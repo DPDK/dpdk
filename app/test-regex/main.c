@@ -25,6 +25,7 @@
 #define MBUF_CACHE_SIZE 256
 #define MBUF_SIZE (1 << 8)
 #define START_BURST_SIZE 32u
+#define MAX_MATCH_MODE 2
 
 enum app_args {
 	ARG_HELP,
@@ -36,6 +37,7 @@ enum app_args {
 	ARG_NUM_OF_QPS,
 	ARG_NUM_OF_LCORES,
 	ARG_NUM_OF_MBUF_SEGS,
+	ARG_NUM_OF_MATCH_MODE,
 };
 
 struct job_ctx {
@@ -72,6 +74,7 @@ struct regex_conf {
 	long data_len;
 	long job_len;
 	uint32_t nb_segs;
+	uint32_t match_mode;
 };
 
 static void
@@ -85,14 +88,17 @@ usage(const char *prog_name)
 		" --nb_iter N: number of iteration to run\n"
 		" --nb_qps N: number of queues to use\n"
 		" --nb_lcores N: number of lcores to use\n"
-		" --nb_segs N: number of mbuf segments\n",
+		" --nb_segs N: number of mbuf segments\n"
+		" --match_mode N: match mode: 0 - None (default),"
+		"   1 - Highest Priority, 2 - Stop On Any\n",
 		prog_name);
 }
 
 static void
 args_parse(int argc, char **argv, char *rules_file, char *data_file,
 	   uint32_t *nb_jobs, bool *perf_mode, uint32_t *nb_iterations,
-	   uint32_t *nb_qps, uint32_t *nb_lcores, uint32_t *nb_segs)
+	   uint32_t *nb_qps, uint32_t *nb_lcores, uint32_t *nb_segs,
+	   uint32_t *match_mode)
 {
 	char **argvopt;
 	int opt;
@@ -116,6 +122,8 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 		{ "nb_lcores", 1, 0, ARG_NUM_OF_LCORES},
 		/* Number of mbuf segments. */
 		{ "nb_segs", 1, 0, ARG_NUM_OF_MBUF_SEGS},
+		/* Match mode. */
+		{ "match_mode", 1, 0, ARG_NUM_OF_MATCH_MODE},
 		/* End of options */
 		{ 0, 0, 0, 0 }
 	};
@@ -157,6 +165,12 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 			break;
 		case ARG_NUM_OF_MBUF_SEGS:
 			*nb_segs = atoi(optarg);
+			break;
+		case ARG_NUM_OF_MATCH_MODE:
+			*match_mode = atoi(optarg);
+			if (*match_mode > MAX_MATCH_MODE)
+				rte_exit(EXIT_FAILURE,
+					 "Invalid match mode value\n");
 			break;
 		case ARG_HELP:
 			usage(argv[0]);
@@ -382,6 +396,7 @@ run_regex(void *args)
 	char *data_buf = rgxc->data_buf;
 	long data_len = rgxc->data_len;
 	long job_len = rgxc->job_len;
+	uint32_t match_mode = rgxc->match_mode;
 	long remainder;
 	long act_job_len = 0;
 	bool last_job = false;
@@ -507,6 +522,21 @@ run_regex(void *args)
 			jobs_ctx[i].mbuf = ops[i]->mbuf;
 			ops[i]->user_id = i;
 			ops[i]->group_id0 = 1;
+			switch (match_mode) {
+			case 0:
+				/* Nothing to set in req_flags */
+				break;
+			case 1:
+				ops[i]->req_flags |= RTE_REGEX_OPS_REQ_MATCH_HIGH_PRIORITY_F;
+				break;
+			case 2:
+				ops[i]->req_flags |= RTE_REGEX_OPS_REQ_STOP_ON_MATCH_F;
+				break;
+			default:
+				rte_exit(EXIT_FAILURE,
+					 "Invalid match mode value\n");
+				break;
+			}
 			pos += act_job_len;
 			actual_jobs++;
 		}
@@ -711,6 +741,7 @@ main(int argc, char **argv)
 	long data_len;
 	long job_len;
 	uint32_t nb_lcores = 1, nb_segs = 1;
+	uint32_t match_mode = 0;
 	struct regex_conf *rgxc;
 	uint32_t i;
 	struct qps_per_lcore *qps_per_lcore;
@@ -724,7 +755,7 @@ main(int argc, char **argv)
 	if (argc > 1)
 		args_parse(argc, argv, rules_file, data_file, &nb_jobs,
 				&perf_mode, &nb_iterations, &nb_qps,
-				&nb_lcores, &nb_segs);
+				&nb_lcores, &nb_segs, &match_mode);
 
 	if (nb_qps == 0)
 		rte_exit(EXIT_FAILURE, "Number of QPs must be greater than 0\n");
@@ -765,6 +796,7 @@ main(int argc, char **argv)
 			.data_buf = data_buf,
 			.data_len = data_len,
 			.job_len = job_len,
+			.match_mode = match_mode,
 		};
 		rte_eal_remote_launch(run_regex, &rgxc[i],
 				      qps_per_lcore[i].lcore_id);

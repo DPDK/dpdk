@@ -71,6 +71,9 @@ Application Options
 ``--nb_segs N``
   number of mbuf segment
 
+``--match_mode N``
+  match mode: 0 - None (default), 1 - Highest Priority, 2 - Stop on Any
+
 ``--help``
   print application options
 
