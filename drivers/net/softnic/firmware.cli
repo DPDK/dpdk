@@ -1,21 +1,40 @@
 ; SPDX-License-Identifier: BSD-3-Clause
-; Copyright(c) 2018 Intel Corporation
+; Copyright(c) 2022 Intel Corporation
 
-link LINK dev 0000:02:00.0
+# Example command line for the DPDK test-pmd application. Out of the 3 application cores (see the
+# -c <core_mask> argument), core 0 is running the control thread doing configuration and CLI, core 1
+# is running the forwarding thread, and core 2 is setup as service core (see the -s <core_mask>
+# argument) for the purpose of running the Soft NIC device:
+#
+#	./build/app/dpdk-testpmd -c 7 -s 4 --vdev 'net_softnic0,firmware=./drivers/net/softnic/firmware.cli,cpu_id=0,conn_port=8086' -- -i
+#
+# Commands from within the DPDK test-pmd application:
+#
+# 	testpmd> set portlist <softnic_port_id>
+#	testpmd> show config fwd
+#	testpmd> start
+#
+# To setup the CLI prompt to the Soft NIC device, the DPDK test-pmd application needs to be modified
+# to call the rte_pmd_softnic_manage() function. Once the Soft NIC device is started, the command to
+# get the CLI prompt is:
+#
+#	telnet 0.0.0.0 8086
 
-pipeline RX period 10 offset_port_id 0
-pipeline RX port in bsz 32 link LINK rxq 0
-pipeline RX port out bsz 32 swq RXQ0
-pipeline RX table match stub
-pipeline RX port in 0 table 0
-pipeline RX table 0 rule add match default action fwd port 0
+;
+; Pipeline code generation & shared object library build.
+;
+pipeline codegen ./drivers/net/softnic/firmware.spec /tmp/firmware.c
+pipeline libbuild /tmp/firmware.c /tmp/firmware.so
 
-pipeline TX period 10 offset_port_id 0
-pipeline TX port in bsz 32 swq TXQ0
-pipeline TX port out bsz 32 link LINK txq 0
-pipeline TX table match stub
-pipeline TX port in 0 table 0
-pipeline TX table 0 rule add match default action fwd port 0
+;
+; List of pipelines.
+;
+pipeline RX build lib /tmp/firmware.so io ./drivers/net/softnic/firmware_rx.io numa 0
+pipeline TX build lib /tmp/firmware.so io ./drivers/net/softnic/firmware_tx.io numa 0
 
-thread 1 pipeline RX enable
-thread 1 pipeline TX enable
+;
+; Pipelines-to-threads mapping. For the Soft NIC devices, the pipelines can be mapped to any of the
+; application service cores (see the -s <core_mask> argument):
+;
+thread 2 pipeline RX enable
+thread 2 pipeline TX enable
