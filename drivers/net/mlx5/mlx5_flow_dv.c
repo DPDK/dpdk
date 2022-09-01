@@ -112,6 +112,13 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 	 * have the user defined items as the flow is split.
 	 */
 	if (layers) {
+		if (tunnel_decap) {
+			/*
+			 * If decap action before modify, it means the driver
+			 * should take the inner as outer for the modify actions.
+			 */
+			layers = ((layers >> 6) & MLX5_FLOW_LAYER_OUTER);
+		}
 		if (layers & MLX5_FLOW_LAYER_OUTER_L3_IPV4)
 			attr->ipv4 = 1;
 		else if (layers & MLX5_FLOW_LAYER_OUTER_L3_IPV6)
