@@ -96,7 +96,7 @@ virtio_vdpa_blk_dev_intr_handler(void *cb_arg)
 		BLK_LOG(INFO, "%s config change capacity=0x%" PRIx64, priv->pdev->device.name, vb_cfg.capacity);
 	}
 
-	if (priv->dev_conf_read) {
+	if (priv->dev_conf_read && priv->configured) {
 		BLK_LOG(INFO, "%s send vhost config change msg", priv->pdev->device.name);
 		ret = rte_vhost_slave_config_change(priv->vid, false);
 		if (ret)
