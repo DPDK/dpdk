@@ -426,6 +426,354 @@ cmd_softnic_pipeline_build(struct pmd_internals *softnic,
 		snprintf(out, out_size, "Pipeline creation failed.\n");
 }
 
+static void
+table_entry_free(struct rte_swx_table_entry *entry)
+{
+	if (!entry)
+		return;
+
+	free(entry->key);
+	free(entry->key_mask);
+	free(entry->action_data);
+	free(entry);
+}
+
+static int
+pipeline_table_entries_add(struct rte_swx_ctl_pipeline *p,
+			   const char *table_name,
+			   FILE *file,
+			   uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_table_entry_read(p,
+							      table_name,
+							      line,
+							      &is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_table_entry_add(p,
+							      table_name,
+							      entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
+	}
+
+error:
+	free(line);
+	*file_line_number = line_id;
+	return status;
+}
+
+/**
+ * pipeline <pipeline_name> table <table_name> add <file_name>
+ */
+static void
+cmd_softnic_pipeline_table_add(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *table_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	table_name = tokens[3];
+
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_table_entries_add(p->ctl,
+					    table_name,
+					    file,
+					    &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+static int
+pipeline_table_entries_delete(struct rte_swx_ctl_pipeline *p,
+			      const char *table_name,
+			      FILE *file,
+			      uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_table_entry_read(p,
+							      table_name,
+							      line,
+							      &is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_table_entry_delete(p,
+								 table_name,
+								 entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
+	}
+
+error:
+	*file_line_number = line_id;
+	free(line);
+	return status;
+}
+
+/**
+ * pipeline <pipeline_name> table <table_name> delete <file_name>
+ */
+static void
+cmd_softnic_pipeline_table_delete(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *table_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	table_name = tokens[3];
+
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_table_entries_delete(p->ctl,
+					       table_name,
+					       file,
+					       &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+static int
+pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *p,
+				 const char *table_name,
+				 FILE *file,
+				 uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_table_entry_read(p,
+							      table_name,
+							      line,
+							      &is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_table_default_entry_add(p,
+								      table_name,
+								      entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
+	}
+
+error:
+	*file_line_number = line_id;
+	free(line);
+	return status;
+}
+
+/**
+ * pipeline <pipeline_name> table <table_name> default <file_name>
+ */
+static void
+cmd_softnic_pipeline_table_default(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *table_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	table_name = tokens[3];
+
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_table_default_entry_add(p->ctl,
+						  table_name,
+						  file,
+						  &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+/**
+ * pipeline <pipeline_name> table <table_name> show [filename]
+ */
+static void
+cmd_softnic_pipeline_table_show(struct pmd_internals *softnic __rte_unused,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *table_name;
+	FILE *file = NULL;
+	int status;
+
+	if (n_tokens != 5 && n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	table_name = tokens[3];
+	file = (n_tokens == 6) ? fopen(tokens[5], "w") : stdout;
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[5]);
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_table_fprintf(file, p->ctl, table_name);
+	if (status)
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_name");
+
+	if (file)
+		fclose(file);
+}
+
 /**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
@@ -568,6 +916,28 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 		if (n_tokens >= 3 && !strcmp(tokens[2], "build")) {
 			cmd_softnic_pipeline_build(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 && !strcmp(tokens[2], "table") && !strcmp(tokens[4], "add")) {
+			cmd_softnic_pipeline_table_add(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 && !strcmp(tokens[2], "table") && !strcmp(tokens[4], "delete")) {
+			cmd_softnic_pipeline_table_delete(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 && !strcmp(tokens[2], "table") && !strcmp(tokens[4], "default")) {
+			cmd_softnic_pipeline_table_default(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 && !strcmp(tokens[2], "table") && !strcmp(tokens[4], "show")) {
+			cmd_softnic_pipeline_table_show(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 	}
