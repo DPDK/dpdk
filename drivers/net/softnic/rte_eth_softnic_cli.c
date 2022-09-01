@@ -366,6 +366,67 @@ free:
 }
 
 /**
+ * pipeline <pipeline_name> build lib <lib_file> io <iospec_file> numa <numa_node>
+ */
+static void
+cmd_softnic_pipeline_build(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p = NULL;
+	char *pipeline_name, *lib_file_name, *iospec_file_name;
+	uint32_t numa_node = 0;
+
+	/* Parsing. */
+	if (n_tokens != 9) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "build")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "build");
+		return;
+	}
+
+	if (strcmp(tokens[3], "lib")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "lib");
+		return;
+	}
+
+	lib_file_name = tokens[4];
+
+	if (strcmp(tokens[5], "io")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "io");
+		return;
+	}
+
+	iospec_file_name = tokens[6];
+
+	if (strcmp(tokens[7], "numa")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "numa");
+		return;
+	}
+
+	if (parser_read_uint32(&numa_node, tokens[8])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "numa_node");
+		return;
+	}
+
+	/* Pipeline create. */
+	p = softnic_pipeline_create(softnic,
+				    pipeline_name,
+				    lib_file_name,
+				    iospec_file_name,
+				    (int)numa_node);
+	if (!p)
+		snprintf(out, out_size, "Pipeline creation failed.\n");
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
 static void
@@ -502,6 +563,11 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 		if (n_tokens >= 3 && !strcmp(tokens[1], "libbuild")) {
 			cmd_softnic_pipeline_libbuild(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "build")) {
+			cmd_softnic_pipeline_build(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 	}
