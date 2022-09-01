@@ -42,11 +42,12 @@ Running the Application
 
    ..  code-block:: console
 
-       ./<build-dir>/examples/dpdk-distributor [EAL options] -- -p PORTMASK
+       ./<build-dir>/examples/dpdk-distributor [EAL options] -- -p PORTMASK [-c]
 
    where,
 
    *   -p PORTMASK: Hexadecimal bitmask of ports to configure
+   *   -c: Combines the RX core with distribution core
 
 #. To run the application in linux environment with 10 lcores, 4 ports,
    issue the command:
