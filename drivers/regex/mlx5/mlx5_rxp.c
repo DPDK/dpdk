@@ -293,6 +293,11 @@ mlx5_regex_configure(struct rte_regexdev *dev,
 
 	if (priv->prog_mode == MLX5_RXP_MODE_NOT_DEFINED)
 		return -1;
+	if (cfg->nb_max_matches != MLX5_REGEX_MAX_MATCHES) {
+		DRV_LOG(ERR, "nb_max_matches is not configurable.");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	priv->nb_queues = cfg->nb_queue_pairs;
 	dev->data->dev_conf.nb_queue_pairs = priv->nb_queues;
 	priv->qps = rte_zmalloc(NULL, sizeof(struct mlx5_regex_qp) *
