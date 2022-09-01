@@ -71,24 +71,6 @@ struct softnic_swq {
 TAILQ_HEAD(softnic_swq_list, softnic_swq);
 
 /**
- * LINK
- */
-struct softnic_link_params {
-	const char *dev_name;
-	uint16_t port_id; /**< Valid only when *dev_name* is NULL. */
-};
-
-struct softnic_link {
-	TAILQ_ENTRY(softnic_link) node;
-	char name[NAME_SIZE];
-	uint16_t port_id;
-	uint32_t n_rxq;
-	uint32_t n_txq;
-};
-
-TAILQ_HEAD(softnic_link_list, softnic_link);
-
-/**
  * Pipeline
  */
 struct pipeline {
@@ -162,7 +144,6 @@ struct pmd_internals {
 	struct softnic_conn *conn;
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
-	struct softnic_link_list link_list;
 	struct pipeline_list pipeline_list;
 	struct softnic_thread thread[RTE_MAX_LCORE];
 	struct softnic_thread_data thread_data[RTE_MAX_LCORE];
@@ -222,24 +203,6 @@ struct softnic_swq *
 softnic_swq_create(struct pmd_internals *p,
 	const char *name,
 	struct softnic_swq_params *params);
-
-/**
- * LINK
- */
-int
-softnic_link_init(struct pmd_internals *p);
-
-void
-softnic_link_free(struct pmd_internals *p);
-
-struct softnic_link *
-softnic_link_find(struct pmd_internals *p,
-	const char *name);
-
-struct softnic_link *
-softnic_link_create(struct pmd_internals *p,
-	const char *name,
-	struct softnic_link_params *params);
 
 /**
  * Pipeline

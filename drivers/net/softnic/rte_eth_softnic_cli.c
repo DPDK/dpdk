@@ -103,50 +103,6 @@ cmd_mempool(struct pmd_internals *softnic,
 }
 
 /**
- * link <link_name>
- *    dev <device_name> | port <port_id>
- */
-static void
-cmd_link(struct pmd_internals *softnic,
-	char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size)
-{
-	struct softnic_link_params p;
-	struct softnic_link *link;
-	char *name;
-
-	memset(&p, 0, sizeof(p));
-
-	if (n_tokens != 4) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-	name = tokens[1];
-
-	if (strcmp(tokens[2], "dev") == 0) {
-		p.dev_name = tokens[3];
-	} else if (strcmp(tokens[2], "port") == 0) {
-		p.dev_name = NULL;
-
-		if (softnic_parser_read_uint16(&p.port_id, tokens[3]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
-			return;
-		}
-	} else {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "dev or port");
-		return;
-	}
-
-	link = softnic_link_create(softnic, name, &p);
-	if (link == NULL) {
-		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
-		return;
-	}
-}
-
-/**
  * swq <swq_name>
  *  size <size>
  */
@@ -306,11 +262,6 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 	if (strcmp(tokens[0], "mempool") == 0) {
 		cmd_mempool(softnic, tokens, n_tokens, out, out_size);
-		return;
-	}
-
-	if (strcmp(tokens[0], "link") == 0) {
-		cmd_link(softnic, tokens, n_tokens, out, out_size);
 		return;
 	}
 
