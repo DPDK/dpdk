@@ -392,6 +392,7 @@ run_regex(void *args)
 	uint16_t qp_id;
 	uint16_t dev_id = 0;
 	uint8_t nb_matches;
+	uint16_t rsp_flags = 0;
 	struct rte_regexdev_match *match;
 	long pos;
 	unsigned long d_ind = 0;
@@ -585,8 +586,9 @@ run_regex(void *args)
 		/* Log results per job. */
 		for (d_ind = 0; d_ind < qp->total_dequeue; d_ind++) {
 			nb_matches = qp->ops[d_ind % actual_jobs]->nb_matches;
-			printf("Job id %"PRIu64" number of matches = %d\n",
-					qp->ops[d_ind]->user_id, nb_matches);
+			rsp_flags = qp->ops[d_ind % actual_jobs]->rsp_flags;
+			printf("Job id %"PRIu64" number of matches = %d, rsp flags = 0x%x\n",
+					qp->ops[d_ind]->user_id, nb_matches, rsp_flags);
 			qp->total_matches += nb_matches;
 			match = qp->ops[d_ind % actual_jobs]->matches;
 			for (i = 0; i < nb_matches; i++) {
