@@ -1080,7 +1080,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	struct roc_nix_fc_cfg fc_cfg = {0};
 	struct roc_nix *nix = &dev->nix;
 	struct rte_ether_addr *ea;
-	uint8_t nb_rxq, nb_txq;
+	uint16_t nb_rxq, nb_txq;
 	uint64_t rx_cfg;
 	void *qs;
 	int rc;

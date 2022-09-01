@@ -1171,8 +1171,10 @@ nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	if (qid >= eth_dev->data->nb_tx_queues)
 		return -ENOTSUP;
 
-	/* Check if RX pause frame is enabled or not */
-	if (!pfc->rx_pause_en) {
+	/* Check if RX pause frame is enabled or not and
+	 * confirm user requested for PFC.
+	 */
+	if (!pfc->rx_pause_en && rx_pause) {
 		if ((roc_nix_tm_tree_type_get(nix) == ROC_NIX_TM_DEFAULT) &&
 		    eth_dev->data->nb_tx_queues > 1) {
 			/*
