@@ -13,7 +13,6 @@
 #include <rte_kvargs.h>
 #include <rte_errno.h>
 #include <rte_ring.h>
-#include <rte_mtr_driver.h>
 
 #include "rte_eth_softnic.h"
 #include "rte_eth_softnic_internals.h"
@@ -168,8 +167,6 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 	softnic_softnic_swq_free_keep_rxq_txq(p);
 	softnic_mempool_free(p);
 
-	softnic_mtr_free(p);
-
 	return 0;
 }
 
@@ -190,8 +187,6 @@ pmd_free(struct pmd_internals *p)
 	softnic_link_free(p);
 	softnic_swq_free(p);
 	softnic_mempool_free(p);
-
-	softnic_mtr_free(p);
 
 	rte_free(p);
 }
@@ -215,14 +210,6 @@ pmd_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
-static int
-pmd_mtr_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
-{
-	*(const struct rte_mtr_ops **)arg = &pmd_mtr_ops;
-
-	return 0;
-}
-
 static const struct eth_dev_ops pmd_ops = {
 	.dev_configure = pmd_dev_configure,
 	.dev_start = pmd_dev_start,
@@ -232,7 +219,6 @@ static const struct eth_dev_ops pmd_ops = {
 	.dev_infos_get = pmd_dev_infos_get,
 	.rx_queue_setup = pmd_rx_queue_setup,
 	.tx_queue_setup = pmd_tx_queue_setup,
-	.mtr_ops_get = pmd_mtr_ops_get,
 };
 
 static uint16_t
@@ -274,8 +260,6 @@ pmd_init(struct pmd_params *params)
 	memcpy(&p->params, params, sizeof(p->params));
 
 	/* Resources */
-	softnic_mtr_init(p);
-
 	softnic_mempool_init(p);
 	softnic_swq_init(p);
 	softnic_link_init(p);

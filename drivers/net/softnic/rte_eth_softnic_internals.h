@@ -19,8 +19,6 @@
 
 #include <rte_ethdev_core.h>
 #include <ethdev_driver.h>
-#include <rte_flow_driver.h>
-#include <rte_mtr_driver.h>
 
 #include "rte_eth_softnic.h"
 #include "conn.h"
@@ -38,68 +36,6 @@ struct pmd_params {
 	uint16_t conn_port;
 	uint32_t cpu_id;
 	int sc; /**< Service cores. */
-};
-
-/**
- * Ethdev Flow API
- */
-struct rte_flow;
-
-TAILQ_HEAD(flow_list, rte_flow);
-
-struct flow_attr_map {
-	char pipeline_name[NAME_SIZE];
-	uint32_t table_id;
-	int valid;
-};
-
-#ifndef SOFTNIC_FLOW_MAX_GROUPS
-#define SOFTNIC_FLOW_MAX_GROUPS                            64
-#endif
-
-struct flow_internals {
-	struct flow_attr_map ingress_map[SOFTNIC_FLOW_MAX_GROUPS];
-	struct flow_attr_map egress_map[SOFTNIC_FLOW_MAX_GROUPS];
-};
-
-/**
- * Meter
- */
-
-/* MTR meter profile */
-struct softnic_mtr_meter_profile {
-	TAILQ_ENTRY(softnic_mtr_meter_profile) node;
-	uint32_t meter_profile_id;
-	struct rte_mtr_meter_profile params;
-	uint32_t n_users;
-};
-
-TAILQ_HEAD(softnic_mtr_meter_profile_list, softnic_mtr_meter_profile);
-
-/* MTR meter policy */
-struct softnic_mtr_meter_policy {
-	TAILQ_ENTRY(softnic_mtr_meter_policy) node;
-	uint32_t meter_policy_id;
-	enum rte_table_action_policer policer[RTE_COLORS];
-	uint32_t n_users;
-};
-
-TAILQ_HEAD(softnic_mtr_meter_policy_list, softnic_mtr_meter_policy);
-
-/* MTR meter object */
-struct softnic_mtr {
-	TAILQ_ENTRY(softnic_mtr) node;
-	uint32_t mtr_id;
-	struct rte_mtr_params params;
-	struct rte_flow *flow;
-};
-
-TAILQ_HEAD(softnic_mtr_list, softnic_mtr);
-
-struct mtr_internals {
-	struct softnic_mtr_meter_profile_list meter_profiles;
-	struct softnic_mtr_meter_policy_list meter_policies;
-	struct softnic_mtr_list mtrs;
 };
 
 /**
@@ -383,7 +319,6 @@ struct softnic_table {
 	struct softnic_table_params params;
 	struct softnic_table_action_profile *ap;
 	struct rte_table_action *a;
-	struct flow_list flows;
 	struct rte_table_action_dscp_table dscp_table;
 	struct softnic_table_meter_profile_list meter_profiles;
 };
@@ -481,9 +416,6 @@ struct pmd_internals {
 	/** Params */
 	struct pmd_params params;
 
-	struct flow_internals flow;
-	struct mtr_internals mtr;
-
 	struct softnic_conn *conn;
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
@@ -512,46 +444,6 @@ ETHDEV(struct pmd_internals *softnic)
 
 	return &rte_eth_devices[port_id];
 }
-
-/**
- * Ethdev Flow API
- */
-int
-flow_attr_map_set(struct pmd_internals *softnic,
-		uint32_t group_id,
-		int ingress,
-		const char *pipeline_name,
-		uint32_t table_id);
-
-struct flow_attr_map *
-flow_attr_map_get(struct pmd_internals *softnic,
-		uint32_t group_id,
-		int ingress);
-
-extern const struct rte_flow_ops pmd_flow_ops;
-
-/**
- * Meter
- */
-int
-softnic_mtr_init(struct pmd_internals *p);
-
-void
-softnic_mtr_free(struct pmd_internals *p);
-
-struct softnic_mtr *
-softnic_mtr_find(struct pmd_internals *p,
-	uint32_t mtr_id);
-
-struct softnic_mtr_meter_profile *
-softnic_mtr_meter_profile_find(struct pmd_internals *p,
-	uint32_t meter_profile_id);
-
-struct softnic_mtr_meter_policy *
-softnic_mtr_meter_policy_find(struct pmd_internals *p,
-	uint32_t meter_policy_id);
-
-extern const struct rte_mtr_ops pmd_mtr_ops;
 
 /**
  * MEMPOOL
@@ -812,15 +704,6 @@ struct softnic_table_rule_action {
 	struct rte_table_action_decap_params decap;
 	struct rte_table_action_sym_crypto_params sym_crypto;
 	uint8_t sym_crypto_key[SYM_CRYPTO_MAX_KEY_SIZE];
-};
-
-struct rte_flow {
-	TAILQ_ENTRY(rte_flow) node;
-	struct softnic_table_rule_match match;
-	struct softnic_table_rule_action action;
-	void *data;
-	struct pipeline *pipeline;
-	uint32_t table_id;
 };
 
 int

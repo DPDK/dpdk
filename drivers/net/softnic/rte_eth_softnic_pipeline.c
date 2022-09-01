@@ -47,17 +47,6 @@ static void
 softnic_pipeline_table_free(struct softnic_table *table)
 {
 	for ( ; ; ) {
-		struct rte_flow *flow;
-
-		flow = TAILQ_FIRST(&table->flows);
-		if (flow == NULL)
-			break;
-
-		TAILQ_REMOVE(&table->flows, flow, node);
-		free(flow);
-	}
-
-	for ( ; ; ) {
 		struct softnic_table_meter_profile *mp;
 
 		mp = TAILQ_FIRST(&table->meter_profiles);
@@ -1035,7 +1024,6 @@ softnic_pipeline_table_create(struct pmd_internals *softnic,
 	memcpy(&table->params, params, sizeof(*params));
 	table->ap = ap;
 	table->a = action;
-	TAILQ_INIT(&table->flows);
 	TAILQ_INIT(&table->meter_profiles);
 	memset(&table->dscp_table, 0, sizeof(table->dscp_table));
 	pipeline->n_tables++;
