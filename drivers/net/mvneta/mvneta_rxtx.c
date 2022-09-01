@@ -79,6 +79,10 @@ mvneta_buffs_refill(struct mvneta_priv *priv, struct mvneta_rxq *rxq, u16 *num)
 	int i, ret;
 	uint16_t nb_desc = *num;
 
+	/* To prevent GCC-12 warning. */
+	if (unlikely(nb_desc == 0))
+		return -1;
+
 	ret = rte_pktmbuf_alloc_bulk(rxq->mp, mbufs, nb_desc);
 	if (ret) {
 		MVNETA_LOG(ERR, "Failed to allocate %u mbufs.", nb_desc);
