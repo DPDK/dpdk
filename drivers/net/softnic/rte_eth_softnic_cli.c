@@ -1245,6 +1245,104 @@ cmd_softnic_pipeline_selector_show(struct pmd_internals *softnic,
 		fclose(file);
 }
 
+static int
+pipeline_learner_default_entry_add(struct rte_swx_ctl_pipeline *p,
+				   const char *learner_name,
+				   FILE *file,
+				   uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_table_entry *entry;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		entry = rte_swx_ctl_pipeline_learner_default_entry_read(p,
+									learner_name,
+									line,
+									&is_blank_or_comment);
+		if (!entry) {
+			if (is_blank_or_comment)
+				continue;
+
+			status = -EINVAL;
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_learner_default_entry_add(p,
+									learner_name,
+									entry);
+		table_entry_free(entry);
+		if (status)
+			goto error;
+	}
+
+error:
+	*file_line_number = line_id;
+	free(line);
+	return status;
+}
+
+/**
+ * pipeline <pipeline_name> learner <learner_name> default <file_name>
+ */
+static void
+cmd_softnic_pipeline_learner_default(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *learner_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	learner_name = tokens[3];
+
+	file_name = tokens[5];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_learner_default_entry_add(p->ctl,
+						    learner_name,
+						    file,
+						    &file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
 /**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
@@ -1454,6 +1552,14 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			!strcmp(tokens[2], "selector") &&
 			!strcmp(tokens[4], "show")) {
 			cmd_softnic_pipeline_selector_show(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 &&
+			!strcmp(tokens[2], "learner") &&
+			!strcmp(tokens[4], "default")) {
+			cmd_softnic_pipeline_learner_default(softnic, tokens, n_tokens,
 				out, out_size);
 			return;
 		}
