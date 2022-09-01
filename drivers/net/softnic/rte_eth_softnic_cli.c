@@ -196,6 +196,7 @@ cmd_softnic_thread_pipeline_enable(struct pmd_internals *softnic,
 	size_t out_size)
 {
 	char *pipeline_name;
+	struct pipeline *p;
 	uint32_t thread_id;
 	int status;
 
@@ -215,13 +216,18 @@ cmd_softnic_thread_pipeline_enable(struct pmd_internals *softnic,
 	}
 
 	pipeline_name = tokens[3];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
 
 	if (strcmp(tokens[4], "enable") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "enable");
 		return;
 	}
 
-	status = softnic_thread_pipeline_enable(softnic, thread_id, pipeline_name);
+	status = softnic_thread_pipeline_enable(softnic, thread_id, p);
 	if (status) {
 		snprintf(out, out_size, MSG_CMD_FAIL, "thread pipeline enable");
 		return;
@@ -239,6 +245,7 @@ cmd_softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 	size_t out_size)
 {
 	char *pipeline_name;
+	struct pipeline *p;
 	uint32_t thread_id;
 	int status;
 
@@ -258,13 +265,18 @@ cmd_softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 	}
 
 	pipeline_name = tokens[3];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
 
 	if (strcmp(tokens[4], "disable") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "disable");
 		return;
 	}
 
-	status = softnic_thread_pipeline_disable(softnic, thread_id, pipeline_name);
+	status = softnic_thread_pipeline_disable(softnic, thread_id, p);
 	if (status) {
 		snprintf(out, out_size, MSG_CMD_FAIL,
 			"thread pipeline disable");
