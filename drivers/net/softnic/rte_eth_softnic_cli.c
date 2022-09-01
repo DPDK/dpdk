@@ -2110,6 +2110,94 @@ cmd_softnic_pipeline_stats(struct pmd_internals *softnic,
 }
 
 /**
+ * pipeline <pipeline_name> mirror session <session_id> port <port_id> clone fast | slow
+ *	truncate <truncation_length>
+ */
+static void
+cmd_softnic_pipeline_mirror_session(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_swx_pipeline_mirroring_session_params params;
+	struct pipeline *p;
+	uint32_t session_id = 0;
+	int status;
+
+	if (n_tokens != 11) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[0], "pipeline")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
+		return;
+	}
+
+	p = softnic_pipeline_find(softnic, tokens[1]);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "mirror")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mirror");
+		return;
+	}
+
+	if (strcmp(tokens[3], "session")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "session");
+		return;
+	}
+
+	if (parser_read_uint32(&session_id, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "session_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "port")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (parser_read_uint32(&params.port_id, tokens[6])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+		return;
+	}
+
+	if (strcmp(tokens[7], "clone")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "clone");
+		return;
+	}
+
+	if (!strcmp(tokens[8], "fast")) {
+		params.fast_clone = 1;
+	} else if (!strcmp(tokens[8], "slow")) {
+		params.fast_clone = 0;
+	} else {
+		snprintf(out, out_size, MSG_ARG_INVALID, "clone");
+		return;
+	}
+
+	if (strcmp(tokens[9], "truncate")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "truncate");
+		return;
+	}
+
+	if (parser_read_uint32(&params.truncation_length, tokens[10])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "truncation_length");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_mirroring_session_set(p->p, session_id, &params);
+	if (status) {
+		snprintf(out, out_size, "Command failed!\n");
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
 static void
@@ -2385,6 +2473,14 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 		if (n_tokens >= 3 && !strcmp(tokens[2], "stats")) {
 			cmd_softnic_pipeline_stats(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 4 &&
+			!strcmp(tokens[2], "mirror") &&
+			!strcmp(tokens[3], "session")) {
+			cmd_softnic_pipeline_mirror_session(softnic, tokens, n_tokens,
+				out, out_size);
 			return;
 		}
 	}
