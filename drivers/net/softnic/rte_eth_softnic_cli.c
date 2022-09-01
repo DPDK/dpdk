@@ -214,80 +214,6 @@ cmd_tap(struct pmd_internals *softnic,
 }
 
 /**
- * cryptodev <tap_name> dev <device_name> | dev_id <device_id>
- * queue <n_queues> <queue_size> max_sessions <n_sessions>
- **/
-
-static void
-cmd_cryptodev(struct pmd_internals *softnic,
-		char **tokens,
-		uint32_t n_tokens,
-		char *out,
-		size_t out_size)
-{
-	struct softnic_cryptodev_params params;
-	char *name;
-
-	memset(&params, 0, sizeof(params));
-	if (n_tokens != 9) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-
-	name = tokens[1];
-
-	if (strcmp(tokens[2], "dev") == 0)
-		params.dev_name = tokens[3];
-	else if (strcmp(tokens[2], "dev_id") == 0) {
-		if (softnic_parser_read_uint32(&params.dev_id, tokens[3]) < 0) {
-			snprintf(out, out_size,	MSG_ARG_INVALID,
-				"dev_id");
-			return;
-		}
-	} else {
-		snprintf(out, out_size,	MSG_ARG_INVALID,
-			"cryptodev");
-		return;
-	}
-
-	if (strcmp(tokens[4], "queue")) {
-		snprintf(out, out_size,	MSG_ARG_NOT_FOUND,
-			"4");
-		return;
-	}
-
-	if (softnic_parser_read_uint32(&params.n_queues, tokens[5]) < 0) {
-		snprintf(out, out_size,	MSG_ARG_INVALID,
-			"q");
-		return;
-	}
-
-	if (softnic_parser_read_uint32(&params.queue_size, tokens[6]) < 0) {
-		snprintf(out, out_size,	MSG_ARG_INVALID,
-			"queue_size");
-		return;
-	}
-
-	if (strcmp(tokens[7], "max_sessions")) {
-		snprintf(out, out_size,	MSG_ARG_NOT_FOUND,
-			"4");
-		return;
-	}
-
-	if (softnic_parser_read_uint32(&params.session_pool_size, tokens[8])
-			< 0) {
-		snprintf(out, out_size,	MSG_ARG_INVALID,
-			"q");
-		return;
-	}
-
-	if (softnic_cryptodev_create(softnic, name, &params) == NULL) {
-		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
-		return;
-	}
-}
-
-/**
  * port in action profile <profile_name>
  *  [filter match | mismatch offset <key_offset> mask <key_mask> key <key_value> port <port_id>]
  *  [balance offset <key_offset> mask <key_mask> port <port_id0> ... <port_id15>]
@@ -879,41 +805,6 @@ cmd_table_action_profile(struct pmd_internals *softnic,
 		t0 += 1;
 	} /* decap */
 
-	if (t0 < n_tokens && (strcmp(tokens[t0], "sym_crypto") == 0)) {
-		struct softnic_cryptodev *cryptodev;
-
-		if (n_tokens < t0 + 5 ||
-				strcmp(tokens[t0 + 1], "dev") ||
-				strcmp(tokens[t0 + 3], "offset")) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"table action profile sym_crypto");
-			return;
-		}
-
-		cryptodev = softnic_cryptodev_find(softnic, tokens[t0 + 2]);
-		if (cryptodev == NULL) {
-			snprintf(out, out_size, MSG_ARG_INVALID,
-				"table action profile sym_crypto");
-			return;
-		}
-
-		p.sym_crypto.cryptodev_id = cryptodev->dev_id;
-
-		if (softnic_parser_read_uint32(&p.sym_crypto.op_offset,
-				tokens[t0 + 4]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID,
-					"table action profile sym_crypto");
-			return;
-		}
-
-		p.sym_crypto.mp_create = cryptodev->mp_create;
-		p.sym_crypto.mp_init = cryptodev->mp_init;
-
-		p.action_mask |= 1LLU << RTE_TABLE_ACTION_SYM_CRYPTO;
-
-		t0 += 5;
-	} /* sym_crypto */
-
 	if (t0 < n_tokens) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
@@ -985,7 +876,6 @@ cmd_pipeline(struct pmd_internals *softnic,
  *  | swq <swq_name>
  *  | tap <tap_name> mempool <mempool_name> mtu <mtu>
  *  | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>
- *  | cryptodev <cryptodev_name> rxq <queue_id>
  *  [action <port_in_action_profile_name>]
  *  [disabled]
  */
@@ -1138,27 +1028,6 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 		}
 
 		t0 += 7;
-	} else if (strcmp(tokens[t0], "cryptodev") == 0) {
-		if (n_tokens < t0 + 3) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port in cryptodev");
-			return;
-		}
-
-		p.type = PORT_IN_CRYPTODEV;
-
-		strlcpy(p.dev_name, tokens[t0 + 1], sizeof(p.dev_name));
-		if (softnic_parser_read_uint16(&p.rxq.queue_id,
-				tokens[t0 + 3]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID,
-				"rxq");
-			return;
-		}
-
-		p.cryptodev.arg_callback = NULL;
-		p.cryptodev.f_callback = NULL;
-
-		t0 += 4;
 	} else {
 		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
 		return;
@@ -1207,7 +1076,6 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
  *  | swq <swq_name>
  *  | tap <tap_name>
  *  | sink [file <file_name> pkts <max_n_pkts>]
- *  | cryptodev <cryptodev_name> txq <txq_id> offset <crypto_op_offset>
  */
 static void
 cmd_pipeline_port_out(struct pmd_internals *softnic,
@@ -1321,40 +1189,6 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 				snprintf(out, out_size, MSG_ARG_INVALID, "max_n_pkts");
 				return;
 			}
-		}
-	} else if (strcmp(tokens[6], "cryptodev") == 0) {
-		if (n_tokens != 12) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port out cryptodev");
-			return;
-		}
-
-		p.type = PORT_OUT_CRYPTODEV;
-
-		strlcpy(p.dev_name, tokens[7], sizeof(p.dev_name));
-
-		if (strcmp(tokens[8], "txq")) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port out cryptodev");
-			return;
-		}
-
-		if (softnic_parser_read_uint16(&p.cryptodev.queue_id, tokens[9])
-				!= 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "queue_id");
-			return;
-		}
-
-		if (strcmp(tokens[10], "offset")) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port out cryptodev");
-			return;
-		}
-
-		if (softnic_parser_read_uint32(&p.cryptodev.op_offset,
-				tokens[11]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "queue_id");
-			return;
 		}
 	} else {
 		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
@@ -4768,11 +4602,6 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 	if (strcmp(tokens[0], "tap") == 0) {
 		cmd_tap(softnic, tokens, n_tokens, out, out_size);
-		return;
-	}
-
-	if (strcmp(tokens[0], "cryptodev") == 0) {
-		cmd_cryptodev(softnic, tokens, n_tokens, out, out_size);
 		return;
 	}
 

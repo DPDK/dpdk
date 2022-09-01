@@ -264,7 +264,6 @@ pmd_init(struct pmd_params *params)
 	softnic_swq_init(p);
 	softnic_link_init(p);
 	softnic_tap_init(p);
-	softnic_cryptodev_init(p);
 	softnic_port_in_action_profile_init(p);
 	softnic_table_action_profile_init(p);
 	softnic_pipeline_init(p);

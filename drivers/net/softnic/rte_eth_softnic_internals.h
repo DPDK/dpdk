@@ -101,28 +101,6 @@ struct softnic_tap {
 TAILQ_HEAD(softnic_tap_list, softnic_tap);
 
 /**
- * Cryptodev
- */
-struct softnic_cryptodev_params {
-	const char *dev_name;
-	uint32_t dev_id; /**< Valid only when *dev_name* is NULL. */
-	uint32_t n_queues;
-	uint32_t queue_size;
-	uint32_t session_pool_size;
-};
-
-struct softnic_cryptodev {
-	TAILQ_ENTRY(softnic_cryptodev) node;
-	char name[NAME_SIZE];
-	uint16_t dev_id;
-	uint32_t n_queues;
-	struct rte_mempool *mp_create;
-	struct rte_mempool *mp_init;
-};
-
-TAILQ_HEAD(softnic_cryptodev_list, softnic_cryptodev);
-
-/**
  * Input port action
  */
 struct softnic_port_in_action_profile_params {
@@ -187,7 +165,6 @@ enum softnic_port_in_type {
 	PORT_IN_SWQ,
 	PORT_IN_TAP,
 	PORT_IN_SOURCE,
-	PORT_IN_CRYPTODEV,
 };
 
 struct softnic_port_in_params {
@@ -209,12 +186,6 @@ struct softnic_port_in_params {
 			const char *file_name;
 			uint32_t n_bytes_per_pkt;
 		} source;
-
-		struct {
-			uint16_t queue_id;
-			void *f_callback;
-			void *arg_callback;
-		} cryptodev;
 	};
 	uint32_t burst_size;
 
@@ -227,7 +198,6 @@ enum softnic_port_out_type {
 	PORT_OUT_SWQ,
 	PORT_OUT_TAP,
 	PORT_OUT_SINK,
-	PORT_OUT_CRYPTODEV,
 };
 
 struct softnic_port_out_params {
@@ -242,11 +212,6 @@ struct softnic_port_out_params {
 			const char *file_name;
 			uint32_t max_n_pkts;
 		} sink;
-
-		struct {
-			uint16_t queue_id;
-			uint32_t op_offset;
-		} cryptodev;
 	};
 	uint32_t burst_size;
 	int retry;
@@ -421,7 +386,6 @@ struct pmd_internals {
 	struct softnic_swq_list swq_list;
 	struct softnic_link_list link_list;
 	struct softnic_tap_list tap_list;
-	struct softnic_cryptodev_list cryptodev_list;
 	struct softnic_port_in_action_profile_list port_in_action_profile_list;
 	struct softnic_table_action_profile_list table_action_profile_list;
 	struct pipeline_list pipeline_list;
@@ -518,24 +482,6 @@ softnic_tap_find(struct pmd_internals *p,
 struct softnic_tap *
 softnic_tap_create(struct pmd_internals *p,
 	const char *name);
-
-/**
- * Sym Crypto
- */
-int
-softnic_cryptodev_init(struct pmd_internals *p);
-
-void
-softnic_cryptodev_free(struct pmd_internals *p);
-
-struct softnic_cryptodev *
-softnic_cryptodev_find(struct pmd_internals *p,
-	const char *name);
-
-struct softnic_cryptodev *
-softnic_cryptodev_create(struct pmd_internals *p,
-	const char *name,
-	struct softnic_cryptodev_params *params);
 
 /**
  * Input port action

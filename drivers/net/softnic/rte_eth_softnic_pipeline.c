@@ -227,7 +227,6 @@ softnic_pipeline_port_in_create(struct pmd_internals *softnic,
 		struct rte_port_sched_reader_params sched;
 		struct rte_port_fd_reader_params fd;
 		struct rte_port_source_params source;
-		struct rte_port_sym_crypto_reader_params cryptodev;
 	} pp;
 
 	struct pipeline *pipeline;
@@ -330,23 +329,6 @@ softnic_pipeline_port_in_create(struct pmd_internals *softnic,
 		break;
 	}
 
-	case PORT_IN_CRYPTODEV:
-	{
-		struct softnic_cryptodev *cryptodev;
-
-		cryptodev = softnic_cryptodev_find(softnic, params->dev_name);
-		if (cryptodev == NULL)
-			return -1;
-
-		pp.cryptodev.cryptodev_id = cryptodev->dev_id;
-		pp.cryptodev.queue_id = params->cryptodev.queue_id;
-		pp.cryptodev.f_callback = params->cryptodev.f_callback;
-		pp.cryptodev.arg_callback = params->cryptodev.arg_callback;
-		p.ops = &rte_port_sym_crypto_reader_ops;
-		p.arg_create = &pp.cryptodev;
-		break;
-	}
-
 	default:
 		return -1;
 	}
@@ -433,14 +415,12 @@ softnic_pipeline_port_out_create(struct pmd_internals *softnic,
 		struct rte_port_sched_writer_params sched;
 		struct rte_port_fd_writer_params fd;
 		struct rte_port_sink_params sink;
-		struct rte_port_sym_crypto_writer_params cryptodev;
 	} pp;
 
 	union {
 		struct rte_port_ethdev_writer_nodrop_params ethdev;
 		struct rte_port_ring_writer_nodrop_params ring;
 		struct rte_port_fd_writer_nodrop_params fd;
-		struct rte_port_sym_crypto_writer_nodrop_params cryptodev;
 	} pp_nodrop;
 
 	struct pipeline *pipeline;
@@ -551,40 +531,6 @@ softnic_pipeline_port_out_create(struct pmd_internals *softnic,
 
 		p.ops = &rte_port_sink_ops;
 		p.arg_create = &pp.sink;
-		break;
-	}
-
-	case PORT_OUT_CRYPTODEV:
-	{
-		struct softnic_cryptodev *cryptodev;
-
-		cryptodev = softnic_cryptodev_find(softnic, params->dev_name);
-		if (cryptodev == NULL)
-			return -1;
-
-		if (params->cryptodev.queue_id >= cryptodev->n_queues)
-			return -1;
-
-		pp.cryptodev.cryptodev_id = cryptodev->dev_id;
-		pp.cryptodev.queue_id = params->cryptodev.queue_id;
-		pp.cryptodev.tx_burst_sz = params->burst_size;
-		pp.cryptodev.crypto_op_offset = params->cryptodev.op_offset;
-
-		pp_nodrop.cryptodev.cryptodev_id = cryptodev->dev_id;
-		pp_nodrop.cryptodev.queue_id = params->cryptodev.queue_id;
-		pp_nodrop.cryptodev.tx_burst_sz = params->burst_size;
-		pp_nodrop.cryptodev.n_retries = params->retry;
-		pp_nodrop.cryptodev.crypto_op_offset =
-				params->cryptodev.op_offset;
-
-		if (params->retry == 0) {
-			p.ops = &rte_port_sym_crypto_writer_ops;
-			p.arg_create = &pp.cryptodev;
-		} else {
-			p.ops = &rte_port_sym_crypto_writer_nodrop_ops;
-			p.arg_create = &pp_nodrop.cryptodev;
-		}
-
 		break;
 	}
 
