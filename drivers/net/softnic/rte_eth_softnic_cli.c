@@ -1910,6 +1910,206 @@ cmd_softnic_pipeline_meter_stats(struct pmd_internals *softnic,
 }
 
 /**
+ * pipeline <pipeline_name> stats
+ */
+static void
+cmd_softnic_pipeline_stats(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_swx_ctl_pipeline_info info;
+	struct pipeline *p;
+	uint32_t i;
+	int status;
+
+	if (n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = softnic_pipeline_find(softnic, tokens[1]);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "stats")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "stats");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_info_get(p->p, &info);
+	if (status) {
+		snprintf(out, out_size, "Pipeline info get error.");
+		return;
+	}
+
+	snprintf(out, out_size, "Input ports:\n");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	for (i = 0; i < info.n_ports_in; i++) {
+		struct rte_swx_port_in_stats stats;
+
+		rte_swx_ctl_pipeline_port_in_stats_read(p->p, i, &stats);
+
+		snprintf(out, out_size, "\tPort %u:"
+			" packets %" PRIu64
+			" bytes %" PRIu64
+			" empty %" PRIu64 "\n",
+			i, stats.n_pkts, stats.n_bytes, stats.n_empty);
+		out_size -= strlen(out);
+		out += strlen(out);
+	}
+
+	snprintf(out, out_size, "\nOutput ports:\n");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	for (i = 0; i < info.n_ports_out; i++) {
+		struct rte_swx_port_out_stats stats;
+
+		rte_swx_ctl_pipeline_port_out_stats_read(p->p, i, &stats);
+
+		if (i != info.n_ports_out - 1)
+			snprintf(out, out_size, "\tPort %u:", i);
+		else
+			snprintf(out, out_size, "\tDROP:");
+
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		snprintf(out,
+			out_size,
+			" packets %" PRIu64
+			" bytes %" PRIu64
+			" clone %" PRIu64
+			" clonerr %" PRIu64 "\n",
+			stats.n_pkts,
+			stats.n_bytes,
+			stats.n_pkts_clone,
+			stats.n_pkts_clone_err);
+
+		out_size -= strlen(out);
+		out += strlen(out);
+	}
+
+	snprintf(out, out_size, "\nTables:\n");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	for (i = 0; i < info.n_tables; i++) {
+		struct rte_swx_ctl_table_info table_info;
+		uint64_t n_pkts_action[info.n_actions];
+		struct rte_swx_table_stats stats = {
+			.n_pkts_hit = 0,
+			.n_pkts_miss = 0,
+			.n_pkts_action = n_pkts_action,
+		};
+		uint32_t j;
+
+		status = rte_swx_ctl_table_info_get(p->p, i, &table_info);
+		if (status) {
+			snprintf(out, out_size, "Table info get error.");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_table_stats_read(p->p, table_info.name, &stats);
+		if (status) {
+			snprintf(out, out_size, "Table stats read error.");
+			return;
+		}
+
+		snprintf(out, out_size, "\tTable %s:\n"
+			"\t\tHit (packets): %" PRIu64 "\n"
+			"\t\tMiss (packets): %" PRIu64 "\n",
+			table_info.name,
+			stats.n_pkts_hit,
+			stats.n_pkts_miss);
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		for (j = 0; j < info.n_actions; j++) {
+			struct rte_swx_ctl_action_info action_info;
+
+			status = rte_swx_ctl_action_info_get(p->p, j, &action_info);
+			if (status) {
+				snprintf(out, out_size, "Action info get error.");
+				return;
+			}
+
+			snprintf(out, out_size, "\t\tAction %s (packets): %" PRIu64 "\n",
+				action_info.name,
+				stats.n_pkts_action[j]);
+			out_size -= strlen(out);
+			out += strlen(out);
+		}
+	}
+
+	snprintf(out, out_size, "\nLearner tables:\n");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	for (i = 0; i < info.n_learners; i++) {
+		struct rte_swx_ctl_learner_info learner_info;
+		uint64_t n_pkts_action[info.n_actions];
+		struct rte_swx_learner_stats stats = {
+			.n_pkts_hit = 0,
+			.n_pkts_miss = 0,
+			.n_pkts_action = n_pkts_action,
+		};
+		uint32_t j;
+
+		status = rte_swx_ctl_learner_info_get(p->p, i, &learner_info);
+		if (status) {
+			snprintf(out, out_size, "Learner table info get error.");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_learner_stats_read(p->p, learner_info.name, &stats);
+		if (status) {
+			snprintf(out, out_size, "Learner table stats read error.");
+			return;
+		}
+
+		snprintf(out, out_size, "\tLearner table %s:\n"
+			"\t\tHit (packets): %" PRIu64 "\n"
+			"\t\tMiss (packets): %" PRIu64 "\n"
+			"\t\tLearn OK (packets): %" PRIu64 "\n"
+			"\t\tLearn error (packets): %" PRIu64 "\n"
+			"\t\tRearm (packets): %" PRIu64 "\n"
+			"\t\tForget (packets): %" PRIu64 "\n",
+			learner_info.name,
+			stats.n_pkts_hit,
+			stats.n_pkts_miss,
+			stats.n_pkts_learn_ok,
+			stats.n_pkts_learn_err,
+			stats.n_pkts_rearm,
+			stats.n_pkts_forget);
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		for (j = 0; j < info.n_actions; j++) {
+			struct rte_swx_ctl_action_info action_info;
+
+			status = rte_swx_ctl_action_info_get(p->p, j, &action_info);
+			if (status) {
+				snprintf(out, out_size, "Action info get error.");
+				return;
+			}
+
+			snprintf(out, out_size, "\t\tAction %s (packets): %" PRIu64 "\n",
+				action_info.name,
+				stats.n_pkts_action[j]);
+			out_size -= strlen(out);
+			out += strlen(out);
+		}
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
 static void
@@ -2183,6 +2383,10 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			return;
 		}
 
+		if (n_tokens >= 3 && !strcmp(tokens[2], "stats")) {
+			cmd_softnic_pipeline_stats(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
 	}
 
 	if (strcmp(tokens[0], "thread") == 0) {
