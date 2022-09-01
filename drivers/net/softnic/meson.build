@@ -21,6 +21,5 @@ sources = files(
         'rte_eth_softnic_swq.c',
         'rte_eth_softnic_tap.c',
         'rte_eth_softnic_thread.c',
-        'rte_eth_softnic_tm.c',
 )
-deps += ['pipeline', 'port', 'table', 'sched', 'cryptodev']
+deps += ['pipeline', 'port', 'table', 'cryptodev']

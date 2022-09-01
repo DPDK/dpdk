@@ -13,14 +13,12 @@
 #include <rte_mbuf.h>
 #include <rte_ring.h>
 #include <rte_ethdev.h>
-#include <rte_sched.h>
 #include <rte_port_in_action.h>
 #include <rte_table_action.h>
 #include <rte_pipeline.h>
 
 #include <rte_ethdev_core.h>
 #include <ethdev_driver.h>
-#include <rte_tm_driver.h>
 #include <rte_flow_driver.h>
 #include <rte_mtr_driver.h>
 
@@ -40,12 +38,6 @@ struct pmd_params {
 	uint16_t conn_port;
 	uint32_t cpu_id;
 	int sc; /**< Service cores. */
-
-	/** Traffic Management (TM) */
-	struct {
-		uint32_t n_queues; /**< Number of queues */
-		uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-	} tm;
 };
 
 /**
@@ -162,134 +154,6 @@ struct softnic_link {
 TAILQ_HEAD(softnic_link_list, softnic_link);
 
 /**
- * TMGR
- */
-
-#ifndef TM_MAX_SUBPORTS
-#define TM_MAX_SUBPORTS					8
-#endif
-
-#ifndef TM_MAX_PIPES_PER_SUBPORT
-#define TM_MAX_PIPES_PER_SUBPORT			4096
-#endif
-
-#ifndef TM_MAX_PIPE_PROFILE
-#define TM_MAX_PIPE_PROFILE				256
-#endif
-
-#ifndef TM_MAX_SUBPORT_PROFILE
-#define TM_MAX_SUBPORT_PROFILE				256
-#endif
-
-struct tm_params {
-	struct rte_sched_port_params port_params;
-	struct rte_sched_subport_params subport_params[TM_MAX_SUBPORTS];
-	struct rte_sched_subport_profile_params
-		subport_profile[TM_MAX_SUBPORT_PROFILE];
-	uint32_t n_subport_profiles;
-	uint32_t subport_to_profile[TM_MAX_SUBPORT_PROFILE];
-	struct rte_sched_pipe_params pipe_profiles[TM_MAX_PIPE_PROFILE];
-	uint32_t n_pipe_profiles;
-	uint32_t pipe_to_profile[TM_MAX_SUBPORTS * TM_MAX_PIPES_PER_SUBPORT];
-};
-
-/* TM Levels */
-enum tm_node_level {
-	TM_NODE_LEVEL_PORT = 0,
-	TM_NODE_LEVEL_SUBPORT,
-	TM_NODE_LEVEL_PIPE,
-	TM_NODE_LEVEL_TC,
-	TM_NODE_LEVEL_QUEUE,
-	TM_NODE_LEVEL_MAX,
-};
-
-/* TM Shaper Profile */
-struct tm_shaper_profile {
-	TAILQ_ENTRY(tm_shaper_profile) node;
-	uint32_t shaper_profile_id;
-	uint32_t n_users;
-	struct rte_tm_shaper_params params;
-};
-
-TAILQ_HEAD(tm_shaper_profile_list, tm_shaper_profile);
-
-/* TM Shared Shaper */
-struct tm_shared_shaper {
-	TAILQ_ENTRY(tm_shared_shaper) node;
-	uint32_t shared_shaper_id;
-	uint32_t n_users;
-	uint32_t shaper_profile_id;
-};
-
-TAILQ_HEAD(tm_shared_shaper_list, tm_shared_shaper);
-
-/* TM WRED Profile */
-struct tm_wred_profile {
-	TAILQ_ENTRY(tm_wred_profile) node;
-	uint32_t wred_profile_id;
-	uint32_t n_users;
-	struct rte_tm_wred_params params;
-};
-
-TAILQ_HEAD(tm_wred_profile_list, tm_wred_profile);
-
-/* TM Node */
-struct tm_node {
-	TAILQ_ENTRY(tm_node) node;
-	uint32_t node_id;
-	uint32_t parent_node_id;
-	uint32_t priority;
-	uint32_t weight;
-	uint32_t level;
-	struct tm_node *parent_node;
-	struct tm_shaper_profile *shaper_profile;
-	struct tm_wred_profile *wred_profile;
-	struct rte_tm_node_params params;
-	struct rte_tm_node_stats stats;
-	uint32_t n_children;
-};
-
-TAILQ_HEAD(tm_node_list, tm_node);
-
-/* TM Hierarchy Specification */
-struct tm_hierarchy {
-	struct tm_shaper_profile_list shaper_profiles;
-	struct tm_shared_shaper_list shared_shapers;
-	struct tm_wred_profile_list wred_profiles;
-	struct tm_node_list nodes;
-
-	uint32_t n_shaper_profiles;
-	uint32_t n_shared_shapers;
-	uint32_t n_wred_profiles;
-	uint32_t n_nodes;
-
-	uint32_t n_tm_nodes[TM_NODE_LEVEL_MAX];
-};
-
-struct tm_internals {
-	/** Hierarchy specification
-	 *
-	 *     -Hierarchy is unfrozen at init and when port is stopped.
-	 *     -Hierarchy is frozen on successful hierarchy commit.
-	 *     -Run-time hierarchy changes are not allowed, therefore it makes
-	 *      sense to keep the hierarchy frozen after the port is started.
-	 */
-	struct tm_hierarchy h;
-	int hierarchy_frozen;
-
-	/** Blueprints */
-	struct tm_params params;
-};
-
-struct softnic_tmgr_port {
-	TAILQ_ENTRY(softnic_tmgr_port) node;
-	char name[NAME_SIZE];
-	struct rte_sched_port *s;
-};
-
-TAILQ_HEAD(softnic_tmgr_port_list, softnic_tmgr_port);
-
-/**
  * TAP
  */
 struct softnic_tap {
@@ -385,7 +249,6 @@ struct pipeline_params {
 enum softnic_port_in_type {
 	PORT_IN_RXQ,
 	PORT_IN_SWQ,
-	PORT_IN_TMGR,
 	PORT_IN_TAP,
 	PORT_IN_SOURCE,
 	PORT_IN_CRYPTODEV,
@@ -426,7 +289,6 @@ struct softnic_port_in_params {
 enum softnic_port_out_type {
 	PORT_OUT_TXQ,
 	PORT_OUT_SWQ,
-	PORT_OUT_TMGR,
 	PORT_OUT_TAP,
 	PORT_OUT_SINK,
 	PORT_OUT_CRYPTODEV,
@@ -619,10 +481,6 @@ struct pmd_internals {
 	/** Params */
 	struct pmd_params params;
 
-	struct {
-		struct tm_internals tm; /**< Traffic Management */
-	} soft;
-
 	struct flow_internals flow;
 	struct mtr_internals mtr;
 
@@ -630,7 +488,6 @@ struct pmd_internals {
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
 	struct softnic_link_list link_list;
-	struct softnic_tmgr_port_list tmgr_port_list;
 	struct softnic_tap_list tap_list;
 	struct softnic_cryptodev_list cryptodev_list;
 	struct softnic_port_in_action_profile_list port_in_action_profile_list;
@@ -752,39 +609,6 @@ struct softnic_link *
 softnic_link_create(struct pmd_internals *p,
 	const char *name,
 	struct softnic_link_params *params);
-
-/**
- * TMGR
- */
-int
-softnic_tmgr_init(struct pmd_internals *p);
-
-void
-softnic_tmgr_free(struct pmd_internals *p);
-
-struct softnic_tmgr_port *
-softnic_tmgr_port_find(struct pmd_internals *p,
-	const char *name);
-
-struct softnic_tmgr_port *
-softnic_tmgr_port_create(struct pmd_internals *p,
-	const char *name);
-
-void
-tm_hierarchy_init(struct pmd_internals *p);
-
-void
-tm_hierarchy_free(struct pmd_internals *p);
-
-static inline int
-tm_used(struct rte_eth_dev *dev)
-{
-	struct pmd_internals *p = dev->data->dev_private;
-
-	return p->soft.tm.h.n_tm_nodes[TM_NODE_LEVEL_PORT];
-}
-
-extern const struct rte_tm_ops pmd_tm_ops;
 
 /**
  * TAP

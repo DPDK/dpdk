@@ -305,21 +305,6 @@ softnic_pipeline_port_in_create(struct pmd_internals *softnic,
 		break;
 	}
 
-	case PORT_IN_TMGR:
-	{
-		struct softnic_tmgr_port *tmgr_port;
-
-		tmgr_port = softnic_tmgr_port_find(softnic, params->dev_name);
-		if (tmgr_port == NULL)
-			return -1;
-
-		pp.sched.sched = tmgr_port->s;
-
-		p.ops = &rte_port_sched_reader_ops;
-		p.arg_create = &pp.sched;
-		break;
-	}
-
 	case PORT_IN_TAP:
 	{
 		struct softnic_tap *tap;
@@ -542,22 +527,6 @@ softnic_pipeline_port_out_create(struct pmd_internals *softnic,
 			p.ops = &rte_port_ring_writer_nodrop_ops;
 			p.arg_create = &pp_nodrop.ring;
 		}
-		break;
-	}
-
-	case PORT_OUT_TMGR:
-	{
-		struct softnic_tmgr_port *tmgr_port;
-
-		tmgr_port = softnic_tmgr_port_find(softnic, params->dev_name);
-		if (tmgr_port == NULL)
-			return -1;
-
-		pp.sched.sched = tmgr_port->s;
-		pp.sched.tx_burst_sz = params->burst_size;
-
-		p.ops = &rte_port_sched_writer_ops;
-		p.arg_create = &pp.sched;
 		break;
 	}
 
