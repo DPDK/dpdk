@@ -44,7 +44,7 @@ class JsonRpcVirtnetClient(object):
         except socket.error as ex:
             print("ERR: Can't connect to vdpa: %s" % (ex))
             print("     VDPA is not ready to accept commands")
-            sys.exit()
+            sys.exit(1)
 
     def __json_to_string(self, request):
         return json.dumps(request)
