@@ -775,6 +775,477 @@ cmd_softnic_pipeline_table_show(struct pmd_internals *softnic __rte_unused,
 }
 
 /**
+ * pipeline <pipeline_name> selector <selector_name> group add
+ */
+static void
+cmd_softnic_pipeline_selector_group_add(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name;
+	uint32_t group_id;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "add")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group add");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_selector_group_add(p->ctl,
+		selector_name,
+		&group_id);
+	if (status)
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+	else
+		snprintf(out, out_size, "Group ID: %u\n", group_id);
+}
+
+/**
+ * pipeline <pipeline_name> selector <selector_name> group delete <group_id>
+ */
+static void
+cmd_softnic_pipeline_selector_group_delete(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name;
+	uint32_t group_id;
+	int status;
+
+	if (n_tokens != 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "delete")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group delete");
+		return;
+	}
+
+	if (parser_read_uint32(&group_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "group_id");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_selector_group_delete(p->ctl,
+		selector_name,
+		group_id);
+	if (status)
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+}
+
+#define GROUP_MEMBER_INFO_TOKENS_MAX 6
+
+static int
+token_is_comment(const char *token)
+{
+	if ((token[0] == '#') ||
+	    (token[0] == ';') ||
+	    ((token[0] == '/') && (token[1] == '/')))
+		return 1; /* TRUE. */
+
+	return 0; /* FALSE. */
+}
+
+static int
+pipeline_selector_group_member_read(const char *string,
+				    uint32_t *group_id,
+				    uint32_t *member_id,
+				    uint32_t *weight,
+				    int *is_blank_or_comment)
+{
+	char *token_array[GROUP_MEMBER_INFO_TOKENS_MAX], **tokens;
+	char *s0 = NULL, *s;
+	uint32_t n_tokens = 0, group_id_val = 0, member_id_val = 0, weight_val = 0;
+	int blank_or_comment = 0;
+
+	/* Check input arguments. */
+	if (!string || !string[0])
+		goto error;
+
+	/* Memory allocation. */
+	s0 = strdup(string);
+	if (!s0)
+		goto error;
+
+	/* Parse the string into tokens. */
+	for (s = s0; ; ) {
+		char *token;
+
+		token = strtok_r(s, " \f\n\r\t\v", &s);
+		if (!token || token_is_comment(token))
+			break;
+
+		if (n_tokens >= GROUP_MEMBER_INFO_TOKENS_MAX)
+			goto error;
+
+		token_array[n_tokens] = token;
+		n_tokens++;
+	}
+
+	if (!n_tokens) {
+		blank_or_comment = 1;
+		goto error;
+	}
+
+	tokens = token_array;
+
+	if (n_tokens < 4 ||
+		strcmp(tokens[0], "group") ||
+		strcmp(tokens[2], "member"))
+		goto error;
+
+	/*
+	 * Group ID.
+	 */
+	if (parser_read_uint32(&group_id_val, tokens[1]) != 0)
+		goto error;
+	*group_id = group_id_val;
+
+	/*
+	 * Member ID.
+	 */
+	if (parser_read_uint32(&member_id_val, tokens[3]) != 0)
+		goto error;
+	*member_id = member_id_val;
+
+	tokens += 4;
+	n_tokens -= 4;
+
+	/*
+	 * Weight.
+	 */
+	if (n_tokens && !strcmp(tokens[0], "weight")) {
+		if (n_tokens < 2)
+			goto error;
+
+		if (parser_read_uint32(&weight_val, tokens[1]) != 0)
+			goto error;
+		*weight = weight_val;
+
+		tokens += 2;
+		n_tokens -= 2;
+	}
+
+	if (n_tokens)
+		goto error;
+
+	free(s0);
+	return 0;
+
+error:
+	free(s0);
+	if (is_blank_or_comment)
+		*is_blank_or_comment = blank_or_comment;
+	return -EINVAL;
+}
+
+static int
+pipeline_selector_group_members_add(struct rte_swx_ctl_pipeline *p,
+				    const char *selector_name,
+				    FILE *file,
+				    uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		uint32_t group_id, member_id, weight;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		status = pipeline_selector_group_member_read(line,
+							     &group_id,
+							     &member_id,
+							     &weight,
+							     &is_blank_or_comment);
+		if (status) {
+			if (is_blank_or_comment)
+				continue;
+
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_selector_group_member_add(p,
+			selector_name,
+			group_id,
+			member_id,
+			weight);
+		if (status)
+			goto error;
+	}
+
+error:
+	free(line);
+	*file_line_number = line_id;
+	return status;
+}
+
+/**
+ * pipeline <pipeline_name> selector <selector_name> group member add <file_name>
+ */
+static void
+cmd_softnic_pipeline_selector_group_member_add(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "member") ||
+		strcmp(tokens[6], "add")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group member add");
+		return;
+	}
+
+	file_name = tokens[7];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_selector_group_members_add(p->ctl,
+		selector_name,
+		file,
+		&file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+static int
+pipeline_selector_group_members_delete(struct rte_swx_ctl_pipeline *p,
+				       const char *selector_name,
+				       FILE *file,
+				       uint32_t *file_line_number)
+{
+	char *line = NULL;
+	uint32_t line_id = 0;
+	int status = 0;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return -ENOMEM;
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		uint32_t group_id, member_id, weight;
+		int is_blank_or_comment;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		status = pipeline_selector_group_member_read(line,
+							     &group_id,
+							     &member_id,
+							     &weight,
+							     &is_blank_or_comment);
+		if (status) {
+			if (is_blank_or_comment)
+				continue;
+
+			goto error;
+		}
+
+		status = rte_swx_ctl_pipeline_selector_group_member_delete(p,
+			selector_name,
+			group_id,
+			member_id);
+		if (status)
+			goto error;
+	}
+
+error:
+	free(line);
+	*file_line_number = line_id;
+	return status;
+}
+
+/**
+ * pipeline <pipeline_name> selector <selector_name> group member delete <file_name>
+ */
+static void
+cmd_softnic_pipeline_selector_group_member_delete(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name, *file_name;
+	FILE *file = NULL;
+	uint32_t file_line_number = 0;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "selector") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "selector");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	if (strcmp(tokens[4], "group") ||
+		strcmp(tokens[5], "member") ||
+		strcmp(tokens[6], "delete")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group member delete");
+		return;
+	}
+
+	file_name = tokens[7];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		return;
+	}
+
+	status = pipeline_selector_group_members_delete(p->ctl,
+							selector_name,
+							file,
+							&file_line_number);
+	if (status)
+		snprintf(out, out_size, "Invalid entry in file %s at line %u\n",
+			 file_name,
+			 file_line_number);
+
+	fclose(file);
+}
+
+/**
+ * pipeline <pipeline_name> selector <selector_name> show [filename]
+ */
+static void
+cmd_softnic_pipeline_selector_show(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name, *selector_name;
+	FILE *file = NULL;
+	int status;
+
+	if (n_tokens != 5 && n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	selector_name = tokens[3];
+
+	file = (n_tokens == 6) ? fopen(tokens[5], "w") : stdout;
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[5]);
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_selector_fprintf(file, p->ctl, selector_name);
+	if (status)
+		snprintf(out, out_size, MSG_ARG_INVALID, "selector_name");
+
+	if (file)
+		fclose(file);
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
 static void
@@ -938,6 +1409,52 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 		if (n_tokens >= 5 && !strcmp(tokens[2], "table") && !strcmp(tokens[4], "show")) {
 			cmd_softnic_pipeline_table_show(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 6 &&
+			!strcmp(tokens[2], "selector") &&
+			!strcmp(tokens[4], "group") &&
+			!strcmp(tokens[5], "add")) {
+			cmd_softnic_pipeline_selector_group_add(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 6 &&
+			!strcmp(tokens[2], "selector") &&
+			!strcmp(tokens[4], "group") &&
+			!strcmp(tokens[5], "delete")) {
+			cmd_softnic_pipeline_selector_group_delete(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 7 &&
+			!strcmp(tokens[2], "selector") &&
+			!strcmp(tokens[4], "group") &&
+			!strcmp(tokens[5], "member") &&
+			!strcmp(tokens[6], "add")) {
+			cmd_softnic_pipeline_selector_group_member_add(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 7 &&
+			!strcmp(tokens[2], "selector") &&
+			!strcmp(tokens[4], "group") &&
+			!strcmp(tokens[5], "member") &&
+			!strcmp(tokens[6], "delete")) {
+			cmd_softnic_pipeline_selector_group_member_delete(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 &&
+			!strcmp(tokens[2], "selector") &&
+			!strcmp(tokens[4], "show")) {
+			cmd_softnic_pipeline_selector_show(softnic, tokens, n_tokens,
+				out, out_size);
 			return;
 		}
 	}
