@@ -1705,28 +1705,28 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			mbuf3 = (uint64_t *)tx_pkts[3];
 
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf0))
-				vsetq_lane_u64(0x80000, xmask01, 0);
+				xmask01 = vsetq_lane_u64(0x80000, xmask01, 0);
 			else
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf0)->pool,
 					(void **)&mbuf0, 1, 0);
 
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf1))
-				vsetq_lane_u64(0x80000, xmask01, 1);
+				xmask01 = vsetq_lane_u64(0x80000, xmask01, 1);
 			else
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf1)->pool,
 					(void **)&mbuf1, 1, 0);
 
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf2))
-				vsetq_lane_u64(0x80000, xmask23, 0);
+				xmask23 = vsetq_lane_u64(0x80000, xmask23, 0);
 			else
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf2)->pool,
 					(void **)&mbuf2, 1, 0);
 
 			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf3))
-				vsetq_lane_u64(0x80000, xmask23, 1);
+				xmask23 = vsetq_lane_u64(0x80000, xmask23, 1);
 			else
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf3)->pool,
