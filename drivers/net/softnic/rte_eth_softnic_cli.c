@@ -12,7 +12,6 @@
 #include <rte_string_fns.h>
 
 #include "rte_eth_softnic_internals.h"
-#include "parser.h"
 
 #ifndef CMD_MAX_TOKENS
 #define CMD_MAX_TOKENS     256
@@ -29,6 +28,45 @@
 #define MSG_FILE_ERR        "Error in file \"%s\" at line %u.\n"
 #define MSG_FILE_NOT_ENOUGH "Not enough rules in file \"%s\".\n"
 #define MSG_CMD_FAIL        "Command \"%s\" failed.\n"
+
+static int
+parser_read_uint32(uint32_t *value, char *p)
+{
+	uint32_t val = 0;
+
+	if (!value || !p || !p[0])
+		return -EINVAL;
+
+	val = strtoul(p, &p, 0);
+	if (p[0])
+		return -EINVAL;
+
+	*value = val;
+	return 0;
+}
+
+#define PARSE_DELIMITER " \f\n\r\t\v"
+
+static int
+parse_tokenize_string(char *string, char *tokens[], uint32_t *n_tokens)
+{
+	uint32_t i;
+
+	if (!string || !tokens || !n_tokens || !*n_tokens)
+		return -EINVAL;
+
+	for (i = 0; i < *n_tokens; i++) {
+		tokens[i] = strtok_r(string, PARSE_DELIMITER, &string);
+		if (!tokens[i])
+			break;
+	}
+
+	if (i == *n_tokens && strtok_r(string, PARSE_DELIMITER, &string))
+		return -E2BIG;
+
+	*n_tokens = i;
+	return 0;
+}
 
 static int
 is_comment(char *in)
@@ -70,7 +108,7 @@ cmd_mempool(struct pmd_internals *softnic,
 		return;
 	}
 
-	if (softnic_parser_read_uint32(&p.buffer_size, tokens[3]) != 0) {
+	if (parser_read_uint32(&p.buffer_size, tokens[3]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "buffer_size");
 		return;
 	}
@@ -80,7 +118,7 @@ cmd_mempool(struct pmd_internals *softnic,
 		return;
 	}
 
-	if (softnic_parser_read_uint32(&p.pool_size, tokens[5]) != 0) {
+	if (parser_read_uint32(&p.pool_size, tokens[5]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pool_size");
 		return;
 	}
@@ -90,7 +128,7 @@ cmd_mempool(struct pmd_internals *softnic,
 		return;
 	}
 
-	if (softnic_parser_read_uint32(&p.cache_size, tokens[7]) != 0) {
+	if (parser_read_uint32(&p.cache_size, tokens[7]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "cache_size");
 		return;
 	}
@@ -129,7 +167,7 @@ cmd_swq(struct pmd_internals *softnic,
 		return;
 	}
 
-	if (softnic_parser_read_uint32(&p.size, tokens[3]) != 0) {
+	if (parser_read_uint32(&p.size, tokens[3]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "size");
 		return;
 	}
@@ -161,7 +199,7 @@ cmd_softnic_thread_pipeline_enable(struct pmd_internals *softnic,
 		return;
 	}
 
-	if (softnic_parser_read_uint32(&thread_id, tokens[1]) != 0) {
+	if (parser_read_uint32(&thread_id, tokens[1]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
 		return;
 	}
@@ -210,7 +248,7 @@ cmd_softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 		return;
 	}
 
-	if (softnic_parser_read_uint32(&thread_id, tokens[1]) != 0) {
+	if (parser_read_uint32(&thread_id, tokens[1]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
 		return;
 	}
@@ -251,7 +289,7 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 	if (is_comment(in))
 		return;
 
-	status = softnic_parse_tokenize_string(in, tokens, &n_tokens);
+	status = parse_tokenize_string(in, tokens, &n_tokens);
 	if (status) {
 		snprintf(out, out_size, MSG_ARG_TOO_MANY, "");
 		return;
