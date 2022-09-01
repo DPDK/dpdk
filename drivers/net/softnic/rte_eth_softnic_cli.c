@@ -35,6 +35,22 @@
 #define MSG_CMD_FAIL        "Command \"%s\" failed.\n"
 
 static int
+parser_read_uint64(uint64_t *value, char *p)
+{
+	uint64_t val = 0;
+
+	if (!value || !p || !p[0])
+		return -EINVAL;
+
+	val = strtoull(p, &p, 0);
+	if (p[0])
+		return -EINVAL;
+
+	*value = val;
+	return 0;
+}
+
+static int
 parser_read_uint32(uint32_t *value, char *p)
 {
 	uint32_t val = 0;
@@ -1404,6 +1420,107 @@ cmd_softnic_pipeline_abort(struct pmd_internals *softnic,
 }
 
 /**
+ * pipeline <pipeline_name> regrd <register_array_name> <index>
+ */
+static void
+cmd_softnic_pipeline_regrd(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	const char *pipeline_name, *name;
+	uint64_t value;
+	uint32_t idx;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "regrd")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "regrd");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (parser_read_uint32(&idx, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_regarray_read(p->p, name, idx, &value);
+	if (status) {
+		snprintf(out, out_size, "Command failed.\n");
+		return;
+	}
+
+	snprintf(out, out_size, "0x%" PRIx64 "\n", value);
+}
+
+/**
+ * pipeline <pipeline_name> regwr <register_array_name> <index> <value>
+ */
+static void
+cmd_softnic_pipeline_regwr(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	const char *pipeline_name, *name;
+	uint64_t value;
+	uint32_t idx;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "regwr")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "regwr");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (parser_read_uint32(&idx, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index");
+		return;
+	}
+
+	if (parser_read_uint64(&value, tokens[5])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "value");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_regarray_write(p->p, name, idx, value);
+	if (status) {
+		snprintf(out, out_size, "Command failed.\n");
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
 static void
@@ -1631,6 +1748,16 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 		if (n_tokens >= 3 && !strcmp(tokens[2], "abort")) {
 			cmd_softnic_pipeline_abort(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "regrd")) {
+			cmd_softnic_pipeline_regrd(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "regwr")) {
+			cmd_softnic_pipeline_regwr(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 	}
