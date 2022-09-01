@@ -26,6 +26,8 @@
 
 #define MLX5_REGEX_RXP_ROF2_LINE_LEN 34
 
+const uint64_t combined_rof_tag = 0xff52544424a52475;
+
 /* Private Declarations */
 static int
 rxp_create_mkey(struct mlx5_regex_priv *priv, void *ptr, size_t size,
@@ -90,6 +92,147 @@ rxp_destroy_mkey(struct mlx5_regex_mkey *mkey)
 }
 
 int
+mlx5_regex_get_rxp_vers(uint32_t regexp_version, uint32_t *target_rxp_vers)
+{
+	int ret = 0;
+	switch (regexp_version) {
+	case MLX5_RXP_BF2_IDENTIFIER:
+		*target_rxp_vers = MLX5_RXP_BF2_ROF_VERSION_STRING;
+		break;
+	case MLX5_RXP_BF3_IDENTIFIER:
+		*target_rxp_vers = MLX5_RXP_BF3_ROF_VERSION_STRING;
+		break;
+	default:
+		DRV_LOG(ERR, "Unsupported rxp version: %u", regexp_version);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+int
+mlx5_regex_check_rof_version(uint32_t combined_rof_vers)
+{
+	int ret = 0;
+	/* Check if combined rof version is supported */
+	switch (combined_rof_vers) {
+	case 1:
+		break;
+	default:
+		DRV_LOG(ERR, "Unsupported combined rof version: %u",
+		combined_rof_vers);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+int
+mlx5_regex_parse_rules_db(struct mlx5_regex_priv *priv,
+			const char **rules_db, uint32_t *rules_db_len)
+{
+	int i = 0;
+	uint32_t j = 0;
+	int ret = 0;
+	bool combined_rof = true;
+	const char *rof_ptr = *rules_db;
+	uint32_t combined_rof_vers = 0;
+	uint32_t num_rof_blocks = 0;
+	uint32_t rxpc_vers = 0;
+	uint32_t target_rxp_vers = 0;
+	uint32_t byte_count = 0;
+	uint32_t rof_bytes_read = 0;
+	bool rof_binary_found = false;
+	struct mlx5_hca_attr *attr = &priv->cdev->config.hca_attr;
+
+	/* Need minimum of 8 bytes to process single or combined rof */
+	if (*rules_db_len < 8)
+		return -EINVAL;
+
+	for (i = 0; i < 8; i++) {
+		if ((char) *rof_ptr !=
+			(char)((combined_rof_tag >> (i * 8)) & 0xFF)) {
+			combined_rof = false;
+			break;
+		}
+		rof_ptr++;
+	}
+	rof_bytes_read += 8;
+
+	if (combined_rof == true) {
+		/* Need at least 24 bytes of header info: 16 byte combined */
+		/* rof header and 8 byte binary rof blob header.           */
+		if (*rules_db_len < 24)
+			return -EINVAL;
+
+		/* Read the combined rof version and number of rof blocks */
+		for (i = 0; i < 4; i++) {
+			combined_rof_vers |= *rof_ptr << (i * 8);
+			rof_ptr++;
+		}
+
+		rof_bytes_read += 4;
+		ret = mlx5_regex_check_rof_version(combined_rof_vers);
+		if (ret < 0)
+			return ret;
+
+		for (i = 0; i < 4; i++) {
+			num_rof_blocks |= *rof_ptr << (i * 8);
+			rof_ptr++;
+		}
+		rof_bytes_read += 4;
+
+		if (num_rof_blocks == 0)
+			return -EINVAL;
+
+		/* Get the version of rxp we need the rof for */
+		ret = mlx5_regex_get_rxp_vers(attr->regexp_version, &target_rxp_vers);
+		if (ret < 0)
+			return ret;
+
+		/* Try to find the rof binary blob for this version of rxp */
+		for (j = 0; j < num_rof_blocks; j++) {
+			rxpc_vers = 0;
+			byte_count = 0;
+			for (i = 0; i < 4; i++) {
+				rxpc_vers |= (*rof_ptr & 0xFF) << (i * 8);
+				rof_ptr++;
+			}
+			for (i = 0; i < 4; i++) {
+				byte_count |= (*rof_ptr & 0xFF) << (i * 8);
+				rof_ptr++;
+			}
+			rof_bytes_read += 8;
+
+			if (rxpc_vers == target_rxp_vers) {
+				/* Found corresponding binary rof entry */
+				if (rof_bytes_read + byte_count <= (*rules_db_len))
+					rof_binary_found = true;
+				else
+					DRV_LOG(ERR, "Compatible rof file found - invalid length!");
+				break;
+			}
+				/* Move on to next rof blob */
+			if (rof_bytes_read + byte_count + 8 < (*rules_db_len)) {
+				rof_ptr += byte_count;
+				rof_bytes_read += byte_count;
+			} else {
+				/* Cannot parse any more of combined rof file */
+				break;
+			}
+		}
+		if (rof_binary_found == true) {
+			*rules_db = rof_ptr;
+			*rules_db_len = byte_count;
+		} else {
+			DRV_LOG(ERR, "Compatible rof file not found!");
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
+int
 mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 		     const char *rule_db, uint32_t rule_db_len)
 {
@@ -109,6 +252,11 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 	}
 	if (rule_db_len == 0)
 		return -EINVAL;
+
+	ret = mlx5_regex_parse_rules_db(priv, &rule_db, &rule_db_len);
+	if (ret < 0)
+		return ret;
+
 	/* copy rules - rules have to be 4KB aligned. */
 	ptr = rte_malloc("", rule_db_len, 1 << 12);
 	if (!ptr) {
