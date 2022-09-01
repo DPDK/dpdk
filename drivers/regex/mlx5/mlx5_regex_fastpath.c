@@ -158,8 +158,12 @@ __prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_hw_qp *qp_obj,
 				op->group_id2 : 0;
 	uint16_t group3 = op->req_flags & RTE_REGEX_OPS_REQ_GROUP_ID3_VALID_F ?
 				op->group_id3 : 0;
-	uint8_t control = op->req_flags &
-				RTE_REGEX_OPS_REQ_MATCH_HIGH_PRIORITY_F ? 1 : 0;
+	uint8_t control = 0x0;
+
+	if (op->req_flags & RTE_REGEX_OPS_REQ_MATCH_HIGH_PRIORITY_F)
+		control = 0x1;
+	else if (op->req_flags & RTE_REGEX_OPS_REQ_STOP_ON_MATCH_F)
+		control = 0x2;
 
 	/* For backward compatibility. */
 	if (!(op->req_flags & (RTE_REGEX_OPS_REQ_GROUP_ID0_VALID_F |
