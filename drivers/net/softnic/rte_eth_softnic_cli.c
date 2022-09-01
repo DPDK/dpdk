@@ -1344,6 +1344,66 @@ cmd_softnic_pipeline_learner_default(struct pmd_internals *softnic,
 }
 
 /**
+ * pipeline <pipeline_name> commit
+ */
+static void
+cmd_softnic_pipeline_commit(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name;
+	int status;
+
+	if (n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_commit(p->ctl, 1);
+	if (status)
+		snprintf(out, out_size, "Commit failed. "
+			"Use \"commit\" to retry or \"abort\" to discard the pending work.\n");
+}
+
+/**
+ * pipeline <pipeline_name> abort
+ */
+static void
+cmd_softnic_pipeline_abort(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct pipeline *p;
+	char *pipeline_name;
+
+	if (n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	rte_swx_ctl_pipeline_abort(p->ctl);
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
 static void
@@ -1561,6 +1621,16 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			!strcmp(tokens[4], "default")) {
 			cmd_softnic_pipeline_learner_default(softnic, tokens, n_tokens,
 				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "commit")) {
+			cmd_softnic_pipeline_commit(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "abort")) {
+			cmd_softnic_pipeline_abort(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 	}
