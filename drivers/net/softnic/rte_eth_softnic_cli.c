@@ -180,7 +180,55 @@ cmd_swq(struct pmd_internals *softnic,
 }
 
 /**
- * thread <thread_id> pipeline <pipeline_name> enable
+ * pipeline codegen <spec_file> <code_file>
+ */
+static void
+cmd_softnic_pipeline_codegen(struct pmd_internals *softnic __rte_unused,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	FILE *spec_file = NULL;
+	FILE *code_file = NULL;
+	uint32_t err_line;
+	const char *err_msg;
+	int status;
+
+	if (n_tokens != 4) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	spec_file = fopen(tokens[2], "r");
+	if (!spec_file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[2]);
+		return;
+	}
+
+	code_file = fopen(tokens[3], "w");
+	if (!code_file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[3]);
+		return;
+	}
+
+	status = rte_swx_pipeline_codegen(spec_file,
+					  code_file,
+					  &err_line,
+					  &err_msg);
+
+	fclose(spec_file);
+	fclose(code_file);
+
+	if (status) {
+		snprintf(out, out_size, "Error %d at line %u: %s\n.",
+			status, err_line, err_msg);
+		return;
+	}
+}
+
+/**
+ * thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]
  */
 static void
 cmd_softnic_thread_pipeline_enable(struct pmd_internals *softnic,
@@ -306,6 +354,13 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 	if (strcmp(tokens[0], "swq") == 0) {
 		cmd_swq(softnic, tokens, n_tokens, out, out_size);
 		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline")) {
+		if (n_tokens >= 2 && !strcmp(tokens[1], "codegen")) {
+			cmd_softnic_pipeline_codegen(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
 	}
 
 	if (strcmp(tokens[0], "thread") == 0) {
