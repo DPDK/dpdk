@@ -216,14 +216,6 @@ pmd_link_update(struct rte_eth_dev *dev __rte_unused,
 }
 
 static int
-pmd_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
-		 const struct rte_flow_ops **ops)
-{
-	*ops = &pmd_flow_ops;
-	return 0;
-}
-
-static int
 pmd_mtr_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
 {
 	*(const struct rte_mtr_ops **)arg = &pmd_mtr_ops;
@@ -240,7 +232,6 @@ static const struct eth_dev_ops pmd_ops = {
 	.dev_infos_get = pmd_dev_infos_get,
 	.rx_queue_setup = pmd_rx_queue_setup,
 	.tx_queue_setup = pmd_tx_queue_setup,
-	.flow_ops_get = pmd_flow_ops_get,
 	.mtr_ops_get = pmd_mtr_ops_get,
 };
 

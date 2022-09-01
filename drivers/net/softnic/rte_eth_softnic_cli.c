@@ -4731,81 +4731,6 @@ cmd_softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 	}
 }
 
-/**
- * flowapi map
- *  group <group_id>
- *  ingress | egress
- *  pipeline <pipeline_name>
- *  table <table_id>
- */
-static void
-cmd_softnic_flowapi_map(struct pmd_internals *softnic,
-		char **tokens,
-		uint32_t n_tokens,
-		char *out,
-		size_t out_size)
-{
-	char *pipeline_name;
-	uint32_t group_id, table_id;
-	int ingress, status;
-
-	if (n_tokens != 9) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-
-	if (strcmp(tokens[1], "map") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "map");
-		return;
-	}
-
-	if (strcmp(tokens[2], "group") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "group");
-		return;
-	}
-
-	if (softnic_parser_read_uint32(&group_id, tokens[3]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "group_id");
-		return;
-	}
-
-	if (strcmp(tokens[4], "ingress") == 0) {
-		ingress = 1;
-	} else if (strcmp(tokens[4], "egress") == 0) {
-		ingress = 0;
-	} else {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "ingress | egress");
-		return;
-	}
-
-	if (strcmp(tokens[5], "pipeline") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
-		return;
-	}
-
-	pipeline_name = tokens[6];
-
-	if (strcmp(tokens[7], "table") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
-		return;
-	}
-
-	if (softnic_parser_read_uint32(&table_id, tokens[8]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
-		return;
-	}
-
-	status = flow_attr_map_set(softnic,
-			group_id,
-			ingress,
-			pipeline_name,
-			table_id);
-	if (status) {
-		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
-		return;
-	}
-}
-
 void
 softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 {
@@ -5061,12 +4986,6 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 				out, out_size);
 			return;
 		}
-	}
-
-	if (strcmp(tokens[0], "flowapi") == 0) {
-		cmd_softnic_flowapi_map(softnic, tokens, n_tokens, out,
-					out_size);
-		return;
 	}
 
 	snprintf(out, out_size, MSG_CMD_UNKNOWN, tokens[0]);

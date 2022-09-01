@@ -13,7 +13,6 @@ sources = files(
         'rte_eth_softnic_action.c',
         'rte_eth_softnic_cli.c',
         'rte_eth_softnic_cryptodev.c',
-        'rte_eth_softnic_flow.c',
         'rte_eth_softnic_link.c',
         'rte_eth_softnic_mempool.c',
         'rte_eth_softnic_meter.c',
