@@ -427,24 +427,27 @@ next_desc:
 
 		/* Get the RSS hash */
 		if (AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3, RSV))
-			mbuf->hash.rss = rte_le_to_cpu_32(desc->write.desc1);
+			first_seg->hash.rss =
+				rte_le_to_cpu_32(desc->write.desc1);
 		etlt = AXGMAC_GET_BITS_LE(desc->write.desc3,
 				RX_NORMAL_DESC3, ETLT);
 		offloads = rxq->pdata->eth_dev->data->dev_conf.rxmode.offloads;
 		if (!err || !etlt) {
 			if (etlt == RX_CVLAN_TAG_PRESENT) {
-				mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
-				mbuf->vlan_tci =
+				first_seg->ol_flags |= RTE_MBUF_F_RX_VLAN;
+				first_seg->vlan_tci =
 					AXGMAC_GET_BITS_LE(desc->write.desc0,
 							RX_NORMAL_DESC0, OVT);
 				if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-					mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
+					first_seg->ol_flags |=
+						RTE_MBUF_F_RX_VLAN_STRIPPED;
 				else
-					mbuf->ol_flags &= ~RTE_MBUF_F_RX_VLAN_STRIPPED;
+					first_seg->ol_flags &=
+						~RTE_MBUF_F_RX_VLAN_STRIPPED;
 			} else {
-				mbuf->ol_flags &=
+				first_seg->ol_flags &=
 					~(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
-				mbuf->vlan_tci = 0;
+				first_seg->vlan_tci = 0;
 			}
 		}
 
@@ -468,18 +471,24 @@ err_set:
 
 		first_seg->port = rxq->port_id;
 		if (rxq->pdata->rx_csum_enable) {
-			mbuf->ol_flags = 0;
-			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+			first_seg->ol_flags = 0;
+			first_seg->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			first_seg->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 			if (unlikely(error_status == AXGBE_L3_CSUM_ERR)) {
-				mbuf->ol_flags &= ~RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-				mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
-				mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
+				first_seg->ol_flags &=
+					~RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+				first_seg->ol_flags |=
+					RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				first_seg->ol_flags &=
+					~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+				first_seg->ol_flags |=
+					RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 			} else if (unlikely(error_status
 						== AXGBE_L4_CSUM_ERR)) {
-				mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+				first_seg->ol_flags &=
+					~RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+				first_seg->ol_flags |=
+					RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			}
 		}
 
