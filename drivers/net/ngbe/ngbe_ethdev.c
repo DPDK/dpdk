@@ -2473,7 +2473,7 @@ static int
 ngbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 4;
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 	struct rte_eth_dev_data *dev_data = dev->data;
 
 	/* If device is started, refuse mtu that requires the support of
@@ -2486,12 +2486,8 @@ ngbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (hw->mode)
-		wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
-			NGBE_FRAME_SIZE_MAX);
-	else
-		wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
-			NGBE_FRMSZ_MAX(frame_size));
+	wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
+		NGBE_FRMSZ_MAX(frame_size));
 
 	return 0;
 }
