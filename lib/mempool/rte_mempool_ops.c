@@ -5,19 +5,27 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <rte_string_fns.h>
 #include <rte_mempool.h>
 #include <rte_errno.h>
 #include <rte_dev.h>
 
-#include "rte_mempool_trace.h"
-
 /* indirect jump table to support external memory pools. */
 struct rte_mempool_ops_table rte_mempool_ops_table = {
 	.sl =  RTE_SPINLOCK_INITIALIZER,
 	.num_ops = 0
 };
+
+static inline int
+qsort_cmp_ops(const void *va, const void *vb)
+{
+	const struct rte_mempool_ops *a = va;
+	const struct rte_mempool_ops *b = vb;
+
+	return strcmp(a->name, b->name);
+}
 
 /* add a new ops struct in rte_mempool_ops_table, return its index. */
 int
@@ -64,6 +72,11 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	ops->populate = h->populate;
 	ops->get_info = h->get_info;
 	ops->dequeue_contig_blocks = h->dequeue_contig_blocks;
+
+	qsort(rte_mempool_ops_table.ops, 
+		  ops_index, 
+		  sizeof(rte_mempool_ops_table.ops[0]), 
+		  qsort_cmp_ops);
 
 	rte_spinlock_unlock(&rte_mempool_ops_table.sl);
 
