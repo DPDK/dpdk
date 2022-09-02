@@ -400,6 +400,7 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 		hw->phy.init_hw = ngbe_init_phy_rtl;
 		hw->phy.check_link = ngbe_check_phy_link_rtl;
 		hw->phy.setup_link = ngbe_setup_phy_link_rtl;
+		hw->phy.set_phy_power = ngbe_set_phy_power_rtl;
 		hw->phy.get_adv_pause = ngbe_get_phy_advertised_pause_rtl;
 		hw->phy.get_lp_adv_pause = ngbe_get_phy_lp_advertised_pause_rtl;
 		hw->phy.set_pause_adv = ngbe_set_phy_pause_adv_rtl;

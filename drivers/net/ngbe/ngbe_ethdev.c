@@ -1220,6 +1220,32 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 }
 
 /*
+ * Set device link up: power on.
+ */
+static int
+ngbe_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	hw->phy.set_phy_power(hw, true);
+
+	return 0;
+}
+
+/*
+ * Set device link down: power off.
+ */
+static int
+ngbe_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	hw->phy.set_phy_power(hw, false);
+
+	return 0;
+}
+
+/*
  * Reset and stop device.
  */
 static int
@@ -3030,6 +3056,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_infos_get              = ngbe_dev_info_get,
 	.dev_start                  = ngbe_dev_start,
 	.dev_stop                   = ngbe_dev_stop,
+	.dev_set_link_up            = ngbe_dev_set_link_up,
+	.dev_set_link_down          = ngbe_dev_set_link_down,
 	.dev_close                  = ngbe_dev_close,
 	.dev_reset                  = ngbe_dev_reset,
 	.promiscuous_enable         = ngbe_dev_promiscuous_enable,

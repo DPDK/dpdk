@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Wangxun ngbe driver.**
+
+  * Added support to set device link down/up.
+
 
 Removed Items
 -------------

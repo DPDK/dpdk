@@ -393,3 +393,16 @@ s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw, u32 *speed, bool *link_up)
 	return status;
 }
 
+s32 ngbe_set_phy_power_rtl(struct ngbe_hw *hw, bool on)
+{
+	u16 value = 0;
+
+	hw->phy.read_reg(hw, RTL_BMCR, 0, &value);
+	if (on)
+		value &= ~RTL_BMCR_PWDN;
+	else
+		value |= RTL_BMCR_PWDN;
+	hw->phy.write_reg(hw, RTL_BMCR, 0, value);
+
+	return 0;
+}
