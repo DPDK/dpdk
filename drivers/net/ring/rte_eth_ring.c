@@ -286,6 +286,29 @@ eth_dev_close(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static int ring_monitor_callback(const uint64_t value,
+		const uint64_t arg[RTE_POWER_MONITOR_OPAQUE_SZ])
+{
+	/* Check if the head pointer has changed */
+	return value != arg[0];
+}
+
+static int
+eth_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
+{
+	struct rte_ring *rng = ((struct ring_queue *)rx_queue)->rng;
+
+	/*
+	 * Monitor ring head since if head moves
+	 * there are packets to transmit
+	 */
+	pmc->addr = &rng->prod.head;
+	pmc->size = sizeof(rng->prod.head);
+	pmc->opaque[0] = rng->prod.head;
+	pmc->fn = ring_monitor_callback;
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_close = eth_dev_close,
 	.dev_start = eth_dev_start,
@@ -305,6 +328,7 @@ static const struct eth_dev_ops ops = {
 	.promiscuous_disable = eth_promiscuous_disable,
 	.allmulticast_enable = eth_allmulticast_enable,
 	.allmulticast_disable = eth_allmulticast_disable,
+	.get_monitor_addr = eth_get_monitor_addr,
 };
 
 static int
