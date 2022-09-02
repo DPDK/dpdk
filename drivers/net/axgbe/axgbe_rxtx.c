@@ -412,6 +412,10 @@ next_desc:
 			}
 
 		}
+		/* Mbuf populate */
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->data_len = data_len;
+		mbuf->pkt_len = data_len;
 
 		if (first_seg != NULL) {
 			if (rte_pktmbuf_chain(first_seg, mbuf) != 0)
@@ -443,9 +447,6 @@ next_desc:
 				mbuf->vlan_tci = 0;
 			}
 		}
-		/* Mbuf populate */
-		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-		mbuf->data_len = data_len;
 
 err_set:
 		rxq->cur++;
