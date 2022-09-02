@@ -343,8 +343,8 @@ uint16_t eth_axgbe_recv_scattered_pkts(void *rx_queue,
 	uint64_t old_dirty = rxq->dirty;
 	struct rte_mbuf *first_seg = NULL;
 	struct rte_mbuf *mbuf, *tmbuf;
-	unsigned int err, etlt;
-	uint32_t error_status;
+	unsigned int err = 0, etlt;
+	uint32_t error_status = 0;
 	uint16_t idx, pidx, data_len = 0, pkt_len = 0;
 	uint64_t offloads;
 
@@ -381,19 +381,6 @@ next_desc:
 		}
 
 		mbuf = rxq->sw_ring[idx];
-		/* Check for any errors and free mbuf*/
-		err = AXGMAC_GET_BITS_LE(desc->write.desc3,
-					 RX_NORMAL_DESC3, ES);
-		error_status = 0;
-		if (unlikely(err)) {
-			error_status = desc->write.desc3 & AXGBE_ERR_STATUS;
-			if ((error_status != AXGBE_L3_CSUM_ERR)
-					&& (error_status != AXGBE_L4_CSUM_ERR)) {
-				rxq->errors++;
-				rte_pktmbuf_free(mbuf);
-				goto err_set;
-			}
-		}
 		rte_prefetch1(rte_pktmbuf_mtod(mbuf, void *));
 
 		if (!AXGMAC_GET_BITS_LE(desc->write.desc3,
@@ -406,6 +393,24 @@ next_desc:
 			pkt_len = AXGMAC_GET_BITS_LE(desc->write.desc3,
 					RX_NORMAL_DESC3, PL);
 			data_len = pkt_len - rxq->crc_len;
+			/* Check for any errors and free mbuf*/
+			err = AXGMAC_GET_BITS_LE(desc->write.desc3,
+					RX_NORMAL_DESC3, ES);
+			error_status = 0;
+			if (unlikely(err)) {
+				error_status = desc->write.desc3 &
+					AXGBE_ERR_STATUS;
+				if (error_status != AXGBE_L3_CSUM_ERR &&
+						error_status != AXGBE_L4_CSUM_ERR) {
+					rxq->errors++;
+					rte_pktmbuf_free(mbuf);
+					rte_pktmbuf_free(first_seg);
+					first_seg = NULL;
+					eop = 0;
+					goto err_set;
+				}
+			}
+
 		}
 
 		if (first_seg != NULL) {
