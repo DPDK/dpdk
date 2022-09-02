@@ -284,7 +284,7 @@ s32 txgbe_close_notify(struct txgbe_hw *hw)
 	if (status)
 		return status;
 
-	tmp = rd32(hw, TXGBE_MNGSWSYNC);
+	tmp = rd32a(hw, TXGBE_MNGMBX, 1);
 	if (tmp == TXGBE_CHECKSUM_CAP_ST_PASS)
 		status = 0;
 	else
@@ -314,7 +314,7 @@ s32 txgbe_open_notify(struct txgbe_hw *hw)
 	if (status)
 		return status;
 
-	tmp = rd32(hw, TXGBE_MNGSWSYNC);
+	tmp = rd32a(hw, TXGBE_MNGMBX, 1);
 	if (tmp == TXGBE_CHECKSUM_CAP_ST_PASS)
 		status = 0;
 	else
