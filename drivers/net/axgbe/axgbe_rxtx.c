@@ -392,8 +392,8 @@ next_desc:
 		} else {
 			eop = 1;
 			pkt_len = AXGMAC_GET_BITS_LE(desc->write.desc3,
-					RX_NORMAL_DESC3, PL);
-			data_len = pkt_len - rxq->crc_len;
+					RX_NORMAL_DESC3, PL) - rxq->crc_len;
+			data_len = pkt_len % rxq->buf_size;
 			/* Check for any errors and free mbuf*/
 			err = AXGMAC_GET_BITS_LE(desc->write.desc3,
 					RX_NORMAL_DESC3, ES);
