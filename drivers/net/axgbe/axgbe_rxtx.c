@@ -407,7 +407,8 @@ next_desc:
 
 		/* Get the RSS hash */
 		if (AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3, RSV))
-			mbuf->hash.rss = rte_le_to_cpu_32(desc->write.desc1);
+			first_seg->hash.rss =
+				rte_le_to_cpu_32(desc->write.desc1);
 
 err_set:
 		rxq->cur++;
@@ -429,18 +430,24 @@ err_set:
 
 		first_seg->port = rxq->port_id;
 		if (rxq->pdata->rx_csum_enable) {
-			mbuf->ol_flags = 0;
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+			first_seg->ol_flags = 0;
+			first_seg->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			first_seg->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
 			if (unlikely(error_status == AXGBE_L3_CSUM_ERR)) {
-				mbuf->ol_flags &= ~PKT_RX_IP_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-				mbuf->ol_flags &= ~PKT_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
+				first_seg->ol_flags &=
+					~PKT_RX_IP_CKSUM_GOOD;
+				first_seg->ol_flags |=
+					PKT_RX_IP_CKSUM_BAD;
+				first_seg->ol_flags &=
+					~PKT_RX_L4_CKSUM_GOOD;
+				first_seg->ol_flags |=
+					PKT_RX_L4_CKSUM_UNKNOWN;
 			} else if (unlikely(error_status
 						== AXGBE_L4_CSUM_ERR)) {
-				mbuf->ol_flags &= ~PKT_RX_L4_CKSUM_GOOD;
-				mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+				first_seg->ol_flags &=
+					~PKT_RX_L4_CKSUM_GOOD;
+				first_seg->ol_flags |=
+					PKT_RX_L4_CKSUM_BAD;
 			}
 		}
 
