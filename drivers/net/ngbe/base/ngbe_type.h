@@ -136,9 +136,8 @@ struct ngbe_hw_stats {
 	u64 mng_bmc2host_packets;
 	u64 mng_host2bmc_packets;
 	/* Basix RxTx */
-	u64 rx_drop_packets;
-	u64 tx_drop_packets;
 	u64 rx_dma_drop;
+	u64 tx_dma_drop;
 	u64 tx_secdrp_packets;
 	u64 rx_packets;
 	u64 tx_packets;
@@ -164,7 +163,7 @@ struct ngbe_hw_stats {
 	u64 rx_length_errors;
 	u64 rx_undersize_errors;
 	u64 rx_fragment_errors;
-	u64 rx_oversize_errors;
+	u64 rx_oversize_cnt;
 	u64 rx_jabber_errors;
 	u64 rx_l3_l4_xsum_error;
 	u64 mac_local_errors;
