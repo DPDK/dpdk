@@ -105,37 +105,6 @@ s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw)
 			status = 0;
 	}
 
-	/* Now get the semaphore between SW/FW through the SWESMBI bit */
-	if (status == 0) {
-		for (i = 0; i < timeout; i++) {
-			/* Set the SW EEPROM semaphore bit to request access */
-			wr32m(hw, NGBE_MNGSWSYNC,
-				NGBE_MNGSWSYNC_REQ, NGBE_MNGSWSYNC_REQ);
-
-			/*
-			 * If we set the bit successfully then we got the
-			 * semaphore.
-			 */
-			swsm = rd32(hw, NGBE_MNGSWSYNC);
-			if (swsm & NGBE_MNGSWSYNC_REQ)
-				break;
-
-			usec_delay(50);
-		}
-
-		/*
-		 * Release semaphores and return error if SW EEPROM semaphore
-		 * was not granted because we don't have access to the EEPROM
-		 */
-		if (i >= timeout) {
-			DEBUGOUT("SWESMBI Software EEPROM semaphore not granted.");
-			ngbe_release_eeprom_semaphore(hw);
-			status = NGBE_ERR_EEPROM;
-		}
-	} else {
-		DEBUGOUT("Software semaphore SMBI between device drivers not granted.");
-	}
-
 	return status;
 }
 
@@ -147,7 +116,6 @@ s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw)
  **/
 void ngbe_release_eeprom_semaphore(struct ngbe_hw *hw)
 {
-	wr32m(hw, NGBE_MNGSWSYNC, NGBE_MNGSWSYNC_REQ, 0);
 	wr32m(hw, NGBE_SWSEM, NGBE_SWSEM_PF, 0);
 	ngbe_flush(hw);
 }
