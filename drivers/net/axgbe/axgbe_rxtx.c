@@ -392,6 +392,10 @@ next_desc:
 			}
 
 		}
+		/* Mbuf populate */
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->data_len = data_len;
+		mbuf->pkt_len = data_len;
 
 		if (first_seg != NULL) {
 			if (rte_pktmbuf_chain(first_seg, mbuf) != 0)
@@ -404,10 +408,6 @@ next_desc:
 		/* Get the RSS hash */
 		if (AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3, RSV))
 			mbuf->hash.rss = rte_le_to_cpu_32(desc->write.desc1);
-
-		/* Mbuf populate */
-		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-		mbuf->data_len = data_len;
 
 err_set:
 		rxq->cur++;
