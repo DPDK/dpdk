@@ -285,9 +285,9 @@ struct txgbe_hw_stats {
 	u64 tx_management_packets;
 	u64 rx_management_dropped;
 	u64 rx_dma_drop;
-	u64 rx_drop_packets;
 
 	/* Basic Error */
+	u64 rx_rdb_drop;
 	u64 rx_crc_errors;
 	u64 rx_illegal_byte_errors;
 	u64 rx_error_bytes;
@@ -295,7 +295,7 @@ struct txgbe_hw_stats {
 	u64 rx_length_errors;
 	u64 rx_undersize_errors;
 	u64 rx_fragment_errors;
-	u64 rx_oversize_errors;
+	u64 rx_oversize_cnt;
 	u64 rx_jabber_errors;
 	u64 rx_l3_l4_xsum_error;
 	u64 mac_local_errors;

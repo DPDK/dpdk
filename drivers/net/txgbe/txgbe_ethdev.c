@@ -173,8 +173,10 @@ static const struct rte_txgbe_xstats_name_off rte_txgbe_stats_strings[] = {
 	HW_XSTAT(rx_management_packets),
 	HW_XSTAT(tx_management_packets),
 	HW_XSTAT(rx_management_dropped),
+	HW_XSTAT(rx_dma_drop),
 
 	/* Basic Error */
+	HW_XSTAT(rx_rdb_drop),
 	HW_XSTAT(rx_crc_errors),
 	HW_XSTAT(rx_illegal_byte_errors),
 	HW_XSTAT(rx_error_bytes),
@@ -182,7 +184,7 @@ static const struct rte_txgbe_xstats_name_off rte_txgbe_stats_strings[] = {
 	HW_XSTAT(rx_length_errors),
 	HW_XSTAT(rx_undersize_errors),
 	HW_XSTAT(rx_fragment_errors),
-	HW_XSTAT(rx_oversize_errors),
+	HW_XSTAT(rx_oversize_cnt),
 	HW_XSTAT(rx_jabber_errors),
 	HW_XSTAT(rx_l3_l4_xsum_error),
 	HW_XSTAT(mac_local_errors),
@@ -1910,7 +1912,7 @@ txgbe_read_stats_registers(struct txgbe_hw *hw,
 	hw_stats->rx_bytes += rd64(hw, TXGBE_DMARXOCTL);
 	hw_stats->tx_bytes += rd64(hw, TXGBE_DMATXOCTL);
 	hw_stats->rx_dma_drop += rd32(hw, TXGBE_DMARXDROP);
-	hw_stats->rx_drop_packets += rd32(hw, TXGBE_PBRXDROP);
+	hw_stats->rx_rdb_drop += rd32(hw, TXGBE_PBRXDROP);
 
 	/* MAC Stats */
 	hw_stats->rx_crc_errors += rd64(hw, TXGBE_MACRXERRCRCL);
@@ -1942,7 +1944,7 @@ txgbe_read_stats_registers(struct txgbe_hw *hw,
 			rd64(hw, TXGBE_MACTX1024TOMAXL);
 
 	hw_stats->rx_undersize_errors += rd64(hw, TXGBE_MACRXERRLENL);
-	hw_stats->rx_oversize_errors += rd32(hw, TXGBE_MACRXOVERSIZE);
+	hw_stats->rx_oversize_cnt += rd32(hw, TXGBE_MACRXOVERSIZE);
 	hw_stats->rx_jabber_errors += rd32(hw, TXGBE_MACRXJABBER);
 
 	/* MNG Stats */
@@ -2064,8 +2066,7 @@ txgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			  hw_stats->rx_mac_short_packet_dropped +
 			  hw_stats->rx_length_errors +
 			  hw_stats->rx_undersize_errors +
-			  hw_stats->rx_oversize_errors +
-			  hw_stats->rx_drop_packets +
+			  hw_stats->rx_rdb_drop +
 			  hw_stats->rx_illegal_byte_errors +
 			  hw_stats->rx_error_bytes +
 			  hw_stats->rx_fragment_errors +
