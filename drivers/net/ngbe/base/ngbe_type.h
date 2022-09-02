@@ -9,7 +9,7 @@
 #define NGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 
 #define NGBE_FRAME_SIZE_MAX       (9728) /* Maximum frame size, +FCS */
-#define NGBE_FRAME_SIZE_DFT       (1522) /* Default frame size, +FCS */
+#define NGBE_FRAME_SIZE_DFT       (1518) /* Default frame size, +FCS */
 #define NGBE_NUM_POOL             (32)
 #define NGBE_PBRXSIZE_MAX         0x00080000 /* 512KB Packet Buffer */
 #define NGBE_PBTXSIZE_MAX         0x00005000 /* 20KB Packet Buffer */

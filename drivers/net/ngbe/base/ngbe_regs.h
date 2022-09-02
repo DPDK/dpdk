@@ -525,7 +525,7 @@ enum ngbe_5tuple_protocol {
 #define   NGBE_PSRCTL_LBENA	       MS(18, 0x1)
 #define NGBE_FRMSZ		       0x015020
 #define   NGBE_FRMSZ_MAX_MASK	       MS(0, 0xFFFF)
-#define   NGBE_FRMSZ_MAX(v)	       LS(v, 0, 0xFFFF)
+#define   NGBE_FRMSZ_MAX(v)	       LS((v) + 4, 0, 0xFFFF)
 #define NGBE_VLANCTL		       0x015088
 #define   NGBE_VLANCTL_TPID_MASK       MS(0, 0xFFFF)
 #define   NGBE_VLANCTL_TPID(v)	       LS(v, 0, 0xFFFF)
