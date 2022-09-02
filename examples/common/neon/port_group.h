@@ -24,7 +24,7 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, uint16x8_t dp1,
 	union {
 		uint16_t u16[FWDSTEP + 1];
 		uint64_t u64;
-	} *pnum = (void *)pn;
+	} __rte_packed *pnum = (void *)pn;
 
 	uint16x8_t mask = {1, 2, 4, 8, 0, 0, 0, 0};
 	int32_t v;
