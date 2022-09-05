@@ -2,6 +2,8 @@
  * Copyright(C) 2022 HiSilicon Limited
  */
 
+#include <rte_malloc.h>
+
 #include "hns3_common.h"
 #include "hns3_logs.h"
 #include "hns3_regs.h"
@@ -9,7 +11,7 @@
 #include "hns3_dump.h"
 
 static const char *
-get_adapter_state_name(enum hns3_adapter_state state)
+hns3_get_adapter_state_name(enum hns3_adapter_state state)
 {
 	const struct {
 		enum hns3_adapter_state state;
@@ -37,7 +39,7 @@ get_adapter_state_name(enum hns3_adapter_state state)
 }
 
 static const char *
-get_io_func_hint_name(uint32_t hint)
+hns3_get_io_func_hint_name(uint32_t hint)
 {
 	switch (hint) {
 	case HNS3_IO_FUNC_HINT_NONE:
@@ -56,7 +58,7 @@ get_io_func_hint_name(uint32_t hint)
 }
 
 static void
-get_dev_mac_info(FILE *file, struct hns3_adapter *hns)
+hns3_get_dev_mac_info(FILE *file, struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_pf *pf = &hns->pf;
@@ -78,7 +80,7 @@ get_dev_mac_info(FILE *file, struct hns3_adapter *hns)
 }
 
 static void
-get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
+hns3_get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
 {
 	const struct {
 		enum hns3_dev_cap cap;
@@ -106,9 +108,9 @@ get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
 }
 
 static const char *
-get_fdir_tuple_name(uint32_t index)
+hns3_get_fdir_tuple_name(uint32_t index)
 {
-	static const char * const tuple_name[] = {
+	const char * const tuple_name[] = {
 		"outer_dst_mac",
 		"outer_src_mac",
 		"outer_vlan_1st_tag",
@@ -147,12 +149,10 @@ get_fdir_tuple_name(uint32_t index)
 }
 
 static void
-get_fdir_basic_info(FILE *file, struct hns3_pf *pf)
+hns3_get_fdir_basic_info(FILE *file, struct hns3_pf *pf)
 {
-#define TMPBUF_SIZE		2048
-#define PERLINE_TUPLE_NAMES	4
+#define HNS3_PERLINE_TUPLE_NAME_LEN	4
 	struct hns3_fd_cfg *fdcfg = &pf->fdir.fd_cfg;
-	char tmpbuf[TMPBUF_SIZE] = {0};
 	uint32_t i, count = 0;
 
 	fprintf(file, "  - Fdir Info:\n");
@@ -175,21 +175,19 @@ get_fdir_basic_info(FILE *file, struct hns3_pf *pf)
 	for (i = 0; i < MAX_TUPLE; i++) {
 		if (!(fdcfg->key_cfg[HNS3_FD_STAGE_1].tuple_active & BIT(i)))
 			continue;
-		if (count % PERLINE_TUPLE_NAMES == 0)
+		if (count % HNS3_PERLINE_TUPLE_NAME_LEN == 0)
 			fprintf(file, "\t      ");
-		fprintf(file, " %s", get_fdir_tuple_name(i));
+		fprintf(file, " %s", hns3_get_fdir_tuple_name(i));
 		count++;
-		if (count % PERLINE_TUPLE_NAMES == 0)
+		if (count % HNS3_PERLINE_TUPLE_NAME_LEN == 0)
 			fprintf(file, "\n");
 	}
-	if (count % PERLINE_TUPLE_NAMES)
+	if (count % HNS3_PERLINE_TUPLE_NAME_LEN)
 		fprintf(file, "\n");
-
-	fprintf(file, "%s", tmpbuf);
 }
 
 static void
-get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
+hns3_get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
@@ -209,7 +207,7 @@ get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 		"\t  -- dev_flags: lsc=%d\n"
 		"\t  -- intr_conf: lsc=%u rxq=%u\n",
 		dev->data->name,
-		get_adapter_state_name(hw->adapter_state),
+		hns3_get_adapter_state_name(hw->adapter_state),
 		dev->data->nb_rx_queues, dev->data->nb_tx_queues,
 		hw->total_tqps_num, hw->tqps_num, hw->intr_tqps_num,
 		hw->rss_size_max, hw->alloc_rss_size, hw->tx_qnum_per_tc,
@@ -217,15 +215,15 @@ get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 		hw->tso_mode, hw->max_non_tso_bd_num,
 		hw->max_tm_rate,
 		hw->set_link_down ? "Yes" : "No",
-		get_io_func_hint_name(hns->rx_func_hint),
-		get_io_func_hint_name(hns->tx_func_hint),
+		hns3_get_io_func_hint_name(hns->rx_func_hint),
+		hns3_get_io_func_hint_name(hns->tx_func_hint),
 		!!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC),
 		dev->data->dev_conf.intr_conf.lsc,
 		dev->data->dev_conf.intr_conf.rxq);
 }
 
 static struct hns3_rx_queue *
-get_rx_queue(struct rte_eth_dev *dev)
+hns3_get_rx_queue(struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_rx_queue *rxq;
@@ -250,7 +248,7 @@ get_rx_queue(struct rte_eth_dev *dev)
 }
 
 static struct hns3_tx_queue *
-get_tx_queue(struct rte_eth_dev *dev)
+hns3_get_tx_queue(struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_tx_queue *txq;
@@ -275,7 +273,7 @@ get_tx_queue(struct rte_eth_dev *dev)
 }
 
 static void
-get_rxtx_fake_queue_info(FILE *file, struct rte_eth_dev *dev)
+hns3_get_rxtx_fake_queue_info(FILE *file, struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_rx_queue *rxq;
@@ -317,10 +315,10 @@ get_rxtx_fake_queue_info(FILE *file, struct rte_eth_dev *dev)
 }
 
 static void
-get_queue_enable_state(struct hns3_hw *hw, uint32_t *queue_state,
-			uint32_t nb_queues, bool is_rxq)
+hns3_get_queue_enable_state(struct hns3_hw *hw, uint32_t *queue_state,
+			    uint32_t nb_queues, bool is_rxq)
 {
-#define STATE_SIZE (sizeof(*queue_state) * CHAR_BIT)
+#define HNS3_QUEUE_NUM_PER_STATS (sizeof(*queue_state) * HNS3_UINT8_BIT)
 	uint32_t queue_en_reg;
 	uint32_t reg_offset;
 	uint32_t state;
@@ -333,28 +331,28 @@ get_queue_enable_state(struct hns3_hw *hw, uint32_t *queue_state,
 		if (hns3_dev_get_support(hw, INDEP_TXRX))
 			state = state && hns3_read_dev(hw, reg_offset +
 						       queue_en_reg);
-		hns3_set_bit(queue_state[i / STATE_SIZE],
-				i % STATE_SIZE, state);
+		hns3_set_bit(queue_state[i / HNS3_QUEUE_NUM_PER_STATS],
+				i % HNS3_QUEUE_NUM_PER_STATS, state);
 	}
 }
 
 static void
-print_queue_state_perline(FILE *file, const uint32_t *queue_state,
-			  uint32_t nb_queues, uint32_t line_num)
+hns3_print_queue_state_perline(FILE *file, const uint32_t *queue_state,
+			       uint32_t nb_queues, uint32_t line_num)
 {
-#define NUM_QUEUE_PER_LINE (sizeof(uint32_t) * HNS3_UINT8_BIT)
-	uint32_t qid = line_num * NUM_QUEUE_PER_LINE;
-	uint32_t j;
+#define HNS3_NUM_QUEUE_PER_LINE (sizeof(uint32_t) * HNS3_UINT8_BIT)
+	uint32_t id = line_num * HNS3_NUM_QUEUE_PER_LINE;
+	uint32_t i;
 
-	for (j = 0; j < NUM_QUEUE_PER_LINE; j++) {
-		fprintf(file, "%1lx", hns3_get_bit(queue_state[line_num], j));
+	for (i = 0; i < HNS3_NUM_QUEUE_PER_LINE; i++) {
+		fprintf(file, "%1lx", hns3_get_bit(queue_state[line_num], i));
 
-		if (qid % CHAR_BIT == CHAR_BIT - 1) {
+		if (id % HNS3_UINT8_BIT == HNS3_UINT8_BIT - 1) {
 			fprintf(file, "%s",
-				j == NUM_QUEUE_PER_LINE - 1 ? "\n" : ":");
+				i == HNS3_NUM_QUEUE_PER_LINE - 1 ? "\n" : ":");
 		}
-		qid++;
-		if (qid >= nb_queues) {
+		id++;
+		if (id >= nb_queues) {
 			fprintf(file, "\n");
 			break;
 		}
@@ -362,66 +360,83 @@ print_queue_state_perline(FILE *file, const uint32_t *queue_state,
 }
 
 static void
-display_queue_enable_state(FILE *file, const uint32_t *queue_state,
-			   uint32_t nb_queues, bool is_rxq)
+hns3_display_queue_enable_state(FILE *file, const uint32_t *queue_state,
+				uint32_t nb_queues, bool is_rxq)
 {
-#define NUM_QUEUE_PER_LINE (sizeof(uint32_t) * HNS3_UINT8_BIT)
+#define HNS3_NUM_QUEUE_PER_LINE (sizeof(uint32_t) * HNS3_UINT8_BIT)
 	uint32_t i;
 
-	if (nb_queues == 0) {
-		fprintf(file, "\t       %s queue number is 0\n",
-				is_rxq ? "Rx" : "Tx");
-		return;
-	}
-
 	fprintf(file, "\t       %s queue id | enable state bitMap\n",
-			is_rxq ? "rx" : "tx");
+			is_rxq ? "Rx" : "Tx");
 
-	for (i = 0; i < (nb_queues - 1) / NUM_QUEUE_PER_LINE + 1; i++) {
-		uint32_t line_end = (i + 1) * NUM_QUEUE_PER_LINE - 1;
-		uint32_t line_start = i * NUM_QUEUE_PER_LINE;
+	for (i = 0; i < (nb_queues - 1) / HNS3_NUM_QUEUE_PER_LINE + 1; i++) {
+		uint32_t line_end = (i + 1) * HNS3_NUM_QUEUE_PER_LINE - 1;
+		uint32_t line_start = i * HNS3_NUM_QUEUE_PER_LINE;
 		fprintf(file, "\t       %04u - %04u | ", line_start,
 			nb_queues - 1 > line_end ? line_end : nb_queues - 1);
 
-
-		print_queue_state_perline(file, queue_state, nb_queues, i);
+		hns3_print_queue_state_perline(file, queue_state, nb_queues, i);
 	}
 }
 
 static void
-get_rxtx_queue_enable_state(FILE *file, struct rte_eth_dev *dev)
+hns3_get_rxtx_queue_enable_state(FILE *file, struct rte_eth_dev *dev)
 {
-#define MAX_TQP_NUM 1280
-#define QUEUE_BITMAP_SIZE (MAX_TQP_NUM / 32)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t rx_queue_state[QUEUE_BITMAP_SIZE] = {0};
-	uint32_t tx_queue_state[QUEUE_BITMAP_SIZE] = {0};
+	uint32_t *rx_queue_state;
+	uint32_t *tx_queue_state;
 	uint32_t nb_rx_queues;
 	uint32_t nb_tx_queues;
+	uint32_t bitmap_size;
 
 	nb_rx_queues = dev->data->nb_rx_queues;
 	nb_tx_queues = dev->data->nb_tx_queues;
+	if (nb_rx_queues == 0) {
+		fprintf(file, "\t  -- Rx queue number is 0\n");
+		return;
+	}
+	if (nb_tx_queues == 0) {
+		fprintf(file, "\t  -- Tx queue number is 0\n");
+		return;
+	}
+
+	bitmap_size = (hw->tqps_num * sizeof(uint32_t) + HNS3_UINT32_BIT) /
+			HNS3_UINT32_BIT;
+	rx_queue_state = (uint32_t *)rte_zmalloc(NULL, bitmap_size, 0);
+	if (rx_queue_state == NULL) {
+		hns3_err(hw, "Failed to allocate memory for rx queue state!");
+		return;
+	}
+
+	tx_queue_state = (uint32_t *)rte_zmalloc(NULL, bitmap_size, 0);
+	if (tx_queue_state == NULL) {
+		hns3_err(hw, "Failed to allocate memory for tx queue state!");
+		rte_free(rx_queue_state);
+		return;
+	}
 
 	fprintf(file, "\t  -- enable state:\n");
-	get_queue_enable_state(hw, rx_queue_state, nb_rx_queues, true);
-	display_queue_enable_state(file, rx_queue_state, nb_rx_queues,
+	hns3_get_queue_enable_state(hw, rx_queue_state, nb_rx_queues, true);
+	hns3_display_queue_enable_state(file, rx_queue_state, nb_rx_queues,
 					 true);
 
-	get_queue_enable_state(hw, tx_queue_state, nb_tx_queues, false);
-	display_queue_enable_state(file, tx_queue_state, nb_tx_queues,
+	hns3_get_queue_enable_state(hw, tx_queue_state, nb_tx_queues, false);
+	hns3_display_queue_enable_state(file, tx_queue_state, nb_tx_queues,
 					 false);
+	rte_free(rx_queue_state);
+	rte_free(tx_queue_state);
 }
 
 static void
-get_rxtx_queue_info(FILE *file, struct rte_eth_dev *dev)
+hns3_get_rxtx_queue_info(FILE *file, struct rte_eth_dev *dev)
 {
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
 
-	rxq = get_rx_queue(dev);
+	rxq = hns3_get_rx_queue(dev);
 	if (rxq == NULL)
 		return;
-	txq = get_tx_queue(dev);
+	txq = hns3_get_tx_queue(dev);
 	if (txq == NULL)
 		return;
 	fprintf(file, "  - Rx/Tx Queue Info:\n");
@@ -434,12 +449,12 @@ get_rxtx_queue_info(FILE *file, struct rte_eth_dev *dev)
 		txq->port_id, txq->nb_tx_desc,
 		txq->tx_push_enable ? "enabled" : "disabled");
 
-	get_rxtx_fake_queue_info(file, dev);
-	get_rxtx_queue_enable_state(file, dev);
+	hns3_get_rxtx_fake_queue_info(file, dev);
+	hns3_get_rxtx_queue_enable_state(file, dev);
 }
 
 static int
-get_vlan_filter_cfg(FILE *file, struct hns3_hw *hw)
+hns3_get_vlan_filter_cfg(FILE *file, struct hns3_hw *hw)
 {
 #define HNS3_FILTER_TYPE_VF		0
 #define HNS3_FILTER_TYPE_PORT		1
@@ -484,7 +499,7 @@ get_vlan_filter_cfg(FILE *file, struct hns3_hw *hw)
 }
 
 static int
-get_vlan_rx_offload_cfg(FILE *file, struct hns3_hw *hw)
+hns3_get_vlan_rx_offload_cfg(FILE *file, struct hns3_hw *hw)
 {
 	struct hns3_vport_vtag_rx_cfg_cmd *req;
 	struct hns3_cmd_desc desc;
@@ -506,8 +521,8 @@ get_vlan_rx_offload_cfg(FILE *file, struct hns3_hw *hw)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret != 0) {
 		hns3_err(hw,
-			"NIC IMP exec ret=%d desc_num=%d optcode=0x%x!",
-			ret, 1, rte_le_to_cpu_16(desc.opcode));
+			 "NIC firmware exec ret=%d optcode=0x%x!", ret,
+			 rte_le_to_cpu_16(desc.opcode));
 		return ret;
 	}
 
@@ -536,7 +551,7 @@ get_vlan_rx_offload_cfg(FILE *file, struct hns3_hw *hw)
 }
 
 static void
-parse_tx_vlan_cfg(FILE *file, struct hns3_vport_vtag_tx_cfg_cmd *req)
+hns3_parse_tx_vlan_cfg(FILE *file, struct hns3_vport_vtag_tx_cfg_cmd *req)
 {
 #define VLAN_VID_MASK 0x0fff
 #define VLAN_PRIO_SHIFT 13
@@ -574,7 +589,7 @@ parse_tx_vlan_cfg(FILE *file, struct hns3_vport_vtag_tx_cfg_cmd *req)
 }
 
 static int
-get_vlan_tx_offload_cfg(FILE *file, struct hns3_hw *hw)
+hns3_get_vlan_tx_offload_cfg(FILE *file, struct hns3_hw *hw)
 {
 	struct hns3_vport_vtag_tx_cfg_cmd *req;
 	struct hns3_cmd_desc desc;
@@ -595,50 +610,50 @@ get_vlan_tx_offload_cfg(FILE *file, struct hns3_hw *hw)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret != 0) {
 		hns3_err(hw,
-			"NIC IMP exec ret=%d desc_num=%d optcode=0x%x!",
+			"NIC firmware exec ret=%d desc_num=%d optcode=0x%x!",
 			ret, 1, rte_le_to_cpu_16(desc.opcode));
 		return ret;
 	}
 
-	parse_tx_vlan_cfg(file, req);
+	hns3_parse_tx_vlan_cfg(file, req);
 
 	return 0;
 }
 
 static void
-get_port_pvid_info(FILE *file, struct hns3_hw *hw)
+hns3_get_port_pvid_info(FILE *file, struct hns3_hw *hw)
 {
-	fprintf(file, "\t  -- pvid status: %s\n",
-		hw->port_base_vlan_cfg.state ? "on" : "off");
+	fprintf(file, "  - pvid status: %s\n",
+		hw->port_base_vlan_cfg.state ? "On" : "Off");
 }
 
 static void
-get_vlan_config_info(FILE *file, struct hns3_hw *hw)
+hns3_get_vlan_config_info(FILE *file, struct hns3_hw *hw)
 {
 	int ret;
 
 	fprintf(file, "  - VLAN Config Info:\n");
-	ret = get_vlan_filter_cfg(file, hw);
+	ret = hns3_get_vlan_filter_cfg(file, hw);
 	if (ret < 0)
 		return;
 
-	ret = get_vlan_rx_offload_cfg(file, hw);
+	ret = hns3_get_vlan_rx_offload_cfg(file, hw);
 	if (ret < 0)
 		return;
 
-	ret = get_vlan_tx_offload_cfg(file, hw);
+	ret = hns3_get_vlan_tx_offload_cfg(file, hw);
 	if (ret < 0)
 		return;
 }
 
 static void
-get_tm_conf_shaper_info(FILE *file, struct hns3_tm_conf *conf)
+hns3_get_tm_conf_shaper_info(FILE *file, struct hns3_tm_conf *conf)
 {
 	struct hns3_shaper_profile_list *shaper_profile_list =
 		&conf->shaper_profile_list;
 	struct hns3_tm_shaper_profile *shaper_profile;
 
-	if (!conf->nb_shaper_profile)
+	if (conf->nb_shaper_profile == 0)
 		return;
 
 	fprintf(file, "  shaper_profile:\n");
@@ -652,9 +667,9 @@ get_tm_conf_shaper_info(FILE *file, struct hns3_tm_conf *conf)
 }
 
 static void
-get_tm_conf_port_node_info(FILE *file, struct hns3_tm_conf *conf)
+hns3_get_tm_conf_port_node_info(FILE *file, struct hns3_tm_conf *conf)
 {
-	if (!conf->root)
+	if (conf->root == NULL)
 		return;
 
 	fprintf(file,
@@ -666,14 +681,14 @@ get_tm_conf_port_node_info(FILE *file, struct hns3_tm_conf *conf)
 }
 
 static void
-get_tm_conf_tc_node_info(FILE *file, struct hns3_tm_conf *conf)
+hns3_get_tm_conf_tc_node_info(FILE *file, struct hns3_tm_conf *conf)
 {
 	struct hns3_tm_node_list *tc_list = &conf->tc_list;
 	struct hns3_tm_node *tc_node[HNS3_MAX_TC_NUM];
 	struct hns3_tm_node *tm_node;
 	uint32_t tidx;
 
-	if (!conf->nb_tc_node)
+	if (conf->nb_tc_node == 0)
 		return;
 
 	fprintf(file, "  tc_node:\n");
@@ -700,25 +715,27 @@ get_tm_conf_tc_node_info(FILE *file, struct hns3_tm_conf *conf)
 }
 
 static void
-get_tm_conf_queue_format_info(FILE *file, struct hns3_tm_node **queue_node,
-			      uint32_t *queue_node_tc,  uint32_t nb_tx_queues)
+hns3_get_tm_conf_queue_format_info(FILE *file, struct hns3_tm_node **queue_node,
+				   uint32_t *queue_node_tc,
+				   uint32_t nb_tx_queues)
 {
-#define PERLINE_QUEUES	32
-#define PERLINE_STRIDE	8
-#define LINE_BUF_SIZE	1024
-	uint32_t i, j, line_num, start_queue, end_queue;
+#define HNS3_PERLINE_QUEUES	32
+#define HNS3_PERLINE_STRIDE	8
+	uint32_t i, j, line_num, start_queue_id, end_queue_id;
 
-	line_num = (nb_tx_queues + PERLINE_QUEUES - 1) / PERLINE_QUEUES;
+	line_num = (nb_tx_queues + HNS3_PERLINE_QUEUES - 1) /
+		HNS3_PERLINE_QUEUES;
 	for (i = 0; i < line_num; i++) {
-		start_queue = i * PERLINE_QUEUES;
-		end_queue = (i + 1) * PERLINE_QUEUES - 1;
-		if (end_queue > nb_tx_queues - 1)
-			end_queue = nb_tx_queues - 1;
-		fprintf(file, "    %04u - %04u | ", start_queue, end_queue);
-		for (j = start_queue; j < nb_tx_queues; j++) {
-			if (j >= end_queue + 1)
+		start_queue_id = i * HNS3_PERLINE_QUEUES;
+		end_queue_id = (i + 1) * HNS3_PERLINE_QUEUES - 1;
+		if (end_queue_id > nb_tx_queues - 1)
+			end_queue_id = nb_tx_queues - 1;
+		fprintf(file, "    %04u - %04u | ", start_queue_id,
+			end_queue_id);
+		for (j = start_queue_id; j < nb_tx_queues; j++) {
+			if (j >= end_queue_id + 1)
 				break;
-			if (j > start_queue && j % PERLINE_STRIDE == 0)
+			if (j > start_queue_id && j % HNS3_PERLINE_STRIDE == 0)
 				fprintf(file, ":");
 			fprintf(file, "%u",
 				queue_node[j] ? queue_node_tc[j] :
@@ -729,8 +746,8 @@ get_tm_conf_queue_format_info(FILE *file, struct hns3_tm_node **queue_node,
 }
 
 static void
-get_tm_conf_queue_node_info(FILE *file, struct hns3_tm_conf *conf,
-			    uint32_t nb_tx_queues)
+hns3_get_tm_conf_queue_node_info(FILE *file, struct hns3_tm_conf *conf,
+				 uint32_t nb_tx_queues)
 {
 	struct hns3_tm_node_list *queue_list = &conf->queue_list;
 	uint32_t nb_queue_node = conf->nb_leaf_nodes_max + 1;
@@ -738,7 +755,7 @@ get_tm_conf_queue_node_info(FILE *file, struct hns3_tm_conf *conf,
 	uint32_t queue_node_tc[nb_queue_node];
 	struct hns3_tm_node *tm_node;
 
-	if (!conf->nb_queue_node)
+	if (conf->nb_queue_node == 0)
 		return;
 
 	fprintf(file,
@@ -757,12 +774,12 @@ get_tm_conf_queue_node_info(FILE *file, struct hns3_tm_conf *conf,
 		nb_tx_queues = RTE_MAX(nb_tx_queues, tm_node->id + 1);
 	}
 
-	get_tm_conf_queue_format_info(file, queue_node, queue_node_tc,
+	hns3_get_tm_conf_queue_format_info(file, queue_node, queue_node_tc,
 				      nb_tx_queues);
 }
 
 static void
-get_tm_conf_info(FILE *file, struct rte_eth_dev *dev)
+hns3_get_tm_conf_info(FILE *file, struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -780,10 +797,10 @@ get_tm_conf_info(FILE *file, struct rte_eth_dev *dev)
 		conf->nb_shaper_profile, conf->nb_tc_node, conf->nb_queue_node,
 		conf->committed);
 
-	get_tm_conf_shaper_info(file, conf);
-	get_tm_conf_port_node_info(file, conf);
-	get_tm_conf_tc_node_info(file, conf);
-	get_tm_conf_queue_node_info(file, conf, dev->data->nb_tx_queues);
+	hns3_get_tm_conf_shaper_info(file, conf);
+	hns3_get_tm_conf_port_node_info(file, conf);
+	hns3_get_tm_conf_tc_node_info(file, conf);
+	hns3_get_tm_conf_queue_node_info(file, conf, dev->data->nb_tx_queues);
 }
 
 static void
@@ -815,7 +832,7 @@ hns3_fc_mode_to_rxtx_pause(enum hns3_fc_mode fc_mode, bool *rx_pause,
 }
 
 static bool
-is_link_fc_mode(struct hns3_adapter *hns)
+hns3_is_link_fc_mode(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_pf *pf = &hns->pf;
@@ -830,21 +847,21 @@ is_link_fc_mode(struct hns3_adapter *hns)
 }
 
 static void
-get_link_fc_info(FILE *file, struct rte_eth_dev *dev)
+hns3_get_link_fc_info(FILE *file, struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	struct rte_eth_fc_conf fc_conf;
+	struct rte_eth_fc_conf cur_fc_conf;
 	bool rx_pause1;
 	bool tx_pause1;
 	bool rx_pause2;
 	bool tx_pause2;
 	int ret;
 
-	if (!is_link_fc_mode(hns))
+	if (!hns3_is_link_fc_mode(hns))
 		return;
 
-	ret = hns3_flow_ctrl_get(dev, &fc_conf);
+	ret = hns3_flow_ctrl_get(dev, &cur_fc_conf);
 	if (ret)  {
 		fprintf(file, "get device flow control info fail!\n");
 		return;
@@ -852,7 +869,7 @@ get_link_fc_info(FILE *file, struct rte_eth_dev *dev)
 
 	hns3_fc_mode_to_rxtx_pause(hw->requested_fc_mode,
 				   &rx_pause1, &tx_pause1);
-	hns3_fc_mode_to_rxtx_pause((enum hns3_fc_mode)fc_conf.mode,
+	hns3_fc_mode_to_rxtx_pause((enum hns3_fc_mode)cur_fc_conf.mode,
 				   &rx_pause2, &tx_pause2);
 
 	fprintf(file,
@@ -867,15 +884,14 @@ get_link_fc_info(FILE *file, struct rte_eth_dev *dev)
 		"\t       Pause time:	0x%x\n",
 		rx_pause1 ? "On" : "Off", tx_pause1 ? "On" : "Off",
 		rx_pause2 ? "On" : "Off", tx_pause2 ? "On" : "Off",
-		fc_conf.autoneg == RTE_ETH_LINK_AUTONEG ? "On" : "Off",
-		fc_conf.pause_time);
+		cur_fc_conf.autoneg == RTE_ETH_LINK_AUTONEG ? "On" : "Off",
+		cur_fc_conf.pause_time);
 }
 
 static void
-get_flow_ctrl_info(FILE *file, struct rte_eth_dev *dev)
+hns3_get_flow_ctrl_info(FILE *file, struct rte_eth_dev *dev)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	fprintf(file, "  - Flow Ctrl Info:\n");
 	fprintf(file,
@@ -885,7 +901,7 @@ get_flow_ctrl_info(FILE *file, struct rte_eth_dev *dev)
 		hw->current_fc_status,
 		hw->requested_fc_mode);
 
-	get_link_fc_info(file, dev);
+	hns3_get_link_fc_info(file, dev);
 }
 
 int
@@ -894,20 +910,23 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
-	get_device_basic_info(file, dev);
-	get_dev_feature_capability(file, hw);
-	get_rxtx_queue_info(file, dev);
-	get_port_pvid_info(file, hw);
+	hns3_get_device_basic_info(file, dev);
+	hns3_get_dev_feature_capability(file, hw);
+	hns3_get_rxtx_queue_info(file, dev);
+	hns3_get_port_pvid_info(file, hw);
 
-	/* VF only supports dumping basic info and feaure capability */
+	/*
+	 * VF only supports dumping basic info, feature capability and queue
+	 * info.
+	 */
 	if (hns->is_vf)
 		return 0;
 
-	get_dev_mac_info(file, hns);
-	get_vlan_config_info(file, hw);
-	get_fdir_basic_info(file, &hns->pf);
-	get_tm_conf_info(file, dev);
-	get_flow_ctrl_info(file, dev);
+	hns3_get_dev_mac_info(file, hns);
+	hns3_get_vlan_config_info(file, hw);
+	hns3_get_fdir_basic_info(file, &hns->pf);
+	hns3_get_tm_conf_info(file, dev);
+	hns3_get_flow_ctrl_info(file, dev);
 
 	return 0;
 }
