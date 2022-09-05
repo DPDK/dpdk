@@ -788,7 +788,8 @@ enum iavf_status iavf_asq_send_command(struct iavf_hw *hw,
 	}
 
 	/* if ready, copy the desc back to temp */
-	if (iavf_asq_done(hw)) {
+	if (iavf_asq_done(hw) &&
+		!details->async && !details->postpone) {
 		iavf_memcpy(desc, desc_on_ring, sizeof(struct iavf_aq_desc),
 			    IAVF_DMA_TO_NONDMA);
 		if (buff != NULL)
