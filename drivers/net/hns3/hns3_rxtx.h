@@ -627,10 +627,12 @@ int hns3_rxq_iterate(struct rte_eth_dev *dev,
 		 int (*callback)(struct hns3_rx_queue *, void *), void *arg);
 void hns3_dev_release_mbufs(struct hns3_adapter *hns);
 int hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
-			unsigned int socket, const struct rte_eth_rxconf *conf,
+			unsigned int socket_id,
+			const struct rte_eth_rxconf *conf,
 			struct rte_mempool *mp);
 int hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
-			unsigned int socket, const struct rte_eth_txconf *conf);
+			unsigned int socket_id,
+			const struct rte_eth_txconf *conf);
 uint32_t hns3_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
@@ -640,9 +642,11 @@ uint16_t hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
 uint16_t hns3_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts);
-uint16_t hns3_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+uint16_t hns3_recv_pkts_vec(void *__restrict rx_queue,
+			    struct rte_mbuf **__restrict rx_pkts,
 			    uint16_t nb_pkts);
-uint16_t hns3_recv_pkts_vec_sve(void *rx_queue, struct rte_mbuf **rx_pkts,
+uint16_t hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
+				struct rte_mbuf **__restrict rx_pkts,
 				uint16_t nb_pkts);
 int hns3_rx_burst_mode_get(struct rte_eth_dev *dev,
 			   __rte_unused uint16_t queue_id,
@@ -685,7 +689,7 @@ void hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_rxq_info *qinfo);
 void hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_txq_info *qinfo);
-uint32_t hns3_get_tqp_reg_offset(uint16_t idx);
+uint32_t hns3_get_tqp_reg_offset(uint16_t queue_id);
 int hns3_start_all_txqs(struct rte_eth_dev *dev);
 int hns3_start_all_rxqs(struct rte_eth_dev *dev);
 void hns3_stop_all_txqs(struct rte_eth_dev *dev);

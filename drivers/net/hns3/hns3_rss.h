@@ -88,7 +88,7 @@ static inline uint32_t roundup_pow_of_two(uint32_t x)
 	return 1UL << fls(x - 1);
 }
 
-extern const uint8_t hns3_hash_key[];
+extern const uint8_t hns3_hash_key[HNS3_RSS_KEY_SIZE];
 
 struct hns3_adapter;
 

@@ -65,7 +65,7 @@ static enum rte_flow_item_type tunnel_next_items[] = {
 
 struct items_step_mngr {
 	enum rte_flow_item_type *items;
-	int count;
+	size_t count;
 };
 
 static inline void
@@ -1120,7 +1120,7 @@ hns3_validate_item(const struct rte_flow_item *item,
 		   struct items_step_mngr step_mngr,
 		   struct rte_flow_error *error)
 {
-	int i;
+	uint32_t i;
 
 	if (item->last)
 		return rte_flow_error_set(error, ENOTSUP,
