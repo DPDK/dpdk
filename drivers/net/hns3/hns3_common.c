@@ -493,7 +493,7 @@ hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 		if (ret) {
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 					       addr);
-			hns3_err(hw, "failed to %s mac addr(%s) index:%d ret = %d.",
+			hns3_err(hw, "failed to %s mac addr(%s) index:%u ret = %d.",
 				 del ? "remove" : "restore", mac_str, i, ret);
 		}
 	}
@@ -680,7 +680,7 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 		ret = hw->ops.bind_ring_with_vector(hw, vec, false,
 						    HNS3_RING_TYPE_TX, i);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "fail to unbind TX ring(%d) with vector: %u, ret=%d",
+			PMD_INIT_LOG(ERR, "fail to unbind TX ring(%u) with vector: %u, ret=%d",
 				     i, vec, ret);
 			return ret;
 		}

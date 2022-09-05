@@ -342,7 +342,7 @@ static void
 print_queue_state_perline(FILE *file, const uint32_t *queue_state,
 			  uint32_t nb_queues, uint32_t line_num)
 {
-#define NUM_QUEUE_PER_LINE (sizeof(*queue_state) * CHAR_BIT)
+#define NUM_QUEUE_PER_LINE (sizeof(uint32_t) * HNS3_UINT8_BIT)
 	uint32_t qid = line_num * NUM_QUEUE_PER_LINE;
 	uint32_t j;
 
@@ -365,7 +365,7 @@ static void
 display_queue_enable_state(FILE *file, const uint32_t *queue_state,
 			   uint32_t nb_queues, bool is_rxq)
 {
-#define NUM_QUEUE_PER_LINE (sizeof(*queue_state) * CHAR_BIT)
+#define NUM_QUEUE_PER_LINE (sizeof(uint32_t) * HNS3_UINT8_BIT)
 	uint32_t i;
 
 	if (nb_queues == 0) {

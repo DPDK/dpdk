@@ -170,7 +170,7 @@ struct hns3_hw_error_desc {
 	const struct hns3_hw_error *hw_err;
 };
 
-int hns3_enable_hw_error_intr(struct hns3_adapter *hns, bool state);
+int hns3_enable_hw_error_intr(struct hns3_adapter *hns, bool en);
 void hns3_handle_msix_error(struct hns3_adapter *hns, uint64_t *levels);
 void hns3_handle_ras_error(struct hns3_adapter *hns, uint64_t *levels);
 void hns3_config_mac_tnl_int(struct hns3_hw *hw, bool en);
@@ -185,7 +185,7 @@ void hns3_schedule_reset(struct hns3_adapter *hns);
 void hns3_schedule_delayed_reset(struct hns3_adapter *hns);
 int hns3_reset_req_hw_reset(struct hns3_adapter *hns);
 int hns3_reset_process(struct hns3_adapter *hns,
-		       enum hns3_reset_level reset_level);
+		       enum hns3_reset_level new_level);
 void hns3_reset_abort(struct hns3_adapter *hns);
 void hns3_start_report_lse(struct rte_eth_dev *dev);
 void hns3_stop_report_lse(struct rte_eth_dev *dev);

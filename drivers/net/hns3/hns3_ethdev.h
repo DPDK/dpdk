@@ -898,11 +898,11 @@ enum hns3_dev_cap {
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_##_name##_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
-	(&((struct hns3_adapter *)adapter)->hw)
+	(&((struct hns3_adapter *)(adapter))->hw)
 #define HNS3_DEV_PRIVATE_TO_PF(adapter) \
-	(&((struct hns3_adapter *)adapter)->pf)
+	(&((struct hns3_adapter *)(adapter))->pf)
 #define HNS3_DEV_PRIVATE_TO_VF(adapter) \
-	(&((struct hns3_adapter *)adapter)->vf)
+	(&((struct hns3_adapter *)(adapter))->vf)
 #define HNS3_DEV_HW_TO_ADAPTER(hw) \
 	container_of(hw, struct hns3_adapter, hw)
 
@@ -999,10 +999,10 @@ static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 
 #define NEXT_ITEM_OF_ACTION(act, actions, index)                        \
 	do {								\
-		act = (actions) + (index);				\
-		while (act->type == RTE_FLOW_ACTION_TYPE_VOID) {	\
+		(act) = (actions) + (index);				\
+		while ((act)->type == RTE_FLOW_ACTION_TYPE_VOID) {	\
 			(index)++;					\
-			act = actions + index;				\
+			(act) = (actions) + (index);				\
 		}							\
 	} while (0)
 
@@ -1027,7 +1027,7 @@ hns3_atomic_clear_bit(unsigned int nr, volatile uint64_t *addr)
 	__atomic_fetch_and(addr, ~(1UL << nr), __ATOMIC_RELAXED);
 }
 
-static inline int64_t
+static inline uint64_t
 hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
 {
 	uint64_t mask = (1UL << nr);

@@ -2759,7 +2759,7 @@ hns3_rx_check_vec_support(__rte_unused struct rte_eth_dev *dev)
 }
 
 uint16_t __rte_weak
-hns3_recv_pkts_vec(__rte_unused void *tx_queue,
+hns3_recv_pkts_vec(__rte_unused void *rx_queue,
 		   __rte_unused struct rte_mbuf **rx_pkts,
 		   __rte_unused uint16_t nb_pkts)
 {
@@ -2767,7 +2767,7 @@ hns3_recv_pkts_vec(__rte_unused void *tx_queue,
 }
 
 uint16_t __rte_weak
-hns3_recv_pkts_vec_sve(__rte_unused void *tx_queue,
+hns3_recv_pkts_vec_sve(__rte_unused void *rx_queue,
 		       __rte_unused struct rte_mbuf **rx_pkts,
 		       __rte_unused uint16_t nb_pkts)
 {

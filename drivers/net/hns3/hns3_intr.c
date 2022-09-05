@@ -16,12 +16,6 @@
 
 #define SWITCH_CONTEXT_US	10
 
-#define HNS3_CHECK_MERGE_CNT(val)			\
-	do {						\
-		if (val)				\
-			hw->reset.stats.merge_cnt++;	\
-	} while (0)
-
 static const char *reset_string[HNS3_MAX_RESET] = {
 	"flr", "vf_func", "vf_pf_func", "vf_full", "vf_global",
 	"pf_func", "global", "IMP", "none",
@@ -2525,20 +2519,20 @@ static void
 hns3_clear_reset_level(struct hns3_hw *hw, uint64_t *levels)
 {
 	uint64_t merge_cnt = hw->reset.stats.merge_cnt;
-	int64_t tmp;
+	uint64_t tmp;
 
 	switch (hw->reset.level) {
 	case HNS3_IMP_RESET:
 		hns3_atomic_clear_bit(HNS3_IMP_RESET, levels);
 		tmp = hns3_test_and_clear_bit(HNS3_GLOBAL_RESET, levels);
-		HNS3_CHECK_MERGE_CNT(tmp);
+		merge_cnt = tmp > 0 ? merge_cnt + 1 : merge_cnt;
 		tmp = hns3_test_and_clear_bit(HNS3_FUNC_RESET, levels);
-		HNS3_CHECK_MERGE_CNT(tmp);
+		merge_cnt = tmp > 0 ? merge_cnt + 1 : merge_cnt;
 		break;
 	case HNS3_GLOBAL_RESET:
 		hns3_atomic_clear_bit(HNS3_GLOBAL_RESET, levels);
 		tmp = hns3_test_and_clear_bit(HNS3_FUNC_RESET, levels);
-		HNS3_CHECK_MERGE_CNT(tmp);
+		merge_cnt = tmp > 0 ? merge_cnt + 1 : merge_cnt;
 		break;
 	case HNS3_FUNC_RESET:
 		hns3_atomic_clear_bit(HNS3_FUNC_RESET, levels);
@@ -2546,19 +2540,19 @@ hns3_clear_reset_level(struct hns3_hw *hw, uint64_t *levels)
 	case HNS3_VF_RESET:
 		hns3_atomic_clear_bit(HNS3_VF_RESET, levels);
 		tmp = hns3_test_and_clear_bit(HNS3_VF_PF_FUNC_RESET, levels);
-		HNS3_CHECK_MERGE_CNT(tmp);
+		merge_cnt = tmp > 0 ? merge_cnt + 1 : merge_cnt;
 		tmp = hns3_test_and_clear_bit(HNS3_VF_FUNC_RESET, levels);
-		HNS3_CHECK_MERGE_CNT(tmp);
+		merge_cnt = tmp > 0 ? merge_cnt + 1 : merge_cnt;
 		break;
 	case HNS3_VF_FULL_RESET:
 		hns3_atomic_clear_bit(HNS3_VF_FULL_RESET, levels);
 		tmp = hns3_test_and_clear_bit(HNS3_VF_FUNC_RESET, levels);
-		HNS3_CHECK_MERGE_CNT(tmp);
+		merge_cnt = tmp > 0 ? merge_cnt + 1 : merge_cnt;
 		break;
 	case HNS3_VF_PF_FUNC_RESET:
 		hns3_atomic_clear_bit(HNS3_VF_PF_FUNC_RESET, levels);
 		tmp = hns3_test_and_clear_bit(HNS3_VF_FUNC_RESET, levels);
-		HNS3_CHECK_MERGE_CNT(tmp);
+		merge_cnt = tmp > 0 ? merge_cnt + 1 : merge_cnt;
 		break;
 	case HNS3_VF_FUNC_RESET:
 		hns3_atomic_clear_bit(HNS3_VF_FUNC_RESET, levels);
@@ -2570,13 +2564,16 @@ hns3_clear_reset_level(struct hns3_hw *hw, uint64_t *levels)
 	default:
 		return;
 	};
-	if (merge_cnt != hw->reset.stats.merge_cnt)
+
+	if (merge_cnt != hw->reset.stats.merge_cnt) {
 		hns3_warn(hw,
 			  "No need to do low-level reset after %s reset. "
 			  "merge cnt: %" PRIu64 " total merge cnt: %" PRIu64,
 			  reset_string[hw->reset.level],
 			  hw->reset.stats.merge_cnt - merge_cnt,
 			  hw->reset.stats.merge_cnt);
+		hw->reset.stats.merge_cnt = merge_cnt;
+	}
 }
 
 static bool
