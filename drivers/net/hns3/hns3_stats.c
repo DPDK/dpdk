@@ -427,15 +427,6 @@ hns3_query_mac_stats_reg_num(struct hns3_hw *hw)
 	return 0;
 }
 
-static int
-hns3_query_update_mac_stats(struct rte_eth_dev *dev)
-{
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
-
-	return hns3_update_mac_stats(hw);
-}
-
 /* Get tqp stats from register */
 static int
 hns3_update_tqp_stats(struct hns3_hw *hw)
@@ -602,14 +593,13 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 }
 
 static int
-hns3_mac_stats_reset(__rte_unused struct rte_eth_dev *dev)
+hns3_mac_stats_reset(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
 	struct hns3_mac_stats *mac_stats = &hw->mac_stats;
 	int ret;
 
-	ret = hns3_query_update_mac_stats(dev);
+	/* Clear hardware MAC statistics by reading it. */
+	ret = hns3_update_mac_stats(hw);
 	if (ret) {
 		hns3_err(hw, "Clear Mac stats fail : %d", ret);
 		return ret;
@@ -727,8 +717,7 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	count = 0;
 
 	if (!hns->is_vf) {
-		/* Update Mac stats */
-		ret = hns3_query_update_mac_stats(dev);
+		ret = hns3_update_mac_stats(hw);
 		if (ret < 0) {
 			hns3_err(hw, "Update Mac stats fail : %d", ret);
 			return ret;
@@ -1095,8 +1084,7 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 	if (hns->is_vf)
 		return 0;
 
-	/* HW registers are cleared on read */
-	ret = hns3_mac_stats_reset(dev);
+	ret = hns3_mac_stats_reset(&hns->hw);
 	if (ret)
 		return ret;
 
