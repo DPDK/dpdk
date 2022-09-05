@@ -125,7 +125,6 @@ hns3_timesync_enable(struct rte_eth_dev *dev)
 
 	if (pf->ptp_enable)
 		return 0;
-	hns3_warn(hw, "note: please ensure Rx/Tx burst mode is simple or common when enabling PTP!");
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_timesync_configure(hns, true);
