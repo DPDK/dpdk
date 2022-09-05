@@ -435,9 +435,8 @@ hns3_tx_fill_hw_ring_sve(struct hns3_tx_queue *txq,
 				offsets, svdup_n_u64(valid_bit));
 
 		/* Increment bytes counter */
-		uint32_t idx;
-		for (idx = 0; idx < svcntd(); idx++)
-			txq->basic_stats.bytes += pkts[idx]->pkt_len;
+		txq->basic_stats.bytes +=
+			(svaddv_u64(pg, data_len) >> HNS3_UINT16_BIT);
 
 		/* update index for next loop */
 		i += svcntd();
