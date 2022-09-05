@@ -1864,8 +1864,15 @@ hns3vf_is_reset_pending(struct hns3_adapter *hns)
 	if (hw->reset.level == HNS3_VF_FULL_RESET)
 		return false;
 
-	/* Check the registers to confirm whether there is reset pending */
-	hns3vf_check_event_cause(hns, NULL);
+	/*
+	 * Check the registers to confirm whether there is reset pending.
+	 * Note: This check may lead to schedule reset task, but only primary
+	 *       process can process the reset event. Therefore, limit the
+	 *       checking under only primary process.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		hns3vf_check_event_cause(hns, NULL);
+
 	reset = hns3vf_get_reset_level(hw, &hw->reset.pending);
 	if (hw->reset.level != HNS3_NONE_RESET && reset != HNS3_NONE_RESET &&
 	    hw->reset.level < reset) {
