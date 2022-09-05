@@ -389,10 +389,12 @@ hns3_tx_fill_hw_ring_sve(struct hns3_tx_queue *txq,
 				   HNS3_UINT32_BIT;
 	svuint64_t base_addr, buf_iova, data_off, data_len, addr;
 	svuint64_t offsets = svindex_u64(0, BD_SIZE);
-	uint32_t i = 0;
-	svbool_t pg = svwhilelt_b64_u32(i, nb_pkts);
+	uint32_t cnt = svcntd();
+	svbool_t pg;
+	uint32_t i;
 
-	do {
+	for (i = 0; i < nb_pkts; /* i is updated in the inner loop */) {
+		pg = svwhilelt_b64_u32(i, nb_pkts);
 		base_addr = svld1_u64(pg, (uint64_t *)pkts);
 		/* calc mbuf's field buf_iova address */
 		buf_iova = svadd_n_u64_z(pg, base_addr,
@@ -439,12 +441,11 @@ hns3_tx_fill_hw_ring_sve(struct hns3_tx_queue *txq,
 			(svaddv_u64(pg, data_len) >> HNS3_UINT16_BIT);
 
 		/* update index for next loop */
-		i += svcntd();
-		pkts += svcntd();
-		txdp += svcntd();
-		tx_entry += svcntd();
-		pg = svwhilelt_b64_u32(i, nb_pkts);
-	} while (svptest_any(svptrue_b64(), pg));
+		i += cnt;
+		pkts += cnt;
+		txdp += cnt;
+		tx_entry += cnt;
+	}
 }
 
 static uint16_t
