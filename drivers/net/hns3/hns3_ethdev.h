@@ -1062,7 +1062,6 @@ int hns3_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts);
 int hns3_timesync_write_time(struct rte_eth_dev *dev,
 			const struct timespec *ts);
 int hns3_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
-int hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)

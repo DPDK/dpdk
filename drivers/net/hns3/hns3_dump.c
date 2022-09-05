@@ -6,7 +6,7 @@
 #include "hns3_logs.h"
 #include "hns3_regs.h"
 #include "hns3_rxtx.h"
-#include "hns3_ethdev.h"
+#include "hns3_dump.h"
 
 static const char *
 get_adapter_state_name(enum hns3_adapter_state state)
