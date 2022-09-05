@@ -1528,6 +1528,7 @@ hns3_tqp_stats_clear(struct hns3_hw *hw)
 int
 hns3_stats_init(struct hns3_hw *hw)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	int ret;
 
 	rte_spinlock_init(&hw->stats_lock);
@@ -1537,6 +1538,9 @@ hns3_stats_init(struct hns3_hw *hw)
 		hns3_err(hw, "clear imissed stats failed, ret = %d", ret);
 		return ret;
 	}
+
+	if (!hns->is_vf)
+		hns3_mac_stats_reset(hw);
 
 	return hns3_tqp_stats_init(hw);
 }
