@@ -340,7 +340,6 @@ uint16_t eth_axgbe_recv_scattered_pkts(void *rx_queue,
 	struct axgbe_rx_queue *rxq = rx_queue;
 	volatile union axgbe_rx_desc *desc;
 
-	uint64_t old_dirty = rxq->dirty;
 	struct rte_mbuf *first_seg = NULL;
 	struct rte_mbuf *mbuf, *tmbuf;
 	unsigned int err = 0, etlt;
@@ -352,8 +351,7 @@ uint16_t eth_axgbe_recv_scattered_pkts(void *rx_queue,
 	while (nb_rx < nb_pkts) {
 		bool eop = 0;
 next_desc:
-		if (unlikely(idx == rxq->nb_desc))
-			idx = 0;
+		idx = AXGBE_GET_DESC_IDX(rxq, rxq->cur);
 
 		desc = &rxq->desc[idx];
 
@@ -446,19 +444,19 @@ next_desc:
 						~RTE_MBUF_F_RX_VLAN_STRIPPED;
 			} else {
 				first_seg->ol_flags &=
-					~(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
+					~(RTE_MBUF_F_RX_VLAN |
+							RTE_MBUF_F_RX_VLAN_STRIPPED);
 				first_seg->vlan_tci = 0;
 			}
 		}
 
 err_set:
 		rxq->cur++;
-		rxq->sw_ring[idx++] = tmbuf;
+		rxq->sw_ring[idx] = tmbuf;
 		desc->read.baddr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(tmbuf));
 		memset((void *)(&desc->read.desc2), 0, 8);
 		AXGMAC_SET_BITS_LE(desc->read.desc3, RX_NORMAL_DESC3, OWN, 1);
-		rxq->dirty++;
 
 		if (!eop) {
 			rte_pktmbuf_free(mbuf);
@@ -501,12 +499,13 @@ err_set:
 	/* Save receive context.*/
 	rxq->pkts += nb_rx;
 
-	if (rxq->dirty != old_dirty) {
+	if (rxq->dirty != rxq->cur) {
 		rte_wmb();
-		idx = AXGBE_GET_DESC_IDX(rxq, rxq->dirty - 1);
+		idx = AXGBE_GET_DESC_IDX(rxq, rxq->cur - 1);
 		AXGMAC_DMA_IOWRITE(rxq, DMA_CH_RDTR_LO,
 				   low32_value(rxq->ring_phys_addr +
 				   (idx * sizeof(union axgbe_rx_desc))));
+		rxq->dirty = rxq->cur;
 	}
 	return nb_rx;
 }
