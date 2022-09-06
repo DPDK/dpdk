@@ -647,3 +647,53 @@ Inline IPsec Support
     supports inline IPsec processing for IAVF PMD. For more details see the
     IPsec Security Gateway Sample Application and Security library
     documentation.
+
+
+Limitations or Knowing issues
+-----------------------------
+
+16 Byte RX Descriptor setting is not available
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Currently the VF's RX descriptor size is decided by PF. There's no PF-VF
+interface for VF to request the RX descriptor size, also no interface to notify
+VF its own RX descriptor size.
+For all available versions of the kernel PF drivers, these drivers don't
+support 16 bytes RX descriptor. If the Linux kernel driver is used as host driver,
+while DPDK iavf PMD is used as the VF driver, DPDK cannot choose 16 bytes receive
+descriptor. The reason is that the RX descriptor is already set to 32 bytes by
+the all existing kernel driver.
+In the future, if the any kernel driver supports 16 bytes RX descriptor, user
+should make sure the DPDK VF uses the same RX descriptor size.
+
+i40e: VF performance is impacted by PCI extended tag setting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To reach maximum NIC performance in the VF the PCI extended tag must be
+enabled. But the kernel driver does not set this feature during initialization.
+So when running traffic on a VF which is managed by the kernel PF driver, a
+significant NIC performance downgrade has been observed (for 64 byte packets,
+there is about 25% line-rate downgrade for a 25GbE device and about 35% for a
+40GbE device).
+
+For kernel version >= 4.11, the kernel's PCI driver will enable the extended
+tag if it detects that the device supports it. So by default, this is not an
+issue. For kernels <= 4.11 or when the PCI extended tag is disabled it can be
+enabled using the steps below.
+
+#. Get the current value of the PCI configure register::
+
+      setpci -s <XX:XX.X> a8.w
+
+#. Set bit 8::
+
+      value = value | 0x100
+
+#. Set the PCI configure register with new value::
+
+      setpci -s <XX:XX.X> a8.w=<value>
+
+i40e: Vlan strip of VF
+~~~~~~~~~~~~~~~~~~~~~~
+
+The VF vlan strip function is only supported in the i40e kernel driver >= 2.1.26.

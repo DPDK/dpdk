@@ -638,24 +638,6 @@ used to classify MPLS packet by using a command in testpmd like:
    testpmd> flow create 0 ingress pattern eth type is 0x8847 / end \
             actions queue index <M> / end
 
-16 Byte RX Descriptor setting on DPDK VF
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Currently the VF's RX descriptor mode is decided by PF. There's no PF-VF
-interface for VF to request the RX descriptor mode, also no interface to notify
-VF its own RX descriptor mode.
-For all available versions of the i40e driver, these drivers don't support 16
-byte RX descriptor. If the Linux i40e kernel driver is used as host driver,
-while DPDK i40e PMD is used as the VF driver, DPDK cannot choose 16 byte receive
-descriptor. The reason is that the RX descriptor is already set to 32 byte by
-the i40e kernel driver.
-In the future, if the Linux i40e driver supports 16 byte RX descriptor, user
-should make sure the DPDK VF uses the same RX descriptor mode, 16 byte or 32
-byte, as the PF driver.
-
-The same rule for DPDK PF + DPDK VF. The PF and VF should use the same RX
-descriptor mode. Or the VF RX will not work.
-
 Receive packets with Ethertype 0x88A8
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -698,38 +680,6 @@ It means if APP has set the max bandwidth for that TC, it comes to no
 effect.
 It's suggested to set the strict priority mode for a TC that is latency
 sensitive but no consuming much bandwidth.
-
-VF performance is impacted by PCI extended tag setting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To reach maximum NIC performance in the VF the PCI extended tag must be
-enabled. The DPDK i40e PF driver will set this feature during initialization,
-but the kernel PF driver does not. So when running traffic on a VF which is
-managed by the kernel PF driver, a significant NIC performance downgrade has
-been observed (for 64 byte packets, there is about 25% line-rate downgrade for
-a 25GbE device and about 35% for a 40GbE device).
-
-For kernel version >= 4.11, the kernel's PCI driver will enable the extended
-tag if it detects that the device supports it. So by default, this is not an
-issue. For kernels <= 4.11 or when the PCI extended tag is disabled it can be
-enabled using the steps below.
-
-#. Get the current value of the PCI configure register::
-
-      setpci -s <XX:XX.X> a8.w
-
-#. Set bit 8::
-
-      value = value | 0x100
-
-#. Set the PCI configure register with new value::
-
-      setpci -s <XX:XX.X> a8.w=<value>
-
-Vlan strip of VF
-~~~~~~~~~~~~~~~~
-
-The VF vlan strip function is only supported in the i40e kernel driver >= 2.1.26.
 
 DCB function
 ~~~~~~~~~~~~
