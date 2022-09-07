@@ -1866,6 +1866,8 @@ iavf_register_parser(struct iavf_flow_parser *parser,
 {
 	struct iavf_parser_list *list = NULL;
 	struct iavf_flow_parser_node *parser_node;
+	struct iavf_flow_parser_node *existing_node;
+	void *temp;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
 
 	parser_node = rte_zmalloc("iavf_parser", sizeof(*parser_node), 0);
@@ -1880,14 +1882,26 @@ iavf_register_parser(struct iavf_flow_parser *parser,
 		TAILQ_INSERT_TAIL(list, parser_node, node);
 	} else if (parser->engine->type == IAVF_FLOW_ENGINE_FDIR) {
 		list = &vf->dist_parser_list;
+		RTE_TAILQ_FOREACH_SAFE(existing_node, list, node, temp) {
+			if (existing_node->parser->engine->type ==
+			    IAVF_FLOW_ENGINE_FSUB) {
+				TAILQ_INSERT_AFTER(list, existing_node,
+						   parser_node, node);
+				goto DONE;
+			}
+		}
 		TAILQ_INSERT_HEAD(list, parser_node, node);
 	} else if (parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_CRYPTO) {
 		list = &vf->ipsec_crypto_parser_list;
+		TAILQ_INSERT_HEAD(list, parser_node, node);
+	} else if (parser->engine->type == IAVF_FLOW_ENGINE_FSUB) {
+		list = &vf->dist_parser_list;
 		TAILQ_INSERT_HEAD(list, parser_node, node);
 	} else {
 		return -EINVAL;
 	}
 
+DONE:
 	return 0;
 }
 
@@ -1902,7 +1916,8 @@ iavf_unregister_parser(struct iavf_flow_parser *parser,
 
 	if (parser->engine->type == IAVF_FLOW_ENGINE_HASH)
 		list = &vf->rss_parser_list;
-	else if (parser->engine->type == IAVF_FLOW_ENGINE_FDIR)
+	else if ((parser->engine->type == IAVF_FLOW_ENGINE_FDIR) ||
+		 (parser->engine->type == IAVF_FLOW_ENGINE_FSUB))
 		list = &vf->dist_parser_list;
 
 	if (list == NULL)

@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Intel iavf driver.**
+
+  * Added flow subscription support.
+
 * **Updated Marvell cnxk driver.**
 
   * Added support for flow action REPRESENTED_PORT.

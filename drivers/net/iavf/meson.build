@@ -16,6 +16,7 @@ sources = files(
         'iavf_hash.c',
         'iavf_tm.c',
         'iavf_ipsec_crypto.c',
+        'iavf_fsub.c',
 )
 
 if arch_subdir == 'x86'
