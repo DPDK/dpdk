@@ -51,6 +51,22 @@ static int devcnt;
 static int interactive;
 static int client_mode;
 
+static int
+vdpa_alloc_vport_res(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_VDPA_SAMPLE_PORTS; i++)
+		if (!vports[i].dev)
+			break;
+	if (i >= MAX_VDPA_SAMPLE_PORTS)
+		return -1;
+	if ((i+1) > devcnt)
+		devcnt = i + 1;
+	return i;
+}
+
+
 /* display usage */
 static void
 vdpa_usage(const char *prgname)
@@ -248,6 +264,7 @@ int vdpa_with_socket_path_start(const char *vf_name,
 {
 	struct rte_vdpa_device *dev;
 	char ifname[MAX_PATH_LEN];
+	int vport_num;
 
 	if (iface[0] == '\0' && !socket_file) {
 		/* Default socket path: /tmp/vf- */
@@ -261,7 +278,13 @@ int vdpa_with_socket_path_start(const char *vf_name,
 			snprintf(ifname, MAX_PATH_LEN,
 				"%s%s", iface, vf_name);
 	}
-	rte_strscpy(vports[devcnt].ifname, ifname, MAX_PATH_LEN);
+	vport_num = vdpa_alloc_vport_res();
+	if (vport_num < 0) {
+		RTE_LOG(ERR, VDPA, "Unable to find vdpa device vport resource for %s.\n",
+		vf_name);
+		return -1;
+	}
+	rte_strscpy(vports[vport_num].ifname, ifname, MAX_PATH_LEN);
 	RTE_LOG(INFO, VDPA, "VDPA VF Device %s socket file is %s\n",
 		vf_name, ifname);
 	dev = rte_vdpa_find_device_by_name(vf_name);
@@ -270,9 +293,9 @@ int vdpa_with_socket_path_start(const char *vf_name,
 		vf_name);
 		return -1;
 	}
-	vports[devcnt].dev = dev;
-	if (start_vdpa(&vports[devcnt]) == 0)
-		devcnt++;
+	vports[vport_num].dev = dev;
+	if (start_vdpa(&vports[vport_num]))
+		memset(&vports[vport_num], 0, sizeof(struct vdpa_port));
 	return 0;
 }
 
@@ -294,12 +317,15 @@ void vdpa_with_socket_path_stop(const char *vf_name)
 		}
 	}
 	if (vport == NULL) {
-		RTE_LOG(ERR, VDPA, "Unable to find vdpa device port for %s.\n",
+		RTE_LOG(ERR, VDPA,
+		"Unable to find vdpa device port for %s in socket path stop.\n",
 		vf_name);
 		return;
 	}
-	if (vport->ifname[0] != '\0')
+	if (vport->ifname[0] != '\0') {
 		close_vdpa(vport);
+		memset(vport, 0, sizeof(*vport));
+	}
 }
 
 int vdpa_get_socket_file_name(const char *vf_name,
@@ -338,8 +364,10 @@ vdpa_sample_quit(void)
 {
 	int i;
 	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, devcnt); i++) {
-		if (vports[i].ifname[0] != '\0')
+		if (vports[i].ifname[0] != '\0') {
 			close_vdpa(&vports[i]);
+			memset(&vports[i], 0, sizeof(struct vdpa_port));
+		}
 	}
 }
 #define RTE_DEV_FOREACH_SAFE(dev, devstr, it, tdev) \
@@ -500,19 +528,25 @@ static void cmd_create_vdpa_port_parsed(void *parsed_result,
 {
 	struct rte_vdpa_device *dev;
 	struct cmd_create_result *res = parsed_result;
+	int vport_num;
 
-	rte_strscpy(vports[devcnt].ifname, res->socket_path, MAX_PATH_LEN);
+	vport_num = vdpa_alloc_vport_res();
+	if (vport_num < 0) {
+		cmdline_printf(cl, "Unable to find vdpa device vport resourc for %s.\n",
+				res->bdf);
+		return;
+	}
+	rte_strscpy(vports[vport_num].ifname, res->socket_path, MAX_PATH_LEN);
 	dev = rte_vdpa_find_device_by_name(res->bdf);
 	if (dev == NULL) {
 		cmdline_printf(cl, "Unable to find vdpa device id for %s.\n",
 				res->bdf);
 		return;
 	}
+	vports[vport_num].dev = dev;
 
-	vports[devcnt].dev = dev;
-
-	if (start_vdpa(&vports[devcnt]) == 0)
-		devcnt++;
+	if (start_vdpa(&vports[vport_num]))
+		memset(&vports[vport_num], 0, sizeof(struct vdpa_port));
 }
 
 cmdline_parse_token_string_t cmd_action_create =
@@ -680,7 +714,7 @@ int
 main(int argc, char *argv[])
 {
 	char ch;
-	int ret;
+	int ret, vport_num;
 	struct cmdline *cl;
 	struct rte_vdpa_device *vdev;
 	struct rte_device *dev;
@@ -690,6 +724,8 @@ main(int argc, char *argv[])
 	sigset_t set;
 	pthread_t thread_s;
 
+	devcnt = 0;
+	memset(vports, 0, sizeof(*vports));
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
@@ -736,12 +772,15 @@ main(int argc, char *argv[])
 				rte_panic("Failed to find vDPA dev for %s\n",
 						dev->name);
 			}
-			vports[devcnt].dev = vdev;
-			snprintf(vports[devcnt].ifname, MAX_PATH_LEN, "%s%d",
-					iface, devcnt);
+			vport_num = vdpa_alloc_vport_res();
+			if (vport_num < 0)
+				rte_panic("Failed to find vDPA dev vport resource for %s\n",
+						dev->name);
+			vports[vport_num].dev = vdev;
+			snprintf(vports[vport_num].ifname, MAX_PATH_LEN, "%s%d",
+					iface, vport_num);
 
-			start_vdpa(&vports[devcnt]);
-			devcnt++;
+			start_vdpa(&vports[vport_num]);
 		}
 
 		printf("enter \'q\' to quit\n");
