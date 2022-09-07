@@ -489,4 +489,10 @@ int iavf_ipsec_crypto_request(struct iavf_adapter *adapter,
 extern const struct rte_tm_ops iavf_tm_ops;
 int iavf_get_ptp_cap(struct iavf_adapter *adapter);
 int iavf_get_phc_time(struct iavf_rx_queue *rxq);
+int iavf_flow_sub(struct iavf_adapter *adapter,
+		  struct iavf_fsub_conf *filter);
+int iavf_flow_unsub(struct iavf_adapter *adapter,
+		    struct iavf_fsub_conf *filter);
+int iavf_flow_sub_check(struct iavf_adapter *adapter,
+			struct iavf_fsub_conf *filter);
 #endif /* _IAVF_ETHDEV_H_ */

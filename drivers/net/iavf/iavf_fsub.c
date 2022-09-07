@@ -69,29 +69,80 @@ iavf_pattern_match_item iavf_fsub_pattern_list[] = {
 };
 
 static int
-iavf_fsub_create(__rte_unused struct iavf_adapter *ad,
-		 __rte_unused struct rte_flow *flow,
-		 __rte_unused void *meta,
-		 __rte_unused struct rte_flow_error *error)
+iavf_fsub_create(struct iavf_adapter *ad, struct rte_flow *flow,
+		 void *meta, struct rte_flow_error *error)
 {
+	struct iavf_fsub_conf *filter = meta;
+	struct iavf_fsub_conf *rule;
+	int ret;
+
+	rule = rte_zmalloc("fsub_entry", sizeof(*rule), 0);
+	if (!rule) {
+		rte_flow_error_set(error, ENOMEM,
+				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				"Failed to allocate memory for fsub rule");
+		return -rte_errno;
+	}
+
+	ret = iavf_flow_sub(ad, filter);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to subscribe flow rule.");
+		goto free_entry;
+	}
+
+	rte_memcpy(rule, filter, sizeof(*rule));
+	flow->rule = rule;
+
+	return ret;
+
+free_entry:
+	rte_free(rule);
 	return -rte_errno;
 }
 
 static int
-iavf_fsub_destroy(__rte_unused struct iavf_adapter *ad,
-		  __rte_unused struct rte_flow *flow,
-		  __rte_unused struct rte_flow_error *error)
+iavf_fsub_destroy(struct iavf_adapter *ad, struct rte_flow *flow,
+		  struct rte_flow_error *error)
 {
-	return -rte_errno;
+	struct iavf_fsub_conf *filter;
+	int ret;
+
+	filter = (struct iavf_fsub_conf *)flow->rule;
+
+	ret = iavf_flow_unsub(ad, filter);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to unsubscribe flow rule.");
+		return -rte_errno;
+	}
+
+	flow->rule = NULL;
+	rte_free(filter);
+
+	return ret;
 }
 
 static int
-iavf_fsub_validation(__rte_unused struct iavf_adapter *ad,
+iavf_fsub_validation(struct iavf_adapter *ad,
 		     __rte_unused struct rte_flow *flow,
-		     __rte_unused void *meta,
-		     __rte_unused struct rte_flow_error *error)
+		     void *meta,
+		     struct rte_flow_error *error)
 {
-	return -rte_errno;
+	struct iavf_fsub_conf *filter = meta;
+	int ret;
+
+	ret = iavf_flow_sub_check(ad, filter);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to validate filter rule.");
+		return -rte_errno;
+	}
+
+	return ret;
 };
 
 static int
