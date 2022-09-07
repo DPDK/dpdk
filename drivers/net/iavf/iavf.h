@@ -148,6 +148,13 @@ struct iavf_fdir_info {
 	struct iavf_fdir_conf conf;
 };
 
+struct iavf_fsub_conf {
+	struct virtchnl_flow_sub sub_fltr;
+	struct virtchnl_flow_unsub unsub_fltr;
+	uint64_t input_set;
+	uint32_t flow_id;
+};
+
 struct iavf_qv_map {
 	uint16_t queue_id;
 	uint16_t vector_id;
