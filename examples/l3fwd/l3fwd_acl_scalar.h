@@ -70,15 +70,12 @@ send_packets_single(struct lcore_conf *qconf, struct rte_mbuf *pkts[], uint16_t 
 
 		/* Set MAC addresses. */
 		eth_hdr = rte_pktmbuf_mtod(pkts[j], struct rte_ether_hdr *);
-		*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[hops[j]];
-		rte_ether_addr_copy(&ports_eth_addr[hops[j]],
-						&eth_hdr->src_addr);
-	}
-
-	for (j  = 0; j != nb_tx; j++) {
-		if (hops[j] != BAD_PORT)
+		if (hops[j] != BAD_PORT) {
+			*(uint64_t *)&eth_hdr->dst_addr = dest_eth_addr[hops[j]];
+			rte_ether_addr_copy(&ports_eth_addr[hops[j]],
+							&eth_hdr->src_addr);
 			send_single_packet(qconf, pkts[j], hops[j]);
-		else
+		} else
 			rte_pktmbuf_free(pkts[j]);
 	}
 }
