@@ -649,13 +649,13 @@ iavf_fsub_parse(struct iavf_adapter *ad,
 		uint32_t array_len,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
+		uint32_t priority,
 		void **meta,
 		struct rte_flow_error *error)
 {
 	struct iavf_fsub_conf *filter;
 	struct iavf_pattern_match_item *pattern_match_item = NULL;
 	int ret = 0;
-	uint32_t priority = 0;
 
 	filter = rte_zmalloc(NULL, sizeof(*filter), 0);
 	if (!filter) {

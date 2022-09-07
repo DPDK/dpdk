@@ -1785,6 +1785,7 @@ enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_l2tpv2_ppp_ipv6_tcp[] = {
 typedef struct iavf_flow_engine * (*parse_engine_t)(struct iavf_adapter *ad,
 		struct rte_flow *flow,
 		struct iavf_parser_list *parser_list,
+		uint32_t priority,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error);
@@ -1951,11 +1952,11 @@ iavf_flow_valid_attr(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	/* Not supported */
-	if (attr->priority) {
+	/* support priority for flow subscribe */
+	if (attr->priority > 1) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-				attr, "Not support priority.");
+				attr, "Only support priority 0 and 1.");
 		return -rte_errno;
 	}
 
@@ -2098,6 +2099,7 @@ static struct iavf_flow_engine *
 iavf_parse_engine_create(struct iavf_adapter *ad,
 		struct rte_flow *flow,
 		struct iavf_parser_list *parser_list,
+		uint32_t priority,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
@@ -2111,7 +2113,7 @@ iavf_parse_engine_create(struct iavf_adapter *ad,
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
-				pattern, actions, &meta, error) < 0)
+				pattern, actions, priority, &meta, error) < 0)
 			continue;
 
 		engine = parser_node->parser->engine;
@@ -2127,6 +2129,7 @@ static struct iavf_flow_engine *
 iavf_parse_engine_validate(struct iavf_adapter *ad,
 		struct rte_flow *flow,
 		struct iavf_parser_list *parser_list,
+		uint32_t priority,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
@@ -2140,7 +2143,7 @@ iavf_parse_engine_validate(struct iavf_adapter *ad,
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
-				pattern, actions, &meta,  error) < 0)
+				pattern, actions, priority, &meta, error) < 0)
 			continue;
 
 		engine = parser_node->parser->engine;
@@ -2201,18 +2204,18 @@ iavf_flow_process_filter(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
-	*engine = iavf_parse_engine(ad, flow, &vf->rss_parser_list, pattern,
-				    actions, error);
+	*engine = iavf_parse_engine(ad, flow, &vf->rss_parser_list,
+				    attr->priority, pattern, actions, error);
 	if (*engine)
 		return 0;
 
-	*engine = iavf_parse_engine(ad, flow, &vf->dist_parser_list, pattern,
-				    actions, error);
+	*engine = iavf_parse_engine(ad, flow, &vf->dist_parser_list,
+				    attr->priority, pattern, actions, error);
 	if (*engine)
 		return 0;
 
 	*engine = iavf_parse_engine(ad, flow, &vf->ipsec_crypto_parser_list,
-			pattern, actions, error);
+				    attr->priority, pattern, actions, error);
 	if (*engine)
 		return 0;
 

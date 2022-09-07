@@ -86,6 +86,7 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 			       uint32_t array_len,
 			       const struct rte_flow_item pattern[],
 			       const struct rte_flow_action actions[],
+			       uint32_t priority,
 			       void **meta,
 			       struct rte_flow_error *error);
 
@@ -1509,6 +1510,7 @@ iavf_hash_parse_pattern_action(__rte_unused struct iavf_adapter *ad,
 			       uint32_t array_len,
 			       const struct rte_flow_item pattern[],
 			       const struct rte_flow_action actions[],
+			       uint32_t priority,
 			       void **meta,
 			       struct rte_flow_error *error)
 {
@@ -1516,6 +1518,9 @@ iavf_hash_parse_pattern_action(__rte_unused struct iavf_adapter *ad,
 	struct iavf_rss_meta *rss_meta_ptr;
 	uint64_t phint = IAVF_PHINT_NONE;
 	int ret = 0;
+
+	if (priority >= 1)
+		return -rte_errno;
 
 	rss_meta_ptr = rte_zmalloc(NULL, sizeof(*rss_meta_ptr), 0);
 	if (!rss_meta_ptr) {
