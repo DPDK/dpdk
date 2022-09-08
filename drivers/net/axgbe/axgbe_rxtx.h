@@ -65,6 +65,12 @@ struct axgbe_rx_queue {
 	uint16_t crc_len;
 	/* address of  s/w rx buffers */
 	struct rte_mbuf **sw_ring;
+
+	/* For segemented packets - save the current state
+	 * of packet, if next descriptor is not ready yet
+	 */
+	struct rte_mbuf *saved_mbuf;
+
 	/* Port private data */
 	struct axgbe_port *pdata;
 	/* Number of Rx descriptors in queue */
