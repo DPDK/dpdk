@@ -416,14 +416,11 @@ err_set:
 		memset((void *)(&desc->read.desc2), 0, 8);
 		AXGMAC_SET_BITS_LE(desc->read.desc3, RX_NORMAL_DESC3, OWN, 1);
 
-		if (!eop) {
-			rte_pktmbuf_free(mbuf);
+		if (!eop)
 			goto next_desc;
-		}
 
 		first_seg->pkt_len = pkt_len;
 		rxq->bytes += pkt_len;
-		mbuf->next = NULL;
 
 		first_seg->port = rxq->port_id;
 		if (rxq->pdata->rx_csum_enable) {
