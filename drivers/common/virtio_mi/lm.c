@@ -186,14 +186,12 @@ virtio_vdpa_send_admin_command(struct virtadmin_ctl *avq,
 	struct virtio_admin_ctrl *result;
 	struct virtqueue *vq;
 
-	ctrl->status = status;
-
 	if (!avq) {
 		DRV_LOG(ERR, "Admin queue is not supported");
 		return -1;
 	}
 
-	rte_spinlock_lock(&avq->lock);
+	ctrl->status = status;
 	vq = virtnet_aq_to_vq(avq);
 
 	DRV_LOG(DEBUG, "vq->vq_desc_head_idx = %d, status = %d, "
@@ -201,14 +199,12 @@ virtio_vdpa_send_admin_command(struct virtadmin_ctl *avq,
 		vq->vq_desc_head_idx, status, vq->hw->avq, vq);
 
 	if (vq->vq_free_cnt < pkt_num + 2) {
-		rte_spinlock_unlock(&avq->lock);
 		return -1;
 	}
 
 	result = virtio_vdpa_send_admin_command_split(avq, ctrl, dat_ctrl,
 			dlen, pkt_num);
 
-	rte_spinlock_unlock(&avq->lock);
 	return result->status;
 }
 
@@ -230,6 +226,8 @@ virtio_vdpa_cmd_identity(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_IDENTITY;
@@ -244,6 +242,7 @@ virtio_vdpa_cmd_identity(struct virtio_vdpa_pf_priv *priv,
 	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 0);
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d", ctrl->hdr.class, ctrl->hdr.cmd, ret);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
@@ -253,6 +252,7 @@ virtio_vdpa_cmd_identity(struct virtio_vdpa_pf_priv *priv,
 	result->minor_ver = rte_le_to_cpu_16(res->minor_ver);
 	result->ter_ver   = rte_le_to_cpu_16(res->ter_ver);
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return ret;
 }
 
@@ -274,6 +274,9 @@ virtio_vdpa_cmd_get_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
 		CMD_LOG(INFO, "host does not support admin queue");
 		return -ENOTSUP;
 	}
+
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_GET_INTERNAL_STATUS;
@@ -290,6 +293,7 @@ virtio_vdpa_cmd_get_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
@@ -300,6 +304,7 @@ virtio_vdpa_cmd_get_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
 	RTE_VERIFY(result->internal_status <= VIRTIO_S_FREEZED);
 	*status = (enum virtio_internal_status)result->internal_status;
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -321,6 +326,8 @@ virtio_vdpa_cmd_set_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_MODIFY_INTERNAL_STATUS;
@@ -335,9 +342,11 @@ virtio_vdpa_cmd_set_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -360,6 +369,8 @@ virtio_vdpa_cmd_save_state(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_SAVE_INTERNAL_STATE;
@@ -376,9 +387,11 @@ virtio_vdpa_cmd_save_state(struct virtio_vdpa_pf_priv *priv,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -401,6 +414,8 @@ virtio_vdpa_cmd_restore_state(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_RESTORE_INTERNAL_STATE;
@@ -417,9 +432,11 @@ virtio_vdpa_cmd_restore_state(struct virtio_vdpa_pf_priv *priv,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -443,6 +460,8 @@ virtio_vdpa_cmd_get_internal_pending_bytes(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_GET_INTERNAL_STATE_PENDING_BYTES;
@@ -460,6 +479,7 @@ virtio_vdpa_cmd_get_internal_pending_bytes(struct virtio_vdpa_pf_priv *priv,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
@@ -467,6 +487,7 @@ virtio_vdpa_cmd_get_internal_pending_bytes(struct virtio_vdpa_pf_priv *priv,
 			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
 	result->pending_bytes = rte_le_to_cpu_64(res->pending_bytes);
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -488,6 +509,8 @@ virtio_vdpa_cmd_dirty_page_identity(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_IDENTITY;
@@ -503,6 +526,7 @@ virtio_vdpa_cmd_dirty_page_identity(struct virtio_vdpa_pf_priv *priv,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
@@ -514,6 +538,7 @@ virtio_vdpa_cmd_dirty_page_identity(struct virtio_vdpa_pf_priv *priv,
 			rte_le_to_cpu_16(res->log_max_pages_track_pull_bytemap_mode);
 	result->max_track_ranges = rte_le_to_cpu_32(res->max_track_ranges);
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -542,6 +567,8 @@ virtio_vdpa_cmd_dirty_page_start_track(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_START_TRACK;
@@ -564,9 +591,11 @@ virtio_vdpa_cmd_dirty_page_start_track(struct virtio_vdpa_pf_priv *priv,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -588,6 +617,8 @@ virtio_vdpa_cmd_dirty_page_stop_track(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_STOP_TRACK;
@@ -602,9 +633,11 @@ virtio_vdpa_cmd_dirty_page_stop_track(struct virtio_vdpa_pf_priv *priv,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -630,6 +663,8 @@ virtio_vdpa_cmd_dirty_page_get_map_pending_bytes(
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_GET_MAP_PENDING_BYTES;
@@ -648,6 +683,7 @@ virtio_vdpa_cmd_dirty_page_get_map_pending_bytes(
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
@@ -655,6 +691,7 @@ virtio_vdpa_cmd_dirty_page_get_map_pending_bytes(
 			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
 	result->pending_bytes = rte_le_to_cpu_64(res->pending_bytes);
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
@@ -680,6 +717,8 @@ virtio_vdpa_cmd_dirty_page_report_map(struct virtio_vdpa_pf_priv *priv,
 		return -ENOTSUP;
 	}
 
+	rte_spinlock_lock(&hw->avq->lock);
+
 	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
 	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
 	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_REPORT_MAP;
@@ -698,9 +737,11 @@ virtio_vdpa_cmd_dirty_page_report_map(struct virtio_vdpa_pf_priv *priv,
 	if (ret) {
 		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev id: %u",
 				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		rte_spinlock_unlock(&hw->avq->lock);
 		return ret;
 	}
 
+	rte_spinlock_unlock(&hw->avq->lock);
 	return 0;
 }
 
