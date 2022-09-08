@@ -173,6 +173,10 @@ int axgbe_dev_fw_version_get(struct rte_eth_dev *eth_dev,
 
 uint16_t axgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts);
+
+uint16_t axgbe_xmit_pkts_seg(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+
 uint16_t axgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts);
 
