@@ -416,11 +416,17 @@ next_desc:
 		mbuf->data_len = data_len;
 		mbuf->pkt_len = data_len;
 
+		if (rxq->saved_mbuf) {
+			first_seg = rxq->saved_mbuf;
+			rxq->saved_mbuf = NULL;
+		}
+
 		if (first_seg != NULL) {
 			if (rte_pktmbuf_chain(first_seg, mbuf) != 0) {
 				rte_pktmbuf_free(first_seg);
 				first_seg = NULL;
 				rte_pktmbuf_free(mbuf);
+				rxq->saved_mbuf = NULL;
 				rxq->errors++;
 				eop = 0;
 				break;
@@ -498,6 +504,10 @@ err_set:
 		 /* Setup receipt context for a new packet.*/
 		first_seg = NULL;
 	}
+
+	/* Check if we need to save state before leaving */
+	if (first_seg != NULL && eop == 0)
+		rxq->saved_mbuf = first_seg;
 
 	/* Save receive context.*/
 	rxq->pkts += nb_rx;
