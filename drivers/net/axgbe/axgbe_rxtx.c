@@ -326,10 +326,11 @@ uint16_t eth_axgbe_recv_scattered_pkts(void *rx_queue,
 	unsigned int err = 0;
 	uint32_t error_status = 0;
 	uint16_t idx, pidx, data_len = 0, pkt_len = 0;
+	bool eop = 0;
 
 	idx = AXGBE_GET_DESC_IDX(rxq, rxq->cur);
+
 	while (nb_rx < nb_pkts) {
-		bool eop = 0;
 next_desc:
 		idx = AXGBE_GET_DESC_IDX(rxq, rxq->cur);
 
@@ -396,9 +397,12 @@ next_desc:
 		mbuf->pkt_len = data_len;
 
 		if (first_seg != NULL) {
-			if (rte_pktmbuf_chain(first_seg, mbuf) != 0)
+			if (rte_pktmbuf_chain(first_seg, mbuf) != 0) {
 				rte_mempool_put(rxq->mb_pool,
 						first_seg);
+				eop = 0;
+				break;
+			}
 		} else {
 			first_seg = mbuf;
 		}
@@ -418,8 +422,8 @@ err_set:
 
 		if (!eop)
 			goto next_desc;
+		eop = 0;
 
-		first_seg->pkt_len = pkt_len;
 		rxq->bytes += pkt_len;
 
 		first_seg->port = rxq->port_id;
