@@ -418,8 +418,10 @@ next_desc:
 
 		if (first_seg != NULL) {
 			if (rte_pktmbuf_chain(first_seg, mbuf) != 0) {
-				rte_mempool_put(rxq->mb_pool,
-						first_seg);
+				rte_pktmbuf_free(first_seg);
+				first_seg = NULL;
+				rte_pktmbuf_free(mbuf);
+				rxq->errors++;
 				eop = 0;
 				break;
 			}
