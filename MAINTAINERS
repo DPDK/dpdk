@@ -1029,7 +1029,7 @@ T: git://dpdk.org/next/dpdk-next-crypto
 F: doc/guides/cryptodevs/features/default.ini
 
 AMD CCP Crypto
-M: Chandubabu Namburu <chandu@amd.com>
+M: Sunil Uttarwar <sunilprakashrao.uttarwar@amd.com>
 F: drivers/crypto/ccp/
 F: doc/guides/cryptodevs/ccp.rst
 F: doc/guides/cryptodevs/features/ccp.ini
