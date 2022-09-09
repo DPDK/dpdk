@@ -52,17 +52,22 @@ static const char control_chars[0x20] = {
 
 /**
  * @internal
- * Does the same as __json_snprintf(buf, len, "\"%s\"", str)
- * except that it does proper escaping as necessary.
+ * This function acts the same as __json_snprintf(buf, len, "%s%s%s", prefix, str, suffix)
+ * except that it does proper escaping of "str" as necessary. Prefix and suffix should be compile-
+ * time constants not needing escaping.
  * Drops any invalid characters we don't support
  */
 static inline int
-__json_format_str(char *buf, const int len, const char *str)
+__json_format_str(char *buf, const int len, const char *prefix, const char *str, const char *suffix)
 {
 	char tmp[len];
 	int tmpidx = 0;
 
-	tmp[tmpidx++] = '"';
+	while (*prefix != '\0' && tmpidx < len)
+		tmp[tmpidx++] = *prefix++;
+	if (tmpidx >= len)
+		return 0;
+
 	while (*str != '\0') {
 		if (*str < (int)RTE_DIM(control_chars)) {
 			int idx = *str;  /* compilers don't like char type as index */
@@ -75,7 +80,7 @@ __json_format_str(char *buf, const int len, const char *str)
 			tmp[tmpidx++] = *str;
 		} else
 			tmp[tmpidx++] = *str;
-		/* we always need space for closing quote and null character.
+		/* we always need space for (at minimum) closing quote and null character.
 		 * Ensuring at least two free characters also means we can always take an
 		 * escaped character like "\n" without overflowing
 		 */
@@ -83,7 +88,12 @@ __json_format_str(char *buf, const int len, const char *str)
 			return 0;
 		str++;
 	}
-	tmp[tmpidx++] = '"';
+
+	while (*suffix != '\0' && tmpidx < len)
+		tmp[tmpidx++] = *suffix++;
+	if (tmpidx >= len)
+		return 0;
+
 	tmp[tmpidx] = '\0';
 
 	strcpy(buf, tmp);
@@ -108,7 +118,7 @@ rte_tel_json_empty_obj(char *buf, const int len, const int used)
 static inline int
 rte_tel_json_str(char *buf, const int len, const int used, const char *str)
 {
-	return used + __json_format_str(buf + used, len - used, str);
+	return used + __json_format_str(buf + used, len - used, "\"", str, "\"");
 }
 
 /* Appends a string into the JSON array in the provided buffer. */
@@ -118,9 +128,9 @@ rte_tel_json_add_array_string(char *buf, const int len, const int used,
 {
 	int ret, end = used - 1; /* strip off final delimiter */
 	if (used <= 2) /* assume empty, since minimum is '[]' */
-		return __json_snprintf(buf, len, "[\"%s\"]", str);
+		return __json_format_str(buf, len, "[\"", str, "\"]");
 
-	ret = __json_snprintf(buf + end, len - end, ",\"%s\"]", str);
+	ret = __json_format_str(buf + end, len - end, ",\"", str, "\"]");
 	return ret == 0 ? used : end + ret;
 }
 
