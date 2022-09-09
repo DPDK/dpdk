@@ -141,6 +141,29 @@ test_string_char_escaping(void)
 	return strncmp(expected, buf, sizeof(buf));
 }
 
+static int
+test_array_char_escaping(void)
+{
+	/* "meaning of life", with tab between first two words, '\n' at end,
+	 * and "life" in quotes, followed by "all the fish" in quotes
+	 */
+	const char *expected = "[\"meaning\\tof \\\"life\\\"\\n\",\"\\\"all the fish\\\"\"]";
+	char buf[1024];
+	int used = 0;
+
+	used = rte_tel_json_empty_array(buf, sizeof(buf), used);
+	if (used != 2 || strcmp(buf, "[]"))
+		return -1;
+
+	used = rte_tel_json_add_array_string(buf, sizeof(buf), used, "meaning\tof \"life\"\n");
+	used = rte_tel_json_add_array_string(buf, sizeof(buf), used, "\"all the fish\"");
+
+	printf("buf = '%s', expected = '%s'\n", buf, expected);
+	if (used != (int)strlen(expected))
+		return -1;
+	return strncmp(expected, buf, sizeof(buf));
+}
+
 typedef int (*test_fn)(void);
 
 static int
@@ -155,6 +178,7 @@ test_telemetry_json(void)
 			test_large_array_element,
 			test_large_obj_element,
 			test_string_char_escaping,
+			test_array_char_escaping,
 	};
 	for (i = 0; i < RTE_DIM(fns); i++)
 		if (fns[i]() == 0)
