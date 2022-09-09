@@ -348,6 +348,30 @@ test_array_with_array_u64_values(void)
 }
 
 static int
+test_string_char_escaping(void)
+{
+	rte_tel_data_string(&response_data, "hello,\nworld\n");
+	return CHECK_OUTPUT("\"hello,\\nworld\\n\"");
+}
+
+static int
+test_array_char_escaping(void)
+{
+	rte_tel_data_start_array(&response_data, RTE_TEL_STRING_VAL);
+	rte_tel_data_add_array_string(&response_data, "\\escape\r");
+	rte_tel_data_add_array_string(&response_data, "characters\n");
+	return CHECK_OUTPUT("[\"\\\\escape\\r\",\"characters\\n\"]");
+}
+
+static int
+test_dict_char_escaping(void)
+{
+	rte_tel_data_start_dict(&response_data);
+	rte_tel_data_add_dict_string(&response_data, "name", "escaped\n\tvalue");
+	return CHECK_OUTPUT("{\"name\":\"escaped\\n\\tvalue\"}");
+}
+
+static int
 connect_to_socket(void)
 {
 	char buf[BUF_SIZE];
@@ -406,7 +430,11 @@ telemetry_data_autotest(void)
 			test_dict_with_dict_values,
 			test_array_with_array_int_values,
 			test_array_with_array_u64_values,
-			test_array_with_array_string_values };
+			test_array_with_array_string_values,
+			test_string_char_escaping,
+			test_array_char_escaping,
+			test_dict_char_escaping,
+	};
 
 	rte_telemetry_register_cmd(REQUEST_CMD, telemetry_test_cb, "Test");
 	for (i = 0; i < RTE_DIM(test_cases); i++) {
