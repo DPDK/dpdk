@@ -94,6 +94,12 @@ check_output(const char *func_name, const char *expected)
 }
 
 static int
+test_null_return(void)
+{
+	return CHECK_OUTPUT("null");
+}
+
+static int
 test_simple_string(void)
 {
 	rte_tel_data_string(&response_data, "Simple string");
@@ -419,6 +425,7 @@ telemetry_data_autotest(void)
 		return -1;
 
 	test_case test_cases[] = {
+			test_null_return,
 			test_simple_string,
 			test_case_array_string,
 			test_case_array_int, test_case_array_u64,

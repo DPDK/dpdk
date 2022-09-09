@@ -236,27 +236,22 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 
 	RTE_BUILD_BUG_ON(sizeof(out_buf) < MAX_CMD_LEN +
 			RTE_TEL_MAX_SINGLE_STRING_LEN + 10);
+
+	prefix_used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":",
+			MAX_CMD_LEN, cmd);
+	cb_data_buf = &out_buf[prefix_used];
+	buf_len = sizeof(out_buf) - prefix_used - 1; /* space for '}' */
+
 	switch (d->type) {
 	case RTE_TEL_NULL:
-		used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":null}",
-				MAX_CMD_LEN, cmd ? cmd : "none");
+		used = strlcpy(cb_data_buf, "null", buf_len);
 		break;
+
 	case RTE_TEL_STRING:
-		prefix_used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":",
-				MAX_CMD_LEN, cmd);
-		cb_data_buf = &out_buf[prefix_used];
-		buf_len = sizeof(out_buf) - prefix_used - 1; /* space for '}' */
-
 		used = rte_tel_json_str(cb_data_buf, buf_len, 0, d->data.str);
-		used += prefix_used;
-		used += strlcat(out_buf + used, "}", sizeof(out_buf) - used);
 		break;
-	case RTE_TEL_DICT:
-		prefix_used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":",
-				MAX_CMD_LEN, cmd);
-		cb_data_buf = &out_buf[prefix_used];
-		buf_len = sizeof(out_buf) - prefix_used - 1; /* space for '}' */
 
+	case RTE_TEL_DICT:
 		used = rte_tel_json_empty_obj(cb_data_buf, buf_len, 0);
 		for (i = 0; i < d->data_len; i++) {
 			const struct tel_dict_entry *v = &d->data.dict[i];
@@ -292,18 +287,12 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 			}
 			}
 		}
-		used += prefix_used;
-		used += strlcat(out_buf + used, "}", sizeof(out_buf) - used);
 		break;
+
 	case RTE_TEL_ARRAY_STRING:
 	case RTE_TEL_ARRAY_INT:
 	case RTE_TEL_ARRAY_U64:
 	case RTE_TEL_ARRAY_CONTAINER:
-		prefix_used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":",
-				MAX_CMD_LEN, cmd);
-		cb_data_buf = &out_buf[prefix_used];
-		buf_len = sizeof(out_buf) - prefix_used - 1; /* space for '}' */
-
 		used = rte_tel_json_empty_array(cb_data_buf, buf_len, 0);
 		for (i = 0; i < d->data_len; i++)
 			if (d->type == RTE_TEL_ARRAY_STRING)
@@ -331,10 +320,10 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 				if (!rec_data->keep)
 					rte_tel_data_free(rec_data->data);
 			}
-		used += prefix_used;
-		used += strlcat(out_buf + used, "}", sizeof(out_buf) - used);
 		break;
 	}
+	used += prefix_used;
+	used += strlcat(out_buf + used, "}", sizeof(out_buf) - used);
 	if (write(s, out_buf, used) < 0)
 		perror("Error writing to socket");
 }
