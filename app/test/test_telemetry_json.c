@@ -102,8 +102,10 @@ test_large_array_element(void)
 
 	used = rte_tel_json_add_array_string(buf, sizeof(buf), used, str);
 	printf("%s: buf = '%s', expected = '%s'\n", __func__, buf, expected);
+	if (used != 0)
+		return -1;
 
-	return strlen(buf) != 0;
+	return strncmp(expected, buf, sizeof(buf));
 }
 
 static int
@@ -117,20 +119,33 @@ test_large_obj_element(void)
 
 	used = rte_tel_json_add_obj_u64(buf, sizeof(buf), used, str, 0);
 	printf("%s: buf = '%s', expected = '%s'\n", __func__, buf, expected);
+	if (used != 0)
+		return -1;
 
-	return strlen(buf) != 0;
+	return strncmp(expected, buf, sizeof(buf));
 }
+
+typedef int (*test_fn)(void);
 
 static int
 test_telemetry_json(void)
 {
-	if (test_basic_array() < 0 ||
-			test_basic_obj() < 0 ||
-			test_overflow_array() < 0 ||
-			test_overflow_obj() < 0 ||
-			test_large_array_element() < 0 ||
-			test_large_obj_element() < 0)
-		return -1;
+	unsigned int i;
+	test_fn fns[] = {
+			test_basic_array,
+			test_basic_obj,
+			test_overflow_array,
+			test_overflow_obj,
+			test_large_array_element,
+			test_large_obj_element,
+	};
+	for (i = 0; i < RTE_DIM(fns); i++)
+		if (fns[i]() == 0)
+			printf("OK\n");
+		else {
+			printf("ERROR\n");
+			return -1;
+		}
 	return 0;
 }
 
