@@ -6,6 +6,8 @@
 #include <stdlib.h>
 
 #undef RTE_USE_LIBBSD
+#include <stdbool.h>
+
 #include <rte_string_fns.h>
 
 #include "telemetry_data.h"
@@ -95,6 +97,24 @@ rte_tel_data_add_array_container(struct rte_tel_data *d,
 	return 0;
 }
 
+static bool
+valid_name(const char *name)
+{
+	char allowed[128] = {
+			['0' ... '9'] = 1,
+			['A' ... 'Z'] = 1,
+			['a' ... 'z'] = 1,
+			['_'] = 1,
+			['/'] = 1,
+	};
+	while (*name != '\0') {
+		if ((size_t)*name >= RTE_DIM(allowed) || allowed[(int)*name] == 0)
+			return false;
+		name++;
+	}
+	return true;
+}
+
 int
 rte_tel_data_add_dict_string(struct rte_tel_data *d, const char *name,
 		const char *val)
@@ -106,6 +126,9 @@ rte_tel_data_add_dict_string(struct rte_tel_data *d, const char *name,
 		return -EINVAL;
 	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES)
 		return -ENOSPC;
+
+	if (!valid_name(name))
+		return -EINVAL;
 
 	d->data_len++;
 	e->type = RTE_TEL_STRING_VAL;
@@ -126,6 +149,9 @@ rte_tel_data_add_dict_int(struct rte_tel_data *d, const char *name, int val)
 	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES)
 		return -ENOSPC;
 
+	if (!valid_name(name))
+		return -EINVAL;
+
 	d->data_len++;
 	e->type = RTE_TEL_INT_VAL;
 	e->value.ival = val;
@@ -142,6 +168,9 @@ rte_tel_data_add_dict_u64(struct rte_tel_data *d,
 		return -EINVAL;
 	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES)
 		return -ENOSPC;
+
+	if (!valid_name(name))
+		return -EINVAL;
 
 	d->data_len++;
 	e->type = RTE_TEL_U64_VAL;
@@ -163,6 +192,9 @@ rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
 		return -EINVAL;
 	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES)
 		return -ENOSPC;
+
+	if (!valid_name(name))
+		return -EINVAL;
 
 	d->data_len++;
 	e->type = RTE_TEL_CONTAINER;
