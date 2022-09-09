@@ -199,14 +199,6 @@ Deprecation Notices
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
-* telemetry: The allowed characters in names for dictionary values
-  will be limited to alphanumeric characters
-  and a small subset of additional printable characters.
-  This will ensure that all dictionary parameter names can be output
-  without escaping in JSON - or in any future output format used.
-  Names for the telemetry commands will be similarly limited.
-  The parameters for telemetry commands are unaffected by this change.
-
 * raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
   in DPDK 22.11, as it is no longer in use, no active user known.
 

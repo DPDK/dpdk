@@ -146,6 +146,14 @@ API Changes
   configuration (``dev_conf.fdir_conf``). Moved corresponding structures
   to internal API since some drivers still use it internally.
 
+* telemetry: The allowed characters in names for dictionary values
+  are now limited to alphanumeric characters and a small subset of additional
+  printable characters.
+  This will ensure that all dictionary parameter names can be output
+  without escaping in JSON - or in any future output format used.
+  Names for the telemetry commands are now similarly limited.
+  The parameters for telemetry commands are unaffected by this change.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 
