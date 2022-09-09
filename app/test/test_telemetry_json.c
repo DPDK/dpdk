@@ -164,6 +164,29 @@ test_array_char_escaping(void)
 	return strncmp(expected, buf, sizeof(buf));
 }
 
+static int
+test_obj_char_escaping(void)
+{
+	const char *expected = "{\"good\":\"Clint Eastwood\\n\","
+			"\"bad\":\"Lee\\tVan\\tCleef\","
+			"\"ugly\":\"\\rEli Wallach\"}";
+	char buf[1024];
+	int used = 0;
+
+	used = rte_tel_json_empty_obj(buf, sizeof(buf), used);
+	if (used != 2 || strcmp(buf, "{}"))
+		return -1;
+
+	used = rte_tel_json_add_obj_str(buf, sizeof(buf), used, "good", "Clint Eastwood\n");
+	used = rte_tel_json_add_obj_str(buf, sizeof(buf), used, "bad", "Lee\tVan\tCleef");
+	used = rte_tel_json_add_obj_str(buf, sizeof(buf), used, "ugly", "\rEli Wallach");
+
+	printf("buf = '%s', expected = '%s'\n", buf, expected);
+	if (used != (int)strlen(expected))
+		return -1;
+	return strncmp(expected, buf, sizeof(buf));
+}
+
 typedef int (*test_fn)(void);
 
 static int
@@ -179,6 +202,7 @@ test_telemetry_json(void)
 			test_large_obj_element,
 			test_string_char_escaping,
 			test_array_char_escaping,
+			test_obj_char_escaping
 	};
 	for (i = 0; i < RTE_DIM(fns); i++)
 		if (fns[i]() == 0)
