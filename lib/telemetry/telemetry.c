@@ -142,15 +142,17 @@ command_help(const char *cmd __rte_unused, const char *params,
 		struct rte_tel_data *d)
 {
 	int i;
+	/* if no parameters return our own help text */
+	const char *to_lookup = (params == NULL ? cmd : params);
 
-	if (!params)
-		return -1;
 	rte_tel_data_start_dict(d);
 	rte_spinlock_lock(&callback_sl);
 	for (i = 0; i < num_callbacks; i++)
-		if (strcmp(params, callbacks[i].cmd) == 0) {
-			rte_tel_data_add_dict_string(d, params,
-					callbacks[i].help);
+		if (strcmp(to_lookup, callbacks[i].cmd) == 0) {
+			if (params == NULL)
+				rte_tel_data_string(d, callbacks[i].help);
+			else
+				rte_tel_data_add_dict_string(d, params,	callbacks[i].help);
 			break;
 		}
 	rte_spinlock_unlock(&callback_sl);
