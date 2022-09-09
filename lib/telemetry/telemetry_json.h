@@ -54,7 +54,7 @@ static const char control_chars[0x20] = {
  * @internal
  * This function acts the same as __json_snprintf(buf, len, "%s%s%s", prefix, str, suffix)
  * except that it does proper escaping of "str" as necessary. Prefix and suffix should be compile-
- * time constants not needing escaping.
+ * time constants, or values not needing escaping.
  * Drops any invalid characters we don't support
  */
 static inline int
@@ -219,12 +219,16 @@ static inline int
 rte_tel_json_add_obj_str(char *buf, const int len, const int used,
 		const char *name, const char *val)
 {
+	char tmp_name[RTE_TEL_MAX_STRING_LEN + 5];
 	int ret, end = used - 1;
-	if (used <= 2) /* assume empty, since minimum is '{}' */
-		return __json_snprintf(buf, len, "{\"%s\":\"%s\"}", name, val);
 
-	ret = __json_snprintf(buf + end, len - end, ",\"%s\":\"%s\"}",
-			name, val);
+	/* names are limited to certain characters so need no escaping */
+	snprintf(tmp_name, sizeof(tmp_name), "{\"%s\":\"", name);
+	if (used <= 2) /* assume empty, since minimum is '{}' */
+		return __json_format_str(buf, len, tmp_name, val, "\"}");
+
+	tmp_name[0] = ',';  /* replace '{' with ',' at start */
+	ret = __json_format_str(buf + end, len - end, tmp_name, val, "\"}");
 	return ret == 0 ? used : end + ret;
 }
 
