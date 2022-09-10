@@ -382,7 +382,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint32_t tx_bytes = 0;
 	struct pcap_pkthdr header;
 	pcap_dumper_t *dumper;
-	unsigned char temp_data[RTE_ETH_PCAP_SNAPLEN];
+	static unsigned char temp_data[RTE_ETH_PCAP_SNAPLEN];
 	size_t len, caplen;
 
 	pp = rte_eth_devices[dumper_q->port_id].process_private;
