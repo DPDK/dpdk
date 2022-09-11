@@ -2201,8 +2201,6 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	uint16_t max_nb_rx_queues = UINT16_MAX;
 	uint16_t max_nb_tx_queues = UINT16_MAX;
-	uint16_t max_rx_desc_lim = UINT16_MAX;
-	uint16_t max_tx_desc_lim = UINT16_MAX;
 
 	dev_info->max_mac_addrs = BOND_MAX_MAC_ADDRS;
 
@@ -2236,12 +2234,6 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 			if (slave_info.max_tx_queues < max_nb_tx_queues)
 				max_nb_tx_queues = slave_info.max_tx_queues;
-
-			if (slave_info.rx_desc_lim.nb_max < max_rx_desc_lim)
-				max_rx_desc_lim = slave_info.rx_desc_lim.nb_max;
-
-			if (slave_info.tx_desc_lim.nb_max < max_tx_desc_lim)
-				max_tx_desc_lim = slave_info.tx_desc_lim.nb_max;
 		}
 	}
 
@@ -2253,8 +2245,10 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	memcpy(&dev_info->default_txconf, &internals->default_txconf,
 	       sizeof(dev_info->default_txconf));
 
-	dev_info->rx_desc_lim.nb_max = max_rx_desc_lim;
-	dev_info->tx_desc_lim.nb_max = max_tx_desc_lim;
+	memcpy(&dev_info->rx_desc_lim, &internals->rx_desc_lim,
+	       sizeof(dev_info->rx_desc_lim));
+	memcpy(&dev_info->tx_desc_lim, &internals->tx_desc_lim,
+	       sizeof(dev_info->tx_desc_lim));
 
 	/**
 	 * If dedicated hw queues enabled for link bonding device in LACP mode
@@ -3387,6 +3381,13 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 
 	memset(&internals->rx_desc_lim, 0, sizeof(internals->rx_desc_lim));
 	memset(&internals->tx_desc_lim, 0, sizeof(internals->tx_desc_lim));
+
+	/*
+	 * Do not restrict descriptor counts until
+	 * the first back-end device gets attached.
+	 */
+	internals->rx_desc_lim.nb_max = UINT16_MAX;
+	internals->tx_desc_lim.nb_max = UINT16_MAX;
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
