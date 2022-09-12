@@ -90,7 +90,6 @@ INTERNAL {
 	roc_hash_sha512_gen;
 	roc_idev_cpt_get;
 	roc_idev_cpt_set;
-	roc_nix_inl_outb_ring_base_get;
 	roc_idev_lmt_base_addr_get;
 	roc_idev_npa_maxpools_get;
 	roc_idev_npa_maxpools_set;
@@ -137,11 +136,13 @@ INTERNAL {
 	roc_nix_get_vwqe_interval;
 	roc_nix_inl_cb_register;
 	roc_nix_inl_cb_unregister;
+	roc_nix_inl_ctx_write;
 	roc_nix_inl_dev_dump;
 	roc_nix_inl_dev_fini;
 	roc_nix_inl_dev_init;
 	roc_nix_inl_dev_is_probed;
 	roc_nix_inl_dev_lock;
+	roc_nix_inl_dev_pffunc_get;
 	roc_nix_inl_dev_rq;
 	roc_nix_inl_dev_rq_get;
 	roc_nix_inl_dev_rq_put;
@@ -163,11 +164,11 @@ INTERNAL {
 	roc_nix_inl_outb_sa_base_get;
 	roc_nix_inl_outb_sso_pffunc_get;
 	roc_nix_inl_outb_is_enabled;
+	roc_nix_inl_outb_ring_base_get;
 	roc_nix_inl_outb_soft_exp_poll_switch;
+	roc_nix_inl_rq_ena_dis;
 	roc_nix_inl_sa_sync;
 	roc_nix_inl_ts_pkind_set;
-	roc_nix_inl_ctx_write;
-	roc_nix_inl_dev_pffunc_get;
 	roc_nix_inl_outb_cpt_lfs_dump;
 	roc_nix_cpt_ctx_cache_sync;
 	roc_nix_is_lbk;

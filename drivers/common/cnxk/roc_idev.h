@@ -17,6 +17,4 @@ void __roc_api roc_idev_cpt_set(struct roc_cpt *cpt);
 
 struct roc_nix *__roc_api roc_idev_npa_nix_get(void);
 
-uint64_t *__roc_api roc_nix_inl_outb_ring_base_get(struct roc_nix *roc_nix);
-
 #endif /* _ROC_IDEV_H_ */

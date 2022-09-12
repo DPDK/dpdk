@@ -660,7 +660,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			0x0FF00000 | ((uint32_t)RTE_EVENT_TYPE_ETHDEV << 28);
 
 		/* Setup rq reference for inline dev if present */
-		rc = roc_nix_inl_dev_rq_get(rq);
+		rc = roc_nix_inl_dev_rq_get(rq, !!eth_dev->data->dev_started);
 		if (rc)
 			goto free_mem;
 	}
@@ -1477,6 +1477,10 @@ cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 
 	roc_nix_inl_outb_soft_exp_poll_switch(&dev->nix, false);
 
+	/* Stop inline device RQ first */
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+		roc_nix_inl_rq_ena_dis(&dev->nix, false);
+
 	/* Stop rx queues and free up pkts pending */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rc = dev_ops->rx_queue_stop(eth_dev, i);
@@ -1520,6 +1524,14 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 		rc = cnxk_nix_rx_queue_start(eth_dev, i);
 		if (rc)
 			return rc;
+	}
+
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
+		rc = roc_nix_inl_rq_ena_dis(&dev->nix, true);
+		if (rc) {
+			plt_err("Failed to enable Inline device RQ, rc=%d", rc);
+			return rc;
+		}
 	}
 
 	/* Start tx queues  */

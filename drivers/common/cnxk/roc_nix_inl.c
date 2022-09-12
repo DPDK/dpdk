@@ -245,6 +245,9 @@ roc_nix_reassembly_configure(uint32_t max_wait_time, uint16_t max_frags)
 	struct roc_cpt *roc_cpt;
 	struct roc_cpt_rxc_time_cfg cfg;
 
+	if (!idev)
+		return -EFAULT;
+
 	PLT_SET_USED(max_frags);
 	if (idev == NULL)
 		return -ENOTSUP;
@@ -587,7 +590,7 @@ roc_nix_inl_outb_is_enabled(struct roc_nix *roc_nix)
 }
 
 int
-roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq)
+roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq, bool enable)
 {
 	struct idev_cfg *idev = idev_get_cfg();
 	int port_id = rq->roc_nix->port_id;
@@ -688,9 +691,9 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq)
 
 	/* Prepare and send RQ init mbox */
 	if (roc_model_is_cn9k())
-		rc = nix_rq_cn9k_cfg(dev, inl_rq, inl_dev->qints, false, true);
+		rc = nix_rq_cn9k_cfg(dev, inl_rq, inl_dev->qints, false, enable);
 	else
-		rc = nix_rq_cfg(dev, inl_rq, inl_dev->qints, false, true);
+		rc = nix_rq_cfg(dev, inl_rq, inl_dev->qints, false, enable);
 	if (rc) {
 		plt_err("Failed to prepare aq_enq msg, rc=%d", rc);
 		return rc;
@@ -753,6 +756,31 @@ roc_nix_inl_dev_rq_put(struct roc_nix_rq *rq)
 	nix_rq_vwqe_flush(rq, inl_dev->vwqe_interval);
 
 	return rc;
+}
+
+int
+roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct roc_nix_rq *inl_rq = roc_nix_inl_dev_rq(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+	int rc;
+
+	if (!idev)
+		return -EFAULT;
+
+	if (nix->inb_inl_dev) {
+		if (!inl_rq || !idev->nix_inl_dev)
+			return -EFAULT;
+
+		inl_dev = idev->nix_inl_dev;
+
+		rc = nix_rq_ena_dis(&inl_dev->dev, inl_rq, enable);
+		if (rc)
+			return rc;
+	}
+	return 0;
 }
 
 void
