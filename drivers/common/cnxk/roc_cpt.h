@@ -158,6 +158,8 @@ int __roc_api roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr,
 int __roc_api roc_cpt_lf_ctx_reload(struct roc_cpt_lf *lf, void *cptr);
 int __roc_api roc_cpt_inline_ipsec_cfg(struct dev *dev, uint8_t slot,
 				       struct roc_nix *nix);
+int __roc_api roc_cpt_inline_ipsec_inb_cfg_read(
+	struct roc_cpt *roc_cpt, struct nix_inline_ipsec_cfg *inb_cfg);
 int __roc_api roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt,
 					   uint16_t param1, uint16_t param2);
 int __roc_api roc_cpt_afs_print(struct roc_cpt *roc_cpt);

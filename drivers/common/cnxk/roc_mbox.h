@@ -263,7 +263,9 @@ struct mbox_msghdr {
 	  nix_bp_cfg_rsp)                                                      \
 	M(NIX_CPT_BP_DISABLE, 0x8021, nix_cpt_bp_disable, nix_bp_cfg_req,      \
 	  msg_rsp)                                                             \
-	M(NIX_RX_SW_SYNC, 0x8022, nix_rx_sw_sync, msg_req, msg_rsp)
+	M(NIX_RX_SW_SYNC, 0x8022, nix_rx_sw_sync, msg_req, msg_rsp)            \
+	M(NIX_READ_INLINE_IPSEC_CFG, 0x8023, nix_read_inline_ipsec_cfg,        \
+	  msg_req, nix_inline_ipsec_cfg)
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
 #define MBOX_UP_CGX_MESSAGES                                                   \
@@ -1161,7 +1163,9 @@ struct nix_inline_ipsec_cfg {
 	uint32_t __io cpt_credit;
 	struct {
 		uint8_t __io egrp;
-		uint8_t __io opcode;
+		uint16_t __io opcode;
+		uint16_t __io param1;
+		uint16_t __io param2;
 	} gen_cfg;
 	struct {
 		uint16_t __io cpt_pf_func;
@@ -1465,7 +1469,9 @@ struct cpt_rx_inline_lf_cfg_msg {
 	uint16_t __io sso_pf_func;
 	uint16_t __io param1;
 	uint16_t __io param2;
-	uint16_t __io reserved;
+	uint16_t __io opcode;
+	uint32_t __io credit;
+	uint32_t __io reserved;
 };
 
 enum cpt_eng_type {

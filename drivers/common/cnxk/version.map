@@ -65,6 +65,7 @@ INTERNAL {
 	roc_cpt_dev_init;
 	roc_cpt_eng_grp_add;
 	roc_cpt_inline_ipsec_cfg;
+	roc_cpt_inline_ipsec_inb_cfg_read;
 	roc_cpt_inline_ipsec_inb_cfg;
 	roc_cpt_iq_disable;
 	roc_cpt_iq_enable;

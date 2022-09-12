@@ -261,6 +261,21 @@ roc_cpt_inline_ipsec_cfg(struct dev *cpt_dev, uint8_t lf_id,
 }
 
 int
+roc_cpt_inline_ipsec_inb_cfg_read(struct roc_cpt *roc_cpt,
+				  struct nix_inline_ipsec_cfg *inb_cfg)
+{
+	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
+	struct dev *dev = &cpt->dev;
+	struct msg_req *req;
+
+	req = mbox_alloc_msg_nix_read_inline_ipsec_cfg(dev->mbox);
+	if (req == NULL)
+		return -EIO;
+
+	return mbox_process_msg(dev->mbox, (void *)&inb_cfg);
+}
+
+int
 roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
 			     uint16_t param2)
 {
