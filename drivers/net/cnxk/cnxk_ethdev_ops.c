@@ -356,8 +356,8 @@ cnxk_nix_priority_flow_ctrl_queue_config(struct rte_eth_dev *eth_dev,
 		return -ENOTSUP;
 	}
 
-	if (roc_nix_is_sdp(nix)) {
-		plt_err("Prio flow ctrl config is not allowed on SDP");
+	if (roc_nix_is_sdp(nix) || roc_nix_is_lbk(nix)) {
+		plt_nix_dbg("Prio flow ctrl config is not allowed on SDP/LBK");
 		return -ENOTSUP;
 	}
 

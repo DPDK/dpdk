@@ -1855,7 +1855,7 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 		pfc_conf.tx_pause.rx_qid = i;
 		rc = cnxk_nix_priority_flow_ctrl_queue_config(eth_dev,
 							      &pfc_conf);
-		if (rc)
+		if (rc && rc != -ENOTSUP)
 			plt_err("Failed to reset PFC. error code(%d)", rc);
 	}
 
