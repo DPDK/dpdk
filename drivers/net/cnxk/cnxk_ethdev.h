@@ -273,8 +273,11 @@ TAILQ_HEAD(cnxk_eth_sec_sess_list, cnxk_eth_sec_sess);
 
 /* Inbound security data */
 struct cnxk_eth_dev_sec_inb {
+	/* IPSec inbound min SPI */
+	uint32_t min_spi;
+
 	/* IPSec inbound max SPI */
-	uint16_t max_spi;
+	uint32_t max_spi;
 
 	/* Using inbound with inline device */
 	bool inl_dev;

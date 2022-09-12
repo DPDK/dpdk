@@ -320,12 +320,11 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 null_devargs:
 	dev->scalar_ena = !!scalar_enable;
 	dev->inb.no_inl_dev = !!no_inl_dev;
+	dev->inb.min_spi = ipsec_in_min_spi;
 	dev->inb.max_spi = ipsec_in_max_spi;
 	dev->outb.max_sa = ipsec_out_max_sa;
 	dev->outb.nb_desc = outb_nb_desc;
 	dev->outb.nb_crypto_qs = outb_nb_crypto_qs;
-	dev->nix.ipsec_in_min_spi = ipsec_in_min_spi;
-	dev->nix.ipsec_in_max_spi = ipsec_in_max_spi;
 	dev->nix.ipsec_out_max_sa = ipsec_out_max_sa;
 	dev->nix.rss_tag_as_xor = !!rss_tag_as_xor;
 	dev->nix.max_sqb_count = sqb_count;
