@@ -1049,9 +1049,13 @@ again:
 
 	/* Submit CPT instructions if any */
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		uint16_t sec_pkts = ((c_lnum << 1) + c_loff);
+
 		/* Reduce pkts to be sent to CPT */
-		burst -= ((c_lnum << 1) + c_loff);
-		cn10k_nix_sec_fc_wait(txq, (c_lnum << 1) + c_loff);
+		burst -= sec_pkts;
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, sec_pkts);
+		cn10k_nix_sec_fc_wait(txq, sec_pkts);
 		cn10k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff,
 				     c_shft);
 	}
@@ -1199,9 +1203,13 @@ again:
 
 	/* Submit CPT instructions if any */
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		uint16_t sec_pkts = ((c_lnum << 1) + c_loff);
+
 		/* Reduce pkts to be sent to CPT */
-		burst -= ((c_lnum << 1) + c_loff);
-		cn10k_nix_sec_fc_wait(txq, (c_lnum << 1) + c_loff);
+		burst -= sec_pkts;
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, sec_pkts);
+		cn10k_nix_sec_fc_wait(txq, sec_pkts);
 		cn10k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff,
 				     c_shft);
 	}
@@ -2753,7 +2761,11 @@ again:
 
 	/* Submit CPT instructions if any */
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
-		cn10k_nix_sec_fc_wait(txq, (c_lnum << 1) + c_loff);
+		uint16_t sec_pkts = (c_lnum << 1) + c_loff;
+
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, sec_pkts);
+		cn10k_nix_sec_fc_wait(txq, sec_pkts);
 		cn10k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff,
 				     c_shft);
 	}
