@@ -24,6 +24,8 @@
 #include <rte_tailq.h>
 #include <rte_telemetry.h>
 
+#include "eal_filesystem.h"
+
 #include "roc_bits.h"
 
 #if defined(__ARM_FEATURE_SVE)
@@ -94,6 +96,7 @@
 #define plt_pci_device		    rte_pci_device
 #define plt_pci_read_config	    rte_pci_read_config
 #define plt_pci_find_ext_capability rte_pci_find_ext_capability
+#define plt_sysfs_value_parse	    eal_parse_sysfs_value
 
 #define plt_log2_u32	 rte_log2_u32
 #define plt_cpu_to_be_16 rte_cpu_to_be_16
