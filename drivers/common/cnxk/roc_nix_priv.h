@@ -202,6 +202,7 @@ struct nix {
 	uint16_t nb_cpt_lf;
 	uint16_t outb_se_ring_cnt;
 	uint16_t outb_se_ring_base;
+	bool need_meta_aura;
 	/* Mode provided by driver */
 	bool inb_inl_dev;
 

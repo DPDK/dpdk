@@ -89,7 +89,12 @@ roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
 
 	rc = nix_rq_ena_dis(&nix->dev, rq, enable);
 	nix_rq_vwqe_flush(rq, nix->vwqe_interval);
+	if (rc)
+		return rc;
 
+	/* Check for meta aura if RQ is enabled */
+	if (enable && nix->need_meta_aura)
+		rc = roc_nix_inl_meta_aura_check(rq);
 	return rc;
 }
 
@@ -556,6 +561,13 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	/* Update aura buf type to indicate its use */
 	nix_rq_aura_buf_type_update(rq, true);
 
+	/* Check for meta aura if RQ is enabled */
+	if (ena && nix->need_meta_aura) {
+		rc = roc_nix_inl_meta_aura_check(rq);
+		if (rc)
+			return rc;
+	}
+
 	return nix_tel_node_add_rq(rq);
 }
 
@@ -593,6 +605,13 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 
 	/* Update aura attribute to indicate its use */
 	nix_rq_aura_buf_type_update(rq, true);
+
+	/* Check for meta aura if RQ is enabled */
+	if (ena && nix->need_meta_aura) {
+		rc = roc_nix_inl_meta_aura_check(rq);
+		if (rc)
+			return rc;
+	}
 
 	return nix_tel_node_add_rq(rq);
 }

@@ -121,6 +121,9 @@ roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(void *sa)
 typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args,
 					  uint32_t soft_exp_event);
 
+typedef int (*roc_nix_inl_meta_pool_cb_t)(uint64_t *aura_handle, uint32_t blk_sz, uint32_t nb_bufs,
+					  bool destroy);
+
 struct roc_nix_inl_dev {
 	/* Input parameters */
 	struct plt_pci_device *pci_dev;
@@ -135,6 +138,8 @@ struct roc_nix_inl_dev {
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
 	bool set_soft_exp_poll;
+	uint32_t nb_meta_bufs;
+	uint32_t meta_buf_sz;
 	/* End of input parameters */
 
 #define ROC_NIX_INL_MEM_SZ (1280)
@@ -165,6 +170,7 @@ uint32_t __roc_api roc_nix_inl_inb_sa_sz(struct roc_nix *roc_nix,
 uintptr_t __roc_api roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix,
 					   bool inl_dev_sa, uint32_t spi);
 void __roc_api roc_nix_inb_mode_set(struct roc_nix *roc_nix, bool use_inl_dev);
+void __roc_api roc_nix_inl_inb_set(struct roc_nix *roc_nix, bool ena);
 int __roc_api roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq, bool ena);
 int __roc_api roc_nix_inl_dev_rq_put(struct roc_nix_rq *rq);
 bool __roc_api roc_nix_inb_is_with_inl_dev(struct roc_nix *roc_nix);
@@ -176,6 +182,7 @@ int __roc_api roc_nix_reassembly_configure(uint32_t max_wait_time,
 int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena,
 				       bool inb_inl_dev);
 int __roc_api roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool ena);
+int __roc_api roc_nix_inl_meta_aura_check(struct roc_nix_rq *rq);
 
 /* NIX Inline Outbound API */
 int __roc_api roc_nix_inl_outb_init(struct roc_nix *roc_nix);
@@ -191,6 +198,7 @@ int __roc_api roc_nix_inl_cb_unregister(roc_nix_inl_sso_work_cb_t cb,
 int __roc_api roc_nix_inl_outb_soft_exp_poll_switch(struct roc_nix *roc_nix,
 						    bool poll);
 uint64_t *__roc_api roc_nix_inl_outb_ring_base_get(struct roc_nix *roc_nix);
+void __roc_api roc_nix_inl_meta_pool_cb_register(roc_nix_inl_meta_pool_cb_t cb);
 
 /* NIX Inline/Outbound API */
 enum roc_nix_inl_sa_sync_op {

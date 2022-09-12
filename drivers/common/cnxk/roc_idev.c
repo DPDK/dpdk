@@ -241,3 +241,13 @@ idev_sso_set(struct roc_sso *sso)
 	if (idev != NULL)
 		__atomic_store_n(&idev->sso, sso, __ATOMIC_RELEASE);
 }
+
+uint64_t
+roc_idev_nix_inl_meta_aura_get(void)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+
+	if (idev != NULL)
+		return idev->inl_cfg.meta_aura;
+	return 0;
+}

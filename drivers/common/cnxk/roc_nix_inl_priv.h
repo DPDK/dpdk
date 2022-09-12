@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <sys/types.h>
 
+#define NIX_INL_META_SIZE 384u
+
 struct nix_inl_dev;
 struct nix_inl_qint {
 	struct nix_inl_dev *inl_dev;
@@ -86,6 +88,8 @@ struct nix_inl_dev {
 	bool attach_cptlf;
 	uint16_t wqe_skip;
 	bool ts_ena;
+	uint32_t nb_meta_bufs;
+	uint32_t meta_buf_sz;
 };
 
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);

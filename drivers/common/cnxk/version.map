@@ -95,6 +95,7 @@ INTERNAL {
 	roc_idev_npa_maxpools_set;
 	roc_idev_npa_nix_get;
 	roc_idev_num_lmtlines_get;
+	roc_idev_nix_inl_meta_aura_get;
 	roc_model;
 	roc_se_auth_key_set;
 	roc_se_ciph_key_set;
@@ -156,7 +157,10 @@ INTERNAL {
 	roc_nix_inl_inb_sa_sz;
 	roc_nix_inl_inb_tag_update;
 	roc_nix_inl_inb_fini;
+	roc_nix_inl_inb_set;
 	roc_nix_inb_is_with_inl_dev;
+	roc_nix_inl_meta_aura_check;
+	roc_nix_inl_meta_pool_cb_register;
 	roc_nix_inb_mode_set;
 	roc_nix_inl_outb_fini;
 	roc_nix_inl_outb_init;
