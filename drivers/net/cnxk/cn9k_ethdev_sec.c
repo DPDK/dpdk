@@ -80,6 +80,66 @@ static struct rte_cryptodev_capabilities cn9k_eth_sec_crypto_caps[] = {
 			}, }
 		}, }
 	},
+	{	/* SHA256 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA256_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 1,
+					.max = 1024,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 16
+				},
+			}, }
+		}, }
+	},
+	{	/* SHA384 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 1,
+					.max = 1024,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 24,
+					.max = 48,
+					.increment = 24
+					},
+			}, }
+		}, }
+	},
+	{	/* SHA512 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA512_HMAC,
+				.block_size = 128,
+				.key_size = {
+					.min = 1,
+					.max = 1024,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 32,
+					.max = 64,
+					.increment = 32
+				},
+			}, }
+		}, }
+	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
@@ -91,7 +151,9 @@ static const struct rte_security_capability cn9k_eth_sec_capabilities[] = {
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
-			.options = { 0 }
+			.options = {
+					.udp_encap = 1
+				}
 		},
 		.crypto_capabilities = cn9k_eth_sec_crypto_caps,
 		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
@@ -103,7 +165,10 @@ static const struct rte_security_capability cn9k_eth_sec_capabilities[] = {
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
-			.options = { 0 }
+			.options = {
+					.udp_encap = 1,
+					.iv_gen_disable = 1
+				}
 		},
 		.crypto_capabilities = cn9k_eth_sec_crypto_caps,
 		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
@@ -337,13 +402,11 @@ cn9k_eth_sec_session_create(void *device,
 			goto mempool_put;
 		}
 
-		/* Always enable explicit IV.
-		 * Copy the IV from application only when iv_gen_disable flag is
-		 * set
+		/* When IV is provided by the application,
+		 * copy the IV to context and enable explicit IV flag in context.
 		 */
-		outb_sa->common_sa.ctl.explicit_iv_en = 1;
-
-		if (conf->ipsec.options.iv_gen_disable == 1) {
+		if (ipsec->options.iv_gen_disable == 1) {
+			outb_sa->common_sa.ctl.explicit_iv_en = 1;
 			iv_str = getenv("ETH_SEC_IV_OVR");
 			if (iv_str)
 				outb_dbg_iv_update(&outb_sa->common_sa, iv_str);
