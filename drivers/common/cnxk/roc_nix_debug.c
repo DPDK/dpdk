@@ -472,22 +472,21 @@ nix_lf_sq_dump(__io struct nix_cn10k_sq_ctx_s *ctx, uint32_t *sqb_aura_p)
 	nix_dump("W7: smenq_next_sqb \t\t0x%" PRIx64 "", ctx->smenq_next_sqb);
 	nix_dump("W8: head_sqb \t\t\t0x%" PRIx64 "", ctx->head_sqb);
 
-	nix_dump("W9: vfi_lso_vld \t\t%d\nW9: vfi_lso_vlan1_ins_ena\t%d",
-		 ctx->vfi_lso_vld, ctx->vfi_lso_vlan1_ins_ena);
+	nix_dump("W9: vfi_lso_vld \t\t%d\nW9: vfi_lso_vlan1_ins_ena\t%d", ctx->vfi_lso_vld,
+		 ctx->vfi_lso_vlan1_ins_ena);
 	nix_dump("W9: vfi_lso_vlan0_ins_ena\t%d\nW9: vfi_lso_mps\t\t\t%d",
 		 ctx->vfi_lso_vlan0_ins_ena, ctx->vfi_lso_mps);
-	nix_dump("W9: vfi_lso_sb \t\t\t%d\nW9: vfi_lso_sizem1\t\t%d",
-		 ctx->vfi_lso_sb, ctx->vfi_lso_sizem1);
+	nix_dump("W9: vfi_lso_sb \t\t\t%d\nW9: vfi_lso_sizem1\t\t%d", ctx->vfi_lso_sb,
+		 ctx->vfi_lso_sizem1);
 	nix_dump("W9: vfi_lso_total\t\t%d", ctx->vfi_lso_total);
 
-	nix_dump("W10: scm_lso_rem \t\t0x%" PRIx64 "",
-		 (uint64_t)ctx->scm_lso_rem);
+	nix_dump("W10: scm_lso_rem \t\t0x%" PRIx64 "", (uint64_t)ctx->scm_lso_rem);
 	nix_dump("W11: octs \t\t\t0x%" PRIx64 "", (uint64_t)ctx->octs);
 	nix_dump("W12: pkts \t\t\t0x%" PRIx64 "", (uint64_t)ctx->pkts);
-	nix_dump("W14: dropped_octs \t\t0x%" PRIx64 "",
-		 (uint64_t)ctx->drop_octs);
-	nix_dump("W15: dropped_pkts \t\t0x%" PRIx64 "",
-		 (uint64_t)ctx->drop_pkts);
+	nix_dump("W13: aged_drop_pkts \t\t\t0x%" PRIx64 "", (uint64_t)ctx->aged_drop_pkts);
+	nix_dump("W13: aged_drop_octs \t\t\t0x%" PRIx64 "", (uint64_t)ctx->aged_drop_octs);
+	nix_dump("W14: dropped_octs \t\t0x%" PRIx64 "", (uint64_t)ctx->drop_octs);
+	nix_dump("W15: dropped_pkts \t\t0x%" PRIx64 "", (uint64_t)ctx->drop_pkts);
 
 	*sqb_aura_p = ctx->sqb_aura;
 }

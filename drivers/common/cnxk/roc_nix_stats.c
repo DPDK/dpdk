@@ -238,6 +238,8 @@ nix_stat_tx_queue_reset(struct nix *nix, uint16_t qid)
 		aq->sq_mask.pkts = ~(aq->sq_mask.pkts);
 		aq->sq_mask.drop_octs = ~(aq->sq_mask.drop_octs);
 		aq->sq_mask.drop_pkts = ~(aq->sq_mask.drop_pkts);
+		aq->sq_mask.aged_drop_octs = ~(aq->sq_mask.aged_drop_octs);
+		aq->sq_mask.aged_drop_pkts = ~(aq->sq_mask.aged_drop_pkts);
 	}
 
 	rc = mbox_process(mbox);
