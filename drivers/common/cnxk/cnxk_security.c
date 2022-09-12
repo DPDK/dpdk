@@ -852,6 +852,7 @@ cnxk_ipsec_icvlen_get(enum rte_crypto_cipher_algorithm c_algo,
 	case RTE_CRYPTO_AUTH_NULL:
 		icv = 0;
 		break;
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		icv = 12;
 		break;
@@ -1208,6 +1209,7 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 		ctx_len = offsetof(struct roc_ie_on_outb_sa, aes_gcm.template);
 	} else {
 		switch (ctl->auth_type) {
+		case ROC_IE_ON_SA_AUTH_MD5:
 		case ROC_IE_ON_SA_AUTH_SHA1:
 			template = &out_sa->sha1.template;
 			ctx_len = offsetof(struct roc_ie_on_outb_sa,
@@ -1306,6 +1308,7 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 		case RTE_CRYPTO_AUTH_AES_GMAC:
 		case RTE_CRYPTO_AUTH_NULL:
 			break;
+		case RTE_CRYPTO_AUTH_MD5_HMAC:
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 			memcpy(out_sa->sha1.hmac_key, auth_key, auth_key_len);
 			break;
@@ -1354,6 +1357,7 @@ cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
 		switch (auth_xform->auth.algo) {
 		case RTE_CRYPTO_AUTH_NULL:
 			break;
+		case RTE_CRYPTO_AUTH_MD5_HMAC:
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 			memcpy(in_sa->sha1_or_gcm.hmac_key, auth_key,
 			       auth_key_len);
