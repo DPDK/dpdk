@@ -108,12 +108,29 @@ cn10k_wqe_to_mbuf(uint64_t wqe, const uint64_t __mbuf, uint8_t port_id,
 			      mbuf_init | ((uint64_t)port_id) << 48, flags);
 }
 
+static void
+cn10k_sso_process_tstamp(uint64_t u64, uint64_t mbuf,
+			 struct cnxk_timesync_info *tstamp)
+{
+	uint64_t tstamp_ptr;
+	uint8_t laptr;
+
+	laptr = (uint8_t) *
+		(uint64_t *)(u64 + (CNXK_SSO_WQE_LAYR_PTR * sizeof(uint64_t)));
+	if (laptr == sizeof(uint64_t)) {
+		/* Extracting tstamp, if PTP enabled*/
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)u64) +
+					   CNXK_SSO_WQE_SG_PTR);
+		cn10k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp, true,
+					 (uint64_t *)tstamp_ptr);
+	}
+}
+
 static __rte_always_inline void
 cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 		   void *lookup_mem, void *tstamp, uintptr_t lbase)
 {
-	uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM |
-			     (flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
+	uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM;
 	struct rte_event_vector *vec;
 	uint64_t aura_handle, laddr;
 	uint16_t nb_mbufs, non_vec;
@@ -132,6 +149,9 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 #define OBJS_PER_CLINE (RTE_CACHE_LINE_SIZE / sizeof(void *))
 	for (i = OBJS_PER_CLINE; i < vec->nb_elem; i += OBJS_PER_CLINE)
 		rte_prefetch0(&vec->ptrs[i]);
+
+	if (flags & NIX_RX_OFFLOAD_TSTAMP_F && tstamp)
+		mbuf_init |= 8;
 
 	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
 	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, wqe, nb_mbufs,
@@ -158,7 +178,6 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 
 	while (non_vec) {
 		struct nix_cqe_hdr_s *cqe = (struct nix_cqe_hdr_s *)wqe[0];
-		uint64_t tstamp_ptr;
 
 		mbuf = (struct rte_mbuf *)((char *)cqe -
 					   sizeof(struct rte_mbuf));
@@ -178,12 +197,10 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 
 		cn10k_nix_cqe_to_mbuf(cqe, cqe->tag, mbuf, lookup_mem,
 				      mbuf_init, flags);
-		/* Extracting tstamp, if PTP enabled*/
-		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)cqe) +
-					   CNXK_SSO_WQE_SG_PTR);
-		cn10k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
-					flags & NIX_RX_OFFLOAD_TSTAMP_F,
-					(uint64_t *)tstamp_ptr);
+
+		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
+			cn10k_sso_process_tstamp((uint64_t)wqe[0],
+						 (uint64_t)mbuf, tstamp);
 		wqe[0] = (struct rte_mbuf *)mbuf;
 		non_vec--;
 		wqe++;
@@ -200,8 +217,6 @@ static __rte_always_inline void
 cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 			   const uint32_t flags)
 {
-	uint64_t tstamp_ptr;
-
 	u64[0] = (u64[0] & (0x3ull << 32)) << 6 |
 		 (u64[0] & (0x3FFull << 36)) << 4 | (u64[0] & 0xffffffff);
 	if ((flags & CPT_RX_WQE_F) &&
@@ -246,12 +261,9 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 		u64[0] = CNXK_CLR_SUB_EVENT(u64[0]);
 		cn10k_wqe_to_mbuf(u64[1], mbuf, port, u64[0] & 0xFFFFF, flags,
 				  ws->lookup_mem);
-		/* Extracting tstamp, if PTP enabled*/
-		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)u64[1]) +
-					   CNXK_SSO_WQE_SG_PTR);
-		cn10k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, ws->tstamp,
-					 flags & NIX_RX_OFFLOAD_TSTAMP_F,
-					 (uint64_t *)tstamp_ptr);
+		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
+			cn10k_sso_process_tstamp(u64[1], mbuf,
+						 ws->tstamp[port]);
 		u64[1] = mbuf;
 	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) ==
 		   RTE_EVENT_TYPE_ETHDEV_VECTOR) {
@@ -262,7 +274,7 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 			   ((vwqe_hdr & 0xFFFF) << 48) | ((uint64_t)port << 32);
 		*(uint64_t *)u64[1] = (uint64_t)vwqe_hdr;
 		cn10k_process_vwqe(u64[1], port, flags, ws->lookup_mem,
-				   ws->tstamp, ws->lmt_base);
+				   ws->tstamp[port], ws->lmt_base);
 		/* Mark vector mempool object as get */
 		RTE_MEMPOOL_CHECK_COOKIES(rte_mempool_from_obj((void *)u64[1]),
 					  (void **)&u64[1], 1, 1);

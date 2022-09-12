@@ -207,6 +207,14 @@ cnxk_sso_rx_adapter_vwqe_enable(struct cnxk_eth_dev *cnxk_eth_dev,
 	return roc_nix_rq_modify(&cnxk_eth_dev->nix, rq, 0);
 }
 
+static void
+cnxk_sso_tstamp_cfg(uint16_t port_id, struct cnxk_eth_dev *cnxk_eth_dev,
+		    struct cnxk_sso_evdev *dev)
+{
+	if (cnxk_eth_dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+		dev->tstamp[port_id] = &cnxk_eth_dev->tstamp;
+}
+
 int
 cnxk_sso_rx_adapter_queue_add(
 	const struct rte_eventdev *event_dev, const struct rte_eth_dev *eth_dev,
@@ -255,6 +263,7 @@ cnxk_sso_rx_adapter_queue_add(
 			roc_nix_fc_npa_bp_cfg(&cnxk_eth_dev->nix,
 					      rxq_sp->qconf.mp->pool_id, true,
 					      dev->force_ena_bp, rxq_sp->tc);
+		cnxk_sso_tstamp_cfg(eth_dev->data->port_id, cnxk_eth_dev, dev);
 		cnxk_eth_dev->nb_rxq_sso++;
 	}
 

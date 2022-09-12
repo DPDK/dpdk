@@ -38,6 +38,7 @@
 #define CNXK_SSO_XAQ_CACHE_CNT (0x7)
 #define CNXK_SSO_XAQ_SLACK     (8)
 #define CNXK_SSO_WQE_SG_PTR    (9)
+#define CNXK_SSO_WQE_LAYR_PTR  (5)
 #define CNXK_SSO_PRIORITY_CNT  (0x8)
 #define CNXK_SSO_WEIGHT_MAX    (0x3f)
 #define CNXK_SSO_WEIGHT_MIN    (0x3)
@@ -123,6 +124,7 @@ struct cnxk_sso_evdev {
 	uint64_t *timer_adptr_sz;
 	uint16_t vec_pool_cnt;
 	uint64_t *vec_pools;
+	struct cnxk_timesync_info *tstamp[RTE_MAX_ETHPORTS];
 	struct cnxk_sso_mlt_prio mlt_prio[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	/* Dev args */
 	uint32_t xae_cnt;
@@ -140,12 +142,12 @@ struct cnxk_sso_evdev {
 struct cn10k_sso_hws {
 	uint64_t base;
 	uint64_t gw_rdata;
-	/* PTP timestamp */
-	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;
 	uint32_t gw_wdata;
 	uint8_t swtag_req;
 	uint8_t hws_id;
+	/* PTP timestamp */
+	struct cnxk_timesync_info **tstamp;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
@@ -160,11 +162,11 @@ struct cn10k_sso_hws {
 struct cn9k_sso_hws {
 	uint64_t base;
 	uint64_t gw_wdata;
-	/* PTP timestamp */
-	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;
 	uint8_t swtag_req;
 	uint8_t hws_id;
+	/* PTP timestamp */
+	struct cnxk_timesync_info **tstamp;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
@@ -177,12 +179,12 @@ struct cn9k_sso_hws {
 struct cn9k_sso_hws_dual {
 	uint64_t base[2]; /* Ping and Pong */
 	uint64_t gw_wdata;
-	/* PTP timestamp */
-	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;
 	uint8_t swtag_req;
 	uint8_t vws; /* Ping pong bit */
 	uint8_t hws_id;
+	/* PTP timestamp */
+	struct cnxk_timesync_info **tstamp;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
