@@ -246,6 +246,7 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 #define CNXK_SDP_CHANNEL_MASK	"sdp_channel_mask"
 #define CNXK_FLOW_PRE_L2_INFO	"flow_pre_l2_info"
 #define CNXK_CUSTOM_SA_ACT	"custom_sa_act"
+#define CNXK_SQB_SLACK		"sqb_slack"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -254,6 +255,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t sqb_count = CNXK_NIX_TX_MAX_SQB;
 	struct flow_pre_l2_size_info pre_l2_info;
 	uint32_t ipsec_in_max_spi = BIT(8) - 1;
+	uint16_t sqb_slack = ROC_NIX_SQB_SLACK;
 	uint32_t ipsec_out_max_sa = BIT(12);
 	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
@@ -311,6 +313,8 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &parse_pre_l2_hdr_info, &pre_l2_info);
 	rte_kvargs_process(kvlist, CNXK_CUSTOM_SA_ACT, &parse_flag,
 			   &custom_sa_act);
+	rte_kvargs_process(kvlist, CNXK_SQB_SLACK, &parse_sqb_count,
+			   &sqb_slack);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -328,6 +332,7 @@ null_devargs:
 	dev->nix.reta_sz = reta_sz;
 	dev->nix.lock_rx_ctx = lock_rx_ctx;
 	dev->nix.custom_sa_action = custom_sa_act;
+	dev->nix.sqb_slack = sqb_slack;
 	dev->npc.flow_prealloc_size = flow_prealloc_size;
 	dev->npc.flow_max_priority = flow_max_priority;
 	dev->npc.switch_header_type = switch_header_type;
@@ -356,4 +361,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_OUTB_NB_CRYPTO_QS "=<1-64>"
 			      CNXK_NO_INL_DEV "=0"
 			      CNXK_SDP_CHANNEL_MASK "=<1-4095>/<1-4095>"
-			      CNXK_CUSTOM_SA_ACT "=1");
+			      CNXK_CUSTOM_SA_ACT "=1"
+			      CNXK_SQB_SLACK "=<12-512>");

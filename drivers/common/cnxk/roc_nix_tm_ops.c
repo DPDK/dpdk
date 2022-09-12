@@ -67,7 +67,7 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	if (enable)
 		*(volatile uint64_t *)sq->fc = rsp->aura.count;
 	else
-		*(volatile uint64_t *)sq->fc = sq->nb_sqb_bufs;
+		*(volatile uint64_t *)sq->fc = sq->aura_sqb_bufs;
 	/* Sync write barrier */
 	plt_wmb();
 	return 0;
@@ -535,7 +535,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		tail_off = (val >> 28) & 0x3F;
 
 		if (sqb_cnt > 1 || head_off != tail_off ||
-		    (*(uint64_t *)sq->fc != sq->nb_sqb_bufs))
+		    (*(uint64_t *)sq->fc != sq->aura_sqb_bufs))
 			plt_err("Failed to gracefully flush sq %u", sq->qid);
 	}
 

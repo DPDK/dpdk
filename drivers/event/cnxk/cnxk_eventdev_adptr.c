@@ -351,14 +351,15 @@ cnxk_sso_sqb_aura_limit_edit(struct roc_nix_sq *sq, uint16_t nb_sqb_bufs)
 {
 	int rc;
 
-	if (sq->nb_sqb_bufs != nb_sqb_bufs) {
+	if (sq->aura_sqb_bufs != nb_sqb_bufs) {
 		rc = roc_npa_aura_limit_modify(
 			sq->aura_handle,
 			RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs));
 		if (rc < 0)
 			return rc;
 
-		sq->nb_sqb_bufs = RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs);
+		sq->nb_sqb_bufs = RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs) -
+				  sq->roc_nix->sqb_slack;
 	}
 	return 0;
 }
@@ -556,7 +557,7 @@ cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
 	} else {
 		txq = eth_dev->data->tx_queues[tx_queue_id];
 		sq = &cnxk_eth_dev->sqs[tx_queue_id];
-		cnxk_sso_sqb_aura_limit_edit(sq, sq->nb_sqb_bufs);
+		cnxk_sso_sqb_aura_limit_edit(sq, sq->aura_sqb_bufs);
 		ret = cnxk_sso_updt_tx_queue_data(
 			event_dev, eth_dev->data->port_id, tx_queue_id, txq);
 		if (ret < 0)
@@ -588,7 +589,7 @@ cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
 							     i);
 	} else {
 		sq = &cnxk_eth_dev->sqs[tx_queue_id];
-		cnxk_sso_sqb_aura_limit_edit(sq, sq->nb_sqb_bufs);
+		cnxk_sso_sqb_aura_limit_edit(sq, sq->aura_sqb_bufs);
 		ret = cnxk_sso_updt_tx_queue_data(
 			event_dev, eth_dev->data->port_id, tx_queue_id, NULL);
 		if (ret < 0)

@@ -13,6 +13,8 @@
 #define ROC_NIX_BPF_STATS_MAX	      12
 #define ROC_NIX_MTR_ID_INVALID	      UINT32_MAX
 #define ROC_NIX_PFC_CLASS_INVALID     UINT8_MAX
+#define ROC_NIX_SQB_LOWER_THRESH      70U
+#define ROC_NIX_SQB_SLACK	      12U
 
 enum roc_nix_rss_reta_sz {
 	ROC_NIX_RSS_RETA_SZ_64 = 64,
@@ -410,19 +412,20 @@ struct roc_nix {
 	bool enable_loop;
 	bool hw_vlan_ins;
 	uint8_t lock_rx_ctx;
-	uint32_t outb_nb_desc;
+	uint16_t sqb_slack;
 	uint16_t outb_nb_crypto_qs;
+	uint32_t outb_nb_desc;
 	uint32_t ipsec_in_min_spi;
 	uint32_t ipsec_in_max_spi;
 	uint32_t ipsec_out_max_sa;
 	bool ipsec_out_sso_pffunc;
+	bool custom_sa_action;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
 	bool io_enabled;
 	bool rx_ptp_ena;
 	uint16_t cints;
-	bool custom_sa_action;
 
 #define ROC_NIX_MEM_SZ (6 * 1024)
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;

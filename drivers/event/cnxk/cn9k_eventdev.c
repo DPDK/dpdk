@@ -1043,7 +1043,8 @@ cn9k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
 			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc /
 						(sqes_per_sqb - 1));
 		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
-		txq->nb_sqb_bufs_adj = (70 * txq->nb_sqb_bufs_adj) / 100;
+		txq->nb_sqb_bufs_adj =
+			(ROC_NIX_SQB_LOWER_THRESH * txq->nb_sqb_bufs_adj) / 100;
 	}
 }
 

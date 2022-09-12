@@ -761,6 +761,10 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	    !(flags & NIX_TX_OFFLOAD_SECURITY_F))
 		rte_io_wmb();
 	txq = cn9k_sso_hws_xtract_meta(m, txq_data);
+	if (((txq->nb_sqb_bufs_adj -
+	      __atomic_load_n((int16_t *)txq->fc_mem, __ATOMIC_RELAXED))
+	     << txq->sqes_per_sqb_log2) <= 0)
+		return 0;
 	cn9k_nix_tx_skeleton(txq, cmd, flags, 0);
 	cn9k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, txq->mark_flag,
 			      txq->mark_fmt);
