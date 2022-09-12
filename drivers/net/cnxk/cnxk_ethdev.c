@@ -617,7 +617,8 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rq->first_skip = first_skip;
 	rq->later_skip = sizeof(struct rte_mbuf);
 	rq->lpb_size = mp->elt_size;
-	rq->lpb_drop_ena = !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY);
+	if (roc_errata_nix_no_meta_aura())
+		rq->lpb_drop_ena = !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY);
 
 	/* Enable Inline IPSec on RQ, will not be used for Poll mode */
 	if (roc_nix_inl_inb_is_enabled(nix))

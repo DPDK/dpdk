@@ -627,17 +627,17 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq)
 	inl_rq->first_skip = rq->first_skip;
 	inl_rq->later_skip = rq->later_skip;
 	inl_rq->lpb_size = rq->lpb_size;
-	inl_rq->lpb_drop_ena = true;
 	inl_rq->spb_ena = rq->spb_ena;
 	inl_rq->spb_aura_handle = rq->spb_aura_handle;
 	inl_rq->spb_size = rq->spb_size;
-	inl_rq->spb_drop_ena = !!rq->spb_ena;
 
-	if (!roc_model_is_cn9k()) {
+	if (roc_errata_nix_no_meta_aura()) {
 		uint64_t aura_limit =
 			roc_npa_aura_op_limit_get(inl_rq->aura_handle);
 		uint64_t aura_shift = plt_log2_u32(aura_limit);
 		uint64_t aura_drop, drop_pc;
+
+		inl_rq->lpb_drop_ena = true;
 
 		if (aura_shift < 8)
 			aura_shift = 0;
@@ -653,11 +653,13 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq)
 		roc_npa_aura_drop_set(inl_rq->aura_handle, aura_drop, true);
 	}
 
-	if (inl_rq->spb_ena) {
+	if (roc_errata_nix_no_meta_aura() && inl_rq->spb_ena) {
 		uint64_t aura_limit =
 			roc_npa_aura_op_limit_get(inl_rq->spb_aura_handle);
 		uint64_t aura_shift = plt_log2_u32(aura_limit);
 		uint64_t aura_drop, drop_pc;
+
+		inl_rq->spb_drop_ena = true;
 
 		if (aura_shift < 8)
 			aura_shift = 0;
