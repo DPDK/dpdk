@@ -711,10 +711,13 @@ struct roc_npa {
 int __roc_api roc_npa_dev_init(struct roc_npa *roc_npa);
 int __roc_api roc_npa_dev_fini(struct roc_npa *roc_npa);
 
+/* Flags to pool create */
+#define ROC_NPA_ZERO_AURA_F BIT(0)
+
 /* NPA pool */
 int __roc_api roc_npa_pool_create(uint64_t *aura_handle, uint32_t block_size,
 				  uint32_t block_count, struct npa_aura_s *aura,
-				  struct npa_pool_s *pool);
+				  struct npa_pool_s *pool, uint32_t flags);
 int __roc_api roc_npa_aura_limit_modify(uint64_t aura_handle,
 					uint16_t aura_limit);
 int __roc_api roc_npa_pool_destroy(uint64_t aura_handle);
@@ -722,6 +725,7 @@ int __roc_api roc_npa_pool_range_update_check(uint64_t aura_handle);
 void __roc_api roc_npa_aura_op_range_set(uint64_t aura_handle,
 					 uint64_t start_iova,
 					 uint64_t end_iova);
+uint64_t __roc_api roc_npa_zero_aura_handle(void);
 
 /* Init callbacks */
 typedef int (*roc_npa_lf_init_cb_t)(struct plt_pci_device *pci_dev);

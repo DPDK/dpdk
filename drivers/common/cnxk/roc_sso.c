@@ -473,7 +473,7 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 	aura.fc_addr = (uint64_t)xaq->fc;
 	aura.fc_hyst_bits = 0; /* Store count on all updates */
 	rc = roc_npa_pool_create(&xaq->aura_handle, xaq_buf_size, xaq->nb_xaq,
-				 &aura, &pool);
+				 &aura, &pool, 0);
 	if (rc) {
 		plt_err("Failed to create XAQ pool");
 		goto npa_fail;

@@ -75,7 +75,7 @@ roc_dpi_configure(struct roc_dpi *roc_dpi)
 
 	memset(&aura, 0, sizeof(aura));
 	rc = roc_npa_pool_create(&aura_handle, DPI_CMD_QUEUE_SIZE,
-				 DPI_CMD_QUEUE_BUFS, &aura, &pool);
+				 DPI_CMD_QUEUE_BUFS, &aura, &pool, 0);
 	if (rc) {
 		plt_err("Failed to create NPA pool, err %d\n", rc);
 		return rc;

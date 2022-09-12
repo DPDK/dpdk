@@ -318,6 +318,7 @@ INTERNAL {
 	roc_npa_pool_destroy;
 	roc_npa_pool_op_pc_reset;
 	roc_npa_pool_range_update_check;
+	roc_npa_zero_aura_handle;
 	roc_npc_fini;
 	roc_npc_flow_create;
 	roc_npc_flow_destroy;

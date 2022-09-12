@@ -261,15 +261,59 @@ bitmap_ctzll(uint64_t slab)
 }
 
 static int
+find_free_aura(struct npa_lf *lf, uint32_t flags)
+{
+	struct plt_bitmap *bmp = lf->npa_bmp;
+	uint64_t aura0_state = 0;
+	uint64_t slab;
+	uint32_t pos;
+	int idx = -1;
+	int rc;
+
+	if (flags & ROC_NPA_ZERO_AURA_F) {
+		/* Only look for zero aura */
+		if (plt_bitmap_get(bmp, 0))
+			return 0;
+		plt_err("Zero aura already in use");
+		return -1;
+	}
+
+	if (lf->zero_aura_rsvd) {
+		/* Save and clear zero aura bit if needed */
+		aura0_state = plt_bitmap_get(bmp, 0);
+		if (aura0_state)
+			plt_bitmap_clear(bmp, 0);
+	}
+
+	pos = 0;
+	slab = 0;
+	/* Scan from the beginning */
+	plt_bitmap_scan_init(bmp);
+	/* Scan bitmap to get the free pool */
+	rc = plt_bitmap_scan(bmp, &pos, &slab);
+	/* Empty bitmap */
+	if (rc == 0) {
+		plt_err("Aura's exhausted");
+		goto empty;
+	}
+
+	idx = pos + bitmap_ctzll(slab);
+empty:
+	if (lf->zero_aura_rsvd && aura0_state)
+		plt_bitmap_set(bmp, 0);
+
+	return idx;
+}
+
+static int
 npa_aura_pool_pair_alloc(struct npa_lf *lf, const uint32_t block_size,
 			 const uint32_t block_count, struct npa_aura_s *aura,
-			 struct npa_pool_s *pool, uint64_t *aura_handle)
+			 struct npa_pool_s *pool, uint64_t *aura_handle,
+			 uint32_t flags)
 {
 	int rc, aura_id, pool_id, stack_size, alloc_size;
 	char name[PLT_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
-	uint64_t slab;
-	uint32_t pos;
 
 	/* Sanity check */
 	if (!lf || !block_size || !block_count || !pool || !aura ||
@@ -281,20 +325,11 @@ npa_aura_pool_pair_alloc(struct npa_lf *lf, const uint32_t block_size,
 	    block_size > ROC_NPA_MAX_BLOCK_SZ)
 		return NPA_ERR_INVALID_BLOCK_SZ;
 
-	pos = 0;
-	slab = 0;
-	/* Scan from the beginning */
-	plt_bitmap_scan_init(lf->npa_bmp);
-	/* Scan bitmap to get the free pool */
-	rc = plt_bitmap_scan(lf->npa_bmp, &pos, &slab);
-	/* Empty bitmap */
-	if (rc == 0) {
-		plt_err("Mempools exhausted");
-		return NPA_ERR_AURA_ID_ALLOC;
-	}
-
 	/* Get aura_id from resource bitmap */
-	aura_id = pos + bitmap_ctzll(slab);
+	aura_id = find_free_aura(lf, flags);
+	if (aura_id < 0)
+		return NPA_ERR_AURA_ID_ALLOC;
+
 	/* Mark pool as reserved */
 	plt_bitmap_clear(lf->npa_bmp, aura_id);
 
@@ -374,7 +409,7 @@ exit:
 int
 roc_npa_pool_create(uint64_t *aura_handle, uint32_t block_size,
 		    uint32_t block_count, struct npa_aura_s *aura,
-		    struct npa_pool_s *pool)
+		    struct npa_pool_s *pool, uint32_t flags)
 {
 	struct npa_aura_s defaura;
 	struct npa_pool_s defpool;
@@ -394,6 +429,11 @@ roc_npa_pool_create(uint64_t *aura_handle, uint32_t block_size,
 		goto error;
 	}
 
+	if (flags & ROC_NPA_ZERO_AURA_F && !lf->zero_aura_rsvd) {
+		rc = NPA_ERR_ALLOC;
+		goto error;
+	}
+
 	if (aura == NULL) {
 		memset(&defaura, 0, sizeof(struct npa_aura_s));
 		aura = &defaura;
@@ -406,7 +446,7 @@ roc_npa_pool_create(uint64_t *aura_handle, uint32_t block_size,
 	}
 
 	rc = npa_aura_pool_pair_alloc(lf, block_size, block_count, aura, pool,
-				      aura_handle);
+				      aura_handle, flags);
 	if (rc) {
 		plt_err("Failed to alloc pool or aura rc=%d", rc);
 		goto error;
@@ -519,6 +559,26 @@ roc_npa_pool_range_update_check(uint64_t aura_handle)
 		return NPA_ERR_PARAM;
 	}
 
+	return 0;
+}
+
+uint64_t
+roc_npa_zero_aura_handle(void)
+{
+	struct idev_cfg *idev;
+	struct npa_lf *lf;
+
+	lf = idev_npa_obj_get();
+	if (lf == NULL)
+		return NPA_ERR_DEVICE_NOT_BOUNDED;
+
+	idev = idev_get_cfg();
+	if (idev == NULL)
+		return NPA_ERR_ALLOC;
+
+	/* Return aura handle only if reserved */
+	if (lf->zero_aura_rsvd)
+		return roc_npa_aura_handle_gen(0, lf->base);
 	return 0;
 }
 
@@ -671,6 +731,10 @@ npa_dev_init(struct npa_lf *lf, uintptr_t base, struct mbox *mbox)
 	/* Mark all pools available */
 	for (i = 0; i < nr_pools; i++)
 		plt_bitmap_set(lf->npa_bmp, i);
+
+	/* Reserve zero aura for all models other than CN9K */
+	if (!roc_model_is_cn9k())
+		lf->zero_aura_rsvd = true;
 
 	/* Allocate memory for qint context */
 	lf->npa_qint_mem = plt_zmalloc(sizeof(struct npa_qint) * nr_pools, 0);
