@@ -817,6 +817,7 @@ cnxk_ipsec_ivlen_get(enum rte_crypto_cipher_algorithm c_algo,
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 		ivlen = 8;
 		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 		ivlen = ROC_CPT_DES_BLOCK_LENGTH;
 		break;
@@ -898,6 +899,7 @@ cnxk_ipsec_outb_roundup_byte(enum rte_crypto_cipher_algorithm c_algo,
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		roundup_byte = 16;
 		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 		roundup_byte = 8;
 		break;
@@ -1032,6 +1034,9 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 			switch (cipher_xform->cipher.algo) {
 			case RTE_CRYPTO_CIPHER_NULL:
 				ctl->enc_type = ROC_IE_ON_SA_ENC_NULL;
+				break;
+			case RTE_CRYPTO_CIPHER_DES_CBC:
+				ctl->enc_type = ROC_IE_ON_SA_ENC_DES_CBC;
 				break;
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
 				ctl->enc_type = ROC_IE_ON_SA_ENC_3DES_CBC;
