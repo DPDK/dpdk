@@ -230,7 +230,7 @@ nix_inl_nix_q_irq(void *param)
 			plt_err("Failed to get rq %d context, rc=%d", q, rc);
 			continue;
 		}
-		nix_lf_rq_dump(ctx);
+		nix_lf_rq_dump(ctx, NULL);
 	}
 }
 
@@ -262,7 +262,7 @@ nix_inl_nix_ras_irq(void *param)
 			plt_err("Failed to get rq %d context, rc=%d", q, rc);
 			continue;
 		}
-		nix_lf_rq_dump(ctx);
+		nix_lf_rq_dump(ctx, NULL);
 	}
 }
 
@@ -295,7 +295,7 @@ nix_inl_nix_err_irq(void *param)
 			plt_err("Failed to get rq %d context, rc=%d", q, rc);
 			continue;
 		}
-		nix_lf_rq_dump(ctx);
+		nix_lf_rq_dump(ctx, NULL);
 	}
 }
 

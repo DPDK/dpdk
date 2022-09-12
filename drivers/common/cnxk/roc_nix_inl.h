@@ -195,7 +195,7 @@ struct roc_nix_inl_dev {
 /* NIX Inline Device API */
 int __roc_api roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev);
 int __roc_api roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev);
-void __roc_api roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev);
+void __roc_api roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev, FILE *file);
 bool __roc_api roc_nix_inl_dev_is_probed(void);
 void __roc_api roc_nix_inl_dev_lock(void);
 void __roc_api roc_nix_inl_dev_unlock(void);
@@ -257,6 +257,6 @@ int __roc_api roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 				  enum roc_nix_inl_sa_sync_op op);
 int __roc_api roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr,
 				    void *sa_cptr, bool inb, uint16_t sa_len);
-void __roc_api roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix);
+void __roc_api roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix, FILE *file);
 
 #endif /* _ROC_NIX_INL_H_ */

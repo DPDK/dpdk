@@ -76,7 +76,7 @@ nix_lf_err_irq(void *param)
 	plt_write64(intr, nix->base + NIX_LF_ERR_INT);
 	/* Dump registers to std out */
 	roc_nix_lf_reg_dump(nix_priv_to_roc_nix(nix), NULL);
-	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix));
+	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix), NULL);
 }
 
 static int
@@ -125,7 +125,7 @@ nix_lf_ras_irq(void *param)
 
 	/* Dump registers to std out */
 	roc_nix_lf_reg_dump(nix_priv_to_roc_nix(nix), NULL);
-	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix));
+	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix), NULL);
 }
 
 static int
@@ -320,7 +320,7 @@ nix_lf_q_irq(void *param)
 
 	/* Dump registers to std out */
 	roc_nix_lf_reg_dump(nix_priv_to_roc_nix(nix), NULL);
-	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix));
+	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix), NULL);
 }
 
 int
