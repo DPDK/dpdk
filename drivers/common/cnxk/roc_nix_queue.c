@@ -140,6 +140,96 @@ roc_nix_rq_is_sso_enable(struct roc_nix *roc_nix, uint32_t qid)
 	return sso_enable ? true : false;
 }
 
+static int
+nix_rq_aura_buf_type_update(struct roc_nix_rq *rq, bool set)
+{
+	struct roc_nix *roc_nix = rq->roc_nix;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	bool inl_inb_ena = roc_nix_inl_inb_is_enabled(roc_nix);
+	uint64_t lpb_aura = 0, vwqe_aura = 0, spb_aura = 0;
+	struct mbox *mbox = nix->dev.mbox;
+	uint64_t aura_base;
+	int rc, count;
+
+	count = set ? 1 : -1;
+	/* For buf type set, use info from RQ context */
+	if (set) {
+		lpb_aura = rq->aura_handle;
+		spb_aura = rq->spb_ena ? rq->spb_aura_handle : 0;
+		vwqe_aura = rq->vwqe_ena ? rq->vwqe_aura_handle : 0;
+		goto skip_ctx_read;
+	}
+
+	aura_base = roc_npa_aura_handle_to_base(rq->aura_handle);
+	if (roc_model_is_cn9k()) {
+		struct nix_aq_enq_rsp *rsp;
+		struct nix_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
+		aq->qidx = rq->qid;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+
+		/* Get aura handle from aura */
+		lpb_aura = roc_npa_aura_handle_gen(rsp->rq.lpb_aura, aura_base);
+		if (rsp->rq.spb_ena)
+			spb_aura = roc_npa_aura_handle_gen(rsp->rq.spb_aura, aura_base);
+	} else {
+		struct nix_cn10k_aq_enq_rsp *rsp;
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
+		aq->qidx = rq->qid;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+
+		/* Get aura handle from aura */
+		lpb_aura = roc_npa_aura_handle_gen(rsp->rq.lpb_aura, aura_base);
+		if (rsp->rq.spb_ena)
+			spb_aura = roc_npa_aura_handle_gen(rsp->rq.spb_aura, aura_base);
+		if (rsp->rq.vwqe_ena)
+			vwqe_aura = roc_npa_aura_handle_gen(rsp->rq.wqe_aura, aura_base);
+	}
+
+skip_ctx_read:
+	/* Update attributes for LPB aura */
+	if (inl_inb_ena)
+		roc_npa_buf_type_update(lpb_aura, ROC_NPA_BUF_TYPE_PACKET_IPSEC, count);
+	else
+		roc_npa_buf_type_update(lpb_aura, ROC_NPA_BUF_TYPE_PACKET, count);
+
+	/* Update attributes for SPB aura */
+	if (spb_aura) {
+		if (inl_inb_ena)
+			roc_npa_buf_type_update(spb_aura, ROC_NPA_BUF_TYPE_PACKET_IPSEC, count);
+		else
+			roc_npa_buf_type_update(spb_aura, ROC_NPA_BUF_TYPE_PACKET, count);
+	}
+
+	/* Update attributes for VWQE aura */
+	if (vwqe_aura) {
+		if (inl_inb_ena)
+			roc_npa_buf_type_update(vwqe_aura, ROC_NPA_BUF_TYPE_VWQE_IPSEC, count);
+		else
+			roc_npa_buf_type_update(vwqe_aura, ROC_NPA_BUF_TYPE_VWQE, count);
+	}
+
+	return 0;
+}
+
 int
 nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 		bool cfg, bool ena)
@@ -292,7 +382,7 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 			/* Maximal Vector size is (2^(MAX_VSIZE_EXP+2)) */
 			aq->rq.max_vsize_exp = rq->vwqe_max_sz_exp - 2;
 			aq->rq.vtime_wait = rq->vwqe_wait_tmo;
-			aq->rq.wqe_aura = rq->vwqe_aura_handle;
+			aq->rq.wqe_aura = roc_npa_aura_handle_to_aura(rq->vwqe_aura_handle);
 		}
 	} else {
 		/* CQ mode */
@@ -463,6 +553,9 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	if (rc)
 		return rc;
 
+	/* Update aura buf type to indicate its use */
+	nix_rq_aura_buf_type_update(rq, true);
+
 	return nix_tel_node_add_rq(rq);
 }
 
@@ -481,6 +574,9 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	if (rq->qid >= nix->nb_rx_queues)
 		return NIX_ERR_QUEUE_INVALID_RANGE;
 
+	/* Clear attributes for existing aura's */
+	nix_rq_aura_buf_type_update(rq, false);
+
 	rq->roc_nix = roc_nix;
 
 	if (is_cn9k)
@@ -495,14 +591,25 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	if (rc)
 		return rc;
 
+	/* Update aura attribute to indicate its use */
+	nix_rq_aura_buf_type_update(rq, true);
+
 	return nix_tel_node_add_rq(rq);
 }
 
 int
 roc_nix_rq_fini(struct roc_nix_rq *rq)
 {
+	int rc;
+
 	/* Disabling RQ is sufficient */
-	return roc_nix_rq_ena_dis(rq, false);
+	rc = roc_nix_rq_ena_dis(rq, false);
+	if (rc)
+		return rc;
+
+	/* Update aura attribute to indicate its use for */
+	nix_rq_aura_buf_type_update(rq, false);
+	return 0;
 }
 
 int
@@ -717,6 +824,7 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	if (rc)
 		goto fail;
 
+	roc_npa_buf_type_update(sq->aura_handle, ROC_NPA_BUF_TYPE_SQB, 1);
 	sq->sqe_mem = plt_zmalloc(blk_sz * nb_sqb_bufs, blk_sz);
 	if (sq->sqe_mem == NULL) {
 		rc = NIX_ERR_NO_MEM;
