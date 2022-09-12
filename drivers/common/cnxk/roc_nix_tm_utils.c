@@ -1236,11 +1236,14 @@ roc_nix_tm_shaper_default_red_algo(struct roc_nix_tm_node *node,
 	struct nix_tm_shaper_profile *profile;
 	struct nix_tm_shaper_data cir, pir;
 
+	if (!roc_prof)
+		return;
+
 	profile = (struct nix_tm_shaper_profile *)roc_prof->reserved;
-	tm_node->red_algo = NIX_REDALG_STD;
+	tm_node->red_algo = roc_prof->red_algo;
 
 	/* C0 doesn't support STALL when both PIR & CIR are enabled */
-	if (profile && roc_model_is_cn96_cx()) {
+	if (roc_model_is_cn96_cx()) {
 		nix_tm_shaper_conf_get(profile, &cir, &pir);
 
 		if (pir.rate && cir.rate)
