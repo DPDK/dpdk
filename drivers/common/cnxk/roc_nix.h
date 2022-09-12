@@ -346,6 +346,7 @@ struct roc_nix_sq {
 	uint32_t nb_desc;
 	uint16_t qid;
 	uint16_t cqid;
+	uint16_t cq_drop_thresh;
 	bool sso_ena;
 	bool cq_ena;
 	/* End of Input parameters */

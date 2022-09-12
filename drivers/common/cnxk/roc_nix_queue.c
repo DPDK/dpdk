@@ -907,6 +907,7 @@ sq_cn9k_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	aq->sq.sso_ena = !!sq->sso_ena;
 	aq->sq.cq_ena = !!sq->cq_ena;
 	aq->sq.cq = sq->cqid;
+	aq->sq.cq_limit = sq->cq_drop_thresh;
 	if (aq->sq.max_sqe_size == NIX_MAXSQESZ_W8)
 		aq->sq.sqe_stype = NIX_STYPE_STP;
 	aq->sq.sqb_aura = roc_npa_aura_handle_to_aura(sq->aura_handle);
@@ -1024,6 +1025,7 @@ sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	aq->sq.sso_ena = !!sq->sso_ena;
 	aq->sq.cq_ena = !!sq->cq_ena;
 	aq->sq.cq = sq->cqid;
+	aq->sq.cq_limit = sq->cq_drop_thresh;
 	if (aq->sq.max_sqe_size == NIX_MAXSQESZ_W8)
 		aq->sq.sqe_stype = NIX_STYPE_STP;
 	aq->sq.sqb_aura = roc_npa_aura_handle_to_aura(sq->aura_handle);
