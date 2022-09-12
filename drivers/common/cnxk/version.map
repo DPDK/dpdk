@@ -306,6 +306,9 @@ INTERNAL {
 	roc_nix_vlan_mcam_entry_write;
 	roc_nix_vlan_strip_vtag_ena_dis;
 	roc_nix_vlan_tpid_set;
+	roc_npa_buf_type_mask;
+	roc_npa_buf_type_limit_get;
+	roc_npa_buf_type_update;
 	roc_npa_aura_drop_set;
 	roc_npa_aura_limit_modify;
 	roc_npa_aura_op_range_set;

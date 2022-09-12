@@ -18,6 +18,7 @@ enum npa_error_status {
 
 struct npa_lf {
 	struct plt_intr_handle *intr_handle;
+	struct npa_aura_attr *aura_attr;
 	struct npa_aura_lim *aura_lim;
 	struct plt_pci_device *pci_dev;
 	struct plt_bitmap *npa_bmp;
@@ -25,6 +26,7 @@ struct npa_lf {
 	uint32_t stack_pg_ptrs;
 	uint32_t stack_pg_bytes;
 	uint16_t npa_msixoff;
+	bool zero_aura_rsvd;
 	void *npa_qint_mem;
 	void *npa_bmp_mem;
 	uint32_t nr_pools;
@@ -32,7 +34,7 @@ struct npa_lf {
 	uint8_t aura_sz;
 	uint32_t qints;
 	uintptr_t base;
-	bool zero_aura_rsvd;
+
 };
 
 struct npa_qint {
@@ -43,6 +45,10 @@ struct npa_qint {
 struct npa_aura_lim {
 	uint64_t ptr_start;
 	uint64_t ptr_end;
+};
+
+struct npa_aura_attr {
+	int buf_type[ROC_NPA_BUF_TYPE_END];
 };
 
 struct dev;

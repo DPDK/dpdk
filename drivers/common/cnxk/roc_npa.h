@@ -714,6 +714,25 @@ int __roc_api roc_npa_dev_fini(struct roc_npa *roc_npa);
 /* Flags to pool create */
 #define ROC_NPA_ZERO_AURA_F BIT(0)
 
+/* Enumerations */
+enum roc_npa_buf_type {
+	/* Aura used for normal pkts */
+	ROC_NPA_BUF_TYPE_PACKET = 0,
+	/* Aura used for ipsec pkts */
+	ROC_NPA_BUF_TYPE_PACKET_IPSEC,
+	/* Aura used as vwqe for normal pkts */
+	ROC_NPA_BUF_TYPE_VWQE,
+	/* Aura used as vwqe for ipsec pkts */
+	ROC_NPA_BUF_TYPE_VWQE_IPSEC,
+	/* Aura used as SQB for SQ */
+	ROC_NPA_BUF_TYPE_SQB,
+	/* Aura used for general buffer */
+	ROC_NPA_BUF_TYPE_BUF,
+	/* Aura used for timeout pool */
+	ROC_NPA_BUF_TYPE_TIMEOUT,
+	ROC_NPA_BUF_TYPE_END,
+};
+
 /* NPA pool */
 int __roc_api roc_npa_pool_create(uint64_t *aura_handle, uint32_t block_size,
 				  uint32_t block_count, struct npa_aura_s *aura,
@@ -726,6 +745,9 @@ void __roc_api roc_npa_aura_op_range_set(uint64_t aura_handle,
 					 uint64_t start_iova,
 					 uint64_t end_iova);
 uint64_t __roc_api roc_npa_zero_aura_handle(void);
+int __roc_api roc_npa_buf_type_update(uint64_t aura_handle, enum roc_npa_buf_type type, int cnt);
+uint64_t __roc_api roc_npa_buf_type_mask(uint64_t aura_handle);
+uint64_t __roc_api roc_npa_buf_type_limit_get(uint64_t type_mask);
 
 /* Init callbacks */
 typedef int (*roc_npa_lf_init_cb_t)(struct plt_pci_device *pci_dev);

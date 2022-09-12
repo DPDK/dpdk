@@ -51,6 +51,7 @@ sources = files(
         'roc_npa.c',
         'roc_npa_debug.c',
         'roc_npa_irq.c',
+        'roc_npa_type.c',
         'roc_npc.c',
         'roc_npc_mcam.c',
         'roc_npc_mcam_dump.c',

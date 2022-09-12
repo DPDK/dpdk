@@ -499,6 +499,7 @@ npa_aura_pool_pair_free(struct npa_lf *lf, uint64_t aura_handle)
 	pool_id = aura_id;
 	rc = npa_aura_pool_fini(lf->mbox, aura_id, aura_handle);
 	rc |= npa_stack_dma_free(lf, name, pool_id);
+	memset(&lf->aura_attr[aura_id], 0, sizeof(struct npa_aura_attr));
 
 	plt_bitmap_set(lf->npa_bmp, aura_id);
 
@@ -750,6 +751,13 @@ npa_dev_init(struct npa_lf *lf, uintptr_t base, struct mbox *mbox)
 		goto qint_free;
 	}
 
+	/* Allocate per-aura attribute */
+	lf->aura_attr = plt_zmalloc(sizeof(struct npa_aura_attr) * nr_pools, 0);
+	if (lf->aura_attr == NULL) {
+		rc = NPA_ERR_PARAM;
+		goto lim_free;
+	}
+
 	/* Init aura start & end limits */
 	for (i = 0; i < nr_pools; i++) {
 		lf->aura_lim[i].ptr_start = UINT64_MAX;
@@ -758,6 +766,8 @@ npa_dev_init(struct npa_lf *lf, uintptr_t base, struct mbox *mbox)
 
 	return 0;
 
+lim_free:
+	plt_free(lf->aura_lim);
 qint_free:
 	plt_free(lf->npa_qint_mem);
 bmap_free:
@@ -780,6 +790,7 @@ npa_dev_fini(struct npa_lf *lf)
 	plt_free(lf->npa_qint_mem);
 	plt_bitmap_free(lf->npa_bmp);
 	plt_free(lf->npa_bmp_mem);
+	plt_free(lf->aura_attr);
 
 	return npa_lf_free(lf->mbox);
 }
