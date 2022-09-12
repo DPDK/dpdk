@@ -606,6 +606,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	/* Setup ROC RQ */
 	rq = &dev->rqs[qid];
 	rq->qid = qid;
+	rq->cqid = cq->qid;
 	rq->aura_handle = mp->pool_id;
 	rq->flow_tag_width = 32;
 	rq->sso_ena = false;
@@ -1162,6 +1163,8 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 
 	if (roc_nix_is_lbk(nix))
 		nix->enable_loop = eth_dev->data->dev_conf.lpbk_mode;
+
+	nix->tx_compl_ena = 0;
 
 	/* Alloc a nix lf */
 	rc = roc_nix_lf_alloc(nix, nb_rxq, nb_txq, rx_cfg);

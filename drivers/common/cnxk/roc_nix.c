@@ -154,7 +154,10 @@ roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq, uint32_t nb_txq,
 		return rc;
 	req->rq_cnt = nb_rxq;
 	req->sq_cnt = nb_txq;
-	req->cq_cnt = nb_rxq;
+	if (roc_nix->tx_compl_ena)
+		req->cq_cnt = nb_rxq + nb_txq;
+	else
+		req->cq_cnt = nb_rxq;
 	/* XQESZ can be W64 or W16 */
 	req->xqe_sz = NIX_XQESZ_W16;
 	req->rss_sz = nix->reta_sz;

@@ -287,6 +287,7 @@ struct roc_nix_stats_queue {
 struct roc_nix_rq {
 	/* Input parameters */
 	uint16_t qid;
+	uint16_t cqid; /* Not valid when SSO is enabled */
 	uint16_t bpf_id;
 	uint64_t aura_handle;
 	bool ipsech_ena;
@@ -412,6 +413,7 @@ struct roc_nix {
 	uint16_t max_sqb_count;
 	enum roc_nix_rss_reta_sz reta_sz;
 	bool enable_loop;
+	bool tx_compl_ena;
 	bool hw_vlan_ins;
 	uint8_t lock_rx_ctx;
 	uint16_t sqb_slack;

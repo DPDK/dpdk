@@ -268,7 +268,7 @@ nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 		aq->rq.good_utag = rq->tag_mask >> 24;
 		aq->rq.bad_utag = rq->tag_mask >> 24;
 		aq->rq.ltag = rq->tag_mask & BITMASK_ULL(24, 0);
-		aq->rq.cq = rq->qid;
+		aq->rq.cq = rq->cqid;
 	}
 
 	if (rq->ipsech_ena)
@@ -395,7 +395,7 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 		aq->rq.good_utag = rq->tag_mask >> 24;
 		aq->rq.bad_utag = rq->tag_mask >> 24;
 		aq->rq.ltag = rq->tag_mask & BITMASK_ULL(24, 0);
-		aq->rq.cq = rq->qid;
+		aq->rq.cq = rq->cqid;
 	}
 
 	if (rq->ipsech_ena) {
@@ -643,9 +643,6 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 
 	if (cq == NULL)
 		return NIX_ERR_PARAM;
-
-	if (cq->qid >= nix->nb_rx_queues)
-		return NIX_ERR_QUEUE_INVALID_RANGE;
 
 	qsize = nix_qsize_clampup(cq->nb_desc);
 	cq->nb_desc = nix_qsize_to_val(qsize);
