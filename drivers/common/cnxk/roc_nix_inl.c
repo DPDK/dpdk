@@ -416,6 +416,70 @@ roc_nix_reassembly_configure(uint32_t max_wait_time, uint16_t max_frags)
 	return roc_cpt_rxc_time_cfg(roc_cpt, &cfg);
 }
 
+static int
+nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_rq_cpt_field_mask_cfg_req *msk_req;
+	struct idev_cfg *idev = idev_get_cfg();
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct idev_nix_inl_cfg *inl_cfg;
+	uint64_t aura_handle;
+	int rc = -ENOSPC;
+	int i;
+
+	if (!idev)
+		return rc;
+
+	inl_cfg = &idev->inl_cfg;
+	msk_req = mbox_alloc_msg_nix_lf_inline_rq_cfg(mbox);
+	if (msk_req == NULL)
+		return rc;
+
+	for (i = 0; i < RQ_CTX_MASK_MAX; i++)
+		msk_req->rq_ctx_word_mask[i] = 0xFFFFFFFFFFFFFFFF;
+
+	msk_req->rq_set.len_ol3_dis = 1;
+	msk_req->rq_set.len_ol4_dis = 1;
+	msk_req->rq_set.len_il3_dis = 1;
+
+	msk_req->rq_set.len_il4_dis = 1;
+	msk_req->rq_set.csum_ol4_dis = 1;
+	msk_req->rq_set.csum_il4_dis = 1;
+
+	msk_req->rq_set.lenerr_dis = 1;
+	msk_req->rq_set.port_ol4_dis = 1;
+	msk_req->rq_set.port_il4_dis = 1;
+
+	msk_req->rq_set.lpb_drop_ena = 0;
+	msk_req->rq_set.spb_drop_ena = 0;
+	msk_req->rq_set.xqe_drop_ena = 0;
+
+	msk_req->rq_mask.len_ol3_dis = ~(msk_req->rq_set.len_ol3_dis);
+	msk_req->rq_mask.len_ol4_dis = ~(msk_req->rq_set.len_ol4_dis);
+	msk_req->rq_mask.len_il3_dis = ~(msk_req->rq_set.len_il3_dis);
+
+	msk_req->rq_mask.len_il4_dis = ~(msk_req->rq_set.len_il4_dis);
+	msk_req->rq_mask.csum_ol4_dis = ~(msk_req->rq_set.csum_ol4_dis);
+	msk_req->rq_mask.csum_il4_dis = ~(msk_req->rq_set.csum_il4_dis);
+
+	msk_req->rq_mask.lenerr_dis = ~(msk_req->rq_set.lenerr_dis);
+	msk_req->rq_mask.port_ol4_dis = ~(msk_req->rq_set.port_ol4_dis);
+	msk_req->rq_mask.port_il4_dis = ~(msk_req->rq_set.port_il4_dis);
+
+	msk_req->rq_mask.lpb_drop_ena = ~(msk_req->rq_set.lpb_drop_ena);
+	msk_req->rq_mask.spb_drop_ena = ~(msk_req->rq_set.spb_drop_ena);
+	msk_req->rq_mask.xqe_drop_ena = ~(msk_req->rq_set.xqe_drop_ena);
+
+	aura_handle = roc_npa_zero_aura_handle();
+	msk_req->ipsec_cfg1.spb_cpt_aura = roc_npa_aura_handle_to_aura(aura_handle);
+	msk_req->ipsec_cfg1.rq_mask_enable = enable;
+	msk_req->ipsec_cfg1.spb_cpt_sizem1 = inl_cfg->buf_sz;
+	msk_req->ipsec_cfg1.spb_cpt_enable = enable;
+
+	return mbox_process(mbox);
+}
+
 int
 roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 {
@@ -472,6 +536,14 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 		nix->need_meta_aura = true;
 		idev->inl_cfg.refs++;
 	}
+
+	if (roc_model_is_cn10kb_a0()) {
+		rc = nix_inl_rq_mask_cfg(roc_nix, true);
+		if (rc) {
+			plt_err("Failed to get rq mask rc=%d", rc);
+			return rc;
+		}
+	}
 	nix->inl_inb_ena = true;
 	return 0;
 }
@@ -481,6 +553,7 @@ roc_nix_inl_inb_fini(struct roc_nix *roc_nix)
 {
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	int rc;
 
 	if (!nix->inl_inb_ena)
 		return 0;
@@ -494,6 +567,14 @@ roc_nix_inl_inb_fini(struct roc_nix *roc_nix)
 		idev->inl_cfg.refs--;
 		if (!idev->inl_cfg.refs)
 			nix_inl_meta_aura_destroy();
+	}
+
+	if (roc_model_is_cn10kb_a0()) {
+		rc = nix_inl_rq_mask_cfg(roc_nix, false);
+		if (rc) {
+			plt_err("Failed to get rq mask rc=%d", rc);
+			return rc;
+		}
 	}
 
 	/* Flush Inbound CTX cache entries */
