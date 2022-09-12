@@ -585,6 +585,7 @@ int cnxk_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
 			     struct rte_eth_rss_conf *rss_conf);
 int cnxk_nix_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 			       struct rte_eth_rss_conf *rss_conf);
+int cnxk_nix_eth_dev_priv_dump(struct rte_eth_dev *eth_dev, FILE *file);
 
 /* Link */
 void cnxk_nix_toggle_flag_link_cfg(struct cnxk_eth_dev *dev, bool set);

@@ -932,6 +932,35 @@ fail:
 }
 
 int
+cnxk_nix_eth_dev_priv_dump(struct rte_eth_dev *eth_dev, FILE *file)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *roc_nix = &dev->nix;
+	int i;
+
+	roc_nix_dump(roc_nix, file);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		roc_nix_rq_dump(&dev->rqs[i], file);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		roc_nix_cq_dump(&dev->cqs[i], file);
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		roc_nix_sq_dump(&dev->sqs[i], file);
+
+	roc_nix_queues_ctx_dump(roc_nix, file);
+
+	roc_nix_tm_dump(roc_nix, file);
+
+	roc_nix_inl_dev_dump(NULL, file);
+
+	roc_nix_inl_outb_cpt_lfs_dump(roc_nix, file);
+
+	return 0;
+}
+
+int
 cnxk_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
 			 struct rte_eth_rss_conf *rss_conf)
 {
