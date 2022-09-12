@@ -998,7 +998,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 }
 
 int
-roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa, uint8_t opcode,
+roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, uint64_t sa, uint8_t opcode,
 		     uint16_t ctx_len, uint8_t egrp)
 {
 	union cpt_res_s res, *hw_res;
@@ -1019,9 +1019,9 @@ roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa, uint8_t opcode,
 	inst.w4.s.param1 = 0;
 	inst.w4.s.param2 = 0;
 	inst.w4.s.dlen = ctx_len;
-	inst.dptr = rte_mempool_virt2iova(sa);
+	inst.dptr = sa;
 	inst.rptr = 0;
-	inst.w7.s.cptr = rte_mempool_virt2iova(sa);
+	inst.w7.s.cptr = sa;
 	inst.w7.s.egrp = egrp;
 
 	inst.w0.u64 = 0;
@@ -1029,7 +1029,7 @@ roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa, uint8_t opcode,
 	inst.w3.u64 = 0;
 	inst.res_addr = (uintptr_t)hw_res;
 
-	rte_io_wmb();
+	plt_io_wmb();
 
 	do {
 		/* Copy CPT command to LMTLINE */
