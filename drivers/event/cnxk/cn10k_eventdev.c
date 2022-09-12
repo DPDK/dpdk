@@ -694,7 +694,7 @@ cn10k_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
 }
 
 static void
-cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
+cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem, uint64_t meta_aura)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	int i;
@@ -703,6 +703,8 @@ cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 		struct cn10k_sso_hws *ws = event_dev->data->ports[i];
 		ws->lookup_mem = lookup_mem;
 		ws->tstamp = dev->tstamp;
+		if (meta_aura)
+			ws->meta_aura = meta_aura;
 	}
 }
 
@@ -713,6 +715,7 @@ cn10k_sso_rx_adapter_queue_add(
 	const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
 	struct cn10k_eth_rxq *rxq;
+	uint64_t meta_aura;
 	void *lookup_mem;
 	int rc;
 
@@ -726,7 +729,8 @@ cn10k_sso_rx_adapter_queue_add(
 		return -EINVAL;
 	rxq = eth_dev->data->rx_queues[0];
 	lookup_mem = rxq->lookup_mem;
-	cn10k_sso_set_priv_mem(event_dev, lookup_mem);
+	meta_aura = rxq->meta_aura;
+	cn10k_sso_set_priv_mem(event_dev, lookup_mem, meta_aura);
 	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
 
 	return 0;

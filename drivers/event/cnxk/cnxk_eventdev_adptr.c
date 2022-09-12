@@ -194,7 +194,7 @@ cnxk_sso_rx_adapter_vwqe_enable(struct cnxk_eth_dev *cnxk_eth_dev,
 
 	rq->vwqe_ena = 1;
 	rq->vwqe_first_skip = 0;
-	rq->vwqe_aura_handle = roc_npa_aura_handle_to_aura(vmp->pool_id);
+	rq->vwqe_aura_handle = vmp->pool_id;
 	rq->vwqe_max_sz_exp = rte_log2_u32(sz);
 	rq->vwqe_wait_tmo =
 		tmo_ns /

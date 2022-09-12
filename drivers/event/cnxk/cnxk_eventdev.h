@@ -148,6 +148,7 @@ struct cn10k_sso_hws {
 	uint8_t hws_id;
 	/* PTP timestamp */
 	struct cnxk_timesync_info **tstamp;
+	uint64_t meta_aura;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;

@@ -877,7 +877,7 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 	nb_pkts = nix_rx_nb_pkts(rxq, wdata, pkts, qmask);
 
 	if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
-		aura_handle = rxq->aura_handle;
+		aura_handle = rxq->meta_aura;
 		sa_base = rxq->sa_base;
 		sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
 		ROC_LMT_BASE_ID_GET(lbase, lmt_id);
@@ -984,7 +984,7 @@ static __rte_always_inline uint16_t
 cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			   const uint16_t flags, void *lookup_mem,
 			   struct cnxk_timesync_info *tstamp,
-			   uintptr_t lmt_base)
+			   uintptr_t lmt_base, uint64_t meta_aura)
 {
 	struct cn10k_eth_rxq *rxq = args;
 	const uint64_t mbuf_initializer = (flags & NIX_RX_VWQE_F) ?
@@ -1003,10 +1003,10 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	uint64x2_t rearm2 = vdupq_n_u64(mbuf_initializer);
 	uint64x2_t rearm3 = vdupq_n_u64(mbuf_initializer);
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
-	uint64_t aura_handle, lbase, laddr;
 	uint8_t loff = 0, lnum = 0, shft = 0;
 	uint8x16_t f0, f1, f2, f3;
 	uint16_t lmt_id, d_off;
+	uint64_t lbase, laddr;
 	uint16_t packets = 0;
 	uint16_t pkts_left;
 	uintptr_t sa_base;
@@ -1035,6 +1035,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 
 	if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
 		if (flags & NIX_RX_VWQE_F) {
+			uint64_t sg_w1;
 			uint16_t port;
 
 			mbuf0 = (struct rte_mbuf *)((uintptr_t)mbufs[0] -
@@ -1042,10 +1043,15 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			/* Pick first mbuf's aura handle assuming all
 			 * mbufs are from a vec and are from same RQ.
 			 */
-			aura_handle = mbuf0->pool->pool_id;
+			if (!meta_aura)
+				meta_aura = mbuf0->pool->pool_id;
 			/* Calculate offset from mbuf to actual data area */
-			d_off = ((uintptr_t)mbuf0->buf_addr - (uintptr_t)mbuf0);
-			d_off += (mbuf_initializer & 0xFFFF);
+			/* Zero aura's first skip i.e mbuf setup might not match the actual
+			 * offset as first skip is taken from second pass RQ. So compute
+			 * using diff b/w first SG pointer and mbuf addr.
+			 */
+			sg_w1 = *(uint64_t *)((uintptr_t)mbufs[0] + 72);
+			d_off = (sg_w1 - (uint64_t)mbuf0);
 
 			/* Get SA Base from lookup tbl using port_id */
 			port = mbuf_initializer >> 48;
@@ -1053,7 +1059,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 
 			lbase = lmt_base;
 		} else {
-			aura_handle = rxq->aura_handle;
+			meta_aura = rxq->meta_aura;
 			d_off = rxq->data_off;
 			sa_base = rxq->sa_base;
 			lbase = rxq->lmt_base;
@@ -1721,7 +1727,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				/* Update aura handle */
 				*(uint64_t *)(laddr - 8) =
 					(((uint64_t)(15 & 0x1) << 32) |
-				    roc_npa_aura_handle_to_aura(aura_handle));
+				    roc_npa_aura_handle_to_aura(meta_aura));
 				loff = loff - 15;
 				shft += 3;
 
@@ -1744,14 +1750,14 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				/* Update aura handle */
 				*(uint64_t *)(laddr - 8) =
 					(((uint64_t)(loff & 0x1) << 32) |
-				    roc_npa_aura_handle_to_aura(aura_handle));
+				    roc_npa_aura_handle_to_aura(meta_aura));
 
 				data = (data & ~(0x7UL << shft)) |
 				       (((uint64_t)loff >> 1) << shft);
 
 				/* Send up to 16 lmt lines of pointers */
 				nix_sec_flush_meta_burst(lmt_id, data, lnum + 1,
-							 aura_handle);
+							 meta_aura);
 				rte_io_wmb();
 				lnum = 0;
 				loff = 0;
@@ -1769,13 +1775,13 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		/* Update aura handle */
 		*(uint64_t *)(laddr - 8) =
 			(((uint64_t)(loff & 0x1) << 32) |
-			 roc_npa_aura_handle_to_aura(aura_handle));
+			 roc_npa_aura_handle_to_aura(meta_aura));
 
 		data = (data & ~(0x7UL << shft)) |
 		       (((uint64_t)loff >> 1) << shft);
 
 		/* Send up to 16 lmt lines of pointers */
-		nix_sec_flush_meta_burst(lmt_id, data, lnum + 1, aura_handle);
+		nix_sec_flush_meta_burst(lmt_id, data, lnum + 1, meta_aura);
 		if (flags & NIX_RX_VWQE_F)
 			plt_io_wmb();
 	}
@@ -1803,7 +1809,7 @@ static inline uint16_t
 cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			   const uint16_t flags, void *lookup_mem,
 			   struct cnxk_timesync_info *tstamp,
-			   uintptr_t lmt_base)
+			   uintptr_t lmt_base, uint64_t meta_aura)
 {
 	RTE_SET_USED(args);
 	RTE_SET_USED(mbufs);
@@ -1812,6 +1818,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	RTE_SET_USED(lookup_mem);
 	RTE_SET_USED(tstamp);
 	RTE_SET_USED(lmt_base);
+	RTE_SET_USED(meta_aura);
 
 	return 0;
 }
@@ -2038,7 +2045,7 @@ NIX_RX_FASTPATH_MODES
 		void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts)      \
 	{                                                                      \
 		return cn10k_nix_recv_pkts_vector(rx_queue, rx_pkts, pkts,     \
-						  (flags), NULL, NULL, 0);     \
+						  (flags), NULL, NULL, 0, 0);  \
 	}
 
 #define NIX_RX_RECV_VEC_MSEG(fn, flags)                                        \

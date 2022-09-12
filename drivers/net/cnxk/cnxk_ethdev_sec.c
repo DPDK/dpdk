@@ -4,10 +4,14 @@
 
 #include <cnxk_ethdev.h>
 
+#define CNXK_NIX_INL_META_POOL_NAME "NIX_INL_META_POOL"
+
 #define CNXK_NIX_INL_SELFTEST	      "selftest"
 #define CNXK_NIX_INL_IPSEC_IN_MIN_SPI "ipsec_in_min_spi"
 #define CNXK_NIX_INL_IPSEC_IN_MAX_SPI "ipsec_in_max_spi"
 #define CNXK_INL_CPT_CHANNEL	      "inl_cpt_channel"
+#define CNXK_NIX_INL_NB_META_BUFS     "nb_meta_bufs"
+#define CNXK_NIX_INL_META_BUF_SZ      "meta_buf_sz"
 
 struct inl_cpt_channel {
 	bool is_multi_channel;
@@ -26,6 +30,85 @@ bitmap_ctzll(uint64_t slab)
 		return 0;
 
 	return __builtin_ctzll(slab);
+}
+
+int
+cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bufs, bool destroy)
+{
+	const char *mp_name = CNXK_NIX_INL_META_POOL_NAME;
+	struct rte_pktmbuf_pool_private mbp_priv;
+	struct npa_aura_s *aura;
+	struct rte_mempool *mp;
+	uint16_t first_skip;
+	int rc;
+
+	/* Destroy the mempool if requested */
+	if (destroy) {
+		mp = rte_mempool_lookup(mp_name);
+		if (!mp)
+			return -ENOENT;
+
+		if (mp->pool_id != *aura_handle) {
+			plt_err("Meta pool aura mismatch");
+			return -EINVAL;
+		}
+
+		plt_free(mp->pool_config);
+		rte_mempool_free(mp);
+
+		*aura_handle = 0;
+		return 0;
+	}
+
+	/* Need to make it similar to rte_pktmbuf_pool() for sake of OOP
+	 * support.
+	 */
+	mp = rte_mempool_create_empty(mp_name, nb_bufs, buf_sz, 0,
+				      sizeof(struct rte_pktmbuf_pool_private),
+				      SOCKET_ID_ANY, 0);
+	if (!mp) {
+		plt_err("Failed to create inline meta pool");
+		return -EIO;
+	}
+
+	/* Indicate to allocate zero aura */
+	aura = plt_zmalloc(sizeof(struct npa_aura_s), 0);
+	if (!aura) {
+		rc = -ENOMEM;
+		goto free_mp;
+	}
+	aura->ena = 1;
+	aura->pool_addr = 0x0;
+
+	rc = rte_mempool_set_ops_byname(mp, rte_mbuf_platform_mempool_ops(),
+					aura);
+	if (rc) {
+		plt_err("Failed to setup mempool ops for meta, rc=%d", rc);
+		goto free_aura;
+	}
+
+	/* Init mempool private area */
+	first_skip = sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM;
+	memset(&mbp_priv, 0, sizeof(mbp_priv));
+	mbp_priv.mbuf_data_room_size = (buf_sz - first_skip +
+					RTE_PKTMBUF_HEADROOM);
+	rte_pktmbuf_pool_init(mp, &mbp_priv);
+
+	/* Populate buffer */
+	rc = rte_mempool_populate_default(mp);
+	if (rc < 0) {
+		plt_err("Failed to create inline meta pool, rc=%d", rc);
+		goto free_aura;
+	}
+
+	rte_mempool_obj_iter(mp, rte_pktmbuf_init, NULL);
+	*aura_handle = mp->pool_id;
+	return 0;
+free_aura:
+	plt_free(aura);
+free_mp:
+	rte_mempool_free(mp);
+	return rc;
 }
 
 int
@@ -128,7 +211,7 @@ struct rte_security_ops cnxk_eth_sec_ops = {
 };
 
 static int
-parse_ipsec_in_spi_range(const char *key, const char *value, void *extra_args)
+parse_val_u32(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
 	uint32_t val;
@@ -184,6 +267,8 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	uint32_t ipsec_in_min_spi = 0;
 	struct inl_cpt_channel cpt_channel;
 	struct rte_kvargs *kvlist;
+	uint32_t nb_meta_bufs = 0;
+	uint32_t meta_buf_sz = 0;
 	uint8_t selftest = 0;
 
 	memset(&cpt_channel, 0, sizeof(cpt_channel));
@@ -198,11 +283,15 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_SELFTEST, &parse_selftest,
 			   &selftest);
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_IPSEC_IN_MIN_SPI,
-			   &parse_ipsec_in_spi_range, &ipsec_in_min_spi);
+			   &parse_val_u32, &ipsec_in_min_spi);
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_IPSEC_IN_MAX_SPI,
-			   &parse_ipsec_in_spi_range, &ipsec_in_max_spi);
+			   &parse_val_u32, &ipsec_in_max_spi);
 	rte_kvargs_process(kvlist, CNXK_INL_CPT_CHANNEL, &parse_inl_cpt_channel,
 			   &cpt_channel);
+	rte_kvargs_process(kvlist, CNXK_NIX_INL_NB_META_BUFS, &parse_val_u32,
+			   &nb_meta_bufs);
+	rte_kvargs_process(kvlist, CNXK_NIX_INL_META_BUF_SZ, &parse_val_u32,
+			   &meta_buf_sz);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -212,6 +301,8 @@ null_devargs:
 	inl_dev->channel = cpt_channel.channel;
 	inl_dev->chan_mask = cpt_channel.mask;
 	inl_dev->is_multi_channel = cpt_channel.is_multi_channel;
+	inl_dev->nb_meta_bufs = nb_meta_bufs;
+	inl_dev->meta_buf_sz = meta_buf_sz;
 	return 0;
 exit:
 	return -EINVAL;

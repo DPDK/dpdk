@@ -39,7 +39,7 @@ struct cn10k_eth_rxq {
 	uint16_t data_off;
 	uint64_t sa_base;
 	uint64_t lmt_base;
-	uint64_t aura_handle;
+	uint64_t meta_aura;
 	uint16_t rq;
 	struct cnxk_timesync_info *tstamp;
 } __plt_cache_aligned;

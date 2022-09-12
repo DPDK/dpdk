@@ -127,12 +127,14 @@ cn10k_sso_process_tstamp(uint64_t u64, uint64_t mbuf,
 }
 
 static __rte_always_inline void
-cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
-		   void *lookup_mem, void *tstamp, uintptr_t lbase)
+cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struct cn10k_sso_hws *ws)
 {
 	uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM;
+	struct cnxk_timesync_info *tstamp = ws->tstamp[port_id];
+	void *lookup_mem = ws->lookup_mem;
+	uintptr_t lbase = ws->lmt_base;
 	struct rte_event_vector *vec;
-	uint64_t aura_handle, laddr;
+	uint64_t meta_aura, laddr;
 	uint16_t nb_mbufs, non_vec;
 	uint16_t lmt_id, d_off;
 	struct rte_mbuf **wqe;
@@ -153,25 +155,31 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 	if (flags & NIX_RX_OFFLOAD_TSTAMP_F && tstamp)
 		mbuf_init |= 8;
 
+	meta_aura = ws->meta_aura;
 	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
 	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, wqe, nb_mbufs,
-					      flags | NIX_RX_VWQE_F, lookup_mem,
-					      tstamp, lbase);
+					      flags | NIX_RX_VWQE_F,
+					      lookup_mem, tstamp,
+					      lbase, meta_aura);
 	wqe += nb_mbufs;
 	non_vec = vec->nb_elem - nb_mbufs;
 
 	if (flags & NIX_RX_OFFLOAD_SECURITY_F && non_vec) {
+		uint64_t sg_w1;
+
 		mbuf = (struct rte_mbuf *)((uintptr_t)wqe[0] -
 					   sizeof(struct rte_mbuf));
 		/* Pick first mbuf's aura handle assuming all
 		 * mbufs are from a vec and are from same RQ.
 		 */
-		aura_handle = mbuf->pool->pool_id;
+		meta_aura = ws->meta_aura;
+		if (!meta_aura)
+			meta_aura = mbuf->pool->pool_id;
 		ROC_LMT_BASE_ID_GET(lbase, lmt_id);
 		laddr = lbase;
 		laddr += 8;
-		d_off = ((uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf);
-		d_off += (mbuf_init & 0xFFFF);
+		sg_w1 = *(uint64_t *)(((uintptr_t)wqe[0]) + 72);
+		d_off = sg_w1 - (uintptr_t)mbuf;
 		sa_base = cnxk_nix_sa_base_get(mbuf_init >> 48, lookup_mem);
 		sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
 	}
@@ -208,7 +216,7 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 
 	/* Free remaining meta buffers if any */
 	if (flags & NIX_RX_OFFLOAD_SECURITY_F && loff) {
-		nix_sec_flush_meta(laddr, lmt_id, loff, aura_handle);
+		nix_sec_flush_meta(laddr, lmt_id, loff, meta_aura);
 		plt_io_wmb();
 	}
 }
@@ -241,8 +249,7 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 			uint64_t cq_w5;
 
 			m = (struct rte_mbuf *)mbuf;
-			d_off = (uintptr_t)(m->buf_addr) - (uintptr_t)m;
-			d_off += RTE_PKTMBUF_HEADROOM;
+			d_off = (*(uint64_t *)(u64[1] + 72)) - (uintptr_t)m;
 
 			cq_w1 = *(uint64_t *)(u64[1] + 8);
 			cq_w5 = *(uint64_t *)(u64[1] + 40);
@@ -273,8 +280,7 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 		vwqe_hdr = ((vwqe_hdr >> 64) & 0xFFF) | BIT_ULL(31) |
 			   ((vwqe_hdr & 0xFFFF) << 48) | ((uint64_t)port << 32);
 		*(uint64_t *)u64[1] = (uint64_t)vwqe_hdr;
-		cn10k_process_vwqe(u64[1], port, flags, ws->lookup_mem,
-				   ws->tstamp[port], ws->lmt_base);
+		cn10k_process_vwqe(u64[1], port, flags, ws);
 		/* Mark vector mempool object as get */
 		RTE_MEMPOOL_CHECK_COOKIES(rte_mempool_from_obj((void *)u64[1]),
 					  (void **)&u64[1], 1, 1);
