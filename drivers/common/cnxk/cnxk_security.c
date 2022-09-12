@@ -1033,6 +1033,9 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 			case RTE_CRYPTO_CIPHER_NULL:
 				ctl->enc_type = ROC_IE_ON_SA_ENC_NULL;
 				break;
+			case RTE_CRYPTO_CIPHER_3DES_CBC:
+				ctl->enc_type = ROC_IE_ON_SA_ENC_3DES_CBC;
+				break;
 			case RTE_CRYPTO_CIPHER_AES_CBC:
 				ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CBC;
 				aes_key_len = cipher_xform->cipher.key.length;

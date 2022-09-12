@@ -248,6 +248,12 @@ cn9k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec,
 				plt_err("Transport mode AES-CBC AES-XCBC is not supported");
 				return -ENOTSUP;
 			}
+
+			if ((cipher->algo == RTE_CRYPTO_CIPHER_3DES_CBC) &&
+			    (auth->algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC)) {
+				plt_err("Transport mode 3DES-CBC AES-XCBC is not supported");
+				return -ENOTSUP;
+			}
 		}
 	}
 
