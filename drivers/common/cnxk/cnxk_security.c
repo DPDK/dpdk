@@ -1242,7 +1242,9 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 			ctx_len += sizeof(template->ip4);
 
 			ip4->version_ihl = RTE_IPV4_VHL_DEF;
-			ip4->time_to_live = ipsec->tunnel.ipv4.ttl;
+			ip4->time_to_live = ipsec->tunnel.ipv4.ttl ?
+						    ipsec->tunnel.ipv4.ttl :
+						    0x40;
 			ip4->type_of_service |= (ipsec->tunnel.ipv4.dscp << 2);
 			if (ipsec->tunnel.ipv4.df)
 				frag_off |= RTE_IPV4_HDR_DF_FLAG;
@@ -1275,7 +1277,9 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 						 ((ipsec->tunnel.ipv6.flabel
 						   << RTE_IPV6_HDR_FL_SHIFT) &
 						  RTE_IPV6_HDR_FL_MASK));
-			ip6->hop_limits = ipsec->tunnel.ipv6.hlimit;
+			ip6->hop_limits = ipsec->tunnel.ipv6.hlimit ?
+						  ipsec->tunnel.ipv6.hlimit :
+						  0x40;
 			memcpy(&ip6->src_addr, &ipsec->tunnel.ipv6.src_addr,
 			       sizeof(struct in6_addr));
 			memcpy(&ip6->dst_addr, &ipsec->tunnel.ipv6.dst_addr,

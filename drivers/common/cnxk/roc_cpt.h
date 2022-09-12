@@ -161,7 +161,8 @@ int __roc_api roc_cpt_inline_ipsec_cfg(struct dev *dev, uint8_t slot,
 int __roc_api roc_cpt_inline_ipsec_inb_cfg_read(
 	struct roc_cpt *roc_cpt, struct nix_inline_ipsec_cfg *inb_cfg);
 int __roc_api roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt,
-					   uint16_t param1, uint16_t param2);
+					   uint16_t param1, uint16_t param2,
+					   uint16_t opcode);
 int __roc_api roc_cpt_afs_print(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_lfs_print(struct roc_cpt *roc_cpt);
 void __roc_api roc_cpt_iq_disable(struct roc_cpt_lf *lf);
@@ -173,7 +174,6 @@ void __roc_api roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth);
 int __roc_api roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr,
 				void *sa_cptr, uint16_t sa_len);
 
-int __roc_api roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, uint64_t sa,
-				   uint8_t opcode, uint16_t ctx_len,
-				   uint8_t egrp);
+int __roc_api roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, uint64_t sa, bool inb,
+				   uint16_t ctx_len, uint8_t egrp);
 #endif /* _ROC_CPT_H_ */

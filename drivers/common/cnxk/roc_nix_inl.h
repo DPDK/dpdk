@@ -22,6 +22,24 @@
 	(ROC_NIX_INL_ONF_IPSEC_OUTB_HW_SZ + ROC_NIX_INL_ONF_IPSEC_OUTB_SW_RSVD)
 #define ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ_LOG2 8
 
+/* ON INB HW area */
+#define ROC_NIX_INL_ON_IPSEC_INB_HW_SZ                                         \
+	PLT_ALIGN(sizeof(struct roc_ie_on_inb_sa), ROC_ALIGN)
+/* ON INB SW reserved area */
+#define ROC_NIX_INL_ON_IPSEC_INB_SW_RSVD 640
+#define ROC_NIX_INL_ON_IPSEC_INB_SA_SZ                                         \
+	(ROC_NIX_INL_ON_IPSEC_INB_HW_SZ + ROC_NIX_INL_ON_IPSEC_INB_SW_RSVD)
+#define ROC_NIX_INL_ON_IPSEC_INB_SA_SZ_LOG2 10
+
+/* ONF OUTB HW area */
+#define ROC_NIX_INL_ON_IPSEC_OUTB_HW_SZ                                        \
+	PLT_ALIGN(sizeof(struct roc_ie_on_outb_sa), ROC_ALIGN)
+/* ONF OUTB SW reserved area */
+#define ROC_NIX_INL_ON_IPSEC_OUTB_SW_RSVD 256
+#define ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ                                        \
+	(ROC_NIX_INL_ON_IPSEC_OUTB_HW_SZ + ROC_NIX_INL_ON_IPSEC_OUTB_SW_RSVD)
+#define ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ_LOG2 9
+
 /* OT INB HW area */
 #define ROC_NIX_INL_OT_IPSEC_INB_HW_SZ                                         \
 	PLT_ALIGN(sizeof(struct roc_ot_ipsec_inb_sa), ROC_ALIGN)
@@ -60,6 +78,34 @@
 #define ROC_NIX_INL_REAS_ACTIVE_THRESHOLD 10
 #define ROC_NIX_INL_REAS_ZOMBIE_LIMIT	  0xFFF
 #define ROC_NIX_INL_REAS_ZOMBIE_THRESHOLD 10
+
+static inline struct roc_ie_on_inb_sa *
+roc_nix_inl_on_ipsec_inb_sa(uintptr_t base, uint64_t idx)
+{
+	uint64_t off = idx << ROC_NIX_INL_ON_IPSEC_INB_SA_SZ_LOG2;
+
+	return PLT_PTR_ADD(base, off);
+}
+
+static inline struct roc_ie_on_outb_sa *
+roc_nix_inl_on_ipsec_outb_sa(uintptr_t base, uint64_t idx)
+{
+	uint64_t off = idx << ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ_LOG2;
+
+	return PLT_PTR_ADD(base, off);
+}
+
+static inline void *
+roc_nix_inl_on_ipsec_inb_sa_sw_rsvd(void *sa)
+{
+	return PLT_PTR_ADD(sa, ROC_NIX_INL_ON_IPSEC_INB_HW_SZ);
+}
+
+static inline void *
+roc_nix_inl_on_ipsec_outb_sa_sw_rsvd(void *sa)
+{
+	return PLT_PTR_ADD(sa, ROC_NIX_INL_ON_IPSEC_OUTB_HW_SZ);
+}
 
 static inline struct roc_onf_ipsec_inb_sa *
 roc_nix_inl_onf_ipsec_inb_sa(uintptr_t base, uint64_t idx)

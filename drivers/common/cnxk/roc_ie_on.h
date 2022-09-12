@@ -13,6 +13,12 @@
 #define ROC_IE_ON_MAJOR_OP_PROCESS_OUTBOUND_IPSEC 0x23
 #define ROC_IE_ON_MAJOR_OP_PROCESS_INBOUND_IPSEC  0x24
 
+#define ROC_IE_ON_INB_MAX_CTX_LEN	       34UL
+#define ROC_IE_ON_INB_IKEV2_SINGLE_SA_SUPPORT  (1 << 12)
+#define ROC_IE_ON_OUTB_MAX_CTX_LEN	       31UL
+#define ROC_IE_ON_OUTB_IKEV2_SINGLE_SA_SUPPORT (1 << 9)
+#define ROC_IE_ON_OUTB_PER_PKT_IV	       (1 << 11)
+
 /* Ucode completion codes */
 enum roc_ie_on_ucc_ipsec {
 	ROC_IE_ON_UCC_SUCCESS = 0,

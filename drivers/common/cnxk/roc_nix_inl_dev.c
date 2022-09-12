@@ -394,7 +394,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 
 	/* CN9K SA is different */
 	if (roc_model_is_cn9k())
-		inb_sa_sz = ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ;
+		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
 	else
 		inb_sa_sz = ROC_NIX_INL_OT_IPSEC_INB_SA_SZ;
 

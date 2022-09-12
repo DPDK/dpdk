@@ -277,7 +277,7 @@ roc_cpt_inline_ipsec_inb_cfg_read(struct roc_cpt *roc_cpt,
 
 int
 roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
-			     uint16_t param2)
+			     uint16_t param2, uint16_t opcode)
 {
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
 	struct cpt_rx_inline_lf_cfg_msg *req;
@@ -292,6 +292,7 @@ roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
 	req->sso_pf_func = idev_sso_pffunc_get();
 	req->param1 = param1;
 	req->param2 = param2;
+	req->opcode = opcode;
 
 	return mbox_process(mbox);
 }
@@ -998,7 +999,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 }
 
 int
-roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, uint64_t sa, uint8_t opcode,
+roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, uint64_t sa, bool inb,
 		     uint16_t ctx_len, uint8_t egrp)
 {
 	union cpt_res_s res, *hw_res;
@@ -1014,7 +1015,9 @@ roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, uint64_t sa, uint8_t opcode,
 
 	hw_res->cn9k.compcode = CPT_COMP_NOT_DONE;
 
-	inst.w4.s.opcode_major = opcode;
+	inst.w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_WRITE_IPSEC_OUTBOUND;
+	if (inb)
+		inst.w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_WRITE_IPSEC_INBOUND;
 	inst.w4.s.opcode_minor = ctx_len >> 3;
 	inst.w4.s.param1 = 0;
 	inst.w4.s.param2 = 0;

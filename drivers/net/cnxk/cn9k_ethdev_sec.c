@@ -134,6 +134,37 @@ ar_window_init(struct cn9k_inb_priv_data *inb_priv)
 	return 0;
 }
 
+static void
+outb_dbg_iv_update(struct roc_ie_on_common_sa *common_sa, const char *__iv_str)
+{
+	uint8_t *iv_dbg = common_sa->iv.aes_iv;
+	char *iv_str = strdup(__iv_str);
+	char *iv_b = NULL;
+	char *save;
+	int i, iv_len = ROC_IE_ON_MAX_IV_LEN;
+
+	if (!iv_str)
+		return;
+
+	if (common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
+	    common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
+	    common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
+	    common_sa->ctl.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
+		iv_dbg = common_sa->iv.gcm.iv;
+		iv_len = 8;
+	}
+
+	memset(iv_dbg, 0, iv_len);
+	for (i = 0; i < iv_len; i++) {
+		iv_b = strtok_r(i ? NULL : iv_str, ",", &save);
+		if (!iv_b)
+			break;
+		iv_dbg[i] = strtoul(iv_b, NULL, 0);
+	}
+
+	free(iv_str);
+}
+
 static int
 cn9k_eth_sec_session_create(void *device,
 			    struct rte_security_session_conf *conf,
@@ -150,6 +181,7 @@ cn9k_eth_sec_session_create(void *device,
 	rte_spinlock_t *lock;
 	char tbuf[128] = {0};
 	bool inbound;
+	int ctx_len;
 	int rc = 0;
 
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
@@ -183,21 +215,25 @@ cn9k_eth_sec_session_create(void *device,
 	memset(eth_sec, 0, sizeof(struct cnxk_eth_sec_sess));
 	sess_priv.u64 = 0;
 
+	if (!dev->outb.lf_base) {
+		plt_err("Could not allocate security session private data");
+		return -ENOMEM;
+	}
+
 	if (inbound) {
 		struct cn9k_inb_priv_data *inb_priv;
-		struct roc_onf_ipsec_inb_sa *inb_sa;
+		struct roc_ie_on_inb_sa *inb_sa;
 		uint32_t spi_mask;
 
 		PLT_STATIC_ASSERT(sizeof(struct cn9k_inb_priv_data) <
-				  ROC_NIX_INL_ONF_IPSEC_INB_SW_RSVD);
+				  ROC_NIX_INL_ON_IPSEC_INB_SW_RSVD);
 
 		spi_mask = roc_nix_inl_inb_spi_range(nix, false, NULL, NULL);
 
 		/* Get Inbound SA from NIX_RX_IPSEC_SA_BASE. Assume no inline
 		 * device always for CN9K.
 		 */
-		inb_sa = (struct roc_onf_ipsec_inb_sa *)
-			 roc_nix_inl_inb_sa_get(nix, false, ipsec->spi);
+		inb_sa = (struct roc_ie_on_inb_sa *)roc_nix_inl_inb_sa_get(nix, false, ipsec->spi);
 		if (!inb_sa) {
 			snprintf(tbuf, sizeof(tbuf),
 				 "Failed to create ingress sa");
@@ -206,7 +242,7 @@ cn9k_eth_sec_session_create(void *device,
 		}
 
 		/* Check if SA is already in use */
-		if (inb_sa->ctl.valid) {
+		if (inb_sa->common_sa.ctl.valid) {
 			snprintf(tbuf, sizeof(tbuf),
 				 "Inbound SA with SPI %u already in use",
 				 ipsec->spi);
@@ -214,17 +250,26 @@ cn9k_eth_sec_session_create(void *device,
 			goto mempool_put;
 		}
 
-		memset(inb_sa, 0, sizeof(struct roc_onf_ipsec_inb_sa));
+		memset(inb_sa, 0, sizeof(struct roc_ie_on_inb_sa));
 
 		/* Fill inbound sa params */
-		rc = cnxk_onf_ipsec_inb_sa_fill(inb_sa, ipsec, crypto);
-		if (rc) {
+		rc = cnxk_on_ipsec_inb_sa_create(ipsec, crypto, inb_sa);
+		if (rc < 0) {
 			snprintf(tbuf, sizeof(tbuf),
 				 "Failed to init inbound sa, rc=%d", rc);
 			goto mempool_put;
 		}
 
-		inb_priv = roc_nix_inl_onf_ipsec_inb_sa_sw_rsvd(inb_sa);
+		ctx_len = rc;
+		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa, inb_sa, inbound,
+					   ctx_len);
+		if (rc) {
+			snprintf(tbuf, sizeof(tbuf),
+				 "Failed to create inbound sa, rc=%d", rc);
+			goto mempool_put;
+		}
+
+		inb_priv = roc_nix_inl_on_ipsec_inb_sa_sw_rsvd(inb_sa);
 		/* Back pointer to get eth_sec */
 		inb_priv->eth_sec = eth_sec;
 
@@ -253,32 +298,55 @@ cn9k_eth_sec_session_create(void *device,
 		dev->inb.nb_sess++;
 	} else {
 		struct cn9k_outb_priv_data *outb_priv;
-		struct roc_onf_ipsec_outb_sa *outb_sa;
 		uintptr_t sa_base = dev->outb.sa_base;
 		struct cnxk_ipsec_outb_rlens *rlens;
+		struct roc_ie_on_outb_sa *outb_sa;
+		const char *iv_str;
 		uint32_t sa_idx;
 
 		PLT_STATIC_ASSERT(sizeof(struct cn9k_outb_priv_data) <
-				  ROC_NIX_INL_ONF_IPSEC_OUTB_SW_RSVD);
+				  ROC_NIX_INL_ON_IPSEC_OUTB_SW_RSVD);
 
 		/* Alloc an sa index */
 		rc = cnxk_eth_outb_sa_idx_get(dev, &sa_idx, 0);
 		if (rc)
 			goto mempool_put;
 
-		outb_sa = roc_nix_inl_onf_ipsec_outb_sa(sa_base, sa_idx);
-		outb_priv = roc_nix_inl_onf_ipsec_outb_sa_sw_rsvd(outb_sa);
+		outb_sa = roc_nix_inl_on_ipsec_outb_sa(sa_base, sa_idx);
+		outb_priv = roc_nix_inl_on_ipsec_outb_sa_sw_rsvd(outb_sa);
 		rlens = &outb_priv->rlens;
 
-		memset(outb_sa, 0, sizeof(struct roc_onf_ipsec_outb_sa));
+		memset(outb_sa, 0, sizeof(struct roc_ie_on_outb_sa));
 
 		/* Fill outbound sa params */
-		rc = cnxk_onf_ipsec_outb_sa_fill(outb_sa, ipsec, crypto);
+		rc = cnxk_on_ipsec_outb_sa_create(ipsec, crypto, outb_sa);
+		if (rc < 0) {
+			snprintf(tbuf, sizeof(tbuf),
+				 "Failed to init outbound sa, rc=%d", rc);
+			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
+			goto mempool_put;
+		}
+
+		ctx_len = rc;
+		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa, outb_sa, inbound,
+					   ctx_len);
 		if (rc) {
 			snprintf(tbuf, sizeof(tbuf),
 				 "Failed to init outbound sa, rc=%d", rc);
 			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
 			goto mempool_put;
+		}
+
+		/* Always enable explicit IV.
+		 * Copy the IV from application only when iv_gen_disable flag is
+		 * set
+		 */
+		outb_sa->common_sa.ctl.explicit_iv_en = 1;
+
+		if (conf->ipsec.options.iv_gen_disable == 1) {
+			iv_str = getenv("ETH_SEC_IV_OVR");
+			if (iv_str)
+				outb_dbg_iv_update(&outb_sa->common_sa, iv_str);
 		}
 
 		/* Save userdata */
@@ -288,8 +356,8 @@ cn9k_eth_sec_session_create(void *device,
 		/* Start sequence number with 1 */
 		outb_priv->seq = 1;
 
-		memcpy(&outb_priv->nonce, outb_sa->nonce, 4);
-		if (outb_sa->ctl.enc_type == ROC_IE_ON_SA_ENC_AES_GCM)
+		memcpy(&outb_priv->nonce, outb_sa->common_sa.iv.gcm.nonce, 4);
+		if (outb_sa->common_sa.ctl.enc_type == ROC_IE_ON_SA_ENC_AES_GCM)
 			outb_priv->copy_salt = 1;
 
 		/* Save rlen info */
@@ -337,9 +405,9 @@ cn9k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	struct roc_onf_ipsec_outb_sa *outb_sa;
-	struct roc_onf_ipsec_inb_sa *inb_sa;
 	struct cnxk_eth_sec_sess *eth_sec;
+	struct roc_ie_on_outb_sa *outb_sa;
+	struct roc_ie_on_inb_sa *inb_sa;
 	struct rte_mempool *mp;
 	rte_spinlock_t *lock;
 
@@ -353,14 +421,14 @@ cn9k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 	if (eth_sec->inb) {
 		inb_sa = eth_sec->sa;
 		/* Disable SA */
-		inb_sa->ctl.valid = 0;
+		inb_sa->common_sa.ctl.valid = 0;
 
 		TAILQ_REMOVE(&dev->inb.list, eth_sec, entry);
 		dev->inb.nb_sess--;
 	} else {
 		outb_sa = eth_sec->sa;
 		/* Disable SA */
-		outb_sa->ctl.valid = 0;
+		outb_sa->common_sa.ctl.valid = 0;
 
 		/* Release Outbound SA index */
 		cnxk_eth_outb_sa_idx_put(dev, eth_sec->sa_idx);

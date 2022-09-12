@@ -8,11 +8,11 @@
 uint32_t soft_exp_consumer_cnt;
 roc_nix_inl_meta_pool_cb_t meta_pool_cb;
 
-PLT_STATIC_ASSERT(ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ ==
-		  1UL << ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ_LOG2);
-PLT_STATIC_ASSERT(ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ == 512);
-PLT_STATIC_ASSERT(ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ ==
-		  1UL << ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ_LOG2);
+PLT_STATIC_ASSERT(ROC_NIX_INL_ON_IPSEC_INB_SA_SZ ==
+		  1UL << ROC_NIX_INL_ON_IPSEC_INB_SA_SZ_LOG2);
+PLT_STATIC_ASSERT(ROC_NIX_INL_ON_IPSEC_INB_SA_SZ == 1024);
+PLT_STATIC_ASSERT(ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ ==
+		  1UL << ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ_LOG2);
 PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_INB_SA_SZ ==
 		  1UL << ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2);
 PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_INB_SA_SZ == 1024);
@@ -184,7 +184,7 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 
 	/* CN9K SA size is different */
 	if (roc_model_is_cn9k())
-		inb_sa_sz = ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ;
+		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
 	else
 		inb_sa_sz = ROC_NIX_INL_OT_IPSEC_INB_SA_SZ;
 
@@ -422,7 +422,9 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct idev_cfg *idev = idev_get_cfg();
 	struct roc_cpt *roc_cpt;
+	uint16_t opcode;
 	uint16_t param1;
+	uint16_t param2;
 	int rc;
 
 	if (idev == NULL)
@@ -439,17 +441,23 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 	}
 
 	if (roc_model_is_cn9k()) {
-		param1 = ROC_ONF_IPSEC_INB_MAX_L2_SZ;
+		param1 = (ROC_ONF_IPSEC_INB_MAX_L2_SZ >> 3) & 0xf;
+		param2 = ROC_IE_ON_INB_IKEV2_SINGLE_SA_SUPPORT;
+		opcode =
+			((ROC_IE_ON_INB_MAX_CTX_LEN << 8) |
+			 (ROC_IE_ON_MAJOR_OP_PROCESS_INBOUND_IPSEC | (1 << 6)));
 	} else {
 		union roc_ot_ipsec_inb_param1 u;
 
 		u.u16 = 0;
 		u.s.esp_trailer_disable = 1;
 		param1 = u.u16;
+		param2 = 0;
+		opcode = (ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC | (1 << 6));
 	}
 
 	/* Do onetime Inbound Inline config in CPTPF */
-	rc = roc_cpt_inline_ipsec_inb_cfg(roc_cpt, param1, 0);
+	rc = roc_cpt_inline_ipsec_inb_cfg(roc_cpt, param1, param2, opcode);
 	if (rc && rc != -EEXIST) {
 		plt_err("Failed to setup inbound lf, rc=%d", rc);
 		return rc;
@@ -605,7 +613,7 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 
 	/* CN9K SA size is different */
 	if (roc_model_is_cn9k())
-		sa_sz = ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ;
+		sa_sz = ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ;
 	else
 		sa_sz = ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ;
 	/* Alloc contiguous memory of outbound SA */
@@ -1212,7 +1220,12 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 
 	/* Nothing much to do on cn9k */
 	if (roc_model_is_cn9k()) {
-		plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
+		nix = roc_nix_to_nix_priv(roc_nix);
+		outb_lf = nix->cpt_lf_base;
+		rc = roc_on_cpt_ctx_write(outb_lf, (uint64_t)sa_dptr, inb,
+					  sa_len, ROC_CPT_DFLT_ENG_GRP_SE_IE);
+		if (rc)
+			return rc;
 		return 0;
 	}
 

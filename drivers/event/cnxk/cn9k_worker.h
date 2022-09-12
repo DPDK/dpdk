@@ -617,12 +617,14 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 	struct nix_send_hdr_s *send_hdr;
 	uint64_t sa_base = txq->sa_base;
 	uint32_t pkt_len, dlen_adj, rlen;
+	struct roc_ie_on_outb_hdr *hdr;
 	uint64x2_t cmd01, cmd23;
 	uint64_t lmt_status, sa;
 	union nix_send_sg_s *sg;
+	uint32_t esn_lo, esn_hi;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
-	uint64_t esn, *iv;
+	uint64_t esn;
 	uint8_t l2_len;
 
 	mdata.u64 = *rte_security_dynfield(m);
@@ -661,14 +663,19 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 
 	/* Load opcode and cptr already prepared at pkt metadata set */
 	pkt_len -= l2_len;
-	pkt_len += sizeof(struct roc_onf_ipsec_outb_hdr) +
-		    ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ;
+	pkt_len += (sizeof(struct roc_ie_on_outb_hdr) - ROC_IE_ON_MAX_IV_LEN) +
+		   ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ;
 	sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
 
-	sa = (uintptr_t)roc_nix_inl_onf_ipsec_outb_sa(sa_base, mdata.sa_idx);
+	sa = (uintptr_t)roc_nix_inl_on_ipsec_outb_sa(sa_base, mdata.sa_idx);
 	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | sa);
-	ucode_cmd[0] = (ROC_IE_ONF_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
-			0x40UL << 48 | pkt_len);
+	ucode_cmd[0] = (((ROC_IE_ON_OUTB_MAX_CTX_LEN << 8) |
+			 ROC_IE_ON_MAJOR_OP_PROCESS_OUTBOUND_IPSEC)
+				<< 48 |
+			(ROC_IE_ON_OUTB_IKEV2_SINGLE_SA_SUPPORT |
+			 (ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ >>
+			  3)) << 32 |
+			pkt_len);
 
 	/* CPT Word 0 and Word 1 */
 	cmd01 = vdupq_n_u64((nixtx + 16) | (cn9k_nix_tx_ext_subs(flags) + 1));
@@ -678,35 +685,40 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 	/* CPT word 2 and 3 */
 	cmd23 = vdupq_n_u64(0);
 	cmd23 = vsetq_lane_u64((((uint64_t)RTE_EVENT_TYPE_CPU << 28) |
-				CNXK_ETHDEV_SEC_OUTB_EV_SUB << 20), cmd23, 0);
-	cmd23 = vsetq_lane_u64((uintptr_t)m | 1, cmd23, 1);
+				CNXK_ETHDEV_SEC_OUTB_EV_SUB << 20),
+			       cmd23, 0);
+	cmd23 = vsetq_lane_u64(((uintptr_t)m + sizeof(struct rte_mbuf)) | 1,
+			       cmd23, 1);
 
 	dptr += l2_len - ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ -
-		sizeof(struct roc_onf_ipsec_outb_hdr);
+		(sizeof(struct roc_ie_on_outb_hdr) - ROC_IE_ON_MAX_IV_LEN);
 	ucode_cmd[1] = dptr;
 	ucode_cmd[2] = dptr;
 
-	/* Update IV to zero and l2 sz */
-	*(uint16_t *)(dptr + sizeof(struct roc_onf_ipsec_outb_hdr)) =
+	/* Update l2 sz */
+	*(uint16_t *)(dptr + (sizeof(struct roc_ie_on_outb_hdr) -
+			      ROC_IE_ON_MAX_IV_LEN)) =
 		rte_cpu_to_be_16(ROC_ONF_IPSEC_OUTB_MAX_L2_INFO_SZ);
-	iv = (uint64_t *)(dptr + 8);
-	iv[0] = 0;
-	iv[1] = 0;
 
 	/* Head wait if needed */
 	if (base)
 		roc_sso_hws_head_wait(base);
 
 	/* ESN */
-	outb_priv = roc_nix_inl_onf_ipsec_outb_sa_sw_rsvd((void *)sa);
+	outb_priv = roc_nix_inl_on_ipsec_outb_sa_sw_rsvd((void *)sa);
 	esn = outb_priv->esn;
 	outb_priv->esn = esn + 1;
 
 	ucode_cmd[0] |= (esn >> 32) << 16;
-	esn = rte_cpu_to_be_32(esn & (BIT_ULL(32) - 1));
+	esn_lo = rte_cpu_to_be_32(esn & (BIT_ULL(32) - 1));
+	esn_hi = rte_cpu_to_be_32(esn >> 32);
 
-	/* Update ESN and IPID and IV */
-	*(uint64_t *)dptr = esn << 32 | esn;
+	/* Update ESN, IPID and IV */
+	hdr = (struct roc_ie_on_outb_hdr *)dptr;
+	hdr->ip_id = esn_lo;
+	hdr->seq = esn_lo;
+	hdr->esn = esn_hi;
+	hdr->df_tos = 0;
 
 	rte_io_wmb();
 	cn9k_sso_txq_fc_wait(txq);

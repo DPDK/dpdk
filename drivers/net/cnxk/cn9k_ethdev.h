@@ -79,6 +79,9 @@ struct cn9k_outb_priv_data {
 
 	/* Back pointer to eth sec session */
 	struct cnxk_eth_sec_sess *eth_sec;
+
+	/* IV in DBG mode */
+	uint8_t iv_dbg[ROC_IE_ON_MAX_IV_LEN];
 };
 
 struct cn9k_sec_sess_priv {

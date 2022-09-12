@@ -29,7 +29,6 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	union cpt_inst_w4 w4;
 	union cpt_inst_w7 w7;
 	size_t ctx_len;
-	uint8_t opcode;
 	uint8_t egrp;
 	int ret;
 
@@ -80,10 +79,9 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 		return ret;
 
 	ctx_len = ret;
-	opcode = ROC_IE_ON_MAJOR_OP_WRITE_IPSEC_OUTBOUND;
 	egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
 	ret = roc_on_cpt_ctx_write(&qp->lf, rte_mempool_virt2iova(&sa->out_sa),
-				   opcode, ctx_len, egrp);
+				   false, ctx_len, egrp);
 
 	if (ret)
 		return ret;
@@ -133,7 +131,6 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	union cpt_inst_w4 w4;
 	union cpt_inst_w7 w7;
 	size_t ctx_len = 0;
-	uint8_t opcode;
 	uint8_t egrp;
 	int ret = 0;
 
@@ -172,10 +169,9 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 		sa->esn_en = 1;
 
 	ctx_len = ret;
-	opcode = ROC_IE_ON_MAJOR_OP_WRITE_IPSEC_INBOUND;
 	egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
 	ret = roc_on_cpt_ctx_write(&qp->lf, rte_mempool_virt2iova(&sa->in_sa),
-				   opcode, ctx_len, egrp);
+				   true, ctx_len, egrp);
 	if (ret)
 		return ret;
 
