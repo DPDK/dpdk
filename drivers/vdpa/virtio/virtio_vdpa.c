@@ -262,16 +262,23 @@ virtio_vdpa_virtq_handler(void *cb_arg)
 	struct virtio_vdpa_vring_info *virtq = cb_arg;
 	struct virtio_vdpa_priv *priv = virtq->priv;
 	uint64_t buf;
-	int nbytes;
+	int nbytes,i;
 
-	if (!priv->configured || !virtq->enable)
+	if (!priv->configured || !virtq->enable) {
 		return;
-
-	if (rte_intr_fd_get(virtq->intr_handle) < 0)
+	}
+	if (rte_intr_fd_get(virtq->intr_handle) < 0) {
 		return;
-
-	do {
+	}
+	for(i = 0; i < 3; i++) {
 		nbytes = read(rte_intr_fd_get(virtq->intr_handle), &buf, 8);
+		if (!priv->configured || !virtq->enable) {
+			return;
+		}
+		if (rte_intr_fd_get(virtq->intr_handle) < 0) {
+			return;
+		}
+
 		if (nbytes < 0) {
 			if (errno == EINTR ||
 				errno == EWOULDBLOCK ||
@@ -281,7 +288,14 @@ virtio_vdpa_virtq_handler(void *cb_arg)
 				priv->vdev->device->name, virtq->index, strerror(errno));
 		}
 		break;
-	} while (1);
+	}
+
+	if (nbytes < 0) {
+		DRV_LOG(ERR,  "%s failed to read %d times kickfd of virtq %d: %s",
+			priv->vdev->device->name, i, virtq->index, strerror(errno));
+		return;
+	}
+
 	virtio_pci_dev_queue_notify(priv->vpdev, virtq->index);
 	if (virtq->notifier_state == VIRTIO_VDPA_NOTIFIER_STATE_DISABLED) {
 		if (rte_vhost_host_notifier_ctrl(priv->vid, virtq->index, true)) {
@@ -297,8 +311,8 @@ virtio_vdpa_virtq_handler(void *cb_arg)
 						VIRTIO_VDPA_NOTIFIER_STATE_ENABLED ? "enabled" :
 									"disabled");
 	}
-	DRV_LOG(DEBUG, "%s ring virtq %u doorbell",
-					priv->vdev->device->name, virtq->index);
+	DRV_LOG(DEBUG, "%s ring virtq %u doorbell i:%d",
+					priv->vdev->device->name, virtq->index, i);
 }
 
 static int
@@ -845,6 +859,8 @@ virtio_vdpa_dev_close(int vid)
 		return -ENODEV;
 	}
 
+	priv->configured = false;
+
 	/* Suspend */
 	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
 	if (ret) {
@@ -973,8 +989,6 @@ virtio_vdpa_dev_close(int vid)
 	}
 
 	rte_free(tmp_hw_idx);
-
-	priv->configured = false;
 
 	/* Disable all queues */
 	for (i = 0; i < num_vr; i++) {
