@@ -638,6 +638,46 @@ handle_dev_xstats(const char *cmd __rte_unused,
 	return 0;
 }
 
+static int
+handle_dev_dump(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	char *buf, *end_param;
+	int dev_id, ret;
+	FILE *f;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -EINVAL;
+
+	dev_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		RTE_RDEV_LOG(NOTICE,
+			"Extra parameters passed to rawdev telemetry command, ignoring");
+	if (!rte_rawdev_pmd_is_valid_dev(dev_id))
+		return -EINVAL;
+
+	buf = calloc(sizeof(char), RTE_TEL_MAX_SINGLE_STRING_LEN);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	f = fmemopen(buf, RTE_TEL_MAX_SINGLE_STRING_LEN - 1, "w+");
+	if (f == NULL) {
+		free(buf);
+		return -EINVAL;
+	}
+
+	ret = rte_rawdev_dump(dev_id, f);
+	fclose(f);
+	if (ret == 0) {
+		rte_tel_data_start_dict(d);
+		rte_tel_data_string(d, buf);
+	}
+
+	free(buf);
+	return 0;
+}
+
 RTE_LOG_REGISTER_DEFAULT(librawdev_logtype, INFO);
 
 RTE_INIT(librawdev_init_telemetry)
@@ -646,4 +686,6 @@ RTE_INIT(librawdev_init_telemetry)
 			"Returns list of available rawdev ports. Takes no parameters");
 	rte_telemetry_register_cmd("/rawdev/xstats", handle_dev_xstats,
 			"Returns the xstats for a rawdev port. Parameters: int port_id");
+	rte_telemetry_register_cmd("/rawdev/dump", handle_dev_dump,
+			"Returns dump information for a rawdev port. Parameters: int port_id");
 }
