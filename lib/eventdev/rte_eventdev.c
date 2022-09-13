@@ -1812,6 +1812,47 @@ handle_queue_xstats(const char *cmd __rte_unused,
 	return eventdev_build_telemetry_data(dev_id, mode, port_queue_id, d);
 }
 
+static int
+handle_dev_dump(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	char *buf, *end_param;
+	int dev_id, ret;
+	FILE *f;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	/* Get dev ID from parameter string */
+	dev_id = strtoul(params, &end_param, 10);
+	if (*end_param != '\0')
+		RTE_EDEV_LOG_DEBUG(
+			"Extra parameters passed to eventdev telemetry command, ignoring");
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+
+	buf = calloc(sizeof(char), RTE_TEL_MAX_SINGLE_STRING_LEN);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	f = fmemopen(buf, RTE_TEL_MAX_SINGLE_STRING_LEN - 1, "w+");
+	if (f == NULL) {
+		free(buf);
+		return -EINVAL;
+	}
+
+	ret = rte_event_dev_dump(dev_id, f);
+	fclose(f);
+	if (ret == 0) {
+		rte_tel_data_start_dict(d);
+		rte_tel_data_string(d, buf);
+	}
+
+	free(buf);
+	return ret;
+}
+
 RTE_INIT(eventdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/eventdev/dev_list", handle_dev_list,
@@ -1828,6 +1869,8 @@ RTE_INIT(eventdev_init_telemetry)
 	rte_telemetry_register_cmd("/eventdev/queue_xstats",
 			handle_queue_xstats,
 			"Returns stats for an eventdev queue. Params: DevID,QueueID");
+	rte_telemetry_register_cmd("/eventdev/dev_dump", handle_dev_dump,
+			"Returns dump information for an eventdev. Parameter: DevID");
 	rte_telemetry_register_cmd("/eventdev/queue_links", handle_queue_links,
 			"Returns links for an eventdev port. Params: DevID,QueueID");
 }
