@@ -994,6 +994,45 @@ dmadev_handle_dev_stats(const char *cmd __rte_unused,
 	return 0;
 }
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+static int
+dmadev_handle_dev_dump(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	char *buf, *end_param;
+	int dev_id, ret;
+	FILE *f;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -EINVAL;
+
+	dev_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		RTE_DMA_LOG(WARNING, "Extra parameters passed to dmadev telemetry command, ignoring");
+
+	buf = calloc(sizeof(char), RTE_TEL_MAX_SINGLE_STRING_LEN);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	f = fmemopen(buf, RTE_TEL_MAX_SINGLE_STRING_LEN - 1, "w+");
+	if (f == NULL) {
+		free(buf);
+		return -EINVAL;
+	}
+
+	ret = rte_dma_dump(dev_id, f);
+	fclose(f);
+	if (ret == 0) {
+		rte_tel_data_start_dict(d);
+		rte_tel_data_string(d, buf);
+	}
+
+	free(buf);
+	return ret;
+}
+#endif /* !RTE_EXEC_ENV_WINDOWS */
+
 RTE_INIT(dmadev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/dmadev/list", dmadev_handle_dev_list,
@@ -1002,4 +1041,8 @@ RTE_INIT(dmadev_init_telemetry)
 			"Returns information for a dmadev. Parameters: int dev_id");
 	rte_telemetry_register_cmd("/dmadev/stats", dmadev_handle_dev_stats,
 			"Returns the stats for a dmadev vchannel. Parameters: int dev_id, vchan_id (Optional if only one vchannel)");
+#ifndef RTE_EXEC_ENV_WINDOWS
+	rte_telemetry_register_cmd("/dmadev/dump", dmadev_handle_dev_dump,
+			"Returns dump information for a dmadev. Parameters: int dev_id");
+#endif
 }
