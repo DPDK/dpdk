@@ -208,9 +208,15 @@ flex_rxd_to_fdir_flags_vec(const __m128i fdir_id0_3)
 	return fdir_flags;
 }
 
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+static inline void
+flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4], __m128i descs_bh[4],
+		       struct rte_mbuf **rx_pkts)
+#else
 static inline void
 flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4],
 		       struct rte_mbuf **rx_pkts)
+#endif
 {
 	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
 	__m128i rearm0, rearm1, rearm2, rearm3;
@@ -285,6 +291,39 @@ flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4],
 
 	/* merge the flags */
 	flags = _mm_or_si128(flags, rss_vlan);
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	if (rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
+		const __m128i l2tag2_mask =
+			_mm_set1_epi32(1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S);
+
+		const __m128i vlan_tci0_1 =
+			_mm_unpacklo_epi32(descs_bh[0], descs_bh[1]);
+		const __m128i vlan_tci2_3 =
+			_mm_unpacklo_epi32(descs_bh[2], descs_bh[3]);
+		const __m128i vlan_tci0_3 =
+			_mm_unpacklo_epi64(vlan_tci0_1, vlan_tci2_3);
+
+		__m128i vlan_bits = _mm_and_si128(vlan_tci0_3, l2tag2_mask);
+
+		vlan_bits = _mm_srli_epi32(vlan_bits,
+						IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S);
+
+		const __m128i vlan_flags_shuf =
+			_mm_set_epi8(0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0,
+					RTE_MBUF_F_RX_VLAN |
+					RTE_MBUF_F_RX_VLAN_STRIPPED,
+					0);
+
+		const __m128i vlan_flags = _mm_shuffle_epi8(vlan_flags_shuf, vlan_bits);
+
+		/* merge with vlan_flags */
+		flags = _mm_or_si128(flags, vlan_flags);
+	}
+#endif
 
 	if (rxq->fdir_enabled) {
 		const __m128i fdir_id0_1 =
@@ -748,6 +787,9 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 	     pos += IAVF_VPMD_DESCS_PER_LOOP,
 	     rxdp += IAVF_VPMD_DESCS_PER_LOOP) {
 		__m128i descs[IAVF_VPMD_DESCS_PER_LOOP];
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+		__m128i descs_bh[IAVF_VPMD_DESCS_PER_LOOP];
+#endif
 		__m128i pkt_mb0, pkt_mb1, pkt_mb2, pkt_mb3;
 		__m128i staterr, sterr_tmp1, sterr_tmp2;
 		/* 2 64 bit or 4 32 bit mbuf pointers in one XMM reg. */
@@ -806,8 +848,6 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		/* C.1 4=>2 filter staterr info only */
 		sterr_tmp1 = _mm_unpackhi_epi32(descs[1], descs[0]);
 
-		flex_desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
-
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		pkt_mb3 = _mm_add_epi16(pkt_mb3, crc_adjust);
 		pkt_mb2 = _mm_add_epi16(pkt_mb2, crc_adjust);
@@ -821,36 +861,35 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		 * needs to load 2nd 16B of each desc for RSS hash parsing,
 		 * will cause performance drop to get into this context.
 		 */
-		if (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH) {
+		if (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH ||
+			rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
 			/* load bottom half of every 32B desc */
-			const __m128i raw_desc_bh3 =
-				_mm_load_si128
+			descs_bh[3] = _mm_load_si128
 					((void *)(&rxdp[3].wb.status_error1));
 			rte_compiler_barrier();
-			const __m128i raw_desc_bh2 =
-				_mm_load_si128
+			descs_bh[2] = _mm_load_si128
 					((void *)(&rxdp[2].wb.status_error1));
 			rte_compiler_barrier();
-			const __m128i raw_desc_bh1 =
-				_mm_load_si128
+			descs_bh[1] = _mm_load_si128
 					((void *)(&rxdp[1].wb.status_error1));
 			rte_compiler_barrier();
-			const __m128i raw_desc_bh0 =
-				_mm_load_si128
+			descs_bh[0] = _mm_load_si128
 					((void *)(&rxdp[0].wb.status_error1));
+		}
 
+		if (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH) {
 			/**
 			 * to shift the 32b RSS hash value to the
 			 * highest 32b of each 128b before mask
 			 */
 			__m128i rss_hash3 =
-				_mm_slli_epi64(raw_desc_bh3, 32);
+				_mm_slli_epi64(descs_bh[3], 32);
 			__m128i rss_hash2 =
-				_mm_slli_epi64(raw_desc_bh2, 32);
+				_mm_slli_epi64(descs_bh[2], 32);
 			__m128i rss_hash1 =
-				_mm_slli_epi64(raw_desc_bh1, 32);
+				_mm_slli_epi64(descs_bh[1], 32);
 			__m128i rss_hash0 =
-				_mm_slli_epi64(raw_desc_bh0, 32);
+				_mm_slli_epi64(descs_bh[0], 32);
 
 			__m128i rss_hash_msk =
 				_mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
@@ -869,6 +908,30 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 			pkt_mb1 = _mm_or_si128(pkt_mb1, rss_hash1);
 			pkt_mb0 = _mm_or_si128(pkt_mb0, rss_hash0);
 		} /* if() on RSS hash parsing */
+
+		if (rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
+			/* L2TAG2_2 */
+			__m128i vlan_tci3 = _mm_slli_si128(descs_bh[3], 4);
+			__m128i vlan_tci2 = _mm_slli_si128(descs_bh[2], 4);
+			__m128i vlan_tci1 = _mm_slli_si128(descs_bh[1], 4);
+			__m128i vlan_tci0 = _mm_slli_si128(descs_bh[0], 4);
+
+			const __m128i vlan_tci_msk = _mm_set_epi32(0, 0xFFFF0000, 0, 0);
+
+			vlan_tci3 = _mm_and_si128(vlan_tci3, vlan_tci_msk);
+			vlan_tci2 = _mm_and_si128(vlan_tci2, vlan_tci_msk);
+			vlan_tci1 = _mm_and_si128(vlan_tci1, vlan_tci_msk);
+			vlan_tci0 = _mm_and_si128(vlan_tci0, vlan_tci_msk);
+
+			pkt_mb3 = _mm_or_si128(pkt_mb3, vlan_tci3);
+			pkt_mb2 = _mm_or_si128(pkt_mb2, vlan_tci2);
+			pkt_mb1 = _mm_or_si128(pkt_mb1, vlan_tci1);
+			pkt_mb0 = _mm_or_si128(pkt_mb0, vlan_tci0);
+		}
+
+		flex_desc_to_olflags_v(rxq, descs, descs_bh, &rx_pkts[pos]);
+#else
+		flex_desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
 #endif
 
 		/* C.2 get 4 pkts staterr value  */
