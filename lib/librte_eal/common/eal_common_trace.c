@@ -218,8 +218,10 @@ rte_trace_regexp(const char *regex, bool enable)
 				rc = rte_trace_point_disable(tp->handle);
 			found = 1;
 		}
-		if (rc < 0)
-			return rc;
+		if (rc < 0) {
+			found = 0;
+			break;
+		}
 	}
 	regfree(&r);
 
