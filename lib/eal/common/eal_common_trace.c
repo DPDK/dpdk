@@ -48,12 +48,6 @@ eal_trace_init(void)
 		goto fail;
 	}
 
-	if (!STAILQ_EMPTY(&trace.args))
-		trace.status = true;
-
-	if (!rte_trace_is_enabled())
-		return 0;
-
 	rte_spinlock_init(&trace.lock);
 
 	/* Is duplicate trace name registered */
@@ -72,13 +66,9 @@ eal_trace_init(void)
 	if (trace_metadata_create() < 0)
 		goto fail;
 
-	/* Create trace directory */
-	if (trace_mkdir())
-		goto free_meta;
-
 	/* Save current epoch timestamp for future use */
 	if (trace_epoch_time_save() < 0)
-		goto fail;
+		goto free_meta;
 
 	/* Apply global configurations */
 	STAILQ_FOREACH(arg, &trace.args, next)
@@ -98,8 +88,6 @@ fail:
 void
 eal_trace_fini(void)
 {
-	if (!rte_trace_is_enabled())
-		return;
 	trace_mem_free();
 	trace_metadata_destroy();
 	eal_trace_args_free();
@@ -108,17 +96,17 @@ eal_trace_fini(void)
 bool
 rte_trace_is_enabled(void)
 {
-	return trace.status;
+	return __atomic_load_n(&trace.status, __ATOMIC_ACQUIRE) != 0;
 }
 
 static void
-trace_mode_set(rte_trace_point_t *trace, enum rte_trace_mode mode)
+trace_mode_set(rte_trace_point_t *t, enum rte_trace_mode mode)
 {
 	if (mode == RTE_TRACE_MODE_OVERWRITE)
-		__atomic_and_fetch(trace, ~__RTE_TRACE_FIELD_ENABLE_DISCARD,
+		__atomic_and_fetch(t, ~__RTE_TRACE_FIELD_ENABLE_DISCARD,
 			__ATOMIC_RELEASE);
 	else
-		__atomic_or_fetch(trace, __RTE_TRACE_FIELD_ENABLE_DISCARD,
+		__atomic_or_fetch(t, __RTE_TRACE_FIELD_ENABLE_DISCARD,
 			__ATOMIC_RELEASE);
 }
 
@@ -146,36 +134,42 @@ trace_point_is_invalid(rte_trace_point_t *t)
 }
 
 bool
-rte_trace_point_is_enabled(rte_trace_point_t *trace)
+rte_trace_point_is_enabled(rte_trace_point_t *t)
 {
 	uint64_t val;
 
-	if (trace_point_is_invalid(trace))
+	if (trace_point_is_invalid(t))
 		return false;
 
-	val = __atomic_load_n(trace, __ATOMIC_ACQUIRE);
+	val = __atomic_load_n(t, __ATOMIC_ACQUIRE);
 	return (val & __RTE_TRACE_FIELD_ENABLE_MASK) != 0;
 }
 
 int
-rte_trace_point_enable(rte_trace_point_t *trace)
+rte_trace_point_enable(rte_trace_point_t *t)
 {
-	if (trace_point_is_invalid(trace))
+	uint64_t prev;
+
+	if (trace_point_is_invalid(t))
 		return -ERANGE;
 
-	__atomic_or_fetch(trace, __RTE_TRACE_FIELD_ENABLE_MASK,
-		__ATOMIC_RELEASE);
+	prev = __atomic_fetch_or(t, __RTE_TRACE_FIELD_ENABLE_MASK, __ATOMIC_RELEASE);
+	if ((prev & __RTE_TRACE_FIELD_ENABLE_MASK) == 0)
+		__atomic_add_fetch(&trace.status, 1, __ATOMIC_RELEASE);
 	return 0;
 }
 
 int
-rte_trace_point_disable(rte_trace_point_t *trace)
+rte_trace_point_disable(rte_trace_point_t *t)
 {
-	if (trace_point_is_invalid(trace))
+	uint64_t prev;
+
+	if (trace_point_is_invalid(t))
 		return -ERANGE;
 
-	__atomic_and_fetch(trace, ~__RTE_TRACE_FIELD_ENABLE_MASK,
-		__ATOMIC_RELEASE);
+	prev = __atomic_fetch_and(t, ~__RTE_TRACE_FIELD_ENABLE_MASK, __ATOMIC_RELEASE);
+	if ((prev & __RTE_TRACE_FIELD_ENABLE_MASK) != 0)
+		__atomic_sub_fetch(&trace.status, 1, __ATOMIC_RELEASE);
 	return 0;
 }
 
@@ -416,9 +410,6 @@ trace_mem_free(void)
 {
 	struct trace *trace = trace_obj_get();
 	uint32_t count;
-
-	if (!rte_trace_is_enabled())
-		return;
 
 	rte_spinlock_lock(&trace->lock);
 	for (count = 0; count < trace->nb_trace_mem_list; count++) {
