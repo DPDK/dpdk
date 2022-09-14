@@ -259,10 +259,9 @@ trace_lcore_mem_dump(FILE *f)
 	struct __rte_trace_header *header;
 	uint32_t count;
 
-	if (trace->nb_trace_mem_list == 0)
-		return;
-
 	rte_spinlock_lock(&trace->lock);
+	if (trace->nb_trace_mem_list == 0)
+		goto out;
 	fprintf(f, "nb_trace_mem_list = %d\n", trace->nb_trace_mem_list);
 	fprintf(f, "\nTrace mem info\n--------------\n");
 	for (count = 0; count < trace->nb_trace_mem_list; count++) {
@@ -273,6 +272,7 @@ trace_lcore_mem_dump(FILE *f)
 		header->stream_header.lcore_id,
 		header->stream_header.thread_name);
 	}
+out:
 	rte_spinlock_unlock(&trace->lock);
 }
 
