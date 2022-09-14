@@ -91,6 +91,8 @@ static int ice_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
 static int ice_dev_set_link_up(struct rte_eth_dev *dev);
 static int ice_dev_set_link_down(struct rte_eth_dev *dev);
+static int ice_dev_led_on(struct rte_eth_dev *dev);
+static int ice_dev_led_off(struct rte_eth_dev *dev);
 
 static int ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int ice_vlan_offload_set(struct rte_eth_dev *dev, int mask);
@@ -216,6 +218,8 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.dev_reset                    = ice_dev_reset,
 	.dev_set_link_up              = ice_dev_set_link_up,
 	.dev_set_link_down            = ice_dev_set_link_down,
+	.dev_led_on                   = ice_dev_led_on,
+	.dev_led_off                  = ice_dev_led_off,
 	.rx_queue_start               = ice_rx_queue_start,
 	.rx_queue_stop                = ice_rx_queue_stop,
 	.tx_queue_start               = ice_tx_queue_start,
@@ -4073,6 +4077,24 @@ ice_dev_set_link_down(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	return ice_force_phys_link_state(hw, false);
+}
+
+static int
+ice_dev_led_on(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int status = ice_aq_set_port_id_led(hw->port_info, false, NULL);
+
+	return status == ICE_SUCCESS ? 0 : -ENOTSUP;
+}
+
+static int
+ice_dev_led_off(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int status = ice_aq_set_port_id_led(hw->port_info, true, NULL);
+
+	return status == ICE_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
