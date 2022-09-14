@@ -9,6 +9,8 @@
 #include "test.h"
 #include "test_trace.h"
 
+int app_dpdk_test_tp_count;
+
 static int32_t
 test_trace_point_globbing(void)
 {
@@ -70,7 +72,14 @@ failed:
 static int32_t
 test_trace_point_disable_enable(void)
 {
+	int expected;
 	int rc;
+
+	/* At tp registration, the associated counter increases once. */
+	expected = 1;
+	TEST_ASSERT_EQUAL(app_dpdk_test_tp_count, expected,
+		"Expecting %d, but got %d for app_dpdk_test_tp_count",
+		expected, app_dpdk_test_tp_count);
 
 	rc = rte_trace_point_disable(&__app_dpdk_test_tp);
 	if (rc < 0)
@@ -78,6 +87,12 @@ test_trace_point_disable_enable(void)
 
 	if (rte_trace_point_is_enabled(&__app_dpdk_test_tp))
 		goto failed;
+
+	/* No emission expected */
+	app_dpdk_test_tp("app.dpdk.test.tp");
+	TEST_ASSERT_EQUAL(app_dpdk_test_tp_count, expected,
+		"Expecting %d, but got %d for app_dpdk_test_tp_count",
+		expected, app_dpdk_test_tp_count);
 
 	rc = rte_trace_point_enable(&__app_dpdk_test_tp);
 	if (rc < 0)
@@ -88,6 +103,11 @@ test_trace_point_disable_enable(void)
 
 	/* Emit the trace */
 	app_dpdk_test_tp("app.dpdk.test.tp");
+	expected++;
+	TEST_ASSERT_EQUAL(app_dpdk_test_tp_count, expected,
+		"Expecting %d, but got %d for app_dpdk_test_tp_count",
+		expected, app_dpdk_test_tp_count);
+
 	return TEST_SUCCESS;
 
 failed:
