@@ -162,13 +162,6 @@ Deprecation Notices
   Event will be one of the configuration fields,
   together with additional vector parameters.
 
-* eventdev: The structure ``rte_event_timer_adapter_stats`` will be
-  extended by adding a new field ``evtim_drop_count``.
-  This counter will represent the number of times an event_timer expiry event
-  is dropped by the timer adapter.
-  This field will be used to add periodic mode support
-  to the software timer adapter in DPDK 22.11.
-
 * eventdev: The function pointer declaration ``eventdev_stop_flush_t``
   will be renamed to ``rte_eventdev_stop_flush_t`` in DPDK 22.11.
 

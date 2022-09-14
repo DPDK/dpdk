@@ -234,6 +234,9 @@ ABI Changes
 
 * ethdev: enum ``RTE_FLOW_ACTION`` was affected by deprecation procedure.
 
+* eventdev: Added ``evtim_drop_count`` field
+  to ``rte_event_timer_adapter_stats`` structure.
+
 
 Known Issues
 ------------

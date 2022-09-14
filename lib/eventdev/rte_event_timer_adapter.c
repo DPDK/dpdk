@@ -55,6 +55,14 @@ static const struct event_timer_adapter_ops swtim_ops;
 #define EVTIM_SVC_LOG_DBG(...) (void)0
 #endif
 
+static inline enum rte_timer_type
+get_timer_type(const struct rte_event_timer_adapter *adapter)
+{
+	return (adapter->data->conf.flags &
+			RTE_EVENT_TIMER_ADAPTER_F_PERIODIC) ?
+			PERIODICAL : SINGLE;
+}
+
 static int
 default_port_conf_cb(uint16_t id, uint8_t event_dev_id, uint8_t *event_port_id,
 		     void *conf_arg)
@@ -197,13 +205,14 @@ rte_event_timer_adapter_create_ext(
 	adapter->data->conf = *conf;  /* copy conf structure */
 
 	/* Query eventdev PMD for timer adapter capabilities and ops */
-	ret = dev->dev_ops->timer_adapter_caps_get(dev,
-						   adapter->data->conf.flags,
-						   &adapter->data->caps,
-						   &adapter->ops);
-	if (ret < 0) {
-		rte_errno = -ret;
-		goto free_memzone;
+	if (dev->dev_ops->timer_adapter_caps_get) {
+		ret = dev->dev_ops->timer_adapter_caps_get(dev,
+				adapter->data->conf.flags,
+				&adapter->data->caps, &adapter->ops);
+		if (ret < 0) {
+			rte_errno = -ret;
+			goto free_memzone;
+		}
 	}
 
 	if (!(adapter->data->caps &
@@ -350,13 +359,14 @@ rte_event_timer_adapter_lookup(uint16_t adapter_id)
 	dev = &rte_eventdevs[adapter->data->event_dev_id];
 
 	/* Query eventdev PMD for timer adapter capabilities and ops */
-	ret = dev->dev_ops->timer_adapter_caps_get(dev,
-						   adapter->data->conf.flags,
-						   &adapter->data->caps,
-						   &adapter->ops);
-	if (ret < 0) {
-		rte_errno = EINVAL;
-		return NULL;
+	if (dev->dev_ops->timer_adapter_caps_get) {
+		ret = dev->dev_ops->timer_adapter_caps_get(dev,
+				adapter->data->conf.flags,
+				&adapter->data->caps, &adapter->ops);
+		if (ret < 0) {
+			rte_errno = EINVAL;
+			return NULL;
+		}
 	}
 
 	/* If eventdev PMD did not provide ops, use default software
@@ -614,35 +624,44 @@ swtim_callback(struct rte_timer *tim)
 	uint64_t opaque;
 	int ret;
 	int n_lcores;
+	enum rte_timer_type type;
 
 	opaque = evtim->impl_opaque[1];
 	adapter = (struct rte_event_timer_adapter *)(uintptr_t)opaque;
 	sw = swtim_pmd_priv(adapter);
+	type = get_timer_type(adapter);
+
+	if (unlikely(sw->in_use[lcore].v == 0)) {
+		sw->in_use[lcore].v = 1;
+		n_lcores = __atomic_fetch_add(&sw->n_poll_lcores, 1,
+					     __ATOMIC_RELAXED);
+		__atomic_store_n(&sw->poll_lcores[n_lcores], lcore,
+				__ATOMIC_RELAXED);
+	}
 
 	ret = event_buffer_add(&sw->buffer, &evtim->ev);
 	if (ret < 0) {
-		/* If event buffer is full, put timer back in list with
-		 * immediate expiry value, so that we process it again on the
-		 * next iteration.
-		 */
-		ret = rte_timer_alt_reset(sw->timer_data_id, tim, 0, SINGLE,
-					  lcore, NULL, evtim);
-		if (ret < 0) {
-			EVTIM_LOG_DBG("event buffer full, failed to reset "
-				      "timer with immediate expiry value");
+		if (type == SINGLE) {
+			/* If event buffer is full, put timer back in list with
+			 * immediate expiry value, so that we process it again
+			 * on the next iteration.
+			 */
+			ret = rte_timer_alt_reset(sw->timer_data_id, tim, 0,
+						SINGLE,	lcore, NULL, evtim);
+			if (ret < 0) {
+				EVTIM_LOG_DBG("event buffer full, failed to "
+						"reset timer with immediate "
+						"expiry value");
+			} else {
+				sw->stats.evtim_retry_count++;
+				EVTIM_LOG_DBG("event buffer full, resetting "
+						"rte_timer with immediate "
+						"expiry value");
+			}
 		} else {
-			sw->stats.evtim_retry_count++;
-			EVTIM_LOG_DBG("event buffer full, resetting rte_timer "
-				      "with immediate expiry value");
+			sw->stats.evtim_drop_count++;
 		}
 
-		if (unlikely(sw->in_use[lcore].v == 0)) {
-			sw->in_use[lcore].v = 1;
-			n_lcores = __atomic_fetch_add(&sw->n_poll_lcores, 1,
-						     __ATOMIC_RELAXED);
-			__atomic_store_n(&sw->poll_lcores[n_lcores], lcore,
-					__ATOMIC_RELAXED);
-		}
 	} else {
 		EVTIM_BUF_LOG_DBG("buffered an event timer expiry event");
 
@@ -656,10 +675,15 @@ swtim_callback(struct rte_timer *tim)
 			sw->n_expired_timers = 0;
 		}
 
-		sw->expired_timers[sw->n_expired_timers++] = tim;
+		/* Don't free rte_timer for a periodic event timer until
+		 * it is cancelled
+		 */
+		if (type == SINGLE)
+			sw->expired_timers[sw->n_expired_timers++] = tim;
 		sw->stats.evtim_exp_count++;
 
-		__atomic_store_n(&evtim->state, RTE_EVENT_TIMER_NOT_ARMED,
+		if (type == SINGLE)
+			__atomic_store_n(&evtim->state, RTE_EVENT_TIMER_NOT_ARMED,
 				__ATOMIC_RELEASE);
 	}
 
@@ -949,6 +973,12 @@ swtim_uninit(struct rte_event_timer_adapter *adapter)
 			   swtim_free_tim,
 			   sw);
 
+	ret = rte_timer_data_dealloc(sw->timer_data_id);
+	if (ret < 0) {
+		EVTIM_LOG_ERR("failed to deallocate timer data instance");
+		return ret;
+	}
+
 	ret = rte_service_component_unregister(sw->service_id);
 	if (ret < 0) {
 		EVTIM_LOG_ERR("failed to unregister service component");
@@ -1055,6 +1085,7 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 	/* Timer list for this lcore is not in use. */
 	uint16_t exp_state = 0;
 	enum rte_event_timer_state n_state;
+	enum rte_timer_type type = SINGLE;
 
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
 	/* Check that the service is running. */
@@ -1093,6 +1124,9 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 		rte_errno = ENOSPC;
 		return 0;
 	}
+
+	/* update timer type for periodic adapter */
+	type = get_timer_type(adapter);
 
 	for (i = 0; i < nb_evtims; i++) {
 		n_state = __atomic_load_n(&evtims[i]->state, __ATOMIC_ACQUIRE);
@@ -1137,7 +1171,7 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 
 		cycles = get_timeout_cycles(evtims[i], adapter);
 		ret = rte_timer_alt_reset(sw->timer_data_id, tim, cycles,
-					  SINGLE, lcore_id, NULL, evtims[i]);
+					  type, lcore_id, NULL, evtims[i]);
 		if (ret < 0) {
 			/* tim was in RUNNING or CONFIG state */
 			__atomic_store_n(&evtims[i]->state,

@@ -193,6 +193,8 @@ struct rte_event_timer_adapter_stats {
 	/**< Event timer retry count */
 	uint64_t adapter_tick_count;
 	/**< Tick count for the adapter, at its resolution */
+	uint64_t evtim_drop_count;
+	/**< event timer expiries dropped */
 };
 
 struct rte_event_timer_adapter;

@@ -81,6 +81,9 @@ extern "C" {
  * the ethdev to eventdev use a SW service function
  */
 
+#define RTE_EVENT_TIMER_ADAPTER_SW_CAP \
+		RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC
+
 #define RTE_EVENTDEV_DETACHED  (0)
 #define RTE_EVENTDEV_ATTACHED  (1)
 

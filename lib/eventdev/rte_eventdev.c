@@ -140,7 +140,11 @@ rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps)
 
 	if (caps == NULL)
 		return -EINVAL;
-	*caps = 0;
+
+	if (dev->dev_ops->timer_adapter_caps_get == NULL)
+		*caps = RTE_EVENT_TIMER_ADAPTER_SW_CAP;
+	else
+		*caps = 0;
 
 	return dev->dev_ops->timer_adapter_caps_get ?
 				(*dev->dev_ops->timer_adapter_caps_get)(dev,
