@@ -55,7 +55,8 @@ The full device is already shared with the kernel driver.
 The DPDK application can setup some flow steering rules,
 and let the rest go to the kernel stack.
 In order to define the filters strictly with flow rules,
-the :ref:`flow_isolated_mode` can be configured.
+the :ref:`flow_isolated_mode` must be configured,
+so there is no default rule routing traffic to userspace.
 
 There is no specific instructions to follow.
 The recommended reading is the :doc:`../prog_guide/rte_flow` guide.

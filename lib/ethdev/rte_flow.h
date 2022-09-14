@@ -4121,6 +4121,10 @@ rte_flow_query(uint16_t port_id,
  *
  * Isolated mode guarantees that all ingress traffic comes from defined flow
  * rules only (current and future).
+ * When enabled with a bifurcated driver,
+ * non-matched packets are routed to the kernel driver interface.
+ * When disabled (the default),
+ * there may be some default rules routing traffic to the DPDK port.
  *
  * Besides making ingress more deterministic, it allows PMDs to safely reuse
  * resources otherwise assigned to handle the remaining traffic, such as
