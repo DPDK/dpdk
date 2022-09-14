@@ -2056,7 +2056,6 @@ rxa_add_queue(struct event_eth_rx_adapter *rx_adapter,
 	qi_ev->event = ev->event;
 	qi_ev->op = RTE_EVENT_OP_NEW;
 	qi_ev->event_type = RTE_EVENT_TYPE_ETH_RX_ADAPTER;
-	qi_ev->sub_event_type = 0;
 
 	if (conf->rx_queue_flags &
 			RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID) {
