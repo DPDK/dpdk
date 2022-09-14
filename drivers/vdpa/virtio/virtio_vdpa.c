@@ -177,14 +177,16 @@ virtio_vdpa_vqs_max_get(struct rte_vdpa_device *vdev, uint32_t *queue_num)
 {
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
+	int unit;
 
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
 
-	*queue_num = priv->hw_nr_virtqs;
-	DRV_LOG(DEBUG, "Vid %d queue num is %d", priv->vid, *queue_num);
+	unit = priv->dev_ops->vdpa_queue_num_unit_get();
+	*queue_num = priv->hw_nr_virtqs / unit;
+	DRV_LOG(DEBUG, "Vid %d queue num is %d unit %d", priv->vid, *queue_num, unit);
 	return 0;
 }
 

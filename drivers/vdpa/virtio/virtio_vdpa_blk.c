@@ -24,6 +24,8 @@ extern int virtio_vdpa_logtype;
 	rte_log(RTE_LOG_ ## level, virtio_vdpa_logtype, \
 		"VIRTIO VDPA BLK %s(): " fmt "\n", __func__, ##args)
 
+#define VIRTIO_VDPA_BLK_QUEUE_NUM_UNIT 1
+
 static void
 virtio_vdpa_blk_vhost_feature_get(uint64_t *features)
 {
@@ -155,10 +157,17 @@ virtio_vdpa_blk_reg_dev_interrupt(struct virtio_vdpa_priv *priv)
 	return 0;
 }
 
+static int
+virtio_vdpa_blk_queue_num_unit_get(void)
+{
+	return VIRTIO_VDPA_BLK_QUEUE_NUM_UNIT;
+}
+
 struct virtio_vdpa_device_callback virtio_vdpa_blk_callback = {
 	.vhost_feature_get = virtio_vdpa_blk_vhost_feature_get,
 	.dirty_desc_get = virtio_vdpa_blk_dirty_desc_get,
 	.reg_dev_intr = virtio_vdpa_blk_reg_dev_interrupt,
 	.unreg_dev_intr = virtio_vdpa_blk_unreg_dev_interrupt,
+	.vdpa_queue_num_unit_get = virtio_vdpa_blk_queue_num_unit_get,
 };
 

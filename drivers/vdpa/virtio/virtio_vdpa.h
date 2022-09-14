@@ -62,6 +62,7 @@ struct virtio_vdpa_device_callback {
 	int (*dirty_desc_get)(int vid, int qix, uint64_t *desc_addr, uint32_t *write_len);
 	int (*reg_dev_intr)(struct virtio_vdpa_priv* priv);
 	int (*unreg_dev_intr)(struct virtio_vdpa_priv* priv);
+	int (*vdpa_queue_num_unit_get)(void);
 };
 
 int virtio_vdpa_dev_pf_filter_dump(struct vdpa_vf_params *vf_info, int max_vf_num, struct virtio_vdpa_pf_priv *pf_priv);

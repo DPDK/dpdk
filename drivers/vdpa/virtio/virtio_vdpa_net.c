@@ -21,6 +21,8 @@ extern int virtio_vdpa_logtype;
 	rte_log(RTE_LOG_ ## level, virtio_vdpa_logtype, \
 		"VIRTIO VDPA NET %s(): " fmt "\n", __func__, ##args)
 
+#define VIRTIO_VDPA_NET_QUEUE_NUM_UNIT 2
+
 static void
 virtio_vdpa_net_vhost_feature_get(uint64_t *features)
 {
@@ -46,11 +48,17 @@ virtio_vdpa_net_dirty_desc_get(int vid, int qix, uint64_t *desc_addr, uint32_t *
 
 	return 0;
 }
+static int
+virtio_vdpa_net_queue_num_unit_get(void)
+{
+	return VIRTIO_VDPA_NET_QUEUE_NUM_UNIT;
+}
 
 struct virtio_vdpa_device_callback virtio_vdpa_net_callback = {
 	.vhost_feature_get = virtio_vdpa_net_vhost_feature_get,
 	.dirty_desc_get = virtio_vdpa_net_dirty_desc_get,
 	.reg_dev_intr = NULL,
 	.unreg_dev_intr = NULL,
+	.vdpa_queue_num_unit_get = virtio_vdpa_net_queue_num_unit_get,
 };
 
