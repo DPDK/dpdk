@@ -314,13 +314,17 @@ trace_dir_default_path_get(char *dir_path)
 	return 0;
 }
 
-int
+static int
 trace_mkdir(void)
 {
 	struct trace *trace = trace_obj_get();
 	char session[TRACE_DIR_STR_LEN];
+	static bool already_done;
 	char *dir_path;
 	int rc;
+
+	if (already_done)
+		return 0;
 
 	if (!trace->dir_offset) {
 		dir_path = calloc(1, sizeof(trace->dir));
@@ -365,6 +369,7 @@ trace_mkdir(void)
 	}
 
 	RTE_LOG(INFO, EAL, "Trace dir: %s\n", trace->dir);
+	already_done = true;
 	return 0;
 }
 
@@ -432,6 +437,10 @@ rte_trace_save(void)
 	int rc = 0;
 
 	if (trace->nb_trace_mem_list == 0)
+		return rc;
+
+	rc = trace_mkdir();
+	if (rc < 0)
 		return rc;
 
 	rc = trace_meta_save(trace);
