@@ -580,7 +580,7 @@ rte_timer_reset_sync(struct rte_timer *tim, uint64_t ticks,
 }
 
 static int
-__rte_timer_stop(struct rte_timer *tim, int local_is_locked,
+__rte_timer_stop(struct rte_timer *tim,
 		 struct rte_timer_data *timer_data)
 {
 	union rte_timer_status prev_status, status;
@@ -602,7 +602,7 @@ __rte_timer_stop(struct rte_timer *tim, int local_is_locked,
 
 	/* remove it from list */
 	if (prev_status.state == RTE_TIMER_PENDING) {
-		timer_del(tim, prev_status, local_is_locked, priv_timer);
+		timer_del(tim, prev_status, 0, priv_timer);
 		__TIMER_STAT_ADD(priv_timer, pending, -1);
 	}
 
@@ -631,7 +631,7 @@ rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim)
 
 	TIMER_DATA_VALID_GET_OR_ERR_RET(timer_data_id, timer_data, -EINVAL);
 
-	return __rte_timer_stop(tim, 0, timer_data);
+	return __rte_timer_stop(tim, timer_data);
 }
 
 /* loop until rte_timer_stop() succeed */
@@ -987,21 +987,16 @@ rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
 		walk_lcore = walk_lcores[i];
 		priv_timer = &timer_data->priv_timer[walk_lcore];
 
-		rte_spinlock_lock(&priv_timer->list_lock);
-
 		for (tim = priv_timer->pending_head.sl_next[0];
 		     tim != NULL;
 		     tim = next_tim) {
 			next_tim = tim->sl_next[0];
 
-			/* Call timer_stop with lock held */
-			__rte_timer_stop(tim, 1, timer_data);
+			__rte_timer_stop(tim, timer_data);
 
 			if (f)
 				f(tim, f_arg);
 		}
-
-		rte_spinlock_unlock(&priv_timer->list_lock);
 	}
 
 	return 0;
