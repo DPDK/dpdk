@@ -126,9 +126,6 @@ test_trace_mode(void)
 
 	current = rte_trace_mode_get();
 
-	if (!rte_trace_is_enabled())
-		return TEST_SKIPPED;
-
 	rte_trace_mode_set(RTE_TRACE_MODE_DISCARD);
 	if (rte_trace_mode_get() != RTE_TRACE_MODE_DISCARD)
 		goto failed;
