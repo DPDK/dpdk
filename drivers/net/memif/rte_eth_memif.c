@@ -684,62 +684,112 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		n_free = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE) - slot;
 	}
 
-	while (n_tx_pkts < nb_pkts && n_free) {
-		mbuf_head = *bufs++;
-		nb_segs = mbuf_head->nb_segs;
-		mbuf = mbuf_head;
+	uint8_t i;
+	struct rte_mbuf **buf_tmp = bufs;
+	mbuf_head = *buf_tmp++;
+	struct rte_mempool *mp = mbuf_head->pool;
 
-		saved_slot = slot;
-		d0 = &ring->desc[slot & mask];
-		dst_off = 0;
-		dst_len = (type == MEMIF_RING_C2S) ?
-			pmd->run.pkt_buffer_size : d0->length;
+	for (i = 1; i < nb_pkts; i++) {
+		mbuf_head = *buf_tmp++;
+		if (mbuf_head->pool != mp)
+			break;
+	}
 
-next_in_chain:
-		src_off = 0;
-		src_len = rte_pktmbuf_data_len(mbuf);
+	uint16_t mbuf_size = rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
+	if (i == nb_pkts && pmd->cfg.pkt_buffer_size >= mbuf_size) {
+		buf_tmp = bufs;
+		while (n_tx_pkts < nb_pkts && n_free) {
+			mbuf_head = *bufs++;
+			nb_segs = mbuf_head->nb_segs;
+			mbuf = mbuf_head;
 
-		while (src_len) {
-			if (dst_len == 0) {
+			saved_slot = slot;
+
+next_in_chain1:
+			d0 = &ring->desc[slot & mask];
+			cp_len = rte_pktmbuf_data_len(mbuf);
+
+			rte_memcpy((uint8_t *)memif_get_buffer(proc_private, d0),
+				rte_pktmbuf_mtod(mbuf, void *), cp_len);
+
+			d0->length = cp_len;
+			mq->n_bytes += cp_len;
+			slot++;
+			n_free--;
+
+			if (--nb_segs > 0) {
 				if (n_free) {
-					slot++;
-					n_free--;
 					d0->flags |= MEMIF_DESC_FLAG_NEXT;
-					d0 = &ring->desc[slot & mask];
-					dst_off = 0;
-					dst_len = (type == MEMIF_RING_C2S) ?
-					    pmd->run.pkt_buffer_size : d0->length;
-					d0->flags = 0;
+					mbuf = mbuf->next;
+					goto next_in_chain1;
 				} else {
 					slot = saved_slot;
-					goto no_free_slots;
+					goto free_mbufs;
 				}
 			}
-			cp_len = RTE_MIN(dst_len, src_len);
 
-			rte_memcpy((uint8_t *)memif_get_buffer(proc_private,
-							       d0) + dst_off,
-				rte_pktmbuf_mtod_offset(mbuf, void *, src_off),
-				cp_len);
-
-			mq->n_bytes += cp_len;
-			src_off += cp_len;
-			dst_off += cp_len;
-			src_len -= cp_len;
-			dst_len -= cp_len;
-
-			d0->length = dst_off;
+			n_tx_pkts++;
 		}
+free_mbufs:
+		rte_pktmbuf_free_bulk(buf_tmp, n_tx_pkts);
+	} else {
+		while (n_tx_pkts < nb_pkts && n_free) {
+			mbuf_head = *bufs++;
+			nb_segs = mbuf_head->nb_segs;
+			mbuf = mbuf_head;
 
-		if (--nb_segs > 0) {
-			mbuf = mbuf->next;
-			goto next_in_chain;
+			saved_slot = slot;
+			d0 = &ring->desc[slot & mask];
+			dst_off = 0;
+			dst_len = (type == MEMIF_RING_C2S) ?
+				pmd->run.pkt_buffer_size : d0->length;
+
+next_in_chain2:
+			src_off = 0;
+			src_len = rte_pktmbuf_data_len(mbuf);
+
+			while (src_len) {
+				if (dst_len == 0) {
+					if (n_free) {
+						slot++;
+						n_free--;
+						d0->flags |= MEMIF_DESC_FLAG_NEXT;
+						d0 = &ring->desc[slot & mask];
+						dst_off = 0;
+						dst_len = (type == MEMIF_RING_C2S) ?
+						    pmd->run.pkt_buffer_size : d0->length;
+						d0->flags = 0;
+					} else {
+						slot = saved_slot;
+						goto no_free_slots;
+					}
+				}
+				cp_len = RTE_MIN(dst_len, src_len);
+
+				rte_memcpy((uint8_t *)memif_get_buffer(proc_private,
+								       d0) + dst_off,
+					rte_pktmbuf_mtod_offset(mbuf, void *, src_off),
+					cp_len);
+
+				mq->n_bytes += cp_len;
+				src_off += cp_len;
+				dst_off += cp_len;
+				src_len -= cp_len;
+				dst_len -= cp_len;
+
+				d0->length = dst_off;
+			}
+
+			if (--nb_segs > 0) {
+				mbuf = mbuf->next;
+				goto next_in_chain2;
+			}
+
+			n_tx_pkts++;
+			slot++;
+			n_free--;
+			rte_pktmbuf_free(mbuf_head);
 		}
-
-		n_tx_pkts++;
-		slot++;
-		n_free--;
-		rte_pktmbuf_free(mbuf_head);
 	}
 
 no_free_slots:
