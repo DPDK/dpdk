@@ -25,6 +25,8 @@
 #define ETH_MEMIF_DISC_STRING_SIZE		96
 #define ETH_MEMIF_SECRET_SIZE			24
 
+#define MAX_PKT_BURST				32
+
 extern int memif_logtype;
 
 #define MIF_LOG(level, fmt, args...) \
