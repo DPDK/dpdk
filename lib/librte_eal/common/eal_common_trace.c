@@ -513,6 +513,7 @@ __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 	/* Form the trace handle */
 	*handle = sz;
 	*handle |= trace.nb_trace_points << __RTE_TRACE_FIELD_ID_SHIFT;
+	trace_mode_set(handle, trace.mode);
 
 	trace.nb_trace_points++;
 	tp->handle = handle;
