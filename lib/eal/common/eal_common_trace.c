@@ -127,9 +127,6 @@ rte_trace_mode_set(enum rte_trace_mode mode)
 {
 	struct trace_point *tp;
 
-	if (!rte_trace_is_enabled())
-		return;
-
 	STAILQ_FOREACH(tp, &tp_list, next)
 		trace_mode_set(tp->handle, mode);
 
