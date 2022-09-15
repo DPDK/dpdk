@@ -3031,7 +3031,7 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	/* Return if port is active */
 	if (eth_dev->data->dev_started) {
 		PMD_DRV_LOG(ERR, "Stop port before changing MTU\n");
-		return -EPERM;
+		return -EBUSY;
 	}
 
 	/* Exit if receive queues are not configured yet */
