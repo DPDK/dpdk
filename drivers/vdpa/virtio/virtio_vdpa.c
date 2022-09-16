@@ -964,7 +964,6 @@ virtio_vdpa_dev_close(int vid)
 		return ret;
 	}
 
-	virtio_pci_dev_state_dump(priv->vpdev ,priv->state_mz_remote->addr, res.pending_bytes);
 	num_vr = rte_vhost_get_vring_num(vid);
 	tmp_hw_idx = rte_zmalloc(NULL, num_vr * sizeof(struct virtio_dev_run_state_info), 0);
 
@@ -1086,11 +1085,10 @@ virtio_vdpa_dev_config(int vid)
 													VIRTIO_CONFIG_STATUS_FEATURES_OK |
 													VIRTIO_CONFIG_STATUS_DRIVER_OK);
 
-	virtio_pci_dev_state_dump(priv->vpdev , priv->state_mz->addr, priv->state_size);
-
 	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
+		virtio_pci_dev_state_dump(priv->vpdev , priv->state_mz->addr, priv->state_size);
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		return -rte_errno;
 	}
@@ -1638,8 +1636,6 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;
 	}
-
-	virtio_pci_dev_state_dump(priv->vpdev, priv->state_mz->addr, state_len);
 
 	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
 	if (ret) {
