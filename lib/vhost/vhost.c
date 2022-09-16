@@ -755,7 +755,7 @@ vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
 }
 
 void
-vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags)
+vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags, bool support_iommu)
 {
 	struct virtio_net *dev = get_device(vid);
 
@@ -770,6 +770,10 @@ vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags)
 		dev->flags |= VIRTIO_DEV_LEGACY_OL_FLAGS;
 	else
 		dev->flags &= ~VIRTIO_DEV_LEGACY_OL_FLAGS;
+	if (support_iommu)
+		dev->flags |= VIRTIO_DEV_SUPPORT_IOMMU;
+	else
+		dev->flags &= ~VIRTIO_DEV_SUPPORT_IOMMU;
 }
 
 void

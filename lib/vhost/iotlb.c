@@ -318,23 +318,25 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 	TAILQ_INIT(&vq->iotlb_list);
 	TAILQ_INIT(&vq->iotlb_pending_list);
 
-	snprintf(pool_name, sizeof(pool_name), "iotlb_%u_%d_%d",
-			getpid(), dev->vid, vq_index);
-	VHOST_LOG_CONFIG(DEBUG, "(%s) IOTLB cache name: %s\n", dev->ifname, pool_name);
+	if (dev->flags & VIRTIO_DEV_SUPPORT_IOMMU) {
+		snprintf(pool_name, sizeof(pool_name), "iotlb_%u_%d_%d",
+				getpid(), dev->vid, vq_index);
+		VHOST_LOG_CONFIG(DEBUG, "(%s) IOTLB cache name: %s\n", dev->ifname, pool_name);
 
-	/* If already created, free it and recreate */
-	vq->iotlb_pool = rte_mempool_lookup(pool_name);
-	rte_mempool_free(vq->iotlb_pool);
+		/* If already created, free it and recreate */
+		vq->iotlb_pool = rte_mempool_lookup(pool_name);
+		rte_mempool_free(vq->iotlb_pool);
 
-	vq->iotlb_pool = rte_mempool_create(pool_name,
-			IOTLB_CACHE_SIZE, sizeof(struct vhost_iotlb_entry), 0,
-			0, 0, NULL, NULL, NULL, socket,
-			RTE_MEMPOOL_F_NO_CACHE_ALIGN |
-			RTE_MEMPOOL_F_SP_PUT);
-	if (!vq->iotlb_pool) {
-		VHOST_LOG_CONFIG(ERR, "(%s) Failed to create IOTLB cache pool %s\n",
-				dev->ifname, pool_name);
-		return -1;
+		vq->iotlb_pool = rte_mempool_create(pool_name,
+				IOTLB_CACHE_SIZE, sizeof(struct vhost_iotlb_entry), 0,
+				0, 0, NULL, NULL, NULL, socket,
+				RTE_MEMPOOL_F_NO_CACHE_ALIGN |
+				RTE_MEMPOOL_F_SP_PUT);
+		if (!vq->iotlb_pool) {
+			VHOST_LOG_CONFIG(ERR, "(%s) Failed to create IOTLB cache pool %s\n",
+					dev->ifname, pool_name);
+			return -1;
+		}
 	}
 
 	vq->iotlb_cache_nr = 0;
