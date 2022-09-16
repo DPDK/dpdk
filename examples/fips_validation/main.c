@@ -660,6 +660,21 @@ prepare_auth_op(void)
 
 	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 
+	if (info.interim_info.gcm_data.gen_iv == 1) {
+		uint32_t i;
+
+		if (!vec.iv.val) {
+			vec.iv.val = rte_malloc(0, vec.iv.len, 0);
+			if (!vec.iv.val)
+				return -ENOMEM;
+		}
+
+		for (i = 0; i < vec.iv.len; i++) {
+			int random = rand();
+			vec.iv.val[i] = (uint8_t)random;
+		}
+	}
+
 	if (vec.iv.len) {
 		uint8_t *iv = rte_crypto_op_ctod_offset(env.op, uint8_t *,
 				IV_OFF);
@@ -1824,6 +1839,11 @@ init_test_ops(void)
 		else
 			test_ops.test = fips_generic_test;
 		break;
+	case FIPS_TEST_ALGO_AES_GMAC:
+		test_ops.prepare_op = prepare_auth_op;
+		test_ops.prepare_xform = prepare_gmac_xform;
+		test_ops.test = fips_generic_test;
+		break;
 	case FIPS_TEST_ALGO_AES_GCM:
 		test_ops.prepare_op = prepare_aead_op;
 		test_ops.prepare_xform = prepare_gcm_xform;
@@ -2001,6 +2021,7 @@ fips_test_one_test_group(void)
 	json_object_set_new(json_info.json_write_group, "tests", write_tests);
 
 	switch (info.algo) {
+	case FIPS_TEST_ALGO_AES_GMAC:
 	case FIPS_TEST_ALGO_AES_GCM:
 		ret = parse_test_gcm_json_init();
 		break;

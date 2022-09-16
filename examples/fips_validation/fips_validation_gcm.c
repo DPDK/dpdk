@@ -292,13 +292,14 @@ parse_test_gcm_json_writeback(struct fips_val *val)
 
 	if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
 		json_t *ct;
+		if (!info.interim_info.gcm_data.is_gmac) {
+			tmp_val.val = val->val;
+			tmp_val.len = vec.pt.len;
 
-		tmp_val.val = val->val;
-		tmp_val.len = vec.pt.len;
-
-		writeback_hex_str("", info.one_line_text, &tmp_val);
-		ct = json_string(info.one_line_text);
-		json_object_set_new(json_info.json_write_case, CT_JSON_STR, ct);
+			writeback_hex_str("", info.one_line_text, &tmp_val);
+			ct = json_string(info.one_line_text);
+			json_object_set_new(json_info.json_write_case, CT_JSON_STR, ct);
+		}
 
 		if (info.interim_info.gcm_data.gen_iv) {
 			json_t *iv;
