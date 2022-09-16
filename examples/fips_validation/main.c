@@ -1701,13 +1701,14 @@ fips_mct_sha_test(void)
 	/* val[0] is op result and other value is for parse_writeback callback */
 	struct fips_val val[2] = {{NULL, 0},};
 	struct fips_val  md[SHA_MD_BLOCK], msg;
-	char temp[MAX_DIGEST_SIZE*2];
 	int ret;
 	uint32_t i, j;
 
 	msg.len = SHA_MD_BLOCK * vec.cipher_auth.digest.len;
 	msg.val = calloc(1, msg.len);
-	memcpy(vec.cipher_auth.digest.val, vec.pt.val, vec.cipher_auth.digest.len);
+	if (vec.pt.val)
+		memcpy(vec.cipher_auth.digest.val, vec.pt.val, vec.cipher_auth.digest.len);
+
 	for (i = 0; i < SHA_MD_BLOCK; i++)
 		md[i].val = rte_malloc(NULL, (MAX_DIGEST_SIZE*2), 0);
 
@@ -1774,14 +1775,15 @@ fips_mct_sha_test(void)
 		memcpy(vec.cipher_auth.digest.val, md[2].val, md[2].len);
 		vec.cipher_auth.digest.len = md[2].len;
 
-		if (info.file_type != FIPS_TYPE_JSON) {
+		if (info.file_type != FIPS_TYPE_JSON)
 			fprintf(info.fp_wr, "COUNT = %u\n", j);
-			writeback_hex_str("", temp, &vec.cipher_auth.digest);
-			fprintf(info.fp_wr, "MD = %s\n\n", temp);
-		}
+
 		val[1].val = msg.val;
 		val[1].len = msg.len;
 		info.parse_writeback(val);
+
+		if (info.file_type != FIPS_TYPE_JSON)
+			fprintf(info.fp_wr, "\n");
 	}
 
 	for (i = 0; i < (SHA_MD_BLOCK); i++)
