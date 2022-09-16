@@ -13,6 +13,7 @@
 #include <rte_random.h>
 #include <rte_memcpy.h>
 #include <rte_thash.h>
+#include <math.h>
 
 #ifdef RTE_EXEC_ENV_WINDOWS
 static int
@@ -26,7 +27,7 @@ test_member_perf(void)
 
 #include <rte_member.h>
 
-#define NUM_KEYSIZES 10
+#define NUM_KEYSIZES RTE_DIM(hashtest_key_lens)
 #define NUM_SHUFFLES 10
 #define MAX_KEYSIZE 64
 #define MAX_ENTRIES (1 << 19)
@@ -36,12 +37,23 @@ test_member_perf(void)
 #define BURST_SIZE 64
 #define VBF_FALSE_RATE 0.03
 
+/* for the heavy hitter detection */
+#define SKETCH_LARGEST_KEY_SIZE (1<<15)
+#define SKETCH_PKT_SIZE 16
+#define TOP_K 100
+#define SKETCH_ERROR_RATE 0.05
+#define SKETCH_SAMPLE_RATE 0.001
+#define NUM_ADDS (KEYS_TO_ADD * 20)
+
 static unsigned int test_socket_id;
 
 enum sstype {
 	HT = 0,
 	CACHE,
 	VBF,
+	SKETCH,
+	SKETCH_BOUNDED,
+	SKETCH_BYTE,
 	NUM_TYPE
 };
 
@@ -88,6 +100,7 @@ static member_set_t data[NUM_TYPE][/* Array to store the data */KEYS_TO_ADD];
 
 /* Array to store all input keys */
 static uint8_t keys[KEYS_TO_ADD][MAX_KEYSIZE];
+static uint8_t hh_keys[KEYS_TO_ADD][MAX_KEYSIZE];
 
 /* Shuffle the keys that have been added, so lookups will be totally random */
 static void
@@ -136,6 +149,10 @@ setup_keys_and_data(struct member_perf_params *params, unsigned int cycle,
 {
 	unsigned int i, j;
 	int num_duplicates;
+	int distinct_key = 0;
+	int count_down = SKETCH_LARGEST_KEY_SIZE;
+	uint32_t swap_idx;
+	uint8_t temp_key[MAX_KEYSIZE];
 
 	params->key_size = hashtest_key_lens[cycle];
 	params->cycle = cycle;
@@ -176,6 +193,22 @@ setup_keys_and_data(struct member_perf_params *params, unsigned int cycle,
 	/* Shuffle the random values again */
 	shuffle_input_keys(params);
 
+	for (i = 0; i < KEYS_TO_ADD; i++) {
+		if (count_down == 0) {
+			distinct_key++;
+			count_down = ceil(SKETCH_LARGEST_KEY_SIZE / (distinct_key + 1));
+		}
+		memcpy(hh_keys[i], keys[distinct_key], params->key_size);
+		count_down--;
+	}
+
+	for (i = KEYS_TO_ADD - 1; i > 0; i--) {
+		swap_idx = rte_rand() % i;
+		memcpy(temp_key, hh_keys[i], params->key_size);
+		memcpy(hh_keys[i], hh_keys[swap_idx], params->key_size);
+		memcpy(hh_keys[swap_idx], temp_key, params->key_size);
+	}
+
 	/* For testing miss lookup, we insert half and lookup the other half */
 	unsigned int entry_cnt, bf_key_cnt;
 	if (!miss) {
@@ -208,6 +241,44 @@ setup_keys_and_data(struct member_perf_params *params, unsigned int cycle,
 	params->setsum[VBF] = rte_member_create(&member_params);
 	if (params->setsum[VBF] == NULL)
 		fprintf(stderr, "VBF create fail\n");
+
+	member_params.name = "test_member_sketch";
+	member_params.key_len = params->key_size;
+	member_params.type = RTE_MEMBER_TYPE_SKETCH;
+	member_params.error_rate = SKETCH_ERROR_RATE;
+	member_params.sample_rate = SKETCH_SAMPLE_RATE;
+	member_params.extra_flag = 0;
+	member_params.top_k = TOP_K;
+	member_params.prim_hash_seed = rte_rdtsc();
+	params->setsum[SKETCH] = rte_member_create(&member_params);
+	if (params->setsum[SKETCH] == NULL)
+		fprintf(stderr, "sketch create fail\n");
+
+	member_params.name = "test_member_sketch_bounded";
+	member_params.key_len = params->key_size;
+	member_params.type = RTE_MEMBER_TYPE_SKETCH;
+	member_params.error_rate = SKETCH_ERROR_RATE;
+	member_params.sample_rate = SKETCH_SAMPLE_RATE;
+	member_params.extra_flag |= RTE_MEMBER_SKETCH_ALWAYS_BOUNDED;
+	member_params.top_k = TOP_K;
+	member_params.prim_hash_seed = rte_rdtsc();
+	params->setsum[SKETCH_BOUNDED] = rte_member_create(&member_params);
+	if (params->setsum[SKETCH_BOUNDED] == NULL)
+		fprintf(stderr, "sketch create fail\n");
+
+	member_params.name = "test_member_sketch_byte";
+	member_params.key_len = params->key_size;
+	member_params.type = RTE_MEMBER_TYPE_SKETCH;
+	member_params.error_rate = SKETCH_ERROR_RATE;
+	member_params.sample_rate = SKETCH_SAMPLE_RATE;
+	member_params.extra_flag |= RTE_MEMBER_SKETCH_COUNT_BYTE;
+	member_params.top_k = TOP_K;
+	member_params.prim_hash_seed = rte_rdtsc();
+	params->setsum[SKETCH_BYTE] = rte_member_create(&member_params);
+	if (params->setsum[SKETCH_BYTE] == NULL)
+		fprintf(stderr, "sketch create fail\n");
+
+
 	for (i = 0; i < NUM_TYPE; i++) {
 		if (params->setsum[i] == NULL)
 			return -1;
@@ -244,6 +315,39 @@ timed_adds(struct member_perf_params *params, int type)
 }
 
 static int
+timed_adds_sketch(struct member_perf_params *params, int type)
+{
+	const uint64_t start_tsc = rte_rdtsc();
+	unsigned int i, j, a;
+	int32_t ret;
+
+	for (i = 0; i < NUM_ADDS / KEYS_TO_ADD; i++) {
+		for (j = 0; j < KEYS_TO_ADD; j++) {
+			if (type == SKETCH_BYTE)
+				ret = rte_member_add_byte_count(params->setsum[type],
+						&hh_keys[j], SKETCH_PKT_SIZE);
+			else
+				ret = rte_member_add(params->setsum[type], &hh_keys[j], 1);
+			if (ret < 0) {
+				printf("Error %d in rte_member_add - key=0x", ret);
+				for (a = 0; a < params->key_size; a++)
+					printf("%02x", hh_keys[j][a]);
+				printf("type: %d\n", type);
+
+				return -1;
+			}
+		}
+	}
+
+	const uint64_t end_tsc = rte_rdtsc();
+	const uint64_t time_taken = end_tsc - start_tsc;
+
+	cycles[type][params->cycle][ADD] = time_taken / NUM_ADDS;
+
+	return 0;
+}
+
+static int
 timed_lookups(struct member_perf_params *params, int type)
 {
 	unsigned int i, j;
@@ -268,6 +372,36 @@ timed_lookups(struct member_perf_params *params, int type)
 			}
 			if (result != data[type][j])
 				false_data[type][params->cycle]++;
+		}
+	}
+
+	const uint64_t end_tsc = rte_rdtsc();
+	const uint64_t time_taken = end_tsc - start_tsc;
+
+	cycles[type][params->cycle][LOOKUP] = time_taken / NUM_LOOKUPS;
+
+	return 0;
+}
+
+static int
+timed_lookups_sketch(struct member_perf_params *params, int type)
+{
+	unsigned int i, j;
+
+	false_data[type][params->cycle] = 0;
+
+	const uint64_t start_tsc = rte_rdtsc();
+	member_set_t result;
+	int ret;
+
+	for (i = 0; i < NUM_LOOKUPS / KEYS_TO_ADD; i++) {
+		for (j = 0; j < KEYS_TO_ADD; j++) {
+			ret = rte_member_lookup(params->setsum[type], &hh_keys[j],
+						&result);
+			if (ret < 0) {
+				printf("lookup wrong internally");
+				return -1;
+			}
 		}
 	}
 
@@ -531,7 +665,7 @@ run_all_tbl_perf_tests(void)
 			printf("Could not create keys/data/table\n");
 			return -1;
 		}
-		for (j = 0; j < NUM_TYPE; j++) {
+		for (j = 0; j < SKETCH; j++) {
 
 			if (timed_adds(&params, j) < 0)
 				return exit_with_fail("timed_adds", &params,
@@ -562,6 +696,17 @@ run_all_tbl_perf_tests(void)
 
 			/* Print a dot to show progress on operations */
 		}
+
+		for (j = SKETCH; j < NUM_TYPE; j++) {
+			if (timed_adds_sketch(&params, j) < 0)
+				return exit_with_fail
+					("timed_adds_sketch", &params, i, j);
+
+			if (timed_lookups_sketch(&params, j) < 0)
+				return exit_with_fail
+					("timed_lookups_sketch", &params, i, j);
+		}
+
 		printf(".");
 		fflush(stdout);
 
@@ -574,7 +719,7 @@ run_all_tbl_perf_tests(void)
 			printf("Could not create keys/data/table\n");
 			return -1;
 			}
-		for (j = 0; j < NUM_TYPE; j++) {
+		for (j = 0; j < SKETCH; j++) {
 			if (timed_miss_lookup(&params, j) < 0)
 				return exit_with_fail("timed_miss_lookup",
 						&params, i, j);
@@ -605,7 +750,7 @@ run_all_tbl_perf_tests(void)
 			"fr_multi_bulk", "false_positive_rate");
 	/* Key size not influence False rate so just print out one key size */
 	for (i = 0; i < 1; i++) {
-		for (j = 0; j < NUM_TYPE; j++) {
+		for (j = 0; j < SKETCH; j++) {
 			printf("%-18d", hashtest_key_lens[i]);
 			printf("%-18d", j);
 			printf("%-18f", (float)false_data[j][i] / NUM_LOOKUPS);

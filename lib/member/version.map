@@ -14,3 +14,12 @@ DPDK_23 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 22.11
+	rte_member_add_byte_count;
+	rte_member_query_count;
+	rte_member_report_heavyhitter;
+};

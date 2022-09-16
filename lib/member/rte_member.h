@@ -39,6 +39,18 @@
  * |          |                     | not overwrite  |                         |
  * |          |                     | existing key.  |                         |
  * +----------+---------------------+----------------+-------------------------+
+ * +==========+=============================+
+ * |   type   |      sketch                 |
+ * +==========+=============================+
+ * |structure | counting bloom filter array |
+ * +----------+-----------------------------+
+ * |set id    | 1: heavy set, 0: light set  |
+ * |          |                             |
+ * +----------+-----------------------------+
+ * |usages &  | count size of a flow,       |
+ * |properties| used for heavy hitter       |
+ * |          | detection.                  |
+ * +----------+-----------------------------+
  * -->
  */
 
@@ -50,6 +62,8 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <inttypes.h>
 
 #include <rte_common.h>
 
@@ -65,6 +79,20 @@ typedef uint16_t member_set_t;
 #define RTE_MEMBER_BUCKET_ENTRIES 16
 /** Maximum number of characters in setsum name. */
 #define RTE_MEMBER_NAMESIZE 32
+/** Max value of the random number */
+#define RTE_RAND_MAX      ~0LLU
+/**
+ * As packets skipped in the sampling-based algorithm, the accounting
+ * results accuracy is not guaranteed in the start stage. There should
+ * be a "convergence time" to achieve the accuracy after receiving enough
+ * packets.
+ * For sketch, use the flag if prefer always bounded mode, which only
+ * starts sampling after receiving enough packets to keep the results
+ * accuracy always bounded.
+ */
+#define RTE_MEMBER_SKETCH_ALWAYS_BOUNDED 0x01
+/** For sketch, use the flag if to count packet size instead of packet count */
+#define RTE_MEMBER_SKETCH_COUNT_BYTE 0x02
 
 /** @internal Hash function used by membership library. */
 #if defined(RTE_ARCH_X86) || defined(__ARM_FEATURE_CRC32)
@@ -104,6 +132,7 @@ struct rte_member_parameters;
 enum rte_member_setsum_type {
 	RTE_MEMBER_TYPE_HT = 0,  /**< Hash table based set summary. */
 	RTE_MEMBER_TYPE_VBF,     /**< Vector of bloom filters. */
+	RTE_MEMBER_TYPE_SKETCH,
 	RTE_MEMBER_NUM_TYPE
 };
 
@@ -113,6 +142,19 @@ enum rte_member_sig_compare_function {
 	RTE_MEMBER_COMPARE_AVX2,
 	RTE_MEMBER_COMPARE_NUM
 };
+
+/* sketch update function with different implementations. */
+typedef void (*sketch_update_fn_t)(const struct rte_member_setsum *ss,
+				   const void *key,
+				   uint32_t count);
+
+/* sketch lookup function with different implementations. */
+typedef uint64_t (*sketch_lookup_fn_t)(const struct rte_member_setsum *ss,
+				       const void *key);
+
+/* sketch delete function with different implementations. */
+typedef void (*sketch_delete_fn_t)(const struct rte_member_setsum *ss,
+				   const void *key);
 
 /** @internal setsummary structure. */
 struct rte_member_setsum {
@@ -134,6 +176,21 @@ struct rte_member_setsum {
 	uint32_t bit_mask;	/* Bit mask to get bit location in bf. */
 	uint32_t num_hashes;	/* Number of hash values to index bf. */
 
+	/* Parameters for sketch */
+	float error_rate;
+	float sample_rate;
+	uint32_t num_col;
+	uint32_t num_row;
+	int always_bounded;
+	double converge_thresh;
+	uint32_t topk;
+	uint32_t count_byte;
+	uint64_t *hash_seeds;
+	sketch_update_fn_t sketch_update; /* Pointer to the sketch update function */
+	sketch_lookup_fn_t sketch_lookup; /* Pointer to the sketch lookup function */
+	sketch_delete_fn_t sketch_delete; /* Pointer to the sketch delete function */
+
+	void *runtime_var;
 	uint32_t mul_shift;  /* vbf internal variable used during bit test. */
 	uint32_t div_shift;  /* vbf internal variable used during bit test. */
 
@@ -143,6 +200,9 @@ struct rte_member_setsum {
 	/* Second cache line should start here. */
 	uint32_t socket_id;          /* NUMA Socket ID for memory. */
 	char name[RTE_MEMBER_NAMESIZE]; /* Name of this set summary. */
+#ifdef RTE_ARCH_X86
+	bool use_avx512;
+#endif
 } __rte_cache_aligned;
 
 /**
@@ -261,8 +321,33 @@ struct rte_member_parameters {
 	 */
 	uint32_t sec_hash_seed;
 
+	/**
+	 * For count(min) sketch data structure, error rate defines the accuracy
+	 * required by the user. Higher accuracy leads to more memory usage, but
+	 * the flow size is estimated more accurately.
+	 */
+	float error_rate;
+
+	/**
+	 * Sampling rate means the internal sample rate of the rows of the count
+	 * min sketches. Lower sampling rate can reduce CPU overhead, but the
+	 * data structure will require more time to converge statistically.
+	 */
+	float sample_rate;
+
+	/**
+	 * How many top heavy hitter to be reported. The library will internally
+	 * keep the keys of heavy hitters for final report.
+	 */
+	uint32_t top_k;
+
+	/**
+	 * Extra flags that may passed in by user
+	 */
+	uint32_t extra_flag;
+
 	int socket_id;			/**< NUMA Socket ID for memory. */
-};
+} __rte_cache_aligned;
 
 /**
  * @warning
@@ -418,7 +503,7 @@ rte_member_lookup_multi_bulk(const struct rte_member_setsum *setsum,
  *   RTE_MEMBER_NO_MATCH by default is set as 0.
  *   For HT mode, the set_id has range as [1, 0x7FFF], MSB is reserved.
  *   For vBF mode the set id is limited by the num_set parameter when create
- *   the set-summary.
+ *   the set-summary. For sketch mode, this id is ignored.
  * @return
  *   HT (cache mode) and vBF should never fail unless the set_id is not in the
  *   valid range. In such case -EINVAL is returned.
@@ -429,11 +514,74 @@ rte_member_lookup_multi_bulk(const struct rte_member_setsum *setsum,
  *   Return 0 for HT (cache mode) if the add does not cause
  *   eviction, return 1 otherwise. Return 0 for non-cache mode if success,
  *   -ENOSPC for full, and 1 if cuckoo eviction happens.
- *   Always returns 0 for vBF mode.
+ *   Always returns 0 for vBF mode and sketch.
  */
 int
 rte_member_add(const struct rte_member_setsum *setsum, const void *key,
 			member_set_t set_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Add the packet byte size into the sketch.
+ *
+ * @param setsum
+ *   Pointer of a set-summary.
+ * @param key
+ *   Pointer of the key to be added.
+ * @param byte_count
+ *   Add the byte count of the packet into the sketch.
+ * @return
+ * Return -EINVAL for invalid parameters, otherwise return 0.
+ */
+__rte_experimental
+int
+rte_member_add_byte_count(const struct rte_member_setsum *setsum,
+			  const void *key, uint32_t byte_count);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Query packet count for a certain flow-key.
+ *
+ * @param setsum
+ *   Pointer of a set-summary.
+ * @param key
+ *   Pointer of the key to be added.
+ * @param count
+ *   The output packet count or byte count.
+ * @return
+ *   Return -EINVAL for invalid parameters.
+ */
+__rte_experimental
+int
+rte_member_query_count(const struct rte_member_setsum *setsum,
+		       const void *key, uint64_t *count);
+
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Report heavyhitter flow-keys into set-summary (SS).
+ *
+ * @param setsum
+ *   Pointer of a set-summary.
+ * @param keys
+ *   Pointer of the output top-k key array.
+ * @param counts
+ *   Pointer of the output packet count or byte count array of the top-k keys.
+ * @return
+ *   Return -EINVAL for invalid parameters. Return a positive integer indicate
+ *   how many heavy hitters are reported.
+ */
+__rte_experimental
+int
+rte_member_report_heavyhitter(const struct rte_member_setsum *setsum,
+			      void **keys, uint64_t *counts);
+
 
 /**
  * @warning

@@ -210,6 +210,14 @@ New Features
   into single event containing ``rte_event_vector``
   whose event type is ``RTE_EVENT_TYPE_CRYPTODEV_VECTOR``.
 
+* **Added NitroSketch in membership library.**
+
+  Added a new data structure called sketch into membership library,
+  to profile the traffic efficiently.
+  NitroSketch provides high-fidelity approximate measurements
+  and appears as a promising alternative to traditional approaches
+  such as packet sampling.
+
 
 Removed Items
 -------------

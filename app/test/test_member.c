@@ -4,6 +4,7 @@
 
 /* This test is for membership library's simple feature test */
 
+#include <math.h>
 #include "test.h"
 
 #include <rte_memcpy.h>
@@ -28,6 +29,7 @@ test_member(void)
 struct rte_member_setsum *setsum_ht;
 struct rte_member_setsum *setsum_cache;
 struct rte_member_setsum *setsum_vbf;
+struct rte_member_setsum *setsum_sketch;
 
 /* 5-tuple key type */
 struct flow_key {
@@ -107,6 +109,21 @@ static struct rte_member_parameters params = {
 		.sec_hash_seed = 11,
 		.socket_id = 0			/* NUMA Socket ID for memory. */
 };
+
+/* for sketch definitions */
+#define TOP_K 10
+#define HH_PKT_SIZE 16
+#define SKETCH_ERROR_RATE 0.05
+#define SKETCH_SAMPLE_RATE 0.001
+#define PRINT_OUT_COUNT 20
+
+#define SKETCH_LARGEST_KEY_SIZE 1000000
+#define SKETCH_TOTAL_KEY 500
+#define NUM_OF_KEY(key) {\
+	(unsigned int)ceil(SKETCH_LARGEST_KEY_SIZE / (key + 1)) \
+}
+
+void *heavy_hitters[TOP_K];
 
 /*
  * Sequence of operations for find existing setsummary
@@ -684,6 +701,257 @@ perform_free(void)
 	rte_member_free(setsum_vbf);
 }
 
+static void
+print_out_sketch_results(uint64_t *count_result, member_set_t *heavy_set,
+			 uint32_t print_num, bool count_byte)
+{
+	uint32_t i;
+
+	for (i = 0; i < print_num; i++) {
+		if (count_byte)
+			printf("key %2u, count %8"PRIu64", real count %8u, "
+				"heavy_set %u, deviation rate [%.04f]\n",
+				i, count_result[i],
+				(unsigned int)ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1)) *
+				HH_PKT_SIZE,
+				heavy_set[i],
+				fabs((float)count_result[i] - (float)NUM_OF_KEY(i) * HH_PKT_SIZE) /
+				((float)NUM_OF_KEY(i) * HH_PKT_SIZE));
+		else
+			printf("key %2u, count %8"PRIu64", real count %8u, "
+				"heavy_set %u, deviation rate [%.04f]\n",
+				i, count_result[i],
+				(unsigned int)ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1)),
+				heavy_set[i],
+				fabs((float)count_result[i] - (float)NUM_OF_KEY(i)) /
+				(float)NUM_OF_KEY(i));
+	}
+}
+
+static int
+sketch_test(uint32_t *keys, uint32_t total_pkt, int count_byte, int reset_test)
+{
+	uint32_t i;
+	uint64_t result_count[SKETCH_TOTAL_KEY];
+	member_set_t heavy_set[SKETCH_TOTAL_KEY];
+	uint64_t count[TOP_K];
+	int ret;
+	int hh_cnt;
+
+	setsum_sketch = rte_member_create(&params);
+	if (setsum_sketch == NULL) {
+		printf("Creation of setsums fail\n");
+		return -1;
+	}
+
+	for (i = 0; i < total_pkt; i++) {
+		if (count_byte)
+			ret = rte_member_add_byte_count(setsum_sketch, &keys[i], HH_PKT_SIZE);
+		else
+			ret = rte_member_add(setsum_sketch, &keys[i], 1);
+
+		if (ret < 0) {
+			printf("rte_member_add Failed! Error [%d]\n", ret);
+			rte_member_free(setsum_sketch);
+
+			return -1;
+		}
+	}
+
+	for (i = 0; i < SKETCH_TOTAL_KEY; i++) {
+		uint32_t tmp_key = i;
+
+		rte_member_query_count(setsum_sketch, (void *)&tmp_key, &result_count[i]);
+		rte_member_lookup(setsum_sketch, (void *)&tmp_key, &heavy_set[i]);
+	}
+
+	print_out_sketch_results(result_count, heavy_set, PRINT_OUT_COUNT, count_byte);
+
+	hh_cnt = rte_member_report_heavyhitter(setsum_sketch, heavy_hitters, count);
+	if (hh_cnt < 0) {
+		printf("sketch report heavy hitter error!");
+		rte_member_free(setsum_sketch);
+
+		return -1;
+	}
+
+	printf("Report heavy hitters:");
+	for (i = 0; i < (unsigned int)hh_cnt; i++) {
+		printf("%u: %"PRIu64"\t",
+			*((uint32_t *)heavy_hitters[i]), count[i]);
+	}
+	printf("\n");
+
+	if (reset_test) {
+		printf("\nEntering Sketch Reset Test Process!\n");
+		rte_member_reset(setsum_sketch);
+
+		/* after reset, check some key's count */
+		for (i = 0; i < SKETCH_TOTAL_KEY; i++) {
+			uint32_t tmp_key = i;
+
+			rte_member_query_count(setsum_sketch, (void *)&tmp_key, &result_count[i]);
+			rte_member_lookup(setsum_sketch, (void *)&tmp_key, &heavy_set[i]);
+		}
+
+		print_out_sketch_results(result_count, heavy_set, PRINT_OUT_COUNT, count_byte);
+
+		printf("\nReinsert keys after Sketch Reset!\n");
+		for (i = 0; i < total_pkt; i++) {
+			if (count_byte)
+				ret = rte_member_add_byte_count
+					(setsum_sketch, &keys[i], HH_PKT_SIZE);
+			else
+				ret = rte_member_add(setsum_sketch, &keys[i], 1);
+
+			if (ret < 0) {
+				printf("rte_member_add Failed! Error [%d]\n", ret);
+				rte_member_free(setsum_sketch);
+
+				return -1;
+			}
+		}
+
+		for (i = 0; i < SKETCH_TOTAL_KEY; i++) {
+			uint32_t tmp_key = i;
+
+			rte_member_query_count(setsum_sketch, (void *)&tmp_key, &result_count[i]);
+			rte_member_lookup(setsum_sketch, (void *)&tmp_key, &heavy_set[i]);
+		}
+
+		print_out_sketch_results(result_count, heavy_set, PRINT_OUT_COUNT, count_byte);
+
+		hh_cnt = rte_member_report_heavyhitter(setsum_sketch, heavy_hitters, count);
+		if (hh_cnt < 0) {
+			printf("sketch report heavy hitter error!");
+			rte_member_free(setsum_sketch);
+
+			return -1;
+		}
+		printf("Report heavy hitters:");
+		for (i = 0; i < (unsigned int)hh_cnt; i++) {
+			printf("%u: %"PRIu64"\t",
+				*((uint32_t *)heavy_hitters[i]), count[i]);
+		}
+		printf("\n");
+
+		printf("\nDelete some keys!\n");
+		uint32_t tmp_key = 0;
+
+		rte_member_delete(setsum_sketch, (void *)&tmp_key, 0);
+		tmp_key = 1;
+		rte_member_delete(setsum_sketch, (void *)&tmp_key, 0);
+
+		for (i = 0; i < SKETCH_TOTAL_KEY; i++) {
+			uint32_t tmp_key = i;
+
+			rte_member_query_count(setsum_sketch, (void *)&tmp_key, &result_count[i]);
+			rte_member_lookup(setsum_sketch, (void *)&tmp_key, &heavy_set[i]);
+		}
+
+		print_out_sketch_results(result_count, heavy_set, PRINT_OUT_COUNT, count_byte);
+
+		hh_cnt = rte_member_report_heavyhitter(setsum_sketch, heavy_hitters, count);
+		if (hh_cnt < 0) {
+			printf("sketch report heavy hitter error!");
+			rte_member_free(setsum_sketch);
+
+			return -1;
+		}
+		printf("Report heavy hitters:");
+		for (i = 0; i < (unsigned int)hh_cnt; i++) {
+			printf("%u: %"PRIu64"\t",
+				*((uint32_t *)heavy_hitters[i]), count[i]);
+		}
+		printf("\n");
+	}
+
+	rte_member_free(setsum_sketch);
+	return 0;
+}
+
+static int
+test_member_sketch(void)
+{
+	unsigned int i, j, index;
+	uint32_t total_pkt = 0;
+	uint32_t *keys;
+	int count_byte = 0;
+
+	for (i = 0; i < SKETCH_TOTAL_KEY; i++)
+		total_pkt += ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1));
+
+	printf("\nTotal key count [%u] in Sketch Autotest\n", total_pkt);
+
+	keys = rte_zmalloc(NULL, sizeof(uint32_t) * total_pkt, 0);
+
+	if (keys == NULL) {
+		printf("RTE_ZMALLOC failed\n");
+		return -1;
+	}
+
+	index = 0;
+	for (i = 0; i < SKETCH_TOTAL_KEY; i++) {
+		for (j = 0; j < ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1)); j++)
+			keys[index++] = i;
+	}
+
+	/* shuffle the keys */
+	for (i = index - 1; i > 0; i--) {
+		uint32_t swap_idx = rte_rand() % i;
+		uint32_t tmp_key = keys[i];
+
+		keys[i] = keys[swap_idx];
+		keys[swap_idx] = tmp_key;
+	}
+
+	params.key_len = 4;
+	params.name = "test_member_sketch";
+	params.type = RTE_MEMBER_TYPE_SKETCH;
+	params.error_rate = SKETCH_ERROR_RATE;
+	params.sample_rate = SKETCH_SAMPLE_RATE;
+	params.extra_flag = 0;
+	params.top_k = TOP_K;
+	params.prim_hash_seed = rte_rdtsc();
+	int reset_test = 0;
+
+	printf("Default sketching params: Error Rate: [%f]\tSample Rate: [%f]\tTopK: [%d]\n",
+			SKETCH_ERROR_RATE, SKETCH_SAMPLE_RATE, TOP_K);
+
+	printf("\n[Sketch with Fixed Sampling Rate Mode]\n");
+	if (sketch_test(keys, total_pkt, count_byte, reset_test) < 0) {
+		rte_free(keys);
+		return -1;
+	}
+
+	params.extra_flag |= RTE_MEMBER_SKETCH_ALWAYS_BOUNDED;
+	printf("\n[Sketch with Always Bounded Mode]\n");
+	if (sketch_test(keys, total_pkt, count_byte, reset_test) < 0) {
+		rte_free(keys);
+		return -1;
+	}
+
+	count_byte = 1;
+	params.extra_flag |= RTE_MEMBER_SKETCH_COUNT_BYTE;
+	printf("\n[Sketch with Packet Size Mode]\n");
+	if (sketch_test(keys, total_pkt, count_byte, reset_test) < 0) {
+		rte_free(keys);
+		return -1;
+	}
+
+	count_byte = 0;
+	params.extra_flag = 0;
+	reset_test = 1;
+	printf("\nreset sketch test\n");
+	if (sketch_test(keys, total_pkt, count_byte, reset_test) < 0) {
+		rte_free(keys);
+		return -1;
+	}
+
+	rte_free(keys);
+	return 0;
+}
+
 static int
 test_member(void)
 {
@@ -719,6 +987,10 @@ test_member(void)
 		return -1;
 	}
 
+	if (test_member_sketch() < 0) {
+		perform_free();
+		return -1;
+	}
 	perform_free();
 	return 0;
 }
