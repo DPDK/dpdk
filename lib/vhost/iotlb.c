@@ -341,16 +341,18 @@ vhost_user_iotlb_init(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	TAILQ_INIT(&vq->iotlb_list);
 	TAILQ_INIT(&vq->iotlb_pending_list);
 
-	vq->iotlb_pool = rte_calloc_socket("iotlb", IOTLB_CACHE_SIZE,
-		sizeof(struct vhost_iotlb_entry), 0, socket);
-	if (!vq->iotlb_pool) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR,
-			"Failed to create IOTLB cache pool for vq %"PRIu32"\n",
-			vq->index);
-		return -1;
+	if (dev->flags & VIRTIO_DEV_SUPPORT_IOMMU) {
+		vq->iotlb_pool = rte_calloc_socket("iotlb", IOTLB_CACHE_SIZE,
+			sizeof(struct vhost_iotlb_entry), 0, socket);
+		if (!vq->iotlb_pool) {
+			VHOST_LOG_CONFIG(dev->ifname, ERR,
+				"Failed to create IOTLB cache pool for vq %"PRIu32"\n",
+				vq->index);
+			return -1;
+		}
+		for (i = 0; i < IOTLB_CACHE_SIZE; i++)
+			vhost_user_iotlb_pool_put(vq, &vq->iotlb_pool[i]);
 	}
-	for (i = 0; i < IOTLB_CACHE_SIZE; i++)
-		vhost_user_iotlb_pool_put(vq, &vq->iotlb_pool[i]);
 
 	vq->iotlb_cache_nr = 0;
 
