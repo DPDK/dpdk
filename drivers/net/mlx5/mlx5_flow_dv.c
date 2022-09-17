@@ -7055,6 +7055,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_REPRESENTED_PORT;
+			port_id_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_validate_item_eth(items, item_flags,
@@ -16642,8 +16643,13 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 	uint8_t misc_mask;
 
 	if (match_src_port && priv->sh->esw_mode) {
-		if (flow_dv_translate_item_port_id(dev, matcher.buf,
-						   value.buf, item, attr)) {
+		if (item && item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
+			ret = flow_dv_translate_item_represented_port(dev, matcher.buf, value.buf,
+								      item, attr);
+		else
+			ret = flow_dv_translate_item_port_id(dev, matcher.buf, value.buf,
+							     item, attr);
+		if (ret) {
 			DRV_LOG(ERR, "Failed to create meter policy%d flow's"
 				" value with port.", color);
 			return -1;
@@ -16692,10 +16698,16 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	struct mlx5_flow_tbl_data_entry *tbl_data;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const uint32_t color_mask = (UINT32_C(1) << MLX5_MTR_COLOR_BITS) - 1;
+	int ret;
 
 	if (match_src_port && priv->sh->esw_mode) {
-		if (flow_dv_translate_item_port_id(dev, matcher.mask.buf,
-						   value.buf, item, attr)) {
+		if (item && item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
+			ret = flow_dv_translate_item_represented_port(dev, matcher.mask.buf,
+								      value.buf, item, attr);
+		else
+			ret = flow_dv_translate_item_port_id(dev, matcher.mask.buf, value.buf,
+							     item, attr);
+		if (ret) {
 			DRV_LOG(ERR, "Failed to register meter policy%d matcher"
 				" with port.", priority);
 			return -1;

@@ -21,6 +21,9 @@
 /* E-Switch Manager port, used for rte_flow_item_port_id. */
 #define MLX5_PORT_ESW_MGR UINT32_MAX
 
+/* E-Switch Manager port, used for rte_flow_item_ethdev. */
+#define MLX5_REPRESENTED_PORT_ESW_MGR UINT16_MAX
+
 /* Private rte flow items. */
 enum mlx5_rte_flow_item_type {
 	MLX5_RTE_FLOW_ITEM_TYPE_END = INT_MIN,
