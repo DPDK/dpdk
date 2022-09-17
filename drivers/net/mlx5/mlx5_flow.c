@@ -5338,6 +5338,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
 		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+			if (mlx5_flow_get_item_vport_id(dev, items, &flow_src_port, NULL, error))
 				return -rte_errno;
 			if (!fm->def_policy && wks->policy->is_hierarchy &&
 			    flow_src_port != priv->representor_id) {
@@ -11012,6 +11013,8 @@ int16_t mlx5_flow_get_esw_manager_vport_id(struct rte_eth_dev *dev)
  *   The src port id match item.
  * @param[out] vport_id
  *   Pointer to put the vport id.
+ * @param[out] all_ports
+ *   Indicate if the item matches all ports.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -11021,6 +11024,7 @@ int16_t mlx5_flow_get_esw_manager_vport_id(struct rte_eth_dev *dev)
 int mlx5_flow_get_item_vport_id(struct rte_eth_dev *dev,
 				const struct rte_flow_item *item,
 				uint16_t *vport_id,
+				bool *all_ports,
 				struct rte_flow_error *error)
 {
 	struct mlx5_priv *port_priv;
@@ -11032,8 +11036,13 @@ int mlx5_flow_get_item_vport_id(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 					  NULL, "Incorrect item type.");
 	pid_v = item->spec;
-	if (!pid_v)
+	if (!pid_v) {
+		if (all_ports)
+			*all_ports = (item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT);
 		return 0;
+	}
+	if (all_ports)
+		*all_ports = false;
 	esw_mgr_port = (item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) ?
 				MLX5_REPRESENTED_PORT_ESW_MGR : MLX5_PORT_ESW_MGR;
 	if (pid_v->id == esw_mgr_port) {

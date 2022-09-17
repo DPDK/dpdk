@@ -473,6 +473,10 @@ Limitations
   - meter profile packet mode is supported.
   - meter profiles of RFC2697, RFC2698 and RFC4115 are supported.
   - RFC4115 implementation is following MEF, meaning yellow traffic may reclaim unused green bandwidth when green token bucket is full.
+  - When using DV flow engine (``dv_flow_en`` = 1),
+    if meter has drop count
+    or meter hierarchy contains any meter that uses drop count,
+    it cannot be used by flow rule matching all ports.
 
 - Integrity:
 

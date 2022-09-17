@@ -5245,6 +5245,8 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 	struct mlx5_flow_meter_info *fm;
 	struct mlx5_flow_meter_policy *mtr_policy;
 	struct mlx5_flow_mtr_mng *mtrmng = priv->sh->mtrmng;
+	uint16_t flow_src_port = priv->representor_id;
+	bool all_ports = false;
 
 	if (!am)
 		return rte_flow_error_set(error, EINVAL,
@@ -5307,27 +5309,34 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 					  "Flow attributes domain "
 					  "have a conflict with current "
 					  "meter domain attributes");
-		if (attr->transfer && mtr_policy->dev) {
-			/**
-			 * When policy has fate action of port_id,
-			 * the flow should have the same src port as policy.
-			 */
-			struct mlx5_priv *policy_port_priv =
-					mtr_policy->dev->data->dev_private;
-			uint16_t flow_src_port = priv->representor_id;
+		if (port_id_item) {
+			if (mlx5_flow_get_item_vport_id(dev, port_id_item, &flow_src_port,
+							&all_ports, error))
+				return -rte_errno;
+		}
+		if (attr->transfer) {
+			if (mtr_policy->dev) {
+				/**
+				 * When policy has fate action of port_id,
+				 * the flow should have the same src port as policy.
+				 */
+				struct mlx5_priv *policy_port_priv =
+						mtr_policy->dev->data->dev_private;
 
-			if (port_id_item) {
-				if (mlx5_flow_get_item_vport_id(dev, port_id_item,
-								&flow_src_port, error))
-					return -rte_errno;
+				if (all_ports || flow_src_port != policy_port_priv->representor_id)
+					return rte_flow_error_set(error,
+							rte_errno,
+							RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+							NULL,
+							"Flow and meter policy "
+							"have different src port.");
 			}
-			if (flow_src_port != policy_port_priv->representor_id)
-				return rte_flow_error_set(error,
-						rte_errno,
-						RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
-						NULL,
-						"Flow and meter policy "
-						"have different src port.");
+			/* When flow matching all src ports, meter should not have drop count. */
+			if (all_ports && (fm->drop_cnt || mtr_policy->hierarchy_drop_cnt))
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
+							  "Meter drop count not supported "
+							  "when matching all ports.");
 		} else if (mtr_policy->is_rss) {
 			struct mlx5_flow_meter_policy *fp;
 			struct mlx5_meter_policy_action_container *acg;
@@ -16251,6 +16260,8 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				mtr_policy->dev = next_policy->dev;
 				if (next_policy->mark)
 					mtr_policy->mark = 1;
+				if (next_fm->drop_cnt || next_policy->hierarchy_drop_cnt)
+					mtr_policy->hierarchy_drop_cnt = 1;
 				action_flags |=
 				MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY;
 				break;
