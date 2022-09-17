@@ -1628,6 +1628,30 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 				RTE_FLOW_ACTION_TYPE_END; action++) {
 		action_type = action->type;
 		switch (action_type) {
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
+			act_ethdev = action->conf;
+
+			if (!rte_eth_dev_is_valid_port(act_ethdev->port_id))
+				goto invalid_port_id;
+
+			/* For traffic to original DCF port */
+			rule_port_id = ad->parent.pf.dev_data->port_id;
+
+			if (rule_port_id != act_ethdev->port_id)
+				goto invalid_port_id;
+
+			rule_info->sw_act.vsi_handle = 0;
+
+			break;
+
+invalid_port_id:
+			rte_flow_error_set(error,
+						EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						actions,
+						"Invalid port_id");
+			return -rte_errno;
+
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
 			act_ethdev = action->conf;
@@ -1799,6 +1823,7 @@ ice_switch_check_action(const struct rte_flow_action *actions,
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_DROP:
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 			actions_num++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
