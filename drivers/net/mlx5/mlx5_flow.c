@@ -6438,14 +6438,12 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		}
 		/*
 		 * If it isn't default-policy Meter, and
-		 * 1. There's no action in flow to change
+		 * 1. Not meter hierarchy and there's no action in flow to change
 		 *    packet (modify/encap/decap etc.), OR
 		 * 2. No drop count needed for this meter.
-		 * 3. It's not meter hierarchy.
 		 * Then no need to use regC to save meter id anymore.
 		 */
-		if (!fm->def_policy && !is_mtr_hierarchy &&
-		    (!has_modify || !fm->drop_cnt))
+		if (!fm->def_policy && ((!has_modify && !is_mtr_hierarchy) || !fm->drop_cnt))
 			set_mtr_reg = false;
 		/* Prefix actions: meter, decap, encap, tag, jump, end, cnt. */
 #define METER_PREFIX_ACTION 7
