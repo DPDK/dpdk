@@ -220,6 +220,7 @@ enum index {
 	CONFIG_COUNTERS_NUMBER,
 	CONFIG_AGING_OBJECTS_NUMBER,
 	CONFIG_METERS_NUMBER,
+	CONFIG_CONN_TRACK_NUMBER,
 
 	/* Indirect action arguments */
 	INDIRECT_ACTION_CREATE,
@@ -1076,6 +1077,7 @@ static const enum index next_config_attr[] = {
 	CONFIG_COUNTERS_NUMBER,
 	CONFIG_AGING_OBJECTS_NUMBER,
 	CONFIG_METERS_NUMBER,
+	CONFIG_CONN_TRACK_NUMBER,
 	END,
 	ZERO,
 };
@@ -2638,6 +2640,14 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.configure.port_attr.nb_meters)),
+	},
+	[CONFIG_CONN_TRACK_NUMBER] = {
+		.name = "conn_tracks_number",
+		.help = "number of connection trackings",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.configure.port_attr.nb_conn_tracks)),
 	},
 	/* Top-level command. */
 	[PATTERN_TEMPLATE] = {

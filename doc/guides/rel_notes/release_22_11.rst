@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added configuration for asynchronous flow connection tracking.**
+
+  Added connection tracking action number hint to ``rte_flow_configure``
+  and ``rte_flow_info_get``.
+  PMD can prepare the connection tracking resources according to the hint.
+
 * **Updated Intel iavf driver.**
 
   * Added flow subscription support.
