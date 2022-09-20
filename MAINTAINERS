@@ -1375,11 +1375,6 @@ T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/raw/ifpga/
 F: doc/guides/rawdevs/ifpga.rst
 
-IOAT Rawdev - DEPRECATED
-M: Bruce Richardson <bruce.richardson@intel.com>
-F: drivers/raw/ioat/
-F: doc/guides/rawdevs/ioat.rst
-
 Marvell CNXK BPHY
 M: Jakub Palider <jpalider@marvell.com>
 M: Tomasz Duszynski <tduszynski@marvell.com>

@@ -24,7 +24,6 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/net/softnic \
                           @TOPDIR@/drivers/raw/dpaa2_cmdif \
                           @TOPDIR@/drivers/raw/ifpga \
-                          @TOPDIR@/drivers/raw/ioat \
                           @TOPDIR@/lib/eal/include \
                           @TOPDIR@/lib/eal/include/generic \
                           @TOPDIR@/lib/acl \

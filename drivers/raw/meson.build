@@ -10,7 +10,6 @@ drivers = [
         'cnxk_gpio',
         'dpaa2_cmdif',
         'ifpga',
-        'ioat',
         'ntb',
         'skeleton',
 ]
