@@ -89,7 +89,7 @@ int __roc_api roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws,
 void __roc_api roc_sso_rsrc_fini(struct roc_sso *roc_sso);
 int __roc_api roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso,
 				       struct roc_sso_hwgrp_qos *qos,
-				       uint8_t nb_qos, uint32_t nb_xaq);
+				       uint8_t nb_qos);
 int __roc_api roc_sso_hwgrp_alloc_xaq(struct roc_sso *roc_sso,
 				      uint32_t npa_aura_id, uint16_t hwgrps);
 int __roc_api roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso,

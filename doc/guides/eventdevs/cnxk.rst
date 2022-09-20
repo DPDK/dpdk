@@ -95,12 +95,11 @@ Runtime Config Options
   We can control the QoS of SSO GGRP by modifying the above mentioned
   thresholds. GGRPs that have higher importance can be assigned higher
   thresholds than the rest. The dictionary format is as follows
-  [Qx-XAQ-TAQ-IAQ][Qz-XAQ-TAQ-IAQ] expressed in percentages, 0 represents
-  default.
+  [Qx-TAQ-IAQ][Qz-TAQ-IAQ] expressed in percentages, 0 represents default.
 
   For example::
 
-    -a 0002:0e:00.0,qos=[1-50-50-50]
+    -a 0002:0e:00.0,qos=[1-50-50]
 
 - ``Force Rx Back pressure``
 

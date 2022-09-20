@@ -1355,7 +1355,7 @@ struct sso_grp_priority {
 struct sso_grp_qos_cfg {
 	struct mbox_msghdr hdr;
 	uint16_t __io grp;
-	uint32_t __io xaq_limit;
+	uint32_t __io rsvd;
 	uint16_t __io taq_thr;
 	uint16_t __io iaq_thr;
 };

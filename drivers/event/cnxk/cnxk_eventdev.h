@@ -84,7 +84,6 @@ typedef int (*cnxk_sso_hws_flush_t)(void *ws, uint8_t queue_id, uintptr_t base,
 
 struct cnxk_sso_qos {
 	uint16_t queue;
-	uint16_t xaq_prcnt;
 	uint16_t taq_prcnt;
 	uint16_t iaq_prcnt;
 };
