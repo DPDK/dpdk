@@ -285,6 +285,9 @@ EXPERIMENTAL {
 	rte_mtr_color_in_protocol_priority_get;
 	rte_mtr_color_in_protocol_set;
 	rte_mtr_meter_vlan_table_update;
+
+	# added in 22.11
+	rte_flow_async_action_handle_query;
 };
 
 INTERNAL {

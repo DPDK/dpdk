@@ -5481,6 +5481,51 @@ rte_flow_async_action_handle_update(uint16_t port_id,
 		const void *update,
 		void *user_data,
 		struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue indirect action query operation.
+ *
+ * Retrieve action-specific data such as counters.
+ * Data is gathered by special action which may be present/referenced in
+ * more than one flow rule definition.
+ * Data will be available only when completion event returns.
+ *
+ * @see rte_flow_async_action_handle_query
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] queue_id
+ *   Flow queue which is used to query the action.
+ * @param[in] op_attr
+ *   Indirect action update operation attributes.
+ * @param[in] action_handle
+ *   Handle for the action object to query.
+ * @param[in, out] data
+ *   Pointer to storage for the associated query data type.
+ *   The out data will be available only when completion event returns
+ *   from rte_flow_pull.
+ * @param[in] user_data
+ *   The user data that will be returned on the completion events.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_async_action_handle_query(uint16_t port_id,
+		uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_action_handle *action_handle,
+		void *data,
+		void *user_data,
+		struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif

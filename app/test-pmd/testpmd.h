@@ -103,6 +103,15 @@ enum {
 	/**< allocate mempool natively, use rte_pktmbuf_pool_create_extbuf */
 };
 
+enum {
+	QUEUE_JOB_TYPE_FLOW_CREATE,
+	QUEUE_JOB_TYPE_FLOW_DESTROY,
+	QUEUE_JOB_TYPE_ACTION_CREATE,
+	QUEUE_JOB_TYPE_ACTION_DESTROY,
+	QUEUE_JOB_TYPE_ACTION_UPDATE,
+	QUEUE_JOB_TYPE_ACTION_QUERY,
+};
+
 /**
  * The data structure associated with RX and TX packet burst statistics
  * that are recorded for each forwarding stream.
@@ -216,6 +225,23 @@ struct port_indirect_action {
 	enum rte_flow_action_type type; /**< Action type. */
 	struct rte_flow_action_handle *handle;	/**< Indirect action handle. */
 	enum age_action_context_type age_type; /**< Age action context type. */
+};
+
+/* Descriptor for action query data. */
+union port_action_query {
+	struct rte_flow_query_count count;
+	struct rte_flow_query_age age;
+	struct rte_flow_action_conntrack ct;
+};
+
+/* Descriptor for queue job. */
+struct queue_job {
+	uint32_t type; /**< Job type. */
+	union {
+		struct port_flow *pf;
+		struct port_indirect_action *pia;
+	};
+	union port_action_query query;
 };
 
 struct port_flow_tunnel {
@@ -905,6 +931,8 @@ int port_queue_action_handle_destroy(portid_t port_id,
 int port_queue_action_handle_update(portid_t port_id, uint32_t queue_id,
 				    bool postpone, uint32_t id,
 				    const struct rte_flow_action *action);
+int port_queue_action_handle_query(portid_t port_id, uint32_t queue_id,
+				   bool postpone, uint32_t id);
 int port_queue_flow_push(portid_t port_id, queueid_t queue_id);
 int port_queue_flow_pull(portid_t port_id, queueid_t queue_id);
 int port_flow_validate(portid_t port_id,

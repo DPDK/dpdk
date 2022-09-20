@@ -61,6 +61,11 @@ New Features
   and ``rte_flow_info_get``.
   PMD can prepare the connection tracking resources according to the hint.
 
+* **Added support for queue-based async query in flow API.**
+
+  Added new function ``rte_flow_async_action_handle_query()``,
+  to query the action asynchronously.
+
 * **Updated Intel iavf driver.**
 
   * Added flow subscription support.

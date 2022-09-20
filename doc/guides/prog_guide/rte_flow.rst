@@ -3774,6 +3774,22 @@ Asynchronous version of indirect action update API.
            void *user_data,
            struct rte_flow_error *error);
 
+Enqueue indirect action query operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Asynchronous version of indirect action query API.
+
+.. code-block:: c
+
+   int
+   rte_flow_async_action_handle_query(uint16_t port_id,
+           uint32_t queue_id,
+           const struct rte_flow_op_attr *q_ops_attr,
+           struct rte_flow_action_handle *action_handle,
+           void *data,
+           void *user_data,
+           struct rte_flow_error *error);
+
 Push enqueued operations
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

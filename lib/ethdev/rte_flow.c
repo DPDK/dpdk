@@ -1840,3 +1840,21 @@ rte_flow_async_action_handle_update(uint16_t port_id,
 					  action_handle, update, user_data, error);
 	return flow_err(port_id, ret, error);
 }
+
+int
+rte_flow_async_action_handle_query(uint16_t port_id,
+		uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_action_handle *action_handle,
+		void *data,
+		void *user_data,
+		struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	int ret;
+
+	ret = ops->async_action_handle_query(dev, queue_id, op_attr,
+					  action_handle, data, user_data, error);
+	return flow_err(port_id, ret, error);
+}

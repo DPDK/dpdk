@@ -1886,16 +1886,88 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 	return 0;
 }
 
+static void
+port_action_handle_query_dump(uint32_t type, union port_action_query *query)
+{
+	switch (type) {
+	case RTE_FLOW_ACTION_TYPE_AGE:
+		printf("Indirect AGE action:\n"
+		       " aged: %u\n"
+		       " sec_since_last_hit_valid: %u\n"
+		       " sec_since_last_hit: %" PRIu32 "\n",
+		       query->age.aged,
+		       query->age.sec_since_last_hit_valid,
+		       query->age.sec_since_last_hit);
+		break;
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		printf("Indirect COUNT action:\n"
+		       " hits_set: %u\n"
+		       " bytes_set: %u\n"
+		       " hits: %" PRIu64 "\n"
+		       " bytes: %" PRIu64 "\n",
+		       query->count.hits_set,
+		       query->count.bytes_set,
+		       query->count.hits,
+		       query->count.bytes);
+		break;
+	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+		printf("Conntrack Context:\n"
+		       "  Peer: %u, Flow dir: %s, Enable: %u\n"
+		       "  Live: %u, SACK: %u, CACK: %u\n"
+		       "  Packet dir: %s, Liberal: %u, State: %u\n"
+		       "  Factor: %u, Retrans: %u, TCP flags: %u\n"
+		       "  Last Seq: %u, Last ACK: %u\n"
+		       "  Last Win: %u, Last End: %u\n",
+		       query->ct.peer_port,
+		       query->ct.is_original_dir ? "Original" : "Reply",
+		       query->ct.enable, query->ct.live_connection,
+		       query->ct.selective_ack, query->ct.challenge_ack_passed,
+		       query->ct.last_direction ? "Original" : "Reply",
+		       query->ct.liberal_mode, query->ct.state,
+		       query->ct.max_ack_window, query->ct.retransmission_limit,
+		       query->ct.last_index, query->ct.last_seq,
+		       query->ct.last_ack, query->ct.last_window,
+		       query->ct.last_end);
+		printf("  Original Dir:\n"
+		       "    scale: %u, fin: %u, ack seen: %u\n"
+		       " unacked data: %u\n    Sent end: %u,"
+		       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
+		       query->ct.original_dir.scale,
+		       query->ct.original_dir.close_initiated,
+		       query->ct.original_dir.last_ack_seen,
+		       query->ct.original_dir.data_unacked,
+		       query->ct.original_dir.sent_end,
+		       query->ct.original_dir.reply_end,
+		       query->ct.original_dir.max_win,
+		       query->ct.original_dir.max_ack);
+		printf("  Reply Dir:\n"
+		       "    scale: %u, fin: %u, ack seen: %u\n"
+		       " unacked data: %u\n    Sent end: %u,"
+		       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
+		       query->ct.reply_dir.scale,
+		       query->ct.reply_dir.close_initiated,
+		       query->ct.reply_dir.last_ack_seen,
+		       query->ct.reply_dir.data_unacked,
+		       query->ct.reply_dir.sent_end,
+		       query->ct.reply_dir.reply_end,
+		       query->ct.reply_dir.max_win,
+		       query->ct.reply_dir.max_ack);
+		break;
+	default:
+		fprintf(stderr,
+			"Indirect action (type: %d) doesn't support query\n",
+			type);
+		break;
+	}
+
+}
+
 int
 port_action_handle_query(portid_t port_id, uint32_t id)
 {
 	struct rte_flow_error error;
 	struct port_indirect_action *pia;
-	union {
-		struct rte_flow_query_count count;
-		struct rte_flow_query_age age;
-		struct rte_flow_action_conntrack ct;
-	} query;
+	union port_action_query query;
 
 	pia = action_get_by_id(port_id, id);
 	if (!pia)
@@ -1915,76 +1987,7 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 	memset(&query, 0, sizeof(query));
 	if (rte_flow_action_handle_query(port_id, pia->handle, &query, &error))
 		return port_flow_complain(&error);
-	switch (pia->type) {
-	case RTE_FLOW_ACTION_TYPE_AGE:
-		printf("Indirect AGE action:\n"
-		       " aged: %u\n"
-		       " sec_since_last_hit_valid: %u\n"
-		       " sec_since_last_hit: %" PRIu32 "\n",
-		       query.age.aged,
-		       query.age.sec_since_last_hit_valid,
-		       query.age.sec_since_last_hit);
-		break;
-	case RTE_FLOW_ACTION_TYPE_COUNT:
-		printf("Indirect COUNT action:\n"
-		       " hits_set: %u\n"
-		       " bytes_set: %u\n"
-		       " hits: %" PRIu64 "\n"
-		       " bytes: %" PRIu64 "\n",
-		       query.count.hits_set,
-		       query.count.bytes_set,
-		       query.count.hits,
-		       query.count.bytes);
-		break;
-	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-		printf("Conntrack Context:\n"
-		       "  Peer: %u, Flow dir: %s, Enable: %u\n"
-		       "  Live: %u, SACK: %u, CACK: %u\n"
-		       "  Packet dir: %s, Liberal: %u, State: %u\n"
-		       "  Factor: %u, Retrans: %u, TCP flags: %u\n"
-		       "  Last Seq: %u, Last ACK: %u\n"
-		       "  Last Win: %u, Last End: %u\n",
-		       query.ct.peer_port,
-		       query.ct.is_original_dir ? "Original" : "Reply",
-		       query.ct.enable, query.ct.live_connection,
-		       query.ct.selective_ack, query.ct.challenge_ack_passed,
-		       query.ct.last_direction ? "Original" : "Reply",
-		       query.ct.liberal_mode, query.ct.state,
-		       query.ct.max_ack_window, query.ct.retransmission_limit,
-		       query.ct.last_index, query.ct.last_seq,
-		       query.ct.last_ack, query.ct.last_window,
-		       query.ct.last_end);
-		printf("  Original Dir:\n"
-		       "    scale: %u, fin: %u, ack seen: %u\n"
-		       " unacked data: %u\n    Sent end: %u,"
-		       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
-		       query.ct.original_dir.scale,
-		       query.ct.original_dir.close_initiated,
-		       query.ct.original_dir.last_ack_seen,
-		       query.ct.original_dir.data_unacked,
-		       query.ct.original_dir.sent_end,
-		       query.ct.original_dir.reply_end,
-		       query.ct.original_dir.max_win,
-		       query.ct.original_dir.max_ack);
-		printf("  Reply Dir:\n"
-		       "    scale: %u, fin: %u, ack seen: %u\n"
-		       " unacked data: %u\n    Sent end: %u,"
-		       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
-		       query.ct.reply_dir.scale,
-		       query.ct.reply_dir.close_initiated,
-		       query.ct.reply_dir.last_ack_seen,
-		       query.ct.reply_dir.data_unacked,
-		       query.ct.reply_dir.sent_end,
-		       query.ct.reply_dir.reply_end,
-		       query.ct.reply_dir.max_win,
-		       query.ct.reply_dir.max_ack);
-		break;
-	default:
-		fprintf(stderr,
-			"Indirect action %u (type: %d) on port %u doesn't support query\n",
-			id, pia->type, port_id);
-		break;
-	}
+	port_action_handle_query_dump(pia->type, &query);
 	return 0;
 }
 
@@ -2476,6 +2479,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	bool found;
 	struct rte_flow_error error = { RTE_FLOW_ERROR_TYPE_NONE, NULL, NULL };
 	struct rte_flow_action_age *age = age_action_get(actions);
+	struct queue_job *job;
 
 	port = &ports[port_id];
 	if (port->flow_list) {
@@ -2519,9 +2523,18 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 		return -EINVAL;
 	}
 
+	job = calloc(1, sizeof(*job));
+	if (!job) {
+		printf("Queue flow create job allocate failed\n");
+		return -ENOMEM;
+	}
+	job->type = QUEUE_JOB_TYPE_FLOW_CREATE;
+
 	pf = port_flow_new(NULL, pattern, actions, &error);
-	if (!pf)
+	if (!pf) {
+		free(job);
 		return port_flow_complain(&error);
+	}
 	if (age) {
 		pf->age_type = ACTION_AGE_CONTEXT_TYPE_FLOW;
 		age->context = &pf->age_type;
@@ -2529,16 +2542,18 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x11, sizeof(error));
 	flow = rte_flow_async_create(port_id, queue_id, &op_attr, pt->table,
-		pattern, pattern_idx, actions, actions_idx, NULL, &error);
+		pattern, pattern_idx, actions, actions_idx, job, &error);
 	if (!flow) {
 		uint32_t flow_id = pf->id;
 		port_queue_flow_destroy(port_id, queue_id, true, 1, &flow_id);
+		free(job);
 		return port_flow_complain(&error);
 	}
 
 	pf->next = port->flow_list;
 	pf->id = id;
 	pf->flow = flow;
+	job->pf = pf;
 	port->flow_list = pf;
 	printf("Flow rule #%u creation enqueued\n", pf->id);
 	return 0;
@@ -2554,6 +2569,7 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 	struct port_flow **tmp;
 	uint32_t c = 0;
 	int ret = 0;
+	struct queue_job *job;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 	    port_id == (portid_t)RTE_PORT_ALL)
@@ -2580,14 +2596,22 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 			 * update it in case of error.
 			 */
 			memset(&error, 0x33, sizeof(error));
+			job = calloc(1, sizeof(*job));
+			if (!job) {
+				printf("Queue flow destroy job allocate failed\n");
+				return -ENOMEM;
+			}
+			job->type = QUEUE_JOB_TYPE_FLOW_DESTROY;
+			job->pf = pf;
+
 			if (rte_flow_async_destroy(port_id, queue_id, &op_attr,
-						   pf->flow, NULL, &error)) {
+						   pf->flow, job, &error)) {
+				free(job);
 				ret = port_flow_complain(&error);
 				continue;
 			}
 			printf("Flow rule #%u destruction enqueued\n", pf->id);
 			*tmp = pf->next;
-			free(pf);
 			break;
 		}
 		if (i == n)
@@ -2609,6 +2633,7 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 	struct port_indirect_action *pia;
 	int ret;
 	struct rte_flow_error error;
+	struct queue_job *job;
 
 	ret = action_alloc(port_id, id, &pia);
 	if (ret)
@@ -2619,6 +2644,13 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 		printf("Queue #%u is invalid\n", queue_id);
 		return -EINVAL;
 	}
+	job = calloc(1, sizeof(*job));
+	if (!job) {
+		printf("Queue action create job allocate failed\n");
+		return -ENOMEM;
+	}
+	job->type = QUEUE_JOB_TYPE_ACTION_CREATE;
+	job->pia = pia;
 
 	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
 		struct rte_flow_action_age *age =
@@ -2630,11 +2662,12 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x88, sizeof(error));
 	pia->handle = rte_flow_async_action_handle_create(port_id, queue_id,
-					&attr, conf, action, NULL, &error);
+					&attr, conf, action, job, &error);
 	if (!pia->handle) {
 		uint32_t destroy_id = pia->id;
 		port_queue_action_handle_destroy(port_id, queue_id,
 						 postpone, 1, &destroy_id);
+		free(job);
 		return port_flow_complain(&error);
 	}
 	pia->type = action->type;
@@ -2653,6 +2686,7 @@ port_queue_action_handle_destroy(portid_t port_id,
 	struct port_indirect_action **tmp;
 	uint32_t c = 0;
 	int ret = 0;
+	struct queue_job *job;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 	    port_id == (portid_t)RTE_PORT_ALL)
@@ -2679,17 +2713,23 @@ port_queue_action_handle_destroy(portid_t port_id,
 			 * of error.
 			 */
 			memset(&error, 0x99, sizeof(error));
+			job = calloc(1, sizeof(*job));
+			if (!job) {
+				printf("Queue action destroy job allocate failed\n");
+				return -ENOMEM;
+			}
+			job->type = QUEUE_JOB_TYPE_ACTION_DESTROY;
+			job->pia = pia;
 
 			if (pia->handle &&
 			    rte_flow_async_action_handle_destroy(port_id,
-				queue_id, &attr, pia->handle, NULL, &error)) {
+				queue_id, &attr, pia->handle, job, &error)) {
 				ret = port_flow_complain(&error);
 				continue;
 			}
 			*tmp = pia->next;
 			printf("Indirect action #%u destruction queued\n",
 			       pia->id);
-			free(pia);
 			break;
 		}
 		if (i == n)
@@ -2709,6 +2749,7 @@ port_queue_action_handle_update(portid_t port_id,
 	struct rte_port *port;
 	struct rte_flow_error error;
 	struct rte_flow_action_handle *action_handle;
+	struct queue_job *job;
 
 	action_handle = port_action_handle_get_by_id(port_id, id);
 	if (!action_handle)
@@ -2720,8 +2761,56 @@ port_queue_action_handle_update(portid_t port_id,
 		return -EINVAL;
 	}
 
+	job = calloc(1, sizeof(*job));
+	if (!job) {
+		printf("Queue action update job allocate failed\n");
+		return -ENOMEM;
+	}
+	job->type = QUEUE_JOB_TYPE_ACTION_UPDATE;
+
 	if (rte_flow_async_action_handle_update(port_id, queue_id, &attr,
-				    action_handle, action, NULL, &error)) {
+				    action_handle, action, job, &error)) {
+		free(job);
+		return port_flow_complain(&error);
+	}
+	printf("Indirect action #%u update queued\n", id);
+	return 0;
+}
+
+/** Enqueue indirect action query operation. */
+int
+port_queue_action_handle_query(portid_t port_id,
+			       uint32_t queue_id, bool postpone, uint32_t id)
+{
+	const struct rte_flow_op_attr attr = { .postpone = postpone};
+	struct rte_port *port;
+	struct rte_flow_error error;
+	struct rte_flow_action_handle *action_handle;
+	struct port_indirect_action *pia;
+	struct queue_job *job;
+
+	pia = action_get_by_id(port_id, id);
+	action_handle = pia ? pia->handle : NULL;
+	if (!action_handle)
+		return -EINVAL;
+
+	port = &ports[port_id];
+	if (queue_id >= port->queue_nb) {
+		printf("Queue #%u is invalid\n", queue_id);
+		return -EINVAL;
+	}
+
+	job = calloc(1, sizeof(*job));
+	if (!job) {
+		printf("Queue action update job allocate failed\n");
+		return -ENOMEM;
+	}
+	job->type = QUEUE_JOB_TYPE_ACTION_QUERY;
+	job->pia = pia;
+
+	if (rte_flow_async_action_handle_query(port_id, queue_id, &attr,
+				    action_handle, &job->query, job, &error)) {
+		free(job);
 		return port_flow_complain(&error);
 	}
 	printf("Indirect action #%u update queued\n", id);
@@ -2766,6 +2855,7 @@ port_queue_flow_pull(portid_t port_id, queueid_t queue_id)
 	int ret = 0;
 	int success = 0;
 	int i;
+	struct queue_job *job;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 	    port_id == (portid_t)RTE_PORT_ALL)
@@ -2795,6 +2885,14 @@ port_queue_flow_pull(portid_t port_id, queueid_t queue_id)
 	for (i = 0; i < ret; i++) {
 		if (res[i].status == RTE_FLOW_OP_SUCCESS)
 			success++;
+		job = (struct queue_job *)res[i].user_data;
+		if (job->type == QUEUE_JOB_TYPE_FLOW_DESTROY)
+			free(job->pf);
+		else if (job->type == QUEUE_JOB_TYPE_ACTION_DESTROY)
+			free(job->pia);
+		else if (job->type == QUEUE_JOB_TYPE_ACTION_QUERY)
+			port_action_handle_query_dump(job->pia->type, &job->query);
+		free(job);
 	}
 	printf("Queue #%u pulled %u operations (%u failed, %u succeeded)\n",
 	       queue_id, ret, ret - success, success);

@@ -4454,6 +4454,25 @@ Query indirect action having id 100::
 
    testpmd> flow indirect_action 0 query 100
 
+Enqueueing query of indirect actions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow queue indirect_action query`` adds query operation for an indirect
+action to a queue. It is bound to ``rte_flow_async_action_handle_query()``::
+
+   flow queue {port_id} indirect_action {queue_id} query
+      {indirect_action_id} [postpone {boolean}]
+
+If successful, it will show::
+
+   Indirect action #[...] query queued
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+``flow queue pull`` must be called to retrieve the operation status.
+
 Sample QinQ flow rules
 ~~~~~~~~~~~~~~~~~~~~~~
 
