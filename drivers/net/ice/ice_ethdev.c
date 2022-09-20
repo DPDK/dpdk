@@ -5791,6 +5791,11 @@ ice_timesync_enable(struct rte_eth_dev *dev)
 		return -1;
 	}
 
+	if (ice_is_e810(hw))
+		hw->phy_cfg = ICE_PHY_E810;
+	else
+		hw->phy_cfg = ICE_PHY_E822;
+
 	if (hw->func_caps.ts_func_info.src_tmr_owned) {
 		ret = ice_ptp_init_phc(hw);
 		if (ret) {
