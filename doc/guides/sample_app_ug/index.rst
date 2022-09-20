@@ -20,7 +20,6 @@ Sample Applications User Guides
     ip_frag
     ipv4_multicast
     ip_reassembly
-    kernel_nic_interface
     keep_alive
     dma
     l2_forward_crypto

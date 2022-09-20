@@ -47,7 +47,6 @@ Deprecation Notices
   and `refinement <http://mails.dpdk.org/archives/dev/2022-June/243596.html>`_:
 
   * Some deprecation warnings will be added in DPDK 22.11.
-  * The KNI example application will be removed from DPDK 22.11.
   * The KNI kernel module, library and PMD will be removed from the DPDK 23.11.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
