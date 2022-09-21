@@ -131,7 +131,8 @@ cnxk_tim_get_target_bucket(struct cnxk_tim_ring *const tim_ring,
 			   const uint32_t rel_bkt, struct cnxk_tim_bkt **bkt,
 			   struct cnxk_tim_bkt **mirr_bkt)
 {
-	const uint64_t bkt_cyc = cnxk_tim_cntvct() - tim_ring->ring_start_cyc;
+	const uint64_t bkt_cyc =
+		tim_ring->tick_fn(tim_ring->tbase) - tim_ring->ring_start_cyc;
 	uint64_t bucket =
 		rte_reciprocal_divide_u64(bkt_cyc, &tim_ring->fast_div) +
 		rel_bkt;

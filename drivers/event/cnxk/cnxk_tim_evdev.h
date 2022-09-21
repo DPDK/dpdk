@@ -24,14 +24,14 @@
 
 #define CNXK_TIM_EVDEV_NAME	    cnxk_tim_eventdev
 #define CNXK_TIM_MAX_BUCKETS	    (0xFFFFF)
-#define CNXK_TIM_RING_DEF_CHUNK_SZ  (4096)
+#define CNXK_TIM_RING_DEF_CHUNK_SZ  (256)
 #define CNXK_TIM_CHUNK_ALIGNMENT    (16)
 #define CNXK_TIM_MAX_BURST	    \
 			(RTE_CACHE_LINE_SIZE / CNXK_TIM_CHUNK_ALIGNMENT)
 #define CNXK_TIM_NB_CHUNK_SLOTS(sz) (((sz) / CNXK_TIM_CHUNK_ALIGNMENT) - 1)
 #define CNXK_TIM_MIN_CHUNK_SLOTS    (0x1)
 #define CNXK_TIM_MAX_CHUNK_SLOTS    (0x1FFE)
-#define CNXK_TIM_MAX_POOL_CACHE_SZ  (128)
+#define CNXK_TIM_MAX_POOL_CACHE_SZ  (16)
 
 #define CN9K_TIM_MIN_TMO_TKS (256)
 
@@ -122,18 +122,18 @@ struct cnxk_tim_bkt {
 };
 
 struct cnxk_tim_ring {
-	uintptr_t base;
 	uint16_t nb_chunk_slots;
 	uint32_t nb_bkts;
-	uint64_t last_updt_cyc;
+	uintptr_t tbase;
+	uint64_t (*tick_fn)(uint64_t tbase);
 	uint64_t ring_start_cyc;
-	uint64_t tck_int;
-	uint64_t tot_int;
 	struct cnxk_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
 	struct rte_reciprocal_u64 fast_div;
 	struct rte_reciprocal_u64 fast_bkt;
+	uint64_t tck_int;
 	uint64_t arm_cnt;
+	uintptr_t base;
 	uint8_t prod_type_sp;
 	uint8_t enable_stats;
 	uint8_t disable_npa;
@@ -166,19 +166,19 @@ cnxk_tim_priv_get(void)
 	return mz->addr;
 }
 
-static inline long double
+static inline double
 cnxk_tim_ns_per_tck(uint64_t freq)
 {
-	return (long double)NSECPERSEC / freq;
+	return (double)NSECPERSEC / freq;
 }
 
 #ifdef RTE_ARCH_ARM64
 static inline uint64_t
-cnxk_tim_cntvct(void)
+cnxk_tim_cntvct(uint64_t base __rte_unused)
 {
 	uint64_t tsc;
 
-	asm volatile("mrs %0, cntvct_el0" : "=r"(tsc));
+	asm volatile("mrs %0, CNTVCT_EL0" : "=r"(tsc)::"memory");
 	return tsc;
 }
 
@@ -192,7 +192,7 @@ cnxk_tim_cntfrq(void)
 }
 #else
 static inline uint64_t
-cnxk_tim_cntvct(void)
+cnxk_tim_cntvct(uint64_t base __rte_unused)
 {
 	return 0;
 }
@@ -203,6 +203,12 @@ cnxk_tim_cntfrq(void)
 	return 0;
 }
 #endif
+
+static inline uint64_t
+cnxk_tim_tick_read(uint64_t tick_base)
+{
+	return plt_read64(tick_base);
+}
 
 static inline enum roc_tim_clk_src
 cnxk_tim_convert_clk_src(enum rte_event_timer_adapter_clk_src clk_src)
@@ -219,6 +225,27 @@ cnxk_tim_convert_clk_src(enum rte_event_timer_adapter_clk_src clk_src)
 	case RTE_EVENT_TIMER_ADAPTER_EXT_CLK3:
 		return roc_model_constant_is_cn9k() ? ROC_TIM_CLK_SRC_INVALID :
 						      ROC_TIM_CLK_SRC_SYNCE;
+	default:
+		return ROC_TIM_CLK_SRC_INVALID;
+	}
+}
+
+static inline uintptr_t
+cnxk_tim_get_tick_base(enum roc_tim_clk_src clk_src, uintptr_t base)
+{
+	switch (clk_src) {
+	case ROC_TIM_CLK_SRC_GTI:
+		return base + TIM_LF_FR_RN_GTI;
+	case ROC_TIM_CLK_SRC_GPIO:
+		return base + TIM_LF_FR_RN_GPIOS;
+	case ROC_TIM_CLK_SRC_10NS:
+		return base + TIM_LF_FR_RN_TENNS;
+	case ROC_TIM_CLK_SRC_PTP:
+		return base + TIM_LF_FR_RN_PTP;
+	case ROC_TIM_CLK_SRC_SYNCE:
+		return base + TIM_LF_FR_RN_SYNCE;
+	case ROC_TIM_CLK_SRC_BTS:
+		return base + TIM_LF_FR_RN_BTS;
 	default:
 		return ROC_TIM_CLK_SRC_INVALID;
 	}
