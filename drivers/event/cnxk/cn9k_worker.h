@@ -157,6 +157,15 @@ cn9k_sso_hws_dual_forward_event(struct cn9k_sso_hws_dual *dws, uint64_t base,
 }
 
 static __rte_always_inline void
+cn9k_sso_tx_tag_flush(uint64_t base)
+{
+	if (unlikely(CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_TAG)) ==
+		     SSO_TT_EMPTY))
+		return;
+	plt_write64(0, base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
+}
+
+static __rte_always_inline void
 cn9k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
 		 const uint32_t tag, const uint32_t flags,
 		 const void *const lookup_mem)
@@ -835,7 +844,7 @@ done:
 			return 1;
 	}
 
-	cnxk_sso_hws_swtag_flush(base);
+	cn9k_sso_tx_tag_flush(base);
 
 	return 1;
 }
