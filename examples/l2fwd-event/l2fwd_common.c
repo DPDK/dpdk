@@ -121,8 +121,9 @@ l2fwd_event_vector_array_free(struct rte_event events[], uint16_t num)
 	uint16_t i;
 
 	for (i = 0; i < num; i++) {
-		rte_pktmbuf_free_bulk(events[i].vec->mbufs,
-				      events[i].vec->nb_elem);
+		rte_pktmbuf_free_bulk(
+			&events[i].vec->mbufs[events[i].vec->elem_offset],
+			events[i].vec->nb_elem);
 		rte_mempool_put(rte_mempool_from_obj(events[i].vec),
 				events[i].vec);
 	}
