@@ -857,6 +857,7 @@ rxa_init_vector(struct event_eth_rx_adapter *rx_adapter,
 	vec->vector_ev->port = vec->port;
 	vec->vector_ev->queue = vec->queue;
 	vec->vector_ev->attr_valid = true;
+	vec->vector_ev->elem_offset = 0;
 	TAILQ_INSERT_TAIL(&rx_adapter->vector_list, vec, next);
 }
 

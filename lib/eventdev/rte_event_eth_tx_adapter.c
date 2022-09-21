@@ -557,16 +557,18 @@ txa_process_event_vector(struct txa_service_data *txa,
 		queue = vec->queue;
 		tqi = txa_service_queue(txa, port, queue);
 		if (unlikely(tqi == NULL || !tqi->added)) {
-			rte_pktmbuf_free_bulk(mbufs, vec->nb_elem);
+			rte_pktmbuf_free_bulk(&mbufs[vec->elem_offset],
+					      vec->nb_elem);
 			rte_mempool_put(rte_mempool_from_obj(vec), vec);
 			return 0;
 		}
 		for (i = 0; i < vec->nb_elem; i++) {
 			nb_tx += rte_eth_tx_buffer(port, queue, tqi->tx_buf,
-						   mbufs[i]);
+						   mbufs[i + vec->elem_offset]);
 		}
 	} else {
-		for (i = 0; i < vec->nb_elem; i++) {
+		for (i = vec->elem_offset; i < vec->elem_offset + vec->nb_elem;
+		     i++) {
 			port = mbufs[i]->port;
 			queue = rte_event_eth_tx_adapter_txq_get(mbufs[i]);
 			tqi = txa_service_queue(txa, port, queue);
