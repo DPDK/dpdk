@@ -1042,7 +1042,9 @@ again:
 
 			VHOST_LOG_CONFIG(INFO, "(%s) free connfd %d\n", path, conn->connfd);
 			close(conn->connfd);
+			pthread_mutex_unlock(&vhost_user.mutex);
 			vhost_destroy_device(conn->vid);
+			pthread_mutex_lock(&vhost_user.mutex);
 			TAILQ_REMOVE(&vsocket->conn_list, conn, next);
 			free(conn);
 		}
