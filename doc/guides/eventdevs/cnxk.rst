@@ -79,8 +79,9 @@ Runtime Config Options
 
 - ``CN10K Getwork mode``
 
-  CN10K supports multiple getwork prefetch modes, by default the prefetch
-  mode is set to none.
+  CN10K supports three getwork prefetch modes no prefetch[0], prefetch
+  immediately[1] and delayed prefetch on forward progress event[2].
+  The default getwork mode is 2.
 
   For example::
 

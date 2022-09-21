@@ -1136,6 +1136,7 @@ cn10k_sso_init(struct rte_eventdev *event_dev)
 		return 0;
 	}
 
+	dev->gw_mode = CN10K_GW_MODE_PREF_WFE;
 	rc = cnxk_sso_init(event_dev);
 	if (rc < 0)
 		return rc;
