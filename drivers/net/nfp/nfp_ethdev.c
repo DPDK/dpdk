@@ -924,7 +924,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		break;
 	default:
 		PMD_INIT_LOG(ERR, "nfp_net: no device ID matching");
-		err = -ENODEV;
+		ret = -ENODEV;
 		goto ctrl_area_cleanup;
 	}
 
