@@ -1717,6 +1717,8 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 
 	slave_eth_dev->data->dev_conf.rxmode.mtu =
 			bonded_eth_dev->data->dev_conf.rxmode.mtu;
+	slave_eth_dev->data->dev_conf.link_speeds =
+			bonded_eth_dev->data->dev_conf.link_speeds;
 
 	slave_eth_dev->data->dev_conf.txmode.offloads |=
 		bonded_eth_dev->data->dev_conf.txmode.offloads;
@@ -2275,6 +2277,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->reta_size = internals->reta_size;
 	dev_info->hash_key_size = internals->rss_key_len;
+	dev_info->speed_capa = internals->speed_capa;
 
 	return 0;
 }
@@ -3591,6 +3594,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	uint64_t offloads;
 	int arg_count;
 	uint16_t port_id = dev - rte_eth_devices;
+	uint32_t link_speeds;
 	uint8_t agg_mode;
 
 	static const uint8_t default_rss_key[40] = {
@@ -3657,6 +3661,29 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 			"bond mode broadcast & 8023AD don't support MBUF_FAST_FREE offload, force disable it.");
 		offloads &= ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 		dev->data->dev_conf.txmode.offloads = offloads;
+	}
+
+	link_speeds = dev->data->dev_conf.link_speeds;
+	/*
+	 * The default value of 'link_speeds' is zero. From its definition,
+	 * this value actually means auto-negotiation. But not all PMDs support
+	 * auto-negotiation. So ignore the check for the auto-negotiation and
+	 * only consider fixed speed to reduce the impact on PMDs.
+	 */
+	if (link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
+		if ((link_speeds &
+		    (internals->speed_capa & ~RTE_ETH_LINK_SPEED_FIXED)) == 0) {
+			RTE_BOND_LOG(ERR, "the fixed speed is not supported by all slave devices.");
+			return -EINVAL;
+		}
+		/*
+		 * Two '1' in binary of 'link_speeds': bit0 and a unique
+		 * speed bit.
+		 */
+		if (__builtin_popcountl(link_speeds) != 2) {
+			RTE_BOND_LOG(ERR, "please set a unique speed.");
+			return -EINVAL;
+		}
 	}
 
 	/* set the max_rx_pktlen */

@@ -513,6 +513,8 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		internals->primary_port = slave_port_id;
 		internals->current_primary_port = slave_port_id;
 
+		internals->speed_capa = dev_info.speed_capa;
+
 		/* Inherit queues settings from first slave */
 		internals->nb_rx_queues = slave_eth_dev->data->nb_rx_queues;
 		internals->nb_tx_queues = slave_eth_dev->data->nb_tx_queues;
@@ -527,6 +529,7 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 	} else {
 		int ret;
 
+		internals->speed_capa &= dev_info.speed_capa;
 		eth_bond_slave_inherit_dev_info_rx_next(internals, &dev_info);
 		eth_bond_slave_inherit_dev_info_tx_next(internals, &dev_info);
 

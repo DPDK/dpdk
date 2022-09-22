@@ -131,6 +131,9 @@ struct bond_dev_private {
 	uint32_t link_down_delay_ms;
 	uint32_t link_up_delay_ms;
 
+	uint32_t speed_capa;
+	/**< Supported speeds bitmap (RTE_ETH_LINK_SPEED_). */
+
 	uint16_t nb_rx_queues;			/**< Total number of rx queues */
 	uint16_t nb_tx_queues;			/**< Total number of tx queues*/
 
