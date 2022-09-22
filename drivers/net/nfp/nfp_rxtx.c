@@ -657,7 +657,7 @@ nfp_net_reset_tx_queue(struct nfp_net_txq *txq)
 	txq->rd_p = 0;
 }
 
-int
+static int
 nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		       uint16_t nb_desc, unsigned int socket_id,
 		       const struct rte_eth_txconf *tx_conf)
@@ -991,7 +991,7 @@ xmit_end:
 	return i;
 }
 
-int
+static int
 nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t queue_idx,
 		uint16_t nb_desc,
@@ -1106,6 +1106,35 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(txq->tx_count));
 
 	return 0;
+}
+
+int
+nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
+		uint16_t queue_idx,
+		uint16_t nb_desc,
+		unsigned int socket_id,
+		const struct rte_eth_txconf *tx_conf)
+{
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
+	case NFP_NET_CFG_VERSION_DP_NFD3:
+		return nfp_net_nfd3_tx_queue_setup(dev, queue_idx,
+				nb_desc, socket_id, tx_conf);
+	case NFP_NET_CFG_VERSION_DP_NFDK:
+		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {
+			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
+				NFD_CFG_MAJOR_VERSION_of(hw->ver));
+			return -EINVAL;
+		}
+		return nfp_net_nfdk_tx_queue_setup(dev, queue_idx,
+				nb_desc, socket_id, tx_conf);
+	default:
+		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
+		return -EINVAL;
+	}
 }
 
 static inline uint32_t

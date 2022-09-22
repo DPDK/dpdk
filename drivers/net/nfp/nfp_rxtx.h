@@ -342,12 +342,9 @@ int nfp_net_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				  struct rte_mempool *mp);
 void nfp_net_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
 void nfp_net_reset_tx_queue(struct nfp_net_txq *txq);
-int nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
-				  uint16_t nb_desc, unsigned int socket_id,
-				  const struct rte_eth_txconf *tx_conf);
 uint16_t nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
-int nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
+int nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t queue_idx,
 		uint16_t nb_desc,
 		unsigned int socket_id,
