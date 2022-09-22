@@ -318,8 +318,8 @@ Such model has the following benefits:
    strictly what is received in DPDK.
 
 More about the bifurcated driver can be found in
-`Mellanox Bifurcated DPDK PMD
-<https://www.dpdk.org/wp-content/uploads/sites/35/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`__.
+NVIDIA `bifurcated PMD
+<https://www.dpdk.org/wp-content/uploads/sites/35/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`_ presentation.
 
 .. _uio:
 

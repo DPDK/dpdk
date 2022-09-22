@@ -815,7 +815,7 @@ F: drivers/net/octeon_ep/
 F: doc/guides/nics/features/octeon_ep.ini
 F: doc/guides/nics/octeon_ep.rst
 
-Mellanox mlx4
+NVIDIA mlx4
 M: Matan Azrad <matan@nvidia.com>
 M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
@@ -823,7 +823,7 @@ F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 F: doc/guides/nics/features/mlx4.ini
 
-Mellanox mlx5
+NVIDIA mlx5
 M: Matan Azrad <matan@nvidia.com>
 M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
@@ -1107,7 +1107,7 @@ F: drivers/crypto/nitrox/
 F: doc/guides/cryptodevs/nitrox.rst
 F: doc/guides/cryptodevs/features/nitrox.ini
 
-Mellanox mlx5
+NVIDIA mlx5
 M: Matan Azrad <matan@nvidia.com>
 F: drivers/crypto/mlx5/
 F: doc/guides/cryptodevs/mlx5.rst
@@ -1174,7 +1174,7 @@ F: drivers/compress/isal/
 F: doc/guides/compressdevs/isal.rst
 F: doc/guides/compressdevs/features/isal.ini
 
-Mellanox mlx5
+NVIDIA mlx5
 M: Matan Azrad <matan@nvidia.com>
 F: drivers/compress/mlx5/
 
@@ -1233,7 +1233,7 @@ F: drivers/regex/cn9k/
 F: doc/guides/regexdevs/cn9k.rst
 F: doc/guides/regexdevs/features/cn9k.ini
 
-Mellanox mlx5
+NVIDIA mlx5
 M: Ori Kam <orika@nvidia.com>
 F: drivers/regex/mlx5/
 F: doc/guides/regexdevs/mlx5.rst
@@ -1250,7 +1250,7 @@ F: drivers/vdpa/ifc/
 F: doc/guides/vdpadevs/ifc.rst
 F: doc/guides/vdpadevs/features/ifcvf.ini
 
-Mellanox mlx5 vDPA
+NVIDIA mlx5 vDPA
 M: Matan Azrad <matan@nvidia.com>
 M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
 F: drivers/vdpa/mlx5/

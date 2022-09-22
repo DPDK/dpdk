@@ -1,24 +1,24 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright 2019 Mellanox Technologies, Ltd
 
-Mellanox BlueField Board Support Package
-========================================
+NVIDIA BlueField Board Support Package
+======================================
 
-This document has information about steps to setup Mellanox BlueField platform
-and common offload HW drivers of **Mellanox BlueField** family SoC.
+.. note::
 
+   NVIDIA acquired Mellanox Technologies in 2020.
+   The DPDK documentation and code might still include instances
+   of or references to Mellanox trademarks (like BlueField and ConnectX)
+   that are now NVIDIA trademarks.
 
-Supported BlueField family SoCs
--------------------------------
-
-- `BlueField <https://docs.mellanox.com/category/bluefieldsnic>`_
+This document has information about steps to setup NVIDIA BlueField platform
+and common offload HW drivers of **NVIDIA BlueField** family SoC.
 
 
 Supported BlueField Platforms
 -----------------------------
 
-- `BlueField-1 <https://docs.mellanox.com/display/bluefieldsniceth/Introduction>`_
-- `BlueField-2 <https://docs.mellanox.com/display/BlueField2DPUENUG/Introduction>`_
+- `BlueField 2 <https://docs.nvidia.com/networking/display/BlueField2DPUENUG/Introduction>`_
 
 
 Common Offload HW Drivers
@@ -26,7 +26,7 @@ Common Offload HW Drivers
 
 1. **NIC Driver**
 
-   See :doc:`../nics/mlx5` for Mellanox mlx5 NIC driver information.
+   See :doc:`../nics/mlx5` for NVIDIA mlx5 NIC driver information.
 
 2. **Cryptodev Driver**
 
@@ -44,8 +44,7 @@ Steps To Setup Platform
 Toolchains, OS and drivers can be downloaded and installed individually
 from the web, but it is recommended to follow instructions at:
 
-- `Mellanox BlueField-1 Software Website <https://docs.mellanox.com/display/BlueFieldSWv31011424/SmartNIC+Bring-Up+and+Driver+Installation>`_
-- `Mellanox BlueField-2 Software Website <https://docs.mellanox.com/display/NVIDIABlueField2DPUQSG#NVIDIABlueField2DPUSoftwareQuickStartGuide-Post-installationProcedurePost-installationProcedure>`_
+- `NVIDIA BlueField Software Website <https://docs.nvidia.com/networking/category/dpuos>`_
 
 
 Compile DPDK
@@ -57,7 +56,7 @@ an x86 based platform.
 Native Compilation
 ~~~~~~~~~~~~~~~~~~
 
-Refer to :doc:`../nics/mlx5` for prerequisites. Either Mellanox OFED/EN or
+Refer to :doc:`../nics/mlx5` for prerequisites. Either NVIDIA MLNX_OFED/EN or
 rdma-core library with corresponding kernel drivers is required.
 
 .. code-block:: console

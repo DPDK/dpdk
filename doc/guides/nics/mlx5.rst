@@ -4,8 +4,15 @@
 
 .. include:: <isonum.txt>
 
-MLX5 Ethernet Poll Mode Driver
-==============================
+NVIDIA MLX5 Ethernet Driver
+===========================
+
+.. note::
+
+   NVIDIA acquired Mellanox Technologies in 2020.
+   The DPDK documentation and code might still include instances
+   of or references to Mellanox trademarks (like BlueField and ConnectX)
+   that are now NVIDIA trademarks.
 
 The mlx5 Ethernet poll mode driver library (**librte_net_mlx5**) provides support
 for **NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx** , **NVIDIA ConnectX-5**,
@@ -29,7 +36,8 @@ This means legacy linux control tools (for example: ethtool, ifconfig and
 more) can operate on the same network interfaces that owned by the DPDK
 application.
 
-See :doc:`../../platform/mlx5` guide for more design details.
+See :doc:`../../platform/mlx5` guide for more design details,
+including prerequisites installation.
 
 Features
 --------
@@ -511,7 +519,7 @@ Limitations
 
 - Bonding under socket direct mode
 
-  - Needs OFED 5.4+.
+  - Needs MLNX_OFED 5.4+.
 
 - Timestamps:
 
@@ -541,7 +549,7 @@ Limitations
   - key
   - sequence
 
-  Matching on checksum and sequence needs OFED 5.6+.
+  Matching on checksum and sequence needs MLNX_OFED 5.6+.
 
 - The NIC egress flow rules on representor port are not supported.
 
@@ -636,7 +644,7 @@ for an additional list of options shared with other mlx5 drivers.
   dropping a packet. Once the timer is expired, the delay drop will be
   deactivated for all the Rx queues with this feature enable. To re-activate
   it, a rearming is needed and it is part of the kernel driver starting from
-  OFED 5.5.
+  MLNX_OFED 5.5.
 
   To enable / disable the delay drop rearming, the private flag ``dropless_rq``
   can be set and queried via ethtool:
@@ -1277,6 +1285,14 @@ There are multiple Rx burst functions with different advantages and limitations.
 Supported hardware offloads
 ---------------------------
 
+Below tables show offload support depending on hardware, firmware,
+and Linux software support.
+
+The :ref:`Linux prerequisites <mlx5_linux_prerequisites>`
+are Linux kernel and rdma-core libraries.
+These dependencies are also packaged in MLNX_OFED or MLNX_EN,
+shortened below as "OFED".
+
 .. table:: Minimal SW/HW versions for queue offloads
 
    ============== ===== ===== ========= ===== ========== =============
@@ -1744,7 +1760,7 @@ Dependency on mstflint package
 
 In order to configure host shaper register,
 ``librte_net_mlx5`` depends on ``libmtcr_ul``
-which can be installed from OFED mstflint package.
+which can be installed from MLNX_OFED mstflint package.
 Meson detects ``libmtcr_ul`` existence at configure stage.
 If the library is detected, the application must link with ``-lmtcr_ul``,
 as done by the pkg-config file libdpdk.pc.

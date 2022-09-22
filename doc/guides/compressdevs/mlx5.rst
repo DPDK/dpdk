@@ -3,8 +3,15 @@
 
 .. include:: <isonum.txt>
 
-MLX5 Compress Driver
-====================
+NVIDIA MLX5 Compress Driver
+===========================
+
+.. note::
+
+   NVIDIA acquired Mellanox Technologies in 2020.
+   The DPDK documentation and code might still include instances
+   of or references to Mellanox trademarks (like BlueField and ConnectX)
+   that are now NVIDIA trademarks.
 
 The mlx5 compress driver library
 (**librte_compress_mlx5**) provides support for **NVIDIA BlueField-2**
@@ -80,5 +87,5 @@ Supported NICs
 Prerequisites
 -------------
 
-- Mellanox OFED version: **5.2**
+- NVIDIA MLNX_OFED version: **5.2**
   See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.

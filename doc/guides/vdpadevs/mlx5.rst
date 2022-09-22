@@ -3,8 +3,15 @@
 
 .. include:: <isonum.txt>
 
-MLX5 vDPA Driver
-================
+NVIDIA MLX5 vDPA Driver
+=======================
+
+.. note::
+
+   NVIDIA acquired Mellanox Technologies in 2020.
+   The DPDK documentation and code might still include instances
+   of or references to Mellanox trademarks (like BlueField and ConnectX)
+   that are now NVIDIA trademarks.
 
 The mlx5 vDPA (vhost data path acceleration) driver library
 (**librte_vdpa_mlx5**) provides support for **NVIDIA ConnectX-6**,
@@ -36,7 +43,7 @@ Supported NICs
 Prerequisites
 -------------
 
-- Mellanox OFED version: **5.0**
+- NVIDIA MLNX_OFED version: **5.0**
   See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.
 
 Run-time configuration

@@ -12,7 +12,7 @@ By means of the generic GPU interface provided by this library,
 it is possible to allocate a chunk of GPU memory and use it
 to create a DPDK mempool with external mbufs having the payload
 on the GPU memory, enabling any network interface card
-(which support this feature like Mellanox NIC)
+supporting this feature
 to directly transmit and receive packets using GPU memory.
 
 Additionally, this library provides a number of functions

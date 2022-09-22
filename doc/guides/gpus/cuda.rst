@@ -156,13 +156,13 @@ Minimal requirements to enable the CUDA driver library are:
 - CUDA 11.4 Driver API or newer
 
 `GPUDirect RDMA Technology <https://docs.nvidia.com/cuda/gpudirect-rdma/index.html>`_
-allows compatible network cards (e.g. Mellanox) to directly send and receive packets
+allows compatible network cards (e.g. ConnectX) to directly send and receive packets
 using GPU memory instead of additional memory copies through the CPU system memory.
 To enable this technology, system requirements are:
 
 - `nvidia-peermem <https://docs.nvidia.com/cuda/gpudirect-rdma/index.html#nvidia-peermem>`_
   module running on the system;
-- Mellanox network card ConnectX-5 or newer (BlueField models included);
+- NVIDIA network card ConnectX-5 or newer (BlueField models included);
 - DPDK mlx5 PMD enabled;
 - To reach the best performance, an additional PCIe switch between GPU and NIC is recommended.
 

@@ -3,8 +3,15 @@
 
 .. include:: <isonum.txt>
 
-MLX5 RegEx Driver
-=================
+NVIDIA MLX5 RegEx Driver
+========================
+
+.. note::
+
+   NVIDIA acquired Mellanox Technologies in 2020.
+   The DPDK documentation and code might still include instances
+   of or references to Mellanox trademarks (like BlueField and ConnectX)
+   that are now NVIDIA trademarks.
 
 The mlx5 RegEx (Regular Expression) driver library
 (**librte_regex_mlx5**) provides support for **NVIDIA BlueField-2**

@@ -3,8 +3,15 @@
 
 .. include:: <isonum.txt>
 
-MLX5 Crypto Driver
-==================
+NVIDIA MLX5 Crypto Driver
+=========================
+
+.. note::
+
+   NVIDIA acquired Mellanox Technologies in 2020.
+   The DPDK documentation and code might still include instances
+   of or references to Mellanox trademarks (like BlueField and ConnectX)
+   that are now NVIDIA trademarks.
 
 The MLX5 crypto driver library
 (**librte_crypto_mlx5**) provides support for **NVIDIA ConnectX-6**
@@ -165,7 +172,7 @@ FW Prerequisites
 Linux Prerequisites
 ~~~~~~~~~~~~~~~~~~~
 
-- Mellanox OFED version: **5.3**.
+- NVIDIA MLNX_OFED version: **5.3**.
 - Compilation can be done also with rdma-core v15+.
 
   See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.
@@ -173,5 +180,5 @@ Linux Prerequisites
 Windows Prerequisites
 ~~~~~~~~~~~~~~~~~~~~~
 
-- Mellanox WINOF-2 version: **2.60** or higher.
+- NVIDIA WINOF-2 version: **2.60** or higher.
   See :ref:`mlx5 common prerequisites <mlx5_windows_prerequisites>` for more details.

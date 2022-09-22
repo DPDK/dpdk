@@ -2,16 +2,19 @@
     Copyright 2012 6WIND S.A.
     Copyright 2015 Mellanox Technologies, Ltd
 
-MLX4 poll mode driver library
-=============================
+NVIDIA MLX4 Ethernet Driver
+===========================
+
+.. note::
+
+   NVIDIA acquired Mellanox Technologies in 2020.
+   The DPDK documentation and code might still include instances
+   of or references to Mellanox trademarks (like BlueField and ConnectX)
+   that are now NVIDIA trademarks.
 
 The MLX4 poll mode driver library (**librte_net_mlx4**) implements support
-for **Mellanox ConnectX-3** and **Mellanox ConnectX-3 Pro** 10/40 Gbps adapters
+for **NVIDIA ConnectX-3** and **NVIDIA ConnectX-3 Pro** 10/40 Gbps adapters
 as well as their virtual functions (VF) in SR-IOV context.
-
-Information and documentation about this family of adapters can be found on
-the `Mellanox website <http://www.mellanox.com>`_. Help is also provided by
-the `Mellanox community <http://community.mellanox.com/welcome>`_.
 
 There is also a `section dedicated to this poll mode driver
 <https://developer.nvidia.com/networking/dpdk>`_.
@@ -20,7 +23,7 @@ There is also a `section dedicated to this poll mode driver
 Implementation details
 ----------------------
 
-Most Mellanox ConnectX-3 devices provide two ports but expose a single PCI
+Most NVIDIA ConnectX-3 devices provide two ports but expose a single PCI
 bus address, thus unlike most drivers, librte_net_mlx4 registers itself as a
 PCI driver that allocates one Ethernet device per detected port.
 
@@ -161,7 +164,7 @@ DPDK and must be installed separately:
 
 - **libmlx4** (provided by rdma-core package)
 
-  Low-level user space driver library for Mellanox ConnectX-3 devices,
+  Low-level user space driver library for NVIDIA ConnectX-3 devices,
   it is automatically loaded by libibverbs.
 
   This library basically implements send/receive calls to the hardware
@@ -176,14 +179,14 @@ DPDK and must be installed separately:
   Unlike most other PMDs, these modules must remain loaded and bound to
   their devices:
 
-  - mlx4_core: hardware driver managing Mellanox ConnectX-3 devices.
+  - mlx4_core: hardware driver managing NVIDIA ConnectX-3 devices.
   - mlx4_en: Ethernet device driver that provides kernel network interfaces.
   - mlx4_ib: InfiniBand device driver.
   - ib_uverbs: user space driver for verbs (entry point for libibverbs).
 
 - **Firmware update**
 
-  Mellanox OFED releases include firmware updates for ConnectX-3 adapters.
+  NVIDIA MLNX_OFED releases include firmware updates for ConnectX-3 adapters.
 
   Because each release provides new features, these updates must be applied to
   match the kernel modules and libraries they come with.
@@ -194,7 +197,7 @@ DPDK and must be installed separately:
    licensed.
 
 Depending on system constraints and user preferences either RDMA core library
-with a recent enough Linux kernel release (recommended) or Mellanox OFED,
+with a recent enough Linux kernel release (recommended) or NVIDIA MLNX_OFED,
 which provides compatibility with older releases.
 
 Current RDMA core package and Linux kernel (recommended)
@@ -211,29 +214,29 @@ Current RDMA core package and Linux kernel (recommended)
 
 .. _`RDMA core installation documentation`: https://raw.githubusercontent.com/linux-rdma/rdma-core/master/README.md
 
-.. _Mellanox_OFED_as_a_fallback:
+.. _OFED_as_a_fallback:
 
-Mellanox OFED as a fallback
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NVIDIA MLNX_OFED as a fallback
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- `Mellanox OFED`_ version: **4.4, 4.5, 4.6**.
+- `NVIDIA MLNX_OFED`_ version: **4.4, 4.5, 4.6**.
 - firmware version: **2.42.5000** and above.
 
-.. _`Mellanox OFED`: https://network.nvidia.com/products/infiniband-drivers/linux/mlnx_ofed/
+.. _`NVIDIA MLNX_OFED`: https://network.nvidia.com/products/infiniband-drivers/linux/mlnx_ofed/
 
 .. note::
 
-   Several versions of Mellanox OFED are available. Installing the version
+   Several versions of NVIDIA MLNX_OFED are available. Installing the version
    this DPDK release was developed and tested against is strongly
    recommended. Please check the `prerequisites`_.
 
-Installing Mellanox OFED
-^^^^^^^^^^^^^^^^^^^^^^^^
+Installing NVIDIA MLNX_OFED
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Download latest Mellanox OFED.
+1. Download latest NVIDIA MLNX_OFED.
 
 2. Install the required libraries and kernel modules either by installing
-   only the required set, or by installing the entire Mellanox OFED:
+   only the required set, or by installing the entire NVIDIA MLNX_OFED:
 
    For bare metal use::
 
@@ -270,9 +273,9 @@ Quick Start Guide
 
    .. note::
 
-        If using Mellanox OFED one can permanently set the port link
+        If using NVIDIA MLNX_OFED one can permanently set the port link
         to Ethernet using connectx_port_config tool provided by it.
-        :ref:`Mellanox_OFED_as_a_fallback`:
+        :ref:`OFED_as_a_fallback`:
 
 .. _QSG_2:
 
@@ -352,7 +355,7 @@ Performance tuning
 Usage example
 -------------
 
-This section demonstrates how to launch **testpmd** with Mellanox ConnectX-3
+This section demonstrates how to launch **testpmd** with NVIDIA ConnectX-3
 devices managed by librte_net_mlx4.
 
 #. Load the kernel modules::
@@ -400,7 +403,7 @@ devices managed by librte_net_mlx4.
 
    .. note::
 
-      There are only two distinct PCI bus addresses because the Mellanox
+      There are only two distinct PCI bus addresses because the NVIDIA
       ConnectX-3 adapters installed on this system are dual port.
 
 #. Request huge pages::
