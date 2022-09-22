@@ -404,9 +404,9 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  *   True(1) where the pointer is correctly aligned, false(0) otherwise
  */
 static inline int
-rte_is_aligned(void *ptr, unsigned align)
+rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
 {
-	return RTE_PTR_ALIGN(ptr, align) == ptr;
+	return ((uintptr_t)ptr & (align - 1)) == 0;
 }
 
 /*********** Macros for compile type checks ********/
