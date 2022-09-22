@@ -720,10 +720,13 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 	uint64_t key_data[2] = {0ULL, 0ULL};
 	uint64_t key_mask[2] = {0ULL, 0ULL};
 	int key_len, bit = 0, index, rc = 0;
+	struct nix_inl_dev *inl_dev = NULL;
 	int intf = pst->flow->nix_intf;
 	struct mcam_entry *base_entry;
+	bool skip_base_rule = false;
 	int off, idx, data_off = 0;
 	uint8_t lid, mask, data;
+	struct idev_cfg *idev;
 	uint16_t layer_info;
 	uint64_t lt, flags;
 
@@ -789,7 +792,14 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 	if (pst->set_ipv6ext_ltype_mask)
 		npc_set_ipv6ext_ltype_mask(pst);
 
-	if (pst->is_vf && pst->flow->nix_intf == NIX_INTF_RX) {
+	idev = idev_get_cfg();
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+	if (inl_dev && inl_dev->is_multi_channel &&
+	    (pst->flow->npc_action & NIX_RX_ACTIONOP_UCAST_IPSEC))
+		skip_base_rule = true;
+
+	if (pst->is_vf && pst->flow->nix_intf == NIX_INTF_RX && !skip_base_rule) {
 		(void)mbox_alloc_msg_npc_read_base_steer_rule(npc->mbox);
 		rc = mbox_process_msg(npc->mbox, (void *)&base_rule_rsp);
 		if (rc) {
