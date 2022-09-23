@@ -2954,6 +2954,7 @@ vhost_user_msg_handler(int vid, int fd)
 	struct vhu_msg_context ctx;
 	vhost_message_handler_t *msg_handler;
 	struct rte_vdpa_device *vdpa_dev;
+	int msg_result = RTE_VHOST_MSG_RESULT_OK;
 	int ret;
 	int unlock_required = 0;
 	bool handled;
@@ -3046,8 +3047,8 @@ vhost_user_msg_handler(int vid, int fd)
 	handled = false;
 	if (dev->extern_ops.pre_msg_handle) {
 		RTE_BUILD_BUG_ON(offsetof(struct vhu_msg_context, msg) != 0);
-		ret = (*dev->extern_ops.pre_msg_handle)(dev->vid, &ctx);
-		switch (ret) {
+		msg_result = (*dev->extern_ops.pre_msg_handle)(dev->vid, &ctx);
+		switch (msg_result) {
 		case RTE_VHOST_MSG_RESULT_REPLY:
 			send_vhost_reply(dev, fd, &ctx);
 			/* Fall-through */
@@ -3065,12 +3066,12 @@ vhost_user_msg_handler(int vid, int fd)
 		goto skip_to_post_handle;
 
 	if (!msg_handler->accepts_fd && validate_msg_fds(dev, &ctx, 0) != 0) {
-		ret = RTE_VHOST_MSG_RESULT_ERR;
+		msg_result = RTE_VHOST_MSG_RESULT_ERR;
 	} else {
-		ret = msg_handler->callback(&dev, &ctx, fd);
+		msg_result = msg_handler->callback(&dev, &ctx, fd);
 	}
 
-	switch (ret) {
+	switch (msg_result) {
 	case RTE_VHOST_MSG_RESULT_ERR:
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"processing %s failed.\n",
@@ -3095,11 +3096,11 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 skip_to_post_handle:
-	if (ret != RTE_VHOST_MSG_RESULT_ERR &&
+	if (msg_result != RTE_VHOST_MSG_RESULT_ERR &&
 			dev->extern_ops.post_msg_handle) {
 		RTE_BUILD_BUG_ON(offsetof(struct vhu_msg_context, msg) != 0);
-		ret = (*dev->extern_ops.post_msg_handle)(dev->vid, &ctx);
-		switch (ret) {
+		msg_result = (*dev->extern_ops.post_msg_handle)(dev->vid, &ctx);
+		switch (msg_result) {
 		case RTE_VHOST_MSG_RESULT_REPLY:
 			send_vhost_reply(dev, fd, &ctx);
 			/* Fall-through */
@@ -3118,7 +3119,7 @@ skip_to_post_handle:
 			"vhost message (req: %d) was not handled.\n",
 			request);
 		close_msg_fds(&ctx);
-		ret = RTE_VHOST_MSG_RESULT_ERR;
+		msg_result = RTE_VHOST_MSG_RESULT_ERR;
 	}
 
 	/*
@@ -3127,17 +3128,16 @@ skip_to_post_handle:
 	 * VHOST_USER_NEED_REPLY was cleared in send_vhost_reply().
 	 */
 	if (ctx.msg.flags & VHOST_USER_NEED_REPLY) {
-		ctx.msg.payload.u64 = ret == RTE_VHOST_MSG_RESULT_ERR;
+		ctx.msg.payload.u64 = msg_result == RTE_VHOST_MSG_RESULT_ERR;
 		ctx.msg.size = sizeof(ctx.msg.payload.u64);
 		ctx.fd_num = 0;
 		send_vhost_reply(dev, fd, &ctx);
-	} else if (ret == RTE_VHOST_MSG_RESULT_ERR) {
+	} else if (msg_result == RTE_VHOST_MSG_RESULT_ERR) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR, "vhost message handling failed.\n");
 		ret = -1;
 		goto unlock;
 	}
 
-	ret = 0;
 	for (i = 0; i < dev->nr_vring; i++) {
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
 		bool cur_ready = vq_is_ready(dev, vq);
