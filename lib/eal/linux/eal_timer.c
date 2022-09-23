@@ -5,6 +5,12 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#ifdef RTE_LIBEAL_USE_HPET
+#include <fcntl.h>
+#include <inttypes.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 #include <rte_common.h>
 #include <rte_cycles.h>
