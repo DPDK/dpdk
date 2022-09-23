@@ -697,3 +697,10 @@ i40e: Vlan strip of VF
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The VF vlan strip function is only supported in the i40e kernel driver >= 2.1.26.
+
+i40e: Vlan filtering of VF
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For i40e driver 2.17.15, configuring VLAN filters from the DPDK VF is unsupported.
+When applying VLAN filters on the VF it must first be configured from the
+corresponding PF.
