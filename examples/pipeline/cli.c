@@ -1786,7 +1786,7 @@ cmd_pipeline_regrd(char **tokens,
 
 	/* index. */
 	if (!strcmp(tokens[4], "index")) {
-		uint32_t idx;
+		uint32_t idx = 0;
 
 		if (n_tokens != 6) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
@@ -1901,7 +1901,7 @@ cmd_pipeline_regwr(char **tokens,
 
 	/* index. */
 	if (!strcmp(tokens[6], "index")) {
-		uint32_t idx;
+		uint32_t idx = 0;
 
 		if (n_tokens != 8) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
