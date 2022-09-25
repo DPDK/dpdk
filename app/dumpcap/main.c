@@ -63,6 +63,8 @@ static unsigned int ring_size = 2048;
 static const char *capture_comment;
 static uint32_t snaplen = RTE_MBUF_DEFAULT_BUF_SIZE;
 static bool dump_bpf;
+static bool show_interfaces;
+
 static struct {
 	uint64_t  duration;	/* nanoseconds */
 	unsigned long packets;  /* number of packets in file */
@@ -256,7 +258,7 @@ static void select_interface(const char *arg)
 }
 
 /* Display list of possible interfaces that can be used. */
-static void show_interfaces(void)
+static void dump_interfaces(void)
 {
 	char name[RTE_ETH_NAME_MAX_LEN];
 	uint16_t p;
@@ -266,6 +268,8 @@ static void show_interfaces(void)
 			continue;
 		printf("%u. %s\n", p, name);
 	}
+
+	exit(0);
 }
 
 static void compile_filter(void)
@@ -353,8 +357,8 @@ static void parse_opts(int argc, char **argv)
 			dump_bpf = true;
 			break;
 		case 'D':
-			show_interfaces();
-			exit(0);
+			show_interfaces = true;
+			break;
 		case 'f':
 			filter_str = optarg;
 			break;
@@ -529,9 +533,6 @@ static void dpdk_init(void)
 
 	if (rte_eal_init(eal_argc, eal_argv) < 0)
 		rte_exit(EXIT_FAILURE, "EAL init failed: is primary process running?\n");
-
-	if (rte_eth_dev_count_avail() == 0)
-		rte_exit(EXIT_FAILURE, "No Ethernet ports found\n");
 }
 
 /* Create packet ring shared between callbacks and process */
@@ -788,6 +789,12 @@ int main(int argc, char **argv)
 
 	parse_opts(argc, argv);
 	dpdk_init();
+
+	if (show_interfaces)
+		dump_interfaces();
+
+	if (rte_eth_dev_count_avail() == 0)
+		rte_exit(EXIT_FAILURE, "No Ethernet ports found\n");
 
 	if (filter_str)
 		compile_filter();
