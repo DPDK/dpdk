@@ -10,6 +10,12 @@
 struct nfp_app_fw_flower {
 	/* Pointer to the PF vNIC */
 	struct nfp_net_hw *pf_hw;
+
+	/* Pointer to a mempool for the ctrlvNIC */
+	struct rte_mempool *ctrl_pktmbuf_pool;
+
+	/* Pointer to the ctrl vNIC */
+	struct nfp_net_hw *ctrl_hw;
 };
 
 int nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev);

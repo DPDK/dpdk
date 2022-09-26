@@ -19,6 +19,7 @@
 #include "../nfpcore/nfp_nsp.h"
 #include "nfp_flower.h"
 
+#define CTRL_VNIC_NB_DESC 512
 #define DEFAULT_FLBUF_SIZE 9216
 
 static const struct eth_dev_ops nfp_flower_pf_vnic_ops = {
@@ -97,12 +98,353 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 	return 0;
 }
 
+static int
+nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
+{
+	uint32_t i;
+	int ret = 0;
+	uint16_t n_txq;
+	uint16_t n_rxq;
+	unsigned int numa_node;
+	struct rte_mempool *mp;
+	struct nfp_net_rxq *rxq;
+	struct nfp_net_txq *txq;
+	struct nfp_pf_dev *pf_dev;
+	struct rte_eth_dev *eth_dev;
+	const struct rte_memzone *tz;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	/* Set up some pointers here for ease of use */
+	pf_dev = hw->pf_dev;
+	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
+
+	ret = nfp_flower_init_vnic_common(hw, "ctrl_vnic");
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Could not init pf vnic");
+		return -EINVAL;
+	}
+
+	/* Allocate memory for the eth_dev of the vNIC */
+	hw->eth_dev = rte_zmalloc("nfp_ctrl_vnic",
+			sizeof(struct rte_eth_dev), RTE_CACHE_LINE_SIZE);
+	if (hw->eth_dev == NULL) {
+		PMD_INIT_LOG(ERR, "Could not allocate ctrl vnic");
+		return -ENOMEM;
+	}
+
+	/* Grab the pointer to the newly created rte_eth_dev here */
+	eth_dev = hw->eth_dev;
+
+	/* Also allocate memory for the data part of the eth_dev */
+	eth_dev->data = rte_zmalloc("nfp_ctrl_vnic_data",
+			sizeof(struct rte_eth_dev_data), RTE_CACHE_LINE_SIZE);
+	if (eth_dev->data == NULL) {
+		PMD_INIT_LOG(ERR, "Could not allocate ctrl vnic data");
+		ret = -ENOMEM;
+		goto eth_dev_cleanup;
+	}
+
+	/* Create a mbuf pool for the ctrl vNIC */
+	numa_node = rte_socket_id();
+	app_fw_flower->ctrl_pktmbuf_pool = rte_pktmbuf_pool_create("ctrl_mbuf_pool",
+			4 * CTRL_VNIC_NB_DESC, 64, 0, 9216, numa_node);
+	if (app_fw_flower->ctrl_pktmbuf_pool == NULL) {
+		PMD_INIT_LOG(ERR, "Create mbuf pool for ctrl vnic failed");
+		ret = -ENOMEM;
+		goto dev_data_cleanup;
+	}
+
+	mp = app_fw_flower->ctrl_pktmbuf_pool;
+
+	/* Configure the ctrl vNIC device */
+	n_rxq = hw->max_rx_queues;
+	n_txq = hw->max_tx_queues;
+	eth_dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
+			sizeof(eth_dev->data->rx_queues[0]) * n_rxq,
+			RTE_CACHE_LINE_SIZE);
+	if (eth_dev->data->rx_queues == NULL) {
+		PMD_INIT_LOG(ERR, "rte_zmalloc failed for ctrl vNIC rx queues");
+		ret = -ENOMEM;
+		goto mempool_cleanup;
+	}
+
+	eth_dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
+			sizeof(eth_dev->data->tx_queues[0]) * n_txq,
+			RTE_CACHE_LINE_SIZE);
+	if (eth_dev->data->tx_queues == NULL) {
+		PMD_INIT_LOG(ERR, "rte_zmalloc failed for ctrl vNIC tx queues");
+		ret = -ENOMEM;
+		goto rx_queue_free;
+	}
+
+	/* Fill in some of the eth_dev fields */
+	eth_dev->device = &pf_dev->pci_dev->device;
+	eth_dev->data->nb_tx_queues = n_rxq;
+	eth_dev->data->nb_rx_queues = n_txq;
+	eth_dev->data->dev_private = hw;
+
+	/* Set up the Rx queues */
+	for (i = 0; i < n_rxq; i++) {
+		rxq = rte_zmalloc_socket("ethdev RX queue",
+				sizeof(struct nfp_net_rxq), RTE_CACHE_LINE_SIZE,
+				numa_node);
+		if (rxq == NULL) {
+			PMD_DRV_LOG(ERR, "Error allocating rxq");
+			ret = -ENOMEM;
+			goto rx_queue_setup_cleanup;
+		}
+
+		eth_dev->data->rx_queues[i] = rxq;
+
+		/* Hw queues mapping based on firmware configuration */
+		rxq->qidx = i;
+		rxq->fl_qcidx = i * hw->stride_rx;
+		rxq->rx_qcidx = rxq->fl_qcidx + (hw->stride_rx - 1);
+		rxq->qcp_fl = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->fl_qcidx);
+		rxq->qcp_rx = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->rx_qcidx);
+
+		/*
+		 * Tracking mbuf size for detecting a potential mbuf overflow due to
+		 * RX offset
+		 */
+		rxq->mem_pool = mp;
+		rxq->mbuf_size = rxq->mem_pool->elt_size;
+		rxq->mbuf_size -= (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM);
+		hw->flbufsz = rxq->mbuf_size;
+
+		rxq->rx_count = CTRL_VNIC_NB_DESC;
+		rxq->rx_free_thresh = DEFAULT_RX_FREE_THRESH;
+		rxq->drop_en = 1;
+
+		/*
+		 * Allocate RX ring hardware descriptors. A memzone large enough to
+		 * handle the maximum ring size is allocated in order to allow for
+		 * resizing in later calls to the queue setup function.
+		 */
+		tz = rte_eth_dma_zone_reserve(eth_dev, "ctrl_rx_ring", i,
+				sizeof(struct nfp_net_rx_desc) * NFP_NET_MAX_RX_DESC,
+				NFP_MEMZONE_ALIGN, numa_node);
+		if (tz == NULL) {
+			PMD_DRV_LOG(ERR, "Error allocating rx dma");
+			rte_free(rxq);
+			ret = -ENOMEM;
+			goto rx_queue_setup_cleanup;
+		}
+
+		/* Saving physical and virtual addresses for the RX ring */
+		rxq->dma = (uint64_t)tz->iova;
+		rxq->rxds = (struct nfp_net_rx_desc *)tz->addr;
+
+		/* Mbuf pointers array for referencing mbufs linked to RX descriptors */
+		rxq->rxbufs = rte_zmalloc_socket("rxq->rxbufs",
+				sizeof(*rxq->rxbufs) * CTRL_VNIC_NB_DESC,
+				RTE_CACHE_LINE_SIZE, numa_node);
+		if (rxq->rxbufs == NULL) {
+			rte_eth_dma_zone_free(eth_dev, "ctrl_rx_ring", i);
+			rte_free(rxq);
+			ret = -ENOMEM;
+			goto rx_queue_setup_cleanup;
+		}
+
+		nfp_net_reset_rx_queue(rxq);
+
+		rxq->hw = hw;
+
+		/*
+		 * Telling the HW about the physical address of the RX ring and number
+		 * of descriptors in log2 format
+		 */
+		nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(i), rxq->dma);
+		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
+	}
+
+	/* Set up the Tx queues */
+	for (i = 0; i < n_txq; i++) {
+		txq = rte_zmalloc_socket("ethdev TX queue",
+				sizeof(struct nfp_net_txq), RTE_CACHE_LINE_SIZE,
+				numa_node);
+		if (txq == NULL) {
+			PMD_DRV_LOG(ERR, "Error allocating txq");
+			ret = -ENOMEM;
+			goto tx_queue_setup_cleanup;
+		}
+
+		eth_dev->data->tx_queues[i] = txq;
+
+		/*
+		 * Allocate TX ring hardware descriptors. A memzone large enough to
+		 * handle the maximum ring size is allocated in order to allow for
+		 * resizing in later calls to the queue setup function.
+		 */
+		tz = rte_eth_dma_zone_reserve(eth_dev, "ctrl_tx_ring", i,
+				sizeof(struct nfp_net_nfd3_tx_desc) * NFP_NET_MAX_TX_DESC,
+				NFP_MEMZONE_ALIGN, numa_node);
+		if (tz == NULL) {
+			PMD_DRV_LOG(ERR, "Error allocating tx dma");
+			rte_free(txq);
+			ret = -ENOMEM;
+			goto tx_queue_setup_cleanup;
+		}
+
+		txq->tx_count = CTRL_VNIC_NB_DESC;
+		txq->tx_free_thresh = DEFAULT_RX_FREE_THRESH;
+		txq->tx_pthresh = DEFAULT_TX_PTHRESH;
+		txq->tx_hthresh = DEFAULT_TX_HTHRESH;
+		txq->tx_wthresh = DEFAULT_TX_WTHRESH;
+
+		/* Queue mapping based on firmware configuration */
+		txq->qidx = i;
+		txq->tx_qcidx = i * hw->stride_tx;
+		txq->qcp_q = hw->tx_bar + NFP_QCP_QUEUE_OFF(txq->tx_qcidx);
+
+		/* Saving physical and virtual addresses for the TX ring */
+		txq->dma = (uint64_t)tz->iova;
+		txq->txds = (struct nfp_net_nfd3_tx_desc *)tz->addr;
+
+		/* Mbuf pointers array for referencing mbufs linked to TX descriptors */
+		txq->txbufs = rte_zmalloc_socket("txq->txbufs",
+				sizeof(*txq->txbufs) * CTRL_VNIC_NB_DESC,
+				RTE_CACHE_LINE_SIZE, numa_node);
+		if (txq->txbufs == NULL) {
+			rte_eth_dma_zone_free(eth_dev, "ctrl_tx_ring", i);
+			rte_free(txq);
+			ret = -ENOMEM;
+			goto tx_queue_setup_cleanup;
+		}
+
+		nfp_net_reset_tx_queue(txq);
+
+		txq->hw = hw;
+
+		/*
+		 * Telling the HW about the physical address of the TX ring and number
+		 * of descriptors in log2 format
+		 */
+		nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(i), txq->dma);
+		nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
+	}
+
+	return 0;
+
+tx_queue_setup_cleanup:
+	for (i = 0; i < hw->max_tx_queues; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		if (txq != NULL) {
+			rte_free(txq->txbufs);
+			rte_eth_dma_zone_free(eth_dev, "ctrl_tx_ring", i);
+			rte_free(txq);
+		}
+	}
+rx_queue_setup_cleanup:
+	for (i = 0; i < hw->max_rx_queues; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		if (rxq != NULL) {
+			rte_free(rxq->rxbufs);
+			rte_eth_dma_zone_free(eth_dev, "ctrl_rx_ring", i);
+			rte_free(rxq);
+		}
+	}
+	rte_free(eth_dev->data->tx_queues);
+rx_queue_free:
+	rte_free(eth_dev->data->rx_queues);
+mempool_cleanup:
+	rte_mempool_free(mp);
+dev_data_cleanup:
+	rte_free(eth_dev->data);
+eth_dev_cleanup:
+	rte_free(eth_dev);
+
+	return ret;
+}
+
+static void
+nfp_flower_cleanup_ctrl_vnic(struct nfp_net_hw *hw)
+{
+	uint32_t i;
+	struct nfp_net_rxq *rxq;
+	struct nfp_net_txq *txq;
+	struct rte_eth_dev *eth_dev;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	eth_dev = hw->eth_dev;
+	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(hw->pf_dev->app_fw_priv);
+
+	for (i = 0; i < hw->max_tx_queues; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		if (txq != NULL) {
+			rte_free(txq->txbufs);
+			rte_eth_dma_zone_free(eth_dev, "ctrl_tx_ring", i);
+			rte_free(txq);
+		}
+	}
+
+	for (i = 0; i < hw->max_rx_queues; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		if (rxq != NULL) {
+			rte_free(rxq->rxbufs);
+			rte_eth_dma_zone_free(eth_dev, "ctrl_rx_ring", i);
+			rte_free(rxq);
+		}
+	}
+
+	rte_free(eth_dev->data->tx_queues);
+	rte_free(eth_dev->data->rx_queues);
+	rte_mempool_free(app_fw_flower->ctrl_pktmbuf_pool);
+	rte_free(eth_dev->data);
+	rte_free(eth_dev);
+}
+
+static int
+nfp_flower_start_ctrl_vnic(struct nfp_net_hw *hw)
+{
+	int ret;
+	uint32_t update;
+	uint32_t new_ctrl;
+	struct rte_eth_dev *dev;
+
+	dev = hw->eth_dev;
+
+	/* Disabling queues just in case... */
+	nfp_net_disable_queues(dev);
+
+	/* Enabling the required queues in the device */
+	nfp_net_enable_queues(dev);
+
+	/* Writing configuration parameters in the device */
+	nfp_net_params_setup(hw);
+
+	new_ctrl = NFP_NET_CFG_CTRL_ENABLE;
+	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
+			NFP_NET_CFG_UPDATE_MSIX;
+
+	rte_wmb();
+
+	/* If an error when reconfig we avoid to change hw state */
+	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to reconfig ctrl vnic");
+		return -EIO;
+	}
+
+	hw->ctrl = new_ctrl;
+
+	/* Setup the freelist ring */
+	ret = nfp_net_rx_freelist_setup(dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Error with flower ctrl vNIC freelist setup");
+		return -EIO;
+	}
+
+	return 0;
+}
+
 int
 nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 {
 	int ret;
 	unsigned int numa_node;
 	struct nfp_net_hw *pf_hw;
+	struct nfp_net_hw *ctrl_hw;
 	struct nfp_app_fw_flower *app_fw_flower;
 
 	numa_node = rte_socket_id();
@@ -147,8 +489,42 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 		goto pf_cpp_area_cleanup;
 	}
 
+	/* The ctrl vNIC struct comes directly after the PF one */
+	app_fw_flower->ctrl_hw = pf_hw + 1;
+	ctrl_hw = app_fw_flower->ctrl_hw;
+
+	/* Map the ctrl vNIC ctrl bar */
+	ctrl_hw->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_ctrl_bar",
+			32768, &ctrl_hw->ctrl_area);
+	if (ctrl_hw->ctrl_bar == NULL) {
+		PMD_INIT_LOG(ERR, "Cloud not map the ctrl vNIC ctrl bar");
+		ret = -ENODEV;
+		goto pf_cpp_area_cleanup;
+	}
+
+	/* Now populate the ctrl vNIC */
+	ctrl_hw->pf_dev = pf_dev;
+	ctrl_hw->cpp = pf_dev->cpp;
+
+	ret = nfp_flower_init_ctrl_vnic(app_fw_flower->ctrl_hw);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Could not initialize flower ctrl vNIC");
+		goto ctrl_cpp_area_cleanup;
+	}
+
+	/* Start the ctrl vNIC */
+	ret = nfp_flower_start_ctrl_vnic(app_fw_flower->ctrl_hw);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Could not start flower ctrl vNIC");
+		goto ctrl_vnic_cleanup;
+	}
+
 	return 0;
 
+ctrl_vnic_cleanup:
+	nfp_flower_cleanup_ctrl_vnic(app_fw_flower->ctrl_hw);
+ctrl_cpp_area_cleanup:
+	nfp_cpp_area_free(ctrl_hw->ctrl_area);
 pf_cpp_area_cleanup:
 	nfp_cpp_area_free(pf_dev->ctrl_area);
 vnic_cleanup:

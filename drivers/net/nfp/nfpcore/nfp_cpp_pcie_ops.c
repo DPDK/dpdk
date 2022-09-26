@@ -91,7 +91,10 @@ struct nfp6000_area_priv;
  * @refcnt:	number of current users
  * @iomem:	mapped IO memory
  */
+#define NFP_BAR_MIN 1
+#define NFP_BAR_MID 5
 #define NFP_BAR_MAX 7
+
 struct nfp_bar {
 	struct nfp_pcie_user *nfp;
 	uint32_t barcfg;
@@ -292,6 +295,7 @@ nfp_reconfigure_bar(struct nfp_pcie_user *nfp, struct nfp_bar *bar, int tgt,
  * BAR0.0: Reserved for General Mapping (for MSI-X access to PCIe SRAM)
  *
  *         Halving PCItoCPPBars for primary and secondary processes.
+ *         For CoreNIC firmware:
  *         NFP PMD just requires two fixed slots, one for configuration BAR,
  *         and another for accessing the hw queues. Another slot is needed
  *         for setting the link up or down. Secondary processes do not need
@@ -301,6 +305,9 @@ nfp_reconfigure_bar(struct nfp_pcie_user *nfp, struct nfp_bar *bar, int tgt,
  *         supported. Due to this requirement and future extensions requiring
  *         new slots per process, only one secondary process is supported by
  *         now.
+ *         For Flower firmware:
+ *         NFP PMD need another fixed slots, used as the configureation BAR
+ *         for ctrl vNIC.
  */
 static int
 nfp_enable_bars(struct nfp_pcie_user *nfp)
@@ -309,11 +316,11 @@ nfp_enable_bars(struct nfp_pcie_user *nfp)
 	int x, start, end;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		start = 4;
-		end = 1;
+		start = NFP_BAR_MID;
+		end = NFP_BAR_MIN;
 	} else {
-		start = 7;
-		end = 4;
+		start = NFP_BAR_MAX;
+		end = NFP_BAR_MID;
 	}
 	for (x = start; x > end; x--) {
 		bar = &nfp->bar[x - 1];
@@ -341,11 +348,11 @@ nfp_alloc_bar(struct nfp_pcie_user *nfp)
 	int x, start, end;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		start = 4;
-		end = 1;
+		start = NFP_BAR_MID;
+		end = NFP_BAR_MIN;
 	} else {
-		start = 7;
-		end = 4;
+		start = NFP_BAR_MAX;
+		end = NFP_BAR_MID;
 	}
 	for (x = start; x > end; x--) {
 		bar = &nfp->bar[x - 1];
@@ -364,11 +371,11 @@ nfp_disable_bars(struct nfp_pcie_user *nfp)
 	int x, start, end;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		start = 4;
-		end = 1;
+		start = NFP_BAR_MID;
+		end = NFP_BAR_MIN;
 	} else {
-		start = 7;
-		end = 4;
+		start = NFP_BAR_MAX;
+		end = NFP_BAR_MID;
 	}
 
 	for (x = start; x > end; x--) {
