@@ -116,6 +116,7 @@ struct nfp_net_adapter;
 /* Firmware application ID's */
 enum nfp_app_fw_id {
 	NFP_APP_FW_CORE_NIC               = 0x1,
+	NFP_APP_FW_FLOWER_NIC             = 0x3,
 };
 
 /* nfp_qcp_ptr - Read or Write Pointer of a queue */

@@ -181,3 +181,16 @@ System configuration
    -k option shows the device driver, if any, that devices are bound to.
    Depending on the modules loaded at this point the new PCI devices may be
    bound to nfp_netvf driver.
+
+
+Flow offload
+------------
+
+Use the flower firmware application, some type of Netronome's SmartNICs can
+offload the flow into cards.
+
+The flower firmware application requires the PMD running two services:
+
+	* PF vNIC service: handling the feedback traffic.
+	* ctrl vNIC service: communicate between PMD and firmware through
+	  control message.

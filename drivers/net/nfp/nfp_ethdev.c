@@ -38,6 +38,8 @@
 #include "nfp_ctrl.h"
 #include "nfp_cpp_bridge.h"
 
+#include "flower/nfp_flower.h"
+
 static int
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic, int port)
 {
@@ -938,6 +940,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 			goto hwqueues_cleanup;
 		}
 		break;
+	case NFP_APP_FW_FLOWER_NIC:
+		PMD_INIT_LOG(INFO, "Initializing Flower");
+		ret = nfp_init_app_fw_flower(pf_dev);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
+			goto hwqueues_cleanup;
+		}
+		break;
 	default:
 		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
 		ret = -EINVAL;
@@ -945,7 +955,12 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* register the CPP bridge service here for primary use */
-	nfp_register_cpp_service(pf_dev->cpp);
+	ret = nfp_enable_cpp_service(pf_dev->cpp);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Enable cpp service failed.");
+		ret = -EINVAL;
+		goto hwqueues_cleanup;
+	}
 
 	return 0;
 
@@ -1069,6 +1084,14 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 			goto sym_tbl_cleanup;
 		}
 		break;
+	case NFP_APP_FW_FLOWER_NIC:
+		PMD_INIT_LOG(INFO, "Initializing Flower");
+		ret = nfp_secondary_init_app_fw_flower(cpp);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
+			goto sym_tbl_cleanup;
+		}
+		break;
 	default:
 		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
 		ret = -EINVAL;
@@ -1076,7 +1099,11 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Register the CPP bridge service for the secondary too */
-	nfp_register_cpp_service(cpp);
+	ret = nfp_enable_cpp_service(cpp);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Enable cpp service failed.");
+		ret = -EINVAL;
+	}
 
 sym_tbl_cleanup:
 	free(sym_tbl);

@@ -94,6 +94,13 @@ New Features
 
   * Added support for flow action REPRESENTED_PORT.
 
+* **Updated Netronome nfp driver.**
+
+  Added the needed data structures and logics to support flow API offload:
+
+  * Added the support of flower firmware.
+  * Added the flower service infrastructure.
+
 * **Updated NXP dpaa2 driver.**
 
   * Added support for flow action REPRESENTED_PORT.

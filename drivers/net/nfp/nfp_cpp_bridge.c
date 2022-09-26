@@ -28,22 +28,86 @@
 static int nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp);
 static int nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp);
 static int nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp);
+static int nfp_cpp_bridge_service_func(void *args);
 
-void nfp_register_cpp_service(struct nfp_cpp *cpp)
+int
+nfp_map_service(uint32_t service_id)
 {
-	uint32_t *cpp_service_id = NULL;
-	struct rte_service_spec service;
+	int32_t ret;
+	uint32_t slcore = 0;
+	int32_t slcore_count;
+	uint8_t service_count;
+	const char *service_name;
+	uint32_t slcore_array[RTE_MAX_LCORE];
+	uint8_t min_service_count = UINT8_MAX;
 
-	memset(&service, 0, sizeof(struct rte_service_spec));
-	snprintf(service.name, sizeof(service.name), "nfp_cpp_service");
-	service.callback = nfp_cpp_bridge_service_func;
-	service.callback_userdata = (void *)cpp;
+	slcore_count = rte_service_lcore_list(slcore_array, RTE_MAX_LCORE);
+	if (slcore_count <= 0) {
+		PMD_INIT_LOG(DEBUG, "No service cores found");
+		return -ENOENT;
+	}
 
-	if (rte_service_component_register(&service,
-					   cpp_service_id))
-		RTE_LOG(WARNING, PMD, "NFP CPP bridge service register() failed");
+	/*
+	 * Find a service core with the least number of services already
+	 * registered to it
+	 */
+	while (slcore_count--) {
+		service_count = rte_service_lcore_count_services(slcore_array[slcore_count]);
+		if (service_count < min_service_count) {
+			slcore = slcore_array[slcore_count];
+			min_service_count = service_count;
+		}
+	}
+
+	service_name = rte_service_get_name(service_id);
+	PMD_INIT_LOG(INFO, "Mapping service %s to core %u", service_name, slcore);
+
+	ret = rte_service_map_lcore_set(service_id, slcore, 1);
+	if (ret != 0) {
+		PMD_INIT_LOG(DEBUG, "Could not map flower service");
+		return -ENOENT;
+	}
+
+	rte_service_runstate_set(service_id, 1);
+	rte_service_component_runstate_set(service_id, 1);
+	rte_service_lcore_start(slcore);
+	if (rte_service_may_be_active(slcore))
+		PMD_INIT_LOG(INFO, "The service %s is running", service_name);
 	else
-		RTE_LOG(DEBUG, PMD, "NFP CPP bridge service registered");
+		PMD_INIT_LOG(ERR, "The service %s is not running", service_name);
+
+	return 0;
+}
+
+int
+nfp_enable_cpp_service(struct nfp_cpp *cpp)
+{
+	int ret;
+	uint32_t service_id = 0;
+	struct rte_service_spec cpp_service = {
+		.name         = "nfp_cpp_service",
+		.callback     = nfp_cpp_bridge_service_func,
+	};
+
+	cpp_service.callback_userdata = (void *)cpp;
+
+	/* Register the cpp service */
+	ret = rte_service_component_register(&cpp_service, &service_id);
+	if (ret != 0) {
+		PMD_INIT_LOG(WARNING, "Could not register nfp cpp service");
+		return -EINVAL;
+	}
+
+	PMD_INIT_LOG(INFO, "NFP cpp service registered");
+
+	/* Map it to available service core*/
+	ret = nfp_map_service(service_id);
+	if (ret != 0) {
+		PMD_INIT_LOG(DEBUG, "Could not map nfp cpp service");
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 /*
@@ -307,7 +371,7 @@ nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp)
  * unaware of the CPP bridge performing the NFP kernel char driver for CPP
  * accesses.
  */
-int32_t
+static int
 nfp_cpp_bridge_service_func(void *args)
 {
 	struct sockaddr address;
