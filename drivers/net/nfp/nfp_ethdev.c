@@ -965,6 +965,49 @@ cpp_cleanup:
 	return ret;
 }
 
+static int
+nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
+		struct nfp_rtsym_table *sym_tbl,
+		struct nfp_cpp *cpp)
+{
+	int i;
+	int err = 0;
+	int ret = 0;
+	int total_vnics;
+	struct nfp_net_hw *hw;
+
+	/* Read the number of vNIC's created for the PF */
+	total_vnics = nfp_rtsym_read_le(sym_tbl, "nfd_cfg_pf0_num_ports", &err);
+	if (err != 0 || total_vnics <= 0 || total_vnics > 8) {
+		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
+		return -ENODEV;
+	}
+
+	for (i = 0; i < total_vnics; i++) {
+		struct rte_eth_dev *eth_dev;
+		char port_name[RTE_ETH_NAME_MAX_LEN];
+		snprintf(port_name, sizeof(port_name), "%s_port%d",
+				pci_dev->device.name, i);
+
+		PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
+		eth_dev = rte_eth_dev_attach_secondary(port_name);
+		if (eth_dev == NULL) {
+			PMD_INIT_LOG(ERR, "Secondary process attach to port %s failed", port_name);
+			ret = -ENODEV;
+			break;
+		}
+
+		eth_dev->process_private = cpp;
+		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+		if (nfp_net_ethdev_ops_mount(hw, eth_dev))
+			return -EINVAL;
+
+		rte_eth_dev_probing_finish(eth_dev);
+	}
+
+	return ret;
+}
+
 /*
  * When attaching to the NFP4000/6000 PF on a secondary process there
  * is no need to initialise the PF again. Only minimal work is required
@@ -973,12 +1016,10 @@ cpp_cleanup:
 static int
 nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 {
-	int i;
 	int err = 0;
 	int ret = 0;
-	int total_ports;
 	struct nfp_cpp *cpp;
-	struct nfp_net_hw *hw;
+	enum nfp_app_fw_id app_fw_id;
 	struct nfp_rtsym_table *sym_tbl;
 
 	if (pci_dev == NULL)
@@ -1012,37 +1053,26 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		return -EIO;
 	}
 
-	total_ports = nfp_rtsym_read_le(sym_tbl, "nfd_cfg_pf0_num_ports", &err);
-	if (err != 0 || total_ports <= 0 || total_ports > 8) {
-		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
-		ret = -ENODEV;
+	/* Read the app ID of the firmware loaded */
+	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &err);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Couldn't read app_fw_id from fw");
 		goto sym_tbl_cleanup;
 	}
 
-	for (i = 0; i < total_ports; i++) {
-		struct rte_eth_dev *eth_dev;
-		char port_name[RTE_ETH_NAME_MAX_LEN];
-
-		snprintf(port_name, sizeof(port_name), "%s_port%d",
-			 pci_dev->device.name, i);
-
-		PMD_DRV_LOG(DEBUG, "Secondary attaching to port %s", port_name);
-		eth_dev = rte_eth_dev_attach_secondary(port_name);
-		if (eth_dev == NULL) {
-			RTE_LOG(ERR, EAL,
-				"secondary process attach failed, ethdev doesn't exist");
-			ret = -ENODEV;
-			break;
+	switch (app_fw_id) {
+	case NFP_APP_FW_CORE_NIC:
+		PMD_INIT_LOG(INFO, "Initializing coreNIC");
+		ret = nfp_secondary_init_app_fw_nic(pci_dev, sym_tbl, cpp);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
+			goto sym_tbl_cleanup;
 		}
-
-		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-
-		if (nfp_net_ethdev_ops_mount(hw, eth_dev))
-			return -EINVAL;
-
-		eth_dev->process_private = cpp;
-
-		rte_eth_dev_probing_finish(eth_dev);
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
+		ret = -EINVAL;
+		goto sym_tbl_cleanup;
 	}
 
 	/* Register the CPP bridge service for the secondary too */
