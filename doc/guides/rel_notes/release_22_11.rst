@@ -259,6 +259,9 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: Updated EAL thread names from ``lcore-worker-<lcore_id>`` to
+  ``rte-worker-<lcore_id>`` so that DPDK can accommodate lcores higher than 99.
+
 * ethdev: enum ``RTE_FLOW_ITEM`` was affected by deprecation procedure.
 
 * ethdev: enum ``RTE_FLOW_ACTION`` was affected by deprecation procedure.

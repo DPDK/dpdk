@@ -1248,7 +1248,7 @@ rte_eal_init(int argc, char **argv)
 
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, sizeof(thread_name),
-			"lcore-worker-%d", i);
+			"rte-worker-%d", i);
 		ret = rte_thread_setname(lcore_config[i].thread_id,
 						thread_name);
 		if (ret != 0)
