@@ -3274,6 +3274,31 @@ This action is meant to use the same structure as `Action: PORT_REPRESENTOR`_.
 
 See also `Item: REPRESENTED_PORT`_.
 
+Action: ``METER_MARK``
+^^^^^^^^^^^^^^^^^^^^^^
+
+Meters a packet stream and marks its packets with colors.
+
+Unlike the ``METER`` action, policing is optional and may be
+performed later with the help of the ``METER_COLOR`` item.
+The profile and/or policy objects have to be created
+using the rte_mtr_profile_add()/rte_mtr_policy_add() API.
+Pointers to these objects are used as action parameters
+and need to be retrieved using the rte_mtr_profile_get() API
+and rte_mtr_policy_get() API respectively.
+
+.. _table_rte_flow_action_meter_mark:
+
+.. table:: METER_MARK
+
+   +------------------+----------------------+
+   | Field            | Value                |
+   +==================+======================+
+   | ``profile``      | Meter profile object |
+   +------------------+----------------------+
+   | ``policy``       | Meter policy object  |
+   +------------------+----------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

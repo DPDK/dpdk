@@ -2125,6 +2125,29 @@ port_meter_policy_add(portid_t port_id, uint32_t policy_id,
 	return ret;
 }
 
+struct rte_flow_meter_profile *
+port_meter_profile_get_by_id(portid_t port_id, uint32_t id)
+{
+	struct rte_mtr_error error;
+	struct rte_flow_meter_profile *profile;
+
+	profile = rte_mtr_meter_profile_get(port_id, id, &error);
+	if (!profile)
+		print_mtr_err_msg(&error);
+	return profile;
+}
+struct rte_flow_meter_policy *
+port_meter_policy_get_by_id(portid_t port_id, uint32_t id)
+{
+	struct rte_mtr_error error;
+	struct rte_flow_meter_policy *policy;
+
+	policy = rte_mtr_meter_policy_get(port_id, id, &error);
+	if (!policy)
+		print_mtr_err_msg(&error);
+	return policy;
+}
+
 /** Validate flow rule. */
 int
 port_flow_validate(portid_t port_id,
@@ -2750,6 +2773,9 @@ port_queue_action_handle_update(portid_t port_id,
 	struct rte_flow_error error;
 	struct rte_flow_action_handle *action_handle;
 	struct queue_job *job;
+	struct port_indirect_action *pia;
+	struct rte_flow_update_meter_mark mtr_update;
+	const void *update;
 
 	action_handle = port_action_handle_get_by_id(port_id, id);
 	if (!action_handle)
@@ -2768,8 +2794,27 @@ port_queue_action_handle_update(portid_t port_id,
 	}
 	job->type = QUEUE_JOB_TYPE_ACTION_UPDATE;
 
+	pia = action_get_by_id(port_id, id);
+	if (!pia) {
+		free(job);
+		return -EINVAL;
+	}
+
+	if (pia->type == RTE_FLOW_ACTION_TYPE_METER_MARK) {
+		rte_memcpy(&mtr_update.meter_mark, action->conf,
+			sizeof(struct rte_flow_action_meter_mark));
+		mtr_update.profile_valid = 1;
+		mtr_update.policy_valid  = 1;
+		mtr_update.color_mode_valid  = 1;
+		mtr_update.init_color_valid  = 1;
+		mtr_update.state_valid  = 1;
+		update = &mtr_update;
+	} else {
+		update = action;
+	}
+
 	if (rte_flow_async_action_handle_update(port_id, queue_id, &attr,
-				    action_handle, action, job, &error)) {
+				    action_handle, update, job, &error)) {
 		free(job);
 		return port_flow_complain(&error);
 	}

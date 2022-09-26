@@ -2789,6 +2789,14 @@ enum rte_flow_action_type {
 	 * @see struct rte_flow_action_ethdev
 	 */
 	RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
+
+	/**
+	 * Traffic metering and marking (MTR).
+	 *
+	 * @see struct rte_flow_action_meter_mark
+	 * See file rte_mtr.h for MTR profile object configuration.
+	 */
+	RTE_FLOW_ACTION_TYPE_METER_MARK,
 };
 
 /**
@@ -3638,6 +3646,54 @@ struct rte_flow_action_modify_field {
 	struct rte_flow_action_modify_data dst; /**< Destination field. */
 	struct rte_flow_action_modify_data src; /**< Source field. */
 	uint32_t width; /**< Number of bits to use from a source field. */
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_METER_MARK
+ *
+ * Traffic metering and marking (MTR).
+ *
+ * Meters a packet stream and marks its packets either
+ * green, yellow, or red according to the specified profile.
+ * The policy is optional and may be specified for defining
+ * subsequent actions based on a color assigned by MTR.
+ * Alternatively, the METER_COLOR item may be used for this.
+ */
+struct rte_flow_action_meter_mark {
+
+	/**< Profile config retrieved with rte_mtr_profile_get(). */
+	struct rte_flow_meter_profile *profile;
+	/**< Policy config retrieved with rte_mtr_policy_get(). */
+	struct rte_flow_meter_policy *policy;
+	/** Metering mode: 0 - Color-Blind, 1 - Color-Aware. */
+	int color_mode;
+	/** Initial Color applied to packets in Color-Aware mode. */
+	enum rte_color init_color;
+	/** Metering state: 0 - Disabled, 1 - Enabled. */
+	int state;
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_METER_MARK
+ *
+ * Wrapper structure for the context update interface.
+ *
+ */
+struct rte_flow_update_meter_mark {
+	/** New meter_mark parameters to be updated. */
+	struct rte_flow_action_meter_mark meter_mark;
+	/** The profile will be updated. */
+	uint32_t profile_valid:1;
+	/** The policy will be updated. */
+	uint32_t policy_valid:1;
+	/** The color mode will be updated. */
+	uint32_t color_mode_valid:1;
+	/** The initial color will be updated. */
+	uint32_t init_color_valid:1;
+	/** The meter state will be updated. */
+	uint32_t state_valid:1;
+	/** Reserved bits for the future usage. */
+	uint32_t reserved:27;
 };
 
 /* Mbuf dynamic field offset for metadata. */
