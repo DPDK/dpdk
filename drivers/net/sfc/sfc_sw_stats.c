@@ -2,7 +2,7 @@
  *
  * Copyright(c) 2021 Xilinx, Inc.
  */
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_bitmap.h>
 
 #include "sfc.h"

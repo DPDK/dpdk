@@ -443,11 +443,6 @@ sfc_repr_check_conf(struct sfc_repr *sr, uint16_t nb_rx_queues,
 		ret = -EINVAL;
 	}
 
-	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		sfcr_err(sr, "Flow Director not supported");
-		ret = -EINVAL;
-	}
-
 	if (conf->intr_conf.lsc != 0) {
 		sfcr_err(sr, "link status change interrupt not supported");
 		ret = -EINVAL;

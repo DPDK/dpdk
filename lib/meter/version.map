@@ -1,4 +1,4 @@
-DPDK_22 {
+DPDK_23 {
 	global:
 
 	rte_meter_srtcm_config;

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_eal.h>
 #include <rte_kvargs.h>
 #include <rte_lcore.h>

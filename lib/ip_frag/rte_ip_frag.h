@@ -179,6 +179,40 @@ int32_t rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 			struct rte_mempool *pool_indirect);
 
 /**
+ * IPv4 fragmentation by copy.
+ *
+ * This function implements the fragmentation of IPv4 packets by copy
+ * non-segmented mbuf.
+ * This function is mainly used to adapt Tx MBUF_FAST_FREE offload.
+ * MBUF_FAST_FREE: Device supports optimization for fast release of mbufs.
+ * When set, application must guarantee that per-queue all mbufs comes from
+ * the same mempool, has refcnt = 1, direct and non-segmented.
+ *
+ * @param pkt_in
+ *   The input packet.
+ * @param pkts_out
+ *   Array storing the output fragments.
+ * @param nb_pkts_out
+ *   Number of fragments.
+ * @param mtu_size
+ *   Size in bytes of the Maximum Transfer Unit (MTU) for the outgoing IPv4
+ *   datagrams. This value includes the size of the IPv4 header.
+ * @param pool_direct
+ *   MBUF pool used for allocating direct buffers for the output fragments.
+ * @return
+ *   Upon successful completion - number of output fragments placed
+ *   in the pkts_out array.
+ *   Otherwise - (-1) * errno.
+ */
+__rte_experimental
+int32_t
+rte_ipv4_fragment_copy_nonseg_packet(struct rte_mbuf *pkt_in,
+	struct rte_mbuf **pkts_out,
+	uint16_t nb_pkts_out,
+	uint16_t mtu_size,
+	struct rte_mempool *pool_direct);
+
+/**
  * This function implements reassembly of fragmented IPv4 packets.
  * Incoming mbufs should have its l2_len/l3_len fields setup correctly.
  *

@@ -17,7 +17,6 @@
 #include <rte_config.h>
 #include <rte_compat.h>
 #include <rte_per_lcore.h>
-#include <rte_bus.h>
 #include <rte_uuid.h>
 
 #include <rte_pci_dev_feature_defs.h>
@@ -459,6 +458,20 @@ __rte_internal
 uint64_t rte_eal_get_baseaddr(void);
 
 /**
+ * IOVA mapping mode.
+ *
+ * IOVA mapping mode is iommu programming mode of a device.
+ * That device (for example: IOMMU backed DMA device) based
+ * on rte_iova_mode will generate physical or virtual address.
+ *
+ */
+enum rte_iova_mode {
+	RTE_IOVA_DC = 0,	/* Don't care mode */
+	RTE_IOVA_PA = (1 << 0), /* DMA using physical address */
+	RTE_IOVA_VA = (1 << 1)  /* DMA using virtual address */
+};
+
+/**
  * Get the iova mode
  *
  * @return
@@ -483,6 +496,26 @@ rte_eal_mbuf_user_pool_ops(void);
  */
 const char *
 rte_eal_get_runtime_dir(void);
+
+/**
+ * Convert a string describing a mask of core ids into an array of core ids.
+ *
+ * On success, the passed array is filled with the orders of the core ids
+ * present in the mask (-1 indicating that a core id is absent).
+ * For example, passing a 0xa coremask results in cores[1] = 0, cores[3] = 1,
+ * and the rest of the array is set to -1.
+ *
+ * @param coremask
+ *   A string describing a mask of core ids.
+ * @param cores
+ *   An array where to store the core ids orders.
+ *   This array must be at least RTE_MAX_LCORE large.
+ * @return
+ *   0 on success, -1 if the string content was invalid.
+ */
+__rte_internal
+int
+rte_eal_parse_coremask(const char *coremask, int *cores);
 
 #ifdef __cplusplus
 }

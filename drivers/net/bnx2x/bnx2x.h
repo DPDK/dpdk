@@ -16,7 +16,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_io.h>
 
 #include "bnx2x_osal.h"

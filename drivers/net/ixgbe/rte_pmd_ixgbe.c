@@ -291,7 +291,8 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 	if (on > 1)
 		return -EINVAL;
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_strip_queue_set, -ENOTSUP);
+	if (*dev->dev_ops->vlan_strip_queue_set == NULL)
+		return -ENOTSUP;
 
 	/* The PF has 128 queue pairs and in SRIOV configuration
 	 * those queues will be assigned to VF's, so RXDCTL

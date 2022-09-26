@@ -25,31 +25,53 @@ test_macros(int __rte_unused unused_parm)
 #define SMALLER 0x1000U
 #define BIGGER 0x2000U
 #define PTR_DIFF BIGGER - SMALLER
-#define FAIL_MACRO(x)\
-	{printf(#x "() test failed!\n");\
-	return -1;}
 
 	uintptr_t unused = 0;
 	unsigned int smaller = SMALLER, bigger  = BIGGER;
+	uint32_t arr[3];
 
 	RTE_SET_USED(unused);
 
 	RTE_SWAP(smaller, bigger);
-	if (smaller != BIGGER && bigger != SMALLER)
-		FAIL_MACRO(RTE_SWAP);
-	if ((uintptr_t)RTE_PTR_ADD(SMALLER, PTR_DIFF) != BIGGER)
-		FAIL_MACRO(RTE_PTR_ADD);
-	if ((uintptr_t)RTE_PTR_SUB(BIGGER, PTR_DIFF) != SMALLER)
-		FAIL_MACRO(RTE_PTR_SUB);
-	if (RTE_PTR_DIFF(BIGGER, SMALLER) != PTR_DIFF)
-		FAIL_MACRO(RTE_PTR_DIFF);
-	if (RTE_MAX(SMALLER, BIGGER) != BIGGER)
-		FAIL_MACRO(RTE_MAX);
-	if (RTE_MIN(SMALLER, BIGGER) != SMALLER)
-		FAIL_MACRO(RTE_MIN);
+	RTE_TEST_ASSERT(smaller == BIGGER && bigger == SMALLER,
+		"RTE_SWAP");
+	RTE_TEST_ASSERT_EQUAL((uintptr_t)RTE_PTR_ADD(SMALLER, PTR_DIFF), BIGGER,
+		"RTE_PTR_ADD");
+	RTE_TEST_ASSERT_EQUAL((uintptr_t)RTE_PTR_SUB(BIGGER, PTR_DIFF), SMALLER,
+		"RTE_PTR_SUB");
+	RTE_TEST_ASSERT_EQUAL(RTE_PTR_DIFF(BIGGER, SMALLER), PTR_DIFF,
+		"RTE_PTR_DIFF");
+	RTE_TEST_ASSERT_EQUAL(RTE_MAX(SMALLER, BIGGER), BIGGER,
+		"RTE_MAX");
+	RTE_TEST_ASSERT_EQUAL(RTE_MIN(SMALLER, BIGGER), SMALLER,
+		"RTE_MIN");
 
-	if (strncmp(RTE_STR(test), "test", sizeof("test")))
-		FAIL_MACRO(RTE_STR);
+	RTE_TEST_ASSERT_EQUAL(RTE_PTR_ADD(arr + 1, sizeof(arr[0])), &arr[2],
+		"RTE_PTR_ADD(expr, x)");
+	RTE_TEST_ASSERT_EQUAL(RTE_PTR_SUB(arr + 1, sizeof(arr[0])), &arr[0],
+		"RTE_PTR_SUB(expr, x)");
+	RTE_TEST_ASSERT_EQUAL(RTE_PTR_ALIGN_FLOOR(arr + 2, 4), &arr[2],
+		"RTE_PTR_ALIGN_FLOOR(expr, x)");
+	RTE_TEST_ASSERT_EQUAL(RTE_PTR_ALIGN_CEIL(arr + 2, 4), &arr[2],
+		"RTE_PTR_ALIGN_CEIL(expr, x)");
+	RTE_TEST_ASSERT_EQUAL(RTE_PTR_ALIGN(arr + 2, 4), &arr[2],
+		"RTE_PTR_ALIGN(expr, x)");
+
+	RTE_TEST_ASSERT_EQUAL(
+		RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(&arr[1], 1), 4), &arr[1],
+		"RTE_PTR_ALIGN_FLOOR(x < y/2, y)");
+	RTE_TEST_ASSERT_EQUAL(
+		RTE_PTR_ALIGN_FLOOR(RTE_PTR_ADD(&arr[1], 3), 4), &arr[1],
+		"RTE_PTR_ALIGN_FLOOR(x > y/2, y)");
+	RTE_TEST_ASSERT_EQUAL(
+		RTE_PTR_ALIGN_CEIL(RTE_PTR_ADD(&arr[1], 3), 4), &arr[2],
+		"RTE_PTR_ALIGN_CEIL(x < y/2, y)");
+	RTE_TEST_ASSERT_EQUAL(
+		RTE_PTR_ALIGN_CEIL(RTE_PTR_ADD(&arr[1], 1), 4), &arr[2],
+		"RTE_PTR_ALIGN_CEIL(x > y/2, y)");
+
+	RTE_TEST_ASSERT(strncmp(RTE_STR(test), "test", sizeof("test")) == 0,
+		"RTE_STR");
 
 	return 0;
 }

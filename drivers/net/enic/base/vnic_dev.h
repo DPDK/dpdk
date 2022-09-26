@@ -9,7 +9,7 @@
 #include <stdbool.h>
 
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "enic_compat.h"
 #include "vnic_resource.h"

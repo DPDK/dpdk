@@ -2,6 +2,7 @@
  * Copyright(c) 2016 IGEL Co., Ltd.
  * Copyright(c) 2016-2018 Intel Corporation
  */
+#include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -13,7 +14,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_net.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_vhost.h>
 #include <rte_spinlock.h>

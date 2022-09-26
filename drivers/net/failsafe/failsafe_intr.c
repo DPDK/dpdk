@@ -10,6 +10,7 @@
 #if defined(LINUX)
 #include <sys/epoll.h>
 #endif
+#include <stdlib.h>
 #include <unistd.h>
 
 #include <rte_alarm.h>

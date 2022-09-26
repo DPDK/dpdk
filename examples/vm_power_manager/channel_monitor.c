@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <ctype.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -2,6 +2,8 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <stdlib.h>
+
 #include <rte_ethdev.h>
 #include <rte_graph.h>
 

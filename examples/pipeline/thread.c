@@ -228,20 +228,33 @@ thread_msg_send_recv(uint32_t thread_id,
 	return rsp;
 }
 
-int
-thread_pipeline_enable(uint32_t thread_id,
-	struct obj *obj,
-	const char *pipeline_name)
+static int
+thread_is_pipeline_enabled(uint32_t thread_id, struct rte_swx_pipeline *p)
 {
-	struct pipeline *p = pipeline_find(obj, pipeline_name);
+	struct thread *t = &thread[thread_id];
+	struct thread_data *td = &thread_data[thread_id];
+	uint32_t i;
+
+	if (!t->enabled)
+		return 0; /* Pipeline NOT enabled on this thread. */
+
+	for (i = 0; i < td->n_pipelines; i++)
+		if (td->p[i] == p)
+			return 1; /* Pipeline enabled on this thread. */
+
+	return 0 /* Pipeline NOT enabled on this thread. */;
+}
+
+int
+thread_pipeline_enable(uint32_t thread_id, struct rte_swx_pipeline *p, uint32_t timer_period_ms)
+{
 	struct thread *t;
 	struct thread_msg_req *req;
 	struct thread_msg_rsp *rsp;
 	int status;
 
 	/* Check input params */
-	if ((thread_id >= RTE_MAX_LCORE) ||
-		(p == NULL))
+	if ((thread_id >= RTE_MAX_LCORE) || !p || !timer_period_ms)
 		return -1;
 
 	t = &thread[thread_id];
@@ -256,18 +269,13 @@ thread_pipeline_enable(uint32_t thread_id,
 			return -1;
 
 		/* Data plane thread */
-		td->p[td->n_pipelines] = p->p;
+		td->p[td->n_pipelines] = p;
 
-		tdp->p = p->p;
-		tdp->timer_period =
-			(rte_get_tsc_hz() * p->timer_period_ms) / 1000;
+		tdp->p = p;
+		tdp->timer_period = (rte_get_tsc_hz() * timer_period_ms) / 1000;
 		tdp->time_next = rte_get_tsc_cycles() + tdp->timer_period;
 
 		td->n_pipelines++;
-
-		/* Pipeline */
-		p->thread_id = thread_id;
-		p->enabled = 1;
 
 		return 0;
 	}
@@ -279,8 +287,8 @@ thread_pipeline_enable(uint32_t thread_id,
 
 	/* Write request */
 	req->type = THREAD_REQ_PIPELINE_ENABLE;
-	req->pipeline_enable.p = p->p;
-	req->pipeline_enable.timer_period_ms = p->timer_period_ms;
+	req->pipeline_enable.p = p;
+	req->pipeline_enable.timer_period_ms = timer_period_ms;
 
 	/* Send request and wait for response */
 	rsp = thread_msg_send_recv(thread_id, req);
@@ -295,37 +303,27 @@ thread_pipeline_enable(uint32_t thread_id,
 	if (status)
 		return status;
 
-	p->thread_id = thread_id;
-	p->enabled = 1;
-
 	return 0;
 }
 
 int
-thread_pipeline_disable(uint32_t thread_id,
-	struct obj *obj,
-	const char *pipeline_name)
+thread_pipeline_disable(uint32_t thread_id, struct rte_swx_pipeline *p)
 {
-	struct pipeline *p = pipeline_find(obj, pipeline_name);
 	struct thread *t;
 	struct thread_msg_req *req;
 	struct thread_msg_rsp *rsp;
 	int status;
 
 	/* Check input params */
-	if ((thread_id >= RTE_MAX_LCORE) ||
-		(p == NULL))
+	if ((thread_id >= RTE_MAX_LCORE) || !p)
 		return -1;
 
 	t = &thread[thread_id];
 	if (t->enabled == 0)
 		return -1;
 
-	if (p->enabled == 0)
+	if (!thread_is_pipeline_enabled(thread_id, p))
 		return 0;
-
-	if (p->thread_id != thread_id)
-		return -1;
 
 	if (!thread_is_running(thread_id)) {
 		struct thread_data *td = &thread_data[thread_id];
@@ -334,7 +332,7 @@ thread_pipeline_disable(uint32_t thread_id,
 		for (i = 0; i < td->n_pipelines; i++) {
 			struct pipeline_data *tdp = &td->pipeline_data[i];
 
-			if (tdp->p != p->p)
+			if (tdp->p != p)
 				continue;
 
 			/* Data plane thread */
@@ -350,9 +348,6 @@ thread_pipeline_disable(uint32_t thread_id,
 
 			td->n_pipelines--;
 
-			/* Pipeline */
-			p->enabled = 0;
-
 			break;
 		}
 
@@ -366,7 +361,7 @@ thread_pipeline_disable(uint32_t thread_id,
 
 	/* Write request */
 	req->type = THREAD_REQ_PIPELINE_DISABLE;
-	req->pipeline_disable.p = p->p;
+	req->pipeline_disable.p = p;
 
 	/* Send request and wait for response */
 	rsp = thread_msg_send_recv(thread_id, req);
@@ -380,8 +375,6 @@ thread_pipeline_disable(uint32_t thread_id,
 	/* Request completion */
 	if (status)
 		return status;
-
-	p->enabled = 0;
 
 	return 0;
 }

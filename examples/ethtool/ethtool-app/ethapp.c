@@ -2,6 +2,8 @@
  * Copyright(c) 2015 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>

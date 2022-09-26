@@ -12,7 +12,7 @@
 
 #include <rte_string_fns.h>
 #include <rte_log.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_telemetry.h>
@@ -71,12 +71,14 @@ rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
 	int ret = 0;
 
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
-	RTE_FUNC_PTR_OR_ERR_RET(dev_info, -EINVAL);
+	if (dev_info == NULL)
+		return -EINVAL;
 
 	rawdev = &rte_rawdevs[dev_id];
 
 	if (dev_info->dev_private != NULL) {
-		RTE_FUNC_PTR_OR_ERR_RET(*rawdev->dev_ops->dev_info_get, -ENOTSUP);
+		if (*rawdev->dev_ops->dev_info_get == NULL)
+			return -ENOTSUP;
 		ret = (*rawdev->dev_ops->dev_info_get)(rawdev,
 				dev_info->dev_private,
 				dev_private_size);
@@ -97,11 +99,13 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
 	int diag;
 
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
-	RTE_FUNC_PTR_OR_ERR_RET(dev_conf, -EINVAL);
+	if (dev_conf == NULL)
+		return -EINVAL;
 
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
+	if (*dev->dev_ops->dev_configure == NULL)
+		return -ENOTSUP;
 
 	if (dev->started) {
 		RTE_RDEV_ERR(
@@ -131,7 +135,8 @@ rte_rawdev_queue_conf_get(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_def_conf, -ENOTSUP);
+	if (*dev->dev_ops->queue_def_conf == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->queue_def_conf)(dev, queue_id, queue_conf,
 			queue_conf_size);
 }
@@ -147,7 +152,8 @@ rte_rawdev_queue_setup(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_setup, -ENOTSUP);
+	if (*dev->dev_ops->queue_setup == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->queue_setup)(dev, queue_id, queue_conf,
 			queue_conf_size);
 }
@@ -160,7 +166,8 @@ rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_release, -ENOTSUP);
+	if (*dev->dev_ops->queue_release == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->queue_release)(dev, queue_id);
 }
 
@@ -172,7 +179,8 @@ rte_rawdev_queue_count(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_count, -ENOTSUP);
+	if (*dev->dev_ops->queue_count == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->queue_count)(dev);
 }
 
@@ -186,7 +194,8 @@ rte_rawdev_get_attr(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->attr_get, -ENOTSUP);
+	if (*dev->dev_ops->attr_get == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->attr_get)(dev, attr_name, attr_value);
 }
 
@@ -200,7 +209,8 @@ rte_rawdev_set_attr(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->attr_set, -ENOTSUP);
+	if (*dev->dev_ops->attr_set == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->attr_set)(dev, attr_name, attr_value);
 }
 
@@ -215,7 +225,8 @@ rte_rawdev_enqueue_buffers(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->enqueue_bufs, -ENOTSUP);
+	if (*dev->dev_ops->enqueue_bufs == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->enqueue_bufs)(dev, buffers, count, context);
 }
 
@@ -230,7 +241,8 @@ rte_rawdev_dequeue_buffers(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dequeue_bufs, -ENOTSUP);
+	if (*dev->dev_ops->dequeue_bufs == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->dequeue_bufs)(dev, buffers, count, context);
 }
 
@@ -242,7 +254,8 @@ rte_rawdev_dump(uint16_t dev_id, FILE *f)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dump, -ENOTSUP);
+	if (*dev->dev_ops->dump == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->dump)(dev, f);
 }
 
@@ -251,7 +264,8 @@ xstats_get_count(uint16_t dev_id)
 {
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get_names, -ENOTSUP);
+	if (*dev->dev_ops->xstats_get_names == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->xstats_get_names)(dev, NULL, 0);
 }
 
@@ -273,7 +287,8 @@ rte_rawdev_xstats_names_get(uint16_t dev_id,
 
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get_names, -ENOTSUP);
+	if (*dev->dev_ops->xstats_get_names == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->xstats_get_names)(dev, xstats_names, size);
 }
 
@@ -287,7 +302,8 @@ rte_rawdev_xstats_get(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
 	const struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get, -ENOTSUP);
+	if (*dev->dev_ops->xstats_get == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->xstats_get)(dev, ids, values, n);
 }
 
@@ -306,7 +322,8 @@ rte_rawdev_xstats_by_name_get(uint16_t dev_id,
 		id = &temp; /* driver never gets a NULL value */
 
 	/* implemented by driver */
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_get_by_name, -ENOTSUP);
+	if (*dev->dev_ops->xstats_get_by_name == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->xstats_get_by_name)(dev, name, id);
 }
 
@@ -317,7 +334,8 @@ rte_rawdev_xstats_reset(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->xstats_reset, -ENOTSUP);
+	if (*dev->dev_ops->xstats_reset == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->xstats_reset)(dev, ids, nb_ids);
 }
 
@@ -327,7 +345,8 @@ rte_rawdev_firmware_status_get(uint16_t dev_id, rte_rawdev_obj_t status_info)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_status_get, -ENOTSUP);
+	if (*dev->dev_ops->firmware_status_get == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->firmware_status_get)(dev, status_info);
 }
 
@@ -337,7 +356,8 @@ rte_rawdev_firmware_version_get(uint16_t dev_id, rte_rawdev_obj_t version_info)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_version_get, -ENOTSUP);
+	if (*dev->dev_ops->firmware_version_get == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->firmware_version_get)(dev, version_info);
 }
 
@@ -350,7 +370,8 @@ rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image)
 	if (!firmware_image)
 		return -EINVAL;
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_load, -ENOTSUP);
+	if (*dev->dev_ops->firmware_load == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->firmware_load)(dev, firmware_image);
 }
 
@@ -360,7 +381,8 @@ rte_rawdev_firmware_unload(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->firmware_load, -ENOTSUP);
+	if (*dev->dev_ops->firmware_load == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->firmware_unload)(dev);
 }
 
@@ -370,7 +392,8 @@ rte_rawdev_selftest(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_selftest, -ENOTSUP);
+	if (*dev->dev_ops->dev_selftest == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->dev_selftest)(dev_id);
 }
 
@@ -435,7 +458,8 @@ rte_rawdev_close(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_close, -ENOTSUP);
+	if (*dev->dev_ops->dev_close == NULL)
+		return -ENOTSUP;
 	/* Device must be stopped before it can be closed */
 	if (dev->started == 1) {
 		RTE_RDEV_ERR("Device %u must be stopped before closing",
@@ -454,7 +478,8 @@ rte_rawdev_reset(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_reset, -ENOTSUP);
+	if (*dev->dev_ops->dev_reset == NULL)
+		return -ENOTSUP;
 	/* Reset is not dependent on state of the device */
 	return (*dev->dev_ops->dev_reset)(dev);
 }

@@ -2,10 +2,10 @@
  * Copyright 2018 Gaëtan Rivet
  */
 
+#include <errno.h>
 #include <string.h>
 
-#include <rte_dev.h>
-#include <rte_bus.h>
+#include <dev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_errno.h>
 

@@ -10,7 +10,7 @@
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_spinlock.h>
 
 #include "../octeontx_logs.h"

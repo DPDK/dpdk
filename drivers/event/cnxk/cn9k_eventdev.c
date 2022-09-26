@@ -123,7 +123,7 @@ cn9k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(arg);
 	uint64_t retry = CNXK_SSO_FLUSH_RETRY_MAX;
-	struct cnxk_timesync_info *tstamp;
+	struct cnxk_timesync_info **tstamp;
 	struct cn9k_sso_hws_dual *dws;
 	struct cn9k_sso_hws *ws;
 	uint64_t cq_ds_cnt = 1;
@@ -942,8 +942,7 @@ cn9k_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
 }
 
 static void
-cn9k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem,
-		      void *tstmp_info)
+cn9k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	int i;
@@ -953,11 +952,11 @@ cn9k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem,
 			struct cn9k_sso_hws_dual *dws =
 				event_dev->data->ports[i];
 			dws->lookup_mem = lookup_mem;
-			dws->tstamp = tstmp_info;
+			dws->tstamp = dev->tstamp;
 		} else {
 			struct cn9k_sso_hws *ws = event_dev->data->ports[i];
 			ws->lookup_mem = lookup_mem;
-			ws->tstamp = tstmp_info;
+			ws->tstamp = dev->tstamp;
 		}
 	}
 }
@@ -970,7 +969,6 @@ cn9k_sso_rx_adapter_queue_add(
 {
 	struct cn9k_eth_rxq *rxq;
 	void *lookup_mem;
-	void *tstmp_info;
 	int rc;
 
 	rc = strncmp(eth_dev->device->driver->name, "net_cn9k", 8);
@@ -984,8 +982,7 @@ cn9k_sso_rx_adapter_queue_add(
 
 	rxq = eth_dev->data->rx_queues[0];
 	lookup_mem = rxq->lookup_mem;
-	tstmp_info = rxq->tstamp;
-	cn9k_sso_set_priv_mem(event_dev, lookup_mem, tstmp_info);
+	cn9k_sso_set_priv_mem(event_dev, lookup_mem);
 	cn9k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
 
 	return 0;
@@ -1046,7 +1043,8 @@ cn9k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
 			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc /
 						(sqes_per_sqb - 1));
 		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
-		txq->nb_sqb_bufs_adj = (70 * txq->nb_sqb_bufs_adj) / 100;
+		txq->nb_sqb_bufs_adj =
+			(ROC_NIX_SQB_LOWER_THRESH * txq->nb_sqb_bufs_adj) / 100;
 	}
 }
 

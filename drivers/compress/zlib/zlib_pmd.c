@@ -2,7 +2,7 @@
  * Copyright(c) 2018 Cavium Networks
  */
 
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_common.h>
 
 #include "zlib_pmd_private.h"

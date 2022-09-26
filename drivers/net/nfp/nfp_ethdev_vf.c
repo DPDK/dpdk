@@ -505,6 +505,14 @@ static const struct rte_pci_id pci_id_nfp_vf_net_map[] = {
 			       PCI_DEVICE_ID_NFP6000_VF_NIC)
 	},
 	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CORIGINE,
+			       PCI_DEVICE_ID_NFP3800_VF_NIC)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CORIGINE,
+			       PCI_DEVICE_ID_NFP6000_VF_NIC)
+	},
+	{
 		.vendor_id = 0,
 	},
 };

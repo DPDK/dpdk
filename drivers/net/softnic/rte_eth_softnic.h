@@ -46,16 +46,6 @@ extern "C" {
 #define SOFTNIC_SC                                         1
 #endif
 
-/** Traffic Manager: Number of scheduler queues. */
-#ifndef SOFTNIC_TM_N_QUEUES
-#define SOFTNIC_TM_N_QUEUES                                (64 * 1024)
-#endif
-
-/** Traffic Manager: Scheduler queue size (per traffic class). */
-#ifndef SOFTNIC_TM_QUEUE_SIZE
-#define SOFTNIC_TM_QUEUE_SIZE                              64
-#endif
-
 /**
  * Soft NIC run.
  *

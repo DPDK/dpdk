@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <linux/virtio_net.h>
 
 #include <rte_mbuf.h>

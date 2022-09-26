@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <stdlib.h>
+
 #include <rte_atomic.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -17,7 +19,7 @@
 #include <rte_lcore.h>
 #include <rte_per_lcore.h>
 #include <rte_random.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_test.h>
 
 #include "ssovf_evdev.h"

@@ -19,6 +19,7 @@ extern "C" {
 
 #include <string.h>
 
+#include <dev_driver.h>
 
 #include "rte_compressdev.h"
 #include "rte_compressdev_internal.h"

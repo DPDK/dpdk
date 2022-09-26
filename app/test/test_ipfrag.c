@@ -418,10 +418,17 @@ test_ip_frag(void)
 		}
 
 		if (tests[i].ipv == 4)
-			len = rte_ipv4_fragment_packet(b, pkts_out, BURST,
+			if (i % 2)
+				len = rte_ipv4_fragment_packet(b, pkts_out, BURST,
 						       tests[i].mtu_size,
 						       direct_pool,
 						       indirect_pool);
+			else
+				len = rte_ipv4_fragment_copy_nonseg_packet(b,
+						       pkts_out,
+						       BURST,
+						       tests[i].mtu_size,
+						       direct_pool);
 		else if (tests[i].ipv == 6)
 			len = rte_ipv6_fragment_packet(b, pkts_out, BURST,
 						       tests[i].mtu_size,

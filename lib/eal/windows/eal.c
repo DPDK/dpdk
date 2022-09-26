@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include <rte_debug.h>
+#include <rte_bus.h>
 #include <rte_eal.h>
 #include <eal_memcfg.h>
 #include <rte_errno.h>

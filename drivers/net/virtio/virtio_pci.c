@@ -9,7 +9,7 @@
 #endif
 
 #include <rte_io.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 
 #include "virtio_pci.h"
 #include "virtio_logs.h"

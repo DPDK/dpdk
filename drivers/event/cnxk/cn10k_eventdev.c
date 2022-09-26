@@ -694,8 +694,7 @@ cn10k_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
 }
 
 static void
-cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem,
-		       void *tstmp_info)
+cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	int i;
@@ -703,7 +702,7 @@ cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem,
 	for (i = 0; i < dev->nb_event_ports; i++) {
 		struct cn10k_sso_hws *ws = event_dev->data->ports[i];
 		ws->lookup_mem = lookup_mem;
-		ws->tstamp = tstmp_info;
+		ws->tstamp = dev->tstamp;
 	}
 }
 
@@ -715,7 +714,6 @@ cn10k_sso_rx_adapter_queue_add(
 {
 	struct cn10k_eth_rxq *rxq;
 	void *lookup_mem;
-	void *tstmp_info;
 	int rc;
 
 	rc = strncmp(eth_dev->device->driver->name, "net_cn10k", 8);
@@ -728,8 +726,7 @@ cn10k_sso_rx_adapter_queue_add(
 		return -EINVAL;
 	rxq = eth_dev->data->rx_queues[0];
 	lookup_mem = rxq->lookup_mem;
-	tstmp_info = rxq->tstamp;
-	cn10k_sso_set_priv_mem(event_dev, lookup_mem, tstmp_info);
+	cn10k_sso_set_priv_mem(event_dev, lookup_mem);
 	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
 
 	return 0;
@@ -815,7 +812,8 @@ cn10k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
 			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc /
 						(sqes_per_sqb - 1));
 		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
-		txq->nb_sqb_bufs_adj = (70 * txq->nb_sqb_bufs_adj) / 100;
+		txq->nb_sqb_bufs_adj =
+			(ROC_NIX_SQB_LOWER_THRESH * txq->nb_sqb_bufs_adj) / 100;
 	}
 }
 

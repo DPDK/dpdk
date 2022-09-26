@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/un.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 

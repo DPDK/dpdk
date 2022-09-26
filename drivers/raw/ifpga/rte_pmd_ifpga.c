@@ -3,7 +3,7 @@
  */
 
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
 #include "rte_pmd_ifpga.h"
@@ -400,12 +400,6 @@ rte_pmd_ifpga_reload(uint16_t dev_id, int type, int page)
 		return -ENODEV;
 
 	return opae_mgr_reload(adapter->mgr, type, page);
-}
-
-const struct rte_pci_bus *
-rte_pmd_ifpga_get_pci_bus(void)
-{
-	return ifpga_get_pci_bus();
 }
 
 int

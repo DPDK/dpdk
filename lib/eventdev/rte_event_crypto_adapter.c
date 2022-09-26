@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <rte_common.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
@@ -974,9 +974,8 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 	     adapter->mode == RTE_EVENT_CRYPTO_ADAPTER_OP_NEW) ||
 	    (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
 	     adapter->mode == RTE_EVENT_CRYPTO_ADAPTER_OP_NEW)) {
-		RTE_FUNC_PTR_OR_ERR_RET(
-			*dev->dev_ops->crypto_adapter_queue_pair_add,
-			-ENOTSUP);
+		if (*dev->dev_ops->crypto_adapter_queue_pair_add == NULL)
+			return -ENOTSUP;
 		if (dev_info->qpairs == NULL) {
 			dev_info->qpairs =
 			    rte_zmalloc_socket(adapter->mem_name,
@@ -1076,9 +1075,8 @@ rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
 	if ((cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) ||
 	    (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
 	     adapter->mode == RTE_EVENT_CRYPTO_ADAPTER_OP_NEW)) {
-		RTE_FUNC_PTR_OR_ERR_RET(
-			*dev->dev_ops->crypto_adapter_queue_pair_del,
-			-ENOTSUP);
+		if (*dev->dev_ops->crypto_adapter_queue_pair_del == NULL)
+			return -ENOTSUP;
 		ret = (*dev->dev_ops->crypto_adapter_queue_pair_del)(dev,
 						dev_info->dev,
 						queue_pair_id);

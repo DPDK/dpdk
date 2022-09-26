@@ -10,6 +10,7 @@
 
 #include <sys/queue.h>
 
+#include <dev_driver.h>
 #include <rte_class.h>
 #include <rte_malloc.h>
 #include <rte_spinlock.h>
@@ -266,7 +267,8 @@ rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
 	if (!dev)
 		return -EINVAL;
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev->ops->get_stats_names, -ENOTSUP);
+	if (dev->ops->get_stats_names == NULL)
+		return -ENOTSUP;
 
 	return dev->ops->get_stats_names(dev, stats_names, size);
 }
@@ -278,7 +280,8 @@ rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
 	if (!dev || !stats || !n)
 		return -EINVAL;
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev->ops->get_stats, -ENOTSUP);
+	if (dev->ops->get_stats == NULL)
+		return -ENOTSUP;
 
 	return dev->ops->get_stats(dev, qid, stats, n);
 }
@@ -289,7 +292,8 @@ rte_vdpa_reset_stats(struct rte_vdpa_device *dev, uint16_t qid)
 	if (!dev)
 		return -EINVAL;
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev->ops->reset_stats, -ENOTSUP);
+	if (dev->ops->reset_stats == NULL)
+		return -ENOTSUP;
 
 	return dev->ops->reset_stats(dev, qid);
 }

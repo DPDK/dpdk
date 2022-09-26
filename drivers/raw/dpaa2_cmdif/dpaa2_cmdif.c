@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <stdint.h>
 
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_atomic.h>
 #include <rte_interrupts.h>
 #include <rte_branch_prediction.h>

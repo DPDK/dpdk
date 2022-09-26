@@ -15,7 +15,7 @@ extern "C" {
 
 #include <rte_spinlock.h>
 #include <rte_cycles.h>
-#include <rte_bus_ifpga.h>
+#include <bus_ifpga_driver.h>
 #include <rte_rawdev.h>
 
 #include "ifpga_rawdev.h"

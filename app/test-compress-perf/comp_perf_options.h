@@ -5,6 +5,8 @@
 #ifndef _COMP_PERF_OPS_
 #define _COMP_PERF_OPS_
 
+#include <rte_dev.h>
+
 #define MAX_LIST		32
 #define MIN_COMPRESSED_BUF_SIZE 8
 #define EXPANSE_RATIO 1.1

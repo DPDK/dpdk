@@ -12,7 +12,7 @@
 #include <cryptodev_pmd.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_security_driver.h>
 #include <rte_hexdump.h>

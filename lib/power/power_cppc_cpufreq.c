@@ -3,6 +3,8 @@
  * Copyright(c) 2021 Arm Limited
  */
 
+#include <stdlib.h>
+
 #include <rte_memcpy.h>
 
 #include "power_cppc_cpufreq.h"

@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+#include <errno.h>
+
 #include "bcmfs_hw_defs.h"
 #include "bcmfs_rm_common.h"
 

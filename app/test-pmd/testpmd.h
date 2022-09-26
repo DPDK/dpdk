@@ -7,8 +7,6 @@
 
 #include <stdbool.h>
 
-#include <rte_pci.h>
-#include <rte_bus_pci.h>
 #ifdef RTE_LIB_GRO
 #include <rte_gro.h>
 #endif
@@ -267,7 +265,7 @@ struct port_txqueue {
  * The data structure associated with each port.
  */
 struct rte_port {
-	struct rte_eth_dev_info dev_info;   /**< PCI info + driver name */
+	struct rte_eth_dev_info dev_info;   /**< Device info + driver name */
 	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
 	struct rte_ether_addr       eth_addr;   /**< Port ethernet address */
 	struct rte_eth_stats    stats;      /**< Last port statistics */
@@ -461,10 +459,6 @@ extern uint8_t hot_plug; /**< enable by "--hot-plug" parameter */
 extern int do_mlockall; /**< set by "--mlockall" or "--no-mlockall" parameter */
 extern uint8_t clear_ptypes; /**< disabled by set ptype cmd */
 
-#ifdef RTE_LIBRTE_IXGBE_BYPASS
-extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
-#endif
-
 /*
  * Store specified sockets on which memory pool to be used by ports
  * is allocated.
@@ -553,8 +547,6 @@ extern lcoreid_t latencystats_lcore_id;
 extern lcoreid_t bitrate_lcore_id;
 extern uint8_t bitrate_enabled;
 #endif
-
-extern struct rte_eth_fdir_conf fdir_conf;
 
 extern uint32_t max_rx_pkt_len;
 
@@ -801,65 +793,6 @@ mbuf_pool_find(unsigned int sock_id, uint16_t idx)
 	return rte_mempool_lookup((const char *)pool_name);
 }
 
-/**
- * Read/Write operations on a PCI register of a port.
- */
-static inline uint32_t
-port_pci_reg_read(struct rte_port *port, uint32_t reg_off)
-{
-	const struct rte_pci_device *pci_dev;
-	const struct rte_bus *bus;
-	void *reg_addr;
-	uint32_t reg_v;
-
-	if (!port->dev_info.device) {
-		fprintf(stderr, "Invalid device\n");
-		return 0;
-	}
-
-	bus = rte_bus_find_by_device(port->dev_info.device);
-	if (bus && !strcmp(bus->name, "pci")) {
-		pci_dev = RTE_DEV_TO_PCI(port->dev_info.device);
-	} else {
-		fprintf(stderr, "Not a PCI device\n");
-		return 0;
-	}
-
-	reg_addr = ((char *)pci_dev->mem_resource[0].addr + reg_off);
-	reg_v = *((volatile uint32_t *)reg_addr);
-	return rte_le_to_cpu_32(reg_v);
-}
-
-#define port_id_pci_reg_read(pt_id, reg_off) \
-	port_pci_reg_read(&ports[(pt_id)], (reg_off))
-
-static inline void
-port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
-{
-	const struct rte_pci_device *pci_dev;
-	const struct rte_bus *bus;
-	void *reg_addr;
-
-	if (!port->dev_info.device) {
-		fprintf(stderr, "Invalid device\n");
-		return;
-	}
-
-	bus = rte_bus_find_by_device(port->dev_info.device);
-	if (bus && !strcmp(bus->name, "pci")) {
-		pci_dev = RTE_DEV_TO_PCI(port->dev_info.device);
-	} else {
-		fprintf(stderr, "Not a PCI device\n");
-		return;
-	}
-
-	reg_addr = ((char *)pci_dev->mem_resource[0].addr + reg_off);
-	*((volatile uint32_t *)reg_addr) = rte_cpu_to_le_32(reg_v);
-}
-
-#define port_id_pci_reg_write(pt_id, reg_off, reg_value) \
-	port_pci_reg_write(&ports[(pt_id)], (reg_off), (reg_value))
-
 static inline void
 get_start_cycles(uint64_t *start_tsc)
 {
@@ -893,6 +826,7 @@ unsigned int parse_item_list(const char *str, const char *item_name,
 			unsigned int max_items,
 			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
+void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 void cmdline_read_from_file(const char *filename);
 int init_cmdline(void);
 void prompt(void);
@@ -922,15 +856,6 @@ void update_fwd_ports(portid_t new_pid);
 void set_fwd_eth_peer(portid_t port_id, char *peer_addr);
 
 void port_mtu_set(portid_t port_id, uint16_t mtu);
-void port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_pos);
-void port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
-		      uint8_t bit_v);
-void port_reg_bit_field_display(portid_t port_id, uint32_t reg_off,
-				uint8_t bit1_pos, uint8_t bit2_pos);
-void port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
-			    uint8_t bit1_pos, uint8_t bit2_pos, uint32_t value);
-void port_reg_display(portid_t port_id, uint32_t reg_off);
-void port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t value);
 int port_action_handle_create(portid_t port_id, uint32_t id,
 			      const struct rte_flow_indir_action_conf *conf,
 			      const struct rte_flow_action *action);
@@ -1091,10 +1016,6 @@ void pmd_test_exit(void);
 #if defined(RTE_NET_I40E) || defined(RTE_NET_IXGBE)
 void fdir_get_infos(portid_t port_id);
 #endif
-void fdir_set_flex_mask(portid_t port_id,
-			   struct rte_eth_fdir_flex_mask *cfg);
-void fdir_set_flex_payload(portid_t port_id,
-			   struct rte_eth_flex_payload_cfg *cfg);
 void port_rss_reta_info(portid_t port_id,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t nb_entries);

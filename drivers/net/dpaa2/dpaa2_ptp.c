@@ -16,7 +16,7 @@
 #include <rte_malloc.h>
 #include <rte_time.h>
 
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <fsl_dprtc.h>
 #include <fsl_dpkg.h>
 

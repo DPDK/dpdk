@@ -27,89 +27,12 @@ extern "C" {
 #include <rte_uuid.h>
 #include <rte_debug.h>
 #include <rte_interrupts.h>
-#include <rte_dev.h>
 #include <rte_vmbus_reg.h>
 
 /* Forward declarations */
 struct rte_vmbus_device;
 struct rte_vmbus_driver;
-struct rte_vmbus_bus;
 struct vmbus_channel;
-struct vmbus_mon_page;
-
-RTE_TAILQ_HEAD(rte_vmbus_device_list, rte_vmbus_device);
-RTE_TAILQ_HEAD(rte_vmbus_driver_list, rte_vmbus_driver);
-
-/* VMBus iterators */
-#define FOREACH_DEVICE_ON_VMBUS(p)	\
-	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.device_list), next)
-
-#define FOREACH_DRIVER_ON_VMBUS(p)	\
-	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.driver_list), next)
-
-/** Maximum number of VMBUS resources. */
-enum hv_uio_map {
-	HV_TXRX_RING_MAP = 0,
-	HV_INT_PAGE_MAP,
-	HV_MON_PAGE_MAP,
-	HV_RECV_BUF_MAP,
-	HV_SEND_BUF_MAP
-};
-#define VMBUS_MAX_RESOURCE 5
-
-/**
- * A structure describing a VMBUS device.
- */
-struct rte_vmbus_device {
-	RTE_TAILQ_ENTRY(rte_vmbus_device) next; /**< Next probed VMBUS device */
-	const struct rte_vmbus_driver *driver; /**< Associated driver */
-	struct rte_device device;              /**< Inherit core device */
-	rte_uuid_t device_id;		       /**< VMBUS device id */
-	rte_uuid_t class_id;		       /**< VMBUS device type */
-	uint32_t relid;			       /**< id for primary */
-	uint8_t monitor_id;		       /**< monitor page */
-	int uio_num;			       /**< UIO device number */
-	uint32_t *int_page;		       /**< VMBUS interrupt page */
-	struct vmbus_channel *primary;	       /**< VMBUS primary channel */
-	struct vmbus_mon_page *monitor_page;   /**< VMBUS monitor page */
-
-	struct rte_intr_handle *intr_handle;    /**< Interrupt handle */
-	struct rte_mem_resource resource[VMBUS_MAX_RESOURCE];
-};
-
-/**
- * Initialization function for the driver called during VMBUS probing.
- */
-typedef int (vmbus_probe_t)(struct rte_vmbus_driver *,
-			    struct rte_vmbus_device *);
-
-/**
- * Initialization function for the driver called during hot plugging.
- */
-typedef int (vmbus_remove_t)(struct rte_vmbus_device *);
-
-/**
- * A structure describing a VMBUS driver.
- */
-struct rte_vmbus_driver {
-	RTE_TAILQ_ENTRY(rte_vmbus_driver) next; /**< Next in list. */
-	struct rte_driver driver;
-	struct rte_vmbus_bus *bus;          /**< VM bus reference. */
-	vmbus_probe_t *probe;               /**< Device Probe function. */
-	vmbus_remove_t *remove;             /**< Device Remove function. */
-
-	const rte_uuid_t *id_table;	    /**< ID table. */
-};
-
-
-/**
- * Structure describing the VM bus
- */
-struct rte_vmbus_bus {
-	struct rte_bus bus;               /**< Inherit the generic class */
-	struct rte_vmbus_device_list device_list;  /**< List of devices */
-	struct rte_vmbus_driver_list driver_list;  /**< List of drivers */
-};
 
 /**
  * Scan the content of the VMBUS bus, and the devices in the devices
@@ -379,39 +302,12 @@ void rte_vmbus_set_latency(const struct rte_vmbus_device *dev,
 			   uint32_t latency);
 
 /**
- * Register a VMBUS driver.
- *
- * @param driver
- *   A pointer to a rte_vmbus_driver structure describing the driver
- *   to be registered.
- */
-void rte_vmbus_register(struct rte_vmbus_driver *driver);
-
-/**
  * For debug dump contents of ring buffer.
  *
  * @param channel
  *	Pointer to vmbus_channel structure.
  */
 void rte_vmbus_chan_dump(FILE *f, const struct vmbus_channel *chan);
-
-/**
- * Unregister a VMBUS driver.
- *
- * @param driver
- *   A pointer to a rte_vmbus_driver structure describing the driver
- *   to be unregistered.
- */
-void rte_vmbus_unregister(struct rte_vmbus_driver *driver);
-
-/** Helper for VMBUS device registration from driver instance */
-#define RTE_PMD_REGISTER_VMBUS(nm, vmbus_drv)		\
-	RTE_INIT(vmbusinitfn_ ##nm)			\
-	{						\
-		(vmbus_drv).driver.name = RTE_STR(nm);	\
-		rte_vmbus_register(&vmbus_drv);		\
-	}						\
-	RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
 #ifdef __cplusplus
 }

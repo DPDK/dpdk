@@ -2,7 +2,9 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <ctype.h>
 #include <stdio.h>
+
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_flow.h>

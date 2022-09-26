@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <ctype.h>
 #include "cnxk_telemetry.h"
 #include "roc_api.h"
 #include "roc_priv.h"

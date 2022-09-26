@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "sfc_efx.h"
 #include "sfc_efx_mcdi.h"

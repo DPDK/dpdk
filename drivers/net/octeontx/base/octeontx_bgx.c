@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <errno.h>
 #include <string.h>
 
 #include "octeontx_bgx.h"

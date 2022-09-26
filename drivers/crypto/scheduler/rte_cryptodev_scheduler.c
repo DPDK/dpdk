@@ -541,7 +541,8 @@ rte_cryptodev_scheduler_option_set(uint8_t scheduler_id,
 
 	sched_ctx = dev->data->dev_private;
 
-	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.option_set, -ENOTSUP);
+	if (*sched_ctx->ops.option_set == NULL)
+		return -ENOTSUP;
 
 	return (*sched_ctx->ops.option_set)(dev, option_type, option);
 }
@@ -571,7 +572,8 @@ rte_cryptodev_scheduler_option_get(uint8_t scheduler_id,
 
 	sched_ctx = dev->data->dev_private;
 
-	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.option_get, -ENOTSUP);
+	if (*sched_ctx->ops.option_get == NULL)
+		return -ENOTSUP;
 
 	return (*sched_ctx->ops.option_get)(dev, option_type, option);
 }

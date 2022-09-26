@@ -1567,7 +1567,8 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				ol_flags3, mbuf3);
 		}
 
-		if (flags & NIX_RX_OFFLOAD_TSTAMP_F) {
+		if ((flags & NIX_RX_OFFLOAD_TSTAMP_F) &&
+		    ((flags & NIX_RX_VWQE_F) && tstamp)) {
 			const uint16x8_t len_off = {
 				0,			     /* ptype   0:15 */
 				0,			     /* ptype  16:32 */

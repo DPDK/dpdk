@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2020 Intel Corporation
  */
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pthread.h>

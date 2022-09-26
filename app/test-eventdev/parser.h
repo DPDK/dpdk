@@ -5,6 +5,7 @@
 #ifndef __INCLUDE_PARSER_H__
 #define __INCLUDE_PARSER_H__
 
+#include <ctype.h>
 #include <stdint.h>
 
 #define PARSE_DELIMITER				" \f\n\r\t\v"

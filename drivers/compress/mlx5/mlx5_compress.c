@@ -5,7 +5,7 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_errno.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_spinlock.h>
 #include <rte_comp.h>
 #include <rte_compressdev.h>

@@ -2,7 +2,7 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_geneve.h>

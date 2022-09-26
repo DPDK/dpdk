@@ -153,9 +153,7 @@ extern uint32_t active_queues[RTE_SCHED_QUEUES_PER_PIPE];
 extern uint32_t n_active_queues;
 
 extern struct rte_sched_port_params port_params;
-#ifdef RTE_SCHED_CMAN
 extern struct rte_sched_cman_params cman_params;
-#endif
 extern struct rte_sched_subport_params subport_params[MAX_SCHED_SUBPORTS];
 
 int app_parse_args(int argc, char **argv);

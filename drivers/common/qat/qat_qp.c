@@ -4,11 +4,11 @@
 
 #include <rte_common.h>
 #include <rte_cycles.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
 
@@ -370,8 +370,8 @@ adf_queue_arb_enable(struct qat_pci_device *qat_dev, struct qat_queue *txq,
 	struct qat_qp_hw_spec_funcs *ops =
 		qat_qp_hw_spec[qat_dev->qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops->qat_qp_adf_arb_enable,
-			-ENOTSUP);
+	if (ops->qat_qp_adf_arb_enable == NULL)
+		return -ENOTSUP;
 	ops->qat_qp_adf_arb_enable(txq, base_addr, lock);
 	return 0;
 }
@@ -383,8 +383,8 @@ adf_queue_arb_disable(enum qat_device_gen qat_dev_gen, struct qat_queue *txq,
 	struct qat_qp_hw_spec_funcs *ops =
 		qat_qp_hw_spec[qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops->qat_qp_adf_arb_disable,
-			-ENOTSUP);
+	if (ops->qat_qp_adf_arb_disable == NULL)
+		return -ENOTSUP;
 	ops->qat_qp_adf_arb_disable(txq, base_addr, lock);
 	return 0;
 }
@@ -396,8 +396,8 @@ qat_qp_build_ring_base(struct qat_pci_device *qat_dev, void *io_addr,
 	struct qat_qp_hw_spec_funcs *ops =
 		qat_qp_hw_spec[qat_dev->qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops->qat_qp_build_ring_base,
-			-ENOTSUP);
+	if (ops->qat_qp_build_ring_base == NULL)
+		return -ENOTSUP;
 	ops->qat_qp_build_ring_base(io_addr, queue);
 	return 0;
 }
@@ -409,8 +409,8 @@ qat_qps_per_service(struct qat_pci_device *qat_dev,
 	struct qat_qp_hw_spec_funcs *ops =
 		qat_qp_hw_spec[qat_dev->qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops->qat_qp_rings_per_service,
-			-ENOTSUP);
+	if (ops->qat_qp_rings_per_service == NULL)
+		return -ENOTSUP;
 	return ops->qat_qp_rings_per_service(qat_dev, service);
 }
 
@@ -421,7 +421,8 @@ qat_qp_get_hw_data(struct qat_pci_device *qat_dev,
 	struct qat_qp_hw_spec_funcs *ops =
 		qat_qp_hw_spec[qat_dev->qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops->qat_qp_get_hw_data, NULL);
+	if (ops->qat_qp_get_hw_data == NULL)
+		return NULL;
 	return ops->qat_qp_get_hw_data(qat_dev, service, qp_id);
 }
 
@@ -431,8 +432,8 @@ qat_read_qp_config(struct qat_pci_device *qat_dev)
 	struct qat_dev_hw_spec_funcs *ops_hw =
 		qat_dev_hw_spec[qat_dev->qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops_hw->qat_dev_read_config,
-			-ENOTSUP);
+	if (ops_hw->qat_dev_read_config == NULL)
+		return -ENOTSUP;
 	return ops_hw->qat_dev_read_config(qat_dev);
 }
 
@@ -442,8 +443,8 @@ adf_configure_queues(struct qat_qp *qp, enum qat_device_gen qat_dev_gen)
 	struct qat_qp_hw_spec_funcs *ops =
 		qat_qp_hw_spec[qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops->qat_qp_adf_configure_queues,
-			-ENOTSUP);
+	if (ops->qat_qp_adf_configure_queues == NULL)
+		return -ENOTSUP;
 	ops->qat_qp_adf_configure_queues(qp);
 	return 0;
 }
@@ -483,8 +484,8 @@ qat_qp_csr_setup(struct qat_pci_device *qat_dev,
 	struct qat_qp_hw_spec_funcs *ops =
 		qat_qp_hw_spec[qat_dev->qat_dev_gen];
 
-	RTE_FUNC_PTR_OR_ERR_RET(ops->qat_qp_csr_setup,
-			-ENOTSUP);
+	if (ops->qat_qp_csr_setup == NULL)
+		return -ENOTSUP;
 	ops->qat_qp_csr_setup(qat_dev, io_addr, qp);
 	return 0;
 }

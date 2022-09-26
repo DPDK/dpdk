@@ -7,7 +7,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include <fslmc_logs.h>
 #include <fslmc_vfio.h>

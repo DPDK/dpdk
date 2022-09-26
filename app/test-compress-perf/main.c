@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <stdlib.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <unistd.h>

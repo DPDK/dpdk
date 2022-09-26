@@ -2,6 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 

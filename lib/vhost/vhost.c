@@ -394,7 +394,7 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	vhost_free_async_mem(vq);
 	rte_free(vq->batch_copy_elems);
-	rte_mempool_free(vq->iotlb_pool);
+	vhost_user_iotlb_destroy(vq);
 	rte_free(vq->log_cache);
 	rte_free(vq);
 }
@@ -575,25 +575,14 @@ vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 }
 
 static void
-init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
+init_vring_queue(struct virtio_net *dev, struct vhost_virtqueue *vq,
+	uint32_t vring_idx)
 {
-	struct vhost_virtqueue *vq;
 	int numa_node = SOCKET_ID_ANY;
-
-	if (vring_idx >= VHOST_MAX_VRING) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "failed to init vring, out of bound (%d)\n",
-			vring_idx);
-		return;
-	}
-
-	vq = dev->virtqueue[vring_idx];
-	if (!vq) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "virtqueue not allocated (%d)\n", vring_idx);
-		return;
-	}
 
 	memset(vq, 0, sizeof(struct vhost_virtqueue));
 
+	vq->index = vring_idx;
 	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 	vq->callfd = VIRTIO_UNINITIALIZED_EVENTFD;
 	vq->notif_enable = VIRTIO_UNINITIALIZED_NOTIF;
@@ -607,31 +596,16 @@ init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 #endif
 	vq->numa_node = numa_node;
 
-	vhost_user_iotlb_init(dev, vring_idx);
+	vhost_user_iotlb_init(dev, vq);
 }
 
 static void
-reset_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
+reset_vring_queue(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	struct vhost_virtqueue *vq;
 	int callfd;
 
-	if (vring_idx >= VHOST_MAX_VRING) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "failed to reset vring, out of bound (%d)\n",
-			vring_idx);
-		return;
-	}
-
-	vq = dev->virtqueue[vring_idx];
-	if (!vq) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR,
-			"failed to reset vring, virtqueue not allocated (%d)\n",
-			vring_idx);
-		return;
-	}
-
 	callfd = vq->callfd;
-	init_vring_queue(dev, vring_idx);
+	init_vring_queue(dev, vq, vq->index);
 	vq->callfd = callfd;
 }
 
@@ -655,7 +629,7 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 		}
 
 		dev->virtqueue[i] = vq;
-		init_vring_queue(dev, i);
+		init_vring_queue(dev, vq, i);
 		rte_spinlock_init(&vq->access_lock);
 		vq->avail_wrap_counter = 1;
 		vq->used_wrap_counter = 1;
@@ -681,8 +655,16 @@ reset_device(struct virtio_net *dev)
 	dev->protocol_features = 0;
 	dev->flags &= VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 
-	for (i = 0; i < dev->nr_vring; i++)
-		reset_vring_queue(dev, i);
+	for (i = 0; i < dev->nr_vring; i++) {
+		struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+		if (!vq) {
+			VHOST_LOG_CONFIG(dev->ifname, ERR,
+				"failed to reset vring, virtqueue not allocated (%d)\n", i);
+			continue;
+		}
+		reset_vring_queue(dev, vq);
+	}
 }
 
 /*
@@ -1661,17 +1643,15 @@ rte_vhost_extern_callback_register(int vid,
 }
 
 static __rte_always_inline int
-async_channel_register(int vid, uint16_t queue_id)
+async_channel_register(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	struct virtio_net *dev = get_device(vid);
-	struct vhost_virtqueue *vq = dev->virtqueue[queue_id];
 	struct vhost_async *async;
 	int node = vq->numa_node;
 
 	if (unlikely(vq->async)) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"async register failed: already registered (qid: %d)\n",
-			queue_id);
+			vq->index);
 		return -1;
 	}
 
@@ -1679,7 +1659,7 @@ async_channel_register(int vid, uint16_t queue_id)
 	if (!async) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to allocate async metadata (qid: %d)\n",
-			queue_id);
+			vq->index);
 		return -1;
 	}
 
@@ -1688,7 +1668,7 @@ async_channel_register(int vid, uint16_t queue_id)
 	if (!async->pkts_info) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to allocate async_pkts_info (qid: %d)\n",
-			queue_id);
+			vq->index);
 		goto out_free_async;
 	}
 
@@ -1697,7 +1677,7 @@ async_channel_register(int vid, uint16_t queue_id)
 	if (!async->pkts_cmpl_flag) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to allocate async pkts_cmpl_flag (qid: %d)\n",
-			queue_id);
+			vq->index);
 		goto out_free_async;
 	}
 
@@ -1708,7 +1688,7 @@ async_channel_register(int vid, uint16_t queue_id)
 		if (!async->buffers_packed) {
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
 				"failed to allocate async buffers (qid: %d)\n",
-				queue_id);
+				vq->index);
 			goto out_free_inflight;
 		}
 	} else {
@@ -1718,7 +1698,7 @@ async_channel_register(int vid, uint16_t queue_id)
 		if (!async->descs_split) {
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
 				"failed to allocate async descs (qid: %d)\n",
-				queue_id);
+				vq->index);
 			goto out_free_inflight;
 		}
 	}
@@ -1753,7 +1733,7 @@ rte_vhost_async_channel_register(int vid, uint16_t queue_id)
 		return -1;
 
 	rte_spinlock_lock(&vq->access_lock);
-	ret = async_channel_register(vid, queue_id);
+	ret = async_channel_register(dev, vq);
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
@@ -1782,7 +1762,7 @@ rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id)
 		return -1;
 	}
 
-	return async_channel_register(vid, queue_id);
+	return async_channel_register(dev, vq);
 }
 
 int

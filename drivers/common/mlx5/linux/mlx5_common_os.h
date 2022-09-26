@@ -9,7 +9,7 @@
 #include <malloc.h>
 
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_debug.h>
 #include <rte_atomic.h>
 #include <rte_log.h>

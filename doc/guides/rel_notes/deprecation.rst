@@ -14,6 +14,10 @@ Deprecation Notices
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
+* eal: RTE_FUNC_PTR_OR_* macros have been marked deprecated and will be removed
+  in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
+  to update their code.
+
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 
@@ -42,19 +46,6 @@ Deprecation Notices
 
 * mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
   will be removed in DPDK 22.11.
-
-* bus: The ``rte_bus`` object will be made opaque in DPDK 22.11.
-  The goal is to remove it from the public ABI and make this object extendable.
-  As a side effect, registering a bus will be marked as an internal API:
-  external users may still register their bus using a new driver header
-  (see ``enable_driver_sdk`` meson option).
-
-* drivers: As a follow-up of the work on the ``rte_bus`` object,
-  the ``rte_driver`` and ``rte_device`` objects (and as a domino effect,
-  their bus-specific counterparts) will be made opaque in DPDK 22.11.
-  Registering a driver on a bus will be marked as an internal API:
-  external users may still register their drivers using the bus-specific
-  driver header (see ``enable_driver_sdk`` meson option).
 
 * bus: The ``dev->device.numa_node`` field is set by each bus driver for
   every device it manages to indicate on which NUMA node this device lies.
@@ -97,10 +88,6 @@ Deprecation Notices
   to enable per-port header split, they will be removed in DPDK 22.11.
   The per-queue Rx packet split offload ``RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT``
   can still be used, and it is configured by ``rte_eth_rxseg_split``.
-
-* ethdev: The flow director API, including ``rte_eth_conf.fdir_conf`` field,
-  and the related structures (``rte_fdir_*`` and ``rte_eth_fdir_*``),
-  will be removed in DPDK 20.11.
 
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
@@ -220,16 +207,8 @@ Deprecation Notices
   Names for the telemetry commands will be similarly limited.
   The parameters for telemetry commands are unaffected by this change.
 
-* net/octeontx_ep: The driver ``octeontx_ep`` was to support OCTEON TX
-  line of products.
-  It will be renamed to ``octeon_ep`` in DPDK 22.11 to apply for
-  all OCTEON EP products: OCTEON TX and future OCTEON chipsets.
-
 * raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
   in DPDK 22.11, as it is no longer in use, no active user known.
-
-* raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` will be removed
-  in DPDK 22.11.
 
 * raw/ioat: The ``ioat`` rawdev driver has been deprecated, since it's
   functionality is provided through the new ``dmadev`` infrastructure.

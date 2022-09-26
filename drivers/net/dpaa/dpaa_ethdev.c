@@ -33,7 +33,7 @@
 #include <rte_malloc.h>
 #include <rte_ring.h>
 
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <rte_dpaa_logs.h>
 #include <dpaa_mempool.h>
 

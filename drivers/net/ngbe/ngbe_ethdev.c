@@ -165,6 +165,7 @@ static const struct rte_ngbe_xstats_name_off rte_ngbe_stats_strings[] = {
 	HW_XSTAT(tx_management_packets),
 	HW_XSTAT(rx_management_dropped),
 	HW_XSTAT(rx_dma_drop),
+	HW_XSTAT(tx_dma_drop),
 	HW_XSTAT(tx_secdrp_packets),
 
 	/* Basic Error */
@@ -175,7 +176,7 @@ static const struct rte_ngbe_xstats_name_off rte_ngbe_stats_strings[] = {
 	HW_XSTAT(rx_length_errors),
 	HW_XSTAT(rx_undersize_errors),
 	HW_XSTAT(rx_fragment_errors),
-	HW_XSTAT(rx_oversize_errors),
+	HW_XSTAT(rx_oversize_cnt),
 	HW_XSTAT(rx_jabber_errors),
 	HW_XSTAT(rx_l3_l4_xsum_error),
 	HW_XSTAT(mac_local_errors),
@@ -1219,6 +1220,32 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 }
 
 /*
+ * Set device link up: power on.
+ */
+static int
+ngbe_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	hw->phy.set_phy_power(hw, true);
+
+	return 0;
+}
+
+/*
+ * Set device link down: power off.
+ */
+static int
+ngbe_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	hw->phy.set_phy_power(hw, false);
+
+	return 0;
+}
+
+/*
  * Reset and stop device.
  */
 static int
@@ -1374,9 +1401,8 @@ ngbe_read_stats_registers(struct ngbe_hw *hw,
 	hw_stats->rx_xoff_packets += rd32(hw, NGBE_PBRXLNKXOFF);
 
 	/* DMA Stats */
-	hw_stats->rx_drop_packets += rd32(hw, NGBE_DMARXDROP);
-	hw_stats->tx_drop_packets += rd32(hw, NGBE_DMATXDROP);
 	hw_stats->rx_dma_drop += rd32(hw, NGBE_DMARXDROP);
+	hw_stats->tx_dma_drop += rd32(hw, NGBE_DMATXDROP);
 	hw_stats->tx_secdrp_packets += rd32(hw, NGBE_DMATXSECDROP);
 	hw_stats->rx_packets += rd32(hw, NGBE_DMARXPKT);
 	hw_stats->tx_packets += rd32(hw, NGBE_DMATXPKT);
@@ -1413,7 +1439,7 @@ ngbe_read_stats_registers(struct ngbe_hw *hw,
 			rd64(hw, NGBE_MACTX1024TOMAXL);
 
 	hw_stats->rx_undersize_errors += rd64(hw, NGBE_MACRXERRLENL);
-	hw_stats->rx_oversize_errors += rd32(hw, NGBE_MACRXOVERSIZE);
+	hw_stats->rx_oversize_cnt += rd32(hw, NGBE_MACRXOVERSIZE);
 	hw_stats->rx_jabber_errors += rd32(hw, NGBE_MACRXJABBER);
 
 	/* MNG Stats */
@@ -1512,7 +1538,7 @@ ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			  hw_stats->rx_mac_short_packet_dropped +
 			  hw_stats->rx_length_errors +
 			  hw_stats->rx_undersize_errors +
-			  hw_stats->rx_oversize_errors +
+			  hw_stats->rdb_drp_cnt +
 			  hw_stats->rx_illegal_byte_errors +
 			  hw_stats->rx_error_bytes +
 			  hw_stats->rx_fragment_errors;
@@ -2473,7 +2499,7 @@ static int
 ngbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 4;
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 	struct rte_eth_dev_data *dev_data = dev->data;
 
 	/* If device is started, refuse mtu that requires the support of
@@ -2486,12 +2512,8 @@ ngbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (hw->mode)
-		wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
-			NGBE_FRAME_SIZE_MAX);
-	else
-		wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
-			NGBE_FRMSZ_MAX(frame_size));
+	wr32m(hw, NGBE_FRMSZ, NGBE_FRMSZ_MAX_MASK,
+		NGBE_FRMSZ_MAX(frame_size));
 
 	return 0;
 }
@@ -3034,6 +3056,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.dev_infos_get              = ngbe_dev_info_get,
 	.dev_start                  = ngbe_dev_start,
 	.dev_stop                   = ngbe_dev_stop,
+	.dev_set_link_up            = ngbe_dev_set_link_up,
+	.dev_set_link_down          = ngbe_dev_set_link_down,
 	.dev_close                  = ngbe_dev_close,
 	.dev_reset                  = ngbe_dev_reset,
 	.promiscuous_enable         = ngbe_dev_promiscuous_enable,

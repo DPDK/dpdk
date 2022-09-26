@@ -2,6 +2,8 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include <rte_lcore.h>
 #include <rte_cycles.h>
 #include <rte_cpuflags.h>

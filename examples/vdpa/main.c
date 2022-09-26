@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -119,7 +120,7 @@ new_device(int vid)
 				"Failed to get generic device for port %d\n", i);
 			continue;
 		}
-		printf("\nnew port %s, device : %s\n", ifname, dev->name);
+		printf("\nnew port %s, device : %s\n", ifname, rte_dev_name(dev));
 		vports[i].vid = vid;
 		break;
 	}
@@ -149,7 +150,7 @@ destroy_device(int vid)
 			continue;
 		}
 
-		printf("\ndestroy port %s, device: %s\n", ifname, dev->name);
+		printf("\ndestroy port %s, device: %s\n", ifname, rte_dev_name(dev));
 		break;
 	}
 }
@@ -353,23 +354,23 @@ static void cmd_list_vdpa_devices_parsed(
 
 	cmdline_printf(cl, "device name\tqueue num\tsupported features\n");
 	RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
-		vdev = rte_vdpa_find_device_by_name(dev->name);
+		vdev = rte_vdpa_find_device_by_name(rte_dev_name(dev));
 		if (!vdev)
 			continue;
 		if (rte_vdpa_get_queue_num(vdev, &queue_num) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa queue number "
-				"for device %s.\n", dev->name);
+				"for device %s.\n", rte_dev_name(dev));
 			continue;
 		}
 		if (rte_vdpa_get_features(vdev, &features) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa features "
-				"for device %s.\n", dev->name);
+				"for device %s.\n", rte_dev_name(dev));
 			continue;
 		}
 		cmdline_printf(cl, "%s\t\t%" PRIu32 "\t\t0x%" PRIx64 "\n",
-			dev->name, queue_num, features);
+			rte_dev_name(dev), queue_num, features);
 	}
 }
 
@@ -606,10 +607,10 @@ main(int argc, char *argv[])
 		cmdline_stdin_exit(cl);
 	} else {
 		RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
-			vdev = rte_vdpa_find_device_by_name(dev->name);
+			vdev = rte_vdpa_find_device_by_name(rte_dev_name(dev));
 			if (vdev == NULL) {
 				rte_panic("Failed to find vDPA dev for %s\n",
-						dev->name);
+						rte_dev_name(dev));
 			}
 			vports[devcnt].dev = vdev;
 			snprintf(vports[devcnt].ifname, MAX_PATH_LEN, "%s%d",

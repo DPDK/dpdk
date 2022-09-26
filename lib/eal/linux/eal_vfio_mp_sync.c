@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
+#include <errno.h>
 #include <unistd.h>
 #include <string.h>
 

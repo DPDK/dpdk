@@ -20,7 +20,7 @@
 #include <rte_memcpy.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "base/txgbe.h"
 #include "txgbe_ethdev.h"

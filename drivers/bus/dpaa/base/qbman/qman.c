@@ -7,7 +7,7 @@
 
 #include "qman.h"
 #include <rte_branch_prediction.h>
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <rte_eventdev.h>
 #include <rte_byteorder.h>
 

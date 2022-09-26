@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
 #define PROC_MODULES "/proc/modules"

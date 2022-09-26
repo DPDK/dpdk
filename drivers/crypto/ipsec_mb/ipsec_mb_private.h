@@ -7,7 +7,7 @@
 
 #include <intel-ipsec-mb.h>
 #include <cryptodev_pmd.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #if defined(RTE_LIB_SECURITY)
 #define IPSEC_MB_DOCSIS_SEC_ENABLED 1

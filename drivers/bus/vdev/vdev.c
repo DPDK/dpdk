@@ -11,8 +11,8 @@
 #include <sys/queue.h>
 
 #include <rte_eal.h>
-#include <rte_dev.h>
-#include <rte_bus.h>
+#include <dev_driver.h>
+#include <bus_driver.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_memory.h>
@@ -21,7 +21,7 @@
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 
-#include "rte_bus_vdev.h"
+#include "bus_vdev_driver.h"
 #include "vdev_logs.h"
 #include "vdev_private.h"
 
@@ -30,16 +30,14 @@
 /* Forward declare to access virtual bus name */
 static struct rte_bus rte_vdev_bus;
 
-/** Double linked list of virtual device drivers. */
-TAILQ_HEAD(vdev_device_list, rte_vdev_device);
 
-static struct vdev_device_list vdev_device_list =
+static TAILQ_HEAD(, rte_vdev_device) vdev_device_list =
 	TAILQ_HEAD_INITIALIZER(vdev_device_list);
 /* The lock needs to be recursive because a vdev can manage another vdev. */
 static rte_spinlock_recursive_t vdev_device_list_lock =
 	RTE_SPINLOCK_RECURSIVE_INITIALIZER;
 
-static struct vdev_driver_list vdev_driver_list =
+static TAILQ_HEAD(, rte_vdev_driver) vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
 
 struct vdev_custom_scan {

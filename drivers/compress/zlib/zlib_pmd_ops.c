@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include <dev_driver.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 

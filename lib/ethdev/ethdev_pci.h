@@ -12,7 +12,7 @@ extern "C" {
 
 #include <rte_malloc.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_config.h>
 #include <ethdev_driver.h>
 
@@ -130,7 +130,8 @@ rte_eth_dev_pci_generic_probe(struct rte_pci_device *pci_dev,
 	if (!eth_dev)
 		return -ENOMEM;
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev_init, -EINVAL);
+	if (*dev_init == NULL)
+		return -EINVAL;
 	ret = dev_init(eth_dev);
 	if (ret)
 		rte_eth_dev_release_port(eth_dev);

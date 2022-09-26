@@ -54,6 +54,31 @@
 
 #define NIX_NB_SEGS_TO_SEGDW(x) ((NIX_SEGDW_MAGIC >> ((x) << 2)) & 0xF)
 
+static __plt_always_inline void
+cn10k_nix_vwqe_wait_fc(struct cn10k_eth_txq *txq, int64_t req)
+{
+	int64_t cached, refill;
+
+retry:
+	while (__atomic_load_n(&txq->fc_cache_pkts, __ATOMIC_RELAXED) < 0)
+		;
+	cached = __atomic_sub_fetch(&txq->fc_cache_pkts, req, __ATOMIC_ACQUIRE);
+	/* Check if there is enough space, else update and retry. */
+	if (cached < 0) {
+		/* Check if we have space else retry. */
+		do {
+			refill =
+				(txq->nb_sqb_bufs_adj -
+				 __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED))
+				<< txq->sqes_per_sqb_log2;
+		} while (refill <= 0);
+		__atomic_compare_exchange(&txq->fc_cache_pkts, &cached, &refill,
+					  0, __ATOMIC_RELEASE,
+					  __ATOMIC_RELAXED);
+		goto retry;
+	}
+}
+
 /* Function to determine no of tx subdesc required in case ext
  * sub desc is enabled.
  */
@@ -1039,6 +1064,8 @@ again:
 		data |= (15ULL << 12);
 		data |= (uint64_t)lmt_id;
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, 16);
 		/* STEOR0 */
 		roc_lmt_submit_steorl(data, pa);
 
@@ -1048,6 +1075,8 @@ again:
 		data |= ((uint64_t)(burst - 17)) << 12;
 		data |= (uint64_t)(lmt_id + 16);
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, burst - 16);
 		/* STEOR1 */
 		roc_lmt_submit_steorl(data, pa);
 	} else if (burst) {
@@ -1057,6 +1086,8 @@ again:
 		data |= ((uint64_t)(burst - 1)) << 12;
 		data |= lmt_id;
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, burst);
 		/* STEOR0 */
 		roc_lmt_submit_steorl(data, pa);
 	}
@@ -1188,6 +1219,8 @@ again:
 		data0 |= (15ULL << 12);
 		data0 |= (uint64_t)lmt_id;
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, 16);
 		/* STEOR0 */
 		roc_lmt_submit_steorl(data0, pa0);
 
@@ -1197,6 +1230,8 @@ again:
 		data1 |= ((uint64_t)(burst - 17)) << 12;
 		data1 |= (uint64_t)(lmt_id + 16);
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, burst - 16);
 		/* STEOR1 */
 		roc_lmt_submit_steorl(data1, pa1);
 	} else if (burst) {
@@ -1207,6 +1242,8 @@ again:
 		data0 |= ((burst - 1) << 12);
 		data0 |= (uint64_t)lmt_id;
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, burst);
 		/* STEOR0 */
 		roc_lmt_submit_steorl(data0, pa0);
 	}
@@ -2735,6 +2772,9 @@ again:
 		wd.data[0] |= (15ULL << 12);
 		wd.data[0] |= (uint64_t)lmt_id;
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq,
+				cn10k_nix_pkts_per_vec_brst(flags) >> 1);
 		/* STEOR0 */
 		roc_lmt_submit_steorl(wd.data[0], pa);
 
@@ -2750,6 +2790,10 @@ again:
 		wd.data[1] |= ((uint64_t)(lnum - 17)) << 12;
 		wd.data[1] |= (uint64_t)(lmt_id + 16);
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq,
+				burst - (cn10k_nix_pkts_per_vec_brst(flags) >>
+					 1));
 		/* STEOR1 */
 		roc_lmt_submit_steorl(wd.data[1], pa);
 	} else if (lnum) {
@@ -2765,6 +2809,8 @@ again:
 		wd.data[0] |= ((uint64_t)(lnum - 1)) << 12;
 		wd.data[0] |= lmt_id;
 
+		if (flags & NIX_TX_VWQE_F)
+			cn10k_nix_vwqe_wait_fc(txq, burst);
 		/* STEOR0 */
 		roc_lmt_submit_steorl(wd.data[0], pa);
 	}

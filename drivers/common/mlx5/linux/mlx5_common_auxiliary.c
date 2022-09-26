@@ -8,7 +8,7 @@
 
 #include <rte_malloc.h>
 #include <rte_errno.h>
-#include <rte_bus_auxiliary.h>
+#include <bus_auxiliary_driver.h>
 #include <rte_common.h>
 #include "eal_filesystem.h"
 
@@ -179,14 +179,20 @@ static struct rte_auxiliary_driver mlx5_auxiliary_driver = {
 	.dma_unmap = mlx5_common_auxiliary_dma_unmap,
 };
 
+static bool mlx5_common_auxiliary_initialized;
+
 void mlx5_common_auxiliary_init(void)
 {
-	if (mlx5_auxiliary_driver.bus == NULL)
+	if (!mlx5_common_auxiliary_initialized) {
 		rte_auxiliary_register(&mlx5_auxiliary_driver);
+		mlx5_common_auxiliary_initialized = true;
+	}
 }
 
 RTE_FINI(mlx5_common_auxiliary_driver_finish)
 {
-	if (mlx5_auxiliary_driver.bus != NULL)
+	if (mlx5_common_auxiliary_initialized) {
 		rte_auxiliary_unregister(&mlx5_auxiliary_driver);
+		mlx5_common_auxiliary_initialized = false;
+	}
 }

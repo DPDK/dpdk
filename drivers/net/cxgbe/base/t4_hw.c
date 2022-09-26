@@ -18,7 +18,7 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_byteorder.h>
 
 #include "common.h"

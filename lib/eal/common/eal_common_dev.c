@@ -4,12 +4,13 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/queue.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_class.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_devargs.h>
 #include <rte_errno.h>
 #include <rte_log.h>
@@ -18,6 +19,48 @@
 
 #include "eal_private.h"
 #include "hotplug_mp.h"
+
+const char *
+rte_driver_name(const struct rte_driver *driver)
+{
+	return driver->name;
+}
+
+const struct rte_bus *
+rte_dev_bus(const struct rte_device *dev)
+{
+	return dev->bus;
+}
+
+const char *
+rte_dev_bus_info(const struct rte_device *dev)
+{
+	return dev->bus_info;
+}
+
+const struct rte_devargs *
+rte_dev_devargs(const struct rte_device *dev)
+{
+	return dev->devargs;
+}
+
+const struct rte_driver *
+rte_dev_driver(const struct rte_device *dev)
+{
+	return dev->driver;
+}
+
+const char *
+rte_dev_name(const struct rte_device *dev)
+{
+	return dev->name;
+}
+
+int
+rte_dev_numa_node(const struct rte_device *dev)
+{
+	return dev->numa_node;
+}
 
 /**
  * The device event callback description.
@@ -592,18 +635,17 @@ rte_dev_iterator_init(struct rte_dev_iterator *it,
 	 * one layer specified.
 	 */
 	if (bus == NULL && cls == NULL) {
-		RTE_LOG(ERR, EAL,
-			"Either bus or class must be specified.\n");
+		RTE_LOG(DEBUG, EAL, "Either bus or class must be specified.\n");
 		rte_errno = EINVAL;
 		goto get_out;
 	}
 	if (bus != NULL && bus->dev_iterate == NULL) {
-		RTE_LOG(ERR, EAL, "Bus %s not supported\n", bus->name);
+		RTE_LOG(DEBUG, EAL, "Bus %s not supported\n", bus->name);
 		rte_errno = ENOTSUP;
 		goto get_out;
 	}
 	if (cls != NULL && cls->dev_iterate == NULL) {
-		RTE_LOG(ERR, EAL, "Class %s not supported\n", cls->name);
+		RTE_LOG(DEBUG, EAL, "Class %s not supported\n", cls->name);
 		rte_errno = ENOTSUP;
 		goto get_out;
 	}

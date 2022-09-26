@@ -157,6 +157,18 @@ Runtime Config Options
    With the above configuration, each send queue's descriptor buffer count is
    limited to a maximum of 64 buffers.
 
+- ``SQB slack count`` (default ``12``)
+
+   Send queue descriptor slack count added to SQB count when a Tx queue is
+   created, can be set using ``sqb_slack`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,sqb_slack=32
+
+   With the above configuration, each send queue's descriptor buffer count will
+   be increased by 32, while keeping the queue limit to default configuration.
+
 - ``Switch header enable`` (default ``none``)
 
    A port can be configured to a specific switch header type by using

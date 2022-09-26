@@ -2,7 +2,7 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_pci.h>
 
 #include "qat_device.h"

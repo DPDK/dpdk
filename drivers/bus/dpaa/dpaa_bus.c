@@ -29,12 +29,12 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_ring.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_mbuf_dyn.h>
 
 #include <dpaa_of.h>
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <rte_dpaa_logs.h>
 #include <dpaax_iova_table.h>
 
@@ -42,6 +42,14 @@
 #include <fsl_qman.h>
 #include <fsl_bman.h>
 #include <netcfg.h>
+
+struct rte_dpaa_bus {
+	struct rte_bus bus;
+	TAILQ_HEAD(, rte_dpaa_device) device_list;
+	TAILQ_HEAD(, rte_dpaa_driver) driver_list;
+	int device_count;
+	int detected;
+};
 
 static struct rte_dpaa_bus rte_dpaa_bus;
 struct netcfg_info *dpaa_netcfg;
@@ -520,23 +528,15 @@ rte_dpaa_driver_register(struct rte_dpaa_driver *driver)
 	BUS_INIT_FUNC_TRACE();
 
 	TAILQ_INSERT_TAIL(&rte_dpaa_bus.driver_list, driver, next);
-	/* Update Bus references */
-	driver->dpaa_bus = &rte_dpaa_bus;
 }
 
 /* un-register a dpaa bus based dpaa driver */
 void
 rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver)
 {
-	struct rte_dpaa_bus *dpaa_bus;
-
 	BUS_INIT_FUNC_TRACE();
 
-	dpaa_bus = driver->dpaa_bus;
-
-	TAILQ_REMOVE(&dpaa_bus->driver_list, driver, next);
-	/* Update Bus references */
-	driver->dpaa_bus = NULL;
+	TAILQ_REMOVE(&rte_dpaa_bus.driver_list, driver, next);
 }
 
 static int

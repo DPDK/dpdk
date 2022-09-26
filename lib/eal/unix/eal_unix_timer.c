@@ -2,6 +2,7 @@
  * Copyright 2020 Mellanox Technologies, Ltd
  */
 
+#include <errno.h>
 #include <time.h>
 
 #include <rte_cycles.h>

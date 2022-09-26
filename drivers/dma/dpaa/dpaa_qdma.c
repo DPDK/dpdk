@@ -2,7 +2,7 @@
  * Copyright 2021 NXP
  */
 
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <rte_dmadev_pmd.h>
 
 #include "dpaa_qdma.h"

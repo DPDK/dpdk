@@ -299,8 +299,8 @@ sink_pkt_tx(void *port, struct rte_swx_pkt *pkt)
 	m->pkt_len = pkt->length;
 	m->data_off = (uint16_t)pkt->offset;
 
-	p->stats.n_pkts++;
-	p->stats.n_bytes += pkt->length;
+	p->stats.n_pkts_drop++;
+	p->stats.n_bytes_drop += pkt->length;
 
 #ifdef RTE_PORT_PCAP
 	if (p->f_dump) {
@@ -335,8 +335,8 @@ __sink_pkt_clone_tx(void *port, struct rte_swx_pkt *pkt, uint32_t truncation_len
 	m->pkt_len = pkt->length;
 	m->data_off = (uint16_t)pkt->offset;
 
-	p->stats.n_pkts++;
-	p->stats.n_bytes += pkt->length;
+	p->stats.n_pkts_drop++;
+	p->stats.n_bytes_drop += pkt->length;
 	p->stats.n_pkts_clone++;
 
 #ifdef RTE_PORT_PCAP

@@ -2,13 +2,15 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include "rte_eth_ring.h"
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_errno.h>
 

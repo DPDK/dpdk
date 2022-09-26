@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <stdlib.h>
 #include <time.h>
 
 #include <pcap.h>
@@ -15,7 +16,7 @@
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_os_shim.h>
 
 #include "pcap_osdep.h"

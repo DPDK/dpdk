@@ -3,13 +3,13 @@
  */
 
 #include <rte_string_fns.h>
-#include <rte_bus_pci.h>
-#include <rte_bus_vdev.h>
+#include <bus_pci_driver.h>
+#include <bus_vdev_driver.h>
 #include <rte_common.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
 #include <rte_pci.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_malloc.h>
 
 #include "ccp_crypto.h"

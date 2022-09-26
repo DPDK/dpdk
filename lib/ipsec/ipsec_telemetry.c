@@ -2,6 +2,7 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
+#include <stdlib.h>
 #include <rte_ipsec.h>
 #include <rte_telemetry.h>
 #include <rte_malloc.h>

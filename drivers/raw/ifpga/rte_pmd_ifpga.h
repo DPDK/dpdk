@@ -221,16 +221,6 @@ int
 rte_pmd_ifpga_reload(uint16_t dev_id, int type, int page);
 
 /**
- * Get PCI bus the Intel FPGA driver register to
- *
- * @return
- *   - (valid pointer) if successful.
- *   - (NULL) if the Intel FPGA driver is not registered to any PCI bus.
- */
-const struct rte_pci_bus *
-rte_pmd_ifpga_get_pci_bus(void);
-
-/**
  * Perform PR (partial reconfiguration) on specified Intel FPGA device
  *
  * @param dev_id

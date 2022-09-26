@@ -7,6 +7,7 @@
 #include "otx_ep_common.h"
 #include "otx_ep_vf.h"
 #include "otx2_ep_vf.h"
+#include "cnxk_ep_vf.h"
 #include "otx_ep_rxtx.h"
 
 #define OTX_EP_DEV(_eth_dev) \
@@ -108,6 +109,11 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 		ret = otx2_ep_vf_setup_device(otx_epvf);
 		otx_epvf->fn_list.disable_io_queues(otx_epvf);
 		break;
+	case PCI_DEVID_CNXK_EP_NET_VF:
+		otx_epvf->chip_id = dev_id;
+		ret = cnxk_ep_vf_setup_device(otx_epvf);
+		otx_epvf->fn_list.disable_io_queues(otx_epvf);
+		break;
 	default:
 		otx_ep_err("Unsupported device\n");
 		ret = -EINVAL;
@@ -139,6 +145,8 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 		otx_epvf->eth_dev->tx_pkt_burst = &otx_ep_xmit_pkts;
 	else if (otx_epvf->chip_id == PCI_DEVID_CN9K_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CN98XX_EP_NET_VF)
+		otx_epvf->eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
+	else if (otx_epvf->chip_id == PCI_DEVID_CNXK_EP_NET_VF)
 		otx_epvf->eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
 	ethdev_queues = (uint32_t)(otx_epvf->sriov_info.rings_per_vf);
 	otx_epvf->max_rx_queues = ethdev_queues;
@@ -337,6 +345,72 @@ otx_ep_tx_queue_release(struct rte_eth_dev *dev, uint16_t q_no)
 	otx_ep_delete_iqs(tq->otx_ep_dev, tq->q_no);
 }
 
+static int
+otx_ep_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(dev);
+	uint32_t i;
+
+	for (i = 0; i < otx_epvf->nb_tx_queues; i++)
+		memset(&otx_epvf->instr_queue[i]->stats, 0,
+		       sizeof(struct otx_ep_iq_stats));
+
+	for (i = 0; i < otx_epvf->nb_rx_queues; i++)
+		memset(&otx_epvf->droq[i]->stats, 0,
+		       sizeof(struct otx_ep_droq_stats));
+
+	return 0;
+}
+
+static int
+otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
+				struct rte_eth_stats *stats)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+	struct otx_ep_iq_stats *ostats;
+	struct otx_ep_droq_stats *istats;
+	uint32_t i;
+
+	memset(stats, 0, sizeof(struct rte_eth_stats));
+
+	for (i = 0; i < otx_epvf->nb_tx_queues; i++) {
+		ostats = &otx_epvf->instr_queue[i]->stats;
+		stats->q_opackets[i] = ostats->tx_pkts;
+		stats->q_obytes[i] = ostats->tx_bytes;
+		stats->opackets += ostats->tx_pkts;
+		stats->obytes += ostats->tx_bytes;
+		stats->oerrors += ostats->instr_dropped;
+	}
+	for (i = 0; i < otx_epvf->nb_rx_queues; i++) {
+		istats = &otx_epvf->droq[i]->stats;
+		stats->q_ipackets[i] = istats->pkts_received;
+		stats->q_ibytes[i] = istats->bytes_received;
+		stats->q_errors[i] = istats->rx_err;
+		stats->ipackets += istats->pkts_received;
+		stats->ibytes += istats->bytes_received;
+		stats->imissed += istats->rx_alloc_failure;
+		stats->ierrors += istats->rx_err;
+		stats->rx_nombuf += istats->rx_alloc_failure;
+	}
+	return 0;
+}
+
+static int
+otx_ep_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
+{
+	RTE_SET_USED(wait_to_complete);
+
+	if (!eth_dev->data->dev_started)
+		return 0;
+	struct rte_eth_link link;
+
+	memset(&link, 0, sizeof(link));
+	link.link_status = RTE_ETH_LINK_UP;
+	link.link_speed  = RTE_ETH_SPEED_NUM_10G;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	return rte_eth_linkstatus_set(eth_dev, &link);
+}
+
 /* Define our ethernet definitions */
 static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.dev_configure		= otx_ep_dev_configure,
@@ -347,6 +421,9 @@ static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.tx_queue_setup	        = otx_ep_tx_queue_setup,
 	.tx_queue_release	= otx_ep_tx_queue_release,
 	.dev_infos_get		= otx_ep_dev_info_get,
+	.stats_get		= otx_ep_dev_stats_get,
+	.stats_reset		= otx_ep_dev_stats_reset,
+	.link_update		= otx_ep_dev_link_update,
 };
 
 static int
@@ -452,6 +529,7 @@ static const struct rte_pci_id pci_id_otx_ep_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_OCTEONTX_EP_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CN9K_EP_NET_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CN98XX_EP_NET_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CNXK_EP_NET_VF) },
 	{ .vendor_id = 0, /* sentinel */ }
 };
 

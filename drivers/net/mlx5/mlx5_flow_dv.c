@@ -15,7 +15,7 @@
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_ip.h>
 #include <rte_gre.h>
 #include <rte_vxlan.h>

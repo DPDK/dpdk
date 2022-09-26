@@ -19,7 +19,7 @@
 #include <rte_security_driver.h>
 #endif
 #include <rte_cycles.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_io.h>
 #include <rte_ip.h>
 #include <rte_kvargs.h>
@@ -41,7 +41,7 @@
 #include <desc/pdcp.h>
 #include <desc/sdap.h>
 
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <dpaa_sec.h>
 #include <dpaa_sec_event.h>
 #include <dpaa_sec_log.h>

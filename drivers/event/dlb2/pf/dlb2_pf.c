@@ -15,7 +15,7 @@
 
 #include <rte_debug.h>
 #include <rte_log.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_devargs.h>
 #include <rte_mbuf.h>
 #include <rte_ring.h>
@@ -25,7 +25,7 @@
 #include <rte_cycles.h>
 #include <rte_io.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_eventdev.h>
 #include <eventdev_pmd.h>
 #include <eventdev_pmd_pci.h>

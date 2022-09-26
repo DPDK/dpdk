@@ -142,6 +142,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# forbid inclusion of driver specific headers in apps and examples
+	awk -v FOLDERS='app examples' \
+		-v EXPRESSIONS='include.*_driver\\.h include.*_pmd\\.h' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using driver specific headers in applications' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# SVG must be included with wildcard extension to allow conversion
 	awk -v FOLDERS='doc' \
 		-v EXPRESSIONS='::[[:space:]]*[^[:space:]]*\\.svg' \

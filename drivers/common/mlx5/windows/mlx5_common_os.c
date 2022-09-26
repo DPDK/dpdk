@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 #include <rte_mempool.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
 

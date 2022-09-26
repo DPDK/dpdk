@@ -812,9 +812,9 @@ M: Radha Mohan Chintakuntla <radhac@marvell.com>
 M: Veerasenareddy Burru <vburru@marvell.com>
 M: Sathesh Edara <sedara@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
-F: drivers/net/octeontx_ep/
-F: doc/guides/nics/features/octeontx_ep.ini
-F: doc/guides/nics/octeontx_ep.rst
+F: drivers/net/octeon_ep/
+F: doc/guides/nics/features/octeon_ep.ini
+F: doc/guides/nics/octeon_ep.rst
 
 Mellanox mlx4
 M: Matan Azrad <matan@nvidia.com>
@@ -1414,6 +1414,7 @@ Network headers
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/net/
 F: app/test/test_cksum.c
+F: app/test/test_cksum_perf.c
 
 Packet CRC
 M: Jasvinder Singh <jasvinder.singh@intel.com>

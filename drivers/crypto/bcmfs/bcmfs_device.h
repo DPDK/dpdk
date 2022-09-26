@@ -9,7 +9,7 @@
 #include <sys/queue.h>
 
 #include <rte_spinlock.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include "bcmfs_logs.h"
 #include "bcmfs_qp.h"

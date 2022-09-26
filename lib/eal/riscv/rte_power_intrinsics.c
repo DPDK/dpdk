@@ -4,6 +4,8 @@
  * Copyright(c) 2022 Semihalf
  */
 
+#include <errno.h>
+
 #include "rte_power_intrinsics.h"
 
 /**

@@ -6,16 +6,17 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <eventdev_pmd.h>
 #include <rte_alarm.h>
 #include <rte_branch_prediction.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
@@ -509,11 +510,6 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 
 	if (conf->dcb_capability_en) {
 		octeontx_log_err("DCB enable not supported");
-		return -EINVAL;
-	}
-
-	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		octeontx_log_err("flow director not supported");
 		return -EINVAL;
 	}
 

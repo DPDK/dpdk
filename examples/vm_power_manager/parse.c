@@ -3,8 +3,13 @@
  * Copyright(c) 2014 6WIND S.A.
  */
 
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
 #include <string.h>
+
 #include <rte_log.h>
+
 #include "parse.h"
 
 /*

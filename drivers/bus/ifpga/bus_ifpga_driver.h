@@ -2,8 +2,8 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
-#ifndef _RTE_BUS_IFPGA_H_
-#define _RTE_BUS_IFPGA_H_
+#ifndef BUS_IFPGA_DRIVER_H
+#define BUS_IFPGA_DRIVER_H
 
 /**
  * @file
@@ -15,22 +15,16 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include <rte_bus.h>
+#include <rte_compat.h>
 #include <rte_pci.h>
 #include <rte_interrupts.h>
 #include <rte_spinlock.h>
 
-/** Name of Intel FPGA Bus */
 #define IFPGA_BUS_NAME ifpga
 
 /* Forward declarations */
 struct rte_afu_device;
 struct rte_afu_driver;
-
-/** Double linked list of Intel FPGA AFU device. */
-RTE_TAILQ_HEAD(ifpga_afu_dev_list, rte_afu_device);
-/** Double linked list of Intel FPGA AFU device drivers. */
-RTE_TAILQ_HEAD(ifpga_afu_drv_list, rte_afu_driver);
 
 #define IFPGA_BUS_BITSTREAM_PATH_MAX_LEN 256
 
@@ -112,6 +106,7 @@ struct rte_afu_driver {
 	const struct rte_afu_uuid *id_table;    /**< AFU uuid within FPGA. */
 };
 
+__rte_internal
 static inline const char *
 rte_ifpga_device_name(const struct rte_afu_device *afu)
 {
@@ -126,6 +121,7 @@ rte_ifpga_device_name(const struct rte_afu_device *afu)
  * @param name
  *   A pointer to AFU name string.
  */
+__rte_internal
 struct rte_afu_device *
 rte_ifpga_find_afu_by_name(const char *name);
 
@@ -136,6 +132,7 @@ rte_ifpga_find_afu_by_name(const char *name);
  *   A pointer to a rte_afu_driver structure describing the driver
  *   to be registered.
  */
+__rte_internal
 void rte_ifpga_driver_register(struct rte_afu_driver *driver);
 
 /**
@@ -145,6 +142,7 @@ void rte_ifpga_driver_register(struct rte_afu_driver *driver);
  *   A pointer to a rte_afu_driver structure describing the driver
  *   to be unregistered.
  */
+__rte_internal
 void rte_ifpga_driver_unregister(struct rte_afu_driver *driver);
 
 #define RTE_PMD_REGISTER_AFU(nm, afudrv)\
@@ -164,4 +162,4 @@ static const char *afudrvinit_ ## nm ## _alias = RTE_STR(alias)
 }
 #endif /* __cplusplus */
 
-#endif /* _RTE_BUS_IFPGA_H_ */
+#endif /* BUS_IFPGA_DRIVER_H */

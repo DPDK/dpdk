@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 
@@ -24,7 +25,7 @@
 #include <rte_memory.h>
 #include <rte_eal_paging.h>
 #include <rte_eal.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
 

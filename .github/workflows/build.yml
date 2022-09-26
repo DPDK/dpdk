@@ -25,7 +25,7 @@ jobs:
       MINGW: ${{ matrix.config.cross == 'mingw' }}
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
-      REF_GIT_TAG: v22.03
+      REF_GIT_TAG: none
       RISCV64: ${{ matrix.config.cross == 'riscv64' }}
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
 
@@ -43,7 +43,7 @@ jobs:
           - os: ubuntu-20.04
             compiler: gcc
             library: shared
-            checks: abi+doc+tests
+            checks: doc+tests
           - os: ubuntu-20.04
             compiler: clang
             library: static
@@ -140,7 +140,7 @@ jobs:
       run: sudo apt install -y crossbuild-essential-riscv64
     - name: Install test tools packages
       if: env.AARCH64 != 'true' || env.PPC64LE != 'true' || env.RISCV64 != 'true' || env.RUN_TESTS == 'true'
-      run: sudo apt install -y gdb
+      run: sudo apt install -y gdb jq
     - name: Install doc generation packages
       if: env.BUILD_DOCS == 'true'
       run: sudo apt install -y doxygen graphviz python3-sphinx

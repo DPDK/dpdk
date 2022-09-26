@@ -2,8 +2,8 @@
  * Copyright (c) 2021 NVIDIA Corporation & Affiliates
  */
 
-#ifndef RTE_BUS_AUXILIARY_H
-#define RTE_BUS_AUXILIARY_H
+#ifndef BUS_AUXILIARY_DRIVER_H
+#define BUS_AUXILIARY_DRIVER_H
 
 /**
  * @file
@@ -22,17 +22,16 @@ extern "C" {
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <rte_compat.h>
 #include <rte_debug.h>
 #include <rte_interrupts.h>
-#include <rte_dev.h>
-#include <rte_bus.h>
+#include <dev_driver.h>
 #include <rte_kvargs.h>
 
 #define RTE_BUS_AUXILIARY_NAME "auxiliary"
 
 /* Forward declarations */
 struct rte_auxiliary_driver;
-struct rte_auxiliary_bus;
 struct rte_auxiliary_device;
 
 /**
@@ -43,7 +42,7 @@ struct rte_auxiliary_device;
  * @return
  *   Whether the driver can handle the auxiliary device.
  */
-typedef bool(rte_auxiliary_match_t)(const char *name);
+typedef bool (rte_auxiliary_match_t)(const char *name);
 
 /**
  * Initialization function for the driver called during auxiliary probing.
@@ -56,8 +55,8 @@ typedef bool(rte_auxiliary_match_t)(const char *name);
  *   - 0 On success.
  *   - Negative value and rte_errno is set otherwise.
  */
-typedef int(rte_auxiliary_probe_t)(struct rte_auxiliary_driver *drv,
-				    struct rte_auxiliary_device *dev);
+typedef int (rte_auxiliary_probe_t)(struct rte_auxiliary_driver *drv,
+	struct rte_auxiliary_device *dev);
 
 /**
  * Uninitialization function for the driver called during hotplugging.
@@ -87,7 +86,7 @@ typedef int (rte_auxiliary_remove_t)(struct rte_auxiliary_device *dev);
  *   - Negative value and rte_errno is set otherwise.
  */
 typedef int (rte_auxiliary_dma_map_t)(struct rte_auxiliary_device *dev,
-				       void *addr, uint64_t iova, size_t len);
+	void *addr, uint64_t iova, size_t len);
 
 /**
  * Driver-specific DMA un-mapping. After a successful call the device
@@ -106,7 +105,7 @@ typedef int (rte_auxiliary_dma_map_t)(struct rte_auxiliary_device *dev,
  *   - Negative value and rte_errno is set otherwise.
  */
 typedef int (rte_auxiliary_dma_unmap_t)(struct rte_auxiliary_device *dev,
-					 void *addr, uint64_t iova, size_t len);
+	void *addr, uint64_t iova, size_t len);
 
 /**
  * A structure describing an auxiliary device.
@@ -125,7 +124,6 @@ struct rte_auxiliary_device {
 struct rte_auxiliary_driver {
 	RTE_TAILQ_ENTRY(rte_auxiliary_driver) next; /**< Next in list. */
 	struct rte_driver driver;             /**< Inherit core driver. */
-	struct rte_auxiliary_bus *bus;        /**< Auxiliary bus reference. */
 	rte_auxiliary_match_t *match;         /**< Device match function. */
 	rte_auxiliary_probe_t *probe;         /**< Device probe function. */
 	rte_auxiliary_remove_t *remove;       /**< Device remove function. */
@@ -160,7 +158,7 @@ struct rte_auxiliary_driver {
  *   A pointer to a rte_auxiliary_driver structure describing the driver
  *   to be registered.
  */
-__rte_experimental
+__rte_internal
 void rte_auxiliary_register(struct rte_auxiliary_driver *driver);
 
 /** Helper for auxiliary device registration from driver instance */
@@ -182,11 +180,11 @@ void rte_auxiliary_register(struct rte_auxiliary_driver *driver);
  *   A pointer to a rte_auxiliary_driver structure describing the driver
  *   to be unregistered.
  */
-__rte_experimental
+__rte_internal
 void rte_auxiliary_unregister(struct rte_auxiliary_driver *driver);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* RTE_BUS_AUXILIARY_H */
+#endif /* BUS_AUXILIARY_DRIVER_H */
