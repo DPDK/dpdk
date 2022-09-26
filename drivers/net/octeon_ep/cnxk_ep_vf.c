@@ -2,8 +2,11 @@
  * Copyright(C) 2022 Marvell.
  */
 
+#include <errno.h>
+
 #include <rte_common.h>
 #include <rte_cycles.h>
+
 #include "cnxk_ep_vf.h"
 
 static void
