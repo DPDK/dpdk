@@ -712,6 +712,90 @@ tx_adapter_instance_get(void)
 }
 
 static int
+tx_adapter_queue_start_stop(void)
+{
+	int err;
+	uint16_t eth_dev_id;
+	struct rte_eth_dev_info dev_info;
+
+	/* Case 1: Test without adding eth Tx queue */
+	err = rte_event_eth_tx_adapter_queue_start(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_stop(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	/* Case 2: Test with wrong eth port */
+	eth_dev_id = rte_eth_dev_count_total() + 1;
+	err = rte_event_eth_tx_adapter_queue_start(eth_dev_id,
+						    TEST_ETH_QUEUE_ID);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_stop(eth_dev_id,
+						    TEST_ETH_QUEUE_ID);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	/* Case 3: Test with wrong tx queue */
+	err = rte_eth_dev_info_get(TEST_ETHDEV_ID, &dev_info);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_start(TEST_ETHDEV_ID,
+						    dev_info.max_tx_queues + 1);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_stop(TEST_ETHDEV_ID,
+						    dev_info.max_tx_queues + 1);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	/* Case 4: Test with right instance, port & rxq */
+	/* Add queue to tx adapter */
+	err = rte_event_eth_tx_adapter_queue_add(TEST_INST_ID,
+						 TEST_ETHDEV_ID,
+						 TEST_ETH_QUEUE_ID);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_stop(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_start(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* Add another queue to tx adapter */
+	err = rte_event_eth_tx_adapter_queue_add(TEST_INST_ID,
+						 TEST_ETHDEV_ID,
+						 TEST_ETH_QUEUE_ID + 1);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_stop(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID + 1);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	err = rte_event_eth_tx_adapter_queue_start(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID + 1);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* Case 5: Test with right instance, port & wrong rxq */
+	err = rte_event_eth_tx_adapter_queue_stop(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID + 2);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_tx_adapter_queue_start(TEST_ETHDEV_ID,
+						    TEST_ETH_QUEUE_ID + 2);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	/* Delete all queues from the Tx adapter */
+	err = rte_event_eth_tx_adapter_queue_del(TEST_INST_ID,
+						 TEST_ETHDEV_ID,
+						 -1);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	return TEST_SUCCESS;
+}
+
+static int
 tx_adapter_dynamic_device(void)
 {
 	uint16_t port_id = rte_eth_dev_count_avail();
@@ -770,6 +854,8 @@ static struct unit_test_suite event_eth_tx_tests = {
 					tx_adapter_service),
 		TEST_CASE_ST(tx_adapter_create, tx_adapter_free,
 					tx_adapter_instance_get),
+		TEST_CASE_ST(tx_adapter_create, tx_adapter_free,
+					tx_adapter_queue_start_stop),
 		TEST_CASE_ST(NULL, NULL, tx_adapter_dynamic_device),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}

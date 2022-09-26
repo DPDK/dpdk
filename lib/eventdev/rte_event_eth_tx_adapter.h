@@ -35,6 +35,8 @@
  *  - rte_event_eth_tx_adapter_event_port_get()
  *  - rte_event_eth_tx_adapter_service_id_get()
  *  - rte_event_eth_tx_adapter_instance_get()
+ *  - rte_event_eth_tx_adapter_queue_start()
+ *  - rte_event_eth_tx_adapter_queue_stop()
  *
  * The application creates the adapter using
  * rte_event_eth_tx_adapter_create() or rte_event_eth_tx_adapter_create_ext().
@@ -446,6 +448,58 @@ int
 rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
 				      uint16_t tx_queue_id,
 				      uint8_t *txa_inst_id);
+/**
+ * Enables the adapter to start enqueueing of packets to the
+ * Tx queue.
+ *
+ * This function is provided so that the application can
+ * resume enqueueing packets that reference packets for
+ * <eth_dev_id, tx_queue_id> after calling
+ * rte_event_eth_tx_adapter_queue_stop().
+ * @see rte_event_eth_tx_adapter_queue_stop
+ *
+ * Use case:
+ * --------
+ * The queue start/stop APIs help avoid some unexpected behavior with
+ * application stopping ethdev Tx queues and adapter being unaware of it.
+ * With these APIs, the application can call stop API to notify adapter
+ * that corresponding ethdev Tx queue is stopped and any in-flight
+ * packets are freed by adapter dataplane code. Adapter queue stop API
+ * is called before stopping the ethdev Tx queue. When ethdev Tx queue
+ * is enabled, application can notify adapter to resume processing of
+ * the packets for that queue by calling the start API. The ethdev Tx
+ * queue is started before calling adapter start API.
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+ * @param tx_queue_id
+ *  Ethernet device transmit queue index.
+ * @return
+ *   - 0: Success
+ *   - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_tx_adapter_queue_start(uint16_t eth_dev_id, uint16_t tx_queue_id);
+
+/**
+ * Stops the adapter runtime function from enqueueing any packets
+ * to the associated Tx queue. This API also frees any packets that may
+ * have been buffered for this queue. All inflight packets destined to the
+ * queue are freed by the adapter runtime until the queue is started again.
+ * @see rte_event_eth_tx_adapter_queue_start
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+ * @param tx_queue_id
+ *  Ethernet device transmit queue index.
+ * @return
+ *   - 0: Success
+ *   - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_tx_adapter_queue_stop(uint16_t eth_dev_id, uint16_t tx_queue_id);
 
 #ifdef __cplusplus
 }

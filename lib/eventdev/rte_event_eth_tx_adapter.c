@@ -47,6 +47,12 @@
 #define txa_dev_instance_get(id) \
 			txa_evdev(id)->dev_ops->eth_tx_adapter_instance_get
 
+#define txa_dev_queue_start(id) \
+			txa_evdev(id)->dev_ops->eth_tx_adapter_queue_start
+
+#define txa_dev_queue_stop(id) \
+			txa_evdev(id)->dev_ops->eth_tx_adapter_queue_stop
+
 #define RTE_EVENT_ETH_TX_ADAPTER_ID_VALID_OR_ERR_RET(id, retval) \
 do { \
 	if (!txa_valid_id(id)) { \
@@ -94,6 +100,8 @@ struct txa_retry {
 struct txa_service_queue_info {
 	/* Queue has been added */
 	uint8_t added;
+	/* Queue is stopped */
+	bool stopped;
 	/* Retry callback argument */
 	struct txa_retry txa_retry;
 	/* Tx buffer */
@@ -556,7 +564,7 @@ txa_process_event_vector(struct txa_service_data *txa,
 		port = vec->port;
 		queue = vec->queue;
 		tqi = txa_service_queue(txa, port, queue);
-		if (unlikely(tqi == NULL || !tqi->added)) {
+		if (unlikely(tqi == NULL || !tqi->added || tqi->stopped)) {
 			rte_pktmbuf_free_bulk(&mbufs[vec->elem_offset],
 					      vec->nb_elem);
 			rte_mempool_put(rte_mempool_from_obj(vec), vec);
@@ -572,7 +580,8 @@ txa_process_event_vector(struct txa_service_data *txa,
 			port = mbufs[i]->port;
 			queue = rte_event_eth_tx_adapter_txq_get(mbufs[i]);
 			tqi = txa_service_queue(txa, port, queue);
-			if (unlikely(tqi == NULL || !tqi->added)) {
+			if (unlikely(tqi == NULL || !tqi->added ||
+				     tqi->stopped)) {
 				rte_pktmbuf_free(mbufs[i]);
 				continue;
 			}
@@ -609,7 +618,8 @@ txa_service_tx(struct txa_service_data *txa, struct rte_event *ev,
 			queue = rte_event_eth_tx_adapter_txq_get(m);
 
 			tqi = txa_service_queue(txa, port, queue);
-			if (unlikely(tqi == NULL || !tqi->added)) {
+			if (unlikely(tqi == NULL || !tqi->added ||
+				     tqi->stopped)) {
 				rte_pktmbuf_free(m);
 				continue;
 			}
@@ -673,7 +683,8 @@ txa_service_func(void *args)
 			for (q = 0; q < dev->data->nb_tx_queues; q++) {
 
 				tqi = txa_service_queue(txa, i, q);
-				if (unlikely(tqi == NULL || !tqi->added))
+				if (unlikely(tqi == NULL || !tqi->added ||
+					     tqi->stopped))
 					continue;
 
 				nb_tx += rte_eth_tx_buffer_flush(i, q,
@@ -868,6 +879,7 @@ txa_service_queue_add(uint8_t id,
 
 	tqi->tx_buf = tb;
 	tqi->added = 1;
+	tqi->stopped = false;
 	tdi->nb_queues++;
 	txa->nb_queues++;
 
@@ -884,6 +896,20 @@ err_unlock:
 
 	rte_spinlock_unlock(&txa->tx_lock);
 	return -1;
+}
+
+static inline void
+txa_txq_buffer_drain(struct txa_service_queue_info *tqi)
+{
+	struct rte_eth_dev_tx_buffer *b;
+	uint16_t i;
+
+	b = tqi->tx_buf;
+
+	for (i = 0; i < b->length; i++)
+		rte_pktmbuf_free(b->pkts[i]);
+
+	b->length = 0;
 }
 
 static int
@@ -931,6 +957,8 @@ txa_service_queue_del(uint8_t id,
 	if (tqi == NULL || !tqi->added)
 		goto ret_unlock;
 
+	/* Drain the buffered mbufs */
+	txa_txq_buffer_drain(tqi);
 	tb = tqi->tx_buf;
 	tqi->added = 0;
 	tqi->tx_buf = NULL;
@@ -1320,4 +1348,80 @@ rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
 	}
 
 	return -EINVAL;
+}
+
+static inline int
+txa_sw_queue_start_state_set(uint16_t eth_dev_id, uint16_t tx_queue_id,
+			     bool start_state, struct txa_service_data *txa)
+{
+	struct txa_service_queue_info *tqi = NULL;
+
+	rte_spinlock_lock(&txa->tx_lock);
+	tqi = txa_service_queue(txa, eth_dev_id, tx_queue_id);
+	if (unlikely(tqi == NULL || !tqi->added)) {
+		rte_spinlock_unlock(&txa->tx_lock);
+		return -EINVAL;
+	}
+	if (start_state == false)
+		txa_txq_buffer_drain(tqi);
+
+	tqi->stopped = !start_state;
+	rte_spinlock_unlock(&txa->tx_lock);
+	return 0;
+}
+
+static int
+txa_queue_start_state_set(uint16_t eth_dev_id, uint16_t tx_queue_id,
+			  bool start_state)
+{
+	struct txa_service_data *txa;
+	uint8_t txa_inst_id;
+	int ret;
+	uint32_t caps = 0;
+
+	/* Below API already does validation of input parameters.
+	 * Hence skipping the validation here.
+	 */
+	ret = rte_event_eth_tx_adapter_instance_get(eth_dev_id,
+						    tx_queue_id,
+						    &txa_inst_id);
+	if (ret < 0)
+		return -EINVAL;
+
+	txa = txa_service_id_to_data(txa_inst_id);
+	ret = rte_event_eth_tx_adapter_caps_get(txa->eventdev_id,
+						eth_dev_id,
+						&caps);
+	if (ret < 0)
+		return -EINVAL;
+
+	if (caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT) {
+		if (start_state == true) {
+			ret = txa_dev_queue_start(txa_inst_id) ?
+			      txa_dev_queue_start(txa_inst_id)(txa_inst_id,
+							       eth_dev_id,
+							       tx_queue_id) : 0;
+		} else {
+			ret = txa_dev_queue_stop(txa_inst_id) ?
+			      txa_dev_queue_stop(txa_inst_id)(txa_inst_id,
+							      eth_dev_id,
+							      tx_queue_id) : 0;
+		}
+		return ret;
+	}
+
+	return txa_sw_queue_start_state_set(eth_dev_id, tx_queue_id,
+					    start_state, txa);
+}
+
+int
+rte_event_eth_tx_adapter_queue_start(uint16_t eth_dev_id, uint16_t tx_queue_id)
+{
+	return txa_queue_start_state_set(eth_dev_id, tx_queue_id, true);
+}
+
+int
+rte_event_eth_tx_adapter_queue_stop(uint16_t eth_dev_id, uint16_t tx_queue_id)
+{
+	return txa_queue_start_state_set(eth_dev_id, tx_queue_id, false);
 }

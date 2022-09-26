@@ -182,3 +182,28 @@ mbufs are destined to the same ethernet port and queue by setting the bit
 ``rte_event_vector::queue``.
 If ``rte_event_vector::attr_valid`` is not set then the Tx adapter should peek
 into each mbuf and transmit them to the requested ethernet port and queue pair.
+
+Queue start/stop
+~~~~~~~~~~~~~~~~
+
+The adapter can be configured to start/stop enqueueing of packets to a
+associated NIC queue using ``rte_event_eth_tx_adapter_queue_start()`` or
+``rte_event_eth_tx_adapter_queue_stop()`` respectively. By default the queue
+is in start state.
+
+These APIs help avoid some unexpected behavior with application stopping ethdev
+Tx queues and adapter being unaware of it. With these APIs, the application can
+call stop API to notify adapter that corresponding ethdev Tx queue is stopped
+and any in-flight packets are freed by adapter dataplane code. Adapter queue
+stop API is called before stopping the ethdev Tx queue. When ethdev Tx queue
+is enabled, application can notify adapter to resume processing of the packets
+for that queue by calling the start API. The ethdev Tx queue is started before
+calling adapter start API.
+
+Start function enables the adapter runtime to start enqueueing of packets
+to the Tx queue.
+
+Stop function stops the adapter runtime function from enqueueing any
+packets to the associated Tx queue. This API also frees any packets that
+may have been buffered for this queue. All inflight packets destined to the
+queue are freed by the adapter runtime until the queue is started again.

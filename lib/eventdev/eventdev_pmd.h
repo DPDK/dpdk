@@ -1277,6 +1277,43 @@ typedef int (*eventdev_eth_tx_adapter_stats_reset_t)(uint8_t id,
 typedef int (*eventdev_eth_tx_adapter_instance_get_t)
 	(uint16_t eth_dev_id, uint16_t tx_queue_id, uint8_t *txa_inst_id);
 
+/**
+ * Start a Tx queue that is assigned to Tx adapter instance
+ *
+ * @param id
+ *  Adapter identifier
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device
+ *
+ * @param tx_queue_id
+ *  Ethernet device Tx queue index
+ *
+ * @return
+ *  -  0: Success
+ *  - <0: Error code on failure
+ */
+typedef int (*eventdev_eth_tx_adapter_queue_start)
+	(uint8_t id, uint16_t eth_dev_id, uint16_t tx_queue_id);
+
+/**
+ * Stop a Tx queue that is assigned to Tx adapter instance
+ *
+ * @param id
+ *  Adapter identifier
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device
+ *
+ * @param tx_queue_id
+ *  Ethernet device Tx queue index
+ *
+ * @return
+ *  -  0: Success
+ *  - <0: Error code on failure
+ */
+typedef int (*eventdev_eth_tx_adapter_queue_stop)
+	(uint8_t id, uint16_t eth_dev_id, uint16_t tx_queue_id);
 
 /** Event device operations function pointer table */
 struct eventdev_ops {
@@ -1390,6 +1427,10 @@ struct eventdev_ops {
 	/**< Reset eth Tx adapter statistics */
 	eventdev_eth_tx_adapter_instance_get_t eth_tx_adapter_instance_get;
 	/**< Get Tx adapter instance ID for Tx queue */
+	eventdev_eth_tx_adapter_queue_start eth_tx_adapter_queue_start;
+	/**< Start Tx queue assigned to Tx adapter instance */
+	eventdev_eth_tx_adapter_queue_stop eth_tx_adapter_queue_stop;
+	/**< Stop Tx queue assigned to Tx adapter instance */
 
 	eventdev_selftest dev_selftest;
 	/**< Start eventdev Selftest */

@@ -80,6 +80,13 @@ New Features
   * Added ``rte_event_eth_tx_adapter_instance_get`` to get Tx adapter
     instance ID for specified ethernet device ID and Tx queue index.
 
+* **Added eventdev Tx adapter queue start/stop API.**
+
+  * Added ``rte_event_eth_tx_adapter_queue_start`` to start
+    enqueueing packets to the Tx queue by Tx adapter.
+  * Added ``rte_event_eth_tx_adapter_queue_stop`` to stop the Tx Adapter
+    from enqueueing any packets to the Tx queue.
+
 
 Removed Items
 -------------
