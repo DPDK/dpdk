@@ -634,6 +634,13 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_macsec.
 	 */
 	RTE_FLOW_ITEM_TYPE_MACSEC,
+
+	/**
+	 * Matches Meter Color Marker.
+	 *
+	 * See struct rte_flow_item_meter_color.
+	 */
+	RTE_FLOW_ITEM_TYPE_METER_COLOR,
 };
 
 /**
@@ -2096,6 +2103,22 @@ struct rte_flow_item_flex_conf {
 	/** Number of link descriptors in the output link array. */
 	uint32_t nb_outputs;
 };
+
+/**
+ * RTE_FLOW_ITEM_TYPE_METER_COLOR.
+ *
+ * Matches Color Marker set by a Meter.
+ */
+struct rte_flow_item_meter_color {
+	enum rte_color color; /**< Meter color marker. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_METER_COLOR. */
+#ifndef __cplusplus
+static const struct rte_flow_item_meter_color rte_flow_item_meter_color_mask = {
+	.color = RTE_COLORS,
+};
+#endif
 
 /**
  * Action types.

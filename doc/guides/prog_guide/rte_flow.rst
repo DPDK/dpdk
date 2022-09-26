@@ -1542,6 +1542,13 @@ Matches a PPP header.
 - ``proto_id``: PPP protocol identifier.
 - Default ``mask`` matches addr, ctrl, proto_id.
 
+Item: ``METER_COLOR``
+^^^^^^^^^^^^^^^^^^^^^
+
+Matches Color Marker set by a Meter.
+
+- ``color``: Metering color marker.
+
 Actions
 ~~~~~~~
 

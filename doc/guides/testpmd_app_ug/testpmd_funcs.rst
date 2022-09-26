@@ -3687,6 +3687,10 @@ This section lists supported pattern items and their attributes, if any.
   - ``ctrl {unsigned}``: PPP control.
   - ``proto_id {unsigned}``: PPP protocol identifier.
 
+- ``meter``: match meter color.
+
+  - ``color {value}``: meter color value (green/yellow/red).
+
 Actions list
 ^^^^^^^^^^^^
 

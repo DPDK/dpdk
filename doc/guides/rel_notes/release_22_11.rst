@@ -74,6 +74,10 @@ New Features
   Added new function ``rte_flow_async_action_handle_query()``,
   to query the action asynchronously.
 
+* **Extended metering and marking support in the flow API.**
+
+  * Added METER_COLOR item to match color marker set by a meter.
+
 * **Updated Intel iavf driver.**
 
   * Added flow subscription support.
