@@ -21,6 +21,7 @@
 #include "nfp_flower.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
+#include "nfp_flower_cmsg.h"
 
 #define CTRL_VNIC_NB_DESC 512
 #define DEFAULT_FLBUF_SIZE 9216
@@ -239,6 +240,383 @@ static const struct eth_dev_ops nfp_flower_pf_vnic_ops = {
 	.dev_stop               = nfp_flower_pf_stop,
 	.dev_close              = nfp_flower_pf_close,
 };
+
+static inline void
+nfp_flower_parse_metadata(struct nfp_net_rxq *rxq,
+		struct nfp_net_rx_desc *rxd,
+		struct rte_mbuf *mbuf,
+		uint32_t *portid)
+{
+	uint32_t meta_info;
+	uint8_t *meta_offset;
+	struct nfp_net_hw *hw;
+
+	hw = rxq->hw;
+	if (!((hw->ctrl & NFP_NET_CFG_CTRL_RSS) ||
+			(hw->ctrl & NFP_NET_CFG_CTRL_RSS2)))
+		return;
+
+	meta_offset = rte_pktmbuf_mtod(mbuf, uint8_t *);
+	meta_offset -= NFP_DESC_META_LEN(rxd);
+	meta_info = rte_be_to_cpu_32(*(uint32_t *)meta_offset);
+	meta_offset += 4;
+
+	while (meta_info != 0) {
+		switch (meta_info & NFP_NET_META_FIELD_MASK) {
+		/* Expect flower firmware to only send packets with META_PORTID */
+		case NFP_NET_META_PORTID:
+			*portid = rte_be_to_cpu_32(*(uint32_t *)meta_offset);
+			meta_offset += 4;
+			meta_info >>= NFP_NET_META_FIELD_SIZE;
+			break;
+		default:
+			/* Unsupported metadata can be a performance issue */
+			return;
+		}
+	}
+}
+
+static inline struct nfp_flower_representor *
+nfp_flower_get_repr(struct nfp_net_hw *hw,
+		uint32_t port_id)
+{
+	uint8_t port;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	/* Obtain handle to app_fw_flower here */
+	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(hw->pf_dev->app_fw_priv);
+
+	switch (NFP_FLOWER_CMSG_PORT_TYPE(port_id)) {
+	case NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT:
+		port =  NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(port_id);
+		return app_fw_flower->phy_reprs[port];
+	case NFP_FLOWER_CMSG_PORT_TYPE_PCIE_PORT:
+		port = NFP_FLOWER_CMSG_PORT_VNIC(port_id);
+		return app_fw_flower->vf_reprs[port];
+	default:
+		break;
+	}
+
+	return NULL;
+}
+
+uint16_t
+nfp_flower_pf_recv_pkts(void *rx_queue,
+		struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	/*
+	 * We need different counters for packets given to the caller
+	 * and packets sent to representors
+	 */
+	int avail = 0;
+	int avail_multiplexed = 0;
+	uint64_t dma_addr;
+	uint32_t meta_portid;
+	uint16_t nb_hold = 0;
+	struct rte_mbuf *mb;
+	struct nfp_net_hw *hw;
+	struct rte_mbuf *new_mb;
+	struct nfp_net_rxq *rxq;
+	struct nfp_net_rx_buff *rxb;
+	struct nfp_net_rx_desc *rxds;
+	struct nfp_flower_representor *repr;
+
+	rxq = rx_queue;
+	if (unlikely(rxq == NULL)) {
+		/*
+		 * DPDK just checks the queue is lower than max queues
+		 * enabled. But the queue needs to be configured
+		 */
+		RTE_LOG_DP(ERR, PMD, "RX Bad queue\n");
+		return 0;
+	}
+
+	hw = rxq->hw;
+
+	/*
+	 * This is tunable as we could allow to receive more packets than
+	 * requested if most are multiplexed.
+	 */
+	while (avail + avail_multiplexed < nb_pkts) {
+		rxb = &rxq->rxbufs[rxq->rd_p];
+		if (unlikely(rxb == NULL)) {
+			RTE_LOG_DP(ERR, PMD, "rxb does not exist!\n");
+			break;
+		}
+
+		rxds = &rxq->rxds[rxq->rd_p];
+		if ((rxds->rxd.meta_len_dd & PCIE_DESC_RX_DD) == 0)
+			break;
+
+		/*
+		 * Memory barrier to ensure that we won't do other
+		 * reads before the DD bit.
+		 */
+		rte_rmb();
+
+		/*
+		 * We got a packet. Let's alloc a new mbuf for refilling the
+		 * free descriptor ring as soon as possible
+		 */
+		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
+		if (unlikely(new_mb == NULL)) {
+			RTE_LOG_DP(DEBUG, PMD,
+			"RX mbuf alloc failed port_id=%u queue_id=%d\n",
+				rxq->port_id, rxq->qidx);
+			nfp_net_mbuf_alloc_failed(rxq);
+			break;
+		}
+
+		nb_hold++;
+
+		/*
+		 * Grab the mbuf and refill the descriptor with the
+		 * previously allocated mbuf
+		 */
+		mb = rxb->mbuf;
+		rxb->mbuf = new_mb;
+
+		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u",
+				rxds->rxd.data_len, rxq->mbuf_size);
+
+		/* Size of this segment */
+		mb->data_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+		/* Size of the whole packet. We just support 1 segment */
+		mb->pkt_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+
+		if (unlikely((mb->data_len + hw->rx_offset) > rxq->mbuf_size)) {
+			/*
+			 * This should not happen and the user has the
+			 * responsibility of avoiding it. But we have
+			 * to give some info about the error
+			 */
+			RTE_LOG_DP(ERR, PMD,
+				"mbuf overflow likely due to the RX offset.\n"
+				"\t\tYour mbuf size should have extra space for"
+				" RX offset=%u bytes.\n"
+				"\t\tCurrently you just have %u bytes available"
+				" but the received packet is %u bytes long",
+				hw->rx_offset,
+				rxq->mbuf_size - hw->rx_offset,
+				mb->data_len);
+			rte_pktmbuf_free(mb);
+			break;
+		}
+
+		/* Filling the received mbuf with packet info */
+		if (hw->rx_offset != 0)
+			mb->data_off = RTE_PKTMBUF_HEADROOM + hw->rx_offset;
+		else
+			mb->data_off = RTE_PKTMBUF_HEADROOM + NFP_DESC_META_LEN(rxds);
+
+		/* No scatter mode supported */
+		mb->nb_segs = 1;
+		mb->next = NULL;
+
+		mb->port = rxq->port_id;
+		meta_portid = 0;
+
+		/* Checking the RSS flag */
+		nfp_flower_parse_metadata(rxq, rxds, mb, &meta_portid);
+		PMD_RX_LOG(DEBUG, "Received from port %u type %u",
+				NFP_FLOWER_CMSG_PORT_VNIC(meta_portid),
+				NFP_FLOWER_CMSG_PORT_VNIC_TYPE(meta_portid));
+
+		/* Checking the checksum flag */
+		nfp_net_rx_cksum(rxq, rxds, mb);
+
+		if ((rxds->rxd.flags & PCIE_DESC_RX_VLAN) &&
+				(hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN)) {
+			mb->vlan_tci = rte_cpu_to_le_32(rxds->rxd.vlan);
+			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+		}
+
+		repr = nfp_flower_get_repr(hw, meta_portid);
+		if (repr != NULL && repr->ring != NULL) {
+			PMD_RX_LOG(DEBUG, "Using representor %s", repr->name);
+			rte_ring_enqueue(repr->ring, (void *)mb);
+			avail_multiplexed++;
+		} else if (repr != NULL) {
+			PMD_RX_LOG(ERR, "[%u] No ring available for repr_port %s\n",
+					hw->idx, repr->name);
+			PMD_RX_LOG(DEBUG, "Adding the mbuf to the mbuf array passed by the app");
+			rx_pkts[avail++] = mb;
+		} else {
+			PMD_RX_LOG(DEBUG, "Adding the mbuf to the mbuf array passed by the app");
+			rx_pkts[avail++] = mb;
+		}
+
+		/* Now resetting and updating the descriptor */
+		rxds->vals[0] = 0;
+		rxds->vals[1] = 0;
+		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DMA_ADDR_DEFAULT(new_mb));
+		rxds->fld.dd = 0;
+		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xff;
+		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;
+
+		rxq->rd_p++;
+		if (unlikely(rxq->rd_p == rxq->rx_count))
+			rxq->rd_p = 0;
+	}
+
+	if (nb_hold == 0)
+		return nb_hold;
+
+	PMD_RX_LOG(DEBUG, "RX port_id=%u queue_id=%d, %d packets received",
+			rxq->port_id, rxq->qidx, nb_hold);
+
+	nb_hold += rxq->nb_rx_hold;
+
+	/*
+	 * FL descriptors needs to be written before incrementing the
+	 * FL queue WR pointer
+	 */
+	rte_wmb();
+	if (nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG, "port=%u queue=%d nb_hold=%u avail=%d",
+				rxq->port_id, rxq->qidx, nb_hold, avail);
+		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
+		nb_hold = 0;
+	}
+
+	rxq->nb_rx_hold = nb_hold;
+
+	return avail;
+}
+
+uint16_t
+nfp_flower_pf_xmit_pkts(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	int i = 0;
+	int pkt_size;
+	int dma_size;
+	uint64_t dma_addr;
+	uint16_t free_descs;
+	uint16_t issued_descs;
+	struct rte_mbuf *pkt;
+	struct nfp_net_hw *hw;
+	struct rte_mbuf **lmbuf;
+	struct nfp_net_txq *txq;
+	struct nfp_net_nfd3_tx_desc txd;
+	struct nfp_net_nfd3_tx_desc *txds;
+
+	txq = tx_queue;
+	hw = txq->hw;
+	txds = &txq->txds[txq->wr_p];
+
+	PMD_TX_LOG(DEBUG, "working for queue %d at pos %u and %u packets",
+			txq->qidx, txq->wr_p, nb_pkts);
+
+	if ((nfp_net_nfd3_free_tx_desc(txq) < nb_pkts) || (nfp_net_nfd3_txq_full(txq)))
+		nfp_net_tx_free_bufs(txq);
+
+	free_descs = (uint16_t)nfp_net_nfd3_free_tx_desc(txq);
+	if (unlikely(free_descs == 0))
+		return 0;
+
+	pkt = *tx_pkts;
+	issued_descs = 0;
+
+	/* Sending packets */
+	while ((i < nb_pkts) && free_descs) {
+		/* Grabbing the mbuf linked to the current descriptor */
+		lmbuf = &txq->txbufs[txq->wr_p].mbuf;
+		/* Warming the cache for releasing the mbuf later on */
+		RTE_MBUF_PREFETCH_TO_FREE(*lmbuf);
+
+		pkt = *(tx_pkts + i);
+
+		if (unlikely(pkt->nb_segs > 1 &&
+				!(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {
+			PMD_INIT_LOG(INFO, "NFP_NET_CFG_CTRL_GATHER not set");
+			PMD_INIT_LOG(INFO, "Multisegment packet unsupported");
+			goto xmit_end;
+		}
+
+		/* Checking if we have enough descriptors */
+		if (unlikely(pkt->nb_segs > free_descs))
+			goto xmit_end;
+
+		/*
+		 * Checksum and VLAN flags just in the first descriptor for a
+		 * multisegment packet, but TSO info needs to be in all of them.
+		 */
+		txd.data_len = pkt->pkt_len;
+		nfp_net_nfd3_tx_tso(txq, &txd, pkt);
+		nfp_net_nfd3_tx_cksum(txq, &txd, pkt);
+
+		if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) &&
+				(hw->cap & NFP_NET_CFG_CTRL_TXVLAN)) {
+			txd.flags |= PCIE_DESC_TX_VLAN;
+			txd.vlan = pkt->vlan_tci;
+		}
+
+		/*
+		 * mbuf data_len is the data in one segment and pkt_len data
+		 * in the whole packet. When the packet is just one segment,
+		 * then data_len = pkt_len
+		 */
+		pkt_size = pkt->pkt_len;
+
+		while (pkt != NULL) {
+			/* Copying TSO, VLAN and cksum info */
+			*txds = txd;
+
+			/* Releasing mbuf used by this descriptor previously*/
+			if (*lmbuf != NULL)
+				rte_pktmbuf_free_seg(*lmbuf);
+
+			/*
+			 * Linking mbuf with descriptor for being released
+			 * next time descriptor is used
+			 */
+			*lmbuf = pkt;
+
+			dma_size = pkt->data_len;
+			dma_addr = rte_mbuf_data_iova(pkt);
+
+			/* Filling descriptors fields */
+			txds->dma_len = dma_size;
+			txds->data_len = txd.data_len;
+			txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
+			txds->dma_addr_lo = (dma_addr & 0xffffffff);
+			ASSERT(free_descs > 0);
+			free_descs--;
+
+			txq->wr_p++;
+			if (unlikely(txq->wr_p == txq->tx_count)) /* wrapping?*/
+				txq->wr_p = 0;
+
+			pkt_size -= dma_size;
+
+			/*
+			 * Making the EOP, packets with just one segment
+			 * the priority
+			 */
+			if (likely(pkt_size == 0))
+				txds->offset_eop = PCIE_DESC_TX_EOP | FLOWER_PKT_DATA_OFFSET;
+			else
+				txds->offset_eop = 0;
+
+			pkt = pkt->next;
+			/* Referencing next free TX descriptor */
+			txds = &txq->txds[txq->wr_p];
+			lmbuf = &txq->txbufs[txq->wr_p].mbuf;
+			issued_descs++;
+		}
+		i++;
+	}
+
+xmit_end:
+	/* Increment write pointers. Force memory write before we let HW know */
+	rte_wmb();
+	nfp_qcp_ptr_add(txq->qcp_q, NFP_QCP_WRITE_PTR, issued_descs);
+
+	return i;
+}
 
 static int
 nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
@@ -817,6 +1195,8 @@ nfp_secondary_init_app_fw_flower(struct nfp_cpp *cpp)
 
 	eth_dev->process_private = cpp;
 	eth_dev->dev_ops = &nfp_flower_pf_vnic_ops;
+	eth_dev->rx_pkt_burst = nfp_flower_pf_recv_pkts;
+	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;
 	rte_eth_dev_probing_finish(eth_dev);
 
 	return 0;

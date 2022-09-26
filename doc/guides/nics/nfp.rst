@@ -200,3 +200,16 @@ The flower firmware application support representor port for VF and physical
 port. There will always exist a representor port for each physical port,
 and the number of the representor port for VF is specified by the user through
 parameter.
+
+In the Rx direction, the flower firmware application will prepend the input
+port information into metadata for each packet which can't offloaded. The PF
+vNIC service will keep polling packets from the firmware, and multiplex them
+to the corresponding representor port.
+
+In the Tx direction, the representor port will prepend the output port
+information into metadata for each packet, and then send it to firmware through
+PF vNIC.
+
+The ctrl vNIC service handling various control message, like the creation and
+configuration of representor port, the pattern and action of flow rules, the
+statistics of flow rules, and so on.
