@@ -168,7 +168,6 @@ struct nfp_pf_dev {
 
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
-	uint32_t nfp_cpp_service_id;
 };
 
 struct nfp_app_fw_nic {
@@ -240,11 +239,8 @@ struct nfp_net_hw {
 	uint8_t idx;
 	/* Internal port number as seen from NFP */
 	uint8_t nfp_idx;
-	bool	is_phyport;
 
 	union eth_table_entry *eth_table;
-
-	uint32_t nfp_cpp_service_id;
 };
 
 struct nfp_net_adapter {

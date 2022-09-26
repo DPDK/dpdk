@@ -387,7 +387,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	uint32_t start_q;
 	int stride = 4;
 	int port = 0;
-	int err;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -421,10 +420,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(DEBUG, "Working with physical port number: %d, "
 			"NFP internal port number: %d", port, hw->nfp_idx);
-
-	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
@@ -476,8 +471,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "nfp_net: no device ID matching");
-		err = -ENODEV;
-		goto dev_err_ctrl_map;
+		return -ENODEV;
 	}
 
 	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
@@ -543,8 +537,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 					       RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
-		err = -ENOMEM;
-		goto dev_err_queues_map;
+		return -ENOMEM;
 	}
 
 	nfp_net_pf_read_mac(app_fw_nic, port);
@@ -574,24 +567,15 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		/* Registering LSC interrupt handler */
-		rte_intr_callback_register(pci_dev->intr_handle,
-				nfp_net_dev_interrupt_handler, (void *)eth_dev);
-		/* Telling the firmware about the LSC interrupt entry */
-		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
-		/* Recording current stats counters values */
-		nfp_net_stats_reset(eth_dev);
-	}
+	/* Registering LSC interrupt handler */
+	rte_intr_callback_register(pci_dev->intr_handle,
+			nfp_net_dev_interrupt_handler, (void *)eth_dev);
+	/* Telling the firmware about the LSC interrupt entry */
+	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
+	/* Recording current stats counters values */
+	nfp_net_stats_reset(eth_dev);
 
 	return 0;
-
-dev_err_queues_map:
-		nfp_cpp_area_free(hw->hwqueues_area);
-dev_err_ctrl_map:
-		nfp_cpp_area_free(hw->ctrl_area);
-
-	return err;
 }
 
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
@@ -791,7 +775,6 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 		hw->eth_dev = eth_dev;
 		hw->idx = i;
 		hw->nfp_idx = nfp_eth_table->ports[i].index;
-		hw->is_phyport = true;
 
 		eth_dev->device = &pf_dev->pci_dev->device;
 
@@ -857,8 +840,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
-		ret = -EIO;
-		goto error;
+		return -EIO;
 	}
 
 	hwinfo = nfp_hwinfo_read(cpp);
@@ -979,7 +961,7 @@ hwinfo_cleanup:
 	free(hwinfo);
 cpp_cleanup:
 	nfp_cpp_free(cpp);
-error:
+
 	return ret;
 }
 
