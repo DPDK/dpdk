@@ -100,6 +100,7 @@ New Features
 
   * Added the support of flower firmware.
   * Added the flower service infrastructure.
+  * Added the control message interactive channels between PMD and firmware.
 
 * **Updated NXP dpaa2 driver.**
 

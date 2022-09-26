@@ -18,6 +18,7 @@
 #include "../nfpcore/nfp_rtsym.h"
 #include "../nfpcore/nfp_nsp.h"
 #include "nfp_flower.h"
+#include "nfp_flower_ctrl.h"
 
 #define CTRL_VNIC_NB_DESC 512
 #define DEFAULT_FLBUF_SIZE 9216
@@ -438,6 +439,46 @@ nfp_flower_start_ctrl_vnic(struct nfp_net_hw *hw)
 	return 0;
 }
 
+static int
+nfp_flower_ctrl_vnic_service(void *arg)
+{
+	struct nfp_app_fw_flower *app_fw_flower = arg;
+
+	nfp_flower_ctrl_vnic_poll(app_fw_flower);
+
+	return 0;
+}
+
+static int
+nfp_flower_enable_services(struct nfp_app_fw_flower *app_fw_flower)
+{
+	int ret;
+	uint32_t service_id;
+	const struct rte_service_spec flower_service = {
+		.name              = "flower_ctrl_vnic_service",
+		.callback          = nfp_flower_ctrl_vnic_service,
+		.callback_userdata = (void *)app_fw_flower,
+	};
+
+	/* Register the flower services */
+	ret = rte_service_component_register(&flower_service, &service_id);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Could not register %s", flower_service.name);
+		return -EINVAL;
+	}
+
+	PMD_INIT_LOG(INFO, "%s registered", flower_service.name);
+
+	/* Map them to available service cores*/
+	ret = nfp_map_service(service_id);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Could not map %s", flower_service.name);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int
 nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 {
@@ -516,6 +557,14 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 	ret = nfp_flower_start_ctrl_vnic(app_fw_flower->ctrl_hw);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not start flower ctrl vNIC");
+		goto ctrl_vnic_cleanup;
+	}
+
+	/* Start up flower services */
+	ret = nfp_flower_enable_services(app_fw_flower);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Could not enable flower services");
+		ret = -ESRCH;
 		goto ctrl_vnic_cleanup;
 	}
 

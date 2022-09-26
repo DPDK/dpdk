@@ -7,6 +7,7 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 sources = files(
         'flower/nfp_flower.c',
+        'flower/nfp_flower_ctrl.c',
         'nfpcore/nfp_cpp_pcie_ops.c',
         'nfpcore/nfp_nsp.c',
         'nfpcore/nfp_cppcore.c',
