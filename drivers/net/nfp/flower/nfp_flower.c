@@ -6,6 +6,7 @@
 #include <rte_common.h>
 #include <rte_service_component.h>
 #include <rte_malloc.h>
+#include <rte_alarm.h>
 #include <ethdev_pci.h>
 #include <ethdev_driver.h>
 
@@ -24,10 +25,219 @@
 #define CTRL_VNIC_NB_DESC 512
 #define DEFAULT_FLBUF_SIZE 9216
 
+static void
+nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+	uint64_t enabled_queues = 0;
+	int i;
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	hw = repr->app_fw_flower->pf_hw;
+
+	/* Enabling the required TX queues in the device */
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		enabled_queues |= (1 << i);
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
+
+	enabled_queues = 0;
+
+	/* Enabling the required RX queues in the device */
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		enabled_queues |= (1 << i);
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
+}
+
+static void
+nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+	uint32_t new_ctrl;
+	uint32_t update = 0;
+	struct nfp_flower_representor *repr;
+
+	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	hw = repr->app_fw_flower->pf_hw;
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
+
+	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
+	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
+		 NFP_NET_CFG_UPDATE_MSIX;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
+		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
+
+	/* If an error when reconfig we avoid to change hw state */
+	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+		return;
+
+	hw->ctrl = new_ctrl;
+}
+
+int
+nfp_flower_pf_start(struct rte_eth_dev *dev)
+{
+	int ret;
+	uint32_t new_ctrl;
+	uint32_t update = 0;
+	struct nfp_net_hw *hw;
+	struct nfp_flower_representor *repr;
+
+	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	hw = repr->app_fw_flower->pf_hw;
+
+	/* Disabling queues just in case... */
+	nfp_pf_repr_disable_queues(dev);
+
+	/* Enabling the required queues in the device */
+	nfp_pf_repr_enable_queues(dev);
+
+	new_ctrl = nfp_check_offloads(dev);
+
+	/* Writing configuration parameters in the device */
+	nfp_net_params_setup(hw);
+
+	update |= NFP_NET_CFG_UPDATE_RSS;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_RSS2)
+		new_ctrl |= NFP_NET_CFG_CTRL_RSS2;
+	else
+		new_ctrl |= NFP_NET_CFG_CTRL_RSS;
+
+	/* Enable device */
+	new_ctrl |= NFP_NET_CFG_CTRL_ENABLE;
+
+	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
+		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
+
+	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
+
+	/* If an error when reconfig we avoid to change hw state */
+	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to reconfig PF vnic");
+		return -EIO;
+	}
+
+	hw->ctrl = new_ctrl;
+
+	/* Setup the freelist ring */
+	ret = nfp_net_rx_freelist_setup(dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Error with flower PF vNIC freelist setup");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/* Stop device: disable rx and tx functions to allow for reconfiguring. */
+int
+nfp_flower_pf_stop(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	struct nfp_net_hw *hw;
+	struct nfp_net_txq *this_tx_q;
+	struct nfp_net_rxq *this_rx_q;
+	struct nfp_flower_representor *repr;
+
+	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	hw = repr->app_fw_flower->pf_hw;
+
+	nfp_pf_repr_disable_queues(dev);
+
+	/* Clear queues */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		nfp_net_reset_tx_queue(this_tx_q);
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		nfp_net_reset_rx_queue(this_rx_q);
+	}
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		/* Configure the physical port down */
+		nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
+	else
+		nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 0);
+
+	return 0;
+}
+
+/* Reset and stop device. The device can not be restarted. */
+static int
+nfp_flower_pf_close(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	struct nfp_net_hw *hw;
+	struct nfp_pf_dev *pf_dev;
+	struct nfp_net_txq *this_tx_q;
+	struct nfp_net_rxq *this_rx_q;
+	struct nfp_flower_representor *repr;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	hw = repr->app_fw_flower->pf_hw;
+	pf_dev = hw->pf_dev;
+	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
+
+	/*
+	 * We assume that the DPDK application is stopping all the
+	 * threads/queues before calling the device close function.
+	 */
+	nfp_pf_repr_disable_queues(dev);
+
+	/* Clear queues */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		nfp_net_reset_tx_queue(this_tx_q);
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		nfp_net_reset_rx_queue(this_rx_q);
+	}
+
+	/* Cancel possible impending LSC work here before releasing the port*/
+	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
+
+	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
+
+	rte_eth_dev_release_port(dev);
+
+	/* Now it is safe to free all PF resources */
+	PMD_DRV_LOG(INFO, "Freeing PF resources");
+	nfp_cpp_area_free(pf_dev->ctrl_area);
+	nfp_cpp_area_free(pf_dev->hwqueues_area);
+	free(pf_dev->hwinfo);
+	free(pf_dev->sym_tbl);
+	nfp_cpp_free(pf_dev->cpp);
+	rte_free(app_fw_flower);
+	rte_free(pf_dev);
+
+	return 0;
+}
+
 static const struct eth_dev_ops nfp_flower_pf_vnic_ops = {
 	.dev_infos_get          = nfp_net_infos_get,
 	.link_update            = nfp_net_link_update,
 	.dev_configure          = nfp_net_configure,
+
+	.dev_start              = nfp_flower_pf_start,
+	.dev_stop               = nfp_flower_pf_stop,
+	.dev_close              = nfp_flower_pf_close,
 };
 
 static int

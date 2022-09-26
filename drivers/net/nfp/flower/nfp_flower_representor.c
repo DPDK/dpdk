@@ -467,7 +467,9 @@ nfp_flower_repr_mac_addr_set(struct rte_eth_dev *ethdev,
 static const struct eth_dev_ops nfp_flower_pf_repr_dev_ops = {
 	.dev_infos_get        = nfp_flower_repr_dev_infos_get,
 
+	.dev_start            = nfp_flower_pf_start,
 	.dev_configure        = nfp_flower_repr_dev_configure,
+	.dev_stop             = nfp_flower_pf_stop,
 
 	.rx_queue_setup       = nfp_pf_repr_rx_queue_setup,
 	.tx_queue_setup       = nfp_pf_repr_tx_queue_setup,
