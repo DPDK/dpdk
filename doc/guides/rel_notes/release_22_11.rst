@@ -77,6 +77,7 @@ New Features
 * **Extended metering and marking support in the flow API.**
 
   * Added METER_COLOR item to match color marker set by a meter.
+  * Added ability to set color marker via modify field flow API.
 
 * **Updated Intel iavf driver.**
 

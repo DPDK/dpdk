@@ -799,7 +799,7 @@ static const char *const modify_field_ids[] = {
 	"udp_port_src", "udp_port_dst",
 	"vxlan_vni", "geneve_vni", "gtp_teid",
 	"tag", "mark", "meta", "pointer", "value",
-	"ipv4_ecn", "ipv6_ecn", "gtp_psc_qfi", NULL
+	"ipv4_ecn", "ipv6_ecn", "gtp_psc_qfi", "meter_color", NULL
 };
 
 static const char *const meter_colors[] = {
