@@ -697,9 +697,6 @@ pipeline_worker_cleanup(uint8_t dev, uint8_t port, struct rte_event ev[],
 {
 	int i;
 
-	if (!(deq - enq))
-		return;
-
 	if (deq) {
 		for (i = enq; i < deq; i++) {
 			if (ev[i].op == RTE_EVENT_OP_RELEASE)
