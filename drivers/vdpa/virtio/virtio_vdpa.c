@@ -1598,7 +1598,14 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	state_len = virtio_pci_dev_state_size_get(priv->vpdev);
 	DRV_LOG(INFO, "%s state len:%d", devname, state_len);
-
+	/*contoller use snap_dma_q_read to get data from host,len:
+	*4096 --> can get all data
+	*3800 --> only get data before 3792 byte
+	*3796 --> only get data before 3792 byte
+	*so,use 4k align RM:3216791 mail:SNAP dma read issue
+	*/
+	state_len = ((state_len -1 + 4096)/4096)*4096;
+	DRV_LOG(INFO, "%s align state len:%d", devname, state_len);
 	priv->state_size = state_len;
 	priv->state_mz = rte_memzone_reserve_aligned(devname, state_len,
 			priv->pdev->device.numa_node, RTE_MEMZONE_IOVA_CONTIG,
