@@ -36,6 +36,12 @@ struct reassembly_vector {
 	bool burst;
 };
 
+struct sa_expiry_vector {
+	struct ipsec_session_data *sa_data;
+	enum rte_eth_event_ipsec_subtype event;
+	bool notify_event;
+};
+
 /* The source file includes below test vectors */
 /* IPv6:
  *

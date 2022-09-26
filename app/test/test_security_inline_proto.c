@@ -967,16 +967,74 @@ event_rx_burst(struct rte_mbuf **rx_pkts, uint16_t nb_pkts_to_rx)
 }
 
 static int
+test_ipsec_inline_sa_exp_event_callback(uint16_t port_id,
+		enum rte_eth_event_type type, void *param, void *ret_param)
+{
+	struct sa_expiry_vector *vector = (struct sa_expiry_vector *)param;
+	struct rte_eth_event_ipsec_desc *event_desc = NULL;
+
+	RTE_SET_USED(port_id);
+
+	if (type != RTE_ETH_EVENT_IPSEC)
+		return -1;
+
+	event_desc = ret_param;
+	if (event_desc == NULL) {
+		printf("Event descriptor not set\n");
+		return -1;
+	}
+	vector->notify_event = true;
+	if (event_desc->metadata != (uint64_t)vector->sa_data) {
+		printf("Mismatch in event specific metadata\n");
+		return -1;
+	}
+	if (event_desc->subtype == RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY) {
+		vector->event = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
+		return 0;
+	} else if (event_desc->subtype == RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY) {
+		vector->event = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
+		return 0;
+	} else if (event_desc->subtype >= RTE_ETH_EVENT_IPSEC_MAX) {
+		printf("Invalid IPsec event reported\n");
+		return -1;
+	}
+
+	return -1;
+}
+
+static enum rte_eth_event_ipsec_subtype
+test_ipsec_inline_setup_expiry_vector(struct sa_expiry_vector *vector,
+		const struct ipsec_test_flags *flags,
+		struct ipsec_test_data *tdata)
+{
+	enum rte_eth_event_ipsec_subtype event = RTE_ETH_EVENT_IPSEC_UNKNOWN;
+
+	vector->event = RTE_ETH_EVENT_IPSEC_UNKNOWN;
+	vector->notify_event = false;
+	vector->sa_data = (void *)tdata;
+	if (flags->sa_expiry_pkts_soft)
+		event = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
+	else
+		event = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
+	rte_eth_dev_callback_register(port_id, RTE_ETH_EVENT_IPSEC,
+		       test_ipsec_inline_sa_exp_event_callback, vector);
+
+	return event;
+}
+
+static int
 test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 		struct ipsec_test_data *res_d,
 		int nb_pkts,
 		bool silent,
 		const struct ipsec_test_flags *flags)
 {
+	enum rte_eth_event_ipsec_subtype event = RTE_ETH_EVENT_IPSEC_UNKNOWN;
 	struct rte_security_session_conf sess_conf = {0};
 	struct rte_crypto_sym_xform cipher = {0};
 	struct rte_crypto_sym_xform auth = {0};
 	struct rte_crypto_sym_xform aead = {0};
+	struct sa_expiry_vector vector = {0};
 	struct rte_security_session *ses;
 	struct rte_security_ctx *ctx;
 	int nb_rx = 0, nb_sent;
@@ -985,6 +1043,12 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	bool outer_ipv4;
 
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_pkts);
+
+	if (flags->sa_expiry_pkts_soft || flags->sa_expiry_bytes_soft) {
+		if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+			return TEST_SUCCESS;
+		event = test_ipsec_inline_setup_expiry_vector(&vector, flags, td);
+	}
 
 	if (td->aead) {
 		sess_conf.crypto_xform = &aead;
@@ -1105,6 +1169,15 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 out:
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
 		destroy_default_flow(port_id);
+	if (flags->sa_expiry_pkts_soft || flags->sa_expiry_bytes_soft) {
+		if (vector.notify_event && (vector.event == event))
+			ret = TEST_SUCCESS;
+		else
+			ret = TEST_FAILED;
+
+		rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_IPSEC,
+			test_ipsec_inline_sa_exp_event_callback, &vector);
+	}
 
 	/* Destroy session so that other cases can create the session again */
 	rte_security_session_destroy(ctx, ses);
@@ -1122,6 +1195,7 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 	int ret;
 
 	if (flags->iv_gen || flags->sa_expiry_pkts_soft ||
+			flags->sa_expiry_bytes_soft ||
 			flags->sa_expiry_pkts_hard)
 		nb_pkts = IPSEC_TEST_PACKETS_MAX;
 
@@ -1153,6 +1227,11 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 
 		if (flags->udp_encap)
 			td_outb.ipsec_xform.options.udp_encap = 1;
+
+		if (flags->sa_expiry_bytes_soft)
+			td_outb.ipsec_xform.life.bytes_soft_limit =
+				(((td_outb.output_text.len + RTE_ETHER_HDR_LEN)
+				  * nb_pkts) >> 3) - 1;
 
 		ret = test_ipsec_inline_proto_process(&td_outb, &td_inb, nb_pkts,
 						false, flags);
@@ -2267,6 +2346,23 @@ test_ipsec_inline_proto_iv_gen(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_inline_proto_sa_pkt_soft_expiry(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags = {
+		.sa_expiry_pkts_soft = true
+	};
+	return test_ipsec_inline_proto_all(&flags);
+}
+static int
+test_ipsec_inline_proto_sa_byte_soft_expiry(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags = {
+		.sa_expiry_bytes_soft = true
+	};
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
 test_ipsec_inline_proto_known_vec_fragmented(const void *test_data)
 {
 	struct ipsec_test_data td_outb;
@@ -2668,7 +2764,14 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 			"IV generation",
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
 			test_ipsec_inline_proto_iv_gen),
-
+		TEST_CASE_NAMED_ST(
+			"SA soft expiry with packet limit",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_sa_pkt_soft_expiry),
+		TEST_CASE_NAMED_ST(
+			"SA soft expiry with byte limit",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_sa_byte_soft_expiry),
 
 		TEST_CASE_NAMED_WITH_DATA(
 			"Antireplay with window size 1024",
