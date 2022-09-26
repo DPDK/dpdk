@@ -332,7 +332,7 @@ int rte_event_eth_rx_adapter_free(uint8_t id);
  * @see RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ
  *
  * @param conf
- *  Additional configuration structure of type *rte_event_eth_rx_adapter_conf*
+ *  Additional configuration structure of type *rte_event_eth_rx_adapter_queue_conf*
  *
  * @return
  *  - 0: Success, Receive queue added correctly.
