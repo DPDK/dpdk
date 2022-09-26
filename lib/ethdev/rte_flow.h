@@ -3689,6 +3689,20 @@ struct rte_flow_action {
 struct rte_flow;
 
 /**
+ * Opaque type for Meter profile object returned by MTR API.
+ *
+ * This handle can be used to create Meter actions instead of profile ID.
+ */
+struct rte_flow_meter_profile;
+
+/**
+ * Opaque type for Meter policy object returned by MTR API.
+ *
+ * This handle can be used to create Meter actions instead of policy ID.
+ */
+struct rte_flow_meter_policy;
+
+/**
  * @warning
  * @b EXPERIMENTAL: this structure may change without prior notice
  *

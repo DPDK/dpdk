@@ -56,6 +56,25 @@ rte_mtr_ops_get(uint16_t port_id, struct rte_mtr_error *error)
 	ops->func;					\
 })
 
+#define RTE_MTR_HNDL_FUNC(port_id, func)		\
+({							\
+	const struct rte_mtr_ops *ops =			\
+		rte_mtr_ops_get(port_id, error);	\
+	if (ops == NULL)				\
+		return NULL;				\
+							\
+	if (ops->func == NULL) {			\
+		rte_mtr_error_set(error,		\
+			ENOSYS,				\
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED,	\
+			NULL,				\
+			rte_strerror(ENOSYS));		\
+		return NULL;				\
+	}						\
+							\
+	ops->func;					\
+})
+
 /* MTR capabilities get */
 int
 rte_mtr_capabilities_get(uint16_t port_id,
@@ -90,6 +109,17 @@ rte_mtr_meter_profile_delete(uint16_t port_id,
 		meter_profile_id, error);
 }
 
+/** MTR meter profile get */
+struct rte_flow_meter_profile *
+rte_mtr_meter_profile_get(uint16_t port_id,
+	uint32_t meter_profile_id,
+	struct rte_mtr_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	return RTE_MTR_HNDL_FUNC(port_id, meter_profile_get)(dev,
+		meter_profile_id, error);
+}
+
 /* MTR meter policy validate */
 int
 rte_mtr_meter_policy_validate(uint16_t port_id,
@@ -121,6 +151,17 @@ rte_mtr_meter_policy_delete(uint16_t port_id,
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	return RTE_MTR_FUNC(port_id, meter_policy_delete)(dev,
+		policy_id, error);
+}
+
+/** MTR meter policy get */
+struct rte_flow_meter_policy *
+rte_mtr_meter_policy_get(uint16_t port_id,
+	uint32_t policy_id,
+	struct rte_mtr_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	return RTE_MTR_HNDL_FUNC(port_id, meter_policy_get)(dev,
 		policy_id, error);
 }
 

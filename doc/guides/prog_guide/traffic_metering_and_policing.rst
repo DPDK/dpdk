@@ -107,6 +107,13 @@ traffic meter and policing library.
      to the list of meter actions (``struct rte_mtr_meter_policy_params::actions``)
      specified per color as show in :numref:`figure_rte_mtr_chaining`.
 
+#. The ``rte_mtr_meter_profile_get()`` and ``rte_mtr_meter_policy_get()``
+   API functions are available for getting the object pointers directly.
+   These pointers allow quick access to profile/policy objects and are
+   required by the ``RTE_FLOW_ACTION_TYPE_METER_MARK`` action.
+   This action may omit the policy definition to provide flexibility
+   to match a color later with the ``RTE_FLOW_ITEM_TYPE_METER_COLOR`` item.
+
 Protocol based input color selection
 ------------------------------------
 

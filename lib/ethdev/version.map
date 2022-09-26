@@ -288,6 +288,8 @@ EXPERIMENTAL {
 
 	# added in 22.11
 	rte_flow_async_action_handle_query;
+	rte_mtr_meter_policy_get;
+	rte_mtr_meter_profile_get;
 };
 
 INTERNAL {

@@ -41,6 +41,12 @@ typedef int (*rte_mtr_meter_profile_delete_t)(struct rte_eth_dev *dev,
 	uint32_t meter_profile_id,
 	struct rte_mtr_error *error);
 
+/** @internal MTR meter profile get. */
+typedef struct rte_flow_meter_profile *
+(*rte_mtr_meter_profile_get_t)(struct rte_eth_dev *dev,
+	uint32_t meter_profile_id,
+	struct rte_mtr_error *error);
+
 /** @internal MTR meter policy validate. */
 typedef int (*rte_mtr_meter_policy_validate_t)(struct rte_eth_dev *dev,
 	struct rte_mtr_meter_policy_params *policy,
@@ -56,6 +62,13 @@ typedef int (*rte_mtr_meter_policy_add_t)(struct rte_eth_dev *dev,
 typedef int (*rte_mtr_meter_policy_delete_t)(struct rte_eth_dev *dev,
 	uint32_t policy_id,
 	struct rte_mtr_error *error);
+
+/** @internal MTR meter policy get. */
+typedef struct rte_flow_meter_policy *
+(*rte_mtr_meter_policy_get_t)(struct rte_eth_dev *dev,
+	uint32_t policy_id,
+	struct rte_mtr_error *error);
+
 
 /** @internal MTR object create. */
 typedef int (*rte_mtr_create_t)(struct rte_eth_dev *dev,
@@ -194,6 +207,12 @@ struct rte_mtr_ops {
 
 	/** MTR object meter policy update */
 	rte_mtr_meter_policy_update_t meter_policy_update;
+
+	/** MTR meter profile get */
+	rte_mtr_meter_profile_get_t meter_profile_get;
+
+	/** MTR meter policy get */
+	rte_mtr_meter_policy_get_t meter_policy_get;
 };
 
 /**
