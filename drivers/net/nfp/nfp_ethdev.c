@@ -33,9 +33,9 @@
 #include "nfpcore/nfp_nsp.h"
 
 #include "nfp_common.h"
+#include "nfp_ctrl.h"
 #include "nfp_rxtx.h"
 #include "nfp_logs.h"
-#include "nfp_ctrl.h"
 #include "nfp_cpp_bridge.h"
 
 #include "flower/nfp_flower.h"
