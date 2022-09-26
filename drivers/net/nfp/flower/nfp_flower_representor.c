@@ -464,6 +464,92 @@ nfp_flower_repr_mac_addr_set(struct rte_eth_dev *ethdev,
 	return 0;
 }
 
+static uint16_t
+nfp_flower_repr_rx_burst(void *rx_queue,
+		struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	unsigned int available = 0;
+	unsigned int total_dequeue;
+	struct nfp_net_rxq *rxq;
+	struct rte_eth_dev *dev;
+	struct nfp_flower_representor *repr;
+
+	rxq = rx_queue;
+	if (unlikely(rxq == NULL)) {
+		PMD_RX_LOG(ERR, "RX Bad queue");
+		return 0;
+	}
+
+	dev = &rte_eth_devices[rxq->port_id];
+	repr = dev->data->dev_private;
+	if (unlikely(repr->ring == NULL)) {
+		PMD_RX_LOG(ERR, "representor %s has no ring configured!",
+				repr->name);
+		return 0;
+	}
+
+	total_dequeue = rte_ring_dequeue_burst(repr->ring, (void *)rx_pkts,
+			nb_pkts, &available);
+	if (total_dequeue != 0) {
+		PMD_RX_LOG(DEBUG, "Representor Rx burst for %s, port_id: 0x%x, "
+				"received: %u, available: %u", repr->name,
+				repr->port_id, total_dequeue, available);
+
+		repr->repr_stats.ipackets += total_dequeue;
+	}
+
+	return total_dequeue;
+}
+
+static uint16_t
+nfp_flower_repr_tx_burst(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	uint16_t i;
+	uint16_t sent;
+	char *meta_offset;
+	void *pf_tx_queue;
+	struct nfp_net_txq *txq;
+	struct nfp_net_hw *pf_hw;
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev *repr_dev;
+	struct nfp_flower_representor *repr;
+
+	txq = tx_queue;
+	if (unlikely(txq == NULL)) {
+		PMD_TX_LOG(ERR, "TX Bad queue");
+		return 0;
+	}
+
+	/* Grab a handle to the representor struct */
+	repr_dev = &rte_eth_devices[txq->port_id];
+	repr = repr_dev->data->dev_private;
+
+	for (i = 0; i < nb_pkts; i++) {
+		meta_offset = rte_pktmbuf_prepend(tx_pkts[i], FLOWER_PKT_DATA_OFFSET);
+		*(uint32_t *)meta_offset = rte_cpu_to_be_32(NFP_NET_META_PORTID);
+		meta_offset += 4;
+		*(uint32_t *)meta_offset = rte_cpu_to_be_32(repr->port_id);
+	}
+
+	/* This points to the PF vNIC that owns this representor */
+	pf_hw = txq->hw;
+	dev = pf_hw->eth_dev;
+
+	/* Only using Tx queue 0 for now. */
+	pf_tx_queue = dev->data->tx_queues[0];
+	sent = nfp_flower_pf_xmit_pkts(pf_tx_queue, tx_pkts, nb_pkts);
+	if (sent != 0) {
+		PMD_TX_LOG(DEBUG, "Representor Tx burst for %s, port_id: 0x%x transmitted: %u",
+				repr->name, repr->port_id, sent);
+		repr->repr_stats.opackets += sent;
+	}
+
+	return sent;
+}
+
 static const struct eth_dev_ops nfp_flower_pf_repr_dev_ops = {
 	.dev_infos_get        = nfp_flower_repr_dev_infos_get,
 
@@ -553,6 +639,8 @@ nfp_flower_pf_repr_init(struct rte_eth_dev *eth_dev,
 	snprintf(repr->name, sizeof(repr->name), "%s", init_repr_data->name);
 
 	eth_dev->dev_ops = &nfp_flower_pf_repr_dev_ops;
+	eth_dev->rx_pkt_burst = nfp_flower_pf_recv_pkts;
+	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 
 	eth_dev->data->representor_id = 0;
@@ -622,6 +710,8 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	snprintf(repr->name, sizeof(repr->name), "%s", init_repr_data->name);
 
 	eth_dev->dev_ops = &nfp_flower_repr_dev_ops;
+	eth_dev->rx_pkt_burst = nfp_flower_repr_rx_burst;
+	eth_dev->tx_pkt_burst = nfp_flower_repr_tx_burst;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 
 	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT)
