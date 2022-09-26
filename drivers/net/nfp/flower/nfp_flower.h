@@ -14,8 +14,20 @@
  */
 #define FLOWER_PKT_DATA_OFFSET 8
 
+#define MAX_FLOWER_PHYPORTS 8
+#define MAX_FLOWER_VFS 64
+
 /* The flower application's private structure */
 struct nfp_app_fw_flower {
+	/* switch domain for this app */
+	uint16_t switch_domain_id;
+
+	/* Number of VF representors */
+	uint8_t num_vf_reprs;
+
+	/* Number of phyport representors */
+	uint8_t num_phyport_reprs;
+
 	/* Pointer to the PF vNIC */
 	struct nfp_net_hw *pf_hw;
 
@@ -30,6 +42,15 @@ struct nfp_app_fw_flower {
 
 	/* Ctrl vNIC Tx counter */
 	uint64_t ctrl_vnic_tx_count;
+
+	/* Array of phyport representors */
+	struct nfp_flower_representor *phy_reprs[MAX_FLOWER_PHYPORTS];
+
+	/* Array of VF representors */
+	struct nfp_flower_representor *vf_reprs[MAX_FLOWER_VFS];
+
+	/* PF representor */
+	struct nfp_flower_representor *pf_repr;
 };
 
 int nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev);

@@ -194,3 +194,9 @@ The flower firmware application requires the PMD running two services:
 	* PF vNIC service: handling the feedback traffic.
 	* ctrl vNIC service: communicate between PMD and firmware through
 	  control message.
+
+To achieve the offload of flow, the representor ports are exposed to OVS.
+The flower firmware application support representor port for VF and physical
+port. There will always exist a representor port for each physical port,
+and the number of the representor port for VF is specified by the user through
+parameter.

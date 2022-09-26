@@ -19,6 +19,7 @@
 #include "../nfpcore/nfp_nsp.h"
 #include "nfp_flower.h"
 #include "nfp_flower_ctrl.h"
+#include "nfp_flower_representor.h"
 
 #define CTRL_VNIC_NB_DESC 512
 #define DEFAULT_FLBUF_SIZE 9216
@@ -565,6 +566,12 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not enable flower services");
 		ret = -ESRCH;
+		goto ctrl_vnic_cleanup;
+	}
+
+	ret = nfp_flower_repr_create(app_fw_flower);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Could not create representor ports");
 		goto ctrl_vnic_cleanup;
 	}
 

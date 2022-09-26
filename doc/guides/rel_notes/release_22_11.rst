@@ -101,6 +101,7 @@ New Features
   * Added the support of flower firmware.
   * Added the flower service infrastructure.
   * Added the control message interactive channels between PMD and firmware.
+  * Added the support of representor port.
 
 * **Updated NXP dpaa2 driver.**
 
