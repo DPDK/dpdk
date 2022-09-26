@@ -116,12 +116,6 @@ nfp_net_rx_queue_count(void *rx_queue)
 	return count;
 }
 
-static inline void
-nfp_net_mbuf_alloc_failed(struct nfp_net_rxq *rxq)
-{
-	rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
-}
-
 /*
  * nfp_net_set_hash - Set mbuf hash data
  *
@@ -583,7 +577,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
  * @txq: TX queue to work with
  * Returns number of descriptors freed
  */
-static int
+int
 nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 {
 	uint32_t qcp_rd_p;
@@ -772,30 +766,6 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(nb_desc));
 
 	return 0;
-}
-
-/* Leaving always free descriptors for avoiding wrapping confusion */
-static inline
-uint32_t nfp_net_nfd3_free_tx_desc(struct nfp_net_txq *txq)
-{
-	if (txq->wr_p >= txq->rd_p)
-		return txq->tx_count - (txq->wr_p - txq->rd_p) - 8;
-	else
-		return txq->rd_p - txq->wr_p - 8;
-}
-
-/*
- * nfp_net_txq_full - Check if the TX queue free descriptors
- * is below tx_free_threshold
- *
- * @txq: TX queue to check
- *
- * This function uses the host copy* of read/write pointers
- */
-static inline
-uint32_t nfp_net_nfd3_txq_full(struct nfp_net_txq *txq)
-{
-	return (nfp_net_nfd3_free_tx_desc(txq) < txq->tx_free_thresh);
 }
 
 /* nfp_net_tx_tso - Set TX descriptor for TSO */
