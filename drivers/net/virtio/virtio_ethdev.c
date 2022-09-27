@@ -2616,6 +2616,13 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 	}
 
+	/* if queues are not allocated, reinit the device */
+	if (hw->vqs == NULL) {
+		ret = virtio_init_device(dev, hw->req_guest_features);
+		if (ret < 0)
+			return ret;
+	}
+
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) &&
 			!virtio_with_feature(hw, VIRTIO_NET_F_RSS)) {
 		PMD_DRV_LOG(ERR, "RSS support requested but not supported by the device");
