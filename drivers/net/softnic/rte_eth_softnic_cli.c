@@ -230,6 +230,7 @@ cmd_softnic_pipeline_codegen(struct pmd_internals *softnic __rte_unused,
 	code_file = fopen(tokens[3], "w");
 	if (!code_file) {
 		snprintf(out, out_size, "Cannot open file %s.\n", tokens[3]);
+		fclose(spec_file);
 		return;
 	}
 
