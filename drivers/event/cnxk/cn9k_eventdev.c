@@ -1066,6 +1066,10 @@ static struct eventdev_ops cn9k_sso_dev_ops = {
 	.crypto_adapter_queue_pair_add = cn9k_crypto_adapter_qp_add,
 	.crypto_adapter_queue_pair_del = cn9k_crypto_adapter_qp_del,
 
+	.xstats_get = cnxk_sso_xstats_get,
+	.xstats_reset = cnxk_sso_xstats_reset,
+	.xstats_get_names = cnxk_sso_xstats_get_names,
+
 	.dump = cnxk_sso_dump,
 	.dev_start = cn9k_sso_start,
 	.dev_stop = cn9k_sso_stop,
