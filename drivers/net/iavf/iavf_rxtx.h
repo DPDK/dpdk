@@ -53,6 +53,8 @@
 #define IAVF_TSO_MAX_SEG          UINT8_MAX
 #define IAVF_TX_MAX_MTU_SEG       8
 
+#define IAVF_TX_MIN_PKT_LEN 17
+
 #define IAVF_TX_CKSUM_OFFLOAD_MASK (		 \
 		RTE_MBUF_F_TX_IP_CKSUM |		 \
 		RTE_MBUF_F_TX_L4_MASK |		 \
