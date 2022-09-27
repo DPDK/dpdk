@@ -116,6 +116,8 @@ enum rte_crypto_asym_xform_type {
 	/**< Elliptic Curve Diffie Hellman */
 	RTE_CRYPTO_ASYM_XFORM_ECPM,
 	/**< Elliptic Curve Point Multiplication */
+	RTE_CRYPTO_ASYM_XFORM_ECFPM,
+	/**< Elliptic Curve Fixed Point Multiplication */
 	RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
 	/**< End of list */
 };
