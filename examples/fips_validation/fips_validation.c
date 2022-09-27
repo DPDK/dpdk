@@ -514,6 +514,12 @@ fips_test_parse_one_json_group(void)
 			if (ret < 0)
 				return ret;
 		}
+
+		if (info.parse_interim_writeback) {
+			ret = info.parse_interim_writeback(NULL);
+			if (ret < 0)
+				return ret;
+		}
 	}
 
 	return 0;

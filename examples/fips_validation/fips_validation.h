@@ -228,6 +228,7 @@ struct fips_test_interim_info {
 	const struct fips_test_callback *interim_callbacks;
 	const struct fips_test_callback *writeback_callbacks;
 
+	post_prcess_t parse_interim_writeback;
 	post_prcess_t parse_writeback;
 	post_prcess_t kat_check;
 };
