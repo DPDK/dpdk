@@ -69,6 +69,7 @@ ACVP
     * TDES-CBC - AFT, MCT
     * TDES-ECB - AFT, MCT
     * RSA
+    * ECDSA
 
 
 Application Information

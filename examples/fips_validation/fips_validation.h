@@ -45,6 +45,7 @@ enum fips_test_algorithms {
 		FIPS_TEST_ALGO_TDES,
 		FIPS_TEST_ALGO_SHA,
 		FIPS_TEST_ALGO_RSA,
+		FIPS_TEST_ALGO_ECDSA,
 		FIPS_TEST_ALGO_MAX
 };
 
@@ -96,6 +97,15 @@ struct fips_test_vector {
 		struct fips_val dq;
 		struct fips_val qinv;
 	} rsa;
+	struct {
+		struct fips_val seed;
+		struct fips_val pkey;
+		struct fips_val qx;
+		struct fips_val qy;
+		struct fips_val r;
+		struct fips_val s;
+		struct fips_val k;
+	} ecdsa;
 
 	struct fips_val pt;
 	struct fips_val ct;
@@ -162,6 +172,10 @@ enum fips_rsa_test_types {
 	RSA_KAT
 };
 
+enum fips_ecdsa_test_types {
+	ECDSA_AFT = 0,
+};
+
 struct aesavs_interim_data {
 	enum fips_aesavs_test_types test_type;
 	uint32_t cipher_algo;
@@ -216,6 +230,14 @@ struct rsa_interim_data {
 	uint8_t random_msg;
 };
 
+struct ecdsa_interim_data {
+	enum rte_crypto_auth_algorithm auth;
+	enum rte_crypto_curve_id curve_id;
+	uint8_t curve_len;
+	uint8_t random_msg;
+	uint8_t pubkey_gen;
+};
+
 #ifdef USE_JANSSON
 /*
  * Maximum length of buffer to hold any json string.
@@ -262,6 +284,7 @@ struct fips_test_interim_info {
 		struct gcm_interim_data gcm_data;
 		struct xts_interim_data xts_data;
 		struct rsa_interim_data rsa_data;
+		struct ecdsa_interim_data ecdsa_data;
 	} interim_info;
 
 	enum fips_test_op op;
@@ -271,6 +294,7 @@ struct fips_test_interim_info {
 	const struct fips_test_callback *writeback_callbacks;
 
 	post_prcess_t parse_interim_writeback;
+	post_prcess_t post_interim_writeback;
 	post_prcess_t parse_writeback;
 	post_prcess_t kat_check;
 };
@@ -340,6 +364,9 @@ parse_test_tdes_json_init(void);
 
 int
 parse_test_rsa_json_init(void);
+
+int
+parse_test_ecdsa_json_init(void);
 
 int
 fips_test_randomize_message(struct fips_val *msg, struct fips_val *rand);

@@ -479,6 +479,8 @@ fips_test_parse_one_json_vector_set(void)
 		info.algo = FIPS_TEST_ALGO_TDES;
 	else if (strstr(algo_str, "RSA"))
 		info.algo = FIPS_TEST_ALGO_RSA;
+	else if (strstr(algo_str, "ECDSA"))
+		info.algo = FIPS_TEST_ALGO_ECDSA;
 	else
 		return -EINVAL;
 

@@ -986,6 +986,103 @@ prepare_rsa_op(void)
 }
 
 static int
+prepare_ecdsa_op(void)
+{
+	struct rte_crypto_asym_op *asym;
+	struct fips_val msg;
+
+	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+
+	asym = env.op->asym;
+	if (env.digest) {
+		msg.val = env.digest;
+		msg.len = env.digest_len;
+	} else {
+		msg.val = vec.pt.val;
+		msg.len = vec.pt.len;
+	}
+
+	if (info.op == FIPS_TEST_ASYM_SIGGEN) {
+		asym->ecdsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+		asym->ecdsa.message.data = msg.val;
+		asym->ecdsa.message.length = msg.len;
+		asym->ecdsa.pkey.data = vec.ecdsa.pkey.val;
+		asym->ecdsa.pkey.length = vec.ecdsa.pkey.len;
+		asym->ecdsa.k.data = vec.ecdsa.k.val;
+		asym->ecdsa.k.length = vec.ecdsa.k.len;
+
+		if (vec.ecdsa.r.val)
+			rte_free(vec.ecdsa.r.val);
+
+		if (vec.ecdsa.s.val)
+			rte_free(vec.ecdsa.s.val);
+
+		vec.ecdsa.r.len = info.interim_info.ecdsa_data.curve_len;
+		vec.ecdsa.r.val = rte_zmalloc(NULL, vec.ecdsa.r.len, 0);
+
+		vec.ecdsa.s.len = vec.ecdsa.r.len;
+		vec.ecdsa.s.val = rte_zmalloc(NULL, vec.ecdsa.s.len, 0);
+
+		asym->ecdsa.r.data = vec.ecdsa.r.val;
+		asym->ecdsa.r.length = 0;
+		asym->ecdsa.s.data = vec.ecdsa.s.val;
+		asym->ecdsa.s.length = 0;
+	} else if (info.op == FIPS_TEST_ASYM_SIGVER) {
+		asym->ecdsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+		asym->ecdsa.message.data = msg.val;
+		asym->ecdsa.message.length = msg.len;
+		asym->ecdsa.q.x.data = vec.ecdsa.qx.val;
+		asym->ecdsa.q.x.length = vec.ecdsa.qx.len;
+		asym->ecdsa.q.y.data = vec.ecdsa.qy.val;
+		asym->ecdsa.q.y.length = vec.ecdsa.qy.len;
+		asym->ecdsa.r.data = vec.ecdsa.r.val;
+		asym->ecdsa.r.length = vec.ecdsa.r.len;
+		asym->ecdsa.s.data = vec.ecdsa.s.val;
+		asym->ecdsa.s.length = vec.ecdsa.s.len;
+	} else {
+		RTE_LOG(ERR, USER1, "Invalid op %d\n", info.op);
+		return -EINVAL;
+	}
+
+	rte_crypto_op_attach_asym_session(env.op, env.asym.sess);
+
+	return 0;
+}
+
+static int
+prepare_ecfpm_op(void)
+{
+	struct rte_crypto_asym_op *asym;
+
+	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+
+	asym = env.op->asym;
+	asym->ecpm.scalar.data = vec.ecdsa.pkey.val;
+	asym->ecpm.scalar.length = vec.ecdsa.pkey.len;
+
+	if (vec.ecdsa.qx.val)
+		rte_free(vec.ecdsa.qx.val);
+
+	if (vec.ecdsa.qy.val)
+		rte_free(vec.ecdsa.qy.val);
+
+	vec.ecdsa.qx.len = info.interim_info.ecdsa_data.curve_len;
+	vec.ecdsa.qx.val = rte_zmalloc(NULL, vec.ecdsa.qx.len, 0);
+
+	vec.ecdsa.qy.len = vec.ecdsa.qx.len;
+	vec.ecdsa.qy.val = rte_zmalloc(NULL, vec.ecdsa.qy.len, 0);
+
+	asym->ecpm.r.x.data = vec.ecdsa.qx.val;
+	asym->ecpm.r.x.length = 0;
+	asym->ecpm.r.y.data = vec.ecdsa.qy.val;
+	asym->ecpm.r.y.length = 0;
+
+	rte_crypto_op_attach_asym_session(env.op, env.asym.sess);
+
+	return 0;
+}
+
+static int
 prepare_aes_xform(struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_cryptodev_symmetric_capability *cap;
@@ -1453,6 +1550,69 @@ prepare_rsa_xform(struct rte_crypto_asym_xform *xform)
 }
 
 static int
+prepare_ecdsa_xform(struct rte_crypto_asym_xform *xform)
+{
+	const struct rte_cryptodev_asymmetric_xform_capability *cap;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+
+	xform->xform_type = RTE_CRYPTO_ASYM_XFORM_ECDSA;
+	xform->next = NULL;
+
+	cap_idx.type = xform->xform_type;
+	cap = rte_cryptodev_asym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	switch (info.op) {
+	case FIPS_TEST_ASYM_SIGGEN:
+		if (!rte_cryptodev_asym_xform_capability_check_optype(cap,
+			RTE_CRYPTO_ASYM_OP_SIGN)) {
+			RTE_LOG(ERR, USER1, "PMD %s xform_op %u\n",
+				info.device_name, RTE_CRYPTO_ASYM_OP_SIGN);
+			return -EPERM;
+		}
+		break;
+	case FIPS_TEST_ASYM_SIGVER:
+		if (!rte_cryptodev_asym_xform_capability_check_optype(cap,
+			RTE_CRYPTO_ASYM_OP_VERIFY)) {
+			RTE_LOG(ERR, USER1, "PMD %s xform_op %u\n",
+				info.device_name, RTE_CRYPTO_ASYM_OP_VERIFY);
+			return -EPERM;
+		}
+		break;
+	default:
+		break;
+	}
+
+	xform->ec.curve_id = info.interim_info.ecdsa_data.curve_id;
+	return 0;
+}
+
+static int
+prepare_ecfpm_xform(struct rte_crypto_asym_xform *xform)
+{
+	const struct rte_cryptodev_asymmetric_xform_capability *cap;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+
+	xform->xform_type = RTE_CRYPTO_ASYM_XFORM_ECFPM;
+	xform->next = NULL;
+
+	cap_idx.type = xform->xform_type;
+	cap = rte_cryptodev_asym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	xform->ec.curve_id = info.interim_info.ecdsa_data.curve_id;
+	return 0;
+}
+
+static int
 get_writeback_data(struct fips_val *val)
 {
 	struct rte_mbuf *m = env.mbuf;
@@ -1551,7 +1711,7 @@ fips_run_asym_test(void)
 	struct rte_crypto_op *deqd_op;
 	int ret;
 
-	if (info.op == FIPS_TEST_ASYM_KEYGEN) {
+	if (info.op == FIPS_TEST_ASYM_KEYGEN && info.algo != FIPS_TEST_ALGO_ECDSA) {
 		RTE_SET_USED(asym);
 		ret = 0;
 		goto exit;
@@ -1614,7 +1774,33 @@ fips_run_test(void)
 	}
 
 	env.op = env.asym.op;
-	return fips_run_asym_test();
+	if (info.op == FIPS_TEST_ASYM_SIGGEN &&
+		info.algo == FIPS_TEST_ALGO_ECDSA &&
+		info.interim_info.ecdsa_data.pubkey_gen == 1) {
+		fips_prepare_asym_xform_t ecdsa_xform;
+		fips_prepare_op_t ecdsa_op;
+
+		ecdsa_xform = test_ops.prepare_asym_xform;
+		ecdsa_op = test_ops.prepare_asym_op;
+		info.op = FIPS_TEST_ASYM_KEYGEN;
+		test_ops.prepare_asym_xform = prepare_ecfpm_xform;
+		test_ops.prepare_asym_op = prepare_ecfpm_op;
+		ret = fips_run_asym_test();
+		if (ret < 0)
+			return ret;
+
+		info.post_interim_writeback(NULL);
+		info.interim_info.ecdsa_data.pubkey_gen = 0;
+
+		test_ops.prepare_asym_xform = ecdsa_xform;
+		test_ops.prepare_asym_op = ecdsa_op;
+		info.op = FIPS_TEST_ASYM_SIGGEN;
+		ret = fips_run_asym_test();
+	} else {
+		ret = fips_run_asym_test();
+	}
+
+	return ret;
 }
 
 static int
@@ -2251,6 +2437,17 @@ init_test_ops(void)
 		test_ops.prepare_asym_xform = prepare_rsa_xform;
 		test_ops.test = fips_generic_test;
 		break;
+	case FIPS_TEST_ALGO_ECDSA:
+		if (info.op == FIPS_TEST_ASYM_KEYGEN) {
+			test_ops.prepare_asym_op = prepare_ecfpm_op;
+			test_ops.prepare_asym_xform = prepare_ecfpm_xform;
+			test_ops.test = fips_generic_test;
+		} else {
+			test_ops.prepare_asym_op = prepare_ecdsa_op;
+			test_ops.prepare_asym_xform = prepare_ecdsa_xform;
+			test_ops.test = fips_generic_test;
+		}
+		break;
 	default:
 		if (strstr(info.file_name, "TECB") ||
 				strstr(info.file_name, "TCBC")) {
@@ -2427,6 +2624,9 @@ fips_test_one_test_group(void)
 	case FIPS_TEST_ALGO_RSA:
 		ret = parse_test_rsa_json_init();
 		break;
+	case FIPS_TEST_ALGO_ECDSA:
+		ret = parse_test_ecdsa_json_init();
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2457,7 +2657,7 @@ static int
 fips_test_one_vector_set(void)
 {
 	int ret;
-	json_t *test_groups, *write_groups, *write_version, *write_set;
+	json_t *test_groups, *write_groups, *write_version, *write_set, *mode;
 	size_t group_idx, num_groups;
 
 	test_groups = json_object_get(json_info.json_vector_set, "testGroups");
@@ -2476,6 +2676,10 @@ fips_test_one_vector_set(void)
 		json_object_get(json_info.json_vector_set, "vsId"));
 	json_object_set(write_set, "algorithm",
 		json_object_get(json_info.json_vector_set, "algorithm"));
+	mode = json_object_get(json_info.json_vector_set, "mode");
+	if (mode != NULL)
+		json_object_set_new(write_set, "mode", mode);
+
 	json_object_set(write_set, "revision",
 		json_object_get(json_info.json_vector_set, "revision"));
 	json_object_set_new(write_set, "isSample",
