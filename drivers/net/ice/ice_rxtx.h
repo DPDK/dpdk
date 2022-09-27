@@ -40,6 +40,8 @@
 
 #define ICE_RXDID_COMMS_OVS	22
 
+#define ICE_TX_MIN_PKT_LEN 17
+
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
 typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
 typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,
