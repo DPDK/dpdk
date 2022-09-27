@@ -183,6 +183,13 @@ struct xts_interim_data {
 };
 
 #ifdef USE_JANSSON
+/*
+ * Maximum length of buffer to hold any json string.
+ * Esp, in asym op, modulo bits decide char buffer size.
+ * max = (modulo / 4)
+ */
+#define FIPS_TEST_JSON_BUF_LEN (4096 / 4)
+
 struct fips_test_json_info {
 	/* Information used for reading from json */
 	json_t *json_root;
