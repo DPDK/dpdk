@@ -2329,12 +2329,15 @@ end_of_tx:
 
 /* TX prep functions */
 uint16_t
-iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+iavf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	      uint16_t nb_pkts)
 {
 	int i, ret;
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
+	struct iavf_tx_queue *txq = tx_queue;
+	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
+	uint16_t max_frame_size = dev->data->mtu + IAVF_ETH_OVERHEAD;
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
@@ -2355,6 +2358,14 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		if (ol_flags & IAVF_TX_OFFLOAD_NOTSUP_MASK) {
 			rte_errno = ENOTSUP;
+			return i;
+		}
+
+		/* check the data_len in mbuf */
+		if (m->data_len < IAVF_TX_MIN_PKT_LEN ||
+			m->data_len > max_frame_size) {
+			rte_errno = EINVAL;
+			PMD_DRV_LOG(ERR, "INVALID mbuf: bad data_len=[%hu]", m->data_len);
 			return i;
 		}
 
