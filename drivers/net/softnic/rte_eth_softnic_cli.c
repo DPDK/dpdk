@@ -326,7 +326,7 @@ cmd_softnic_pipeline_libbuild(struct pmd_internals *softnic __rte_unused,
 	buffer = malloc(MAX_LINE_SIZE);
 	if (!buffer) {
 		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
-		return;
+		goto free;
 	}
 
 	snprintf(buffer,
