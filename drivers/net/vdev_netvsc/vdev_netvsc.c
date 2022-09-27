@@ -24,10 +24,10 @@
 #include <unistd.h>
 
 #include <rte_alarm.h>
-#include <rte_bus.h>
-#include <rte_bus_vdev.h>
+#include <bus_driver.h>
+#include <bus_vdev_driver.h>
 #include <rte_common.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>

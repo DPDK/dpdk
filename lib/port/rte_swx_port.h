@@ -185,11 +185,17 @@ typedef void
 
 /** Output port statistics counters. */
 struct rte_swx_port_out_stats {
-	/** Number of packets. */
+	/** Number of packets successfully transmitted. */
 	uint64_t n_pkts;
 
-	/** Number of bytes. */
+	/** Number of bytes successfully transmitted. */
 	uint64_t n_bytes;
+
+	/** Number of packets dropped. */
+	uint64_t n_pkts_drop;
+
+	/** Number of bytes dropped. */
+	uint64_t n_bytes_drop;
 
 	/** Number of packets cloned successfully. */
 	uint64_t n_pkts_clone;

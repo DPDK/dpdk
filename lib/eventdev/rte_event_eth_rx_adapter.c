@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Intel Corporation.
  * All rights reserved.
  */
+#include <ctype.h>
+#include <stdlib.h>
 #if defined(LINUX)
 #include <sys/epoll.h>
 #endif
@@ -9,7 +11,7 @@
 
 #include <rte_cycles.h>
 #include <rte_common.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <ethdev_driver.h>
 #include <rte_log.h>
@@ -2655,8 +2657,8 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	dev_info = &rx_adapter->eth_devices[eth_dev_id];
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->eth_rx_adapter_queue_add,
-					-ENOTSUP);
+		if (*dev->dev_ops->eth_rx_adapter_queue_add == NULL)
+			return -ENOTSUP;
 		if (dev_info->rx_queue == NULL) {
 			dev_info->rx_queue =
 			    rte_zmalloc_socket(rx_adapter->mem_name,
@@ -2750,8 +2752,8 @@ rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 	dev_info = &rx_adapter->eth_devices[eth_dev_id];
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->eth_rx_adapter_queue_del,
-				 -ENOTSUP);
+		if (*dev->dev_ops->eth_rx_adapter_queue_del == NULL)
+			return -ENOTSUP;
 		ret = (*dev->dev_ops->eth_rx_adapter_queue_del)(dev,
 						&rte_eth_devices[eth_dev_id],
 						rx_queue_id);
@@ -2861,9 +2863,8 @@ rte_event_eth_rx_adapter_vector_limits_get(
 	}
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		RTE_FUNC_PTR_OR_ERR_RET(
-			*dev->dev_ops->eth_rx_adapter_vector_limits_get,
-			-ENOTSUP);
+		if (*dev->dev_ops->eth_rx_adapter_vector_limits_get == NULL)
+			return -ENOTSUP;
 		ret = dev->dev_ops->eth_rx_adapter_vector_limits_get(
 			dev, &rte_eth_devices[eth_port_id], limits);
 	} else {

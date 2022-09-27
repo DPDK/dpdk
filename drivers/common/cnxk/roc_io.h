@@ -161,14 +161,15 @@ roc_lmt_mov(void *out, const void *in, const uint32_t lmtext)
 {
 	volatile const __uint128_t *src128 = (const __uint128_t *)in;
 	volatile __uint128_t *dst128 = (__uint128_t *)out;
+	uint32_t i;
 
 	dst128[0] = src128[0];
 	dst128[1] = src128[1];
 	/* lmtext receives following value:
 	 * 1: NIX_SUBDC_EXT needed i.e. tx vlan case
 	 */
-	if (lmtext)
-		dst128[2] = src128[2];
+	for (i = 0; i < lmtext; i++)
+		dst128[2 + i] = src128[2 + i];
 }
 
 static __plt_always_inline void

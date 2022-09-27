@@ -18,6 +18,7 @@ test_sources = files(
         'test_bpf.c',
         'test_byteorder.c',
         'test_cksum.c',
+        'test_cksum_perf.c',
         'test_cmdline.c',
         'test_cmdline_cirbuf.c',
         'test_cmdline_etheraddr.c',
@@ -473,12 +474,14 @@ message('hugepage availability: @0@'.format(has_hugepage))
 timeout_seconds = 600
 timeout_seconds_fast = 10
 
+test_no_huge_args = ['--no-huge', '-m', '2048']
+
 foreach arg : fast_tests
     test_args = []
     run_test = true
     if not has_hugepage
         if arg[1]
-            test_args += ['--no-huge', '-m', '2048']
+            test_args += test_no_huge_args
         else
             run_test = false
         endif
@@ -492,9 +495,7 @@ foreach arg : fast_tests
 
     if (get_option('default_library') == 'shared' and
         arg[0] == 'event_eth_tx_adapter_autotest')
-        foreach drv:dpdk_drivers
-            test_args += ['-d', drv.full_path().split('.a')[0] + '.so']
-        endforeach
+        test_args += ['-d', dpdk_drivers_build_dir]
     endif
     if is_linux
         test_args += ['--file-prefix=@0@'.format(arg[0])]
@@ -519,6 +520,35 @@ foreach arg : fast_tests
         endif
     endif
 endforeach
+
+if not is_windows and dpdk_conf.has('RTE_LIB_TELEMETRY')
+    test_args = [dpdk_test]
+    test_args += test_no_huge_args
+    if get_option('default_library') == 'shared'
+        test_args += ['-d', dpdk_drivers_build_dir]
+    endif
+    if dpdk_conf.has('RTE_CRYPTO_NULL')
+        test_args += ['--vdev=crypto_null0']
+    endif
+    if dpdk_conf.has('RTE_DMA_SKELETON')
+        test_args += ['--vdev=dma_skeleton0']
+    endif
+    if dpdk_conf.has('RTE_EVENT_SKELETON')
+        test_args += ['--vdev=event_skeleton0']
+    endif
+    if dpdk_conf.has('RTE_NET_NULL')
+        test_args += ['--vdev=net_null0']
+    endif
+    if dpdk_conf.has('RTE_RAW_SKELETON')
+        test_args += ['--vdev=rawdev_skeleton0']
+    endif
+    test_args += ['-a', '0000:00:00.0']
+    test('telemetry_all', find_program('test_telemetry.sh'),
+            args: test_args,
+            timeout : timeout_seconds_fast,
+            is_parallel : false,
+            suite : 'fast-tests')
+endif
 
 foreach arg : perf_test_names
     test(arg, dpdk_test,

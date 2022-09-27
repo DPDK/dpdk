@@ -16,7 +16,7 @@
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>
 
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <fsl_dpdmux.h>
 #include <fsl_dpkg.h>
 

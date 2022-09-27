@@ -2,6 +2,8 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <errno.h>
+#include <stdlib.h>
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <unistd.h>
 #include <pthread.h>

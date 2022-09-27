@@ -4,7 +4,7 @@
  */
 
 #include <sys/queue.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_malloc.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
@@ -1583,9 +1583,7 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 	 * value. So, we need not do anything for the not provided fields later.
 	 */
 	memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-	memset(&rule->mask, 0xFF, sizeof(struct txgbe_hw_fdir_mask));
-	rule->mask.vlan_tci_mask = 0;
-	rule->mask.flex_bytes_mask = 0;
+	memset(&rule->mask, 0, sizeof(struct txgbe_hw_fdir_mask));
 
 	/**
 	 * The first not void item should be
@@ -1867,7 +1865,10 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type |= TXGBE_ATR_L4TYPE_TCP;
-		ptype = txgbe_ptype_table[TXGBE_PT_IPV4_TCP];
+		if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6)
+			ptype = txgbe_ptype_table[TXGBE_PT_IPV6_TCP];
+		else
+			ptype = txgbe_ptype_table[TXGBE_PT_IPV4_TCP];
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -1931,7 +1932,10 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type |= TXGBE_ATR_L4TYPE_UDP;
-		ptype = txgbe_ptype_table[TXGBE_PT_IPV4_UDP];
+		if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6)
+			ptype = txgbe_ptype_table[TXGBE_PT_IPV6_UDP];
+		else
+			ptype = txgbe_ptype_table[TXGBE_PT_IPV4_UDP];
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -1990,7 +1994,10 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type |= TXGBE_ATR_L4TYPE_SCTP;
-		ptype = txgbe_ptype_table[TXGBE_PT_IPV4_SCTP];
+		if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6)
+			ptype = txgbe_ptype_table[TXGBE_PT_IPV6_SCTP];
+		else
+			ptype = txgbe_ptype_table[TXGBE_PT_IPV4_SCTP];
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -2140,6 +2147,16 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 	}
 
 	rule->input.pkt_type = cpu_to_be16(txgbe_encode_ptype(ptype));
+
+	if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6) {
+		if (rule->input.flow_type & TXGBE_ATR_L4TYPE_MASK)
+			rule->input.pkt_type &= 0xFFFF;
+		else
+			rule->input.pkt_type &= 0xF8FF;
+
+		rule->input.flow_type &= TXGBE_ATR_L3TYPE_MASK |
+					TXGBE_ATR_L4TYPE_MASK;
+	}
 
 	return txgbe_parse_fdir_act_attr(attr, actions, rule, error);
 }
@@ -2439,7 +2456,7 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
-	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
+	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 
 	ret = txgbe_parse_fdir_filter_normal(dev, attr, pattern,
 					actions, rule, error);
@@ -2458,9 +2475,16 @@ step_next:
 		(rule->input.src_port != 0 || rule->input.dst_port != 0))
 		return -ENOTSUP;
 
-	if (fdir_mode == RTE_FDIR_MODE_NONE ||
-	    fdir_mode != rule->mode)
+	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
+		fdir_conf->mode = rule->mode;
+		ret = txgbe_fdir_configure(dev);
+		if (ret) {
+			fdir_conf->mode = RTE_FDIR_MODE_NONE;
+			return ret;
+		}
+	} else if (fdir_conf->mode != rule->mode) {
 		return -ENOTSUP;
+	}
 
 	if (rule->queue >= dev->data->nb_rx_queues)
 		return -ENOTSUP;
@@ -2827,8 +2851,10 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 				ret = memcmp(&fdir_info->mask,
 					&fdir_rule.mask,
 					sizeof(struct txgbe_hw_fdir_mask));
-				if (ret)
+				if (ret) {
+					PMD_DRV_LOG(ERR, "only support one global mask");
 					goto out;
+				}
 
 				if (fdir_info->flex_bytes_offset !=
 						fdir_rule.flex_bytes_offset)

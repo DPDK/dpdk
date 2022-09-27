@@ -755,7 +755,7 @@ show_port(void)
 		}
 
 		printf("\t  -- driver %s device %s socket %d\n",
-		       dev_info.driver_name, dev_info.device->name,
+		       dev_info.driver_name, rte_dev_name(dev_info.device),
 		       rte_eth_dev_socket_id(i));
 
 		ret = rte_eth_dev_owner_get(i, &owner);
@@ -1254,7 +1254,7 @@ show_crypto(void)
 		       rte_cryptodev_name_get(i),
 		       dev_info.driver_name,
 		       dev_info.driver_id,
-		       dev_info.device->numa_node,
+		       rte_dev_numa_node(dev_info.device),
 		       rte_cryptodev_queue_pair_count(i));
 
 		display_crypto_feature_info(dev_info.feature_flags);
@@ -1466,7 +1466,7 @@ dump_regs(char *file_prefix)
 			else
 				printf("Device (%s) regs dumped successfully, "
 					"driver:%s version:0X%08X\n",
-					dev_info.device->name,
+					rte_dev_name(dev_info.device),
 					dev_info.driver_name, reg_info.version);
 
 			fclose(fp_regs);

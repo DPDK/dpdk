@@ -8,7 +8,7 @@
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
 #include <rte_tcp.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
 
 #include "rte_eth_bond.h"

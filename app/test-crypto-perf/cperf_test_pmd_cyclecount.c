@@ -3,6 +3,7 @@
  */
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>

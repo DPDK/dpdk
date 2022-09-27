@@ -25,8 +25,8 @@ qat_comp_capabilities_info qat_comp_get_capa_info(
 
 	if (qat_dev_gen >= QAT_N_GENS)
 		return ret;
-	RTE_FUNC_PTR_OR_ERR_RET(qat_comp_gen_dev_ops[qat_dev_gen]
-			.qat_comp_get_capabilities, ret);
+	if (qat_comp_gen_dev_ops[qat_dev_gen].qat_comp_get_capabilities == NULL)
+		return ret;
 	return qat_comp_gen_dev_ops[qat_dev_gen]
 			.qat_comp_get_capabilities(qat_dev);
 }

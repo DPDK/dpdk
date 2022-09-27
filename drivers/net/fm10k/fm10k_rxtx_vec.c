@@ -209,17 +209,12 @@ fm10k_rx_vec_condition_check(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
-	struct rte_eth_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 
 #ifndef RTE_FM10K_RX_OLFLAGS_ENABLE
 	/* without rx ol_flags, no VP flag report */
 	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
 		return -1;
 #endif
-
-	/* no fdir support */
-	if (fconf->mode != RTE_FDIR_MODE_NONE)
-		return -1;
 
 	/* no header split support */
 	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_HEADER_SPLIT)

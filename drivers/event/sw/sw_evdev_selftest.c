@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/queue.h>
@@ -21,7 +22,7 @@
 #include <rte_pause.h>
 #include <rte_service.h>
 #include <rte_service_component.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include "sw_evdev.h"
 

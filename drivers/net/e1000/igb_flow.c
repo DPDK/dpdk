@@ -21,7 +21,7 @@
 #include <rte_eal.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 

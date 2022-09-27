@@ -8,6 +8,7 @@
 
 #include <rte_common.h>
 #include <rte_kvargs.h>
+#include <bus_driver.h>
 #include <rte_bus_vdev.h>
 
 #include "test.h"
@@ -22,7 +23,7 @@ static const char * const valid_keys[] = {
 static int
 cmp_dev_name(const struct rte_device *dev, const void *name)
 {
-	return strcmp(dev->name, name);
+	return strcmp(rte_dev_name(dev), name);
 }
 
 static int
@@ -38,7 +39,7 @@ cmp_dev_match(const struct rte_device *dev, const void *_kvlist)
 
 	/* if key is present in kvlist and does not match, filter device */
 	name = rte_kvargs_get(kvlist, key);
-	if (name != NULL && strcmp(name, dev->name))
+	if (name != NULL && strcmp(name, rte_dev_name(dev)) != 0)
 		return -1;
 
 	return 0;

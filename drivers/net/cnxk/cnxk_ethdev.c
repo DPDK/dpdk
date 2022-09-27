@@ -1092,11 +1092,6 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
-	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		plt_err("Flow director is not supported");
-		goto fail_configure;
-	}
-
 	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE &&
 	    rxmode->mq_mode != RTE_ETH_MQ_RX_RSS) {
 		plt_err("Unsupported mq rx mode %d", rxmode->mq_mode);
@@ -1722,6 +1717,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
 	dev->ptype_disable = 0;
+	dev->proto = RTE_MTR_COLOR_IN_PROTO_OUTER_VLAN;
 
 	TAILQ_INIT(&dev->inb.list);
 	TAILQ_INIT(&dev->outb.list);

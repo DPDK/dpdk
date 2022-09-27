@@ -7,17 +7,16 @@
 
 #include <stdint.h>
 
-#include "obj.h"
+#include <rte_swx_pipeline.h>
 
 int
 thread_pipeline_enable(uint32_t thread_id,
-	struct obj *obj,
-	const char *pipeline_name);
+		       struct rte_swx_pipeline *p,
+		       uint32_t timer_period_ms);
 
 int
 thread_pipeline_disable(uint32_t thread_id,
-	struct obj *obj,
-	const char *pipeline_name);
+			struct rte_swx_pipeline *p);
 
 int
 thread_init(void);

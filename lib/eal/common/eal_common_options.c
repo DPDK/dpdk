@@ -742,8 +742,8 @@ check_core_list(int *lcores, unsigned int count)
 	return -1;
 }
 
-static int
-eal_parse_coremask(const char *coremask, int *cores)
+int
+rte_eal_parse_coremask(const char *coremask, int *cores)
 {
 	const char *coremask_orig = coremask;
 	int lcores[RTE_MAX_LCORE];
@@ -1649,7 +1649,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		if (eal_service_cores_parsed())
 			RTE_LOG(WARNING, EAL,
 				"Service cores parsed before dataplane cores. Please ensure -c is before -s or -S\n");
-		if (eal_parse_coremask(optarg, lcore_indexes) < 0) {
+		if (rte_eal_parse_coremask(optarg, lcore_indexes) < 0) {
 			RTE_LOG(ERR, EAL, "invalid coremask syntax\n");
 			return -1;
 		}

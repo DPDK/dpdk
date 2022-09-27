@@ -10,7 +10,7 @@
 #include <ethdev_driver.h>
 #include <ethdev_vdev.h>
 #include <rte_malloc.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_net.h>
 #include <rte_debug.h>
@@ -30,6 +30,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include <arpa/inet.h>

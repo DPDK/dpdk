@@ -19,7 +19,7 @@ struct roc_model *roc_model;
 #define PART_106xx  0xB9
 #define PART_105xx  0xBA
 #define PART_105xxN 0xBC
-#define PART_103xx  0xBE
+#define PART_103xx  0xBD
 #define PART_98xx   0xB1
 #define PART_96xx   0xB2
 #define PART_95xx   0xB3

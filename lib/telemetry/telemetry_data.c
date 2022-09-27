@@ -2,6 +2,9 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <errno.h>
+#include <stdlib.h>
+
 #undef RTE_USE_LIBBSD
 #include <rte_string_fns.h>
 

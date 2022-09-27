@@ -1,4 +1,4 @@
-DPDK_22 {
+DPDK_23 {
 	global:
 
 	rte_pipeline_ah_packet_drop;
@@ -82,7 +82,6 @@ EXPERIMENTAL {
 	rte_swx_ctl_table_ops_get;
 	rte_swx_pipeline_action_config;
 	rte_swx_pipeline_build;
-	rte_swx_pipeline_build_from_spec;
 	rte_swx_pipeline_config;
 	rte_swx_pipeline_extern_func_register;
 	rte_swx_pipeline_extern_object_config;
@@ -145,4 +144,15 @@ EXPERIMENTAL {
 	rte_swx_ctl_pipeline_learner_timeout_get;
 	rte_swx_ctl_pipeline_learner_timeout_set;
 	rte_swx_pipeline_hash_func_register;
+
+	# added in 22.11
+	rte_swx_ctl_meter_reset_with_key;
+	rte_swx_ctl_meter_set_with_key;
+	rte_swx_ctl_meter_stats_read_with_key;
+	rte_swx_ctl_pipeline_find;
+	rte_swx_ctl_pipeline_regarray_read_with_key;
+	rte_swx_ctl_pipeline_regarray_write_with_key;
+	rte_swx_pipeline_build_from_lib;
+	rte_swx_pipeline_codegen;
+	rte_swx_pipeline_find;
 };

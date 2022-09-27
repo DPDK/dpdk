@@ -17,7 +17,7 @@
 #include <rte_config.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <rte_eventdev.h>
 #include <eventdev_pmd.h>

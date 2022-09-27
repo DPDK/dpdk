@@ -1,10 +1,5 @@
-DPDK_22 {
+DPDK_23 {
 	local: *;
-};
-
-INTERNAL {
-	global:
-	cnxk_nix_inb_mode_set;
 };
 
 EXPERIMENTAL {
@@ -12,4 +7,9 @@ EXPERIMENTAL {
 	global:
 	rte_pmd_cnxk_hw_sa_read;
 	rte_pmd_cnxk_hw_sa_write;
+};
+
+INTERNAL {
+	global:
+	cnxk_nix_inb_mode_set;
 };

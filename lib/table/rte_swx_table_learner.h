@@ -47,8 +47,11 @@ extern "C" {
  */
 
 #include <stdint.h>
+#include <sys/types.h>
 
 #include <rte_compat.h>
+
+#include "rte_swx_hash_func.h"
 
 /** Maximum number of key timeout values per learner table. */
 #ifndef RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX
@@ -76,6 +79,10 @@ struct rte_swx_table_learner_params {
 	 * is equal to *action_data_size* plus 8 bytes, which are used to store the action ID.
 	 */
 	uint32_t action_data_size;
+
+	/** Hash function. When NULL, the default hash function will be used.
+	 */
+	rte_swx_hash_func_t hash_func;
 
 	/** Maximum number of keys to be stored in the table together with their associated data. */
 	uint32_t n_keys_max;
@@ -167,6 +174,14 @@ rte_swx_table_learner_timeout_update(void *table,
  * possibly an associated key add operation. The mailbox mechanism allows for multiple concurrent
  * table key lookup and add operations into the same table.
  *
+ * The table entry consists of the action ID and the action data. Each table entry is unique, even
+ * though different table entries can have identical content, i.e. same values for the action ID and
+ * the action data. The table entry ID is also returned by the table lookup operation. It can be
+ * used to index into an external array of resources such as counters, registers or meters to
+ * identify the resource directly associated with the current table entry with no need to store the
+ * corresponding index into the table entry. The index of the external resource is thus
+ * auto-generated instead of being stored in the table entry.
+ *
  * @param[in] table
  *   Table handle.
  * @param[in] mailbox
@@ -181,6 +196,9 @@ rte_swx_table_learner_timeout_update(void *table,
  * @param[out] action_data
  *   Action data for the *action_id* action. Must point to a valid array of table *action_data_size*
  *   bytes. Only valid when the function returns 1 and *hit* is set to true.
+ * @param[out] entry_id
+ *   Table entry unique ID. Must point to a valid 32-bit variable. Only valid when the function
+ *   returns 1 and *hit* is set to true.
  * @param[out] hit
  *   Only valid when the function returns 1. Set to non-zero (true) on table lookup hit and to zero
  *   (false) on table lookup miss.
@@ -196,6 +214,7 @@ rte_swx_table_learner_lookup(void *table,
 			     uint8_t **key,
 			     uint64_t *action_id,
 			     uint8_t **action_data,
+			     size_t *entry_id,
 			     int *hit);
 
 /**

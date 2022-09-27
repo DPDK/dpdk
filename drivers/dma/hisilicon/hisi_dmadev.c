@@ -5,7 +5,7 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_cycles.h>
 #include <rte_eal.h>
 #include <rte_io.h>

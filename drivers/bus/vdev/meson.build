@@ -6,5 +6,6 @@ sources = files(
         'vdev_params.c',
 )
 headers = files('rte_bus_vdev.h')
+driver_sdk_headers = files('bus_vdev_driver.h')
 
 deps += ['kvargs']

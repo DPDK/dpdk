@@ -8,12 +8,30 @@
 
 #include <stdbool.h>
 #include <sys/uio.h>
+
+#include <bus_driver.h>
+#include <bus_vmbus_driver.h>
 #include <rte_log.h>
 #include <rte_eal_paging.h>
 #include <rte_vmbus_reg.h>
-#include <rte_bus_vmbus.h>
+
+/**
+ * Structure describing the VM bus
+ */
+struct rte_vmbus_bus {
+	struct rte_bus bus;               /**< Inherit the generic class */
+	RTE_TAILQ_HEAD(, rte_vmbus_device) device_list; /**< List of devices */
+	RTE_TAILQ_HEAD(, rte_vmbus_driver) driver_list; /**< List of drivers */
+};
 
 extern struct rte_vmbus_bus rte_vmbus_bus;
+
+/* VMBus iterators */
+#define FOREACH_DEVICE_ON_VMBUS(p)	\
+	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.device_list), next)
+
+#define FOREACH_DRIVER_ON_VMBUS(p)	\
+	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.driver_list), next)
 
 extern int vmbus_logtype_bus;
 #define VMBUS_LOG(level, fmt, args...) \

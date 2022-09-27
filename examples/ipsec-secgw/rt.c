@@ -5,6 +5,7 @@
 /*
  * Routing Table (RT)
  */
+#include <stdlib.h>
 #include <sys/types.h>
 #include <rte_lpm.h>
 #include <rte_lpm6.h>

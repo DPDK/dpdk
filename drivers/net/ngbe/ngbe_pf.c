@@ -6,7 +6,7 @@
 #include <rte_ether.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "base/ngbe.h"
 #include "ngbe_ethdev.h"

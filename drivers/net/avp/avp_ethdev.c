@@ -16,13 +16,13 @@
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_ether.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_spinlock.h>
 #include <rte_byteorder.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_io.h>

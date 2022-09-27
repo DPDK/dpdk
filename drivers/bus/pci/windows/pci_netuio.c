@@ -8,6 +8,7 @@
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_eal.h>
+#include <rte_bus_pci.h>
 
 #ifdef __MINGW32__
 #include <ddk/ndisguid.h>

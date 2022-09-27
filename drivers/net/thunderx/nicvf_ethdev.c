@@ -20,7 +20,7 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
@@ -32,7 +32,7 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_tailq.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
@@ -2010,11 +2010,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 
 	if (conf->dcb_capability_en) {
 		PMD_INIT_LOG(INFO, "DCB enable not supported");
-		return -EINVAL;
-	}
-
-	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		PMD_INIT_LOG(INFO, "Flow director not supported");
 		return -EINVAL;
 	}
 

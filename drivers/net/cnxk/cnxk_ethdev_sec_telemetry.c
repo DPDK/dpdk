@@ -2,6 +2,8 @@
  * Copyright(C) 2022 Marvell.
  */
 
+#include <ctype.h>
+
 #include <rte_telemetry.h>
 
 #include <roc_api.h>

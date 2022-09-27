@@ -3,6 +3,7 @@
  */
 
 #include <inttypes.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include <rte_byteorder.h>

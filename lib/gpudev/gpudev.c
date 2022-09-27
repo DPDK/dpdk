@@ -2,6 +2,8 @@
  * Copyright (c) 2021 NVIDIA Corporation & Affiliates
  */
 
+#include <stdlib.h>
+
 #include <rte_eal.h>
 #include <rte_tailq.h>
 #include <rte_string_fns.h>

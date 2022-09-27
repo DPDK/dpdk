@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Gaëtan Rivet
  */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include <rte_class.h>

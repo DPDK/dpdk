@@ -307,11 +307,13 @@ enum instruction_type {
 	 * dst = src
 	 * dst = HMEF, src = HMEFTI
 	 */
-	INSTR_MOV,    /* dst = MEF, src = MEFT */
-	INSTR_MOV_MH, /* dst = MEF, src = H */
-	INSTR_MOV_HM, /* dst = H, src = MEFT */
-	INSTR_MOV_HH, /* dst = H, src = H */
-	INSTR_MOV_I,  /* dst = HMEF, src = I */
+	INSTR_MOV,     /* dst = MEF, src = MEFT; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_MH,  /* dst = MEF, src = H; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_HM,  /* dst = H, src = MEFT; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_HH,  /* dst = H, src = H; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_DMA, /* dst = HMEF, src = HMEF; size(dst) = size(src) > 64 bits, NBO format. */
+	INSTR_MOV_128, /* dst = HMEF, src = HMEF; size(dst) = size(src) = 128 bits, NBO format. */
+	INSTR_MOV_I,   /* dst = HMEF, src = I; size(dst) <= 64 bits. */
 
 	/* dma h.header t.field
 	 * memcpy(h.header, t.field, sizeof(h.header))
@@ -501,6 +503,11 @@ enum instruction_type {
 
 	/* forget */
 	INSTR_LEARNER_FORGET,
+
+	/* entryid m.table_entry_id
+	 * Read the internal table entry ID into the specified meta-data field.
+	 */
+	INSTR_ENTRYID,
 
 	/* extern e.obj.func */
 	INSTR_EXTERN_OBJ,
@@ -826,6 +833,7 @@ struct table {
 	int *action_is_for_table_entries;
 	int *action_is_for_default_entry;
 
+	struct hash_func *hf;
 	uint32_t size;
 	uint32_t id;
 };
@@ -897,6 +905,7 @@ struct learner {
 	int *action_is_for_table_entries;
 	int *action_is_for_default_entry;
 
+	struct hash_func *hf;
 	uint32_t size;
 	uint32_t timeout[RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX];
 	uint32_t n_timeouts;
@@ -1005,6 +1014,7 @@ struct thread {
 	struct learner_runtime *learners;
 	struct rte_swx_table_state *table_state;
 	uint64_t action_id;
+	size_t entry_id;
 	int hit; /* 0 = Miss, 1 = Hit. */
 	uint32_t learner_id;
 	uint64_t time;
@@ -1459,6 +1469,8 @@ instr_operand_nbo(struct thread *t, const struct instr_operand *x)
 #endif
 
 struct rte_swx_pipeline {
+	char name[RTE_SWX_NAME_SIZE];
+
 	struct struct_type_tailq struct_types;
 	struct port_in_type_tailq port_in_types;
 	struct port_in_tailq ports_in;
@@ -2371,6 +2383,21 @@ __instr_forget_exec(struct rte_swx_pipeline *p,
 }
 
 /*
+ * entryid.
+ */
+static inline void
+__instr_entryid_exec(struct rte_swx_pipeline *p __rte_unused,
+		       struct thread *t,
+		       const struct instruction *ip)
+{
+	TRACE("[Thread %2u]: entryid\n",
+	      p->thread_id);
+
+	/* Meta-data. */
+	METADATA_WRITE(t, ip->mov.dst.offset, ip->mov.dst.n_bits, t->entry_id);
+}
+
+/*
  * extern.
  */
 static inline uint32_t
@@ -2481,6 +2508,72 @@ __instr_mov_hh_exec(struct rte_swx_pipeline *p __rte_unused,
 	TRACE("[Thread %2u] mov (hh)\n", p->thread_id);
 
 	MOV_HH(t, ip);
+}
+
+static inline void
+__instr_mov_dma_exec(struct rte_swx_pipeline *p __rte_unused,
+		     struct thread *t,
+		     const struct instruction *ip)
+{
+	uint8_t *dst_struct = t->structs[ip->mov.dst.struct_id];
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->mov.dst.offset];
+	uint32_t *dst32_ptr;
+	uint16_t *dst16_ptr;
+	uint8_t *dst8_ptr;
+
+	uint8_t *src_struct = t->structs[ip->mov.src.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->mov.src.offset];
+	uint32_t *src32_ptr;
+	uint16_t *src16_ptr;
+	uint8_t *src8_ptr;
+
+	uint32_t n = ip->mov.dst.n_bits >> 3, i;
+
+	TRACE("[Thread %2u] mov (dma) %u bytes\n", p->thread_id, n);
+
+	/* 8-byte transfers. */
+	for (i = 0; i < n >> 3; i++)
+		*dst64_ptr++ = *src64_ptr++;
+
+	/* 4-byte transfers. */
+	n &= 7;
+	dst32_ptr = (uint32_t *)dst64_ptr;
+	src32_ptr = (uint32_t *)src64_ptr;
+
+	for (i = 0; i < n >> 2; i++)
+		*dst32_ptr++ = *src32_ptr++;
+
+	/* 2-byte transfers. */
+	n &= 3;
+	dst16_ptr = (uint16_t *)dst32_ptr;
+	src16_ptr = (uint16_t *)src32_ptr;
+
+	for (i = 0; i < n >> 1; i++)
+		*dst16_ptr++ = *src16_ptr++;
+
+	/* 1-byte transfer. */
+	n &= 1;
+	dst8_ptr = (uint8_t *)dst16_ptr;
+	src8_ptr = (uint8_t *)src16_ptr;
+	if (n)
+		*dst8_ptr = *src8_ptr;
+}
+
+static inline void
+__instr_mov_128_exec(struct rte_swx_pipeline *p __rte_unused,
+		     struct thread *t,
+		     const struct instruction *ip)
+{
+	uint8_t *dst_struct = t->structs[ip->mov.dst.struct_id];
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->mov.dst.offset];
+
+	uint8_t *src_struct = t->structs[ip->mov.src.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->mov.src.offset];
+
+	TRACE("[Thread %2u] mov (128)\n", p->thread_id);
+
+	dst64_ptr[0] = src64_ptr[0];
+	dst64_ptr[1] = src64_ptr[1];
 }
 
 static inline void

@@ -6,6 +6,7 @@
 #define CUDA_COMMON_H
 
 #include <dlfcn.h>
+#include <errno.h>
 
 #include <rte_common.h>
 #include <rte_log.h>

@@ -18,7 +18,7 @@
 #include <rte_malloc.h>
 #include <rte_vfio.h>
 #include <rte_eal.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_spinlock.h>
 #include <rte_tailq.h>
 

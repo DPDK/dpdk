@@ -3,9 +3,11 @@
  * Copyright 2013-2014 6WIND S.A.
  */
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -24,6 +26,7 @@
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
+#include <rte_bus.h>
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
@@ -31,7 +34,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
@@ -642,26 +644,24 @@ skip_parse:
 		if (identifier && da.bus != next)
 			continue;
 
-		/* Skip buses that don't have iterate method */
-		if (!next->dev_iterate)
-			continue;
-
-		snprintf(devstr, sizeof(devstr), "bus=%s", next->name);
+		snprintf(devstr, sizeof(devstr), "bus=%s", rte_bus_name(next));
 		RTE_DEV_FOREACH(dev, devstr, &dev_iter) {
 
-			if (!dev->driver)
+			if (rte_dev_driver(dev) == NULL)
 				continue;
 			/* Check for matching device if identifier is present */
 			if (identifier &&
-			    strncmp(da.name, dev->name, strlen(dev->name)))
+			    strncmp(da.name, rte_dev_name(dev), strlen(rte_dev_name(dev))))
 				continue;
 			printf("\n%s Infos for device %s %s\n",
-			       info_border, dev->name, info_border);
-			printf("Bus name: %s", dev->bus->name);
-			printf("\nDriver name: %s", dev->driver->name);
+			       info_border, rte_dev_name(dev), info_border);
+			printf("Bus name: %s", rte_bus_name(rte_dev_bus(dev)));
+			printf("\nBus information: %s",
+				rte_dev_bus_info(dev) ? rte_dev_bus_info(dev) : "");
+			printf("\nDriver name: %s", rte_driver_name(rte_dev_driver(dev)));
 			printf("\nDevargs: %s",
-			       dev->devargs ? dev->devargs->args : "");
-			printf("\nConnect to socket: %d", dev->numa_node);
+			       rte_dev_devargs(dev) ? rte_dev_devargs(dev)->args : "");
+			printf("\nConnect to socket: %d", rte_dev_numa_node(dev));
 			printf("\n");
 
 			/* List ports with matching device name */
@@ -806,8 +806,8 @@ port_infos_display(portid_t port_id)
 	else
 		printf("\nFirmware-version: %s", "not available");
 
-	if (dev_info.device->devargs && dev_info.device->devargs->args)
-		printf("\nDevargs: %s", dev_info.device->devargs->args);
+	if (rte_dev_devargs(dev_info.device) && rte_dev_devargs(dev_info.device)->args)
+		printf("\nDevargs: %s", rte_dev_devargs(dev_info.device)->args);
 	printf("\nConnect to socket: %u", port->socket_id);
 
 	if (port_numa[port_id] != NUMA_NO_CONFIG) {
@@ -1136,200 +1136,6 @@ vlan_id_is_invalid(uint16_t vlan_id)
 		return 0;
 	fprintf(stderr, "Invalid vlan_id %d (must be < 4096)\n", vlan_id);
 	return 1;
-}
-
-static int
-port_reg_off_is_invalid(portid_t port_id, uint32_t reg_off)
-{
-	const struct rte_pci_device *pci_dev;
-	const struct rte_bus *bus;
-	uint64_t pci_len;
-
-	if (reg_off & 0x3) {
-		fprintf(stderr,
-			"Port register offset 0x%X not aligned on a 4-byte boundary\n",
-			(unsigned int)reg_off);
-		return 1;
-	}
-
-	if (!ports[port_id].dev_info.device) {
-		fprintf(stderr, "Invalid device\n");
-		return 0;
-	}
-
-	bus = rte_bus_find_by_device(ports[port_id].dev_info.device);
-	if (bus && !strcmp(bus->name, "pci")) {
-		pci_dev = RTE_DEV_TO_PCI(ports[port_id].dev_info.device);
-	} else {
-		fprintf(stderr, "Not a PCI device\n");
-		return 1;
-	}
-
-	pci_len = pci_dev->mem_resource[0].len;
-	if (reg_off >= pci_len) {
-		fprintf(stderr,
-			"Port %d: register offset %u (0x%X) out of port PCI resource (length=%"PRIu64")\n",
-			port_id, (unsigned int)reg_off, (unsigned int)reg_off,
-			pci_len);
-		return 1;
-	}
-	return 0;
-}
-
-static int
-reg_bit_pos_is_invalid(uint8_t bit_pos)
-{
-	if (bit_pos <= 31)
-		return 0;
-	fprintf(stderr, "Invalid bit position %d (must be <= 31)\n", bit_pos);
-	return 1;
-}
-
-#define display_port_and_reg_off(port_id, reg_off) \
-	printf("port %d PCI register at offset 0x%X: ", (port_id), (reg_off))
-
-static inline void
-display_port_reg_value(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
-{
-	display_port_and_reg_off(port_id, (unsigned)reg_off);
-	printf("0x%08X (%u)\n", (unsigned)reg_v, (unsigned)reg_v);
-}
-
-void
-port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_x)
-{
-	uint32_t reg_v;
-
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit_x))
-		return;
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	display_port_and_reg_off(port_id, (unsigned)reg_off);
-	printf("bit %d=%d\n", bit_x, (int) ((reg_v & (1 << bit_x)) >> bit_x));
-}
-
-void
-port_reg_bit_field_display(portid_t port_id, uint32_t reg_off,
-			   uint8_t bit1_pos, uint8_t bit2_pos)
-{
-	uint32_t reg_v;
-	uint8_t  l_bit;
-	uint8_t  h_bit;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit1_pos))
-		return;
-	if (reg_bit_pos_is_invalid(bit2_pos))
-		return;
-	if (bit1_pos > bit2_pos)
-		l_bit = bit2_pos, h_bit = bit1_pos;
-	else
-		l_bit = bit1_pos, h_bit = bit2_pos;
-
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	reg_v >>= l_bit;
-	if (h_bit < 31)
-		reg_v &= ((1 << (h_bit - l_bit + 1)) - 1);
-	display_port_and_reg_off(port_id, (unsigned)reg_off);
-	printf("bits[%d, %d]=0x%0*X (%u)\n", l_bit, h_bit,
-	       ((h_bit - l_bit) / 4) + 1, (unsigned)reg_v, (unsigned)reg_v);
-}
-
-void
-port_reg_display(portid_t port_id, uint32_t reg_off)
-{
-	uint32_t reg_v;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	display_port_reg_value(port_id, reg_off, reg_v);
-}
-
-void
-port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
-		 uint8_t bit_v)
-{
-	uint32_t reg_v;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit_pos))
-		return;
-	if (bit_v > 1) {
-		fprintf(stderr, "Invalid bit value %d (must be 0 or 1)\n",
-			(int) bit_v);
-		return;
-	}
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	if (bit_v == 0)
-		reg_v &= ~(1 << bit_pos);
-	else
-		reg_v |= (1 << bit_pos);
-	port_id_pci_reg_write(port_id, reg_off, reg_v);
-	display_port_reg_value(port_id, reg_off, reg_v);
-}
-
-void
-port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
-		       uint8_t bit1_pos, uint8_t bit2_pos, uint32_t value)
-{
-	uint32_t max_v;
-	uint32_t reg_v;
-	uint8_t  l_bit;
-	uint8_t  h_bit;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit1_pos))
-		return;
-	if (reg_bit_pos_is_invalid(bit2_pos))
-		return;
-	if (bit1_pos > bit2_pos)
-		l_bit = bit2_pos, h_bit = bit1_pos;
-	else
-		l_bit = bit1_pos, h_bit = bit2_pos;
-
-	if ((h_bit - l_bit) < 31)
-		max_v = (1 << (h_bit - l_bit + 1)) - 1;
-	else
-		max_v = 0xFFFFFFFF;
-
-	if (value > max_v) {
-		fprintf(stderr, "Invalid value %u (0x%x) must be < %u (0x%x)\n",
-				(unsigned)value, (unsigned)value,
-				(unsigned)max_v, (unsigned)max_v);
-		return;
-	}
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	reg_v &= ~(max_v << l_bit); /* Keep unchanged bits */
-	reg_v |= (value << l_bit); /* Set changed bits */
-	port_id_pci_reg_write(port_id, reg_off, reg_v);
-	display_port_reg_value(port_id, reg_off, reg_v);
-}
-
-void
-port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
-{
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	port_id_pci_reg_write(port_id, reg_off, reg_v);
-	display_port_reg_value(port_id, reg_off, reg_v);
 }
 
 static uint32_t
@@ -5729,41 +5535,6 @@ flowtype_to_str(uint16_t flow_type)
 #if defined(RTE_NET_I40E) || defined(RTE_NET_IXGBE)
 
 static inline void
-print_fdir_mask(struct rte_eth_fdir_masks *mask)
-{
-	printf("\n    vlan_tci: 0x%04x", rte_be_to_cpu_16(mask->vlan_tci_mask));
-
-	if (fdir_conf.mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
-		printf(", mac_addr: 0x%02x, tunnel_type: 0x%01x,"
-			" tunnel_id: 0x%08x",
-			mask->mac_addr_byte_mask, mask->tunnel_type_mask,
-			rte_be_to_cpu_32(mask->tunnel_id_mask));
-	else if (fdir_conf.mode != RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
-		printf(", src_ipv4: 0x%08x, dst_ipv4: 0x%08x",
-			rte_be_to_cpu_32(mask->ipv4_mask.src_ip),
-			rte_be_to_cpu_32(mask->ipv4_mask.dst_ip));
-
-		printf("\n    src_port: 0x%04x, dst_port: 0x%04x",
-			rte_be_to_cpu_16(mask->src_port_mask),
-			rte_be_to_cpu_16(mask->dst_port_mask));
-
-		printf("\n    src_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x",
-			rte_be_to_cpu_32(mask->ipv6_mask.src_ip[0]),
-			rte_be_to_cpu_32(mask->ipv6_mask.src_ip[1]),
-			rte_be_to_cpu_32(mask->ipv6_mask.src_ip[2]),
-			rte_be_to_cpu_32(mask->ipv6_mask.src_ip[3]));
-
-		printf("\n    dst_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x",
-			rte_be_to_cpu_32(mask->ipv6_mask.dst_ip[0]),
-			rte_be_to_cpu_32(mask->ipv6_mask.dst_ip[1]),
-			rte_be_to_cpu_32(mask->ipv6_mask.dst_ip[2]),
-			rte_be_to_cpu_32(mask->ipv6_mask.dst_ip[3]));
-	}
-
-	printf("\n");
-}
-
-static inline void
 print_fdir_flex_payload(struct rte_eth_fdir_flex_conf *flex_conf, uint32_t num)
 {
 	struct rte_eth_flex_payload_cfg *cfg;
@@ -5898,8 +5669,6 @@ fdir_get_infos(portid_t port_id)
 		fdir_info.flex_payload_unit,
 		fdir_info.max_flex_payload_segment_num,
 		fdir_info.flex_bitmask_unit, fdir_info.max_flex_bitmask_num);
-	printf("  MASK: ");
-	print_fdir_mask(&fdir_info.mask);
 	if (fdir_info.flex_conf.nb_payloads > 0) {
 		printf("  FLEX PAYLOAD SRC OFFSET:");
 		print_fdir_flex_payload(&fdir_info.flex_conf, fdir_info.max_flexpayload);
@@ -5925,69 +5694,6 @@ fdir_get_infos(portid_t port_id)
 }
 
 #endif /* RTE_NET_I40E || RTE_NET_IXGBE */
-
-void
-fdir_set_flex_mask(portid_t port_id, struct rte_eth_fdir_flex_mask *cfg)
-{
-	struct rte_port *port;
-	struct rte_eth_fdir_flex_conf *flex_conf;
-	int i, idx = 0;
-
-	port = &ports[port_id];
-	flex_conf = &port->dev_conf.fdir_conf.flex_conf;
-	for (i = 0; i < RTE_ETH_FLOW_MAX; i++) {
-		if (cfg->flow_type == flex_conf->flex_mask[i].flow_type) {
-			idx = i;
-			break;
-		}
-	}
-	if (i >= RTE_ETH_FLOW_MAX) {
-		if (flex_conf->nb_flexmasks < RTE_DIM(flex_conf->flex_mask)) {
-			idx = flex_conf->nb_flexmasks;
-			flex_conf->nb_flexmasks++;
-		} else {
-			fprintf(stderr,
-				"The flex mask table is full. Can not set flex mask for flow_type(%u).",
-				cfg->flow_type);
-			return;
-		}
-	}
-	rte_memcpy(&flex_conf->flex_mask[idx],
-			 cfg,
-			 sizeof(struct rte_eth_fdir_flex_mask));
-}
-
-void
-fdir_set_flex_payload(portid_t port_id, struct rte_eth_flex_payload_cfg *cfg)
-{
-	struct rte_port *port;
-	struct rte_eth_fdir_flex_conf *flex_conf;
-	int i, idx = 0;
-
-	port = &ports[port_id];
-	flex_conf = &port->dev_conf.fdir_conf.flex_conf;
-	for (i = 0; i < RTE_ETH_PAYLOAD_MAX; i++) {
-		if (cfg->type == flex_conf->flex_set[i].type) {
-			idx = i;
-			break;
-		}
-	}
-	if (i >= RTE_ETH_PAYLOAD_MAX) {
-		if (flex_conf->nb_payloads < RTE_DIM(flex_conf->flex_set)) {
-			idx = flex_conf->nb_payloads;
-			flex_conf->nb_payloads++;
-		} else {
-			fprintf(stderr,
-				"The flex payload table is full. Can not set flex payload for type(%u).",
-				cfg->type);
-			return;
-		}
-	}
-	rte_memcpy(&flex_conf->flex_set[idx],
-			 cfg,
-			 sizeof(struct rte_eth_flex_payload_cfg));
-
-}
 
 void
 set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)

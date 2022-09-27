@@ -159,33 +159,6 @@ The command line options are:
     The default port is the port 9 which is defined for the discard protocol
     (RFC 863).
 
-*   ``--pkt-filter-mode=mode``
-
-    Set Flow Director mode where mode is either ``none`` (the default), ``signature`` or ``perfect``.
-    See :ref:`testpmd_flow_director` for more details.
-
-*   ``--pkt-filter-report-hash=mode``
-
-    Set Flow Director hash match reporting mode where mode is ``none``, ``match`` (the default) or ``always``.
-
-*   ``--pkt-filter-size=N``
-
-    Set Flow Director allocated memory size, where N is 64K, 128K or 256K.
-    Sizes are in kilobytes. The default is 64.
-
-*   ``--pkt-filter-flexbytes-offset=N``
-
-    Set the flexbytes offset.
-    The offset is defined in words (not bytes) counted from the first byte of the destination Ethernet MAC address,
-    where N is 0 <= N <= 32.
-    The default value is 0x6.
-
-*   ``--pkt-filter-drop-queue=N``
-
-    Set the drop-queue.
-    In perfect filter mode, when a rule is added with queue = -1, the packet will be enqueued into the RX drop-queue.
-    If the drop-queue does not exist, the packet is dropped. The default value is N=127.
-
 *   ``--disable-crc-strip``
 
     Disable hardware CRC stripping.

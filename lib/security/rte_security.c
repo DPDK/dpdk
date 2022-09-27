@@ -4,8 +4,11 @@
  * Copyright (c) 2020 Samsung Electronics Co., Ltd All Rights Reserved
  */
 
+#include <ctype.h>
+#include <stdlib.h>
+
 #include <rte_cryptodev.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_telemetry.h>
 #include "rte_security.h"
 #include "rte_security_driver.h"
@@ -131,7 +134,8 @@ __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 	RTE_PTR_OR_ERR_RET(instance, -EINVAL);
 	RTE_PTR_OR_ERR_RET(instance->ops, -EINVAL);
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*instance->ops->set_pkt_metadata, -ENOTSUP);
+	if (*instance->ops->set_pkt_metadata == NULL)
+		return -ENOTSUP;
 	return instance->ops->set_pkt_metadata(instance->device,
 					       sess, m, params);
 }
@@ -145,7 +149,8 @@ __rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md)
 	RTE_PTR_OR_ERR_RET(instance, NULL);
 	RTE_PTR_OR_ERR_RET(instance->ops, NULL);
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*instance->ops->get_userdata, NULL);
+	if (*instance->ops->get_userdata == NULL)
+		return NULL;
 	if (instance->ops->get_userdata(instance->device, md, &userdata))
 		return NULL;
 

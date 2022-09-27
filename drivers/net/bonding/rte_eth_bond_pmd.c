@@ -15,7 +15,7 @@
 #include <rte_ip_frag.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
 #include <rte_string_fns.h>
@@ -82,7 +82,7 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					 bufs + num_rx_total, nb_pkts);
 		num_rx_total += num_rx_slave;
 		nb_pkts -= num_rx_slave;
-		if (++active_slave == slave_count)
+		if (++active_slave >= slave_count)
 			active_slave = 0;
 	}
 
@@ -2418,9 +2418,6 @@ bond_ethdev_slave_link_status_change_monitor(void *cb_arg)
 			 * event callback */
 			if (slave_ethdev->data->dev_link.link_status !=
 					internals->slaves[i].last_link_status) {
-				internals->slaves[i].last_link_status =
-						slave_ethdev->data->dev_link.link_status;
-
 				bond_ethdev_lsc_event_callback(internals->slaves[i].port_id,
 						RTE_ETH_EVENT_INTR_LSC,
 						&bonded_ethdev->data->port_id,
@@ -2919,7 +2916,7 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 
 	uint8_t lsc_flag = 0;
 	int valid_slave = 0;
-	uint16_t active_pos;
+	uint16_t active_pos, slave_idx;
 	uint16_t i;
 
 	if (type != RTE_ETH_EVENT_INTR_LSC || param == NULL)
@@ -2940,6 +2937,7 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 	for (i = 0; i < internals->slave_count; i++) {
 		if (internals->slaves[i].port_id == port_id) {
 			valid_slave = 1;
+			slave_idx = i;
 			break;
 		}
 	}
@@ -3028,6 +3026,7 @@ link_update:
 	 * slaves
 	 */
 	bond_ethdev_link_update(bonded_eth_dev, 0);
+	internals->slaves[slave_idx].last_link_status = link.link_status;
 
 	if (lsc_flag) {
 		/* Cancel any possible outstanding interrupts if delays are enabled */

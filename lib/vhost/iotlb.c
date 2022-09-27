@@ -13,6 +13,7 @@
 
 struct vhost_iotlb_entry {
 	TAILQ_ENTRY(vhost_iotlb_entry) next;
+	SLIST_ENTRY(vhost_iotlb_entry) next_free;
 
 	uint64_t iova;
 	uint64_t uaddr;
@@ -21,6 +22,28 @@ struct vhost_iotlb_entry {
 };
 
 #define IOTLB_CACHE_SIZE 2048
+
+static struct vhost_iotlb_entry *
+vhost_user_iotlb_pool_get(struct vhost_virtqueue *vq)
+{
+	struct vhost_iotlb_entry *node;
+
+	rte_spinlock_lock(&vq->iotlb_free_lock);
+	node = SLIST_FIRST(&vq->iotlb_free_list);
+	if (node != NULL)
+		SLIST_REMOVE_HEAD(&vq->iotlb_free_list, next_free);
+	rte_spinlock_unlock(&vq->iotlb_free_lock);
+	return node;
+}
+
+static void
+vhost_user_iotlb_pool_put(struct vhost_virtqueue *vq,
+	struct vhost_iotlb_entry *node)
+{
+	rte_spinlock_lock(&vq->iotlb_free_lock);
+	SLIST_INSERT_HEAD(&vq->iotlb_free_list, node, next_free);
+	rte_spinlock_unlock(&vq->iotlb_free_lock);
+}
 
 static void
 vhost_user_iotlb_cache_random_evict(struct vhost_virtqueue *vq);
@@ -34,7 +57,7 @@ vhost_user_iotlb_pending_remove_all(struct vhost_virtqueue *vq)
 
 	RTE_TAILQ_FOREACH_SAFE(node, &vq->iotlb_pending_list, next, temp_node) {
 		TAILQ_REMOVE(&vq->iotlb_pending_list, node, next);
-		rte_mempool_put(vq->iotlb_pool, node);
+		vhost_user_iotlb_pool_put(vq, node);
 	}
 
 	rte_rwlock_write_unlock(&vq->iotlb_pending_lock);
@@ -66,22 +89,21 @@ vhost_user_iotlb_pending_insert(struct virtio_net *dev, struct vhost_virtqueue *
 				uint64_t iova, uint8_t perm)
 {
 	struct vhost_iotlb_entry *node;
-	int ret;
 
-	ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
-	if (ret) {
+	node = vhost_user_iotlb_pool_get(vq);
+	if (node == NULL) {
 		VHOST_LOG_CONFIG(dev->ifname, DEBUG,
-			"IOTLB pool %s empty, clear entries for pending insertion\n",
-			vq->iotlb_pool->name);
+			"IOTLB pool for vq %"PRIu32" empty, clear entries for pending insertion\n",
+			vq->index);
 		if (!TAILQ_EMPTY(&vq->iotlb_pending_list))
 			vhost_user_iotlb_pending_remove_all(vq);
 		else
 			vhost_user_iotlb_cache_random_evict(vq);
-		ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
-		if (ret) {
+		node = vhost_user_iotlb_pool_get(vq);
+		if (node == NULL) {
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"IOTLB pool %s still empty, pending insertion failure\n",
-				vq->iotlb_pool->name);
+				"IOTLB pool vq %"PRIu32" still empty, pending insertion failure\n",
+				vq->index);
 			return;
 		}
 	}
@@ -113,7 +135,7 @@ vhost_user_iotlb_pending_remove(struct vhost_virtqueue *vq,
 		if ((node->perm & perm) != node->perm)
 			continue;
 		TAILQ_REMOVE(&vq->iotlb_pending_list, node, next);
-		rte_mempool_put(vq->iotlb_pool, node);
+		vhost_user_iotlb_pool_put(vq, node);
 	}
 
 	rte_rwlock_write_unlock(&vq->iotlb_pending_lock);
@@ -128,7 +150,7 @@ vhost_user_iotlb_cache_remove_all(struct vhost_virtqueue *vq)
 
 	RTE_TAILQ_FOREACH_SAFE(node, &vq->iotlb_list, next, temp_node) {
 		TAILQ_REMOVE(&vq->iotlb_list, node, next);
-		rte_mempool_put(vq->iotlb_pool, node);
+		vhost_user_iotlb_pool_put(vq, node);
 	}
 
 	vq->iotlb_cache_nr = 0;
@@ -149,7 +171,7 @@ vhost_user_iotlb_cache_random_evict(struct vhost_virtqueue *vq)
 	RTE_TAILQ_FOREACH_SAFE(node, &vq->iotlb_list, next, temp_node) {
 		if (!entry_idx) {
 			TAILQ_REMOVE(&vq->iotlb_list, node, next);
-			rte_mempool_put(vq->iotlb_pool, node);
+			vhost_user_iotlb_pool_put(vq, node);
 			vq->iotlb_cache_nr--;
 			break;
 		}
@@ -165,22 +187,21 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq
 				uint64_t size, uint8_t perm)
 {
 	struct vhost_iotlb_entry *node, *new_node;
-	int ret;
 
-	ret = rte_mempool_get(vq->iotlb_pool, (void **)&new_node);
-	if (ret) {
+	new_node = vhost_user_iotlb_pool_get(vq);
+	if (new_node == NULL) {
 		VHOST_LOG_CONFIG(dev->ifname, DEBUG,
-			"IOTLB pool %s empty, clear entries for cache insertion\n",
-			vq->iotlb_pool->name);
+			"IOTLB pool vq %"PRIu32" empty, clear entries for cache insertion\n",
+			vq->index);
 		if (!TAILQ_EMPTY(&vq->iotlb_list))
 			vhost_user_iotlb_cache_random_evict(vq);
 		else
 			vhost_user_iotlb_pending_remove_all(vq);
-		ret = rte_mempool_get(vq->iotlb_pool, (void **)&new_node);
-		if (ret) {
+		new_node = vhost_user_iotlb_pool_get(vq);
+		if (new_node == NULL) {
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"IOTLB pool %s still empty, cache insertion failed\n",
-				vq->iotlb_pool->name);
+				"IOTLB pool vq %"PRIu32" still empty, cache insertion failed\n",
+				vq->index);
 			return;
 		}
 	}
@@ -198,7 +219,7 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq
 		 * So if iova already in list, assume identical.
 		 */
 		if (node->iova == new_node->iova) {
-			rte_mempool_put(vq->iotlb_pool, new_node);
+			vhost_user_iotlb_pool_put(vq, new_node);
 			goto unlock;
 		} else if (node->iova > new_node->iova) {
 			TAILQ_INSERT_BEFORE(node, new_node, next);
@@ -235,7 +256,7 @@ vhost_user_iotlb_cache_remove(struct vhost_virtqueue *vq,
 
 		if (iova < node->iova + node->size) {
 			TAILQ_REMOVE(&vq->iotlb_list, node, next);
-			rte_mempool_put(vq->iotlb_pool, node);
+			vhost_user_iotlb_pool_put(vq, node);
 			vq->iotlb_cache_nr--;
 		}
 	}
@@ -293,10 +314,9 @@ vhost_user_iotlb_flush_all(struct vhost_virtqueue *vq)
 }
 
 int
-vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
+vhost_user_iotlb_init(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	char pool_name[RTE_MEMPOOL_NAMESIZE];
-	struct vhost_virtqueue *vq = dev->virtqueue[vq_index];
+	unsigned int i;
 	int socket = 0;
 
 	if (vq->iotlb_pool) {
@@ -305,6 +325,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 		 * just drop all cached and pending entries.
 		 */
 		vhost_user_iotlb_flush_all(vq);
+		rte_free(vq->iotlb_pool);
 	}
 
 #ifdef RTE_LIBRTE_VHOST_NUMA
@@ -312,32 +333,32 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 		socket = 0;
 #endif
 
+	rte_spinlock_init(&vq->iotlb_free_lock);
 	rte_rwlock_init(&vq->iotlb_lock);
 	rte_rwlock_init(&vq->iotlb_pending_lock);
 
+	SLIST_INIT(&vq->iotlb_free_list);
 	TAILQ_INIT(&vq->iotlb_list);
 	TAILQ_INIT(&vq->iotlb_pending_list);
 
-	snprintf(pool_name, sizeof(pool_name), "iotlb_%u_%d_%d",
-			getpid(), dev->vid, vq_index);
-	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "IOTLB cache name: %s\n", pool_name);
-
-	/* If already created, free it and recreate */
-	vq->iotlb_pool = rte_mempool_lookup(pool_name);
-	rte_mempool_free(vq->iotlb_pool);
-
-	vq->iotlb_pool = rte_mempool_create(pool_name,
-			IOTLB_CACHE_SIZE, sizeof(struct vhost_iotlb_entry), 0,
-			0, 0, NULL, NULL, NULL, socket,
-			RTE_MEMPOOL_F_NO_CACHE_ALIGN |
-			RTE_MEMPOOL_F_SP_PUT);
+	vq->iotlb_pool = rte_calloc_socket("iotlb", IOTLB_CACHE_SIZE,
+		sizeof(struct vhost_iotlb_entry), 0, socket);
 	if (!vq->iotlb_pool) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to create IOTLB cache pool %s\n",
-			pool_name);
+		VHOST_LOG_CONFIG(dev->ifname, ERR,
+			"Failed to create IOTLB cache pool for vq %"PRIu32"\n",
+			vq->index);
 		return -1;
 	}
+	for (i = 0; i < IOTLB_CACHE_SIZE; i++)
+		vhost_user_iotlb_pool_put(vq, &vq->iotlb_pool[i]);
 
 	vq->iotlb_cache_nr = 0;
 
 	return 0;
+}
+
+void
+vhost_user_iotlb_destroy(struct vhost_virtqueue *vq)
+{
+	rte_free(vq->iotlb_pool);
 }

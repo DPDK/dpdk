@@ -16,7 +16,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
-#include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
 
 #include "obj.h"
@@ -37,24 +36,12 @@ TAILQ_HEAD(link_list, link);
 TAILQ_HEAD(ring_list, ring);
 
 /*
- * tap
- */
-TAILQ_HEAD(tap_list, tap);
-
-/*
- * pipeline
- */
-TAILQ_HEAD(pipeline_list, pipeline);
-
-/*
  * obj
  */
 struct obj {
 	struct mempool_list mempool_list;
 	struct link_list link_list;
 	struct ring_list ring_list;
-	struct pipeline_list pipeline_list;
-	struct tap_list tap_list;
 };
 
 /*
@@ -188,7 +175,7 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	struct mempool *mempool;
 	uint32_t cpu_id, i;
 	int status;
-	uint16_t port_id;
+	uint16_t port_id = 0;
 
 	/* Check input params */
 	if ((name == NULL) ||
@@ -200,16 +187,9 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 		(params->tx.queue_size == 0))
 		return NULL;
 
-	port_id = params->port_id;
-	if (params->dev_name) {
-		status = rte_eth_dev_get_port_by_name(params->dev_name,
-			&port_id);
-
-		if (status)
-			return NULL;
-	} else
-		if (!rte_eth_dev_is_valid_port(port_id))
-			return NULL;
+	status = rte_eth_dev_get_port_by_name(name, &port_id);
+	if (status)
+		return NULL;
 
 	if (rte_eth_dev_info_get(port_id, &port_info) != 0)
 		return NULL;
@@ -322,7 +302,6 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	/* Node fill in */
 	strlcpy(link->name, name, sizeof(link->name));
 	link->port_id = port_id;
-	rte_eth_dev_get_name_by_port(port_id, link->dev_name);
 	link->n_rxq = params->rx.n_queues;
 	link->n_txq = params->tx.n_queues;
 
@@ -432,147 +411,6 @@ ring_find(struct obj *obj, const char *name)
 }
 
 /*
- * tap
- */
-#define TAP_DEV		"/dev/net/tun"
-
-struct tap *
-tap_find(struct obj *obj, const char *name)
-{
-	struct tap *tap;
-
-	if (!obj || !name)
-		return NULL;
-
-	TAILQ_FOREACH(tap, &obj->tap_list, node)
-		if (strcmp(tap->name, name) == 0)
-			return tap;
-
-	return NULL;
-}
-
-struct tap *
-tap_next(struct obj *obj, struct tap *tap)
-{
-	return (tap == NULL) ?
-		TAILQ_FIRST(&obj->tap_list) : TAILQ_NEXT(tap, node);
-}
-
-#ifndef RTE_EXEC_ENV_LINUX
-
-struct tap *
-tap_create(struct obj *obj __rte_unused, const char *name __rte_unused)
-{
-	return NULL;
-}
-
-#else
-
-struct tap *
-tap_create(struct obj *obj, const char *name)
-{
-	struct tap *tap;
-	struct ifreq ifr;
-	int fd, status;
-
-	/* Check input params */
-	if ((name == NULL) ||
-		tap_find(obj, name))
-		return NULL;
-
-	/* Resource create */
-	fd = open(TAP_DEV, O_RDWR | O_NONBLOCK);
-	if (fd < 0)
-		return NULL;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_flags = IFF_TAP | IFF_NO_PI; /* No packet information */
-	strlcpy(ifr.ifr_name, name, IFNAMSIZ);
-
-	status = ioctl(fd, TUNSETIFF, (void *) &ifr);
-	if (status < 0) {
-		close(fd);
-		return NULL;
-	}
-
-	/* Node allocation */
-	tap = calloc(1, sizeof(struct tap));
-	if (tap == NULL) {
-		close(fd);
-		return NULL;
-	}
-	/* Node fill in */
-	strlcpy(tap->name, name, sizeof(tap->name));
-	tap->fd = fd;
-
-	/* Node add to list */
-	TAILQ_INSERT_TAIL(&obj->tap_list, tap, node);
-
-	return tap;
-}
-
-#endif
-
-/*
- * pipeline
- */
-#ifndef PIPELINE_MSGQ_SIZE
-#define PIPELINE_MSGQ_SIZE                                 64
-#endif
-
-struct pipeline *
-pipeline_create(struct obj *obj, const char *name, int numa_node)
-{
-	struct pipeline *pipeline;
-	struct rte_swx_pipeline *p = NULL;
-	int status;
-
-	/* Check input params */
-	if ((name == NULL) ||
-		pipeline_find(obj, name))
-		return NULL;
-
-	/* Resource create */
-	status = rte_swx_pipeline_config(&p, numa_node);
-	if (status)
-		goto error;
-
-	/* Node allocation */
-	pipeline = calloc(1, sizeof(struct pipeline));
-	if (pipeline == NULL)
-		goto error;
-
-	/* Node fill in */
-	strlcpy(pipeline->name, name, sizeof(pipeline->name));
-	pipeline->p = p;
-	pipeline->timer_period_ms = 10;
-
-	/* Node add to list */
-	TAILQ_INSERT_TAIL(&obj->pipeline_list, pipeline, node);
-
-	return pipeline;
-
-error:
-	rte_swx_pipeline_free(p);
-	return NULL;
-}
-
-struct pipeline *
-pipeline_find(struct obj *obj, const char *name)
-{
-	struct pipeline *pipeline;
-
-	if (!obj || !name)
-		return NULL;
-
-	TAILQ_FOREACH(pipeline, &obj->pipeline_list, node)
-		if (strcmp(name, pipeline->name) == 0)
-			return pipeline;
-
-	return NULL;
-}
-
-/*
  * obj
  */
 struct obj *
@@ -587,8 +425,6 @@ obj_init(void)
 	TAILQ_INIT(&obj->mempool_list);
 	TAILQ_INIT(&obj->link_list);
 	TAILQ_INIT(&obj->ring_list);
-	TAILQ_INIT(&obj->pipeline_list);
-	TAILQ_INIT(&obj->tap_list);
 
 	return obj;
 }

@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "ionic_dev.h"
 #include "ionic_if.h"

@@ -9,7 +9,7 @@
 #include <rte_regexdev.h>
 #include <rte_regexdev_core.h>
 #include <rte_regexdev_driver.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>

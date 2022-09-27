@@ -15,8 +15,8 @@
 
 #include <rte_errno.h>
 #include <rte_string_fns.h>
-#include <rte_bus_pci.h>
-#include <rte_bus_auxiliary.h>
+#include <bus_pci_driver.h>
+#include <bus_auxiliary_driver.h>
 
 #include "mlx5_common.h"
 #include "mlx5_nl.h"

@@ -1,4 +1,4 @@
-DPDK_22 {
+DPDK_23 {
 	global:
 
 	rte_vmbus_chan_close;
@@ -16,13 +16,18 @@ DPDK_22 {
 	rte_vmbus_map_device;
 	rte_vmbus_max_channels;
 	rte_vmbus_probe;
-	rte_vmbus_register;
 	rte_vmbus_scan;
 	rte_vmbus_set_latency;
 	rte_vmbus_sub_channel_index;
 	rte_vmbus_subchan_open;
 	rte_vmbus_unmap_device;
-	rte_vmbus_unregister;
 
 	local: *;
+};
+
+INTERNAL {
+	global:
+
+	rte_vmbus_register;
+	rte_vmbus_unregister;
 };

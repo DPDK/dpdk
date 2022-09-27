@@ -682,12 +682,12 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	else
 		sqes_per_sqb = (blk_sz / 8) / 8;
 
-	sq->nb_desc = PLT_MAX(256U, sq->nb_desc);
+	sq->nb_desc = PLT_MAX(512U, sq->nb_desc);
 	nb_sqb_bufs = sq->nb_desc / sqes_per_sqb;
 	nb_sqb_bufs += NIX_SQB_LIST_SPACE;
 	/* Clamp up the SQB count */
 	nb_sqb_bufs = PLT_MIN(roc_nix->max_sqb_count,
-			      (uint16_t)PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs));
+			      PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs));
 
 	sq->nb_sqb_bufs = nb_sqb_bufs;
 	sq->sqes_per_sqb_log2 = (uint16_t)plt_log2_u32(sqes_per_sqb);
@@ -695,8 +695,9 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 		nb_sqb_bufs -
 		(PLT_ALIGN_MUL_CEIL(nb_sqb_bufs, sqes_per_sqb) / sqes_per_sqb);
 	sq->nb_sqb_bufs_adj =
-		(sq->nb_sqb_bufs_adj * NIX_SQB_LOWER_THRESH) / 100;
+		(sq->nb_sqb_bufs_adj * ROC_NIX_SQB_LOWER_THRESH) / 100;
 
+	nb_sqb_bufs += roc_nix->sqb_slack;
 	/* Explicitly set nat_align alone as by default pool is with both
 	 * nat_align and buf_offset = 1 which we don't want for SQB.
 	 */
@@ -711,12 +712,12 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 		aura.fc_stype = 0x3; /* STSTP */
 	aura.fc_addr = (uint64_t)sq->fc;
 	aura.fc_hyst_bits = 0; /* Store count on all updates */
-	rc = roc_npa_pool_create(&sq->aura_handle, blk_sz, NIX_MAX_SQB, &aura,
+	rc = roc_npa_pool_create(&sq->aura_handle, blk_sz, nb_sqb_bufs, &aura,
 				 &pool);
 	if (rc)
 		goto fail;
 
-	sq->sqe_mem = plt_zmalloc(blk_sz * NIX_MAX_SQB, blk_sz);
+	sq->sqe_mem = plt_zmalloc(blk_sz * nb_sqb_bufs, blk_sz);
 	if (sq->sqe_mem == NULL) {
 		rc = NIX_ERR_NO_MEM;
 		goto nomem;
@@ -724,21 +725,21 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 
 	/* Fill the initial buffers */
 	iova = (uint64_t)sq->sqe_mem;
-	for (count = 0; count < NIX_MAX_SQB; count++) {
+	for (count = 0; count < nb_sqb_bufs; count++) {
 		roc_npa_aura_op_free(sq->aura_handle, 0, iova);
 		iova += blk_sz;
 	}
 
-	if (roc_npa_aura_op_available_wait(sq->aura_handle, NIX_MAX_SQB, 0) !=
-	    NIX_MAX_SQB) {
+	if (roc_npa_aura_op_available_wait(sq->aura_handle, nb_sqb_bufs, 0) !=
+	    nb_sqb_bufs) {
 		plt_err("Failed to free all pointers to the pool");
 		rc = NIX_ERR_NO_MEM;
 		goto npa_fail;
 	}
 
 	roc_npa_aura_op_range_set(sq->aura_handle, (uint64_t)sq->sqe_mem, iova);
-	roc_npa_aura_limit_modify(sq->aura_handle, sq->nb_sqb_bufs);
-	sq->aura_sqb_bufs = NIX_MAX_SQB;
+	roc_npa_aura_limit_modify(sq->aura_handle, nb_sqb_bufs);
+	sq->aura_sqb_bufs = nb_sqb_bufs;
 
 	return rc;
 npa_fail:

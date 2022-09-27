@@ -8,7 +8,7 @@
 #include <rte_io.h>
 #include <rte_eal.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
 

@@ -19,6 +19,8 @@ extern "C" {
 
 #include <rte_os.h>
 
+#include "rte_swx_hash_func.h"
+
 /** Match type. */
 enum rte_swx_table_match_type {
 	/** Wildcard Match (WM). */
@@ -57,6 +59,12 @@ struct rte_swx_table_params {
 	 * which are used to store the action ID.
 	 */
 	uint32_t action_data_size;
+
+	/** Hash function. Ignored when not needed by the table implementation.
+	 * When needed but set to NULL, the table implementation will select the
+	 * hash function to use.
+	 */
+	rte_swx_hash_func_t hash_func;
 
 	/** Maximum number of keys to be stored in the table together with their
 	 * associated data.
@@ -225,6 +233,15 @@ typedef int
  * data likely to be read from the CPU cache with no CPU pipeline stall, which
  * significantly improves the table lookup performance.
  *
+ * The table entry consists of the action ID and the action data. Each table
+ * entry is unique, although different table entries can have identical content,
+ * i.e. same values for the action ID and the action data. The table entry ID is
+ * also returned by the table lookup operation. It can be used to index into an
+ * external array of resources such as counters, registers or meters to identify
+ * the resource directly associated with the current table entry with no need to
+ * store the corresponding index into the table entry. The index of the external
+ * resource is thus auto-generated instead of being stored in the table entry.
+ *
  * @param[in] table
  *   Table handle.
  * @param[in] mailbox
@@ -239,6 +256,9 @@ typedef int
  *   Action data for the *action_id* action. Must point to a valid array of
  *   table *action_data_size* bytes. Only valid when the function returns 1 and
  *   *hit* is set to true.
+ * @param[out] entry_id
+ *   Table entry unique ID. Must point to a valid 32-bit variable. Only valid
+ *   when the function returns 1 and *hit* is set to true.
  * @param[out] hit
  *   Only valid when the function returns 1. Set to non-zero (true) on table
  *   lookup hit and to zero (false) on table lookup miss.
@@ -252,6 +272,7 @@ typedef int
 			  uint8_t **key,
 			  uint64_t *action_id,
 			  uint8_t **action_data,
+			  size_t *entry_id,
 			  int *hit);
 
 /**

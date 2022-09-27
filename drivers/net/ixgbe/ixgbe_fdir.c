@@ -317,7 +317,7 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev)
 	reg = IXGBE_PCI_REG_ADDR(hw, IXGBE_FDIRDIP4M);
 	*reg = ~(info->mask.dst_ipv4_mask);
 
-	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_SIGNATURE) {
+	if (IXGBE_DEV_FDIR_CONF(dev)->mode == RTE_FDIR_MODE_SIGNATURE) {
 		/*
 		 * Store source and destination IPv6 masks (bit reversed)
 		 */
@@ -346,7 +346,7 @@ fdir_set_input_mask_x550(struct rte_eth_dev *dev)
 	uint32_t fdirm = IXGBE_FDIRM_POOL | IXGBE_FDIRM_DIPv6 |
 			 IXGBE_FDIRM_FLEX;
 	uint32_t fdiripv6m;
-	enum rte_fdir_mode mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 	uint16_t mac_mask;
 
 	PMD_INIT_FUNC_TRACE();
@@ -469,7 +469,7 @@ static int
 ixgbe_fdir_store_input_mask(struct rte_eth_dev *dev,
 			    const struct rte_eth_fdir_masks *input_mask)
 {
-	enum rte_fdir_mode mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 
 	if (mode >= RTE_FDIR_MODE_SIGNATURE &&
 	    mode <= RTE_FDIR_MODE_PERFECT)
@@ -485,7 +485,7 @@ ixgbe_fdir_store_input_mask(struct rte_eth_dev *dev,
 int
 ixgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 {
-	enum rte_fdir_mode mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 
 	if (mode >= RTE_FDIR_MODE_SIGNATURE &&
 	    mode <= RTE_FDIR_MODE_PERFECT)
@@ -639,7 +639,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	int err;
 	uint32_t fdirctrl, pbsize;
 	int i;
-	enum rte_fdir_mode mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -658,7 +658,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	    mode != RTE_FDIR_MODE_PERFECT)
 		return -ENOSYS;
 
-	err = configure_fdir_flags(&dev->data->dev_conf.fdir_conf, &fdirctrl);
+	err = configure_fdir_flags(IXGBE_DEV_FDIR_CONF(dev), &fdirctrl);
 	if (err)
 		return err;
 
@@ -680,13 +680,13 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	for (i = 1; i < 8; i++)
 		IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), 0);
 
-	err = fdir_set_input_mask(dev, &dev->data->dev_conf.fdir_conf.mask);
+	err = fdir_set_input_mask(dev, &IXGBE_DEV_FDIR_CONF(dev)->mask);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD mask");
 		return err;
 	}
-	err = ixgbe_set_fdir_flex_conf(dev,
-		&dev->data->dev_conf.fdir_conf.flex_conf, &fdirctrl);
+	err = ixgbe_set_fdir_flex_conf(dev, &IXGBE_DEV_FDIR_CONF(dev)->flex_conf,
+				       &fdirctrl);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD flexible arguments.");
 		return err;
@@ -1121,7 +1121,7 @@ ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 	int err;
 	struct ixgbe_hw_fdir_info *info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
-	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode fdir_mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 	struct ixgbe_fdir_filter *node;
 	bool add_node = FALSE;
 
@@ -1165,12 +1165,12 @@ ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			return -ENOTSUP;
 		}
 		fdirhash = atr_compute_perfect_hash_82599(&rule->ixgbe_fdir,
-							  dev->data->dev_conf.fdir_conf.pballoc);
+							  IXGBE_DEV_FDIR_CONF(dev)->pballoc);
 		fdirhash |= rule->soft_id <<
 			IXGBE_FDIRHASH_SIG_SW_INDEX_SHIFT;
 	} else
 		fdirhash = atr_compute_sig_hash_82599(&rule->ixgbe_fdir,
-						      dev->data->dev_conf.fdir_conf.pballoc);
+						      IXGBE_DEV_FDIR_CONF(dev)->pballoc);
 
 	if (del) {
 		err = ixgbe_remove_fdir_filter(info, &rule->ixgbe_fdir);
@@ -1188,7 +1188,7 @@ ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 	fdircmd_flags = (update) ? IXGBE_FDIRCMD_FILTER_UPDATE : 0;
 	if (rule->fdirflags & IXGBE_FDIRCMD_DROP) {
 		if (is_perfect) {
-			queue = dev->data->dev_conf.fdir_conf.drop_queue;
+			queue = IXGBE_DEV_FDIR_CONF(dev)->drop_queue;
 			fdircmd_flags |= IXGBE_FDIRCMD_DROP;
 		} else {
 			PMD_DRV_LOG(ERR, "Drop option is not supported in"
@@ -1288,7 +1288,7 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 	offset = ((fdirctrl & IXGBE_FDIRCTRL_FLEX_MASK) >>
 			IXGBE_FDIRCTRL_FLEX_SHIFT) * sizeof(uint16_t);
 
-	fdir_info->mode = dev->data->dev_conf.fdir_conf.mode;
+	fdir_info->mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 	max_num = (1 << (FDIRENTRIES_NUM_SHIFT +
 			(fdirctrl & FDIRCTRL_PBALLOC_MASK)));
 	if (fdir_info->mode >= RTE_FDIR_MODE_PERFECT &&
@@ -1341,7 +1341,7 @@ ixgbe_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *fdir_st
 	struct ixgbe_hw_fdir_info *info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	uint32_t reg, max_num;
-	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode fdir_mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 
 	/* Get the information from registers */
 	reg = IXGBE_READ_REG(hw, IXGBE_FDIRFREE);
@@ -1398,7 +1398,7 @@ ixgbe_fdir_filter_restore(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	struct ixgbe_fdir_filter *node;
 	bool is_perfect = FALSE;
-	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode fdir_mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
 
 	if (fdir_mode >= RTE_FDIR_MODE_PERFECT &&
 	    fdir_mode <= RTE_FDIR_MODE_PERFECT_TUNNEL)

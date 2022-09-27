@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <sys/queue.h>
 #include <unistd.h>
 #include <linux/virtio_net.h>
@@ -299,15 +300,20 @@ struct vhost_virtqueue {
 
 	rte_rwlock_t	iotlb_lock;
 	rte_rwlock_t	iotlb_pending_lock;
-	struct rte_mempool *iotlb_pool;
+	struct vhost_iotlb_entry *iotlb_pool;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
 	int				iotlb_cache_nr;
+	rte_spinlock_t	iotlb_free_lock;
+	SLIST_HEAD(, vhost_iotlb_entry) iotlb_free_list;
 
 	/* Used to notify the guest (trigger interrupt) */
 	int			callfd;
 	/* Currently unused as polling mode is enabled */
 	int			kickfd;
+
+	/* Index of this vq in dev->virtqueue[] */
+	uint32_t		index;
 
 	/* inflight share memory info */
 	union {

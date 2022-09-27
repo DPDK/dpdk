@@ -28,7 +28,6 @@
 #include <rte_interrupts.h>
 #include <rte_log.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
 #include <rte_common.h>
 #include <rte_launch.h>
 #include <rte_memory.h>
@@ -47,8 +46,6 @@
  * @file
  * PCI probing under BSD.
  */
-
-extern struct rte_pci_bus rte_pci_bus;
 
 /* Map pci device */
 int
@@ -251,7 +248,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	/* FreeBSD has no NUMA support (yet) */
 	dev->device.numa_node = 0;
 
-	pci_name_set(dev);
+	pci_common_set(dev);
 
 	/* FreeBSD has only one pass through driver */
 	dev->kdrv = RTE_PCI_KDRV_NIC_UIO;
@@ -302,11 +299,11 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 			} else { /* already registered */
 				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
-				pci_name_set(dev2);
+				pci_common_set(dev2);
 				memmove(dev2->mem_resource,
 					dev->mem_resource,
 					sizeof(dev->mem_resource));
-				free(dev);
+				pci_free(dev);
 			}
 			return 0;
 		}
@@ -316,7 +313,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	return 0;
 
 skipdev:
-	free(dev);
+	pci_free(dev);
 	return 0;
 }
 

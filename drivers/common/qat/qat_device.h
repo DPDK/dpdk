@@ -4,7 +4,7 @@
 #ifndef _QAT_DEVICE_H_
 #define _QAT_DEVICE_H_
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "qat_common.h"
 #include "qat_logs.h"

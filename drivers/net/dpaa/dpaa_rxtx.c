@@ -37,7 +37,7 @@
 
 #include "dpaa_ethdev.h"
 #include "dpaa_rxtx.h"
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <dpaa_mempool.h>
 
 #include <qman.h>

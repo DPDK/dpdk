@@ -240,22 +240,20 @@ vhost_backend_cleanup(struct virtio_net *dev)
 }
 
 static void
-vhost_user_notify_queue_state(struct virtio_net *dev, uint16_t index,
-			      int enable)
+vhost_user_notify_queue_state(struct virtio_net *dev, struct vhost_virtqueue *vq,
+	int enable)
 {
 	struct rte_vdpa_device *vdpa_dev = dev->vdpa_dev;
-	struct vhost_virtqueue *vq = dev->virtqueue[index];
 
 	/* Configure guest notifications on enable */
 	if (enable && vq->notif_enable != VIRTIO_UNINITIALIZED_NOTIF)
 		vhost_enable_guest_notification(dev, vq, vq->notif_enable);
 
 	if (vdpa_dev && vdpa_dev->ops->set_vring_state)
-		vdpa_dev->ops->set_vring_state(dev->vid, index, enable);
+		vdpa_dev->ops->set_vring_state(dev->vid, vq->index, enable);
 
 	if (dev->notify_ops->vring_state_changed)
-		dev->notify_ops->vring_state_changed(dev->vid,
-				index, enable);
+		dev->notify_ops->vring_state_changed(dev->vid, vq->index, enable);
 }
 
 /*
@@ -493,11 +491,11 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
  * make them on the same numa node as the memory of vring descriptor.
  */
 #ifdef RTE_LIBRTE_VHOST_NUMA
-static struct virtio_net*
-numa_realloc(struct virtio_net *dev, int index)
+static void
+numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 {
 	int node, dev_node;
-	struct virtio_net *old_dev;
+	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
 	struct batch_copy_elem *bce;
 	struct guest_page *gp;
@@ -505,39 +503,40 @@ numa_realloc(struct virtio_net *dev, int index)
 	size_t mem_size;
 	int ret;
 
-	old_dev = dev;
-	vq = dev->virtqueue[index];
+	dev = *pdev;
+	vq = *pvq;
 
 	/*
 	 * If VQ is ready, it is too late to reallocate, it certainly already
 	 * happened anyway on VHOST_USER_SET_VRING_ADRR.
 	 */
 	if (vq->ready)
-		return dev;
+		return;
 
 	ret = get_mempolicy(&node, NULL, 0, vq->desc, MPOL_F_NODE | MPOL_F_ADDR);
 	if (ret) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"unable to get virtqueue %d numa information.\n",
-			index);
-		return dev;
+			vq->index);
+		return;
 	}
 
 	if (node == vq->numa_node)
 		goto out_dev_realloc;
 
-	vq = rte_realloc_socket(vq, sizeof(*vq), 0, node);
+	vq = rte_realloc_socket(*pvq, sizeof(**pvq), 0, node);
 	if (!vq) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to realloc virtqueue %d on node %d\n",
-			index, node);
-		return dev;
+			(*pvq)->index, node);
+		return;
 	}
+	*pvq = vq;
 
-	if (vq != dev->virtqueue[index]) {
+	if (vq != dev->virtqueue[vq->index]) {
 		VHOST_LOG_CONFIG(dev->ifname, INFO, "reallocated virtqueue on node %d\n", node);
-		dev->virtqueue[index] = vq;
-		vhost_user_iotlb_init(dev, index);
+		dev->virtqueue[vq->index] = vq;
+		vhost_user_iotlb_init(dev, vq);
 	}
 
 	if (vq_is_packed(dev)) {
@@ -549,7 +548,7 @@ numa_realloc(struct virtio_net *dev, int index)
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
 				"failed to realloc shadow packed on node %d\n",
 				node);
-			return dev;
+			return;
 		}
 		vq->shadow_used_packed = sup;
 	} else {
@@ -561,7 +560,7 @@ numa_realloc(struct virtio_net *dev, int index)
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
 				"failed to realloc shadow split on node %d\n",
 				node);
-			return dev;
+			return;
 		}
 		vq->shadow_used_split = sus;
 	}
@@ -572,7 +571,7 @@ numa_realloc(struct virtio_net *dev, int index)
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to realloc batch copy elem on node %d\n",
 			node);
-		return dev;
+		return;
 	}
 	vq->batch_copy_elems = bce;
 
@@ -584,7 +583,7 @@ numa_realloc(struct virtio_net *dev, int index)
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
 				"failed to realloc log cache on node %d\n",
 				node);
-			return dev;
+			return;
 		}
 		vq->log_cache = lc;
 	}
@@ -597,7 +596,7 @@ numa_realloc(struct virtio_net *dev, int index)
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
 				"failed to realloc resubmit inflight on node %d\n",
 				node);
-			return dev;
+			return;
 		}
 		vq->resubmit_inflight = ri;
 
@@ -610,7 +609,7 @@ numa_realloc(struct virtio_net *dev, int index)
 				VHOST_LOG_CONFIG(dev->ifname, ERR,
 					"failed to realloc resubmit list on node %d\n",
 					node);
-				return dev;
+				return;
 			}
 			ri->resubmit_list = rd;
 		}
@@ -621,22 +620,23 @@ numa_realloc(struct virtio_net *dev, int index)
 out_dev_realloc:
 
 	if (dev->flags & VIRTIO_DEV_RUNNING)
-		return dev;
+		return;
 
 	ret = get_mempolicy(&dev_node, NULL, 0, dev, MPOL_F_NODE | MPOL_F_ADDR);
 	if (ret) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR, "unable to get numa information.\n");
-		return dev;
+		return;
 	}
 
 	if (dev_node == node)
-		return dev;
+		return;
 
-	dev = rte_realloc_socket(old_dev, sizeof(*dev), 0, node);
+	dev = rte_realloc_socket(*pdev, sizeof(**pdev), 0, node);
 	if (!dev) {
-		VHOST_LOG_CONFIG(old_dev->ifname, ERR, "failed to realloc dev on node %d\n", node);
-		return old_dev;
+		VHOST_LOG_CONFIG((*pdev)->ifname, ERR, "failed to realloc dev on node %d\n", node);
+		return;
 	}
+	*pdev = dev;
 
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "reallocated device on node %d\n", node);
 	vhost_devices[dev->vid] = dev;
@@ -648,7 +648,7 @@ out_dev_realloc:
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to realloc mem table on node %d\n",
 			node);
-		return dev;
+		return;
 	}
 	dev->mem = mem;
 
@@ -658,17 +658,16 @@ out_dev_realloc:
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to realloc guest pages on node %d\n",
 			node);
-		return dev;
+		return;
 	}
 	dev->guest_pages = gp;
-
-	return dev;
 }
 #else
-static struct virtio_net*
-numa_realloc(struct virtio_net *dev, int index __rte_unused)
+static void
+numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 {
-	return dev;
+	RTE_SET_USED(pdev);
+	RTE_SET_USED(pvq);
 }
 #endif
 
@@ -738,88 +737,91 @@ log_addr_to_gpa(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	return log_gpa;
 }
 
-static struct virtio_net *
-translate_ring_addresses(struct virtio_net *dev, int vq_index)
+static void
+translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 {
-	struct vhost_virtqueue *vq = dev->virtqueue[vq_index];
-	struct vhost_vring_addr *addr = &vq->ring_addrs;
+	struct vhost_virtqueue *vq;
+	struct virtio_net *dev;
 	uint64_t len, expected_len;
 
-	if (addr->flags & (1 << VHOST_VRING_F_LOG)) {
+	dev = *pdev;
+	vq = *pvq;
+
+	if (vq->ring_addrs.flags & (1 << VHOST_VRING_F_LOG)) {
 		vq->log_guest_addr =
 			log_addr_to_gpa(dev, vq);
 		if (vq->log_guest_addr == 0) {
 			VHOST_LOG_CONFIG(dev->ifname, DEBUG, "failed to map log_guest_addr.\n");
-			return dev;
+			return;
 		}
 	}
 
 	if (vq_is_packed(dev)) {
 		len = sizeof(struct vring_packed_desc) * vq->size;
 		vq->desc_packed = (struct vring_packed_desc *)(uintptr_t)
-			ring_addr_to_vva(dev, vq, addr->desc_user_addr, &len);
+			ring_addr_to_vva(dev, vq, vq->ring_addrs.desc_user_addr, &len);
 		if (vq->desc_packed == NULL ||
 				len != sizeof(struct vring_packed_desc) *
 				vq->size) {
 			VHOST_LOG_CONFIG(dev->ifname, DEBUG, "failed to map desc_packed ring.\n");
-			return dev;
+			return;
 		}
 
-		dev = numa_realloc(dev, vq_index);
-		vq = dev->virtqueue[vq_index];
-		addr = &vq->ring_addrs;
+		numa_realloc(&dev, &vq);
+		*pdev = dev;
+		*pvq = vq;
 
 		len = sizeof(struct vring_packed_desc_event);
 		vq->driver_event = (struct vring_packed_desc_event *)
 					(uintptr_t)ring_addr_to_vva(dev,
-					vq, addr->avail_user_addr, &len);
+					vq, vq->ring_addrs.avail_user_addr, &len);
 		if (vq->driver_event == NULL ||
 				len != sizeof(struct vring_packed_desc_event)) {
 			VHOST_LOG_CONFIG(dev->ifname, DEBUG,
 				"failed to find driver area address.\n");
-			return dev;
+			return;
 		}
 
 		len = sizeof(struct vring_packed_desc_event);
 		vq->device_event = (struct vring_packed_desc_event *)
 					(uintptr_t)ring_addr_to_vva(dev,
-					vq, addr->used_user_addr, &len);
+					vq, vq->ring_addrs.used_user_addr, &len);
 		if (vq->device_event == NULL ||
 				len != sizeof(struct vring_packed_desc_event)) {
 			VHOST_LOG_CONFIG(dev->ifname, DEBUG,
 				"failed to find device area address.\n");
-			return dev;
+			return;
 		}
 
 		vq->access_ok = true;
-		return dev;
+		return;
 	}
 
 	/* The addresses are converted from QEMU virtual to Vhost virtual. */
 	if (vq->desc && vq->avail && vq->used)
-		return dev;
+		return;
 
 	len = sizeof(struct vring_desc) * vq->size;
 	vq->desc = (struct vring_desc *)(uintptr_t)ring_addr_to_vva(dev,
-			vq, addr->desc_user_addr, &len);
+			vq, vq->ring_addrs.desc_user_addr, &len);
 	if (vq->desc == 0 || len != sizeof(struct vring_desc) * vq->size) {
 		VHOST_LOG_CONFIG(dev->ifname, DEBUG, "failed to map desc ring.\n");
-		return dev;
+		return;
 	}
 
-	dev = numa_realloc(dev, vq_index);
-	vq = dev->virtqueue[vq_index];
-	addr = &vq->ring_addrs;
+	numa_realloc(&dev, &vq);
+	*pdev = dev;
+	*pvq = vq;
 
 	len = sizeof(struct vring_avail) + sizeof(uint16_t) * vq->size;
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
 		len += sizeof(uint16_t);
 	expected_len = len;
 	vq->avail = (struct vring_avail *)(uintptr_t)ring_addr_to_vva(dev,
-			vq, addr->avail_user_addr, &len);
+			vq, vq->ring_addrs.avail_user_addr, &len);
 	if (vq->avail == 0 || len != expected_len) {
 		VHOST_LOG_CONFIG(dev->ifname, DEBUG, "failed to map avail ring.\n");
-		return dev;
+		return;
 	}
 
 	len = sizeof(struct vring_used) +
@@ -828,10 +830,10 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 		len += sizeof(uint16_t);
 	expected_len = len;
 	vq->used = (struct vring_used *)(uintptr_t)ring_addr_to_vva(dev,
-			vq, addr->used_user_addr, &len);
+			vq, vq->ring_addrs.used_user_addr, &len);
 	if (vq->used == 0 || len != expected_len) {
 		VHOST_LOG_CONFIG(dev->ifname, DEBUG, "failed to map used ring.\n");
-		return dev;
+		return;
 	}
 
 	if (vq->last_used_idx != vq->used->idx) {
@@ -850,8 +852,6 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "mapped address avail: %p\n", vq->avail);
 	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "mapped address used: %p\n", vq->used);
 	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "log_guest_addr: %" PRIx64 "\n", vq->log_guest_addr);
-
-	return dev;
 }
 
 /*
@@ -887,10 +887,7 @@ vhost_user_set_vring_addr(struct virtio_net **pdev,
 	if ((vq->enabled && (dev->features &
 				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))) ||
 			access_ok) {
-		dev = translate_ring_addresses(dev, ctx->msg.payload.addr.index);
-		if (!dev)
-			return RTE_VHOST_MSG_RESULT_ERR;
-
+		translate_ring_addresses(&dev, &vq);
 		*pdev = dev;
 	}
 
@@ -1396,12 +1393,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 			 */
 			vring_invalidate(dev, vq);
 
-			dev = translate_ring_addresses(dev, i);
-			if (!dev) {
-				dev = *pdev;
-				goto free_mem_table;
-			}
-
+			translate_ring_addresses(&dev, &vq);
 			*pdev = dev;
 		}
 	}
@@ -1781,7 +1773,7 @@ vhost_user_set_vring_call(struct virtio_net **pdev,
 
 	if (vq->ready) {
 		vq->ready = false;
-		vhost_user_notify_queue_state(dev, file.index, 0);
+		vhost_user_notify_queue_state(dev, vq, 0);
 	}
 
 	if (vq->callfd >= 0)
@@ -2029,17 +2021,9 @@ vhost_user_set_vring_kick(struct virtio_net **pdev,
 		file.index, file.fd);
 
 	/* Interpret ring addresses only when ring is started. */
-	dev = translate_ring_addresses(dev, file.index);
-	if (!dev) {
-		if (file.fd != VIRTIO_INVALID_EVENTFD)
-			close(file.fd);
-
-		return RTE_VHOST_MSG_RESULT_ERR;
-	}
-
-	*pdev = dev;
-
 	vq = dev->virtqueue[file.index];
+	translate_ring_addresses(&dev, &vq);
+	*pdev = dev;
 
 	/*
 	 * When VHOST_USER_F_PROTOCOL_FEATURES is not negotiated,
@@ -2052,7 +2036,7 @@ vhost_user_set_vring_kick(struct virtio_net **pdev,
 
 	if (vq->ready) {
 		vq->ready = false;
-		vhost_user_notify_queue_state(dev, file.index, 0);
+		vhost_user_notify_queue_state(dev, vq, 0);
 	}
 
 	if (vq->kickfd >= 0)
@@ -2595,7 +2579,8 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 
 			if (is_vring_iotlb(dev, vq, imsg)) {
 				rte_spinlock_lock(&vq->access_lock);
-				*pdev = dev = translate_ring_addresses(dev, i);
+				translate_ring_addresses(&dev, &vq);
+				*pdev = dev;
 				rte_spinlock_unlock(&vq->access_lock);
 			}
 		}
@@ -3159,7 +3144,7 @@ skip_to_post_handle:
 
 		if (cur_ready != (vq && vq->ready)) {
 			vq->ready = cur_ready;
-			vhost_user_notify_queue_state(dev, i, cur_ready);
+			vhost_user_notify_queue_state(dev, vq, cur_ready);
 		}
 	}
 
@@ -3381,8 +3366,10 @@ int rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable)
 		q_last = qid;
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_vfio_device_fd, -ENOTSUP);
-	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_notify_area, -ENOTSUP);
+	if (vdpa_dev->ops->get_vfio_device_fd == NULL)
+		return -ENOTSUP;
+	if (vdpa_dev->ops->get_notify_area == NULL)
+		return -ENOTSUP;
 
 	vfio_device_fd = vdpa_dev->ops->get_vfio_device_fd(vid);
 	if (vfio_device_fd < 0)

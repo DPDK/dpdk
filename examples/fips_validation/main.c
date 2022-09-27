@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <dirent.h>
+#include <stdlib.h>
 
 #include <rte_cryptodev.h>
 #include <rte_malloc.h>

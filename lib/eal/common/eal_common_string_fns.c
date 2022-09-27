@@ -2,8 +2,10 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <stdio.h>
+#include <ctype.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <rte_string_fns.h>
 #include <rte_errno.h>
@@ -63,4 +65,36 @@ rte_strscpy(char *dst, const char *src, size_t dsize)
 		dst[res - 1] = '\0';
 	rte_errno = E2BIG;
 	return -rte_errno;
+}
+
+uint64_t
+rte_str_to_size(const char *str)
+{
+	char *endptr;
+	unsigned long long size;
+
+	while (isspace((int)*str))
+		str++;
+	if (*str == '-')
+		return 0;
+
+	errno = 0;
+	size = strtoull(str, &endptr, 0);
+	if (errno)
+		return 0;
+
+	if (*endptr == ' ')
+		endptr++; /* allow 1 space gap */
+
+	switch (*endptr) {
+	case 'G': case 'g':
+		size *= 1024; /* fall-through */
+	case 'M': case 'm':
+		size *= 1024; /* fall-through */
+	case 'K': case 'k':
+		size *= 1024; /* fall-through */
+	default:
+		break;
+	}
+	return size;
 }

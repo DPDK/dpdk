@@ -2,9 +2,12 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
+#include <dev_driver.h>
 #include <rte_eal.h>
 
 #include "rte_compressdev_internal.h"

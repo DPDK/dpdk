@@ -9,7 +9,7 @@
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_class.h>
 
 #include "test.h"
@@ -98,9 +98,9 @@ test_valid_devargs_cases(const struct devargs_case *list, size_t n)
 			      list[i].bus_kv) != 0)
 			goto fail;
 		if (list[i].bus != NULL &&
-		    strcmp(da.bus->name, list[i].bus) != 0) {
+		    strcmp(rte_bus_name(da.bus), list[i].bus) != 0) {
 			printf("rte_devargs_parse(%s) bus name (%s) not expected (%s)\n",
-			       list[i].devargs, da.bus->name, list[i].bus);
+			       list[i].devargs, rte_bus_name(da.bus), list[i].bus);
 			goto fail;
 		}
 		if ((list[i].class_kv > 0 || list[i].class != NULL) &&

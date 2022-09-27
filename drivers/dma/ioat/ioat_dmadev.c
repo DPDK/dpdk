@@ -2,7 +2,7 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_dmadev_pmd.h>
 #include <rte_malloc.h>
 #include <rte_prefetch.h>

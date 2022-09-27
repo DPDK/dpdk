@@ -11,7 +11,7 @@
 #include <rte_regexdev.h>
 #include <rte_regexdev_core.h>
 #include <rte_regexdev_driver.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include <mlx5_common.h>
 #include <mlx5_glue.h>

@@ -2,7 +2,7 @@
  * Copyright(c) 2017 Huawei Technologies Co., Ltd
  */
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "hinic_compat.h"
 #include "hinic_csr.h"

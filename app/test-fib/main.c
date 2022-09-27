@@ -3,6 +3,7 @@
  */
 
 #include <getopt.h>
+#include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>

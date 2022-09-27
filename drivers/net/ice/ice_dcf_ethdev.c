@@ -18,7 +18,7 @@
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include <iavf_devids.h>
 

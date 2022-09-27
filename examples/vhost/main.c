@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
+#include <ctype.h>
 #include <arpa/inet.h>
 #include <getopt.h>
 #include <linux/if_ether.h>
@@ -10,6 +11,7 @@
 #include <linux/virtio_ring.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/eventfd.h>
 #include <sys/param.h>
 #include <unistd.h>

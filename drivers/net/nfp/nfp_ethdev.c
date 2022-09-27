@@ -16,7 +16,7 @@
 #include <rte_common.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_ether.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
@@ -680,7 +680,9 @@ nfp_fw_setup(struct rte_pci_device *dev,
 	char card_desc[100];
 	int err = 0;
 
-	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
+	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "nffw.partno");
+	if (nfp_fw_model == NULL)
+		nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
 
 	if (nfp_fw_model) {
 		PMD_DRV_LOG(INFO, "firmware model found: %s", nfp_fw_model);
@@ -1068,6 +1070,18 @@ static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
 	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
+			       PCI_DEVICE_ID_NFP6000_PF_NIC)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CORIGINE,
+			       PCI_DEVICE_ID_NFP3800_PF_NIC)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CORIGINE,
+			       PCI_DEVICE_ID_NFP4000_PF_NIC)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CORIGINE,
 			       PCI_DEVICE_ID_NFP6000_PF_NIC)
 	},
 	{

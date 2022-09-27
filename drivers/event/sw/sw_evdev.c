@@ -3,9 +3,10 @@
  */
 
 #include <inttypes.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_ring.h>
 #include <rte_errno.h>

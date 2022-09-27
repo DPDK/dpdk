@@ -9,12 +9,10 @@
 #include <ethdev_driver.h>
 #include <ethdev_vdev.h>
 #include <rte_malloc.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_errno.h>
 #include <rte_ring.h>
-#include <rte_tm_driver.h>
-#include <rte_mtr_driver.h>
 
 #include "rte_eth_softnic.h"
 #include "rte_eth_softnic_internals.h"
@@ -23,20 +21,6 @@
 #define PMD_PARAM_CONN_PORT                                "conn_port"
 #define PMD_PARAM_CPU_ID                                   "cpu_id"
 #define PMD_PARAM_SC                                       "sc"
-#define PMD_PARAM_TM_N_QUEUES                              "tm_n_queues"
-#define PMD_PARAM_TM_QSIZE0                                "tm_qsize0"
-#define PMD_PARAM_TM_QSIZE1                                "tm_qsize1"
-#define PMD_PARAM_TM_QSIZE2                                "tm_qsize2"
-#define PMD_PARAM_TM_QSIZE3                                "tm_qsize3"
-#define PMD_PARAM_TM_QSIZE4                                "tm_qsize4"
-#define PMD_PARAM_TM_QSIZE5                                "tm_qsize5"
-#define PMD_PARAM_TM_QSIZE6                                "tm_qsize6"
-#define PMD_PARAM_TM_QSIZE7                                "tm_qsize7"
-#define PMD_PARAM_TM_QSIZE8                                "tm_qsize8"
-#define PMD_PARAM_TM_QSIZE9                                "tm_qsize9"
-#define PMD_PARAM_TM_QSIZE10                               "tm_qsize10"
-#define PMD_PARAM_TM_QSIZE11                               "tm_qsize11"
-#define PMD_PARAM_TM_QSIZE12                               "tm_qsize12"
 
 
 static const char * const pmd_valid_args[] = {
@@ -44,20 +28,6 @@ static const char * const pmd_valid_args[] = {
 	PMD_PARAM_CONN_PORT,
 	PMD_PARAM_CPU_ID,
 	PMD_PARAM_SC,
-	PMD_PARAM_TM_N_QUEUES,
-	PMD_PARAM_TM_QSIZE0,
-	PMD_PARAM_TM_QSIZE1,
-	PMD_PARAM_TM_QSIZE2,
-	PMD_PARAM_TM_QSIZE3,
-	PMD_PARAM_TM_QSIZE4,
-	PMD_PARAM_TM_QSIZE5,
-	PMD_PARAM_TM_QSIZE6,
-	PMD_PARAM_TM_QSIZE7,
-	PMD_PARAM_TM_QSIZE8,
-	PMD_PARAM_TM_QSIZE9,
-	PMD_PARAM_TM_QSIZE10,
-	PMD_PARAM_TM_QSIZE11,
-	PMD_PARAM_TM_QSIZE12,
 	NULL
 };
 
@@ -190,16 +160,8 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 	/* Firmware */
 	softnic_pipeline_disable_all(p);
 	softnic_pipeline_free(p);
-	softnic_table_action_profile_free(p);
-	softnic_port_in_action_profile_free(p);
-	softnic_tap_free(p);
-	softnic_tmgr_free(p);
-	softnic_link_free(p);
 	softnic_softnic_swq_free_keep_rxq_txq(p);
 	softnic_mempool_free(p);
-
-	tm_hierarchy_free(p);
-	softnic_mtr_free(p);
 
 	return 0;
 }
@@ -215,16 +177,8 @@ pmd_free(struct pmd_internals *p)
 
 	softnic_thread_free(p);
 	softnic_pipeline_free(p);
-	softnic_table_action_profile_free(p);
-	softnic_port_in_action_profile_free(p);
-	softnic_tap_free(p);
-	softnic_tmgr_free(p);
-	softnic_link_free(p);
 	softnic_swq_free(p);
 	softnic_mempool_free(p);
-
-	tm_hierarchy_free(p);
-	softnic_mtr_free(p);
 
 	rte_free(p);
 }
@@ -248,30 +202,6 @@ pmd_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
-static int
-pmd_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
-		 const struct rte_flow_ops **ops)
-{
-	*ops = &pmd_flow_ops;
-	return 0;
-}
-
-static int
-pmd_tm_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
-{
-	*(const struct rte_tm_ops **)arg = &pmd_tm_ops;
-
-	return 0;
-}
-
-static int
-pmd_mtr_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
-{
-	*(const struct rte_mtr_ops **)arg = &pmd_mtr_ops;
-
-	return 0;
-}
-
 static const struct eth_dev_ops pmd_ops = {
 	.dev_configure = pmd_dev_configure,
 	.dev_start = pmd_dev_start,
@@ -281,9 +211,6 @@ static const struct eth_dev_ops pmd_ops = {
 	.dev_infos_get = pmd_dev_infos_get,
 	.rx_queue_setup = pmd_rx_queue_setup,
 	.tx_queue_setup = pmd_tx_queue_setup,
-	.flow_ops_get = pmd_flow_ops_get,
-	.tm_ops_get = pmd_tm_ops_get,
-	.mtr_ops_get = pmd_mtr_ops_get,
 };
 
 static uint16_t
@@ -325,17 +252,8 @@ pmd_init(struct pmd_params *params)
 	memcpy(&p->params, params, sizeof(p->params));
 
 	/* Resources */
-	tm_hierarchy_init(p);
-	softnic_mtr_init(p);
-
 	softnic_mempool_init(p);
 	softnic_swq_init(p);
-	softnic_link_init(p);
-	softnic_tmgr_init(p);
-	softnic_tap_init(p);
-	softnic_cryptodev_init(p);
-	softnic_port_in_action_profile_init(p);
-	softnic_table_action_profile_init(p);
 	softnic_pipeline_init(p);
 
 	status = softnic_thread_init(p);
@@ -459,20 +377,6 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	}
 	p->cpu_id = SOFTNIC_CPU_ID;
 	p->sc = SOFTNIC_SC;
-	p->tm.n_queues = SOFTNIC_TM_N_QUEUES;
-	p->tm.qsize[0] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[1] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[2] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[3] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[4] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[5] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[6] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[7] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[8] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[9] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[10] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[11] = SOFTNIC_TM_QUEUE_SIZE;
-	p->tm.qsize[12] = SOFTNIC_TM_QUEUE_SIZE;
 
 	/* Firmware script (optional) */
 	if (rte_kvargs_count(kvlist, PMD_PARAM_FIRMWARE) == 1) {
@@ -513,104 +417,6 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	if (rte_kvargs_count(kvlist, PMD_PARAM_SC) == 1) {
 		ret = rte_kvargs_process(kvlist, PMD_PARAM_SC,
 			&get_uint32, &p->sc);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	/* TM number of queues (optional) */
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_N_QUEUES) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_N_QUEUES,
-			&get_uint32, &p->tm.n_queues);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	/* TM queue size 0 .. 3 (optional) */
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE0) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE0,
-			&get_uint32, &p->tm.qsize[0]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE1) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE1,
-			&get_uint32, &p->tm.qsize[1]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE2) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE2,
-			&get_uint32, &p->tm.qsize[2]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE3) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE3,
-			&get_uint32, &p->tm.qsize[3]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE4) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE4,
-			&get_uint32, &p->tm.qsize[4]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE5) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE5,
-			&get_uint32, &p->tm.qsize[5]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE6) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE6,
-			&get_uint32, &p->tm.qsize[6]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE7) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE7,
-			&get_uint32, &p->tm.qsize[7]);
-		if (ret < 0)
-			goto out_free;
-	}
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE8) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE8,
-			&get_uint32, &p->tm.qsize[8]);
-		if (ret < 0)
-			goto out_free;
-	}
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE9) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE9,
-			&get_uint32, &p->tm.qsize[9]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE10) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE10,
-			&get_uint32, &p->tm.qsize[10]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE11) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE11,
-			&get_uint32, &p->tm.qsize[11]);
-		if (ret < 0)
-			goto out_free;
-	}
-
-	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE12) == 1) {
-		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE12,
-			&get_uint32, &p->tm.qsize[12]);
 		if (ret < 0)
 			goto out_free;
 	}
@@ -696,20 +502,6 @@ RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
 	PMD_PARAM_FIRMWARE "=<string> "
 	PMD_PARAM_CONN_PORT "=<uint16> "
 	PMD_PARAM_CPU_ID "=<uint32> "
-	PMD_PARAM_TM_N_QUEUES "=<uint32> "
-	PMD_PARAM_TM_QSIZE0 "=<uint32> "
-	PMD_PARAM_TM_QSIZE1 "=<uint32> "
-	PMD_PARAM_TM_QSIZE2 "=<uint32> "
-	PMD_PARAM_TM_QSIZE3 "=<uint32>"
-	PMD_PARAM_TM_QSIZE4 "=<uint32> "
-	PMD_PARAM_TM_QSIZE5 "=<uint32> "
-	PMD_PARAM_TM_QSIZE6 "=<uint32> "
-	PMD_PARAM_TM_QSIZE7 "=<uint32> "
-	PMD_PARAM_TM_QSIZE8 "=<uint32> "
-	PMD_PARAM_TM_QSIZE9 "=<uint32> "
-	PMD_PARAM_TM_QSIZE10 "=<uint32> "
-	PMD_PARAM_TM_QSIZE11 "=<uint32>"
-	PMD_PARAM_TM_QSIZE12 "=<uint32>"
 );
 
 int

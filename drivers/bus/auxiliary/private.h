@@ -9,9 +9,10 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
-#include "rte_bus_auxiliary.h"
+#include <bus_driver.h>
 
-extern struct rte_auxiliary_bus auxiliary_bus;
+#include "bus_auxiliary_driver.h"
+
 extern int auxiliary_bus_logtype;
 
 #define AUXILIARY_LOG(level, ...) \
@@ -19,26 +20,23 @@ extern int auxiliary_bus_logtype;
 		RTE_FMT("auxiliary bus: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 			RTE_FMT_TAIL(__VA_ARGS__,)))
 
-/* Auxiliary bus iterators */
-#define FOREACH_DEVICE_ON_AUXILIARY_BUS(p) \
-		TAILQ_FOREACH(p, &(auxiliary_bus.device_list), next)
-
-#define FOREACH_DRIVER_ON_AUXILIARY_BUS(p) \
-		TAILQ_FOREACH(p, &(auxiliary_bus.driver_list), next)
-
-/* List of auxiliary devices. */
-TAILQ_HEAD(rte_auxiliary_device_list, rte_auxiliary_device);
-/* List of auxiliary drivers. */
-TAILQ_HEAD(rte_auxiliary_driver_list, rte_auxiliary_driver);
-
 /*
  * Structure describing the auxiliary bus
  */
 struct rte_auxiliary_bus {
 	struct rte_bus bus;                  /* Inherit the generic class */
-	struct rte_auxiliary_device_list device_list;  /* List of devices */
-	struct rte_auxiliary_driver_list driver_list;  /* List of drivers */
+	TAILQ_HEAD(, rte_auxiliary_device) device_list;  /* List of devices */
+	TAILQ_HEAD(, rte_auxiliary_driver) driver_list;  /* List of drivers */
 };
+
+extern struct rte_auxiliary_bus auxiliary_bus;
+
+/* Auxiliary bus iterators */
+#define FOREACH_DEVICE_ON_AUXILIARY_BUS(p) \
+	TAILQ_FOREACH(p, &(auxiliary_bus.device_list), next)
+
+#define FOREACH_DRIVER_ON_AUXILIARY_BUS(p) \
+	TAILQ_FOREACH(p, &(auxiliary_bus.driver_list), next)
 
 /*
  * Test whether the auxiliary device exist.

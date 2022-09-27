@@ -10,13 +10,13 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
+
 #include <rte_log.h>
-#include <rte_bus.h>
 #include <rte_malloc.h>
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_kvargs.h>
 #include <rte_alarm.h>
 #include <rte_interrupts.h>
@@ -26,7 +26,7 @@
 #include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_common.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_string_fns.h>
 #include <rte_pmd_i40e.h>
 
@@ -35,7 +35,7 @@
 #include "base/ifpga_api.h"
 #include "rte_rawdev.h"
 #include "rte_rawdev_pmd.h"
-#include "rte_bus_ifpga.h"
+#include "bus_ifpga_driver.h"
 #include "ifpga_common.h"
 #include "ifpga_logs.h"
 #include "ifpga_rawdev.h"
@@ -713,7 +713,8 @@ ifpga_rawdev_configure(const struct rte_rawdev *dev,
 {
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	return config ? 0 : 1;
 }
@@ -726,7 +727,8 @@ ifpga_rawdev_start(struct rte_rawdev *dev)
 
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	adapter = ifpga_rawdev_get_priv(dev);
 	if (!adapter)
@@ -1752,7 +1754,7 @@ ifpga_vdev_parse_devargs(struct rte_devargs *devargs,
 
 	if (rte_kvargs_count(kvlist, IFPGA_ARG_PORT) == 1) {
 		if (rte_kvargs_process(kvlist, IFPGA_ARG_PORT,
-			&rte_ifpga_get_integer32_arg, &port) < 0) {
+				ifpga_get_integer32_arg, &port) < 0) {
 			IFPGA_RAWDEV_PMD_ERR("error to parse %s",
 				IFPGA_ARG_PORT);
 			goto end;
@@ -1887,11 +1889,6 @@ RTE_PMD_REGISTER_PARAM_STRING(ifpga_rawdev_cfg,
 	"ifpga=<string> "
 	"port=<int> "
 	"afu_bts=<path>");
-
-struct rte_pci_bus *ifpga_get_pci_bus(void)
-{
-	return rte_ifpga_rawdev_pmd.bus;
-}
 
 int ifpga_rawdev_partial_reconfigure(struct rte_rawdev *dev, int port,
 	const char *file)

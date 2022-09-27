@@ -11,7 +11,7 @@
 #include <pthread.h>
 
 #include <rte_atomic.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <ethdev_driver.h>
 #include <rte_devargs.h>
 #include <rte_flow.h>

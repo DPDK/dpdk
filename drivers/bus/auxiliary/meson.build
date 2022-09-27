@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2021 NVIDIA Corporation & Affiliates
 
-headers = files(
-        'rte_bus_auxiliary.h',
-)
+driver_sdk_headers += files('bus_auxiliary_driver.h')
 sources = files(
         'auxiliary_common.c',
         'auxiliary_params.c',

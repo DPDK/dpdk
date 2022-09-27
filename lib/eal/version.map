@@ -1,4 +1,4 @@
-DPDK_22 {
+DPDK_23 {
 	global:
 
 	__rte_panic;
@@ -12,10 +12,9 @@ DPDK_22 {
 	rte_bus_find_by_device;
 	rte_bus_find_by_name;
 	rte_bus_get_iommu_class;
+	rte_bus_name;
 	rte_bus_probe;
-	rte_bus_register;
 	rte_bus_scan;
-	rte_bus_unregister;
 	rte_calloc;
 	rte_calloc_socket;
 	rte_cpu_get_flag_enabled;
@@ -27,7 +26,13 @@ DPDK_22 {
 	rte_delay_us_block;
 	rte_delay_us_callback_register;
 	rte_delay_us_sleep;
+	rte_dev_bus;
+	rte_dev_bus_info;
+	rte_dev_devargs;
+	rte_dev_driver;
 	rte_dev_is_probed;
+	rte_dev_name;
+	rte_dev_numa_node;
 	rte_dev_probe;
 	rte_dev_remove;
 	rte_devargs_add;
@@ -38,6 +43,7 @@ DPDK_22 {
 	rte_devargs_parsef;
 	rte_devargs_remove;
 	rte_devargs_type_count;
+	rte_driver_name;
 	rte_dump_physmem_layout;
 	rte_dump_stack;
 	rte_dump_tailq;
@@ -261,6 +267,7 @@ DPDK_22 {
 	rte_socket_id;
 	rte_socket_id_by_idx;
 	rte_srand;
+	rte_str_to_size;
 	rte_strerror;
 	rte_strscpy;
 	rte_strsplit;
@@ -429,7 +436,10 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
+	rte_bus_register;
+	rte_bus_unregister;
 	rte_eal_get_baseaddr;
+	rte_eal_parse_coremask;
 	rte_firmware_read;
 	rte_intr_allow_others;
 	rte_intr_cap_multiple;

@@ -32,6 +32,7 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_launch.h>
+#include <rte_bus.h>
 #include <rte_eal.h>
 #include <rte_alarm.h>
 #include <rte_per_lcore.h>
@@ -42,7 +43,6 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_dev.h>
@@ -445,16 +445,6 @@ uint32_t event_print_mask = (UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN) |
  */
 int do_mlockall = 0;
 
-/*
- * NIC bypass mode configuration options.
- */
-
-#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
-/* The NIC bypass watchdog timeout. */
-uint32_t bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
-#endif
-
-
 #ifdef RTE_LIB_LATENCYSTATS
 
 /*
@@ -476,29 +466,6 @@ struct rte_eth_rxmode rx_mode;
 
 struct rte_eth_txmode tx_mode = {
 	.offloads = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
-};
-
-struct rte_eth_fdir_conf fdir_conf = {
-	.mode = RTE_FDIR_MODE_NONE,
-	.pballoc = RTE_ETH_FDIR_PBALLOC_64K,
-	.status = RTE_FDIR_REPORT_STATUS,
-	.mask = {
-		.vlan_tci_mask = 0xFFEF,
-		.ipv4_mask     = {
-			.src_ip = 0xFFFFFFFF,
-			.dst_ip = 0xFFFFFFFF,
-		},
-		.ipv6_mask     = {
-			.src_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
-			.dst_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
-		},
-		.src_port_mask = 0xFFFF,
-		.dst_port_mask = 0xFFFF,
-		.mac_addr_byte_mask = 0xFF,
-		.tunnel_type_mask = 1,
-		.tunnel_id_mask = 0xFFFFFFFF,
-	},
-	.drop_queue = 127,
 };
 
 volatile int test_done = 1; /* stop packet forwarding when set to 1. */
@@ -1057,7 +1024,7 @@ dma_unmap_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 			TESTPMD_LOG(DEBUG,
 				    "unable to DMA unmap addr 0x%p "
 				    "for device %s\n",
-				    memhdr->addr, dev_info.device->name);
+				    memhdr->addr, rte_dev_name(dev_info.device));
 		}
 	}
 	ret = rte_extmem_unregister(memhdr->addr, memhdr->len);
@@ -1098,7 +1065,7 @@ dma_map_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 			TESTPMD_LOG(DEBUG,
 				    "unable to DMA map addr 0x%p "
 				    "for device %s\n",
-				    memhdr->addr, dev_info.device->name);
+				    memhdr->addr, rte_dev_name(dev_info.device));
 		}
 	}
 }
@@ -3441,7 +3408,7 @@ detach_device(struct rte_device *dev)
 	}
 
 	if (rte_dev_remove(dev) < 0) {
-		TESTPMD_LOG(ERR, "Failed to detach device %s\n", dev->name);
+		TESTPMD_LOG(ERR, "Failed to detach device %s\n", rte_dev_name(dev));
 		return;
 	}
 	remove_invalid_ports();
@@ -3507,9 +3474,9 @@ detach_devargs(char *identifier)
 		}
 	}
 
-	if (rte_eal_hotplug_remove(da.bus->name, da.name) != 0) {
+	if (rte_eal_hotplug_remove(rte_bus_name(da.bus), da.name) != 0) {
 		TESTPMD_LOG(ERR, "Failed to detach device %s(%s)\n",
-			    da.name, da.bus->name);
+			    da.name, rte_bus_name(da.bus));
 		rte_devargs_reset(&da);
 		return;
 	}
@@ -3933,7 +3900,6 @@ init_port_config(void)
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
-		port->dev_conf.fdir_conf = fdir_conf;
 
 		ret = eth_dev_info_get_print_err(pid, &port->dev_info);
 		if (ret != 0)
@@ -3971,10 +3937,6 @@ init_port_config(void)
 		ret = eth_macaddr_get_print_err(pid, &port->eth_addr);
 		if (ret != 0)
 			return;
-
-#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
-		rte_pmd_ixgbe_bypass_init(pid);
-#endif
 
 		if (lsc_interrupt && (*port->dev_info.dev_flags & RTE_ETH_DEV_INTR_LSC))
 			port->dev_conf.intr_conf.lsc = 1;

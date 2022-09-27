@@ -8,11 +8,28 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include <rte_bus_pci.h>
+#include <bus_driver.h>
+#include <bus_pci_driver.h>
 #include <rte_os_shim.h>
 #include <rte_pci.h>
 
+/**
+ * Structure describing the PCI bus
+ */
+struct rte_pci_bus {
+	struct rte_bus bus;               /**< Inherit the generic class */
+	RTE_TAILQ_HEAD(, rte_pci_device) device_list; /**< List of PCI devices */
+	RTE_TAILQ_HEAD(, rte_pci_driver) driver_list; /**< List of PCI drivers */
+};
+
 extern struct rte_pci_bus rte_pci_bus;
+
+/* PCI Bus iterators */
+#define FOREACH_DEVICE_ON_PCIBUS(p)	\
+	RTE_TAILQ_FOREACH(p, &(rte_pci_bus.device_list), next)
+
+#define FOREACH_DRIVER_ON_PCIBUS(p)	\
+	RTE_TAILQ_FOREACH(p, &(rte_pci_bus.driver_list), next)
 
 struct rte_pci_driver;
 struct rte_pci_device;
@@ -27,10 +44,16 @@ struct rte_pci_device;
 int rte_pci_scan(void);
 
 /**
- * Find the name of a PCI device.
+ * Set common internal information for a PCI device.
  */
 void
-pci_name_set(struct rte_pci_device *dev);
+pci_common_set(struct rte_pci_device *dev);
+
+/**
+ * Free a PCI device.
+ */
+void
+pci_free(struct rte_pci_device *dev);
 
 /**
  * Validate whether a device with given PCI address should be ignored or not.

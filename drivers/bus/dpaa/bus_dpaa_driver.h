@@ -3,12 +3,14 @@
  *   Copyright 2017-2022 NXP
  *
  */
-#ifndef __RTE_DPAA_BUS_H__
-#define __RTE_DPAA_BUS_H__
+#ifndef BUS_DPAA_DRIVER_H
+#define BUS_DPAA_DRIVER_H
 
-#include <rte_bus.h>
+#include <rte_compat.h>
+#include <dev_driver.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_mempool.h>
+
 #include <dpaax_iova_table.h>
 
 #include <dpaa_of.h>
@@ -73,22 +75,10 @@ extern unsigned int dpaa_svr_family;
 struct rte_dpaa_device;
 struct rte_dpaa_driver;
 
-/* DPAA Device and Driver lists for DPAA bus */
-TAILQ_HEAD(rte_dpaa_device_list, rte_dpaa_device);
-TAILQ_HEAD(rte_dpaa_driver_list, rte_dpaa_driver);
-
 enum rte_dpaa_type {
 	FSL_DPAA_ETH = 1,
 	FSL_DPAA_CRYPTO,
 	FSL_DPAA_QDMA
-};
-
-struct rte_dpaa_bus {
-	struct rte_bus bus;
-	struct rte_dpaa_device_list device_list;
-	struct rte_dpaa_driver_list driver_list;
-	int device_count;
-	int detected;
 };
 
 struct dpaa_device_id {
@@ -119,7 +109,6 @@ typedef int (*rte_dpaa_remove_t)(struct rte_dpaa_device *dpaa_dev);
 struct rte_dpaa_driver {
 	TAILQ_ENTRY(rte_dpaa_driver) next;
 	struct rte_driver driver;
-	struct rte_dpaa_bus *dpaa_bus;
 	enum rte_dpaa_type drv_type;
 	rte_dpaa_probe_t probe;
 	rte_dpaa_remove_t remove;
@@ -166,6 +155,7 @@ extern struct dpaa_memseg_list rte_dpaa_memsegs;
 /* Either iterate over the list of internal memseg references or fallback to
  * EAL memseg based iova2virt.
  */
+__rte_internal
 static inline void *rte_dpaa_mem_ptov(phys_addr_t paddr)
 {
 	struct dpaa_memseg *ms;
@@ -192,6 +182,7 @@ static inline void *rte_dpaa_mem_ptov(phys_addr_t paddr)
 	return va;
 }
 
+__rte_internal
 static inline rte_iova_t
 rte_dpaa_mem_vtop(void *vaddr)
 {
@@ -263,4 +254,4 @@ struct fm_eth_port_cfg *dpaa_get_eth_port_cfg(int dev_id);
 }
 #endif
 
-#endif /* __RTE_DPAA_BUS_H__ */
+#endif /* BUS_DPAA_DRIVER_H */

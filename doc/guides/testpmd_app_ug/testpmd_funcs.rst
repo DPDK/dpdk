@@ -55,7 +55,6 @@ These are divided into sections and can be accessed using help, help section or 
            help display                    : Displaying port, stats and config information.
            help config                     : Configuration information.
            help ports                      : Configuring ports.
-           help registers                  : Reading and setting port registers.
            help filters                    : Filters configuration help.
            help traffic_management         : Traffic Management commands.
            help devices                    : Device related commands.
@@ -930,51 +929,12 @@ set drop enable bit for all queues::
 
    testpmd> set all queues drop (port_id) (on|off)
 
-set split drop enable (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-set split drop enable bit for VF from PF::
-
-   testpmd> set vf split drop (port_id) (vf_id) (on|off)
-
 set mac antispoof (for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set mac antispoof for a VF from the PF::
 
    testpmd> set vf mac antispoof  (port_id) (vf_id) (on|off)
-
-set macsec offload
-~~~~~~~~~~~~~~~~~~
-
-Enable/disable MACsec offload::
-
-   testpmd> set macsec offload (port_id) on encrypt (on|off) replay-protect (on|off)
-   testpmd> set macsec offload (port_id) off
-
-set macsec sc
-~~~~~~~~~~~~~
-
-Configure MACsec secure connection (SC)::
-
-   testpmd> set macsec sc (tx|rx) (port_id) (mac) (pi)
-
-.. note::
-
-   The pi argument is ignored for tx.
-   Check the NIC Datasheet for hardware limits.
-
-set macsec sa
-~~~~~~~~~~~~~
-
-Configure MACsec secure association (SA)::
-
-   testpmd> set macsec sa (tx|rx) (port_id) (idx) (an) (pn) (key)
-
-.. note::
-
-   The IDX value must be 0 or 1.
-   Check the NIC Datasheet for hardware limits.
 
 vlan set stripq
 ~~~~~~~~~~~~~~~
@@ -1384,13 +1344,6 @@ Set the allmulti mode for a port or for all ports::
 
 Same as the ifconfig (8) option. Controls how multicast packets are handled.
 
-set tc tx min bandwidth
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Set all TCs' TX min relative bandwidth (%) globally for all PF and VFs::
-
-   testpmd> set tc tx min-bandwidth (port_id) (bw1, bw2, ...)
-
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 
@@ -1540,48 +1493,6 @@ The default is flush ``on``.
 Mainly used with PCAP drivers to turn off the default behavior of flushing the first 512 packets on RX streams::
 
    testpmd> set flush_rx off
-
-set bypass mode
-~~~~~~~~~~~~~~~
-
-Set the bypass mode for the lowest port on bypass enabled NIC::
-
-   testpmd> set bypass mode (normal|bypass|isolate) (port_id)
-
-set bypass event
-~~~~~~~~~~~~~~~~
-
-Set the event required to initiate specified bypass mode for the lowest port on a bypass enabled::
-
-   testpmd> set bypass event (timeout|os_on|os_off|power_on|power_off) \
-            mode (normal|bypass|isolate) (port_id)
-
-Where:
-
-* ``timeout``: Enable bypass after watchdog timeout.
-
-* ``os_on``: Enable bypass when OS/board is powered on.
-
-* ``os_off``: Enable bypass when OS/board is powered off.
-
-* ``power_on``: Enable bypass when power supply is turned on.
-
-* ``power_off``: Enable bypass when power supply is turned off.
-
-
-set bypass timeout
-~~~~~~~~~~~~~~~~~~
-
-Set the bypass watchdog timeout to ``n`` seconds where 0 = instant::
-
-   testpmd> set bypass timeout (0|1.5|2|3|4|8|16|32)
-
-show bypass config
-~~~~~~~~~~~~~~~~~~
-
-Show the bypass configuration for a bypass enabled NIC using the lowest port on the NIC::
-
-   testpmd> show bypass config (port_id)
 
 set link up
 ~~~~~~~~~~~
@@ -2356,86 +2267,6 @@ manage link bonding devices from within testpmd interactive prompt.
 
 See :doc:`../prog_guide/link_bonding_poll_mode_drv_lib` for more information.
 
-Register Functions
-------------------
-
-The Register Functions can be used to read from and write to registers on the network card referenced by a port number.
-This is mainly useful for debugging purposes.
-Reference should be made to the appropriate datasheet for the network card for details on the register addresses
-and fields that can be accessed.
-
-read reg
-~~~~~~~~
-
-Display the value of a port register::
-
-   testpmd> read reg (port_id) (address)
-
-For example, to examine the Flow Director control register (FDIRCTL, 0x0000EE000) on an Intel 82599 10 GbE Controller::
-
-   testpmd> read reg 0 0xEE00
-   port 0 PCI register at offset 0xEE00: 0x4A060029 (1241907241)
-
-read regfield
-~~~~~~~~~~~~~
-
-Display a port register bit field::
-
-   testpmd> read regfield (port_id) (address) (bit_x) (bit_y)
-
-For example, reading the lowest two bits from the register in the example above::
-
-   testpmd> read regfield 0 0xEE00 0 1
-   port 0 PCI register at offset 0xEE00: bits[0, 1]=0x1 (1)
-
-read regbit
-~~~~~~~~~~~
-
-Display a single port register bit::
-
-   testpmd> read regbit (port_id) (address) (bit_x)
-
-For example, reading the lowest bit from the register in the example above::
-
-   testpmd> read regbit 0 0xEE00 0
-   port 0 PCI register at offset 0xEE00: bit 0=1
-
-write reg
-~~~~~~~~~
-
-Set the value of a port register::
-
-   testpmd> write reg (port_id) (address) (value)
-
-For example, to clear a register::
-
-   testpmd> write reg 0 0xEE00 0x0
-   port 0 PCI register at offset 0xEE00: 0x00000000 (0)
-
-write regfield
-~~~~~~~~~~~~~~
-
-Set bit field of a port register::
-
-   testpmd> write regfield (port_id) (address) (bit_x) (bit_y) (value)
-
-For example, writing to the register cleared in the example above::
-
-   testpmd> write regfield 0 0xEE00 0 1 2
-   port 0 PCI register at offset 0xEE00: 0x00000002 (2)
-
-write regbit
-~~~~~~~~~~~~
-
-Set single bit value of a port register::
-
-   testpmd> write regbit (port_id) (address) (bit_x) (value)
-
-For example, to set the high bit in the register from the example above::
-
-   testpmd> write regbit 0 0xEE00 31 1
-   port 0 PCI register at offset 0xEE00: 0x8000000A (2147483658)
-
 Traffic Metering and Policing
 -----------------------------
 
@@ -3003,44 +2834,6 @@ This section details the available filter functions that are available.
 
 Note these functions interface the deprecated legacy filtering framework,
 superseded by *rte_flow*. See `Flow rules management`_.
-
-.. _testpmd_flow_director:
-
-flow_director_mask
-~~~~~~~~~~~~~~~~~~
-
-Set flow director's input masks::
-
-   flow_director_mask (port_id) mode IP vlan (vlan_value) \
-                      src_mask (ipv4_src) (ipv6_src) (src_port) \
-                      dst_mask (ipv4_dst) (ipv6_dst) (dst_port)
-
-   flow_director_mask (port_id) mode MAC-VLAN vlan (vlan_value)
-
-   flow_director_mask (port_id) mode Tunnel vlan (vlan_value) \
-                      mac (mac_value) tunnel-type (tunnel_type_value) \
-                      tunnel-id (tunnel_id_value)
-
-Example, to set flow director mask on port 0::
-
-   testpmd> flow_director_mask 0 mode IP vlan 0xefff \
-            src_mask 255.255.255.255 \
-                FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF \
-            dst_mask 255.255.255.255 \
-                FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF
-
-flow_director_flex_payload
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Configure flexible payload selection::
-
-   flow_director_flex_payload (port_id) (raw|l2|l3|l4) (config)
-
-For example, to select the first 16 bytes from the offset 4 (bytes) of packet's payload as flexible payload::
-
-   testpmd> flow_director_flex_payload 0 l4 \
-            (4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-
 
 .. _testpmd_rte_flow:
 
@@ -5451,3 +5244,4 @@ See:
 
 - :ref:`net/bonding testpmd driver specific commands <bonding_testpmd_commands>`
 - :ref:`net/i40e testpmd driver specific commands <net_i40e_testpmd_commands>`
+- :ref:`net/ixgbe testpmd driver specific commands <net_ixgbe_testpmd_commands>`

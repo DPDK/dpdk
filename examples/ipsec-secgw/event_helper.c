@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) 2020 Marvell International Ltd.
  */
+#include <stdlib.h>
+
 #include <rte_bitmap.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>

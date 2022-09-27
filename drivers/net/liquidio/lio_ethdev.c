@@ -281,7 +281,8 @@ lio_dev_xstats_reset(struct rte_eth_dev *eth_dev)
 	}
 
 	/* clear stored per queue stats */
-	RTE_FUNC_PTR_OR_ERR_RET(*eth_dev->dev_ops->stats_reset, 0);
+	if (*eth_dev->dev_ops->stats_reset == NULL)
+		return 0;
 	return (*eth_dev->dev_ops->stats_reset)(eth_dev);
 }
 

@@ -13,7 +13,6 @@
 #define NIX_DEF_SQB	     ((uint16_t)16)
 #define NIX_MIN_SQB	     ((uint16_t)8)
 #define NIX_SQB_LIST_SPACE   ((uint16_t)2)
-#define NIX_SQB_LOWER_THRESH ((uint16_t)70)
 
 /* Apply BP/DROP when CQ is 95% full */
 #define NIX_CQ_THRESH_LEVEL	(5 * 256 / 100)

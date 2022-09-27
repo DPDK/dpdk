@@ -5,6 +5,7 @@
 #ifndef EAL_THREAD_H
 #define EAL_THREAD_H
 
+#include <rte_common.h>
 #include <rte_lcore.h>
 
 /**

@@ -15,7 +15,6 @@
 #include <rte_tailq.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
-#include <rte_bus.h>
 #include <rte_atomic.h>
 #include <rte_memory.h>
 #include <rte_pause.h>

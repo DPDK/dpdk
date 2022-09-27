@@ -3,9 +3,11 @@
  * All rights reserved.
  */
 
+#include <ctype.h>
 #include <string.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include <rte_memzone.h>
 #include <rte_errno.h>

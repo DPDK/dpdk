@@ -5,6 +5,7 @@
 #include <rte_string_fns.h>
 #include <ethdev_pci.h>
 
+#include <ctype.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_atomic.h>
 #include <rte_byteorder.h>
 #include <rte_io.h>

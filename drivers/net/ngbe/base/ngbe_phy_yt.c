@@ -463,7 +463,16 @@ s32 ngbe_check_phy_link_yt(struct ngbe_hw *hw,
 
 	if (phy_link) {
 		*link_up = true;
+	} else {
+		status = ngbe_read_phy_reg_mdi(hw, YT_SPST, 0, &phy_data);
+		phy_link = phy_data & YT_SPST_LINK;
+		phy_speed = phy_data & YT_SPST_SPEED_MASK;
 
+		if (phy_link)
+			*link_up = true;
+	}
+
+	if (*link_up) {
 		if (phy_speed == YT_SPST_SPEED_1000M)
 			*speed = NGBE_LINK_SPEED_1GB_FULL;
 		else if (phy_speed == YT_SPST_SPEED_100M)

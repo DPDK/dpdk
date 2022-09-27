@@ -4,6 +4,7 @@
 
 #include <fnmatch.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include <rte_common.h>
 #include <rte_debug.h>

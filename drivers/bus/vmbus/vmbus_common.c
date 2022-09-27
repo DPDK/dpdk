@@ -11,7 +11,6 @@
 #include <sys/mman.h>
 
 #include <rte_log.h>
-#include <rte_bus.h>
 #include <rte_eal.h>
 #include <rte_tailq.h>
 #include <rte_devargs.h>
@@ -235,7 +234,6 @@ rte_vmbus_register(struct rte_vmbus_driver *driver)
 		"Registered driver %s", driver->driver.name);
 
 	TAILQ_INSERT_TAIL(&rte_vmbus_bus.driver_list, driver, next);
-	driver->bus = &rte_vmbus_bus;
 }
 
 /* unregister vmbus driver */
@@ -243,7 +241,6 @@ void
 rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 {
 	TAILQ_REMOVE(&rte_vmbus_bus.driver_list, driver, next);
-	driver->bus = NULL;
 }
 
 /* Add a device to VMBUS bus */

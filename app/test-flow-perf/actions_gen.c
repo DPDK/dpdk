@@ -6,6 +6,7 @@
  * and initializing it with needed data.
  */
 
+#include <stdlib.h>
 #include <sys/types.h>
 #include <rte_malloc.h>
 #include <rte_flow.h>

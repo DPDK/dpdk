@@ -15,6 +15,7 @@
 #define   RTL_BMCR_RESET		MS16(15, 0x1)
 #define	  RTL_BMCR_SPEED_SELECT0	MS16(13, 0x1)
 #define   RTL_BMCR_ANE			MS16(12, 0x1)
+#define   RTL_BMCR_PWDN			MS16(11, 0x1)
 #define   RTL_BMCR_RESTART_AN		MS16(9, 0x1)
 #define   RTL_BMCR_DUPLEX		MS16(8, 0x1)
 #define   RTL_BMCR_SPEED_SELECT1	MS16(6, 0x1)
@@ -88,5 +89,6 @@ s32 ngbe_get_phy_lp_advertised_pause_rtl(struct ngbe_hw *hw, u8 *pause_bit);
 s32 ngbe_set_phy_pause_adv_rtl(struct ngbe_hw *hw, u16 pause_bit);
 s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw,
 			u32 *speed, bool *link_up);
+s32 ngbe_set_phy_power_rtl(struct ngbe_hw *hw, bool on);
 
 #endif /* _NGBE_PHY_RTL_H_ */

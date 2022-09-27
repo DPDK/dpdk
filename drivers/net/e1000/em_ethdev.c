@@ -13,14 +13,14 @@
 #include <rte_byteorder.h>
 #include <rte_debug.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_malloc.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "e1000_logs.h"
 #include "base/e1000_api.h"

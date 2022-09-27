@@ -2,9 +2,11 @@
  * Copyright(c) 2016-2017 Intel Corporation
  */
 
+#include <ctype.h>
 #include <getopt.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <sched.h>
 

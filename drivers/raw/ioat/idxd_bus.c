@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include "ioat_private.h"

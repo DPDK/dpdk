@@ -2,12 +2,12 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_common.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_pci.h>
 
 #include "cn9k_cryptodev.h"

@@ -20,7 +20,7 @@
 #include <rte_tailq.h>
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
-#include <rte_bus_ifpga.h>
+#include <bus_ifpga_driver.h>
 #include <ifpga_common.h>
 #include <ifpga_logs.h>
 #include <ifpga_rawdev.h>

@@ -2,6 +2,7 @@
  * Copyright 2020-2021 NXP
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -10,7 +11,7 @@
 #include <dirent.h>
 
 #include <rte_common.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_kvargs.h>

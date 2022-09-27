@@ -7,7 +7,10 @@
 
 #include <rte_common.h>
 #include <rte_prefetch.h>
+#include <rte_jhash.h>
+#include <rte_hash_crc.h>
 
+#include "rte_swx_keycmp.h"
 #include "rte_swx_table_em.h"
 
 #define CHECK(condition, err_code)                                             \
@@ -54,181 +57,10 @@ env_free(void *start, size_t size)
 
 #endif
 
-#if defined(RTE_ARCH_X86_64)
-
-#include <x86intrin.h>
-
-#define crc32_u64(crc, v) _mm_crc32_u64(crc, v)
-
-#else
-
-static inline uint64_t
-crc32_u64_generic(uint64_t crc, uint64_t value)
-{
-	int i;
-
-	crc = (crc & 0xFFFFFFFFLLU) ^ value;
-	for (i = 63; i >= 0; i--) {
-		uint64_t mask;
-
-		mask = -(crc & 1LLU);
-		crc = (crc >> 1LLU) ^ (0x82F63B78LLU & mask);
-	}
-
-	return crc;
-}
-
-#define crc32_u64(crc, v) crc32_u64_generic(crc, v)
-
-#endif
-
-/* Key size needs to be one of: 8, 16, 32 or 64. */
-static inline uint32_t
-hash(void *key, void *key_mask, uint32_t key_size, uint32_t seed)
-{
-	uint64_t *k = key;
-	uint64_t *m = key_mask;
-	uint64_t k0, k2, k5, crc0, crc1, crc2, crc3, crc4, crc5;
-
-	switch (key_size) {
-	case 8:
-		crc0 = crc32_u64(seed, k[0] & m[0]);
-		return crc0;
-
-	case 16:
-		k0 = k[0] & m[0];
-
-		crc0 = crc32_u64(k0, seed);
-		crc1 = crc32_u64(k0 >> 32, k[1] & m[1]);
-
-		crc0 ^= crc1;
-
-		return crc0;
-
-	case 32:
-		k0 = k[0] & m[0];
-		k2 = k[2] & m[2];
-
-		crc0 = crc32_u64(k0, seed);
-		crc1 = crc32_u64(k0 >> 32, k[1] & m[1]);
-
-		crc2 = crc32_u64(k2, k[3] & m[3]);
-		crc3 = k2 >> 32;
-
-		crc0 = crc32_u64(crc0, crc1);
-		crc1 = crc32_u64(crc2, crc3);
-
-		crc0 ^= crc1;
-
-		return crc0;
-
-	case 64:
-		k0 = k[0] & m[0];
-		k2 = k[2] & m[2];
-		k5 = k[5] & m[5];
-
-		crc0 = crc32_u64(k0, seed);
-		crc1 = crc32_u64(k0 >> 32, k[1] & m[1]);
-
-		crc2 = crc32_u64(k2, k[3] & m[3]);
-		crc3 = crc32_u64(k2 >> 32, k[4] & m[4]);
-
-		crc4 = crc32_u64(k5, k[6] & m[6]);
-		crc5 = crc32_u64(k5 >> 32, k[7] & m[7]);
-
-		crc0 = crc32_u64(crc0, (crc1 << 32) ^ crc2);
-		crc1 = crc32_u64(crc3, (crc4 << 32) ^ crc5);
-
-		crc0 ^= crc1;
-
-		return crc0;
-
-	default:
-		crc0 = 0;
-		return crc0;
-	}
-}
-
-/* n_bytes needs to be a multiple of 8 bytes. */
 static void
-keycpy(void *dst, void *src, void *src_mask, uint32_t n_bytes)
+keycpy(void *dst, void *src, uint32_t n_bytes)
 {
-	uint64_t *dst64 = dst, *src64 = src, *src_mask64 = src_mask;
-	uint32_t i;
-
-	for (i = 0; i < n_bytes / sizeof(uint64_t); i++)
-		dst64[i] = src64[i] & src_mask64[i];
-}
-
-/*
- * Return: 0 = Keys are NOT equal; 1 = Keys are equal.
- */
-static inline uint32_t
-keycmp(void *a, void *b, void *b_mask, uint32_t n_bytes)
-{
-	uint64_t *a64 = a, *b64 = b, *b_mask64 = b_mask;
-
-	switch (n_bytes) {
-	case 8: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint32_t result = 1;
-
-		if (xor0)
-			result = 0;
-		return result;
-	}
-
-	case 16: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint64_t xor1 = a64[1] ^ (b64[1] & b_mask64[1]);
-		uint64_t or = xor0 | xor1;
-		uint32_t result = 1;
-
-		if (or)
-			result = 0;
-		return result;
-	}
-
-	case 32: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint64_t xor1 = a64[1] ^ (b64[1] & b_mask64[1]);
-		uint64_t xor2 = a64[2] ^ (b64[2] & b_mask64[2]);
-		uint64_t xor3 = a64[3] ^ (b64[3] & b_mask64[3]);
-		uint64_t or = (xor0 | xor1) | (xor2 | xor3);
-		uint32_t result = 1;
-
-		if (or)
-			result = 0;
-		return result;
-	}
-
-	case 64: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint64_t xor1 = a64[1] ^ (b64[1] & b_mask64[1]);
-		uint64_t xor2 = a64[2] ^ (b64[2] & b_mask64[2]);
-		uint64_t xor3 = a64[3] ^ (b64[3] & b_mask64[3]);
-		uint64_t xor4 = a64[4] ^ (b64[4] & b_mask64[4]);
-		uint64_t xor5 = a64[5] ^ (b64[5] & b_mask64[5]);
-		uint64_t xor6 = a64[6] ^ (b64[6] & b_mask64[6]);
-		uint64_t xor7 = a64[7] ^ (b64[7] & b_mask64[7]);
-		uint64_t or = ((xor0 | xor1) | (xor2 | xor3)) |
-			      ((xor4 | xor5) | (xor6 | xor7));
-		uint32_t result = 1;
-
-		if (or)
-			result = 0;
-		return result;
-	}
-
-	default: {
-		uint32_t i;
-
-		for (i = 0; i < n_bytes / sizeof(uint64_t); i++)
-			if (a64[i] != (b64[i] & b_mask64[i]))
-				return 0;
-		return 1;
-	}
-	}
+	memcpy(dst, src, n_bytes);
 }
 
 #define KEYS_PER_BUCKET 4
@@ -244,8 +76,6 @@ struct table {
 	struct rte_swx_table_params params;
 
 	/* Internal. */
-	uint32_t key_size;
-	uint32_t data_size;
 	uint32_t key_size_shl;
 	uint32_t data_size_shl;
 	uint32_t n_buckets;
@@ -253,9 +83,9 @@ struct table {
 	uint32_t key_stack_tos;
 	uint32_t bkt_ext_stack_tos;
 	uint64_t total_size;
+	rte_swx_keycmp_func_t keycmp_func;
 
 	/* Memory arrays. */
-	uint8_t *key_mask;
 	struct bucket_extension *buckets;
 	struct bucket_extension *buckets_ext;
 	uint8_t *keys;
@@ -279,8 +109,7 @@ table_key_data(struct table *t, uint32_t key_id)
 static inline int
 bkt_is_empty(struct bucket_extension *bkt)
 {
-	return (!bkt->sig[0] && !bkt->sig[1] && !bkt->sig[2] && !bkt->sig[3]) ?
-		1 : 0;
+	return (!bkt->sig[0] && !bkt->sig[1] && !bkt->sig[2] && !bkt->sig[3]) ? 1 : 0;
 }
 
 /* Return:
@@ -311,7 +140,7 @@ bkt_keycmp(struct table *t,
 	/* Key comparison. */
 	bkt_key_id = bkt->key_id[bkt_pos];
 	bkt_key = table_key(t, bkt_key_id);
-	return keycmp(bkt_key, input_key, t->key_mask, t->key_size);
+	return t->keycmp_func(bkt_key, input_key, t->params.key_size);
 }
 
 static inline void
@@ -331,15 +160,13 @@ bkt_key_install(struct table *t,
 	/* Key. */
 	bkt->key_id[bkt_pos] = bkt_key_id;
 	bkt_key = table_key(t, bkt_key_id);
-	keycpy(bkt_key, input->key, t->key_mask, t->key_size);
+	keycpy(bkt_key, input->key, t->params.key_size);
 
 	/* Key data. */
 	bkt_data = table_key_data(t, bkt_key_id);
 	bkt_data[0] = input->action_id;
 	if (t->params.action_data_size && input->action_data)
-		memcpy(&bkt_data[1],
-		       input->action_data,
-		       t->params.action_data_size);
+		memcpy(&bkt_data[1], input->action_data, t->params.action_data_size);
 }
 
 static inline void
@@ -358,9 +185,7 @@ bkt_key_data_update(struct table *t,
 	bkt_data = table_key_data(t, bkt_key_id);
 	bkt_data[0] = input->action_id;
 	if (t->params.action_data_size && input->action_data)
-		memcpy(&bkt_data[1],
-		       input->action_data,
-		       t->params.action_data_size);
+		memcpy(&bkt_data[1], input->action_data, t->params.action_data_size);
 }
 
 #define CL RTE_CACHE_LINE_ROUNDUP
@@ -374,9 +199,9 @@ __table_create(struct table **table,
 {
 	struct table *t;
 	uint8_t *memory;
-	size_t table_meta_sz, key_mask_sz, bucket_sz, bucket_ext_sz, key_sz,
+	size_t table_meta_sz, bucket_sz, bucket_ext_sz, key_sz,
 		key_stack_sz, bkt_ext_stack_sz, data_sz, total_size;
-	size_t key_mask_offset, bucket_offset, bucket_ext_offset, key_offset,
+	size_t bucket_offset, bucket_ext_offset, key_offset,
 		key_stack_offset, bkt_ext_stack_offset, data_offset;
 	uint32_t key_size, key_data_size, n_buckets, n_buckets_ext, i;
 
@@ -384,30 +209,34 @@ __table_create(struct table **table,
 	CHECK(params, EINVAL);
 	CHECK(params->match_type == RTE_SWX_TABLE_MATCH_EXACT, EINVAL);
 	CHECK(params->key_size, EINVAL);
-	CHECK(params->key_size <= 64, EINVAL);
+
+	if (params->key_mask0) {
+		for (i = 0; i < params->key_size; i++)
+			if (params->key_mask0[i] != 0xFF)
+				break;
+
+		CHECK(i == params->key_size, EINVAL);
+	}
+
 	CHECK(params->n_keys_max, EINVAL);
 
 	/* Memory allocation. */
 	key_size = rte_align64pow2(params->key_size);
-	if (key_size < 8)
-		key_size = 8;
 	key_data_size = rte_align64pow2(params->action_data_size + 8);
-	n_buckets = params->n_keys_max / KEYS_PER_BUCKET;
-	n_buckets_ext = params->n_keys_max / KEYS_PER_BUCKET;
+	n_buckets = rte_align64pow2((params->n_keys_max + KEYS_PER_BUCKET - 1) / KEYS_PER_BUCKET);
+	n_buckets_ext = n_buckets;
 
 	table_meta_sz = CL(sizeof(struct table));
-	key_mask_sz = CL(key_size);
 	bucket_sz = CL(n_buckets * sizeof(struct bucket_extension));
 	bucket_ext_sz = CL(n_buckets_ext * sizeof(struct bucket_extension));
 	key_sz = CL(params->n_keys_max * key_size);
 	key_stack_sz = CL(params->n_keys_max * sizeof(uint32_t));
 	bkt_ext_stack_sz = CL(n_buckets_ext * sizeof(uint32_t));
 	data_sz = CL(params->n_keys_max * key_data_size);
-	total_size = table_meta_sz + key_mask_sz + bucket_sz + bucket_ext_sz +
+	total_size = table_meta_sz + bucket_sz + bucket_ext_sz +
 		     key_sz + key_stack_sz + bkt_ext_stack_sz + data_sz;
 
-	key_mask_offset = table_meta_sz;
-	bucket_offset = key_mask_offset + key_mask_sz;
+	bucket_offset = table_meta_sz;
 	bucket_ext_offset = bucket_offset + bucket_sz;
 	key_offset = bucket_ext_offset + bucket_ext_sz;
 	key_stack_offset = key_offset + key_sz;
@@ -427,29 +256,23 @@ __table_create(struct table **table,
 	/* Initialization. */
 	t = (struct table *)memory;
 	memcpy(&t->params, params, sizeof(*params));
+	t->params.key_mask0 = NULL;
+	if (!params->hash_func)
+		t->params.hash_func = rte_hash_crc;
 
-	t->key_size = key_size;
-	t->data_size = key_data_size;
 	t->key_size_shl = __builtin_ctzl(key_size);
 	t->data_size_shl = __builtin_ctzl(key_data_size);
 	t->n_buckets = n_buckets;
 	t->n_buckets_ext = n_buckets_ext;
 	t->total_size = total_size;
+	t->keycmp_func = rte_swx_keycmp_func_get(params->key_size);
 
-	t->key_mask = &memory[key_mask_offset];
 	t->buckets = (struct bucket_extension *)&memory[bucket_offset];
 	t->buckets_ext = (struct bucket_extension *)&memory[bucket_ext_offset];
 	t->keys = &memory[key_offset];
 	t->key_stack = (uint32_t *)&memory[key_stack_offset];
 	t->bkt_ext_stack = (uint32_t *)&memory[bkt_ext_stack_offset];
 	t->data = &memory[data_offset];
-
-	t->params.key_mask0 = t->key_mask;
-
-	if (!params->key_mask0)
-		memset(t->key_mask, 0xFF, params->key_size);
-	else
-		memcpy(t->key_mask, params->key_mask0, params->key_size);
 
 	for (i = 0; i < t->params.n_keys_max; i++)
 		t->key_stack[i] = t->params.n_keys_max - 1 - i;
@@ -485,7 +308,7 @@ table_add(void *table, struct rte_swx_table_entry *entry)
 	CHECK(entry, EINVAL);
 	CHECK(entry->key, EINVAL);
 
-	input_sig = hash(entry->key, t->key_mask, t->key_size, 0);
+	input_sig = t->params.hash_func(entry->key, t->params.key_size, 0);
 	bkt_id = input_sig & (t->n_buckets - 1);
 	bkt0 = &t->buckets[bkt_id];
 	input_sig = (input_sig >> 16) | 1;
@@ -506,10 +329,8 @@ table_add(void *table, struct rte_swx_table_entry *entry)
 
 				/* Allocate new key & install. */
 				CHECK(t->key_stack_tos, ENOSPC);
-				new_bkt_key_id =
-					t->key_stack[--t->key_stack_tos];
-				bkt_key_install(t, bkt, entry, i,
-						new_bkt_key_id, input_sig);
+				new_bkt_key_id = t->key_stack[--t->key_stack_tos];
+				bkt_key_install(t, bkt, entry, i, new_bkt_key_id, input_sig);
 				return 0;
 			}
 
@@ -526,8 +347,7 @@ table_add(void *table, struct rte_swx_table_entry *entry)
 
 		/* Allocate new key & install. */
 		new_bkt_key_id = t->key_stack[--t->key_stack_tos];
-		bkt_key_install(t, new_bkt, entry, 0,
-				new_bkt_key_id, input_sig);
+		bkt_key_install(t, new_bkt, entry, 0, new_bkt_key_id, input_sig);
 		return 0;
 	}
 
@@ -545,7 +365,7 @@ table_del(void *table, struct rte_swx_table_entry *entry)
 	CHECK(entry, EINVAL);
 	CHECK(entry->key, EINVAL);
 
-	input_sig = hash(entry->key, t->key_mask, t->key_size, 0);
+	input_sig = t->params.hash_func(entry->key, t->params.key_size, 0);
 	bkt_id = input_sig & (t->n_buckets - 1);
 	bkt0 = &t->buckets[bkt_id];
 	input_sig = (input_sig >> 16) | 1;
@@ -556,17 +376,13 @@ table_del(void *table, struct rte_swx_table_entry *entry)
 			if (bkt_keycmp(t, bkt, entry->key, i, input_sig)) {
 				/* Key free. */
 				bkt->sig[i] = 0;
-				t->key_stack[t->key_stack_tos++] =
-					bkt->key_id[i];
+				t->key_stack[t->key_stack_tos++] = bkt->key_id[i];
 
-				/* Bucket extension free if empty and not the
-				 * 1st in bucket.
-				 */
+				/* Bucket extension free if empty and not the 1st in bucket. */
 				if (bkt_prev && bkt_is_empty(bkt)) {
 					bkt_prev->next = bkt->next;
 					bkt_id = bkt - t->buckets_ext;
-					t->bkt_ext_stack[t->bkt_ext_stack_tos++]
-						= bkt_id;
+					t->bkt_ext_stack[t->bkt_ext_stack_tos++] = bkt_id;
 				}
 
 				return 0;
@@ -587,6 +403,7 @@ table_lookup_unoptimized(void *table,
 			 uint8_t **key,
 			 uint64_t *action_id,
 			 uint8_t **action_data,
+			 size_t *entry_id,
 			 int *hit)
 {
 	struct table *t = table;
@@ -596,7 +413,7 @@ table_lookup_unoptimized(void *table,
 
 	input_key = &(*key)[t->params.key_offset];
 
-	input_sig = hash(input_key, t->key_mask, t->key_size, 0);
+	input_sig = t->params.hash_func(input_key, t->params.key_size, 0);
 	bkt_id = input_sig & (t->n_buckets - 1);
 	bkt0 = &t->buckets[bkt_id];
 	input_sig = (input_sig >> 16) | 1;
@@ -615,6 +432,7 @@ table_lookup_unoptimized(void *table,
 				bkt_data = table_key_data(t, bkt_key_id);
 				*action_id = bkt_data[0];
 				*action_data = (uint8_t *)&bkt_data[1];
+				*entry_id = bkt_key_id;
 				*hit = 1;
 				return 1;
 			}
@@ -684,6 +502,7 @@ table_lookup(void *table,
 	     uint8_t **key,
 	     uint64_t *action_id,
 	     uint8_t **action_data,
+	     size_t *entry_id,
 	     int *hit)
 {
 	struct table *t = table;
@@ -695,7 +514,7 @@ table_lookup(void *table,
 		struct bucket_extension *bkt;
 		uint32_t input_sig, bkt_id;
 
-		input_sig = hash(input_key, t->key_mask, t->key_size, 0);
+		input_sig = t->params.hash_func(input_key, t->params.key_size, 0);
 		bkt_id = input_sig & (t->n_buckets - 1);
 		bkt = &t->buckets[bkt_id];
 		rte_prefetch0(bkt);
@@ -756,10 +575,11 @@ table_lookup(void *table,
 		uint64_t *bkt_data = table_key_data(t, bkt_key_id);
 		uint32_t lkp_hit;
 
-		lkp_hit = keycmp(bkt_key, input_key, t->key_mask, t->key_size);
+		lkp_hit = t->keycmp_func(bkt_key, input_key, t->params.key_size);
 		lkp_hit &= m->sig_match;
 		*action_id = bkt_data[0];
 		*action_data = (uint8_t *)&bkt_data[1];
+		*entry_id = bkt_key_id;
 		*hit = lkp_hit;
 
 		m->state = 0;
@@ -770,6 +590,7 @@ table_lookup(void *table,
 							key,
 							action_id,
 							action_data,
+							entry_id,
 							hit);
 
 		return 1;

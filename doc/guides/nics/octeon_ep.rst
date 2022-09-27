@@ -4,9 +4,9 @@
 OCTEON TX EP Poll Mode driver
 =============================
 
-The OCTEON TX EP ETHDEV PMD (**librte_pmd_octeontx_ep**) provides poll mode
+The OCTEON TX EP ETHDEV PMD (**librte_pmd_octeon_ep**) provides poll mode
 ethdev driver support for the virtual functions (VF) of **Marvell OCTEON 9**
-and **Cavium OCTEON TX** families of adapters in SR-IOV context.
+and **Cavium OCTEON** families of adapters in SR-IOV context.
 
 More information can be found at `Marvell Official Website
 <https://www.marvell.com/content/dam/marvell/en/public-collateral/embedded-processors/marvell-liquidio-III-solutions-brief.pdf>`_.

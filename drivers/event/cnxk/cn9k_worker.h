@@ -169,13 +169,29 @@ cn9k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
 			     mbuf_init | ((uint64_t)port_id) << 48, flags);
 }
 
+static void
+cn9k_sso_process_tstamp(uint64_t u64, uint64_t mbuf,
+			struct cnxk_timesync_info *tstamp)
+{
+	uint64_t tstamp_ptr;
+	uint8_t laptr;
+
+	laptr = (uint8_t) *
+		(uint64_t *)(u64 + (CNXK_SSO_WQE_LAYR_PTR * sizeof(uint64_t)));
+	if (laptr == sizeof(uint64_t)) {
+		/* Extracting tstamp, if PTP enabled*/
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)u64) +
+					   CNXK_SSO_WQE_SG_PTR);
+		cn9k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp, true,
+					(uint64_t *)tstamp_ptr);
+	}
+}
+
 static __rte_always_inline void
 cn9k_sso_hws_post_process(uint64_t *u64, uint64_t mbuf, const uint32_t flags,
 			  const void *const lookup_mem,
-			  struct cnxk_timesync_info *tstamp)
+			  struct cnxk_timesync_info **tstamp)
 {
-	uint64_t tstamp_ptr;
-
 	u64[0] = (u64[0] & (0x3ull << 32)) << 6 |
 		 (u64[0] & (0x3FFull << 36)) << 4 | (u64[0] & 0xffffffff);
 	if ((flags & CPT_RX_WQE_F) &&
@@ -187,12 +203,8 @@ cn9k_sso_hws_post_process(uint64_t *u64, uint64_t mbuf, const uint32_t flags,
 		u64[0] = CNXK_CLR_SUB_EVENT(u64[0]);
 		cn9k_wqe_to_mbuf(u64[1], mbuf, port, u64[0] & 0xFFFFF, flags,
 				 lookup_mem);
-		/* Extracting tstamp, if PTP enabled*/
-		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)u64[1]) +
-					   CNXK_SSO_WQE_SG_PTR);
-		cn9k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
-					flags & NIX_RX_OFFLOAD_TSTAMP_F,
-					(uint64_t *)tstamp_ptr);
+		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
+			cn9k_sso_process_tstamp(u64[1], mbuf, tstamp[port]);
 		u64[1] = mbuf;
 	}
 }
@@ -298,7 +310,7 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 static __rte_always_inline uint16_t
 cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev,
 			    const uint32_t flags, void *lookup_mem,
-			    struct cnxk_timesync_info *tstamp)
+			    struct cnxk_timesync_info **tstamp)
 {
 	union {
 		__uint128_t get_work;
@@ -749,6 +761,10 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	    !(flags & NIX_TX_OFFLOAD_SECURITY_F))
 		rte_io_wmb();
 	txq = cn9k_sso_hws_xtract_meta(m, txq_data);
+	if (((txq->nb_sqb_bufs_adj -
+	      __atomic_load_n((int16_t *)txq->fc_mem, __ATOMIC_RELAXED))
+	     << txq->sqes_per_sqb_log2) <= 0)
+		return 0;
 	cn9k_nix_tx_skeleton(txq, cmd, flags, 0);
 	cn9k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, txq->mark_flag,
 			      txq->mark_fmt);

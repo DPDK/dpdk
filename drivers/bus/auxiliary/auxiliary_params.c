@@ -4,13 +4,12 @@
 
 #include <string.h>
 
-#include <rte_bus.h>
-#include <rte_dev.h>
+#include <bus_driver.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <rte_kvargs.h>
 
 #include "private.h"
-#include "rte_bus_auxiliary.h"
 
 enum auxiliary_params {
 	RTE_AUXILIARY_PARAM_NAME,

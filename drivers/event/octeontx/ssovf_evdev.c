@@ -3,11 +3,12 @@
  */
 
 #include <inttypes.h>
+#include <stdlib.h>
 
 #include <rte_common.h>
 #include <cryptodev_pmd.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_eal.h>
 #include <ethdev_driver.h>
 #include <rte_event_eth_rx_adapter.h>
@@ -16,7 +17,7 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include "ssovf_evdev.h"
 #include "timvf_evdev.h"

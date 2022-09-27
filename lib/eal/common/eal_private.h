@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_lcore.h>
 #include <rte_memory.h>
 

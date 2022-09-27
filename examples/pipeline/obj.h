@@ -63,9 +63,6 @@ struct link_params_rss {
 };
 
 struct link_params {
-	const char *dev_name;
-	uint16_t port_id; /**< Valid only when *dev_name* is NULL. */
-
 	struct {
 		uint32_t n_queues;
 		uint32_t queue_size;
@@ -84,7 +81,6 @@ struct link_params {
 struct link {
 	TAILQ_ENTRY(link) node;
 	char name[NAME_SIZE];
-	char dev_name[NAME_SIZE];
 	uint16_t port_id;
 	uint32_t n_rxq;
 	uint32_t n_txq;
@@ -124,47 +120,5 @@ ring_create(struct obj *obj,
 
 struct ring *
 ring_find(struct obj *obj, const char *name);
-
-/*
- * tap
- */
-struct tap {
-	TAILQ_ENTRY(tap) node;
-	char name[NAME_SIZE];
-	int fd;
-};
-
-struct tap *
-tap_find(struct obj *obj, const char *name);
-
-struct tap *
-tap_next(struct obj *obj, struct tap *tap);
-
-struct tap *
-tap_create(struct obj *obj, const char *name);
-
-/*
- * pipeline
- */
-struct pipeline {
-	TAILQ_ENTRY(pipeline) node;
-	char name[NAME_SIZE];
-
-	struct rte_swx_pipeline *p;
-	struct rte_swx_ctl_pipeline *ctl;
-
-	uint32_t timer_period_ms;
-	int enabled;
-	uint32_t thread_id;
-	uint32_t cpu_id;
-};
-
-struct pipeline *
-pipeline_create(struct obj *obj,
-		const char *name,
-		int numa_node);
-
-struct pipeline *
-pipeline_find(struct obj *obj, const char *name);
 
 #endif /* _INCLUDE_OBJ_H_ */

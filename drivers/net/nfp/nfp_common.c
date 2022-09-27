@@ -19,7 +19,7 @@
 #include <rte_debug.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_ether.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
@@ -1372,6 +1372,7 @@ nfp_net_close_tx_queue(struct rte_eth_dev *dev)
 
 RTE_LOG_REGISTER_SUFFIX(nfp_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(nfp_logtype_driver, driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(nfp_logtype_cpp, cpp, NOTICE);
 /*
  * Local variables:
  * c-file-style: "Linux"

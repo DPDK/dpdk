@@ -17,9 +17,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 
 #include <rte_config.h>
@@ -295,7 +292,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * subtract a byte-value offset from a pointer
  */
-#define RTE_PTR_SUB(ptr, x) ((void*)((uintptr_t)ptr - (x)))
+#define RTE_PTR_SUB(ptr, x) ((void *)((uintptr_t)(ptr) - (x)))
 
 /**
  * get the difference between two pointer values, i.e. how far apart
@@ -320,7 +317,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * must be a power-of-two value.
  */
 #define RTE_PTR_ALIGN_FLOOR(ptr, align) \
-	((typeof(ptr))RTE_ALIGN_FLOOR((uintptr_t)ptr, align))
+	((typeof(ptr))RTE_ALIGN_FLOOR((uintptr_t)(ptr), align))
 
 /**
  * Macro to align a value to a given power-of-two. The resultant value
@@ -425,9 +422,7 @@ rte_is_aligned(void *ptr, unsigned align)
 #define RTE_CACHE_LINE_MASK (RTE_CACHE_LINE_SIZE-1)
 
 /** Return the first cache-aligned value greater or equal to size. */
-#define RTE_CACHE_LINE_ROUNDUP(size) \
-	(RTE_CACHE_LINE_SIZE * ((size + RTE_CACHE_LINE_SIZE - 1) / \
-	RTE_CACHE_LINE_SIZE))
+#define RTE_CACHE_LINE_ROUNDUP(size) RTE_ALIGN_CEIL(size, RTE_CACHE_LINE_SIZE)
 
 /** Cache line size in terms of log2 */
 #if RTE_CACHE_LINE_SIZE == 64
@@ -875,34 +870,8 @@ rte_log2_u64(uint64_t v)
  * @return
  *     Number.
  */
-static inline uint64_t
-rte_str_to_size(const char *str)
-{
-	char *endptr;
-	unsigned long long size;
-
-	while (isspace((int)*str))
-		str++;
-	if (*str == '-')
-		return 0;
-
-	errno = 0;
-	size = strtoull(str, &endptr, 0);
-	if (errno)
-		return 0;
-
-	if (*endptr == ' ')
-		endptr++; /* allow 1 space gap */
-
-	switch (*endptr){
-	case 'G': case 'g': size *= 1024; /* fall-through */
-	case 'M': case 'm': size *= 1024; /* fall-through */
-	case 'K': case 'k': size *= 1024; /* fall-through */
-	default:
-		break;
-	}
-	return size;
-}
+uint64_t
+rte_str_to_size(const char *str);
 
 /**
  * Function to terminate the application immediately, printing an error

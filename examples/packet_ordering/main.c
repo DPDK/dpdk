@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2016 Intel Corporation
  */
 
+#include <stdlib.h>
 #include <signal.h>
 #include <getopt.h>
 

@@ -19,12 +19,12 @@
 #include <ethdev_vdev.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_spinlock.h>
 
 #include <rte_cycles.h>
-#include <rte_bus_ifpga.h>
+#include <bus_ifpga_driver.h>
 #include <rte_tm_driver.h>
 
 #define IPN3KE_TM_SCRATCH_RW 0

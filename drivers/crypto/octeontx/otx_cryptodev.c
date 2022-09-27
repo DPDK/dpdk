@@ -2,7 +2,7 @@
  * Copyright(c) 2018 Cavium, Inc
  */
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_common.h>
 #include <cryptodev_pmd.h>
 #include <rte_log.h>

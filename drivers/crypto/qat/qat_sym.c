@@ -7,7 +7,7 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_crypto_sym.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_byteorder.h>
 
 #include "qat_sym.h"

@@ -34,7 +34,8 @@ bpf_load(const struct rte_bpf_prm *prm)
 
 	memcpy(&bpf->prm, prm, sizeof(bpf->prm));
 
-	memcpy(buf + bsz, prm->xsym, xsz);
+	if (xsz > 0)
+		memcpy(buf + bsz, prm->xsym, xsz);
 	memcpy(buf + bsz + xsz, prm->ins, insz);
 
 	bpf->prm.xsym = (void *)(buf + bsz);

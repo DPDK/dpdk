@@ -13,7 +13,6 @@
 #include <rte_tailq.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
-#include <rte_bus.h>
 #include <rte_bus_vmbus.h>
 
 #include "private.h"

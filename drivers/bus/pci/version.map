@@ -1,17 +1,14 @@
-DPDK_22 {
+DPDK_23 {
 	global:
 
 	rte_pci_dump;
-	rte_pci_get_sysfs_path;
 	rte_pci_ioport_map;
 	rte_pci_ioport_read;
 	rte_pci_ioport_unmap;
 	rte_pci_ioport_write;
 	rte_pci_map_device;
 	rte_pci_read_config;
-	rte_pci_register;
 	rte_pci_unmap_device;
-	rte_pci_unregister;
 	rte_pci_write_config;
 
 	local: *;
@@ -24,4 +21,12 @@ EXPERIMENTAL {
 
 	# added in 21.08
 	rte_pci_set_bus_master;
+};
+
+INTERNAL {
+	global:
+
+	rte_pci_get_sysfs_path;
+	rte_pci_register;
+	rte_pci_unregister;
 };

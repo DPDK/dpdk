@@ -3,7 +3,7 @@
  */
 
 #include <rte_eal.h>
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <rte_dmadev.h>
 #include <rte_dmadev_pmd.h>
 #include <rte_kvargs.h>

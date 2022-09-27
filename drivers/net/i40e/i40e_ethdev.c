@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
@@ -15,7 +16,7 @@
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
@@ -23,7 +24,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_alarm.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_tailq.h>
 #include <rte_hash_crc.h>
 #include <rte_bitmap.h>
@@ -1886,24 +1887,6 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
-	/* Only legacy filter API needs the following fdir config. So when the
-	 * legacy filter API is deprecated, the following codes should also be
-	 * removed.
-	 */
-	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT) {
-		ret = i40e_fdir_setup(pf);
-		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to setup flow director.");
-			return -ENOTSUP;
-		}
-		ret = i40e_fdir_configure(dev);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "failed to configure fdir.");
-			goto err;
-		}
-	} else
-		i40e_fdir_teardown(pf);
-
 	ret = i40e_dev_init_vlan(dev);
 	if (ret < 0)
 		goto err;
@@ -1945,12 +1928,6 @@ err_dcb:
 	rte_free(pf->vmdq);
 	pf->vmdq = NULL;
 err:
-	/* Need to release fdir resource if exists.
-	 * Only legacy filter API needs the following fdir config. So when the
-	 * legacy filter API is deprecated, the following code should also be
-	 * removed.
-	 */
-	i40e_fdir_teardown(pf);
 	return ret;
 }
 
@@ -2599,13 +2576,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	/* Disable interrupt */
 	i40e_pf_disable_irq0(hw);
 	rte_intr_disable(intr_handle);
-
-	/*
-	 * Only legacy filter API needs the following fdir config. So when the
-	 * legacy filter API is deprecated, the following code should also be
-	 * removed.
-	 */
-	i40e_fdir_teardown(pf);
 
 	/* shutdown and destroy the HMC */
 	i40e_shutdown_lan_hmc(hw);

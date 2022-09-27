@@ -2,6 +2,7 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <stdlib.h>
 #include <fnmatch.h>
 #include <sys/queue.h>
 #include <regex.h>

@@ -6,7 +6,7 @@
 #define MLX5_COMMON_PRIVATE_H
 
 #include <rte_pci.h>
-#include <rte_bus_auxiliary.h>
+#include <bus_auxiliary_driver.h>
 
 #include "mlx5_common.h"
 

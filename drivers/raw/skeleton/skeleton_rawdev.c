@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -13,7 +14,7 @@
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_eal.h>
 #include <rte_kvargs.h>
 #include <rte_log.h>
@@ -21,7 +22,7 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_lcore.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
@@ -76,7 +77,8 @@ static int skeleton_rawdev_configure(const struct rte_rawdev *dev,
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	if (config == NULL || config_size != sizeof(*skeldev_conf)) {
 		SKELETON_PMD_ERR("Invalid configuration");
@@ -106,7 +108,8 @@ static int skeleton_rawdev_start(struct rte_rawdev *dev)
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	skeldev = skeleton_rawdev_get_priv(dev);
 
@@ -169,7 +172,8 @@ static int skeleton_rawdev_close(struct rte_rawdev *dev)
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	skeldev = skeleton_rawdev_get_priv(dev);
 
@@ -212,7 +216,8 @@ static int skeleton_rawdev_reset(struct rte_rawdev *dev)
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	skeldev = skeleton_rawdev_get_priv(dev);
 
@@ -295,7 +300,8 @@ static int skeleton_rawdev_queue_release(struct rte_rawdev *dev,
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	skeldev = skeleton_rawdev_get_priv(dev);
 
@@ -317,7 +323,8 @@ static uint16_t skeleton_rawdev_queue_count(struct rte_rawdev *dev)
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	skeldev = skeleton_rawdev_get_priv(dev);
 	return skeldev->num_queues;
@@ -468,7 +475,8 @@ static int skeleton_rawdev_firmware_status_get(struct rte_rawdev *dev,
 
 	skeldev = skeleton_rawdev_get_priv(dev);
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	if (status_info)
 		memcpy(status_info, &skeldev->fw.firmware_state,

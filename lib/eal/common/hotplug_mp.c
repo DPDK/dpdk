@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 Intel Corporation
  */
+#include <stdlib.h>
 #include <string.h>
 
+#include <bus_driver.h>
 #include <rte_eal.h>
 #include <rte_errno.h>
 #include <rte_alarm.h>
