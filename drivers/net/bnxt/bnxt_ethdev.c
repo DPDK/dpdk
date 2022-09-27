@@ -1654,6 +1654,7 @@ static void bnxt_drv_uninit(struct bnxt *bp)
 	bnxt_free_link_info(bp);
 	bnxt_free_parent_info(bp);
 	bnxt_uninit_locks(bp);
+	bnxt_free_rep_info(bp);
 
 	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
 	bp->tx_mem_zone = NULL;
@@ -5978,7 +5979,6 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 
 	bnxt_free_flow_stats_info(bp);
 	bnxt_free_switch_domain(bp);
-	bnxt_free_rep_info(bp);
 	rte_free(bp->ptp_cfg);
 	bp->ptp_cfg = NULL;
 	return rc;
