@@ -641,7 +641,7 @@ cmd_pipeline_libbuild(char **tokens,
 	buffer = malloc(MAX_LINE_SIZE);
 	if (!buffer) {
 		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
-		return;
+		goto free;
 	}
 
 	snprintf(buffer,
