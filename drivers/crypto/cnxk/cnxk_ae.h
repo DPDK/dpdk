@@ -181,6 +181,7 @@ cnxk_ae_fill_session_parameters(struct cnxk_ae_sess *sess,
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		/* Fall through */
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
+	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
 		ret = cnxk_ae_fill_ec_params(sess, xform);
 		break;
 	default:
@@ -207,6 +208,7 @@ cnxk_ae_free_session_parameters(struct cnxk_ae_sess *sess)
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		/* Fall through */
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
+	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
 		break;
 	default:
 		break;
@@ -601,6 +603,64 @@ cnxk_ae_enqueue_ecdsa_op(struct rte_crypto_op *op,
 }
 
 static __rte_always_inline int
+cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
+		   struct roc_ae_buf_ptr *meta_buf, uint64_t *fpm_iova,
+		   struct roc_ae_ec_group *ec_grp, uint8_t curveid,
+		   struct cpt_inst_s *inst)
+{
+	uint16_t scalar_align, p_align;
+	uint16_t dlen, prime_len;
+	uint64_t fpm_table_iova;
+	union cpt_inst_w4 w4;
+	uint8_t *dptr;
+
+	prime_len = ec_grp->prime.length;
+	fpm_table_iova = (uint64_t)fpm_iova[curveid];
+
+	/* Input buffer */
+	dptr = meta_buf->vaddr;
+	inst->dptr = (uintptr_t)dptr;
+
+	p_align = RTE_ALIGN_CEIL(prime_len, 8);
+	scalar_align = RTE_ALIGN_CEIL(ecpm->scalar.length, 8);
+
+	/*
+	 * Set dlen = sum(ROUNDUP8(input point(x and y coordinates), prime,
+	 * scalar length),
+	 * Please note point length is equivalent to prime of the curve
+	 */
+	dlen = sizeof(fpm_table_iova) + 3 * p_align + scalar_align;
+
+	memset(dptr, 0, dlen);
+
+	*(uint64_t *)dptr = fpm_table_iova;
+	dptr += sizeof(fpm_table_iova);
+
+	/* Copy scalar, prime */
+	memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
+	dptr += scalar_align;
+	memcpy(dptr, ec_grp->prime.data, ec_grp->prime.length);
+	dptr += p_align;
+	memcpy(dptr, ec_grp->consta.data, ec_grp->consta.length);
+	dptr += p_align;
+	memcpy(dptr, ec_grp->constb.data, ec_grp->constb.length);
+	dptr += p_align;
+
+	/* Setup opcodes */
+	w4.s.opcode_major = ROC_AE_MAJOR_OP_ECC;
+	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECC_FPM;
+
+	w4.s.param1 = curveid | (1 << 8);
+	w4.s.param2 = ecpm->scalar.length;
+	w4.s.dlen = dlen;
+
+	inst->w4.u64 = w4.u64;
+	inst->rptr = (uintptr_t)dptr;
+
+	return 0;
+}
+
+static __rte_always_inline int
 cnxk_ae_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 		  struct roc_ae_buf_ptr *meta_buf,
 		  struct roc_ae_ec_group *ec_grp, uint8_t curveid,
@@ -811,6 +871,14 @@ cnxk_ae_enqueue(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		if (unlikely(ret))
 			goto req_fail;
 		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
+		ret = cnxk_ae_ecfpm_prep(&asym_op->ecpm, &meta_buf,
+					 sess->cnxk_fpm_iova,
+					 sess->ec_grp[sess->ec_ctx.curveid],
+					 sess->ec_ctx.curveid, inst);
+		if (unlikely(ret))
+			goto req_fail;
+		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		ret = -EINVAL;
@@ -845,6 +913,7 @@ cnxk_ae_post_process(struct rte_crypto_op *cop, struct cnxk_ae_sess *sess,
 					 sess->ec_grp);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
+	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
 		cnxk_ae_dequeue_ecpm_op(&op->ecpm, rptr, &sess->ec_ctx,
 					sess->ec_grp);
 		break;

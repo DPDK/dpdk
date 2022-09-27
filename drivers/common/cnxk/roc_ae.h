@@ -18,6 +18,7 @@
 #define ROC_AE_MINOR_OP_ECDSA_SIGN   0x01
 #define ROC_AE_MINOR_OP_ECDSA_VERIFY 0x02
 #define ROC_AE_MINOR_OP_ECC_UMP	     0x03
+#define ROC_AE_MINOR_OP_ECC_FPM	     0x04
 
 /**
  * Enumeration roc_ae_ec_id

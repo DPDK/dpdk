@@ -82,6 +82,16 @@ static const struct rte_cryptodev_capabilities caps_mul[] = {
 			},
 		}
 	},
+	{	/* ECFPM */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ECFPM,
+				.op_types = 0
+				}
+			},
+		}
+	},
 };
 
 static const struct rte_cryptodev_capabilities caps_sha1_sha2[] = {
