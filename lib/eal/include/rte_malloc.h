@@ -522,23 +522,6 @@ void
 rte_malloc_dump_heaps(FILE *f);
 
 /**
- * Set the maximum amount of allocated memory for this type.
- *
- * This is not yet implemented
- *
- * @param type
- *   A string identifying the type of allocated objects.
- * @param max
- *   The maximum amount of allocated bytes for this type.
- * @return
- *   - 0: Success.
- *   - (-1): Error.
- */
-__rte_deprecated
-int
-rte_malloc_set_limit(const char *type, size_t max);
-
-/**
  * Return the IO address of a virtual address obtained through
  * rte_malloc
  *

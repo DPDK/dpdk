@@ -165,7 +165,6 @@ DPDK_23 {
 	rte_malloc_heap_memory_detach;
 	rte_malloc_heap_memory_remove;
 	rte_malloc_heap_socket_is_external;
-	rte_malloc_set_limit;
 	rte_malloc_socket;
 	rte_malloc_validate;
 	rte_malloc_virt2iova;

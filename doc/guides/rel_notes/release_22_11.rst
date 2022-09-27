@@ -136,6 +136,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* mem: Removed not implemented and deprecated ``rte_malloc_set_limit``.
+
 * ethdev: removed ``RTE_FLOW_ITEM_TYPE_PF``;
   use ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT``.
 
