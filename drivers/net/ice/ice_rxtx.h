@@ -40,6 +40,8 @@
 
 #define ICE_RXDID_COMMS_OVS	22
 
+#define ICE_TX_MIN_PKT_LEN 17
+
 extern uint64_t ice_timestamp_dynflag;
 extern int ice_timestamp_dynfield_offset;
 
