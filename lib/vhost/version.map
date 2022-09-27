@@ -41,14 +41,12 @@ DPDK_23 {
 	rte_vhost_get_mtu;
 	rte_vhost_get_negotiated_features;
 	rte_vhost_get_numa_node;
-	rte_vhost_get_queue_num;
 	rte_vhost_get_vdpa_device;
 	rte_vhost_get_vhost_ring_inflight;
 	rte_vhost_get_vhost_vring;
 	rte_vhost_get_vring_base;
 	rte_vhost_get_vring_base_from_inflight;
 	rte_vhost_get_vring_num;
-	rte_vhost_gpa_to_vva;
 	rte_vhost_log_used_vring;
 	rte_vhost_log_write;
 	rte_vhost_rx_queue_count;

@@ -354,44 +354,6 @@ struct rte_vhost_stat_name {
 /**
  * Convert guest physical address to host virtual address
  *
- * This function is deprecated because unsafe.
- * New rte_vhost_va_from_guest_pa() should be used instead to ensure
- * guest physical ranges are fully and contiguously mapped into
- * process virtual address space.
- *
- * @param mem
- *  the guest memory regions
- * @param gpa
- *  the guest physical address for querying
- * @return
- *  the host virtual address on success, 0 on failure
- */
-__rte_deprecated
-static __rte_always_inline uint64_t
-rte_vhost_gpa_to_vva(struct rte_vhost_memory *mem, uint64_t gpa)
-{
-	struct rte_vhost_mem_region *reg;
-	uint32_t i;
-
-	for (i = 0; i < mem->nregions; i++) {
-		reg = &mem->regions[i];
-		if (gpa >= reg->guest_phys_addr &&
-		    gpa <  reg->guest_phys_addr + reg->size) {
-			return gpa - reg->guest_phys_addr +
-			       reg->host_user_addr;
-		}
-	}
-
-	return 0;
-}
-
-/**
- * Convert guest physical address to host virtual address safely
- *
- * This variant of rte_vhost_gpa_to_vva() takes care all the
- * requested length is mapped and contiguous in process address
- * space.
- *
  * @param mem
  *  the guest memory regions
  * @param gpa
@@ -695,23 +657,6 @@ int rte_vhost_get_mtu(int vid, uint16_t *mtu);
  *  The numa node, -1 on failure
  */
 int rte_vhost_get_numa_node(int vid);
-
-/**
- * @deprecated
- * Get the number of queues the device supports.
- *
- * Note this function is deprecated, as it returns a queue pair number,
- * which is vhost specific. Instead, rte_vhost_get_vring_num should
- * be used.
- *
- * @param vid
- *  vhost device ID
- *
- * @return
- *  The number of queues, 0 on failure
- */
-__rte_deprecated
-uint32_t rte_vhost_get_queue_num(int vid);
 
 /**
  * Get the number of vrings the device supports.

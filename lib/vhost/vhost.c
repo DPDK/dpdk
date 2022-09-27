@@ -859,17 +859,6 @@ rte_vhost_get_numa_node(int vid)
 #endif
 }
 
-uint32_t
-rte_vhost_get_queue_num(int vid)
-{
-	struct virtio_net *dev = get_device(vid);
-
-	if (dev == NULL)
-		return 0;
-
-	return dev->nr_vring / 2;
-}
-
 uint16_t
 rte_vhost_get_vring_num(int vid)
 {

@@ -121,6 +121,9 @@ Removed Items
 * ethdev: removed ``RTE_FLOW_ACTION_TYPE_PHY_PORT``;
   use ``RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT``.
 
+* vhost: Removed deprecated ``rte_vhost_gpa_to_vva`` and
+  ``rte_vhost_get_queue_num`` helpers.
+
 
 API Changes
 -----------
