@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <rte_cryptodev.h>
 
@@ -32,6 +33,22 @@ struct plain_hash_size_conversion {
 		{"48", RTE_CRYPTO_AUTH_SHA384},
 		{"64", RTE_CRYPTO_AUTH_SHA512},
 };
+
+int
+parse_test_sha_hash_size(enum rte_crypto_auth_algorithm algo)
+{
+	int ret = -EINVAL;
+	uint8_t i;
+
+	for (i = 0; i < RTE_DIM(phsc); i++) {
+		if (phsc[i].algo == algo) {
+			ret = atoi(phsc[i].str);
+			break;
+		}
+	}
+
+	return ret;
+}
 
 static int
 parse_interim_algo(__rte_unused const char *key,
@@ -212,6 +229,7 @@ parse_test_sha_json_algorithm(void)
 	json_t *algorithm_object;
 	const char *algorithm_str;
 	uint32_t i;
+	int sz;
 
 	algorithm_object = json_object_get(json_info.json_vector_set, "algorithm");
 	algorithm_str = json_string_value(algorithm_object);
@@ -226,23 +244,15 @@ parse_test_sha_json_algorithm(void)
 	if (i == RTE_DIM(json_algorithms))
 		return -1;
 
-	for (i = 0; i < RTE_DIM(phsc); i++) {
-		if (info.interim_info.sha_data.algo == phsc[i].algo) {
-			vec.cipher_auth.digest.len = atoi(phsc[i].str);
-			free(vec.cipher_auth.digest.val);
-			vec.cipher_auth.digest.val = calloc(1, vec.cipher_auth.digest.len);
-			if (vec.cipher_auth.digest.val == NULL)
-				return -1;
-
-			break;
-		}
-	}
-
-	if (i == RTE_DIM(phsc)) {
-		free(vec.cipher_auth.digest.val);
-		vec.cipher_auth.digest.val = NULL;
+	sz = parse_test_sha_hash_size(info.interim_info.sha_data.algo);
+	if (sz < 0)
 		return -1;
-	}
+
+	free(vec.cipher_auth.digest.val);
+	vec.cipher_auth.digest.len = sz;
+	vec.cipher_auth.digest.val = calloc(1, sz);
+	if (vec.cipher_auth.digest.val == NULL)
+		return -1;
 
 	return 0;
 }

@@ -374,4 +374,6 @@ int prepare_gcm_xform(struct rte_crypto_sym_xform *xform);
 
 int prepare_gmac_xform(struct rte_crypto_sym_xform *xform);
 
+int parse_test_sha_hash_size(enum rte_crypto_auth_algorithm algo);
+
 #endif
