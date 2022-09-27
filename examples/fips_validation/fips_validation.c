@@ -490,6 +490,9 @@ fips_test_parse_one_json_group(void)
 		for (i = 0; info.interim_callbacks[i].key != NULL; i++) {
 			param = json_object_get(json_info.json_test_group,
 					info.interim_callbacks[i].key);
+			if (!param)
+				continue;
+
 			switch (json_typeof(param)) {
 			case JSON_STRING:
 				snprintf(json_value, 256, "%s", json_string_value(param));
