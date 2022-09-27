@@ -2356,6 +2356,13 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 	}
 
+	/* if queues are not allocated, reinit the device */
+	if (hw->vqs == NULL) {
+		ret = virtio_init_device(dev, hw->req_guest_features);
+		if (ret < 0)
+			return ret;
+	}
+
 	if ((rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
 			    DEV_RX_OFFLOAD_TCP_CKSUM)) &&
 		!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM)) {
