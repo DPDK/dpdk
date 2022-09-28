@@ -3580,6 +3580,82 @@ int
 rte_eth_tx_done_cleanup(uint16_t port_id, uint16_t queue_id, uint32_t free_cnt);
 
 /**
+ * Subtypes for MACsec offload event (@ref RTE_ETH_EVENT_MACSEC)
+ * raised by Ethernet device.
+ */
+enum rte_eth_event_macsec_subtype {
+	/** Notifies unknown MACsec subevent. */
+	RTE_ETH_SUBEVENT_MACSEC_UNKNOWN,
+	/**
+	 * Subevent of RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR sectag validation events
+	 *	Validation check: SecTag.TCI.V = 1
+	 */
+	RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_V_EQ1,
+	/**
+	 * Subevent of RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR sectag validation events
+	 *	Validation check: SecTag.TCI.E = 0 && SecTag.TCI.C = 1
+	 */
+	RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_E_EQ0_C_EQ1,
+	/**
+	 * Subevent of RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR sectag validation events
+	 *	Validation check: SecTag.SL >= 'd48
+	 */
+	RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SL_GTE48,
+	/**
+	 * Subevent of RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR sectag validation events
+	 *	Validation check: SecTag.TCI.ES = 1 && SecTag.TCI.SC = 1
+	 */
+	RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_ES_EQ1_SC_EQ1,
+	/**
+	 * Subevent of RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR sectag validation events
+	 *	Validation check: SecTag.TCI.SC = 1 && SecTag.TCI.SCB = 1
+	 */
+	RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SC_EQ1_SCB_EQ1,
+};
+
+/**
+ * Event types for MACsec offload event (@ref RTE_ETH_EVENT_MACSEC)
+ * raised by eth device.
+ */
+enum rte_eth_event_macsec_type {
+	/** Notifies unknown MACsec event. */
+	RTE_ETH_EVENT_MACSEC_UNKNOWN,
+	/** Notifies Sectag validation failure events. */
+	RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR,
+	/** Notifies Rx SA hard expiry events. */
+	RTE_ETH_EVENT_MACSEC_RX_SA_PN_HARD_EXP,
+	/** Notifies Rx SA soft expiry events. */
+	RTE_ETH_EVENT_MACSEC_RX_SA_PN_SOFT_EXP,
+	/** Notifies Tx SA hard expiry events. */
+	RTE_ETH_EVENT_MACSEC_TX_SA_PN_HARD_EXP,
+	/** Notifies Tx SA soft events. */
+	RTE_ETH_EVENT_MACSEC_TX_SA_PN_SOFT_EXP,
+	/** Notifies Invalid SA event. */
+	RTE_ETH_EVENT_MACSEC_SA_NOT_VALID,
+};
+
+/**
+ * Descriptor for @ref RTE_ETH_EVENT_MACSEC event.
+ * Used by ethdev to send extra information of the MACsec offload event.
+ */
+struct rte_eth_event_macsec_desc {
+	/** Type of RTE_ETH_EVENT_MACSEC_* event. */
+	enum rte_eth_event_macsec_type type;
+	/** Type of RTE_ETH_SUBEVENT_MACSEC_* subevent. */
+	enum rte_eth_event_macsec_subtype subtype;
+	/**
+	 * Event specific metadata.
+	 *
+	 * For the following events, *userdata* registered
+	 * with the *rte_security_session* would be returned
+	 * as metadata.
+	 *
+	 * @see struct rte_security_session_conf
+	 */
+	uint64_t metadata;
+};
+
+/**
  * Subtypes for IPsec offload event(@ref RTE_ETH_EVENT_IPSEC) raised by
  * eth device.
  */
