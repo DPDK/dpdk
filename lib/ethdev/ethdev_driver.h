@@ -599,7 +599,7 @@ typedef int (*eth_uc_all_hash_table_set_t)(struct rte_eth_dev *dev,
 /** @internal Set queue Tx rate. */
 typedef int (*eth_set_queue_rate_limit_t)(struct rte_eth_dev *dev,
 				uint16_t queue_idx,
-				uint16_t tx_rate);
+				uint32_t tx_rate);
 
 /** @internal Add tunneling UDP port. */
 typedef int (*eth_udp_tunnel_port_add_t)(struct rte_eth_dev *dev,

@@ -172,12 +172,12 @@ int rte_pmd_bnxt_set_vf_mac_addr(uint16_t port, uint16_t vf,
 }
 
 int rte_pmd_bnxt_set_vf_rate_limit(uint16_t port, uint16_t vf,
-				uint16_t tx_rate, uint64_t q_msk)
+				uint32_t tx_rate, uint64_t q_msk)
 {
 	struct rte_eth_dev *eth_dev;
 	struct rte_eth_dev_info dev_info;
 	struct bnxt *bp;
-	uint16_t tot_rate = 0;
+	uint32_t tot_rate = 0;
 	uint64_t idx;
 	int rc;
 

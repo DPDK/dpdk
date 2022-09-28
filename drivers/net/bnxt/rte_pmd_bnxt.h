@@ -184,7 +184,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint16_t port, uint8_t on);
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
 int rte_pmd_bnxt_set_vf_rate_limit(uint16_t port, uint16_t vf,
-				uint16_t tx_rate, uint64_t q_msk);
+				uint32_t tx_rate, uint64_t q_msk);
 
 /**
  * Get VF's statistics

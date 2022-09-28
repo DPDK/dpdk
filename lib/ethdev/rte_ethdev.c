@@ -4443,7 +4443,7 @@ rte_eth_dev_uc_all_hash_table_set(uint16_t port_id, uint8_t on)
 }
 
 int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
-					uint16_t tx_rate)
+					uint32_t tx_rate)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;

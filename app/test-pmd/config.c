@@ -5863,7 +5863,7 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 }
 
 int
-set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
+set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint32_t rate)
 {
 	int diag;
 	struct rte_eth_link link;
@@ -5891,7 +5891,7 @@ set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
 }
 
 int
-set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
+set_vf_rate_limit(portid_t port_id, uint16_t vf, uint32_t rate, uint64_t q_msk)
 {
 	int diag = -ENOTSUP;
 

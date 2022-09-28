@@ -281,6 +281,13 @@ API Changes
   for per-queue packet split offload,
   which is configured by ``rte_eth_rxseg_split``.
 
+* ethdev: Changed the type of the parameter ``rate`` of the function
+  ``rte_eth_set_queue_rate_limit()`` from ``uint16_t`` to ``uint32_t``
+  to support more than 64 Gbps.
+  Changed the type of the parameter ``tx_rate`` of the functions
+  ``rte_pmd_bnxt_set_vf_rate_limit()`` and
+  ``rte_pmd_ixgbe_set_vf_rate_limit()`` in the same way for consistency.
+
 * ethdev: Promoted ``rte_eth_rx_metadata_negotiate()``
   from experimental to stable.
 

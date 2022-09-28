@@ -380,7 +380,7 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
  *   - (-EINVAL) if bad parameter.
  */
 int rte_pmd_ixgbe_set_vf_rate_limit(uint16_t port, uint16_t vf,
-				     uint16_t tx_rate, uint64_t q_msk);
+				     uint32_t tx_rate, uint64_t q_msk);
 
 /**
  * Set all the TCs' bandwidth weight.

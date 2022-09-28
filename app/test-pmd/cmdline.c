@@ -7779,7 +7779,7 @@ struct cmd_queue_rate_limit_result {
 	cmdline_fixed_string_t queue;
 	uint8_t queue_num;
 	cmdline_fixed_string_t rate;
-	uint16_t rate_num;
+	uint32_t rate_num;
 };
 
 static void cmd_queue_rate_limit_parsed(void *parsed_result,
@@ -7820,7 +7820,7 @@ static cmdline_parse_token_string_t cmd_queue_rate_limit_rate =
 				rate, "rate");
 static cmdline_parse_token_num_t cmd_queue_rate_limit_ratenum =
 	TOKEN_NUM_INITIALIZER(struct cmd_queue_rate_limit_result,
-				rate_num, RTE_UINT16);
+				rate_num, RTE_UINT32);
 
 static cmdline_parse_inst_t cmd_queue_rate_limit = {
 	.f = cmd_queue_rate_limit_parsed,
@@ -7847,7 +7847,7 @@ struct cmd_vf_rate_limit_result {
 	cmdline_fixed_string_t vf;
 	uint8_t vf_num;
 	cmdline_fixed_string_t rate;
-	uint16_t rate_num;
+	uint32_t rate_num;
 	cmdline_fixed_string_t q_msk;
 	uint64_t q_msk_val;
 };
@@ -7891,7 +7891,7 @@ static cmdline_parse_token_string_t cmd_vf_rate_limit_rate =
 				rate, "rate");
 static cmdline_parse_token_num_t cmd_vf_rate_limit_ratenum =
 	TOKEN_NUM_INITIALIZER(struct cmd_vf_rate_limit_result,
-				rate_num, RTE_UINT16);
+				rate_num, RTE_UINT32);
 static cmdline_parse_token_string_t cmd_vf_rate_limit_q_msk =
 	TOKEN_STRING_INITIALIZER(struct cmd_vf_rate_limit_result,
 				q_msk, "queue_mask");

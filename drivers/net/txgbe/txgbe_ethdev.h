@@ -586,7 +586,7 @@ int txgbe_tm_ops_get(struct rte_eth_dev *dev, void *ops);
 void txgbe_tm_conf_init(struct rte_eth_dev *dev);
 void txgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 int txgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
-			       uint16_t tx_rate);
+			       uint32_t tx_rate);
 int txgbe_rss_conf_init(struct txgbe_rte_flow_rss_conf *out,
 			const struct rte_flow_action_rss *in);
 int txgbe_action_rss_same(const struct rte_flow_action_rss *comp,

@@ -558,7 +558,7 @@ int cnxk_nix_read_clock(struct rte_eth_dev *eth_dev, uint64_t *clock);
 uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 int cnxk_nix_tm_ops_get(struct rte_eth_dev *eth_dev, void *ops);
 int cnxk_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
-				     uint16_t queue_idx, uint16_t tx_rate);
+				     uint16_t queue_idx, uint32_t tx_rate);
 int cnxk_nix_tm_mark_vlan_dei(struct rte_eth_dev *eth_dev, int mark_green,
 			      int mark_yellow, int mark_red,
 			      struct rte_tm_error *error);

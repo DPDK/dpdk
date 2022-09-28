@@ -753,13 +753,13 @@ int ixgbe_enable_sec_tx_path_generic(struct ixgbe_hw *hw);
 
 int ixgbe_vt_check(struct ixgbe_hw *hw);
 int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
-			    uint16_t tx_rate, uint64_t q_msk);
+			    uint32_t tx_rate, uint64_t q_msk);
 bool is_ixgbe_supported(struct rte_eth_dev *dev);
 int ixgbe_tm_ops_get(struct rte_eth_dev *dev, void *ops);
 void ixgbe_tm_conf_init(struct rte_eth_dev *dev);
 void ixgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
-			       uint16_t tx_rate);
+			       uint32_t tx_rate);
 int ixgbe_rss_conf_init(struct ixgbe_rte_flow_rss_conf *out,
 			const struct rte_flow_action_rss *in);
 int ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,

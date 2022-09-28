@@ -63,11 +63,6 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
-* ethdev: The function ``rte_eth_set_queue_rate_limit`` takes ``rate`` in Mbps.
-  The queue rate is limited to 64 Gbps because declared as ``uint16_t``.
-  The ``rate`` parameter will be modified to ``uint32_t`` in DPDK 22.11
-  so that it can work for more than 64 Gbps.
-
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 
