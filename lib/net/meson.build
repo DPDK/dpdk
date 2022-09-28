@@ -10,6 +10,7 @@ headers = files(
         'rte_icmp.h',
         'rte_arp.h',
         'rte_ether.h',
+        'rte_macsec.h',
         'rte_vxlan.h',
         'rte_gre.h',
         'rte_gtp.h',
