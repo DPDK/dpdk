@@ -860,7 +860,7 @@ dlb2_hw_create_sched_domain(struct dlb2_eventdev *dlb2,
 		cfg->num_ldb_queues;
 
 	cfg->num_hist_list_entries = resources_asked->num_ldb_ports *
-		DLB2_NUM_HIST_LIST_ENTRIES_PER_LDB_PORT;
+		evdev_dlb2_default_info.max_event_port_dequeue_depth;
 
 	if (device_version == DLB2_HW_V2_5) {
 		DLB2_LOG_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, credits=%d\n",
@@ -1585,7 +1585,7 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	cfg.cq_depth = rte_align32pow2(dequeue_depth);
 	cfg.cq_depth_threshold = 1;
 
-	cfg.cq_history_list_size = DLB2_NUM_HIST_LIST_ENTRIES_PER_LDB_PORT;
+	cfg.cq_history_list_size = cfg.cq_depth;
 
 	cfg.cos_id = ev_port->cos_id;
 	cfg.cos_strict = 0;/* best effots */
@@ -3033,6 +3033,7 @@ __dlb2_event_enqueue_burst(void *event_port,
 	struct dlb2_port *qm_port = &ev_port->qm_port;
 	struct process_local_port_data *port_data;
 	int retries = ev_port->enq_retries;
+	int num_tx;
 	int i;
 
 	RTE_ASSERT(ev_port->enq_configured);
@@ -3041,8 +3042,8 @@ __dlb2_event_enqueue_burst(void *event_port,
 	i = 0;
 
 	port_data = &dlb2_port[qm_port->id][PORT_TYPE(qm_port)];
-
-	while (i < num) {
+	num_tx = RTE_MIN(num, ev_port->conf.enqueue_depth);
+	while (i < num_tx) {
 		uint8_t sched_types[DLB2_NUM_QES_PER_CACHE_LINE];
 		uint8_t queue_ids[DLB2_NUM_QES_PER_CACHE_LINE];
 		int pop_offs = 0;
