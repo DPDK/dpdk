@@ -151,11 +151,6 @@ Deprecation Notices
   pointer for the private data to the application which can be attached
   to the packet while enqueuing.
 
-* security: MACsec support is planned to be added in DPDK 22.11,
-  which would result in updates to structures ``rte_security_macsec_xform``,
-  ``rte_security_macsec_stats`` and security capability structure
-  ``rte_security_capability`` to accommodate MACsec capabilities.
-
 * eventdev: The function ``rte_event_crypto_adapter_queue_pair_add`` will
   accept configuration of type ``rte_event_crypto_adapter_queue_conf`` instead
   of ``rte_event``, similar to ``rte_event_eth_rx_adapter_queue_add`` signature.

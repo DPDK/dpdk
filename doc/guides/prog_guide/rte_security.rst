@@ -347,6 +347,59 @@ The CRC is Ethernet CRC-32 as specified in Ethernet/[ISO/IEC 8802-3].
     * Other DOCSIS protocol functionality such as Header Checksum (HCS)
       calculation may be added in the future.
 
+MACSEC Protocol
+~~~~~~~~~~~~~~~
+
+Media Access Control security (MACsec) provides point-to-point security
+on Ethernet links and is defined by IEEE standard 802.1AE.
+MACsec secures an Ethernet link for almost all traffic,
+including frames from the Link Layer Discovery Protocol (LLDP),
+Link Aggregation Control Protocol (LACP),
+Dynamic Host Configuration Protocol (DHCP),
+Address Resolution Protocol (ARP),
+and other protocols that are not typically secured on an Ethernet link
+because of limitations with other security solutions.
+
+.. code-block:: c
+
+             Receive                                                Transmit
+             -------                                                --------
+
+         Ethernet frame                                          Ethernet frame
+          from network                                           towards network
+                |                                                      ^
+                ~                                                      |
+                |                                                      ~
+                V                                                      |
+    +-----------------------+      +------------------+      +-------------------------+
+    | Secure Frame Verify   |      | Cipher Suite(SA) |      | Secure Frame Generation |
+    +-----------------------+<-----+------------------+----->+-------------------------+
+    | SecTAG + ICV remove   |      |  SECY   |   SC   |      | SecTAG + ICV Added      |
+    +---+-------------------+      +------------------+      +-------------------------+
+                |                                                      ^
+                |                                                      |
+                V                                                      |
+        Packet to Core/App                                     Packet from Core/App
+
+
+
+To configure MACsec on an inline NIC device or a lookaside crypto device,
+a security association (SA) and a secure channel (SC) are created
+before creating rte_security session.
+
+SA is created using API ``rte_security_macsec_sa_create``
+which allows setting SA keys, salt, SSCI, packet number (PN) into the PMD,
+and the API returns a handle which can be used to map it with a secure channel,
+using the API ``rte_security_macsec_sc_create``.
+Same SAs can be used for multiple SCs.
+The Rx SC will need a set of 4 SAs for each of the association numbers (AN).
+For Tx SC a single SA is set which will be used by hardware to process the packet.
+
+The API ``rte_security_macsec_sc_create`` returns a handle for SC,
+and this handle is set in ``rte_security_macsec_xform``
+to create a MACsec session using ``rte_security_session_create``.
+
+
 Device Features and Capabilities
 ---------------------------------
 
@@ -519,6 +572,35 @@ protocol.
         RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
     };
 
+Below is the example PMD capability for MACsec
+
+.. code-block:: c
+
+    static const struct rte_security_capability pmd_security_capabilities[] = {
+        {
+                .action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
+                .protocol = RTE_SECURITY_PROTOCOL_MACSEC,
+                .macsec = {
+                        .mtu = 1500,
+                        .alg = RTE_SECURITY_MACSEC_ALG_GCM_128,
+                        .max_nb_sc = 64,
+                        .max_nb_sa = 128,
+                        .max_nb_sess = 64,
+                        .replay_win_sz = 4096,
+                        .relative_sectag_insert = 1,
+                        .fixed_sectag_insert = 1,
+                        .icv_include_da_sa = 1,
+                        .ctrl_port_enable = 1,
+                        .preserve_sectag = 1,
+                        .preserve_icv = 1,
+                        .validate_frames = 1,
+                        .re_key = 1,
+                        .anti_replay = 1,
+                },
+                .crypto_capabilities = NULL,
+        },
+    };
+
 Capabilities Discovery
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -663,6 +745,8 @@ which will be updated in the future.
 
 IPsec related configuration parameters are defined in ``rte_security_ipsec_xform``
 
+MACsec related configuration parameters are defined in ``rte_security_macsec_xform``
+
 PDCP related configuration parameters are defined in ``rte_security_pdcp_xform``
 
 DOCSIS related configuration parameters are defined in ``rte_security_docsis_xform``
@@ -684,7 +768,7 @@ The ingress/egress flow attribute should match that specified in the security
 session if the security session supports the definition of the direction.
 
 Multiple flows can be configured to use the same security session. For
-example if the security session specifies an egress IPsec SA, then multiple
+example if the security session specifies an egress IPsec/MACsec SA, then multiple
 flows can be specified to that SA. In the case of an ingress IPsec SA then
 it is only valid to have a single flow to map to that security session.
 
@@ -694,8 +778,8 @@ it is only valid to have a single flow to map to that security session.
                  |
         +--------|--------+
         |    Add/Remove   |
-        |     IPsec SA    |   <------ Build security flow action of
-        |        |        |           ipsec transform
+        | IPsec/MACsec SA |   <------ Build security flow action of
+        |        |        |           IPsec/MACsec transform
         |--------|--------|
                  |
         +--------V--------+
@@ -714,9 +798,9 @@ it is only valid to have a single flow to map to that security session.
         |                 |
         +--------|--------+
 
-* Add/Delete SA flow:
+* Add/Delete IPsec SA flow:
   To add a new inline SA construct a rte_flow_item for Ethernet + IP + ESP
-  using the SA selectors and the ``rte_crypto_ipsec_xform`` as the ``rte_flow_action``.
+  using the SA selectors and the ``rte_security_ipsec_xform`` as the ``rte_flow_action``.
   Note that any rte_flow_items may be empty, which means it is not checked.
 
 .. code-block:: console
@@ -729,6 +813,23 @@ it is only valid to have a single flow to map to that security session.
     However, the API can represent, IPsec crypto offload with any encapsulation:
         +-------+            +--------+    +-----+
         |  Eth  | ->  ... -> |   ESP  | -> | END |
+        +-------+            +--------+    +-----+
+
+* Add/Delete MACsec SA flow:
+  To add a new inline SA construct a rte_flow_item for Ethernet + SecTAG
+  using the SA selectors and the ``rte_security_macsec_xform`` as the ``rte_flow_action``.
+  Note that any rte_flow_items may be empty, which means it is not checked.
+
+.. code-block:: console
+
+    In its most basic form, MACsec flow specification is as follows:
+        +-------+     +----------+     +-----+
+        |  Eth  | ->  |  SecTag  |  -> | END |
+        +-------+     +----------+     +-----+
+
+    However, the API can represent, MACsec offload with any encapsulation:
+        +-------+            +--------+    +-----+
+        |  Eth  | ->  ... -> | SecTag | -> | END |
         +-------+            +--------+    +-----+
 
 

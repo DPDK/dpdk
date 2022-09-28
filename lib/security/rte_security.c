@@ -125,6 +125,92 @@ rte_security_session_destroy(struct rte_security_ctx *instance,
 }
 
 int
+rte_security_macsec_sc_create(struct rte_security_ctx *instance,
+			      struct rte_security_macsec_sc *conf)
+{
+	int sc_id;
+
+	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sc_create, -EINVAL, -ENOTSUP);
+	RTE_PTR_OR_ERR_RET(conf, -EINVAL);
+
+	sc_id = instance->ops->macsec_sc_create(instance->device, conf);
+	if (sc_id >= 0)
+		instance->macsec_sc_cnt++;
+
+	return sc_id;
+}
+
+int
+rte_security_macsec_sa_create(struct rte_security_ctx *instance,
+			      struct rte_security_macsec_sa *conf)
+{
+	int sa_id;
+
+	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sa_create, -EINVAL, -ENOTSUP);
+	RTE_PTR_OR_ERR_RET(conf, -EINVAL);
+
+	sa_id = instance->ops->macsec_sa_create(instance->device, conf);
+	if (sa_id >= 0)
+		instance->macsec_sa_cnt++;
+
+	return sa_id;
+}
+
+int
+rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id)
+{
+	int ret;
+
+	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sc_destroy, -EINVAL, -ENOTSUP);
+
+	ret = instance->ops->macsec_sc_destroy(instance->device, sc_id);
+	if (ret != 0)
+		return ret;
+
+	if (instance->macsec_sc_cnt)
+		instance->macsec_sc_cnt--;
+
+	return 0;
+}
+
+int
+rte_security_macsec_sa_destroy(struct rte_security_ctx *instance, uint16_t sa_id)
+{
+	int ret;
+
+	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sa_destroy, -EINVAL, -ENOTSUP);
+
+	ret = instance->ops->macsec_sa_destroy(instance->device, sa_id);
+	if (ret != 0)
+		return ret;
+
+	if (instance->macsec_sa_cnt)
+		instance->macsec_sa_cnt--;
+
+	return 0;
+}
+
+int
+rte_security_macsec_sc_stats_get(struct rte_security_ctx *instance, uint16_t sc_id,
+				 struct rte_security_macsec_sc_stats *stats)
+{
+	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sc_stats_get, -EINVAL, -ENOTSUP);
+	RTE_PTR_OR_ERR_RET(stats, -EINVAL);
+
+	return instance->ops->macsec_sc_stats_get(instance->device, sc_id, stats);
+}
+
+int
+rte_security_macsec_sa_stats_get(struct rte_security_ctx *instance, uint16_t sa_id,
+				 struct rte_security_macsec_sa_stats *stats)
+{
+	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sa_stats_get, -EINVAL, -ENOTSUP);
+	RTE_PTR_OR_ERR_RET(stats, -EINVAL);
+
+	return instance->ops->macsec_sa_stats_get(instance->device, sa_id, stats);
+}
+
+int
 __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 				struct rte_security_session *sess,
 				struct rte_mbuf *m, void *params)

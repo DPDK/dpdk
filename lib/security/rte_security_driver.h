@@ -64,6 +64,50 @@ typedef int (*security_session_update_t)(void *device,
 		struct rte_security_session_conf *conf);
 
 /**
+ * Configure a MACsec secure channel (SC) on a device.
+ *
+ * @param	device		Crypto/eth device pointer
+ * @param	conf		MACsec SC configuration params
+ *
+ * @return
+ *  - positive sc_id if SC is created successfully.
+ *  - -EINVAL if input parameters are invalid.
+ *  - -ENOTSUP if device does not support MACsec.
+ *  - -ENOMEM if the SC cannot be created.
+ */
+typedef int (*security_macsec_sc_create_t)(void *device, struct rte_security_macsec_sc *conf);
+
+/**
+ * Free MACsec secure channel (SC).
+ *
+ * @param	device		Crypto/eth device pointer
+ * @param	sc_id		MACsec SC ID
+ */
+typedef int (*security_macsec_sc_destroy_t)(void *device, uint16_t sc_id);
+
+/**
+ * Configure a MACsec security Association (SA) on a device.
+ *
+ * @param	device		Crypto/eth device pointer
+ * @param	conf		MACsec SA configuration params
+ *
+ * @return
+ *  - positive sa_id if SA is created successfully.
+ *  - -EINVAL if input parameters are invalid.
+ *  - -ENOTSUP if device does not support MACsec.
+ *  - -ENOMEM if the SA cannot be created.
+ */
+typedef int (*security_macsec_sa_create_t)(void *device, struct rte_security_macsec_sa *conf);
+
+/**
+ * Free MACsec security association (SA).
+ *
+ * @param	device		Crypto/eth device pointer
+ * @param	sa_id		MACsec SA ID
+ */
+typedef int (*security_macsec_sa_destroy_t)(void *device, uint16_t sa_id);
+
+/**
  * Get the size of a security session
  *
  * @param	device		Crypto/eth device pointer
@@ -88,6 +132,36 @@ typedef unsigned int (*security_session_get_size)(void *device);
 typedef int (*security_session_stats_get_t)(void *device,
 		struct rte_security_session *sess,
 		struct rte_security_stats *stats);
+
+/**
+ * Get MACsec secure channel stats from the PMD.
+ *
+ * @param	device		Crypto/eth device pointer
+ * @param	sc_id		secure channel ID created by rte_security_macsec_sc_create()
+ * @param	stats		SC stats of the driver
+ *
+ * @return
+ *  - 0 if success.
+ *  - -EINVAL if sc_id or device is invalid.
+ */
+typedef int (*security_macsec_sc_stats_get_t)(void *device, uint16_t sc_id,
+		struct rte_security_macsec_sc_stats *stats);
+
+/**
+ * Get MACsec SA stats from the PMD.
+ *
+ * @param	device		Crypto/eth device pointer
+ * @param	sa_id		secure channel ID created by rte_security_macsec_sc_create()
+ * @param	stats		SC stats of the driver
+ *
+ * @return
+ *  - 0 if success.
+ *  - -EINVAL if sa_id or device is invalid.
+ */
+typedef int (*security_macsec_sa_stats_get_t)(void *device, uint16_t sa_id,
+		struct rte_security_macsec_sa_stats *stats);
+
+
 
 __rte_internal
 int rte_security_dynfield_register(void);
@@ -154,6 +228,18 @@ struct rte_security_ops {
 	/**< Get userdata associated with session which processed the packet. */
 	security_capabilities_get_t capabilities_get;
 	/**< Get security capabilities. */
+	security_macsec_sc_create_t macsec_sc_create;
+	/**< Configure a MACsec security channel (SC). */
+	security_macsec_sc_destroy_t macsec_sc_destroy;
+	/**< Free a MACsec security channel (SC). */
+	security_macsec_sa_create_t macsec_sa_create;
+	/**< Configure a MACsec security association (SA). */
+	security_macsec_sa_destroy_t macsec_sa_destroy;
+	/**< Free a MACsec security association (SA). */
+	security_macsec_sc_stats_get_t macsec_sc_stats_get;
+	/**< Get MACsec SC statistics. */
+	security_macsec_sa_stats_get_t macsec_sa_stats_get;
+	/**< Get MACsec SA statistics. */
 };
 
 #ifdef __cplusplus

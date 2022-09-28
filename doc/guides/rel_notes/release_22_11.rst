@@ -67,6 +67,11 @@ New Features
 
   * Added support to set device link down/up.
 
+* **Added support for MACsec in rte_security.**
+
+  Added MACsec transform for rte_security session and added new API
+  to configure security associations (SA) and secure channels (SC).
+
 * **Updated Marvell cnxk crypto driver.**
 
   * Added AES-CCM support in lookaside protocol (IPsec) for CN9K & CN10K.
@@ -215,6 +220,11 @@ API Changes
 
 * ethdev: Promoted ``rte_flow_pick_transfer_proxy()``
   from experimental to stable.
+
+* security: MACsec support is added which resulted in updates
+  to structures ``rte_security_macsec_xform``, ``rte_security_macsec_stats``
+  and security capability structure ``rte_security_capability``
+  to accommodate MACsec capabilities.
 
 * telemetry: The allowed characters in names for dictionary values
   are now limited to alphanumeric characters and a small subset of additional
