@@ -17,7 +17,7 @@
 #include "ngbe_rxtx.h"
 
 #ifdef RTE_LIBRTE_IEEE1588
-#define NGBE_TX_IEEE1588_TMST PKT_TX_IEEE1588_TMST
+#define NGBE_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
 #else
 #define NGBE_TX_IEEE1588_TMST 0
 #endif
@@ -740,7 +740,7 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		cmd_type_len = NGBE_TXD_FCS;
 
 #ifdef RTE_LIBRTE_IEEE1588
-		if (ol_flags & PKT_TX_IEEE1588_TMST)
+		if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 			cmd_type_len |= NGBE_TXD_1588;
 #endif
 
@@ -922,7 +922,7 @@ ngbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
 	};
 #ifdef RTE_LIBRTE_IEEE1588
 	static uint64_t ip_pkt_etqf_map[8] = {
-		0, 0, 0, PKT_RX_IEEE1588_PTP,
+		0, 0, 0, RTE_MBUF_F_RX_IEEE1588_PTP,
 		0, 0, 0, 0,
 	};
 	int etfid = ngbe_etflt_id(NGBE_RXD_PTID(pkt_info));
@@ -952,7 +952,7 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 
 #ifdef RTE_LIBRTE_IEEE1588
 	if (rx_status & NGBE_RXD_STAT_1588)
-		pkt_flags = pkt_flags | PKT_RX_IEEE1588_TMST;
+		pkt_flags = pkt_flags | RTE_MBUF_F_RX_IEEE1588_TMST;
 #endif
 	return pkt_flags;
 }
