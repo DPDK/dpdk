@@ -144,7 +144,8 @@ rte_crypto_auth_algorithm_strings[] = {
 
 	[RTE_CRYPTO_AUTH_KASUMI_F9]	= "kasumi-f9",
 	[RTE_CRYPTO_AUTH_SNOW3G_UIA2]	= "snow3g-uia2",
-	[RTE_CRYPTO_AUTH_ZUC_EIA3]	= "zuc-eia3"
+	[RTE_CRYPTO_AUTH_ZUC_EIA3]	= "zuc-eia3",
+	[RTE_CRYPTO_AUTH_SM3]		= "sm3"
 };
 
 /**

@@ -370,8 +370,10 @@ enum rte_crypto_auth_algorithm {
 	/**< HMAC using 384 bit SHA3 algorithm. */
 	RTE_CRYPTO_AUTH_SHA3_512,
 	/**< 512 bit SHA3 algorithm. */
-	RTE_CRYPTO_AUTH_SHA3_512_HMAC
+	RTE_CRYPTO_AUTH_SHA3_512_HMAC,
 	/**< HMAC using 512 bit SHA3 algorithm. */
+	RTE_CRYPTO_AUTH_SM3
+	/**< ShangMi 3 (SM3) algorithm */
 };
 
 /** Authentication algorithm name strings */

@@ -89,6 +89,7 @@ New Features
 
 * **Added new algorithms to cryptodev.**
 
+  * Added symmetric hash algorithm ShangMi 3 (SM3).
   * Added symmetric cipher algorithm ShangMi 4 (SM4) in ECB, CBC and CTR modes.
 
 * **Updated Marvell cnxk crypto driver.**
