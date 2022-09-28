@@ -814,7 +814,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		else
 			bufs[num_rx] = eth_fd_to_mbuf(fd, eth_data->port_id);
 #if defined(RTE_LIBRTE_IEEE1588)
-		if (bufs[num_rx]->ol_flags & PKT_RX_IEEE1588_TMST) {
+		if (bufs[num_rx]->ol_flags & RTE_MBUF_F_RX_IEEE1588_TMST) {
 			priv->rx_timestamp =
 				*dpaa2_timestamp_dynfield(bufs[num_rx]);
 		}
@@ -1035,7 +1035,7 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 							eth_data->port_id);
 
 #if defined(RTE_LIBRTE_IEEE1588)
-		if (bufs[num_rx]->ol_flags & PKT_RX_IEEE1588_TMST) {
+		if (bufs[num_rx]->ol_flags & RTE_MBUF_F_RX_IEEE1588_TMST) {
 			priv->rx_timestamp =
 				*dpaa2_timestamp_dynfield(bufs[num_rx]);
 		}
@@ -1166,7 +1166,7 @@ uint16_t dpaa2_dev_tx_conf(void *queue)
 			mbuf = DPAA2_INLINE_MBUF_FROM_BUF(v_addr,
 				rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
 
-			if (mbuf->ol_flags & PKT_TX_IEEE1588_TMST) {
+			if (mbuf->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST) {
 				annotation = (struct dpaa2_annot_hdr *)((size_t)
 					DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)) +
 					DPAA2_FD_PTA_SIZE);
@@ -1247,7 +1247,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 * corresponding to last packet transmitted for reading
 	 * the timestamp
 	 */
-	if ((*bufs)->ol_flags & PKT_TX_IEEE1588_TMST) {
+	if ((*bufs)->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST) {
 		priv->next_tx_conf_queue = dpaa2_q->tx_conf_queue;
 		dpaa2_dev_tx_conf(dpaa2_q->tx_conf_queue);
 		priv->tx_timestamp = 0;
