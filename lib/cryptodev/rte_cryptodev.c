@@ -89,7 +89,10 @@ rte_crypto_cipher_algorithm_strings[] = {
 
 	[RTE_CRYPTO_CIPHER_KASUMI_F8]	= "kasumi-f8",
 	[RTE_CRYPTO_CIPHER_SNOW3G_UEA2]	= "snow3g-uea2",
-	[RTE_CRYPTO_CIPHER_ZUC_EEA3]	= "zuc-eea3"
+	[RTE_CRYPTO_CIPHER_ZUC_EEA3]	= "zuc-eea3",
+	[RTE_CRYPTO_CIPHER_SM4_ECB]	= "sm4-ecb",
+	[RTE_CRYPTO_CIPHER_SM4_CBC]	= "sm4-cbc",
+	[RTE_CRYPTO_CIPHER_SM4_CTR]	= "sm4-ctr"
 };
 
 /**

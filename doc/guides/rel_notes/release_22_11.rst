@@ -87,6 +87,10 @@ New Features
   Added MACsec transform for rte_security session and added new API
   to configure security associations (SA) and secure channels (SC).
 
+* **Added new algorithms to cryptodev.**
+
+  * Added symmetric cipher algorithm ShangMi 4 (SM4) in ECB, CBC and CTR modes.
+
 * **Updated Marvell cnxk crypto driver.**
 
   * Added AES-CCM support in lookaside protocol (IPsec) for CN9K & CN10K.
