@@ -157,9 +157,6 @@ Deprecation Notices
   Event will be one of the configuration fields,
   together with additional vector parameters.
 
-* eventdev: The function pointer declaration ``eventdev_stop_flush_t``
-  will be renamed to ``rte_eventdev_stop_flush_t`` in DPDK 22.11.
-
 * eventdev: The element ``*u64s`` in the structure ``rte_event_vector``
   is deprecated and will be replaced with ``u64s`` in DPDK 22.11.
 

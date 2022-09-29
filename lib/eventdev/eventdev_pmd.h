@@ -1315,6 +1315,8 @@ typedef int (*eventdev_eth_tx_adapter_queue_start)
 typedef int (*eventdev_eth_tx_adapter_queue_stop)
 	(uint8_t id, uint16_t eth_dev_id, uint16_t tx_queue_id);
 
+#define eventdev_stop_flush_t rte_eventdev_stop_flush_t
+
 /** Event device operations function pointer table */
 struct eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */

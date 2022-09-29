@@ -1325,7 +1325,8 @@ rte_event_dev_start(uint8_t dev_id)
 
 int
 rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
-		eventdev_stop_flush_t callback, void *userdata)
+					   rte_eventdev_stop_flush_t callback,
+					   void *userdata)
 {
 	struct rte_eventdev *dev;
 

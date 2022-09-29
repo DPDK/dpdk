@@ -1023,8 +1023,8 @@ rte_event_dev_start(uint8_t dev_id);
 void
 rte_event_dev_stop(uint8_t dev_id);
 
-typedef void (*eventdev_stop_flush_t)(uint8_t dev_id, struct rte_event event,
-		void *arg);
+typedef void (*rte_eventdev_stop_flush_t)(uint8_t dev_id,
+					  struct rte_event event, void *arg);
 /**< Callback function called during rte_event_dev_stop(), invoked once per
  * flushed event.
  */
@@ -1053,9 +1053,8 @@ typedef void (*eventdev_stop_flush_t)(uint8_t dev_id, struct rte_event event,
  *
  * @see rte_event_dev_stop()
  */
-int
-rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
-		eventdev_stop_flush_t callback, void *userdata);
+int rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
+					       rte_eventdev_stop_flush_t callback, void *userdata);
 
 /**
  * Close an event device. The device cannot be restarted!
