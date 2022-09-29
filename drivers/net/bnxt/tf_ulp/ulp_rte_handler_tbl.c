@@ -73,10 +73,6 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
 	.proto_act_func          = NULL
 	},
-	[RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-	.proto_act_func          = NULL
-	},
 	[RTE_FLOW_ACTION_TYPE_OF_DEC_MPLS_TTL] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
 	.proto_act_func          = NULL

@@ -2295,17 +2295,6 @@ enum rte_flow_action_type {
 	 * @deprecated
 	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
 	 *
-	 * Implements OFPAT_SET_MPLS_TTL ("MPLS TTL") as defined by the
-	 * OpenFlow Switch Specification.
-	 *
-	 * See struct rte_flow_action_of_set_mpls_ttl.
-	 */
-	RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL,
-
-	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
-	 *
 	 * Implements OFPAT_DEC_MPLS_TTL ("decrement MPLS TTL") as defined
 	 * by the OpenFlow Switch Specification.
 	 *
@@ -3057,19 +3046,6 @@ struct rte_flow_action_meter {
  */
 struct rte_flow_action_security {
 	void *security_session; /**< Pointer to security session structure. */
-};
-
-/**
- * @deprecated
- * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
- *
- * RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL
- *
- * Implements OFPAT_SET_MPLS_TTL ("MPLS TTL") as defined by the OpenFlow
- * Switch Specification.
- */
-struct rte_flow_action_of_set_mpls_ttl {
-	uint8_t mpls_ttl; /**< MPLS TTL. */
 };
 
 /**

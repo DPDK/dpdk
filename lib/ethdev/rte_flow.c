@@ -192,8 +192,6 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(PORT_ID, sizeof(struct rte_flow_action_port_id)),
 	MK_FLOW_ACTION(METER, sizeof(struct rte_flow_action_meter)),
 	MK_FLOW_ACTION(SECURITY, sizeof(struct rte_flow_action_security)),
-	MK_FLOW_ACTION(OF_SET_MPLS_TTL,
-		       sizeof(struct rte_flow_action_of_set_mpls_ttl)),
 	MK_FLOW_ACTION(OF_DEC_MPLS_TTL, 0),
 	MK_FLOW_ACTION(OF_SET_NW_TTL,
 		       sizeof(struct rte_flow_action_of_set_nw_ttl)),
