@@ -1965,8 +1965,8 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 {
 	struct dlb2_eventdev *dlb2;
 	struct dlb2_eventdev_port *ev_port;
-	int ret;
 	uint32_t hw_credit_quanta, sw_credit_quanta;
+	int ret;
 
 	if (dev == NULL || port_conf == NULL) {
 		DLB2_LOG_ERR("Null parameter\n");
@@ -2066,6 +2066,24 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 	ev_port->outstanding_releases = 0;
 	ev_port->inflight_credits = 0;
 	ev_port->dlb2 = dlb2; /* reverse link */
+
+	/* Default for worker ports */
+	sw_credit_quanta = dlb2->sw_credit_quanta;
+	hw_credit_quanta = dlb2->hw_credit_quanta;
+
+	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_HINT_PRODUCER) {
+		/* Producer type ports. Mostly enqueue */
+		sw_credit_quanta = DLB2_SW_CREDIT_P_QUANTA_DEFAULT;
+		hw_credit_quanta = DLB2_SW_CREDIT_P_BATCH_SZ;
+	}
+	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_HINT_CONSUMER) {
+		/* Consumer type ports. Mostly dequeue */
+		sw_credit_quanta = DLB2_SW_CREDIT_C_QUANTA_DEFAULT;
+		hw_credit_quanta = DLB2_SW_CREDIT_C_BATCH_SZ;
+	}
+	ev_port->credit_update_quanta = sw_credit_quanta;
+	ev_port->qm_port.hw_credit_quanta = hw_credit_quanta;
+
 
 	/* Tear down pre-existing port->queue links */
 	if (dlb2->run_state == DLB2_RUN_STATE_STOPPED)
