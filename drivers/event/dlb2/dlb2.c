@@ -36,6 +36,16 @@
 #include "dlb2_inline_fns.h"
 
 /*
+ * Bypass memory fencing instructions when port is of Producer type.
+ * This should be enabled very carefully with understanding that producer
+ * is not doing any writes which need fencing. The movdir64 instruction used to
+ * enqueue events to DLB is a weakly-ordered instruction and movdir64 write
+ * to DLB can go ahead of relevant application writes like updates to buffers
+ * being sent with event
+ */
+#define DLB2_BYPASS_FENCE_ON_PP 0  /* 1 == Bypass fence, 0 == do not bypass */
+
+/*
  * Resources exposed to eventdev. Some values overridden at runtime using
  * values returned by the DLB kernel driver.
  */
@@ -1985,21 +1995,15 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 	sw_credit_quanta = dlb2->sw_credit_quanta;
 	hw_credit_quanta = dlb2->hw_credit_quanta;
 
+	ev_port->qm_port.is_producer = false;
 	ev_port->qm_port.is_directed = port_conf->event_port_cfg &
 		RTE_EVENT_PORT_CFG_SINGLE_LINK;
-
-	/*
-	 * Validate credit config before creating port
-	 */
-
-	/* Default for worker ports */
-	sw_credit_quanta = dlb2->sw_credit_quanta;
-	hw_credit_quanta = dlb2->hw_credit_quanta;
 
 	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_HINT_PRODUCER) {
 		/* Producer type ports. Mostly enqueue */
 		sw_credit_quanta = DLB2_SW_CREDIT_P_QUANTA_DEFAULT;
 		hw_credit_quanta = DLB2_SW_CREDIT_P_BATCH_SZ;
+		ev_port->qm_port.is_producer = true;
 	}
 	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_HINT_CONSUMER) {
 		/* Consumer type ports. Mostly dequeue */
@@ -2008,6 +2012,10 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 	}
 	ev_port->credit_update_quanta = sw_credit_quanta;
 	ev_port->qm_port.hw_credit_quanta = hw_credit_quanta;
+
+	/*
+	 * Validate credit config before creating port
+	 */
 
 	if (port_conf->enqueue_depth > sw_credit_quanta ||
 	    port_conf->enqueue_depth > hw_credit_quanta) {
@@ -3073,7 +3081,12 @@ __dlb2_event_enqueue_burst(void *event_port,
 		dlb2_event_build_hcws(qm_port, &events[i], j - pop_offs,
 				      sched_types, queue_ids);
 
+#if DLB2_BYPASS_FENCE_ON_PP == 1
+		/* Bypass fence instruction for producer ports */
+		dlb2_hw_do_enqueue(qm_port, i == 0 && !qm_port->is_producer, port_data);
+#else
 		dlb2_hw_do_enqueue(qm_port, i == 0, port_data);
+#endif
 
 		/* Don't include the token pop QE in the enqueue count */
 		i += j - pop_offs;
