@@ -165,8 +165,8 @@ Removed Items
 * ethdev: removed ``RTE_FLOW_ACTION_TYPE_PHY_PORT``;
   use ``RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT``.
 
-* ethdev: removed ``OF_SET_MPLS_TTL`` and ``OF_DEC_MPLS_TTL``
-  which are not actually supported by any PMD.
+* ethdev: removed ``OF_SET_MPLS_TTL``, ``OF_DEC_MPLS_TTL`` and
+  ``OF_SET_NW_TTL``  which are not actually supported by any PMD.
   ``MODIFY_FIELD`` action should be used to do packet edits via flow API.
 
 * vhost: Removed deprecated ``rte_vhost_gpa_to_vva`` and

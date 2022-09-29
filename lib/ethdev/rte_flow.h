@@ -2292,17 +2292,6 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SECURITY,
 
 	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
-	 *
-	 * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow
-	 * Switch Specification.
-	 *
-	 * See struct rte_flow_action_of_set_nw_ttl.
-	 */
-	RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL,
-
-	/**
 	 * @warning This is a legacy action.
 	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
 	 *
@@ -3035,19 +3024,6 @@ struct rte_flow_action_meter {
  */
 struct rte_flow_action_security {
 	void *security_session; /**< Pointer to security session structure. */
-};
-
-/**
- * @deprecated
- * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
- *
- * RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL
- *
- * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow Switch
- * Specification.
- */
-struct rte_flow_action_of_set_nw_ttl {
-	uint8_t nw_ttl; /**< IP TTL. */
 };
 
 /**

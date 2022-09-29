@@ -515,8 +515,6 @@ enum index {
 	ACTION_METER_COLOR_MODE,
 	ACTION_METER_INIT_COLOR,
 	ACTION_METER_STATE,
-	ACTION_OF_SET_NW_TTL,
-	ACTION_OF_SET_NW_TTL_NW_TTL,
 	ACTION_OF_DEC_NW_TTL,
 	ACTION_OF_COPY_TTL_OUT,
 	ACTION_OF_COPY_TTL_IN,
@@ -1834,7 +1832,6 @@ static const enum index next_action[] = {
 	ACTION_METER,
 	ACTION_METER_COLOR,
 	ACTION_METER_MARK,
-	ACTION_OF_SET_NW_TTL,
 	ACTION_OF_DEC_NW_TTL,
 	ACTION_OF_COPY_TTL_OUT,
 	ACTION_OF_COPY_TTL_IN,
@@ -1947,12 +1944,6 @@ static const enum index action_meter_mark[] = {
 	ACTION_METER_COLOR_MODE,
 	ACTION_METER_INIT_COLOR,
 	ACTION_METER_STATE,
-	ACTION_NEXT,
-	ZERO,
-};
-
-static const enum index action_of_set_nw_ttl[] = {
-	ACTION_OF_SET_NW_TTL_NW_TTL,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -5456,23 +5447,6 @@ static const struct token token_list[] = {
 		.help = "meter state",
 		.next = NEXT(action_meter_mark, NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_meter_mark, state)),
-		.call = parse_vc_conf,
-	},
-	[ACTION_OF_SET_NW_TTL] = {
-		.name = "of_set_nw_ttl",
-		.help = "OpenFlow's OFPAT_SET_NW_TTL",
-		.priv = PRIV_ACTION
-			(OF_SET_NW_TTL,
-			 sizeof(struct rte_flow_action_of_set_nw_ttl)),
-		.next = NEXT(action_of_set_nw_ttl),
-		.call = parse_vc,
-	},
-	[ACTION_OF_SET_NW_TTL_NW_TTL] = {
-		.name = "nw_ttl",
-		.help = "IP TTL",
-		.next = NEXT(action_of_set_nw_ttl, NEXT_ENTRY(COMMON_UNSIGNED)),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_of_set_nw_ttl,
-					nw_ttl)),
 		.call = parse_vc_conf,
 	},
 	[ACTION_OF_DEC_NW_TTL] = {
