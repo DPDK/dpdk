@@ -247,6 +247,9 @@ API Changes
   and security capability structure ``rte_security_capability``
   to accommodate MACsec capabilities.
 
+* metrics: Updated ``rte_metrics_init`` so it returns an error code instead
+  of calling ``rte_exit``.
+
 * telemetry: The allowed characters in names for dictionary values
   are now limited to alphanumeric characters and a small subset of additional
   printable characters.

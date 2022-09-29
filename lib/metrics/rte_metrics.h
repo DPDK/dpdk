@@ -79,8 +79,14 @@ struct rte_metric_value {
  *
  * @param socket_id
  *   Socket to use for shared memory allocation.
+ * @return
+ *   0 on success
+ *   Negative error code (from rte_errno.h) on error:
+ *     -EEXIST - a memzone for metrics already exists but metrics is not initialized
+ *     -ENOMEM - cannot allocate metrics memzone
+ *     -E_RTE_SECONDARY - function called from secondary process
  */
-void rte_metrics_init(int socket_id);
+int rte_metrics_init(int socket_id);
 
 /**
  * Deinitialize metric module. This function must be called from

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <rte_errno.h>
 #include <rte_common.h>
 #include <rte_string_fns.h>
 #include <rte_metrics.h>
@@ -54,28 +55,29 @@ struct rte_metrics_data_s {
 	rte_spinlock_t lock;
 };
 
-void
+int
 rte_metrics_init(int socket_id)
 {
 	struct rte_metrics_data_s *stats;
 	const struct rte_memzone *memzone;
 
 	if (metrics_initialized)
-		return;
+		return 0;
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return -E_RTE_SECONDARY;
 
 	memzone = rte_memzone_lookup(RTE_METRICS_MEMZONE_NAME);
 	if (memzone != NULL)
-		return;
+		return -EEXIST;
 	memzone = rte_memzone_reserve(RTE_METRICS_MEMZONE_NAME,
 		sizeof(struct rte_metrics_data_s), socket_id, 0);
 	if (memzone == NULL)
-		rte_exit(EXIT_FAILURE, "Unable to allocate stats memzone\n");
+		return -ENOMEM;
 	stats = memzone->addr;
 	memset(stats, 0, sizeof(struct rte_metrics_data_s));
 	rte_spinlock_init(&stats->lock);
 	metrics_initialized = 1;
+	return 0;
 }
 
 int

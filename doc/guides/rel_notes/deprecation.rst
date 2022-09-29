@@ -154,8 +154,5 @@ Deprecation Notices
   Event will be one of the configuration fields,
   together with additional vector parameters.
 
-* metrics: The function ``rte_metrics_init`` will have a non-void return
-  in order to notify errors instead of calling ``rte_exit``.
-
 * raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
   in DPDK 22.11, as it is no longer in use, no active user known.
