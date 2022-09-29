@@ -75,6 +75,16 @@ part_number_config_arm = {
             ['RTE_MAX_NUMA_NODES', 2]
         ]
     },
+    '0xd40': {
+        'march': 'armv8.4-a',
+        'march_features': ['sve'],
+        'compiler_options':  ['-mcpu=neoverse-v1'],
+        'flags': [
+            ['RTE_MACHINE', '"neoverse-v1"'],
+            ['RTE_ARM_FEATURE_ATOMICS', true],
+            ['RTE_MAX_NUMA_NODES', 1]
+        ]
+    },
     '0xd49': {
         'march': 'armv8.5-a',
         'march_features': ['sve2'],
@@ -336,6 +346,14 @@ soc_graviton2 = {
     'numa': false
 }
 
+soc_graviton3 = {
+    'description': 'AWS Graviton3',
+    'implementer': '0x41',
+    'part_number': '0xd40',
+    'extra_march_features': ['crypto'],
+    'numa': false
+}
+
 soc_kunpeng920 = {
     'description': 'HiSilicon Kunpeng 920',
     'implementer': '0x48',
@@ -419,6 +437,7 @@ dpaa:            NXP DPAA
 emag:            Ampere eMAG
 ft2000plus:      Phytium FT-2000+
 graviton2:       AWS Graviton2
+graviton3:       AWS Graviton3
 kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
 n1sdp:           Arm Neoverse N1SDP
@@ -443,6 +462,7 @@ socs = {
     'emag': soc_emag,
     'ft2000plus': soc_ft2000plus,
     'graviton2': soc_graviton2,
+    'graviton3': soc_graviton3,
     'kunpeng920': soc_kunpeng920,
     'kunpeng930': soc_kunpeng930,
     'n1sdp': soc_n1sdp,
