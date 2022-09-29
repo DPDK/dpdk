@@ -2123,23 +2123,6 @@ fields in the pattern items.
    | 1     | END      |
    +-------+----------+
 
-Action: ``OF_DEC_MPLS_TTL``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This action is deprecated. Consider `Action: MODIFY_FIELD`_.
-
-Implements ``OFPAT_DEC_MPLS_TTL`` ("decrement MPLS TTL") as defined by the
-`OpenFlow Switch Specification`_.
-
-.. _table_rte_flow_action_of_dec_mpls_ttl:
-
-.. table:: OF_DEC_MPLS_TTL
-
-   +---------------+
-   | Field         |
-   +===============+
-   | no properties |
-   +---------------+
-
 Action: ``OF_SET_NW_TTL``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 This action is deprecated. Consider `Action: MODIFY_FIELD`_.

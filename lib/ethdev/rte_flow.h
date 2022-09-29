@@ -2295,17 +2295,6 @@ enum rte_flow_action_type {
 	 * @deprecated
 	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
 	 *
-	 * Implements OFPAT_DEC_MPLS_TTL ("decrement MPLS TTL") as defined
-	 * by the OpenFlow Switch Specification.
-	 *
-	 * No associated configuration structure.
-	 */
-	RTE_FLOW_ACTION_TYPE_OF_DEC_MPLS_TTL,
-
-	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
-	 *
 	 * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow
 	 * Switch Specification.
 	 *
