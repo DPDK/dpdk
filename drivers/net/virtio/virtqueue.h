@@ -475,10 +475,6 @@ virtqueue_enable_intr(struct virtqueue *vq)
 }
 
 /**
- *  Dump virtqueue internal structures, for debug purpose only.
- */
-void virtqueue_dump(struct virtqueue *vq);
-/**
  *  Get all mbufs to be freed.
  */
 struct rte_mbuf *virtqueue_detach_unused(struct virtqueue *vq);
