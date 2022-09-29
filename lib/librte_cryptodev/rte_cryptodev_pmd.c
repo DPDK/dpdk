@@ -94,11 +94,11 @@ rte_cryptodev_pmd_create(const char *name,
 	struct rte_cryptodev *cryptodev;
 
 	if (params->name[0] != '\0') {
-		CDEV_LOG_INFO("User specified device name = %s\n", params->name);
+		CDEV_LOG_INFO("User specified device name = %s", params->name);
 		name = params->name;
 	}
 
-	CDEV_LOG_INFO("Creating cryptodev %s\n", name);
+	CDEV_LOG_INFO("Creating cryptodev %s", name);
 
 	CDEV_LOG_INFO("Initialisation parameters - name: %s,"
 			"socket id: %d, max queue pairs: %u",
