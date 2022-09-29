@@ -7787,9 +7787,13 @@ static int
 ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int mode = IXGBEVF_XCAST_MODE_NONE;
 	int ret;
 
-	switch (hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE)) {
+	if (dev->data->all_multicast)
+		mode = IXGBEVF_XCAST_MODE_ALLMULTI;
+
+	switch (hw->mac.ops.update_xcast_mode(hw, mode)) {
 	case IXGBE_SUCCESS:
 		ret = 0;
 		break;
@@ -7811,6 +7815,9 @@ ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	int ret;
 	int mode = IXGBEVF_XCAST_MODE_ALLMULTI;
 
+	if (dev->data->promiscuous)
+		return 0;
+
 	switch (hw->mac.ops.update_xcast_mode(hw, mode)) {
 	case IXGBE_SUCCESS:
 		ret = 0;
@@ -7831,6 +7838,9 @@ ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
+
+	if (dev->data->promiscuous)
+		return 0;
 
 	switch (hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_MULTI)) {
 	case IXGBE_SUCCESS:
