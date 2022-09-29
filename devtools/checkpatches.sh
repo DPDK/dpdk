@@ -229,12 +229,12 @@ print_headline() { # <title>
 total=0
 status=0
 
-check () { # <patch> <commit> <title>
+check () { # <patch-file> <commit>
 	local ret=0
+	local subject=''
 	headline_printed=false
 
 	total=$(($total + 1))
-	! $verbose || print_headline "$3"
 	if [ -n "$1" ] ; then
 		tmpinput=$1
 	else
@@ -249,10 +249,14 @@ check () { # <patch> <commit> <title>
 		fi
 	fi
 
+	# Subject can be on 2 lines
+	subject=$(sed '/^Subject: */!d;s///;N;s,\n[[:space:]]\+, ,;s,\n.*,,;q' "$tmpinput")
+	! $verbose || print_headline "$subject"
+
 	! $verbose || printf 'Running checkpatch.pl:\n'
 	report=$($DPDK_CHECKPATCH_PATH $options "$tmpinput" 2>/dev/null)
 	if [ $? -ne 0 ] ; then
-		$headline_printed || print_headline "$3"
+		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report" | sed -n '1,/^total:.*lines checked$/p'
 		ret=1
 	fi
@@ -260,7 +264,7 @@ check () { # <patch> <commit> <title>
 	! $verbose || printf '\nChecking API additions/removals:\n'
 	report=$($VALIDATE_NEW_API "$tmpinput")
 	if [ $? -ne 0 ] ; then
-		$headline_printed || print_headline "$3"
+		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"
 		ret=1
 	fi
@@ -268,7 +272,7 @@ check () { # <patch> <commit> <title>
 	! $verbose || printf '\nChecking forbidden tokens additions:\n'
 	report=$(check_forbidden_additions "$tmpinput")
 	if [ $? -ne 0 ] ; then
-		$headline_printed || print_headline "$3"
+		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"
 		ret=1
 	fi
@@ -276,7 +280,7 @@ check () { # <patch> <commit> <title>
 	! $verbose || printf '\nChecking __rte_experimental tags:\n'
 	report=$(check_experimental_tags "$tmpinput")
 	if [ $? -ne 0 ] ; then
-		$headline_printed || print_headline "$3"
+		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"
 		ret=1
 	fi
@@ -284,7 +288,7 @@ check () { # <patch> <commit> <title>
 	! $verbose || printf '\nChecking __rte_internal tags:\n'
 	report=$(check_internal_tags "$tmpinput")
 	if [ $? -ne 0 ] ; then
-		$headline_printed || print_headline "$3"
+		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"
 		ret=1
 	fi
@@ -300,20 +304,10 @@ check () { # <patch> <commit> <title>
 
 if [ -n "$1" ] ; then
 	for patch in "$@" ; do
-		# Subject can be on 2 lines
-		subject=$(sed '/^Subject: */!d;s///;N;s,\n[[:space:]]\+, ,;s,\n.*,,;q' "$patch")
-		check "$patch" '' "$subject"
+		check "$patch" ''
 	done
 elif [ ! -t 0 ] ; then # stdin
-	subject=$(while read header value ; do
-		if [ "$header" = 'Subject:' ] ; then
-			IFS= read next
-			continuation=$(echo "$next" | sed -n 's,^[[:space:]]\+, ,p')
-			echo $value$continuation
-			break
-		fi
-	done)
-	check '' '' "$subject"
+	check '' ''
 else
 	if [ $number -eq 0 ] ; then
 		commits=$(git rev-list --reverse $range)
@@ -321,8 +315,7 @@ else
 		commits=$(git rev-list --reverse --max-count=$number HEAD)
 	fi
 	for commit in $commits ; do
-		subject=$(git log --format='%s' -1 $commit)
-		check '' $commit "$subject"
+		check '' $commit
 	done
 fi
 pass=$(($total - $status))
