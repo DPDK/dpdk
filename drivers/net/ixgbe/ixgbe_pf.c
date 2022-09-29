@@ -781,9 +781,9 @@ ixgbe_set_vf_mc_promisc(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 			return -1;
 		}
 
-		disable = 0;
+		disable = IXGBE_VMOLR_VPE;
 		enable = IXGBE_VMOLR_BAM | IXGBE_VMOLR_ROMPE |
-			 IXGBE_VMOLR_MPE | IXGBE_VMOLR_UPE | IXGBE_VMOLR_VPE;
+			 IXGBE_VMOLR_MPE | IXGBE_VMOLR_UPE;
 		break;
 	default:
 		return -1;
