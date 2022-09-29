@@ -235,6 +235,46 @@ skip_ctx_read:
 	return 0;
 }
 
+static int
+nix_rq_cn9k_cman_cfg(struct dev *dev, struct roc_nix_rq *rq)
+{
+	struct mbox *mbox = dev->mbox;
+	struct nix_aq_enq_req *aq;
+
+	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
+	aq->qidx = rq->qid;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
+		aq->rq.lpb_pool_pass = rq->red_pass;
+		aq->rq.lpb_pool_drop = rq->red_drop;
+		aq->rq_mask.lpb_pool_pass = ~(aq->rq_mask.lpb_pool_pass);
+		aq->rq_mask.lpb_pool_drop = ~(aq->rq_mask.lpb_pool_drop);
+
+	}
+
+	if (rq->spb_red_pass && (rq->spb_red_pass >= rq->spb_red_drop)) {
+		aq->rq.spb_pool_pass = rq->spb_red_pass;
+		aq->rq.spb_pool_drop = rq->spb_red_drop;
+		aq->rq_mask.spb_pool_pass = ~(aq->rq_mask.spb_pool_pass);
+		aq->rq_mask.spb_pool_drop = ~(aq->rq_mask.spb_pool_drop);
+
+	}
+
+	if (rq->xqe_red_pass && (rq->xqe_red_pass >= rq->xqe_red_drop)) {
+		aq->rq.xqe_pass = rq->xqe_red_pass;
+		aq->rq.xqe_drop = rq->xqe_red_drop;
+		aq->rq_mask.xqe_drop = ~(aq->rq_mask.xqe_drop);
+		aq->rq_mask.xqe_pass = ~(aq->rq_mask.xqe_pass);
+	}
+
+	return mbox_process(mbox);
+}
+
 int
 nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 		bool cfg, bool ena)
@@ -529,6 +569,46 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 	return 0;
 }
 
+static int
+nix_rq_cman_cfg(struct dev *dev, struct roc_nix_rq *rq)
+{
+	struct nix_cn10k_aq_enq_req *aq;
+	struct mbox *mbox = dev->mbox;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
+	aq->qidx = rq->qid;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
+		aq->rq.lpb_pool_pass = rq->red_pass;
+		aq->rq.lpb_pool_drop = rq->red_drop;
+		aq->rq_mask.lpb_pool_pass = ~(aq->rq_mask.lpb_pool_pass);
+		aq->rq_mask.lpb_pool_drop = ~(aq->rq_mask.lpb_pool_drop);
+
+	}
+
+	if (rq->spb_red_pass && (rq->spb_red_pass >= rq->spb_red_drop)) {
+		aq->rq.spb_pool_pass = rq->spb_red_pass;
+		aq->rq.spb_pool_drop = rq->spb_red_drop;
+		aq->rq_mask.spb_pool_pass = ~(aq->rq_mask.spb_pool_pass);
+		aq->rq_mask.spb_pool_drop = ~(aq->rq_mask.spb_pool_drop);
+
+	}
+
+	if (rq->xqe_red_pass && (rq->xqe_red_pass >= rq->xqe_red_drop)) {
+		aq->rq.xqe_pass = rq->xqe_red_pass;
+		aq->rq.xqe_drop = rq->xqe_red_drop;
+		aq->rq_mask.xqe_drop = ~(aq->rq_mask.xqe_drop);
+		aq->rq_mask.xqe_pass = ~(aq->rq_mask.xqe_pass);
+	}
+
+	return mbox_process(mbox);
+}
+
 int
 roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 {
@@ -614,6 +694,32 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	}
 
 	return nix_tel_node_add_rq(rq);
+}
+
+int
+roc_nix_rq_cman_config(struct roc_nix *roc_nix, struct roc_nix_rq *rq)
+{
+	bool is_cn9k = roc_model_is_cn9k();
+	struct nix *nix;
+	struct dev *dev;
+	int rc;
+
+	if (roc_nix == NULL || rq == NULL)
+		return NIX_ERR_PARAM;
+
+	nix = roc_nix_to_nix_priv(roc_nix);
+
+	if (rq->qid >= nix->nb_rx_queues)
+		return NIX_ERR_QUEUE_INVALID_RANGE;
+
+	dev = &nix->dev;
+
+	if (is_cn9k)
+		rc = nix_rq_cn9k_cman_cfg(dev, rq);
+	else
+		rc = nix_rq_cman_cfg(dev, rq);
+
+	return rc;
 }
 
 int

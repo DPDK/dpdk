@@ -228,6 +228,7 @@ INTERNAL {
 	roc_nix_reassembly_configure;
 	roc_nix_register_cq_irqs;
 	roc_nix_register_queue_irqs;
+	roc_nix_rq_cman_config;
 	roc_nix_rq_dump;
 	roc_nix_rq_ena_dis;
 	roc_nix_rq_fini;
