@@ -2463,7 +2463,7 @@ iavf_fill_ctx_desc_segmentation_field(volatile uint64_t *field,
 		total_length = m->pkt_len - (m->l2_len + m->l3_len + m->l4_len);
 
 		if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
-			total_length -= m->outer_l3_len;
+			total_length -= m->outer_l3_len + m->outer_l2_len;
 	}
 
 #ifdef RTE_LIBRTE_IAVF_DEBUG_TX
@@ -2634,50 +2634,36 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 		((uint64_t)l2tag1 << IAVF_TXD_DATA_QW1_L2TAG1_SHIFT));
 }
 
+/* Calculate the number of TX descriptors needed for each pkt */
+static inline uint16_t
+iavf_calc_pkt_desc(struct rte_mbuf *tx_pkt)
+{
+	struct rte_mbuf *txd = tx_pkt;
+	uint16_t count = 0;
+
+	while (txd != NULL) {
+		count += (txd->data_len + IAVF_MAX_DATA_PER_TXD - 1) /
+			IAVF_MAX_DATA_PER_TXD;
+		txd = txd->next;
+	}
+
+	return count;
+}
+
 static inline void
 iavf_fill_data_desc(volatile struct iavf_tx_desc *desc,
-	struct rte_mbuf *m, uint64_t desc_template,
-	uint16_t tlen, uint16_t ipseclen)
+	uint64_t desc_template,	uint16_t buffsz,
+	uint64_t buffer_addr)
 {
-	uint32_t hdrlen = m->l2_len;
-	uint32_t bufsz = 0;
-
 	/* fill data descriptor qw1 from template */
 	desc->cmd_type_offset_bsz = desc_template;
 
-	/* set data buffer address */
-	desc->buffer_addr = rte_mbuf_data_iova(m);
-
-	/* calculate data buffer size less set header lengths */
-	if ((m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) &&
-			(m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
-					RTE_MBUF_F_TX_UDP_SEG))) {
-		hdrlen += m->outer_l3_len;
-		if (m->ol_flags & RTE_MBUF_F_TX_L4_MASK)
-			hdrlen += m->l3_len + m->l4_len;
-		else
-			hdrlen += m->l3_len;
-		if (m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)
-			hdrlen += ipseclen;
-		bufsz = hdrlen + tlen;
-	} else if ((m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) &&
-			(m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
-					RTE_MBUF_F_TX_UDP_SEG))) {
-		hdrlen += m->outer_l3_len + m->l3_len + ipseclen;
-		if (m->ol_flags & RTE_MBUF_F_TX_L4_MASK)
-			hdrlen += m->l4_len;
-		bufsz = hdrlen + tlen;
-
-	} else {
-		bufsz = m->data_len;
-	}
-
 	/* set data buffer size */
 	desc->cmd_type_offset_bsz |=
-		(((uint64_t)bufsz << IAVF_TXD_DATA_QW1_TX_BUF_SZ_SHIFT) &
+		(((uint64_t)buffsz << IAVF_TXD_DATA_QW1_TX_BUF_SZ_SHIFT) &
 		IAVF_TXD_DATA_QW1_TX_BUF_SZ_MASK);
 
-	desc->buffer_addr = rte_cpu_to_le_64(desc->buffer_addr);
+	desc->buffer_addr = rte_cpu_to_le_64(buffer_addr);
 	desc->cmd_type_offset_bsz = rte_cpu_to_le_64(desc->cmd_type_offset_bsz);
 }
 
@@ -2702,8 +2688,10 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct iavf_tx_entry *txe_ring = txq->sw_ring;
 	struct iavf_tx_entry *txe, *txn;
 	struct rte_mbuf *mb, *mb_seg;
+	uint64_t buf_dma_addr;
 	uint16_t desc_idx, desc_idx_last;
 	uint16_t idx;
+	uint16_t slen;
 
 
 	/* Check if the descriptor ring needs to be cleaned. */
@@ -2742,8 +2730,14 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * The number of descriptors that must be allocated for
 		 * a packet equals to the number of the segments of that
 		 * packet plus the context and ipsec descriptors if needed.
+		 * Recalculate the needed tx descs when TSO enabled in case
+		 * the mbuf data size exceeds max data size that hw allows
+		 * per tx desc.
 		 */
-		nb_desc_required = nb_desc_data + nb_desc_ctx + nb_desc_ipsec;
+		if (mb->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+			nb_desc_required = iavf_calc_pkt_desc(mb) + nb_desc_ctx + nb_desc_ipsec;
+		else
+			nb_desc_required = nb_desc_data + nb_desc_ctx + nb_desc_ipsec;
 
 		desc_idx_last = (uint16_t)(desc_idx + nb_desc_required - 1);
 
@@ -2839,8 +2833,37 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				rte_pktmbuf_free_seg(txe->mbuf);
 
 			txe->mbuf = mb_seg;
-			iavf_fill_data_desc(ddesc, mb_seg,
-					ddesc_template, tlen, ipseclen);
+
+			if (mb_seg->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+				slen = tlen + mb_seg->l2_len + mb_seg->l3_len +
+						mb_seg->outer_l3_len + ipseclen;
+				if (mb_seg->ol_flags & RTE_MBUF_F_TX_L4_MASK)
+					slen += mb_seg->l4_len;
+			} else {
+				slen = mb_seg->data_len;
+			}
+
+			buf_dma_addr = rte_mbuf_data_iova(mb_seg);
+			while ((mb_seg->ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
+					RTE_MBUF_F_TX_UDP_SEG)) &&
+					unlikely(slen > IAVF_MAX_DATA_PER_TXD)) {
+				iavf_fill_data_desc(ddesc, ddesc_template,
+					IAVF_MAX_DATA_PER_TXD, buf_dma_addr);
+
+				IAVF_DUMP_TX_DESC(txq, ddesc, desc_idx);
+
+				buf_dma_addr += IAVF_MAX_DATA_PER_TXD;
+				slen -= IAVF_MAX_DATA_PER_TXD;
+
+				txe->last_id = desc_idx_last;
+				desc_idx = txe->next_id;
+				txe = txn;
+				ddesc = &txr[desc_idx];
+				txn = &txe_ring[txe->next_id];
+			}
+
+			iavf_fill_data_desc(ddesc, ddesc_template,
+					slen, buf_dma_addr);
 
 			IAVF_DUMP_TX_DESC(txq, ddesc, desc_idx);
 
