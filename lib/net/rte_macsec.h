@@ -28,6 +28,7 @@ extern "C" {
 /**
  * MACsec Header (SecTAG)
  */
+__extension__
 struct rte_macsec_hdr {
 	/**
 	 * Tag control information and Association number of secure channel.
