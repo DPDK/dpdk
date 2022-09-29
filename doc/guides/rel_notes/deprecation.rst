@@ -18,9 +18,6 @@ Deprecation Notices
   in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
   to update their code.
 
-* eal: The function ``rte_eal_remote_launch`` will return new error codes
-  after read or write error on the pipe, instead of calling ``rte_panic``.
-
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
   in DPDK. DPDK has adopted the atomic operations from

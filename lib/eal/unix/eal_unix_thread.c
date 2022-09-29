@@ -9,7 +9,7 @@
 
 #include "eal_private.h"
 
-void
+int
 eal_thread_wake_worker(unsigned int worker_id)
 {
 	int m2w = lcore_config[worker_id].pipe_main2worker[1];
@@ -21,13 +21,14 @@ eal_thread_wake_worker(unsigned int worker_id)
 		n = write(m2w, &c, 1);
 	} while (n == 0 || (n < 0 && errno == EINTR));
 	if (n < 0)
-		rte_panic("cannot write on configuration pipe\n");
+		return -EPIPE;
 
 	do {
 		n = read(w2m, &c, 1);
 	} while (n < 0 && errno == EINTR);
 	if (n <= 0)
-		rte_panic("cannot read on configuration pipe\n");
+		return -EPIPE;
+	return 0;
 }
 
 void

@@ -49,8 +49,7 @@ rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 	 */
 	__atomic_store_n(&lcore_config[worker_id].f, f, __ATOMIC_RELEASE);
 
-	eal_thread_wake_worker(worker_id);
-	rc = 0;
+	rc = eal_thread_wake_worker(worker_id);
 
 finish:
 	rte_eal_trace_thread_remote_launch(f, arg, worker_id, rc);

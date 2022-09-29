@@ -62,6 +62,7 @@ typedef int (lcore_function_t)(void *);
  * @return
  *   - 0: Success. Execution of function f started on the remote lcore.
  *   - (-EBUSY): The remote lcore is not in a WAIT state.
+ *   - (-EPIPE): Error reading or writing pipe to worker thread
  */
 int rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned worker_id);
 

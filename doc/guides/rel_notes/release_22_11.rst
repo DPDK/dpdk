@@ -155,6 +155,9 @@ API Changes
   in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
   to update their code.
 
+* eal: Updated ``rte_eal_remote_launch`` so it returns -EPIPE in case of
+  a read or write error on the pipe, instead of calling ``rte_panic``.
+
 * mempool: Deprecated helper macro ``MEMPOOL_HEADER_SIZE()`` is removed.
   The replacement macro ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
 
