@@ -77,14 +77,6 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
 	.proto_act_func          = NULL
 	},
-	[RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_OUT] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-	.proto_act_func          = NULL
-	},
-	[RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_IN] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-	.proto_act_func          = NULL
-	},
 	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
 	.proto_act_func          = ulp_rte_of_pop_vlan_act_handler

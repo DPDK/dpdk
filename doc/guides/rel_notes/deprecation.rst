@@ -101,10 +101,6 @@ Deprecation Notices
   is deprecated as ambiguous with respect to the embedded switch. The use of
   these attributes will become invalid starting from DPDK 22.11.
 
-* ethdev: Actions
-  ``OF_COPY_TTL_OUT``, ``OF_COPY_TTL_IN`` are deprecated as not supported by
-  any PMD, so they will be removed in DPDK 22.11.
-
 * ethdev: Actions ``OF_DEC_NW_TTL``, ``SET_IPV4_SRC``, ``SET_IPV4_DST``,
   ``SET_IPV6_SRC``, ``SET_IPV6_DST``, ``SET_TP_SRC``, ``SET_TP_DST``,
   ``DEC_TTL``, ``SET_TTL``, ``SET_MAC_SRC``, ``SET_MAC_DST``, ``INC_TCP_SEQ``,

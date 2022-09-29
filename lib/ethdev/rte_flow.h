@@ -2303,30 +2303,6 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL,
 
 	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
-	 *
-	 * Implements OFPAT_COPY_TTL_OUT ("copy TTL "outwards" -- from
-	 * next-to-outermost to outermost") as defined by the OpenFlow
-	 * Switch Specification.
-	 *
-	 * No associated configuration structure.
-	 */
-	RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_OUT,
-
-	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
-	 *
-	 * Implements OFPAT_COPY_TTL_IN ("copy TTL "inwards" -- from
-	 * outermost to next-to-outermost") as defined by the OpenFlow
-	 * Switch Specification.
-	 *
-	 * No associated configuration structure.
-	 */
-	RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_IN,
-
-	/**
 	 * Implements OFPAT_POP_VLAN ("pop the outer VLAN tag") as defined
 	 * by the OpenFlow Switch Specification.
 	 *

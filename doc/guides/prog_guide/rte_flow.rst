@@ -2140,41 +2140,6 @@ Implements ``OFPAT_DEC_NW_TTL`` ("decrement IP TTL") as defined by the
    | no properties |
    +---------------+
 
-Action: ``OF_COPY_TTL_OUT``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This action is deprecated. Consider `Action: MODIFY_FIELD`_.
-
-Implements ``OFPAT_COPY_TTL_OUT`` ("copy TTL "outwards" -- from
-next-to-outermost to outermost") as defined by the `OpenFlow Switch
-Specification`_.
-
-.. _table_rte_flow_action_of_copy_ttl_out:
-
-.. table:: OF_COPY_TTL_OUT
-
-   +---------------+
-   | Field         |
-   +===============+
-   | no properties |
-   +---------------+
-
-Action: ``OF_COPY_TTL_IN``
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-This action is deprecated. Consider `Action: MODIFY_FIELD`_.
-
-Implements ``OFPAT_COPY_TTL_IN`` ("copy TTL "inwards" -- from outermost to
-next-to-outermost") as defined by the `OpenFlow Switch Specification`_.
-
-.. _table_rte_flow_action_of_copy_ttl_in:
-
-.. table:: OF_COPY_TTL_IN
-
-   +---------------+
-   | Field         |
-   +===============+
-   | no properties |
-   +---------------+
-
 Action: ``OF_POP_VLAN``
 ^^^^^^^^^^^^^^^^^^^^^^^
 
