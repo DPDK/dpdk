@@ -652,7 +652,7 @@ set_sym_session_private_data(struct rte_cryptodev_sym_session *sess,
 		uint8_t driver_id, void *private_data)
 {
 	if (unlikely(sess->nb_drivers <= driver_id)) {
-		CDEV_LOG_ERR("Set private data for driver %u not allowed\n",
+		CDEV_LOG_ERR("Set private data for driver %u not allowed",
 				driver_id);
 		return;
 	}
