@@ -51,6 +51,7 @@ static void dlb2_init_domain_rsrc_lists(struct dlb2_hw_domain *domain)
 	dlb2_list_init_head(&domain->used_dir_pq_pairs);
 	dlb2_list_init_head(&domain->avail_ldb_queues);
 	dlb2_list_init_head(&domain->avail_dir_pq_pairs);
+	dlb2_list_init_head(&domain->rsvd_dir_pq_pairs);
 
 	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++)
 		dlb2_list_init_head(&domain->used_ldb_ports[i]);
@@ -106,8 +107,10 @@ void dlb2_resource_free(struct dlb2_hw *hw)
  * Return:
  * Returns 0 upon success, <0 otherwise.
  */
-int dlb2_resource_init(struct dlb2_hw *hw, enum dlb2_hw_ver ver)
+int dlb2_resource_init(struct dlb2_hw *hw, enum dlb2_hw_ver ver, const void *probe_args)
 {
+	const struct dlb2_devargs *args = (const struct dlb2_devargs *)probe_args;
+	bool ldb_port_default = args ? args->default_ldb_port_allocation : false;
 	struct dlb2_list_entry *list;
 	unsigned int i;
 	int ret;
@@ -122,6 +125,7 @@ int dlb2_resource_init(struct dlb2_hw *hw, enum dlb2_hw_ver ver)
 	 * the distance from 1 to 0 and to 2, the distance from 2 to 1 and to
 	 * 3, etc.).
 	 */
+
 	const u8 init_ldb_port_allocation[DLB2_MAX_NUM_LDB_PORTS] = {
 		0,  7,  14,  5, 12,  3, 10,  1,  8, 15,  6, 13,  4, 11,  2,  9,
 		16, 23, 30, 21, 28, 19, 26, 17, 24, 31, 22, 29, 20, 27, 18, 25,
@@ -164,7 +168,10 @@ int dlb2_resource_init(struct dlb2_hw *hw, enum dlb2_hw_ver ver)
 		int cos_id = i >> DLB2_NUM_COS_DOMAINS;
 		struct dlb2_ldb_port *port;
 
-		port = &hw->rsrcs.ldb_ports[init_ldb_port_allocation[i]];
+		if (ldb_port_default == true)
+			port = &hw->rsrcs.ldb_ports[init_ldb_port_allocation[i]];
+		else
+			port = &hw->rsrcs.ldb_ports[hw->ldb_pp_allocations[i]];
 
 		dlb2_list_add(&hw->pf.avail_ldb_ports[cos_id],
 			      &port->func_list);
@@ -172,7 +179,8 @@ int dlb2_resource_init(struct dlb2_hw *hw, enum dlb2_hw_ver ver)
 
 	hw->pf.num_avail_dir_pq_pairs = DLB2_MAX_NUM_DIR_PORTS(hw->ver);
 	for (i = 0; i < hw->pf.num_avail_dir_pq_pairs; i++) {
-		list = &hw->rsrcs.dir_pq_pairs[i].func_list;
+		int index = hw->dir_pp_allocations[i];
+		list = &hw->rsrcs.dir_pq_pairs[index].func_list;
 
 		dlb2_list_add(&hw->pf.avail_dir_pq_pairs, list);
 	}
@@ -592,6 +600,7 @@ static int dlb2_attach_dir_ports(struct dlb2_hw *hw,
 				 u32 num_ports,
 				 struct dlb2_cmd_response *resp)
 {
+	int num_res = hw->num_prod_cores;
 	unsigned int i;
 
 	if (rsrcs->num_avail_dir_pq_pairs < num_ports) {
@@ -611,12 +620,19 @@ static int dlb2_attach_dir_ports(struct dlb2_hw *hw,
 			return -EFAULT;
 		}
 
+		if (num_res) {
+			dlb2_list_add(&domain->rsvd_dir_pq_pairs,
+				      &port->domain_list);
+			num_res--;
+		} else {
+			dlb2_list_add(&domain->avail_dir_pq_pairs,
+			&port->domain_list);
+		}
+
 		dlb2_list_del(&rsrcs->avail_dir_pq_pairs, &port->func_list);
 
 		port->domain_id = domain->id;
 		port->owned = true;
-
-		dlb2_list_add(&domain->avail_dir_pq_pairs, &port->domain_list);
 	}
 
 	rsrcs->num_avail_dir_pq_pairs -= num_ports;
@@ -735,6 +751,199 @@ static int dlb2_attach_ldb_queues(struct dlb2_hw *hw,
 	}
 
 	rsrcs->num_avail_ldb_queues -= num_queues;
+
+	return 0;
+}
+
+static int
+dlb2_pp_profile(struct dlb2_hw *hw, int port, int cpu, bool is_ldb)
+{
+	u64 cycle_start = 0ULL, cycle_end = 0ULL;
+	struct dlb2_hcw hcw_mem[DLB2_HCW_MEM_SIZE], *hcw;
+	void __iomem *pp_addr;
+	cpu_set_t cpuset;
+	int i;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(cpu, &cpuset);
+	sched_setaffinity(0, sizeof(cpuset), &cpuset);
+
+	pp_addr = os_map_producer_port(hw, port, is_ldb);
+
+	/* Point hcw to a 64B-aligned location */
+	hcw = (struct dlb2_hcw *)((uintptr_t)&hcw_mem[DLB2_HCW_64B_OFF] &
+	      ~DLB2_HCW_ALIGN_MASK);
+
+	/*
+	 * Program the first HCW for a completion and token return and
+	 * the other HCWs as NOOPS
+	 */
+
+	memset(hcw, 0, (DLB2_HCW_MEM_SIZE - DLB2_HCW_64B_OFF) * sizeof(*hcw));
+	hcw->qe_comp = 1;
+	hcw->cq_token = 1;
+	hcw->lock_id = 1;
+
+	cycle_start = rte_get_tsc_cycles();
+	for (i = 0; i < DLB2_NUM_PROBE_ENQS; i++)
+		dlb2_movdir64b(pp_addr, hcw);
+
+	cycle_end = rte_get_tsc_cycles();
+
+	os_unmap_producer_port(hw, pp_addr);
+	return (int)(cycle_end - cycle_start);
+}
+
+static void *
+dlb2_pp_profile_func(void *data)
+{
+	struct dlb2_pp_thread_data *thread_data = data;
+	int cycles;
+
+	cycles = dlb2_pp_profile(thread_data->hw, thread_data->pp,
+	thread_data->cpu, thread_data->is_ldb);
+
+	thread_data->cycles = cycles;
+
+	return NULL;
+}
+
+static int dlb2_pp_cycle_comp(const void *a, const void *b)
+{
+	const struct dlb2_pp_thread_data *x = a;
+	const struct dlb2_pp_thread_data *y = b;
+
+	return x->cycles - y->cycles;
+}
+
+
+/* Probe producer ports from different CPU cores */
+static void
+dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type, int cos_id)
+{
+	struct dlb2_dev *dlb2_dev = container_of(hw, struct dlb2_dev, hw);
+	int i, err, ver = DLB2_HW_DEVICE_FROM_PCI_ID(dlb2_dev->pdev);
+	bool is_ldb = (port_type == DLB2_LDB_PORT);
+	int num_ports = is_ldb ? DLB2_MAX_NUM_LDB_PORTS :
+	DLB2_MAX_NUM_DIR_PORTS(ver);
+	struct dlb2_pp_thread_data dlb2_thread_data[num_ports];
+	int *port_allocations = is_ldb ? hw->ldb_pp_allocations :
+					 hw->dir_pp_allocations;
+	int num_sort = is_ldb ? DLB2_NUM_COS_DOMAINS : 1;
+	struct dlb2_pp_thread_data cos_cycles[num_sort];
+	int num_ports_per_sort = num_ports / num_sort;
+	pthread_t pthread;
+
+	dlb2_dev->enqueue_four = dlb2_movdir64b;
+
+	DLB2_LOG_INFO(" for %s: cpu core used in pp profiling: %d\n",
+		      is_ldb ? "LDB" : "DIR", cpu);
+
+	memset(cos_cycles, 0, num_sort * sizeof(struct dlb2_pp_thread_data));
+	for (i = 0; i < num_ports; i++) {
+		int cos = is_ldb ? (i >> DLB2_NUM_COS_DOMAINS) : 0;
+
+		dlb2_thread_data[i].is_ldb = is_ldb;
+		dlb2_thread_data[i].pp = i;
+		dlb2_thread_data[i].cycles = 0;
+		dlb2_thread_data[i].hw = hw;
+		dlb2_thread_data[i].cpu = cpu;
+
+		err = pthread_create(&pthread, NULL, &dlb2_pp_profile_func,
+				     &dlb2_thread_data[i]);
+		if (err) {
+			DLB2_LOG_ERR(": thread creation failed! err=%d", err);
+			return;
+		}
+
+		err = pthread_join(pthread, NULL);
+		if (err) {
+			DLB2_LOG_ERR(": thread join failed! err=%d", err);
+			return;
+		}
+		cos_cycles[cos].cycles += dlb2_thread_data[i].cycles;
+
+		if ((i + 1) % num_ports_per_sort == 0) {
+			int index = cos * num_ports_per_sort;
+
+			cos_cycles[cos].pp = index;
+			/*
+			 * For LDB ports first sort with in a cos. Later sort
+			 * the best cos based on total cycles for the cos.
+			 * For DIR ports, there is a single sort across all
+			 * ports.
+			 */
+			qsort(&dlb2_thread_data[index], num_ports_per_sort,
+			      sizeof(struct dlb2_pp_thread_data),
+			      dlb2_pp_cycle_comp);
+		}
+	}
+
+	/*
+	 * Re-arrange best ports by cos if default cos is used.
+	 */
+	if (is_ldb && cos_id == DLB2_COS_DEFAULT)
+		qsort(cos_cycles, num_sort,
+		      sizeof(struct dlb2_pp_thread_data),
+		      dlb2_pp_cycle_comp);
+
+	for (i = 0; i < num_ports; i++) {
+		int start = is_ldb ? cos_cycles[i / num_ports_per_sort].pp : 0;
+		int index = i % num_ports_per_sort;
+
+		port_allocations[i] = dlb2_thread_data[start + index].pp;
+		DLB2_LOG_INFO(": pp %d cycles %d", port_allocations[i],
+			     dlb2_thread_data[start + index].cycles);
+	}
+}
+
+int
+dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
+{
+	const struct dlb2_devargs *args = (const struct dlb2_devargs *)probe_args;
+	const char *mask = NULL;
+	int cpu = 0, cnt = 0, cores[RTE_MAX_LCORE];
+	int i, cos_id = DLB2_COS_DEFAULT;
+
+	if (args) {
+		mask = (const char *)args->producer_coremask;
+		cos_id = args->cos_id;
+	}
+
+	if (mask && rte_eal_parse_coremask(mask, cores)) {
+		DLB2_LOG_ERR(": Invalid producer coremask=%s", mask);
+		return -1;
+	}
+
+	hw->num_prod_cores = 0;
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		if (rte_lcore_is_enabled(i)) {
+			if (mask) {
+				/*
+				 * Populate the producer cores from parsed
+				 * coremask
+				 */
+				if (cores[i] != -1) {
+					hw->prod_core_list[cores[i]] = i;
+					hw->num_prod_cores++;
+				}
+			} else if ((++cnt == DLB2_EAL_PROBE_CORE ||
+			   rte_lcore_count() < DLB2_EAL_PROBE_CORE)) {
+				/*
+				 * If no producer coremask is provided, use the
+				 * second EAL core to probe
+				 */
+				cpu = i;
+				break;
+			}
+		}
+	}
+	/* Use the first core in producer coremask to probe */
+	if (hw->num_prod_cores)
+		cpu = hw->prod_core_list[0];
+
+	dlb2_get_pp_allocation(hw, cpu, DLB2_LDB_PORT, cos_id);
+	dlb2_get_pp_allocation(hw, cpu, DLB2_DIR_PORT, DLB2_COS_DEFAULT);
 
 	return 0;
 }
@@ -4359,6 +4568,8 @@ dlb2_verify_create_ldb_port_args(struct dlb2_hw *hw,
 		return -EINVAL;
 	}
 
+	DLB2_LOG_INFO(": LDB: cos=%d port:%d\n", id, port->id.phys_id);
+
 	/* Check cache-line alignment */
 	if ((cq_dma_base & 0x3F) != 0) {
 		resp->status = DLB2_ST_INVALID_CQ_VIRT_ADDR;
@@ -4568,13 +4779,25 @@ dlb2_verify_create_dir_port_args(struct dlb2_hw *hw,
 		/*
 		 * If the port's queue is not configured, validate that a free
 		 * port-queue pair is available.
+		 * First try the 'res' list if the port is producer OR if
+		 * 'avail' list is empty else fall back to 'avail' list
 		 */
-		pq = DLB2_DOM_LIST_HEAD(domain->avail_dir_pq_pairs,
-					typeof(*pq));
+		if (!dlb2_list_empty(&domain->rsvd_dir_pq_pairs) &&
+		    (args->is_producer ||
+		     dlb2_list_empty(&domain->avail_dir_pq_pairs)))
+			pq = DLB2_DOM_LIST_HEAD(domain->rsvd_dir_pq_pairs,
+						typeof(*pq));
+		else
+			pq = DLB2_DOM_LIST_HEAD(domain->avail_dir_pq_pairs,
+						typeof(*pq));
+
 		if (!pq) {
 			resp->status = DLB2_ST_DIR_PORTS_UNAVAILABLE;
 			return -EINVAL;
 		}
+		DLB2_LOG_INFO(": DIR: port:%d is_producer=%d\n",
+			      pq->id.phys_id, args->is_producer);
+
 	}
 
 	/* Check cache-line alignment */
@@ -4875,11 +5098,18 @@ int dlb2_hw_create_dir_port(struct dlb2_hw *hw,
 		return ret;
 
 	/*
-	 * Configuration succeeded, so move the resource from the 'avail' to
-	 * the 'used' list (if it's not already there).
+	 * Configuration succeeded, so move the resource from the 'avail' or
+	 * 'res' to the 'used' list (if it's not already there).
 	 */
 	if (args->queue_id == -1) {
-		dlb2_list_del(&domain->avail_dir_pq_pairs, &port->domain_list);
+		struct dlb2_list_head *res = &domain->rsvd_dir_pq_pairs;
+		struct dlb2_list_head *avail = &domain->avail_dir_pq_pairs;
+
+		if ((args->is_producer && !dlb2_list_empty(res)) ||
+		     dlb2_list_empty(avail))
+			dlb2_list_del(res, &port->domain_list);
+		else
+			dlb2_list_del(avail, &port->domain_list);
 
 		dlb2_list_add(&domain->used_dir_pq_pairs, &port->domain_list);
 	}

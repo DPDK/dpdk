@@ -702,6 +702,7 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 	struct dlb2_devargs dlb2_args = {
 		.socket_id = rte_socket_id(),
 		.max_num_events = DLB2_MAX_NUM_LDB_CREDITS,
+		.producer_coremask = NULL,
 		.num_dir_credits_override = -1,
 		.qid_depth_thresholds = { {0} },
 		.poll_interval = DLB2_POLL_INTERVAL_DEFAULT,
@@ -713,6 +714,7 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 	};
 	struct dlb2_eventdev *dlb2;
 	int q;
+	const void *probe_args = NULL;
 
 	DLB2_LOG_DBG("Enter with dev_id=%d socket_id=%d",
 		     eventdev->data->dev_id, eventdev->data->socket_id);
@@ -728,16 +730,6 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		dlb2 = dlb2_pmd_priv(eventdev); /* rte_zmalloc_socket mem */
 		dlb2->version = DLB2_HW_DEVICE_FROM_PCI_ID(pci_dev);
 
-		/* Probe the DLB2 PF layer */
-		dlb2->qm_instance.pf_dev = dlb2_probe(pci_dev);
-
-		if (dlb2->qm_instance.pf_dev == NULL) {
-			DLB2_LOG_ERR("DLB2 PF Probe failed with error %d\n",
-				     rte_errno);
-			ret = -rte_errno;
-			goto dlb2_probe_failed;
-		}
-
 		/* Were we invoked with runtime parameters? */
 		if (pci_dev->device.devargs) {
 			ret = dlb2_parse_params(pci_dev->device.devargs->args,
@@ -749,6 +741,17 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 					     ret, rte_errno);
 				goto dlb2_probe_failed;
 			}
+			probe_args = &dlb2_args;
+		}
+
+		/* Probe the DLB2 PF layer */
+		dlb2->qm_instance.pf_dev = dlb2_probe(pci_dev, probe_args);
+
+		if (dlb2->qm_instance.pf_dev == NULL) {
+			DLB2_LOG_ERR("DLB2 PF Probe failed with error %d\n",
+				     rte_errno);
+			ret = -rte_errno;
+			goto dlb2_probe_failed;
 		}
 
 		ret = dlb2_primary_eventdev_probe(eventdev,

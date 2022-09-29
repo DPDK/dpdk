@@ -147,7 +147,7 @@ static int dlb2_pf_wait_for_device_ready(struct dlb2_dev *dlb2_dev,
 }
 
 struct dlb2_dev *
-dlb2_probe(struct rte_pci_device *pdev)
+dlb2_probe(struct rte_pci_device *pdev, const void *probe_args)
 {
 	struct dlb2_dev *dlb2_dev;
 	int ret = 0;
@@ -208,6 +208,10 @@ dlb2_probe(struct rte_pci_device *pdev)
 	if (ret)
 		goto wait_for_device_ready_fail;
 
+	ret = dlb2_resource_probe(&dlb2_dev->hw, probe_args);
+	if (ret)
+		goto resource_probe_fail;
+
 	ret = dlb2_pf_reset(dlb2_dev);
 	if (ret)
 		goto dlb2_reset_fail;
@@ -216,7 +220,7 @@ dlb2_probe(struct rte_pci_device *pdev)
 	if (ret)
 		goto init_driver_state_fail;
 
-	ret = dlb2_resource_init(&dlb2_dev->hw, dlb_version);
+	ret = dlb2_resource_init(&dlb2_dev->hw, dlb_version, probe_args);
 	if (ret)
 		goto resource_init_fail;
 
@@ -227,6 +231,7 @@ resource_init_fail:
 init_driver_state_fail:
 dlb2_reset_fail:
 pci_mmap_bad_addr:
+resource_probe_fail:
 wait_for_device_ready_fail:
 	rte_free(dlb2_dev);
 dlb2_dev_malloc_fail:

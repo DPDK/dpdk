@@ -249,6 +249,7 @@ struct dlb2_hw_domain {
 	struct dlb2_list_head avail_ldb_queues;
 	struct dlb2_list_head avail_ldb_ports[DLB2_NUM_COS_DOMAINS];
 	struct dlb2_list_head avail_dir_pq_pairs;
+	struct dlb2_list_head rsvd_dir_pq_pairs;
 	u32 total_hist_list_entries;
 	u32 avail_hist_list_entries;
 	u32 hist_list_entry_base;
@@ -347,6 +348,10 @@ struct dlb2_hw {
 	struct dlb2_function_resources vdev[DLB2_MAX_NUM_VDEVS];
 	struct dlb2_hw_domain domains[DLB2_MAX_NUM_DOMAINS];
 	u8 cos_reservation[DLB2_NUM_COS_DOMAINS];
+	int prod_core_list[RTE_MAX_LCORE];
+	u8 num_prod_cores;
+	int dir_pp_allocations[DLB2_MAX_NUM_DIR_PORTS_V2_5];
+	int ldb_pp_allocations[DLB2_MAX_NUM_LDB_PORTS];
 
 	/* Virtualization */
 	int virt_mode;

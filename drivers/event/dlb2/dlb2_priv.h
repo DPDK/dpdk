@@ -51,6 +51,8 @@
 #define DLB2_CQ_WEIGHT "cq_weight"
 #define DLB2_PORT_COS "port_cos"
 #define DLB2_COS_BW "cos_bw"
+#define DLB2_PRODUCER_COREMASK "producer_coremask"
+#define DLB2_DEFAULT_LDB_PORT_ALLOCATION_ARG "default_port_allocation"
 
 /* Begin HW related defines and structs */
 
@@ -386,6 +388,7 @@ struct dlb2_port {
 	uint16_t hw_credit_quanta;
 	bool use_avx512;
 	uint32_t cq_weight;
+	bool is_producer; /* True if port is of type producer */
 };
 
 /* Per-process per-port mmio and memory pointers */
@@ -669,6 +672,8 @@ struct dlb2_devargs {
 	struct dlb2_cq_weight cq_weight;
 	struct dlb2_port_cos port_cos;
 	struct dlb2_cos_bw cos_bw;
+	const char *producer_coremask;
+	bool default_ldb_port_allocation;
 };
 
 /* End Eventdev related defines and structs */
@@ -722,6 +727,8 @@ void dlb2_event_build_hcws(struct dlb2_port *qm_port,
 			   uint8_t *sched_type,
 			   uint8_t *queue_id);
 
+/* Extern functions */
+extern int rte_eal_parse_coremask(const char *coremask, int *cores);
 
 /* Extern globals */
 extern struct process_local_port_data dlb2_port[][DLB2_NUM_PORT_TYPES];

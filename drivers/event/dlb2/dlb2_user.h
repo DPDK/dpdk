@@ -498,6 +498,7 @@ struct dlb2_create_dir_port_args {
 	__u16 cq_depth;
 	__u16 cq_depth_threshold;
 	__s32 queue_id;
+	__u8 is_producer;
 };
 
 /*

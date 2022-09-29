@@ -414,3 +414,39 @@ Note that the weight may not exceed the maximum CQ depth.
        --allow ea:00.0,cq_weight=all:<weight>
        --allow ea:00.0,cq_weight=qidA-qidB:<weight>
        --allow ea:00.0,cq_weight=qid:<weight>
+
+Producer Coremask
+~~~~~~~~~~~~~~~~~
+
+For best performance, applications running on certain cores should use
+the DLB device locally available on the same tile along with other
+resources. To allocate optimal resources, probing is done for each
+producer port (PP) for a given CPU and the best performing ports are
+allocated to producers. The cpu used for probing is either the first
+core of producer coremask (if present) or the second core of EAL
+coremask. This will be extended later to probe for all CPUs in the
+producer coremask or EAL coremask. Producer coremask can be passed
+along with the BDF of the DLB devices.
+
+    .. code-block:: console
+
+       -a xx:y.z,producer_coremask=<core_mask>
+
+Default LDB Port Allocation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For optimal load balancing ports that map to one or more QIDs in common
+should not be in numerical sequence. The port->QID mapping is application
+dependent, but the driver interleaves port IDs as much as possible to
+reduce the likelihood of sequential ports mapping to the same QID(s).
+
+Hence, DLB uses an initial allocation of Port IDs to maximize the
+average distance between an ID and its immediate neighbors. (i.e.the
+distance from 1 to 0 and to 2, the distance from 2 to 1 and to 3, etc.).
+Initial port allocation option can be passed through devarg. If y (or Y)
+inial port allocation will be used, otherwise initial port allocation
+won't be used.
+
+    .. code-block:: console
+
+       --allow ea:00.0,default_port_allocation=<y/Y>
