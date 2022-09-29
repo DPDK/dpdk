@@ -161,6 +161,7 @@ New Features
 * **Updated Marvell cnxk driver.**
 
   * Added support for flow action REPRESENTED_PORT.
+  * Added support for congestion management.
 
 * **Added Microsoft mana driver.**
 

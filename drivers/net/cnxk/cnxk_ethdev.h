@@ -419,6 +419,9 @@ struct cnxk_eth_dev {
 	struct cnxk_mtr_policy mtr_policy;
 	struct cnxk_mtr mtr;
 
+	/* Congestion Management */
+	struct rte_eth_cman_config cman_cfg;
+
 	/* Rx burst for cleanup(Only Primary) */
 	eth_rx_burst_t rx_pkt_burst_no_offload;
 
@@ -650,6 +653,15 @@ cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 			      struct rte_security_session *sess);
 int cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bufs,
 			      bool destroy);
+
+/* Congestion Management */
+int cnxk_nix_cman_info_get(struct rte_eth_dev *dev, struct rte_eth_cman_info *info);
+
+int cnxk_nix_cman_config_init(struct rte_eth_dev *dev, struct rte_eth_cman_config *config);
+
+int cnxk_nix_cman_config_set(struct rte_eth_dev *dev, const struct rte_eth_cman_config *config);
+
+int cnxk_nix_cman_config_get(struct rte_eth_dev *dev, struct rte_eth_cman_config *config);
 
 /* Other private functions */
 int nix_recalc_mtu(struct rte_eth_dev *eth_dev);
