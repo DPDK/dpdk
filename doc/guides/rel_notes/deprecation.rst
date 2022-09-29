@@ -157,9 +157,6 @@ Deprecation Notices
   Event will be one of the configuration fields,
   together with additional vector parameters.
 
-* eventdev: The element ``*u64s`` in the structure ``rte_event_vector``
-  is deprecated and will be replaced with ``u64s`` in DPDK 22.11.
-
 * eventdev: The structure ``rte_event_vector`` will be modified to include
   ``elem_offset:12`` bits taken from ``rsvd:15``. The ``elem_offset`` defines
   the offset into the vector array from which valid elements are present.

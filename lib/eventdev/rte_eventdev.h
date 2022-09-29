@@ -1117,7 +1117,7 @@ struct rte_event_vector {
 #endif
 		struct rte_mbuf *mbufs[0];
 		void *ptrs[0];
-		uint64_t *u64s[0];
+		uint64_t u64s[0];
 #ifndef __cplusplus
 	} __rte_aligned(16);
 #endif
