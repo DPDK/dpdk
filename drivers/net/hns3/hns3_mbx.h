@@ -5,6 +5,10 @@
 #ifndef _HNS3_MBX_H_
 #define _HNS3_MBX_H_
 
+#include <stdint.h>
+
+#include <rte_spinlock.h>
+
 enum HNS3_MBX_OPCODE {
 	HNS3_MBX_RESET = 0x01,          /* (VF -> PF) assert reset */
 	HNS3_MBX_ASSERTING_RESET,       /* (PF -> VF) PF is asserting reset */

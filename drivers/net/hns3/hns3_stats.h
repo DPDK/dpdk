@@ -5,6 +5,8 @@
 #ifndef _HNS3_STATS_H_
 #define _HNS3_STATS_H_
 
+#include <rte_ethdev.h>
+
 /* TQP stats */
 struct hns3_tqp_stats {
 	uint64_t rcb_tx_ring_pktnum_rcd; /* Total num of transmitted packets */
@@ -127,6 +129,8 @@ struct hns3_reset_stats;
 
 #define HNS3_TX_ERROR_STATS_FIELD_OFFSET(f) \
 	(offsetof(struct hns3_tx_queue, f))
+
+struct hns3_hw;
 
 int hns3_stats_get(struct rte_eth_dev *eth_dev,
 		   struct rte_eth_stats *rte_stats);

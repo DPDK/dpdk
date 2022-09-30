@@ -8,13 +8,13 @@
 #include <rte_io.h>
 #include <rte_pci.h>
 
-#include "hns3_ethdev.h"
 #include "hns3_logs.h"
 #include "hns3_rxtx.h"
 #include "hns3_intr.h"
 #include "hns3_regs.h"
 #include "hns3_dcb.h"
 #include "hns3_mp.h"
+#include "hns3_ethdev.h"
 
 #define HNS3_DEFAULT_PORT_CONF_BURST_SIZE	32
 #define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
