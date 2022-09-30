@@ -1713,6 +1713,7 @@ hns3_add_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	uint8_t vf_id;
 	int ret;
+	int idx;
 
 	/* Check if mac addr is valid */
 	if (!rte_is_multicast_ether_addr(mac_addr)) {
@@ -1730,9 +1731,8 @@ hns3_add_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 					HNS3_MC_MAC_VLAN_OPS_DESC_NUM);
 	if (ret) {
 		/* This mac addr do not exist, add new entry for it */
-		memset(desc[0].data, 0, sizeof(desc[0].data));
-		memset(desc[1].data, 0, sizeof(desc[0].data));
-		memset(desc[2].data, 0, sizeof(desc[0].data));
+		for (idx = 0; idx < HNS3_MC_MAC_VLAN_OPS_DESC_NUM; idx++)
+			memset(desc[idx].data, 0, sizeof(desc[idx].data));
 	}
 
 	/*
