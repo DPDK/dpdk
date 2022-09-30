@@ -2661,14 +2661,17 @@ static void
 hns3_parse_dev_specifications(struct hns3_hw *hw, struct hns3_cmd_desc *desc)
 {
 	struct hns3_dev_specs_0_cmd *req0;
+	struct hns3_dev_specs_1_cmd *req1;
 
 	req0 = (struct hns3_dev_specs_0_cmd *)desc[0].data;
+	req1 = (struct hns3_dev_specs_1_cmd *)desc[1].data;
 
 	hw->max_non_tso_bd_num = req0->max_non_tso_bd_num;
 	hw->rss_ind_tbl_size = rte_le_to_cpu_16(req0->rss_ind_tbl_size);
 	hw->rss_key_size = rte_le_to_cpu_16(req0->rss_key_size);
 	hw->max_tm_rate = rte_le_to_cpu_32(req0->max_tm_rate);
 	hw->intr.int_ql_max = rte_le_to_cpu_16(req0->intr_ql_max);
+	hw->min_tx_pkt_len = req1->min_tx_pkt_len;
 }
 
 static int
@@ -2763,7 +2766,6 @@ hns3_get_capability(struct hns3_hw *hw)
 	hw->tso_mode = HNS3_TSO_HW_CAL_PSEUDO_H_CSUM;
 	hw->vlan_mode = HNS3_HW_SHIFT_AND_DISCARD_MODE;
 	hw->drop_stats_mode = HNS3_PKTS_DROP_STATS_MODE2;
-	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
 	pf->tqp_config_mode = HNS3_FLEX_MAX_TQP_NUM_MODE;
 	hw->rss_info.ipv6_sctp_offload_supported = true;
 	hw->udp_cksum_mode = HNS3_SPECIAL_PORT_HW_CKSUM_MODE;
