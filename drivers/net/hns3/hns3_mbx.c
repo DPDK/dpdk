@@ -429,7 +429,7 @@ hns3_handle_mbx_msg_out_intr(struct hns3_hw *hw)
 			 * Clear opcode to inform intr thread don't process
 			 * again.
 			 */
-			crq->desc[crq->next_to_use].opcode = 0;
+			crq->desc[next_to_use].opcode = 0;
 		}
 
 scan_next:
