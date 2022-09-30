@@ -5006,7 +5006,6 @@ static int
 hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
-	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
 	bool link_en;
 	int ret;
 
@@ -5043,7 +5042,7 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 	if (ret)
 		goto err_set_link_speed;
 
-	return hns3_restore_filter(dev);
+	return hns3_restore_filter(hns);
 
 err_set_link_speed:
 	(void)hns3_cfg_mac_mode(hw, false);

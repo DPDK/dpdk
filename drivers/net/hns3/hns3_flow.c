@@ -1508,11 +1508,9 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 }
 
 static int
-hns3_update_indir_table(struct rte_eth_dev *dev,
+hns3_update_indir_table(struct hns3_hw *hw,
 			const struct rte_flow_action_rss *conf, uint16_t num)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
 	uint16_t indir_tbl[HNS3_RSS_IND_TBL_SIZE_MAX];
 	uint16_t j;
 	uint32_t i;
@@ -1535,11 +1533,9 @@ hns3_update_indir_table(struct rte_eth_dev *dev,
 }
 
 static int
-hns3_config_rss_filter(struct rte_eth_dev *dev,
+hns3_config_rss_filter(struct hns3_hw *hw,
 		       const struct hns3_rss_conf *conf, bool add)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_conf *rss_info;
 	uint64_t flow_types;
 	uint16_t num;
@@ -1591,13 +1587,13 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 	}
 
 	/* Set rx queues to use */
-	num = RTE_MIN(dev->data->nb_rx_queues, rss_flow_conf.queue_num);
+	num = RTE_MIN(hw->data->nb_rx_queues, rss_flow_conf.queue_num);
 	if (rss_flow_conf.queue_num > num)
 		hns3_warn(hw, "Config queue numbers %u are beyond the scope of truncated",
 			  rss_flow_conf.queue_num);
 	hns3_info(hw, "Max of contiguous %u PF queues are configured", num);
 	if (num) {
-		ret = hns3_update_indir_table(dev, &rss_flow_conf, num);
+		ret = hns3_update_indir_table(hw, &rss_flow_conf, num);
 		if (ret)
 			return ret;
 	}
@@ -1627,7 +1623,7 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 	rss_filter_ptr = TAILQ_FIRST(&hw->flow_rss_list);
 	while (rss_filter_ptr) {
 		TAILQ_REMOVE(&hw->flow_rss_list, rss_filter_ptr, entries);
-		ret = hns3_config_rss_filter(dev, &rss_filter_ptr->filter_info,
+		ret = hns3_config_rss_filter(hw, &rss_filter_ptr->filter_info,
 					     false);
 		if (ret)
 			rss_rule_fail_cnt++;
@@ -1647,11 +1643,9 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 }
 
 static int
-hns3_restore_rss_filter(struct rte_eth_dev *dev)
+hns3_restore_rss_filter(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_rss_conf_ele *filter;
-	struct hns3_hw *hw = &hns->hw;
 	int ret = 0;
 
 	pthread_mutex_lock(&hw->flows_lock);
@@ -1659,7 +1653,7 @@ hns3_restore_rss_filter(struct rte_eth_dev *dev)
 		if (!filter->filter_info.valid)
 			continue;
 
-		ret = hns3_config_rss_filter(dev, &filter->filter_info, true);
+		ret = hns3_config_rss_filter(hw, &filter->filter_info, true);
 		if (ret != 0) {
 			hns3_err(hw, "restore RSS filter failed, ret=%d", ret);
 			goto out;
@@ -1673,16 +1667,16 @@ out:
 }
 
 int
-hns3_restore_filter(struct rte_eth_dev *dev)
+hns3_restore_filter(struct hns3_adapter *hns)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
 	ret = hns3_restore_all_fdir_filter(hns);
 	if (ret != 0)
 		return ret;
 
-	return hns3_restore_rss_filter(dev);
+	return hns3_restore_rss_filter(hw);
 }
 
 static int
@@ -1699,7 +1693,7 @@ hns3_flow_parse_rss(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	return hns3_config_rss_filter(dev, conf, add);
+	return hns3_config_rss_filter(hw, conf, add);
 }
 
 static int
@@ -1960,7 +1954,7 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		break;
 	case RTE_ETH_FILTER_HASH:
 		rss_filter_ptr = (struct hns3_rss_conf_ele *)flow->rule;
-		ret = hns3_config_rss_filter(dev, &rss_filter_ptr->filter_info,
+		ret = hns3_config_rss_filter(hw, &rss_filter_ptr->filter_info,
 					     false);
 		if (ret)
 			return rte_flow_error_set(error, EIO,
