@@ -400,8 +400,34 @@ hns3_rss_reset_indir_table(struct hns3_hw *hw)
 	return ret;
 }
 
+static void
+hns3_rss_check_l3l4_types(struct hns3_hw *hw, uint64_t rss_hf)
+{
+	uint64_t ip_mask = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+			   ETH_RSS_NONFRAG_IPV4_OTHER |
+			   ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
+			   ETH_RSS_NONFRAG_IPV6_OTHER;
+	uint64_t l4_mask = ETH_RSS_NONFRAG_IPV4_TCP |
+			   ETH_RSS_NONFRAG_IPV4_UDP |
+			   ETH_RSS_NONFRAG_IPV4_SCTP |
+			   ETH_RSS_NONFRAG_IPV6_TCP |
+			   ETH_RSS_NONFRAG_IPV6_UDP |
+			   ETH_RSS_NONFRAG_IPV6_SCTP;
+	uint64_t l3_src_dst_mask = ETH_RSS_L3_SRC_ONLY |
+				   ETH_RSS_L3_DST_ONLY;
+	uint64_t l4_src_dst_mask = ETH_RSS_L4_SRC_ONLY |
+				   ETH_RSS_L4_DST_ONLY;
+
+	if (rss_hf & l3_src_dst_mask &&
+	    !(rss_hf & ip_mask || rss_hf & l4_mask))
+		hns3_warn(hw, "packet type isn't specified, L3_SRC/DST_ONLY is ignored.");
+
+	if (rss_hf & l4_src_dst_mask && !(rss_hf & l4_mask))
+		hns3_warn(hw, "packet type isn't specified, L4_SRC/DST_ONLY is ignored.");
+}
+
 static uint64_t
-hns3_rss_calc_tuple_filed(uint64_t rss_hf)
+hns3_rss_calc_tuple_filed(struct hns3_hw *hw, uint64_t rss_hf)
 {
 	uint64_t l3_only_mask = ETH_RSS_L3_SRC_ONLY |
 				ETH_RSS_L3_DST_ONLY;
@@ -430,6 +456,7 @@ hns3_rss_calc_tuple_filed(uint64_t rss_hf)
 		    !has_l3_l4_only)
 			tuple |= hns3_set_tuple_table[i].rss_field;
 	}
+	hns3_rss_check_l3l4_types(hw, rss_hf);
 
 	return tuple;
 }
@@ -445,7 +472,7 @@ hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf)
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_INPUT_TUPLE, false);
 	req = (struct hns3_rss_input_tuple_cmd *)desc.data;
 
-	tuple_field = hns3_rss_calc_tuple_filed(rss_hf);
+	tuple_field = hns3_rss_calc_tuple_filed(hw, rss_hf);
 	req->tuple_field = rte_cpu_to_le_64(tuple_field);
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
