@@ -1565,24 +1565,20 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 		hns3_warn(hw, "Config queue numbers %u are beyond the scope of truncated",
 			  rss_flow_conf.queue_num);
 	hns3_info(hw, "Max of contiguous %u PF queues are configured", num);
-
-	rte_spinlock_lock(&hw->lock);
 	if (num) {
 		ret = hns3_update_indir_table(dev, &rss_flow_conf, num);
 		if (ret)
-			goto rss_config_err;
+			return ret;
 	}
 
 	/* Set hash algorithm and flow types by the user's config */
 	ret = hns3_hw_rss_hash_set(hw, &rss_flow_conf);
 	if (ret)
-		goto rss_config_err;
+		return ret;
 
 	ret = hns3_rss_conf_copy(rss_info, &rss_flow_conf);
-	if (ret) {
+	if (ret)
 		hns3_err(hw, "RSS config init fail(%d)", ret);
-		goto rss_config_err;
-	}
 
 	/*
 	 * When create a new RSS rule, the old rule will be overlaid and set
@@ -1590,9 +1586,6 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 	 */
 	TAILQ_FOREACH(rss_filter_ptr, &hw->flow_rss_list, entries)
 		rss_filter_ptr->filter_info.valid = false;
-
-rss_config_err:
-	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
@@ -1638,6 +1631,7 @@ hns3_restore_rss_filter(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = &hns->hw;
 	int ret = 0;
 
+	pthread_mutex_lock(&hw->flows_lock);
 	TAILQ_FOREACH(filter, &hw->flow_rss_list, entries) {
 		if (!filter->filter_info.valid)
 			continue;
@@ -1650,6 +1644,8 @@ hns3_restore_rss_filter(struct rte_eth_dev *dev)
 	}
 
 out:
+	pthread_mutex_unlock(&hw->flows_lock);
+
 	return ret;
 }
 
