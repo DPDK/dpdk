@@ -4890,7 +4890,6 @@ static int
 hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
-	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
 	int ret;
 
 	ret = hns3_update_queue_map_configure(hns);
@@ -4911,7 +4910,7 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 		PMD_INIT_LOG(ERR, "failed to enable MAC, ret = %d", ret);
 		goto err_config_mac_mode;
 	}
-	return hns3_restore_filter(dev);
+	return hns3_restore_filter(hns);
 
 err_config_mac_mode:
 	hns3_dev_release_mbufs(hns);
