@@ -1541,8 +1541,6 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 			rss_info->conf.queue_num = 0;
 		}
 
-		/* set RSS func invalid after flushed */
-		rss_info->conf.func = RTE_ETH_HASH_FUNCTION_MAX;
 		return 0;
 	}
 
@@ -1621,13 +1619,23 @@ int
 hns3_restore_rss_filter(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_rss_conf_ele *filter;
 	struct hns3_hw *hw = &hns->hw;
+	int ret = 0;
 
-	/* When user flush all rules, it doesn't need to restore RSS rule */
-	if (hw->rss_info.conf.func == RTE_ETH_HASH_FUNCTION_MAX)
-		return 0;
+	TAILQ_FOREACH(filter, &hw->flow_rss_list, entries) {
+		if (!filter->filter_info.valid)
+			continue;
 
-	return hns3_config_rss_filter(dev, &hw->rss_info, true);
+		ret = hns3_config_rss_filter(dev, &filter->filter_info, true);
+		if (ret != 0) {
+			hns3_err(hw, "restore RSS filter failed, ret=%d", ret);
+			goto out;
+		}
+	}
+
+out:
+	return ret;
 }
 
 static int
