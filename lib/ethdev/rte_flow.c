@@ -348,6 +348,13 @@ rte_flow_validate(uint16_t port_id,
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	int ret;
 
+	if (likely(!!attr) && attr->transfer &&
+	    (attr->ingress || attr->egress)) {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR,
+					  attr, "cannot use attr ingress/egress with attr transfer");
+	}
+
 	if (unlikely(!ops))
 		return -rte_errno;
 	if (likely(!!ops->validate)) {

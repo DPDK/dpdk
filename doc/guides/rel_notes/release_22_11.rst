@@ -283,6 +283,10 @@ API Changes
 * ethdev: Promoted ``rte_flow_pick_transfer_proxy()``
   from experimental to stable.
 
+* ethdev: Banned the use of attributes ``ingress``/``egress`` in "transfer"
+  flows, as the final step of deprecation process that had been started
+  in DPDK 21.11. See items ``PORT_REPRESENTOR``, ``REPRESENTED_PORT``.
+
 * cryptodev: The structure ``rte_cryptodev_sym_session`` was made internal.
   The API ``rte_cryptodev_sym_session_init`` and ``rte_cryptodev_sym_session_clear``
   were removed and user would only need to call ``rte_cryptodev_sym_session_create``

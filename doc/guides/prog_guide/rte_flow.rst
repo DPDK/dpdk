@@ -204,13 +204,8 @@ When supported, this effectively enables an application to reroute traffic
 not necessarily intended for it (e.g. coming from or addressed to different
 physical ports, VFs or applications) at the device level.
 
-In "transfer" flows, the use of `Attribute: Traffic direction`_ in the sense of
-implicitly matching packets going to or going from the ethdev used to create
-flow rules is **deprecated**. `Attribute: Transfer`_ shifts the viewpoint to
-the embedded switch. In it, `Attribute: Traffic direction`_ is ambiguous as
-the switch serves many different endpoints. The application should match
-traffic originating from precise locations. To do so, it should
-use `Item: PORT_REPRESENTOR`_ and `Item: REPRESENTED_PORT`_.
+In "transfer" flows, the use of `Attribute: Traffic direction`_ in not allowed.
+One may use `Item: PORT_REPRESENTOR`_ and `Item: REPRESENTED_PORT`_ instead.
 
 Pattern item
 ~~~~~~~~~~~~

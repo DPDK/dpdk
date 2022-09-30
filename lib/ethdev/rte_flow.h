@@ -89,28 +89,10 @@ struct rte_flow_attr {
 	uint32_t priority; /**< Rule priority level within group. */
 	/**
 	 * The rule in question applies to ingress traffic (non-"transfer").
-	 *
-	 * @deprecated
-	 * It has been possible to combine this attribute with "transfer".
-	 * Doing so has been assumed to restrict the scope of matching
-	 * to traffic going from within the embedded switch toward the
-	 * ethdev the flow rule being created through. This behaviour
-	 * is deprecated. During the transition period, one may still
-	 * rely on it, but PMDs and applications are encouraged to
-	 * gradually move away from this approach.
 	 */
 	uint32_t ingress:1;
 	/**
 	 * The rule in question applies to egress traffic (non-"transfer").
-	 *
-	 * @deprecated
-	 * It has been possible to combine this attribute with "transfer".
-	 * Doing so has been assumed to restrict the scope of matching
-	 * to traffic sent by the application by virtue of the ethdev
-	 * the flow rule being created through. This behaviour is now
-	 * deprecated. During the transition period, one may still
-	 * rely on it, but PMDs and applications are encouraged to
-	 * gradually move away from this approach.
 	 */
 	uint32_t egress:1;
 	/**
