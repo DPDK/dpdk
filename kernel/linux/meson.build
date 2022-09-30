@@ -11,7 +11,7 @@ endif
 kernel_dir = get_option('kernel_dir')
 if kernel_dir == ''
 	# use default path for native builds
-	kernel_version = run_command('uname', '-r', check: true).stdout().strip()
+	kernel_version = run_command('uname', '-r').stdout().strip()
 	kernel_dir = '/lib/modules/' + kernel_version
 endif
 
@@ -23,7 +23,7 @@ endif
 
 # test running make in kernel directory, using "make kernelversion"
 make_returncode = run_command('make', '-sC', kernel_dir + '/build',
-		'kernelversion', check: true).returncode()
+		'kernelversion').returncode()
 if make_returncode != 0
 	error('Cannot compile kernel modules as requested - are kernel headers installed?')
 endif

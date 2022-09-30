@@ -23,7 +23,7 @@ is_ms_linker = is_windows and (cc.get_id() == 'clang')
 pver = meson.project_version().split('.')
 major_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
 abi_version = run_command(find_program('cat', 'more'),
-	abi_version_file, check: true).stdout().strip()
+	abi_version_file).stdout().strip()
 
 # Libraries have the abi_version as the filename extension
 # and have the soname be all but the final part of the abi_version.

@@ -158,7 +158,7 @@ else
 		# 'Primary Part number', 'Revision']
 		detect_vendor = find_program(join_paths(
 				meson.current_source_dir(), 'armv8_machine.py'))
-		cmd = run_command(detect_vendor.path(), check: false)
+		cmd = run_command(detect_vendor.path())
 		if cmd.returncode() == 0
 			cmd_output = cmd.stdout().to_lower().strip().split(' ')
 		endif
