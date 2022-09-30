@@ -2808,6 +2808,7 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 	struct hns3_cfg cfg;
 	int ret;
 
+	memset(&cfg, 0, sizeof(cfg));
 	ret = hns3_get_board_cfg(hw, &cfg);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "get board config failed %d", ret);
