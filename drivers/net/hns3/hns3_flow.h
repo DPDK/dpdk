@@ -40,5 +40,6 @@ int hns3_dev_flow_ops_get(struct rte_eth_dev *dev,
 			  const struct rte_flow_ops **ops);
 void hns3_flow_init(struct rte_eth_dev *dev);
 void hns3_flow_uninit(struct rte_eth_dev *dev);
+int hns3_restore_filter(struct rte_eth_dev *dev);
 
 #endif /* _HNS3_FLOW_H_ */
