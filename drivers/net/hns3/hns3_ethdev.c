@@ -5753,10 +5753,6 @@ hns3_restore_conf(struct hns3_adapter *hns)
 	if (ret)
 		goto err_promisc;
 
-	ret = hns3_restore_all_fdir_filter(hns);
-	if (ret)
-		goto err_promisc;
-
 	ret = hns3_restore_rx_interrupt(hw);
 	if (ret)
 		goto err_promisc;
