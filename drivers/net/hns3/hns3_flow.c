@@ -1675,6 +1675,13 @@ out:
 int
 hns3_restore_filter(struct rte_eth_dev *dev)
 {
+	struct hns3_adapter *hns = dev->data->dev_private;
+	int ret;
+
+	ret = hns3_restore_all_fdir_filter(hns);
+	if (ret != 0)
+		return ret;
+
 	return hns3_restore_rss_filter(dev);
 }
 
