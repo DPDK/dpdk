@@ -2001,7 +2001,7 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_SCTP,
 		RTE_PTYPE_INNER_L4_ICMP,
-		RTE_PTYPE_TUNNEL_VXLAN,
+		RTE_PTYPE_TUNNEL_GRENAT,
 		RTE_PTYPE_TUNNEL_NVGRE,
 		RTE_PTYPE_UNKNOWN
 	};
@@ -2098,7 +2098,7 @@ hns3_init_tunnel_ptype_tbl(struct hns3_ptype_table *tbl)
 	tbl->ol3table[5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT;
 
 	tbl->ol4table[0] = RTE_PTYPE_UNKNOWN;
-	tbl->ol4table[1] = RTE_PTYPE_L4_UDP | RTE_PTYPE_TUNNEL_VXLAN;
+	tbl->ol4table[1] = RTE_PTYPE_L4_UDP | RTE_PTYPE_TUNNEL_GRENAT;
 	tbl->ol4table[2] = RTE_PTYPE_TUNNEL_NVGRE;
 }
 
