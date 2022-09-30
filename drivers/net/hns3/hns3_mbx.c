@@ -436,8 +436,10 @@ scan_next:
 		next_to_use = (next_to_use + 1) % hw->cmq.crq.desc_num;
 	}
 
-	crq->next_to_use = next_to_use;
-	hns3_write_dev(hw, HNS3_CMDQ_RX_HEAD_REG, crq->next_to_use);
+	/*
+	 * Note: the crq->next_to_use field should not updated, otherwise,
+	 * mailbox messages may be discarded.
+	 */
 }
 
 void
