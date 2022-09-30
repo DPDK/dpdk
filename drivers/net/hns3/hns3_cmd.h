@@ -983,6 +983,12 @@ struct hns3_dev_specs_0_cmd {
 	uint32_t max_tm_rate;
 };
 
+struct hns3_dev_specs_1_cmd {
+	uint8_t rsv0[12];
+	uint8_t min_tx_pkt_len;
+	uint8_t rsv1[11];
+};
+
 struct hns3_query_rpu_cmd {
 	uint32_t tc_queue_num;
 	uint32_t rsv1[2];
