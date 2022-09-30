@@ -91,6 +91,15 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen4[] = {
 		CAP_RNG(key_size, 32, 32, 0),
 		CAP_RNG(digest_size, 16, 16, 0),
 		CAP_RNG(aad_size, 0, 240, 1), CAP_RNG(iv_size, 12, 12, 0)),
+	QAT_SYM_CIPHER_CAP(SM4_ECB,
+		CAP_SET(block_size, 16),
+		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 0, 0, 0)),
+	QAT_SYM_CIPHER_CAP(SM4_CBC,
+		CAP_SET(block_size, 16),
+		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 16, 16, 0)),
+	QAT_SYM_CIPHER_CAP(SM4_CTR,
+		CAP_SET(block_size, 16),
+		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 16, 16, 0)),
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 

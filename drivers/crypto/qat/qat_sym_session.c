@@ -465,6 +465,18 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_XTS_MODE;
 		break;
+	case RTE_CRYPTO_CIPHER_SM4_ECB:
+		session->qat_cipher_alg = ICP_QAT_HW_CIPHER_ALGO_SM4;
+		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
+		break;
+	case RTE_CRYPTO_CIPHER_SM4_CBC:
+		session->qat_cipher_alg = ICP_QAT_HW_CIPHER_ALGO_SM4;
+		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
+		break;
+	case RTE_CRYPTO_CIPHER_SM4_CTR:
+		session->qat_cipher_alg = ICP_QAT_HW_CIPHER_ALGO_SM4;
+		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
+		break;
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_F8:
