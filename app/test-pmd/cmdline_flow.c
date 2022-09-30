@@ -2966,7 +2966,7 @@ static const struct token token_list[] = {
 	},
 	/* Queue  arguments. */
 	[QUEUE_TEMPLATE_TABLE] = {
-		.name = "template table",
+		.name = "template_table",
 		.help = "specify table id",
 		.next = NEXT(NEXT_ENTRY(QUEUE_PATTERN_TEMPLATE),
 			     NEXT_ENTRY(COMMON_TABLE_ID)),
