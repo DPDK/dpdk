@@ -1069,6 +1069,9 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 	bool err = false;
 	int ret;
 
+	if (hns->is_vf)
+		return 0;
+
 	/*
 	 * This API is called in the reset recovery process, the parent function
 	 * must hold hw->lock.
