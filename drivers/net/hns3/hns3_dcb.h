@@ -7,7 +7,11 @@
 
 #include <stdint.h>
 
+#include <ethdev_driver.h>
+#include <rte_ethdev.h>
+
 #include "hns3_cmd.h"
+#include "hns3_ethdev.h"
 
 #define HNS3_ETHER_MAX_RATE		100000
 

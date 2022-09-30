@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 
+#include <rte_byteorder.h>
+#include <rte_spinlock.h>
+
 #define HNS3_CMDQ_TX_TIMEOUT		30000
 #define HNS3_CMDQ_CLEAR_WAIT_TIME	200
 #define HNS3_CMDQ_RX_INVLD_B		0

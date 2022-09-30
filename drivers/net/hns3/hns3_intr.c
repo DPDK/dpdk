@@ -10,9 +10,9 @@
 
 #include "hns3_common.h"
 #include "hns3_logs.h"
-#include "hns3_intr.h"
 #include "hns3_regs.h"
 #include "hns3_rxtx.h"
+#include "hns3_intr.h"
 
 #define SWITCH_CONTEXT_US	10
 

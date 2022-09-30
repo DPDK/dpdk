@@ -17,10 +17,10 @@
 #endif
 
 #include "hns3_common.h"
-#include "hns3_rxtx.h"
 #include "hns3_regs.h"
 #include "hns3_logs.h"
 #include "hns3_mp.h"
+#include "hns3_rxtx.h"
 
 #define HNS3_CFG_DESC_NUM(num)	((num) / 8 - 1)
 #define HNS3_RX_RING_PREFETCTH_MASK	3

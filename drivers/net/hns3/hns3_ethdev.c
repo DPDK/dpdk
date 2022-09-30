@@ -6,7 +6,6 @@
 #include <bus_pci_driver.h>
 #include <ethdev_pci.h>
 
-#include "hns3_ethdev.h"
 #include "hns3_common.h"
 #include "hns3_dump.h"
 #include "hns3_logs.h"
@@ -16,6 +15,7 @@
 #include "hns3_dcb.h"
 #include "hns3_mp.h"
 #include "hns3_flow.h"
+#include "hns3_ethdev.h"
 
 #define HNS3_SERVICE_INTERVAL		1000000 /* us */
 #define HNS3_SERVICE_QUICK_INTERVAL	10

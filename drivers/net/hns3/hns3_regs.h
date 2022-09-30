@@ -5,6 +5,9 @@
 #ifndef _HNS3_REGS_H_
 #define _HNS3_REGS_H_
 
+#include <ethdev_driver.h>
+#include <rte_dev_info.h>
+
 /* bar registers for cmdq */
 #define HNS3_CMDQ_TX_ADDR_L_REG		0x27000
 #define HNS3_CMDQ_TX_ADDR_H_REG		0x27004

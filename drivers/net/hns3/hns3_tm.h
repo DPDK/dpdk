@@ -105,6 +105,8 @@ hns3_tm_calc_node_tc_no(struct hns3_tm_conf *conf, uint32_t node_id)
 		return 0;
 }
 
+struct hns3_hw;
+
 void hns3_tm_conf_init(struct rte_eth_dev *dev);
 void hns3_tm_conf_uninit(struct rte_eth_dev *dev);
 int hns3_tm_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg);

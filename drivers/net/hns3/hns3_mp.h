@@ -5,6 +5,8 @@
 #ifndef _HNS3_MP_H_
 #define _HNS3_MP_H_
 
+#include <ethdev_driver.h>
+
 /* Local data for primary or secondary process. */
 struct hns3_process_local_data {
 	bool init_done; /* Process action register completed flag. */

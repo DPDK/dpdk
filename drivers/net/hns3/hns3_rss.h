@@ -4,6 +4,7 @@
 
 #ifndef _HNS3_RSS_H_
 #define _HNS3_RSS_H_
+
 #include <rte_ethdev.h>
 #include <rte_flow.h>
 
@@ -91,6 +92,7 @@ static inline uint32_t roundup_pow_of_two(uint32_t x)
 extern const uint8_t hns3_hash_key[HNS3_RSS_KEY_SIZE];
 
 struct hns3_adapter;
+struct hns3_hw;
 
 int hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			     struct rte_eth_rss_conf *rss_conf);

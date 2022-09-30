@@ -5,6 +5,10 @@
 #ifndef _HNS3_FDIR_H_
 #define _HNS3_FDIR_H_
 
+#include <stdint.h>
+
+#include <rte_flow.h>
+
 struct hns3_fd_key_cfg {
 	uint8_t key_sel;
 	uint8_t inner_sipv6_word_en;
@@ -177,6 +181,7 @@ struct hns3_fdir_info {
 };
 
 struct hns3_adapter;
+struct hns3_hw;
 
 int hns3_init_fd_config(struct hns3_adapter *hns);
 int hns3_fdir_filter_init(struct hns3_adapter *hns);

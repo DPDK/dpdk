@@ -7,10 +7,10 @@
 #include <ethdev_pci.h>
 #include <rte_pci.h>
 
-#include "hns3_common.h"
 #include "hns3_logs.h"
 #include "hns3_regs.h"
 #include "hns3_rxtx.h"
+#include "hns3_common.h"
 
 int
 hns3_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,

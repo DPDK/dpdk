@@ -6,7 +6,16 @@
 #define _HNS3_RXTX_H_
 
 #include <stdint.h>
+
+#include <ethdev_driver.h>
 #include <rte_mbuf_core.h>
+#include <rte_ethdev.h>
+#include <rte_ethdev_core.h>
+#include <rte_io.h>
+#include <rte_mempool.h>
+#include <rte_memzone.h>
+
+#include "hns3_ethdev.h"
 
 #define	HNS3_MIN_RING_DESC	64
 #define	HNS3_MAX_RING_DESC	32768

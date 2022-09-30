@@ -6,6 +6,9 @@
 #define _HNS3_FLOW_H_
 
 #include <rte_flow.h>
+#include <ethdev_driver.h>
+
+#include "hns3_rss.h"
 
 struct hns3_flow_counter {
 	LIST_ENTRY(hns3_flow_counter) next; /* Pointer to the next counter. */
