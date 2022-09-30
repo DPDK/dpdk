@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_INTR_H_
-#define _HNS3_INTR_H_
+#ifndef HNS3_INTR_H
+#define HNS3_INTR_H
 
 #include <stdint.h>
 
@@ -190,4 +190,4 @@ void hns3_reset_abort(struct hns3_adapter *hns);
 void hns3_start_report_lse(struct rte_eth_dev *dev);
 void hns3_stop_report_lse(struct rte_eth_dev *dev);
 
-#endif /* _HNS3_INTR_H_ */
+#endif /* HNS3_INTR_H */

@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_ETHDEV_H_
-#define _HNS3_ETHDEV_H_
+#ifndef HNS3_ETHDEV_H
+#define HNS3_ETHDEV_H
 
 #include <pthread.h>
 #include <ethdev_driver.h>
@@ -1074,4 +1074,4 @@ is_reset_pending(struct hns3_adapter *hns)
 	return ret;
 }
 
-#endif /* _HNS3_ETHDEV_H_ */
+#endif /* HNS3_ETHDEV_H */

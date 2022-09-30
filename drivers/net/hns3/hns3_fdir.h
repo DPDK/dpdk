@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_FDIR_H_
-#define _HNS3_FDIR_H_
+#ifndef HNS3_FDIR_H
+#define HNS3_FDIR_H
 
 #include <stdint.h>
 
@@ -192,4 +192,4 @@ int hns3_clear_all_fdir_filter(struct hns3_adapter *hns);
 int hns3_fd_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value);
 int hns3_restore_all_fdir_filter(struct hns3_adapter *hns);
 
-#endif /* _HNS3_FDIR_H_ */
+#endif /* HNS3_FDIR_H */

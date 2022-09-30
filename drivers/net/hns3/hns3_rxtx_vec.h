@@ -2,8 +2,8 @@
  * Copyright(c) 2020-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_RXTX_VEC_H_
-#define _HNS3_RXTX_VEC_H_
+#ifndef HNS3_RXTX_VEC_H
+#define HNS3_RXTX_VEC_H
 
 #include "hns3_rxtx.h"
 #include "hns3_ethdev.h"
@@ -94,4 +94,4 @@ hns3_rx_reassemble_pkts(struct rte_mbuf **rx_pkts,
 
 	return count;
 }
-#endif /* _HNS3_RXTX_VEC_H_ */
+#endif /* HNS3_RXTX_VEC_H */

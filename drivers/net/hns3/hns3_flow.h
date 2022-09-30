@@ -2,8 +2,8 @@
  * Copyright(C) 2021 HiSilicon Limited
  */
 
-#ifndef _HNS3_FLOW_H_
-#define _HNS3_FLOW_H_
+#ifndef HNS3_FLOW_H
+#define HNS3_FLOW_H
 
 #include <rte_flow.h>
 #include <ethdev_driver.h>
@@ -54,4 +54,4 @@ void hns3_flow_init(struct rte_eth_dev *dev);
 void hns3_flow_uninit(struct rte_eth_dev *dev);
 int hns3_restore_filter(struct hns3_adapter *hns);
 
-#endif /* _HNS3_FLOW_H_ */
+#endif /* HNS3_FLOW_H */

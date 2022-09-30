@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_RSS_H_
-#define _HNS3_RSS_H_
+#ifndef HNS3_RSS_H
+#define HNS3_RSS_H
 
 #include <rte_ethdev.h>
 #include <rte_flow.h>
@@ -109,4 +109,4 @@ void hns3_rss_uninit(struct hns3_adapter *hns);
 int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf);
 int hns3_rss_set_algo_key(struct hns3_hw *hw, const uint8_t *key);
 
-#endif /* _HNS3_RSS_H_ */
+#endif /* HNS3_RSS_H */

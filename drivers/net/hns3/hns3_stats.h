@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_STATS_H_
-#define _HNS3_STATS_H_
+#ifndef HNS3_STATS_H
+#define HNS3_STATS_H
 
 #include <ethdev_driver.h>
 #include <rte_ethdev.h>
@@ -172,4 +172,4 @@ void hns3_stats_uninit(struct hns3_hw *hw);
 int hns3_query_mac_stats_reg_num(struct hns3_hw *hw);
 void hns3_update_hw_stats(struct hns3_hw *hw);
 
-#endif /* _HNS3_STATS_H_ */
+#endif /* HNS3_STATS_H */

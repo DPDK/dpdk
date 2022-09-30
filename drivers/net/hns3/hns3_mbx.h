@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_MBX_H_
-#define _HNS3_MBX_H_
+#ifndef HNS3_MBX_H
+#define HNS3_MBX_H
 
 #include <stdint.h>
 
@@ -172,4 +172,4 @@ void hns3_dev_handle_mbx_msg(struct hns3_hw *hw);
 int hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		      const uint8_t *msg_data, uint8_t msg_len, bool need_resp,
 		      uint8_t *resp_data, uint16_t resp_len);
-#endif /* _HNS3_MBX_H_ */
+#endif /* HNS3_MBX_H */

@@ -2,8 +2,8 @@
  * Copyright(c) 2020-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_RXTX_VEC_NEON_H_
-#define _HNS3_RXTX_VEC_NEON_H_
+#ifndef HNS3_RXTX_VEC_NEON_H
+#define HNS3_RXTX_VEC_NEON_H
 
 #include <arm_neon.h>
 
@@ -299,4 +299,4 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 
 	return nb_rx;
 }
-#endif /* _HNS3_RXTX_VEC_NEON_H_ */
+#endif /* HNS3_RXTX_VEC_NEON_H */

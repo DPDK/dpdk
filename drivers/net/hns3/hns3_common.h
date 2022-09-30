@@ -2,8 +2,8 @@
  * Copyright(C) 2021 HiSilicon Limited
  */
 
-#ifndef _HNS3_COMMON_H_
-#define _HNS3_COMMON_H_
+#ifndef HNS3_COMMON_H
+#define HNS3_COMMON_H
 
 #include <sys/time.h>
 
@@ -61,4 +61,4 @@ int hns3_restore_rx_interrupt(struct hns3_hw *hw);
 
 int hns3_get_pci_revision_id(struct hns3_hw *hw, uint8_t *revision_id);
 
-#endif /* _HNS3_COMMON_H_ */
+#endif /* HNS3_COMMON_H */

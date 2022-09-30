@@ -2,8 +2,8 @@
  * Copyright(c) 2020-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_TM_H_
-#define _HNS3_TM_H_
+#ifndef HNS3_TM_H
+#define HNS3_TM_H
 
 #include <stdint.h>
 #include <rte_tailq.h>
@@ -114,4 +114,4 @@ void hns3_tm_dev_start_proc(struct hns3_hw *hw);
 void hns3_tm_dev_stop_proc(struct hns3_hw *hw);
 int hns3_tm_conf_update(struct hns3_hw *hw);
 
-#endif /* _HNS3_TM_H */
+#endif /* HNS3_TM_H */

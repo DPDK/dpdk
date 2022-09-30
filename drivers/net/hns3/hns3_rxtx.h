@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#ifndef _HNS3_RXTX_H_
-#define _HNS3_RXTX_H_
+#ifndef HNS3_RXTX_H
+#define HNS3_RXTX_H
 
 #include <stdint.h>
 
@@ -777,4 +777,4 @@ void hns3_tx_push_init(struct rte_eth_dev *dev);
 void hns3_stop_tx_datapath(struct rte_eth_dev *dev);
 void hns3_start_tx_datapath(struct rte_eth_dev *dev);
 
-#endif /* _HNS3_RXTX_H_ */
+#endif /* HNS3_RXTX_H */
