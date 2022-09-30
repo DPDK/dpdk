@@ -4890,6 +4890,7 @@ static int
 hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
 	int ret;
 
 	ret = hns3_update_queue_map_configure(hns);
@@ -4910,7 +4911,7 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 		PMD_INIT_LOG(ERR, "failed to enable MAC, ret = %d", ret);
 		goto err_config_mac_mode;
 	}
-	return 0;
+	return hns3_restore_filter(dev);
 
 err_config_mac_mode:
 	hns3_dev_release_mbufs(hns);
@@ -5018,12 +5019,6 @@ hns3_restore_rx_interrupt(struct hns3_hw *hw)
 	return 0;
 }
 
-static void
-hns3_restore_filter(struct rte_eth_dev *dev)
-{
-	hns3_restore_rss_filter(dev);
-}
-
 static int
 hns3_dev_start(struct rte_eth_dev *dev)
 {
@@ -5074,8 +5069,6 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
 	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, dev);
-
-	hns3_restore_filter(dev);
 
 	/* Enable interrupt of all rx queues before enabling queues */
 	hns3_dev_all_rx_queue_intr_enable(hw, true);

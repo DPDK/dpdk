@@ -2085,6 +2085,7 @@ static int
 hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
 	uint16_t nb_rx_q = hw->data->nb_rx_queues;
 	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	int ret;
@@ -2097,7 +2098,7 @@ hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 	if (ret)
 		hns3_err(hw, "failed to init queues, ret = %d.", ret);
 
-	return ret;
+	return hns3_restore_filter(dev);
 }
 
 static int
@@ -2194,12 +2195,6 @@ hns3vf_restore_rx_interrupt(struct hns3_hw *hw)
 	return 0;
 }
 
-static void
-hns3vf_restore_filter(struct rte_eth_dev *dev)
-{
-	hns3_restore_rss_filter(dev);
-}
-
 static int
 hns3vf_dev_start(struct rte_eth_dev *dev)
 {
@@ -2249,8 +2244,6 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
 	hns3vf_service_handler(dev);
-
-	hns3vf_restore_filter(dev);
 
 	/* Enable interrupt of all rx queues before enabling queues */
 	hns3_dev_all_rx_queue_intr_enable(hw, true);

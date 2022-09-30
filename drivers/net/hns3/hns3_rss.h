@@ -110,6 +110,6 @@ int hns3_config_rss(struct hns3_adapter *hns);
 void hns3_rss_uninit(struct hns3_adapter *hns);
 int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf);
 int hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key);
-int hns3_restore_rss_filter(struct rte_eth_dev *dev);
+int hns3_restore_filter(struct rte_eth_dev *dev);
 
 #endif /* _HNS3_RSS_H_ */
