@@ -94,6 +94,7 @@ New Features
 
 * **Updated Intel QuickAssist Technology (QAT) symmetric crypto driver.**
 
+  * Added support for SM3 hash algorithm.
   * Added support for SM4 encryption algorithm in ECB, CBC and CTR modes.
 
 * **Updated Marvell cnxk crypto driver.**
