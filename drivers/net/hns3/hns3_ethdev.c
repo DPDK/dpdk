@@ -5006,6 +5006,7 @@ static int
 hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
 	bool link_en;
 	int ret;
 
@@ -5042,7 +5043,7 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 	if (ret)
 		goto err_set_link_speed;
 
-	return 0;
+	return hns3_restore_filter(dev);
 
 err_set_link_speed:
 	(void)hns3_cfg_mac_mode(hw, false);
@@ -5057,12 +5058,6 @@ err_config_mac_mode:
 	 */
 	(void)hns3_reset_all_tqps(hns);
 	return ret;
-}
-
-static void
-hns3_restore_filter(struct rte_eth_dev *dev)
-{
-	hns3_restore_rss_filter(dev);
 }
 
 static int
@@ -5120,8 +5115,6 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	hns3_rx_scattered_calc(dev);
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
-
-	hns3_restore_filter(dev);
 
 	/* Enable interrupt of all rx queues before enabling queues */
 	hns3_dev_all_rx_queue_intr_enable(hw, true);

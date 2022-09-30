@@ -1646,7 +1646,7 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 	return ret;
 }
 
-int
+static int
 hns3_restore_rss_filter(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -1670,6 +1670,12 @@ out:
 	pthread_mutex_unlock(&hw->flows_lock);
 
 	return ret;
+}
+
+int
+hns3_restore_filter(struct rte_eth_dev *dev)
+{
+	return hns3_restore_rss_filter(dev);
 }
 
 static int
