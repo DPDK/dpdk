@@ -34,10 +34,6 @@
 #define HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP 2
 #define HNS3_RSS_HASH_ALGO_MASK		0xf
 
-struct hns3_rss_tuple_cfg {
-	uint64_t rss_tuple_fields;
-};
-
 #define HNS3_RSS_QUEUES_BUFFER_NUM	64 /* Same as the Max rx/tx queue num */
 struct hns3_rss_conf {
 	/* RSS parameters :algorithm, flow_types,  key, queue */

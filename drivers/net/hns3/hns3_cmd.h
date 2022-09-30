@@ -59,11 +59,6 @@ enum hns3_cmd_return_status {
 	HNS3_CMD_ROH_CHECK_FAIL = 12
 };
 
-struct hns3_misc_vector {
-	uint8_t *addr;
-	int vector_irq;
-};
-
 struct hns3_cmq {
 	struct hns3_cmq_ring csq;
 	struct hns3_cmq_ring crq;
@@ -395,20 +390,6 @@ struct hns3_shared_buf {
 struct hns3_pkt_buf_alloc {
 	struct hns3_priv_buf priv_buf[HNS3_MAX_TC_NUM];
 	struct hns3_shared_buf s_buf;
-};
-
-#define HNS3_RX_COM_WL_EN_B	15
-struct hns3_rx_com_wl_buf_cmd {
-	uint16_t high_wl;
-	uint16_t low_wl;
-	uint8_t rsv[20];
-};
-
-#define HNS3_RX_PKT_EN_B	15
-struct hns3_rx_pkt_buf_cmd {
-	uint16_t high_pkt;
-	uint16_t low_pkt;
-	uint8_t rsv[20];
 };
 
 #define HNS3_PF_STATE_DONE_B	0
