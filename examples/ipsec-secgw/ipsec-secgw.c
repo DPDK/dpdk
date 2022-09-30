@@ -3356,7 +3356,7 @@ main(int32_t argc, char **argv)
 		port_init(portid, req_rx_offloads[portid],
 				req_tx_offloads[portid]);
 		if ((req_tx_offloads[portid] & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM))
-			ipv4_cksum_port_mask = 1U << portid;
+			ipv4_cksum_port_mask |= 1U << portid;
 	}
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
