@@ -875,6 +875,12 @@ struct hns3_dev_specs_0_cmd {
 	uint32_t max_tm_rate;
 };
 
+struct hns3_dev_specs_1_cmd {
+	uint8_t rsv0[12];
+	uint8_t min_tx_pkt_len;
+	uint8_t rsv1[11];
+};
+
 #define HNS3_MAX_TQP_NUM_HIP08_PF	64
 #define HNS3_DEFAULT_TX_BUF		0x4000    /* 16k  bytes */
 #define HNS3_TOTAL_PKT_BUF		0x108000  /* 1.03125M bytes */
