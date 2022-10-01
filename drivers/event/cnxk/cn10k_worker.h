@@ -230,6 +230,9 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 	if ((flags & CPT_RX_WQE_F) &&
 	    (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_CRYPTODEV)) {
 		u64[1] = cn10k_cpt_crypto_adapter_dequeue(u64[1]);
+	} else if ((flags & CPT_RX_WQE_F) &&
+		   (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_CRYPTODEV_VECTOR)) {
+		u64[1] = cn10k_cpt_crypto_adapter_vector_dequeue(u64[1]);
 	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV) {
 		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);
 		uint64_t mbuf;
@@ -272,8 +275,7 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 			cn10k_sso_process_tstamp(u64[1], mbuf,
 						 ws->tstamp[port]);
 		u64[1] = mbuf;
-	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) ==
-		   RTE_EVENT_TYPE_ETHDEV_VECTOR) {
+	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV_VECTOR) {
 		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);
 		__uint128_t vwqe_hdr = *(__uint128_t *)u64[1];
 

@@ -10,6 +10,7 @@
 #include <cryptodev_pmd.h>
 #include <rte_devargs.h>
 #include <rte_ethdev.h>
+#include <rte_event_crypto_adapter.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
 #include <rte_kvargs.h>
@@ -305,7 +306,8 @@ int cnxk_sso_tx_adapter_start(uint8_t id, const struct rte_eventdev *event_dev);
 int cnxk_sso_tx_adapter_stop(uint8_t id, const struct rte_eventdev *event_dev);
 int cnxk_sso_tx_adapter_free(uint8_t id, const struct rte_eventdev *event_dev);
 int cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
-			       const struct rte_cryptodev *cdev, int32_t queue_pair_id);
+			       const struct rte_cryptodev *cdev, int32_t queue_pair_id,
+			       const struct rte_event_crypto_adapter_queue_conf *conf);
 int cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev, int32_t queue_pair_id);
 
 #endif /* __CNXK_EVENTDEV_H__ */

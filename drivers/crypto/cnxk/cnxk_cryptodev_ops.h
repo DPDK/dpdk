@@ -37,7 +37,10 @@ struct cpt_qp_meta_info {
 
 struct cpt_inflight_req {
 	union cpt_res_s res;
-	struct rte_crypto_op *cop;
+	union {
+		struct rte_crypto_op *cop;
+		struct rte_event_vector *vec;
+	};
 	void *mdata;
 	uint8_t op_flags;
 	void *qp;
@@ -63,6 +66,10 @@ struct crypto_adpter_info {
 	/**< Set if queue pair is added to crypto adapter */
 	struct rte_mempool *req_mp;
 	/**< CPT inflight request mempool */
+	uint16_t vector_sz;
+	/** Maximum number of cops to combine into single vector */
+	struct rte_mempool *vector_mp;
+	/** Pool for allocating rte_event_vector */
 };
 
 struct cnxk_cpt_qp {

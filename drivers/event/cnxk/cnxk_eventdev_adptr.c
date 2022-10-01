@@ -641,7 +641,8 @@ cnxk_sso_tx_adapter_free(uint8_t id __rte_unused,
 }
 
 static int
-crypto_adapter_qp_setup(const struct rte_cryptodev *cdev, struct cnxk_cpt_qp *qp)
+crypto_adapter_qp_setup(const struct rte_cryptodev *cdev, struct cnxk_cpt_qp *qp,
+			const struct rte_event_crypto_adapter_queue_conf *conf)
 {
 	char name[RTE_MEMPOOL_NAMESIZE];
 	uint32_t cache_size, nb_req;
@@ -674,6 +675,10 @@ crypto_adapter_qp_setup(const struct rte_cryptodev *cdev, struct cnxk_cpt_qp *qp
 	if (qp->ca.req_mp == NULL)
 		return -ENOMEM;
 
+	if (conf != NULL) {
+		qp->ca.vector_sz = conf->vector_sz;
+		qp->ca.vector_mp = conf->vector_mp;
+	}
 	qp->ca.enabled = true;
 
 	return 0;
@@ -681,7 +686,8 @@ crypto_adapter_qp_setup(const struct rte_cryptodev *cdev, struct cnxk_cpt_qp *qp
 
 int
 cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev, const struct rte_cryptodev *cdev,
-			   int32_t queue_pair_id)
+			   int32_t queue_pair_id,
+			   const struct rte_event_crypto_adapter_queue_conf *conf)
 {
 	struct cnxk_sso_evdev *sso_evdev = cnxk_sso_pmd_priv(event_dev);
 	uint32_t adptr_xae_cnt = 0;
@@ -693,7 +699,7 @@ cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev, const struct rt
 
 		for (qp_id = 0; qp_id < cdev->data->nb_queue_pairs; qp_id++) {
 			qp = cdev->data->queue_pairs[qp_id];
-			ret = crypto_adapter_qp_setup(cdev, qp);
+			ret = crypto_adapter_qp_setup(cdev, qp, conf);
 			if (ret) {
 				cnxk_crypto_adapter_qp_del(cdev, -1);
 				return ret;
@@ -702,7 +708,7 @@ cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev, const struct rt
 		}
 	} else {
 		qp = cdev->data->queue_pairs[queue_pair_id];
-		ret = crypto_adapter_qp_setup(cdev, qp);
+		ret = crypto_adapter_qp_setup(cdev, qp, conf);
 		if (ret)
 			return ret;
 		adptr_xae_cnt = qp->ca.req_mp->size;
@@ -733,7 +739,8 @@ crypto_adapter_qp_free(struct cnxk_cpt_qp *qp)
 }
 
 int
-cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev, int32_t queue_pair_id)
+cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev,
+			   int32_t queue_pair_id)
 {
 	struct cnxk_cpt_qp *qp;
 
