@@ -26,6 +26,7 @@
 #include <rte_eventdev.h>
 #include <eventdev_pmd_vdev.h>
 #include <rte_ethdev.h>
+#include <rte_event_crypto_adapter.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
 #include <cryptodev_pmd.h>
@@ -775,10 +776,10 @@ static int
 dpaa_eventdev_crypto_queue_add(const struct rte_eventdev *dev,
 		const struct rte_cryptodev *cryptodev,
 		int32_t rx_queue_id,
-		const struct rte_event *ev)
+		const struct rte_event_crypto_adapter_queue_conf *conf)
 {
 	struct dpaa_eventdev *priv = dev->data->dev_private;
-	uint8_t ev_qid = ev->queue_id;
+	uint8_t ev_qid = conf->ev.queue_id;
 	u16 ch_id = priv->evq_info[ev_qid].ch_id;
 	int ret;
 
@@ -786,10 +787,10 @@ dpaa_eventdev_crypto_queue_add(const struct rte_eventdev *dev,
 
 	if (rx_queue_id == -1)
 		return dpaa_eventdev_crypto_queue_add_all(dev,
-				cryptodev, ev);
+				cryptodev, &conf->ev);
 
 	ret = dpaa_sec_eventq_attach(cryptodev, rx_queue_id,
-			ch_id, ev);
+			ch_id, &conf->ev);
 	if (ret) {
 		DPAA_EVENTDEV_ERR(
 			"dpaa_sec_eventq_attach failed: ret: %d\n", ret);

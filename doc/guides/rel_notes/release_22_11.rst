@@ -117,6 +117,12 @@ New Features
   * Added ``rte_event_eth_tx_adapter_queue_stop`` to stop the Tx Adapter
     from enqueueing any packets to the Tx queue.
 
+* **Added event crypto adapter vectorization support.**
+
+  Added support to aggregate crypto operations processed by event crypto adapter
+  into single event containing ``rte_event_vector``
+  whose event type is ``RTE_EVENT_TYPE_CRYPTODEV_VECTOR``.
+
 
 Removed Items
 -------------
@@ -261,6 +267,13 @@ API Changes
   by most of the drivers and it was retrieving userdata from mbuf dynamic field.
   The API is now removed and the application can directly get the userdata from
   mbuf dynamic field.
+
+* eventdev: The function ``rte_event_crypto_adapter_queue_pair_add`` was updated
+  to accept configuration of type ``rte_event_crypto_adapter_queue_conf``
+  instead of ``rte_event``,
+  similar to ``rte_event_eth_rx_adapter_queue_add`` signature.
+  Event will be one of the configuration fields,
+  together with additional vector parameters.
 
 * metrics: Updated ``rte_metrics_init`` so it returns an error code instead
   of calling ``rte_exit``.

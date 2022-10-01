@@ -837,14 +837,13 @@ perf_event_crypto_adapter_setup(struct test_perf *t, struct prod_data *p)
 	}
 
 	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
-		struct rte_event response_info;
+		struct rte_event_crypto_adapter_queue_conf conf;
 
-		response_info.event = 0;
-		response_info.sched_type = RTE_SCHED_TYPE_ATOMIC;
-		response_info.queue_id = p->queue_id;
+		memset(&conf, 0, sizeof(conf));
+		conf.ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+		conf.ev.queue_id = p->queue_id;
 		ret = rte_event_crypto_adapter_queue_pair_add(
-			TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id,
-			&response_info);
+			TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id, &conf);
 	} else {
 		ret = rte_event_crypto_adapter_queue_pair_add(
 			TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id, NULL);

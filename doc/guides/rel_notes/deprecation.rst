@@ -148,11 +148,5 @@ Deprecation Notices
   pointer for the private data to the application which can be attached
   to the packet while enqueuing.
 
-* eventdev: The function ``rte_event_crypto_adapter_queue_pair_add`` will
-  accept configuration of type ``rte_event_crypto_adapter_queue_conf`` instead
-  of ``rte_event``, similar to ``rte_event_eth_rx_adapter_queue_add`` signature.
-  Event will be one of the configuration fields,
-  together with additional vector parameters.
-
 * raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
   in DPDK 22.11, as it is no longer in use, no active user known.

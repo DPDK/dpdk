@@ -921,11 +921,12 @@ int
 rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 			uint8_t cdev_id,
 			int32_t queue_pair_id,
-			const struct rte_event *event)
+			const struct rte_event_crypto_adapter_queue_conf *conf)
 {
+	struct rte_event_crypto_adapter_vector_limits limits;
 	struct event_crypto_adapter *adapter;
-	struct rte_eventdev *dev;
 	struct crypto_device_info *dev_info;
+	struct rte_eventdev *dev;
 	uint32_t cap;
 	int ret;
 
@@ -950,11 +951,49 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 		return ret;
 	}
 
-	if ((cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) &&
-	    (event == NULL)) {
-		RTE_EDEV_LOG_ERR("Conf value can not be NULL for dev_id=%u",
-				  cdev_id);
-		return -EINVAL;
+	if (conf == NULL) {
+		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
+			RTE_EDEV_LOG_ERR("Conf value can not be NULL for dev_id=%u",
+					 cdev_id);
+			return -EINVAL;
+		}
+	} else {
+		if (conf->flags & RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR) {
+			if ((cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_EVENT_VECTOR) == 0) {
+				RTE_EDEV_LOG_ERR("Event vectorization is not supported,"
+						 "dev %" PRIu8 " cdev %" PRIu8, id,
+						 cdev_id);
+				return -ENOTSUP;
+			}
+
+			ret = rte_event_crypto_adapter_vector_limits_get(
+				adapter->eventdev_id, cdev_id, &limits);
+			if (ret < 0) {
+				RTE_EDEV_LOG_ERR("Failed to get event device vector "
+						 "limits, dev %" PRIu8 " cdev %" PRIu8,
+						 id, cdev_id);
+				return -EINVAL;
+			}
+
+			if (conf->vector_sz < limits.min_sz ||
+			    conf->vector_sz > limits.max_sz ||
+			    conf->vector_timeout_ns < limits.min_timeout_ns ||
+			    conf->vector_timeout_ns > limits.max_timeout_ns ||
+			    conf->vector_mp == NULL) {
+				RTE_EDEV_LOG_ERR("Invalid event vector configuration,"
+						" dev %" PRIu8 " cdev %" PRIu8,
+						id, cdev_id);
+				return -EINVAL;
+			}
+
+			if (conf->vector_mp->elt_size < (sizeof(struct rte_event_vector) +
+			    (sizeof(uintptr_t) * conf->vector_sz))) {
+				RTE_EDEV_LOG_ERR("Invalid event vector configuration,"
+						" dev %" PRIu8 " cdev %" PRIu8,
+						id, cdev_id);
+				return -EINVAL;
+			}
+		}
 	}
 
 	dev_info = &adapter->cdevs[cdev_id];
@@ -989,7 +1028,7 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 		ret = (*dev->dev_ops->crypto_adapter_queue_pair_add)(dev,
 				dev_info->dev,
 				queue_pair_id,
-				event);
+				conf);
 		if (ret)
 			return ret;
 
@@ -1029,8 +1068,8 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 		rte_service_component_runstate_set(adapter->service_id, 1);
 	}
 
-	rte_eventdev_trace_crypto_adapter_queue_pair_add(id, cdev_id, event,
-		queue_pair_id);
+	rte_eventdev_trace_crypto_adapter_queue_pair_add(id, cdev_id,
+		queue_pair_id, conf);
 	return 0;
 }
 
@@ -1287,4 +1326,49 @@ rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 	*event_port_id = adapter->event_port_id;
 
 	return 0;
+}
+
+int
+rte_event_crypto_adapter_vector_limits_get(
+	uint8_t dev_id, uint16_t cdev_id,
+	struct rte_event_crypto_adapter_vector_limits *limits)
+{
+	struct rte_cryptodev *cdev;
+	struct rte_eventdev *dev;
+	uint32_t cap;
+	int ret;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+
+	if (!rte_cryptodev_is_valid_dev(cdev_id)) {
+		RTE_EDEV_LOG_ERR("Invalid dev_id=%" PRIu8, cdev_id);
+		return -EINVAL;
+	}
+
+	if (limits == NULL) {
+		RTE_EDEV_LOG_ERR("Invalid limits storage provided");
+		return -EINVAL;
+	}
+
+	dev = &rte_eventdevs[dev_id];
+	cdev = rte_cryptodev_pmd_get_dev(cdev_id);
+
+	ret = rte_event_crypto_adapter_caps_get(dev_id, cdev_id, &cap);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8
+				 "cdev %" PRIu16, dev_id, cdev_id);
+		return ret;
+	}
+
+	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_EVENT_VECTOR)) {
+		RTE_EDEV_LOG_ERR("Event vectorization is not supported,"
+				 "dev %" PRIu8 " cdev %" PRIu8, dev_id, cdev_id);
+		return -ENOTSUP;
+	}
+
+	if ((*dev->dev_ops->crypto_adapter_vector_limits_get) == NULL)
+		return -ENOTSUP;
+
+	return dev->dev_ops->crypto_adapter_vector_limits_get(
+		dev, cdev, limits);
 }

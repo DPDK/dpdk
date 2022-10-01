@@ -253,6 +253,78 @@ struct rte_event_crypto_adapter_conf {
 	 */
 };
 
+#define RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR	0x1
+/**< This flag indicates that crypto operations processed on the crypto
+ * adapter need to be vectorized
+ * @see rte_event_crypto_adapter_queue_conf::flags
+ */
+
+/**
+ * Adapter queue configuration structure
+ */
+struct rte_event_crypto_adapter_queue_conf {
+	uint32_t flags;
+	/**< Flags for handling crypto operations
+	 * @see RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR
+	 */
+	struct rte_event ev;
+	/**< If HW supports cryptodev queue pair to event queue binding,
+	 * application is expected to fill in event information.
+	 * @see RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND
+	 */
+	uint16_t vector_sz;
+	/**< Indicates the maximum number for crypto operations to combine and
+	 * form a vector.
+	 * @see rte_event_crypto_adapter_vector_limits::min_sz
+	 * @see rte_event_crypto_adapter_vector_limits::max_sz
+	 * Valid when RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR flag is set in
+	 * @see rte_event_crypto_adapter_queue_conf::flags
+	 */
+	uint64_t vector_timeout_ns;
+	/**<
+	 * Indicates the maximum number of nanoseconds to wait for aggregating
+	 * crypto operations. Should be within vectorization limits of the
+	 * adapter
+	 * @see rte_event_crypto_adapter_vector_limits::min_timeout_ns
+	 * @see rte_event_crypto_adapter_vector_limits::max_timeout_ns
+	 * Valid when RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR flag is set in
+	 * @see rte_event_crypto_adapter_queue_conf::flags
+	 */
+	struct rte_mempool *vector_mp;
+	/**< Indicates the mempool that should be used for allocating
+	 * rte_event_vector container.
+	 * Should be created by using `rte_event_vector_pool_create`.
+	 * Valid when RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR flag is set in
+	 * @see rte_event_crypto_adapter_queue_conf::flags.
+	 */
+};
+
+/**
+ * A structure used to retrieve event crypto adapter vector limits.
+ */
+struct rte_event_crypto_adapter_vector_limits {
+	uint16_t min_sz;
+	/**< Minimum vector limit configurable.
+	 * @see rte_event_crypto_adapter_queue_conf::vector_sz
+	 */
+	uint16_t max_sz;
+	/**< Maximum vector limit configurable.
+	 * @see rte_event_crypto_adapter_queue_conf::vector_sz
+	 */
+	uint8_t log2_sz;
+	/**< True if the size configured should be in log2.
+	 * @see rte_event_crypto_adapter_queue_conf::vector_sz
+	 */
+	uint64_t min_timeout_ns;
+	/**< Minimum vector timeout configurable.
+	 * @see rte_event_crypto_adapter_queue_conf::vector_timeout_ns
+	 */
+	uint64_t max_timeout_ns;
+	/**< Maximum vector timeout configurable.
+	 * @see rte_event_crypto_adapter_queue_conf::vector_timeout_ns
+	 */
+};
+
 /**
  * Function type used for adapter configuration callback. The callback is
  * used to fill in members of the struct rte_event_crypto_adapter_conf, this
@@ -392,10 +464,9 @@ rte_event_crypto_adapter_free(uint8_t id);
  *  Cryptodev queue pair identifier. If queue_pair_id is set -1,
  *  adapter adds all the pre configured queue pairs to the instance.
  *
- * @param event
- *  if HW supports cryptodev queue pair to event queue binding, application is
- *  expected to fill in event information, else it will be NULL.
- *  @see RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND
+ * @param conf
+ *  Additional configuration structure of type
+ *  *rte_event_crypto_adapter_queue_conf*
  *
  * @return
  *  - 0: Success, queue pair added correctly.
@@ -405,7 +476,7 @@ int
 rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 			uint8_t cdev_id,
 			int32_t queue_pair_id,
-			const struct rte_event *event);
+			const struct rte_event_crypto_adapter_queue_conf *conf);
 
 /**
  * Delete a queue pair from an event crypto adapter.
@@ -522,6 +593,26 @@ rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  */
 int
 rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
+
+/**
+ * Retrieve vector limits for a given event dev and crypto dev pair.
+ * @see rte_event_crypto_adapter_vector_limits
+ *
+ * @param dev_id
+ *  Event device identifier.
+ * @param cdev_id
+ *  Crypto device identifier.
+ * @param [out] limits
+ *  A pointer to rte_event_crypto_adapter_vector_limits structure that has to
+ *  be filled.
+ *
+ * @return
+ *  - 0: Success.
+ *  - <0: Error code on failure.
+ */
+int rte_event_crypto_adapter_vector_limits_get(
+	uint8_t dev_id, uint16_t cdev_id,
+	struct rte_event_crypto_adapter_vector_limits *limits);
 
 /**
  * Enqueue a burst of crypto operations as event objects supplied in *rte_event*

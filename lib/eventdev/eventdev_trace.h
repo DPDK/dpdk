@@ -18,6 +18,7 @@ extern "C" {
 #include <rte_trace_point.h>
 
 #include "rte_eventdev.h"
+#include "rte_event_crypto_adapter.h"
 #include "rte_event_eth_rx_adapter.h"
 #include "rte_event_timer_adapter.h"
 
@@ -271,11 +272,12 @@ RTE_TRACE_POINT(
 RTE_TRACE_POINT(
 	rte_eventdev_trace_crypto_adapter_queue_pair_add,
 	RTE_TRACE_POINT_ARGS(uint8_t adptr_id, uint8_t cdev_id,
-		const void *event, int32_t queue_pair_id),
+		int32_t queue_pair_id,
+		const struct rte_event_crypto_adapter_queue_conf *conf),
 	rte_trace_point_emit_u8(adptr_id);
 	rte_trace_point_emit_u8(cdev_id);
 	rte_trace_point_emit_i32(queue_pair_id);
-	rte_trace_point_emit_ptr(event);
+	rte_trace_point_emit_ptr(conf);
 )
 
 RTE_TRACE_POINT(

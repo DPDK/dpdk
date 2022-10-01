@@ -201,10 +201,10 @@ capability, event information must be passed to the add API.
 
         ret = rte_event_crypto_adapter_caps_get(id, evdev, &cap);
         if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
-                struct rte_event event;
+                struct rte_event_crypto_adapter_queue_conf conf;
 
-                // Fill in event information & pass it to add API
-                rte_event_crypto_adapter_queue_pair_add(id, cdev_id, qp_id, &event);
+                // Fill in conf.event information & pass it to add API
+                rte_event_crypto_adapter_queue_pair_add(id, cdev_id, qp_id, &conf);
         } else
                 rte_event_crypto_adapter_queue_pair_add(id, cdev_id, qp_id, NULL);
 
@@ -290,6 +290,23 @@ the ``rte_crypto_op``.
                 /* Store private data information along with rte_crypto_op */
                 rte_memcpy(op + len, &m_data, sizeof(m_data));
         }
+
+Enable event vectorization
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The event crypto adapter can aggregate outcoming crypto operations based on
+provided response information of ``rte_event_crypto_metadata::response_info``
+and generate a ``rte_event`` containing ``rte_event_vector`` whose event type
+is ``RTE_EVENT_TYPE_CRYPTODEV_VECTOR``.
+To enable vectorization application should set
+RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR in
+``rte_event_crypto_adapter_queue_conf::flag`` and provide vector
+configuration(size, mempool, etc.) with respect of
+``rte_event_crypto_adapter_vector_limits``, which could be obtained by calling
+``rte_event_crypto_adapter_vector_limits_get()``.
+
+The RTE_EVENT_CRYPTO_ADAPTER_CAP_EVENT_VECTOR capability indicates whether
+PMD supports this feature.
 
 Start the adapter instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

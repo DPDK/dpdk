@@ -746,12 +746,12 @@ static int
 ssovf_crypto_adapter_qp_add(const struct rte_eventdev *dev,
 			    const struct rte_cryptodev *cdev,
 			    int32_t queue_pair_id,
-			    const struct rte_event *event)
+			    const struct rte_event_crypto_adapter_queue_conf *conf)
 {
 	struct cpt_instance *qp;
 	uint8_t qp_id;
 
-	RTE_SET_USED(event);
+	RTE_SET_USED(conf);
 
 	if (queue_pair_id == -1) {
 		for (qp_id = 0; qp_id < cdev->data->nb_queue_pairs; qp_id++) {

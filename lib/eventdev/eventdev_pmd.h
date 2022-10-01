@@ -910,6 +910,7 @@ rte_event_pmd_selftest_seqn(struct rte_mbuf *mbuf)
 }
 
 struct rte_cryptodev;
+struct rte_event_crypto_adapter_queue_conf;
 
 /**
  * This API may change without prior notice
@@ -964,11 +965,11 @@ typedef int (*eventdev_crypto_adapter_caps_get_t)
  *   - <0: Error code returned by the driver function.
  *
  */
-typedef int (*eventdev_crypto_adapter_queue_pair_add_t)
-			(const struct rte_eventdev *dev,
-			 const struct rte_cryptodev *cdev,
-			 int32_t queue_pair_id,
-			 const struct rte_event *event);
+typedef int (*eventdev_crypto_adapter_queue_pair_add_t)(
+		const struct rte_eventdev *dev,
+		const struct rte_cryptodev *cdev,
+		int32_t queue_pair_id,
+		const struct rte_event_crypto_adapter_queue_conf *queue_conf);
 
 
 /**
@@ -1076,6 +1077,27 @@ typedef int (*eventdev_crypto_adapter_stats_get)
 typedef int (*eventdev_crypto_adapter_stats_reset)
 			(const struct rte_eventdev *dev,
 			 const struct rte_cryptodev *cdev);
+
+struct rte_event_crypto_adapter_vector_limits;
+/**
+ * Get event vector limits for a given event, crypto device pair.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param cdev
+ *   Crypto device pointer
+ *
+ * @param[out] limits
+ *   Pointer to the limits structure to be filled.
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Error code returned by the driver function.
+ */
+typedef int (*eventdev_crypto_adapter_vector_limits_get_t)(
+	const struct rte_eventdev *dev, const struct rte_cryptodev *cdev,
+	struct rte_event_crypto_adapter_vector_limits *limits);
 
 /**
  * Retrieve the event device's eth Tx adapter capabilities.
@@ -1402,6 +1424,9 @@ struct eventdev_ops {
 	/**< Get crypto stats */
 	eventdev_crypto_adapter_stats_reset crypto_adapter_stats_reset;
 	/**< Reset crypto stats */
+	eventdev_crypto_adapter_vector_limits_get_t
+		crypto_adapter_vector_limits_get;
+	/**< Get event vector limits for the crypto adapter */
 
 	eventdev_eth_rx_adapter_q_stats_get eth_rx_adapter_queue_stats_get;
 	/**< Get ethernet Rx queue stats */
