@@ -89,11 +89,6 @@ Deprecation Notices
   alternative is implemented.
   The legacy actions should be removed in DPDK 22.11.
 
-* ethdev: The enum ``rte_eth_event_ipsec_subtype`` will be extended to add
-  new subtype values ``RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY``,
-  ``RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY`` and
-  ``RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY`` in DPDK 22.11.
-
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,
