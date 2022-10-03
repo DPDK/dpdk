@@ -203,13 +203,13 @@ ulp_flow_db_resource_get(struct bnxt_ulp_context *ulp_ctxt,
  * Flush all flows in the flow database.
  *
  * ulp_ctxt [in] Ptr to ulp context
- * tbl_idx [in] The index to table
+ * flow_type [in] - specify default or regular
  *
  * returns 0 on success or negative number on failure
  */
 int32_t
 ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
-			uint32_t idx);
+			enum bnxt_ulp_fdb_type flow_type);
 
 /*
  * Flush all flows in the flow database that belong to a device function.
