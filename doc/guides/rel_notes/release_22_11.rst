@@ -81,6 +81,11 @@ New Features
   * Added meter API to get a pointer to profile/policy by their ID.
   * Added METER_MARK action for metering with lockless profile/policy access.
 
+* **Added flow offload action to route packets to kernel.**
+
+  Added new flow action which allows application to re-route packets
+  directly to the kernel without software involvement.
+
 * **Updated Intel iavf driver.**
 
   * Added flow subscription support.

@@ -2722,6 +2722,17 @@ enum rte_flow_action_type {
 	 * See file rte_mtr.h for MTR profile object configuration.
 	 */
 	RTE_FLOW_ACTION_TYPE_METER_MARK,
+
+	/**
+	 * Send packets to the kernel, without going to userspace at all.
+	 * The packets will be received by the kernel driver sharing
+	 * the same device as the DPDK port on which this action is configured.
+	 * This action mostly suits bifurcated driver model.
+	 * This is an ingress non-transfer action only.
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL,
 };
 
 /**

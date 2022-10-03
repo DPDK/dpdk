@@ -3691,6 +3691,9 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``color {value}``: meter color value (green/yellow/red).
 
+- ``send_to_kernel``: send packets to kernel.
+
+
 Actions list
 ^^^^^^^^^^^^
 
