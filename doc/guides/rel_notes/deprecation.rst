@@ -93,6 +93,3 @@ Deprecation Notices
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,
   so that application can reset that particular queue pair.
-
-* raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
-  in DPDK 22.11, as it is no longer in use, no active user known.
