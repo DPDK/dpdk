@@ -183,11 +183,19 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 
 	while (!mc_ctx->stop_signal) {
 		if (pending_enq_ops) {
+			scheduler_set_worker_session(
+				&enq_ops[pending_enq_ops_idx], pending_enq_ops,
+				worker_idx);
 			processed_ops =
 				rte_cryptodev_enqueue_burst(worker->dev_id,
 					worker->qp_id,
 					&enq_ops[pending_enq_ops_idx],
 					pending_enq_ops);
+			if (processed_ops < pending_deq_ops)
+				scheduler_retrieve_session(
+					&enq_ops[pending_enq_ops_idx +
+						processed_ops],
+					pending_deq_ops - processed_ops);
 			pending_enq_ops -= processed_ops;
 			pending_enq_ops_idx += processed_ops;
 			inflight_ops += processed_ops;
@@ -195,9 +203,16 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 			processed_ops = rte_ring_dequeue_burst(enq_ring, (void *)enq_ops,
 							MC_SCHED_BUFFER_SIZE, NULL);
 			if (processed_ops) {
+				scheduler_set_worker_session(enq_ops,
+					processed_ops, worker_idx);
 				pending_enq_ops_idx = rte_cryptodev_enqueue_burst(
 						worker->dev_id, worker->qp_id,
 						enq_ops, processed_ops);
+				if (pending_enq_ops_idx < processed_ops)
+					scheduler_retrieve_session(
+						enq_ops + pending_enq_ops_idx,
+						processed_ops -
+						pending_enq_ops_idx);
 				pending_enq_ops = processed_ops - pending_enq_ops_idx;
 				inflight_ops += pending_enq_ops_idx;
 			}
@@ -214,6 +229,8 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 					worker->dev_id, worker->qp_id, deq_ops,
 					MC_SCHED_BUFFER_SIZE);
 			if (processed_ops) {
+				scheduler_retrieve_session(deq_ops,
+					processed_ops);
 				inflight_ops -= processed_ops;
 				if (reordering_enabled) {
 					uint16_t j;

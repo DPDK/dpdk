@@ -9,6 +9,7 @@
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
 #include <rte_reorder.h>
+#include <rte_errno.h>
 
 #include "scheduler_pmd_private.h"
 
@@ -469,19 +470,113 @@ scheduler_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 	return max_priv_sess_size;
 }
 
+struct scheduler_configured_sess_info {
+	uint8_t dev_id;
+	uint8_t driver_id;
+	struct rte_cryptodev_sym_session *sess;
+};
+
 static int
-scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
-	struct rte_crypto_sym_xform *xform __rte_unused,
-	struct rte_cryptodev_sym_session *sess __rte_unused)
+scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev,
+	struct rte_crypto_sym_xform *xform,
+	struct rte_cryptodev_sym_session *sess)
 {
+	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
+	struct rte_mempool *mp = rte_mempool_from_obj(sess);
+	struct scheduler_session_ctx *sess_ctx = (void *)sess->driver_priv_data;
+	struct scheduler_configured_sess_info configured_sess[
+			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
+	uint32_t i, j, n_configured_sess = 0;
+	int ret = 0;
+
+	if (mp == NULL)
+		return -EINVAL;
+
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		struct scheduler_worker *worker = &sched_ctx->workers[i];
+		struct rte_cryptodev_sym_session *worker_sess;
+		uint8_t next_worker = 0;
+
+		for (j = 0; j < n_configured_sess; j++) {
+			if (configured_sess[j].driver_id ==
+					worker->driver_id) {
+				sess_ctx->worker_sess[i] =
+					configured_sess[j].sess;
+				next_worker = 1;
+				break;
+			}
+		}
+		if (next_worker)
+			continue;
+
+		if (rte_mempool_avail_count(mp) == 0) {
+			ret = -ENOMEM;
+			goto error_exit;
+		}
+
+		worker_sess = rte_cryptodev_sym_session_create(worker->dev_id,
+			xform, mp);
+		if (worker_sess == NULL) {
+			ret = -rte_errno;
+			goto error_exit;
+		}
+
+		worker_sess->opaque_data = (uint64_t)sess;
+		sess_ctx->worker_sess[i] = worker_sess;
+		configured_sess[n_configured_sess].driver_id =
+			worker->driver_id;
+		configured_sess[n_configured_sess].dev_id = worker->dev_id;
+		configured_sess[n_configured_sess].sess = worker_sess;
+		n_configured_sess++;
+	}
+
 	return 0;
+error_exit:
+	sess_ctx->ref_cnt = sched_ctx->ref_cnt;
+	for (i = 0; i < n_configured_sess; i++)
+		rte_cryptodev_sym_session_free(configured_sess[i].dev_id,
+			configured_sess[i].sess);
+	return ret;
 }
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
-		struct rte_cryptodev_sym_session *sess __rte_unused)
-{}
+scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
+{
+	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
+	struct scheduler_session_ctx *sess_ctx = (void *)sess->driver_priv_data;
+	struct scheduler_configured_sess_info deleted_sess[
+			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
+	uint32_t i, j, n_deleted_sess = 0;
+
+	if (sched_ctx->ref_cnt != sess_ctx->ref_cnt) {
+		CR_SCHED_LOG(WARNING,
+			"Worker updated between session creation/deletion. "
+			"The session may not be freed fully.");
+	}
+
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		struct scheduler_worker *worker = &sched_ctx->workers[i];
+		uint8_t next_worker = 0;
+
+		for (j = 0; j < n_deleted_sess; j++) {
+			if (deleted_sess[j].driver_id == worker->driver_id) {
+				sess_ctx->worker_sess[i] = NULL;
+				next_worker = 1;
+				break;
+			}
+		}
+		if (next_worker)
+			continue;
+
+		rte_cryptodev_sym_session_free(worker->dev_id,
+			sess_ctx->worker_sess[i]);
+
+		deleted_sess[n_deleted_sess++].driver_id = worker->driver_id;
+		sess_ctx->worker_sess[i] = NULL;
+	}
+}
 
 static struct rte_cryptodev_ops scheduler_pmd_ops = {
 		.dev_configure		= scheduler_pmd_config,
