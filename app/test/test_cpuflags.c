@@ -281,6 +281,47 @@ test_cpuflags(void)
 	CHECK_FOR_FLAG(RTE_CPUFLAG_RISCV_ISA_Z);
 #endif
 
+#if defined(RTE_ARCH_LOONGARCH)
+	printf("Check for CPUCFG:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_CPUCFG);
+
+	printf("Check for LAM:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_LAM);
+
+	printf("Check for UAL:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_UAL);
+
+	printf("Check for FPU:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_FPU);
+
+	printf("Check for LSX:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_LSX);
+
+	printf("Check for LASX:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_LASX);
+
+	printf("Check for CRC32:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_CRC32);
+
+	printf("Check for COMPLEX:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_COMPLEX);
+
+	printf("Check for CRYPTO:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_CRYPTO);
+
+	printf("Check for LVZ:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_LVZ);
+
+	printf("Check for LBT_X86:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_LBT_X86);
+
+	printf("Check for LBT_ARM:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_LBT_ARM);
+
+	printf("Check for LBT_MIPS:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_LBT_MIPS);
+#endif
+
 	/*
 	 * Check if invalid data is handled properly
 	 */
