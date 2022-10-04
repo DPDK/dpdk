@@ -23,7 +23,6 @@
 #include "ccp_pci.h"
 #include "ccp_pmd_private.h"
 
-int iommu_mode;
 struct ccp_list ccp_list = TAILQ_HEAD_INITIALIZER(ccp_list);
 static int ccp_dev_id;
 
@@ -652,7 +651,7 @@ is_ccp_device(const char *dirname,
 static int
 ccp_probe_device(int ccp_type, struct rte_pci_device *pci_dev)
 {
-	struct ccp_device *ccp_dev = NULL;
+	struct ccp_device *ccp_dev;
 
 	ccp_dev = rte_zmalloc("ccp_device", sizeof(*ccp_dev),
 			      RTE_CACHE_LINE_SIZE);
@@ -684,16 +683,10 @@ ccp_probe_devices(struct rte_pci_device *pci_dev,
 	struct dirent *d;
 	DIR *dir;
 	int ret = 0;
-	int module_idx = 0;
 	uint16_t domain;
 	uint8_t bus, devid, function;
 	char dirname[PATH_MAX];
 
-	module_idx = ccp_check_pci_uio_module();
-	if (module_idx < 0)
-		return -1;
-
-	iommu_mode = module_idx;
 	TAILQ_INIT(&ccp_list);
 	dir = opendir(SYSFS_PCI_DEVICES);
 	if (dir == NULL)
