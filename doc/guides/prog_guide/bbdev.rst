@@ -1118,6 +1118,111 @@ Figure :numref:`figure_turbo_tb_decode` above
 showing the Turbo decoding of CBs using BBDEV interface in TB-mode
 is also valid for LDPC decode.
 
+BBDEV FFT Operation
+~~~~~~~~~~~~~~~~~~~
+
+This operation allows to run a combination of DFT and/or IDFT and/or time-domain windowing.
+These can be used in a modular fashion (using bypass modes) or as a processing pipeline
+which can be used for FFT-based baseband signal processing.
+
+In more details it allows :
+
+* to process the data first through an IDFT of adjustable size and padding;
+* to perform the windowing as a programmable cyclic shift offset of the data
+  followed by a pointwise multiplication by a time domain window;
+* to process the related data through a DFT of adjustable size and
+  de-padding for each such cyclic shift output.
+
+A flexible number of Rx antennas are being processed in parallel with the same configuration.
+The API allows more generally for flexibility in what the PMD may support (capability flags) and
+flexibility to adjust some of the parameters of the processing.
+
+The operation/capability flags that can be set for each FFT operation are given below.
+
+  **NOTE:** The actual operation flags that may be used with a specific
+  bbdev PMD are dependent on the driver capabilities as reported via
+  ``rte_bbdev_info_get()``, and may be a subset of those below.
+
++--------------------------------------------------------------------+
+|Description of FFT capability flags                                 |
++====================================================================+
+|RTE_BBDEV_FFT_WINDOWING                                             |
+| Set to enable/support windowing in time domain                     |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_CS_ADJUSTMENT                                         |
+| Set to enable/support  the cyclic shift time offset adjustment     |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_DFT_BYPASS                                            |
+| Set to bypass the DFT and use directly the IDFT as an option       |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_IDFT_BYPASS                                           |
+| Set to bypass the IDFT and use directly the DFT as an option       |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_WINDOWING_BYPASS                                      |
+| Set to bypass the time domain windowing  as an option              |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_POWER_MEAS                                            |
+| Set to provide an optional power measurement of the DFT output     |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_FP16_INPUT                                            |
+| Set if the input data shall use FP16 format instead of INT16       |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_FP16_OUTPUT                                           |
+| Set if the output data shall use FP16 format instead of INT16      |
++--------------------------------------------------------------------+
+
+The FFT parameters are set out in the table below.
+
++-------------------------+--------------------------------------------------------------+
+|Parameter                |Description                                                   |
++=========================+==============================================================+
+|base_input               |input data                                                    |
++-------------------------+--------------------------------------------------------------+
+|base_output              |output data                                                   |
++-------------------------+--------------------------------------------------------------+
+|power_meas_output        |optional output data with power measurement on DFT output     |
++-------------------------+--------------------------------------------------------------+
+|op_flags                 |bitmask of all active operation capabilities                  |
++-------------------------+--------------------------------------------------------------+
+|input_sequence_size      |size of the input sequence in 32-bits points per antenna      |
++-------------------------+--------------------------------------------------------------+
+|input_leading_padding    |number of points padded at the start of input data            |
++-------------------------+--------------------------------------------------------------+
+|output_sequence_size     |size of the output sequence per antenna and cyclic shift      |
++-------------------------+--------------------------------------------------------------+
+|output_leading_depadding |number of points de-padded at the start of output data        |
++-------------------------+--------------------------------------------------------------+
+|window_index             |optional windowing profile index used for each cyclic shift   |
++-------------------------+--------------------------------------------------------------+
+|cs_bitmap                |bitmap of the cyclic shift output requested (LSB for index 0) |
++-------------------------+--------------------------------------------------------------+
+|num_antennas_log2        |number of antennas as a log2 (10 maps to 1024...)             |
++-------------------------+--------------------------------------------------------------+
+|idft_log2                |IDFT size as a log2                                           |
++-------------------------+--------------------------------------------------------------+
+|dft_log2                 |DFT size as a log2                                            |
++-------------------------+--------------------------------------------------------------+
+|cs_time_adjustment       |adjustment of time position of all the cyclic shift output    |
++-------------------------+--------------------------------------------------------------+
+|idft_shift               |shift down of signal level post iDFT                          |
++-------------------------+--------------------------------------------------------------+
+|dft_shift                |shift down of signal level post DFT                           |
++-------------------------+--------------------------------------------------------------+
+|ncs_reciprocal           |inverse of max number of CS normalized to 15b (ie. 231 for 12)|
++-------------------------+--------------------------------------------------------------+
+|power_shift              |shift down of level of power measurement when enabled         |
++-------------------------+--------------------------------------------------------------+
+|fp16_exp_adjust          |value added to FP16 exponent at conversion from INT16         |
++-------------------------+--------------------------------------------------------------+
+
+The mbuf input ``base_input`` is mandatory for all bbdev PMDs and
+is the incoming data for the processing. Its size may not fit into an actual mbuf,
+but the structure is used to pass iova address.
+The mbuf output ``output`` is mandatory and is output of the FFT processing chain.
+Each point is a complex number of 32bits :
+either as 2 INT16 or as 2 FP16 based when the option supported.
+The data layout is based on contiguous concatenation of output data
+first by cyclic shift then by antenna.
 
 Sample code
 -----------

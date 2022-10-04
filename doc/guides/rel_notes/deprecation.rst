@@ -94,10 +94,6 @@ Deprecation Notices
   ``RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY`` and
   ``RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY`` in DPDK 22.11.
 
-* bbdev: Will extend API to support new operation type ``RTE_BBDEV_OP_FFT`` as per
-  this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=22111>`__.
-  This should be updated in DPDK 22.11.
-
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,

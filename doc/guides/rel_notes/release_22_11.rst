@@ -168,6 +168,12 @@ New Features
   * Added AES-CCM support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES & DES DOCSIS algorithm support in lookaside crypto for CN9K.
 
+* **Added bbdev operation for FFT processing.**
+
+  Added a new operation type in bbdev for FFT processing with new functions
+  ``rte_bbdev_enqueue_fft_ops``, ``rte_bbdev_dequeue_fft_ops``,
+  and related structures.
+
 * **Added eventdev adapter instance get API.**
 
   * Added ``rte_event_eth_rx_adapter_instance_get`` to get Rx adapter

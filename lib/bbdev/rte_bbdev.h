@@ -401,6 +401,12 @@ typedef uint16_t (*rte_bbdev_enqueue_dec_ops_t)(
 		struct rte_bbdev_dec_op **ops,
 		uint16_t num);
 
+/** @internal Enqueue FFT operations for processing on queue of a device. */
+typedef uint16_t (*rte_bbdev_enqueue_fft_ops_t)(
+		struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_fft_op **ops,
+		uint16_t num);
+
 /** @internal Dequeue encode operations from a queue of a device. */
 typedef uint16_t (*rte_bbdev_dequeue_enc_ops_t)(
 		struct rte_bbdev_queue_data *q_data,
@@ -410,6 +416,11 @@ typedef uint16_t (*rte_bbdev_dequeue_enc_ops_t)(
 typedef uint16_t (*rte_bbdev_dequeue_dec_ops_t)(
 		struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num);
+
+/** @internal Dequeue FFT operations from a queue of a device. */
+typedef uint16_t (*rte_bbdev_dequeue_fft_ops_t)(
+		struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_fft_op **ops, uint16_t num);
 
 #define RTE_BBDEV_NAME_MAX_LEN  64  /**< Max length of device name */
 
@@ -459,6 +470,10 @@ struct __rte_cache_aligned rte_bbdev {
 	rte_bbdev_dequeue_enc_ops_t dequeue_ldpc_enc_ops;
 	/** Dequeue decode function */
 	rte_bbdev_dequeue_dec_ops_t dequeue_ldpc_dec_ops;
+	/** Enqueue FFT function */
+	rte_bbdev_enqueue_fft_ops_t enqueue_fft_ops;
+	/** Dequeue FFT function */
+	rte_bbdev_dequeue_fft_ops_t dequeue_fft_ops;
 	const struct rte_bbdev_ops *dev_ops;  /**< Functions exported by PMD */
 	struct rte_bbdev_data *data;  /**< Pointer to device data */
 	enum rte_bbdev_state state;  /**< If device is currently used or not */
@@ -591,11 +606,10 @@ rte_bbdev_enqueue_ldpc_dec_ops(uint16_t dev_id, uint16_t queue_id,
 	return dev->enqueue_ldpc_dec_ops(q_data, ops, num_ops);
 }
 
-
 /**
- * Dequeue a burst of processed encode operations from a queue of the device.
- * This functions returns only the current contents of the queue, and does not
- * block until @ num_ops is available.
+ * Enqueue a burst of FFT operations to a queue of the device.
+ * This functions only enqueues as many operations as currently possible and
+ * does not block until @p num_ops entries in the queue are available.
  * This function does not provide any error notification to avoid the
  * corresponding overhead.
  *
@@ -604,15 +618,46 @@ rte_bbdev_enqueue_ldpc_dec_ops(uint16_t dev_id, uint16_t queue_id,
  * @param queue_id
  *   The index of the queue.
  * @param ops
- *   Pointer array where operations will be dequeued to. Must have at least
- *   @p num_ops entries
- *   ie. A pointer to a table of void * pointers (ops) that will be filled.
+ *   Pointer array containing operations to be enqueued.
+ *   Must have at least @p num_ops entries.
+ * @param num_ops
+ *   The maximum number of operations to enqueue.
+ *
+ * @return
+ *   The number of operations actually enqueued.
+ *   (This is the number of processed entries in the @p ops array.)
+ */
+__rte_experimental
+static inline uint16_t
+rte_bbdev_enqueue_fft_ops(uint16_t dev_id, uint16_t queue_id,
+		struct rte_bbdev_fft_op **ops, uint16_t num_ops)
+{
+	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
+	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	return dev->enqueue_fft_ops(q_data, ops, num_ops);
+}
+
+/**
+ * Dequeue a burst of processed encode operations from a queue of the device.
+ * This functions returns only the current contents of the queue,
+ * and does not block until @ num_ops is available.
+ * This function does not provide any error notification to avoid the
+ * corresponding overhead.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param queue_id
+ *   The index of the queue.
+ * @param ops
+ *   Pointer array where operations will be dequeued to.
+ *   Must have at least @p num_ops entries, i.e.
+ *   a pointer to a table of void * pointers (ops) that will be filled.
  * @param num_ops
  *   The maximum number of operations to dequeue.
  *
  * @return
- *   The number of operations actually dequeued (this is the number of entries
- *   copied into the @p ops array).
+ *   The number of operations actually dequeued.
+ *   (This is the number of entries copied into the @p ops array.)
  */
 static inline uint16_t
 rte_bbdev_dequeue_enc_ops(uint16_t dev_id, uint16_t queue_id,
@@ -714,6 +759,37 @@ rte_bbdev_dequeue_ldpc_dec_ops(uint16_t dev_id, uint16_t queue_id,
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
 	return dev->dequeue_ldpc_dec_ops(q_data, ops, num_ops);
+}
+
+/**
+ * Dequeue a burst of FFT operations from a queue of the device.
+ * This functions returns only the current contents of the queue, and does not
+ * block until @ num_ops is available.
+ * This function does not provide any error notification to avoid the
+ * corresponding overhead.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param queue_id
+ *   The index of the queue.
+ * @param ops
+ *   Pointer array where operations will be dequeued to. Must have at least
+ *   @p num_ops entries
+ * @param num_ops
+ *   The maximum number of operations to dequeue.
+ *
+ * @return
+ *   The number of operations actually dequeued (this is the number of entries
+ *   copied into the @p ops array).
+ */
+__rte_experimental
+static inline uint16_t
+rte_bbdev_dequeue_fft_ops(uint16_t dev_id, uint16_t queue_id,
+		struct rte_bbdev_fft_op **ops, uint16_t num_ops)
+{
+	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
+	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	return dev->dequeue_fft_ops(q_data, ops, num_ops);
 }
 
 /** Definitions of device event types */
