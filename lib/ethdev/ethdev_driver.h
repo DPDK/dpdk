@@ -1094,6 +1094,22 @@ typedef int (*eth_rx_queue_avail_thresh_query_t)(struct rte_eth_dev *dev,
 					uint16_t *rx_queue_id,
 					uint8_t *avail_thresh);
 
+/** @internal Get congestion management information. */
+typedef int (*eth_cman_info_get_t)(struct rte_eth_dev *dev,
+				struct rte_eth_cman_info *info);
+
+/** @internal Init congestion management structure with default values. */
+typedef int (*eth_cman_config_init_t)(struct rte_eth_dev *dev,
+				struct rte_eth_cman_config *config);
+
+/** @internal Configure congestion management on a port. */
+typedef int (*eth_cman_config_set_t)(struct rte_eth_dev *dev,
+				const struct rte_eth_cman_config *config);
+
+/** @internal Retrieve congestion management configuration of a port. */
+typedef int (*eth_cman_config_get_t)(struct rte_eth_dev *dev,
+				struct rte_eth_cman_config *config);
+
 /**
  * @internal
  * Dump Rx descriptor info to a file.
@@ -1362,6 +1378,15 @@ struct eth_dev_ops {
 	eth_rx_descriptor_dump_t eth_rx_descriptor_dump;
 	/** Dump Tx descriptor info */
 	eth_tx_descriptor_dump_t eth_tx_descriptor_dump;
+
+	/** Get congestion management information */
+	eth_cman_info_get_t cman_info_get;
+	/** Initialize congestion management structure with default values */
+	eth_cman_config_init_t cman_config_init;
+	/** Configure congestion management */
+	eth_cman_config_set_t cman_config_set;
+	/** Retrieve congestion management configuration */
+	eth_cman_config_get_t cman_config_get;
 };
 
 /**

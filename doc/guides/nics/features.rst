@@ -727,6 +727,18 @@ Supports configuring per-queue stat counter mapping.
   ``rte_eth_dev_set_tx_queue_stats_mapping()``.
 
 
+.. _nic_features_congestion_management:
+
+Congestion management
+---------------------
+
+Supports congestion management.
+
+* **[implements] eth_dev_ops**: ``cman_info_get``, ``cman_config_set``, ``cman_config_get``.
+* **[related]    API**: ``rte_eth_cman_info_get()``, ``rte_eth_cman_config_init()``,
+  ``rte_eth_cman_config_set()``, ``rte_eth_cman_config_get()``.
+
+
 .. _nic_features_fw_version:
 
 FW version

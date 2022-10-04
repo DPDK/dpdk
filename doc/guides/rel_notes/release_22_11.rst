@@ -63,6 +63,12 @@ New Features
   In theory this implementation should work with any target based on
   ``LoongArch`` ISA.
 
+* **Added support for congestion management in ethdev.**
+
+  Added new API functions ``rte_eth_cman_config_init()``,
+  ``rte_eth_cman_config_get()``, ``rte_eth_cman_config_set()``,
+  ``rte_eth_cman_info_get()`` to support congestion management.
+
 * **Added ethdev Rx/Tx descriptor dump API.**
 
   Added the ethdev Rx/Tx descriptor dump API which provides functions

@@ -37,6 +37,9 @@ struct rte_eth_dev_callback {
 
 extern rte_spinlock_t eth_dev_cb_lock;
 
+/* Convert all error to -EIO if device is removed. */
+int eth_err(uint16_t port_id, int ret);
+
 /*
  * Convert rte_eth_dev pointer to port ID.
  * NULL will be translated to RTE_MAX_ETHPORTS.

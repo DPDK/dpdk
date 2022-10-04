@@ -287,6 +287,10 @@ EXPERIMENTAL {
 	rte_mtr_meter_vlan_table_update;
 
 	# added in 22.11
+	rte_eth_cman_config_get;
+	rte_eth_cman_config_init;
+	rte_eth_cman_config_set;
+	rte_eth_cman_info_get;
 	rte_eth_rx_descriptor_dump;
 	rte_eth_tx_descriptor_dump;
 	rte_flow_async_action_handle_query;

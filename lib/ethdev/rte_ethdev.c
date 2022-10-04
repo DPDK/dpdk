@@ -650,7 +650,7 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 	return -ENODEV;
 }
 
-static int
+int
 eth_err(uint16_t port_id, int ret)
 {
 	if (ret == 0)

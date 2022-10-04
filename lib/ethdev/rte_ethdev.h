@@ -160,6 +160,7 @@ extern "C" {
 #define RTE_ETHDEV_DEBUG_TX
 #endif
 
+#include <rte_cman.h>
 #include <rte_compat.h>
 #include <rte_log.h>
 #include <rte_interrupts.h>
@@ -5368,6 +5369,169 @@ __rte_experimental
 int rte_eth_tx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
 			       uint16_t offset, uint16_t num, FILE *file);
 
+
+/* Congestion management */
+
+/** Enumerate list of ethdev congestion management objects */
+enum rte_eth_cman_obj {
+	/** Congestion management based on Rx queue depth */
+	RTE_ETH_CMAN_OBJ_RX_QUEUE = RTE_BIT32(0),
+	/**
+	 * Congestion management based on mempool depth associated with Rx queue
+	 * @see rte_eth_rx_queue_setup()
+	 */
+	RTE_ETH_CMAN_OBJ_RX_QUEUE_MEMPOOL = RTE_BIT32(1),
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change, or be removed, without prior notice
+ *
+ * A structure used to retrieve information of ethdev congestion management.
+ */
+struct rte_eth_cman_info {
+	/**
+	 * Set of supported congestion management modes
+	 * @see enum rte_cman_mode
+	 */
+	uint64_t modes_supported;
+	/**
+	 * Set of supported congestion management objects
+	 * @see enum rte_eth_cman_obj
+	 */
+	uint64_t objs_supported;
+	/**
+	 * Reserved for future fields. Always returned as 0 when
+	 * rte_eth_cman_info_get() is invoked
+	 */
+	uint8_t rsvd[8];
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change, or be removed, without prior notice
+ *
+ * A structure used to configure the ethdev congestion management.
+ */
+struct rte_eth_cman_config {
+	/** Congestion management object */
+	enum rte_eth_cman_obj obj;
+	/** Congestion management mode */
+	enum rte_cman_mode mode;
+	union {
+		/**
+		 * Rx queue to configure congestion management.
+		 *
+		 * Valid when object is RTE_ETH_CMAN_OBJ_RX_QUEUE or
+		 * RTE_ETH_CMAN_OBJ_RX_QUEUE_MEMPOOL.
+		 */
+		uint16_t rx_queue;
+		/**
+		 * Reserved for future fields.
+		 * It must be set to 0 when rte_eth_cman_config_set() is invoked
+		 * and will be returned as 0 when rte_eth_cman_config_get() is
+		 * invoked.
+		 */
+		uint8_t rsvd_obj_params[4];
+	} obj_param;
+	union {
+		/**
+		 * RED configuration parameters.
+		 *
+		 * Valid when mode is RTE_CMAN_RED.
+		 */
+		struct rte_cman_red_params red;
+		/**
+		 * Reserved for future fields.
+		 * It must be set to 0 when rte_eth_cman_config_set() is invoked
+		 * and will be returned as 0 when rte_eth_cman_config_get() is
+		 * invoked.
+		 */
+		uint8_t rsvd_mode_params[4];
+	} mode_param;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Retrieve the information for ethdev congestion management
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param info
+ *   A pointer to a structure of type *rte_eth_cman_info* to be filled with
+ *   the information about congestion management.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for cman_info_get does not exist.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Initialize the ethdev congestion management configuration structure with default values.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param config
+ *   A pointer to a structure of type *rte_eth_cman_config* to be initialized
+ *   with default value.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for cman_config_init does not exist.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Configure ethdev congestion management
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param config
+ *   A pointer to a structure of type *rte_eth_cman_config* to be configured.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for cman_config_set does not exist.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *config);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Retrieve the applied ethdev congestion management parameters for the given port.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param config
+ *   A pointer to a structure of type *rte_eth_cman_config* to retrieve
+ *   congestion management parameters for the given object.
+ *   Application must fill all parameters except mode_param parameter in
+ *   struct rte_eth_cman_config.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if support for cman_config_get does not exist.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_cman_config_get(uint16_t port_id, struct rte_eth_cman_config *config);
 
 #include <rte_ethdev_core.h>
 
