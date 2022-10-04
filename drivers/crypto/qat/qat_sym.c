@@ -85,7 +85,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			if (unlikely(ctx->build_request[proc_type] == NULL)) {
 				int ret =
 				qat_sym_gen_dev_ops[dev_gen].set_session(
-					(void *)cdev, (void *)sess);
+					(void *)cdev, (void *)ctx);
 				if (ret < 0) {
 					op->status =
 						RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
