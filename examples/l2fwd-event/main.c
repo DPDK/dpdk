@@ -660,8 +660,8 @@ main(int argc, char **argv)
 			rte_panic("Invalid port pair config\n");
 	}
 
-	nb_mbufs = RTE_MAX(nb_ports * (RTE_TEST_RX_DESC_DEFAULT +
-				       RTE_TEST_TX_DESC_DEFAULT +
+	nb_mbufs = RTE_MAX(nb_ports * (RX_DESC_DEFAULT +
+				       TX_DESC_DEFAULT +
 				       MAX_PKT_BURST + rte_lcore_count() *
 				       MEMPOOL_CACHE_SIZE), 8192U);
 

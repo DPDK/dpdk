@@ -53,8 +53,8 @@
 
 #define MAX_LCORE_PARAMS 1024
 
-uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
+uint16_t nb_rxd = RX_DESC_DEFAULT;
+uint16_t nb_txd = TX_DESC_DEFAULT;
 
 /**< Ports set in promiscuous mode off by default. */
 static int promiscuous_on;
@@ -445,7 +445,7 @@ print_usage(const char *prgname)
 		"                    another is route entry at while line leads with character '%c'.\n"
 		"  --rule_ipv6=FILE: Specify the ipv6 rules entries file.\n"
 		"  --alg: ACL classify method to use, one of: %s.\n\n",
-		prgname, RTE_TEST_RX_DESC_DEFAULT, RTE_TEST_TX_DESC_DEFAULT,
+		prgname, RX_DESC_DEFAULT, TX_DESC_DEFAULT,
 		ACL_LEAD_CHAR, ROUTE_LEAD_CHAR, alg);
 }
 

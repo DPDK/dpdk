@@ -47,8 +47,8 @@
 #define MBUF_CACHE_SIZE (250)
 #define BURST_SIZE (32)
 
-#define RTE_TEST_RX_DESC_MAX	(2048)
-#define RTE_TEST_TX_DESC_MAX	(2048)
+#define RX_DESC_MAX	(2048)
+#define TX_DESC_MAX	(2048)
 #define MAX_PKT_BURST			(512)
 #define DEF_PKT_BURST			(16)
 
@@ -225,8 +225,8 @@ test_setup(void)
 				"Ethernet header struct allocation failed!");
 	}
 
-	nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + DEF_PKT_BURST +
-			RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
+	nb_mbuf_per_pool = RX_DESC_MAX + DEF_PKT_BURST +
+			TX_DESC_MAX + MAX_PKT_BURST;
 	if (test_params->mbuf_pool == NULL) {
 		test_params->mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
 			nb_mbuf_per_pool, MBUF_CACHE_SIZE, 0,

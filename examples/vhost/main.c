@@ -57,8 +57,8 @@
 #define DEVICE_SAFE_REMOVE	2
 
 /* Configurable number of RX/TX ring descriptors */
-#define RTE_TEST_RX_DESC_DEFAULT 1024
-#define RTE_TEST_TX_DESC_DEFAULT 512
+#define RX_DESC_DEFAULT 1024
+#define TX_DESC_DEFAULT 512
 
 #define INVALID_PORT_ID 0xFF
 #define INVALID_DMA_ID -1
@@ -445,8 +445,8 @@ port_init(uint16_t port)
 	/*configure the number of supported virtio devices based on VMDQ limits */
 	num_devices = dev_info.max_vmdq_pools;
 
-	rx_ring_size = RTE_TEST_RX_DESC_DEFAULT;
-	tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
+	rx_ring_size = RX_DESC_DEFAULT;
+	tx_ring_size = TX_DESC_DEFAULT;
 
 	tx_rings = (uint16_t)rte_lcore_count();
 
@@ -493,7 +493,7 @@ port_init(uint16_t port)
 			"for port %u: %s.\n", port, strerror(-retval));
 		return retval;
 	}
-	if (rx_ring_size > RTE_TEST_RX_DESC_DEFAULT) {
+	if (rx_ring_size > RX_DESC_DEFAULT) {
 		RTE_LOG(ERR, VHOST_PORT, "Mbuf pool has an insufficient size "
 			"for Rx queues on port %u.\n", port);
 		return -1;

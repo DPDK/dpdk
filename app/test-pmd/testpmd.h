@@ -28,9 +28,6 @@
 
 #define RTE_PORT_ALL            (~(portid_t)0x0)
 
-#define RTE_TEST_RX_DESC_MAX    2048
-#define RTE_TEST_TX_DESC_MAX    2048
-
 #define RTE_PORT_STOPPED        (uint16_t)0
 #define RTE_PORT_STARTED        (uint16_t)1
 #define RTE_PORT_CLOSED         (uint16_t)2
@@ -66,6 +63,9 @@ extern uint8_t cl_quit;
 
 /* The prefix of the mbuf pool names created by the application. */
 #define MBUF_POOL_NAME_PFX "mb_pool"
+
+#define RX_DESC_MAX    2048
+#define TX_DESC_MAX    2048
 
 #define MAX_PKT_BURST 512
 #define DEF_PKT_BURST 32

@@ -38,8 +38,8 @@
  * 1024 queues require to meet the needs of a large number of vmdq_pools.
  * (RX/TX_queue_nb * RX/TX_ring_descriptors_nb) per port.
  */
-#define NUM_MBUFS_PER_PORT (MAX_QUEUES * RTE_MAX(RTE_TEST_RX_DESC_DEFAULT, \
-						RTE_TEST_TX_DESC_DEFAULT))
+#define NUM_MBUFS_PER_PORT (MAX_QUEUES * RTE_MAX(RX_DESC_DEFAULT, \
+						TX_DESC_DEFAULT))
 #define MBUF_CACHE_SIZE 64
 
 #define MAX_PKT_BURST 32
@@ -47,8 +47,8 @@
 /*
  * Configurable number of RX/TX ring descriptors
  */
-#define RTE_TEST_RX_DESC_DEFAULT 1024
-#define RTE_TEST_TX_DESC_DEFAULT 1024
+#define RX_DESC_DEFAULT 1024
+#define TX_DESC_DEFAULT 1024
 
 #define INVALID_PORT_ID 0xFF
 
@@ -177,8 +177,8 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	struct rte_eth_txconf *txconf;
 	struct rte_eth_conf port_conf;
 	uint16_t rxRings, txRings;
-	uint16_t rxRingSize = RTE_TEST_RX_DESC_DEFAULT;
-	uint16_t txRingSize = RTE_TEST_TX_DESC_DEFAULT;
+	uint16_t rxRingSize = RX_DESC_DEFAULT;
+	uint16_t txRingSize = TX_DESC_DEFAULT;
 	int retval;
 	uint16_t q;
 	uint16_t queues_per_pool;
@@ -269,8 +269,8 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 				&txRingSize);
 	if (retval != 0)
 		return retval;
-	if (RTE_MAX(rxRingSize, txRingSize) > RTE_MAX(RTE_TEST_RX_DESC_DEFAULT,
-			RTE_TEST_TX_DESC_DEFAULT)) {
+	if (RTE_MAX(rxRingSize, txRingSize) > RTE_MAX(RX_DESC_DEFAULT,
+			TX_DESC_DEFAULT)) {
 		printf("Mbuf pool has an insufficient size for port %u.\n",
 			port);
 		return -1;

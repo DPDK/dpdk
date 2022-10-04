@@ -37,8 +37,8 @@ test_event_inline_ipsec(void)
 #define NB_ETHPORTS_USED		1
 #define MEMPOOL_CACHE_SIZE		32
 #define MAX_PKT_BURST			32
-#define RTE_TEST_RX_DESC_DEFAULT	1024
-#define RTE_TEST_TX_DESC_DEFAULT	1024
+#define RX_DESC_DEFAULT	1024
+#define TX_DESC_DEFAULT	1024
 #define RTE_PORT_ALL		(~(uint16_t)0x0)
 
 #define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
@@ -1506,8 +1506,8 @@ inline_ipsec_testsuite_setup(void)
 
 	printf("Generate %d packets\n", MAX_TRAFFIC_BURST);
 
-	nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-	nb_txd = RTE_TEST_TX_DESC_DEFAULT;
+	nb_rxd = RX_DESC_DEFAULT;
+	nb_txd = TX_DESC_DEFAULT;
 
 	/* configuring port 0 for the test is enough */
 	port_id = 0;

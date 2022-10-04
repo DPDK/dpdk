@@ -49,8 +49,8 @@
 #define CRC_24B_LEN 3
 
 /* Configurable number of RX/TX ring descriptors */
-#define RTE_TEST_RX_DESC_DEFAULT 128
-#define RTE_TEST_TX_DESC_DEFAULT 512
+#define RX_DESC_DEFAULT 128
+#define TX_DESC_DEFAULT 512
 
 #define BBDEV_ASSERT(a) do { \
 	if (!(a)) { \
@@ -467,7 +467,7 @@ initialize_ports(struct app_config_params *app_params,
 	/* initialize RX queues for encoder */
 	for (q = 0; q < app_params->num_enc_cores; q++) {
 		ret = rte_eth_rx_queue_setup(port_id, q,
-			RTE_TEST_RX_DESC_DEFAULT,
+			RX_DESC_DEFAULT,
 			rte_eth_dev_socket_id(port_id),
 			NULL, ethdev_mbuf_mempool);
 		if (ret < 0) {
@@ -479,7 +479,7 @@ initialize_ports(struct app_config_params *app_params,
 	/* initialize TX queues for decoder */
 	for (q = 0; q < app_params->num_dec_cores; q++) {
 		ret = rte_eth_tx_queue_setup(port_id, q,
-			RTE_TEST_TX_DESC_DEFAULT,
+			TX_DESC_DEFAULT,
 			rte_eth_dev_socket_id(port_id), NULL);
 		if (ret < 0) {
 			printf("rte_eth_tx_queue_setup: err=%d, queue=%u\n",

@@ -203,7 +203,7 @@ The global configuration for TX queues is stored in a static structure:
             .hthresh = TX_HTHRESH,
             .wthresh = TX_WTHRESH,
         },
-        .tx_free_thresh = RTE_TEST_TX_DESC_DEFAULT + 1, /* disable feature */
+        .tx_free_thresh = TX_DESC_DEFAULT + 1, /* disable feature */
     };
 
 Receive, Process and Transmit Packets
