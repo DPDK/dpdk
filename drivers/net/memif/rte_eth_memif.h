@@ -182,6 +182,8 @@ const char *memif_version(void);
 #define __NR_memfd_create 356
 #elif defined __riscv
 #define __NR_memfd_create 279
+#elif defined __loongarch__
+#define __NR_memfd_create 279
 #else
 #error "__NR_memfd_create unknown for this architecture"
 #endif
