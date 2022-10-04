@@ -1,12 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018 Luca Boccassi <bluca@debian.org>
 
-if arch_subdir == 'loongarch'
-    build = false
-    reason = 'not supported on LoongArch'
-    subdir_done()
-endif
-
 if not is_linux
     build = false
     reason = 'only supported on Linux'
