@@ -223,6 +223,21 @@ rte_bbdev_queue_start(uint16_t dev_id, uint16_t queue_id);
 int
 rte_bbdev_queue_stop(uint16_t dev_id, uint16_t queue_id);
 
+/**
+ * Flags to indicate the status of the device.
+ */
+enum rte_bbdev_device_status {
+	RTE_BBDEV_DEV_NOSTATUS,        /**< Nothing being reported. */
+	RTE_BBDEV_DEV_NOT_SUPPORTED,   /**< Device status is not supported on the PMD. */
+	RTE_BBDEV_DEV_RESET,           /**< Device in reset and un-configured state. */
+	RTE_BBDEV_DEV_CONFIGURED,      /**< Device is configured and ready to use. */
+	RTE_BBDEV_DEV_ACTIVE,          /**< Device is configured and VF is being used. */
+	RTE_BBDEV_DEV_FATAL_ERR,       /**< Device has hit a fatal uncorrectable error. */
+	RTE_BBDEV_DEV_RESTART_REQ,     /**< Device requires application to restart. */
+	RTE_BBDEV_DEV_RECONFIG_REQ,    /**< Device requires application to reconfigure queues. */
+	RTE_BBDEV_DEV_CORRECT_ERR,     /**< Warning of a correctable error event happened. */
+};
+
 /** Device statistics. */
 struct rte_bbdev_stats {
 	uint64_t enqueued_count;  /**< Count of all operations enqueued */
@@ -284,10 +299,12 @@ struct rte_bbdev_driver_info {
 	uint8_t max_ul_queue_priority;
 	/** Set if device supports per-queue interrupts */
 	bool queue_intr_supported;
-	/** Minimum alignment of buffers, in bytes */
-	uint16_t min_alignment;
+	/** Device Status */
+	enum rte_bbdev_device_status device_status;
 	/** HARQ memory available in kB */
 	uint32_t harq_buffer_size;
+	/** Minimum alignment of buffers, in bytes */
+	uint16_t min_alignment;
 	/** Byte endianness (RTE_BIG_ENDIAN/RTE_LITTLE_ENDIAN) supported
 	 *  for input/output data
 	 */
@@ -826,6 +843,20 @@ rte_bbdev_queue_intr_disable(uint16_t dev_id, uint16_t queue_id);
 int
 rte_bbdev_queue_intr_ctl(uint16_t dev_id, uint16_t queue_id, int epfd, int op,
 		void *data);
+
+/**
+ * Convert device status from enum to string.
+ *
+ * @param status
+ *   Device status as enum.
+ *
+ * @returns
+ *   Device status as string or NULL if invalid.
+ *
+ */
+__rte_experimental
+const char*
+rte_bbdev_device_status_str(enum rte_bbdev_device_status status);
 
 #ifdef __cplusplus
 }

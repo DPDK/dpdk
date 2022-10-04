@@ -39,3 +39,10 @@ DPDK_23 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 22.11
+	rte_bbdev_device_status_str;
+};

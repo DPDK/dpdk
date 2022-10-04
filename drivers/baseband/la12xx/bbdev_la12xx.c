@@ -101,6 +101,7 @@ la12xx_info_get(struct rte_bbdev *dev __rte_unused,
 	dev_info->capabilities = bbdev_capabilities;
 	dev_info->cpu_flag_reqs = NULL;
 	dev_info->min_alignment = 64;
+	dev_info->device_status = RTE_BBDEV_DEV_NOT_SUPPORTED;
 
 	rte_bbdev_log_debug("got device info from %u", dev->data->dev_id);
 }

@@ -1133,3 +1133,25 @@ rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type)
 	rte_bbdev_log(ERR, "Invalid operation type");
 	return NULL;
 }
+
+const char *
+rte_bbdev_device_status_str(enum rte_bbdev_device_status status)
+{
+	static const char * const dev_sta_string[] = {
+		"RTE_BBDEV_DEV_NOSTATUS",
+		"RTE_BBDEV_DEV_NOT_SUPPORTED",
+		"RTE_BBDEV_DEV_RESET",
+		"RTE_BBDEV_DEV_CONFIGURED",
+		"RTE_BBDEV_DEV_ACTIVE",
+		"RTE_BBDEV_DEV_FATAL_ERR",
+		"RTE_BBDEV_DEV_RESTART_REQ",
+		"RTE_BBDEV_DEV_RECONFIG_REQ",
+		"RTE_BBDEV_DEV_CORRECT_ERR",
+	};
+
+	if (status < sizeof(dev_sta_string) / sizeof(char *))
+		return dev_sta_string[status];
+
+	rte_bbdev_log(ERR, "Invalid device status");
+	return NULL;
+}

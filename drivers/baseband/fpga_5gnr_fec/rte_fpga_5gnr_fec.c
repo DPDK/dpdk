@@ -369,6 +369,7 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 	dev_info->capabilities = bbdev_capabilities;
 	dev_info->cpu_flag_reqs = NULL;
 	dev_info->data_endianness = RTE_LITTLE_ENDIAN;
+	dev_info->device_status = RTE_BBDEV_DEV_NOT_SUPPORTED;
 
 	/* Calculates number of queues assigned to device */
 	dev_info->max_num_queues = 0;

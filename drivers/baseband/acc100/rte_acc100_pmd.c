@@ -1061,6 +1061,7 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 
 	/* Read and save the populated config from ACC100 registers */
 	fetch_acc100_config(dev);
+	dev_info->device_status = RTE_BBDEV_DEV_NOT_SUPPORTED;
 
 	/* This isn't ideal because it reports the maximum number of queues but
 	 * does not provide info on how many can be uplink/downlink or different

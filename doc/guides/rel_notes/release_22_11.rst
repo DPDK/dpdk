@@ -432,6 +432,9 @@ ABI Changes
   and to allow for futureproof enum insertion a padded ``RTE_BBDEV_OP_TYPE_SIZE_MAX``
   macro is added.
 
+* bbdev: Structure ``rte_bbdev_driver_info`` was updated to add new parameters
+  for device status using ``rte_bbdev_device_status``.
+
 * eventdev: Added ``evtim_drop_count`` field
   to ``rte_event_timer_adapter_stats`` structure.
 

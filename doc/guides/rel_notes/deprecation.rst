@@ -99,9 +99,6 @@ Deprecation Notices
   New members will be added in ``rte_bbdev_driver_info`` to expose
   PMD queue topology inspired by
   this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=22076>`__.
-  New member will be added in ``rte_bbdev_driver_info`` to expose
-  the device status as per
-  this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=23367>`__.
   This should be updated in DPDK 22.11.
 
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
