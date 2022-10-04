@@ -3289,6 +3289,13 @@ dpaa_sec_security_session_destroy(void *dev __rte_unused,
 	}
 	return 0;
 }
+
+static unsigned int
+dpaa_sec_security_session_get_size(void *device __rte_unused)
+{
+	return sizeof(dpaa_sec_session);
+}
+
 #endif
 static int
 dpaa_sec_dev_configure(struct rte_cryptodev *dev __rte_unused,
@@ -3547,6 +3554,7 @@ dpaa_sec_capabilities_get(void *device __rte_unused)
 static const struct rte_security_ops dpaa_sec_security_ops = {
 	.session_create = dpaa_sec_security_session_create,
 	.session_update = NULL,
+	.session_get_size = dpaa_sec_security_session_get_size,
 	.session_stats_get = NULL,
 	.session_destroy = dpaa_sec_security_session_destroy,
 	.set_pkt_metadata = NULL,

@@ -180,6 +180,8 @@ qat_security_session_create(void *dev, struct rte_security_session_conf *conf,
 		struct rte_security_session *sess);
 int
 qat_security_session_destroy(void *dev, struct rte_security_session *sess);
+unsigned int
+qat_security_session_get_size(void *dev __rte_unused);
 #endif
 
 #endif /* _QAT_SYM_SESSION_H_ */

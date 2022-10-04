@@ -1937,6 +1937,11 @@ caam_jr_security_session_destroy(void *dev __rte_unused,
 	return 0;
 }
 
+static unsigned int
+caam_jr_security_session_get_size(void *device __rte_unused)
+{
+	return sizeof(struct caam_jr_session);
+}
 
 static int
 caam_jr_dev_configure(struct rte_cryptodev *dev,
@@ -2031,6 +2036,7 @@ static struct rte_cryptodev_ops caam_jr_ops = {
 static struct rte_security_ops caam_jr_security_ops = {
 	.session_create = caam_jr_security_session_create,
 	.session_update = NULL,
+	.session_get_size = caam_jr_security_session_get_size,
 	.session_stats_get = NULL,
 	.session_destroy = caam_jr_security_session_destroy,
 	.set_pkt_metadata = NULL,

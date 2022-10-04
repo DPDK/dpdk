@@ -2670,4 +2670,10 @@ qat_security_session_destroy(void *dev __rte_unused,
 # endif
 	return 0;
 }
+
+unsigned int
+qat_security_session_get_size(void *device __rte_unused)
+{
+	return sizeof(struct qat_sym_session);
+}
 #endif

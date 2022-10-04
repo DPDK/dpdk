@@ -907,6 +907,12 @@ mrvl_crypto_pmd_security_session_destroy(void *dev __rte_unused,
 	return 0;
 }
 
+static unsigned int
+mrvl_crypto_pmd_security_session_create(void *device __rte_unused)
+{
+	return sizeof(struct mrvl_crypto_session);
+}
+
 static const
 struct rte_security_capability mrvl_crypto_pmd_sec_security_cap[] = {
 	{ /* IPsec Lookaside Protocol offload ESP Tunnel Egress */
@@ -971,6 +977,7 @@ mrvl_crypto_pmd_security_capabilities_get(void *device __rte_unused)
 struct rte_security_ops mrvl_sec_security_pmd_ops = {
 	.session_create = mrvl_crypto_pmd_security_session_create,
 	.session_update = NULL,
+	.session_get_size = mrvl_crypto_pmd_security_session_get_size,
 	.session_stats_get = NULL,
 	.session_destroy = mrvl_crypto_pmd_security_session_destroy,
 	.set_pkt_metadata = NULL,

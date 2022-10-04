@@ -2130,6 +2130,12 @@ aesni_mb_pmd_sec_sess_destroy(void *dev __rte_unused,
 	return 0;
 }
 
+static unsigned int
+aesni_mb_pmd_sec_sess_get_size(void *device __rte_unused)
+{
+	return sizeof(struct aesni_mb_session);
+}
+
 /** Get security capabilities for aesni multi-buffer */
 static const struct rte_security_capability *
 aesni_mb_pmd_sec_capa_get(void *device __rte_unused)
@@ -2140,6 +2146,7 @@ aesni_mb_pmd_sec_capa_get(void *device __rte_unused)
 static struct rte_security_ops aesni_mb_pmd_sec_ops = {
 		.session_create = aesni_mb_pmd_sec_sess_create,
 		.session_update = NULL,
+		.session_get_size = aesni_mb_pmd_sec_sess_get_size,
 		.session_stats_get = NULL,
 		.session_destroy = aesni_mb_pmd_sec_sess_destroy,
 		.set_pkt_metadata = NULL,

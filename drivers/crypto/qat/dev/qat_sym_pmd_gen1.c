@@ -428,6 +428,7 @@ qat_security_cap_get_gen1(void *dev __rte_unused)
 struct rte_security_ops security_qat_ops_gen1 = {
 		.session_create = qat_security_session_create,
 		.session_update = NULL,
+		.session_get_size = qat_security_session_get_size,
 		.session_stats_get = NULL,
 		.session_destroy = qat_security_session_destroy,
 		.set_pkt_metadata = NULL,
