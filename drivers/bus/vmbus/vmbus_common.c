@@ -111,12 +111,8 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 	/* reference driver structure */
 	dev->driver = dr;
 
-	if (dev->device.numa_node < 0) {
-		if (rte_socket_count() > 1)
-			VMBUS_LOG(INFO, "Device %s is not NUMA-aware, defaulting socket to 0",
-					guid);
-		dev->device.numa_node = 0;
-	}
+	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
+		VMBUS_LOG(INFO, "Device %s is not NUMA-aware", guid);
 
 	/* call the driver probe() function */
 	VMBUS_LOG(INFO, "  probe driver: %s", dr->driver.name);

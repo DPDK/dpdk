@@ -236,12 +236,8 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		return 1;
 	}
 
-	if (dev->device.numa_node < 0) {
-		if (rte_socket_count() > 1)
-			RTE_LOG(INFO, EAL, "Device %s is not NUMA-aware, defaulting socket to 0\n",
-					dev->name);
-		dev->device.numa_node = 0;
-	}
+	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
+		RTE_LOG(INFO, EAL, "Device %s is not NUMA-aware\n", dev->name);
 
 	already_probed = rte_dev_is_probed(&dev->device);
 	if (already_probed && !(dr->drv_flags & RTE_PCI_DRV_PROBE_AGAIN)) {

@@ -231,7 +231,7 @@ lcore_rx(struct lcore_params *p)
 		if ((enabled_port_mask & (1 << port)) == 0)
 			continue;
 
-		if (rte_eth_dev_socket_id(port) > 0 &&
+		if (rte_eth_dev_socket_id(port) >= 0 &&
 				rte_eth_dev_socket_id(port) != socket_id)
 			printf("WARNING, port %u is on remote NUMA node to "
 					"RX thread.\n\tPerformance will not "
@@ -406,7 +406,7 @@ lcore_tx(struct rte_ring *in_r)
 		if ((enabled_port_mask & (1 << port)) == 0)
 			continue;
 
-		if (rte_eth_dev_socket_id(port) > 0 &&
+		if (rte_eth_dev_socket_id(port) >= 0 &&
 				rte_eth_dev_socket_id(port) != socket_id)
 			printf("WARNING, port %u is on remote NUMA node to "
 					"TX thread.\n\tPerformance will not "

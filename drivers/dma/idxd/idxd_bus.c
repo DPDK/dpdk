@@ -12,6 +12,7 @@
 #include <dev_driver.h>
 #include <rte_devargs.h>
 #include <rte_eal.h>
+#include <rte_memory.h>
 #include <rte_log.h>
 #include <rte_dmadev_pmd.h>
 #include <rte_string_fns.h>
@@ -322,7 +323,7 @@ dsa_scan(void)
 
 	while ((wq = readdir(dev_dir)) != NULL) {
 		struct rte_dsa_device *dev;
-		int numa_node = -1;
+		int numa_node = SOCKET_ID_ANY;
 
 		if (strncmp(wq->d_name, "wq", 2) != 0)
 			continue;

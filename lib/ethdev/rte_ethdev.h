@@ -2442,9 +2442,11 @@ int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
  * @param port_id
  *   The port identifier of the Ethernet device
  * @return
- *   The NUMA socket ID to which the Ethernet device is connected or
- *   a default of zero if the socket could not be determined.
- *   -1 is returned is the port_id value is out of range.
+ *   - The NUMA socket ID which the Ethernet device is connected to.
+ *   - -1 (which translates to SOCKET_ID_ANY) if the socket could not be
+ *     determined. rte_errno is then set to:
+ *     - EINVAL is the port_id is invalid,
+ *     - 0 is the socket could not be determined,
  */
 int rte_eth_dev_socket_id(uint16_t port_id);
 

@@ -293,7 +293,6 @@ vmbus_scan_one(const char *name)
 			goto error;
 		dev->device.numa_node = tmp;
 	} else {
-		/* if no NUMA support, set default to 0 */
 		dev->device.numa_node = SOCKET_ID_ANY;
 	}
 

@@ -156,6 +156,7 @@ scan_one_fslmc_device(char *dev_name)
 	}
 
 	dev->device.bus = &rte_fslmc_bus.bus;
+	dev->device.numa_node = SOCKET_ID_ANY;
 
 	/* Allocate interrupt instance */
 	dev->intr_handle =

@@ -40,14 +40,11 @@ auxiliary_scan_one(const char *dirname, const char *name)
 	/* Get NUMA node, default to 0 if not present */
 	snprintf(filename, sizeof(filename), "%s/%s/numa_node",
 		 dirname, name);
-	if (access(filename, F_OK) != -1) {
-		if (eal_parse_sysfs_value(filename, &tmp) == 0)
-			dev->device.numa_node = tmp;
-		else
-			dev->device.numa_node = -1;
-	} else {
-		dev->device.numa_node = 0;
-	}
+	if (access(filename, F_OK) == 0 &&
+	    eal_parse_sysfs_value(filename, &tmp) == 0)
+		dev->device.numa_node = tmp;
+	else
+		dev->device.numa_node = SOCKET_ID_ANY;
 
 	auxiliary_on_scan(dev);
 

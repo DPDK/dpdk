@@ -246,7 +246,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	dev->max_vfs = 0;
 
 	/* FreeBSD has no NUMA support (yet) */
-	dev->device.numa_node = 0;
+	dev->device.numa_node = SOCKET_ID_ANY;
 
 	pci_common_set(dev);
 

@@ -561,8 +561,16 @@ rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 int
 rte_eth_dev_socket_id(uint16_t port_id)
 {
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -1);
-	return rte_eth_devices[port_id].data->numa_node;
+	int socket_id = SOCKET_ID_ANY;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		rte_errno = EINVAL;
+	} else {
+		socket_id = rte_eth_devices[port_id].data->numa_node;
+		if (socket_id == SOCKET_ID_ANY)
+			rte_errno = 0;
+	}
+	return socket_id;
 }
 
 void *

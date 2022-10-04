@@ -33,13 +33,6 @@ Deprecation Notices
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
 
-* bus: The ``dev->device.numa_node`` field is set by each bus driver for
-  every device it manages to indicate on which NUMA node this device lies.
-  When this information is unknown, the assigned value is not consistent
-  across the bus drivers.
-  In DPDK 22.11, the default value will be set to -1 by all bus drivers
-  when the NUMA information is unavailable.
-
 * kni: The KNI kernel module and library are not recommended for use by new
   applications - other technologies such as virtio-user are recommended instead.
   Following the DPDK technical board

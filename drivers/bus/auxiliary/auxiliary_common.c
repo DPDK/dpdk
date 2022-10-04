@@ -105,12 +105,8 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 		return -1;
 	}
 
-	if (dev->device.numa_node < 0) {
-		if (rte_socket_count() > 1)
-			AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware, defaulting socket to 0",
-					dev->name);
-		dev->device.numa_node = 0;
-	}
+	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
+		RTE_LOG(INFO, EAL, "Device %s is not NUMA-aware\n", dev->name);
 
 	iova_mode = rte_eal_iova_mode();
 	if ((drv->drv_flags & RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA) > 0 &&

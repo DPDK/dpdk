@@ -249,7 +249,6 @@ get_device_resource_info(HDEVINFO dev_info,
 		DWORD error = GetLastError();
 		if (error == ERROR_NOT_FOUND) {
 			/* On older CPUs, NUMA is not bound to PCIe locality. */
-			dev->device.numa_node = 0;
 			return ERROR_SUCCESS;
 		}
 		RTE_LOG_WIN32_ERR("SetupDiGetDevicePropertyW"

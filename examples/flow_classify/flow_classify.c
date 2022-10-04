@@ -818,6 +818,8 @@ main(int argc, char *argv[])
 		printf("\nWARNING: Too many lcores enabled. Only 1 used.\n");
 
 	socket_id = rte_eth_dev_socket_id(0);
+	if (socket_id == SOCKET_ID_ANY)
+		socket_id = rte_lcore_to_socket_id(rte_get_next_lcore(-1, 0, 0));
 
 	/* Memory allocation. 8< */
 	size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct flow_classifier_acl));

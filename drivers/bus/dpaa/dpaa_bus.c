@@ -179,6 +179,7 @@ dpaa_create_device_list(void)
 		}
 
 		dev->device.bus = &rte_dpaa_bus.bus;
+		dev->device.numa_node = SOCKET_ID_ANY;
 
 		/* Allocate interrupt handle instance */
 		dev->intr_handle =

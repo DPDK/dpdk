@@ -220,6 +220,12 @@ API Changes
   Application can use ``devtools/cocci/prefix_mbuf_offload_flags.cocci``
   to replace all occurrences of old mbuf flags in C code.
 
+* bus: Changed the device numa node to -1 when NUMA information is unavailable.
+  The ``dev->device.numa_node`` field is set by each bus driver for
+  every device it manages to indicate on which NUMA node this device lies.
+  When this information is unknown, the assigned value was not consistent
+  across the bus drivers. This similarly impacts ``rte_eth_dev_socket_id()``.
+
 * bus: Registering a bus has been marked as an internal API.
   External users may still register their bus using the ``bus_driver.h``
   driver header (see ``enable_driver_sdk`` meson option).
