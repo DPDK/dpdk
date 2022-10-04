@@ -74,10 +74,7 @@ cperf_pmd_cyclecount_test_free(struct cperf_pmd_cyclecount_ctx *ctx)
 				(struct rte_security_session *)ctx->sess);
 		} else
 #endif
-		{
-			rte_cryptodev_sym_session_clear(ctx->dev_id, ctx->sess);
-			rte_cryptodev_sym_session_free(ctx->sess);
-		}
+			rte_cryptodev_sym_session_free(ctx->dev_id, ctx->sess);
 	}
 
 	rte_mempool_free(ctx->pool);

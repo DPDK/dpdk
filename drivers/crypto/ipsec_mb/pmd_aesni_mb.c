@@ -1710,8 +1710,6 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 {
 	struct rte_crypto_op *op = (struct rte_crypto_op *)job->user_data;
 	struct aesni_mb_session *sess = NULL;
-	uint32_t driver_id = ipsec_mb_get_driver_id(
-						IPSEC_MB_PMD_TYPE_AESNI_MB);
 
 #ifdef AESNI_MB_DOCSIS_SEC_ENABLED
 	uint8_t is_docsis_sec = 0;
@@ -1725,15 +1723,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 		sess = get_sec_session_private_data(op->sym->sec_session);
 	} else
 #endif
-	{
-		sess = get_sym_session_private_data(op->sym->session,
-						driver_id);
-	}
-
-	if (unlikely(sess == NULL)) {
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
-		return op;
-	}
+		sess = (void *)op->sym->session->driver_priv_data;
 
 	if (likely(op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)) {
 		switch (job->status) {
@@ -1771,10 +1761,6 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 	/* Free session if a session-less crypto op */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		memset(sess, 0, sizeof(struct aesni_mb_session));
-		memset(op->sym->session, 0,
-			rte_cryptodev_sym_get_existing_header_session_size(
-				op->sym->session));
-		rte_mempool_put(qp->sess_mp_priv, sess);
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}
@@ -1962,16 +1948,6 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	return processed_jobs;
 }
 
-
-static inline void
-ipsec_mb_fill_error_code(struct rte_crypto_sym_vec *vec, int32_t err)
-{
-	uint32_t i;
-
-	for (i = 0; i != vec->num; ++i)
-		vec->status[i] = err;
-}
-
 static inline int
 check_crypto_sgl(union rte_crypto_sym_ofs so, const struct rte_crypto_sgl *sgl)
 {
@@ -2028,7 +2004,7 @@ verify_sync_dgst(struct rte_crypto_sym_vec *vec,
 }
 
 static uint32_t
-aesni_mb_process_bulk(struct rte_cryptodev *dev,
+aesni_mb_process_bulk(struct rte_cryptodev *dev __rte_unused,
 	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs sofs,
 	struct rte_crypto_sym_vec *vec)
 {
@@ -2037,14 +2013,8 @@ aesni_mb_process_bulk(struct rte_cryptodev *dev,
 	void *buf;
 	IMB_JOB *job;
 	IMB_MGR *mb_mgr;
-	struct aesni_mb_session *s;
+	struct aesni_mb_session *s = (void *)sess->driver_priv_data;
 	uint8_t tmp_dgst[vec->num][DIGEST_LENGTH_MAX];
-
-	s = get_sym_session_private_data(sess, dev->driver_id);
-	if (s == NULL) {
-		ipsec_mb_fill_error_code(vec, EINVAL);
-		return 0;
-	}
 
 	/* get per-thread MB MGR, create one if needed */
 	mb_mgr = get_per_thread_mb_mgr();

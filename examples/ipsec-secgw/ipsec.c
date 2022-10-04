@@ -174,11 +174,8 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
 
 		}
 		ips->crypto.dev_id = cdev_id;
-		ips->crypto.ses = rte_cryptodev_sym_session_create(
-				skt_ctx->session_pool);
-		rte_cryptodev_sym_session_init(cdev_id,
-				ips->crypto.ses, sa->xforms,
-				skt_ctx->session_priv_pool);
+		ips->crypto.ses = rte_cryptodev_sym_session_create(cdev_id,
+				sa->xforms, skt_ctx->session_pool);
 
 		rte_cryptodev_info_get(cdev_id, &cdev_info);
 	}

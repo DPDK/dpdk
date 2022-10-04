@@ -136,8 +136,6 @@ struct ipsec_mb_qp {
 	struct rte_ring *ingress_queue;
 	/**< Ring for placing operations ready for processing */
 	struct rte_mempool *sess_mp;
-	/**< Session Mempool */
-	struct rte_mempool *sess_mp_priv;
 	/**< Session Private Data Mempool */
 	struct rte_cryptodev_stats stats;
 	/**< Queue pair statistics */
@@ -399,8 +397,7 @@ ipsec_mb_sym_session_get_size(struct rte_cryptodev *dev);
 int ipsec_mb_sym_session_configure(
 	struct rte_cryptodev *dev,
 	struct rte_crypto_sym_xform *xform,
-	struct rte_cryptodev_sym_session *sess,
-	struct rte_mempool *mempool);
+	struct rte_cryptodev_sym_session *sess);
 
 /** Clear the memory of session so it does not leave key material behind */
 void
@@ -411,50 +408,50 @@ ipsec_mb_sym_session_clear(struct rte_cryptodev *dev,
 static __rte_always_inline void *
 ipsec_mb_get_session_private(struct ipsec_mb_qp *qp, struct rte_crypto_op *op)
 {
-	void *sess = NULL;
+	struct rte_cryptodev_sym_session *sess = NULL;
 	uint32_t driver_id = ipsec_mb_get_driver_id(qp->pmd_type);
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	uint8_t sess_type = op->sess_type;
 	void *_sess;
-	void *_sess_private_data = NULL;
 	struct ipsec_mb_internals *pmd_data = &ipsec_mb_pmds[qp->pmd_type];
 
 	switch (sess_type) {
 	case RTE_CRYPTO_OP_WITH_SESSION:
 		if (likely(sym_op->session != NULL))
-			sess = get_sym_session_private_data(sym_op->session,
-							    driver_id);
+			sess = sym_op->session;
+		else
+			goto error_exit;
 	break;
 	case RTE_CRYPTO_OP_SESSIONLESS:
 		if (!qp->sess_mp ||
 		    rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		if (!qp->sess_mp_priv ||
-		    rte_mempool_get(qp->sess_mp_priv,
-					(void **)&_sess_private_data))
-			return NULL;
-
-		sess = _sess_private_data;
-		if (unlikely(pmd_data->session_configure(qp->mb_mgr,
-				sess, sym_op->xform) != 0)) {
+		sess = _sess;
+		if (sess->sess_data_sz < pmd_data->session_priv_size) {
 			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
-			sess = NULL;
+			goto error_exit;
 		}
 
-		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_sym_session_private_data(sym_op->session, driver_id,
-					     _sess_private_data);
+		if (unlikely(pmd_data->session_configure(qp->mb_mgr,
+			(void *)sess->driver_priv_data, sym_op->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, _sess);
+			goto error_exit;
+		}
+
+		sess->driver_id = driver_id;
+		sym_op->session = sess;
+
 	break;
 	default:
 		IPSEC_MB_LOG(ERR, "Unrecognized session type %u", sess_type);
 	}
 
-	if (unlikely(sess == NULL))
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+	return (void *)sess->driver_priv_data;
 
-	return sess;
+error_exit:
+	op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+	return NULL;
 }
 
 #endif /* _IPSEC_MB_PRIVATE_H_ */

@@ -78,8 +78,6 @@ struct ccp_qp {
 	/**< Ring for placing process packets */
 	struct rte_mempool *sess_mp;
 	/**< Session Mempool */
-	struct rte_mempool *sess_mp_priv;
-	/**< Session Private Data Mempool */
 	struct rte_mempool *batch_mp;
 	/**< Session Mempool for batch info */
 	struct rte_cryptodev_stats qp_stats;

@@ -157,7 +157,6 @@ struct event_crypto_adapter_test_params {
 	struct rte_mempool *op_mpool;
 	struct rte_mempool *asym_op_mpool;
 	struct rte_mempool *session_mpool;
-	struct rte_mempool *session_priv_mpool;
 	struct rte_mempool *asym_sess_mpool;
 	struct rte_cryptodev_config *config;
 	uint8_t crypto_event_port_id;
@@ -307,14 +306,9 @@ test_op_forward_mode(uint8_t session_less)
 	sym_op = op->sym;
 
 	if (!session_less) {
-		sess = rte_cryptodev_sym_session_create(
-				params.session_mpool);
+		sess = rte_cryptodev_sym_session_create(TEST_CDEV_ID,
+				&cipher_xform, params.session_mpool);
 		TEST_ASSERT_NOT_NULL(sess, "Session creation failed\n");
-
-		/* Create Crypto session*/
-		ret = rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,
-				&cipher_xform, params.session_priv_mpool);
-		TEST_ASSERT_SUCCESS(ret, "Failed to init session\n");
 
 		ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID,
 							&cap);
@@ -683,8 +677,8 @@ test_op_new_mode(uint8_t session_less)
 	sym_op = op->sym;
 
 	if (!session_less) {
-		sess = rte_cryptodev_sym_session_create(
-				params.session_mpool);
+		sess = rte_cryptodev_sym_session_create(TEST_CDEV_ID,
+				&cipher_xform, params.session_mpool);
 		TEST_ASSERT_NOT_NULL(sess, "Session creation failed\n");
 
 		ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID,
@@ -699,9 +693,6 @@ test_op_new_mode(uint8_t session_less)
 					RTE_CRYPTO_OP_WITH_SESSION,
 					&m_data, sizeof(m_data));
 		}
-		ret = rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,
-				&cipher_xform, params.session_priv_mpool);
-		TEST_ASSERT_SUCCESS(ret, "Failed to init session\n");
 
 		rte_crypto_op_attach_sym_session(op, sess);
 	} else {
@@ -994,20 +985,10 @@ configure_cryptodev(void)
 
 	params.session_mpool = rte_cryptodev_sym_session_pool_create(
 			"CRYPTO_ADAPTER_SESSION_MP",
-			MAX_NB_SESSIONS, 0, 0,
+			MAX_NB_SESSIONS, session_size, 0,
 			sizeof(union rte_event_crypto_metadata),
 			SOCKET_ID_ANY);
 	TEST_ASSERT_NOT_NULL(params.session_mpool,
-			"session mempool allocation failed\n");
-
-	params.session_priv_mpool = rte_mempool_create(
-				"CRYPTO_AD_SESS_MP_PRIV",
-				MAX_NB_SESSIONS,
-				session_size,
-				0, 0, NULL, NULL, NULL,
-				NULL, SOCKET_ID_ANY,
-				0);
-	TEST_ASSERT_NOT_NULL(params.session_priv_mpool,
 			"session mempool allocation failed\n");
 
 	rte_cryptodev_info_get(TEST_CDEV_ID, &info);
@@ -1048,7 +1029,6 @@ configure_cryptodev(void)
 
 	qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;
 	qp_conf.mp_session = params.session_mpool;
-	qp_conf.mp_session_private = params.session_priv_mpool;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			TEST_CDEV_ID, TEST_CDEV_QP_ID, &qp_conf,
@@ -1417,11 +1397,6 @@ crypto_teardown(void)
 		rte_mempool_avail_count(params.session_mpool));
 		rte_mempool_free(params.session_mpool);
 		params.session_mpool = NULL;
-	}
-	if (params.session_priv_mpool != NULL) {
-		rte_mempool_avail_count(params.session_priv_mpool);
-		rte_mempool_free(params.session_priv_mpool);
-		params.session_priv_mpool = NULL;
 	}
 
 	/* Free asym session mempool */

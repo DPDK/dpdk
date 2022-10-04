@@ -58,7 +58,7 @@ process_op(const struct null_crypto_qp *qp, struct rte_crypto_op *op,
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		memset(op->sym->session, 0,
 				sizeof(struct null_crypto_session));
-		rte_cryptodev_sym_session_free(op->sym->session);
+		rte_mempool_put(qp->sess_mp, (void *)op->sym->session);
 		op->sym->session = NULL;
 	}
 
@@ -78,30 +78,21 @@ get_session(struct null_crypto_qp *qp, struct rte_crypto_op *op)
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (likely(sym_op->session != NULL))
 			sess = (struct null_crypto_session *)
-					get_sym_session_private_data(
-					sym_op->session, cryptodev_driver_id);
+				sym_op->session->driver_priv_data;
 	} else {
-		void *_sess = NULL;
-		void *_sess_private_data = NULL;
+		struct rte_cryptodev_sym_session *_sess = NULL;
 
 		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		if (rte_mempool_get(qp->sess_mp_priv,
-				(void **)&_sess_private_data))
-			return NULL;
-
-		sess = (struct null_crypto_session *)_sess_private_data;
+		sess = (struct null_crypto_session *)_sess->driver_priv_data;
 
 		if (unlikely(null_crypto_set_session_parameters(sess,
 				sym_op->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
 			sess = NULL;
 		}
-		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_sym_session_private_data(op->sym->session,
-				cryptodev_driver_id, _sess_private_data);
+		sym_op->session = _sess;
 	}
 
 	return sess;

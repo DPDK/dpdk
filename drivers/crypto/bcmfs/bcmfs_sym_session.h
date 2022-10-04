@@ -93,8 +93,7 @@ bcmfs_process_crypto_op(struct rte_crypto_op *op,
 int
 bcmfs_sym_session_configure(struct rte_cryptodev *dev,
 			    struct rte_crypto_sym_xform *xform,
-			    struct rte_cryptodev_sym_session *sess,
-			    struct rte_mempool *mempool);
+			    struct rte_cryptodev_sym_session *sess);
 
 void
 bcmfs_sym_session_clear(struct rte_cryptodev *dev,

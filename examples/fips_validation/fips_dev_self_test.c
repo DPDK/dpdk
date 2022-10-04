@@ -969,7 +969,6 @@ struct fips_dev_auto_test_env {
 	struct rte_mempool *mpool;
 	struct rte_mempool *op_pool;
 	struct rte_mempool *sess_pool;
-	struct rte_mempool *sess_priv_pool;
 	struct rte_mbuf *mbuf;
 	struct rte_crypto_op *op;
 };
@@ -1479,13 +1478,8 @@ run_single_test(uint8_t dev_id,
 		return ret;
 	}
 
-	sess = rte_cryptodev_sym_session_create(env->sess_pool);
-	if (!sess)
-		return -ENOMEM;
-
-	ret = rte_cryptodev_sym_session_init(dev_id,
-			sess, &xform, env->sess_priv_pool);
-	if (ret < 0) {
+	sess = rte_cryptodev_sym_session_create(dev_id, &xform, env->sess_pool);
+	if (!sess) {
 		RTE_LOG(ERR, PMD, "Error %i: Init session\n", ret);
 		return ret;
 	}
@@ -1508,8 +1502,7 @@ run_single_test(uint8_t dev_id,
 				1);
 	} while (n_deqd == 0);
 
-	rte_cryptodev_sym_session_clear(dev_id, sess);
-	rte_cryptodev_sym_session_free(sess);
+	rte_cryptodev_sym_session_free(dev_id, sess);
 
 	if (env->op->status != RTE_CRYPTO_OP_STATUS_SUCCESS)
 		return -1;
@@ -1527,7 +1520,6 @@ fips_dev_auto_test_uninit(uint8_t dev_id,
 	rte_mempool_free(env->mpool);
 	rte_mempool_free(env->op_pool);
 	rte_mempool_free(env->sess_pool);
-	rte_mempool_free(env->sess_priv_pool);
 
 	rte_cryptodev_stop(dev_id);
 }
@@ -1535,7 +1527,7 @@ fips_dev_auto_test_uninit(uint8_t dev_id,
 static int
 fips_dev_auto_test_init(uint8_t dev_id, struct fips_dev_auto_test_env *env)
 {
-	struct rte_cryptodev_qp_conf qp_conf = {128, NULL, NULL};
+	struct rte_cryptodev_qp_conf qp_conf = {128, NULL};
 	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(dev_id);
 	struct rte_cryptodev_config conf;
 	char name[128];
@@ -1579,25 +1571,13 @@ fips_dev_auto_test_init(uint8_t dev_id, struct fips_dev_auto_test_env *env)
 	snprintf(name, 128, "%s%u", "SELF_TEST_SESS_POOL", dev_id);
 
 	env->sess_pool = rte_cryptodev_sym_session_pool_create(name,
-			128, 0, 0, 0, rte_cryptodev_socket_id(dev_id));
+			128, sess_sz, 0, 0, rte_cryptodev_socket_id(dev_id));
 	if (!env->sess_pool) {
 		ret = -ENOMEM;
 		goto error_exit;
 	}
 
-	memset(name, 0, 128);
-	snprintf(name, 128, "%s%u", "SELF_TEST_SESS_PRIV_POOL", dev_id);
-
-	env->sess_priv_pool = rte_mempool_create(name,
-			128, sess_sz, 0, 0, NULL, NULL, NULL,
-			NULL, rte_cryptodev_socket_id(dev_id), 0);
-	if (!env->sess_priv_pool) {
-		ret = -ENOMEM;
-		goto error_exit;
-	}
-
 	qp_conf.mp_session = env->sess_pool;
-	qp_conf.mp_session_private = env->sess_priv_pool;
 
 	ret = rte_cryptodev_queue_pair_setup(dev_id, 0, &qp_conf,
 			rte_cryptodev_socket_id(dev_id));

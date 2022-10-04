@@ -1693,8 +1693,6 @@ cryptodevs_init(uint16_t req_queue_num)
 		qp_conf.nb_descriptors = qp_desc_nb;
 		qp_conf.mp_session =
 			socket_ctx[dev_conf.socket_id].session_pool;
-		qp_conf.mp_session_private =
-			socket_ctx[dev_conf.socket_id].session_priv_pool;
 		for (qp = 0; qp < dev_conf.nb_queue_pairs; qp++)
 			if (rte_cryptodev_queue_pair_setup(cdev_id, qp,
 					&qp_conf, dev_conf.socket_id))
@@ -2501,12 +2499,8 @@ one_session_free(struct rte_ipsec_session *ips)
 		if (ips->crypto.ses == NULL)
 			return 0;
 
-		ret = rte_cryptodev_sym_session_clear(ips->crypto.dev_id,
-						      ips->crypto.ses);
-		if (ret)
-			return ret;
-
-		ret = rte_cryptodev_sym_session_free(ips->crypto.ses);
+		ret = rte_cryptodev_sym_session_free(ips->crypto.dev_id,
+				ips->crypto.ses);
 	} else {
 		/* Session has not been created */
 		if (ips->security.ctx == NULL || ips->security.ses == NULL)

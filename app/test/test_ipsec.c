@@ -370,20 +370,9 @@ testsuite_setup(void)
 		return TEST_FAILED;
 	}
 
-	ts_params->qp_conf.mp_session_private = rte_mempool_create(
-				"test_priv_sess_mp",
-				MAX_NB_SESSIONS,
-				sess_sz,
-				0, 0, NULL, NULL, NULL,
-				NULL, SOCKET_ID_ANY,
-				0);
-
-	TEST_ASSERT_NOT_NULL(ts_params->qp_conf.mp_session_private,
-			"private session mempool allocation failed");
-
 	ts_params->qp_conf.mp_session =
 		rte_cryptodev_sym_session_pool_create("test_sess_mp",
-			MAX_NB_SESSIONS, 0, 0, 0, SOCKET_ID_ANY);
+			MAX_NB_SESSIONS, sess_sz, 0, 0, SOCKET_ID_ANY);
 
 	TEST_ASSERT_NOT_NULL(ts_params->qp_conf.mp_session,
 			"session mempool allocation failed");
@@ -427,11 +416,6 @@ testsuite_teardown(void)
 	if (ts_params->qp_conf.mp_session != NULL) {
 		rte_mempool_free(ts_params->qp_conf.mp_session);
 		ts_params->qp_conf.mp_session = NULL;
-	}
-
-	if (ts_params->qp_conf.mp_session_private != NULL) {
-		rte_mempool_free(ts_params->qp_conf.mp_session_private);
-		ts_params->qp_conf.mp_session_private = NULL;
 	}
 }
 
@@ -647,8 +631,7 @@ create_dummy_sec_session(struct ipsec_unitest_params *ut,
 	static struct rte_security_session_conf conf;
 
 	ut->ss[j].security.ses = rte_security_session_create(&dummy_sec_ctx,
-					&conf, qp->mp_session,
-					qp->mp_session_private);
+					&conf, qp->mp_session, NULL);
 
 	if (ut->ss[j].security.ses == NULL)
 		return -ENOMEM;
@@ -662,25 +645,15 @@ static int
 create_crypto_session(struct ipsec_unitest_params *ut,
 	struct rte_cryptodev_qp_conf *qp, uint8_t dev_id, uint32_t j)
 {
-	int32_t rc;
 	struct rte_cryptodev_sym_session *s;
 
-	s = rte_cryptodev_sym_session_create(qp->mp_session);
+	s = rte_cryptodev_sym_session_create(dev_id, ut->crypto_xforms,
+			qp->mp_session);
 	if (s == NULL)
 		return -ENOMEM;
 
-	/* initialize SA crypto session for device */
-	rc = rte_cryptodev_sym_session_init(dev_id, s,
-			ut->crypto_xforms, qp->mp_session_private);
-	if (rc == 0) {
-		ut->ss[j].crypto.ses = s;
-		return 0;
-	} else {
-		/* failure, do cleanup */
-		rte_cryptodev_sym_session_clear(dev_id, s);
-		rte_cryptodev_sym_session_free(s);
-		return rc;
-	}
+	ut->ss[j].crypto.ses = s;
+	return 0;
 }
 
 static int
@@ -1196,8 +1169,7 @@ static void
 destroy_crypto_session(struct ipsec_unitest_params *ut,
 	uint8_t crypto_dev, uint32_t j)
 {
-	rte_cryptodev_sym_session_clear(crypto_dev, ut->ss[j].crypto.ses);
-	rte_cryptodev_sym_session_free(ut->ss[j].crypto.ses);
+	rte_cryptodev_sym_session_free(crypto_dev, ut->ss[j].crypto.ses);
 	memset(&ut->ss[j], 0, sizeof(ut->ss[j]));
 }
 

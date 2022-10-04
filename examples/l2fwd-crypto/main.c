@@ -228,7 +228,6 @@ struct rte_mempool *l2fwd_pktmbuf_pool;
 struct rte_mempool *l2fwd_crypto_op_pool;
 static struct {
 	struct rte_mempool *sess_mp;
-	struct rte_mempool *priv_mp;
 } session_pool_socket[RTE_MAX_NUMA_NODES];
 
 /* Per-port statistics struct */
@@ -675,7 +674,6 @@ static struct rte_cryptodev_sym_session *
 initialize_crypto_session(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 {
 	struct rte_crypto_sym_xform *first_xform;
-	struct rte_cryptodev_sym_session *session;
 	int retval = rte_cryptodev_socket_id(cdev_id);
 
 	if (retval < 0)
@@ -697,17 +695,8 @@ initialize_crypto_session(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 		first_xform = &options->auth_xform;
 	}
 
-	session = rte_cryptodev_sym_session_create(
+	return rte_cryptodev_sym_session_create(cdev_id, first_xform,
 			session_pool_socket[socket_id].sess_mp);
-	if (session == NULL)
-		return NULL;
-
-	if (rte_cryptodev_sym_session_init(cdev_id, session,
-				first_xform,
-				session_pool_socket[socket_id].priv_mp) < 0)
-		return NULL;
-
-	return session;
 }
 /* >8 End of creation of session. */
 
@@ -2380,13 +2369,10 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 
 		rte_cryptodev_info_get(cdev_id, &dev_info);
 
-		/*
-		 * Two sessions objects are required for each session
-		 * (one for the header, one for the private data)
-		 */
 		if (!strcmp(dev_info.driver_name, "crypto_scheduler")) {
 #ifdef RTE_CRYPTO_SCHEDULER
-			uint32_t nb_workers =
+			/* scheduler session header + 1 session per worker */
+			uint32_t nb_workers = 1 +
 				rte_cryptodev_scheduler_workers_get(cdev_id,
 								NULL);
 
@@ -2395,41 +2381,15 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		} else
 			sessions_needed = enabled_cdev_count;
 
-		if (session_pool_socket[socket_id].priv_mp == NULL) {
-			char mp_name[RTE_MEMPOOL_NAMESIZE];
-
-			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
-				"priv_sess_mp_%u", socket_id);
-
-			session_pool_socket[socket_id].priv_mp =
-					rte_mempool_create(mp_name,
-						sessions_needed,
-						max_sess_sz,
-						0, 0, NULL, NULL, NULL,
-						NULL, socket_id,
-						0);
-
-			if (session_pool_socket[socket_id].priv_mp == NULL) {
-				printf("Cannot create pool on socket %d\n",
-					socket_id);
-				return -ENOMEM;
-			}
-
-			printf("Allocated pool \"%s\" on socket %d\n",
-				mp_name, socket_id);
-		}
-
 		if (session_pool_socket[socket_id].sess_mp == NULL) {
 			char mp_name[RTE_MEMPOOL_NAMESIZE];
 			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
 				"sess_mp_%u", socket_id);
 
 			session_pool_socket[socket_id].sess_mp =
-					rte_cryptodev_sym_session_pool_create(
-							mp_name,
-							sessions_needed,
-							0, 0, 0, socket_id);
-
+				rte_cryptodev_sym_session_pool_create(
+					mp_name, sessions_needed, max_sess_sz,
+					0, 0, socket_id);
 			if (session_pool_socket[socket_id].sess_mp == NULL) {
 				printf("Cannot create pool on socket %d\n",
 					socket_id);
@@ -2580,8 +2540,6 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 
 		qp_conf.nb_descriptors = 2048;
 		qp_conf.mp_session = session_pool_socket[socket_id].sess_mp;
-		qp_conf.mp_session_private =
-				session_pool_socket[socket_id].priv_mp;
 
 		retval = rte_cryptodev_queue_pair_setup(cdev_id, 0, &qp_conf,
 				socket_id);

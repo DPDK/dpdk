@@ -1357,8 +1357,7 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 	switch (op->sess_type) {
 	case RTE_CRYPTO_OP_WITH_SESSION:
 		ses = (struct caam_jr_session *)
-		get_sym_session_private_data(op->sym->session,
-					cryptodev_driver_id);
+			op->sym->session->driver_priv_data;
 		break;
 	case RTE_CRYPTO_OP_SECURITY_SESSION:
 		ses = (struct caam_jr_session *)
@@ -1692,54 +1691,39 @@ err1:
 }
 
 static int
-caam_jr_sym_session_configure(struct rte_cryptodev *dev,
+caam_jr_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 			      struct rte_crypto_sym_xform *xform,
-			      struct rte_cryptodev_sym_session *sess,
-			      struct rte_mempool *mempool)
+			      struct rte_cryptodev_sym_session *sess)
 {
 	void *sess_private_data;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CAAM_JR_ERR("Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
-
+	sess_private_data = (void *)sess->driver_priv_data;
 	memset(sess_private_data, 0, sizeof(struct caam_jr_session));
 	ret = caam_jr_set_session_parameters(dev, xform, sess_private_data);
 	if (ret != 0) {
 		CAAM_JR_ERR("failed to configure session parameters");
 		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
-
-	set_sym_session_private_data(sess, dev->driver_id, sess_private_data);
 
 	return 0;
 }
 
 /* Clear the memory of session so it doesn't leave key material behind */
 static void
-caam_jr_sym_session_clear(struct rte_cryptodev *dev,
+caam_jr_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 		struct rte_cryptodev_sym_session *sess)
 {
-	uint8_t index = dev->driver_id;
-	void *sess_priv = get_sym_session_private_data(sess, index);
+	void *sess_priv = (void *)sess->driver_priv_data;
 	struct caam_jr_session *s = (struct caam_jr_session *)sess_priv;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (sess_priv) {
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
-		memset(s, 0, sizeof(struct caam_jr_session));
-		set_sym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
 

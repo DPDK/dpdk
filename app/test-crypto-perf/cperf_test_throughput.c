@@ -52,10 +52,8 @@ cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 				(struct rte_security_session *)ctx->sess);
 		}
 #endif
-		else {
-			rte_cryptodev_sym_session_clear(ctx->dev_id, ctx->sess);
-			rte_cryptodev_sym_session_free(ctx->sess);
-		}
+		else
+			rte_cryptodev_sym_session_free(ctx->dev_id, ctx->sess);
 	}
 	rte_mempool_free(ctx->pool);
 

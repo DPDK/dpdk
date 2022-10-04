@@ -49,7 +49,6 @@ struct cpt_instance {
 	uint32_t queue_id;
 	uintptr_t rsvd;
 	struct rte_mempool *sess_mp;
-	struct rte_mempool *sess_mp_priv;
 	struct cpt_qp_meta_info meta_info;
 	uint8_t ca_enabled;
 };

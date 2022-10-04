@@ -197,7 +197,6 @@ struct vhost_crypto {
 	struct rte_hash *session_map;
 	struct rte_mempool *mbuf_pool;
 	struct rte_mempool *sess_pool;
-	struct rte_mempool *sess_priv_pool;
 	struct rte_mempool *wb_pool;
 
 	/** DPDK cryptodev ID */
@@ -376,16 +375,10 @@ vhost_crypto_create_sess(struct vhost_crypto *vcrypto,
 		return;
 	}
 
-	session = rte_cryptodev_sym_session_create(vcrypto->sess_pool);
+	session = rte_cryptodev_sym_session_create(vcrypto->cid, &xform1,
+			vcrypto->sess_pool);
 	if (!session) {
 		VC_LOG_ERR("Failed to create session");
-		sess_param->session_id = -VIRTIO_CRYPTO_ERR;
-		return;
-	}
-
-	if (rte_cryptodev_sym_session_init(vcrypto->cid, session, &xform1,
-			vcrypto->sess_priv_pool) < 0) {
-		VC_LOG_ERR("Failed to initialize session");
 		sess_param->session_id = -VIRTIO_CRYPTO_ERR;
 		return;
 	}
@@ -395,12 +388,8 @@ vhost_crypto_create_sess(struct vhost_crypto *vcrypto,
 			&vcrypto->last_session_id, session) < 0) {
 		VC_LOG_ERR("Failed to insert session to hash table");
 
-		if (rte_cryptodev_sym_session_clear(vcrypto->cid, session) < 0)
-			VC_LOG_ERR("Failed to clear session");
-		else {
-			if (rte_cryptodev_sym_session_free(session) < 0)
-				VC_LOG_ERR("Failed to free session");
-		}
+		if (rte_cryptodev_sym_session_free(vcrypto->cid, session) < 0)
+			VC_LOG_ERR("Failed to free session");
 		sess_param->session_id = -VIRTIO_CRYPTO_ERR;
 		return;
 	}
@@ -427,12 +416,7 @@ vhost_crypto_close_sess(struct vhost_crypto *vcrypto, uint64_t session_id)
 		return -VIRTIO_CRYPTO_INVSESS;
 	}
 
-	if (rte_cryptodev_sym_session_clear(vcrypto->cid, session) < 0) {
-		VC_LOG_DBG("Failed to clear session");
-		return -VIRTIO_CRYPTO_ERR;
-	}
-
-	if (rte_cryptodev_sym_session_free(session) < 0) {
+	if (rte_cryptodev_sym_session_free(vcrypto->cid, session) < 0) {
 		VC_LOG_DBG("Failed to free session");
 		return -VIRTIO_CRYPTO_ERR;
 	}
@@ -1393,7 +1377,6 @@ rte_vhost_crypto_driver_start(const char *path)
 int
 rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 		struct rte_mempool *sess_pool,
-		struct rte_mempool *sess_priv_pool,
 		int socket_id)
 {
 	struct virtio_net *dev = get_device(vid);
@@ -1415,7 +1398,6 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 	}
 
 	vcrypto->sess_pool = sess_pool;
-	vcrypto->sess_priv_pool = sess_priv_pool;
 	vcrypto->cid = cryptodev_id;
 	vcrypto->cache_session_id = UINT64_MAX;
 	vcrypto->last_session_id = 1;

@@ -97,35 +97,14 @@ fill_session_pool_socket(int32_t socket_id, uint32_t session_priv_size,
 	char mp_name[RTE_MEMPOOL_NAMESIZE];
 	struct rte_mempool *sess_mp;
 
-	if (session_pool_socket[socket_id].priv_mp == NULL) {
-		snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
-			"priv_sess_mp_%u", socket_id);
-
-		sess_mp = rte_mempool_create(mp_name,
-					nb_sessions,
-					session_priv_size,
-					0, 0, NULL, NULL, NULL,
-					NULL, socket_id,
-					0);
-
-		if (sess_mp == NULL) {
-			printf("Cannot create pool \"%s\" on socket %d\n",
-				mp_name, socket_id);
-			return -ENOMEM;
-		}
-
-		printf("Allocated pool \"%s\" on socket %d\n",
-			mp_name, socket_id);
-		session_pool_socket[socket_id].priv_mp = sess_mp;
-	}
-
 	if (session_pool_socket[socket_id].sess_mp == NULL) {
 
 		snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
 			"sess_mp_%u", socket_id);
 
 		sess_mp = rte_cryptodev_sym_session_pool_create(mp_name,
-					nb_sessions, 0, 0, 0, socket_id);
+					nb_sessions, session_priv_size, 0, 0,
+					socket_id);
 
 		if (sess_mp == NULL) {
 			printf("Cannot create pool \"%s\" on socket %d\n",
@@ -136,6 +115,7 @@ fill_session_pool_socket(int32_t socket_id, uint32_t session_priv_size,
 		printf("Allocated pool \"%s\" on socket %d\n",
 			mp_name, socket_id);
 		session_pool_socket[socket_id].sess_mp = sess_mp;
+		session_pool_socket[socket_id].priv_mp = sess_mp;
 	}
 
 	return 0;
@@ -323,12 +303,9 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 			return ret;
 
 		qp_conf.mp_session = session_pool_socket[socket_id].sess_mp;
-		qp_conf.mp_session_private =
-				session_pool_socket[socket_id].priv_mp;
 
 		if (opts->op_type == CPERF_ASYM_MODEX) {
 			qp_conf.mp_session = NULL;
-			qp_conf.mp_session_private = NULL;
 		}
 
 		ret = rte_cryptodev_configure(cdev_id, &conf);

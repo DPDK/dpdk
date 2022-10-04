@@ -317,9 +317,7 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 #endif
 	{
 		sess = (struct qat_sym_session *)
-				get_sym_session_private_data(
-				rx_op->sym->session,
-				qat_sym_driver_id);
+			rx_op->sym->session->driver_priv_data;
 		is_docsis_sec = 0;
 	}
 

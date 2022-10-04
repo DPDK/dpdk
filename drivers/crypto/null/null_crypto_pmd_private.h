@@ -31,8 +31,6 @@ struct null_crypto_qp {
 	/**< Ring for placing process packets */
 	struct rte_mempool *sess_mp;
 	/**< Session Mempool */
-	struct rte_mempool *sess_mp_priv;
-	/**< Session Mempool */
 	struct rte_cryptodev_stats qp_stats;
 	/**< Queue pair statistics */
 } __rte_cache_aligned;

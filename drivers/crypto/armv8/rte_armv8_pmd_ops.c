@@ -244,7 +244,6 @@ armv8_crypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		goto qp_setup_cleanup;
 
 	qp->sess_mp = qp_conf->mp_session;
-	qp->sess_mp_priv = qp_conf->mp_session_private;
 
 	memset(&qp->stats, 0, sizeof(qp->stats));
 
@@ -265,10 +264,9 @@ armv8_crypto_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 
 /** Configure the session from a crypto xform chain */
 static int
-armv8_crypto_pmd_sym_session_configure(struct rte_cryptodev *dev,
+armv8_crypto_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *sess,
-		struct rte_mempool *mempool)
+		struct rte_cryptodev_sym_session *sess)
 {
 	void *sess_private_data;
 	int ret;
@@ -278,43 +276,22 @@ armv8_crypto_pmd_sym_session_configure(struct rte_cryptodev *dev,
 		return -EINVAL;
 	}
 
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CDEV_LOG_ERR(
-			"Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
+	sess_private_data = sess->driver_priv_data;
 
 	ret = armv8_crypto_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {
 		ARMV8_CRYPTO_LOG_ERR("failed configure session parameters");
-
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
-
-	set_sym_session_private_data(sess, dev->driver_id,
-			sess_private_data);
 
 	return 0;
 }
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-armv8_crypto_pmd_sym_session_clear(struct rte_cryptodev *dev,
-		struct rte_cryptodev_sym_session *sess)
-{
-	uint8_t index = dev->driver_id;
-	void *sess_priv = get_sym_session_private_data(sess, index);
-
-	/* Zero out the whole structure */
-	if (sess_priv) {
-		memset(sess_priv, 0, sizeof(struct armv8_crypto_session));
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-		set_sym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
-	}
-}
+armv8_crypto_pmd_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
+		struct rte_cryptodev_sym_session *sess __rte_unused)
+{}
 
 struct rte_cryptodev_ops armv8_crypto_pmd_ops = {
 		.dev_configure		= armv8_crypto_pmd_config,

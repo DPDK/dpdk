@@ -123,12 +123,12 @@ struct qat_sym_session {
 int
 qat_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *sess,
-		struct rte_mempool *mempool);
+		struct rte_cryptodev_sym_session *sess);
 
 int
 qat_sym_session_set_parameters(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform, void *session_private);
+		struct rte_crypto_sym_xform *xform, void *session_private,
+		rte_iova_t session_private_iova);
 
 int
 qat_sym_session_configure_aead(struct rte_cryptodev *dev,

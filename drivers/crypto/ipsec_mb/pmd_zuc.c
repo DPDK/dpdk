@@ -239,10 +239,6 @@ process_ops(struct rte_crypto_op **ops, enum ipsec_mb_operation op_type,
 		/* Free session if a session-less crypto op. */
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 			memset(sessions[i], 0, sizeof(struct zuc_session));
-			memset(ops[i]->sym->session, 0,
-			rte_cryptodev_sym_get_existing_header_session_size(
-					ops[i]->sym->session));
-			rte_mempool_put(qp->sess_mp_priv, sessions[i]);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
 		}

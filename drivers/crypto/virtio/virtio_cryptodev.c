@@ -40,8 +40,7 @@ static void virtio_crypto_sym_clear_session(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess);
 static int virtio_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *session,
-		struct rte_mempool *mp);
+		struct rte_cryptodev_sym_session *session);
 
 /*
  * The set of PCI devices this driver supports
@@ -952,12 +951,7 @@ virtio_crypto_sym_clear_session(
 
 	hw = dev->data->dev_private;
 	vq = hw->cvq;
-	session = (struct virtio_crypto_session *)get_sym_session_private_data(
-		sess, cryptodev_virtio_driver_id);
-	if (session == NULL) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid session parameter");
-		return;
-	}
+	session = (struct virtio_crypto_session *)sess->driver_priv_data;
 
 	VIRTIO_CRYPTO_SESSION_LOG_INFO("vq->vq_desc_head_idx = %d, "
 			"vq = %p", vq->vq_desc_head_idx, vq);
@@ -1070,10 +1064,6 @@ virtio_crypto_sym_clear_session(
 	VIRTIO_CRYPTO_SESSION_LOG_INFO("Close session %"PRIu64" successfully ",
 			session->session_id);
 
-	memset(session, 0, sizeof(struct virtio_crypto_session));
-	struct rte_mempool *sess_mp = rte_mempool_from_obj(session);
-	set_sym_session_private_data(sess, cryptodev_virtio_driver_id, NULL);
-	rte_mempool_put(sess_mp, session);
 	rte_free(malloc_virt_addr);
 }
 
@@ -1292,11 +1282,9 @@ static int
 virtio_crypto_check_sym_configure_session_paras(
 		struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *sym_sess,
-		struct rte_mempool *mempool)
+		struct rte_cryptodev_sym_session *sym_sess)
 {
-	if (unlikely(xform == NULL) || unlikely(sym_sess == NULL) ||
-		unlikely(mempool == NULL)) {
+	if (unlikely(xform == NULL) || unlikely(sym_sess == NULL)) {
 		VIRTIO_CRYPTO_SESSION_LOG_ERR("NULL pointer");
 		return -1;
 	}
@@ -1311,12 +1299,9 @@ static int
 virtio_crypto_sym_configure_session(
 		struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *sess,
-		struct rte_mempool *mempool)
+		struct rte_cryptodev_sym_session *sess)
 {
 	int ret;
-	struct virtio_crypto_session crypto_sess;
-	void *session_private = &crypto_sess;
 	struct virtio_crypto_session *session;
 	struct virtio_crypto_op_ctrl_req *ctrl_req;
 	enum virtio_crypto_cmd_id cmd_id;
@@ -1328,19 +1313,12 @@ virtio_crypto_sym_configure_session(
 	PMD_INIT_FUNC_TRACE();
 
 	ret = virtio_crypto_check_sym_configure_session_paras(dev, xform,
-			sess, mempool);
+			sess);
 	if (ret < 0) {
 		VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid parameters");
 		return ret;
 	}
-
-	if (rte_mempool_get(mempool, &session_private)) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR(
-			"Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
-
-	session = (struct virtio_crypto_session *)session_private;
+	session = (struct virtio_crypto_session *)sess->driver_priv_data;
 	memset(session, 0, sizeof(struct virtio_crypto_session));
 	ctrl_req = &session->ctrl;
 	ctrl_req->header.opcode = VIRTIO_CRYPTO_CIPHER_CREATE_SESSION;
@@ -1402,10 +1380,6 @@ virtio_crypto_sym_configure_session(
 			"Unsupported operation chain order parameter");
 		goto error_out;
 	}
-
-	set_sym_session_private_data(sess, dev->driver_id,
-		session_private);
-
 	return 0;
 
 error_out:

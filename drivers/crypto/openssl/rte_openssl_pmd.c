@@ -887,10 +887,8 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 		if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 			/* get existing session */
 			if (likely(op->sym->session != NULL))
-				sess = (struct openssl_session *)
-						get_sym_session_private_data(
-						op->sym->session,
-						cryptodev_driver_id);
+				sess = (void *)
+					op->sym->session->driver_priv_data;
 		} else {
 			if (likely(op->asym->session != NULL))
 				asym_sess = (struct openssl_asym_session *)
@@ -901,32 +899,26 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 			return asym_sess;
 		}
 	} else {
+		struct rte_cryptodev_sym_session *_sess;
 		/* sessionless asymmetric not supported */
 		if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC)
 			return NULL;
 
 		/* provide internal session */
-		void *_sess = rte_cryptodev_sym_session_create(qp->sess_mp);
-		void *_sess_private_data = NULL;
+		rte_mempool_get(qp->sess_mp, (void **)&_sess);
 
 		if (_sess == NULL)
 			return NULL;
 
-		if (rte_mempool_get(qp->sess_mp_priv,
-				(void **)&_sess_private_data))
-			return NULL;
-
-		sess = (struct openssl_session *)_sess_private_data;
+		sess = (struct openssl_session *)_sess->driver_priv_data;
 
 		if (unlikely(openssl_set_session_parameters(sess,
 				op->sym->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
 			sess = NULL;
 		}
 		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_sym_session_private_data(op->sym->session,
-				cryptodev_driver_id, _sess_private_data);
+
 	}
 
 	if (sess == NULL)
@@ -2900,10 +2892,6 @@ process_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		openssl_reset_session(sess);
 		memset(sess, 0, sizeof(struct openssl_session));
-		memset(op->sym->session, 0,
-			rte_cryptodev_sym_get_existing_header_session_size(
-				op->sym->session));
-		rte_mempool_put(qp->sess_mp_priv, sess);
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}

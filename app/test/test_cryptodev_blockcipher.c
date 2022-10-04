@@ -68,7 +68,6 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
 	struct rte_mempool *sess_mpool,
-	struct rte_mempool *sess_priv_mpool,
 	uint8_t dev_id,
 	char *test_msg)
 {
@@ -514,11 +513,9 @@ iterate:
 	 */
 	if (!(t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS) &&
 			nb_iterates == 0) {
-		sess = rte_cryptodev_sym_session_create(sess_mpool);
-
-		status = rte_cryptodev_sym_session_init(dev_id, sess,
-				init_xform, sess_priv_mpool);
-		if (status == -ENOTSUP) {
+		sess = rte_cryptodev_sym_session_create(dev_id, init_xform,
+				sess_mpool);
+		if (sess == NULL) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "UNSUPPORTED");
 			status = TEST_SKIPPED;
 			goto error_exit;
@@ -801,10 +798,8 @@ iterate:
 
 error_exit:
 	if (!(t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS)) {
-		if (sess) {
-			rte_cryptodev_sym_session_clear(dev_id, sess);
-			rte_cryptodev_sym_session_free(sess);
-		}
+		if (sess)
+			rte_cryptodev_sym_session_free(dev_id, sess);
 		rte_free(cipher_xform);
 		rte_free(auth_xform);
 	}
@@ -829,7 +824,6 @@ blockcipher_test_case_run(const void *data)
 			p_testsuite_params->mbuf_pool,
 			p_testsuite_params->op_mpool,
 			p_testsuite_params->session_mpool,
-			p_testsuite_params->session_priv_mpool,
 			p_testsuite_params->valid_devs[0],
 			test_msg);
 	return status;

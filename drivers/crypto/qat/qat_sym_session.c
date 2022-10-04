@@ -226,22 +226,13 @@ qat_is_auth_alg_supported(enum rte_crypto_auth_algorithm algo,
 }
 
 void
-qat_sym_session_clear(struct rte_cryptodev *dev,
+qat_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 		struct rte_cryptodev_sym_session *sess)
 {
-	uint8_t index = dev->driver_id;
-	void *sess_priv = get_sym_session_private_data(sess, index);
-	struct qat_sym_session *s = (struct qat_sym_session *)sess_priv;
+	struct qat_sym_session *s = (void *)sess->driver_priv_data;
 
-	if (sess_priv) {
-		if (s->bpi_ctx)
-			bpi_cipher_ctx_free(s->bpi_ctx);
-		memset(s, 0, qat_sym_session_get_private_size(dev));
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
-		set_sym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
-	}
+	if (s->bpi_ctx)
+		bpi_cipher_ctx_free(s->bpi_ctx);
 }
 
 static int
@@ -524,34 +515,23 @@ error_out:
 int
 qat_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *sess,
-		struct rte_mempool *mempool)
+		struct rte_cryptodev_sym_session *sess)
 {
-	void *sess_private_data;
 	int ret;
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CDEV_LOG_ERR(
-			"Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	if (ossl_legacy_provider_load())
 		return -EINVAL;
 #endif
-	ret = qat_sym_session_set_parameters(dev, xform, sess_private_data);
+	ret = qat_sym_session_set_parameters(dev, xform,
+			(void *)sess->driver_priv_data,
+			sess->driver_priv_data_iova);
 	if (ret != 0) {
 		QAT_LOG(ERR,
 		    "Crypto QAT PMD: failed to configure session parameters");
 
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
-
-	set_sym_session_private_data(sess, dev->driver_id,
-		sess_private_data);
 
 # if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	ossl_legacy_provider_unload();
@@ -561,7 +541,8 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 
 int
 qat_sym_session_set_parameters(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform, void *session_private)
+		struct rte_crypto_sym_xform *xform, void *session_private,
+		rte_iova_t session_paddr)
 {
 	struct qat_sym_session *session = session_private;
 	struct qat_cryptodev_private *internals = dev->data->dev_private;
@@ -570,7 +551,6 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 	int qat_cmd_id;
 
 	/* Verify the session physical address is known */
-	rte_iova_t session_paddr = rte_mempool_virt2iova(session);
 	if (session_paddr == 0 || session_paddr == RTE_BAD_IOVA) {
 		QAT_LOG(ERR,
 			"Session physical address unknown. Bad memory pool.");

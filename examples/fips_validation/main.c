@@ -55,7 +55,6 @@ struct cryptodev_fips_validate_env {
 	uint16_t mbuf_data_room;
 	struct rte_mempool *mpool;
 	struct rte_mempool *sess_mpool;
-	struct rte_mempool *sess_priv_mpool;
 	struct rte_mempool *op_pool;
 	struct rte_mbuf *mbuf;
 	uint8_t *digest;
@@ -70,7 +69,7 @@ static int
 cryptodev_fips_validate_app_int(void)
 {
 	struct rte_cryptodev_config conf = {rte_socket_id(), 1, 0};
-	struct rte_cryptodev_qp_conf qp_conf = {128, NULL, NULL};
+	struct rte_cryptodev_qp_conf qp_conf = {128, NULL};
 	struct rte_cryptodev_info dev_info;
 	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(
 			env.dev_id);
@@ -110,14 +109,9 @@ cryptodev_fips_validate_app_int(void)
 	ret = -ENOMEM;
 
 	env.sess_mpool = rte_cryptodev_sym_session_pool_create(
-			"FIPS_SESS_MEMPOOL", 16, 0, 0, 0, rte_socket_id());
+			"FIPS_SESS_MEMPOOL", 16, sess_sz, 0, 0,
+			rte_socket_id());
 	if (!env.sess_mpool)
-		goto error_exit;
-
-	env.sess_priv_mpool = rte_mempool_create("FIPS_SESS_PRIV_MEMPOOL",
-			16, sess_sz, 0, 0, NULL, NULL, NULL,
-			NULL, rte_socket_id(), 0);
-	if (!env.sess_priv_mpool)
 		goto error_exit;
 
 	env.op_pool = rte_crypto_op_pool_create(
@@ -134,7 +128,6 @@ cryptodev_fips_validate_app_int(void)
 		goto error_exit;
 
 	qp_conf.mp_session = env.sess_mpool;
-	qp_conf.mp_session_private = env.sess_priv_mpool;
 
 	ret = rte_cryptodev_queue_pair_setup(env.dev_id, 0, &qp_conf,
 			rte_socket_id());
@@ -151,7 +144,6 @@ error_exit:
 
 	rte_mempool_free(env.mpool);
 	rte_mempool_free(env.sess_mpool);
-	rte_mempool_free(env.sess_priv_mpool);
 	rte_mempool_free(env.op_pool);
 
 	return ret;
@@ -162,11 +154,9 @@ cryptodev_fips_validate_app_uninit(void)
 {
 	rte_pktmbuf_free(env.mbuf);
 	rte_crypto_op_free(env.op);
-	rte_cryptodev_sym_session_clear(env.dev_id, env.sess);
-	rte_cryptodev_sym_session_free(env.sess);
+	rte_cryptodev_sym_session_free(env.dev_id, env.sess);
 	rte_mempool_free(env.mpool);
 	rte_mempool_free(env.sess_mpool);
-	rte_mempool_free(env.sess_priv_mpool);
 	rte_mempool_free(env.op_pool);
 }
 
@@ -1202,13 +1192,9 @@ fips_run_test(void)
 	if (ret < 0)
 		return ret;
 
-	env.sess = rte_cryptodev_sym_session_create(env.sess_mpool);
-	if (!env.sess)
-		return -ENOMEM;
-
-	ret = rte_cryptodev_sym_session_init(env.dev_id,
-			env.sess, &xform, env.sess_priv_mpool);
-	if (ret < 0) {
+	env.sess = rte_cryptodev_sym_session_create(env.dev_id, &xform,
+			env.sess_mpool);
+	if (!env.sess) {
 		RTE_LOG(ERR, USER1, "Error %i: Init session\n",
 				ret);
 		goto exit;
@@ -1237,9 +1223,10 @@ fips_run_test(void)
 	vec.status = env.op->status;
 
 exit:
-	rte_cryptodev_sym_session_clear(env.dev_id, env.sess);
-	rte_cryptodev_sym_session_free(env.sess);
-	env.sess = NULL;
+	if (env.sess) {
+		rte_cryptodev_sym_session_free(env.dev_id, env.sess);
+		env.sess = NULL;
+	}
 
 	return ret;
 }

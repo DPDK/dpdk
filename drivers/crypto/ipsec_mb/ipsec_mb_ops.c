@@ -264,7 +264,6 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->pmd_type = internals->pmd_type;
 	qp->sess_mp = qp_conf->mp_session;
-	qp->sess_mp_priv = qp_conf->mp_session_private;
 
 	qp->ingress_queue = ipsec_mb_qp_create_processed_ops_ring(qp,
 		qp_conf->nb_descriptors, socket_id);
@@ -312,9 +311,8 @@ ipsec_mb_sym_session_get_size(struct rte_cryptodev *dev)
 int
 ipsec_mb_sym_session_configure(
 	struct rte_cryptodev *dev, struct rte_crypto_sym_xform *xform,
-	struct rte_cryptodev_sym_session *sess, struct rte_mempool *mempool)
+	struct rte_cryptodev_sym_session *sess)
 {
-	void *sess_private_data;
 	struct ipsec_mb_dev_private *internals = dev->data->dev_private;
 	struct ipsec_mb_internals *pmd_data =
 		&ipsec_mb_pmds[internals->pmd_type];
@@ -330,23 +328,15 @@ ipsec_mb_sym_session_configure(
 		return -EINVAL;
 	}
 
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		IPSEC_MB_LOG(ERR, "Couldn't get object from session mempool");
-		free_mb_mgr(mb_mgr);
-		return -ENOMEM;
-	}
-
-	ret = (*pmd_data->session_configure)(mb_mgr, sess_private_data, xform);
+	ret = (*pmd_data->session_configure)(mb_mgr,
+			(void *)sess->driver_priv_data, xform);
 	if (ret != 0) {
 		IPSEC_MB_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		free_mb_mgr(mb_mgr);
 		return ret;
 	}
-
-	set_sym_session_private_data(sess, dev->driver_id, sess_private_data);
 
 	free_mb_mgr(mb_mgr);
 	return 0;
@@ -354,18 +344,6 @@ ipsec_mb_sym_session_configure(
 
 /** Clear the session memory */
 void
-ipsec_mb_sym_session_clear(struct rte_cryptodev *dev,
-			       struct rte_cryptodev_sym_session *sess)
-{
-	uint8_t index = dev->driver_id;
-	void *sess_priv = get_sym_session_private_data(sess, index);
-
-	/* Zero out the whole structure */
-	if (sess_priv) {
-		memset(sess_priv, 0, ipsec_mb_sym_session_get_size(dev));
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
-		set_sym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
-	}
-}
+ipsec_mb_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
+		struct rte_cryptodev_sym_session *sess __rte_unused)
+{}

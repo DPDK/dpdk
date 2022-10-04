@@ -171,7 +171,6 @@ otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 
 	instance->queue_id = que_pair_id;
 	instance->sess_mp = qp_conf->mp_session;
-	instance->sess_mp_priv = qp_conf->mp_session_private;
 	dev->data->queue_pairs[que_pair_id] = instance;
 
 	return 0;
@@ -243,24 +242,18 @@ sym_xform_verify(struct rte_crypto_sym_xform *xform)
 }
 
 static int
-sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
-		      struct rte_cryptodev_sym_session *sess,
-		      struct rte_mempool *pool)
+sym_session_configure(struct rte_crypto_sym_xform *xform,
+		      struct rte_cryptodev_sym_session *sess)
 {
 	struct rte_crypto_sym_xform *temp_xform = xform;
 	struct cpt_sess_misc *misc;
 	vq_cmd_word3_t vq_cmd_w3;
-	void *priv;
+	void *priv = (void *)sess->driver_priv_data;
 	int ret;
 
 	ret = sym_xform_verify(xform);
 	if (unlikely(ret))
 		return ret;
-
-	if (unlikely(rte_mempool_get(pool, &priv))) {
-		CPT_LOG_ERR("Could not allocate session private data");
-		return -ENOMEM;
-	}
 
 	memset(priv, 0, sizeof(struct cpt_sess_misc) +
 			offsetof(struct cpt_ctx, mc_ctx));
@@ -301,9 +294,7 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 		goto priv_put;
 	}
 
-	set_sym_session_private_data(sess, driver_id, priv);
-
-	misc->ctx_dma_addr = rte_mempool_virt2iova(misc) +
+	misc->ctx_dma_addr = sess->driver_priv_data_iova +
 			     sizeof(struct cpt_sess_misc);
 
 	vq_cmd_w3.u64 = 0;
@@ -316,17 +307,14 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 	return 0;
 
 priv_put:
-	if (priv)
-		rte_mempool_put(pool, priv);
 	return -ENOTSUP;
 }
 
 static void
-sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess)
+sym_session_clear(struct rte_cryptodev_sym_session *sess)
 {
-	void *priv = get_sym_session_private_data(sess, driver_id);
+	void *priv = (void *)sess->driver_priv_data;
 	struct cpt_sess_misc *misc;
-	struct rte_mempool *pool;
 	struct cpt_ctx *ctx;
 
 	if (priv == NULL)
@@ -336,35 +324,26 @@ sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess)
 	ctx = SESS_PRIV(misc);
 
 	rte_free(ctx->auth_key);
-
-	memset(priv, 0, cpt_get_session_size());
-
-	pool = rte_mempool_from_obj(priv);
-
-	set_sym_session_private_data(sess, driver_id, NULL);
-
-	rte_mempool_put(pool, priv);
 }
 
 static int
-otx_cpt_session_cfg(struct rte_cryptodev *dev,
+otx_cpt_session_cfg(struct rte_cryptodev *dev __rte_unused,
 		    struct rte_crypto_sym_xform *xform,
-		    struct rte_cryptodev_sym_session *sess,
-		    struct rte_mempool *pool)
+		    struct rte_cryptodev_sym_session *sess)
 {
 	CPT_PMD_INIT_FUNC_TRACE();
 
-	return sym_session_configure(dev->driver_id, xform, sess, pool);
+	return sym_session_configure(xform, sess);
 }
 
 
 static void
-otx_cpt_session_clear(struct rte_cryptodev *dev,
+otx_cpt_session_clear(struct rte_cryptodev *dev __rte_unused,
 		  struct rte_cryptodev_sym_session *sess)
 {
 	CPT_PMD_INIT_FUNC_TRACE();
 
-	return sym_session_clear(dev->driver_id, sess);
+	return sym_session_clear(sess);
 }
 
 static unsigned int
@@ -528,10 +507,7 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 	void *req;
 	uint64_t cpt_op;
 
-	sess = (struct cpt_sess_misc *)
-			get_sym_session_private_data(sym_op->session,
-						     otx_cryptodev_driver_id);
-
+	sess = (struct cpt_sess_misc *)sym_op->session->driver_priv_data;
 	cpt_op = sess->cpt_op;
 
 	if (likely(cpt_op & CPT_OP_CIPHER_MASK))
@@ -560,21 +536,18 @@ static __rte_always_inline void * __rte_hot
 otx_cpt_enq_single_sym_sessless(struct cpt_instance *instance,
 				struct rte_crypto_op *op)
 {
-	const int driver_id = otx_cryptodev_driver_id;
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	struct rte_cryptodev_sym_session *sess;
 	void *req;
 	int ret;
 
 	/* Create temporary session */
-	sess = rte_cryptodev_sym_session_create(instance->sess_mp);
-	if (sess == NULL) {
+	if (rte_mempool_get(instance->sess_mp, (void **)&sess) < 0) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
 
-	ret = sym_session_configure(driver_id, sym_op->xform, sess,
-				    instance->sess_mp_priv);
+	ret = sym_session_configure(sym_op->xform, sess);
 	if (ret)
 		goto sess_put;
 
@@ -583,12 +556,10 @@ otx_cpt_enq_single_sym_sessless(struct cpt_instance *instance,
 	/* Enqueue op with the tmp session set */
 	req = otx_cpt_enq_single_sym(instance, op);
 	if (unlikely(req == NULL))
-		goto priv_put;
+		goto sess_put;
 
 	return req;
 
-priv_put:
-	sym_session_clear(driver_id, sess);
 sess_put:
 	rte_mempool_put(instance->sess_mp, sess);
 	return NULL;
@@ -873,13 +844,9 @@ static inline void
 free_sym_session_data(const struct cpt_instance *instance,
 		      struct rte_crypto_op *cop)
 {
-	void *sess_private_data_t = get_sym_session_private_data(
-		cop->sym->session, otx_cryptodev_driver_id);
+	void *sess_private_data_t = (void *)cop->sym->session->driver_priv_data;
+
 	memset(sess_private_data_t, 0, cpt_get_session_size());
-	memset(cop->sym->session, 0,
-	       rte_cryptodev_sym_get_existing_header_session_size(
-		       cop->sym->session));
-	rte_mempool_put(instance->sess_mp_priv, sess_private_data_t);
 	rte_mempool_put(instance->sess_mp, cop->sym->session);
 	cop->sym->session = NULL;
 }

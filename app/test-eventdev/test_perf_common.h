@@ -70,7 +70,6 @@ struct test_perf {
 		RTE_EVENT_TIMER_ADAPTER_NUM_MAX] __rte_cache_aligned;
 	struct rte_mempool *ca_op_pool;
 	struct rte_mempool *ca_sess_pool;
-	struct rte_mempool *ca_sess_priv_pool;
 	struct rte_mempool *ca_asym_sess_pool;
 } __rte_cache_aligned;
 

@@ -470,44 +470,18 @@ scheduler_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 }
 
 static int
-scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev,
-	struct rte_crypto_sym_xform *xform,
-	struct rte_cryptodev_sym_session *sess,
-	struct rte_mempool *mempool)
+scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
+	struct rte_crypto_sym_xform *xform __rte_unused,
+	struct rte_cryptodev_sym_session *sess __rte_unused)
 {
-	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	uint32_t i;
-	int ret;
-
-	for (i = 0; i < sched_ctx->nb_workers; i++) {
-		struct scheduler_worker *worker = &sched_ctx->workers[i];
-
-		ret = rte_cryptodev_sym_session_init(worker->dev_id, sess,
-					xform, mempool);
-		if (ret < 0) {
-			CR_SCHED_LOG(ERR, "unable to config sym session");
-			return ret;
-		}
-	}
-
 	return 0;
 }
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev,
-		struct rte_cryptodev_sym_session *sess)
-{
-	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	uint32_t i;
-
-	/* Clear private data of workers */
-	for (i = 0; i < sched_ctx->nb_workers; i++) {
-		struct scheduler_worker *worker = &sched_ctx->workers[i];
-
-		rte_cryptodev_sym_session_clear(worker->dev_id, sess);
-	}
-}
+scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
+		struct rte_cryptodev_sym_session *sess __rte_unused)
+{}
 
 static struct rte_cryptodev_ops scheduler_pmd_ops = {
 		.dev_configure		= scheduler_pmd_config,

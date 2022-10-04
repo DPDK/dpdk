@@ -241,10 +241,6 @@ handle_completed_gcm_crypto_op(struct ipsec_mb_qp *qp,
 	/* Free session if a session-less crypto op */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		memset(sess, 0, sizeof(struct aesni_gcm_session));
-		memset(op->sym->session, 0,
-			rte_cryptodev_sym_get_existing_header_session_size(
-				op->sym->session));
-		rte_mempool_put(qp->sess_mp_priv, sess);
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}
@@ -455,44 +451,35 @@ static inline struct aesni_gcm_session *
 aesni_gcm_get_session(struct ipsec_mb_qp *qp,
 	     struct rte_crypto_op *op)
 {
-	struct aesni_gcm_session *sess = NULL;
-	uint32_t driver_id =
-	    ipsec_mb_get_driver_id(IPSEC_MB_PMD_TYPE_AESNI_GCM);
+	struct rte_cryptodev_sym_session *sess = NULL;
 	struct rte_crypto_sym_op *sym_op = op->sym;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (likely(sym_op->session != NULL))
-			sess = (struct aesni_gcm_session *)
-			    get_sym_session_private_data(sym_op->session,
-							 driver_id);
+			sess = sym_op->session;
 	} else {
-		void *_sess;
-		void *_sess_private_data = NULL;
-
-		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
+		if (rte_mempool_get(qp->sess_mp, (void **)&sess))
 			return NULL;
 
-		if (rte_mempool_get(qp->sess_mp_priv,
-				(void **)&_sess_private_data))
+		if (unlikely(sess->sess_data_sz <
+				sizeof(struct aesni_gcm_session))) {
+			rte_mempool_put(qp->sess_mp, sess);
 			return NULL;
-
-		sess = (struct aesni_gcm_session *)_sess_private_data;
+		}
 
 		if (unlikely(aesni_gcm_session_configure(qp->mb_mgr,
-				 _sess_private_data, sym_op->xform) != 0)) {
-			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
+				(void *)sess->driver_priv_data,
+				sym_op->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, sess);
 			sess = NULL;
 		}
-		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_sym_session_private_data(sym_op->session, driver_id,
-					     _sess_private_data);
+		sym_op->session = sess;
 	}
 
 	if (unlikely(sess == NULL))
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 
-	return sess;
+	return (void *)sess->driver_priv_data;
 }
 
 static uint16_t
@@ -712,21 +699,14 @@ aesni_gmac_sgl_verify(struct aesni_gcm_session *s,
 
 /** Process CPU crypto bulk operations */
 static uint32_t
-aesni_gcm_process_bulk(struct rte_cryptodev *dev,
+aesni_gcm_process_bulk(struct rte_cryptodev *dev __rte_unused,
 			struct rte_cryptodev_sym_session *sess,
 			__rte_unused union rte_crypto_sym_ofs ofs,
 			struct rte_crypto_sym_vec *vec)
 {
-	struct aesni_gcm_session *s;
+	struct aesni_gcm_session *s = (void *)sess->driver_priv_data;
 	struct gcm_context_data gdata_ctx;
 	IMB_MGR *mb_mgr;
-
-	s = (struct aesni_gcm_session *) get_sym_session_private_data(sess,
-		dev->driver_id);
-	if (unlikely(s == NULL)) {
-		aesni_gcm_fill_error_code(vec, EINVAL);
-		return 0;
-	}
 
 	/* get per-thread MB MGR, create one if needed */
 	mb_mgr = get_per_thread_mb_mgr();

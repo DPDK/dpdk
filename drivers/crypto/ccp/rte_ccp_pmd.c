@@ -56,33 +56,23 @@ get_ccp_session(struct ccp_qp *qp, struct rte_crypto_op *op)
 		if (unlikely(op->sym->session == NULL))
 			return NULL;
 
-		sess = (struct ccp_session *)
-			get_sym_session_private_data(
-				op->sym->session,
-				ccp_cryptodev_driver_id);
+		sess = (void *)op->sym->session->driver_priv_data;
 	} else if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
-		void *_sess;
-		void *_sess_private_data = NULL;
+		struct rte_cryptodev_sym_session *_sess;
 		struct ccp_private *internals;
 
-		if (rte_mempool_get(qp->sess_mp, &_sess))
-			return NULL;
-		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		sess = (struct ccp_session *)_sess_private_data;
+		sess = (void *)_sess->driver_priv_data;
 
 		internals = (struct ccp_private *)qp->dev->data->dev_private;
 		if (unlikely(ccp_set_session_parameters(sess, op->sym->xform,
 							internals) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
 			sess = NULL;
 		}
-		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_sym_session_private_data(op->sym->session,
-					 ccp_cryptodev_driver_id,
-					 _sess_private_data);
+		op->sym->session = _sess;
 	}
 
 	return sess;
@@ -161,13 +151,10 @@ ccp_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	for (i = 0; i < nb_dequeued; i++)
 		if (unlikely(ops[i]->sess_type ==
 			     RTE_CRYPTO_OP_SESSIONLESS)) {
-			struct ccp_session *sess = (struct ccp_session *)
-					get_sym_session_private_data(
-						ops[i]->sym->session,
-						ccp_cryptodev_driver_id);
+			struct ccp_session *sess =
+				(void *)ops[i]->sym->session->driver_priv_data;
 
-			rte_mempool_put(qp->sess_mp_priv,
-					sess);
+			memset(sess, 0, sizeof(*sess));
 			rte_mempool_put(qp->sess_mp,
 					ops[i]->sym->session);
 			ops[i]->sym->session = NULL;

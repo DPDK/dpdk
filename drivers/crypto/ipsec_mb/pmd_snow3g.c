@@ -362,10 +362,6 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 		/* Free session if a session-less crypto op. */
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 			memset(session, 0, sizeof(struct snow3g_session));
-			memset(ops[i]->sym->session, 0,
-			rte_cryptodev_sym_get_existing_header_session_size(
-					ops[i]->sym->session));
-			rte_mempool_put(qp->sess_mp_priv, session);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
 		}
@@ -417,8 +413,9 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 
 	/* Free session if a session-less crypto op. */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
-		memset(op->sym->session, 0, sizeof(struct snow3g_session));
-		rte_cryptodev_sym_session_free(op->sym->session);
+		memset(op->sym->session->driver_priv_data, 0,
+			sizeof(struct snow3g_session));
+		rte_mempool_put(qp->sess_mp, (void *)op->sym->session);
 		op->sym->session = NULL;
 	}
 

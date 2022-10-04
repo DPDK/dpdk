@@ -211,8 +211,7 @@ bcmfs_sym_get_session(struct rte_crypto_op *op)
 	} else if (likely(op->sym->session != NULL)) {
 		/* get existing session */
 		sess = (struct bcmfs_sym_session *)
-			  get_sym_session_private_data(op->sym->session,
-						       cryptodev_bcmfs_driver_id);
+			op->sym->session->driver_priv_data;
 	}
 
 	if (sess == NULL)
@@ -222,10 +221,9 @@ bcmfs_sym_get_session(struct rte_crypto_op *op)
 }
 
 int
-bcmfs_sym_session_configure(struct rte_cryptodev *dev,
+bcmfs_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 			    struct rte_crypto_sym_xform *xform,
-			    struct rte_cryptodev_sym_session *sess,
-			    struct rte_mempool *mempool)
+			    struct rte_cryptodev_sym_session *sess)
 {
 	void *sess_private_data;
 	int ret;
@@ -235,45 +233,23 @@ bcmfs_sym_session_configure(struct rte_cryptodev *dev,
 		return -EINVAL;
 	}
 
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		BCMFS_DP_LOG(ERR,
-			"Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
+	sess_private_data = (void *)sess->driver_priv_data;
 
 	ret = crypto_set_session_parameters(sess_private_data, xform);
 
 	if (ret != 0) {
 		BCMFS_DP_LOG(ERR, "Failed configure session parameters");
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
-
-	set_sym_session_private_data(sess, dev->driver_id,
-				     sess_private_data);
 
 	return 0;
 }
 
 /* Clear the memory of session so it doesn't leave key material behind */
 void
-bcmfs_sym_session_clear(struct rte_cryptodev *dev,
-			struct rte_cryptodev_sym_session  *sess)
-{
-	uint8_t index = dev->driver_id;
-	void *sess_priv = get_sym_session_private_data(sess, index);
-
-	if (sess_priv) {
-		struct rte_mempool *sess_mp;
-
-		memset(sess_priv, 0, sizeof(struct bcmfs_sym_session));
-		sess_mp = rte_mempool_from_obj(sess_priv);
-
-		set_sym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
-	}
-}
+bcmfs_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
+			struct rte_cryptodev_sym_session  *sess __rte_unused)
+{}
 
 unsigned int
 bcmfs_sym_session_get_private_size(struct rte_cryptodev *dev __rte_unused)

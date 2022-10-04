@@ -863,15 +863,10 @@ cryptodev_sym_sess_create(struct prod_data *p, struct test_perf *t)
 	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 	cipher_xform.next = NULL;
 
-	sess = rte_cryptodev_sym_session_create(t->ca_sess_pool);
+	sess = rte_cryptodev_sym_session_create(p->ca.cdev_id, &cipher_xform,
+			t->ca_sess_pool);
 	if (sess == NULL) {
 		evt_err("Failed to create sym session");
-		return NULL;
-	}
-
-	if (rte_cryptodev_sym_session_init(p->ca.cdev_id, sess, &cipher_xform,
-					   t->ca_sess_priv_pool)) {
-		evt_err("Failed to init session");
 		return NULL;
 	}
 
@@ -1381,15 +1376,6 @@ perf_cryptodev_setup(struct evt_test *test, struct evt_options *opt)
 		goto err;
 	}
 
-	t->ca_sess_pool = rte_cryptodev_sym_session_pool_create(
-		"ca_sess_pool", nb_sessions, 0, 0,
-		sizeof(union rte_event_crypto_metadata), SOCKET_ID_ANY);
-	if (t->ca_sess_pool == NULL) {
-		evt_err("Failed to create sym session pool");
-		ret = -ENOMEM;
-		goto err;
-	}
-
 	max_session_size = 0;
 	for (cdev_id = 0; cdev_id < cdev_count; cdev_id++) {
 		unsigned int session_size;
@@ -1400,12 +1386,11 @@ perf_cryptodev_setup(struct evt_test *test, struct evt_options *opt)
 			max_session_size = session_size;
 	}
 
-	max_session_size += sizeof(union rte_event_crypto_metadata);
-	t->ca_sess_priv_pool = rte_mempool_create(
-		"ca_sess_priv_pool", nb_sessions, max_session_size, 0, 0, NULL,
-		NULL, NULL, NULL, SOCKET_ID_ANY, 0);
-	if (t->ca_sess_priv_pool == NULL) {
-		evt_err("failed to create sym session private pool");
+	t->ca_sess_pool = rte_cryptodev_sym_session_pool_create(
+		"ca_sess_pool", nb_sessions, max_session_size, 0,
+		sizeof(union rte_event_crypto_metadata), SOCKET_ID_ANY);
+	if (t->ca_sess_pool == NULL) {
+		evt_err("Failed to create sym session pool");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -1445,7 +1430,6 @@ perf_cryptodev_setup(struct evt_test *test, struct evt_options *opt)
 
 		qp_conf.nb_descriptors = NB_CRYPTODEV_DESCRIPTORS;
 		qp_conf.mp_session = t->ca_sess_pool;
-		qp_conf.mp_session_private = t->ca_sess_priv_pool;
 
 		for (qp_id = 0; qp_id < conf.nb_queue_pairs; qp_id++) {
 			ret = rte_cryptodev_queue_pair_setup(
@@ -1466,7 +1450,6 @@ err:
 
 	rte_mempool_free(t->ca_op_pool);
 	rte_mempool_free(t->ca_sess_pool);
-	rte_mempool_free(t->ca_sess_priv_pool);
 	rte_mempool_free(t->ca_asym_sess_pool);
 
 	return ret;
@@ -1491,8 +1474,7 @@ perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt)
 		for (flow_id = 0; flow_id < t->nb_flows; flow_id++) {
 			sess = p->ca.crypto_sess[flow_id];
 			cdev_id = p->ca.cdev_id;
-			rte_cryptodev_sym_session_clear(cdev_id, sess);
-			rte_cryptodev_sym_session_free(sess);
+			rte_cryptodev_sym_session_free(cdev_id, sess);
 		}
 
 		rte_event_crypto_adapter_queue_pair_del(
@@ -1508,7 +1490,6 @@ perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt)
 
 	rte_mempool_free(t->ca_op_pool);
 	rte_mempool_free(t->ca_sess_pool);
-	rte_mempool_free(t->ca_sess_priv_pool);
 	rte_mempool_free(t->ca_asym_sess_pool);
 }
 

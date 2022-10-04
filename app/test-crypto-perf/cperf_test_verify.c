@@ -39,10 +39,8 @@ static void
 cperf_verify_test_free(struct cperf_verify_ctx *ctx)
 {
 	if (ctx) {
-		if (ctx->sess) {
-			rte_cryptodev_sym_session_clear(ctx->dev_id, ctx->sess);
-			rte_cryptodev_sym_session_free(ctx->sess);
-		}
+		if (ctx->sess)
+			rte_cryptodev_sym_session_free(ctx->dev_id, ctx->sess);
 
 		rte_mempool_free(ctx->pool);
 

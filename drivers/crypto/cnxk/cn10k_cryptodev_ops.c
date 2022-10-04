@@ -41,24 +41,23 @@ struct vec_request {
 static inline struct cnxk_se_sess *
 cn10k_cpt_sym_temp_sess_create(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op)
 {
-	const int driver_id = cn10k_cryptodev_driver_id;
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	struct rte_cryptodev_sym_session *sess;
 	struct cnxk_se_sess *priv;
 	int ret;
 
 	/* Create temporary session */
-	sess = rte_cryptodev_sym_session_create(qp->sess_mp);
-	if (sess == NULL)
+	if (rte_mempool_get(qp->sess_mp, (void **)&sess) < 0)
 		return NULL;
 
-	ret = sym_session_configure(qp->lf.roc_cpt, driver_id, sym_op->xform,
-				    sess, qp->sess_mp_priv);
-	if (ret)
+	ret = sym_session_configure(qp->lf.roc_cpt, sym_op->xform,
+				    sess);
+	if (ret) {
+		rte_mempool_put(qp->sess_mp, (void *)sess);
 		goto sess_put;
+	}
 
-	priv = get_sym_session_private_data(sess, driver_id);
-
+	priv = (void *)sess->driver_priv_data;
 	sym_op->session = sess;
 
 	return priv;
@@ -130,8 +129,7 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 				return 0;
 			w7 = sec_sess->sa.inst.w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			sess = get_sym_session_private_data(
-				sym_op->session, cn10k_cryptodev_driver_id);
+			sess = (void *)sym_op->session->driver_priv_data;
 			ret = cpt_sym_inst_fill(qp, op, sess, infl_req,
 						&inst[0]);
 			if (unlikely(ret))
@@ -147,8 +145,7 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 			ret = cpt_sym_inst_fill(qp, op, sess, infl_req,
 						&inst[0]);
 			if (unlikely(ret)) {
-				sym_session_clear(cn10k_cryptodev_driver_id,
-						  op->sym->session);
+				sym_session_clear(op->sym->session);
 				rte_mempool_put(qp->sess_mp, op->sym->session);
 				return 0;
 			}
@@ -312,8 +309,9 @@ cn10k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused,
 		} else if (sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
-			priv = get_sym_session_private_data(
-				sess, cn10k_cryptodev_driver_id);
+			priv = (void *)(
+				((struct rte_cryptodev_sym_session *)sess)->
+				driver_priv_data);
 			priv->qp = qp;
 			priv->cpt_inst_w2 = w2;
 		} else
@@ -350,8 +348,7 @@ cn10k_ca_meta_info_extract(struct rte_crypto_op *op,
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
-			priv = get_sym_session_private_data(
-				op->sym->session, cn10k_cryptodev_driver_id);
+			priv = (void *)op->sym->session->driver_priv_data;
 			*qp = priv->qp;
 			*w2 = priv->cpt_inst_w2;
 		} else {
@@ -818,7 +815,6 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 {
 	const uint8_t uc_compcode = res->uc_compcode;
 	const uint8_t compcode = res->compcode;
-	unsigned int sz;
 
 	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
@@ -895,11 +891,7 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 temp_sess_free:
 	if (unlikely(cop->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
 		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
-			sym_session_clear(cn10k_cryptodev_driver_id,
-					  cop->sym->session);
-			sz = rte_cryptodev_sym_get_existing_header_session_size(
-				cop->sym->session);
-			memset(cop->sym->session, 0, sz);
+			sym_session_clear(cop->sym->session);
 			rte_mempool_put(qp->sess_mp, cop->sym->session);
 			cop->sym->session = NULL;
 		}

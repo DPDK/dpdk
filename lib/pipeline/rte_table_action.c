@@ -1898,16 +1898,10 @@ sym_crypto_apply(struct sym_crypto_data *data,
 		}
 	}
 
-	session = rte_cryptodev_sym_session_create(cfg->mp_create);
+	session = rte_cryptodev_sym_session_create(cfg->cryptodev_id,
+			p->xform, cfg->mp_create);
 	if (!session)
 		return -ENOMEM;
-
-	ret = rte_cryptodev_sym_session_init(cfg->cryptodev_id, session,
-			p->xform, cfg->mp_init);
-	if (ret < 0) {
-		rte_cryptodev_sym_session_free(session);
-		return ret;
-	}
 
 	data->data_offset = (uint16_t)p->data_offset;
 	data->session = session;

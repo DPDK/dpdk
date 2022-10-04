@@ -39,12 +39,6 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_free,
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_session_free,
 	lib.cryptodev.asym.free)
 
-RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_init,
-	lib.cryptodev.sym.init)
-
-RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_clear,
-	lib.cryptodev.sym.clear)
-
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_enqueue_burst,
 	lib.cryptodev.enq.burst)
 

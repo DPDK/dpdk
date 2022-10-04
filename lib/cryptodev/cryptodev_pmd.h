@@ -302,7 +302,6 @@ typedef unsigned int (*cryptodev_asym_get_session_private_size_t)(
  * @param	dev		Crypto device pointer
  * @param	xform		Single or chain of crypto xforms
  * @param	session		Pointer to cryptodev's private session structure
- * @param	mp		Mempool where the private session is allocated
  *
  * @return
  *  - Returns 0 if private session structure have been created successfully.
@@ -312,8 +311,8 @@ typedef unsigned int (*cryptodev_asym_get_session_private_size_t)(
  */
 typedef int (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
-		struct rte_cryptodev_sym_session *session,
-		struct rte_mempool *mp);
+		struct rte_cryptodev_sym_session *session);
+
 /**
  * Configure a Crypto asymmetric session on a device.
  *
@@ -338,6 +337,7 @@ typedef int (*cryptodev_asym_configure_session_t)(struct rte_cryptodev *dev,
  */
 typedef void (*cryptodev_sym_free_session_t)(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess);
+
 /**
  * Clear asymmetric session private data.
  *
@@ -637,28 +637,6 @@ cryptodev_fp_ops_set(struct rte_crypto_fp_ops *fp_ops,
 __rte_internal
 void *
 rte_cryptodev_session_event_mdata_get(struct rte_crypto_op *op);
-
-static inline void *
-get_sym_session_private_data(const struct rte_cryptodev_sym_session *sess,
-		uint8_t driver_id) {
-	if (unlikely(sess->nb_drivers <= driver_id))
-		return NULL;
-
-	return sess->sess_data[driver_id].data;
-}
-
-static inline void
-set_sym_session_private_data(struct rte_cryptodev_sym_session *sess,
-		uint8_t driver_id, void *private_data)
-{
-	if (unlikely(sess->nb_drivers <= driver_id)) {
-		CDEV_LOG_ERR("Set private data for driver %u not allowed",
-				driver_id);
-		return;
-	}
-
-	sess->sess_data[driver_id].data = private_data;
-}
 
 /**
  * @internal
