@@ -1,0 +1,16 @@
+[binaries]
+c = ['ccache', 'loongarch64-unknown-linux-gnu-gcc']
+cpp = ['ccache', 'loongarch64-unknown-linux-gnu-g++']
+ar = 'loongarch64-unknown-linux-gnu-gcc-ar'
+strip = 'loongarch64-unknown-linux-gnu-strip'
+pcap-config = ''
+
+[host_machine]
+system = 'linux'
+cpu_family = 'loongarch64'
+cpu = '3a5000'
+endian = 'little'
+
+[properties]
+implementor_id = 'generic'
+implementor_pn = 'default'

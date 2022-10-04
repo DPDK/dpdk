@@ -55,6 +55,14 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added initial LoongArch architecture support.**
+
+  Added EAL implementation for LoongArch architecture.
+  The initial devices the porting was tested on included Loongson 3A5000,
+  Loongson 3C5000 and Loongson 3C5000L.
+  In theory this implementation should work with any target based on
+  ``LoongArch`` ISA.
+
 * **Added configuration for asynchronous flow connection tracking.**
 
   Added connection tracking action number hint to ``rte_flow_configure``

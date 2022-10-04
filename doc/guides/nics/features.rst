@@ -832,6 +832,14 @@ ARMv8
 Support armv8a (64bit) architecture.
 
 
+.. _nic_features_loongarch64:
+
+LoongArch64
+-----------
+
+Support 64-bit LoongArch architecture.
+
+
 .. _nic_features_power8:
 
 Power8

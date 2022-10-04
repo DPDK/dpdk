@@ -77,7 +77,11 @@ uint64_t eal_get_baseaddr(void)
 	 * rte_mem_check_dma_mask for ensuring all memory is within supported
 	 * range.
 	 */
+#if defined(RTE_ARCH_LOONGARCH)
+	return 0x7000000000ULL;
+#else
 	return 0x100000000ULL;
+#endif
 }
 
 /*

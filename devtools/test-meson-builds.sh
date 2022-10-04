@@ -260,6 +260,10 @@ build build-x86-mingw $f skipABI -Dexamples=helloworld
 f=$srcdir/config/arm/arm64_armv8_linux_gcc
 build build-arm64-generic-gcc $f ABI $use_shared
 
+# generic LoongArch
+f=$srcdir/config/loongarch/loongarch_loongarch64_linux_gcc
+build build-loongarch64-generic-gcc $f ABI $use_shared
+
 # IBM POWER
 f=$srcdir/config/ppc/ppc64le-power8-linux-gcc
 build build-ppc64-power8-gcc $f ABI $use_shared

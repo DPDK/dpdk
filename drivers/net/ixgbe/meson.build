@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+if arch_subdir == 'loongarch'
+    build = false
+    reason = 'not supported on LoongArch'
+    subdir_done()
+endif
+
 cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
 subdir('base')

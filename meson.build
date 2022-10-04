@@ -52,6 +52,8 @@ if host_machine.cpu_family().startswith('x86')
     arch_subdir = 'x86'
 elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().startswith('aarch')
     arch_subdir = 'arm'
+elif host_machine.cpu_family().startswith('loongarch')
+    arch_subdir = 'loongarch'
 elif host_machine.cpu_family().startswith('ppc')
     arch_subdir = 'ppc'
 elif host_machine.cpu_family().startswith('riscv')
