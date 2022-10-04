@@ -483,7 +483,7 @@ scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev,
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct rte_mempool *mp = rte_mempool_from_obj(sess);
-	struct scheduler_session_ctx *sess_ctx = (void *)sess->driver_priv_data;
+	struct scheduler_session_ctx *sess_ctx = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	struct scheduler_configured_sess_info configured_sess[
 			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
 	uint32_t i, j, n_configured_sess = 0;
@@ -545,7 +545,7 @@ scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	struct scheduler_session_ctx *sess_ctx = (void *)sess->driver_priv_data;
+	struct scheduler_session_ctx *sess_ctx = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	struct scheduler_configured_sess_info deleted_sess[
 			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
 	uint32_t i, j, n_deleted_sess = 0;

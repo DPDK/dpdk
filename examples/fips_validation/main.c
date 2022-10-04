@@ -60,7 +60,7 @@ struct cryptodev_fips_validate_env {
 	uint8_t *digest;
 	uint16_t digest_len;
 	struct rte_crypto_op *op;
-	struct rte_cryptodev_sym_session *sess;
+	void *sess;
 	uint16_t self_test;
 	struct fips_dev_broken_test_config *broken_test_config;
 } env;

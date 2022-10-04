@@ -902,28 +902,6 @@ struct rte_cryptodev_cb_rcu {
 void *
 rte_cryptodev_get_sec_ctx(uint8_t dev_id);
 
-/** Cryptodev symmetric crypto session
- * Each session is derived from a fixed xform chain. Therefore each session
- * has a fixed algo, key, op-type, digest_len etc.
- */
-struct rte_cryptodev_sym_session {
-	RTE_MARKER cacheline0;
-	uint8_t driver_id;
-	uint64_t opaque_data;
-	/**< Can be used for external metadata */
-	uint32_t sess_data_sz;
-	/**< Pointer to the user data stored after sess data */
-	uint16_t user_data_sz;
-	/**< session user data will be placed after sess data */
-	rte_iova_t driver_priv_data_iova;
-	/**< session driver data IOVA address */
-
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
-	/**< second cache line - start of the driver session data */
-	uint8_t driver_priv_data[0];
-	/**< Driver specific session data, variable size */
-};
-
 /**
  * Create a symmetric session mempool.
  *
@@ -1036,7 +1014,7 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
  */
 int
 rte_cryptodev_sym_session_free(uint8_t dev_id,
-	struct rte_cryptodev_sym_session *sess);
+	void *sess);
 
 /**
  * Clears and frees asymmetric crypto session header and private data,
@@ -1136,10 +1114,30 @@ const char *rte_cryptodev_driver_name_get(uint8_t driver_id);
  */
 __rte_experimental
 int
-rte_cryptodev_sym_session_set_user_data(
-					struct rte_cryptodev_sym_session *sess,
+rte_cryptodev_sym_session_set_user_data(void *sess,
 					void *data,
 					uint16_t size);
+
+#define CRYPTO_SESS_OPAQUE_DATA_OFF 0
+/**
+ * Get opaque data from session handle
+ */
+static inline uint64_t
+rte_cryptodev_sym_session_opaque_data_get(void *sess)
+{
+	return *((uint64_t *)sess + CRYPTO_SESS_OPAQUE_DATA_OFF);
+}
+
+/**
+ * Set opaque data in session handle
+ */
+static inline void
+rte_cryptodev_sym_session_opaque_data_set(void *sess, uint64_t opaque)
+{
+	uint64_t *data;
+	data = (((uint64_t *)sess) + CRYPTO_SESS_OPAQUE_DATA_OFF);
+	*data = opaque;
+}
 
 /**
  * Get user data stored in a session.
@@ -1153,8 +1151,7 @@ rte_cryptodev_sym_session_set_user_data(
  */
 __rte_experimental
 void *
-rte_cryptodev_sym_session_get_user_data(
-					struct rte_cryptodev_sym_session *sess);
+rte_cryptodev_sym_session_get_user_data(void *sess);
 
 /**
  * Store user data in an asymmetric session.
@@ -1202,7 +1199,7 @@ rte_cryptodev_asym_session_get_user_data(void *sess);
 __rte_experimental
 uint32_t
 rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
-	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs ofs,
+	void *sess, union rte_crypto_sym_ofs ofs,
 	struct rte_crypto_sym_vec *vec);
 
 /**
@@ -1244,8 +1241,7 @@ rte_cryptodev_session_event_mdata_set(uint8_t dev_id, void *sess,
  * Union of different crypto session types, including session-less xform
  * pointer.
  */
-union rte_cryptodev_session_ctx {
-	struct rte_cryptodev_sym_session *crypto_sess;
+union rte_cryptodev_session_ctx {void *crypto_sess;
 	struct rte_crypto_sym_xform *xform;
 	struct rte_security_session *sec_sess;
 };

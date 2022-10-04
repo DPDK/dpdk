@@ -67,7 +67,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		return -EINVAL;
 
 	if (likely(op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)) {
-		ctx = (void *)op->sym->session->driver_priv_data;
+		ctx = (void *)CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 		if (sess != (uintptr_t)ctx) {
 			struct rte_cryptodev *cdev;
 			struct qat_cryptodev_private *internals;
@@ -386,7 +386,7 @@ qat_sym_configure_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (sess_type != RTE_CRYPTO_OP_WITH_SESSION)
 		return -EINVAL;
 
-	ctx = (void *)session_ctx.crypto_sess->driver_priv_data;
+	ctx = CRYPTODEV_GET_SYM_SESS_PRIV(session_ctx.crypto_sess);
 
 	dp_ctx->session = ctx;
 

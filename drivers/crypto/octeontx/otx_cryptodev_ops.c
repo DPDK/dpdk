@@ -248,7 +248,7 @@ sym_session_configure(struct rte_crypto_sym_xform *xform,
 	struct rte_crypto_sym_xform *temp_xform = xform;
 	struct cpt_sess_misc *misc;
 	vq_cmd_word3_t vq_cmd_w3;
-	void *priv = (void *)sess->driver_priv_data;
+	void *priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	int ret;
 
 	ret = sym_xform_verify(xform);
@@ -294,7 +294,7 @@ sym_session_configure(struct rte_crypto_sym_xform *xform,
 		goto priv_put;
 	}
 
-	misc->ctx_dma_addr = sess->driver_priv_data_iova +
+	misc->ctx_dma_addr = CRYPTODEV_GET_SYM_SESS_PRIV_IOVA(sess) +
 			     sizeof(struct cpt_sess_misc);
 
 	vq_cmd_w3.u64 = 0;
@@ -313,7 +313,7 @@ priv_put:
 static void
 sym_session_clear(struct rte_cryptodev_sym_session *sess)
 {
-	void *priv = (void *)sess->driver_priv_data;
+	void *priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	struct cpt_sess_misc *misc;
 	struct cpt_ctx *ctx;
 
@@ -507,7 +507,7 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 	void *req;
 	uint64_t cpt_op;
 
-	sess = (struct cpt_sess_misc *)sym_op->session->driver_priv_data;
+	sess = CRYPTODEV_GET_SYM_SESS_PRIV(sym_op->session);
 	cpt_op = sess->cpt_op;
 
 	if (likely(cpt_op & CPT_OP_CIPHER_MASK))
@@ -844,7 +844,7 @@ static inline void
 free_sym_session_data(const struct cpt_instance *instance,
 		      struct rte_crypto_op *cop)
 {
-	void *sess_private_data_t = (void *)cop->sym->session->driver_priv_data;
+	void *sess_private_data_t = CRYPTODEV_GET_SYM_SESS_PRIV(cop->sym->session);
 
 	memset(sess_private_data_t, 0, cpt_get_session_size());
 	rte_mempool_put(instance->sess_mp, cop->sym->session);

@@ -227,7 +227,7 @@ static int
 create_sa(enum rte_security_session_action_type action_type,
 	  struct ipsec_sa *sa)
 {
-	static struct rte_cryptodev_sym_session dummy_ses;
+	void *dummy_ses = NULL;
 	size_t sz;
 	int rc;
 
@@ -247,7 +247,7 @@ create_sa(enum rte_security_session_action_type action_type,
 		"failed to allocate memory for rte_ipsec_sa\n");
 
 	sa->ss[0].type = action_type;
-	sa->ss[0].crypto.ses = &dummy_ses;
+	sa->ss[0].crypto.ses = dummy_ses;
 
 	rc = rte_ipsec_sa_init(sa->ss[0].sa, &sa->sa_prm, sz);
 	rc = (rc > 0 && (uint32_t)rc <= sz) ? 0 : -EINVAL;

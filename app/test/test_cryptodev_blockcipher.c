@@ -80,7 +80,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_crypto_sym_op *sym_op = NULL;
 	struct rte_crypto_op *op = NULL;
 	struct rte_cryptodev_info dev_info;
-	struct rte_cryptodev_sym_session *sess = NULL;
+	void *sess = NULL;
 
 	int status = TEST_SUCCESS;
 	const struct blockcipher_test_data *tdata = t->test_data;

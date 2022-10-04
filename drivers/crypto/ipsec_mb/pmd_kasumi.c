@@ -282,7 +282,7 @@ process_op_bit(struct rte_crypto_op *op, struct kasumi_session *session,
 
 	/* Free session if a session-less crypto op. */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
-		memset(op->sym->session->driver_priv_data, 0,
+		memset(CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session), 0,
 			sizeof(struct kasumi_session));
 		rte_mempool_put(qp->sess_mp, (void *)op->sym->session);
 		op->sym->session = NULL;

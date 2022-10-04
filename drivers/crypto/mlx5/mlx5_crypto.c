@@ -175,7 +175,7 @@ mlx5_crypto_sym_session_configure(struct rte_cryptodev *dev,
 {
 	struct mlx5_crypto_priv *priv = dev->data->dev_private;
 	struct mlx5_crypto_session *sess_private_data =
-		(void *)session->driver_priv_data;
+		CRYPTODEV_GET_SYM_SESS_PRIV(session);
 	struct rte_crypto_cipher_xform *cipher;
 	uint8_t encryption_order;
 
@@ -239,7 +239,7 @@ mlx5_crypto_sym_session_clear(struct rte_cryptodev *dev,
 			      struct rte_cryptodev_sym_session *sess)
 {
 	struct mlx5_crypto_priv *priv = dev->data->dev_private;
-	struct mlx5_crypto_session *spriv = (void *)sess->driver_priv_data;
+	struct mlx5_crypto_session *spriv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	if (unlikely(spriv == NULL)) {
 		DRV_LOG(ERR, "Failed to get session %p private data.", spriv);
@@ -355,8 +355,7 @@ mlx5_crypto_wqe_set(struct mlx5_crypto_priv *priv,
 			 struct rte_crypto_op *op,
 			 struct mlx5_umr_wqe *umr)
 {
-	struct mlx5_crypto_session *sess =
-		(void *)op->sym->session->driver_priv_data;
+	struct mlx5_crypto_session *sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 	struct mlx5_wqe_cseg *cseg = &umr->ctr;
 	struct mlx5_wqe_mkey_cseg *mkc = &umr->mkc;
 	struct mlx5_wqe_dseg *klms = &umr->kseg[0];

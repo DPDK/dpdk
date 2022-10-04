@@ -887,8 +887,8 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 		if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 			/* get existing session */
 			if (likely(op->sym->session != NULL))
-				sess = (void *)
-					op->sym->session->driver_priv_data;
+				sess = CRYPTODEV_GET_SYM_SESS_PRIV(
+					op->sym->session);
 		} else {
 			if (likely(op->asym->session != NULL))
 				asym_sess = (struct openssl_asym_session *)

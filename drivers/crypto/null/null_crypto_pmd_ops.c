@@ -265,7 +265,7 @@ null_crypto_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		return -EINVAL;
 	}
 
-	sess_private_data = (void *)sess->driver_priv_data;
+	sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	ret = null_crypto_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {

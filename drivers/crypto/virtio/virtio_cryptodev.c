@@ -951,7 +951,7 @@ virtio_crypto_sym_clear_session(
 
 	hw = dev->data->dev_private;
 	vq = hw->cvq;
-	session = (struct virtio_crypto_session *)sess->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	VIRTIO_CRYPTO_SESSION_LOG_INFO("vq->vq_desc_head_idx = %d, "
 			"vq = %p", vq->vq_desc_head_idx, vq);
@@ -1318,7 +1318,7 @@ virtio_crypto_sym_configure_session(
 		VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid parameters");
 		return ret;
 	}
-	session = (struct virtio_crypto_session *)sess->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	memset(session, 0, sizeof(struct virtio_crypto_session));
 	ctrl_req = &session->ctrl;
 	ctrl_req->header.opcode = VIRTIO_CRYPTO_CIPHER_CREATE_SESSION;

@@ -767,7 +767,7 @@ ccp_pmd_sym_session_configure(struct rte_cryptodev *dev,
 		return -ENOMEM;
 	}
 
-	sess_private_data = (void *)sess->driver_priv_data;
+	sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	internals = (struct ccp_private *)dev->data->dev_private;
 	ret = ccp_set_session_parameters(sess_private_data, xform, internals);

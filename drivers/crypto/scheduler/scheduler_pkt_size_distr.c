@@ -76,13 +76,10 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		rte_prefetch0((uint8_t *)ops[i + 7]->sym->session +
 			sizeof(struct rte_cryptodev_sym_session));
 
-		sess_ctx[0] = (void *)ops[i]->sym->session->driver_priv_data;
-		sess_ctx[1] =
-			(void *)ops[i + 1]->sym->session->driver_priv_data;
-		sess_ctx[2] =
-			(void *)ops[i + 2]->sym->session->driver_priv_data;
-		sess_ctx[3] =
-			(void *)ops[i + 3]->sym->session->driver_priv_data;
+		sess_ctx[0] = CRYPTODEV_GET_SYM_SESS_PRIV(ops[i]->sym->session);
+		sess_ctx[1] = CRYPTODEV_GET_SYM_SESS_PRIV(ops[i + 1]->sym->session);
+		sess_ctx[2] = CRYPTODEV_GET_SYM_SESS_PRIV(ops[i + 2]->sym->session);
+		sess_ctx[3] = CRYPTODEV_GET_SYM_SESS_PRIV(ops[i + 3]->sym->session);
 
 		/* job_len is initialized as cipher data length, once
 		 * it is 0, equals to auth data length
@@ -166,7 +163,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 	for (; i < nb_ops; i++) {
 		struct scheduler_session_ctx *sess_ctx =
-			(void *)ops[i]->sym->session->driver_priv_data;
+			CRYPTODEV_GET_SYM_SESS_PRIV(ops[i]->sym->session);
 		uint32_t job_len;
 		uint8_t target;
 

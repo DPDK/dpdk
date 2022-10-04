@@ -329,7 +329,7 @@ ipsec_mb_sym_session_configure(
 	}
 
 	ret = (*pmd_data->session_configure)(mb_mgr,
-			(void *)sess->driver_priv_data, xform);
+			CRYPTODEV_GET_SYM_SESS_PRIV(sess), xform);
 	if (ret != 0) {
 		IPSEC_MB_LOG(ERR, "failed configure session parameters");
 

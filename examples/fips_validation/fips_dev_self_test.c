@@ -980,7 +980,7 @@ typedef int (*fips_dev_self_test_prepare_xform_t)(uint8_t,
 		uint32_t);
 
 typedef int (*fips_dev_self_test_prepare_op_t)(struct rte_crypto_op *,
-		struct rte_mbuf *, struct rte_cryptodev_sym_session *,
+		struct rte_mbuf *, void *,
 		uint32_t, struct fips_dev_self_test_vector *);
 
 typedef int (*fips_dev_self_test_check_result_t)(struct rte_crypto_op *,
@@ -1172,7 +1172,7 @@ prepare_aead_xform(uint8_t dev_id,
 static int
 prepare_cipher_op(struct rte_crypto_op *op,
 		struct rte_mbuf *mbuf,
-		struct rte_cryptodev_sym_session *session,
+		void *session,
 		uint32_t dir,
 		struct fips_dev_self_test_vector *vec)
 {
@@ -1211,7 +1211,7 @@ prepare_cipher_op(struct rte_crypto_op *op,
 static int
 prepare_auth_op(struct rte_crypto_op *op,
 		struct rte_mbuf *mbuf,
-		struct rte_cryptodev_sym_session *session,
+		void *session,
 		uint32_t dir,
 		struct fips_dev_self_test_vector *vec)
 {
@@ -1250,7 +1250,7 @@ prepare_auth_op(struct rte_crypto_op *op,
 static int
 prepare_aead_op(struct rte_crypto_op *op,
 		struct rte_mbuf *mbuf,
-		struct rte_cryptodev_sym_session *session,
+		void *session,
 		uint32_t dir,
 		struct fips_dev_self_test_vector *vec)
 {
@@ -1462,7 +1462,7 @@ run_single_test(uint8_t dev_id,
 		uint32_t negative_test)
 {
 	struct rte_crypto_sym_xform xform;
-	struct rte_cryptodev_sym_session *sess;
+	void *sess;
 	uint16_t n_deqd;
 	uint8_t key[256];
 	int ret;

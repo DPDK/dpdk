@@ -430,8 +430,7 @@ rte_crypto_op_sym_xforms_alloc(struct rte_crypto_op *op, uint8_t nb_xforms)
  * @param	sess	cryptodev session
  */
 static inline int
-rte_crypto_op_attach_sym_session(struct rte_crypto_op *op,
-		struct rte_cryptodev_sym_session *sess)
+rte_crypto_op_attach_sym_session(struct rte_crypto_op *op, void *sess)
 {
 	if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC))
 		return -1;

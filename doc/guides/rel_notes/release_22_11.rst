@@ -260,6 +260,15 @@ API Changes
 * ethdev: Promoted ``rte_flow_pick_transfer_proxy()``
   from experimental to stable.
 
+* cryptodev: The structure ``rte_cryptodev_sym_session`` was made internal.
+  The API ``rte_cryptodev_sym_session_init`` and ``rte_cryptodev_sym_session_clear``
+  were removed and user would only need to call ``rte_cryptodev_sym_session_create``
+  and ``rte_cryptodev_sym_session_free`` to create/destroy sessions.
+  The API ``rte_cryptodev_sym_session_create`` was updated to take a single mempool
+  with element size big enough to hold session data and session private data.
+  All sample applications were updated to attach an opaque pointer for the session
+  to the ``rte_crypto_op`` while enqueuing.
+
 * security: MACsec support is added which resulted in updates
   to structures ``rte_security_macsec_xform``, ``rte_security_macsec_stats``
   and security capability structure ``rte_security_capability``

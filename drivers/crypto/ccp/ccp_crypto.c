@@ -1585,7 +1585,7 @@ ccp_perform_hmac(struct rte_crypto_op *op,
 	void *append_ptr;
 	uint8_t *addr;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 	addr = session->auth.pre_compute;
 
 	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
@@ -1764,7 +1764,7 @@ ccp_perform_sha(struct rte_crypto_op *op,
 	void *append_ptr;
 	uint64_t auth_msg_bits;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
@@ -1855,7 +1855,7 @@ ccp_perform_sha3_hmac(struct rte_crypto_op *op,
 	uint32_t tail;
 	phys_addr_t src_addr, dest_addr, ctx_paddr, dest_addr_t;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
@@ -1999,7 +1999,7 @@ ccp_perform_sha3(struct rte_crypto_op *op,
 	uint32_t tail;
 	phys_addr_t src_addr, dest_addr, ctx_paddr;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
@@ -2071,7 +2071,7 @@ ccp_perform_aes_cmac(struct rte_crypto_op *op,
 	phys_addr_t src_addr, dest_addr, key_addr;
 	int length, non_align_len;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 	key_addr = rte_mem_virt2phy(session->auth.key_ccp);
 
 	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
@@ -2232,7 +2232,7 @@ ccp_perform_aes(struct rte_crypto_op *op,
 	phys_addr_t src_addr, dest_addr, key_addr;
 	uint8_t *iv;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 	function.raw = 0;
 
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *, session->iv.offset);
@@ -2318,7 +2318,7 @@ ccp_perform_3des(struct rte_crypto_op *op,
 	uint8_t *iv;
 	phys_addr_t src_addr, dest_addr, key_addr;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *, session->iv.offset);
 	switch (session->cipher.um.des_mode) {
@@ -2426,7 +2426,7 @@ ccp_perform_aes_gcm(struct rte_crypto_op *op, struct ccp_queue *cmd_q)
 	phys_addr_t digest_dest_addr;
 	int length, non_align_len;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *, session->iv.offset);
 	key_addr = session->cipher.key_phys;
 
@@ -2591,7 +2591,7 @@ ccp_crypto_cipher(struct rte_crypto_op *op,
 	int result = 0;
 	struct ccp_session *session;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	switch (session->cipher.algo) {
 	case CCP_CIPHER_ALGO_AES_CBC:
@@ -2627,7 +2627,7 @@ ccp_crypto_auth(struct rte_crypto_op *op,
 	int result = 0;
 	struct ccp_session *session;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	switch (session->auth.algo) {
 	case CCP_AUTH_ALGO_SHA1:
@@ -2695,7 +2695,7 @@ ccp_crypto_aead(struct rte_crypto_op *op,
 	int result = 0;
 	struct ccp_session *session;
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	switch (session->auth.algo) {
 	case CCP_AUTH_ALGO_AES_GCM:
@@ -2758,8 +2758,7 @@ process_ops_to_enqueue(struct ccp_qp *qp,
 	b_info->head_offset = (uint32_t)(cmd_q->qbase_phys_addr + cmd_q->qidx *
 					 Q_DESC_SIZE);
 	for (i = b_idx; i < (nb_ops+b_idx); i++) {
-		session = (struct ccp_session *)
-			op[i]->sym->session->driver_priv_data;
+		session = CRYPTODEV_GET_SYM_SESS_PRIV(op[i]->sym->session);
 		switch (session->cmd_id) {
 		case CCP_CMD_CIPHER:
 			result = ccp_crypto_cipher(op[i], cmd_q, b_info);
@@ -2835,7 +2834,7 @@ static inline void ccp_auth_dq_prepare(struct rte_crypto_op *op)
 	int offset, digest_offset;
 	uint8_t digest_le[64];
 
-	session = (struct ccp_session *)op->sym->session->driver_priv_data;
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	if (session->cmd_id == CCP_CMD_COMBINED) {
 		digest_data = op->sym->aead.digest.data;
@@ -2909,8 +2908,7 @@ ccp_prepare_ops(struct ccp_qp *qp,
 
 	for (i =  b_info->b_idx; i < min_ops; i++) {
 		op_d[i] = b_info->op[b_info->b_idx + b_info->op_idx++];
-		session = (struct ccp_session *)
-			op_d[i]->sym->session->driver_priv_data;
+		session = CRYPTODEV_GET_SYM_SESS_PRIV(op_d[i]->sym->session);
 		switch (session->cmd_id) {
 		case CCP_CMD_CIPHER:
 			op_d[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;

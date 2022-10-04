@@ -207,7 +207,7 @@ virtqueue_crypto_sym_enqueue_xmit(
 			offsetof(struct virtio_crypto_op_cookie, iv);
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct virtio_crypto_session *session =
-		(void *)cop->sym->session->driver_priv_data;
+		CRYPTODEV_GET_SYM_SESS_PRIV(cop->sym->session);
 	struct virtio_crypto_op_data_req *op_data_req;
 	uint32_t hash_result_len = 0;
 	struct virtio_crypto_op_cookie *crypto_op_cookie;

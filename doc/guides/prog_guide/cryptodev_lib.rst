@@ -125,13 +125,11 @@ Each queue pairs resources may be allocated on a specified socket.
         uint32_t nb_descriptors; /**< Number of descriptors per queue pair */
         struct rte_mempool *mp_session;
         /**< The mempool for creating session in sessionless mode */
-        struct rte_mempool *mp_session_private;
-        /**< The mempool for creating sess private data in sessionless mode */
     };
 
 
-The fields ``mp_session`` and ``mp_session_private`` are used for creating
-temporary session to process the crypto operations in the session-less mode.
+The field ``mp_session`` is used for creating temporary session to process
+the crypto operations in the session-less mode.
 They can be the same other different mempools. Please note not all Cryptodev
 PMDs supports session-less mode.
 
@@ -595,7 +593,7 @@ chain.
         struct rte_mbuf *m_dst;
 
         union {
-            struct rte_cryptodev_sym_session *session;
+            void *session;
             /**< Handle for the initialised session context */
             struct rte_crypto_sym_xform *xform;
             /**< Session-less API Crypto operation parameters */
@@ -943,14 +941,10 @@ using one of the crypto PMDs available in DPDK.
 
     /* Create crypto session and initialize it for the crypto device. */
     struct rte_cryptodev_sym_session *session;
-    session = rte_cryptodev_sym_session_create(session_pool);
+    session = rte_cryptodev_sym_session_create(cdev_id, &cipher_xform,
+                    session_pool);
     if (session == NULL)
         rte_exit(EXIT_FAILURE, "Session could not be created\n");
-
-    if (rte_cryptodev_sym_session_init(cdev_id, session,
-                    &cipher_xform, session_priv_pool) < 0)
-        rte_exit(EXIT_FAILURE, "Session could not be initialized "
-                    "for the crypto device\n");
 
     /* Get a burst of crypto operations. */
     struct rte_crypto_op *crypto_ops[BURST_SIZE];

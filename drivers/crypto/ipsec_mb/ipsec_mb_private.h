@@ -434,7 +434,7 @@ ipsec_mb_get_session_private(struct ipsec_mb_qp *qp, struct rte_crypto_op *op)
 		}
 
 		if (unlikely(pmd_data->session_configure(qp->mb_mgr,
-			(void *)sess->driver_priv_data, sym_op->xform) != 0)) {
+			CRYPTODEV_GET_SYM_SESS_PRIV(sess), sym_op->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
 			goto error_exit;
 		}
@@ -447,7 +447,7 @@ ipsec_mb_get_session_private(struct ipsec_mb_qp *qp, struct rte_crypto_op *op)
 		IPSEC_MB_LOG(ERR, "Unrecognized session type %u", sess_type);
 	}
 
-	return (void *)sess->driver_priv_data;
+	return CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 error_exit:
 	op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;

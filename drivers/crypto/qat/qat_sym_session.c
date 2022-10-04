@@ -229,7 +229,7 @@ void
 qat_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 		struct rte_cryptodev_sym_session *sess)
 {
-	struct qat_sym_session *s = (void *)sess->driver_priv_data;
+	struct qat_sym_session *s = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	if (s->bpi_ctx)
 		bpi_cipher_ctx_free(s->bpi_ctx);
@@ -524,8 +524,8 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 		return -EINVAL;
 #endif
 	ret = qat_sym_session_set_parameters(dev, xform,
-			(void *)sess->driver_priv_data,
-			sess->driver_priv_data_iova);
+			CRYPTODEV_GET_SYM_SESS_PRIV(sess),
+			CRYPTODEV_GET_SYM_SESS_PRIV_IOVA(sess));
 	if (ret != 0) {
 		QAT_LOG(ERR,
 		    "Crypto QAT PMD: failed to configure session parameters");

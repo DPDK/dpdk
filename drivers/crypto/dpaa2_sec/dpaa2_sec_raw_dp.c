@@ -1012,7 +1012,7 @@ dpaa2_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 		sess = (dpaa2_sec_session *)get_sec_session_private_data(
 				session_ctx.sec_sess);
 	else if (sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		sess = (void *)session_ctx.crypto_sess->driver_priv_data;
+		sess = CRYPTODEV_GET_SYM_SESS_PRIV(session_ctx.crypto_sess);
 	else
 		return -ENOTSUP;
 	raw_dp_ctx->dequeue_burst = dpaa2_sec_raw_dequeue_burst;

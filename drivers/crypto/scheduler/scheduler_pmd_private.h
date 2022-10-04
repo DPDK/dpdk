@@ -131,28 +131,28 @@ scheduler_set_worker_session(struct rte_crypto_op **ops, uint16_t nb_ops,
 
 		if (op[0]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct scheduler_session_ctx *sess_ctx =
-				(void *)op[0]->sym->session->driver_priv_data;
+				CRYPTODEV_GET_SYM_SESS_PRIV(op[0]->sym->session);
 			op[0]->sym->session =
 				sess_ctx->worker_sess[worker_index];
 		}
 
 		if (op[1]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct scheduler_session_ctx *sess_ctx =
-				(void *)op[1]->sym->session->driver_priv_data;
+				CRYPTODEV_GET_SYM_SESS_PRIV(op[1]->sym->session);
 			op[1]->sym->session =
 				sess_ctx->worker_sess[worker_index];
 		}
 
 		if (op[2]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct scheduler_session_ctx *sess_ctx =
-				(void *)op[2]->sym->session->driver_priv_data;
+				CRYPTODEV_GET_SYM_SESS_PRIV(op[2]->sym->session);
 			op[2]->sym->session =
 				sess_ctx->worker_sess[worker_index];
 		}
 
 		if (op[3]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct scheduler_session_ctx *sess_ctx =
-				(void *)op[3]->sym->session->driver_priv_data;
+				CRYPTODEV_GET_SYM_SESS_PRIV(op[3]->sym->session);
 			op[3]->sym->session =
 				sess_ctx->worker_sess[worker_index];
 		}
@@ -164,7 +164,7 @@ scheduler_set_worker_session(struct rte_crypto_op **ops, uint16_t nb_ops,
 	while (n--) {
 		if (op[0]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct scheduler_session_ctx *sess_ctx =
-				(void *)op[0]->sym->session->driver_priv_data;
+				CRYPTODEV_GET_SYM_SESS_PRIV(op[0]->sym->session);
 
 			op[0]->sym->session =
 				sess_ctx->worker_sess[worker_index];
@@ -195,17 +195,17 @@ scheduler_retrieve_session(struct rte_crypto_op **ops, uint16_t nb_ops)
 		}
 
 		if (op[0]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			op[0]->sym->session =
-				(void *)op[0]->sym->session->opaque_data;
+			op[0]->sym->session = (void *)(uintptr_t)
+				rte_cryptodev_sym_session_opaque_data_get(op[0]->sym->session);
 		if (op[1]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			op[1]->sym->session =
-				(void *)op[1]->sym->session->opaque_data;
+			op[1]->sym->session = (void *)(uintptr_t)
+				rte_cryptodev_sym_session_opaque_data_get(op[1]->sym->session);
 		if (op[2]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			op[2]->sym->session =
-				(void *)op[2]->sym->session->opaque_data;
+			op[2]->sym->session = (void *)(uintptr_t)
+				rte_cryptodev_sym_session_opaque_data_get(op[2]->sym->session);
 		if (op[3]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			op[3]->sym->session =
-				(void *)op[3]->sym->session->opaque_data;
+			op[3]->sym->session = (void *)(uintptr_t)
+				rte_cryptodev_sym_session_opaque_data_get(op[3]->sym->session);
 
 		op += 4;
 		n -= 4;
@@ -213,8 +213,8 @@ scheduler_retrieve_session(struct rte_crypto_op **ops, uint16_t nb_ops)
 
 	while (n--) {
 		if (op[0]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			op[0]->sym->session =
-				(void *)op[0]->sym->session->opaque_data;
+			op[0]->sym->session = (void *)(uintptr_t)
+				rte_cryptodev_sym_session_opaque_data_get(op[0]->sym->session);
 		op++;
 	}
 }

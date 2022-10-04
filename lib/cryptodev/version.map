@@ -146,7 +146,6 @@ EXPERIMENTAL {
 	__rte_cryptodev_trace_sym_capability_check_cipher;
 	__rte_cryptodev_trace_sym_capability_get;
 	__rte_cryptodev_trace_sym_cpu_crypto_process;
-	__rte_cryptodev_trace_sym_get_existing_header_session_size;
 	__rte_cryptodev_trace_sym_get_private_session_size;
 	__rte_cryptodev_trace_sym_session_get_user_data;
 	__rte_cryptodev_trace_sym_session_set_user_data;

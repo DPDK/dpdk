@@ -28,7 +28,7 @@ struct cperf_pmd_cyclecount_ctx {
 	struct rte_crypto_op **ops;
 	struct rte_crypto_op **ops_processed;
 
-	struct rte_cryptodev_sym_session *sess;
+	void *sess;
 
 	cperf_populate_ops_t populate_ops;
 

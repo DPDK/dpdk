@@ -1723,7 +1723,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 		sess = get_sec_session_private_data(op->sym->sec_session);
 	} else
 #endif
-		sess = (void *)op->sym->session->driver_priv_data;
+		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 
 	if (likely(op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)) {
 		switch (job->status) {
@@ -2013,7 +2013,7 @@ aesni_mb_process_bulk(struct rte_cryptodev *dev __rte_unused,
 	void *buf;
 	IMB_JOB *job;
 	IMB_MGR *mb_mgr;
-	struct aesni_mb_session *s = (void *)sess->driver_priv_data;
+	struct aesni_mb_session *s = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	uint8_t tmp_dgst[vec->num][DIGEST_LENGTH_MAX];
 
 	/* get per-thread MB MGR, create one if needed */

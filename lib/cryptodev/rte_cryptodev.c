@@ -2095,11 +2095,11 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
 }
 
 int
-rte_cryptodev_sym_session_free(uint8_t dev_id,
-	struct rte_cryptodev_sym_session *sess)
+rte_cryptodev_sym_session_free(uint8_t dev_id, void *_sess)
 {
 	struct rte_cryptodev *dev;
 	struct rte_mempool *sess_mp;
+	struct rte_cryptodev_sym_session *sess = _sess;
 	struct rte_cryptodev_sym_session_pool_private_data *pool_priv;
 
 	if (sess == NULL)
@@ -2222,10 +2222,11 @@ rte_cryptodev_asym_get_private_session_size(uint8_t dev_id)
 }
 
 int
-rte_cryptodev_sym_session_set_user_data(
-		struct rte_cryptodev_sym_session *sess, void *data,
+rte_cryptodev_sym_session_set_user_data(void *_sess, void *data,
 		uint16_t size)
 {
+	struct rte_cryptodev_sym_session *sess = _sess;
+
 	if (sess == NULL)
 		return -EINVAL;
 
@@ -2240,8 +2241,9 @@ rte_cryptodev_sym_session_set_user_data(
 }
 
 void *
-rte_cryptodev_sym_session_get_user_data(struct rte_cryptodev_sym_session *sess)
+rte_cryptodev_sym_session_get_user_data(void *_sess)
 {
+	struct rte_cryptodev_sym_session *sess = _sess;
 	void *data = NULL;
 
 	if (sess == NULL || sess->user_data_sz == 0)
@@ -2299,10 +2301,11 @@ sym_crypto_fill_status(struct rte_crypto_sym_vec *vec, int32_t errnum)
 
 uint32_t
 rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
-	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs ofs,
+	void *_sess, union rte_crypto_sym_ofs ofs,
 	struct rte_crypto_sym_vec *vec)
 {
 	struct rte_cryptodev *dev;
+	struct rte_cryptodev_sym_session *sess = _sess;
 
 	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		sym_crypto_fill_status(vec, EINVAL);

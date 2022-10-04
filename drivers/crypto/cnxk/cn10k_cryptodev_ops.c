@@ -129,7 +129,7 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 				return 0;
 			w7 = sec_sess->sa.inst.w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			sess = (void *)sym_op->session->driver_priv_data;
+			sess = CRYPTODEV_GET_SYM_SESS_PRIV(sym_op->session);
 			ret = cpt_sym_inst_fill(qp, op, sess, infl_req,
 						&inst[0]);
 			if (unlikely(ret))
@@ -309,9 +309,7 @@ cn10k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused,
 		} else if (sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
-			priv = (void *)(
-				((struct rte_cryptodev_sym_session *)sess)->
-				driver_priv_data);
+			priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 			priv->qp = qp;
 			priv->cpt_inst_w2 = w2;
 		} else
@@ -348,7 +346,7 @@ cn10k_ca_meta_info_extract(struct rte_crypto_op *op,
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
-			priv = (void *)op->sym->session->driver_priv_data;
+			priv = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 			*qp = priv->qp;
 			*w2 = priv->cpt_inst_w2;
 		} else {

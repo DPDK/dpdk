@@ -1356,8 +1356,7 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 
 	switch (op->sess_type) {
 	case RTE_CRYPTO_OP_WITH_SESSION:
-		ses = (struct caam_jr_session *)
-			op->sym->session->driver_priv_data;
+		ses = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 		break;
 	case RTE_CRYPTO_OP_SECURITY_SESSION:
 		ses = (struct caam_jr_session *)
@@ -1699,7 +1698,7 @@ caam_jr_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-	sess_private_data = (void *)sess->driver_priv_data;
+	sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	memset(sess_private_data, 0, sizeof(struct caam_jr_session));
 	ret = caam_jr_set_session_parameters(dev, xform, sess_private_data);
 	if (ret != 0) {
@@ -1716,12 +1715,11 @@ static void
 caam_jr_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 		struct rte_cryptodev_sym_session *sess)
 {
-	void *sess_priv = (void *)sess->driver_priv_data;
-	struct caam_jr_session *s = (struct caam_jr_session *)sess_priv;
+	struct caam_jr_session *s = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (sess_priv) {
+	if (s) {
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
 	}

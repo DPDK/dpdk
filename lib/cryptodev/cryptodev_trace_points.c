@@ -135,9 +135,6 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_xform_capability_check_optype,
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_cpu_crypto_process,
 	lib.cryptodev.sym.cpu.crypto.process)
 
-RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_get_existing_header_session_size,
-	lib.cryptodev.sym.get.existing.header.session.size)
-
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_get_user_data,
 	lib.cryptodev.sym.session.get.user.data)
 

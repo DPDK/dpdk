@@ -645,7 +645,7 @@ static int
 create_crypto_session(struct ipsec_unitest_params *ut,
 	struct rte_cryptodev_qp_conf *qp, uint8_t dev_id, uint32_t j)
 {
-	struct rte_cryptodev_sym_session *s;
+	void *s;
 
 	s = rte_cryptodev_sym_session_create(dev_id, ut->crypto_xforms,
 			qp->mp_session);

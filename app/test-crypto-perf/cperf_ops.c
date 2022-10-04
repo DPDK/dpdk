@@ -13,7 +13,7 @@ static void
 cperf_set_ops_asym(struct rte_crypto_op **ops,
 		   uint32_t src_buf_offset __rte_unused,
 		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
-		   struct rte_cryptodev_sym_session *sess,
+		   void *sess,
 		   const struct cperf_options *options,
 		   const struct cperf_test_vector *test_vector __rte_unused,
 		   uint16_t iv_offset __rte_unused,
@@ -55,7 +55,7 @@ static void
 cperf_set_ops_security(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset __rte_unused,
 		uint32_t dst_buf_offset __rte_unused,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
@@ -125,7 +125,7 @@ static void
 cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset __rte_unused,
 		uint32_t dst_buf_offset __rte_unused,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
@@ -183,7 +183,7 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 static void
 cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector __rte_unused,
 		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
@@ -221,7 +221,7 @@ cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 static void
 cperf_set_ops_null_auth(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector __rte_unused,
 		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
@@ -259,7 +259,7 @@ cperf_set_ops_null_auth(struct rte_crypto_op **ops,
 static void
 cperf_set_ops_cipher(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset, uint32_t *imix_idx,
@@ -314,7 +314,7 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 static void
 cperf_set_ops_auth(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset, uint32_t *imix_idx,
@@ -414,7 +414,7 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 static void
 cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset, uint32_t *imix_idx,
@@ -532,7 +532,7 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 static void
 cperf_set_ops_aead(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset, uint32_t *imix_idx,
@@ -640,7 +640,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 	}
 }
 
-static struct rte_cryptodev_sym_session *
+static void *
 create_ipsec_session(struct rte_mempool *sess_mp,
 		struct rte_mempool *priv_mp,
 		uint8_t dev_id,
@@ -757,7 +757,7 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 				&sess_conf, sess_mp, priv_mp);
 }
 
-static struct rte_cryptodev_sym_session *
+static void *
 cperf_create_session(struct rte_mempool *sess_mp,
 	struct rte_mempool *priv_mp,
 	uint8_t dev_id,
@@ -768,7 +768,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 	struct rte_crypto_sym_xform cipher_xform;
 	struct rte_crypto_sym_xform auth_xform;
 	struct rte_crypto_sym_xform aead_xform;
-	struct rte_cryptodev_sym_session *sess = NULL;
+	void *sess = NULL;
 	void *asym_sess = NULL;
 	struct rte_crypto_asym_xform xform = {0};
 	int ret;

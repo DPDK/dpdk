@@ -82,7 +82,7 @@ struct crypto_unittest_params {
 #endif
 
 	union {
-		struct rte_cryptodev_sym_session *sess;
+		void *sess;
 #ifdef RTE_LIB_SECURITY
 		struct rte_security_session *sec_session;
 #endif
@@ -122,7 +122,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 		uint8_t *hmac_key);
 
 static int
-test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
+test_AES_CBC_HMAC_SHA512_decrypt_perform(void *sess,
 		struct crypto_unittest_params *ut_params,
 		struct crypto_testsuite_params *ts_param,
 		const uint8_t *cipher,
@@ -2289,7 +2289,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 		uint8_t *hmac_key);
 
 static int
-test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
+test_AES_CBC_HMAC_SHA512_decrypt_perform(void *sess,
 		struct crypto_unittest_params *ut_params,
 		struct crypto_testsuite_params *ts_params,
 		const uint8_t *cipher,
@@ -2330,7 +2330,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 
 
 static int
-test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
+test_AES_CBC_HMAC_SHA512_decrypt_perform(void *sess,
 		struct crypto_unittest_params *ut_params,
 		struct crypto_testsuite_params *ts_params,
 		const uint8_t *cipher,
@@ -12199,7 +12199,7 @@ test_multi_session(void)
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_cryptodev_info dev_info;
-	struct rte_cryptodev_sym_session **sessions;
+	void **sessions;
 	uint16_t i;
 
 	/* Verify the capabilities */
@@ -12222,7 +12222,7 @@ test_multi_session(void)
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
 	sessions = rte_malloc(NULL,
-			sizeof(struct rte_cryptodev_sym_session *) *
+			sizeof(void *) *
 			(MAX_NB_SESSIONS + 1), 0);
 
 	/* Create multiple crypto sessions*/
@@ -12291,7 +12291,7 @@ test_multi_session_random_usage(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info dev_info;
-	struct rte_cryptodev_sym_session **sessions;
+	void **sessions;
 	uint32_t i, j;
 	struct multi_session_params ut_paramz[] = {
 
@@ -12334,8 +12334,7 @@ test_multi_session_random_usage(void)
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
-	sessions = rte_malloc(NULL,
-			(sizeof(struct rte_cryptodev_sym_session *)
+	sessions = rte_malloc(NULL, (sizeof(void *)
 					* MAX_NB_SESSIONS) + 1, 0);
 
 	for (i = 0; i < MB_SESSION_NUMBER; i++) {

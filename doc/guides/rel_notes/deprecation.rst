@@ -133,11 +133,6 @@ Deprecation Notices
   this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=23367>`__.
   This should be updated in DPDK 22.11.
 
-* cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
-  ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
-  session and the private data of session. An opaque pointer can be exposed
-  directly to application which can be attached to the ``rte_crypto_op``.
-
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,

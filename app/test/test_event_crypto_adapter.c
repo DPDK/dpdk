@@ -276,13 +276,13 @@ static int
 test_op_forward_mode(uint8_t session_less)
 {
 	struct rte_crypto_sym_xform cipher_xform;
-	struct rte_cryptodev_sym_session *sess;
 	union rte_event_crypto_metadata m_data;
 	struct rte_crypto_sym_op *sym_op;
 	struct rte_crypto_op *op;
 	struct rte_mbuf *m;
 	struct rte_event ev;
 	uint32_t cap;
+	void *sess;
 	int ret;
 
 	memset(&m_data, 0, sizeof(m_data));
@@ -649,12 +649,12 @@ static int
 test_op_new_mode(uint8_t session_less)
 {
 	struct rte_crypto_sym_xform cipher_xform;
-	struct rte_cryptodev_sym_session *sess;
 	union rte_event_crypto_metadata m_data;
 	struct rte_crypto_sym_op *sym_op;
 	struct rte_crypto_op *op;
 	struct rte_mbuf *m;
 	uint32_t cap;
+	void *sess;
 	int ret;
 
 	memset(&m_data, 0, sizeof(m_data));

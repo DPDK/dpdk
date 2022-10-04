@@ -670,7 +670,7 @@ dpaa_sec_dump(struct dpaa_sec_op_ctx *ctx, struct dpaa_sec_qp *qp)
 	struct qm_sg_entry sg[2];
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		sess = (dpaa_sec_session *)op->sym->session->driver_priv_data;
+		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIBRTE_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 		sess = (dpaa_sec_session *)
@@ -1924,8 +1924,7 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 
 			switch (op->sess_type) {
 			case RTE_CRYPTO_OP_WITH_SESSION:
-				ses = (void *)
-					op->sym->session->driver_priv_data;
+				ses = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 				break;
 #ifdef RTE_LIB_SECURITY
 			case RTE_CRYPTO_OP_SECURITY_SESSION:
@@ -2673,7 +2672,7 @@ dpaa_sec_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess)
 {
-	void *sess_private_data = (void *)sess->driver_priv_data;
+	void *sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2714,7 +2713,7 @@ dpaa_sec_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
-	void *sess_priv = (void *)sess->driver_priv_data;
+	void *sess_priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	dpaa_sec_session *s = (dpaa_sec_session *)sess_priv;
 
 	free_session_memory(dev, s);

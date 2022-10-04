@@ -12,15 +12,16 @@
 #include "cperf_test_vectors.h"
 
 
-typedef struct rte_cryptodev_sym_session *(*cperf_sessions_create_t)(
-		struct rte_mempool *sess_mp, struct rte_mempool *sess_priv_mp,
+typedef void *(*cperf_sessions_create_t)(
+		struct rte_mempool *sess_mp,
+		struct rte_mempool *priv_mp,
 		uint8_t dev_id, const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset);
 
 typedef void (*cperf_populate_ops_t)(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		uint16_t nb_ops, void *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset, uint32_t *imix_idx,

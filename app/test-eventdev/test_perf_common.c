@@ -852,11 +852,11 @@ perf_event_crypto_adapter_setup(struct test_perf *t, struct prod_data *p)
 	return ret;
 }
 
-static struct rte_cryptodev_sym_session *
+static void *
 cryptodev_sym_sess_create(struct prod_data *p, struct test_perf *t)
 {
 	struct rte_crypto_sym_xform cipher_xform;
-	struct rte_cryptodev_sym_session *sess;
+	void *sess;
 
 	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
@@ -1007,7 +1007,7 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				m_data.response_info.flow_id = flow_id;
 				if (opt->crypto_op_type ==
 						RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
-					struct rte_cryptodev_sym_session *sess;
+					void *sess;
 
 					sess = cryptodev_sym_sess_create(p, t);
 					if (sess == NULL)
@@ -1466,7 +1466,7 @@ perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt)
 		return;
 
 	for (port = t->nb_workers; port < perf_nb_event_ports(opt); port++) {
-		struct rte_cryptodev_sym_session *sess;
+		void *sess;
 		struct prod_data *p = &t->prod[port];
 		uint32_t flow_id;
 		uint8_t cdev_id;

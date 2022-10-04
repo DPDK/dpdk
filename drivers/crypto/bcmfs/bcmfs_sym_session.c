@@ -210,8 +210,7 @@ bcmfs_sym_get_session(struct rte_crypto_op *op)
 		BCMFS_DP_LOG(ERR, "operations op(%p) is sessionless", op);
 	} else if (likely(op->sym->session != NULL)) {
 		/* get existing session */
-		sess = (struct bcmfs_sym_session *)
-			op->sym->session->driver_priv_data;
+		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 	}
 
 	if (sess == NULL)
@@ -233,7 +232,7 @@ bcmfs_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		return -EINVAL;
 	}
 
-	sess_private_data = (void *)sess->driver_priv_data;
+	sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	ret = crypto_set_session_parameters(sess_private_data, xform);
 

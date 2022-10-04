@@ -5,7 +5,7 @@
 #ifndef _CNXK_CRYPTODEV_OPS_H_
 #define _CNXK_CRYPTODEV_OPS_H_
 
-#include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 #include <rte_event_crypto_adapter.h>
 
 #include "roc_api.h"

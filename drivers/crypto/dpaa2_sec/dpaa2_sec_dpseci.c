@@ -1379,7 +1379,7 @@ build_sec_fd(struct rte_crypto_op *op,
 	dpaa2_sec_session *sess;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		sess = (dpaa2_sec_session *)op->sym->session->driver_priv_data;
+		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIB_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 		sess = (dpaa2_sec_session *)get_sec_session_private_data(
@@ -1677,7 +1677,7 @@ dpaa2_sec_dump(struct rte_crypto_op *op)
 	struct rte_crypto_sym_op *sym_op;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		sess = (dpaa2_sec_session *)op->sym->session->driver_priv_data;
+		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIBRTE_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 		sess = (dpaa2_sec_session *)get_sec_session_private_data(
@@ -3756,7 +3756,7 @@ dpaa2_sec_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess)
 {
-	void *sess_private_data = (void *)sess->driver_priv_data;
+	void *sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	int ret;
 
 	ret = dpaa2_sec_set_session_parameters(xform, sess_private_data);
@@ -3775,10 +3775,9 @@ dpaa2_sec_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 		struct rte_cryptodev_sym_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
-	void *sess_priv = (void *)sess->driver_priv_data;
-	dpaa2_sec_session *s = (dpaa2_sec_session *)sess_priv;
+	dpaa2_sec_session *s = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
-	if (sess_priv) {
+	if (s) {
 		rte_free(s->ctxt);
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);

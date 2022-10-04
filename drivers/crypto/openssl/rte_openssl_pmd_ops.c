@@ -795,7 +795,7 @@ openssl_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess)
 {
-	void *sess_private_data = (void *)sess->driver_priv_data;
+	void *sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	int ret;
 
 	if (unlikely(sess == NULL)) {
@@ -1319,7 +1319,7 @@ static void
 openssl_pmd_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 		struct rte_cryptodev_sym_session *sess)
 {
-	void *sess_priv = (void *)sess->driver_priv_data;
+	void *sess_priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	/* Zero out the whole structure */
 	openssl_reset_session(sess_priv);

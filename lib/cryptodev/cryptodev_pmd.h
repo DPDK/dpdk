@@ -133,6 +133,38 @@ struct cryptodev_driver {
 	uint8_t id;
 };
 
+/** Cryptodev symmetric crypto session
+ * Each session is derived from a fixed xform chain. Therefore each session
+ * has a fixed algo, key, op-type, digest_len etc.
+ */
+struct rte_cryptodev_sym_session {
+	RTE_MARKER cacheline0;
+	uint64_t opaque_data;
+	/**< Can be used for external metadata */
+	uint32_t sess_data_sz;
+	/**< Pointer to the user data stored after sess data */
+	uint16_t user_data_sz;
+	/**< Session user data will be placed after sess data */
+	uint8_t driver_id;
+	/**< Driver id to get the session priv */
+	rte_iova_t driver_priv_data_iova;
+	/**< Session driver data IOVA address */
+
+	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	/**< Second cache line - start of the driver session data */
+	uint8_t driver_priv_data[0];
+	/**< Driver specific session data, variable size */
+};
+
+/**
+ * Helper macro to get driver private data
+ */
+#define CRYPTODEV_GET_SYM_SESS_PRIV(s) \
+	((void *)(((struct rte_cryptodev_sym_session *)s)->driver_priv_data))
+#define CRYPTODEV_GET_SYM_SESS_PRIV_IOVA(s) \
+	(((struct rte_cryptodev_sym_session *)s)->driver_priv_data_iova)
+
+
 /**
  * Get the rte_cryptodev structure device pointer for the device. Assumes a
  * valid device index.

@@ -624,7 +624,7 @@ sym_session_configure(struct roc_cpt *roc_cpt,
 		      struct rte_cryptodev_sym_session *sess)
 {
 	enum cpt_dp_thread_type thr_type;
-	struct cnxk_se_sess *sess_priv = (void *)sess->driver_priv_data;
+	struct cnxk_se_sess *sess_priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	int ret;
 
 	memset(sess_priv, 0, sizeof(struct cnxk_se_sess));
@@ -693,7 +693,7 @@ cnxk_cpt_sym_session_configure(struct rte_cryptodev *dev,
 void
 sym_session_clear(struct rte_cryptodev_sym_session *sess)
 {
-	struct cnxk_se_sess *sess_priv = (void *)sess->driver_priv_data;
+	struct cnxk_se_sess *sess_priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 
 	if (sess_priv->roc_se_ctx.auth_key != NULL)
 		plt_free(sess_priv->roc_se_ctx.auth_key);

@@ -468,7 +468,7 @@ aesni_gcm_get_session(struct ipsec_mb_qp *qp,
 		}
 
 		if (unlikely(aesni_gcm_session_configure(qp->mb_mgr,
-				(void *)sess->driver_priv_data,
+				CRYPTODEV_GET_SYM_SESS_PRIV(sess),
 				sym_op->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, sess);
 			sess = NULL;
@@ -479,7 +479,7 @@ aesni_gcm_get_session(struct ipsec_mb_qp *qp,
 	if (unlikely(sess == NULL))
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 
-	return (void *)sess->driver_priv_data;
+	return CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 }
 
 static uint16_t
@@ -704,7 +704,7 @@ aesni_gcm_process_bulk(struct rte_cryptodev *dev __rte_unused,
 			__rte_unused union rte_crypto_sym_ofs ofs,
 			struct rte_crypto_sym_vec *vec)
 {
-	struct aesni_gcm_session *s = (void *)sess->driver_priv_data;
+	struct aesni_gcm_session *s = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	struct gcm_context_data gdata_ctx;
 	IMB_MGR *mb_mgr;
 

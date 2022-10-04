@@ -188,7 +188,7 @@ struct l2fwd_crypto_params {
 	struct l2fwd_iv auth_iv;
 	struct l2fwd_iv aead_iv;
 	struct l2fwd_key aad;
-	struct rte_cryptodev_sym_session *session;
+	void *session;
 
 	uint8_t do_cipher;
 	uint8_t do_hash;
@@ -670,7 +670,7 @@ generate_random_key(uint8_t *key, unsigned length)
 }
 
 /* Session is created and is later attached to the crypto operation. 8< */
-static struct rte_cryptodev_sym_session *
+static void *
 initialize_crypto_session(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 {
 	struct rte_crypto_sym_xform *first_xform;
@@ -719,7 +719,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 			US_PER_S * BURST_TX_DRAIN_US;
 	struct l2fwd_crypto_params *cparams;
 	struct l2fwd_crypto_params port_cparams[qconf->nb_crypto_devs];
-	struct rte_cryptodev_sym_session *session;
+	void *session;
 
 	if (qconf->nb_rx_ports == 0) {
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);

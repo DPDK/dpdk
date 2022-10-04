@@ -534,7 +534,7 @@ nitrox_sym_dev_sess_configure(struct rte_cryptodev *cdev __rte_unused,
 			      struct rte_crypto_sym_xform *xform,
 			      struct rte_cryptodev_sym_session *sess)
 {
-	struct nitrox_crypto_ctx *ctx = (void *)sess->driver_priv_data;
+	struct nitrox_crypto_ctx *ctx = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 	struct rte_crypto_auth_xform *auth_xform = NULL;
 	struct rte_crypto_aead_xform *aead_xform = NULL;
@@ -577,7 +577,7 @@ nitrox_sym_dev_sess_configure(struct rte_cryptodev *cdev __rte_unused,
 		goto err;
 	}
 
-	ctx->iova = sess->driver_priv_data_iova;
+	ctx->iova = CRYPTODEV_GET_SYM_SESS_PRIV_IOVA(sess);
 	return 0;
 err:
 	return ret;
@@ -593,7 +593,7 @@ get_crypto_ctx(struct rte_crypto_op *op)
 {
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (likely(op->sym->session))
-			return (void *)op->sym->session->driver_priv_data;
+			return CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 	}
 
 	return NULL;

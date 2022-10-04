@@ -316,8 +316,7 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 	} else
 #endif
 	{
-		sess = (struct qat_sym_session *)
-			rx_op->sym->session->driver_priv_data;
+		sess = CRYPTODEV_GET_SYM_SESS_PRIV(rx_op->sym->session);
 		is_docsis_sec = 0;
 	}
 
