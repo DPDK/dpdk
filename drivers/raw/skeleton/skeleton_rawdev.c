@@ -475,9 +475,6 @@ static int skeleton_rawdev_firmware_status_get(struct rte_rawdev *dev,
 
 	skeldev = skeleton_rawdev_get_priv(dev);
 
-	if (dev == NULL)
-		return -EINVAL;
-
 	if (status_info)
 		memcpy(status_info, &skeldev->fw.firmware_state,
 			sizeof(enum skeleton_firmware_state));
