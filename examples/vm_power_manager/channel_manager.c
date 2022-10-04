@@ -22,6 +22,7 @@
 #include <rte_mempool.h>
 #include <rte_log.h>
 #include <rte_spinlock.h>
+#include <rte_tailq.h>
 
 #include <libvirt/libvirt.h>
 
@@ -58,16 +59,16 @@ struct virtual_machine_info {
 	virDomainInfo info;
 	rte_spinlock_t config_spinlock;
 	int allow_query;
-	LIST_ENTRY(virtual_machine_info) vms_info;
+	RTE_TAILQ_ENTRY(virtual_machine_info) vms_info;
 };
 
-LIST_HEAD(, virtual_machine_info) vm_list_head;
+RTE_TAILQ_HEAD(, virtual_machine_info) vm_list_head;
 
 static struct virtual_machine_info *
 find_domain_by_name(const char *name)
 {
 	struct virtual_machine_info *info;
-	LIST_FOREACH(info, &vm_list_head, vms_info) {
+	RTE_TAILQ_FOREACH(info, &vm_list_head, vms_info) {
 		if (!strncmp(info->name, name, CHANNEL_MGR_MAX_NAME_LEN-1))
 			return info;
 	}
@@ -878,7 +879,7 @@ add_vm(const char *vm_name)
 
 	new_domain->allow_query = 0;
 	rte_spinlock_init(&(new_domain->config_spinlock));
-	LIST_INSERT_HEAD(&vm_list_head, new_domain, vms_info);
+	TAILQ_INSERT_HEAD(&vm_list_head, new_domain, vms_info);
 	return 0;
 }
 
@@ -900,7 +901,7 @@ remove_vm(const char *vm_name)
 		rte_spinlock_unlock(&vm_info->config_spinlock);
 		return -1;
 	}
-	LIST_REMOVE(vm_info, vms_info);
+	TAILQ_REMOVE(&vm_list_head, vm_info, vms_info);
 	rte_spinlock_unlock(&vm_info->config_spinlock);
 	rte_free(vm_info);
 	return 0;
@@ -953,7 +954,7 @@ channel_manager_init(const char *path __rte_unused)
 {
 	virNodeInfo info;
 
-	LIST_INIT(&vm_list_head);
+	TAILQ_INIT(&vm_list_head);
 	if (connect_hypervisor(path) < 0) {
 		global_n_host_cpus = 64;
 		global_hypervisor_available = 0;
@@ -1005,9 +1006,9 @@ channel_manager_exit(void)
 {
 	unsigned i;
 	char mask[RTE_MAX_LCORE];
-	struct virtual_machine_info *vm_info;
+	struct virtual_machine_info *vm_info, *tmp;
 
-	LIST_FOREACH(vm_info, &vm_list_head, vms_info) {
+	RTE_TAILQ_FOREACH_SAFE(vm_info, &vm_list_head, vms_info, tmp) {
 
 		rte_spinlock_lock(&(vm_info->config_spinlock));
 
@@ -1022,7 +1023,7 @@ channel_manager_exit(void)
 		}
 		rte_spinlock_unlock(&(vm_info->config_spinlock));
 
-		LIST_REMOVE(vm_info, vms_info);
+		TAILQ_REMOVE(&vm_list_head, vm_info, vms_info);
 		rte_free(vm_info);
 	}
 
