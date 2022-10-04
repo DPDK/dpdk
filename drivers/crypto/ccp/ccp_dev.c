@@ -653,7 +653,6 @@ static int
 ccp_probe_device(int ccp_type, struct rte_pci_device *pci_dev)
 {
 	struct ccp_device *ccp_dev = NULL;
-	int uio_fd = -1;
 
 	ccp_dev = rte_zmalloc("ccp_device", sizeof(*ccp_dev),
 			      RTE_CACHE_LINE_SIZE);
@@ -671,8 +670,6 @@ ccp_probe_device(int ccp_type, struct rte_pci_device *pci_dev)
 	return 0;
 fail:
 	CCP_LOG_ERR("CCP Device probe failed");
-	if (uio_fd >= 0)
-		close(uio_fd);
 	rte_free(ccp_dev);
 	return -1;
 }
