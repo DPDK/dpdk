@@ -10,9 +10,6 @@
 #include <bus_pci_driver.h>
 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
-#define PROC_MODULES "/proc/modules"
-
-int ccp_check_pci_uio_module(void);
 
 int ccp_parse_pci_addr_format(const char *buf, int bufsize, uint16_t *domain,
 			      uint8_t *bus, uint8_t *devid, uint8_t *function);
