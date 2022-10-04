@@ -65,8 +65,7 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
-		struct rte_security_session *sec_sess =
-			(struct rte_security_session *)sess;
+		void *sec_sess = (void *)sess;
 		uint32_t buf_sz;
 
 		uint32_t *per_pkt_hfn = rte_crypto_op_ctod_offset(ops[i],
@@ -131,8 +130,7 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
 		uint64_t *tsc_start)
 {
-	struct rte_security_session *sec_sess =
-			(struct rte_security_session *)sess;
+	void *sec_sess = sess;
 	const uint32_t test_buffer_size = options->test_buffer_size;
 	const uint32_t headroom_sz = options->headroom_sz;
 	const uint32_t segment_sz = options->segment_sz;

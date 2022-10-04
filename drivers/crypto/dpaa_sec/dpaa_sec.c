@@ -673,7 +673,7 @@ dpaa_sec_dump(struct dpaa_sec_op_ctx *ctx, struct dpaa_sec_qp *qp)
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIBRTE_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->session);
 #endif
 	if (sess == NULL) {
 		printf("session is NULL\n");
@@ -1926,7 +1926,7 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				break;
 #ifdef RTE_LIB_SECURITY
 			case RTE_CRYPTO_OP_SECURITY_SESSION:
-				ses = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+				ses = SECURITY_GET_SESS_PRIV(op->sym->session);
 				break;
 #endif
 			default:

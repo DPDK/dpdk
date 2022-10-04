@@ -49,7 +49,7 @@ cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 					rte_cryptodev_get_sec_ctx(ctx->dev_id);
 			rte_security_session_destroy(
 				sec_ctx,
-				(struct rte_security_session *)ctx->sess);
+				(void *)ctx->sess);
 		}
 #endif
 		else

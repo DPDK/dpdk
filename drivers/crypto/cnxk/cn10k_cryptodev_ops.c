@@ -122,7 +122,7 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-			sec_sess = SECURITY_GET_SESS_PRIV(sym_op->sec_session);
+			sec_sess = SECURITY_GET_SESS_PRIV(sym_op->session);
 			ret = cpt_sec_inst_fill(qp, op, sec_sess, &inst[0]);
 			if (unlikely(ret))
 				return 0;
@@ -338,7 +338,7 @@ cn10k_ca_meta_info_extract(struct rte_crypto_op *op,
 			struct cn10k_sec_session *priv;
 			struct cn10k_ipsec_sa *sa;
 
-			priv = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+			priv = SECURITY_GET_SESS_PRIV(op->sym->session);
 			sa = &priv->sa;
 			*qp = sa->qp;
 			*w2 = sa->inst.w2;

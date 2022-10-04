@@ -20,6 +20,24 @@ extern "C" {
 #include "rte_security.h"
 
 /**
+ * @internal
+ * Security session to be used by library for internal usage
+ */
+struct rte_security_session {
+	RTE_MARKER cacheline0;
+	uint64_t opaque_data;
+	/**< Opaque user defined data */
+	uint64_t fast_mdata;
+	/**< Fast metadata to be used for inline path */
+	rte_iova_t driver_priv_data_iova;
+	/**< session private data IOVA address */
+
+	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	uint8_t driver_priv_data[0];
+	/**< Private session material, variable size (depends on driver) */
+};
+
+/**
  * Helper macro to get driver private data
  */
 #define SECURITY_GET_SESS_PRIV(s) \

@@ -42,7 +42,7 @@ rte_security_dynfield_register(void)
 	return rte_security_dynfield_offset;
 }
 
-struct rte_security_session *
+void *
 rte_security_session_create(struct rte_security_ctx *instance,
 			    struct rte_security_session_conf *conf,
 			    struct rte_mempool *mp)
@@ -72,12 +72,12 @@ rte_security_session_create(struct rte_security_ctx *instance,
 	}
 	instance->sess_cnt++;
 
-	return sess;
+	return (void *)sess;
 }
 
 int
 rte_security_session_update(struct rte_security_ctx *instance,
-			    struct rte_security_session *sess,
+			    void *sess,
 			    struct rte_security_session_conf *conf)
 {
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, session_update, -EINVAL,
@@ -99,7 +99,7 @@ rte_security_session_get_size(struct rte_security_ctx *instance)
 
 int
 rte_security_session_stats_get(struct rte_security_ctx *instance,
-			       struct rte_security_session *sess,
+			       void *sess,
 			       struct rte_security_stats *stats)
 {
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, session_stats_get, -EINVAL,
@@ -111,8 +111,7 @@ rte_security_session_stats_get(struct rte_security_ctx *instance,
 }
 
 int
-rte_security_session_destroy(struct rte_security_ctx *instance,
-			     struct rte_security_session *sess)
+rte_security_session_destroy(struct rte_security_ctx *instance, void *sess)
 {
 	int ret;
 
@@ -220,7 +219,7 @@ rte_security_macsec_sa_stats_get(struct rte_security_ctx *instance, uint16_t sa_
 
 int
 __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
-				struct rte_security_session *sess,
+				void *sess,
 				struct rte_mbuf *m, void *params)
 {
 #ifdef RTE_DEBUG

@@ -17,7 +17,7 @@
 #endif
 
 struct port_drv_mode_data {
-	struct rte_security_session *sess;
+	void *sess;
 	struct rte_security_ctx *ctx;
 };
 

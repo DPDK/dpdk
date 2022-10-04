@@ -48,7 +48,7 @@ rte_ipsec_session_prepare(struct rte_ipsec_session *ss)
 		rte_cryptodev_sym_session_opaque_data_set(ss->crypto.ses,
 			(uintptr_t)ss);
 	else
-		ss->security.ses->opaque_data = (uintptr_t)ss;
+		rte_security_session_opaque_data_set(ss->security.ses, (uintptr_t)ss);
 
 	return 0;
 }

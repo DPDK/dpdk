@@ -234,7 +234,7 @@
 static struct mock_session_create_data {
 	void *device;
 	struct rte_security_session_conf *conf;
-	struct rte_security_session *sess;
+	void *sess;
 	struct rte_mempool *mp;
 	struct rte_mempool *priv_mp;
 
@@ -268,7 +268,7 @@ mock_session_create(void *device,
  */
 static struct mock_session_update_data {
 	void *device;
-	struct rte_security_session *sess;
+	void *sess;
 	struct rte_security_session_conf *conf;
 
 	int ret;
@@ -322,7 +322,7 @@ mock_session_get_size(void *device)
  */
 static struct mock_session_stats_get_data {
 	void *device;
-	struct rte_security_session *sess;
+	void *sess;
 	struct rte_security_stats *stats;
 
 	int ret;
@@ -352,7 +352,7 @@ mock_session_stats_get(void *device,
  */
 static struct mock_session_destroy_data {
 	void *device;
-	struct rte_security_session *sess;
+	void *sess;
 
 	int ret;
 
@@ -377,7 +377,7 @@ mock_session_destroy(void *device, struct rte_security_session *sess)
  */
 static struct mock_set_pkt_metadata_data {
 	void *device;
-	struct rte_security_session *sess;
+	void *sess;
 	struct rte_mbuf *m;
 	void *params;
 
@@ -475,7 +475,7 @@ static struct security_testsuite_params {
 static struct security_unittest_params {
 	struct rte_security_ctx ctx;
 	struct rte_security_session_conf conf;
-	struct rte_security_session *sess;
+	void *sess;
 } unittest_params = {
 	.ctx = {
 		.device = NULL,
@@ -610,7 +610,7 @@ ut_setup_with_session(void)
 {
 	struct security_unittest_params *ut_params = &unittest_params;
 	struct security_testsuite_params *ts_params = &testsuite_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	int ret = ut_setup();
 	if (ret != TEST_SUCCESS)
@@ -661,7 +661,7 @@ test_session_create_inv_context(void)
 {
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	sess = rte_security_session_create(NULL, &ut_params->conf,
 			ts_params->session_mpool);
@@ -683,7 +683,7 @@ test_session_create_inv_context_ops(void)
 {
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	ut_params->ctx.ops = NULL;
 
@@ -707,7 +707,7 @@ test_session_create_inv_context_ops_fun(void)
 {
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	ut_params->ctx.ops = &empty_ops;
 
@@ -730,7 +730,7 @@ test_session_create_inv_configuration(void)
 {
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	sess = rte_security_session_create(&ut_params->ctx, NULL,
 			ts_params->session_mpool);
@@ -751,7 +751,7 @@ static int
 test_session_create_inv_mempool(void)
 {
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf, NULL);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
@@ -772,8 +772,8 @@ test_session_create_mempool_empty(void)
 {
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *tmp[SECURITY_TEST_MEMPOOL_SIZE];
-	struct rte_security_session *sess;
+	void *tmp[SECURITY_TEST_MEMPOOL_SIZE];
+	void *sess;
 
 	/* Get all available objects from mempool. */
 	int i, ret;
@@ -813,7 +813,7 @@ test_session_create_ops_failure(void)
 {
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	mock_session_create_exp.device = NULL;
 	mock_session_create_exp.conf = &ut_params->conf;
@@ -839,7 +839,7 @@ test_session_create_success(void)
 {
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_session *sess;
+	void *sess;
 
 	mock_session_create_exp.device = NULL;
 	mock_session_create_exp.conf = &ut_params->conf;

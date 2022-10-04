@@ -84,7 +84,7 @@ struct crypto_unittest_params {
 	union {
 		void *sess;
 #ifdef RTE_LIB_SECURITY
-		struct rte_security_session *sec_session;
+		void *sec_session;
 #endif
 	};
 #ifdef RTE_LIB_SECURITY

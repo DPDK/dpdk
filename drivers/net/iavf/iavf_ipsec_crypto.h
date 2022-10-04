@@ -5,7 +5,7 @@
 #ifndef _IAVF_IPSEC_CRYPTO_H_
 #define _IAVF_IPSEC_CRYPTO_H_
 
-#include <rte_security.h>
+#include <rte_security_driver.h>
 
 #include "iavf.h"
 

@@ -138,9 +138,5 @@ Deprecation Notices
   which got error interrupt to the application,
   so that application can reset that particular queue pair.
 
-* security: Hide structure ``rte_security_session`` and expose an opaque
-  pointer for the private data to the application which can be attached
-  to the packet while enqueuing.
-
 * raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
   in DPDK 22.11, as it is no longer in use, no active user known.

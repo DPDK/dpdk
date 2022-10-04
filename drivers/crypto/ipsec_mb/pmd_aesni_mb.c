@@ -1584,7 +1584,7 @@ set_sec_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -1;
 	}
-	session = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+	session = SECURITY_GET_SESS_PRIV(op->sym->session);
 
 	if (unlikely(session == NULL)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
@@ -1719,7 +1719,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 		 * this is for DOCSIS
 		 */
 		is_docsis_sec = 1;
-		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->session);
 	} else
 #endif
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);

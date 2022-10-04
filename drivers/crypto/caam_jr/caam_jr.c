@@ -1359,7 +1359,7 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 		ses = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 		break;
 	case RTE_CRYPTO_OP_SECURITY_SESSION:
-		ses = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+		ses = SECURITY_GET_SESS_PRIV(op->sym->session);
 		break;
 	default:
 		CAAM_JR_DP_ERR("sessionless crypto op not supported");

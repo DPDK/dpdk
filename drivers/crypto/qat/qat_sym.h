@@ -277,7 +277,7 @@ qat_sym_preprocess_requests(void **ops, uint16_t nb_ops)
 		op = (struct rte_crypto_op *)ops[i];
 
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-			ctx = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+			ctx = SECURITY_GET_SESS_PRIV(op->sym->session);
 
 			if (ctx == NULL || ctx->bpi_ctx == NULL)
 				continue;
@@ -310,7 +310,7 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 		 * Assuming at this point that if it's a security
 		 * op, that this is for DOCSIS
 		 */
-		sess = SECURITY_GET_SESS_PRIV(rx_op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(rx_op->sym->session);
 		is_docsis_sec = 1;
 	} else
 #endif

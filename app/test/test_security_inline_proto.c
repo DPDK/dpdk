@@ -119,7 +119,7 @@ static struct rte_flow *default_flow[RTE_MAX_ETHPORTS];
 /* Create Inline IPsec session */
 static int
 create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
-		struct rte_security_session **sess, struct rte_security_ctx **ctx,
+		void **sess, struct rte_security_ctx **ctx,
 		uint32_t *ol_flags, const struct ipsec_test_flags *flags,
 		struct rte_security_session_conf *sess_conf)
 {
@@ -695,8 +695,8 @@ static int
 test_ipsec_with_reassembly(struct reassembly_vector *vector,
 		const struct ipsec_test_flags *flags)
 {
-	struct rte_security_session *out_ses[ENCAP_DECAP_BURST_SZ] = {0};
-	struct rte_security_session *in_ses[ENCAP_DECAP_BURST_SZ] = {0};
+	void *out_ses[ENCAP_DECAP_BURST_SZ] = {0};
+	void *in_ses[ENCAP_DECAP_BURST_SZ] = {0};
 	struct rte_eth_ip_reassembly_params reass_capa = {0};
 	struct rte_security_session_conf sess_conf_out = {0};
 	struct rte_security_session_conf sess_conf_in = {0};
@@ -1032,12 +1032,12 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	struct rte_crypto_sym_xform auth = {0};
 	struct rte_crypto_sym_xform aead = {0};
 	struct sa_expiry_vector vector = {0};
-	struct rte_security_session *ses;
 	struct rte_security_ctx *ctx;
 	int nb_rx = 0, nb_sent;
 	uint32_t ol_flags;
 	int i, j = 0, ret;
 	bool outer_ipv4;
+	void *ses;
 
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_pkts);
 
@@ -1301,7 +1301,7 @@ test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
 	struct rte_mbuf *rx_pkt = NULL;
 	struct rte_mbuf *tx_pkt = NULL;
 	int nb_rx, nb_sent;
-	struct rte_security_session *ses;
+	void *ses;
 	struct rte_security_ctx *ctx;
 	uint32_t ol_flags;
 	bool outer_ipv4;

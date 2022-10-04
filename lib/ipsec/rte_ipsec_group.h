@@ -44,16 +44,16 @@ struct rte_ipsec_group {
 static inline struct rte_ipsec_session *
 rte_ipsec_ses_from_crypto(const struct rte_crypto_op *cop)
 {
-	const struct rte_security_session *ss;
-	void *cs;
+	void *ses;
 
 	if (cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-		ss = cop->sym[0].sec_session;
-		return (struct rte_ipsec_session *)(uintptr_t)ss->opaque_data;
-	} else if (cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		cs = cop->sym[0].session;
+		ses = cop->sym[0].session;
 		return (struct rte_ipsec_session *)(uintptr_t)
-			rte_cryptodev_sym_session_opaque_data_get(cs);
+			rte_security_session_opaque_data_get(ses);
+	} else if (cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		ses = cop->sym[0].session;
+		return (struct rte_ipsec_session *)(uintptr_t)
+			rte_cryptodev_sym_session_opaque_data_get(ses);
 	}
 	return NULL;
 }

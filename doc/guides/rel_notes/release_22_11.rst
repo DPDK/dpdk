@@ -269,6 +269,11 @@ API Changes
   All sample applications were updated to attach an opaque pointer for the session
   to the ``rte_crypto_op`` while enqueuing.
 
+* security: The structure ``rte_security_session`` was made internal
+  and corresponding functions were updated to take/return an opaque session pointer.
+  The API ``rte_security_session_create`` was updated to take only one mempool
+  which has enough space to hold session and driver private data.
+
 * security: MACsec support is added which resulted in updates
   to structures ``rte_security_macsec_xform``, ``rte_security_macsec_stats``
   and security capability structure ``rte_security_capability``

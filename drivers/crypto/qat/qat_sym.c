@@ -101,7 +101,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 #ifdef RTE_LIB_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-		ctx = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+		ctx = SECURITY_GET_SESS_PRIV(op->sym->session);
 		if (unlikely(!ctx)) {
 			QAT_DP_LOG(ERR, "No session for this device");
 			return -EINVAL;
@@ -145,7 +145,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				}
 			}
 
-			sess = (uintptr_t)op->sym->sec_session;
+			sess = (uintptr_t)op->sym->session;
 			build_request = ctx->build_request[proc_type];
 			opaque[0] = sess;
 			opaque[1] = (uintptr_t)build_request;

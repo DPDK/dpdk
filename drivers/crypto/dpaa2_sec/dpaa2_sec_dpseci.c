@@ -1382,7 +1382,7 @@ build_sec_fd(struct rte_crypto_op *op,
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIB_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->session);
 #endif
 	else {
 		DPAA2_SEC_DP_ERR("Session type invalid\n");
@@ -1582,7 +1582,7 @@ sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 	mbuf->buf_iova = op->sym->aead.digest.phys_addr;
 	op->sym->aead.digest.phys_addr = 0L;
 
-	sess_priv = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+	sess_priv = SECURITY_GET_SESS_PRIV(op->sym->session);
 	if (sess_priv->dir == DIR_ENC)
 		mbuf->data_off += SEC_FLC_DHR_OUTBOUND;
 	else
@@ -1678,7 +1678,7 @@ dpaa2_sec_dump(struct rte_crypto_op *op)
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIBRTE_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->session);
 #endif
 
 	if (sess == NULL)
