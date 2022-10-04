@@ -41,7 +41,7 @@ Compilation of the DPDK
    resulting in statically linked applications not being linked properly.
    Use an updated version of ``pkg-config`` or ``pkgconf`` instead when building applications
 
-*   Python 3.5 or later.
+*   Python 3.6 or later.
 
 *   Meson (version 0.53.2+) and ninja
 

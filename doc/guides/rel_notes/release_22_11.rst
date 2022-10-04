@@ -225,6 +225,17 @@ New Features
   sysfs entries to adjust the minimum and maximum uncore frequency values,
   which works on Linux with Intel hardware only.
 
+* **Rewritten pmdinfo script.**
+
+  The ``dpdk-pmdinfo.py`` script was rewritten to produce valid JSON only.
+  PCI-IDs parsing has been removed.
+  To get a similar output to the (now removed) ``-r/--raw`` flag,
+  the following command may be used:
+
+  .. code-block:: sh
+
+     strings $dpdk_binary_or_driver | sed -n 's/^PMD_INFO_STRING= //p'
+
 
 Removed Items
 -------------

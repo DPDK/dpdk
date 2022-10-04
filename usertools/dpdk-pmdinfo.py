@@ -1,626 +1,310 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2016  Neil Horman <nhorman@tuxdriver.com>
+# Copyright(c) 2022  Robin Jarry
+# pylint: disable=invalid-name
 
-# -------------------------------------------------------------------------
-#
-# Utility to dump PMD_INFO_STRING support from an object file
-#
-# -------------------------------------------------------------------------
-import json
-import os
-import platform
-import sys
+r"""
+Utility to dump PMD_INFO_STRING support from DPDK binaries.
+
+This script prints JSON output to be interpreted by other tools. Here are some
+examples with jq:
+
+Get the complete info for a given driver:
+
+  %(prog)s dpdk-testpmd | \
+  jq '.[] | select(.name == "cnxk_nix_inl")'
+
+Get only the required kernel modules for a given driver:
+
+  %(prog)s dpdk-testpmd | \
+  jq '.[] | select(.name == "net_i40e").kmod'
+
+Get only the required kernel modules for a given device:
+
+  %(prog)s dpdk-testpmd | \
+  jq '.[] | select(.devices[] | .vendor_id == "15b3" and .device_id == "1013").kmod'
+"""
+
 import argparse
-from elftools.common.exceptions import ELFError
-from elftools.common.py3compat import byte2int
-from elftools.elf.elffile import ELFFile
-
-
-# For running from development directory. It should take precedence over the
-# installed pyelftools.
-sys.path.insert(0, '.')
-
-raw_output = False
-pcidb = None
-
-# ===========================================
-
-class Vendor:
-    """
-    Class for vendors. This is the top level class
-    for the devices belong to a specific vendor.
-    self.devices is the device dictionary
-    subdevices are in each device.
-    """
-
-    def __init__(self, vendorStr):
-        """
-        Class initializes with the raw line from pci.ids
-        Parsing takes place inside __init__
-        """
-        self.ID = vendorStr.split()[0]
-        self.name = vendorStr.replace("%s " % self.ID, "").rstrip()
-        self.devices = {}
-
-    def addDevice(self, deviceStr):
-        """
-        Adds a device to self.devices
-        takes the raw line from pci.ids
-        """
-        s = deviceStr.strip()
-        devID = s.split()[0]
-        if devID in self.devices:
-            pass
-        else:
-            self.devices[devID] = Device(deviceStr)
-
-    def report(self):
-        print(self.ID, self.name)
-        for id, dev in self.devices.items():
-            dev.report()
-
-    def find_device(self, devid):
-        # convert to a hex string and remove 0x
-        devid = hex(devid)[2:]
-        try:
-            return self.devices[devid]
-        except:
-            return Device("%s  Unknown Device" % devid)
-
-
-class Device:
-
-    def __init__(self, deviceStr):
-        """
-        Class for each device.
-        Each vendor has its own devices dictionary.
-        """
-        s = deviceStr.strip()
-        self.ID = s.split()[0]
-        self.name = s.replace("%s  " % self.ID, "")
-        self.subdevices = {}
-
-    def report(self):
-        print("\t%s\t%s" % (self.ID, self.name))
-        for subID, subdev in self.subdevices.items():
-            subdev.report()
-
-    def addSubDevice(self, subDeviceStr):
-        """
-        Adds a subvendor, subdevice to device.
-        Uses raw line from pci.ids
-        """
-        s = subDeviceStr.strip()
-        spl = s.split()
-        subVendorID = spl[0]
-        subDeviceID = spl[1]
-        subDeviceName = s.split("  ")[-1]
-        devID = "%s:%s" % (subVendorID, subDeviceID)
-        self.subdevices[devID] = SubDevice(
-            subVendorID, subDeviceID, subDeviceName)
-
-    def find_subid(self, subven, subdev):
-        subven = hex(subven)[2:]
-        subdev = hex(subdev)[2:]
-        devid = "%s:%s" % (subven, subdev)
-
-        try:
-            return self.subdevices[devid]
-        except:
-            if (subven == "ffff" and subdev == "ffff"):
-                return SubDevice("ffff", "ffff", "(All Subdevices)")
-            return SubDevice(subven, subdev, "(Unknown Subdevice)")
-
-
-class SubDevice:
-    """
-    Class for subdevices.
-    """
-
-    def __init__(self, vendor, device, name):
-        """
-        Class initializes with vendorid, deviceid and name
-        """
-        self.vendorID = vendor
-        self.deviceID = device
-        self.name = name
-
-    def report(self):
-        print("\t\t%s\t%s\t%s" % (self.vendorID, self.deviceID, self.name))
-
-
-class PCIIds:
-    """
-    Top class for all pci.ids entries.
-    All queries will be asked to this class.
-    PCIIds.vendors["0e11"].devices["0046"].\
-    subdevices["0e11:4091"].name  =  "Smart Array 6i"
-    """
-
-    def __init__(self, filename):
-        """
-        Prepares the directories.
-        Checks local data file.
-        Tries to load from local, if not found, downloads from web
-        """
-        self.version = ""
-        self.date = ""
-        self.vendors = {}
-        self.contents = None
-        self.readLocal(filename)
-        self.parse()
-
-    def reportVendors(self):
-        """Reports the vendors
-        """
-        for vid, v in self.vendors.items():
-            print(v.ID, v.name)
-
-    def report(self, vendor=None):
-        """
-        Reports everything for all vendors or a specific vendor
-        PCIIds.report()  reports everything
-        PCIIDs.report("0e11") reports only "Compaq Computer Corporation"
-        """
-        if vendor is not None:
-            self.vendors[vendor].report()
-        else:
-            for vID, v in self.vendors.items():
-                v.report()
-
-    def find_vendor(self, vid):
-        # convert vid to a hex string and remove the 0x
-        vid = hex(vid)[2:]
-
-        try:
-            return self.vendors[vid]
-        except:
-            return Vendor("%s Unknown Vendor" % (vid))
-
-    def findDate(self, content):
-        for l in content:
-            if l.find("Date:") > -1:
-                return l.split()[-2].replace("-", "")
-        return None
-
-    def parse(self):
-        if not self.contents:
-            print("data/%s-pci.ids not found" % self.date)
-        else:
-            vendorID = ""
-            deviceID = ""
-            for l in self.contents:
-                if l[0] == "#":
-                    continue
-                elif not l.strip():
-                    continue
-                else:
-                    if l.find("\t\t") == 0:
-                        self.vendors[vendorID].devices[
-                            deviceID].addSubDevice(l)
-                    elif l.find("\t") == 0:
-                        deviceID = l.strip().split()[0]
-                        self.vendors[vendorID].addDevice(l)
-                    else:
-                        vendorID = l.split()[0]
-                        self.vendors[vendorID] = Vendor(l)
-
-    def readLocal(self, filename):
-        """
-        Reads the local file
-        """
-        with open(filename, 'r', encoding='utf-8') as f:
-            self.contents = f.readlines()
-        self.date = self.findDate(self.contents)
-
-    def loadLocal(self):
-        """
-        Loads database from local. If there is no file,
-        it creates a new one from web
-        """
-        self.date = idsfile[0].split("/")[1].split("-")[0]
-        self.readLocal()
-
-
-# =======================================
-
-def search_file(filename, search_path):
-    """ Given a search path, find file with requested name """
-    for path in search_path.split(':'):
-        candidate = os.path.join(path, filename)
-        if os.path.exists(candidate):
-            return os.path.abspath(candidate)
-    return None
-
-
-class ReadElf(object):
-    """ display_* methods are used to emit output into the output stream
-    """
-
-    def __init__(self, file, output):
-        """ file:
-                stream object with the ELF file to read
-
-            output:
-                output stream to write to
-        """
-        self.elffile = ELFFile(file)
-        self.output = output
-
-        # Lazily initialized if a debug dump is requested
-        self._dwarfinfo = None
-
-        self._versioninfo = None
-
-    def _section_from_spec(self, spec):
-        """ Retrieve a section given a "spec" (either number or name).
-            Return None if no such section exists in the file.
-        """
-        try:
-            num = int(spec)
-            if num < self.elffile.num_sections():
-                return self.elffile.get_section(num)
-            return None
-        except ValueError:
-            # Not a number. Must be a name then
-            section = self.elffile.get_section_by_name(force_unicode(spec))
-            if section is None:
-                # No match with a unicode name.
-                # Some versions of pyelftools (<= 0.23) store internal strings
-                # as bytes. Try again with the name encoded as bytes.
-                section = self.elffile.get_section_by_name(force_bytes(spec))
-            return section
-
-    def pretty_print_pmdinfo(self, pmdinfo):
-        global pcidb
-
-        for i in pmdinfo["pci_ids"]:
-            vendor = pcidb.find_vendor(i[0])
-            device = vendor.find_device(i[1])
-            subdev = device.find_subid(i[2], i[3])
-            print("%s (%s) : %s (%s) %s" %
-                  (vendor.name, vendor.ID, device.name,
-                   device.ID, subdev.name))
-
-    def parse_pmd_info_string(self, mystring):
-        global raw_output
-        global pcidb
-
-        optional_pmd_info = [
-            {'id': 'params', 'tag': 'PMD PARAMETERS'},
-            {'id': 'kmod', 'tag': 'PMD KMOD DEPENDENCIES'}
-        ]
-
-        i = mystring.index("=")
-        mystring = mystring[i + 2:]
-        pmdinfo = json.loads(mystring)
-
-        if raw_output:
-            print(json.dumps(pmdinfo))
-            return
-
-        print("PMD NAME: " + pmdinfo["name"])
-        for i in optional_pmd_info:
-            try:
-                print("%s: %s" % (i['tag'], pmdinfo[i['id']]))
-            except KeyError:
-                continue
-
-        if pmdinfo["pci_ids"]:
-            print("PMD HW SUPPORT:")
-            if pcidb is not None:
-                self.pretty_print_pmdinfo(pmdinfo)
-            else:
-                print("VENDOR\t DEVICE\t SUBVENDOR\t SUBDEVICE")
-                for i in pmdinfo["pci_ids"]:
-                    print("0x%04x\t 0x%04x\t 0x%04x\t\t 0x%04x" %
-                          (i[0], i[1], i[2], i[3]))
-
-        print("")
-
-    def display_pmd_info_strings(self, section_spec):
-        """ Display a strings dump of a section. section_spec is either a
-            section number or a name.
-        """
-        section = self._section_from_spec(section_spec)
-        if section is None:
-            return
-
-        data = section.data()
-        dataptr = 0
-
-        while dataptr < len(data):
-            while (dataptr < len(data) and
-                   not 32 <= byte2int(data[dataptr]) <= 127):
-                dataptr += 1
-
-            if dataptr >= len(data):
-                break
-
-            endptr = dataptr
-            while endptr < len(data) and byte2int(data[endptr]) != 0:
-                endptr += 1
-
-            # pyelftools may return byte-strings, force decode them
-            mystring = force_unicode(data[dataptr:endptr])
-            rc = mystring.find("PMD_INFO_STRING")
-            if rc != -1:
-                self.parse_pmd_info_string(mystring[rc:])
-
-            dataptr = endptr
-
-    def find_librte_eal(self, section):
-        for tag in section.iter_tags():
-            # pyelftools may return byte-strings, force decode them
-            if force_unicode(tag.entry.d_tag) == 'DT_NEEDED':
-                if "librte_eal" in force_unicode(tag.needed):
-                    return force_unicode(tag.needed)
-        return None
-
-    def search_for_autoload_path(self):
-        scanelf = self
-        scanfile = None
-        library = None
-
-        section = self._section_from_spec(".dynamic")
-        try:
-            eallib = self.find_librte_eal(section)
-            if eallib is not None:
-                ldlibpath = os.environ.get('LD_LIBRARY_PATH')
-                if ldlibpath is None:
-                    ldlibpath = ""
-                dtr = self.get_dt_runpath(section)
-                library = search_file(eallib,
-                                      dtr + ":" + ldlibpath +
-                                      ":/usr/lib64:/lib64:/usr/lib:/lib")
-                if library is None:
-                    return (None, None)
-                if not raw_output:
-                    print("Scanning for autoload path in %s" % library)
-                scanfile = open(library, 'rb')
-                scanelf = ReadElf(scanfile, sys.stdout)
-        except AttributeError:
-            # Not a dynamic binary
-            pass
-        except ELFError:
-            scanfile.close()
-            return (None, None)
-
-        section = scanelf._section_from_spec(".rodata")
-        if section is None:
-            if scanfile is not None:
-                scanfile.close()
-            return (None, None)
-
-        data = section.data()
-        dataptr = 0
-
-        while dataptr < len(data):
-            while (dataptr < len(data) and
-                   not 32 <= byte2int(data[dataptr]) <= 127):
-                dataptr += 1
-
-            if dataptr >= len(data):
-                break
-
-            endptr = dataptr
-            while endptr < len(data) and byte2int(data[endptr]) != 0:
-                endptr += 1
-
-            # pyelftools may return byte-strings, force decode them
-            mystring = force_unicode(data[dataptr:endptr])
-            rc = mystring.find("DPDK_PLUGIN_PATH")
-            if rc != -1:
-                rc = mystring.find("=")
-                return (mystring[rc + 1:], library)
-
-            dataptr = endptr
-        if scanfile is not None:
-            scanfile.close()
-        return (None, None)
-
-    def get_dt_runpath(self, dynsec):
-        for tag in dynsec.iter_tags():
-            # pyelftools may return byte-strings, force decode them
-            if force_unicode(tag.entry.d_tag) == 'DT_RUNPATH':
-                return force_unicode(tag.runpath)
-        return ""
-
-    def process_dt_needed_entries(self):
-        """ Look to see if there are any DT_NEEDED entries in the binary
-            And process those if there are
-        """
-        runpath = ""
-        ldlibpath = os.environ.get('LD_LIBRARY_PATH')
-        if ldlibpath is None:
-            ldlibpath = ""
-
-        dynsec = self._section_from_spec(".dynamic")
-        try:
-            runpath = self.get_dt_runpath(dynsec)
-        except AttributeError:
-            # dynsec is None, just return
-            return
-
-        for tag in dynsec.iter_tags():
-            # pyelftools may return byte-strings, force decode them
-            if force_unicode(tag.entry.d_tag) == 'DT_NEEDED':
-                if 'librte_' in force_unicode(tag.needed):
-                    library = search_file(force_unicode(tag.needed),
-                                          runpath + ":" + ldlibpath +
-                                          ":/usr/lib64:/lib64:/usr/lib:/lib")
-                    if library is not None:
-                        with open(library, 'rb') as file:
-                            try:
-                                libelf = ReadElf(file, sys.stdout)
-                            except ELFError:
-                                print("%s is no an ELF file" % library)
-                                continue
-                            libelf.process_dt_needed_entries()
-                            libelf.display_pmd_info_strings(".rodata")
-                            file.close()
-
-
-# compat: remove force_unicode & force_bytes when pyelftools<=0.23 support is
-# dropped.
-def force_unicode(s):
-    if hasattr(s, 'decode') and callable(s.decode):
-        s = s.decode('latin-1')  # same encoding used in pyelftools py3compat
-    return s
-
-
-def force_bytes(s):
-    if hasattr(s, 'encode') and callable(s.encode):
-        s = s.encode('latin-1')  # same encoding used in pyelftools py3compat
-    return s
-
-
-def scan_autoload_path(autoload_path):
-    global raw_output
-
-    if not os.path.exists(autoload_path):
-        return
-
+import json
+import logging
+import os
+import re
+import string
+import subprocess
+import sys
+from pathlib import Path
+from typing import Iterable, Iterator, List, Union
+
+import elftools
+from elftools.elf.elffile import ELFError, ELFFile
+
+
+# ----------------------------------------------------------------------------
+def main() -> int:  # pylint: disable=missing-docstring
     try:
-        dirs = os.listdir(autoload_path)
-    except OSError:
-        # Couldn't read the directory, give up
-        return
-
-    for d in dirs:
-        dpath = os.path.join(autoload_path, d)
-        if os.path.isdir(dpath):
-            scan_autoload_path(dpath)
-        if os.path.isfile(dpath):
-            try:
-                file = open(dpath, 'rb')
-                readelf = ReadElf(file, sys.stdout)
-            except ELFError:
-                # this is likely not an elf file, skip it
-                continue
-            except IOError:
-                # No permission to read the file, skip it
-                continue
-
-            if not raw_output:
-                print("Hw Support for library %s" % d)
-            readelf.display_pmd_info_strings(".rodata")
-            file.close()
+        args = parse_args()
+        logging.basicConfig(
+            stream=sys.stderr,
+            format="%(levelname)s: %(message)s",
+            level={
+                0: logging.ERROR,
+                1: logging.WARNING,
+            }.get(args.verbose, logging.DEBUG),
+        )
+        info = parse_pmdinfo(args.elf_files, args.search_plugins)
+        print(json.dumps(info, indent=2))
+    except BrokenPipeError:
+        pass
+    except KeyboardInterrupt:
+        return 1
+    except Exception as e:  # pylint: disable=broad-except
+        logging.error("%s", e)
+        return 1
+    return 0
 
 
-def scan_for_autoload_pmds(dpdk_path):
+# ----------------------------------------------------------------------------
+def parse_args() -> argparse.Namespace:
     """
-    search the specified application or path for a pmd autoload path
-    then scan said path for pmds and report hw support
+    Parse command line arguments.
     """
-    global raw_output
-
-    if not os.path.isfile(dpdk_path):
-        if not raw_output:
-            print("Must specify a file name")
-        return
-
-    file = open(dpdk_path, 'rb')
-    try:
-        readelf = ReadElf(file, sys.stdout)
-    except ElfError:
-        if not raw_output:
-            print("Unable to parse %s" % file)
-        return
-
-    (autoload_path, scannedfile) = readelf.search_for_autoload_path()
-    if not autoload_path:
-        if not raw_output:
-            print("No autoload path configured in %s" % dpdk_path)
-        return
-    if not raw_output:
-        if scannedfile is None:
-            scannedfile = dpdk_path
-        print("Found autoload path %s in %s" % (autoload_path, scannedfile))
-
-    file.close()
-    if not raw_output:
-        print("Discovered Autoload HW Support:")
-    scan_autoload_path(autoload_path)
-    return
-
-
-def main(stream=None):
-    global raw_output
-    global pcidb
-
-    pcifile_default = "./pci.ids"  # For unknown OS's assume local file
-    if platform.system() == 'Linux':
-        # hwdata is the legacy location, misc is supported going forward
-        pcifile_default = "/usr/share/misc/pci.ids"
-        if not os.path.exists(pcifile_default):
-            pcifile_default = "/usr/share/hwdata/pci.ids"
-    elif platform.system() == 'FreeBSD':
-        pcifile_default = "/usr/local/share/pciids/pci.ids"
-        if not os.path.exists(pcifile_default):
-            pcifile_default = "/usr/share/misc/pci_vendors"
-
     parser = argparse.ArgumentParser(
-        usage='usage: %(prog)s [-hrtp] [-d <pci id file>] elf_file',
-        description="Dump pmd hardware support info")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('-r', '--raw',
-                       action='store_true', dest='raw_output',
-                       help='dump raw json strings')
-    group.add_argument("-t", "--table", dest="tblout",
-                       help="output information on hw support as a hex table",
-                       action='store_true')
-    parser.add_argument("-d", "--pcidb", dest="pcifile",
-                        help="specify a pci database to get vendor names from",
-                        default=pcifile_default, metavar="FILE")
-    parser.add_argument("-p", "--plugindir", dest="pdir",
-                        help="scan dpdk for autoload plugins",
-                        action='store_true')
-    parser.add_argument("elf_file", help="driver shared object file")
-    args = parser.parse_args()
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-p",
+        "--search-plugins",
+        action="store_true",
+        help="""
+        In addition of ELF_FILEs and their linked dynamic libraries, also scan
+        the DPDK plugins path.
+        """,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="""
+        Display warnings due to linked libraries not found or ELF/JSON parsing
+        errors in these libraries. Use twice to show debug messages.
+        """,
+    )
+    parser.add_argument(
+        "elf_files",
+        metavar="ELF_FILE",
+        nargs="+",
+        type=existing_file,
+        help="""
+        DPDK application binary or dynamic library.
+        """,
+    )
+    return parser.parse_args()
 
-    if args.raw_output:
-        raw_output = True
 
-    if args.tblout:
-        args.pcifile = None
+# ----------------------------------------------------------------------------
+def parse_pmdinfo(paths: Iterable[Path], search_plugins: bool) -> List[dict]:
+    """
+    Extract DPDK PMD info JSON strings from an ELF file.
 
-    if args.pcifile:
-        pcidb = PCIIds(args.pcifile)
-        if pcidb is None:
-            print("Pci DB file not found")
-            exit(1)
+    :returns:
+        A list of DPDK drivers info dictionaries.
+    """
+    binaries = set(paths)
+    for p in paths:
+        binaries.update(get_needed_libs(p))
+    if search_plugins:
+        # cast to list to avoid errors with update while iterating
+        binaries.update(list(get_plugin_libs(binaries)))
 
-    if args.pdir:
-        exit(scan_for_autoload_pmds(args.elf_file))
+    drivers = []
 
-    ldlibpath = os.environ.get('LD_LIBRARY_PATH')
-    if ldlibpath is None:
-        ldlibpath = ""
-
-    if os.path.exists(args.elf_file):
-        myelffile = args.elf_file
-    else:
-        myelffile = search_file(args.elf_file,
-                                ldlibpath + ":/usr/lib64:/lib64:/usr/lib:/lib")
-
-    if myelffile is None:
-        print("File not found")
-        sys.exit(1)
-
-    with open(myelffile, 'rb') as file:
+    for b in binaries:
+        logging.debug("analyzing %s", b)
         try:
-            readelf = ReadElf(file, sys.stdout)
-            readelf.process_dt_needed_entries()
-            readelf.display_pmd_info_strings(".rodata")
-            sys.exit(0)
+            for s in get_elf_strings(b, ".rodata", "PMD_INFO_STRING="):
+                try:
+                    info = json.loads(s)
+                    scrub_pci_ids(info)
+                    drivers.append(info)
+                except ValueError as e:
+                    # invalid JSON, should never happen
+                    logging.warning("%s: %s", b, e)
+        except ELFError as e:
+            # only happens for discovered plugins that are not ELF
+            logging.debug("%s: cannot parse ELF: %s", b, e)
 
-        except ELFError as ex:
-            sys.stderr.write('ELF error: %s\n' % ex)
-            sys.exit(1)
+    return drivers
 
 
-# -------------------------------------------------------------------------
-if __name__ == '__main__':
-    main()
+# ----------------------------------------------------------------------------
+PCI_FIELDS = ("vendor", "device", "subsystem_vendor", "subsystem_device")
+
+
+def scrub_pci_ids(info: dict):
+    """
+    Convert numerical ids to hex strings.
+    Strip empty pci_ids lists.
+    Strip wildcard 0xFFFF ids.
+    """
+    pci_ids = []
+    for pci_fields in info.pop("pci_ids"):
+        pci = {}
+        for name, value in zip(PCI_FIELDS, pci_fields):
+            if value != 0xFFFF:
+                pci[name] = f"{value:04x}"
+        if pci:
+            pci_ids.append(pci)
+    if pci_ids:
+        info["pci_ids"] = pci_ids
+
+
+# ----------------------------------------------------------------------------
+def get_plugin_libs(binaries: Iterable[Path]) -> Iterator[Path]:
+    """
+    Look into the provided binaries for DPDK_PLUGIN_PATH and scan the path
+    for files.
+    """
+    for b in binaries:
+        for p in get_elf_strings(b, ".rodata", "DPDK_PLUGIN_PATH="):
+            plugin_path = p.strip()
+            logging.debug("discovering plugins in %s", plugin_path)
+            for root, _, files in os.walk(plugin_path):
+                for f in files:
+                    yield Path(root) / f
+            # no need to search in other binaries.
+            return
+
+
+# ----------------------------------------------------------------------------
+def existing_file(value: str) -> Path:
+    """
+    Argparse type= callback to ensure an argument points to a valid file path.
+    """
+    path = Path(value)
+    if not path.is_file():
+        raise argparse.ArgumentTypeError(f"{value}: No such file")
+    return path
+
+
+# ----------------------------------------------------------------------------
+PRINTABLE_BYTES = frozenset(string.printable.encode("ascii"))
+
+
+def find_strings(buf: bytes, prefix: str) -> Iterator[str]:
+    """
+    Extract strings of printable ASCII characters from a bytes buffer.
+    """
+    view = memoryview(buf)
+    start = None
+
+    for i, b in enumerate(view):
+        if start is None and b in PRINTABLE_BYTES:
+            # mark beginning of string
+            start = i
+            continue
+        if start is not None:
+            if b in PRINTABLE_BYTES:
+                # string not finished
+                continue
+            if b == 0:
+                # end of string
+                s = view[start:i].tobytes().decode("ascii")
+                if s.startswith(prefix):
+                    yield s[len(prefix) :]
+            # There can be byte sequences where a non-printable byte
+            # follows a printable one. Ignore that.
+            start = None
+
+
+# ----------------------------------------------------------------------------
+def elftools_version():
+    """
+    Extract pyelftools version as a tuple of integers for easy comparison.
+    """
+    version = getattr(elftools, "__version__", "")
+    match = re.match(r"^(\d+)\.(\d+).*$", str(version))
+    if not match:
+        # cannot determine version, hope for the best
+        return (0, 24)
+    return (int(match[1]), int(match[2]))
+
+
+ELFTOOLS_VERSION = elftools_version()
+
+
+def from_elftools(s: Union[bytes, str]) -> str:
+    """
+    Earlier versions of pyelftools (< 0.24) return bytes encoded with "latin-1"
+    instead of python strings.
+    """
+    if isinstance(s, bytes):
+        return s.decode("latin-1")
+    return s
+
+
+def to_elftools(s: str) -> Union[bytes, str]:
+    """
+    Earlier versions of pyelftools (< 0.24) assume that ELF section and tags
+    are bytes encoded with "latin-1" instead of python strings.
+    """
+    if ELFTOOLS_VERSION < (0, 24):
+        return s.encode("latin-1")
+    return s
+
+
+# ----------------------------------------------------------------------------
+def get_elf_strings(path: Path, section: str, prefix: str) -> Iterator[str]:
+    """
+    Extract strings from a named ELF section in a file.
+    """
+    with path.open("rb") as f:
+        elf = ELFFile(f)
+        sec = elf.get_section_by_name(to_elftools(section))
+        if not sec:
+            return
+        yield from find_strings(sec.data(), prefix)
+
+
+# ----------------------------------------------------------------------------
+LDD_LIB_RE = re.compile(
+    r"""
+    ^                  # beginning of line
+    \t                 # tab
+    (\S+)              # lib name
+    \s+=>\s+
+    (/\S+)             # lib path
+    \s+
+    \(0x[0-9A-Fa-f]+\) # address
+    \s*
+    $                  # end of line
+    """,
+    re.MULTILINE | re.VERBOSE,
+)
+
+
+def get_needed_libs(path: Path) -> Iterator[Path]:
+    """
+    Extract the dynamic library dependencies from an ELF executable.
+    """
+    with subprocess.Popen(
+        ["ldd", str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as proc:
+        out, err = proc.communicate()
+        if proc.returncode != 0:
+            err = err.decode("utf-8").splitlines()[-1].strip()
+            raise Exception(f"cannot read ELF file: {err}")
+        for match in LDD_LIB_RE.finditer(out.decode("utf-8")):
+            libname, libpath = match.groups()
+            if libname.startswith("librte_"):
+                libpath = Path(libpath)
+                if libpath.is_file():
+                    yield libpath.resolve()
+
+
+# ----------------------------------------------------------------------------
+if __name__ == "__main__":
+    sys.exit(main())
