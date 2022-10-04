@@ -103,6 +103,13 @@ la12xx_info_get(struct rte_bbdev *dev __rte_unused,
 	dev_info->min_alignment = 64;
 	dev_info->device_status = RTE_BBDEV_DEV_NOT_SUPPORTED;
 
+	dev_info->num_queues[RTE_BBDEV_OP_NONE] = 0;
+	dev_info->num_queues[RTE_BBDEV_OP_TURBO_DEC] = 0;
+	dev_info->num_queues[RTE_BBDEV_OP_TURBO_ENC] = 0;
+	dev_info->num_queues[RTE_BBDEV_OP_LDPC_DEC] = LA12XX_MAX_QUEUES / 2;
+	dev_info->num_queues[RTE_BBDEV_OP_LDPC_ENC] = LA12XX_MAX_QUEUES / 2;
+	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_DEC] = 1;
+	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_ENC] = 1;
 	rte_bbdev_log_debug("got device info from %u", dev->data->dev_id);
 }
 
