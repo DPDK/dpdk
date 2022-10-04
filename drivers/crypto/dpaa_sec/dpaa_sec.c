@@ -673,9 +673,7 @@ dpaa_sec_dump(struct dpaa_sec_op_ctx *ctx, struct dpaa_sec_qp *qp)
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIBRTE_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-		sess = (dpaa_sec_session *)
-			get_sec_session_private_data(
-					op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 #endif
 	if (sess == NULL) {
 		printf("session is NULL\n");
@@ -1928,9 +1926,7 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				break;
 #ifdef RTE_LIB_SECURITY
 			case RTE_CRYPTO_OP_SECURITY_SESSION:
-				ses = (dpaa_sec_session *)
-					get_sec_session_private_data(
-							op->sym->sec_session);
+				ses = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 				break;
 #endif
 			default:
@@ -3245,17 +3241,11 @@ out:
 static int
 dpaa_sec_security_session_create(void *dev,
 				 struct rte_security_session_conf *conf,
-				 struct rte_security_session *sess,
-				 struct rte_mempool *mempool)
+				 struct rte_security_session *sess)
 {
-	void *sess_private_data;
+	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	int ret;
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		DPAA_SEC_ERR("Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
 
 	switch (conf->protocol) {
 	case RTE_SECURITY_PROTOCOL_IPSEC:
@@ -3273,12 +3263,8 @@ dpaa_sec_security_session_create(void *dev,
 	}
 	if (ret != 0) {
 		DPAA_SEC_ERR("failed to configure session parameters");
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
-
-	set_sec_session_private_data(sess, sess_private_data);
 
 	ret = dpaa_sec_prep_cdb(sess_private_data);
 	if (ret) {
@@ -3295,12 +3281,11 @@ dpaa_sec_security_session_destroy(void *dev __rte_unused,
 		struct rte_security_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
-	void *sess_priv = get_sec_session_private_data(sess);
+	void *sess_priv = SECURITY_GET_SESS_PRIV(sess);
 	dpaa_sec_session *s = (dpaa_sec_session *)sess_priv;
 
 	if (sess_priv) {
 		free_session_memory((struct rte_cryptodev *)dev, s);
-		set_sec_session_private_data(sess, NULL);
 	}
 	return 0;
 }

@@ -15,7 +15,6 @@ struct cperf_op_fns;
 
 typedef void  *(*cperf_constructor_t)(
 		struct rte_mempool *sess_mp,
-		struct rte_mempool *sess_priv_mp,
 		uint8_t dev_id,
 		uint16_t qp_id,
 		const struct cperf_options *options,

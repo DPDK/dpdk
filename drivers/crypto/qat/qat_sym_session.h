@@ -177,7 +177,7 @@ qat_sym_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 #ifdef RTE_LIB_SECURITY
 int
 qat_security_session_create(void *dev, struct rte_security_session_conf *conf,
-		struct rte_security_session *sess, struct rte_mempool *mempool);
+		struct rte_security_session *sess);
 int
 qat_security_session_destroy(void *dev, struct rte_security_session *sess);
 #endif

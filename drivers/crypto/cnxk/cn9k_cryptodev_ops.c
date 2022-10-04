@@ -27,7 +27,7 @@ cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
 	struct cn9k_ipsec_sa *sa;
 	int ret;
 
-	priv = get_sec_session_private_data(op->sym->sec_session);
+	priv = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 	sa = &priv->sa;
 
 	if (unlikely(sym_op->m_dst && sym_op->m_dst != sym_op->m_src)) {
@@ -337,7 +337,7 @@ cn9k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused,
 			struct cn9k_sec_session *priv;
 			struct cn9k_ipsec_sa *sa;
 
-			priv = get_sec_session_private_data(sess);
+			priv = SECURITY_GET_SESS_PRIV(sess);
 			sa = &priv->sa;
 			sa->qp = qp;
 			sa->inst.w2 = w2;
@@ -374,7 +374,7 @@ cn9k_ca_meta_info_extract(struct rte_crypto_op *op,
 			struct cn9k_sec_session *priv;
 			struct cn9k_ipsec_sa *sa;
 
-			priv = get_sec_session_private_data(op->sym->sec_session);
+			priv = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 			sa = &priv->sa;
 			*qp = sa->qp;
 			inst->w2.u64 = sa->inst.w2;
@@ -539,8 +539,7 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 			     CPT_OP_FLAGS_IPSEC_INB_REPLAY)) {
 			int ret;
 
-			priv = get_sec_session_private_data(
-				sym_op->sec_session);
+			priv = SECURITY_GET_SESS_PRIV(sym_op->sec_session);
 			sa = &priv->sa;
 
 			ret = ipsec_antireplay_check(

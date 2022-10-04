@@ -20,23 +20,28 @@ extern "C" {
 #include "rte_security.h"
 
 /**
+ * Helper macro to get driver private data
+ */
+#define SECURITY_GET_SESS_PRIV(s) \
+	((void *)(((struct rte_security_session *)s)->driver_priv_data))
+#define SECURITY_GET_SESS_PRIV_IOVA(s) \
+	(((struct rte_security_session *)s)->driver_priv_data_iova)
+
+/**
  * Configure a security session on a device.
  *
  * @param	device		Crypto/eth device pointer
  * @param	conf		Security session configuration
  * @param	sess		Pointer to Security private session structure
- * @param	mp		Mempool where the private session is allocated
  *
  * @return
  *  - Returns 0 if private session structure have been created successfully.
  *  - Returns -EINVAL if input parameters are invalid.
  *  - Returns -ENOTSUP if crypto device does not support the crypto transform.
- *  - Returns -ENOMEM if the private session could not be allocated.
  */
 typedef int (*security_session_create_t)(void *device,
 		struct rte_security_session_conf *conf,
-		struct rte_security_session *sess,
-		struct rte_mempool *mp);
+		struct rte_security_session *sess);
 
 /**
  * Free driver private session data.

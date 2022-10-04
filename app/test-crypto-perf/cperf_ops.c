@@ -642,7 +642,6 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 
 static void *
 create_ipsec_session(struct rte_mempool *sess_mp,
-		struct rte_mempool *priv_mp,
 		uint8_t dev_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
@@ -753,13 +752,11 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 				rte_cryptodev_get_sec_ctx(dev_id);
 
 	/* Create security session */
-	return (void *)rte_security_session_create(ctx,
-				&sess_conf, sess_mp, priv_mp);
+	return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
 }
 
 static void *
 cperf_create_session(struct rte_mempool *sess_mp,
-	struct rte_mempool *priv_mp,
 	uint8_t dev_id,
 	const struct cperf_options *options,
 	const struct cperf_test_vector *test_vector,
@@ -859,12 +856,11 @@ cperf_create_session(struct rte_mempool *sess_mp,
 					rte_cryptodev_get_sec_ctx(dev_id);
 
 		/* Create security session */
-		return (void *)rte_security_session_create(ctx,
-					&sess_conf, sess_mp, priv_mp);
+		return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
 	}
 
 	if (options->op_type == CPERF_IPSEC) {
-		return create_ipsec_session(sess_mp, priv_mp, dev_id,
+		return create_ipsec_session(sess_mp, dev_id,
 				options, test_vector, iv_offset);
 	}
 
@@ -908,8 +904,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 					rte_cryptodev_get_sec_ctx(dev_id);
 
 		/* Create security session */
-		return (void *)rte_security_session_create(ctx,
-					&sess_conf, sess_mp, priv_mp);
+		return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
 	}
 #endif
 	/*

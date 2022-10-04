@@ -25,7 +25,7 @@
 #include <rte_malloc.h>
 #include <rte_crypto_sym.h>
 #ifdef RTE_LIB_SECURITY
-#include <rte_security.h>
+#include <rte_security_driver.h>
 #endif
 
 #include "qat_logs.h"
@@ -2570,7 +2570,8 @@ qat_sec_session_check_docsis(struct rte_security_session_conf *conf)
 
 static int
 qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
-		struct rte_security_session_conf *conf, void *session_private)
+		struct rte_security_session_conf *conf, void *session_private,
+		rte_iova_t session_paddr)
 {
 	int ret;
 	int qat_cmd_id;
@@ -2589,7 +2590,6 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 	xform = conf->crypto_xform;
 
 	/* Verify the session physical address is known */
-	rte_iova_t session_paddr = rte_mempool_virt2iova(session);
 	if (session_paddr == 0 || session_paddr == RTE_BAD_IOVA) {
 		QAT_LOG(ERR,
 			"Session physical address unknown. Bad memory pool.");
@@ -2619,10 +2619,9 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 int
 qat_security_session_create(void *dev,
 				struct rte_security_session_conf *conf,
-				struct rte_security_session *sess,
-				struct rte_mempool *mempool)
+				struct rte_security_session *sess)
 {
-	void *sess_private_data;
+	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	struct qat_cryptodev_private *internals = cdev->data->dev_private;
 	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
@@ -2635,25 +2634,17 @@ qat_security_session_create(void *dev,
 		return -EINVAL;
 	}
 
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		QAT_LOG(ERR, "Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
-
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	if (ossl_legacy_provider_load())
 		return -EINVAL;
 #endif
 	ret = qat_sec_session_set_docsis_parameters(cdev, conf,
-			sess_private_data);
+			sess_private_data, SECURITY_GET_SESS_PRIV_IOVA(sess));
 	if (ret != 0) {
 		QAT_LOG(ERR, "Failed to configure session parameters");
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
 
-	set_sec_session_private_data(sess, sess_private_data);
 	sym_session = (struct qat_sym_session *)sess_private_data;
 	sym_session->dev_id = internals->dev_id;
 
@@ -2665,17 +2656,13 @@ int
 qat_security_session_destroy(void *dev __rte_unused,
 				 struct rte_security_session *sess)
 {
-	void *sess_priv = get_sec_session_private_data(sess);
+	void *sess_priv = SECURITY_GET_SESS_PRIV(sess);
 	struct qat_sym_session *s = (struct qat_sym_session *)sess_priv;
 
 	if (sess_priv) {
 		if (s->bpi_ctx)
 			bpi_cipher_ctx_free(s->bpi_ctx);
 		memset(s, 0, qat_sym_session_get_private_size(dev));
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
-		set_sec_session_private_data(sess, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
 	}
 
 # if (OPENSSL_VERSION_NUMBER >= 0x30000000L)

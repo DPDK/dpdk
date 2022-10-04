@@ -66,7 +66,6 @@ extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha512;
 
 static struct rte_mempool *mbufpool;
 static struct rte_mempool *sess_pool;
-static struct rte_mempool *sess_priv_pool;
 /* ethernet addresses of ports */
 static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
@@ -311,8 +310,7 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 		setenv("ETH_SEC_IV_OVR", arr, 1);
 	}
 
-	*sess = rte_security_session_create(sec_ctx,
-				sess_conf, sess_pool, sess_priv_pool);
+	*sess = rte_security_session_create(sec_ctx, sess_conf, sess_pool);
 	if (*sess == NULL) {
 		printf("SEC Session init failed.\n");
 		return TEST_FAILED;
@@ -495,18 +493,6 @@ init_mempools(unsigned int nb_mbuf)
 			return TEST_FAILED;
 		}
 		printf("Allocated sess pool\n");
-	}
-	if (sess_priv_pool == NULL) {
-		snprintf(s, sizeof(s), "sess_priv_pool");
-		sess_priv_pool = rte_mempool_create(s, nb_sess, sess_sz,
-				MEMPOOL_CACHE_SIZE, 0,
-				NULL, NULL, NULL, NULL,
-				SOCKET_ID_ANY, 0);
-		if (sess_priv_pool == NULL) {
-			printf("Cannot init sess_priv pool\n");
-			return TEST_FAILED;
-		}
-		printf("Allocated sess_priv pool\n");
 	}
 
 	return 0;

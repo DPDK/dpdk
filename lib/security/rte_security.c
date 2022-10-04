@@ -45,21 +45,28 @@ rte_security_dynfield_register(void)
 struct rte_security_session *
 rte_security_session_create(struct rte_security_ctx *instance,
 			    struct rte_security_session_conf *conf,
-			    struct rte_mempool *mp,
-			    struct rte_mempool *priv_mp)
+			    struct rte_mempool *mp)
 {
 	struct rte_security_session *sess = NULL;
+	uint32_t sess_priv_size;
 
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, session_create, NULL, NULL);
 	RTE_PTR_OR_ERR_RET(conf, NULL);
 	RTE_PTR_OR_ERR_RET(mp, NULL);
-	RTE_PTR_OR_ERR_RET(priv_mp, NULL);
+
+	sess_priv_size = instance->ops->session_get_size(instance->device);
+	if (mp->elt_size < (sizeof(struct rte_security_session) + sess_priv_size))
+		return NULL;
 
 	if (rte_mempool_get(mp, (void **)&sess))
 		return NULL;
 
-	if (instance->ops->session_create(instance->device, conf,
-				sess, priv_mp)) {
+	/* Clear session priv data */
+	memset(sess->driver_priv_data, 0, sess_priv_size);
+
+	sess->driver_priv_data_iova = rte_mempool_virt2iova(sess) +
+			offsetof(struct rte_security_session, driver_priv_data);
+	if (instance->ops->session_create(instance->device, conf, sess)) {
 		rte_mempool_put(mp, (void *)sess);
 		return NULL;
 	}
@@ -86,7 +93,8 @@ rte_security_session_get_size(struct rte_security_ctx *instance)
 {
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, session_get_size, 0, 0);
 
-	return instance->ops->session_get_size(instance->device);
+	return (sizeof(struct rte_security_session) +
+			instance->ops->session_get_size(instance->device));
 }
 
 int

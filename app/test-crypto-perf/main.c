@@ -24,7 +24,6 @@
 
 static struct {
 	struct rte_mempool *sess_mp;
-	struct rte_mempool *priv_mp;
 } session_pool_socket[RTE_MAX_NUMA_NODES];
 
 const char *cperf_test_type_strs[] = {
@@ -115,7 +114,6 @@ fill_session_pool_socket(int32_t socket_id, uint32_t session_priv_size,
 		printf("Allocated pool \"%s\" on socket %d\n",
 			mp_name, socket_id);
 		session_pool_socket[socket_id].sess_mp = sess_mp;
-		session_pool_socket[socket_id].priv_mp = sess_mp;
 	}
 
 	return 0;
@@ -660,7 +658,6 @@ main(int argc, char **argv)
 
 		ctx[i] = cperf_testmap[opts.test].constructor(
 				session_pool_socket[socket_id].sess_mp,
-				session_pool_socket[socket_id].priv_mp,
 				cdev_id, qp_id,
 				&opts, t_vec, &op_fns);
 		if (ctx[i] == NULL) {

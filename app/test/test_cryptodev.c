@@ -649,12 +649,6 @@ testsuite_setup(void)
 			SOCKET_ID_ANY);
 	TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
 			"session mempool allocation failed");
-	ts_params->session_priv_mpool = rte_mempool_create(
-			"test_sess_mp_priv", MAX_NB_SESSIONS, session_size,
-			0, 0, NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
-
-	TEST_ASSERT_NOT_NULL(ts_params->session_priv_mpool,
-			"session mempool allocation failed");
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
 			&ts_params->conf),
@@ -694,8 +688,6 @@ testsuite_teardown(void)
 	if (ts_params->session_mpool != NULL) {
 		rte_mempool_free(ts_params->session_mpool);
 		ts_params->session_mpool = NULL;
-		rte_mempool_free(ts_params->session_priv_mpool);
-		ts_params->session_priv_mpool = NULL;
 	}
 
 	res = rte_cryptodev_close(ts_params->valid_devs[0]);
@@ -8621,8 +8613,7 @@ static int test_pdcp_proto(int i, int oop, enum rte_crypto_cipher_operation opc,
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx,
-				&sess_conf, ts_params->session_mpool,
-				NULL);
+				&sess_conf, ts_params->session_mpool);
 
 	if (!ut_params->sec_session) {
 		printf("TestCase %s()-%d line %d failed %s: ",
@@ -8901,8 +8892,7 @@ test_pdcp_proto_SGL(int i, int oop,
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx,
-				&sess_conf, ts_params->session_mpool,
-				ts_params->session_priv_mpool);
+				&sess_conf, ts_params->session_mpool);
 
 	if (!ut_params->sec_session) {
 		printf("TestCase %s()-%d line %d failed %s: ",
@@ -9497,8 +9487,7 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
-					ts_params->session_mpool,
-					ts_params->session_priv_mpool);
+					ts_params->session_mpool);
 
 	if (ut_params->sec_session == NULL)
 		return TEST_SKIPPED;
@@ -10509,8 +10498,7 @@ test_docsis_proto_uplink(const void *data)
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
-					ts_params->session_mpool,
-					ts_params->session_priv_mpool);
+					ts_params->session_mpool);
 
 	if (!ut_params->sec_session) {
 		printf("Test function %s line %u: failed to allocate session\n",
@@ -10694,8 +10682,7 @@ test_docsis_proto_downlink(const void *data)
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
-					ts_params->session_mpool,
-					ts_params->session_priv_mpool);
+					ts_params->session_mpool);
 
 	if (!ut_params->sec_session) {
 		printf("Test function %s line %u: failed to allocate session\n",
@@ -14976,10 +14963,6 @@ test_scheduler_attach_worker_op(void)
 			rte_mempool_free(ts_params->session_mpool);
 			ts_params->session_mpool = NULL;
 		}
-		if (ts_params->session_priv_mpool) {
-			rte_mempool_free(ts_params->session_priv_mpool);
-			ts_params->session_priv_mpool = NULL;
-		}
 
 		if (info.sym.max_nb_sessions != 0 &&
 				info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
@@ -15000,23 +14983,6 @@ test_scheduler_attach_worker_op(void)
 						MAX_NB_SESSIONS, session_size,
 						0, 0, SOCKET_ID_ANY);
 			TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
-					"session mempool allocation failed");
-		}
-
-		/*
-		 * Create mempool with maximum number of sessions,
-		 * to include device specific session private data
-		 */
-		if (ts_params->session_priv_mpool == NULL) {
-			ts_params->session_priv_mpool = rte_mempool_create(
-					"test_sess_mp_priv",
-					MAX_NB_SESSIONS,
-					session_size,
-					0, 0, NULL, NULL, NULL,
-					NULL, SOCKET_ID_ANY,
-					0);
-
-			TEST_ASSERT_NOT_NULL(ts_params->session_priv_mpool,
 					"session mempool allocation failed");
 		}
 

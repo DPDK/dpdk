@@ -159,13 +159,12 @@ const struct supported_auth_algo auth_algos[] = {
 
 static int
 dummy_sec_create(void *device, struct rte_security_session_conf *conf,
-	struct rte_security_session *sess, struct rte_mempool *mp)
+	struct rte_security_session *sess)
 {
 	RTE_SET_USED(device);
 	RTE_SET_USED(conf);
-	RTE_SET_USED(mp);
+	RTE_SET_USED(sess);
 
-	sess->sess_private_data = NULL;
 	return 0;
 }
 
@@ -631,7 +630,7 @@ create_dummy_sec_session(struct ipsec_unitest_params *ut,
 	static struct rte_security_session_conf conf;
 
 	ut->ss[j].security.ses = rte_security_session_create(&dummy_sec_ctx,
-					&conf, qp->mp_session, NULL);
+					&conf, qp->mp_session);
 
 	if (ut->ss[j].security.ses == NULL)
 		return -ENOMEM;

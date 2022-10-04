@@ -1359,9 +1359,7 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 		ses = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 		break;
 	case RTE_CRYPTO_OP_SECURITY_SESSION:
-		ses = (struct caam_jr_session *)
-			get_sec_session_private_data(
-					op->sym->sec_session);
+		ses = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 		break;
 	default:
 		CAAM_JR_DP_ERR("sessionless crypto op not supported");
@@ -1900,17 +1898,11 @@ out:
 static int
 caam_jr_security_session_create(void *dev,
 				struct rte_security_session_conf *conf,
-				struct rte_security_session *sess,
-				struct rte_mempool *mempool)
+				struct rte_security_session *sess)
 {
-	void *sess_private_data;
+	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	int ret;
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CAAM_JR_ERR("Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
 
 	switch (conf->protocol) {
 	case RTE_SECURITY_PROTOCOL_IPSEC:
@@ -1924,12 +1916,7 @@ caam_jr_security_session_create(void *dev,
 	}
 	if (ret != 0) {
 		CAAM_JR_ERR("failed to configure session parameters");
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
-		return ret;
 	}
-
-	set_sec_session_private_data(sess, sess_private_data);
 
 	return ret;
 }
@@ -1940,18 +1927,12 @@ caam_jr_security_session_destroy(void *dev __rte_unused,
 				 struct rte_security_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
-	void *sess_priv = get_sec_session_private_data(sess);
+	struct caam_jr_session *s = SECURITY_GET_SESS_PRIV(sess);
 
-	struct caam_jr_session *s = (struct caam_jr_session *)sess_priv;
-
-	if (sess_priv) {
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
+	if (s) {
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
-		memset(sess, 0, sizeof(struct caam_jr_session));
-		set_sec_session_private_data(sess, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
+		memset(s, 0, sizeof(struct caam_jr_session));
 	}
 	return 0;
 }

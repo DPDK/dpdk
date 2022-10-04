@@ -258,7 +258,6 @@ struct socket_ctx {
 	struct rte_mempool *mbuf_pool[RTE_MAX_ETHPORTS];
 	struct rte_mempool *mbuf_pool_indir;
 	struct rte_mempool *session_pool;
-	struct rte_mempool *session_priv_pool;
 };
 
 struct cnt_blk {

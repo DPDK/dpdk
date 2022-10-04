@@ -674,10 +674,17 @@ struct rte_security_session_conf {
 };
 
 struct rte_security_session {
-	void *sess_private_data;
-	/**< Private session material */
+	RTE_MARKER cacheline0;
 	uint64_t opaque_data;
 	/**< Opaque user defined data */
+	uint64_t fast_mdata;
+	/**< Fast metadata to be used for inline path */
+	rte_iova_t driver_priv_data_iova;
+	/**< session private data IOVA address */
+
+	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	uint8_t driver_priv_data[0];
+	/**< Private session material, variable size (depends on driver) */
 };
 
 /**
@@ -686,7 +693,6 @@ struct rte_security_session {
  * @param   instance	security instance
  * @param   conf	session configuration parameters
  * @param   mp		mempool to allocate session objects from
- * @param   priv_mp	mempool to allocate session private data objects from
  * @return
  *  - On success, pointer to session
  *  - On failure, NULL
@@ -694,8 +700,7 @@ struct rte_security_session {
 struct rte_security_session *
 rte_security_session_create(struct rte_security_ctx *instance,
 			    struct rte_security_session_conf *conf,
-			    struct rte_mempool *mp,
-			    struct rte_mempool *priv_mp);
+			    struct rte_mempool *mp);
 
 /**
  * Update security session as specified by the session configuration
@@ -885,7 +890,7 @@ rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 	/* Fast Path */
 	if (instance->flags & RTE_SEC_CTX_F_FAST_SET_MDATA) {
 		*rte_security_dynfield(mb) =
-			(rte_security_dynfield_t)(sess->sess_private_data);
+			(rte_security_dynfield_t)(sess->fast_mdata);
 		return 0;
 	}
 
@@ -906,19 +911,6 @@ __rte_security_attach_session(struct rte_crypto_sym_op *sym_op,
 	sym_op->sec_session = sess;
 
 	return 0;
-}
-
-static inline void *
-get_sec_session_private_data(const struct rte_security_session *sess)
-{
-	return sess->sess_private_data;
-}
-
-static inline void
-set_sec_session_private_data(struct rte_security_session *sess,
-			     void *private_data)
-{
-	sess->sess_private_data = private_data;
 }
 
 /**

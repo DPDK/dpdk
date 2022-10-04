@@ -1382,8 +1382,7 @@ build_sec_fd(struct rte_crypto_op *op,
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIB_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-		sess = (dpaa2_sec_session *)get_sec_session_private_data(
-				op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 #endif
 	else {
 		DPAA2_SEC_DP_ERR("Session type invalid\n");
@@ -1583,8 +1582,7 @@ sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 	mbuf->buf_iova = op->sym->aead.digest.phys_addr;
 	op->sym->aead.digest.phys_addr = 0L;
 
-	sess_priv = (dpaa2_sec_session *)get_sec_session_private_data(
-				op->sym->sec_session);
+	sess_priv = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 	if (sess_priv->dir == DIR_ENC)
 		mbuf->data_off += SEC_FLC_DHR_OUTBOUND;
 	else
@@ -1680,8 +1678,7 @@ dpaa2_sec_dump(struct rte_crypto_op *op)
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
 #ifdef RTE_LIBRTE_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
-		sess = (dpaa2_sec_session *)get_sec_session_private_data(
-			op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 #endif
 
 	if (sess == NULL)
@@ -3690,17 +3687,11 @@ out:
 static int
 dpaa2_sec_security_session_create(void *dev,
 				  struct rte_security_session_conf *conf,
-				  struct rte_security_session *sess,
-				  struct rte_mempool *mempool)
+				  struct rte_security_session *sess)
 {
-	void *sess_private_data;
+	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	int ret;
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		DPAA2_SEC_ERR("Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
 
 	switch (conf->protocol) {
 	case RTE_SECURITY_PROTOCOL_IPSEC:
@@ -3718,12 +3709,8 @@ dpaa2_sec_security_session_create(void *dev,
 	}
 	if (ret != 0) {
 		DPAA2_SEC_ERR("Failed to configure session parameters");
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
-
-	set_sec_session_private_data(sess, sess_private_data);
 
 	return ret;
 }
@@ -3734,19 +3721,15 @@ dpaa2_sec_security_session_destroy(void *dev __rte_unused,
 		struct rte_security_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
-	void *sess_priv = get_sec_session_private_data(sess);
+	void *sess_priv = SECURITY_GET_SESS_PRIV(sess);
 
 	dpaa2_sec_session *s = (dpaa2_sec_session *)sess_priv;
 
 	if (sess_priv) {
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
 		rte_free(s->ctxt);
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
 		memset(s, 0, sizeof(dpaa2_sec_session));
-		set_sec_session_private_data(sess, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
 	}
 	return 0;
 }

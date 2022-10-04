@@ -2111,38 +2111,6 @@ session_pool_init(struct socket_ctx *ctx, int32_t socket_id, size_t sess_sz)
 }
 
 static void
-session_priv_pool_init(struct socket_ctx *ctx, int32_t socket_id,
-	size_t sess_sz)
-{
-	char mp_name[RTE_MEMPOOL_NAMESIZE];
-	struct rte_mempool *sess_mp;
-	uint32_t nb_sess;
-
-	snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
-			"sess_mp_priv_%u", socket_id);
-	nb_sess = (get_nb_crypto_sessions() + CDEV_MP_CACHE_SZ *
-		rte_lcore_count());
-	nb_sess = RTE_MAX(nb_sess, CDEV_MP_CACHE_SZ *
-			CDEV_MP_CACHE_MULTIPLIER);
-	sess_mp = rte_mempool_create(mp_name,
-			nb_sess,
-			sess_sz,
-			CDEV_MP_CACHE_SZ,
-			0, NULL, NULL, NULL,
-			NULL, socket_id,
-			0);
-	ctx->session_priv_pool = sess_mp;
-
-	if (ctx->session_priv_pool == NULL)
-		rte_exit(EXIT_FAILURE,
-			"Cannot init session priv pool on socket %d\n",
-			socket_id);
-	else
-		printf("Allocated session priv pool on socket %d\n",
-			socket_id);
-}
-
-static void
 pool_init(struct socket_ctx *ctx, int32_t socket_id, int portid,
 	  uint32_t nb_mbuf)
 {
@@ -3000,8 +2968,6 @@ main(int32_t argc, char **argv)
 			continue;
 
 		session_pool_init(&socket_ctx[socket_id], socket_id, sess_sz);
-		session_priv_pool_init(&socket_ctx[socket_id], socket_id,
-			sess_sz);
 	}
 	printf("Number of mbufs in packet pool %d\n", nb_bufs_in_pool);
 

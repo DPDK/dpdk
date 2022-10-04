@@ -9,6 +9,7 @@
 #include <rte_crypto_sym.h>
 #include <bus_pci_driver.h>
 #include <rte_byteorder.h>
+#include <rte_security_driver.h>
 
 #include "qat_sym.h"
 #include "qat_crypto.h"
@@ -100,7 +101,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 #ifdef RTE_LIB_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-		ctx = get_sec_session_private_data(op->sym->sec_session);
+		ctx = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 		if (unlikely(!ctx)) {
 			QAT_DP_LOG(ERR, "No session for this device");
 			return -EINVAL;

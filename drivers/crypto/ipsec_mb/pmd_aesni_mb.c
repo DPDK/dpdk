@@ -1584,8 +1584,7 @@ set_sec_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -1;
 	}
-	session = (struct aesni_mb_session *)
-		get_sec_session_private_data(op->sym->sec_session);
+	session = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 
 	if (unlikely(session == NULL)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
@@ -1720,7 +1719,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 		 * this is for DOCSIS
 		 */
 		is_docsis_sec = 1;
-		sess = get_sec_session_private_data(op->sym->sec_session);
+		sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
 	} else
 #endif
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
@@ -2095,10 +2094,9 @@ struct rte_cryptodev_ops aesni_mb_pmd_ops = {
  */
 static int
 aesni_mb_pmd_sec_sess_create(void *dev, struct rte_security_session_conf *conf,
-		struct rte_security_session *sess,
-		struct rte_mempool *mempool)
+		struct rte_security_session *sess)
 {
-	void *sess_private_data;
+	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	int ret;
 
@@ -2108,23 +2106,13 @@ aesni_mb_pmd_sec_sess_create(void *dev, struct rte_security_session_conf *conf,
 		return -EINVAL;
 	}
 
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		IPSEC_MB_LOG(ERR, "Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
-
 	ret = aesni_mb_set_docsis_sec_session_parameters(cdev, conf,
 			sess_private_data);
 
 	if (ret != 0) {
 		IPSEC_MB_LOG(ERR, "Failed to configure session parameters");
-
-		/* Return session to mempool */
-		rte_mempool_put(mempool, sess_private_data);
 		return ret;
 	}
-
-	set_sec_session_private_data(sess, sess_private_data);
 
 	return ret;
 }
@@ -2134,14 +2122,10 @@ static int
 aesni_mb_pmd_sec_sess_destroy(void *dev __rte_unused,
 		struct rte_security_session *sess)
 {
-	void *sess_priv = get_sec_session_private_data(sess);
+	void *sess_priv = SECURITY_GET_SESS_PRIV(sess);
 
 	if (sess_priv) {
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
 		memset(sess_priv, 0, sizeof(struct aesni_mb_session));
-		set_sec_session_private_data(sess, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
 	}
 	return 0;
 }

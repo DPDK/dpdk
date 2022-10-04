@@ -833,21 +833,15 @@ struct rte_cryptodev_ops *rte_mrvl_crypto_pmd_ops = &mrvl_crypto_pmd_ops;
 static int
 mrvl_crypto_pmd_security_session_create(__rte_unused void *dev,
 				 struct rte_security_session_conf *conf,
-				 struct rte_security_session *sess,
-				 struct rte_mempool *mempool)
+				 struct rte_security_session *sess)
 {
 	struct mrvl_crypto_session *mrvl_sess;
-	void *sess_private_data;
+	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
 	int ret;
 
 	if (sess == NULL) {
 		MRVL_LOG(ERR, "Invalid session struct.");
 		return -EINVAL;
-	}
-
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		MRVL_LOG(ERR, "Couldn't get object from session mempool.");
-		return -ENOMEM;
 	}
 
 	switch (conf->protocol) {
@@ -863,8 +857,6 @@ mrvl_crypto_pmd_security_session_create(__rte_unused void *dev,
 		if (ret != 0) {
 			MRVL_LOG(ERR, "Failed to configure session parameters.");
 
-			/* Return session to mempool */
-			rte_mempool_put(mempool, sess_private_data);
 			return ret;
 		}
 
@@ -878,8 +870,6 @@ mrvl_crypto_pmd_security_session_create(__rte_unused void *dev,
 				&mrvl_sess->sam_sess);
 		if (ret < 0) {
 			MRVL_LOG(ERR, "PMD: failed to create IPSEC session.");
-			/* Return session to mempool */
-			rte_mempool_put(mempool, sess_private_data);
 			return ret;
 		}
 		break;
@@ -889,8 +879,6 @@ mrvl_crypto_pmd_security_session_create(__rte_unused void *dev,
 		return -EINVAL;
 	}
 
-	set_sec_session_private_data(sess, sess_private_data);
-
 	return ret;
 }
 
@@ -899,13 +887,12 @@ static int
 mrvl_crypto_pmd_security_session_destroy(void *dev __rte_unused,
 		struct rte_security_session *sess)
 {
-	void *sess_priv = get_sec_session_private_data(sess);
+	void *sess_priv = SECURITY_GET_SESS_PRIV(sess);
 
 	/* Zero out the whole structure */
 	if (sess_priv) {
 		struct mrvl_crypto_session *mrvl_sess =
 			(struct mrvl_crypto_session *)sess_priv;
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
 
 		if (mrvl_sess->sam_sess &&
 		    sam_session_destroy(mrvl_sess->sam_sess) < 0) {
@@ -916,8 +903,6 @@ mrvl_crypto_pmd_security_session_destroy(void *dev __rte_unused,
 		rte_free(mrvl_sess->sam_sess_params.auth_key);
 		rte_free(mrvl_sess->sam_sess_params.cipher_iv);
 		memset(sess, 0, sizeof(struct rte_security_session));
-		set_sec_session_private_data(sess, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
 	}
 	return 0;
 }

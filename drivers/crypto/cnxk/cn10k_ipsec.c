@@ -47,7 +47,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	void *out_sa;
 	int ret = 0;
 
-	sess = get_sec_session_private_data(sec_sess);
+	sess = SECURITY_GET_SESS_PRIV(sec_sess);
 	sa = &sess->sa;
 	out_sa = &sa->out_sa;
 
@@ -173,7 +173,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	void *in_sa;
 	int ret = 0;
 
-	sess = get_sec_session_private_data(sec_sess);
+	sess = SECURITY_GET_SESS_PRIV(sec_sess);
 	sa = &sess->sa;
 	in_sa = &sa->in_sa;
 
@@ -290,37 +290,16 @@ cn10k_ipsec_session_create(void *dev,
 
 static int
 cn10k_sec_session_create(void *device, struct rte_security_session_conf *conf,
-			 struct rte_security_session *sess,
-			 struct rte_mempool *mempool)
+			 struct rte_security_session *sess)
 {
-	struct cn10k_sec_session *priv;
-	int ret;
-
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL)
 		return -EINVAL;
 
-	if (rte_mempool_get(mempool, (void **)&priv)) {
-		plt_err("Could not allocate security session private data");
-		return -ENOMEM;
-	}
+	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
+		return -ENOTSUP;
 
-	set_sec_session_private_data(sess, priv);
-
-	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC) {
-		ret = -ENOTSUP;
-		goto mempool_put;
-	}
-	ret = cn10k_ipsec_session_create(device, &conf->ipsec,
+	return cn10k_ipsec_session_create(device, &conf->ipsec,
 					 conf->crypto_xform, sess);
-	if (ret)
-		goto mempool_put;
-
-	return 0;
-
-mempool_put:
-	rte_mempool_put(mempool, priv);
-	set_sec_session_private_data(sess, NULL);
-	return ret;
 }
 
 static int
@@ -329,14 +308,13 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 	struct rte_cryptodev *crypto_dev = dev;
 	union roc_ot_ipsec_sa_word2 *w2;
 	struct cn10k_sec_session *sess;
-	struct rte_mempool *sess_mp;
 	struct cn10k_ipsec_sa *sa;
 	struct cnxk_cpt_qp *qp;
 	struct roc_cpt_lf *lf;
 	void *sa_dptr = NULL;
 	int ret;
 
-	sess = get_sec_session_private_data(sec_sess);
+	sess = SECURITY_GET_SESS_PRIV(sec_sess);
 	if (sess == NULL)
 		return 0;
 
@@ -390,11 +368,6 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 		roc_cpt_lf_ctx_reload(lf, &sa->in_sa);
 	}
 
-	sess_mp = rte_mempool_from_obj(sess);
-
-	set_sec_session_private_data(sec_sess, NULL);
-	rte_mempool_put(sess_mp, sess);
-
 	return 0;
 }
 
@@ -416,7 +389,7 @@ cn10k_sec_session_stats_get(void *device, struct rte_security_session *sess,
 	struct cn10k_ipsec_sa *sa;
 	struct cnxk_cpt_qp *qp;
 
-	priv = get_sec_session_private_data(sess);
+	priv = SECURITY_GET_SESS_PRIV(sess);
 	if (priv == NULL)
 		return -EINVAL;
 
@@ -457,7 +430,7 @@ cn10k_sec_session_update(void *device, struct rte_security_session *sess,
 	struct cnxk_cpt_vf *vf;
 	int ret;
 
-	priv = get_sec_session_private_data(sess);
+	priv = SECURITY_GET_SESS_PRIV(sess);
 	if (priv == NULL)
 		return -EINVAL;
 
