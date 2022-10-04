@@ -362,7 +362,7 @@ ccp_find_lsb_regions(struct ccp_queue *cmd_q, uint64_t status)
 		if (ccp_get_bit(&cmd_q->lsbmask, j))
 			weight++;
 
-	printf("Queue %d can access %d LSB regions  of mask  %lu\n",
+	CCP_LOG_DBG("Queue %d can access %d LSB regions  of mask  %lu\n",
 	       (int)cmd_q->id, weight, cmd_q->lsbmask);
 
 	return weight ? 0 : -EINVAL;
@@ -710,7 +710,7 @@ ccp_probe_devices(struct rte_pci_device *pci_dev,
 		snprintf(dirname, sizeof(dirname), "%s/%s",
 			     SYSFS_PCI_DEVICES, d->d_name);
 		if (is_ccp_device(dirname, ccp_id, &ccp_type)) {
-			printf("CCP : Detected CCP device with ID = 0x%x\n",
+			CCP_LOG_DBG("CCP : Detected CCP device with ID = 0x%x\n",
 			       ccp_id[ccp_type].device_id);
 			ret = ccp_probe_device(ccp_type, pci_dev);
 			if (ret == 0)

@@ -11,6 +11,7 @@
 #include <rte_string_fns.h>
 
 #include "ccp_pci.h"
+#include "ccp_pmd_private.h"
 
 static const char * const uio_module_names[] = {
 	"igb_uio",
@@ -41,7 +42,7 @@ ccp_check_pci_uio_module(void)
 		rewind(fp);
 	}
 	fclose(fp);
-	printf("Insert igb_uio or uio_pci_generic kernel module(s)");
+	CCP_LOG_DBG("Insert igb_uio or uio_pci_generic kernel module(s)");
 	return -1;/* uio not inserted */
 }
 
