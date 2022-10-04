@@ -47,6 +47,7 @@ EXPERIMENTAL {
 	rte_bbdev_dequeue_fft_ops;
 	rte_bbdev_device_status_str;
 	rte_bbdev_enqueue_fft_ops;
+	rte_bbdev_enqueue_status_str;
 	rte_bbdev_fft_op_alloc_bulk;
 	rte_bbdev_fft_op_free_bulk;
 };

@@ -441,6 +441,9 @@ ABI Changes
 * bbdev: Structure ``rte_bbdev_driver_info`` was updated to add new parameters
   for queue topology, device status using ``rte_bbdev_device_status``.
 
+* bbdev: Structure ``rte_bbdev_queue_data`` was updated to add new parameter
+  for enqueue status using ``rte_bbdev_enqueue_status``.
+
 * eventdev: Added ``evtim_drop_count`` field
   to ``rte_event_timer_adapter_stats`` structure.
 

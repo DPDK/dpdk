@@ -721,6 +721,8 @@ get_stats_from_queues(struct rte_bbdev *dev, struct rte_bbdev_stats *stats)
 		stats->dequeued_count += q_stats->dequeued_count;
 		stats->enqueue_err_count += q_stats->enqueue_err_count;
 		stats->dequeue_err_count += q_stats->dequeue_err_count;
+		stats->enqueue_warn_count += q_stats->enqueue_warn_count;
+		stats->dequeue_warn_count += q_stats->dequeue_warn_count;
 	}
 	rte_bbdev_log_debug("Got stats on %u", dev->data->dev_id);
 }
@@ -1161,5 +1163,22 @@ rte_bbdev_device_status_str(enum rte_bbdev_device_status status)
 		return dev_sta_string[status];
 
 	rte_bbdev_log(ERR, "Invalid device status");
+	return NULL;
+}
+
+const char *
+rte_bbdev_enqueue_status_str(enum rte_bbdev_enqueue_status status)
+{
+	static const char * const enq_sta_string[] = {
+		"RTE_BBDEV_ENQ_STATUS_NONE",
+		"RTE_BBDEV_ENQ_STATUS_QUEUE_FULL",
+		"RTE_BBDEV_ENQ_STATUS_RING_FULL",
+		"RTE_BBDEV_ENQ_STATUS_INVALID_OP",
+	};
+
+	if (status < sizeof(enq_sta_string) / sizeof(char *))
+		return enq_sta_string[status];
+
+	rte_bbdev_log(ERR, "Invalid enqueue status");
 	return NULL;
 }

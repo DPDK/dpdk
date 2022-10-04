@@ -35,6 +35,13 @@ extern "C" {
 #define RTE_BBDEV_MAX_DEVS 128  /**< Max number of devices */
 #endif
 
+/*
+ * Maximum size to be used to manage the enum rte_bbdev_enqueue_status
+ * including padding for future enum insertion.
+ * The enum values must be explicitly kept smaller or equal to this padded maximum size.
+ */
+#define RTE_BBDEV_ENQ_STATUS_SIZE_MAX 6
+
 /** Flags indicate current state of BBDEV device */
 enum rte_bbdev_state {
 	RTE_BBDEV_UNUSED,
@@ -224,6 +231,22 @@ int
 rte_bbdev_queue_stop(uint16_t dev_id, uint16_t queue_id);
 
 /**
+ * Flags to indicate the reason why a previous enqueue may not have
+ * consumed all requested operations.
+ * In case of multiple reasons the latter supersedes a previous one.
+ * The related macro RTE_BBDEV_ENQ_STATUS_SIZE_MAX can be used
+ * as an absolute maximum for notably sizing array
+ * while allowing for future enumeration insertion.
+ */
+enum rte_bbdev_enqueue_status {
+	RTE_BBDEV_ENQ_STATUS_NONE,             /**< Nothing to report. */
+	RTE_BBDEV_ENQ_STATUS_QUEUE_FULL,       /**< Not enough room in queue. */
+	RTE_BBDEV_ENQ_STATUS_RING_FULL,        /**< Not enough room in ring. */
+	RTE_BBDEV_ENQ_STATUS_INVALID_OP,       /**< Operation was rejected as invalid. */
+	/* Note: RTE_BBDEV_ENQ_STATUS_SIZE_MAX must be larger or equal to maximum enum value. */
+};
+
+/**
  * Flags to indicate the status of the device.
  */
 enum rte_bbdev_device_status {
@@ -246,6 +269,12 @@ struct rte_bbdev_stats {
 	uint64_t enqueue_err_count;
 	/** Total error count on operations dequeued */
 	uint64_t dequeue_err_count;
+	/** Total warning count on operations enqueued. */
+	uint64_t enqueue_warn_count;
+	/** Total warning count on operations dequeued. */
+	uint64_t dequeue_warn_count;
+	/** Total enqueue status count based on *rte_bbdev_enqueue_status* enum. */
+	uint64_t enqueue_status_count[RTE_BBDEV_ENQ_STATUS_SIZE_MAX];
 	/** CPU cycles consumed by the (HW/SW) accelerator device to offload
 	 *  the enqueue request to its internal queues.
 	 *  - For a HW device this is the cycles consumed in MMIO write
@@ -386,6 +415,7 @@ struct rte_bbdev_queue_data {
 	void *queue_private;  /**< Driver-specific per-queue data */
 	struct rte_bbdev_queue_conf conf;  /**< Current configuration */
 	struct rte_bbdev_stats queue_stats;  /**< Queue statistics */
+	enum rte_bbdev_enqueue_status enqueue_status; /**< Enqueue status when op is rejected */
 	bool started;  /**< Queue state */
 };
 
@@ -937,6 +967,20 @@ rte_bbdev_queue_intr_ctl(uint16_t dev_id, uint16_t queue_id, int epfd, int op,
 __rte_experimental
 const char*
 rte_bbdev_device_status_str(enum rte_bbdev_device_status status);
+
+/**
+ * Convert queue status from enum to string.
+ *
+ * @param status
+ *   Queue status as enum.
+ *
+ * @returns
+ *   Queue status as string or NULL if op_type is invalid.
+ *
+ */
+__rte_experimental
+const char*
+rte_bbdev_enqueue_status_str(enum rte_bbdev_enqueue_status status);
 
 #ifdef __cplusplus
 }
