@@ -6,12 +6,6 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-if arch_subdir == 'loongarch'
-    build = false
-    reason = 'not supported on LoongArch'
-    subdir_done()
-endif
-
 allow_experimental_apis = true
 deps += ['acl', 'hash', 'lpm', 'fib', 'eventdev']
 sources = files(
