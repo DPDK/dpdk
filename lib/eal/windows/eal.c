@@ -263,6 +263,7 @@ rte_eal_cleanup(void)
 
 	eal_intr_thread_cancel();
 	eal_mem_virt2iova_cleanup();
+	eal_bus_cleanup();
 	/* after this point, any DPDK pointers will become dangling */
 	rte_eal_memory_detach();
 	eal_cleanup_config(internal_conf);

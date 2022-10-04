@@ -206,6 +206,18 @@ typedef int (*rte_bus_hot_unplug_handler_t)(struct rte_device *dev);
 typedef int (*rte_bus_sigbus_handler_t)(const void *failure_addr);
 
 /**
+ * Implementation specific cleanup function which is responsible for cleaning up
+ * devices on that bus with applicable drivers.
+ *
+ * This is called while iterating over each registered bus.
+ *
+ * @return
+ * 0 for successful cleanup
+ * !0 for any error during cleanup
+ */
+typedef int (*rte_bus_cleanup_t)(void);
+
+/**
  * Bus scan policies
  */
 enum rte_bus_scan_mode {
@@ -256,6 +268,7 @@ struct rte_bus {
 				/**< handle hot-unplug failure on the bus */
 	rte_bus_sigbus_handler_t sigbus_handler;
 					/**< handle sigbus error on the bus */
+	rte_bus_cleanup_t cleanup;   /**< Cleanup devices on bus */
 };
 
 /**

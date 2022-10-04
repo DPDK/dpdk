@@ -442,6 +442,16 @@ int rte_eal_memory_detach(void);
 struct rte_bus *rte_bus_find_by_device_name(const char *str);
 
 /**
+ * For each device on the buses, call the driver-specific function for
+ * device cleanup.
+ *
+ * @return
+ * 0 for successful cleanup
+ * !0 otherwise
+ */
+int eal_bus_cleanup(void);
+
+/**
  * Create the unix channel for primary/secondary communication.
  *
  * @return

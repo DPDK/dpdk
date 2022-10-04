@@ -25,6 +25,7 @@
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_vfio.h>
+#include <rte_tailq.h>
 
 #include "private.h"
 
@@ -437,6 +438,32 @@ pci_probe(void)
 	}
 
 	return (probed && probed == failed) ? -1 : 0;
+}
+
+static int
+pci_cleanup(void)
+{
+	struct rte_pci_device *dev, *tmp_dev;
+	int error = 0;
+
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_pci_bus.device_list, next, tmp_dev) {
+		struct rte_pci_driver *drv = dev->driver;
+		int ret = 0;
+
+		if (drv == NULL || drv->remove == NULL)
+			continue;
+
+		ret = drv->remove(dev);
+		if (ret < 0) {
+			rte_errno = errno;
+			error = -1;
+		}
+		dev->driver = NULL;
+		dev->device.driver = NULL;
+		free(dev);
+	}
+
+	return error;
 }
 
 /* dump one device */
@@ -856,6 +883,7 @@ struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.scan = rte_pci_scan,
 		.probe = pci_probe,
+		.cleanup = pci_cleanup,
 		.find_device = pci_find_device,
 		.plug = pci_plug,
 		.unplug = pci_unplug,
