@@ -428,6 +428,10 @@ ABI Changes
 
 * ethdev: enum ``RTE_FLOW_ACTION`` was affected by deprecation procedure.
 
+* bbdev: enum ``rte_bbdev_op_type`` was affected to remove ``RTE_BBDEV_OP_TYPE_COUNT``
+  and to allow for futureproof enum insertion a padded ``RTE_BBDEV_OP_TYPE_SIZE_MAX``
+  macro is added.
+
 * eventdev: Added ``evtim_drop_count`` field
   to ``rte_event_timer_adapter_stats`` structure.
 

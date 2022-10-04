@@ -94,10 +94,7 @@ Deprecation Notices
   ``RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY`` and
   ``RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY`` in DPDK 22.11.
 
-* bbdev: ``RTE_BBDEV_OP_TYPE_COUNT`` terminating the ``rte_bbdev_op_type``
-  enum will be deprecated and instead use fixed array size when required
-  to allow for future enum extension.
-  Will extend API to support new operation type ``RTE_BBDEV_OP_FFT`` as per
+* bbdev: Will extend API to support new operation type ``RTE_BBDEV_OP_FFT`` as per
   this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=22111>`__.
   New members will be added in ``rte_bbdev_driver_info`` to expose
   PMD queue topology inspired by

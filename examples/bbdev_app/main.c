@@ -1040,7 +1040,7 @@ main(int argc, char **argv)
 	void *sigret;
 	struct app_config_params app_params = def_app_config;
 	struct rte_mempool *ethdev_mbuf_mempool, *bbdev_mbuf_mempool;
-	struct rte_mempool *bbdev_op_pools[RTE_BBDEV_OP_TYPE_COUNT];
+	struct rte_mempool *bbdev_op_pools[RTE_BBDEV_OP_TYPE_SIZE_MAX];
 	struct lcore_conf lcore_conf[RTE_MAX_LCORE] = { {0} };
 	struct lcore_statistics lcore_stats[RTE_MAX_LCORE] = { {0} };
 	struct stats_lcore_params stats_lcore;

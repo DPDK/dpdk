@@ -23,6 +23,8 @@
 
 #define DEV_NAME "BBDEV"
 
+/* Number of supported operation types in *rte_bbdev_op_type*. */
+#define BBDEV_OP_TYPE_COUNT 5
 
 /* BBDev library logging ID */
 RTE_LOG_REGISTER_DEFAULT(bbdev_logtype, NOTICE);
@@ -890,10 +892,10 @@ rte_bbdev_op_pool_create(const char *name, enum rte_bbdev_op_type type,
 		return NULL;
 	}
 
-	if (type >= RTE_BBDEV_OP_TYPE_COUNT) {
+	if (type >= BBDEV_OP_TYPE_COUNT) {
 		rte_bbdev_log(ERR,
 				"Invalid op type (%u), should be less than %u",
-				type, RTE_BBDEV_OP_TYPE_COUNT);
+				type, BBDEV_OP_TYPE_COUNT);
 		return NULL;
 	}
 
@@ -1125,7 +1127,7 @@ rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type)
 		"RTE_BBDEV_OP_LDPC_ENC",
 	};
 
-	if (op_type < RTE_BBDEV_OP_TYPE_COUNT)
+	if (op_type < BBDEV_OP_TYPE_COUNT)
 		return op_types[op_type];
 
 	rte_bbdev_log(ERR, "Invalid operation type");

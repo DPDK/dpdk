@@ -2429,13 +2429,13 @@ run_test_case_on_device(test_case_function *test_case_func, uint8_t dev_id,
 
 	/* Find capabilities */
 	const struct rte_bbdev_op_cap *cap = info.drv.capabilities;
-	for (i = 0; i < RTE_BBDEV_OP_TYPE_COUNT; i++) {
+	do {
 		if (cap->type == test_vector.op_type) {
 			capabilities = cap;
 			break;
 		}
 		cap++;
-	}
+	} while (cap->type != RTE_BBDEV_OP_NONE);
 	TEST_ASSERT_NOT_NULL(capabilities,
 			"Couldn't find capabilities");
 

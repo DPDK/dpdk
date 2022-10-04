@@ -521,7 +521,7 @@ test_bbdev_op_pool(void)
 	rte_mempool_free(mp);
 
 	TEST_ASSERT((mp = rte_bbdev_op_pool_create("Test_INV",
-			RTE_BBDEV_OP_TYPE_COUNT, size, cache_size, 0)) == NULL,
+			RTE_BBDEV_OP_TYPE_SIZE_MAX, size, cache_size, 0)) == NULL,
 			"Failed test for rte_bbdev_op_pool_create: "
 			"returned value is not NULL for invalid type");
 
