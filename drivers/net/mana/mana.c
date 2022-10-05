@@ -118,9 +118,26 @@ mana_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static const uint32_t *
+mana_supported_ptypes(struct rte_eth_dev *dev __rte_unused)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	return ptypes;
+}
+
 static const struct eth_dev_ops mana_dev_ops = {
 	.dev_configure		= mana_dev_configure,
 	.dev_close		= mana_dev_close,
+	.dev_supported_ptypes_get = mana_supported_ptypes,
 };
 
 static const struct eth_dev_ops mana_dev_secondary_ops = {
