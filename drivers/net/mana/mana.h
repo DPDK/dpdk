@@ -56,6 +56,47 @@ struct mana_shared_data {
 
 #define NOT_USING_CLIENT_DATA_UNIT 0
 
+enum tx_packet_format_v2 {
+	SHORT_PACKET_FORMAT = 0,
+	LONG_PACKET_FORMAT = 1
+};
+
+struct transmit_short_oob_v2 {
+	enum tx_packet_format_v2 packet_format : 2;
+	uint32_t tx_is_outer_ipv4 : 1;
+	uint32_t tx_is_outer_ipv6 : 1;
+	uint32_t tx_compute_IP_header_checksum : 1;
+	uint32_t tx_compute_TCP_checksum : 1;
+	uint32_t tx_compute_UDP_checksum : 1;
+	uint32_t suppress_tx_CQE_generation : 1;
+	uint32_t VCQ_number : 24;
+	uint32_t tx_transport_header_offset : 10;
+	uint32_t VSQ_frame_num : 14;
+	uint32_t short_vport_offset : 8;
+};
+
+struct transmit_long_oob_v2 {
+	uint32_t tx_is_encapsulated_packet : 1;
+	uint32_t tx_inner_is_ipv6 : 1;
+	uint32_t tx_inner_TCP_options_present : 1;
+	uint32_t inject_vlan_prior_tag : 1;
+	uint32_t reserved1 : 12;
+	uint32_t priority_code_point : 3;
+	uint32_t drop_eligible_indicator : 1;
+	uint32_t vlan_identifier : 12;
+	uint32_t tx_inner_frame_offset : 10;
+	uint32_t tx_inner_IP_header_relative_offset : 6;
+	uint32_t long_vport_offset : 12;
+	uint32_t reserved3 : 4;
+	uint32_t reserved4 : 32;
+	uint32_t reserved5 : 32;
+};
+
+struct transmit_oob_v2 {
+	struct transmit_short_oob_v2 short_oob;
+	struct transmit_long_oob_v2 long_oob;
+};
+
 enum gdma_queue_types {
 	GDMA_QUEUE_TYPE_INVALID  = 0,
 	GDMA_QUEUE_SEND,
@@ -177,12 +218,34 @@ enum mana_cqe_type {
 	CQE_RX_COALESCED_4              = 2,
 	CQE_RX_OBJECT_FENCE             = 3,
 	CQE_RX_TRUNCATED                = 4,
+
+	CQE_TX_OKAY                     = 32,
+	CQE_TX_SA_DROP                  = 33,
+	CQE_TX_MTU_DROP                 = 34,
+	CQE_TX_INVALID_OOB              = 35,
+	CQE_TX_INVALID_ETH_TYPE         = 36,
+	CQE_TX_HDR_PROCESSING_ERROR     = 37,
+	CQE_TX_VF_DISABLED              = 38,
+	CQE_TX_VPORT_IDX_OUT_OF_RANGE   = 39,
+	CQE_TX_VPORT_DISABLED           = 40,
+	CQE_TX_VLAN_TAGGING_VIOLATION   = 41,
 };
 
 struct mana_cqe_header {
 	uint32_t cqe_type    : 6;
 	uint32_t client_type : 2;
 	uint32_t vendor_err  : 24;
+}; /* HW DATA */
+
+struct mana_tx_comp_oob {
+	struct mana_cqe_header cqe_hdr;
+
+	uint32_t tx_data_offset;
+
+	uint32_t tx_sgl_offset       : 5;
+	uint32_t tx_wqe_offset       : 27;
+
+	uint32_t reserved[12];
 }; /* HW DATA */
 
 /* NDIS HASH Types */
@@ -348,6 +411,7 @@ struct mana_txq {
 	uint32_t desc_ring_head, desc_ring_tail;
 
 	struct mana_mr_btree mr_btree;
+	struct mana_stats stats;
 	unsigned int socket;
 };
 
@@ -398,6 +462,8 @@ int gdma_post_work_request(struct mana_gdma_queue *queue,
 uint8_t *gdma_get_wqe_pointer(struct mana_gdma_queue *queue);
 
 uint16_t mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **rx_pkts,
+		       uint16_t pkts_n);
+uint16_t mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts,
 		       uint16_t pkts_n);
 
 uint16_t mana_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
