@@ -106,6 +106,81 @@ mana_dev_configure(struct rte_eth_dev *dev)
 static int mana_intr_uninstall(struct mana_priv *priv);
 
 static int
+mana_dev_start(struct rte_eth_dev *dev)
+{
+	int ret;
+	struct mana_priv *priv = dev->data->dev_private;
+
+	rte_spinlock_init(&priv->mr_btree_lock);
+	ret = mana_mr_btree_init(&priv->mr_btree, MANA_MR_BTREE_CACHE_N,
+				 dev->device->numa_node);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to init device MR btree %d", ret);
+		return ret;
+	}
+
+	ret = mana_start_tx_queues(dev);
+	if (ret) {
+		DRV_LOG(ERR, "failed to start tx queues %d", ret);
+		goto failed_tx;
+	}
+
+	ret = mana_start_rx_queues(dev);
+	if (ret) {
+		DRV_LOG(ERR, "failed to start rx queues %d", ret);
+		goto failed_rx;
+	}
+
+	rte_wmb();
+
+	dev->tx_pkt_burst = mana_tx_burst;
+	dev->rx_pkt_burst = mana_rx_burst;
+
+	DRV_LOG(INFO, "TX/RX queues have started");
+
+	/* Enable datapath for secondary processes */
+	mana_mp_req_on_rxtx(dev, MANA_MP_REQ_START_RXTX);
+
+	return 0;
+
+failed_rx:
+	mana_stop_tx_queues(dev);
+
+failed_tx:
+	mana_mr_btree_free(&priv->mr_btree);
+
+	return ret;
+}
+
+static int
+mana_dev_stop(struct rte_eth_dev *dev __rte_unused)
+{
+	int ret;
+
+	dev->tx_pkt_burst = mana_tx_burst_removed;
+	dev->rx_pkt_burst = mana_rx_burst_removed;
+
+	/* Stop datapath on secondary processes */
+	mana_mp_req_on_rxtx(dev, MANA_MP_REQ_STOP_RXTX);
+
+	rte_wmb();
+
+	ret = mana_stop_tx_queues(dev);
+	if (ret) {
+		DRV_LOG(ERR, "failed to stop tx queues");
+		return ret;
+	}
+
+	ret = mana_stop_rx_queues(dev);
+	if (ret) {
+		DRV_LOG(ERR, "failed to stop tx queues");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
 mana_dev_close(struct rte_eth_dev *dev)
 {
 	struct mana_priv *priv = dev->data->dev_private;
@@ -453,6 +528,8 @@ mana_dev_link_update(struct rte_eth_dev *dev,
 
 static const struct eth_dev_ops mana_dev_ops = {
 	.dev_configure		= mana_dev_configure,
+	.dev_start		= mana_dev_start,
+	.dev_stop		= mana_dev_stop,
 	.dev_close		= mana_dev_close,
 	.dev_infos_get		= mana_dev_info_get,
 	.txq_info_get		= mana_dev_tx_queue_info,
