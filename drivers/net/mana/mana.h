@@ -249,6 +249,8 @@ struct mana_priv {
 	struct ibv_context *ib_ctx;
 	struct ibv_pd *ib_pd;
 	struct ibv_pd *ib_parent_pd;
+	struct ibv_rwq_ind_table *ind_table;
+	struct ibv_qp *rwq_qp;
 	void *db_page;
 	struct rte_eth_rss_conf rss_conf;
 	struct rte_intr_handle *intr_handle;
@@ -272,6 +274,13 @@ struct mana_txq_desc {
 struct mana_rxq_desc {
 	struct rte_mbuf *pkt;
 	uint32_t wqe_size_in_bu;
+};
+
+struct mana_stats {
+	uint64_t packets;
+	uint64_t bytes;
+	uint64_t errors;
+	uint64_t nombuf;
 };
 
 struct mana_gdma_queue {
@@ -312,6 +321,8 @@ struct mana_rxq {
 	struct mana_priv *priv;
 	uint32_t num_desc;
 	struct rte_mempool *mp;
+	struct ibv_cq *cq;
+	struct ibv_wq *wq;
 
 	/* For storing pending requests */
 	struct mana_rxq_desc *desc_ring;
@@ -321,6 +332,10 @@ struct mana_rxq {
 	 */
 	uint32_t desc_ring_head, desc_ring_tail;
 
+	struct mana_gdma_queue gdma_rq;
+	struct mana_gdma_queue gdma_cq;
+
+	struct mana_stats stats;
 	struct mana_mr_btree mr_btree;
 
 	unsigned int socket;
@@ -341,6 +356,7 @@ extern int mana_logtype_init;
 
 int mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 		       uint32_t queue_id, uint32_t tail);
+int mana_rq_ring_doorbell(struct mana_rxq *rxq);
 
 int gdma_post_work_request(struct mana_gdma_queue *queue,
 			   struct gdma_work_request *work_req,
@@ -356,8 +372,10 @@ uint16_t mana_tx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 int gdma_poll_completion_queue(struct mana_gdma_queue *cq,
 			       struct gdma_comp *comp);
 
+int mana_start_rx_queues(struct rte_eth_dev *dev);
 int mana_start_tx_queues(struct rte_eth_dev *dev);
 
+int mana_stop_rx_queues(struct rte_eth_dev *dev);
 int mana_stop_tx_queues(struct rte_eth_dev *dev);
 
 struct mana_mr_cache *mana_find_pmd_mr(struct mana_mr_btree *local_tree,

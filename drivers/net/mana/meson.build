@@ -14,6 +14,7 @@ sources += files(
         'mana.c',
         'mp.c',
         'mr.c',
+        'rx.c',
         'tx.c',
 )
 
