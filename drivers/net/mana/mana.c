@@ -103,11 +103,17 @@ mana_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int mana_intr_uninstall(struct mana_priv *priv);
+
 static int
 mana_dev_close(struct rte_eth_dev *dev)
 {
 	struct mana_priv *priv = dev->data->dev_private;
 	int ret;
+
+	ret = mana_intr_uninstall(priv);
+	if (ret)
+		return ret;
 
 	ret = ibv_close_device(priv->ib_ctx);
 	if (ret) {
@@ -339,6 +345,96 @@ mana_ibv_device_to_pci_addr(const struct ibv_device *device,
 	free(line);
 	fclose(file);
 	return 0;
+}
+
+/*
+ * Interrupt handler from IB layer to notify this device is being removed.
+ */
+static void
+mana_intr_handler(void *arg)
+{
+	struct mana_priv *priv = arg;
+	struct ibv_context *ctx = priv->ib_ctx;
+	struct ibv_async_event event;
+
+	/* Read and ack all messages from IB device */
+	while (true) {
+		if (ibv_get_async_event(ctx, &event))
+			break;
+
+		if (event.event_type == IBV_EVENT_DEVICE_FATAL) {
+			struct rte_eth_dev *dev;
+
+			dev = &rte_eth_devices[priv->port_id];
+			if (dev->data->dev_conf.intr_conf.rmv)
+				rte_eth_dev_callback_process(dev,
+					RTE_ETH_EVENT_INTR_RMV, NULL);
+		}
+
+		ibv_ack_async_event(&event);
+	}
+}
+
+static int
+mana_intr_uninstall(struct mana_priv *priv)
+{
+	int ret;
+
+	ret = rte_intr_callback_unregister(priv->intr_handle,
+					   mana_intr_handler, priv);
+	if (ret <= 0) {
+		DRV_LOG(ERR, "Failed to unregister intr callback ret %d", ret);
+		return ret;
+	}
+
+	rte_intr_instance_free(priv->intr_handle);
+
+	return 0;
+}
+
+static int
+mana_intr_install(struct mana_priv *priv)
+{
+	int ret, flags;
+	struct ibv_context *ctx = priv->ib_ctx;
+
+	priv->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	if (!priv->intr_handle) {
+		DRV_LOG(ERR, "Failed to allocate intr_handle");
+		rte_errno = ENOMEM;
+		return -ENOMEM;
+	}
+
+	rte_intr_fd_set(priv->intr_handle, -1);
+
+	flags = fcntl(ctx->async_fd, F_GETFL);
+	ret = fcntl(ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to change async_fd to NONBLOCK");
+		goto free_intr;
+	}
+
+	rte_intr_fd_set(priv->intr_handle, ctx->async_fd);
+	rte_intr_type_set(priv->intr_handle, RTE_INTR_HANDLE_EXT);
+
+	ret = rte_intr_callback_register(priv->intr_handle,
+					 mana_intr_handler, priv);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to register intr callback");
+		rte_intr_fd_set(priv->intr_handle, -1);
+		goto restore_fd;
+	}
+
+	return 0;
+
+restore_fd:
+	fcntl(ctx->async_fd, F_SETFL, flags);
+
+free_intr:
+	rte_intr_instance_free(priv->intr_handle);
+	priv->intr_handle = NULL;
+
+	return ret;
 }
 
 static int
@@ -622,6 +718,13 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 		priv->max_send_sge);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
+	/* Create async interrupt handler */
+	ret = mana_intr_install(priv);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to install intr handler");
+		goto failed;
+	}
 
 	rte_spinlock_lock(&mana_shared_data->lock);
 	mana_shared_data->primary_cnt++;

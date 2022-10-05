@@ -35,6 +35,7 @@ struct mana_priv {
 	struct ibv_pd *ib_pd;
 	struct ibv_pd *ib_parent_pd;
 	void *db_page;
+	struct rte_intr_handle *intr_handle;
 	int max_rx_queues;
 	int max_tx_queues;
 	int max_rx_desc;
