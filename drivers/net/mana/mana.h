@@ -288,6 +288,13 @@ struct mana_gdma_queue {
 struct mana_txq {
 	struct mana_priv *priv;
 	uint32_t num_desc;
+	struct ibv_cq *cq;
+	struct ibv_qp *qp;
+
+	struct mana_gdma_queue gdma_sq;
+	struct mana_gdma_queue gdma_cq;
+
+	uint32_t tx_vp_offset;
 
 	/* For storing pending requests */
 	struct mana_txq_desc *desc_ring;
@@ -348,6 +355,10 @@ uint16_t mana_tx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 
 int gdma_poll_completion_queue(struct mana_gdma_queue *cq,
 			       struct gdma_comp *comp);
+
+int mana_start_tx_queues(struct rte_eth_dev *dev);
+
+int mana_stop_tx_queues(struct rte_eth_dev *dev);
 
 struct mana_mr_cache *mana_find_pmd_mr(struct mana_mr_btree *local_tree,
 				       struct mana_priv *priv,
