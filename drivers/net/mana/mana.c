@@ -205,6 +205,17 @@ mana_dev_info_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+mana_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
+		       struct rte_eth_rxq_info *qinfo)
+{
+	struct mana_rxq *rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mp;
+	qinfo->nb_desc = rxq->num_desc;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
+}
+
 static const uint32_t *
 mana_supported_ptypes(struct rte_eth_dev *dev __rte_unused)
 {
@@ -283,6 +294,63 @@ mana_rss_hash_conf_get(struct rte_eth_dev *dev,
 }
 
 static int
+mana_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			uint16_t nb_desc, unsigned int socket_id,
+			const struct rte_eth_rxconf *rx_conf __rte_unused,
+			struct rte_mempool *mp)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	struct mana_rxq *rxq;
+	int ret;
+
+	rxq = rte_zmalloc_socket("mana_rxq", sizeof(*rxq), 0, socket_id);
+	if (!rxq) {
+		DRV_LOG(ERR, "failed to allocate rxq");
+		return -ENOMEM;
+	}
+
+	DRV_LOG(DEBUG, "idx %u nb_desc %u socket %u",
+		queue_idx, nb_desc, socket_id);
+
+	rxq->socket = socket_id;
+
+	rxq->desc_ring = rte_zmalloc_socket("mana_rx_mbuf_ring",
+					    sizeof(struct mana_rxq_desc) *
+						nb_desc,
+					    RTE_CACHE_LINE_SIZE, socket_id);
+
+	if (!rxq->desc_ring) {
+		DRV_LOG(ERR, "failed to allocate rxq desc_ring");
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	rxq->desc_ring_head = 0;
+	rxq->desc_ring_tail = 0;
+
+	rxq->priv = priv;
+	rxq->num_desc = nb_desc;
+	rxq->mp = mp;
+	dev->data->rx_queues[queue_idx] = rxq;
+
+	return 0;
+
+fail:
+	rte_free(rxq->desc_ring);
+	rte_free(rxq);
+	return ret;
+}
+
+static void
+mana_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct mana_rxq *rxq = dev->data->rx_queues[qid];
+
+	rte_free(rxq->desc_ring);
+	rte_free(rxq);
+}
+
+static int
 mana_dev_link_update(struct rte_eth_dev *dev,
 		     int wait_to_complete __rte_unused)
 {
@@ -303,9 +371,12 @@ static const struct eth_dev_ops mana_dev_ops = {
 	.dev_configure		= mana_dev_configure,
 	.dev_close		= mana_dev_close,
 	.dev_infos_get		= mana_dev_info_get,
+	.rxq_info_get		= mana_dev_rx_queue_info,
 	.dev_supported_ptypes_get = mana_supported_ptypes,
 	.rss_hash_update	= mana_rss_hash_update,
 	.rss_hash_conf_get	= mana_rss_hash_conf_get,
+	.rx_queue_setup		= mana_dev_rx_queue_setup,
+	.rx_queue_release	= mana_dev_rx_queue_release,
 	.link_update		= mana_dev_link_update,
 };
 
