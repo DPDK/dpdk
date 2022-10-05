@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -364,4 +365,58 @@ rte_thread_unregister(void)
 	if (lcore_id != LCORE_ID_ANY)
 		RTE_LOG(DEBUG, EAL, "Unregistered non-EAL thread (was lcore %u).\n",
 			lcore_id);
+}
+
+int
+rte_thread_attr_init(rte_thread_attr_t *attr)
+{
+	if (attr == NULL)
+		return EINVAL;
+
+	CPU_ZERO(&attr->cpuset);
+	attr->priority = RTE_THREAD_PRIORITY_NORMAL;
+
+	return 0;
+}
+
+int
+rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
+		enum rte_thread_priority priority)
+{
+	if (thread_attr == NULL)
+		return EINVAL;
+
+	thread_attr->priority = priority;
+
+	return 0;
+}
+
+int
+rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
+		rte_cpuset_t *cpuset)
+{
+	if (thread_attr == NULL)
+		return EINVAL;
+
+	if (cpuset == NULL)
+		return EINVAL;
+
+	thread_attr->cpuset = *cpuset;
+
+	return 0;
+}
+
+int
+rte_thread_attr_get_affinity(rte_thread_attr_t *thread_attr,
+		rte_cpuset_t *cpuset)
+{
+	if (thread_attr == NULL)
+		return EINVAL;
+
+	if (cpuset == NULL)
+		return EINVAL;
+
+	*cpuset = thread_attr->cpuset;
+
+	return 0;
 }

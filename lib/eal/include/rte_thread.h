@@ -41,6 +41,16 @@ enum rte_thread_priority {
 };
 
 /**
+ * Representation for thread attributes.
+ */
+typedef struct {
+	enum rte_thread_priority priority; /**< thread priority */
+#ifdef RTE_HAS_CPUSET
+	rte_cpuset_t cpuset; /**< thread affinity */
+#endif
+} rte_thread_attr_t;
+
+/**
  * TLS key type, an opaque pointer.
  */
 typedef struct eal_tls_key *rte_thread_key;
@@ -57,7 +67,88 @@ typedef struct eal_tls_key *rte_thread_key;
 __rte_experimental
 rte_thread_t rte_thread_self(void);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Initialize the attributes of a thread.
+ * These attributes can be passed to the rte_thread_create() function
+ * that will create a new thread and set its attributes according to attr.
+ *
+ * @param attr
+ *   Thread attributes to initialize.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_attr_init(rte_thread_attr_t *attr);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set the thread priority value in the thread attributes pointed to
+ * by 'thread_attr'.
+ *
+ * @param thread_attr
+ *   Points to the thread attributes in which priority will be updated.
+ *
+ * @param priority
+ *   Points to the value of the priority to be set.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
+		enum rte_thread_priority priority);
+
 #ifdef RTE_HAS_CPUSET
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set the CPU affinity value in the thread attributes pointed to
+ * by 'thread_attr'.
+ *
+ * @param thread_attr
+ *   Points to the thread attributes in which affinity will be updated.
+ *
+ * @param cpuset
+ *   Points to the value of the affinity to be set.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
+		rte_cpuset_t *cpuset);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get the value of CPU affinity that is set in the thread attributes pointed
+ * to by 'thread_attr'.
+ *
+ * @param thread_attr
+ *   Points to the thread attributes from which affinity will be retrieved.
+ *
+ * @param cpuset
+ *   Pointer to the memory that will store the affinity.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_attr_get_affinity(rte_thread_attr_t *thread_attr,
+		rte_cpuset_t *cpuset);
 
 /**
  * @warning
