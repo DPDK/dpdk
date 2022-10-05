@@ -146,6 +146,25 @@ rte_thread_t rte_thread_self(void);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Check if 2 thread ids are equal.
+ *
+ * @param t1
+ *   First thread id.
+ *
+ * @param t2
+ *   Second thread id.
+ *
+ * @return
+ *   If the ids are equal, return nonzero.
+ *   Otherwise, return 0.
+ */
+__rte_experimental
+int rte_thread_equal(rte_thread_t t1, rte_thread_t t2);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Initialize the attributes of a thread.
  * These attributes can be passed to the rte_thread_create() function
  * that will create a new thread and set its attributes according to attr.

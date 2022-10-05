@@ -289,6 +289,12 @@ rte_thread_detach(rte_thread_t thread_id)
 	return 0;
 }
 
+int
+rte_thread_equal(rte_thread_t t1, rte_thread_t t2)
+{
+	return t1.opaque_id == t2.opaque_id;
+}
+
 rte_thread_t
 rte_thread_self(void)
 {

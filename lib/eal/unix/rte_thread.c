@@ -210,6 +210,12 @@ rte_thread_detach(rte_thread_t thread_id)
 	return pthread_detach((pthread_t)thread_id.opaque_id);
 }
 
+int
+rte_thread_equal(rte_thread_t t1, rte_thread_t t2)
+{
+	return pthread_equal((pthread_t)t1.opaque_id, (pthread_t)t2.opaque_id);
+}
+
 rte_thread_t
 rte_thread_self(void)
 {
