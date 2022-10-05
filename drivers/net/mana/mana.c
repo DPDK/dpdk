@@ -134,10 +134,28 @@ mana_supported_ptypes(struct rte_eth_dev *dev __rte_unused)
 	return ptypes;
 }
 
+static int
+mana_dev_link_update(struct rte_eth_dev *dev,
+		     int wait_to_complete __rte_unused)
+{
+	struct rte_eth_link link;
+
+	/* MANA has no concept of carrier state, always reporting UP */
+	link = (struct rte_eth_link) {
+		.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
+		.link_autoneg = RTE_ETH_LINK_SPEED_FIXED,
+		.link_speed = RTE_ETH_SPEED_NUM_100G,
+		.link_status = RTE_ETH_LINK_UP,
+	};
+
+	return rte_eth_linkstatus_set(dev, &link);
+}
+
 static const struct eth_dev_ops mana_dev_ops = {
 	.dev_configure		= mana_dev_configure,
 	.dev_close		= mana_dev_close,
 	.dev_supported_ptypes_get = mana_supported_ptypes,
+	.link_update		= mana_dev_link_update,
 };
 
 static const struct eth_dev_ops mana_dev_secondary_ops = {
