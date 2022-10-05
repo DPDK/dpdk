@@ -75,9 +75,29 @@ struct mana_priv {
 	uint64_t max_mr_size;
 };
 
+struct mana_txq_desc {
+	struct rte_mbuf *pkt;
+	uint32_t wqe_size_in_bu;
+};
+
 struct mana_rxq_desc {
 	struct rte_mbuf *pkt;
 	uint32_t wqe_size_in_bu;
+};
+
+struct mana_txq {
+	struct mana_priv *priv;
+	uint32_t num_desc;
+
+	/* For storing pending requests */
+	struct mana_txq_desc *desc_ring;
+
+	/* desc_ring_head is where we put pending requests to ring,
+	 * completion pull off desc_ring_tail
+	 */
+	uint32_t desc_ring_head, desc_ring_tail;
+
+	unsigned int socket;
 };
 
 struct mana_rxq {

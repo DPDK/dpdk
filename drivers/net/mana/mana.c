@@ -206,6 +206,16 @@ mana_dev_info_get(struct rte_eth_dev *dev,
 }
 
 static void
+mana_dev_tx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
+		       struct rte_eth_txq_info *qinfo)
+{
+	struct mana_txq *txq = dev->data->tx_queues[queue_id];
+
+	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+	qinfo->nb_desc = txq->num_desc;
+}
+
+static void
 mana_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_rxq_info *qinfo)
 {
@@ -294,6 +304,60 @@ mana_rss_hash_conf_get(struct rte_eth_dev *dev,
 }
 
 static int
+mana_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			uint16_t nb_desc, unsigned int socket_id,
+			const struct rte_eth_txconf *tx_conf __rte_unused)
+
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	struct mana_txq *txq;
+	int ret;
+
+	txq = rte_zmalloc_socket("mana_txq", sizeof(*txq), 0, socket_id);
+	if (!txq) {
+		DRV_LOG(ERR, "failed to allocate txq");
+		return -ENOMEM;
+	}
+
+	txq->socket = socket_id;
+
+	txq->desc_ring = rte_malloc_socket("mana_tx_desc_ring",
+					   sizeof(struct mana_txq_desc) *
+						nb_desc,
+					   RTE_CACHE_LINE_SIZE, socket_id);
+	if (!txq->desc_ring) {
+		DRV_LOG(ERR, "failed to allocate txq desc_ring");
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	DRV_LOG(DEBUG, "idx %u nb_desc %u socket %u txq->desc_ring %p",
+		queue_idx, nb_desc, socket_id, txq->desc_ring);
+
+	txq->desc_ring_head = 0;
+	txq->desc_ring_tail = 0;
+	txq->priv = priv;
+	txq->num_desc = nb_desc;
+	dev->data->tx_queues[queue_idx] = txq;
+
+	return 0;
+
+fail:
+	rte_free(txq->desc_ring);
+	rte_free(txq);
+	return ret;
+}
+
+static void
+mana_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct mana_txq *txq = dev->data->tx_queues[qid];
+
+	rte_free(txq->desc_ring);
+	rte_free(txq);
+}
+
+static int
 mana_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_rxconf *rx_conf __rte_unused,
@@ -371,10 +435,13 @@ static const struct eth_dev_ops mana_dev_ops = {
 	.dev_configure		= mana_dev_configure,
 	.dev_close		= mana_dev_close,
 	.dev_infos_get		= mana_dev_info_get,
+	.txq_info_get		= mana_dev_tx_queue_info,
 	.rxq_info_get		= mana_dev_rx_queue_info,
 	.dev_supported_ptypes_get = mana_supported_ptypes,
 	.rss_hash_update	= mana_rss_hash_update,
 	.rss_hash_conf_get	= mana_rss_hash_conf_get,
+	.tx_queue_setup		= mana_dev_tx_queue_setup,
+	.tx_queue_release	= mana_dev_tx_queue_release,
 	.rx_queue_setup		= mana_dev_rx_queue_setup,
 	.rx_queue_release	= mana_dev_rx_queue_release,
 	.link_update		= mana_dev_link_update,
