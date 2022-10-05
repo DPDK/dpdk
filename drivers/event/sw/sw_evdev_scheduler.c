@@ -506,7 +506,7 @@ end_qe:
 	return pkts_iter;
 }
 
-void
+int32_t
 sw_event_schedule(struct rte_eventdev *dev)
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
@@ -517,7 +517,7 @@ sw_event_schedule(struct rte_eventdev *dev)
 
 	sw->sched_called++;
 	if (unlikely(!sw->started))
-		return;
+		return -EAGAIN;
 
 	do {
 		uint32_t in_pkts_this_iteration = 0;
@@ -610,4 +610,6 @@ sw_event_schedule(struct rte_eventdev *dev)
 	sw->sched_last_iter_bitmask = cqs_scheds_last_iter;
 	if (unlikely(sw->port_count >= 64))
 		sw->sched_last_iter_bitmask = UINT64_MAX;
+
+	return work_done ? 0 : -EAGAIN;
 }

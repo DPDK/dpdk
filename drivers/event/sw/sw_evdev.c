@@ -934,8 +934,7 @@ set_refill_once(const char *key __rte_unused, const char *value, void *opaque)
 static int32_t sw_sched_service_func(void *args)
 {
 	struct rte_eventdev *dev = args;
-	sw_event_schedule(dev);
-	return 0;
+	return sw_event_schedule(dev);
 }
 
 static int

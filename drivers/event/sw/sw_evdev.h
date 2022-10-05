@@ -295,7 +295,7 @@ uint16_t sw_event_enqueue_burst(void *port, const struct rte_event ev[],
 uint16_t sw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
 uint16_t sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 			uint64_t wait);
-void sw_event_schedule(struct rte_eventdev *dev);
+int32_t sw_event_schedule(struct rte_eventdev *dev);
 int sw_xstats_init(struct sw_evdev *dev);
 int sw_xstats_uninit(struct sw_evdev *dev);
 int sw_xstats_get_names(const struct rte_eventdev *dev,
