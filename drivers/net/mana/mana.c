@@ -124,6 +124,87 @@ mana_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+mana_dev_info_get(struct rte_eth_dev *dev,
+		  struct rte_eth_dev_info *dev_info)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+
+	dev_info->max_mtu = RTE_ETHER_MTU;
+
+	/* RX params */
+	dev_info->min_rx_bufsize = MIN_RX_BUF_SIZE;
+	dev_info->max_rx_pktlen = MAX_FRAME_SIZE;
+
+	dev_info->max_rx_queues = priv->max_rx_queues;
+	dev_info->max_tx_queues = priv->max_tx_queues;
+
+	dev_info->max_mac_addrs = MANA_MAX_MAC_ADDR;
+	dev_info->max_hash_mac_addrs = 0;
+
+	dev_info->max_vfs = 1;
+
+	/* Offload params */
+	dev_info->rx_offload_capa = MANA_DEV_RX_OFFLOAD_SUPPORT;
+
+	dev_info->tx_offload_capa = MANA_DEV_TX_OFFLOAD_SUPPORT;
+
+	/* RSS */
+	dev_info->reta_size = INDIRECTION_TABLE_NUM_ELEMENTS;
+	dev_info->hash_key_size = TOEPLITZ_HASH_KEY_SIZE_IN_BYTES;
+	dev_info->flow_type_rss_offloads = MANA_ETH_RSS_SUPPORT;
+
+	/* Thresholds */
+	dev_info->default_rxconf = (struct rte_eth_rxconf){
+		.rx_thresh = {
+			.pthresh = 8,
+			.hthresh = 8,
+			.wthresh = 0,
+		},
+		.rx_free_thresh = 32,
+		/* If no descriptors available, pkts are dropped by default */
+		.rx_drop_en = 1,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf){
+		.tx_thresh = {
+			.pthresh = 32,
+			.hthresh = 0,
+			.wthresh = 0,
+		},
+		.tx_rs_thresh = 32,
+		.tx_free_thresh = 32,
+	};
+
+	/* Buffer limits */
+	dev_info->rx_desc_lim.nb_min = MIN_BUFFERS_PER_QUEUE;
+	dev_info->rx_desc_lim.nb_max = priv->max_rx_desc;
+	dev_info->rx_desc_lim.nb_align = MIN_BUFFERS_PER_QUEUE;
+	dev_info->rx_desc_lim.nb_seg_max = priv->max_recv_sge;
+	dev_info->rx_desc_lim.nb_mtu_seg_max = priv->max_recv_sge;
+
+	dev_info->tx_desc_lim.nb_min = MIN_BUFFERS_PER_QUEUE;
+	dev_info->tx_desc_lim.nb_max = priv->max_tx_desc;
+	dev_info->tx_desc_lim.nb_align = MIN_BUFFERS_PER_QUEUE;
+	dev_info->tx_desc_lim.nb_seg_max = priv->max_send_sge;
+	dev_info->rx_desc_lim.nb_mtu_seg_max = priv->max_recv_sge;
+
+	/* Speed */
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
+
+	/* RX params */
+	dev_info->default_rxportconf.burst_size = 1;
+	dev_info->default_rxportconf.ring_size = MAX_RECEIVE_BUFFERS_PER_QUEUE;
+	dev_info->default_rxportconf.nb_queues = 1;
+
+	/* TX params */
+	dev_info->default_txportconf.burst_size = 1;
+	dev_info->default_txportconf.ring_size = MAX_SEND_BUFFERS_PER_QUEUE;
+	dev_info->default_txportconf.nb_queues = 1;
+
+	return 0;
+}
+
 static const uint32_t *
 mana_supported_ptypes(struct rte_eth_dev *dev __rte_unused)
 {
@@ -160,11 +241,13 @@ mana_dev_link_update(struct rte_eth_dev *dev,
 static const struct eth_dev_ops mana_dev_ops = {
 	.dev_configure		= mana_dev_configure,
 	.dev_close		= mana_dev_close,
+	.dev_infos_get		= mana_dev_info_get,
 	.dev_supported_ptypes_get = mana_supported_ptypes,
 	.link_update		= mana_dev_link_update,
 };
 
 static const struct eth_dev_ops mana_dev_secondary_ops = {
+	.dev_infos_get = mana_dev_info_get,
 };
 
 uint16_t
