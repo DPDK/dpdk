@@ -10,6 +10,7 @@ endif
 deps += ['pci', 'bus_pci', 'net', 'eal', 'kvargs']
 
 sources += files(
+        'gdma.c',
         'mana.c',
         'mp.c',
         'mr.c',
