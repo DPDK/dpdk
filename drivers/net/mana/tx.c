@@ -406,7 +406,8 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		ret = mana_ring_doorbell(db_page, GDMA_QUEUE_SEND,
 					 txq->gdma_sq.id,
 					 txq->gdma_sq.head *
-						GDMA_WQE_ALIGNMENT_UNIT_SIZE);
+						GDMA_WQE_ALIGNMENT_UNIT_SIZE,
+					 0);
 		if (ret)
 			DRV_LOG(ERR, "mana_ring_doorbell failed ret %d", ret);
 	}

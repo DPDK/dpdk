@@ -22,7 +22,7 @@ static uint8_t mana_rss_hash_key_default[TOEPLITZ_HASH_KEY_SIZE_IN_BYTES] = {
 };
 
 int
-mana_rq_ring_doorbell(struct mana_rxq *rxq)
+mana_rq_ring_doorbell(struct mana_rxq *rxq, uint8_t arm)
 {
 	struct mana_priv *priv = rxq->priv;
 	int ret;
@@ -37,9 +37,9 @@ mana_rq_ring_doorbell(struct mana_rxq *rxq)
 	}
 
 	ret = mana_ring_doorbell(db_page, GDMA_QUEUE_RECEIVE,
-				 rxq->gdma_rq.id,
-				 rxq->gdma_rq.head *
-					GDMA_WQE_ALIGNMENT_UNIT_SIZE);
+			 rxq->gdma_rq.id,
+			 rxq->gdma_rq.head * GDMA_WQE_ALIGNMENT_UNIT_SIZE,
+			 arm);
 
 	if (ret)
 		DRV_LOG(ERR, "failed to ring RX doorbell ret %d", ret);
@@ -121,7 +121,7 @@ mana_alloc_and_post_rx_wqes(struct mana_rxq *rxq)
 		}
 	}
 
-	mana_rq_ring_doorbell(rxq);
+	mana_rq_ring_doorbell(rxq, rxq->num_desc);
 
 	return ret;
 }
@@ -163,6 +163,14 @@ mana_stop_rx_queues(struct rte_eth_dev *dev)
 				DRV_LOG(ERR,
 					"rx_queue destroy_cq failed %d", ret);
 			rxq->cq = NULL;
+
+			if (rxq->channel) {
+				ret = ibv_destroy_comp_channel(rxq->channel);
+				if (ret)
+					DRV_LOG(ERR, "failed destroy comp %d",
+						ret);
+				rxq->channel = NULL;
+			}
 		}
 
 		/* Drain and free posted WQEs */
@@ -204,8 +212,24 @@ mana_start_rx_queues(struct rte_eth_dev *dev)
 				.data = (void *)(uintptr_t)rxq->socket,
 			}));
 
+		if (dev->data->dev_conf.intr_conf.rxq) {
+			rxq->channel = ibv_create_comp_channel(priv->ib_ctx);
+			if (!rxq->channel) {
+				ret = -errno;
+				DRV_LOG(ERR, "Queue %d comp channel failed", i);
+				goto fail;
+			}
+
+			ret = mana_fd_set_non_blocking(rxq->channel->fd);
+			if (ret) {
+				DRV_LOG(ERR, "Failed to set comp non-blocking");
+				goto fail;
+			}
+		}
+
 		rxq->cq = ibv_create_cq(priv->ib_ctx, rxq->num_desc,
-					NULL, NULL, 0);
+					NULL, rxq->channel,
+					rxq->channel ? i : 0);
 		if (!rxq->cq) {
 			ret = -errno;
 			DRV_LOG(ERR, "failed to create rx cq queue %d", i);
@@ -356,7 +380,8 @@ fail:
 uint16_t
 mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	uint16_t pkt_received = 0, cqe_processed = 0;
+	uint16_t pkt_received = 0;
+	uint8_t wqe_posted = 0;
 	struct mana_rxq *rxq = dpdk_rxq;
 	struct mana_priv *priv = rxq->priv;
 	struct gdma_comp comp;
@@ -442,18 +467,65 @@ drop:
 		if (rxq->desc_ring_tail >= rxq->num_desc)
 			rxq->desc_ring_tail = 0;
 
-		cqe_processed++;
-
 		/* Post another request */
 		ret = mana_alloc_and_post_rx_wqe(rxq);
 		if (ret) {
 			DRV_LOG(ERR, "failed to post rx wqe ret=%d", ret);
 			break;
 		}
+
+		wqe_posted++;
 	}
 
-	if (cqe_processed)
-		mana_rq_ring_doorbell(rxq);
+	if (wqe_posted)
+		mana_rq_ring_doorbell(rxq, wqe_posted);
 
 	return pkt_received;
+}
+
+static int
+mana_arm_cq(struct mana_rxq *rxq, uint8_t arm)
+{
+	struct mana_priv *priv = rxq->priv;
+	uint32_t head = rxq->gdma_cq.head %
+		(rxq->gdma_cq.count << COMPLETION_QUEUE_ENTRY_OWNER_BITS_SIZE);
+
+	DRV_LOG(ERR, "Ringing completion queue ID %u head %u arm %d",
+		rxq->gdma_cq.id, head, arm);
+
+	return mana_ring_doorbell(priv->db_page, GDMA_QUEUE_COMPLETION,
+				  rxq->gdma_cq.id, head, arm);
+}
+
+int
+mana_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct mana_rxq *rxq = dev->data->rx_queues[rx_queue_id];
+
+	return mana_arm_cq(rxq, 1);
+}
+
+int
+mana_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct mana_rxq *rxq = dev->data->rx_queues[rx_queue_id];
+	struct ibv_cq *ev_cq;
+	void *ev_ctx;
+	int ret;
+
+	ret = ibv_get_cq_event(rxq->channel, &ev_cq, &ev_ctx);
+	if (ret)
+		ret = errno;
+	else if (ev_cq != rxq->cq)
+		ret = EINVAL;
+
+	if (ret) {
+		if (ret != EAGAIN)
+			DRV_LOG(ERR, "Can't disable RX intr queue %d",
+				rx_queue_id);
+	} else {
+		ibv_ack_cq_events(rxq->cq, 1);
+	}
+
+	return -ret;
 }

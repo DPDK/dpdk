@@ -215,7 +215,7 @@ enum {
  */
 int
 mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
-		   uint32_t queue_id, uint32_t tail)
+		   uint32_t queue_id, uint32_t tail, uint8_t arm)
 {
 	uint8_t *addr = db_page;
 	union gdma_doorbell_entry e = {};
@@ -230,14 +230,14 @@ mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 	case GDMA_QUEUE_RECEIVE:
 		e.rq.id = queue_id;
 		e.rq.tail_ptr = tail;
-		e.rq.wqe_cnt = 1;
+		e.rq.wqe_cnt = arm;
 		addr += DOORBELL_OFFSET_RQ;
 		break;
 
 	case GDMA_QUEUE_COMPLETION:
 		e.cq.id = queue_id;
 		e.cq.tail_ptr = tail;
-		e.cq.arm = 1;
+		e.cq.arm = arm;
 		addr += DOORBELL_OFFSET_CQ;
 		break;
 
@@ -249,8 +249,8 @@ mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 	/* Ensure all writes are done before ringing doorbell */
 	rte_wmb();
 
-	DRV_LOG(DEBUG, "db_page %p addr %p queue_id %u type %u tail %u",
-		db_page, addr, queue_id, queue_type, tail);
+	DRV_LOG(DEBUG, "db_page %p addr %p queue_id %u type %u tail %u arm %u",
+		db_page, addr, queue_id, queue_type, tail, arm);
 
 	rte_write64(e.as_uint64, addr);
 	return 0;

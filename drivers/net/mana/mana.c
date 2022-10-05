@@ -103,7 +103,72 @@ mana_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int mana_intr_uninstall(struct mana_priv *priv);
+static void
+rx_intr_vec_disable(struct mana_priv *priv)
+{
+	struct rte_intr_handle *intr_handle = priv->intr_handle;
+
+	rte_intr_free_epoll_fd(intr_handle);
+	rte_intr_vec_list_free(intr_handle);
+	rte_intr_nb_efd_set(intr_handle, 0);
+}
+
+static int
+rx_intr_vec_enable(struct mana_priv *priv)
+{
+	unsigned int i;
+	unsigned int rxqs_n = priv->dev_data->nb_rx_queues;
+	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
+	struct rte_intr_handle *intr_handle = priv->intr_handle;
+	int ret;
+
+	rx_intr_vec_disable(priv);
+
+	if (rte_intr_vec_list_alloc(intr_handle, NULL, n)) {
+		DRV_LOG(ERR, "Failed to allocate memory for interrupt vector");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < n; i++) {
+		struct mana_rxq *rxq = priv->dev_data->rx_queues[i];
+
+		ret = rte_intr_vec_list_index_set(intr_handle, i,
+						  RTE_INTR_VEC_RXTX_OFFSET + i);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to set intr vec %u", i);
+			return ret;
+		}
+
+		ret = rte_intr_efds_index_set(intr_handle, i, rxq->channel->fd);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to set FD at intr %u", i);
+			return ret;
+		}
+	}
+
+	return rte_intr_nb_efd_set(intr_handle, n);
+}
+
+static void
+rxq_intr_disable(struct mana_priv *priv)
+{
+	int err = rte_errno;
+
+	rx_intr_vec_disable(priv);
+	rte_errno = err;
+}
+
+static int
+rxq_intr_enable(struct mana_priv *priv)
+{
+	const struct rte_eth_intr_conf *const intr_conf =
+		&priv->dev_data->dev_conf.intr_conf;
+
+	if (!intr_conf->rxq)
+		return 0;
+
+	return rx_intr_vec_enable(priv);
+}
 
 static int
 mana_dev_start(struct rte_eth_dev *dev)
@@ -141,7 +206,16 @@ mana_dev_start(struct rte_eth_dev *dev)
 	/* Enable datapath for secondary processes */
 	mana_mp_req_on_rxtx(dev, MANA_MP_REQ_START_RXTX);
 
+	ret = rxq_intr_enable(priv);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to enable RX interrupts");
+		goto failed_intr;
+	}
+
 	return 0;
+
+failed_intr:
+	mana_stop_rx_queues(dev);
 
 failed_rx:
 	mana_stop_tx_queues(dev);
@@ -153,9 +227,12 @@ failed_tx:
 }
 
 static int
-mana_dev_stop(struct rte_eth_dev *dev __rte_unused)
+mana_dev_stop(struct rte_eth_dev *dev)
 {
 	int ret;
+	struct mana_priv *priv = dev->data->dev_private;
+
+	rxq_intr_disable(priv);
 
 	dev->tx_pkt_burst = mana_tx_burst_removed;
 	dev->rx_pkt_burst = mana_rx_burst_removed;
@@ -179,6 +256,8 @@ mana_dev_stop(struct rte_eth_dev *dev __rte_unused)
 
 	return 0;
 }
+
+static int mana_intr_uninstall(struct mana_priv *priv);
 
 static int
 mana_dev_close(struct rte_eth_dev *dev)
@@ -614,6 +693,8 @@ static const struct eth_dev_ops mana_dev_ops = {
 	.tx_queue_release	= mana_dev_tx_queue_release,
 	.rx_queue_setup		= mana_dev_rx_queue_setup,
 	.rx_queue_release	= mana_dev_rx_queue_release,
+	.rx_queue_intr_enable	= mana_rx_intr_enable,
+	.rx_queue_intr_disable	= mana_rx_intr_disable,
 	.link_update		= mana_dev_link_update,
 	.stats_get		= mana_dev_stats_get,
 	.stats_reset		= mana_dev_stats_reset,
@@ -850,10 +931,22 @@ mana_intr_uninstall(struct mana_priv *priv)
 	return 0;
 }
 
-static int
-mana_intr_install(struct mana_priv *priv)
+int
+mana_fd_set_non_blocking(int fd)
 {
-	int ret, flags;
+	int ret = fcntl(fd, F_GETFL);
+
+	if (ret != -1 && !fcntl(fd, F_SETFL, ret | O_NONBLOCK))
+		return 0;
+
+	rte_errno = errno;
+	return -rte_errno;
+}
+
+static int
+mana_intr_install(struct rte_eth_dev *eth_dev, struct mana_priv *priv)
+{
+	int ret;
 	struct ibv_context *ctx = priv->ib_ctx;
 
 	priv->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
@@ -863,30 +956,34 @@ mana_intr_install(struct mana_priv *priv)
 		return -ENOMEM;
 	}
 
-	rte_intr_fd_set(priv->intr_handle, -1);
+	ret = rte_intr_fd_set(priv->intr_handle, -1);
+	if (ret)
+		goto free_intr;
 
-	flags = fcntl(ctx->async_fd, F_GETFL);
-	ret = fcntl(ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	ret = mana_fd_set_non_blocking(ctx->async_fd);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to change async_fd to NONBLOCK");
 		goto free_intr;
 	}
 
-	rte_intr_fd_set(priv->intr_handle, ctx->async_fd);
-	rte_intr_type_set(priv->intr_handle, RTE_INTR_HANDLE_EXT);
+	ret = rte_intr_fd_set(priv->intr_handle, ctx->async_fd);
+	if (ret)
+		goto free_intr;
+
+	ret = rte_intr_type_set(priv->intr_handle, RTE_INTR_HANDLE_EXT);
+	if (ret)
+		goto free_intr;
 
 	ret = rte_intr_callback_register(priv->intr_handle,
 					 mana_intr_handler, priv);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to register intr callback");
 		rte_intr_fd_set(priv->intr_handle, -1);
-		goto restore_fd;
+		goto free_intr;
 	}
 
+	eth_dev->intr_handle = priv->intr_handle;
 	return 0;
-
-restore_fd:
-	fcntl(ctx->async_fd, F_SETFL, flags);
 
 free_intr:
 	rte_intr_instance_free(priv->intr_handle);
@@ -1178,7 +1275,7 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	/* Create async interrupt handler */
-	ret = mana_intr_install(priv);
+	ret = mana_intr_install(eth_dev, priv);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to install intr handler");
 		goto failed;

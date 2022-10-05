@@ -420,6 +420,7 @@ struct mana_rxq {
 	uint32_t num_desc;
 	struct rte_mempool *mp;
 	struct ibv_cq *cq;
+	struct ibv_comp_channel *channel;
 	struct ibv_wq *wq;
 
 	/* For storing pending requests */
@@ -453,8 +454,8 @@ extern int mana_logtype_init;
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
 int mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
-		       uint32_t queue_id, uint32_t tail);
-int mana_rq_ring_doorbell(struct mana_rxq *rxq);
+		       uint32_t queue_id, uint32_t tail, uint8_t arm);
+int mana_rq_ring_doorbell(struct mana_rxq *rxq, uint8_t arm);
 
 int gdma_post_work_request(struct mana_gdma_queue *queue,
 			   struct gdma_work_request *work_req,
@@ -533,5 +534,9 @@ void mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type);
 
 void *mana_alloc_verbs_buf(size_t size, void *data);
 void mana_free_verbs_buf(void *ptr, void *data __rte_unused);
+
+int mana_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int mana_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int mana_fd_set_non_blocking(int fd);
 
 #endif
