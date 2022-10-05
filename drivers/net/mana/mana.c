@@ -222,6 +222,67 @@ mana_supported_ptypes(struct rte_eth_dev *dev __rte_unused)
 }
 
 static int
+mana_rss_hash_update(struct rte_eth_dev *dev,
+		     struct rte_eth_rss_conf *rss_conf)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+
+	/* Currently can only update RSS hash when device is stopped */
+	if (dev->data->dev_started) {
+		DRV_LOG(ERR, "Can't update RSS after device has started");
+		return -ENODEV;
+	}
+
+	if (rss_conf->rss_hf & ~MANA_ETH_RSS_SUPPORT) {
+		DRV_LOG(ERR, "Port %u invalid RSS HF 0x%" PRIx64,
+			dev->data->port_id, rss_conf->rss_hf);
+		return -EINVAL;
+	}
+
+	if (rss_conf->rss_key && rss_conf->rss_key_len) {
+		if (rss_conf->rss_key_len != TOEPLITZ_HASH_KEY_SIZE_IN_BYTES) {
+			DRV_LOG(ERR, "Port %u key len must be %u long",
+				dev->data->port_id,
+				TOEPLITZ_HASH_KEY_SIZE_IN_BYTES);
+			return -EINVAL;
+		}
+
+		priv->rss_conf.rss_key_len = rss_conf->rss_key_len;
+		priv->rss_conf.rss_key =
+			rte_zmalloc("mana_rss", rss_conf->rss_key_len,
+				    RTE_CACHE_LINE_SIZE);
+		if (!priv->rss_conf.rss_key)
+			return -ENOMEM;
+		memcpy(priv->rss_conf.rss_key, rss_conf->rss_key,
+		       rss_conf->rss_key_len);
+	}
+	priv->rss_conf.rss_hf = rss_conf->rss_hf;
+
+	return 0;
+}
+
+static int
+mana_rss_hash_conf_get(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_conf *rss_conf)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+
+	if (!rss_conf)
+		return -EINVAL;
+
+	if (rss_conf->rss_key &&
+	    rss_conf->rss_key_len >= priv->rss_conf.rss_key_len) {
+		memcpy(rss_conf->rss_key, priv->rss_conf.rss_key,
+		       priv->rss_conf.rss_key_len);
+	}
+
+	rss_conf->rss_key_len = priv->rss_conf.rss_key_len;
+	rss_conf->rss_hf = priv->rss_conf.rss_hf;
+
+	return 0;
+}
+
+static int
 mana_dev_link_update(struct rte_eth_dev *dev,
 		     int wait_to_complete __rte_unused)
 {
@@ -243,6 +304,8 @@ static const struct eth_dev_ops mana_dev_ops = {
 	.dev_close		= mana_dev_close,
 	.dev_infos_get		= mana_dev_info_get,
 	.dev_supported_ptypes_get = mana_supported_ptypes,
+	.rss_hash_update	= mana_rss_hash_update,
+	.rss_hash_conf_get	= mana_rss_hash_conf_get,
 	.link_update		= mana_dev_link_update,
 };
 
