@@ -37,7 +37,7 @@ extern "C" {
 
 /* Capabilities of a service.
  *
- * Use the *rte_service_probe_capability* function to check if a service is
+ * Use the rte_service_probe_capability() function to check if a service is
  * capable of a specific capability.
  */
 /** When set, the service is capable of having multiple threads run it at the
@@ -147,13 +147,13 @@ int32_t rte_service_map_lcore_get(uint32_t service_id, uint32_t lcore);
 int32_t rte_service_runstate_set(uint32_t id, uint32_t runstate);
 
 /**
- * Get the runstate for the service with *id*. See *rte_service_runstate_set*
+ * Get the runstate for the service with *id*. See rte_service_runstate_set()
  * for details of runstates. A service can call this function to ensure that
  * the application has indicated that it will receive CPU cycles. Either a
  * service-core is mapped (default case), or the application has explicitly
  * disabled the check that a service-cores is mapped to the service and takes
  * responsibility to run the service manually using the available function
- * *rte_service_run_iter_on_app_lcore* to do so.
+ * rte_service_run_iter_on_app_lcore() to do so.
  *
  * @retval 1 Service is running
  * @retval 0 Service is stopped
@@ -181,7 +181,7 @@ rte_service_may_be_active(uint32_t id);
 /**
  * Enable or disable the check for a service-core being mapped to the service.
  * An application can disable the check when takes the responsibility to run a
- * service itself using *rte_service_run_iter_on_app_lcore*.
+ * service itself using rte_service_run_iter_on_app_lcore().
  *
  * @param id The id of the service to set the check on
  * @param enable When zero, the check is disabled. Non-zero enables the check.
@@ -216,7 +216,7 @@ int32_t rte_service_set_runstate_mapped_check(uint32_t id, int32_t enable);
  *           atomics, applications can choose to enable or disable this feature
  *
  * Note that any thread calling this function MUST be a DPDK EAL thread, as
- * the *rte_lcore_id* function is used to access internal data structures.
+ * the rte_lcore_id() function is used to access internal data structures.
  *
  * @retval 0 Service was run on the calling thread successfully
  * @retval -EBUSY Another lcore is executing the service, and it is not a
@@ -232,7 +232,7 @@ int32_t rte_service_run_iter_on_app_lcore(uint32_t id,
  *
  * Starting a core makes the core begin polling. Any services assigned to it
  * will be run as fast as possible. The application must ensure that the lcore
- * is in a launchable state: e.g. call *rte_eal_lcore_wait* on the lcore_id
+ * is in a launchable state: e.g. call rte_eal_lcore_wait() on the lcore_id
  * before calling this function.
  *
  * @retval 0 Success
@@ -248,7 +248,7 @@ int32_t rte_service_lcore_start(uint32_t lcore_id);
  * service core. Note that the service lcore thread may not have returned from
  * the service it is running when this API returns.
  *
- * The *rte_service_lcore_may_be_active* API can be used to check if the
+ * The rte_service_lcore_may_be_active() API can be used to check if the
  * service lcore is * still active.
  *
  * @retval 0 Success
@@ -265,7 +265,7 @@ int32_t rte_service_lcore_stop(uint32_t lcore_id);
  * Reports if a service lcore is currently running.
  *
  * This function returns if the core has finished service cores code, and has
- * returned to EAL control. If *rte_service_lcore_stop* has been called but
+ * returned to EAL control. If rte_service_lcore_stop() has been called but
  * the lcore has not returned to EAL yet, it might be required to wait and call
  * this function again. The amount of time to wait before the core returns
  * depends on the duration of the services being run.
@@ -293,7 +293,7 @@ int32_t rte_service_lcore_add(uint32_t lcore);
 /**
  * Removes lcore from the list of service cores.
  *
- * This can fail if the core is not stopped, see *rte_service_core_stop*.
+ * This can fail if the core is not stopped, see rte_service_core_stop().
  *
  * @retval 0 Success
  * @retval -EBUSY Lcore is not stopped, stop service core before removing.
@@ -308,7 +308,7 @@ int32_t rte_service_lcore_del(uint32_t lcore);
  * service core count can be used in mapping logic when creating mappings
  * from service cores to services.
  *
- * See *rte_service_lcore_list* for details on retrieving the lcore_id of each
+ * See rte_service_lcore_list() for details on retrieving the lcore_id of each
  * service core.
  *
  * @return The number of service cores currently configured.
@@ -344,14 +344,14 @@ int32_t rte_service_set_stats_enable(uint32_t id, int32_t enable);
  * indicating the lcore_id of a service core.
  *
  * Adding and removing service cores can be performed using
- * *rte_service_lcore_add* and *rte_service_lcore_del*.
- * @param [out] array An array of at least *rte_service_lcore_count* items.
+ * rte_service_lcore_add() and rte_service_lcore_del().
+ * @param [out] array An array of at least rte_service_lcore_count() items.
  *              If statically allocating the buffer, use RTE_MAX_LCORE.
  * @param [out] n The size of *array*.
  * @retval >=0 Number of service cores that have been populated in the array
  * @retval -ENOMEM The provided array is not large enough to fill in the
  *          service core list. No items have been populated, call this function
- *          with a size of at least *rte_service_core_count* items.
+ *          with a size of at least rte_service_core_count() items.
  */
 int32_t rte_service_lcore_list(uint32_t array[], uint32_t n);
 
