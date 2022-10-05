@@ -660,7 +660,7 @@ rte_bsf32(uint32_t v)
  * @return
  *     Returns 0 if ``v`` was 0, otherwise returns 1.
  */
-static inline uint32_t
+static inline int
 rte_bsf32_safe(uint32_t v, uint32_t *pos)
 {
 	if (v == 0)
@@ -739,7 +739,7 @@ rte_bsf64(uint64_t v)
  * @return
  *     Returns 0 if ``v`` was 0, otherwise returns 1.
  */
-static inline uint32_t
+static inline int
 rte_bsf64_safe(uint64_t v, uint32_t *pos)
 {
 	if (v == 0)
