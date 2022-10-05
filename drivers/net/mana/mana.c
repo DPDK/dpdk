@@ -42,7 +42,85 @@ static rte_spinlock_t mana_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 int mana_logtype_driver;
 int mana_logtype_init;
 
+/*
+ * Callback from rdma-core to allocate a buffer for a queue.
+ */
+void *
+mana_alloc_verbs_buf(size_t size, void *data)
+{
+	void *ret;
+	size_t alignment = rte_mem_page_size();
+	int socket = (int)(uintptr_t)data;
+
+	DRV_LOG(DEBUG, "size=%zu socket=%d", size, socket);
+
+	if (alignment == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	ret = rte_zmalloc_socket("mana_verb_buf", size, alignment, socket);
+	if (!ret && size)
+		rte_errno = ENOMEM;
+	return ret;
+}
+
+void
+mana_free_verbs_buf(void *ptr, void *data __rte_unused)
+{
+	rte_free(ptr);
+}
+
+static int
+mana_dev_configure(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev_conf->rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
+
+	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues) {
+		DRV_LOG(ERR, "Only support equal number of rx/tx queues");
+		return -EINVAL;
+	}
+
+	if (!rte_is_power_of_2(dev->data->nb_rx_queues)) {
+		DRV_LOG(ERR, "number of TX/RX queues must be power of 2");
+		return -EINVAL;
+	}
+
+	priv->num_queues = dev->data->nb_rx_queues;
+
+	manadv_set_context_attr(priv->ib_ctx, MANADV_CTX_ATTR_BUF_ALLOCATORS,
+				(void *)((uintptr_t)&(struct manadv_ctx_allocators){
+					.alloc = &mana_alloc_verbs_buf,
+					.free = &mana_free_verbs_buf,
+					.data = 0,
+				}));
+
+	return 0;
+}
+
+static int
+mana_dev_close(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	ret = ibv_close_device(priv->ib_ctx);
+	if (ret) {
+		ret = errno;
+		return ret;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops mana_dev_ops = {
+	.dev_configure		= mana_dev_configure,
+	.dev_close		= mana_dev_close,
 };
 
 static const struct eth_dev_ops mana_dev_secondary_ops = {
@@ -655,8 +733,7 @@ mana_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 static int
 mana_dev_uninit(struct rte_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
-	return 0;
+	return mana_dev_close(dev);
 }
 
 /*
