@@ -352,3 +352,108 @@ fail:
 	mana_stop_rx_queues(dev);
 	return ret;
 }
+
+uint16_t
+mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
+{
+	uint16_t pkt_received = 0, cqe_processed = 0;
+	struct mana_rxq *rxq = dpdk_rxq;
+	struct mana_priv *priv = rxq->priv;
+	struct gdma_comp comp;
+	struct rte_mbuf *mbuf;
+	int ret;
+
+	while (pkt_received < pkts_n &&
+	       gdma_poll_completion_queue(&rxq->gdma_cq, &comp) == 1) {
+		struct mana_rxq_desc *desc;
+		struct mana_rx_comp_oob *oob =
+			(struct mana_rx_comp_oob *)&comp.completion_data[0];
+
+		if (comp.work_queue_number != rxq->gdma_rq.id) {
+			DRV_LOG(ERR, "rxq comp id mismatch wqid=0x%x rcid=0x%x",
+				comp.work_queue_number, rxq->gdma_rq.id);
+			rxq->stats.errors++;
+			break;
+		}
+
+		desc = &rxq->desc_ring[rxq->desc_ring_tail];
+		rxq->gdma_rq.tail += desc->wqe_size_in_bu;
+		mbuf = desc->pkt;
+
+		switch (oob->cqe_hdr.cqe_type) {
+		case CQE_RX_OKAY:
+			/* Proceed to process mbuf */
+			break;
+
+		case CQE_RX_TRUNCATED:
+			DRV_LOG(ERR, "Drop a truncated packet");
+			rxq->stats.errors++;
+			rte_pktmbuf_free(mbuf);
+			goto drop;
+
+		case CQE_RX_COALESCED_4:
+			DRV_LOG(ERR, "RX coalescing is not supported");
+			continue;
+
+		default:
+			DRV_LOG(ERR, "Unknown RX CQE type %d",
+				oob->cqe_hdr.cqe_type);
+			continue;
+		}
+
+		DRV_LOG(DEBUG, "mana_rx_comp_oob CQE_RX_OKAY rxq %p", rxq);
+
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->nb_segs = 1;
+		mbuf->next = NULL;
+		mbuf->pkt_len = oob->packet_info[0].packet_length;
+		mbuf->data_len = oob->packet_info[0].packet_length;
+		mbuf->port = priv->port_id;
+
+		if (oob->rx_ip_header_checksum_succeeded)
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+
+		if (oob->rx_ip_header_checksum_failed)
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+
+		if (oob->rx_outer_ip_header_checksum_failed)
+			mbuf->ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+
+		if (oob->rx_tcp_checksum_succeeded ||
+		    oob->rx_udp_checksum_succeeded)
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+
+		if (oob->rx_tcp_checksum_failed ||
+		    oob->rx_udp_checksum_failed)
+			mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+
+		if (oob->rx_hash_type == MANA_HASH_L3 ||
+		    oob->rx_hash_type == MANA_HASH_L4) {
+			mbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+			mbuf->hash.rss = oob->packet_info[0].packet_hash;
+		}
+
+		pkts[pkt_received++] = mbuf;
+		rxq->stats.packets++;
+		rxq->stats.bytes += mbuf->data_len;
+
+drop:
+		rxq->desc_ring_tail++;
+		if (rxq->desc_ring_tail >= rxq->num_desc)
+			rxq->desc_ring_tail = 0;
+
+		cqe_processed++;
+
+		/* Post another request */
+		ret = mana_alloc_and_post_rx_wqe(rxq);
+		if (ret) {
+			DRV_LOG(ERR, "failed to post rx wqe ret=%d", ret);
+			break;
+		}
+	}
+
+	if (cqe_processed)
+		mana_rq_ring_doorbell(rxq);
+
+	return pkt_received;
+}

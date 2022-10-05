@@ -172,6 +172,11 @@ struct gdma_work_request {
 
 enum mana_cqe_type {
 	CQE_INVALID                     = 0,
+
+	CQE_RX_OKAY                     = 1,
+	CQE_RX_COALESCED_4              = 2,
+	CQE_RX_OBJECT_FENCE             = 3,
+	CQE_RX_TRUNCATED                = 4,
 };
 
 struct mana_cqe_header {
@@ -195,6 +200,35 @@ struct mana_cqe_header {
 #define MANA_HASH_L4                                                         \
 	(NDIS_HASH_TCP_IPV4 | NDIS_HASH_UDP_IPV4 | NDIS_HASH_TCP_IPV6 |      \
 	 NDIS_HASH_UDP_IPV6 | NDIS_HASH_TCP_IPV6_EX | NDIS_HASH_UDP_IPV6_EX)
+
+struct mana_rx_comp_per_packet_info {
+	uint32_t packet_length	: 16;
+	uint32_t reserved0	: 16;
+	uint32_t reserved1;
+	uint32_t packet_hash;
+}; /* HW DATA */
+#define RX_COM_OOB_NUM_PACKETINFO_SEGMENTS 4
+
+struct mana_rx_comp_oob {
+	struct mana_cqe_header cqe_hdr;
+
+	uint32_t rx_vlan_id				: 12;
+	uint32_t rx_vlan_tag_present			: 1;
+	uint32_t rx_outer_ip_header_checksum_succeeded	: 1;
+	uint32_t rx_outer_ip_header_checksum_failed	: 1;
+	uint32_t reserved				: 1;
+	uint32_t rx_hash_type				: 9;
+	uint32_t rx_ip_header_checksum_succeeded	: 1;
+	uint32_t rx_ip_header_checksum_failed		: 1;
+	uint32_t rx_tcp_checksum_succeeded		: 1;
+	uint32_t rx_tcp_checksum_failed			: 1;
+	uint32_t rx_udp_checksum_succeeded		: 1;
+	uint32_t rx_udp_checksum_failed			: 1;
+	uint32_t reserved1				: 1;
+	struct mana_rx_comp_per_packet_info
+		packet_info[RX_COM_OOB_NUM_PACKETINFO_SEGMENTS];
+	uint32_t received_wqe_offset;
+}; /* HW DATA */
 
 struct gdma_wqe_dma_oob {
 	uint32_t reserved:24;
@@ -362,6 +396,9 @@ int gdma_post_work_request(struct mana_gdma_queue *queue,
 			   struct gdma_work_request *work_req,
 			   struct gdma_posted_wqe_info *wqe_info);
 uint8_t *gdma_get_wqe_pointer(struct mana_gdma_queue *queue);
+
+uint16_t mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **rx_pkts,
+		       uint16_t pkts_n);
 
 uint16_t mana_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 			       uint16_t pkts_n);

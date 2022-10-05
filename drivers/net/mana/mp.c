@@ -141,6 +141,8 @@ mana_mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case MANA_MP_REQ_START_RXTX:
 		DRV_LOG(INFO, "Port %u starting datapath", dev->data->port_id);
 
+		dev->rx_pkt_burst = mana_rx_burst;
+
 		rte_mb();
 
 		res->result = 0;
