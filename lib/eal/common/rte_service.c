@@ -66,6 +66,7 @@ struct core_state {
 	uint8_t is_service_core; /* set if core is currently a service core */
 	uint8_t service_active_on_lcore[RTE_SERVICE_NUM_MAX];
 	uint64_t loops;
+	uint64_t cycles;
 	struct service_stats service_stats[RTE_SERVICE_NUM_MAX];
 } __rte_cache_aligned;
 
@@ -376,6 +377,9 @@ service_runner_do_callback(struct rte_service_spec_impl *s,
 		 * is needed, and not the more expensive atomic
 		 * add.
 		 */
+		__atomic_store_n(&cs->cycles, cs->cycles + cycles,
+			 __ATOMIC_RELAXED);
+
 		struct service_stats *service_stats =
 			&cs->service_stats[service_idx];
 
@@ -818,6 +822,14 @@ lcore_attr_get_loops(unsigned int lcore)
 }
 
 static uint64_t
+lcore_attr_get_cycles(unsigned int lcore)
+{
+	struct core_state *cs = &lcore_states[lcore];
+
+	return __atomic_load_n(&cs->cycles, __ATOMIC_RELAXED);
+}
+
+static uint64_t
 lcore_attr_get_service_calls(uint32_t service_id, unsigned int lcore)
 {
 	struct core_state *cs = &lcore_states[lcore];
@@ -901,6 +913,9 @@ rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 	switch (attr_id) {
 	case RTE_SERVICE_LCORE_ATTR_LOOPS:
 		*attr_value = lcore_attr_get_loops(lcore);
+		return 0;
+	case RTE_SERVICE_LCORE_ATTR_CYCLES:
+		*attr_value = lcore_attr_get_cycles(lcore);
 		return 0;
 	default:
 		return -EINVAL;

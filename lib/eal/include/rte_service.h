@@ -408,6 +408,12 @@ int32_t rte_service_attr_reset_all(uint32_t id);
 #define RTE_SERVICE_LCORE_ATTR_LOOPS 0
 
 /**
+ * Returns the total number of cycles that the lcore has spent on
+ * running services.
+ */
+#define RTE_SERVICE_LCORE_ATTR_CYCLES 1
+
+/**
  * Get an attribute from a service core.
  *
  * @param lcore Id of the service core.

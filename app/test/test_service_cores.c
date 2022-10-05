@@ -403,7 +403,7 @@ service_lcore_attr_get(void)
 			"lcore_attr_get() failed to get loops "
 			"(expected > zero)");
 
-	lcore_attr_id++;  // invalid lcore attr id
+	lcore_attr_id = 42; /* invalid lcore attr id */
 	TEST_ASSERT_EQUAL(-EINVAL, rte_service_lcore_attr_get(slcore_id,
 			lcore_attr_id, &lcore_attr_value),
 			"Invalid lcore attr didn't return -EINVAL");
