@@ -76,8 +76,13 @@ Deprecation Notices
   will be limited to maximum 256 queues.
   Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
 
-* ethdev: Items and actions ``PF``, ``VF``, ``PHY_PORT``, ``PORT_ID`` are
-  deprecated as hard-to-use / ambiguous and will be removed in DPDK 22.11.
+* ethdev: Flow actions ``PF`` and ``VF`` have been deprecated since DPDK 21.11
+  and are yet to be removed. That still has not happened because there are net
+  drivers which support combined use of either action ``PF`` or action ``VF``
+  with action ``QUEUE``, namely, i40e, ixgbe and txgbe (L2 tunnel rule).
+  It is unclear whether it is acceptable to just drop support for
+  such a complex use case, so maintainers of the said drivers
+  should take a closer look at this and provide assistance.
 
 * ethdev: Actions ``OF_DEC_NW_TTL``, ``SET_IPV4_SRC``, ``SET_IPV4_DST``,
   ``SET_IPV6_SRC``, ``SET_IPV6_DST``, ``SET_TP_SRC``, ``SET_TP_DST``,
