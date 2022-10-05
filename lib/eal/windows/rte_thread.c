@@ -15,6 +15,11 @@ struct eal_tls_key {
 	DWORD thread_index;
 };
 
+struct thread_routine_ctx {
+	rte_thread_func thread_func;
+	void *routine_args;
+};
+
 /* Translates the most common error codes related to threads */
 static int
 thread_translate_win32_error(DWORD error)
@@ -112,6 +117,174 @@ thread_map_os_priority_to_eal_value(int os_pri, DWORD pri_class,
 		RTE_LOG(DEBUG, EAL, "The OS priority value does not map to an EAL-defined priority.\n");
 		return EINVAL;
 	}
+
+	return 0;
+}
+
+static int
+convert_cpuset_to_affinity(const rte_cpuset_t *cpuset,
+		PGROUP_AFFINITY affinity)
+{
+	int ret = 0;
+	PGROUP_AFFINITY cpu_affinity = NULL;
+	unsigned int cpu_idx;
+
+	memset(affinity, 0, sizeof(GROUP_AFFINITY));
+	affinity->Group = (USHORT)-1;
+
+	/* Check that all cpus of the set belong to the same processor group and
+	 * accumulate thread affinity to be applied.
+	 */
+	for (cpu_idx = 0; cpu_idx < CPU_SETSIZE; cpu_idx++) {
+		if (!CPU_ISSET(cpu_idx, cpuset))
+			continue;
+
+		cpu_affinity = eal_get_cpu_affinity(cpu_idx);
+
+		if (affinity->Group == (USHORT)-1) {
+			affinity->Group = cpu_affinity->Group;
+		} else if (affinity->Group != cpu_affinity->Group) {
+			RTE_LOG(DEBUG, EAL, "All processors must belong to the same processor group\n");
+			ret = ENOTSUP;
+			goto cleanup;
+		}
+
+		affinity->Mask |= cpu_affinity->Mask;
+	}
+
+	if (affinity->Mask == 0) {
+		ret = EINVAL;
+		goto cleanup;
+	}
+
+cleanup:
+	return ret;
+}
+
+static DWORD
+thread_func_wrapper(void *arg)
+{
+	struct thread_routine_ctx ctx = *(struct thread_routine_ctx *)arg;
+
+	free(arg);
+
+	return (DWORD)ctx.thread_func(ctx.routine_args);
+}
+
+int
+rte_thread_create(rte_thread_t *thread_id,
+		  const rte_thread_attr_t *thread_attr,
+		  rte_thread_func thread_func, void *args)
+{
+	int ret = 0;
+	DWORD tid;
+	HANDLE thread_handle = NULL;
+	GROUP_AFFINITY thread_affinity;
+	struct thread_routine_ctx *ctx;
+
+	ctx = calloc(1, sizeof(*ctx));
+	if (ctx == NULL) {
+		RTE_LOG(DEBUG, EAL, "Insufficient memory for thread context allocations\n");
+		ret = ENOMEM;
+		goto cleanup;
+	}
+	ctx->routine_args = args;
+	ctx->thread_func = thread_func;
+
+	thread_handle = CreateThread(NULL, 0, thread_func_wrapper, ctx,
+		CREATE_SUSPENDED, &tid);
+	if (thread_handle == NULL) {
+		ret = thread_log_last_error("CreateThread()");
+		goto cleanup;
+	}
+	thread_id->opaque_id = tid;
+
+	if (thread_attr != NULL) {
+		if (CPU_COUNT(&thread_attr->cpuset) > 0) {
+			ret = convert_cpuset_to_affinity(
+							&thread_attr->cpuset,
+							&thread_affinity
+							);
+			if (ret != 0) {
+				RTE_LOG(DEBUG, EAL, "Unable to convert cpuset to thread affinity\n");
+				goto cleanup;
+			}
+
+			if (!SetThreadGroupAffinity(thread_handle,
+						    &thread_affinity, NULL)) {
+				ret = thread_log_last_error("SetThreadGroupAffinity()");
+				goto cleanup;
+			}
+		}
+		ret = rte_thread_set_priority(*thread_id,
+				thread_attr->priority);
+		if (ret != 0) {
+			RTE_LOG(DEBUG, EAL, "Unable to set thread priority\n");
+			goto cleanup;
+		}
+	}
+
+	if (ResumeThread(thread_handle) == (DWORD)-1) {
+		ret = thread_log_last_error("ResumeThread()");
+		goto cleanup;
+	}
+
+	ctx = NULL;
+cleanup:
+	free(ctx);
+	if (thread_handle != NULL) {
+		CloseHandle(thread_handle);
+		thread_handle = NULL;
+	}
+
+	return ret;
+}
+
+int
+rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr)
+{
+	HANDLE thread_handle;
+	DWORD result;
+	DWORD exit_code = 0;
+	BOOL err;
+	int ret = 0;
+
+	thread_handle = OpenThread(SYNCHRONIZE | THREAD_QUERY_INFORMATION,
+				   FALSE, thread_id.opaque_id);
+	if (thread_handle == NULL) {
+		ret = thread_log_last_error("OpenThread()");
+		goto cleanup;
+	}
+
+	result = WaitForSingleObject(thread_handle, INFINITE);
+	if (result != WAIT_OBJECT_0) {
+		ret = thread_log_last_error("WaitForSingleObject()");
+		goto cleanup;
+	}
+
+	if (value_ptr != NULL) {
+		err = GetExitCodeThread(thread_handle, &exit_code);
+		if (err == 0) {
+			ret = thread_log_last_error("GetExitCodeThread()");
+			goto cleanup;
+		}
+		*value_ptr = exit_code;
+	}
+
+cleanup:
+	if (thread_handle != NULL) {
+		CloseHandle(thread_handle);
+		thread_handle = NULL;
+	}
+
+	return ret;
+}
+
+int
+rte_thread_detach(rte_thread_t thread_id)
+{
+	/* No resources that need to be released. */
+	RTE_SET_USED(thread_id);
 
 	return 0;
 }
@@ -278,46 +451,6 @@ rte_thread_value_get(rte_thread_key key)
 		return NULL;
 	}
 	return output;
-}
-
-static int
-convert_cpuset_to_affinity(const rte_cpuset_t *cpuset,
-		PGROUP_AFFINITY affinity)
-{
-	int ret = 0;
-	PGROUP_AFFINITY cpu_affinity = NULL;
-	unsigned int cpu_idx;
-
-	memset(affinity, 0, sizeof(GROUP_AFFINITY));
-	affinity->Group = (USHORT)-1;
-
-	/* Check that all cpus of the set belong to the same processor group and
-	 * accumulate thread affinity to be applied.
-	 */
-	for (cpu_idx = 0; cpu_idx < CPU_SETSIZE; cpu_idx++) {
-		if (!CPU_ISSET(cpu_idx, cpuset))
-			continue;
-
-		cpu_affinity = eal_get_cpu_affinity(cpu_idx);
-
-		if (affinity->Group == (USHORT)-1) {
-			affinity->Group = cpu_affinity->Group;
-		} else if (affinity->Group != cpu_affinity->Group) {
-			RTE_LOG(DEBUG, EAL, "All processors must belong to the same processor group\n");
-			ret = ENOTSUP;
-			goto cleanup;
-		}
-
-		affinity->Mask |= cpu_affinity->Mask;
-	}
-
-	if (affinity->Mask == 0) {
-		ret = EINVAL;
-		goto cleanup;
-	}
-
-cleanup:
-	return ret;
 }
 
 int

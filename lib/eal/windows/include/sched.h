@@ -44,7 +44,7 @@ typedef struct _rte_cpuset_s {
 	(1LL << _WHICH_BIT(b))) != 0LL)
 
 static inline int
-count_cpu(rte_cpuset_t *s)
+count_cpu(const rte_cpuset_t *s)
 {
 	unsigned int _i;
 	int count = 0;

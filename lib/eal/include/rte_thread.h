@@ -31,6 +31,18 @@ typedef struct {
 } rte_thread_t;
 
 /**
+ * Thread function
+ *
+ * Function pointer to thread start routine.
+ *
+ * @param arg
+ *   Argument passed to rte_thread_create().
+ * @return
+ *   Thread function exit value.
+ */
+typedef uint32_t (*rte_thread_func) (void *arg);
+
+/**
  * Thread priority values.
  */
 enum rte_thread_priority {
@@ -54,6 +66,69 @@ typedef struct {
  * TLS key type, an opaque pointer.
  */
 typedef struct eal_tls_key *rte_thread_key;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create a new thread that will invoke the 'thread_func' routine.
+ *
+ * @param thread_id
+ *    A pointer that will store the id of the newly created thread.
+ *
+ * @param thread_attr
+ *    Attributes that are used at the creation of the new thread.
+ *
+ * @param thread_func
+ *    The routine that the new thread will invoke when starting execution.
+ *
+ * @param arg
+ *    Argument to be passed to the 'thread_func' routine.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_create(rte_thread_t *thread_id,
+		const rte_thread_attr_t *thread_attr,
+		rte_thread_func thread_func, void *arg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Waits for the thread identified by 'thread_id' to terminate
+ *
+ * @param thread_id
+ *    The identifier of the thread.
+ *
+ * @param value_ptr
+ *    Stores the exit status of the thread.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Indicate that the return value of the thread is not needed and
+ * all thread resources should be release when the thread terminates.
+ *
+ * @param thread_id
+ *    The id of the thread to be detached.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_detach(rte_thread_t thread_id);
 
 /**
  * @warning

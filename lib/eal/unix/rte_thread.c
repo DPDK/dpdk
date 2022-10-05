@@ -16,6 +16,11 @@ struct eal_tls_key {
 	pthread_key_t thread_index;
 };
 
+struct thread_routine_ctx {
+	rte_thread_func thread_func;
+	void *routine_args;
+};
+
 static int
 thread_map_priority_to_os_value(enum rte_thread_priority eal_pri, int *os_pri,
 	int *pol)
@@ -73,6 +78,136 @@ thread_map_os_priority_to_eal_priority(int policy, int os_pri,
 	}
 
 	return 0;
+}
+
+static void *
+thread_func_wrapper(void *arg)
+{
+	struct thread_routine_ctx ctx = *(struct thread_routine_ctx *)arg;
+
+	free(arg);
+
+	return (void *)(uintptr_t)ctx.thread_func(ctx.routine_args);
+}
+
+int
+rte_thread_create(rte_thread_t *thread_id,
+		const rte_thread_attr_t *thread_attr,
+		rte_thread_func thread_func, void *args)
+{
+	int ret = 0;
+	pthread_attr_t attr;
+	pthread_attr_t *attrp = NULL;
+	struct thread_routine_ctx *ctx;
+	struct sched_param param = {
+		.sched_priority = 0,
+	};
+	int policy = SCHED_OTHER;
+
+	ctx = calloc(1, sizeof(*ctx));
+	if (ctx == NULL) {
+		RTE_LOG(DEBUG, EAL, "Insufficient memory for thread context allocations\n");
+		ret = ENOMEM;
+		goto cleanup;
+	}
+	ctx->routine_args = args;
+	ctx->thread_func = thread_func;
+
+	if (thread_attr != NULL) {
+		ret = pthread_attr_init(&attr);
+		if (ret != 0) {
+			RTE_LOG(DEBUG, EAL, "pthread_attr_init failed\n");
+			goto cleanup;
+		}
+
+		attrp = &attr;
+
+		/*
+		 * Set the inherit scheduler parameter to explicit,
+		 * otherwise the priority attribute is ignored.
+		 */
+		ret = pthread_attr_setinheritsched(attrp,
+				PTHREAD_EXPLICIT_SCHED);
+		if (ret != 0) {
+			RTE_LOG(DEBUG, EAL, "pthread_attr_setinheritsched failed\n");
+			goto cleanup;
+		}
+
+
+		if (thread_attr->priority ==
+				RTE_THREAD_PRIORITY_REALTIME_CRITICAL) {
+			ret = ENOTSUP;
+			goto cleanup;
+		}
+		ret = thread_map_priority_to_os_value(thread_attr->priority,
+				&param.sched_priority, &policy);
+		if (ret != 0)
+			goto cleanup;
+
+		ret = pthread_attr_setschedpolicy(attrp, policy);
+		if (ret != 0) {
+			RTE_LOG(DEBUG, EAL, "pthread_attr_setschedpolicy failed\n");
+			goto cleanup;
+		}
+
+		ret = pthread_attr_setschedparam(attrp, &param);
+		if (ret != 0) {
+			RTE_LOG(DEBUG, EAL, "pthread_attr_setschedparam failed\n");
+			goto cleanup;
+		}
+	}
+
+	ret = pthread_create((pthread_t *)&thread_id->opaque_id, attrp,
+		thread_func_wrapper, ctx);
+	if (ret != 0) {
+		RTE_LOG(DEBUG, EAL, "pthread_create failed\n");
+		goto cleanup;
+	}
+
+	if (thread_attr != NULL && CPU_COUNT(&thread_attr->cpuset) > 0) {
+		ret = rte_thread_set_affinity_by_id(*thread_id,
+			&thread_attr->cpuset);
+		if (ret != 0) {
+			RTE_LOG(DEBUG, EAL, "rte_thread_set_affinity_by_id failed\n");
+			goto cleanup;
+		}
+	}
+
+	ctx = NULL;
+cleanup:
+	free(ctx);
+	if (attrp != NULL)
+		pthread_attr_destroy(&attr);
+
+	return ret;
+}
+
+int
+rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr)
+{
+	int ret = 0;
+	void *res = (void *)(uintptr_t)0;
+	void **pres = NULL;
+
+	if (value_ptr != NULL)
+		pres = &res;
+
+	ret = pthread_join((pthread_t)thread_id.opaque_id, pres);
+	if (ret != 0) {
+		RTE_LOG(DEBUG, EAL, "pthread_join failed\n");
+		return ret;
+	}
+
+	if (value_ptr != NULL)
+		*value_ptr = (uint32_t)(uintptr_t)res;
+
+	return 0;
+}
+
+int
+rte_thread_detach(rte_thread_t thread_id)
+{
+	return pthread_detach((pthread_t)thread_id.opaque_id);
 }
 
 rte_thread_t

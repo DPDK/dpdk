@@ -436,6 +436,9 @@ EXPERIMENTAL {
 	rte_thread_attr_init;
 	rte_thread_attr_set_affinity;
 	rte_thread_attr_set_priority;
+	rte_thread_create;
+	rte_thread_detach;
+	rte_thread_join;
 };
 
 INTERNAL {
