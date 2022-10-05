@@ -2,6 +2,8 @@
  * Copyright(c) 2016 Intel Corporation
  */
 
+#include <ctype.h>
+#include <errno.h>
 #include <getopt.h>
 #include <inttypes.h>
 #include <limits.h>
