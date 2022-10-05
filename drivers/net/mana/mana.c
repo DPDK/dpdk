@@ -526,6 +526,79 @@ mana_dev_link_update(struct rte_eth_dev *dev,
 	return rte_eth_linkstatus_set(dev, &link);
 }
 
+static int
+mana_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	unsigned int i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		if (!txq)
+			continue;
+
+		stats->opackets = txq->stats.packets;
+		stats->obytes = txq->stats.bytes;
+		stats->oerrors = txq->stats.errors;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_opackets[i] = txq->stats.packets;
+			stats->q_obytes[i] = txq->stats.bytes;
+		}
+	}
+
+	stats->rx_nombuf = 0;
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+
+		if (!rxq)
+			continue;
+
+		stats->ipackets = rxq->stats.packets;
+		stats->ibytes = rxq->stats.bytes;
+		stats->ierrors = rxq->stats.errors;
+
+		/* There is no good way to get stats->imissed, not setting it */
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = rxq->stats.packets;
+			stats->q_ibytes[i] = rxq->stats.bytes;
+		}
+
+		stats->rx_nombuf += rxq->stats.nombuf;
+	}
+
+	return 0;
+}
+
+static int
+mana_dev_stats_reset(struct rte_eth_dev *dev __rte_unused)
+{
+	unsigned int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		if (!txq)
+			continue;
+
+		memset(&txq->stats, 0, sizeof(txq->stats));
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+
+		if (!rxq)
+			continue;
+
+		memset(&rxq->stats, 0, sizeof(rxq->stats));
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops mana_dev_ops = {
 	.dev_configure		= mana_dev_configure,
 	.dev_start		= mana_dev_start,
@@ -542,9 +615,13 @@ static const struct eth_dev_ops mana_dev_ops = {
 	.rx_queue_setup		= mana_dev_rx_queue_setup,
 	.rx_queue_release	= mana_dev_rx_queue_release,
 	.link_update		= mana_dev_link_update,
+	.stats_get		= mana_dev_stats_get,
+	.stats_reset		= mana_dev_stats_reset,
 };
 
 static const struct eth_dev_ops mana_dev_secondary_ops = {
+	.stats_get = mana_dev_stats_get,
+	.stats_reset = mana_dev_stats_reset,
 	.dev_infos_get = mana_dev_info_get,
 };
 
