@@ -78,6 +78,11 @@ static uint32_t rte_service_library_initialized;
 int32_t
 rte_service_init(void)
 {
+	/* Hard limit due to the use of an uint64_t-based bitmask (and the
+	 * clzl intrinsic).
+	 */
+	RTE_BUILD_BUG_ON(RTE_SERVICE_NUM_MAX > 64);
+
 	if (rte_service_library_initialized) {
 		RTE_LOG(NOTICE, EAL,
 			"service library init() called, init flag %d\n",
@@ -470,7 +475,6 @@ static int32_t
 service_runner_func(void *arg)
 {
 	RTE_SET_USED(arg);
-	uint32_t i;
 	const int lcore = rte_lcore_id();
 	struct core_state *cs = &lcore_states[lcore];
 
@@ -484,10 +488,17 @@ service_runner_func(void *arg)
 			RUNSTATE_RUNNING) {
 
 		const uint64_t service_mask = cs->service_mask;
+		uint8_t start_id;
+		uint8_t end_id;
+		uint8_t i;
 
-		for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
-			if (!service_registered(i))
-				continue;
+		if (service_mask == 0)
+			continue;
+
+		start_id = __builtin_ctzl(service_mask);
+		end_id = 64 - __builtin_clzl(service_mask);
+
+		for (i = start_id; i < end_id; i++) {
 			/* return value ignored as no change to code flow */
 			service_run(i, cs, service_mask, service_get(i), 1);
 		}
