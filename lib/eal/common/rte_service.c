@@ -10,6 +10,7 @@
 #include <rte_service_component.h>
 
 #include <rte_lcore.h>
+#include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_atomic.h>
@@ -373,26 +374,29 @@ service_runner_do_callback(struct rte_service_spec_impl *s,
 
 	if (service_stats_enabled(s)) {
 		uint64_t start = rte_rdtsc();
-		s->spec.callback(userdata);
-		uint64_t end = rte_rdtsc();
-		uint64_t cycles = end - start;
+		int rc = s->spec.callback(userdata);
 
 		/* The lcore service worker thread is the only writer,
 		 * and thus only a non-atomic load and an atomic store
 		 * is needed, and not the more expensive atomic
 		 * add.
 		 */
-		__atomic_store_n(&cs->cycles, cs->cycles + cycles,
-			 __ATOMIC_RELAXED);
-
 		struct service_stats *service_stats =
 			&cs->service_stats[service_idx];
 
+		if (likely(rc != -EAGAIN)) {
+			uint64_t end = rte_rdtsc();
+			uint64_t cycles = end - start;
+
+			__atomic_store_n(&cs->cycles, cs->cycles + cycles,
+				__ATOMIC_RELAXED);
+			__atomic_store_n(&service_stats->cycles,
+				service_stats->cycles + cycles,
+				__ATOMIC_RELAXED);
+		}
+
 		__atomic_store_n(&service_stats->calls,
 			service_stats->calls + 1, __ATOMIC_RELAXED);
-
-		__atomic_store_n(&service_stats->cycles,
-			service_stats->cycles + cycles, __ATOMIC_RELAXED);
 	} else
 		s->spec.callback(userdata);
 }

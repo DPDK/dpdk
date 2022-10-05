@@ -19,6 +19,11 @@ extern "C" {
 
 /**
  * Signature of callback function to run a service.
+ *
+ * A service function call resulting in no actual work being
+ * performed, should return -EAGAIN. In that case, the (presumbly few)
+ * cycles spent will not be counted toward the lcore or service-level
+ * cycles attributes.
  */
 typedef int32_t (*rte_service_func)(void *args);
 
