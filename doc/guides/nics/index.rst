@@ -41,6 +41,7 @@ Network Interface Controller Drivers
     intel_vf
     kni
     liquidio
+    mana
     memif
     mlx4
     mlx5

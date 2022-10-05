@@ -94,6 +94,8 @@ New Features
 
   * Added support for flow action REPRESENTED_PORT.
 
+* **Added Microsoft mana driver.**
+
 * **Updated Netronome nfp driver.**
 
   Added the needed data structures and logics to support flow API offload:
