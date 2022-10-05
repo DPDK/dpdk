@@ -12,6 +12,55 @@
 
 extern struct mana_shared_data *mana_shared_data;
 
+/*
+ * Process MR request from secondary process.
+ */
+static int
+mana_mp_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len)
+{
+	struct ibv_mr *ibv_mr;
+	int ret;
+	struct mana_mr_cache *mr;
+
+	ibv_mr = ibv_reg_mr(priv->ib_pd, (void *)addr, len,
+			    IBV_ACCESS_LOCAL_WRITE);
+
+	if (!ibv_mr)
+		return -errno;
+
+	DRV_LOG(DEBUG, "MR (2nd) lkey %u addr %p len %zu",
+		ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
+
+	mr = rte_calloc("MANA MR", 1, sizeof(*mr), 0);
+	if (!mr) {
+		DRV_LOG(ERR, "(2nd) Failed to allocate MR");
+		ret = -ENOMEM;
+		goto fail_alloc;
+	}
+	mr->lkey = ibv_mr->lkey;
+	mr->addr = (uintptr_t)ibv_mr->addr;
+	mr->len = ibv_mr->length;
+	mr->verb_obj = ibv_mr;
+
+	rte_spinlock_lock(&priv->mr_btree_lock);
+	ret = mana_mr_btree_insert(&priv->mr_btree, mr);
+	rte_spinlock_unlock(&priv->mr_btree_lock);
+	if (ret) {
+		DRV_LOG(ERR, "(2nd) Failed to add to global MR btree");
+		goto fail_btree;
+	}
+
+	return 0;
+
+fail_btree:
+	rte_free(mr);
+
+fail_alloc:
+	ibv_dereg_mr(ibv_mr);
+
+	return ret;
+}
+
 static void
 mp_init_msg(struct rte_mp_msg *msg, enum mana_mp_req_type type, int port_id)
 {
@@ -47,6 +96,12 @@ mana_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	mp_init_msg(&mp_res, param->type, param->port_id);
 
 	switch (param->type) {
+	case MANA_MP_REQ_CREATE_MR:
+		ret = mana_mp_mr_create(priv, param->addr, param->len);
+		res->result = ret;
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
+
 	case MANA_MP_REQ_VERBS_CMD_FD:
 		mp_res.num_fds = 1;
 		mp_res.fds[0] = priv->ib_ctx->cmd_fd;
@@ -191,6 +246,43 @@ mana_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev)
 		dev->data->port_id, ret);
 exit:
 	free(mp_rep.msgs);
+	return ret;
+}
+
+/*
+ * Request the primary process to register a MR.
+ */
+int
+mana_mp_req_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len)
+{
+	struct rte_mp_msg mp_req = {0};
+	struct rte_mp_msg *mp_res;
+	struct rte_mp_reply mp_rep;
+	struct mana_mp_param *req = (struct mana_mp_param *)mp_req.param;
+	struct mana_mp_param *res;
+	struct timespec ts = {.tv_sec = MANA_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
+	int ret;
+
+	mp_init_msg(&mp_req, MANA_MP_REQ_CREATE_MR, priv->port_id);
+	req->addr = addr;
+	req->len = len;
+
+	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u request to primary failed",
+			req->port_id);
+		return ret;
+	}
+
+	if (mp_rep.nb_received != 1)
+		return -EPROTO;
+
+	mp_res = &mp_rep.msgs[0];
+	res = (struct mana_mp_param *)mp_res->param;
+	ret = res->result;
+
+	free(mp_rep.msgs);
+
 	return ret;
 }
 

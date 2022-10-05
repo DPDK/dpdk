@@ -111,6 +111,8 @@ mana_dev_close(struct rte_eth_dev *dev)
 	struct mana_priv *priv = dev->data->dev_private;
 	int ret;
 
+	mana_remove_all_mr(priv);
+
 	ret = mana_intr_uninstall(priv);
 	if (ret)
 		return ret;
@@ -331,6 +333,13 @@ mana_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		goto fail;
 	}
 
+	ret = mana_mr_btree_init(&txq->mr_btree,
+				 MANA_MR_BTREE_PER_QUEUE_N, socket_id);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to init TXQ MR btree");
+		goto fail;
+	}
+
 	DRV_LOG(DEBUG, "idx %u nb_desc %u socket %u txq->desc_ring %p",
 		queue_idx, nb_desc, socket_id, txq->desc_ring);
 
@@ -352,6 +361,8 @@ static void
 mana_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	struct mana_txq *txq = dev->data->tx_queues[qid];
+
+	mana_mr_btree_free(&txq->mr_btree);
 
 	rte_free(txq->desc_ring);
 	rte_free(txq);
@@ -392,6 +403,13 @@ mana_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->desc_ring_head = 0;
 	rxq->desc_ring_tail = 0;
 
+	ret = mana_mr_btree_init(&rxq->mr_btree,
+				 MANA_MR_BTREE_PER_QUEUE_N, socket_id);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to init RXQ MR btree");
+		goto fail;
+	}
+
 	rxq->priv = priv;
 	rxq->num_desc = nb_desc;
 	rxq->mp = mp;
@@ -409,6 +427,8 @@ static void
 mana_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	struct mana_rxq *rxq = dev->data->rx_queues[qid];
+
+	mana_mr_btree_free(&rxq->mr_btree);
 
 	rte_free(rxq->desc_ring);
 	rte_free(rxq);
