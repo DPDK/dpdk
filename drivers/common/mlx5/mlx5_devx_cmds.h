@@ -191,6 +191,8 @@ struct mlx5_hca_attr {
 	uint32_t log_max_hairpin_queues:5;
 	uint32_t log_max_hairpin_wq_data_sz:5;
 	uint32_t log_max_hairpin_num_packets:5;
+	uint32_t hairpin_sq_wqe_bb_size:4;
+	uint32_t hairpin_sq_wq_in_host_mem:1;
 	uint32_t vhca_id:16;
 	uint32_t relaxed_ordering_write:1;
 	uint32_t relaxed_ordering_read:1;
@@ -407,6 +409,7 @@ struct mlx5_devx_create_sq_attr {
 	uint32_t non_wire:1;
 	uint32_t static_sq_wq:1;
 	uint32_t ts_format:2;
+	uint32_t hairpin_wq_buffer_type:3;
 	uint32_t user_index:24;
 	uint32_t cqn:24;
 	uint32_t packet_pacing_rate_limit_index:16;
