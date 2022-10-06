@@ -993,6 +993,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 							hairpin_sq_wqe_bb_size);
 		attr->hairpin_sq_wq_in_host_mem = MLX5_GET(cmd_hca_cap_2, hcattr,
 							   hairpin_sq_wq_in_host_mem);
+		attr->hairpin_data_buffer_locked = MLX5_GET(cmd_hca_cap_2, hcattr,
+							    hairpin_data_buffer_locked);
 	}
 	if (attr->log_min_stride_wqe_sz == 0)
 		attr->log_min_stride_wqe_sz = MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
@@ -1293,6 +1295,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
 	MLX5_SET(rqc, rq_ctx, state, rq_attr->state);
 	MLX5_SET(rqc, rq_ctx, flush_in_error_en, rq_attr->flush_in_error_en);
 	MLX5_SET(rqc, rq_ctx, hairpin, rq_attr->hairpin);
+	MLX5_SET(rqc, rq_ctx, hairpin_data_buffer_type, rq_attr->hairpin_data_buffer_type);
 	MLX5_SET(rqc, rq_ctx, user_index, rq_attr->user_index);
 	MLX5_SET(rqc, rq_ctx, cqn, rq_attr->cqn);
 	MLX5_SET(rqc, rq_ctx, counter_set_id, rq_attr->counter_set_id);
