@@ -562,7 +562,7 @@ extern uint16_t stats_period;
 extern struct rte_eth_xstat_name *xstats_display;
 extern unsigned int xstats_display_num;
 
-extern uint16_t hairpin_mode;
+extern uint32_t hairpin_mode;
 
 #ifdef RTE_LIB_LATENCYSTATS
 extern uint8_t latencystats_enabled;

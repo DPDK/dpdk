@@ -409,7 +409,7 @@ bool setup_on_probe_event = true;
 uint8_t clear_ptypes = true;
 
 /* Hairpin ports configuration mode. */
-uint16_t hairpin_mode;
+uint32_t hairpin_mode;
 
 /* Pretty printing of ethdev events */
 static const char * const eth_event_desc[] = {
@@ -2519,6 +2519,16 @@ port_is_started(portid_t port_id)
 	return 1;
 }
 
+#define HAIRPIN_MODE_RX_FORCE_MEMORY RTE_BIT32(8)
+#define HAIRPIN_MODE_TX_FORCE_MEMORY RTE_BIT32(9)
+
+#define HAIRPIN_MODE_RX_LOCKED_MEMORY RTE_BIT32(12)
+#define HAIRPIN_MODE_RX_RTE_MEMORY RTE_BIT32(13)
+
+#define HAIRPIN_MODE_TX_LOCKED_MEMORY RTE_BIT32(16)
+#define HAIRPIN_MODE_TX_RTE_MEMORY RTE_BIT32(17)
+
+
 /* Configure the Rx and Tx hairpin queues for the selected port. */
 static int
 setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi)
@@ -2534,6 +2544,12 @@ setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi)
 	uint16_t peer_tx_port = pi;
 	uint32_t manual = 1;
 	uint32_t tx_exp = hairpin_mode & 0x10;
+	uint32_t rx_force_memory = hairpin_mode & HAIRPIN_MODE_RX_FORCE_MEMORY;
+	uint32_t rx_locked_memory = hairpin_mode & HAIRPIN_MODE_RX_LOCKED_MEMORY;
+	uint32_t rx_rte_memory = hairpin_mode & HAIRPIN_MODE_RX_RTE_MEMORY;
+	uint32_t tx_force_memory = hairpin_mode & HAIRPIN_MODE_TX_FORCE_MEMORY;
+	uint32_t tx_locked_memory = hairpin_mode & HAIRPIN_MODE_TX_LOCKED_MEMORY;
+	uint32_t tx_rte_memory = hairpin_mode & HAIRPIN_MODE_TX_RTE_MEMORY;
 
 	if (!(hairpin_mode & 0xf)) {
 		peer_rx_port = pi;
@@ -2573,6 +2589,9 @@ setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi)
 		hairpin_conf.peers[0].queue = i + nb_rxq;
 		hairpin_conf.manual_bind = !!manual;
 		hairpin_conf.tx_explicit = !!tx_exp;
+		hairpin_conf.force_memory = !!tx_force_memory;
+		hairpin_conf.use_locked_device_memory = !!tx_locked_memory;
+		hairpin_conf.use_rte_memory = !!tx_rte_memory;
 		diag = rte_eth_tx_hairpin_queue_setup
 			(pi, qi, nb_txd, &hairpin_conf);
 		i++;
@@ -2596,6 +2615,9 @@ setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi)
 		hairpin_conf.peers[0].queue = i + nb_txq;
 		hairpin_conf.manual_bind = !!manual;
 		hairpin_conf.tx_explicit = !!tx_exp;
+		hairpin_conf.force_memory = !!rx_force_memory;
+		hairpin_conf.use_locked_device_memory = !!rx_locked_memory;
+		hairpin_conf.use_rte_memory = !!rx_rte_memory;
 		diag = rte_eth_rx_hairpin_queue_setup
 			(pi, qi, nb_rxd, &hairpin_conf);
 		i++;

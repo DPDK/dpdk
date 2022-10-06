@@ -529,10 +529,16 @@ The command line options are:
 
     Enable display of RX and TX burst stats.
 
-*   ``--hairpin-mode=0xXX``
+*   ``--hairpin-mode=0xXXXX``
 
-    Set the hairpin port mode with bitmask, only valid when hairpin queues number is set::
+    Set the hairpin port configuration with bitmask, only valid when hairpin queues number is set::
 
+	bit 18 - hairpin TX queues will use RTE memory
+	bit 16 - hairpin TX queues will use locked device memory
+	bit 13 - hairpin RX queues will use RTE memory
+	bit 12 - hairpin RX queues will use locked device memory
+	bit 9 - force memory settings of hairpin TX queue
+	bit 8 - force memory settings of hairpin RX queue
 	bit 4 - explicit Tx flow rule
 	bit 1 - two hairpin ports paired
 	bit 0 - two hairpin ports loop
