@@ -9,7 +9,8 @@ endif
 
 sources = files('rte_eth_af_xdp.c')
 
-xdp_dep = dependency('libxdp', version : '>=1.2.2', required: false, method: 'pkg-config')
+libxdp_ver = '>=1.2.2'
+xdp_dep = dependency('libxdp', version : libxdp_ver, required: false, method: 'pkg-config')
 bpf_dep = dependency('libbpf', required: false, method: 'pkg-config')
 if not bpf_dep.found()
     bpf_dep = cc.find_library('bpf', required: false)
@@ -45,11 +46,11 @@ if cc.has_header('linux/if_xdp.h')
             endif
         else
             build = false
-            reason = 'missing dependency, "libxdp" or "libbpf <= v0.6.0"'
+            reason = 'missing dependency, "libxdp ' + libxdp_ver + '" or "libbpf <= v0.6.0"'
         endif
     else
         build = false
-        reason = 'missing dependency, "libxdp" and "libbpf"'
+        reason = 'missing dependency, "libxdp ' + libxdp_ver + '" and "libbpf"'
     endif
 else
     build = false
