@@ -1185,18 +1185,23 @@ static int
 mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq_data, struct mlx5_txq_ctrl, txq);
-	struct mlx5_devx_create_sq_attr attr = { 0 };
+	struct mlx5_devx_create_sq_attr dev_mem_attr = { 0 };
+	struct mlx5_devx_create_sq_attr host_mem_attr = { 0 };
 	struct mlx5_txq_obj *tmpl = txq_ctrl->obj;
+	void *umem_buf = NULL;
+	void *umem_obj = NULL;
 	uint32_t max_wq_data;
 
 	MLX5_ASSERT(txq_data);
 	MLX5_ASSERT(tmpl);
 	tmpl->txq_ctrl = txq_ctrl;
-	attr.hairpin = 1;
-	attr.tis_lst_sz = 1;
+	dev_mem_attr.hairpin = 1;
+	dev_mem_attr.tis_lst_sz = 1;
+	dev_mem_attr.tis_num = mlx5_get_txq_tis_num(dev, idx);
 	max_wq_data =
 		priv->sh->cdev->config.hca_attr.log_max_hairpin_wq_data_sz;
 	/* Jumbo frames > 9KB should be supported, and more packets. */
@@ -1208,19 +1213,103 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 			rte_errno = ERANGE;
 			return -rte_errno;
 		}
-		attr.wq_attr.log_hairpin_data_sz = priv->config.log_hp_size;
+		dev_mem_attr.wq_attr.log_hairpin_data_sz = priv->config.log_hp_size;
 	} else {
-		attr.wq_attr.log_hairpin_data_sz =
+		dev_mem_attr.wq_attr.log_hairpin_data_sz =
 				(max_wq_data < MLX5_HAIRPIN_JUMBO_LOG_SIZE) ?
 				 max_wq_data : MLX5_HAIRPIN_JUMBO_LOG_SIZE;
 	}
 	/* Set the packets number to the maximum value for performance. */
-	attr.wq_attr.log_hairpin_num_packets =
-			attr.wq_attr.log_hairpin_data_sz -
+	dev_mem_attr.wq_attr.log_hairpin_num_packets =
+			dev_mem_attr.wq_attr.log_hairpin_data_sz -
 			MLX5_HAIRPIN_QUEUE_STRIDE;
+	dev_mem_attr.hairpin_wq_buffer_type = MLX5_SQC_HAIRPIN_WQ_BUFFER_TYPE_INTERNAL_BUFFER;
+	if (txq_ctrl->hairpin_conf.use_rte_memory) {
+		uint32_t umem_size;
+		uint32_t umem_dbrec;
+		size_t alignment = MLX5_WQE_BUF_ALIGNMENT;
 
-	attr.tis_num = mlx5_get_txq_tis_num(dev, idx);
-	tmpl->sq = mlx5_devx_cmd_create_sq(priv->sh->cdev->ctx, &attr);
+		if (alignment == (size_t)-1) {
+			DRV_LOG(ERR, "Failed to get WQE buf alignment.");
+			rte_errno = ENOMEM;
+			return -rte_errno;
+		}
+		/*
+		 * It is assumed that configuration is verified against capabilities
+		 * during queue setup.
+		 */
+		MLX5_ASSERT(hca_attr->hairpin_sq_wq_in_host_mem);
+		MLX5_ASSERT(hca_attr->hairpin_sq_wqe_bb_size > 0);
+		rte_memcpy(&host_mem_attr, &dev_mem_attr, sizeof(host_mem_attr));
+		umem_size = MLX5_WQE_SIZE *
+			RTE_BIT32(host_mem_attr.wq_attr.log_hairpin_num_packets);
+		umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
+		umem_size += MLX5_DBR_SIZE;
+		umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+				       alignment, priv->sh->numa_node);
+		if (umem_buf == NULL && txq_ctrl->hairpin_conf.force_memory) {
+			DRV_LOG(ERR, "Failed to allocate memory for hairpin TX queue");
+			rte_errno = ENOMEM;
+			return -rte_errno;
+		} else if (umem_buf == NULL && !txq_ctrl->hairpin_conf.force_memory) {
+			DRV_LOG(WARNING, "Failed to allocate memory for hairpin TX queue."
+					 " Falling back to TX queue located on the device.");
+			goto create_sq_on_device;
+		}
+		umem_obj = mlx5_os_umem_reg(priv->sh->cdev->ctx,
+					    (void *)(uintptr_t)umem_buf,
+					    umem_size,
+					    IBV_ACCESS_LOCAL_WRITE);
+		if (umem_obj == NULL && txq_ctrl->hairpin_conf.force_memory) {
+			DRV_LOG(ERR, "Failed to register UMEM for hairpin TX queue");
+			mlx5_free(umem_buf);
+			return -rte_errno;
+		} else if (umem_obj == NULL && !txq_ctrl->hairpin_conf.force_memory) {
+			DRV_LOG(WARNING, "Failed to register UMEM for hairpin TX queue."
+					 " Falling back to TX queue located on the device.");
+			rte_errno = 0;
+			mlx5_free(umem_buf);
+			goto create_sq_on_device;
+		}
+		host_mem_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
+		host_mem_attr.wq_attr.wq_umem_valid = 1;
+		host_mem_attr.wq_attr.wq_umem_id = mlx5_os_get_umem_id(umem_obj);
+		host_mem_attr.wq_attr.wq_umem_offset = 0;
+		host_mem_attr.wq_attr.dbr_umem_valid = 1;
+		host_mem_attr.wq_attr.dbr_umem_id = host_mem_attr.wq_attr.wq_umem_id;
+		host_mem_attr.wq_attr.dbr_addr = umem_dbrec;
+		host_mem_attr.wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
+		host_mem_attr.wq_attr.log_wq_sz =
+				host_mem_attr.wq_attr.log_hairpin_num_packets *
+				hca_attr->hairpin_sq_wqe_bb_size;
+		host_mem_attr.wq_attr.log_wq_pg_sz = MLX5_LOG_PAGE_SIZE;
+		host_mem_attr.hairpin_wq_buffer_type = MLX5_SQC_HAIRPIN_WQ_BUFFER_TYPE_HOST_MEMORY;
+		tmpl->sq = mlx5_devx_cmd_create_sq(priv->sh->cdev->ctx, &host_mem_attr);
+		if (!tmpl->sq && txq_ctrl->hairpin_conf.force_memory) {
+			DRV_LOG(ERR,
+				"Port %u tx hairpin queue %u can't create SQ object.",
+				dev->data->port_id, idx);
+			claim_zero(mlx5_os_umem_dereg(umem_obj));
+			mlx5_free(umem_buf);
+			return -rte_errno;
+		} else if (!tmpl->sq && !txq_ctrl->hairpin_conf.force_memory) {
+			DRV_LOG(WARNING,
+				"Port %u tx hairpin queue %u failed to allocate SQ object"
+				" using host memory. Falling back to TX queue located"
+				" on the device",
+				dev->data->port_id, idx);
+			rte_errno = 0;
+			claim_zero(mlx5_os_umem_dereg(umem_obj));
+			mlx5_free(umem_buf);
+			goto create_sq_on_device;
+		}
+		tmpl->umem_buf_wq_buffer = umem_buf;
+		tmpl->umem_obj_wq_buffer = umem_obj;
+		return 0;
+	}
+
+create_sq_on_device:
+	tmpl->sq = mlx5_devx_cmd_create_sq(priv->sh->cdev->ctx, &dev_mem_attr);
 	if (!tmpl->sq) {
 		DRV_LOG(ERR,
 			"Port %u tx hairpin queue %u can't create SQ object.",
@@ -1452,8 +1541,20 @@ mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 {
 	MLX5_ASSERT(txq_obj);
 	if (txq_obj->txq_ctrl->is_hairpin) {
+		if (txq_obj->sq) {
+			claim_zero(mlx5_devx_cmd_destroy(txq_obj->sq));
+			txq_obj->sq = NULL;
+		}
 		if (txq_obj->tis)
 			claim_zero(mlx5_devx_cmd_destroy(txq_obj->tis));
+		if (txq_obj->umem_obj_wq_buffer) {
+			claim_zero(mlx5_os_umem_dereg(txq_obj->umem_obj_wq_buffer));
+			txq_obj->umem_obj_wq_buffer = NULL;
+		}
+		if (txq_obj->umem_buf_wq_buffer) {
+			mlx5_free(txq_obj->umem_buf_wq_buffer);
+			txq_obj->umem_buf_wq_buffer = NULL;
+		}
 #if defined(HAVE_MLX5DV_DEVX_UAR_OFFSET) || !defined(HAVE_INFINIBAND_VERBS_H)
 	} else {
 		mlx5_txq_release_devx_resources(txq_obj);
