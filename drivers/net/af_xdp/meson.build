@@ -22,11 +22,6 @@ if cc.has_header('linux/if_xdp.h')
         ext_deps += xdp_dep
         if bpf_dep.found() and cc.has_header('bpf/bpf.h')
             ext_deps += bpf_dep
-            bpf_ver_dep = dependency('libbpf', version : '>=0.7.0',
-                                 required: false, method: 'pkg-config')
-            if bpf_ver_dep.found()
-                cflags += ['-DRTE_NET_AF_XDP_LIBBPF_OBJ_OPEN']
-            endif
         else
             build = false
             reason = 'missing dependency, libbpf'
@@ -63,5 +58,10 @@ if build
   if cc.has_function('xsk_socket__create_shared', prefix : xsk_check_prefix,
                      dependencies : ext_deps)
       cflags += ['-DRTE_NET_AF_XDP_SHARED_UMEM']
+  endif
+  if cc.has_function('bpf_object__next_program',
+                     prefix : '#include <bpf/libbpf.h>',
+                     dependencies : bpf_dep)
+      cflags += ['-DRTE_NET_AF_XDP_LIBBPF_OBJ_OPEN']
   endif
 endif
