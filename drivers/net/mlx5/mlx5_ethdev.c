@@ -740,6 +740,8 @@ mlx5_hairpin_cap_get(struct rte_eth_dev *dev, struct rte_eth_hairpin_cap *cap)
 	cap->max_tx_2_rx = 1;
 	cap->max_nb_desc = 8192;
 	hca_attr = &priv->sh->cdev->config.hca_attr;
+	cap->rx_cap.locked_device_memory = hca_attr->hairpin_data_buffer_locked;
+	cap->rx_cap.rte_memory = 0;
 	cap->tx_cap.locked_device_memory = 0;
 	cap->tx_cap.rte_memory = hca_attr->hairpin_sq_wq_in_host_mem;
 	return 0;

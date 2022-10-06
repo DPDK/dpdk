@@ -1517,6 +1517,20 @@ which is shared with other resources (e.g. flow rules).
 Starting with DPDK 22.11 and NVIDIA MLNX_OFED 5.8,
 applications are allowed to:
 
+#. Place data buffers and Rx packet descriptors in dedicated device memory.
+   Application can request that configuration
+   through ``use_locked_device_memory`` configuration option.
+
+   Placing data buffers and Rx packet descriptors in dedicated device memory
+   can decrease latency on hairpinned traffic,
+   since traffic processing for the hairpin queue will not be memory starved.
+
+   However, reserving device memory for hairpin Rx queues
+   may decrease throughput under heavy load,
+   since less resources will be available on device.
+
+   This option is supported only for Rx hairpin queues.
+
 #. Place Tx packet descriptors in host memory.
    Application can request that configuration
    through ``use_rte_memory`` configuration option.

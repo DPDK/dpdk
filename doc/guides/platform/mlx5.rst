@@ -555,6 +555,11 @@ Below are some firmware configurations listed.
 
    REAL_TIME_CLOCK_ENABLE=1
 
+- allow locking hairpin RQ data buffer in device memory::
+
+   HAIRPIN_DATA_BUFFER_LOCK=1
+   MEMIC_SIZE_LIMIT=0
+
 
 .. _mlx5_common_driver_options:
 

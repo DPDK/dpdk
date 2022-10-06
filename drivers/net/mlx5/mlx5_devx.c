@@ -468,14 +468,16 @@ mlx5_rxq_obj_hairpin_new(struct mlx5_rxq_priv *rxq)
 {
 	uint16_t idx = rxq->idx;
 	struct mlx5_priv *priv = rxq->priv;
+	struct mlx5_hca_attr *hca_attr __rte_unused = &priv->sh->cdev->config.hca_attr;
 	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->ctrl;
-	struct mlx5_devx_create_rq_attr attr = { 0 };
+	struct mlx5_devx_create_rq_attr unlocked_attr = { 0 };
+	struct mlx5_devx_create_rq_attr locked_attr = { 0 };
 	struct mlx5_rxq_obj *tmpl = rxq_ctrl->obj;
 	uint32_t max_wq_data;
 
 	MLX5_ASSERT(rxq != NULL && rxq->ctrl != NULL && tmpl != NULL);
 	tmpl->rxq_ctrl = rxq_ctrl;
-	attr.hairpin = 1;
+	unlocked_attr.hairpin = 1;
 	max_wq_data =
 		priv->sh->cdev->config.hca_attr.log_max_hairpin_wq_data_sz;
 	/* Jumbo frames > 9KB should be supported, and more packets. */
@@ -487,20 +489,50 @@ mlx5_rxq_obj_hairpin_new(struct mlx5_rxq_priv *rxq)
 			rte_errno = ERANGE;
 			return -rte_errno;
 		}
-		attr.wq_attr.log_hairpin_data_sz = priv->config.log_hp_size;
+		unlocked_attr.wq_attr.log_hairpin_data_sz = priv->config.log_hp_size;
 	} else {
-		attr.wq_attr.log_hairpin_data_sz =
+		unlocked_attr.wq_attr.log_hairpin_data_sz =
 				(max_wq_data < MLX5_HAIRPIN_JUMBO_LOG_SIZE) ?
 				 max_wq_data : MLX5_HAIRPIN_JUMBO_LOG_SIZE;
 	}
 	/* Set the packets number to the maximum value for performance. */
-	attr.wq_attr.log_hairpin_num_packets =
-			attr.wq_attr.log_hairpin_data_sz -
+	unlocked_attr.wq_attr.log_hairpin_num_packets =
+			unlocked_attr.wq_attr.log_hairpin_data_sz -
 			MLX5_HAIRPIN_QUEUE_STRIDE;
-	attr.counter_set_id = priv->counter_set_id;
+	unlocked_attr.counter_set_id = priv->counter_set_id;
 	rxq_ctrl->rxq.delay_drop = priv->config.hp_delay_drop;
-	attr.delay_drop_en = priv->config.hp_delay_drop;
-	tmpl->rq = mlx5_devx_cmd_create_rq(priv->sh->cdev->ctx, &attr,
+	unlocked_attr.delay_drop_en = priv->config.hp_delay_drop;
+	unlocked_attr.hairpin_data_buffer_type =
+			MLX5_RQC_HAIRPIN_DATA_BUFFER_TYPE_UNLOCKED_INTERNAL_BUFFER;
+	if (rxq->hairpin_conf.use_locked_device_memory) {
+		/*
+		 * It is assumed that configuration is verified against capabilities
+		 * during queue setup.
+		 */
+		MLX5_ASSERT(hca_attr->hairpin_data_buffer_locked);
+		rte_memcpy(&locked_attr, &unlocked_attr, sizeof(locked_attr));
+		locked_attr.hairpin_data_buffer_type =
+				MLX5_RQC_HAIRPIN_DATA_BUFFER_TYPE_LOCKED_INTERNAL_BUFFER;
+		tmpl->rq = mlx5_devx_cmd_create_rq(priv->sh->cdev->ctx, &locked_attr,
+						   rxq_ctrl->socket);
+		if (!tmpl->rq && rxq->hairpin_conf.force_memory) {
+			DRV_LOG(ERR, "Port %u Rx hairpin queue %u can't create RQ object"
+				     " with locked memory buffer",
+				     priv->dev_data->port_id, idx);
+			return -rte_errno;
+		} else if (!tmpl->rq && !rxq->hairpin_conf.force_memory) {
+			DRV_LOG(WARNING, "Port %u Rx hairpin queue %u can't create RQ object"
+					 " with locked memory buffer. Falling back to unlocked"
+					 " device memory.",
+					 priv->dev_data->port_id, idx);
+			rte_errno = 0;
+			goto create_rq_unlocked;
+		}
+		goto create_rq_set_state;
+	}
+
+create_rq_unlocked:
+	tmpl->rq = mlx5_devx_cmd_create_rq(priv->sh->cdev->ctx, &unlocked_attr,
 					   rxq_ctrl->socket);
 	if (!tmpl->rq) {
 		DRV_LOG(ERR,
@@ -509,6 +541,7 @@ mlx5_rxq_obj_hairpin_new(struct mlx5_rxq_priv *rxq)
 		rte_errno = errno;
 		return -rte_errno;
 	}
+create_rq_set_state:
 	priv->dev_data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_HAIRPIN;
 	return 0;
 }
