@@ -17,10 +17,10 @@ endif
 
 if cc.has_header('linux/if_xdp.h')
     if xdp_dep.found() and cc.has_header('xdp/xsk.h')
+        cflags += ['-DRTE_NET_AF_XDP_LIBXDP']
+        cflags += ['-DRTE_NET_AF_XDP_SHARED_UMEM']
+        ext_deps += xdp_dep
         if bpf_dep.found() and cc.has_header('bpf/bpf.h')
-            cflags += ['-DRTE_NET_AF_XDP_LIBXDP']
-            cflags += ['-DRTE_NET_AF_XDP_SHARED_UMEM']
-            ext_deps += xdp_dep
             ext_deps += bpf_dep
             bpf_ver_dep = dependency('libbpf', version : '>=0.7.0',
                                  required: false, method: 'pkg-config')
