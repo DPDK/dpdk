@@ -77,6 +77,17 @@ New Features
   The information demonstrates I/O process which is important for debug.
   The dump format is vendor-specific.
 
+* **Added ethdev hairpin memory configuration options.**
+
+  Added new configuration flags for hairpin queues in ``rte_eth_hairpin_conf``:
+
+  * ``use_locked_device_memory``
+  * ``use_rte_memory``
+  * ``force_memory``
+
+  Each flag has a corresponding capability flag
+  in ``struct rte_eth_hairpin_queue_cap``.
+
 * **Added configuration for asynchronous flow connection tracking.**
 
   Added connection tracking action number hint to ``rte_flow_configure``

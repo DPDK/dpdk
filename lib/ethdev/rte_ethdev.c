@@ -1968,6 +1968,28 @@ rte_eth_rx_hairpin_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 			conf->peer_count, cap.max_rx_2_tx);
 		return -EINVAL;
 	}
+	if (conf->use_locked_device_memory && !cap.rx_cap.locked_device_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to use locked device memory for Rx queue, which is not supported");
+		return -EINVAL;
+	}
+	if (conf->use_rte_memory && !cap.rx_cap.rte_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to use DPDK memory for Rx queue, which is not supported");
+		return -EINVAL;
+	}
+	if (conf->use_locked_device_memory && conf->use_rte_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to use mutually exclusive memory settings for Rx queue");
+		return -EINVAL;
+	}
+	if (conf->force_memory &&
+	    !conf->use_locked_device_memory &&
+	    !conf->use_rte_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to force Rx queue memory settings, but none is set");
+		return -EINVAL;
+	}
 	if (conf->peer_count == 0) {
 		RTE_ETHDEV_LOG(ERR,
 			"Invalid value for number of peers for Rx queue(=%u), should be: > 0",
@@ -2133,6 +2155,28 @@ rte_eth_tx_hairpin_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		RTE_ETHDEV_LOG(ERR,
 			"Invalid value for number of peers for Tx queue(=%u), should be: <= %hu",
 			conf->peer_count, cap.max_tx_2_rx);
+		return -EINVAL;
+	}
+	if (conf->use_locked_device_memory && !cap.tx_cap.locked_device_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to use locked device memory for Tx queue, which is not supported");
+		return -EINVAL;
+	}
+	if (conf->use_rte_memory && !cap.tx_cap.rte_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to use DPDK memory for Tx queue, which is not supported");
+		return -EINVAL;
+	}
+	if (conf->use_locked_device_memory && conf->use_rte_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to use mutually exclusive memory settings for Tx queue");
+		return -EINVAL;
+	}
+	if (conf->force_memory &&
+	    !conf->use_locked_device_memory &&
+	    !conf->use_rte_memory) {
+		RTE_ETHDEV_LOG(ERR,
+			"Attempt to force Tx queue memory settings, but none is set");
 		return -EINVAL;
 	}
 	if (conf->peer_count == 0) {
