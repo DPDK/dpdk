@@ -55,3 +55,11 @@ else
     build = false
     reason = 'missing header, "linux/if_xdp.h"'
 endif
+
+if build
+  if cc.has_function('bpf_xdp_attach',
+                     prefix : '#include <bpf/libbpf.h>',
+                     dependencies : bpf_dep)
+      cflags += ['-DRTE_NET_AF_XDP_LIBBPF_XDP_ATTACH']
+  endif
+endif
