@@ -97,6 +97,12 @@ where,
 *   -P: Sets all ports to promiscuous mode so that packets are accepted regardless of the packet's Ethernet MAC destination address.
     Without this option, only packets with the Ethernet MAC destination address set to the Ethernet address of the port are accepted.
 
+*   -u: optional, sets uncore min/max frequency to minimum value.
+
+*   -U: optional, sets uncore min/max frequency to maximum value.
+
+*   -i (frequency index): optional, sets uncore frequency to frequency index value, by setting min and max values to be the same.
+
 *   --config (port,queue,lcore)[,(port,queue,lcore)]: determines which queues from which ports are mapped to which cores.
 
 *   --max-pkt-len: optional, maximum packet length in decimal (64-9600)
@@ -364,3 +370,29 @@ in the DPDK Programmer's Guide for more details on PMD power management.
 .. code-block:: console
 
         ./<build_dir>/examples/dpdk-l3fwd-power -l 1-3 -- -p 0x0f --config="(0,0,2),(0,1,3)" --pmd-mgmt=scale
+
+Setting Uncore Values
+---------------------
+
+Uncore frequency can be adjusted through manipulating related sysfs entries
+to adjust the minimum and maximum uncore values.
+This will be set for each package and die on the SKU.
+The driver for enabling this is available from kernel version 5.6 and above.
+Three options are available for setting uncore frequency:
+
+``-u``
+  This will set uncore minimum and maximum frequencies to minimum possible value.
+
+``-U``
+  This will set uncore minimum and maximum frequencies to maximum possible value.
+
+``-i``
+  This will allow you to set the specific uncore frequency index that you want,
+  by setting the uncore frequency to a frequency pointed by index.
+  Frequency index's are set 100MHz apart from maximum to minimum.
+  Frequency index values are in descending order,
+  i.e., index 0 is maximum frequency index.
+
+.. code-block:: console
+
+   dpdk-l3fwd-power -l 1-3 -- -p 0x0f --config="(0,0,2),(0,1,3)" -i 1

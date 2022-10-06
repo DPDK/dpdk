@@ -47,6 +47,7 @@
 #include <rte_metrics.h>
 #include <rte_telemetry.h>
 #include <rte_power_pmd_mgmt.h>
+#include <rte_power_intel_uncore.h>
 
 #include "perf_core.h"
 #include "main.h"
@@ -161,6 +162,9 @@ static struct rte_timer telemetry_timer;
 /* stats index returned by metrics lib */
 int telstats_index;
 
+/* flag to check if uncore option enabled */
+int enabled_uncore = -1;
+
 struct telstats_name {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 };
@@ -177,6 +181,12 @@ enum busy_rate {
 	ZERO = 0,
 	PARTIAL = 50,
 	FULL = 100
+};
+
+enum uncore_choice {
+	UNCORE_MIN = 0,
+	UNCORE_MAX = 1,
+	UNCORE_IDX = 2
 };
 
 /* reference poll count to measure core busyness */
@@ -1615,6 +1625,9 @@ print_usage(const char *prgname)
 		"  [--max-pkt-len PKTLEN]\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -P: enable promiscuous mode\n"
+		"  -u: set min/max frequency for uncore to minimum value\n"
+		"  -U: set min/max frequency for uncore to maximum value\n"
+		"  -i (frequency index): set min/max frequency for uncore to specified frequency index\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
 		"  --high-perf-cores CORELIST: list of high performance cores\n"
 		"  --perf-config: similar as config, cores specified as indices"
@@ -1669,6 +1682,74 @@ static int parse_max_pkt_len(const char *pktlen)
 		return -1;
 
 	return len;
+}
+
+static int
+parse_uncore_options(enum uncore_choice choice, const char *argument)
+{
+	unsigned int die, pkg, max_pkg, max_die;
+	int ret = 0;
+	max_pkg = rte_power_uncore_get_num_pkgs();
+	if (max_pkg == 0)
+		return -1;
+
+	for (pkg = 0; pkg < max_pkg; pkg++) {
+		max_die = rte_power_uncore_get_num_dies(pkg);
+		if (max_die == 0)
+			return -1;
+		for (die = 0; die < max_die; die++) {
+			ret = rte_power_uncore_init(pkg, die);
+			if (ret == -1) {
+				RTE_LOG(INFO, L3FWD_POWER, "Unable to initialize uncore for pkg %02u die %02u\n"
+				, pkg, die);
+				return ret;
+			}
+			if (choice == UNCORE_MIN) {
+				ret = rte_power_uncore_freq_min(pkg, die);
+				if (ret == -1) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Unable to set the uncore min/max to minimum uncore frequency value for pkg %02u die %02u\n"
+					, pkg, die);
+					return ret;
+				}
+			} else if (choice == UNCORE_MAX) {
+				ret = rte_power_uncore_freq_max(pkg, die);
+				if (ret == -1) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Unable to set uncore min/max to maximum uncore frequency value for pkg %02u die %02u\n"
+					, pkg, die);
+					return ret;
+				}
+			} else if (choice == UNCORE_IDX) {
+				char *ptr = NULL;
+				int frequency_index = strtol(argument, &ptr, 10);
+				if (argument == ptr) {
+					RTE_LOG(INFO, L3FWD_POWER, "Index given is not a valid number.");
+					return -1;
+				}
+				int freq_array_len = rte_power_uncore_get_num_freqs(pkg, die);
+				if (frequency_index > freq_array_len - 1) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Frequency index given out of range, please choose a value from 0 to %d.\n",
+					freq_array_len);
+					return -1;
+				}
+				ret = rte_power_set_uncore_freq(pkg, die, frequency_index);
+				if (ret == -1) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Unable to set min/max uncore index value for pkg %02u die %02u\n",
+					pkg, die);
+					return ret;
+				}
+			} else {
+				RTE_LOG(INFO, L3FWD_POWER, "Uncore choice provided invalid\n");
+				return -1;
+			}
+		}
+	}
+
+	RTE_LOG(INFO, L3FWD_POWER, "Successfully set max/min/index uncore frequency.\n");
+	return ret;
 }
 
 static int
@@ -1863,7 +1944,7 @@ parse_args(int argc, char **argv)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "p:l:m:h:P",
+	while ((opt = getopt_long(argc, argvopt, "p:l:m:h:PuUi:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1891,6 +1972,27 @@ parse_args(int argc, char **argv)
 		case 'h':
 			limit = parse_max_pkt_len(optarg);
 			freq_tlb[HGH] = limit;
+			break;
+		case 'u':
+			enabled_uncore = parse_uncore_options(UNCORE_MIN, NULL);
+			if (enabled_uncore < 0) {
+				print_usage(prgname);
+				return -1;
+			}
+			break;
+		case 'U':
+			enabled_uncore = parse_uncore_options(UNCORE_MAX, NULL);
+			if (enabled_uncore < 0) {
+				print_usage(prgname);
+				return -1;
+			}
+			break;
+		case 'i':
+			enabled_uncore = parse_uncore_options(UNCORE_IDX, optarg);
+			if (enabled_uncore < 0) {
+				print_usage(prgname);
+				return -1;
+			}
 			break;
 		/* long options */
 		case 0:
@@ -2363,7 +2465,7 @@ init_power_library(void)
 static int
 deinit_power_library(void)
 {
-	unsigned int lcore_id;
+	unsigned int lcore_id, max_pkg, max_die, die, pkg;
 	int ret = 0;
 
 	RTE_LCORE_FOREACH(lcore_id) {
@@ -2374,6 +2476,26 @@ deinit_power_library(void)
 				"Library deinitialization failed on core %u\n",
 				lcore_id);
 			return ret;
+		}
+	}
+
+	/* if uncore option was set */
+	if (enabled_uncore == 0) {
+		max_pkg = rte_power_uncore_get_num_pkgs();
+		if (max_pkg == 0)
+			return -1;
+		for (pkg = 0; pkg < max_pkg; pkg++) {
+			max_die = rte_power_uncore_get_num_dies(pkg);
+			if (max_die == 0)
+				return -1;
+			for (die = 0; die < max_die; die++) {
+				ret = rte_power_uncore_exit(pkg, die);
+				if (ret < 0) {
+					RTE_LOG(ERR, L3FWD_POWER, "Failed to exit uncore deinit successfully for pkg %02u die %02u\n"
+						, pkg, die);
+					return -1;
+				}
+			}
 		}
 	}
 	return ret;
