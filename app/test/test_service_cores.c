@@ -22,6 +22,7 @@ static uint64_t service_tick;
 static uint32_t service_remote_launch_flag;
 
 #define SERVICE_DELAY 1
+#define TIMEOUT_MS 1000
 
 #define DUMMY_SERVICE_NAME "dummy_service"
 #define MT_SAFE_SERVICE_NAME "mt_safe_service"
@@ -119,15 +120,15 @@ unregister_all(void)
 	return TEST_SUCCESS;
 }
 
-/* Wait until service lcore not active, or for 100x SERVICE_DELAY */
+/* Wait until service lcore not active, or for TIMEOUT_MS */
 static void
 wait_slcore_inactive(uint32_t slcore_id)
 {
 	int i;
 
 	for (i = 0; rte_service_lcore_may_be_active(slcore_id) == 1 &&
-			i < 100; i++)
-		rte_delay_ms(SERVICE_DELAY);
+			i < TIMEOUT_MS; i++)
+		rte_delay_ms(1);
 }
 
 /* register a single dummy service */
@@ -903,12 +904,25 @@ service_lcore_start_stop(void)
 	return unregister_all();
 }
 
+static int
+service_ensure_stopped_with_timeout(uint32_t sid)
+{
+	/* give the service time to stop running */
+	int i;
+	for (i = 0; i < TIMEOUT_MS; i++) {
+		if (!rte_service_may_be_active(sid))
+			break;
+		rte_delay_ms(1);
+	}
+
+	return rte_service_may_be_active(sid);
+}
+
 /* stop a service and wait for it to become inactive */
 static int
 service_may_be_active(void)
 {
 	const uint32_t sid = 0;
-	int i;
 
 	/* expected failure cases */
 	TEST_ASSERT_EQUAL(-EINVAL, rte_service_may_be_active(10000),
@@ -928,19 +942,11 @@ service_may_be_active(void)
 	TEST_ASSERT_EQUAL(1, service_lcore_running_check(),
 			"Service core expected to poll service but it didn't");
 
-	/* stop the service */
+	/* stop the service, and wait for not-active with timeout */
 	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
 			"Error: Service stop returned non-zero");
-
-	/* give the service 100ms to stop running */
-	for (i = 0; i < 100; i++) {
-		if (!rte_service_may_be_active(sid))
-			break;
-		rte_delay_ms(SERVICE_DELAY);
-	}
-
-	TEST_ASSERT_EQUAL(0, rte_service_may_be_active(sid),
-			  "Error: Service not stopped after 100ms");
+	TEST_ASSERT_EQUAL(0, service_ensure_stopped_with_timeout(sid),
+			  "Error: Service not stopped after timeout period.");
 
 	return unregister_all();
 }
@@ -954,7 +960,6 @@ service_active_two_cores(void)
 		return TEST_SKIPPED;
 
 	const uint32_t sid = 0;
-	int i;
 
 	uint32_t lcore = rte_get_next_lcore(/* start core */ -1,
 					    /* skip main */ 1,
@@ -984,16 +989,8 @@ service_active_two_cores(void)
 	/* stop the service */
 	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
 			"Error: Service stop returned non-zero");
-
-	/* give the service 100ms to stop running */
-	for (i = 0; i < 100; i++) {
-		if (!rte_service_may_be_active(sid))
-			break;
-		rte_delay_ms(SERVICE_DELAY);
-	}
-
-	TEST_ASSERT_EQUAL(0, rte_service_may_be_active(sid),
-			  "Error: Service not stopped after 100ms");
+	TEST_ASSERT_EQUAL(0, service_ensure_stopped_with_timeout(sid),
+			  "Error: Service not stopped after timeout period.");
 
 	return unregister_all();
 }
