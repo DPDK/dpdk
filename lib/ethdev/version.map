@@ -287,6 +287,8 @@ EXPERIMENTAL {
 	rte_mtr_meter_vlan_table_update;
 
 	# added in 22.11
+	rte_eth_rx_descriptor_dump;
+	rte_eth_tx_descriptor_dump;
 	rte_flow_async_action_handle_query;
 	rte_mtr_meter_policy_get;
 	rte_mtr_meter_profile_get;

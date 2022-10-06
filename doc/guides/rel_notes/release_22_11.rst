@@ -63,6 +63,14 @@ New Features
   In theory this implementation should work with any target based on
   ``LoongArch`` ISA.
 
+* **Added ethdev Rx/Tx descriptor dump API.**
+
+  Added the ethdev Rx/Tx descriptor dump API which provides functions
+  for querying descriptor from device.
+  The descriptor information differs in different NICs.
+  The information demonstrates I/O process which is important for debug.
+  The dump format is vendor-specific.
+
 * **Added configuration for asynchronous flow connection tracking.**
 
   Added connection tracking action number hint to ``rte_flow_configure``

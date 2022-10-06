@@ -1095,6 +1095,54 @@ typedef int (*eth_rx_queue_avail_thresh_query_t)(struct rte_eth_dev *dev,
 					uint8_t *avail_thresh);
 
 /**
+ * @internal
+ * Dump Rx descriptor info to a file.
+ *
+ * It is used for debugging, not a dataplane API.
+ *
+ * @param dev
+ *   Port (ethdev) handle.
+ * @param queue_id
+ *   A Rx queue identifier on this port.
+ * @param offset
+ *   The offset of the descriptor starting from tail. (0 is the next
+ *   packet to be received by the driver).
+ * @param num
+ *   The number of the descriptors to dump.
+ * @param file
+ *   A pointer to a file for output.
+ * @return
+ *   Negative errno value on error, zero on success.
+ */
+typedef int (*eth_rx_descriptor_dump_t)(const struct rte_eth_dev *dev,
+					uint16_t queue_id, uint16_t offset,
+					uint16_t num, FILE *file);
+
+/**
+ * @internal
+ * Dump Tx descriptor info to a file.
+ *
+ * This API is used for debugging, not a dataplane API.
+ *
+ * @param dev
+ *   Port (ethdev) handle.
+ * @param queue_id
+ *   A Tx queue identifier on this port.
+ * @param offset
+ *   The offset of the descriptor starting from tail. (0 is the place where
+ *   the next packet will be send).
+ * @param num
+ *   The number of the descriptors to dump.
+ * @param file
+ *   A pointer to a file for output.
+ * @return
+ *   Negative errno value on error, zero on success.
+ */
+typedef int (*eth_tx_descriptor_dump_t)(const struct rte_eth_dev *dev,
+					uint16_t queue_id, uint16_t offset,
+					uint16_t num, FILE *file);
+
+/**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
@@ -1309,6 +1357,11 @@ struct eth_dev_ops {
 	eth_rx_queue_avail_thresh_set_t rx_queue_avail_thresh_set;
 	/** Query Rx queue available descriptors threshold event */
 	eth_rx_queue_avail_thresh_query_t rx_queue_avail_thresh_query;
+
+	/** Dump Rx descriptor info */
+	eth_rx_descriptor_dump_t eth_rx_descriptor_dump;
+	/** Dump Tx descriptor info */
+	eth_tx_descriptor_dump_t eth_tx_descriptor_dump;
 };
 
 /**

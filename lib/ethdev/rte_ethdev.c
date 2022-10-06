@@ -6052,6 +6052,58 @@ rte_eth_dev_priv_dump(uint16_t port_id, FILE *file)
 	return eth_err(port_id, (*dev->dev_ops->eth_dev_priv_dump)(dev, file));
 }
 
+int
+rte_eth_rx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
+			   uint16_t offset, uint16_t num, FILE *file)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (queue_id >= dev->data->nb_rx_queues) {
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", queue_id);
+		return -EINVAL;
+	}
+
+	if (file == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid file (NULL)\n");
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->eth_rx_descriptor_dump == NULL)
+		return -ENOTSUP;
+
+	return eth_err(port_id, (*dev->dev_ops->eth_rx_descriptor_dump)(dev,
+						queue_id, offset, num, file));
+}
+
+int
+rte_eth_tx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
+			   uint16_t offset, uint16_t num, FILE *file)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (queue_id >= dev->data->nb_tx_queues) {
+		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u\n", queue_id);
+		return -EINVAL;
+	}
+
+	if (file == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid file (NULL)\n");
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->eth_tx_descriptor_dump == NULL)
+		return -ENOTSUP;
+
+	return eth_err(port_id, (*dev->dev_ops->eth_tx_descriptor_dump)(dev,
+						queue_id, offset, num, file));
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_eth_dev_logtype, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

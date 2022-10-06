@@ -5314,6 +5314,61 @@ typedef struct {
 __rte_experimental
 int rte_eth_dev_priv_dump(uint16_t port_id, FILE *file);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Dump ethdev Rx descriptor info to a file.
+ *
+ * This API is used for debugging, not a dataplane API.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   A Rx queue identifier on this port.
+ * @param offset
+ *  The offset of the descriptor starting from tail. (0 is the next
+ *  packet to be received by the driver).
+ * @param num
+ *   The number of the descriptors to dump.
+ * @param file
+ *   A pointer to a file for output.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+__rte_experimental
+int rte_eth_rx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
+			       uint16_t offset, uint16_t num, FILE *file);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Dump ethdev Tx descriptor info to a file.
+ *
+ * This API is used for debugging, not a dataplane API.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   A Tx queue identifier on this port.
+ * @param offset
+ *  The offset of the descriptor starting from tail. (0 is the place where
+ *  the next packet will be send).
+ * @param num
+ *   The number of the descriptors to dump.
+ * @param file
+ *   A pointer to a file for output.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+__rte_experimental
+int rte_eth_tx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
+			       uint16_t offset, uint16_t num, FILE *file);
+
+
 #include <rte_ethdev_core.h>
 
 /**
