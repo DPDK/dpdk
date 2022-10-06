@@ -767,7 +767,7 @@ mrvl_request_prepare_sec(struct sam_cio_ipsec_params *request,
 		return -EINVAL;
 	}
 
-	sess = SECURITY_GET_SESS_PRIV(op->sym->sec_session);
+	sess = SECURITY_GET_SESS_PRIV(op->sym->session);
 	if (unlikely(sess == NULL)) {
 		MRVL_LOG(ERR, "Session was not created for this device! %d",
 			 cryptodev_driver_id);
