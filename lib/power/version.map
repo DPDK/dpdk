@@ -48,4 +48,15 @@ EXPERIMENTAL {
 	rte_power_pmd_mgmt_set_pause_duration;
 	rte_power_pmd_mgmt_set_scaling_freq_max;
 	rte_power_pmd_mgmt_set_scaling_freq_min;
+
+	# added in 22.11
+	rte_power_get_uncore_freq;
+	rte_power_set_uncore_freq;
+	rte_power_uncore_exit;
+	rte_power_uncore_freq_max;
+	rte_power_uncore_freq_min;
+	rte_power_uncore_get_num_dies;
+	rte_power_uncore_get_num_freqs;
+	rte_power_uncore_get_num_pkgs;
+	rte_power_uncore_init;
 };

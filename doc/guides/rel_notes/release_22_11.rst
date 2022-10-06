@@ -218,6 +218,13 @@ New Features
   and appears as a promising alternative to traditional approaches
   such as packet sampling.
 
+* **Added Intel uncore frequency control API to the power library.**
+
+  Added API to allow uncore frequency adjustment.
+  This is done through manipulating related uncore frequency control
+  sysfs entries to adjust the minimum and maximum uncore frequency values,
+  which works on Linux with Intel hardware only.
+
 
 Removed Items
 -------------
