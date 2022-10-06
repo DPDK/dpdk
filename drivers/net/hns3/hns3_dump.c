@@ -10,6 +10,9 @@
 #include "hns3_rxtx.h"
 #include "hns3_dump.h"
 
+#define HNS3_BD_DW_NUM 8
+#define HNS3_BD_ADDRESS_LAST_DW 2
+
 static const char *
 hns3_get_adapter_state_name(enum hns3_adapter_state state)
 {
@@ -928,6 +931,91 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	hns3_get_fdir_basic_info(file, &hns->pf);
 	hns3_get_tm_conf_info(file, dev);
 	hns3_get_flow_ctrl_info(file, dev);
+
+	return 0;
+}
+
+int
+hns3_rx_descriptor_dump(const struct rte_eth_dev *dev, uint16_t queue_id,
+			uint16_t offset, uint16_t num, FILE *file)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_rx_queue *rxq = dev->data->rx_queues[queue_id];
+	uint32_t *bd_data;
+	uint16_t count = 0;
+	uint16_t desc_id;
+	int i;
+
+	if (offset >= rxq->nb_rx_desc)
+		return -EINVAL;
+
+	if (num > rxq->nb_rx_desc) {
+		hns3_err(hw, "Invalid BD num=%u\n", num);
+		return -EINVAL;
+	}
+
+	while (count < num) {
+		desc_id = (rxq->next_to_use + offset + count) % rxq->nb_rx_desc;
+		bd_data = (uint32_t *)(&rxq->rx_ring[desc_id]);
+		fprintf(file, "Rx queue id:%u BD id:%u\n", queue_id, desc_id);
+		for (i = 0; i < HNS3_BD_DW_NUM; i++) {
+			/*
+			 * For the sake of security, first 8 bytes of BD which
+			 * stands for physical address of packet should not be
+			 * shown.
+			 */
+			if (i < HNS3_BD_ADDRESS_LAST_DW) {
+				fprintf(file, "RX BD WORD[%d]:0x%08x\n", i, 0);
+				continue;
+			}
+			fprintf(file, "RX BD WORD[%d]:0x%08x\n", i,
+				*(bd_data + i));
+		}
+		count++;
+	}
+
+	return 0;
+}
+
+int
+hns3_tx_descriptor_dump(const struct rte_eth_dev *dev, uint16_t queue_id,
+			uint16_t offset, uint16_t num, FILE *file)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_tx_queue *txq = dev->data->tx_queues[queue_id];
+	uint32_t *bd_data;
+	uint16_t count = 0;
+	uint16_t desc_id;
+	int i;
+
+	if (offset >= txq->nb_tx_desc)
+		return -EINVAL;
+
+	if (num > txq->nb_tx_desc) {
+		hns3_err(hw, "Invalid BD num=%u\n", num);
+		return -EINVAL;
+	}
+
+	while (count < num) {
+		desc_id = (txq->next_to_use + offset + count) % txq->nb_tx_desc;
+		bd_data = (uint32_t *)(&txq->tx_ring[desc_id]);
+		fprintf(file, "Tx queue id:%u BD id:%u\n", queue_id, desc_id);
+		for (i = 0; i < HNS3_BD_DW_NUM; i++) {
+			/*
+			 * For the sake of security, first 8 bytes of BD which
+			 * stands for physical address of packet should not be
+			 * shown.
+			 */
+			if (i < HNS3_BD_ADDRESS_LAST_DW) {
+				fprintf(file, "TX BD WORD[%d]:0x%08x\n", i, 0);
+				continue;
+			}
+
+			fprintf(file, "Tx BD WORD[%d]:0x%08x\n", i,
+				*(bd_data + i));
+		}
+		count++;
+	}
 
 	return 0;
 }
