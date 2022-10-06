@@ -100,6 +100,10 @@ New Features
   Added new flow action which allows application to re-route packets
   directly to the kernel without software involvement.
 
+* **Updated AF_XDP driver.**
+
+  * Made compatible with libbpf v0.8.0 (when used with libxdp).
+
 * **Updated Intel iavf driver.**
 
   * Added flow subscription support.

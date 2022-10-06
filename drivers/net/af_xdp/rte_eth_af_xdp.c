@@ -866,6 +866,40 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+#ifdef RTE_NET_AF_XDP_LIBBPF_XDP_ATTACH
+
+static int link_xdp_prog_with_dev(int ifindex, int fd, __u32 flags)
+{
+	return bpf_xdp_attach(ifindex, fd, flags, NULL);
+}
+
+static int
+remove_xdp_program(struct pmd_internals *internals)
+{
+	uint32_t curr_prog_id = 0;
+	int ret;
+
+	ret = bpf_xdp_query_id(internals->if_index, XDP_FLAGS_UPDATE_IF_NOEXIST,
+			       &curr_prog_id);
+	if (ret != 0) {
+		AF_XDP_LOG(ERR, "bpf_xdp_query_id failed\n");
+		return ret;
+	}
+
+	ret = bpf_xdp_detach(internals->if_index, XDP_FLAGS_UPDATE_IF_NOEXIST,
+			     NULL);
+	if (ret != 0)
+		AF_XDP_LOG(ERR, "bpf_xdp_detach failed\n");
+	return ret;
+}
+
+#else
+
+static int link_xdp_prog_with_dev(int ifindex, int fd, __u32 flags)
+{
+	return bpf_set_link_xdp_fd(ifindex, fd, flags);
+}
+
 static int
 remove_xdp_program(struct pmd_internals *internals)
 {
@@ -885,6 +919,8 @@ remove_xdp_program(struct pmd_internals *internals)
 		AF_XDP_LOG(ERR, "bpf_set_link_xdp_fd failed\n");
 	return ret;
 }
+
+#endif
 
 static void
 xdp_umem_destroy(struct xsk_umem_info *umem)
@@ -1205,7 +1241,7 @@ load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
 	}
 
 	/* Link the program with the given network device */
-	ret = bpf_set_link_xdp_fd(if_index, prog_fd,
+	ret = link_xdp_prog_with_dev(if_index, prog_fd,
 					XDP_FLAGS_UPDATE_IF_NOEXIST);
 	if (ret) {
 		AF_XDP_LOG(ERR, "Failed to set prog fd %d on interface\n",

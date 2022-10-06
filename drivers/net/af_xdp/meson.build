@@ -64,4 +64,9 @@ if build
                      dependencies : bpf_dep)
       cflags += ['-DRTE_NET_AF_XDP_LIBBPF_OBJ_OPEN']
   endif
+  if cc.has_function('bpf_xdp_attach',
+                     prefix : '#include <bpf/libbpf.h>',
+                     dependencies : bpf_dep)
+      cflags += ['-DRTE_NET_AF_XDP_LIBBPF_XDP_ATTACH']
+  endif
 endif
