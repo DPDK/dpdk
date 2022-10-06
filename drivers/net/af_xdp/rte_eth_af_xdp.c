@@ -866,18 +866,24 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 remove_xdp_program(struct pmd_internals *internals)
 {
 	uint32_t curr_prog_id = 0;
+	int ret;
 
-	if (bpf_get_link_xdp_id(internals->if_index, &curr_prog_id,
-				XDP_FLAGS_UPDATE_IF_NOEXIST)) {
+	ret = bpf_get_link_xdp_id(internals->if_index, &curr_prog_id,
+				  XDP_FLAGS_UPDATE_IF_NOEXIST);
+	if (ret != 0) {
 		AF_XDP_LOG(ERR, "bpf_get_link_xdp_id failed\n");
-		return;
+		return ret;
 	}
-	bpf_set_link_xdp_fd(internals->if_index, -1,
-			XDP_FLAGS_UPDATE_IF_NOEXIST);
+
+	ret = bpf_set_link_xdp_fd(internals->if_index, -1,
+				  XDP_FLAGS_UPDATE_IF_NOEXIST);
+	if (ret != 0)
+		AF_XDP_LOG(ERR, "bpf_set_link_xdp_fd failed\n");
+	return ret;
 }
 
 static void
@@ -932,7 +938,8 @@ eth_dev_close(struct rte_eth_dev *dev)
 	 */
 	dev->data->mac_addrs = NULL;
 
-	remove_xdp_program(internals);
+	if (remove_xdp_program(internals) != 0)
+		AF_XDP_LOG(ERR, "Error while removing XDP program.\n");
 
 	if (internals->shared_umem) {
 		struct internal_list *list;
