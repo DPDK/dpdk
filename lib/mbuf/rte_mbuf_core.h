@@ -737,7 +737,7 @@ struct rte_mbuf_ext_shared_info {
  *   The offset into the data to calculate address from.
  */
 #define rte_pktmbuf_iova_offset(m, o) \
-	(rte_iova_t)((m)->buf_iova + (m)->data_off + (o))
+	(rte_iova_t)(rte_mbuf_iova_get(m) + (m)->data_off + (o))
 
 /**
  * A macro that returns the IO address that points to the start of the

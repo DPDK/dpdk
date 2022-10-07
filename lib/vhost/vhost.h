@@ -971,7 +971,7 @@ restore_mbuf(struct rte_mbuf *m)
 		/* start of buffer is after mbuf structure and priv data */
 
 		m->buf_addr = (char *)m + mbuf_size;
-		m->buf_iova = rte_mempool_virt2iova(m) + mbuf_size;
+		rte_mbuf_iova_set(m, rte_mempool_virt2iova(m) + mbuf_size);
 		m = m->next;
 	}
 }

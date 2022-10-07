@@ -1923,7 +1923,7 @@ pkt_work_sym_crypto(struct rte_mbuf *mbuf, struct sym_crypto_data *data,
 
 	op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
-	op->phys_addr = mbuf->buf_iova + cfg->op_offset - sizeof(*mbuf);
+	op->phys_addr = rte_mbuf_iova_get(mbuf) + cfg->op_offset - sizeof(*mbuf);
 	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 	sym->m_src = mbuf;
 	sym->m_dst = NULL;

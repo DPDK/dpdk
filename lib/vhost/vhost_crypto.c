@@ -807,11 +807,10 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	switch (vcrypto->option) {
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_src->data_len = cipher->para.src_data_len;
-		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
-				cipher->para.src_data_len);
+		rte_mbuf_iova_set(m_src,
+				  gpa_to_hpa(vcrypto->dev, desc->addr, cipher->para.src_data_len));
 		m_src->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
-		if (unlikely(m_src->buf_iova == 0 ||
-				m_src->buf_addr == NULL)) {
+		if (unlikely(rte_mbuf_iova_get(m_src) == 0 || m_src->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
@@ -851,10 +850,10 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 
 	switch (vcrypto->option) {
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
-		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
-				desc->addr, cipher->para.dst_data_len);
+		rte_mbuf_iova_set(m_dst,
+				  gpa_to_hpa(vcrypto->dev, desc->addr, cipher->para.dst_data_len));
 		m_dst->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RW);
-		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
+		if (unlikely(rte_mbuf_iova_get(m_dst) == 0 || m_dst->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
@@ -965,10 +964,10 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		m_src->data_len = chain->para.src_data_len;
 		m_dst->data_len = chain->para.dst_data_len;
 
-		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
-				chain->para.src_data_len);
+		rte_mbuf_iova_set(m_src,
+				  gpa_to_hpa(vcrypto->dev, desc->addr, chain->para.src_data_len));
 		m_src->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
-		if (unlikely(m_src->buf_iova == 0 || m_src->buf_addr == NULL)) {
+		if (unlikely(rte_mbuf_iova_get(m_src) == 0 || m_src->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
@@ -1008,10 +1007,10 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 
 	switch (vcrypto->option) {
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
-		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
-				desc->addr, chain->para.dst_data_len);
+		rte_mbuf_iova_set(m_dst,
+				  gpa_to_hpa(vcrypto->dev, desc->addr, chain->para.dst_data_len));
 		m_dst->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RW);
-		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
+		if (unlikely(rte_mbuf_iova_get(m_dst) == 0 || m_dst->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;

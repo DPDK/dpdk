@@ -1002,7 +1002,7 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 					seg->length);
 				memcpy(data, seg->addr, seg->length);
 				m_head->buf_addr = data;
-				m_head->buf_iova = rte_malloc_virt2iova(data);
+				rte_mbuf_iova_set(m_head, rte_malloc_virt2iova(data));
 				m_head->data_off = 0;
 				m_head->data_len = seg->length;
 			} else {

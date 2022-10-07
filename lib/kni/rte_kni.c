@@ -357,8 +357,7 @@ static void *
 va2pa(struct rte_mbuf *m)
 {
 	return (void *)((unsigned long)m -
-			((unsigned long)m->buf_addr -
-			 (unsigned long)m->buf_iova));
+			((unsigned long)m->buf_addr - (unsigned long)rte_mbuf_iova_get(m)));
 }
 
 static void *
