@@ -44,6 +44,8 @@
 #define CNXK_NIX_RX_DEFAULT_RING_SZ 4096
 /* Max supported SQB count */
 #define CNXK_NIX_TX_MAX_SQB 512
+/* LPB & SPB */
+#define CNXK_NIX_NUM_POOLS_MAX 2
 
 /* If PTP is enabled additional SEND MEM DESC is required which
  * takes 2 words, hence max 7 iova address are possible
