@@ -478,7 +478,11 @@ struct rte_mbuf {
 	 */
 	rte_iova_t buf_iova __rte_aligned(sizeof(rte_iova_t));
 #else
-	uint64_t dummy;
+	/**
+	 * Reserved for dynamic fields
+	 * if physical address field is disabled.
+	 */
+	uint64_t dynfield2;
 #endif
 
 	/* next 8 bytes are initialised on RX descriptor rearm */
