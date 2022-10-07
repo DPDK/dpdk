@@ -112,6 +112,16 @@
 
 extern struct rte_mempool *dpaa_tx_sg_pool;
 
+/* structure to free external and indirect
+ * buffers.
+ */
+struct dpaa_sw_buf_free {
+	/* To which packet this segment belongs */
+	uint16_t pkt_id;
+	/* The actual segment */
+	struct rte_mbuf *seg;
+};
+
 /* Each network interface is represented by one of these */
 struct dpaa_if {
 	int valid;
