@@ -63,6 +63,12 @@ New Features
   In theory this implementation should work with any target based on
   ``LoongArch`` ISA.
 
+* **Added support for multiple mbuf pools per ethdev Rx queue.**
+
+  The capability allows application to provide many mempools
+  of different size, and PMD and/or NIC to choose a memory pool
+  based on the packet's length and/or Rx buffers availability.
+
 * **Added support for congestion management in ethdev.**
 
   Added new API functions ``rte_eth_cman_config_init()``,

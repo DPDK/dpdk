@@ -1747,6 +1747,41 @@ rte_eth_rx_queue_check_split(const struct rte_eth_rxseg_split *rx_seg,
 	return 0;
 }
 
+static int
+rte_eth_rx_queue_check_mempools(struct rte_mempool **rx_mempools,
+			       uint16_t n_mempools, uint32_t *min_buf_size,
+			       const struct rte_eth_dev_info *dev_info)
+{
+	uint16_t pool_idx;
+	int ret;
+
+	if (n_mempools > dev_info->max_rx_mempools) {
+		RTE_ETHDEV_LOG(ERR,
+			       "Too many Rx mempools %u vs maximum %u\n",
+			       n_mempools, dev_info->max_rx_mempools);
+		return -EINVAL;
+	}
+
+	for (pool_idx = 0; pool_idx < n_mempools; pool_idx++) {
+		struct rte_mempool *mp = rx_mempools[pool_idx];
+
+		if (mp == NULL) {
+			RTE_ETHDEV_LOG(ERR, "null Rx mempool pointer\n");
+			return -EINVAL;
+		}
+
+		ret = rte_eth_check_rx_mempool(mp, RTE_PKTMBUF_HEADROOM,
+					       dev_info->min_rx_bufsize);
+		if (ret != 0)
+			return ret;
+
+		*min_buf_size = RTE_MIN(*min_buf_size,
+					rte_pktmbuf_data_room_size(mp));
+	}
+
+	return 0;
+}
+
 int
 rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		       uint16_t nb_rx_desc, unsigned int socket_id,
@@ -1754,7 +1789,8 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		       struct rte_mempool *mp)
 {
 	int ret;
-	uint32_t mbp_buf_size;
+	uint64_t rx_offloads;
+	uint32_t mbp_buf_size = UINT32_MAX;
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_rxconf local_conf;
@@ -1774,35 +1810,42 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	if (ret != 0)
 		return ret;
 
+	rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	if (rx_conf != NULL)
+		rx_offloads |= rx_conf->offloads;
+
+	/* Ensure that we have one and only one source of Rx buffers */
+	if ((mp != NULL) +
+	    (rx_conf != NULL && rx_conf->rx_nseg > 0) +
+	    (rx_conf != NULL && rx_conf->rx_nmempool > 0) != 1) {
+		RTE_ETHDEV_LOG(ERR,
+			       "Ambiguous Rx mempools configuration\n");
+		return -EINVAL;
+	}
+
 	if (mp != NULL) {
 		/* Single pool configuration check. */
-		if (rx_conf != NULL && rx_conf->rx_nseg != 0) {
-			RTE_ETHDEV_LOG(ERR,
-				       "Ambiguous segment configuration\n");
-			return -EINVAL;
-		}
-
 		ret = rte_eth_check_rx_mempool(mp, RTE_PKTMBUF_HEADROOM,
 					       dev_info.min_rx_bufsize);
 		if (ret != 0)
 			return ret;
 
 		mbp_buf_size = rte_pktmbuf_data_room_size(mp);
-	} else {
+	} else if (rx_conf != NULL && rx_conf->rx_nseg > 0) {
 		const struct rte_eth_rxseg_split *rx_seg;
 		uint16_t n_seg;
 
 		/* Extended multi-segment configuration check. */
-		if (rx_conf == NULL || rx_conf->rx_seg == NULL || rx_conf->rx_nseg == 0) {
+		if (rx_conf->rx_seg == NULL) {
 			RTE_ETHDEV_LOG(ERR,
-				       "Memory pool is null and no extended configuration provided\n");
+				       "Memory pool is null and no multi-segment configuration provided\n");
 			return -EINVAL;
 		}
 
 		rx_seg = (const struct rte_eth_rxseg_split *)rx_conf->rx_seg;
 		n_seg = rx_conf->rx_nseg;
 
-		if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) {
+		if (rx_offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) {
 			ret = rte_eth_rx_queue_check_split(rx_seg, n_seg,
 							   &mbp_buf_size,
 							   &dev_info);
@@ -1812,6 +1855,22 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 			RTE_ETHDEV_LOG(ERR, "No Rx segmentation offload configured\n");
 			return -EINVAL;
 		}
+	} else if (rx_conf != NULL && rx_conf->rx_nmempool > 0) {
+		/* Extended multi-pool configuration check. */
+		if (rx_conf->rx_mempools == NULL) {
+			RTE_ETHDEV_LOG(ERR, "Memory pools array is null\n");
+			return -EINVAL;
+		}
+
+		ret = rte_eth_rx_queue_check_mempools(rx_conf->rx_mempools,
+						     rx_conf->rx_nmempool,
+						     &mbp_buf_size,
+						     &dev_info);
+		if (ret != 0)
+			return ret;
+	} else {
+		RTE_ETHDEV_LOG(ERR, "Missing Rx mempool configuration\n");
+		return -EINVAL;
 	}
 
 	/* Use default specified by driver, if nb_rx_desc is zero */

@@ -1067,6 +1067,28 @@ struct rte_eth_rxconf {
 	 */
 	union rte_eth_rxseg *rx_seg;
 
+	/**
+	 * Array of mempools to allocate Rx buffers from.
+	 *
+	 * This provides support for multiple mbuf pools per Rx queue.
+	 * The capability is reported in device info via positive
+	 * max_rx_mempools.
+	 *
+	 * It could be useful for more efficient usage of memory when an
+	 * application creates different mempools to steer the specific
+	 * size of the packet.
+	 *
+	 * If many mempools are specified, packets received using Rx
+	 * burst may belong to any provided mempool. From ethdev user point
+	 * of view it is undefined how PMD/NIC chooses mempool for a packet.
+	 *
+	 * If Rx scatter is enabled, a packet may be delivered using a chain
+	 * of mbufs obtained from single mempool or multiple mempools based
+	 * on the NIC implementation.
+	 */
+	struct rte_mempool **rx_mempools;
+	uint16_t rx_nmempool; /** < Number of Rx mempools */
+
 	uint64_t reserved_64s[2]; /**< Reserved for future fields */
 	void *reserved_ptrs[2];   /**< Reserved for future fields */
 };
@@ -1678,6 +1700,13 @@ struct rte_eth_dev_info {
 	/** Configured number of Rx/Tx queues */
 	uint16_t nb_rx_queues; /**< Number of Rx queues. */
 	uint16_t nb_tx_queues; /**< Number of Tx queues. */
+	/**
+	 * Maximum number of Rx mempools supported per Rx queue.
+	 *
+	 * Value greater than 0 means that the driver supports Rx queue
+	 * mempools specification via rx_conf->rx_mempools.
+	 */
+	uint16_t max_rx_mempools;
 	/** Rx parameter recommendations */
 	struct rte_eth_dev_portconf default_rxportconf;
 	/** Tx parameter recommendations */
