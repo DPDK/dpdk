@@ -1435,60 +1435,82 @@ rte_mempool_put(struct rte_mempool *mp, void *obj)
  *   A pointer to a mempool cache structure. May be NULL if not needed.
  * @return
  *   - >=0: Success; number of objects supplied.
- *   - <0: Error; code of ring dequeue function.
+ *   - <0: Error; code of driver dequeue function.
  */
 static __rte_always_inline int
 rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 			   unsigned int n, struct rte_mempool_cache *cache)
 {
 	int ret;
+	unsigned int remaining = n;
 	uint32_t index, len;
 	void **cache_objs;
 
-	/* No cache provided or cannot be satisfied from cache */
-	if (unlikely(cache == NULL || n >= cache->size))
-		goto ring_dequeue;
+	/* No cache provided */
+	if (unlikely(cache == NULL))
+		goto driver_dequeue;
 
-	cache_objs = cache->objs;
+	/* Use the cache as much as we have to return hot objects first */
+	len = RTE_MIN(remaining, cache->len);
+	cache_objs = &cache->objs[cache->len];
+	cache->len -= len;
+	remaining -= len;
+	for (index = 0; index < len; index++)
+		*obj_table++ = *--cache_objs;
 
-	/* Can this be satisfied from the cache? */
-	if (cache->len < n) {
-		/* No. Backfill the cache first, and then fill from it */
-		uint32_t req = n + (cache->size - cache->len);
+	if (remaining == 0) {
+		/* The entire request is satisfied from the cache. */
 
-		/* How many do we require i.e. number to fill the cache + the request */
-		ret = rte_mempool_ops_dequeue_bulk(mp,
-			&cache->objs[cache->len], req);
-		if (unlikely(ret < 0)) {
-			/*
-			 * In the off chance that we are buffer constrained,
-			 * where we are not able to allocate cache + n, go to
-			 * the ring directly. If that fails, we are truly out of
-			 * buffers.
-			 */
-			goto ring_dequeue;
-		}
+		RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+		RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
 
-		cache->len += req;
+		return 0;
 	}
 
-	/* Now fill in the response ... */
-	for (index = 0, len = cache->len - 1; index < n; ++index, len--, obj_table++)
-		*obj_table = cache_objs[len];
+	/* if dequeue below would overflow mem allocated for cache */
+	if (unlikely(remaining > RTE_MEMPOOL_CACHE_MAX_SIZE))
+		goto driver_dequeue;
 
-	cache->len -= n;
+	/* Fill the cache from the backend; fetch size + remaining objects. */
+	ret = rte_mempool_ops_dequeue_bulk(mp, cache->objs,
+			cache->size + remaining);
+	if (unlikely(ret < 0)) {
+		/*
+		 * We are buffer constrained, and not able to allocate
+		 * cache + remaining.
+		 * Do not fill the cache, just satisfy the remaining part of
+		 * the request directly from the backend.
+		 */
+		goto driver_dequeue;
+	}
+
+	/* Satisfy the remaining part of the request from the filled cache. */
+	cache_objs = &cache->objs[cache->size + remaining];
+	for (index = 0; index < remaining; index++)
+		*obj_table++ = *--cache_objs;
+
+	cache->len = cache->size;
 
 	RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
 	RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
 
 	return 0;
 
-ring_dequeue:
+driver_dequeue:
 
-	/* get remaining objects from ring */
-	ret = rte_mempool_ops_dequeue_bulk(mp, obj_table, n);
+	/* Get remaining objects directly from the backend. */
+	ret = rte_mempool_ops_dequeue_bulk(mp, obj_table, remaining);
 
 	if (ret < 0) {
+		if (likely(cache != NULL)) {
+			cache->len = n - remaining;
+			/*
+			 * No further action is required to roll the first part
+			 * of the request back into the cache, as objects in
+			 * the cache are intact.
+			 */
+		}
+
 		RTE_MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
 		RTE_MEMPOOL_STAT_ADD(mp, get_fail_objs, n);
 	} else {
