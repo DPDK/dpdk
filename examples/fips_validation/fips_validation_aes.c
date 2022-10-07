@@ -30,8 +30,10 @@
 #define TESTTYPE_JSON_STR	"testType"
 #define DIR_JSON_STR		"direction"
 #define KEYLEN_JSON_STR		"keyLen"
+#define OVERFLOW_JSON_STR	"overflow"
 
 #define KEY_JSON_STR	"key"
+#define PAYLOADLEN_JSON_STR	"payloadLen"
 #define IV_JSON_STR	"iv"
 #define PT_JSON_STR	"pt"
 #define CT_JSON_STR	"ct"
@@ -52,6 +54,7 @@ struct {
 		{AESAVS_TYPE_MMT, "MMT"},
 		{AESAVS_TYPE_MCT, "MCT"},
 		{AESAVS_TYPE_AFT, "AFT"},
+		{AESAVS_TYPE_CTR, "CTR"},
 };
 
 struct aes_test_algo {
@@ -60,6 +63,7 @@ struct aes_test_algo {
 } const algo_con[] = {
 		{"CBC", RTE_CRYPTO_CIPHER_AES_CBC},
 		{"ECB", RTE_CRYPTO_CIPHER_AES_ECB},
+		{"CTR", RTE_CRYPTO_CIPHER_AES_CTR},
 };
 
 static int
@@ -291,6 +295,7 @@ parse_test_aes_json_init(void)
 	case AESAVS_TYPE_MCT:
 		info.parse_writeback = parse_test_aes_mct_json_writeback;
 		break;
+	case AESAVS_TYPE_CTR:
 	case AESAVS_TYPE_AFT:
 		info.parse_writeback = parse_test_aes_json_writeback;
 		break;
