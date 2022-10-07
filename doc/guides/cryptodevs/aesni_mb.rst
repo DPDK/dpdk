@@ -72,7 +72,6 @@ Protocol offloads:
 Limitations
 -----------
 
-* Chained mbufs are not supported.
 * Out-of-place is not supported for combined Crypto-CRC DOCSIS security
   protocol.
 * RTE_CRYPTO_CIPHER_DES_DOCSISBPI is not supported for combined Crypto-CRC
