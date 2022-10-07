@@ -2990,6 +2990,16 @@ create_wireless_algo_auth_cipher_operation(
 			remaining_off -= rte_pktmbuf_data_len(sgl_buf);
 			sgl_buf = sgl_buf->next;
 		}
+
+		/* The last segment should be large enough to hold full digest */
+		if (sgl_buf->data_len < auth_tag_len) {
+			rte_pktmbuf_free(sgl_buf->next);
+			sgl_buf->next = NULL;
+			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(sgl_buf,
+					auth_tag_len - sgl_buf->data_len),
+					"No room to append auth tag");
+		}
+
 		sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(sgl_buf,
 				uint8_t *, remaining_off);
 		sym_op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(sgl_buf,
