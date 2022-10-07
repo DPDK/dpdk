@@ -178,6 +178,16 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP;
 		break;
+	case DPAA_PKT_TYPE_IPSEC_IPV4:
+		if (*((uintptr_t *)&annot->parse) & DPAA_PARSE_ESP_MASK)
+			m->packet_type = RTE_PTYPE_L2_ETHER |
+				RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_ESP;
+		break;
+	case DPAA_PKT_TYPE_IPSEC_IPV6:
+		if (*((uintptr_t *)&annot->parse) & DPAA_PARSE_ESP_MASK)
+			m->packet_type = RTE_PTYPE_L2_ETHER |
+				RTE_PTYPE_L3_IPV6 | RTE_PTYPE_TUNNEL_ESP;
+		break;
 	case DPAA_PKT_TYPE_IPV4_EXT_UDP:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_UDP;
