@@ -33,6 +33,13 @@
 
 #define DPAA_SGT_MAX_ENTRIES 16 /* maximum number of entries in SG Table */
 
+/* Maximum SG segments supported on all cores*/
+#define DPAA_MAX_SGS 128
+/* SG pool size */
+#define DPAA_POOL_SIZE 2048
+/* SG pool cache size */
+#define DPAA_POOL_CACHE_SIZE 256
+
 /* RX queue tail drop threshold (CGR Based) in frame count */
 #define CGR_RX_PERFQ_THRESH 256
 #define CGR_TX_CGR_THRESH 512
@@ -102,6 +109,8 @@
 #define DPAA_DEFAULT_RXQ_VSP_ID		1
 
 #define FMC_FILE "/tmp/fmc.bin"
+
+extern struct rte_mempool *dpaa_tx_sg_pool;
 
 /* Each network interface is represented by one of these */
 struct dpaa_if {
