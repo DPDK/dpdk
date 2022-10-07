@@ -64,6 +64,9 @@
 /* Tx confirmation enabled */
 #define DPAA2_TX_CONF_ENABLE	0x06
 
+/* DPDMUX index for DPMAC */
+#define DPAA2_DPDMUX_DPMAC_IDX 0
+
 #define DPAA2_RSS_OFFLOAD_ALL ( \
 	RTE_ETH_RSS_L2_PAYLOAD | \
 	RTE_ETH_RSS_IP | \
