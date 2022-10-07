@@ -302,7 +302,7 @@ int bman_free_raw_portal(struct dpaa_raw_portal *portal)
 	_IOW(DPAA_IOCTL_MAGIC, 0x0E, struct usdpaa_ioctl_link_status)
 
 #define DPAA_IOCTL_DISABLE_LINK_STATUS_INTERRUPT \
-	_IOW(DPAA_IOCTL_MAGIC, 0x0F, char*)
+	_IOW(DPAA_IOCTL_MAGIC, 0x0F, char[IF_NAME_MAX_LEN])
 
 int dpaa_intr_enable(char *if_name, int efd)
 {
@@ -330,7 +330,7 @@ int dpaa_intr_disable(char *if_name)
 	if (ret)
 		return ret;
 
-	ret = ioctl(fd, DPAA_IOCTL_DISABLE_LINK_STATUS_INTERRUPT, &if_name);
+	ret = ioctl(fd, DPAA_IOCTL_DISABLE_LINK_STATUS_INTERRUPT, if_name);
 	if (ret) {
 		if (errno == EINVAL)
 			printf("Failed to disable interrupt: Not Supported\n");
@@ -472,7 +472,7 @@ int dpaa_update_link_speed(char *if_name, int link_speed, int link_duplex)
 }
 
 #define DPAA_IOCTL_RESTART_LINK_AUTONEG \
-	_IOW(DPAA_IOCTL_MAGIC, 0x13, char *)
+	_IOW(DPAA_IOCTL_MAGIC, 0x13, char[IF_NAME_MAX_LEN])
 
 int dpaa_restart_link_autoneg(char *if_name)
 {
@@ -481,7 +481,7 @@ int dpaa_restart_link_autoneg(char *if_name)
 	if (ret)
 		return ret;
 
-	ret = ioctl(fd, DPAA_IOCTL_RESTART_LINK_AUTONEG, &if_name);
+	ret = ioctl(fd, DPAA_IOCTL_RESTART_LINK_AUTONEG, if_name);
 	if (ret) {
 		if (errno == EINVAL)
 			printf("Failed to restart autoneg: Not Supported\n");
