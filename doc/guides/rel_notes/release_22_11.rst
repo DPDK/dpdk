@@ -421,6 +421,9 @@ ABI Changes
 * eal: Updated EAL thread names from ``lcore-worker-<lcore_id>`` to
   ``rte-worker-<lcore_id>`` so that DPDK can accommodate lcores higher than 99.
 
+* mbuf: Replaced ``buf_iova`` field with ``next`` field and added a new field
+  ``dynfield2`` at its place in second cacheline if ``RTE_IOVA_AS_PA`` is 0.
+
 * ethdev: enum ``RTE_FLOW_ITEM`` was affected by deprecation procedure.
 
 * ethdev: enum ``RTE_FLOW_ACTION`` was affected by deprecation procedure.
