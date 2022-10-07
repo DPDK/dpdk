@@ -403,7 +403,7 @@ eth_fd_to_mbuf(const struct qbman_fd *fd,
 static int __rte_noinline __rte_hot
 eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		  struct qbman_fd *fd,
-		  struct rte_mempool *mp, uint16_t bpid)
+		  uint16_t bpid)
 {
 	struct rte_mbuf *cur_seg = mbuf, *prev_seg, *mi, *temp;
 	struct qbman_sge *sgt, *sge = NULL;
@@ -433,12 +433,12 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		}
 		DPAA2_SET_FD_OFFSET(fd, offset);
 	} else {
-		temp = rte_pktmbuf_alloc(mp);
+		temp = rte_pktmbuf_alloc(dpaa2_tx_sg_pool);
 		if (temp == NULL) {
 			DPAA2_PMD_DP_DEBUG("No memory to allocate S/G table\n");
 			return -ENOMEM;
 		}
-		DPAA2_SET_ONLY_FD_BPID(fd, bpid);
+		DPAA2_SET_ONLY_FD_BPID(fd, mempool_to_bpid(dpaa2_tx_sg_pool));
 		DPAA2_SET_FD_OFFSET(fd, temp->data_off);
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 		rte_mempool_check_cookies(rte_mempool_from_obj((void *)temp),
@@ -1321,9 +1321,10 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			if (unlikely(RTE_MBUF_HAS_EXTBUF(*bufs))) {
 				if (unlikely((*bufs)->nb_segs > 1)) {
+					mp = (*bufs)->pool;
 					if (eth_mbuf_to_sg_fd(*bufs,
 							      &fd_arr[loop],
-							      mp, 0))
+							      mempool_to_bpid(mp)))
 						goto send_n_return;
 				} else {
 					eth_mbuf_to_fd(*bufs,
@@ -1372,7 +1373,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					if (eth_mbuf_to_sg_fd(*bufs,
 							&fd_arr[loop],
-							mp, bpid))
+							bpid))
 						goto send_n_return;
 				} else {
 					eth_mbuf_to_fd(*bufs,
@@ -1646,7 +1647,6 @@ dpaa2_dev_tx_multi_txq_ordered(void **queue,
 			if (unlikely((*bufs)->nb_segs > 1)) {
 				if (eth_mbuf_to_sg_fd(*bufs,
 						      &fd_arr[loop],
-						      mp,
 						      bpid))
 					goto send_frames;
 			} else {
@@ -1810,7 +1810,6 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					if (eth_mbuf_to_sg_fd(*bufs,
 							      &fd_arr[loop],
-							      mp,
 							      bpid))
 						goto send_n_return;
 				} else {
