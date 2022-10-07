@@ -41,6 +41,39 @@
 /* In WQE set mode, the pi should be quarter of the MLX5_REGEX_MAX_WQE_INDEX. */
 #define MLX5_REGEX_UMR_QP_PI_IDX(pi, ops) \
 	(((pi) + (ops)) & (MLX5_REGEX_MAX_WQE_INDEX >> 2))
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+#define MLX5_REGEX_DEBUG 0
+#endif
+#ifdef HAVE_MLX5_UMR_IMKEY
+static uint16_t max_nb_segs = MLX5_REGEX_MAX_KLM_NUM;
+#else
+static uint16_t max_nb_segs = 1;
+#endif
+
+uint16_t
+mlx5_regexdev_max_segs_get(void)
+{
+	return max_nb_segs;
+}
+
+#ifdef MLX5_REGEX_DEBUG
+static inline uint16_t
+validate_ops(struct rte_regex_ops **ops, uint16_t nb_ops)
+{
+	uint16_t nb_left = nb_ops;
+	struct rte_mbuf *mbuf;
+
+	while (nb_left--) {
+		mbuf = ops[nb_left]->mbuf;
+		if ((mbuf->pkt_len > MLX5_RXP_MAX_JOB_LENGTH) ||
+		    (mbuf->nb_segs > max_nb_segs)) {
+			DRV_LOG(ERR, "Failed to validate regex ops");
+			return 1;
+		}
+	}
+	return 0;
+}
+#endif
 
 static inline uint32_t
 qp_size_get(struct mlx5_regex_hw_qp *qp)
@@ -375,6 +408,11 @@ mlx5_regexdev_enqueue_gga(struct rte_regexdev *dev, uint16_t qp_id,
 	struct mlx5_regex_hw_qp *qp_obj;
 	size_t hw_qpid, nb_left = nb_ops, nb_desc;
 
+#ifdef MLX5_REGEX_DEBUG
+	if (validate_ops(ops, nb_ops))
+		return 0;
+#endif
+
 	while ((hw_qpid = ffs(queue->free_qps))) {
 		hw_qpid--; /* ffs returns 1 for bit 0 */
 		qp_obj = &queue->qps[hw_qpid];
@@ -408,6 +446,11 @@ mlx5_regexdev_enqueue(struct rte_regexdev *dev, uint16_t qp_id,
 	struct mlx5_regex_qp *queue = &priv->qps[qp_id];
 	struct mlx5_regex_hw_qp *qp_obj;
 	size_t hw_qpid, job_id, i = 0;
+
+#ifdef MLX5_REGEX_DEBUG
+	if (validate_ops(ops, nb_ops))
+		return 0;
+#endif
 
 	while ((hw_qpid = ffs(queue->free_qps))) {
 		hw_qpid--; /* ffs returns 1 for bit 0 */

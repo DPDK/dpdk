@@ -94,4 +94,6 @@ uint16_t mlx5_regexdev_dequeue(struct rte_regexdev *dev, uint16_t qp_id,
 		       struct rte_regex_ops **ops, uint16_t nb_ops);
 uint16_t mlx5_regexdev_enqueue_gga(struct rte_regexdev *dev, uint16_t qp_id,
 		       struct rte_regex_ops **ops, uint16_t nb_ops);
+uint16_t mlx5_regexdev_max_segs_get(void);
+
 #endif /* MLX5_REGEX_H */

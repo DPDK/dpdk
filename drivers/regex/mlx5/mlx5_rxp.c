@@ -45,6 +45,7 @@ mlx5_regex_info_get(struct rte_regexdev *dev __rte_unused,
 			      RTE_REGEXDEV_CAPA_QUEUE_PAIR_OOS_F;
 	info->rule_flags = 0;
 	info->max_queue_pairs = UINT16_MAX;
+	info->max_segs = mlx5_regexdev_max_segs_get();
 	return 0;
 }
 
