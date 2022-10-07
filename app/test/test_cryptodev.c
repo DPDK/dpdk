@@ -4299,7 +4299,8 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 }
 
 static int
-test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
+test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata,
+		uint8_t sgl_in, uint8_t sgl_out)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -4330,9 +4331,12 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 
 	uint64_t feat_flags = dev_info.feature_flags;
 
-	if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
-		printf("Device doesn't support out-of-place scatter-gather "
-				"in both input and output mbufs. "
+	if (((sgl_in && sgl_out) && !(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT))
+			|| ((!sgl_in && sgl_out) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT))
+			|| ((sgl_in && !sgl_out) &&
+			!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT))) {
+		printf("Device doesn't support out-of-place scatter gather type. "
 				"Test Skipped.\n");
 		return TEST_SKIPPED;
 	}
@@ -4357,10 +4361,21 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 	/* the algorithms block size */
 	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
 
-	ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool,
-			plaintext_pad_len, 10, 0);
-	ut_params->obuf = create_segmented_mbuf(ts_params->mbuf_pool,
-			plaintext_pad_len, 3, 0);
+	if (sgl_in)
+		ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool,
+				plaintext_pad_len, 10, 0);
+	else {
+		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		rte_pktmbuf_append(ut_params->ibuf, plaintext_pad_len);
+	}
+
+	if (sgl_out)
+		ut_params->obuf = create_segmented_mbuf(ts_params->mbuf_pool,
+				plaintext_pad_len, 3, 0);
+	else {
+		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		rte_pktmbuf_append(ut_params->obuf, plaintext_pad_len);
+	}
 
 	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
 			"Failed to allocate input buffer in mempool");
@@ -6714,9 +6729,20 @@ test_snow3g_encryption_test_case_1_oop(void)
 static int
 test_snow3g_encryption_test_case_1_oop_sgl(void)
 {
-	return test_snow3g_encryption_oop_sgl(&snow3g_test_case_1);
+	return test_snow3g_encryption_oop_sgl(&snow3g_test_case_1, 1, 1);
 }
 
+static int
+test_snow3g_encryption_test_case_1_oop_lb_in_sgl_out(void)
+{
+	return test_snow3g_encryption_oop_sgl(&snow3g_test_case_1, 0, 1);
+}
+
+static int
+test_snow3g_encryption_test_case_1_oop_sgl_in_lb_out(void)
+{
+	return test_snow3g_encryption_oop_sgl(&snow3g_test_case_1, 1, 0);
+}
 
 static int
 test_snow3g_encryption_test_case_1_offset_oop(void)
@@ -15842,6 +15868,10 @@ static struct unit_test_suite cryptodev_snow3g_testsuite  = {
 			test_snow3g_encryption_test_case_1_oop),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1_oop_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_1_oop_lb_in_sgl_out),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_1_oop_sgl_in_lb_out),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1_offset_oop),
 		TEST_CASE_ST(ut_setup, ut_teardown,
