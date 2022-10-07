@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017,2019-2021 NXP
+ * Copyright 2017,2019-2022 NXP
  */
 
 #include <assert.h>
@@ -176,7 +176,7 @@ send_partial:
 				if (retry_count > DPAA2_EV_TX_RETRY_COUNT) {
 					num_tx += loop;
 					nb_events -= loop;
-					return num_tx + loop;
+					return num_tx;
 				}
 			} else {
 				loop += ret;
@@ -1016,9 +1016,7 @@ dpaa2_eventdev_txa_enqueue(void *port,
 		txq[i] = rte_eth_devices[m[i]->port].data->tx_queues[qid];
 	}
 
-	dpaa2_dev_tx_multi_txq_ordered(txq, m, nb_events);
-
-	return nb_events;
+	return dpaa2_dev_tx_multi_txq_ordered(txq, m, nb_events);
 }
 
 static struct eventdev_ops dpaa2_eventdev_ops = {

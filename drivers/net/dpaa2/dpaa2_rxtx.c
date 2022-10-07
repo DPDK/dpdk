@@ -1525,7 +1525,7 @@ dpaa2_dev_tx_multi_txq_ordered(void **queue,
 	uint32_t loop, retry_count;
 	int32_t ret;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
-	uint32_t frames_to_send;
+	uint32_t frames_to_send, num_free_eq_desc = 0;
 	struct rte_mempool *mp;
 	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS];
 	struct dpaa2_queue *dpaa2_q[MAX_TX_RING_SLOTS];
@@ -1547,29 +1547,49 @@ dpaa2_dev_tx_multi_txq_ordered(void **queue,
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
 
-	for (loop = 0; loop < nb_pkts; loop++) {
+	frames_to_send = (nb_pkts > dpaa2_eqcr_size) ?
+		dpaa2_eqcr_size : nb_pkts;
+
+	for (loop = 0; loop < frames_to_send; loop++) {
 		dpaa2_q[loop] = (struct dpaa2_queue *)queue[loop];
 		eth_data = dpaa2_q[loop]->eth_data;
 		priv = eth_data->dev_private;
-		qbman_eq_desc_clear(&eqdesc[loop]);
-		if (*dpaa2_seqn(*bufs) && priv->en_ordered) {
-			order_sendq = (struct dpaa2_queue *)priv->tx_vq[0];
-			dpaa2_set_enqueue_descriptor(order_sendq,
-							     (*bufs),
-							     &eqdesc[loop]);
-		} else {
-			qbman_eq_desc_set_no_orp(&eqdesc[loop],
-							 DPAA2_EQ_RESP_ERR_FQ);
-			qbman_eq_desc_set_fq(&eqdesc[loop],
-						     dpaa2_q[loop]->fqid);
+		if (!priv->en_loose_ordered) {
+			if (*dpaa2_seqn(*bufs) & DPAA2_ENQUEUE_FLAG_ORP) {
+				if (!num_free_eq_desc) {
+					num_free_eq_desc = dpaa2_free_eq_descriptors();
+					if (!num_free_eq_desc)
+						goto send_frames;
+				}
+				num_free_eq_desc--;
+			}
 		}
 
+		DPAA2_PMD_DP_DEBUG("===> eth_data =%p, fqid =%d\n",
+				   eth_data, dpaa2_q[loop]->fqid);
+
+		/* Check if the queue is congested */
 		retry_count = 0;
 		while (qbman_result_SCN_state(dpaa2_q[loop]->cscn)) {
 			retry_count++;
 			/* Retry for some time before giving up */
 			if (retry_count > CONG_RETRY_COUNT)
 				goto send_frames;
+		}
+
+		/* Prepare enqueue descriptor */
+		qbman_eq_desc_clear(&eqdesc[loop]);
+
+		if (*dpaa2_seqn(*bufs) && priv->en_ordered) {
+			order_sendq = (struct dpaa2_queue *)priv->tx_vq[0];
+			dpaa2_set_enqueue_descriptor(order_sendq,
+						     (*bufs),
+						     &eqdesc[loop]);
+		} else {
+			qbman_eq_desc_set_no_orp(&eqdesc[loop],
+							 DPAA2_EQ_RESP_ERR_FQ);
+			qbman_eq_desc_set_fq(&eqdesc[loop],
+						     dpaa2_q[loop]->fqid);
 		}
 
 		if (likely(RTE_MBUF_DIRECT(*bufs))) {
@@ -1591,7 +1611,6 @@ dpaa2_dev_tx_multi_txq_ordered(void **queue,
 					&fd_arr[loop],
 					mempool_to_bpid(mp));
 				bufs++;
-				dpaa2_q[loop]++;
 				continue;
 			}
 		} else {
@@ -1637,18 +1656,19 @@ dpaa2_dev_tx_multi_txq_ordered(void **queue,
 		}
 
 		bufs++;
-		dpaa2_q[loop]++;
 	}
 
 send_frames:
 	frames_to_send = loop;
 	loop = 0;
+	retry_count = 0;
 	while (loop < frames_to_send) {
 		ret = qbman_swp_enqueue_multiple_desc(swp, &eqdesc[loop],
 				&fd_arr[loop],
 				frames_to_send - loop);
 		if (likely(ret > 0)) {
 			loop += ret;
+			retry_count = 0;
 		} else {
 			retry_count++;
 			if (retry_count > DPAA2_MAX_TX_RETRY_COUNT)
@@ -1834,7 +1854,7 @@ send_n_return:
 		retry_count = 0;
 		while (i < loop) {
 			ret = qbman_swp_enqueue_multiple_desc(swp,
-				       &eqdesc[loop], &fd_arr[i], loop - i);
+				       &eqdesc[i], &fd_arr[i], loop - i);
 			if (unlikely(ret < 0)) {
 				retry_count++;
 				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT)
