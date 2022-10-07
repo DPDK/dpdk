@@ -66,6 +66,9 @@
 /* Tx confirmation enabled */
 #define DPAA2_TX_CONF_ENABLE	0x06
 
+/* DPDMUX index for DPMAC */
+#define DPAA2_DPDMUX_DPMAC_IDX 0
+
 /* HW loopback the egress traffic to self ingress*/
 #define DPAA2_TX_MAC_LOOPBACK_MODE 0x20
 

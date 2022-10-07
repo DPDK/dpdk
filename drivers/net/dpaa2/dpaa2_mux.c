@@ -336,7 +336,7 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 
 		ret = dpdmux_if_set_errors_behavior(&dpdmux_dev->dpdmux,
 				CMD_PRI_LOW,
-				dpdmux_dev->token, dpdmux_id,
+				dpdmux_dev->token, DPAA2_DPDMUX_DPMAC_IDX,
 				&mux_err_cfg);
 		if (ret) {
 			DPAA2_PMD_ERR("dpdmux_if_set_errors_behavior %s err %d",
