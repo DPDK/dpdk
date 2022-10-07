@@ -989,8 +989,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	} else {
 		DPAA_PMD_WARN("The requested maximum Rx packet size (%u) is"
 		     " larger than a single mbuf (%u) and scattered"
-		     " mode has not been requested",
-		     max_rx_pktlen, buffsz - RTE_PKTMBUF_HEADROOM);
+		     " mode has not been requested", max_rx_pktlen, buffsz);
 	}
 
 	dpaa_intf->bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
@@ -1005,7 +1004,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		if (vsp_id >= 0) {
 			ret = dpaa_port_vsp_update(dpaa_intf, fmc_q, vsp_id,
 					DPAA_MEMPOOL_TO_POOL_INFO(mp)->bpid,
-					fif);
+					fif, buffsz + RTE_PKTMBUF_HEADROOM);
 			if (ret) {
 				DPAA_PMD_ERR("dpaa_port_vsp_update failed");
 				return ret;
