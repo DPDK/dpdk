@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017,2019 NXP
+ * Copyright 2017-2022 NXP
  *
  */
 
@@ -64,7 +64,7 @@ static int fsl_qman_portal_init(uint32_t index, int is_shared)
 	qpcfg.addr_virt[DPAA_PORTAL_CE] = map.addr.cena;
 	qpcfg.addr_virt[DPAA_PORTAL_CI] = map.addr.cinh;
 
-	qmfd = open(QMAN_PORTAL_IRQ_PATH, O_RDONLY);
+	qmfd = open(QMAN_PORTAL_IRQ_PATH, O_RDONLY | O_NONBLOCK);
 	if (qmfd == -1) {
 		pr_err("QMan irq init failed\n");
 		process_portal_unmap(&map.addr);
@@ -174,7 +174,7 @@ struct qman_portal *fsl_qman_fq_portal_create(int *fd)
 	q_pcfg->addr_virt[DPAA_PORTAL_CE] = q_map.addr.cena;
 	q_pcfg->addr_virt[DPAA_PORTAL_CI] = q_map.addr.cinh;
 
-	q_fd = open(QMAN_PORTAL_IRQ_PATH, O_RDONLY);
+	q_fd = open(QMAN_PORTAL_IRQ_PATH, O_RDONLY | O_NONBLOCK);
 	if (q_fd == -1) {
 		pr_err("QMan irq init failed\n");
 		goto err;
