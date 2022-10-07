@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2015 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017,2022 NXP
  *
  */
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
 
 #include <rte_spinlock.h>
+#include <rte_cycles.h>
 
 /** User space framework uses MC Portal in shared mode. Following change
  * introduces lock in MC FLIB
@@ -54,7 +55,7 @@ static int mc_status_to_error(enum mc_cmd_status status)
 int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 {
 	enum mc_cmd_status status;
-	uint64_t response;
+	uint64_t response, start_time, total_time, time_to_wait;
 
 	if (!mc_io || !mc_io->regs)
 		return -EACCES;
@@ -64,15 +65,20 @@ int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 
 	mc_write_command(mc_io->regs, cmd);
 
+	/* Wait for one second. rte_get_timer_hz() returns frequency of CPU */
+	time_to_wait = rte_get_timer_hz();
+	total_time = 0;
+	start_time = rte_get_timer_cycles();
+
 	/* Spin until status changes */
 	do {
 		response = ioread64(mc_io->regs);
 		status = mc_cmd_read_status((struct mc_command *)&response);
+		total_time = rte_get_timer_cycles() - start_time;
+	} while (status == MC_CMD_STATUS_READY && total_time <= time_to_wait);
 
-		/* --- Call wait function here to prevent blocking ---
-		 * Change the loop condition accordingly to exit on timeout.
-		 */
-	} while (status == MC_CMD_STATUS_READY);
+	if (status == MC_CMD_STATUS_READY)
+		return mc_status_to_error(MC_CMD_STATUS_TIMEOUT);
 
 	/* Read the response back into the command buffer */
 	mc_read_response(mc_io->regs, cmd);
