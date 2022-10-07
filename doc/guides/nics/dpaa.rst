@@ -187,6 +187,10 @@ See :doc:`../platform/dpaa` for setup information
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
   to setup the basic DPDK environment.
+- DPAA driver has dependency on kernel to perform various functionalities.
+  So kernel and DPDK version should be compatible for proper working.
+  Refer release notes of NXP SDK guide to match the versions `NXP LSDK GUIDE
+  <https://www.nxp.com/design/software/embedded-software/linux-software-and-development-tools/layerscape-software-development-kit-v21-08:LAYERSCAPE-SDK>`_.
 
 .. note::
 
