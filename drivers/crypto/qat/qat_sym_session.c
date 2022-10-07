@@ -520,8 +520,19 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 	int ret;
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-	if (ossl_legacy_provider_load())
-		return -EINVAL;
+		OSSL_PROVIDER * legacy;
+		OSSL_PROVIDER *deflt;
+
+		/* Load Multiple providers into the default (NULL) library context */
+		legacy = OSSL_PROVIDER_load(NULL, "legacy");
+		if (legacy == NULL)
+			return -EINVAL;
+
+		deflt = OSSL_PROVIDER_load(NULL, "default");
+		if (deflt == NULL) {
+			OSSL_PROVIDER_unload(legacy);
+			return -EINVAL;
+		}
 #endif
 	ret = qat_sym_session_set_parameters(dev, xform,
 			CRYPTODEV_GET_SYM_SESS_PRIV(sess),
@@ -534,7 +545,8 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 	}
 
 # if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-	ossl_legacy_provider_unload();
+		OSSL_PROVIDER_unload(legacy);
+		OSSL_PROVIDER_unload(deflt);
 # endif
 	return 0;
 }
@@ -2575,8 +2587,11 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 {
 	int ret;
 	int qat_cmd_id;
+	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	struct rte_crypto_sym_xform *xform = NULL;
 	struct qat_sym_session *session = session_private;
+	struct qat_cryptodev_private *internals = cdev->data->dev_private;
+	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
 
 	/* Clear the session */
 	memset(session, 0, qat_sym_session_get_private_size(dev));
@@ -2613,7 +2628,7 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 		return ret;
 	qat_sym_session_finalize(session);
 
-	return 0;
+	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)cdev, session);
 }
 
 int
@@ -2623,9 +2638,6 @@ qat_security_session_create(void *dev,
 {
 	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
-	struct qat_cryptodev_private *internals = cdev->data->dev_private;
-	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
-	struct qat_sym_session *sym_session = NULL;
 	int ret;
 
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL ||
@@ -2645,11 +2657,7 @@ qat_security_session_create(void *dev,
 		return ret;
 	}
 
-	sym_session = (struct qat_sym_session *)sess_private_data;
-	sym_session->dev_id = internals->dev_id;
-
-	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)cdev,
-			sess_private_data);
+	return 0;
 }
 
 int
