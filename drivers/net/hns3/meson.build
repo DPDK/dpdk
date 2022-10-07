@@ -13,6 +13,12 @@ if arch_subdir != 'x86' and arch_subdir != 'arm' or not dpdk_conf.get('RTE_ARCH_
     subdir_done()
 endif
 
+if dpdk_conf.get('RTE_IOVA_AS_PA') == 0
+    build = false
+    reason = 'driver does not support disabling IOVA as PA mode'
+    subdir_done()
+endif
+
 sources = files(
         'hns3_cmd.c',
         'hns3_dcb.c',

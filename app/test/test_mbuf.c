@@ -1232,11 +1232,13 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 		return -1;
 	}
 
-	badbuf = *buf;
-	rte_mbuf_iova_set(&badbuf, 0);
-	if (verify_mbuf_check_panics(&badbuf)) {
-		printf("Error with bad-physaddr mbuf test\n");
-		return -1;
+	if (RTE_IOVA_AS_PA) {
+		badbuf = *buf;
+		rte_mbuf_iova_set(&badbuf, 0);
+		if (verify_mbuf_check_panics(&badbuf)) {
+			printf("Error with bad-physaddr mbuf test\n");
+			return -1;
+		}
 	}
 
 	badbuf = *buf;
