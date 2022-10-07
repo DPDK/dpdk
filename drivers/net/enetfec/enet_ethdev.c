@@ -54,6 +54,7 @@ enetfec_restart(struct rte_eth_dev *dev)
 	uint32_t rcntl = OPT_FRAME_SIZE | 0x04;
 	uint32_t ecntl = ENETFEC_ETHEREN;
 	uint32_t val;
+	int i;
 
 	/* Clear any outstanding interrupt. */
 	writel(0xffffffff, (uint8_t *)fep->hw_baseaddr_v + ENETFEC_EIR);
@@ -149,6 +150,9 @@ enetfec_restart(struct rte_eth_dev *dev)
 	/* And last, enable the transmit and receive processing */
 	rte_write32(rte_cpu_to_le_32(ecntl),
 		(uint8_t *)fep->hw_baseaddr_v + ENETFEC_ECR);
+
+	for (i = 0; i < fep->max_rx_queues; i++)
+		rte_write32(0, fep->rx_queues[i]->bd.active_reg_desc);
 	rte_delay_us(10);
 }
 
