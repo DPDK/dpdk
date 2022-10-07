@@ -12,16 +12,14 @@ project('DPDK', 'C',
             'default_library=static',
             'warning_level=2',
         ],
-        meson_version: '>= 0.49.2'
+        meson_version: '>= 0.53.2'
 )
 
 # check for developer mode
 developer_mode = false
 if get_option('developer_mode').auto()
-    if meson.version().version_compare('>=0.53') # fs module available
-        fs = import('fs')
-        developer_mode = fs.exists('.git')
-    endif
+    fs = import('fs')
+    developer_mode = fs.exists('.git')
 else
     developer_mode = get_option('developer_mode').enabled()
 endif

@@ -47,7 +47,7 @@ endif
 
 libmtcr_ul_found = false
 lib = cc.find_library('mtcr_ul', required:false)
-if lib.found() and run_command('meson', '--version').stdout().version_compare('>= 0.49.2')
+if lib.found()
     libmtcr_ul_found = true
     ext_deps += lib
 endif
