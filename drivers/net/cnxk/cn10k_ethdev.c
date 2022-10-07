@@ -67,9 +67,9 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	RTE_BUILD_BUG_ON(RTE_MBUF_OUTL2_LEN_BITS != 7);
 	RTE_BUILD_BUG_ON(RTE_MBUF_OUTL3_LEN_BITS != 9);
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) !=
-			 offsetof(struct rte_mbuf, buf_iova) + 8);
+			 offsetof(struct rte_mbuf, buf_addr) + 16);
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, ol_flags) !=
-			 offsetof(struct rte_mbuf, buf_iova) + 16);
+			 offsetof(struct rte_mbuf, buf_addr) + 24);
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
 			 offsetof(struct rte_mbuf, ol_flags) + 12);
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, tx_offload) !=

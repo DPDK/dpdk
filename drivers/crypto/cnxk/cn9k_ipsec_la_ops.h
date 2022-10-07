@@ -99,7 +99,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 
 	/* Prepare CPT instruction */
 	inst->w4.u64 = sa->inst.w4 | rte_pktmbuf_pkt_len(m_src);
-	inst->dptr = inst->rptr = rte_pktmbuf_iova(m_src);
+	inst->dptr = inst->rptr = rte_pktmbuf_mtod(m_src, uint64_t);
 	inst->w7.u64 = sa->inst.w7;
 }
 #endif /* __CN9K_IPSEC_LA_OPS_H__ */

@@ -3,3 +3,4 @@
 
 deps += ['bus_pci', 'common_cnxk', 'dmadev']
 sources = files('cnxk_dmadev.c')
+pmd_supports_disable_iova_as_pa = true

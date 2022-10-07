@@ -10,3 +10,4 @@ sources = files(
         'cnxk_bphy_irq.c',
 )
 headers = files('rte_pmd_bphy.h')
+pmd_supports_disable_iova_as_pa = true

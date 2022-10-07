@@ -1900,14 +1900,6 @@ again:
 		mbuf2 = (uint64_t *)tx_pkts[2];
 		mbuf3 = (uint64_t *)tx_pkts[3];
 
-		mbuf0 = (uint64_t *)((uintptr_t)mbuf0 +
-				     offsetof(struct rte_mbuf, buf_iova));
-		mbuf1 = (uint64_t *)((uintptr_t)mbuf1 +
-				     offsetof(struct rte_mbuf, buf_iova));
-		mbuf2 = (uint64_t *)((uintptr_t)mbuf2 +
-				     offsetof(struct rte_mbuf, buf_iova));
-		mbuf3 = (uint64_t *)((uintptr_t)mbuf3 +
-				     offsetof(struct rte_mbuf, buf_iova));
 		/*
 		 * Get mbuf's, olflags, iova, pktlen, dataoff
 		 * dataoff_iovaX.D[0] = iova,
@@ -1915,28 +1907,24 @@ again:
 		 * len_olflagsX.D[0] = ol_flags,
 		 * len_olflagsX.D[1](63:32) = mbuf->pkt_len
 		 */
-		dataoff_iova0 = vld1q_u64(mbuf0);
-		len_olflags0 = vld1q_u64(mbuf0 + 2);
-		dataoff_iova1 = vld1q_u64(mbuf1);
-		len_olflags1 = vld1q_u64(mbuf1 + 2);
-		dataoff_iova2 = vld1q_u64(mbuf2);
-		len_olflags2 = vld1q_u64(mbuf2 + 2);
-		dataoff_iova3 = vld1q_u64(mbuf3);
-		len_olflags3 = vld1q_u64(mbuf3 + 2);
+		dataoff_iova0 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf0)->data_off, vld1q_u64(mbuf0), 1);
+		len_olflags0 = vld1q_u64(mbuf0 + 3);
+		dataoff_iova1 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf0)->data_off, vld1q_u64(mbuf1), 1);
+		len_olflags1 = vld1q_u64(mbuf1 + 3);
+		dataoff_iova2 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf0)->data_off, vld1q_u64(mbuf2), 1);
+		len_olflags2 = vld1q_u64(mbuf2 + 3);
+		dataoff_iova3 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf0)->data_off, vld1q_u64(mbuf3), 1);
+		len_olflags3 = vld1q_u64(mbuf3 + 3);
 
 		/* Move mbufs to point pool */
-		mbuf0 = (uint64_t *)((uintptr_t)mbuf0 +
-				     offsetof(struct rte_mbuf, pool) -
-				     offsetof(struct rte_mbuf, buf_iova));
-		mbuf1 = (uint64_t *)((uintptr_t)mbuf1 +
-				     offsetof(struct rte_mbuf, pool) -
-				     offsetof(struct rte_mbuf, buf_iova));
-		mbuf2 = (uint64_t *)((uintptr_t)mbuf2 +
-				     offsetof(struct rte_mbuf, pool) -
-				     offsetof(struct rte_mbuf, buf_iova));
-		mbuf3 = (uint64_t *)((uintptr_t)mbuf3 +
-				     offsetof(struct rte_mbuf, pool) -
-				     offsetof(struct rte_mbuf, buf_iova));
+		mbuf0 = (uint64_t *)((uintptr_t)mbuf0 + offsetof(struct rte_mbuf, pool));
+		mbuf1 = (uint64_t *)((uintptr_t)mbuf1 + offsetof(struct rte_mbuf, pool));
+		mbuf2 = (uint64_t *)((uintptr_t)mbuf2 + offsetof(struct rte_mbuf, pool));
+		mbuf3 = (uint64_t *)((uintptr_t)mbuf3 + offsetof(struct rte_mbuf, pool));
 
 		if (flags & (NIX_TX_OFFLOAD_OL3_OL4_CSUM_F |
 			     NIX_TX_OFFLOAD_L3_L4_CSUM_F)) {
@@ -1985,17 +1973,6 @@ again:
 		};
 		xtmp128 = vzip2q_u64(len_olflags0, len_olflags1);
 		ytmp128 = vzip2q_u64(len_olflags2, len_olflags3);
-
-		/* Clear dataoff_iovaX.D[1] bits other than dataoff(15:0) */
-		const uint64x2_t and_mask0 = {
-			0xFFFFFFFFFFFFFFFF,
-			0x000000000000FFFF,
-		};
-
-		dataoff_iova0 = vandq_u64(dataoff_iova0, and_mask0);
-		dataoff_iova1 = vandq_u64(dataoff_iova1, and_mask0);
-		dataoff_iova2 = vandq_u64(dataoff_iova2, and_mask0);
-		dataoff_iova3 = vandq_u64(dataoff_iova3, and_mask0);
 
 		/*
 		 * Pick only 16 bits of pktlen preset at bits 63:32

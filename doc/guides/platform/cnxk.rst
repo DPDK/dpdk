@@ -575,6 +575,8 @@ Compile DPDK
 
 DPDK may be compiled either natively on OCTEON CN9K/CN10K platform or cross-compiled on
 an x86 based platform.
+Meson build option ``enable_iova_as_pa`` is disabled on CNXK platforms.
+So only PMDs supporting this option are enabled on CNXK platform builds.
 
 Native Compilation
 ~~~~~~~~~~~~~~~~~~

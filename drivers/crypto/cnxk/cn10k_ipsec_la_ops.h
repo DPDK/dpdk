@@ -86,7 +86,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop,
 
 	/* Prepare CPT instruction */
 	inst->w4.u64 = inst_w4_u64 | rte_pktmbuf_pkt_len(m_src);
-	dptr = rte_pktmbuf_iova(m_src);
+	dptr = rte_pktmbuf_mtod(m_src, uint64_t);
 	inst->dptr = dptr;
 	inst->rptr = dptr;
 
@@ -103,7 +103,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_ipsec_sa *sa,
 
 	/* Prepare CPT instruction */
 	inst->w4.u64 = sa->inst.w4 | rte_pktmbuf_pkt_len(m_src);
-	dptr = rte_pktmbuf_iova(m_src);
+	dptr = rte_pktmbuf_mtod(m_src, uint64_t);
 	inst->dptr = dptr;
 	inst->rptr = dptr;
 

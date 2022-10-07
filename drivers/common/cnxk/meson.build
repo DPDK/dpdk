@@ -87,3 +87,4 @@ sources += files('cnxk_telemetry_bphy.c',
 )
 
 deps += ['bus_pci', 'net', 'telemetry']
+pmd_supports_disable_iova_as_pa = true

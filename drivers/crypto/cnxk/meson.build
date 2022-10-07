@@ -31,3 +31,5 @@ if get_option('buildtype').contains('debug')
 else
     cflags += [ '-ULA_IPSEC_DEBUG','-UCNXK_CRYPTODEV_DEBUG' ]
 endif
+
+pmd_supports_disable_iova_as_pa = true
