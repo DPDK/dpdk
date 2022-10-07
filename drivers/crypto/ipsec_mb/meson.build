@@ -41,3 +41,4 @@ sources = files(
         'pmd_zuc.c',
 )
 deps += ['bus_vdev', 'net', 'security']
+pmd_supports_disable_iova_as_pa = true

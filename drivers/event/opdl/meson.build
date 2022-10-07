@@ -9,3 +9,4 @@ sources = files(
         'opdl_test.c',
 )
 deps += ['bus_vdev']
+pmd_supports_disable_iova_as_pa = true

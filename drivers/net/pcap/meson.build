@@ -15,3 +15,4 @@ ext_deps += pcap_dep
 if is_windows
     ext_deps += cc.find_library('iphlpapi', required: true)
 endif
+pmd_supports_disable_iova_as_pa = true

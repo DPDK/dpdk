@@ -12,3 +12,4 @@ sources = files(
 )
 
 deps += ['hash']
+pmd_supports_disable_iova_as_pa = true

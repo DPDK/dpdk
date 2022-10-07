@@ -35,3 +35,4 @@ foreach arg:args
     config.set(arg[0], cc.has_header_symbol(arg[1], arg[2]))
 endforeach
 configure_file(output : 'tap_autoconf.h', configuration : config)
+pmd_supports_disable_iova_as_pa = true

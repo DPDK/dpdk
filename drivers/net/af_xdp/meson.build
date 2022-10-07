@@ -70,3 +70,5 @@ if build
       cflags += ['-DRTE_NET_AF_XDP_LIBBPF_XDP_ATTACH']
   endif
 endif
+
+pmd_supports_disable_iova_as_pa = true
