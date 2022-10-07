@@ -39,11 +39,6 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 		if (pkt_received >= nb_pkts)
 			break;
 
-		new_mbuf = rte_pktmbuf_alloc(pool);
-		if (unlikely(new_mbuf == NULL)) {
-			stats->rx_nombuf++;
-			break;
-		}
 		/* Check for errors. */
 		status ^= RX_BD_LAST;
 		if (status & (RX_BD_LG | RX_BD_SH | RX_BD_NO |
@@ -70,6 +65,12 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 			if (status & (RX_BD_NO | RX_BD_TR))
 				ENETFEC_DP_LOG(DEBUG, "rx_frame_error");
 			goto rx_processing_done;
+		}
+
+		new_mbuf = rte_pktmbuf_alloc(pool);
+		if (unlikely(new_mbuf == NULL)) {
+			stats->rx_nombuf++;
+			break;
 		}
 
 		/* Process the incoming frame. */
@@ -193,7 +194,16 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			tx_st = 0;
 			break;
 		}
+
+		mbuf = *(tx_pkts);
+		if (mbuf->nb_segs > 1) {
+			ENETFEC_DP_LOG(DEBUG, "SG not supported");
+			return pkt_transmitted;
+		}
+
+		tx_pkts++;
 		bdp = txq->bd.cur;
+
 		/* First clean the ring */
 		index = enet_get_bd_index(bdp, &txq->bd);
 		status = rte_le_to_cpu_16(rte_read16(&bdp->bd_sc));
@@ -207,9 +217,6 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txq->tx_mbuf[index] = NULL;
 		}
 
-		mbuf = *(tx_pkts);
-		tx_pkts++;
-
 		/* Fill in a Tx ring entry */
 		last_bdp = bdp;
 		status &= ~TX_BD_STATS;
@@ -219,10 +226,6 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		stats->opackets++;
 		stats->obytes += buflen;
 
-		if (mbuf->nb_segs > 1) {
-			ENETFEC_DP_LOG(DEBUG, "SG not supported");
-			return -1;
-		}
 		status |= (TX_BD_LAST);
 		data = rte_pktmbuf_mtod(mbuf, void *);
 		for (i = 0; i <= buflen; i += RTE_CACHE_LINE_SIZE)
@@ -268,5 +271,5 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 */
 		txq->bd.cur = bdp;
 	}
-	return nb_pkts;
+	return pkt_transmitted;
 }
