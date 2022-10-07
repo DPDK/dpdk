@@ -57,6 +57,8 @@ struct blockcipher_test_case {
 	const struct blockcipher_test_data *test_data;
 	uint8_t op_mask; /* operation mask */
 	uint8_t feature_mask;
+	uint64_t sgl_flag;
+	uint8_t sgl_segs;
 };
 
 struct blockcipher_test_data {

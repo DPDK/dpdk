@@ -95,7 +95,9 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	uint8_t tmp_dst_buf[MBUF_SIZE];
 	uint32_t pad_len;
 
-	int nb_segs = 1;
+	int nb_segs_in = 1;
+	int nb_segs_out = 1;
+	uint64_t sgl_type = t->sgl_flag;
 	uint32_t nb_iterates = 0;
 
 	rte_cryptodev_info_get(dev_id, &dev_info);
@@ -120,30 +122,31 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		}
 	}
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SG) {
-		uint64_t oop_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT;
-
-		if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
-			if (!(feat_flags & oop_flag)) {
-				printf("Device doesn't support out-of-place "
-					"scatter-gather in input mbuf. "
-					"Test Skipped.\n");
-				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
-					"SKIPPED");
-				return TEST_SKIPPED;
-			}
-		} else {
-			if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
-				printf("Device doesn't support in-place "
-					"scatter-gather mbufs. "
-					"Test Skipped.\n");
-				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
-					"SKIPPED");
-				return TEST_SKIPPED;
-			}
+		if (sgl_type == 0) {
+			if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP)
+				sgl_type = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT;
+			else
+				sgl_type = RTE_CRYPTODEV_FF_IN_PLACE_SGL;
 		}
 
-		nb_segs = 3;
+		if (!(feat_flags & sgl_type)) {
+			printf("Device doesn't support scatter-gather type."
+				" Test Skipped.\n");
+			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+				"SKIPPED");
+			return TEST_SKIPPED;
+		}
+
+		if (sgl_type == RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT ||
+				sgl_type == RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT ||
+				sgl_type == RTE_CRYPTODEV_FF_IN_PLACE_SGL)
+			nb_segs_in = t->sgl_segs == 0 ? 3 : t->sgl_segs;
+
+		if (sgl_type == RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT ||
+				sgl_type == RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)
+			nb_segs_out = t->sgl_segs == 0 ? 3 : t->sgl_segs;
 	}
+
 	if (!!(feat_flags & RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY) ^
 		tdata->wrapped_key) {
 		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
@@ -206,7 +209,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	/* for contiguous mbuf, nb_segs is 1 */
 	ibuf = create_segmented_mbuf(mbuf_pool,
-			tdata->ciphertext.len, nb_segs, src_pattern);
+			tdata->ciphertext.len, nb_segs_in, src_pattern);
 	if (ibuf == NULL) {
 		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 			"line %u FAILED: %s",
@@ -255,7 +258,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	}
 
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
-		obuf = rte_pktmbuf_alloc(mbuf_pool);
+		obuf = create_segmented_mbuf(mbuf_pool,
+			tdata->ciphertext.len, nb_segs_out, dst_pattern);
 		if (!obuf) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
 				"FAILED: %s", __LINE__,

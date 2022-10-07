@@ -467,10 +467,12 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 	},
 	{
-		.test_descr = "HMAC-SHA1 Digest Scatter Gather",
+		.test_descr = "HMAC-SHA1 Digest Scatter Gather (Inplace)",
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "HMAC-SHA1 Digest Verify",
@@ -478,10 +480,12 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 	},
 	{
-		.test_descr = "HMAC-SHA1 Digest Verify Scatter Gather",
+		.test_descr = "HMAC-SHA1 Digest Verify Scatter Gather (Inplace)",
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "SHA224 Digest",

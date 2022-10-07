@@ -4163,12 +4163,44 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-192-CTR XCBC Decryption Digest Verify "
-				"Scatter Gather",
+				"Scatter Gather (Inplace)",
+		.test_data = &aes_test_data_2,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CTR XCBC Decryption Digest Verify "
+				"Scatter Gather OOP (SGL in SGL out)",
 		.test_data = &aes_test_data_2,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
 			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
 	},
+	{
+		.test_descr = "AES-192-CTR XCBC Decryption Digest Verify "
+				"Scatter Gather OOP (LB in SGL out)",
+		.test_data = &aes_test_data_2,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CTR XCBC Decryption Digest Verify "
+				"Scatter Gather OOP (SGL in LB out)",
+		.test_data = &aes_test_data_2,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
+	},
+
 	{
 		.test_descr = "AES-256-CTR HMAC-SHA1 Encryption Digest",
 		.test_data = &aes_test_data_3,
@@ -4193,11 +4225,52 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
-				"Scatter Gather",
+				"Scatter Gather (Inplace)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
+				"Scatter Gather OOP (SGL in SGL out)",
 		.test_data = &aes_test_data_4,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
 			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
+				"Scatter Gather OOP 16 segs (SGL in SGL out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 16
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
+				"Scatter Gather OOP (LB in SGL out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
+				"Scatter Gather OOP (SGL in LB out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -4207,10 +4280,52 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
-			"Verify Scatter Gather",
+			"Verify Scatter Gather (Inplace)",
 		.test_data = &aes_test_data_4,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
+			"Verify Scatter Gather OOP (SGL in SGL out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
+			"Verify Scatter Gather OOP 16 segs (SGL in SGL out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 16
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
+			"Verify Scatter Gather OOP (LB in SGL out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
+			"Verify Scatter Gather OOP (SGL in LB out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -4255,12 +4370,46 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest "
-				"Scatter Gather Sessionless",
+				"Scatter Gather Sessionless (Inplace)",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS |
+			BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest "
+				"Scatter Gather Sessionless OOP (SGL in SGL out)",
 		.test_data = &aes_test_data_6,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS |
 			BLOCKCIPHER_TEST_FEATURE_SG |
 			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest "
+				"Scatter Gather Sessionless OOP (LB in SGL out)",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS |
+			BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest "
+				"Scatter Gather Sessionless OOP (SGL in LB out)",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS |
+			BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
@@ -4270,11 +4419,42 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
-			"Verify Scatter Gather",
+			"Verify Scatter Gather (Inplace)",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 2
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
+			"Verify Scatter Gather OOP (SGL in SGL out)",
 		.test_data = &aes_test_data_6,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
 			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
+			"Verify Scatter Gather OOP (LB in SGL out)",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
+			"Verify Scatter Gather OOP (SGL in LB out)",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC XCBC Encryption Digest",
@@ -4358,6 +4538,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN_ENC,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
 				BLOCKCIPHER_TEST_FEATURE_DIGEST_ENCRYPTED,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
@@ -4382,6 +4564,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
 			BLOCKCIPHER_TEST_FEATURE_SESSIONLESS |
 			BLOCKCIPHER_TEST_FEATURE_DIGEST_ENCRYPTED,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -4397,6 +4581,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_DEC_AUTH_VERIFY,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
 				BLOCKCIPHER_TEST_FEATURE_DIGEST_ENCRYPTED,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -4421,6 +4607,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS |
 				BLOCKCIPHER_TEST_FEATURE_SG |
 				BLOCKCIPHER_TEST_FEATURE_DIGEST_ENCRYPTED,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -4505,6 +4693,41 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 	},
 	{
+		.test_descr = "AES-128-CBC Encryption Scatter gather (Inplace)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC Encryption Scatter gather OOP (SGL in SGL out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC Encryption Scatter gather OOP (LB in SGL out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-128-CBC Encryption Scatter gather OOP (SGL in LB out)",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
+	},
+	{
 		.test_descr = "AES-128-CBC Decryption",
 		.test_data = &aes_test_data_4,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
@@ -4515,11 +4738,39 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 	},
 	{
-		.test_descr = "AES-192-CBC Encryption Scatter gather",
+		.test_descr = "AES-192-CBC Encryption Scatter gather (Inplace)",
+		.test_data = &aes_test_data_10,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CBC Encryption Scatter gather OOP (SGL in SGL out)",
 		.test_data = &aes_test_data_10,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
 			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CBC Encryption Scatter gather OOP (LB in SGL out)",
+		.test_data = &aes_test_data_10,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CBC Encryption Scatter gather OOP (SGL in LB out)",
+		.test_data = &aes_test_data_10,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-192-CBC Decryption",
@@ -4527,10 +4778,39 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 	},
 	{
-		.test_descr = "AES-192-CBC Decryption Scatter Gather",
+		.test_descr = "AES-192-CBC Decryption Scatter Gather (Inplace)",
 		.test_data = &aes_test_data_10,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_IN_PLACE_SGL,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CBC Decryption Scatter Gather OOP (SGL in SGL out)",
+		.test_data = &aes_test_data_10,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CBC Decryption Scatter Gather OOP (LB in SGL out)",
+		.test_data = &aes_test_data_10,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT,
+		.sgl_segs = 3
+	},
+	{
+		.test_descr = "AES-192-CBC Decryption Scatter Gather OOP (SGL in LB out)",
+		.test_data = &aes_test_data_10,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-CBC Encryption",
@@ -4694,6 +4974,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (512-byte plaintext"
@@ -4702,6 +4984,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-XTS Encryption (512-byte plaintext"
@@ -4710,6 +4994,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (512-byte plaintext"
@@ -4718,6 +5004,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-XTS Encryption (4096-byte plaintext"
@@ -4726,6 +5014,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (4096-byte plaintext"
@@ -4734,6 +5024,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-XTS Encryption (4096-byte plaintext"
@@ -4742,6 +5034,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (4096-byte plaintext"
@@ -4750,6 +5044,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
 				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT,
+		.sgl_segs = 3
 	},
 	{
 		.test_descr = "cipher-only - NULL algo - x8 - encryption",
