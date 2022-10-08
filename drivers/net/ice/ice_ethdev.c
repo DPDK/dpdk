@@ -1841,17 +1841,17 @@ load_fw:
 	PMD_INIT_LOG(DEBUG, "DDP package name: %s", pkg_file);
 
 	err = ice_copy_and_init_pkg(hw, buf, bufsz);
-	if (err) {
+	if (!ice_is_init_pkg_successful(err)) {
 		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d\n", err);
-		goto out;
+		free(buf);
+		return -1;
 	}
 
 	/* store the loaded pkg type info */
 	adapter->active_pkg_type = ice_load_pkg_type(hw);
 
-out:
 	free(buf);
-	return err;
+	return 0;
 }
 
 static void
