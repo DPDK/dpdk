@@ -1524,14 +1524,14 @@ iavf_fdir_check(struct iavf_adapter *adapter,
 		PMD_DRV_LOG(ERR,
 			"Failed to check rule request due to parameters validation"
 			" or HW doesn't support");
-		return -1;
+		err = -1;
 	} else {
 		PMD_DRV_LOG(ERR,
 			"Failed to check rule request due to other reasons");
-		return -1;
+		err =  -1;
 	}
 
-	return 0;
+	return err;
 }
 
 int
@@ -1553,9 +1553,11 @@ iavf_flow_sub(struct iavf_adapter *adapter, struct iavf_fsub_conf *filter)
 	args.out_size = IAVF_AQ_BUF_SZ;
 
 	err = iavf_execute_vf_cmd(adapter, &args, 0);
-	if (err)
+	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to execute command of "
 				 "OP_FLOW_SUBSCRIBE");
+		return err;
+	}
 
 	fsub_cfg = (struct virtchnl_flow_sub *)args.out_buffer;
 	filter->flow_id = fsub_cfg->flow_id;
@@ -1602,9 +1604,11 @@ iavf_flow_unsub(struct iavf_adapter *adapter, struct iavf_fsub_conf *filter)
 	args.out_size = IAVF_AQ_BUF_SZ;
 
 	err = iavf_execute_vf_cmd(adapter, &args, 0);
-	if (err)
+	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to execute command of "
 				 "OP_FLOW_UNSUBSCRIBE");
+		return err;
+	}
 
 	unsub_cfg = (struct virtchnl_flow_unsub *)args.out_buffer;
 
@@ -1644,7 +1648,7 @@ iavf_flow_sub_check(struct iavf_adapter *adapter,
 
 	err = iavf_execute_vf_cmd(adapter, &args, 0);
 	if (err) {
-		PMD_DRV_LOG(ERR, "fail to check flow director rule");
+		PMD_DRV_LOG(ERR, "Failed to check flow subscription rule");
 		return err;
 	}
 

@@ -21,7 +21,6 @@
 #include <iavf.h>
 #include "iavf_generic_flow.h"
 
-
 #define MAX_QGRP_NUM_TYPE      7
 #define IAVF_IPV6_ADDR_LENGTH  16
 #define MAX_INPUT_SET_BYTE     32
@@ -95,6 +94,7 @@ iavf_fsub_create(struct iavf_adapter *ad, struct rte_flow *flow,
 	rte_memcpy(rule, filter, sizeof(*rule));
 	flow->rule = rule;
 
+	rte_free(meta);
 	return ret;
 
 free_entry:
@@ -414,7 +414,7 @@ iavf_fsub_parse_pattern(const struct rte_flow_item pattern[],
 
 			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, S_VLAN);
 
-			if (vlan_spec && vlan_spec) {
+			if (vlan_spec && vlan_mask) {
 				input = &outer_input_set;
 
 				*input |= IAVF_INSET_VLAN_OUTER;
@@ -578,7 +578,7 @@ iavf_fsub_parse_action(struct iavf_adapter *ad,
 
 error1:
 	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, actions,
-			   "Invalid ethdev_port_id");
+			   "Invalid port id");
 	return -rte_errno;
 
 error2:
@@ -662,14 +662,16 @@ iavf_fsub_parse(struct iavf_adapter *ad,
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "No memory for iavf_fsub_conf_ptr");
-		goto error;
+		return -ENOMEM;
 	}
 
 	/* search flow subscribe pattern */
 	pattern_match_item = iavf_search_pattern_match_item(pattern, array,
 							    array_len, error);
-	if (!pattern_match_item)
-		return -rte_errno;
+	if (!pattern_match_item) {
+		ret = -rte_errno;
+		goto error;
+	}
 
 	/* parse flow subscribe pattern */
 	ret = iavf_fsub_parse_pattern(pattern,
@@ -686,13 +688,13 @@ iavf_fsub_parse(struct iavf_adapter *ad,
 	/* parse flow subscribe pattern action */
 	ret = iavf_fsub_parse_action((void *)ad, actions, priority,
 				     error, filter);
-	if (ret)
-		goto error;
-
-	if (meta)
-		*meta = filter;
 
 error:
+	if (!ret && meta)
+		*meta = filter;
+	else
+		rte_free(filter);
+
 	rte_free(pattern_match_item);
 	return ret;
 }
