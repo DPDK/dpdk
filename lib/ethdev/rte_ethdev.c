@@ -6209,6 +6209,39 @@ rte_eth_tx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
 						queue_id, offset, num, file));
 }
 
+int
+rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *ptypes, int num)
+{
+	int i, j;
+	struct rte_eth_dev *dev;
+	const uint32_t *all_types;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (ptypes == NULL && num > 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Cannot get ethdev port %u supported header protocol types to NULL when array size is non zero\n",
+			port_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->buffer_split_supported_hdr_ptypes_get == NULL)
+		return -ENOTSUP;
+	all_types = (*dev->dev_ops->buffer_split_supported_hdr_ptypes_get)(dev);
+
+	if (all_types == NULL)
+		return 0;
+
+	for (i = 0, j = 0; all_types[i] != RTE_PTYPE_UNKNOWN; ++i) {
+		if (j < num)
+			ptypes[j] = all_types[i];
+		j++;
+	}
+
+	return j;
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_eth_dev_logtype, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

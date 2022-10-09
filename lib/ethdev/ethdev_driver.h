@@ -1057,6 +1057,18 @@ typedef int (*eth_ip_reassembly_conf_set_t)(struct rte_eth_dev *dev,
 
 /**
  * @internal
+ * Get supported header protocols of a PMD to split.
+ *
+ * @param dev
+ *   Ethdev handle of port.
+ *
+ * @return
+ *   An array pointer to store supported protocol headers.
+ */
+typedef const uint32_t *(*eth_buffer_split_supported_hdr_ptypes_get_t)(struct rte_eth_dev *dev);
+
+/**
+ * @internal
  * Dump private info from device to a file.
  *
  * @param dev
@@ -1365,6 +1377,9 @@ struct eth_dev_ops {
 	eth_ip_reassembly_conf_get_t ip_reassembly_conf_get;
 	/** Set IP reassembly configuration */
 	eth_ip_reassembly_conf_set_t ip_reassembly_conf_set;
+
+	/** Get supported header ptypes to split */
+	eth_buffer_split_supported_hdr_ptypes_get_t buffer_split_supported_hdr_ptypes_get;
 
 	/** Dump private info from device */
 	eth_dev_priv_dump_t eth_dev_priv_dump;

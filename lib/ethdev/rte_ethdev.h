@@ -6337,6 +6337,37 @@ rte_eth_tx_buffer(uint16_t port_id, uint16_t queue_id,
 	return rte_eth_tx_buffer_flush(port_id, queue_id, buffer);
 }
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get supported header protocols to split on Rx.
+ *
+ * When a packet type is announced to be split,
+ * it *must* be supported by the PMD.
+ * For instance, if eth-ipv4, eth-ipv4-udp is announced,
+ * the PMD must return the following packet types for these packets:
+ * - Ether/IPv4             -> RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4
+ * - Ether/IPv4/UDP         -> RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP
+ *
+ * @param port_id
+ *   The port identifier of the device.
+ * @param[out] ptypes
+ *   An array pointer to store supported protocol headers, allocated by caller.
+ *   These ptypes are composed with RTE_PTYPE_*.
+ * @param num
+ *   Size of the array pointed by param ptypes.
+ * @return
+ *   - (>=0) Number of supported ptypes. If the number of types exceeds num,
+ *           only num entries will be filled into the ptypes array,
+ *           but the full count of supported ptypes will be returned.
+ *   - (-ENOTSUP) if header protocol is not supported by device.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *ptypes, int num);
+
 #ifdef __cplusplus
 }
 #endif

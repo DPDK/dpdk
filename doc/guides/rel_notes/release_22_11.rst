@@ -75,6 +75,11 @@ New Features
   ``rte_eth_cman_config_get()``, ``rte_eth_cman_config_set()``,
   ``rte_eth_cman_info_get()`` to support congestion management.
 
+* **Added protocol header based buffer split.**
+
+  * Added ``rte_eth_buffer_split_get_supported_hdr_ptypes()`` to get supported
+    header protocols to split at.
+
 * **Added ethdev Rx/Tx descriptor dump API.**
 
   Added the ethdev Rx/Tx descriptor dump API which provides functions

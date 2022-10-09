@@ -181,9 +181,10 @@ Scatters the packets being received on specified boundaries to segmented mbufs.
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT``.
 * **[uses]       rte_eth_rxconf**: ``rx_conf.rx_seg, rx_conf.rx_nseg``.
+* **[implements] eth_dev_ops**: ``buffer_split_supported_hdr_ptypes_get``,
 * **[implements] datapath**: ``Buffer Split functionality``.
 * **[provides]   rte_eth_dev_info**: ``rx_offload_capa:RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT``.
-* **[related] API**: ``rte_eth_rx_queue_setup()``.
+* **[related] API**: ``rte_eth_rx_queue_setup()``, ``rte_eth_buffer_split_get_supported_hdr_ptypes()``.
 
 
 .. _nic_features_lro:
