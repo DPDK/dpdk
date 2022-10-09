@@ -580,6 +580,7 @@ extern uint32_t max_rx_pkt_len;
  * Configuration of packet segments used to scatter received packets
  * if some of split features is configured.
  */
+extern uint32_t rx_pkt_hdr_protos[MAX_SEGS_BUFFER_SPLIT];
 extern uint16_t rx_pkt_seg_lengths[MAX_SEGS_BUFFER_SPLIT];
 extern uint8_t  rx_pkt_nb_segs; /**< Number of segments to split */
 extern uint16_t rx_pkt_seg_offsets[MAX_SEGS_BUFFER_SPLIT];
@@ -851,6 +852,9 @@ inc_tx_burst_stats(struct fwd_stream *fs, uint16_t nb_tx)
 unsigned int parse_item_list(const char *str, const char *item_name,
 			unsigned int max_items,
 			unsigned int *parsed_items, int check_unique_values);
+unsigned int parse_hdrs_list(const char *str, const char *item_name,
+			unsigned int max_item,
+			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
 void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 void cmdline_read_from_file(const char *filename);
@@ -1006,6 +1010,8 @@ void set_record_core_cycles(uint8_t on_off);
 void set_record_burst_stats(uint8_t on_off);
 void set_verbose_level(uint16_t vb_level);
 void set_rx_pkt_segments(unsigned int *seg_lengths, unsigned int nb_segs);
+void set_rx_pkt_hdrs(unsigned int *seg_protos, unsigned int nb_segs);
+void show_rx_pkt_hdrs(void);
 void show_rx_pkt_segments(void);
 void set_rx_pkt_offsets(unsigned int *seg_offsets, unsigned int nb_offs);
 void show_rx_pkt_offsets(void);

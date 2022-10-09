@@ -278,7 +278,7 @@ show config
 Displays the configuration of the application.
 The configuration comes from the command-line, the runtime or the application defaults::
 
-   testpmd> show config (rxtx|cores|fwd|rxoffs|rxpkts|txpkts|txtimes)
+   testpmd> show config (rxtx|cores|fwd|rxoffs|rxpkts|rxhdrs|txpkts|txtimes)
 
 The available information categories are:
 
@@ -290,7 +290,9 @@ The available information categories are:
 
 * ``rxoffs``: Packet offsets for RX split.
 
-* ``rxpkts``: Packets to RX split configuration.
+* ``rxpkts``: Packets to RX length-based split configuration.
+
+* ``rxhdrs``: Packets to RX proto-based split configuration.
 
 * ``txpkts``: Packets to TX configuration.
 
@@ -798,6 +800,20 @@ mbuf for remaining segments will be allocated from the last valid pool).
 
 Where x[,y]* represents a CSV list of values, without white space. Zero value
 means to use the corresponding memory pool data buffer size.
+
+set rxhdrs
+~~~~~~~~~~
+
+Set the protocol headers of segments to scatter packets on receiving
+if split feature is engaged.
+Affects only the queues configured with split offloads
+(currently BUFFER_SPLIT is supported only).
+
+   testpmd> set rxhdrs (eth[,ipv4]*)
+
+Where eth[,ipv4]* represents a CSV list of values, without white space.
+If the list of offsets is shorter than the list of segments,
+zero offsets will be used for the remaining segments.
 
 set txpkts
 ~~~~~~~~~~

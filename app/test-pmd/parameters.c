@@ -152,6 +152,7 @@ usage(char* progname)
 	       " Used mainly with PCAP drivers.\n");
 	printf("  --rxoffs=X[,Y]*: set RX segment offsets for split.\n");
 	printf("  --rxpkts=X[,Y]*: set RX segment sizes to split.\n");
+	printf("  --rxhdrs=eth[,ipv4]*: set RX segment protocol to split.\n");
 	printf("  --txpkts=X[,Y]*: set TX segment sizes"
 		" or total packet length.\n");
 	printf("  --txonly-multi-flow: generate multiple flows in txonly mode\n");
@@ -660,6 +661,7 @@ launch_args_parse(int argc, char** argv)
 		{ "flow-isolate-all",	        0, 0, 0 },
 		{ "rxoffs",			1, 0, 0 },
 		{ "rxpkts",			1, 0, 0 },
+		{ "rxhdrs",			1, 0, 0 },
 		{ "txpkts",			1, 0, 0 },
 		{ "txonly-multi-flow",		0, 0, 0 },
 		{ "rxq-share",			2, 0, 0 },
@@ -1254,13 +1256,25 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "rxpkts")) {
 				unsigned int seg_len[MAX_SEGS_BUFFER_SPLIT];
 				unsigned int nb_segs;
-
 				nb_segs = parse_item_list
 						(optarg, "rxpkt segments",
 						 MAX_SEGS_BUFFER_SPLIT,
 						 seg_len, 0);
 				if (nb_segs > 0)
 					set_rx_pkt_segments(seg_len, nb_segs);
+				else
+					rte_exit(EXIT_FAILURE, "bad rxpkts\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name, "rxhdrs")) {
+				unsigned int seg_hdrs[MAX_SEGS_BUFFER_SPLIT];
+				unsigned int nb_segs;
+
+				nb_segs = parse_hdrs_list
+						(optarg, "rxpkt segments",
+						MAX_SEGS_BUFFER_SPLIT,
+						seg_hdrs, 0);
+				if (nb_segs > 0)
+					set_rx_pkt_hdrs(seg_hdrs, nb_segs);
 				else
 					rte_exit(EXIT_FAILURE, "bad rxpkts\n");
 			}
