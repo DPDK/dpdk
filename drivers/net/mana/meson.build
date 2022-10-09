@@ -3,7 +3,7 @@
 
 if not is_linux or not dpdk_conf.has('RTE_ARCH_X86_64')
     build = false
-    reason = 'mana is supported on Linux X86_64'
+    reason = 'only supported on x86_64 Linux'
     subdir_done()
 endif
 
@@ -18,9 +18,12 @@ sources += files(
         'tx.c',
 )
 
-libnames = ['ibverbs', 'mana' ]
+libnames = ['ibverbs', 'mana']
 foreach libname:libnames
-    lib = cc.find_library(libname, required:false)
+    lib = dependency('lib' + libname, required:false)
+    if not lib.found()
+        lib = cc.find_library(libname, required:false)
+    endif
     if lib.found()
         ext_deps += lib
     else

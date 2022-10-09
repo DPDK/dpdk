@@ -29,7 +29,6 @@ and must be installed separately:
   It allows slow and privileged operations
   (context initialization, hardware resources allocations)
   to be managed by the kernel and fast operations to never leave user space.
-  The minimum required rdma-core version is v43.
 
   In most cases, rdma-core is shipped as a package with an OS distribution.
   User can also install the upstream version of the rdma-core from
@@ -40,7 +39,8 @@ and must be installed separately:
   Low-level user space driver library
   for Microsoft Azure Network Adapter devices,
   it is automatically loaded by libibverbs.
-  The minimum required version of rdma-core with libmana is v43.
+
+  The support of MANA is not merged in rdma-core 42.
 
 - **Kernel modules**
 
@@ -55,6 +55,8 @@ and must be installed separately:
   - mana: Ethernet device driver that provides kernel network interfaces.
   - mana_ib: InifiniBand device driver.
   - ib_uverbs: user space driver for verbs (entry point for libibverbs).
+
+  The support of MANA is planned in Linux 6.2.
 
 Driver compilation and testing
 ------------------------------
