@@ -16,6 +16,9 @@
 #define ICE_RX_MAX_BURST 32
 #define ICE_TX_MAX_BURST 32
 
+/* Maximal number of segments to split. */
+#define ICE_RX_MAX_NSEG 2
+
 #define ICE_CHK_Q_ENA_COUNT        100
 #define ICE_CHK_Q_ENA_INTERVAL_US  100
 
@@ -45,6 +48,11 @@
 extern uint64_t ice_timestamp_dynflag;
 extern int ice_timestamp_dynfield_offset;
 
+/* Max header size can be 2K - 64 bytes */
+#define ICE_RX_HDR_BUF_SIZE    (2048 - 64)
+
+#define ICE_HEADER_SPLIT_ENA   BIT(0)
+
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
 typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
 typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,
@@ -53,6 +61,12 @@ typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,
 
 struct ice_rx_entry {
 	struct rte_mbuf *mbuf;
+};
+
+enum ice_rx_dtype {
+	ICE_RX_DTYPE_NO_SPLIT       = 0,
+	ICE_RX_DTYPE_HEADER_SPLIT   = 1,
+	ICE_RX_DTYPE_SPLIT_ALWAYS   = 2,
 };
 
 struct ice_rx_queue {
@@ -101,6 +115,8 @@ struct ice_rx_queue {
 	uint32_t hw_time_high; /* high 32 bits of timestamp */
 	uint32_t hw_time_low; /* low 32 bits of timestamp */
 	uint64_t hw_time_update; /* SW time of HW record updating */
+	struct rte_eth_rxseg_split rxseg[ICE_RX_MAX_NSEG];
+	uint32_t rxseg_nb;
 };
 
 struct ice_tx_entry {

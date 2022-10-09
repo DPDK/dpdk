@@ -291,6 +291,9 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 		return -1;
 
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT)
+		return -1;
+
 	if (rxq->offloads & ICE_RX_VECTOR_OFFLOAD)
 		return ICE_VECTOR_OFFLOAD_PATH;
 

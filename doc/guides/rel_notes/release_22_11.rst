@@ -132,6 +132,10 @@ New Features
 
   * Added flow subscription support.
 
+* **Updated Intel ice driver.**
+
+  * Added protocol based buffer split support in scalar path.
+
 * **Updated Marvell cnxk driver.**
 
   * Added support for flow action REPRESENTED_PORT.
