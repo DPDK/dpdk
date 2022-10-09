@@ -1344,19 +1344,9 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 		cache_objs = &cache->objs[cache->len];
 		cache->len += n;
 	} else {
-		unsigned int keep = (n >= cache->size) ? 0 : (cache->size - n);
-
-		/*
-		 * If number of object to keep in the cache is positive:
-		 * keep = cache->size - n < cache->flushthresh - n < cache->len
-		 * since cache->flushthresh > cache->size.
-		 * If keep is 0, cache->len cannot be 0 anyway since
-		 * n <= cache->flushthresh and we'd no be here with
-		 * cache->len == 0.
-		 */
-		cache_objs = &cache->objs[keep];
-		rte_mempool_ops_enqueue_bulk(mp, cache_objs, cache->len - keep);
-		cache->len = keep + n;
+		cache_objs = &cache->objs[0];
+		rte_mempool_ops_enqueue_bulk(mp, cache_objs, cache->len);
+		cache->len = n;
 	}
 
 	/* Add the objects to the cache. */
