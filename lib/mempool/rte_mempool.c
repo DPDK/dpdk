@@ -745,6 +745,11 @@ rte_mempool_free(struct rte_mempool *mp)
 static void
 mempool_cache_init(struct rte_mempool_cache *cache, uint32_t size)
 {
+	/* Check that cache have enough space for flush threshold */
+	RTE_BUILD_BUG_ON(CALC_CACHE_FLUSHTHRESH(RTE_MEMPOOL_CACHE_MAX_SIZE) >
+			 RTE_SIZEOF_FIELD(struct rte_mempool_cache, objs) /
+			 RTE_SIZEOF_FIELD(struct rte_mempool_cache, objs[0]));
+
 	cache->size = size;
 	cache->flushthresh = CALC_CACHE_FLUSHTHRESH(size);
 	cache->len = 0;

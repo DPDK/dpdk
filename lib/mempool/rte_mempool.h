@@ -90,7 +90,7 @@ struct rte_mempool_cache {
 	 * Cache is allocated to this size to allow it to overflow in certain
 	 * cases to avoid needless emptying of cache.
 	 */
-	void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 3]; /**< Cache objects */
+	void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2]; /**< Cache objects */
 } __rte_cache_aligned;
 
 /**
@@ -1329,29 +1329,38 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 	RTE_MEMPOOL_STAT_ADD(mp, put_bulk, 1);
 	RTE_MEMPOOL_STAT_ADD(mp, put_objs, n);
 
-	/* No cache provided or if put would overflow mem allocated for cache */
-	if (unlikely(cache == NULL || n > RTE_MEMPOOL_CACHE_MAX_SIZE))
+	/* No cache provided or the request itself is too big for the cache */
+	if (unlikely(cache == NULL || n > cache->flushthresh))
 		goto driver_enqueue;
 
-	cache_objs = &cache->objs[cache->len];
-
 	/*
-	 * The cache follows the following algorithm
-	 *   1. Add the objects to the cache
-	 *   2. Anything greater than the cache min value (if it crosses the
-	 *   cache flush threshold) is flushed to the backend.
+	 * The cache follows the following algorithm:
+	 *   1. If the objects cannot be added to the cache without crossing
+	 *      the flush threshold, flush the cache to the backend.
+	 *   2. Add the objects to the cache.
 	 */
 
-	/* Add elements back into the cache */
-	rte_memcpy(&cache_objs[0], obj_table, sizeof(void *) * n);
+	if (cache->len + n <= cache->flushthresh) {
+		cache_objs = &cache->objs[cache->len];
+		cache->len += n;
+	} else {
+		unsigned int keep = (n >= cache->size) ? 0 : (cache->size - n);
 
-	cache->len += n;
-
-	if (cache->len >= cache->flushthresh) {
-		rte_mempool_ops_enqueue_bulk(mp, &cache->objs[cache->size],
-				cache->len - cache->size);
-		cache->len = cache->size;
+		/*
+		 * If number of object to keep in the cache is positive:
+		 * keep = cache->size - n < cache->flushthresh - n < cache->len
+		 * since cache->flushthresh > cache->size.
+		 * If keep is 0, cache->len cannot be 0 anyway since
+		 * n <= cache->flushthresh and we'd no be here with
+		 * cache->len == 0.
+		 */
+		cache_objs = &cache->objs[keep];
+		rte_mempool_ops_enqueue_bulk(mp, cache_objs, cache->len - keep);
+		cache->len = keep + n;
 	}
+
+	/* Add the objects to the cache. */
+	rte_memcpy(cache_objs, obj_table, sizeof(void *) * n);
 
 	return;
 
