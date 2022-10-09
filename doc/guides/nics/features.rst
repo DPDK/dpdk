@@ -174,7 +174,7 @@ Supports receiving segmented mbufs.
 
 .. _nic_features_buffer_split:
 
-Buffer Split on Rx
+Buffer split on Rx
 ------------------
 
 Scatters the packets being received on specified boundaries to segmented mbufs.
