@@ -2781,7 +2781,7 @@ main(int argc, char **argv)
 	/* Enable Ethernet ports */
 	enabled_portcount = initialize_ports(&options);
 	if (enabled_portcount < 1)
-		rte_exit(EXIT_FAILURE, "Failed to initial Ethernet ports\n");
+		rte_exit(EXIT_FAILURE, "Failed to initialize Ethernet ports\n");
 
 	/* Initialize the port/queue configuration of each logical core */
 	RTE_ETH_FOREACH_DEV(portid) {
