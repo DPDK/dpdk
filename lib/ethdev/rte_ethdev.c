@@ -1687,15 +1687,41 @@ rte_eth_check_rx_mempool(struct rte_mempool *mp, uint16_t offset,
 }
 
 static int
-rte_eth_rx_queue_check_split(const struct rte_eth_rxseg_split *rx_seg,
-			     uint16_t n_seg, uint32_t *mbp_buf_size,
-			     const struct rte_eth_dev_info *dev_info)
+eth_dev_buffer_split_get_supported_hdrs_helper(uint16_t port_id, uint32_t **ptypes)
+{
+	int cnt;
+
+	cnt = rte_eth_buffer_split_get_supported_hdr_ptypes(port_id, NULL, 0);
+	if (cnt <= 0)
+		return cnt;
+
+	*ptypes = malloc(sizeof(uint32_t) * cnt);
+	if (*ptypes == NULL)
+		return -ENOMEM;
+
+	cnt = rte_eth_buffer_split_get_supported_hdr_ptypes(port_id, *ptypes, cnt);
+	if (cnt <= 0) {
+		free(*ptypes);
+		*ptypes = NULL;
+	}
+	return cnt;
+}
+
+static int
+rte_eth_rx_queue_check_split(uint16_t port_id,
+			const struct rte_eth_rxseg_split *rx_seg,
+			uint16_t n_seg, uint32_t *mbp_buf_size,
+			const struct rte_eth_dev_info *dev_info)
 {
 	const struct rte_eth_rxseg_capa *seg_capa = &dev_info->rx_seg_capa;
 	struct rte_mempool *mp_first;
 	uint32_t offset_mask;
 	uint16_t seg_idx;
-	int ret;
+	int ret = 0;
+	int ptype_cnt;
+	uint32_t *ptypes;
+	uint32_t prev_proto_hdrs = RTE_PTYPE_UNKNOWN;
+	int i;
 
 	if (n_seg > seg_capa->max_nseg) {
 		RTE_ETHDEV_LOG(ERR,
@@ -1709,42 +1735,92 @@ rte_eth_rx_queue_check_split(const struct rte_eth_rxseg_split *rx_seg,
 	 */
 	mp_first = rx_seg[0].mp;
 	offset_mask = RTE_BIT32(seg_capa->offset_align_log2) - 1;
+
+	ptypes = NULL;
+	ptype_cnt = eth_dev_buffer_split_get_supported_hdrs_helper(port_id, &ptypes);
+
 	for (seg_idx = 0; seg_idx < n_seg; seg_idx++) {
 		struct rte_mempool *mpl = rx_seg[seg_idx].mp;
 		uint32_t length = rx_seg[seg_idx].length;
 		uint32_t offset = rx_seg[seg_idx].offset;
+		uint32_t proto_hdr = rx_seg[seg_idx].proto_hdr;
 
 		if (mpl == NULL) {
 			RTE_ETHDEV_LOG(ERR, "null mempool pointer\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 		if (seg_idx != 0 && mp_first != mpl &&
 		    seg_capa->multi_pools == 0) {
 			RTE_ETHDEV_LOG(ERR, "Receiving to multiple pools is not supported\n");
-			return -ENOTSUP;
+			ret = -ENOTSUP;
+			goto out;
 		}
 		if (offset != 0) {
 			if (seg_capa->offset_allowed == 0) {
 				RTE_ETHDEV_LOG(ERR, "Rx segmentation with offset is not supported\n");
-				return -ENOTSUP;
+				ret = -ENOTSUP;
+				goto out;
 			}
 			if (offset & offset_mask) {
 				RTE_ETHDEV_LOG(ERR, "Rx segmentation invalid offset alignment %u, %u\n",
 					       offset,
 					       seg_capa->offset_align_log2);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
 		}
 
 		offset += seg_idx != 0 ? 0 : RTE_PKTMBUF_HEADROOM;
 		*mbp_buf_size = rte_pktmbuf_data_room_size(mpl);
-		length = length != 0 ? length : *mbp_buf_size;
+		if (proto_hdr != 0) {
+			/* Split based on protocol headers. */
+			if (length != 0) {
+				RTE_ETHDEV_LOG(ERR,
+					"Do not set length split and protocol split within a segment\n"
+					);
+				ret = -EINVAL;
+				goto out;
+			}
+			if ((proto_hdr & prev_proto_hdrs) != 0) {
+				RTE_ETHDEV_LOG(ERR,
+					"Repeat with previous protocol headers or proto-split after length-based split\n"
+					);
+				ret = -EINVAL;
+				goto out;
+			}
+			if (ptype_cnt <= 0) {
+				RTE_ETHDEV_LOG(ERR,
+					"Port %u failed to get supported buffer split header protocols\n",
+					port_id);
+				ret = -ENOTSUP;
+				goto out;
+			}
+			for (i = 0; i < ptype_cnt; i++) {
+				if ((prev_proto_hdrs | proto_hdr) == ptypes[i])
+					break;
+			}
+			if (i == ptype_cnt) {
+				RTE_ETHDEV_LOG(ERR,
+					"Requested Rx split header protocols 0x%x is not supported.\n",
+					proto_hdr);
+				ret = -EINVAL;
+				goto out;
+			}
+			prev_proto_hdrs |= proto_hdr;
+		} else {
+			/* Split at fixed length. */
+			length = length != 0 ? length : *mbp_buf_size;
+			prev_proto_hdrs = RTE_PTYPE_ALL_MASK;
+		}
 
 		ret = rte_eth_check_rx_mempool(mpl, offset, length);
 		if (ret != 0)
-			return ret;
+			goto out;
 	}
-	return 0;
+out:
+	free(ptypes);
+	return ret;
 }
 
 static int
@@ -1846,7 +1922,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		n_seg = rx_conf->rx_nseg;
 
 		if (rx_offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) {
-			ret = rte_eth_rx_queue_check_split(rx_seg, n_seg,
+			ret = rte_eth_rx_queue_check_split(port_id, rx_seg, n_seg,
 							   &mbp_buf_size,
 							   &dev_info);
 			if (ret != 0)

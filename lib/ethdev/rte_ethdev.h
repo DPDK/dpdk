@@ -994,6 +994,9 @@ struct rte_eth_txmode {
  *   specified in the first array element, the second buffer, from the
  *   pool in the second element, and so on.
  *
+ * - The proto_hdrs in the elements define the split position of
+ *   received packets.
+ *
  * - The offsets from the segment description elements specify
  *   the data offset from the buffer beginning except the first mbuf.
  *   The first segment offset is added with RTE_PKTMBUF_HEADROOM.
@@ -1015,12 +1018,44 @@ struct rte_eth_txmode {
  *     - pool from the last valid element
  *     - the buffer size from this pool
  *     - zero offset
+ *
+ * - Length based buffer split:
+ *     - mp, length, offset should be configured.
+ *     - The proto_hdr field must be 0.
+ *
+ * - Protocol header based buffer split:
+ *     - mp, offset, proto_hdr should be configured.
+ *     - The length field must be 0.
+ *     - The proto_hdr field in the last segment should be 0.
+ *
+ * - When protocol header split is enabled, NIC may receive packets
+ *   which do not match all the protocol headers within the Rx segments.
+ *   At this point, NIC will have two possible split behaviors according to
+ *   matching results, one is exact match, another is longest match.
+ *   The split result of NIC must belong to one of them.
+ *   The exact match means NIC only do split when the packets exactly match all
+ *   the protocol headers in the segments.
+ *   Otherwise, the whole packet will be put into the last valid mempool.
+ *   The longest match means NIC will do split until packets mismatch
+ *   the protocol header in the segments.
+ *   The rest will be put into the last valid pool.
  */
 struct rte_eth_rxseg_split {
 	struct rte_mempool *mp; /**< Memory pool to allocate segment from. */
 	uint16_t length; /**< Segment data length, configures split point. */
 	uint16_t offset; /**< Data offset from beginning of mbuf data buffer. */
-	uint32_t reserved; /**< Reserved field. */
+	/**
+	 * proto_hdr defines a bit mask of the protocol sequence as RTE_PTYPE_*.
+	 * The last RTE_PTYPE* in the mask indicates the split position.
+	 *
+	 * If one protocol header is defined to split packets into two segments,
+	 * for non-tunneling packets, the complete protocol sequence should be defined.
+	 * For tunneling packets, for simplicity, only the tunnel and inner part of
+	 * complete protocol sequence is required.
+	 * If several protocol headers are defined to split packets into multi-segments,
+	 * the repeated parts of adjacent segments should be omitted.
+	 */
+	uint32_t proto_hdr;
 };
 
 /**

@@ -79,6 +79,8 @@ New Features
 
   * Added ``rte_eth_buffer_split_get_supported_hdr_ptypes()`` to get supported
     header protocols to split at.
+  * Supported protocol-based buffer split using added ``proto_hdr``
+    in structure ``rte_eth_rxseg_split``.
 
 * **Added ethdev Rx/Tx descriptor dump API.**
 
@@ -347,6 +349,11 @@ API Changes
   Instead, user can still use ``RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT``
   for per-queue packet split offload,
   which is configured by ``rte_eth_rxseg_split``.
+
+* ethdev: The ``reserved`` field in the ``rte_eth_rxseg_split`` structure is
+  replaced with ``proto_hdr`` to support protocol header based buffer split.
+  User can choose length or protocol header to configure buffer split
+  according to NIC's capability.
 
 * ethdev: Changed the type of the parameter ``rate`` of the function
   ``rte_eth_set_queue_rate_limit()`` from ``uint16_t`` to ``uint32_t``
