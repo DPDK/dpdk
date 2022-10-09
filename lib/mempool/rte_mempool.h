@@ -786,12 +786,19 @@ rte_mempool_ops_enqueue_bulk(struct rte_mempool *mp, void * const *obj_table,
 		unsigned n)
 {
 	struct rte_mempool_ops *ops;
+	int ret;
 
 	RTE_MEMPOOL_STAT_ADD(mp, put_common_pool_bulk, 1);
 	RTE_MEMPOOL_STAT_ADD(mp, put_common_pool_objs, n);
 	rte_mempool_trace_ops_enqueue_bulk(mp, obj_table, n);
 	ops = rte_mempool_get_ops(mp->ops_index);
-	return ops->enqueue(mp, obj_table, n);
+	ret = ops->enqueue(mp, obj_table, n);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	if (unlikely(ret < 0))
+		RTE_LOG(CRIT, MEMPOOL, "cannot enqueue %u objects to mempool %s\n",
+			n, mp->name);
+#endif
+	return ret;
 }
 
 /**
@@ -1351,12 +1358,7 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 ring_enqueue:
 
 	/* push remaining objects in ring */
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	if (rte_mempool_ops_enqueue_bulk(mp, obj_table, n) < 0)
-		rte_panic("cannot put objects in mempool\n");
-#else
 	rte_mempool_ops_enqueue_bulk(mp, obj_table, n);
-#endif
 }
 
 
