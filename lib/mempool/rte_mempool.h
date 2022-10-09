@@ -1331,7 +1331,7 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 
 	/* No cache provided or if put would overflow mem allocated for cache */
 	if (unlikely(cache == NULL || n > RTE_MEMPOOL_CACHE_MAX_SIZE))
-		goto ring_enqueue;
+		goto driver_enqueue;
 
 	cache_objs = &cache->objs[cache->len];
 
@@ -1339,7 +1339,7 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 	 * The cache follows the following algorithm
 	 *   1. Add the objects to the cache
 	 *   2. Anything greater than the cache min value (if it crosses the
-	 *   cache flush threshold) is flushed to the ring.
+	 *   cache flush threshold) is flushed to the backend.
 	 */
 
 	/* Add elements back into the cache */
@@ -1355,9 +1355,9 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 
 	return;
 
-ring_enqueue:
+driver_enqueue:
 
-	/* push remaining objects in ring */
+	/* push objects to the backend */
 	rte_mempool_ops_enqueue_bulk(mp, obj_table, n);
 }
 
