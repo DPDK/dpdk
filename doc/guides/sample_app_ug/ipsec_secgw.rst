@@ -82,9 +82,10 @@ The application supports two modes of operation: poll mode and event mode.
   to help application to have multiple worker threads by maximizing performance from
   every type of event device without affecting existing paths/use cases. The worker
   to be used will be determined by the operating conditions and the underlying device
-  capabilities. **Currently the application provides non-burst, internal port worker
-  threads and supports inline protocol only.** It also provides infrastructure for
-  non-internal port however does not define any worker threads.
+  capabilities.
+  **Currently the application provides non-burst, internal port worker threads.**
+  It also provides infrastructure for non-internal port
+  however does not define any worker threads.
 
   Event mode also supports event vectorization. The event devices, ethernet device
   pairs which support the capability ``RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR`` can

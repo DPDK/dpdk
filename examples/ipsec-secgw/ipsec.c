@@ -6,6 +6,7 @@
 #include <netinet/ip.h>
 
 #include <rte_branch_prediction.h>
+#include <rte_event_crypto_adapter.h>
 #include <rte_log.h>
 #include <rte_crypto.h>
 #include <rte_security.h>
@@ -56,14 +57,17 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 
 int
 create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
-	struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
-	struct rte_ipsec_session *ips)
+	struct socket_ctx *skt_ctx, const struct eventmode_conf *em_conf,
+	struct ipsec_sa *sa, struct rte_ipsec_session *ips)
 {
 	uint16_t cdev_id = RTE_CRYPTO_MAX_DEVS;
+	enum rte_crypto_op_sess_type sess_type;
 	struct rte_cryptodev_info cdev_info;
+	enum rte_crypto_op_type op_type;
 	unsigned long cdev_id_qp = 0;
-	struct cdev_key key = { 0 };
 	struct ipsec_ctx *ipsec_ctx;
+	struct cdev_key key = { 0 };
+	void *sess = NULL;
 	uint32_t lcore_id;
 	int32_t ret = 0;
 
@@ -158,6 +162,10 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
 				return -1;
 			}
 			ips->security.ctx = ctx;
+
+			sess = ips->security.ses;
+			op_type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+			sess_type = RTE_CRYPTO_OP_SECURITY_SESSION;
 		} else {
 			RTE_LOG(ERR, IPSEC, "Inline not supported\n");
 			return -1;
@@ -177,6 +185,28 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
 				sa->xforms, skt_ctx->session_pool);
 
 		rte_cryptodev_info_get(cdev_id, &cdev_info);
+	}
+
+	/* Setup meta data required by event crypto adapter */
+	if (em_conf->enable_event_crypto_adapter && sess != NULL) {
+		union rte_event_crypto_metadata m_data;
+		const struct eventdev_params *eventdev_conf;
+
+		eventdev_conf = &(em_conf->eventdev_config[0]);
+		memset(&m_data, 0, sizeof(m_data));
+
+		/* Fill in response information */
+		m_data.response_info.sched_type = em_conf->ext_params.sched_type;
+		m_data.response_info.op = RTE_EVENT_OP_NEW;
+		m_data.response_info.queue_id = eventdev_conf->ev_cpt_queue_id;
+
+		/* Fill in request information */
+		m_data.request_info.cdev_id = cdev_id;
+		m_data.request_info.queue_pair_id = 0;
+
+		/* Attach meta info to session */
+		rte_cryptodev_session_event_mdata_set(cdev_id, sess, op_type,
+				sess_type, &m_data, sizeof(m_data));
 	}
 
 	return 0;

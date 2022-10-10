@@ -14,6 +14,7 @@
 #include <rte_flow.h>
 #include <rte_ipsec.h>
 
+#include "event_helper.h"
 #include "ipsec-secgw.h"
 
 #define RTE_LOGTYPE_IPSEC_ESP   RTE_LOGTYPE_USER2
@@ -425,7 +426,8 @@ sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound);
 
 void
 sa_init(struct socket_ctx *ctx, int32_t socket_id,
-		struct lcore_conf *lcore_conf);
+	struct lcore_conf *lcore_conf,
+	const struct eventmode_conf *em_conf);
 
 void
 rt_init(struct socket_ctx *ctx, int32_t socket_id);
@@ -442,8 +444,8 @@ enqueue_cop_burst(struct cdev_qp *cqp);
 
 int
 create_lookaside_session(struct ipsec_ctx *ipsec_ctx[],
-	struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
-	struct rte_ipsec_session *ips);
+	struct socket_ctx *skt_ctx, const struct eventmode_conf *em_conf,
+	struct ipsec_sa *sa, struct rte_ipsec_session *ips);
 
 int
 create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,

@@ -271,6 +271,11 @@ New Features
   sysfs entries to adjust the minimum and maximum uncore frequency values,
   which works on Linux with Intel hardware only.
 
+* **Updated IPsec sample application.**
+
+  Added support for lookaside sessions in event mode.
+  See the :doc:`../sample_app_ug/ipsec_secgw` for more details.
+
 * **Rewritten pmdinfo script.**
 
   The ``dpdk-pmdinfo.py`` script was rewritten to produce valid JSON only.
