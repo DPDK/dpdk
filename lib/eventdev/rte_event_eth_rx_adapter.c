@@ -1184,7 +1184,7 @@ rxa_intr_thread(void *arg)
 /* Dequeue <port, q> from interrupt ring and enqueue received
  * mbufs to eventdev
  */
-static inline void
+static inline bool
 rxa_intr_ring_dequeue(struct event_eth_rx_adapter *rx_adapter)
 {
 	uint32_t n;
@@ -1194,20 +1194,27 @@ rxa_intr_ring_dequeue(struct event_eth_rx_adapter *rx_adapter)
 	struct rte_event_eth_rx_adapter_stats *stats;
 	rte_spinlock_t *ring_lock;
 	uint8_t max_done = 0;
+	bool work = false;
 
 	if (rx_adapter->num_rx_intr == 0)
-		return;
+		return work;
 
 	if (rte_ring_count(rx_adapter->intr_ring) == 0
 		&& !rx_adapter->qd_valid)
-		return;
+		return work;
 
 	buf = &rx_adapter->event_enqueue_buffer;
 	stats = &rx_adapter->stats;
 	ring_lock = &rx_adapter->intr_ring_lock;
 
-	if (buf->count >= BATCH_SIZE)
-		rxa_flush_event_buffer(rx_adapter, buf, stats);
+	if (buf->count >= BATCH_SIZE) {
+		uint16_t n;
+
+		n = rxa_flush_event_buffer(rx_adapter, buf, stats);
+
+		if (likely(n > 0))
+			work = true;
+	}
 
 	while (rxa_pkt_buf_available(buf)) {
 		struct eth_device_info *dev_info;
@@ -1289,7 +1296,12 @@ rxa_intr_ring_dequeue(struct event_eth_rx_adapter *rx_adapter)
 	}
 
 done:
-	rx_adapter->stats.rx_intr_packets += nb_rx;
+	if (nb_rx > 0) {
+		rx_adapter->stats.rx_intr_packets += nb_rx;
+		work = true;
+	}
+
+	return work;
 }
 
 /*
@@ -1305,7 +1317,7 @@ done:
  * the hypervisor's switching layer where adjustments can be made to deal with
  * it.
  */
-static inline void
+static inline bool
 rxa_poll(struct event_eth_rx_adapter *rx_adapter)
 {
 	uint32_t num_queue;
@@ -1314,6 +1326,7 @@ rxa_poll(struct event_eth_rx_adapter *rx_adapter)
 	struct rte_event_eth_rx_adapter_stats *stats = NULL;
 	uint32_t wrr_pos;
 	uint32_t max_nb_rx;
+	bool work = false;
 
 	wrr_pos = rx_adapter->wrr_pos;
 	max_nb_rx = rx_adapter->max_nb_rx;
@@ -1329,14 +1342,20 @@ rxa_poll(struct event_eth_rx_adapter *rx_adapter)
 		/* Don't do a batch dequeue from the rx queue if there isn't
 		 * enough space in the enqueue buffer.
 		 */
-		if (buf->count >= BATCH_SIZE)
-			rxa_flush_event_buffer(rx_adapter, buf, stats);
+		if (buf->count >= BATCH_SIZE) {
+			uint16_t n;
+
+			n = rxa_flush_event_buffer(rx_adapter, buf, stats);
+
+			if (likely(n > 0))
+				work = true;
+		}
 		if (!rxa_pkt_buf_available(buf)) {
 			if (rx_adapter->use_queue_event_buf)
 				goto poll_next_entry;
 			else {
 				rx_adapter->wrr_pos = wrr_pos;
-				return;
+				break;
 			}
 		}
 
@@ -1352,6 +1371,11 @@ poll_next_entry:
 		if (++wrr_pos == rx_adapter->wrr_len)
 			wrr_pos = 0;
 	}
+
+	if (nb_rx > 0)
+		work = true;
+
+	return work;
 }
 
 static void
@@ -1384,12 +1408,14 @@ static int
 rxa_service_func(void *args)
 {
 	struct event_eth_rx_adapter *rx_adapter = args;
+	bool intr_work;
+	bool poll_work;
 
 	if (rte_spinlock_trylock(&rx_adapter->rx_lock) == 0)
-		return 0;
+		return -EAGAIN;
 	if (!rx_adapter->rxa_started) {
 		rte_spinlock_unlock(&rx_adapter->rx_lock);
-		return 0;
+		return -EAGAIN;
 	}
 
 	if (rx_adapter->ena_vector) {
@@ -1410,12 +1436,12 @@ rxa_service_func(void *args)
 		}
 	}
 
-	rxa_intr_ring_dequeue(rx_adapter);
-	rxa_poll(rx_adapter);
+	intr_work = rxa_intr_ring_dequeue(rx_adapter);
+	poll_work = rxa_poll(rx_adapter);
 
 	rte_spinlock_unlock(&rx_adapter->rx_lock);
 
-	return 0;
+	return intr_work || poll_work ? 0 : -EAGAIN;
 }
 
 static void *
