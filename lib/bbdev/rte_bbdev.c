@@ -1159,7 +1159,8 @@ rte_bbdev_device_status_str(enum rte_bbdev_device_status status)
 		"RTE_BBDEV_DEV_CORRECT_ERR",
 	};
 
-	if (status < sizeof(dev_sta_string) / sizeof(char *))
+	/* Cast from enum required for clang. */
+	if ((uint8_t)status < sizeof(dev_sta_string) / sizeof(char *))
 		return dev_sta_string[status];
 
 	rte_bbdev_log(ERR, "Invalid device status");
@@ -1176,7 +1177,8 @@ rte_bbdev_enqueue_status_str(enum rte_bbdev_enqueue_status status)
 		"RTE_BBDEV_ENQ_STATUS_INVALID_OP",
 	};
 
-	if (status < sizeof(enq_sta_string) / sizeof(char *))
+	/* Cast from enum required for clang. */
+	if ((uint8_t)status < sizeof(enq_sta_string) / sizeof(char *))
 		return enq_sta_string[status];
 
 	rte_bbdev_log(ERR, "Invalid enqueue status");
