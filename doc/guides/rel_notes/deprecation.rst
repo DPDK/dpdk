@@ -37,10 +37,8 @@ Deprecation Notices
   applications - other technologies such as virtio-user are recommended instead.
   Following the DPDK technical board
   `decision <https://mails.dpdk.org/archives/dev/2021-January/197077.html>`_
-  and `refinement <http://mails.dpdk.org/archives/dev/2022-June/243596.html>`_:
-
-  * Some deprecation warnings will be added in DPDK 22.11.
-  * The KNI kernel module, library and PMD will be removed from the DPDK 23.11.
+  and `refinement <https://mails.dpdk.org/archives/dev/2022-June/243596.html>`_,
+  the KNI kernel module, library and PMD will be removed from the DPDK 23.11 release.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is

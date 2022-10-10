@@ -96,6 +96,8 @@ static volatile int kni_fd = -1;
 int
 rte_kni_init(unsigned int max_kni_ifaces __rte_unused)
 {
+	RTE_LOG(WARNING, KNI, "WARNING: KNI is deprecated and will be removed in DPDK 23.11\n");
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	if (rte_eal_iova_mode() != RTE_IOVA_PA) {
 		RTE_LOG(ERR, KNI, "KNI requires IOVA as PA\n");
