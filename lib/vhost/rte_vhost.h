@@ -1090,7 +1090,6 @@ rte_vhost_slave_config_change(int vid, bool need_reply);
  *  - Failure if lower than 0. The device ID or queue ID is invalid or
  +    statistics collection is not enabled.
  */
-__rte_experimental
 int
 rte_vhost_vring_stats_get_names(int vid, uint16_t queue_id,
 		struct rte_vhost_stat_name *name, unsigned int size);
@@ -1118,7 +1117,6 @@ rte_vhost_vring_stats_get_names(int vid, uint16_t queue_id,
  *  - Failure if lower than 0. The device ID or queue ID is invalid, or
  *    statistics collection is not enabled.
  */
-__rte_experimental
 int
 rte_vhost_vring_stats_get(int vid, uint16_t queue_id,
 		struct rte_vhost_stat *stats, unsigned int n);
@@ -1135,7 +1133,6 @@ rte_vhost_vring_stats_get(int vid, uint16_t queue_id,
  *  - Failure if lower than 0. The device ID or queue ID is invalid, or
  *    statistics collection is not enabled.
  */
-__rte_experimental
 int
 rte_vhost_vring_stats_reset(int vid, uint16_t queue_id);
 

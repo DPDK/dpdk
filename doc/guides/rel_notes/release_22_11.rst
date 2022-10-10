@@ -445,6 +445,10 @@ API Changes
   flows, as the final step of deprecation process that had been started
   in DPDK 21.11. See items ``PORT_REPRESENTOR``, ``REPRESENTED_PORT``.
 
+* vhost: Promoted ``rte_vhost_vring_stats_get()``,
+  ``rte_vhost_vring_stats_get_names()`` and ``rte_vhost_vring_stats_reset()``
+  from experimental to stable.
+
 * cryptodev: The structure ``rte_cryptodev_sym_session`` was made internal.
   The API ``rte_cryptodev_sym_session_init`` and ``rte_cryptodev_sym_session_clear``
   were removed and user would only need to call ``rte_cryptodev_sym_session_create``

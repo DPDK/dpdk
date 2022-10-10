@@ -57,6 +57,9 @@ DPDK_23 {
 	rte_vhost_set_vring_base;
 	rte_vhost_va_from_guest_pa;
 	rte_vhost_vring_call;
+	rte_vhost_vring_stats_get;
+	rte_vhost_vring_stats_get_names;
+	rte_vhost_vring_stats_reset;
 
 	local: *;
 };
@@ -88,9 +91,6 @@ EXPERIMENTAL {
 
 	# added in 22.07
 	rte_vhost_async_get_inflight_thread_unsafe;
-	rte_vhost_vring_stats_get_names;
-	rte_vhost_vring_stats_get;
-	rte_vhost_vring_stats_reset;
 	rte_vhost_async_try_dequeue_burst;
 	rte_vhost_driver_get_vdpa_dev_type;
 	rte_vhost_clear_queue;
