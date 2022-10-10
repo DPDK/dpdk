@@ -185,6 +185,8 @@ struct eventmode_conf {
 		/**< Max vector timeout in nanoseconds */
 	uint64_t vector_pool_sz;
 		/**< Vector pool size */
+	bool enable_event_crypto_adapter;
+		/**< Enables event crypto adapter related configuration */
 };
 
 /**

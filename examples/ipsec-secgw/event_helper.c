@@ -4,8 +4,10 @@
 #include <stdlib.h>
 
 #include <rte_bitmap.h>
+#include <rte_cryptodev.h>
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
+#include <rte_event_crypto_adapter.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
 #include <rte_malloc.h>
@@ -741,6 +743,126 @@ eh_start_eventdev(struct eventmode_conf *em_conf)
 			return ret;
 		}
 	}
+	return 0;
+}
+
+static int
+eh_initialize_crypto_adapter(struct eventmode_conf *em_conf)
+{
+	struct rte_event_dev_info evdev_default_conf = {0};
+	struct rte_event_port_conf port_conf = {0};
+	struct eventdev_params *eventdev_config;
+	uint8_t eventdev_id, cdev_id, n;
+	uint32_t cap;
+	int ret;
+
+	if (!em_conf->enable_event_crypto_adapter)
+		return 0;
+
+	/*
+	 * More then one eventdev is not supported,
+	 * all event crypto adapters will be assigned to one eventdev
+	 */
+	RTE_ASSERT(em_conf->nb_eventdev == 1);
+
+	/* Get event device configuration */
+	eventdev_config = &(em_conf->eventdev_config[0]);
+	eventdev_id = eventdev_config->eventdev_id;
+
+	n = rte_cryptodev_count();
+
+	for (cdev_id = 0; cdev_id != n; cdev_id++) {
+		/* Check event's crypto capabilities */
+		ret = rte_event_crypto_adapter_caps_get(eventdev_id, cdev_id, &cap);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to get event device's crypto capabilities %d", ret);
+			return ret;
+		}
+
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD)) {
+			EH_LOG_ERR("Event crypto adapter does not support forward mode!");
+			return -EINVAL;
+		}
+
+		/* Create event crypto adapter */
+
+		/* Get default configuration of event dev */
+		ret = rte_event_dev_info_get(eventdev_id, &evdev_default_conf);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to get event dev info %d", ret);
+			return ret;
+		}
+
+		/* Setup port conf */
+		port_conf.new_event_threshold =
+				evdev_default_conf.max_num_events;
+		port_conf.dequeue_depth =
+				evdev_default_conf.max_event_port_dequeue_depth;
+		port_conf.enqueue_depth =
+				evdev_default_conf.max_event_port_enqueue_depth;
+
+		/* Create adapter */
+		ret = rte_event_crypto_adapter_create(cdev_id, eventdev_id,
+				&port_conf, RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to create event crypto adapter %d", ret);
+			return ret;
+		}
+
+		/* Add crypto queue pairs to event crypto adapter */
+		ret = rte_event_crypto_adapter_queue_pair_add(cdev_id, eventdev_id,
+				-1, /* adds all the pre configured queue pairs to the instance */
+				NULL);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to add queue pairs to event crypto adapter %d", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+eh_start_crypto_adapter(struct eventmode_conf *em_conf)
+{
+	uint8_t cdev_id, n;
+	int ret;
+
+	if (!em_conf->enable_event_crypto_adapter)
+		return 0;
+
+	n = rte_cryptodev_count();
+	for (cdev_id = 0; cdev_id != n; cdev_id++) {
+		ret = rte_event_crypto_adapter_start(cdev_id);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to start event crypto device %d (%d)",
+					cdev_id, ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+eh_stop_crypto_adapter(struct eventmode_conf *em_conf)
+{
+	uint8_t cdev_id, n;
+	int ret;
+
+	if (!em_conf->enable_event_crypto_adapter)
+		return 0;
+
+	n = rte_cryptodev_count();
+	for (cdev_id = 0; cdev_id != n; cdev_id++) {
+		ret = rte_event_crypto_adapter_stop(cdev_id);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to stop event crypto device %d (%d)",
+					cdev_id, ret);
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -1697,6 +1819,13 @@ eh_devs_init(struct eh_conf *conf)
 		return ret;
 	}
 
+	/* Setup event crypto adapter */
+	ret = eh_initialize_crypto_adapter(em_conf);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to start event dev %d", ret);
+		return ret;
+	}
+
 	/* Setup Rx adapter */
 	ret = eh_initialize_rx_adapter(em_conf);
 	if (ret < 0) {
@@ -1717,6 +1846,14 @@ eh_devs_init(struct eh_conf *conf)
 		EH_LOG_ERR("Failed to start event dev %d", ret);
 		return ret;
 	}
+
+	/* Start event crypto adapter */
+	ret = eh_start_crypto_adapter(em_conf);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to start event crypto dev %d", ret);
+		return ret;
+	}
+
 
 	/* Start eth devices after setting up adapter */
 	RTE_ETH_FOREACH_DEV(port_id) {
@@ -1786,6 +1923,13 @@ eh_devs_uninit(struct eh_conf *conf)
 			EH_LOG_ERR("Failed to free rx adapter %d", ret);
 			return ret;
 		}
+	}
+
+	/* Stop event crypto adapter */
+	ret = eh_stop_crypto_adapter(em_conf);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to start event crypto dev %d", ret);
+		return ret;
 	}
 
 	/* Stop and release event devices */

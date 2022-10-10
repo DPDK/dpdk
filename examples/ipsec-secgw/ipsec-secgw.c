@@ -44,6 +44,7 @@
 #include <rte_cryptodev.h>
 #include <rte_security.h>
 #include <rte_eventdev.h>
+#include <rte_event_crypto_adapter.h>
 #include <rte_ip.h>
 #include <rte_ip_frag.h>
 #include <rte_alarm.h>
@@ -2098,8 +2099,8 @@ session_pool_init(struct socket_ctx *ctx, int32_t socket_id, size_t sess_sz)
 	nb_sess = RTE_MAX(nb_sess, CDEV_MP_CACHE_SZ *
 			CDEV_MP_CACHE_MULTIPLIER);
 	sess_mp = rte_cryptodev_sym_session_pool_create(
-			mp_name, nb_sess, sess_sz, CDEV_MP_CACHE_SZ, 0,
-			socket_id);
+			mp_name, nb_sess, sess_sz, CDEV_MP_CACHE_SZ,
+			0, socket_id);
 	ctx->session_pool = sess_mp;
 
 	if (ctx->session_pool == NULL)
@@ -2378,7 +2379,8 @@ signal_handler(int signum)
 }
 
 static void
-ev_mode_sess_verify(struct ipsec_sa *sa, int nb_sa)
+ev_mode_sess_verify(struct ipsec_sa *sa, int nb_sa,
+		struct eventmode_conf *em_conf)
 {
 	struct rte_ipsec_session *ips;
 	int32_t i;
@@ -2388,9 +2390,11 @@ ev_mode_sess_verify(struct ipsec_sa *sa, int nb_sa)
 
 	for (i = 0; i < nb_sa; i++) {
 		ips = ipsec_get_primary_session(&sa[i]);
-		if (ips->type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
-			rte_exit(EXIT_FAILURE, "Event mode supports only "
-				 "inline protocol sessions\n");
+		if (ips->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL)
+			em_conf->enable_event_crypto_adapter = true;
+		else if (ips->type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
+			rte_exit(EXIT_FAILURE, "Event mode supports inline "
+				 "and lookaside protocol sessions\n");
 	}
 
 }
@@ -2423,13 +2427,12 @@ check_event_mode_params(struct eh_conf *eh_conf)
 		em_conf->ext_params.sched_type = RTE_SCHED_TYPE_ORDERED;
 
 	/*
-	 * Event mode currently supports only inline protocol sessions.
-	 * If there are other types of sessions configured then exit with
-	 * error.
+	 * Event mode currently supports inline and lookaside protocol
+	 * sessions. If there are other types of sessions configured then exit
+	 * with error.
 	 */
-	ev_mode_sess_verify(sa_in, nb_sa_in);
-	ev_mode_sess_verify(sa_out, nb_sa_out);
-
+	ev_mode_sess_verify(sa_in, nb_sa_in, em_conf);
+	ev_mode_sess_verify(sa_out, nb_sa_out, em_conf);
 
 	/* Option --config does not apply to event mode */
 	if (nb_lcore_params > 0) {
