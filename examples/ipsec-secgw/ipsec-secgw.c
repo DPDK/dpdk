@@ -1540,7 +1540,7 @@ add_mapping(const char *str, uint16_t cdev_id,
 }
 
 static int32_t
-add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
+add_cdev_mapping(const struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 		uint16_t qp, struct lcore_params *params)
 {
 	int32_t ret = 0;
@@ -1596,6 +1596,37 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 	return ret;
 }
 
+static uint16_t
+map_cdev_to_cores_from_config(enum eh_pkt_transfer_mode mode, int16_t cdev_id,
+		const struct rte_cryptodev_info *cdev_info,
+		uint16_t *last_used_lcore_id)
+{
+	uint16_t nb_qp = 0, i = 0, max_nb_qps;
+
+	/* For event lookaside mode all sessions are bound to single qp.
+	 * It's enough to bind one core, since all cores will share same qp
+	 * Event inline mode do not use this functionality.
+	 */
+	if (mode == EH_PKT_TRANSFER_MODE_EVENT) {
+		add_cdev_mapping(cdev_info, cdev_id, nb_qp, &lcore_params[0]);
+		return 1;
+	}
+
+	/* Check if there are enough queue pairs for all configured cores */
+	max_nb_qps = RTE_MIN(nb_lcore_params, cdev_info->max_nb_queue_pairs);
+
+	while (nb_qp < max_nb_qps && i < nb_lcore_params) {
+		if (add_cdev_mapping(cdev_info, cdev_id, nb_qp,
+					&lcore_params[*last_used_lcore_id]))
+			nb_qp++;
+		(*last_used_lcore_id)++;
+		*last_used_lcore_id %= nb_lcore_params;
+		i++;
+	}
+
+	return nb_qp;
+}
+
 /* Check if the device is enabled by cryptodev_mask */
 static int
 check_cryptodev_mask(uint8_t cdev_id)
@@ -1607,13 +1638,13 @@ check_cryptodev_mask(uint8_t cdev_id)
 }
 
 static uint16_t
-cryptodevs_init(uint16_t req_queue_num)
+cryptodevs_init(enum eh_pkt_transfer_mode mode)
 {
+	struct rte_hash_parameters params = { 0 };
 	struct rte_cryptodev_config dev_conf;
 	struct rte_cryptodev_qp_conf qp_conf;
-	uint16_t idx, max_nb_qps, qp, total_nb_qps, i;
+	uint16_t idx, qp, total_nb_qps;
 	int16_t cdev_id;
-	struct rte_hash_parameters params = { 0 };
 
 	const uint64_t mseg_flag = multi_seg_required() ?
 				RTE_CRYPTODEV_FF_IN_PLACE_SGL : 0;
@@ -1654,23 +1685,8 @@ cryptodevs_init(uint16_t req_queue_num)
 				cdev_id,
 				rte_cryptodev_get_feature_name(mseg_flag));
 
-		if (nb_lcore_params > cdev_info.max_nb_queue_pairs)
-			max_nb_qps = cdev_info.max_nb_queue_pairs;
-		else
-			max_nb_qps = nb_lcore_params;
 
-		qp = 0;
-		i = 0;
-		while (qp < max_nb_qps && i < nb_lcore_params) {
-			if (add_cdev_mapping(&cdev_info, cdev_id, qp,
-						&lcore_params[idx]))
-				qp++;
-			idx++;
-			idx = idx % nb_lcore_params;
-			i++;
-		}
-
-		qp = RTE_MIN(max_nb_qps, RTE_MAX(req_queue_num, qp));
+		qp = map_cdev_to_cores_from_config(mode, cdev_id, &cdev_info, &idx);
 		if (qp == 0)
 			continue;
 
