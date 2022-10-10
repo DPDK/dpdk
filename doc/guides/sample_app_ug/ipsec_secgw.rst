@@ -95,6 +95,9 @@ The application supports two modes of operation: poll mode and event mode.
   (default vector-size is 16) and vector-tmo (default vector-tmo is 102400ns).
   By default event vectorization is disabled and it can be enabled using event-vector
   option.
+  For the event devices, crypto device pairs which support the capability
+  ``RTE_EVENT_CRYPTO_ADAPTER_CAP_EVENT_VECTOR`` vector aggregation
+  could also be enable using event-vector option.
 
 Additionally the event mode introduces two submodes of processing packets:
 

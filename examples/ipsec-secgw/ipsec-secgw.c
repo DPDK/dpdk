@@ -85,7 +85,7 @@ static uint16_t nb_txd = IPSEC_SECGW_TX_DESC_DEFAULT;
 /*
  * Configurable number of descriptors per queue pair
  */
-static uint32_t qp_desc_nb = 2048;
+uint32_t qp_desc_nb = 2048;
 
 #define ETHADDR_TO_UINT64(addr) __BYTES_TO_UINT64( \
 		(addr)->addr_bytes[0], (addr)->addr_bytes[1], \

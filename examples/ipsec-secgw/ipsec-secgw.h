@@ -145,6 +145,7 @@ extern bool per_port_pool;
 
 extern uint32_t mtu_size;
 extern uint32_t frag_tbl_sz;
+extern uint32_t qp_desc_nb;
 
 #define SS_F		(1U << 0)	/* Single SA mode */
 #define INL_PR_F	(1U << 1)	/* Inline Protocol */

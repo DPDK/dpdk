@@ -792,12 +792,15 @@ eh_start_eventdev(struct eventmode_conf *em_conf)
 static int
 eh_initialize_crypto_adapter(struct eventmode_conf *em_conf)
 {
+	struct rte_event_crypto_adapter_queue_conf queue_conf;
 	struct rte_event_dev_info evdev_default_conf = {0};
 	struct rte_event_port_conf port_conf = {0};
 	struct eventdev_params *eventdev_config;
+	char mp_name[RTE_MEMPOOL_NAMESIZE];
+	const uint8_t nb_qp_per_cdev = 1;
 	uint8_t eventdev_id, cdev_id, n;
-	uint32_t cap;
-	int ret;
+	uint32_t cap, nb_elem;
+	int ret, socket_id;
 
 	if (!em_conf->enable_event_crypto_adapter)
 		return 0;
@@ -852,10 +855,35 @@ eh_initialize_crypto_adapter(struct eventmode_conf *em_conf)
 			return ret;
 		}
 
+		memset(&queue_conf, 0, sizeof(queue_conf));
+		if ((cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_EVENT_VECTOR) &&
+		    (em_conf->ext_params.event_vector)) {
+			queue_conf.flags |= RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR;
+			queue_conf.vector_sz = em_conf->ext_params.vector_size;
+			/*
+			 * Currently all sessions configured with same response
+			 * info fields, so packets will be aggregated to the
+			 * same vector. This allows us to configure number of
+			 * vectors only to hold all queue pair descriptors.
+			 */
+			nb_elem = (qp_desc_nb / queue_conf.vector_sz) + 1;
+			nb_elem *= nb_qp_per_cdev;
+			socket_id = rte_cryptodev_socket_id(cdev_id);
+			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+					"QP_VEC_%u_%u", socket_id, cdev_id);
+			queue_conf.vector_mp = rte_event_vector_pool_create(
+					mp_name, nb_elem, 0,
+					queue_conf.vector_sz, socket_id);
+			if (queue_conf.vector_mp == NULL) {
+				EH_LOG_ERR("failed to create event vector pool");
+				return -ENOMEM;
+			}
+		}
+
 		/* Add crypto queue pairs to event crypto adapter */
 		ret = rte_event_crypto_adapter_queue_pair_add(cdev_id, eventdev_id,
 				-1, /* adds all the pre configured queue pairs to the instance */
-				NULL);
+				&queue_conf);
 		if (ret < 0) {
 			EH_LOG_ERR("Failed to add queue pairs to event crypto adapter %d", ret);
 			return ret;
