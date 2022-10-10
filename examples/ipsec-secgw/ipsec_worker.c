@@ -508,7 +508,7 @@ route_and_send_pkt:
 
 drop_pkt_and_exit:
 	RTE_LOG(ERR, IPSEC, "Inbound packet dropped\n");
-	rte_pktmbuf_free(pkt);
+	free_pkts(&pkt, 1);
 	ev->mbuf = NULL;
 	return PKT_DROPPED;
 }
@@ -620,7 +620,7 @@ lookaside:
 
 drop_pkt_and_exit:
 	RTE_LOG(ERR, IPSEC, "Outbound packet dropped\n");
-	rte_pktmbuf_free(pkt);
+	free_pkts(&pkt, 1);
 	ev->mbuf = NULL;
 	return PKT_DROPPED;
 }
@@ -853,6 +853,7 @@ ipsec_ev_vector_process(struct lcore_conf_ev_tx_int_port_wrkr *lconf,
 	pkt = vec->mbufs[0];
 
 	ev_vector_attr_init(vec);
+	core_stats_update_rx(vec->nb_elem);
 	if (is_unprotected_port(pkt->port))
 		ret = process_ipsec_ev_inbound_vector(&lconf->inbound,
 						      &lconf->rt, vec);
@@ -861,6 +862,7 @@ ipsec_ev_vector_process(struct lcore_conf_ev_tx_int_port_wrkr *lconf,
 						       &lconf->rt, vec);
 
 	if (likely(ret > 0)) {
+		core_stats_update_tx(vec->nb_elem);
 		vec->nb_elem = ret;
 		ret = rte_event_eth_tx_adapter_enqueue(links[0].eventdev_id,
 						       links[0].event_port_id, ev, 1, 0);
@@ -1181,6 +1183,7 @@ ipsec_wrkr_non_burst_int_port_app_mode(struct eh_event_link_info *links,
 			ipsec_ev_vector_process(&lconf, links, &ev);
 			continue;
 		case RTE_EVENT_TYPE_ETHDEV:
+			core_stats_update_rx(1);
 			if (is_unprotected_port(ev.mbuf->port))
 				ret = process_ipsec_ev_inbound(&lconf.inbound,
 								&lconf.rt, links, &ev);
@@ -1202,6 +1205,7 @@ ipsec_wrkr_non_burst_int_port_app_mode(struct eh_event_link_info *links,
 			continue;
 		}
 
+		core_stats_update_tx(1);
 		/*
 		 * Since tx internal port is available, events can be
 		 * directly enqueued to the adapter and it would be
