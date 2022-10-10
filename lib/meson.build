@@ -85,6 +85,8 @@ optional_libs = [
         'vhost',
 ]
 
+dpdk_libs_deprecated += ['kni']
+
 disabled_libs = []
 opt_disabled_libs = run_command(list_dir_globs, get_option('disable_libs'),
         check: true).stdout().split()

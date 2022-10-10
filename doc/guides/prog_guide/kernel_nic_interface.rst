@@ -14,6 +14,10 @@ Kernel NIC Interface
    For an alternative to KNI, that does not require any out-of-tree Linux kernel modules,
    or a custom library, see :ref:`virtio_user_as_exception_path`.
 
+.. note::
+
+   KNI is disabled by default in the DPDK build.
+   To re-enable the library, remove 'kni' from the "disable_libs" meson option when configuring a build.
 
 The DPDK Kernel NIC Interface (KNI) allows userspace applications access to the Linux* control plane.
 
