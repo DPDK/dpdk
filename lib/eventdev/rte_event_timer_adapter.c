@@ -785,6 +785,7 @@ swtim_service_func(void *arg)
 	struct swtim *sw = swtim_pmd_priv(adapter);
 	uint16_t nb_evs_flushed = 0;
 	uint16_t nb_evs_invalid = 0;
+	const uint64_t prior_enq_count = sw->stats.ev_enq_count;
 
 	if (swtim_did_tick(sw)) {
 		rte_timer_alt_manage(sw->timer_data_id,
@@ -811,7 +812,7 @@ swtim_service_func(void *arg)
 	rte_event_maintain(adapter->data->event_dev_id,
 			   adapter->data->event_port_id, 0);
 
-	return 0;
+	return prior_enq_count == sw->stats.ev_enq_count ? -EAGAIN : 0;
 }
 
 /* The adapter initialization function rounds the mempool size up to the next
