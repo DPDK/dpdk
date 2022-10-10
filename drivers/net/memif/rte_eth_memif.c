@@ -55,7 +55,7 @@ static const char * const valid_arguments[] = {
 };
 
 static const struct rte_eth_link pmd_link = {
-	.link_speed = RTE_ETH_SPEED_NUM_10G,
+	.link_speed = RTE_ETH_SPEED_NUM_100G,
 	.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
 	.link_status = RTE_ETH_LINK_DOWN,
 	.link_autoneg = RTE_ETH_LINK_AUTONEG
