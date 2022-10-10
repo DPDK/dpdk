@@ -771,7 +771,7 @@ check:
 	return nb_deq;
 }
 
-static void
+static int
 eca_crypto_adapter_run(struct event_crypto_adapter *adapter,
 		       unsigned int max_ops)
 {
@@ -791,22 +791,26 @@ eca_crypto_adapter_run(struct event_crypto_adapter *adapter,
 
 	}
 
-	if (ops_left == max_ops)
+	if (ops_left == max_ops) {
 		rte_event_maintain(adapter->eventdev_id,
 				   adapter->event_port_id, 0);
+		return -EAGAIN;
+	} else
+		return 0;
 }
 
 static int
 eca_service_func(void *args)
 {
 	struct event_crypto_adapter *adapter = args;
+	int ret;
 
 	if (rte_spinlock_trylock(&adapter->lock) == 0)
 		return 0;
-	eca_crypto_adapter_run(adapter, adapter->max_nb);
+	ret = eca_crypto_adapter_run(adapter, adapter->max_nb);
 	rte_spinlock_unlock(&adapter->lock);
 
-	return 0;
+	return ret;
 }
 
 static int
