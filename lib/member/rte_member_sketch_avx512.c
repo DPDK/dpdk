@@ -28,8 +28,8 @@ sketch_update_avx512(const struct rte_member_setsum *ss,
 	v_row_base = _mm256_mullo_epi32(v_idx, v_col);
 	v_hash_result = _mm256_add_epi32(v_row_base, v_hash_result);
 
-	current_sketch =
-		_mm512_i32gather_epi64(v_hash_result, count_array, 8);
+	current_sketch = _mm512_i32gather_epi64
+				(v_hash_result, (void *)count_array, 8);
 	v_count = _mm512_set1_epi64(count);
 	updated_sketch = _mm512_add_epi64(current_sketch, v_count);
 	_mm512_i32scatter_epi64
