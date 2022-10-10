@@ -139,6 +139,9 @@ foreach subpath:subdirs
                 if not is_variable('shared_rte_' + d)
                     build = false
                     reason = 'missing internal dependency, "@0@"'.format(d)
+                    if dpdk_libs_deprecated.contains(d)
+                        reason += ' (deprecated lib)'
+                    endif
                     message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
                             .format(d, name, 'drivers/' + drv_path))
                 else

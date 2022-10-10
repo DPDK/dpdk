@@ -107,6 +107,8 @@ OPTS="$OPTS -Dcheck_includes=true"
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
     OPTS="$OPTS -Ddisable_libs=*"
+else
+    OPTS="$OPTS -Ddisable_libs="
 fi
 
 if [ "$ASAN" = "true" ]; then

@@ -136,7 +136,13 @@ foreach l:libraries
     if disabled_libs.contains(l)
         build = false
         reason = 'explicitly disabled via build config'
+        if dpdk_libs_deprecated.contains(l)
+            reason += ' (deprecated lib)'
+        endif
     else
+        if dpdk_libs_deprecated.contains(l)
+            warning('Enabling deprecated library, "@0@"'.format(l))
+        endif
         subdir(l)
     endif
     if name != l
@@ -152,6 +158,9 @@ foreach l:libraries
         if not is_variable('shared_rte_' + d)
             build = false
             reason = 'missing internal dependency, "@0@"'.format(d)
+            if dpdk_libs_deprecated.contains(d)
+                reason += ' (deprecated lib)'
+            endif
             message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
                     .format(d, name, 'lib/' + l))
         else
