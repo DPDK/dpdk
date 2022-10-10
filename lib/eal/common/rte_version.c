@@ -25,7 +25,7 @@ rte_version_release(void) { return RTE_VER_RELEASE; }
 const char *
 rte_version(void)
 {
-	static char version[32];
+	static char version[64];
 	if (version[0] != 0)
 		return version;
 	if (strlen(RTE_VER_SUFFIX) == 0)
@@ -35,12 +35,15 @@ rte_version(void)
 				RTE_VER_MONTH,
 				RTE_VER_MINOR);
 		else
-			snprintf(version, sizeof(version), "%s %d.%02d.%d%s%d",
+			snprintf(version, sizeof(version), "%s %d.%02d.%d%s%d.%s%d.%d",
 				RTE_VER_PREFIX,
 				RTE_VER_YEAR,
 				RTE_VER_MONTH,
 				RTE_VER_MINOR,
 				RTE_VER_SUFFIX,
-				RTE_VER_RELEASE);
+				RTE_VER_RELEASE,
+				RTE_VER_VFE_SUFFIX,
+				RTE_VER_VFE_MAIN,
+				RTE_VER_VFE_SUB);
 	return version;
 }

@@ -39,6 +39,14 @@ if pver.get(2).contains('-rc')
     dpdk_conf.set('RTE_VER_MINOR', rc_ver.get(0).to_int())
     dpdk_conf.set_quoted('RTE_VER_SUFFIX', '-rc')
     dpdk_conf.set('RTE_VER_RELEASE', rc_ver.get(1).to_int())
+    if pver.get(3).contains('mlx_vfe_vdpa-')
+        vfe_ver = pver.get(3).split('mlx_vfe_vdpa-')
+        dpdk_conf.set_quoted('RTE_VER_VFE_SUFFIX', 'mlx_vfe_vdpa-')
+        dpdk_conf.set('RTE_VER_VFE_MAIN', vfe_ver.get(1).to_int())
+        dpdk_conf.set('RTE_VER_VFE_SUB', pver.get(4).to_int())
+    else
+        error('VFE version is not set')
+    endif
 else
     dpdk_conf.set('RTE_VER_MINOR', pver.get(2).to_int())
     dpdk_conf.set_quoted('RTE_VER_SUFFIX', '')
