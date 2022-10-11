@@ -3548,14 +3548,15 @@ virtio_dev_tx_async_split_compliant(struct virtio_net *dev,
 }
 
 static __rte_always_inline void
-vhost_async_shadow_dequeue_single_packed(struct vhost_virtqueue *vq, uint16_t buf_id)
+vhost_async_shadow_dequeue_single_packed(struct vhost_virtqueue *vq,
+				uint16_t buf_id, uint16_t count)
 {
 	struct vhost_async *async = vq->async;
 	uint16_t idx = async->buffer_idx_packed;
 
 	async->buffers_packed[idx].id = buf_id;
 	async->buffers_packed[idx].len = 0;
-	async->buffers_packed[idx].count = 1;
+	async->buffers_packed[idx].count = count;
 
 	async->buffer_idx_packed++;
 	if (async->buffer_idx_packed >= vq->size)
@@ -3576,6 +3577,8 @@ virtio_dev_tx_async_single_packed(struct virtio_net *dev,
 	uint16_t nr_vec = 0;
 	uint32_t buf_len;
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
+	struct vhost_async *async = vq->async;
+	struct async_inflight_info *pkts_info = async->pkts_info;
 	static bool allocerr_warned;
 
 	if (unlikely(fill_vec_buf_packed(dev, vq, vq->last_avail_idx, &desc_count,
@@ -3604,8 +3607,12 @@ virtio_dev_tx_async_single_packed(struct virtio_net *dev,
 		return -1;
 	}
 
+	pkts_info[slot_idx].descs = desc_count;
+
 	/* update async shadow packed ring */
-	vhost_async_shadow_dequeue_single_packed(vq, buf_id);
+	vhost_async_shadow_dequeue_single_packed(vq, buf_id, desc_count);
+
+	vq_inc_last_avail_packed(vq, desc_count);
 
 	return err;
 }
@@ -3644,9 +3651,6 @@ virtio_dev_tx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 
 		pkts_info[slot_idx].mbuf = pkt;
-
-		vq_inc_last_avail_packed(vq, 1);
-
 	}
 
 	n_xfer = vhost_async_dma_transfer(dev, vq, dma_id, vchan_id, async->pkts_idx,
@@ -3657,6 +3661,8 @@ virtio_dev_tx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	pkt_err = pkt_idx - n_xfer;
 
 	if (unlikely(pkt_err)) {
+		uint16_t descs_err = 0;
+
 		pkt_idx -= pkt_err;
 
 		/**
@@ -3673,10 +3679,10 @@ virtio_dev_tx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 
 		/* recover available ring */
-		if (vq->last_avail_idx >= pkt_err) {
-			vq->last_avail_idx -= pkt_err;
+		if (vq->last_avail_idx >= descs_err) {
+			vq->last_avail_idx -= descs_err;
 		} else {
-			vq->last_avail_idx += vq->size - pkt_err;
+			vq->last_avail_idx += vq->size - descs_err;
 			vq->avail_wrap_counter ^= 1;
 		}
 	}
