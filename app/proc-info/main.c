@@ -46,6 +46,8 @@
 #define MAX_STRING_LEN 256
 
 #define ETHDEV_FWVERS_LEN 32
+#define RTE_RETA_CONF_GROUP_NUM 32
+#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
 #define STATS_BDR_FMT "========================================"
 #define STATS_BDR_STR(w, s) printf("%.*s%s%.*s\n", w, \
@@ -109,6 +111,8 @@ static char *dump_regs_file_prefix;
 static uint32_t enable_shw_version;
 /* Enable show ethdev firmware version. */
 static uint32_t enable_shw_fw_version;
+/* Enable show RSS reta. */
+static uint32_t enable_shw_rss_reta;
 
 /* display usage */
 static void
@@ -139,6 +143,7 @@ proc_info_usage(const char *prgname)
 		"  --show-mempool[=name]: to display mempool information\n"
 		"  --version: to display DPDK version\n"
 		"  --firmware-version: to display ethdev firmware version\n"
+		"  --show-rss-reta: to display ports redirection table\n"
 		"  --iter-mempool=name: iterate mempool elements to display content\n"
 		"  --dump-regs=file-prefix: dump registers to file with the file-prefix\n",
 		prgname);
@@ -253,6 +258,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"dump-regs", required_argument, NULL, 0},
 		{"version", 0, NULL, 0},
 		{"firmware-version", 0, NULL, 0},
+		{"show-rss-reta", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -330,6 +336,9 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name,
 					"firmware-version", MAX_LONG_OPT_SZ))
 				enable_shw_fw_version = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"show-rss-reta", MAX_LONG_OPT_SZ))
+				enable_shw_rss_reta = 1;
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -1524,6 +1533,52 @@ show_firmware_version(void)
 	}
 }
 
+static void
+show_port_rss_reta_info(void)
+{
+	struct rte_eth_rss_reta_entry64 reta_conf[RTE_RETA_CONF_GROUP_NUM + 1];
+	struct rte_eth_dev_info dev_info;
+	uint16_t i, idx, shift;
+	uint16_t num;
+	uint16_t id;
+	int ret;
+
+	RTE_ETH_FOREACH_DEV(id) {
+		/* Skip if port is not in mask */
+		if ((enabled_port_mask & (1ul << id)) == 0)
+			continue;
+
+		snprintf(bdr_str, MAX_STRING_LEN, " Port %u ", id);
+		STATS_BDR_STR(5, bdr_str);
+
+		ret = rte_eth_dev_info_get(id, &dev_info);
+		if (ret != 0) {
+			fprintf(stderr, "Error getting device info: %s\n",
+				strerror(-ret));
+			return;
+		}
+
+		num = DIV_ROUND_UP(dev_info.reta_size, RTE_ETH_RETA_GROUP_SIZE);
+		memset(reta_conf, 0, sizeof(reta_conf));
+		for (i = 0; i < num; i++)
+			reta_conf[i].mask = ~0ULL;
+
+		ret = rte_eth_dev_rss_reta_query(id, reta_conf, dev_info.reta_size);
+		if (ret != 0) {
+			fprintf(stderr, "Error getting RSS RETA info: %s\n",
+				strerror(-ret));
+			return;
+		}
+
+		for (i = 0; i < dev_info.reta_size; i++) {
+			idx = i / RTE_ETH_RETA_GROUP_SIZE;
+			shift = i % RTE_ETH_RETA_GROUP_SIZE;
+			printf("RSS RETA configuration: hash index=%u, queue=%u\n",
+				i, reta_conf[idx].reta[shift]);
+		}
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1641,6 +1696,8 @@ main(int argc, char **argv)
 		show_version();
 	if (enable_shw_fw_version)
 		show_firmware_version();
+	if (enable_shw_rss_reta)
+		show_port_rss_reta_info();
 
 	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_close(i);
