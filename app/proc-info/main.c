@@ -48,6 +48,7 @@
 #define ETHDEV_FWVERS_LEN 32
 #define RTE_RETA_CONF_GROUP_NUM 32
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+#define EEPROM_DUMP_CHUNKSIZE 1024
 
 #define STATS_BDR_FMT "========================================"
 #define STATS_BDR_STR(w, s) printf("%.*s%s%.*s\n", w, \
@@ -113,6 +114,8 @@ static uint32_t enable_shw_version;
 static uint32_t enable_shw_fw_version;
 /* Enable show RSS reta. */
 static uint32_t enable_shw_rss_reta;
+/* Enable show module eeprom information. */
+static uint32_t enable_shw_module_eeprom;
 
 /* display usage */
 static void
@@ -144,6 +147,7 @@ proc_info_usage(const char *prgname)
 		"  --version: to display DPDK version\n"
 		"  --firmware-version: to display ethdev firmware version\n"
 		"  --show-rss-reta: to display ports redirection table\n"
+		"  --show-module-eeprom: to display ports module eeprom information\n"
 		"  --iter-mempool=name: iterate mempool elements to display content\n"
 		"  --dump-regs=file-prefix: dump registers to file with the file-prefix\n",
 		prgname);
@@ -259,6 +263,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"version", 0, NULL, 0},
 		{"firmware-version", 0, NULL, 0},
 		{"show-rss-reta", 0, NULL, 0},
+		{"show-module-eeprom", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -339,6 +344,9 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name,
 					"show-rss-reta", MAX_LONG_OPT_SZ))
 				enable_shw_rss_reta = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"show-module-eeprom", MAX_LONG_OPT_SZ))
+				enable_shw_module_eeprom = 1;
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -1579,6 +1587,48 @@ show_port_rss_reta_info(void)
 	}
 }
 
+static void
+show_module_eeprom_info(void)
+{
+	unsigned char bytes_eeprom[EEPROM_DUMP_CHUNKSIZE];
+	struct rte_eth_dev_module_info module_info;
+	struct rte_dev_eeprom_info eeprom_info;
+	uint16_t i;
+	int ret;
+
+	RTE_ETH_FOREACH_DEV(i) {
+		/* Skip if port is not in mask */
+		if ((enabled_port_mask & (1ul << i)) == 0)
+			continue;
+
+		snprintf(bdr_str, MAX_STRING_LEN, " Port %u ", i);
+		STATS_BDR_STR(5, bdr_str);
+
+		ret = rte_eth_dev_get_module_info(i, &module_info);
+		if (ret != 0) {
+			fprintf(stderr, "Module EEPROM information read error: %s\n",
+				strerror(-ret));
+			return;
+		}
+
+		eeprom_info.offset = 0;
+		eeprom_info.length = module_info.eeprom_len;
+		eeprom_info.data = bytes_eeprom;
+
+		ret = rte_eth_dev_get_module_eeprom(i, &eeprom_info);
+		if (ret != 0) {
+			fprintf(stderr, "Module EEPROM read error: %s\n",
+				strerror(-ret));
+			return;
+		}
+
+		rte_hexdump(stdout, "hexdump", eeprom_info.data,
+			    eeprom_info.length);
+		printf("Finish -- Port: %u MODULE EEPROM length: %d bytes\n",
+		       i, eeprom_info.length);
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1698,6 +1748,8 @@ main(int argc, char **argv)
 		show_firmware_version();
 	if (enable_shw_rss_reta)
 		show_port_rss_reta_info();
+	if (enable_shw_module_eeprom)
+		show_module_eeprom_info();
 
 	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_close(i);

@@ -20,7 +20,8 @@ The application has a number of command line options:
    ./<build_dir>/app/dpdk-proc-info -- -m | [-p PORTMASK] [--stats | --xstats |
    --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto |
    --show-ring[=name] | --show-mempool[=name] | --iter-mempool=name |
-   --show-port-private | --version | --firmware-version | --show-rss-reta ]
+   --show-port-private | --version | --firmware-version | --show-rss-reta |
+   --show-module-eeprom ]
 
 Parameters
 ~~~~~~~~~~
@@ -81,6 +82,9 @@ The firmware-version parameter displays ethdev firmware version.
 
 **--show-rss-reta**
 The show-rss-reta parameter displays ports rss redirection table.
+
+**--show-module-eeprom**
+The show-module-eeprom parameter displays ports module eeprom information.
 
 Limitations
 -----------
