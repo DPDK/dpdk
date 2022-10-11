@@ -48,33 +48,33 @@
 #define STATS_BDR_STR(w, s) printf("%.*s%s%.*s\n", w, \
 	STATS_BDR_FMT, s, w, STATS_BDR_FMT)
 
-/**< mask of enabled ports */
+/* mask of enabled ports */
 static unsigned long enabled_port_mask;
-/**< Enable stats. */
+/* Enable stats. */
 static uint32_t enable_stats;
-/**< Enable xstats. */
+/* Enable xstats. */
 static uint32_t enable_xstats;
-/**< Enable collectd format*/
+/* Enable collectd format */
 static uint32_t enable_collectd_format;
-/**< FD to send collectd format messages to STDOUT*/
+/* FD to send collectd format messages to STDOUT */
 static int stdout_fd;
-/**< Host id process is running on */
+/* Host id process is running on */
 static char host_id[MAX_LONG_OPT_SZ];
 #ifdef RTE_LIB_METRICS
-/**< Enable metrics. */
+/* Enable metrics. */
 static uint32_t enable_metrics;
 #endif
-/**< Enable stats reset. */
+/* Enable stats reset. */
 static uint32_t reset_stats;
-/**< Enable xstats reset. */
+/* Enable xstats reset. */
 static uint32_t reset_xstats;
-/**< Enable memory info. */
+/* Enable memory info. */
 static uint32_t mem_info;
-/**< Enable displaying xstat name. */
+/* Enable displaying xstat name. */
 static uint32_t enable_xstats_name;
 static char *xstats_name;
 
-/**< Enable xstats by ids. */
+/* Enable xstats by ids. */
 #define MAX_NB_XSTATS_IDS 1024
 static uint32_t nb_xstats_ids;
 static uint64_t xstats_ids[MAX_NB_XSTATS_IDS];
@@ -82,28 +82,28 @@ static uint64_t xstats_ids[MAX_NB_XSTATS_IDS];
 /* show border */
 static char bdr_str[MAX_STRING_LEN];
 
-/**< Enable show port. */
+/* Enable show port. */
 static uint32_t enable_shw_port;
 /* Enable show port private info. */
 static uint32_t enable_shw_port_priv;
-/**< Enable show tm. */
+/* Enable show tm. */
 static uint32_t enable_shw_tm;
-/**< Enable show crypto. */
+/* Enable show crypto. */
 static uint32_t enable_shw_crypto;
-/**< Enable show ring. */
+/* Enable show ring. */
 static uint32_t enable_shw_ring;
 static char *ring_name;
-/**< Enable show mempool. */
+/* Enable show mempool. */
 static uint32_t enable_shw_mempool;
 static char *mempool_name;
-/**< Enable iter mempool. */
+/* Enable iter mempool. */
 static uint32_t enable_iter_mempool;
 static char *mempool_iter_name;
-/**< Enable dump regs. */
+/* Enable dump regs. */
 static uint32_t enable_dump_regs;
 static char *dump_regs_file_prefix;
 
-/**< display usage */
+/* display usage */
 static void
 proc_info_usage(const char *prgname)
 {
