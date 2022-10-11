@@ -213,13 +213,24 @@ implementer_phytium = {
         ['RTE_MACHINE', '"armv8a"'],
         ['RTE_USE_C11_MEM_MODEL', true],
         ['RTE_CACHE_LINE_SIZE', 64],
-        ['RTE_MAX_LCORE', 64],
-        ['RTE_MAX_NUMA_NODES', 8]
     ],
     'part_number_config': {
         '0x662': {
-            'machine_args': ['-march=armv8-a+crc'],
+            'march': 'armv8-a',
+            'march_features': ['crc'],
+            'flags': [
+                ['RTE_MAX_LCORE', 64],
+                ['RTE_MAX_NUMA_NODES', 8]
+             ]
         },
+       '0x663': {
+            'march': 'armv8-a',
+            'march_features': ['crc'],
+            'flags': [
+                ['RTE_MAX_LCORE', 256],
+                ['RTE_MAX_NUMA_NODES', 32]
+            ]
+        }
     }
 }
 
@@ -339,6 +350,13 @@ soc_ft2000plus = {
     'numa': true
 }
 
+soc_tys2500 = {
+    'description': 'Phytium TengYun S2500',
+    'implementer': '0x70',
+    'part_number': '0x663',
+    'numa': true
+}
+
 soc_graviton2 = {
     'description': 'AWS Graviton2',
     'implementer': '0x41',
@@ -436,6 +454,7 @@ cn10k:           Marvell OCTEON 10
 dpaa:            NXP DPAA
 emag:            Ampere eMAG
 ft2000plus:      Phytium FT-2000+
+tys2500:         Phytium TengYun S2500
 graviton2:       AWS Graviton2
 graviton3:       AWS Graviton3
 kunpeng920:      HiSilicon Kunpeng 920
@@ -461,6 +480,7 @@ socs = {
     'dpaa': soc_dpaa,
     'emag': soc_emag,
     'ft2000plus': soc_ft2000plus,
+    'tys2500': soc_tys2500,
     'graviton2': soc_graviton2,
     'graviton3': soc_graviton3,
     'kunpeng920': soc_kunpeng920,
