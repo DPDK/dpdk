@@ -992,9 +992,10 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			    uint64_t rss_type)
 {
 	struct virtchnl_proto_hdr *hdr;
+	int phdrs_count = proto_hdrs->count;
 	int i;
 
-	for (i = 0; i < proto_hdrs->count; i++) {
+	for (i = 0; i < phdrs_count; i++) {
 		hdr = &proto_hdrs->proto_hdr[i];
 		switch (hdr->type) {
 		case VIRTCHNL_PROTO_HDR_ETH:
@@ -1183,12 +1184,13 @@ iavf_refine_proto_hdrs_gtpu(struct virtchnl_proto_hdrs *proto_hdrs,
 			    uint64_t rss_type)
 {
 	struct virtchnl_proto_hdr *hdr;
+	int phdrs_count = proto_hdrs->count;
 	int i;
 
 	if (!(rss_type & RTE_ETH_RSS_GTPU))
 		return;
 
-	for (i = 0; i < proto_hdrs->count; i++) {
+	for (i = 0; i < phdrs_count; i++) {
 		hdr = &proto_hdrs->proto_hdr[i];
 		switch (hdr->type) {
 		case VIRTCHNL_PROTO_HDR_GTPU_IP:
@@ -1208,6 +1210,7 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 	struct virtchnl_proto_hdr *hdr2;
 	int i, shift_count = 1;
 	int tun_lvl = proto_hdrs->tunnel_level;
+	int phdrs_count = proto_hdrs->count;
 
 	if (!(phint & IAVF_PHINT_GTPU_MSK) && !(phint & IAVF_PHINT_GRE))
 		return;
@@ -1217,7 +1220,7 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 			shift_count = 2;
 
 		/* shift headers layer */
-		for (i = proto_hdrs->count - 1 + shift_count;
+		for (i = phdrs_count - 1 + shift_count;
 		     i > shift_count - 1; i--) {
 			hdr1 = &proto_hdrs->proto_hdr[i];
 			hdr2 = &proto_hdrs->proto_hdr[i - shift_count];
@@ -1278,6 +1281,7 @@ iavf_refine_proto_hdrs_l2tpv2(struct virtchnl_proto_hdrs *proto_hdrs,
 			      uint64_t phint)
 {
 	struct virtchnl_proto_hdr *hdr, *hdr1;
+	int phdrs_count = proto_hdrs->count;
 	int i;
 
 	if (!(phint & IAVF_PHINT_L2TPV2) && !(phint & IAVF_PHINT_L2TPV2_LEN))
@@ -1285,7 +1289,7 @@ iavf_refine_proto_hdrs_l2tpv2(struct virtchnl_proto_hdrs *proto_hdrs,
 
 	if (proto_hdrs->tunnel_level == TUNNEL_LEVEL_INNER) {
 		/* shift headers layer */
-		for (i = proto_hdrs->count - 1 + 1; i > 0; i--)
+		for (i = phdrs_count; i > 0; i--)
 			proto_hdrs->proto_hdr[i] = proto_hdrs->proto_hdr[i - 1];
 
 		/* adding outer ip header at layer 0 */
@@ -1298,7 +1302,7 @@ iavf_refine_proto_hdrs_l2tpv2(struct virtchnl_proto_hdrs *proto_hdrs,
 		else if (phint & IAVF_PHINT_OUTER_IPV6)
 			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, IPV6);
 	} else {
-		for (i = 0; i < proto_hdrs->count; i++) {
+		for (i = 0; i < phdrs_count; i++) {
 			hdr = &proto_hdrs->proto_hdr[i];
 			if (hdr->type == VIRTCHNL_PROTO_HDR_L2TPV2) {
 				if (phint & IAVF_PHINT_L2TPV2) {
@@ -1309,7 +1313,6 @@ iavf_refine_proto_hdrs_l2tpv2(struct virtchnl_proto_hdrs *proto_hdrs,
 			}
 		}
 	}
-
 }
 
 static void iavf_refine_proto_hdrs(struct virtchnl_proto_hdrs *proto_hdrs,
