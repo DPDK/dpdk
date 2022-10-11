@@ -845,6 +845,7 @@ show_port(void)
 
 		for (j = 0; j < dev_info.nb_rx_queues; j++) {
 			struct rte_eth_rxq_info queue_info;
+			struct rte_eth_burst_mode mode;
 			int count;
 
 			ret = rte_eth_rx_queue_info_get(i, j, &queue_info);
@@ -880,11 +881,18 @@ show_port(void)
 			if (queue_info.conf.offloads != 0)
 				show_offloads(queue_info.conf.offloads, rte_eth_dev_rx_offload_name);
 
+			if (rte_eth_rx_burst_mode_get(i, j, &mode) == 0)
+				printf(" burst mode : %s%s",
+				       mode.info,
+				       mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ?
+						" (per queue)" : "");
+
 			printf("\n");
 		}
 
 		for (j = 0; j < dev_info.nb_tx_queues; j++) {
 			struct rte_eth_txq_info queue_info;
+			struct rte_eth_burst_mode mode;
 
 			ret = rte_eth_tx_queue_info_get(i, j, &queue_info);
 			if (ret != 0)
@@ -905,6 +913,13 @@ show_port(void)
 
 			if (queue_info.conf.offloads != 0)
 				show_offloads(queue_info.conf.offloads, rte_eth_dev_tx_offload_name);
+
+			if (rte_eth_tx_burst_mode_get(i, j, &mode) == 0)
+				printf(" burst mode : %s%s",
+				       mode.info,
+				       mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ?
+						" (per queue)" : "");
+
 			printf("\n");
 		}
 
