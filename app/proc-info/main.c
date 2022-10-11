@@ -45,6 +45,8 @@
 #define MAX_LONG_OPT_SZ 64
 #define MAX_STRING_LEN 256
 
+#define ETHDEV_FWVERS_LEN 32
+
 #define STATS_BDR_FMT "========================================"
 #define STATS_BDR_STR(w, s) printf("%.*s%s%.*s\n", w, \
 	STATS_BDR_FMT, s, w, STATS_BDR_FMT)
@@ -105,6 +107,8 @@ static uint32_t enable_dump_regs;
 static char *dump_regs_file_prefix;
 /* Enable show DPDK version. */
 static uint32_t enable_shw_version;
+/* Enable show ethdev firmware version. */
+static uint32_t enable_shw_fw_version;
 
 /* display usage */
 static void
@@ -134,6 +138,7 @@ proc_info_usage(const char *prgname)
 		"  --show-ring[=name]: to display ring information\n"
 		"  --show-mempool[=name]: to display mempool information\n"
 		"  --version: to display DPDK version\n"
+		"  --firmware-version: to display ethdev firmware version\n"
 		"  --iter-mempool=name: iterate mempool elements to display content\n"
 		"  --dump-regs=file-prefix: dump registers to file with the file-prefix\n",
 		prgname);
@@ -247,6 +252,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"iter-mempool", required_argument, NULL, 0},
 		{"dump-regs", required_argument, NULL, 0},
 		{"version", 0, NULL, 0},
+		{"firmware-version", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -321,6 +327,9 @@ proc_info_parse_args(int argc, char **argv)
 			} else if (!strncmp(long_option[option_index].name,
 					"version", MAX_LONG_OPT_SZ))
 				enable_shw_version = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"firmware-version", MAX_LONG_OPT_SZ))
+				enable_shw_fw_version = 1;
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -1491,6 +1500,30 @@ show_version(void)
 	printf("DPDK version: %s\n", rte_version());
 }
 
+static void
+show_firmware_version(void)
+{
+	char fw_version[ETHDEV_FWVERS_LEN];
+	uint16_t i;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " show - firmware version ");
+	STATS_BDR_STR(10, bdr_str);
+
+	RTE_ETH_FOREACH_DEV(i) {
+		/* Skip if port is not in mask */
+		if ((enabled_port_mask & (1ul << i)) == 0)
+			continue;
+
+		if (rte_eth_dev_fw_version_get(i, fw_version,
+					       ETHDEV_FWVERS_LEN) == 0)
+			printf("Ethdev port %u firmware version: %s\n", i,
+				fw_version);
+		else
+			printf("Ethdev port %u firmware version: %s\n", i,
+				"not available");
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1606,6 +1639,8 @@ main(int argc, char **argv)
 		dump_regs(dump_regs_file_prefix);
 	if (enable_shw_version)
 		show_version();
+	if (enable_shw_fw_version)
+		show_firmware_version();
 
 	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_close(i);
