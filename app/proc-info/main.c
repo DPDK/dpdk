@@ -117,6 +117,21 @@ static uint32_t enable_shw_rss_reta;
 /* Enable show module eeprom information. */
 static uint32_t enable_shw_module_eeprom;
 
+/* Enable dump Rx/Tx descriptor. */
+static uint32_t enable_shw_rx_desc_dump;
+static uint32_t enable_shw_tx_desc_dump;
+
+#define DESC_PARAM_NUM 3
+
+struct desc_param {
+	uint16_t queue_id; /* A queue identifier on this port. */
+	uint16_t offset;   /* The offset of the descriptor starting from tail. */
+	uint16_t num;      /* The number of the descriptors to dump. */
+};
+
+static struct desc_param rx_desc_param;
+static struct desc_param tx_desc_param;
+
 /* display usage */
 static void
 proc_info_usage(const char *prgname)
@@ -148,6 +163,14 @@ proc_info_usage(const char *prgname)
 		"  --firmware-version: to display ethdev firmware version\n"
 		"  --show-rss-reta: to display ports redirection table\n"
 		"  --show-module-eeprom: to display ports module eeprom information\n"
+		"  --show-rx-descriptor queue_id:offset:num to display ports Rx descriptor information. "
+			"queue_id: A Rx queue identifier on this port. "
+			"offset: The offset of the descriptor starting from tail. "
+			"num: The number of the descriptors to dump.\n"
+		"  --show-tx-descriptor queue_id:offset:num to display ports Tx descriptor information. "
+			"queue_id: A Tx queue identifier on this port. "
+			"offset: The offset of the descriptor starting from tail. "
+			"num: The number of the descriptors to dump.\n"
 		"  --iter-mempool=name: iterate mempool elements to display content\n"
 		"  --dump-regs=file-prefix: dump registers to file with the file-prefix\n",
 		prgname);
@@ -198,6 +221,19 @@ parse_xstats_ids(char *list, uint64_t *ids, int limit) {
 	}
 
 	return length;
+}
+
+static int
+parse_descriptor_param(char *list, struct desc_param *desc)
+{
+	int ret;
+
+	ret = sscanf(list, "%hu:%hu:%hu", &desc->queue_id, &desc->offset,
+		     &desc->num);
+	if (ret != DESC_PARAM_NUM)
+		return -EINVAL;
+
+	return 0;
 }
 
 static int
@@ -264,6 +300,8 @@ proc_info_parse_args(int argc, char **argv)
 		{"firmware-version", 0, NULL, 0},
 		{"show-rss-reta", 0, NULL, 0},
 		{"show-module-eeprom", 0, NULL, 0},
+		{"show-rx-descriptor", required_argument, NULL, 1},
+		{"show-tx-descriptor", required_argument, NULL, 1},
 		{NULL, 0, 0, 0}
 	};
 
@@ -367,6 +405,26 @@ proc_info_parse_args(int argc, char **argv)
 					return -1;
 				}
 				nb_xstats_ids = ret;
+			} else if (!strncmp(long_option[option_index].name,
+				"show-rx-descriptor", MAX_LONG_OPT_SZ)) {
+				int ret = parse_descriptor_param(optarg,
+							&rx_desc_param);
+				if (ret < 0) {
+					fprintf(stderr, "Error parsing Rx descriptor param: %s\n",
+						strerror(-ret));
+					return -1;
+				}
+				enable_shw_rx_desc_dump = 1;
+			} else if (!strncmp(long_option[option_index].name,
+				"show-tx-descriptor", MAX_LONG_OPT_SZ)) {
+				int ret = parse_descriptor_param(optarg,
+							&tx_desc_param);
+				if (ret < 0) {
+					fprintf(stderr, "Error parsing Tx descriptor param: %s\n",
+						strerror(-ret));
+					return -1;
+				}
+				enable_shw_tx_desc_dump = 1;
 			}
 			break;
 		default:
@@ -1644,6 +1702,48 @@ show_module_eeprom_info(void)
 	}
 }
 
+static void
+nic_rx_descriptor_display(uint16_t port_id, struct desc_param *desc)
+{
+	uint16_t queue_id = desc->queue_id;
+	uint16_t offset = desc->offset;
+	uint16_t num = desc->num;
+	int ret;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " show - Rx descriptor ");
+	STATS_BDR_STR(10, bdr_str);
+
+	printf("Dump ethdev Rx descriptor for port %u, queue %u, offset %u, num %u\n",
+		port_id, queue_id, offset, num);
+
+	ret = rte_eth_rx_descriptor_dump(port_id, queue_id, offset, num,
+					 stdout);
+	if (ret < 0)
+		fprintf(stderr, "Error dumping ethdev Rx descriptor: %s\n",
+			strerror(-ret));
+}
+
+static void
+nic_tx_descriptor_display(uint16_t port_id, struct desc_param *desc)
+{
+	uint16_t queue_id = desc->queue_id;
+	uint16_t offset = desc->offset;
+	uint16_t num = desc->num;
+	int ret;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " show - Tx descriptor ");
+	STATS_BDR_STR(10, bdr_str);
+
+	printf("Dump ethdev Tx descriptor for port %u, queue %u, offset %u, num %u\n",
+		port_id, queue_id, offset, num);
+
+	ret = rte_eth_tx_descriptor_dump(port_id, queue_id, offset, num,
+					 stdout);
+	if (ret < 0)
+		fprintf(stderr, "Error dumping ethdev Tx descriptor: %s\n",
+			strerror(-ret));
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1732,6 +1832,10 @@ main(int argc, char **argv)
 			metrics_display(i);
 #endif
 
+		if (enable_shw_rx_desc_dump)
+			nic_rx_descriptor_display(i, &rx_desc_param);
+		if (enable_shw_tx_desc_dump)
+			nic_tx_descriptor_display(i, &tx_desc_param);
 	}
 
 #ifdef RTE_LIB_METRICS

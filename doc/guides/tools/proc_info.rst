@@ -21,7 +21,8 @@ The application has a number of command line options:
    --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto |
    --show-ring[=name] | --show-mempool[=name] | --iter-mempool=name |
    --show-port-private | --version | --firmware-version | --show-rss-reta |
-   --show-module-eeprom ]
+   --show-module-eeprom | --show-rx-descriptor queue_id:offset:num |
+   --show-tx-descriptor queue_id:offset:num ]
 
 Parameters
 ~~~~~~~~~~
@@ -85,6 +86,20 @@ The show-rss-reta parameter displays ports rss redirection table.
 
 **--show-module-eeprom**
 The show-module-eeprom parameter displays ports module eeprom information.
+
+**--show-rx-descriptor queue_id:offset:num**
+The show-rx-descriptor parameter displays ports Rx descriptor information
+specified by queue_id, offset and num.
+queue_id: A Rx queue identifier on this port.
+offset: The offset of the descriptor starting from tail.
+num: The number of the descriptors to dump.
+
+**--show-tx-descriptor queue_id:offset:num**
+The show-tx-descriptor parameter displays ports Tx descriptor information
+specified by queue_id, offset and num.
+queue_id: A Tx queue identifier on this port.
+offset: The offset of the descriptor starting from tail.
+num: The number of the descriptors to dump.
 
 Limitations
 -----------
