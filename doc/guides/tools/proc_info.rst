@@ -19,7 +19,8 @@ The application has a number of command line options:
 
    ./<build_dir>/app/dpdk-proc-info -- -m | [-p PORTMASK] [--stats | --xstats |
    --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto |
-   --show-ring[=name] | --show-mempool[=name] | --iter-mempool=name ]
+   --show-ring[=name] | --show-mempool[=name] | --iter-mempool=name |
+   --show-port-private ]
 
 Parameters
 ~~~~~~~~~~
@@ -68,6 +69,9 @@ mempool. For invalid or no mempool name, whole list is dump.
 **--iter-mempool=name**
 The iter-mempool parameter iterates and displays mempool elements specified
 by name. For invalid or no mempool name no elements are displayed.
+
+**--show-port-private**
+The show-port-private parameter displays ports private information.
 
 Limitations
 -----------
