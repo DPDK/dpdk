@@ -211,13 +211,398 @@ fetch_acc200_config(struct rte_bbdev *dev)
 			acc_conf->q_fft.aq_depth_log2);
 }
 
+/* Allocate 64MB memory used for all software rings. */
+static int
+acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
+{
+	uint32_t phys_low, phys_high, value;
+	struct acc_device *d = dev->data->dev_private;
+	const struct acc200_registry_addr *reg_addr;
+	int ret;
+
+	if (d->pf_device && !d->acc_conf.pf_mode_en) {
+		rte_bbdev_log(NOTICE,
+				"%s has PF mode disabled. This PF can't be used.",
+				dev->data->name);
+		return -ENODEV;
+	}
+	if (!d->pf_device && d->acc_conf.pf_mode_en) {
+		rte_bbdev_log(NOTICE,
+				"%s has PF mode enabled. This VF can't be used.",
+				dev->data->name);
+		return -ENODEV;
+	}
+
+	alloc_sw_rings_min_mem(dev, d, num_queues, socket_id);
+
+	/* If minimal memory space approach failed, then allocate
+	 * the 2 * 64MB block for the sw rings.
+	 */
+	if (d->sw_rings == NULL)
+		alloc_2x64mb_sw_rings_mem(dev, d, socket_id);
+
+	if (d->sw_rings == NULL) {
+		rte_bbdev_log(NOTICE,
+				"Failure allocating sw_rings memory");
+		return -ENOMEM;
+	}
+
+	/* Configure ACC200 with the base address for DMA descriptor rings.
+	 * Same descriptor rings used for UL and DL DMA Engines.
+	 * Note : Assuming only VF0 bundle is used for PF mode.
+	 */
+	phys_high = (uint32_t)(d->sw_rings_iova >> 32);
+	phys_low  = (uint32_t)(d->sw_rings_iova & ~(ACC_SIZE_64MBYTE-1));
+
+	/* Choose correct registry addresses for the device type. */
+	if (d->pf_device)
+		reg_addr = &pf_reg_addr;
+	else
+		reg_addr = &vf_reg_addr;
+
+	/* Read the populated cfg from ACC200 registers. */
+	fetch_acc200_config(dev);
+
+	/* Start Pmon */
+	for (value = 0; value <= 2; value++) {
+		acc_reg_write(d, reg_addr->pmon_ctrl_a, value);
+		acc_reg_write(d, reg_addr->pmon_ctrl_b, value);
+		acc_reg_write(d, reg_addr->pmon_ctrl_c, value);
+	}
+
+	/* Release AXI from PF. */
+	if (d->pf_device)
+		acc_reg_write(d, HWPfDmaAxiControl, 1);
+
+	acc_reg_write(d, reg_addr->dma_ring_ul5g_hi, phys_high);
+	acc_reg_write(d, reg_addr->dma_ring_ul5g_lo, phys_low);
+	acc_reg_write(d, reg_addr->dma_ring_dl5g_hi, phys_high);
+	acc_reg_write(d, reg_addr->dma_ring_dl5g_lo, phys_low);
+	acc_reg_write(d, reg_addr->dma_ring_ul4g_hi, phys_high);
+	acc_reg_write(d, reg_addr->dma_ring_ul4g_lo, phys_low);
+	acc_reg_write(d, reg_addr->dma_ring_dl4g_hi, phys_high);
+	acc_reg_write(d, reg_addr->dma_ring_dl4g_lo, phys_low);
+	acc_reg_write(d, reg_addr->dma_ring_fft_hi, phys_high);
+	acc_reg_write(d, reg_addr->dma_ring_fft_lo, phys_low);
+	/*
+	 * Configure Ring Size to the max queue ring size
+	 * (used for wrapping purpose).
+	 */
+	value = log2_basic(d->sw_ring_size / ACC_RING_SIZE_GRANULARITY);
+	acc_reg_write(d, reg_addr->ring_size, value);
+
+	/* Configure tail pointer for use when SDONE enabled. */
+	if (d->tail_ptrs == NULL)
+		d->tail_ptrs = rte_zmalloc_socket(
+				dev->device->driver->name,
+				ACC200_NUM_QGRPS * ACC200_NUM_AQS * sizeof(uint32_t),
+				RTE_CACHE_LINE_SIZE, socket_id);
+	if (d->tail_ptrs == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate tail ptr for %s:%u",
+				dev->device->driver->name,
+				dev->data->dev_id);
+		ret = -ENOMEM;
+		goto free_sw_rings;
+	}
+	d->tail_ptr_iova = rte_malloc_virt2iova(d->tail_ptrs);
+
+	phys_high = (uint32_t)(d->tail_ptr_iova >> 32);
+	phys_low  = (uint32_t)(d->tail_ptr_iova);
+	acc_reg_write(d, reg_addr->tail_ptrs_ul5g_hi, phys_high);
+	acc_reg_write(d, reg_addr->tail_ptrs_ul5g_lo, phys_low);
+	acc_reg_write(d, reg_addr->tail_ptrs_dl5g_hi, phys_high);
+	acc_reg_write(d, reg_addr->tail_ptrs_dl5g_lo, phys_low);
+	acc_reg_write(d, reg_addr->tail_ptrs_ul4g_hi, phys_high);
+	acc_reg_write(d, reg_addr->tail_ptrs_ul4g_lo, phys_low);
+	acc_reg_write(d, reg_addr->tail_ptrs_dl4g_hi, phys_high);
+	acc_reg_write(d, reg_addr->tail_ptrs_dl4g_lo, phys_low);
+	acc_reg_write(d, reg_addr->tail_ptrs_fft_hi, phys_high);
+	acc_reg_write(d, reg_addr->tail_ptrs_fft_lo, phys_low);
+
+	if (d->harq_layout == NULL)
+		d->harq_layout = rte_zmalloc_socket("HARQ Layout",
+				ACC_HARQ_LAYOUT * sizeof(*d->harq_layout),
+				RTE_CACHE_LINE_SIZE, dev->data->socket_id);
+	if (d->harq_layout == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate harq_layout for %s:%u",
+				dev->device->driver->name,
+				dev->data->dev_id);
+		ret = -ENOMEM;
+		goto free_tail_ptrs;
+	}
+
+	/* Mark as configured properly */
+	d->configured = true;
+
+	rte_bbdev_log_debug(
+			"ACC200 (%s) configured  sw_rings = %p, sw_rings_iova = %#"
+			PRIx64, dev->data->name, d->sw_rings, d->sw_rings_iova);
+	return 0;
+
+free_tail_ptrs:
+	rte_free(d->tail_ptrs);
+	d->tail_ptrs = NULL;
+free_sw_rings:
+	rte_free(d->sw_rings_base);
+	d->sw_rings = NULL;
+
+	return ret;
+}
+
 /* Free memory used for software rings. */
 static int
 acc200_dev_close(struct rte_bbdev *dev)
 {
-	RTE_SET_USED(dev);
+	struct acc_device *d = dev->data->dev_private;
+	if (d->sw_rings_base != NULL) {
+		rte_free(d->tail_ptrs);
+		rte_free(d->sw_rings_base);
+		rte_free(d->harq_layout);
+		d->sw_rings_base = NULL;
+		d->tail_ptrs = NULL;
+		d->harq_layout = NULL;
+	}
 	/* Ensure all in flight HW transactions are completed. */
 	usleep(ACC_LONG_WAIT);
+	return 0;
+}
+
+/**
+ * Report a ACC200 queue index which is free.
+ * Return 0 to 16k for a valid queue_idx or -1 when no queue is available.
+ * Note : Only supporting VF0 Bundle for PF mode.
+ */
+static int
+acc200_find_free_queue_idx(struct rte_bbdev *dev,
+		const struct rte_bbdev_queue_conf *conf)
+{
+	struct acc_device *d = dev->data->dev_private;
+	int op_2_acc[6] = {0, UL_4G, DL_4G, UL_5G, DL_5G, FFT};
+	int acc = op_2_acc[conf->op_type];
+	struct rte_acc_queue_topology *qtop = NULL;
+	uint16_t group_idx;
+	uint64_t aq_idx;
+
+	qtopFromAcc(&qtop, acc, &(d->acc_conf));
+	if (qtop == NULL)
+		return -1;
+	/* Identify matching QGroup Index which are sorted in priority order. */
+	group_idx = qtop->first_qgroup_index + conf->priority;
+	if (group_idx >= ACC200_NUM_QGRPS ||
+			conf->priority >= qtop->num_qgroups) {
+		rte_bbdev_log(INFO, "Invalid Priority on %s, priority %u",
+				dev->data->name, conf->priority);
+		return -1;
+	}
+	/* Find a free AQ_idx.  */
+	for (aq_idx = 0; aq_idx < qtop->num_aqs_per_groups; aq_idx++) {
+		if (((d->q_assigned_bit_map[group_idx] >> aq_idx) & 0x1) == 0) {
+			/* Mark the Queue as assigned. */
+			d->q_assigned_bit_map[group_idx] |= (1 << aq_idx);
+			/* Report the AQ Index. */
+			return (group_idx << ACC200_GRP_ID_SHIFT) + aq_idx;
+		}
+	}
+	rte_bbdev_log(INFO, "Failed to find free queue on %s, priority %u",
+			dev->data->name, conf->priority);
+	return -1;
+}
+
+/* Setup ACC200 queue. */
+static int
+acc200_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
+		const struct rte_bbdev_queue_conf *conf)
+{
+	struct acc_device *d = dev->data->dev_private;
+	struct acc_queue *q;
+	int16_t q_idx;
+	int ret;
+
+	if (d == NULL) {
+		rte_bbdev_log(ERR, "Undefined device");
+		return -ENODEV;
+	}
+	/* Allocate the queue data structure. */
+	q = rte_zmalloc_socket(dev->device->driver->name, sizeof(*q),
+			RTE_CACHE_LINE_SIZE, conf->socket);
+	if (q == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate queue memory");
+		return -ENOMEM;
+	}
+
+	q->d = d;
+	q->ring_addr = RTE_PTR_ADD(d->sw_rings, (d->sw_ring_size * queue_id));
+	q->ring_addr_iova = d->sw_rings_iova + (d->sw_ring_size * queue_id);
+
+	/* Prepare the Ring with default descriptor format. */
+	union acc_dma_desc *desc = NULL;
+	unsigned int desc_idx, b_idx;
+	int fcw_len = (conf->op_type == RTE_BBDEV_OP_LDPC_ENC ?
+		ACC_FCW_LE_BLEN : (conf->op_type == RTE_BBDEV_OP_TURBO_DEC ?
+		ACC_FCW_TD_BLEN : (conf->op_type == RTE_BBDEV_OP_LDPC_DEC ?
+		ACC_FCW_LD_BLEN : ACC_FCW_FFT_BLEN)));
+
+	for (desc_idx = 0; desc_idx < d->sw_ring_max_depth; desc_idx++) {
+		desc = q->ring_addr + desc_idx;
+		desc->req.word0 = ACC_DMA_DESC_TYPE;
+		desc->req.word1 = 0; /**< Timestamp. */
+		desc->req.word2 = 0;
+		desc->req.word3 = 0;
+		uint64_t fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
+		desc->req.data_ptrs[0].address = q->ring_addr_iova + fcw_offset;
+		desc->req.data_ptrs[0].blen = fcw_len;
+		desc->req.data_ptrs[0].blkid = ACC_DMA_BLKID_FCW;
+		desc->req.data_ptrs[0].last = 0;
+		desc->req.data_ptrs[0].dma_ext = 0;
+		for (b_idx = 1; b_idx < ACC_DMA_MAX_NUM_POINTERS - 1;
+				b_idx++) {
+			desc->req.data_ptrs[b_idx].blkid = ACC_DMA_BLKID_IN;
+			desc->req.data_ptrs[b_idx].last = 1;
+			desc->req.data_ptrs[b_idx].dma_ext = 0;
+			b_idx++;
+			desc->req.data_ptrs[b_idx].blkid =
+					ACC_DMA_BLKID_OUT_ENC;
+			desc->req.data_ptrs[b_idx].last = 1;
+			desc->req.data_ptrs[b_idx].dma_ext = 0;
+		}
+		/* Preset some fields of LDPC FCW. */
+		desc->req.fcw_ld.FCWversion = ACC_FCW_VER;
+		desc->req.fcw_ld.gain_i = 1;
+		desc->req.fcw_ld.gain_h = 1;
+	}
+
+	q->lb_in = rte_zmalloc_socket(dev->device->driver->name,
+			RTE_CACHE_LINE_SIZE,
+			RTE_CACHE_LINE_SIZE, conf->socket);
+	if (q->lb_in == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate lb_in memory");
+		ret = -ENOMEM;
+		goto free_q;
+	}
+	q->lb_in_addr_iova = rte_malloc_virt2iova(q->lb_in);
+	q->lb_out = rte_zmalloc_socket(dev->device->driver->name,
+			RTE_CACHE_LINE_SIZE,
+			RTE_CACHE_LINE_SIZE, conf->socket);
+	if (q->lb_out == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate lb_out memory");
+		ret = -ENOMEM;
+		goto free_lb_in;
+	}
+	q->lb_out_addr_iova = rte_malloc_virt2iova(q->lb_out);
+	q->companion_ring_addr = rte_zmalloc_socket(dev->device->driver->name,
+			d->sw_ring_max_depth * sizeof(*q->companion_ring_addr),
+			RTE_CACHE_LINE_SIZE, conf->socket);
+	if (q->companion_ring_addr == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate companion_ring memory");
+		ret = -ENOMEM;
+		goto free_lb_out;
+	}
+
+	/*
+	 * Software queue ring wraps synchronously with the HW when it reaches
+	 * the boundary of the maximum allocated queue size, no matter what the
+	 * sw queue size is. This wrapping is guarded by setting the wrap_mask
+	 * to represent the maximum queue size as allocated at the time when
+	 * the device has been setup (in configure()).
+	 *
+	 * The queue depth is set to the queue size value (conf->queue_size).
+	 * This limits the occupancy of the queue at any point of time, so that
+	 * the queue does not get swamped with enqueue requests.
+	 */
+	q->sw_ring_depth = conf->queue_size;
+	q->sw_ring_wrap_mask = d->sw_ring_max_depth - 1;
+
+	q->op_type = conf->op_type;
+
+	q_idx = acc200_find_free_queue_idx(dev, conf);
+	if (q_idx == -1) {
+		ret = -EINVAL;
+		goto free_companion_ring_addr;
+	}
+
+	q->qgrp_id = (q_idx >> ACC200_GRP_ID_SHIFT) & 0xF;
+	q->vf_id = (q_idx >> ACC200_VF_ID_SHIFT)  & 0x3F;
+	q->aq_id = q_idx & 0xF;
+	q->aq_depth = 0;
+	if (conf->op_type ==  RTE_BBDEV_OP_TURBO_DEC)
+		q->aq_depth = (1 << d->acc_conf.q_ul_4g.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_TURBO_ENC)
+		q->aq_depth = (1 << d->acc_conf.q_dl_4g.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_LDPC_DEC)
+		q->aq_depth = (1 << d->acc_conf.q_ul_5g.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_LDPC_ENC)
+		q->aq_depth = (1 << d->acc_conf.q_dl_5g.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_FFT)
+		q->aq_depth = (1 << d->acc_conf.q_fft.aq_depth_log2);
+
+	q->mmio_reg_enqueue = RTE_PTR_ADD(d->mmio_base,
+			queue_offset(d->pf_device,
+					q->vf_id, q->qgrp_id, q->aq_id));
+
+	rte_bbdev_log_debug(
+			"Setup dev%u q%u: qgrp_id=%u, vf_id=%u, aq_id=%u, aq_depth=%u, mmio_reg_enqueue=%p base %p\n",
+			dev->data->dev_id, queue_id, q->qgrp_id, q->vf_id,
+			q->aq_id, q->aq_depth, q->mmio_reg_enqueue,
+			d->mmio_base);
+
+	dev->data->queues[queue_id].queue_private = q;
+	return 0;
+
+free_companion_ring_addr:
+	rte_free(q->companion_ring_addr);
+	q->companion_ring_addr = NULL;
+free_lb_out:
+	rte_free(q->lb_out);
+	q->lb_out = NULL;
+free_lb_in:
+	rte_free(q->lb_in);
+	q->lb_in = NULL;
+free_q:
+	rte_free(q);
+	q = NULL;
+
+	return ret;
+}
+
+/* Stop ACC200 queue and clear counters. */
+static int
+acc200_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
+{
+	struct acc_queue *q;
+	q = dev->data->queues[queue_id].queue_private;
+	rte_bbdev_log(INFO, "Queue Stop %d H/T/D %d %d %x OpType %d",
+			queue_id, q->sw_ring_head, q->sw_ring_tail,
+			q->sw_ring_depth, q->op_type);
+	/* ignore all operations in flight and clear counters */
+	q->sw_ring_tail = q->sw_ring_head;
+	q->aq_enqueued = 0;
+	q->aq_dequeued = 0;
+	dev->data->queues[queue_id].queue_stats.enqueued_count = 0;
+	dev->data->queues[queue_id].queue_stats.dequeued_count = 0;
+	dev->data->queues[queue_id].queue_stats.enqueue_err_count = 0;
+	dev->data->queues[queue_id].queue_stats.dequeue_err_count = 0;
+	dev->data->queues[queue_id].queue_stats.enqueue_warn_count = 0;
+	dev->data->queues[queue_id].queue_stats.dequeue_warn_count = 0;
+	return 0;
+}
+
+/* Release ACC200 queue. */
+static int
+acc200_queue_release(struct rte_bbdev *dev, uint16_t q_id)
+{
+	struct acc_device *d = dev->data->dev_private;
+	struct acc_queue *q = dev->data->queues[q_id].queue_private;
+
+	if (q != NULL) {
+		/* Mark the Queue as un-assigned. */
+		d->q_assigned_bit_map[q->qgrp_id] &= (~0ULL - (uint64_t) (1 << q->aq_id));
+		rte_free(q->companion_ring_addr);
+		rte_free(q->lb_in);
+		rte_free(q->lb_out);
+		rte_free(q);
+		dev->data->queues[q_id].queue_private = NULL;
+	}
+
 	return 0;
 }
 
@@ -270,8 +655,12 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 }
 
 static const struct rte_bbdev_ops acc200_bbdev_ops = {
+	.setup_queues = acc200_setup_queues,
 	.close = acc200_dev_close,
 	.info_get = acc200_dev_info_get,
+	.queue_setup = acc200_queue_setup,
+	.queue_release = acc200_queue_release,
+	.queue_stop = acc200_queue_stop,
 };
 
 /* ACC200 PCI PF address map. */

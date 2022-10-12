@@ -100,6 +100,7 @@
 #define ACC_LIMIT_DL_MUX_BITS          534
 #define ACC_NUM_QGRPS_PER_WORD         8
 #define ACC_MAX_NUM_QGRPS              32
+#define ACC_RING_SIZE_GRANULARITY      64
 
 /* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
 #define ACC_N_ZC_1 66 /* N = 66 Zc for BG 1 */
