@@ -860,6 +860,63 @@ prepare_aead_op(void)
 }
 
 static int
+get_hash_oid(enum rte_crypto_auth_algorithm hash, uint8_t *buf)
+{
+	uint8_t id_sha512[] = {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09,
+				  0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+				  0x04, 0x02, 0x03, 0x05, 0x00, 0x04,
+				  0x40};
+	uint8_t id_sha384[] = {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09,
+				  0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+				  0x04, 0x02, 0x02, 0x05, 0x00, 0x04,
+				  0x30};
+	uint8_t id_sha256[] = {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09,
+				  0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+				  0x04, 0x02, 0x01, 0x05, 0x00, 0x04,
+				  0x20};
+	uint8_t id_sha224[] = {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09,
+				  0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+				  0x04, 0x02, 0x04, 0x05, 0x00, 0x04,
+				  0x1c};
+	uint8_t id_sha1[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05,
+				0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05,
+				0x00, 0x04, 0x14};
+	uint8_t *id = NULL;
+	int id_len = 0;
+
+	switch (hash) {
+	case RTE_CRYPTO_AUTH_SHA1:
+		id = id_sha1;
+		id_len = sizeof(id_sha1);
+		break;
+	case RTE_CRYPTO_AUTH_SHA224:
+		id = id_sha224;
+		id_len = sizeof(id_sha224);
+		break;
+	case RTE_CRYPTO_AUTH_SHA256:
+		id = id_sha256;
+		id_len = sizeof(id_sha256);
+		break;
+	case RTE_CRYPTO_AUTH_SHA384:
+		id = id_sha384;
+		id_len = sizeof(id_sha384);
+		break;
+	case RTE_CRYPTO_AUTH_SHA512:
+		id = id_sha512;
+		id_len = sizeof(id_sha512);
+		break;
+	default:
+		id_len = -1;
+		break;
+	}
+
+	if (id != NULL)
+		rte_memcpy(buf, id, id_len);
+
+	return id_len;
+}
+
+static int
 prepare_rsa_op(void)
 {
 	struct rte_crypto_asym_op *asym;
@@ -872,6 +929,27 @@ prepare_rsa_op(void)
 	asym->rsa.padding.hash = info.interim_info.rsa_data.auth;
 
 	if (env.digest) {
+		if (asym->rsa.padding.type == RTE_CRYPTO_RSA_PADDING_PKCS1_5) {
+			int b_len = 0;
+			uint8_t b[32];
+
+			b_len = get_hash_oid(asym->rsa.padding.hash, b);
+			if (b_len < 0) {
+				RTE_LOG(ERR, USER1, "Failed to get digest info for hash %d\n",
+					asym->rsa.padding.hash);
+				return -EINVAL;
+			}
+
+			if (b_len) {
+				msg.len = env.digest_len + b_len;
+				msg.val = rte_zmalloc(NULL, msg.len, 0);
+				rte_memcpy(msg.val, b, b_len);
+				rte_memcpy(msg.val + b_len, env.digest, env.digest_len);
+				rte_free(env.digest);
+				env.digest = msg.val;
+				env.digest_len = msg.len;
+			}
+		}
 		msg.val = env.digest;
 		msg.len = env.digest_len;
 	} else {
