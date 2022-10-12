@@ -1654,9 +1654,7 @@ enqueue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	uint32_t in_offset, out_offset, out_length, mbuf_total_left, seg_total_left;
 	struct rte_mbuf *input, *output_head, *output;
 
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
-			& q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, total_enqueued_cbs);
 	acc_fcw_te_fill(op, &desc->req.fcw_te);
 
 	input = op->turbo_enc.input.data;
@@ -1698,10 +1696,9 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	int i, next_triplet;
 	uint16_t  in_length_in_bytes;
 	struct rte_bbdev_op_ldpc_enc *enc = &ops[0]->ldpc_enc;
+	struct acc_ptrs *context_ptrs;
 
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_descs)
-			& q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, total_enqueued_descs);
 	acc_fcw_le_fill(ops[0], &desc->req.fcw_le, num, 0);
 
 	/** This could be done at polling. */
@@ -1731,7 +1728,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 
 	desc->req.op_addr = ops[0];
 	/* Keep track of pointers even when multiplexed in single descriptor. */
-	struct acc_ptrs *context_ptrs = q->companion_ring_addr + desc_idx;
+	context_ptrs = q->companion_ring_addr + acc_desc_idx(q, total_enqueued_descs);
 	for (i = 0; i < num; i++)
 		context_ptrs->ptr[i].op_addr = ops[i];
 
@@ -1760,9 +1757,7 @@ enqueue_ldpc_enc_part_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	int i, next_triplet;
 	struct rte_bbdev_op_ldpc_enc *enc = &op->ldpc_enc;
 
-
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_descs) & q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, total_enqueued_descs);
 	acc_fcw_le_fill(op, &desc->req.fcw_le, num_cbs, e);
 
 	/** This could be done at polling. */
@@ -1808,12 +1803,12 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	uint32_t in_offset, out_offset, out_length, mbuf_total_left,
 		seg_total_left;
 	struct rte_mbuf *input, *output_head, *output;
-	uint16_t current_enqueued_cbs = 0;
+	uint16_t desc_idx, current_enqueued_cbs = 0;
+	uint64_t fcw_offset;
 
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
-			& q->sw_ring_wrap_mask);
+	desc_idx = acc_desc_idx(q, total_enqueued_cbs);
 	desc = q->ring_addr + desc_idx;
-	uint64_t fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
+	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
 	acc_fcw_te_fill(op, &desc->req.fcw_te);
 
 	input = op->turbo_enc.input.data;
@@ -1829,8 +1824,7 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	while (mbuf_total_left > 0 && r < c) {
 		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 		/* Set up DMA descriptor */
-		desc = q->ring_addr + ((q->sw_ring_head + total_enqueued_cbs)
-				& q->sw_ring_wrap_mask);
+		desc = acc_desc(q, total_enqueued_cbs);
 		desc->req.data_ptrs[0].address = q->ring_addr_iova + fcw_offset;
 		desc->req.data_ptrs[0].blen = ACC_FCW_TE_BLEN;
 
@@ -1877,7 +1871,7 @@ enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		uint16_t enq_descs, uint8_t cbs_in_tb)
 {
 	uint8_t num_a, num_b;
-	uint16_t desc_idx, input_len_B, return_descs;
+	uint16_t input_len_B, return_descs;
 	uint8_t r = op->ldpc_enc.tb_params.r;
 	uint8_t cab =  op->ldpc_enc.tb_params.cab;
 	union acc_dma_desc *desc;
@@ -1918,16 +1912,12 @@ enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 
 	return_descs = enq_descs - init_enq_descs;
 	/* Keep total number of CBs in first TB. */
-	desc_idx = ((q->sw_ring_head + init_enq_descs)
-			& q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, init_enq_descs);
 	desc->req.cbs_in_tb = return_descs; /** Actual number of descriptors. */
 	desc->req.op_addr = op;
 
 	/* Set SDone on last CB descriptor for TB mode. */
-	desc_idx = ((q->sw_ring_head + enq_descs - 1)
-			& q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, enq_descs - 1);
 	desc->req.sdone_enable = 1;
 	desc->req.irq_enable = q->irq_enable;
 	desc->req.op_addr = op;
@@ -1946,9 +1936,7 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	struct rte_mbuf *input, *h_output_head, *h_output,
 		*s_output_head, *s_output;
 
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
-			& q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, total_enqueued_cbs);
 	acc200_fcw_td_fill(op, &desc->req.fcw_td);
 
 	input = op->turbo_dec.input.data;
@@ -1962,8 +1950,7 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 
 	/* Set up DMA descriptor */
-	desc = q->ring_addr + ((q->sw_ring_head + total_enqueued_cbs)
-			& q->sw_ring_wrap_mask);
+	desc = acc_desc(q, total_enqueued_cbs);
 
 	ret = acc200_dma_desc_td_fill(op, &desc->req, &input, h_output,
 			s_output, &in_offset, &h_out_offset, &s_out_offset,
@@ -1997,7 +1984,6 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 {
 	int ret, hq_len;
 	union acc_dma_desc *desc;
-	uint16_t desc_idx;
 	struct rte_mbuf *input, *h_output_head, *h_output;
 	uint32_t in_offset, h_out_offset, mbuf_total_left, h_out_length = 0;
 	union acc_harq_layout_data *harq_layout;
@@ -2005,8 +1991,7 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	if (op->ldpc_dec.cb_params.e == 0)
 		return -EINVAL;
 
-	desc_idx = ((q->sw_ring_head + total_enqueued_cbs) & q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, total_enqueued_cbs);
 
 	input = op->ldpc_dec.input.data;
 	h_output_head = h_output = op->ldpc_dec.hard_output.data;
@@ -2017,8 +2002,7 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 
 	if (same_op) {
 		union acc_dma_desc *prev_desc;
-		desc_idx = ((q->sw_ring_head + total_enqueued_cbs - 1) & q->sw_ring_wrap_mask);
-		prev_desc = q->ring_addr + desc_idx;
+		prev_desc = acc_desc(q, total_enqueued_cbs - 1);
 		uint8_t *prev_ptr = (uint8_t *) prev_desc;
 		uint8_t *new_ptr = (uint8_t *) desc;
 		/* Copy first 4 words and BDESCs. */
@@ -2094,13 +2078,15 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	uint32_t in_offset, h_out_offset, h_out_length, mbuf_total_left, seg_total_left;
 	struct rte_mbuf *input, *h_output_head, *h_output;
 	uint16_t current_enqueued_cbs = 0;
-	uint16_t sys_cols, trail_len = 0;
+	uint16_t desc_idx, sys_cols, trail_len = 0;
+	uint64_t fcw_offset;
+	union acc_harq_layout_data *harq_layout;
 
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs) & q->sw_ring_wrap_mask);
+	desc_idx = acc_desc_idx(q, total_enqueued_cbs);
 	desc = q->ring_addr + desc_idx;
 	desc_first = desc;
-	uint64_t fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
-	union acc_harq_layout_data *harq_layout = q->d->harq_layout;
+	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
+	harq_layout = q->d->harq_layout;
 	acc200_fcw_ld_fill(op, &desc->req.fcw_ld, harq_layout);
 
 	input = op->ldpc_dec.input.data;
@@ -2123,7 +2109,7 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		else
 			seg_total_left = op->ldpc_dec.input.length;
 		/* Set up DMA descriptor. */
-		desc_idx = ((q->sw_ring_head + total_enqueued_cbs) & q->sw_ring_wrap_mask);
+		desc_idx = acc_desc_idx(q, total_enqueued_cbs);
 		desc = q->ring_addr + desc_idx;
 		fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
 		desc->req.data_ptrs[0].address = q->ring_addr_iova + fcw_offset;
@@ -2186,12 +2172,12 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		h_out_length, mbuf_total_left, seg_total_left;
 	struct rte_mbuf *input, *h_output_head, *h_output,
 		*s_output_head, *s_output;
-	uint16_t current_enqueued_cbs = 0;
+	uint16_t desc_idx, current_enqueued_cbs = 0;
+	uint64_t fcw_offset;
 
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
-			& q->sw_ring_wrap_mask);
+	desc_idx = acc_desc_idx(q, total_enqueued_cbs);
 	desc = q->ring_addr + desc_idx;
-	uint64_t fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
+	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
 	acc200_fcw_td_fill(op, &desc->req.fcw_td);
 
 	input = op->turbo_dec.input.data;
@@ -2210,8 +2196,7 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 
 		/* Set up DMA descriptor */
-		desc = q->ring_addr + ((q->sw_ring_head + total_enqueued_cbs)
-				& q->sw_ring_wrap_mask);
+		desc = acc_desc(q, total_enqueued_cbs);
 		desc->req.data_ptrs[0].address = q->ring_addr_iova + fcw_offset;
 		desc->req.data_ptrs[0].blen = ACC_FCW_TD_BLEN;
 		ret = acc200_dma_desc_td_fill(op, &desc->req, &input,
@@ -2294,8 +2279,7 @@ acc200_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
 		return 0; /* Nothing to enqueue */
 
 	/* Set SDone in last CB in enqueued ops for CB mode*/
-	desc = q->ring_addr + ((q->sw_ring_head + i - 1)
-			& q->sw_ring_wrap_mask);
+	desc = acc_desc(q, i - 1);
 	desc->req.sdone_enable = 1;
 	desc->req.irq_enable = q->irq_enable;
 
@@ -2341,7 +2325,7 @@ acc200_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 		return 0; /* Nothing to enqueue. */
 
 	/* Set SDone in last CB in enqueued ops for CB mode. */
-	desc = q->ring_addr + ((q->sw_ring_head + desc_idx - 1) & q->sw_ring_wrap_mask);
+	desc = acc_desc(q, desc_idx - 1);
 	desc->req.sdone_enable = 1;
 	desc->req.irq_enable = q->irq_enable;
 
@@ -2487,8 +2471,7 @@ acc200_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
 		return 0; /* Nothing to enqueue. */
 
 	/* Set SDone in last CB in enqueued ops for CB mode. */
-	desc = q->ring_addr + ((q->sw_ring_head + i - 1)
-			& q->sw_ring_wrap_mask);
+	desc = acc_desc(q, i - 1);
 	desc->req.sdone_enable = 1;
 	desc->req.irq_enable = q->irq_enable;
 
@@ -2573,7 +2556,7 @@ acc200_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 		return 0; /* Nothing to enqueue. */
 
 	/* Set SDone in last CB in enqueued ops for CB mode. */
-	desc = q->ring_addr + ((q->sw_ring_head + i - 1) & q->sw_ring_wrap_mask);
+	desc = acc_desc(q, i - 1);
 	desc->req.sdone_enable = 1;
 	desc->req.irq_enable = q->irq_enable;
 
@@ -2662,8 +2645,9 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	struct rte_bbdev_enc_op *op;
 	int i;
 	struct acc_ptrs *context_ptrs;
-	int desc_idx = ((q->sw_ring_tail + *dequeued_descs) & q->sw_ring_wrap_mask);
+	uint16_t desc_idx;
 
+	desc_idx = acc_desc_idx_tail(q, *dequeued_descs);
 	desc = q->ring_addr + desc_idx;
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 
@@ -2679,7 +2663,6 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 
 	/* Clearing status, it will be set based on response. */
 	op->status = 0;
-
 	op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
@@ -2717,7 +2700,7 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	uint8_t i = 0;
 	uint16_t current_dequeued_descs = 0, descs_in_tb;
 
-	desc = q->ring_addr + ((q->sw_ring_tail + *dequeued_descs) & q->sw_ring_wrap_mask);
+	desc = acc_desc_tail(q, *dequeued_descs);
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 
 	/* Check fdone bit. */
@@ -2727,8 +2710,7 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	/* Get number of CBs in dequeued TB. */
 	descs_in_tb = desc->req.cbs_in_tb;
 	/* Get last CB */
-	last_desc = q->ring_addr + ((q->sw_ring_tail + *dequeued_descs + descs_in_tb - 1)
-			& q->sw_ring_wrap_mask);
+	last_desc = acc_desc_tail(q, *dequeued_descs + descs_in_tb - 1);
 	/* Check if last CB in TB is ready to dequeue (and thus
 	 * the whole TB) - checking sdone bit. If not return.
 	 */
@@ -2743,7 +2725,7 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	op->status = 0;
 
 	while (i < descs_in_tb) {
-		desc = q->ring_addr + ((q->sw_ring_tail + *dequeued_descs) & q->sw_ring_wrap_mask);
+		desc = acc_desc_tail(q, *dequeued_descs);
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
 		rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
@@ -2779,7 +2761,7 @@ dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	union acc_dma_rsp_desc rsp;
 	struct rte_bbdev_dec_op *op;
 
-	desc = q->ring_addr + ((q->sw_ring_tail + dequeued_cbs) & q->sw_ring_wrap_mask);
+	desc = acc_desc_tail(q, dequeued_cbs);
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 
 	/* Check fdone bit. */
@@ -2831,7 +2813,7 @@ dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	union acc_dma_rsp_desc rsp;
 	struct rte_bbdev_dec_op *op;
 
-	desc = q->ring_addr + ((q->sw_ring_tail + dequeued_cbs) & q->sw_ring_wrap_mask);
+	desc = acc_desc_tail(q, dequeued_cbs);
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 
 	/* Check fdone bit. */
@@ -2895,7 +2877,7 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	uint8_t cbs_in_tb = 1, cb_idx = 0;
 	uint32_t tb_crc_check = 0;
 
-	desc = q->ring_addr + ((q->sw_ring_tail + dequeued_cbs) & q->sw_ring_wrap_mask);
+	desc = acc_desc_tail(q, dequeued_cbs);
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 
 	/* Check fdone bit. */
@@ -2908,8 +2890,7 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	/* Get number of CBs in dequeued TB. */
 	cbs_in_tb = desc->req.cbs_in_tb;
 	/* Get last CB. */
-	last_desc = q->ring_addr + ((q->sw_ring_tail + dequeued_cbs + cbs_in_tb - 1)
-			& q->sw_ring_wrap_mask);
+	last_desc = acc_desc_tail(q, dequeued_cbs + cbs_in_tb - 1);
 	/* Check if last CB in TB is ready to dequeue (and thus the whole TB) - checking sdone bit.
 	 * If not return.
 	 */
@@ -2922,7 +2903,7 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 
 	/* Read remaining CBs if exists. */
 	while (cb_idx < cbs_in_tb) {
-		desc = q->ring_addr + ((q->sw_ring_tail + dequeued_cbs) & q->sw_ring_wrap_mask);
+		desc = acc_desc_tail(q, dequeued_cbs);
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
 		rte_bbdev_log_debug("Resp. desc %p: %x %x %x", desc,
@@ -2978,8 +2959,7 @@ acc200_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 	struct rte_bbdev_enc_op *op;
 	if (avail == 0)
 		return 0;
-	op = (q->ring_addr + (q->sw_ring_tail &
-			q->sw_ring_wrap_mask))->req.op_addr;
+	op = acc_op_tail(q, 0);
 
 	cbm = op->turbo_enc.code_block_mode;
 
@@ -3020,7 +3000,7 @@ acc200_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 	struct rte_bbdev_enc_op *op;
 	if (avail == 0)
 		return 0;
-	op = (q->ring_addr + (q->sw_ring_tail & q->sw_ring_wrap_mask))->req.op_addr;
+	op = acc_op_tail(q, 0);
 	cbm = op->ldpc_enc.code_block_mode;
 
 	for (i = 0; i < avail; i++) {
@@ -3064,8 +3044,7 @@ acc200_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 	dequeue_num = (avail < num) ? avail : num;
 
 	for (i = 0; i < dequeue_num; ++i) {
-		op = (q->ring_addr + ((q->sw_ring_tail + dequeued_cbs)
-			& q->sw_ring_wrap_mask))->req.op_addr;
+		op = acc_op_tail(q, dequeued_cbs);
 		if (op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
 			ret = dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
 					&aq_dequeued);
@@ -3104,8 +3083,7 @@ acc200_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 	dequeue_num = RTE_MIN(avail, num);
 
 	for (i = 0; i < dequeue_num; ++i) {
-		op = (q->ring_addr + ((q->sw_ring_tail + dequeued_cbs)
-			& q->sw_ring_wrap_mask))->req.op_addr;
+		op = acc_op_tail(q, dequeued_cbs);
 		if (op->ldpc_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
 			ret = dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
 					&aq_dequeued);
@@ -3201,13 +3179,11 @@ enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
 		uint16_t total_enqueued_cbs)
 {
 	union acc_dma_desc *desc;
-	uint16_t desc_idx;
 	struct rte_mbuf *input, *output;
 	uint32_t in_offset, out_offset;
 	struct acc_fcw_fft *fcw;
 
-	desc_idx = (q->sw_ring_head + total_enqueued_cbs) & q->sw_ring_wrap_mask;
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, total_enqueued_cbs);
 	input = op->fft.base_input.data;
 	output = op->fft.base_output.data;
 	in_offset = op->fft.base_input.offset;
@@ -3255,7 +3231,7 @@ acc200_enqueue_fft(struct rte_bbdev_queue_data *q_data,
 		return 0; /* Nothing to enqueue. */
 
 	/* Set SDone in last CB in enqueued ops for CB mode. */
-	desc = q->ring_addr + ((q->sw_ring_head + i - 1) & q->sw_ring_wrap_mask);
+	desc = acc_desc(q, i - 1);
 
 	desc->req.sdone_enable = 1;
 	desc->req.irq_enable = q->irq_enable;
@@ -3278,7 +3254,7 @@ dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
 	union acc_dma_rsp_desc rsp;
 	struct rte_bbdev_fft_op *op;
 
-	desc = q->ring_addr + ((q->sw_ring_tail + dequeued_cbs) & q->sw_ring_wrap_mask);
+	desc = acc_desc_tail(q, dequeued_cbs);
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 
 	/* Check fdone bit */

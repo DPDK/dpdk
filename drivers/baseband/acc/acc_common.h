@@ -865,6 +865,41 @@ acc_fcw_le_fill(const struct rte_bbdev_enc_op *op,
 	fcw->mcb_count = num_cb;
 }
 
+/* Provide the descriptor index on a given queue */
+static inline uint16_t
+acc_desc_idx(struct acc_queue *q, uint16_t offset)
+{
+	return (q->sw_ring_head + offset) & q->sw_ring_wrap_mask;
+}
+
+/* Provide the descriptor pointer on a given queue */
+static inline union acc_dma_desc*
+acc_desc(struct acc_queue *q, uint16_t offset)
+{
+	return q->ring_addr + acc_desc_idx(q, offset);
+}
+
+/* Provide the descriptor index for the tail of a given queue */
+static inline uint16_t
+acc_desc_idx_tail(struct acc_queue *q, uint16_t offset)
+{
+	return (q->sw_ring_tail + offset) & q->sw_ring_wrap_mask;
+}
+
+/* Provide the descriptor tail pointer on a given queue */
+static inline union acc_dma_desc*
+acc_desc_tail(struct acc_queue *q, uint16_t offset)
+{
+	return q->ring_addr + acc_desc_idx_tail(q, offset);
+}
+
+/* Provide the operation pointer from the tail of a given queue */
+static inline void*
+acc_op_tail(struct acc_queue *q, uint16_t offset)
+{
+	return (q->ring_addr + ((q->sw_ring_tail + offset) & q->sw_ring_wrap_mask))->req.op_addr;
+}
+
 /* Enqueue a number of operations to HW and update software rings */
 static inline void
 acc_dma_enqueue(struct acc_queue *q, uint16_t n,
@@ -892,13 +927,11 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 		enq_batch_size = RTE_MIN(n, MAX_ENQ_BATCH_SIZE);
 
 		/* Set flag on last descriptor in a batch */
-		desc = q->ring_addr + ((q->sw_ring_head + enq_batch_size - 1) &
-				q->sw_ring_wrap_mask);
+		desc = acc_desc(q, enq_batch_size - 1);
 		desc->req.last_desc_in_batch = 1;
 
 		/* Calculate the 1st descriptor's address */
-		offset = ((q->sw_ring_head & q->sw_ring_wrap_mask) *
-				sizeof(union acc_dma_desc));
+		offset = ((q->sw_ring_head & q->sw_ring_wrap_mask) * sizeof(union acc_dma_desc));
 		req_elem_addr = q->ring_addr_iova + offset;
 
 		/* Fill enqueue struct */
