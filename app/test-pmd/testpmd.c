@@ -3336,14 +3336,16 @@ reset_port(portid_t pid)
 			continue;
 		}
 
-		diag = rte_eth_dev_reset(pi);
-		if (diag == 0) {
-			port = &ports[pi];
-			port->need_reconfig = 1;
-			port->need_reconfig_queues = 1;
-		} else {
-			fprintf(stderr, "Failed to reset port %d. diag=%d\n",
-				pi, diag);
+		if (is_proc_primary()) {
+			diag = rte_eth_dev_reset(pi);
+			if (diag == 0) {
+				port = &ports[pi];
+				port->need_reconfig = 1;
+				port->need_reconfig_queues = 1;
+			} else {
+				fprintf(stderr, "Failed to reset port %d. diag=%d\n",
+					pi, diag);
+			}
 		}
 	}
 
