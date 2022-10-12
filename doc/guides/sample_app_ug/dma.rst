@@ -45,7 +45,7 @@ The application requires a number of command line options:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-ioat [EAL options] -- [-p MASK] [-q NQ] [-s RS] [-c <sw|hw>]
+    ./<build_dir>/examples/dpdk-dma [EAL options] -- [-p MASK] [-q NQ] [-s RS] [-c <sw|hw>]
         [--[no-]mac-updating] [-b BS] [-f FS] [-i SI]
 
 where,
