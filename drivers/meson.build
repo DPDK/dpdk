@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
+fs = import('fs')
+
 # Defines the order of dependencies evaluation
 subdirs = [
         'common',
@@ -206,37 +208,41 @@ foreach subpath:subdirs
         version_map = '@0@/@1@/version.map'.format(meson.current_source_dir(), drv_path)
         implib = 'lib' + lib_name + '.dll.a'
 
-        def_file = custom_target(lib_name + '_def',
-                command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                input: version_map,
-                output: '@0@_exports.def'.format(lib_name))
+        lk_deps = []
+        lk_args = []
+        if fs.is_file(version_map)
+            def_file = custom_target(lib_name + '_def',
+                    command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                    input: version_map,
+                    output: '@0@_exports.def'.format(lib_name))
 
-        mingw_map = custom_target(lib_name + '_mingw',
-                command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                input: version_map,
-                output: '@0@_mingw.map'.format(lib_name))
+            mingw_map = custom_target(lib_name + '_mingw',
+                    command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                    input: version_map,
+                    output: '@0@_mingw.map'.format(lib_name))
 
-        lk_deps = [version_map, def_file, mingw_map]
-        if is_windows
-            if is_ms_linker
-                lk_args = ['-Wl,/def:' + def_file.full_path()]
-                if meson.version().version_compare('<0.54.0')
-                    lk_args += ['-Wl,/implib:drivers\\' + implib]
+            lk_deps = [version_map, def_file, mingw_map]
+            if is_windows
+                if is_ms_linker
+                    lk_args = ['-Wl,/def:' + def_file.full_path()]
+                    if meson.version().version_compare('<0.54.0')
+                        lk_args += ['-Wl,/implib:drivers\\' + implib]
+                    endif
+                else
+                    lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
                 endif
             else
-                lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
-            endif
-        else
-            lk_args = ['-Wl,--version-script=' + version_map]
-            if developer_mode
-                # on unix systems check the output of the
-                # check-symbols.sh script, using it as a
-                # dependency of the .so build
-                lk_deps += custom_target(lib_name + '.sym_chk',
-                        command: [check_symbols, version_map, '@INPUT@'],
-                        capture: true,
-                        input: static_lib,
-                        output: lib_name + '.sym_chk')
+                lk_args = ['-Wl,--version-script=' + version_map]
+                if developer_mode
+                    # on unix systems check the output of the
+                    # check-symbols.sh script, using it as a
+                    # dependency of the .so build
+                    lk_deps += custom_target(lib_name + '.sym_chk',
+                            command: [check_symbols, version_map, '@INPUT@'],
+                            capture: true,
+                            input: static_lib,
+                            output: lib_name + '.sym_chk')
+                endif
             endif
         endif
 
