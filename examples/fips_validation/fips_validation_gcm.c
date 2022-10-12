@@ -81,12 +81,12 @@ parser_read_gcm_pt_len(const char *key, char *src,
 
 	if (vec.pt.len == 0) {
 		info.interim_info.gcm_data.is_gmac = 1;
-		test_ops.prepare_op = prepare_auth_op;
-		test_ops.prepare_xform = prepare_gmac_xform;
+		test_ops.prepare_sym_op = prepare_auth_op;
+		test_ops.prepare_sym_xform = prepare_gmac_xform;
 	} else {
 		info.interim_info.gcm_data.is_gmac = 0;
-		test_ops.prepare_op = prepare_aead_op;
-		test_ops.prepare_xform = prepare_gcm_xform;
+		test_ops.prepare_sym_op = prepare_aead_op;
+		test_ops.prepare_sym_xform = prepare_gcm_xform;
 	}
 
 	return ret;

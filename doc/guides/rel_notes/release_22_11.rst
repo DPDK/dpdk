@@ -278,6 +278,11 @@ New Features
   Added support for lookaside sessions in event mode.
   See the :doc:`../sample_app_ug/ipsec_secgw` for more details.
 
+* **Updated FIPS validation sample application.**
+
+  Added support for asymmetric crypto algorithms.
+  See the :doc:`../sample_app_ug/fips_validation` for more details.
+
 * **Rewritten pmdinfo script.**
 
   The ``dpdk-pmdinfo.py`` script was rewritten to produce valid JSON only.

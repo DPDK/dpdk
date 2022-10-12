@@ -37,6 +37,8 @@ enum {
 	OPT_CRYPTODEV_BK_DIR_KEY_NUM,
 #define OPT_USE_JSON                "use-json"
 	OPT_USE_JSON_NUM,
+#define OPT_CRYPTODEV_ASYM          "asymmetric"
+	OPT_CRYPTODEV_ASYM_NUM,
 };
 
 struct fips_test_vector vec;
@@ -51,34 +53,140 @@ struct cryptodev_fips_validate_env {
 	const char *rsp_path;
 	uint32_t is_path_folder;
 	uint8_t dev_id;
+	struct rte_mempool *mpool;
+	struct fips_sym_env {
+		struct rte_mempool *sess_mpool;
+		struct rte_mempool *op_pool;
+		struct rte_cryptodev_sym_session *sess;
+		struct rte_crypto_op *op;
+	} sym;
+	struct fips_asym_env {
+		struct rte_mempool *sess_mpool;
+		struct rte_mempool *op_pool;
+		struct rte_cryptodev_asym_session *sess;
+		struct rte_crypto_op *op;
+	} asym;
+	struct rte_crypto_op *op;
 	uint8_t dev_support_sgl;
 	uint16_t mbuf_data_room;
-	struct rte_mempool *mpool;
-	struct rte_mempool *sess_mpool;
-	struct rte_mempool *op_pool;
 	struct rte_mbuf *mbuf;
 	uint8_t *digest;
 	uint16_t digest_len;
-	struct rte_crypto_op *op;
-	void *sess;
+	bool is_asym_test;
 	uint16_t self_test;
 	struct fips_dev_broken_test_config *broken_test_config;
 } env;
 
 static int
-cryptodev_fips_validate_app_int(void)
+cryptodev_fips_validate_app_sym_init(void)
+{
+	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(
+							env.dev_id);
+	struct rte_cryptodev_info dev_info;
+	struct fips_sym_env *sym = &env.sym;
+	int ret;
+
+	rte_cryptodev_info_get(env.dev_id, &dev_info);
+	if (dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)
+		env.dev_support_sgl = 1;
+	else
+		env.dev_support_sgl = 0;
+
+	ret = -ENOMEM;
+	sym->sess_mpool = rte_cryptodev_sym_session_pool_create(
+			"FIPS_SYM_SESS_MEMPOOL", 16, sess_sz, 0, 0, rte_socket_id());
+	if (!sym->sess_mpool)
+		goto error_exit;
+
+	sym->op_pool = rte_crypto_op_pool_create(
+			"FIPS_OP_SYM_POOL",
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+			1, 0,
+			16,
+			rte_socket_id());
+	if (!sym->op_pool)
+		goto error_exit;
+
+	sym->op = rte_crypto_op_alloc(sym->op_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	if (!sym->op)
+		goto error_exit;
+
+	return 0;
+
+error_exit:
+	rte_mempool_free(sym->sess_mpool);
+	rte_mempool_free(sym->op_pool);
+	return ret;
+}
+
+static void
+cryptodev_fips_validate_app_sym_uninit(void)
+{
+	struct fips_sym_env *sym = &env.sym;
+
+	rte_pktmbuf_free(env.mbuf);
+	rte_crypto_op_free(sym->op);
+	rte_cryptodev_sym_session_free(env.dev_id, sym->sess);
+	rte_mempool_free(sym->sess_mpool);
+	rte_mempool_free(sym->op_pool);
+}
+
+static int
+cryptodev_fips_validate_app_asym_init(void)
+{
+	struct fips_asym_env *asym = &env.asym;
+	int ret;
+
+	ret = -ENOMEM;
+	asym->sess_mpool = rte_cryptodev_asym_session_pool_create(
+			"FIPS_ASYM_SESS_MEMPOOL", 16, 0, 0, rte_socket_id());
+	if (!asym->sess_mpool)
+		goto error_exit;
+
+	asym->op_pool = rte_crypto_op_pool_create(
+			"FIPS_OP_ASYM_POOL",
+			RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+			1, 0,
+			16,
+			rte_socket_id());
+	if (!asym->op_pool)
+		goto error_exit;
+
+	asym->op = rte_crypto_op_alloc(asym->op_pool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!asym->op)
+		goto error_exit;
+
+	return 0;
+
+error_exit:
+	rte_mempool_free(asym->sess_mpool);
+	rte_mempool_free(asym->op_pool);
+	return ret;
+}
+
+static void
+cryptodev_fips_validate_app_asym_uninit(void)
+{
+	struct fips_asym_env *asym = &env.asym;
+
+	rte_crypto_op_free(asym->op);
+	rte_cryptodev_asym_session_free(env.dev_id, asym->sess);
+	rte_mempool_free(asym->sess_mpool);
+	rte_mempool_free(asym->op_pool);
+}
+
+static int
+cryptodev_fips_validate_app_init(void)
 {
 	struct rte_cryptodev_config conf = {rte_socket_id(), 1, 0};
 	struct rte_cryptodev_qp_conf qp_conf = {128, NULL};
-	struct rte_cryptodev_info dev_info;
-	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(
-			env.dev_id);
 	uint32_t nb_mbufs = UINT16_MAX / env.mbuf_data_room + 1;
 	int ret;
 
 	if (env.self_test) {
 		ret = fips_dev_self_test(env.dev_id, env.broken_test_config);
 		if (ret < 0) {
+			rte_cryptodev_stop(env.dev_id);
 			rte_cryptodev_close(env.dev_id);
 
 			return ret;
@@ -89,45 +197,24 @@ cryptodev_fips_validate_app_int(void)
 	if (ret < 0)
 		return ret;
 
-	rte_cryptodev_info_get(env.dev_id, &dev_info);
-	if (dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)
-		env.dev_support_sgl = 1;
-	else
-		env.dev_support_sgl = 0;
-
+	ret = -ENOMEM;
 	env.mpool = rte_pktmbuf_pool_create("FIPS_MEMPOOL", nb_mbufs,
 			0, 0, sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM +
 			env.mbuf_data_room, rte_socket_id());
 	if (!env.mpool)
 		return ret;
 
-	ret = rte_cryptodev_queue_pair_setup(env.dev_id, 0, &qp_conf,
-			rte_socket_id());
+	ret = cryptodev_fips_validate_app_sym_init();
 	if (ret < 0)
-		return ret;
-
-	ret = -ENOMEM;
-
-	env.sess_mpool = rte_cryptodev_sym_session_pool_create(
-			"FIPS_SESS_MEMPOOL", 16, sess_sz, 0, 0,
-			rte_socket_id());
-	if (!env.sess_mpool)
 		goto error_exit;
 
-	env.op_pool = rte_crypto_op_pool_create(
-			"FIPS_OP_POOL",
-			RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-			1, 0,
-			16,
-			rte_socket_id());
-	if (!env.op_pool)
-		goto error_exit;
+	if (env.is_asym_test) {
+		ret = cryptodev_fips_validate_app_asym_init();
+		if (ret < 0)
+			goto error_exit;
+	}
 
-	env.op = rte_crypto_op_alloc(env.op_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
-	if (!env.op)
-		goto error_exit;
-
-	qp_conf.mp_session = env.sess_mpool;
+	qp_conf.mp_session = env.sym.sess_mpool;
 
 	ret = rte_cryptodev_queue_pair_setup(env.dev_id, 0, &qp_conf,
 			rte_socket_id());
@@ -141,23 +228,21 @@ cryptodev_fips_validate_app_int(void)
 	return 0;
 
 error_exit:
-
 	rte_mempool_free(env.mpool);
-	rte_mempool_free(env.sess_mpool);
-	rte_mempool_free(env.op_pool);
-
 	return ret;
 }
 
 static void
 cryptodev_fips_validate_app_uninit(void)
 {
-	rte_pktmbuf_free(env.mbuf);
-	rte_crypto_op_free(env.op);
-	rte_cryptodev_sym_session_free(env.dev_id, env.sess);
+	cryptodev_fips_validate_app_sym_uninit();
+
+	if (env.is_asym_test)
+		cryptodev_fips_validate_app_asym_uninit();
+
 	rte_mempool_free(env.mpool);
-	rte_mempool_free(env.sess_mpool);
-	rte_mempool_free(env.op_pool);
+	rte_cryptodev_stop(env.dev_id);
+	rte_cryptodev_close(env.dev_id);
 }
 
 static int
@@ -253,6 +338,8 @@ cryptodev_fips_validate_parse_args(int argc, char **argv)
 				NULL, OPT_CRYPTODEV_BK_ID_NUM},
 		{OPT_CRYPTODEV_BK_DIR_KEY, required_argument,
 				NULL, OPT_CRYPTODEV_BK_DIR_KEY_NUM},
+		{OPT_CRYPTODEV_ASYM, no_argument,
+				NULL, OPT_CRYPTODEV_ASYM_NUM},
 		{NULL, 0, 0, 0}
 	};
 
@@ -365,6 +452,10 @@ cryptodev_fips_validate_parse_args(int argc, char **argv)
 			}
 			break;
 
+		case OPT_CRYPTODEV_ASYM_NUM:
+			env.is_asym_test = true;
+			break;
+
 		default:
 			cryptodev_fips_validate_usage(prgname);
 			return -EINVAL;
@@ -405,7 +496,7 @@ main(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Failed to parse arguments!\n");
 
-	ret = cryptodev_fips_validate_app_int();
+	ret = cryptodev_fips_validate_app_init();
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Error %i: Failed init\n", ret);
 		return -1;
@@ -644,7 +735,7 @@ prepare_cipher_op(void)
 		sym->cipher.data.length = vec.ct.len;
 	}
 
-	rte_crypto_op_attach_sym_session(env.op, env.sess);
+	rte_crypto_op_attach_sym_session(env.op, env.sym.sess);
 
 	sym->m_src = env.mbuf;
 	sym->cipher.data.offset = 0;
@@ -707,7 +798,7 @@ prepare_auth_op(void)
 		memcpy(env.digest, vec.cipher_auth.digest.val,
 				vec.cipher_auth.digest.len);
 
-	rte_crypto_op_attach_sym_session(env.op, env.sess);
+	rte_crypto_op_attach_sym_session(env.op, env.sym.sess);
 
 	return 0;
 }
@@ -763,7 +854,55 @@ prepare_aead_op(void)
 	sym->aead.aad.data = vec.aead.aad.val;
 	sym->aead.aad.phys_addr = rte_malloc_virt2iova(sym->aead.aad.data);
 
-	rte_crypto_op_attach_sym_session(env.op, env.sess);
+	rte_crypto_op_attach_sym_session(env.op, env.sym.sess);
+
+	return 0;
+}
+
+static int
+prepare_rsa_op(void)
+{
+	struct rte_crypto_asym_op *asym;
+	struct fips_val msg;
+
+	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+
+	asym = env.op->asym;
+	asym->rsa.padding.type = info.interim_info.rsa_data.padding;
+	asym->rsa.padding.hash = info.interim_info.rsa_data.auth;
+
+	if (env.digest) {
+		msg.val = env.digest;
+		msg.len = env.digest_len;
+	} else {
+		msg.val = vec.pt.val;
+		msg.len = vec.pt.len;
+	}
+
+	if (info.op == FIPS_TEST_ASYM_SIGGEN) {
+		asym->rsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+		asym->rsa.message.data = msg.val;
+		asym->rsa.message.length = msg.len;
+
+		if (vec.rsa.signature.val)
+			rte_free(vec.rsa.signature.val);
+
+		vec.rsa.signature.val = rte_zmalloc(NULL, vec.rsa.n.len, 0);
+		vec.rsa.signature.len = vec.rsa.n.len;
+		asym->rsa.sign.data = vec.rsa.signature.val;
+		asym->rsa.sign.length = 0;
+	} else if (info.op == FIPS_TEST_ASYM_SIGVER) {
+		asym->rsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+		asym->rsa.message.data = msg.val;
+		asym->rsa.message.length = msg.len;
+		asym->rsa.sign.data = vec.rsa.signature.val;
+		asym->rsa.sign.length = vec.rsa.signature.len;
+	} else {
+		RTE_LOG(ERR, USER1, "Invalid op %d\n", info.op);
+		return -EINVAL;
+	}
+
+	rte_crypto_op_attach_asym_session(env.op, env.asym.sess);
 
 	return 0;
 }
@@ -1155,6 +1294,87 @@ prepare_xts_xform(struct rte_crypto_sym_xform *xform)
 }
 
 static int
+prepare_rsa_xform(struct rte_crypto_asym_xform *xform)
+{
+	const struct rte_cryptodev_asymmetric_xform_capability *cap;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+	struct rte_cryptodev_info dev_info;
+
+	xform->xform_type = RTE_CRYPTO_ASYM_XFORM_RSA;
+	xform->next = NULL;
+
+	cap_idx.type = xform->xform_type;
+	cap = rte_cryptodev_asym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	switch (info.op) {
+	case FIPS_TEST_ASYM_SIGGEN:
+		if (!rte_cryptodev_asym_xform_capability_check_optype(cap,
+			RTE_CRYPTO_ASYM_OP_SIGN)) {
+			RTE_LOG(ERR, USER1, "PMD %s xform_op %u\n",
+				info.device_name, RTE_CRYPTO_ASYM_OP_SIGN);
+			return -EPERM;
+		}
+		break;
+	case FIPS_TEST_ASYM_SIGVER:
+		if (!rte_cryptodev_asym_xform_capability_check_optype(cap,
+			RTE_CRYPTO_ASYM_OP_VERIFY)) {
+			RTE_LOG(ERR, USER1, "PMD %s xform_op %u\n",
+				info.device_name, RTE_CRYPTO_ASYM_OP_VERIFY);
+			return -EPERM;
+		}
+		break;
+	case FIPS_TEST_ASYM_KEYGEN:
+		break;
+	default:
+		break;
+	}
+
+	rte_cryptodev_info_get(env.dev_id, &dev_info);
+	xform->rsa.key_type = info.interim_info.rsa_data.privkey;
+	switch (xform->rsa.key_type) {
+	case RTE_RSA_KEY_TYPE_QT:
+		if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT)) {
+			RTE_LOG(ERR, USER1, "PMD %s does not support QT key type\n",
+				info.device_name);
+			return -EPERM;
+		}
+		xform->rsa.qt.p.data = vec.rsa.p.val;
+		xform->rsa.qt.p.length = vec.rsa.p.len;
+		xform->rsa.qt.q.data = vec.rsa.q.val;
+		xform->rsa.qt.q.length = vec.rsa.q.len;
+		xform->rsa.qt.dP.data = vec.rsa.dp.val;
+		xform->rsa.qt.dP.length = vec.rsa.dp.len;
+		xform->rsa.qt.dQ.data = vec.rsa.dq.val;
+		xform->rsa.qt.dQ.length = vec.rsa.dq.len;
+		xform->rsa.qt.qInv.data = vec.rsa.qinv.val;
+		xform->rsa.qt.qInv.length = vec.rsa.qinv.len;
+		break;
+	case RTE_RSA_KEY_TYPE_EXP:
+		if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
+			RTE_LOG(ERR, USER1, "PMD %s does not support EXP key type\n",
+				info.device_name);
+			return -EPERM;
+		}
+		xform->rsa.d.data = vec.rsa.d.val;
+		xform->rsa.d.length = vec.rsa.d.len;
+		break;
+	default:
+		break;
+	}
+
+	xform->rsa.e.data = vec.rsa.e.val;
+	xform->rsa.e.length = vec.rsa.e.len;
+	xform->rsa.n.data = vec.rsa.n.val;
+	xform->rsa.n.length = vec.rsa.n.len;
+	return 0;
+}
+
+static int
 get_writeback_data(struct fips_val *val)
 {
 	struct rte_mbuf *m = env.mbuf;
@@ -1200,25 +1420,25 @@ get_writeback_data(struct fips_val *val)
 }
 
 static int
-fips_run_test(void)
+fips_run_sym_test(void)
 {
 	struct rte_crypto_sym_xform xform = {0};
 	uint16_t n_deqd;
 	int ret;
 
-	ret = test_ops.prepare_xform(&xform);
+	if (!test_ops.prepare_sym_xform || !test_ops.prepare_sym_op)
+		return -EINVAL;
+
+	ret = test_ops.prepare_sym_xform(&xform);
 	if (ret < 0)
 		return ret;
 
-	env.sess = rte_cryptodev_sym_session_create(env.dev_id, &xform,
-			env.sess_mpool);
-	if (!env.sess) {
-		RTE_LOG(ERR, USER1, "Error %i: Init session\n",
-				ret);
-		goto exit;
-	}
+	env.sym.sess = rte_cryptodev_sym_session_create(env.dev_id, &xform,
+						env.sym.sess_mpool);
+	if (!env.sym.sess)
+		return -ENOMEM;
 
-	ret = test_ops.prepare_op();
+	ret = test_ops.prepare_sym_op();
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Error %i: Prepare op\n",
 				ret);
@@ -1234,19 +1454,89 @@ fips_run_test(void)
 	do {
 		struct rte_crypto_op *deqd_op;
 
-		n_deqd = rte_cryptodev_dequeue_burst(env.dev_id, 0, &deqd_op,
-				1);
+		n_deqd = rte_cryptodev_dequeue_burst(env.dev_id, 0, &deqd_op, 1);
 	} while (n_deqd == 0);
 
 	vec.status = env.op->status;
 
 exit:
-	if (env.sess) {
-		rte_cryptodev_sym_session_free(env.dev_id, env.sess);
-		env.sess = NULL;
+	rte_cryptodev_sym_session_free(env.dev_id, env.sym.sess);
+	env.sym.sess = NULL;
+	return ret;
+}
+
+static int
+fips_run_asym_test(void)
+{
+	struct rte_crypto_asym_xform xform = {0};
+	struct rte_crypto_asym_op *asym;
+	struct rte_crypto_op *deqd_op;
+	int ret;
+
+	if (info.op == FIPS_TEST_ASYM_KEYGEN) {
+		RTE_SET_USED(asym);
+		ret = 0;
+		goto exit;
 	}
 
+	if (!test_ops.prepare_asym_xform || !test_ops.prepare_asym_op)
+		return -EINVAL;
+
+	asym = env.op->asym;
+	ret = test_ops.prepare_asym_xform(&xform);
+	if (ret < 0)
+		return ret;
+
+	ret = rte_cryptodev_asym_session_create(env.dev_id, &xform, env.asym.sess_mpool,
+			(void *)&env.asym.sess);
+	if (ret < 0)
+		return ret;
+
+	ret = test_ops.prepare_asym_op();
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "Error %i: Prepare op\n", ret);
+		goto exit;
+	}
+
+	if (rte_cryptodev_enqueue_burst(env.dev_id, 0, &env.op, 1) < 1) {
+		RTE_LOG(ERR, USER1, "Error: Failed enqueue\n");
+		ret = -1;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(env.dev_id, 0, &deqd_op, 1) == 0)
+		rte_pause();
+
+	vec.status = env.op->status;
+
+ exit:
+	if (env.asym.sess)
+		rte_cryptodev_asym_session_free(env.dev_id, env.asym.sess);
+
+	env.asym.sess = NULL;
 	return ret;
+}
+
+static int
+fips_run_test(void)
+{
+	int ret;
+
+	env.op = env.sym.op;
+	if (env.is_asym_test) {
+		vec.cipher_auth.digest.len = parse_test_sha_hash_size(
+						info.interim_info.rsa_data.auth);
+		test_ops.prepare_sym_xform = prepare_sha_xform;
+		test_ops.prepare_sym_op = prepare_auth_op;
+		ret = fips_run_sym_test();
+		if (ret < 0)
+			return ret;
+	} else {
+		return fips_run_sym_test();
+	}
+
+	env.op = env.asym.op;
+	return fips_run_asym_test();
 }
 
 static int
@@ -1271,9 +1561,11 @@ fips_generic_test(void)
 		return ret;
 	}
 
-	ret = get_writeback_data(&val);
-	if (ret < 0)
-		return ret;
+	if (!env.is_asym_test) {
+		ret = get_writeback_data(&val);
+		if (ret < 0)
+			return ret;
+	}
 
 	switch (info.file_type) {
 	case FIPS_TYPE_REQ:
@@ -1823,65 +2115,70 @@ init_test_ops(void)
 	case FIPS_TEST_ALGO_AES_CBC:
 	case FIPS_TEST_ALGO_AES_CTR:
 	case FIPS_TEST_ALGO_AES:
-		test_ops.prepare_op = prepare_cipher_op;
-		test_ops.prepare_xform  = prepare_aes_xform;
+		test_ops.prepare_sym_op = prepare_cipher_op;
+		test_ops.prepare_sym_xform  = prepare_aes_xform;
 		if (info.interim_info.aes_data.test_type == AESAVS_TYPE_MCT)
 			test_ops.test = fips_mct_aes_test;
 		else
 			test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_HMAC:
-		test_ops.prepare_op = prepare_auth_op;
-		test_ops.prepare_xform = prepare_hmac_xform;
+		test_ops.prepare_sym_op = prepare_auth_op;
+		test_ops.prepare_sym_xform = prepare_hmac_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_TDES:
-		test_ops.prepare_op = prepare_cipher_op;
-		test_ops.prepare_xform  = prepare_tdes_xform;
+		test_ops.prepare_sym_op = prepare_cipher_op;
+		test_ops.prepare_sym_xform = prepare_tdes_xform;
 		if (info.interim_info.tdes_data.test_type == TDES_MCT)
 			test_ops.test = fips_mct_tdes_test;
 		else
 			test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_AES_GMAC:
-		test_ops.prepare_op = prepare_auth_op;
-		test_ops.prepare_xform = prepare_gmac_xform;
+		test_ops.prepare_sym_op = prepare_auth_op;
+		test_ops.prepare_sym_xform = prepare_gmac_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_AES_GCM:
-		test_ops.prepare_op = prepare_aead_op;
-		test_ops.prepare_xform = prepare_gcm_xform;
+		test_ops.prepare_sym_op = prepare_aead_op;
+		test_ops.prepare_sym_xform = prepare_gcm_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_AES_CMAC:
-		test_ops.prepare_op = prepare_auth_op;
-		test_ops.prepare_xform = prepare_cmac_xform;
+		test_ops.prepare_sym_op = prepare_auth_op;
+		test_ops.prepare_sym_xform = prepare_cmac_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_AES_CCM:
-		test_ops.prepare_op = prepare_aead_op;
-		test_ops.prepare_xform = prepare_ccm_xform;
+		test_ops.prepare_sym_op = prepare_aead_op;
+		test_ops.prepare_sym_xform = prepare_ccm_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_SHA:
-		test_ops.prepare_op = prepare_auth_op;
-		test_ops.prepare_xform = prepare_sha_xform;
+		test_ops.prepare_sym_op = prepare_auth_op;
+		test_ops.prepare_sym_xform = prepare_sha_xform;
 		if (info.interim_info.sha_data.test_type == SHA_MCT)
 			test_ops.test = fips_mct_sha_test;
 		else
 			test_ops.test = fips_generic_test;
 		break;
 	case FIPS_TEST_ALGO_AES_XTS:
-		test_ops.prepare_op = prepare_cipher_op;
-		test_ops.prepare_xform = prepare_xts_xform;
+		test_ops.prepare_sym_op = prepare_cipher_op;
+		test_ops.prepare_sym_xform = prepare_xts_xform;
+		test_ops.test = fips_generic_test;
+		break;
+	case FIPS_TEST_ALGO_RSA:
+		test_ops.prepare_asym_op = prepare_rsa_op;
+		test_ops.prepare_asym_xform = prepare_rsa_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	default:
 		if (strstr(info.file_name, "TECB") ||
 				strstr(info.file_name, "TCBC")) {
 			info.algo = FIPS_TEST_ALGO_TDES;
-			test_ops.prepare_op = prepare_cipher_op;
-			test_ops.prepare_xform	= prepare_tdes_xform;
+			test_ops.prepare_sym_op = prepare_cipher_op;
+			test_ops.prepare_sym_xform = prepare_tdes_xform;
 			if (info.interim_info.tdes_data.test_type == TDES_MCT)
 				test_ops.test = fips_mct_tdes_test;
 			else
@@ -2048,6 +2345,9 @@ fips_test_one_test_group(void)
 		break;
 	case FIPS_TEST_ALGO_TDES:
 		ret = parse_test_tdes_json_init();
+		break;
+	case FIPS_TEST_ALGO_RSA:
+		ret = parse_test_rsa_json_init();
 		break;
 	default:
 		return -EINVAL;

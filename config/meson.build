@@ -226,6 +226,12 @@ if jansson_dep.found()
     dpdk_conf.set('RTE_HAS_JANSSON', 1)
 endif
 
+# check for OpenSSL
+openssl_dep = dependency('openssl', required: false, method: 'pkg-config')
+if openssl_dep.found()
+    dpdk_conf.set('RTE_HAS_OPENSSL', 1)
+endif
+
 # check for pcap
 pcap_dep = dependency('libpcap', required: false, method: 'pkg-config')
 pcap_lib = is_windows ? 'wpcap' : 'pcap'

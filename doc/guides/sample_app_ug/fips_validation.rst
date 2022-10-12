@@ -68,6 +68,7 @@ ACVP
     * SHA (1, 256, 384, 512) - AFT, MCT
     * TDES-CBC - AFT, MCT
     * TDES-ECB - AFT, MCT
+    * RSA
 
 
 Application Information
