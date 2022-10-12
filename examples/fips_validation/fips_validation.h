@@ -213,6 +213,7 @@ struct rsa_interim_data {
 	uint16_t saltlen;
 	enum rte_crypto_rsa_padding_type padding;
 	enum rte_crypto_rsa_priv_key_type privkey;
+	uint8_t random_msg;
 };
 
 #ifdef USE_JANSSON
@@ -339,6 +340,9 @@ parse_test_tdes_json_init(void);
 
 int
 parse_test_rsa_json_init(void);
+
+int
+fips_test_randomize_message(struct fips_val *msg, struct fips_val *rand);
 #endif /* USE_JANSSON */
 
 int

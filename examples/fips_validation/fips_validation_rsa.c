@@ -18,17 +18,23 @@
 
 #include "fips_validation.h"
 
+#define CONFORMANCE_JSON_STR	"conformance"
 #define TESTTYPE_JSON_STR	"testType"
 #define SIGTYPE_JSON_STR "sigType"
 #define MOD_JSON_STR	"modulo"
 #define HASH_JSON_STR	"hashAlg"
 #define SALT_JSON_STR	"saltLen"
+#define RV_JSON_STR	"randomValue"
 #define E_JSON_STR	"e"
 #define N_JSON_STR	"n"
 
 #define SEED_JSON_STR	"seed"
 #define MSG_JSON_STR	"message"
 #define SIG_JSON_STR	"signature"
+
+
+#define RV_BUF_LEN (1024/8)
+#define RV_BIT_LEN (256)
 
 #ifdef USE_JANSSON
 struct {
@@ -258,6 +264,13 @@ prepare_vec_rsa(void)
 	if (!BN_mod_inverse(qinv, q, p, ctx))
 		goto err;
 
+	if (info.interim_info.rsa_data.random_msg) {
+		if (!BN_generate_prime_ex(r, RV_BIT_LEN, 0, NULL, NULL, NULL))
+			goto err;
+
+		parse_uint8_hex_str("", BN_bn2hex(r), &vec.rsa.seed);
+	}
+
 	parse_uint8_hex_str("", BN_bn2hex(e), &vec.rsa.e);
 	parse_uint8_hex_str("", BN_bn2hex(p), &vec.rsa.p);
 	parse_uint8_hex_str("", BN_bn2hex(q), &vec.rsa.q);
@@ -295,6 +308,11 @@ static int
 parse_test_rsa_json_interim_writeback(struct fips_val *val)
 {
 	RTE_SET_USED(val);
+
+	if (info.interim_info.rsa_data.random_msg) {
+		json_object_set_new(json_info.json_write_group, "conformance",
+							json_string("SP800-106"));
+	}
 
 	if (info.op == FIPS_TEST_ASYM_SIGGEN) {
 		json_t *obj;
@@ -366,6 +384,14 @@ parse_test_rsa_json_writeback(struct fips_val *val)
 		writeback_hex_str("", info.one_line_text, &vec.rsa.signature);
 		obj = json_string(info.one_line_text);
 		json_object_set_new(json_info.json_write_case, "signature", obj);
+
+		if (info.interim_info.rsa_data.random_msg) {
+			writeback_hex_str("", info.one_line_text, &vec.rsa.seed);
+			obj = json_string(info.one_line_text);
+			json_object_set_new(json_info.json_write_case, "randomValue", obj);
+			json_object_set_new(json_info.json_write_case, "randomValueLen",
+				json_integer(vec.rsa.seed.len * 8));
+		}
 	} else if (info.op == FIPS_TEST_ASYM_SIGVER) {
 		if (vec.status == RTE_CRYPTO_OP_STATUS_SUCCESS)
 			json_object_set_new(json_info.json_write_case, "testPassed", json_true());
@@ -405,6 +431,8 @@ parse_interim_str(const char *key, char *src, struct fips_val *val)
 		if (i >= RTE_DIM(rsa_auth_algs))
 			return -EINVAL;
 
+	}  else if (strcmp(key, CONFORMANCE_JSON_STR) == 0) {
+		info.interim_info.rsa_data.random_msg = 1;
 	}  else if (strcmp(key, SALT_JSON_STR) == 0) {
 		info.interim_info.rsa_data.saltlen = atoi(src);
 	} else if (strcmp(key, TESTTYPE_JSON_STR) == 0) {
@@ -435,6 +463,83 @@ parse_keygen_e_str(const char *key, char *src, struct fips_val *val)
 	return prepare_vec_rsa();
 }
 
+/*
+ * Message randomization function as per NIST SP 800-106.
+ */
+int
+fips_test_randomize_message(struct fips_val *msg, struct fips_val *rand)
+{
+	uint8_t m[FIPS_TEST_JSON_BUF_LEN], rv[RV_BUF_LEN];
+	uint32_t m_bitlen, rv_bitlen, count, remain, i, j;
+	uint16_t rv_len;
+
+	if (!msg->val || !rand->val || rand->len > RV_BUF_LEN
+		|| msg->len > FIPS_TEST_JSON_BUF_LEN)
+		return -EINVAL;
+
+	memset(rv, 0, sizeof(rv));
+	memcpy(rv, rand->val, rand->len);
+	rv_bitlen = rand->len * 8;
+	rv_len = rand->len;
+
+	memset(m, 0, sizeof(m));
+	memcpy(m, msg->val, msg->len);
+	m_bitlen = msg->len * 8;
+
+	if (m_bitlen >= (rv_bitlen - 1)) {
+		m[msg->len] = 0x80;
+		m_bitlen += 8;
+	} else {
+		m[msg->len] = 0x80;
+		m_bitlen += (rv_bitlen - m_bitlen - 8);
+	}
+
+	count = m_bitlen / rv_bitlen;
+	remain = m_bitlen % rv_bitlen;
+	for (i = 0; i < count * rv_len; i++)
+		m[i] ^= rv[i % rv_len];
+
+	for (j = 0; j < remain / 8; j++)
+		m[i + j] ^= rv[j];
+
+	m[i + j] = ((uint8_t *)&rv_bitlen)[0];
+	m[i + j + 1] = (((uint8_t *)&rv_bitlen)[1] >> 8) & 0xFF;
+
+	rte_free(msg->val);
+	msg->len = (rv_bitlen + m_bitlen + 16) / 8;
+	msg->val = rte_zmalloc(NULL, msg->len, 0);
+	if (!msg->val)
+		return -EPERM;
+
+	memcpy(msg->val, rv, rv_len);
+	memcpy(&msg->val[rv_len], m, (m_bitlen + 16) / 8);
+	return 0;
+}
+
+static int
+parse_siggen_message_str(const char *key, char *src, struct fips_val *val)
+{
+	int ret = 0;
+
+	parse_uint8_hex_str(key, src, val);
+	if (info.interim_info.rsa_data.random_msg)
+		ret = fips_test_randomize_message(val, &vec.rsa.seed);
+
+	return ret;
+}
+
+static int
+parse_sigver_randomvalue_str(const char *key, char *src, struct fips_val *val)
+{
+	int ret = 0;
+
+	parse_uint8_hex_str(key, src, val);
+	if (info.interim_info.rsa_data.random_msg)
+		ret = fips_test_randomize_message(&vec.pt, val);
+
+	return ret;
+}
+
 struct fips_test_callback rsa_keygen_interim_json_vectors[] = {
 		{MOD_JSON_STR, parse_interim_str, NULL},
 		{HASH_JSON_STR, parse_interim_str, NULL},
@@ -446,6 +551,7 @@ struct fips_test_callback rsa_siggen_interim_json_vectors[] = {
 		{SIGTYPE_JSON_STR, parse_interim_str, NULL},
 		{MOD_JSON_STR, parse_interim_str, NULL},
 		{HASH_JSON_STR, parse_interim_str, NULL},
+		{CONFORMANCE_JSON_STR, parse_interim_str, NULL},
 		{SALT_JSON_STR, parse_interim_str, NULL},
 		{TESTTYPE_JSON_STR, parse_interim_str, NULL},
 		{NULL, NULL, NULL} /**< end pointer */
@@ -455,6 +561,7 @@ struct fips_test_callback rsa_sigver_interim_json_vectors[] = {
 		{SIGTYPE_JSON_STR, parse_interim_str, NULL},
 		{MOD_JSON_STR, parse_interim_str, NULL},
 		{HASH_JSON_STR, parse_interim_str, NULL},
+		{CONFORMANCE_JSON_STR, parse_interim_str, NULL},
 		{SALT_JSON_STR, parse_interim_str, NULL},
 		{N_JSON_STR, parse_uint8_hex_str, &vec.rsa.n},
 		{E_JSON_STR, parse_uint8_hex_str, &vec.rsa.e},
@@ -469,13 +576,14 @@ struct fips_test_callback rsa_keygen_json_vectors[] = {
 };
 
 struct fips_test_callback rsa_siggen_json_vectors[] = {
-		{MSG_JSON_STR, parse_uint8_hex_str, &vec.pt},
+		{MSG_JSON_STR, parse_siggen_message_str, &vec.pt},
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
 struct fips_test_callback rsa_sigver_json_vectors[] = {
 		{MSG_JSON_STR, parse_uint8_hex_str, &vec.pt},
 		{SIG_JSON_STR, parse_uint8_hex_str, &vec.rsa.signature},
+		{RV_JSON_STR, parse_sigver_randomvalue_str, &vec.rsa.seed},
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
@@ -491,6 +599,7 @@ parse_test_rsa_json_init(void)
 	info.parse_writeback = NULL;
 	info.interim_callbacks = NULL;
 	info.parse_interim_writeback = NULL;
+	info.interim_info.rsa_data.random_msg = 0;
 
 	if (strcmp(mode_str, "keyGen") == 0) {
 		info.op = FIPS_TEST_ASYM_KEYGEN;
@@ -505,6 +614,7 @@ parse_test_rsa_json_init(void)
 		info.op = FIPS_TEST_ASYM_SIGVER;
 		info.callbacks = rsa_sigver_json_vectors;
 		info.interim_callbacks = rsa_sigver_interim_json_vectors;
+		info.parse_interim_writeback = parse_test_rsa_json_interim_writeback;
 	} else {
 		return -EINVAL;
 	}
