@@ -403,6 +403,8 @@ struct rte_bbdev_op_dec_ldpc_tb_params {
  * The output mbuf data structure is expected to be allocated by the
  * application with enough room for the output data.
  */
+
+/* Structure rte_bbdev_op_turbo_dec 8< */
 struct rte_bbdev_op_turbo_dec {
 	/** The Virtual Circular Buffer, wk, size 3*Kpi for each CB */
 	struct rte_bbdev_op_data input;
@@ -446,6 +448,7 @@ struct rte_bbdev_op_turbo_dec {
 		struct rte_bbdev_op_dec_turbo_tb_params tb_params;
 	};
 };
+/* >8 End of structure rte_bbdev_op_turbo_dec. */
 
 /** Operation structure for LDPC decode.
  *
@@ -476,6 +479,8 @@ struct rte_bbdev_op_turbo_dec {
  * The output mbuf data structure is expected to be allocated by the
  * application with enough room for the output data.
  */
+
+/* Structure rte_bbdev_op_ldpc_dec 8< */
 struct rte_bbdev_op_ldpc_dec {
 	/** The Virtual Circular Buffer for this code block, one LLR
 	 * per bit of the original CB.
@@ -536,6 +541,7 @@ struct rte_bbdev_op_ldpc_dec {
 		struct rte_bbdev_op_dec_ldpc_tb_params tb_params;
 	};
 };
+/* >8 End of structure rte_bbdev_op_ldpc_dec. */
 
 /** Turbo encode code block parameters */
 struct rte_bbdev_op_enc_turbo_cb_params {
@@ -644,6 +650,8 @@ struct rte_bbdev_op_enc_ldpc_tb_params {
  * The output mbuf data structure is expected to be allocated by the
  * application with enough room for the output data.
  */
+
+/* Structure rte_bbdev_op_turbo_enc 8< */
 struct rte_bbdev_op_turbo_enc {
 	/** The input CB or TB data */
 	struct rte_bbdev_op_data input;
@@ -663,6 +671,7 @@ struct rte_bbdev_op_turbo_enc {
 		struct rte_bbdev_op_enc_turbo_tb_params tb_params;
 	};
 };
+/* >8 End of structure rte_bbdev_op_turbo_enc. */
 
 /** Operation structure for LDPC encode.
  * An operation can be performed on one CB at a time "CB-mode".
@@ -677,6 +686,8 @@ struct rte_bbdev_op_turbo_enc {
  * The output mbuf data structure is expected to be allocated by the
  * application with enough room for the output data.
  */
+
+/* Structure rte_bbdev_op_ldpc_enc 8< */
 struct rte_bbdev_op_ldpc_enc {
 	/** The input TB or CB data */
 	struct rte_bbdev_op_data input;
@@ -717,6 +728,7 @@ struct rte_bbdev_op_ldpc_enc {
 		struct rte_bbdev_op_enc_ldpc_tb_params tb_params;
 	};
 };
+/* >8 End of structure rte_bbdev_op_ldpc_enc. */
 
 /** Operation structure for FFT processing.
  *
@@ -726,6 +738,8 @@ struct rte_bbdev_op_ldpc_enc {
  * The output mbuf data structure is expected to be allocated by the
  * application with enough room for the output data.
  */
+
+/* Structure rte_bbdev_op_fft 8< */
 struct rte_bbdev_op_fft {
 	/** Input data starting from first antenna. */
 	struct rte_bbdev_op_data base_input;
@@ -766,6 +780,7 @@ struct rte_bbdev_op_fft {
 	/** Adjust the FP6 exponent for INT<->FP16 conversion. */
 	uint16_t fp16_exp_adjust;
 };
+/* >8 End of structure rte_bbdev_op_fft. */
 
 /** List of the capabilities for the Turbo Decoder */
 struct rte_bbdev_op_cap_turbo_dec {

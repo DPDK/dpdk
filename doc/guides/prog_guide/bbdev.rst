@@ -510,20 +510,10 @@ This structure has three elements:
 BBDEV Turbo Encode Operation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: c
-
-    struct rte_bbdev_op_turbo_enc {
-        struct rte_bbdev_op_data input;
-        struct rte_bbdev_op_data output;
-
-        uint32_t op_flags;
-        uint8_t rv_index;
-        uint8_t code_block_mode;
-        union {
-            struct rte_bbdev_op_enc_cb_params cb_params;
-            struct rte_bbdev_op_enc_tb_params tb_params;
-        };
-    };
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev_op.h
+   :language: c
+   :start-after: Structure rte_bbdev_op_turbo_enc 8<
+   :end-before: >8 End of structure rte_bbdev_op_turbo_enc.
 
 The Turbo encode structure includes the ``input`` and ``output`` mbuf
 data pointers. The provided mbuf pointer of ``input`` needs to be big
@@ -606,26 +596,10 @@ TB-mode. CB-mode is a reduced version, where only one CB exists:
 BBDEV Turbo Decode Operation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: c
-
-    struct rte_bbdev_op_turbo_dec {
-        struct rte_bbdev_op_data input;
-        struct rte_bbdev_op_data hard_output;
-        struct rte_bbdev_op_data soft_output;
-
-        uint32_t op_flags;
-        uint8_t rv_index;
-        uint8_t iter_min:4;
-        uint8_t iter_max:4;
-        uint8_t iter_count;
-        uint8_t ext_scale;
-        uint8_t num_maps;
-        uint8_t code_block_mode;
-        union {
-            struct rte_bbdev_op_dec_cb_params cb_params;
-            struct rte_bbdev_op_dec_tb_params tb_params;
-        };
-    };
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev_op.h
+   :language: c
+   :start-after: Structure rte_bbdev_op_turbo_dec 8<
+   :end-before: >8 End of structure rte_bbdev_op_turbo_dec.
 
 The Turbo decode structure includes the ``input``, ``hard_output`` and
 optionally the ``soft_output`` mbuf data pointers.
@@ -751,26 +725,10 @@ given below.
 The structure passed for each LDPC encode operation is given below,
 with the operation flags forming a bitmask in the ``op_flags`` field.
 
-.. code-block:: c
-
-    struct rte_bbdev_op_ldpc_enc {
-
-        struct rte_bbdev_op_data input;
-        struct rte_bbdev_op_data output;
-
-        uint32_t op_flags;
-        uint8_t rv_index;
-        uint8_t basegraph;
-        uint16_t z_c;
-        uint16_t n_cb;
-        uint8_t q_m;
-        uint16_t n_filler;
-        uint8_t code_block_mode;
-        union {
-            struct rte_bbdev_op_enc_ldpc_cb_params cb_params;
-            struct rte_bbdev_op_enc_ldpc_tb_params tb_params;
-        };
-    };
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev_op.h
+   :language: c
+   :start-after: Structure rte_bbdev_op_ldpc_enc 8<
+   :end-before: >8 End of structure rte_bbdev_op_ldpc_enc.
 
 The LDPC encode parameters are set out in the table below.
 
@@ -949,33 +907,10 @@ given below.
 The structure passed for each LDPC decode operation is given below,
 with the operation flags forming a bitmask in the ``op_flags`` field.
 
-.. code-block:: c
-
-
-    struct rte_bbdev_op_ldpc_dec {
-
-        struct rte_bbdev_op_data input;
-        struct rte_bbdev_op_data hard_output;
-        struct rte_bbdev_op_data soft_output;
-        struct rte_bbdev_op_data harq_combined_input;
-        struct rte_bbdev_op_data harq_combined_output;
-
-        uint32_t op_flags;
-        uint8_t rv_index;
-        uint8_t basegraph;
-        uint16_t z_c;
-        uint16_t n_cb;
-        uint8_t q_m;
-        uint16_t n_filler;
-        uint8_t iter_max;
-        uint8_t iter_count;
-        uint8_t code_block_mode;
-        union {
-            struct rte_bbdev_op_dec_ldpc_cb_params cb_params;
-            struct rte_bbdev_op_dec_ldpc_tb_params tb_params;
-        };
-    };
-
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev_op.h
+   :language: c
+   :start-after: Structure rte_bbdev_op_ldpc_dec 8<
+   :end-before: >8 End of structure rte_bbdev_op_ldpc_dec.
 
 The LDPC decode parameters are set out in the table below.
 
@@ -1137,11 +1072,17 @@ A flexible number of Rx antennas are being processed in parallel with the same c
 The API allows more generally for flexibility in what the PMD may support (capability flags) and
 flexibility to adjust some of the parameters of the processing.
 
-The operation/capability flags that can be set for each FFT operation are given below.
+The structure passed for each FFT operation is given below,
+with the operation flags forming a bitmask in the ``op_flags`` field.
 
   **NOTE:** The actual operation flags that may be used with a specific
   bbdev PMD are dependent on the driver capabilities as reported via
   ``rte_bbdev_info_get()``, and may be a subset of those below.
+
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev_op.h
+   :language: c
+   :start-after: Structure rte_bbdev_op_fft 8<
+   :end-before: >8 End of structure rte_bbdev_op_fft.
 
 +--------------------------------------------------------------------+
 |Description of FFT capability flags                                 |
