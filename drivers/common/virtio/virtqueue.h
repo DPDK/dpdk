@@ -231,6 +231,19 @@ struct virtio_admin_ctrl_hdr {
 	uint8_t cmd;
 } __rte_packed;
 
+#define VIRTIO_ADMIN_CMD_RETRY_CNT 120
+#define VIRTIO_ADMIN_CMD_STATUS_DNR_BIT 0x80
+
+/*
+ * Bits (6:0) - Status Code (SC)
+ * Indicate status information for the command
+ *
+ * Bit (7) - Do Not Retry (DNR)
+ * If set to 1, indicates that if the same command is submitted
+ * again - it is expected to fail.
+ * If cleared to 0, indicates that the same command is submitted
+ * again may succeed.
+ */
 typedef uint8_t virtio_admin_ctrl_ack;
 
 #define VIRTIO_MAX_ADMIN_DATA 2048

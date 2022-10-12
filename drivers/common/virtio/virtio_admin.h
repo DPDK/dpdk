@@ -94,21 +94,21 @@ struct virtio_admin_hdr {
 
 typedef uint8_t virtio_admin_status;
 
-/* status values that are transport, device and vendor independent */
-#define VIRTIO_ADMIN_STATUS_COMMON_START	0
-#define VIRTIO_ADMIN_STATUS_COMMON_END		63
+/* Status Code (SC) that are transport, device and vendor independent */
+#define VIRTIO_ADMIN_STATUS_COMMON_START 0
+#define VIRTIO_ADMIN_STATUS_COMMON_END 31
 
-/* status values that are transport specific */
-#define VIRTIO_ADMIN_STATUS_TRANSPORT_START	64
-#define VIRTIO_ADMIN_STATUS_TRANSPORT_END	127
+/* Status Code (SC) that are transport specific */
+#define VIRTIO_ADMIN_STATUS_TRANSPORT_START 32
+#define VIRTIO_ADMIN_STATUS_TRANSPORT_END 63
 
-/* status values that are device specific */
-#define VIRTIO_ADMIN_STATUS_DEVICE_START	128
-#define VIRTIO_ADMIN_STATUS_DEVICE_END		191
+/* Status Code (SC) that are device specific */
+#define VIRTIO_ADMIN_STATUS_DEVICE_START 64
+#define VIRTIO_ADMIN_STATUS_DEVICE_END 95
 
-/* status values that are reserved */
-#define VIRTIO_ADMIN_STATUS_RESERVED_START	192
-#define VIRTIO_ADMIN_STATUS_RESERVED_END	255
+/* Status Code (SC) that are reserved */
+#define VIRTIO_ADMIN_STATUS_RESERVED_START 96
+#define VIRTIO_ADMIN_STATUS_RESERVED_END 127
 
 /* Common status values */
 #define VIRTIO_ADMIN_STATUS_COMMON_OK			0

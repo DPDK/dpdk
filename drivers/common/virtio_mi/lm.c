@@ -185,6 +185,7 @@ virtio_vdpa_send_admin_command(struct virtadmin_ctl *avq,
 	virtio_admin_ctrl_ack status = ~0;
 	struct virtio_admin_ctrl *result;
 	struct virtqueue *vq;
+	int i;
 
 	if (!avq) {
 		DRV_LOG(ERR, "Admin queue is not supported");
@@ -202,8 +203,16 @@ virtio_vdpa_send_admin_command(struct virtadmin_ctl *avq,
 		return -1;
 	}
 
-	result = virtio_vdpa_send_admin_command_split(avq, ctrl, dat_ctrl,
+	for (i = 0; i < VIRTIO_ADMIN_CMD_RETRY_CNT; i++) {
+		result = virtio_vdpa_send_admin_command_split(avq, ctrl, dat_ctrl,
 			dlen, pkt_num);
+		if(result->status && (!(result->status & VIRTIO_ADMIN_CMD_STATUS_DNR_BIT))) {
+			DRV_LOG(DEBUG, "No:%d cmd status:0x%x, submit again after 100ms", i, result->status);
+			usleep(100000);
+		}
+		else
+			break;
+	}
 
 	return result->status;
 }
