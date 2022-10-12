@@ -192,6 +192,11 @@ power_init_for_setting_uncore_freq(struct uncore_power_info *ui)
 	ui->init_max_freq = base_max_freq;
 	ui->init_min_freq = base_min_freq;
 
+	fclose(f_base_min);
+	fclose(f_base_max);
+	fclose(f_max);
+	fclose(f_min);
+
 	return 0;
 
 err:
