@@ -854,7 +854,7 @@ unsigned int parse_item_list(const char *str, const char *item_name,
 			unsigned int *parsed_items, int check_unique_values);
 unsigned int parse_hdrs_list(const char *str, const char *item_name,
 			unsigned int max_item,
-			unsigned int *parsed_items, int check_unique_values);
+			unsigned int *parsed_items);
 void launch_args_parse(int argc, char** argv);
 void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 void cmdline_read_from_file(const char *filename);

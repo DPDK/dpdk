@@ -3440,7 +3440,7 @@ get_ptype(char *value)
 
 unsigned int
 parse_hdrs_list(const char *str, const char *item_name, unsigned int max_items,
-				unsigned int *parsed_items, int check_hdrs_sequence)
+				unsigned int *parsed_items)
 {
 	unsigned int nb_item;
 	char *cur;
@@ -3462,8 +3462,6 @@ parse_hdrs_list(const char *str, const char *item_name, unsigned int max_items,
 		fprintf(stderr, "Number of %s = %u > %u (maximum items)\n",
 			item_name, nb_item + 1, max_items);
 	free(str2);
-	if (!check_hdrs_sequence)
-		return nb_item;
 	return nb_item;
 }
 
@@ -3854,7 +3852,7 @@ cmd_set_rxhdrs_parsed(void *parsed_result,
 
 	res = parsed_result;
 	nb_segs = parse_hdrs_list(res->values, "segment hdrs",
-				  MAX_SEGS_BUFFER_SPLIT, seg_hdrs, 0);
+				  MAX_SEGS_BUFFER_SPLIT, seg_hdrs);
 	if (nb_segs > 0)
 		set_rx_pkt_hdrs(seg_hdrs, nb_segs);
 	cmd_reconfig_device_queue(RTE_PORT_ALL, 0, 1);

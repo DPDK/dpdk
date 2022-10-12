@@ -1278,7 +1278,7 @@ launch_args_parse(int argc, char** argv)
 				nb_segs = parse_hdrs_list
 						(optarg, "rxpkt segments",
 						MAX_SEGS_BUFFER_SPLIT,
-						seg_hdrs, 0);
+						seg_hdrs);
 				if (nb_segs > 0)
 					set_rx_pkt_hdrs(seg_hdrs, nb_segs);
 				else
