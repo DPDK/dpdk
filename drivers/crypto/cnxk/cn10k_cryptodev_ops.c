@@ -72,7 +72,6 @@ cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		  struct cn10k_sec_session *sess, struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	struct cn10k_ipsec_sa *sa;
 	int ret;
 
 	if (unlikely(sym_op->m_dst && sym_op->m_dst != sym_op->m_src)) {
@@ -85,12 +84,10 @@ cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		return -ENOTSUP;
 	}
 
-	sa = &sess->sa;
-
-	if (sa->is_outbound)
-		ret = process_outb_sa(&qp->lf, op, sa, inst);
+	if (sess->is_outbound)
+		ret = process_outb_sa(&qp->lf, op, sess, inst);
 	else
-		ret = process_inb_sa(op, sa, inst);
+		ret = process_inb_sa(op, sess, inst);
 
 	return ret;
 }
@@ -122,11 +119,11 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-			sec_sess = SECURITY_GET_SESS_PRIV(sym_op->session);
+			sec_sess = (struct cn10k_sec_session *)(sym_op->session);
 			ret = cpt_sec_inst_fill(qp, op, sec_sess, &inst[0]);
 			if (unlikely(ret))
 				return 0;
-			w7 = sec_sess->sa.inst.w7;
+			w7 = sec_sess->inst.w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			sess = CRYPTODEV_GET_SYM_SESS_PRIV(sym_op->session);
 			ret = cpt_sym_inst_fill(qp, op, sess, infl_req,
@@ -298,13 +295,10 @@ cn10k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused,
 	/* Set meta according to session type */
 	if (op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		if (sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-			struct cn10k_sec_session *priv;
-			struct cn10k_ipsec_sa *sa;
+			struct cn10k_sec_session *sec_sess = (struct cn10k_sec_session *)sess;
 
-			priv = SECURITY_GET_SESS_PRIV(sess);
-			sa = &priv->sa;
-			sa->qp = qp;
-			sa->inst.w2 = w2;
+			sec_sess->qp = qp;
+			sec_sess->inst.w2 = w2;
 		} else if (sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
@@ -335,13 +329,12 @@ cn10k_ca_meta_info_extract(struct rte_crypto_op *op,
 {
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-			struct cn10k_sec_session *priv;
-			struct cn10k_ipsec_sa *sa;
+			struct cn10k_sec_session *sec_sess;
 
-			priv = SECURITY_GET_SESS_PRIV(op->sym->session);
-			sa = &priv->sa;
-			*qp = sa->qp;
-			*w2 = sa->inst.w2;
+			sec_sess = (struct cn10k_sec_session *)op->sym->session;
+
+			*qp = sec_sess->qp;
+			*w2 = sec_sess->inst.w2;
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
