@@ -600,6 +600,7 @@ as follows:
 - ``dev_configure``
 - ``dev_start``
 - ``dev_stop``
+- ``dev_reset``
 - ``rx_queue_setup``
 - ``tx_queue_setup``
 - ``rx_queue_release``
