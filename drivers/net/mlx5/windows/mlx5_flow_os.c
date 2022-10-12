@@ -262,7 +262,7 @@ mlx5_is_thread_alive(HANDLE thread_handle)
 
 	if (result == WAIT_OBJECT_0)
 		return false;
-	return false;
+	return true;
 }
 
 static int
