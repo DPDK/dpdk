@@ -53,7 +53,7 @@
 #define DL_5G_LOAD_BALANCE 128
 #endif
 
-#ifdef RTE_BASEBAND_ACC100
+#ifdef RTE_BASEBAND_ACC
 #include <rte_acc100_cfg.h>
 #define ACC100PF_DRIVER_NAME   ("intel_acc100_pf")
 #define ACC100VF_DRIVER_NAME   ("intel_acc100_vf")
@@ -706,7 +706,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 				info->dev_name);
 	}
 #endif
-#ifdef RTE_BASEBAND_ACC100
+#ifdef RTE_BASEBAND_ACC
 	if ((get_init_device() == true) &&
 			(!strcmp(info->drv.driver_name, ACC100PF_DRIVER_NAME))) {
 		struct rte_acc_conf conf;

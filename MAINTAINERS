@@ -1339,7 +1339,7 @@ F: doc/guides/bbdevs/features/fpga_lte_fec.ini
 F: drivers/baseband/fpga_5gnr_fec/
 F: doc/guides/bbdevs/fpga_5gnr_fec.rst
 F: doc/guides/bbdevs/features/fpga_5gnr_fec.ini
-F: drivers/baseband/acc100/
+F: drivers/baseband/acc/
 F: doc/guides/bbdevs/acc100.rst
 F: doc/guides/bbdevs/features/acc100.ini
 F: doc/guides/bbdevs/features/acc101.ini

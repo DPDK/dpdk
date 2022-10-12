@@ -6,7 +6,7 @@ if is_windows
 endif
 
 drivers = [
-        'acc100',
+        'acc',
         'fpga_5gnr_fec',
         'fpga_lte_fec',
         'la12xx',
