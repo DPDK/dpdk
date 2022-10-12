@@ -82,20 +82,31 @@ cnxk_ae_fill_rsa_params(struct cnxk_ae_sess *sess,
 	struct rte_crypto_rsa_priv_key_qt qt = xform->rsa.qt;
 	struct rte_crypto_rsa_xform *xfrm_rsa = &xform->rsa;
 	struct rte_crypto_rsa_xform *rsa = &sess->rsa_ctx;
+	struct rte_crypto_param_t d = xform->rsa.d;
 	size_t mod_len = xfrm_rsa->n.length;
 	size_t exp_len = xfrm_rsa->e.length;
 	uint64_t total_size;
 	size_t len = 0;
 
-	if (qt.p.length != 0 && qt.p.data == NULL)
-		return -EINVAL;
+	/* Set private key type */
+	rsa->key_type = xfrm_rsa->key_type;
 
-	/* Make sure key length used is not more than mod_len/2 */
-	if (qt.p.data != NULL)
-		len = (((mod_len / 2) < qt.p.length) ? 0 : qt.p.length);
+	if (rsa->key_type == RTE_RSA_KEY_TYPE_QT) {
+		if (qt.p.length != 0 && qt.p.data == NULL)
+			return -EINVAL;
+
+		/* Make sure key length used is not more than mod_len/2 */
+		if (qt.p.data != NULL)
+			len = (((mod_len / 2) < qt.p.length) ? 0 : qt.p.length * 5);
+	} else if (rsa->key_type == RTE_RSA_KEY_TYPE_EXP) {
+		if (d.length != 0 && d.data == NULL)
+			return -EINVAL;
+
+		len = d.length;
+	}
 
 	/* Total size required for RSA key params(n,e,(q,dQ,p,dP,qInv)) */
-	total_size = mod_len + exp_len + 5 * len;
+	total_size = mod_len + exp_len + len;
 
 	/* Allocate buffer to hold all RSA keys */
 	rsa->n.data = rte_malloc(NULL, total_size, 0);
@@ -107,8 +118,8 @@ cnxk_ae_fill_rsa_params(struct cnxk_ae_sess *sess,
 	rsa->e.data = rsa->n.data + mod_len;
 	memcpy(rsa->e.data, xfrm_rsa->e.data, exp_len);
 
-	/* Private key in quintuple format */
-	if (len != 0) {
+	if (rsa->key_type == RTE_RSA_KEY_TYPE_QT) {
+		/* Private key in quintuple format */
 		rsa->qt.q.data = rsa->e.data + exp_len;
 		memcpy(rsa->qt.q.data, qt.q.data, qt.q.length);
 		rsa->qt.dQ.data = rsa->qt.q.data + qt.q.length;
@@ -126,6 +137,11 @@ cnxk_ae_fill_rsa_params(struct cnxk_ae_sess *sess,
 		rsa->qt.p.length = qt.p.length;
 		rsa->qt.dP.length = qt.dP.length;
 		rsa->qt.qInv.length = qt.qInv.length;
+	} else if (rsa->key_type == RTE_RSA_KEY_TYPE_EXP) {
+		/* Private key in exponent format */
+		rsa->d.data = rsa->e.data + exp_len;
+		memcpy(rsa->d.data, d.data, d.length);
+		rsa->d.length = d.length;
 	}
 	rsa->n.length = mod_len;
 	rsa->e.length = exp_len;
@@ -317,9 +333,63 @@ cnxk_ae_rsa_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
 }
 
 static __rte_always_inline void
+cnxk_ae_rsa_exp_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
+		     struct rte_crypto_rsa_xform *rsa, rte_crypto_param *crypto_param,
+		     struct cpt_inst_s *inst)
+{
+	struct rte_crypto_rsa_op_param rsa_op;
+	uint32_t privkey_len = rsa->d.length;
+	uint32_t mod_len = rsa->n.length;
+	union cpt_inst_w4 w4;
+	uint32_t in_size;
+	uint32_t dlen;
+	uint8_t *dptr;
+
+	rsa_op = op->asym->rsa;
+
+	/* Input buffer */
+	dptr = meta_buf->vaddr;
+	inst->dptr = (uintptr_t)dptr;
+	memcpy(dptr, rsa->n.data, mod_len);
+	dptr += mod_len;
+	memcpy(dptr, rsa->d.data, privkey_len);
+	dptr += privkey_len;
+
+	in_size = crypto_param->length;
+	memcpy(dptr, crypto_param->data, in_size);
+
+	dptr += in_size;
+	dlen = mod_len + privkey_len + in_size;
+
+	if (rsa_op.padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
+		/* Use mod_exp operation for no_padding type */
+		w4.s.opcode_minor = ROC_AE_MINOR_OP_MODEX;
+		w4.s.param2 = privkey_len;
+	} else {
+		if (rsa_op.op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+			w4.s.opcode_minor = ROC_AE_MINOR_OP_PKCS_ENC;
+			/* Private key encrypt (exponent), use BT1*/
+			w4.s.param2 = ROC_AE_CPT_BLOCK_TYPE1 | ((uint16_t)(privkey_len) << 1);
+		} else if (rsa_op.op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+			w4.s.opcode_minor = ROC_AE_MINOR_OP_PKCS_DEC;
+			/* Private key decrypt (exponent), use BT2 */
+			w4.s.param2 = ROC_AE_CPT_BLOCK_TYPE2;
+		}
+	}
+
+	w4.s.opcode_major = ROC_AE_MAJOR_OP_MODEX;
+
+	w4.s.param1 = mod_len;
+	w4.s.dlen = dlen;
+
+	inst->w4.u64 = w4.u64;
+	inst->rptr = (uintptr_t)dptr;
+}
+
+static __rte_always_inline void
 cnxk_ae_rsa_crt_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
-		     struct rte_crypto_rsa_xform *rsa,
-		     rte_crypto_param *crypto_param, struct cpt_inst_s *inst)
+		     struct rte_crypto_rsa_xform *rsa, rte_crypto_param *crypto_param,
+		     struct cpt_inst_s *inst)
 {
 	uint32_t qInv_len = rsa->qt.qInv.length;
 	struct rte_crypto_rsa_op_param rsa_op;
@@ -374,28 +444,30 @@ cnxk_ae_rsa_crt_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
 }
 
 static __rte_always_inline int __rte_hot
-cnxk_ae_enqueue_rsa_op(struct rte_crypto_op *op,
-		       struct roc_ae_buf_ptr *meta_buf,
+cnxk_ae_enqueue_rsa_op(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
 		       struct cnxk_ae_sess *sess, struct cpt_inst_s *inst)
 {
 	struct rte_crypto_rsa_op_param *rsa = &op->asym->rsa;
+	struct rte_crypto_rsa_xform *ctx = &sess->rsa_ctx;
 
 	switch (rsa->op_type) {
 	case RTE_CRYPTO_ASYM_OP_VERIFY:
-		cnxk_ae_rsa_prep(op, meta_buf, &sess->rsa_ctx, &rsa->sign,
-				 inst);
+		cnxk_ae_rsa_prep(op, meta_buf, ctx, &rsa->sign, inst);
 		break;
 	case RTE_CRYPTO_ASYM_OP_ENCRYPT:
-		cnxk_ae_rsa_prep(op, meta_buf, &sess->rsa_ctx, &rsa->message,
-				 inst);
+		cnxk_ae_rsa_prep(op, meta_buf, ctx, &rsa->message, inst);
 		break;
 	case RTE_CRYPTO_ASYM_OP_SIGN:
-		cnxk_ae_rsa_crt_prep(op, meta_buf, &sess->rsa_ctx,
-				     &rsa->message, inst);
+		if (ctx->key_type == RTE_RSA_KEY_TYPE_QT)
+			cnxk_ae_rsa_crt_prep(op, meta_buf, ctx, &rsa->message, inst);
+		else
+			cnxk_ae_rsa_exp_prep(op, meta_buf, ctx, &rsa->message, inst);
 		break;
 	case RTE_CRYPTO_ASYM_OP_DECRYPT:
-		cnxk_ae_rsa_crt_prep(op, meta_buf, &sess->rsa_ctx, &rsa->cipher,
-				     inst);
+		if (ctx->key_type == RTE_RSA_KEY_TYPE_QT)
+			cnxk_ae_rsa_crt_prep(op, meta_buf, ctx, &rsa->cipher, inst);
+		else
+			cnxk_ae_rsa_exp_prep(op, meta_buf, ctx, &rsa->cipher, inst);
 		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
