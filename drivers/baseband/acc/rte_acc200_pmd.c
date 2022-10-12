@@ -211,6 +211,149 @@ fetch_acc200_config(struct rte_bbdev *dev)
 			acc_conf->q_fft.aq_depth_log2);
 }
 
+/* Checks PF Info Ring to find the interrupt cause and handles it accordingly. */
+static inline void
+acc200_check_ir(struct acc_device *acc200_dev)
+{
+	volatile union acc_info_ring_data *ring_data;
+	uint16_t info_ring_head = acc200_dev->info_ring_head;
+	if (unlikely(acc200_dev->info_ring == NULL))
+		return;
+
+	ring_data = acc200_dev->info_ring + (acc200_dev->info_ring_head & ACC_INFO_RING_MASK);
+
+	while (ring_data->valid) {
+		if ((ring_data->int_nb < ACC200_PF_INT_DMA_DL_DESC_IRQ) || (
+				ring_data->int_nb > ACC200_PF_INT_DMA_DL5G_DESC_IRQ)) {
+			rte_bbdev_log(WARNING, "InfoRing: ITR:%d Info:0x%x",
+				ring_data->int_nb, ring_data->detailed_info);
+			/* Initialize Info Ring entry and move forward. */
+			ring_data->val = 0;
+		}
+		info_ring_head++;
+		ring_data = acc200_dev->info_ring + (info_ring_head & ACC_INFO_RING_MASK);
+	}
+}
+
+/* Interrupt handler triggered by ACC200 dev for handling specific interrupt. */
+static void
+acc200_dev_interrupt_handler(void *cb_arg)
+{
+	struct rte_bbdev *dev = cb_arg;
+	struct acc_device *acc200_dev = dev->data->dev_private;
+	volatile union acc_info_ring_data *ring_data;
+	struct acc_deq_intr_details deq_intr_det;
+
+	ring_data = acc200_dev->info_ring + (acc200_dev->info_ring_head & ACC_INFO_RING_MASK);
+
+	while (ring_data->valid) {
+		if (acc200_dev->pf_device) {
+			rte_bbdev_log_debug(
+					"ACC200 PF Interrupt received, Info Ring data: 0x%x -> %d",
+					ring_data->val, ring_data->int_nb);
+
+			switch (ring_data->int_nb) {
+			case ACC200_PF_INT_DMA_DL_DESC_IRQ:
+			case ACC200_PF_INT_DMA_UL_DESC_IRQ:
+			case ACC200_PF_INT_DMA_FFT_DESC_IRQ:
+			case ACC200_PF_INT_DMA_UL5G_DESC_IRQ:
+			case ACC200_PF_INT_DMA_DL5G_DESC_IRQ:
+				deq_intr_det.queue_id = get_queue_id_from_ring_info(
+						dev->data, *ring_data);
+				if (deq_intr_det.queue_id == UINT16_MAX) {
+					rte_bbdev_log(ERR,
+							"Couldn't find queue: aq_id: %u, qg_id: %u, vf_id: %u",
+							ring_data->aq_id,
+							ring_data->qg_id,
+							ring_data->vf_id);
+					return;
+				}
+				rte_bbdev_pmd_callback_process(dev,
+						RTE_BBDEV_EVENT_DEQUEUE, &deq_intr_det);
+				break;
+			default:
+				rte_bbdev_pmd_callback_process(dev, RTE_BBDEV_EVENT_ERROR, NULL);
+				break;
+			}
+		} else {
+			rte_bbdev_log_debug(
+					"ACC200 VF Interrupt received, Info Ring data: 0x%x\n",
+					ring_data->val);
+			switch (ring_data->int_nb) {
+			case ACC200_VF_INT_DMA_DL_DESC_IRQ:
+			case ACC200_VF_INT_DMA_UL_DESC_IRQ:
+			case ACC200_VF_INT_DMA_FFT_DESC_IRQ:
+			case ACC200_VF_INT_DMA_UL5G_DESC_IRQ:
+			case ACC200_VF_INT_DMA_DL5G_DESC_IRQ:
+				/* VFs are not aware of their vf_id - it's set to 0.  */
+				ring_data->vf_id = 0;
+				deq_intr_det.queue_id = get_queue_id_from_ring_info(
+						dev->data, *ring_data);
+				if (deq_intr_det.queue_id == UINT16_MAX) {
+					rte_bbdev_log(ERR,
+							"Couldn't find queue: aq_id: %u, qg_id: %u",
+							ring_data->aq_id,
+							ring_data->qg_id);
+					return;
+				}
+				rte_bbdev_pmd_callback_process(dev,
+						RTE_BBDEV_EVENT_DEQUEUE, &deq_intr_det);
+				break;
+			default:
+				rte_bbdev_pmd_callback_process(dev, RTE_BBDEV_EVENT_ERROR, NULL);
+				break;
+			}
+		}
+
+		/* Initialize Info Ring entry and move forward. */
+		ring_data->val = 0;
+		++acc200_dev->info_ring_head;
+		ring_data = acc200_dev->info_ring +
+				(acc200_dev->info_ring_head & ACC_INFO_RING_MASK);
+	}
+}
+
+/* Allocate and setup inforing. */
+static int
+allocate_info_ring(struct rte_bbdev *dev)
+{
+	struct acc_device *d = dev->data->dev_private;
+	const struct acc200_registry_addr *reg_addr;
+	rte_iova_t info_ring_iova;
+	uint32_t phys_low, phys_high;
+
+	if (d->info_ring != NULL)
+		return 0; /* Already configured. */
+
+	/* Choose correct registry addresses for the device type. */
+	if (d->pf_device)
+		reg_addr = &pf_reg_addr;
+	else
+		reg_addr = &vf_reg_addr;
+	/* Allocate InfoRing */
+	d->info_ring = rte_zmalloc_socket("Info Ring", ACC_INFO_RING_NUM_ENTRIES *
+			sizeof(*d->info_ring), RTE_CACHE_LINE_SIZE, dev->data->socket_id);
+	if (d->info_ring == NULL) {
+		rte_bbdev_log(ERR,
+				"Failed to allocate Info Ring for %s:%u",
+				dev->device->driver->name,
+				dev->data->dev_id);
+		return -ENOMEM;
+	}
+	info_ring_iova = rte_malloc_virt2iova(d->info_ring);
+
+	/* Setup Info Ring. */
+	phys_high = (uint32_t)(info_ring_iova >> 32);
+	phys_low  = (uint32_t)(info_ring_iova);
+	acc_reg_write(d, reg_addr->info_ring_hi, phys_high);
+	acc_reg_write(d, reg_addr->info_ring_lo, phys_low);
+	acc_reg_write(d, reg_addr->info_ring_en, ACC200_REG_IRQ_EN_ALL);
+	d->info_ring_head = (acc_reg_read(d, reg_addr->info_ring_ptr) &
+			0xFFF) / sizeof(union acc_info_ring_data);
+	return 0;
+}
+
+
 /* Allocate 64MB memory used for all software rings. */
 static int
 acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
@@ -319,6 +462,14 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	acc_reg_write(d, reg_addr->tail_ptrs_fft_hi, phys_high);
 	acc_reg_write(d, reg_addr->tail_ptrs_fft_lo, phys_low);
 
+	ret = allocate_info_ring(dev);
+	if (ret < 0) {
+		rte_bbdev_log(ERR, "Failed to allocate info_ring for %s:%u",
+				dev->device->driver->name,
+				dev->data->dev_id);
+		/* Continue */
+	}
+
 	if (d->harq_layout == NULL)
 		d->harq_layout = rte_zmalloc_socket("HARQ Layout",
 				ACC_HARQ_LAYOUT * sizeof(*d->harq_layout),
@@ -349,17 +500,120 @@ free_sw_rings:
 	return ret;
 }
 
+static int
+acc200_intr_enable(struct rte_bbdev *dev)
+{
+	int ret;
+	struct acc_device *d = dev->data->dev_private;
+	/*
+	 * MSI/MSI-X are supported.
+	 * Option controlled by vfio-intr through EAL parameter.
+	 */
+	if (rte_intr_type_get(dev->intr_handle) == RTE_INTR_HANDLE_VFIO_MSI) {
+
+		ret = allocate_info_ring(dev);
+		if (ret < 0) {
+			rte_bbdev_log(ERR,
+					"Couldn't allocate info ring for device: %s",
+					dev->data->name);
+			return ret;
+		}
+		ret = rte_intr_enable(dev->intr_handle);
+		if (ret < 0) {
+			rte_bbdev_log(ERR,
+					"Couldn't enable interrupts for device: %s",
+					dev->data->name);
+			rte_free(d->info_ring);
+			return ret;
+		}
+		ret = rte_intr_callback_register(dev->intr_handle,
+				acc200_dev_interrupt_handler, dev);
+		if (ret < 0) {
+			rte_bbdev_log(ERR,
+					"Couldn't register interrupt callback for device: %s",
+					dev->data->name);
+			rte_free(d->info_ring);
+			return ret;
+		}
+
+		return 0;
+	} else if (rte_intr_type_get(dev->intr_handle) == RTE_INTR_HANDLE_VFIO_MSIX) {
+		int i, max_queues;
+		struct acc_device *acc200_dev = dev->data->dev_private;
+
+		ret = allocate_info_ring(dev);
+		if (ret < 0) {
+			rte_bbdev_log(ERR,
+					"Couldn't allocate info ring for device: %s",
+					dev->data->name);
+			return ret;
+		}
+
+		if (acc200_dev->pf_device)
+			max_queues = ACC200_MAX_PF_MSIX;
+		else
+			max_queues = ACC200_MAX_VF_MSIX;
+
+		if (rte_intr_efd_enable(dev->intr_handle, max_queues)) {
+			rte_bbdev_log(ERR, "Failed to create fds for %u queues",
+					dev->data->num_queues);
+			return -1;
+		}
+
+		for (i = 0; i < max_queues; ++i) {
+			if (rte_intr_efds_index_set(dev->intr_handle, i,
+					rte_intr_fd_get(dev->intr_handle)))
+				return -rte_errno;
+		}
+
+		if (rte_intr_vec_list_alloc(dev->intr_handle, "intr_vec",
+				dev->data->num_queues)) {
+			rte_bbdev_log(ERR, "Failed to allocate %u vectors",
+					dev->data->num_queues);
+			return -ENOMEM;
+		}
+
+		ret = rte_intr_enable(dev->intr_handle);
+
+		if (ret < 0) {
+			rte_bbdev_log(ERR,
+					"Couldn't enable interrupts for device: %s",
+					dev->data->name);
+			rte_free(d->info_ring);
+			return ret;
+		}
+		ret = rte_intr_callback_register(dev->intr_handle,
+				acc200_dev_interrupt_handler, dev);
+		if (ret < 0) {
+			rte_bbdev_log(ERR,
+					"Couldn't register interrupt callback for device: %s",
+					dev->data->name);
+			rte_free(d->info_ring);
+			return ret;
+		}
+
+		return 0;
+	}
+
+	rte_bbdev_log(ERR, "ACC200 (%s) supports only VFIO MSI/MSI-X interrupts\n",
+			dev->data->name);
+	return -ENOTSUP;
+}
+
 /* Free memory used for software rings. */
 static int
 acc200_dev_close(struct rte_bbdev *dev)
 {
 	struct acc_device *d = dev->data->dev_private;
+	acc200_check_ir(d);
 	if (d->sw_rings_base != NULL) {
 		rte_free(d->tail_ptrs);
+		rte_free(d->info_ring);
 		rte_free(d->sw_rings_base);
 		rte_free(d->harq_layout);
-		d->sw_rings_base = NULL;
 		d->tail_ptrs = NULL;
+		d->info_ring = NULL;
+		d->sw_rings_base = NULL;
 		d->harq_layout = NULL;
 	}
 	/* Ensure all in flight HW transactions are completed. */
@@ -662,6 +916,7 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 					RTE_BBDEV_TURBO_CONTINUE_CRC_MATCH |
 					RTE_BBDEV_TURBO_SOFT_OUTPUT |
 					RTE_BBDEV_TURBO_EARLY_TERMINATION |
+					RTE_BBDEV_TURBO_DEC_INTERRUPTS |
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_SOFT_OUT |
 					RTE_BBDEV_TURBO_MAP_DEC |
@@ -683,6 +938,7 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 					RTE_BBDEV_TURBO_CRC_24B_ATTACH |
 					RTE_BBDEV_TURBO_RV_INDEX_BYPASS |
 					RTE_BBDEV_TURBO_RATE_MATCH |
+					RTE_BBDEV_TURBO_ENC_INTERRUPTS |
 					RTE_BBDEV_TURBO_ENC_SCATTER_GATHER,
 				.num_buffers_src =
 						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
@@ -696,7 +952,8 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 				.capability_flags =
 					RTE_BBDEV_LDPC_RATE_MATCH |
 					RTE_BBDEV_LDPC_CRC_24B_ATTACH |
-					RTE_BBDEV_LDPC_INTERLEAVER_BYPASS,
+					RTE_BBDEV_LDPC_INTERLEAVER_BYPASS |
+					RTE_BBDEV_LDPC_ENC_INTERRUPTS,
 				.num_buffers_src =
 						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
 				.num_buffers_dst =
@@ -717,7 +974,8 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 				RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS |
 				RTE_BBDEV_LDPC_DEC_SCATTER_GATHER |
 				RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION |
-				RTE_BBDEV_LDPC_LLR_COMPRESSION,
+				RTE_BBDEV_LDPC_LLR_COMPRESSION |
+				RTE_BBDEV_LDPC_DEC_INTERRUPTS,
 			.llr_size = 8,
 			.llr_decimals = 1,
 			.num_buffers_src =
@@ -785,15 +1043,46 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 	dev_info->min_alignment = 1;
 	dev_info->capabilities = bbdev_capabilities;
 	dev_info->harq_buffer_size = 0;
+
+	acc200_check_ir(d);
+}
+
+static int
+acc200_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
+{
+	struct acc_queue *q = dev->data->queues[queue_id].queue_private;
+
+	if (rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_VFIO_MSI &&
+			rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_VFIO_MSIX)
+		return -ENOTSUP;
+
+	q->irq_enable = 1;
+	return 0;
+}
+
+static int
+acc200_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
+{
+	struct acc_queue *q = dev->data->queues[queue_id].queue_private;
+
+	if (rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_VFIO_MSI &&
+			rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_VFIO_MSIX)
+		return -ENOTSUP;
+
+	q->irq_enable = 0;
+	return 0;
 }
 
 static const struct rte_bbdev_ops acc200_bbdev_ops = {
 	.setup_queues = acc200_setup_queues,
+	.intr_enable = acc200_intr_enable,
 	.close = acc200_dev_close,
 	.info_get = acc200_dev_info_get,
 	.queue_setup = acc200_queue_setup,
 	.queue_release = acc200_queue_release,
 	.queue_stop = acc200_queue_stop,
+	.queue_intr_enable = acc200_queue_intr_enable,
+	.queue_intr_disable = acc200_queue_intr_disable
 };
 
 /* ACC200 PCI PF address map. */
@@ -2430,6 +2719,7 @@ dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	if (op->status != 0) {
 		/* These errors are not expected. */
 		q_data->queue_stats.dequeue_err_count++;
+		acc200_check_ir(q->d);
 	}
 
 	/* CRC invalid if error exists. */
@@ -2493,6 +2783,9 @@ dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	}
 
 	op->ldpc_dec.iter_count = (uint8_t) rsp.iter_cnt;
+
+	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
+		acc200_check_ir(q->d);
 
 	/* Check if this is the last desc in batch (Atomic Queue). */
 	if (desc->req.last_desc_in_batch) {
@@ -2926,6 +3219,9 @@ dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
 	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
 	if (op->status != 0)
 		q_data->queue_stats.dequeue_err_count++;
+
+	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
+		acc200_check_ir(q->d);
 
 	/* Check if this is the last desc in batch (Atomic Queue). */
 	if (desc->req.last_desc_in_batch) {
