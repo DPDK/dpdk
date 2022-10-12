@@ -180,11 +180,12 @@ dlb2_init_port_cos(struct dlb2_eventdev *dlb2, int *port_cos)
 {
 	int q;
 
-	for (q = 0; q < DLB2_MAX_NUM_PORTS_ALL; q++)
+	for (q = 0; q < DLB2_MAX_NUM_PORTS_ALL; q++) {
+		dlb2->ev_ports[q].cos_id = port_cos[q];
 		if (port_cos[q] != DLB2_COS_DEFAULT) {
-			dlb2->ev_ports[q].cos_id = port_cos[q];
 			dlb2->cos_ports[port_cos[q]]++;
 		}
+	}
 }
 
 static void

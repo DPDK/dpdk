@@ -450,7 +450,7 @@ struct dlb2_create_dir_queue_args {
  * - num_hist_list_entries: Number of history list entries. This must be
  *	greater than or equal cq_depth.
  * - cos_id: class-of-service to allocate this port from. Must be between 0 and
- *	3, inclusive.
+ *	3, inclusive. Should be 255 if default.
  * - cos_strict: If set, return an error if there are no available ports in the
  *	requested class-of-service. Else, allocate the port from a different
  *	class-of-service if the requested class has no available ports.

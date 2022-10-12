@@ -421,7 +421,7 @@ struct dlb2_config {
 };
 
 enum dlb2_cos {
-	DLB2_COS_DEFAULT = -1,
+	DLB2_COS_DEFAULT = 255,
 	DLB2_COS_0 = 0,
 	DLB2_COS_1,
 	DLB2_COS_2,

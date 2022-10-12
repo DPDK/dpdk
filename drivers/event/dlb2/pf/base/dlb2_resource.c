@@ -577,11 +577,14 @@ static int dlb2_attach_ldb_ports(struct dlb2_hw *hw,
 	/* Allocate num_ldb_ports from any class-of-service */
 	for (i = 0; i < args->num_ldb_ports; i++) {
 		for (j = 0; j < DLB2_NUM_COS_DOMAINS; j++) {
+			/* Allocate from best performing cos */
+			u32 cos_idx = j + DLB2_MAX_NUM_LDB_PORTS;
+			u32 cos_id = hw->ldb_pp_allocations[cos_idx];
 			ret = __dlb2_attach_ldb_ports(hw,
 						      rsrcs,
 						      domain,
 						      1,
-						      j,
+						      cos_id,
 						      resp);
 			if (ret == 0)
 				break;
@@ -819,20 +822,28 @@ static int dlb2_pp_cycle_comp(const void *a, const void *b)
 
 /* Probe producer ports from different CPU cores */
 static void
-dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type, int cos_id)
+dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 {
+	struct dlb2_pp_thread_data dlb2_thread_data[DLB2_MAX_NUM_DIR_PORTS_V2_5];
 	struct dlb2_dev *dlb2_dev = container_of(hw, struct dlb2_dev, hw);
-	int i, err, ver = DLB2_HW_DEVICE_FROM_PCI_ID(dlb2_dev->pdev);
+	struct dlb2_pp_thread_data cos_cycles[DLB2_NUM_COS_DOMAINS];
+	int ver = DLB2_HW_DEVICE_FROM_PCI_ID(dlb2_dev->pdev);
+	int num_ports_per_sort, num_ports, num_sort, i, err;
 	bool is_ldb = (port_type == DLB2_LDB_PORT);
-	int num_ports = is_ldb ? DLB2_MAX_NUM_LDB_PORTS :
-	DLB2_MAX_NUM_DIR_PORTS(ver);
-	struct dlb2_pp_thread_data dlb2_thread_data[num_ports];
-	int *port_allocations = is_ldb ? hw->ldb_pp_allocations :
-					 hw->dir_pp_allocations;
-	int num_sort = is_ldb ? DLB2_NUM_COS_DOMAINS : 1;
-	struct dlb2_pp_thread_data cos_cycles[num_sort];
-	int num_ports_per_sort = num_ports / num_sort;
+	int *port_allocations;
 	pthread_t pthread;
+
+	if (is_ldb) {
+		port_allocations = hw->ldb_pp_allocations;
+		num_ports = DLB2_MAX_NUM_LDB_PORTS;
+		num_sort = DLB2_NUM_COS_DOMAINS;
+	} else {
+		port_allocations = hw->dir_pp_allocations;
+		num_ports = DLB2_MAX_NUM_DIR_PORTS(ver);
+		num_sort = 1;
+	}
+
+	num_ports_per_sort = num_ports / num_sort;
 
 	dlb2_dev->enqueue_four = dlb2_movdir64b;
 
@@ -841,8 +852,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type, int cos_id)
 
 	memset(cos_cycles, 0, num_sort * sizeof(struct dlb2_pp_thread_data));
 	for (i = 0; i < num_ports; i++) {
-		int cos = is_ldb ? (i >> DLB2_NUM_COS_DOMAINS) : 0;
-
+		int cos = (i >> DLB2_NUM_COS_DOMAINS) % DLB2_NUM_COS_DOMAINS;
 		dlb2_thread_data[i].is_ldb = is_ldb;
 		dlb2_thread_data[i].pp = i;
 		dlb2_thread_data[i].cycles = 0;
@@ -861,12 +871,17 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type, int cos_id)
 			DLB2_LOG_ERR(": thread join failed! err=%d", err);
 			return;
 		}
-		cos_cycles[cos].cycles += dlb2_thread_data[i].cycles;
+
+		if (is_ldb)
+			cos_cycles[cos].cycles += dlb2_thread_data[i].cycles;
 
 		if ((i + 1) % num_ports_per_sort == 0) {
-			int index = cos * num_ports_per_sort;
+			int index = 0;
 
-			cos_cycles[cos].pp = index;
+			if (is_ldb) {
+				cos_cycles[cos].pp = cos;
+				index = cos * num_ports_per_sort;
+			}
 			/*
 			 * For LDB ports first sort with in a cos. Later sort
 			 * the best cos based on total cycles for the cos.
@@ -880,21 +895,23 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type, int cos_id)
 	}
 
 	/*
-	 * Re-arrange best ports by cos if default cos is used.
+	 * Sort by best cos aggregated over all ports per cos
+	 * Note: After DLB2_MAX_NUM_LDB_PORTS sorted cos is stored and so'pp'
+	 * is cos_id and not port id.
 	 */
-	if (is_ldb && cos_id == DLB2_COS_DEFAULT)
-		qsort(cos_cycles, num_sort,
-		      sizeof(struct dlb2_pp_thread_data),
+	if (is_ldb) {
+		qsort(cos_cycles, num_sort, sizeof(struct dlb2_pp_thread_data),
 		      dlb2_pp_cycle_comp);
+		for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++)
+			port_allocations[i + DLB2_MAX_NUM_LDB_PORTS] = cos_cycles[i].pp;
+	}
 
 	for (i = 0; i < num_ports; i++) {
-		int start = is_ldb ? cos_cycles[i / num_ports_per_sort].pp : 0;
-		int index = i % num_ports_per_sort;
-
-		port_allocations[i] = dlb2_thread_data[start + index].pp;
+		port_allocations[i] = dlb2_thread_data[i].pp;
 		DLB2_LOG_INFO(": pp %d cycles %d", port_allocations[i],
-			     dlb2_thread_data[start + index].cycles);
+			      dlb2_thread_data[i].cycles);
 	}
+
 }
 
 int
@@ -903,11 +920,10 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 	const struct dlb2_devargs *args = (const struct dlb2_devargs *)probe_args;
 	const char *mask = NULL;
 	int cpu = 0, cnt = 0, cores[RTE_MAX_LCORE];
-	int i, cos_id = DLB2_COS_DEFAULT;
+	int i;
 
 	if (args) {
 		mask = (const char *)args->producer_coremask;
-		cos_id = args->cos_id;
 	}
 
 	if (mask && rte_eal_parse_coremask(mask, cores)) {
@@ -942,8 +958,8 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 	if (hw->num_prod_cores)
 		cpu = hw->prod_core_list[0];
 
-	dlb2_get_pp_allocation(hw, cpu, DLB2_LDB_PORT, cos_id);
-	dlb2_get_pp_allocation(hw, cpu, DLB2_DIR_PORT, DLB2_COS_DEFAULT);
+	dlb2_get_pp_allocation(hw, cpu, DLB2_LDB_PORT);
+	dlb2_get_pp_allocation(hw, cpu, DLB2_DIR_PORT);
 
 	return 0;
 }
@@ -4543,7 +4559,8 @@ dlb2_verify_create_ldb_port_args(struct dlb2_hw *hw,
 		return -EINVAL;
 	}
 
-	if (args->cos_id >= DLB2_NUM_COS_DOMAINS) {
+	if (args->cos_id >= DLB2_NUM_COS_DOMAINS &&
+	    (args->cos_id != DLB2_COS_DEFAULT || args->cos_strict)) {
 		resp->status = DLB2_ST_INVALID_COS_ID;
 		return -EINVAL;
 	}
@@ -4554,7 +4571,13 @@ dlb2_verify_create_ldb_port_args(struct dlb2_hw *hw,
 					  typeof(*port));
 	} else {
 		for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++) {
-			id = (args->cos_id + i) % DLB2_NUM_COS_DOMAINS;
+			if (args->cos_id == DLB2_COS_DEFAULT) {
+				/* Allocate from best performing cos */
+				u32 cos_idx = i + DLB2_MAX_NUM_LDB_PORTS;
+				id = hw->ldb_pp_allocations[cos_idx];
+			} else {
+				id = (args->cos_id + i) % DLB2_NUM_COS_DOMAINS;
+			}
 
 			port = DLB2_DOM_LIST_HEAD(domain->avail_ldb_ports[id],
 						  typeof(*port));

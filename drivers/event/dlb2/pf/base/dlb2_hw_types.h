@@ -351,7 +351,7 @@ struct dlb2_hw {
 	int prod_core_list[RTE_MAX_LCORE];
 	u8 num_prod_cores;
 	int dir_pp_allocations[DLB2_MAX_NUM_DIR_PORTS_V2_5];
-	int ldb_pp_allocations[DLB2_MAX_NUM_LDB_PORTS];
+	int ldb_pp_allocations[DLB2_MAX_NUM_LDB_PORTS + DLB2_NUM_COS_DOMAINS];
 
 	/* Virtualization */
 	int virt_mode;
