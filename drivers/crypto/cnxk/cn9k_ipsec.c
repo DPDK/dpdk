@@ -32,38 +32,39 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	uint8_t egrp;
 	int ret;
 
-	sess = SECURITY_GET_SESS_PRIV(sec_sess);
+	sess = (struct cn9k_sec_session *)sec_sess;
 	sa = &sess->sa;
+
+	/* Initialize lookaside IPsec private data */
 
 	memset(sa, 0, sizeof(struct cn9k_ipsec_sa));
 
-	/* Initialize lookaside IPsec private data */
-	sa->dir = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
+	sess->is_outbound = 1;
 
 	if (ipsec->esn.value)
-		sa->esn = ipsec->esn.value - 1;
+		sess->esn = ipsec->esn.value - 1;
 
-	ret = cnxk_ipsec_outb_rlens_get(&sa->rlens, ipsec, crypto_xform);
+	ret = cnxk_ipsec_outb_rlens_get(&sess->rlens, ipsec, crypto_xform);
 	if (ret)
 		return ret;
 
-	sa->custom_hdr_len =
+	sess->custom_hdr_len =
 		sizeof(struct roc_ie_on_outb_hdr) - ROC_IE_ON_MAX_IV_LEN;
 
 #ifdef LA_IPSEC_DEBUG
 	/* Use IV from application in debug mode */
 	if (ipsec->options.iv_gen_disable == 1) {
-		sa->custom_hdr_len = sizeof(struct roc_ie_on_outb_hdr);
+		sess->custom_hdr_len = sizeof(struct roc_ie_on_outb_hdr);
 
 		if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-			sa->cipher_iv_off = crypto_xform->aead.iv.offset;
-			sa->cipher_iv_len = crypto_xform->aead.iv.length;
+			sess->cipher_iv_off = crypto_xform->aead.iv.offset;
+			sess->cipher_iv_len = crypto_xform->aead.iv.length;
 		} else if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
-			sa->cipher_iv_off = crypto_xform->cipher.iv.offset;
-			sa->cipher_iv_len = crypto_xform->cipher.iv.length;
+			sess->cipher_iv_off = crypto_xform->cipher.iv.offset;
+			sess->cipher_iv_len = crypto_xform->cipher.iv.length;
 		} else {
-			sa->cipher_iv_off = crypto_xform->auth.iv.offset;
-			sa->cipher_iv_len = crypto_xform->auth.iv.length;
+			sess->cipher_iv_off = crypto_xform->auth.iv.offset;
+			sess->cipher_iv_len = crypto_xform->auth.iv.length;
 		}
 	}
 #else
@@ -80,8 +81,7 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 
 	ctx_len = ret;
 	egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
-	ret = roc_on_cpt_ctx_write(&qp->lf, SECURITY_GET_SESS_PRIV_IOVA(sec_sess),
-				   false, ctx_len, egrp);
+	ret = roc_on_cpt_ctx_write(&qp->lf, (uintptr_t)sa, false, ctx_len, egrp);
 
 	if (ret)
 		return ret;
@@ -108,9 +108,9 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 
 	w7.u64 = 0;
 	w7.s.egrp = egrp;
-	w7.s.cptr = SECURITY_GET_SESS_PRIV_IOVA(sec_sess);
+	w7.s.cptr = (uintptr_t)&sess->sa;
 
-	inst_tmpl = &sa->inst;
+	inst_tmpl = &sess->inst;
 	inst_tmpl->w4 = w4.u64;
 	inst_tmpl->w7 = w7.u64;
 
@@ -134,31 +134,30 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	uint8_t egrp;
 	int ret = 0;
 
-	sess = SECURITY_GET_SESS_PRIV(sec_sess);
+	sess = (struct cn9k_sec_session *)sec_sess;
 	sa = &sess->sa;
 
 	memset(sa, 0, sizeof(struct cn9k_ipsec_sa));
 
-	sa->dir = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
-	sa->replay_win_sz = ipsec->replay_win_sz;
+	sess->is_outbound = 0;
+	sess->replay_win_sz = ipsec->replay_win_sz;
 
-	if (sa->replay_win_sz) {
-		if (sa->replay_win_sz > CNXK_ON_AR_WIN_SIZE_MAX) {
-			plt_err("Replay window size:%u is not supported",
-				sa->replay_win_sz);
+	if (sess->replay_win_sz) {
+		if (sess->replay_win_sz > CNXK_ON_AR_WIN_SIZE_MAX) {
+			plt_err("Replay window size:%u is not supported", sess->replay_win_sz);
 			return -ENOTSUP;
 		}
 
 		/* Set window bottom to 1, base and top to size of window */
-		sa->ar.winb = 1;
-		sa->ar.wint = sa->replay_win_sz;
-		sa->ar.base = sa->replay_win_sz;
+		sess->ar.winb = 1;
+		sess->ar.wint = sess->replay_win_sz;
+		sess->ar.base = sess->replay_win_sz;
 
-		sa->seq_lo = ipsec->esn.low;
-		sa->seq_hi = ipsec->esn.hi;
+		sess->seq_lo = ipsec->esn.low;
+		sess->seq_hi = ipsec->esn.hi;
 
-		sa->in_sa.common_sa.seq_t.tl = sa->seq_lo;
-		sa->in_sa.common_sa.seq_t.th = sa->seq_hi;
+		sess->sa.in_sa.common_sa.seq_t.tl = sess->seq_lo;
+		sess->sa.in_sa.common_sa.seq_t.th = sess->seq_hi;
 	}
 
 	ret = cnxk_on_ipsec_inb_sa_create(ipsec, crypto_xform, &sa->in_sa);
@@ -166,12 +165,11 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 		return ret;
 
 	if (sa->in_sa.common_sa.ctl.esn_en)
-		sa->esn_en = 1;
+		sess->esn_en = 1;
 
 	ctx_len = ret;
 	egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
-	ret = roc_on_cpt_ctx_write(&qp->lf, SECURITY_GET_SESS_PRIV_IOVA(sec_sess),
-				   true, ctx_len, egrp);
+	ret = roc_on_cpt_ctx_write(&qp->lf, (uint64_t)sa, true, ctx_len, egrp);
 	if (ret)
 		return ret;
 
@@ -184,9 +182,9 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	w4.s.param2 = param2.u16;
 
 	w7.s.egrp = egrp;
-	w7.s.cptr = SECURITY_GET_SESS_PRIV_IOVA(sec_sess);
+	w7.s.cptr = (uintptr_t)&sess->sa;
 
-	inst_tmpl = &sa->inst;
+	inst_tmpl = &sess->inst;
 	inst_tmpl->w4 = w4.u64;
 	inst_tmpl->w7 = w7.u64;
 

@@ -23,12 +23,10 @@ cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
 		       struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	struct cn9k_sec_session *priv;
-	struct cn9k_ipsec_sa *sa;
+	struct cn9k_sec_session *sec_sess;
 	int ret;
 
-	priv = SECURITY_GET_SESS_PRIV(op->sym->session);
-	sa = &priv->sa;
+	sec_sess = (struct cn9k_sec_session *)(op->sym->session);
 
 	if (unlikely(sym_op->m_dst && sym_op->m_dst != sym_op->m_src)) {
 		plt_dp_err("Out of place is not supported");
@@ -40,12 +38,12 @@ cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
 		return -ENOTSUP;
 	}
 
-	if (sa->dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
-		ret = process_outb_sa(op, sa, inst);
+	if (sec_sess->is_outbound)
+		ret = process_outb_sa(op, sec_sess, inst);
 	else {
 		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
-		process_inb_sa(op, sa, inst);
-		if (unlikely(sa->replay_win_sz))
+		process_inb_sa(op, sec_sess, inst);
+		if (unlikely(sec_sess->replay_win_sz))
 			infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_INB_REPLAY;
 		ret = 0;
 	}
@@ -335,12 +333,10 @@ cn9k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused,
 	if (op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		if (sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 			struct cn9k_sec_session *priv;
-			struct cn9k_ipsec_sa *sa;
 
-			priv = SECURITY_GET_SESS_PRIV(sess);
-			sa = &priv->sa;
-			sa->qp = qp;
-			sa->inst.w2 = w2;
+			priv = (struct cn9k_sec_session *)sess;
+			priv->qp = qp;
+			priv->inst.w2 = w2;
 		} else if (sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
@@ -372,12 +368,10 @@ cn9k_ca_meta_info_extract(struct rte_crypto_op *op,
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 			struct cn9k_sec_session *priv;
-			struct cn9k_ipsec_sa *sa;
 
-			priv = SECURITY_GET_SESS_PRIV(op->sym->session);
-			sa = &priv->sa;
-			*qp = sa->qp;
-			inst->w2.u64 = sa->inst.w2;
+			priv = (struct cn9k_sec_session *)(op->sym->session);
+			*qp = priv->qp;
+			inst->w2.u64 = priv->inst.w2;
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
@@ -480,7 +474,8 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
 }
 
 static inline int
-ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz, struct roc_ie_on_inb_hdr *data)
+ipsec_antireplay_check(struct cn9k_sec_session *sess, uint32_t win_sz,
+		       struct roc_ie_on_inb_hdr *data)
 {
 	uint32_t esn_low, esn_hi, seql, seqh = 0;
 	struct roc_ie_on_common_sa *common_sa;
@@ -489,7 +484,7 @@ ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz, struct roc_ie_
 	uint8_t esn;
 	int ret;
 
-	in_sa = &sa->in_sa;
+	in_sa = &sess->sa.in_sa;
 	common_sa = &in_sa->common_sa;
 
 	esn = common_sa->ctl.esn_en;
@@ -505,7 +500,7 @@ ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz, struct roc_ie_
 	if (unlikely(seq == 0))
 		return IPSEC_ANTI_REPLAY_FAILED;
 
-	ret = cnxk_on_anti_replay_check(seq, &sa->ar, win_sz);
+	ret = cnxk_on_anti_replay_check(seq, &sess->ar, win_sz);
 	if (esn && !ret) {
 		esn_low = rte_be_to_cpu_32(common_sa->seq_t.tl);
 		esn_hi = rte_be_to_cpu_32(common_sa->seq_t.th);
@@ -526,7 +521,6 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m = sym_op->m_src;
 	struct cn9k_sec_session *priv;
-	struct cn9k_ipsec_sa *sa;
 	struct rte_ipv6_hdr *ip6;
 	struct rte_ipv4_hdr *ip;
 	uint16_t m_len = 0;
@@ -539,12 +533,10 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 			     CPT_OP_FLAGS_IPSEC_INB_REPLAY)) {
 			int ret;
 
-			priv = SECURITY_GET_SESS_PRIV(sym_op->session);
-			sa = &priv->sa;
+			priv = (struct cn9k_sec_session *)(sym_op->session);
 
-			ret = ipsec_antireplay_check(
-				sa, sa->replay_win_sz,
-				(struct roc_ie_on_inb_hdr *)data);
+			ret = ipsec_antireplay_check(priv, priv->replay_win_sz,
+						     (struct roc_ie_on_inb_hdr *)data);
 			if (unlikely(ret)) {
 				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 				return;
