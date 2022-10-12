@@ -211,6 +211,33 @@ fetch_acc200_config(struct rte_bbdev *dev)
 			acc_conf->q_fft.aq_depth_log2);
 }
 
+static inline void
+acc200_vf2pf(struct acc_device *d, unsigned int payload)
+{
+	acc_reg_write(d, HWVfHiVfToPfDbellVf, payload);
+}
+
+/* Request device status information. */
+static inline uint32_t
+acc200_device_status(struct rte_bbdev *dev)
+{
+	struct acc_device *d = dev->data->dev_private;
+	uint32_t reg, time_out = 0;
+
+	if (d->pf_device)
+		return RTE_BBDEV_DEV_NOT_SUPPORTED;
+
+	acc200_vf2pf(d, ACC_VF2PF_STATUS_REQUEST);
+	reg = acc_reg_read(d, HWVfHiPfToVfDbellVf);
+	while ((time_out < ACC200_STATUS_TO) && (reg == RTE_BBDEV_DEV_NOSTATUS)) {
+		usleep(ACC200_STATUS_WAIT); /*< Wait or VF->PF->VF Comms */
+		reg = acc_reg_read(d, HWVfHiPfToVfDbellVf);
+		time_out++;
+	}
+
+	return reg;
+}
+
 /* Checks PF Info Ring to find the interrupt cause and handles it accordingly. */
 static inline void
 acc200_check_ir(struct acc_device *acc200_dev)
@@ -484,6 +511,7 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 
 	/* Mark as configured properly */
 	d->configured = true;
+	acc200_vf2pf(d, ACC_VF2PF_USING_VF);
 
 	rte_bbdev_log_debug(
 			"ACC200 (%s) configured  sw_rings = %p, sw_rings_iova = %#"
@@ -1011,6 +1039,8 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 
 	/* Read and save the populated config from ACC200 registers. */
 	fetch_acc200_config(dev);
+	/* Check the status of device. */
+	dev_info->device_status = acc200_device_status(dev);
 
 	/* Exposed number of queues. */
 	dev_info->num_queues[RTE_BBDEV_OP_NONE] = 0;
