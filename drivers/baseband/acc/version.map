@@ -5,5 +5,5 @@ DPDK_23 {
 EXPERIMENTAL {
 	global:
 
-	rte_acc10x_configure;
+	rte_acc_configure;
 };

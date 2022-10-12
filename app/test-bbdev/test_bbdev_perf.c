@@ -54,7 +54,7 @@
 #endif
 
 #ifdef RTE_BASEBAND_ACC
-#include <rte_acc100_cfg.h>
+#include <rte_acc_cfg.h>
 #define ACC100PF_DRIVER_NAME   ("intel_acc100_pf")
 #define ACC100VF_DRIVER_NAME   ("intel_acc100_vf")
 #define ACC100_QMGR_NUM_AQS 16
@@ -63,6 +63,14 @@
 #define ACC100_QMGR_INVALID_IDX -1
 #define ACC100_QMGR_RR 1
 #define ACC100_QOS_GBR 0
+#define ACC200PF_DRIVER_NAME   ("intel_acc200_pf")
+#define ACC200VF_DRIVER_NAME   ("intel_acc200_vf")
+#define ACC200_QMGR_NUM_AQS 16
+#define ACC200_QMGR_NUM_QGS 2
+#define ACC200_QMGR_AQ_DEPTH 5
+#define ACC200_QMGR_INVALID_IDX -1
+#define ACC200_QMGR_RR 1
+#define ACC200_QOS_GBR 0
 #endif
 
 #define OPS_CACHE_SIZE 256U
@@ -757,9 +765,71 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 		conf.q_dl_5g.aq_depth_log2 = ACC100_QMGR_AQ_DEPTH;
 
 		/* setup PF with configuration information */
-		ret = rte_acc10x_configure(info->dev_name, &conf);
+		ret = rte_acc_configure(info->dev_name, &conf);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to configure ACC100 PF for bbdev %s",
+				info->dev_name);
+	}
+	if ((get_init_device() == true) &&
+		(!strcmp(info->drv.driver_name, ACC200PF_DRIVER_NAME))) {
+		struct rte_acc_conf conf;
+		unsigned int i;
+
+		printf("Configure ACC200 FEC Driver %s with default values\n",
+				info->drv.driver_name);
+
+		/* clear default configuration before initialization */
+		memset(&conf, 0, sizeof(struct rte_acc_conf));
+
+		/* Always set in PF mode for built-in configuration */
+		conf.pf_mode_en = true;
+		for (i = 0; i < RTE_ACC_NUM_VFS; ++i) {
+			conf.arb_dl_4g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_dl_4g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_dl_4g[i].round_robin_weight = ACC200_QMGR_RR;
+			conf.arb_ul_4g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_ul_4g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_ul_4g[i].round_robin_weight = ACC200_QMGR_RR;
+			conf.arb_dl_5g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_dl_5g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_dl_5g[i].round_robin_weight = ACC200_QMGR_RR;
+			conf.arb_ul_5g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_ul_5g[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_ul_5g[i].round_robin_weight = ACC200_QMGR_RR;
+			conf.arb_fft[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_fft[i].gbr_threshold1 = ACC200_QOS_GBR;
+			conf.arb_fft[i].round_robin_weight = ACC200_QMGR_RR;
+		}
+
+		conf.input_pos_llr_1_bit = true;
+		conf.output_pos_llr_1_bit = true;
+		conf.num_vf_bundles = 1; /**< Number of VF bundles to setup */
+
+		conf.q_ul_4g.num_qgroups = ACC200_QMGR_NUM_QGS;
+		conf.q_ul_4g.first_qgroup_index = ACC200_QMGR_INVALID_IDX;
+		conf.q_ul_4g.num_aqs_per_groups = ACC200_QMGR_NUM_AQS;
+		conf.q_ul_4g.aq_depth_log2 = ACC200_QMGR_AQ_DEPTH;
+		conf.q_dl_4g.num_qgroups = ACC200_QMGR_NUM_QGS;
+		conf.q_dl_4g.first_qgroup_index = ACC200_QMGR_INVALID_IDX;
+		conf.q_dl_4g.num_aqs_per_groups = ACC200_QMGR_NUM_AQS;
+		conf.q_dl_4g.aq_depth_log2 = ACC200_QMGR_AQ_DEPTH;
+		conf.q_ul_5g.num_qgroups = ACC200_QMGR_NUM_QGS;
+		conf.q_ul_5g.first_qgroup_index = ACC200_QMGR_INVALID_IDX;
+		conf.q_ul_5g.num_aqs_per_groups = ACC200_QMGR_NUM_AQS;
+		conf.q_ul_5g.aq_depth_log2 = ACC200_QMGR_AQ_DEPTH;
+		conf.q_dl_5g.num_qgroups = ACC200_QMGR_NUM_QGS;
+		conf.q_dl_5g.first_qgroup_index = ACC200_QMGR_INVALID_IDX;
+		conf.q_dl_5g.num_aqs_per_groups = ACC200_QMGR_NUM_AQS;
+		conf.q_dl_5g.aq_depth_log2 = ACC200_QMGR_AQ_DEPTH;
+		conf.q_fft.num_qgroups = ACC200_QMGR_NUM_QGS;
+		conf.q_fft.first_qgroup_index = ACC200_QMGR_INVALID_IDX;
+		conf.q_fft.num_aqs_per_groups = ACC200_QMGR_NUM_AQS;
+		conf.q_fft.aq_depth_log2 = ACC200_QMGR_AQ_DEPTH;
+
+		/* setup PF with configuration information */
+		ret = rte_acc_configure(info->dev_name, &conf);
+		TEST_ASSERT_SUCCESS(ret,
+				"Failed to configure ACC200 PF for bbdev %s",
 				info->dev_name);
 	}
 #endif

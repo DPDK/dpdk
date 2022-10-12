@@ -6,9 +6,9 @@
 #define _RTE_ACC_COMMON_CFG_H_
 
 /**
- * @file rte_acc100_cfg.h
+ * @file rte_acc_common_cfg.h
  *
- * Functions for configuring ACC100 HW, exposed directly to applications.
+ * Functions for configuring ACC HW, exposed directly to applications.
  * Configuration related to encoding/decoding is done through the
  * librte_bbdev library.
  *
@@ -23,11 +23,11 @@
 extern "C" {
 #endif
 
-/**< Number of Virtual Functions ACC300 supports */
+/**< Maximum number of Virtual Functions ACC may support */
 #define RTE_ACC_NUM_VFS 64
 
 /**
- * Definition of Queue Topology for ACC300 Configuration
+ * Definition of Queue Topology for ACC Configuration
  * Some level of details is abstracted out to expose a clean interface
  * given that comprehensive flexibility is not required
  */
@@ -54,7 +54,7 @@ struct rte_acc_queue_topology {
 };
 
 /**
- * Definition of Arbitration related parameters for ACC300 Configuration
+ * Definition of Arbitration related parameters for ACC Configuration
  */
 struct rte_acc_arbitration {
 	/** Default Weight for VF Fairness Arbitration */
@@ -64,7 +64,7 @@ struct rte_acc_arbitration {
 };
 
 /**
- * Structure to pass ACC300 configuration.
+ * Structure to pass ACC configuration.
  * Note: all VF Bundles will have the same configuration.
  */
 struct rte_acc_conf {

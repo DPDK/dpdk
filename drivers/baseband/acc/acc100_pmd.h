@@ -7,7 +7,7 @@
 
 #include "acc100_pf_enum.h"
 #include "acc100_vf_enum.h"
-#include "rte_acc100_cfg.h"
+#include "rte_acc_cfg.h"
 #include "acc_common.h"
 
 /* Helper macro for logging */

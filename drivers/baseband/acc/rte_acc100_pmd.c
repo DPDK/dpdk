@@ -23,6 +23,7 @@
 #include <rte_bbdev_pmd.h>
 #include "acc100_pmd.h"
 #include "acc101_pmd.h"
+#include "acc200_cfg.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 RTE_LOG_REGISTER_DEFAULT(acc100_logtype, DEBUG);
@@ -4638,7 +4639,7 @@ acc101_configure(const char *dev_name, struct rte_acc_conf *conf)
 }
 
 int
-rte_acc10x_configure(const char *dev_name, struct rte_acc_conf *conf)
+rte_acc_configure(const char *dev_name, struct rte_acc_conf *conf)
 {
 	struct rte_bbdev *bbdev = rte_bbdev_get_named_dev(dev_name);
 	if (bbdev == NULL) {
@@ -4650,6 +4651,8 @@ rte_acc10x_configure(const char *dev_name, struct rte_acc_conf *conf)
 	printf("Configure dev id %x\n", pci_dev->id.device_id);
 	if (pci_dev->id.device_id == ACC100_PF_DEVICE_ID)
 		return acc100_configure(dev_name, conf);
-	else
+	else if (pci_dev->id.device_id == ACC101_PF_DEVICE_ID)
 		return acc101_configure(dev_name, conf);
+	else
+		return acc200_configure(dev_name, conf);
 }

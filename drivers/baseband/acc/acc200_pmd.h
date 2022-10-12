@@ -8,6 +8,7 @@
 #include "acc_common.h"
 #include "acc200_pf_enum.h"
 #include "acc200_vf_enum.h"
+#include "acc200_cfg.h"
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \
