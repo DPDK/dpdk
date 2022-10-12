@@ -40,7 +40,6 @@
 #define DLB2_NUM_DIR_CREDITS "num_dir_credits"
 #define DEV_ID_ARG "dev_id"
 #define DLB2_QID_DEPTH_THRESH_ARG "qid_depth_thresh"
-#define DLB2_COS_ARG "cos"
 #define DLB2_POLL_INTERVAL_ARG "poll_interval"
 #define DLB2_SW_CREDIT_QUANTA_ARG "sw_credit_quanta"
 #define DLB2_HW_CREDIT_QUANTA_ARG "hw_credit_quanta"
@@ -661,7 +660,6 @@ struct dlb2_devargs {
 	int num_dir_credits_override;
 	int dev_id;
 	struct dlb2_qid_depth_thresholds qid_depth_thresholds;
-	enum dlb2_cos cos_id;
 	int poll_interval;
 	int sw_credit_quanta;
 	int hw_credit_quanta;
