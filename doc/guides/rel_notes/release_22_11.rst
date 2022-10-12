@@ -237,6 +237,12 @@ New Features
   ``rte_bbdev_enqueue_fft_ops``, ``rte_bbdev_dequeue_fft_ops``,
   and related structures.
 
+* **Added Intel ACC200 bbdev driver.**
+
+  Added a new ``acc200`` bbdev driver for the Intel\ |reg| ACC200 accelerator
+  integrated on SPR-EE.  See the
+  :doc:`../bbdevs/acc200` guide for more details on this new driver.
+
 * **Added eventdev adapter instance get API.**
 
   * Added ``rte_event_eth_rx_adapter_instance_get`` to get Rx adapter
