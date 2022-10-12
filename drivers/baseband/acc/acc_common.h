@@ -1302,4 +1302,88 @@ acc_pci_remove(struct rte_pci_device *pci_dev)
 	return 0;
 }
 
+static inline void
+acc_enqueue_status(struct rte_bbdev_queue_data *q_data,
+		enum rte_bbdev_enqueue_status status)
+{
+	q_data->enqueue_status = status;
+	q_data->queue_stats.enqueue_status_count[status]++;
+
+	rte_acc_log(WARNING, "Enqueue Status: %s %#"PRIx64"",
+			rte_bbdev_enqueue_status_str(status),
+			q_data->queue_stats.enqueue_status_count[status]);
+}
+
+static inline void
+acc_enqueue_invalid(struct rte_bbdev_queue_data *q_data)
+{
+	acc_enqueue_status(q_data, RTE_BBDEV_ENQ_STATUS_INVALID_OP);
+}
+
+static inline void
+acc_enqueue_ring_full(struct rte_bbdev_queue_data *q_data)
+{
+	acc_enqueue_status(q_data, RTE_BBDEV_ENQ_STATUS_RING_FULL);
+}
+
+static inline void
+acc_enqueue_queue_full(struct rte_bbdev_queue_data *q_data)
+{
+	acc_enqueue_status(q_data, RTE_BBDEV_ENQ_STATUS_QUEUE_FULL);
+}
+
+/* Number of available descriptor in ring to enqueue */
+static inline uint32_t
+acc_ring_avail_enq(struct acc_queue *q)
+{
+	return (q->sw_ring_depth - 1 + q->sw_ring_tail - q->sw_ring_head) & q->sw_ring_wrap_mask;
+}
+
+/* Number of available descriptor in ring to dequeue */
+static inline uint32_t
+acc_ring_avail_deq(struct acc_queue *q)
+{
+	return (q->sw_ring_depth + q->sw_ring_head - q->sw_ring_tail) & q->sw_ring_wrap_mask;
+}
+
+/* Check room in AQ for the enqueues batches into Qmgr */
+static inline int32_t
+acc_aq_avail(struct rte_bbdev_queue_data *q_data, uint16_t num_ops)
+{
+	struct acc_queue *q = q_data->queue_private;
+	int32_t aq_avail = q->aq_depth -
+			((q->aq_enqueued - q->aq_dequeued +
+			ACC_MAX_QUEUE_DEPTH) % ACC_MAX_QUEUE_DEPTH)
+			- (num_ops >> 7);
+	if (aq_avail <= 0)
+		acc_enqueue_queue_full(q_data);
+	return aq_avail;
+}
+
+/* Calculates number of CBs in processed encoder TB based on 'r' and input
+ * length.
+ */
+static inline uint8_t
+get_num_cbs_in_tb_ldpc_enc(struct rte_bbdev_op_ldpc_enc *ldpc_enc)
+{
+	uint8_t c, r, crc24_bits = 0;
+	uint16_t k = (ldpc_enc->basegraph == 1 ? 22 : 10) * ldpc_enc->z_c
+		- ldpc_enc->n_filler;
+	uint8_t cbs_in_tb = 0;
+	int32_t length;
+
+	length = ldpc_enc->input.length;
+	r = ldpc_enc->tb_params.r;
+	c = ldpc_enc->tb_params.c;
+	crc24_bits = 0;
+	if (check_bit(ldpc_enc->op_flags, RTE_BBDEV_LDPC_CRC_24B_ATTACH))
+		crc24_bits = 24;
+	while (length > 0 && r < c) {
+		length -= (k - crc24_bits) >> 3;
+		r++;
+		cbs_in_tb++;
+	}
+	return cbs_in_tb;
+}
+
 #endif /* _ACC_COMMON_H_ */
