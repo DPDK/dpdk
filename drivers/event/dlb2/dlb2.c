@@ -848,10 +848,11 @@ dlb2_hw_create_sched_domain(struct dlb2_eventdev *dlb2,
 	}
 
 	cfg->cos_strict = 0; /* Best effort */
-	cfg->num_cos_ldb_ports[0] = resources_asked->num_ldb_ports - cos_ports;
+	cfg->num_cos_ldb_ports[0] = dlb2->cos_ports[0];
 	cfg->num_cos_ldb_ports[1] = dlb2->cos_ports[1];
 	cfg->num_cos_ldb_ports[2] = dlb2->cos_ports[2];
 	cfg->num_cos_ldb_ports[3] = dlb2->cos_ports[3];
+	cfg->num_ldb_ports = resources_asked->num_ldb_ports - cos_ports;
 
 	if (device_version == DLB2_HW_V2)
 		cfg->num_ldb_credits = resources_asked->num_ldb_credits;
