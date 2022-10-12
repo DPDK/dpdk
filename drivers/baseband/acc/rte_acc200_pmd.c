@@ -727,6 +727,21 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 			.num_buffers_soft_out = 0,
 			}
 		},
+		{
+			.type	= RTE_BBDEV_OP_FFT,
+			.cap.fft = {
+				.capability_flags =
+						RTE_BBDEV_FFT_WINDOWING |
+						RTE_BBDEV_FFT_CS_ADJUSTMENT |
+						RTE_BBDEV_FFT_DFT_BYPASS |
+						RTE_BBDEV_FFT_IDFT_BYPASS |
+						RTE_BBDEV_FFT_WINDOWING_BYPASS,
+				.num_buffers_src =
+						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+				.num_buffers_dst =
+						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+			}
+		},
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
 	};
 
@@ -749,12 +764,13 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 			d->acc_conf.q_ul_5g.num_qgroups;
 	dev_info->num_queues[RTE_BBDEV_OP_LDPC_ENC] = d->acc_conf.q_dl_5g.num_aqs_per_groups *
 			d->acc_conf.q_dl_5g.num_qgroups;
-	dev_info->num_queues[RTE_BBDEV_OP_FFT] = 0;
+	dev_info->num_queues[RTE_BBDEV_OP_FFT] = d->acc_conf.q_fft.num_aqs_per_groups *
+			d->acc_conf.q_fft.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_DEC] = d->acc_conf.q_ul_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_ENC] = d->acc_conf.q_dl_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_DEC] = d->acc_conf.q_ul_5g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_ENC] = d->acc_conf.q_dl_5g.num_qgroups;
-	dev_info->queue_priority[RTE_BBDEV_OP_FFT] = 0;
+	dev_info->queue_priority[RTE_BBDEV_OP_FFT] = d->acc_conf.q_fft.num_qgroups;
 	dev_info->max_num_queues = 0;
 	for (i = RTE_BBDEV_OP_NONE; i <= RTE_BBDEV_OP_FFT; i++)
 		dev_info->max_num_queues += dev_info->num_queues[i];
@@ -2738,6 +2754,219 @@ acc200_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 	return i;
 }
 
+/* Fill in a frame control word for FFT processing. */
+static inline void
+acc200_fcw_fft_fill(struct rte_bbdev_fft_op *op, struct acc_fcw_fft *fcw)
+{
+	fcw->in_frame_size = op->fft.input_sequence_size;
+	fcw->leading_pad_size = op->fft.input_leading_padding;
+	fcw->out_frame_size = op->fft.output_sequence_size;
+	fcw->leading_depad_size = op->fft.output_leading_depadding;
+	fcw->cs_window_sel = op->fft.window_index[0] +
+			(op->fft.window_index[1] << 8) +
+			(op->fft.window_index[2] << 16) +
+			(op->fft.window_index[3] << 24);
+	fcw->cs_window_sel2 = op->fft.window_index[4] +
+			(op->fft.window_index[5] << 8);
+	fcw->cs_enable_bmap = op->fft.cs_bitmap;
+	fcw->num_antennas = op->fft.num_antennas_log2;
+	fcw->idft_size = op->fft.idft_log2;
+	fcw->dft_size = op->fft.dft_log2;
+	fcw->cs_offset = op->fft.cs_time_adjustment;
+	fcw->idft_shift = op->fft.idft_shift;
+	fcw->dft_shift = op->fft.dft_shift;
+	fcw->cs_multiplier = op->fft.ncs_reciprocal;
+	if (check_bit(op->fft.op_flags, RTE_BBDEV_FFT_IDFT_BYPASS)) {
+		if (check_bit(op->fft.op_flags, RTE_BBDEV_FFT_WINDOWING_BYPASS))
+			fcw->bypass = 2;
+		else
+			fcw->bypass = 1;
+	} else if (check_bit(op->fft.op_flags, RTE_BBDEV_FFT_DFT_BYPASS))
+		fcw->bypass = 3;
+	else
+		fcw->bypass = 0;
+}
+
+static inline int
+acc200_dma_desc_fft_fill(struct rte_bbdev_fft_op *op,
+		struct acc_dma_req_desc *desc,
+		struct rte_mbuf *input, struct rte_mbuf *output,
+		uint32_t *in_offset, uint32_t *out_offset)
+{
+	/* FCW already done. */
+	acc_header_init(desc);
+	desc->data_ptrs[1].address = rte_pktmbuf_iova_offset(input, *in_offset);
+	desc->data_ptrs[1].blen = op->fft.input_sequence_size * 4;
+	desc->data_ptrs[1].blkid = ACC_DMA_BLKID_IN;
+	desc->data_ptrs[1].last = 1;
+	desc->data_ptrs[1].dma_ext = 0;
+	desc->data_ptrs[2].address = rte_pktmbuf_iova_offset(output, *out_offset);
+	desc->data_ptrs[2].blen = op->fft.output_sequence_size * 4;
+	desc->data_ptrs[2].blkid = ACC_DMA_BLKID_OUT_HARD;
+	desc->data_ptrs[2].last = 1;
+	desc->data_ptrs[2].dma_ext = 0;
+	desc->m2dlen = 2;
+	desc->d2mlen = 1;
+	desc->ib_ant_offset = op->fft.input_sequence_size;
+	desc->num_ant = op->fft.num_antennas_log2 - 3;
+	int num_cs = 0, i;
+	for (i = 0; i < 12; i++)
+		if (check_bit(op->fft.cs_bitmap, 1 << i))
+			num_cs++;
+	desc->num_cs = num_cs;
+	desc->ob_cyc_offset = op->fft.output_sequence_size;
+	desc->ob_ant_offset = op->fft.output_sequence_size * num_cs;
+	desc->op_addr = op;
+	return 0;
+}
+
+
+/** Enqueue one FFT operation for ACC200 device. */
+static inline int
+enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
+		uint16_t total_enqueued_cbs)
+{
+	union acc_dma_desc *desc;
+	uint16_t desc_idx;
+	struct rte_mbuf *input, *output;
+	uint32_t in_offset, out_offset;
+	struct acc_fcw_fft *fcw;
+
+	desc_idx = (q->sw_ring_head + total_enqueued_cbs) & q->sw_ring_wrap_mask;
+	desc = q->ring_addr + desc_idx;
+	input = op->fft.base_input.data;
+	output = op->fft.base_output.data;
+	in_offset = op->fft.base_input.offset;
+	out_offset = op->fft.base_output.offset;
+	fcw = &desc->req.fcw_fft;
+
+	acc200_fcw_fft_fill(op, fcw);
+	acc200_dma_desc_fft_fill(op, &desc->req, input, output, &in_offset, &out_offset);
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	rte_memdump(stderr, "FCW", &desc->req.fcw_fft,
+			sizeof(desc->req.fcw_fft));
+	rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
+#endif
+	return 1;
+}
+
+/* Enqueue decode operations for ACC200 device. */
+static uint16_t
+acc200_enqueue_fft(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_fft_op **ops, uint16_t num)
+{
+	struct acc_queue *q;
+	int32_t aq_avail, avail;
+	uint16_t i;
+	union acc_dma_desc *desc;
+	int ret;
+
+	aq_avail = acc_aq_avail(q_data, num);
+	if (unlikely((aq_avail <= 0) || (num == 0)))
+		return 0;
+	q = q_data->queue_private;
+	avail = acc_ring_avail_enq(q);
+
+	for (i = 0; i < num; ++i) {
+		/* Check if there are available space for further processing. */
+		if (unlikely(avail < 1))
+			break;
+		avail -= 1;
+		ret = enqueue_fft_one_op(q, ops[i], i);
+		if (ret < 0)
+			break;
+	}
+
+	if (unlikely(i == 0))
+		return 0; /* Nothing to enqueue. */
+
+	/* Set SDone in last CB in enqueued ops for CB mode. */
+	desc = q->ring_addr + ((q->sw_ring_head + i - 1) & q->sw_ring_wrap_mask);
+
+	desc->req.sdone_enable = 1;
+	desc->req.irq_enable = q->irq_enable;
+	acc_dma_enqueue(q, i, &q_data->queue_stats);
+
+	/* Update stats */
+	q_data->queue_stats.enqueued_count += i;
+	q_data->queue_stats.enqueue_err_count += num - i;
+	return i;
+}
+
+
+/* Dequeue one FFT operations from ACC200 device. */
+static inline int
+dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
+		struct acc_queue *q, struct rte_bbdev_fft_op **ref_op,
+		uint16_t dequeued_cbs, uint32_t *aq_dequeued)
+{
+	union acc_dma_desc *desc, atom_desc;
+	union acc_dma_rsp_desc rsp;
+	struct rte_bbdev_fft_op *op;
+
+	desc = q->ring_addr + ((q->sw_ring_tail + dequeued_cbs) & q->sw_ring_wrap_mask);
+	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+
+	/* Check fdone bit */
+	if (!(atom_desc.rsp.val & ACC_FDONE))
+		return -1;
+
+	rsp.val = atom_desc.rsp.val;
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	rte_memdump(stderr, "Resp", &desc->rsp.val,
+			sizeof(desc->rsp.val));
+#endif
+	/* Dequeue. */
+	op = desc->req.op_addr;
+
+	/* Clearing status, it will be set based on response. */
+	op->status = 0;
+	op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
+	op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
+	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
+	if (op->status != 0)
+		q_data->queue_stats.dequeue_err_count++;
+
+	/* Check if this is the last desc in batch (Atomic Queue). */
+	if (desc->req.last_desc_in_batch) {
+		(*aq_dequeued)++;
+		desc->req.last_desc_in_batch = 0;
+	}
+	desc->rsp.val = ACC_DMA_DESC_TYPE;
+	desc->rsp.add_info_0 = 0;
+	*ref_op = op;
+	/* One CB (op) was successfully dequeued. */
+	return 1;
+}
+
+
+/* Dequeue FFT operations from ACC200 device. */
+static uint16_t
+acc200_dequeue_fft(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_fft_op **ops, uint16_t num)
+{
+	struct acc_queue *q = q_data->queue_private;
+	uint16_t dequeue_num, i, dequeued_cbs = 0;
+	uint32_t avail = acc_ring_avail_deq(q);
+	uint32_t aq_dequeued = 0;
+	int ret;
+
+	dequeue_num = RTE_MIN(avail, num);
+
+	for (i = 0; i < dequeue_num; ++i) {
+		ret = dequeue_fft_one_op(q_data, q, &ops[i], dequeued_cbs, &aq_dequeued);
+		if (ret <= 0)
+			break;
+		dequeued_cbs += ret;
+	}
+
+	q->aq_dequeued += aq_dequeued;
+	q->sw_ring_tail += dequeued_cbs;
+	/* Update enqueue stats. */
+	q_data->queue_stats.dequeued_count += i;
+	return i;
+}
+
 /* Initialization Function */
 static void
 acc200_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
@@ -2753,6 +2982,8 @@ acc200_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 	dev->enqueue_ldpc_dec_ops = acc200_enqueue_ldpc_dec;
 	dev->dequeue_ldpc_enc_ops = acc200_dequeue_ldpc_enc;
 	dev->dequeue_ldpc_dec_ops = acc200_dequeue_ldpc_dec;
+	dev->enqueue_fft_ops = acc200_enqueue_fft;
+	dev->dequeue_fft_ops = acc200_dequeue_fft;
 
 	((struct acc_device *) dev->data->dev_private)->pf_device =
 			!strcmp(drv->driver.name,
