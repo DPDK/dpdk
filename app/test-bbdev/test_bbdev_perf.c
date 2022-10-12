@@ -709,18 +709,18 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 #ifdef RTE_BASEBAND_ACC100
 	if ((get_init_device() == true) &&
 			(!strcmp(info->drv.driver_name, ACC100PF_DRIVER_NAME))) {
-		struct rte_acc100_conf conf;
+		struct rte_acc_conf conf;
 		unsigned int i;
 
 		printf("Configure ACC100/ACC101 FEC Driver %s with default values\n",
 				info->drv.driver_name);
 
 		/* clear default configuration before initialization */
-		memset(&conf, 0, sizeof(struct rte_acc100_conf));
+		memset(&conf, 0, sizeof(struct rte_acc_conf));
 
 		/* Always set in PF mode for built-in configuration */
 		conf.pf_mode_en = true;
-		for (i = 0; i < RTE_ACC100_NUM_VFS; ++i) {
+		for (i = 0; i < RTE_ACC_NUM_VFS; ++i) {
 			conf.arb_dl_4g[i].gbr_threshold1 = ACC100_QOS_GBR;
 			conf.arb_dl_4g[i].gbr_threshold1 = ACC100_QOS_GBR;
 			conf.arb_dl_4g[i].round_robin_weight = ACC100_QMGR_RR;
