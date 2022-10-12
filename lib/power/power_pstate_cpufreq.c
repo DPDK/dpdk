@@ -96,7 +96,7 @@ power_read_turbo_pct(uint64_t *outVal)
 
 	errno = 0;
 	*outVal = (uint64_t) strtol(val, &endptr, 10);
-	if (*endptr != 0 || errno != 0) {
+	if (errno != 0 || (*endptr != 0 && *endptr != '\n')) {
 		RTE_LOG(ERR, POWER, "Error converting str to digits, read from %s: %s\n",
 				 POWER_SYSFILE_TURBO_PCT, strerror(errno));
 		ret = -1;
