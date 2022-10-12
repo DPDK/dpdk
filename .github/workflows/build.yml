@@ -73,7 +73,7 @@ jobs:
 
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Generate cache keys
       id: get_ref_keys
       run: |
@@ -84,7 +84,7 @@ jobs:
         echo -n '::set-output name=abi::'
         echo 'abi-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-${{ env.LIBABIGAIL_VERSION }}-${{ env.REF_GIT_TAG }}'
     - name: Retrieve ccache cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.ccache
         key: ${{ steps.get_ref_keys.outputs.ccache }}-${{ github.ref }}
@@ -92,13 +92,13 @@ jobs:
           ${{ steps.get_ref_keys.outputs.ccache }}-refs/heads/main
     - name: Retrieve libabigail cache
       id: libabigail-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       if: env.ABI_CHECKS == 'true'
       with:
         path: libabigail
         key: ${{ steps.get_ref_keys.outputs.libabigail }}
     - name: Retrieve ABI reference cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       if: env.ABI_CHECKS == 'true'
       with:
         path: reference
@@ -141,7 +141,7 @@ jobs:
       run: .ci/linux-build.sh
     - name: Upload logs on failure
       if: failure()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: meson-logs-${{ join(matrix.config.*, '-') }}
         path: |
