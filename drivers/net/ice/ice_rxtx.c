@@ -1158,7 +1158,8 @@ ice_rx_queue_release(void *rxq)
 		return;
 	}
 
-	q->rx_rel_mbufs(q);
+	if (q->rx_rel_mbufs != NULL)
+		q->rx_rel_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -1356,7 +1357,8 @@ ice_tx_queue_release(void *txq)
 		return;
 	}
 
-	q->tx_rel_mbufs(q);
+	if (q->tx_rel_mbufs != NULL)
+		q->tx_rel_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
