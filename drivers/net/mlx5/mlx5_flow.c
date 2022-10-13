@@ -7028,8 +7028,8 @@ error:
 	rte_errno = ret; /* Restore rte_errno. */
 	ret = rte_errno;
 	rte_errno = ret;
-	mlx5_flow_pop_thread_workspace();
 error_before_hairpin_split:
+	mlx5_flow_pop_thread_workspace();
 	rte_free(translated_actions);
 	return 0;
 }
