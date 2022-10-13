@@ -533,6 +533,17 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 		return -ENODEV;
 	}
 
+	if (vq_idx >= (int)priv->hw_nr_virtqs) {
+		DRV_LOG(ERR, "Too big vq_idx: %d", vq_idx);
+		return -E2BIG;
+	}
+
+	if (!state && !priv->vrings[vq_idx]->enable) {
+		DRV_LOG(INFO, "VDPA device %s vid:%d  set vring %d state %d already disabled, just return",
+						priv->vdev->device->name, vid, vq_idx, state);
+		return 0;
+	}
+
 	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
 		DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", vdev->device->name, priv->lcore_id);
 		rte_eal_wait_lcore(priv->lcore_id);
@@ -541,11 +552,6 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
 		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
 		return -EINVAL;
-	}
-
-	if (vq_idx >= (int)priv->hw_nr_virtqs) {
-		DRV_LOG(ERR, "Too big vq_idx: %d", vq_idx);
-		return -E2BIG;
 	}
 
 	/* TO_DO: check if vid set here is suitable */
