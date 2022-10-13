@@ -1070,7 +1070,8 @@ iavf_configure_queues(struct iavf_adapter *adapter,
 			}
 
 			if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP &&
-			    vf->ptp_caps & VIRTCHNL_1588_PTP_CAP_RX_TSTAMP)
+			    vf->ptp_caps & VIRTCHNL_1588_PTP_CAP_RX_TSTAMP &&
+			    rxq[i]->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 				vc_qp->rxq.flags |= VIRTCHNL_PTP_RX_TSTAMP;
 		}
 #else
