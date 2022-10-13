@@ -409,7 +409,6 @@ txgbe_crypto_remove_session(void *device,
 {
 	struct rte_eth_dev *eth_dev = device;
 	struct txgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(session);
-	struct rte_mempool *mempool = rte_mempool_from_obj(ic_session);
 
 	if (eth_dev != ic_session->dev) {
 		PMD_DRV_LOG(ERR, "Session not bound to this device\n");
@@ -421,7 +420,7 @@ txgbe_crypto_remove_session(void *device,
 		return -EFAULT;
 	}
 
-	rte_mempool_put(mempool, (void *)ic_session);
+	memset(ic_session, 0, sizeof(struct txgbe_crypto_session));
 
 	return 0;
 }
