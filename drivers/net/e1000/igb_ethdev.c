@@ -2341,6 +2341,8 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
 
+	dev_info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PASSIVE;
+
 	return 0;
 }
 

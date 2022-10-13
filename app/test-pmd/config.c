@@ -921,6 +921,18 @@ port_infos_display(portid_t port_id)
 			printf("Switch Rx domain: %u\n",
 			       dev_info.switch_info.rx_domain);
 	}
+	printf("Device error handling mode: ");
+	switch (dev_info.err_handle_mode) {
+	case RTE_ETH_ERROR_HANDLE_MODE_NONE:
+		printf("none\n");
+		break;
+	case RTE_ETH_ERROR_HANDLE_MODE_PASSIVE:
+		printf("passive\n");
+		break;
+	default:
+		printf("unknown\n");
+		break;
+	}
 }
 
 void

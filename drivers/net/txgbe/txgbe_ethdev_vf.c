@@ -521,6 +521,8 @@ txgbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
 
+	dev_info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PASSIVE;
+
 	return 0;
 }
 

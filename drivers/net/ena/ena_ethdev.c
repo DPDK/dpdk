@@ -2482,6 +2482,8 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 	dev_info->default_rxportconf.ring_size = ENA_DEFAULT_RING_SIZE;
 	dev_info->default_txportconf.ring_size = ENA_DEFAULT_RING_SIZE;
 
+	dev_info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PASSIVE;
+
 	return 0;
 }
 

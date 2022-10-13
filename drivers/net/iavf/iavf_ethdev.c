@@ -1179,6 +1179,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_align = IAVF_ALIGN_RING_DESC,
 	};
 
+	dev_info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PASSIVE;
+
 	return 0;
 }
 
