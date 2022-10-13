@@ -82,6 +82,13 @@ New Features
   * Supported protocol-based buffer split using added ``proto_hdr``
     in structure ``rte_eth_rxseg_split``.
 
+* **Added proactive error handling mode for ethdev.**
+
+  Added proactive error handling mode for ethdev,
+  and three events were introduced: ``RTE_ETH_EVENT_ERR_RECOVERING``
+  to report that the port is recovering from an error,
+  ``RTE_ETH_EVENT_RECOVER_SUCCESS`` and ``RTE_ETH_EVENT_RECOVER_FAILED``.
+
 * **Added ethdev Rx/Tx descriptor dump API.**
 
   Added the ethdev Rx/Tx descriptor dump API which provides functions

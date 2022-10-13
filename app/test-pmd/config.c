@@ -929,6 +929,9 @@ port_infos_display(portid_t port_id)
 	case RTE_ETH_ERROR_HANDLE_MODE_PASSIVE:
 		printf("passive\n");
 		break;
+	case RTE_ETH_ERROR_HANDLE_MODE_PROACTIVE:
+		printf("proactive\n");
+		break;
 	default:
 		printf("unknown\n");
 		break;
