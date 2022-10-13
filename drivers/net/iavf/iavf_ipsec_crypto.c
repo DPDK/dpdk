@@ -1034,7 +1034,7 @@ iavf_ipsec_crypto_session_destroy(void *device,
 		return -EINVAL;
 
 	ret = iavf_ipsec_crypto_sa_del(adapter, iavf_sess);
-	rte_mempool_put(rte_mempool_from_obj(iavf_sess), (void *)iavf_sess);
+	memset(iavf_sess, 0, sizeof(struct iavf_security_session));
 	return ret;
 }
 
