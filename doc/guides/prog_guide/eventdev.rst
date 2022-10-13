@@ -85,7 +85,7 @@ flexibility in what the actual vector is.
 
 * ``struct rte_mbuf *mbufs[0]`` - An array of mbufs.
 * ``void *ptrs[0]`` - An array of pointers.
-* ``uint64_t *u64s[0]`` - An array of uint64_t elements.
+* ``uint64_t u64s[0]`` - An array of uint64_t elements.
 
 The size of the event vector is related to the total number of elements it is
 configured to hold, this is achieved by making `rte_event_vector` a variable
