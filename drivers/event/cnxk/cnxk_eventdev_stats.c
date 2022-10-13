@@ -103,7 +103,7 @@ static struct cnxk_sso_xstats_name sso_hwgrp_xstats[] = {
 int
 cnxk_sso_xstats_get(const struct rte_eventdev *event_dev,
 		    enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
-		    const unsigned int ids[], uint64_t values[], unsigned int n)
+		    const uint64_t ids[], uint64_t values[], unsigned int n)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	struct roc_sso_hwgrp_stats hwgrp_stats;
@@ -170,7 +170,7 @@ invalid_value:
 int
 cnxk_sso_xstats_reset(struct rte_eventdev *event_dev,
 		      enum rte_event_dev_xstats_mode mode,
-		      int16_t queue_port_id, const uint32_t ids[], uint32_t n)
+		      int16_t queue_port_id, const uint64_t ids[], uint32_t n)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	struct roc_sso_hwgrp_stats hwgrp_stats;
@@ -235,7 +235,7 @@ cnxk_sso_xstats_get_names(const struct rte_eventdev *event_dev,
 			  enum rte_event_dev_xstats_mode mode,
 			  uint8_t queue_port_id,
 			  struct rte_event_dev_xstats_name *xstats_names,
-			  unsigned int *ids, unsigned int size)
+			  uint64_t *ids, unsigned int size)
 {
 	struct rte_event_dev_xstats_name xstats_names_copy[CNXK_SSO_NUM_XSTATS];
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);

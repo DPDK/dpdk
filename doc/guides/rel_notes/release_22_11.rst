@@ -445,6 +445,11 @@ API Changes
   is renamed to ``rte_eventdev_stop_flush_t``
   to avoid conflicts with application symbols.
 
+* eventdev: The data type of the ID parameter in the functions
+  ``rte_event_dev_xstats_names_get``, ``rte_event_dev_xstats_get``,
+  ``rte_event_dev_xstats_by_name_get`` and ``rte_event_dev_xstats_reset``
+  is changed to ``uint64_t`` from ``unsigned int`` and ``uint32_t``.
+
 * metrics: Updated ``rte_metrics_init`` so it returns an error code instead
   of calling ``rte_exit``.
 

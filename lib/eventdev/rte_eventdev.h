@@ -1784,7 +1784,7 @@ rte_event_dev_xstats_names_get(uint8_t dev_id,
 			       enum rte_event_dev_xstats_mode mode,
 			       uint8_t queue_port_id,
 			       struct rte_event_dev_xstats_name *xstats_names,
-			       unsigned int *ids,
+			       uint64_t *ids,
 			       unsigned int size);
 
 /**
@@ -1817,7 +1817,7 @@ int
 rte_event_dev_xstats_get(uint8_t dev_id,
 			 enum rte_event_dev_xstats_mode mode,
 			 uint8_t queue_port_id,
-			 const unsigned int ids[],
+			 const uint64_t ids[],
 			 uint64_t values[], unsigned int n);
 
 /**
@@ -1838,7 +1838,7 @@ rte_event_dev_xstats_get(uint8_t dev_id,
  */
 uint64_t
 rte_event_dev_xstats_by_name_get(uint8_t dev_id, const char *name,
-				 unsigned int *id);
+				 uint64_t *id);
 
 /**
  * Reset the values of the xstats of the selected component in the device.
@@ -1864,7 +1864,7 @@ int
 rte_event_dev_xstats_reset(uint8_t dev_id,
 			   enum rte_event_dev_xstats_mode mode,
 			   int16_t queue_port_id,
-			   const uint32_t ids[],
+			   const uint64_t ids[],
 			   uint32_t nb_ids);
 
 /**

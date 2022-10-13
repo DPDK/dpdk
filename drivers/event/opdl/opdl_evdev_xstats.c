@@ -65,7 +65,7 @@ opdl_xstats_get_names(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode,
 		uint8_t queue_port_id,
 		struct rte_event_dev_xstats_name *xstats_names,
-		unsigned int *ids, unsigned int size)
+		uint64_t *ids, unsigned int size)
 {
 	struct opdl_evdev *device = opdl_pmd_priv(dev);
 
@@ -99,7 +99,7 @@ int
 opdl_xstats_get(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode,
 		uint8_t queue_port_id,
-		const unsigned int ids[],
+		const uint64_t ids[],
 		uint64_t values[], unsigned int n)
 {
 	struct opdl_evdev *device = opdl_pmd_priv(dev);
@@ -133,7 +133,7 @@ opdl_xstats_get(const struct rte_eventdev *dev,
 
 uint64_t
 opdl_xstats_get_by_name(const struct rte_eventdev *dev,
-		const char *name, unsigned int *id)
+		const char *name, uint64_t *id)
 {
 	struct opdl_evdev *device = opdl_pmd_priv(dev);
 
@@ -161,7 +161,7 @@ opdl_xstats_get_by_name(const struct rte_eventdev *dev,
 int
 opdl_xstats_reset(struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode,
-		int16_t queue_port_id, const uint32_t ids[],
+		int16_t queue_port_id, const uint64_t ids[],
 		uint32_t nb_ids)
 {
 	struct opdl_evdev *device = opdl_pmd_priv(dev);

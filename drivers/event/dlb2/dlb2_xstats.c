@@ -666,7 +666,7 @@ int
 dlb2_eventdev_xstats_get_names(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
 		struct rte_event_dev_xstats_name *xstats_names,
-		unsigned int *ids, unsigned int size)
+		uint64_t *ids, unsigned int size)
 {
 	const struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
 	unsigned int i;
@@ -717,7 +717,7 @@ dlb2_eventdev_xstats_get_names(const struct rte_eventdev *dev,
 static int
 dlb2_xstats_update(struct dlb2_eventdev *dlb2,
 		enum rte_event_dev_xstats_mode mode,
-		uint8_t queue_port_id, const unsigned int ids[],
+		uint8_t queue_port_id, const uint64_t ids[],
 		uint64_t values[], unsigned int n, const uint32_t reset)
 {
 	unsigned int i;
@@ -791,7 +791,7 @@ invalid_value:
 int
 dlb2_eventdev_xstats_get(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
-		const unsigned int ids[], uint64_t values[], unsigned int n)
+		const uint64_t ids[], uint64_t values[], unsigned int n)
 {
 	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
 	const uint32_t reset = 0;
@@ -802,7 +802,7 @@ dlb2_eventdev_xstats_get(const struct rte_eventdev *dev,
 
 uint64_t
 dlb2_eventdev_xstats_get_by_name(const struct rte_eventdev *dev,
-				 const char *name, unsigned int *id)
+				 const char *name, uint64_t *id)
 {
 	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
 	unsigned int i;
@@ -876,7 +876,7 @@ dlb2_xstats_reset_range(struct dlb2_eventdev *dlb2, uint32_t start,
 
 static int
 dlb2_xstats_reset_queue(struct dlb2_eventdev *dlb2, uint8_t queue_id,
-			const uint32_t ids[], uint32_t nb_ids)
+			const uint64_t ids[], uint32_t nb_ids)
 {
 	const uint32_t reset = 1;
 
@@ -898,7 +898,7 @@ dlb2_xstats_reset_queue(struct dlb2_eventdev *dlb2, uint8_t queue_id,
 
 static int
 dlb2_xstats_reset_port(struct dlb2_eventdev *dlb2, uint8_t port_id,
-		       const uint32_t ids[], uint32_t nb_ids)
+		       const uint64_t ids[], uint32_t nb_ids)
 {
 	const uint32_t reset = 1;
 	int offset = dlb2->xstats_offset_for_port[port_id];
@@ -917,14 +917,14 @@ dlb2_xstats_reset_port(struct dlb2_eventdev *dlb2, uint8_t port_id,
 }
 
 static int
-dlb2_xstats_reset_dev(struct dlb2_eventdev *dlb2, const uint32_t ids[],
+dlb2_xstats_reset_dev(struct dlb2_eventdev *dlb2, const uint64_t ids[],
 		      uint32_t nb_ids)
 {
 	uint32_t i;
 
 	if (ids) {
 		for (i = 0; i < nb_ids; i++) {
-			uint32_t id = ids[i];
+			uint64_t id = ids[i];
 
 			if (id >= dlb2->xstats_count_mode_dev)
 				return -EINVAL;
@@ -942,7 +942,7 @@ int
 dlb2_eventdev_xstats_reset(struct rte_eventdev *dev,
 			   enum rte_event_dev_xstats_mode mode,
 			   int16_t queue_port_id,
-			   const uint32_t ids[],
+			   const uint64_t ids[],
 			   uint32_t nb_ids)
 {
 	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);

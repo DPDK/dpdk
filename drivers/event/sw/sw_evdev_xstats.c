@@ -393,7 +393,7 @@ int
 sw_xstats_get_names(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
 		struct rte_event_dev_xstats_name *xstats_names,
-		unsigned int *ids, unsigned int size)
+		uint64_t *ids, unsigned int size)
 {
 	const struct sw_evdev *sw = sw_pmd_priv_const(dev);
 	unsigned int i;
@@ -444,7 +444,7 @@ sw_xstats_get_names(const struct rte_eventdev *dev,
 
 static int
 sw_xstats_update(struct sw_evdev *sw, enum rte_event_dev_xstats_mode mode,
-		uint8_t queue_port_id, const unsigned int ids[],
+		uint8_t queue_port_id, const uint64_t ids[],
 		uint64_t values[], unsigned int n, const uint32_t reset,
 		const uint32_t ret_if_n_lt_nstats)
 {
@@ -509,7 +509,7 @@ invalid_value:
 int
 sw_xstats_get(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
-		const unsigned int ids[], uint64_t values[], unsigned int n)
+		const uint64_t ids[], uint64_t values[], unsigned int n)
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
 	const uint32_t reset = 0;
@@ -520,7 +520,7 @@ sw_xstats_get(const struct rte_eventdev *dev,
 
 uint64_t
 sw_xstats_get_by_name(const struct rte_eventdev *dev,
-		const char *name, unsigned int *id)
+		const char *name, uint64_t *id)
 {
 	const struct sw_evdev *sw = sw_pmd_priv_const(dev);
 	unsigned int i;
@@ -556,7 +556,7 @@ sw_xstats_reset_range(struct sw_evdev *sw, uint32_t start, uint32_t num)
 
 static int
 sw_xstats_reset_queue(struct sw_evdev *sw, uint8_t queue_id,
-		const uint32_t ids[], uint32_t nb_ids)
+		const uint64_t ids[], uint32_t nb_ids)
 {
 	const uint32_t reset = 1;
 	const uint32_t ret_n_lt_stats = 0;
@@ -577,7 +577,7 @@ sw_xstats_reset_queue(struct sw_evdev *sw, uint8_t queue_id,
 
 static int
 sw_xstats_reset_port(struct sw_evdev *sw, uint8_t port_id,
-		const uint32_t ids[], uint32_t nb_ids)
+		const uint64_t ids[], uint32_t nb_ids)
 {
 	const uint32_t reset = 1;
 	const uint32_t ret_n_lt_stats = 0;
@@ -597,12 +597,12 @@ sw_xstats_reset_port(struct sw_evdev *sw, uint8_t port_id,
 }
 
 static int
-sw_xstats_reset_dev(struct sw_evdev *sw, const uint32_t ids[], uint32_t nb_ids)
+sw_xstats_reset_dev(struct sw_evdev *sw, const uint64_t ids[], uint32_t nb_ids)
 {
 	uint32_t i;
 	if (ids) {
 		for (i = 0; i < nb_ids; i++) {
-			uint32_t id = ids[i];
+			uint64_t id = ids[i];
 			if (id >= sw->xstats_count_mode_dev)
 				return -EINVAL;
 			sw_xstats_reset_range(sw, id, 1);
@@ -619,7 +619,7 @@ int
 sw_xstats_reset(struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode,
 		int16_t queue_port_id,
-		const uint32_t ids[],
+		const uint64_t ids[],
 		uint32_t nb_ids)
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);

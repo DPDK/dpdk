@@ -529,7 +529,7 @@ typedef void (*eventdev_dump_t)(struct rte_eventdev *dev, FILE *f);
  */
 typedef int (*eventdev_xstats_get_t)(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
-		const unsigned int ids[], uint64_t values[], unsigned int n);
+		const uint64_t ids[], uint64_t values[], unsigned int n);
 
 /**
  * Resets the statistic values in xstats for the device, based on mode.
@@ -537,7 +537,7 @@ typedef int (*eventdev_xstats_get_t)(const struct rte_eventdev *dev,
 typedef int (*eventdev_xstats_reset_t)(struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode,
 		int16_t queue_port_id,
-		const uint32_t ids[],
+		const uint64_t ids[],
 		uint32_t nb_ids);
 
 /**
@@ -564,7 +564,7 @@ typedef int (*eventdev_xstats_reset_t)(struct rte_eventdev *dev,
 typedef int (*eventdev_xstats_get_names_t)(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
 		struct rte_event_dev_xstats_name *xstats_names,
-		unsigned int *ids, unsigned int size);
+		uint64_t *ids, unsigned int size);
 
 /**
  * Get value of one stats and optionally return its id
@@ -582,7 +582,7 @@ typedef int (*eventdev_xstats_get_names_t)(const struct rte_eventdev *dev,
  *   if id pointer is non-NULL
  */
 typedef uint64_t (*eventdev_xstats_get_by_name)(const struct rte_eventdev *dev,
-		const char *name, unsigned int *id);
+		const char *name, uint64_t *id);
 
 
 /**

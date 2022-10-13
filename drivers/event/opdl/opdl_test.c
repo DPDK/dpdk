@@ -471,7 +471,7 @@ atomic_basic(struct test *t)
 	return 0;
 }
 static __rte_always_inline int
-check_qid_stats(uint32_t id[], int index)
+check_qid_stats(uint64_t id[], int index)
 {
 
 	if (index == 0) {
@@ -509,7 +509,7 @@ check_statistics(void)
 				0);
 		if (num_stats > 0) {
 
-			uint32_t id[num_stats];
+			uint64_t id[num_stats];
 			struct rte_event_dev_xstats_name names[num_stats];
 			uint64_t values[num_stats];
 

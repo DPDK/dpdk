@@ -92,7 +92,7 @@ xstats_print(void)
 {
 	const uint32_t XSTATS_MAX = 1024;
 	uint32_t i;
-	uint32_t ids[XSTATS_MAX];
+	uint64_t ids[XSTATS_MAX];
 	uint64_t values[XSTATS_MAX];
 	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
 
@@ -310,15 +310,14 @@ static inline int
 test_event_dev_stats_get(int dev_id, struct test_event_dev_stats *stats)
 {
 	static uint32_t i;
-	static uint32_t total_ids[3]; /* rx, tx and drop */
-	static uint32_t port_rx_pkts_ids[MAX_PORTS];
-	static uint32_t port_rx_dropped_ids[MAX_PORTS];
-	static uint32_t port_inflight_ids[MAX_PORTS];
-	static uint32_t port_tx_pkts_ids[MAX_PORTS];
-	static uint32_t qid_rx_pkts_ids[MAX_QIDS];
-	static uint32_t qid_rx_dropped_ids[MAX_QIDS];
-	static uint32_t qid_tx_pkts_ids[MAX_QIDS];
-
+	static uint64_t total_ids[3]; /* rx, tx and drop */
+	static uint64_t port_rx_pkts_ids[MAX_PORTS];
+	static uint64_t port_rx_dropped_ids[MAX_PORTS];
+	static uint64_t port_inflight_ids[MAX_PORTS];
+	static uint64_t port_tx_pkts_ids[MAX_PORTS];
+	static uint64_t qid_rx_pkts_ids[MAX_QIDS];
+	static uint64_t qid_rx_dropped_ids[MAX_QIDS];
+	static uint64_t qid_tx_pkts_ids[MAX_QIDS];
 
 	stats->rx_pkts = rte_event_dev_xstats_by_name_get(dev_id,
 			"dev_rx", &total_ids[0]);
@@ -863,7 +862,7 @@ xstats_tests(struct test *t)
 	const uint32_t XSTATS_MAX = 1024;
 
 	uint32_t i;
-	uint32_t ids[XSTATS_MAX];
+	uint64_t ids[XSTATS_MAX];
 	uint64_t values[XSTATS_MAX];
 	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
 
@@ -963,11 +962,10 @@ xstats_tests(struct test *t)
 	static const uint64_t expected[] = {3, 3, 0, 1, 0, 0, 4, 1};
 	for (i = 0; (signed int)i < ret; i++) {
 		if (expected[i] != values[i]) {
-			printf(
-				"%d Error xstat %d (id %d) %s : %"PRIu64
-				", expect %"PRIu64"\n",
-				__LINE__, i, ids[i], xstats_names[i].name,
-				values[i], expected[i]);
+			printf("%d Error xstat %d (id %" PRIu64
+			       ") %s : %" PRIu64 ", expect %" PRIu64 "\n",
+			       __LINE__, i, ids[i], xstats_names[i].name,
+			       values[i], expected[i]);
 			goto fail;
 		}
 	}
@@ -982,11 +980,10 @@ xstats_tests(struct test *t)
 					0, ids, values, num_stats);
 	for (i = 0; (signed int)i < ret; i++) {
 		if (expected_zero[i] != values[i]) {
-			printf(
-				"%d Error, xstat %d (id %d) %s : %"PRIu64
-				", expect %"PRIu64"\n",
-				__LINE__, i, ids[i], xstats_names[i].name,
-				values[i], expected_zero[i]);
+			printf("%d Error, xstat %d (id %" PRIu64
+			       ") %s : %" PRIu64 ", expect %" PRIu64 "\n",
+			       __LINE__, i, ids[i], xstats_names[i].name,
+			       values[i], expected_zero[i]);
 			goto fail;
 		}
 	}
@@ -1058,11 +1055,10 @@ xstats_tests(struct test *t)
 					0, ids, values, num_stats);
 	for (i = 0; (signed int)i < ret; i++) {
 		if (port_expected_zero[i] != values[i]) {
-			printf(
-				"%d, Error, xstat %d (id %d) %s : %"PRIu64
-				", expect %"PRIu64"\n",
-				__LINE__, i, ids[i], xstats_names[i].name,
-				values[i], port_expected_zero[i]);
+			printf("%d, Error, xstat %d (id %" PRIu64
+			       ") %s : %" PRIu64 ", expect %" PRIu64 "\n",
+			       __LINE__, i, ids[i], xstats_names[i].name,
+			       values[i], port_expected_zero[i]);
 			goto fail;
 		}
 	}
@@ -1095,11 +1091,10 @@ xstats_tests(struct test *t)
 	};
 	for (i = 0; (signed int)i < ret; i++) {
 		if (queue_expected[i] != values[i]) {
-			printf(
-				"%d, Error, xstat %d (id %d) %s : %"PRIu64
-				", expect %"PRIu64"\n",
-				__LINE__, i, ids[i], xstats_names[i].name,
-				values[i], queue_expected[i]);
+			printf("%d, Error, xstat %d (id %" PRIu64
+			       ") %s : %" PRIu64 ", expect %" PRIu64 "\n",
+			       __LINE__, i, ids[i], xstats_names[i].name,
+			       values[i], queue_expected[i]);
 			goto fail;
 		}
 	}
@@ -1129,11 +1124,10 @@ xstats_tests(struct test *t)
 	int fails = 0;
 	for (i = 0; (signed int)i < ret; i++) {
 		if (queue_expected_zero[i] != values[i]) {
-			printf(
-				"%d, Error, xstat %d (id %d) %s : %"PRIu64
-				", expect %"PRIu64"\n",
-				__LINE__, i, ids[i], xstats_names[i].name,
-				values[i], queue_expected_zero[i]);
+			printf("%d, Error, xstat %d (id %" PRIu64
+			       ") %s : %" PRIu64 ", expect %" PRIu64 "\n",
+			       __LINE__, i, ids[i], xstats_names[i].name,
+			       values[i], queue_expected_zero[i]);
 			fails++;
 		}
 	}
@@ -1160,7 +1154,7 @@ xstats_id_abuse_tests(struct test *t)
 	const uint32_t XSTATS_MAX = 1024;
 	const uint32_t link_port = 2;
 
-	uint32_t ids[XSTATS_MAX];
+	uint64_t ids[XSTATS_MAX];
 	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
 
 	/* Create instance with 4 ports */
@@ -1379,7 +1373,7 @@ xstats_brute_force(struct test *t)
 {
 	uint32_t i;
 	const uint32_t XSTATS_MAX = 1024;
-	uint32_t ids[XSTATS_MAX];
+	uint64_t ids[XSTATS_MAX];
 	uint64_t values[XSTATS_MAX];
 	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
 
@@ -1454,7 +1448,7 @@ xstats_id_reset_tests(struct test *t)
 #define XSTATS_MAX 1024
 	int ret;
 	uint32_t i;
-	uint32_t ids[XSTATS_MAX];
+	uint64_t ids[XSTATS_MAX];
 	uint64_t values[XSTATS_MAX];
 	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
 
@@ -1510,13 +1504,14 @@ xstats_id_reset_tests(struct test *t)
 	};
 	uint64_t dev_expected[] = {NPKTS, NPKTS, 0, 1, 0, 0, 4, 1};
 	for (i = 0; (int)i < ret; i++) {
-		unsigned int id;
+		uint64_t id;
 		uint64_t val = rte_event_dev_xstats_by_name_get(evdev,
 								dev_names[i],
 								&id);
 		if (id != i) {
-			printf("%d: %s id incorrect, expected %d got %d\n",
-					__LINE__, dev_names[i], i, id);
+			printf("%d: %s id incorrect, expected %d got %" PRIu64
+			       "\n",
+			       __LINE__, dev_names[i], i, id);
 			goto fail;
 		}
 		if (val != dev_expected[i]) {
@@ -1631,20 +1626,20 @@ xstats_id_reset_tests(struct test *t)
 
 	int failed = 0;
 	for (i = 0; (int)i < ret; i++) {
-		unsigned int id;
+		uint64_t id;
 		uint64_t val = rte_event_dev_xstats_by_name_get(evdev,
 								port_names[i],
 								&id);
 		if (id != i + PORT_OFF) {
-			printf("%d: %s id incorrect, expected %d got %d\n",
-					__LINE__, port_names[i], i+PORT_OFF,
-					id);
+			printf("%d: %s id incorrect, expected %d got %" PRIu64
+			       "\n",
+			       __LINE__, port_names[i], i + PORT_OFF, id);
 			failed = 1;
 		}
 		if (val != port_expected[i]) {
-			printf("%d: %s value incorrect, expected %"PRIu64
-				" got %d\n", __LINE__, port_names[i],
-				port_expected[i], id);
+			printf("%d: %s value incorrect, expected %" PRIu64
+			       " got %" PRIu64 "\n",
+			       __LINE__, port_names[i], port_expected[i], id);
 			failed = 1;
 		}
 		/* reset to zero */
@@ -1746,14 +1741,14 @@ xstats_id_reset_tests(struct test *t)
 
 	failed = 0;
 	for (i = 0; (int)i < ret; i++) {
-		unsigned int id;
+		uint64_t id;
 		uint64_t val = rte_event_dev_xstats_by_name_get(evdev,
 								queue_names[i],
 								&id);
 		if (id != i + QUEUE_OFF) {
-			printf("%d: %s id incorrect, expected %d got %d\n",
-					__LINE__, queue_names[i], i+QUEUE_OFF,
-					id);
+			printf("%d: %s id incorrect, expected %d got %" PRIu64
+			       "\n",
+			       __LINE__, queue_names[i], i + QUEUE_OFF, id);
 			failed = 1;
 		}
 		if (val != queue_expected[i]) {

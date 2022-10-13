@@ -1161,7 +1161,7 @@ int
 rte_event_dev_xstats_names_get(uint8_t dev_id,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
 		struct rte_event_dev_xstats_name *xstats_names,
-		unsigned int *ids, unsigned int size)
+		uint64_t *ids, unsigned int size)
 {
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
 	const int cnt_expected_entries = xstats_get_count(dev_id, mode,
@@ -1183,7 +1183,7 @@ rte_event_dev_xstats_names_get(uint8_t dev_id,
 /* retrieve eventdev extended statistics */
 int
 rte_event_dev_xstats_get(uint8_t dev_id, enum rte_event_dev_xstats_mode mode,
-		uint8_t queue_port_id, const unsigned int ids[],
+		uint8_t queue_port_id, const uint64_t ids[],
 		uint64_t values[], unsigned int n)
 {
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
@@ -1198,11 +1198,11 @@ rte_event_dev_xstats_get(uint8_t dev_id, enum rte_event_dev_xstats_mode mode,
 
 uint64_t
 rte_event_dev_xstats_by_name_get(uint8_t dev_id, const char *name,
-		unsigned int *id)
+		uint64_t *id)
 {
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, 0);
 	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
-	unsigned int temp = -1;
+	uint64_t temp = -1;
 
 	if (id != NULL)
 		*id = (unsigned int)-1;
@@ -1217,7 +1217,7 @@ rte_event_dev_xstats_by_name_get(uint8_t dev_id, const char *name,
 
 int rte_event_dev_xstats_reset(uint8_t dev_id,
 		enum rte_event_dev_xstats_mode mode, int16_t queue_port_id,
-		const uint32_t ids[], uint32_t nb_ids)
+		const uint64_t ids[], uint32_t nb_ids)
 {
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
@@ -1658,7 +1658,7 @@ eventdev_build_telemetry_data(int dev_id,
 			      struct rte_tel_data *d)
 {
 	struct rte_event_dev_xstats_name *xstat_names;
-	unsigned int *ids;
+	uint64_t *ids;
 	uint64_t *values;
 	int i, ret, num_xstats;
 

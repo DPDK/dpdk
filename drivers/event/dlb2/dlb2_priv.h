@@ -686,20 +686,20 @@ void dlb2_xstats_uninit(struct dlb2_eventdev *dlb2);
 
 int dlb2_eventdev_xstats_get(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
-		const unsigned int ids[], uint64_t values[], unsigned int n);
+		const uint64_t ids[], uint64_t values[], unsigned int n);
 
 int dlb2_eventdev_xstats_get_names(const struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
 		struct rte_event_dev_xstats_name *xstat_names,
-		unsigned int *ids, unsigned int size);
+		uint64_t *ids, unsigned int size);
 
 uint64_t dlb2_eventdev_xstats_get_by_name(const struct rte_eventdev *dev,
-					  const char *name, unsigned int *id);
+					  const char *name, uint64_t *id);
 
 int dlb2_eventdev_xstats_reset(struct rte_eventdev *dev,
 		enum rte_event_dev_xstats_mode mode,
 		int16_t queue_port_id,
-		const uint32_t ids[],
+		const uint64_t ids[],
 		uint32_t nb_ids);
 
 int test_dlb2_eventdev(void);

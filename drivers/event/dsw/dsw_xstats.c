@@ -15,8 +15,8 @@
  */
 #define DSW_XSTATS_ID_PARAM_BITS (8)
 #define DSW_XSTATS_ID_STAT_BITS					\
-	(sizeof(unsigned int)*CHAR_BIT - DSW_XSTATS_ID_PARAM_BITS)
-#define DSW_XSTATS_ID_STAT_MASK ((1 << DSW_XSTATS_ID_STAT_BITS) - 1)
+	(sizeof(uint64_t)*CHAR_BIT - DSW_XSTATS_ID_PARAM_BITS)
+#define DSW_XSTATS_ID_STAT_MASK ((UINT64_C(1) << DSW_XSTATS_ID_STAT_BITS) - 1)
 
 #define DSW_XSTATS_ID_GET_PARAM(id)		\
 	((id)>>DSW_XSTATS_ID_STAT_BITS)
@@ -25,7 +25,7 @@
 	((id) & DSW_XSTATS_ID_STAT_MASK)
 
 #define DSW_XSTATS_ID_CREATE(id, param_value)			\
-	(((param_value) << DSW_XSTATS_ID_STAT_BITS) | id)
+	((((uint64_t)param_value) << DSW_XSTATS_ID_STAT_BITS) | id)
 
 typedef
 uint64_t (*dsw_xstats_dev_get_value_fn)(struct dsw_evdev *dsw);
@@ -169,7 +169,7 @@ static struct dsw_xstats_port dsw_port_xstats[] = {
 typedef
 void (*dsw_xstats_foreach_fn)(const char *xstats_name,
 			      enum rte_event_dev_xstats_mode mode,
-			      uint8_t queue_port_id, unsigned int xstats_id,
+			      uint8_t queue_port_id, uint64_t xstats_id,
 			      void *data);
 
 static void
@@ -193,7 +193,7 @@ dsw_xstats_port_foreach(struct dsw_evdev *dsw, uint8_t port_id,
 	     stat_idx < RTE_DIM(dsw_port_xstats);) {
 		struct dsw_xstats_port *xstat = &dsw_port_xstats[stat_idx];
 		char xstats_name[RTE_EVENT_DEV_XSTATS_NAME_SIZE];
-		unsigned int xstats_id;
+		uint64_t xstats_id;
 
 		if (xstat->per_queue) {
 			xstats_id = DSW_XSTATS_ID_CREATE(stat_idx, queue_id);
@@ -219,7 +219,7 @@ dsw_xstats_port_foreach(struct dsw_evdev *dsw, uint8_t port_id,
 
 struct store_ctx {
 	struct rte_event_dev_xstats_name *names;
-	unsigned int *ids;
+	uint64_t *ids;
 	unsigned int count;
 	unsigned int capacity;
 };
@@ -227,7 +227,7 @@ struct store_ctx {
 static void
 dsw_xstats_store_stat(const char *xstats_name,
 		      enum rte_event_dev_xstats_mode mode,
-		      uint8_t queue_port_id, unsigned int xstats_id,
+		      uint8_t queue_port_id, uint64_t xstats_id,
 		      void *data)
 {
 	struct store_ctx *ctx = data;
@@ -248,7 +248,7 @@ dsw_xstats_get_names(const struct rte_eventdev *dev,
 		     enum rte_event_dev_xstats_mode mode,
 		     uint8_t queue_port_id,
 		     struct rte_event_dev_xstats_name *xstats_names,
-		     unsigned int *ids, unsigned int capacity)
+		     uint64_t *ids, unsigned int capacity)
 {
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
 
@@ -276,13 +276,13 @@ dsw_xstats_get_names(const struct rte_eventdev *dev,
 
 static int
 dsw_xstats_dev_get(const struct rte_eventdev *dev,
-		   const unsigned int ids[], uint64_t values[], unsigned int n)
+		   const uint64_t ids[], uint64_t values[], unsigned int n)
 {
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
 	unsigned int i;
 
 	for (i = 0; i < n; i++) {
-		unsigned int id = ids[i];
+		uint64_t id = ids[i];
 		struct dsw_xstat_dev *xstat = &dsw_dev_xstats[id];
 		values[i] = xstat->get_value_fn(dsw);
 	}
@@ -291,13 +291,13 @@ dsw_xstats_dev_get(const struct rte_eventdev *dev,
 
 static int
 dsw_xstats_port_get(const struct rte_eventdev *dev, uint8_t port_id,
-		    const unsigned int ids[], uint64_t values[], unsigned int n)
+		    const uint64_t ids[], uint64_t values[], unsigned int n)
 {
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
 	unsigned int i;
 
 	for (i = 0; i < n; i++) {
-		unsigned int id = ids[i];
+		uint64_t id = ids[i];
 		unsigned int stat_idx = DSW_XSTATS_ID_GET_STAT(id);
 		struct dsw_xstats_port *xstat = &dsw_port_xstats[stat_idx];
 		uint8_t queue_id = 0;
@@ -313,7 +313,7 @@ dsw_xstats_port_get(const struct rte_eventdev *dev, uint8_t port_id,
 int
 dsw_xstats_get(const struct rte_eventdev *dev,
 	       enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
-	       const unsigned int ids[], uint64_t values[], unsigned int n)
+	       const uint64_t ids[], uint64_t values[], unsigned int n)
 {
 	switch (mode) {
 	case RTE_EVENT_DEV_XSTATS_DEVICE:
@@ -332,14 +332,14 @@ dsw_xstats_get(const struct rte_eventdev *dev,
 struct find_ctx {
 	const struct rte_eventdev *dev;
 	const char *name;
-	unsigned int *id;
+	uint64_t *id;
 	uint64_t value;
 };
 
 static void
 dsw_xstats_find_stat(const char *xstats_name,
 		     enum rte_event_dev_xstats_mode mode,
-		     uint8_t queue_port_id, unsigned int xstats_id,
+		     uint8_t queue_port_id, uint64_t xstats_id,
 		     void *data)
 {
 	struct find_ctx *ctx = data;
@@ -354,7 +354,7 @@ dsw_xstats_find_stat(const char *xstats_name,
 
 uint64_t
 dsw_xstats_get_by_name(const struct rte_eventdev *dev, const char *name,
-		       unsigned int *id)
+		       uint64_t *id)
 {
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
 	uint16_t port_id;
