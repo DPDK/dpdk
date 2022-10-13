@@ -180,6 +180,10 @@ void bnxt_handle_async_event(struct bnxt *bp,
 			return;
 		}
 
+		rte_eth_dev_callback_process(bp->eth_dev,
+					     RTE_ETH_EVENT_ERR_RECOVERING,
+					     NULL);
+
 		pthread_mutex_lock(&bp->err_recovery_lock);
 		event_data = data1;
 		/* timestamp_lo/hi values are in units of 100ms */

@@ -1063,6 +1063,8 @@ found:
 	dev_info->vmdq_pool_base = 0;
 	dev_info->vmdq_queue_base = 0;
 
+	dev_info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PROACTIVE;
+
 	return 0;
 }
 
@@ -4382,13 +4384,18 @@ static void bnxt_dev_recover(void *arg)
 	PMD_DRV_LOG(INFO, "Port: %u Recovered from FW reset\n",
 		    bp->eth_dev->data->port_id);
 	pthread_mutex_unlock(&bp->err_recovery_lock);
-
+	rte_eth_dev_callback_process(bp->eth_dev,
+				     RTE_ETH_EVENT_RECOVERY_SUCCESS,
+				     NULL);
 	return;
 err_start:
 	bnxt_dev_stop(bp->eth_dev);
 err:
 	bp->flags |= BNXT_FLAG_FATAL_ERROR;
 	bnxt_uninit_resources(bp, false);
+	rte_eth_dev_callback_process(bp->eth_dev,
+				     RTE_ETH_EVENT_RECOVERY_FAILED,
+				     NULL);
 	if (bp->eth_dev->data->dev_conf.intr_conf.rmv)
 		rte_eth_dev_callback_process(bp->eth_dev,
 					     RTE_ETH_EVENT_INTR_RMV,
@@ -4559,6 +4566,10 @@ reset:
 	bnxt_stop_rxtx(bp->eth_dev);
 
 	PMD_DRV_LOG(ERR, "Detected FW dead condition\n");
+
+	rte_eth_dev_callback_process(bp->eth_dev,
+				     RTE_ETH_EVENT_ERR_RECOVERING,
+				     NULL);
 
 	if (bnxt_is_primary_func(bp))
 		wait_msec = info->primary_func_wait_period;
