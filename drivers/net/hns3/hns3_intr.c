@@ -1480,6 +1480,27 @@ static const struct hns3_hw_err_type hns3_hw_error_type[] = {
 	}
 };
 
+static void
+hns3_report_reset_begin(struct hns3_hw *hw)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_ERR_RECOVERING, NULL);
+}
+
+static void
+hns3_report_reset_success(struct hns3_hw *hw)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_RECOVERY_SUCCESS, NULL);
+}
+
+static void
+hns3_report_reset_failed(struct hns3_hw *hw)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_RECOVERY_FAILED, NULL);
+}
+
 static int
 hns3_config_ncsi_hw_err_int(struct hns3_adapter *hns, bool en)
 {
@@ -2642,6 +2663,7 @@ hns3_reset_pre(struct hns3_adapter *hns)
 	if (hw->reset.stage == RESET_STAGE_NONE) {
 		__atomic_store_n(&hns->hw.reset.resetting, 1, __ATOMIC_RELAXED);
 		hw->reset.stage = RESET_STAGE_DOWN;
+		hns3_report_reset_begin(hw);
 		ret = hw->reset.ops->stop_service(hns);
 		hns3_clock_gettime(&tv);
 		if (ret) {
@@ -2751,6 +2773,7 @@ hns3_reset_post(struct hns3_adapter *hns)
 			  hns3_clock_calctime_ms(&tv_delta),
 			  tv.tv_sec, tv.tv_usec);
 		hw->reset.level = HNS3_NONE_RESET;
+		hns3_report_reset_success(hw);
 	}
 	return 0;
 
@@ -2796,6 +2819,7 @@ hns3_reset_fail_handle(struct hns3_adapter *hns)
 		  hns3_clock_calctime_ms(&tv_delta),
 		  tv.tv_sec, tv.tv_usec);
 	hw->reset.level = HNS3_NONE_RESET;
+	hns3_report_reset_failed(hw);
 }
 
 /*

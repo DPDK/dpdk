@@ -149,6 +149,8 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 		info->max_mac_addrs = HNS3_VF_UC_MACADDR_NUM;
 	}
 
+	info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PROACTIVE;
+
 	return 0;
 }
 
