@@ -916,7 +916,7 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	nb_sqb_bufs += NIX_SQB_LIST_SPACE;
 	/* Clamp up the SQB count */
 	nb_sqb_bufs = PLT_MIN(roc_nix->max_sqb_count,
-			      PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs));
+			      (uint16_t)PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs));
 
 	sq->nb_sqb_bufs = nb_sqb_bufs;
 	sq->sqes_per_sqb_log2 = (uint16_t)plt_log2_u32(sqes_per_sqb);
