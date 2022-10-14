@@ -680,7 +680,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	first_skip += RTE_PKTMBUF_HEADROOM;
 	first_skip += rte_pktmbuf_priv_size(lpb_pool);
 	rq->first_skip = first_skip;
-	rq->later_skip = sizeof(struct rte_mbuf);
+	rq->later_skip = sizeof(struct rte_mbuf) + rte_pktmbuf_priv_size(mp);
 	rq->lpb_size = lpb_pool->elt_size;
 	if (roc_errata_nix_no_meta_aura())
 		rq->lpb_drop_ena = !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY);

@@ -682,6 +682,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		    uint64_t rearm, const uint16_t flags)
 {
 	const rte_iova_t *iova_list;
+	uint16_t later_skip = 0;
 	struct rte_mbuf *head;
 	const rte_iova_t *eol;
 	uint8_t nb_segs;
@@ -720,10 +721,11 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 	nb_segs--;
 
 	rearm = rearm & ~0xFFFF;
+	later_skip = (uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf;
 
 	head = mbuf;
 	while (nb_segs) {
-		mbuf->next = ((struct rte_mbuf *)*iova_list) - 1;
+		mbuf->next = (struct rte_mbuf *)(*iova_list - later_skip);
 		mbuf = mbuf->next;
 
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
