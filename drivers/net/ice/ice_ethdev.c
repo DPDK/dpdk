@@ -5206,7 +5206,7 @@ ice_get_module_eeprom(struct rte_eth_dev *dev,
 			}
 
 			/* Make sure we have enough room for the new block */
-			if ((i + SFF_READ_BLOCK_SIZE) < info->length)
+			if ((i + SFF_READ_BLOCK_SIZE) <= info->length)
 				memcpy(data + i, value, SFF_READ_BLOCK_SIZE);
 		}
 	}
