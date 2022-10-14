@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
+enabled_apps = get_option('enable_apps')
+disabled_apps = get_option('disable_apps')
+
 apps = [
         'dumpcap',
         'pdump',
@@ -27,7 +30,11 @@ if get_option('default_library') == 'static' and not is_windows
 endif
 
 foreach app:apps
-    build = true
+    build = enabled_apps == '' or enabled_apps.contains(app)
+    # let disabled_apps override enabled_apps
+    if disabled_apps != ''
+        build = build and not disabled_apps.contains(app)
+    endif
     name = app
     sources = []
     includes = []
@@ -40,6 +47,10 @@ foreach app:apps
     # external package/library requirements
     ext_deps = []
     deps = []
+
+    if not build
+        continue
+    endif
 
     subdir(name)
 
