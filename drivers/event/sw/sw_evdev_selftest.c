@@ -1483,6 +1483,7 @@ xstats_id_reset_tests(struct test *t)
 			goto fail;
 		}
 		ev.queue_id = t->qid[i];
+		ev.flow_id = 0;
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.mbuf = arp;
 		*rte_event_pmd_selftest_seqn(arp) = i;
