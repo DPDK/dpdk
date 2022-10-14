@@ -377,6 +377,7 @@ vdpa_sample_quit(void)
         (dev) = (tdev))
 bool rpc_start=false;
 bool eal_start=false;
+static pthread_mutex_t quit_lock;
 
 static void
 signal_handler(int signum)
@@ -387,6 +388,7 @@ signal_handler(int signum)
 
 	if (signum == SIGINT || signum == SIGTERM) {
 		printf("\nSignal %d received, preparing to exit...\n", signum);
+		pthread_mutex_lock(&quit_lock);
 		if (rpc_start)
 			vdpa_rpc_stop(&vdpa_rpc_ctx);
 
@@ -733,6 +735,8 @@ main(int argc, char *argv[])
 	if (ret != 0)
 		printf("Set sig mask fail");
 
+	pthread_mutex_init(&quit_lock, NULL);
+
 	ret = pthread_create(&thread_s,NULL,&sig_thread,(void*)&set);
 	if (ret!= 0)
 		rte_exit(EXIT_FAILURE, "sig thread create failed\n");
@@ -794,6 +798,8 @@ main(int argc, char *argv[])
 			printf("enter \'q\' to quit\n");
 		}
 	}
+
+	pthread_mutex_lock(&quit_lock);
 	vdpa_rpc_stop(&vdpa_rpc_ctx);
 	vdpa_sample_quit();
 
