@@ -595,6 +595,9 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 		ws->gw_rdata = roc_sso_hws_head_wait(ws->base);
 
 	cn10k_sso_txq_fc_wait(txq);
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		cn10k_nix_sec_fc_wait_one(txq);
+
 	roc_lmt_submit_steorl(lmt_id, pa);
 
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {

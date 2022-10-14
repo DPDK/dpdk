@@ -12,6 +12,7 @@
 /* [CN10K, .) */
 #define ROC_LMT_LINE_SZ		    128
 #define ROC_NUM_LMT_LINES	    2048
+#define ROC_LMT_LINES_PER_STR_LOG2  4
 #define ROC_LMT_LINES_PER_CORE_LOG2 5
 #define ROC_LMT_LINE_SIZE_LOG2	    7
 #define ROC_LMT_BASE_PER_CORE_LOG2                                             \

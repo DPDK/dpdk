@@ -397,7 +397,7 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 		/* DLEN passed is excluding L2 HDR */
 		pkt_len -= l2_len;
 	}
-	w0 |= nixtx;
+	w0 |= sess_priv.nixtx_off ? ((((int64_t)nixtx - (int64_t)dptr) & 0xFFFFF) << 32) : nixtx;
 	/* CPT word 0 and 1 */
 	cmd01 = vdupq_n_u64(0);
 	cmd01 = vsetq_lane_u64(w0, cmd01, 0);
@@ -539,7 +539,7 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 		sg->seg1_size = pkt_len + dlen_adj;
 		pkt_len -= l2_len;
 	}
-	w0 |= nixtx;
+	w0 |= sess_priv.nixtx_off ? ((((int64_t)nixtx - (int64_t)dptr) & 0xFFFFF) << 32) : nixtx;
 	/* CPT word 0 and 1 */
 	cmd01 = vdupq_n_u64(0);
 	cmd01 = vsetq_lane_u64(w0, cmd01, 0);
