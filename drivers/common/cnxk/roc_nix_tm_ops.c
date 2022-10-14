@@ -880,19 +880,29 @@ roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
 		TAILQ_FOREACH(sibling, list, node) {
 			if (sibling->parent != node->parent)
 				continue;
-			k += nix_tm_sw_xoff_prep(sibling, true, &req->reg[k],
-						 &req->regval[k]);
+			k += nix_tm_sw_xoff_prep(sibling, true, &req->reg[k], &req->regval[k]);
+			if (k >= MAX_REGS_PER_MBOX_MSG) {
+				req->num_regs = k;
+				rc = mbox_process(mbox);
+				if (rc)
+					return rc;
+				k = 0;
+				req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+				req->lvl = node->hw_lvl;
+			}
 		}
-		req->num_regs = k;
-		rc = mbox_process(mbox);
-		if (rc)
-			return rc;
 
-		/* Update new weight for current node */
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		if (k) {
+			req->num_regs = k;
+			rc = mbox_process(mbox);
+			if (rc)
+				return rc;
+			/* Update new weight for current node */
+			req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		}
+
 		req->lvl = node->hw_lvl;
-		req->num_regs =
-			nix_tm_sched_reg_prep(nix, node, req->reg, req->regval);
+		req->num_regs = nix_tm_sched_reg_prep(nix, node, req->reg, req->regval);
 		rc = mbox_process(mbox);
 		if (rc)
 			return rc;
@@ -905,19 +915,29 @@ roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
 		TAILQ_FOREACH(sibling, list, node) {
 			if (sibling->parent != node->parent)
 				continue;
-			k += nix_tm_sw_xoff_prep(sibling, false, &req->reg[k],
-						 &req->regval[k]);
+			k += nix_tm_sw_xoff_prep(sibling, false, &req->reg[k], &req->regval[k]);
+			if (k >= MAX_REGS_PER_MBOX_MSG) {
+				req->num_regs = k;
+				rc = mbox_process(mbox);
+				if (rc)
+					return rc;
+				k = 0;
+				req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+				req->lvl = node->hw_lvl;
+			}
 		}
-		req->num_regs = k;
-		rc = mbox_process(mbox);
-		if (rc)
-			return rc;
 
-		/* XON Parent node */
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		if (k) {
+			req->num_regs = k;
+			rc = mbox_process(mbox);
+			if (rc)
+				return rc;
+			/* XON Parent node */
+			req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		}
+
 		req->lvl = node->parent->hw_lvl;
-		req->num_regs = nix_tm_sw_xoff_prep(node->parent, false,
-						    req->reg, req->regval);
+		req->num_regs = nix_tm_sw_xoff_prep(node->parent, false, req->reg, req->regval);
 		rc = mbox_process(mbox);
 		if (rc)
 			return rc;
