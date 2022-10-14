@@ -479,6 +479,12 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 	case ROC_IE_OT_UCC_ERR_SA_OVERFLOW:
 		desc.subtype = RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW;
 		break;
+	case ROC_IE_OT_UCC_ERR_SA_EXPIRED:
+		if (sa->w2.s.life_unit == ROC_IE_OT_SA_LIFE_UNIT_PKTS)
+			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY;
+		else
+			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY;
+		break;
 	case ROC_IE_OT_UCC_ERR_PKT_IP:
 		warn_cnt++;
 		if (warn_cnt % 10000 == 0)
