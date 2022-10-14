@@ -1307,12 +1307,6 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			ol_flags3 |= nix_rx_olflags_get(lookup_mem, cq3_w1);
 		}
 
-		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf1->pool, (void **)&mbuf1, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf2->pool, (void **)&mbuf2, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf3->pool, (void **)&mbuf3, 1, 1);
-
 		/* Translate meta to mbuf */
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
 			uint64_t cq0_w5 = *CQE_PTR_OFF(cq0, 0, 40, flags);
