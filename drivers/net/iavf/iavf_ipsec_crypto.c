@@ -708,19 +708,11 @@ iavf_ipsec_crypto_action_valid(struct rte_eth_dev *ethdev,
 	if (unlikely(sess == NULL || sess->adapter != adapter))
 		return false;
 
-	/* SPI value must be non-zero */
-	if (spi == 0)
+	/* SPI value must be non-zero and must match flow SPI*/
+	if (spi == 0 || (htonl(sess->sa.spi) != spi))
 		return false;
-	/* Session SPI must patch flow SPI*/
-	else if (sess->sa.spi == spi) {
-		return true;
-		/**
-		 * TODO: We should add a way of tracking valid hw SA indices to
-		 * make validation less brittle
-		 */
-	}
 
-		return true;
+	return true;
 }
 
 /**
