@@ -1215,7 +1215,13 @@ struct nix_inline_ipsec_lf_cfg {
 struct nix_hw_info {
 	struct mbox_msghdr hdr;
 	uint16_t __io vwqe_delay;
-	uint16_t __io rsvd[15];
+	uint16_t __io max_mtu;
+	uint16_t __io min_mtu;
+	uint32_t __io rpm_dwrr_mtu;
+	uint32_t __io sdp_dwrr_mtu;
+	uint32_t __io lbk_dwrr_mtu;
+	uint32_t __io rsvd32[1];
+	uint64_t __io rsvd[15]; /* Add reserved fields for future expansion */
 };
 
 struct nix_bandprof_alloc_req {

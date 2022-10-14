@@ -644,9 +644,25 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 	return k;
 }
 
+static inline int
+nix_tm_default_rr_weight(struct nix *nix)
+{
+	struct roc_nix *roc_nix = nix_priv_to_roc_nix(nix);
+	uint32_t max_pktlen = roc_nix_max_pkt_len(roc_nix);
+	uint32_t weight;
+
+	/* Reduce TX VTAG Insertions */
+	max_pktlen -= 8;
+	weight = max_pktlen / roc_nix->dwrr_mtu;
+	if (max_pktlen % roc_nix->dwrr_mtu)
+		weight += 1;
+
+	return weight;
+}
+
 uint8_t
-nix_tm_sched_reg_prep(struct nix *nix, struct nix_tm_node *node,
-		      volatile uint64_t *reg, volatile uint64_t *regval)
+nix_tm_sched_reg_prep(struct nix *nix, struct nix_tm_node *node, volatile uint64_t *reg,
+		      volatile uint64_t *regval)
 {
 	uint64_t strict_prio = node->priority;
 	uint32_t hw_lvl = node->hw_lvl;
@@ -654,8 +670,14 @@ nix_tm_sched_reg_prep(struct nix *nix, struct nix_tm_node *node,
 	uint64_t rr_quantum;
 	uint8_t k = 0;
 
-	/* For CN9K, weight needs to be converted to quantum */
-	rr_quantum = nix_tm_weight_to_rr_quantum(node->weight);
+	/* If minimum weight not provided, then by default RR_QUANTUM
+	 * should be in sync with kernel, i.e., single MTU value
+	 */
+	if (!node->weight)
+		rr_quantum = nix_tm_default_rr_weight(nix);
+	else
+		/* For CN9K, weight needs to be converted to quantum */
+		rr_quantum = nix_tm_weight_to_rr_quantum(node->weight);
 
 	/* For children to root, strict prio is default if either
 	 * device root is TL2 or TL1 Static Priority is disabled.
@@ -666,8 +688,8 @@ nix_tm_sched_reg_prep(struct nix *nix, struct nix_tm_node *node,
 
 	plt_tm_dbg("Schedule config node %s(%u) lvl %u id %u, "
 		   "prio 0x%" PRIx64 ", rr_quantum/rr_wt 0x%" PRIx64 " (%p)",
-		   nix_tm_hwlvl2str(node->hw_lvl), schq, node->lvl, node->id,
-		   strict_prio, rr_quantum, node);
+		   nix_tm_hwlvl2str(node->hw_lvl), schq, node->lvl, node->id, strict_prio,
+		   rr_quantum, node);
 
 	switch (hw_lvl) {
 	case NIX_TXSCH_LVL_SMQ:

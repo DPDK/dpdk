@@ -256,10 +256,6 @@ nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node)
 	if (node->weight > roc_nix_tm_max_sched_wt_get())
 		return NIX_ERR_TM_WEIGHT_EXCEED;
 
-	/* Maintain minimum weight */
-	if (!node->weight)
-		node->weight = 1;
-
 	node->hw_lvl = nix_tm_lvl2nix(nix, lvl);
 	node->rr_prio = 0xF;
 	node->max_prio = UINT32_MAX;

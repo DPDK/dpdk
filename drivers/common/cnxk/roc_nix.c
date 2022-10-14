@@ -303,8 +303,15 @@ roc_nix_get_hw_info(struct roc_nix *roc_nix)
 
 	mbox_alloc_msg_nix_get_hw_info(mbox);
 	rc = mbox_process_msg(mbox, (void *)&hw_info);
-	if (rc == 0)
+	if (rc == 0) {
 		nix->vwqe_interval = hw_info->vwqe_delay;
+		if (nix->lbk_link)
+			roc_nix->dwrr_mtu = hw_info->lbk_dwrr_mtu;
+		else if (nix->sdp_link)
+			roc_nix->dwrr_mtu = hw_info->sdp_dwrr_mtu;
+		else
+			roc_nix->dwrr_mtu = hw_info->rpm_dwrr_mtu;
+	}
 
 	return rc;
 }

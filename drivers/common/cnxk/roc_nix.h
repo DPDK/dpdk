@@ -426,6 +426,7 @@ struct roc_nix {
 	uint32_t ipsec_in_min_spi;
 	uint32_t ipsec_in_max_spi;
 	uint32_t ipsec_out_max_sa;
+	uint32_t dwrr_mtu;
 	bool ipsec_out_sso_pffunc;
 	bool custom_sa_action;
 	/* End of input parameters */
