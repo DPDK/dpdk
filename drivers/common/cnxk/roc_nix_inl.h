@@ -183,7 +183,7 @@ struct roc_nix_inl_dev {
 	uint16_t wqe_skip;
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
-	bool set_soft_exp_poll;
+	uint32_t soft_exp_poll_freq; /* Polling disabled if 0 */
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
 	/* End of input parameters */
@@ -229,6 +229,7 @@ int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena,
 				       bool inb_inl_dev);
 int __roc_api roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool ena);
 int __roc_api roc_nix_inl_meta_aura_check(struct roc_nix_rq *rq);
+bool __roc_api roc_nix_has_reass_support(struct roc_nix *nix);
 
 /* NIX Inline Outbound API */
 int __roc_api roc_nix_inl_outb_init(struct roc_nix *roc_nix);

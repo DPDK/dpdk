@@ -12,6 +12,10 @@
 #define CNXK_INL_CPT_CHANNEL	      "inl_cpt_channel"
 #define CNXK_NIX_INL_NB_META_BUFS     "nb_meta_bufs"
 #define CNXK_NIX_INL_META_BUF_SZ      "meta_buf_sz"
+#define CNXK_NIX_SOFT_EXP_POLL_FREQ   "soft_exp_poll_freq"
+
+/* Default soft expiry poll freq in usec */
+#define CNXK_NIX_SOFT_EXP_POLL_FREQ_DFLT 100
 
 struct inl_cpt_channel {
 	bool is_multi_channel;
@@ -263,6 +267,7 @@ static int
 nix_inl_parse_devargs(struct rte_devargs *devargs,
 		      struct roc_nix_inl_dev *inl_dev)
 {
+	uint32_t soft_exp_poll_freq = CNXK_NIX_SOFT_EXP_POLL_FREQ_DFLT;
 	uint32_t ipsec_in_max_spi = BIT(8) - 1;
 	uint32_t ipsec_in_min_spi = 0;
 	struct inl_cpt_channel cpt_channel;
@@ -292,6 +297,8 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 			   &nb_meta_bufs);
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_META_BUF_SZ, &parse_val_u32,
 			   &meta_buf_sz);
+	rte_kvargs_process(kvlist, CNXK_NIX_SOFT_EXP_POLL_FREQ,
+			   &parse_val_u32, &soft_exp_poll_freq);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -303,6 +310,7 @@ null_devargs:
 	inl_dev->is_multi_channel = cpt_channel.is_multi_channel;
 	inl_dev->nb_meta_bufs = nb_meta_bufs;
 	inl_dev->meta_buf_sz = meta_buf_sz;
+	inl_dev->soft_exp_poll_freq = soft_exp_poll_freq;
 	return 0;
 exit:
 	return -EINVAL;
@@ -390,7 +398,6 @@ cnxk_nix_inl_dev_probe(struct rte_pci_driver *pci_drv,
 	wqe_skip = RTE_ALIGN_CEIL(sizeof(struct rte_mbuf), ROC_CACHE_LINE_SZ);
 	wqe_skip = wqe_skip / ROC_CACHE_LINE_SZ;
 	inl_dev->wqe_skip = wqe_skip;
-	inl_dev->set_soft_exp_poll = true;
 	rc = roc_nix_inl_dev_init(inl_dev);
 	if (rc) {
 		plt_err("Failed to init nix inl device, rc=%d(%s)", rc,
@@ -425,5 +432,9 @@ RTE_PMD_REGISTER_KMOD_DEP(cnxk_nix_inl, "vfio-pci");
 
 RTE_PMD_REGISTER_PARAM_STRING(cnxk_nix_inl,
 			      CNXK_NIX_INL_SELFTEST "=1"
-			      CNXK_NIX_INL_IPSEC_IN_MAX_SPI "=<1-65535>"
-			      CNXK_INL_CPT_CHANNEL "=<1-4095>/<1-4095>");
+			      CNXK_NIX_INL_IPSEC_IN_MIN_SPI "=<1-U32_MAX>"
+			      CNXK_NIX_INL_IPSEC_IN_MAX_SPI "=<1-U32_MAX>"
+			      CNXK_INL_CPT_CHANNEL "=<1-4095>/<1-4095>"
+			      CNXK_NIX_INL_NB_META_BUFS "=<1-U32_MAX>"
+			      CNXK_NIX_INL_META_BUF_SZ "=<1-U32_MAX>"
+			      CNXK_NIX_SOFT_EXP_POLL_FREQ "=<0-U32_MAX>");

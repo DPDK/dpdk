@@ -789,7 +789,6 @@ nix_inl_outb_poll_thread_setup(struct nix_inl_dev *inl_dev)
 
 	soft_exp_consumer_cnt = 0;
 	soft_exp_poll_thread_exit = false;
-	inl_dev->soft_exp_poll_freq = 100;
 	rc = plt_ctrl_thread_create(&inl_dev->soft_exp_poll_thread,
 				    "OUTB_SOFT_EXP_POLL_THREAD", NULL,
 				    nix_inl_outb_poll_thread, inl_dev);
@@ -839,10 +838,11 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->wqe_skip = roc_inl_dev->wqe_skip;
 	inl_dev->spb_drop_pc = NIX_AURA_DROP_PC_DFLT;
 	inl_dev->lpb_drop_pc = NIX_AURA_DROP_PC_DFLT;
-	inl_dev->set_soft_exp_poll = roc_inl_dev->set_soft_exp_poll;
+	inl_dev->set_soft_exp_poll = !!roc_inl_dev->soft_exp_poll_freq;
 	inl_dev->nb_rqs = inl_dev->is_multi_channel ? 1 : PLT_MAX_ETHPORTS;
 	inl_dev->nb_meta_bufs = roc_inl_dev->nb_meta_bufs;
 	inl_dev->meta_buf_sz = roc_inl_dev->meta_buf_sz;
+	inl_dev->soft_exp_poll_freq = roc_inl_dev->soft_exp_poll_freq;
 
 	if (roc_inl_dev->spb_drop_pc)
 		inl_dev->spb_drop_pc = roc_inl_dev->spb_drop_pc;
