@@ -32,6 +32,7 @@ cc = meson.get_compiler('c')
 dpdk_source_root = meson.current_source_dir()
 dpdk_build_root = meson.current_build_dir()
 dpdk_conf = configuration_data()
+dpdk_includes = []
 dpdk_libraries = []
 dpdk_static_libraries = []
 dpdk_shared_lib_deps = []

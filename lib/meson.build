@@ -189,6 +189,7 @@ foreach l:libraries
 
     libname = 'rte_' + name
     includes += include_directories(l)
+    dpdk_includes += include_directories(l)
 
     if developer_mode and is_windows and use_function_versioning
         message('@0@: Function versioning is not supported by Windows.'.format(name))

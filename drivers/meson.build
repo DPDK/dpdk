@@ -174,6 +174,10 @@ foreach subpath:subdirs
             install_headers(driver_sdk_headers)
         endif
 
+        if headers.length() > 0
+            dpdk_includes += include_directories(drv_path)
+        endif
+
         # generate pmdinfo sources by building a temporary
         # lib and then running pmdinfogen on the contents of
         # that lib. The final lib reuses the object files and
