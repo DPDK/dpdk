@@ -141,6 +141,12 @@ roc_model_is_cn96_ax(void)
 }
 
 static inline uint64_t
+roc_model_is_cn96_b0(void)
+{
+	return (roc_model->flag & ROC_MODEL_CN96xx_B0);
+}
+
+static inline uint64_t
 roc_model_is_cn96_cx(void)
 {
 	return (roc_model->flag & ROC_MODEL_CN96xx_C0);
@@ -168,6 +174,12 @@ static inline uint64_t
 roc_model_is_cnf95xxn_b0(void)
 {
 	return roc_model->flag & ROC_MODEL_CNF95xxN_B0;
+}
+
+static inline uint64_t
+roc_model_is_cnf95xxo_a0(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF95xxO_A0;
 }
 
 static inline uint16_t

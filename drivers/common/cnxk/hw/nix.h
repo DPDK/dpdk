@@ -2118,6 +2118,7 @@ struct nix_lso_format {
 #define NIX_CN9K_MAX_HW_FRS 9212UL
 #define NIX_LBK_MAX_HW_FRS  65535UL
 #define NIX_SDP_MAX_HW_FRS  65535UL
+#define NIX_SDP_16K_HW_FRS  16380UL
 #define NIX_RPM_MAX_HW_FRS  16380UL
 #define NIX_MIN_HW_FRS	    60UL
 

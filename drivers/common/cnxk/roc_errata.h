@@ -90,4 +90,12 @@ roc_errata_nix_no_meta_aura(void)
 	return roc_model_is_cn10ka_a0();
 }
 
+/* Errata IPBUNIXTX-35039 */
+static inline bool
+roc_errata_nix_sdp_send_has_mtu_size_16k(void)
+{
+	return (roc_model_is_cnf95xxn_a0() || roc_model_is_cnf95xxo_a0() ||
+		roc_model_is_cn96_a0() || roc_model_is_cn96_b0());
+}
+
 #endif /* _ROC_ERRATA_H_ */

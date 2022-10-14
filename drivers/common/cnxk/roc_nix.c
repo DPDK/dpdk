@@ -127,8 +127,11 @@ roc_nix_max_pkt_len(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 
-	if (roc_nix_is_sdp(roc_nix))
+	if (roc_nix_is_sdp(roc_nix)) {
+		if (roc_errata_nix_sdp_send_has_mtu_size_16k())
+			return NIX_SDP_16K_HW_FRS;
 		return NIX_SDP_MAX_HW_FRS;
+	}
 
 	if (roc_model_is_cn9k())
 		return NIX_CN9K_MAX_HW_FRS;
