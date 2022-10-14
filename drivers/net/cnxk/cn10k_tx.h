@@ -422,8 +422,6 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 				CNXK_ETHDEV_SEC_OUTB_EV_SUB << 20), cmd23, 0);
 	cmd23 = vsetq_lane_u64((uintptr_t)m | 1, cmd23, 1);
 
-	dptr += l2_len;
-
 	/* Move to our line */
 	laddr = LMT_OFF(lbase, *lnum, *loff ? 64 : 0);
 
@@ -563,8 +561,6 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	cmd23 = vsetq_lane_u64((((uint64_t)RTE_EVENT_TYPE_CPU << 28) | tag |
 				CNXK_ETHDEV_SEC_OUTB_EV_SUB << 20), cmd23, 0);
 	cmd23 = vsetq_lane_u64((uintptr_t)m | 1, cmd23, 1);
-
-	dptr += l2_len;
 
 	/* Move to our line */
 	laddr = LMT_OFF(lbase, *lnum, *loff ? 64 : 0);

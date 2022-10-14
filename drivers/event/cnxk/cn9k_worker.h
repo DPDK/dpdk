@@ -718,7 +718,6 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 	esn = outb_priv->esn;
 	outb_priv->esn = esn + 1;
 
-	ucode_cmd[0] |= (esn >> 32) << 16;
 	esn_lo = rte_cpu_to_be_32(esn & (BIT_ULL(32) - 1));
 	esn_hi = rte_cpu_to_be_32(esn >> 32);
 
