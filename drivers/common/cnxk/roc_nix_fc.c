@@ -52,8 +52,10 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		req->bpid_per_chan = true;
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
-		if (rc || (req->chan_cnt != rsp->chan_cnt))
+		if (rc || (req->chan_cnt != rsp->chan_cnt)) {
+			rc = -EIO;
 			goto exit;
+		}
 
 		nix->chan_cnt = rsp->chan_cnt;
 		for (i = 0; i < rsp->chan_cnt; i++)

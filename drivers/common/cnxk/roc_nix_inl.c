@@ -454,27 +454,29 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 	msk_req->rq_set.lpb_drop_ena = 0;
 	msk_req->rq_set.spb_drop_ena = 0;
 	msk_req->rq_set.xqe_drop_ena = 0;
+	msk_req->rq_set.spb_ena = 1;
 
-	msk_req->rq_mask.len_ol3_dis = ~(msk_req->rq_set.len_ol3_dis);
-	msk_req->rq_mask.len_ol4_dis = ~(msk_req->rq_set.len_ol4_dis);
-	msk_req->rq_mask.len_il3_dis = ~(msk_req->rq_set.len_il3_dis);
+	msk_req->rq_mask.len_ol3_dis = 0;
+	msk_req->rq_mask.len_ol4_dis = 0;
+	msk_req->rq_mask.len_il3_dis = 0;
 
-	msk_req->rq_mask.len_il4_dis = ~(msk_req->rq_set.len_il4_dis);
-	msk_req->rq_mask.csum_ol4_dis = ~(msk_req->rq_set.csum_ol4_dis);
-	msk_req->rq_mask.csum_il4_dis = ~(msk_req->rq_set.csum_il4_dis);
+	msk_req->rq_mask.len_il4_dis = 0;
+	msk_req->rq_mask.csum_ol4_dis = 0;
+	msk_req->rq_mask.csum_il4_dis = 0;
 
-	msk_req->rq_mask.lenerr_dis = ~(msk_req->rq_set.lenerr_dis);
-	msk_req->rq_mask.port_ol4_dis = ~(msk_req->rq_set.port_ol4_dis);
-	msk_req->rq_mask.port_il4_dis = ~(msk_req->rq_set.port_il4_dis);
+	msk_req->rq_mask.lenerr_dis = 0;
+	msk_req->rq_mask.port_ol4_dis = 0;
+	msk_req->rq_mask.port_il4_dis = 0;
 
-	msk_req->rq_mask.lpb_drop_ena = ~(msk_req->rq_set.lpb_drop_ena);
-	msk_req->rq_mask.spb_drop_ena = ~(msk_req->rq_set.spb_drop_ena);
-	msk_req->rq_mask.xqe_drop_ena = ~(msk_req->rq_set.xqe_drop_ena);
+	msk_req->rq_mask.lpb_drop_ena = 0;
+	msk_req->rq_mask.spb_drop_ena = 0;
+	msk_req->rq_mask.xqe_drop_ena = 0;
+	msk_req->rq_mask.spb_ena = 0;
 
 	aura_handle = roc_npa_zero_aura_handle();
 	msk_req->ipsec_cfg1.spb_cpt_aura = roc_npa_aura_handle_to_aura(aura_handle);
 	msk_req->ipsec_cfg1.rq_mask_enable = enable;
-	msk_req->ipsec_cfg1.spb_cpt_sizem1 = inl_cfg->buf_sz;
+	msk_req->ipsec_cfg1.spb_cpt_sizem1 = (inl_cfg->buf_sz >> 7) - 1;
 	msk_req->ipsec_cfg1.spb_cpt_enable = enable;
 
 	return mbox_process(mbox);
@@ -544,13 +546,6 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 		idev->inl_cfg.refs++;
 	}
 
-	if (roc_model_is_cn10kb_a0()) {
-		rc = nix_inl_rq_mask_cfg(roc_nix, true);
-		if (rc) {
-			plt_err("Failed to get rq mask rc=%d", rc);
-			return rc;
-		}
-	}
 	nix->inl_inb_ena = true;
 	return 0;
 }
@@ -1042,6 +1037,14 @@ roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool enable)
 
 	if (!idev)
 		return -EFAULT;
+
+	if (roc_model_is_cn10kb_a0()) {
+		rc = nix_inl_rq_mask_cfg(roc_nix, true);
+		if (rc) {
+			plt_err("Failed to get rq mask rc=%d", rc);
+			return rc;
+		}
+	}
 
 	if (nix->inb_inl_dev) {
 		if (!inl_rq || !idev->nix_inl_dev)
