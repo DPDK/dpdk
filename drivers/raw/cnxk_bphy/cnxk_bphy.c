@@ -41,6 +41,22 @@ bphy_test_handler_fn(int irq_num, void *isr_data)
 	test[irq_num].handled_data = *((int *)isr_data);
 }
 
+int
+rte_pmd_bphy_npa_pf_func_get_rmt(uint16_t *pf_func)
+{
+	*pf_func = roc_bphy_npa_pf_func_get();
+
+	return 0;
+}
+
+int
+rte_pmd_bphy_sso_pf_func_get_rmt(uint16_t *pf_func)
+{
+	*pf_func = roc_bphy_sso_pf_func_get();
+
+	return 0;
+}
+
 static int
 bphy_rawdev_selftest(uint16_t dev_id)
 {

@@ -862,6 +862,29 @@ rte_pmd_bphy_cgx_cpri_mode_misc(uint16_t dev_id, uint16_t lmac,
 	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
 }
 
+/**
+ * Obtain NPA PF func
+ *
+ * @param pf_func
+ *   Address of an NPA PF and function for NPA free pointer
+ *   requests to obtain
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+int rte_pmd_bphy_npa_pf_func_get_rmt(uint16_t *pf_func);
+
+/**
+ * Obtain SSO PF func
+ *
+ * @param pf_func
+ *   Address SSO PF and function for SSO add-work requests to obtain
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+int rte_pmd_bphy_sso_pf_func_get_rmt(uint16_t *pf_func);
+
 #ifdef __cplusplus
 }
 #endif
