@@ -15,6 +15,7 @@
 
 #define VALUE_DELIMITER ","
 #define ENTRY_DELIMITER "="
+#define FFT_WIN_SIZE 12
 
 const char *op_data_prefixes[] = {
 	"input",
@@ -214,6 +215,35 @@ op_ldpc_decoder_flag_strtoul(char *token, uint32_t *op_flag_value)
 	return 0;
 }
 
+
+/* Convert FFT flag from string to unsigned long int. */
+static int
+op_fft_flag_strtoul(char *token, uint32_t *op_flag_value)
+{
+	if (!strcmp(token, "RTE_BBDEV_FFT_WINDOWING"))
+		*op_flag_value = RTE_BBDEV_FFT_WINDOWING;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_CS_ADJUSTMENT"))
+		*op_flag_value = RTE_BBDEV_FFT_CS_ADJUSTMENT;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_DFT_BYPASS"))
+		*op_flag_value = RTE_BBDEV_FFT_DFT_BYPASS;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_IDFT_BYPASS"))
+		*op_flag_value = RTE_BBDEV_FFT_IDFT_BYPASS;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_WINDOWING_BYPASS"))
+		*op_flag_value = RTE_BBDEV_FFT_WINDOWING_BYPASS;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_POWER_MEAS"))
+		*op_flag_value = RTE_BBDEV_FFT_POWER_MEAS;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_FP16_INPUT"))
+		*op_flag_value = RTE_BBDEV_FFT_FP16_INPUT;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_FP16_OUTPUT"))
+		*op_flag_value = RTE_BBDEV_FFT_FP16_OUTPUT;
+	else {
+		printf("The given value is not a FFT flag\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 /* convert turbo encoder flag from string to unsigned long int*/
 static int
 op_encoder_flag_strtoul(char *token, uint32_t *op_flag_value)
@@ -290,6 +320,10 @@ parse_turbo_flags(char *tokens, uint32_t *op_flags,
 			if (op_ldpc_decoder_flag_strtoul(tok, &op_flag_value)
 					== -1)
 				return -1;
+		} else if (op_type == RTE_BBDEV_OP_FFT) {
+			if (op_fft_flag_strtoul(tok, &op_flag_value)
+					== -1)
+				return -1;
 		} else {
 			return -1;
 		}
@@ -317,6 +351,8 @@ op_turbo_type_strtol(char *token, enum rte_bbdev_op_type *op_type)
 		*op_type = RTE_BBDEV_OP_LDPC_ENC;
 	else if (!strcmp(token, "RTE_BBDEV_OP_LDPC_DEC"))
 		*op_type = RTE_BBDEV_OP_LDPC_DEC;
+	else if (!strcmp(token, "RTE_BBDEV_OP_FFT"))
+		*op_type = RTE_BBDEV_OP_FFT;
 	else if (!strcmp(token, "RTE_BBDEV_OP_NONE"))
 		*op_type = RTE_BBDEV_OP_NONE;
 	else {
@@ -857,6 +893,111 @@ parse_ldpc_decoder_params(const char *key_token, char *token,
 	return 0;
 }
 
+
+/* Parse FFT parameters and assigns to global variable. */
+static int
+parse_fft_params(const char *key_token, char *token,
+		struct test_bbdev_vector *vector)
+{
+	int ret = 0, status = 0, i, shift;
+	uint32_t op_flags = 0;
+	char *tok, *err = NULL;
+
+	struct rte_bbdev_op_fft *fft = &vector->fft;
+
+	if (starts_with(key_token, op_data_prefixes[DATA_INPUT])) {
+		ret = parse_data_entry(key_token, token, vector,
+				DATA_INPUT,
+				op_data_prefixes[DATA_INPUT]);
+	} else if (starts_with(key_token, "output")) {
+		ret = parse_data_entry(key_token, token, vector,
+				DATA_HARD_OUTPUT,
+				"output");
+	} else if (starts_with(key_token, "power_output")) {
+		ret = parse_data_entry(key_token, token, vector,
+				DATA_SOFT_OUTPUT,
+				"power_output");
+	} else if (!strcmp(key_token, "in_sequence_size")) {
+		fft->input_sequence_size = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "in_leading_padding")) {
+		fft->input_leading_padding = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "out_sequence_size")) {
+		fft->output_sequence_size = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "out_leading_depadding")) {
+		fft->output_leading_depadding = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "window_index")) {
+		tok = strtok(token, VALUE_DELIMITER);
+		if (tok == NULL)
+			return -1;
+		for (i = 0; i < FFT_WIN_SIZE; i++) {
+			shift = (i % 2) ? 4 : 0;
+			fft->window_index[i / 2] |= (uint32_t) strtoul(tok, &err, 0)
+					<< shift;
+			if (i < (FFT_WIN_SIZE - 1)) {
+				tok = strtok(NULL, VALUE_DELIMITER);
+				if (tok == NULL)
+					return -1;
+			}
+		}
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "cs_bitmap")) {
+		fft->cs_bitmap = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "num_antennas_log2")) {
+		fft->num_antennas_log2 = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "ifft_log2")) {
+		fft->idft_log2 = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "fft_log2")) {
+		fft->dft_log2 = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "cs_time_adjustment")) {
+		fft->cs_time_adjustment = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "ifft_shift")) {
+		fft->idft_shift = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "fft_shift")) {
+		fft->dft_shift = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "ncs_reciprocal")) {
+		fft->ncs_reciprocal = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "power_shift")) {
+		fft->power_shift = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "fp16_exponent_adjust")) {
+		fft->fp16_exp_adjust = (uint32_t) strtoul(token, &err, 0);
+		printf("%d\n", fft->fp16_exp_adjust);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "op_flags")) {
+		vector->mask |= TEST_BBDEV_VF_OP_FLAGS;
+		ret = parse_turbo_flags(token, &op_flags, vector->op_type);
+		if (!ret)
+			fft->op_flags = op_flags;
+	} else if (!strcmp(key_token, "expected_status")) {
+		vector->mask |= TEST_BBDEV_VF_EXPECTED_STATUS;
+		ret = parse_expected_status(token, &status, vector->op_type);
+		if (!ret)
+			vector->expected_status = status;
+	} else {
+		printf("Not valid fft key: '%s'\n", key_token);
+		return -1;
+	}
+
+	if (ret != 0) {
+		printf("Failed with convert '%s\t%s'\n", key_token, token);
+		return -1;
+	}
+
+	return 0;
+}
+
 /* checks the type of key and assigns data */
 static int
 parse_entry(char *entry, struct test_bbdev_vector *vector)
@@ -907,6 +1048,9 @@ parse_entry(char *entry, struct test_bbdev_vector *vector)
 			return -1;
 	} else if (vector->op_type == RTE_BBDEV_OP_LDPC_DEC) {
 		if (parse_ldpc_decoder_params(key_token, token, vector) == -1)
+			return -1;
+	} else if (vector->op_type == RTE_BBDEV_OP_FFT) {
+		if (parse_fft_params(key_token, token, vector) == -1)
 			return -1;
 	}
 
@@ -976,6 +1120,21 @@ check_ldpc_decoder_segments(struct test_bbdev_vector *vector)
 		if (vector->entries[DATA_HARQ_OUTPUT].segments[i].addr == NULL)
 			return -1;
 
+	return 0;
+}
+
+static int
+check_fft_segments(struct test_bbdev_vector *vector)
+{
+	unsigned char i;
+
+	for (i = 0; i < vector->entries[DATA_INPUT].nb_segments; i++)
+		if (vector->entries[DATA_INPUT].segments[i].addr == NULL)
+			return -1;
+
+	for (i = 0; i < vector->entries[DATA_HARD_OUTPUT].nb_segments; i++)
+		if (vector->entries[DATA_HARD_OUTPUT].segments[i].addr == NULL)
+			return -1;
 	return 0;
 }
 
@@ -1192,6 +1351,26 @@ check_ldpc_decoder(struct test_bbdev_vector *vector)
 	return 0;
 }
 
+/* Checks fft parameters. */
+static int
+check_fft(struct test_bbdev_vector *vector)
+{
+	const int mask = vector->mask;
+
+	if (check_fft_segments(vector) < 0)
+		return -1;
+
+	/* Check which params were set. */
+	if (!(mask & TEST_BBDEV_VF_OP_FLAGS)) {
+		printf(
+			"WARNING: op_flags was not specified in vector file and capabilities will not be validated\n");
+	}
+	if (!(mask & TEST_BBDEV_VF_EXPECTED_STATUS))
+		printf(
+			"WARNING: expected_status was not specified in vector file and will be set to 0\n");
+	return 0;
+}
+
 /* checks encoder parameters */
 static int
 check_encoder(struct test_bbdev_vector *vector)
@@ -1349,6 +1528,9 @@ bbdev_check_vector(struct test_bbdev_vector *vector)
 			return -1;
 	} else if (vector->op_type == RTE_BBDEV_OP_LDPC_DEC) {
 		if (check_ldpc_decoder(vector) == -1)
+			return -1;
+	} else if (vector->op_type == RTE_BBDEV_OP_FFT) {
+		if (check_fft(vector) == -1)
 			return -1;
 	} else if (vector->op_type != RTE_BBDEV_OP_NONE) {
 		printf("Vector was not filled\n");

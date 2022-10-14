@@ -798,3 +798,136 @@ Following statuses can be used:
 
     expected_status =
     OK
+
+
+FFT test vectors template
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For FFT it has to be always set to ``RTE_BBDEV_OP_FFT``
+
+.. parsed-literal::
+
+    op_type =
+    RTE_BBDEV_OP_FFT
+
+Chain of uint32_t values
+
+.. parsed-literal::
+
+    input0 =
+    0x11d2bcac, ...
+
+Chain of uint32_t values
+
+.. parsed-literal::
+
+    output0 =
+    0xd2399179, ...
+
+uint16_t value
+
+.. parsed-literal::
+
+    in_sequence_size =
+    60
+
+uint16_t value
+
+.. parsed-literal::
+
+    in_leading_padding =
+    4
+
+uint16_t value
+
+.. parsed-literal::
+
+    out_sequence_size =
+    60
+
+uint6_t value
+
+.. parsed-literal::
+
+    out_leading_depadding =
+    0
+
+List of window indexes
+
+.. parsed-literal::
+
+    window_index =
+    2, 5, 8, 11, 14, 2, 5, 8, 11, 14, 2, 5
+
+uint8_t value
+
+.. parsed-literal::
+
+    num_antennas_log2 =
+    3
+
+uint8_t value
+
+.. parsed-literal::
+
+    ifft_log2 =
+    6
+
+uint8_t value
+
+.. parsed-literal::
+
+    fft_log2 =
+    6
+
+uint8_t value
+
+.. parsed-literal::
+
+    cs_time_adjustment =
+    0
+
+uint8_t value
+
+.. parsed-literal::
+
+    ifft_shift =
+    3
+
+uint8_t value
+
+.. parsed-literal::
+
+    fft_shift =
+    3
+
+uint16_t value
+
+.. parsed-literal::
+
+    ncs_reciprocal =
+    5461
+
+Chain of flags for FFT operation based on the
+rte_bbdev_op_fft_flag_bitmasks:
+
+.. parsed-literal::
+
+    op_flags =
+    RTE_BBDEV_FFT_CS_ADJUSTMENT, RTE_BBDEV_FFT_WINDOWING
+
+Chain of operation statuses that are expected after operation is performed.
+Following statuses can be used:
+
+- ``DMA``
+
+- ``FCW``
+
+- ``OK``
+
+``OK`` means no errors are expected. Cannot be used with other values.
+
+.. parsed-literal::
+
+    expected_status =
+    OK
