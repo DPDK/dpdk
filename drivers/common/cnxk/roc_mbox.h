@@ -1164,10 +1164,10 @@ struct nix_bp_cfg_req {
 	/* bpid_per_chan = 1 assigns separate bp id for each channel */
 };
 
-/* PF can be mapped to either CGX or LBK interface,
- * so maximum 64 channels are possible.
+/* PF can be mapped to either CGX or LBK or SDP interface,
+ * so maximum 256 channels are possible.
  */
-#define NIX_MAX_CHAN	 64
+#define NIX_MAX_CHAN	 256
 #define NIX_CGX_MAX_CHAN 16
 #define NIX_LBK_MAX_CHAN 1
 struct nix_bp_cfg_rsp {

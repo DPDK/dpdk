@@ -436,7 +436,7 @@ struct roc_nix {
 	bool rx_ptp_ena;
 	uint16_t cints;
 
-#define ROC_NIX_MEM_SZ (6 * 1024)
+#define ROC_NIX_MEM_SZ (6 * 1056)
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 
