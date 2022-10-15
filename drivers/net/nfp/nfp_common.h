@@ -14,6 +14,8 @@
 #ifndef _NFP_COMMON_H_
 #define _NFP_COMMON_H_
 
+#include "nfp_ctrl.h"
+
 #define NFP_NET_PMD_VERSION "0.1"
 #define PCI_VENDOR_ID_NETRONOME         0x19ee
 #define PCI_VENDOR_ID_CORIGINE          0x1da8
@@ -208,6 +210,9 @@ struct nfp_net_hw {
 
 	int stride_rx;
 	int stride_tx;
+
+	uint16_t vxlan_ports[NFP_NET_N_VXLAN_PORTS];
+	uint8_t vxlan_usecnt[NFP_NET_N_VXLAN_PORTS];
 
 	uint8_t *qcp_cfg;
 	rte_spinlock_t reconfig_lock;
@@ -438,6 +443,7 @@ void nfp_net_stop_rx_queue(struct rte_eth_dev *dev);
 void nfp_net_close_rx_queue(struct rte_eth_dev *dev);
 void nfp_net_stop_tx_queue(struct rte_eth_dev *dev);
 void nfp_net_close_tx_queue(struct rte_eth_dev *dev);
+int nfp_net_set_vxlan_port(struct nfp_net_hw *hw, size_t idx, uint16_t port);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)
