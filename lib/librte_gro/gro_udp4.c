@@ -221,6 +221,11 @@ gro_udp4_reassemble(struct rte_mbuf *pkt,
 	if (!is_ipv4_fragment(ipv4_hdr))
 		return -1;
 
+	ip_dl = rte_be_to_cpu_16(ipv4_hdr->total_length);
+	/* trim the tail padding bytes */
+	if (pkt->pkt_len > (uint32_t)(ip_dl + pkt->l2_len))
+		rte_pktmbuf_trim(pkt, pkt->pkt_len - ip_dl - pkt->l2_len);
+
 	/*
 	 * Don't process the packet whose payload length is less than or
 	 * equal to 0.
@@ -228,13 +233,8 @@ gro_udp4_reassemble(struct rte_mbuf *pkt,
 	if (pkt->pkt_len <= hdr_len)
 		return -1;
 
-	ip_dl = rte_be_to_cpu_16(ipv4_hdr->total_length);
 	if (ip_dl <= pkt->l3_len)
 		return -1;
-
-	/* trim the tail padding bytes */
-	if (pkt->pkt_len > (uint32_t)(ip_dl + pkt->l2_len))
-		rte_pktmbuf_trim(pkt, pkt->pkt_len - ip_dl - pkt->l2_len);
 
 	ip_dl -= pkt->l3_len;
 	ip_id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
