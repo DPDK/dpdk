@@ -226,6 +226,12 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	 */
 	if (tcp_hdr->tcp_flags != RTE_TCP_ACK_FLAG)
 		return -1;
+
+	/* trim the tail padding bytes */
+	ip_tlen = rte_be_to_cpu_16(ipv4_hdr->total_length);
+	if (pkt->pkt_len > (uint32_t)(ip_tlen + pkt->l2_len))
+		rte_pktmbuf_trim(pkt, pkt->pkt_len - ip_tlen - pkt->l2_len);
+
 	/*
 	 * Don't process the packet whose payload length is less than or
 	 * equal to 0.
@@ -233,11 +239,6 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	tcp_dl = pkt->pkt_len - hdr_len;
 	if (tcp_dl <= 0)
 		return -1;
-
-	/* trim the tail padding bytes */
-	ip_tlen = rte_be_to_cpu_16(ipv4_hdr->total_length);
-	if (pkt->pkt_len > (uint32_t)(ip_tlen + pkt->l2_len))
-		rte_pktmbuf_trim(pkt, pkt->pkt_len - ip_tlen - pkt->l2_len);
 
 	/*
 	 * Save IPv4 ID for the packet whose DF bit is 0. For the packet
