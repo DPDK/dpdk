@@ -271,6 +271,12 @@ The following is an overview of some key Vhost API functions:
   Poll enqueue completion status from async data path. Completed packets
   are returned to applications through ``pkts``.
 
+* ``rte_vhost_vring_call_nonblock(int vid, uint16_t vring_idx)``
+
+  Notify the guest that used descriptors have been added to the vring. This function
+  will return -EAGAIN when vq's access lock is held by other thread, user should try
+  again later.
+
 Vhost-user Implementations
 --------------------------
 
