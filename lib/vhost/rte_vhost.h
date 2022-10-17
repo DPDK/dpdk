@@ -910,6 +910,21 @@ rte_vhost_clr_inflight_desc_packed(int vid, uint16_t vring_idx,
 int rte_vhost_vring_call(int vid, uint16_t vring_idx);
 
 /**
+ * Notify the guest that used descriptors have been added to the vring.  This
+ * function acts as a memory barrier.  This function will return -EAGAIN when
+ * vq's access lock is held by other thread, user should try again later.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @return
+ *  0 on success, -1 on failure, -EAGAIN for another retry
+ */
+__rte_experimental
+int rte_vhost_vring_call_nonblock(int vid, uint16_t vring_idx);
+
+/**
  * Get vhost RX queue avail count.
  *
  * @param vid

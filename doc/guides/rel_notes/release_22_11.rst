@@ -188,6 +188,12 @@ New Features
   Added support to unconfigure DMA vChannel that is no longer used
   by the vhost library.
 
+* **Added non-blocking notify API to vhost library.**
+
+  Added ``rte_vhost_vring_call_nonblock`` API to notify the guest that
+  used descriptors have been added to the vring in non-blocking way.
+  User should check the return value of this API and try again if needed.
+
 * **Added support for MACsec in rte_security.**
 
   Added MACsec transform for rte_security session and added new API
