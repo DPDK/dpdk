@@ -324,13 +324,6 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 			goto set_hsplit_finish;
 		}
 
-		switch (proto_hdr & RTE_PTYPE_TUNNEL_MASK) {
-		case RTE_PTYPE_TUNNEL_GRENAT:
-			rx_ctx.dtype = ICE_RX_DTYPE_HEADER_SPLIT;
-			rx_ctx.hsplit_1 = ICE_RLAN_RX_HSPLIT_1_SPLIT_ALWAYS;
-			goto set_hsplit_finish;
-		}
-
 		switch (proto_hdr & RTE_PTYPE_INNER_L4_MASK) {
 		case RTE_PTYPE_INNER_L4_TCP:
 		case RTE_PTYPE_INNER_L4_UDP:
@@ -355,6 +348,13 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 		case RTE_PTYPE_INNER_L2_ETHER:
 			rx_ctx.dtype = ICE_RX_DTYPE_HEADER_SPLIT;
 			rx_ctx.hsplit_0 = ICE_RLAN_RX_HSPLIT_0_SPLIT_L2;
+			goto set_hsplit_finish;
+		}
+
+		switch (proto_hdr & RTE_PTYPE_TUNNEL_MASK) {
+		case RTE_PTYPE_TUNNEL_GRENAT:
+			rx_ctx.dtype = ICE_RX_DTYPE_HEADER_SPLIT;
+			rx_ctx.hsplit_1 = ICE_RLAN_RX_HSPLIT_1_SPLIT_ALWAYS;
 			goto set_hsplit_finish;
 		}
 
