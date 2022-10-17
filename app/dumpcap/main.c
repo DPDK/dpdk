@@ -64,6 +64,8 @@ static const char *capture_comment;
 static uint32_t snaplen = RTE_MBUF_DEFAULT_BUF_SIZE;
 static bool dump_bpf;
 static bool show_interfaces;
+static bool select_interfaces;
+const char *interface_arg;
 
 static struct {
 	uint64_t  duration;	/* nanoseconds */
@@ -370,7 +372,8 @@ static void parse_opts(int argc, char **argv)
 			usage();
 			exit(0);
 		case 'i':
-			select_interface(optarg);
+			select_interfaces = true;
+			interface_arg = optarg;
 			break;
 		case 'n':
 			use_pcapng = true;
@@ -801,6 +804,9 @@ int main(int argc, char **argv)
 
 	if (rte_eth_dev_count_avail() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports found\n");
+
+	if (select_interfaces)
+		select_interface(interface_arg);
 
 	if (filter_str)
 		compile_filter();
