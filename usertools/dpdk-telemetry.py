@@ -23,7 +23,7 @@ DEFAULT_PREFIX = 'rte'
 CMDS = []
 
 
-def read_socket(sock, buf_len, echo=True):
+def read_socket(sock, buf_len, echo=True, pretty=False):
     """ Read data from socket and return it in JSON format """
     reply = sock.recv(buf_len).decode()
     try:
@@ -33,7 +33,8 @@ def read_socket(sock, buf_len, echo=True):
         sock.close()
         raise
     if echo:
-        print(json.dumps(ret))
+        indent = 2 if pretty else None
+        print(json.dumps(ret, indent=indent))
     return ret
 
 
@@ -127,7 +128,7 @@ def handle_socket(args, path):
         else:
             list_fp()
         return
-    json_reply = read_socket(sock, 1024, prompt)
+    json_reply = read_socket(sock, 1024, prompt, prompt)
     output_buf_len = json_reply["max_output_len"]
     app_name = get_app_name(json_reply["pid"])
     if app_name and prompt:
@@ -143,7 +144,7 @@ def handle_socket(args, path):
         while text != "quit":
             if text.startswith('/'):
                 sock.send(text.encode())
-                read_socket(sock, output_buf_len)
+                read_socket(sock, output_buf_len, pretty=prompt)
             text = input(prompt).strip()
     except EOFError:
         pass
