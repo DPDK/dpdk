@@ -330,11 +330,16 @@ parse_test_gcm_json_writeback(struct fips_val *val)
 				json_object_set_new(json_info.json_write_case, PT_JSON_STR,
 					json_string(info.one_line_text));
 			} else {
-				json_object_set_new(json_info.json_write_case, PT_JSON_STR,
-					json_string(""));
+				json_object_set_new(json_info.json_write_case, "testPassed",
+					json_true());
 			}
 		} else {
-			json_object_set_new(json_info.json_write_case, "testPassed", json_false());
+			if (!info.interim_info.gcm_data.is_gmac)
+				json_object_set_new(json_info.json_write_case, PT_JSON_STR,
+					json_string(""));
+			else
+				json_object_set_new(json_info.json_write_case, "testPassed",
+					json_false());
 		}
 	}
 
