@@ -35,21 +35,12 @@ jobs:
         config:
           - os: ubuntu-20.04
             compiler: gcc
-            library: static
-          - os: ubuntu-20.04
-            compiler: gcc
-            library: shared
             mini: mini
           - os: ubuntu-20.04
             compiler: gcc
-            library: shared
             checks: doc+tests
           - os: ubuntu-20.04
             compiler: clang
-            library: static
-          - os: ubuntu-20.04
-            compiler: clang
-            library: shared
             checks: asan+doc+tests
           - os: ubuntu-20.04
             compiler: gcc
@@ -61,23 +52,12 @@ jobs:
             cross: mingw
           - os: ubuntu-20.04
             compiler: gcc
-            library: static
             cross: aarch64
           - os: ubuntu-20.04
             compiler: gcc
-            library: shared
-            cross: aarch64
-          - os: ubuntu-20.04
-            compiler: gcc
-            library: static
             cross: ppc64le
           - os: ubuntu-20.04
             compiler: gcc
-            library: shared
-            cross: ppc64le
-          - os: ubuntu-20.04
-            compiler: gcc
-            library: shared
             cross: riscv64
 
     steps:
@@ -222,16 +202,8 @@ jobs:
         config:
           - image: fedora:35
             compiler: gcc
-            library: static
-          - image: fedora:35
-            compiler: gcc
-            library: shared
           - image: fedora:35
             compiler: clang
-            library: static
-          - image: fedora:35
-            compiler: clang
-            library: shared
 
     steps:
     - name: Checkout sources

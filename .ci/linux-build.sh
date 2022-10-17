@@ -1,5 +1,11 @@
 #!/bin/sh -xe
 
+if [ -z "${DEF_LIB:-}" ]; then
+    DEF_LIB=static ABI_CHECKS= BUILD_DOCS= RUN_TESTS= $0
+    DEF_LIB=shared $0
+    exit
+fi
+
 # Builds are run as root in containers, no need for sudo
 [ "$(id -u)" != '0' ] || alias sudo=
 
@@ -78,10 +84,6 @@ if [ "$RISCV64" = "true" ]; then
     cross_file=config/riscv/riscv64_linux_gcc
 fi
 
-if [ -n "$cross_file" ]; then
-    OPTS="$OPTS --cross-file $cross_file"
-fi
-
 if [ "$BUILD_DOCS" = "true" ]; then
     OPTS="$OPTS -Denable_docs=true"
 fi
@@ -101,8 +103,8 @@ else
 fi
 
 OPTS="$OPTS -Dplatform=generic"
-OPTS="$OPTS --default-library=$DEF_LIB"
-OPTS="$OPTS --buildtype=debugoptimized"
+OPTS="$OPTS -Ddefault_library=$DEF_LIB"
+OPTS="$OPTS -Dbuildtype=debugoptimized"
 OPTS="$OPTS -Dcheck_includes=true"
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
@@ -118,7 +120,16 @@ if [ "$ASAN" = "true" ]; then
     fi
 fi
 
-meson build --werror $OPTS
+OPTS="$OPTS -Dwerror=true"
+
+if [ -d build ]; then
+    meson configure build $OPTS
+else
+    if [ -n "$cross_file" ]; then
+        OPTS="$OPTS --cross-file $cross_file"
+    fi
+    meson setup build $OPTS
+fi
 ninja -C build
 
 if [ -z "$cross_file" ]; then
