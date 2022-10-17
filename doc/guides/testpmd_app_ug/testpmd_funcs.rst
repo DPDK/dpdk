@@ -1553,8 +1553,8 @@ Enable or disable a per port Rx offloading on all Rx queues of a port::
 * ``offloading``: can be any of these offloading capability:
                   vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
                   qinq_strip, outer_ipv4_cksum, macsec_strip,
-                  vlan_filter, vlan_extend, jumbo_frame,
-                  scatter, timestamp, security, keep_crc, rss_hash
+                  vlan_filter, vlan_extend, scatter, timestamp, security,
+                  keep_crc, rss_hash
 
 This command should be run when the port is stopped, or else it will fail.
 
@@ -1568,8 +1568,8 @@ Enable or disable a per queue Rx offloading only on a specific Rx queue::
 * ``offloading``: can be any of these offloading capability:
                   vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
                   qinq_strip, outer_ipv4_cksum, macsec_strip,
-                  vlan_filter, vlan_extend, jumbo_frame,
-                  scatter, timestamp, security, keep_crc
+                  vlan_filter, vlan_extend, scatter, timestamp, security,
+                  keep_crc
 
 This command should be run when the port is stopped, or else it will fail.
 
