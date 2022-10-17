@@ -793,7 +793,8 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 			vq_update_avail_idx(vq);
 	}
 
-	PMD_INIT_LOG(DEBUG, "Allocated %d bufs", nbufs);
+	PMD_INIT_LOG(DEBUG, "Allocated %d bufs (port=%u queue=%u)", nbufs,
+		     dev->data->port_id, queue_idx);
 
 	VIRTQUEUE_DUMP(vq);
 

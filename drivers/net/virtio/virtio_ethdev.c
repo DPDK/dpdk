@@ -2814,7 +2814,8 @@ virtio_dev_start(struct rte_eth_dev *dev)
 			return -EINVAL;
 	}
 
-	PMD_INIT_LOG(DEBUG, "nb_queues=%d", nb_queues);
+	PMD_INIT_LOG(DEBUG, "nb_queues=%u (port=%u)", nb_queues,
+		     dev->data->port_id);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		vq = virtnet_rxq_to_vq(dev->data->rx_queues[i]);
@@ -2828,7 +2829,8 @@ virtio_dev_start(struct rte_eth_dev *dev)
 		virtqueue_notify(vq);
 	}
 
-	PMD_INIT_LOG(DEBUG, "Notified backend at initialization");
+	PMD_INIT_LOG(DEBUG, "Notified backend at initialization (port=%u)",
+		     dev->data->port_id);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		vq = virtnet_rxq_to_vq(dev->data->rx_queues[i]);
