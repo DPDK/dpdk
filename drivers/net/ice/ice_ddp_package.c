@@ -3,6 +3,8 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
@@ -10,6 +12,7 @@
 
 #include "ice_ethdev.h"
 
+#define ICE_BLK_MAX_COUNT          512
 #define ICE_BUFF_SEG_HEADER_FLAG   0x1
 #define ICE_PKG_HDR_HEADR_PART1    1
 #define ICE_PKG_HDR_HEADR_PART2    2
@@ -416,4 +419,94 @@ int rte_pmd_ice_dump_package(uint16_t port, uint8_t **buff, uint32_t *size)
 		return -ENOTSUP;
 
 	return ice_dump_pkg(dev, buff, size);
+}
+
+static uint16_t
+covert_byte_to_hex(uint8_t **outbuf, const uint8_t *inbuf, uint32_t inbuf_size)
+{
+	uint32_t i;
+	uint8_t *buffer = *outbuf;
+	for (i = 0; i < inbuf_size; ++i)
+		sprintf((char *)(buffer + i * 2), "%02X", inbuf[i]);
+
+	return inbuf_size * 2;
+}
+
+static int
+ice_dump_switch(struct rte_eth_dev *dev, uint8_t **buff2, uint32_t *size)
+{
+	struct ice_hw *hw;
+	int i = 0;
+	uint16_t tbl_id = 0;
+	uint32_t tbl_idx = 0;
+	int tbl_cnt = 0;
+	uint8_t *buffer = *buff2;
+
+	hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* table index string format: "0000:" */
+	#define TBL_IDX_STR_SIZE 7
+	for (i = 0; i < ICE_BLK_MAX_COUNT; i++) {
+		int res;
+		uint16_t buff_size;
+		uint8_t *buff;
+		uint32_t offset = 0;
+
+		buff = malloc(ICE_PKG_BUF_SIZE);
+		if (!buff)
+			return ICE_ERR_NO_MEMORY;
+
+		if (tbl_idx == 0) {
+			char tbl_idx_str[TBL_IDX_STR_SIZE];
+			memset(tbl_idx_str, 0, sizeof(tbl_idx_str));
+			sprintf(tbl_idx_str, "%d:", tbl_id);
+			memcpy(buffer, tbl_idx_str, strlen(tbl_idx_str));
+			offset = strlen(tbl_idx_str);
+			buffer += offset;
+		}
+
+		res = ice_aq_get_internal_data(hw,
+			ICE_AQC_DBG_DUMP_CLUSTER_ID_SW,
+			tbl_id, tbl_idx, buff,
+			ICE_PKG_BUF_SIZE,
+			&buff_size, &tbl_id, &tbl_idx, NULL);
+
+		if (res) {
+			free(buff);
+			return res;
+		}
+
+		offset = covert_byte_to_hex(&buffer, buff, buff_size);
+		buffer += offset;
+
+		free(buff);
+
+		tbl_cnt++;
+		if (tbl_idx == 0xffffffff) {
+			tbl_idx = 0;
+			tbl_cnt = 0;
+			memset(buffer, '\n', sizeof(char));
+			buffer++;
+			offset = 0;
+		}
+
+		if (tbl_id == 0xff)
+			break;
+	}
+
+	*size = buffer - *buff2;
+	return 0;
+}
+
+int rte_pmd_ice_dump_switch(uint16_t port, uint8_t **buff, uint32_t *size)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	if (!is_ice_supported(dev))
+		return -ENOTSUP;
+
+	return ice_dump_switch(dev, buff, size);
 }
