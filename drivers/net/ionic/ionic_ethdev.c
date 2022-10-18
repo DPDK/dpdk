@@ -1082,14 +1082,16 @@ ionic_configure_intr(struct ionic_adapter *adapter)
 		return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle))
+	if (rte_intr_dp_is_en(intr_handle)) {
 		IONIC_PRINT(DEBUG,
 			"Packet I/O interrupt on datapath is enabled");
 
-	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec", adapter->nintrs)) {
-		IONIC_PRINT(ERR, "Failed to allocate %u vectors",
-			    adapter->nintrs);
-		return -ENOMEM;
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						adapter->nintrs)) {
+			IONIC_PRINT(ERR, "Failed to allocate %u vectors",
+				adapter->nintrs);
+			return -ENOMEM;
+		}
 	}
 
 	err = rte_intr_callback_register(intr_handle,
