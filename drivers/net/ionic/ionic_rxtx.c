@@ -1274,3 +1274,54 @@ ionic_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 
 	return RTE_ETH_RX_DESC_AVAIL;
 }
+
+int
+ionic_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct ionic_tx_qcq *txq = tx_queue;
+	struct ionic_qcq *qcq = &txq->qcq;
+	struct ionic_txq_comp *cq_desc;
+	uint16_t mask, head, tail, pos, cq_pos;
+	bool done_color;
+
+	mask = qcq->q.size_mask;
+
+	/* offset must be within the size of the ring */
+	if (offset > mask)
+		return -EINVAL;
+
+	head = qcq->q.head_idx;
+	tail = qcq->q.tail_idx;
+
+	/* offset is beyond what is posted */
+	if (offset >= ((head - tail) & mask))
+		return RTE_ETH_TX_DESC_DONE;
+
+	/* interested in this absolute position in the txq */
+	pos = (tail + offset) & mask;
+
+	/* tx cq position != tx q position, need to walk cq */
+	cq_pos = qcq->cq.tail_idx;
+	cq_desc = qcq->cq.base;
+	cq_desc = &cq_desc[cq_pos];
+
+	/* how far behind is pos from head? */
+	offset = (head - pos) & mask;
+
+	/* walk cq descriptors that match the expected done color */
+	done_color = qcq->cq.done_color;
+	while (color_match(cq_desc->color, done_color)) {
+		/* is comp index no further behind than pos? */
+		tail = rte_cpu_to_le_16(cq_desc->comp_index);
+		if (((head - tail) & mask) <= offset)
+			return RTE_ETH_TX_DESC_DONE;
+
+		cq_pos = (cq_pos + 1) & mask;
+		cq_desc = qcq->cq.base;
+		cq_desc = &cq_desc[cq_pos];
+
+		done_color = done_color != (cq_pos == 0);
+	}
+
+	return RTE_ETH_TX_DESC_FULL;
+}
