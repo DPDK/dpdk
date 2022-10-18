@@ -843,7 +843,7 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 
 	/* RSS */
 	pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
-	rxm->hash.rss = cq_desc->rss_hash;
+	rxm->hash.rss = rte_le_to_cpu_32(cq_desc->rss_hash);
 
 	/* Vlan Strip */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_VLAN) {
