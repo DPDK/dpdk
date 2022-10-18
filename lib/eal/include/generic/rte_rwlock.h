@@ -108,10 +108,7 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
- * try to take a read lock.
+ * Try to take a read lock.
  *
  * @param rwl
  *   A pointer to a rwlock structure.
@@ -120,7 +117,6 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
  *   - -EBUSY if lock could not be acquired for reading because a
  *     writer holds the lock
  */
-__rte_experimental
 static inline int
 rte_rwlock_read_trylock(rte_rwlock_t *rwl)
 {
@@ -159,10 +155,7 @@ rte_rwlock_read_unlock(rte_rwlock_t *rwl)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
- * try to take a write lock.
+ * Try to take a write lock.
  *
  * @param rwl
  *   A pointer to a rwlock structure.
@@ -171,7 +164,6 @@ rte_rwlock_read_unlock(rte_rwlock_t *rwl)
  *   - -EBUSY if lock could not be acquired for writing because
  *     it was already locked for reading or writing
  */
-__rte_experimental
 static inline int
 rte_rwlock_write_trylock(rte_rwlock_t *rwl)
 {
