@@ -1235,3 +1235,42 @@ ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	return rx_svc.nb_rx;
 }
+
+int
+ionic_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct ionic_rx_qcq *rxq = rx_queue;
+	struct ionic_qcq *qcq = &rxq->qcq;
+	struct ionic_rxq_comp *cq_desc;
+	uint16_t mask, head, tail, pos;
+	bool done_color;
+
+	mask = qcq->q.size_mask;
+
+	/* offset must be within the size of the ring */
+	if (offset > mask)
+		return -EINVAL;
+
+	head = qcq->q.head_idx;
+	tail = qcq->q.tail_idx;
+
+	/* offset is beyond what is posted */
+	if (offset >= ((head - tail) & mask))
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	/* interested in this absolute position in the rxq */
+	pos = (tail + offset) & mask;
+
+	/* rx cq position == rx q position */
+	cq_desc = qcq->cq.base;
+	cq_desc = &cq_desc[pos];
+
+	/* expected done color at this position */
+	done_color = qcq->cq.done_color != (pos < tail);
+
+	/* has the hw indicated the done color at this position? */
+	if (color_match(cq_desc->pkt_type_color, done_color))
+		return RTE_ETH_RX_DESC_DONE;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}

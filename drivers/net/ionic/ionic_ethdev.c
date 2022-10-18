@@ -984,6 +984,8 @@ eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
 	eth_dev->tx_pkt_burst = &ionic_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &ionic_prep_pkts;
 
+	eth_dev->rx_descriptor_status = ionic_dev_rx_descriptor_status;
+
 	/* Multi-process not supported, primary does initialization anyway */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;

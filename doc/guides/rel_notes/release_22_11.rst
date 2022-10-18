@@ -141,6 +141,7 @@ New Features
   * Enhanced data path to provide substantial performance improvements.
   * Added support for mbuf fast free.
   * Added support for advertising packet types.
+  * Added support for descriptor status functions.
 
 * **Updated Intel iavf driver.**
 
