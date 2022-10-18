@@ -566,6 +566,7 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 		const char *type_name,
 		uint16_t flags,
 		uint16_t num_descs,
+		uint16_t num_segs,
 		uint16_t desc_size,
 		uint16_t cq_desc_size,
 		uint16_t sg_desc_size,
@@ -616,6 +617,7 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 		goto err_out_free_qcq;
 	}
 
+	new->q.num_segs = num_segs;
 	new->q.type = type;
 
 	err = ionic_q_init(&new->q, index, num_descs);
@@ -698,13 +700,37 @@ ionic_qcq_free(struct ionic_qcq *qcq)
 
 int
 ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
-		uint16_t nrxq_descs, struct ionic_rx_qcq **rxq_out)
+		uint16_t nrxq_descs, struct rte_mempool *mb_pool,
+		struct ionic_rx_qcq **rxq_out)
 {
 	struct ionic_rx_qcq *rxq;
-	uint16_t flags;
+	uint16_t flags, seg_size, hdr_seg_size, max_segs, max_segs_fw;
+	uint32_t max_mtu;
 	int err;
 
 	flags = IONIC_QCQ_F_SG;
+
+	seg_size = rte_pktmbuf_data_room_size(mb_pool);
+
+	/* The first mbuf needs to leave headroom */
+	hdr_seg_size = seg_size - RTE_PKTMBUF_HEADROOM;
+
+	max_mtu = rte_le_to_cpu_32(lif->adapter->ident.lif.eth.max_mtu);
+
+	max_segs_fw = IONIC_RX_MAX_SG_ELEMS + 1;
+
+	/*
+	 * Calculate how many fragment pointers might be stored in queue.
+	 */
+	max_segs = 1 + (max_mtu + RTE_PKTMBUF_HEADROOM - 1) / seg_size;
+
+	IONIC_PRINT(DEBUG, "rxq %u frame_size %u seg_size %u max_segs %u",
+		index, lif->frame_size, seg_size, max_segs);
+	if (max_segs > max_segs_fw) {
+		IONIC_PRINT(ERR, "Rx mbuf size insufficient (%d > %d avail)",
+			max_segs, max_segs_fw);
+		return -EINVAL;
+	}
 
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_RXQ,
@@ -714,6 +740,7 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		"rx",
 		flags,
 		nrxq_descs,
+		max_segs,
 		sizeof(struct ionic_rxq_desc),
 		sizeof(struct ionic_rxq_comp),
 		sizeof(struct ionic_rxq_sg_desc),
@@ -722,6 +749,8 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		return err;
 
 	rxq->flags = flags;
+	rxq->seg_size = seg_size;
+	rxq->hdr_seg_size = hdr_seg_size;
 
 	lif->rxqcqs[index] = rxq;
 	*rxq_out = rxq;
@@ -749,6 +778,7 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		"tx",
 		flags,
 		ntxq_descs,
+		1,
 		sizeof(struct ionic_txq_desc),
 		sizeof(struct ionic_txq_comp),
 		sizeof(struct ionic_txq_sg_desc_v1),
@@ -779,6 +809,7 @@ ionic_admin_qcq_alloc(struct ionic_lif *lif)
 		"admin",
 		flags,
 		IONIC_ADMINQ_LENGTH,
+		1,
 		sizeof(struct ionic_admin_cmd),
 		sizeof(struct ionic_admin_comp),
 		0,
@@ -805,6 +836,7 @@ ionic_notify_qcq_alloc(struct ionic_lif *lif)
 		"notify",
 		flags,
 		IONIC_NOTIFYQ_LENGTH,
+		1,
 		sizeof(struct ionic_notifyq_cmd),
 		sizeof(union ionic_notifyq_comp),
 		0,
