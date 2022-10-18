@@ -343,18 +343,17 @@ static int
 ionic_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	int err;
 
-	IONIC_PRINT_CALL();
+	if (lif->state & IONIC_LIF_F_UP) {
+		IONIC_PRINT(ERR, "Stop %s before setting mtu", lif->name);
+		return -EBUSY;
+	}
 
-	/*
-	 * Note: mtu check against IONIC_MIN_MTU, IONIC_MAX_MTU
-	 * is done by the API.
-	 */
+	/* Note: mtu check against min/max is done by the API */
+	IONIC_PRINT(INFO, "Setting mtu %u", mtu);
 
-	err = ionic_lif_change_mtu(lif, mtu);
-	if (err)
-		return err;
+	/* Update the frame size used by the Rx path */
+	lif->frame_size = mtu + IONIC_ETH_OVERHEAD;
 
 	return 0;
 }
@@ -376,12 +375,16 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 		rte_le_to_cpu_32(cfg->queue_count[IONIC_QTYPE_TXQ]);
 
 	/* Also add ETHER_CRC_LEN if the adapter is able to keep CRC */
-	dev_info->min_rx_bufsize = IONIC_MIN_MTU + RTE_ETHER_HDR_LEN;
-	dev_info->max_rx_pktlen = IONIC_MAX_MTU + RTE_ETHER_HDR_LEN;
-	dev_info->max_mac_addrs = adapter->max_mac_addrs;
-	dev_info->min_mtu = IONIC_MIN_MTU;
-	dev_info->max_mtu = IONIC_MAX_MTU;
+	dev_info->min_mtu = RTE_MAX((uint32_t)IONIC_MIN_MTU,
+			rte_le_to_cpu_32(ident->lif.eth.min_mtu));
+	dev_info->max_mtu = RTE_MIN((uint32_t)IONIC_MAX_MTU,
+			rte_le_to_cpu_32(ident->lif.eth.max_mtu));
+	dev_info->min_rx_bufsize = dev_info->min_mtu + IONIC_ETH_OVERHEAD;
+	dev_info->max_rx_pktlen = dev_info->max_mtu + IONIC_ETH_OVERHEAD;
+	dev_info->max_lro_pkt_size =
+		eth_dev->data->dev_conf.rxmode.max_lro_pkt_size;
 
+	dev_info->max_mac_addrs = adapter->max_mac_addrs;
 	dev_info->hash_key_size = IONIC_RSS_HASH_KEY_SIZE;
 	dev_info->reta_size = rte_le_to_cpu_16(ident->lif.eth.rss_ind_tbl_sz);
 	dev_info->flow_type_rss_offloads = IONIC_ETH_RSS_OFFLOAD_ALL;
@@ -888,6 +891,15 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 
 	if (dev_conf->lpbk_mode)
 		IONIC_PRINT(WARNING, "Loopback mode not supported");
+
+	lif->frame_size = eth_dev->data->mtu + IONIC_ETH_OVERHEAD;
+
+	err = ionic_lif_change_mtu(lif, eth_dev->data->mtu);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot set LIF frame size %u: %d",
+			lif->frame_size, err);
+		return err;
+	}
 
 	err = ionic_lif_start(lif);
 	if (err) {

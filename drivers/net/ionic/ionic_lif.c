@@ -536,7 +536,7 @@ ionic_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 }
 
 int
-ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu)
+ionic_lif_change_mtu(struct ionic_lif *lif, uint32_t new_mtu)
 {
 	struct ionic_admin_ctx ctx = {
 		.pending_work = true,
@@ -546,13 +546,8 @@ ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu)
 			.mtu = rte_cpu_to_le_32(new_mtu),
 		},
 	};
-	int err;
 
-	err = ionic_adminq_post_wait(lif, &ctx);
-	if (err)
-		return err;
-
-	return 0;
+	return ionic_adminq_post_wait(lif, &ctx);
 }
 
 int
@@ -730,6 +725,7 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 	int err;
 
 	flags = IONIC_QCQ_F_SG;
+
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_RXQ,
 		sizeof(struct ionic_rx_qcq),

@@ -772,8 +772,6 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 	struct ionic_rxq_comp *cq_desc_base = cq->base;
 	struct ionic_rxq_comp *cq_desc = &cq_desc_base[cq_desc_index];
 	struct rte_mbuf *rxm, *rxm_seg;
-	uint32_t max_frame_size =
-		rxq->qcq.lif->eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
 	uint64_t pkt_flags = 0;
 	uint32_t pkt_type;
 	struct ionic_rx_stats *stats = &rxq->stats;
@@ -814,8 +812,7 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 		return;
 	}
 
-	if (cq_desc->len > max_frame_size ||
-			cq_desc->len == 0) {
+	if (cq_desc->len > rxq->frame_size || cq_desc->len == 0) {
 		stats->bad_len++;
 		ionic_rx_recycle(q, q_desc_index, rxm);
 		return;
@@ -936,7 +933,7 @@ ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
 }
 
 static __rte_always_inline int
-ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
+ionic_rx_fill(struct ionic_rx_qcq *rxq)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
 	struct ionic_rxq_desc *desc, *desc_base = q->base;
@@ -961,7 +958,7 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 
 		info = IONIC_INFO_PTR(q, q->head_idx);
 
-		nsegs = (len + buf_size - 1) / buf_size;
+		nsegs = (rxq->frame_size + buf_size - 1) / buf_size;
 
 		desc = &desc_base[q->head_idx];
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(rxm));
@@ -996,9 +993,9 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 			prev_rxm_seg = rxm_seg;
 		}
 
-		if (size < len)
+		if (size < rxq->frame_size)
 			IONIC_PRINT(ERR, "Rx SG size is not sufficient (%d < %d)",
-				size, len);
+				size, rxq->frame_size);
 
 		info[0] = rxm;
 
@@ -1016,7 +1013,6 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 int __rte_cold
 ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
-	uint32_t frame_size = eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
 	uint8_t *rx_queue_state = eth_dev->data->rx_queue_state;
 	struct ionic_rx_qcq *rxq;
 	int err;
@@ -1029,8 +1025,10 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 	rxq = eth_dev->data->rx_queues[rx_queue_id];
 
-	IONIC_PRINT(DEBUG, "Starting RX queue %u, %u descs (size: %u)",
-		rx_queue_id, rxq->qcq.q.num_descs, frame_size);
+	rxq->frame_size = rxq->qcq.lif->frame_size - RTE_ETHER_CRC_LEN;
+
+	IONIC_PRINT(DEBUG, "Starting RX queue %u, %u descs, size %u",
+		rx_queue_id, rxq->qcq.q.num_descs, rxq->frame_size);
 
 	if (!(rxq->flags & IONIC_QCQ_F_INITED)) {
 		err = ionic_lif_rxq_init(rxq);
@@ -1041,7 +1039,7 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	}
 
 	/* Allocate buffers for descriptor rings */
-	if (ionic_rx_fill(rxq, frame_size) != 0) {
+	if (ionic_rx_fill(rxq) != 0) {
 		IONIC_PRINT(ERR, "Could not alloc mbuf for queue:%d",
 			rx_queue_id);
 		return -1;
@@ -1129,8 +1127,6 @@ ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
 	struct ionic_rx_qcq *rxq = rx_queue;
-	uint32_t frame_size =
-		rxq->qcq.lif->eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
 	struct ionic_rx_service service_cb_arg;
 
 	service_cb_arg.rx_pkts = rx_pkts;
@@ -1139,7 +1135,7 @@ ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	ionic_rxq_service(rxq, nb_pkts, &service_cb_arg);
 
-	ionic_rx_fill(rxq, frame_size);
+	ionic_rx_fill(rxq);
 
 	return service_cb_arg.nb_rx;
 }

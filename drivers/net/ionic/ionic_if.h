@@ -401,8 +401,8 @@ union ionic_lif_config {
  *     @version:            Ethernet identify structure version
  *     @max_ucast_filters:  Number of perfect unicast addresses supported
  *     @max_mcast_filters:  Number of perfect multicast addresses supported
- *     @min_frame_size:     Minimum size of frames to be sent
- *     @max_frame_size:     Maximum size of frames to be sent
+ *     @min_mtu:            Minimum MTU of frames to be sent
+ *     @max_mtu:            Maximum MTU of frames to be sent
  *     @config:             LIF config struct with features, mtu, mac, q counts
  *
  * @rdma:                RDMA identify structure
@@ -434,8 +434,8 @@ union ionic_lif_identity {
 			__le32 max_ucast_filters;
 			__le32 max_mcast_filters;
 			__le16 rss_ind_tbl_sz;
-			__le32 min_frame_size;
-			__le32 max_frame_size;
+			__le32 min_mtu;
+			__le32 max_mtu;
 			u8 rsvd2[106];
 			union ionic_lif_config config;
 		} __rte_packed eth;

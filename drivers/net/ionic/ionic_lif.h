@@ -81,6 +81,7 @@ struct ionic_rx_qcq {
 
 	/* cacheline2 */
 	struct rte_mempool *mb_pool;
+	uint16_t frame_size;	/* Based on configured MTU */
 	uint16_t flags;
 
 	/* cacheline3 (inside stats) */
@@ -123,6 +124,7 @@ struct ionic_lif {
 	struct ionic_adapter *adapter;
 	struct rte_eth_dev *eth_dev;
 	uint16_t port_id;  /**< Device port identifier */
+	uint16_t frame_size;
 	uint32_t hw_index;
 	uint32_t state;
 	uint32_t ntxqcqs;
@@ -181,7 +183,7 @@ int ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr);
 int ionic_qcq_service(struct ionic_qcq *qcq, int budget, ionic_cq_cb cb,
 	void *cb_arg);
 
-int ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu);
+int ionic_lif_change_mtu(struct ionic_lif *lif, uint32_t new_mtu);
 
 int ionic_dev_add_mac(struct rte_eth_dev *eth_dev,
 	struct rte_ether_addr *mac_addr,
