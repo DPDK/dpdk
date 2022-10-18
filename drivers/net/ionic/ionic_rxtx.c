@@ -72,7 +72,11 @@ ionic_rx_empty(struct ionic_rx_qcq *rxq)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
 
-	ionic_empty_array(q->info, q->num_descs, 0);
+	/*
+	 * Walk the full info array so that the clean up includes any
+	 * fragments that were left dangling for later reuse
+	 */
+	ionic_empty_array(q->info, q->num_descs * q->num_segs, 0);
 }
 
 /*********************************************************************
@@ -658,9 +662,6 @@ ionic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
  *
  **********************************************************************/
 
-static void ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
-		struct rte_mbuf *mbuf);
-
 void
 ionic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		struct rte_eth_rxq_info *qinfo)
@@ -763,63 +764,66 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+/*
+ * Cleans one descriptor. Connects the filled mbufs into a chain.
+ * Does not advance the tail index.
+ */
 static __rte_always_inline void
-ionic_rx_clean(struct ionic_rx_qcq *rxq,
-		uint32_t q_desc_index, uint32_t cq_desc_index,
+ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
+		struct ionic_rxq_comp *cq_desc,
 		struct ionic_rx_service *rx_svc)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
-	struct ionic_cq *cq = &rxq->qcq.cq;
-	struct ionic_rxq_comp *cq_desc_base = cq->base;
-	struct ionic_rxq_comp *cq_desc = &cq_desc_base[cq_desc_index];
-	struct rte_mbuf *rxm, *rxm_seg;
+	struct rte_mbuf *rxm, *rxm_seg, *prev_rxm;
+	struct ionic_rx_stats *stats = &rxq->stats;
 	uint64_t pkt_flags = 0;
 	uint32_t pkt_type;
-	struct ionic_rx_stats *stats = &rxq->stats;
-	uint32_t left;
+	uint32_t left, i;
+	uint16_t cq_desc_len;
 	void **info;
 
-	assert(q_desc_index == cq_desc->comp_index);
+	cq_desc_len = rte_le_to_cpu_16(cq_desc->len);
 
-	info = IONIC_INFO_PTR(q, cq_desc->comp_index);
+	info = IONIC_INFO_PTR(q, q->tail_idx);
 
 	rxm = info[0];
 
 	if (cq_desc->status) {
 		stats->bad_cq_status++;
-		ionic_rx_recycle(q, q_desc_index, rxm);
 		return;
 	}
 
-	if (rx_svc->nb_rx >= rx_svc->nb_pkts) {
-		stats->no_room++;
-		ionic_rx_recycle(q, q_desc_index, rxm);
-		return;
-	}
-
-	if (cq_desc->len > rxq->frame_size || cq_desc->len == 0) {
+	if (cq_desc_len > rxq->frame_size || cq_desc_len == 0) {
 		stats->bad_len++;
-		ionic_rx_recycle(q, q_desc_index, rxm);
 		return;
 	}
 
-	rxm->data_off = RTE_PKTMBUF_HEADROOM;
-	rte_prefetch1((char *)rxm->buf_addr + rxm->data_off);
-	rxm->nb_segs = 1; /* cq_desc->num_sg_elems */
-	rxm->pkt_len = cq_desc->len;
-	rxm->port = rxq->qcq.lif->port_id;
+	info[0] = NULL;
 
-	rxm->data_len = RTE_MIN(rxq->hdr_seg_size, cq_desc->len);
-	left = cq_desc->len - rxm->data_len;
+	/* Set the mbuf metadata based on the cq entry */
+	rxm->rearm_data[0] = rxq->rearm_data;
+	rxm->pkt_len = cq_desc_len;
+	rxm->data_len = RTE_MIN(rxq->hdr_seg_size, cq_desc_len);
+	left = cq_desc_len - rxm->data_len;
+	rxm->nb_segs = cq_desc->num_sg_elems + 1;
+	prev_rxm = rxm;
 
-	rxm_seg = rxm->next;
-	while (rxm_seg && left) {
+	for (i = 1; i < rxm->nb_segs && left; i++) {
+		rxm_seg = info[i];
+		info[i] = NULL;
+
+		/* Set the chained mbuf metadata */
+		rxm_seg->rearm_data[0] = rxq->rearm_seg_data;
 		rxm_seg->data_len = RTE_MIN(rxq->seg_size, left);
 		left -= rxm_seg->data_len;
 
-		rxm_seg = rxm_seg->next;
-		rxm->nb_segs++;
+		/* Link the mbuf */
+		prev_rxm->next = rxm_seg;
+		prev_rxm = rxm_seg;
 	}
+
+	/* Terminate the mbuf chain */
+	prev_rxm->next = NULL;
 
 	/* RSS */
 	pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
@@ -897,77 +901,74 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 	stats->bytes += rxm->pkt_len;
 }
 
-static void
-ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
-		 struct rte_mbuf *mbuf)
-{
-	struct ionic_rxq_desc *desc_base = q->base;
-	struct ionic_rxq_desc *old = &desc_base[q_desc_index];
-	struct ionic_rxq_desc *new = &desc_base[q->head_idx];
-
-	new->addr = old->addr;
-	new->len = old->len;
-
-	q->info[q->head_idx] = mbuf;
-
-	q->head_idx = Q_NEXT_TO_POST(q, 1);
-
-	ionic_q_flush(q);
-}
-
+/*
+ * Fills one descriptor with mbufs. Does not advance the head index.
+ */
 static __rte_always_inline int
-ionic_rx_fill(struct ionic_rx_qcq *rxq)
+ionic_rx_fill_one(struct ionic_rx_qcq *rxq)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
+	struct rte_mbuf *rxm, *rxm_seg;
 	struct ionic_rxq_desc *desc, *desc_base = q->base;
 	struct ionic_rxq_sg_desc *sg_desc, *sg_desc_base = q->sg_base;
-	struct ionic_rxq_sg_elem *elem;
+	rte_iova_t data_iova;
+	uint32_t i;
 	void **info;
-	rte_iova_t dma_addr;
-	uint32_t i, j;
 
-	/* Initialize software ring entries */
-	for (i = ionic_q_space_avail(q); i; i--) {
-		struct rte_mbuf *rxm = rte_mbuf_raw_alloc(rxq->mb_pool);
-		struct rte_mbuf *prev_rxm_seg;
+	info = IONIC_INFO_PTR(q, q->head_idx);
+	desc = &desc_base[q->head_idx];
+	sg_desc = &sg_desc_base[q->head_idx];
 
-		if (rxm == NULL) {
-			IONIC_PRINT(ERR, "RX mbuf alloc failed");
+	/* mbuf is unused => whole chain is unused */
+	if (unlikely(info[0]))
+		return 0;
+
+	rxm = rte_mbuf_raw_alloc(rxq->mb_pool);
+	if (unlikely(rxm == NULL)) {
+		assert(0);
+		return -ENOMEM;
+	}
+
+	info[0] = rxm;
+
+	data_iova = rte_mbuf_data_iova_default(rxm);
+	desc->addr = rte_cpu_to_le_64(data_iova);
+
+	for (i = 1; i < q->num_segs; i++) {
+		/* mbuf is unused => rest of the chain is unused */
+		if (info[i])
+			return 0;
+
+		rxm_seg = rte_mbuf_raw_alloc(rxq->mb_pool);
+		if (rxm_seg == NULL) {
+			assert(0);
 			return -ENOMEM;
 		}
 
-		info = IONIC_INFO_PTR(q, q->head_idx);
+		info[i] = rxm_seg;
 
-		desc = &desc_base[q->head_idx];
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(rxm));
-		desc->addr = dma_addr;
-		rxm->next = NULL;
+		/* The data_off does not get set to 0 until later */
+		data_iova = rxm_seg->buf_iova;
+		sg_desc->elems[i - 1].addr = rte_cpu_to_le_64(data_iova);
+	}
 
-		prev_rxm_seg = rxm;
-		sg_desc = &sg_desc_base[q->head_idx];
-		elem = sg_desc->elems;
-		for (j = 0; j < q->num_segs - 1u; j++) {
-			struct rte_mbuf *rxm_seg;
-			rte_iova_t data_iova;
+	return 0;
+}
 
-			rxm_seg = rte_mbuf_raw_alloc(rxq->mb_pool);
-			if (rxm_seg == NULL) {
-				IONIC_PRINT(ERR, "RX mbuf alloc failed");
-				return -ENOMEM;
-			}
+/*
+ * Fills all descriptors with mbufs.
+ */
+static int __rte_cold
+ionic_rx_fill(struct ionic_rx_qcq *rxq)
+{
+	struct ionic_queue *q = &rxq->qcq.q;
+	uint32_t i;
+	int err;
 
-			rxm_seg->data_off = 0;
-			data_iova = rte_mbuf_data_iova(rxm_seg);
-			dma_addr = rte_cpu_to_le_64(data_iova);
-			elem->addr = dma_addr;
-			elem++;
-
-			rxm_seg->next = NULL;
-			prev_rxm_seg->next = rxm_seg;
-			prev_rxm_seg = rxm_seg;
-		}
-
-		info[0] = rxm;
+	for (i = 1; i < q->num_descs; i++) {
+		err = ionic_rx_fill_one(rxq);
+		if (err)
+			return err;
 
 		q->head_idx = Q_NEXT_TO_POST(q, 1);
 	}
@@ -1056,53 +1057,52 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	return 0;
 }
 
+/*
+ * Walk the CQ to find completed receive descriptors.
+ * Any completed descriptor found is refilled.
+ */
 static __rte_always_inline void
 ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 		struct ionic_rx_service *rx_svc)
 {
 	struct ionic_cq *cq = &rxq->qcq.cq;
 	struct ionic_queue *q = &rxq->qcq.q;
+	struct ionic_rxq_desc *q_desc_base = q->base;
 	struct ionic_rxq_comp *cq_desc, *cq_desc_base = cq->base;
-	bool more;
-	uint32_t curr_q_tail_idx, curr_cq_tail_idx;
 	uint32_t work_done = 0;
 
-	if (work_to_do == 0)
-		return;
-
 	cq_desc = &cq_desc_base[cq->tail_idx];
+
 	while (color_match(cq_desc->pkt_type_color, cq->done_color)) {
-		curr_cq_tail_idx = cq->tail_idx;
 		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
 
 		if (cq->tail_idx == 0)
 			cq->done_color = !cq->done_color;
 
-		/* Prefetch the next 4 descriptors */
-		if ((cq->tail_idx & 0x3) == 0)
-			rte_prefetch0(&cq_desc_base[cq->tail_idx]);
+		/* Prefetch 8 x 8B bufinfo */
+		rte_prefetch0(IONIC_INFO_PTR(q, Q_NEXT_TO_SRVC(q, 8)));
+		/* Prefetch 4 x 16B comp */
+		rte_prefetch0(&cq_desc_base[Q_NEXT_TO_SRVC(cq, 4)]);
+		/* Prefetch 4 x 16B descriptors */
+		rte_prefetch0(&q_desc_base[Q_NEXT_TO_POST(q, 4)]);
 
-		do {
-			more = (q->tail_idx != cq_desc->comp_index);
+		ionic_rx_clean_one(rxq, cq_desc, rx_svc);
 
-			curr_q_tail_idx = q->tail_idx;
-			q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
+		q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
 
-			/* Prefetch the next 4 descriptors */
-			if ((q->tail_idx & 0x3) == 0)
-				/* q desc info */
-				rte_prefetch0(&q->info[q->tail_idx]);
+		(void)ionic_rx_fill_one(rxq);
 
-			ionic_rx_clean(rxq, curr_q_tail_idx, curr_cq_tail_idx,
-				rx_svc);
-
-		} while (more);
+		q->head_idx = Q_NEXT_TO_POST(q, 1);
 
 		if (++work_done == work_to_do)
 			break;
 
 		cq_desc = &cq_desc_base[cq->tail_idx];
 	}
+
+	/* Update the queue indices and ring the doorbell */
+	if (work_done)
+		ionic_q_flush(q);
 }
 
 /*
@@ -1141,12 +1141,9 @@ ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct ionic_rx_service rx_svc;
 
 	rx_svc.rx_pkts = rx_pkts;
-	rx_svc.nb_pkts = nb_pkts;
 	rx_svc.nb_rx = 0;
 
 	ionic_rxq_service(rxq, nb_pkts, &rx_svc);
-
-	ionic_rx_fill(rxq);
 
 	return rx_svc.nb_rx;
 }

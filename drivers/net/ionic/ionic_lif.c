@@ -116,7 +116,6 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 		struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats;
 		stats->ierrors +=
 			rx_stats->bad_cq_status +
-			rx_stats->no_room +
 			rx_stats->bad_len;
 	}
 
@@ -136,7 +135,6 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 		stats->q_ibytes[i] = rx_stats->bytes;
 		stats->q_errors[i] =
 			rx_stats->bad_cq_status +
-			rx_stats->no_room +
 			rx_stats->bad_len;
 	}
 
@@ -608,8 +606,9 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 
 	new->lif = lif;
 
+	/* Most queue types will store 1 ptr per descriptor */
 	new->q.info = rte_calloc_socket("ionic",
-				num_descs, sizeof(void *),
+				num_descs * num_segs, sizeof(void *),
 				rte_mem_page_size(), socket_id);
 	if (!new->q.info) {
 		IONIC_PRINT(ERR, "Cannot allocate queue info");
@@ -698,6 +697,42 @@ ionic_qcq_free(struct ionic_qcq *qcq)
 	rte_free(qcq);
 }
 
+static uint64_t
+ionic_rx_rearm_data(struct ionic_lif *lif)
+{
+	struct rte_mbuf rxm;
+
+	memset(&rxm, 0, sizeof(rxm));
+
+	rte_mbuf_refcnt_set(&rxm, 1);
+	rxm.data_off = RTE_PKTMBUF_HEADROOM;
+	rxm.nb_segs = 1;
+	rxm.port = lif->port_id;
+
+	rte_compiler_barrier();
+
+	RTE_BUILD_BUG_ON(sizeof(rxm.rearm_data[0]) != sizeof(uint64_t));
+	return rxm.rearm_data[0];
+}
+
+static uint64_t
+ionic_rx_seg_rearm_data(struct ionic_lif *lif)
+{
+	struct rte_mbuf rxm;
+
+	memset(&rxm, 0, sizeof(rxm));
+
+	rte_mbuf_refcnt_set(&rxm, 1);
+	rxm.data_off = 0;  /* no headroom */
+	rxm.nb_segs = 1;
+	rxm.port = lif->port_id;
+
+	rte_compiler_barrier();
+
+	RTE_BUILD_BUG_ON(sizeof(rxm.rearm_data[0]) != sizeof(uint64_t));
+	return rxm.rearm_data[0];
+}
+
 int
 ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t nrxq_descs, struct rte_mempool *mb_pool,
@@ -721,11 +756,13 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 
 	/*
 	 * Calculate how many fragment pointers might be stored in queue.
+	 * This is the worst-case number, so that there's enough room in
+	 * the info array.
 	 */
 	max_segs = 1 + (max_mtu + RTE_PKTMBUF_HEADROOM - 1) / seg_size;
 
-	IONIC_PRINT(DEBUG, "rxq %u frame_size %u seg_size %u max_segs %u",
-		index, lif->frame_size, seg_size, max_segs);
+	IONIC_PRINT(DEBUG, "rxq %u max_mtu %u seg_size %u max_segs %u",
+		index, max_mtu, seg_size, max_segs);
 	if (max_segs > max_segs_fw) {
 		IONIC_PRINT(ERR, "Rx mbuf size insufficient (%d > %d avail)",
 			max_segs, max_segs_fw);
@@ -751,6 +788,8 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 	rxq->flags = flags;
 	rxq->seg_size = seg_size;
 	rxq->hdr_seg_size = hdr_seg_size;
+	rxq->rearm_data = ionic_rx_rearm_data(lif);
+	rxq->rearm_seg_data = ionic_rx_seg_rearm_data(lif);
 
 	lif->rxqcqs[index] = rxq;
 	*rxq_out = rxq;

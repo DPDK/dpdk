@@ -40,7 +40,6 @@ struct ionic_rx_stats {
 	uint64_t packets;
 	uint64_t bytes;
 	uint64_t bad_cq_status;
-	uint64_t no_room;
 	uint64_t bad_len;
 	uint64_t mtods;
 };
@@ -80,6 +79,8 @@ struct ionic_rx_qcq {
 
 	/* cacheline2 */
 	struct rte_mempool *mb_pool;
+	uint64_t rearm_data;
+	uint64_t rearm_seg_data;
 	uint16_t frame_size;	/* Based on configured MTU */
 	uint16_t hdr_seg_size;	/* Length of first segment of RX chain */
 	uint16_t seg_size;	/* Length of all subsequent segments */

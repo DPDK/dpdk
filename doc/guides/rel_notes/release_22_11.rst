@@ -138,6 +138,7 @@ New Features
 * **Updated AMD Pensando ionic driver.**
 
   * Updated to reflect that Pensando has been acquired by AMD.
+  * Enhanced data path to provide substantial performance improvements.
 
 * **Updated Intel iavf driver.**
 
