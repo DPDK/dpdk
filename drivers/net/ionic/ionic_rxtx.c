@@ -279,18 +279,20 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 		uint16_t vlan_tci, bool has_vlan,
 		bool start, bool done)
 {
+	uint64_t cmd;
 	uint8_t flags = 0;
 	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
 	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
 	flags |= start ? IONIC_TXQ_DESC_FLAG_TSO_SOT : 0;
 	flags |= done ? IONIC_TXQ_DESC_FLAG_TSO_EOT : 0;
 
-	desc->cmd = encode_txq_desc_cmd(IONIC_TXQ_DESC_OPCODE_TSO,
+	cmd = encode_txq_desc_cmd(IONIC_TXQ_DESC_OPCODE_TSO,
 		flags, nsge, addr);
-	desc->len = len;
-	desc->vlan_tci = vlan_tci;
-	desc->hdr_len = hdrlen;
-	desc->mss = mss;
+	desc->cmd = rte_cpu_to_le_64(cmd);
+	desc->len = rte_cpu_to_le_16(len);
+	desc->vlan_tci = rte_cpu_to_le_16(vlan_tci);
+	desc->hdr_len = rte_cpu_to_le_16(hdrlen);
+	desc->mss = rte_cpu_to_le_16(mss);
 
 	ionic_q_post(q, done, NULL, done ? txm : NULL);
 }
@@ -397,7 +399,7 @@ ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
 				len = RTE_MIN(frag_left, left);
 				frag_left -= len;
 				elem->addr = next_addr;
-				elem->len = len;
+				elem->len = rte_cpu_to_le_16(len);
 				elem++;
 				desc_nsge++;
 			} else {
@@ -445,7 +447,7 @@ ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
 	bool encap;
 	bool has_vlan;
 	uint64_t ol_flags = txm->ol_flags;
-	uint64_t addr;
+	uint64_t addr, cmd;
 	uint8_t opcode = IONIC_TXQ_DESC_OPCODE_CSUM_NONE;
 	uint8_t flags = 0;
 
@@ -477,13 +479,14 @@ ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
 
 	addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm));
 
-	desc->cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
-	desc->len = txm->data_len;
-	desc->vlan_tci = txm->vlan_tci;
+	cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
+	desc->cmd = rte_cpu_to_le_64(cmd);
+	desc->len = rte_cpu_to_le_16(txm->data_len);
+	desc->vlan_tci = rte_cpu_to_le_16(txm->vlan_tci);
 
 	txm_seg = txm->next;
 	while (txm_seg != NULL) {
-		elem->len = txm_seg->data_len;
+		elem->len = rte_cpu_to_le_16(txm_seg->data_len);
 		elem->addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm_seg));
 		stats->frags++;
 		elem++;
@@ -796,7 +799,7 @@ ionic_rx_clean(struct ionic_queue *q,
 	/* Vlan Strip */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_VLAN) {
 		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
-		rxm->vlan_tci = cq_desc->vlan_tci;
+		rxm->vlan_tci = rte_le_to_cpu_16(cq_desc->vlan_tci);
 	}
 
 	/* Checksum */
