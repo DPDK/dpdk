@@ -63,8 +63,8 @@ ionic_rx_filter_save(struct ionic_lif *lif, uint32_t flow_id,
 	f->flow_id = flow_id;
 	f->filter_id = rte_le_to_cpu_32(ctx->comp.rx_filter_add.filter_id);
 	f->rxq_index = rxq_index;
-	f->match = rte_le_to_cpu_16(f->cmd.match);
 	memcpy(&f->cmd, &ctx->cmd, sizeof(f->cmd));
+	f->match = rte_le_to_cpu_16(f->cmd.match);
 
 	switch (f->match) {
 	case IONIC_RX_FILTER_MATCH_VLAN:
