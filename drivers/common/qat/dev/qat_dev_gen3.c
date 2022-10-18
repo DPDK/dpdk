@@ -67,12 +67,25 @@ static struct qat_qp_hw_spec_funcs qat_qp_hw_spec_gen3 = {
 	.qat_qp_get_hw_data = qat_qp_get_hw_data_gen3
 };
 
+static int
+qat_dev_get_slice_map_gen3(uint16_t *map,
+	const struct rte_pci_device *pci_dev)
+{
+	if (rte_pci_read_config(pci_dev, map,
+			ADF1_C4XXXIOV_VFLEGFUSES_LEN,
+			ADF_C4XXXIOV_VFLEGFUSES_OFFSET) < 0) {
+		return -1;
+	}
+	return 0;
+}
+
 static struct qat_dev_hw_spec_funcs qat_dev_hw_spec_gen3 = {
 	.qat_dev_reset_ring_pairs = qat_reset_ring_pairs_gen1,
 	.qat_dev_get_transport_bar = qat_dev_get_transport_bar_gen1,
 	.qat_dev_get_misc_bar = qat_dev_get_misc_bar_gen1,
 	.qat_dev_read_config = qat_dev_read_config_gen1,
 	.qat_dev_get_extra_size = qat_dev_get_extra_size_gen1,
+	.qat_dev_get_slice_map = qat_dev_get_slice_map_gen3,
 };
 
 RTE_INIT(qat_dev_gen_gen3_init)

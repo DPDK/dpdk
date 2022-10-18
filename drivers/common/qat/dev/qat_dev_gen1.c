@@ -241,12 +241,20 @@ qat_dev_get_extra_size_gen1(void)
 	return 0;
 }
 
+static int
+qat_get_dev_slice_map_gen1(uint16_t *map __rte_unused,
+	const struct rte_pci_device *pci_dev __rte_unused)
+{
+	return 0;
+}
+
 static struct qat_dev_hw_spec_funcs qat_dev_hw_spec_gen1 = {
 	.qat_dev_reset_ring_pairs = qat_reset_ring_pairs_gen1,
 	.qat_dev_get_transport_bar = qat_dev_get_transport_bar_gen1,
 	.qat_dev_get_misc_bar = qat_dev_get_misc_bar_gen1,
 	.qat_dev_read_config = qat_dev_read_config_gen1,
 	.qat_dev_get_extra_size = qat_dev_get_extra_size_gen1,
+	.qat_dev_get_slice_map = qat_get_dev_slice_map_gen1,
 };
 
 RTE_INIT(qat_dev_gen_gen1_init)

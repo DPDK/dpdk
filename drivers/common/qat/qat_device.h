@@ -8,8 +8,9 @@
 
 #include "qat_common.h"
 #include "qat_logs.h"
-#include "adf_transport_access_macros.h"
 #include "qat_qp.h"
+#include "adf_transport_access_macros.h"
+#include "icp_qat_hw.h"
 
 #define QAT_DETACHED  (0)
 #define QAT_ATTACHED  (1)
@@ -20,6 +21,8 @@
 #define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
 #define ASYM_ENQ_THRESHOLD_NAME "qat_asym_enq_threshold"
 #define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
+#define QAT_CMD_SLICE_MAP "qat_cmd_slice_disable"
+#define QAT_CMD_SLICE_MAP_POS	4
 #define MAX_QP_THRESHOLD_SIZE	32
 
 /**
@@ -34,6 +37,8 @@ typedef int (*qat_dev_get_misc_bar_t)
 typedef int (*qat_dev_read_config_t)
 		(struct qat_pci_device *);
 typedef int (*qat_dev_get_extra_size_t)(void);
+typedef int (*qat_dev_get_slice_map_t)(uint16_t *map,
+		const struct rte_pci_device *pci_dev);
 
 struct qat_dev_hw_spec_funcs {
 	qat_dev_reset_ring_pairs_t	qat_dev_reset_ring_pairs;
@@ -41,6 +46,7 @@ struct qat_dev_hw_spec_funcs {
 	qat_dev_get_misc_bar_t		qat_dev_get_misc_bar;
 	qat_dev_read_config_t		qat_dev_read_config;
 	qat_dev_get_extra_size_t	qat_dev_get_extra_size;
+	qat_dev_get_slice_map_t		qat_dev_get_slice_map;
 };
 
 extern struct qat_dev_hw_spec_funcs *qat_dev_hw_spec[];
