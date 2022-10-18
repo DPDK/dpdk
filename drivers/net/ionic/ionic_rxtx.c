@@ -77,6 +77,10 @@ ionic_rx_empty(struct ionic_rx_qcq *rxq)
 	 * fragments that were left dangling for later reuse
 	 */
 	ionic_empty_array(q->info, q->num_descs * q->num_segs, 0);
+
+	ionic_empty_array((void **)rxq->mbs,
+			IONIC_MBUF_BULK_ALLOC, rxq->mb_idx);
+	rxq->mb_idx = 0;
 }
 
 /*********************************************************************
@@ -950,6 +954,7 @@ ionic_rx_fill_one(struct ionic_rx_qcq *rxq)
 	rte_iova_t data_iova;
 	uint32_t i;
 	void **info;
+	int ret;
 
 	info = IONIC_INFO_PTR(q, q->head_idx);
 	desc = &desc_base[q->head_idx];
@@ -959,12 +964,19 @@ ionic_rx_fill_one(struct ionic_rx_qcq *rxq)
 	if (unlikely(info[0]))
 		return 0;
 
-	rxm = rte_mbuf_raw_alloc(rxq->mb_pool);
-	if (unlikely(rxm == NULL)) {
-		assert(0);
-		return -ENOMEM;
+	if (rxq->mb_idx == 0) {
+		ret = rte_mempool_get_bulk(rxq->mb_pool,
+					(void **)rxq->mbs,
+					IONIC_MBUF_BULK_ALLOC);
+		if (ret) {
+			assert(0);
+			return -ENOMEM;
+		}
+
+		rxq->mb_idx = IONIC_MBUF_BULK_ALLOC;
 	}
 
+	rxm = rxq->mbs[--rxq->mb_idx];
 	info[0] = rxm;
 
 	data_iova = rte_mbuf_data_iova_default(rxm);
@@ -975,12 +987,19 @@ ionic_rx_fill_one(struct ionic_rx_qcq *rxq)
 		if (info[i])
 			return 0;
 
-		rxm_seg = rte_mbuf_raw_alloc(rxq->mb_pool);
-		if (rxm_seg == NULL) {
-			assert(0);
-			return -ENOMEM;
+		if (rxq->mb_idx == 0) {
+			ret = rte_mempool_get_bulk(rxq->mb_pool,
+					(void **)rxq->mbs,
+					IONIC_MBUF_BULK_ALLOC);
+			if (ret) {
+				assert(0);
+				return -ENOMEM;
+			}
+
+			rxq->mb_idx = IONIC_MBUF_BULK_ALLOC;
 		}
 
+		rxm_seg = rxq->mbs[--rxq->mb_idx];
 		info[i] = rxm_seg;
 
 		/* The data_off does not get set to 0 until later */

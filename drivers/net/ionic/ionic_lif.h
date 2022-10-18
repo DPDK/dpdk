@@ -17,6 +17,8 @@
 #define IONIC_ADMINQ_LENGTH	16	/* must be a power of two */
 #define IONIC_NOTIFYQ_LENGTH	64	/* must be a power of two */
 
+#define IONIC_MBUF_BULK_ALLOC	64	/* Multiple of 4 */
+
 #define IONIC_RSS_OFFLOAD_ALL ( \
 	IONIC_RSS_TYPE_IPV4 | \
 	IONIC_RSS_TYPE_IPV4_TCP | \
@@ -86,9 +88,13 @@ struct ionic_rx_qcq {
 	uint16_t hdr_seg_size;	/* Length of first segment of RX chain */
 	uint16_t seg_size;	/* Length of all subsequent segments */
 	uint16_t flags;
+	uint16_t mb_idx;
 
 	/* cacheline3 (inside stats) */
 	struct ionic_rx_stats stats;
+
+	/* cacheline4+ */
+	struct rte_mbuf *mbs[IONIC_MBUF_BULK_ALLOC] __rte_cache_aligned;
 };
 
 struct ionic_tx_qcq {
