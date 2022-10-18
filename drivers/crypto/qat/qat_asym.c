@@ -808,15 +808,15 @@ qat_asym_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
 	int err = 0;
 
 	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-	if (unlikely(qat_session == NULL)) {
-		QAT_DP_LOG(ERR, "Session was not created for this device");
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
-		goto error;
-	}
-
 	switch (op->sess_type) {
 	case RTE_CRYPTO_OP_WITH_SESSION:
 		request_init(qat_req);
+		if (unlikely(qat_session == NULL)) {
+			QAT_DP_LOG(ERR,
+				"Session was not created for this device");
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+			goto error;
+		}
 		xform = &qat_session->xform;
 		break;
 	case RTE_CRYPTO_OP_SESSIONLESS:
