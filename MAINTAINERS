@@ -630,6 +630,12 @@ F: drivers/net/axgbe/
 F: doc/guides/nics/axgbe.rst
 F: doc/guides/nics/features/axgbe.ini
 
+AMD Pensando ionic
+M: Andrew Boyer <andrew.boyer@amd.com>
+F: drivers/net/ionic/
+F: doc/guides/nics/ionic.rst
+F: doc/guides/nics/features/ionic.ini
+
 Marvell/Aquantia atlantic
 M: Igor Russkikh <irusskikh@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
@@ -894,12 +900,6 @@ M: Gagandeep Singh <g.singh@nxp.com>
 F: doc/guides/nics/pfe.rst
 F: drivers/net/pfe/
 F: doc/guides/nics/features/pfe.ini
-
-Pensando ionic
-M: Andrew Boyer <aboyer@pensando.io>
-F: drivers/net/ionic/
-F: doc/guides/nics/ionic.rst
-F: doc/guides/nics/features/ionic.ini
 
 Marvell QLogic bnx2x
 M: Rasesh Mody <rmody@marvell.com>

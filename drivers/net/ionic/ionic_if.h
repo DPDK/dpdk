@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Linux-OpenIB OR BSD-3-Clause */
-/* Copyright (c) 2017-2020 Pensando Systems, Inc.  All rights reserved. */
+/* Copyright 2017-2022 Advanced Micro Devices, Inc. */
 
 #ifndef _IONIC_IF_H_
 #define _IONIC_IF_H_

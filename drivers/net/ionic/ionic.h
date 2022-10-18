@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright(c) 2018-2019 Pensando Systems, Inc. All rights reserved.
+ * Copyright 2018-2022 Advanced Micro Devices, Inc.
  */
 
 #ifndef _IONIC_H_
@@ -15,7 +15,7 @@
 #include "ionic_osdep.h"
 
 #define IONIC_DRV_NAME			"ionic"
-#define IONIC_DRV_DESCRIPTION		"Pensando Ethernet NIC Driver"
+#define IONIC_DRV_DESCRIPTION		"AMD Pensando Ethernet NIC Driver"
 #define IONIC_DRV_VERSION		"0.11.0-49"
 
 /* Vendor ID */

@@ -135,6 +135,10 @@ New Features
 
   * Made compatible with libbpf v0.8.0 (when used with libxdp).
 
+* **Updated AMD Pensando ionic driver.**
+
+  * Updated to reflect that Pensando has been acquired by AMD.
+
 * **Updated Intel iavf driver.**
 
   * Added flow subscription support.
