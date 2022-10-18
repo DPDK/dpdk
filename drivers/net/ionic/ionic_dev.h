@@ -176,9 +176,12 @@ struct ionic_adapter;
 struct ionic_qcq;
 struct rte_mempool;
 struct rte_eth_dev;
+struct rte_devargs;
 
 struct ionic_dev_intf {
 	int  (*setup)(struct ionic_adapter *adapter);
+	int  (*devargs)(struct ionic_adapter *adapter,
+			struct rte_devargs *devargs);
 	void (*copy_bus_info)(struct ionic_adapter *adapter,
 			struct rte_eth_dev *eth_dev);
 	int  (*configure_intr)(struct ionic_adapter *adapter);

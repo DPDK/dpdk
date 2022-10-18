@@ -15,6 +15,7 @@
 #include <rte_eal.h>
 #include <ethdev_pci.h>
 #include <rte_dev.h>
+#include <rte_kvargs.h>
 
 #include "ionic.h"
 #include "ionic_if.h"
@@ -92,6 +93,58 @@ ionic_pci_setup(struct ionic_adapter *adapter)
 	return 0;
 }
 
+const char *ionic_pci_devargs_arr[] = {
+	PMD_IONIC_CMB_KVARG,
+	NULL,
+};
+
+static int
+ionic_pci_devarg_cmb(const char *key __rte_unused, const char *val, void *arg)
+{
+	struct ionic_adapter *adapter = arg;
+
+	if (!strcmp(val, "1")) {
+		IONIC_PRINT(NOTICE, "%s enabled", PMD_IONIC_CMB_KVARG);
+		adapter->q_in_cmb = true;
+	} else if (!strcmp(val, "0")) {
+		IONIC_PRINT(DEBUG, "%s disabled (default)",
+			PMD_IONIC_CMB_KVARG);
+	} else {
+		IONIC_PRINT(ERR, "%s=%s invalid, use 1 or 0",
+			PMD_IONIC_CMB_KVARG, val);
+		return -ERANGE;
+	}
+
+	return 0;
+}
+
+static int
+ionic_pci_devargs(struct ionic_adapter *adapter, struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	int err = 0;
+
+	if (!devargs)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, ionic_pci_devargs_arr);
+	if (!kvlist) {
+		IONIC_PRINT(ERR, "Couldn't parse args '%s'", devargs->args);
+		return -EINVAL;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_IONIC_CMB_KVARG) == 1) {
+		err = rte_kvargs_process(kvlist, PMD_IONIC_CMB_KVARG,
+				ionic_pci_devarg_cmb, adapter);
+		if (err < 0)
+			goto free_kvlist;
+	}
+
+free_kvlist:
+	rte_kvargs_free(kvlist);
+	return err;
+}
+
 static void
 ionic_pci_copy_bus_info(struct ionic_adapter *adapter,
 	struct rte_eth_dev *eth_dev)
@@ -160,6 +213,7 @@ ionic_pci_unconfigure_intr(struct ionic_adapter *adapter)
 
 static const struct ionic_dev_intf ionic_pci_intf = {
 	.setup = ionic_pci_setup,
+	.devargs = ionic_pci_devargs,
 	.copy_bus_info = ionic_pci_copy_bus_info,
 	.configure_intr = ionic_pci_configure_intr,
 	.unconfigure_intr = ionic_pci_unconfigure_intr,
@@ -206,7 +260,8 @@ eth_ionic_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_pci_ionic_pmd = {
 	.id_table = pci_id_ionic_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+			RTE_PCI_DRV_WC_ACTIVATE,
 	.probe = eth_ionic_pci_probe,
 	.remove = eth_ionic_pci_remove,
 };
@@ -214,3 +269,6 @@ static struct rte_pci_driver rte_pci_ionic_pmd = {
 RTE_PMD_REGISTER_PCI(net_ionic_pci, rte_pci_ionic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ionic_pci, pci_id_ionic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ionic_pci, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_ionic_pci,
+	PMD_IONIC_CMB_KVARG "=<0|1>"
+);

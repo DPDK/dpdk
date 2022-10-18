@@ -49,6 +49,7 @@ struct ionic_rx_stats {
 #define IONIC_QCQ_F_INITED	BIT(0)
 #define IONIC_QCQ_F_SG		BIT(1)
 #define IONIC_QCQ_F_DEFERRED	BIT(4)
+#define IONIC_QCQ_F_CMB		BIT(5)
 #define IONIC_QCQ_F_CSUM_L3	BIT(7)
 #define IONIC_QCQ_F_CSUM_UDP	BIT(8)
 #define IONIC_QCQ_F_CSUM_TCP	BIT(9)
@@ -126,6 +127,7 @@ struct ionic_qtype_info {
 #define IONIC_LIF_F_LINK_CHECK_NEEDED	BIT(1)
 #define IONIC_LIF_F_UP			BIT(2)
 #define IONIC_LIF_F_FW_RESET		BIT(3)
+#define IONIC_LIF_F_Q_IN_CMB		BIT(4)
 
 #define IONIC_LIF_NAME_MAX_SZ		(32)
 

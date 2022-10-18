@@ -1118,6 +1118,15 @@ eth_ionic_dev_probe(void *bus_dev, struct rte_device *rte_dev,
 
 	adapter->intf = intf;
 
+	/* Parse device arguments */
+	if (adapter->intf->devargs) {
+		err = (*adapter->intf->devargs)(adapter, rte_dev->devargs);
+		if (err) {
+			IONIC_PRINT(ERR, "Cannot parse device arguments");
+			goto err_free_adapter;
+		}
+	}
+
 	/* Discover ionic dev resources */
 	err = ionic_setup(adapter);
 	if (err) {

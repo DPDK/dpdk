@@ -660,6 +660,21 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 		ionic_q_sg_map(&new->q, sg_base, sg_base_pa);
 	}
 
+	if (flags & IONIC_QCQ_F_CMB) {
+		/* alloc descriptor ring from nic memory */
+		if (lif->adapter->cmb_offset + q_size >
+				lif->adapter->bars.bar[2].len) {
+			IONIC_PRINT(ERR, "Cannot reserve queue from NIC mem");
+			return -ENOMEM;
+		}
+		q_base = (void *)
+			((uintptr_t)lif->adapter->bars.bar[2].vaddr +
+			 (uintptr_t)lif->adapter->cmb_offset);
+		/* CMB PA is a relative address */
+		q_base_pa = lif->adapter->cmb_offset;
+		lif->adapter->cmb_offset += q_size;
+	}
+
 	IONIC_PRINT(DEBUG, "Q-Base-PA = %#jx CQ-Base-PA = %#jx "
 		"SG-base-PA = %#jx",
 		q_base_pa, cq_base_pa, sg_base_pa);
@@ -744,6 +759,8 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 	int err;
 
 	flags = IONIC_QCQ_F_SG;
+	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
+		flags |= IONIC_QCQ_F_CMB;
 
 	seg_size = rte_pktmbuf_data_room_size(mb_pool);
 
@@ -806,6 +823,8 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 	int err;
 
 	flags = IONIC_QCQ_F_SG;
+	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
+		flags |= IONIC_QCQ_F_CMB;
 
 	num_segs_fw = IONIC_TX_MAX_SG_ELEMS_V1 + 1;
 
@@ -992,6 +1011,19 @@ ionic_lif_alloc(struct ionic_lif *lif)
 	if (lif->qtype_info[IONIC_QTYPE_TXQ].version < 1) {
 		IONIC_PRINT(ERR, "FW too old, please upgrade");
 		return -ENXIO;
+	}
+
+	if (adapter->q_in_cmb) {
+		if (adapter->bars.num_bars >= 3 &&
+		    lif->qtype_info[IONIC_QTYPE_RXQ].version >= 2 &&
+		    lif->qtype_info[IONIC_QTYPE_TXQ].version >= 3) {
+			IONIC_PRINT(INFO, "%s enabled on %s",
+				PMD_IONIC_CMB_KVARG, lif->name);
+			lif->state |= IONIC_LIF_F_Q_IN_CMB;
+		} else {
+			IONIC_PRINT(ERR, "%s not supported on %s, disabled",
+				PMD_IONIC_CMB_KVARG, lif->name);
+		}
 	}
 
 	IONIC_PRINT(DEBUG, "Allocating Lif Info");
@@ -1537,6 +1569,9 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 	};
 	int err;
 
+	if (txq->flags & IONIC_QCQ_F_CMB)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
+
 	IONIC_PRINT(DEBUG, "txq_init.index %d", q->index);
 	IONIC_PRINT(DEBUG, "txq_init.ring_base 0x%" PRIx64 "", q->base_pa);
 	IONIC_PRINT(DEBUG, "txq_init.ring_size %d",
@@ -1587,6 +1622,9 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 		},
 	};
 	int err;
+
+	if (rxq->flags & IONIC_QCQ_F_CMB)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
 
 	IONIC_PRINT(DEBUG, "rxq_init.index %d", q->index);
 	IONIC_PRINT(DEBUG, "rxq_init.ring_base 0x%" PRIx64 "", q->base_pa);
