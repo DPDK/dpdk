@@ -1037,17 +1037,17 @@ ionic_lif_alloc(struct ionic_lif *lif)
 		return -ENOMEM;
 	}
 
-	lif->txqcqs = rte_zmalloc("ionic", sizeof(*lif->txqcqs) *
-		adapter->max_ntxqs_per_lif, 0);
-
+	lif->txqcqs = rte_calloc("ionic",
+				adapter->max_ntxqs_per_lif,
+				sizeof(*lif->txqcqs), 0);
 	if (!lif->txqcqs) {
 		IONIC_PRINT(ERR, "Cannot allocate tx queues array");
 		return -ENOMEM;
 	}
 
-	lif->rxqcqs = rte_zmalloc("ionic", sizeof(*lif->rxqcqs) *
-		adapter->max_nrxqs_per_lif, 0);
-
+	lif->rxqcqs = rte_calloc("ionic",
+				adapter->max_nrxqs_per_lif,
+				sizeof(*lif->rxqcqs), 0);
 	if (!lif->rxqcqs) {
 		IONIC_PRINT(ERR, "Cannot allocate rx queues array");
 		return -ENOMEM;
