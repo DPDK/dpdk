@@ -30,6 +30,8 @@
  */
 #define CRYPTO_ENQ_FLUSH_THRESHOLD 1024
 
+#define ECA_ADAPTER_ARRAY "crypto_adapter_array"
+
 struct rte_event_crypto_adapter {
 	/* Event device identifier */
 	uint8_t eventdev_id;
@@ -118,7 +120,6 @@ eca_valid_id(uint8_t id)
 static int
 eca_init(void)
 {
-	const char *name = "crypto_adapter_array";
 	const struct rte_memzone *mz;
 	unsigned int sz;
 
@@ -126,9 +127,10 @@ eca_init(void)
 	    RTE_EVENT_CRYPTO_ADAPTER_MAX_INSTANCE;
 	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
 
-	mz = rte_memzone_lookup(name);
+	mz = rte_memzone_lookup(ECA_ADAPTER_ARRAY);
 	if (mz == NULL) {
-		mz = rte_memzone_reserve_aligned(name, sz, rte_socket_id(), 0,
+		mz = rte_memzone_reserve_aligned(ECA_ADAPTER_ARRAY, sz,
+						 rte_socket_id(), 0,
 						 RTE_CACHE_LINE_SIZE);
 		if (mz == NULL) {
 			RTE_EDEV_LOG_ERR("failed to reserve memzone err = %"
@@ -138,6 +140,22 @@ eca_init(void)
 	}
 
 	event_crypto_adapter = mz->addr;
+	return 0;
+}
+
+static int
+eca_memzone_lookup(void)
+{
+	const struct rte_memzone *mz;
+
+	if (event_crypto_adapter == NULL) {
+		mz = rte_memzone_lookup(ECA_ADAPTER_ARRAY);
+		if (mz == NULL)
+			return -ENOMEM;
+
+		event_crypto_adapter = mz->addr;
+	}
+
 	return 0;
 }
 
@@ -1047,6 +1065,9 @@ rte_event_crypto_adapter_stats_get(uint8_t id,
 	uint32_t i;
 	int ret;
 
+	if (eca_memzone_lookup())
+		return -ENOMEM;
+
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	adapter = eca_id_to_adapter(id);
@@ -1087,6 +1108,9 @@ rte_event_crypto_adapter_stats_reset(uint8_t id)
 	struct crypto_device_info *dev_info;
 	struct rte_eventdev *dev;
 	uint32_t i;
+
+	if (eca_memzone_lookup())
+		return -ENOMEM;
 
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
