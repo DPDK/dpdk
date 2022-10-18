@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+# SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2019-2022 Advanced Micro Devices, Inc.
 
 if is_windows

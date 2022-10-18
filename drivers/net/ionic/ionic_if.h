@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0 OR Linux-OpenIB OR BSD-3-Clause */
-/* Copyright 2017-2022 Advanced Micro Devices, Inc. */
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright 2017-2022 Advanced Micro Devices, Inc.
+ */
 
 #ifndef _IONIC_IF_H_
 #define _IONIC_IF_H_
