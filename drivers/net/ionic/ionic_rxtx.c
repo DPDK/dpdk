@@ -804,6 +804,36 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+#define IONIC_CSUM_FLAG_MASK (IONIC_RXQ_COMP_CSUM_F_VLAN - 1)
+static const uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK]
+		__rte_cache_aligned = {
+	/* IP_BAD set */
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD] = RTE_MBUF_F_RX_IP_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_BAD] =
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_UDP_OK] =
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_UDP_BAD] =
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+	/* IP_OK set */
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK] = RTE_MBUF_F_RX_IP_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_TCP_BAD] =
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_UDP_OK] =
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_UDP_BAD] =
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
+	/* No IP flag set */
+	[IONIC_RXQ_COMP_CSUM_F_TCP_OK] = RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_TCP_BAD] = RTE_MBUF_F_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_UDP_OK] = RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_UDP_BAD] = RTE_MBUF_F_RX_L4_CKSUM_BAD,
+};
+
 /* RTE_PTYPE_UNKNOWN is 0x0 */
 static const uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK]
 		__rte_cache_aligned = {
@@ -836,7 +866,7 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 	uint32_t pkt_type;
 	uint32_t left, i;
 	uint16_t cq_desc_len;
-	uint8_t ptype;
+	uint8_t ptype, cflags;
 	void **info;
 
 	cq_desc_len = rte_le_to_cpu_16(cq_desc->len);
@@ -894,19 +924,8 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 
 	/* Checksum */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_CALC) {
-		if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_IP_OK)
-			pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-		else if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_IP_BAD)
-			pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
-
-		if ((cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_TCP_OK) ||
-			(cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_UDP_OK))
-			pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
-		else if ((cq_desc->csum_flags &
-				IONIC_RXQ_COMP_CSUM_F_TCP_BAD) ||
-				(cq_desc->csum_flags &
-				IONIC_RXQ_COMP_CSUM_F_UDP_BAD))
-			pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+		cflags = cq_desc->csum_flags & IONIC_CSUM_FLAG_MASK;
+		pkt_flags |= ionic_csum_flags[cflags];
 	}
 
 	rxm->ol_flags = pkt_flags;
