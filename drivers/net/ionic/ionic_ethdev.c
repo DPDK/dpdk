@@ -396,7 +396,7 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	 */
 
 	dev_info->rx_queue_offload_capa = 0;
-	dev_info->tx_queue_offload_capa = 0;
+	dev_info->tx_queue_offload_capa = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	/*
 	 * Per-port capabilities

@@ -50,6 +50,7 @@ struct ionic_rx_stats {
 #define IONIC_QCQ_F_CSUM_L3	BIT(7)
 #define IONIC_QCQ_F_CSUM_UDP	BIT(8)
 #define IONIC_QCQ_F_CSUM_TCP	BIT(9)
+#define IONIC_QCQ_F_FAST_FREE	BIT(10)
 
 /* Queue / Completion Queue */
 struct ionic_qcq {
