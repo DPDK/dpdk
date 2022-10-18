@@ -140,6 +140,7 @@ New Features
   * Updated to reflect that Pensando has been acquired by AMD.
   * Enhanced data path to provide substantial performance improvements.
   * Added support for mbuf fast free.
+  * Added support for advertising packet types.
 
 * **Updated Intel iavf driver.**
 

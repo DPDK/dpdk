@@ -70,6 +70,7 @@ static const struct rte_eth_desc_lim tx_desc_lim_v1 = {
 
 static const struct eth_dev_ops ionic_eth_dev_ops = {
 	.dev_infos_get          = ionic_dev_info_get,
+	.dev_supported_ptypes_get = ionic_dev_supported_ptypes_get,
 	.dev_configure          = ionic_dev_configure,
 	.mtu_set                = ionic_dev_mtu_set,
 	.dev_start              = ionic_dev_start,

@@ -40,4 +40,6 @@ void ionic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 void ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 
+const uint32_t *ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+
 #endif /* _IONIC_RXTX_H_ */

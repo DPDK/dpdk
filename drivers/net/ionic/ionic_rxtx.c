@@ -850,6 +850,25 @@ static const uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK]
 		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
 };
 
+const uint32_t *
+ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+{
+	/* See ionic_ptype_table[] */
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_TIMESYNC,
+		RTE_PTYPE_L2_ETHER_LLDP,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	return ptypes;
+}
+
 /*
  * Cleans one descriptor. Connects the filled mbufs into a chain.
  * Does not advance the tail index.
