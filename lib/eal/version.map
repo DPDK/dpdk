@@ -76,6 +76,7 @@ DPDK_23 {
 	rte_eal_wait_lcore;
 	rte_epoll_ctl;
 	rte_epoll_wait;
+	rte_epoll_wait_interruptible;
 	rte_exit;
 	rte_extmem_attach;
 	rte_extmem_detach;
@@ -387,7 +388,6 @@ EXPERIMENTAL {
 	# added in 20.11
 	__rte_eal_trace_generic_size_t; # WINDOWS_NO_EXPORT
 	rte_cpu_get_intrinsics_support; # WINDOWS_NO_EXPORT
-	rte_epoll_wait_interruptible;
 	rte_service_lcore_may_be_active;
 	rte_vect_get_max_simd_bitwidth;
 	rte_vect_set_max_simd_bitwidth;
