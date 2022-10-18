@@ -846,17 +846,6 @@ ionic_notify_qcq_alloc(struct ionic_lif *lif)
 	return 0;
 }
 
-static void *
-ionic_bus_map_dbpage(struct ionic_adapter *adapter, int page_num)
-{
-	char *vaddr = adapter->bars[IONIC_PCI_BAR_DBELL].vaddr;
-
-	if (adapter->num_bars <= IONIC_PCI_BAR_DBELL)
-		return NULL;
-
-	return (void *)&vaddr[page_num << PAGE_SHIFT];
-}
-
 static void
 ionic_lif_queue_identify(struct ionic_lif *lif)
 {
@@ -959,7 +948,7 @@ ionic_lif_alloc(struct ionic_lif *lif)
 	rte_spinlock_init(&lif->adminq_lock);
 	rte_spinlock_init(&lif->adminq_service_lock);
 
-	lif->kern_dbpage = ionic_bus_map_dbpage(adapter, 0);
+	lif->kern_dbpage = adapter->idev.db_pages;
 	if (!lif->kern_dbpage) {
 		IONIC_PRINT(ERR, "Cannot map dbpage, aborting");
 		return -ENOMEM;
