@@ -64,7 +64,7 @@ ionic_tx_empty(struct ionic_tx_qcq *txq)
 {
 	struct ionic_queue *q = &txq->qcq.q;
 
-	ionic_empty_array(q->info, q->num_descs, 0);
+	ionic_empty_array(q->info, q->num_descs * q->num_segs, 0);
 }
 
 static void __rte_cold
@@ -102,50 +102,49 @@ ionic_tx_flush(struct ionic_tx_qcq *txq)
 {
 	struct ionic_cq *cq = &txq->qcq.cq;
 	struct ionic_queue *q = &txq->qcq.q;
-	struct rte_mbuf *txm, *next;
-	struct ionic_txq_comp *cq_desc_base = cq->base;
-	struct ionic_txq_comp *cq_desc;
+	struct rte_mbuf *txm;
+	struct ionic_txq_comp *cq_desc, *cq_desc_base = cq->base;
 	void **info;
-	u_int32_t comp_index = (u_int32_t)-1;
+	uint32_t i;
 
 	cq_desc = &cq_desc_base[cq->tail_idx];
+
 	while (color_match(cq_desc->color, cq->done_color)) {
 		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
-
-		/* Prefetch the next 4 descriptors (not really useful here) */
-		if ((cq->tail_idx & 0x3) == 0)
-			rte_prefetch0(&cq_desc_base[cq->tail_idx]);
-
 		if (cq->tail_idx == 0)
 			cq->done_color = !cq->done_color;
 
-		comp_index = cq_desc->comp_index;
+		/* Prefetch 4 x 16B comp at cq->tail_idx + 4 */
+		if ((cq->tail_idx & 0x3) == 0)
+			rte_prefetch0(&cq_desc_base[Q_NEXT_TO_SRVC(cq, 4)]);
 
-		cq_desc = &cq_desc_base[cq->tail_idx];
-	}
+		while (q->tail_idx != rte_le_to_cpu_16(cq_desc->comp_index)) {
+			/* Prefetch 8 mbuf ptrs at q->tail_idx + 2 */
+			rte_prefetch0(IONIC_INFO_PTR(q, Q_NEXT_TO_SRVC(q, 2)));
 
-	if (comp_index != (u_int32_t)-1) {
-		while (q->tail_idx != comp_index) {
+			/* Prefetch next mbuf */
+			void **next_info =
+				IONIC_INFO_PTR(q, Q_NEXT_TO_SRVC(q, 1));
+			if (next_info[0])
+				rte_mbuf_prefetch_part2(next_info[0]);
+			if (next_info[1])
+				rte_mbuf_prefetch_part2(next_info[1]);
+
 			info = IONIC_INFO_PTR(q, q->tail_idx);
+			for (i = 0; i < q->num_segs; i++) {
+				txm = info[i];
+				if (!txm)
+					break;
+
+				rte_pktmbuf_free_seg(txm);
+
+				info[i] = NULL;
+			}
 
 			q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
-
-			/* Prefetch the next 4 descriptors */
-			if ((q->tail_idx & 0x3) == 0)
-				/* q desc info */
-				rte_prefetch0(&q->info[q->tail_idx]);
-
-			/*
-			 * Note: you can just use rte_pktmbuf_free,
-			 * but this loop is faster
-			 */
-			txm = info[0];
-			while (txm != NULL) {
-				next = txm->next;
-				rte_pktmbuf_free_seg(txm);
-				txm = next;
-			}
 		}
+
+		cq_desc = &cq_desc_base[cq->tail_idx];
 	}
 }
 
@@ -327,9 +326,12 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 		uint16_t vlan_tci, bool has_vlan,
 		bool start, bool done)
 {
+	struct rte_mbuf *txm_seg;
 	void **info;
 	uint64_t cmd;
 	uint8_t flags = 0;
+	int i;
+
 	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
 	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
 	flags |= start ? IONIC_TXQ_DESC_FLAG_TSO_SOT : 0;
@@ -345,7 +347,13 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 
 	if (done) {
 		info = IONIC_INFO_PTR(q, q->head_idx);
-		info[0] = txm;
+
+		/* Walk the mbuf chain to stash pointers in the array */
+		txm_seg = txm;
+		for (i = 0; i < txm->nb_segs; i++) {
+			info[i] = txm_seg;
+			txm_seg = txm_seg->next;
+		}
 	}
 
 	q->head_idx = Q_NEXT_TO_POST(q, 1);
@@ -497,8 +505,7 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	struct ionic_tx_stats *stats = &txq->stats;
 	struct rte_mbuf *txm_seg;
 	void **info;
-	bool encap;
-	bool has_vlan;
+	rte_iova_t data_iova;
 	uint64_t ol_flags = txm->ol_flags;
 	uint64_t addr, cmd;
 	uint8_t opcode = IONIC_TXQ_DESC_OPCODE_CSUM_NONE;
@@ -524,32 +531,44 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	if (opcode == IONIC_TXQ_DESC_OPCODE_CSUM_NONE)
 		stats->no_csum++;
 
-	has_vlan = (ol_flags & RTE_MBUF_F_TX_VLAN);
-	encap = ((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) ||
-			(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) &&
-			((ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) ||
-			 (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6));
+	if (((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) ||
+	     (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) &&
+	    ((ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) ||
+	     (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6))) {
+		flags |= IONIC_TXQ_DESC_FLAG_ENCAP;
+	}
 
-	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
-	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
+	if (ol_flags & RTE_MBUF_F_TX_VLAN) {
+		flags |= IONIC_TXQ_DESC_FLAG_VLAN;
+		desc->vlan_tci = rte_cpu_to_le_16(txm->vlan_tci);
+	}
 
 	addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm));
 
 	cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
 	desc->cmd = rte_cpu_to_le_64(cmd);
 	desc->len = rte_cpu_to_le_16(txm->data_len);
-	desc->vlan_tci = rte_cpu_to_le_16(txm->vlan_tci);
 
 	info[0] = txm;
 
-	elem = sg_desc_base[q->head_idx].elems;
+	if (txm->nb_segs > 1) {
+		txm_seg = txm->next;
 
-	txm_seg = txm->next;
-	while (txm_seg != NULL) {
-		elem->len = rte_cpu_to_le_16(txm_seg->data_len);
-		elem->addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm_seg));
-		elem++;
-		txm_seg = txm_seg->next;
+		elem = sg_desc_base[q->head_idx].elems;
+
+		while (txm_seg != NULL) {
+			/* Stash the mbuf ptr in the array */
+			info++;
+			*info = txm_seg;
+
+			/* Configure the SGE */
+			data_iova = rte_mbuf_data_iova(txm_seg);
+			elem->len = rte_cpu_to_le_16(txm_seg->data_len);
+			elem->addr = rte_cpu_to_le_64(data_iova);
+			elem++;
+
+			txm_seg = txm_seg->next;
+		}
 	}
 
 	q->head_idx = Q_NEXT_TO_POST(q, 1);
@@ -565,10 +584,18 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ionic_queue *q = &txq->qcq.q;
 	struct ionic_tx_stats *stats = &txq->stats;
 	struct rte_mbuf *mbuf;
-	uint32_t next_q_head_idx;
 	uint32_t bytes_tx = 0;
 	uint16_t nb_avail, nb_tx = 0;
 	int err;
+
+	struct ionic_txq_desc *desc_base = q->base;
+	rte_prefetch0(&desc_base[q->head_idx]);
+	rte_prefetch0(IONIC_INFO_PTR(q, q->head_idx));
+
+	if (tx_pkts) {
+		rte_mbuf_prefetch_part1(tx_pkts[0]);
+		rte_mbuf_prefetch_part2(tx_pkts[0]);
+	}
 
 	/* Cleaning old buffers */
 	ionic_tx_flush(txq);
@@ -580,11 +607,13 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	while (nb_tx < nb_pkts) {
-		next_q_head_idx = Q_NEXT_TO_POST(q, 1);
-		if ((next_q_head_idx & 0x3) == 0) {
-			struct ionic_txq_desc *desc_base = q->base;
-			rte_prefetch0(&desc_base[next_q_head_idx]);
-			rte_prefetch0(&q->info[next_q_head_idx]);
+		uint16_t next_idx = Q_NEXT_TO_POST(q, 1);
+		rte_prefetch0(&desc_base[next_idx]);
+		rte_prefetch0(IONIC_INFO_PTR(q, next_idx));
+
+		if (nb_tx + 1 < nb_pkts) {
+			rte_mbuf_prefetch_part1(tx_pkts[nb_tx + 1]);
+			rte_mbuf_prefetch_part2(tx_pkts[nb_tx + 1]);
 		}
 
 		mbuf = tx_pkts[nb_tx];
@@ -605,10 +634,10 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (nb_tx > 0) {
 		rte_wmb();
 		ionic_q_flush(q);
-	}
 
-	stats->packets += nb_tx;
-	stats->bytes += bytes_tx;
+		stats->packets += nb_tx;
+		stats->bytes += bytes_tx;
+	}
 
 	return nb_tx;
 }
