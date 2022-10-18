@@ -275,13 +275,42 @@ struct rte_cryptodev_ops qat_sym_crypto_ops_gen2 = {
 	.sym_configure_raw_dp_ctx = qat_sym_configure_dp_ctx,
 };
 
-static struct qat_capabilities_info
-qat_sym_crypto_cap_get_gen2(struct qat_pci_device *qat_dev __rte_unused)
+static int
+qat_sym_crypto_cap_get_gen2(struct qat_cryptodev_private *internals,
+			const char *capa_memz_name,
+			const uint16_t __rte_unused slice_map)
 {
-	struct qat_capabilities_info capa_info;
-	capa_info.data = qat_sym_crypto_caps_gen2;
-	capa_info.size = sizeof(qat_sym_crypto_caps_gen2);
-	return capa_info;
+	const uint32_t size = sizeof(qat_sym_crypto_caps_gen2);
+	uint32_t i;
+
+	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
+	if (internals->capa_mz == NULL) {
+		internals->capa_mz = rte_memzone_reserve(capa_memz_name,
+				size, rte_socket_id(), 0);
+		if (internals->capa_mz == NULL) {
+			QAT_LOG(DEBUG,
+				"Error allocating memzone for capabilities");
+			return -1;
+		}
+	}
+
+	struct rte_cryptodev_capabilities *addr =
+			(struct rte_cryptodev_capabilities *)
+				internals->capa_mz->addr;
+	const struct rte_cryptodev_capabilities *capabilities =
+		qat_sym_crypto_caps_gen2;
+	const uint32_t capa_num =
+		size / sizeof(struct rte_cryptodev_capabilities);
+	uint32_t curr_capa = 0;
+
+	for (i = 0; i < capa_num; i++) {
+		memcpy(addr + curr_capa, capabilities + i,
+			sizeof(struct rte_cryptodev_capabilities));
+		curr_capa++;
+	}
+	internals->qat_dev_capabilities = internals->capa_mz->addr;
+
+	return 0;
 }
 
 RTE_INIT(qat_sym_crypto_gen2_init)

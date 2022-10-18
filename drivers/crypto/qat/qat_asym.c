@@ -1276,14 +1276,12 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 		.socket_id = qat_dev_instance->pci_dev->device.numa_node,
 		.private_data_size = sizeof(struct qat_cryptodev_private)
 	};
-	struct qat_capabilities_info capa_info;
-	const struct rte_cryptodev_capabilities *capabilities;
 	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
 		&qat_asym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-	uint64_t capa_size;
 	int i = 0;
+	uint16_t slice_map = 0;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");
@@ -1340,36 +1338,35 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	internals->qat_dev = qat_pci_dev;
 	internals->dev_id = cryptodev->data->dev_id;
 
-	capa_info = gen_dev_ops->get_capabilities(qat_pci_dev);
-	capabilities = capa_info.data;
-	capa_size = capa_info.size;
-
-	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
-	if (internals->capa_mz == NULL) {
-		internals->capa_mz = rte_memzone_reserve(capa_memz_name,
-				capa_size, rte_socket_id(), 0);
-		if (internals->capa_mz == NULL) {
-			QAT_LOG(DEBUG,
-				"Error allocating memzone for capabilities, "
-				"destroying PMD for %s",
-				name);
-			rte_cryptodev_pmd_destroy(cryptodev);
-			memset(&qat_dev_instance->asym_rte_dev, 0,
-				sizeof(qat_dev_instance->asym_rte_dev));
-			return -EFAULT;
-		}
-	}
-
-	memcpy(internals->capa_mz->addr, capabilities, capa_size);
-	internals->qat_dev_capabilities = internals->capa_mz->addr;
-
 	while (1) {
 		if (qat_dev_cmd_param[i].name == NULL)
 			break;
 		if (!strcmp(qat_dev_cmd_param[i].name, ASYM_ENQ_THRESHOLD_NAME))
 			internals->min_enq_burst_threshold =
 					qat_dev_cmd_param[i].val;
+		if (!strcmp(qat_dev_cmd_param[i].name, QAT_CMD_SLICE_MAP))
+			slice_map = qat_dev_cmd_param[i].val;
 		i++;
+	}
+
+	if (slice_map & ICP_ACCEL_MASK_PKE_SLICE) {
+		QAT_LOG(ERR, "Device %s does not support PKE slice",
+				name);
+		rte_cryptodev_pmd_destroy(cryptodev);
+		memset(&qat_dev_instance->asym_rte_dev, 0,
+			sizeof(qat_dev_instance->asym_rte_dev));
+		return -1;
+	}
+
+	if (gen_dev_ops->get_capabilities(internals,
+			capa_memz_name, slice_map) < 0) {
+		QAT_LOG(ERR,
+			"Device cannot obtain capabilities, destroying PMD for %s",
+			name);
+		rte_cryptodev_pmd_destroy(cryptodev);
+		memset(&qat_dev_instance->asym_rte_dev, 0,
+			sizeof(qat_dev_instance->asym_rte_dev));
+		return -1;
 	}
 
 	qat_pci_dev->asym_dev = internals;

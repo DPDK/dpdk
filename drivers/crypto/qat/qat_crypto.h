@@ -44,8 +44,8 @@ struct qat_capabilities_info {
 	uint64_t size;
 };
 
-typedef struct qat_capabilities_info (*get_capabilities_info_t)
-			(struct qat_pci_device *qat_dev);
+typedef int (*get_capabilities_info_t)(struct qat_cryptodev_private *internals,
+			const char *capa_memz_name, uint16_t slice_map);
 
 typedef uint64_t (*get_feature_flags_t)(struct qat_pci_device *qat_dev);
 

@@ -928,8 +928,9 @@ void
 qat_sym_session_set_ext_hash_flags_gen2(struct qat_sym_session *session,
 		uint8_t hash_flag);
 
-struct qat_capabilities_info
-qat_asym_crypto_cap_get_gen1(struct qat_pci_device *qat_dev);
+int
+qat_asym_crypto_cap_get_gen1(struct qat_cryptodev_private *internals,
+			const char *capa_memz_name, const uint16_t slice_map);
 
 uint64_t
 qat_asym_crypto_feature_flags_get_gen1(struct qat_pci_device *qat_dev);

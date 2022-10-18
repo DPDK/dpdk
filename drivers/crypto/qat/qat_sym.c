@@ -182,6 +182,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
 {
 	int i = 0, ret = 0;
+	uint16_t slice_map = 0;
 	struct qat_device_info *qat_dev_instance =
 			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 	struct rte_cryptodev_pmd_init_params init_params = {
@@ -193,11 +194,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	struct qat_cryptodev_private *internals;
-	struct qat_capabilities_info capa_info;
-	const struct rte_cryptodev_capabilities *capabilities;
 	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
 		&qat_sym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
-	uint64_t capa_size;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
@@ -277,37 +275,25 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	internals->dev_id = cryptodev->data->dev_id;
 
-	capa_info = gen_dev_ops->get_capabilities(qat_pci_dev);
-	capabilities = capa_info.data;
-	capa_size = capa_info.size;
-
-	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
-	if (internals->capa_mz == NULL) {
-		internals->capa_mz = rte_memzone_reserve(capa_memz_name,
-				capa_size, rte_socket_id(), 0);
-		if (internals->capa_mz == NULL) {
-			QAT_LOG(DEBUG,
-				"Error allocating memzone for capabilities, "
-				"destroying PMD for %s", name);
-			ret = -EFAULT;
-			goto error;
-		}
-	}
-
-	memcpy(internals->capa_mz->addr, capabilities, capa_size);
-	internals->qat_dev_capabilities = internals->capa_mz->addr;
-
-	while (1) {
-		if (qat_dev_cmd_param[i].name == NULL)
-			break;
+	while (qat_dev_cmd_param[i].name != NULL) {
 		if (!strcmp(qat_dev_cmd_param[i].name, SYM_ENQ_THRESHOLD_NAME))
 			internals->min_enq_burst_threshold =
 					qat_dev_cmd_param[i].val;
 		if (!strcmp(qat_dev_cmd_param[i].name, QAT_IPSEC_MB_LIB))
 			qat_ipsec_mb_lib = qat_dev_cmd_param[i].val;
+		if (!strcmp(qat_dev_cmd_param[i].name, QAT_CMD_SLICE_MAP))
+			slice_map = qat_dev_cmd_param[i].val;
 		i++;
 	}
 
+	if (gen_dev_ops->get_capabilities(internals,
+			capa_memz_name, slice_map) < 0) {
+		QAT_LOG(ERR,
+			"Device cannot obtain capabilities, destroying PMD for %s",
+			name);
+		ret = -1;
+		goto error;
+	}
 	internals->service_type = QAT_SERVICE_SYMMETRIC;
 	qat_pci_dev->sym_dev = internals;
 	QAT_LOG(DEBUG, "Created QAT SYM device %s as cryptodev instance %d",

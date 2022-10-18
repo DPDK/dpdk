@@ -143,13 +143,81 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen3[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
-static struct qat_capabilities_info
-qat_sym_crypto_cap_get_gen3(struct qat_pci_device *qat_dev __rte_unused)
+static int
+check_cipher_capa(const struct rte_cryptodev_capabilities *cap,
+		enum rte_crypto_cipher_algorithm algo)
 {
-	struct qat_capabilities_info capa_info;
-	capa_info.data = qat_sym_crypto_caps_gen3;
-	capa_info.size = sizeof(qat_sym_crypto_caps_gen3);
-	return capa_info;
+	if (cap->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+		return 0;
+	if (cap->sym.xform_type != RTE_CRYPTO_SYM_XFORM_CIPHER)
+		return 0;
+	if (cap->sym.cipher.algo != algo)
+		return 0;
+	return 1;
+}
+
+static int
+check_auth_capa(const struct rte_cryptodev_capabilities *cap,
+		enum rte_crypto_auth_algorithm algo)
+{
+	if (cap->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+		return 0;
+	if (cap->sym.xform_type != RTE_CRYPTO_SYM_XFORM_AUTH)
+		return 0;
+	if (cap->sym.auth.algo != algo)
+		return 0;
+	return 1;
+}
+
+static int
+qat_sym_crypto_cap_get_gen3(struct qat_cryptodev_private *internals,
+			const char *capa_memz_name, const uint16_t slice_map)
+{
+	const uint32_t size = sizeof(qat_sym_crypto_caps_gen3);
+	uint32_t i;
+
+	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
+	if (internals->capa_mz == NULL) {
+		internals->capa_mz = rte_memzone_reserve(capa_memz_name,
+				size, rte_socket_id(), 0);
+		if (internals->capa_mz == NULL) {
+			QAT_LOG(DEBUG,
+				"Error allocating memzone for capabilities");
+			return -1;
+		}
+	}
+
+	struct rte_cryptodev_capabilities *addr =
+			(struct rte_cryptodev_capabilities *)
+				internals->capa_mz->addr;
+	const struct rte_cryptodev_capabilities *capabilities =
+		qat_sym_crypto_caps_gen3;
+	const uint32_t capa_num =
+		size / sizeof(struct rte_cryptodev_capabilities);
+	uint32_t curr_capa = 0;
+
+	for (i = 0; i < capa_num; i++) {
+		if (slice_map & ICP_ACCEL_MASK_SM4_SLICE && (
+			check_cipher_capa(&capabilities[i],
+				RTE_CRYPTO_CIPHER_SM4_ECB) ||
+			check_cipher_capa(&capabilities[i],
+				RTE_CRYPTO_CIPHER_SM4_CBC) ||
+			check_cipher_capa(&capabilities[i],
+				RTE_CRYPTO_CIPHER_SM4_CTR))) {
+			continue;
+		}
+		if (slice_map & ICP_ACCEL_MASK_SM3_SLICE && (
+			check_auth_capa(&capabilities[i],
+				RTE_CRYPTO_AUTH_SM3))) {
+			continue;
+		}
+		memcpy(addr + curr_capa, capabilities + i,
+			sizeof(struct rte_cryptodev_capabilities));
+		curr_capa++;
+	}
+	internals->qat_dev_capabilities = internals->capa_mz->addr;
+
+	return 0;
 }
 
 static __rte_always_inline void
