@@ -336,7 +336,7 @@ ionic_dev_cmd_wait_check(struct ionic_dev *idev, unsigned long max_wait)
 int
 ionic_setup(struct ionic_adapter *adapter)
 {
-	return ionic_dev_setup(adapter);
+	return (*adapter->intf->setup)(adapter);
 }
 
 int

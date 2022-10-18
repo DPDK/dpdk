@@ -9,6 +9,7 @@ endif
 
 sources = files(
         'ionic_dev.c',
+        'ionic_dev_pci.c',
         'ionic_ethdev.c',
         'ionic_lif.c',
         'ionic_mac_api.c',
