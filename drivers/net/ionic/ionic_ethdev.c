@@ -1005,7 +1005,8 @@ eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_calloc("ionic",
 					adapter->max_mac_addrs,
-					RTE_ETHER_ADDR_LEN, 0);
+					RTE_ETHER_ADDR_LEN,
+					RTE_CACHE_LINE_SIZE);
 	if (eth_dev->data->mac_addrs == NULL) {
 		IONIC_PRINT(ERR, "Failed to allocate %u bytes needed to "
 			"store MAC addresses",
@@ -1083,7 +1084,7 @@ eth_ionic_dev_probe(void *bus_dev, struct rte_device *rte_dev,
 		goto err;
 	}
 
-	adapter = rte_zmalloc("ionic", sizeof(*adapter), 0);
+	adapter = rte_zmalloc("ionic", sizeof(*adapter), RTE_CACHE_LINE_SIZE);
 	if (!adapter) {
 		IONIC_PRINT(ERR, "OOM");
 		err = -ENOMEM;

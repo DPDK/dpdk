@@ -55,8 +55,7 @@ ionic_rx_filter_save(struct ionic_lif *lif, uint32_t flow_id,
 	struct ionic_rx_filter *f;
 	uint32_t key;
 
-	f = rte_zmalloc("ionic", sizeof(*f), 0);
-
+	f = rte_zmalloc("ionic", sizeof(*f), RTE_CACHE_LINE_SIZE);
 	if (!f)
 		return -ENOMEM;
 
