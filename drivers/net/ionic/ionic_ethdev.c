@@ -828,8 +828,6 @@ ionic_dev_configure(struct rte_eth_dev *eth_dev)
 
 	ionic_lif_configure(lif);
 
-	ionic_lif_set_features(lif);
-
 	return 0;
 }
 
@@ -883,6 +881,13 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 	if (dev_conf->lpbk_mode)
 		IONIC_PRINT(WARNING, "Loopback mode not supported");
 
+	/* Re-set features in case SG flag was added in rx_queue_setup() */
+	err = ionic_lif_set_features(lif);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot set LIF features: %d", err);
+		return err;
+	}
+
 	lif->frame_size = eth_dev->data->mtu + IONIC_ETH_OVERHEAD;
 
 	err = ionic_lif_change_mtu(lif, eth_dev->data->mtu);
@@ -916,6 +921,18 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 			IONIC_PRINT(WARNING, "Failed to set link speed %u",
 				speed);
 	}
+
+	if (lif->hw_features & IONIC_ETH_HW_RX_SG)
+		eth_dev->rx_pkt_burst = &ionic_recv_pkts_sg;
+	else
+		eth_dev->rx_pkt_burst = &ionic_recv_pkts;
+
+	if (lif->hw_features & IONIC_ETH_HW_TX_SG)
+		eth_dev->tx_pkt_burst = &ionic_xmit_pkts_sg;
+	else
+		eth_dev->tx_pkt_burst = &ionic_xmit_pkts;
+
+	eth_dev->tx_pkt_prepare = &ionic_prep_pkts;
 
 	ionic_dev_link_update(eth_dev, 0);
 
@@ -980,10 +997,6 @@ eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
 	IONIC_PRINT_CALL();
 
 	eth_dev->dev_ops = &ionic_eth_dev_ops;
-	eth_dev->rx_pkt_burst = &ionic_recv_pkts;
-	eth_dev->tx_pkt_burst = &ionic_xmit_pkts;
-	eth_dev->tx_pkt_prepare = &ionic_prep_pkts;
-
 	eth_dev->rx_descriptor_status = ionic_dev_rx_descriptor_status;
 	eth_dev->tx_descriptor_status = ionic_dev_tx_descriptor_status;
 

@@ -16,4 +16,6 @@ sources = files(
         'ionic_main.c',
         'ionic_rx_filter.c',
         'ionic_rxtx.c',
+        'ionic_rxtx_simple.c',
+        'ionic_rxtx_sg.c',
 )

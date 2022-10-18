@@ -755,11 +755,10 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		struct ionic_rx_qcq **rxq_out)
 {
 	struct ionic_rx_qcq *rxq;
-	uint16_t flags, seg_size, hdr_seg_size, max_segs, max_segs_fw;
+	uint16_t flags = 0, seg_size, hdr_seg_size, max_segs, max_segs_fw = 1;
 	uint32_t max_mtu;
 	int err;
 
-	flags = IONIC_QCQ_F_SG;
 	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
 		flags |= IONIC_QCQ_F_CMB;
 
@@ -770,7 +769,18 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 
 	max_mtu = rte_le_to_cpu_32(lif->adapter->ident.lif.eth.max_mtu);
 
-	max_segs_fw = IONIC_RX_MAX_SG_ELEMS + 1;
+	/* If mbufs are too small to hold received packets, enable SG */
+	if (max_mtu > hdr_seg_size) {
+		IONIC_PRINT(NOTICE, "Enabling RX_OFFLOAD_SCATTER");
+		lif->eth_dev->data->dev_conf.rxmode.offloads |=
+			RTE_ETH_RX_OFFLOAD_SCATTER;
+		ionic_lif_configure_rx_sg_offload(lif);
+	}
+
+	if (lif->features & IONIC_ETH_HW_RX_SG) {
+		flags |= IONIC_QCQ_F_SG;
+		max_segs_fw = IONIC_RX_MAX_SG_ELEMS + 1;
+	}
 
 	/*
 	 * Calculate how many fragment pointers might be stored in queue.
@@ -820,14 +830,17 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t ntxq_descs, struct ionic_tx_qcq **txq_out)
 {
 	struct ionic_tx_qcq *txq;
-	uint16_t flags, num_segs_fw;
+	uint16_t flags = 0, num_segs_fw = 1;
 	int err;
 
-	flags = IONIC_QCQ_F_SG;
+	if (lif->features & IONIC_ETH_HW_TX_SG) {
+		flags |= IONIC_QCQ_F_SG;
+		num_segs_fw = IONIC_TX_MAX_SG_ELEMS_V1 + 1;
+	}
 	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
 		flags |= IONIC_QCQ_F_CMB;
 
-	num_segs_fw = IONIC_TX_MAX_SG_ELEMS_V1 + 1;
+	IONIC_PRINT(DEBUG, "txq %u num_segs %u", index, num_segs_fw);
 
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_TXQ,
@@ -1561,8 +1574,7 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 			.type = q->type,
 			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
-			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_SG |
-						IONIC_QINIT_F_ENA),
+			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
 			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 			.ring_size = rte_log2_u32(q->num_descs),
 			.ring_base = rte_cpu_to_le_64(q->base_pa),
@@ -1572,6 +1584,8 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 	};
 	int err;
 
+	if (txq->flags & IONIC_QCQ_F_SG)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_SG);
 	if (txq->flags & IONIC_QCQ_F_CMB)
 		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
 
@@ -1615,8 +1629,7 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 			.type = q->type,
 			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
-			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_SG |
-						IONIC_QINIT_F_ENA),
+			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
 			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 			.ring_size = rte_log2_u32(q->num_descs),
 			.ring_base = rte_cpu_to_le_64(q->base_pa),
@@ -1626,6 +1639,8 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 	};
 	int err;
 
+	if (rxq->flags & IONIC_QCQ_F_SG)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_SG);
 	if (rxq->flags & IONIC_QCQ_F_CMB)
 		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
 
@@ -1792,6 +1807,20 @@ ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask)
 }
 
 void
+ionic_lif_configure_rx_sg_offload(struct ionic_lif *lif)
+{
+	struct rte_eth_rxmode *rxmode = &lif->eth_dev->data->dev_conf.rxmode;
+
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
+		lif->features |= IONIC_ETH_HW_RX_SG;
+		lif->eth_dev->data->scattered_rx = 1;
+	} else {
+		lif->features &= ~IONIC_ETH_HW_RX_SG;
+		lif->eth_dev->data->scattered_rx = 0;
+	}
+}
+
+void
 ionic_lif_configure(struct ionic_lif *lif)
 {
 	struct rte_eth_rxmode *rxmode = &lif->eth_dev->data->dev_conf.rxmode;
@@ -1836,13 +1865,11 @@ ionic_lif_configure(struct ionic_lif *lif)
 	else
 		lif->features &= ~IONIC_ETH_HW_RX_CSUM;
 
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
-		lif->features |= IONIC_ETH_HW_RX_SG;
-		lif->eth_dev->data->scattered_rx = 1;
-	} else {
-		lif->features &= ~IONIC_ETH_HW_RX_SG;
-		lif->eth_dev->data->scattered_rx = 0;
-	}
+	/*
+	 * NB: RX_SG may be enabled later during rx_queue_setup() if
+	 * required by the mbuf/mtu configuration
+	 */
+	ionic_lif_configure_rx_sg_offload(lif);
 
 	/* Covers VLAN_STRIP */
 	ionic_lif_configure_vlan_offload(lif, RTE_ETH_VLAN_STRIP_MASK);
