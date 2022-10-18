@@ -148,6 +148,7 @@ DPDK_23 {
 	rte_log_get_global_level;
 	rte_log_get_level;
 	rte_log_get_stream;
+	rte_log_list_types;
 	rte_log_register;
 	rte_log_register_type_and_pick_level;
 	rte_log_set_global_level;
@@ -400,7 +401,6 @@ EXPERIMENTAL {
 	# added in 21.05
 	rte_devargs_reset;
 	rte_intr_callback_unregister_sync;
-	rte_log_list_types;
 	rte_thread_key_create;
 	rte_thread_key_delete;
 	rte_thread_value_get;
