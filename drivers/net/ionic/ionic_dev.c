@@ -318,6 +318,15 @@ ionic_cq_init(struct ionic_cq *cq, uint16_t num_descs)
 }
 
 void
+ionic_cq_reset(struct ionic_cq *cq)
+{
+	cq->tail_idx = 0;
+	cq->done_color = 1;
+
+	memset(cq->base, 0, sizeof(struct ionic_nop_comp) * cq->num_descs);
+}
+
+void
 ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa)
 {
 	cq->base = base;
@@ -378,4 +387,11 @@ ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa)
 {
 	q->sg_base = base;
 	q->sg_base_pa = base_pa;
+}
+
+void
+ionic_q_reset(struct ionic_queue *q)
+{
+	q->head_idx = 0;
+	q->tail_idx = 0;
 }

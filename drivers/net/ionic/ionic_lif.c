@@ -30,25 +30,7 @@ static const uint8_t ionic_qtype_vers[IONIC_QTYPE_MAX] = {
 static int ionic_lif_addr_add(struct ionic_lif *lif, const uint8_t *addr);
 static int ionic_lif_addr_del(struct ionic_lif *lif, const uint8_t *addr);
 
-int
-ionic_qcq_enable(struct ionic_qcq *qcq)
-{
-	struct ionic_queue *q = &qcq->q;
-	struct ionic_lif *lif = qcq->lif;
-	struct ionic_admin_ctx ctx = {
-		.pending_work = true,
-		.cmd.q_control = {
-			.opcode = IONIC_CMD_Q_CONTROL,
-			.type = q->type,
-			.index = rte_cpu_to_le_32(q->index),
-			.oper = IONIC_Q_ENABLE,
-		},
-	};
-
-	return ionic_adminq_post_wait(lif, &ctx);
-}
-
-int
+static int
 ionic_qcq_disable(struct ionic_qcq *qcq)
 {
 	struct ionic_queue *q = &qcq->q;
@@ -133,7 +115,6 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 	for (i = 0; i < lif->nrxqcqs; i++) {
 		struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats;
 		stats->ierrors +=
-			rx_stats->no_cb_arg +
 			rx_stats->bad_cq_status +
 			rx_stats->no_room +
 			rx_stats->bad_len;
@@ -154,7 +135,6 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 		stats->q_ipackets[i] = rx_stats->packets;
 		stats->q_ibytes[i] = rx_stats->bytes;
 		stats->q_errors[i] =
-			rx_stats->no_cb_arg +
 			rx_stats->bad_cq_status +
 			rx_stats->no_room +
 			rx_stats->bad_len;
@@ -1146,12 +1126,16 @@ ionic_lif_rss_teardown(struct ionic_lif *lif)
 void
 ionic_lif_txq_deinit(struct ionic_tx_qcq *txq)
 {
+	ionic_qcq_disable(&txq->qcq);
+
 	txq->flags &= ~IONIC_QCQ_F_INITED;
 }
 
 void
 ionic_lif_rxq_deinit(struct ionic_rx_qcq *rxq)
 {
+	ionic_qcq_disable(&rxq->qcq);
+
 	rxq->flags &= ~IONIC_QCQ_F_INITED;
 }
 
@@ -1488,6 +1472,9 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 		ctx.cmd.q_init.ring_size);
 	IONIC_PRINT(DEBUG, "txq_init.ver %u", ctx.cmd.q_init.ver);
 
+	ionic_q_reset(q);
+	ionic_cq_reset(cq);
+
 	err = ionic_adminq_post_wait(lif, &ctx);
 	if (err)
 		return err;
@@ -1535,6 +1522,9 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 	IONIC_PRINT(DEBUG, "rxq_init.ring_size %d",
 		ctx.cmd.q_init.ring_size);
 	IONIC_PRINT(DEBUG, "rxq_init.ver %u", ctx.cmd.q_init.ver);
+
+	ionic_q_reset(q);
+	ionic_cq_reset(cq);
 
 	err = ionic_adminq_post_wait(lif, &ctx);
 	if (err)

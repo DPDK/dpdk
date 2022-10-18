@@ -39,7 +39,6 @@ struct ionic_tx_stats {
 struct ionic_rx_stats {
 	uint64_t packets;
 	uint64_t bytes;
-	uint64_t no_cb_arg;
 	uint64_t bad_cq_status;
 	uint64_t no_room;
 	uint64_t bad_len;
@@ -206,9 +205,6 @@ int ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
 	uint32_t index, uint16_t ntxq_descs,
 	struct ionic_tx_qcq **qcq_out);
 void ionic_qcq_free(struct ionic_qcq *qcq);
-
-int ionic_qcq_enable(struct ionic_qcq *qcq);
-int ionic_qcq_disable(struct ionic_qcq *qcq);
 
 int ionic_lif_rxq_init(struct ionic_rx_qcq *rxq);
 void ionic_lif_rxq_deinit(struct ionic_rx_qcq *rxq);
