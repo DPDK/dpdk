@@ -55,7 +55,10 @@ ionic_dev_setup(struct ionic_adapter *adapter)
 			ioread8(&idev->dev_info->fw_version[i]);
 	adapter->fw_version[IONIC_DEVINFO_FWVERS_BUFLEN - 1] = '\0';
 
-	IONIC_PRINT(DEBUG, "Firmware version: %s", adapter->fw_version);
+	adapter->name = adapter->pci_dev->device.name;
+
+	IONIC_PRINT(DEBUG, "%s firmware version: %s",
+		adapter->name, adapter->fw_version);
 
 	/* BAR1: doorbells */
 	bar++;
