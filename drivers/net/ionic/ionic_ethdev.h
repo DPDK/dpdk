@@ -17,8 +17,6 @@
 
 #define IONIC_ETH_DEV_TO_LIF(eth_dev) ((struct ionic_lif *) \
 	(eth_dev)->data->dev_private)
-#define IONIC_ETH_DEV_TO_ADAPTER(eth_dev) \
-	(IONIC_ETH_DEV_TO_LIF(eth_dev)->adapter)
 
 int ionic_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
 

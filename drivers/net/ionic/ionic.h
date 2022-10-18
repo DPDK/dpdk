@@ -62,7 +62,6 @@ struct ionic_adapter {
 	bool link_up;
 	char fw_version[IONIC_DEVINFO_FWVERS_BUFLEN];
 	struct rte_pci_device *pci_dev;
-	LIST_ENTRY(ionic_adapter) pci_adapters;
 };
 
 /** ionic_admin_ctx - Admin command context.
