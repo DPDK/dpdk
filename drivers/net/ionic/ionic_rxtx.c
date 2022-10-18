@@ -551,6 +551,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	}
 
 	rxq->mb_pool = mp;
+	rxq->wdog_ms = IONIC_Q_WDOG_MS;
 
 	/*
 	 * Note: the interface does not currently support
