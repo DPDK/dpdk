@@ -129,20 +129,23 @@ cleanup_crt(struct qat_asym_op_cookie *cookie,
 
 static void
 cleanup(struct qat_asym_op_cookie *cookie,
-		struct rte_crypto_asym_xform *xform, int alg_size)
+		struct rte_crypto_asym_xform *xform)
 {
 	if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODEX)
 		cleanup_arrays(cookie, QAT_ASYM_MODEXP_NUM_IN_PARAMS,
-				QAT_ASYM_MODEXP_NUM_OUT_PARAMS, alg_size);
+				QAT_ASYM_MODEXP_NUM_OUT_PARAMS,
+				cookie->alg_bytesize);
 	else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODINV)
 		cleanup_arrays(cookie, QAT_ASYM_MODINV_NUM_IN_PARAMS,
-				QAT_ASYM_MODINV_NUM_OUT_PARAMS, alg_size);
+				QAT_ASYM_MODINV_NUM_OUT_PARAMS,
+				cookie->alg_bytesize);
 	else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_RSA) {
 		if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_QT)
-			cleanup_crt(cookie, alg_size);
+			cleanup_crt(cookie, cookie->alg_bytesize);
 		else {
 			cleanup_arrays(cookie, QAT_ASYM_RSA_NUM_IN_PARAMS,
-				QAT_ASYM_RSA_NUM_OUT_PARAMS, alg_size);
+				QAT_ASYM_RSA_NUM_OUT_PARAMS,
+				cookie->alg_bytesize);
 		}
 	} else {
 		cleanup_arrays(cookie, QAT_ASYM_MAX_PARAMS,
@@ -804,12 +807,13 @@ qat_asym_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
 			op->asym->session->sess_private_data;
 	int err = 0;
 
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 	if (unlikely(qat_session == NULL)) {
 		QAT_DP_LOG(ERR, "Session was not created for this device");
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		goto error;
 	}
 
-	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 	switch (op->sess_type) {
 	case RTE_CRYPTO_OP_WITH_SESSION:
 		request_init(qat_req);
@@ -882,10 +886,11 @@ qat_asym_process_response(void **out_op, uint8_t *resp,
 	struct rte_crypto_op *op = (struct rte_crypto_op *)(uintptr_t)
 			(resp_msg->opaque);
 	struct qat_asym_op_cookie *cookie = op_cookie;
-	struct rte_crypto_asym_xform *xform;
+	struct rte_crypto_asym_xform *xform = NULL;
 	struct qat_asym_session *qat_session = (struct qat_asym_session *)
 			op->asym->session->sess_private_data;
 
+	*out_op = op;
 	if (cookie->error) {
 		cookie->error = 0;
 		if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
@@ -917,17 +922,13 @@ qat_asym_process_response(void **out_op, uint8_t *resp,
 	default:
 		QAT_DP_LOG(ERR,
 			"Invalid session/xform settings in response ring!");
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 	}
-
-	if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED) {
-		op->status = qat_asym_collect_response(op,
-					cookie, xform);
-		cleanup(cookie, xform, cookie->alg_bytesize);
-	}
-
-	*out_op = op;
+	if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
+		op->status = qat_asym_collect_response(op, cookie, xform);
 	HEXDUMP("resp_msg:", resp_msg, sizeof(struct icp_qat_fw_pke_resp));
+	if (likely(xform != NULL))
+		cleanup(cookie, xform);
 
 	return 1;
 }
