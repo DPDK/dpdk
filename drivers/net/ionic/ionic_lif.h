@@ -104,6 +104,7 @@ struct ionic_tx_qcq {
 
 	/* cacheline2 */
 	uint16_t num_segs_fw;	/* # segs supported by current FW */
+	uint16_t free_thresh;
 	uint16_t flags;
 
 	struct ionic_tx_stats stats;

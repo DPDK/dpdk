@@ -429,8 +429,8 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->tx_desc_lim = tx_desc_lim_v1;
 
 	/* Driver-preferred Rx/Tx parameters */
-	dev_info->default_rxportconf.burst_size = 32;
-	dev_info->default_txportconf.burst_size = 32;
+	dev_info->default_rxportconf.burst_size = IONIC_DEF_TXRX_BURST;
+	dev_info->default_txportconf.burst_size = IONIC_DEF_TXRX_BURST;
 	dev_info->default_rxportconf.nb_queues = 1;
 	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_rxportconf.ring_size = IONIC_DEF_TXRX_DESC;

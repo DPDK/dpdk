@@ -20,6 +20,7 @@
 #define IONIC_MAX_RING_DESC		32768
 #define IONIC_MIN_RING_DESC		16
 #define IONIC_DEF_TXRX_DESC		4096
+#define IONIC_DEF_TXRX_BURST		32
 
 #define IONIC_DEVCMD_TIMEOUT		5	/* devcmd_timeout */
 #define IONIC_DEVCMD_CHECK_PERIOD_US	10	/* devcmd status chk period */
