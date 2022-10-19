@@ -2156,6 +2156,9 @@ bond_ethdev_cfg_cleanup(struct rte_eth_dev *dev)
 	int skipped = 0;
 	struct rte_flow_error ferror;
 
+	/* Flush flows in all back-end devices before removing them */
+	bond_flow_ops.flush(dev, &ferror);
+
 	while (internals->slave_count != skipped) {
 		uint16_t port_id = internals->slaves[skipped].port_id;
 
@@ -2173,7 +2176,6 @@ bond_ethdev_cfg_cleanup(struct rte_eth_dev *dev)
 			skipped++;
 		}
 	}
-	bond_flow_ops.flush(dev, &ferror);
 }
 
 int
