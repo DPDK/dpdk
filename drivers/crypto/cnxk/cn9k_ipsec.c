@@ -211,50 +211,8 @@ cn9k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec,
 				plt_err("Transport mode AES-256-GCM is not supported");
 				return -ENOTSUP;
 			}
-		} else {
-			struct rte_crypto_cipher_xform *cipher;
-			struct rte_crypto_auth_xform *auth;
-
-			if (crypto->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
-				cipher = &crypto->cipher;
-				auth = &crypto->next->auth;
-			} else {
-				cipher = &crypto->next->cipher;
-				auth = &crypto->auth;
-			}
-
-			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
-			    (auth->algo == RTE_CRYPTO_AUTH_SHA256_HMAC)) {
-				plt_err("Transport mode AES-CBC SHA2 HMAC 256 is not supported");
-				return -ENOTSUP;
-			}
-
-			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
-			    (auth->algo == RTE_CRYPTO_AUTH_SHA384_HMAC)) {
-				plt_err("Transport mode AES-CBC SHA2 HMAC 384 is not supported");
-				return -ENOTSUP;
-			}
-
-			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
-			    (auth->algo == RTE_CRYPTO_AUTH_SHA512_HMAC)) {
-				plt_err("Transport mode AES-CBC SHA2 HMAC 512 is not supported");
-				return -ENOTSUP;
-			}
-
-			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
-			    (auth->algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC)) {
-				plt_err("Transport mode AES-CBC AES-XCBC is not supported");
-				return -ENOTSUP;
-			}
-
-			if ((cipher->algo == RTE_CRYPTO_CIPHER_3DES_CBC) &&
-			    (auth->algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC)) {
-				plt_err("Transport mode 3DES-CBC AES-XCBC is not supported");
-				return -ENOTSUP;
-			}
 		}
 	}
-
 	return 0;
 }
 

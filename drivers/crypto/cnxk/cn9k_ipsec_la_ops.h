@@ -16,11 +16,15 @@ static __rte_always_inline int32_t
 ipsec_po_out_rlen_get(struct cn9k_sec_session *sess, uint32_t plen)
 {
 	uint32_t enc_payload_len;
+	int adj_len = 0;
 
-	enc_payload_len = RTE_ALIGN_CEIL(plen + sess->rlens.roundup_len,
-					 sess->rlens.roundup_byte);
+	if (sess->sa.out_sa.common_sa.ctl.ipsec_mode == ROC_IE_SA_MODE_TRANSPORT)
+		adj_len = ROC_CPT_TUNNEL_IPV4_HDR_LEN;
 
-	return sess->custom_hdr_len + sess->rlens.partial_len + enc_payload_len;
+	enc_payload_len =
+		RTE_ALIGN_CEIL(plen + sess->rlens.roundup_len - adj_len, sess->rlens.roundup_byte);
+
+	return sess->custom_hdr_len + sess->rlens.partial_len + enc_payload_len + adj_len;
 }
 
 static __rte_always_inline int
