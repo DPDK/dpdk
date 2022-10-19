@@ -90,6 +90,15 @@ next:
 	if (!hw->lm_cfg)
 		WARNINGOUT("HW support live migration not support!\n");
 
+	/* For some hardware implementation, for example:
+	 * the BAR 4 of PF is NULL, while BAR 4 of VF is not.
+	 * This code makes sure hw->mq_cfg is a valid address.
+	 */
+	if (hw->mem_resource[4].addr)
+		hw->mq_cfg = hw->mem_resource[4].addr + IFCVF_MQ_OFFSET;
+	else
+		hw->mq_cfg = NULL;
+
 	if (hw->common_cfg == NULL || hw->notify_base == NULL ||
 			hw->isr == NULL || hw->dev_cfg == NULL) {
 		DEBUGOUT("capability incomplete\n");

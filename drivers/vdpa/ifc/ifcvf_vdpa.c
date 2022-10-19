@@ -1248,6 +1248,7 @@ ifcvf_get_vdpa_features(struct rte_vdpa_device *vdev, uint64_t *features)
 		 1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD | \
 		 1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER | \
 		 1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD | \
+		 1ULL << VHOST_USER_PROTOCOL_F_MQ | \
 		 1ULL << VHOST_USER_PROTOCOL_F_STATUS)
 
 #define VDPA_BLK_PROTOCOL_FEATURES \

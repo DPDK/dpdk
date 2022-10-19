@@ -50,6 +50,7 @@
 
 #define IFCVF_LM_CFG_SIZE		0x40
 #define IFCVF_LM_RING_STATE_OFFSET	0x20
+#define IFCVF_MQ_OFFSET			0x28
 
 #define IFCVF_LM_LOGGING_CTRL		0x0
 
@@ -149,6 +150,7 @@ struct ifcvf_hw {
 	u16    *notify_base;
 	u16    *notify_addr[IFCVF_MAX_QUEUES * 2];
 	u8     *lm_cfg;
+	u8     *mq_cfg;
 	struct vring_info vring[IFCVF_MAX_QUEUES * 2];
 	u8 nr_vring;
 	int device_type;
