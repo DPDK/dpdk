@@ -1323,6 +1323,9 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 			auth_offset += iv_len;
 
 			inputlen = auth_offset + auth_data_len;
+
+			/* length should be in bits */
+			auth_data_len *= 8;
 		}
 
 		outputlen = mac_len;
