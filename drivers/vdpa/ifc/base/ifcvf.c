@@ -252,6 +252,9 @@ ifcvf_hw_enable(struct ifcvf_hw *hw)
 
 	ifcvf_enable_mq(hw);
 	for (i = 0; i < hw->nr_vring; i++) {
+		if (!hw->vring[i].enable)
+			continue;
+
 		IFCVF_WRITE_REG16(i, &cfg->queue_select);
 		io_write64_twopart(hw->vring[i].desc, &cfg->queue_desc_lo,
 				&cfg->queue_desc_hi);
