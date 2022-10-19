@@ -946,6 +946,26 @@ static const struct rte_cryptodev_capabilities sec_caps_aes[] = {
 };
 
 static const struct rte_cryptodev_capabilities sec_caps_des[] = {
+	{	/* DES  */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_DES_CBC,
+				.block_size = 8,
+				.key_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, },
+		}, }
+	},
 	{	/* 3DES CBC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -965,7 +985,7 @@ static const struct rte_cryptodev_capabilities sec_caps_des[] = {
 				}
 			}, }
 		}, }
-	}
+	},
 };
 
 static const struct rte_cryptodev_capabilities sec_caps_sha1_sha2[] = {
@@ -1044,6 +1064,26 @@ static const struct rte_cryptodev_capabilities sec_caps_sha1_sha2[] = {
 				.digest_size = {
 					.min = 32,
 					.max = 32,
+					.increment = 0
+				},
+			}, }
+		}, }
+	},
+	{	/* MD5 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_MD5_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 12,
+					.max = 12,
 					.increment = 0
 				},
 			}, }

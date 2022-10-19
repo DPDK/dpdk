@@ -23,6 +23,10 @@ ipsec_xform_cipher_verify(struct rte_crypto_sym_xform *crypto_xform)
 	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_NULL)
 		return 0;
 
+	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_DES_CBC &&
+	    crypto_xform->cipher.key.length == 8)
+		return 0;
+
 	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC ||
 	    crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CTR) {
 		switch (crypto_xform->cipher.key.length) {
@@ -50,6 +54,11 @@ ipsec_xform_auth_verify(struct rte_crypto_sym_xform *crypto_xform)
 
 	if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_NULL)
 		return 0;
+
+	if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_MD5_HMAC) {
+		if (keylen == 16)
+			return 0;
+	}
 
 	if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC) {
 		if (keylen >= 20 && keylen <= 64)
