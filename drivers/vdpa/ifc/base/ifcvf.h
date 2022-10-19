@@ -12,12 +12,14 @@
 #define IFCVF_BLK	1
 
 #define IFCVF_VENDOR_ID                     0x1AF4
-#define IFCVF_NET_DEVICE_ID                 0x1041
+#define IFCVF_NET_MODERN_DEVICE_ID          0x1041
 #define IFCVF_BLK_MODERN_DEVICE_ID          0x1042
+#define IFCVF_NET_TRANSITIONAL_DEVICE_ID    0x1000
 #define IFCVF_BLK_TRANSITIONAL_DEVICE_ID    0x1001
 #define IFCVF_SUBSYS_VENDOR_ID              0x8086
 #define IFCVF_SUBSYS_DEVICE_ID              0x001A
-#define IFCVF_BLK_DEVICE_ID                 0x0002
+#define IFCVF_SUBSYS_NET_DEVICE_ID          0x0001
+#define IFCVF_SUBSYS_BLK_DEVICE_ID          0x0002
 
 #define IFCVF_MAX_QUEUES		1
 

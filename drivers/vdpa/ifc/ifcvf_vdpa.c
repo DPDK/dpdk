@@ -1684,23 +1684,30 @@ ifcvf_pci_remove(struct rte_pci_device *pci_dev)
 static const struct rte_pci_id pci_id_ifcvf_map[] = {
 	{ .class_id = RTE_CLASS_ANY_ID,
 	  .vendor_id = IFCVF_VENDOR_ID,
-	  .device_id = IFCVF_NET_DEVICE_ID,
+	  .device_id = IFCVF_NET_MODERN_DEVICE_ID,
 	  .subsystem_vendor_id = IFCVF_SUBSYS_VENDOR_ID,
 	  .subsystem_device_id = IFCVF_SUBSYS_DEVICE_ID,
 	},
 
 	{ .class_id = RTE_CLASS_ANY_ID,
 	  .vendor_id = IFCVF_VENDOR_ID,
+	  .device_id = IFCVF_NET_TRANSITIONAL_DEVICE_ID,
+	  .subsystem_vendor_id = IFCVF_SUBSYS_VENDOR_ID,
+	  .subsystem_device_id = IFCVF_SUBSYS_NET_DEVICE_ID,
+	},
+
+	{ .class_id = RTE_CLASS_ANY_ID,
+	  .vendor_id = IFCVF_VENDOR_ID,
 	  .device_id = IFCVF_BLK_TRANSITIONAL_DEVICE_ID,
 	  .subsystem_vendor_id = IFCVF_SUBSYS_VENDOR_ID,
-	  .subsystem_device_id = IFCVF_BLK_DEVICE_ID,
+	  .subsystem_device_id = IFCVF_SUBSYS_BLK_DEVICE_ID,
 	},
 
 	{ .class_id = RTE_CLASS_ANY_ID,
 	  .vendor_id = IFCVF_VENDOR_ID,
 	  .device_id = IFCVF_BLK_MODERN_DEVICE_ID,
 	  .subsystem_vendor_id = IFCVF_SUBSYS_VENDOR_ID,
-	  .subsystem_device_id = IFCVF_BLK_DEVICE_ID,
+	  .subsystem_device_id = IFCVF_SUBSYS_BLK_DEVICE_ID,
 	},
 
 	{ .vendor_id = 0, /* sentinel */
