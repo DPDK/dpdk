@@ -1737,16 +1737,19 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	internal->sw_lm = sw_fallback_lm;
 
+	pthread_mutex_lock(&internal_list_lock);
+	TAILQ_INSERT_TAIL(&internal_list, list, next);
+	pthread_mutex_unlock(&internal_list_lock);
+
 	internal->vdev = rte_vdpa_register_device(&pci_dev->device,
 				dev_info[internal->hw.device_type].ops);
 	if (internal->vdev == NULL) {
 		DRV_LOG(ERR, "failed to register device %s", pci_dev->name);
+		pthread_mutex_lock(&internal_list_lock);
+		TAILQ_REMOVE(&internal_list, list, next);
+		pthread_mutex_unlock(&internal_list_lock);
 		goto error;
 	}
-
-	pthread_mutex_lock(&internal_list_lock);
-	TAILQ_INSERT_TAIL(&internal_list, list, next);
-	pthread_mutex_unlock(&internal_list_lock);
 
 	rte_atomic32_set(&internal->started, 1);
 	update_datapath(internal);
