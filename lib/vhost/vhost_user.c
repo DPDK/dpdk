@@ -2972,6 +2972,7 @@ vhost_user_msg_handler(int vid, int fd)
 	bool handled;
 	uint32_t request;
 	uint32_t i;
+	uint16_t blk_call_fd;
 
 	dev = get_device(vid);
 	if (dev == NULL)
@@ -3181,9 +3182,15 @@ unlock:
 	if (!vdpa_dev)
 		goto out;
 
-	if (vdpa_dev->type == RTE_VHOST_VDPA_DEVICE_TYPE_BLK
-		&& request != VHOST_USER_SET_VRING_CALL)
-		goto out;
+	if (vdpa_dev->type == RTE_VHOST_VDPA_DEVICE_TYPE_BLK) {
+		if (request == VHOST_USER_SET_VRING_CALL) {
+			blk_call_fd = ctx.msg.payload.u64 & VHOST_USER_VRING_IDX_MASK;
+			if (blk_call_fd != dev->nr_vring - 1)
+				goto out;
+		} else {
+			goto out;
+		}
+	}
 
 	if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
 		if (vdpa_dev->ops->dev_conf(dev->vid))
