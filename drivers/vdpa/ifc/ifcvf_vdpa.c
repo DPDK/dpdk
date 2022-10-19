@@ -26,6 +26,12 @@
 
 #include "base/ifcvf.h"
 
+/*
+ * RTE_MIN() cannot be used since braced-group within expression allowed
+ * only inside a function.
+ */
+#define MIN(v1, v2)	((v1) < (v2) ? (v1) : (v2))
+
 RTE_LOG_REGISTER(ifcvf_vdpa_logtype, pmd.vdpa.ifcvf, NOTICE);
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, ifcvf_vdpa_logtype, \
@@ -1512,6 +1518,7 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	uint64_t capacity = 0;
 	uint8_t *byte;
 	uint32_t i;
+	uint16_t queue_pairs;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -1559,7 +1566,6 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 
 	internal->configured = 0;
-	internal->max_queues = IFCVF_MAX_QUEUES;
 	features = ifcvf_get_features(&internal->hw);
 
 	device_id = ifcvf_pci_get_device_type(pci_dev);
@@ -1570,6 +1576,14 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (device_id == VIRTIO_ID_NET) {
 		internal->hw.device_type = IFCVF_NET;
+		/*
+		 * ifc device always has CTRL_VQ,
+		 * and supports VIRTIO_NET_F_CTRL_VQ feature.
+		 */
+		queue_pairs = (internal->hw.common_cfg->num_queues - 1) / 2;
+		DRV_LOG(INFO, "%s support %u queue pairs", pci_dev->name,
+			queue_pairs);
+		internal->max_queues = MIN(IFCVF_MAX_QUEUES, queue_pairs);
 		internal->features = features &
 					~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
 		internal->features |= dev_info[IFCVF_NET].features;
@@ -1608,6 +1622,9 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(DEBUG, "    sectors  : %u",
 			internal->hw.blk_cfg->geometry.sectors);
 		DRV_LOG(DEBUG, "num_queues: 0x%08x",
+			internal->hw.blk_cfg->num_queues);
+
+		internal->max_queues = MIN(IFCVF_MAX_QUEUES,
 			internal->hw.blk_cfg->num_queues);
 	}
 
