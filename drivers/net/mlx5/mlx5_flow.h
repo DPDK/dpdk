@@ -1918,6 +1918,8 @@ struct mlx5_flow_tbl_resource *flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		bool external, const struct mlx5_flow_tunnel *tunnel,
 		uint32_t group_id, uint8_t dummy,
 		uint32_t table_id, struct rte_flow_error *error);
+int flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
+				 struct mlx5_flow_tbl_resource *tbl);
 
 struct mlx5_list_entry *flow_dv_tag_create_cb(void *tool_ctx, void *cb_ctx);
 int flow_dv_tag_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,

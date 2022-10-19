@@ -700,6 +700,19 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
+	if (sh->send_to_kernel_action.action) {
+		void *action = sh->send_to_kernel_action.action;
+
+		mlx5_glue->destroy_flow_action(action);
+		sh->send_to_kernel_action.action = NULL;
+	}
+	if (sh->send_to_kernel_action.tbl) {
+		struct mlx5_flow_tbl_resource *tbl =
+				sh->send_to_kernel_action.tbl;
+
+		flow_dv_tbl_resource_release(sh, tbl);
+		sh->send_to_kernel_action.tbl = NULL;
+	}
 #endif /* HAVE_MLX5DV_DR */
 	if (sh->default_miss_action)
 		mlx5_glue->destroy_flow_action
