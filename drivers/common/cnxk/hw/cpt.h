@@ -157,6 +157,22 @@ union cpt_inst_w4 {
 	} s;
 };
 
+union cpt_inst_w5 {
+	uint64_t u64;
+	struct {
+		uint64_t dptr : 60;
+		uint64_t gather_sz : 4;
+	} s;
+};
+
+union cpt_inst_w6 {
+	uint64_t u64;
+	struct {
+		uint64_t rptr : 60;
+		uint64_t scatter_sz : 4;
+	} s;
+};
+
 union cpt_inst_w7 {
 	uint64_t u64;
 	struct {
@@ -200,9 +216,15 @@ struct cpt_inst_s {
 
 	union cpt_inst_w4 w4;
 
-	uint64_t dptr;
+	union {
+		union cpt_inst_w5 w5;
+		uint64_t dptr;
+	};
 
-	uint64_t rptr;
+	union {
+		union cpt_inst_w6 w6;
+		uint64_t rptr;
+	};
 
 	union cpt_inst_w7 w7;
 };

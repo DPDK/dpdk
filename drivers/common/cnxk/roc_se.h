@@ -183,6 +183,17 @@ struct roc_se_sglist_comp {
 	uint64_t ptr[4];
 };
 
+struct roc_se_sg2list_comp {
+	union {
+		uint64_t len;
+		struct {
+			uint16_t len[3];
+			uint16_t valid_segs;
+		} s;
+	} u;
+	uint64_t ptr[3];
+};
+
 struct roc_se_enc_context {
 	uint64_t iv_source : 1;
 	uint64_t aes_key : 2;

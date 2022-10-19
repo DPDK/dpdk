@@ -292,6 +292,7 @@ static void
 cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct roc_cpt *cpt = roc_idev_cpt_get();
 	const event_dequeue_t sso_hws_deq[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_sso_hws_deq_##name,
 		NIX_RX_FASTPATH_MODES
@@ -594,14 +595,16 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 			}
 		}
 	}
-	event_dev->ca_enqueue = cn10k_cpt_crypto_adapter_enqueue;
+
+	if ((cpt != NULL) && (cpt->cpt_revision > ROC_CPT_REVISION_ID_106XX))
+		event_dev->ca_enqueue = cn10k_cpt_sg_ver2_crypto_adapter_enqueue;
+	else
+		event_dev->ca_enqueue = cn10k_cpt_sg_ver1_crypto_adapter_enqueue;
 
 	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
-		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue,
-				       sso_hws_tx_adptr_enq_seg);
+		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq_seg);
 	else
-		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue,
-				       sso_hws_tx_adptr_enq);
+		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq);
 
 	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
 }
