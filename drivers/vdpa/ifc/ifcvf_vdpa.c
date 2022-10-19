@@ -121,7 +121,7 @@ find_internal_resource_by_vdev(struct rte_vdpa_device *vdev)
 }
 
 static struct internal_list *
-find_internal_resource_by_dev(struct rte_pci_device *pdev)
+find_internal_resource_by_pci_dev(struct rte_pci_device *pdev)
 {
 	int found = 0;
 	struct internal_list *list;
@@ -1746,7 +1746,7 @@ ifcvf_pci_remove(struct rte_pci_device *pci_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	list = find_internal_resource_by_dev(pci_dev);
+	list = find_internal_resource_by_pci_dev(pci_dev);
 	if (list == NULL) {
 		DRV_LOG(ERR, "Invalid device: %s", pci_dev->name);
 		return -1;
