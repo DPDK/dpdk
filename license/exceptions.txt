@@ -16,4 +16,5 @@ SPDX Identifier     TB Approval Date  GB Approval Date  File name
 2.BSD-2-Clause      10/23/2019        12/18/2019        lib/eal/windows/include/getopt.h
 3.ISC AND
   BSD-2-Clause      10/23/2019        12/18/2019        lib/eal/windows/getopt.c
+4. MIT              10/19/2022        10/18/2022        drivers/net/gve/base/*
 ---------------------------------------------------------------------------------------------------
