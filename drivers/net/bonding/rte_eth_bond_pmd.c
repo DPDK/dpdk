@@ -271,6 +271,24 @@ bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint16_t slave_port) {
 	return 0;
 }
 
+static bool
+is_bond_mac_addr(const struct rte_ether_addr *ea,
+		 const struct rte_ether_addr *mac_addrs, uint32_t max_mac_addrs)
+{
+	uint32_t i;
+
+	for (i = 0; i < max_mac_addrs; i++) {
+		/* skip zero address */
+		if (rte_is_zero_ether_addr(&mac_addrs[i]))
+			continue;
+
+		if (rte_is_same_ether_addr(ea, &mac_addrs[i]))
+			return true;
+	}
+
+	return false;
+}
+
 static inline uint16_t
 rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 		bool dedicated_rxq)
@@ -331,8 +349,9 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 			/* Remove packet from array if:
 			 * - it is slow packet but no dedicated rxq is present,
 			 * - slave is not in collecting state,
-			 * - bonding interface is not in promiscuous mode:
-			 *   - packet is unicast and address does not match,
+			 * - bonding interface is not in promiscuous mode and
+			 *   packet address isn't in mac_addrs array:
+			 *   - packet is unicast,
 			 *   - packet is multicast and bonding interface
 			 *     is not in allmulti,
 			 */
@@ -342,12 +361,10 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 						 bufs[j])) ||
 				!collecting ||
 				(!promisc &&
-				 ((rte_is_unicast_ether_addr(&hdr->dst_addr) &&
-				   !rte_is_same_ether_addr(bond_mac,
-						       &hdr->dst_addr)) ||
-				  (!allmulti &&
-				   rte_is_multicast_ether_addr(&hdr->dst_addr)))))) {
-
+				 !is_bond_mac_addr(&hdr->dst_addr, bond_mac,
+						   BOND_MAX_MAC_ADDRS) &&
+				 (rte_is_unicast_ether_addr(&hdr->dst_addr) ||
+				  !allmulti)))) {
 				if (hdr->ether_type == ether_type_slow_be) {
 					bond_mode_8023ad_handle_slow_pkt(
 					    internals, slaves[idx], bufs[j]);
