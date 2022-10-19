@@ -10968,6 +10968,38 @@ mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 }
 
 /**
+ * Get the priority for sending traffic to kernel table.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   On success: the value of priority for sending traffic to kernel table
+ *   On failure: -1
+ */
+uint32_t
+mlx5_get_send_to_kernel_priority(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t res;
+
+	switch (priv->sh->flow_max_priority) {
+	case RTE_DIM(priority_map_5):
+		res = 15;
+		break;
+	case RTE_DIM(priority_map_3):
+		res = 7;
+		break;
+	default:
+		DRV_LOG(ERR,
+			"port %u maximum priority: %d expected 8/16",
+			dev->data->port_id, priv->sh->flow_max_priority);
+		res = (uint32_t)-1;
+	}
+	return res;
+}
+
+/**
  * Get the E-Switch Manager vport id.
  *
  * @param[in] dev

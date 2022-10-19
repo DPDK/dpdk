@@ -12192,6 +12192,51 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void *
+flow_dv_translate_action_send_to_kernel(struct rte_eth_dev *dev,
+					struct rte_flow_error *error)
+{
+	struct mlx5_flow_tbl_resource *tbl;
+	struct mlx5_dev_ctx_shared *sh;
+	uint32_t priority;
+	void *action;
+	int ret;
+
+	sh = MLX5_SH(dev);
+	if (sh->send_to_kernel_action.action)
+		return sh->send_to_kernel_action.action;
+	priority = mlx5_get_send_to_kernel_priority(dev);
+	if (priority == (uint32_t)-1) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "required priority is not available");
+		return NULL;
+	}
+	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL, 0, 0, 0,
+				       error);
+	if (!tbl) {
+		rte_flow_error_set(error, ENODATA,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot find destination root table");
+		return NULL;
+	}
+	ret = mlx5_flow_os_create_flow_action_send_to_kernel(tbl->obj,
+				priority, &action);
+	if (ret) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot create action");
+		goto err;
+	}
+	MLX5_ASSERT(action);
+	sh->send_to_kernel_action.action = action;
+	sh->send_to_kernel_action.tbl = tbl;
+	return action;
+err:
+	flow_dv_tbl_resource_release(sh, tbl);
+	return NULL;
+}
+
 /**
  * Convert Sample action to DV specification.
  *
@@ -13697,9 +13742,15 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_CT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
-			return rte_flow_error_set(error, ENOTSUP,
-				RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL, "send to kernel action is not supported.");
+			dev_flow->dv.actions[actions_n] =
+				flow_dv_translate_action_send_to_kernel(dev,
+							error);
+			if (!dev_flow->dv.actions[actions_n])
+				return -rte_errno;
+			actions_n++;
+			action_flags |= MLX5_FLOW_ACTION_SEND_TO_KERNEL;
+			dev_flow->handle->fate_action =
+					MLX5_FLOW_FATE_SEND_TO_KERNEL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
