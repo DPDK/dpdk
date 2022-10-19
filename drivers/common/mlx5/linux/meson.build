@@ -213,6 +213,8 @@ has_sym_args = [
             'ibv_reg_mr_iova' ],
         [ 'HAVE_MLX5_IBV_IMPORT_CTX_PD_AND_MR', 'infiniband/verbs.h',
             'ibv_import_device' ],
+        [ 'HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE', 'infiniband/mlx5dv.h',
+            'mlx5dv_dr_action_create_dest_root_table' ],
 ]
 if  libmtcr_ul_found
     has_sym_args += [

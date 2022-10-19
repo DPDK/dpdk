@@ -1434,6 +1434,21 @@ mlx5_glue_dv_free_pp(struct mlx5dv_pp *pp)
 #endif
 }
 
+static void *
+mlx5_glue_dr_create_flow_action_send_to_kernel(void *tbl, uint16_t priority)
+{
+#ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
+	struct mlx5dv_dr_table *table = (struct mlx5dv_dr_table *)tbl;
+
+	return mlx5dv_dr_action_create_dest_root_table(table, priority);
+#else
+	RTE_SET_USED(tbl);
+	RTE_SET_USED(priority);
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
 __rte_cache_aligned
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.version = MLX5_GLUE_VERSION,
@@ -1561,4 +1576,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dv_free_var = mlx5_glue_dv_free_var,
 	.dv_alloc_pp = mlx5_glue_dv_alloc_pp,
 	.dv_free_pp = mlx5_glue_dv_free_pp,
+	.dr_create_flow_action_send_to_kernel =
+		mlx5_glue_dr_create_flow_action_send_to_kernel,
 };

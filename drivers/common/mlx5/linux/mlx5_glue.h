@@ -373,6 +373,8 @@ struct mlx5_glue {
 	void *(*dv_create_flow_action_aso)
 			(struct mlx5dv_dr_domain *domain, void *aso_obj,
 			 uint32_t offset, uint32_t flags, uint8_t return_reg_c);
+	void *(*dr_create_flow_action_send_to_kernel)(void *tbl,
+						      uint16_t priority);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

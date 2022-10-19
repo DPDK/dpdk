@@ -369,6 +369,28 @@ mlx5_flow_os_create_flow_action_default_miss(void **action)
 }
 
 /**
+ * Create flow action: send_to_kernel.
+ *
+ * @param[in] tbl
+ *   Pointer to destination root table.
+ * @param[in] priority
+ *   Priority to which traffic will arrive.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_send_to_kernel(void *tbl, uint16_t priority,
+					  void **action)
+{
+	*action = mlx5_glue->dr_create_flow_action_send_to_kernel(tbl,
+								  priority);
+	return (*action) ? 0 : -1;
+}
+
+/**
  * Create flow action: dest_devx_tir
  *
  * @param[in] tir
