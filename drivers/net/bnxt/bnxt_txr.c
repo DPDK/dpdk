@@ -209,6 +209,25 @@ bnxt_invalid_nb_segs(struct rte_mbuf *tx_pkt)
 	return (nb_segs != tx_pkt->nb_segs);
 }
 
+static int bnxt_invalid_mbuf(struct rte_mbuf *mbuf)
+{
+	uint32_t mbuf_size = sizeof(struct rte_mbuf) + mbuf->priv_size;
+	const char *reason;
+
+	if (unlikely(rte_eal_iova_mode() != RTE_IOVA_VA &&
+		     rte_eal_iova_mode() != RTE_IOVA_PA))
+		return 0;
+
+	if (unlikely(rte_mbuf_check(mbuf, 1, &reason)))
+		return -EINVAL;
+
+	if (unlikely(mbuf->buf_iova < mbuf_size ||
+		     (mbuf->buf_iova != rte_mempool_virt2iova(mbuf) + mbuf_size)))
+		return -EINVAL;
+
+	return 0;
+}
+
 static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				struct bnxt_tx_queue *txq,
 				uint16_t *coal_pkts,
@@ -235,6 +254,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	if (unlikely(is_bnxt_in_error(txq->bp)))
 		return -EIO;
+
+	if (unlikely(bnxt_invalid_mbuf(tx_pkt)))
+		return -EINVAL;
 
 	if (unlikely(bnxt_invalid_nb_segs(tx_pkt)))
 		return -EINVAL;
