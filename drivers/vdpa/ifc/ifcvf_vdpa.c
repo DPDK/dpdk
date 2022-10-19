@@ -144,6 +144,29 @@ find_internal_resource_by_pci_dev(struct rte_pci_device *pdev)
 	return list;
 }
 
+static struct internal_list *
+find_internal_resource_by_rte_dev(struct rte_device *rte_dev)
+{
+	int found = 0;
+	struct internal_list *list;
+
+	pthread_mutex_lock(&internal_list_lock);
+
+	TAILQ_FOREACH(list, &internal_list, next) {
+		if (rte_dev == &list->internal->pdev->device) {
+			found = 1;
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&internal_list_lock);
+
+	if (!found)
+		return NULL;
+
+	return list;
+}
+
 static int
 ifcvf_vfio_setup(struct ifcvf_internal *internal)
 {
@@ -1398,10 +1421,11 @@ ifcvf_get_device_type(struct rte_vdpa_device *vdev,
 {
 	struct ifcvf_internal *internal;
 	struct internal_list *list;
+	struct rte_device *rte_dev = vdev->device;
 
-	list = find_internal_resource_by_vdev(vdev);
+	list = find_internal_resource_by_rte_dev(rte_dev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_LOG(ERR, "Invalid rte device: %p", rte_dev);
 		return -1;
 	}
 
