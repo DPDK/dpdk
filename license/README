@@ -58,20 +58,19 @@ DPDK Governing Board. Steps for any exception approval:
 3. Technical Board then approach Governing Board for such limited approval for
    the given contribution only.
 
-Any approvals shall be documented in "Licenses/exceptions.txt" with record
-dates.
+Any approvals shall be documented in "license/exceptions.txt" with record dates.
 
 DPDK project supported licenses are:
 
 1. BSD 3-clause "New" or "Revised" License
 	SPDX-License-Identifier: BSD-3-Clause
 	URL: http://spdx.org/licenses/BSD-3-Clause#licenseText
-	DPDK License text: licenses/bsd-3-clause.txt
+	DPDK License text: license/bsd-3-clause.txt
 2. GNU General Public License v2.0 only
 	SPDX-License-Identifier: GPL-2.0
 	URL: http://spdx.org/licenses/GPL-2.0.html#licenseText
-	DPDK License text: licenses/gpl-2.0.txt
+	DPDK License text: license/gpl-2.0.txt
 3. GNU Lesser General Public License v2.1
 	SPDX-License-Identifier: LGPL-2.1
 	URL: http://spdx.org/licenses/LGPL-2.1.html#licenseText
-	DPDK License text: licenses/lgpl-2.1.txt
+	DPDK License text: license/lgpl-2.1.txt
