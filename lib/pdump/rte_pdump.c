@@ -537,6 +537,12 @@ pdump_prepare_client_request(const char *device, uint16_t queue,
 	struct pdump_request *req = (struct pdump_request *)mp_req.param;
 	struct pdump_response *resp;
 
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		PDUMP_LOG(ERR,
+			  "pdump enable/disable not allowed in primary process\n");
+		return -EINVAL;
+	}
+
 	memset(req, 0, sizeof(*req));
 
 	req->ver = (flags & RTE_PDUMP_FLAG_PCAPNG) ? V2 : V1;
