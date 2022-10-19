@@ -1219,6 +1219,7 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 	struct rte_ipv6_hdr *ip6;
 	struct rte_ipv4_hdr *ip4;
 	const uint8_t *auth_key;
+	uint16_t sport, dport;
 	int auth_key_len = 0;
 	size_t ctx_len;
 	int ret;
@@ -1266,10 +1267,22 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 	}
 
 	ip4 = (struct rte_ipv4_hdr *)&template->ip4.ipv4_hdr;
+
+	sport = 4500;
+	dport = 4500;
+
+	/* If custom port values are provided, Overwrite default port values. */
 	if (ipsec->options.udp_encap) {
+
+		if (ipsec->udp.sport)
+			sport = ipsec->udp.sport;
+
+		if (ipsec->udp.dport)
+			dport = ipsec->udp.dport;
+
 		ip4->next_proto_id = IPPROTO_UDP;
-		template->ip4.udp_src = rte_be_to_cpu_16(4500);
-		template->ip4.udp_dst = rte_be_to_cpu_16(4500);
+		template->ip4.udp_src = rte_be_to_cpu_16(sport);
+		template->ip4.udp_dst = rte_be_to_cpu_16(dport);
 	} else {
 		if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_AH)
 			ip4->next_proto_id = IPPROTO_AH;
@@ -1303,13 +1316,12 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 			ip6 = (struct rte_ipv6_hdr *)&template->ip6.ipv6_hdr;
 			if (ipsec->options.udp_encap) {
 				ip6->proto = IPPROTO_UDP;
-				template->ip6.udp_src = rte_be_to_cpu_16(4500);
-				template->ip6.udp_dst = rte_be_to_cpu_16(4500);
+				template->ip6.udp_src = rte_be_to_cpu_16(sport);
+				template->ip6.udp_dst = rte_be_to_cpu_16(dport);
 			} else {
-				ip6->proto = (ipsec->proto ==
-					      RTE_SECURITY_IPSEC_SA_PROTO_ESP) ?
-						     IPPROTO_ESP :
-						     IPPROTO_AH;
+				ip6->proto = (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_ESP) ?
+							      IPPROTO_ESP :
+							      IPPROTO_AH;
 			}
 			ip6->vtc_flow =
 				rte_cpu_to_be_32(0x60000000 |
