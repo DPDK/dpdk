@@ -202,6 +202,37 @@ io_write64_twopart(u64 val, u32 *lo, u32 *hi)
 	IFCVF_WRITE_REG32(val >> 32, hi);
 }
 
+STATIC void
+ifcvf_enable_mq(struct ifcvf_hw *hw)
+{
+	u8 *mq_cfg;
+	u8 qid;
+	int nr_queue = 0;
+
+	for (qid = 0; qid < hw->nr_vring; qid++) {
+		if (!hw->vring[qid].enable)
+			continue;
+		nr_queue++;
+	}
+
+	if (nr_queue == 0) {
+		WARNINGOUT("no enabled vring\n");
+		return;
+	}
+
+	mq_cfg = hw->mq_cfg;
+	if (mq_cfg) {
+		if (hw->device_type == IFCVF_BLK) {
+			*(u32 *)mq_cfg = nr_queue;
+			RTE_LOG(INFO, PMD, "%d queues are enabled\n", nr_queue);
+		} else {
+			*(u32 *)mq_cfg = nr_queue / 2;
+			RTE_LOG(INFO, PMD, "%d queue pairs are enabled\n",
+				nr_queue / 2);
+		}
+	}
+}
+
 STATIC int
 ifcvf_hw_enable(struct ifcvf_hw *hw)
 {
@@ -219,6 +250,7 @@ ifcvf_hw_enable(struct ifcvf_hw *hw)
 		return -1;
 	}
 
+	ifcvf_enable_mq(hw);
 	for (i = 0; i < hw->nr_vring; i++) {
 		IFCVF_WRITE_REG16(i, &cfg->queue_select);
 		io_write64_twopart(hw->vring[i].desc, &cfg->queue_desc_lo,
