@@ -82,7 +82,6 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_sec_session *sess, struct
 	/* Prepare CPT instruction */
 	inst->w4.u64 = sess->inst.w4 | dlen;
 	inst->dptr = PLT_U64_CAST(hdr);
-	inst->rptr = PLT_U64_CAST(hdr);
 	inst->w7.u64 = sess->inst.w7;
 
 	return 0;
@@ -96,7 +95,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn9k_sec_session *sess, struct 
 
 	/* Prepare CPT instruction */
 	inst->w4.u64 = sess->inst.w4 | rte_pktmbuf_pkt_len(m_src);
-	inst->dptr = inst->rptr = rte_pktmbuf_mtod(m_src, uint64_t);
+	inst->dptr = rte_pktmbuf_mtod(m_src, uint64_t);
 	inst->w7.u64 = sess->inst.w7;
 }
 #endif /* __CN9K_IPSEC_LA_OPS_H__ */

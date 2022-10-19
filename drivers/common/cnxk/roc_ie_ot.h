@@ -18,6 +18,8 @@
 #define ROC_IE_OT_CPT_TS_PKIND	  54
 #define ROC_IE_OT_SA_CTX_HDR_SIZE 1
 
+#define ROC_IE_OT_INPLACE_BIT BIT(6)
+
 enum roc_ie_ot_ucc_ipsec {
 	ROC_IE_OT_UCC_SUCCESS = 0x00,
 	ROC_IE_OT_UCC_ERR_SA_INVAL = 0xb0,

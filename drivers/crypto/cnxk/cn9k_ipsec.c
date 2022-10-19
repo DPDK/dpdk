@@ -87,7 +87,7 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 		return ret;
 
 	w4.u64 = 0;
-	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_OUTBOUND_IPSEC;
+	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_OUTBOUND_IPSEC | ROC_IE_ON_INPLACE_BIT;
 	w4.s.opcode_minor = ctx_len >> 3;
 
 	param1.u16 = 0;
@@ -174,7 +174,7 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 		return ret;
 
 	w4.u64 = 0;
-	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_INBOUND_IPSEC;
+	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_INBOUND_IPSEC | ROC_IE_ON_INPLACE_BIT;
 	w4.s.opcode_minor = ctx_len >> 3;
 
 	param2.u16 = 0;

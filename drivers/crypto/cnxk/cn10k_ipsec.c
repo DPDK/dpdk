@@ -99,7 +99,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
-	inst_w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC;
+	inst_w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC | ROC_IE_OT_INPLACE_BIT;
 
 	param1.u16 = 0;
 
@@ -193,7 +193,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
-	inst_w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC;
+	inst_w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC | ROC_IE_OT_INPLACE_BIT;
 
 	param1.u16 = 0;
 
