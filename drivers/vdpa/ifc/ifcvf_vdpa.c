@@ -1282,13 +1282,59 @@ ifcvf_get_protocol_features(struct rte_vdpa_device *vdev, uint64_t *features)
 }
 
 static int
+ifcvf_config_vring(struct ifcvf_internal *internal, int vring)
+{
+	struct ifcvf_hw *hw = &internal->hw;
+	int vid = internal->vid;
+	struct rte_vhost_vring vq;
+	uint64_t gpa;
+
+	if (hw->vring[vring].enable) {
+		rte_vhost_get_vhost_vring(vid, vring, &vq);
+		gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.desc);
+		if (gpa == 0) {
+			DRV_LOG(ERR, "Fail to get GPA for descriptor ring.");
+			return -1;
+		}
+		hw->vring[vring].desc = gpa;
+
+		gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.avail);
+		if (gpa == 0) {
+			DRV_LOG(ERR, "Fail to get GPA for available ring.");
+			return -1;
+		}
+		hw->vring[vring].avail = gpa;
+
+		gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.used);
+		if (gpa == 0) {
+			DRV_LOG(ERR, "Fail to get GPA for used ring.");
+			return -1;
+		}
+		hw->vring[vring].used = gpa;
+
+		hw->vring[vring].size = vq.size;
+		rte_vhost_get_vring_base(vid, vring,
+				&hw->vring[vring].last_avail_idx,
+				&hw->vring[vring].last_used_idx);
+		ifcvf_enable_vring_hw(&internal->hw, vring);
+	} else {
+		ifcvf_disable_vring_hw(&internal->hw, vring);
+		rte_vhost_set_vring_base(vid, vring,
+				hw->vring[vring].last_avail_idx,
+				hw->vring[vring].last_used_idx);
+	}
+
+	return 0;
+}
+
+static int
 ifcvf_set_vring_state(int vid, int vring, int state)
 {
 	struct rte_vdpa_device *vdev;
 	struct internal_list *list;
 	struct ifcvf_internal *internal;
 	struct ifcvf_hw *hw;
-	struct ifcvf_pci_common_cfg *cfg;
+	bool enable = !!state;
 	int ret = 0;
 
 	vdev = rte_vhost_get_vdpa_device(vid);
@@ -1298,6 +1344,9 @@ ifcvf_set_vring_state(int vid, int vring, int state)
 		return -1;
 	}
 
+	DRV_LOG(INFO, "%s queue %d of vDPA device %s",
+		enable ? "enable" : "disable", vring, vdev->device->name);
+
 	internal = list->internal;
 	if (vring < 0 || vring >= internal->max_queues * 2) {
 		DRV_LOG(ERR, "Vring index %d not correct", vring);
@@ -1305,27 +1354,41 @@ ifcvf_set_vring_state(int vid, int vring, int state)
 	}
 
 	hw = &internal->hw;
+	hw->vring[vring].enable = enable;
+
 	if (!internal->configured)
-		goto exit;
+		return 0;
 
-	cfg = hw->common_cfg;
-	IFCVF_WRITE_REG16(vring, &cfg->queue_select);
-	IFCVF_WRITE_REG16(!!state, &cfg->queue_enable);
+	unset_notify_relay(internal);
 
-	if (!state && hw->vring[vring].enable) {
-		ret = vdpa_disable_vfio_intr(internal);
-		if (ret)
-			return ret;
+	ret = vdpa_enable_vfio_intr(internal, false);
+	if (ret) {
+		DRV_LOG(ERR, "failed to set vfio interrupt of vDPA device %s",
+			vdev->device->name);
+		return ret;
 	}
 
-	if (state && !hw->vring[vring].enable) {
-		ret = vdpa_enable_vfio_intr(internal, false);
-		if (ret)
-			return ret;
+	ret = ifcvf_config_vring(internal, vring);
+	if (ret) {
+		DRV_LOG(ERR, "failed to configure queue %d of vDPA device %s",
+			vring, vdev->device->name);
+		return ret;
 	}
 
-exit:
-	hw->vring[vring].enable = !!state;
+	ret = setup_notify_relay(internal);
+	if (ret) {
+		DRV_LOG(ERR, "failed to setup notify relay of vDPA device %s",
+			vdev->device->name);
+		return ret;
+	}
+
+	ret = rte_vhost_host_notifier_ctrl(vid, vring, enable);
+	if (ret) {
+		DRV_LOG(ERR, "vDPA device %s queue %d host notifier ctrl fail",
+			vdev->device->name, vring);
+		return ret;
+	}
+
 	return 0;
 }
 

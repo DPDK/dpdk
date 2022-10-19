@@ -164,6 +164,12 @@ u64
 ifcvf_get_features(struct ifcvf_hw *hw);
 
 int
+ifcvf_enable_vring_hw(struct ifcvf_hw *hw, int i);
+
+void
+ifcvf_disable_vring_hw(struct ifcvf_hw *hw, int i);
+
+int
 ifcvf_start_hw(struct ifcvf_hw *hw);
 
 void

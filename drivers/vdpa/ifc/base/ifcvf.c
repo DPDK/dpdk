@@ -233,6 +233,106 @@ ifcvf_enable_mq(struct ifcvf_hw *hw)
 	}
 }
 
+int
+ifcvf_enable_vring_hw(struct ifcvf_hw *hw, int i)
+{
+	struct ifcvf_pci_common_cfg *cfg;
+	u8 *lm_cfg;
+	u16 notify_off;
+	int msix_vector;
+
+	if (i >= (int)hw->nr_vring)
+		return -1;
+
+	cfg = hw->common_cfg;
+	if (!cfg) {
+		RTE_LOG(ERR, PMD, "common_cfg in HW is NULL.\n");
+		return -1;
+	}
+
+	ifcvf_enable_mq(hw);
+
+	IFCVF_WRITE_REG16(i, &cfg->queue_select);
+	msix_vector = IFCVF_READ_REG16(&cfg->queue_msix_vector);
+	if (msix_vector != (i + 1)) {
+		IFCVF_WRITE_REG16(i + 1, &cfg->queue_msix_vector);
+		msix_vector = IFCVF_READ_REG16(&cfg->queue_msix_vector);
+		if (msix_vector == IFCVF_MSI_NO_VECTOR) {
+			RTE_LOG(ERR, PMD, "queue %d, msix vec alloc failed\n",
+				i);
+			return -1;
+		}
+	}
+
+	io_write64_twopart(hw->vring[i].desc, &cfg->queue_desc_lo,
+			&cfg->queue_desc_hi);
+	io_write64_twopart(hw->vring[i].avail, &cfg->queue_avail_lo,
+			&cfg->queue_avail_hi);
+	io_write64_twopart(hw->vring[i].used, &cfg->queue_used_lo,
+			&cfg->queue_used_hi);
+	IFCVF_WRITE_REG16(hw->vring[i].size, &cfg->queue_size);
+
+	lm_cfg = hw->lm_cfg;
+	if (lm_cfg) {
+		if (hw->device_type == IFCVF_BLK)
+			*(u32 *)(lm_cfg + IFCVF_LM_RING_STATE_OFFSET +
+				i * IFCVF_LM_CFG_SIZE) =
+				(u32)hw->vring[i].last_avail_idx |
+				((u32)hw->vring[i].last_used_idx << 16);
+		else
+			*(u32 *)(lm_cfg + IFCVF_LM_RING_STATE_OFFSET +
+				(i / 2) * IFCVF_LM_CFG_SIZE +
+				(i % 2) * 4) =
+				(u32)hw->vring[i].last_avail_idx |
+				((u32)hw->vring[i].last_used_idx << 16);
+	}
+
+	notify_off = IFCVF_READ_REG16(&cfg->queue_notify_off);
+	hw->notify_addr[i] = (void *)((u8 *)hw->notify_base +
+			notify_off * hw->notify_off_multiplier);
+	IFCVF_WRITE_REG16(1, &cfg->queue_enable);
+
+	return 0;
+}
+
+void
+ifcvf_disable_vring_hw(struct ifcvf_hw *hw, int i)
+{
+	struct ifcvf_pci_common_cfg *cfg;
+	u32 ring_state;
+	u8 *lm_cfg;
+
+	if (i >= (int)hw->nr_vring)
+		return;
+
+	cfg = hw->common_cfg;
+	if (!cfg) {
+		RTE_LOG(ERR, PMD, "common_cfg in HW is NULL.\n");
+		return;
+	}
+
+	IFCVF_WRITE_REG16(i, &cfg->queue_select);
+	IFCVF_WRITE_REG16(0, &cfg->queue_enable);
+
+	lm_cfg = hw->lm_cfg;
+	if (lm_cfg) {
+		if (hw->device_type == IFCVF_BLK) {
+			ring_state = *(u32 *)(lm_cfg +
+					IFCVF_LM_RING_STATE_OFFSET +
+					i * IFCVF_LM_CFG_SIZE);
+			hw->vring[i].last_avail_idx =
+				(u16)(ring_state & IFCVF_16_BIT_MASK);
+		} else {
+			ring_state = *(u32 *)(lm_cfg +
+					IFCVF_LM_RING_STATE_OFFSET +
+					(i / 2) * IFCVF_LM_CFG_SIZE +
+					(i % 2) * 4);
+			hw->vring[i].last_avail_idx = (u16)(ring_state >> 16);
+		}
+		hw->vring[i].last_used_idx = (u16)(ring_state >> 16);
+	}
+}
+
 STATIC int
 ifcvf_hw_enable(struct ifcvf_hw *hw)
 {
