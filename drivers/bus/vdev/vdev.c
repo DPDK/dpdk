@@ -577,9 +577,12 @@ vdev_cleanup(void)
 		const struct rte_vdev_driver *drv;
 		int ret = 0;
 
+		if (dev->device.driver == NULL)
+			continue;
+
 		drv = container_of(dev->device.driver, const struct rte_vdev_driver, driver);
 
-		if (drv == NULL || drv->remove == NULL)
+		if (drv->remove == NULL)
 			continue;
 
 		ret = drv->remove(dev);
