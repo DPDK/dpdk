@@ -73,6 +73,7 @@ rte_vdpa_register_device(struct rte_device *rte_dev,
 		struct rte_vdpa_dev_ops *ops)
 {
 	struct rte_vdpa_device *dev;
+	int ret = 0;
 
 	if (ops == NULL)
 		return NULL;
@@ -101,6 +102,20 @@ rte_vdpa_register_device(struct rte_device *rte_dev,
 
 	dev->device = rte_dev;
 	dev->ops = ops;
+
+	if (ops->get_dev_type) {
+		ret = ops->get_dev_type(dev, &dev->type);
+		if (ret) {
+			VHOST_LOG_CONFIG(rte_dev->name, ERR,
+					 "Failed to get vdpa dev type.\n");
+			ret = -1;
+			goto out_unlock;
+		}
+	} else {
+		/** by default, we assume vdpa device is a net device */
+		dev->type = RTE_VHOST_VDPA_DEVICE_TYPE_NET;
+	}
+
 	TAILQ_INSERT_TAIL(&vdpa_device_list, dev, next);
 out_unlock:
 	rte_spinlock_unlock(&vdpa_device_list_lock);

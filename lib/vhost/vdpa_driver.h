@@ -92,6 +92,8 @@ struct rte_vdpa_device {
 	struct rte_device *device;
 	/** vdpa device operations */
 	struct rte_vdpa_dev_ops *ops;
+	/** vdpa device type: net, blk... */
+	uint32_t type;
 };
 
 /**

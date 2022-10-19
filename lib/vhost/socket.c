@@ -627,7 +627,6 @@ rte_vhost_driver_get_vdpa_dev_type(const char *path, uint32_t *type)
 {
 	struct vhost_user_socket *vsocket;
 	struct rte_vdpa_device *vdpa_dev;
-	uint32_t vdpa_type = 0;
 	int ret = 0;
 
 	pthread_mutex_lock(&vhost_user.mutex);
@@ -644,19 +643,7 @@ rte_vhost_driver_get_vdpa_dev_type(const char *path, uint32_t *type)
 		goto unlock_exit;
 	}
 
-	if (vdpa_dev->ops->get_dev_type) {
-		ret = vdpa_dev->ops->get_dev_type(vdpa_dev, &vdpa_type);
-		if (ret) {
-			VHOST_LOG_CONFIG(path, ERR,
-				"failed to get vdpa dev type for socket file.\n");
-			ret = -1;
-			goto unlock_exit;
-		}
-	} else {
-		vdpa_type = RTE_VHOST_VDPA_DEVICE_TYPE_NET;
-	}
-
-	*type = vdpa_type;
+	*type = vdpa_dev->type;
 
 unlock_exit:
 	pthread_mutex_unlock(&vhost_user.mutex);
