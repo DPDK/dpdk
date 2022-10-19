@@ -1640,7 +1640,7 @@ xstats_id_reset_tests(struct test *t)
 		if (val != port_expected[i]) {
 			printf("%d: %s value incorrect, expected %" PRIu64
 			       " got %" PRIu64 "\n",
-			       __LINE__, port_names[i], port_expected[i], id);
+			       __LINE__, port_names[i], port_expected[i], val);
 			failed = 1;
 		}
 		/* reset to zero */
