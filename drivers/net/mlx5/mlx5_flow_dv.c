@@ -7970,6 +7970,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			 * list it here as a supported type
 			 */
 			break;
+#ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
+		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
+			action_flags |= MLX5_FLOW_ACTION_SEND_TO_KERNEL;
+			++actions_n;
+			break;
+#endif
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -13694,6 +13700,11 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_CT;
 			break;
+		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "send to kernel action is not supported.");
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			if (mhdr_res->actions_num) {
@@ -14741,6 +14752,12 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 	case MLX5_FLOW_FATE_PORT_ID:
 		flow_dv_port_id_action_resource_release(dev,
 				handle->rix_port_id_action);
+		break;
+	case MLX5_FLOW_FATE_SEND_TO_KERNEL:
+		/* In case of send_to_kernel action the actual release of
+		 * resource is done when all shared DR resources are released
+		 * since this resource is created once and always reused.
+		 */
 		break;
 	default:
 		DRV_LOG(DEBUG, "Incorrect fate action:%d", handle->fate_action);
