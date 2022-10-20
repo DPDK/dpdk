@@ -1205,6 +1205,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t drop_action_check_flag:1; /* Check Flag for drop action. */
 	uint32_t flow_priority_check_flag:1; /* Check Flag for flow priority. */
 	uint32_t metadata_regc_check_flag:1; /* Check Flag for metadata REGC. */
+	uint32_t hws_tags:1; /* Check if tags info for HWS initialized. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */

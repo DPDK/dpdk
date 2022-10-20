@@ -2240,6 +2240,82 @@ flow_hw_clear_port_info(struct rte_eth_dev *dev)
 	info->is_wire = 0;
 }
 
+/*
+ * Initialize the information of available tag registers and an intersection
+ * of all the probed devices' REG_C_Xs.
+ * PS. No port concept in steering part, right now it cannot be per port level.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+void flow_hw_init_tags_set(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t meta_mode = priv->sh->config.dv_xmeta_en;
+	uint8_t masks = (uint8_t)priv->sh->cdev->config.hca_attr.set_reg_c;
+	uint32_t i, j;
+	enum modify_reg copy[MLX5_FLOW_HW_TAGS_MAX] = {REG_NON};
+	uint8_t unset = 0;
+	uint8_t copy_masks = 0;
+
+	/*
+	 * The CAPA is global for common device but only used in net.
+	 * It is shared per eswitch domain.
+	 */
+	if (!!priv->sh->hws_tags)
+		return;
+	unset |= 1 << (priv->mtr_color_reg - REG_C_0);
+	unset |= 1 << (REG_C_6 - REG_C_0);
+	if (meta_mode == MLX5_XMETA_MODE_META32_HWS) {
+		unset |= 1 << (REG_C_1 - REG_C_0);
+		unset |= 1 << (REG_C_0 - REG_C_0);
+	}
+	masks &= ~unset;
+	if (mlx5_flow_hw_avl_tags_init_cnt) {
+		for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
+			if (mlx5_flow_hw_avl_tags[i] != REG_NON && !!((1 << i) & masks)) {
+				copy[mlx5_flow_hw_avl_tags[i] - REG_C_0] =
+						mlx5_flow_hw_avl_tags[i];
+				copy_masks |= (1 << i);
+			}
+		}
+		if (copy_masks != masks) {
+			j = 0;
+			for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++)
+				if (!!((1 << i) & copy_masks))
+					mlx5_flow_hw_avl_tags[j++] = copy[i];
+		}
+	} else {
+		j = 0;
+		for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
+			if (!!((1 << i) & masks))
+				mlx5_flow_hw_avl_tags[j++] =
+					(enum modify_reg)(i + (uint32_t)REG_C_0);
+		}
+	}
+	priv->sh->hws_tags = 1;
+	mlx5_flow_hw_avl_tags_init_cnt++;
+}
+
+/*
+ * Reset the available tag registers information to NONE.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+void flow_hw_clear_tags_set(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!priv->sh->hws_tags)
+		return;
+	priv->sh->hws_tags = 0;
+	mlx5_flow_hw_avl_tags_init_cnt--;
+	if (!mlx5_flow_hw_avl_tags_init_cnt)
+		memset(mlx5_flow_hw_avl_tags, REG_NON,
+		       sizeof(enum modify_reg) * MLX5_FLOW_HW_TAGS_MAX);
+}
+
 /**
  * Create shared action.
  *

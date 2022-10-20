@@ -1558,6 +1558,8 @@ err_secondary:
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		if (priv->vport_meta_mask)
 			flow_hw_set_port_info(eth_dev);
+		/* Only HWS requires this information. */
+		flow_hw_init_tags_set(eth_dev);
 		return eth_dev;
 #else
 		DRV_LOG(ERR, "DV support is missing for HWS.");

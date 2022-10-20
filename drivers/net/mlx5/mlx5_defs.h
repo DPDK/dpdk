@@ -139,6 +139,8 @@
 #define MLX5_XMETA_MODE_META32 2
 /* Provide info on patrial hw miss. Implies MLX5_XMETA_MODE_META16 */
 #define MLX5_XMETA_MODE_MISS_INFO 3
+/* Only valid in HWS, 32bits extended META without MARK support in FDB. */
+#define MLX5_XMETA_MODE_META32_HWS 4
 
 /* Tx accurate scheduling on timestamps parameters. */
 #define MLX5_TXPP_WAIT_INIT_TS 1000ul /* How long to wait timestamp. */

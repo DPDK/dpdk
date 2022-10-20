@@ -1334,6 +1334,10 @@ struct flow_hw_port_info {
 
 extern struct flow_hw_port_info mlx5_flow_hw_port_infos[RTE_MAX_ETHPORTS];
 
+#define MLX5_FLOW_HW_TAGS_MAX 8
+extern uint32_t mlx5_flow_hw_avl_tags_init_cnt;
+extern enum modify_reg mlx5_flow_hw_avl_tags[];
+
 /*
  * Get metadata match tag and mask for given rte_eth_dev port.
  * Used in HWS rule creation.
@@ -1375,8 +1379,31 @@ flow_hw_get_wire_port(struct ibv_context *ibctx)
 }
 #endif
 
+/*
+ * Convert metadata or tag to the actual register.
+ * META: Can only be used to match in the FDB in this stage, fixed C_1.
+ * TAG: C_x expect meter color reg and the reserved ones.
+ * TODO: Per port / device, FDB or NIC for Meta matching.
+ */
+static __rte_always_inline int
+flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
+{
+	switch (type) {
+	case RTE_FLOW_ITEM_TYPE_META:
+		return REG_C_1;
+	case RTE_FLOW_ITEM_TYPE_TAG:
+		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
+		return mlx5_flow_hw_avl_tags[id];
+	default:
+		return REG_NON;
+	}
+}
+
 void flow_hw_set_port_info(struct rte_eth_dev *dev);
 void flow_hw_clear_port_info(struct rte_eth_dev *dev);
+
+void flow_hw_init_tags_set(struct rte_eth_dev *dev);
+void flow_hw_clear_tags_set(struct rte_eth_dev *dev);
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
