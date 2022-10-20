@@ -182,8 +182,10 @@ dlb2_init_port_cos(struct dlb2_eventdev *dlb2, int *port_cos)
 
 	for (q = 0; q < DLB2_MAX_NUM_PORTS_ALL; q++) {
 		dlb2->ev_ports[q].cos_id = port_cos[q];
-		if (port_cos[q] != DLB2_COS_DEFAULT) {
+		if (port_cos[q] != DLB2_COS_DEFAULT &&
+		    dlb2->cos_ports[port_cos[q]] < DLB2_MAX_NUM_LDB_PORTS_PER_COS) {
 			dlb2->cos_ports[port_cos[q]]++;
+			dlb2->max_cos_port = q;
 		}
 	}
 }
@@ -841,8 +843,9 @@ dlb2_hw_create_sched_domain(struct dlb2_eventdev *dlb2,
 	cos_ports = dlb2->cos_ports[0] + dlb2->cos_ports[1] +
 		    dlb2->cos_ports[2] + dlb2->cos_ports[3];
 
-	if (cos_ports > resources_asked->num_ldb_ports) {
-		DLB2_LOG_ERR("dlb2: num_ldb_ports < nonzero cos_ports\n");
+	if (cos_ports > resources_asked->num_ldb_ports ||
+	    (cos_ports && dlb2->max_cos_port >= resources_asked->num_ldb_ports)) {
+		DLB2_LOG_ERR("dlb2: num_ldb_ports < cos_ports\n");
 		ret = EINVAL;
 		goto error_exit;
 	}

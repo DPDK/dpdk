@@ -92,6 +92,7 @@
 #define DLB2_NUM_SN_GROUPS 2
 #define DLB2_MAX_LDB_SN_ALLOC 1024
 #define DLB2_MAX_QUEUE_DEPTH_THRESHOLD 8191
+#define DLB2_MAX_NUM_LDB_PORTS_PER_COS (DLB2_MAX_NUM_LDB_PORTS/DLB2_COS_NUM_VALS)
 
 /* 2048 total hist list entries and 64 total ldb ports, which
  * makes for 2048/64 == 32 hist list entries per port. However, CQ
@@ -635,6 +636,7 @@ struct dlb2_eventdev {
 	};
 	uint32_t cos_ports[DLB2_COS_NUM_VALS]; /* total ldb ports in each class */
 	uint32_t cos_bw[DLB2_COS_NUM_VALS]; /* bandwidth per cos domain */
+	uint8_t max_cos_port; /* Max LDB port from any cos */
 };
 
 /* used for collecting and passing around the dev args */
