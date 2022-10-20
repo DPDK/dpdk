@@ -57,6 +57,13 @@ enum mlx5_rte_flow_field_id {
 
 #define MLX5_INDIRECT_ACTION_TYPE_OFFSET 29
 
+#define MLX5_INDIRECT_ACTION_TYPE_GET(handle) \
+	(((uint32_t)(uintptr_t)(handle)) >> MLX5_INDIRECT_ACTION_TYPE_OFFSET)
+
+#define MLX5_INDIRECT_ACTION_IDX_GET(handle) \
+	(((uint32_t)(uintptr_t)(handle)) & \
+	 ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1))
+
 enum {
 	MLX5_INDIRECT_ACTION_TYPE_RSS,
 	MLX5_INDIRECT_ACTION_TYPE_AGE,
@@ -1829,6 +1836,15 @@ typedef int (*mlx5_flow_async_action_handle_update_t)
 			 void *user_data,
 			 struct rte_flow_error *error);
 
+typedef int (*mlx5_flow_async_action_handle_query_t)
+			(struct rte_eth_dev *dev,
+			 uint32_t queue,
+			 const struct rte_flow_op_attr *attr,
+			 const struct rte_flow_action_handle *handle,
+			 void *data,
+			 void *user_data,
+			 struct rte_flow_error *error);
+
 typedef int (*mlx5_flow_async_action_handle_destroy_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t queue,
@@ -1891,6 +1907,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_push_t push;
 	mlx5_flow_async_action_handle_create_t async_action_create;
 	mlx5_flow_async_action_handle_update_t async_action_update;
+	mlx5_flow_async_action_handle_query_t async_action_query;
 	mlx5_flow_async_action_handle_destroy_t async_action_destroy;
 };
 

@@ -13150,7 +13150,7 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Failed to allocate CT object");
 	ct = flow_aso_ct_get_by_dev_idx(dev, idx);
-	if (mlx5_aso_ct_update_by_wqe(sh, MLX5_HW_INV_QUEUE, ct, pro)) {
+	if (mlx5_aso_ct_update_by_wqe(sh, MLX5_HW_INV_QUEUE, ct, pro, NULL, true)) {
 		flow_dv_aso_ct_dev_release(dev, idx);
 		rte_flow_error_set(error, EBUSY,
 				   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -15987,7 +15987,7 @@ __flow_dv_action_ct_update(struct rte_eth_dev *dev, uint32_t idx,
 		if (ret)
 			return ret;
 		ret = mlx5_aso_ct_update_by_wqe(priv->sh, MLX5_HW_INV_QUEUE,
-						ct, new_prf);
+						ct, new_prf, NULL, true);
 		if (ret)
 			return rte_flow_error_set(error, EIO,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -16823,7 +16823,8 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 							ct->peer;
 		((struct rte_flow_action_conntrack *)data)->is_original_dir =
 							ct->is_original;
-		if (mlx5_aso_ct_query_by_wqe(priv->sh, MLX5_HW_INV_QUEUE, ct, data))
+		if (mlx5_aso_ct_query_by_wqe(priv->sh, MLX5_HW_INV_QUEUE, ct,
+					data, NULL, true))
 			return rte_flow_error_set(error, EIO,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					NULL,

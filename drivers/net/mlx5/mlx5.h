@@ -346,6 +346,8 @@ struct mlx5_lb_ctx {
 enum {
 	MLX5_HW_Q_JOB_TYPE_CREATE, /* Flow create job type. */
 	MLX5_HW_Q_JOB_TYPE_DESTROY, /* Flow destroy job type. */
+	MLX5_HW_Q_JOB_TYPE_UPDATE,
+	MLX5_HW_Q_JOB_TYPE_QUERY,
 };
 
 #define MLX5_HW_MAX_ITEMS (16)
@@ -353,12 +355,23 @@ enum {
 /* HW steering flow management job descriptor. */
 struct mlx5_hw_q_job {
 	uint32_t type; /* Job type. */
-	struct rte_flow_hw *flow; /* Flow attached to the job. */
+	union {
+		struct rte_flow_hw *flow; /* Flow attached to the job. */
+		const void *action; /* Indirect action attached to the job. */
+	};
 	void *user_data; /* Job user data. */
 	uint8_t *encap_data; /* Encap data. */
 	struct mlx5_modification_cmd *mhdr_cmd;
 	struct rte_flow_item *items;
-	struct rte_flow_item_ethdev port_spec;
+	union {
+		struct {
+			/* Pointer to ct query user memory. */
+			struct rte_flow_action_conntrack *profile;
+			/* Pointer to ct ASO query out memory. */
+			void *out_data;
+		} __rte_packed;
+		struct rte_flow_item_ethdev port_spec;
+	} __rte_packed;
 };
 
 /* HW steering job descriptor LIFO pool. */
@@ -366,6 +379,8 @@ struct mlx5_hw_q {
 	uint32_t job_idx; /* Free job index. */
 	uint32_t size; /* LIFO size. */
 	struct mlx5_hw_q_job **job; /* LIFO header. */
+	struct rte_ring *indir_cq; /* Indirect action SW completion queue. */
+	struct rte_ring *indir_iq; /* Indirect action SW in progress queue. */
 } __rte_cache_aligned;
 
 
@@ -574,6 +589,7 @@ struct mlx5_aso_sq_elem {
 			struct mlx5_aso_ct_action *ct;
 			char *query_data;
 		};
+		void *user_data;
 	};
 };
 
@@ -583,7 +599,9 @@ struct mlx5_aso_sq {
 	struct mlx5_aso_cq cq;
 	struct mlx5_devx_sq sq_obj;
 	struct mlx5_pmd_mr mr;
+	volatile struct mlx5_aso_wqe *db;
 	uint16_t pi;
+	uint16_t db_pi;
 	uint32_t head;
 	uint32_t tail;
 	uint32_t sqn;
@@ -998,6 +1016,7 @@ struct mlx5_flow_meter_profile {
 enum mlx5_aso_mtr_state {
 	ASO_METER_FREE, /* In free list. */
 	ASO_METER_WAIT, /* ACCESS_ASO WQE in progress. */
+	ASO_METER_WAIT_ASYNC, /* CQE will be handled by async pull. */
 	ASO_METER_READY, /* CQE received. */
 };
 
@@ -1200,6 +1219,7 @@ struct mlx5_bond_info {
 enum mlx5_aso_ct_state {
 	ASO_CONNTRACK_FREE, /* Inactive, in the free list. */
 	ASO_CONNTRACK_WAIT, /* WQE sent in the SQ. */
+	ASO_CONNTRACK_WAIT_ASYNC, /* CQE will be handled by async pull. */
 	ASO_CONNTRACK_READY, /* CQE received w/o error. */
 	ASO_CONNTRACK_QUERY, /* WQE for query sent. */
 	ASO_CONNTRACK_MAX, /* Guard. */
@@ -1208,13 +1228,21 @@ enum mlx5_aso_ct_state {
 /* Generic ASO connection tracking structure. */
 struct mlx5_aso_ct_action {
 	union {
-		LIST_ENTRY(mlx5_aso_ct_action) next;
-		/* Pointer to the next ASO CT. Used only in SWS. */
-		struct mlx5_aso_ct_pool *pool;
-		/* Pointer to action pool. Used only in HWS. */
+		/* SWS mode struct. */
+		struct {
+			/* Pointer to the next ASO CT. Used only in SWS. */
+			LIST_ENTRY(mlx5_aso_ct_action) next;
+		};
+		/* HWS mode struct. */
+		struct {
+			/* Pointer to action pool. Used only in HWS. */
+			struct mlx5_aso_ct_pool *pool;
+		};
 	};
-	void *dr_action_orig; /* General action object for original dir. */
-	void *dr_action_rply; /* General action object for reply dir. */
+	/* General action object for original dir. */
+	void *dr_action_orig;
+	/* General action object for reply dir. */
+	void *dr_action_rply;
 	uint32_t refcnt; /* Action used count in device flows. */
 	uint16_t offset; /* Offset of ASO CT in DevX objects bulk. */
 	uint16_t peer; /* The only peer port index could also use this CT. */
@@ -2148,18 +2176,21 @@ int mlx5_aso_flow_hit_queue_poll_stop(struct mlx5_dev_ctx_shared *sh);
 void mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
 			   enum mlx5_access_aso_opc_mod aso_opc_mod);
 int mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
-				 struct mlx5_aso_mtr *mtr,
-				 struct mlx5_mtr_bulk *bulk);
+		struct mlx5_aso_mtr *mtr, struct mlx5_mtr_bulk *bulk,
+		void *user_data, bool push);
 int mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 		struct mlx5_aso_mtr *mtr);
 int mlx5_aso_ct_update_by_wqe(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 			      struct mlx5_aso_ct_action *ct,
-			      const struct rte_flow_action_conntrack *profile);
+			      const struct rte_flow_action_conntrack *profile,
+			      void *user_data,
+			      bool push);
 int mlx5_aso_ct_wait_ready(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 			   struct mlx5_aso_ct_action *ct);
 int mlx5_aso_ct_query_by_wqe(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 			     struct mlx5_aso_ct_action *ct,
-			     struct rte_flow_action_conntrack *profile);
+			     struct rte_flow_action_conntrack *profile,
+			     void *user_data, bool push);
 int mlx5_aso_ct_available(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 			  struct mlx5_aso_ct_action *ct);
 uint32_t
@@ -2167,6 +2198,13 @@ mlx5_get_supported_sw_parsing_offloads(const struct mlx5_hca_attr *attr);
 uint32_t
 mlx5_get_supported_tunneling_offloads(const struct mlx5_hca_attr *attr);
 
+void mlx5_aso_ct_obj_analyze(struct rte_flow_action_conntrack *profile,
+			     char *wdata);
+void mlx5_aso_push_wqe(struct mlx5_dev_ctx_shared *sh,
+		       struct mlx5_aso_sq *sq);
+int mlx5_aso_pull_completion(struct mlx5_aso_sq *sq,
+			     struct rte_flow_op_result res[],
+			     uint16_t n_res);
 int mlx5_aso_cnt_queue_init(struct mlx5_dev_ctx_shared *sh);
 void mlx5_aso_cnt_queue_uninit(struct mlx5_dev_ctx_shared *sh);
 int mlx5_aso_cnt_query(struct mlx5_dev_ctx_shared *sh,

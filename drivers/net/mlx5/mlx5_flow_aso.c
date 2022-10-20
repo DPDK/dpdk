@@ -518,6 +518,70 @@ mlx5_aso_cqe_err_handle(struct mlx5_aso_sq *sq)
 			       (volatile uint32_t *)&sq->sq_obj.aso_wqes[idx]);
 }
 
+int
+mlx5_aso_pull_completion(struct mlx5_aso_sq *sq,
+			 struct rte_flow_op_result res[],
+			 uint16_t n_res)
+{
+	struct mlx5_aso_cq *cq = &sq->cq;
+	volatile struct mlx5_cqe *restrict cqe;
+	const uint32_t cq_size = 1 << cq->log_desc_n;
+	const uint32_t mask = cq_size - 1;
+	uint32_t idx;
+	uint32_t next_idx;
+	uint16_t max;
+	uint16_t n = 0;
+	int ret;
+
+	max = (uint16_t)(sq->head - sq->tail);
+	if (unlikely(!max || !n_res))
+		return 0;
+	next_idx = cq->cq_ci & mask;
+	do {
+		idx = next_idx;
+		next_idx = (cq->cq_ci + 1) & mask;
+		/* Need to confirm the position of the prefetch. */
+		rte_prefetch0(&cq->cq_obj.cqes[next_idx]);
+		cqe = &cq->cq_obj.cqes[idx];
+		ret = check_cqe(cqe, cq_size, cq->cq_ci);
+		/*
+		 * Be sure owner read is done before any other cookie field or
+		 * opaque field.
+		 */
+		rte_io_rmb();
+		if (ret == MLX5_CQE_STATUS_HW_OWN)
+			break;
+		res[n].user_data = sq->elts[(uint16_t)((sq->tail + n) & mask)].user_data;
+		if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
+			mlx5_aso_cqe_err_handle(sq);
+			res[n].status = RTE_FLOW_OP_ERROR;
+		} else {
+			res[n].status = RTE_FLOW_OP_SUCCESS;
+		}
+		cq->cq_ci++;
+		if (++n == n_res)
+			break;
+	} while (1);
+	if (likely(n)) {
+		sq->tail += n;
+		rte_io_wmb();
+		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
+	}
+	return n;
+}
+
+void
+mlx5_aso_push_wqe(struct mlx5_dev_ctx_shared *sh,
+		  struct mlx5_aso_sq *sq)
+{
+	if (sq->db_pi == sq->pi)
+		return;
+	mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)sq->db,
+			   sq->pi, &sq->sq_obj.db_rec[MLX5_SND_DBR],
+			   !sh->tx_uar.dbnc);
+	sq->db_pi = sq->pi;
+}
+
 /**
  * Update ASO objects upon completion.
  *
@@ -727,7 +791,9 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 			       struct mlx5_aso_sq *sq,
 			       struct mlx5_aso_mtr *aso_mtr,
 			       struct mlx5_mtr_bulk *bulk,
-				   bool need_lock)
+			       bool need_lock,
+			       void *user_data,
+			       bool push)
 {
 	volatile struct mlx5_aso_wqe *wqe = NULL;
 	struct mlx5_flow_meter_info *fm = NULL;
@@ -753,7 +819,7 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 	rte_prefetch0(&sq->sq_obj.aso_wqes[(sq->head + 1) & mask]);
 	/* Fill next WQE. */
 	fm = &aso_mtr->fm;
-	sq->elts[sq->head & mask].mtr = aso_mtr;
+	sq->elts[sq->head & mask].mtr = user_data ? user_data : aso_mtr;
 	if (aso_mtr->type == ASO_METER_INDIRECT) {
 		if (likely(sh->config.dv_flow_en == 2))
 			pool = aso_mtr->pool;
@@ -819,9 +885,13 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 	 */
 	sq->head++;
 	sq->pi += 2;/* Each WQE contains 2 WQEBB's. */
-	mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)wqe,
+	if (push) {
+		mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)wqe,
 			   sq->pi, &sq->sq_obj.db_rec[MLX5_SND_DBR],
 			   !sh->tx_uar.dbnc);
+		sq->db_pi = sq->pi;
+	}
+	sq->db = wqe;
 	if (need_lock)
 		rte_spinlock_unlock(&sq->sqsl);
 	return 1;
@@ -911,11 +981,14 @@ mlx5_aso_mtr_completion_handle(struct mlx5_aso_sq *sq, bool need_lock)
 int
 mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 			struct mlx5_aso_mtr *mtr,
-			struct mlx5_mtr_bulk *bulk)
+			struct mlx5_mtr_bulk *bulk,
+			void *user_data,
+			bool push)
 {
 	struct mlx5_aso_sq *sq;
 	uint32_t poll_wqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
 	bool need_lock;
+	int ret;
 
 	if (likely(sh->config.dv_flow_en == 2) &&
 	    mtr->type == ASO_METER_INDIRECT) {
@@ -930,10 +1003,15 @@ mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 		sq = &sh->mtrmng->pools_mng.sq;
 		need_lock = true;
 	}
+	if (queue != MLX5_HW_INV_QUEUE) {
+		ret = mlx5_aso_mtr_sq_enqueue_single(sh, sq, mtr, bulk,
+						     need_lock, user_data, push);
+		return ret > 0 ? 0 : -1;
+	}
 	do {
 		mlx5_aso_mtr_completion_handle(sq, need_lock);
-		if (mlx5_aso_mtr_sq_enqueue_single(sh, sq, mtr,
-						   bulk, need_lock))
+		if (mlx5_aso_mtr_sq_enqueue_single(sh, sq, mtr, bulk,
+						   need_lock, NULL, true))
 			return 0;
 		/* Waiting for wqe resource. */
 		rte_delay_us_sleep(MLX5_ASO_WQE_CQE_RESPONSE_DELAY);
@@ -962,6 +1040,7 @@ mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 {
 	struct mlx5_aso_sq *sq;
 	uint32_t poll_cqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
+	uint8_t state;
 	bool need_lock;
 
 	if (likely(sh->config.dv_flow_en == 2) &&
@@ -977,8 +1056,8 @@ mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 		sq = &sh->mtrmng->pools_mng.sq;
 		need_lock = true;
 	}
-	if (__atomic_load_n(&mtr->state, __ATOMIC_RELAXED) ==
-					    ASO_METER_READY)
+	state = __atomic_load_n(&mtr->state, __ATOMIC_RELAXED);
+	if (state == ASO_METER_READY || state == ASO_METER_WAIT_ASYNC)
 		return 0;
 	do {
 		mlx5_aso_mtr_completion_handle(sq, need_lock);
@@ -1093,7 +1172,9 @@ mlx5_aso_ct_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 			      struct mlx5_aso_sq *sq,
 			      struct mlx5_aso_ct_action *ct,
 			      const struct rte_flow_action_conntrack *profile,
-			      bool need_lock)
+			      bool need_lock,
+			      void *user_data,
+			      bool push)
 {
 	volatile struct mlx5_aso_wqe *wqe = NULL;
 	uint16_t size = 1 << sq->log_desc_n;
@@ -1117,10 +1198,16 @@ mlx5_aso_ct_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 	wqe = &sq->sq_obj.aso_wqes[sq->head & mask];
 	rte_prefetch0(&sq->sq_obj.aso_wqes[(sq->head + 1) & mask]);
 	/* Fill next WQE. */
-	MLX5_ASO_CT_UPDATE_STATE(ct, ASO_CONNTRACK_WAIT);
-	sq->elts[sq->head & mask].ct = ct;
-	sq->elts[sq->head & mask].query_data = NULL;
+	MLX5_ASO_CT_UPDATE_STATE(ct,
+			user_data ? ASO_CONNTRACK_WAIT_ASYNC : ASO_CONNTRACK_WAIT);
+	if (user_data) {
+		sq->elts[sq->head & mask].user_data = user_data;
+	} else {
+		sq->elts[sq->head & mask].ct = ct;
+		sq->elts[sq->head & mask].query_data = NULL;
+	}
 	pool = __mlx5_aso_ct_get_pool(sh, ct);
+
 	/* Each WQE will have a single CT object. */
 	wqe->general_cseg.misc = rte_cpu_to_be_32(pool->devx_obj->id +
 						  ct->offset);
@@ -1200,9 +1287,13 @@ mlx5_aso_ct_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 		 profile->reply_dir.max_ack);
 	sq->head++;
 	sq->pi += 2; /* Each WQE contains 2 WQEBB's. */
-	mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)wqe,
-			   sq->pi, &sq->sq_obj.db_rec[MLX5_SND_DBR],
-			   !sh->tx_uar.dbnc);
+	if (push) {
+		mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)wqe,
+				   sq->pi, &sq->sq_obj.db_rec[MLX5_SND_DBR],
+				   !sh->tx_uar.dbnc);
+		sq->db_pi = sq->pi;
+	}
+	sq->db = wqe;
 	if (need_lock)
 		rte_spinlock_unlock(&sq->sqsl);
 	return 1;
@@ -1258,7 +1349,9 @@ static int
 mlx5_aso_ct_sq_query_single(struct mlx5_dev_ctx_shared *sh,
 			    struct mlx5_aso_sq *sq,
 			    struct mlx5_aso_ct_action *ct, char *data,
-			    bool need_lock)
+			    bool need_lock,
+			    void *user_data,
+			    bool push)
 {
 	volatile struct mlx5_aso_wqe *wqe = NULL;
 	uint16_t size = 1 << sq->log_desc_n;
@@ -1284,14 +1377,23 @@ mlx5_aso_ct_sq_query_single(struct mlx5_dev_ctx_shared *sh,
 		DRV_LOG(ERR, "Fail: SQ is full and no free WQE to send");
 		return 0;
 	}
-	MLX5_ASO_CT_UPDATE_STATE(ct, ASO_CONNTRACK_QUERY);
+	MLX5_ASO_CT_UPDATE_STATE(ct,
+			user_data ? ASO_CONNTRACK_WAIT_ASYNC : ASO_CONNTRACK_QUERY);
 	wqe = &sq->sq_obj.aso_wqes[sq->head & mask];
 	/* Confirm the location and address of the prefetch instruction. */
 	rte_prefetch0(&sq->sq_obj.aso_wqes[(sq->head + 1) & mask]);
 	/* Fill next WQE. */
 	wqe_idx = sq->head & mask;
-	sq->elts[wqe_idx].ct = ct;
-	sq->elts[wqe_idx].query_data = data;
+	/* Check if this is async mode. */
+	if (user_data) {
+		struct mlx5_hw_q_job *job = (struct mlx5_hw_q_job *)user_data;
+
+		sq->elts[wqe_idx].ct = user_data;
+		job->out_data = (char *)((uintptr_t)sq->mr.addr + wqe_idx * 64);
+	} else {
+		sq->elts[wqe_idx].query_data = data;
+		sq->elts[wqe_idx].ct = ct;
+	}
 	pool = __mlx5_aso_ct_get_pool(sh, ct);
 	/* Each WQE will have a single CT object. */
 	wqe->general_cseg.misc = rte_cpu_to_be_32(pool->devx_obj->id +
@@ -1317,9 +1419,13 @@ mlx5_aso_ct_sq_query_single(struct mlx5_dev_ctx_shared *sh,
 	 * data segment is not used in this case.
 	 */
 	sq->pi += 2;
-	mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)wqe,
-			   sq->pi, &sq->sq_obj.db_rec[MLX5_SND_DBR],
-			   !sh->tx_uar.dbnc);
+	if (push) {
+		mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)wqe,
+				   sq->pi, &sq->sq_obj.db_rec[MLX5_SND_DBR],
+				   !sh->tx_uar.dbnc);
+		sq->db_pi = sq->pi;
+	}
+	sq->db = wqe;
 	if (need_lock)
 		rte_spinlock_unlock(&sq->sqsl);
 	return 1;
@@ -1405,20 +1511,29 @@ int
 mlx5_aso_ct_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
 			  uint32_t queue,
 			  struct mlx5_aso_ct_action *ct,
-			  const struct rte_flow_action_conntrack *profile)
+			  const struct rte_flow_action_conntrack *profile,
+			  void *user_data,
+			  bool push)
 {
 	uint32_t poll_wqe_times = MLX5_CT_POLL_WQE_CQE_TIMES;
 	struct mlx5_aso_ct_pool *pool = __mlx5_aso_ct_get_pool(sh, ct);
 	struct mlx5_aso_sq *sq;
 	bool need_lock = !!(queue == MLX5_HW_INV_QUEUE);
+	int ret;
 
 	if (sh->config.dv_flow_en == 2)
 		sq = __mlx5_aso_ct_get_sq_in_hws(queue, pool);
 	else
 		sq = __mlx5_aso_ct_get_sq_in_sws(sh, ct);
+	if (queue != MLX5_HW_INV_QUEUE) {
+		ret = mlx5_aso_ct_sq_enqueue_single(sh, sq, ct, profile,
+						    need_lock, user_data, push);
+		return ret > 0 ? 0 : -1;
+	}
 	do {
-		mlx5_aso_ct_completion_handle(sh, sq, need_lock);
-		if (mlx5_aso_ct_sq_enqueue_single(sh, sq, ct, profile, need_lock))
+		mlx5_aso_ct_completion_handle(sh, sq,  need_lock);
+		if (mlx5_aso_ct_sq_enqueue_single(sh, sq, ct, profile,
+						  need_lock, NULL, true))
 			return 0;
 		/* Waiting for wqe resource. */
 		rte_delay_us_sleep(10u);
@@ -1478,7 +1593,7 @@ mlx5_aso_ct_wait_ready(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
  * @param[in] wdata
  *   Pointer to data fetched from hardware.
  */
-static inline void
+void
 mlx5_aso_ct_obj_analyze(struct rte_flow_action_conntrack *profile,
 			char *wdata)
 {
@@ -1562,7 +1677,8 @@ int
 mlx5_aso_ct_query_by_wqe(struct mlx5_dev_ctx_shared *sh,
 			 uint32_t queue,
 			 struct mlx5_aso_ct_action *ct,
-			 struct rte_flow_action_conntrack *profile)
+			 struct rte_flow_action_conntrack *profile,
+			 void *user_data, bool push)
 {
 	uint32_t poll_wqe_times = MLX5_CT_POLL_WQE_CQE_TIMES;
 	struct mlx5_aso_ct_pool *pool = __mlx5_aso_ct_get_pool(sh, ct);
@@ -1575,9 +1691,15 @@ mlx5_aso_ct_query_by_wqe(struct mlx5_dev_ctx_shared *sh,
 		sq = __mlx5_aso_ct_get_sq_in_hws(queue, pool);
 	else
 		sq = __mlx5_aso_ct_get_sq_in_sws(sh, ct);
+	if (queue != MLX5_HW_INV_QUEUE) {
+		ret = mlx5_aso_ct_sq_query_single(sh, sq, ct, out_data,
+						  need_lock, user_data, push);
+		return ret > 0 ? 0 : -1;
+	}
 	do {
 		mlx5_aso_ct_completion_handle(sh, sq, need_lock);
-		ret = mlx5_aso_ct_sq_query_single(sh, sq, ct, out_data, need_lock);
+		ret = mlx5_aso_ct_sq_query_single(sh, sq, ct, out_data,
+				need_lock, NULL, true);
 		if (ret < 0)
 			return ret;
 		else if (ret > 0)
@@ -1628,7 +1750,8 @@ mlx5_aso_ct_available(struct mlx5_dev_ctx_shared *sh,
 		rte_errno = ENXIO;
 		return -rte_errno;
 	} else if (state == ASO_CONNTRACK_READY ||
-		   state == ASO_CONNTRACK_QUERY) {
+		   state == ASO_CONNTRACK_QUERY ||
+		   state == ASO_CONNTRACK_WAIT_ASYNC) {
 		return 0;
 	}
 	do {

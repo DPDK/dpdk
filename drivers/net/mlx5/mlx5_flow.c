@@ -977,6 +977,14 @@ mlx5_flow_async_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 				  void *user_data,
 				  struct rte_flow_error *error);
 
+static int
+mlx5_flow_async_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
+				 const struct rte_flow_op_attr *attr,
+				 const struct rte_flow_action_handle *handle,
+				 void *data,
+				 void *user_data,
+				 struct rte_flow_error *error);
+
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
 	.create = mlx5_flow_create,
@@ -1015,6 +1023,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.push = mlx5_flow_push,
 	.async_action_handle_create = mlx5_flow_async_action_handle_create,
 	.async_action_handle_update = mlx5_flow_async_action_handle_update,
+	.async_action_handle_query = mlx5_flow_async_action_handle_query,
 	.async_action_handle_destroy = mlx5_flow_async_action_handle_destroy,
 };
 
@@ -8856,6 +8865,42 @@ mlx5_flow_async_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 
 	return fops->async_action_update(dev, queue, attr, handle,
 					 update, user_data, error);
+}
+
+/**
+ * Query shared action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   Which queue to be used..
+ * @param[in] attr
+ *   Operation attribute.
+ * @param[in] handle
+ *   Action handle to be updated.
+ * @param[in] data
+ *   Pointer query result data.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_async_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
+				    const struct rte_flow_op_attr *attr,
+				    const struct rte_flow_action_handle *handle,
+				    void *data,
+				    void *user_data,
+				    struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops =
+			flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+
+	return fops->async_action_query(dev, queue, attr, handle,
+					data, user_data, error);
 }
 
 /**
