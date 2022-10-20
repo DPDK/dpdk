@@ -47,6 +47,11 @@
 /* Lowest priority for HW non-root table. */
 #define MLX5_HW_LOWEST_PRIO_NON_ROOT (UINT32_MAX)
 
+/* Priorities for Rx control flow rules. */
+#define MLX5_HW_CTRL_RX_PRIO_L2 (MLX5_HW_LOWEST_PRIO_ROOT)
+#define MLX5_HW_CTRL_RX_PRIO_L3 (MLX5_HW_LOWEST_PRIO_ROOT - 1)
+#define MLX5_HW_CTRL_RX_PRIO_L4 (MLX5_HW_LOWEST_PRIO_ROOT - 2)
+
 #define MLX5_HW_VLAN_PUSH_TYPE_IDX 0
 #define MLX5_HW_VLAN_PUSH_VID_IDX 1
 #define MLX5_HW_VLAN_PUSH_PCP_IDX 2
@@ -82,6 +87,72 @@ static uint32_t mlx5_hw_act_flag[MLX5_HW_ACTION_FLAG_MAX]
 		MLX5DR_ACTION_FLAG_HWS_TX,
 		MLX5DR_ACTION_FLAG_HWS_FDB,
 	},
+};
+
+/* Ethernet item spec for promiscuous mode. */
+static const struct rte_flow_item_eth ctrl_rx_eth_promisc_spec = {
+	.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+/* Ethernet item mask for promiscuous mode. */
+static const struct rte_flow_item_eth ctrl_rx_eth_promisc_mask = {
+	.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+
+/* Ethernet item spec for all multicast mode. */
+static const struct rte_flow_item_eth ctrl_rx_eth_mcast_spec = {
+	.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+/* Ethernet item mask for all multicast mode. */
+static const struct rte_flow_item_eth ctrl_rx_eth_mcast_mask = {
+	.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+
+/* Ethernet item spec for IPv4 multicast traffic. */
+static const struct rte_flow_item_eth ctrl_rx_eth_ipv4_mcast_spec = {
+	.dst.addr_bytes = "\x01\x00\x5e\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+/* Ethernet item mask for IPv4 multicast traffic. */
+static const struct rte_flow_item_eth ctrl_rx_eth_ipv4_mcast_mask = {
+	.dst.addr_bytes = "\xff\xff\xff\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+
+/* Ethernet item spec for IPv6 multicast traffic. */
+static const struct rte_flow_item_eth ctrl_rx_eth_ipv6_mcast_spec = {
+	.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+/* Ethernet item mask for IPv6 multicast traffic. */
+static const struct rte_flow_item_eth ctrl_rx_eth_ipv6_mcast_mask = {
+	.dst.addr_bytes = "\xff\xff\x00\x00\x00\x00",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+
+/* Ethernet item mask for unicast traffic. */
+static const struct rte_flow_item_eth ctrl_rx_eth_dmac_mask = {
+	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
+};
+
+/* Ethernet item spec for broadcast. */
+static const struct rte_flow_item_eth ctrl_rx_eth_bcast_spec = {
+	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.type = 0,
 };
 
 /**
@@ -6349,6 +6420,365 @@ flow_hw_create_vlan(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+flow_hw_cleanup_ctrl_rx_tables(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	unsigned int j;
+
+	if (!priv->hw_ctrl_rx)
+		return;
+	for (i = 0; i < MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX; ++i) {
+		for (j = 0; j < MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX; ++j) {
+			struct rte_flow_template_table *tbl = priv->hw_ctrl_rx->tables[i][j].tbl;
+			struct rte_flow_pattern_template *pt = priv->hw_ctrl_rx->tables[i][j].pt;
+
+			if (tbl)
+				claim_zero(flow_hw_table_destroy(dev, tbl, NULL));
+			if (pt)
+				claim_zero(flow_hw_pattern_template_destroy(dev, pt, NULL));
+		}
+	}
+	for (i = 0; i < MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX; ++i) {
+		struct rte_flow_actions_template *at = priv->hw_ctrl_rx->rss[i];
+
+		if (at)
+			claim_zero(flow_hw_actions_template_destroy(dev, at, NULL));
+	}
+	mlx5_free(priv->hw_ctrl_rx);
+	priv->hw_ctrl_rx = NULL;
+}
+
+static uint64_t
+flow_hw_ctrl_rx_rss_type_hash_types(const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	switch (rss_type) {
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_NON_IP:
+		return 0;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4:
+		return RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 | RTE_ETH_RSS_NONFRAG_IPV4_OTHER;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_UDP:
+		return RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_TCP:
+		return RTE_ETH_RSS_NONFRAG_IPV4_TCP;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6:
+		return RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 | RTE_ETH_RSS_NONFRAG_IPV6_OTHER;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_UDP:
+		return RTE_ETH_RSS_NONFRAG_IPV6_UDP | RTE_ETH_RSS_IPV6_UDP_EX;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_TCP:
+		return RTE_ETH_RSS_NONFRAG_IPV6_TCP | RTE_ETH_RSS_IPV6_TCP_EX;
+	default:
+		/* Should not reach here. */
+		MLX5_ASSERT(false);
+		return 0;
+	}
+}
+
+static struct rte_flow_actions_template *
+flow_hw_create_ctrl_rx_rss_template(struct rte_eth_dev *dev,
+				    const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_actions_template_attr attr = {
+		.ingress = 1,
+	};
+	uint16_t queue[RTE_MAX_QUEUES_PER_PORT];
+	struct rte_flow_action_rss rss_conf = {
+		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
+		.level = 0,
+		.types = 0,
+		.key_len = priv->rss_conf.rss_key_len,
+		.key = priv->rss_conf.rss_key,
+		.queue_num = priv->reta_idx_n,
+		.queue = queue,
+	};
+	struct rte_flow_action actions[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_RSS,
+			.conf = &rss_conf,
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		}
+	};
+	struct rte_flow_action masks[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_RSS,
+			.conf = &rss_conf,
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		}
+	};
+	struct rte_flow_actions_template *at;
+	struct rte_flow_error error;
+	unsigned int i;
+
+	MLX5_ASSERT(priv->reta_idx_n > 0 && priv->reta_idx);
+	/* Select proper RSS hash types and based on that configure the actions template. */
+	rss_conf.types = flow_hw_ctrl_rx_rss_type_hash_types(rss_type);
+	if (rss_conf.types) {
+		for (i = 0; i < priv->reta_idx_n; ++i)
+			queue[i] = (*priv->reta_idx)[i];
+	} else {
+		rss_conf.queue_num = 1;
+		queue[0] = (*priv->reta_idx)[0];
+	}
+	at = flow_hw_actions_template_create(dev, &attr, actions, masks, &error);
+	if (!at)
+		DRV_LOG(ERR,
+			"Failed to create ctrl flow actions template: rte_errno(%d), type(%d): %s",
+			rte_errno, error.type,
+			error.message ? error.message : "(no stated reason)");
+	return at;
+}
+
+static uint32_t ctrl_rx_rss_priority_map[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX] = {
+	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_NON_IP] = MLX5_HW_CTRL_RX_PRIO_L2,
+	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4] = MLX5_HW_CTRL_RX_PRIO_L3,
+	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_UDP] = MLX5_HW_CTRL_RX_PRIO_L4,
+	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_TCP] = MLX5_HW_CTRL_RX_PRIO_L4,
+	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6] = MLX5_HW_CTRL_RX_PRIO_L3,
+	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_UDP] = MLX5_HW_CTRL_RX_PRIO_L4,
+	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_TCP] = MLX5_HW_CTRL_RX_PRIO_L4,
+};
+
+static uint32_t ctrl_rx_nb_flows_map[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX] = {
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL] = 1,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST] = 1,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST] = 1,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN] = MLX5_MAX_VLAN_IDS,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST] = 1,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN] = MLX5_MAX_VLAN_IDS,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST] = 1,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN] = MLX5_MAX_VLAN_IDS,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC] = MLX5_MAX_UC_MAC_ADDRESSES,
+	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN] =
+			MLX5_MAX_UC_MAC_ADDRESSES * MLX5_MAX_VLAN_IDS,
+};
+
+static struct rte_flow_template_table_attr
+flow_hw_get_ctrl_rx_table_attr(enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type,
+			       const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	return (struct rte_flow_template_table_attr){
+		.flow_attr = {
+			.group = 0,
+			.priority = ctrl_rx_rss_priority_map[rss_type],
+			.ingress = 1,
+		},
+		.nb_flows = ctrl_rx_nb_flows_map[eth_pattern_type],
+	};
+}
+
+static struct rte_flow_item
+flow_hw_get_ctrl_rx_eth_item(const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type)
+{
+	struct rte_flow_item item = {
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.mask = NULL,
+	};
+
+	switch (eth_pattern_type) {
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL:
+		item.mask = &ctrl_rx_eth_promisc_mask;
+		break;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST:
+		item.mask = &ctrl_rx_eth_mcast_mask;
+		break;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN:
+		item.mask = &ctrl_rx_eth_dmac_mask;
+		break;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN:
+		item.mask = &ctrl_rx_eth_ipv4_mcast_mask;
+		break;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
+		item.mask = &ctrl_rx_eth_ipv6_mcast_mask;
+		break;
+	default:
+		/* Should not reach here - ETH mask must be present. */
+		item.type = RTE_FLOW_ITEM_TYPE_END;
+		MLX5_ASSERT(false);
+		break;
+	}
+	return item;
+}
+
+static struct rte_flow_item
+flow_hw_get_ctrl_rx_vlan_item(const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type)
+{
+	struct rte_flow_item item = {
+		.type = RTE_FLOW_ITEM_TYPE_VOID,
+		.mask = NULL,
+	};
+
+	switch (eth_pattern_type) {
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN:
+		item.type = RTE_FLOW_ITEM_TYPE_VLAN;
+		item.mask = &rte_flow_item_vlan_mask;
+		break;
+	default:
+		/* Nothing to update. */
+		break;
+	}
+	return item;
+}
+
+static struct rte_flow_item
+flow_hw_get_ctrl_rx_l3_item(const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct rte_flow_item item = {
+		.type = RTE_FLOW_ITEM_TYPE_VOID,
+		.mask = NULL,
+	};
+
+	switch (rss_type) {
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4:
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_UDP:
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_TCP:
+		item.type = RTE_FLOW_ITEM_TYPE_IPV4;
+		break;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6:
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_UDP:
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_TCP:
+		item.type = RTE_FLOW_ITEM_TYPE_IPV6;
+		break;
+	default:
+		/* Nothing to update. */
+		break;
+	}
+	return item;
+}
+
+static struct rte_flow_item
+flow_hw_get_ctrl_rx_l4_item(const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct rte_flow_item item = {
+		.type = RTE_FLOW_ITEM_TYPE_VOID,
+		.mask = NULL,
+	};
+
+	switch (rss_type) {
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_UDP:
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_UDP:
+		item.type = RTE_FLOW_ITEM_TYPE_UDP;
+		break;
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_TCP:
+	case MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_TCP:
+		item.type = RTE_FLOW_ITEM_TYPE_TCP;
+		break;
+	default:
+		/* Nothing to update. */
+		break;
+	}
+	return item;
+}
+
+static struct rte_flow_pattern_template *
+flow_hw_create_ctrl_rx_pattern_template
+		(struct rte_eth_dev *dev,
+		 const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type,
+		 const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	const struct rte_flow_pattern_template_attr attr = {
+		.relaxed_matching = 0,
+		.ingress = 1,
+	};
+	struct rte_flow_item items[] = {
+		/* Matching patterns */
+		flow_hw_get_ctrl_rx_eth_item(eth_pattern_type),
+		flow_hw_get_ctrl_rx_vlan_item(eth_pattern_type),
+		flow_hw_get_ctrl_rx_l3_item(rss_type),
+		flow_hw_get_ctrl_rx_l4_item(rss_type),
+		/* Terminate pattern */
+		{ .type = RTE_FLOW_ITEM_TYPE_END }
+	};
+
+	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
+}
+
+static int
+flow_hw_create_ctrl_rx_tables(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	unsigned int j;
+	int ret;
+
+	MLX5_ASSERT(!priv->hw_ctrl_rx);
+	priv->hw_ctrl_rx = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*priv->hw_ctrl_rx),
+				       RTE_CACHE_LINE_SIZE, rte_socket_id());
+	if (!priv->hw_ctrl_rx) {
+		DRV_LOG(ERR, "Failed to allocate memory for Rx control flow tables");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	/* Create all pattern template variants. */
+	for (i = 0; i < MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX; ++i) {
+		enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type = i;
+
+		for (j = 0; j < MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX; ++j) {
+			const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type = j;
+			struct rte_flow_template_table_attr attr;
+			struct rte_flow_pattern_template *pt;
+
+			attr = flow_hw_get_ctrl_rx_table_attr(eth_pattern_type, rss_type);
+			pt = flow_hw_create_ctrl_rx_pattern_template(dev, eth_pattern_type,
+								     rss_type);
+			if (!pt)
+				goto err;
+			priv->hw_ctrl_rx->tables[i][j].attr = attr;
+			priv->hw_ctrl_rx->tables[i][j].pt = pt;
+		}
+	}
+	return 0;
+err:
+	ret = rte_errno;
+	flow_hw_cleanup_ctrl_rx_tables(dev);
+	rte_errno = ret;
+	return -ret;
+}
+
+void
+mlx5_flow_hw_cleanup_ctrl_rx_templates(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_hw_ctrl_rx *hw_ctrl_rx;
+	unsigned int i;
+	unsigned int j;
+
+	if (!priv->dr_ctx)
+		return;
+	if (!priv->hw_ctrl_rx)
+		return;
+	hw_ctrl_rx = priv->hw_ctrl_rx;
+	for (i = 0; i < MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX; ++i) {
+		for (j = 0; j < MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX; ++j) {
+			struct mlx5_flow_hw_ctrl_rx_table *tmpls = &hw_ctrl_rx->tables[i][j];
+
+			if (tmpls->tbl) {
+				claim_zero(flow_hw_table_destroy(dev, tmpls->tbl, NULL));
+				tmpls->tbl = NULL;
+			}
+		}
+	}
+	for (j = 0; j < MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX; ++j) {
+		if (hw_ctrl_rx->rss[j]) {
+			claim_zero(flow_hw_actions_template_destroy(dev, hw_ctrl_rx->rss[j], NULL));
+			hw_ctrl_rx->rss[j] = NULL;
+		}
+	}
+}
+
 /**
  * Configure port HWS resources.
  *
@@ -6515,6 +6945,12 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	priv->nb_queue = nb_q_updated;
 	rte_spinlock_init(&priv->hw_ctrl_lock);
 	LIST_INIT(&priv->hw_ctrl_flows);
+	ret = flow_hw_create_ctrl_rx_tables(dev);
+	if (ret) {
+		rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to set up Rx control flow templates");
+		goto err;
+	}
 	/* Initialize meter library*/
 	if (port_attr->nb_meters)
 		if (mlx5_flow_meter_init(dev, port_attr->nb_meters, 1, 1, nb_q_updated))
@@ -6668,6 +7104,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	flow_hw_rxq_flag_set(dev, false);
 	flow_hw_flush_all_ctrl_flows(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
+	flow_hw_cleanup_ctrl_rx_tables(dev);
 	while (!LIST_EMPTY(&priv->flow_hw_tbl_ongo)) {
 		tbl = LIST_FIRST(&priv->flow_hw_tbl_ongo);
 		flow_hw_table_destroy(dev, tbl, NULL);
@@ -8461,6 +8898,368 @@ mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn)
 	}
 	return flow_hw_create_ctrl_flow(dev, dev, priv->hw_tx_repr_tagging_tbl,
 					items, 0, actions, 0);
+}
+
+static uint32_t
+__calc_pattern_flags(const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type)
+{
+	switch (eth_pattern_type) {
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL:
+		return MLX5_CTRL_PROMISCUOUS;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST:
+		return MLX5_CTRL_ALL_MULTICAST;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN:
+		return MLX5_CTRL_BROADCAST;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN:
+		return MLX5_CTRL_IPV4_MULTICAST;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
+		return MLX5_CTRL_IPV6_MULTICAST;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN:
+		return MLX5_CTRL_DMAC;
+	default:
+		/* Should not reach here. */
+		MLX5_ASSERT(false);
+		return 0;
+	}
+}
+
+static uint32_t
+__calc_vlan_flags(const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type)
+{
+	switch (eth_pattern_type) {
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN:
+		return MLX5_CTRL_VLAN_FILTER;
+	default:
+		return 0;
+	}
+}
+
+static bool
+eth_pattern_type_is_requested(const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type,
+			      uint32_t flags)
+{
+	uint32_t pattern_flags = __calc_pattern_flags(eth_pattern_type);
+	uint32_t vlan_flags = __calc_vlan_flags(eth_pattern_type);
+	bool pattern_requested = !!(pattern_flags & flags);
+	bool consider_vlan = vlan_flags || (MLX5_CTRL_VLAN_FILTER & flags);
+	bool vlan_requested = !!(vlan_flags & flags);
+
+	if (consider_vlan)
+		return pattern_requested && vlan_requested;
+	else
+		return pattern_requested;
+}
+
+static bool
+rss_type_is_requested(struct mlx5_priv *priv,
+		      const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct rte_flow_actions_template *at = priv->hw_ctrl_rx->rss[rss_type];
+	unsigned int i;
+
+	for (i = 0; at->actions[i].type != RTE_FLOW_ACTION_TYPE_END; ++i) {
+		if (at->actions[i].type == RTE_FLOW_ACTION_TYPE_RSS) {
+			const struct rte_flow_action_rss *rss = at->actions[i].conf;
+			uint64_t rss_types = rss->types;
+
+			if ((rss_types & priv->rss_conf.rss_hf) != rss_types)
+				return false;
+		}
+	}
+	return true;
+}
+
+static const struct rte_flow_item_eth *
+__get_eth_spec(const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern)
+{
+	switch (pattern) {
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL:
+		return &ctrl_rx_eth_promisc_spec;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST:
+		return &ctrl_rx_eth_mcast_spec;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN:
+		return &ctrl_rx_eth_bcast_spec;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN:
+		return &ctrl_rx_eth_ipv4_mcast_spec;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
+		return &ctrl_rx_eth_ipv6_mcast_spec;
+	default:
+		/* This case should not be reached. */
+		MLX5_ASSERT(false);
+		return NULL;
+	}
+}
+
+static int
+__flow_hw_ctrl_flows_single(struct rte_eth_dev *dev,
+			    struct rte_flow_template_table *tbl,
+			    const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern_type,
+			    const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	const struct rte_flow_item_eth *eth_spec = __get_eth_spec(pattern_type);
+	struct rte_flow_item items[5];
+	struct rte_flow_action actions[] = {
+		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
+		{ .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+
+	if (!eth_spec)
+		return -EINVAL;
+	memset(items, 0, sizeof(items));
+	items[0] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = eth_spec,
+	};
+	items[1] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_VOID };
+	items[2] = flow_hw_get_ctrl_rx_l3_item(rss_type);
+	items[3] = flow_hw_get_ctrl_rx_l4_item(rss_type);
+	items[4] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_END };
+	/* Without VLAN filtering, only a single flow rule must be created. */
+	return flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0);
+}
+
+static int
+__flow_hw_ctrl_flows_single_vlan(struct rte_eth_dev *dev,
+				 struct rte_flow_template_table *tbl,
+				 const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern_type,
+				 const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_eth *eth_spec = __get_eth_spec(pattern_type);
+	struct rte_flow_item items[5];
+	struct rte_flow_action actions[] = {
+		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
+		{ .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+	unsigned int i;
+
+	if (!eth_spec)
+		return -EINVAL;
+	memset(items, 0, sizeof(items));
+	items[0] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = eth_spec,
+	};
+	/* Optional VLAN for now will be VOID - will be filled later. */
+	items[1] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_VLAN };
+	items[2] = flow_hw_get_ctrl_rx_l3_item(rss_type);
+	items[3] = flow_hw_get_ctrl_rx_l4_item(rss_type);
+	items[4] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_END };
+	/* Since VLAN filtering is done, create a single flow rule for each registered vid. */
+	for (i = 0; i < priv->vlan_filter_n; ++i) {
+		uint16_t vlan = priv->vlan_filter[i];
+		struct rte_flow_item_vlan vlan_spec = {
+			.tci = rte_cpu_to_be_16(vlan),
+		};
+
+		items[1].spec = &vlan_spec;
+		if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0))
+			return -rte_errno;
+	}
+	return 0;
+}
+
+static int
+__flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
+			     struct rte_flow_template_table *tbl,
+			     const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern_type,
+			     const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct rte_flow_item_eth eth_spec;
+	struct rte_flow_item items[5];
+	struct rte_flow_action actions[] = {
+		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
+		{ .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+	const struct rte_ether_addr cmp = {
+		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	};
+	unsigned int i;
+
+	RTE_SET_USED(pattern_type);
+
+	memset(&eth_spec, 0, sizeof(eth_spec));
+	memset(items, 0, sizeof(items));
+	items[0] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = &eth_spec,
+	};
+	items[1] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_VOID };
+	items[2] = flow_hw_get_ctrl_rx_l3_item(rss_type);
+	items[3] = flow_hw_get_ctrl_rx_l4_item(rss_type);
+	items[4] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_END };
+	for (i = 0; i < MLX5_MAX_MAC_ADDRESSES; ++i) {
+		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+		if (!memcmp(mac, &cmp, sizeof(*mac)))
+			continue;
+		memcpy(&eth_spec.dst.addr_bytes, mac->addr_bytes, RTE_ETHER_ADDR_LEN);
+		if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0))
+			return -rte_errno;
+	}
+	return 0;
+}
+
+static int
+__flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
+				  struct rte_flow_template_table *tbl,
+				  const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern_type,
+				  const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_item_eth eth_spec;
+	struct rte_flow_item items[5];
+	struct rte_flow_action actions[] = {
+		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
+		{ .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+	const struct rte_ether_addr cmp = {
+		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	};
+	unsigned int i;
+	unsigned int j;
+
+	RTE_SET_USED(pattern_type);
+
+	memset(&eth_spec, 0, sizeof(eth_spec));
+	memset(items, 0, sizeof(items));
+	items[0] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = &eth_spec,
+	};
+	items[1] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_VLAN };
+	items[2] = flow_hw_get_ctrl_rx_l3_item(rss_type);
+	items[3] = flow_hw_get_ctrl_rx_l4_item(rss_type);
+	items[4] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_END };
+	for (i = 0; i < MLX5_MAX_MAC_ADDRESSES; ++i) {
+		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+		if (!memcmp(mac, &cmp, sizeof(*mac)))
+			continue;
+		memcpy(&eth_spec.dst.addr_bytes, mac->addr_bytes, RTE_ETHER_ADDR_LEN);
+		for (j = 0; j < priv->vlan_filter_n; ++j) {
+			uint16_t vlan = priv->vlan_filter[j];
+			struct rte_flow_item_vlan vlan_spec = {
+				.tci = rte_cpu_to_be_16(vlan),
+			};
+
+			items[1].spec = &vlan_spec;
+			if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0))
+				return -rte_errno;
+		}
+	}
+	return 0;
+}
+
+static int
+__flow_hw_ctrl_flows(struct rte_eth_dev *dev,
+		     struct rte_flow_template_table *tbl,
+		     const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern_type,
+		     const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	switch (pattern_type) {
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST:
+		return __flow_hw_ctrl_flows_single(dev, tbl, pattern_type, rss_type);
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
+		return __flow_hw_ctrl_flows_single_vlan(dev, tbl, pattern_type, rss_type);
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC:
+		return __flow_hw_ctrl_flows_unicast(dev, tbl, pattern_type, rss_type);
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN:
+		return __flow_hw_ctrl_flows_unicast_vlan(dev, tbl, pattern_type, rss_type);
+	default:
+		/* Should not reach here. */
+		MLX5_ASSERT(false);
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
+}
+
+
+int
+mlx5_flow_hw_ctrl_flows(struct rte_eth_dev *dev, uint32_t flags)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_hw_ctrl_rx *hw_ctrl_rx;
+	unsigned int i;
+	unsigned int j;
+	int ret = 0;
+
+	RTE_SET_USED(priv);
+	RTE_SET_USED(flags);
+	if (!priv->dr_ctx) {
+		DRV_LOG(DEBUG, "port %u Control flow rules will not be created. "
+			       "HWS needs to be configured beforehand.",
+			       dev->data->port_id);
+		return 0;
+	}
+	if (!priv->hw_ctrl_rx) {
+		DRV_LOG(ERR, "port %u Control flow rules templates were not created.",
+			dev->data->port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	hw_ctrl_rx = priv->hw_ctrl_rx;
+	for (i = 0; i < MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX; ++i) {
+		const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type = i;
+
+		if (!eth_pattern_type_is_requested(eth_pattern_type, flags))
+			continue;
+		for (j = 0; j < MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX; ++j) {
+			const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type = j;
+			struct rte_flow_actions_template *at;
+			struct mlx5_flow_hw_ctrl_rx_table *tmpls = &hw_ctrl_rx->tables[i][j];
+			const struct mlx5_flow_template_table_cfg cfg = {
+				.attr = tmpls->attr,
+				.external = 0,
+			};
+
+			if (!hw_ctrl_rx->rss[rss_type]) {
+				at = flow_hw_create_ctrl_rx_rss_template(dev, rss_type);
+				if (!at)
+					return -rte_errno;
+				hw_ctrl_rx->rss[rss_type] = at;
+			} else {
+				at = hw_ctrl_rx->rss[rss_type];
+			}
+			if (!rss_type_is_requested(priv, rss_type))
+				continue;
+			if (!tmpls->tbl) {
+				tmpls->tbl = flow_hw_table_create(dev, &cfg,
+								  &tmpls->pt, 1, &at, 1, NULL);
+				if (!tmpls->tbl) {
+					DRV_LOG(ERR, "port %u Failed to create template table "
+						     "for control flow rules. Unable to create "
+						     "control flow rules.",
+						     dev->data->port_id);
+					return -rte_errno;
+				}
+			}
+
+			ret = __flow_hw_ctrl_flows(dev, tmpls->tbl, eth_pattern_type, rss_type);
+			if (ret) {
+				DRV_LOG(ERR, "port %u Failed to create control flow rule.",
+					dev->data->port_id);
+				return ret;
+			}
+		}
+	}
+	return 0;
 }
 
 void

@@ -1415,6 +1415,9 @@ continue_dev_stop:
 	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_GEN, true);
 	mlx5_flow_meter_rxq_flush(dev);
 	mlx5_action_handle_detach(dev);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	mlx5_flow_hw_cleanup_ctrl_rx_templates(dev);
+#endif
 	mlx5_rx_intr_vec_disable(dev);
 	priv->sh->port[priv->dev_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 	priv->sh->port[priv->dev_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
@@ -1435,6 +1438,7 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_sh_config *config = &priv->sh->config;
+	uint64_t flags = 0;
 	unsigned int i;
 	int ret;
 
@@ -1481,7 +1485,18 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	} else {
 		DRV_LOG(INFO, "port %u FDB default rule is disabled", dev->data->port_id);
 	}
-	return 0;
+	if (priv->isolated)
+		return 0;
+	if (dev->data->promiscuous)
+		flags |= MLX5_CTRL_PROMISCUOUS;
+	if (dev->data->all_multicast)
+		flags |= MLX5_CTRL_ALL_MULTICAST;
+	else
+		flags |= MLX5_CTRL_BROADCAST | MLX5_CTRL_IPV4_MULTICAST | MLX5_CTRL_IPV6_MULTICAST;
+	flags |= MLX5_CTRL_DMAC;
+	if (priv->vlan_filter_n)
+		flags |= MLX5_CTRL_VLAN_FILTER;
+	return mlx5_flow_hw_ctrl_flows(dev, flags);
 error:
 	ret = rte_errno;
 	mlx5_flow_hw_flush_ctrl_flows(dev);
@@ -1717,6 +1732,9 @@ mlx5_traffic_restart(struct rte_eth_dev *dev)
 {
 	if (dev->data->dev_started) {
 		mlx5_traffic_disable(dev);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		mlx5_flow_hw_cleanup_ctrl_rx_templates(dev);
+#endif
 		return mlx5_traffic_enable(dev);
 	}
 	return 0;

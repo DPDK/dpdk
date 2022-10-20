@@ -2118,6 +2118,62 @@ rte_col_2_mlx5_col(enum rte_color rcol)
 	return MLX5_FLOW_COLOR_UNDEFINED;
 }
 
+/* All types of Ethernet patterns used in control flow rules. */
+enum mlx5_flow_ctrl_rx_eth_pattern_type {
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL = 0,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN,
+	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX,
+};
+
+/* All types of RSS actions used in control flow rules. */
+enum mlx5_flow_ctrl_rx_expanded_rss_type {
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_NON_IP = 0,
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4,
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_UDP,
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV4_TCP,
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6,
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_UDP,
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_TCP,
+	MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX,
+};
+
+/**
+ * Contains pattern template, template table and its attributes for a single
+ * combination of Ethernet pattern and RSS action. Used to create control flow rules
+ * with HWS.
+ */
+struct mlx5_flow_hw_ctrl_rx_table {
+	struct rte_flow_template_table_attr attr;
+	struct rte_flow_pattern_template *pt;
+	struct rte_flow_template_table *tbl;
+};
+
+/* Contains all templates required to create control flow rules with HWS. */
+struct mlx5_flow_hw_ctrl_rx {
+	struct rte_flow_actions_template *rss[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX];
+	struct mlx5_flow_hw_ctrl_rx_table tables[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX]
+						[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX];
+};
+
+#define MLX5_CTRL_PROMISCUOUS    (RTE_BIT32(0))
+#define MLX5_CTRL_ALL_MULTICAST  (RTE_BIT32(1))
+#define MLX5_CTRL_BROADCAST      (RTE_BIT32(2))
+#define MLX5_CTRL_IPV4_MULTICAST (RTE_BIT32(3))
+#define MLX5_CTRL_IPV6_MULTICAST (RTE_BIT32(4))
+#define MLX5_CTRL_DMAC           (RTE_BIT32(5))
+#define MLX5_CTRL_VLAN_FILTER    (RTE_BIT32(6))
+
+int mlx5_flow_hw_ctrl_flows(struct rte_eth_dev *dev, uint32_t flags);
+void mlx5_flow_hw_cleanup_ctrl_rx_templates(struct rte_eth_dev *dev);
+
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,
 			     const struct mlx5_flow_tunnel *tunnel,
 			     uint32_t group, uint32_t *table,

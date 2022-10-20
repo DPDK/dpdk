@@ -1642,6 +1642,8 @@ struct mlx5_hw_ctrl_flow {
 	struct rte_flow *flow;
 };
 
+struct mlx5_flow_hw_ctrl_rx;
+
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
@@ -1773,6 +1775,8 @@ struct mlx5_priv {
 	/* Management data for ASO connection tracking. */
 	struct mlx5_aso_ct_pool *hws_ctpool; /* HW steering's CT pool. */
 	struct mlx5_aso_mtr_pool *hws_mpool; /* HW steering's Meter pool. */
+	struct mlx5_flow_hw_ctrl_rx *hw_ctrl_rx;
+	/**< HW steering templates used to create control flow rules. */
 #endif
 };
 
