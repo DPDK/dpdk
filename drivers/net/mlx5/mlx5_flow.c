@@ -63,10 +63,6 @@ tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 				uint32_t group, uint32_t *table,
 				struct rte_flow_error *error);
 
-static struct mlx5_flow_workspace *mlx5_flow_push_thread_workspace(void);
-static void mlx5_flow_pop_thread_workspace(void);
-
-
 /** Device flow drivers. */
 extern const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops;
 
@@ -7108,7 +7104,7 @@ mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t txq)
 	struct rte_flow_item_port_id port_spec = {
 		.id = MLX5_PORT_ESW_MGR,
 	};
-	struct mlx5_rte_flow_item_tx_queue txq_spec = {
+	struct mlx5_rte_flow_item_sq txq_spec = {
 		.queue = txq,
 	};
 	struct rte_flow_item pattern[] = {
@@ -7118,7 +7114,7 @@ mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t txq)
 		},
 		{
 			.type = (enum rte_flow_item_type)
-				MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+				MLX5_RTE_FLOW_ITEM_TYPE_SQ,
 			.spec = &txq_spec,
 		},
 		{
@@ -7404,7 +7400,7 @@ err:
  *
  * @return pointer to thread specific flow workspace data, NULL on error.
  */
-static struct mlx5_flow_workspace*
+struct mlx5_flow_workspace*
 mlx5_flow_push_thread_workspace(void)
 {
 	struct mlx5_flow_workspace *curr;
@@ -7441,7 +7437,7 @@ mlx5_flow_push_thread_workspace(void)
  *
  * @return pointer to thread specific flow workspace data, NULL on error.
  */
-static void
+void
 mlx5_flow_pop_thread_workspace(void)
 {
 	struct mlx5_flow_workspace *data = mlx5_flow_get_thread_workspace();
@@ -7504,16 +7500,16 @@ mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev,
 		.egress = 1,
 		.priority = 0,
 	};
-	struct mlx5_rte_flow_item_tx_queue queue_spec = {
+	struct mlx5_rte_flow_item_sq queue_spec = {
 		.queue = queue,
 	};
-	struct mlx5_rte_flow_item_tx_queue queue_mask = {
+	struct mlx5_rte_flow_item_sq queue_mask = {
 		.queue = UINT32_MAX,
 	};
 	struct rte_flow_item items[] = {
 		{
 			.type = (enum rte_flow_item_type)
-				MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+				MLX5_RTE_FLOW_ITEM_TYPE_SQ,
 			.spec = &queue_spec,
 			.last = NULL,
 			.mask = &queue_mask,

@@ -212,31 +212,6 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 	attr->valid = 1;
 }
 
-/*
- * Convert rte_mtr_color to mlx5 color.
- *
- * @param[in] rcol
- *   rte_mtr_color.
- *
- * @return
- *   mlx5 color.
- */
-static inline int
-rte_col_2_mlx5_col(enum rte_color rcol)
-{
-	switch (rcol) {
-	case RTE_COLOR_GREEN:
-		return MLX5_FLOW_COLOR_GREEN;
-	case RTE_COLOR_YELLOW:
-		return MLX5_FLOW_COLOR_YELLOW;
-	case RTE_COLOR_RED:
-		return MLX5_FLOW_COLOR_RED;
-	default:
-		break;
-	}
-	return MLX5_FLOW_COLOR_UNDEFINED;
-}
-
 struct field_modify_info {
 	uint32_t size; /* Size of field in protocol header, in bytes. */
 	uint32_t offset; /* Offset of field in protocol header, in bytes. */
@@ -7338,8 +7313,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_ITEM_TAG;
 			break;
-		case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
-			last_item = MLX5_FLOW_ITEM_TX_QUEUE;
+		case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
+			last_item = MLX5_FLOW_ITEM_SQ;
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
 			break;
@@ -8225,7 +8200,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	 * work due to metadata regC0 mismatch.
 	 */
 	if ((!attr->transfer && attr->egress) && priv->representor &&
-	    !(item_flags & MLX5_FLOW_ITEM_TX_QUEUE))
+	    !(item_flags & MLX5_FLOW_ITEM_SQ))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  NULL,
@@ -11244,9 +11219,9 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
 				const struct rte_flow_item *item,
 				uint32_t key_type)
 {
-	const struct mlx5_rte_flow_item_tx_queue *queue_m;
-	const struct mlx5_rte_flow_item_tx_queue *queue_v;
-	const struct mlx5_rte_flow_item_tx_queue queue_mask = {
+	const struct mlx5_rte_flow_item_sq *queue_m;
+	const struct mlx5_rte_flow_item_sq *queue_v;
+	const struct mlx5_rte_flow_item_sq queue_mask = {
 		.queue = UINT32_MAX,
 	};
 	void *misc_v =
@@ -13231,9 +13206,9 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 		flow_dv_translate_mlx5_item_tag(dev, key, items, key_type);
 		last_item = MLX5_FLOW_ITEM_TAG;
 		break;
-	case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+	case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
 		flow_dv_translate_item_tx_queue(dev, key, items, key_type);
-		last_item = MLX5_FLOW_ITEM_TX_QUEUE;
+		last_item = MLX5_FLOW_ITEM_SQ;
 		break;
 	case RTE_FLOW_ITEM_TYPE_GTP:
 		flow_dv_translate_item_gtp(key, items, tunnel, key_type);
@@ -13271,6 +13246,105 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 	wks->last_item = last_item;
 	wks->next_protocol = next_protocol;
 	return 0;
+}
+
+/**
+ * Fill the HW steering flow with DV spec.
+ *
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] key
+ *   Pointer to the flow matcher key.
+ * @param[in] key_type
+ *   Key type.
+ * @param[in, out] item_flags
+ *   Pointer to the flow item flags.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+flow_dv_translate_items_hws(const struct rte_flow_item *items,
+			    struct mlx5_flow_attr *attr, void *key,
+			    uint32_t key_type, uint64_t *item_flags,
+			    uint8_t *match_criteria,
+			    struct rte_flow_error *error)
+{
+	struct mlx5_flow_workspace *flow_wks = mlx5_flow_push_thread_workspace();
+	struct mlx5_flow_rss_desc rss_desc = { .level = attr->rss_level };
+	struct rte_flow_attr rattr = {
+		.group = attr->group,
+		.priority = attr->priority,
+		.ingress = !!(attr->tbl_type == MLX5DR_TABLE_TYPE_NIC_RX),
+		.egress = !!(attr->tbl_type == MLX5DR_TABLE_TYPE_NIC_TX),
+		.transfer = !!(attr->tbl_type == MLX5DR_TABLE_TYPE_FDB),
+	};
+	struct mlx5_dv_matcher_workspace wks = {
+		.action_flags = attr->act_flags,
+		.item_flags = item_flags ? *item_flags : 0,
+		.external = 0,
+		.next_protocol = 0xff,
+		.attr = &rattr,
+		.rss_desc = &rss_desc,
+	};
+	int ret = 0;
+
+	RTE_SET_USED(flow_wks);
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		if (!mlx5_flow_os_item_supported(items->type)) {
+			ret = rte_flow_error_set(error, ENOTSUP,
+						 RTE_FLOW_ERROR_TYPE_ITEM,
+						 NULL, "item not supported");
+			goto exit;
+		}
+		ret = flow_dv_translate_items(&rte_eth_devices[attr->port_id],
+			items, &wks, key, key_type,  NULL);
+		if (ret)
+			goto exit;
+	}
+	if (wks.item_flags & MLX5_FLOW_LAYER_VXLAN_GPE) {
+		flow_dv_translate_item_vxlan_gpe(key,
+						 wks.tunnel_item,
+						 wks.item_flags,
+						 key_type);
+	} else if (wks.item_flags & MLX5_FLOW_LAYER_GENEVE) {
+		flow_dv_translate_item_geneve(key,
+					      wks.tunnel_item,
+					      wks.item_flags,
+					      key_type);
+	} else if (wks.item_flags & MLX5_FLOW_LAYER_GRE) {
+		if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE) {
+			flow_dv_translate_item_gre(key,
+						   wks.tunnel_item,
+						   wks.item_flags,
+						   key_type);
+		} else if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE_OPTION) {
+			flow_dv_translate_item_gre_option(key,
+							  wks.tunnel_item,
+							  wks.gre_item,
+							  wks.item_flags,
+							  key_type);
+		} else if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_NVGRE) {
+			flow_dv_translate_item_nvgre(key,
+						     wks.tunnel_item,
+						     wks.item_flags,
+						     key_type);
+		} else {
+			MLX5_ASSERT(false);
+		}
+	}
+
+	if (match_criteria)
+		*match_criteria = flow_dv_matcher_enable(key);
+	if (item_flags)
+		*item_flags = wks.item_flags;
+exit:
+	mlx5_flow_pop_thread_workspace();
+	return ret;
 }
 
 /**

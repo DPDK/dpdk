@@ -28,7 +28,7 @@
 enum mlx5_rte_flow_item_type {
 	MLX5_RTE_FLOW_ITEM_TYPE_END = INT_MIN,
 	MLX5_RTE_FLOW_ITEM_TYPE_TAG,
-	MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+	MLX5_RTE_FLOW_ITEM_TYPE_SQ,
 	MLX5_RTE_FLOW_ITEM_TYPE_VLAN,
 	MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL,
 };
@@ -95,7 +95,7 @@ struct mlx5_flow_action_copy_mreg {
 };
 
 /* Matches on source queue. */
-struct mlx5_rte_flow_item_tx_queue {
+struct mlx5_rte_flow_item_sq {
 	uint32_t queue;
 };
 
@@ -159,7 +159,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_LAYER_GENEVE (1u << 26)
 
 /* Queue items. */
-#define MLX5_FLOW_ITEM_TX_QUEUE (1u << 27)
+#define MLX5_FLOW_ITEM_SQ (1u << 27)
 
 /* Pattern tunnel Layer bits (continued). */
 #define MLX5_FLOW_LAYER_GTP (1u << 28)
@@ -195,6 +195,9 @@ enum mlx5_feature_name {
 /* Port Representor/Represented Port item */
 #define MLX5_FLOW_ITEM_PORT_REPRESENTOR (UINT64_C(1) << 41)
 #define MLX5_FLOW_ITEM_REPRESENTED_PORT (UINT64_C(1) << 42)
+
+/* Meter color item */
+#define MLX5_FLOW_ITEM_METER_COLOR (UINT64_C(1) << 44)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
@@ -1009,6 +1012,18 @@ flow_items_to_tunnel(const struct rte_flow_item items[])
 	return items[0].spec;
 }
 
+/* HW steering flow attributes. */
+struct mlx5_flow_attr {
+	uint32_t port_id; /* Port index. */
+	uint32_t group; /* Flow group. */
+	uint32_t priority; /* Original Priority. */
+	/* rss level, used by priority adjustment. */
+	uint32_t rss_level;
+	/* Action flags, used by priority adjustment. */
+	uint32_t act_flags;
+	uint32_t tbl_type; /* Flow table type. */
+};
+
 /* Flow structure. */
 struct rte_flow {
 	uint32_t dev_handles;
@@ -1601,6 +1616,8 @@ struct mlx5_flow_driver_ops {
 
 /* mlx5_flow.c */
 
+struct mlx5_flow_workspace *mlx5_flow_push_thread_workspace(void);
+void mlx5_flow_pop_thread_workspace(void);
 struct mlx5_flow_workspace *mlx5_flow_get_thread_workspace(void);
 __extension__
 struct flow_grp_info {
@@ -1769,6 +1786,32 @@ mlx5_translate_tunnel_etypes(uint64_t pattern_flags)
 
 int flow_hw_q_flow_flush(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error);
+
+/*
+ * Convert rte_mtr_color to mlx5 color.
+ *
+ * @param[in] rcol
+ *   rte_mtr_color.
+ *
+ * @return
+ *   mlx5 color.
+ */
+static inline int
+rte_col_2_mlx5_col(enum rte_color rcol)
+{
+	switch (rcol) {
+	case RTE_COLOR_GREEN:
+		return MLX5_FLOW_COLOR_GREEN;
+	case RTE_COLOR_YELLOW:
+		return MLX5_FLOW_COLOR_YELLOW;
+	case RTE_COLOR_RED:
+		return MLX5_FLOW_COLOR_RED;
+	default:
+		break;
+	}
+	return MLX5_FLOW_COLOR_UNDEFINED;
+}
+
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,
 			     const struct mlx5_flow_tunnel *tunnel,
 			     uint32_t group, uint32_t *table,
@@ -2128,4 +2171,9 @@ int mlx5_flow_get_item_vport_id(struct rte_eth_dev *dev,
 				bool *all_ports,
 				struct rte_flow_error *error);
 
+int flow_dv_translate_items_hws(const struct rte_flow_item *items,
+				struct mlx5_flow_attr *attr, void *key,
+				uint32_t key_type, uint64_t *item_flags,
+				uint8_t *match_criteria,
+				struct rte_flow_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
