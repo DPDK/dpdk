@@ -1280,6 +1280,52 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	return 0;
 }
 
+#ifdef HAVE_MLX5_HWS_SUPPORT
+
+static int
+mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	int ret;
+
+	if (priv->sh->config.dv_esw_en && priv->master) {
+		if (mlx5_flow_hw_esw_create_mgr_sq_miss_flow(dev))
+			goto error;
+	}
+	for (i = 0; i < priv->txqs_n; ++i) {
+		struct mlx5_txq_ctrl *txq = mlx5_txq_get(dev, i);
+		uint32_t queue;
+
+		if (!txq)
+			continue;
+		if (txq->is_hairpin)
+			queue = txq->obj->sq->id;
+		else
+			queue = txq->obj->sq_obj.sq->id;
+		if ((priv->representor || priv->master) &&
+		    priv->sh->config.dv_esw_en) {
+			if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, queue)) {
+				mlx5_txq_release(dev, i);
+				goto error;
+			}
+		}
+		mlx5_txq_release(dev, i);
+	}
+	if ((priv->master || priv->representor) && priv->sh->config.dv_esw_en) {
+		if (mlx5_flow_hw_esw_create_default_jump_flow(dev))
+			goto error;
+	}
+	return 0;
+error:
+	ret = rte_errno;
+	mlx5_flow_hw_flush_ctrl_flows(dev);
+	rte_errno = ret;
+	return -rte_errno;
+}
+
+#endif
+
 /**
  * Enable traffic flows configured by control plane
  *
@@ -1316,6 +1362,10 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	unsigned int j;
 	int ret;
 
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_traffic_enable_hws(dev);
+#endif
 	/*
 	 * Hairpin txq default flow should be created no matter if it is
 	 * isolation mode. Or else all the packets to be sent will be sent
@@ -1346,13 +1396,17 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		}
 		mlx5_txq_release(dev, i);
 	}
-	if (priv->sh->config.dv_esw_en) {
-		if (mlx5_flow_create_esw_table_zero_flow(dev))
-			priv->fdb_def_rule = 1;
-		else
-			DRV_LOG(INFO, "port %u FDB default rule cannot be"
-				" configured - only Eswitch group 0 flows are"
-				" supported.", dev->data->port_id);
+	if (priv->sh->config.fdb_def_rule) {
+		if (priv->sh->config.dv_esw_en) {
+			if (mlx5_flow_create_esw_table_zero_flow(dev))
+				priv->fdb_def_rule = 1;
+			else
+				DRV_LOG(INFO, "port %u FDB default rule cannot be configured - only Eswitch group 0 flows are supported.",
+					dev->data->port_id);
+		}
+	} else {
+		DRV_LOG(INFO, "port %u FDB default rule is disabled",
+			dev->data->port_id);
 	}
 	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0) {
 		ret = mlx5_flow_lacp_miss(dev);
@@ -1470,7 +1524,14 @@ error:
 void
 mlx5_traffic_disable(struct rte_eth_dev *dev)
 {
-	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		mlx5_flow_hw_flush_ctrl_flows(dev);
+	else
+#endif
+		mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
 }
 
 /**

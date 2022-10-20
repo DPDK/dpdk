@@ -314,6 +314,7 @@ struct mlx5_sh_config {
 	uint32_t allow_duplicate_pattern:1;
 	uint32_t lro_allowed:1; /* Whether LRO is allowed. */
 	/* Allow/Prevent the duplicate rules pattern. */
+	uint32_t fdb_def_rule:1; /* Create FDB default jump rule */
 };
 
 
@@ -342,6 +343,8 @@ enum {
 	MLX5_HW_Q_JOB_TYPE_DESTROY, /* Flow destroy job type. */
 };
 
+#define MLX5_HW_MAX_ITEMS (16)
+
 /* HW steering flow management job descriptor. */
 struct mlx5_hw_q_job {
 	uint32_t type; /* Job type. */
@@ -349,6 +352,8 @@ struct mlx5_hw_q_job {
 	void *user_data; /* Job user data. */
 	uint8_t *encap_data; /* Encap data. */
 	struct mlx5_modification_cmd *mhdr_cmd;
+	struct rte_flow_item *items;
+	struct rte_flow_item_ethdev port_spec;
 };
 
 /* HW steering job descriptor LIFO pool. */
@@ -1212,6 +1217,8 @@ struct mlx5_dev_ctx_shared {
 	uint32_t flow_priority_check_flag:1; /* Check Flag for flow priority. */
 	uint32_t metadata_regc_check_flag:1; /* Check Flag for metadata REGC. */
 	uint32_t hws_tags:1; /* Check if tags info for HWS initialized. */
+	uint32_t shared_mark_enabled:1;
+	/* If mark action is enabled on Rxqs (shared E-Switch domain). */
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
@@ -1463,6 +1470,12 @@ struct mlx5_obj_ops {
 
 #define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
 
+struct mlx5_hw_ctrl_flow {
+	LIST_ENTRY(mlx5_hw_ctrl_flow) next;
+	struct rte_eth_dev *owner_dev;
+	struct rte_flow *flow;
+};
+
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
@@ -1503,6 +1516,11 @@ struct mlx5_priv {
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	void *root_drop_action; /* Pointer to root drop action. */
+	rte_spinlock_t hw_ctrl_lock;
+	LIST_HEAD(hw_ctrl_flow, mlx5_hw_ctrl_flow) hw_ctrl_flows;
+	struct rte_flow_template_table *hw_esw_sq_miss_root_tbl;
+	struct rte_flow_template_table *hw_esw_sq_miss_tbl;
+	struct rte_flow_template_table *hw_esw_zero_tbl;
 	struct mlx5_indexed_pool *flows[MLX5_FLOW_TYPE_MAXI];
 	/* RTE Flow rules. */
 	uint32_t ctrl_flows; /* Control flow rules. */
@@ -1563,11 +1581,11 @@ struct mlx5_priv {
 	struct mlx5_hw_q *hw_q;
 	/* HW steering rte flow table list header. */
 	LIST_HEAD(flow_hw_tbl, rte_flow_template_table) flow_hw_tbl;
+	struct mlx5dr_action **hw_vport;
 	/* HW steering global drop action. */
-	struct mlx5dr_action *hw_drop[MLX5_HW_ACTION_FLAG_MAX]
-				     [MLX5DR_TABLE_TYPE_MAX];
-	/* HW steering global drop action. */
-	struct mlx5dr_action *hw_tag[MLX5_HW_ACTION_FLAG_MAX];
+	struct mlx5dr_action *hw_drop[2];
+	/* HW steering global tag action. */
+	struct mlx5dr_action *hw_tag[2];
 	struct mlx5_indexed_pool *acts_ipool; /* Action data indexed pool. */
 #endif
 };

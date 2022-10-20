@@ -2442,8 +2442,8 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
  *   Previous validated item in the pattern items.
  * @param[in] gtp_item
  *   Previous GTP item specification.
- * @param[in] attr
- *   Pointer to flow attributes.
+ * @param root
+ *   Whether action is on root table.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2454,7 +2454,7 @@ static int
 flow_dv_validate_item_gtp_psc(const struct rte_flow_item *item,
 			      uint64_t last_item,
 			      const struct rte_flow_item *gtp_item,
-			      const struct rte_flow_attr *attr,
+			      bool root,
 			      struct rte_flow_error *error)
 {
 	const struct rte_flow_item_gtp *gtp_spec;
@@ -2479,7 +2479,7 @@ flow_dv_validate_item_gtp_psc(const struct rte_flow_item *item,
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
 			 "GTP E flag must be 1 to match GTP PSC");
 	/* Check the flow is not created in group zero. */
-	if (!attr->transfer && !attr->group)
+	if (root)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			 "GTP PSC is not supported for group 0");
@@ -3344,20 +3344,19 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
 /**
  * Indicates whether ASO aging is supported.
  *
- * @param[in] sh
- *   Pointer to shared device context structure.
- * @param[in] attr
- *   Attributes of flow that includes AGE action.
+ * @param[in] priv
+ *   Pointer to device private context structure.
+ * @param[in] root
+ *   Whether action is on root table.
  *
  * @return
  *   True when ASO aging is supported, false otherwise.
  */
 static inline bool
-flow_hit_aso_supported(const struct mlx5_dev_ctx_shared *sh,
-		const struct rte_flow_attr *attr)
+flow_hit_aso_supported(const struct mlx5_priv *priv, bool root)
 {
-	MLX5_ASSERT(sh && attr);
-	return (sh->flow_hit_aso_en && (attr->transfer || attr->group));
+	MLX5_ASSERT(priv);
+	return (priv->sh->flow_hit_aso_en && !root);
 }
 
 /**
@@ -3369,8 +3368,8 @@ flow_hit_aso_supported(const struct mlx5_dev_ctx_shared *sh,
  *   Indicator if action is shared.
  * @param[in] action_flags
  *   Holds the actions detected until now.
- * @param[in] attr
- *   Attributes of flow that includes this action.
+ * @param[in] root
+ *   Whether action is on root table.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -3380,7 +3379,7 @@ flow_hit_aso_supported(const struct mlx5_dev_ctx_shared *sh,
 static int
 flow_dv_validate_action_count(struct rte_eth_dev *dev, bool shared,
 			      uint64_t action_flags,
-			      const struct rte_flow_attr *attr,
+			      bool root,
 			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -3392,7 +3391,7 @@ flow_dv_validate_action_count(struct rte_eth_dev *dev, bool shared,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "duplicate count actions set");
 	if (shared && (action_flags & MLX5_FLOW_ACTION_AGE) &&
-	    !flow_hit_aso_supported(priv->sh, attr))
+	    !flow_hit_aso_supported(priv, root))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "old age and indirect count combination is not supported");
@@ -3623,8 +3622,8 @@ flow_dv_validate_action_raw_encap_decap
  *   Holds the actions detected until now.
  * @param[in] item_flags
  *   The items found in this flow rule.
- * @param[in] attr
- *   Pointer to flow attributes.
+ * @param root
+ *   Whether action is on root table.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -3635,12 +3634,12 @@ static int
 flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
 			       uint64_t action_flags,
 			       uint64_t item_flags,
-			       const struct rte_flow_attr *attr,
+			       bool root,
 			       struct rte_flow_error *error)
 {
 	RTE_SET_USED(dev);
 
-	if (attr->group == 0 && !attr->transfer)
+	if (root)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
@@ -4890,6 +4889,8 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
  *   Pointer to the modify action.
  * @param[in] attr
  *   Pointer to the flow attributes.
+ * @param root
+ *   Whether action is on root table.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -4902,6 +4903,7 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				   const uint64_t action_flags,
 				   const struct rte_flow_action *action,
 				   const struct rte_flow_attr *attr,
+				   bool root,
 				   struct rte_flow_error *error)
 {
 	int ret = 0;
@@ -4949,7 +4951,7 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	}
 	if (action_modify_field->src.field != RTE_FLOW_FIELD_VALUE &&
 	    action_modify_field->src.field != RTE_FLOW_FIELD_POINTER) {
-		if (!attr->transfer && !attr->group)
+		if (root)
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"modify field action is not"
@@ -5039,8 +5041,7 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	    action_modify_field->src.field == RTE_FLOW_FIELD_IPV4_ECN ||
 	    action_modify_field->dst.field == RTE_FLOW_FIELD_IPV6_ECN ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_IPV6_ECN)
-		if (!hca_attr->modify_outer_ip_ecn &&
-		    !attr->transfer && !attr->group)
+		if (!hca_attr->modify_outer_ip_ecn && root)
 			return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the ECN for current firmware is not supported");
@@ -5074,11 +5075,12 @@ flow_dv_validate_action_jump(struct rte_eth_dev *dev,
 			     bool external, struct rte_flow_error *error)
 {
 	uint32_t target_group, table = 0;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret = 0;
 	struct flow_grp_info grp_info = {
 		.external = !!external,
 		.transfer = !!attributes->transfer,
-		.fdb_def_rule = 1,
+		.fdb_def_rule = !!priv->fdb_def_rule,
 		.std_tbl_fix = 0
 	};
 	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
@@ -5658,6 +5660,8 @@ flow_dv_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  *   Pointer to the COUNT action in sample action list.
  * @param[out] fdb_mirror_limit
  *   Pointer to the FDB mirror limitation flag.
+ * @param root
+ *   Whether action is on root table.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -5674,6 +5678,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			       const struct rte_flow_action_rss **sample_rss,
 			       const struct rte_flow_action_count **count,
 			       int *fdb_mirror_limit,
+			       bool root,
 			       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5775,7 +5780,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = flow_dv_validate_action_count
 				(dev, false, *action_flags | sub_action_flags,
-				 attr, error);
+				 root, error);
 			if (ret < 0)
 				return ret;
 			*count = act->conf;
@@ -7255,7 +7260,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = mlx5_flow_validate_item_vxlan(dev, udp_dport,
 							    items, item_flags,
-							    attr, error);
+							    is_root, error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_LAYER_VXLAN;
@@ -7349,7 +7354,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
 			ret = flow_dv_validate_item_gtp_psc(items, last_item,
-							    gtp_item, attr,
+							    gtp_item, is_root,
 							    error);
 			if (ret < 0)
 				return ret;
@@ -7566,7 +7571,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = flow_dv_validate_action_count(dev, shared_count,
 							    action_flags,
-							    attr, error);
+							    is_root, error);
 			if (ret < 0)
 				return ret;
 			count = actions->conf;
@@ -7860,7 +7865,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
-			if (!attr->transfer && !attr->group)
+			if (is_root)
 				return rte_flow_error_set(error, ENOTSUP,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 									   NULL,
@@ -7885,7 +7890,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			 * Validate the regular AGE action (using counter)
 			 * mutual exclusion with indirect counter actions.
 			 */
-			if (!flow_hit_aso_supported(priv->sh, attr)) {
+			if (!flow_hit_aso_supported(priv, is_root)) {
 				if (shared_count)
 					return rte_flow_error_set
 						(error, EINVAL,
@@ -7941,6 +7946,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							     rss, &sample_rss,
 							     &sample_count,
 							     &fdb_mirror_limit,
+							     is_root,
 							     error);
 			if (ret < 0)
 				return ret;
@@ -7957,6 +7963,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 								   action_flags,
 								   actions,
 								   attr,
+								   is_root,
 								   error);
 			if (ret < 0)
 				return ret;
@@ -7970,8 +7977,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 			ret = flow_dv_validate_action_aso_ct(dev, action_flags,
-							     item_flags, attr,
-							     error);
+							     item_flags,
+							     is_root, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_CT;
@@ -9174,15 +9181,18 @@ flow_dv_translate_item_vxlan(struct rte_eth_dev *dev,
 	if (MLX5_ITEM_VALID(item, key_type))
 		return;
 	MLX5_ITEM_UPDATE(item, key_type, vxlan_v, vxlan_m, &nic_mask);
-	if (item->mask == &nic_mask &&
-	    ((!attr->group && !priv->sh->tunnel_header_0_1) ||
-	    (attr->group && !priv->sh->misc5_cap)))
+	if ((item->mask == &nic_mask) &&
+	    ((!attr->group && !(attr->transfer && priv->fdb_def_rule) &&
+	    !priv->sh->tunnel_header_0_1) ||
+	    ((attr->group || (attr->transfer && priv->fdb_def_rule)) &&
+	    !priv->sh->misc5_cap)))
 		vxlan_m = &rte_flow_item_vxlan_mask;
 	if ((priv->sh->steering_format_version ==
 	     MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 &&
 	     dport != MLX5_UDP_PORT_VXLAN) ||
-	    (!attr->group && !attr->transfer) ||
-	    ((attr->group || attr->transfer) && !priv->sh->misc5_cap)) {
+	    (!attr->group && !(attr->transfer && priv->fdb_def_rule)) ||
+	    ((attr->group || (attr->transfer && priv->fdb_def_rule)) &&
+	    !priv->sh->misc5_cap)) {
 		misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 		size = sizeof(vxlan_m->vni);
 		vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, vxlan_vni);
@@ -14216,7 +14226,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			 */
 			if (action_flags & MLX5_FLOW_ACTION_AGE) {
 				if ((non_shared_age && count) ||
-				    !flow_hit_aso_supported(priv->sh, attr)) {
+				    !flow_hit_aso_supported(priv, !dev_flow->dv.group)) {
 					/* Creates age by counters. */
 					cnt_act = flow_dv_prepare_counter
 								(dev, dev_flow,
@@ -18371,6 +18381,7 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 			struct rte_flow_error *err)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	/* called from RTE API */
 
 	RTE_SET_USED(conf);
 	switch (action->type) {
@@ -18398,7 +18409,7 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 						"Indirect age action not supported");
 		return flow_dv_validate_action_age(0, action, dev, err);
 	case RTE_FLOW_ACTION_TYPE_COUNT:
-		return flow_dv_validate_action_count(dev, true, 0, NULL, err);
+		return flow_dv_validate_action_count(dev, true, 0, false, err);
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		if (!priv->sh->ct_aso_en)
 			return rte_flow_error_set(err, ENOTSUP,
@@ -18575,6 +18586,8 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 	bool def_green = false;
 	bool def_yellow = false;
 	const struct rte_flow_action_rss *rss_color[RTE_COLORS] = {NULL};
+	/* Called from RTE API */
+	bool is_root = !(attr->group || (attr->transfer && priv->fdb_def_rule));
 
 	if (!dev_conf->dv_esw_en)
 		def_domain &= ~MLX5_MTR_DOMAIN_TRANSFER_BIT;
@@ -18776,7 +18789,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 				break;
 			case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 				ret = flow_dv_validate_action_modify_field(dev,
-					action_flags[i], act, attr, &flow_err);
+					action_flags[i], act, attr, is_root, &flow_err);
 				if (ret < 0)
 					return -rte_mtr_error_set(error,
 					  ENOTSUP,

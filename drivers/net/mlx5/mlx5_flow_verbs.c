@@ -1245,12 +1245,14 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 	uint16_t ether_type = 0;
 	bool is_empty_vlan = false;
 	uint16_t udp_dport = 0;
+	bool is_root;
 
 	if (items == NULL)
 		return -1;
 	ret = mlx5_flow_validate_attributes(dev, attr, error);
 	if (ret < 0)
 		return ret;
+	is_root = ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int ret = 0;
@@ -1380,7 +1382,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = mlx5_flow_validate_item_vxlan(dev, udp_dport,
 							    items, item_flags,
-							    attr, error);
+							    is_root, error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_LAYER_VXLAN;

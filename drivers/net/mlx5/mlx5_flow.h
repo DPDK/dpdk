@@ -1165,6 +1165,11 @@ struct rte_flow_pattern_template {
 	struct mlx5dr_match_template *mt; /* mlx5 match template. */
 	uint64_t item_flags; /* Item layer flags. */
 	uint32_t refcnt;  /* Reference counter. */
+	/*
+	 * If true, then rule pattern should be prepended with
+	 * represented_port pattern item.
+	 */
+	bool implicit_port;
 };
 
 /* Flow action template struct. */
@@ -1240,6 +1245,7 @@ struct mlx5_hw_action_template {
 /* mlx5 flow group struct. */
 struct mlx5_flow_group {
 	struct mlx5_list_entry entry;
+	struct rte_eth_dev *dev; /* Reference to corresponding device. */
 	struct mlx5dr_table *tbl; /* HWS table object. */
 	struct mlx5_hw_jump_action jump; /* Jump action. */
 	enum mlx5dr_table_type type; /* Table type. */
@@ -1497,6 +1503,9 @@ void flow_hw_clear_port_info(struct rte_eth_dev *dev);
 
 void flow_hw_init_tags_set(struct rte_eth_dev *dev);
 void flow_hw_clear_tags_set(struct rte_eth_dev *dev);
+
+int flow_hw_create_vport_action(struct rte_eth_dev *dev);
+void flow_hw_destroy_vport_action(struct rte_eth_dev *dev);
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
@@ -2099,7 +2108,7 @@ int mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 				  uint16_t udp_dport,
 				  const struct rte_flow_item *item,
 				  uint64_t item_flags,
-				  const struct rte_flow_attr *attr,
+				  bool root,
 				  struct rte_flow_error *error);
 int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				      uint64_t item_flags,
@@ -2358,4 +2367,15 @@ int flow_dv_translate_items_hws(const struct rte_flow_item *items,
 				uint32_t key_type, uint64_t *item_flags,
 				uint8_t *match_criteria,
 				struct rte_flow_error *error);
+
+int mlx5_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
+				  uint16_t *proxy_port_id,
+				  struct rte_flow_error *error);
+
+int mlx5_flow_hw_flush_ctrl_flows(struct rte_eth_dev *dev);
+
+int mlx5_flow_hw_esw_create_mgr_sq_miss_flow(struct rte_eth_dev *dev);
+int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
+					 uint32_t txq);
+int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

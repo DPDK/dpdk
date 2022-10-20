@@ -997,6 +997,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.flex_item_create = mlx5_flow_flex_item_create,
 	.flex_item_release = mlx5_flow_flex_item_release,
 	.info_get = mlx5_flow_info_get,
+	.pick_transfer_proxy = mlx5_flow_pick_transfer_proxy,
 	.configure = mlx5_flow_port_configure,
 	.pattern_template_create = mlx5_flow_pattern_template_create,
 	.pattern_template_destroy = mlx5_flow_pattern_template_destroy,
@@ -1240,7 +1241,7 @@ mlx5_get_lowest_priority(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!attr->group && !attr->transfer)
+	if (!attr->group && !(attr->transfer && priv->fdb_def_rule))
 		return priv->sh->flow_max_priority - 2;
 	return MLX5_NON_ROOT_FLOW_MAX_PRIO - 1;
 }
@@ -1267,11 +1268,14 @@ mlx5_get_matcher_priority(struct rte_eth_dev *dev,
 	uint16_t priority = (uint16_t)attr->priority;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	/* NIC root rules */
 	if (!attr->group && !attr->transfer) {
 		if (attr->priority == MLX5_FLOW_LOWEST_PRIO_INDICATOR)
 			priority = priv->sh->flow_max_priority - 1;
 		return mlx5_os_flow_adjust_priority(dev, priority, subpriority);
-	} else if (!external && attr->transfer && attr->group == 0 &&
+	/* FDB root rules */
+	} else if (attr->transfer && (!external || !priv->fdb_def_rule) &&
+		   attr->group == 0 &&
 		   attr->priority == MLX5_FLOW_LOWEST_PRIO_INDICATOR) {
 		return (priv->sh->flow_max_priority - 1) * 3;
 	}
@@ -1479,13 +1483,32 @@ flow_rxq_mark_flag_set(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
+	uint16_t port_id;
 
-	if (priv->mark_enabled)
+	if (priv->sh->shared_mark_enabled)
 		return;
-	LIST_FOREACH(rxq_ctrl, &priv->rxqsctrl, next) {
-		rxq_ctrl->rxq.mark = 1;
+	if (priv->master || priv->representor) {
+		MLX5_ETH_FOREACH_DEV(port_id, dev->device) {
+			struct mlx5_priv *opriv =
+				rte_eth_devices[port_id].data->dev_private;
+
+			if (!opriv ||
+			    opriv->sh != priv->sh ||
+			    opriv->domain_id != priv->domain_id ||
+			    opriv->mark_enabled)
+				continue;
+			LIST_FOREACH(rxq_ctrl, &opriv->rxqsctrl, next) {
+				rxq_ctrl->rxq.mark = 1;
+			}
+			opriv->mark_enabled = 1;
+		}
+	} else {
+		LIST_FOREACH(rxq_ctrl, &priv->rxqsctrl, next) {
+			rxq_ctrl->rxq.mark = 1;
+		}
+		priv->mark_enabled = 1;
 	}
-	priv->mark_enabled = 1;
+	priv->sh->shared_mark_enabled = 1;
 }
 
 /**
@@ -1621,6 +1644,7 @@ flow_rxq_flags_clear(struct rte_eth_dev *dev)
 		rxq->ctrl->rxq.tunnel = 0;
 	}
 	priv->mark_enabled = 0;
+	priv->sh->shared_mark_enabled = 0;
 }
 
 /**
@@ -2806,8 +2830,8 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
  *   Item specification.
  * @param[in] item_flags
  *   Bit-fields that holds the items detected until now.
- * @param[in] attr
- *   Flow rule attributes.
+ * @param root
+ *   Whether action is on root table.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2819,7 +2843,7 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 			      uint16_t udp_dport,
 			      const struct rte_flow_item *item,
 			      uint64_t item_flags,
-			      const struct rte_flow_attr *attr,
+			      bool root,
 			      struct rte_flow_error *error)
 {
 	const struct rte_flow_item_vxlan *spec = item->spec;
@@ -2856,12 +2880,11 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 	if (priv->sh->steering_format_version !=
 	    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 ||
 	    !udp_dport || udp_dport == MLX5_UDP_PORT_VXLAN) {
-		/* FDB domain & NIC domain non-zero group */
-		if ((attr->transfer || attr->group) && priv->sh->misc5_cap)
+		/* non-root table */
+		if (!root && priv->sh->misc5_cap)
 			valid_mask = &nic_mask;
 		/* Group zero in NIC domain */
-		if (!attr->group && !attr->transfer &&
-		    priv->sh->tunnel_header_0_1)
+		if (!root && priv->sh->tunnel_header_0_1)
 			valid_mask = &nic_mask;
 	}
 	ret = mlx5_flow_item_acceptable
@@ -3100,11 +3123,11 @@ mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
 	if (mask->checksum_rsvd.checksum || mask->sequence.sequence) {
 		if (priv->sh->steering_format_version ==
 		    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 ||
-		    ((attr->group || attr->transfer) &&
+		    ((attr->group || (attr->transfer && priv->fdb_def_rule)) &&
 		     !priv->sh->misc5_cap) ||
 		    (!(priv->sh->tunnel_header_0_1 &&
 		       priv->sh->tunnel_header_2_3) &&
-		    !attr->group && !attr->transfer))
+		    !attr->group && (!attr->transfer || !priv->fdb_def_rule)))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  item,
@@ -6161,7 +6184,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	}
 	if (qrss) {
 		/* Check if it is in meter suffix table. */
-		mtr_sfx = attr->group == (attr->transfer ?
+		mtr_sfx = attr->group ==
+			  ((attr->transfer && priv->fdb_def_rule) ?
 			  (MLX5_FLOW_TABLE_LEVEL_METER - 1) :
 			  MLX5_FLOW_TABLE_LEVEL_METER);
 		/*
@@ -11115,4 +11139,44 @@ int mlx5_flow_get_item_vport_id(struct rte_eth_dev *dev,
 	}
 
 	return 0;
+}
+
+int
+mlx5_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
+			      uint16_t *proxy_port_id,
+			      struct rte_flow_error *error)
+{
+	const struct mlx5_priv *priv = dev->data->dev_private;
+	uint16_t port_id;
+
+	if (!priv->sh->config.dv_esw_en)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "unable to provide a proxy port"
+					  " without E-Switch configured");
+	if (!priv->master && !priv->representor)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "unable to provide a proxy port"
+					  " for port which is not a master"
+					  " or a representor port");
+	if (priv->master) {
+		*proxy_port_id = dev->data->port_id;
+		return 0;
+	}
+	MLX5_ETH_FOREACH_DEV(port_id, dev->device) {
+		const struct rte_eth_dev *port_dev = &rte_eth_devices[port_id];
+		const struct mlx5_priv *port_priv = port_dev->data->dev_private;
+
+		if (port_priv->master &&
+		    port_priv->domain_id == priv->domain_id) {
+			*proxy_port_id = port_id;
+			return 0;
+		}
+	}
+	return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "unable to find a proxy port");
 }

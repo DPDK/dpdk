@@ -1564,11 +1564,18 @@ err_secondary:
 	}
 	rte_rwlock_init(&priv->ind_tbls_lock);
 	if (priv->sh->config.dv_flow_en == 2) {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#ifdef HAVE_MLX5_HWS_SUPPORT
 		if (priv->vport_meta_mask)
 			flow_hw_set_port_info(eth_dev);
 		/* Only HWS requires this information. */
 		flow_hw_init_tags_set(eth_dev);
+		if (priv->sh->config.dv_esw_en &&
+		    flow_hw_create_vport_action(eth_dev)) {
+			DRV_LOG(ERR, "port %u failed to create vport action",
+				eth_dev->data->port_id);
+			err = EINVAL;
+			goto error;
+		}
 		return eth_dev;
 #else
 		DRV_LOG(ERR, "DV support is missing for HWS.");
@@ -1633,6 +1640,13 @@ err_secondary:
 	return eth_dev;
 error:
 	if (priv) {
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		if (eth_dev &&
+		    priv->sh &&
+		    priv->sh->config.dv_flow_en == 2 &&
+		    priv->sh->config.dv_esw_en)
+			flow_hw_destroy_vport_action(eth_dev);
+#endif
 		if (priv->mreg_cp_tbl)
 			mlx5_hlist_destroy(priv->mreg_cp_tbl);
 		if (priv->sh)
