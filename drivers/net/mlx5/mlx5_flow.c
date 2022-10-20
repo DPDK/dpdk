@@ -4219,6 +4219,12 @@ flow_action_handles_translate(struct rte_eth_dev *dev,
 						MLX5_RTE_FLOW_ACTION_TYPE_COUNT;
 			translated[handle->index].conf = (void *)(uintptr_t)idx;
 			break;
+		case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
+			translated[handle->index].type =
+						(enum rte_flow_action_type)
+						MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK;
+			translated[handle->index].conf = (void *)(uintptr_t)idx;
+			break;
 		case MLX5_INDIRECT_ACTION_TYPE_AGE:
 			if (priv->sh->flow_hit_aso_en) {
 				translated[handle->index].type =

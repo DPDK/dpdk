@@ -100,6 +100,7 @@ Features
   flow group.
 - Flow metering, including meter policy API.
 - Flow meter hierarchy.
+- Flow meter mark.
 - Flow integrity offload API.
 - Connection tracking.
 - Sub-Function representors.
@@ -494,6 +495,8 @@ Limitations
     if meter has drop count
     or meter hierarchy contains any meter that uses drop count,
     it cannot be used by flow rule matching all ports.
+  - When using HWS flow engine (``dv_flow_en`` = 2),
+    only meter mark action is supported.
 
 - Integrity:
 

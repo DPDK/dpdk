@@ -46,6 +46,7 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_COUNT,
 	MLX5_RTE_FLOW_ACTION_TYPE_JUMP,
 	MLX5_RTE_FLOW_ACTION_TYPE_RSS,
+	MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK,
 };
 
 /* Private (internal) Field IDs for MODIFY_FIELD action. */
@@ -54,22 +55,23 @@ enum mlx5_rte_flow_field_id {
 			MLX5_RTE_FLOW_FIELD_META_REG,
 };
 
-#define MLX5_INDIRECT_ACTION_TYPE_OFFSET 30
+#define MLX5_INDIRECT_ACTION_TYPE_OFFSET 29
 
 enum {
 	MLX5_INDIRECT_ACTION_TYPE_RSS,
 	MLX5_INDIRECT_ACTION_TYPE_AGE,
 	MLX5_INDIRECT_ACTION_TYPE_COUNT,
 	MLX5_INDIRECT_ACTION_TYPE_CT,
+	MLX5_INDIRECT_ACTION_TYPE_METER_MARK,
 };
 
-/* Now, the maximal ports will be supported is 256, action number is 4M. */
-#define MLX5_INDIRECT_ACT_CT_MAX_PORT 0x100
+/* Now, the maximal ports will be supported is 16, action number is 32M. */
+#define MLX5_INDIRECT_ACT_CT_MAX_PORT 0x10
 
 #define MLX5_INDIRECT_ACT_CT_OWNER_SHIFT 22
 #define MLX5_INDIRECT_ACT_CT_OWNER_MASK (MLX5_INDIRECT_ACT_CT_MAX_PORT - 1)
 
-/* 30-31: type, 22-29: owner port, 0-21: index. */
+/* 29-31: type, 25-28: owner port, 0-24: index */
 #define MLX5_INDIRECT_ACT_CT_GEN_IDX(owner, index) \
 	((MLX5_INDIRECT_ACTION_TYPE_CT << MLX5_INDIRECT_ACTION_TYPE_OFFSET) | \
 	 (((owner) & MLX5_INDIRECT_ACT_CT_OWNER_MASK) << \
@@ -1117,6 +1119,7 @@ struct rte_flow_hw {
 	};
 	struct rte_flow_template_table *table; /* The table flow allcated from. */
 	uint32_t cnt_id;
+	uint32_t mtr_id;
 	uint8_t rule[0]; /* HWS layer data struct. */
 } __rte_packed;
 
@@ -1168,6 +1171,9 @@ struct mlx5_action_construct_data {
 		struct {
 			uint32_t id;
 		} shared_counter;
+		struct {
+			uint32_t id;
+		} shared_meter;
 	};
 };
 
@@ -1251,6 +1257,7 @@ struct mlx5_hw_actions {
 	uint16_t encap_decap_pos; /* Encap/Decap action position. */
 	uint32_t mark:1; /* Indicate the mark action. */
 	uint32_t cnt_id; /* Counter id. */
+	uint32_t mtr_id; /* Meter id. */
 	/* Translated DR action array from action template. */
 	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
 };
@@ -1540,6 +1547,7 @@ flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
 		 */
 		return REG_A;
 	case RTE_FLOW_ITEM_TYPE_CONNTRACK:
+	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 		return mlx5_flow_hw_aso_tag;
 	case RTE_FLOW_ITEM_TYPE_TAG:
 		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
@@ -1927,10 +1935,10 @@ mlx5_aso_meter_by_idx(struct mlx5_priv *priv, uint32_t idx)
 	struct mlx5_aso_mtr_pools_mng *pools_mng =
 				&priv->sh->mtrmng->pools_mng;
 
-	/* Decrease to original index. */
-	idx--;
 	if (priv->mtr_bulk.aso)
 		return priv->mtr_bulk.aso + idx;
+	/* Decrease to original index. */
+	idx--;
 	MLX5_ASSERT(idx / MLX5_ASO_MTRS_PER_POOL < pools_mng->n);
 	rte_rwlock_read_lock(&pools_mng->resize_mtrwl);
 	pool = pools_mng->pools[idx / MLX5_ASO_MTRS_PER_POOL];
