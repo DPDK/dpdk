@@ -637,6 +637,7 @@ static dumpcap_out_t create_output(void)
 	else {
 		mode_t mode = group_read ? 0640 : 0600;
 
+		fprintf(stderr, "File: %s\n", output_name);
 		fd = open(output_name, O_WRONLY | O_CREAT, mode);
 		if (fd < 0)
 			rte_exit(EXIT_FAILURE, "Can not open \"%s\": %s\n",
@@ -784,8 +785,13 @@ int main(int argc, char **argv)
 	struct rte_ring *r;
 	struct rte_mempool *mp;
 	dumpcap_out_t out;
+	char *p;
 
-	progname = argv[0];
+	p = strrchr(argv[0], '/');
+	if (p == NULL)
+		progname = argv[0];
+	else
+		progname = p + 1;
 
 	parse_opts(argc, argv);
 	dpdk_init();
