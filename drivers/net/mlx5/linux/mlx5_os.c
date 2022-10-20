@@ -1567,6 +1567,20 @@ err_secondary:
 	rte_rwlock_init(&priv->ind_tbls_lock);
 	if (priv->sh->config.dv_flow_en == 2) {
 #ifdef HAVE_MLX5_HWS_SUPPORT
+		if (priv->sh->config.dv_esw_en) {
+			if (priv->sh->dv_regc0_mask == UINT32_MAX) {
+				DRV_LOG(ERR, "E-Switch port metadata is required when using HWS "
+					     "but it is disabled (configure it through devlink)");
+				err = ENOTSUP;
+				goto error;
+			}
+			if (priv->sh->dv_regc0_mask == 0) {
+				DRV_LOG(ERR, "E-Switch with HWS is not supported "
+					     "(no available bits in reg_c[0])");
+				err = ENOTSUP;
+				goto error;
+			}
+		}
 		if (priv->vport_meta_mask)
 			flow_hw_set_port_info(eth_dev);
 		if (priv->sh->config.dv_esw_en &&

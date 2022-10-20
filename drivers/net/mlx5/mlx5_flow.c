@@ -7155,14 +7155,14 @@ mlx5_flow_create_esw_table_zero_flow(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param txq
- *   Txq index.
+ * @param sq_num
+ *   SQ number.
  *
  * @return
  *   Flow ID on success, 0 otherwise and rte_errno is set.
  */
 uint32_t
-mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t txq)
+mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sq_num)
 {
 	struct rte_flow_attr attr = {
 		.group = 0,
@@ -7174,8 +7174,8 @@ mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t txq)
 	struct rte_flow_item_port_id port_spec = {
 		.id = MLX5_PORT_ESW_MGR,
 	};
-	struct mlx5_rte_flow_item_sq txq_spec = {
-		.queue = txq,
+	struct mlx5_rte_flow_item_sq sq_spec = {
+		.queue = sq_num,
 	};
 	struct rte_flow_item pattern[] = {
 		{
@@ -7185,7 +7185,7 @@ mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t txq)
 		{
 			.type = (enum rte_flow_item_type)
 				MLX5_RTE_FLOW_ITEM_TYPE_SQ,
-			.spec = &txq_spec,
+			.spec = &sq_spec,
 		},
 		{
 			.type = RTE_FLOW_ITEM_TYPE_END,
@@ -7556,22 +7556,22 @@ mlx5_flow_verify(struct rte_eth_dev *dev __rte_unused)
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param queue
- *   The queue index.
+ * @param sq_num
+ *   The SQ hw number.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev,
-			    uint32_t queue)
+			    uint32_t sq_num)
 {
 	const struct rte_flow_attr attr = {
 		.egress = 1,
 		.priority = 0,
 	};
 	struct mlx5_rte_flow_item_sq queue_spec = {
-		.queue = queue,
+		.queue = sq_num,
 	};
 	struct mlx5_rte_flow_item_sq queue_mask = {
 		.queue = UINT32_MAX,

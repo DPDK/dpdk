@@ -3176,7 +3176,10 @@ flow_hw_translate_group(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_attr *flow_attr = &cfg->attr.flow_attr;
 
-	if (priv->sh->config.dv_esw_en && cfg->external && flow_attr->transfer) {
+	if (priv->sh->config.dv_esw_en &&
+	    priv->fdb_def_rule &&
+	    cfg->external &&
+	    flow_attr->transfer) {
 		if (group > MLX5_HW_MAX_TRANSFER_GROUP)
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -5140,14 +5143,23 @@ flow_hw_free_vport_actions(struct mlx5_priv *priv)
 }
 
 static uint32_t
-flow_hw_usable_lsb_vport_mask(struct mlx5_priv *priv)
+flow_hw_esw_mgr_regc_marker_mask(struct rte_eth_dev *dev)
 {
-	uint32_t usable_mask = ~priv->vport_meta_mask;
+	uint32_t mask = MLX5_SH(dev)->dv_regc0_mask;
 
-	if (usable_mask)
-		return (1 << rte_bsf32(usable_mask));
-	else
-		return 0;
+	/* Mask is verified during device initialization. */
+	MLX5_ASSERT(mask != 0);
+	return mask;
+}
+
+static uint32_t
+flow_hw_esw_mgr_regc_marker(struct rte_eth_dev *dev)
+{
+	uint32_t mask = MLX5_SH(dev)->dv_regc0_mask;
+
+	/* Mask is verified during device initialization. */
+	MLX5_ASSERT(mask != 0);
+	return RTE_BIT32(rte_bsf32(mask));
 }
 
 /**
@@ -5173,11 +5185,18 @@ flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev)
 	struct rte_flow_item_ethdev port_mask = {
 		.port_id = UINT16_MAX,
 	};
+	struct mlx5_rte_flow_item_sq sq_mask = {
+		.queue = UINT32_MAX,
+	};
 	struct rte_flow_item items[] = {
 		{
 			.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
 			.spec = &port_spec,
 			.mask = &port_mask,
+		},
+		{
+			.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_SQ,
+			.mask = &sq_mask,
 		},
 		{
 			.type = RTE_FLOW_ITEM_TYPE_END,
@@ -5188,9 +5207,10 @@ flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev)
 }
 
 /**
- * Creates a flow pattern template used to match REG_C_0 and a TX queue.
- * Matching on REG_C_0 is set up to match on least significant bit usable
- * by user-space, which is set when packet was originated from E-Switch Manager.
+ * Creates a flow pattern template used to match REG_C_0 and a SQ.
+ * Matching on REG_C_0 is set up to match on all bits usable by user-space.
+ * If traffic was sent from E-Switch Manager, then all usable bits will be set to 0,
+ * except the least significant bit, which will be set to 1.
  *
  * This template is used to set up a table for SQ miss default flow.
  *
@@ -5203,8 +5223,6 @@ flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev)
 static struct rte_flow_pattern_template *
 flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t marker_bit = flow_hw_usable_lsb_vport_mask(priv);
 	struct rte_flow_pattern_template_attr attr = {
 		.relaxed_matching = 0,
 		.transfer = 1,
@@ -5214,6 +5232,7 @@ flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev)
 	};
 	struct rte_flow_item_tag reg_c0_mask = {
 		.index = 0xff,
+		.data = flow_hw_esw_mgr_regc_marker_mask(dev),
 	};
 	struct mlx5_rte_flow_item_sq queue_mask = {
 		.queue = UINT32_MAX,
@@ -5235,12 +5254,6 @@ flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev)
 		},
 	};
 
-	if (!marker_bit) {
-		DRV_LOG(ERR, "Unable to set up pattern template for SQ miss table");
-		return NULL;
-	}
-	reg_c0_spec.data = marker_bit;
-	reg_c0_mask.data = marker_bit;
 	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
 }
 
@@ -5332,9 +5345,8 @@ flow_hw_create_tx_default_mreg_copy_pattern_template(struct rte_eth_dev *dev)
 static struct rte_flow_actions_template *
 flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t marker_bit = flow_hw_usable_lsb_vport_mask(priv);
-	uint32_t marker_bit_mask = UINT32_MAX;
+	uint32_t marker_mask = flow_hw_esw_mgr_regc_marker_mask(dev);
+	uint32_t marker_bits = flow_hw_esw_mgr_regc_marker(dev);
 	struct rte_flow_actions_template_attr attr = {
 		.transfer = 1,
 	};
@@ -5347,7 +5359,7 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
 		},
-		.width = 1,
+		.width = __builtin_popcount(marker_mask),
 	};
 	struct rte_flow_action_modify_field set_reg_m = {
 		.operation = RTE_FLOW_MODIFY_SET,
@@ -5394,13 +5406,9 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
 		}
 	};
 
-	if (!marker_bit) {
-		DRV_LOG(ERR, "Unable to set up actions template for SQ miss table");
-		return NULL;
-	}
-	set_reg_v.dst.offset = rte_bsf32(marker_bit);
-	rte_memcpy(set_reg_v.src.value, &marker_bit, sizeof(marker_bit));
-	rte_memcpy(set_reg_m.src.value, &marker_bit_mask, sizeof(marker_bit_mask));
+	set_reg_v.dst.offset = rte_bsf32(marker_mask);
+	rte_memcpy(set_reg_v.src.value, &marker_bits, sizeof(marker_bits));
+	rte_memcpy(set_reg_m.src.value, &marker_mask, sizeof(marker_mask));
 	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m, NULL);
 }
 
@@ -5587,7 +5595,7 @@ flow_hw_create_ctrl_sq_miss_root_table(struct rte_eth_dev *dev,
 	struct rte_flow_template_table_attr attr = {
 		.flow_attr = {
 			.group = 0,
-			.priority = 0,
+			.priority = MLX5_HW_LOWEST_PRIO_ROOT,
 			.ingress = 0,
 			.egress = 0,
 			.transfer = 1,
@@ -5702,7 +5710,7 @@ flow_hw_create_ctrl_jump_table(struct rte_eth_dev *dev,
 	struct rte_flow_template_table_attr attr = {
 		.flow_attr = {
 			.group = 0,
-			.priority = MLX5_HW_LOWEST_PRIO_ROOT,
+			.priority = 0,
 			.ingress = 0,
 			.egress = 0,
 			.transfer = 1,
@@ -7800,141 +7808,123 @@ flow_hw_flush_all_ctrl_flows(struct rte_eth_dev *dev)
 }
 
 int
-mlx5_flow_hw_esw_create_mgr_sq_miss_flow(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_item_ethdev port_spec = {
-		.port_id = MLX5_REPRESENTED_PORT_ESW_MGR,
-	};
-	struct rte_flow_item_ethdev port_mask = {
-		.port_id = MLX5_REPRESENTED_PORT_ESW_MGR,
-	};
-	struct rte_flow_item items[] = {
-		{
-			.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
-			.spec = &port_spec,
-			.mask = &port_mask,
-		},
-		{
-			.type = RTE_FLOW_ITEM_TYPE_END,
-		},
-	};
-	struct rte_flow_action_modify_field modify_field = {
-		.operation = RTE_FLOW_MODIFY_SET,
-		.dst = {
-			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-		},
-		.src = {
-			.field = RTE_FLOW_FIELD_VALUE,
-		},
-		.width = 1,
-	};
-	struct rte_flow_action_jump jump = {
-		.group = 1,
-	};
-	struct rte_flow_action actions[] = {
-		{
-			.type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
-			.conf = &modify_field,
-		},
-		{
-			.type = RTE_FLOW_ACTION_TYPE_JUMP,
-			.conf = &jump,
-		},
-		{
-			.type = RTE_FLOW_ACTION_TYPE_END,
-		},
-	};
-
-	MLX5_ASSERT(priv->master);
-	if (!priv->dr_ctx ||
-	    !priv->hw_esw_sq_miss_root_tbl)
-		return 0;
-	return flow_hw_create_ctrl_flow(dev, dev,
-					priv->hw_esw_sq_miss_root_tbl,
-					items, 0, actions, 0);
-}
-
-int
-mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t txq)
+mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 {
 	uint16_t port_id = dev->data->port_id;
+	struct rte_flow_item_ethdev esw_mgr_spec = {
+		.port_id = MLX5_REPRESENTED_PORT_ESW_MGR,
+	};
+	struct rte_flow_item_ethdev esw_mgr_mask = {
+		.port_id = MLX5_REPRESENTED_PORT_ESW_MGR,
+	};
 	struct rte_flow_item_tag reg_c0_spec = {
 		.index = (uint8_t)REG_C_0,
+		.data = flow_hw_esw_mgr_regc_marker(dev),
 	};
 	struct rte_flow_item_tag reg_c0_mask = {
 		.index = 0xff,
+		.data = flow_hw_esw_mgr_regc_marker_mask(dev),
 	};
-	struct mlx5_rte_flow_item_sq queue_spec = {
-		.queue = txq,
-	};
-	struct mlx5_rte_flow_item_sq queue_mask = {
-		.queue = UINT32_MAX,
-	};
-	struct rte_flow_item items[] = {
-		{
-			.type = (enum rte_flow_item_type)
-				MLX5_RTE_FLOW_ITEM_TYPE_TAG,
-			.spec = &reg_c0_spec,
-			.mask = &reg_c0_mask,
-		},
-		{
-			.type = (enum rte_flow_item_type)
-				MLX5_RTE_FLOW_ITEM_TYPE_SQ,
-			.spec = &queue_spec,
-			.mask = &queue_mask,
-		},
-		{
-			.type = RTE_FLOW_ITEM_TYPE_END,
-		},
+	struct mlx5_rte_flow_item_sq sq_spec = {
+		.queue = sqn,
 	};
 	struct rte_flow_action_ethdev port = {
 		.port_id = port_id,
 	};
-	struct rte_flow_action actions[] = {
-		{
-			.type = RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
-			.conf = &port,
-		},
-		{
-			.type = RTE_FLOW_ACTION_TYPE_END,
-		},
-	};
+	struct rte_flow_item items[3] = { { 0 } };
+	struct rte_flow_action actions[3] = { { 0 } };
 	struct rte_eth_dev *proxy_dev;
 	struct mlx5_priv *proxy_priv;
 	uint16_t proxy_port_id = dev->data->port_id;
-	uint32_t marker_bit;
 	int ret;
 
-	RTE_SET_USED(txq);
 	ret = rte_flow_pick_transfer_proxy(port_id, &proxy_port_id, NULL);
 	if (ret) {
-		DRV_LOG(ERR, "Unable to pick proxy port for port %u", port_id);
+		DRV_LOG(ERR, "Unable to pick transfer proxy port for port %u. Transfer proxy "
+			     "port must be present to create default SQ miss flows.",
+			     port_id);
 		return ret;
 	}
 	proxy_dev = &rte_eth_devices[proxy_port_id];
 	proxy_priv = proxy_dev->data->dev_private;
-	if (!proxy_priv->dr_ctx)
+	if (!proxy_priv->dr_ctx) {
+		DRV_LOG(DEBUG, "Transfer proxy port (port %u) of port %u must be configured "
+			       "for HWS to create default SQ miss flows. Default flows will "
+			       "not be created.",
+			       proxy_port_id, port_id);
 		return 0;
+	}
 	if (!proxy_priv->hw_esw_sq_miss_root_tbl ||
 	    !proxy_priv->hw_esw_sq_miss_tbl) {
-		DRV_LOG(ERR, "port %u proxy port %u was configured but default"
-			" flow tables are not created",
-			port_id, proxy_port_id);
+		DRV_LOG(ERR, "Transfer proxy port (port %u) of port %u was configured, but "
+			     "default flow tables were not created.",
+			     proxy_port_id, port_id);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	marker_bit = flow_hw_usable_lsb_vport_mask(proxy_priv);
-	if (!marker_bit) {
-		DRV_LOG(ERR, "Unable to set up control flow in SQ miss table");
-		rte_errno = EINVAL;
-		return -rte_errno;
+	/*
+	 * Create a root SQ miss flow rule - match E-Switch Manager and SQ,
+	 * and jump to group 1.
+	 */
+	items[0] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
+		.spec = &esw_mgr_spec,
+		.mask = &esw_mgr_mask,
+	};
+	items[1] = (struct rte_flow_item){
+		.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_SQ,
+		.spec = &sq_spec,
+	};
+	items[2] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_END,
+	};
+	actions[0] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
+	};
+	actions[1] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_JUMP,
+	};
+	actions[2] = (struct rte_flow_action) {
+		.type = RTE_FLOW_ACTION_TYPE_END,
+	};
+	ret = flow_hw_create_ctrl_flow(dev, proxy_dev, proxy_priv->hw_esw_sq_miss_root_tbl,
+				       items, 0, actions, 0);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u failed to create root SQ miss flow rule for SQ %u, ret %d",
+			port_id, sqn, ret);
+		return ret;
 	}
-	reg_c0_spec.data = marker_bit;
-	reg_c0_mask.data = marker_bit;
-	return flow_hw_create_ctrl_flow(dev, proxy_dev,
-					proxy_priv->hw_esw_sq_miss_tbl,
-					items, 0, actions, 0);
+	/*
+	 * Create a non-root SQ miss flow rule - match REG_C_0 marker and SQ,
+	 * and forward to port.
+	 */
+	items[0] = (struct rte_flow_item){
+		.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+		.spec = &reg_c0_spec,
+		.mask = &reg_c0_mask,
+	};
+	items[1] = (struct rte_flow_item){
+		.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_SQ,
+		.spec = &sq_spec,
+	};
+	items[2] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_END,
+	};
+	actions[0] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
+		.conf = &port,
+	};
+	actions[1] = (struct rte_flow_action){
+		.type = RTE_FLOW_ACTION_TYPE_END,
+	};
+	ret = flow_hw_create_ctrl_flow(dev, proxy_dev, proxy_priv->hw_esw_sq_miss_tbl,
+				       items, 0, actions, 0);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u failed to create HWS SQ miss flow rule for SQ %u, ret %d",
+			port_id, sqn, ret);
+		return ret;
+	}
+	return 0;
 }
 
 int
@@ -7972,17 +7962,24 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 
 	ret = rte_flow_pick_transfer_proxy(port_id, &proxy_port_id, NULL);
 	if (ret) {
-		DRV_LOG(ERR, "Unable to pick proxy port for port %u", port_id);
+		DRV_LOG(ERR, "Unable to pick transfer proxy port for port %u. Transfer proxy "
+			     "port must be present to create default FDB jump rule.",
+			     port_id);
 		return ret;
 	}
 	proxy_dev = &rte_eth_devices[proxy_port_id];
 	proxy_priv = proxy_dev->data->dev_private;
-	if (!proxy_priv->dr_ctx)
+	if (!proxy_priv->dr_ctx) {
+		DRV_LOG(DEBUG, "Transfer proxy port (port %u) of port %u must be configured "
+			       "for HWS to create default FDB jump rule. Default rule will "
+			       "not be created.",
+			       proxy_port_id, port_id);
 		return 0;
+	}
 	if (!proxy_priv->hw_esw_zero_tbl) {
-		DRV_LOG(ERR, "port %u proxy port %u was configured but default"
-			" flow tables are not created",
-			port_id, proxy_port_id);
+		DRV_LOG(ERR, "Transfer proxy port (port %u) of port %u was configured, but "
+			     "default flow tables were not created.",
+			     proxy_port_id, port_id);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}

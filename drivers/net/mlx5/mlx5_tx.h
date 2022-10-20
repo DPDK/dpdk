@@ -213,6 +213,7 @@ struct mlx5_txq_ctrl *mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_releasable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_verify(struct rte_eth_dev *dev);
+int mlx5_txq_get_sqn(struct mlx5_txq_ctrl *txq);
 void txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl);
 void txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl);
 uint64_t mlx5_get_tx_port_offloads(struct rte_eth_dev *dev);

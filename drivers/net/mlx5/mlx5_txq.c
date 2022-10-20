@@ -27,6 +27,8 @@
 #include "mlx5_tx.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
+#include "rte_pmd_mlx5.h"
+#include "mlx5_flow.h"
 
 /**
  * Allocate TX queue elements.
@@ -1272,6 +1274,51 @@ mlx5_txq_verify(struct rte_eth_dev *dev)
 		++ret;
 	}
 	return ret;
+}
+
+int
+mlx5_txq_get_sqn(struct mlx5_txq_ctrl *txq)
+{
+	return txq->is_hairpin ? txq->obj->sq->id : txq->obj->sq_obj.sq->id;
+}
+
+int
+rte_pmd_mlx5_external_sq_enable(uint16_t port_id, uint32_t sq_num)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+	uint32_t flow;
+
+	if (rte_eth_dev_is_valid_port(port_id) < 0) {
+		DRV_LOG(ERR, "There is no Ethernet device for port %u.",
+			port_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	dev = &rte_eth_devices[port_id];
+	priv = dev->data->dev_private;
+	if ((!priv->representor && !priv->master) ||
+	    !priv->sh->config.dv_esw_en) {
+		DRV_LOG(ERR, "Port %u must be represetnor or master port in E-Switch mode.",
+			port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (sq_num == 0) {
+		DRV_LOG(ERR, "Invalid SQ number.");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_esw_create_sq_miss_flow(dev, sq_num);
+#endif
+	flow = mlx5_flow_create_devx_sq_miss_flow(dev, sq_num);
+	if (flow > 0)
+		return 0;
+	DRV_LOG(ERR, "Port %u failed to create default miss flow for SQ %u.",
+		port_id, sq_num);
+	return -rte_errno;
 }
 
 /**

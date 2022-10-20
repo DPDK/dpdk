@@ -426,7 +426,7 @@ mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
 			mlx5_txq_release(dev, peer_queue);
 			return -rte_errno;
 		}
-		peer_info->qp_id = txq_ctrl->obj->sq->id;
+		peer_info->qp_id = mlx5_txq_get_sqn(txq_ctrl);
 		peer_info->vhca_id = priv->sh->cdev->config.hca_attr.vhca_id;
 		/* 1-to-1 mapping, only the first one is used. */
 		peer_info->peer_q = txq_ctrl->hairpin_conf.peers[0].queue;
@@ -818,7 +818,7 @@ mlx5_hairpin_bind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 		}
 		/* Pass TxQ's information to peer RxQ and try binding. */
 		cur.peer_q = rx_queue;
-		cur.qp_id = txq_ctrl->obj->sq->id;
+		cur.qp_id = mlx5_txq_get_sqn(txq_ctrl);
 		cur.vhca_id = priv->sh->cdev->config.hca_attr.vhca_id;
 		cur.tx_explicit = txq_ctrl->hairpin_conf.tx_explicit;
 		cur.manual_bind = txq_ctrl->hairpin_conf.manual_bind;
@@ -1300,8 +1300,6 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	int ret;
 
 	if (priv->sh->config.dv_esw_en && priv->master) {
-		if (mlx5_flow_hw_esw_create_mgr_sq_miss_flow(dev))
-			goto error;
 		if (priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS)
 			if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev))
 				goto error;
@@ -1312,10 +1310,7 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 
 		if (!txq)
 			continue;
-		if (txq->is_hairpin)
-			queue = txq->obj->sq->id;
-		else
-			queue = txq->obj->sq_obj.sq->id;
+		queue = mlx5_txq_get_sqn(txq);
 		if ((priv->representor || priv->master) &&
 		    priv->sh->config.dv_esw_en) {
 			if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, queue)) {
@@ -1325,9 +1320,15 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 		}
 		mlx5_txq_release(dev, i);
 	}
-	if ((priv->master || priv->representor) && priv->sh->config.dv_esw_en) {
-		if (mlx5_flow_hw_esw_create_default_jump_flow(dev))
-			goto error;
+	if (priv->sh->config.fdb_def_rule) {
+		if ((priv->master || priv->representor) && priv->sh->config.dv_esw_en) {
+			if (!mlx5_flow_hw_esw_create_default_jump_flow(dev))
+				priv->fdb_def_rule = 1;
+			else
+				goto error;
+		}
+	} else {
+		DRV_LOG(INFO, "port %u FDB default rule is disabled", dev->data->port_id);
 	}
 	return 0;
 error:
@@ -1393,14 +1394,18 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		    txq_ctrl->hairpin_conf.tx_explicit == 0 &&
 		    txq_ctrl->hairpin_conf.peers[0].port ==
 		    priv->dev_data->port_id) {
-			ret = mlx5_ctrl_flow_source_queue(dev, i);
+			ret = mlx5_ctrl_flow_source_queue(dev,
+					mlx5_txq_get_sqn(txq_ctrl));
 			if (ret) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}
 		}
 		if (priv->sh->config.dv_esw_en) {
-			if (mlx5_flow_create_devx_sq_miss_flow(dev, i) == 0) {
+			uint32_t q = mlx5_txq_get_sqn(txq_ctrl);
+
+			if (mlx5_flow_create_devx_sq_miss_flow(dev, q) == 0) {
+				mlx5_txq_release(dev, i);
 				DRV_LOG(ERR,
 					"Port %u Tx queue %u SQ create representor devx default miss rule failed.",
 					dev->data->port_id, i);

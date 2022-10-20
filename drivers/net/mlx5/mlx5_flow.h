@@ -116,7 +116,7 @@ struct mlx5_flow_action_copy_mreg {
 
 /* Matches on source queue. */
 struct mlx5_rte_flow_item_sq {
-	uint32_t queue;
+	uint32_t queue; /* DevX SQ number */
 };
 
 /* Feature name to allocate metadata register. */
@@ -2493,9 +2493,8 @@ int mlx5_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
 
 int mlx5_flow_hw_flush_ctrl_flows(struct rte_eth_dev *dev);
 
-int mlx5_flow_hw_esw_create_mgr_sq_miss_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
-					 uint32_t txq);
+					 uint32_t sqn);
 int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev);
 int mlx5_flow_actions_validate(struct rte_eth_dev *dev,
