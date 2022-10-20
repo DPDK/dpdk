@@ -74,6 +74,8 @@ has_member_args = [
             'struct ibv_counters_init_attr', 'comp_mask' ],
         [ 'HAVE_MLX5DV_DEVX_UAR_OFFSET', 'infiniband/mlx5dv.h',
             'struct mlx5dv_devx_uar', 'mmap_off' ],
+        [ 'HAVE_MLX5DV_FLOW_MATCHER_FT_TYPE', 'infiniband/mlx5dv.h',
+            'struct mlx5dv_flow_matcher_attr', 'ft_type' ],
 ]
 # input array for meson symbol search:
 # [ "MACRO to define if found", "header for the search",
