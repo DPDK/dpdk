@@ -1078,10 +1078,6 @@ struct mlx5_action_construct_data {
 	uint16_t action_dst; /* mlx5dr_rule_action dst offset. */
 	union {
 		struct {
-			/* encap src(item) offset. */
-			uint16_t src;
-			/* encap dst data offset. */
-			uint16_t dst;
 			/* encap data len. */
 			uint16_t len;
 		} encap;
@@ -1124,6 +1120,8 @@ struct mlx5_hw_jump_action {
 /* Encap decap action struct. */
 struct mlx5_hw_encap_decap_action {
 	struct mlx5dr_action *action; /* Action object. */
+	/* Is header_reformat action shared across flows in table. */
+	bool shared;
 	size_t data_size; /* Action metadata size. */
 	uint8_t data[]; /* Action data. */
 };

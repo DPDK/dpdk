@@ -402,10 +402,6 @@ __flow_hw_act_data_general_append(struct mlx5_priv *priv,
  *   Offset of source rte flow action.
  * @param[in] action_dst
  *   Offset of destination DR action.
- * @param[in] encap_src
- *   Offset of source encap raw data.
- * @param[in] encap_dst
- *   Offset of destination encap raw data.
  * @param[in] len
  *   Length of the data to be updated.
  *
@@ -418,16 +414,12 @@ __flow_hw_act_data_encap_append(struct mlx5_priv *priv,
 				enum rte_flow_action_type type,
 				uint16_t action_src,
 				uint16_t action_dst,
-				uint16_t encap_src,
-				uint16_t encap_dst,
 				uint16_t len)
 {	struct mlx5_action_construct_data *act_data;
 
 	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
 	if (!act_data)
 		return -1;
-	act_data->encap.src = encap_src;
-	act_data->encap.dst = encap_dst;
 	act_data->encap.len = len;
 	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
 	return 0;
@@ -524,53 +516,6 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 }
 
 /**
- * Translate encap items to encapsulation list.
- *
- * @param[in] dev
- *   Pointer to the rte_eth_dev data structure.
- * @param[in] acts
- *   Pointer to the template HW steering DR actions.
- * @param[in] type
- *   Action type.
- * @param[in] action_src
- *   Offset of source rte flow action.
- * @param[in] action_dst
- *   Offset of destination DR action.
- * @param[in] items
- *   Encap item pattern.
- * @param[in] items_m
- *   Encap item mask indicates which part are constant and dynamic.
- *
- * @return
- *    0 on success, negative value otherwise and rte_errno is set.
- */
-static __rte_always_inline int
-flow_hw_encap_item_translate(struct rte_eth_dev *dev,
-			     struct mlx5_hw_actions *acts,
-			     enum rte_flow_action_type type,
-			     uint16_t action_src,
-			     uint16_t action_dst,
-			     const struct rte_flow_item *items,
-			     const struct rte_flow_item *items_m)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	size_t len, total_len = 0;
-	uint32_t i = 0;
-
-	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++, items_m++, i++) {
-		len = flow_dv_get_item_hdr_len(items->type);
-		if ((!items_m->spec ||
-		    memcmp(items_m->spec, items->spec, len)) &&
-		    __flow_hw_act_data_encap_append(priv, acts, type,
-						    action_src, action_dst, i,
-						    total_len, len))
-			return -1;
-		total_len += len;
-	}
-	return 0;
-}
-
-/**
  * Translate rte_flow actions to DR action.
  *
  * As the action template has already indicated the actions. Translate
@@ -611,7 +556,7 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 	const struct rte_flow_action_raw_encap *raw_encap_data;
 	const struct rte_flow_item *enc_item = NULL, *enc_item_m = NULL;
 	uint16_t reformat_pos = MLX5_HW_MAX_ACTS, reformat_src = 0;
-	uint8_t *encap_data = NULL;
+	uint8_t *encap_data = NULL, *encap_data_m = NULL;
 	size_t data_size = 0;
 	bool actions_end = false;
 	uint32_t type, i;
@@ -718,9 +663,9 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			MLX5_ASSERT(reformat_pos == MLX5_HW_MAX_ACTS);
 			enc_item = ((const struct rte_flow_action_vxlan_encap *)
 				   actions->conf)->definition;
-			enc_item_m =
-				((const struct rte_flow_action_vxlan_encap *)
-				 masks->conf)->definition;
+			if (masks->conf)
+				enc_item_m = ((const struct rte_flow_action_vxlan_encap *)
+					     masks->conf)->definition;
 			reformat_pos = i++;
 			reformat_src = actions - action_start;
 			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L2;
@@ -729,9 +674,9 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			MLX5_ASSERT(reformat_pos == MLX5_HW_MAX_ACTS);
 			enc_item = ((const struct rte_flow_action_nvgre_encap *)
 				   actions->conf)->definition;
-			enc_item_m =
-				((const struct rte_flow_action_nvgre_encap *)
-				actions->conf)->definition;
+			if (masks->conf)
+				enc_item_m = ((const struct rte_flow_action_nvgre_encap *)
+					     masks->conf)->definition;
 			reformat_pos = i++;
 			reformat_src = actions - action_start;
 			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L2;
@@ -743,6 +688,11 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_TNL_L2_TO_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			raw_encap_data =
+				(const struct rte_flow_action_raw_encap *)
+				 masks->conf;
+			if (raw_encap_data)
+				encap_data_m = raw_encap_data->data;
 			raw_encap_data =
 				(const struct rte_flow_action_raw_encap *)
 				 actions->conf;
@@ -776,22 +726,17 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 	}
 	if (reformat_pos != MLX5_HW_MAX_ACTS) {
 		uint8_t buf[MLX5_ENCAP_MAX_LEN];
+		bool shared_rfmt = true;
 
 		if (enc_item) {
 			MLX5_ASSERT(!encap_data);
-			if (flow_dv_convert_encap_data
-				(enc_item, buf, &data_size, error) ||
-			    flow_hw_encap_item_translate
-				(dev, acts, (action_start + reformat_src)->type,
-				 reformat_src, reformat_pos,
-				 enc_item, enc_item_m))
+			if (flow_dv_convert_encap_data(enc_item, buf, &data_size, error))
 				goto err;
 			encap_data = buf;
-		} else if (encap_data && __flow_hw_act_data_encap_append
-				(priv, acts,
-				 (action_start + reformat_src)->type,
-				 reformat_src, reformat_pos, 0, 0, data_size)) {
-			goto err;
+			if (!enc_item_m)
+				shared_rfmt = false;
+		} else if (encap_data && !encap_data_m) {
+			shared_rfmt = false;
 		}
 		acts->encap_decap = mlx5_malloc(MLX5_MEM_ZERO,
 				    sizeof(*acts->encap_decap) + data_size,
@@ -805,12 +750,22 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 		acts->encap_decap->action = mlx5dr_action_create_reformat
 				(priv->dr_ctx, refmt_type,
 				 data_size, encap_data,
-				 rte_log2_u32(table_attr->nb_flows),
-				 mlx5_hw_act_flag[!!attr->group][type]);
+				 shared_rfmt ? 0 : rte_log2_u32(table_attr->nb_flows),
+				 mlx5_hw_act_flag[!!attr->group][type] |
+				 (shared_rfmt ? MLX5DR_ACTION_FLAG_SHARED : 0));
 		if (!acts->encap_decap->action)
 			goto err;
 		acts->rule_acts[reformat_pos].action =
 						acts->encap_decap->action;
+		acts->rule_acts[reformat_pos].reformat.data =
+						acts->encap_decap->data;
+		if (shared_rfmt)
+			acts->rule_acts[reformat_pos].reformat.offset = 0;
+		else if (__flow_hw_act_data_encap_append(priv, acts,
+				 (action_start + reformat_src)->type,
+				 reformat_src, reformat_pos, data_size))
+			goto err;
+		acts->encap_decap->shared = shared_rfmt;
 		acts->encap_decap_pos = reformat_pos;
 	}
 	acts->acts_num = i;
@@ -975,6 +930,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			.ingress = 1,
 	};
 	uint32_t ft_flag;
+	size_t encap_len = 0;
 
 	memcpy(rule_acts, hw_acts->rule_acts,
 	       sizeof(*rule_acts) * hw_acts->acts_num);
@@ -992,9 +948,6 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	} else {
 		attr.ingress = 1;
 	}
-	if (hw_acts->encap_decap && hw_acts->encap_decap->data_size)
-		memcpy(buf, hw_acts->encap_decap->data,
-		       hw_acts->encap_decap->data_size);
 	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
 		uint32_t jump_group;
 		uint32_t tag;
@@ -1053,23 +1006,20 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 			enc_item = ((const struct rte_flow_action_vxlan_encap *)
 				   action->conf)->definition;
-			rte_memcpy((void *)&buf[act_data->encap.dst],
-				   enc_item[act_data->encap.src].spec,
-				   act_data->encap.len);
+			if (flow_dv_convert_encap_data(enc_item, buf, &encap_len, NULL))
+				return -1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			enc_item = ((const struct rte_flow_action_nvgre_encap *)
 				   action->conf)->definition;
-			rte_memcpy((void *)&buf[act_data->encap.dst],
-				   enc_item[act_data->encap.src].spec,
-				   act_data->encap.len);
+			if (flow_dv_convert_encap_data(enc_item, buf, &encap_len, NULL))
+				return -1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap_data =
 				(const struct rte_flow_action_raw_encap *)
 				 action->conf;
-			rte_memcpy((void *)&buf[act_data->encap.dst],
-				   raw_encap_data->data, act_data->encap.len);
+			rte_memcpy((void *)buf, raw_encap_data->data, act_data->encap.len);
 			MLX5_ASSERT(raw_encap_data->size ==
 				    act_data->encap.len);
 			break;
@@ -1077,7 +1027,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			break;
 		}
 	}
-	if (hw_acts->encap_decap) {
+	if (hw_acts->encap_decap && !hw_acts->encap_decap->shared) {
 		rule_acts[hw_acts->encap_decap_pos].reformat.offset =
 				job->flow->idx - 1;
 		rule_acts[hw_acts->encap_decap_pos].reformat.data = buf;
