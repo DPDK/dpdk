@@ -1700,7 +1700,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 	*tbls = NULL;
 }
 
-#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+#ifdef HAVE_MLX5_HWS_SUPPORT
 /**
  * Allocate HW steering group hash list.
  *
@@ -1749,7 +1749,7 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 	int err = 0;
 
 	/* Tables are only used in DV and DR modes. */
-#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+#ifdef HAVE_MLX5_HWS_SUPPORT
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_NAME_SIZE];
 
@@ -1942,7 +1942,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	/* Free the eCPRI flex parser resource. */
 	mlx5_flex_parser_ecpri_release(dev);
 	mlx5_flex_item_port_cleanup(dev);
-#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+#ifdef HAVE_MLX5_HWS_SUPPORT
 	flow_hw_resource_release(dev);
 	flow_hw_clear_port_info(dev);
 	if (priv->sh->config.dv_flow_en == 2)

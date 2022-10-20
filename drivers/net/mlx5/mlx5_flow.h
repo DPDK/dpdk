@@ -17,6 +17,7 @@
 #include <mlx5_prm.h>
 
 #include "mlx5.h"
+#include "hws/mlx5dr.h"
 
 /* E-Switch Manager port, used for rte_flow_item_port_id. */
 #define MLX5_PORT_ESW_MGR UINT32_MAX
@@ -1046,6 +1047,10 @@ struct rte_flow {
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 /* HWS flow struct. */
 struct rte_flow_hw {
 	uint32_t idx; /* Flow index from indexed pool. */
@@ -1056,8 +1061,12 @@ struct rte_flow_hw {
 		struct mlx5_hrxq *hrxq; /* TIR action. */
 	};
 	struct rte_flow_template_table *table; /* The table flow allcated from. */
-	struct mlx5dr_rule rule; /* HWS layer data struct. */
+	uint8_t rule[0]; /* HWS layer data struct. */
 } __rte_packed;
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
 
 /* rte flow action translate to DR action struct. */
 struct mlx5_action_construct_data {

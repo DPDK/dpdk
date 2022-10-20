@@ -175,6 +175,10 @@ New Features
   * Added the control message interactive channels between PMD and firmware.
   * Added the support of representor port.
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Added full support for queue-based async HW steering.
+
 * **Updated NXP dpaa2 driver.**
 
   * Added support for flow action REPRESENTED_PORT.

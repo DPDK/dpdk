@@ -8,6 +8,7 @@ dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_common_mlx5_glue.so'
 LIB_GLUE_VERSION = abi_version
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
+mlx5_config = configuration_data()
 if dlopen_ibverbs
     dpdk_conf.set('RTE_IBVERBS_LINK_DLOPEN', 1)
     cflags += [
@@ -223,15 +224,15 @@ if  libmtcr_ul_found
         [ 'HAVE_MLX5_MSTFLINT', 'mstflint/mtcr.h', 'mopen' ],
     ]
 endif
-config = configuration_data()
+
 foreach arg:has_sym_args
-    config.set(arg[0], cc.has_header_symbol(arg[1], arg[2], dependencies: libs))
+    mlx5_config.set(arg[0], cc.has_header_symbol(arg[1], arg[2], dependencies: libs))
 endforeach
 foreach arg:has_member_args
     file_prefix = '#include <' + arg[1] + '>'
-    config.set(arg[0], cc.has_member(arg[2], arg[3], prefix : file_prefix, dependencies: libs))
+    mlx5_config.set(arg[0], cc.has_member(arg[2], arg[3], prefix : file_prefix, dependencies: libs))
 endforeach
-configure_file(output : 'mlx5_autoconf.h', configuration : config)
+configure_file(output : 'mlx5_autoconf.h', configuration : mlx5_config)
 
 # Build Glue Library
 if dlopen_ibverbs

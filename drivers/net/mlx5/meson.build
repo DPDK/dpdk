@@ -14,10 +14,8 @@ sources = files(
         'mlx5.c',
         'mlx5_ethdev.c',
         'mlx5_flow.c',
-        'mlx5_dr.c',
         'mlx5_flow_meter.c',
         'mlx5_flow_dv.c',
-        'mlx5_flow_hw.c',
         'mlx5_flow_aso.c',
         'mlx5_flow_flex.c',
         'mlx5_mac.c',
@@ -42,6 +40,7 @@ sources = files(
 
 if is_linux
     sources += files(
+            'mlx5_flow_hw.c',
             'mlx5_flow_verbs.c',
     )
     if (dpdk_conf.has('RTE_ARCH_X86_64')
@@ -72,3 +71,7 @@ endif
 testpmd_sources += files('mlx5_testpmd.c')
 
 subdir(exec_env)
+
+if (is_linux and mlx5_config.get('HAVE_IBV_FLOW_DV_SUPPORT', false))
+    subdir('hws')
+endif

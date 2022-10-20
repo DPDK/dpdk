@@ -152,6 +152,15 @@ Limitations
   - When configuring host shaper with MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED flag set,
     only rates 0 and 100Mbps are supported.
 
+- HW steering:
+
+  - WQE based high scaling and safer flow insertion/destruction.
+  - Set ``dv_flow_en`` to 2 in order to enable HW steering.
+  - Async queue-based ``rte_flow_async`` APIs supported only.
+  - NIC ConnectX-5 and before are not supported.
+  - Partial match with item template is not supported.
+  - IPv6 5-tuple matching is not supported.
+
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
 
@@ -534,12 +543,6 @@ Limitations
   - The send scheduling is based on timestamps
     from the reference "Clock Queue" completions,
     the scheduled send timestamps should not be specified with non-zero MSB.
-
-  - HW steering:
-
-    - WQE based high scaling and safer flow insertion/destruction.
-    - Set ``dv_flow_en`` to 2 in order to enable HW steering.
-    - Async queue-based ``rte_flow_q`` APIs supported only.
 
 - Match on GRE header supports the following fields:
 

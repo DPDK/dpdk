@@ -1110,8 +1110,8 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 				  actions, rule_acts, &acts_num);
 	ret = mlx5dr_rule_create(table->matcher,
 				 pattern_template_index, items,
-				 rule_acts, acts_num,
-				 &rule_attr, &flow->rule);
+				 action_template_index, rule_acts,
+				 &rule_attr, (struct mlx5dr_rule *)flow->rule);
 	if (likely(!ret))
 		return (struct rte_flow *)flow;
 	/* Flow created fail, return the descriptor and flow memory. */
@@ -1174,7 +1174,7 @@ flow_hw_async_flow_destroy(struct rte_eth_dev *dev,
 	job->user_data = user_data;
 	job->flow = fh;
 	rule_attr.user_data = job;
-	ret = mlx5dr_rule_destroy(&fh->rule, &rule_attr);
+	ret = mlx5dr_rule_destroy((struct mlx5dr_rule *)fh->rule, &rule_attr);
 	if (likely(!ret))
 		return 0;
 	priv->hw_q[queue].job_idx++;
@@ -1440,7 +1440,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		.data = &flow_attr,
 	};
 	struct mlx5_indexed_pool_config cfg = {
-		.size = sizeof(struct rte_flow_hw),
+		.size = sizeof(struct rte_flow_hw) + mlx5dr_rule_get_handle_size(),
 		.trunk_size = 1 << 12,
 		.per_core_cache = 1 << 13,
 		.need_lock = 1,
@@ -1501,7 +1501,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		tbl->its[i] = item_templates[i];
 	}
 	tbl->matcher = mlx5dr_matcher_create
-		(tbl->grp->tbl, mt, nb_item_templates, &matcher_attr);
+		(tbl->grp->tbl, mt, nb_item_templates, NULL, 0, &matcher_attr);
 	if (!tbl->matcher)
 		goto it_error;
 	tbl->nb_item_templates = nb_item_templates;
