@@ -113,6 +113,7 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 		  struct mlx5_flow *dev_flow, bool tunnel_decap)
 {
 	uint64_t layers = dev_flow->handle->layers;
+	bool tunnel_match = false;
 
 	/*
 	 * If layers is already initialized, it means this dev_flow is the
@@ -149,8 +150,10 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 		case RTE_FLOW_ITEM_TYPE_GTP:
-			if (tunnel_decap)
+			if (tunnel_decap) {
 				attr->attr = 0;
+				tunnel_match = true;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			if (!attr->ipv6)
@@ -164,7 +167,8 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 				    ((const struct rte_flow_item_ipv4 *)
 				      (item->mask))->hdr.next_proto_id;
 			if ((next_protocol == IPPROTO_IPIP ||
-			    next_protocol == IPPROTO_IPV6) && tunnel_decap)
+			    next_protocol == IPPROTO_IPV6) && tunnel_decap &&
+			    !tunnel_match)
 				attr->attr = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
@@ -179,7 +183,8 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 				    ((const struct rte_flow_item_ipv6 *)
 				      (item->mask))->hdr.proto;
 			if ((next_protocol == IPPROTO_IPIP ||
-			    next_protocol == IPPROTO_IPV6) && tunnel_decap)
+			    next_protocol == IPPROTO_IPV6) && tunnel_decap &&
+			    !tunnel_match)
 				attr->attr = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
