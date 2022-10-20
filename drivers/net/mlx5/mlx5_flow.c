@@ -33,6 +33,12 @@
 #include "mlx5_common_os.h"
 #include "rte_pmd_mlx5.h"
 
+/*
+ * Shared array for quick translation between port_id and vport mask/values
+ * used for HWS rules.
+ */
+struct flow_hw_port_info mlx5_flow_hw_port_infos[RTE_MAX_ETHPORTS];
+
 struct tunnel_default_miss_ctx {
 	uint16_t *queue;
 	__extension__

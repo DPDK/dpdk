@@ -1554,8 +1554,16 @@ err_secondary:
 	if (!priv->hrxqs)
 		goto error;
 	rte_rwlock_init(&priv->ind_tbls_lock);
-	if (priv->sh->config.dv_flow_en == 2)
+	if (priv->sh->config.dv_flow_en == 2) {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+		if (priv->vport_meta_mask)
+			flow_hw_set_port_info(eth_dev);
 		return eth_dev;
+#else
+		DRV_LOG(ERR, "DV support is missing for HWS.");
+		goto error;
+#endif
+	}
 	/* Port representor shares the same max priority with pf port. */
 	if (!priv->sh->flow_priority_check_flag) {
 		/* Supported Verbs flow priority number detection. */
