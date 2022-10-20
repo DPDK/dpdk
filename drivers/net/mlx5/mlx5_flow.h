@@ -1013,6 +1013,51 @@ flow_items_to_tunnel(const struct rte_flow_item items[])
 	return items[0].spec;
 }
 
+/**
+ * Fetch 1, 2, 3 or 4 byte field from the byte array
+ * and return as unsigned integer in host-endian format.
+ *
+ * @param[in] data
+ *   Pointer to data array.
+ * @param[in] size
+ *   Size of field to extract.
+ *
+ * @return
+ *   converted field in host endian format.
+ */
+static inline uint32_t
+flow_dv_fetch_field(const uint8_t *data, uint32_t size)
+{
+	uint32_t ret;
+
+	switch (size) {
+	case 1:
+		ret = *data;
+		break;
+	case 2:
+		ret = rte_be_to_cpu_16(*(const unaligned_uint16_t *)data);
+		break;
+	case 3:
+		ret = rte_be_to_cpu_16(*(const unaligned_uint16_t *)data);
+		ret = (ret << 8) | *(data + sizeof(uint16_t));
+		break;
+	case 4:
+		ret = rte_be_to_cpu_32(*(const unaligned_uint32_t *)data);
+		break;
+	default:
+		MLX5_ASSERT(false);
+		ret = 0;
+		break;
+	}
+	return ret;
+}
+
+struct field_modify_info {
+	uint32_t size; /* Size of field in protocol header, in bytes. */
+	uint32_t offset; /* Offset of field in protocol header, in bytes. */
+	enum mlx5_modification_field id;
+};
+
 /* HW steering flow attributes. */
 struct mlx5_flow_attr {
 	uint32_t port_id; /* Port index. */
@@ -1082,6 +1127,29 @@ struct mlx5_action_construct_data {
 			uint16_t len;
 		} encap;
 		struct {
+			/* Modify header action offset in pattern. */
+			uint16_t mhdr_cmds_off;
+			/* Offset in pattern after modify header actions. */
+			uint16_t mhdr_cmds_end;
+			/*
+			 * True if this action is masked and does not need to
+			 * be generated.
+			 */
+			bool shared;
+			/*
+			 * Modified field definitions in dst field (SET, ADD)
+			 * or src field (COPY).
+			 */
+			struct field_modify_info field[MLX5_ACT_MAX_MOD_FIELDS];
+			/* Modified field definitions in dst field (COPY). */
+			struct field_modify_info dcopy[MLX5_ACT_MAX_MOD_FIELDS];
+			/*
+			 * Masks applied to field values to generate
+			 * PRM actions.
+			 */
+			uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS];
+		} modify_header;
+		struct {
 			uint64_t types; /* RSS hash types. */
 			uint32_t level; /* RSS level. */
 			uint32_t idx; /* Shared action index. */
@@ -1106,6 +1174,7 @@ struct rte_flow_actions_template {
 	struct rte_flow_actions_template_attr attr;
 	struct rte_flow_action *actions; /* Cached flow actions. */
 	struct rte_flow_action *masks; /* Cached action masks.*/
+	uint16_t mhdr_off; /* Offset of DR modify header action. */
 	uint32_t refcnt; /* Reference counter. */
 };
 
@@ -1126,6 +1195,22 @@ struct mlx5_hw_encap_decap_action {
 	uint8_t data[]; /* Action data. */
 };
 
+#define MLX5_MHDR_MAX_CMD ((MLX5_MAX_MODIFY_NUM) * 2 + 1)
+
+/* Modify field action struct. */
+struct mlx5_hw_modify_header_action {
+	/* Reference to DR action */
+	struct mlx5dr_action *action;
+	/* Modify header action position in action rule table. */
+	uint16_t pos;
+	/* Is MODIFY_HEADER action shared across flows in table. */
+	bool shared;
+	/* Amount of modification commands stored in the precompiled buffer. */
+	uint32_t mhdr_cmds_num;
+	/* Precompiled modification commands. */
+	struct mlx5_modification_cmd mhdr_cmds[MLX5_MHDR_MAX_CMD];
+};
+
 /* The maximum actions support in the flow. */
 #define MLX5_HW_MAX_ACTS 16
 
@@ -1135,6 +1220,7 @@ struct mlx5_hw_actions {
 	LIST_HEAD(act_list, mlx5_action_construct_data) act_list;
 	struct mlx5_hw_jump_action *jump; /* Jump action. */
 	struct mlx5_hrxq *tir; /* TIR action. */
+	struct mlx5_hw_modify_header_action *mhdr; /* Modify header action. */
 	/* Encap/Decap action. */
 	struct mlx5_hw_encap_decap_action *encap_decap;
 	uint16_t encap_decap_pos; /* Encap/Decap action position. */
@@ -2246,6 +2332,16 @@ int flow_dv_action_query(struct rte_eth_dev *dev,
 size_t flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type);
 int flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 			   size_t *size, struct rte_flow_error *error);
+void mlx5_flow_field_id_to_modify_info
+		(const struct rte_flow_action_modify_data *data,
+		 struct field_modify_info *info, uint32_t *mask,
+		 uint32_t width, struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr, struct rte_flow_error *error);
+int flow_dv_convert_modify_action(struct rte_flow_item *item,
+			      struct field_modify_info *field,
+			      struct field_modify_info *dcopy,
+			      struct mlx5_flow_dv_modify_hdr_resource *resource,
+			      uint32_t type, struct rte_flow_error *error);
 
 #define MLX5_PF_VPORT_ID 0
 #define MLX5_ECPF_VPORT_ID 0xFFFE

@@ -1553,6 +1553,15 @@ err_secondary:
 				       mlx5_hrxq_clone_free_cb);
 	if (!priv->hrxqs)
 		goto error;
+	mlx5_set_metadata_mask(eth_dev);
+	if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	    !priv->sh->dv_regc0_mask) {
+		DRV_LOG(ERR, "metadata mode %u is not supported "
+			     "(no metadata reg_c[0] is available)",
+			     sh->config.dv_xmeta_en);
+			err = ENOTSUP;
+			goto error;
+	}
 	rte_rwlock_init(&priv->ind_tbls_lock);
 	if (priv->sh->config.dv_flow_en == 2) {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -1578,15 +1587,6 @@ err_secondary:
 	if (err < 0) {
 		err = -err;
 		goto error;
-	}
-	mlx5_set_metadata_mask(eth_dev);
-	if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
-	    !priv->sh->dv_regc0_mask) {
-		DRV_LOG(ERR, "metadata mode %u is not supported "
-			     "(no metadata reg_c[0] is available)",
-			     sh->config.dv_xmeta_en);
-			err = ENOTSUP;
-			goto error;
 	}
 	/* Query availability of metadata reg_c's. */
 	if (!priv->sh->metadata_regc_check_flag) {
