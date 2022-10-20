@@ -9,6 +9,7 @@
 #include <rte_security.h>
 
 #define IPSEC_TEST_PACKETS_MAX 32
+#define IPSEC_TEXT_MAX_LEN 16384u
 
 struct ipsec_test_data {
 	struct {
@@ -19,12 +20,12 @@ struct ipsec_test_data {
 	} auth_key;
 
 	struct {
-		uint8_t data[1024];
+		uint8_t data[IPSEC_TEXT_MAX_LEN];
 		unsigned int len;
 	} input_text;
 
 	struct {
-		uint8_t data[1024];
+		uint8_t data[IPSEC_TEXT_MAX_LEN];
 		unsigned int len;
 	} output_text;
 
@@ -107,6 +108,7 @@ struct ipsec_test_flags {
 	enum flabel_flags flabel;
 	bool dec_ttl_or_hop_limit;
 	bool ah;
+	uint32_t plaintext_len;
 };
 
 struct crypto_param {
