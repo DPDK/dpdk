@@ -1311,12 +1311,6 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 
 	/* Nothing much to do on cn9k */
 	if (roc_model_is_cn9k()) {
-		nix = roc_nix_to_nix_priv(roc_nix);
-		outb_lf = nix->cpt_lf_base;
-		rc = roc_on_cpt_ctx_write(outb_lf, (uint64_t)sa_dptr, inb,
-					  sa_len, ROC_CPT_DFLT_ENG_GRP_SE_IE);
-		if (rc)
-			return rc;
 		return 0;
 	}
 

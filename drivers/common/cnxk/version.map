@@ -78,13 +78,13 @@ INTERNAL {
 	roc_cpt_parse_hdr_dump;
 	roc_cpt_rxc_time_cfg;
 	roc_cpt_ctx_write;
-	roc_on_cpt_ctx_write;
 	roc_dpi_configure;
 	roc_dpi_dev_fini;
 	roc_dpi_dev_init;
 	roc_dpi_disable;
 	roc_dpi_enable;
 	roc_error_msg_get;
+	roc_hash_md5_gen;
 	roc_hash_sha1_gen;
 	roc_hash_sha256_gen;
 	roc_hash_sha512_gen;

@@ -28,6 +28,10 @@ ipsec_hmac_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform,
 	 * per packet computation
 	 */
 	switch (auth_xform->auth.algo) {
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
+		roc_hash_md5_gen(opad, (uint32_t *)&hmac_opad_ipad[0]);
+		roc_hash_md5_gen(ipad, (uint32_t *)&hmac_opad_ipad[24]);
+		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		roc_hash_sha1_gen(opad, (uint32_t *)&hmac_opad_ipad[0]);
 		roc_hash_sha1_gen(ipad, (uint32_t *)&hmac_opad_ipad[24]);
@@ -1218,9 +1222,7 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 	struct roc_ie_on_sa_ctl *ctl;
 	struct rte_ipv6_hdr *ip6;
 	struct rte_ipv4_hdr *ip4;
-	const uint8_t *auth_key;
 	uint16_t sport, dport;
-	int auth_key_len = 0;
 	size_t ctx_len;
 	int ret;
 
@@ -1345,29 +1347,14 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 	ctx_len += RTE_ALIGN_CEIL(ctx_len, 8);
 
 	if (crypto_xform->type != RTE_CRYPTO_SYM_XFORM_AEAD) {
-		auth_key = auth_xform->auth.key.data;
-		auth_key_len = auth_xform->auth.key.length;
+		uint8_t *hmac_opad_ipad = (uint8_t *)&out_sa->sha2;
 
-		switch (auth_xform->auth.algo) {
-		case RTE_CRYPTO_AUTH_AES_GMAC:
-		case RTE_CRYPTO_AUTH_NULL:
-			break;
-		case RTE_CRYPTO_AUTH_MD5_HMAC:
-		case RTE_CRYPTO_AUTH_SHA1_HMAC:
-			memcpy(out_sa->sha1.hmac_key, auth_key, auth_key_len);
-			break;
-		case RTE_CRYPTO_AUTH_SHA256_HMAC:
-		case RTE_CRYPTO_AUTH_SHA384_HMAC:
-		case RTE_CRYPTO_AUTH_SHA512_HMAC:
-			memcpy(out_sa->sha2.hmac_key, auth_key, auth_key_len);
-			break;
-		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
-			memcpy(out_sa->aes_xcbc.key, auth_key, auth_key_len);
-			break;
-		default:
-			plt_err("Unsupported auth algorithm %u",
-				auth_xform->auth.algo);
-			return -ENOTSUP;
+		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
+			const uint8_t *auth_key = auth_xform->auth.key.data;
+
+			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
+		} else if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_NULL) {
+			ipsec_hmac_opad_ipad_gen(auth_xform, hmac_opad_ipad);
 		}
 	}
 
@@ -1392,9 +1379,9 @@ cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD ||
 	    auth_xform->auth.algo == RTE_CRYPTO_AUTH_NULL ||
 	    auth_xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
-		ctx_len = offsetof(struct roc_ie_on_inb_sa,
-				   sha1_or_gcm.hmac_key[0]);
+		ctx_len = offsetof(struct roc_ie_on_inb_sa, sha1_or_gcm.hmac_key[0]);
 	} else {
+		uint8_t *hmac_opad_ipad = (uint8_t *)&in_sa->sha2;
 		auth_key = auth_xform->auth.key.data;
 		auth_key_len = auth_xform->auth.key.length;
 
@@ -1421,9 +1408,15 @@ cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
 					   aes_xcbc.selector);
 			break;
 		default:
-			plt_err("Unsupported auth algorithm %u",
-				auth_xform->auth.algo);
+			plt_err("Unsupported auth algorithm %u", auth_xform->auth.algo);
 			return -ENOTSUP;
+		}
+		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
+			const uint8_t *auth_key = auth_xform->auth.key.data;
+
+			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
+		} else if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_NULL) {
+			ipsec_hmac_opad_ipad_gen(auth_xform, hmac_opad_ipad);
 		}
 	}
 

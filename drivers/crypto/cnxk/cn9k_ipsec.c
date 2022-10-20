@@ -81,10 +81,6 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 
 	ctx_len = ret;
 	egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
-	ret = roc_on_cpt_ctx_write(&qp->lf, (uintptr_t)sa, false, ctx_len, egrp);
-
-	if (ret)
-		return ret;
 
 	w4.u64 = 0;
 	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_OUTBOUND_IPSEC | ROC_IE_ON_INPLACE_BIT;
@@ -169,9 +165,6 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 
 	ctx_len = ret;
 	egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
-	ret = roc_on_cpt_ctx_write(&qp->lf, (uint64_t)sa, true, ctx_len, egrp);
-	if (ret)
-		return ret;
 
 	w4.u64 = 0;
 	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_INBOUND_IPSEC | ROC_IE_ON_INPLACE_BIT;

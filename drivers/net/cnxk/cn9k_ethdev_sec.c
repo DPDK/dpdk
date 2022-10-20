@@ -600,14 +600,6 @@ cn9k_eth_sec_session_create(void *device,
 		}
 
 		ctx_len = rc;
-		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa, inb_sa, inbound,
-					   ctx_len);
-		if (rc) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Failed to create inbound sa, rc=%d", rc);
-			goto err;
-		}
-
 		inb_priv = roc_nix_inl_on_ipsec_inb_sa_sw_rsvd(inb_sa);
 		/* Back pointer to get eth_sec */
 		inb_priv->eth_sec = eth_sec;
