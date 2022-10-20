@@ -1775,35 +1775,17 @@ cpt_kasumi_enc_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	auth_data_len = ROC_SE_AUTH_DLEN(d_lens);
 
 	se_ctx = params->ctx;
+	iv_s = params->iv_buf;
 	flags = se_ctx->zsk_flags;
 	mac_len = se_ctx->mac_len;
 
-	if (flags == 0x0)
-		iv_s = params->iv_buf;
-	else
-		iv_s = params->auth_iv_buf;
-
 	dir = iv_s[8] & 0x1;
 
-	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_SE_DMA_MODE;
-
-	/* indicates ECB/CBC, direction, ctx from cptr, iv from dptr */
-	cpt_inst_w4.s.opcode_minor = ((1 << 6) | (se_ctx->k_ecb << 5) |
-				      (dir << 4) | (0 << 3) | (flags & 0x7));
-
-	/*
-	 * GP op header, lengths are expected in bits.
-	 */
-	cpt_inst_w4.s.param1 = encr_data_len;
-	cpt_inst_w4.s.param2 = auth_data_len;
-
-	/* consider iv len */
 	if (flags == 0x0) {
+		/* Consider IV len */
 		encr_offset += iv_len;
 		auth_offset += iv_len;
-	}
 
-	if (flags == 0x0) {
 		inputlen = encr_offset + (RTE_ALIGN(encr_data_len, 8) / 8);
 		outputlen = inputlen;
 		/* iv offset is 0 */
@@ -1824,6 +1806,15 @@ cpt_kasumi_enc_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 			return -1;
 		}
 	}
+
+	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_SE_DMA_MODE;
+
+	/* Indicate ECB/CBC, direction, CTX from CPTR, IV from DPTR */
+	cpt_inst_w4.s.opcode_minor =
+		((1 << 6) | (se_ctx->k_ecb << 5) | (dir << 4) | (0 << 3) | (flags & 0x7));
+
+	cpt_inst_w4.s.param1 = encr_data_len;
+	cpt_inst_w4.s.param2 = auth_data_len;
 
 	inst->w4.u64 = cpt_inst_w4.u64;
 	if (is_sg_ver2)
@@ -2039,6 +2030,8 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
 		if (sess->chained_op)
 			return -ENOTSUP;
+		if (c_form->iv.length != 8)
+			return -EINVAL;
 		enc_type = ROC_SE_KASUMI_F8_ECB;
 		cipher_key_len = 16;
 		zsk_flag = ROC_SE_K_F8;
@@ -2455,15 +2448,12 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	fc_params.mac_buf.size = 0;
 	fc_params.mac_buf.vaddr = 0;
 
-	if (likely(sess->iv_length)) {
+	if (likely(is_kasumi || sess->iv_length)) {
 		flags |= ROC_SE_VALID_IV_BUF;
-		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *,
-							     sess->iv_offset);
+		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset);
 		if (!is_aead && sess->aes_ctr && unlikely(sess->iv_length != 16)) {
 			memcpy((uint8_t *)iv_buf,
-			       rte_crypto_op_ctod_offset(cop, uint8_t *,
-							 sess->iv_offset),
-			       12);
+			       rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset), 12);
 			iv_buf[3] = rte_cpu_to_be_32(0x1);
 			fc_params.iv_buf = iv_buf;
 		}
@@ -3038,7 +3028,7 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 			/* Store it at end of auth iv */
 			iv_buf[8] = direction;
-			params.auth_iv_buf = iv_buf;
+			params.iv_buf = iv_buf;
 		}
 	}
 
