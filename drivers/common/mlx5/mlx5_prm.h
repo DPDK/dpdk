@@ -1295,6 +1295,7 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP = 0xc << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_ROCE = 0x4 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE = 0x7 << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_ESW_FLOW_TABLE = 0x8 << 1,
 	MLX5_SET_HCA_CAP_OP_MOD_ESW = 0x9 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_CRYPTO = 0x1A << 1,
@@ -1892,6 +1893,7 @@ struct mlx5_ifc_roce_caps_bits {
 };
 
 struct mlx5_ifc_ft_fields_support_bits {
+	/* set_action_field_support */
 	u8 outer_dmac[0x1];
 	u8 outer_smac[0x1];
 	u8 outer_ether_type[0x1];
@@ -1919,7 +1921,7 @@ struct mlx5_ifc_ft_fields_support_bits {
 	u8 outer_gre_key[0x1];
 	u8 outer_vxlan_vni[0x1];
 	u8 reserved_at_1a[0x5];
-	u8 source_eswitch_port[0x1];
+	u8 source_eswitch_port[0x1]; /* end of DW0 */
 	u8 inner_dmac[0x1];
 	u8 inner_smac[0x1];
 	u8 inner_ether_type[0x1];
@@ -1943,8 +1945,33 @@ struct mlx5_ifc_ft_fields_support_bits {
 	u8 inner_tcp_sport[0x1];
 	u8 inner_tcp_dport[0x1];
 	u8 inner_tcp_flags[0x1];
-	u8 reserved_at_37[0x9];
-	u8 reserved_at_40[0x40];
+	u8 reserved_at_37[0x9]; /* end of DW1 */
+	u8 reserved_at_40[0x20]; /* end of DW2 */
+	u8 reserved_at_60[0x18];
+	union {
+		struct {
+			u8 metadata_reg_c_7[0x1];
+			u8 metadata_reg_c_6[0x1];
+			u8 metadata_reg_c_5[0x1];
+			u8 metadata_reg_c_4[0x1];
+			u8 metadata_reg_c_3[0x1];
+			u8 metadata_reg_c_2[0x1];
+			u8 metadata_reg_c_1[0x1];
+			u8 metadata_reg_c_0[0x1];
+		};
+		u8 metadata_reg_c_x[0x8];
+	}; /* end of DW3 */
+	/* set_action_field_support_2 */
+	u8 reserved_at_80[0x80];
+	/* add_action_field_support */
+	u8 reserved_at_100[0x80];
+	/* add_action_field_support_2 */
+	u8 reserved_at_180[0x80];
+	/* copy_action_field_support */
+	u8 reserved_at_200[0x80];
+	/* copy_action_field_support_2 */
+	u8 reserved_at_280[0x80];
+	u8 reserved_at_300[0x100];
 };
 
 /*
@@ -1989,9 +2016,18 @@ struct mlx5_ifc_flow_table_nic_cap_bits {
 	u8 reserved_at_e00[0x200];
 	struct mlx5_ifc_ft_fields_support_bits
 		ft_header_modify_nic_receive;
-	u8 reserved_at_1080[0x380];
 	struct mlx5_ifc_ft_fields_support_2_bits
 		ft_field_support_2_nic_receive;
+	u8 reserved_at_1480[0x780];
+	struct mlx5_ifc_ft_fields_support_bits
+		ft_header_modify_nic_transmit;
+	u8 reserved_at_2000[0x6000];
+};
+
+struct mlx5_ifc_flow_table_esw_cap_bits {
+	u8 reserved_at_0[0x800];
+	struct mlx5_ifc_ft_fields_support_bits ft_header_modify_esw_fdb;
+	u8 reserved_at_C00[0x7400];
 };
 
 /*
@@ -2046,6 +2082,7 @@ union mlx5_ifc_hca_cap_union_bits {
 	struct mlx5_ifc_qos_cap_bits qos_cap;
 	struct mlx5_ifc_virtio_emulation_cap_bits vdpa_caps;
 	struct mlx5_ifc_flow_table_nic_cap_bits flow_table_nic_cap;
+	struct mlx5_ifc_flow_table_esw_cap_bits flow_table_esw_cap;
 	struct mlx5_ifc_esw_cap_bits esw_cap;
 	struct mlx5_ifc_roce_caps_bits roce_caps;
 	u8 reserved_at_0[0x8000];
