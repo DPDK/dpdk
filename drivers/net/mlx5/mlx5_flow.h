@@ -1210,12 +1210,18 @@ struct rte_flow_pattern_template {
 	struct rte_flow_pattern_template_attr attr;
 	struct mlx5dr_match_template *mt; /* mlx5 match template. */
 	uint64_t item_flags; /* Item layer flags. */
+	uint64_t orig_item_nb; /* Number of pattern items provided by the user (with END item). */
 	uint32_t refcnt;  /* Reference counter. */
 	/*
 	 * If true, then rule pattern should be prepended with
 	 * represented_port pattern item.
 	 */
 	bool implicit_port;
+	/*
+	 * If true, then rule pattern should be prepended with
+	 * tag pattern item for representor matching.
+	 */
+	bool implicit_tag;
 };
 
 /* Flow action template struct. */
@@ -2497,6 +2503,7 @@ int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
 					 uint32_t sqn);
 int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev);
+int mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn);
 int mlx5_flow_actions_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_actions_template_attr *attr,
 		const struct rte_flow_action actions[],

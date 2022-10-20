@@ -1123,7 +1123,11 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		}
 		break;
 	case MLX5_METADATA_TX:
-		return REG_A;
+		if (config->dv_flow_en == 2 && config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
+			return REG_C_1;
+		} else {
+			return REG_A;
+		}
 	case MLX5_METADATA_FDB:
 		switch (config->dv_xmeta_en) {
 		case MLX5_XMETA_MODE_LEGACY:
@@ -11351,7 +11355,7 @@ mlx5_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
 			return 0;
 		}
 	}
-	return rte_flow_error_set(error, EINVAL,
+	return rte_flow_error_set(error, ENODEV,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, "unable to find a proxy port");
 }

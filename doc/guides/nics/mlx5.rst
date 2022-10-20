@@ -1092,6 +1092,17 @@ for an additional list of options shared with other mlx5 drivers.
 
     <Primary_PCI_BDF>,representor=pf[0,1]vf[0-2]
 
+- ``repr_matching_en`` parameter [int]
+
+  - 0. If representor matching is disabled, then there will be no implicit
+    item added. As a result, ingress flow rules will match traffic
+    coming to any port, not only the port on which flow rule is created.
+
+  - 1. If representor matching is enabled (default setting),
+    then each ingress pattern template has an implicit REPRESENTED_PORT
+    item added. Flow rules based on this pattern template will match
+    the vport associated with port on which rule is created.
+
 - ``max_dump_files_num`` parameter [int]
 
   The maximum number of files per PMD entity that may be created for debug information.

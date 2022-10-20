@@ -321,6 +321,7 @@ struct mlx5_sh_config {
 	} cnt_svc; /* configure for HW steering's counter's service. */
 	/* Allow/Prevent the duplicate rules pattern. */
 	uint32_t fdb_def_rule:1; /* Create FDB default jump rule */
+	uint32_t repr_matching:1; /* Enable implicit vport matching in HWS FDB. */
 };
 
 /* Structure for VF VLAN workaround. */
@@ -371,6 +372,7 @@ struct mlx5_hw_q_job {
 			void *out_data;
 		} __rte_packed;
 		struct rte_flow_item_ethdev port_spec;
+		struct rte_flow_item_tag tag_spec;
 	} __rte_packed;
 };
 
@@ -1686,6 +1688,9 @@ struct mlx5_priv {
 	struct rte_flow_template_table *hw_esw_sq_miss_tbl;
 	struct rte_flow_template_table *hw_esw_zero_tbl;
 	struct rte_flow_template_table *hw_tx_meta_cpy_tbl;
+	struct rte_flow_pattern_template *hw_tx_repr_tagging_pt;
+	struct rte_flow_actions_template *hw_tx_repr_tagging_at;
+	struct rte_flow_template_table *hw_tx_repr_tagging_tbl;
 	struct mlx5_indexed_pool *flows[MLX5_FLOW_TYPE_MAXI];
 	/* RTE Flow rules. */
 	uint32_t ctrl_flows; /* Control flow rules. */

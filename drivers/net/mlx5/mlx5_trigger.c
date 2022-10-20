@@ -1065,6 +1065,69 @@ mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
 	return ret;
 }
 
+#ifdef HAVE_MLX5_HWS_SUPPORT
+
+/**
+ * Check if starting representor port is allowed.
+ *
+ * If transfer proxy port is configured for HWS, then starting representor port
+ * is allowed if and only if transfer proxy port is started as well.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   If stopping representor port is allowed, then 0 is returned.
+ *   Otherwise rte_errno is set, and negative errno value is returned.
+ */
+static int
+mlx5_hw_representor_port_allowed_start(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_eth_dev *proxy_dev;
+	struct mlx5_priv *proxy_priv;
+	uint16_t proxy_port_id = UINT16_MAX;
+	int ret;
+
+	MLX5_ASSERT(priv->sh->config.dv_flow_en == 2);
+	MLX5_ASSERT(priv->sh->config.dv_esw_en);
+	MLX5_ASSERT(priv->representor);
+	ret = rte_flow_pick_transfer_proxy(dev->data->port_id, &proxy_port_id, NULL);
+	if (ret) {
+		if (ret == -ENODEV)
+			DRV_LOG(ERR, "Starting representor port %u is not allowed. Transfer "
+				     "proxy port is not available.", dev->data->port_id);
+		else
+			DRV_LOG(ERR, "Failed to pick transfer proxy for port %u (ret = %d)",
+				dev->data->port_id, ret);
+		return ret;
+	}
+	proxy_dev = &rte_eth_devices[proxy_port_id];
+	proxy_priv = proxy_dev->data->dev_private;
+	if (proxy_priv->dr_ctx == NULL) {
+		DRV_LOG(DEBUG, "Starting representor port %u is allowed, but default traffic flows"
+			       " will not be created. Transfer proxy port must be configured"
+			       " for HWS and started.",
+			       dev->data->port_id);
+		return 0;
+	}
+	if (!proxy_dev->data->dev_started) {
+		DRV_LOG(ERR, "Failed to start port %u: transfer proxy (port %u) must be started",
+			     dev->data->port_id, proxy_port_id);
+		rte_errno = EAGAIN;
+		return -rte_errno;
+	}
+	if (priv->sh->config.repr_matching && !priv->dr_ctx) {
+		DRV_LOG(ERR, "Failed to start port %u: with representor matching enabled, port "
+			     "must be configured for HWS", dev->data->port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	return 0;
+}
+
+#endif
+
 /**
  * DPDK callback to start the device.
  *
@@ -1084,6 +1147,19 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	int fine_inline;
 
 	DRV_LOG(DEBUG, "port %u starting device", dev->data->port_id);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (priv->sh->config.dv_flow_en == 2) {
+		/* If there is no E-Switch, then there are no start/stop order limitations. */
+		if (!priv->sh->config.dv_esw_en)
+			goto continue_dev_start;
+		/* If master is being started, then it is always allowed. */
+		if (priv->master)
+			goto continue_dev_start;
+		if (mlx5_hw_representor_port_allowed_start(dev))
+			return -rte_errno;
+	}
+continue_dev_start:
+#endif
 	fine_inline = rte_mbuf_dynflag_lookup
 		(RTE_PMD_MLX5_FINE_GRANULARITY_INLINE, NULL);
 	if (fine_inline >= 0)
@@ -1248,6 +1324,53 @@ error:
 	return -rte_errno;
 }
 
+#ifdef HAVE_MLX5_HWS_SUPPORT
+/**
+ * Check if stopping transfer proxy port is allowed.
+ *
+ * If transfer proxy port is configured for HWS, then it is allowed to stop it
+ * if and only if all other representor ports are stopped.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   If stopping transfer proxy port is allowed, then 0 is returned.
+ *   Otherwise rte_errno is set, and negative errno value is returned.
+ */
+static int
+mlx5_hw_proxy_port_allowed_stop(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	bool representor_started = false;
+	uint16_t port_id;
+
+	MLX5_ASSERT(priv->sh->config.dv_flow_en == 2);
+	MLX5_ASSERT(priv->sh->config.dv_esw_en);
+	MLX5_ASSERT(priv->master);
+	/* If transfer proxy port was not configured for HWS, then stopping it is allowed. */
+	if (!priv->dr_ctx)
+		return 0;
+	MLX5_ETH_FOREACH_DEV(port_id, dev->device) {
+		const struct rte_eth_dev *port_dev = &rte_eth_devices[port_id];
+		const struct mlx5_priv *port_priv = port_dev->data->dev_private;
+
+		if (port_id != dev->data->port_id &&
+		    port_priv->domain_id == priv->domain_id &&
+		    port_dev->data->dev_started)
+			representor_started = true;
+	}
+	if (representor_started) {
+		DRV_LOG(INFO, "Failed to stop port %u: attached representor ports"
+			      " must be stopped before stopping transfer proxy port",
+			      dev->data->port_id);
+		rte_errno = EBUSY;
+		return -rte_errno;
+	}
+	return 0;
+}
+#endif
+
 /**
  * DPDK callback to stop the device.
  *
@@ -1261,6 +1384,21 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (priv->sh->config.dv_flow_en == 2) {
+		/* If there is no E-Switch, then there are no start/stop order limitations. */
+		if (!priv->sh->config.dv_esw_en)
+			goto continue_dev_stop;
+		/* If representor is being stopped, then it is always allowed. */
+		if (priv->representor)
+			goto continue_dev_stop;
+		if (mlx5_hw_proxy_port_allowed_stop(dev)) {
+			dev->data->dev_started = 1;
+			return -rte_errno;
+		}
+	}
+continue_dev_stop:
+#endif
 	dev->data->dev_started = 0;
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
@@ -1296,13 +1434,21 @@ static int
 mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_sh_config *config = &priv->sh->config;
 	unsigned int i;
 	int ret;
 
-	if (priv->sh->config.dv_esw_en && priv->master) {
-		if (priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS)
-			if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev))
-				goto error;
+	/*
+	 * With extended metadata enabled, the Tx metadata copy is handled by default
+	 * Tx tagging flow rules, so default Tx flow rule is not needed. It is only
+	 * required when representor matching is disabled.
+	 */
+	if (config->dv_esw_en &&
+	    !config->repr_matching &&
+	    config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
+	    priv->master) {
+		if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev))
+			goto error;
 	}
 	for (i = 0; i < priv->txqs_n; ++i) {
 		struct mlx5_txq_ctrl *txq = mlx5_txq_get(dev, i);
@@ -1311,17 +1457,22 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 		if (!txq)
 			continue;
 		queue = mlx5_txq_get_sqn(txq);
-		if ((priv->representor || priv->master) &&
-		    priv->sh->config.dv_esw_en) {
+		if ((priv->representor || priv->master) && config->dv_esw_en) {
 			if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, queue)) {
+				mlx5_txq_release(dev, i);
+				goto error;
+			}
+		}
+		if (config->dv_esw_en && config->repr_matching) {
+			if (mlx5_flow_hw_tx_repr_matching_flow(dev, queue)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}
 		}
 		mlx5_txq_release(dev, i);
 	}
-	if (priv->sh->config.fdb_def_rule) {
-		if ((priv->master || priv->representor) && priv->sh->config.dv_esw_en) {
+	if (config->fdb_def_rule) {
+		if ((priv->master || priv->representor) && config->dv_esw_en) {
 			if (!mlx5_flow_hw_esw_create_default_jump_flow(dev))
 				priv->fdb_def_rule = 1;
 			else

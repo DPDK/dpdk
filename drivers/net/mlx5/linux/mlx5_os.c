@@ -1568,6 +1568,9 @@ err_secondary:
 	if (priv->sh->config.dv_flow_en == 2) {
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		if (priv->sh->config.dv_esw_en) {
+			uint32_t usable_bits;
+			uint32_t required_bits;
+
 			if (priv->sh->dv_regc0_mask == UINT32_MAX) {
 				DRV_LOG(ERR, "E-Switch port metadata is required when using HWS "
 					     "but it is disabled (configure it through devlink)");
@@ -1577,6 +1580,14 @@ err_secondary:
 			if (priv->sh->dv_regc0_mask == 0) {
 				DRV_LOG(ERR, "E-Switch with HWS is not supported "
 					     "(no available bits in reg_c[0])");
+				err = ENOTSUP;
+				goto error;
+			}
+			usable_bits = __builtin_popcount(priv->sh->dv_regc0_mask);
+			required_bits = __builtin_popcount(priv->vport_meta_mask);
+			if (usable_bits < required_bits) {
+				DRV_LOG(ERR, "Not enough bits available in reg_c[0] to provide "
+					     "representor matching.");
 				err = ENOTSUP;
 				goto error;
 			}
