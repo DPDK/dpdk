@@ -44,12 +44,22 @@
 /* Lowest priority for HW non-root table. */
 #define MLX5_HW_LOWEST_PRIO_NON_ROOT (UINT32_MAX)
 
+#define MLX5_HW_VLAN_PUSH_TYPE_IDX 0
+#define MLX5_HW_VLAN_PUSH_VID_IDX 1
+#define MLX5_HW_VLAN_PUSH_PCP_IDX 2
+
 static int flow_hw_flush_all_ctrl_flows(struct rte_eth_dev *dev);
 static int flow_hw_translate_group(struct rte_eth_dev *dev,
 				   const struct mlx5_flow_template_table_cfg *cfg,
 				   uint32_t group,
 				   uint32_t *table_group,
 				   struct rte_flow_error *error);
+static __rte_always_inline int
+flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
+			       struct mlx5_hw_q_job *job,
+			       struct mlx5_action_construct_data *act_data,
+			       const struct mlx5_hw_actions *hw_acts,
+			       const struct rte_flow_action *action);
 
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
 
@@ -1065,6 +1075,52 @@ flow_hw_cnt_compile(struct rte_eth_dev *dev, uint32_t  start_pos,
 	return 0;
 }
 
+static __rte_always_inline bool
+is_of_vlan_pcp_present(const struct rte_flow_action *actions)
+{
+	/*
+	 * Order of RTE VLAN push actions is
+	 * OF_PUSH_VLAN / OF_SET_VLAN_VID [ / OF_SET_VLAN_PCP ]
+	 */
+	return actions[MLX5_HW_VLAN_PUSH_PCP_IDX].type ==
+		RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP;
+}
+
+static __rte_always_inline bool
+is_template_masked_push_vlan(const struct rte_flow_action_of_push_vlan *mask)
+{
+	/*
+	 * In masked push VLAN template all RTE push actions are masked.
+	 */
+	return mask && mask->ethertype != 0;
+}
+
+static rte_be32_t vlan_hdr_to_be32(const struct rte_flow_action *actions)
+{
+/*
+ * OpenFlow Switch Specification defines 801.1q VID as 12+1 bits.
+ */
+	rte_be32_t type, vid, pcp;
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	rte_be32_t vid_lo, vid_hi;
+#endif
+
+	type = ((const struct rte_flow_action_of_push_vlan *)
+		actions[MLX5_HW_VLAN_PUSH_TYPE_IDX].conf)->ethertype;
+	vid = ((const struct rte_flow_action_of_set_vlan_vid *)
+		actions[MLX5_HW_VLAN_PUSH_VID_IDX].conf)->vlan_vid;
+	pcp = is_of_vlan_pcp_present(actions) ?
+	      ((const struct rte_flow_action_of_set_vlan_pcp *)
+		      actions[MLX5_HW_VLAN_PUSH_PCP_IDX].conf)->vlan_pcp : 0;
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	vid_hi = vid & 0xff;
+	vid_lo = vid >> 8;
+	return (((vid_lo << 8) | (pcp << 5) | vid_hi) << 16) | type;
+#else
+	return (type << 16) | (pcp << 13) | vid;
+#endif
+}
+
 /**
  * Translate rte_flow actions to DR action.
  *
@@ -1166,6 +1222,26 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			acts->rule_acts[action_pos].action =
 				priv->hw_tag[!!attr->group];
 			flow_hw_rxq_flag_set(dev, true);
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			action_pos = at->actions_off[actions - at->actions];
+			acts->rule_acts[action_pos].action =
+				priv->hw_push_vlan[type];
+			if (is_template_masked_push_vlan(masks->conf))
+				acts->rule_acts[action_pos].push_vlan.vlan_hdr =
+					vlan_hdr_to_be32(actions);
+			else if (__flow_hw_act_data_general_append
+					(priv, acts, actions->type,
+					 actions - action_start, action_pos))
+				goto err;
+			actions += is_of_vlan_pcp_present(actions) ?
+					MLX5_HW_VLAN_PUSH_PCP_IDX :
+					MLX5_HW_VLAN_PUSH_VID_IDX;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			action_pos = at->actions_off[actions - at->actions];
+			acts->rule_acts[action_pos].action =
+				priv->hw_pop_vlan[type];
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			action_pos = at->actions_off[actions - at->actions];
@@ -1787,8 +1863,17 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		cnt_id_t cnt_id;
 
 		action = &actions[act_data->action_src];
-		MLX5_ASSERT(action->type == RTE_FLOW_ACTION_TYPE_INDIRECT ||
-			    (int)action->type == act_data->type);
+		/*
+		 * action template construction replaces
+		 * OF_SET_VLAN_VID with MODIFY_FIELD
+		 */
+		if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
+			MLX5_ASSERT(act_data->type ==
+				    RTE_FLOW_ACTION_TYPE_MODIFY_FIELD);
+		else
+			MLX5_ASSERT(action->type ==
+				    RTE_FLOW_ACTION_TYPE_INDIRECT ||
+				    (int)action->type == act_data->type);
 		switch (act_data->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			if (flow_hw_shared_action_construct
@@ -1803,6 +1888,10 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			      (((const struct rte_flow_action_mark *)
 			      (action->conf))->id);
 			rule_acts[act_data->action_dst].tag.value = tag;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			rule_acts[act_data->action_dst].push_vlan.vlan_hdr =
+				vlan_hdr_to_be32(action);
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_group = ((const struct rte_flow_action_jump *)
@@ -1855,10 +1944,16 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				    act_data->encap.len);
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
-			ret = flow_hw_modify_field_construct(job,
-							     act_data,
-							     hw_acts,
-							     action);
+			if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
+				ret = flow_hw_set_vlan_vid_construct(dev, job,
+								     act_data,
+								     hw_acts,
+								     action);
+			else
+				ret = flow_hw_modify_field_construct(job,
+								     act_data,
+								     hw_acts,
+								     action);
 			if (ret)
 				return -1;
 			break;
@@ -2562,9 +2657,14 @@ error:
 			mlx5_ipool_destroy(tbl->flow);
 		mlx5_free(tbl);
 	}
-	rte_flow_error_set(error, err,
-			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			  "fail to create rte table");
+	if (error != NULL) {
+		rte_flow_error_set(error, err,
+				error->type == RTE_FLOW_ERROR_TYPE_NONE ?
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED : error->type,
+				NULL,
+				error->message == NULL ?
+				"fail to create rte table" : error->message);
+	}
 	return NULL;
 }
 
@@ -2868,28 +2968,76 @@ flow_hw_action_meta_copy_insert(const struct rte_flow_action actions[],
 				uint16_t *ins_pos)
 {
 	uint16_t idx, total = 0;
-	bool ins = false;
+	uint16_t end_idx = UINT16_MAX;
 	bool act_end = false;
+	bool modify_field = false;
+	bool rss_or_queue = false;
 
 	MLX5_ASSERT(actions && masks);
 	MLX5_ASSERT(new_actions && new_masks);
 	MLX5_ASSERT(ins_actions && ins_masks);
 	for (idx = 0; !act_end; idx++) {
-		if (idx >= MLX5_HW_MAX_ACTS)
-			return -1;
-		if (actions[idx].type == RTE_FLOW_ACTION_TYPE_RSS ||
-		    actions[idx].type == RTE_FLOW_ACTION_TYPE_QUEUE) {
-			ins = true;
-			*ins_pos = idx;
-		}
-		if (actions[idx].type == RTE_FLOW_ACTION_TYPE_END)
+		switch (actions[idx].type) {
+		case RTE_FLOW_ACTION_TYPE_RSS:
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			/* It is assumed that application provided only single RSS/QUEUE action. */
+			MLX5_ASSERT(!rss_or_queue);
+			rss_or_queue = true;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			modify_field = true;
+			break;
+		case RTE_FLOW_ACTION_TYPE_END:
+			end_idx = idx;
 			act_end = true;
+			break;
+		default:
+			break;
+		}
 	}
-	if (!ins)
+	if (!rss_or_queue)
 		return 0;
-	else if (idx == MLX5_HW_MAX_ACTS)
+	else if (idx >= MLX5_HW_MAX_ACTS)
 		return -1; /* No more space. */
 	total = idx;
+	/*
+	 * If actions template contains MODIFY_FIELD action, then meta copy action can be inserted
+	 * at the template's end. Position of MODIFY_HDR action is based on the position of the
+	 * first MODIFY_FIELD flow action.
+	 */
+	if (modify_field) {
+		*ins_pos = end_idx;
+		goto insert_meta_copy;
+	}
+	/*
+	 * If actions template does not contain MODIFY_FIELD action, then meta copy action must be
+	 * inserted at aplace conforming with action order defined in steering/mlx5dr_action.c.
+	 */
+	act_end = false;
+	for (idx = 0; !act_end; idx++) {
+		switch (actions[idx].type) {
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+		case RTE_FLOW_ACTION_TYPE_METER:
+		case RTE_FLOW_ACTION_TYPE_METER_MARK:
+		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_RSS:
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			*ins_pos = idx;
+			act_end = true;
+			break;
+		case RTE_FLOW_ACTION_TYPE_END:
+			act_end = true;
+			break;
+		default:
+			break;
+		}
+	}
+insert_meta_copy:
+	MLX5_ASSERT(*ins_pos != UINT16_MAX);
+	MLX5_ASSERT(*ins_pos < total);
 	/* Before the position, no change for the actions. */
 	for (idx = 0; idx < *ins_pos; idx++) {
 		new_actions[idx] = actions[idx];
@@ -2904,6 +3052,73 @@ flow_hw_action_meta_copy_insert(const struct rte_flow_action actions[],
 		new_masks[idx + 1] = masks[idx];
 	}
 	return 0;
+}
+
+static int
+flow_hw_validate_action_push_vlan(struct rte_eth_dev *dev,
+				  const
+				  struct rte_flow_actions_template_attr *attr,
+				  const struct rte_flow_action *action,
+				  const struct rte_flow_action *mask,
+				  struct rte_flow_error *error)
+{
+#define X_FIELD(ptr, t, f) (((ptr)->conf) && ((t *)((ptr)->conf))->f)
+
+	const bool masked_push =
+		X_FIELD(mask + MLX5_HW_VLAN_PUSH_TYPE_IDX,
+			const struct rte_flow_action_of_push_vlan, ethertype);
+	bool masked_param;
+
+	/*
+	 * Mandatory actions order:
+	 * OF_PUSH_VLAN / OF_SET_VLAN_VID [ / OF_SET_VLAN_PCP ]
+	 */
+	RTE_SET_USED(dev);
+	RTE_SET_USED(attr);
+	/* Check that mark matches OF_PUSH_VLAN */
+	if (mask[MLX5_HW_VLAN_PUSH_TYPE_IDX].type !=
+	    RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action, "OF_PUSH_VLAN: mask does not match");
+	/* Check that the second template and mask items are SET_VLAN_VID */
+	if (action[MLX5_HW_VLAN_PUSH_VID_IDX].type !=
+	    RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID ||
+	    mask[MLX5_HW_VLAN_PUSH_VID_IDX].type !=
+	    RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action, "OF_PUSH_VLAN: invalid actions order");
+	masked_param = X_FIELD(mask + MLX5_HW_VLAN_PUSH_VID_IDX,
+			       const struct rte_flow_action_of_set_vlan_vid,
+			       vlan_vid);
+	/*
+	 * PMD requires OF_SET_VLAN_VID mask to must match OF_PUSH_VLAN
+	 */
+	if (masked_push ^ masked_param)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "OF_SET_VLAN_VID: mask does not match OF_PUSH_VLAN");
+	if (is_of_vlan_pcp_present(action)) {
+		if (mask[MLX5_HW_VLAN_PUSH_PCP_IDX].type !=
+		     RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  action, "OF_SET_VLAN_PCP: missing mask configuration");
+		masked_param = X_FIELD(mask + MLX5_HW_VLAN_PUSH_PCP_IDX,
+				       const struct
+				       rte_flow_action_of_set_vlan_pcp,
+				       vlan_pcp);
+		/*
+		 * PMD requires OF_SET_VLAN_PCP mask to must match OF_PUSH_VLAN
+		 */
+		if (masked_push ^ masked_param)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, action,
+						  "OF_SET_VLAN_PCP: mask does not match OF_PUSH_VLAN");
+	}
+	return 0;
+#undef X_FIELD
 }
 
 static int
@@ -2996,6 +3211,18 @@ flow_hw_actions_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 			/* TODO: Validation logic */
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			ret = flow_hw_validate_action_push_vlan
+					(dev, attr, action, mask, error);
+			if (ret != 0)
+				return ret;
+			i += is_of_vlan_pcp_present(action) ?
+				MLX5_HW_VLAN_PUSH_PCP_IDX :
+				MLX5_HW_VLAN_PUSH_VID_IDX;
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			break;
@@ -3023,6 +3250,8 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = MLX5DR_ACTION_TYP_VPORT,
 	[RTE_FLOW_ACTION_TYPE_COUNT] = MLX5DR_ACTION_TYP_CTR,
 	[RTE_FLOW_ACTION_TYPE_CONNTRACK] = MLX5DR_ACTION_TYP_ASO_CT,
+	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = MLX5DR_ACTION_TYP_POP_VLAN,
+	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = MLX5DR_ACTION_TYP_PUSH_VLAN,
 };
 
 static int
@@ -3139,6 +3368,14 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 				goto err_actions_num;
 			action_types[curr_off++] = MLX5DR_ACTION_TYP_FT;
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			type = mlx5_hw_dr_action_types[at->actions[i].type];
+			at->actions_off[i] = curr_off;
+			action_types[curr_off++] = type;
+			i += is_of_vlan_pcp_present(at->actions + i) ?
+				MLX5_HW_VLAN_PUSH_PCP_IDX :
+				MLX5_HW_VLAN_PUSH_VID_IDX;
+			break;
 		default:
 			type = mlx5_hw_dr_action_types[at->actions[i].type];
 			at->actions_off[i] = curr_off;
@@ -3166,6 +3403,89 @@ err_actions_num:
 	return NULL;
 }
 
+static void
+flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
+		     struct rte_flow_action *ra,
+		     struct rte_flow_action *rm,
+		     struct rte_flow_action_modify_field *spec,
+		     struct rte_flow_action_modify_field *mask,
+		     int set_vlan_vid_ix)
+{
+	struct rte_flow_error error;
+	const bool masked = rm[set_vlan_vid_ix].conf &&
+		(((const struct rte_flow_action_of_set_vlan_vid *)
+			rm[set_vlan_vid_ix].conf)->vlan_vid != 0);
+	const struct rte_flow_action_of_set_vlan_vid *conf =
+		ra[set_vlan_vid_ix].conf;
+	rte_be16_t vid = masked ? conf->vlan_vid : 0;
+	int width = mlx5_flow_item_field_width(dev, RTE_FLOW_FIELD_VLAN_ID, 0,
+					       NULL, &error);
+	*spec = (typeof(*spec)) {
+		.operation = RTE_FLOW_MODIFY_SET,
+		.dst = {
+			.field = RTE_FLOW_FIELD_VLAN_ID,
+			.level = 0, .offset = 0,
+		},
+		.src = {
+			.field = RTE_FLOW_FIELD_VALUE,
+			.level = vid,
+			.offset = 0,
+		},
+		.width = width,
+	};
+	*mask = (typeof(*mask)) {
+		.operation = RTE_FLOW_MODIFY_SET,
+		.dst = {
+			.field = RTE_FLOW_FIELD_VLAN_ID,
+			.level = 0xffffffff, .offset = 0xffffffff,
+		},
+		.src = {
+			.field = RTE_FLOW_FIELD_VALUE,
+			.level = masked ? (1U << width) - 1 : 0,
+			.offset = 0,
+		},
+		.width = 0xffffffff,
+	};
+	ra[set_vlan_vid_ix].type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD;
+	ra[set_vlan_vid_ix].conf = spec;
+	rm[set_vlan_vid_ix].type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD;
+	rm[set_vlan_vid_ix].conf = mask;
+}
+
+static __rte_always_inline int
+flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
+			       struct mlx5_hw_q_job *job,
+			       struct mlx5_action_construct_data *act_data,
+			       const struct mlx5_hw_actions *hw_acts,
+			       const struct rte_flow_action *action)
+{
+	struct rte_flow_error error;
+	rte_be16_t vid = ((const struct rte_flow_action_of_set_vlan_vid *)
+			   action->conf)->vlan_vid;
+	int width = mlx5_flow_item_field_width(dev, RTE_FLOW_FIELD_VLAN_ID, 0,
+					       NULL, &error);
+	struct rte_flow_action_modify_field conf = {
+		.operation = RTE_FLOW_MODIFY_SET,
+		.dst = {
+			.field = RTE_FLOW_FIELD_VLAN_ID,
+			.level = 0, .offset = 0,
+		},
+		.src = {
+			.field = RTE_FLOW_FIELD_VALUE,
+			.level = vid,
+			.offset = 0,
+		},
+		.width = width,
+	};
+	struct rte_flow_action modify_action = {
+		.type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
+		.conf = &conf
+	};
+
+	return flow_hw_modify_field_construct(job, act_data, hw_acts,
+					      &modify_action);
+}
+
 /**
  * Create flow action template.
  *
@@ -3191,14 +3511,18 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 			struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	int len, act_num, act_len, mask_len;
+	int len, act_len, mask_len;
+	unsigned int act_num;
 	unsigned int i;
 	struct rte_flow_actions_template *at = NULL;
-	uint16_t pos = MLX5_HW_MAX_ACTS;
+	uint16_t pos = UINT16_MAX;
 	struct rte_flow_action tmp_action[MLX5_HW_MAX_ACTS];
 	struct rte_flow_action tmp_mask[MLX5_HW_MAX_ACTS];
-	const struct rte_flow_action *ra;
-	const struct rte_flow_action *rm;
+	struct rte_flow_action *ra = (void *)(uintptr_t)actions;
+	struct rte_flow_action *rm = (void *)(uintptr_t)masks;
+	int set_vlan_vid_ix = -1;
+	struct rte_flow_action_modify_field set_vlan_vid_spec = {0, };
+	struct rte_flow_action_modify_field set_vlan_vid_mask = {0, };
 	const struct rte_flow_action_modify_field rx_mreg = {
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
@@ -3238,21 +3562,58 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 		return NULL;
 	if (priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
 	    priv->sh->config.dv_esw_en) {
+		/* Application should make sure only one Q/RSS exist in one rule. */
 		if (flow_hw_action_meta_copy_insert(actions, masks, &rx_cpy, &rx_cpy_mask,
 						    tmp_action, tmp_mask, &pos)) {
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					   "Failed to concatenate new action/mask");
 			return NULL;
+		} else if (pos != UINT16_MAX) {
+			ra = tmp_action;
+			rm = tmp_mask;
 		}
 	}
-	/* Application should make sure only one Q/RSS exist in one rule. */
-	if (pos == MLX5_HW_MAX_ACTS) {
-		ra = actions;
-		rm = masks;
-	} else {
-		ra = tmp_action;
-		rm = tmp_mask;
+	for (i = 0; ra[i].type != RTE_FLOW_ACTION_TYPE_END; ++i) {
+		switch (ra[i].type) {
+		/* OF_PUSH_VLAN *MUST* come before OF_SET_VLAN_VID */
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			i += is_of_vlan_pcp_present(ra + i) ?
+				MLX5_HW_VLAN_PUSH_PCP_IDX :
+				MLX5_HW_VLAN_PUSH_VID_IDX;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			set_vlan_vid_ix = i;
+			break;
+		default:
+			break;
+		}
+	}
+	/*
+	 * Count flow actions to allocate required space for storing DR offsets and to check
+	 * if temporary buffer would not be overrun.
+	 */
+	act_num = i + 1;
+	if (act_num >= MLX5_HW_MAX_ACTS) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, NULL, "Too many actions");
+		return NULL;
+	}
+	if (set_vlan_vid_ix != -1) {
+		/* If temporary action buffer was not used, copy template actions to it */
+		if (ra == actions && rm == masks) {
+			for (i = 0; i < act_num; ++i) {
+				tmp_action[i] = actions[i];
+				tmp_mask[i] = masks[i];
+				if (actions[i].type == RTE_FLOW_ACTION_TYPE_END)
+					break;
+			}
+			ra = tmp_action;
+			rm = tmp_mask;
+		}
+		flow_hw_set_vlan_vid(dev, ra, rm,
+				     &set_vlan_vid_spec, &set_vlan_vid_mask,
+				     set_vlan_vid_ix);
 	}
 	act_len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, NULL, 0, ra, error);
 	if (act_len <= 0)
@@ -3262,10 +3623,6 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	if (mask_len <= 0)
 		return NULL;
 	len += RTE_ALIGN(mask_len, 16);
-	/* Count flow actions to allocate required space for storing DR offsets. */
-	act_num = 0;
-	for (i = 0; ra[i].type != RTE_FLOW_ACTION_TYPE_END; ++i)
-		act_num++;
 	len += RTE_ALIGN(act_num * sizeof(*at->actions_off), 16);
 	at = mlx5_malloc(MLX5_MEM_ZERO, len + sizeof(*at),
 			 RTE_CACHE_LINE_SIZE, rte_socket_id());
@@ -4513,7 +4870,11 @@ flow_hw_create_tx_default_mreg_copy_table(struct rte_eth_dev *dev,
 		.attr = tx_tbl_attr,
 		.external = false,
 	};
-	struct rte_flow_error drop_err;
+	struct rte_flow_error drop_err = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.cause = NULL,
+		.message = NULL,
+	};
 
 	RTE_SET_USED(drop_err);
 	return flow_hw_table_create(dev, &tx_tbl_cfg, &pt, 1, &at, 1, &drop_err);
@@ -4794,6 +5155,60 @@ err:
 	return NULL;
 }
 
+static void
+flow_hw_destroy_vlan(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	enum mlx5dr_table_type i;
+
+	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (priv->hw_pop_vlan[i]) {
+			mlx5dr_action_destroy(priv->hw_pop_vlan[i]);
+			priv->hw_pop_vlan[i] = NULL;
+		}
+		if (priv->hw_push_vlan[i]) {
+			mlx5dr_action_destroy(priv->hw_push_vlan[i]);
+			priv->hw_push_vlan[i] = NULL;
+		}
+	}
+}
+
+static int
+flow_hw_create_vlan(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	enum mlx5dr_table_type i;
+	const enum mlx5dr_action_flags flags[MLX5DR_TABLE_TYPE_MAX] = {
+		MLX5DR_ACTION_FLAG_HWS_RX,
+		MLX5DR_ACTION_FLAG_HWS_TX,
+		MLX5DR_ACTION_FLAG_HWS_FDB
+	};
+
+	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i <= MLX5DR_TABLE_TYPE_NIC_TX; i++) {
+		priv->hw_pop_vlan[i] =
+			mlx5dr_action_create_pop_vlan(priv->dr_ctx, flags[i]);
+		if (!priv->hw_pop_vlan[i])
+			return -ENOENT;
+		priv->hw_push_vlan[i] =
+			mlx5dr_action_create_push_vlan(priv->dr_ctx, flags[i]);
+		if (!priv->hw_pop_vlan[i])
+			return -ENOENT;
+	}
+	if (priv->sh->config.dv_esw_en && priv->master) {
+		priv->hw_pop_vlan[MLX5DR_TABLE_TYPE_FDB] =
+			mlx5dr_action_create_pop_vlan
+				(priv->dr_ctx, MLX5DR_ACTION_FLAG_HWS_FDB);
+		if (!priv->hw_pop_vlan[MLX5DR_TABLE_TYPE_FDB])
+			return -ENOENT;
+		priv->hw_push_vlan[MLX5DR_TABLE_TYPE_FDB] =
+			mlx5dr_action_create_push_vlan
+				(priv->dr_ctx, MLX5DR_ACTION_FLAG_HWS_FDB);
+		if (!priv->hw_pop_vlan[MLX5DR_TABLE_TYPE_FDB])
+			return -ENOENT;
+	}
+	return 0;
+}
+
 /**
  * Configure port HWS resources.
  *
@@ -4996,6 +5411,9 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		if (priv->hws_cpool == NULL)
 			goto err;
 	}
+	ret = flow_hw_create_vlan(dev);
+	if (ret)
+		goto err;
 	return 0;
 err:
 	if (priv->hws_ctpool) {
@@ -5013,6 +5431,7 @@ err:
 		if (priv->hw_tag[i])
 			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
+	flow_hw_destroy_vlan(dev);
 	if (dr_ctx)
 		claim_zero(mlx5dr_context_close(dr_ctx));
 	mlx5_free(priv->hw_q);
@@ -5072,6 +5491,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 		if (priv->hw_tag[i])
 			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
+	flow_hw_destroy_vlan(dev);
 	flow_hw_free_vport_actions(priv);
 	if (priv->acts_ipool) {
 		mlx5_ipool_destroy(priv->acts_ipool);

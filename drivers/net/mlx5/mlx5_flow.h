@@ -2456,4 +2456,8 @@ int mlx5_flow_pattern_validate(struct rte_eth_dev *dev,
 		struct rte_flow_error *error);
 int flow_hw_table_update(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error);
+int mlx5_flow_item_field_width(struct rte_eth_dev *dev,
+			   enum rte_flow_field_id field, int inherit,
+			   const struct rte_flow_attr *attr,
+			   struct rte_flow_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
