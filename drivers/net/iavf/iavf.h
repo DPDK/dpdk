@@ -424,6 +424,8 @@ _atomic_set_async_response_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
 }
 int iavf_check_api_version(struct iavf_adapter *adapter);
 int iavf_get_vf_resource(struct iavf_adapter *adapter);
+void iavf_dev_event_handler_fini(void);
+int iavf_dev_event_handler_init(void);
 void iavf_handle_virtchnl_msg(struct rte_eth_dev *dev);
 int iavf_enable_vlan_strip(struct iavf_adapter *adapter);
 int iavf_disable_vlan_strip(struct iavf_adapter *adapter);
