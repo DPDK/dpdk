@@ -642,7 +642,8 @@ mlx5_aso_flow_hit_queue_poll_stop(struct mlx5_dev_ctx_shared *sh)
 static uint16_t
 mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 			       struct mlx5_aso_sq *sq,
-			       struct mlx5_aso_mtr *aso_mtr)
+			       struct mlx5_aso_mtr *aso_mtr,
+			       struct mlx5_mtr_bulk *bulk)
 {
 	volatile struct mlx5_aso_wqe *wqe = NULL;
 	struct mlx5_flow_meter_info *fm = NULL;
@@ -653,6 +654,7 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 	uint32_t dseg_idx = 0;
 	struct mlx5_aso_mtr_pool *pool = NULL;
 	uint32_t param_le;
+	int id;
 
 	rte_spinlock_lock(&sq->sqsl);
 	res = size - (uint16_t)(sq->head - sq->tail);
@@ -666,14 +668,19 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 	/* Fill next WQE. */
 	fm = &aso_mtr->fm;
 	sq->elts[sq->head & mask].mtr = aso_mtr;
-	pool = container_of(aso_mtr, struct mlx5_aso_mtr_pool,
-			mtrs[aso_mtr->offset]);
-	wqe->general_cseg.misc = rte_cpu_to_be_32(pool->devx_obj->id +
-			(aso_mtr->offset >> 1));
-	wqe->general_cseg.opcode = rte_cpu_to_be_32(MLX5_OPCODE_ACCESS_ASO |
-			(ASO_OPC_MOD_POLICER <<
-			WQE_CSEG_OPC_MOD_OFFSET) |
-			sq->pi << WQE_CSEG_WQE_INDEX_OFFSET);
+	if (aso_mtr->type == ASO_METER_INDIRECT) {
+		pool = container_of(aso_mtr, struct mlx5_aso_mtr_pool,
+				    mtrs[aso_mtr->offset]);
+		id = pool->devx_obj->id;
+	} else {
+		id = bulk->devx_obj->id;
+	}
+	wqe->general_cseg.misc = rte_cpu_to_be_32(id +
+						  (aso_mtr->offset >> 1));
+	wqe->general_cseg.opcode =
+		rte_cpu_to_be_32(MLX5_OPCODE_ACCESS_ASO |
+			(ASO_OPC_MOD_POLICER << WQE_CSEG_OPC_MOD_OFFSET) |
+			 sq->pi << WQE_CSEG_WQE_INDEX_OFFSET);
 	/* There are 2 meters in one ASO cache line. */
 	dseg_idx = aso_mtr->offset & 0x1;
 	wqe->aso_cseg.data_mask =
@@ -811,14 +818,15 @@ mlx5_aso_mtr_completion_handle(struct mlx5_aso_sq *sq)
  */
 int
 mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
-			struct mlx5_aso_mtr *mtr)
+			struct mlx5_aso_mtr *mtr,
+			struct mlx5_mtr_bulk *bulk)
 {
 	struct mlx5_aso_sq *sq = &sh->mtrmng->pools_mng.sq;
 	uint32_t poll_wqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
 
 	do {
 		mlx5_aso_mtr_completion_handle(sq);
-		if (mlx5_aso_mtr_sq_enqueue_single(sh, sq, mtr))
+		if (mlx5_aso_mtr_sq_enqueue_single(sh, sq, mtr, bulk))
 			return 0;
 		/* Waiting for wqe resource. */
 		rte_delay_us_sleep(MLX5_ASO_WQE_CQE_RESPONSE_DELAY);

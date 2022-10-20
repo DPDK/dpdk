@@ -179,6 +179,7 @@ New Features
 
   * Added full support for queue-based async HW steering.
     - Support of FDB.
+    - Support of meter.
     - Support of modify fields.
 
 * **Updated NXP dpaa2 driver.**

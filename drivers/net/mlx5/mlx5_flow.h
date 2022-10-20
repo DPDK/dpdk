@@ -1668,6 +1668,11 @@ typedef int (*mlx5_flow_port_configure_t)
 			 uint16_t nb_queue,
 			 const struct rte_flow_queue_attr *queue_attr[],
 			 struct rte_flow_error *err);
+typedef int (*mlx5_flow_pattern_validate_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_pattern_template_attr *attr,
+			 const struct rte_flow_item items[],
+			 struct rte_flow_error *error);
 typedef struct rte_flow_pattern_template *(*mlx5_flow_pattern_template_create_t)
 			(struct rte_eth_dev *dev,
 			 const struct rte_flow_pattern_template_attr *attr,
@@ -1676,6 +1681,12 @@ typedef struct rte_flow_pattern_template *(*mlx5_flow_pattern_template_create_t)
 typedef int (*mlx5_flow_pattern_template_destroy_t)
 			(struct rte_eth_dev *dev,
 			 struct rte_flow_pattern_template *template,
+			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_actions_validate_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_actions_template_attr *attr,
+			 const struct rte_flow_action actions[],
+			 const struct rte_flow_action masks[],
 			 struct rte_flow_error *error);
 typedef struct rte_flow_actions_template *(*mlx5_flow_actions_template_create_t)
 			(struct rte_eth_dev *dev,
@@ -1793,8 +1804,10 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_item_update_t item_update;
 	mlx5_flow_info_get_t info_get;
 	mlx5_flow_port_configure_t configure;
+	mlx5_flow_pattern_validate_t pattern_validate;
 	mlx5_flow_pattern_template_create_t pattern_template_create;
 	mlx5_flow_pattern_template_destroy_t pattern_template_destroy;
+	mlx5_flow_actions_validate_t actions_validate;
 	mlx5_flow_actions_template_create_t actions_template_create;
 	mlx5_flow_actions_template_destroy_t actions_template_destroy;
 	mlx5_flow_table_create_t template_table_create;
@@ -1878,6 +1891,8 @@ mlx5_aso_meter_by_idx(struct mlx5_priv *priv, uint32_t idx)
 
 	/* Decrease to original index. */
 	idx--;
+	if (priv->mtr_bulk.aso)
+		return priv->mtr_bulk.aso + idx;
 	MLX5_ASSERT(idx / MLX5_ASO_MTRS_PER_POOL < pools_mng->n);
 	rte_rwlock_read_lock(&pools_mng->resize_mtrwl);
 	pool = pools_mng->pools[idx / MLX5_ASO_MTRS_PER_POOL];
@@ -2392,4 +2407,13 @@ int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
 					 uint32_t txq);
 int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev);
+int mlx5_flow_actions_validate(struct rte_eth_dev *dev,
+		const struct rte_flow_actions_template_attr *attr,
+		const struct rte_flow_action actions[],
+		const struct rte_flow_action masks[],
+		struct rte_flow_error *error);
+int mlx5_flow_pattern_validate(struct rte_eth_dev *dev,
+		const struct rte_flow_pattern_template_attr *attr,
+		const struct rte_flow_item items[],
+		struct rte_flow_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

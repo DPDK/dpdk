@@ -362,6 +362,9 @@ struct mlx5_hw_q {
 	struct mlx5_hw_q_job **job; /* LIFO header. */
 } __rte_cache_aligned;
 
+
+
+
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_CONTAINER_RESIZE 64
@@ -787,15 +790,29 @@ struct mlx5_flow_meter_policy {
 	/* Is meter action in policy table. */
 	uint32_t hierarchy_drop_cnt:1;
 	/* Is any meter in hierarchy contains drop_cnt. */
+	uint32_t skip_r:1;
+	/* If red color policy is skipped. */
 	uint32_t skip_y:1;
 	/* If yellow color policy is skipped. */
 	uint32_t skip_g:1;
 	/* If green color policy is skipped. */
 	uint32_t mark:1;
 	/* If policy contains mark action. */
+	uint32_t initialized:1;
+	/* Initialized. */
+	uint16_t group;
+	/* The group. */
 	rte_spinlock_t sl;
 	uint32_t ref_cnt;
 	/* Use count. */
+	struct rte_flow_pattern_template *hws_item_templ;
+	/* Hardware steering item templates. */
+	struct rte_flow_actions_template *hws_act_templ[MLX5_MTR_DOMAIN_MAX];
+	/* Hardware steering action templates. */
+	struct rte_flow_template_table *hws_flow_table[MLX5_MTR_DOMAIN_MAX];
+	/* Hardware steering tables. */
+	struct rte_flow *hws_flow_rule[MLX5_MTR_DOMAIN_MAX][RTE_COLORS];
+	/* Hardware steering rules. */
 	struct mlx5_meter_policy_action_container act_cnt[MLX5_MTR_RTE_COLORS];
 	/* Policy actions container. */
 	void *dr_drop_action[MLX5_MTR_DOMAIN_MAX];
@@ -870,6 +887,7 @@ struct mlx5_flow_meter_info {
 	 */
 	uint32_t transfer:1;
 	uint32_t def_policy:1;
+	uint32_t initialized:1;
 	/* Meter points to default policy. */
 	uint32_t color_aware:1;
 	/* Meter is color aware mode. */
@@ -885,6 +903,10 @@ struct mlx5_flow_meter_info {
 	/**< Flow meter action. */
 	void *meter_action_y;
 	/**< Flow meter action for yellow init_color. */
+	uint32_t meter_offset;
+	/**< Flow meter offset. */
+	uint16_t group;
+	/**< Flow meter group. */
 };
 
 /* PPS(packets per second) map to BPS(Bytes per second).
@@ -919,6 +941,7 @@ struct mlx5_flow_meter_profile {
 	uint32_t ref_cnt; /**< Use count. */
 	uint32_t g_support:1; /**< If G color will be generated. */
 	uint32_t y_support:1; /**< If Y color will be generated. */
+	uint32_t initialized:1; /**< Initialized. */
 };
 
 /* 2 meters in each ASO cache line */
@@ -939,13 +962,20 @@ enum mlx5_aso_mtr_state {
 	ASO_METER_READY, /* CQE received. */
 };
 
+/*aso flow meter type*/
+enum mlx5_aso_mtr_type {
+	ASO_METER_INDIRECT,
+	ASO_METER_DIRECT,
+};
+
 /* Generic aso_flow_meter information. */
 struct mlx5_aso_mtr {
 	LIST_ENTRY(mlx5_aso_mtr) next;
+	enum mlx5_aso_mtr_type type;
 	struct mlx5_flow_meter_info fm;
 	/**< Pointer to the next aso flow meter structure. */
 	uint8_t state; /**< ASO flow meter state. */
-	uint8_t offset;
+	uint32_t offset;
 };
 
 /* Generic aso_flow_meter pool structure. */
@@ -967,6 +997,14 @@ struct mlx5_aso_mtr_pools_mng {
 	struct aso_meter_list meters; /* Free ASO flow meter list. */
 	struct mlx5_aso_sq sq; /*SQ using by ASO flow meter. */
 	struct mlx5_aso_mtr_pool **pools; /* ASO flow meter pool array. */
+};
+
+/* Bulk management structure for ASO flow meter. */
+struct mlx5_mtr_bulk {
+	uint32_t size; /* Number of ASO objects. */
+	struct mlx5dr_action *action; /* HWS action */
+	struct mlx5_devx_obj *devx_obj; /* DEVX object. */
+	struct mlx5_aso_mtr *aso; /* Array of ASO objects. */
 };
 
 /* Meter management structure for global flow meter resource. */
@@ -1022,6 +1060,7 @@ struct mlx5_flow_tbl_resource {
 #define MLX5_FLOW_TABLE_LEVEL_METER (MLX5_MAX_TABLES - 3)
 #define MLX5_FLOW_TABLE_LEVEL_POLICY (MLX5_MAX_TABLES - 4)
 #define MLX5_MAX_TABLES_EXTERNAL MLX5_FLOW_TABLE_LEVEL_POLICY
+#define MLX5_FLOW_TABLE_HWS_POLICY (MLX5_MAX_TABLES - 10)
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
 #define MLX5_FLOW_TABLE_FACTOR 10
 
@@ -1314,6 +1353,12 @@ TAILQ_HEAD(mlx5_mtr_profiles, mlx5_flow_meter_profile);
 /* MTR list. */
 TAILQ_HEAD(mlx5_legacy_flow_meters, mlx5_legacy_flow_meter);
 
+struct mlx5_mtr_config {
+	uint32_t nb_meters; /**< Number of configured meters */
+	uint32_t nb_meter_profiles; /**< Number of configured meter profiles */
+	uint32_t nb_meter_policies; /**< Number of configured meter policies */
+};
+
 /* RSS description. */
 struct mlx5_flow_rss_desc {
 	uint32_t level;
@@ -1551,12 +1596,16 @@ struct mlx5_priv {
 	struct mlx5_nl_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
 	struct mlx5_hlist *mreg_cp_tbl;
 	/* Hash table of Rx metadata register copy table. */
+	struct mlx5_mtr_config mtr_config; /* Meter configuration */
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 	struct mlx5_legacy_flow_meters flow_meters; /* MTR list. */
 	struct mlx5_l3t_tbl *mtr_profile_tbl; /* Meter index lookup table. */
+	struct mlx5_flow_meter_profile *mtr_profile_arr; /* Profile array. */
 	struct mlx5_l3t_tbl *policy_idx_tbl; /* Policy index lookup table. */
+	struct mlx5_flow_meter_policy *mtr_policy_arr; /* Policy array. */
 	struct mlx5_l3t_tbl *mtr_idx_tbl; /* Meter index lookup table. */
+	struct mlx5_mtr_bulk mtr_bulk; /* Meter index mapping for HWS */
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
 	struct mlx5_mp_id mp_id; /* ID of a multi-process process */
@@ -1570,13 +1619,13 @@ struct mlx5_priv {
 	struct mlx5_flex_item flex_item[MLX5_PORT_FLEX_ITEM_NUM];
 	/* Flex items have been created on the port. */
 	uint32_t flex_item_map; /* Map of allocated flex item elements. */
+	uint32_t nb_queue; /* HW steering queue number. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	/* Item template list. */
 	LIST_HEAD(flow_hw_itt, rte_flow_pattern_template) flow_hw_itt;
 	/* Action template list. */
 	LIST_HEAD(flow_hw_at, rte_flow_actions_template) flow_hw_at;
 	struct mlx5dr_context *dr_ctx; /**< HW steering DR context. */
-	uint32_t nb_queue; /* HW steering queue number. */
 	/* HW steering queue polling mechanism job descriptor LIFO. */
 	struct mlx5_hw_q *hw_q;
 	/* HW steering rte flow table list header. */
@@ -1592,6 +1641,7 @@ struct mlx5_priv {
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
 #define ETH_DEV(priv) (&rte_eth_devices[PORT_ID(priv)])
+#define CTRL_QUEUE_ID(priv) ((priv)->nb_queue - 1)
 
 struct rte_hairpin_peer_info {
 	uint32_t qp_id;
@@ -1903,6 +1953,11 @@ void mlx5_pmd_socket_uninit(void);
 
 /* mlx5_flow_meter.c */
 
+int mlx5_flow_meter_init(struct rte_eth_dev *dev,
+			 uint32_t nb_meters,
+			 uint32_t nb_meter_profiles,
+			 uint32_t nb_meter_policies);
+void mlx5_flow_meter_uninit(struct rte_eth_dev *dev);
 int mlx5_flow_meter_ops_get(struct rte_eth_dev *dev, void *arg);
 struct mlx5_flow_meter_info *mlx5_flow_meter_find(struct mlx5_priv *priv,
 		uint32_t meter_id, uint32_t *mtr_idx);
@@ -1977,7 +2032,7 @@ int mlx5_aso_flow_hit_queue_poll_stop(struct mlx5_dev_ctx_shared *sh);
 void mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
 		enum mlx5_access_aso_opc_mod aso_opc_mod);
 int mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
-		struct mlx5_aso_mtr *mtr);
+		struct mlx5_aso_mtr *mtr, struct mlx5_mtr_bulk *bulk);
 int mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh,
 		struct mlx5_aso_mtr *mtr);
 int mlx5_aso_ct_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
