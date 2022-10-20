@@ -290,4 +290,28 @@ get_ecpm_function(const struct rte_crypto_asym_xform *xform)
 	return qat_function;
 }
 
+static struct qat_asym_function
+get_ec_verify_function(const struct rte_crypto_asym_xform *xform)
+{
+	struct qat_asym_function qat_function;
+
+	switch (xform->ec.curve_id) {
+	case RTE_CRYPTO_EC_GROUP_SECP256R1:
+		qat_function.func_id = MATHS_POINT_VERIFY_GFP_L256;
+		qat_function.bytesize = 32;
+		break;
+	case RTE_CRYPTO_EC_GROUP_SECP384R1:
+		qat_function.func_id = MATHS_POINT_VERIFY_GFP_L512;
+		qat_function.bytesize = 64;
+		break;
+	case RTE_CRYPTO_EC_GROUP_SECP521R1:
+		qat_function.func_id = MATHS_POINT_VERIFY_GFP_521;
+		qat_function.bytesize = 66;
+		break;
+	default:
+		qat_function.func_id = 0;
+	}
+	return qat_function;
+}
+
 #endif
