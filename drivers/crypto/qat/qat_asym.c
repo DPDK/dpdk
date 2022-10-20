@@ -765,6 +765,94 @@ ecpm_collect(struct rte_crypto_asym_op *asym_op,
 }
 
 static int
+ecdh_set_input(struct icp_qat_fw_pke_request *qat_req,
+		struct qat_asym_op_cookie *cookie,
+		const struct rte_crypto_asym_op *asym_op,
+		const struct rte_crypto_asym_xform *xform)
+{
+	struct qat_asym_function qat_function;
+	uint32_t qat_func_alignsize, func_id;
+	int curve_id;
+
+	curve_id = pick_curve(xform);
+	if (curve_id < 0) {
+		QAT_LOG(DEBUG, "Incorrect elliptic curve");
+		return -EINVAL;
+	}
+
+	qat_function = get_ecpm_function(xform);
+	func_id = qat_function.func_id;
+	if (func_id == 0) {
+		QAT_LOG(ERR, "Cannot obtain functionality id");
+		return -EINVAL;
+	}
+	qat_func_alignsize = RTE_ALIGN_CEIL(qat_function.bytesize, 8);
+
+	if (asym_op->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
+		SET_PKE_LN(asym_op->ecdh.priv_key, qat_func_alignsize, 0);
+		SET_PKE_LN_EC(curve[curve_id], x, 1);
+		SET_PKE_LN_EC(curve[curve_id], y, 2);
+	} else {
+		SET_PKE_LN(asym_op->ecdh.priv_key, qat_func_alignsize, 0);
+		SET_PKE_LN(asym_op->ecdh.pub_key.x, qat_func_alignsize, 1);
+		SET_PKE_LN(asym_op->ecdh.pub_key.y, qat_func_alignsize, 2);
+	}
+	SET_PKE_LN_EC(curve[curve_id], a, 3);
+	SET_PKE_LN_EC(curve[curve_id], b, 4);
+	SET_PKE_LN_EC(curve[curve_id], p, 5);
+	SET_PKE_LN_EC(curve[curve_id], h, 6);
+
+	cookie->alg_bytesize = curve[curve_id].bytesize;
+	cookie->qat_func_alignsize = qat_func_alignsize;
+	qat_req->pke_hdr.cd_pars.func_id = func_id;
+	qat_req->input_param_count =
+			QAT_ASYM_ECPM_IN_PARAMS;
+	qat_req->output_param_count =
+			QAT_ASYM_ECPM_OUT_PARAMS;
+
+	HEXDUMP("k", cookie->input_array[0], qat_func_alignsize);
+	HEXDUMP("xG", cookie->input_array[1], qat_func_alignsize);
+	HEXDUMP("yG", cookie->input_array[2], qat_func_alignsize);
+	HEXDUMP("a", cookie->input_array[3], qat_func_alignsize);
+	HEXDUMP("b", cookie->input_array[4], qat_func_alignsize);
+	HEXDUMP("q", cookie->input_array[5], qat_func_alignsize);
+	HEXDUMP("h", cookie->input_array[6], qat_func_alignsize);
+
+	return 0;
+}
+
+static uint8_t
+ecdh_collect(struct rte_crypto_asym_op *asym_op,
+		const struct qat_asym_op_cookie *cookie)
+{
+	uint8_t *x, *y;
+	uint32_t alg_bytesize = cookie->alg_bytesize;
+	uint32_t qat_func_alignsize = cookie->qat_func_alignsize;
+	uint32_t ltrim = qat_func_alignsize - alg_bytesize;
+
+	if (asym_op->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
+		asym_op->ecdh.pub_key.x.length = alg_bytesize;
+		asym_op->ecdh.pub_key.y.length = alg_bytesize;
+		x = asym_op->ecdh.pub_key.x.data;
+		y = asym_op->ecdh.pub_key.y.data;
+	} else {
+		asym_op->ecdh.shared_secret.x.length = alg_bytesize;
+		asym_op->ecdh.shared_secret.y.length = alg_bytesize;
+		x = asym_op->ecdh.shared_secret.x.data;
+		y = asym_op->ecdh.shared_secret.y.data;
+	}
+
+	rte_memcpy(x, &cookie->output_array[0][ltrim], alg_bytesize);
+	rte_memcpy(y, &cookie->output_array[1][ltrim], alg_bytesize);
+
+	HEXDUMP("X", cookie->output_array[0],
+		qat_func_alignsize);
+	HEXDUMP("Y", cookie->output_array[1],
+		qat_func_alignsize);
+	return RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
+static int
 asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 		struct qat_asym_op_cookie *cookie,
 		const struct rte_crypto_asym_op *asym_op,
@@ -781,6 +869,9 @@ asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 		return ecdsa_set_input(qat_req, cookie, asym_op, xform);
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 		return ecpm_set_input(qat_req, cookie, asym_op, xform);
+	case RTE_CRYPTO_ASYM_XFORM_ECDH:
+		return ecdh_set_input(qat_req, cookie,
+				asym_op, xform);
 	default:
 		QAT_LOG(ERR, "Invalid/unsupported asymmetric crypto xform");
 		return -EINVAL;
@@ -867,6 +958,8 @@ qat_asym_collect_response(struct rte_crypto_op *op,
 		return ecdsa_collect(asym_op, cookie);
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 		return ecpm_collect(asym_op, cookie);
+	case RTE_CRYPTO_ASYM_XFORM_ECDH:
+		return ecdh_collect(asym_op, cookie);
 	default:
 		QAT_LOG(ERR, "Not supported xform type");
 		return  RTE_CRYPTO_OP_STATUS_ERROR;
@@ -1099,7 +1192,7 @@ err:
 }
 
 static void
-session_set_ecdsa(struct qat_asym_session *qat_session,
+session_set_ec(struct qat_asym_session *qat_session,
 			struct rte_crypto_asym_xform *xform)
 {
 	qat_session->xform.ec.curve_id = xform->ec.curve_id;
@@ -1129,7 +1222,8 @@ qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
-		session_set_ecdsa(qat_session, xform);
+	case RTE_CRYPTO_ASYM_XFORM_ECDH:
+		session_set_ec(qat_session, xform);
 		break;
 	default:
 		ret = -ENOTSUP;

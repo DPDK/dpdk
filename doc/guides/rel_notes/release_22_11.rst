@@ -215,10 +215,11 @@ New Features
   * Added symmetric hash algorithm ShangMi 3 (SM3).
   * Added symmetric cipher algorithm ShangMi 4 (SM4) in ECB, CBC and CTR modes.
 
-* **Updated Intel QuickAssist Technology (QAT) symmetric crypto driver.**
+* **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 
   * Added support for SM3 hash algorithm.
   * Added support for SM4 encryption algorithm in ECB, CBC and CTR modes.
+  * Added support for ECDH key exchange algorithm.
 
 * **Updated Marvell cnxk crypto driver.**
 
