@@ -479,6 +479,7 @@ static int32_t
 service_runner_func(void *arg)
 {
 	RTE_SET_USED(arg);
+	uint8_t i;
 	const int lcore = rte_lcore_id();
 	struct core_state *cs = &lcore_states[lcore];
 
@@ -494,7 +495,6 @@ service_runner_func(void *arg)
 		const uint64_t service_mask = cs->service_mask;
 		uint8_t start_id;
 		uint8_t end_id;
-		uint8_t i;
 
 		if (service_mask == 0)
 			continue;
@@ -509,6 +509,12 @@ service_runner_func(void *arg)
 
 		__atomic_store_n(&cs->loops, cs->loops + 1, __ATOMIC_RELAXED);
 	}
+
+	/* Switch off this core for all services, to ensure that future
+	 * calls to may_be_active() know this core is switched off.
+	 */
+	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++)
+		cs->service_active_on_lcore[i] = 0;
 
 	/* Use SEQ CST memory ordering to avoid any re-ordering around
 	 * this store, ensuring that once this store is visible, the service
@@ -805,11 +811,6 @@ rte_service_lcore_stop(uint32_t lcore)
 		int32_t only_core = (1 ==
 			__atomic_load_n(&rte_services[i].num_mapped_cores,
 				__ATOMIC_RELAXED));
-
-		/* Switch off this core for all services, to ensure that future
-		 * calls to may_be_active() know this core is switched off.
-		 */
-		cs->service_active_on_lcore[i] = 0;
 
 		/* if the core is mapped, and the service is running, and this
 		 * is the only core that is mapped, the service would cease to
