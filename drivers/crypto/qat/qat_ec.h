@@ -264,7 +264,7 @@ static struct elliptic_curve curve[] = {
 };
 
 static int
-pick_curve(struct rte_crypto_asym_xform *xform)
+pick_curve(const struct rte_crypto_asym_xform *xform)
 {
 	switch (xform->ec.curve_id) {
 	case RTE_CRYPTO_EC_GROUP_SECP256R1:

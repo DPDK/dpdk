@@ -461,7 +461,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
 
 __rte_weak int
 qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
+		const struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
 {
 	return 0;
 }

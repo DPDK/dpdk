@@ -50,13 +50,13 @@ get_modexp_function2(uint32_t bytesize)
 }
 
 static struct qat_asym_function
-get_modexp_function(struct rte_crypto_asym_xform *xform)
+get_modexp_function(const struct rte_crypto_asym_xform *xform)
 {
 	return get_modexp_function2(xform->modex.modulus.length);
 }
 
 static struct qat_asym_function
-get_modinv_function(struct rte_crypto_asym_xform *xform)
+get_modinv_function(const struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function = { };
 
@@ -137,7 +137,7 @@ get_modinv_function(struct rte_crypto_asym_xform *xform)
 }
 
 static struct qat_asym_function
-get_rsa_enc_function(struct rte_crypto_asym_xform *xform)
+get_rsa_enc_function(const struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function = { };
 
@@ -164,7 +164,7 @@ get_rsa_enc_function(struct rte_crypto_asym_xform *xform)
 }
 
 static struct qat_asym_function
-get_rsa_dec_function(struct rte_crypto_asym_xform *xform)
+get_rsa_dec_function(const struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function = { };
 
@@ -191,7 +191,7 @@ get_rsa_dec_function(struct rte_crypto_asym_xform *xform)
 }
 
 static struct qat_asym_function
-get_rsa_crt_function(struct rte_crypto_asym_xform *xform)
+get_rsa_crt_function(const struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function = { };
 	int nlen = xform->rsa.qt.p.length * 2;
@@ -219,7 +219,7 @@ get_rsa_crt_function(struct rte_crypto_asym_xform *xform)
 }
 
 static struct qat_asym_function
-get_ecdsa_verify_function(struct rte_crypto_asym_xform *xform)
+get_ecdsa_verify_function(const struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function;
 
@@ -243,7 +243,7 @@ get_ecdsa_verify_function(struct rte_crypto_asym_xform *xform)
 }
 
 static struct qat_asym_function
-get_ecdsa_function(struct rte_crypto_asym_xform *xform)
+get_ecdsa_function(const struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function;
 
@@ -267,7 +267,7 @@ get_ecdsa_function(struct rte_crypto_asym_xform *xform)
 }
 
 static struct qat_asym_function
-get_ecpm_function(struct rte_crypto_asym_xform *xform)
+get_ecpm_function(const struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function;
 

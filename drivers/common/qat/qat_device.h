@@ -164,8 +164,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
 		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
-qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
+qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
+		const struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
