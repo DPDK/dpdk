@@ -49,6 +49,7 @@ struct flow_hw_port_info mlx5_flow_hw_port_infos[RTE_MAX_ETHPORTS];
  */
 uint32_t mlx5_flow_hw_avl_tags_init_cnt;
 enum modify_reg mlx5_flow_hw_avl_tags[MLX5_FLOW_HW_TAGS_MAX] = {REG_NON};
+enum modify_reg mlx5_flow_hw_aso_tag;
 
 struct tunnel_default_miss_ctx {
 	uint16_t *queue;

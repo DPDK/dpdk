@@ -12860,6 +12860,7 @@ flow_dv_ct_pool_create(struct rte_eth_dev *dev,
 	struct mlx5_devx_obj *obj = NULL;
 	uint32_t i;
 	uint32_t log_obj_size = rte_log2_u32(MLX5_ASO_CT_ACTIONS_PER_POOL);
+	size_t mem_size;
 
 	obj = mlx5_devx_cmd_create_conn_track_offload_obj(priv->sh->cdev->ctx,
 							  priv->sh->cdev->pdn,
@@ -12869,7 +12870,10 @@ flow_dv_ct_pool_create(struct rte_eth_dev *dev,
 		DRV_LOG(ERR, "Failed to create conn_track_offload_obj using DevX.");
 		return NULL;
 	}
-	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool), 0, SOCKET_ID_ANY);
+	mem_size = sizeof(struct mlx5_aso_ct_action) *
+		   MLX5_ASO_CT_ACTIONS_PER_POOL +
+		   sizeof(*pool);
+	pool = mlx5_malloc(MLX5_MEM_ZERO, mem_size, 0, SOCKET_ID_ANY);
 	if (!pool) {
 		rte_errno = ENOMEM;
 		claim_zero(mlx5_devx_cmd_destroy(obj));
@@ -13009,10 +13013,13 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Failed to allocate CT object");
 	ct = flow_aso_ct_get_by_dev_idx(dev, idx);
-	if (mlx5_aso_ct_update_by_wqe(sh, ct, pro))
-		return rte_flow_error_set(error, EBUSY,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "Failed to update CT");
+	if (mlx5_aso_ct_update_by_wqe(sh, MLX5_HW_INV_QUEUE, ct, pro)) {
+		flow_dv_aso_ct_dev_release(dev, idx);
+		rte_flow_error_set(error, EBUSY,
+				   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				   "Failed to update CT");
+		return 0;
+	}
 	ct->is_original = !!pro->is_original_dir;
 	ct->peer = pro->peer_port;
 	return idx;
@@ -14224,7 +14231,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						RTE_FLOW_ERROR_TYPE_ACTION,
 						NULL,
 						"Failed to get CT object.");
-			if (mlx5_aso_ct_available(priv->sh, ct))
+			if (mlx5_aso_ct_available(priv->sh, MLX5_HW_INV_QUEUE, ct))
 				return rte_flow_error_set(error, rte_errno,
 						RTE_FLOW_ERROR_TYPE_ACTION,
 						NULL,
@@ -15838,14 +15845,15 @@ __flow_dv_action_ct_update(struct rte_eth_dev *dev, uint32_t idx,
 		ret = mlx5_validate_action_ct(dev, new_prf, error);
 		if (ret)
 			return ret;
-		ret = mlx5_aso_ct_update_by_wqe(priv->sh, ct, new_prf);
+		ret = mlx5_aso_ct_update_by_wqe(priv->sh, MLX5_HW_INV_QUEUE,
+						ct, new_prf);
 		if (ret)
 			return rte_flow_error_set(error, EIO,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					NULL,
 					"Failed to send CT context update WQE");
-		/* Block until ready or a failure. */
-		ret = mlx5_aso_ct_available(priv->sh, ct);
+		/* Block until ready or a failure, default is asynchronous. */
+		ret = mlx5_aso_ct_available(priv->sh, MLX5_HW_INV_QUEUE, ct);
 		if (ret)
 			rte_flow_error_set(error, rte_errno,
 					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -16674,7 +16682,7 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 							ct->peer;
 		((struct rte_flow_action_conntrack *)data)->is_original_dir =
 							ct->is_original;
-		if (mlx5_aso_ct_query_by_wqe(priv->sh, ct, data))
+		if (mlx5_aso_ct_query_by_wqe(priv->sh, MLX5_HW_INV_QUEUE, ct, data))
 			return rte_flow_error_set(error, EIO,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					NULL,

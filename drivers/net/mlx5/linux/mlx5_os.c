@@ -1362,9 +1362,11 @@ err_secondary:
 			DRV_LOG(DEBUG, "Flow Hit ASO is supported.");
 		}
 #endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO */
-#if defined(HAVE_MLX5_DR_CREATE_ACTION_ASO) && \
-	defined(HAVE_MLX5_DR_ACTION_ASO_CT)
-		if (hca_attr->ct_offload && priv->mtr_color_reg == REG_C_3) {
+#if defined (HAVE_MLX5_DR_CREATE_ACTION_ASO) && \
+    defined (HAVE_MLX5_DR_ACTION_ASO_CT)
+		/* HWS create CT ASO SQ based on HWS configure queue number. */
+		if (sh->config.dv_flow_en != 2 &&
+		    hca_attr->ct_offload && priv->mtr_color_reg == REG_C_3) {
 			err = mlx5_flow_aso_ct_mng_init(sh);
 			if (err) {
 				err = -err;

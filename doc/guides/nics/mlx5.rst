@@ -515,7 +515,7 @@ Limitations
   - Cannot co-exist with ASO meter, ASO age action in a single flow rule.
   - Flow rules insertion rate and memory consumption need more optimization.
   - 256 ports maximum.
-  - 4M connections maximum.
+  - 4M connections maximum with ``dv_flow_en`` 1 mode. 16M with ``dv_flow_en`` 2.
 
 - Multi-thread flow insertion:
 

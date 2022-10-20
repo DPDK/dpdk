@@ -755,7 +755,8 @@ mlx5_flow_aso_ct_mng_init(struct mlx5_dev_ctx_shared *sh)
 
 	if (sh->ct_mng)
 		return 0;
-	sh->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*sh->ct_mng),
+	sh->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*sh->ct_mng) +
+				 sizeof(struct mlx5_aso_sq) * MLX5_ASO_CT_SQ_NUM,
 				 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!sh->ct_mng) {
 		DRV_LOG(ERR, "ASO CT management allocation failed.");
