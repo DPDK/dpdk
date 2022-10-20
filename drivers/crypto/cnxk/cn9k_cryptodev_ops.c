@@ -500,6 +500,7 @@ ipsec_antireplay_check(struct cn9k_sec_session *sess, uint32_t win_sz,
 	if (unlikely(seq == 0))
 		return IPSEC_ANTI_REPLAY_FAILED;
 
+	rte_spinlock_lock(&sess->ar.lock);
 	ret = cnxk_on_anti_replay_check(seq, &sess->ar, win_sz);
 	if (esn && !ret) {
 		esn_low = rte_be_to_cpu_32(common_sa->seq_t.tl);
@@ -510,6 +511,7 @@ ipsec_antireplay_check(struct cn9k_sec_session *sess, uint32_t win_sz,
 			common_sa->seq_t.th = rte_cpu_to_be_32(seqh);
 		}
 	}
+	rte_spinlock_unlock(&sess->ar.lock);
 
 	return ret;
 }
