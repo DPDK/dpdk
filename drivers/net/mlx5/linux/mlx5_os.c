@@ -1567,6 +1567,15 @@ err_secondary:
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		if (priv->vport_meta_mask)
 			flow_hw_set_port_info(eth_dev);
+		if (priv->sh->config.dv_esw_en &&
+		    priv->sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+		    priv->sh->config.dv_xmeta_en != MLX5_XMETA_MODE_META32_HWS) {
+			DRV_LOG(ERR,
+				"metadata mode %u is not supported in HWS eswitch mode",
+				priv->sh->config.dv_xmeta_en);
+				err = ENOTSUP;
+				goto error;
+		}
 		/* Only HWS requires this information. */
 		flow_hw_init_tags_set(eth_dev);
 		if (priv->sh->config.dv_esw_en &&
@@ -1582,7 +1591,6 @@ err_secondary:
 		goto error;
 #endif
 	}
-	/* Port representor shares the same max priority with pf port. */
 	if (!priv->sh->flow_priority_check_flag) {
 		/* Supported Verbs flow priority number detection. */
 		err = mlx5_flow_discover_priorities(eth_dev);

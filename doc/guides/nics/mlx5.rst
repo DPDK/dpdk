@@ -980,6 +980,10 @@ for an additional list of options shared with other mlx5 drivers.
   - 3, this engages tunnel offload mode. In E-Switch configuration, that
     mode implicitly activates ``dv_xmeta_en=1``.
 
+  - 4, this mode is only supported in HWS (``dv_flow_en=2``).
+    The Rx/Tx metadata with 32b width copy between FDB and NIC is supported.
+    The mark is only supported in NIC and there is no copy supported.
+
   +------+-----------+-----------+-------------+-------------+
   | Mode | ``MARK``  | ``META``  | ``META`` Tx | FDB/Through |
   +======+===========+===========+=============+=============+

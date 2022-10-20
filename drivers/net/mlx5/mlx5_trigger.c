@@ -1292,6 +1292,9 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	if (priv->sh->config.dv_esw_en && priv->master) {
 		if (mlx5_flow_hw_esw_create_mgr_sq_miss_flow(dev))
 			goto error;
+		if (priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS)
+			if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev))
+				goto error;
 	}
 	for (i = 0; i < priv->txqs_n; ++i) {
 		struct mlx5_txq_ctrl *txq = mlx5_txq_get(dev, i);

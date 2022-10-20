@@ -1754,7 +1754,8 @@ mlx5_flow_field_id_to_modify_info
 			int reg;
 
 			if (priv->sh->config.dv_flow_en == 2)
-				reg = REG_C_1;
+				reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG,
+							 data->level);
 			else
 				reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG,
 							   data->level, error);
@@ -1832,6 +1833,24 @@ mlx5_flow_field_id_to_modify_info
 			mask[idx] = flow_modify_info_mask_32(width, off_be);
 		else
 			info[idx].offset = off_be;
+		break;
+	case MLX5_RTE_FLOW_FIELD_META_REG:
+		{
+			uint32_t meta_mask = priv->sh->dv_meta_mask;
+			uint32_t meta_count = __builtin_popcount(meta_mask);
+			uint32_t reg = data->level;
+
+			RTE_SET_USED(meta_count);
+			MLX5_ASSERT(data->offset + width <= meta_count);
+			MLX5_ASSERT(reg != REG_NON);
+			MLX5_ASSERT(reg < RTE_DIM(reg_to_field));
+			info[idx] = (struct field_modify_info){4, 0, reg_to_field[reg]};
+			if (mask)
+				mask[idx] = flow_modify_info_mask_32_masked
+					(width, data->offset, meta_mask);
+			else
+				info[idx].offset = data->offset;
+		}
 		break;
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
@@ -9796,7 +9815,19 @@ flow_dv_translate_item_meta(struct rte_eth_dev *dev,
 	mask = meta_m->data;
 	if (key_type == MLX5_SET_MATCHER_HS_M)
 		mask = value;
-	reg = flow_dv_get_metadata_reg(dev, attr, NULL);
+	/*
+	 * In the current implementation, REG_B cannot be used to match.
+	 * Force to use REG_C_1 in HWS root table as other tables.
+	 * This map may change.
+	 * NIC: modify - REG_B to be present in SW
+	 *      match - REG_C_1 when copied from FDB, different from SWS
+	 * FDB: modify - REG_C_1 in Xmeta mode, REG_NON in legacy mode
+	 *      match - REG_C_1 in FDB
+	 */
+	if (!!(key_type & MLX5_SET_MATCHER_SW))
+		reg = flow_dv_get_metadata_reg(dev, attr, NULL);
+	else
+		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_META, 0);
 	if (reg < 0)
 		return;
 	MLX5_ASSERT(reg != REG_NON);
@@ -9896,7 +9927,10 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 	/* When set mask, the index should be from spec. */
 	index = tag_vv ? tag_vv->index : tag_v->index;
 	/* Get the metadata register index for the tag. */
-	reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, index, NULL);
+	if (!!(key_type & MLX5_SET_MATCHER_SW))
+		reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, index, NULL);
+	else
+		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, index);
 	MLX5_ASSERT(reg > 0);
 	flow_dv_match_meta_reg(key, reg, tag_v->data, tag_m->data);
 }
@@ -13465,7 +13499,8 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 	 */
 	if (!(wks.item_flags & MLX5_FLOW_ITEM_PORT_ID) &&
 	    !(wks.item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) && priv->sh->esw_mode &&
-	    !(attr->egress && !attr->transfer)) {
+	    !(attr->egress && !attr->transfer) &&
+	    attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP) {
 		if (flow_dv_translate_item_port_id_all(dev, match_mask,
 						   match_value, NULL, attr))
 			return -rte_errno;

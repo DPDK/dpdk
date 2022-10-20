@@ -48,6 +48,12 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_RSS,
 };
 
+/* Private (internal) Field IDs for MODIFY_FIELD action. */
+enum mlx5_rte_flow_field_id {
+		MLX5_RTE_FLOW_FIELD_END = INT_MIN,
+			MLX5_RTE_FLOW_FIELD_META_REG,
+};
+
 #define MLX5_INDIRECT_ACTION_TYPE_OFFSET 30
 
 enum {
@@ -1181,6 +1187,7 @@ struct rte_flow_actions_template {
 	struct rte_flow_action *masks; /* Cached action masks.*/
 	uint16_t mhdr_off; /* Offset of DR modify header action. */
 	uint32_t refcnt; /* Reference counter. */
+	uint16_t rx_cpy_pos; /* Action position of Rx metadata to be copied. */
 };
 
 /* Jump action struct. */
@@ -1257,6 +1264,11 @@ struct mlx5_flow_group {
 #define MLX5_HW_TBL_MAX_ITEM_TEMPLATE 2
 #define MLX5_HW_TBL_MAX_ACTION_TEMPLATE 32
 
+struct mlx5_flow_template_table_cfg {
+	struct rte_flow_template_table_attr attr; /* Table attributes passed through flow API. */
+	bool external; /* True if created by flow API, false if table is internal to PMD. */
+};
+
 struct rte_flow_template_table {
 	LIST_ENTRY(rte_flow_template_table) next;
 	struct mlx5_flow_group *grp; /* The group rte_flow_template_table uses. */
@@ -1266,6 +1278,7 @@ struct rte_flow_template_table {
 	/* Action templates bind to the table. */
 	struct mlx5_hw_action_template ats[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
 	struct mlx5_indexed_pool *flow; /* The table's flow ipool. */
+	struct mlx5_flow_template_table_cfg cfg;
 	uint32_t type; /* Flow table type RX/TX/FDB. */
 	uint8_t nb_item_templates; /* Item template number. */
 	uint8_t nb_action_templates; /* Action template number. */
@@ -2378,4 +2391,5 @@ int mlx5_flow_hw_esw_create_mgr_sq_miss_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
 					 uint32_t txq);
 int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
+int mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

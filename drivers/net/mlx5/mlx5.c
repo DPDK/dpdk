@@ -1218,7 +1218,8 @@ mlx5_dev_args_check_handler(const char *key, const char *val, void *opaque)
 		if (tmp != MLX5_XMETA_MODE_LEGACY &&
 		    tmp != MLX5_XMETA_MODE_META16 &&
 		    tmp != MLX5_XMETA_MODE_META32 &&
-		    tmp != MLX5_XMETA_MODE_MISS_INFO) {
+		    tmp != MLX5_XMETA_MODE_MISS_INFO &&
+		    tmp != MLX5_XMETA_MODE_META32_HWS) {
 			DRV_LOG(ERR, "Invalid extensive metadata parameter.");
 			rte_errno = EINVAL;
 			return -rte_errno;
@@ -2848,6 +2849,10 @@ mlx5_set_metadata_mask(struct rte_eth_dev *dev)
 	case MLX5_XMETA_MODE_META32:
 		meta = UINT32_MAX;
 		mark = (reg_c0 >> rte_bsf32(reg_c0)) & MLX5_FLOW_MARK_MASK;
+		break;
+	case MLX5_XMETA_MODE_META32_HWS:
+		meta = UINT32_MAX;
+		mark = MLX5_FLOW_MARK_MASK;
 		break;
 	default:
 		meta = 0;

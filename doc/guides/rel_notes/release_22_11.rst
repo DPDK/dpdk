@@ -178,6 +178,7 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added full support for queue-based async HW steering.
+    - Support of FDB.
     - Support of modify fields.
 
 * **Updated NXP dpaa2 driver.**

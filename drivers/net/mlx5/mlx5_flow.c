@@ -1105,6 +1105,8 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 			return REG_C_0;
 		case MLX5_XMETA_MODE_META32:
 			return REG_C_1;
+		case MLX5_XMETA_MODE_META32_HWS:
+			return REG_C_1;
 		}
 		break;
 	case MLX5_METADATA_TX:
@@ -1117,11 +1119,14 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 			return REG_C_0;
 		case MLX5_XMETA_MODE_META32:
 			return REG_C_1;
+		case MLX5_XMETA_MODE_META32_HWS:
+			return REG_C_1;
 		}
 		break;
 	case MLX5_FLOW_MARK:
 		switch (config->dv_xmeta_en) {
 		case MLX5_XMETA_MODE_LEGACY:
+		case MLX5_XMETA_MODE_META32_HWS:
 			return REG_NON;
 		case MLX5_XMETA_MODE_META16:
 			return REG_C_1;
@@ -4440,7 +4445,8 @@ static bool flow_check_modify_action_type(struct rte_eth_dev *dev,
 		return true;
 	case RTE_FLOW_ACTION_TYPE_FLAG:
 	case RTE_FLOW_ACTION_TYPE_MARK:
-		if (priv->sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY)
+		if (priv->sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+		    priv->sh->config.dv_xmeta_en != MLX5_XMETA_MODE_META32_HWS)
 			return true;
 		else
 			return false;

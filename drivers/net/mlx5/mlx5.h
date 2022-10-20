@@ -303,8 +303,8 @@ struct mlx5_sh_config {
 	uint32_t reclaim_mode:2; /* Memory reclaim mode. */
 	uint32_t dv_esw_en:1; /* Enable E-Switch DV flow. */
 	/* Enable DV flow. 1 means SW steering, 2 means HW steering. */
-	unsigned int dv_flow_en:2;
-	uint32_t dv_xmeta_en:2; /* Enable extensive flow metadata. */
+	uint32_t dv_flow_en:2; /* Enable DV flow. */
+	uint32_t dv_xmeta_en:3; /* Enable extensive flow metadata. */
 	uint32_t dv_miss_info:1; /* Restore packet after partial hw miss. */
 	uint32_t l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
 	uint32_t vf_nl_en:1; /* Enable Netlink requests in VF mode. */
@@ -316,7 +316,6 @@ struct mlx5_sh_config {
 	/* Allow/Prevent the duplicate rules pattern. */
 	uint32_t fdb_def_rule:1; /* Create FDB default jump rule */
 };
-
 
 /* Structure for VF VLAN workaround. */
 struct mlx5_vf_vlan {
@@ -1290,12 +1289,12 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_lb_ctx self_lb; /* QP to enable self loopback for Devx. */
 	unsigned int flow_max_priority;
 	enum modify_reg flow_mreg_c[MLX5_MREG_C_NUM];
+	/* Availability of mreg_c's. */
 	void *devx_channel_lwm;
 	struct rte_intr_handle *intr_handle_lwm;
 	pthread_mutex_t lwm_config_lock;
 	uint32_t host_shaper_rate:8;
 	uint32_t lwm_triggered:1;
-	/* Availability of mreg_c's. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -1521,6 +1520,7 @@ struct mlx5_priv {
 	struct rte_flow_template_table *hw_esw_sq_miss_root_tbl;
 	struct rte_flow_template_table *hw_esw_sq_miss_tbl;
 	struct rte_flow_template_table *hw_esw_zero_tbl;
+	struct rte_flow_template_table *hw_tx_meta_cpy_tbl;
 	struct mlx5_indexed_pool *flows[MLX5_FLOW_TYPE_MAXI];
 	/* RTE Flow rules. */
 	uint32_t ctrl_flows; /* Control flow rules. */
