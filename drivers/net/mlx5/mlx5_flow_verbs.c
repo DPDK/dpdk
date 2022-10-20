@@ -122,7 +122,7 @@ flow_verbs_counter_get_by_idx(struct rte_eth_dev *dev,
 			      struct mlx5_flow_counter_pool **ppool)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
+	struct mlx5_flow_counter_mng *cmng = &priv->sh->sws_cmng;
 	struct mlx5_flow_counter_pool *pool;
 
 	idx = (idx - 1) & (MLX5_CNT_SHARED_OFFSET - 1);
@@ -215,7 +215,7 @@ static uint32_t
 flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t id __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
+	struct mlx5_flow_counter_mng *cmng = &priv->sh->sws_cmng;
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt = NULL;
 	uint32_t n_valid = cmng->n_valid;

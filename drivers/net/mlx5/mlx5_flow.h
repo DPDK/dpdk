@@ -294,6 +294,8 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY (1ull << 40)
 #define MLX5_FLOW_ACTION_CT (1ull << 41)
 #define MLX5_FLOW_ACTION_SEND_TO_KERNEL (1ull << 42)
+#define MLX5_FLOW_ACTION_INDIRECT_COUNT (1ull << 43)
+#define MLX5_FLOW_ACTION_INDIRECT_AGE (1ull << 44)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
@@ -1102,6 +1104,22 @@ struct rte_flow {
 	uint32_t geneve_tlv_option; /**< Holds Geneve TLV option id. > */
 } __rte_packed;
 
+/*
+ * HWS COUNTER ID's layout
+ *       3                   2                   1                   0
+ *     1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |  T  |     | D |                                               |
+ *    ~  Y  |     | C |                    IDX                        ~
+ *    |  P  |     | S |                                               |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *    Bit 31:29 = TYPE = MLX5_INDIRECT_ACTION_TYPE_COUNT = b'10
+ *    Bit 25:24 = DCS index
+ *    Bit 23:00 = IDX in this counter belonged DCS bulk.
+ */
+typedef uint32_t cnt_id_t;
+
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
 #ifdef PEDANTIC
@@ -1118,7 +1136,8 @@ struct rte_flow_hw {
 		struct mlx5_hrxq *hrxq; /* TIR action. */
 	};
 	struct rte_flow_template_table *table; /* The table flow allcated from. */
-	uint32_t cnt_id;
+	uint32_t age_idx;
+	cnt_id_t cnt_id;
 	uint32_t mtr_id;
 	uint8_t rule[0]; /* HWS layer data struct. */
 } __rte_packed;
@@ -1169,7 +1188,7 @@ struct mlx5_action_construct_data {
 			uint32_t idx; /* Shared action index. */
 		} shared_rss;
 		struct {
-			uint32_t id;
+			cnt_id_t id;
 		} shared_counter;
 		struct {
 			uint32_t id;
@@ -1200,6 +1219,7 @@ struct rte_flow_actions_template {
 	struct rte_flow_action *actions; /* Cached flow actions. */
 	struct rte_flow_action *masks; /* Cached action masks.*/
 	struct mlx5dr_action_template *tmpl; /* mlx5dr action template. */
+	uint64_t action_flags; /* Bit-map of all valid action in template. */
 	uint16_t dr_actions_num; /* Amount of DR rules actions. */
 	uint16_t actions_num; /* Amount of flow actions */
 	uint16_t *actions_off; /* DR action offset for given rte action offset. */
@@ -1256,7 +1276,7 @@ struct mlx5_hw_actions {
 	struct mlx5_hw_encap_decap_action *encap_decap;
 	uint16_t encap_decap_pos; /* Encap/Decap action position. */
 	uint32_t mark:1; /* Indicate the mark action. */
-	uint32_t cnt_id; /* Counter id. */
+	cnt_id_t cnt_id; /* Counter id. */
 	uint32_t mtr_id; /* Meter id. */
 	/* Translated DR action array from action template. */
 	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
@@ -1632,6 +1652,12 @@ typedef int (*mlx5_flow_get_aged_flows_t)
 					 void **context,
 					 uint32_t nb_contexts,
 					 struct rte_flow_error *error);
+typedef int (*mlx5_flow_get_q_aged_flows_t)
+					(struct rte_eth_dev *dev,
+					 uint32_t queue_id,
+					 void **context,
+					 uint32_t nb_contexts,
+					 struct rte_flow_error *error);
 typedef int (*mlx5_flow_action_validate_t)
 				(struct rte_eth_dev *dev,
 				 const struct rte_flow_indir_action_conf *conf,
@@ -1838,6 +1864,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_counter_free_t counter_free;
 	mlx5_flow_counter_query_t counter_query;
 	mlx5_flow_get_aged_flows_t get_aged_flows;
+	mlx5_flow_get_q_aged_flows_t get_q_aged_flows;
 	mlx5_flow_action_validate_t action_validate;
 	mlx5_flow_action_create_t action_create;
 	mlx5_flow_action_destroy_t action_destroy;

@@ -459,6 +459,22 @@ Limitations
     The modify field action is not intended to modify VLAN headers type field,
     dedicated VLAN push and pop actions should be used instead.
 
+- Age action:
+
+  - with HW steering (``dv_flow_en=2``)
+
+    - Using the same indirect count action combined with multiple age actions
+      in different flows may cause a wrong age state for the age actions.
+    - Creating/destroying flow rules with indirect age action when it is active
+      (timeout != 0) may cause a wrong age state for the indirect age action.
+
+    - The driver reuses counters for aging action, so for optimization
+      the values in ``rte_flow_port_attr`` structure should describe:
+
+      - ``nb_counters`` is the number of flow rules using counter (with/without age)
+        in addition to flow rules using only age (without count action).
+      - ``nb_aging_objects`` is the number of flow rules containing age action.
+
 - IPv6 header item 'proto' field, indicating the next header protocol, should
   not be set as extension header.
   In case the next header is an extension header, it should not be specified in

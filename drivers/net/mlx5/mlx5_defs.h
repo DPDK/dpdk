@@ -43,6 +43,9 @@
 #define MLX5_PMD_SOFT_COUNTERS 1
 #endif
 
+/* Maximum number of DCS created per port. */
+#define MLX5_HWS_CNT_DCS_NUM 4
+
 /* Alarm timeout. */
 #define MLX5_ALARM_TIMEOUT_US 100000
 

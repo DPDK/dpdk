@@ -171,6 +171,14 @@ typedef int32_t (*mlx5_l3t_alloc_callback_fn)(void *ctx,
 					   union mlx5_l3t_data *data);
 
 /*
+ * The default ipool threshold value indicates which per_core_cache
+ * value to set.
+ */
+#define MLX5_HW_IPOOL_SIZE_THRESHOLD (1 << 19)
+/* The default min local cache size. */
+#define MLX5_HW_IPOOL_CACHE_MIN (1 << 9)
+
+/*
  * The indexed memory entry index is made up of trunk index and offset of
  * the entry in the trunk. Since the entry index is 32 bits, in case user
  * prefers to have small trunks, user can change the macro below to a big
@@ -207,7 +215,7 @@ struct mlx5_indexed_pool_config {
 	 */
 	uint32_t need_lock:1;
 	/* Lock is needed for multiple thread usage. */
-	uint32_t release_mem_en:1; /* Rlease trunk when it is free. */
+	uint32_t release_mem_en:1; /* Release trunk when it is free. */
 	uint32_t max_idx; /* The maximum index can be allocated. */
 	uint32_t per_core_cache;
 	/*

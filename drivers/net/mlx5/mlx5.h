@@ -644,12 +644,45 @@ struct mlx5_geneve_tlv_option_resource {
 /* Current time in seconds. */
 #define MLX5_CURR_TIME_SEC	(rte_rdtsc() / rte_get_tsc_hz())
 
+/*
+ * HW steering queue oriented AGE info.
+ * It contains an array of rings, one for each HWS queue.
+ */
+struct mlx5_hws_q_age_info {
+	uint16_t nb_rings; /* Number of aged-out ring lists. */
+	struct rte_ring *aged_lists[]; /* Aged-out lists. */
+};
+
+/*
+ * HW steering AGE info.
+ * It has a ring list containing all aged out flow rules.
+ */
+struct mlx5_hws_age_info {
+	struct rte_ring *aged_list; /* Aged out lists. */
+};
+
 /* Aging information for per port. */
 struct mlx5_age_info {
 	uint8_t flags; /* Indicate if is new event or need to be triggered. */
-	struct mlx5_counters aged_counters; /* Aged counter list. */
-	struct aso_age_list aged_aso; /* Aged ASO actions list. */
-	rte_spinlock_t aged_sl; /* Aged flow list lock. */
+	union {
+		/* SW/FW steering AGE info. */
+		struct {
+			struct mlx5_counters aged_counters;
+			/* Aged counter list. */
+			struct aso_age_list aged_aso;
+			/* Aged ASO actions list. */
+			rte_spinlock_t aged_sl; /* Aged flow list lock. */
+		};
+		struct {
+			struct mlx5_indexed_pool *ages_ipool;
+			union {
+				struct mlx5_hws_age_info hw_age;
+				/* HW steering AGE info. */
+				struct mlx5_hws_q_age_info *hw_q_age;
+				/* HW steering queue oriented AGE info. */
+			};
+		};
+	};
 };
 
 /* Per port data of shared IB device. */
@@ -1312,6 +1345,9 @@ struct mlx5_dev_ctx_shared {
 	uint32_t hws_tags:1; /* Check if tags info for HWS initialized. */
 	uint32_t shared_mark_enabled:1;
 	/* If mark action is enabled on Rxqs (shared E-Switch domain). */
+	uint32_t hws_max_log_bulk_sz:5;
+	/* Log of minimal HWS counters created hard coded. */
+	uint32_t hws_max_nb_counters; /* Maximal number for HWS counters. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
@@ -1353,7 +1389,8 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_list *dest_array_list;
 	struct mlx5_list *flex_parsers_dv; /* Flex Item parsers. */
 	/* List of destination array actions. */
-	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
+	struct mlx5_flow_counter_mng sws_cmng;
+	/* SW steering counters management structure. */
 	void *default_miss_action; /* Default miss action. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
 	struct mlx5_indexed_pool *mdh_ipools[MLX5_MAX_MODIFY_NUM];
@@ -1683,6 +1720,9 @@ struct mlx5_priv {
 	LIST_HEAD(flow_hw_at, rte_flow_actions_template) flow_hw_at;
 	struct mlx5dr_context *dr_ctx; /**< HW steering DR context. */
 	/* HW steering queue polling mechanism job descriptor LIFO. */
+	uint32_t hws_strict_queue:1;
+	/**< Whether all operations strictly happen on the same HWS queue. */
+	uint32_t hws_age_req:1; /**< Whether this port has AGE indexed pool. */
 	struct mlx5_hw_q *hw_q;
 	/* HW steering rte flow table list header. */
 	LIST_HEAD(flow_hw_tbl, rte_flow_template_table) flow_hw_tbl;
@@ -1998,6 +2038,9 @@ int mlx5_validate_action_ct(struct rte_eth_dev *dev,
 			    const struct rte_flow_action_conntrack *conntrack,
 			    struct rte_flow_error *error);
 
+int mlx5_flow_get_q_aged_flows(struct rte_eth_dev *dev, uint32_t queue_id,
+			       void **contexts, uint32_t nb_contexts,
+			       struct rte_flow_error *error);
 
 /* mlx5_mp_os.c */
 

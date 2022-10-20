@@ -985,6 +985,9 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.isolate = mlx5_flow_isolate,
 	.query = mlx5_flow_query,
 	.dev_dump = mlx5_flow_dev_dump,
+#ifdef MLX5_HAVE_RTE_FLOW_Q_AGE
+	.get_q_aged_flows = mlx5_flow_get_q_aged_flows,
+#endif
 	.get_aged_flows = mlx5_flow_get_aged_flows,
 	.action_handle_create = mlx5_action_handle_create,
 	.action_handle_destroy = mlx5_action_handle_destroy,
@@ -8940,11 +8943,11 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 		mem_mng->raws[i].data = raw_data + i * MLX5_COUNTERS_PER_POOL;
 	}
 	for (i = 0; i < MLX5_MAX_PENDING_QUERIES; ++i)
-		LIST_INSERT_HEAD(&sh->cmng.free_stat_raws,
+		LIST_INSERT_HEAD(&sh->sws_cmng.free_stat_raws,
 				 mem_mng->raws + MLX5_CNT_CONTAINER_RESIZE + i,
 				 next);
-	LIST_INSERT_HEAD(&sh->cmng.mem_mngs, mem_mng, next);
-	sh->cmng.mem_mng = mem_mng;
+	LIST_INSERT_HEAD(&sh->sws_cmng.mem_mngs, mem_mng, next);
+	sh->sws_cmng.mem_mng = mem_mng;
 	return 0;
 }
 
@@ -8963,7 +8966,7 @@ static int
 mlx5_flow_set_counter_stat_mem(struct mlx5_dev_ctx_shared *sh,
 			       struct mlx5_flow_counter_pool *pool)
 {
-	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
+	struct mlx5_flow_counter_mng *cmng = &sh->sws_cmng;
 	/* Resize statistic memory once used out. */
 	if (!(pool->index % MLX5_CNT_CONTAINER_RESIZE) &&
 	    mlx5_flow_create_counter_stat_mem_mng(sh)) {
@@ -8992,14 +8995,14 @@ mlx5_set_query_alarm(struct mlx5_dev_ctx_shared *sh)
 {
 	uint32_t pools_n, us;
 
-	pools_n = __atomic_load_n(&sh->cmng.n_valid, __ATOMIC_RELAXED);
+	pools_n = __atomic_load_n(&sh->sws_cmng.n_valid, __ATOMIC_RELAXED);
 	us = MLX5_POOL_QUERY_FREQ_US / pools_n;
 	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us", pools_n, us);
 	if (rte_eal_alarm_set(us, mlx5_flow_query_alarm, sh)) {
-		sh->cmng.query_thread_on = 0;
+		sh->sws_cmng.query_thread_on = 0;
 		DRV_LOG(ERR, "Cannot reinitialize query alarm");
 	} else {
-		sh->cmng.query_thread_on = 1;
+		sh->sws_cmng.query_thread_on = 1;
 	}
 }
 
@@ -9015,12 +9018,12 @@ mlx5_flow_query_alarm(void *arg)
 {
 	struct mlx5_dev_ctx_shared *sh = arg;
 	int ret;
-	uint16_t pool_index = sh->cmng.pool_index;
-	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
+	uint16_t pool_index = sh->sws_cmng.pool_index;
+	struct mlx5_flow_counter_mng *cmng = &sh->sws_cmng;
 	struct mlx5_flow_counter_pool *pool;
 	uint16_t n_valid;
 
-	if (sh->cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
+	if (sh->sws_cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
 		goto set_alarm;
 	rte_spinlock_lock(&cmng->pool_update_sl);
 	pool = cmng->pools[pool_index];
@@ -9033,7 +9036,7 @@ mlx5_flow_query_alarm(void *arg)
 		/* There is a pool query in progress. */
 		goto set_alarm;
 	pool->raw_hw =
-		LIST_FIRST(&sh->cmng.free_stat_raws);
+		LIST_FIRST(&sh->sws_cmng.free_stat_raws);
 	if (!pool->raw_hw)
 		/* No free counter statistics raw memory. */
 		goto set_alarm;
@@ -9059,12 +9062,12 @@ mlx5_flow_query_alarm(void *arg)
 		goto set_alarm;
 	}
 	LIST_REMOVE(pool->raw_hw, next);
-	sh->cmng.pending_queries++;
+	sh->sws_cmng.pending_queries++;
 	pool_index++;
 	if (pool_index >= n_valid)
 		pool_index = 0;
 set_alarm:
-	sh->cmng.pool_index = pool_index;
+	sh->sws_cmng.pool_index = pool_index;
 	mlx5_set_query_alarm(sh);
 }
 
@@ -9147,7 +9150,7 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 		(struct mlx5_flow_counter_pool *)(uintptr_t)async_id;
 	struct mlx5_counter_stats_raw *raw_to_free;
 	uint8_t query_gen = pool->query_gen ^ 1;
-	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
+	struct mlx5_flow_counter_mng *cmng = &sh->sws_cmng;
 	enum mlx5_counter_type cnt_type =
 		pool->is_aged ? MLX5_COUNTER_TYPE_AGE :
 				MLX5_COUNTER_TYPE_ORIGIN;
@@ -9170,9 +9173,9 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 			rte_spinlock_unlock(&cmng->csl[cnt_type]);
 		}
 	}
-	LIST_INSERT_HEAD(&sh->cmng.free_stat_raws, raw_to_free, next);
+	LIST_INSERT_HEAD(&sh->sws_cmng.free_stat_raws, raw_to_free, next);
 	pool->raw_hw = NULL;
-	sh->cmng.pending_queries--;
+	sh->sws_cmng.pending_queries--;
 }
 
 static int
@@ -9532,7 +9535,7 @@ mlx5_flow_dev_dump_sh_all(struct rte_eth_dev *dev,
 	struct mlx5_list_inconst *l_inconst;
 	struct mlx5_list_entry *e;
 	int lcore_index;
-	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
+	struct mlx5_flow_counter_mng *cmng = &priv->sh->sws_cmng;
 	uint32_t max;
 	void *action;
 
@@ -9703,16 +9706,56 @@ mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 {
 	const struct mlx5_flow_driver_ops *fops;
 	struct rte_flow_attr attr = { .transfer = 0 };
+	enum mlx5_flow_drv_type type = flow_get_drv_type(dev, &attr);
 
-	if (flow_get_drv_type(dev, &attr) == MLX5_FLOW_TYPE_DV) {
-		fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
-		return fops->get_aged_flows(dev, contexts, nb_contexts,
-						    error);
+	if (type == MLX5_FLOW_TYPE_DV || type == MLX5_FLOW_TYPE_HW) {
+		fops = flow_get_drv_ops(type);
+		return fops->get_aged_flows(dev, contexts, nb_contexts, error);
 	}
-	DRV_LOG(ERR,
-		"port %u get aged flows is not supported.",
-		 dev->data->port_id);
+	DRV_LOG(ERR, "port %u get aged flows is not supported.",
+		dev->data->port_id);
 	return -ENOTSUP;
+}
+
+/**
+ * Get aged-out flows per HWS queue.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] queue_id
+ *   Flow queue to query.
+ * @param[in] context
+ *   The address of an array of pointers to the aged-out flows contexts.
+ * @param[in] nb_countexts
+ *   The length of context array pointers.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   how many contexts get in success, otherwise negative errno value.
+ *   if nb_contexts is 0, return the amount of all aged contexts.
+ *   if nb_contexts is not 0 , return the amount of aged flows reported
+ *   in the context array.
+ */
+int
+mlx5_flow_get_q_aged_flows(struct rte_eth_dev *dev, uint32_t queue_id,
+			   void **contexts, uint32_t nb_contexts,
+			   struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr attr = { 0 };
+
+	if (flow_get_drv_type(dev, &attr) == MLX5_FLOW_TYPE_HW) {
+		fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+		return fops->get_q_aged_flows(dev, queue_id, contexts,
+					      nb_contexts, error);
+	}
+	DRV_LOG(ERR, "port %u queue %u get aged flows is not supported.",
+		dev->data->port_id, queue_id);
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "get Q aged flows with incorrect steering mode");
 }
 
 /* Wrapper for driver action_validate op callback */

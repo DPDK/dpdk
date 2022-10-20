@@ -10,25 +10,25 @@
 #include "mlx5_flow.h"
 
 /*
- * COUNTER ID's layout
+ * HWS COUNTER ID's layout
  *       3                   2                   1                   0
  *     1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    | T |       | D |                                               |
- *    ~ Y |       | C |                    IDX                        ~
- *    | P |       | S |                                               |
+ *    |  T  |     | D |                                               |
+ *    ~  Y  |     | C |                    IDX                        ~
+ *    |  P  |     | S |                                               |
  *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
- *    Bit 31:30 = TYPE = MLX5_INDIRECT_ACTION_TYPE_COUNT = b'10
+ *    Bit 31:29 = TYPE = MLX5_INDIRECT_ACTION_TYPE_COUNT = b'10
  *    Bit 25:24 = DCS index
  *    Bit 23:00 = IDX in this counter belonged DCS bulk.
  */
-typedef uint32_t cnt_id_t;
 
-#define MLX5_HWS_CNT_DCS_NUM 4
 #define MLX5_HWS_CNT_DCS_IDX_OFFSET 24
 #define MLX5_HWS_CNT_DCS_IDX_MASK 0x3
 #define MLX5_HWS_CNT_IDX_MASK ((1UL << MLX5_HWS_CNT_DCS_IDX_OFFSET) - 1)
+
+#define MLX5_HWS_AGE_IDX_MASK (RTE_BIT32(MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1)
 
 struct mlx5_hws_cnt_dcs {
 	void *dr_action;
@@ -44,12 +44,22 @@ struct mlx5_hws_cnt_dcs_mng {
 
 struct mlx5_hws_cnt {
 	struct flow_counter_stats reset;
+	bool in_used; /* Indicator whether this counter in used or in pool. */
 	union {
-		uint32_t share: 1;
-		/*
-		 * share will be set to 1 when this counter is used as indirect
-		 * action. Only meaningful when user own this counter.
-		 */
+		struct {
+			uint32_t share:1;
+			/*
+			 * share will be set to 1 when this counter is used as
+			 * indirect action.
+			 */
+			uint32_t age_idx:24;
+			/*
+			 * When this counter uses for aging, it save the index
+			 * of AGE parameter. For pure counter (without aging)
+			 * this index is zero.
+			 */
+		};
+		/* This struct is only meaningful when user own this counter. */
 		uint32_t query_gen_when_free;
 		/*
 		 * When PMD own this counter (user put back counter to PMD
@@ -96,7 +106,47 @@ struct mlx5_hws_cnt_pool {
 	struct rte_ring *free_list;
 	struct rte_ring *wait_reset_list;
 	struct mlx5_hws_cnt_pool_caches *cache;
+	uint64_t time_of_last_age_check;
 } __rte_cache_aligned;
+
+/* HWS AGE status. */
+enum {
+	HWS_AGE_FREE, /* Initialized state. */
+	HWS_AGE_CANDIDATE, /* AGE assigned to flows. */
+	HWS_AGE_CANDIDATE_INSIDE_RING,
+	/*
+	 * AGE assigned to flows but it still in ring. It was aged-out but the
+	 * timeout was changed, so it in ring but stiil candidate.
+	 */
+	HWS_AGE_AGED_OUT_REPORTED,
+	/*
+	 * Aged-out, reported by rte_flow_get_q_aged_flows and wait for destroy.
+	 */
+	HWS_AGE_AGED_OUT_NOT_REPORTED,
+	/*
+	 * Aged-out, inside the aged-out ring.
+	 * wait for rte_flow_get_q_aged_flows and destroy.
+	 */
+};
+
+/* HWS counter age parameter. */
+struct mlx5_hws_age_param {
+	uint32_t timeout; /* Aging timeout in seconds (atomically accessed). */
+	uint32_t sec_since_last_hit;
+	/* Time in seconds since last hit (atomically accessed). */
+	uint16_t state; /* AGE state (atomically accessed). */
+	uint64_t accumulator_last_hits;
+	/* Last total value of hits for comparing. */
+	uint64_t accumulator_hits;
+	/* Accumulator for hits coming from several counters. */
+	uint32_t accumulator_cnt;
+	/* Number counters which already updated the accumulator in this sec. */
+	uint32_t nb_cnts; /* Number counters used by this AGE. */
+	uint32_t queue_id; /* Queue id of the counter. */
+	cnt_id_t own_cnt_index;
+	/* Counter action created specifically for this AGE action. */
+	void *context; /* Flow AGE context. */
+} __rte_packed __rte_cache_aligned;
 
 /**
  * Translate counter id into internal index (start from 0), which can be used
@@ -107,7 +157,7 @@ struct mlx5_hws_cnt_pool {
  * @return
  *   Internal index
  */
-static __rte_always_inline cnt_id_t
+static __rte_always_inline uint32_t
 mlx5_hws_cnt_iidx(struct mlx5_hws_cnt_pool *cpool, cnt_id_t cnt_id)
 {
 	uint8_t dcs_idx = cnt_id >> MLX5_HWS_CNT_DCS_IDX_OFFSET;
@@ -139,7 +189,7 @@ mlx5_hws_cnt_id_valid(cnt_id_t cnt_id)
  *   Counter id
  */
 static __rte_always_inline cnt_id_t
-mlx5_hws_cnt_id_gen(struct mlx5_hws_cnt_pool *cpool, cnt_id_t iidx)
+mlx5_hws_cnt_id_gen(struct mlx5_hws_cnt_pool *cpool, uint32_t iidx)
 {
 	struct mlx5_hws_cnt_dcs_mng *dcs_mng = &cpool->dcs_mng;
 	uint32_t idx;
@@ -344,9 +394,10 @@ mlx5_hws_cnt_pool_put(struct mlx5_hws_cnt_pool *cpool,
 	struct rte_ring_zc_data zcdr = {0};
 	struct rte_ring *qcache = NULL;
 	unsigned int wb_num = 0; /* cache write-back number. */
-	cnt_id_t iidx;
+	uint32_t iidx;
 
 	iidx = mlx5_hws_cnt_iidx(cpool, *cnt_id);
+	cpool->pool[iidx].in_used = false;
 	cpool->pool[iidx].query_gen_when_free =
 		__atomic_load_n(&cpool->query_gen, __ATOMIC_RELAXED);
 	if (likely(queue != NULL))
@@ -388,20 +439,23 @@ mlx5_hws_cnt_pool_put(struct mlx5_hws_cnt_pool *cpool,
  *   A pointer to HWS queue. If null, it means fetch from common pool.
  * @param cnt_id
  *   A pointer to a cnt_id_t * pointer (counter id) that will be filled.
+ * @param age_idx
+ *   Index of AGE parameter using this counter, zero means there is no such AGE.
+ *
  * @return
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  *   - -EAGAIN: counter is not ready; try again.
  */
 static __rte_always_inline int
-mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool,
-		uint32_t *queue, cnt_id_t *cnt_id)
+mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
+		      cnt_id_t *cnt_id, uint32_t age_idx)
 {
 	unsigned int ret;
 	struct rte_ring_zc_data zcdc = {0};
 	struct rte_ring *qcache = NULL;
-	uint32_t query_gen = 0;
-	cnt_id_t iidx, tmp_cid = 0;
+	uint32_t iidx, query_gen = 0;
+	cnt_id_t tmp_cid = 0;
 
 	if (likely(queue != NULL))
 		qcache = cpool->cache->qcache[*queue];
@@ -422,6 +476,8 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool,
 		__hws_cnt_query_raw(cpool, *cnt_id,
 				    &cpool->pool[iidx].reset.hits,
 				    &cpool->pool[iidx].reset.bytes);
+		cpool->pool[iidx].in_used = true;
+		cpool->pool[iidx].age_idx = age_idx;
 		return 0;
 	}
 	ret = rte_ring_dequeue_zc_burst_elem_start(qcache, sizeof(cnt_id_t), 1,
@@ -455,6 +511,8 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool,
 			    &cpool->pool[iidx].reset.bytes);
 	rte_ring_dequeue_zc_elem_finish(qcache, 1);
 	cpool->pool[iidx].share = 0;
+	cpool->pool[iidx].in_used = true;
+	cpool->pool[iidx].age_idx = age_idx;
 	return 0;
 }
 
@@ -478,16 +536,16 @@ mlx5_hws_cnt_pool_get_action_offset(struct mlx5_hws_cnt_pool *cpool,
 }
 
 static __rte_always_inline int
-mlx5_hws_cnt_shared_get(struct mlx5_hws_cnt_pool *cpool, cnt_id_t *cnt_id)
+mlx5_hws_cnt_shared_get(struct mlx5_hws_cnt_pool *cpool, cnt_id_t *cnt_id,
+			uint32_t age_idx)
 {
 	int ret;
 	uint32_t iidx;
 
-	ret = mlx5_hws_cnt_pool_get(cpool, NULL, cnt_id);
+	ret = mlx5_hws_cnt_pool_get(cpool, NULL, cnt_id, age_idx);
 	if (ret != 0)
 		return ret;
 	iidx = mlx5_hws_cnt_iidx(cpool, *cnt_id);
-	MLX5_ASSERT(cpool->pool[iidx].share == 0);
 	cpool->pool[iidx].share = 1;
 	return 0;
 }
@@ -513,10 +571,73 @@ mlx5_hws_cnt_is_shared(struct mlx5_hws_cnt_pool *cpool, cnt_id_t cnt_id)
 	return cpool->pool[iidx].share ? true : false;
 }
 
+static __rte_always_inline void
+mlx5_hws_cnt_age_set(struct mlx5_hws_cnt_pool *cpool, cnt_id_t cnt_id,
+		     uint32_t age_idx)
+{
+	uint32_t iidx = mlx5_hws_cnt_iidx(cpool, cnt_id);
+
+	MLX5_ASSERT(cpool->pool[iidx].share);
+	cpool->pool[iidx].age_idx = age_idx;
+}
+
+static __rte_always_inline uint32_t
+mlx5_hws_cnt_age_get(struct mlx5_hws_cnt_pool *cpool, cnt_id_t cnt_id)
+{
+	uint32_t iidx = mlx5_hws_cnt_iidx(cpool, cnt_id);
+
+	MLX5_ASSERT(cpool->pool[iidx].share);
+	return cpool->pool[iidx].age_idx;
+}
+
+static __rte_always_inline cnt_id_t
+mlx5_hws_age_cnt_get(struct mlx5_priv *priv, struct mlx5_hws_age_param *param,
+		     uint32_t age_idx)
+{
+	if (!param->own_cnt_index) {
+		/* Create indirect counter one for internal usage. */
+		if (mlx5_hws_cnt_shared_get(priv->hws_cpool,
+					    &param->own_cnt_index, age_idx) < 0)
+			return 0;
+		param->nb_cnts++;
+	}
+	return param->own_cnt_index;
+}
+
+static __rte_always_inline void
+mlx5_hws_age_nb_cnt_increase(struct mlx5_priv *priv, uint32_t age_idx)
+{
+	struct mlx5_age_info *age_info = GET_PORT_AGE_INFO(priv);
+	struct mlx5_indexed_pool *ipool = age_info->ages_ipool;
+	struct mlx5_hws_age_param *param = mlx5_ipool_get(ipool, age_idx);
+
+	MLX5_ASSERT(param != NULL);
+	param->nb_cnts++;
+}
+
+static __rte_always_inline void
+mlx5_hws_age_nb_cnt_decrease(struct mlx5_priv *priv, uint32_t age_idx)
+{
+	struct mlx5_age_info *age_info = GET_PORT_AGE_INFO(priv);
+	struct mlx5_indexed_pool *ipool = age_info->ages_ipool;
+	struct mlx5_hws_age_param *param = mlx5_ipool_get(ipool, age_idx);
+
+	if (param != NULL)
+		param->nb_cnts--;
+}
+
+static __rte_always_inline bool
+mlx5_hws_age_is_indirect(uint32_t age_idx)
+{
+	return (age_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET) ==
+		MLX5_INDIRECT_ACTION_TYPE_AGE ? true : false;
+}
+
 /* init HWS counter pool. */
 struct mlx5_hws_cnt_pool *
-mlx5_hws_cnt_pool_init(const struct mlx5_hws_cnt_pool_cfg *pcfg,
-		const struct mlx5_hws_cache_param *ccfg);
+mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
+		       const struct mlx5_hws_cnt_pool_cfg *pcfg,
+		       const struct mlx5_hws_cache_param *ccfg);
 
 void
 mlx5_hws_cnt_pool_deinit(struct mlx5_hws_cnt_pool *cntp);
@@ -554,5 +675,29 @@ mlx5_hws_cnt_svc_init(struct mlx5_dev_ctx_shared *sh);
 
 void
 mlx5_hws_cnt_svc_deinit(struct mlx5_dev_ctx_shared *sh);
+
+int
+mlx5_hws_age_action_destroy(struct mlx5_priv *priv, uint32_t idx,
+			    struct rte_flow_error *error);
+
+uint32_t
+mlx5_hws_age_action_create(struct mlx5_priv *priv, uint32_t queue_id,
+			   bool shared, const struct rte_flow_action_age *age,
+			   uint32_t flow_idx, struct rte_flow_error *error);
+
+int
+mlx5_hws_age_action_update(struct mlx5_priv *priv, uint32_t idx,
+			   const void *update, struct rte_flow_error *error);
+
+void *
+mlx5_hws_age_context_get(struct mlx5_priv *priv, uint32_t idx);
+
+int
+mlx5_hws_age_pool_init(struct rte_eth_dev *dev,
+		       const struct rte_flow_port_attr *attr,
+		       uint16_t nb_queues);
+
+void
+mlx5_hws_age_pool_destroy(struct mlx5_priv *priv);
 
 #endif /* _MLX5_HWS_CNT_H_ */
