@@ -91,10 +91,12 @@ struct mlx5dv_port;
 
 #define MLX5_PORT_QUERY_VPORT (1u << 0)
 #define MLX5_PORT_QUERY_REG_C0 (1u << 1)
+#define MLX5_PORT_QUERY_ESW_OWNER_VHCA_ID (1u << 2)
 
 struct mlx5_port_info {
 	uint16_t query_flags;
 	uint16_t vport_id; /* Associated VF vport index (if any). */
+	uint16_t esw_owner_vhca_id; /* Associated the esw_owner that this VF belongs to. */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 };
@@ -164,6 +166,7 @@ struct mlx5_glue {
 	int (*query_device_ex)(struct ibv_context *context,
 			       const struct ibv_query_device_ex_input *input,
 			       struct ibv_device_attr_ex *attr);
+	const char *(*get_device_name)(struct ibv_device *device);
 	int (*query_rt_values_ex)(struct ibv_context *context,
 			       struct ibv_values_ex *values);
 	int (*query_port)(struct ibv_context *context, uint8_t port_num,
@@ -268,8 +271,13 @@ struct mlx5_glue {
 		(struct ibv_context *context,
 		 struct mlx5dv_flow_matcher_attr *matcher_attr,
 		 void *tbl);
+	void *(*dv_create_flow_matcher_root)
+		(struct ibv_context *context,
+		 struct mlx5dv_flow_matcher_attr *matcher_attr);
 	void *(*dv_create_flow)(void *matcher, void *match_value,
 			  size_t num_actions, void *actions[]);
+	void *(*dv_create_flow_root)(void *matcher, void *match_value,
+				     size_t num_actions, void *actions);
 	void *(*dv_create_flow_action_counter)(void *obj, uint32_t  offset);
 	void *(*dv_create_flow_action_dest_ibv_qp)(void *qp);
 	void *(*dv_create_flow_action_dest_devx_tir)(void *tir);
@@ -277,12 +285,20 @@ struct mlx5_glue {
 		(struct ibv_context *ctx, enum mlx5dv_flow_table_type ft_type,
 		 void *domain, uint64_t flags, size_t actions_sz,
 		 uint64_t actions[]);
+	void *(*dv_create_flow_action_modify_header_root)
+		(struct ibv_context *ctx, size_t actions_sz, uint64_t actions[],
+		 enum mlx5dv_flow_table_type ft_type);
 	void *(*dv_create_flow_action_packet_reformat)
 		(struct ibv_context *ctx,
 		 enum mlx5dv_flow_action_packet_reformat_type reformat_type,
 		 enum mlx5dv_flow_table_type ft_type,
 		 struct mlx5dv_dr_domain *domain,
 		 uint32_t flags, size_t data_sz, void *data);
+	void *(*dv_create_flow_action_packet_reformat_root)
+		(struct ibv_context *ctx,
+		 size_t data_sz, void *data,
+		 enum mlx5dv_flow_action_packet_reformat_type reformat_type,
+		 enum mlx5dv_flow_table_type ft_type);
 	void *(*dv_create_flow_action_tag)(uint32_t tag);
 	void *(*dv_create_flow_action_meter)
 		(struct mlx5dv_dr_flow_meter_attr *attr);
@@ -291,6 +307,7 @@ struct mlx5_glue {
 	void *(*dr_create_flow_action_default_miss)(void);
 	int (*dv_destroy_flow)(void *flow);
 	int (*dv_destroy_flow_matcher)(void *matcher);
+	int (*dv_destroy_flow_matcher_root)(void *matcher);
 	struct ibv_context *(*dv_open_device)(struct ibv_device *device);
 	struct mlx5dv_var *(*dv_alloc_var)(struct ibv_context *context,
 					   uint32_t flags);
