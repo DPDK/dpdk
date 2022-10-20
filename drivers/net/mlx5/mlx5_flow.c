@@ -5478,7 +5478,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	int shared_actions_n = MLX5_MAX_SHARED_ACTIONS;
 	union {
 		struct mlx5_flow_expand_rss buf;
-		uint8_t buffer[4096];
+		uint8_t buffer[8192];
 	} expand_buffer;
 	union {
 		struct rte_flow_action actions[MLX5_MAX_SPLIT_ACTIONS];
