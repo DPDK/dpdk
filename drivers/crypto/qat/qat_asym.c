@@ -70,27 +70,33 @@ static const struct rte_driver cryptodev_qat_asym_driver = {
 	} while (0)
 
 #define SET_PKE_LN(what, how, idx) \
-		rte_memcpy(cookie->input_array[idx] + how - \
-			what.length, \
-			what.data, \
-			what.length)
+	rte_memcpy(cookie->input_array[idx] + how - \
+		what.length, \
+		what.data, \
+		what.length)
 
 #define SET_PKE_LN_EC(curve, p, idx) \
-		rte_memcpy(cookie->input_array[idx] + \
-			qat_func_alignsize - curve.bytesize, \
-			curve.p.data, curve.bytesize)
+	rte_memcpy(cookie->input_array[idx] + \
+		qat_func_alignsize - curve.bytesize, \
+		curve.p.data, curve.bytesize)
 
 #define SET_PKE_9A_IN(what, idx) \
-		rte_memcpy(&cookie->input_buffer[idx * \
-			qat_func_alignsize] + \
-			qat_func_alignsize - what.length, \
-			what.data, what.length)
+	rte_memcpy(&cookie->input_buffer[idx * \
+		qat_func_alignsize] + \
+		qat_func_alignsize - what.length, \
+		what.data, what.length)
 
 #define SET_PKE_9A_EC(curve, p, idx) \
-		rte_memcpy(&cookie->input_buffer[idx * \
-			qat_func_alignsize] + \
-			qat_func_alignsize - curve.bytesize, \
-			curve.p.data, curve.bytesize)
+	rte_memcpy(&cookie->input_buffer[idx * \
+		qat_func_alignsize] + \
+		qat_func_alignsize - curve.bytesize, \
+		curve.p.data, curve.bytesize)
+
+#define PARAM_CLR(what) \
+	do { \
+		memset(what.data, 0, what.length); \
+		rte_free(what.data);	\
+	} while (0)
 
 static void
 request_init(struct icp_qat_fw_pke_request *qat_req)
@@ -98,8 +104,8 @@ request_init(struct icp_qat_fw_pke_request *qat_req)
 	memset(qat_req, 0, sizeof(*qat_req));
 	qat_req->pke_hdr.service_type = ICP_QAT_FW_COMN_REQ_CPM_FW_PKE;
 	qat_req->pke_hdr.hdr_flags =
-			ICP_QAT_FW_COMN_HDR_FLAGS_BUILD
-			(ICP_QAT_FW_COMN_REQ_FLAG_SET);
+		ICP_QAT_FW_COMN_HDR_FLAGS_BUILD
+		(ICP_QAT_FW_COMN_REQ_FLAG_SET);
 }
 
 static void
@@ -1146,40 +1152,29 @@ qat_asym_session_get_private_size(struct rte_cryptodev *dev __rte_unused)
 static void
 session_clear_modexp(struct rte_crypto_modex_xform *modex)
 {
-	memset(modex->modulus.data, 0, modex->modulus.length);
-	rte_free(modex->modulus.data);
-	memset(modex->exponent.data, 0, modex->exponent.length);
-	rte_free(modex->exponent.data);
+	PARAM_CLR(modex->modulus);
+	PARAM_CLR(modex->exponent);
 }
 
 static void
 session_clear_modinv(struct rte_crypto_modinv_xform *modinv)
 {
-	memset(modinv->modulus.data, 0, modinv->modulus.length);
-	rte_free(modinv->modulus.data);
+	PARAM_CLR(modinv->modulus);
 }
 
 static void
 session_clear_rsa(struct rte_crypto_rsa_xform *rsa)
 {
-	memset(rsa->n.data, 0, rsa->n.length);
-	rte_free(rsa->n.data);
-	memset(rsa->e.data, 0, rsa->e.length);
-	rte_free(rsa->e.data);
+	PARAM_CLR(rsa->n);
+	PARAM_CLR(rsa->e);
 	if (rsa->key_type == RTE_RSA_KEY_TYPE_EXP) {
-		memset(rsa->d.data, 0, rsa->d.length);
-		rte_free(rsa->d.data);
+		PARAM_CLR(rsa->d);
 	} else {
-		memset(rsa->qt.p.data, 0, rsa->qt.p.length);
-		rte_free(rsa->qt.p.data);
-		memset(rsa->qt.q.data, 0, rsa->qt.q.length);
-		rte_free(rsa->qt.q.data);
-		memset(rsa->qt.dP.data, 0, rsa->qt.dP.length);
-		rte_free(rsa->qt.dP.data);
-		memset(rsa->qt.dQ.data, 0, rsa->qt.dQ.length);
-		rte_free(rsa->qt.dQ.data);
-		memset(rsa->qt.qInv.data, 0, rsa->qt.qInv.length);
-		rte_free(rsa->qt.qInv.data);
+		PARAM_CLR(rsa->qt.p);
+		PARAM_CLR(rsa->qt.q);
+		PARAM_CLR(rsa->qt.dP);
+		PARAM_CLR(rsa->qt.dQ);
+		PARAM_CLR(rsa->qt.qInv);
 	}
 }
 
