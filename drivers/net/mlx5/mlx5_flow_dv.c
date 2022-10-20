@@ -12695,132 +12695,121 @@ flow_dv_aso_age_params_init(struct rte_eth_dev *dev,
 
 static void
 flow_dv_translate_integrity_l4(const struct rte_flow_item_integrity *mask,
-			       const struct rte_flow_item_integrity *value,
-			       void *headers_m, void *headers_v)
+			       void *headers)
 {
+	/*
+	 * In HWS mode MLX5_ITEM_UPDATE() macro assigns the same pointer to
+	 * both mask and value, therefore ether can be used.
+	 * In SWS SW_V mode mask points to item mask and value points to item
+	 * spec. Integrity item value is used only if matching mask is set.
+	 * Use mask reference here to keep SWS functionality.
+	 */
 	if (mask->l4_ok) {
 		/* RTE l4_ok filter aggregates hardware l4_ok and
 		 * l4_checksum_ok filters.
 		 * Positive RTE l4_ok match requires hardware match on both L4
 		 * hardware integrity bits.
-		 * For negative match, check hardware l4_checksum_ok bit only,
-		 * because hardware sets that bit to 0 for all packets
-		 * with bad L4.
+		 * PMD supports positive integrity item semantics only.
 		 */
-		if (value->l4_ok) {
-			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_ok, 1);
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_ok, 1);
-		}
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok, 1);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_checksum_ok,
-			 !!value->l4_ok);
-	}
-	if (mask->l4_csum_ok) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok, 1);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_checksum_ok,
-			 value->l4_csum_ok);
+		MLX5_SET(fte_match_set_lyr_2_4, headers, l4_ok, 1);
+		MLX5_SET(fte_match_set_lyr_2_4, headers, l4_checksum_ok, 1);
+	} else if (mask->l4_csum_ok) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers, l4_checksum_ok, 1);
 	}
 }
 
 static void
 flow_dv_translate_integrity_l3(const struct rte_flow_item_integrity *mask,
-			       const struct rte_flow_item_integrity *value,
-			       void *headers_m, void *headers_v, bool is_ipv4)
+			       void *headers, bool is_ipv4)
 {
+	/*
+	 * In HWS mode MLX5_ITEM_UPDATE() macro assigns the same pointer to
+	 * both mask and value, therefore ether can be used.
+	 * In SWS SW_V mode mask points to item mask and value points to item
+	 * spec. Integrity item value used only if matching mask is set.
+	 * Use mask reference here to keep SWS functionality.
+	 */
 	if (mask->l3_ok) {
 		/* RTE l3_ok filter aggregates for IPv4 hardware l3_ok and
 		 * ipv4_csum_ok filters.
 		 * Positive RTE l3_ok match requires hardware match on both L3
 		 * hardware integrity bits.
-		 * For negative match, check hardware l3_csum_ok bit only,
-		 * because hardware sets that bit to 0 for all packets
-		 * with bad L3.
+		 * PMD supports positive integrity item semantics only.
 		 */
+		MLX5_SET(fte_match_set_lyr_2_4, headers, l3_ok, 1);
 		if (is_ipv4) {
-			if (value->l3_ok) {
-				MLX5_SET(fte_match_set_lyr_2_4, headers_m,
-					 l3_ok, 1);
-				MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-					 l3_ok, 1);
-			}
-			MLX5_SET(fte_match_set_lyr_2_4, headers_m,
+			MLX5_SET(fte_match_set_lyr_2_4, headers,
 				 ipv4_checksum_ok, 1);
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-				 ipv4_checksum_ok, !!value->l3_ok);
-		} else {
-			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l3_ok, 1);
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v, l3_ok,
-				 value->l3_ok);
 		}
-	}
-	if (mask->ipv4_csum_ok) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ipv4_checksum_ok, 1);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ipv4_checksum_ok,
-			 value->ipv4_csum_ok);
+	} else if (is_ipv4 && mask->ipv4_csum_ok) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers, ipv4_checksum_ok, 1);
 	}
 }
 
 static void
-set_integrity_bits(void *headers_m, void *headers_v,
-		   const struct rte_flow_item *integrity_item, bool is_l3_ip4)
+set_integrity_bits(void *headers, const struct rte_flow_item *integrity_item,
+		   bool is_l3_ip4, uint32_t key_type)
 {
-	const struct rte_flow_item_integrity *spec = integrity_item->spec;
-	const struct rte_flow_item_integrity *mask = integrity_item->mask;
+	const struct rte_flow_item_integrity *spec;
+	const struct rte_flow_item_integrity *mask;
 
 	/* Integrity bits validation cleared spec pointer */
-	MLX5_ASSERT(spec != NULL);
-	if (!mask)
-		mask = &rte_flow_item_integrity_mask;
-	flow_dv_translate_integrity_l3(mask, spec, headers_m, headers_v,
-				       is_l3_ip4);
-	flow_dv_translate_integrity_l4(mask, spec, headers_m, headers_v);
+	if (MLX5_ITEM_VALID(integrity_item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(integrity_item, key_type, spec, mask,
+			 &rte_flow_item_integrity_mask);
+	flow_dv_translate_integrity_l3(mask, headers, is_l3_ip4);
+	flow_dv_translate_integrity_l4(mask, headers);
 }
 
 static void
-flow_dv_translate_item_integrity_post(void *matcher, void *key,
+flow_dv_translate_item_integrity_post(void *key,
 				      const
 				      struct rte_flow_item *integrity_items[2],
-				      uint64_t pattern_flags)
+				      uint64_t pattern_flags, uint32_t key_type)
 {
-	void *headers_m, *headers_v;
+	void *headers;
 	bool is_l3_ip4;
 
 	if (pattern_flags & MLX5_FLOW_ITEM_INNER_INTEGRITY) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+		headers = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
 		is_l3_ip4 = (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV4) !=
 			    0;
-		set_integrity_bits(headers_m, headers_v,
-				   integrity_items[1], is_l3_ip4);
+		set_integrity_bits(headers, integrity_items[1], is_l3_ip4,
+				   key_type);
 	}
 	if (pattern_flags & MLX5_FLOW_ITEM_OUTER_INTEGRITY) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+		headers = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 		is_l3_ip4 = (pattern_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4) !=
 			    0;
-		set_integrity_bits(headers_m, headers_v,
-				   integrity_items[0], is_l3_ip4);
+		set_integrity_bits(headers, integrity_items[0], is_l3_ip4,
+				   key_type);
 	}
 }
 
-static void
+static uint64_t
 flow_dv_translate_item_integrity(const struct rte_flow_item *item,
-				 const struct rte_flow_item *integrity_items[2],
-				 uint64_t *last_item)
+				 struct mlx5_dv_matcher_workspace *wks,
+				 uint64_t key_type)
 {
-	const struct rte_flow_item_integrity *spec = (typeof(spec))item->spec;
+	if ((key_type & MLX5_SET_MATCHER_SW) != 0) {
+		const struct rte_flow_item_integrity
+			*spec = (typeof(spec))item->spec;
 
-	/* integrity bits validation cleared spec pointer */
-	MLX5_ASSERT(spec != NULL);
-	if (spec->level > 1) {
-		integrity_items[1] = item;
-		*last_item |= MLX5_FLOW_ITEM_INNER_INTEGRITY;
+		/* SWS integrity bits validation cleared spec pointer */
+		if (spec->level > 1) {
+			wks->integrity_items[1] = item;
+			wks->last_item |= MLX5_FLOW_ITEM_INNER_INTEGRITY;
+		} else {
+			wks->integrity_items[0] = item;
+			wks->last_item |= MLX5_FLOW_ITEM_OUTER_INTEGRITY;
+		}
 	} else {
-		integrity_items[0] = item;
-		*last_item |= MLX5_FLOW_ITEM_OUTER_INTEGRITY;
+		/* HWS supports outer integrity only */
+		wks->integrity_items[0] = item;
+		wks->last_item |= MLX5_FLOW_ITEM_OUTER_INTEGRITY;
 	}
+	return wks->last_item;
 }
 
 /**
@@ -13448,6 +13437,10 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 		flow_dv_translate_item_meter_color(dev, key, items, key_type);
 		last_item = MLX5_FLOW_ITEM_METER_COLOR;
 		break;
+	case RTE_FLOW_ITEM_TYPE_INTEGRITY:
+		last_item = flow_dv_translate_item_integrity(items,
+							     wks, key_type);
+		break;
 	default:
 		break;
 	}
@@ -13514,6 +13507,12 @@ flow_dv_translate_items_hws(const struct rte_flow_item *items,
 			items, &wks, key, key_type,  NULL);
 		if (ret)
 			goto exit;
+	}
+	if (wks.item_flags & MLX5_FLOW_ITEM_INTEGRITY) {
+		flow_dv_translate_item_integrity_post(key,
+						      wks.integrity_items,
+						      wks.item_flags,
+						      key_type);
 	}
 	if (wks.item_flags & MLX5_FLOW_LAYER_VXLAN_GPE) {
 		flow_dv_translate_item_vxlan_gpe(key,
@@ -13597,7 +13596,6 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 			     mlx5_flow_get_thread_workspace())->rss_desc,
 	};
 	struct mlx5_dv_matcher_workspace wks_m = wks;
-	const struct rte_flow_item *integrity_items[2] = {NULL, NULL};
 	int ret = 0;
 	int tunnel;
 
@@ -13608,10 +13606,6 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 						  NULL, "item not supported");
 		tunnel = !!(wks.item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (items->type) {
-		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
-			flow_dv_translate_item_integrity(items, integrity_items,
-							 &wks.last_item);
-			break;
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			flow_dv_translate_item_aso_ct(dev, match_mask,
 						      match_value, items);
@@ -13654,9 +13648,14 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 			return -rte_errno;
 	}
 	if (wks.item_flags & MLX5_FLOW_ITEM_INTEGRITY) {
-		flow_dv_translate_item_integrity_post(match_mask, match_value,
-						      integrity_items,
-						      wks.item_flags);
+		flow_dv_translate_item_integrity_post(match_mask,
+						      wks_m.integrity_items,
+						      wks_m.item_flags,
+						      MLX5_SET_MATCHER_SW_M);
+		flow_dv_translate_item_integrity_post(match_value,
+						      wks.integrity_items,
+						      wks.item_flags,
+						      MLX5_SET_MATCHER_SW_V);
 	}
 	if (wks.item_flags & MLX5_FLOW_LAYER_VXLAN_GPE) {
 		flow_dv_translate_item_vxlan_gpe(match_mask,

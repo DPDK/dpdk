@@ -1473,6 +1473,7 @@ struct mlx5_dv_matcher_workspace {
 	struct mlx5_flow_rss_desc *rss_desc; /* RSS descriptor. */
 	const struct rte_flow_item *tunnel_item; /* Flow tunnel item. */
 	const struct rte_flow_item *gre_item; /* Flow GRE item. */
+	const struct rte_flow_item *integrity_items[2];
 };
 
 struct mlx5_flow_split_info {

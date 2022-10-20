@@ -4658,6 +4658,14 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ICMP6:
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			break;
+		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
+			/*
+			 * Integrity flow item validation require access to
+			 * both item mask and spec.
+			 * Current HWS model allows item mask in pattern
+			 * template and item spec in flow rule.
+			 */
+			break;
 		case RTE_FLOW_ITEM_TYPE_END:
 			items_end = true;
 			break;
