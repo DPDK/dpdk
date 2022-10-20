@@ -63,6 +63,25 @@
 #define MLX5DV_FLOW_VLAN_PCP_MASK_BE RTE_BE16(MLX5DV_FLOW_VLAN_PCP_MASK)
 #define MLX5DV_FLOW_VLAN_VID_MASK_BE RTE_BE16(MLX5DV_FLOW_VLAN_VID_MASK)
 
+#define MLX5_ITEM_VALID(item, key_type) \
+	(((MLX5_SET_MATCHER_SW & (key_type)) && !((item)->spec)) || \
+	 ((MLX5_SET_MATCHER_HS_V == (key_type)) && !((item)->spec)) || \
+	 ((MLX5_SET_MATCHER_HS_M == (key_type)) && !((item)->mask)))
+
+#define MLX5_ITEM_UPDATE(item, key_type, v, m, gm) \
+	do { \
+		if ((key_type) == MLX5_SET_MATCHER_SW_V) { \
+			v = (item)->spec; \
+			m = (item)->mask ? (item)->mask : (gm); \
+		} else if ((key_type) == MLX5_SET_MATCHER_HS_V) { \
+			v = (item)->spec; \
+			m = (v); \
+		} else { \
+			v = (item)->mask ? (item)->mask : (gm); \
+			m = (v); \
+		} \
+	} while (0)
+
 union flow_dv_attr {
 	struct {
 		uint32_t valid:1;
@@ -8325,70 +8344,61 @@ flow_dv_check_valid_spec(void *match_mask, void *match_value)
 static inline void
 flow_dv_set_match_ip_version(uint32_t group,
 			     void *headers_v,
-			     void *headers_m,
+			     uint32_t key_type,
 			     uint8_t ip_version)
 {
-	if (group == 0)
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
+	if (group == 0 && (key_type & MLX5_SET_MATCHER_M))
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 0xf);
 	else
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version,
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version,
 			 ip_version);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, ip_version);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ethertype, 0);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype, 0);
 }
 
 /**
- * Add Ethernet item to matcher and to the value.
+ * Add Ethernet item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] grpup
+ *   Flow matcher group.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_eth(void *matcher, void *key,
-			   const struct rte_flow_item *item, int inner,
-			   uint32_t group)
+flow_dv_translate_item_eth(void *key, const struct rte_flow_item *item,
+			   int inner, uint32_t group, uint32_t key_type)
 {
-	const struct rte_flow_item_eth *eth_m = item->mask;
-	const struct rte_flow_item_eth *eth_v = item->spec;
+	const struct rte_flow_item_eth *eth_vv = item->spec;
+	const struct rte_flow_item_eth *eth_m;
+	const struct rte_flow_item_eth *eth_v;
 	const struct rte_flow_item_eth nic_mask = {
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.type = RTE_BE16(0xffff),
 		.has_vlan = 0,
 	};
-	void *hdrs_m;
 	void *hdrs_v;
 	char *l24_v;
 	unsigned int i;
 
-	if (!eth_v)
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!eth_m)
-		eth_m = &nic_mask;
-	if (inner) {
-		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
+	MLX5_ITEM_UPDATE(item, key_type, eth_v, eth_m, &nic_mask);
+	if (!eth_vv)
+		eth_vv = eth_v;
+	if (inner)
 		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
+	else
 		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	memcpy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_m, dmac_47_16),
-	       &eth_m->dst, sizeof(eth_m->dst));
 	/* The value must be in the range of the mask. */
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_v, dmac_47_16);
 	for (i = 0; i < sizeof(eth_m->dst); ++i)
 		l24_v[i] = eth_m->dst.addr_bytes[i] & eth_v->dst.addr_bytes[i];
-	memcpy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_m, smac_47_16),
-	       &eth_m->src, sizeof(eth_m->src));
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_v, smac_47_16);
 	/* The value must be in the range of the mask. */
 	for (i = 0; i < sizeof(eth_m->dst); ++i)
@@ -8402,145 +8412,149 @@ flow_dv_translate_item_eth(void *matcher, void *key,
 	 * eCPRI over Ether layer will use type value 0xAEFE.
 	 */
 	if (eth_m->type == 0xFFFF) {
+		rte_be16_t type = eth_v->type;
+
+		/*
+		 * When set the matcher mask, refer to the original spec
+		 * value.
+		 */
+		if (key_type == MLX5_SET_MATCHER_SW_M) {
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
+			type = eth_vv->type;
+		}
 		/* Set cvlan_tag mask for any single\multi\un-tagged case. */
-		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, cvlan_tag, 1);
-		switch (eth_v->type) {
+		switch (type) {
 		case RTE_BE16(RTE_ETHER_TYPE_VLAN):
 			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
 			return;
 		case RTE_BE16(RTE_ETHER_TYPE_QINQ):
-			MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, svlan_tag, 1);
 			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag, 1);
 			return;
 		case RTE_BE16(RTE_ETHER_TYPE_IPV4):
-			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 4);
+			flow_dv_set_match_ip_version(group, hdrs_v, key_type,
+						     4);
 			return;
 		case RTE_BE16(RTE_ETHER_TYPE_IPV6):
-			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 6);
+			flow_dv_set_match_ip_version(group, hdrs_v, key_type,
+						     6);
 			return;
 		default:
 			break;
 		}
 	}
-	if (eth_m->has_vlan) {
-		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, cvlan_tag, 1);
-		if (eth_v->has_vlan) {
-			/*
-			 * Here, when also has_more_vlan field in VLAN item is
-			 * not set, only single-tagged packets will be matched.
-			 */
-			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
+	/*
+	 * Only SW steering value should refer to the mask value.
+	 * Other cases are using the fake masks, just ignore the mask.
+	 */
+	if (eth_v->has_vlan && eth_m->has_vlan) {
+		/*
+		 * Here, when also has_more_vlan field in VLAN item is
+		 * not set, only single-tagged packets will be matched.
+		 */
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
+		if (key_type != MLX5_SET_MATCHER_HS_M && eth_vv->has_vlan)
 			return;
-		}
 	}
-	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, ethertype,
-		 rte_be_to_cpu_16(eth_m->type));
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_v, ethertype);
 	*(uint16_t *)(l24_v) = eth_m->type & eth_v->type;
 }
 
 /**
- * Add VLAN item to matcher and to the value.
+ * Add VLAN item to the value.
  *
- * @param[in, out] dev_flow
- *   Flow descriptor.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] wks
+ *   Item workspace.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
-			    void *matcher, void *key,
-			    const struct rte_flow_item *item,
-			    int inner, uint32_t group)
+flow_dv_translate_item_vlan(void *key, const struct rte_flow_item *item,
+			    int inner, struct mlx5_dv_matcher_workspace *wks,
+			    uint32_t key_type)
 {
-	const struct rte_flow_item_vlan *vlan_m = item->mask;
-	const struct rte_flow_item_vlan *vlan_v = item->spec;
-	void *hdrs_m;
+	const struct rte_flow_item_vlan *vlan_m;
+	const struct rte_flow_item_vlan *vlan_v;
+	const struct rte_flow_item_vlan *vlan_vv = item->spec;
 	void *hdrs_v;
-	uint16_t tci_m;
 	uint16_t tci_v;
 
 	if (inner) {
-		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
 		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
 	} else {
-		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
 		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 		/*
 		 * This is workaround, masks are not supported,
 		 * and pre-validated.
 		 */
-		if (vlan_v)
-			dev_flow->handle->vf_vlan.tag =
-					rte_be_to_cpu_16(vlan_v->tci) & 0x0fff;
+		if (vlan_vv)
+			wks->vlan_tag = rte_be_to_cpu_16(vlan_vv->tci) & 0x0fff;
 	}
 	/*
 	 * When VLAN item exists in flow, mark packet as tagged,
 	 * even if TCI is not specified.
 	 */
-	if (!MLX5_GET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag)) {
-		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, cvlan_tag, 1);
+	if (!MLX5_GET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag))
 		MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
-	}
-	if (!vlan_v)
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!vlan_m)
-		vlan_m = &rte_flow_item_vlan_mask;
-	tci_m = rte_be_to_cpu_16(vlan_m->tci);
+	MLX5_ITEM_UPDATE(item, key_type, vlan_v, vlan_m,
+			 &rte_flow_item_vlan_mask);
 	tci_v = rte_be_to_cpu_16(vlan_m->tci & vlan_v->tci);
-	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, first_vid, tci_m);
 	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, first_vid, tci_v);
-	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, first_cfi, tci_m >> 12);
 	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, first_cfi, tci_v >> 12);
-	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, first_prio, tci_m >> 13);
 	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, first_prio, tci_v >> 13);
 	/*
 	 * HW is optimized for IPv4/IPv6. In such cases, avoid setting
 	 * ethertype, and use ip_version field instead.
 	 */
 	if (vlan_m->inner_type == 0xFFFF) {
-		switch (vlan_v->inner_type) {
+		rte_be16_t inner_type = vlan_v->inner_type;
+
+		/*
+		 * When set the matcher mask, refer to the original spec
+		 * value.
+		 */
+		if (key_type == MLX5_SET_MATCHER_SW_M)
+			inner_type = vlan_vv->inner_type;
+		switch (inner_type) {
 		case RTE_BE16(RTE_ETHER_TYPE_VLAN):
-			MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, svlan_tag, 1);
 			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag, 1);
-			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 0);
+			if (key_type & MLX5_SET_MATCHER_V)
+				MLX5_SET(fte_match_set_lyr_2_4, hdrs_v,
+					 cvlan_tag, 0);
 			return;
 		case RTE_BE16(RTE_ETHER_TYPE_IPV4):
-			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 4);
+			flow_dv_set_match_ip_version
+				(wks->group, hdrs_v, key_type, 4);
 			return;
 		case RTE_BE16(RTE_ETHER_TYPE_IPV6):
-			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 6);
+			flow_dv_set_match_ip_version
+				(wks->group, hdrs_v, key_type, 6);
 			return;
 		default:
 			break;
 		}
 	}
 	if (vlan_m->has_more_vlan && vlan_v->has_more_vlan) {
-		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, svlan_tag, 1);
 		MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag, 1);
 		/* Only one vlan_tag bit can be set. */
-		MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 0);
+		if (key_type & MLX5_SET_MATCHER_V)
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 0);
 		return;
 	}
-	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, ethertype,
-		 rte_be_to_cpu_16(vlan_m->inner_type));
 	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, ethertype,
 		 rte_be_to_cpu_16(vlan_m->inner_type & vlan_v->inner_type));
 }
 
 /**
- * Add IPV4 item to matcher and to the value.
+ * Add IPV4 item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
@@ -8549,14 +8563,15 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
  *   Item is inner pattern.
  * @param[in] group
  *   The group to insert the rule.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_ipv4(void *matcher, void *key,
-			    const struct rte_flow_item *item,
-			    int inner, uint32_t group)
+flow_dv_translate_item_ipv4(void *key, const struct rte_flow_item *item,
+			    int inner, uint32_t group, uint32_t key_type)
 {
-	const struct rte_flow_item_ipv4 *ipv4_m = item->mask;
-	const struct rte_flow_item_ipv4 *ipv4_v = item->spec;
+	const struct rte_flow_item_ipv4 *ipv4_m;
+	const struct rte_flow_item_ipv4 *ipv4_v;
 	const struct rte_flow_item_ipv4 nic_mask = {
 		.hdr = {
 			.src_addr = RTE_BE32(0xffffffff),
@@ -8566,68 +8581,41 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 			.time_to_live = 0xff,
 		},
 	};
-	void *headers_m;
 	void *headers_v;
-	char *l24_m;
 	char *l24_v;
-	uint8_t tos, ihl_m, ihl_v;
+	uint8_t tos;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	flow_dv_set_match_ip_version(group, headers_v, headers_m, 4);
-	if (!ipv4_v)
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+			    MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	flow_dv_set_match_ip_version(group, headers_v, key_type, 4);
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!ipv4_m)
-		ipv4_m = &nic_mask;
-	l24_m = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m,
-			     dst_ipv4_dst_ipv6.ipv4_layout.ipv4);
+	MLX5_ITEM_UPDATE(item, key_type, ipv4_v, ipv4_m, &nic_mask);
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v,
 			     dst_ipv4_dst_ipv6.ipv4_layout.ipv4);
-	*(uint32_t *)l24_m = ipv4_m->hdr.dst_addr;
 	*(uint32_t *)l24_v = ipv4_m->hdr.dst_addr & ipv4_v->hdr.dst_addr;
-	l24_m = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m,
-			  src_ipv4_src_ipv6.ipv4_layout.ipv4);
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v,
 			  src_ipv4_src_ipv6.ipv4_layout.ipv4);
-	*(uint32_t *)l24_m = ipv4_m->hdr.src_addr;
 	*(uint32_t *)l24_v = ipv4_m->hdr.src_addr & ipv4_v->hdr.src_addr;
 	tos = ipv4_m->hdr.type_of_service & ipv4_v->hdr.type_of_service;
-	ihl_m = ipv4_m->hdr.version_ihl & RTE_IPV4_HDR_IHL_MASK;
-	ihl_v = ipv4_v->hdr.version_ihl & RTE_IPV4_HDR_IHL_MASK;
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ipv4_ihl, ihl_m);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ipv4_ihl, ihl_m & ihl_v);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_ecn,
-		 ipv4_m->hdr.type_of_service);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ipv4_ihl,
+		 ipv4_v->hdr.ihl & ipv4_m->hdr.ihl);
+	if (key_type == MLX5_SET_MATCHER_SW_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_ecn,
+			 ipv4_v->hdr.type_of_service);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_ecn, tos);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_dscp,
-		 ipv4_m->hdr.type_of_service >> 2);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_dscp, tos >> 2);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol,
-		 ipv4_m->hdr.next_proto_id);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
 		 ipv4_v->hdr.next_proto_id & ipv4_m->hdr.next_proto_id);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_ttl_hoplimit,
-		 ipv4_m->hdr.time_to_live);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_ttl_hoplimit,
 		 ipv4_v->hdr.time_to_live & ipv4_m->hdr.time_to_live);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, frag,
-		 !!(ipv4_m->hdr.fragment_offset));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, frag,
 		 !!(ipv4_v->hdr.fragment_offset & ipv4_m->hdr.fragment_offset));
 }
 
 /**
- * Add IPV6 item to matcher and to the value.
+ * Add IPV6 item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
@@ -8636,14 +8624,15 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
  *   Item is inner pattern.
  * @param[in] group
  *   The group to insert the rule.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_ipv6(void *matcher, void *key,
-			    const struct rte_flow_item *item,
-			    int inner, uint32_t group)
+flow_dv_translate_item_ipv6(void *key, const struct rte_flow_item *item,
+			    int inner, uint32_t group, uint32_t key_type)
 {
-	const struct rte_flow_item_ipv6 *ipv6_m = item->mask;
-	const struct rte_flow_item_ipv6 *ipv6_v = item->spec;
+	const struct rte_flow_item_ipv6 *ipv6_m;
+	const struct rte_flow_item_ipv6 *ipv6_v;
 	const struct rte_flow_item_ipv6 nic_mask = {
 		.hdr = {
 			.src_addr =
@@ -8657,287 +8646,217 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 			.hop_limits = 0xff,
 		},
 	};
-	void *headers_m;
 	void *headers_v;
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	char *l24_m;
 	char *l24_v;
-	uint32_t vtc_m;
 	uint32_t vtc_v;
 	int i;
 	int size;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	flow_dv_set_match_ip_version(group, headers_v, headers_m, 6);
-	if (!ipv6_v)
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+			    MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	flow_dv_set_match_ip_version(group, headers_v, key_type, 6);
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!ipv6_m)
-		ipv6_m = &nic_mask;
+	MLX5_ITEM_UPDATE(item, key_type, ipv6_v, ipv6_m, &nic_mask);
 	size = sizeof(ipv6_m->hdr.dst_addr);
-	l24_m = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m,
-			     dst_ipv4_dst_ipv6.ipv6_layout.ipv6);
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v,
 			     dst_ipv4_dst_ipv6.ipv6_layout.ipv6);
-	memcpy(l24_m, ipv6_m->hdr.dst_addr, size);
 	for (i = 0; i < size; ++i)
-		l24_v[i] = l24_m[i] & ipv6_v->hdr.dst_addr[i];
-	l24_m = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m,
-			     src_ipv4_src_ipv6.ipv6_layout.ipv6);
+		l24_v[i] = ipv6_m->hdr.dst_addr[i] & ipv6_v->hdr.dst_addr[i];
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v,
 			     src_ipv4_src_ipv6.ipv6_layout.ipv6);
-	memcpy(l24_m, ipv6_m->hdr.src_addr, size);
 	for (i = 0; i < size; ++i)
-		l24_v[i] = l24_m[i] & ipv6_v->hdr.src_addr[i];
+		l24_v[i] = ipv6_m->hdr.src_addr[i] & ipv6_v->hdr.src_addr[i];
 	/* TOS. */
-	vtc_m = rte_be_to_cpu_32(ipv6_m->hdr.vtc_flow);
 	vtc_v = rte_be_to_cpu_32(ipv6_m->hdr.vtc_flow & ipv6_v->hdr.vtc_flow);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_ecn, vtc_m >> 20);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_ecn, vtc_v >> 20);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_dscp, vtc_m >> 22);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_dscp, vtc_v >> 22);
 	/* Label. */
-	if (inner) {
-		MLX5_SET(fte_match_set_misc, misc_m, inner_ipv6_flow_label,
-			 vtc_m);
+	if (inner)
 		MLX5_SET(fte_match_set_misc, misc_v, inner_ipv6_flow_label,
 			 vtc_v);
-	} else {
-		MLX5_SET(fte_match_set_misc, misc_m, outer_ipv6_flow_label,
-			 vtc_m);
+	else
 		MLX5_SET(fte_match_set_misc, misc_v, outer_ipv6_flow_label,
 			 vtc_v);
-	}
 	/* Protocol. */
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol,
-		 ipv6_m->hdr.proto);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
 		 ipv6_v->hdr.proto & ipv6_m->hdr.proto);
 	/* Hop limit. */
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_ttl_hoplimit,
-		 ipv6_m->hdr.hop_limits);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_ttl_hoplimit,
 		 ipv6_v->hdr.hop_limits & ipv6_m->hdr.hop_limits);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, frag,
-		 !!(ipv6_m->has_frag_ext));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, frag,
 		 !!(ipv6_v->has_frag_ext & ipv6_m->has_frag_ext));
 }
 
 /**
- * Add IPV6 fragment extension item to matcher and to the value.
+ * Add IPV6 fragment extension item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_ipv6_frag_ext(void *matcher, void *key,
+flow_dv_translate_item_ipv6_frag_ext(void *key,
 				     const struct rte_flow_item *item,
-				     int inner)
+				     int inner, uint32_t key_type)
 {
-	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_ext_m = item->mask;
-	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_ext_v = item->spec;
+	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_ext_m;
+	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_ext_v;
 	const struct rte_flow_item_ipv6_frag_ext nic_mask = {
 		.hdr = {
 			.next_header = 0xff,
 			.frag_data = RTE_BE16(0xffff),
 		},
 	};
-	void *headers_m;
 	void *headers_v;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+			    MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	/* IPv6 fragment extension item exists, so packet is IP fragment. */
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, frag, 1);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, frag, 1);
-	if (!ipv6_frag_ext_v)
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!ipv6_frag_ext_m)
-		ipv6_frag_ext_m = &nic_mask;
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol,
-		 ipv6_frag_ext_m->hdr.next_header);
+	MLX5_ITEM_UPDATE(item, key_type, ipv6_frag_ext_v,
+			 ipv6_frag_ext_m, &nic_mask);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
 		 ipv6_frag_ext_v->hdr.next_header &
 		 ipv6_frag_ext_m->hdr.next_header);
 }
 
 /**
- * Add TCP item to matcher and to the value.
+ * Add TCP item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_tcp(void *matcher, void *key,
-			   const struct rte_flow_item *item,
-			   int inner)
+flow_dv_translate_item_tcp(void *key, const struct rte_flow_item *item,
+			   int inner, uint32_t key_type)
 {
-	const struct rte_flow_item_tcp *tcp_m = item->mask;
-	const struct rte_flow_item_tcp *tcp_v = item->spec;
-	void *headers_m;
+	const struct rte_flow_item_tcp *tcp_m;
+	const struct rte_flow_item_tcp *tcp_v;
 	void *headers_v;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_TCP);
-	if (!tcp_v)
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (key_type & MLX5_SET_MATCHER_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, 0xff);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, IPPROTO_TCP);
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!tcp_m)
-		tcp_m = &rte_flow_item_tcp_mask;
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, tcp_sport,
-		 rte_be_to_cpu_16(tcp_m->hdr.src_port));
+	MLX5_ITEM_UPDATE(item, key_type, tcp_v, tcp_m,
+			 &rte_flow_item_tcp_mask);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, tcp_sport,
 		 rte_be_to_cpu_16(tcp_v->hdr.src_port & tcp_m->hdr.src_port));
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, tcp_dport,
-		 rte_be_to_cpu_16(tcp_m->hdr.dst_port));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, tcp_dport,
 		 rte_be_to_cpu_16(tcp_v->hdr.dst_port & tcp_m->hdr.dst_port));
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, tcp_flags,
-		 tcp_m->hdr.tcp_flags);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, tcp_flags,
-		 (tcp_v->hdr.tcp_flags & tcp_m->hdr.tcp_flags));
+		 tcp_v->hdr.tcp_flags & tcp_m->hdr.tcp_flags);
 }
 
 /**
- * Add ESP item to matcher and to the value.
+ * Add ESP item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_esp(void *matcher, void *key,
-			   const struct rte_flow_item *item,
-			   int inner)
+flow_dv_translate_item_esp(void *key, const struct rte_flow_item *item,
+			   int inner, uint32_t key_type)
 {
-	const struct rte_flow_item_esp *esp_m = item->mask;
-	const struct rte_flow_item_esp *esp_v = item->spec;
-	void *headers_m;
+	const struct rte_flow_item_esp *esp_m;
+	const struct rte_flow_item_esp *esp_v;
 	void *headers_v;
-	char *spi_m;
 	char *spi_v;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_ESP);
-	if (!esp_v)
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (key_type & MLX5_SET_MATCHER_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, 0xff);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, IPPROTO_ESP);
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!esp_m)
-		esp_m = &rte_flow_item_esp_mask;
-	headers_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	MLX5_ITEM_UPDATE(item, key_type, esp_v, esp_m,
+			 &rte_flow_item_esp_mask);
 	headers_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	if (inner) {
-		spi_m = MLX5_ADDR_OF(fte_match_set_misc, headers_m, inner_esp_spi);
-		spi_v = MLX5_ADDR_OF(fte_match_set_misc, headers_v, inner_esp_spi);
-	} else {
-		spi_m = MLX5_ADDR_OF(fte_match_set_misc, headers_m, outer_esp_spi);
-		spi_v = MLX5_ADDR_OF(fte_match_set_misc, headers_v, outer_esp_spi);
-	}
-	*(uint32_t *)spi_m = esp_m->hdr.spi;
+	spi_v = inner ? MLX5_ADDR_OF(fte_match_set_misc, headers_v,
+				inner_esp_spi) : MLX5_ADDR_OF(fte_match_set_misc
+				, headers_v, outer_esp_spi);
 	*(uint32_t *)spi_v = esp_m->hdr.spi & esp_v->hdr.spi;
 }
 
 /**
- * Add UDP item to matcher and to the value.
+ * Add UDP item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_udp(void *matcher, void *key,
-			   const struct rte_flow_item *item,
-			   int inner)
+flow_dv_translate_item_udp(void *key, const struct rte_flow_item *item,
+			   int inner, struct mlx5_dv_matcher_workspace *wks,
+			   uint32_t key_type)
 {
-	const struct rte_flow_item_udp *udp_m = item->mask;
-	const struct rte_flow_item_udp *udp_v = item->spec;
-	void *headers_m;
+	const struct rte_flow_item_udp *udp_m;
+	const struct rte_flow_item_udp *udp_v;
 	void *headers_v;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_UDP);
-	if (!udp_v)
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (key_type & MLX5_SET_MATCHER_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, 0xff);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, IPPROTO_UDP);
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!udp_m)
-		udp_m = &rte_flow_item_udp_mask;
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_sport,
-		 rte_be_to_cpu_16(udp_m->hdr.src_port));
+	MLX5_ITEM_UPDATE(item, key_type, udp_v, udp_m,
+			 &rte_flow_item_udp_mask);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_sport,
 		 rte_be_to_cpu_16(udp_v->hdr.src_port & udp_m->hdr.src_port));
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport,
-		 rte_be_to_cpu_16(udp_m->hdr.dst_port));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
 		 rte_be_to_cpu_16(udp_v->hdr.dst_port & udp_m->hdr.dst_port));
+	/* Force get UDP dport in case to be used in VXLAN translate. */
+	if (key_type & MLX5_SET_MATCHER_SW) {
+		udp_v = item->spec;
+		wks->udp_dport = rte_be_to_cpu_16(udp_v->hdr.dst_port &
+						  udp_m->hdr.dst_port);
+	}
 }
 
 /**
- * Add GRE optional Key item to matcher and to the value.
+ * Add GRE optional Key item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
@@ -8946,55 +8865,46 @@ flow_dv_translate_item_udp(void *matcher, void *key,
  *   Item is inner pattern.
  */
 static void
-flow_dv_translate_item_gre_key(void *matcher, void *key,
-				   const struct rte_flow_item *item)
+flow_dv_translate_item_gre_key(void *key, const struct rte_flow_item *item,
+			       uint32_t key_type)
 {
-	const rte_be32_t *key_m = item->mask;
-	const rte_be32_t *key_v = item->spec;
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	const rte_be32_t *key_m;
+	const rte_be32_t *key_v;
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	rte_be32_t gre_key_default_mask = RTE_BE32(UINT32_MAX);
 
 	/* GRE K bit must be on and should already be validated */
-	MLX5_SET(fte_match_set_misc, misc_m, gre_k_present, 1);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_k_present, 1);
-	if (!key_v)
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!key_m)
-		key_m = &gre_key_default_mask;
-	MLX5_SET(fte_match_set_misc, misc_m, gre_key_h,
-		 rte_be_to_cpu_32(*key_m) >> 8);
+	MLX5_ITEM_UPDATE(item, key_type, key_v, key_m,
+			 &gre_key_default_mask);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_key_h,
 		 rte_be_to_cpu_32((*key_v) & (*key_m)) >> 8);
-	MLX5_SET(fte_match_set_misc, misc_m, gre_key_l,
-		 rte_be_to_cpu_32(*key_m) & 0xFF);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_key_l,
 		 rte_be_to_cpu_32((*key_v) & (*key_m)) & 0xFF);
 }
 
 /**
- * Add GRE item to matcher and to the value.
+ * Add GRE item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] pattern_flags
  *   Accumulated pattern flags.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_gre(void *matcher, void *key,
-			   const struct rte_flow_item *item,
-			   uint64_t pattern_flags)
+flow_dv_translate_item_gre(void *key, const struct rte_flow_item *item,
+			   uint64_t pattern_flags, uint32_t key_type)
 {
 	static const struct rte_flow_item_gre empty_gre = {0,};
 	const struct rte_flow_item_gre *gre_m = item->mask;
 	const struct rte_flow_item_gre *gre_v = item->spec;
-	void *headers_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
 	void *headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	struct {
 		union {
@@ -9012,8 +8922,11 @@ flow_dv_translate_item_gre(void *matcher, void *key,
 	} gre_crks_rsvd0_ver_m, gre_crks_rsvd0_ver_v;
 	uint16_t protocol_m, protocol_v;
 
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_GRE);
+	if (key_type & MLX5_SET_MATCHER_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, 0xff);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
+			 IPPROTO_GRE);
 	if (!gre_v) {
 		gre_v = &empty_gre;
 		gre_m = &empty_gre;
@@ -9021,20 +8934,18 @@ flow_dv_translate_item_gre(void *matcher, void *key,
 		if (!gre_m)
 			gre_m = &rte_flow_item_gre_mask;
 	}
+	if (key_type & MLX5_SET_MATCHER_M)
+		gre_v = gre_m;
+	else if (key_type == MLX5_SET_MATCHER_HS_V)
+		gre_m = gre_v;
 	gre_crks_rsvd0_ver_m.value = rte_be_to_cpu_16(gre_m->c_rsvd0_ver);
 	gre_crks_rsvd0_ver_v.value = rte_be_to_cpu_16(gre_v->c_rsvd0_ver);
-	MLX5_SET(fte_match_set_misc, misc_m, gre_c_present,
-		 gre_crks_rsvd0_ver_m.c_present);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_c_present,
 		 gre_crks_rsvd0_ver_v.c_present &
 		 gre_crks_rsvd0_ver_m.c_present);
-	MLX5_SET(fte_match_set_misc, misc_m, gre_k_present,
-		 gre_crks_rsvd0_ver_m.k_present);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_k_present,
 		 gre_crks_rsvd0_ver_v.k_present &
 		 gre_crks_rsvd0_ver_m.k_present);
-	MLX5_SET(fte_match_set_misc, misc_m, gre_s_present,
-		 gre_crks_rsvd0_ver_m.s_present);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_s_present,
 		 gre_crks_rsvd0_ver_v.s_present &
 		 gre_crks_rsvd0_ver_m.s_present);
@@ -9045,17 +8956,17 @@ flow_dv_translate_item_gre(void *matcher, void *key,
 		protocol_v = mlx5_translate_tunnel_etypes(pattern_flags);
 		if (protocol_v)
 			protocol_m = 0xFFFF;
+		/* Restore the value to mask in mask case. */
+		if (key_type & MLX5_SET_MATCHER_M)
+			protocol_v = protocol_m;
 	}
-	MLX5_SET(fte_match_set_misc, misc_m, gre_protocol, protocol_m);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
 		 protocol_m & protocol_v);
 }
 
 /**
- * Add GRE optional items to matcher and to the value.
+ * Add GRE optional items to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
@@ -9064,13 +8975,16 @@ flow_dv_translate_item_gre(void *matcher, void *key,
  *   Pointer to gre_item.
  * @param[in] pattern_flags
  *   Accumulated pattern flags.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_gre_option(void *matcher, void *key,
+flow_dv_translate_item_gre_option(void *key,
 				  const struct rte_flow_item *item,
 				  const struct rte_flow_item *gre_item,
-				  uint64_t pattern_flags)
+				  uint64_t pattern_flags, uint32_t key_type)
 {
+	void *misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
 	const struct rte_flow_item_gre_opt *option_m = item->mask;
 	const struct rte_flow_item_gre_opt *option_v = item->spec;
 	const struct rte_flow_item_gre *gre_m = gre_item->mask;
@@ -9079,8 +8993,6 @@ flow_dv_translate_item_gre_option(void *matcher, void *key,
 	struct rte_flow_item gre_key_item;
 	uint16_t c_rsvd0_ver_m, c_rsvd0_ver_v;
 	uint16_t protocol_m, protocol_v;
-	void *misc5_m;
-	void *misc5_v;
 
 	/*
 	 * If only match key field, keep using misc for matching.
@@ -9089,11 +9001,10 @@ flow_dv_translate_item_gre_option(void *matcher, void *key,
 	 */
 	if (!(option_m->sequence.sequence ||
 	      option_m->checksum_rsvd.checksum)) {
-		flow_dv_translate_item_gre(matcher, key, gre_item,
-					   pattern_flags);
+		flow_dv_translate_item_gre(key, gre_item, pattern_flags, key_type);
 		gre_key_item.spec = &option_v->key.key;
 		gre_key_item.mask = &option_m->key.key;
-		flow_dv_translate_item_gre_key(matcher, key, &gre_key_item);
+		flow_dv_translate_item_gre_key(key, &gre_key_item, key_type);
 		return;
 	}
 	if (!gre_v) {
@@ -9128,57 +9039,49 @@ flow_dv_translate_item_gre_option(void *matcher, void *key,
 		c_rsvd0_ver_v |= RTE_BE16(0x8000);
 		c_rsvd0_ver_m |= RTE_BE16(0x8000);
 	}
+	if (key_type & MLX5_SET_MATCHER_M) {
+		c_rsvd0_ver_v = c_rsvd0_ver_m;
+		protocol_v = protocol_m;
+		option_v = option_m;
+	}
 	/*
 	 * Hardware parses GRE optional field into the fixed location,
 	 * do not need to adjust the tunnel dword indices.
 	 */
-	misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
-	misc5_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_5);
 	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_0,
 		 rte_be_to_cpu_32((c_rsvd0_ver_v | protocol_v << 16) &
 				  (c_rsvd0_ver_m | protocol_m << 16)));
-	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_0,
-		 rte_be_to_cpu_32(c_rsvd0_ver_m | protocol_m << 16));
 	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_1,
 		 rte_be_to_cpu_32(option_v->checksum_rsvd.checksum &
 				  option_m->checksum_rsvd.checksum));
-	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_1,
-		 rte_be_to_cpu_32(option_m->checksum_rsvd.checksum));
 	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_2,
 		 rte_be_to_cpu_32(option_v->key.key & option_m->key.key));
-	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_2,
-		 rte_be_to_cpu_32(option_m->key.key));
 	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_3,
 		 rte_be_to_cpu_32(option_v->sequence.sequence &
 				  option_m->sequence.sequence));
-	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_3,
-		 rte_be_to_cpu_32(option_m->sequence.sequence));
 }
 
 /**
  * Add NVGRE item to matcher and to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] pattern_flags
  *   Accumulated pattern flags.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_nvgre(void *matcher, void *key,
-			     const struct rte_flow_item *item,
-			     unsigned long pattern_flags)
+flow_dv_translate_item_nvgre(void *key, const struct rte_flow_item *item,
+			     unsigned long pattern_flags, uint32_t key_type)
 {
-	const struct rte_flow_item_nvgre *nvgre_m = item->mask;
-	const struct rte_flow_item_nvgre *nvgre_v = item->spec;
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	const struct rte_flow_item_nvgre *nvgre_m;
+	const struct rte_flow_item_nvgre *nvgre_v;
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	const char *tni_flow_id_m;
 	const char *tni_flow_id_v;
-	char *gre_key_m;
 	char *gre_key_v;
 	int size;
 	int i;
@@ -9197,158 +9100,145 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
 		.mask = &gre_mask,
 		.last = NULL,
 	};
-	flow_dv_translate_item_gre(matcher, key, &gre_item, pattern_flags);
-	if (!nvgre_v)
+	flow_dv_translate_item_gre(key, &gre_item, pattern_flags, key_type);
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!nvgre_m)
-		nvgre_m = &rte_flow_item_nvgre_mask;
+	MLX5_ITEM_UPDATE(item, key_type, nvgre_v, nvgre_m,
+		    &rte_flow_item_nvgre_mask);
 	tni_flow_id_m = (const char *)nvgre_m->tni;
 	tni_flow_id_v = (const char *)nvgre_v->tni;
 	size = sizeof(nvgre_m->tni) + sizeof(nvgre_m->flow_id);
-	gre_key_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, gre_key_h);
 	gre_key_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, gre_key_h);
-	memcpy(gre_key_m, tni_flow_id_m, size);
 	for (i = 0; i < size; ++i)
-		gre_key_v[i] = gre_key_m[i] & tni_flow_id_v[i];
+		gre_key_v[i] = tni_flow_id_m[i] & tni_flow_id_v[i];
 }
 
 /**
- * Add VXLAN item to matcher and to the value.
+ * Add VXLAN item to the value.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] attr
  *   Flow rule attributes.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] wks
+ *   Matcher workspace.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
 flow_dv_translate_item_vxlan(struct rte_eth_dev *dev,
 			     const struct rte_flow_attr *attr,
-			     void *matcher, void *key,
-			     const struct rte_flow_item *item,
-			     int inner)
+			     void *key, const struct rte_flow_item *item,
+			     int inner, struct mlx5_dv_matcher_workspace *wks,
+			     uint32_t key_type)
 {
-	const struct rte_flow_item_vxlan *vxlan_m = item->mask;
-	const struct rte_flow_item_vxlan *vxlan_v = item->spec;
-	void *headers_m;
+	const struct rte_flow_item_vxlan *vxlan_m;
+	const struct rte_flow_item_vxlan *vxlan_v;
+	const struct rte_flow_item_vxlan *vxlan_vv = item->spec;
 	void *headers_v;
-	void *misc5_m;
+	void *misc_v;
 	void *misc5_v;
+	uint32_t tunnel_v;
 	uint32_t *tunnel_header_v;
-	uint32_t *tunnel_header_m;
+	char *vni_v;
 	uint16_t dport;
+	int size;
+	int i;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_item_vxlan nic_mask = {
 		.vni = "\xff\xff\xff",
 		.rsvd1 = 0xff,
 	};
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
+	misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	dport = item->type == RTE_FLOW_ITEM_TYPE_VXLAN ?
 		MLX5_UDP_PORT_VXLAN : MLX5_UDP_PORT_VXLAN_GPE;
 	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
-	}
-	dport = MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport);
-	if (!vxlan_v)
-		return;
-	if (!vxlan_m) {
-		if ((!attr->group && !priv->sh->tunnel_header_0_1) ||
-		    (attr->group && !priv->sh->misc5_cap))
-			vxlan_m = &rte_flow_item_vxlan_mask;
+		if (key_type & MLX5_SET_MATCHER_M)
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 udp_dport, 0xFFFF);
 		else
-			vxlan_m = &nic_mask;
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 udp_dport, dport);
 	}
+	/*
+	 * Read the UDP dport to check if the value satisfies the VXLAN
+	 * matching with MISC5 for CX5.
+	 */
+	if (wks->udp_dport)
+		dport = wks->udp_dport;
+	if (MLX5_ITEM_VALID(item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(item, key_type, vxlan_v, vxlan_m, &nic_mask);
+	if (item->mask == &nic_mask &&
+	    ((!attr->group && !priv->sh->tunnel_header_0_1) ||
+	    (attr->group && !priv->sh->misc5_cap)))
+		vxlan_m = &rte_flow_item_vxlan_mask;
 	if ((priv->sh->steering_format_version ==
-	    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 &&
-	    dport != MLX5_UDP_PORT_VXLAN) ||
-	    (!attr->group && !attr->transfer && !priv->sh->tunnel_header_0_1) ||
+	     MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 &&
+	     dport != MLX5_UDP_PORT_VXLAN) ||
+	    (!attr->group && !attr->transfer) ||
 	    ((attr->group || attr->transfer) && !priv->sh->misc5_cap)) {
-		void *misc_m;
-		void *misc_v;
-		char *vni_m;
-		char *vni_v;
-		int size;
-		int i;
-		misc_m = MLX5_ADDR_OF(fte_match_param,
-				      matcher, misc_parameters);
 		misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 		size = sizeof(vxlan_m->vni);
-		vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, vxlan_vni);
 		vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, vxlan_vni);
-		memcpy(vni_m, vxlan_m->vni, size);
 		for (i = 0; i < size; ++i)
-			vni_v[i] = vni_m[i] & vxlan_v->vni[i];
+			vni_v[i] = vxlan_m->vni[i] & vxlan_v->vni[i];
 		return;
 	}
-	misc5_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_5);
-	misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
 	tunnel_header_v = (uint32_t *)MLX5_ADDR_OF(fte_match_set_misc5,
 						   misc5_v,
 						   tunnel_header_1);
-	tunnel_header_m = (uint32_t *)MLX5_ADDR_OF(fte_match_set_misc5,
-						   misc5_m,
-						   tunnel_header_1);
-	*tunnel_header_v = (vxlan_v->vni[0] & vxlan_m->vni[0]) |
-			   (vxlan_v->vni[1] & vxlan_m->vni[1]) << 8 |
-			   (vxlan_v->vni[2] & vxlan_m->vni[2]) << 16;
-	if (*tunnel_header_v)
-		*tunnel_header_m = vxlan_m->vni[0] |
-			vxlan_m->vni[1] << 8 |
-			vxlan_m->vni[2] << 16;
-	else
-		*tunnel_header_m = 0x0;
-	*tunnel_header_v |= (vxlan_v->rsvd1 & vxlan_m->rsvd1) << 24;
-	if (vxlan_v->rsvd1 & vxlan_m->rsvd1)
-		*tunnel_header_m |= vxlan_m->rsvd1 << 24;
+	tunnel_v = (vxlan_v->vni[0] & vxlan_m->vni[0]) |
+		   (vxlan_v->vni[1] & vxlan_m->vni[1]) << 8 |
+		   (vxlan_v->vni[2] & vxlan_m->vni[2]) << 16;
+	*tunnel_header_v = tunnel_v;
+	if (key_type == MLX5_SET_MATCHER_SW_M) {
+		tunnel_v = (vxlan_vv->vni[0] & vxlan_m->vni[0]) |
+			   (vxlan_vv->vni[1] & vxlan_m->vni[1]) << 8 |
+			   (vxlan_vv->vni[2] & vxlan_m->vni[2]) << 16;
+		if (!tunnel_v)
+			*tunnel_header_v = 0x0;
+		if (vxlan_vv->rsvd1 & vxlan_m->rsvd1)
+			*tunnel_header_v |= vxlan_v->rsvd1 << 24;
+	} else {
+		*tunnel_header_v |= (vxlan_v->rsvd1 & vxlan_m->rsvd1) << 24;
+	}
 }
 
 /**
- * Add VXLAN-GPE item to matcher and to the value.
+ * Add VXLAN-GPE item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in] inner
- *   Item is inner pattern.
+ * @param[in] pattern_flags
+ *   Item pattern flags.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 
 static void
-flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
-				 const struct rte_flow_item *item,
-				 const uint64_t pattern_flags)
+flow_dv_translate_item_vxlan_gpe(void *key, const struct rte_flow_item *item,
+				 const uint64_t pattern_flags,
+				 uint32_t key_type)
 {
 	static const struct rte_flow_item_vxlan_gpe dummy_vxlan_gpe_hdr = {0, };
 	const struct rte_flow_item_vxlan_gpe *vxlan_m = item->mask;
 	const struct rte_flow_item_vxlan_gpe *vxlan_v = item->spec;
 	/* The item was validated to be on the outer side */
-	void *headers_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
 	void *headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	void *misc_m =
-		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_3);
 	void *misc_v =
 		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
-	char *vni_m =
-		MLX5_ADDR_OF(fte_match_set_misc3, misc_m, outer_vxlan_gpe_vni);
 	char *vni_v =
 		MLX5_ADDR_OF(fte_match_set_misc3, misc_v, outer_vxlan_gpe_vni);
 	int i, size = sizeof(vxlan_m->vni);
@@ -9357,9 +9247,12 @@ flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
 	uint8_t m_protocol, v_protocol;
 
 	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
-			 MLX5_UDP_PORT_VXLAN_GPE);
+		if (key_type & MLX5_SET_MATCHER_M)
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+				 0xFFFF);
+		else
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+				 MLX5_UDP_PORT_VXLAN_GPE);
 	}
 	if (!vxlan_v) {
 		vxlan_v = &dummy_vxlan_gpe_hdr;
@@ -9368,15 +9261,18 @@ flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
 		if (!vxlan_m)
 			vxlan_m = &rte_flow_item_vxlan_gpe_mask;
 	}
-	memcpy(vni_m, vxlan_m->vni, size);
+	if (key_type & MLX5_SET_MATCHER_M)
+		vxlan_v = vxlan_m;
+	else if (key_type == MLX5_SET_MATCHER_HS_V)
+		vxlan_m = vxlan_v;
 	for (i = 0; i < size; ++i)
-		vni_v[i] = vni_m[i] & vxlan_v->vni[i];
+		vni_v[i] = vxlan_m->vni[i] & vxlan_v->vni[i];
 	if (vxlan_m->flags) {
 		flags_m = vxlan_m->flags;
 		flags_v = vxlan_v->flags;
 	}
-	MLX5_SET(fte_match_set_misc3, misc_m, outer_vxlan_gpe_flags, flags_m);
-	MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_flags, flags_v);
+	MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_flags,
+		 flags_m & flags_v);
 	m_protocol = vxlan_m->protocol;
 	v_protocol = vxlan_v->protocol;
 	if (!m_protocol) {
@@ -9389,50 +9285,50 @@ flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
 			v_protocol = RTE_VXLAN_GPE_TYPE_IPV6;
 		if (v_protocol)
 			m_protocol = 0xFF;
+		/* Restore the value to mask in mask case. */
+		if (key_type & MLX5_SET_MATCHER_M)
+			v_protocol = m_protocol;
 	}
-	MLX5_SET(fte_match_set_misc3, misc_m,
-		 outer_vxlan_gpe_next_protocol, m_protocol);
 	MLX5_SET(fte_match_set_misc3, misc_v,
 		 outer_vxlan_gpe_next_protocol, m_protocol & v_protocol);
 }
 
 /**
- * Add Geneve item to matcher and to the value.
+ * Add Geneve item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in] inner
- *   Item is inner pattern.
+ * @param[in] pattern_flags
+ *   Item pattern flags.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 
 static void
-flow_dv_translate_item_geneve(void *matcher, void *key,
-			      const struct rte_flow_item *item,
-			      uint64_t pattern_flags)
+flow_dv_translate_item_geneve(void *key, const struct rte_flow_item *item,
+			      uint64_t pattern_flags, uint32_t key_type)
 {
 	static const struct rte_flow_item_geneve empty_geneve = {0,};
 	const struct rte_flow_item_geneve *geneve_m = item->mask;
 	const struct rte_flow_item_geneve *geneve_v = item->spec;
 	/* GENEVE flow item validation allows single tunnel item */
-	void *headers_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
 	void *headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	uint16_t gbhdr_m;
 	uint16_t gbhdr_v;
-	char *vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, geneve_vni);
 	char *vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, geneve_vni);
 	size_t size = sizeof(geneve_m->vni), i;
 	uint16_t protocol_m, protocol_v;
 
 	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
-			 MLX5_UDP_PORT_GENEVE);
+		if (key_type & MLX5_SET_MATCHER_M)
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+				 0xFFFF);
+		else
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+				 MLX5_UDP_PORT_GENEVE);
 	}
 	if (!geneve_v) {
 		geneve_v = &empty_geneve;
@@ -9441,17 +9337,16 @@ flow_dv_translate_item_geneve(void *matcher, void *key,
 		if (!geneve_m)
 			geneve_m = &rte_flow_item_geneve_mask;
 	}
-	memcpy(vni_m, geneve_m->vni, size);
+	if (key_type & MLX5_SET_MATCHER_M)
+		geneve_v = geneve_m;
+	else if (key_type == MLX5_SET_MATCHER_HS_V)
+		geneve_m = geneve_v;
 	for (i = 0; i < size; ++i)
-		vni_v[i] = vni_m[i] & geneve_v->vni[i];
+		vni_v[i] = geneve_m->vni[i] & geneve_v->vni[i];
 	gbhdr_m = rte_be_to_cpu_16(geneve_m->ver_opt_len_o_c_rsvd0);
 	gbhdr_v = rte_be_to_cpu_16(geneve_v->ver_opt_len_o_c_rsvd0);
-	MLX5_SET(fte_match_set_misc, misc_m, geneve_oam,
-		 MLX5_GENEVE_OAMF_VAL(gbhdr_m));
 	MLX5_SET(fte_match_set_misc, misc_v, geneve_oam,
 		 MLX5_GENEVE_OAMF_VAL(gbhdr_v) & MLX5_GENEVE_OAMF_VAL(gbhdr_m));
-	MLX5_SET(fte_match_set_misc, misc_m, geneve_opt_len,
-		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_m));
 	MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
 		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_v) &
 		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_m));
@@ -9462,8 +9357,10 @@ flow_dv_translate_item_geneve(void *matcher, void *key,
 		protocol_v = mlx5_translate_tunnel_etypes(pattern_flags);
 		if (protocol_v)
 			protocol_m = 0xFFFF;
+		/* Restore the value to mask in mask case. */
+		if (key_type & MLX5_SET_MATCHER_M)
+			protocol_v = protocol_m;
 	}
-	MLX5_SET(fte_match_set_misc, misc_m, geneve_protocol_type, protocol_m);
 	MLX5_SET(fte_match_set_misc, misc_v, geneve_protocol_type,
 		 protocol_m & protocol_v);
 }
@@ -9473,10 +9370,8 @@ flow_dv_translate_item_geneve(void *matcher, void *key,
  *
  * @param dev[in, out]
  *   Pointer to rte_eth_dev structure.
- * @param[in, out] tag_be24
- *   Tag value in big endian then R-shift 8.
- * @parm[in, out] dev_flow
- *   Pointer to the dev_flow.
+ * @param[in] item
+ *   Flow pattern to translate.
  * @param[out] error
  *   pointer to error structure.
  *
@@ -9553,38 +9448,38 @@ exit:
 }
 
 /**
- * Add Geneve TLV option item to matcher.
+ * Add Geneve TLV option item to value.
  *
  * @param[in, out] dev
  *   Pointer to rte_eth_dev structure.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  * @param[out] error
  *   Pointer to error structure.
  */
 static int
-flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *matcher,
-				  void *key, const struct rte_flow_item *item,
+flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
+				  const struct rte_flow_item *item,
+				  uint32_t key_type,
 				  struct rte_flow_error *error)
 {
-	const struct rte_flow_item_geneve_opt *geneve_opt_m = item->mask;
-	const struct rte_flow_item_geneve_opt *geneve_opt_v = item->spec;
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	const struct rte_flow_item_geneve_opt *geneve_opt_m;
+	const struct rte_flow_item_geneve_opt *geneve_opt_v;
+	const struct rte_flow_item_geneve_opt *geneve_opt_vv = item->spec;
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
-			misc_parameters_3);
 	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
 	rte_be32_t opt_data_key = 0, opt_data_mask = 0;
+	uint32_t *data;
 	int ret = 0;
 
-	if (!geneve_opt_v)
+	if (MLX5_ITEM_VALID(item, key_type))
 		return -1;
-	if (!geneve_opt_m)
-		geneve_opt_m = &rte_flow_item_geneve_opt_mask;
+	MLX5_ITEM_UPDATE(item, key_type, geneve_opt_v, geneve_opt_m,
+			 &rte_flow_item_geneve_opt_mask);
 	ret = flow_dev_geneve_tlv_option_resource_register(dev, item,
 							   error);
 	if (ret) {
@@ -9598,17 +9493,21 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *matcher,
 	 * If the option length was not requested but the GENEVE TLV option item
 	 * is present we set the option length field implicitly.
 	 */
-	if (!MLX5_GET16(fte_match_set_misc, misc_m, geneve_opt_len)) {
-		MLX5_SET(fte_match_set_misc, misc_m, geneve_opt_len,
-			 MLX5_GENEVE_OPTLEN_MASK);
-		MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
-			 geneve_opt_v->option_len + 1);
+	if (!MLX5_GET16(fte_match_set_misc, misc_v, geneve_opt_len)) {
+		if (key_type & MLX5_SET_MATCHER_M)
+			MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
+				 MLX5_GENEVE_OPTLEN_MASK);
+		else
+			MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
+				 geneve_opt_v->option_len + 1);
 	}
-	MLX5_SET(fte_match_set_misc, misc_m, geneve_tlv_option_0_exist, 1);
-	MLX5_SET(fte_match_set_misc, misc_v, geneve_tlv_option_0_exist, 1);
 	/* Set the data. */
-	if (geneve_opt_v->data) {
-		memcpy(&opt_data_key, geneve_opt_v->data,
+	if (key_type == MLX5_SET_MATCHER_SW_V)
+		data = geneve_opt_vv->data;
+	else
+		data = geneve_opt_v->data;
+	if (data) {
+		memcpy(&opt_data_key, data,
 			RTE_MIN((uint32_t)(geneve_opt_v->option_len * 4),
 				sizeof(opt_data_key)));
 		MLX5_ASSERT((uint32_t)(geneve_opt_v->option_len * 4) <=
@@ -9618,9 +9517,6 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *matcher,
 				sizeof(opt_data_mask)));
 		MLX5_ASSERT((uint32_t)(geneve_opt_v->option_len * 4) <=
 				sizeof(opt_data_mask));
-		MLX5_SET(fte_match_set_misc3, misc3_m,
-				geneve_tlv_option_0_data,
-				rte_be_to_cpu_32(opt_data_mask));
 		MLX5_SET(fte_match_set_misc3, misc3_v,
 				geneve_tlv_option_0_data,
 			rte_be_to_cpu_32(opt_data_key & opt_data_mask));
@@ -9629,10 +9525,8 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *matcher,
 }
 
 /**
- * Add MPLS item to matcher and to the value.
+ * Add MPLS item to the value.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
@@ -9641,85 +9535,139 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *matcher,
  *   The protocol layer indicated in previous item.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_mpls(void *matcher, void *key,
-			    const struct rte_flow_item *item,
-			    uint64_t prev_layer,
-			    int inner)
+flow_dv_translate_item_mpls(void *key, const struct rte_flow_item *item,
+			    uint64_t prev_layer, int inner,
+			    uint32_t key_type)
 {
-	const uint32_t *in_mpls_m = item->mask;
-	const uint32_t *in_mpls_v = item->spec;
-	uint32_t *out_mpls_m = 0;
+	const uint32_t *in_mpls_m;
+	const uint32_t *in_mpls_v;
 	uint32_t *out_mpls_v = 0;
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	void *misc2_m = MLX5_ADDR_OF(fte_match_param, matcher,
-				     misc_parameters_2);
 	void *misc2_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
-	void *headers_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
 	void *headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 
 	switch (prev_layer) {
 	case MLX5_FLOW_LAYER_OUTER_L4_UDP:
 		if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
-			MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport,
-				 0xffff);
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
-				 MLX5_UDP_PORT_MPLS);
+			if (key_type & MLX5_SET_MATCHER_M)
+				MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+					 udp_dport, 0xffff);
+			else
+				MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+					 udp_dport, MLX5_UDP_PORT_MPLS);
 		}
 		break;
 	case MLX5_FLOW_LAYER_GRE:
 		/* Fall-through. */
 	case MLX5_FLOW_LAYER_GRE_KEY:
 		if (!MLX5_GET16(fte_match_set_misc, misc_v, gre_protocol)) {
-			MLX5_SET(fte_match_set_misc, misc_m, gre_protocol,
-				 0xffff);
-			MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
-				 RTE_ETHER_TYPE_MPLS);
+			if (key_type & MLX5_SET_MATCHER_M)
+				MLX5_SET(fte_match_set_misc, misc_v,
+					 gre_protocol, 0xffff);
+			else
+				MLX5_SET(fte_match_set_misc, misc_v,
+					 gre_protocol, RTE_ETHER_TYPE_MPLS);
 		}
 		break;
 	default:
 		break;
 	}
-	if (!in_mpls_v)
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!in_mpls_m)
-		in_mpls_m = (const uint32_t *)&rte_flow_item_mpls_mask;
+	MLX5_ITEM_UPDATE(item, key_type, in_mpls_v, in_mpls_m,
+			 &rte_flow_item_mpls_mask);
 	switch (prev_layer) {
 	case MLX5_FLOW_LAYER_OUTER_L4_UDP:
-		out_mpls_m =
-			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_m,
-						 outer_first_mpls_over_udp);
 		out_mpls_v =
 			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_v,
 						 outer_first_mpls_over_udp);
 		break;
 	case MLX5_FLOW_LAYER_GRE:
-		out_mpls_m =
-			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_m,
-						 outer_first_mpls_over_gre);
 		out_mpls_v =
 			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_v,
 						 outer_first_mpls_over_gre);
 		break;
 	default:
 		/* Inner MPLS not over GRE is not supported. */
-		if (!inner) {
-			out_mpls_m =
-				(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2,
-							 misc2_m,
-							 outer_first_mpls);
+		if (!inner)
 			out_mpls_v =
 				(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2,
 							 misc2_v,
 							 outer_first_mpls);
-		}
 		break;
 	}
-	if (out_mpls_m && out_mpls_v) {
-		*out_mpls_m = *in_mpls_m;
+	if (out_mpls_v)
 		*out_mpls_v = *in_mpls_v & *in_mpls_m;
+}
+
+/**
+ * Add metadata register item to matcher
+ *
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] reg_type
+ *   Type of device metadata register
+ * @param[in] value
+ *   Register value
+ * @param[in] mask
+ *   Register mask
+ */
+static void
+flow_dv_match_meta_reg(void *key, enum modify_reg reg_type,
+		       uint32_t data, uint32_t mask)
+{
+	void *misc2_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+	uint32_t temp;
+
+	data &= mask;
+	switch (reg_type) {
+	case REG_A:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_a, data);
+		break;
+	case REG_B:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_b, data);
+		break;
+	case REG_C_0:
+		/*
+		 * The metadata register C0 field might be divided into
+		 * source vport index and META item value, we should set
+		 * this field according to specified mask, not as whole one.
+		 */
+		temp = MLX5_GET(fte_match_set_misc2, misc2_v, metadata_reg_c_0);
+		if (mask)
+			temp &= ~mask;
+		temp |= data;
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0, temp);
+		break;
+	case REG_C_1:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_1, data);
+		break;
+	case REG_C_2:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_2, data);
+		break;
+	case REG_C_3:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_3, data);
+		break;
+	case REG_C_4:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_4, data);
+		break;
+	case REG_C_5:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_5, data);
+		break;
+	case REG_C_6:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_6, data);
+		break;
+	case REG_C_7:
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_7, data);
+		break;
+	default:
+		MLX5_ASSERT(false);
+		break;
 	}
 }
 
@@ -9738,72 +9686,11 @@ flow_dv_translate_item_mpls(void *matcher, void *key,
  *   Register mask
  */
 static void
-flow_dv_match_meta_reg(void *matcher, void *key,
-		       enum modify_reg reg_type,
-		       uint32_t data, uint32_t mask)
+flow_dv_match_meta_reg_all(void *matcher, void *key, enum modify_reg reg_type,
+			   uint32_t data, uint32_t mask)
 {
-	void *misc2_m =
-		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
-	void *misc2_v =
-		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
-	uint32_t temp;
-
-	data &= mask;
-	switch (reg_type) {
-	case REG_A:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_a, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_a, data);
-		break;
-	case REG_B:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_b, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_b, data);
-		break;
-	case REG_C_0:
-		/*
-		 * The metadata register C0 field might be divided into
-		 * source vport index and META item value, we should set
-		 * this field according to specified mask, not as whole one.
-		 */
-		temp = MLX5_GET(fte_match_set_misc2, misc2_m, metadata_reg_c_0);
-		temp |= mask;
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_0, temp);
-		temp = MLX5_GET(fte_match_set_misc2, misc2_v, metadata_reg_c_0);
-		temp &= ~mask;
-		temp |= data;
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_0, temp);
-		break;
-	case REG_C_1:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_1, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_1, data);
-		break;
-	case REG_C_2:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_2, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_2, data);
-		break;
-	case REG_C_3:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_3, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_3, data);
-		break;
-	case REG_C_4:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_4, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_4, data);
-		break;
-	case REG_C_5:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_5, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_5, data);
-		break;
-	case REG_C_6:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_6, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_6, data);
-		break;
-	case REG_C_7:
-		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_c_7, mask);
-		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_7, data);
-		break;
-	default:
-		MLX5_ASSERT(false);
-		break;
-	}
+	flow_dv_match_meta_reg(key, reg_type, data, mask);
+	flow_dv_match_meta_reg(matcher, reg_type, mask, mask);
 }
 
 /**
@@ -9811,29 +9698,44 @@ flow_dv_match_meta_reg(void *matcher, void *key,
  *
  * @param[in] dev
  *   The device to configure through.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_mark(struct rte_eth_dev *dev,
-			    void *matcher, void *key,
-			    const struct rte_flow_item *item)
+flow_dv_translate_item_mark(struct rte_eth_dev *dev, void *key,
+			    const struct rte_flow_item *item,
+			    uint32_t key_type)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_item_mark *mark;
 	uint32_t value;
-	uint32_t mask;
+	uint32_t mask = 0;
 
-	mark = item->mask ? (const void *)item->mask :
-			    &rte_flow_item_mark_mask;
-	mask = mark->id & priv->sh->dv_mark_mask;
-	mark = (const void *)item->spec;
-	MLX5_ASSERT(mark);
-	value = mark->id & priv->sh->dv_mark_mask & mask;
+	if (key_type & MLX5_SET_MATCHER_SW) {
+		mark = item->mask ? (const void *)item->mask :
+				    &rte_flow_item_mark_mask;
+		mask = mark->id;
+		if (key_type == MLX5_SET_MATCHER_SW_M) {
+			value = mask;
+		} else {
+			mark = (const void *)item->spec;
+			MLX5_ASSERT(mark);
+			value = mark->id;
+		}
+	} else {
+		mark = (key_type == MLX5_SET_MATCHER_HS_V) ?
+			(const void *)item->spec : (const void *)item->mask;
+		MLX5_ASSERT(mark);
+		value = mark->id;
+		if (key_type == MLX5_SET_MATCHER_HS_M)
+			mask = value;
+	}
+	mask &= priv->sh->dv_mark_mask;
+	value &= mask;
 	if (mask) {
 		enum modify_reg reg;
 
@@ -9849,7 +9751,7 @@ flow_dv_translate_item_mark(struct rte_eth_dev *dev,
 			mask <<= shl_c0;
 			value <<= shl_c0;
 		}
-		flow_dv_match_meta_reg(matcher, key, reg, value, mask);
+		flow_dv_match_meta_reg(key, reg, value, mask);
 	}
 }
 
@@ -9858,65 +9760,66 @@ flow_dv_translate_item_mark(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   The devich to configure through.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] attr
  *   Attributes of flow that includes this item.
  * @param[in] item
  *   Flow pattern to translate.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
 flow_dv_translate_item_meta(struct rte_eth_dev *dev,
-			    void *matcher, void *key,
+			    void *key,
 			    const struct rte_flow_attr *attr,
-			    const struct rte_flow_item *item)
+			    const struct rte_flow_item *item,
+			    uint32_t key_type)
 {
 	const struct rte_flow_item_meta *meta_m;
 	const struct rte_flow_item_meta *meta_v;
+	uint32_t value;
+	uint32_t mask = 0;
+	int reg;
 
-	meta_m = (const void *)item->mask;
-	if (!meta_m)
-		meta_m = &rte_flow_item_meta_mask;
-	meta_v = (const void *)item->spec;
-	if (meta_v) {
-		int reg;
-		uint32_t value = meta_v->data;
-		uint32_t mask = meta_m->data;
+	if (MLX5_ITEM_VALID(item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(item, key_type, meta_v, meta_m,
+			 &rte_flow_item_meta_mask);
+	value = meta_v->data;
+	mask = meta_m->data;
+	if (key_type == MLX5_SET_MATCHER_HS_M)
+		mask = value;
+	reg = flow_dv_get_metadata_reg(dev, attr, NULL);
+	if (reg < 0)
+		return;
+	MLX5_ASSERT(reg != REG_NON);
+	if (reg == REG_C_0) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
+		uint32_t shl_c0 = rte_bsf32(msk_c0);
 
-		reg = flow_dv_get_metadata_reg(dev, attr, NULL);
-		if (reg < 0)
-			return;
-		MLX5_ASSERT(reg != REG_NON);
-		if (reg == REG_C_0) {
-			struct mlx5_priv *priv = dev->data->dev_private;
-			uint32_t msk_c0 = priv->sh->dv_regc0_mask;
-			uint32_t shl_c0 = rte_bsf32(msk_c0);
-
-			mask &= msk_c0;
-			mask <<= shl_c0;
-			value <<= shl_c0;
-		}
-		flow_dv_match_meta_reg(matcher, key, reg, value, mask);
+		mask &= msk_c0;
+		mask <<= shl_c0;
+		value <<= shl_c0;
 	}
+	flow_dv_match_meta_reg(key, reg, value, mask);
 }
 
 /**
  * Add vport metadata Reg C0 item to matcher
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
- * @param[in] reg
- *   Flow pattern to translate.
+ * @param[in] value
+ *   Register value
+ * @param[in] mask
+ *   Register mask
  */
 static void
-flow_dv_translate_item_meta_vport(void *matcher, void *key,
-				  uint32_t value, uint32_t mask)
+flow_dv_translate_item_meta_vport(void *key, uint32_t value, uint32_t mask)
 {
-	flow_dv_match_meta_reg(matcher, key, REG_C_0, value, mask);
+	flow_dv_match_meta_reg(key, REG_C_0, value, mask);
 }
 
 /**
@@ -9924,17 +9827,17 @@ flow_dv_translate_item_meta_vport(void *matcher, void *key,
  *
  * @param[in] dev
  *   The devich to configure through.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev,
-				void *matcher, void *key,
-				const struct rte_flow_item *item)
+flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev, void *key,
+				const struct rte_flow_item *item,
+				uint32_t key_type)
 {
 	const struct mlx5_rte_flow_item_tag *tag_v = item->spec;
 	const struct mlx5_rte_flow_item_tag *tag_m = item->mask;
@@ -9943,6 +9846,8 @@ flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev,
 	MLX5_ASSERT(tag_v);
 	value = tag_v->data;
 	mask = tag_m ? tag_m->data : UINT32_MAX;
+	if (key_type & MLX5_SET_MATCHER_M)
+		value = mask;
 	if (tag_v->id == REG_C_0) {
 		struct mlx5_priv *priv = dev->data->dev_private;
 		uint32_t msk_c0 = priv->sh->dv_regc0_mask;
@@ -9952,7 +9857,7 @@ flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev,
 		mask <<= shl_c0;
 		value <<= shl_c0;
 	}
-	flow_dv_match_meta_reg(matcher, key, tag_v->id, value, mask);
+	flow_dv_match_meta_reg(key, tag_v->id, value, mask);
 }
 
 /**
@@ -9960,50 +9865,50 @@ flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   The devich to configure through.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_tag(struct rte_eth_dev *dev,
-			   void *matcher, void *key,
-			   const struct rte_flow_item *item)
+flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
+			   const struct rte_flow_item *item,
+			   uint32_t key_type)
 {
-	const struct rte_flow_item_tag *tag_v = item->spec;
-	const struct rte_flow_item_tag *tag_m = item->mask;
+	const struct rte_flow_item_tag *tag_vv = item->spec;
+	const struct rte_flow_item_tag *tag_v;
+	const struct rte_flow_item_tag *tag_m;
 	enum modify_reg reg;
+	uint32_t index;
 
-	MLX5_ASSERT(tag_v);
-	tag_m = tag_m ? tag_m : &rte_flow_item_tag_mask;
+	if (MLX5_ITEM_VALID(item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(item, key_type, tag_v, tag_m,
+		&rte_flow_item_tag_mask);
+	/* When set mask, the index should be from spec. */
+	index = tag_vv ? tag_vv->index : tag_v->index;
 	/* Get the metadata register index for the tag. */
-	reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, tag_v->index, NULL);
+	reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, index, NULL);
 	MLX5_ASSERT(reg > 0);
-	flow_dv_match_meta_reg(matcher, key, reg, tag_v->data, tag_m->data);
+	flow_dv_match_meta_reg(key, reg, tag_v->data, tag_m->data);
 }
 
 /**
  * Add source vport match to the specified matcher.
  *
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] port
  *   Source vport value to match
- * @param[in] mask
- *   Mask
  */
 static void
-flow_dv_translate_item_source_vport(void *matcher, void *key,
-				    int16_t port, uint16_t mask)
+flow_dv_translate_item_source_vport(void *key,
+				    int16_t port)
 {
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 
-	MLX5_SET(fte_match_set_misc, misc_m, source_port, mask);
 	MLX5_SET(fte_match_set_misc, misc_v, source_port, port);
 }
 
@@ -10012,31 +9917,34 @@ flow_dv_translate_item_source_vport(void *matcher, void *key,
  *
  * @param[in] dev
  *   The devich to configure through.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in]
+ * @param[in] attr
  *   Flow attributes.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  *
  * @return
  *   0 on success, a negative errno value otherwise.
  */
 static int
-flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
-			       void *key, const struct rte_flow_item *item,
-			       const struct rte_flow_attr *attr)
+flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *key,
+			       const struct rte_flow_item *item,
+			       const struct rte_flow_attr *attr,
+			       uint32_t key_type)
 {
 	const struct rte_flow_item_port_id *pid_m = item ? item->mask : NULL;
 	const struct rte_flow_item_port_id *pid_v = item ? item->spec : NULL;
 	struct mlx5_priv *priv;
 	uint16_t mask, id;
+	uint32_t vport_meta;
 
 	if (pid_v && pid_v->id == MLX5_PORT_ESW_MGR) {
-		flow_dv_translate_item_source_vport(matcher, key,
-			mlx5_flow_get_esw_manager_vport_id(dev), 0xffff);
+		flow_dv_translate_item_source_vport(key,
+				key_type & MLX5_SET_MATCHER_V ?
+				mlx5_flow_get_esw_manager_vport_id(dev) : 0xffff);
 		return 0;
 	}
 	mask = pid_m ? pid_m->id : 0xffff;
@@ -10044,6 +9952,13 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 	priv = mlx5_port_to_eswitch_info(id, item == NULL);
 	if (!priv)
 		return -rte_errno;
+	if (key_type & MLX5_SET_MATCHER_M) {
+		id = mask;
+		vport_meta = priv->vport_meta_mask;
+	} else {
+		id = priv->vport_id;
+		vport_meta = priv->vport_meta_tag;
+	}
 	/*
 	 * Translate to vport field or to metadata, depending on mode.
 	 * Kernel can use either misc.source_port or half of C0 metadata
@@ -10057,20 +9972,17 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 		 */
 		if (mask == 0xffff && priv->vport_id == 0xffff &&
 		    priv->pf_bond < 0 && attr->transfer)
-			flow_dv_translate_item_source_vport
-				(matcher, key, priv->vport_id, mask);
+			flow_dv_translate_item_source_vport(key, id);
 		/*
 		 * We should always set the vport metadata register,
 		 * otherwise the SW steering library can drop
 		 * the rule if wire vport metadata value is not zero,
 		 * it depends on kernel configuration.
 		 */
-		flow_dv_translate_item_meta_vport(matcher, key,
-						  priv->vport_meta_tag,
-						  priv->vport_meta_mask);
+		flow_dv_translate_item_meta_vport
+				(key, vport_meta, priv->vport_meta_mask);
 	} else {
-		flow_dv_translate_item_source_vport(matcher, key,
-						    priv->vport_id, mask);
+		flow_dv_translate_item_source_vport(key, id);
 	}
 	return 0;
 }
@@ -10080,8 +9992,6 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
  *
  * @param[in] dev
  *   The devich to configure through.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
@@ -10093,21 +10003,25 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
  *   0 on success, a negative errno value otherwise.
  */
 static int
-flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *matcher,
-					void *key,
+flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *key,
 					const struct rte_flow_item *item,
-					const struct rte_flow_attr *attr)
+					const struct rte_flow_attr *attr,
+					uint32_t key_type)
 {
 	const struct rte_flow_item_ethdev *pid_m = item ? item->mask : NULL;
 	const struct rte_flow_item_ethdev *pid_v = item ? item->spec : NULL;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	struct mlx5_priv *priv;
 	uint16_t mask, id;
+	uint32_t vport_meta;
 
+	MLX5_ASSERT(wks);
 	if (!pid_m && !pid_v)
 		return 0;
 	if (pid_v && pid_v->port_id == UINT16_MAX) {
-		flow_dv_translate_item_source_vport(matcher, key,
-			mlx5_flow_get_esw_manager_vport_id(dev), UINT16_MAX);
+		flow_dv_translate_item_source_vport(key,
+			key_type & MLX5_SET_MATCHER_V ?
+			mlx5_flow_get_esw_manager_vport_id(dev) : 0xffff);
 		return 0;
 	}
 	mask = pid_m ? pid_m->port_id : UINT16_MAX;
@@ -10115,6 +10029,14 @@ flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *matcher,
 	priv = mlx5_port_to_eswitch_info(id, item == NULL);
 	if (!priv)
 		return -rte_errno;
+	if (key_type & MLX5_SET_MATCHER_M) {
+		id = mask;
+		vport_meta = priv->vport_meta_mask;
+	} else {
+		id = priv->vport_id;
+		vport_meta = priv->vport_meta_tag;
+		wks->vport_meta_tag = vport_meta;
+	}
 	/*
 	 * Translate to vport field or to metadata, depending on mode.
 	 * Kernel can use either misc.source_port or half of C0 metadata
@@ -10127,267 +10049,25 @@ flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *matcher,
 		 * save the extra vport match.
 		 */
 		if (mask == UINT16_MAX && priv->vport_id == UINT16_MAX &&
-		    priv->pf_bond < 0 && attr->transfer)
-			flow_dv_translate_item_source_vport
-				(matcher, key, priv->vport_id, mask);
+		    priv->pf_bond < 0 && attr->transfer &&
+		    priv->sh->config.dv_flow_en != 2)
+			flow_dv_translate_item_source_vport(key, id);
 		/*
 		 * We should always set the vport metadata register,
 		 * otherwise the SW steering library can drop
 		 * the rule if wire vport metadata value is not zero,
 		 * it depends on kernel configuration.
 		 */
-		flow_dv_translate_item_meta_vport(matcher, key,
-						  priv->vport_meta_tag,
+		flow_dv_translate_item_meta_vport(key, vport_meta,
 						  priv->vport_meta_mask);
 	} else {
-		flow_dv_translate_item_source_vport(matcher, key,
-						    priv->vport_id, mask);
+		flow_dv_translate_item_source_vport(key, id);
 	}
 	return 0;
 }
 
 /**
- * Add ICMP6 item to matcher and to the value.
- *
- * @param[in, out] matcher
- *   Flow matcher.
- * @param[in, out] key
- *   Flow matcher value.
- * @param[in] item
- *   Flow pattern to translate.
- * @param[in] inner
- *   Item is inner pattern.
- */
-static void
-flow_dv_translate_item_icmp6(void *matcher, void *key,
-			      const struct rte_flow_item *item,
-			      int inner)
-{
-	const struct rte_flow_item_icmp6 *icmp6_m = item->mask;
-	const struct rte_flow_item_icmp6 *icmp6_v = item->spec;
-	void *headers_m;
-	void *headers_v;
-	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
-				     misc_parameters_3);
-	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xFF);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_ICMPV6);
-	if (!icmp6_v)
-		return;
-	if (!icmp6_m)
-		icmp6_m = &rte_flow_item_icmp6_mask;
-	MLX5_SET(fte_match_set_misc3, misc3_m, icmpv6_type, icmp6_m->type);
-	MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_type,
-		 icmp6_v->type & icmp6_m->type);
-	MLX5_SET(fte_match_set_misc3, misc3_m, icmpv6_code, icmp6_m->code);
-	MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_code,
-		 icmp6_v->code & icmp6_m->code);
-}
-
-/**
- * Add ICMP item to matcher and to the value.
- *
- * @param[in, out] matcher
- *   Flow matcher.
- * @param[in, out] key
- *   Flow matcher value.
- * @param[in] item
- *   Flow pattern to translate.
- * @param[in] inner
- *   Item is inner pattern.
- */
-static void
-flow_dv_translate_item_icmp(void *matcher, void *key,
-			    const struct rte_flow_item *item,
-			    int inner)
-{
-	const struct rte_flow_item_icmp *icmp_m = item->mask;
-	const struct rte_flow_item_icmp *icmp_v = item->spec;
-	uint32_t icmp_header_data_m = 0;
-	uint32_t icmp_header_data_v = 0;
-	void *headers_m;
-	void *headers_v;
-	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
-				     misc_parameters_3);
-	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xFF);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_ICMP);
-	if (!icmp_v)
-		return;
-	if (!icmp_m)
-		icmp_m = &rte_flow_item_icmp_mask;
-	MLX5_SET(fte_match_set_misc3, misc3_m, icmp_type,
-		 icmp_m->hdr.icmp_type);
-	MLX5_SET(fte_match_set_misc3, misc3_v, icmp_type,
-		 icmp_v->hdr.icmp_type & icmp_m->hdr.icmp_type);
-	MLX5_SET(fte_match_set_misc3, misc3_m, icmp_code,
-		 icmp_m->hdr.icmp_code);
-	MLX5_SET(fte_match_set_misc3, misc3_v, icmp_code,
-		 icmp_v->hdr.icmp_code & icmp_m->hdr.icmp_code);
-	icmp_header_data_m = rte_be_to_cpu_16(icmp_m->hdr.icmp_seq_nb);
-	icmp_header_data_m |= rte_be_to_cpu_16(icmp_m->hdr.icmp_ident) << 16;
-	if (icmp_header_data_m) {
-		icmp_header_data_v = rte_be_to_cpu_16(icmp_v->hdr.icmp_seq_nb);
-		icmp_header_data_v |=
-			 rte_be_to_cpu_16(icmp_v->hdr.icmp_ident) << 16;
-		MLX5_SET(fte_match_set_misc3, misc3_m, icmp_header_data,
-			 icmp_header_data_m);
-		MLX5_SET(fte_match_set_misc3, misc3_v, icmp_header_data,
-			 icmp_header_data_v & icmp_header_data_m);
-	}
-}
-
-/**
- * Add GTP item to matcher and to the value.
- *
- * @param[in, out] matcher
- *   Flow matcher.
- * @param[in, out] key
- *   Flow matcher value.
- * @param[in] item
- *   Flow pattern to translate.
- * @param[in] inner
- *   Item is inner pattern.
- */
-static void
-flow_dv_translate_item_gtp(void *matcher, void *key,
-			   const struct rte_flow_item *item, int inner)
-{
-	const struct rte_flow_item_gtp *gtp_m = item->mask;
-	const struct rte_flow_item_gtp *gtp_v = item->spec;
-	void *headers_m;
-	void *headers_v;
-	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
-				     misc_parameters_3);
-	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
-	uint16_t dport = RTE_GTPU_UDP_PORT;
-
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
-	}
-	if (!gtp_v)
-		return;
-	if (!gtp_m)
-		gtp_m = &rte_flow_item_gtp_mask;
-	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_msg_flags,
-		 gtp_m->v_pt_rsv_flags);
-	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_flags,
-		 gtp_v->v_pt_rsv_flags & gtp_m->v_pt_rsv_flags);
-	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_msg_type, gtp_m->msg_type);
-	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_type,
-		 gtp_v->msg_type & gtp_m->msg_type);
-	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_teid,
-		 rte_be_to_cpu_32(gtp_m->teid));
-	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_teid,
-		 rte_be_to_cpu_32(gtp_v->teid & gtp_m->teid));
-}
-
-/**
- * Add GTP PSC item to matcher.
- *
- * @param[in, out] matcher
- *   Flow matcher.
- * @param[in, out] key
- *   Flow matcher value.
- * @param[in] item
- *   Flow pattern to translate.
- */
-static int
-flow_dv_translate_item_gtp_psc(void *matcher, void *key,
-			       const struct rte_flow_item *item)
-{
-	const struct rte_flow_item_gtp_psc *gtp_psc_m = item->mask;
-	const struct rte_flow_item_gtp_psc *gtp_psc_v = item->spec;
-	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
-			misc_parameters_3);
-	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
-	union {
-		uint32_t w32;
-		struct {
-			uint16_t seq_num;
-			uint8_t npdu_num;
-			uint8_t next_ext_header_type;
-		};
-	} dw_2;
-	uint8_t gtp_flags;
-
-	/* Always set E-flag match on one, regardless of GTP item settings. */
-	gtp_flags = MLX5_GET(fte_match_set_misc3, misc3_m, gtpu_msg_flags);
-	gtp_flags |= MLX5_GTP_EXT_HEADER_FLAG;
-	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_msg_flags, gtp_flags);
-	gtp_flags = MLX5_GET(fte_match_set_misc3, misc3_v, gtpu_msg_flags);
-	gtp_flags |= MLX5_GTP_EXT_HEADER_FLAG;
-	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_flags, gtp_flags);
-	/*Set next extension header type. */
-	dw_2.seq_num = 0;
-	dw_2.npdu_num = 0;
-	dw_2.next_ext_header_type = 0xff;
-	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_dw_2,
-		 rte_cpu_to_be_32(dw_2.w32));
-	dw_2.seq_num = 0;
-	dw_2.npdu_num = 0;
-	dw_2.next_ext_header_type = 0x85;
-	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_dw_2,
-		 rte_cpu_to_be_32(dw_2.w32));
-	if (gtp_psc_v) {
-		union {
-			uint32_t w32;
-			struct {
-				uint8_t len;
-				uint8_t type_flags;
-				uint8_t qfi;
-				uint8_t reserved;
-			};
-		} dw_0;
-
-		/*Set extension header PDU type and Qos. */
-		if (!gtp_psc_m)
-			gtp_psc_m = &rte_flow_item_gtp_psc_mask;
-		dw_0.w32 = 0;
-		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_m->hdr.type);
-		dw_0.qfi = gtp_psc_m->hdr.qfi;
-		MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_first_ext_dw_0,
-			 rte_cpu_to_be_32(dw_0.w32));
-		dw_0.w32 = 0;
-		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_v->hdr.type &
-							gtp_psc_m->hdr.type);
-		dw_0.qfi = gtp_psc_v->hdr.qfi & gtp_psc_m->hdr.qfi;
-		MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_first_ext_dw_0,
-			 rte_cpu_to_be_32(dw_0.w32));
-	}
-	return 0;
-}
-
-/**
- * Add eCPRI item to matcher and to the value.
+ * Translate port-id item to eswitch match on  port-id.
  *
  * @param[in] dev
  *   The devich to configure through.
@@ -10397,23 +10077,250 @@ flow_dv_translate_item_gtp_psc(void *matcher, void *key,
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in] last_item
- *   Last item flags.
+ * @param[in] attr
+ *   Flow attributes.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+flow_dv_translate_item_port_id_all(struct rte_eth_dev *dev,
+			       void *matcher, void *key,
+			       const struct rte_flow_item *item,
+			       const struct rte_flow_attr *attr)
+{
+	int ret;
+
+	ret = flow_dv_translate_item_port_id
+			(dev, matcher, item, attr, MLX5_SET_MATCHER_SW_M);
+	if (ret)
+		return ret;
+	ret = flow_dv_translate_item_port_id
+			(dev, key, item, attr, MLX5_SET_MATCHER_SW_V);
+	return ret;
+}
+
+
+/**
+ * Add ICMP6 item to the value.
+ *
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
-flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
-			     void *key, const struct rte_flow_item *item,
-			     uint64_t last_item)
+flow_dv_translate_item_icmp6(void *key, const struct rte_flow_item *item,
+			     int inner, uint32_t key_type)
+{
+	const struct rte_flow_item_icmp6 *icmp6_m;
+	const struct rte_flow_item_icmp6 *icmp6_v;
+	void *headers_v;
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (key_type & MLX5_SET_MATCHER_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, 0xFF);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
+			 IPPROTO_ICMPV6);
+	if (MLX5_ITEM_VALID(item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(item, key_type, icmp6_v, icmp6_m,
+		&rte_flow_item_icmp6_mask);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_type,
+		 icmp6_v->type & icmp6_m->type);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_code,
+		 icmp6_v->code & icmp6_m->code);
+}
+
+/**
+ * Add ICMP item to the value.
+ *
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
+ */
+static void
+flow_dv_translate_item_icmp(void *key, const struct rte_flow_item *item,
+			    int inner, uint32_t key_type)
+{
+	const struct rte_flow_item_icmp *icmp_m;
+	const struct rte_flow_item_icmp *icmp_v;
+	uint32_t icmp_header_data_m = 0;
+	uint32_t icmp_header_data_v = 0;
+	void *headers_v;
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+			MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (key_type & MLX5_SET_MATCHER_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, 0xFF);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+			 ip_protocol, IPPROTO_ICMP);
+	if (MLX5_ITEM_VALID(item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(item, key_type, icmp_v, icmp_m,
+		&rte_flow_item_icmp_mask);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmp_type,
+		 icmp_v->hdr.icmp_type & icmp_m->hdr.icmp_type);
+	MLX5_SET(fte_match_set_misc3, misc3_v, icmp_code,
+		 icmp_v->hdr.icmp_code & icmp_m->hdr.icmp_code);
+	icmp_header_data_m = rte_be_to_cpu_16(icmp_m->hdr.icmp_seq_nb);
+	icmp_header_data_m |= rte_be_to_cpu_16(icmp_m->hdr.icmp_ident) << 16;
+	if (icmp_header_data_m) {
+		icmp_header_data_v = rte_be_to_cpu_16(icmp_v->hdr.icmp_seq_nb);
+		icmp_header_data_v |=
+			 rte_be_to_cpu_16(icmp_v->hdr.icmp_ident) << 16;
+		MLX5_SET(fte_match_set_misc3, misc3_v, icmp_header_data,
+			 icmp_header_data_v & icmp_header_data_m);
+	}
+}
+
+/**
+ * Add GTP item to the value.
+ *
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
+ */
+static void
+flow_dv_translate_item_gtp(void *key, const struct rte_flow_item *item,
+			   int inner, uint32_t key_type)
+{
+	const struct rte_flow_item_gtp *gtp_m;
+	const struct rte_flow_item_gtp *gtp_v;
+	void *headers_v;
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	uint16_t dport = RTE_GTPU_UDP_PORT;
+
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+			MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
+		if (key_type & MLX5_SET_MATCHER_M)
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 udp_dport, 0xFFFF);
+		else
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 udp_dport, dport);
+	}
+	if (MLX5_ITEM_VALID(item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(item, key_type, gtp_v, gtp_m,
+		&rte_flow_item_gtp_mask);
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_flags,
+		 gtp_v->v_pt_rsv_flags & gtp_m->v_pt_rsv_flags);
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_type,
+		 gtp_v->msg_type & gtp_m->msg_type);
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_teid,
+		 rte_be_to_cpu_32(gtp_v->teid & gtp_m->teid));
+}
+
+/**
+ * Add GTP PSC item to matcher.
+ *
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
+ */
+static int
+flow_dv_translate_item_gtp_psc(void *key, const struct rte_flow_item *item,
+			       uint32_t key_type)
+{
+	const struct rte_flow_item_gtp_psc *gtp_psc_m;
+	const struct rte_flow_item_gtp_psc *gtp_psc_v;
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	union {
+		uint32_t w32;
+		struct {
+			uint16_t seq_num;
+			uint8_t npdu_num;
+			uint8_t next_ext_header_type;
+		};
+	} dw_2;
+	union {
+		uint32_t w32;
+		struct {
+			uint8_t len;
+			uint8_t type_flags;
+			uint8_t qfi;
+			uint8_t reserved;
+		};
+	} dw_0;
+	uint8_t gtp_flags;
+
+	/* Always set E-flag match on one, regardless of GTP item settings. */
+	gtp_flags = MLX5_GET(fte_match_set_misc3, misc3_v, gtpu_msg_flags);
+	gtp_flags |= MLX5_GTP_EXT_HEADER_FLAG;
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_flags, gtp_flags);
+	/*Set next extension header type. */
+	dw_2.seq_num = 0;
+	dw_2.npdu_num = 0;
+	if (key_type & MLX5_SET_MATCHER_M)
+		dw_2.next_ext_header_type = 0xff;
+	else
+		dw_2.next_ext_header_type = 0x85;
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_dw_2,
+		 rte_cpu_to_be_32(dw_2.w32));
+	if (MLX5_ITEM_VALID(item, key_type))
+		return 0;
+	MLX5_ITEM_UPDATE(item, key_type, gtp_psc_v,
+		gtp_psc_m, &rte_flow_item_gtp_psc_mask);
+	dw_0.w32 = 0;
+	dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_v->hdr.type &
+						  gtp_psc_m->hdr.type);
+	dw_0.qfi = gtp_psc_v->hdr.qfi & gtp_psc_m->hdr.qfi;
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_first_ext_dw_0,
+		 rte_cpu_to_be_32(dw_0.w32));
+	return 0;
+}
+
+/**
+ * Add eCPRI item to matcher and to the value.
+ *
+ * @param[in] dev
+ *   The devich to configure through.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] last_item
+ *   Last item flags.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
+ */
+static void
+flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *key,
+			     const struct rte_flow_item *item,
+			     uint64_t last_item, uint32_t key_type)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const struct rte_flow_item_ecpri *ecpri_m = item->mask;
-	const struct rte_flow_item_ecpri *ecpri_v = item->spec;
+	const struct rte_flow_item_ecpri *ecpri_m;
+	const struct rte_flow_item_ecpri *ecpri_v;
+	const struct rte_flow_item_ecpri *ecpri_vv = item->spec;
 	struct rte_ecpri_common_hdr common;
-	void *misc4_m = MLX5_ADDR_OF(fte_match_param, matcher,
-				     misc_parameters_4);
 	void *misc4_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_4);
 	uint32_t *samples;
-	void *dw_m;
 	void *dw_v;
 
 	/*
@@ -10421,21 +10328,22 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 	 * match on eCPRI EtherType implicitly.
 	 */
 	if (last_item & MLX5_FLOW_LAYER_OUTER_L2) {
-		void *hdrs_m, *hdrs_v, *l2m, *l2v;
+		void *hdrs_v, *l2v;
 
-		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
 		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-		l2m = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_m, ethertype);
 		l2v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_v, ethertype);
-		if (*(uint16_t *)l2m == 0 && *(uint16_t *)l2v == 0) {
-			*(uint16_t *)l2m = UINT16_MAX;
-			*(uint16_t *)l2v = RTE_BE16(RTE_ETHER_TYPE_ECPRI);
+		if (*(uint16_t *)l2v == 0) {
+			if (key_type & MLX5_SET_MATCHER_M)
+				*(uint16_t *)l2v = UINT16_MAX;
+			else
+				*(uint16_t *)l2v =
+					RTE_BE16(RTE_ETHER_TYPE_ECPRI);
 		}
 	}
-	if (!ecpri_v)
+	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	if (!ecpri_m)
-		ecpri_m = &rte_flow_item_ecpri_mask;
+	MLX5_ITEM_UPDATE(item, key_type, ecpri_v, ecpri_m,
+		&rte_flow_item_ecpri_mask);
 	/*
 	 * Maximal four DW samples are supported in a single matching now.
 	 * Two are used now for a eCPRI matching:
@@ -10447,16 +10355,11 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 		return;
 	samples = priv->sh->ecpri_parser.ids;
 	/* Need to take the whole DW as the mask to fill the entry. */
-	dw_m = MLX5_ADDR_OF(fte_match_set_misc4, misc4_m,
-			    prog_sample_field_value_0);
 	dw_v = MLX5_ADDR_OF(fte_match_set_misc4, misc4_v,
 			    prog_sample_field_value_0);
 	/* Already big endian (network order) in the header. */
-	*(uint32_t *)dw_m = ecpri_m->hdr.common.u32;
 	*(uint32_t *)dw_v = ecpri_v->hdr.common.u32 & ecpri_m->hdr.common.u32;
 	/* Sample#0, used for matching type, offset 0. */
-	MLX5_SET(fte_match_set_misc4, misc4_m,
-		 prog_sample_field_id_0, samples[0]);
 	/* It makes no sense to set the sample ID in the mask field. */
 	MLX5_SET(fte_match_set_misc4, misc4_v,
 		 prog_sample_field_id_0, samples[0]);
@@ -10465,21 +10368,19 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 	 * Some wildcard rules only matching type field should be supported.
 	 */
 	if (ecpri_m->hdr.dummy[0]) {
-		common.u32 = rte_be_to_cpu_32(ecpri_v->hdr.common.u32);
+		if (key_type == MLX5_SET_MATCHER_SW_M)
+			common.u32 = rte_be_to_cpu_32(ecpri_vv->hdr.common.u32);
+		else
+			common.u32 = rte_be_to_cpu_32(ecpri_v->hdr.common.u32);
 		switch (common.type) {
 		case RTE_ECPRI_MSG_TYPE_IQ_DATA:
 		case RTE_ECPRI_MSG_TYPE_RTC_CTRL:
 		case RTE_ECPRI_MSG_TYPE_DLY_MSR:
-			dw_m = MLX5_ADDR_OF(fte_match_set_misc4, misc4_m,
-					    prog_sample_field_value_1);
 			dw_v = MLX5_ADDR_OF(fte_match_set_misc4, misc4_v,
 					    prog_sample_field_value_1);
-			*(uint32_t *)dw_m = ecpri_m->hdr.dummy[0];
 			*(uint32_t *)dw_v = ecpri_v->hdr.dummy[0] &
 					    ecpri_m->hdr.dummy[0];
 			/* Sample#1, to match message body, offset 4. */
-			MLX5_SET(fte_match_set_misc4, misc4_m,
-				 prog_sample_field_id_1, samples[1]);
 			MLX5_SET(fte_match_set_misc4, misc4_v,
 				 prog_sample_field_id_1, samples[1]);
 			break;
@@ -10544,7 +10445,7 @@ flow_dv_translate_item_aso_ct(struct rte_eth_dev *dev,
 	reg_id = mlx5_flow_get_reg_id(dev, MLX5_ASO_CONNTRACK, 0, &error);
 	if (reg_id == REG_NON)
 		return;
-	flow_dv_match_meta_reg(matcher, key, (enum modify_reg)reg_id,
+	flow_dv_match_meta_reg_all(matcher, key, (enum modify_reg)reg_id,
 			       reg_value, reg_mask);
 }
 
@@ -11330,42 +11231,48 @@ flow_dv_translate_create_counter(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to the dev struct.
- * @param[in, out] matcher
- *   Flow matcher.
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in] inner
- *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
  */
 static void
 flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
-				void *matcher, void *key,
-				const struct rte_flow_item *item)
+				void *key,
+				const struct rte_flow_item *item,
+				uint32_t key_type)
 {
 	const struct mlx5_rte_flow_item_tx_queue *queue_m;
 	const struct mlx5_rte_flow_item_tx_queue *queue_v;
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
-	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	struct mlx5_txq_ctrl *txq;
-	uint32_t queue, mask;
+	const struct mlx5_rte_flow_item_tx_queue queue_mask = {
+		.queue = UINT32_MAX,
+	};
+	void *misc_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	struct mlx5_txq_ctrl *txq = NULL;
+	uint32_t queue;
 
-	queue_m = (const void *)item->mask;
-	queue_v = (const void *)item->spec;
-	if (!queue_v)
+	MLX5_ITEM_UPDATE(item, key_type, queue_v, queue_m, &queue_mask);
+	if (!queue_m || !queue_v)
 		return;
-	txq = mlx5_txq_get(dev, queue_v->queue);
-	if (!txq)
-		return;
-	if (txq->is_hairpin)
-		queue = txq->obj->sq->id;
-	else
-		queue = txq->obj->sq_obj.sq->id;
-	mask = queue_m == NULL ? UINT32_MAX : queue_m->queue;
-	MLX5_SET(fte_match_set_misc, misc_m, source_sqn, mask);
-	MLX5_SET(fte_match_set_misc, misc_v, source_sqn, queue & mask);
-	mlx5_txq_release(dev, queue_v->queue);
+	if (key_type & MLX5_SET_MATCHER_V) {
+		txq = mlx5_txq_get(dev, queue_v->queue);
+		if (!txq)
+			return;
+		if (txq->is_hairpin)
+			queue = txq->obj->sq->id;
+		else
+			queue = txq->obj->sq_obj.sq->id;
+		if (key_type == MLX5_SET_MATCHER_SW_V)
+			queue &= queue_m->queue;
+	} else {
+		queue = queue_m->queue;
+	}
+	MLX5_SET(fte_match_set_misc, misc_v, source_sqn, queue);
+	if (txq)
+		mlx5_txq_release(dev, queue_v->queue);
 }
 
 /**
@@ -13076,7 +12983,298 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
 }
 
 /**
- * Translate the flow item to matcher.
+ * Fill the flow matcher with DV spec.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] wks
+ *   Pointer to the matcher workspace.
+ * @param[in] key
+ *   Pointer to the flow matcher key.
+ * @param[in] key_type
+ *   Key type.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_translate_items(struct rte_eth_dev *dev,
+			const struct rte_flow_item *items,
+			struct mlx5_dv_matcher_workspace *wks,
+			void *key, uint32_t key_type,
+			struct rte_flow_error *error)
+{
+	struct mlx5_flow_rss_desc *rss_desc = wks->rss_desc;
+	uint8_t next_protocol = wks->next_protocol;
+	int tunnel = !!(wks->item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	int item_type = items->type;
+	uint64_t last_item = wks->last_item;
+	int ret;
+
+	switch (item_type) {
+	case RTE_FLOW_ITEM_TYPE_ESP:
+		flow_dv_translate_item_esp(key, items, tunnel, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L4;
+		last_item = MLX5_FLOW_ITEM_ESP;
+		break;
+	case RTE_FLOW_ITEM_TYPE_PORT_ID:
+		flow_dv_translate_item_port_id
+			(dev, key, items, wks->attr, key_type);
+		last_item = MLX5_FLOW_ITEM_PORT_ID;
+		break;
+	case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+		flow_dv_translate_item_represented_port
+			(dev, key, items, wks->attr, key_type);
+		last_item = MLX5_FLOW_ITEM_REPRESENTED_PORT;
+		break;
+	case RTE_FLOW_ITEM_TYPE_ETH:
+		flow_dv_translate_item_eth(key, items, tunnel,
+					   wks->group, key_type);
+		wks->priority = wks->action_flags &
+				MLX5_FLOW_ACTION_DEFAULT_MISS &&
+				!wks->external ?
+				MLX5_PRIORITY_MAP_L3 :
+				MLX5_PRIORITY_MAP_L2;
+		last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+				     MLX5_FLOW_LAYER_OUTER_L2;
+		break;
+	case RTE_FLOW_ITEM_TYPE_VLAN:
+		flow_dv_translate_item_vlan(key, items, tunnel, wks, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L2;
+		last_item = tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
+					  MLX5_FLOW_LAYER_INNER_VLAN) :
+					 (MLX5_FLOW_LAYER_OUTER_L2 |
+					  MLX5_FLOW_LAYER_OUTER_VLAN);
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		mlx5_flow_tunnel_ip_check(items, next_protocol,
+					  &wks->item_flags, &tunnel);
+		flow_dv_translate_item_ipv4(key, items, tunnel,
+					    wks->group, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L3;
+		last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+				     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+		if (items->mask != NULL &&
+		    items->spec != NULL &&
+			((const struct rte_flow_item_ipv4 *)
+			 items->mask)->hdr.next_proto_id) {
+			next_protocol =
+				((const struct rte_flow_item_ipv4 *)
+				 (items->spec))->hdr.next_proto_id;
+			next_protocol &=
+				((const struct rte_flow_item_ipv4 *)
+				 (items->mask))->hdr.next_proto_id;
+		} else if (key_type == MLX5_SET_MATCHER_HS_M &&
+			   items->mask != NULL) {
+			next_protocol =  ((const struct rte_flow_item_ipv4 *)
+					(items->mask))->hdr.next_proto_id;
+		} else if (key_type == MLX5_SET_MATCHER_HS_V &&
+			   items->spec != NULL) {
+			next_protocol =  ((const struct rte_flow_item_ipv4 *)
+					(items->spec))->hdr.next_proto_id;
+		} else {
+			/* Reset for inner layer. */
+			next_protocol = 0xff;
+		}
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		mlx5_flow_tunnel_ip_check(items, next_protocol,
+					  &wks->item_flags, &tunnel);
+		flow_dv_translate_item_ipv6(key, items, tunnel,
+					    wks->group, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L3;
+		last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+				     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+		if (items->mask != NULL &&
+		    items->spec != NULL &&
+			((const struct rte_flow_item_ipv6 *)
+			 items->mask)->hdr.proto) {
+			next_protocol =
+				((const struct rte_flow_item_ipv6 *)
+				 items->spec)->hdr.proto;
+			next_protocol &=
+				((const struct rte_flow_item_ipv6 *)
+				 items->mask)->hdr.proto;
+		} else if (key_type == MLX5_SET_MATCHER_HS_M &&
+			   items->mask != NULL) {
+			next_protocol =  ((const struct rte_flow_item_ipv6 *)
+					(items->mask))->hdr.proto;
+		} else if (key_type == MLX5_SET_MATCHER_HS_V &&
+			   items->spec != NULL) {
+			next_protocol =  ((const struct rte_flow_item_ipv6 *)
+					(items->spec))->hdr.proto;
+		} else {
+			/* Reset for inner layer. */
+			next_protocol = 0xff;
+		}
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
+		flow_dv_translate_item_ipv6_frag_ext
+					(key, items, tunnel, key_type);
+		last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6_FRAG_EXT :
+				     MLX5_FLOW_LAYER_OUTER_L3_IPV6_FRAG_EXT;
+		if (items->mask != NULL &&
+		    items->spec != NULL &&
+			((const struct rte_flow_item_ipv6_frag_ext *)
+			 items->mask)->hdr.next_header) {
+			next_protocol =
+			((const struct rte_flow_item_ipv6_frag_ext *)
+			 items->spec)->hdr.next_header;
+			next_protocol &=
+			((const struct rte_flow_item_ipv6_frag_ext *)
+			 items->mask)->hdr.next_header;
+		} else if (key_type == MLX5_SET_MATCHER_HS_M &&
+			   items->mask != NULL) {
+			next_protocol =  ((const struct rte_flow_item_ipv6_frag_ext *)
+					(items->mask))->hdr.next_header;
+		} else if (key_type == MLX5_SET_MATCHER_HS_V &&
+			   items->spec != NULL) {
+			next_protocol =  ((const struct rte_flow_item_ipv6_frag_ext *)
+					(items->spec))->hdr.next_header;
+		} else {
+			/* Reset for inner layer. */
+			next_protocol = 0xff;
+		}
+		break;
+	case RTE_FLOW_ITEM_TYPE_TCP:
+		flow_dv_translate_item_tcp(key, items, tunnel, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L4;
+		last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
+				     MLX5_FLOW_LAYER_OUTER_L4_TCP;
+		break;
+	case RTE_FLOW_ITEM_TYPE_UDP:
+		flow_dv_translate_item_udp(key, items, tunnel, wks, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L4;
+		last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+				     MLX5_FLOW_LAYER_OUTER_L4_UDP;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE:
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		wks->tunnel_item = items;
+		wks->gre_item = items;
+		last_item = MLX5_FLOW_LAYER_GRE;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE_KEY:
+		flow_dv_translate_item_gre_key(key, items, key_type);
+		last_item = MLX5_FLOW_LAYER_GRE_KEY;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE_OPTION:
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		wks->tunnel_item = items;
+		last_item = MLX5_FLOW_LAYER_GRE;
+		break;
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		wks->tunnel_item = items;
+		last_item = MLX5_FLOW_LAYER_GRE;
+		break;
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+		flow_dv_translate_item_vxlan(dev, wks->attr, key,
+					     items, tunnel, wks, key_type);
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		last_item = MLX5_FLOW_LAYER_VXLAN;
+		break;
+	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		wks->tunnel_item = items;
+		last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GENEVE:
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		wks->tunnel_item = items;
+		last_item = MLX5_FLOW_LAYER_GENEVE;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
+		ret = flow_dv_translate_item_geneve_opt
+				(dev, key, items, key_type, error);
+		if (ret)
+			return rte_flow_error_set(error, -ret,
+				RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				"cannot create GENEVE TLV option");
+		wks->geneve_tlv_option = 1;
+		last_item = MLX5_FLOW_LAYER_GENEVE_OPT;
+		break;
+	case RTE_FLOW_ITEM_TYPE_MPLS:
+		flow_dv_translate_item_mpls(key, items, last_item,
+					    tunnel, key_type);
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		last_item = MLX5_FLOW_LAYER_MPLS;
+		break;
+	case RTE_FLOW_ITEM_TYPE_MARK:
+		flow_dv_translate_item_mark(dev, key, items, key_type);
+		last_item = MLX5_FLOW_ITEM_MARK;
+		break;
+	case RTE_FLOW_ITEM_TYPE_META:
+		flow_dv_translate_item_meta
+				(dev, key, wks->attr, items, key_type);
+		last_item = MLX5_FLOW_ITEM_METADATA;
+		break;
+	case RTE_FLOW_ITEM_TYPE_ICMP:
+		flow_dv_translate_item_icmp(key, items, tunnel, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L4;
+		last_item = MLX5_FLOW_LAYER_ICMP;
+		break;
+	case RTE_FLOW_ITEM_TYPE_ICMP6:
+		flow_dv_translate_item_icmp6(key, items, tunnel, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L4;
+		last_item = MLX5_FLOW_LAYER_ICMP6;
+		break;
+	case RTE_FLOW_ITEM_TYPE_TAG:
+		flow_dv_translate_item_tag(dev, key, items, key_type);
+		last_item = MLX5_FLOW_ITEM_TAG;
+		break;
+	case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
+		flow_dv_translate_mlx5_item_tag(dev, key, items, key_type);
+		last_item = MLX5_FLOW_ITEM_TAG;
+		break;
+	case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+		flow_dv_translate_item_tx_queue(dev, key, items, key_type);
+		last_item = MLX5_FLOW_ITEM_TX_QUEUE;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GTP:
+		flow_dv_translate_item_gtp(key, items, tunnel, key_type);
+		wks->priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+		last_item = MLX5_FLOW_LAYER_GTP;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+		ret = flow_dv_translate_item_gtp_psc(key, items, key_type);
+		if (ret)
+			return rte_flow_error_set(error, -ret,
+				RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				"cannot create GTP PSC item");
+		last_item = MLX5_FLOW_LAYER_GTP_PSC;
+		break;
+	case RTE_FLOW_ITEM_TYPE_ECPRI:
+		if (!mlx5_flex_parser_ecpri_exist(dev)) {
+			/* Create it only the first time to be used. */
+			ret = mlx5_flex_parser_ecpri_alloc(dev);
+			if (ret)
+				return rte_flow_error_set
+					(error, -ret,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					NULL,
+					"cannot create eCPRI parser");
+		}
+		flow_dv_translate_item_ecpri
+				(dev, key, items, last_item, key_type);
+		/* No other protocol should follow eCPRI layer. */
+		last_item = MLX5_FLOW_LAYER_ECPRI;
+		break;
+	default:
+		break;
+	}
+	wks->item_flags |= last_item;
+	wks->last_item = last_item;
+	wks->next_protocol = next_protocol;
+	return 0;
+}
+
+/**
+ * Fill the SW steering flow with DV spec.
  *
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
@@ -13086,7 +13284,7 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
  *   Pointer to the flow attributes.
  * @param[in] items
  *   Pointer to the list of items.
- * @param[in] matcher
+ * @param[in, out] matcher
  *   Pointer to the flow matcher.
  * @param[out] error
  *   Pointer to the error structure.
@@ -13095,287 +13293,41 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_translate_items(struct rte_eth_dev *dev,
-			struct mlx5_flow *dev_flow,
-			const struct rte_flow_attr *attr,
-			const struct rte_flow_item items[],
-			struct mlx5_flow_dv_matcher *matcher,
-			struct rte_flow_error *error)
+flow_dv_translate_items_sws(struct rte_eth_dev *dev,
+			    struct mlx5_flow *dev_flow,
+			    const struct rte_flow_attr *attr,
+			    const struct rte_flow_item *items,
+			    struct mlx5_flow_dv_matcher *matcher,
+			    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow *flow = dev_flow->flow;
-	struct mlx5_flow_handle *handle = dev_flow->handle;
-	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
-	struct mlx5_flow_rss_desc *rss_desc = &wks->rss_desc;
-	uint64_t item_flags = 0;
-	uint64_t last_item = 0;
 	void *match_mask = matcher->mask.buf;
 	void *match_value = dev_flow->dv.value.buf;
-	uint8_t next_protocol = 0xff;
-	uint16_t priority = 0;
+	struct mlx5_dv_matcher_workspace wks = {
+		.action_flags = dev_flow->act_flags,
+		.item_flags = 0,
+		.external = dev_flow->external,
+		.next_protocol = 0xff,
+		.group = dev_flow->dv.group,
+		.attr = attr,
+		.rss_desc = &((struct mlx5_flow_workspace *)
+			     mlx5_flow_get_thread_workspace())->rss_desc,
+	};
+	struct mlx5_dv_matcher_workspace wks_m = wks;
 	const struct rte_flow_item *integrity_items[2] = {NULL, NULL};
-	const struct rte_flow_item *tunnel_item = NULL;
-	const struct rte_flow_item *gre_item = NULL;
 	int ret = 0;
+	int tunnel;
 
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
-		int item_type = items->type;
-
-		if (!mlx5_flow_os_item_supported(item_type))
+		if (!mlx5_flow_os_item_supported(items->type))
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "item not supported");
-		switch (item_type) {
-		case RTE_FLOW_ITEM_TYPE_ESP:
-			flow_dv_translate_item_esp(match_mask, match_value,
-						   items, tunnel);
-			priority = MLX5_PRIORITY_MAP_L4;
-			last_item = MLX5_FLOW_ITEM_ESP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_PORT_ID:
-			flow_dv_translate_item_port_id
-				(dev, match_mask, match_value, items, attr);
-			last_item = MLX5_FLOW_ITEM_PORT_ID;
-			break;
-		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
-			flow_dv_translate_item_represented_port
-				(dev, match_mask, match_value, items, attr);
-			last_item = MLX5_FLOW_ITEM_REPRESENTED_PORT;
-			break;
-		case RTE_FLOW_ITEM_TYPE_ETH:
-			flow_dv_translate_item_eth(match_mask, match_value,
-						   items, tunnel,
-						   dev_flow->dv.group);
-			priority = dev_flow->act_flags &
-					MLX5_FLOW_ACTION_DEFAULT_MISS &&
-					!dev_flow->external ?
-					MLX5_PRIORITY_MAP_L3 :
-					MLX5_PRIORITY_MAP_L2;
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
-					     MLX5_FLOW_LAYER_OUTER_L2;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VLAN:
-			flow_dv_translate_item_vlan(dev_flow,
-						    match_mask, match_value,
-						    items, tunnel,
-						    dev_flow->dv.group);
-			priority = MLX5_PRIORITY_MAP_L2;
-			last_item = tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
-					      MLX5_FLOW_LAYER_INNER_VLAN) :
-					     (MLX5_FLOW_LAYER_OUTER_L2 |
-					      MLX5_FLOW_LAYER_OUTER_VLAN);
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-			mlx5_flow_tunnel_ip_check(items, next_protocol,
-						  &item_flags, &tunnel);
-			flow_dv_translate_item_ipv4(match_mask, match_value,
-						    items, tunnel,
-						    dev_flow->dv.group);
-			priority = MLX5_PRIORITY_MAP_L3;
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
-					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
-			if (items->mask != NULL &&
-			    ((const struct rte_flow_item_ipv4 *)
-			     items->mask)->hdr.next_proto_id) {
-				next_protocol =
-					((const struct rte_flow_item_ipv4 *)
-					 (items->spec))->hdr.next_proto_id;
-				next_protocol &=
-					((const struct rte_flow_item_ipv4 *)
-					 (items->mask))->hdr.next_proto_id;
-			} else {
-				/* Reset for inner layer. */
-				next_protocol = 0xff;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			mlx5_flow_tunnel_ip_check(items, next_protocol,
-						  &item_flags, &tunnel);
-			flow_dv_translate_item_ipv6(match_mask, match_value,
-						    items, tunnel,
-						    dev_flow->dv.group);
-			priority = MLX5_PRIORITY_MAP_L3;
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
-					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
-			if (items->mask != NULL &&
-			    ((const struct rte_flow_item_ipv6 *)
-			     items->mask)->hdr.proto) {
-				next_protocol =
-					((const struct rte_flow_item_ipv6 *)
-					 items->spec)->hdr.proto;
-				next_protocol &=
-					((const struct rte_flow_item_ipv6 *)
-					 items->mask)->hdr.proto;
-			} else {
-				/* Reset for inner layer. */
-				next_protocol = 0xff;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
-			flow_dv_translate_item_ipv6_frag_ext(match_mask,
-							     match_value,
-							     items, tunnel);
-			last_item = tunnel ?
-					MLX5_FLOW_LAYER_INNER_L3_IPV6_FRAG_EXT :
-					MLX5_FLOW_LAYER_OUTER_L3_IPV6_FRAG_EXT;
-			if (items->mask != NULL &&
-			    ((const struct rte_flow_item_ipv6_frag_ext *)
-			     items->mask)->hdr.next_header) {
-				next_protocol =
-				((const struct rte_flow_item_ipv6_frag_ext *)
-				 items->spec)->hdr.next_header;
-				next_protocol &=
-				((const struct rte_flow_item_ipv6_frag_ext *)
-				 items->mask)->hdr.next_header;
-			} else {
-				/* Reset for inner layer. */
-				next_protocol = 0xff;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_TCP:
-			flow_dv_translate_item_tcp(match_mask, match_value,
-						   items, tunnel);
-			priority = MLX5_PRIORITY_MAP_L4;
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
-					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_UDP:
-			flow_dv_translate_item_udp(match_mask, match_value,
-						   items, tunnel);
-			priority = MLX5_PRIORITY_MAP_L4;
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
-					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GRE:
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_GRE;
-			tunnel_item = items;
-			gre_item = items;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
-			flow_dv_translate_item_gre_key(match_mask,
-						       match_value, items);
-			last_item = MLX5_FLOW_LAYER_GRE_KEY;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GRE_OPTION:
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_GRE;
-			tunnel_item = items;
-			break;
-		case RTE_FLOW_ITEM_TYPE_NVGRE:
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_GRE;
-			tunnel_item = items;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			flow_dv_translate_item_vxlan(dev, attr,
-						     match_mask, match_value,
-						     items, tunnel);
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_VXLAN;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
-			tunnel_item = items;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GENEVE:
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_GENEVE;
-			tunnel_item = items;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
-			ret = flow_dv_translate_item_geneve_opt(dev, match_mask,
-							  match_value,
-							  items, error);
-			if (ret)
-				return rte_flow_error_set(error, -ret,
-					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-					"cannot create GENEVE TLV option");
-			flow->geneve_tlv_option = 1;
-			last_item = MLX5_FLOW_LAYER_GENEVE_OPT;
-			break;
-		case RTE_FLOW_ITEM_TYPE_MPLS:
-			flow_dv_translate_item_mpls(match_mask, match_value,
-						    items, last_item, tunnel);
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_MPLS;
-			break;
-		case RTE_FLOW_ITEM_TYPE_MARK:
-			flow_dv_translate_item_mark(dev, match_mask,
-						    match_value, items);
-			last_item = MLX5_FLOW_ITEM_MARK;
-			break;
-		case RTE_FLOW_ITEM_TYPE_META:
-			flow_dv_translate_item_meta(dev, match_mask,
-						    match_value, attr, items);
-			last_item = MLX5_FLOW_ITEM_METADATA;
-			break;
-		case RTE_FLOW_ITEM_TYPE_ICMP:
-			flow_dv_translate_item_icmp(match_mask, match_value,
-						    items, tunnel);
-			priority = MLX5_PRIORITY_MAP_L4;
-			last_item = MLX5_FLOW_LAYER_ICMP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_ICMP6:
-			flow_dv_translate_item_icmp6(match_mask, match_value,
-						      items, tunnel);
-			priority = MLX5_PRIORITY_MAP_L4;
-			last_item = MLX5_FLOW_LAYER_ICMP6;
-			break;
-		case RTE_FLOW_ITEM_TYPE_TAG:
-			flow_dv_translate_item_tag(dev, match_mask,
-						   match_value, items);
-			last_item = MLX5_FLOW_ITEM_TAG;
-			break;
-		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
-			flow_dv_translate_mlx5_item_tag(dev, match_mask,
-							match_value, items);
-			last_item = MLX5_FLOW_ITEM_TAG;
-			break;
-		case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
-			flow_dv_translate_item_tx_queue(dev, match_mask,
-							match_value,
-							items);
-			last_item = MLX5_FLOW_ITEM_TX_QUEUE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GTP:
-			flow_dv_translate_item_gtp(match_mask, match_value,
-						   items, tunnel);
-			priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
-			last_item = MLX5_FLOW_LAYER_GTP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
-			ret = flow_dv_translate_item_gtp_psc(match_mask,
-							  match_value,
-							  items);
-			if (ret)
-				return rte_flow_error_set(error, -ret,
-					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-					"cannot create GTP PSC item");
-			last_item = MLX5_FLOW_LAYER_GTP_PSC;
-			break;
-		case RTE_FLOW_ITEM_TYPE_ECPRI:
-			if (!mlx5_flex_parser_ecpri_exist(dev)) {
-				/* Create it only the first time to be used. */
-				ret = mlx5_flex_parser_ecpri_alloc(dev);
-				if (ret)
-					return rte_flow_error_set
-						(error, -ret,
-						RTE_FLOW_ERROR_TYPE_ITEM,
-						NULL,
-						"cannot create eCPRI parser");
-			}
-			flow_dv_translate_item_ecpri(dev, match_mask,
-						     match_value, items,
-						     last_item);
-			/* No other protocol should follow eCPRI layer. */
-			last_item = MLX5_FLOW_LAYER_ECPRI;
-			break;
+		tunnel = !!(wks.item_flags & MLX5_FLOW_LAYER_TUNNEL);
+		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 			flow_dv_translate_item_integrity(items, integrity_items,
-							 &last_item);
+							 &wks.last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			flow_dv_translate_item_aso_ct(dev, match_mask,
@@ -13385,13 +13337,22 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 			flow_dv_translate_item_flex(dev, match_mask,
 						    match_value, items,
 						    dev_flow, tunnel != 0);
-			last_item = tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
-				    MLX5_FLOW_ITEM_OUTER_FLEX;
+			wks.last_item = tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
+						 MLX5_FLOW_ITEM_OUTER_FLEX;
 			break;
+
 		default:
+			ret = flow_dv_translate_items(dev, items, &wks_m,
+				match_mask, MLX5_SET_MATCHER_SW_M, error);
+			if (ret)
+				return ret;
+			ret = flow_dv_translate_items(dev, items, &wks,
+				match_value, MLX5_SET_MATCHER_SW_V, error);
+			if (ret)
+				return ret;
 			break;
 		}
-		item_flags |= last_item;
+		wks.item_flags |= wks.last_item;
 	}
 	/*
 	 * When E-Switch mode is enabled, we have two cases where we need to
@@ -13401,48 +13362,82 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 	 * In both cases the source port is set according the current port
 	 * in use.
 	 */
-	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) &&
-	    !(item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) && priv->sh->esw_mode &&
+	if (!(wks.item_flags & MLX5_FLOW_ITEM_PORT_ID) &&
+	    !(wks.item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) && priv->sh->esw_mode &&
 	    !(attr->egress && !attr->transfer)) {
-		if (flow_dv_translate_item_port_id(dev, match_mask,
+		if (flow_dv_translate_item_port_id_all(dev, match_mask,
 						   match_value, NULL, attr))
 			return -rte_errno;
 	}
-	if (item_flags & MLX5_FLOW_ITEM_INTEGRITY) {
+	if (wks.item_flags & MLX5_FLOW_ITEM_INTEGRITY) {
 		flow_dv_translate_item_integrity_post(match_mask, match_value,
 						      integrity_items,
-						      item_flags);
+						      wks.item_flags);
 	}
-	if (item_flags & MLX5_FLOW_LAYER_VXLAN_GPE)
-		flow_dv_translate_item_vxlan_gpe(match_mask, match_value,
-						 tunnel_item, item_flags);
-	else if (item_flags & MLX5_FLOW_LAYER_GENEVE)
-		flow_dv_translate_item_geneve(match_mask, match_value,
-					      tunnel_item, item_flags);
-	else if (item_flags & MLX5_FLOW_LAYER_GRE) {
-		if (tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE)
-			flow_dv_translate_item_gre(match_mask, match_value,
-						   tunnel_item, item_flags);
-		else if (tunnel_item->type == RTE_FLOW_ITEM_TYPE_NVGRE)
-			flow_dv_translate_item_nvgre(match_mask, match_value,
-						     tunnel_item, item_flags);
-		else if (tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE_OPTION)
-			flow_dv_translate_item_gre_option(match_mask, match_value,
-					tunnel_item, gre_item, item_flags);
-		else
+	if (wks.item_flags & MLX5_FLOW_LAYER_VXLAN_GPE) {
+		flow_dv_translate_item_vxlan_gpe(match_mask,
+						 wks.tunnel_item,
+						 wks.item_flags,
+						 MLX5_SET_MATCHER_SW_M);
+		flow_dv_translate_item_vxlan_gpe(match_value,
+						 wks.tunnel_item,
+						 wks.item_flags,
+						 MLX5_SET_MATCHER_SW_V);
+	} else if (wks.item_flags & MLX5_FLOW_LAYER_GENEVE) {
+		flow_dv_translate_item_geneve(match_mask,
+					      wks.tunnel_item,
+					      wks.item_flags,
+					      MLX5_SET_MATCHER_SW_M);
+		flow_dv_translate_item_geneve(match_value,
+					      wks.tunnel_item,
+					      wks.item_flags,
+					      MLX5_SET_MATCHER_SW_V);
+	} else if (wks.item_flags & MLX5_FLOW_LAYER_GRE) {
+		if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE) {
+			flow_dv_translate_item_gre(match_mask,
+						   wks.tunnel_item,
+						   wks.item_flags,
+						   MLX5_SET_MATCHER_SW_M);
+			flow_dv_translate_item_gre(match_value,
+						   wks.tunnel_item,
+						   wks.item_flags,
+						   MLX5_SET_MATCHER_SW_V);
+		} else if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_NVGRE) {
+			flow_dv_translate_item_nvgre(match_mask,
+						     wks.tunnel_item,
+						     wks.item_flags,
+						     MLX5_SET_MATCHER_SW_M);
+			flow_dv_translate_item_nvgre(match_value,
+						     wks.tunnel_item,
+						     wks.item_flags,
+						     MLX5_SET_MATCHER_SW_V);
+		} else if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE_OPTION) {
+			flow_dv_translate_item_gre_option(match_mask,
+							  wks.tunnel_item,
+							  wks.gre_item,
+							  wks.item_flags,
+							  MLX5_SET_MATCHER_SW_M);
+			flow_dv_translate_item_gre_option(match_value,
+							  wks.tunnel_item,
+							  wks.gre_item,
+							  wks.item_flags,
+							  MLX5_SET_MATCHER_SW_V);
+		} else {
 			MLX5_ASSERT(false);
+		}
 	}
-	matcher->priority = priority;
+	dev_flow->handle->vf_vlan.tag = wks.vlan_tag;
+	matcher->priority = wks.priority;
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-	MLX5_ASSERT(!flow_dv_check_valid_spec(matcher->mask.buf,
-					      dev_flow->dv.value.buf));
+	MLX5_ASSERT(!flow_dv_check_valid_spec(match_mask, match_value));
 #endif
 	/*
 	 * Layers may be already initialized from prefix flow if this dev_flow
 	 * is the suffix flow.
 	 */
-	handle->layers |= item_flags;
-	return ret;
+	dev_flow->handle->layers |= wks.item_flags;
+	dev_flow->flow->geneve_tlv_option = wks.geneve_tlv_option;
+	return 0;
 }
 
 /**
@@ -14182,7 +14177,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			modify_action_position = actions_n++;
 	}
 	dev_flow->act_flags = action_flags;
-	ret = flow_dv_translate_items(dev, dev_flow, attr, items, &matcher,
+	ret = flow_dv_translate_items_sws(dev, dev_flow, attr, items, &matcher,
 				      error);
 	if (ret)
 		return -rte_errno;
@@ -16754,27 +16749,23 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_match_params value = {
 		.size = sizeof(value.buf),
 	};
-	struct mlx5_flow_dv_match_params matcher = {
-		.size = sizeof(matcher.buf),
-	};
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint8_t misc_mask;
 
 	if (match_src_port && priv->sh->esw_mode) {
 		if (item && item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
-			ret = flow_dv_translate_item_represented_port(dev, matcher.buf, value.buf,
-								      item, attr);
+			ret = flow_dv_translate_item_represented_port(dev, value.buf,
+						item, attr, MLX5_SET_MATCHER_SW_V);
 		else
-			ret = flow_dv_translate_item_port_id(dev, matcher.buf, value.buf,
-							     item, attr);
+			ret = flow_dv_translate_item_port_id(dev, value.buf,
+						item, attr, MLX5_SET_MATCHER_SW_V);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create meter policy%d flow's"
 				" value with port.", color);
 			return -1;
 		}
 	}
-	flow_dv_match_meta_reg(matcher.buf, value.buf,
-			       (enum modify_reg)color_reg_c_idx,
+	flow_dv_match_meta_reg(value.buf, (enum modify_reg)color_reg_c_idx,
 			       rte_col_2_mlx5_col(color), UINT32_MAX);
 	misc_mask = flow_dv_matcher_enable(value.buf);
 	__flow_dv_adjust_buf_size(&value.size, misc_mask);
@@ -16806,9 +16797,6 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 		},
 		.tbl = tbl_rsc,
 	};
-	struct mlx5_flow_dv_match_params value = {
-		.size = sizeof(value.buf),
-	};
 	struct mlx5_flow_cb_ctx ctx = {
 		.error = error,
 		.data = &matcher,
@@ -16821,10 +16809,10 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	if (match_src_port && priv->sh->esw_mode) {
 		if (item && item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
 			ret = flow_dv_translate_item_represented_port(dev, matcher.mask.buf,
-								      value.buf, item, attr);
+						item, attr, MLX5_SET_MATCHER_SW_M);
 		else
-			ret = flow_dv_translate_item_port_id(dev, matcher.mask.buf, value.buf,
-							     item, attr);
+			ret = flow_dv_translate_item_port_id(dev, matcher.mask.buf,
+						item, attr, MLX5_SET_MATCHER_SW_M);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to register meter policy%d matcher"
 				" with port.", priority);
@@ -16833,7 +16821,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	}
 	tbl_data = container_of(tbl_rsc, struct mlx5_flow_tbl_data_entry, tbl);
 	if (priority < RTE_COLOR_RED)
-		flow_dv_match_meta_reg(matcher.mask.buf, value.buf,
+		flow_dv_match_meta_reg(matcher.mask.buf,
 			(enum modify_reg)color_reg_c_idx, 0, color_mask);
 	matcher.priority = priority;
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
@@ -17369,7 +17357,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 		tbl_data = container_of(mtrmng->drop_tbl[domain],
 				struct mlx5_flow_tbl_data_entry, tbl);
 		if (!mtrmng->def_matcher[domain]) {
-			flow_dv_match_meta_reg(matcher.mask.buf, value.buf,
+			flow_dv_match_meta_reg_all(matcher.mask.buf, value.buf,
 				       (enum modify_reg)mtr_id_reg_c,
 				       0, 0);
 			matcher.priority = MLX5_MTRS_DEFAULT_RULE_PRIORITY;
@@ -17389,7 +17377,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 		if (!mtrmng->def_rule[domain]) {
 			i = 0;
 			actions[i++] = priv->sh->dr_drop_action;
-			flow_dv_match_meta_reg(matcher_para.buf, value.buf,
+			flow_dv_match_meta_reg_all(matcher_para.buf, value.buf,
 				(enum modify_reg)mtr_id_reg_c, 0, 0);
 			misc_mask = flow_dv_matcher_enable(value.buf);
 			__flow_dv_adjust_buf_size(&value.size, misc_mask);
@@ -17408,7 +17396,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 		MLX5_ASSERT(mtrmng->max_mtr_bits);
 		if (!mtrmng->drop_matcher[domain][mtrmng->max_mtr_bits - 1]) {
 			/* Create matchers for Drop. */
-			flow_dv_match_meta_reg(matcher.mask.buf, value.buf,
+			flow_dv_match_meta_reg_all(matcher.mask.buf, value.buf,
 					(enum modify_reg)mtr_id_reg_c, 0,
 					(mtr_id_mask << mtr_id_offset));
 			matcher.priority = MLX5_REG_BITS - mtrmng->max_mtr_bits;
@@ -17428,7 +17416,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 		drop_matcher =
 			mtrmng->drop_matcher[domain][mtrmng->max_mtr_bits - 1];
 		/* Create drop rule, matching meter_id only. */
-		flow_dv_match_meta_reg(matcher_para.buf, value.buf,
+		flow_dv_match_meta_reg_all(matcher_para.buf, value.buf,
 				(enum modify_reg)mtr_id_reg_c,
 				(mtr_idx << mtr_id_offset), UINT32_MAX);
 		i = 0;
@@ -18910,8 +18898,12 @@ flow_dv_discover_priorities(struct rte_eth_dev *dev,
 	flow.dv.actions[0] = action;
 	flow.dv.actions_n = 1;
 	memset(&eth, 0, sizeof(eth));
-	flow_dv_translate_item_eth(matcher.mask.buf, flow.dv.value.buf,
-				   &item, /* inner */ false, /* group */ 0);
+	flow_dv_translate_item_eth(matcher.mask.buf, &item,
+				   /* inner */ false, /* group */ 0,
+				   MLX5_SET_MATCHER_SW_M);
+	flow_dv_translate_item_eth(flow.dv.value.buf, &item,
+				   /* inner */ false, /* group */ 0,
+				   MLX5_SET_MATCHER_SW_V);
 	matcher.crc = rte_raw_cksum(matcher.mask.buf, matcher.mask.size);
 	for (i = 0; i < vprio_n; i++) {
 		/* Configure the next proposed maximum priority. */

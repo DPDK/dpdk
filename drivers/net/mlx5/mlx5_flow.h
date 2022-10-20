@@ -1267,6 +1267,38 @@ struct mlx5_flow_workspace {
 	uint32_t skip_matcher_reg:1;
 	/* Indicates if need to skip matcher register in translate. */
 	uint32_t mark:1; /* Indicates if flow contains mark action. */
+	uint32_t vport_meta_tag; /* Used for vport index match. */
+};
+
+/* Matcher translate type. */
+enum MLX5_SET_MATCHER {
+	MLX5_SET_MATCHER_SW_V = 1 << 0,
+	MLX5_SET_MATCHER_SW_M = 1 << 1,
+	MLX5_SET_MATCHER_HS_V = 1 << 2,
+	MLX5_SET_MATCHER_HS_M = 1 << 3,
+};
+
+#define MLX5_SET_MATCHER_SW (MLX5_SET_MATCHER_SW_V | MLX5_SET_MATCHER_SW_M)
+#define MLX5_SET_MATCHER_HS (MLX5_SET_MATCHER_HS_V | MLX5_SET_MATCHER_HS_M)
+#define MLX5_SET_MATCHER_V (MLX5_SET_MATCHER_SW_V | MLX5_SET_MATCHER_HS_V)
+#define MLX5_SET_MATCHER_M (MLX5_SET_MATCHER_SW_M | MLX5_SET_MATCHER_HS_M)
+
+/* Flow matcher workspace intermediate data. */
+struct mlx5_dv_matcher_workspace {
+	uint8_t priority; /* Flow priority. */
+	uint64_t last_item; /* Last item in pattern. */
+	uint64_t item_flags; /* Flow item pattern flags. */
+	uint64_t action_flags; /* Flow action flags. */
+	bool external; /* External flow or not. */
+	uint32_t vlan_tag:12; /* Flow item VLAN tag. */
+	uint8_t next_protocol; /* Tunnel next protocol */
+	uint32_t geneve_tlv_option; /* Flow item Geneve TLV option. */
+	uint32_t group; /* Flow group. */
+	uint16_t udp_dport; /* Flow item UDP port. */
+	const struct rte_flow_attr *attr; /* Flow attribute. */
+	struct mlx5_flow_rss_desc *rss_desc; /* RSS descriptor. */
+	const struct rte_flow_item *tunnel_item; /* Flow tunnel item. */
+	const struct rte_flow_item *gre_item; /* Flow GRE item. */
 };
 
 struct mlx5_flow_split_info {
