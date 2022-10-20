@@ -63,6 +63,63 @@ flow_hw_rxq_flag_set(struct rte_eth_dev *dev, bool enable)
 }
 
 /**
+ * Set the hash fields according to the @p rss_desc information.
+ *
+ * @param[in] rss_desc
+ *   Pointer to the mlx5_flow_rss_desc.
+ * @param[out] hash_fields
+ *   Pointer to the RSS hash fields.
+ */
+static void
+flow_hw_hashfields_set(struct mlx5_flow_rss_desc *rss_desc,
+		       uint64_t *hash_fields)
+{
+	uint64_t fields = 0;
+	int rss_inner = 0;
+	uint64_t rss_types = rte_eth_rss_hf_refine(rss_desc->types);
+
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	if (rss_desc->level >= 2)
+		rss_inner = 1;
+#endif
+	if (rss_types & MLX5_IPV4_LAYER_TYPES) {
+		if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
+			fields |= IBV_RX_HASH_SRC_IPV4;
+		else if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
+			fields |= IBV_RX_HASH_DST_IPV4;
+		else
+			fields |= MLX5_IPV4_IBV_RX_HASH;
+	} else if (rss_types & MLX5_IPV6_LAYER_TYPES) {
+		if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
+			fields |= IBV_RX_HASH_SRC_IPV6;
+		else if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
+			fields |= IBV_RX_HASH_DST_IPV6;
+		else
+			fields |= MLX5_IPV6_IBV_RX_HASH;
+	}
+	if (rss_types & RTE_ETH_RSS_UDP) {
+		if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
+			fields |= IBV_RX_HASH_SRC_PORT_UDP;
+		else if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
+			fields |= IBV_RX_HASH_DST_PORT_UDP;
+		else
+			fields |= MLX5_UDP_IBV_RX_HASH;
+	} else if (rss_types & RTE_ETH_RSS_TCP) {
+		if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
+			fields |= IBV_RX_HASH_SRC_PORT_TCP;
+		else if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
+			fields |= IBV_RX_HASH_DST_PORT_TCP;
+		else
+			fields |= MLX5_TCP_IBV_RX_HASH;
+	}
+	if (rss_types & RTE_ETH_RSS_ESP)
+		fields |= IBV_RX_HASH_IPSEC_SPI;
+	if (rss_inner)
+		fields |= IBV_RX_HASH_INNER;
+	*hash_fields = fields;
+}
+
+/**
  * Generate the pattern item flags.
  * Will be used for shared RSS action.
  *
@@ -225,7 +282,7 @@ flow_hw_tir_action_register(struct rte_eth_dev *dev,
 		       MLX5_RSS_HASH_KEY_LEN);
 		rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
 		rss_desc.types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
-		flow_dv_hashfields_set(0, &rss_desc, &rss_desc.hash_fields);
+		flow_hw_hashfields_set(&rss_desc, &rss_desc.hash_fields);
 		flow_dv_action_rss_l34_hash_adjust(rss->types,
 						   &rss_desc.hash_fields);
 		if (rss->level > 1) {
