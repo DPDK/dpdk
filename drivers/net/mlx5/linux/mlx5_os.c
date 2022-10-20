@@ -1578,6 +1578,7 @@ err_secondary:
 		}
 		/* Only HWS requires this information. */
 		flow_hw_init_tags_set(eth_dev);
+		flow_hw_init_flow_metadata_config(eth_dev);
 		if (priv->sh->config.dv_esw_en &&
 		    flow_hw_create_vport_action(eth_dev)) {
 			DRV_LOG(ERR, "port %u failed to create vport action",

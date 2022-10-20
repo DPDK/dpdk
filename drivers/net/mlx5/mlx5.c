@@ -1969,8 +1969,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	flow_hw_destroy_vport_action(dev);
 	flow_hw_resource_release(dev);
 	flow_hw_clear_port_info(dev);
-	if (priv->sh->config.dv_flow_en == 2)
+	if (priv->sh->config.dv_flow_en == 2) {
+		flow_hw_clear_flow_metadata_config();
 		flow_hw_clear_tags_set(dev);
+	}
 #endif
 	if (priv->rxq_privs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */

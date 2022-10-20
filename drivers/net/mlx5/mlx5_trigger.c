@@ -1170,6 +1170,16 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id, rte_strerror(rte_errno));
 		goto error;
 	}
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (priv->sh->config.dv_flow_en == 2) {
+		ret = flow_hw_table_update(dev, NULL);
+		if (ret) {
+			DRV_LOG(ERR, "port %u failed to update HWS tables",
+				dev->data->port_id);
+			goto error;
+		}
+	}
+#endif
 	ret = mlx5_traffic_enable(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u failed to set defaults flows",

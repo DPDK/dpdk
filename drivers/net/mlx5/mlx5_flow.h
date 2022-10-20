@@ -1189,6 +1189,11 @@ struct rte_flow_actions_template {
 	struct rte_flow_actions_template_attr attr;
 	struct rte_flow_action *actions; /* Cached flow actions. */
 	struct rte_flow_action *masks; /* Cached action masks.*/
+	struct mlx5dr_action_template *tmpl; /* mlx5dr action template. */
+	uint16_t dr_actions_num; /* Amount of DR rules actions. */
+	uint16_t actions_num; /* Amount of flow actions */
+	uint16_t *actions_off; /* DR action offset for given rte action offset. */
+	uint16_t reformat_off; /* Offset of DR reformat action. */
 	uint16_t mhdr_off; /* Offset of DR modify header action. */
 	uint32_t refcnt; /* Reference counter. */
 	uint16_t rx_cpy_pos; /* Action position of Rx metadata to be copied. */
@@ -1240,7 +1245,6 @@ struct mlx5_hw_actions {
 	/* Encap/Decap action. */
 	struct mlx5_hw_encap_decap_action *encap_decap;
 	uint16_t encap_decap_pos; /* Encap/Decap action position. */
-	uint32_t acts_num:4; /* Total action number. */
 	uint32_t mark:1; /* Indicate the mark action. */
 	uint32_t cnt_id; /* Counter id. */
 	/* Translated DR action array from action template. */
@@ -1496,6 +1500,13 @@ flow_hw_get_wire_port(struct ibv_context *ibctx)
 }
 #endif
 
+extern uint32_t mlx5_flow_hw_flow_metadata_config_refcnt;
+extern uint8_t mlx5_flow_hw_flow_metadata_esw_en;
+extern uint8_t mlx5_flow_hw_flow_metadata_xmeta_en;
+
+void flow_hw_init_flow_metadata_config(struct rte_eth_dev *dev);
+void flow_hw_clear_flow_metadata_config(void);
+
 /*
  * Convert metadata or tag to the actual register.
  * META: Can only be used to match in the FDB in this stage, fixed C_1.
@@ -1507,7 +1518,22 @@ flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
 {
 	switch (type) {
 	case RTE_FLOW_ITEM_TYPE_META:
-		return REG_C_1;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		if (mlx5_flow_hw_flow_metadata_esw_en &&
+		    mlx5_flow_hw_flow_metadata_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
+			return REG_C_1;
+		}
+#endif
+		/*
+		 * On root table - PMD allows only egress META matching, thus
+		 * REG_A matching is sufficient.
+		 *
+		 * On non-root tables - REG_A corresponds to general_purpose_lookup_field,
+		 * which translates to REG_A in NIC TX and to REG_B in NIC RX.
+		 * However, current FW does not implement REG_B case right now, so
+		 * REG_B case should be rejected on pattern template validation.
+		 */
+		return REG_A;
 	case RTE_FLOW_ITEM_TYPE_TAG:
 		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
 		return mlx5_flow_hw_avl_tags[id];
@@ -2421,4 +2447,6 @@ int mlx5_flow_pattern_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_pattern_template_attr *attr,
 		const struct rte_flow_item items[],
 		struct rte_flow_error *error);
+int flow_hw_table_update(struct rte_eth_dev *dev,
+			 struct rte_flow_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
