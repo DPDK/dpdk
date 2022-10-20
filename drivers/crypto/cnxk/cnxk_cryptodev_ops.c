@@ -27,11 +27,13 @@ cnxk_cpt_get_mlen(void)
 	len = 2 * sizeof(uint64_t);
 	len += ROC_SE_MAX_MAC_LEN * sizeof(uint8_t);
 
+	/* For PDCP_CHAIN passthrough alignment */
+	len += 8;
 	len += ROC_SE_OFF_CTRL_LEN + ROC_CPT_AES_CBC_IV_LEN;
-	len += RTE_ALIGN_CEIL((ROC_SE_SG_LIST_HDR_SIZE +
-			       (RTE_ALIGN_CEIL(ROC_SE_MAX_SG_IN_OUT_CNT, 4) >>
-				2) * ROC_SE_SG_ENTRY_SIZE),
-			      8);
+	len += RTE_ALIGN_CEIL(
+		(ROC_SE_SG_LIST_HDR_SIZE +
+		 (RTE_ALIGN_CEIL(ROC_SE_MAX_SG_IN_OUT_CNT, 4) >> 2) * ROC_SE_SG_ENTRY_SIZE),
+		8);
 
 	return len;
 }

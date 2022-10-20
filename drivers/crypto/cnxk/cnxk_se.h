@@ -1393,12 +1393,11 @@ cpt_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 
 static __rte_always_inline int
 cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
-			struct roc_se_fc_params *params,
-			struct cpt_inst_s *inst)
+			struct roc_se_fc_params *params, struct cpt_inst_s *inst)
 {
+	uint32_t encr_data_len, auth_data_len, aad_len, passthr_len, pad_len, hdr_len;
 	uint32_t encr_offset, auth_offset, iv_offset = 0;
 	uint8_t *auth_iv = NULL, *cipher_iv = NULL;
-	uint32_t encr_data_len, auth_data_len;
 	uint8_t pdcp_ci_alg, pdcp_auth_alg;
 	union cpt_inst_w4 cpt_inst_w4;
 	struct roc_se_ctx *se_ctx;
@@ -1413,12 +1412,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	encr_offset = ROC_SE_ENCR_OFFSET(d_offs);
 	auth_offset = ROC_SE_AUTH_OFFSET(d_offs);
 
-	if (auth_offset != encr_offset) {
-		plt_dp_err("encr_offset and auth_offset are not same");
-		plt_dp_err("enc_offset: %d", encr_offset);
-		plt_dp_err("auth_offset: %d", auth_offset);
-		return -1;
-	}
+	aad_len = encr_offset - auth_offset;
 
 	if (unlikely(encr_offset >> 16)) {
 		plt_dp_err("Offset not supported");
@@ -1433,12 +1427,16 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 	encr_data_len = ROC_SE_ENCR_DLEN(d_lens);
 	auth_data_len = ROC_SE_AUTH_DLEN(d_lens);
+	auth_data_len -= aad_len;
 
-	if ((auth_data_len + mac_len) != encr_data_len) {
-		plt_dp_err("(auth_data_len + mac_len) != encr_data_len");
-		plt_dp_err("auth_data_len: %d", auth_data_len);
-		plt_dp_err("encr_data_len: %d", encr_data_len);
-		plt_dp_err("mac_len: %d", mac_len);
+	encr_offset += iv_len;
+	auth_offset = encr_offset - aad_len;
+	passthr_len = RTE_ALIGN_CEIL(auth_offset, 8);
+
+	if (unlikely((aad_len >> 16) || (passthr_len >> 8))) {
+		plt_dp_err("Length not supported");
+		plt_dp_err("AAD_len: %d", aad_len);
+		plt_dp_err("Passthrough_len: %d", passthr_len);
 		return -1;
 	}
 
@@ -1454,12 +1452,15 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	if (likely(params->cipher_iv_len))
 		cipher_iv = params->iv_buf;
 
-	encr_offset += iv_len;
+	pad_len = passthr_len - auth_offset;
+	hdr_len = iv_len + pad_len;
 
 	if (se_ctx->auth_then_ciph)
-		inputlen = encr_offset + auth_data_len;
+		inputlen = auth_data_len;
 	else
-		inputlen = encr_offset + encr_data_len;
+		inputlen = encr_data_len;
+
+	inputlen += (encr_offset + pad_len);
 
 	if (likely(((req_flags & ROC_SE_SINGLE_BUF_INPLACE)) &&
 		   ((req_flags & ROC_SE_SINGLE_BUF_HEADROOM)))) {
@@ -1468,19 +1469,18 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 		/* Use Direct mode */
 
-		offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr -
-					    ROC_SE_OFF_CTRL_LEN - iv_len);
+		offset_vaddr = PLT_PTR_SUB(dm_vaddr, ROC_SE_OFF_CTRL_LEN + hdr_len);
 
 		/* DPTR */
 		inst->dptr = (uint64_t)offset_vaddr;
 		/* RPTR should just exclude offset control word */
-		inst->rptr = (uint64_t)dm_vaddr - iv_len;
+		inst->rptr = (uint64_t)PLT_PTR_SUB(dm_vaddr, hdr_len);
 
 		cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
 
 		*(uint64_t *)offset_vaddr =
-			rte_cpu_to_be_64(((uint64_t)(iv_offset) << 16) |
-					 ((uint64_t)(encr_offset)));
+			rte_cpu_to_be_64(((uint64_t)(aad_len) << 16) |
+					 ((uint64_t)(iv_offset) << 8) | ((uint64_t)(passthr_len)));
 
 		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
 		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
@@ -1499,8 +1499,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		/* save space for IV */
 		offset_vaddr = m_vaddr;
 
-		m_vaddr = (uint8_t *)m_vaddr + ROC_SE_OFF_CTRL_LEN +
-			  RTE_ALIGN_CEIL(iv_len, 8);
+		m_vaddr = PLT_PTR_ADD(m_vaddr, ROC_SE_OFF_CTRL_LEN + RTE_ALIGN_CEIL(hdr_len, 8));
 
 		cpt_inst_w4.s.opcode_major |= (uint64_t)ROC_SE_DMA_MODE;
 
@@ -1519,11 +1518,11 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		/* Offset control word followed by iv */
 
 		i = fill_sg_comp(gather_comp, i, (uint64_t)offset_vaddr,
-				 ROC_SE_OFF_CTRL_LEN + iv_len);
+				 ROC_SE_OFF_CTRL_LEN + hdr_len);
 
 		*(uint64_t *)offset_vaddr =
-			rte_cpu_to_be_64(((uint64_t)(iv_offset) << 16) |
-					 ((uint64_t)(encr_offset)));
+			rte_cpu_to_be_64(((uint64_t)(aad_len) << 16) |
+					 ((uint64_t)(iv_offset) << 8) | ((uint64_t)(passthr_len)));
 
 		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
 		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
@@ -1532,11 +1531,10 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
 
 		/* input data */
-		size = inputlen - iv_len;
+		size = inputlen - hdr_len;
 		if (size) {
-			i = fill_sg_comp_from_iov(gather_comp, i,
-						  params->src_iov, 0, &size,
-						  NULL, 0);
+			i = fill_sg_comp_from_iov(gather_comp, i, params->src_iov, 0, &size, NULL,
+						  0);
 			if (unlikely(size)) {
 				plt_dp_err("Insufficient buffer space,"
 					   " size %d needed",
@@ -1553,29 +1551,25 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		 */
 
 		i = 0;
-		scatter_comp =
-			(struct roc_se_sglist_comp *)((uint8_t *)gather_comp +
-						      g_size_bytes);
+		scatter_comp = (struct roc_se_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-		if (iv_len) {
+		if ((hdr_len)) {
 			i = fill_sg_comp(scatter_comp, i,
-					 (uint64_t)offset_vaddr +
-						 ROC_SE_OFF_CTRL_LEN,
-					 iv_len);
+					 (uint64_t)offset_vaddr + ROC_SE_OFF_CTRL_LEN, hdr_len);
 		}
 
 		/* Add output data */
-		if (se_ctx->ciph_then_auth &&
-		    (req_flags & ROC_SE_VALID_MAC_BUF))
-			size = inputlen - iv_len;
+		if (se_ctx->ciph_then_auth && (req_flags & ROC_SE_VALID_MAC_BUF))
+			size = inputlen;
 		else
 			/* Output including mac */
-			size = inputlen - iv_len + mac_len;
+			size = inputlen + mac_len;
+
+		size -= hdr_len;
 
 		if (size) {
-			i = fill_sg_comp_from_iov(scatter_comp, i,
-						  params->dst_iov, 0, &size,
-						  NULL, 0);
+			i = fill_sg_comp_from_iov(scatter_comp, i, params->dst_iov, 0, &size, NULL,
+						  0);
 
 			if (unlikely(size)) {
 				plt_dp_err("Insufficient buffer space,"
@@ -2399,7 +2393,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 
 		*flags |= ROC_SE_SINGLE_BUF_INPLACE;
 		headroom = rte_pktmbuf_headroom(pkt);
-		if (likely(headroom >= 24))
+		if (likely(headroom >= CNXK_CPT_MIN_HEADROOM_REQ))
 			*flags |= ROC_SE_SINGLE_BUF_HEADROOM;
 
 		param->bufs[0].vaddr = seg_data;
