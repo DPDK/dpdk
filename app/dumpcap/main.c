@@ -842,7 +842,7 @@ int main(int argc, char **argv)
 		pcap_dump_close(out.dumper);
 
 	cleanup_pdump_resources();
-	rte_free(bpf_filter);
+
 	rte_ring_free(r);
 	rte_mempool_free(mp);
 
