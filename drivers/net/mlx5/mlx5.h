@@ -313,6 +313,10 @@ struct mlx5_sh_config {
 	uint32_t hw_fcs_strip:1; /* FCS stripping is supported. */
 	uint32_t allow_duplicate_pattern:1;
 	uint32_t lro_allowed:1; /* Whether LRO is allowed. */
+	struct {
+		uint16_t service_core;
+		uint32_t cycle_time; /* query cycle time in milli-second. */
+	} cnt_svc; /* configure for HW steering's counter's service. */
 	/* Allow/Prevent the duplicate rules pattern. */
 	uint32_t fdb_def_rule:1; /* Create FDB default jump rule */
 };
@@ -1234,6 +1238,22 @@ struct mlx5_send_to_kernel_action {
 	void *tbl;
 };
 
+#define HWS_CNT_ASO_SQ_NUM 4
+
+struct mlx5_hws_aso_mng {
+	uint16_t sq_num;
+	struct mlx5_aso_sq sqs[HWS_CNT_ASO_SQ_NUM];
+};
+
+struct mlx5_hws_cnt_svc_mng {
+	uint32_t refcnt;
+	uint32_t service_core;
+	uint32_t query_interval;
+	pthread_t service_thread;
+	uint8_t svc_running;
+	struct mlx5_hws_aso_mng aso_mng __rte_cache_aligned;
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -1334,6 +1354,7 @@ struct mlx5_dev_ctx_shared {
 	pthread_mutex_t lwm_config_lock;
 	uint32_t host_shaper_rate:8;
 	uint32_t lwm_triggered:1;
+	struct mlx5_hws_cnt_svc_mng *cnt_svc;
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -1620,6 +1641,7 @@ struct mlx5_priv {
 	/* Flex items have been created on the port. */
 	uint32_t flex_item_map; /* Map of allocated flex item elements. */
 	uint32_t nb_queue; /* HW steering queue number. */
+	struct mlx5_hws_cnt_pool *hws_cpool; /* HW steering's counter pool. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	/* Item template list. */
 	LIST_HEAD(flow_hw_itt, rte_flow_pattern_template) flow_hw_itt;
@@ -2049,6 +2071,11 @@ uint32_t
 mlx5_get_supported_sw_parsing_offloads(const struct mlx5_hca_attr *attr);
 uint32_t
 mlx5_get_supported_tunneling_offloads(const struct mlx5_hca_attr *attr);
+
+int mlx5_aso_cnt_queue_init(struct mlx5_dev_ctx_shared *sh);
+void mlx5_aso_cnt_queue_uninit(struct mlx5_dev_ctx_shared *sh);
+int mlx5_aso_cnt_query(struct mlx5_dev_ctx_shared *sh,
+		struct mlx5_hws_cnt_pool *cpool);
 
 /* mlx5_flow_flex.c */
 

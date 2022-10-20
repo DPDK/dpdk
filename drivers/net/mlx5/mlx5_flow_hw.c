@@ -10,6 +10,7 @@
 #include "mlx5_rx.h"
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+#include "mlx5_hws_cnt.h"
 
 /* The maximum actions support in the flow. */
 #define MLX5_HW_MAX_ACTS 16
@@ -353,6 +354,10 @@ __flow_hw_action_template_destroy(struct rte_eth_dev *dev,
 			mlx5dr_action_destroy(acts->mhdr->action);
 		mlx5_free(acts->mhdr);
 	}
+	if (mlx5_hws_cnt_id_valid(acts->cnt_id)) {
+		mlx5_hws_cnt_shared_put(priv->hws_cpool, &acts->cnt_id);
+		acts->cnt_id = 0;
+	}
 }
 
 /**
@@ -533,6 +538,44 @@ __flow_hw_act_data_shared_rss_append(struct mlx5_priv *priv,
 }
 
 /**
+ * Append shared counter action to the dynamic action list.
+ *
+ * @param[in] priv
+ *   Pointer to the port private data structure.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ * @param[in] type
+ *   Action type.
+ * @param[in] action_src
+ *   Offset of source rte flow action.
+ * @param[in] action_dst
+ *   Offset of destination DR action.
+ * @param[in] cnt_id
+ *   Shared counter id.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline int
+__flow_hw_act_data_shared_cnt_append(struct mlx5_priv *priv,
+				     struct mlx5_hw_actions *acts,
+				     enum rte_flow_action_type type,
+				     uint16_t action_src,
+				     uint16_t action_dst,
+				     cnt_id_t cnt_id)
+{	struct mlx5_action_construct_data *act_data;
+
+	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
+	if (!act_data)
+		return -1;
+	act_data->type = type;
+	act_data->shared_counter.id = cnt_id;
+	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
+	return 0;
+}
+
+
+/**
  * Translate shared indirect action.
  *
  * @param[in] dev
@@ -571,6 +614,13 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 		    (priv, acts,
 		    (enum rte_flow_action_type)MLX5_RTE_FLOW_ACTION_TYPE_RSS,
 		    action_src, action_dst, idx, shared_rss))
+			return -1;
+		break;
+	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
+		if (__flow_hw_act_data_shared_cnt_append(priv, acts,
+			(enum rte_flow_action_type)
+			MLX5_RTE_FLOW_ACTION_TYPE_COUNT,
+			action_src, action_dst, act_idx))
 			return -1;
 		break;
 	default:
@@ -946,6 +996,30 @@ flow_hw_meter_compile(struct rte_eth_dev *dev,
 	}
 	return 0;
 }
+
+static __rte_always_inline int
+flow_hw_cnt_compile(struct rte_eth_dev *dev, uint32_t  start_pos,
+		      struct mlx5_hw_actions *acts)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t pos = start_pos;
+	cnt_id_t cnt_id;
+	int ret;
+
+	ret = mlx5_hws_cnt_shared_get(priv->hws_cpool, &cnt_id);
+	if (ret != 0)
+		return ret;
+	ret = mlx5_hws_cnt_pool_get_action_offset
+				(priv->hws_cpool,
+				 cnt_id,
+				 &acts->rule_acts[pos].action,
+				 &acts->rule_acts[pos].counter.offset);
+	if (ret != 0)
+		return ret;
+	acts->cnt_id = cnt_id;
+	return 0;
+}
+
 /**
  * Translate rte_flow actions to DR action.
  *
@@ -1192,6 +1266,20 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 				goto err;
 			i++;
 			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			if (masks->conf &&
+			    ((const struct rte_flow_action_count *)
+			     masks->conf)->id) {
+				err = flow_hw_cnt_compile(dev, i, acts);
+				if (err)
+					goto err;
+			} else if (__flow_hw_act_data_general_append
+					(priv, acts, actions->type,
+					 actions - action_start, i)) {
+				goto err;
+			}
+			i++;
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			break;
@@ -1380,6 +1468,13 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev,
 				(dev, &act_data, item_flags, rule_act))
 			return -1;
 		break;
+	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
+		if (mlx5_hws_cnt_pool_get_action_offset(priv->hws_cpool,
+				act_idx,
+				&rule_act->action,
+				&rule_act->counter.offset))
+			return -1;
+		break;
 	default:
 		DRV_LOG(WARNING, "Unsupported shared action type:%d", type);
 		break;
@@ -1523,7 +1618,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			  const uint8_t it_idx,
 			  const struct rte_flow_action actions[],
 			  struct mlx5dr_rule_action *rule_acts,
-			  uint32_t *acts_num)
+			  uint32_t *acts_num,
+			  uint32_t queue)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_template_table *table = job->flow->table;
@@ -1577,6 +1673,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		uint64_t item_flags;
 		struct mlx5_hw_jump_action *jump;
 		struct mlx5_hrxq *hrxq;
+		cnt_id_t cnt_id;
 
 		action = &actions[act_data->action_src];
 		MLX5_ASSERT(action->type == RTE_FLOW_ACTION_TYPE_INDIRECT ||
@@ -1684,6 +1781,32 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			if (mlx5_aso_mtr_wait(priv->sh, mtr))
 				return -1;
 			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool, &queue,
+					&cnt_id);
+			if (ret != 0)
+				return ret;
+			ret = mlx5_hws_cnt_pool_get_action_offset
+				(priv->hws_cpool,
+				 cnt_id,
+				 &rule_acts[act_data->action_dst].action,
+				 &rule_acts[act_data->action_dst].counter.offset
+				 );
+			if (ret != 0)
+				return ret;
+			job->flow->cnt_id = cnt_id;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = mlx5_hws_cnt_pool_get_action_offset
+				(priv->hws_cpool,
+				 act_data->shared_counter.id,
+				 &rule_acts[act_data->action_dst].action,
+				 &rule_acts[act_data->action_dst].counter.offset
+				 );
+			if (ret != 0)
+				return ret;
+			job->flow->cnt_id = act_data->shared_counter.id;
+			break;
 		default:
 			break;
 		}
@@ -1693,6 +1816,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				job->flow->idx - 1;
 		rule_acts[hw_acts->encap_decap_pos].reformat.data = buf;
 	}
+	if (mlx5_hws_cnt_id_valid(hw_acts->cnt_id))
+		job->flow->cnt_id = hw_acts->cnt_id;
 	return 0;
 }
 
@@ -1828,7 +1953,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	 * user's input, in order to save the cost.
 	 */
 	if (flow_hw_actions_construct(dev, job, hw_acts, pattern_template_index,
-				  actions, rule_acts, &acts_num)) {
+				  actions, rule_acts, &acts_num, queue)) {
 		rte_errno = EINVAL;
 		goto free;
 	}
@@ -1958,6 +2083,13 @@ flow_hw_pull(struct rte_eth_dev *dev,
 				flow_hw_jump_release(dev, job->flow->jump);
 			else if (job->flow->fate_type == MLX5_FLOW_FATE_QUEUE)
 				mlx5_hrxq_obj_release(dev, job->flow->hrxq);
+			if (mlx5_hws_cnt_id_valid(job->flow->cnt_id) &&
+			    mlx5_hws_cnt_is_shared
+				(priv->hws_cpool, job->flow->cnt_id) == false) {
+				mlx5_hws_cnt_pool_put(priv->hws_cpool, &queue,
+						&job->flow->cnt_id);
+				job->flow->cnt_id = 0;
+			}
 			mlx5_ipool_free(job->flow->table->flow, job->flow->idx);
 		}
 		priv->hw_q[queue].job[priv->hw_q[queue].job_idx++] = job;
@@ -2680,6 +2812,9 @@ flow_hw_actions_validate(struct rte_eth_dev *dev,
 					(dev, action, mask, error);
 			if (ret < 0)
 				return ret;
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			/* TODO: Validation logic */
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
@@ -4352,6 +4487,12 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	}
 	if (_queue_attr)
 		mlx5_free(_queue_attr);
+	if (port_attr->nb_counters) {
+		priv->hws_cpool = mlx5_hws_cnt_pool_create(dev, port_attr,
+				nb_queue);
+		if (priv->hws_cpool == NULL)
+			goto err;
+	}
 	return 0;
 err:
 	flow_hw_free_vport_actions(priv);
@@ -4421,6 +4562,8 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 		mlx5_ipool_destroy(priv->acts_ipool);
 		priv->acts_ipool = NULL;
 	}
+	if (priv->hws_cpool)
+		mlx5_hws_cnt_pool_destroy(priv->sh, priv->hws_cpool);
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
 	claim_zero(mlx5dr_context_close(priv->dr_ctx));
@@ -4562,10 +4705,28 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 			     void *user_data,
 			     struct rte_flow_error *error)
 {
+	struct rte_flow_action_handle *handle = NULL;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	cnt_id_t cnt_id;
+
 	RTE_SET_USED(queue);
 	RTE_SET_USED(attr);
 	RTE_SET_USED(user_data);
-	return flow_dv_action_create(dev, conf, action, error);
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		if (mlx5_hws_cnt_shared_get(priv->hws_cpool, &cnt_id))
+			rte_flow_error_set(error, ENODEV,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL,
+					"counter are not configured!");
+		else
+			handle = (struct rte_flow_action_handle *)
+				 (uintptr_t)cnt_id;
+		break;
+	default:
+		handle = flow_dv_action_create(dev, conf, action, error);
+	}
+	return handle;
 }
 
 /**
@@ -4629,10 +4790,172 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 			      void *user_data,
 			      struct rte_flow_error *error)
 {
+	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
+	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
 	RTE_SET_USED(queue);
 	RTE_SET_USED(attr);
 	RTE_SET_USED(user_data);
-	return flow_dv_action_destroy(dev, handle, error);
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
+		return mlx5_hws_cnt_shared_put(priv->hws_cpool, &act_idx);
+	default:
+		return flow_dv_action_destroy(dev, handle, error);
+	}
+}
+
+static int
+flow_hw_query_counter(const struct rte_eth_dev *dev, uint32_t counter,
+		      void *data, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hws_cnt *cnt;
+	struct rte_flow_query_count *qc = data;
+	uint32_t iidx = mlx5_hws_cnt_iidx(priv->hws_cpool, counter);
+	uint64_t pkts, bytes;
+
+	if (!mlx5_hws_cnt_id_valid(counter))
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"counter are not available");
+	cnt = &priv->hws_cpool->pool[iidx];
+	__hws_cnt_query_raw(priv->hws_cpool, counter, &pkts, &bytes);
+	qc->hits_set = 1;
+	qc->bytes_set = 1;
+	qc->hits = pkts - cnt->reset.hits;
+	qc->bytes = bytes - cnt->reset.bytes;
+	if (qc->reset) {
+		cnt->reset.bytes = bytes;
+		cnt->reset.hits = pkts;
+	}
+	return 0;
+}
+
+static int
+flow_hw_query(struct rte_eth_dev *dev,
+	      struct rte_flow *flow __rte_unused,
+	      const struct rte_flow_action *actions __rte_unused,
+	      void *data __rte_unused,
+	      struct rte_flow_error *error __rte_unused)
+{
+	int ret = -EINVAL;
+	struct rte_flow_hw *hw_flow = (struct rte_flow_hw *)flow;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = flow_hw_query_counter(dev, hw_flow->cnt_id, data,
+						  error);
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
+		}
+	}
+	return ret;
+}
+
+/**
+ * Create indirect action.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] conf
+ *   Shared action configuration.
+ * @param[in] action
+ *   Action specification used to create indirect action.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   A valid shared action handle in case of success, NULL otherwise and
+ *   rte_errno is set.
+ */
+static struct rte_flow_action_handle *
+flow_hw_action_create(struct rte_eth_dev *dev,
+		       const struct rte_flow_indir_action_conf *conf,
+		       const struct rte_flow_action *action,
+		       struct rte_flow_error *err)
+{
+	return flow_hw_action_handle_create(dev, UINT32_MAX, NULL, conf, action,
+					    NULL, err);
+}
+
+/**
+ * Destroy the indirect action.
+ * Release action related resources on the NIC and the memory.
+ * Lock free, (mutex should be acquired by caller).
+ * Dispatcher for action type specific call.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] handle
+ *   The indirect action object handle to be removed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+flow_hw_action_destroy(struct rte_eth_dev *dev,
+		       struct rte_flow_action_handle *handle,
+		       struct rte_flow_error *error)
+{
+	return flow_hw_action_handle_destroy(dev, UINT32_MAX, NULL, handle,
+			NULL, error);
+}
+
+/**
+ * Updates in place shared action configuration.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] handle
+ *   The indirect action object handle to be updated.
+ * @param[in] update
+ *   Action specification used to modify the action pointed by *handle*.
+ *   *update* could be of same type with the action pointed by the *handle*
+ *   handle argument, or some other structures like a wrapper, depending on
+ *   the indirect action type.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+flow_hw_action_update(struct rte_eth_dev *dev,
+		      struct rte_flow_action_handle *handle,
+		      const void *update,
+		      struct rte_flow_error *err)
+{
+	return flow_hw_action_handle_update(dev, UINT32_MAX, NULL, handle,
+			update, NULL, err);
+}
+
+static int
+flow_hw_action_query(struct rte_eth_dev *dev,
+		     const struct rte_flow_action_handle *handle, void *data,
+		     struct rte_flow_error *error)
+{
+	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
+	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
+
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
+		return flow_hw_query_counter(dev, act_idx, data, error);
+	default:
+		return flow_dv_action_query(dev, handle, data, error);
+	}
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
@@ -4654,10 +4977,11 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.async_action_destroy = flow_hw_action_handle_destroy,
 	.async_action_update = flow_hw_action_handle_update,
 	.action_validate = flow_dv_action_validate,
-	.action_create = flow_dv_action_create,
-	.action_destroy = flow_dv_action_destroy,
-	.action_update = flow_dv_action_update,
-	.action_query = flow_dv_action_query,
+	.action_create = flow_hw_action_create,
+	.action_destroy = flow_hw_action_destroy,
+	.action_update = flow_hw_action_update,
+	.action_query = flow_hw_action_query,
+	.query = flow_hw_query,
 };
 
 /**

@@ -7830,24 +7830,33 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
  */
 static int
 flow_drv_query(struct rte_eth_dev *dev,
-	       uint32_t flow_idx,
+	       struct rte_flow *eflow,
 	       const struct rte_flow_action *actions,
 	       void *data,
 	       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct mlx5_flow_driver_ops *fops;
-	struct rte_flow *flow = mlx5_ipool_get(priv->flows[MLX5_FLOW_TYPE_GEN],
-					       flow_idx);
-	enum mlx5_flow_drv_type ftype;
+	struct rte_flow *flow = NULL;
+	enum mlx5_flow_drv_type ftype = MLX5_FLOW_TYPE_MIN;
 
+	if (priv->sh->config.dv_flow_en == 2) {
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		flow = eflow;
+		ftype = MLX5_FLOW_TYPE_HW;
+#endif
+	} else {
+		flow = (struct rte_flow *)mlx5_ipool_get(priv->flows[MLX5_FLOW_TYPE_GEN],
+				(uintptr_t)(void *)eflow);
+	}
 	if (!flow) {
 		return rte_flow_error_set(error, ENOENT,
 			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			  NULL,
 			  "invalid flow handle");
 	}
-	ftype = flow->drv_type;
+	if (ftype == MLX5_FLOW_TYPE_MIN)
+		ftype = flow->drv_type;
 	MLX5_ASSERT(ftype > MLX5_FLOW_TYPE_MIN && ftype < MLX5_FLOW_TYPE_MAX);
 	fops = flow_get_drv_ops(ftype);
 
@@ -7868,14 +7877,8 @@ mlx5_flow_query(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	int ret;
-	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->sh->config.dv_flow_en == 2)
-		return rte_flow_error_set(error, ENOTSUP,
-			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			  NULL,
-			  "Flow non-Q query not supported");
-	ret = flow_drv_query(dev, (uintptr_t)(void *)flow, actions, data,
+	ret = flow_drv_query(dev, flow, actions, data,
 			     error);
 	if (ret < 0)
 		return ret;

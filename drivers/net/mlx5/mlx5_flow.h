@@ -1112,6 +1112,7 @@ struct rte_flow_hw {
 		struct mlx5_hrxq *hrxq; /* TIR action. */
 	};
 	struct rte_flow_template_table *table; /* The table flow allcated from. */
+	uint32_t cnt_id;
 	uint8_t rule[0]; /* HWS layer data struct. */
 } __rte_packed;
 
@@ -1160,6 +1161,9 @@ struct mlx5_action_construct_data {
 			uint32_t level; /* RSS level. */
 			uint32_t idx; /* Shared action index. */
 		} shared_rss;
+		struct {
+			uint32_t id;
+		} shared_counter;
 	};
 };
 
@@ -1238,6 +1242,7 @@ struct mlx5_hw_actions {
 	uint16_t encap_decap_pos; /* Encap/Decap action position. */
 	uint32_t acts_num:4; /* Total action number. */
 	uint32_t mark:1; /* Indicate the mark action. */
+	uint32_t cnt_id; /* Counter id. */
 	/* Translated DR action array from action template. */
 	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
 };

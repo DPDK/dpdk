@@ -41,6 +41,7 @@ sources = files(
 if is_linux
     sources += files(
             'mlx5_flow_hw.c',
+            'mlx5_hws_cnt.c',
             'mlx5_flow_verbs.c',
     )
     if (dpdk_conf.has('RTE_ARCH_X86_64')

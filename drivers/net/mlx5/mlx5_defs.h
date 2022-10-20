@@ -188,4 +188,6 @@
 #define static_assert _Static_assert
 #endif
 
+#define MLX5_CNT_SVC_CYCLE_TIME_DEFAULT 500
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

@@ -40,6 +40,7 @@ INTERNAL {
 	mlx5_devx_cmd_create_virtq;
 	mlx5_devx_cmd_destroy;
 	mlx5_devx_cmd_flow_counter_alloc;
+	mlx5_devx_cmd_flow_counter_alloc_general;
 	mlx5_devx_cmd_flow_counter_query;
 	mlx5_devx_cmd_flow_dump;
 	mlx5_devx_cmd_flow_single_dump;

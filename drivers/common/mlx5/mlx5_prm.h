@@ -1170,8 +1170,10 @@ struct mlx5_ifc_alloc_flow_counter_in_bits {
 	u8 reserved_at_10[0x10];
 	u8 reserved_at_20[0x10];
 	u8 op_mod[0x10];
-	u8 flow_counter_id[0x20];
-	u8 reserved_at_40[0x18];
+	u8 reserved_at_40[0x8];
+	u8 pd[0x18];
+	u8 reserved_at_60[0x13];
+	u8 flow_counter_bulk_log_size[0x5];
 	u8 flow_counter_bulk[0x8];
 };
 
@@ -1405,7 +1407,13 @@ enum {
 #define MLX5_STEERING_LOGIC_FORMAT_CONNECTX_6DX 0x1
 
 struct mlx5_ifc_cmd_hca_cap_bits {
-	u8 reserved_at_0[0x20];
+	u8 access_other_hca_roce[0x1];
+	u8 alloc_flow_counter_pd[0x1];
+	u8 flow_counter_access_aso[0x1];
+	u8 reserved_at_3[0x5];
+	u8 flow_access_aso_opc_mod[0x8];
+	u8 reserved_at_10[0xf];
+	u8 vhca_resource_manager[0x1];
 	u8 hca_cap_2[0x1];
 	u8 reserved_at_21[0xf];
 	u8 vhca_id[0x10];
@@ -2118,7 +2126,11 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 format_select_dw_8_6_ext[0x1];
 	u8 reserved_at_1ac[0x14];
 	u8 general_obj_types_127_64[0x40];
-	u8 reserved_at_200[0x80];
+	u8 reserved_at_200[0x53];
+	u8 flow_counter_bulk_log_max_alloc[0x5];
+	u8 reserved_at_258[0x3];
+	u8 flow_counter_bulk_log_granularity[0x5];
+	u8 reserved_at_260[0x20];
 	u8 format_select_dw_gtpu_dw_0[0x8];
 	u8 format_select_dw_gtpu_dw_1[0x8];
 	u8 format_select_dw_gtpu_dw_2[0x8];

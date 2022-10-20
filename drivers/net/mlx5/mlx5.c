@@ -175,6 +175,12 @@
 /* Device parameter to create the fdb default rule in PMD */
 #define MLX5_FDB_DEFAULT_RULE_EN "fdb_def_rule_en"
 
+/* HW steering counter configuration. */
+#define MLX5_HWS_CNT_SERVICE_CORE "service_core"
+
+/* HW steering counter's query interval. */
+#define MLX5_HWS_CNT_CYCLE_TIME "svc_cycle_time"
+
 /* Shared memory between primary and secondary processes. */
 struct mlx5_shared_data *mlx5_shared_data;
 
@@ -1245,6 +1251,10 @@ mlx5_dev_args_check_handler(const char *key, const char *val, void *opaque)
 		config->allow_duplicate_pattern = !!tmp;
 	} else if (strcmp(MLX5_FDB_DEFAULT_RULE_EN, key) == 0) {
 		config->fdb_def_rule = !!tmp;
+	} else if (strcmp(MLX5_HWS_CNT_SERVICE_CORE, key) == 0) {
+		config->cnt_svc.service_core = tmp;
+	} else if (strcmp(MLX5_HWS_CNT_CYCLE_TIME, key) == 0) {
+		config->cnt_svc.cycle_time = tmp;
 	}
 	return 0;
 }
@@ -1281,6 +1291,8 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		MLX5_DECAP_EN,
 		MLX5_ALLOW_DUPLICATE_PATTERN,
 		MLX5_FDB_DEFAULT_RULE_EN,
+		MLX5_HWS_CNT_SERVICE_CORE,
+		MLX5_HWS_CNT_CYCLE_TIME,
 		NULL,
 	};
 	int ret = 0;
@@ -1293,6 +1305,8 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 	config->decap_en = 1;
 	config->allow_duplicate_pattern = 1;
 	config->fdb_def_rule = 1;
+	config->cnt_svc.cycle_time = MLX5_CNT_SVC_CYCLE_TIME_DEFAULT;
+	config->cnt_svc.service_core = rte_get_main_lcore();
 	if (mkvlist != NULL) {
 		/* Process parameters. */
 		ret = mlx5_kvargs_process(mkvlist, params,
