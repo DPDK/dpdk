@@ -2508,6 +2508,10 @@ enqueue_enc_one_op_tb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 	r = op->turbo_enc.tb_params.r;
 
 	while (mbuf_total_left > 0 && r < c) {
+		if (unlikely(input == NULL)) {
+			rte_bbdev_log(ERR, "Not enough input segment");
+			return -EINVAL;
+		}
 		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 		/* Set up DMA descriptor */
 		desc = q->ring_addr + ((q->sw_ring_head + total_enqueued_cbs)
@@ -3539,6 +3543,8 @@ acc100_enqueue_ldpc_dec_tb(struct rte_bbdev_queue_data *q_data,
 			break;
 		enqueued_cbs += ret;
 	}
+	if (unlikely(enqueued_cbs == 0))
+		return 0; /* Nothing to enqueue */
 
 	acc100_dma_enqueue(q, enqueued_cbs, &q_data->queue_stats);
 
@@ -4081,6 +4087,8 @@ acc100_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 	for (i = 0; i < dequeue_num; ++i) {
 		op = (q->ring_addr + ((q->sw_ring_tail + dequeued_cbs)
 			& q->sw_ring_wrap_mask))->req.op_addr;
+		if (unlikely(op == NULL))
+			break;
 		if (op->turbo_dec.code_block_mode == 0)
 			ret = dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
 					&aq_dequeued);
@@ -4126,6 +4134,8 @@ acc100_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 	for (i = 0; i < dequeue_num; ++i) {
 		op = (q->ring_addr + ((q->sw_ring_tail + dequeued_cbs)
 			& q->sw_ring_wrap_mask))->req.op_addr;
+		if (unlikely(op == NULL))
+			break;
 		if (op->ldpc_dec.code_block_mode == 0)
 			ret = dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
 					&aq_dequeued);
