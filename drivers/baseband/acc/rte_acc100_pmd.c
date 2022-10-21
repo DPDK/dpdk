@@ -2165,6 +2165,56 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	return num;
 }
 
+/* Enqueue one encode operations for ACC100 device for a partial TB
+ * all codes blocks have same configuration multiplexed on the same descriptor.
+ */
+static inline void
+enqueue_ldpc_enc_part_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
+		uint16_t total_enqueued_descs, int16_t num_cbs, uint32_t e,
+		uint16_t in_len_bytes, uint32_t out_len_bytes, uint32_t *in_offset,
+		uint32_t *out_offset)
+{
+	union acc_dma_desc *desc = NULL;
+	struct rte_mbuf *output_head, *output;
+	int i, next_triplet;
+	struct rte_bbdev_op_ldpc_enc *enc = &op->ldpc_enc;
+	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_descs) & q->sw_ring_wrap_mask);
+
+	desc = q->ring_addr + desc_idx;
+	acc_fcw_le_fill(op, &desc->req.fcw_le, num_cbs, e);
+
+	/* This could be done at polling. */
+	acc_header_init(&desc->req);
+	desc->req.numCBs = num_cbs;
+
+	desc->req.m2dlen = 1 + num_cbs;
+	desc->req.d2mlen = num_cbs;
+	next_triplet = 1;
+
+	for (i = 0; i < num_cbs; i++) {
+		desc->req.data_ptrs[next_triplet].address =
+			rte_pktmbuf_iova_offset(enc->input.data, *in_offset);
+		*in_offset += in_len_bytes;
+		desc->req.data_ptrs[next_triplet].blen = in_len_bytes;
+		next_triplet++;
+		desc->req.data_ptrs[next_triplet].address =
+			rte_pktmbuf_iova_offset(enc->output.data, *out_offset);
+		*out_offset += out_len_bytes;
+		desc->req.data_ptrs[next_triplet].blen = out_len_bytes;
+		next_triplet++;
+		enc->output.length += out_len_bytes;
+		output_head = output = enc->output.data;
+		mbuf_append(output_head, output, out_len_bytes);
+	}
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	rte_memdump(stderr, "FCW", &desc->req.fcw_le,
+			sizeof(desc->req.fcw_le) - 8);
+	rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
+#endif
+
+}
+
 /* Enqueue one encode operations for ACC100 device in CB mode */
 static inline int
 enqueue_ldpc_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
@@ -2304,6 +2354,76 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	desc->req.irq_enable = q->irq_enable;
 
 	return current_enqueued_cbs;
+}
+
+/* Enqueue one encode operations for ACC100 device in TB mode.
+ * returns the number of descs used.
+ */
+static inline int
+enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
+		uint16_t enq_descs, uint8_t cbs_in_tb)
+{
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
+	if (validate_ldpc_enc_op(op, q) == -1) {
+		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+		return -EINVAL;
+	}
+#endif
+	uint8_t num_a, num_b;
+	uint16_t desc_idx;
+	uint8_t r = op->ldpc_enc.tb_params.r;
+	uint8_t cab =  op->ldpc_enc.tb_params.cab;
+	union acc_dma_desc *desc;
+	uint16_t init_enq_descs = enq_descs;
+	uint16_t input_len_B = ((op->ldpc_enc.basegraph == 1 ? 22 : 10) *
+			op->ldpc_enc.z_c - op->ldpc_enc.n_filler) >> 3;
+	uint32_t in_offset = 0, out_offset = 0;
+	uint16_t return_descs;
+
+	if (check_bit(op->ldpc_enc.op_flags, RTE_BBDEV_LDPC_CRC_24B_ATTACH))
+		input_len_B -= 3;
+
+	if (r < cab) {
+		num_a = cab - r;
+		num_b = cbs_in_tb - cab;
+	} else {
+		num_a = 0;
+		num_b = cbs_in_tb - r;
+	}
+
+	while (num_a > 0) {
+		uint32_t e = op->ldpc_enc.tb_params.ea;
+		uint32_t out_len_bytes = (e + 7) >> 3;
+		uint8_t enq = RTE_MIN(num_a, ACC_MUX_5GDL_DESC);
+		num_a -= enq;
+		enqueue_ldpc_enc_part_tb(q, op, enq_descs, enq, e, input_len_B,
+				out_len_bytes, &in_offset, &out_offset);
+		enq_descs++;
+	}
+	while (num_b > 0) {
+		uint32_t e = op->ldpc_enc.tb_params.eb;
+		uint32_t out_len_bytes = (e + 7) >> 3;
+		uint8_t enq = RTE_MIN(num_b, ACC_MUX_5GDL_DESC);
+		num_b -= enq;
+		enqueue_ldpc_enc_part_tb(q, op, enq_descs, enq, e, input_len_B,
+				out_len_bytes, &in_offset, &out_offset);
+		enq_descs++;
+	}
+
+	return_descs = enq_descs - init_enq_descs;
+	/* Keep total number of CBs in first TB. */
+	desc_idx = ((q->sw_ring_head + init_enq_descs) & q->sw_ring_wrap_mask);
+	desc = q->ring_addr + desc_idx;
+	desc->req.cbs_in_tb = return_descs; /** Actual number of descriptors. */
+	desc->req.op_addr = op;
+
+	/* Set SDone on last CB descriptor for TB mode. */
+	desc_idx = ((q->sw_ring_head + enq_descs - 1) & q->sw_ring_wrap_mask);
+	desc = q->ring_addr + desc_idx;
+	desc->req.sdone_enable = 1;
+	desc->req.irq_enable = q->irq_enable;
+	desc->req.op_addr = op;
+	return return_descs;
 }
 
 #ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
@@ -2882,6 +3002,10 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 
 #ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
+	if (cbs_in_tb == 0) {
+		rte_bbdev_log(ERR, "Turbo decoder invalid number of CBs");
+		return -EINVAL;
+	}
 	if (validate_dec_op(op, q) == -1) {
 		rte_bbdev_log(ERR, "Turbo decoder validation rejected");
 		return -EINVAL;
@@ -3103,6 +3227,44 @@ acc100_enqueue_enc_tb(struct rte_bbdev_queue_data *q_data,
 	return i;
 }
 
+/* Enqueue LDPC encode operations for ACC100 device in TB mode. */
+static uint16_t
+acc100_enqueue_ldpc_enc_tb(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_enc_op **ops, uint16_t num)
+{
+	struct acc_queue *q = q_data->queue_private;
+	int32_t avail = acc_ring_avail_enq(q);
+	uint16_t i, enqueued_descs = 0;
+	uint8_t cbs_in_tb;
+	int descs_used;
+
+	for (i = 0; i < num; ++i) {
+		cbs_in_tb = get_num_cbs_in_tb_ldpc_enc(&ops[i]->ldpc_enc);
+		/* Check if there are available space for further processing. */
+		if (unlikely(avail - cbs_in_tb < 0)) {
+			acc_enqueue_ring_full(q_data);
+			break;
+		}
+		descs_used = enqueue_ldpc_enc_one_op_tb(q, ops[i], enqueued_descs, cbs_in_tb);
+		if (descs_used < 0) {
+			acc_enqueue_invalid(q_data);
+			break;
+		}
+		enqueued_descs += descs_used;
+		avail -= descs_used;
+	}
+	if (unlikely(enqueued_descs == 0))
+		return 0; /* Nothing to enqueue. */
+
+	acc_dma_enqueue(q, enqueued_descs, &q_data->queue_stats);
+
+	/* Update stats. */
+	q_data->queue_stats.enqueued_count += i;
+	q_data->queue_stats.enqueue_err_count += num - i;
+
+	return i;
+}
+
 /* Enqueue encode operations for ACC100 device. */
 static uint16_t
 acc100_enqueue_enc(struct rte_bbdev_queue_data *q_data,
@@ -3126,7 +3288,7 @@ acc100_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->ldpc_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-		return acc100_enqueue_enc_tb(q_data, ops, num);
+		return acc100_enqueue_ldpc_enc_tb(q_data, ops, num);
 	else
 		return acc100_enqueue_ldpc_enc_cb(q_data, ops, num);
 }
