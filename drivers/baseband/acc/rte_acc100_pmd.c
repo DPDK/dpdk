@@ -1714,7 +1714,7 @@ acc100_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 		crc24_overlap = 24;
 
 	/* Compute some LDPC BG lengths */
-	input_length = dec->cb_params.e;
+	input_length = fcw->rm_e;
 	if (check_bit(op->ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_LLR_COMPRESSION))
 		input_length = (input_length * 3 + 3) / 4;
