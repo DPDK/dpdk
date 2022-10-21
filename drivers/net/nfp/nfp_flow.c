@@ -19,6 +19,30 @@
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
 
+/* Static initializer for a list of subsequent item types */
+#define NEXT_ITEM(...) \
+	((const enum rte_flow_item_type []){ \
+		__VA_ARGS__, RTE_FLOW_ITEM_TYPE_END, \
+	})
+
+/* Process structure associated with a flow item */
+struct nfp_flow_item_proc {
+	/* Bit-mask for fields supported by this PMD. */
+	const void *mask_support;
+	/* Bit-mask to use when @p item->mask is not provided. */
+	const void *mask_default;
+	/* Size in bytes for @p mask_support and @p mask_default. */
+	const unsigned int mask_sz;
+	/* Merge a pattern item into a flow rule handle. */
+	int (*merge)(struct rte_flow *nfp_flow,
+			char **mbuf_off,
+			const struct rte_flow_item *item,
+			const struct nfp_flow_item_proc *proc,
+			bool is_mask);
+	/* List of possible subsequent items. */
+	const enum rte_flow_item_type *const next_item;
+};
+
 struct nfp_mask_id_entry {
 	uint32_t hash_key;
 	uint32_t ref_cnt;
@@ -464,12 +488,36 @@ nfp_flow_compile_metadata(struct nfp_flow_priv *priv,
 
 static int
 nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
-		__rte_unused struct nfp_fl_key_ls *key_ls)
+		struct nfp_fl_key_ls *key_ls)
 {
+	struct rte_eth_dev *ethdev;
 	const struct rte_flow_item *item;
+	struct nfp_flower_representor *representor;
+	const struct rte_flow_item_port_id *port_id;
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
+			/*
+			 * eth is set with no specific params.
+			 * NFP does not need this.
+			 */
+			if (item->spec == NULL)
+				continue;
+			key_ls->key_layer |= NFP_FLOWER_LAYER_MAC;
+			key_ls->key_size += sizeof(struct nfp_flower_mac_mpls);
+			break;
+		case RTE_FLOW_ITEM_TYPE_PORT_ID:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_PORT_ID detected");
+			port_id = item->spec;
+			if (port_id->id >= RTE_MAX_ETHPORTS)
+				return -ERANGE;
+			ethdev = &rte_eth_devices[port_id->id];
+			representor = (struct nfp_flower_representor *)
+					ethdev->data->dev_private;
+			key_ls->port = rte_cpu_to_be_32(representor->port_id);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
 			return -ENOTSUP;
@@ -529,6 +577,202 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 	return ret;
 }
 
+static int
+nfp_flow_merge_eth(__rte_unused struct rte_flow *nfp_flow,
+		char **mbuf_off,
+		const struct rte_flow_item *item,
+		const struct nfp_flow_item_proc *proc,
+		bool is_mask)
+{
+	struct nfp_flower_mac_mpls *eth;
+	const struct rte_flow_item_eth *spec;
+	const struct rte_flow_item_eth *mask;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge eth: no item->spec!");
+		goto eth_end;
+	}
+
+	mask = item->mask ? item->mask : proc->mask_default;
+	eth = (void *)*mbuf_off;
+
+	if (is_mask) {
+		memcpy(eth->mac_src, mask->src.addr_bytes, RTE_ETHER_ADDR_LEN);
+		memcpy(eth->mac_dst, mask->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
+	} else {
+		memcpy(eth->mac_src, spec->src.addr_bytes, RTE_ETHER_ADDR_LEN);
+		memcpy(eth->mac_dst, spec->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
+	}
+
+	eth->mpls_lse = 0;
+
+eth_end:
+	*mbuf_off += sizeof(struct nfp_flower_mac_mpls);
+
+	return 0;
+}
+
+/* Graph of supported items and associated process function */
+static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
+	[RTE_FLOW_ITEM_TYPE_END] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
+	},
+	[RTE_FLOW_ITEM_TYPE_ETH] = {
+		.mask_support = &(const struct rte_flow_item_eth){
+			.hdr = {
+				.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+				.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+				.ether_type          = RTE_BE16(0xffff),
+			},
+			.has_vlan = 1,
+		},
+		.mask_default = &rte_flow_item_eth_mask,
+		.mask_sz = sizeof(struct rte_flow_item_eth),
+		.merge = nfp_flow_merge_eth,
+	},
+};
+
+static int
+nfp_flow_item_check(const struct rte_flow_item *item,
+		const struct nfp_flow_item_proc *proc)
+{
+	int ret = 0;
+	unsigned int i;
+	const uint8_t *mask;
+
+	/* item->last and item->mask cannot exist without item->spec. */
+	if (item->spec == NULL) {
+		if (item->mask || item->last) {
+			PMD_DRV_LOG(ERR, "'mask' or 'last' field provided"
+					" without a corresponding 'spec'.");
+			return -EINVAL;
+		}
+		/* No spec, no mask, no problem. */
+		return 0;
+	}
+
+	mask = item->mask ?
+		(const uint8_t *)item->mask :
+		(const uint8_t *)proc->mask_default;
+
+	/*
+	 * Single-pass check to make sure that:
+	 * - Mask is supported, no bits are set outside proc->mask_support.
+	 * - Both item->spec and item->last are included in mask.
+	 */
+	for (i = 0; i != proc->mask_sz; ++i) {
+		if (mask[i] == 0)
+			continue;
+
+		if ((mask[i] | ((const uint8_t *)proc->mask_support)[i]) !=
+				((const uint8_t *)proc->mask_support)[i]) {
+			PMD_DRV_LOG(ERR, "Unsupported field found in 'mask'.");
+			ret = -EINVAL;
+			break;
+		}
+
+		if (item->last && (((const uint8_t *)item->spec)[i] & mask[i]) !=
+				(((const uint8_t *)item->last)[i] & mask[i])) {
+			PMD_DRV_LOG(ERR, "Range between 'spec' and 'last'"
+					" is larger than 'mask'.");
+			ret = -ERANGE;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int
+nfp_flow_compile_item_proc(const struct rte_flow_item items[],
+		struct rte_flow *nfp_flow,
+		char **mbuf_off_exact,
+		char **mbuf_off_mask)
+{
+	int i;
+	int ret = 0;
+	const struct rte_flow_item *item;
+	const struct nfp_flow_item_proc *proc_list;
+
+	proc_list = nfp_flow_item_proc_list;
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		const struct nfp_flow_item_proc *proc = NULL;
+
+		for (i = 0; proc_list->next_item && proc_list->next_item[i]; ++i) {
+			if (proc_list->next_item[i] == item->type) {
+				proc = &nfp_flow_item_proc_list[item->type];
+				break;
+			}
+		}
+
+		if (proc == NULL) {
+			PMD_DRV_LOG(ERR, "No next item provided for %d", item->type);
+			ret = -ENOTSUP;
+			break;
+		}
+
+		/* Perform basic sanity checks */
+		ret = nfp_flow_item_check(item, proc);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "nfp flow item %d check failed", item->type);
+			ret = -EINVAL;
+			break;
+		}
+
+		if (proc->merge == NULL) {
+			PMD_DRV_LOG(ERR, "nfp flow item %d no proc function", item->type);
+			ret = -ENOTSUP;
+			break;
+		}
+
+		ret = proc->merge(nfp_flow, mbuf_off_exact, item,
+				proc, false);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "nfp flow item %d exact merge failed", item->type);
+			break;
+		}
+
+		ret = proc->merge(nfp_flow, mbuf_off_mask, item,
+				proc, true);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "nfp flow item %d mask merge failed", item->type);
+			break;
+		}
+
+		proc_list = proc;
+	}
+
+	return ret;
+}
+
+static int
+nfp_flow_compile_items(__rte_unused struct nfp_flower_representor *representor,
+		const struct rte_flow_item items[],
+		struct rte_flow *nfp_flow)
+{
+	int ret;
+	char *mbuf_off_mask;
+	char *mbuf_off_exact;
+
+	mbuf_off_exact = nfp_flow->payload.unmasked_data +
+			sizeof(struct nfp_flower_meta_tci) +
+			sizeof(struct nfp_flower_in_port);
+	mbuf_off_mask  = nfp_flow->payload.mask_data +
+			sizeof(struct nfp_flower_meta_tci) +
+			sizeof(struct nfp_flower_in_port);
+
+	/* Go over items */
+	ret = nfp_flow_compile_item_proc(items, nfp_flow,
+			&mbuf_off_exact, &mbuf_off_mask);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "nfp flow item compile failed.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static struct rte_flow *
 nfp_flow_process(struct nfp_flower_representor *representor,
 		const struct rte_flow_item items[],
@@ -572,6 +816,12 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	nfp_flow->install_flag = true;
 
 	nfp_flow_compile_metadata(priv, nfp_flow, &key_layer, stats_ctx);
+
+	ret = nfp_flow_compile_items(representor, items, nfp_flow);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "nfp flow item process failed.");
+		goto free_flow;
+	}
 
 	nfp_flow_meta = nfp_flow->payload.meta;
 	mask_data = nfp_flow->payload.mask_data;

@@ -233,6 +233,26 @@ struct nfp_flower_in_port {
 	rte_be32_t in_port;
 };
 
+/*
+ * L2 details (4W/16B)
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     mac_addr_dst, 31 - 0                      |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |      mac_addr_dst, 47 - 32    |     mac_addr_src, 15 - 0      |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     mac_addr_src, 47 - 16                     |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |       mpls outermost label            |  TC |B|   reserved  |q|
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_mac_mpls {
+	uint8_t mac_dst[6];
+	uint8_t mac_src[6];
+	rte_be32_t mpls_lse;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);

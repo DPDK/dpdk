@@ -161,7 +161,7 @@ New Features
 
 * **Updated Netronome nfp driver.**
 
-  Added the needed data structures and logics to support flow API offload:
+  Added flow API support:
 
   * Added the support of flower firmware.
   * Added the flower service infrastructure.
