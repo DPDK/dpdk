@@ -676,6 +676,7 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	struct acc_device *d = dev->data->dev_private;
 	struct acc_queue *q;
 	int16_t q_idx;
+	int ret;
 
 	if (d == NULL) {
 		rte_bbdev_log(ERR, "Undefined device");
@@ -734,8 +735,8 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 			RTE_CACHE_LINE_SIZE, conf->socket);
 	if (q->lb_in == NULL) {
 		rte_bbdev_log(ERR, "Failed to allocate lb_in memory");
-		rte_free(q);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto free_q;
 	}
 	q->lb_in_addr_iova = rte_malloc_virt2iova(q->lb_in);
 	q->lb_out = rte_zmalloc_socket(dev->device->driver->name,
@@ -743,11 +744,18 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 			RTE_CACHE_LINE_SIZE, conf->socket);
 	if (q->lb_out == NULL) {
 		rte_bbdev_log(ERR, "Failed to allocate lb_out memory");
-		rte_free(q->lb_in);
-		rte_free(q);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto free_lb_in;
 	}
 	q->lb_out_addr_iova = rte_malloc_virt2iova(q->lb_out);
+	q->companion_ring_addr = rte_zmalloc_socket(dev->device->driver->name,
+			d->sw_ring_max_depth * sizeof(*q->companion_ring_addr),
+			RTE_CACHE_LINE_SIZE, conf->socket);
+	if (q->companion_ring_addr == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate companion_ring memory");
+		ret = -ENOMEM;
+		goto free_lb_out;
+	}
 
 	/*
 	 * Software queue ring wraps synchronously with the HW when it reaches
@@ -767,10 +775,8 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 
 	q_idx = acc100_find_free_queue_idx(dev, conf);
 	if (q_idx == -1) {
-		rte_free(q->lb_in);
-		rte_free(q->lb_out);
-		rte_free(q);
-		return -1;
+		ret = -EINVAL;
+		goto free_companion_ring_addr;
 	}
 
 	q->qgrp_id = (q_idx >> ACC100_GRP_ID_SHIFT) & 0xF;
@@ -797,6 +803,21 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 
 	dev->data->queues[queue_id].queue_private = q;
 	return 0;
+
+free_companion_ring_addr:
+	rte_free(q->companion_ring_addr);
+	q->companion_ring_addr = NULL;
+free_lb_out:
+	rte_free(q->lb_out);
+	q->lb_out = NULL;
+free_lb_in:
+	rte_free(q->lb_in);
+	q->lb_in = NULL;
+free_q:
+	rte_free(q);
+	q = NULL;
+
+	return ret;
 }
 
 static inline void
@@ -869,6 +890,7 @@ acc100_queue_release(struct rte_bbdev *dev, uint16_t q_id)
 		/* Mark the Queue as un-assigned */
 		d->q_assigned_bit_map[q->qgrp_id] &= (0xFFFFFFFFFFFFFFFF -
 				(uint64_t) (1 << q->aq_id));
+		rte_free(q->companion_ring_addr);
 		rte_free(q->lb_in);
 		rte_free(q->lb_out);
 		rte_free(q);
@@ -2396,7 +2418,7 @@ enqueue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 /* Enqueue one encode operations for ACC100 device in CB mode */
 static inline int
 enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
-		uint16_t total_enqueued_cbs, int16_t num)
+		uint16_t total_enqueued_descs, int16_t num)
 {
 	union acc_dma_desc *desc = NULL;
 	uint32_t out_length;
@@ -2413,7 +2435,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	}
 #endif
 
-	desc = acc_desc(q, total_enqueued_cbs);
+	desc = acc_desc(q, total_enqueued_descs);
 	acc_fcw_le_fill(ops[0], &desc->req.fcw_le, num, 0);
 
 	/** This could be done at polling */
@@ -2443,6 +2465,11 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	}
 
 	desc->req.op_addr = ops[0];
+	/* Keep track of pointers even when multiplexed in single descriptor */
+	struct acc_ptrs *context_ptrs = q->companion_ring_addr
+			+ acc_desc_idx(q, total_enqueued_descs);
+	for (i = 0; i < num; i++)
+		context_ptrs->ptr[i].op_addr = ops[i];
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	rte_memdump(stderr, "FCW", &desc->req.fcw_le,
@@ -3791,7 +3818,8 @@ acc100_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 /* Dequeue one encode operations from ACC100 device in CB mode */
 static inline int
 dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
-		uint16_t total_dequeued_cbs, uint32_t *aq_dequeued)
+		uint16_t *dequeued_ops, uint32_t *aq_dequeued,
+		uint16_t *dequeued_descs)
 {
 	union acc_dma_desc *desc, atom_desc;
 	union acc_dma_rsp_desc rsp;
@@ -3799,7 +3827,7 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	int i;
 	uint16_t desc_idx;
 
-	desc_idx = acc_desc_idx_tail(q, total_dequeued_cbs);
+	desc_idx = acc_desc_idx_tail(q, *dequeued_descs);
 	desc = q->ring_addr + desc_idx;
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
 			__ATOMIC_RELAXED);
@@ -3809,7 +3837,7 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
-	rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
+	rte_bbdev_log_debug("Resp. desc %p: %x num %d\n", desc, rsp.val, desc->req.numCBs);
 
 	/* Dequeue */
 	op = desc->req.op_addr;
@@ -3829,27 +3857,35 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	desc->rsp.add_info_0 = 0; /*Reserved bits */
 	desc->rsp.add_info_1 = 0; /*Reserved bits */
 
-	/* Flag that the muxing cause loss of opaque data */
-	op->opaque_data = (void *)-1;
-	for (i = 0 ; i < desc->req.numCBs; i++)
-		ref_op[i] = op;
+	ref_op[0] = op;
+	struct acc_ptrs *context_ptrs = q->companion_ring_addr + desc_idx;
+	for (i = 1 ; i < desc->req.numCBs; i++)
+		ref_op[i] = context_ptrs->ptr[i].op_addr;
+
+	/* One CB (op) was successfully dequeued */
+	/* One op was successfully dequeued */
+	(*dequeued_descs)++;
+	*dequeued_ops += desc->req.numCBs;
 
 	/* One CB (op) was successfully dequeued */
 	return desc->req.numCBs;
 }
 
-/* Dequeue one encode operations from ACC100 device in TB mode */
+/* Dequeue one LDPC encode operations from ACC100 device in TB mode
+ * That operation may cover multiple descriptors
+ */
 static inline int
 dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
-		uint16_t total_dequeued_cbs, uint32_t *aq_dequeued)
+		uint16_t *dequeued_ops, uint32_t *aq_dequeued,
+		uint16_t *dequeued_descs)
 {
 	union acc_dma_desc *desc, *last_desc, atom_desc;
 	union acc_dma_rsp_desc rsp;
 	struct rte_bbdev_enc_op *op;
 	uint8_t i = 0;
-	uint16_t current_dequeued_cbs = 0, cbs_in_tb;
+	uint16_t current_dequeued_descs = 0, descs_in_tb;
 
-	desc = acc_desc_tail(q, total_dequeued_cbs);
+	desc = acc_desc_tail(q, *dequeued_descs);
 	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
 			__ATOMIC_RELAXED);
 
@@ -3858,9 +3894,9 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		return -1;
 
 	/* Get number of CBs in dequeued TB */
-	cbs_in_tb = desc->req.cbs_in_tb;
+	descs_in_tb = desc->req.cbs_in_tb;
 	/* Get last CB */
-	last_desc = acc_desc_tail(q, total_dequeued_cbs + cbs_in_tb - 1);
+	last_desc = acc_desc_tail(q, *dequeued_descs + descs_in_tb - 1);
 	/* Check if last CB in TB is ready to dequeue (and thus
 	 * the whole TB) - checking sdone bit. If not return.
 	 */
@@ -3875,14 +3911,13 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	/* Clearing status, it will be set based on response */
 	op->status = 0;
 
-	while (i < cbs_in_tb) {
-		desc = acc_desc_tail(q, total_dequeued_cbs);
+	while (i < descs_in_tb) {
+		desc = acc_desc_tail(q, *dequeued_descs);
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
 				__ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
-		rte_bbdev_log_debug("Resp. desc %p: %x r %d c %d\n",
-				desc, rsp.val,
-				cb_idx, cbs_in_tb);
+		rte_bbdev_log_debug("Resp. desc %p: %x descs %d cbs %d\n",
+				desc, rsp.val, descs_in_tb, desc->req.numCBs);
 
 		op->status |= ((rsp.input_err)
 				? (1 << RTE_BBDEV_DATA_ERROR) : 0);
@@ -3896,14 +3931,15 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		desc->rsp.val = ACC_DMA_DESC_TYPE;
 		desc->rsp.add_info_0 = 0;
 		desc->rsp.add_info_1 = 0;
-		total_dequeued_cbs++;
-		current_dequeued_cbs++;
+		(*dequeued_descs)++;
+		current_dequeued_descs++;
 		i++;
 	}
 
 	*ref_op = op;
 
-	return current_dequeued_cbs;
+	(*dequeued_ops)++;
+	return current_dequeued_descs;
 }
 
 /* Dequeue one decode operation from ACC100 device in CB mode */
@@ -4093,12 +4129,12 @@ acc100_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	uint16_t dequeue_num;
 	uint32_t avail = acc_ring_avail_deq(q);
 	uint32_t aq_dequeued = 0;
-	uint16_t i, dequeued_cbs = 0;
+	uint16_t i, dequeued_ops = 0, dequeued_descs = 0;
+	int ret, cbm;
 	struct rte_bbdev_enc_op *op;
-	int ret;
+
 	if (avail == 0)
 		return 0;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
@@ -4107,30 +4143,36 @@ acc100_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 		return 0;
 	}
 #endif
+	op = (q->ring_addr + (q->sw_ring_tail &
+			q->sw_ring_wrap_mask))->req.op_addr;
+	if (unlikely(ops == NULL || op == NULL))
+		return 0;
+	cbm = op->turbo_enc.code_block_mode;
 
-	dequeue_num = (avail < num) ? avail : num;
-
-	for (i = 0; i < dequeue_num; ++i) {
-		op = acc_op_tail(q, dequeued_cbs);
-		if (op->turbo_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-			ret = dequeue_enc_one_op_tb(q, &ops[i], dequeued_cbs,
-					&aq_dequeued);
+	for (i = 0; i < num; i++) {
+		if (cbm == RTE_BBDEV_TRANSPORT_BLOCK)
+			ret = dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
+					&dequeued_ops, &aq_dequeued,
+					&dequeued_descs);
 		else
-			ret = dequeue_enc_one_op_cb(q, &ops[i], dequeued_cbs,
-					&aq_dequeued);
+			ret = dequeue_enc_one_op_cb(q, &ops[dequeued_ops],
+					&dequeued_ops, &aq_dequeued,
+					&dequeued_descs);
 
 		if (ret < 0)
 			break;
-		dequeued_cbs += ret;
+
+		if (dequeued_ops >= num)
+			break;
 	}
 
 	q->aq_dequeued += aq_dequeued;
-	q->sw_ring_tail += dequeued_cbs;
+	q->sw_ring_tail += dequeued_descs;
 
 	/* Update enqueue stats */
-	q_data->queue_stats.dequeued_count += i;
+	q_data->queue_stats.dequeued_count += dequeued_ops;
 
-	return i;
+	return dequeued_ops;
 }
 
 /* Dequeue LDPC encode operations from ACC100 device. */
@@ -4141,24 +4183,36 @@ acc100_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 	struct acc_queue *q = q_data->queue_private;
 	uint32_t avail = acc_ring_avail_deq(q);
 	uint32_t aq_dequeued = 0;
-	uint16_t dequeue_num, i, dequeued_cbs = 0, dequeued_descs = 0;
-	int ret;
+	uint16_t i, dequeued_ops = 0, dequeued_descs = 0;
+	int ret, cbm;
+	struct rte_bbdev_enc_op *op;
+	union acc_dma_desc *desc;
 
+	if (q == NULL)
+		return 0;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-	if (unlikely(ops == 0 && q == NULL))
+	if (unlikely(ops == 0))
 		return 0;
 #endif
-
-	dequeue_num = RTE_MIN(avail, num);
-
-	for (i = 0; i < dequeue_num; i++) {
-		ret = dequeue_enc_one_op_cb(q, &ops[dequeued_cbs],
-				dequeued_descs, &aq_dequeued);
+	desc = q->ring_addr + (q->sw_ring_tail & q->sw_ring_wrap_mask);
+	if (unlikely(desc == NULL))
+		return 0;
+	op = desc->req.op_addr;
+	if (unlikely(ops == NULL || op == NULL))
+		return 0;
+	cbm = op->ldpc_enc.code_block_mode;
+	for (i = 0; i < avail; i++) {
+		if (cbm == RTE_BBDEV_TRANSPORT_BLOCK)
+			ret = dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
+					&dequeued_ops, &aq_dequeued,
+					&dequeued_descs);
+		else
+			ret = dequeue_enc_one_op_cb(q, &ops[dequeued_ops],
+					&dequeued_ops, &aq_dequeued,
+					&dequeued_descs);
 		if (ret < 0)
 			break;
-		dequeued_cbs += ret;
-		dequeued_descs++;
-		if (dequeued_cbs >= num)
+		if (dequeued_ops >= num)
 			break;
 	}
 
@@ -4166,11 +4220,10 @@ acc100_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 	q->sw_ring_tail += dequeued_descs;
 
 	/* Update enqueue stats */
-	q_data->queue_stats.dequeued_count += dequeued_cbs;
+	q_data->queue_stats.dequeued_count += dequeued_ops;
 
-	return dequeued_cbs;
+	return dequeued_ops;
 }
-
 
 /* Dequeue decode operations from ACC100 device. */
 static uint16_t
