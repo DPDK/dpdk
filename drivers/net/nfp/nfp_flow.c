@@ -518,6 +518,10 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 					ethdev->data->dev_private;
 			key_ls->port = rte_cpu_to_be_32(representor->port_id);
 			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_VLAN detected");
+			key_ls->vlan = NFP_FLOWER_MASK_VLAN_CFI;
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
 			return -ENOTSUP;
@@ -623,12 +627,42 @@ eth_end:
 	return 0;
 }
 
+static int
+nfp_flow_merge_vlan(struct rte_flow *nfp_flow,
+		__rte_unused char **mbuf_off,
+		const struct rte_flow_item *item,
+		const struct nfp_flow_item_proc *proc,
+		bool is_mask)
+{
+	struct nfp_flower_meta_tci *meta_tci;
+	const struct rte_flow_item_vlan *spec;
+	const struct rte_flow_item_vlan *mask;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge vlan: no item->spec!");
+		return 0;
+	}
+
+	mask = item->mask ? item->mask : proc->mask_default;
+	if (is_mask) {
+		meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.mask_data;
+		meta_tci->tci |= mask->tci;
+	} else {
+		meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+		meta_tci->tci |= spec->tci;
+	}
+
+	return 0;
+}
+
 /* Graph of supported items and associated process function */
 static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VLAN),
 		.mask_support = &(const struct rte_flow_item_eth){
 			.hdr = {
 				.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
@@ -640,6 +674,18 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.mask_default = &rte_flow_item_eth_mask,
 		.mask_sz = sizeof(struct rte_flow_item_eth),
 		.merge = nfp_flow_merge_eth,
+	},
+	[RTE_FLOW_ITEM_TYPE_VLAN] = {
+		.mask_support = &(const struct rte_flow_item_vlan){
+			.hdr = {
+				.vlan_tci  = RTE_BE16(0xefff),
+				.eth_proto = RTE_BE16(0xffff),
+			},
+			.has_more_vlan = 1,
+		},
+		.mask_default = &rte_flow_item_vlan_mask,
+		.mask_sz = sizeof(struct rte_flow_item_vlan),
+		.merge = nfp_flow_merge_vlan,
 	},
 };
 
