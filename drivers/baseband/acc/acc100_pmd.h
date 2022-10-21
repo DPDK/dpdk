@@ -115,6 +115,8 @@ struct acc100_registry_addr {
 	unsigned int depth_log1_offset;
 	unsigned int qman_group_func;
 	unsigned int ddr_range;
+	unsigned int pmon_ctrl_a;
+	unsigned int pmon_ctrl_b;
 };
 
 /* Structure holding registry addresses for PF */
@@ -144,6 +146,8 @@ static const struct acc100_registry_addr pf_reg_addr = {
 	.depth_log1_offset = HWPfQmgrGrpDepthLog21Vf,
 	.qman_group_func = HWPfQmgrGrpFunction0,
 	.ddr_range = HWPfDmaVfDdrBaseRw,
+	.pmon_ctrl_a = HWVfPmACntrlRegVf,
+	.pmon_ctrl_b = HWVfPmBCntrlRegVf,
 };
 
 /* Structure holding registry addresses for VF */
