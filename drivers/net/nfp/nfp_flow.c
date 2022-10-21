@@ -546,6 +546,16 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VOID detected");
 			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_DROP detected");
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_COUNT detected");
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_PORT_ID detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_output);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -773,6 +783,90 @@ nfp_flow_compile_items(__rte_unused struct nfp_flower_representor *representor,
 	return 0;
 }
 
+static int
+nfp_flow_action_output(char *act_data,
+		const struct rte_flow_action *action,
+		struct nfp_fl_rule_metadata *nfp_flow_meta)
+{
+	size_t act_size;
+	struct rte_eth_dev *ethdev;
+	struct nfp_fl_act_output *output;
+	struct nfp_flower_representor *representor;
+	const struct rte_flow_action_port_id *port_id;
+
+	port_id = action->conf;
+	if (port_id == NULL || port_id->id >= RTE_MAX_ETHPORTS)
+		return -ERANGE;
+
+	ethdev = &rte_eth_devices[port_id->id];
+	representor = (struct nfp_flower_representor *)ethdev->data->dev_private;
+	act_size = sizeof(struct nfp_fl_act_output);
+
+	output = (struct nfp_fl_act_output *)act_data;
+	output->head.jump_id = NFP_FL_ACTION_OPCODE_OUTPUT;
+	output->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	output->flags        = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
+	output->port         = rte_cpu_to_be_32(representor->port_id);
+
+	nfp_flow_meta->shortcut = rte_cpu_to_be_32(representor->port_id);
+
+	return 0;
+}
+
+static int
+nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
+		const struct rte_flow_action actions[],
+		struct rte_flow *nfp_flow)
+{
+	int ret = 0;
+	char *position;
+	char *action_data;
+	bool drop_flag = false;
+	uint32_t total_actions = 0;
+	const struct rte_flow_action *action;
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
+
+	nfp_flow_meta = nfp_flow->payload.meta;
+	action_data   = nfp_flow->payload.action_data;
+	position      = action_data;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP");
+			drop_flag = true;
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_COUNT");
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_PORT_ID");
+			ret = nfp_flow_action_output(position, action, nfp_flow_meta);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Failed when process"
+						" RTE_FLOW_ACTION_TYPE_PORT_ID");
+				return ret;
+			}
+
+			position += sizeof(struct nfp_fl_act_output);
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
+			return -ENOTSUP;
+		}
+		total_actions++;
+	}
+
+	if (drop_flag)
+		nfp_flow_meta->shortcut = rte_cpu_to_be_32(NFP_FL_SC_ACT_DROP);
+	else if (total_actions > 1)
+		nfp_flow_meta->shortcut = rte_cpu_to_be_32(NFP_FL_SC_ACT_NULL);
+
+	return 0;
+}
+
 static struct rte_flow *
 nfp_flow_process(struct nfp_flower_representor *representor,
 		const struct rte_flow_item items[],
@@ -820,6 +914,12 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	ret = nfp_flow_compile_items(representor, items, nfp_flow);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "nfp flow item process failed.");
+		goto free_flow;
+	}
+
+	ret = nfp_flow_compile_action(representor, actions, nfp_flow);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "nfp flow action process failed.");
 		goto free_flow;
 	}
 

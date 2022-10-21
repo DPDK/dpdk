@@ -253,6 +253,17 @@ struct nfp_flower_mac_mpls {
 	rte_be32_t mpls_lse;
 };
 
+struct nfp_fl_act_head {
+	uint8_t jump_id;
+	uint8_t len_lw;
+};
+
+struct nfp_fl_act_output {
+	struct nfp_fl_act_head head;
+	rte_be16_t flags;
+	rte_be32_t port;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);

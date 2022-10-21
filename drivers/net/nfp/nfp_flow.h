@@ -34,6 +34,43 @@
 /* The firmware expects lengths in units of long words */
 #define NFP_FL_LW_SIZ                   2
 
+#define NFP_FL_SC_ACT_DROP      0x80000000
+#define NFP_FL_SC_ACT_USER      0x7D000000
+#define NFP_FL_SC_ACT_POPV      0x6A000000
+#define NFP_FL_SC_ACT_NULL      0x00000000
+
+/* Action opcodes */
+#define NFP_FL_ACTION_OPCODE_OUTPUT             0
+#define NFP_FL_ACTION_OPCODE_PUSH_VLAN          1
+#define NFP_FL_ACTION_OPCODE_POP_VLAN           2
+#define NFP_FL_ACTION_OPCODE_PUSH_MPLS          3
+#define NFP_FL_ACTION_OPCODE_POP_MPLS           4
+#define NFP_FL_ACTION_OPCODE_USERSPACE          5
+#define NFP_FL_ACTION_OPCODE_SET_TUNNEL         6
+#define NFP_FL_ACTION_OPCODE_SET_ETHERNET       7
+#define NFP_FL_ACTION_OPCODE_SET_MPLS           8
+#define NFP_FL_ACTION_OPCODE_SET_IPV4_ADDRS     9
+#define NFP_FL_ACTION_OPCODE_SET_IPV4_TTL_TOS   10
+#define NFP_FL_ACTION_OPCODE_SET_IPV6_SRC       11
+#define NFP_FL_ACTION_OPCODE_SET_IPV6_DST       12
+#define NFP_FL_ACTION_OPCODE_SET_IPV6_TC_HL_FL  13
+#define NFP_FL_ACTION_OPCODE_SET_UDP            14
+#define NFP_FL_ACTION_OPCODE_SET_TCP            15
+#define NFP_FL_ACTION_OPCODE_PRE_LAG            16
+#define NFP_FL_ACTION_OPCODE_PRE_TUNNEL         17
+#define NFP_FL_ACTION_OPCODE_PRE_GS             18
+#define NFP_FL_ACTION_OPCODE_GS                 19
+#define NFP_FL_ACTION_OPCODE_PUSH_NSH           20
+#define NFP_FL_ACTION_OPCODE_POP_NSH            21
+#define NFP_FL_ACTION_OPCODE_SET_QUEUE          22
+#define NFP_FL_ACTION_OPCODE_CONNTRACK          23
+#define NFP_FL_ACTION_OPCODE_METER              24
+#define NFP_FL_ACTION_OPCODE_CT_NAT_EXT         25
+#define NFP_FL_ACTION_OPCODE_PUSH_GENEVE        26
+#define NFP_FL_ACTION_OPCODE_NUM                32
+
+#define NFP_FL_OUT_FLAGS_LAST            RTE_BIT32(15)
+
 /* Tunnel ports */
 #define NFP_FL_PORT_TYPE_TUN            0x50000000
 
