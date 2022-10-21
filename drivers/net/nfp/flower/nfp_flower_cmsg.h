@@ -129,6 +129,31 @@ struct nfp_flower_cmsg_port_mod {
 	rte_be16_t mtu;
 };
 
+/*
+ * NFP_FLOWER_CMSG_TYPE_FLOW_STATS
+ *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *    Word  +---------------+-----------------------------------------------+
+ *       0  |    Reserved   |               Host Context                    |
+ *          +---------------+-----------------------------------------------+
+ *       1  |                          Packet Count                         |
+ *          +---------------------------------------------------------------+
+ *       2  |                          Byte Count                           |
+ *          +---------------------------------------------------------------+
+ *       2  |                          Byte Count                           |
+ *          +---------------------------------------------------------------+
+ *       3  |                          Host Cookie                          |
+ *          +---------------------------------------------------------------+
+ *       4  |                          Host Cookie                          |
+ *          +---------------------------------------------------------------+
+ */
+struct nfp_flower_stats_frame {
+	rte_be32_t stats_con_id;
+	rte_be32_t pkt_count;
+	rte_be64_t byte_count;
+	rte_be64_t stats_cookie;
+};
+
 enum nfp_flower_cmsg_port_type {
 	NFP_FLOWER_CMSG_PORT_TYPE_UNSPEC,
 	NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT,

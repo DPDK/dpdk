@@ -11,8 +11,10 @@
 #include "../nfp_logs.h"
 #include "../nfp_ctrl.h"
 #include "../nfp_rxtx.h"
+#include "nfp_flow.h"
 #include "nfp_flower.h"
 #include "nfp_flower_ctrl.h"
+#include "nfp_flower_cmsg.h"
 
 #define MAX_PKT_BURST 32
 
@@ -223,10 +225,74 @@ xmit_end:
 	return cnt;
 }
 
+static void
+nfp_flower_cmsg_rx_stats(struct nfp_flow_priv *flow_priv,
+		struct rte_mbuf *mbuf)
+{
+	char *msg;
+	uint16_t i;
+	uint16_t count;
+	uint16_t msg_len;
+	uint32_t ctx_id;
+	struct nfp_flower_stats_frame *stats;
+
+	msg = rte_pktmbuf_mtod(mbuf, char *) + NFP_FLOWER_CMSG_HLEN;
+	msg_len = mbuf->data_len - NFP_FLOWER_CMSG_HLEN;
+	count = msg_len / sizeof(struct nfp_flower_stats_frame);
+
+	rte_spinlock_lock(&flow_priv->stats_lock);
+	for (i = 0; i < count; i++) {
+		stats = (struct nfp_flower_stats_frame *)msg + i;
+		ctx_id = rte_be_to_cpu_32(stats->stats_con_id);
+		flow_priv->stats[ctx_id].pkts  += rte_be_to_cpu_32(stats->pkt_count);
+		flow_priv->stats[ctx_id].bytes += rte_be_to_cpu_64(stats->byte_count);
+	}
+	rte_spinlock_unlock(&flow_priv->stats_lock);
+}
+
+static void
+nfp_flower_cmsg_rx(struct nfp_flow_priv *flow_priv,
+		struct rte_mbuf **pkts_burst,
+		uint16_t count)
+{
+	uint16_t i;
+	char *meta;
+	uint32_t meta_type;
+	uint32_t meta_info;
+	struct nfp_flower_cmsg_hdr *cmsg_hdr;
+
+	for (i = 0; i < count; i++) {
+		meta = rte_pktmbuf_mtod(pkts_burst[i], char *);
+
+		/* Free the unsupported ctrl packet */
+		meta_type = rte_be_to_cpu_32(*(uint32_t *)(meta - 8));
+		meta_info = rte_be_to_cpu_32(*(uint32_t *)(meta - 4));
+		if (meta_type != NFP_NET_META_PORTID ||
+				meta_info != NFP_META_PORT_ID_CTRL) {
+			PMD_DRV_LOG(ERR, "Incorrect metadata for ctrl packet!");
+			rte_pktmbuf_free(pkts_burst[i]);
+			continue;
+		}
+
+		cmsg_hdr = (struct nfp_flower_cmsg_hdr *)meta;
+		if (unlikely(cmsg_hdr->version != NFP_FLOWER_CMSG_VER1)) {
+			PMD_DRV_LOG(ERR, "Incorrect repr control version!");
+			rte_pktmbuf_free(pkts_burst[i]);
+			continue;
+		}
+
+		if (cmsg_hdr->type == NFP_FLOWER_CMSG_TYPE_FLOW_STATS) {
+			/* We need to deal with stats updates from HW asap */
+			nfp_flower_cmsg_rx_stats(flow_priv, pkts_burst[i]);
+		}
+
+		rte_pktmbuf_free(pkts_burst[i]);
+	}
+}
+
 void
 nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower)
 {
-	uint16_t i;
 	uint16_t count;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_hw *ctrl_hw;
@@ -243,9 +309,8 @@ nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower)
 		count = nfp_flower_ctrl_vnic_recv(rxq, pkts_burst, MAX_PKT_BURST);
 		if (count != 0) {
 			app_fw_flower->ctrl_vnic_rx_count += count;
-			/* Process cmsgs here, only free for now */
-			for (i = 0; i < count; i++)
-				rte_pktmbuf_free(pkts_burst[i]);
+			/* Process cmsgs here */
+			nfp_flower_cmsg_rx(app_fw_flower->flow_priv, pkts_burst, count);
 		}
 	}
 }
