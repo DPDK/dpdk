@@ -563,6 +563,7 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 	int ret = 0;
 	bool mac_set_flag = false;
 	bool ip_set_flag = false;
+	bool tp_set_flag = false;
 	const struct rte_flow_action *action;
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
@@ -638,6 +639,13 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_DST detected");
 			key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TP_SRC detected");
+			if (!tp_set_flag) {
+				key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
+				tp_set_flag = true;
+			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
@@ -1356,6 +1364,33 @@ nfp_flow_action_set_ipv6(char *act_data,
 		set_ip->ipv6[i].exact = set_ipv6->ipv6_addr[i];
 }
 
+static void
+nfp_flow_action_set_tp(char *act_data,
+		const struct rte_flow_action *action,
+		bool tp_src_flag,
+		bool tp_set_flag)
+{
+	size_t act_size;
+	struct nfp_fl_act_set_tport *set_tp;
+	const struct rte_flow_action_set_tp *set_tp_conf;
+
+	if (tp_set_flag)
+		set_tp = (struct nfp_fl_act_set_tport *)act_data - 1;
+	else
+		set_tp = (struct nfp_fl_act_set_tport *)act_data;
+
+	act_size = sizeof(struct nfp_fl_act_set_tport);
+	set_tp->head.jump_id = NFP_FL_ACTION_OPCODE_SET_TCP;
+	set_tp->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	set_tp->reserved     = 0;
+
+	set_tp_conf = (const struct rte_flow_action_set_tp *)action->conf;
+	if (tp_src_flag)
+		set_tp->src_port = set_tp_conf->port;
+	else
+		set_tp->dst_port = set_tp_conf->port;
+}
+
 static int
 nfp_flow_action_push_vlan(char *act_data,
 		const struct rte_flow_action *action)
@@ -1399,6 +1434,7 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 	char *action_data;
 	bool drop_flag = false;
 	bool ip_set_flag = false;
+	bool tp_set_flag = false;
 	bool mac_set_flag = false;
 	uint32_t total_actions = 0;
 	const struct rte_flow_action *action;
@@ -1493,6 +1529,14 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_DST");
 			nfp_flow_action_set_ipv6(position, action, false);
 			position += sizeof(struct nfp_fl_act_set_ipv6_addr);
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_SRC");
+			nfp_flow_action_set_tp(position, action, true, tp_set_flag);
+			if (!tp_set_flag) {
+				position += sizeof(struct nfp_fl_act_set_tport);
+				tp_set_flag = true;
+			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
