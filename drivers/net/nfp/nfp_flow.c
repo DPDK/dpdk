@@ -672,6 +672,14 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 				}
 			}
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP detected");
+			if (!ttl_tos_flag) {
+				key_ls->act_size +=
+					sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
+				ttl_tos_flag = true;
+			}
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1495,6 +1503,29 @@ nfp_flow_action_set_hl(char *act_data,
 	tc_hl->reserved = 0;
 }
 
+static void
+nfp_flow_action_set_tos(char *act_data,
+		const struct rte_flow_action *action,
+		bool ttl_tos_flag)
+{
+	size_t act_size;
+	struct nfp_fl_act_set_ip4_ttl_tos *ttl_tos;
+	const struct rte_flow_action_set_dscp *tos_conf;
+
+	if (ttl_tos_flag)
+		ttl_tos = (struct nfp_fl_act_set_ip4_ttl_tos *)act_data - 1;
+	else
+		ttl_tos = (struct nfp_fl_act_set_ip4_ttl_tos *)act_data;
+
+	act_size = sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
+	ttl_tos->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV4_TTL_TOS;
+	ttl_tos->head.len_lw = act_size >> NFP_FL_LW_SIZ;
+
+	tos_conf = (const struct rte_flow_action_set_dscp *)action->conf;
+	ttl_tos->ipv4_tos = tos_conf->dscp;
+	ttl_tos->reserved = 0;
+}
+
 static int
 nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
@@ -1635,6 +1666,14 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 					position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 					tc_hl_flag = true;
 				}
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP");
+			nfp_flow_action_set_tos(position, action, ttl_tos_flag);
+			if (!ttl_tos_flag) {
+				position += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
+				ttl_tos_flag = true;
 			}
 			break;
 		default:
