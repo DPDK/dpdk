@@ -87,6 +87,7 @@
 #define ACC100_HARQ_DDR         (512 * 1)
 #define ACC100_PRQ_DDR_VER       0x10092020
 #define ACC100_DDR_TRAINING_MAX (5000)
+#define ACC100_HARQ_ALIGN_COMP   256
 
 struct acc100_registry_addr {
 	unsigned int dma_ring_dl5g_hi;

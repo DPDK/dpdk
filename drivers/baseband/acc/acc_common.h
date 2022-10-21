@@ -120,6 +120,7 @@
 
 #define ACC_ALGO_SPA                0
 #define ACC_ALGO_MSA                1
+#define ACC_HARQ_ALIGN_64B          64
 
 /* Helper macro for logging */
 #define rte_acc_log(level, fmt, ...) \

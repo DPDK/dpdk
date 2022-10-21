@@ -1040,6 +1040,7 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	uint16_t harq_index;
 	uint32_t l;
 	bool harq_prun = false;
+	uint32_t max_hc_in;
 
 	fcw->qm = op->ldpc_dec.q_m;
 	fcw->nfiller = op->ldpc_dec.n_filler;
@@ -1089,13 +1090,22 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		harq_in_length = op->ldpc_dec.harq_combined_input.length;
 		if (fcw->hcin_decomp_mode > 0)
 			harq_in_length = harq_in_length * 8 / 6;
-		harq_in_length = RTE_ALIGN(harq_in_length, 64);
-		if ((harq_layout[harq_index].offset > 0) & harq_prun) {
+
+		harq_in_length = RTE_MIN(harq_in_length, op->ldpc_dec.n_cb
+				- op->ldpc_dec.n_filler);
+
+		/* Alignment on next 64B - Already enforced from HC output */
+		harq_in_length = RTE_ALIGN_FLOOR(harq_in_length, ACC_HARQ_ALIGN_64B);
+
+		/* Stronger alignment requirement when in decompression mode */
+		if (fcw->hcin_decomp_mode > 0)
+			harq_in_length = RTE_ALIGN_FLOOR(harq_in_length, ACC100_HARQ_ALIGN_COMP);
+
+		if ((harq_layout[harq_index].offset > 0) && harq_prun) {
 			rte_bbdev_log_debug("HARQ IN offset unexpected for now\n");
 			fcw->hcin_size0 = harq_layout[harq_index].size0;
 			fcw->hcin_offset = harq_layout[harq_index].offset;
-			fcw->hcin_size1 = harq_in_length -
-					harq_layout[harq_index].offset;
+			fcw->hcin_size1 = harq_in_length - harq_layout[harq_index].offset;
 		} else {
 			fcw->hcin_size0 = harq_in_length;
 			fcw->hcin_offset = 0;
@@ -1105,6 +1115,21 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		fcw->hcin_size0 = 0;
 		fcw->hcin_offset = 0;
 		fcw->hcin_size1 = 0;
+	}
+
+	/* Enforce additional check on FCW validity */
+	max_hc_in = RTE_ALIGN_CEIL(fcw->ncb - fcw->nfiller, ACC_HARQ_ALIGN_64B);
+	if ((fcw->hcin_size0 > max_hc_in) ||
+			(fcw->hcin_size1 + fcw->hcin_offset > max_hc_in) ||
+			((fcw->hcin_size0 > fcw->hcin_offset) &&
+			(fcw->hcin_size1 != 0))) {
+		rte_bbdev_log(ERR, " Invalid FCW : HCIn %d %d %d, Ncb %d F %d",
+				fcw->hcin_size0, fcw->hcin_size1,
+				fcw->hcin_offset,
+				fcw->ncb, fcw->nfiller);
+		/* Disable HARQ input in that case to carry forward */
+		op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
+		fcw->hcin_en = 0;
 	}
 
 	fcw->itmax = op->ldpc_dec.iter_max;
@@ -1131,15 +1156,27 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	if (fcw->hcout_en > 0) {
 		parity_offset = (op->ldpc_dec.basegraph == 1 ? 20 : 8)
 			* op->ldpc_dec.z_c - op->ldpc_dec.n_filler;
-		k0_p = (fcw->k0 > parity_offset) ?
-				fcw->k0 - op->ldpc_dec.n_filler : fcw->k0;
+		k0_p = (fcw->k0 > parity_offset) ? fcw->k0 - op->ldpc_dec.n_filler : fcw->k0;
 		ncb_p = fcw->ncb - op->ldpc_dec.n_filler;
-		l = k0_p + fcw->rm_e;
+		l = RTE_MIN(k0_p + fcw->rm_e, INT16_MAX);
 		harq_out_length = (uint16_t) fcw->hcin_size0;
-		harq_out_length = RTE_MIN(RTE_MAX(harq_out_length, l), ncb_p);
-		harq_out_length = (harq_out_length + 0x3F) & 0xFFC0;
-		if ((k0_p > fcw->hcin_size0 + ACC_HARQ_OFFSET_THRESHOLD) &&
-				harq_prun) {
+		harq_out_length = RTE_MAX(harq_out_length, l);
+
+		/* Stronger alignment when in compression mode */
+		if (fcw->hcout_comp_mode > 0)
+			harq_out_length = RTE_ALIGN_CEIL(harq_out_length, ACC100_HARQ_ALIGN_COMP);
+
+		/* Cannot exceed the pruned Ncb circular buffer */
+		harq_out_length = RTE_MIN(harq_out_length, ncb_p);
+
+		/* Alignment on next 64B */
+		harq_out_length = RTE_ALIGN_CEIL(harq_out_length, ACC_HARQ_ALIGN_64B);
+
+		/* Stronger alignment when in compression mode enforced again */
+		if (fcw->hcout_comp_mode > 0)
+			harq_out_length = RTE_ALIGN_FLOOR(harq_out_length, ACC100_HARQ_ALIGN_COMP);
+
+		if ((k0_p > fcw->hcin_size0 + ACC_HARQ_OFFSET_THRESHOLD) && harq_prun) {
 			fcw->hcout_size0 = (uint16_t) fcw->hcin_size0;
 			fcw->hcout_offset = k0_p & 0xFFC0;
 			fcw->hcout_size1 = harq_out_length - fcw->hcout_offset;
@@ -1148,6 +1185,14 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 			fcw->hcout_size1 = 0;
 			fcw->hcout_offset = 0;
 		}
+
+		if (fcw->hcout_size0 == 0) {
+			rte_bbdev_log(ERR, " Invalid FCW : HCout %d",
+				fcw->hcout_size0);
+			op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
+			fcw->hcout_en = 0;
+		}
+
 		harq_layout[harq_index].offset = fcw->hcout_offset;
 		harq_layout[harq_index].size0 = fcw->hcout_size0;
 	} else {
@@ -1187,6 +1232,10 @@ acc101_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		rte_bbdev_log(WARNING, "Null HARQ input size provided");
 		/* Disable HARQ input in that case to carry forward */
 		op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
+	}
+	if (unlikely(fcw->rm_e == 0)) {
+		rte_bbdev_log(WARNING, "Null E input provided");
+		fcw->rm_e = 2;
 	}
 
 	fcw->hcin_en = check_bit(op->ldpc_dec.op_flags,
