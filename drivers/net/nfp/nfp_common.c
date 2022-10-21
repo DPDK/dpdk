@@ -177,9 +177,9 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Checking MTU set */
-	if (rxmode->mtu > hw->flbufsz) {
-		PMD_INIT_LOG(INFO, "MTU (%u) larger then current mbufsize (%u) not supported",
-				    rxmode->mtu, hw->flbufsz);
+	if (rxmode->mtu > NFP_FRAME_SIZE_MAX) {
+		PMD_INIT_LOG(ERR, "MTU (%u) larger than NFP_FRAME_SIZE_MAX (%u) not supported",
+				    rxmode->mtu, NFP_FRAME_SIZE_MAX);
 		return -ERANGE;
 	}
 
