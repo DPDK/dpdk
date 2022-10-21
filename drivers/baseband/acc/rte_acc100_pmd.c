@@ -1444,8 +1444,7 @@ acc100_dma_desc_le_fill(struct rte_bbdev_enc_op *op,
 
 	K = (enc->basegraph == 1 ? 22 : 10) * enc->z_c;
 	in_length_in_bits = K - enc->n_filler;
-	if ((enc->op_flags & RTE_BBDEV_LDPC_CRC_24A_ATTACH) ||
-			(enc->op_flags & RTE_BBDEV_LDPC_CRC_24B_ATTACH))
+	if (enc->op_flags & RTE_BBDEV_LDPC_CRC_24B_ATTACH)
 		in_length_in_bits -= 24;
 	in_length_in_bytes = in_length_in_bits >> 3;
 
