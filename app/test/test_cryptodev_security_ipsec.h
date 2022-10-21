@@ -195,6 +195,12 @@ static const struct crypto_param auth_list[] = {
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
+		.alg.auth =  RTE_CRYPTO_AUTH_MD5_HMAC,
+		.key_length = 16,
+		.digest_length = 12,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
 		.alg.auth =  RTE_CRYPTO_AUTH_SHA256_HMAC,
 		.key_length = 32,
 		.digest_length = 16,
