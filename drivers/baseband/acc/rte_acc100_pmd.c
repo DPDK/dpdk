@@ -663,16 +663,16 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	struct acc_queue *q;
 	int16_t q_idx;
 
+	if (d == NULL) {
+		rte_bbdev_log(ERR, "Undefined device");
+		return -ENODEV;
+	}
 	/* Allocate the queue data structure. */
 	q = rte_zmalloc_socket(dev->device->driver->name, sizeof(*q),
 			RTE_CACHE_LINE_SIZE, conf->socket);
 	if (q == NULL) {
 		rte_bbdev_log(ERR, "Failed to allocate queue memory");
 		return -ENOMEM;
-	}
-	if (d == NULL) {
-		rte_bbdev_log(ERR, "Undefined device");
-		return -ENODEV;
 	}
 
 	q->d = d;
