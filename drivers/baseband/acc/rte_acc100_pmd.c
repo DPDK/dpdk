@@ -2969,13 +2969,17 @@ acc100_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
 
 	for (i = 0; i < num; ++i) {
 		/* Check if there are available space for further processing */
-		if (unlikely(avail - 1 < 0))
+		if (unlikely(avail - 1 < 0)) {
+			acc_enqueue_ring_full(q_data);
 			break;
+		}
 		avail -= 1;
 
 		ret = enqueue_enc_one_op_cb(q, ops[i], i);
-		if (ret < 0)
+		if (ret < 0) {
+			acc_enqueue_invalid(q_data);
 			break;
+		}
 	}
 
 	if (unlikely(i == 0))
@@ -3007,20 +3011,26 @@ acc100_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 	int16_t enq, left = num;
 
 	while (left > 0) {
-		if (unlikely(avail < 1))
+		if (unlikely(avail < 1)) {
+			acc_enqueue_ring_full(q_data);
 			break;
+		}
 		avail--;
 		enq = RTE_MIN(left, ACC_MUX_5GDL_DESC);
 		if (check_mux(&ops[i], enq)) {
 			ret = enqueue_ldpc_enc_n_op_cb(q, &ops[i],
 					desc_idx, enq);
-			if (ret < 0)
+			if (ret < 0) {
+				acc_enqueue_invalid(q_data);
 				break;
+			}
 			i += enq;
 		} else {
 			ret = enqueue_ldpc_enc_one_op_cb(q, ops[i], desc_idx);
-			if (ret < 0)
+			if (ret < 0) {
+				acc_enqueue_invalid(q_data);
 				break;
+			}
 			i++;
 		}
 		desc_idx++;
@@ -3058,13 +3068,17 @@ acc100_enqueue_enc_tb(struct rte_bbdev_queue_data *q_data,
 	for (i = 0; i < num; ++i) {
 		cbs_in_tb = get_num_cbs_in_tb_enc(&ops[i]->turbo_enc);
 		/* Check if there are available space for further processing */
-		if (unlikely(avail - cbs_in_tb < 0))
+		if (unlikely(avail - cbs_in_tb < 0)) {
+			acc_enqueue_ring_full(q_data);
 			break;
+		}
 		avail -= cbs_in_tb;
 
 		ret = enqueue_enc_one_op_tb(q, ops[i], enqueued_cbs, cbs_in_tb);
-		if (ret < 0)
+		if (ret < 0) {
+			acc_enqueue_invalid(q_data);
 			break;
+		}
 		enqueued_cbs += ret;
 	}
 	if (unlikely(enqueued_cbs == 0))
@@ -3121,13 +3135,17 @@ acc100_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
 
 	for (i = 0; i < num; ++i) {
 		/* Check if there are available space for further processing */
-		if (unlikely(avail - 1 < 0))
+		if (unlikely(avail - 1 < 0)) {
+			acc_enqueue_ring_full(q_data);
 			break;
+		}
 		avail -= 1;
 
 		ret = enqueue_dec_one_op_cb(q, ops[i], i);
-		if (ret < 0)
+		if (ret < 0) {
+			acc_enqueue_invalid(q_data);
 			break;
+		}
 	}
 
 	if (unlikely(i == 0))
@@ -3167,8 +3185,10 @@ acc100_enqueue_ldpc_dec_tb(struct rte_bbdev_queue_data *q_data,
 
 		ret = enqueue_ldpc_dec_one_op_tb(q, ops[i],
 				enqueued_cbs, cbs_in_tb);
-		if (ret < 0)
+		if (ret < 0) {
+			acc_enqueue_invalid(q_data);
 			break;
+		}
 		enqueued_cbs += ret;
 	}
 	if (unlikely(enqueued_cbs == 0))
@@ -3195,8 +3215,10 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 	bool same_op = false;
 	for (i = 0; i < num; ++i) {
 		/* Check if there are available space for further processing */
-		if (unlikely(avail < 1))
+		if (unlikely(avail < 1)) {
+			acc_enqueue_ring_full(q_data);
 			break;
+		}
 		avail -= 1;
 
 		if (i > 0)
@@ -3209,8 +3231,10 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 			ops[i]->ldpc_dec.n_filler, ops[i]->ldpc_dec.cb_params.e,
 			same_op);
 		ret = enqueue_ldpc_dec_one_op_cb(q, ops[i], i, same_op);
-		if (ret < 0)
+		if (ret < 0) {
+			acc_enqueue_invalid(q_data);
 			break;
+		}
 	}
 
 	if (unlikely(i == 0))
@@ -3245,13 +3269,17 @@ acc100_enqueue_dec_tb(struct rte_bbdev_queue_data *q_data,
 	for (i = 0; i < num; ++i) {
 		cbs_in_tb = get_num_cbs_in_tb_dec(&ops[i]->turbo_dec);
 		/* Check if there are available space for further processing */
-		if (unlikely(avail - cbs_in_tb < 0))
+		if (unlikely(avail - cbs_in_tb < 0)) {
+			acc_enqueue_ring_full(q_data);
 			break;
+		}
 		avail -= cbs_in_tb;
 
 		ret = enqueue_dec_one_op_tb(q, ops[i], enqueued_cbs, cbs_in_tb);
-		if (ret < 0)
+		if (ret < 0) {
+			acc_enqueue_invalid(q_data);
 			break;
+		}
 		enqueued_cbs += ret;
 	}
 
