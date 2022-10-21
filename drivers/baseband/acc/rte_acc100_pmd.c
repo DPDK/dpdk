@@ -262,11 +262,12 @@ acc100_check_ir(struct acc_device *acc100_dev)
 	while (ring_data->valid) {
 		if ((ring_data->int_nb < ACC100_PF_INT_DMA_DL_DESC_IRQ) || (
 				ring_data->int_nb >
-				ACC100_PF_INT_DMA_DL5G_DESC_IRQ))
+				ACC100_PF_INT_DMA_DL5G_DESC_IRQ)) {
 			rte_bbdev_log(WARNING, "InfoRing: ITR:%d Info:0x%x",
 				ring_data->int_nb, ring_data->detailed_info);
-		/* Initialize Info Ring entry and move forward */
-		ring_data->val = 0;
+			/* Initialize Info Ring entry and move forward */
+			ring_data->val = 0;
+		}
 		info_ring_head++;
 		ring_data = acc100_dev->info_ring +
 				(info_ring_head & ACC_INFO_RING_MASK);
