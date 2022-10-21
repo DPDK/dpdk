@@ -635,6 +635,10 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC detected");
 			key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_DST detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1483,6 +1487,11 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC");
 			nfp_flow_action_set_ipv6(position, action, true);
+			position += sizeof(struct nfp_fl_act_set_ipv6_addr);
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_DST");
+			nfp_flow_action_set_ipv6(position, action, false);
 			position += sizeof(struct nfp_fl_act_set_ipv6_addr);
 			break;
 		default:
