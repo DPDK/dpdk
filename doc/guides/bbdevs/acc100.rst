@@ -65,6 +65,15 @@ ACC100 and ACC101 5G/4G FEC PMDs support the following BBDEV capabilities:
    - ``RTE_BBDEV_TURBO_DEC_SCATTER_GATHER`` :  supports scatter-gather for input/output data
    - ``RTE_BBDEV_TURBO_HALF_ITERATION_EVEN`` :  set half iteration granularity
 
+* PMD-specific build flags:
+  The ACC100 PMD includes some optional build flags which may be used for troubleshooting.
+  Recommended build configuration is for these to be kept as default.
+  - ``RTE_LIBRTE_BBDEV_SKIP_VALIDATE``: option to skip API input validation.
+  Recommended value is to keep the validation enabled by default
+  as a protection for negative scenarios at a cost of some cycles
+  spent to enforce these checks.
+
+
 Installation
 ------------
 

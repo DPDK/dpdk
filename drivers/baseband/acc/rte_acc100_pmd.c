@@ -1037,7 +1037,7 @@ is_acc100(struct acc_queue *q)
 	return (q->d->device_variant == ACC100_VARIANT);
 }
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 static inline bool
 validate_op_required(struct acc_queue *q)
 {
@@ -1801,7 +1801,7 @@ acc100_dma_desc_ld_update(struct rte_bbdev_dec_op *op,
 	desc->op_addr = op;
 }
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 /* Validates turbo encoder parameters */
 static inline int
 validate_enc_op(struct rte_bbdev_enc_op *op, struct acc_queue *q)
@@ -2064,10 +2064,10 @@ enqueue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		seg_total_left;
 	struct rte_mbuf *input, *output_head, *output;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_enc_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "Turbo encoder validation failed");
+		rte_bbdev_log(ERR, "Turbo encoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -2116,10 +2116,10 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	uint16_t  in_length_in_bytes;
 	struct rte_bbdev_op_ldpc_enc *enc = &ops[0]->ldpc_enc;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_ldpc_enc_op(ops[0], q) == -1) {
-		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+		rte_bbdev_log(ERR, "LDPC encoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -2176,10 +2176,10 @@ enqueue_ldpc_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		seg_total_left;
 	struct rte_mbuf *input, *output_head, *output;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_ldpc_enc_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+		rte_bbdev_log(ERR, "LDPC encoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -2232,10 +2232,10 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	uint16_t desc_idx, current_enqueued_cbs = 0;
 	uint64_t fcw_offset;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_enc_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "Turbo encoder validation failed");
+		rte_bbdev_log(ERR, "Turbo encoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -2306,7 +2306,7 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	return current_enqueued_cbs;
 }
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 /* Validates turbo decoder parameters */
 static inline int
 validate_dec_op(struct rte_bbdev_dec_op *op, struct acc_queue *q)
@@ -2464,10 +2464,10 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	struct rte_mbuf *input, *h_output_head, *h_output,
 		*s_output_head, *s_output;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_dec_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "Turbo decoder validation failed");
+		rte_bbdev_log(ERR, "Turbo decoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -2687,10 +2687,10 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		return ret;
 	}
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_ldpc_dec_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "LDPC decoder validation failed");
+		rte_bbdev_log(ERR, "LDPC decoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -2788,10 +2788,10 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	uint64_t fcw_offset;
 	union acc_harq_layout_data *harq_layout;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_ldpc_dec_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "LDPC decoder validation failed");
+		rte_bbdev_log(ERR, "LDPC decoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -2880,10 +2880,10 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	uint16_t desc_idx, current_enqueued_cbs = 0;
 	uint64_t fcw_offset;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
+#ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	/* Validate op structure */
 	if (validate_dec_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "Turbo decoder validation failed");
+		rte_bbdev_log(ERR, "Turbo decoder validation rejected");
 		return -EINVAL;
 	}
 #endif
