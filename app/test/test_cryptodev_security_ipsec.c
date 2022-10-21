@@ -14,6 +14,8 @@
 #include "test_cryptodev_security_ipsec.h"
 
 #define IV_LEN_MAX 16
+#define UDP_CUSTOM_SPORT 4650
+#define UDP_CUSTOM_DPORT 4660
 
 #ifndef IPVERSION
 #define IPVERSION 4
@@ -508,6 +510,11 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 
 		if (flags->dec_ttl_or_hop_limit)
 			td->ipsec_xform.options.dec_ttl = 1;
+
+		if (flags->udp_encap && flags->udp_encap_custom_ports) {
+			td->ipsec_xform.udp.sport = UDP_CUSTOM_SPORT;
+			td->ipsec_xform.udp.dport = UDP_CUSTOM_DPORT;
+		}
 	}
 }
 
@@ -765,23 +772,6 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
 	   flags->udp_encap) {
-		const struct rte_ipv4_hdr *iph4;
-		const struct rte_ipv6_hdr *iph6;
-
-		if (td->ipsec_xform.tunnel.type ==
-				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
-			iph4 = (const struct rte_ipv4_hdr *)output_text;
-			if (iph4->next_proto_id != IPPROTO_UDP) {
-				printf("UDP header is not found\n");
-				return TEST_FAILED;
-			}
-		} else {
-			iph6 = (const struct rte_ipv6_hdr *)output_text;
-			if (iph6->proto != IPPROTO_UDP) {
-				printf("UDP header is not found\n");
-				return TEST_FAILED;
-			}
-		}
 
 		len -= sizeof(struct rte_udp_hdr);
 		output_text += sizeof(struct rte_udp_hdr);
@@ -1039,6 +1029,53 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 				iph6 = (const struct rte_ipv6_hdr *)output_text;
 				if (test_ipsec_iph6_hdr_validate(iph6, flags))
 					return TEST_FAILED;
+			}
+		}
+	}
+
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
+	   flags->udp_encap) {
+		const struct rte_ipv4_hdr *iph4;
+		const struct rte_ipv6_hdr *iph6;
+
+		if (td->ipsec_xform.tunnel.type ==
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			iph4 = (const struct rte_ipv4_hdr *)output_text;
+
+			if (iph4->next_proto_id != IPPROTO_UDP) {
+				printf("UDP header is not found\n");
+				return TEST_FAILED;
+			}
+
+			if (flags->udp_encap_custom_ports) {
+				const struct rte_udp_hdr *udph;
+
+				udph = (const struct rte_udp_hdr *)(output_text +
+					sizeof(struct rte_ipv4_hdr));
+				if ((rte_be_to_cpu_16(udph->src_port) != UDP_CUSTOM_SPORT) ||
+				    (rte_be_to_cpu_16(udph->dst_port) != UDP_CUSTOM_DPORT)) {
+					printf("UDP custom ports not matching.\n");
+					return TEST_FAILED;
+				}
+			}
+		} else {
+			iph6 = (const struct rte_ipv6_hdr *)output_text;
+
+			if (iph6->proto != IPPROTO_UDP) {
+				printf("UDP header is not found\n");
+				return TEST_FAILED;
+			}
+
+			if (flags->udp_encap_custom_ports) {
+				const struct rte_udp_hdr *udph;
+
+				udph = (const struct rte_udp_hdr *)(output_text +
+					sizeof(struct rte_ipv6_hdr));
+				if ((rte_be_to_cpu_16(udph->src_port) != UDP_CUSTOM_SPORT) ||
+				    (rte_be_to_cpu_16(udph->dst_port) != UDP_CUSTOM_DPORT)) {
+					printf("UDP custom ports not matching.\n");
+					return TEST_FAILED;
+				}
 			}
 		}
 	}

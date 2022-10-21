@@ -9893,6 +9893,23 @@ test_ipsec_proto_err_icv_corrupt(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_proto_udp_encap_custom_ports(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN10K_PMD)))
+		return TEST_SKIPPED;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.udp_encap = true;
+	flags.udp_encap_custom_ports = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
 test_ipsec_proto_udp_encap(const void *data __rte_unused)
 {
 	struct ipsec_test_flags flags;
@@ -15358,6 +15375,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"UDP encapsulation",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_udp_encap),
+		TEST_CASE_NAMED_ST(
+			"UDP encapsulation with custom ports",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_udp_encap_custom_ports),
 		TEST_CASE_NAMED_ST(
 			"UDP encapsulation ports verification test",
 			ut_setup_security, ut_teardown,
