@@ -114,6 +114,13 @@ nfp_net_start(struct rte_eth_dev *dev)
 		update = NFP_NET_CFG_UPDATE_MSIX;
 	}
 
+	/* Checking MTU set */
+	if (dev->data->mtu > hw->flbufsz) {
+		PMD_INIT_LOG(ERR, "MTU (%u) can't be larger than the current NFP_FRAME_SIZE (%u)",
+				dev->data->mtu, hw->flbufsz);
+		return -ERANGE;
+	}
+
 	rte_intr_enable(intr_handle);
 
 	new_ctrl = nfp_check_offloads(dev);
@@ -602,7 +609,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->mtu = RTE_ETHER_MTU;
-	hw->flbufsz = RTE_ETHER_MTU;
 
 	/* VLAN insertion is incompatible with LSOv2 */
 	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
