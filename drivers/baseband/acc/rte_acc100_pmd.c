@@ -776,9 +776,15 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	q->qgrp_id = (q_idx >> ACC100_GRP_ID_SHIFT) & 0xF;
 	q->vf_id = (q_idx >> ACC100_VF_ID_SHIFT)  & 0x3F;
 	q->aq_id = q_idx & 0xF;
-	q->aq_depth = (conf->op_type ==  RTE_BBDEV_OP_TURBO_DEC) ?
-			(1 << d->acc_conf.q_ul_4g.aq_depth_log2) :
-			(1 << d->acc_conf.q_dl_4g.aq_depth_log2);
+	q->aq_depth = 0;
+	if (conf->op_type ==  RTE_BBDEV_OP_TURBO_DEC)
+		q->aq_depth = (1 << d->acc_conf.q_ul_4g.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_TURBO_ENC)
+		q->aq_depth = (1 << d->acc_conf.q_dl_4g.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_LDPC_DEC)
+		q->aq_depth = (1 << d->acc_conf.q_ul_5g.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_LDPC_ENC)
+		q->aq_depth = (1 << d->acc_conf.q_dl_5g.aq_depth_log2);
 
 	q->mmio_reg_enqueue = RTE_PTR_ADD(d->mmio_base,
 			queue_offset(d->pf_device,
