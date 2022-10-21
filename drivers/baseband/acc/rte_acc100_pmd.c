@@ -1017,14 +1017,13 @@ acc100_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 			RTE_BBDEV_TURBO_HALF_ITERATION_EVEN);
 }
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
-
 static inline bool
 is_acc100(struct acc_queue *q)
 {
 	return (q->d->device_variant == ACC100_VARIANT);
 }
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
 static inline bool
 validate_op_required(struct acc_queue *q)
 {
@@ -1355,12 +1354,28 @@ acc100_dma_fill_blk_type_in(struct acc_dma_req_desc *desc,
 	return next_triplet;
 }
 
+/* May need to pad LDPC Encoder input to avoid small beat for ACC100. */
+static inline uint16_t
+pad_le_in(uint16_t blen, struct acc_queue *q)
+{
+	uint16_t last_beat;
+
+	if (!is_acc100(q))
+		return blen;
+
+	last_beat = blen % 64;
+	if ((last_beat > 0) && (last_beat <= 8))
+		blen += 8;
+
+	return blen;
+}
+
 static inline int
 acc100_dma_desc_le_fill(struct rte_bbdev_enc_op *op,
 		struct acc_dma_req_desc *desc, struct rte_mbuf **input,
 		struct rte_mbuf *output, uint32_t *in_offset,
 		uint32_t *out_offset, uint32_t *out_length,
-		uint32_t *mbuf_total_left, uint32_t *seg_total_left)
+		uint32_t *mbuf_total_left, uint32_t *seg_total_left, struct acc_queue *q)
 {
 	int next_triplet = 1; /* FCW already done */
 	uint16_t K, in_length_in_bits, in_length_in_bytes;
@@ -1384,8 +1399,7 @@ acc100_dma_desc_le_fill(struct rte_bbdev_enc_op *op,
 	}
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset,
-			in_length_in_bytes,
-			seg_total_left, next_triplet);
+			pad_le_in(in_length_in_bytes, q), seg_total_left, next_triplet);
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
@@ -2035,7 +2049,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	acc_header_init(&desc->req);
 	desc->req.numCBs = num;
 
-	in_length_in_bytes = ops[0]->ldpc_enc.input.data->data_len;
+	in_length_in_bytes = pad_le_in(ops[0]->ldpc_enc.input.data->data_len, q);
 	out_length = (enc->cb_params.e + 7) >> 3;
 	desc->req.m2dlen = 1 + num;
 	desc->req.d2mlen = num;
@@ -2102,7 +2116,7 @@ enqueue_ldpc_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 
 	ret = acc100_dma_desc_le_fill(op, &desc->req, &input, output,
 			&in_offset, &out_offset, &out_length, &mbuf_total_left,
-			&seg_total_left);
+			&seg_total_left, q);
 
 	if (unlikely(ret < 0))
 		return ret;
