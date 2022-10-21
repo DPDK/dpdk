@@ -202,11 +202,13 @@ test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 		return -ENOTSUP;
 	}
 
-	if (ipsec_xform->replay_win_sz > sec_cap->ipsec.replay_win_sz_max) {
-		if (!silent)
-			RTE_LOG(INFO, USER1,
-				"Replay window size is not supported\n");
-		return -ENOTSUP;
+	if (ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		if (ipsec_xform->replay_win_sz > sec_cap->ipsec.replay_win_sz_max) {
+			if (!silent)
+				RTE_LOG(INFO, USER1,
+					"Replay window size is not supported\n");
+			return -ENOTSUP;
+		}
 	}
 
 	return 0;
