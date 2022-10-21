@@ -362,6 +362,11 @@ struct nfp_fl_act_set_eth {
 	uint8_t eth_addr[RTE_ETHER_ADDR_LEN * 2];
 };
 
+struct nfp_fl_act_pop_vlan {
+	struct nfp_fl_act_head head;
+	rte_be16_t reserved;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);

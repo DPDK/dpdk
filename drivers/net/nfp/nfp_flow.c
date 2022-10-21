@@ -600,6 +600,10 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 				mac_set_flag = true;
 			}
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_POP_VLAN detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_pop_vlan);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1248,6 +1252,22 @@ nfp_flow_action_set_mac(char *act_data,
 	}
 }
 
+static void
+nfp_flow_action_pop_vlan(char *act_data,
+		struct nfp_fl_rule_metadata *nfp_flow_meta)
+{
+	size_t act_size;
+	struct nfp_fl_act_pop_vlan *pop_vlan;
+
+	act_size = sizeof(struct nfp_fl_act_pop_vlan);
+	pop_vlan = (struct nfp_fl_act_pop_vlan *)act_data;
+	pop_vlan->head.jump_id = NFP_FL_ACTION_OPCODE_POP_VLAN;
+	pop_vlan->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	pop_vlan->reserved     = 0;
+
+	nfp_flow_meta->shortcut = rte_cpu_to_be_32(NFP_FL_SC_ACT_POPV);
+}
+
 static int
 nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
@@ -1303,6 +1323,11 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 				position += sizeof(struct nfp_fl_act_set_eth);
 				mac_set_flag = true;
 			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_OF_POP_VLAN");
+			nfp_flow_action_pop_vlan(position, nfp_flow_meta);
+			position += sizeof(struct nfp_fl_act_pop_vlan);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
