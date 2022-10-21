@@ -604,6 +604,16 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_POP_VLAN detected");
 			key_ls->act_size += sizeof(struct nfp_fl_act_pop_vlan);
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_push_vlan);
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID detected");
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP detected");
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1269,6 +1279,39 @@ nfp_flow_action_pop_vlan(char *act_data,
 }
 
 static int
+nfp_flow_action_push_vlan(char *act_data,
+		const struct rte_flow_action *action)
+{
+	size_t act_size;
+	struct nfp_fl_act_push_vlan *push_vlan;
+	const struct rte_flow_action_of_push_vlan *push_vlan_conf;
+	const struct rte_flow_action_of_set_vlan_pcp *vlan_pcp_conf;
+	const struct rte_flow_action_of_set_vlan_vid *vlan_vid_conf;
+
+	if (((action + 1)->type != RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP) ||
+			((action + 2)->type != RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID))
+		return -EINVAL;
+
+	act_size = sizeof(struct nfp_fl_act_push_vlan);
+	push_vlan = (struct nfp_fl_act_push_vlan *)act_data;
+	push_vlan->head.jump_id = NFP_FL_ACTION_OPCODE_PUSH_VLAN;
+	push_vlan->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	push_vlan->reserved     = 0;
+
+	push_vlan_conf = (const struct rte_flow_action_of_push_vlan *)
+			action->conf;
+	vlan_pcp_conf  = (const struct rte_flow_action_of_set_vlan_pcp *)
+			(action + 1)->conf;
+	vlan_vid_conf  = (const struct rte_flow_action_of_set_vlan_vid *)
+			(action + 2)->conf;
+	push_vlan->vlan_tpid = push_vlan_conf->ethertype;
+	push_vlan->vlan_tci = ((vlan_pcp_conf->vlan_pcp & 0x07) << 13) |
+			(vlan_vid_conf->vlan_vid & 0x0fff);
+
+	return 0;
+}
+
+static int
 nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
@@ -1328,6 +1371,23 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_OF_POP_VLAN");
 			nfp_flow_action_pop_vlan(position, nfp_flow_meta);
 			position += sizeof(struct nfp_fl_act_pop_vlan);
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN");
+			ret = nfp_flow_action_push_vlan(position, action);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Failed when process"
+						" RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN");
+				return ret;
+			}
+
+			/*
+			 * RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP and
+			 * RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID
+			 * have also been processed.
+			 */
+			action += 2;
+			position += sizeof(struct nfp_fl_act_push_vlan);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);

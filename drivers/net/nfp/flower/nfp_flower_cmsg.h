@@ -367,6 +367,13 @@ struct nfp_fl_act_pop_vlan {
 	rte_be16_t reserved;
 };
 
+struct nfp_fl_act_push_vlan {
+	struct nfp_fl_act_head head;
+	rte_be16_t reserved;
+	rte_be16_t vlan_tpid;
+	rte_be16_t vlan_tci;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);
