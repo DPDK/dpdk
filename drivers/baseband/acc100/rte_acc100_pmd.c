@@ -569,9 +569,9 @@ allocate_info_ring(struct rte_bbdev *dev)
 		reg_addr = &vf_reg_addr;
 	/* Allocate InfoRing */
 	d->info_ring = rte_zmalloc_socket("Info Ring",
-			ACC100_INFO_RING_NUM_ENTRIES *
-			sizeof(*d->info_ring), RTE_CACHE_LINE_SIZE,
-			dev->data->socket_id);
+		ACC100_INFO_RING_NUM_ENTRIES *
+		sizeof(*d->info_ring), RTE_CACHE_LINE_SIZE,
+		dev->data->socket_id);
 	if (d->info_ring == NULL) {
 		rte_bbdev_log(ERR,
 				"Failed to allocate Info Ring for %s:%u",
@@ -660,7 +660,8 @@ acc100_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	acc100_reg_write(d, reg_addr->ring_size, value);
 
 	/* Configure tail pointer for use when SDONE enabled */
-	d->tail_ptrs = rte_zmalloc_socket(
+	if (d->tail_ptrs == NULL)
+		d->tail_ptrs = rte_zmalloc_socket(
 			dev->device->driver->name,
 			ACC100_NUM_QGRPS * ACC100_NUM_AQS * sizeof(uint32_t),
 			RTE_CACHE_LINE_SIZE, socket_id);
@@ -668,8 +669,8 @@ acc100_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 		rte_bbdev_log(ERR, "Failed to allocate tail ptr for %s:%u",
 				dev->device->driver->name,
 				dev->data->dev_id);
-		rte_free(d->sw_rings);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto free_sw_rings;
 	}
 	d->tail_ptr_iova = rte_malloc_virt2iova(d->tail_ptrs);
 
@@ -692,15 +693,16 @@ acc100_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 		/* Continue */
 	}
 
-	d->harq_layout = rte_zmalloc_socket("HARQ Layout",
+	if (d->harq_layout == NULL)
+		d->harq_layout = rte_zmalloc_socket("HARQ Layout",
 			ACC100_HARQ_LAYOUT * sizeof(*d->harq_layout),
 			RTE_CACHE_LINE_SIZE, dev->data->socket_id);
 	if (d->harq_layout == NULL) {
 		rte_bbdev_log(ERR, "Failed to allocate harq_layout for %s:%u",
 				dev->device->driver->name,
 				dev->data->dev_id);
-		rte_free(d->sw_rings);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto free_tail_ptrs;
 	}
 
 	/* Mark as configured properly */
@@ -709,8 +711,16 @@ acc100_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	rte_bbdev_log_debug(
 			"ACC100 (%s) configured  sw_rings = %p, sw_rings_iova = %#"
 			PRIx64, dev->data->name, d->sw_rings, d->sw_rings_iova);
-
 	return 0;
+
+free_tail_ptrs:
+	rte_free(d->tail_ptrs);
+	d->tail_ptrs = NULL;
+free_sw_rings:
+	rte_free(d->sw_rings_base);
+	d->sw_rings = NULL;
+
+	return ret;
 }
 
 static int
