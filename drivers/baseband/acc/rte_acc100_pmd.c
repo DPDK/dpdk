@@ -2861,7 +2861,7 @@ acc100_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	int32_t avail = q->sw_ring_depth + q->sw_ring_tail - q->sw_ring_head;
+	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i;
 	union acc_dma_desc *desc;
 	int ret;
@@ -2899,7 +2899,7 @@ acc100_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	int32_t avail = q->sw_ring_depth + q->sw_ring_tail - q->sw_ring_head;
+	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i = 0;
 	union acc_dma_desc *desc;
 	int ret, desc_idx = 0;
@@ -2949,7 +2949,7 @@ acc100_enqueue_enc_tb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	int32_t avail = q->sw_ring_depth + q->sw_ring_tail - q->sw_ring_head;
+	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i, enqueued_cbs = 0;
 	uint8_t cbs_in_tb;
 	int ret;
@@ -3011,7 +3011,7 @@ acc100_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	int32_t avail = q->sw_ring_depth + q->sw_ring_tail - q->sw_ring_head;
+	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i;
 	union acc_dma_desc *desc;
 	int ret;
@@ -3050,7 +3050,7 @@ acc100_enqueue_ldpc_dec_tb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	int32_t avail = q->sw_ring_depth + q->sw_ring_tail - q->sw_ring_head;
+	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i, enqueued_cbs = 0;
 	uint8_t cbs_in_tb;
 	int ret;
@@ -3083,7 +3083,7 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	int32_t avail = q->sw_ring_depth + q->sw_ring_tail - q->sw_ring_head;
+	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i;
 	union acc_dma_desc *desc;
 	int ret;
@@ -3132,7 +3132,7 @@ acc100_enqueue_dec_tb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	int32_t avail = q->sw_ring_depth + q->sw_ring_tail - q->sw_ring_head;
+	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i, enqueued_cbs = 0;
 	uint8_t cbs_in_tb;
 	int ret;
@@ -3495,12 +3495,13 @@ acc100_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 {
 	struct acc_queue *q = q_data->queue_private;
 	uint16_t dequeue_num;
-	uint32_t avail = q->sw_ring_head - q->sw_ring_tail;
+	uint32_t avail = acc_ring_avail_deq(q);
 	uint32_t aq_dequeued = 0;
 	uint16_t i, dequeued_cbs = 0;
 	struct rte_bbdev_enc_op *op;
 	int ret;
-
+	if (avail == 0)
+		return 0;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	if (unlikely(ops == NULL || q == NULL)) {
 		rte_bbdev_log_debug("Unexpected undefined pointer");
@@ -3539,7 +3540,7 @@ acc100_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
-	uint32_t avail = q->sw_ring_head - q->sw_ring_tail;
+	uint32_t avail = acc_ring_avail_deq(q);
 	uint32_t aq_dequeued = 0;
 	uint16_t dequeue_num, i, dequeued_cbs = 0, dequeued_descs = 0;
 	int ret;
@@ -3579,7 +3580,7 @@ acc100_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 {
 	struct acc_queue *q = q_data->queue_private;
 	uint16_t dequeue_num;
-	uint32_t avail = q->sw_ring_head - q->sw_ring_tail;
+	uint32_t avail = acc_ring_avail_deq(q);
 	uint32_t aq_dequeued = 0;
 	uint16_t i;
 	uint16_t dequeued_cbs = 0;
@@ -3623,7 +3624,7 @@ acc100_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 {
 	struct acc_queue *q = q_data->queue_private;
 	uint16_t dequeue_num;
-	uint32_t avail = q->sw_ring_head - q->sw_ring_tail;
+	uint32_t avail = acc_ring_avail_deq(q);
 	uint32_t aq_dequeued = 0;
 	uint16_t i;
 	uint16_t dequeued_cbs = 0;
