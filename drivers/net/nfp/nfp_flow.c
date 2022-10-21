@@ -561,6 +561,7 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
 	int ret = 0;
+	bool mac_set_flag = false;
 	const struct rte_flow_action *action;
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
@@ -584,6 +585,13 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_PORT_ID detected");
 			key_ls->act_size += sizeof(struct nfp_fl_act_output);
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_MAC_SRC detected");
+			if (!mac_set_flag) {
+				key_ls->act_size += sizeof(struct nfp_fl_act_set_eth);
+				mac_set_flag = true;
+			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
@@ -1203,6 +1211,36 @@ nfp_flow_action_output(char *act_data,
 	return 0;
 }
 
+static void
+nfp_flow_action_set_mac(char *act_data,
+		const struct rte_flow_action *action,
+		bool mac_src_flag,
+		bool mac_set_flag)
+{
+	size_t act_size;
+	struct nfp_fl_act_set_eth *set_eth;
+	const struct rte_flow_action_set_mac *set_mac;
+
+	if (mac_set_flag)
+		set_eth = (struct nfp_fl_act_set_eth *)act_data - 1;
+	else
+		set_eth = (struct nfp_fl_act_set_eth *)act_data;
+
+	act_size = sizeof(struct nfp_fl_act_set_eth);
+	set_eth->head.jump_id = NFP_FL_ACTION_OPCODE_SET_ETHERNET;
+	set_eth->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	set_eth->reserved     = 0;
+
+	set_mac = (const struct rte_flow_action_set_mac *)action->conf;
+	if (mac_src_flag) {
+		rte_memcpy(&set_eth->eth_addr[RTE_ETHER_ADDR_LEN],
+				set_mac->mac_addr, RTE_ETHER_ADDR_LEN);
+	} else {
+		rte_memcpy(&set_eth->eth_addr[0],
+				set_mac->mac_addr, RTE_ETHER_ADDR_LEN);
+	}
+}
+
 static int
 nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
@@ -1212,6 +1250,7 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 	char *position;
 	char *action_data;
 	bool drop_flag = false;
+	bool mac_set_flag = false;
 	uint32_t total_actions = 0;
 	const struct rte_flow_action *action;
 	struct nfp_fl_rule_metadata *nfp_flow_meta;
@@ -1241,6 +1280,14 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 			}
 
 			position += sizeof(struct nfp_fl_act_output);
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_MAC_SRC");
+			nfp_flow_action_set_mac(position, action, true, mac_set_flag);
+			if (!mac_set_flag) {
+				position += sizeof(struct nfp_fl_act_set_eth);
+				mac_set_flag = true;
+			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
