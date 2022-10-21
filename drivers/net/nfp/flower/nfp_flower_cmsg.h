@@ -400,6 +400,25 @@ struct nfp_fl_act_set_ip4_addrs {
 };
 
 /*
+ * IPv4 ttl tos
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   -   |opcode |       |jump_id|    ttl_mask   |   tos_mask    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |       ttl     |      tos      |               0               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_fl_act_set_ip4_ttl_tos {
+	struct nfp_fl_act_head head;
+	uint8_t ipv4_ttl_mask;
+	uint8_t ipv4_tos_mask;
+	uint8_t ipv4_ttl;
+	uint8_t ipv4_tos;
+	rte_be16_t reserved;
+};
+
+/*
  * IPv6 addr
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
@@ -430,6 +449,31 @@ struct nfp_fl_act_set_ipv6_addr {
 		rte_be32_t mask;
 		rte_be32_t exact;
 	} ipv6[4];
+};
+
+/*
+ * ipv6 tc hl fl
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   -   |opcode |       |jump_id|  tclass_mask  |  hlimit_mask  |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |               0               |  tclass       |  hlimit       |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           0           |             flabel_mask               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           0           |             flabel                    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_fl_act_set_ipv6_tc_hl_fl {
+	struct nfp_fl_act_head head;
+	uint8_t ipv6_tc_mask;
+	uint8_t ipv6_hop_limit_mask;
+	rte_be16_t reserved;
+	uint8_t ipv6_tc;
+	uint8_t ipv6_hop_limit;
+	rte_be32_t ipv6_label_mask;
+	rte_be32_t ipv6_label;
 };
 
 /*
