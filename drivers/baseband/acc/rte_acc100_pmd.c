@@ -1764,6 +1764,11 @@ validate_enc_op(struct rte_bbdev_enc_op *op, struct acc_queue *q)
 		return -1;
 	}
 
+	if (unlikely(turbo_enc->input.length == 0)) {
+		rte_bbdev_log(ERR, "input length null");
+		return -1;
+	}
+
 	if (turbo_enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		tb = &turbo_enc->tb_params;
 		if ((tb->k_neg < RTE_BBDEV_TURBO_MIN_CB_SIZE
@@ -1783,11 +1788,12 @@ validate_enc_op(struct rte_bbdev_enc_op *op, struct acc_queue *q)
 					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
-		if (tb->c_neg > (RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1))
+		if (unlikely(tb->c_neg > 0)) {
 			rte_bbdev_log(ERR,
-					"c_neg (%u) is out of range 0 <= value <= %u",
-					tb->c_neg,
-					RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1);
+					"c_neg (%u) expected to be null",
+					tb->c_neg);
+			return -1;
+		}
 		if (tb->c < 1 || tb->c > RTE_BBDEV_TURBO_MAX_CODE_BLOCKS) {
 			rte_bbdev_log(ERR,
 					"c (%u) is out of range 1 <= value <= %u",
@@ -2281,6 +2287,11 @@ validate_dec_op(struct rte_bbdev_dec_op *op, struct acc_queue *q)
 		return -1;
 	}
 
+	if (unlikely(turbo_dec->input.length == 0)) {
+		rte_bbdev_log(ERR, "input length null");
+		return -1;
+	}
+
 	if (turbo_dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		tb = &turbo_dec->tb_params;
 		if ((tb->k_neg < RTE_BBDEV_TURBO_MIN_CB_SIZE
@@ -2301,11 +2312,13 @@ validate_dec_op(struct rte_bbdev_dec_op *op, struct acc_queue *q)
 					RTE_BBDEV_TURBO_MAX_CB_SIZE);
 			return -1;
 		}
-		if (tb->c_neg > (RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1))
+		if (unlikely(tb->c_neg > (RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1))) {
 			rte_bbdev_log(ERR,
 					"c_neg (%u) is out of range 0 <= value <= %u",
 					tb->c_neg,
 					RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1);
+					return -1;
+		}
 		if (tb->c < 1 || tb->c > RTE_BBDEV_TURBO_MAX_CODE_BLOCKS) {
 			rte_bbdev_log(ERR,
 					"c (%u) is out of range 1 <= value <= %u",
