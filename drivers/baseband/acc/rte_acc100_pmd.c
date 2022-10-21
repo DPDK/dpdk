@@ -1364,6 +1364,8 @@ acc101_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
  *   Store information about device capabilities
  * @param next_triplet
  *   Index for ACC100 DMA Descriptor triplet
+ * @param scattergather
+ *   Flag to support scatter-gather for the mbuf
  *
  * @return
  *   Returns index of next triplet on success, other value if lengths of
@@ -1373,12 +1375,16 @@ acc101_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 static inline int
 acc100_dma_fill_blk_type_in(struct acc_dma_req_desc *desc,
 		struct rte_mbuf **input, uint32_t *offset, uint32_t cb_len,
-		uint32_t *seg_total_left, int next_triplet)
+		uint32_t *seg_total_left, int next_triplet,
+		bool scattergather)
 {
 	uint32_t part_len;
 	struct rte_mbuf *m = *input;
 
-	part_len = (*seg_total_left < cb_len) ? *seg_total_left : cb_len;
+	if (scattergather)
+		part_len = (*seg_total_left < cb_len) ? *seg_total_left : cb_len;
+	else
+		part_len = cb_len;
 	cb_len -= part_len;
 	*seg_total_left -= part_len;
 
@@ -1469,7 +1475,7 @@ acc100_dma_desc_le_fill(struct rte_bbdev_enc_op *op,
 	}
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset,
-			pad_le_in(in_length_in_bytes, q), seg_total_left, next_triplet);
+			pad_le_in(in_length_in_bytes, q), seg_total_left, next_triplet, false);
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
@@ -1557,7 +1563,9 @@ acc100_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	}
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset, kw,
-			seg_total_left, next_triplet);
+			seg_total_left, next_triplet,
+			check_bit(op->turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_DEC_SCATTER_GATHER));
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
@@ -1659,7 +1667,9 @@ acc100_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input,
 			in_offset, input_length,
-			seg_total_left, next_triplet);
+			seg_total_left, next_triplet,
+			check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_DEC_SCATTER_GATHER));
 
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
@@ -2727,10 +2737,9 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		fcw = &desc->req.fcw_ld;
 		q->d->fcw_ld_fill(op, fcw, harq_layout);
 
-		/* Special handling when overusing mbuf */
-		if (fcw->rm_e < ACC_MAX_E_MBUF)
-			seg_total_left = rte_pktmbuf_data_len(input)
-					- in_offset;
+		/* Special handling when using mbuf or not */
+		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DEC_SCATTER_GATHER))
+			seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 		else
 			seg_total_left = fcw->rm_e;
 
@@ -2805,9 +2814,10 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	r = op->ldpc_dec.tb_params.r;
 
 	while (mbuf_total_left > 0 && r < c) {
-
-		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
-
+		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DEC_SCATTER_GATHER))
+			seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
+		else
+			seg_total_left = op->ldpc_dec.input.length;
 		/* Set up DMA descriptor */
 		desc = acc_desc(q, total_enqueued_cbs);
 		desc->req.data_ptrs[0].address = q->ring_addr_iova + fcw_offset;
@@ -2832,7 +2842,9 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
 #endif
 
-		if (seg_total_left == 0) {
+		if (check_bit(op->ldpc_dec.op_flags,
+				RTE_BBDEV_LDPC_DEC_SCATTER_GATHER)
+				&& (seg_total_left == 0)) {
 			/* Go to the next mbuf */
 			input = input->next;
 			in_offset = 0;
