@@ -979,6 +979,7 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 
 	/* Read and save the populated config from ACC100 registers */
 	fetch_acc100_config(dev);
+	/* Check the status of device */
 	dev_info->device_status = RTE_BBDEV_DEV_NOT_SUPPORTED;
 
 	/* Expose number of queues */
@@ -2654,7 +2655,7 @@ enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 {
 #ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 	if (validate_ldpc_enc_op(op, q) == -1) {
-		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+		rte_bbdev_log(ERR, "LDPC encoder validation rejected");
 		return -EINVAL;
 	}
 #endif
@@ -3877,8 +3878,9 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
 				__ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
-		rte_bbdev_log_debug("Resp. desc %p: %x", desc,
-				rsp.val);
+		rte_bbdev_log_debug("Resp. desc %p: %x r %d c %d\n",
+				desc, rsp.val,
+				cb_idx, cbs_in_tb);
 
 		op->status |= ((rsp.input_err)
 				? (1 << RTE_BBDEV_DATA_ERROR) : 0);
@@ -3974,6 +3976,7 @@ dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
+	rte_bbdev_log_debug("Resp. desc %p: %x\n", desc, rsp.val);
 
 	/* Dequeue */
 	op = desc->req.op_addr;
