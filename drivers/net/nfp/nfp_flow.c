@@ -631,6 +631,10 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 				ip_set_flag = true;
 			}
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1322,6 +1326,32 @@ nfp_flow_action_set_ip(char *act_data,
 		set_ip->ipv4_dst = set_ipv4->ipv4_addr;
 }
 
+static void
+nfp_flow_action_set_ipv6(char *act_data,
+		const struct rte_flow_action *action,
+		bool ip_src_flag)
+{
+	int i;
+	size_t act_size;
+	struct nfp_fl_act_set_ipv6_addr *set_ip;
+	const struct rte_flow_action_set_ipv6 *set_ipv6;
+
+	set_ip = (struct nfp_fl_act_set_ipv6_addr *)act_data;
+	set_ipv6 = (const struct rte_flow_action_set_ipv6 *)action->conf;
+
+	if (ip_src_flag)
+		set_ip->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV6_SRC;
+	else
+		set_ip->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV6_DST;
+
+	act_size = sizeof(struct nfp_fl_act_set_ipv6_addr);
+	set_ip->head.len_lw = act_size >> NFP_FL_LW_SIZ;
+	set_ip->reserved = 0;
+
+	for (i = 0; i < 4; i++)
+		set_ip->ipv6[i].exact = set_ipv6->ipv6_addr[i];
+}
+
 static int
 nfp_flow_action_push_vlan(char *act_data,
 		const struct rte_flow_action *action)
@@ -1449,6 +1479,11 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 				position += sizeof(struct nfp_fl_act_set_ip4_addrs);
 				ip_set_flag = true;
 			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC");
+			nfp_flow_action_set_ipv6(position, action, true);
+			position += sizeof(struct nfp_fl_act_set_ipv6_addr);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
