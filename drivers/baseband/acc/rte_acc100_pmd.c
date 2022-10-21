@@ -885,7 +885,6 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 {
 	struct acc_device *d = dev->data->dev_private;
 	int i;
-
 	static const struct rte_bbdev_op_cap bbdev_capabilities[] = {
 		{
 			.type = RTE_BBDEV_OP_TURBO_DEC,
@@ -897,7 +896,6 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 					RTE_BBDEV_TURBO_EARLY_TERMINATION |
 					RTE_BBDEV_TURBO_DEC_INTERRUPTS |
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
-					RTE_BBDEV_TURBO_MAP_DEC |
 					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
 					RTE_BBDEV_TURBO_DEC_CRC_24B_DROP |
 					RTE_BBDEV_TURBO_DEC_SCATTER_GATHER,
@@ -992,12 +990,13 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 			d->acc_conf.q_ul_5g.num_qgroups;
 	dev_info->num_queues[RTE_BBDEV_OP_LDPC_ENC] = d->acc_conf.q_dl_5g.num_aqs_per_groups *
 			d->acc_conf.q_dl_5g.num_qgroups;
+	dev_info->num_queues[RTE_BBDEV_OP_FFT] = 0;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_DEC] = d->acc_conf.q_ul_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_ENC] = d->acc_conf.q_dl_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_DEC] = d->acc_conf.q_ul_5g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_ENC] = d->acc_conf.q_dl_5g.num_qgroups;
 	dev_info->max_num_queues = 0;
-	for (i = RTE_BBDEV_OP_TURBO_DEC; i <= RTE_BBDEV_OP_LDPC_ENC; i++)
+	for (i = RTE_BBDEV_OP_NONE; i <= RTE_BBDEV_OP_LDPC_ENC; i++)
 		dev_info->max_num_queues += dev_info->num_queues[i];
 	dev_info->queue_size_lim = ACC_MAX_QUEUE_DEPTH;
 	dev_info->hardware_accelerated = true;
