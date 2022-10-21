@@ -3189,6 +3189,7 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		uint16_t total_enqueued_cbs, uint8_t cbs_in_tb)
 {
 	union acc_dma_desc *desc = NULL;
+	union acc_dma_desc *desc_first = NULL;
 	int ret;
 	uint8_t r, c;
 	uint32_t in_offset, h_out_offset,
@@ -3208,6 +3209,7 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 
 	desc_idx = acc_desc_idx(q, total_enqueued_cbs);
 	desc = q->ring_addr + desc_idx;
+	desc_first = desc;
 	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
 	harq_layout = q->d->harq_layout;
 	q->d->fcw_ld_fill(op, &desc->req.fcw_ld, harq_layout);
@@ -3230,6 +3232,7 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		desc = acc_desc(q, total_enqueued_cbs);
 		desc->req.data_ptrs[0].address = q->ring_addr_iova + fcw_offset;
 		desc->req.data_ptrs[0].blen = ACC_FCW_LD_BLEN;
+		rte_memcpy(&desc->req.fcw_ld, &desc_first->req.fcw_ld, ACC_FCW_LD_BLEN);
 		ret = acc100_dma_desc_ld_fill(op, &desc->req, &input,
 				h_output, &in_offset, &h_out_offset,
 				&h_out_length,
