@@ -253,6 +253,44 @@ struct nfp_flower_mac_mpls {
 	rte_be32_t mpls_lse;
 };
 
+/*
+ * L4 ports (for UDP, TCP, SCTP) (1W/4B)
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |            port_src           |           port_dst            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_tp_ports {
+	rte_be16_t port_src;
+	rte_be16_t port_dst;
+};
+
+struct nfp_flower_ip_ext {
+	uint8_t tos;
+	uint8_t proto;
+	uint8_t ttl;
+	uint8_t flags;
+};
+
+/*
+ * L3 IPv4 details (3W/12B)
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |    DSCP   |ECN|   protocol    |      ttl      |     flags     |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                        ipv4_addr_src                          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                        ipv4_addr_dst                          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_ipv4 {
+	struct nfp_flower_ip_ext ip_ext;
+	rte_be32_t ipv4_src;
+	rte_be32_t ipv4_dst;
+};
+
 struct nfp_fl_act_head {
 	uint8_t jump_id;
 	uint8_t len_lw;
