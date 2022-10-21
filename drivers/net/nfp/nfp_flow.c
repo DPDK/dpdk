@@ -647,6 +647,13 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 				tp_set_flag = true;
 			}
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TP_DST detected");
+			if (!tp_set_flag) {
+				key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
+				tp_set_flag = true;
+			}
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1533,6 +1540,14 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_SRC");
 			nfp_flow_action_set_tp(position, action, true, tp_set_flag);
+			if (!tp_set_flag) {
+				position += sizeof(struct nfp_fl_act_set_tport);
+				tp_set_flag = true;
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_DST");
+			nfp_flow_action_set_tp(position, action, false, tp_set_flag);
 			if (!tp_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_tport);
 				tp_set_flag = true;
