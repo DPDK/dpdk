@@ -374,6 +374,31 @@ struct nfp_fl_act_push_vlan {
 	rte_be16_t vlan_tci;
 };
 
+/*
+ * IPv4 addrs
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   -   |opcode |       |jump_id|               -               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     ipv4_saddr_mask                           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     ipv4_saddr                                |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     ipv4_daddr_mask                           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     ipv4_daddr                                |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_fl_act_set_ip4_addrs {
+	struct nfp_fl_act_head head;
+	rte_be16_t reserved;
+	rte_be32_t ipv4_src_mask;
+	rte_be32_t ipv4_src;
+	rte_be32_t ipv4_dst_mask;
+	rte_be32_t ipv4_dst;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);
