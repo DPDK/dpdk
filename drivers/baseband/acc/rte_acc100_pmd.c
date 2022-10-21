@@ -938,7 +938,7 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 			d->acc_conf.q_ul_4g.num_qgroups - 1;
 	dev_info->default_queue_conf = default_queue_conf;
 	dev_info->cpu_flag_reqs = NULL;
-	dev_info->min_alignment = 64;
+	dev_info->min_alignment = 1;
 	dev_info->capabilities = bbdev_capabilities;
 #ifdef ACC100_EXT_MEM
 	dev_info->harq_buffer_size = d->ddr_size;
