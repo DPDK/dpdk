@@ -152,6 +152,18 @@ static const struct crypto_param cipher_list[] = {
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+		.alg.cipher =  RTE_CRYPTO_CIPHER_DES_CBC,
+		.key_length = 8,
+		.iv_length = 8,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+		.alg.cipher =  RTE_CRYPTO_CIPHER_3DES_CBC,
+		.key_length = 24,
+		.iv_length = 8,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
 		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CBC,
 		.key_length = 16,
 		.iv_length = 16,
