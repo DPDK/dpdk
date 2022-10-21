@@ -15,6 +15,7 @@
 #include "../nfp_ctrl.h"
 #include "../nfp_cpp_bridge.h"
 #include "../nfp_rxtx.h"
+#include "../nfp_flow.h"
 #include "../nfpcore/nfp_mip.h"
 #include "../nfpcore/nfp_rtsym.h"
 #include "../nfpcore/nfp_nsp.h"
@@ -1090,13 +1091,19 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 
 	pf_dev->app_fw_priv = app_fw_flower;
 
+	ret = nfp_flow_priv_init(pf_dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "init flow priv failed");
+		goto app_cleanup;
+	}
+
 	/* Allocate memory for the PF AND ctrl vNIC here (hence the * 2) */
 	pf_hw = rte_zmalloc_socket("nfp_pf_vnic", 2 * sizeof(struct nfp_net_adapter),
 			RTE_CACHE_LINE_SIZE, numa_node);
 	if (pf_hw == NULL) {
 		PMD_INIT_LOG(ERR, "Could not malloc nfp pf vnic");
 		ret = -ENOMEM;
-		goto app_cleanup;
+		goto flow_priv_cleanup;
 	}
 
 	/* Map the PF ctrl bar */
@@ -1174,6 +1181,8 @@ pf_cpp_area_cleanup:
 	nfp_cpp_area_free(pf_dev->ctrl_area);
 vnic_cleanup:
 	rte_free(pf_hw);
+flow_priv_cleanup:
+	nfp_flow_priv_uninit(pf_dev);
 app_cleanup:
 	rte_free(app_fw_flower);
 

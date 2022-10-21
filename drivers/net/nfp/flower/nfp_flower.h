@@ -54,6 +54,8 @@ struct nfp_app_fw_flower {
 
 	/* service id of ctrl vnic service */
 	uint32_t ctrl_vnic_id;
+
+	struct nfp_flow_priv *flow_priv;
 };
 
 int nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev);

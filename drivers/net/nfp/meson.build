@@ -27,4 +27,7 @@ sources = files(
         'nfp_cpp_bridge.c',
         'nfp_ethdev_vf.c',
         'nfp_ethdev.c',
+        'nfp_flow.c',
 )
+
+deps += ['hash']
