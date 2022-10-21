@@ -799,6 +799,65 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	return 0;
 }
 
+static inline void
+acc100_print_op(struct rte_bbdev_dec_op *op, enum rte_bbdev_op_type op_type,
+		uint16_t index)
+{
+	if (op == NULL)
+		return;
+	if (op_type == RTE_BBDEV_OP_LDPC_DEC)
+		rte_bbdev_log(DEBUG,
+			"  Op 5GUL %d %d %d %d %d %d %d %d %d %d %d %d",
+			index,
+			op->ldpc_dec.basegraph, op->ldpc_dec.z_c,
+			op->ldpc_dec.n_cb, op->ldpc_dec.q_m,
+			op->ldpc_dec.n_filler, op->ldpc_dec.cb_params.e,
+			op->ldpc_dec.op_flags, op->ldpc_dec.rv_index,
+			op->ldpc_dec.iter_max, op->ldpc_dec.iter_count,
+			op->ldpc_dec.harq_combined_input.length
+			);
+	else if (op_type == RTE_BBDEV_OP_LDPC_ENC) {
+		struct rte_bbdev_enc_op *op_dl = (struct rte_bbdev_enc_op *) op;
+		rte_bbdev_log(DEBUG,
+			"  Op 5GDL %d %d %d %d %d %d %d %d %d",
+			index,
+			op_dl->ldpc_enc.basegraph, op_dl->ldpc_enc.z_c,
+			op_dl->ldpc_enc.n_cb, op_dl->ldpc_enc.q_m,
+			op_dl->ldpc_enc.n_filler, op_dl->ldpc_enc.cb_params.e,
+			op_dl->ldpc_enc.op_flags, op_dl->ldpc_enc.rv_index
+			);
+	}
+}
+
+static int
+acc100_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
+{
+	struct acc_queue *q;
+	struct rte_bbdev_dec_op *op;
+	uint16_t i;
+
+	q = dev->data->queues[queue_id].queue_private;
+	rte_bbdev_log(INFO, "Queue Stop %d H/T/D %d %d %x OpType %d",
+			queue_id, q->sw_ring_head, q->sw_ring_tail,
+			q->sw_ring_depth, q->op_type);
+	for (i = 0; i < q->sw_ring_depth; ++i) {
+		op = (q->ring_addr + i)->req.op_addr;
+		acc100_print_op(op, q->op_type, i);
+	}
+	/* ignore all operations in flight and clear counters */
+	q->sw_ring_tail = q->sw_ring_head;
+	q->aq_enqueued = 0;
+	q->aq_dequeued = 0;
+	dev->data->queues[queue_id].queue_stats.enqueued_count = 0;
+	dev->data->queues[queue_id].queue_stats.dequeued_count = 0;
+	dev->data->queues[queue_id].queue_stats.enqueue_err_count = 0;
+	dev->data->queues[queue_id].queue_stats.dequeue_err_count = 0;
+	dev->data->queues[queue_id].queue_stats.enqueue_warn_count = 0;
+	dev->data->queues[queue_id].queue_stats.dequeue_warn_count = 0;
+
+	return 0;
+}
+
 /* Release ACC100 queue */
 static int
 acc100_queue_release(struct rte_bbdev *dev, uint16_t q_id)
@@ -991,6 +1050,7 @@ static const struct rte_bbdev_ops acc100_bbdev_ops = {
 	.info_get = acc100_dev_info_get,
 	.queue_setup = acc100_queue_setup,
 	.queue_release = acc100_queue_release,
+	.queue_stop = acc100_queue_stop,
 	.queue_intr_enable = acc100_queue_intr_enable,
 	.queue_intr_disable = acc100_queue_intr_disable
 };
