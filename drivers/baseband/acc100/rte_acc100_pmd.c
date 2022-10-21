@@ -769,6 +769,9 @@ acc100_dev_close(struct rte_bbdev *dev)
 		rte_free(d->info_ring);
 		rte_free(d->sw_rings_base);
 		d->sw_rings_base = NULL;
+		d->tail_ptrs = NULL;
+		d->info_ring = NULL;
+		d->harq_layout = NULL;
 	}
 	/* Ensure all in flight HW transactions are completed */
 	usleep(ACC100_LONG_WAIT);
