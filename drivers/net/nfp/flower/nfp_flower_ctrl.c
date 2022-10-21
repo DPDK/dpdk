@@ -4,6 +4,7 @@
  */
 
 #include <rte_common.h>
+#include <rte_service.h>
 #include <ethdev_pci.h>
 
 #include "../nfp_common.h"
@@ -238,7 +239,7 @@ nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower)
 	/* ctrl vNIC only has a single Rx queue */
 	rxq = ctrl_eth_dev->data->rx_queues[0];
 
-	while (true) {
+	while (rte_service_runstate_get(app_fw_flower->ctrl_vnic_id) != 0) {
 		count = nfp_flower_ctrl_vnic_recv(rxq, pkts_burst, MAX_PKT_BURST);
 		if (count != 0) {
 			app_fw_flower->ctrl_vnic_rx_count += count;

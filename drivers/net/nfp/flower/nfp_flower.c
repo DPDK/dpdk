@@ -1056,6 +1056,7 @@ nfp_flower_enable_services(struct nfp_app_fw_flower *app_fw_flower)
 		return -EINVAL;
 	}
 
+	app_fw_flower->ctrl_vnic_id = service_id;
 	PMD_INIT_LOG(INFO, "%s registered", flower_service.name);
 
 	/* Map them to available service cores*/

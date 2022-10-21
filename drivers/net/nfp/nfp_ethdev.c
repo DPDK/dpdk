@@ -1071,7 +1071,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* register the CPP bridge service here for primary use */
-	ret = nfp_enable_cpp_service(pf_dev->cpp);
+	ret = nfp_enable_cpp_service(pf_dev);
 	if (ret != 0)
 		PMD_INIT_LOG(INFO, "Enable cpp service failed.");
 

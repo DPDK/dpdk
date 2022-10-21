@@ -171,6 +171,9 @@ struct nfp_pf_dev {
 
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
+
+	/* service id of cpp bridge service */
+	uint32_t cpp_bridge_id;
 };
 
 struct nfp_app_fw_nic {

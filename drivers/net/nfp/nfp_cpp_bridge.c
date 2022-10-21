@@ -80,7 +80,7 @@ nfp_map_service(uint32_t service_id)
 }
 
 int
-nfp_enable_cpp_service(struct nfp_cpp *cpp)
+nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev)
 {
 	int ret;
 	uint32_t service_id = 0;
@@ -89,7 +89,7 @@ nfp_enable_cpp_service(struct nfp_cpp *cpp)
 		.callback     = nfp_cpp_bridge_service_func,
 	};
 
-	cpp_service.callback_userdata = (void *)cpp;
+	cpp_service.callback_userdata = (void *)pf_dev;
 
 	/* Register the cpp service */
 	ret = rte_service_component_register(&cpp_service, &service_id);
@@ -98,6 +98,7 @@ nfp_enable_cpp_service(struct nfp_cpp *cpp)
 		return -EINVAL;
 	}
 
+	pf_dev->cpp_bridge_id = service_id;
 	PMD_INIT_LOG(INFO, "NFP cpp service registered");
 
 	/* Map it to available service core*/
@@ -375,7 +376,8 @@ static int
 nfp_cpp_bridge_service_func(void *args)
 {
 	struct sockaddr address;
-	struct nfp_cpp *cpp = args;
+	struct nfp_cpp *cpp;
+	struct nfp_pf_dev *pf_dev;
 	int sockfd, datafd, op, ret;
 
 	unlink("/tmp/nfp_cpp");
@@ -408,7 +410,9 @@ nfp_cpp_bridge_service_func(void *args)
 		return ret;
 	}
 
-	for (;;) {
+	pf_dev = args;
+	cpp = pf_dev->cpp;
+	while (rte_service_runstate_get(pf_dev->cpp_bridge_id) != 0) {
 		datafd = accept(sockfd, NULL, NULL);
 		if (datafd < 0) {
 			RTE_LOG(ERR, PMD, "%s: accept call error (%d)\n",
