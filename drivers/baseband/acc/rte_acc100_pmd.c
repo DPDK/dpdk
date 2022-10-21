@@ -1954,14 +1954,11 @@ static inline int
 validate_ldpc_enc_op(struct rte_bbdev_enc_op *op, struct acc_queue *q)
 {
 	struct rte_bbdev_op_ldpc_enc *ldpc_enc = &op->ldpc_enc;
+	int K, N, q_m, crc24;
 
 	if (!validate_op_required(q))
 		return 0;
 
-	if (op->mempool == NULL) {
-		rte_bbdev_log(ERR, "Invalid mempool pointer");
-		return -1;
-	}
 	if (ldpc_enc->input.data == NULL) {
 		rte_bbdev_log(ERR, "Invalid input pointer");
 		return -1;
@@ -1970,17 +1967,12 @@ validate_ldpc_enc_op(struct rte_bbdev_enc_op *op, struct acc_queue *q)
 		rte_bbdev_log(ERR, "Invalid output pointer");
 		return -1;
 	}
-	if (ldpc_enc->input.length >
-			RTE_BBDEV_LDPC_MAX_CB_SIZE >> 3) {
-		rte_bbdev_log(ERR, "CB size (%u) is too big, max: %d",
-				ldpc_enc->input.length,
-				RTE_BBDEV_LDPC_MAX_CB_SIZE);
+	if (ldpc_enc->input.length == 0) {
+		rte_bbdev_log(ERR, "CB size (%u) is null", ldpc_enc->input.length);
 		return -1;
 	}
 	if ((ldpc_enc->basegraph > 2) || (ldpc_enc->basegraph == 0)) {
-		rte_bbdev_log(ERR,
-				"BG (%u) is out of range 1 <= value <= 2",
-				ldpc_enc->basegraph);
+		rte_bbdev_log(ERR, "BG (%u) is out of range 1 <= value <= 2", ldpc_enc->basegraph);
 		return -1;
 	}
 	if (ldpc_enc->rv_index > 3) {
@@ -1995,12 +1987,88 @@ validate_ldpc_enc_op(struct rte_bbdev_enc_op *op, struct acc_queue *q)
 				ldpc_enc->code_block_mode);
 		return -1;
 	}
-	int K = (ldpc_enc->basegraph == 1 ? 22 : 10) * ldpc_enc->z_c;
-	if (ldpc_enc->n_filler >= K) {
-		rte_bbdev_log(ERR,
-				"K and F are not compatible %u %u",
-				K, ldpc_enc->n_filler);
+	if (ldpc_enc->z_c > ACC_MAX_ZC) {
+		rte_bbdev_log(ERR, "Zc (%u) is out of range", ldpc_enc->z_c);
 		return -1;
+	}
+
+	K = (ldpc_enc->basegraph == 1 ? 22 : 10) * ldpc_enc->z_c;
+	N = (ldpc_enc->basegraph == 1 ? ACC_N_ZC_1 : ACC_N_ZC_2) * ldpc_enc->z_c;
+	q_m = ldpc_enc->q_m;
+	crc24 = 0;
+
+	if (check_bit(op->ldpc_enc.op_flags,
+			RTE_BBDEV_LDPC_CRC_24A_ATTACH) ||
+			check_bit(op->ldpc_enc.op_flags,
+			RTE_BBDEV_LDPC_CRC_24B_ATTACH))
+		crc24 = 24;
+	if ((K - ldpc_enc->n_filler) % 8 > 0) {
+		rte_bbdev_log(ERR, "K - F not byte aligned %u", K - ldpc_enc->n_filler);
+		return -1;
+	}
+	if (ldpc_enc->n_filler > (K - 2 * ldpc_enc->z_c)) {
+		rte_bbdev_log(ERR, "K - F invalid %u %u", K, ldpc_enc->n_filler);
+		return -1;
+	}
+	if ((ldpc_enc->n_cb > N) || (ldpc_enc->n_cb <= K)) {
+		rte_bbdev_log(ERR, "Ncb (%u) is out of range K  %d N %d", ldpc_enc->n_cb, K, N);
+		return -1;
+	}
+	if (!check_bit(op->ldpc_enc.op_flags,
+			RTE_BBDEV_LDPC_INTERLEAVER_BYPASS) &&
+			((q_m == 0) || ((q_m > 2) && ((q_m % 2) == 1))
+			|| (q_m > 8))) {
+		rte_bbdev_log(ERR, "Qm (%u) is out of range", ldpc_enc->q_m);
+		return -1;
+	}
+	if (ldpc_enc->code_block_mode == RTE_BBDEV_CODE_BLOCK) {
+		if (ldpc_enc->cb_params.e == 0) {
+			rte_bbdev_log(ERR, "E is null");
+			return -1;
+		}
+		if (q_m > 0) {
+			if (ldpc_enc->cb_params.e % q_m > 0) {
+				rte_bbdev_log(ERR, "E not multiple of qm %d", q_m);
+				return -1;
+			}
+		}
+		if ((ldpc_enc->z_c <= 11) && (ldpc_enc->cb_params.e > 3456)) {
+			rte_bbdev_log(ERR, "E too large for small block");
+			return -1;
+		}
+		if (ldpc_enc->input.length >
+			RTE_BBDEV_LDPC_MAX_CB_SIZE >> 3) {
+			rte_bbdev_log(ERR, "CB size (%u) is too big, max: %d",
+					ldpc_enc->input.length,
+					RTE_BBDEV_LDPC_MAX_CB_SIZE);
+		return -1;
+		}
+		if (K < (int) (ldpc_enc->input.length * 8 + ldpc_enc->n_filler) + crc24) {
+			rte_bbdev_log(ERR,
+					"K and F not matching input size %u %u %u",
+					K, ldpc_enc->n_filler,
+					ldpc_enc->input.length);
+			return -1;
+		}
+	} else {
+		if ((ldpc_enc->tb_params.c == 0) ||
+				(ldpc_enc->tb_params.ea == 0) ||
+				(ldpc_enc->tb_params.eb == 0)) {
+			rte_bbdev_log(ERR, "TB parameter is null");
+			return -1;
+		}
+		if (q_m > 0) {
+			if ((ldpc_enc->tb_params.ea % q_m > 0) ||
+				(ldpc_enc->tb_params.eb % q_m > 0)) {
+				rte_bbdev_log(ERR, "E not multiple of qm %d", q_m);
+				return -1;
+			}
+		}
+		if ((ldpc_enc->z_c <= 11) && (RTE_MAX(ldpc_enc->tb_params.ea,
+				ldpc_enc->tb_params.eb) > 3456)) {
+			rte_bbdev_log(ERR, "E too large for small block");
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -2010,24 +2078,30 @@ static inline int
 validate_ldpc_dec_op(struct rte_bbdev_dec_op *op, struct acc_queue *q)
 {
 	struct rte_bbdev_op_ldpc_dec *ldpc_dec = &op->ldpc_dec;
+	int K, N, q_m;
+	uint32_t min_harq_input;
 
 	if (!validate_op_required(q))
 		return 0;
 
-	if (op->mempool == NULL) {
-		rte_bbdev_log(ERR, "Invalid mempool pointer");
+	if (ldpc_dec->input.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid input pointer");
+		return -1;
+	}
+	if (ldpc_dec->hard_output.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid output pointer");
+		return -1;
+	}
+	if (ldpc_dec->input.length == 0) {
+		rte_bbdev_log(ERR, "input is null");
 		return -1;
 	}
 	if ((ldpc_dec->basegraph > 2) || (ldpc_dec->basegraph == 0)) {
-		rte_bbdev_log(ERR,
-				"BG (%u) is out of range 1 <= value <= 2",
-				ldpc_dec->basegraph);
+		rte_bbdev_log(ERR, "BG (%u) is out of range 1 <= value <= 2", ldpc_dec->basegraph);
 		return -1;
 	}
 	if (ldpc_dec->iter_max == 0) {
-		rte_bbdev_log(ERR,
-				"iter_max (%u) is equal to 0",
-				ldpc_dec->iter_max);
+		rte_bbdev_log(ERR, "iter_max (%u) is equal to 0", ldpc_dec->iter_max);
 		return -1;
 	}
 	if (ldpc_dec->rv_index > 3) {
@@ -2042,13 +2116,162 @@ validate_ldpc_dec_op(struct rte_bbdev_dec_op *op, struct acc_queue *q)
 				ldpc_dec->code_block_mode);
 		return -1;
 	}
-	int K = (ldpc_dec->basegraph == 1 ? 22 : 10) * ldpc_dec->z_c;
-	if (ldpc_dec->n_filler >= K) {
-		rte_bbdev_log(ERR,
-				"K and F are not compatible %u %u",
-				K, ldpc_dec->n_filler);
+	/* Check Zc is valid value. */
+	if ((ldpc_dec->z_c > ACC_MAX_ZC) || (ldpc_dec->z_c < 2)) {
+		rte_bbdev_log(ERR, "Zc (%u) is out of range", ldpc_dec->z_c);
 		return -1;
 	}
+	if (ldpc_dec->z_c > 256) {
+		if ((ldpc_dec->z_c % 32) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", ldpc_dec->z_c);
+			return -1;
+		}
+	} else if (ldpc_dec->z_c > 128) {
+		if ((ldpc_dec->z_c % 16) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", ldpc_dec->z_c);
+			return -1;
+		}
+	} else if (ldpc_dec->z_c > 64) {
+		if ((ldpc_dec->z_c % 8) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", ldpc_dec->z_c);
+			return -1;
+		}
+	} else if (ldpc_dec->z_c > 32) {
+		if ((ldpc_dec->z_c % 4) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", ldpc_dec->z_c);
+			return -1;
+		}
+	} else if (ldpc_dec->z_c > 16) {
+		if ((ldpc_dec->z_c % 2) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", ldpc_dec->z_c);
+			return -1;
+		}
+	}
+
+	K = (ldpc_dec->basegraph == 1 ? 22 : 10) * ldpc_dec->z_c;
+	N = (ldpc_dec->basegraph == 1 ? ACC_N_ZC_1 : ACC_N_ZC_2) * ldpc_dec->z_c;
+	q_m = ldpc_dec->q_m;
+
+	if (ldpc_dec->n_filler >= K - 2 * ldpc_dec->z_c) {
+		rte_bbdev_log(ERR, "K and F are not compatible %u %u", K, ldpc_dec->n_filler);
+		return -1;
+	}
+	if ((ldpc_dec->n_cb > N) || (ldpc_dec->n_cb <= K)) {
+		rte_bbdev_log(ERR, "Ncb (%u) is out of range K  %d N %d", ldpc_dec->n_cb, K, N);
+		return -1;
+	}
+	if (((q_m == 0) || ((q_m > 2) && ((q_m % 2) == 1))
+			|| (q_m > 8))) {
+		rte_bbdev_log(ERR, "Qm (%u) is out of range", ldpc_dec->q_m);
+		return -1;
+	}
+	if (ldpc_dec->code_block_mode == RTE_BBDEV_CODE_BLOCK) {
+		if (ldpc_dec->cb_params.e == 0) {
+			rte_bbdev_log(ERR, "E is null");
+			return -1;
+		}
+		if (ldpc_dec->cb_params.e % q_m > 0) {
+			rte_bbdev_log(ERR, "E not multiple of qm %d", q_m);
+			return -1;
+		}
+		if (ldpc_dec->cb_params.e > 512 * ldpc_dec->z_c) {
+			rte_bbdev_log(ERR, "E too high");
+			return -1;
+		}
+	} else {
+		if ((ldpc_dec->tb_params.c == 0) ||
+				(ldpc_dec->tb_params.ea == 0) ||
+				(ldpc_dec->tb_params.eb == 0)) {
+			rte_bbdev_log(ERR, "TB parameter is null");
+			return -1;
+		}
+		if ((ldpc_dec->tb_params.ea % q_m > 0) ||
+				(ldpc_dec->tb_params.eb % q_m > 0)) {
+			rte_bbdev_log(ERR, "E not multiple of qm %d", q_m);
+			return -1;
+		}
+		if ((ldpc_dec->tb_params.ea > 512 * ldpc_dec->z_c) ||
+				(ldpc_dec->tb_params.eb > 512 * ldpc_dec->z_c)) {
+			rte_bbdev_log(ERR, "E too high");
+			return -1;
+		}
+	}
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DECODE_BYPASS)) {
+		rte_bbdev_log(ERR, "Avoid LDPC Decode bypass");
+		return -1;
+	}
+
+	/* Avoid HARQ compression for small block size */
+	if ((check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION)) && (K < 2048))
+		op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
+
+	min_harq_input = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION) ? 256 : 64;
+	if (check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE) &&
+			ldpc_dec->harq_combined_input.length <
+			min_harq_input) {
+		rte_bbdev_log(ERR, "HARQ input size is too small %d < %d",
+			ldpc_dec->harq_combined_input.length,
+			min_harq_input);
+		return -1;
+	}
+
+	/* Enforce in-range HARQ input size */
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE)) {
+		uint32_t max_harq_input = RTE_ALIGN_CEIL(ldpc_dec->n_cb - ldpc_dec->n_filler, 64);
+
+		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION))
+			max_harq_input = max_harq_input * 3 / 4;
+
+		if (ldpc_dec->harq_combined_input.length > max_harq_input) {
+			rte_bbdev_log(ERR,
+					"HARQ input size out of range %d > %d, Ncb %d F %d K %d N %d",
+					ldpc_dec->harq_combined_input.length,
+					max_harq_input, ldpc_dec->n_cb,
+					ldpc_dec->n_filler, K, N);
+			/* Fallback to flush HARQ combine */
+			ldpc_dec->harq_combined_input.length = 0;
+
+			if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE))
+				op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
+		}
+	}
+
+#ifdef ACC100_EXT_MEM
+	/* Enforce in-range HARQ offset */
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE)) {
+		if ((op->ldpc_dec.harq_combined_input.offset >> 10) >= q->d->ddr_size) {
+			rte_bbdev_log(ERR,
+				"HARQin offset out of range %d > %d",
+				op->ldpc_dec.harq_combined_input.offset,
+				q->d->ddr_size);
+			return -1;
+		}
+		if ((op->ldpc_dec.harq_combined_input.offset & 0x3FF) > 0) {
+			rte_bbdev_log(ERR,
+				"HARQin offset not aligned on 1kB %d",
+				op->ldpc_dec.harq_combined_input.offset);
+			return -1;
+		}
+	}
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
+		if ((op->ldpc_dec.harq_combined_output.offset >> 10) >= q->d->ddr_size) {
+			rte_bbdev_log(ERR,
+				"HARQout offset out of range %d > %d",
+				op->ldpc_dec.harq_combined_output.offset,
+				q->d->ddr_size);
+			return -1;
+		}
+		if ((op->ldpc_dec.harq_combined_output.offset & 0x3FF) > 0) {
+			rte_bbdev_log(ERR,
+				"HARQout offset not aligned on 1kB %d",
+				op->ldpc_dec.harq_combined_output.offset);
+			return -1;
+		}
+	}
+#endif
+
 	return 0;
 }
 #endif
@@ -2686,7 +2909,7 @@ harq_loopback(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	memset(fcw, 0, sizeof(struct acc_fcw_ld));
 	fcw->FCWversion = ACC_FCW_VER;
 	fcw->qm = 2;
-	fcw->Zc = 384;
+	fcw->Zc = ACC_MAX_ZC;
 	if (harq_in_length < 16 * ACC_N_ZC_1)
 		fcw->Zc = 16;
 	fcw->ncb = fcw->Zc * ACC_N_ZC_1;

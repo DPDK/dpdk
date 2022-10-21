@@ -72,6 +72,8 @@ ACC100 and ACC101 5G/4G FEC PMDs support the following BBDEV capabilities:
   Recommended value is to keep the validation enabled by default
   as a protection for negative scenarios at a cost of some cycles
   spent to enforce these checks.
+  - ``ACC100_EXT_MEM``: default option with memory external to CPU on the PCIe card DDR itself.
+  Alternative build option will use CPU memory (not recommended).
 
 
 Installation

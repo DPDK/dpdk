@@ -121,6 +121,7 @@
 #define ACC_ALGO_SPA                0
 #define ACC_ALGO_MSA                1
 #define ACC_HARQ_ALIGN_64B          64
+#define ACC_MAX_ZC                  384
 
 /* Helper macro for logging */
 #define rte_acc_log(level, fmt, ...) \
