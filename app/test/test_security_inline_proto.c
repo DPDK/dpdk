@@ -1378,8 +1378,13 @@ test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
 						tx_pkt, NULL);
 			tx_pkt->ol_flags |= RTE_MBUF_F_TX_SEC_OFFLOAD;
 		}
+
 		/* Send packet to ethdev for inline IPsec processing. */
-		nb_sent = rte_eth_tx_burst(port_id, 0, &tx_pkt, 1);
+		if (event_mode_enabled)
+			nb_sent = event_tx_burst(&tx_pkt, 1);
+		else
+			nb_sent = rte_eth_tx_burst(port_id, 0, &tx_pkt, 1);
+
 		if (nb_sent != 1) {
 			printf("\nUnable to TX packets");
 			rte_pktmbuf_free(tx_pkt);
@@ -1390,11 +1395,14 @@ test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
 		rte_pause();
 
 		/* Receive back packet on loopback interface. */
-		do {
-			rte_delay_ms(1);
-			nb_rx = rte_eth_rx_burst(port_id, 0, &rx_pkt, 1);
-		} while (nb_rx == 0);
-
+		if (event_mode_enabled)
+			nb_rx = event_rx_burst(&rx_pkt, nb_sent);
+		else {
+			do {
+				rte_delay_ms(1);
+				nb_rx = rte_eth_rx_burst(port_id, 0, &rx_pkt, 1);
+			} while (nb_rx == 0);
+		}
 		rte_pktmbuf_adj(rx_pkt, RTE_ETHER_HDR_LEN);
 
 		if (res_d != NULL)
