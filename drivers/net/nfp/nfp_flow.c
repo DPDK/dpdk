@@ -527,6 +527,11 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV4;
 			key_ls->key_size += sizeof(struct nfp_flower_ipv4);
 			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
+			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV6;
+			key_ls->key_size += sizeof(struct nfp_flower_ipv6);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
 			return -ENOTSUP;
@@ -705,6 +710,51 @@ ipv4_end:
 	return 0;
 }
 
+static int
+nfp_flow_merge_ipv6(struct rte_flow *nfp_flow,
+		char **mbuf_off,
+		const struct rte_flow_item *item,
+		const struct nfp_flow_item_proc *proc,
+		bool is_mask)
+{
+	struct nfp_flower_ipv6 *ipv6;
+	const struct rte_ipv6_hdr *hdr;
+	struct nfp_flower_meta_tci *meta_tci;
+	const struct rte_flow_item_ipv6 *spec;
+	const struct rte_flow_item_ipv6 *mask;
+
+	spec = item->spec;
+	mask = item->mask ? item->mask : proc->mask_default;
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
+		goto ipv6_end;
+	}
+
+	/*
+	 * reserve space for L4 info.
+	 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv4
+	 */
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP)
+		*mbuf_off += sizeof(struct nfp_flower_tp_ports);
+
+	hdr = is_mask ? &mask->hdr : &spec->hdr;
+	ipv6 = (struct nfp_flower_ipv6 *)*mbuf_off;
+
+	ipv6->ip_ext.tos   = (hdr->vtc_flow & RTE_IPV6_HDR_TC_MASK) >>
+			RTE_IPV6_HDR_TC_SHIFT;
+	ipv6->ip_ext.proto = hdr->proto;
+	ipv6->ip_ext.ttl   = hdr->hop_limits;
+	memcpy(ipv6->ipv6_src, hdr->src_addr, sizeof(ipv6->ipv6_src));
+	memcpy(ipv6->ipv6_dst, hdr->dst_addr, sizeof(ipv6->ipv6_dst));
+
+ipv6_end:
+	*mbuf_off += sizeof(struct nfp_flower_ipv6);
+
+	return 0;
+}
+
 /* Graph of supported items and associated process function */
 static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
@@ -712,7 +762,8 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VLAN,
-			RTE_FLOW_ITEM_TYPE_IPV4),
+			RTE_FLOW_ITEM_TYPE_IPV4,
+			RTE_FLOW_ITEM_TYPE_IPV6),
 		.mask_support = &(const struct rte_flow_item_eth){
 			.hdr = {
 				.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
@@ -726,7 +777,8 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.merge = nfp_flow_merge_eth,
 	},
 	[RTE_FLOW_ITEM_TYPE_VLAN] = {
-		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_IPV4),
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_IPV4,
+			RTE_FLOW_ITEM_TYPE_IPV6),
 		.mask_support = &(const struct rte_flow_item_vlan){
 			.hdr = {
 				.vlan_tci  = RTE_BE16(0xefff),
@@ -752,6 +804,23 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.mask_default = &rte_flow_item_ipv4_mask,
 		.mask_sz = sizeof(struct rte_flow_item_ipv4),
 		.merge = nfp_flow_merge_ipv4,
+	},
+	[RTE_FLOW_ITEM_TYPE_IPV6] = {
+		.mask_support = &(const struct rte_flow_item_ipv6){
+			.hdr = {
+				.vtc_flow   = RTE_BE32(0x0ff00000),
+				.proto      = 0xff,
+				.hop_limits = 0xff,
+				.src_addr   = "\xff\xff\xff\xff\xff\xff\xff\xff"
+					"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.dst_addr   = "\xff\xff\xff\xff\xff\xff\xff\xff"
+					"\xff\xff\xff\xff\xff\xff\xff\xff",
+			},
+			.has_frag_ext = 1,
+		},
+		.mask_default = &rte_flow_item_ipv6_mask,
+		.mask_sz = sizeof(struct rte_flow_item_ipv6),
+		.merge = nfp_flow_merge_ipv6,
 	},
 };
 
