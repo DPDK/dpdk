@@ -189,10 +189,58 @@ nfp_flower_cmsg_get_data(struct rte_mbuf *m)
 	return rte_pktmbuf_mtod(m, char *) + 4 + 4 + NFP_FLOWER_CMSG_HLEN;
 }
 
+/*
+ * Metadata with L2 (1W/4B)
+ * ----------------------------------------------------------------
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |    key_type   |    mask_id    | PCP |p|   vlan outermost VID  |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *                                 ^                               ^
+ *                           NOTE: |             TCI               |
+ *                                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_meta_tci {
+	uint8_t nfp_flow_key_layer;
+	uint8_t mask_id;
+	rte_be16_t tci;
+};
+
+/*
+ * Extended metadata for additional key_layers (1W/4B)
+ * ----------------------------------------------------------------
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                      nfp_flow_key_layer2                      |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_ext_meta {
+	rte_be32_t nfp_flow_key_layer2;
+};
+
+/*
+ * L1 Port details (1W/4B)
+ * ----------------------------------------------------------------
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         port_ingress                          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_in_port {
+	rte_be32_t in_port;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);
 int nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,
 		uint32_t port_id, bool carrier_ok);
+int nfp_flower_cmsg_flow_delete(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_flow *flow);
+int nfp_flower_cmsg_flow_add(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_flow *flow);
 
 #endif /* _NFP_CMSG_H_ */

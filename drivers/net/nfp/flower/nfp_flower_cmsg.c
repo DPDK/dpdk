@@ -6,6 +6,7 @@
 #include "../nfpcore/nfp_nsp.h"
 #include "../nfp_logs.h"
 #include "../nfp_common.h"
+#include "../nfp_flow.h"
 #include "nfp_flower.h"
 #include "nfp_flower_cmsg.h"
 #include "nfp_flower_ctrl.h"
@@ -167,6 +168,74 @@ nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,
 	msg->reserved = 0;
 	msg->info     = carrier_ok;
 	msg->mtu      = 9000;
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int
+nfp_flower_cmsg_flow_delete(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_flow *flow)
+{
+	char *msg;
+	uint16_t cnt;
+	uint32_t msg_len;
+	struct rte_mbuf *mbuf;
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for flow delete.");
+		return -ENOMEM;
+	}
+
+	/* Copy the flow to mbuf */
+	nfp_flow_meta = flow->payload.meta;
+	msg_len = (nfp_flow_meta->key_len + nfp_flow_meta->mask_len +
+			nfp_flow_meta->act_len) << NFP_FL_LW_SIZ;
+	msg_len += sizeof(struct nfp_fl_rule_metadata);
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_FLOW_DEL, msg_len);
+	rte_memcpy(msg, flow->payload.meta, msg_len);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int
+nfp_flower_cmsg_flow_add(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_flow *flow)
+{
+	char *msg;
+	uint16_t cnt;
+	uint32_t msg_len;
+	struct rte_mbuf *mbuf;
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for flow add.");
+		return -ENOMEM;
+	}
+
+	/* copy the flow to mbuf */
+	nfp_flow_meta = flow->payload.meta;
+	msg_len = (nfp_flow_meta->key_len + nfp_flow_meta->mask_len +
+			nfp_flow_meta->act_len) << NFP_FL_LW_SIZ;
+	msg_len += sizeof(struct nfp_fl_rule_metadata);
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_FLOW_ADD, msg_len);
+	rte_memcpy(msg, flow->payload.meta, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
 	if (cnt == 0) {

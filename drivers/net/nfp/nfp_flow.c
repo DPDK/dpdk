@@ -7,11 +7,15 @@
 #include <rte_hash.h>
 #include <rte_jhash.h>
 #include <bus_pci_driver.h>
+#include <rte_malloc.h>
 
 #include "nfp_common.h"
 #include "nfp_flow.h"
 #include "nfp_logs.h"
 #include "flower/nfp_flower.h"
+#include "flower/nfp_flower_cmsg.h"
+#include "flower/nfp_flower_ctrl.h"
+#include "flower/nfp_flower_representor.h"
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
 
@@ -20,6 +24,15 @@ struct nfp_mask_id_entry {
 	uint32_t ref_cnt;
 	uint8_t mask_id;
 };
+
+static inline struct nfp_flow_priv *
+nfp_flow_dev_to_priv(struct rte_eth_dev *dev)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	return repr->app_fw_flower->flow_priv;
+}
 
 static int
 nfp_mask_id_alloc(struct nfp_flow_priv *priv, uint8_t *mask_id)
@@ -160,7 +173,7 @@ nfp_mask_table_search(struct nfp_flow_priv *priv,
 	return entry;
 }
 
-__rte_unused static bool
+static bool
 nfp_check_mask_add(struct nfp_flow_priv *priv,
 		char *mask_data,
 		uint32_t mask_len,
@@ -187,7 +200,7 @@ nfp_check_mask_add(struct nfp_flow_priv *priv,
 	return true;
 }
 
-__rte_unused static bool
+static bool
 nfp_check_mask_remove(struct nfp_flow_priv *priv,
 		char *mask_data,
 		uint32_t mask_len,
@@ -215,7 +228,7 @@ nfp_check_mask_remove(struct nfp_flow_priv *priv,
 	return true;
 }
 
-__rte_unused static int
+static int
 nfp_flow_table_add(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -230,7 +243,7 @@ nfp_flow_table_add(struct nfp_flow_priv *priv,
 	return 0;
 }
 
-__rte_unused static int
+static int
 nfp_flow_table_delete(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -245,7 +258,7 @@ nfp_flow_table_delete(struct nfp_flow_priv *priv,
 	return 0;
 }
 
-__rte_unused static struct rte_flow *
+static struct rte_flow *
 nfp_flow_table_search(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -262,7 +275,7 @@ nfp_flow_table_search(struct nfp_flow_priv *priv,
 	return flow_find;
 }
 
-__rte_unused static struct rte_flow *
+static struct rte_flow *
 nfp_flow_alloc(struct nfp_fl_key_ls *key_layer)
 {
 	char *tmp;
@@ -295,14 +308,14 @@ exit:
 	return NULL;
 }
 
-__rte_unused static void
+static void
 nfp_flow_free(struct rte_flow *nfp_flow)
 {
 	rte_free(nfp_flow->payload.meta);
 	rte_free(nfp_flow);
 }
 
-__rte_unused static int
+static int
 nfp_stats_id_alloc(struct nfp_flow_priv *priv, uint32_t *ctx)
 {
 	struct circ_buf *ring;
@@ -337,7 +350,7 @@ nfp_stats_id_alloc(struct nfp_flow_priv *priv, uint32_t *ctx)
 	return 0;
 }
 
-__rte_unused static int
+static int
 nfp_stats_id_free(struct nfp_flow_priv *priv, uint32_t ctx)
 {
 	struct circ_buf *ring;
@@ -351,6 +364,567 @@ nfp_stats_id_free(struct nfp_flow_priv *priv, uint32_t ctx)
 	memcpy(&ring->buf[ring->head], &ctx, NFP_FL_STATS_ELEM_RS);
 	ring->head = (ring->head + NFP_FL_STATS_ELEM_RS) %
 			(priv->stats_ring_size * NFP_FL_STATS_ELEM_RS);
+
+	return 0;
+}
+
+static void
+nfp_flower_compile_meta_tci(char *mbuf_off, struct nfp_fl_key_ls *key_layer)
+{
+	struct nfp_flower_meta_tci *tci_meta;
+
+	tci_meta = (struct nfp_flower_meta_tci *)mbuf_off;
+	tci_meta->nfp_flow_key_layer = key_layer->key_layer;
+	tci_meta->mask_id = ~0;
+	tci_meta->tci = rte_cpu_to_be_16(key_layer->vlan);
+}
+
+static void
+nfp_flower_update_meta_tci(char *exact, uint8_t mask_id)
+{
+	struct nfp_flower_meta_tci *meta_tci;
+
+	meta_tci = (struct nfp_flower_meta_tci *)exact;
+	meta_tci->mask_id = mask_id;
+}
+
+static void
+nfp_flower_compile_ext_meta(char *mbuf_off, struct nfp_fl_key_ls *key_layer)
+{
+	struct nfp_flower_ext_meta *ext_meta;
+
+	ext_meta = (struct nfp_flower_ext_meta *)mbuf_off;
+	ext_meta->nfp_flow_key_layer2 = rte_cpu_to_be_32(key_layer->key_layer_two);
+}
+
+static void
+nfp_compile_meta_port(char *mbuf_off,
+		struct nfp_fl_key_ls *key_layer,
+		bool is_mask)
+{
+	struct nfp_flower_in_port *port_meta;
+
+	port_meta = (struct nfp_flower_in_port *)mbuf_off;
+
+	if (is_mask)
+		port_meta->in_port = rte_cpu_to_be_32(~0);
+	else if (key_layer->tun_type)
+		port_meta->in_port = rte_cpu_to_be_32(NFP_FL_PORT_TYPE_TUN |
+				key_layer->tun_type);
+	else
+		port_meta->in_port = rte_cpu_to_be_32(key_layer->port);
+}
+
+static void
+nfp_flow_compile_metadata(struct nfp_flow_priv *priv,
+		struct rte_flow *nfp_flow,
+		struct nfp_fl_key_ls *key_layer,
+		uint32_t stats_ctx)
+{
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
+	char *mbuf_off_exact;
+	char *mbuf_off_mask;
+
+	/*
+	 * Convert to long words as firmware expects
+	 * lengths in units of NFP_FL_LW_SIZ.
+	 */
+	nfp_flow_meta               = nfp_flow->payload.meta;
+	nfp_flow_meta->key_len      = key_layer->key_size >> NFP_FL_LW_SIZ;
+	nfp_flow_meta->mask_len     = key_layer->key_size >> NFP_FL_LW_SIZ;
+	nfp_flow_meta->act_len      = key_layer->act_size >> NFP_FL_LW_SIZ;
+	nfp_flow_meta->flags        = 0;
+	nfp_flow_meta->host_ctx_id  = rte_cpu_to_be_32(stats_ctx);
+	nfp_flow_meta->host_cookie  = rte_rand();
+	nfp_flow_meta->flow_version = rte_cpu_to_be_64(priv->flower_version);
+
+	mbuf_off_exact = nfp_flow->payload.unmasked_data;
+	mbuf_off_mask  = nfp_flow->payload.mask_data;
+
+	/* Populate Metadata */
+	nfp_flower_compile_meta_tci(mbuf_off_exact, key_layer);
+	nfp_flower_compile_meta_tci(mbuf_off_mask, key_layer);
+	mbuf_off_exact += sizeof(struct nfp_flower_meta_tci);
+	mbuf_off_mask  += sizeof(struct nfp_flower_meta_tci);
+
+	/* Populate Extended Metadata if required */
+	if (key_layer->key_layer & NFP_FLOWER_LAYER_EXT_META) {
+		nfp_flower_compile_ext_meta(mbuf_off_exact, key_layer);
+		nfp_flower_compile_ext_meta(mbuf_off_mask, key_layer);
+		mbuf_off_exact += sizeof(struct nfp_flower_ext_meta);
+		mbuf_off_mask  += sizeof(struct nfp_flower_ext_meta);
+	}
+
+	/* Populate Port Data */
+	nfp_compile_meta_port(mbuf_off_exact, key_layer, false);
+	nfp_compile_meta_port(mbuf_off_mask, key_layer, true);
+	mbuf_off_exact += sizeof(struct nfp_flower_in_port);
+	mbuf_off_mask  += sizeof(struct nfp_flower_in_port);
+}
+
+static int
+nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
+		__rte_unused struct nfp_fl_key_ls *key_ls)
+{
+	const struct rte_flow_item *item;
+
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		switch (item->type) {
+		default:
+			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
+			return -ENOTSUP;
+		}
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
+		struct nfp_fl_key_ls *key_ls)
+{
+	int ret = 0;
+	const struct rte_flow_action *action;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		/* Make sure actions length no longer than NFP_FL_MAX_A_SIZ */
+		if (key_ls->act_size > NFP_FL_MAX_A_SIZ) {
+			PMD_DRV_LOG(ERR, "The action list is too long.");
+			ret = -ERANGE;
+			break;
+		}
+
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VOID detected");
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
+			return -ENOTSUP;
+		}
+	}
+
+	return ret;
+}
+
+static int
+nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
+		const struct rte_flow_action actions[],
+		struct nfp_fl_key_ls *key_ls)
+{
+	int ret = 0;
+
+	key_ls->key_layer_two = 0;
+	key_ls->key_layer = NFP_FLOWER_LAYER_PORT;
+	key_ls->key_size = sizeof(struct nfp_flower_meta_tci) +
+			sizeof(struct nfp_flower_in_port);
+	key_ls->act_size = 0;
+	key_ls->port = ~0;
+	key_ls->vlan = 0;
+	key_ls->tun_type = NFP_FL_TUN_NONE;
+
+	ret |= nfp_flow_key_layers_calculate_items(items, key_ls);
+	ret |= nfp_flow_key_layers_calculate_actions(actions, key_ls);
+
+	return ret;
+}
+
+static struct rte_flow *
+nfp_flow_process(struct nfp_flower_representor *representor,
+		const struct rte_flow_item items[],
+		const struct rte_flow_action actions[],
+		bool validate_flag)
+{
+	int ret;
+	char *hash_data;
+	char *mask_data;
+	uint32_t mask_len;
+	uint32_t stats_ctx = 0;
+	uint8_t new_mask_id = 0;
+	struct rte_flow *nfp_flow;
+	struct rte_flow *flow_find;
+	struct nfp_flow_priv *priv;
+	struct nfp_fl_key_ls key_layer;
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
+
+	ret = nfp_flow_key_layers_calculate(items, actions, &key_layer);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Key layers calculate failed.");
+		return NULL;
+	}
+
+	if (key_layer.port == (uint32_t)~0)
+		key_layer.port = representor->port_id;
+
+	priv = representor->app_fw_flower->flow_priv;
+	ret = nfp_stats_id_alloc(priv, &stats_ctx);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "nfp stats id alloc failed.");
+		return NULL;
+	}
+
+	nfp_flow = nfp_flow_alloc(&key_layer);
+	if (nfp_flow == NULL) {
+		PMD_DRV_LOG(ERR, "Alloc nfp flow failed.");
+		goto free_stats;
+	}
+
+	nfp_flow->install_flag = true;
+
+	nfp_flow_compile_metadata(priv, nfp_flow, &key_layer, stats_ctx);
+
+	nfp_flow_meta = nfp_flow->payload.meta;
+	mask_data = nfp_flow->payload.mask_data;
+	mask_len = key_layer.key_size;
+	if (!nfp_check_mask_add(priv, mask_data, mask_len,
+			&nfp_flow_meta->flags, &new_mask_id)) {
+		PMD_DRV_LOG(ERR, "nfp mask add check failed.");
+		goto free_flow;
+	}
+
+	/* Once we have a mask_id, update the meta tci */
+	nfp_flower_update_meta_tci(nfp_flow->payload.unmasked_data, new_mask_id);
+
+	/* Calculate and store the hash_key for later use */
+	hash_data = (char *)(nfp_flow->payload.unmasked_data);
+	nfp_flow->hash_key = rte_jhash(hash_data, nfp_flow->length, priv->hash_seed);
+
+	/* Find the flow in hash table */
+	flow_find = nfp_flow_table_search(priv, nfp_flow);
+	if (flow_find != NULL) {
+		PMD_DRV_LOG(ERR, "This flow is already exist.");
+		if (!nfp_check_mask_remove(priv, mask_data, mask_len,
+				&nfp_flow_meta->flags)) {
+			PMD_DRV_LOG(ERR, "nfp mask del check failed.");
+		}
+		goto free_flow;
+	}
+
+	/* Flow validate should not update the flower version */
+	if (!validate_flag)
+		priv->flower_version++;
+
+	return nfp_flow;
+
+free_flow:
+	nfp_flow_free(nfp_flow);
+free_stats:
+	nfp_stats_id_free(priv, stats_ctx);
+
+	return NULL;
+}
+
+static struct rte_flow *
+nfp_flow_setup(struct nfp_flower_representor *representor,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item items[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error,
+		bool validate_flag)
+{
+	if (attr->group != 0)
+		PMD_DRV_LOG(INFO, "Pretend we support group attribute.");
+
+	if (attr->priority != 0)
+		PMD_DRV_LOG(INFO, "Pretend we support priority attribute.");
+
+	if (attr->transfer != 0)
+		PMD_DRV_LOG(INFO, "Pretend we support transfer attribute.");
+
+	if (attr->egress != 0) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+				NULL, "Egress is not supported.");
+		return NULL;
+	}
+
+	if (attr->ingress == 0) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+				NULL, "Only ingress is supported.");
+		return NULL;
+	}
+
+	return nfp_flow_process(representor, items, actions, validate_flag);
+}
+
+static int
+nfp_flow_teardown(struct nfp_flow_priv *priv,
+		struct rte_flow *nfp_flow,
+		bool validate_flag)
+{
+	char *mask_data;
+	uint32_t mask_len;
+	uint32_t stats_ctx;
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
+
+	nfp_flow_meta = nfp_flow->payload.meta;
+	mask_data = nfp_flow->payload.mask_data;
+	mask_len = nfp_flow_meta->mask_len << NFP_FL_LW_SIZ;
+	if (!nfp_check_mask_remove(priv, mask_data, mask_len,
+			&nfp_flow_meta->flags)) {
+		PMD_DRV_LOG(ERR, "nfp mask del check failed.");
+		return -EINVAL;
+	}
+
+	nfp_flow_meta->flow_version = rte_cpu_to_be_64(priv->flower_version);
+
+	/* Flow validate should not update the flower version */
+	if (!validate_flag)
+		priv->flower_version++;
+
+	stats_ctx = rte_be_to_cpu_32(nfp_flow_meta->host_ctx_id);
+	return nfp_stats_id_free(priv, stats_ctx);
+}
+
+static int
+nfp_flow_validate(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item items[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_flow *nfp_flow;
+	struct nfp_flow_priv *priv;
+	struct nfp_flower_representor *representor;
+
+	representor = (struct nfp_flower_representor *)dev->data->dev_private;
+	priv = representor->app_fw_flower->flow_priv;
+
+	nfp_flow = nfp_flow_setup(representor, attr, items, actions, error, true);
+	if (nfp_flow == NULL) {
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "This flow can not be offloaded.");
+	}
+
+	ret = nfp_flow_teardown(priv, nfp_flow, true);
+	if (ret != 0) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Flow resource free failed.");
+	}
+
+	nfp_flow_free(nfp_flow);
+
+	return 0;
+}
+
+static struct rte_flow *
+nfp_flow_create(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item items[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_flow *nfp_flow;
+	struct nfp_flow_priv *priv;
+	struct nfp_app_fw_flower *app_fw_flower;
+	struct nfp_flower_representor *representor;
+
+	representor = (struct nfp_flower_representor *)dev->data->dev_private;
+	app_fw_flower = representor->app_fw_flower;
+	priv = app_fw_flower->flow_priv;
+
+	nfp_flow = nfp_flow_setup(representor, attr, items, actions, error, false);
+	if (nfp_flow == NULL) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "This flow can not be offloaded.");
+		return NULL;
+	}
+
+	/* Add the flow to hardware */
+	if (nfp_flow->install_flag) {
+		ret = nfp_flower_cmsg_flow_add(app_fw_flower, nfp_flow);
+		if (ret != 0) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "Add flow to firmware failed.");
+			goto flow_teardown;
+		}
+	}
+
+	/* Add the flow to flow hash table */
+	ret = nfp_flow_table_add(priv, nfp_flow);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Add flow to the flow table failed.");
+		goto flow_teardown;
+	}
+
+	return nfp_flow;
+
+flow_teardown:
+	nfp_flow_teardown(priv, nfp_flow, false);
+	nfp_flow_free(nfp_flow);
+
+	return NULL;
+}
+
+static int
+nfp_flow_destroy(struct rte_eth_dev *dev,
+		struct rte_flow *nfp_flow,
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_flow *flow_find;
+	struct nfp_flow_priv *priv;
+	struct nfp_app_fw_flower *app_fw_flower;
+	struct nfp_flower_representor *representor;
+
+	representor = (struct nfp_flower_representor *)dev->data->dev_private;
+	app_fw_flower = representor->app_fw_flower;
+	priv = app_fw_flower->flow_priv;
+
+	/* Find the flow in flow hash table */
+	flow_find = nfp_flow_table_search(priv, nfp_flow);
+	if (flow_find == NULL) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Flow does not exist.");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	/* Update flow */
+	ret = nfp_flow_teardown(priv, nfp_flow, false);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Flow teardown failed.");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	/* Delete the flow from hardware */
+	if (nfp_flow->install_flag) {
+		ret = nfp_flower_cmsg_flow_delete(app_fw_flower, nfp_flow);
+		if (ret != 0) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "Delete flow from firmware failed.");
+			ret = -EINVAL;
+			goto exit;
+		}
+	}
+
+	/* Delete the flow from flow hash table */
+	ret = nfp_flow_table_delete(priv, nfp_flow);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Delete flow from the flow table failed.");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+exit:
+	nfp_flow_free(nfp_flow);
+
+	return ret;
+}
+
+static int
+nfp_flow_flush(struct rte_eth_dev *dev,
+		struct rte_flow_error *error)
+{
+	int ret = 0;
+	void *next_data;
+	uint32_t iter = 0;
+	const void *next_key;
+	struct nfp_flow_priv *priv;
+
+	priv = nfp_flow_dev_to_priv(dev);
+
+	while (rte_hash_iterate(priv->flow_table, &next_key, &next_data, &iter) >= 0) {
+		ret = nfp_flow_destroy(dev, (struct rte_flow *)next_data, error);
+		if (ret != 0)
+			break;
+	}
+
+	return ret;
+}
+
+static void
+nfp_flow_stats_get(struct rte_eth_dev *dev,
+		struct rte_flow *nfp_flow,
+		void *data)
+{
+	uint32_t ctx_id;
+	struct rte_flow *flow;
+	struct nfp_flow_priv *priv;
+	struct nfp_fl_stats *stats;
+	struct rte_flow_query_count *query;
+
+	priv = nfp_flow_dev_to_priv(dev);
+	flow = nfp_flow_table_search(priv, nfp_flow);
+	if (flow == NULL) {
+		PMD_DRV_LOG(ERR, "Can not find statistics for this flow.");
+		return;
+	}
+
+	query = (struct rte_flow_query_count *)data;
+	memset(query, 0, sizeof(*query));
+
+	ctx_id = rte_be_to_cpu_32(nfp_flow->payload.meta->host_ctx_id);
+	stats = &priv->stats[ctx_id];
+
+	rte_spinlock_lock(&priv->stats_lock);
+	if (stats->pkts != 0 && stats->bytes != 0) {
+		query->hits = stats->pkts;
+		query->bytes = stats->bytes;
+		query->hits_set = 1;
+		query->bytes_set = 1;
+		if (query->reset != 0) {
+			stats->pkts = 0;
+			stats->bytes = 0;
+		}
+	}
+	rte_spinlock_unlock(&priv->stats_lock);
+}
+
+static int
+nfp_flow_query(struct rte_eth_dev *dev,
+		struct rte_flow *nfp_flow,
+		const struct rte_flow_action *actions,
+		void *data,
+		struct rte_flow_error *error)
+{
+	const struct rte_flow_action *action;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			nfp_flow_stats_get(dev, nfp_flow, data);
+			break;
+		default:
+			rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "Unsupported action type for flow query.");
+			return -ENOTSUP;
+		}
+	}
+
+	return 0;
+}
+
+static const struct rte_flow_ops nfp_flow_ops = {
+	.validate                    = nfp_flow_validate,
+	.create                      = nfp_flow_create,
+	.destroy                     = nfp_flow_destroy,
+	.flush                       = nfp_flow_flush,
+	.query                       = nfp_flow_query,
+};
+
+int
+nfp_net_flow_ops_get(struct rte_eth_dev *dev,
+		const struct rte_flow_ops **ops)
+{
+	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0) {
+		*ops = NULL;
+		PMD_DRV_LOG(ERR, "Port is not a representor.");
+		return -EINVAL;
+	}
+
+	*ops = &nfp_flow_ops;
 
 	return 0;
 }
