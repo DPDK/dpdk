@@ -1051,7 +1051,7 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		union acc_harq_layout_data *harq_layout)
 {
 	uint16_t harq_out_length, harq_in_length, ncb_p, k0_p, parity_offset;
-	uint16_t harq_index;
+	uint32_t harq_index;
 	uint32_t l;
 	bool harq_prun = false;
 	uint32_t max_hc_in;
@@ -1099,8 +1099,7 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 			RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION);
 	fcw->llr_pack_mode = check_bit(op->ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_LLR_COMPRESSION);
-	harq_index = op->ldpc_dec.harq_combined_output.offset /
-			ACC_HARQ_OFFSET;
+	harq_index = hq_index(op->ldpc_dec.harq_combined_output.offset);
 #ifdef ACC100_EXT_MEM
 	/* Limit cases when HARQ pruning is valid */
 	harq_prun = ((op->ldpc_dec.harq_combined_output.offset %
@@ -1778,20 +1777,17 @@ acc100_dma_desc_ld_update(struct rte_bbdev_dec_op *op,
 	*h_out_length = desc->data_ptrs[next_triplet].blen;
 	next_triplet++;
 
-	if (check_bit(op->ldpc_dec.op_flags,
-				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
-		desc->data_ptrs[next_triplet].address =
-				op->ldpc_dec.harq_combined_output.offset;
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
+		struct rte_bbdev_dec_op *prev_op;
+		uint32_t harq_idx, prev_harq_idx;
+		desc->data_ptrs[next_triplet].address = op->ldpc_dec.harq_combined_output.offset;
 		/* Adjust based on previous operation */
-		struct rte_bbdev_dec_op *prev_op = desc->op_addr;
+		prev_op = desc->op_addr;
 		op->ldpc_dec.harq_combined_output.length =
 				prev_op->ldpc_dec.harq_combined_output.length;
-		int16_t hq_idx = op->ldpc_dec.harq_combined_output.offset /
-				ACC_HARQ_OFFSET;
-		int16_t prev_hq_idx =
-				prev_op->ldpc_dec.harq_combined_output.offset
-				/ ACC_HARQ_OFFSET;
-		harq_layout[hq_idx].val = harq_layout[prev_hq_idx].val;
+		harq_idx = hq_index(op->ldpc_dec.harq_combined_output.offset);
+		prev_harq_idx = hq_index(prev_op->ldpc_dec.harq_combined_output.offset);
+		harq_layout[harq_idx].val = harq_layout[prev_harq_idx].val;
 #ifndef ACC100_EXT_MEM
 		struct rte_bbdev_op_data ho =
 				op->ldpc_dec.harq_combined_output;
@@ -2535,6 +2531,9 @@ harq_loopback(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	struct rte_mbuf *hq_output_head, *hq_output;
 	uint16_t harq_dma_length_in, harq_dma_length_out;
 	uint16_t harq_in_length = op->ldpc_dec.harq_combined_input.length;
+	bool ddr_mem_in;
+	union acc_harq_layout_data *harq_layout;
+	uint32_t harq_index;
 
 	if (harq_in_length == 0) {
 		rte_bbdev_log(ERR, "Loopback of invalid null size\n");
@@ -2554,13 +2553,12 @@ harq_loopback(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	}
 	harq_dma_length_out = harq_dma_length_in;
 
-	bool ddr_mem_in = check_bit(op->ldpc_dec.op_flags,
+	ddr_mem_in = check_bit(op->ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE);
-	union acc_harq_layout_data *harq_layout = q->d->harq_layout;
-	uint16_t harq_index = (ddr_mem_in ?
+	harq_layout = q->d->harq_layout;
+	harq_index = hq_index(ddr_mem_in ?
 			op->ldpc_dec.harq_combined_input.offset :
-			op->ldpc_dec.harq_combined_output.offset)
-			/ ACC_HARQ_OFFSET;
+			op->ldpc_dec.harq_combined_output.offset);
 
 	desc = acc_desc(q, total_enqueued_cbs);
 	fcw = &desc->req.fcw_ld;
