@@ -532,6 +532,11 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV6;
 			key_ls->key_size += sizeof(struct nfp_flower_ipv6);
 			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_TCP detected");
+			key_ls->key_layer |= NFP_FLOWER_LAYER_TP;
+			key_ls->key_size += sizeof(struct nfp_flower_tp_ports);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
 			return -ENOTSUP;
@@ -755,6 +760,78 @@ ipv6_end:
 	return 0;
 }
 
+static int
+nfp_flow_merge_tcp(struct rte_flow *nfp_flow,
+		char **mbuf_off,
+		const struct rte_flow_item *item,
+		const struct nfp_flow_item_proc *proc,
+		bool is_mask)
+{
+	uint8_t tcp_flags;
+	struct nfp_flower_tp_ports *ports;
+	struct nfp_flower_ipv4 *ipv4 = NULL;
+	struct nfp_flower_ipv6 *ipv6 = NULL;
+	const struct rte_flow_item_tcp *spec;
+	const struct rte_flow_item_tcp *mask;
+	struct nfp_flower_meta_tci *meta_tci;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge tcp: no item->spec!");
+		return 0;
+	}
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4) {
+		ipv4  = (struct nfp_flower_ipv4 *)
+			(*mbuf_off - sizeof(struct nfp_flower_ipv4));
+		ports = (struct nfp_flower_tp_ports *)
+			((char *)ipv4 - sizeof(struct nfp_flower_tp_ports));
+	} else { /* IPv6 */
+		ipv6  = (struct nfp_flower_ipv6 *)
+			(*mbuf_off - sizeof(struct nfp_flower_ipv6));
+		ports = (struct nfp_flower_tp_ports *)
+			((char *)ipv6 - sizeof(struct nfp_flower_tp_ports));
+	}
+
+	mask = item->mask ? item->mask : proc->mask_default;
+	if (is_mask) {
+		ports->port_src = mask->hdr.src_port;
+		ports->port_dst = mask->hdr.dst_port;
+		tcp_flags       = mask->hdr.tcp_flags;
+	} else {
+		ports->port_src = spec->hdr.src_port;
+		ports->port_dst = spec->hdr.dst_port;
+		tcp_flags       = spec->hdr.tcp_flags;
+	}
+
+	if (ipv4) {
+		if (tcp_flags & RTE_TCP_FIN_FLAG)
+			ipv4->ip_ext.flags |= NFP_FL_TCP_FLAG_FIN;
+		if (tcp_flags & RTE_TCP_SYN_FLAG)
+			ipv4->ip_ext.flags |= NFP_FL_TCP_FLAG_SYN;
+		if (tcp_flags & RTE_TCP_RST_FLAG)
+			ipv4->ip_ext.flags |= NFP_FL_TCP_FLAG_RST;
+		if (tcp_flags & RTE_TCP_PSH_FLAG)
+			ipv4->ip_ext.flags |= NFP_FL_TCP_FLAG_PSH;
+		if (tcp_flags & RTE_TCP_URG_FLAG)
+			ipv4->ip_ext.flags |= NFP_FL_TCP_FLAG_URG;
+	} else {  /* IPv6 */
+		if (tcp_flags & RTE_TCP_FIN_FLAG)
+			ipv6->ip_ext.flags |= NFP_FL_TCP_FLAG_FIN;
+		if (tcp_flags & RTE_TCP_SYN_FLAG)
+			ipv6->ip_ext.flags |= NFP_FL_TCP_FLAG_SYN;
+		if (tcp_flags & RTE_TCP_RST_FLAG)
+			ipv6->ip_ext.flags |= NFP_FL_TCP_FLAG_RST;
+		if (tcp_flags & RTE_TCP_PSH_FLAG)
+			ipv6->ip_ext.flags |= NFP_FL_TCP_FLAG_PSH;
+		if (tcp_flags & RTE_TCP_URG_FLAG)
+			ipv6->ip_ext.flags |= NFP_FL_TCP_FLAG_URG;
+	}
+
+	return 0;
+}
+
 /* Graph of supported items and associated process function */
 static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
@@ -791,6 +868,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.merge = nfp_flow_merge_vlan,
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_TCP),
 		.mask_support = &(const struct rte_flow_item_ipv4){
 			.hdr = {
 				.type_of_service = 0xff,
@@ -806,6 +884,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.merge = nfp_flow_merge_ipv4,
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_TCP),
 		.mask_support = &(const struct rte_flow_item_ipv6){
 			.hdr = {
 				.vtc_flow   = RTE_BE32(0x0ff00000),
@@ -821,6 +900,18 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.mask_default = &rte_flow_item_ipv6_mask,
 		.mask_sz = sizeof(struct rte_flow_item_ipv6),
 		.merge = nfp_flow_merge_ipv6,
+	},
+	[RTE_FLOW_ITEM_TYPE_TCP] = {
+		.mask_support = &(const struct rte_flow_item_tcp){
+			.hdr = {
+				.tcp_flags = 0xff,
+				.src_port  = RTE_BE16(0xffff),
+				.dst_port  = RTE_BE16(0xffff),
+			},
+		},
+		.mask_default = &rte_flow_item_tcp_mask,
+		.mask_sz = sizeof(struct rte_flow_item_tcp),
+		.merge = nfp_flow_merge_tcp,
 	},
 };
 

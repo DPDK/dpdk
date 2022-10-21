@@ -24,6 +24,13 @@
 #define NFP_FLOWER_LAYER2_GENEVE_OP     RTE_BIT32(6)
 #define NFP_FLOWER_LAYER2_TUN_IPV6      RTE_BIT32(7)
 
+/* Compressed HW representation of TCP Flags */
+#define NFP_FL_TCP_FLAG_FIN             RTE_BIT32(0)
+#define NFP_FL_TCP_FLAG_SYN             RTE_BIT32(1)
+#define NFP_FL_TCP_FLAG_RST             RTE_BIT32(2)
+#define NFP_FL_TCP_FLAG_PSH             RTE_BIT32(3)
+#define NFP_FL_TCP_FLAG_URG             RTE_BIT32(4)
+
 #define NFP_FL_META_FLAG_MANAGE_MASK    RTE_BIT32(7)
 
 #define NFP_FLOWER_MASK_VLAN_CFI        RTE_BIT32(12)
