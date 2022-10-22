@@ -37,6 +37,8 @@
 #include "nfpcore/nfp_rtsym.h"
 #include "nfpcore/nfp_nsp.h"
 
+#include "flower/nfp_flower_representor.h"
+
 #include "nfp_common.h"
 #include "nfp_ctrl.h"
 #include "nfp_rxtx.h"
@@ -412,10 +414,16 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
 	int ret;
+	struct nfp_flower_representor *repr;
 
 	PMD_DRV_LOG(DEBUG, "Promiscuous mode enable");
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
+		repr = dev->data->dev_private;
+		hw = repr->app_fw_flower->pf_hw;
+	} else {
+		hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	}
 
 	if (!(hw->cap & NFP_NET_CFG_CTRL_PROMISC)) {
 		PMD_INIT_LOG(INFO, "Promiscuous mode not supported");

@@ -6,6 +6,8 @@
 #ifndef _NFP_FLOWER_H_
 #define _NFP_FLOWER_H_
 
+#include "../nfp_common.h"
+
 /*
  * Flower fallback and ctrl path always adds and removes
  * 8 bytes of prepended data. Tx descriptors must point

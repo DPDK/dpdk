@@ -6,6 +6,8 @@
 #ifndef _NFP_FLOWER_REPRESENTOR_H_
 #define _NFP_FLOWER_REPRESENTOR_H_
 
+#include "nfp_flower.h"
+
 /*
  * enum nfp_repr_type - type of representor
  * @NFP_REPR_TYPE_PHYS_PORT:   external NIC port
