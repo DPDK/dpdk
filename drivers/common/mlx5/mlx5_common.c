@@ -164,8 +164,9 @@ mlx5_kvargs_prepare(struct mlx5_kvargs_ctrl *mkvlist,
 	struct rte_kvargs *kvlist;
 	uint32_t i;
 
-	if (devargs == NULL)
+	if (mkvlist == NULL)
 		return 0;
+	MLX5_ASSERT(devargs != NULL && devargs->args != NULL);
 	kvlist = rte_kvargs_parse(devargs->args, NULL);
 	if (kvlist == NULL) {
 		rte_errno = EINVAL;
@@ -400,8 +401,9 @@ parse_class_options(const struct rte_devargs *devargs,
 {
 	int ret = 0;
 
-	if (devargs == NULL)
+	if (mkvlist == NULL)
 		return 0;
+	MLX5_ASSERT(devargs != NULL);
 	if (devargs->cls != NULL && devargs->cls->name != NULL)
 		/* Global syntax, only one class type. */
 		return class_name_to_value(devargs->cls->name);
@@ -965,7 +967,7 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 	int ret;
 
 	DRV_LOG(INFO, "probe device \"%s\".", eal_dev->name);
-	if (eal_dev->devargs != NULL)
+	if (eal_dev->devargs != NULL && eal_dev->devargs->args != NULL)
 		mkvlist_p = &mkvlist;
 	ret = mlx5_kvargs_prepare(mkvlist_p, eal_dev->devargs);
 	if (ret < 0) {
