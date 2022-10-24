@@ -265,13 +265,14 @@ init_mbufpool(unsigned nb_mbuf)
 }
 
 static uint16_t
-alloc_lcore(uint16_t socketid)
+alloc_lcore(int socketid)
 {
 	unsigned lcore_id;
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (LCORE_AVAIL != lcore_conf[lcore_id].status ||
-		    lcore_conf[lcore_id].socketid != socketid ||
+		    (socketid != SOCKET_ID_ANY &&
+		     lcore_conf[lcore_id].socketid != socketid) ||
 		    lcore_id == rte_get_main_lcore())
 			continue;
 		lcore_conf[lcore_id].status = LCORE_USED;
@@ -711,17 +712,18 @@ test_pmd_perf(void)
 	num = 0;
 	RTE_ETH_FOREACH_DEV(portid) {
 		if (socketid == -1) {
-			socketid = rte_eth_dev_socket_id(portid);
-			worker_id = alloc_lcore(socketid);
+			worker_id = alloc_lcore(rte_eth_dev_socket_id(portid));
 			if (worker_id == (uint16_t)-1) {
 				printf("No avail lcore to run test\n");
 				return -1;
 			}
+			socketid = rte_lcore_to_socket_id(worker_id);
 			printf("Performance test runs on lcore %u socket %u\n",
 			       worker_id, socketid);
 		}
 
-		if (socketid != rte_eth_dev_socket_id(portid)) {
+		if (socketid != rte_eth_dev_socket_id(portid) &&
+		    rte_eth_dev_socket_id(portid) != SOCKET_ID_ANY) {
 			printf("Skip port %d\n", portid);
 			continue;
 		}
