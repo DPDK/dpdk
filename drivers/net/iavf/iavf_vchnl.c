@@ -488,22 +488,32 @@ iavf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 				iavf_handle_pf_event_msg(dev, info.msg_buf,
 						info.msg_len);
 			} else {
-				/* check for inline IPsec events */
-				struct inline_ipsec_msg *imsg =
-					(struct inline_ipsec_msg *)info.msg_buf;
-				struct rte_eth_event_ipsec_desc desc;
-				if (msg_opc ==
-					VIRTCHNL_OP_INLINE_IPSEC_CRYPTO &&
-					imsg->ipsec_opcode ==
-						INLINE_IPSEC_OP_EVENT) {
-					struct virtchnl_ipsec_event *ev =
-							imsg->ipsec_data.event;
-					desc.subtype =
-						RTE_ETH_EVENT_IPSEC_UNKNOWN;
-					desc.metadata = ev->ipsec_event_data;
-					iavf_dev_event_post(dev, RTE_ETH_EVENT_IPSEC,
-							&desc, sizeof(desc));
-					return;
+				/* check for unsolicited messages i.e. events */
+				if (info.msg_len > 0) {
+					switch (msg_opc) {
+					case VIRTCHNL_OP_INLINE_IPSEC_CRYPTO: {
+						struct inline_ipsec_msg *imsg =
+							(struct inline_ipsec_msg *)info.msg_buf;
+						if (imsg->ipsec_opcode
+								== INLINE_IPSEC_OP_EVENT) {
+							struct rte_eth_event_ipsec_desc desc;
+							struct virtchnl_ipsec_event *ev =
+									imsg->ipsec_data.event;
+							desc.subtype =
+									RTE_ETH_EVENT_IPSEC_UNKNOWN;
+							desc.metadata =
+									ev->ipsec_event_data;
+							iavf_dev_event_post(dev,
+								RTE_ETH_EVENT_IPSEC,
+								&desc, sizeof(desc));
+							continue;
+					}
+				}
+						break;
+					default:
+						break;
+					}
+
 				}
 
 				/* read message and it's expected one */
