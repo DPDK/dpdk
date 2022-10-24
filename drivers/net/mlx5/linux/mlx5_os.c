@@ -2411,7 +2411,7 @@ mlx5_os_parse_eth_devargs(struct rte_device *dev,
 			dev->devargs->cls_str);
 		return -rte_errno;
 	}
-	if (eth_da->type == RTE_ETH_REPRESENTOR_NONE) {
+	if (eth_da->type == RTE_ETH_REPRESENTOR_NONE && dev->devargs->args) {
 		/* Parse legacy device argument */
 		ret = rte_eth_devargs_parse(dev->devargs->args, eth_da);
 		if (ret) {
