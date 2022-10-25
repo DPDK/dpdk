@@ -2384,8 +2384,10 @@ nfp_flower_add_tun_neigh_v4_encap(struct nfp_app_fw_flower *app_fw_flower,
 
 static int
 nfp_flower_add_tun_neigh_v4_decap(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		struct rte_flow *nfp_flow)
 {
+	bool exists = false;
 	struct nfp_fl_tun *tmp;
 	struct nfp_fl_tun *tun;
 	struct nfp_flow_priv *priv;
@@ -2419,11 +2421,17 @@ nfp_flower_add_tun_neigh_v4_decap(struct nfp_app_fw_flower *app_fw_flower,
 	LIST_FOREACH(tmp, &priv->nn_list, next) {
 		if (memcmp(&tmp->payload, &tun->payload, sizeof(struct nfp_fl_tun_entry)) == 0) {
 			tmp->ref_cnt++;
-			return 0;
+			exists = true;
+			break;
 		}
 	}
 
-	LIST_INSERT_HEAD(&priv->nn_list, tun, next);
+	if (exists) {
+		if (!nfp_flower_support_decap_v2(app_fw_flower))
+			return 0;
+	} else {
+		LIST_INSERT_HEAD(&priv->nn_list, tun, next);
+	}
 
 	memset(&payload, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v4));
 	payload.dst_ipv4 = ipv4->ipv4_src;
@@ -2431,6 +2439,17 @@ nfp_flower_add_tun_neigh_v4_decap(struct nfp_app_fw_flower *app_fw_flower,
 	memcpy(payload.common.dst_mac, eth->mac_src, RTE_ETHER_ADDR_LEN);
 	memcpy(payload.common.src_mac, eth->mac_dst, RTE_ETHER_ADDR_LEN);
 	payload.common.port_id = port->in_port;
+
+	if (nfp_flower_support_decap_v2(app_fw_flower)) {
+		if (meta_tci->tci != 0) {
+			payload.ext.vlan_tci = meta_tci->tci;
+			payload.ext.vlan_tpid = 0x88a8;
+		} else {
+			payload.ext.vlan_tci = 0xffff;
+			payload.ext.vlan_tpid = 0xffff;
+		}
+		payload.ext.host_ctx = nfp_flow_meta->host_ctx_id;
+	}
 
 	return nfp_flower_cmsg_tun_neigh_v4_rule(app_fw_flower, &payload);
 }
@@ -2492,8 +2511,10 @@ nfp_flower_add_tun_neigh_v6_encap(struct nfp_app_fw_flower *app_fw_flower,
 
 static int
 nfp_flower_add_tun_neigh_v6_decap(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		struct rte_flow *nfp_flow)
 {
+	bool exists = false;
 	struct nfp_fl_tun *tmp;
 	struct nfp_fl_tun *tun;
 	struct nfp_flow_priv *priv;
@@ -2527,11 +2548,17 @@ nfp_flower_add_tun_neigh_v6_decap(struct nfp_app_fw_flower *app_fw_flower,
 	LIST_FOREACH(tmp, &priv->nn_list, next) {
 		if (memcmp(&tmp->payload, &tun->payload, sizeof(struct nfp_fl_tun_entry)) == 0) {
 			tmp->ref_cnt++;
-			return 0;
+			exists = true;
+			break;
 		}
 	}
 
-	LIST_INSERT_HEAD(&priv->nn_list, tun, next);
+	if (exists) {
+		if (!nfp_flower_support_decap_v2(app_fw_flower))
+			return 0;
+	} else {
+		LIST_INSERT_HEAD(&priv->nn_list, tun, next);
+	}
 
 	memset(&payload, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v6));
 	memcpy(payload.dst_ipv6, ipv6->ipv6_src, sizeof(payload.dst_ipv6));
@@ -2539,6 +2566,17 @@ nfp_flower_add_tun_neigh_v6_decap(struct nfp_app_fw_flower *app_fw_flower,
 	memcpy(payload.common.dst_mac, eth->mac_src, RTE_ETHER_ADDR_LEN);
 	memcpy(payload.common.src_mac, eth->mac_dst, RTE_ETHER_ADDR_LEN);
 	payload.common.port_id = port->in_port;
+
+	if (nfp_flower_support_decap_v2(app_fw_flower)) {
+		if (meta_tci->tci != 0) {
+			payload.ext.vlan_tci = meta_tci->tci;
+			payload.ext.vlan_tpid = 0x88a8;
+		} else {
+			payload.ext.vlan_tci = 0xffff;
+			payload.ext.vlan_tpid = 0xffff;
+		}
+		payload.ext.host_ctx = nfp_flow_meta->host_ctx_id;
+	}
 
 	return nfp_flower_cmsg_tun_neigh_v6_rule(app_fw_flower, &payload);
 }
@@ -2557,12 +2595,14 @@ nfp_flower_del_tun_neigh_v6(struct nfp_app_fw_flower *app_fw_flower,
 
 static int
 nfp_flower_del_tun_neigh(struct nfp_app_fw_flower *app_fw_flower,
-		struct rte_flow *nfp_flow)
+		struct rte_flow *nfp_flow,
+		bool decap_flag)
 {
 	int ret;
 	bool flag = false;
 	struct nfp_fl_tun *tmp;
 	struct nfp_fl_tun *tun;
+	struct nfp_flower_in_port *port;
 
 	tun = &nfp_flow->tun;
 	LIST_FOREACH(tmp, &app_fw_flower->flow_priv->nn_list, next) {
@@ -2588,6 +2628,40 @@ nfp_flower_del_tun_neigh(struct nfp_app_fw_flower *app_fw_flower,
 			return nfp_flower_del_tun_neigh_v4(app_fw_flower,
 					tmp->payload.dst.dst_ipv4);
 		}
+	}
+
+	if (!decap_flag)
+		return 0;
+
+	port = (struct nfp_flower_in_port *)(nfp_flow->payload.unmasked_data +
+			sizeof(struct nfp_fl_rule_metadata) +
+			sizeof(struct nfp_flower_meta_tci));
+
+	if (tmp->payload.v6_flag != 0) {
+		struct nfp_flower_cmsg_tun_neigh_v6 nn_v6;
+		memset(&nn_v6, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v6));
+		memcpy(nn_v6.dst_ipv6, tmp->payload.dst.dst_ipv6, sizeof(nn_v6.dst_ipv6));
+		memcpy(nn_v6.src_ipv6, tmp->payload.src.src_ipv6, sizeof(nn_v6.src_ipv6));
+		memcpy(nn_v6.common.dst_mac, tmp->payload.dst_addr, RTE_ETHER_ADDR_LEN);
+		memcpy(nn_v6.common.src_mac, tmp->payload.src_addr, RTE_ETHER_ADDR_LEN);
+		nn_v6.common.port_id = port->in_port;
+
+		ret = nfp_flower_cmsg_tun_neigh_v6_rule(app_fw_flower, &nn_v6);
+	} else {
+		struct nfp_flower_cmsg_tun_neigh_v4 nn_v4;
+		memset(&nn_v4, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v4));
+		nn_v4.dst_ipv4 = tmp->payload.dst.dst_ipv4;
+		nn_v4.src_ipv4 = tmp->payload.src.src_ipv4;
+		memcpy(nn_v4.common.dst_mac, tmp->payload.dst_addr, RTE_ETHER_ADDR_LEN);
+		memcpy(nn_v4.common.src_mac, tmp->payload.src_addr, RTE_ETHER_ADDR_LEN);
+		nn_v4.common.port_id = port->in_port;
+
+		ret = nfp_flower_cmsg_tun_neigh_v4_rule(app_fw_flower, &nn_v4);
+	}
+
+	if (ret != 0) {
+		PMD_DRV_LOG(DEBUG, "Failed to send the nn entry");
+		return -EINVAL;
 	}
 
 	return 0;
@@ -2877,12 +2951,14 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 		goto free_entry;
 	}
 
-	ret = nfp_flower_cmsg_pre_tunnel_rule(repr->app_fw_flower, nfp_flow_meta,
-			nfp_mac_idx, true);
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Send pre tunnel rule failed");
-		ret = -EINVAL;
-		goto free_entry;
+	if (!nfp_flower_support_decap_v2(repr->app_fw_flower)) {
+		ret = nfp_flower_cmsg_pre_tunnel_rule(repr->app_fw_flower, nfp_flow_meta,
+				nfp_mac_idx, true);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Send pre tunnel rule failed");
+			ret = -EINVAL;
+			goto free_entry;
+		}
 	}
 
 	find_entry->ref_cnt = 1U;
@@ -2933,18 +3009,20 @@ nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
 		return -EINVAL;
 	}
 
-	ret = nfp_flower_cmsg_pre_tunnel_rule(app_fw_flower, nfp_flow_meta,
-			nfp_mac_idx, false);
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Send pre tunnel rule failed");
-		return -EINVAL;
+	if (!nfp_flower_support_decap_v2(app_fw_flower)) {
+		ret = nfp_flower_cmsg_pre_tunnel_rule(app_fw_flower, nfp_flow_meta,
+				nfp_mac_idx, false);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Send pre tunnel rule failed");
+			return -EINVAL;
+		}
 	}
 
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
 	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4)
-		return nfp_flower_add_tun_neigh_v4_decap(app_fw_flower, nfp_flow);
+		return nfp_flower_add_tun_neigh_v4_decap(app_fw_flower, nfp_flow_meta, nfp_flow);
 	else
-		return nfp_flower_add_tun_neigh_v6_decap(app_fw_flower, nfp_flow);
+		return nfp_flower_add_tun_neigh_v6_decap(app_fw_flower, nfp_flow_meta, nfp_flow);
 }
 
 static int
@@ -3654,11 +3732,11 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 		break;
 	case NFP_FLOW_ENCAP:
 		/* Delete the entry from nn table */
-		ret = nfp_flower_del_tun_neigh(app_fw_flower, nfp_flow);
+		ret = nfp_flower_del_tun_neigh(app_fw_flower, nfp_flow, false);
 		break;
 	case NFP_FLOW_DECAP:
 		/* Delete the entry from nn table */
-		ret = nfp_flower_del_tun_neigh(app_fw_flower, nfp_flow);
+		ret = nfp_flower_del_tun_neigh(app_fw_flower, nfp_flow, true);
 		if (ret != 0)
 			goto exit;
 

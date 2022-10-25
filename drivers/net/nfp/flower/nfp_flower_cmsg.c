@@ -263,6 +263,8 @@ nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	msg_len = sizeof(struct nfp_flower_cmsg_tun_neigh_v4);
+	if (!nfp_flower_support_decap_v2(app_fw_flower))
+		msg_len -= sizeof(struct nfp_flower_tun_neigh_ext);
 	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_NEIGH, msg_len);
 	memcpy(msg, payload, msg_len);
 
@@ -292,6 +294,8 @@ nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	msg_len = sizeof(struct nfp_flower_cmsg_tun_neigh_v6);
+	if (!nfp_flower_support_decap_v2(app_fw_flower))
+		msg_len -= sizeof(struct nfp_flower_tun_neigh_ext);
 	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V6, msg_len);
 	memcpy(msg, payload, msg_len);
 

@@ -1074,6 +1074,8 @@ int
 nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 {
 	int ret;
+	int err;
+	uint64_t ext_features;
 	unsigned int numa_node;
 	struct nfp_net_hw *pf_hw;
 	struct nfp_net_hw *ctrl_hw;
@@ -1114,6 +1116,18 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 		ret = -ENODEV;
 		goto vnic_cleanup;
 	}
+
+	/* Read the extra features */
+	ext_features = nfp_rtsym_read_le(pf_dev->sym_tbl, "_abi_flower_extra_features",
+			&err);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Couldn't read extra features from fw");
+		ret = -EIO;
+		goto pf_cpp_area_cleanup;
+	}
+
+	/* Store the extra features */
+	app_fw_flower->ext_features = ext_features;
 
 	/* Fill in the PF vNIC and populate app struct */
 	app_fw_flower->pf_hw = pf_hw;

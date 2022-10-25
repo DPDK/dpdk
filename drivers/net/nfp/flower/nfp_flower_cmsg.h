@@ -136,6 +136,21 @@ struct nfp_flower_tun_neigh {
 };
 
 /*
+ *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *          +---------------------------------------------------------------+
+ *        0 |         VLAN_TPID             |            VLAN_ID            |
+ *          +---------------------------------------------------------------+
+ *        1 |                           HOST_CTX                            |
+ *          +---------------------------------------------------------------+
+ */
+struct nfp_flower_tun_neigh_ext {
+	rte_be16_t vlan_tpid;
+	rte_be16_t vlan_tci;
+	rte_be32_t host_ctx;
+};
+
+/*
  * NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V4
  *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
  *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
@@ -157,6 +172,7 @@ struct nfp_flower_cmsg_tun_neigh_v4 {
 	rte_be32_t dst_ipv4;
 	rte_be32_t src_ipv4;
 	struct nfp_flower_tun_neigh common;
+	struct nfp_flower_tun_neigh_ext ext;
 };
 
 /*
@@ -193,6 +209,7 @@ struct nfp_flower_cmsg_tun_neigh_v6 {
 	uint8_t dst_ipv6[16];
 	uint8_t src_ipv6[16];
 	struct nfp_flower_tun_neigh common;
+	struct nfp_flower_tun_neigh_ext ext;
 };
 
 #define NFP_TUN_PRE_TUN_RULE_DEL    (1 << 0)
