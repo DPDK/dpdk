@@ -124,6 +124,15 @@ struct mlx5_flow_expand_node {
 	 */
 };
 
+/** Keep same format with mlx5_flow_expand_rss to share the buffer for expansion. */
+struct mlx5_flow_expand_sqn {
+	uint32_t entries; /** Number of entries */
+	struct {
+		struct rte_flow_item *pattern; /**< Expanded pattern array. */
+		uint32_t priority; /**< Priority offset for each expansion. */
+	} entry[];
+};
+
 /* Optional expand field. The expansion alg will not go deeper. */
 #define MLX5_EXPANSION_NODE_OPTIONAL (UINT64_C(1) << 0)
 
@@ -570,6 +579,88 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 		node = next_node && *next_node ? &graph[*next_node] : NULL;
 	};
 	return lsize;
+}
+
+/**
+ * Expand SQN flows into several possible flows according to the Tx queue
+ * number
+ *
+ * @param[in] buf
+ *   Buffer to store the result expansion.
+ * @param[in] size
+ *   Buffer size in bytes. If 0, @p buf can be NULL.
+ * @param[in] pattern
+ *   User flow pattern.
+ * @param[in] sq_specs
+ *   Buffer to store sq spec.
+ *
+ * @return
+ *   0 for success and negative value for failure
+ *
+ */
+static int
+mlx5_flow_expand_sqn(struct mlx5_flow_expand_sqn *buf, size_t size,
+		     const struct rte_flow_item *pattern,
+		     struct mlx5_rte_flow_item_sq *sq_specs)
+{
+	const struct rte_flow_item *item;
+	bool port_representor = false;
+	size_t user_pattern_size = 0;
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+	void *addr = NULL;
+	uint16_t port_id;
+	size_t lsize;
+	int elt = 2;
+	uint16_t i;
+
+	buf->entries = 0;
+	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		if (item->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR) {
+			const struct rte_flow_item_ethdev *pid_v = item->spec;
+
+			if (!pid_v)
+				return 0;
+			port_id = pid_v->port_id;
+			port_representor = true;
+		}
+		user_pattern_size += sizeof(*item);
+	}
+	if (!port_representor)
+		return 0;
+	dev = &rte_eth_devices[port_id];
+	priv = dev->data->dev_private;
+	buf->entry[0].pattern = (void *)&buf->entry[priv->txqs_n];
+	lsize = offsetof(struct mlx5_flow_expand_sqn, entry) +
+		sizeof(buf->entry[0]) * priv->txqs_n;
+	if (lsize + (user_pattern_size + sizeof(struct rte_flow_item) * elt) * priv->txqs_n > size)
+		return -EINVAL;
+	addr = buf->entry[0].pattern;
+	for (i = 0; i != priv->txqs_n; ++i) {
+		struct rte_flow_item pattern_add[] = {
+			{
+				.type = (enum rte_flow_item_type)
+					MLX5_RTE_FLOW_ITEM_TYPE_SQ,
+				.spec = &sq_specs[i],
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_END,
+			},
+		};
+		struct mlx5_txq_ctrl *txq = mlx5_txq_get(dev, i);
+
+		if (txq == NULL)
+			return -EINVAL;
+		buf->entry[i].pattern = addr;
+		sq_specs[i].queue = mlx5_txq_get_sqn(txq);
+		mlx5_txq_release(dev, i);
+		rte_memcpy(addr, pattern, user_pattern_size);
+		addr = (void *)(((uintptr_t)addr) + user_pattern_size);
+		rte_memcpy(addr, pattern_add, sizeof(struct rte_flow_item) * elt);
+		addr = (void *)(((uintptr_t)addr) + sizeof(struct rte_flow_item) * elt);
+		buf->entries++;
+	}
+	return 0;
 }
 
 enum mlx5_expansion {
@@ -5421,6 +5512,11 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 			memcpy(sfx_items, items, sizeof(*sfx_items));
 			sfx_items++;
 			break;
+		case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
+			flow_src_port = 0;
+			memcpy(sfx_items, items, sizeof(*sfx_items));
+			sfx_items++;
+			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			/* Determine if copy vlan item below. */
 			vlan_item_src = items;
@@ -6076,7 +6172,8 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 		};
 		/* Prepare the suffix subflow items. */
 		for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-			if (items->type == RTE_FLOW_ITEM_TYPE_PORT_ID) {
+			if (items->type == RTE_FLOW_ITEM_TYPE_PORT_ID ||
+			    items->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR) {
 				memcpy(sfx_items, items, sizeof(*sfx_items));
 				sfx_items++;
 			}
@@ -6903,6 +7000,7 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		struct rte_flow_item items[MLX5_MAX_SPLIT_ITEMS];
 		uint8_t buffer[2048];
 	} items_tx;
+	struct mlx5_rte_flow_item_sq sq_specs[RTE_MAX_QUEUES_PER_PORT];
 	struct mlx5_flow_expand_rss *buf = &expand_buffer.buf;
 	struct mlx5_flow_rss_desc *rss_desc;
 	const struct rte_flow_action *p_actions_rx;
@@ -6991,8 +7089,18 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 				mlx5_dbg__print_pattern(buf->entry[i].pattern);
 		}
 	} else {
-		buf->entries = 1;
-		buf->entry[0].pattern = (void *)(uintptr_t)items;
+		ret = mlx5_flow_expand_sqn((struct mlx5_flow_expand_sqn *)buf,
+					   sizeof(expand_buffer.buffer),
+					   items, sq_specs);
+		if (ret) {
+			rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL, "not enough memory for rte_flow");
+			goto error;
+		}
+		if (buf->entries == 0) {
+			buf->entries = 1;
+			buf->entry[0].pattern = (void *)(uintptr_t)items;
+		}
 	}
 	rss_desc->shared_rss = flow_get_shared_rss_action(dev, indir_actions,
 						      indir_actions_n);

@@ -7185,6 +7185,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			port_id_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+		case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
 			ret = flow_dv_validate_item_represented_port
 					(dev, items, attr, item_flags, error);
 			if (ret < 0)
@@ -13613,6 +13614,7 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 			     mlx5_flow_get_thread_workspace())->rss_desc,
 	};
 	struct mlx5_dv_matcher_workspace wks_m = wks;
+	int item_type;
 	int ret = 0;
 	int tunnel;
 
@@ -13622,7 +13624,8 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "item not supported");
 		tunnel = !!(wks.item_flags & MLX5_FLOW_LAYER_TUNNEL);
-		switch (items->type) {
+		item_type = items->type;
+		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			flow_dv_translate_item_aso_ct(dev, match_mask,
 						      match_value, items);
@@ -13633,6 +13636,12 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 						    dev_flow, tunnel != 0);
 			wks.last_item = tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
 						 MLX5_FLOW_ITEM_OUTER_FLEX;
+			break;
+		case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
+			flow_dv_translate_item_sq(match_value, items,
+						  MLX5_SET_MATCHER_SW_V);
+			flow_dv_translate_item_sq(match_mask, items,
+						  MLX5_SET_MATCHER_SW_M);
 			break;
 		default:
 			ret = flow_dv_translate_items(dev, items, &wks_m,
