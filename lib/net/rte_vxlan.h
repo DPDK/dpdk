@@ -30,9 +30,20 @@ extern "C" {
  * Contains the 8-bit flag, 24-bit VXLAN Network Identifier and
  * Reserved fields (24 bits and 8 bits)
  */
+__extension__ /* no named member in struct */
 struct rte_vxlan_hdr {
-	rte_be32_t vx_flags; /**< flag (8) + Reserved (24). */
-	rte_be32_t vx_vni;   /**< VNI (24) + Reserved (8). */
+	union {
+		struct {
+			rte_be32_t vx_flags; /**< flags (8) + Reserved (24). */
+			rte_be32_t vx_vni;   /**< VNI (24) + Reserved (8). */
+		};
+		struct {
+			uint8_t    flags;    /**< Should be 8 (I flag). */
+			uint8_t    rsvd0[3]; /**< Reserved. */
+			uint8_t    vni[3];   /**< VXLAN identifier. */
+			uint8_t    rsvd1;    /**< Reserved. */
+		};
+	};
 } __rte_packed;
 
 /** VXLAN tunnel header length. */
@@ -45,11 +56,23 @@ struct rte_vxlan_hdr {
  * Contains the 8-bit flag, 8-bit next-protocol, 24-bit VXLAN Network
  * Identifier and Reserved fields (16 bits and 8 bits).
  */
+__extension__ /* no named member in struct */
 struct rte_vxlan_gpe_hdr {
-	uint8_t vx_flags;    /**< flag (8). */
-	uint8_t reserved[2]; /**< Reserved (16). */
-	uint8_t proto;       /**< next-protocol (8). */
-	rte_be32_t vx_vni;   /**< VNI (24) + Reserved (8). */
+	union {
+		struct {
+			uint8_t vx_flags;    /**< flag (8). */
+			uint8_t reserved[2]; /**< Reserved (16). */
+			uint8_t protocol;    /**< next-protocol (8). */
+			rte_be32_t vx_vni;   /**< VNI (24) + Reserved (8). */
+		};
+		struct {
+			uint8_t flags;    /**< Flags. */
+			uint8_t rsvd0[2]; /**< Reserved. */
+			uint8_t proto;    /**< Next protocol. */
+			uint8_t vni[3];   /**< VXLAN identifier. */
+			uint8_t rsvd1;    /**< Reserved. */
+		};
+	};
 } __rte_packed;
 
 /** VXLAN-GPE tunnel header length. */
