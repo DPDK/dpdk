@@ -148,7 +148,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		target[3] = !(job_len[3] & psd_qp_ctx->threshold);
 		if (ops[i + 3]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
 			ops[i + 3]->sym->session =
-				sess_ctx[1]->worker_sess[target[3]];
+				sess_ctx[3]->worker_sess[target[3]];
 		p_enq_op = &enq_ops[target[3]];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->worker_idx] ==
