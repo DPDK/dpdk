@@ -860,10 +860,15 @@ em_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 	int i, nb_enq = 0, nb_deq = 0;
 	struct lcore_conf *lconf;
 	unsigned int lcore_id;
+	uint16_t *dst_ports;
 
 	if (event_p_id < 0)
 		return;
 
+	dst_ports = rte_zmalloc("", sizeof(uint16_t) * evt_rsrc->vector_size,
+				RTE_CACHE_LINE_SIZE);
+	if (dst_ports == NULL)
+		return;
 	lcore_id = rte_lcore_id();
 	lconf = &lcore_conf[lcore_id];
 
@@ -885,13 +890,12 @@ em_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 			}
 
 #if defined RTE_ARCH_X86 || defined __ARM_NEON
-			l3fwd_em_process_event_vector(events[i].vec, lconf);
+			l3fwd_em_process_event_vector(events[i].vec, lconf,
+						      dst_ports);
 #else
 			l3fwd_em_no_opt_process_event_vector(events[i].vec,
-							     lconf);
+							     lconf, dst_ports);
 #endif
-			if (flags & L3FWD_EVENT_TX_DIRECT)
-				event_vector_txq_set(events[i].vec, 0);
 		}
 
 		if (flags & L3FWD_EVENT_TX_ENQ) {
@@ -915,6 +919,7 @@ em_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 
 	l3fwd_event_worker_cleanup(event_d_id, event_p_id, events, nb_enq,
 				   nb_deq, 1);
+	rte_free(dst_ports);
 }
 
 int __rte_noinline

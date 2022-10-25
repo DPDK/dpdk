@@ -100,7 +100,7 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint16_t portid,
 	}
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint16_t
 l3fwd_em_simple_process(struct rte_mbuf *m, struct lcore_conf *qconf)
 {
 	struct rte_ether_hdr *eth_hdr;
@@ -117,6 +117,8 @@ l3fwd_em_simple_process(struct rte_mbuf *m, struct lcore_conf *qconf)
 		m->port = l3fwd_em_handle_ipv6(m, m->port, eth_hdr, qconf);
 	else
 		m->port = BAD_PORT;
+
+	return m->port;
 }
 
 /*
@@ -179,7 +181,8 @@ l3fwd_em_no_opt_process_events(int nb_rx, struct rte_event **events,
 
 static inline void
 l3fwd_em_no_opt_process_event_vector(struct rte_event_vector *vec,
-				     struct lcore_conf *qconf)
+				     struct lcore_conf *qconf,
+				     uint16_t *dst_ports)
 {
 	struct rte_mbuf **mbufs = vec->mbufs;
 	int32_t i;
@@ -188,30 +191,20 @@ l3fwd_em_no_opt_process_event_vector(struct rte_event_vector *vec,
 	for (i = 0; i < PREFETCH_OFFSET && i < vec->nb_elem; i++)
 		rte_prefetch0(rte_pktmbuf_mtod(mbufs[i], void *));
 
-	/* Process first packet to init vector attributes */
-	l3fwd_em_simple_process(mbufs[0], qconf);
-	if (vec->attr_valid) {
-		if (mbufs[0]->port != BAD_PORT)
-			vec->port = mbufs[0]->port;
-		else
-			vec->attr_valid = 0;
-	}
-
 	/*
 	 * Prefetch and forward already prefetched packets.
 	 */
-	for (i = 1; i < (vec->nb_elem - PREFETCH_OFFSET); i++) {
+	for (i = 0; i < (vec->nb_elem - PREFETCH_OFFSET); i++) {
 		rte_prefetch0(
 			rte_pktmbuf_mtod(mbufs[i + PREFETCH_OFFSET], void *));
-		l3fwd_em_simple_process(mbufs[i], qconf);
-		event_vector_attr_validate(vec, mbufs[i]);
+		dst_ports[i] = l3fwd_em_simple_process(mbufs[i], qconf);
 	}
 
 	/* Forward remaining prefetched packets */
-	for (; i < vec->nb_elem; i++) {
-		l3fwd_em_simple_process(mbufs[i], qconf);
-		event_vector_attr_validate(vec, mbufs[i]);
-	}
+	for (; i < vec->nb_elem; i++)
+		dst_ports[i] = l3fwd_em_simple_process(mbufs[i], qconf);
+
+	process_event_vector(vec, dst_ports);
 }
 
 #endif /* __L3FWD_EM_H__ */

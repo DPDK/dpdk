@@ -113,39 +113,48 @@ l3fwd_em_process_events(int nb_rx, struct rte_event **events,
 
 	for (i = 1, j = 0; j < nb_rx; i++, j++) {
 		struct rte_mbuf *mbuf = events[j]->mbuf;
+		uint16_t port;
 
 		if (i < nb_rx) {
 			rte_prefetch0(rte_pktmbuf_mtod(
 					events[i]->mbuf,
 					struct rte_ether_hdr *) + 1);
 		}
+		port = mbuf->port;
 		mbuf->port = em_get_dst_port(qconf, mbuf, mbuf->port);
 		process_packet(mbuf, &mbuf->port);
+		if (mbuf->port == BAD_PORT)
+			mbuf->port = port;
 	}
 }
 
 static inline void
 l3fwd_em_process_event_vector(struct rte_event_vector *vec,
-			      struct lcore_conf *qconf)
+			      struct lcore_conf *qconf, uint16_t *dst_ports)
 {
+	const uint8_t attr_valid = vec->attr_valid;
 	struct rte_mbuf **mbufs = vec->mbufs;
 	int32_t i, j;
 
 	rte_prefetch0(rte_pktmbuf_mtod(mbufs[0], struct rte_ether_hdr *) + 1);
-
-	if (vec->attr_valid)
-		vec->port = em_get_dst_port(qconf, mbufs[0], mbufs[0]->port);
 
 	for (i = 0, j = 1; i < vec->nb_elem; i++, j++) {
 		if (j < vec->nb_elem)
 			rte_prefetch0(rte_pktmbuf_mtod(mbufs[j],
 						       struct rte_ether_hdr *) +
 				      1);
-		mbufs[i]->port =
-			em_get_dst_port(qconf, mbufs[i], mbufs[i]->port);
-		process_packet(mbufs[i], &mbufs[i]->port);
-		event_vector_attr_validate(vec, mbufs[i]);
+		dst_ports[i] = em_get_dst_port(qconf, mbufs[i],
+					       attr_valid ? vec->port :
+							    mbufs[i]->port);
 	}
+	j = RTE_ALIGN_FLOOR(vec->nb_elem, FWDSTEP);
+
+	for (i = 0; i != j; i += FWDSTEP)
+		processx4_step3(&vec->mbufs[i], &dst_ports[i]);
+	for (; i < vec->nb_elem; i++)
+		process_packet(vec->mbufs[i], &dst_ports[i]);
+
+	process_event_vector(vec, dst_ports);
 }
 
 #endif /* __L3FWD_EM_SEQUENTIAL_H__ */

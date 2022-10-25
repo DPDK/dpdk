@@ -103,27 +103,6 @@ process_dst_port(uint16_t *dst_ports, uint16_t nb_elem)
 }
 #endif
 
-static inline void
-event_vector_attr_validate(struct rte_event_vector *vec, struct rte_mbuf *mbuf)
-{
-	/* l3fwd application only changes mbuf port while processing */
-	if (vec->attr_valid && (vec->port != mbuf->port))
-		vec->attr_valid = 0;
-}
-
-static inline void
-event_vector_txq_set(struct rte_event_vector *vec, uint16_t txq)
-{
-	if (vec->attr_valid) {
-		vec->queue = txq;
-	} else {
-		int i;
-
-		for (i = 0; i < vec->nb_elem; i++)
-			rte_event_eth_tx_adapter_txq_set(vec->mbufs[i], txq);
-	}
-}
-
 static inline uint16_t
 filter_bad_packets(struct rte_mbuf **mbufs, uint16_t *dst_port,
 		   uint16_t nb_pkts)
