@@ -6,6 +6,8 @@
 #ifndef _GVE_ADMINQ_H
 #define _GVE_ADMINQ_H
 
+#include "gve_osdep.h"
+
 /* Admin queue opcodes */
 enum gve_adminq_opcodes {
 	GVE_ADMINQ_DESCRIBE_DEVICE		= 0x1,

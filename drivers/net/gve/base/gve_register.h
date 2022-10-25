@@ -6,6 +6,8 @@
 #ifndef _GVE_REGISTER_H_
 #define _GVE_REGISTER_H_
 
+#include "gve_osdep.h"
+
 /* Fixed Configuration Registers */
 struct gve_registers {
 	__be32	device_status;

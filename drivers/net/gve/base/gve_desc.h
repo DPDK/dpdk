@@ -8,6 +8,8 @@
 #ifndef _GVE_DESC_H_
 #define _GVE_DESC_H_
 
+#include "gve_osdep.h"
+
 /* A note on seg_addrs
  *
  * Base addresses encoded in seg_addr are not assumed to be physical

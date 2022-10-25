@@ -8,6 +8,8 @@
 #ifndef _GVE_DESC_DQO_H_
 #define _GVE_DESC_DQO_H_
 
+#include "gve_osdep.h"
+
 #define GVE_TX_MAX_HDR_SIZE_DQO 255
 #define GVE_TX_MIN_TSO_MSS_DQO 88
 
