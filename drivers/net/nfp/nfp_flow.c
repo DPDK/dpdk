@@ -1609,7 +1609,7 @@ nfp_flow_merge_gre(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
-nfp_flow_merge_gre_key(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
+nfp_flow_merge_gre_key(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
@@ -1617,6 +1617,7 @@ nfp_flow_merge_gre_key(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		bool is_mask,
 		__rte_unused bool is_outer_layer)
 {
+	int ret = 0;
 	rte_be32_t tun_key;
 	const rte_be32_t *spec;
 	const rte_be32_t *mask;
@@ -1646,6 +1647,8 @@ nfp_flow_merge_gre_key(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
 		tun4->tun_key = tun_key;
 		tun4->tun_flags = rte_cpu_to_be_16(NFP_FL_GRE_FLAG_KEY);
+		if (!is_mask)
+			ret = nfp_tun_add_ipv4_off(app_fw_flower, tun4->ipv4.dst);
 	}
 
 gre_key_end:
@@ -1655,7 +1658,7 @@ gre_key_end:
 	else
 		*mbuf_off += sizeof(struct nfp_flower_ipv4_gre_tun);
 
-	return 0;
+	return ret;
 }
 
 const rte_be32_t nfp_flow_item_gre_key = 0xffffffff;
@@ -3831,6 +3834,7 @@ nfp_flow_tunnel_decap_set(__rte_unused struct rte_eth_dev *dev,
 		*num_of_actions = 1;
 		break;
 	case RTE_FLOW_ITEM_TYPE_GENEVE:
+	case RTE_FLOW_ITEM_TYPE_GRE:
 		nfp_action->type = RTE_FLOW_ACTION_TYPE_RAW_DECAP;
 		*pmd_actions = nfp_action;
 		*num_of_actions = 1;
