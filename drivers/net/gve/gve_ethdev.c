@@ -28,8 +28,16 @@ gve_write_version(uint8_t *driver_version_register)
 }
 
 static int
-gve_dev_configure(__rte_unused struct rte_eth_dev *dev)
+gve_dev_configure(struct rte_eth_dev *dev)
 {
+	struct gve_priv *priv = dev->data->dev_private;
+
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
+
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
+		priv->enable_rsc = 1;
+
 	return 0;
 }
 
@@ -96,6 +104,54 @@ gve_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
+gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+
+	dev_info->device = dev->device;
+	dev_info->max_mac_addrs = 1;
+	dev_info->max_rx_queues = priv->max_nb_rxq;
+	dev_info->max_tx_queues = priv->max_nb_txq;
+	dev_info->min_rx_bufsize = GVE_MIN_BUF_SIZE;
+	dev_info->max_rx_pktlen = GVE_MAX_RX_PKTLEN;
+	dev_info->max_mtu = GVE_MAX_MTU;
+	dev_info->min_mtu = GVE_MIN_MTU;
+
+	dev_info->rx_offload_capa = 0;
+	dev_info->tx_offload_capa = 0;
+
+	if (priv->queue_format == GVE_DQO_RDA_FORMAT)
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = GVE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_free_thresh = GVE_DEFAULT_TX_FREE_THRESH,
+		.offloads = 0,
+	};
+
+	dev_info->default_rxportconf.ring_size = priv->rx_desc_cnt;
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = priv->rx_desc_cnt,
+		.nb_min = priv->rx_desc_cnt,
+		.nb_align = 1,
+	};
+
+	dev_info->default_txportconf.ring_size = priv->tx_desc_cnt;
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = priv->tx_desc_cnt,
+		.nb_min = priv->tx_desc_cnt,
+		.nb_align = 1,
+	};
+
+	return 0;
+}
+
+static int
 gve_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct gve_priv *priv = dev->data->dev_private;
@@ -127,6 +183,7 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_start            = gve_dev_start,
 	.dev_stop             = gve_dev_stop,
 	.dev_close            = gve_dev_close,
+	.dev_infos_get        = gve_dev_info_get,
 	.link_update          = gve_link_update,
 	.mtu_set              = gve_dev_mtu_set,
 };

@@ -31,6 +31,9 @@
 #define GVE_MIN_BUF_SIZE	    1024
 #define GVE_MAX_RX_PKTLEN	    65535
 
+#define GVE_MAX_MTU	RTE_ETHER_MTU
+#define GVE_MIN_MTU	RTE_ETHER_MIN_MTU
+
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
  */

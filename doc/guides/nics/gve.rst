@@ -74,3 +74,9 @@ Also, only GQI_QPL queue format is in use on GCP
 since GQI_RDA hasn't been released in production.
 
 Currently, setting MTU with value larger than 1460 is not supported.
+
+Currently, only "RSS hash" is force enabled
+so that the backend hardware device calculated hash values
+could be shared with applications.
+But for RSS, there is no such API to config RSS hash function or RETA table.
+So, limited RSS is supported only with default config/setting.
