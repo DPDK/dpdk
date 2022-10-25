@@ -476,7 +476,7 @@ nfp_tun_del_ipv4_off(struct nfp_app_fw_flower *app_fw_flower,
 	return 0;
 }
 
-__rte_unused static int
+static int
 nfp_tun_add_ipv6_off(struct nfp_app_fw_flower *app_fw_flower,
 		uint8_t ipv6[])
 {
@@ -1352,6 +1352,8 @@ nfp_flow_merge_vxlan(struct nfp_app_fw_flower *app_fw_flower,
 			NFP_FLOWER_LAYER2_TUN_IPV6)) {
 		tun6 = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
 		tun6->tun_id = hdr->vx_vni;
+		if (!is_mask)
+			ret = nfp_tun_add_ipv6_off(app_fw_flower, tun6->ipv6.ipv6_dst);
 	} else {
 		tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
 		tun4->tun_id = hdr->vx_vni;
@@ -2163,7 +2165,7 @@ nfp_flower_add_tun_neigh_v6_encap(struct nfp_app_fw_flower *app_fw_flower,
 	return nfp_flower_cmsg_tun_neigh_v6_rule(app_fw_flower, &payload);
 }
 
-__rte_unused static int
+static int
 nfp_flower_add_tun_neigh_v6_decap(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow)
 {
@@ -2577,7 +2579,7 @@ free_entry:
 
 static int
 nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
-		__rte_unused const struct rte_flow_action *action,
+		const struct rte_flow_action *action,
 		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		struct rte_flow *nfp_flow)
 {
@@ -2595,6 +2597,8 @@ nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
 	nfp_mac_idx = (nfp_mac_idx << 8) |
 			NFP_FLOWER_CMSG_PORT_TYPE_OTHER_PORT |
 			NFP_TUN_PRE_TUN_IDX_BIT;
+	if (action->conf != NULL)
+		nfp_mac_idx |= NFP_TUN_PRE_TUN_IPV6_BIT;
 
 	app_fw_flower = repr->app_fw_flower;
 	ret = nfp_flower_cmsg_tun_mac_rule(app_fw_flower, &repr->mac_addr,
@@ -2615,7 +2619,7 @@ nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
 	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4)
 		return nfp_flower_add_tun_neigh_v4_decap(app_fw_flower, nfp_flow);
 	else
-		return -ENOTSUP;
+		return nfp_flower_add_tun_neigh_v6_decap(app_fw_flower, nfp_flow);
 }
 
 static int
@@ -2803,6 +2807,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			}
 			nfp_flow->type = NFP_FLOW_DECAP;
 			nfp_flow->install_flag = false;
+			if (action->conf != NULL)
+				nfp_flow->tun.payload.v6_flag = 1;
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
@@ -3273,6 +3279,9 @@ nfp_flow_tunnel_decap_set(__rte_unused struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	if (tunnel->is_ipv6)
+		nfp_action->conf = (void *)~0;
+
 	switch (tunnel->type) {
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
 		nfp_action->type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
@@ -3300,6 +3309,7 @@ nfp_flow_tunnel_action_decap_release(__rte_unused struct rte_eth_dev *dev,
 
 	for (i = 0; i < num_of_actions; i++) {
 		nfp_action = &pmd_actions[i];
+		nfp_action->conf = NULL;
 		rte_free(nfp_action);
 	}
 
