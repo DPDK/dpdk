@@ -820,6 +820,26 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				return -EINVAL;
 			}
 			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GRE detected");
+			/* Clear IPv4 bits */
+			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+			key_ls->tun_type = NFP_FL_TUN_GRE;
+			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
+			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GRE;
+			key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
+			if (outer_ip4_flag) {
+				key_ls->key_size += sizeof(struct nfp_flower_ipv4_gre_tun);
+				/*
+				 * The outer l3 layer information is
+				 * in `struct nfp_flower_ipv4_gre_tun`
+				 */
+				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GRE_KEY detected");
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
 			return -ENOTSUP;
@@ -1540,6 +1560,62 @@ geneve_end:
 	return ret;
 }
 
+static int
+nfp_flow_merge_gre(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
+		__rte_unused struct rte_flow *nfp_flow,
+		char **mbuf_off,
+		__rte_unused const struct rte_flow_item *item,
+		__rte_unused const struct nfp_flow_item_proc *proc,
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
+{
+	struct nfp_flower_ipv4_gre_tun *tun4;
+
+	/* NVGRE is the only supported GRE tunnel type */
+	tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
+	if (is_mask)
+		tun4->ethertype = rte_cpu_to_be_16(~0);
+	else
+		tun4->ethertype = rte_cpu_to_be_16(0x6558);
+
+	return 0;
+}
+
+static int
+nfp_flow_merge_gre_key(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
+		__rte_unused struct rte_flow *nfp_flow,
+		char **mbuf_off,
+		const struct rte_flow_item *item,
+		__rte_unused const struct nfp_flow_item_proc *proc,
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
+{
+	rte_be32_t tun_key;
+	const rte_be32_t *spec;
+	const rte_be32_t *mask;
+	struct nfp_flower_ipv4_gre_tun *tun4;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge gre key: no item->spec!");
+		goto gre_key_end;
+	}
+
+	mask = item->mask ? item->mask : proc->mask_default;
+	tun_key = is_mask ? *mask : *spec;
+
+	tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
+	tun4->tun_key = tun_key;
+	tun4->tun_flags = rte_cpu_to_be_16(NFP_FL_GRE_FLAG_KEY);
+
+gre_key_end:
+	*mbuf_off += sizeof(struct nfp_flower_ipv4_gre_tun);
+
+	return 0;
+}
+
+const rte_be32_t nfp_flow_item_gre_key = 0xffffffff;
+
 /* Graph of supported items and associated process function */
 static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
@@ -1580,7 +1656,8 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_TCP,
 			RTE_FLOW_ITEM_TYPE_UDP,
-			RTE_FLOW_ITEM_TYPE_SCTP),
+			RTE_FLOW_ITEM_TYPE_SCTP,
+			RTE_FLOW_ITEM_TYPE_GRE),
 		.mask_support = &(const struct rte_flow_item_ipv4){
 			.hdr = {
 				.type_of_service = 0xff,
@@ -1671,6 +1748,23 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.mask_sz = sizeof(struct rte_flow_item_geneve),
 		.merge = nfp_flow_merge_geneve,
 	},
+	[RTE_FLOW_ITEM_TYPE_GRE] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_GRE_KEY),
+		.mask_support = &(const struct rte_flow_item_gre){
+			.c_rsvd0_ver = RTE_BE16(0xa000),
+			.protocol = RTE_BE16(0xffff),
+		},
+		.mask_default = &rte_flow_item_gre_mask,
+		.mask_sz = sizeof(struct rte_flow_item_gre),
+		.merge = nfp_flow_merge_gre,
+	},
+	[RTE_FLOW_ITEM_TYPE_GRE_KEY] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
+		.mask_support = &nfp_flow_item_gre_key,
+		.mask_default = &nfp_flow_item_gre_key,
+		.mask_sz = sizeof(rte_be32_t),
+		.merge = nfp_flow_merge_gre_key,
+	},
 };
 
 static int
@@ -1728,7 +1822,8 @@ static bool
 nfp_flow_is_tun_item(const struct rte_flow_item *item)
 {
 	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN ||
-			item->type == RTE_FLOW_ITEM_TYPE_GENEVE)
+			item->type == RTE_FLOW_ITEM_TYPE_GENEVE ||
+			item->type == RTE_FLOW_ITEM_TYPE_GRE_KEY)
 		return true;
 
 	return false;
