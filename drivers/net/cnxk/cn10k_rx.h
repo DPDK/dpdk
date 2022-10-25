@@ -636,9 +636,11 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			mbuf23 = vqsubq_u64(mbuf23, data_off);
 		} else {
 			mbuf01 =
-				vsubq_u64(vld1q_u64((uint64_t *)cq0), data_off);
-			mbuf23 = vsubq_u64(vld1q_u64((uint64_t *)(cq0 + 16)),
-					   data_off);
+				vsubq_u64(vld1q_u64((uint64_t *)cq0),
+					  vdupq_n_u64(sizeof(struct rte_mbuf)));
+			mbuf23 =
+				vsubq_u64(vld1q_u64((uint64_t *)(cq0 + 16)),
+					  vdupq_n_u64(sizeof(struct rte_mbuf)));
 		}
 
 		/* Move mbufs to scalar registers for future use */
