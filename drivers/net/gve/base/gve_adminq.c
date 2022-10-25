@@ -3,6 +3,7 @@
  * Copyright (C) 2015-2022 Google, Inc.
  */
 
+#include "../gve_ethdev.h"
 #include "gve_adminq.h"
 #include "gve_register.h"
 

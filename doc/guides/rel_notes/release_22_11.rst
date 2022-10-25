@@ -145,6 +145,11 @@ New Features
   * Added Q-in-CMB feature controlled by device option ``ionic_cmb``.
   * Added optimized handlers for non-scattered Rx and Tx.
 
+* **Added GVE net PMD**
+
+  * Added the new ``gve`` net driver for Google Virtual Ethernet devices.
+  * See the :doc:`../nics/gve` NIC guide for more details on this new driver.
+
 * **Updated Intel iavf driver.**
 
   * Added flow subscription support.

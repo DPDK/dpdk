@@ -697,6 +697,12 @@ F: drivers/net/enic/
 F: doc/guides/nics/enic.rst
 F: doc/guides/nics/features/enic.ini
 
+Google Virtual Ethernet
+M: Junfeng Guo <junfeng.guo@intel.com>
+F: drivers/net/gve/
+F: doc/guides/nics/gve.rst
+F: doc/guides/nics/features/gve.ini
+
 Hisilicon hns3
 M: Dongdong Liu <liudongdong3@huawei.com>
 M: Yisen Zhuang <yisen.zhuang@huawei.com>
