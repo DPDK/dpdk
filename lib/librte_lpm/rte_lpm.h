@@ -183,8 +183,6 @@ rte_lpm_find_existing(const char *name);
  *
  * @param lpm
  *   LPM object handle
- * @return
- *   None
  */
 void
 rte_lpm_free(struct rte_lpm *lpm);

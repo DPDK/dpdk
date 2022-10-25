@@ -119,8 +119,6 @@ rte_fib6_find_existing(const char *name);
  *
  * @param fib
  *   FIB object handle
- * @return
- *   None
  */
 __rte_experimental
 void

@@ -327,8 +327,6 @@ rte_bitmap_reset(struct rte_bitmap *bmp)
  *   Handle to bitmap instance
  * @param pos
  *   Bit position
- * @return
- *   0 upon success, error code otherwise
  */
 static inline void
 rte_bitmap_prefetch0(struct rte_bitmap *bmp, uint32_t pos)

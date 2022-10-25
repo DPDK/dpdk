@@ -130,9 +130,6 @@ struct rte_rcu_qsbr {
  *   Pointer to the resource data stored on the defer queue
  * @param n
  *   Number of resources to free. Currently, this is set to 1.
- *
- * @return
- *   None
  */
 typedef void (*rte_rcu_qsbr_free_resource_t)(void *p, void *e, unsigned int n);
 

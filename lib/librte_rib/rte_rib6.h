@@ -337,8 +337,6 @@ rte_rib6_find_existing(const char *name);
  *
  * @param rib
  *   RIB object handle
- * @return
- *   None
  */
 __rte_experimental
 void

@@ -491,9 +491,6 @@ rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev);
  *  *
  * @param	dev	Pointer to cryptodev struct
  * @param	event	Crypto device interrupt event type.
- *
- * @return
- *  void
  */
 void rte_cryptodev_pmd_callback_process(struct rte_cryptodev *dev,
 				enum rte_cryptodev_event_type event);

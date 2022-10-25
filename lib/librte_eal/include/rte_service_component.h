@@ -130,8 +130,6 @@ int32_t rte_service_init(void);
 /**
  * @internal Free up the memory that has been initialized.
  * This routine is to be invoked prior to process termination.
- *
- * @retval None
  */
 void rte_service_finalize(void);
 
