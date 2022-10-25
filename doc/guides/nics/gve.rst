@@ -72,3 +72,5 @@ Jumbo Frame is not supported in PMD for now.
 It'll be added in a future DPDK release.
 Also, only GQI_QPL queue format is in use on GCP
 since GQI_RDA hasn't been released in production.
+
+Currently, setting MTU with value larger than 1460 is not supported.

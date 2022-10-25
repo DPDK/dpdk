@@ -95,12 +95,40 @@ gve_dev_close(struct rte_eth_dev *dev)
 	return err;
 }
 
+static int
+gve_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	int err;
+
+	if (mtu < RTE_ETHER_MIN_MTU || mtu > priv->max_mtu) {
+		PMD_DRV_LOG(ERR, "MIN MTU is %u, MAX MTU is %u",
+			    RTE_ETHER_MIN_MTU, priv->max_mtu);
+		return -EINVAL;
+	}
+
+	/* mtu setting is forbidden if port is start */
+	if (dev->data->dev_started) {
+		PMD_DRV_LOG(ERR, "Port must be stopped before configuration");
+		return -EBUSY;
+	}
+
+	err = gve_adminq_set_mtu(priv, mtu);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to set mtu as %u err = %d", mtu, err);
+		return err;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_configure        = gve_dev_configure,
 	.dev_start            = gve_dev_start,
 	.dev_stop             = gve_dev_stop,
 	.dev_close            = gve_dev_close,
 	.link_update          = gve_link_update,
+	.mtu_set              = gve_dev_mtu_set,
 };
 
 static void
