@@ -565,6 +565,7 @@ nfp_tun_check_ip_off_del(struct nfp_flower_representor *repr,
 	struct nfp_flower_ipv4_udp_tun *udp4;
 	struct nfp_flower_ipv6_udp_tun *udp6;
 	struct nfp_flower_ipv4_gre_tun *gre4;
+	struct nfp_flower_ipv6_gre_tun *gre6;
 	struct nfp_flower_meta_tci *meta_tci;
 	struct nfp_flower_ext_meta *ext_meta = NULL;
 
@@ -576,9 +577,15 @@ nfp_tun_check_ip_off_del(struct nfp_flower_representor *repr,
 		key_layer2 = rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2);
 
 	if (key_layer2 & NFP_FLOWER_LAYER2_TUN_IPV6) {
-		udp6 = (struct nfp_flower_ipv6_udp_tun *)(nfp_flow->payload.mask_data -
-				sizeof(struct nfp_flower_ipv6_udp_tun));
-		ret = nfp_tun_del_ipv6_off(repr->app_fw_flower, udp6->ipv6.ipv6_dst);
+		if (key_layer2 & NFP_FLOWER_LAYER2_GRE) {
+			gre6 = (struct nfp_flower_ipv6_gre_tun *)(nfp_flow->payload.mask_data -
+					sizeof(struct nfp_flower_ipv6_gre_tun));
+			ret = nfp_tun_del_ipv6_off(repr->app_fw_flower, gre6->ipv6.ipv6_dst);
+		} else {
+			udp6 = (struct nfp_flower_ipv6_udp_tun *)(nfp_flow->payload.mask_data -
+					sizeof(struct nfp_flower_ipv6_udp_tun));
+			ret = nfp_tun_del_ipv6_off(repr->app_fw_flower, udp6->ipv6.ipv6_dst);
+		}
 	} else {
 		if (key_layer2 & NFP_FLOWER_LAYER2_GRE) {
 			gre4 = (struct nfp_flower_ipv4_gre_tun *)(nfp_flow->payload.mask_data -
@@ -1186,11 +1193,15 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_ipv6 *spec;
 	const struct rte_flow_item_ipv6 *mask;
+	struct nfp_flower_ext_meta *ext_meta = NULL;
 	struct nfp_flower_ipv6_udp_tun *ipv6_udp_tun;
+	struct nfp_flower_ipv6_gre_tun *ipv6_gre_tun;
 
 	spec = item->spec;
 	mask = item->mask ? item->mask : proc->mask_default;
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META)
+		ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
 
 	if (is_outer_layer && nfp_flow_is_tunnel(nfp_flow)) {
 		if (spec == NULL) {
@@ -1199,15 +1210,29 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		}
 
 		hdr = is_mask ? &mask->hdr : &spec->hdr;
-		ipv6_udp_tun = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
 
-		ipv6_udp_tun->ip_ext.tos = (hdr->vtc_flow &
-				RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
-		ipv6_udp_tun->ip_ext.ttl = hdr->hop_limits;
-		memcpy(ipv6_udp_tun->ipv6.ipv6_src, hdr->src_addr,
-				sizeof(ipv6_udp_tun->ipv6.ipv6_src));
-		memcpy(ipv6_udp_tun->ipv6.ipv6_dst, hdr->dst_addr,
-				sizeof(ipv6_udp_tun->ipv6.ipv6_dst));
+		if (ext_meta && (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+				NFP_FLOWER_LAYER2_GRE)) {
+			ipv6_gre_tun = (struct nfp_flower_ipv6_gre_tun *)*mbuf_off;
+
+			ipv6_gre_tun->ip_ext.tos = (hdr->vtc_flow &
+					RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
+			ipv6_gre_tun->ip_ext.ttl = hdr->hop_limits;
+			memcpy(ipv6_gre_tun->ipv6.ipv6_src, hdr->src_addr,
+					sizeof(ipv6_gre_tun->ipv6.ipv6_src));
+			memcpy(ipv6_gre_tun->ipv6.ipv6_dst, hdr->dst_addr,
+					sizeof(ipv6_gre_tun->ipv6.ipv6_dst));
+		} else {
+			ipv6_udp_tun = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
+
+			ipv6_udp_tun->ip_ext.tos = (hdr->vtc_flow &
+					RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
+			ipv6_udp_tun->ip_ext.ttl = hdr->hop_limits;
+			memcpy(ipv6_udp_tun->ipv6.ipv6_src, hdr->src_addr,
+					sizeof(ipv6_udp_tun->ipv6.ipv6_src));
+			memcpy(ipv6_udp_tun->ipv6.ipv6_dst, hdr->dst_addr,
+					sizeof(ipv6_udp_tun->ipv6.ipv6_dst));
+		}
 	} else {
 		if (spec == NULL) {
 			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
