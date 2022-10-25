@@ -13,6 +13,12 @@ if [ -z "$dir" ]; then
 	exit 1
 fi
 
+# test git-grep for -o (--only-matching) option
+if ! git grep -qo git -- $0 >/dev/null 2>&1; then
+	echo "git version >= 2.19 is required" >&2
+	exit 1
+fi
+
 # sorting order
 export LC_COLLATE=C
 
