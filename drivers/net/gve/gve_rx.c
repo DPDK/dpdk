@@ -6,6 +6,148 @@
 #include "base/gve_adminq.h"
 
 static inline void
+gve_rx_refill(struct gve_rx_queue *rxq)
+{
+	uint16_t mask = rxq->nb_rx_desc - 1;
+	uint16_t idx = rxq->next_avail & mask;
+	uint32_t next_avail = rxq->next_avail;
+	uint16_t nb_alloc, i;
+	struct rte_mbuf *nmb;
+	int diag;
+
+	/* wrap around */
+	nb_alloc = rxq->nb_rx_desc - idx;
+	if (nb_alloc <= rxq->nb_avail) {
+		diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[idx], nb_alloc);
+		if (diag < 0) {
+			for (i = 0; i < nb_alloc; i++) {
+				nmb = rte_pktmbuf_alloc(rxq->mpool);
+				if (!nmb)
+					break;
+				rxq->sw_ring[idx + i] = nmb;
+			}
+			if (i != nb_alloc)
+				nb_alloc = i;
+		}
+		rxq->nb_avail -= nb_alloc;
+		next_avail += nb_alloc;
+
+		/* queue page list mode doesn't need real refill. */
+		if (rxq->is_gqi_qpl) {
+			idx += nb_alloc;
+		} else {
+			for (i = 0; i < nb_alloc; i++) {
+				nmb = rxq->sw_ring[idx];
+				rxq->rx_data_ring[idx].addr =
+					rte_cpu_to_be_64(rte_mbuf_data_iova(nmb));
+				idx++;
+			}
+		}
+		if (idx == rxq->nb_rx_desc)
+			idx = 0;
+	}
+
+	if (rxq->nb_avail > 0) {
+		nb_alloc = rxq->nb_avail;
+		if (rxq->nb_rx_desc < idx + rxq->nb_avail)
+			nb_alloc = rxq->nb_rx_desc - idx;
+		diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[idx], nb_alloc);
+		if (diag < 0) {
+			for (i = 0; i < nb_alloc; i++) {
+				nmb = rte_pktmbuf_alloc(rxq->mpool);
+				if (!nmb)
+					break;
+				rxq->sw_ring[idx + i] = nmb;
+			}
+			nb_alloc = i;
+		}
+		rxq->nb_avail -= nb_alloc;
+		next_avail += nb_alloc;
+
+		if (!rxq->is_gqi_qpl) {
+			for (i = 0; i < nb_alloc; i++) {
+				nmb = rxq->sw_ring[idx];
+				rxq->rx_data_ring[idx].addr =
+					rte_cpu_to_be_64(rte_mbuf_data_iova(nmb));
+				idx++;
+			}
+		}
+	}
+
+	if (next_avail != rxq->next_avail) {
+		rte_write32(rte_cpu_to_be_32(next_avail), rxq->qrx_tail);
+		rxq->next_avail = next_avail;
+	}
+}
+
+uint16_t
+gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	volatile struct gve_rx_desc *rxr, *rxd;
+	struct gve_rx_queue *rxq = rx_queue;
+	uint16_t rx_id = rxq->rx_tail;
+	struct rte_mbuf *rxe;
+	uint16_t nb_rx, len;
+	uint64_t addr;
+	uint16_t i;
+
+	rxr = rxq->rx_desc_ring;
+	nb_rx = 0;
+
+	for (i = 0; i < nb_pkts; i++) {
+		rxd = &rxr[rx_id];
+		if (GVE_SEQNO(rxd->flags_seq) != rxq->expected_seqno)
+			break;
+
+		if (rxd->flags_seq & GVE_RXF_ERR)
+			continue;
+
+		len = rte_be_to_cpu_16(rxd->len) - GVE_RX_PAD;
+		rxe = rxq->sw_ring[rx_id];
+		if (rxq->is_gqi_qpl) {
+			addr = (uint64_t)(rxq->qpl->mz->addr) + rx_id * PAGE_SIZE + GVE_RX_PAD;
+			rte_memcpy((void *)((size_t)rxe->buf_addr + rxe->data_off),
+				   (void *)(size_t)addr, len);
+		}
+		rxe->pkt_len = len;
+		rxe->data_len = len;
+		rxe->port = rxq->port_id;
+		rxe->ol_flags = 0;
+
+		if (rxd->flags_seq & GVE_RXF_TCP)
+			rxe->packet_type |= RTE_PTYPE_L4_TCP;
+		if (rxd->flags_seq & GVE_RXF_UDP)
+			rxe->packet_type |= RTE_PTYPE_L4_UDP;
+		if (rxd->flags_seq & GVE_RXF_IPV4)
+			rxe->packet_type |= RTE_PTYPE_L3_IPV4;
+		if (rxd->flags_seq & GVE_RXF_IPV6)
+			rxe->packet_type |= RTE_PTYPE_L3_IPV6;
+
+		if (gve_needs_rss(rxd->flags_seq)) {
+			rxe->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+			rxe->hash.rss = rte_be_to_cpu_32(rxd->rss_hash);
+		}
+
+		rxq->expected_seqno = gve_next_seqno(rxq->expected_seqno);
+
+		rx_id++;
+		if (rx_id == rxq->nb_rx_desc)
+			rx_id = 0;
+
+		rx_pkts[nb_rx] = rxe;
+		nb_rx++;
+	}
+
+	rxq->nb_avail += nb_rx;
+	rxq->rx_tail = rx_id;
+
+	if (rxq->nb_avail > rxq->free_thresh)
+		gve_rx_refill(rxq);
+
+	return nb_rx;
+}
+
+static inline void
 gve_reset_rxq(struct gve_rx_queue *rxq)
 {
 	struct rte_mbuf **sw_ring = rxq->sw_ring;

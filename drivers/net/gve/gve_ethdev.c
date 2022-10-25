@@ -288,7 +288,13 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = GVE_MIN_MTU;
 
 	dev_info->rx_offload_capa = 0;
-	dev_info->tx_offload_capa = 0;
+	dev_info->tx_offload_capa =
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS	|
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM	|
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM	|
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM	|
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM	|
+		RTE_ETH_TX_OFFLOAD_TCP_TSO;
 
 	if (priv->queue_format == GVE_DQO_RDA_FORMAT)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
@@ -637,6 +643,13 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	err = gve_init_priv(priv, false);
 	if (err)
 		return err;
+
+	if (gve_is_gqi(priv)) {
+		eth_dev->rx_pkt_burst = gve_rx_burst;
+		eth_dev->tx_pkt_burst = gve_tx_burst;
+	} else {
+		PMD_DRV_LOG(ERR, "DQO_RDA is not implemented and will be added in the future");
+	}
 
 	eth_dev->data->mac_addrs = &priv->dev_addr;
 
