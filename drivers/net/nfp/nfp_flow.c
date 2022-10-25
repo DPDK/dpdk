@@ -1772,6 +1772,91 @@ nfp_flow_action_set_tc(char *act_data,
 	tc_hl->reserved = 0;
 }
 
+__rte_unused static void
+nfp_flow_pre_tun_v4_process(struct nfp_fl_act_pre_tun *pre_tun,
+		rte_be32_t ipv4_dst)
+{
+	pre_tun->head.jump_id = NFP_FL_ACTION_OPCODE_PRE_TUNNEL;
+	pre_tun->head.len_lw  = sizeof(struct nfp_fl_act_pre_tun) >> NFP_FL_LW_SIZ;
+	pre_tun->ipv4_dst     = ipv4_dst;
+}
+
+__rte_unused static void
+nfp_flow_set_tun_process(struct nfp_fl_act_set_tun *set_tun,
+		enum nfp_flower_tun_type tun_type,
+		uint64_t tun_id,
+		uint8_t ttl,
+		uint8_t tos)
+{
+	/* Currently only support one pre-tunnel, so index is always 0. */
+	uint8_t pretun_idx = 0;
+	uint32_t tun_type_index;
+
+	tun_type_index = ((tun_type << 4) & 0xf0) | (pretun_idx & 0x07);
+
+	set_tun->head.jump_id   = NFP_FL_ACTION_OPCODE_SET_TUNNEL;
+	set_tun->head.len_lw    = sizeof(struct nfp_fl_act_set_tun) >> NFP_FL_LW_SIZ;
+	set_tun->tun_type_index = rte_cpu_to_be_32(tun_type_index);
+	set_tun->tun_id         = rte_cpu_to_be_64(tun_id);
+	set_tun->ttl            = ttl;
+	set_tun->tos            = tos;
+}
+
+__rte_unused static int
+nfp_flower_add_tun_neigh_v4_encap(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct nfp_fl_tun *tun,
+		const struct rte_ether_hdr *eth,
+		const struct rte_flow_item_ipv4 *ipv4)
+{
+	struct nfp_fl_tun *tmp;
+	struct nfp_flow_priv *priv;
+	struct nfp_flower_in_port *port;
+	struct nfp_flower_cmsg_tun_neigh_v4 payload;
+
+	tun->payload.v6_flag = 0;
+	tun->payload.dst.dst_ipv4 = ipv4->hdr.dst_addr;
+	tun->payload.src.src_ipv4 = ipv4->hdr.src_addr;
+	memcpy(tun->payload.dst_addr, eth->dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+	memcpy(tun->payload.src_addr, eth->src_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+
+	tun->ref_cnt = 1;
+	priv = app_fw_flower->flow_priv;
+	LIST_FOREACH(tmp, &priv->nn_list, next) {
+		if (memcmp(&tmp->payload, &tun->payload, sizeof(struct nfp_fl_tun_entry)) == 0) {
+			tmp->ref_cnt++;
+			return 0;
+		}
+	}
+
+	LIST_INSERT_HEAD(&priv->nn_list, tun, next);
+
+	port = (struct nfp_flower_in_port *)((char *)nfp_flow_meta +
+			sizeof(struct nfp_fl_rule_metadata) +
+			sizeof(struct nfp_flower_meta_tci));
+
+	memset(&payload, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v4));
+	payload.dst_ipv4 = ipv4->hdr.dst_addr;
+	payload.src_ipv4 = ipv4->hdr.src_addr;
+	memcpy(payload.common.dst_mac, eth->dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+	memcpy(payload.common.src_mac, eth->src_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+	payload.common.port_id = port->in_port;
+
+	return nfp_flower_cmsg_tun_neigh_v4_rule(app_fw_flower, &payload);
+}
+
+__rte_unused static int
+nfp_flower_del_tun_neigh_v4(struct nfp_app_fw_flower *app_fw_flower,
+		rte_be32_t ipv4)
+{
+	struct nfp_flower_cmsg_tun_neigh_v4 payload;
+
+	memset(&payload, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v4));
+	payload.dst_ipv4 = ipv4;
+
+	return nfp_flower_cmsg_tun_neigh_v4_rule(app_fw_flower, &payload);
+}
+
 static int
 nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
@@ -2486,6 +2571,9 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		ret = -ENOMEM;
 		goto free_mask_table;
 	}
+
+	/* neighbor next list */
+	LIST_INIT(&priv->nn_list);
 
 	return 0;
 

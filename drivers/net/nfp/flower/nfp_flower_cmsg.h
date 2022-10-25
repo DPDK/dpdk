@@ -129,6 +129,36 @@ struct nfp_flower_cmsg_port_mod {
 	rte_be16_t mtu;
 };
 
+struct nfp_flower_tun_neigh {
+	uint8_t dst_mac[RTE_ETHER_ADDR_LEN];
+	uint8_t src_mac[RTE_ETHER_ADDR_LEN];
+	rte_be32_t port_id;
+};
+
+/*
+ * NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V4
+ *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *          +---------------------------------------------------------------+
+ *        0 |                           DST_IPV4                            |
+ *          +---------------------------------------------------------------+
+ *        1 |                           SRC_IPV4                            |
+ *          +---------------------------------------------------------------+
+ *        2 |                      DST_MAC_B5_B4_B3_B2                      |
+ *          +-------------------------------+-------------------------------+
+ *        3 |             DST_MAC_B1_B0     |        SRC_MAC_B5_B4          |
+ *          +-------------------------------+-------------------------------+
+ *        4 |                       SRC_MAC_B3_B2_B1_B0                     |
+ *          +---------------------------------------------------------------+
+ *        5 |                    Egress Port (NFP internal)                 |
+ *          +---------------------------------------------------------------+
+ */
+struct nfp_flower_cmsg_tun_neigh_v4 {
+	rte_be32_t dst_ipv4;
+	rte_be32_t src_ipv4;
+	struct nfp_flower_tun_neigh common;
+};
+
 /*
  * NFP_FLOWER_CMSG_TYPE_FLOW_STATS
  *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
@@ -574,6 +604,67 @@ struct nfp_fl_act_set_tport {
 	rte_be16_t dst_port;
 };
 
+/*
+ * Pre-tunnel
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |  -  |  opcode |       |jump_id|              -      |M|   - |V|
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |         ipv6_daddr_127_96     /     ipv4_daddr                |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     ipv6_daddr_95_64                          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     ipv6_daddr_63_32                          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     ipv6_daddr_31_0                           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_fl_act_pre_tun {
+	struct nfp_fl_act_head head;
+	rte_be16_t flags;
+	union {
+		rte_be32_t ipv4_dst;
+		uint8_t ipv6_dst[16];
+	};
+};
+
+/*
+ * Set tunnel
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * | res |  opcode |  res  | len_lw|           reserved            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                            tun_id0                            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                            tun_id1                            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                      reserved                 |  type |r| idx |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           ipv4_flags          |      ttl      |      tos      |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         reserved_cvs1                         |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |          reserved_cvs2        |        reserved_cvs3          |
+ * |            var_flags          |            var_np             |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_fl_act_set_tun {
+	struct nfp_fl_act_head head;
+	rte_be16_t reserved;
+	rte_be64_t tun_id;
+	rte_be32_t tun_type_index;
+	rte_be16_t tun_flags;
+	uint8_t    ttl;
+	uint8_t    tos;
+	rte_be16_t outer_vlan_tpid;
+	rte_be16_t outer_vlan_tci;
+	uint8_t    tun_len;      /* Only valid for NFP_FL_TUNNEL_GENEVE */
+	uint8_t    reserved2;
+	rte_be16_t tun_proto;    /* Only valid for NFP_FL_TUNNEL_GENEVE */
+} __rte_packed;
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);
@@ -583,5 +674,7 @@ int nfp_flower_cmsg_flow_delete(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *flow);
 int nfp_flower_cmsg_flow_add(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *flow);
+int nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_flower_cmsg_tun_neigh_v4 *payload);
 
 #endif /* _NFP_CMSG_H_ */

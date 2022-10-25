@@ -90,6 +90,11 @@ enum nfp_flower_tun_type {
 	NFP_FL_TUN_GENEVE = 4,
 };
 
+enum nfp_flow_type {
+	NFP_FLOW_COMMON,
+	NFP_FLOW_ENCAP,
+};
+
 struct nfp_fl_key_ls {
 	uint32_t key_layer_two;
 	uint8_t key_layer;
@@ -116,6 +121,24 @@ struct nfp_fl_payload {
 	char *unmasked_data;
 	char *mask_data;
 	char *action_data;
+};
+
+struct nfp_fl_tun {
+	LIST_ENTRY(nfp_fl_tun) next;
+	uint8_t ref_cnt;
+	struct nfp_fl_tun_entry {
+		uint8_t v6_flag;
+		uint8_t dst_addr[RTE_ETHER_ADDR_LEN];
+		uint8_t src_addr[RTE_ETHER_ADDR_LEN];
+		union {
+			rte_be32_t dst_ipv4;
+			uint8_t dst_ipv6[16];
+		} dst;
+		union {
+			rte_be32_t src_ipv4;
+			uint8_t src_ipv6[16];
+		} src;
+	} payload;
 };
 
 #define CIRC_CNT(head, tail, size)     (((head) - (tail)) & ((size) - 1))
@@ -161,13 +184,17 @@ struct nfp_flow_priv {
 	struct nfp_fl_stats_id stats_ids; /**< The stats id ring. */
 	struct nfp_fl_stats *stats; /**< Store stats of flow. */
 	rte_spinlock_t stats_lock; /** < Lock the update of 'stats' field. */
+	/* neighbor next */
+	LIST_HEAD(, nfp_fl_tun)nn_list; /**< Store nn entry */
 };
 
 struct rte_flow {
 	struct nfp_fl_payload payload;
+	struct nfp_fl_tun tun;
 	size_t length;
 	uint32_t hash_key;
 	bool install_flag;
+	enum nfp_flow_type type;
 };
 
 int nfp_flow_priv_init(struct nfp_pf_dev *pf_dev);
