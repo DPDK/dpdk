@@ -63,6 +63,9 @@ Features and Limitations
 
 In this release, the GVE PMD provides the basic functionality
 of packet reception and transmission.
+Supported features of the GVE PMD are:
+
+- Link state information
 
 Currently, only GQI_QPL and GQI_RDA queue format are supported in PMD.
 Jumbo Frame is not supported in PMD for now.

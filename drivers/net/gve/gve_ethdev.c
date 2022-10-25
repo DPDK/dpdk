@@ -34,9 +34,38 @@ gve_dev_configure(__rte_unused struct rte_eth_dev *dev)
 }
 
 static int
+gve_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	struct rte_eth_link link;
+	int err;
+
+	memset(&link, 0, sizeof(link));
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_autoneg = RTE_ETH_LINK_AUTONEG;
+
+	if (!dev->data->dev_started) {
+		link.link_status = RTE_ETH_LINK_DOWN;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	} else {
+		link.link_status = RTE_ETH_LINK_UP;
+		PMD_DRV_LOG(DEBUG, "Get link status from hw");
+		err = gve_adminq_report_link_speed(priv);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to get link speed.");
+			priv->link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+		}
+		link.link_speed = priv->link_speed;
+	}
+
+	return rte_eth_linkstatus_set(dev, &link);
+}
+
+static int
 gve_dev_start(struct rte_eth_dev *dev)
 {
 	dev->data->dev_started = 1;
+	gve_link_update(dev, 0);
 
 	return 0;
 }
@@ -71,6 +100,7 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_start            = gve_dev_start,
 	.dev_stop             = gve_dev_stop,
 	.dev_close            = gve_dev_close,
+	.link_update          = gve_link_update,
 };
 
 static void
