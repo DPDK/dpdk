@@ -4184,19 +4184,19 @@ static const struct token token_list[] = {
 		.help = "GTP flags",
 		.next = NEXT(item_gtp, NEXT_ENTRY(COMMON_UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_gtp,
-					v_pt_rsv_flags)),
+					hdr.gtp_hdr_info)),
 	},
 	[ITEM_GTP_MSG_TYPE] = {
 		.name = "msg_type",
 		.help = "GTP message type",
 		.next = NEXT(item_gtp, NEXT_ENTRY(COMMON_UNSIGNED), item_param),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_gtp, msg_type)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_gtp, hdr.msg_type)),
 	},
 	[ITEM_GTP_TEID] = {
 		.name = "teid",
 		.help = "tunnel endpoint identifier",
 		.next = NEXT(item_gtp, NEXT_ENTRY(COMMON_UNSIGNED), item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp, teid)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp, hdr.teid)),
 	},
 	[ITEM_GTPC] = {
 		.name = "gtpc",
@@ -11294,7 +11294,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 				goto error;
 			}
 			gtp = item->spec;
-			if ((gtp->v_pt_rsv_flags & 0x07) != 0x04) {
+			if (gtp->hdr.s == 1 || gtp->hdr.pn == 1) {
 				/* Only E flag should be set. */
 				fprintf(stderr,
 					"Error - GTP unsupported flags\n");

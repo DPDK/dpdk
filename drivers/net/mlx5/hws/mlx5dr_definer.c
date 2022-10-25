@@ -145,9 +145,9 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE16,	tcp_src_port,		v->hdr.src_port,	rte_flow_item_tcp) \
 	X(SET_BE16,	tcp_dst_port,		v->hdr.dst_port,	rte_flow_item_tcp) \
 	X(SET,		gtp_udp_port,		RTE_GTPU_UDP_PORT,	rte_flow_item_gtp) \
-	X(SET_BE32,	gtp_teid,		v->teid,		rte_flow_item_gtp) \
-	X(SET,		gtp_msg_type,		v->msg_type,		rte_flow_item_gtp) \
-	X(SET,		gtp_ext_flag,		!!v->v_pt_rsv_flags,	rte_flow_item_gtp) \
+	X(SET_BE32,	gtp_teid,		v->hdr.teid,		rte_flow_item_gtp) \
+	X(SET,		gtp_msg_type,		v->hdr.msg_type,	rte_flow_item_gtp) \
+	X(SET,		gtp_ext_flag,		!!v->hdr.gtp_hdr_info,	rte_flow_item_gtp) \
 	X(SET,		gtp_next_ext_hdr,	GTP_PDU_SC,		rte_flow_item_gtp_psc) \
 	X(SET,		gtp_ext_hdr_pdu,	v->hdr.type,		rte_flow_item_gtp_psc) \
 	X(SET,		gtp_ext_hdr_qfi,	v->hdr.qfi,		rte_flow_item_gtp_psc) \
@@ -830,12 +830,12 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
-	if (m->msg_len || m->v_pt_rsv_flags & ~MLX5DR_DEFINER_GTP_EXT_HDR_BIT) {
+	if (m->hdr.plen || m->hdr.gtp_hdr_info & ~MLX5DR_DEFINER_GTP_EXT_HDR_BIT) {
 		rte_errno = ENOTSUP;
 		return rte_errno;
 	}
 
-	if (m->teid) {
+	if (m->hdr.teid) {
 		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_TEID_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
@@ -847,7 +847,7 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 		fc->byte_off = cd->caps->format_select_gtpu_dw_1 * DW_SIZE;
 	}
 
-	if (m->v_pt_rsv_flags) {
+	if (m->hdr.gtp_hdr_info) {
 		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
@@ -861,7 +861,7 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 	}
 
 
-	if (m->msg_type) {
+	if (m->hdr.msg_type) {
 		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;

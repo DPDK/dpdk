@@ -761,26 +761,26 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 			gtp = (struct rte_flow_item_gtp *)
 				((unsigned char *)udp +
 					sizeof(struct rte_udp_hdr));
-			gtp->msg_len =
+			gtp->hdr.plen =
 				rte_cpu_to_be_16(I40E_FDIR_GTP_DEFAULT_LEN);
-			gtp->teid = fdir_input->flow.gtp_flow.teid;
-			gtp->msg_type = I40E_FDIR_GTP_MSG_TYPE_0X01;
+			gtp->hdr.teid = fdir_input->flow.gtp_flow.teid;
+			gtp->hdr.msg_type = I40E_FDIR_GTP_MSG_TYPE_0X01;
 
 			/* GTP-C message type is not supported. */
 			if (cus_pctype->index == I40E_CUSTOMIZED_GTPC) {
 				udp->dst_port =
 				      rte_cpu_to_be_16(I40E_FDIR_GTPC_DST_PORT);
-				gtp->v_pt_rsv_flags =
+				gtp->hdr.gtp_hdr_info =
 					I40E_FDIR_GTP_VER_FLAG_0X32;
 			} else {
 				udp->dst_port =
 				      rte_cpu_to_be_16(I40E_FDIR_GTPU_DST_PORT);
-				gtp->v_pt_rsv_flags =
+				gtp->hdr.gtp_hdr_info =
 					I40E_FDIR_GTP_VER_FLAG_0X30;
 			}
 
 			if (cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV4) {
-				gtp->msg_type = I40E_FDIR_GTP_MSG_TYPE_0XFF;
+				gtp->hdr.msg_type = I40E_FDIR_GTP_MSG_TYPE_0XFF;
 				gtp_ipv4 = (struct rte_ipv4_hdr *)
 					((unsigned char *)gtp +
 					 sizeof(struct rte_flow_item_gtp));
@@ -794,7 +794,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 					sizeof(struct rte_ipv4_hdr);
 			} else if (cus_pctype->index ==
 				   I40E_CUSTOMIZED_GTPU_IPV6) {
-				gtp->msg_type = I40E_FDIR_GTP_MSG_TYPE_0XFF;
+				gtp->hdr.msg_type = I40E_FDIR_GTP_MSG_TYPE_0XFF;
 				gtp_ipv6 = (struct rte_ipv6_hdr *)
 					((unsigned char *)gtp +
 					 sizeof(struct rte_flow_item_gtp));

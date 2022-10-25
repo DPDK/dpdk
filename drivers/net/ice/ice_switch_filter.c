@@ -1405,9 +1405,9 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 				return false;
 			}
 			if (gtp_spec && gtp_mask) {
-				if (gtp_mask->v_pt_rsv_flags ||
-				    gtp_mask->msg_type ||
-				    gtp_mask->msg_len) {
+				if (gtp_mask->hdr.gtp_hdr_info ||
+				    gtp_mask->hdr.msg_type ||
+				    gtp_mask->hdr.plen) {
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ITEM,
 						item,
@@ -1415,13 +1415,13 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 					return false;
 				}
 				input = &outer_input_set;
-				if (gtp_mask->teid)
+				if (gtp_mask->hdr.teid)
 					*input |= ICE_INSET_GTPU_TEID;
 				list[t].type = ICE_GTP;
 				list[t].h_u.gtp_hdr.teid =
-					gtp_spec->teid;
+					gtp_spec->hdr.teid;
 				list[t].m_u.gtp_hdr.teid =
-					gtp_mask->teid;
+					gtp_mask->hdr.teid;
 				input_set_byte += 4;
 				t++;
 			}

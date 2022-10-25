@@ -1068,12 +1068,7 @@ Note: GTP, GTPC and GTPU use the same structure. GTPC and GTPU item
 are defined for a user-friendly API when creating GTP-C and GTP-U
 flow rules.
 
-- ``v_pt_rsv_flags``: version (3b), protocol type (1b), reserved (1b),
-  extension header flag (1b), sequence number flag (1b), N-PDU number
-  flag (1b).
-- ``msg_type``: message type.
-- ``msg_len``: message length.
-- ``teid``: tunnel endpoint identifier.
+- ``hdr``:  header definition (``rte_gtp.h``).
 - Default ``mask`` matches teid only.
 
 Item: ``ESP``
@@ -1248,8 +1243,7 @@ Item: ``GTP_PSC``
 
 Matches a GTP PDU extension header with type 0x85.
 
-- ``pdu_type``: PDU type.
-- ``qfi``: QoS flow identifier.
+- ``hdr``:  header definition (``rte_gtp.h``).
 - Default ``mask`` matches QFI only.
 
 Item: ``PPPOES``, ``PPPOED``

@@ -1158,23 +1158,33 @@ static const struct rte_flow_item_fuzzy rte_flow_item_fuzzy_mask = {
  *
  * Matches a GTPv1 header.
  */
+RTE_STD_C11
 struct rte_flow_item_gtp {
-	/**
-	 * Version (3b), protocol type (1b), reserved (1b),
-	 * Extension header flag (1b),
-	 * Sequence number flag (1b),
-	 * N-PDU number flag (1b).
-	 */
-	uint8_t v_pt_rsv_flags;
-	uint8_t msg_type; /**< Message type. */
-	rte_be16_t msg_len; /**< Message length. */
-	rte_be32_t teid; /**< Tunnel endpoint identifier. */
+	union {
+		struct {
+			/*
+			 * These are old fields kept for compatibility.
+			 * Please prefer hdr field below.
+			 */
+			/**
+			 * Version (3b), protocol type (1b), reserved (1b),
+			 * Extension header flag (1b),
+			 * Sequence number flag (1b),
+			 * N-PDU number flag (1b).
+			 */
+			uint8_t v_pt_rsv_flags;
+			uint8_t msg_type; /**< Message type. */
+			rte_be16_t msg_len; /**< Message length. */
+			rte_be32_t teid; /**< Tunnel endpoint identifier. */
+		};
+		struct rte_gtp_hdr hdr; /**< GTP header definition. */
+	};
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_GTP. */
 #ifndef __cplusplus
 static const struct rte_flow_item_gtp rte_flow_item_gtp_mask = {
-	.teid = RTE_BE32(0xffffffff),
+	.hdr.teid = RTE_BE32(UINT32_MAX),
 };
 #endif
 

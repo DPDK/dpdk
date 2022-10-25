@@ -1277,16 +1277,16 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, GTPU_IP);
 
 			if (gtp_spec && gtp_mask) {
-				if (gtp_mask->v_pt_rsv_flags ||
-					gtp_mask->msg_type ||
-					gtp_mask->msg_len) {
+				if (gtp_mask->hdr.gtp_hdr_info ||
+					gtp_mask->hdr.msg_type ||
+					gtp_mask->hdr.plen) {
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ITEM,
 						item, "Invalid GTP mask");
 					return -rte_errno;
 				}
 
-				if (gtp_mask->teid == UINT32_MAX) {
+				if (gtp_mask->hdr.teid == UINT32_MAX) {
 					input_set |= IAVF_INSET_GTPU_TEID;
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, GTPU_IP, TEID);
 				}

@@ -213,10 +213,10 @@ add_gtp(struct rte_flow_item *items,
 	__rte_unused struct additional_para para)
 {
 	static struct rte_flow_item_gtp gtp_spec = {
-		.teid = RTE_BE32(TEID_VALUE),
+		.hdr.teid = RTE_BE32(TEID_VALUE),
 	};
 	static struct rte_flow_item_gtp gtp_mask = {
-		.teid = RTE_BE32(0xffffffff),
+		.hdr.teid = RTE_BE32(0xffffffff),
 	};
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_GTP;

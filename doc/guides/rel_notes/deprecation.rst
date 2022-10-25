@@ -79,7 +79,6 @@ Deprecation Notices
   - ``rte_flow_item_geneve``
   - ``rte_flow_item_geneve_opt``
   - ``rte_flow_item_gre``
-  - ``rte_flow_item_gtp``
   - ``rte_flow_item_icmp6``
   - ``rte_flow_item_icmp6_nd_na``
   - ``rte_flow_item_icmp6_nd_ns``

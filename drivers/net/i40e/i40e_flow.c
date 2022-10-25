@@ -2135,10 +2135,10 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			gtp_mask = item->mask;
 
 			if (gtp_spec && gtp_mask) {
-				if (gtp_mask->v_pt_rsv_flags ||
-				    gtp_mask->msg_type ||
-				    gtp_mask->msg_len ||
-				    gtp_mask->teid != UINT32_MAX) {
+				if (gtp_mask->hdr.gtp_hdr_info ||
+				    gtp_mask->hdr.msg_type ||
+				    gtp_mask->hdr.plen ||
+				    gtp_mask->hdr.teid != UINT32_MAX) {
 					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -2147,7 +2147,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				}
 
 				filter->input.flow.gtp_flow.teid =
-					gtp_spec->teid;
+					gtp_spec->hdr.teid;
 				filter->input.flow_ext.customized_pctype = true;
 				cus_proto = item_type;
 			}
@@ -3570,10 +3570,10 @@ i40e_flow_parse_gtp_pattern(struct rte_eth_dev *dev,
 				return -rte_errno;
 			}
 
-			if (gtp_mask->v_pt_rsv_flags ||
-			    gtp_mask->msg_type ||
-			    gtp_mask->msg_len ||
-			    gtp_mask->teid != UINT32_MAX) {
+			if (gtp_mask->hdr.gtp_hdr_info ||
+			    gtp_mask->hdr.msg_type ||
+			    gtp_mask->hdr.plen ||
+			    gtp_mask->hdr.teid != UINT32_MAX) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -3586,7 +3586,7 @@ i40e_flow_parse_gtp_pattern(struct rte_eth_dev *dev,
 			else if (item_type == RTE_FLOW_ITEM_TYPE_GTPU)
 				filter->tunnel_type = I40E_TUNNEL_TYPE_GTPU;
 
-			filter->tenant_id = rte_be_to_cpu_32(gtp_spec->teid);
+			filter->tenant_id = rte_be_to_cpu_32(gtp_spec->hdr.teid);
 
 			break;
 		default:
