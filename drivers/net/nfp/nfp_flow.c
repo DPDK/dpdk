@@ -1464,6 +1464,8 @@ nfp_flow_merge_geneve(struct nfp_app_fw_flower *app_fw_flower,
 		tun6 = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
 		tun6->tun_id = rte_cpu_to_be_32((geneve->vni[0] << 16) |
 				(geneve->vni[1] << 8) | (geneve->vni[2]));
+		if (!is_mask)
+			ret = nfp_tun_add_ipv6_off(app_fw_flower, tun6->ipv6.ipv6_dst);
 	} else {
 		tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
 		tun4->tun_id = rte_cpu_to_be_32((geneve->vni[0] << 16) |
