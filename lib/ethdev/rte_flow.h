@@ -649,8 +649,8 @@ struct rte_flow_item_higig2_hdr {
 static const struct rte_flow_item_higig2_hdr rte_flow_item_higig2_hdr_mask = {
 	.hdr = {
 		.ppt1 = {
-			.classification = 0xffff,
-			.vid = 0xfff,
+			.classification = RTE_BE16(UINT16_MAX),
+			.vid = RTE_BE16(0xfff),
 		},
 	},
 };

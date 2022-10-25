@@ -45,7 +45,7 @@ struct rte_gre_hdr {
 	uint16_t res3:5; /**< Reserved */
 	uint16_t ver:3;  /**< Version Number */
 #endif
-	uint16_t proto;  /**< Protocol Type */
+	rte_be16_t proto;  /**< Protocol Type */
 } __rte_packed;
 
 /**
