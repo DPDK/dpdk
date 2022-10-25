@@ -47,6 +47,10 @@ struct vxlan_data {
 				sizeof(struct rte_ipv6_hdr) + \
 				sizeof(struct rte_udp_hdr) + \
 				sizeof(struct rte_flow_item_geneve))
+#define NVGRE_V4_LEN     (sizeof(struct rte_ether_hdr) + \
+				sizeof(struct rte_ipv4_hdr) + \
+				sizeof(struct rte_flow_item_gre) + \
+				sizeof(rte_be32_t))    /* gre key */
 
 /* Process structure associated with a flow item */
 struct nfp_flow_item_proc {
@@ -2828,6 +2832,41 @@ nfp_flow_action_geneve_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
+nfp_flow_action_nvgre_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
+		char *act_data,
+		char *actions,
+		const struct rte_flow_action_raw_encap *raw_encap,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct nfp_fl_tun *tun)
+{
+	const struct rte_ether_hdr *eth;
+	const struct rte_flow_item_ipv4 *ipv4;
+	const struct rte_flow_item_gre *gre;
+	struct nfp_fl_act_pre_tun *pre_tun;
+	struct nfp_fl_act_set_tun *set_tun;
+	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
+	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
+
+	eth  = (const struct rte_ether_hdr *)raw_encap->data;
+	ipv4 = (const struct rte_flow_item_ipv4 *)(eth + 1);
+	gre  = (const struct rte_flow_item_gre *)(ipv4 + 1);
+
+	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
+	memset(pre_tun, 0, act_pre_size);
+	nfp_flow_pre_tun_v4_process(pre_tun, ipv4->hdr.dst_addr);
+
+	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
+	memset(set_tun, 0, act_set_size);
+	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_GRE, 0,
+			ipv4->hdr.time_to_live, ipv4->hdr.type_of_service);
+	set_tun->tun_proto = gre->protocol;
+
+	/* Send the tunnel neighbor cmsg to fw */
+	return nfp_flower_add_tun_neigh_v4_encap(app_fw_flower, nfp_flow_meta,
+			tun, eth, ipv4);
+}
+
+static int
 nfp_flow_action_raw_encap(struct nfp_app_fw_flower *app_fw_flower,
 		char *act_data,
 		char *actions,
@@ -2863,6 +2902,10 @@ nfp_flow_action_raw_encap(struct nfp_app_fw_flower *app_fw_flower,
 		break;
 	case GENEVE_V6_LEN:
 		ret = nfp_flow_action_geneve_encap_v6(app_fw_flower, act_data,
+				actions, raw_encap, nfp_flow_meta, tun);
+		break;
+	case NVGRE_V4_LEN:
+		ret = nfp_flow_action_nvgre_encap_v4(app_fw_flower, act_data,
 				actions, raw_encap, nfp_flow_meta, tun);
 		break;
 	default:
