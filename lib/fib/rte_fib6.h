@@ -115,8 +115,6 @@ rte_fib6_find_existing(const char *name);
  * @param fib
  *   FIB object handle created by rte_fib6_create().
  *   If fib is NULL, no operation is performed.
- * @return
- *   None
  */
 void
 rte_fib6_free(struct rte_fib6 *fib);

@@ -329,8 +329,6 @@ rte_thash_find_existing(const char *name);
  *
  * @param ctx
  *  Thash context
- * @return
- *  None
  */
 __rte_experimental
 void
