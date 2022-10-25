@@ -20,6 +20,7 @@
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_ether.h>
+#include <rte_arp.h>
 #include <rte_icmp.h>
 #include <rte_ip.h>
 #include <rte_sctp.h>
@@ -1264,26 +1265,36 @@ static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
  *
  * Matches an ARP header for Ethernet/IPv4.
  */
+RTE_STD_C11
 struct rte_flow_item_arp_eth_ipv4 {
-	rte_be16_t hrd; /**< Hardware type, normally 1. */
-	rte_be16_t pro; /**< Protocol type, normally 0x0800. */
-	uint8_t hln; /**< Hardware address length, normally 6. */
-	uint8_t pln; /**< Protocol address length, normally 4. */
-	rte_be16_t op; /**< Opcode (1 for request, 2 for reply). */
-	struct rte_ether_addr sha; /**< Sender hardware address. */
-	rte_be32_t spa; /**< Sender IPv4 address. */
-	struct rte_ether_addr tha; /**< Target hardware address. */
-	rte_be32_t tpa; /**< Target IPv4 address. */
+	union {
+		struct {
+			/*
+			 * These are old fields kept for compatibility.
+			 * Please prefer hdr field below.
+			 */
+			rte_be16_t hrd; /**< Hardware type, normally 1. */
+			rte_be16_t pro; /**< Protocol type, normally 0x0800. */
+			uint8_t hln; /**< Hardware address length, normally 6. */
+			uint8_t pln; /**< Protocol address length, normally 4. */
+			rte_be16_t op; /**< Opcode (1 for request, 2 for reply). */
+			struct rte_ether_addr sha; /**< Sender hardware address. */
+			rte_be32_t spa; /**< Sender IPv4 address. */
+			struct rte_ether_addr tha; /**< Target hardware address. */
+			rte_be32_t tpa; /**< Target IPv4 address. */
+		};
+		struct rte_arp_hdr hdr; /**< ARP header definition. */
+	};
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4. */
 #ifndef __cplusplus
 static const struct rte_flow_item_arp_eth_ipv4
 rte_flow_item_arp_eth_ipv4_mask = {
-	.sha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.spa = RTE_BE32(0xffffffff),
-	.tha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.tpa = RTE_BE32(0xffffffff),
+	.hdr.arp_data.arp_sha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.arp_data.arp_sip = RTE_BE32(UINT32_MAX),
+	.hdr.arp_data.arp_tha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.arp_data.arp_tip = RTE_BE32(UINT32_MAX),
 };
 #endif
 

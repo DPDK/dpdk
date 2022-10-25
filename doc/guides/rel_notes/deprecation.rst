@@ -74,7 +74,6 @@ Deprecation Notices
   These items are not compliant (not including struct from lib/net/):
 
   - ``rte_flow_item_ah``
-  - ``rte_flow_item_arp_eth_ipv4``
   - ``rte_flow_item_e_tag``
   - ``rte_flow_item_geneve``
   - ``rte_flow_item_geneve_opt``

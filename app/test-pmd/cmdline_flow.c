@@ -4273,7 +4273,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(COMMON_MAC_ADDR),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
-					     sha)),
+					     hdr.arp_data.arp_sha)),
 	},
 	[ITEM_ARP_ETH_IPV4_SPA] = {
 		.name = "spa",
@@ -4281,7 +4281,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(COMMON_IPV4_ADDR),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
-					     spa)),
+					     hdr.arp_data.arp_sip)),
 	},
 	[ITEM_ARP_ETH_IPV4_THA] = {
 		.name = "tha",
@@ -4289,7 +4289,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(COMMON_MAC_ADDR),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
-					     tha)),
+					     hdr.arp_data.arp_tha)),
 	},
 	[ITEM_ARP_ETH_IPV4_TPA] = {
 		.name = "tpa",
@@ -4297,7 +4297,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_arp_eth_ipv4, NEXT_ENTRY(COMMON_IPV4_ADDR),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_arp_eth_ipv4,
-					     tpa)),
+					     hdr.arp_data.arp_tip)),
 	},
 	[ITEM_IPV6_EXT] = {
 		.name = "ipv6_ext",

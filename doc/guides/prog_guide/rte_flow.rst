@@ -1104,15 +1104,7 @@ Item: ``ARP_ETH_IPV4``
 
 Matches an ARP header for Ethernet/IPv4.
 
-- ``hdr``: hardware type, normally 1.
-- ``pro``: protocol type, normally 0x0800.
-- ``hln``: hardware address length, normally 6.
-- ``pln``: protocol address length, normally 4.
-- ``op``: opcode (1 for request, 2 for reply).
-- ``sha``: sender hardware address.
-- ``spa``: sender IPv4 address.
-- ``tha``: target hardware address.
-- ``tpa``: target IPv4 address.
+- ``hdr``:  header definition (``rte_arp.h``).
 - Default ``mask`` matches SHA, SPA, THA and TPA.
 
 Item: ``IPV6_EXT``
