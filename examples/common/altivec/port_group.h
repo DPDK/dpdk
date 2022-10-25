@@ -26,12 +26,17 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp,
 		uint16_t u16[FWDSTEP + 1];
 		uint64_t u64;
 	} *pnum = (void *)pn;
-
+	__vector unsigned long long result;
+	const __vector unsigned int perm_mask = {0x00204060, 0x80808080,
+						 0x80808080, 0x80808080};
 	int32_t v;
 
-	v = vec_any_eq(dp1, dp2);
+	dp1 = (__vector unsigned short)vec_cmpeq(dp1, dp2);
+	dp1 = vec_mergeh(dp1, dp1);
+	result = (__vector unsigned long long)vec_vbpermq(
+		(__vector unsigned char)dp1, (__vector unsigned char)perm_mask);
 
-
+	v = result[1];
 	/* update last port counter. */
 	lp[0] += gptbl[v].lpv;
 
