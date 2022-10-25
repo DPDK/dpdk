@@ -955,6 +955,9 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VXLAN_DECAP detected");
 			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_RAW_DECAP detected");
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1426,7 +1429,7 @@ vxlan_end:
 }
 
 static int
-nfp_flow_merge_geneve(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
+nfp_flow_merge_geneve(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
@@ -1434,6 +1437,7 @@ nfp_flow_merge_geneve(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		bool is_mask,
 		__rte_unused bool is_outer_layer)
 {
+	int ret = 0;
 	struct nfp_flower_ipv4_udp_tun *tun4;
 	struct nfp_flower_ipv6_udp_tun *tun6;
 	struct nfp_flower_meta_tci *meta_tci;
@@ -1464,6 +1468,8 @@ nfp_flow_merge_geneve(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
 		tun4->tun_id = rte_cpu_to_be_32((geneve->vni[0] << 16) |
 				(geneve->vni[1] << 8) | (geneve->vni[2]));
+		if (!is_mask)
+			ret = nfp_tun_add_ipv4_off(app_fw_flower, tun4->ipv4.dst);
 	}
 
 geneve_end:
@@ -1474,7 +1480,7 @@ geneve_end:
 		*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
 	}
 
-	return 0;
+	return ret;
 }
 
 /* Graph of supported items and associated process function */
@@ -3056,6 +3062,7 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			nfp_flow->type = NFP_FLOW_ENCAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			PMD_DRV_LOG(DEBUG, "process action tunnel decap");
 			ret = nfp_flow_action_tunnel_decap(representor, action,
 					nfp_flow_meta, nfp_flow);
@@ -3543,6 +3550,11 @@ nfp_flow_tunnel_decap_set(__rte_unused struct rte_eth_dev *dev,
 	switch (tunnel->type) {
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
 		nfp_action->type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
+		*pmd_actions = nfp_action;
+		*num_of_actions = 1;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GENEVE:
+		nfp_action->type = RTE_FLOW_ACTION_TYPE_RAW_DECAP;
 		*pmd_actions = nfp_action;
 		*num_of_actions = 1;
 		break;
