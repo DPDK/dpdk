@@ -564,6 +564,7 @@ nfp_tun_check_ip_off_del(struct nfp_flower_representor *repr,
 	uint32_t key_layer2 = 0;
 	struct nfp_flower_ipv4_udp_tun *udp4;
 	struct nfp_flower_ipv6_udp_tun *udp6;
+	struct nfp_flower_ipv4_gre_tun *gre4;
 	struct nfp_flower_meta_tci *meta_tci;
 	struct nfp_flower_ext_meta *ext_meta = NULL;
 
@@ -579,9 +580,15 @@ nfp_tun_check_ip_off_del(struct nfp_flower_representor *repr,
 				sizeof(struct nfp_flower_ipv6_udp_tun));
 		ret = nfp_tun_del_ipv6_off(repr->app_fw_flower, udp6->ipv6.ipv6_dst);
 	} else {
-		udp4 = (struct nfp_flower_ipv4_udp_tun *)(nfp_flow->payload.mask_data -
-				sizeof(struct nfp_flower_ipv4_udp_tun));
-		ret = nfp_tun_del_ipv4_off(repr->app_fw_flower, udp4->ipv4.dst);
+		if (key_layer2 & NFP_FLOWER_LAYER2_GRE) {
+			gre4 = (struct nfp_flower_ipv4_gre_tun *)(nfp_flow->payload.mask_data -
+					sizeof(struct nfp_flower_ipv4_gre_tun));
+			ret = nfp_tun_del_ipv4_off(repr->app_fw_flower, gre4->ipv4.dst);
+		} else {
+			udp4 = (struct nfp_flower_ipv4_udp_tun *)(nfp_flow->payload.mask_data -
+					sizeof(struct nfp_flower_ipv4_udp_tun));
+			ret = nfp_tun_del_ipv4_off(repr->app_fw_flower, udp4->ipv4.dst);
+		}
 	}
 
 	return ret;
@@ -1013,7 +1020,7 @@ nfp_flow_is_tunnel(struct rte_flow *nfp_flow)
 
 	ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
 	key_layer2 = rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2);
-	if (key_layer2 & NFP_FLOWER_LAYER2_GENEVE)
+	if (key_layer2 & (NFP_FLOWER_LAYER2_GENEVE | NFP_FLOWER_LAYER2_GRE))
 		return true;
 
 	return false;
@@ -1102,11 +1109,15 @@ nfp_flow_merge_ipv4(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_ipv4 *spec;
 	const struct rte_flow_item_ipv4 *mask;
+	struct nfp_flower_ext_meta *ext_meta = NULL;
 	struct nfp_flower_ipv4_udp_tun *ipv4_udp_tun;
+	struct nfp_flower_ipv4_gre_tun *ipv4_gre_tun;
 
 	spec = item->spec;
 	mask = item->mask ? item->mask : proc->mask_default;
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META)
+		ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
 
 	if (is_outer_layer && nfp_flow_is_tunnel(nfp_flow)) {
 		if (spec == NULL) {
@@ -1115,12 +1126,23 @@ nfp_flow_merge_ipv4(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		}
 
 		hdr = is_mask ? &mask->hdr : &spec->hdr;
-		ipv4_udp_tun = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
 
-		ipv4_udp_tun->ip_ext.tos = hdr->type_of_service;
-		ipv4_udp_tun->ip_ext.ttl = hdr->time_to_live;
-		ipv4_udp_tun->ipv4.src   = hdr->src_addr;
-		ipv4_udp_tun->ipv4.dst   = hdr->dst_addr;
+		if (ext_meta && (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+				NFP_FLOWER_LAYER2_GRE)) {
+			ipv4_gre_tun = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
+
+			ipv4_gre_tun->ip_ext.tos = hdr->type_of_service;
+			ipv4_gre_tun->ip_ext.ttl = hdr->time_to_live;
+			ipv4_gre_tun->ipv4.src   = hdr->src_addr;
+			ipv4_gre_tun->ipv4.dst   = hdr->dst_addr;
+		} else {
+			ipv4_udp_tun = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
+
+			ipv4_udp_tun->ip_ext.tos = hdr->type_of_service;
+			ipv4_udp_tun->ip_ext.ttl = hdr->time_to_live;
+			ipv4_udp_tun->ipv4.src   = hdr->src_addr;
+			ipv4_udp_tun->ipv4.dst   = hdr->dst_addr;
+		}
 	} else {
 		if (spec == NULL) {
 			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");

@@ -49,6 +49,9 @@
 #define NFP_FL_SC_ACT_POPV      0x6A000000
 #define NFP_FL_SC_ACT_NULL      0x00000000
 
+/* GRE Tunnel flags */
+#define NFP_FL_GRE_FLAG_KEY         (1 << 2)
+
 /* Action opcodes */
 #define NFP_FL_ACTION_OPCODE_OUTPUT             0
 #define NFP_FL_ACTION_OPCODE_PUSH_VLAN          1

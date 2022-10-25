@@ -575,6 +575,35 @@ struct nfp_flower_ipv6_udp_tun {
 	rte_be32_t tun_id;
 };
 
+/*
+ * Flow Frame GRE TUNNEL --> Tunnel details (6W/24B)
+ * -----------------------------------------------------------------
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         ipv4_addr_src                         |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         ipv4_addr_dst                         |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           tun_flags           |       tos     |       ttl     |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |            Reserved           |           Ethertype           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                              Key                              |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                           Reserved                            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_ipv4_gre_tun {
+	struct nfp_flower_tun_ipv4 ipv4;
+	rte_be16_t tun_flags;
+	struct nfp_flower_tun_ip_ext ip_ext;
+	rte_be16_t reserved1;
+	rte_be16_t ethertype;
+	rte_be32_t tun_key;
+	rte_be32_t reserved2;
+};
+
 struct nfp_fl_act_head {
 	uint8_t jump_id;
 	uint8_t len_lw;
