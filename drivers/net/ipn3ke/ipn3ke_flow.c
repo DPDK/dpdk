@@ -108,7 +108,7 @@ ipn3ke_pattern_vxlan(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			vxlan = item->spec;
 
-			rte_memcpy(&parser->key[6], vxlan->vni, 3);
+			rte_memcpy(&parser->key[6], vxlan->hdr.vni, 3);
 			break;
 
 		default:
@@ -576,7 +576,7 @@ ipn3ke_pattern_vxlan_ip_udp(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			vxlan = item->spec;
 
-			rte_memcpy(&parser->key[0], vxlan->vni, 3);
+			rte_memcpy(&parser->key[0], vxlan->hdr.vni, 3);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_IPV4:

@@ -2481,7 +2481,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		rule->mask.tunnel_type_mask = 1;
 
 		vxlan_mask = item->mask;
-		if (vxlan_mask->flags) {
+		if (vxlan_mask->hdr.flags) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2489,11 +2489,11 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 		/* VNI must be totally masked or not. */
-		if ((vxlan_mask->vni[0] || vxlan_mask->vni[1] ||
-			vxlan_mask->vni[2]) &&
-			((vxlan_mask->vni[0] != 0xFF) ||
-			(vxlan_mask->vni[1] != 0xFF) ||
-				(vxlan_mask->vni[2] != 0xFF))) {
+		if ((vxlan_mask->hdr.vni[0] || vxlan_mask->hdr.vni[1] ||
+			vxlan_mask->hdr.vni[2]) &&
+			((vxlan_mask->hdr.vni[0] != 0xFF) ||
+			(vxlan_mask->hdr.vni[1] != 0xFF) ||
+				(vxlan_mask->hdr.vni[2] != 0xFF))) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2501,15 +2501,15 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 
-		rte_memcpy(&rule->mask.tunnel_id_mask, vxlan_mask->vni,
-			RTE_DIM(vxlan_mask->vni));
+		rte_memcpy(&rule->mask.tunnel_id_mask, vxlan_mask->hdr.vni,
+			RTE_DIM(vxlan_mask->hdr.vni));
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
 			vxlan_spec = item->spec;
 			rte_memcpy(((uint8_t *)
 				&rule->ixgbe_fdir.formatted.tni_vni),
-				vxlan_spec->vni, RTE_DIM(vxlan_spec->vni));
+				vxlan_spec->hdr.vni, RTE_DIM(vxlan_spec->hdr.vni));
 		}
 	}
 

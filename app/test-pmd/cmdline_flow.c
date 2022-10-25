@@ -4031,7 +4031,7 @@ static const struct token token_list[] = {
 		.help = "VXLAN identifier",
 		.next = NEXT(item_vxlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan, vni)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan, hdr.vni)),
 	},
 	[ITEM_VXLAN_LAST_RSVD] = {
 		.name = "last_rsvd",
@@ -4039,7 +4039,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vxlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan,
-					     rsvd1)),
+					     hdr.rsvd1)),
 	},
 	[ITEM_E_TAG] = {
 		.name = "e_tag",
@@ -4257,7 +4257,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vxlan_gpe, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan_gpe,
-					     vni)),
+					     hdr.vni)),
 	},
 	[ITEM_ARP_ETH_IPV4] = {
 		.name = "arp_eth_ipv4",
@@ -7547,7 +7547,7 @@ parse_setup_vxlan_encap_data(struct action_vxlan_encap_data *action_vxlan_encap_
 			.src_port = vxlan_encap_conf.udp_src,
 			.dst_port = vxlan_encap_conf.udp_dst,
 		},
-		.item_vxlan.flags = 0,
+		.item_vxlan.hdr.flags = 0,
 	};
 	memcpy(action_vxlan_encap_data->item_eth.hdr.dst_addr.addr_bytes,
 	       vxlan_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
@@ -7601,7 +7601,7 @@ parse_setup_vxlan_encap_data(struct action_vxlan_encap_data *action_vxlan_encap_
 							&ipv6_mask_tos;
 		}
 	}
-	memcpy(action_vxlan_encap_data->item_vxlan.vni, vxlan_encap_conf.vni,
+	memcpy(action_vxlan_encap_data->item_vxlan.hdr.vni, vxlan_encap_conf.vni,
 	       RTE_DIM(vxlan_encap_conf.vni));
 	return 0;
 }

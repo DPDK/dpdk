@@ -990,17 +990,17 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 			input = &inner_input_set;
 			if (vxlan_spec && vxlan_mask) {
 				list[t].type = ICE_VXLAN;
-				if (vxlan_mask->vni[0] ||
-					vxlan_mask->vni[1] ||
-					vxlan_mask->vni[2]) {
+				if (vxlan_mask->hdr.vni[0] ||
+					vxlan_mask->hdr.vni[1] ||
+					vxlan_mask->hdr.vni[2]) {
 					list[t].h_u.tnl_hdr.vni =
-						(vxlan_spec->vni[2] << 16) |
-						(vxlan_spec->vni[1] << 8) |
-						vxlan_spec->vni[0];
+						(vxlan_spec->hdr.vni[2] << 16) |
+						(vxlan_spec->hdr.vni[1] << 8) |
+						vxlan_spec->hdr.vni[0];
 					list[t].m_u.tnl_hdr.vni =
-						(vxlan_mask->vni[2] << 16) |
-						(vxlan_mask->vni[1] << 8) |
-						vxlan_mask->vni[0];
+						(vxlan_mask->hdr.vni[2] << 16) |
+						(vxlan_mask->hdr.vni[1] << 8) |
+						vxlan_mask->hdr.vni[0];
 					*input |= ICE_INSET_VXLAN_VNI;
 					input_set_byte += 2;
 				}

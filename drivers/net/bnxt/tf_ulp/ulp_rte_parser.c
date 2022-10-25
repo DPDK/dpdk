@@ -1414,28 +1414,28 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 	 * Copy the rte_flow_item for vxlan into hdr_field using vxlan
 	 * header fields
 	 */
-	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->flags);
+	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->hdr.flags);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(vxlan_spec, flags),
-			      ulp_deference_struct(vxlan_mask, flags),
+			      ulp_deference_struct(vxlan_spec, hdr.flags),
+			      ulp_deference_struct(vxlan_mask, hdr.flags),
 			      ULP_PRSR_ACT_DEFAULT);
 
-	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->rsvd0);
+	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->hdr.rsvd0);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(vxlan_spec, rsvd0),
-			      ulp_deference_struct(vxlan_mask, rsvd0),
+			      ulp_deference_struct(vxlan_spec, hdr.rsvd0),
+			      ulp_deference_struct(vxlan_mask, hdr.rsvd0),
 			      ULP_PRSR_ACT_DEFAULT);
 
-	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->vni);
+	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->hdr.vni);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(vxlan_spec, vni),
-			      ulp_deference_struct(vxlan_mask, vni),
+			      ulp_deference_struct(vxlan_spec, hdr.vni),
+			      ulp_deference_struct(vxlan_mask, hdr.vni),
 			      ULP_PRSR_ACT_DEFAULT);
 
-	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->rsvd1);
+	size = sizeof(((struct rte_flow_item_vxlan *)NULL)->hdr.rsvd1);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(vxlan_spec, rsvd1),
-			      ulp_deference_struct(vxlan_mask, rsvd1),
+			      ulp_deference_struct(vxlan_spec, hdr.rsvd1),
+			      ulp_deference_struct(vxlan_mask, hdr.rsvd1),
 			      ULP_PRSR_ACT_DEFAULT);
 
 	/* Update the hdr_bitmap with vxlan */
@@ -1827,17 +1827,17 @@ ulp_rte_enc_vxlan_hdr_handler(struct ulp_rte_parser_params *params,
 	uint32_t size;
 
 	field = &params->enc_field[BNXT_ULP_ENC_FIELD_VXLAN_FLAGS];
-	size = sizeof(vxlan_spec->flags);
-	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->flags, size);
+	size = sizeof(vxlan_spec->hdr.flags);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->hdr.flags, size);
 
-	size = sizeof(vxlan_spec->rsvd0);
-	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->rsvd0, size);
+	size = sizeof(vxlan_spec->hdr.rsvd0);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->hdr.rsvd0, size);
 
-	size = sizeof(vxlan_spec->vni);
-	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->vni, size);
+	size = sizeof(vxlan_spec->hdr.vni);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->hdr.vni, size);
 
-	size = sizeof(vxlan_spec->rsvd1);
-	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->rsvd1, size);
+	size = sizeof(vxlan_spec->hdr.rsvd1);
+	field = ulp_rte_parser_fld_copy(field, &vxlan_spec->hdr.rsvd1, size);
 
 	ULP_BITMAP_SET(params->enc_hdr_bitmap.bits, BNXT_ULP_HDR_BIT_T_VXLAN);
 }
@@ -1989,7 +1989,7 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	vxlan_size = sizeof(struct rte_flow_item_vxlan);
 	/* copy the vxlan details */
 	memcpy(&vxlan_spec, item->spec, vxlan_size);
-	vxlan_spec.flags = 0x08;
+	vxlan_spec.hdr.flags = 0x08;
 	vxlan_size = tfp_cpu_to_be_32(vxlan_size);
 	memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ],
 	       &vxlan_size, sizeof(uint32_t));

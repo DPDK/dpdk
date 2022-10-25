@@ -3009,7 +3009,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 			/* Check if VNI is masked. */
 			if (vxlan_spec && vxlan_mask) {
 				is_vni_masked =
-					!!memcmp(vxlan_mask->vni, vni_mask,
+					!!memcmp(vxlan_mask->hdr.vni, vni_mask,
 						 RTE_DIM(vni_mask));
 				if (is_vni_masked) {
 					rte_flow_error_set(error, EINVAL,
@@ -3020,7 +3020,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 				}
 
 				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
-					   vxlan_spec->vni, 3);
+					   vxlan_spec->hdr.vni, 3);
 				filter->tenant_id =
 					rte_be_to_cpu_32(tenant_id_be);
 				filter_type |= RTE_ETH_TUNNEL_FILTER_TENID;

@@ -95,7 +95,6 @@ Deprecation Notices
   - ``rte_flow_item_pfcp``
   - ``rte_flow_item_pppoe``
   - ``rte_flow_item_pppoe_proto_id``
-  - ``rte_flow_item_vxlan_gpe``
 
 * ethdev: Queue specific stats fields will be removed from ``struct rte_eth_stats``.
   Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``,

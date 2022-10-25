@@ -935,10 +935,7 @@ Item: ``VXLAN``
 
 Matches a VXLAN header (RFC 7348).
 
-- ``flags``: normally 0x08 (I flag).
-- ``rsvd0``: reserved, normally 0x000000.
-- ``vni``: VXLAN network identifier.
-- ``rsvd1``: reserved, normally 0x00.
+- ``hdr``:  header definition (``rte_vxlan.h``).
 - Default ``mask`` matches VNI only.
 
 Item: ``E_TAG``
@@ -1104,11 +1101,7 @@ Item: ``VXLAN-GPE``
 
 Matches a VXLAN-GPE header (draft-ietf-nvo3-vxlan-gpe-05).
 
-- ``flags``: normally 0x0C (I and P flags).
-- ``rsvd0``: reserved, normally 0x0000.
-- ``protocol``: protocol type.
-- ``vni``: VXLAN network identifier.
-- ``rsvd1``: reserved, normally 0x00.
+- ``hdr``:  header definition (``rte_vxlan.h``).
 - Default ``mask`` matches VNI only.
 
 Item: ``ARP_ETH_IPV4``

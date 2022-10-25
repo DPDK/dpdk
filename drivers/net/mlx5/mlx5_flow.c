@@ -333,7 +333,7 @@ mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 		ret = mlx5_ethertype_to_item_type(spec, mask, true);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-		MLX5_XSET_ITEM_MASK_SPEC(vxlan_gpe, protocol);
+		MLX5_XSET_ITEM_MASK_SPEC(vxlan_gpe, hdr.proto);
 		ret = mlx5_nsh_proto_to_item_type(spec, mask);
 		break;
 	default:
@@ -2919,8 +2919,8 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 		uint8_t vni[4];
 	} id = { .vlan_id = 0, };
 	const struct rte_flow_item_vxlan nic_mask = {
-		.vni = "\xff\xff\xff",
-		.rsvd1 = 0xff,
+		.hdr.vni = "\xff\xff\xff",
+		.hdr.rsvd1 = 0xff,
 	};
 	const struct rte_flow_item_vxlan *valid_mask;
 
@@ -2959,8 +2959,8 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return ret;
 	if (spec) {
-		memcpy(&id.vni[1], spec->vni, 3);
-		memcpy(&id.vni[1], mask->vni, 3);
+		memcpy(&id.vni[1], spec->hdr.vni, 3);
+		memcpy(&id.vni[1], mask->hdr.vni, 3);
 	}
 	if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
 		return rte_flow_error_set(error, ENOTSUP,
@@ -3030,14 +3030,14 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 	if (ret < 0)
 		return ret;
 	if (spec) {
-		if (spec->protocol)
+		if (spec->hdr.proto)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  item,
 						  "VxLAN-GPE protocol"
 						  " not supported");
-		memcpy(&id.vni[1], spec->vni, 3);
-		memcpy(&id.vni[1], mask->vni, 3);
+		memcpy(&id.vni[1], spec->hdr.vni, 3);
+		memcpy(&id.vni[1], mask->hdr.vni, 3);
 	}
 	if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
 		return rte_flow_error_set(error, ENOTSUP,

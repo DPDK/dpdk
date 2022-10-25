@@ -765,9 +765,9 @@ flow_verbs_translate_item_vxlan(struct mlx5_flow *dev_flow,
 	if (!mask)
 		mask = &rte_flow_item_vxlan_mask;
 	if (spec) {
-		memcpy(&id.vni[1], spec->vni, 3);
+		memcpy(&id.vni[1], spec->hdr.vni, 3);
 		vxlan.val.tunnel_id = id.vlan_id;
-		memcpy(&id.vni[1], mask->vni, 3);
+		memcpy(&id.vni[1], mask->hdr.vni, 3);
 		vxlan.mask.tunnel_id = id.vlan_id;
 		/* Remove unwanted bits from values. */
 		vxlan.val.tunnel_id &= vxlan.mask.tunnel_id;
@@ -807,9 +807,9 @@ flow_verbs_translate_item_vxlan_gpe(struct mlx5_flow *dev_flow,
 	if (!mask)
 		mask = &rte_flow_item_vxlan_gpe_mask;
 	if (spec) {
-		memcpy(&id.vni[1], spec->vni, 3);
+		memcpy(&id.vni[1], spec->hdr.vni, 3);
 		vxlan_gpe.val.tunnel_id = id.vlan_id;
-		memcpy(&id.vni[1], mask->vni, 3);
+		memcpy(&id.vni[1], mask->hdr.vni, 3);
 		vxlan_gpe.mask.tunnel_id = id.vlan_id;
 		/* Remove unwanted bits from values. */
 		vxlan_gpe.val.tunnel_id &= vxlan_gpe.mask.tunnel_id;

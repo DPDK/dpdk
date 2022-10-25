@@ -2223,8 +2223,8 @@ static const struct sfc_mae_field_locator flocs_tunnel[] = {
 		 * The size and offset values are relevant
 		 * for Geneve and NVGRE, too.
 		 */
-		.size = RTE_SIZEOF_FIELD(struct rte_flow_item_vxlan, vni),
-		.ofst = offsetof(struct rte_flow_item_vxlan, vni),
+		.size = RTE_SIZEOF_FIELD(struct rte_flow_item_vxlan, hdr.vni),
+		.ofst = offsetof(struct rte_flow_item_vxlan, hdr.vni),
 	},
 };
 
@@ -2359,10 +2359,10 @@ sfc_mae_rule_parse_item_tunnel(const struct rte_flow_item *item,
 	 * The extra byte is 0 both in the mask and in the value.
 	 */
 	vxp = (const struct rte_flow_item_vxlan *)spec;
-	memcpy(vnet_id_v + 1, &vxp->vni, sizeof(vxp->vni));
+	memcpy(vnet_id_v + 1, &vxp->hdr.vni, sizeof(vxp->hdr.vni));
 
 	vxp = (const struct rte_flow_item_vxlan *)mask;
-	memcpy(vnet_id_m + 1, &vxp->vni, sizeof(vxp->vni));
+	memcpy(vnet_id_m + 1, &vxp->hdr.vni, sizeof(vxp->hdr.vni));
 
 	rc = efx_mae_match_spec_field_set(ctx_mae->match_spec,
 					  EFX_MAE_FIELD_ENC_VNET_ID_BE,

@@ -563,9 +563,11 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				break;
 			}
 
-			if (vxlan_spec->rsvd1 || vxlan_spec->rsvd0[0] ||
-			    vxlan_spec->rsvd0[1] || vxlan_spec->rsvd0[2] ||
-			    vxlan_spec->flags != 0x8) {
+			if ((vxlan_spec->hdr.rsvd0[0] != 0) ||
+			    (vxlan_spec->hdr.rsvd0[1] != 0) ||
+			    (vxlan_spec->hdr.rsvd0[2] != 0) ||
+			    (vxlan_spec->hdr.rsvd1 != 0) ||
+			    (vxlan_spec->hdr.flags != 8)) {
 				rte_flow_error_set(error,
 						   EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -577,7 +579,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 			/* Check if VNI is masked. */
 			if (vxlan_mask != NULL) {
 				vni_masked =
-					!!memcmp(vxlan_mask->vni, vni_mask,
+					!!memcmp(vxlan_mask->hdr.vni, vni_mask,
 						 RTE_DIM(vni_mask));
 				if (vni_masked) {
 					rte_flow_error_set
@@ -590,7 +592,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				}
 
 				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
-					   vxlan_spec->vni, 3);
+					   vxlan_spec->hdr.vni, 3);
 				filter->vni =
 					rte_be_to_cpu_32(tenant_id_be);
 				filter->tunnel_type =

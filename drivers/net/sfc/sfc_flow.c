@@ -921,7 +921,7 @@ sfc_flow_parse_vxlan(const struct rte_flow_item *item,
 	const struct rte_flow_item_vxlan *spec = NULL;
 	const struct rte_flow_item_vxlan *mask = NULL;
 	const struct rte_flow_item_vxlan supp_mask = {
-		.vni = { 0xff, 0xff, 0xff }
+		.hdr.vni = { 0xff, 0xff, 0xff }
 	};
 
 	rc = sfc_flow_parse_init(item,
@@ -945,8 +945,8 @@ sfc_flow_parse_vxlan(const struct rte_flow_item *item,
 	if (spec == NULL)
 		return 0;
 
-	rc = sfc_flow_set_efx_spec_vni_or_vsid(efx_spec, spec->vni,
-					       mask->vni, item, error);
+	rc = sfc_flow_set_efx_spec_vni_or_vsid(efx_spec, spec->hdr.vni,
+					       mask->hdr.vni, item, error);
 
 	return rc;
 }

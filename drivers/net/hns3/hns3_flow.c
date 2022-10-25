@@ -933,23 +933,23 @@ hns3_parse_vxlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	vxlan_mask = item->mask;
 	vxlan_spec = item->spec;
 
-	if (vxlan_mask->flags)
+	if (vxlan_mask->hdr.flags)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "Flags is not supported in VxLAN");
 
 	/* VNI must be totally masked or not. */
-	if (memcmp(vxlan_mask->vni, full_mask, VNI_OR_TNI_LEN) &&
-	    memcmp(vxlan_mask->vni, zero_mask, VNI_OR_TNI_LEN))
+	if (memcmp(vxlan_mask->hdr.vni, full_mask, VNI_OR_TNI_LEN) &&
+	    memcmp(vxlan_mask->hdr.vni, zero_mask, VNI_OR_TNI_LEN))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "VNI must be totally masked or not in VxLAN");
-	if (vxlan_mask->vni[0]) {
+	if (vxlan_mask->hdr.vni[0]) {
 		hns3_set_bit(rule->input_set, OUTER_TUN_VNI, 1);
-		memcpy(rule->key_conf.mask.outer_tun_vni, vxlan_mask->vni,
+		memcpy(rule->key_conf.mask.outer_tun_vni, vxlan_mask->hdr.vni,
 			   VNI_OR_TNI_LEN);
 	}
-	memcpy(rule->key_conf.spec.outer_tun_vni, vxlan_spec->vni,
+	memcpy(rule->key_conf.spec.outer_tun_vni, vxlan_spec->hdr.vni,
 		   VNI_OR_TNI_LEN);
 	return 0;
 }

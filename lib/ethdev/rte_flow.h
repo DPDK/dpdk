@@ -1007,7 +1007,7 @@ struct rte_flow_item_vxlan {
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
-	.hdr.vx_vni = RTE_BE32(0xffffff00), /* (0xffffff << 8) */
+	.hdr.vni = "\xff\xff\xff",
 };
 #endif
 
@@ -1224,18 +1224,28 @@ static const struct rte_flow_item_geneve rte_flow_item_geneve_mask = {
  *
  * Matches a VXLAN-GPE header.
  */
+RTE_STD_C11
 struct rte_flow_item_vxlan_gpe {
-	uint8_t flags; /**< Normally 0x0c (I and P flags). */
-	uint8_t rsvd0[2]; /**< Reserved, normally 0x0000. */
-	uint8_t protocol; /**< Protocol type. */
-	uint8_t vni[3]; /**< VXLAN identifier. */
-	uint8_t rsvd1; /**< Reserved, normally 0x00. */
+	union {
+		struct {
+			/*
+			 * These are old fields kept for compatibility.
+			 * Please prefer hdr field below.
+			 */
+			uint8_t flags; /**< Normally 0x0c (I and P flags). */
+			uint8_t rsvd0[2]; /**< Reserved, normally 0x0000. */
+			uint8_t protocol; /**< Protocol type. */
+			uint8_t vni[3]; /**< VXLAN identifier. */
+			uint8_t rsvd1; /**< Reserved, normally 0x00. */
+		};
+		struct rte_vxlan_gpe_hdr hdr;
+	};
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
-	.vni = "\xff\xff\xff",
+	.hdr.vni = "\xff\xff\xff",
 };
 #endif
 
