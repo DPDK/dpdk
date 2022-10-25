@@ -712,19 +712,19 @@ print_out_sketch_results(uint64_t *count_result, member_set_t *heavy_set,
 			printf("key %2u, count %8"PRIu64", real count %8u, "
 				"heavy_set %u, deviation rate [%.04f]\n",
 				i, count_result[i],
-				(unsigned int)ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1)) *
+				(unsigned int)ceil((double)SKETCH_LARGEST_KEY_SIZE / (i + 1)) *
 				HH_PKT_SIZE,
 				heavy_set[i],
-				fabs((float)count_result[i] - (float)NUM_OF_KEY(i) * HH_PKT_SIZE) /
-				((float)NUM_OF_KEY(i) * HH_PKT_SIZE));
+				fabs((double)count_result[i] - (double)NUM_OF_KEY(i) * HH_PKT_SIZE) /
+				((double)NUM_OF_KEY(i) * HH_PKT_SIZE));
 		else
 			printf("key %2u, count %8"PRIu64", real count %8u, "
 				"heavy_set %u, deviation rate [%.04f]\n",
 				i, count_result[i],
-				(unsigned int)ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1)),
+				(unsigned int)ceil((double)SKETCH_LARGEST_KEY_SIZE / (i + 1)),
 				heavy_set[i],
-				fabs((float)count_result[i] - (float)NUM_OF_KEY(i)) /
-				(float)NUM_OF_KEY(i));
+				fabs((double)count_result[i] - (double)NUM_OF_KEY(i)) /
+				(double)NUM_OF_KEY(i));
 	}
 }
 
@@ -879,7 +879,7 @@ test_member_sketch(void)
 	int count_byte = 0;
 
 	for (i = 0; i < SKETCH_TOTAL_KEY; i++)
-		total_pkt += ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1));
+		total_pkt += ceil((double)SKETCH_LARGEST_KEY_SIZE / (i + 1));
 
 	printf("\nTotal key count [%u] in Sketch Autotest\n", total_pkt);
 
@@ -892,7 +892,7 @@ test_member_sketch(void)
 
 	index = 0;
 	for (i = 0; i < SKETCH_TOTAL_KEY; i++) {
-		for (j = 0; j < ceil(SKETCH_LARGEST_KEY_SIZE / (i + 1)); j++)
+		for (j = 0; j < ceil((double)SKETCH_LARGEST_KEY_SIZE / (i + 1)); j++)
 			keys[index++] = i;
 	}
 

@@ -196,7 +196,8 @@ setup_keys_and_data(struct member_perf_params *params, unsigned int cycle,
 	for (i = 0; i < KEYS_TO_ADD; i++) {
 		if (count_down == 0) {
 			distinct_key++;
-			count_down = ceil(SKETCH_LARGEST_KEY_SIZE / (distinct_key + 1));
+			count_down = ceil((double)SKETCH_LARGEST_KEY_SIZE /
+					(distinct_key + 1));
 		}
 		memcpy(hh_keys[i], keys[distinct_key], params->key_size);
 		count_down--;
