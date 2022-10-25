@@ -324,6 +324,41 @@ struct nfp_flower_ipv6 {
 	uint8_t ipv6_dst[16];
 };
 
+struct nfp_flower_tun_ipv4 {
+	rte_be32_t src;
+	rte_be32_t dst;
+};
+
+struct nfp_flower_tun_ip_ext {
+	uint8_t tos;
+	uint8_t ttl;
+};
+
+/*
+ * Flow Frame IPv4 UDP TUNNEL --> Tunnel details (5W/20B)
+ * -----------------------------------------------------------------
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         ipv4_addr_src                         |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         ipv4_addr_dst                         |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           Reserved            |      tos      |      ttl      |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                            Reserved                           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     VNI                       |   Reserved    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_flower_ipv4_udp_tun {
+	struct nfp_flower_tun_ipv4 ipv4;
+	rte_be16_t reserved1;
+	struct nfp_flower_tun_ip_ext ip_ext;
+	rte_be32_t reserved2;
+	rte_be32_t tun_id;
+};
+
 struct nfp_fl_act_head {
 	uint8_t jump_id;
 	uint8_t len_lw;

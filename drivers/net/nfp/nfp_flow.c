@@ -38,7 +38,8 @@ struct nfp_flow_item_proc {
 			char **mbuf_off,
 			const struct rte_flow_item *item,
 			const struct nfp_flow_item_proc *proc,
-			bool is_mask);
+			bool is_mask,
+			bool is_outer_layer);
 	/* List of possible subsequent items. */
 	const enum rte_flow_item_type *const next_item;
 };
@@ -491,6 +492,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 		struct nfp_fl_key_ls *key_ls)
 {
 	struct rte_eth_dev *ethdev;
+	bool outer_ip4_flag = false;
 	const struct rte_flow_item *item;
 	struct nfp_flower_representor *representor;
 	const struct rte_flow_item_port_id *port_id;
@@ -526,6 +528,8 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
 			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV4;
 			key_ls->key_size += sizeof(struct nfp_flower_ipv4);
+			if (!outer_ip4_flag)
+				outer_ip4_flag = true;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
@@ -546,6 +550,21 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_SCTP detected");
 			key_ls->key_layer |= NFP_FLOWER_LAYER_TP;
 			key_ls->key_size += sizeof(struct nfp_flower_tp_ports);
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_VXLAN detected");
+			/* Clear IPv4 bits */
+			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+			key_ls->tun_type = NFP_FL_TUN_VXLAN;
+			key_ls->key_layer |= NFP_FLOWER_LAYER_VXLAN;
+			if (outer_ip4_flag) {
+				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
+				/*
+				 * The outer l3 layer information is
+				 * in `struct nfp_flower_ipv4_udp_tun`
+				 */
+				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
@@ -719,12 +738,25 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 	return ret;
 }
 
+static bool
+nfp_flow_is_tunnel(struct rte_flow *nfp_flow)
+{
+	struct nfp_flower_meta_tci *meta_tci;
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_VXLAN)
+		return true;
+
+	return false;
+}
+
 static int
 nfp_flow_merge_eth(__rte_unused struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
-		bool is_mask)
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
 {
 	struct nfp_flower_mac_mpls *eth;
 	const struct rte_flow_item_eth *spec;
@@ -760,7 +792,8 @@ nfp_flow_merge_vlan(struct rte_flow *nfp_flow,
 		__rte_unused char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
-		bool is_mask)
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
 {
 	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_vlan *spec;
@@ -789,41 +822,58 @@ nfp_flow_merge_ipv4(struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
-		bool is_mask)
+		bool is_mask,
+		bool is_outer_layer)
 {
 	struct nfp_flower_ipv4 *ipv4;
 	const struct rte_ipv4_hdr *hdr;
 	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_ipv4 *spec;
 	const struct rte_flow_item_ipv4 *mask;
+	struct nfp_flower_ipv4_udp_tun *ipv4_udp_tun;
 
 	spec = item->spec;
 	mask = item->mask ? item->mask : proc->mask_default;
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
 
-	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");
-		goto ipv4_end;
-	}
+	if (is_outer_layer && nfp_flow_is_tunnel(nfp_flow)) {
+		if (spec == NULL) {
+			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");
+			return 0;
+		}
 
-	/*
-	 * reserve space for L4 info.
-	 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv4
-	 */
-	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP)
-		*mbuf_off += sizeof(struct nfp_flower_tp_ports);
+		hdr = is_mask ? &mask->hdr : &spec->hdr;
+		ipv4_udp_tun = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
 
-	hdr = is_mask ? &mask->hdr : &spec->hdr;
-	ipv4 = (struct nfp_flower_ipv4 *)*mbuf_off;
+		ipv4_udp_tun->ip_ext.tos = hdr->type_of_service;
+		ipv4_udp_tun->ip_ext.ttl = hdr->time_to_live;
+		ipv4_udp_tun->ipv4.src   = hdr->src_addr;
+		ipv4_udp_tun->ipv4.dst   = hdr->dst_addr;
+	} else {
+		if (spec == NULL) {
+			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");
+			goto ipv4_end;
+		}
 
-	ipv4->ip_ext.tos   = hdr->type_of_service;
-	ipv4->ip_ext.proto = hdr->next_proto_id;
-	ipv4->ip_ext.ttl   = hdr->time_to_live;
-	ipv4->ipv4_src     = hdr->src_addr;
-	ipv4->ipv4_dst     = hdr->dst_addr;
+		/*
+		 * reserve space for L4 info.
+		 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv4
+		 */
+		if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP)
+			*mbuf_off += sizeof(struct nfp_flower_tp_ports);
+
+		hdr = is_mask ? &mask->hdr : &spec->hdr;
+		ipv4 = (struct nfp_flower_ipv4 *)*mbuf_off;
+
+		ipv4->ip_ext.tos   = hdr->type_of_service;
+		ipv4->ip_ext.proto = hdr->next_proto_id;
+		ipv4->ip_ext.ttl   = hdr->time_to_live;
+		ipv4->ipv4_src     = hdr->src_addr;
+		ipv4->ipv4_dst     = hdr->dst_addr;
 
 ipv4_end:
-	*mbuf_off += sizeof(struct nfp_flower_ipv4);
+		*mbuf_off += sizeof(struct nfp_flower_ipv4);
+	}
 
 	return 0;
 }
@@ -833,7 +883,8 @@ nfp_flow_merge_ipv6(struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
-		bool is_mask)
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
 {
 	struct nfp_flower_ipv6 *ipv6;
 	const struct rte_ipv6_hdr *hdr;
@@ -878,7 +929,8 @@ nfp_flow_merge_tcp(struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
-		bool is_mask)
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
 {
 	uint8_t tcp_flags;
 	struct nfp_flower_tp_ports *ports;
@@ -950,7 +1002,8 @@ nfp_flow_merge_udp(struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
-		bool is_mask)
+		bool is_mask,
+		bool is_outer_layer)
 {
 	char *ports_off;
 	struct nfp_flower_tp_ports *ports;
@@ -961,6 +1014,12 @@ nfp_flow_merge_udp(struct rte_flow *nfp_flow,
 	spec = item->spec;
 	if (spec == NULL) {
 		PMD_DRV_LOG(DEBUG, "nfp flow merge udp: no item->spec!");
+		return 0;
+	}
+
+	/* Don't add L4 info if working on a inner layer pattern */
+	if (!is_outer_layer) {
+		PMD_DRV_LOG(INFO, "Detected inner layer UDP, skipping.");
 		return 0;
 	}
 
@@ -991,7 +1050,8 @@ nfp_flow_merge_sctp(struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
-		bool is_mask)
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
 {
 	char *ports_off;
 	struct nfp_flower_tp_ports *ports;
@@ -1027,10 +1087,42 @@ nfp_flow_merge_sctp(struct rte_flow *nfp_flow,
 	return 0;
 }
 
+static int
+nfp_flow_merge_vxlan(__rte_unused struct rte_flow *nfp_flow,
+		char **mbuf_off,
+		const struct rte_flow_item *item,
+		const struct nfp_flow_item_proc *proc,
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
+{
+	const struct rte_vxlan_hdr *hdr;
+	struct nfp_flower_ipv4_udp_tun *tun4;
+	const struct rte_flow_item_vxlan *spec;
+	const struct rte_flow_item_vxlan *mask;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge vxlan: no item->spec!");
+		goto vxlan_end;
+	}
+
+	mask = item->mask ? item->mask : proc->mask_default;
+	hdr = is_mask ? &mask->hdr : &spec->hdr;
+
+	tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
+	tun4->tun_id = hdr->vx_vni;
+
+vxlan_end:
+	*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
+
+	return 0;
+}
+
 /* Graph of supported items and associated process function */
 static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
-		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH,
+			RTE_FLOW_ITEM_TYPE_IPV4),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VLAN,
@@ -1113,6 +1205,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.merge = nfp_flow_merge_tcp,
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VXLAN),
 		.mask_support = &(const struct rte_flow_item_udp){
 			.hdr = {
 				.src_port = RTE_BE16(0xffff),
@@ -1133,6 +1226,17 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.mask_default = &rte_flow_item_sctp_mask,
 		.mask_sz = sizeof(struct rte_flow_item_sctp),
 		.merge = nfp_flow_merge_sctp,
+	},
+	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
+		.mask_support = &(const struct rte_flow_item_vxlan){
+			.hdr = {
+				.vx_vni = RTE_BE32(0xffffff00),
+			},
+		},
+		.mask_default = &rte_flow_item_vxlan_mask,
+		.mask_sz = sizeof(struct rte_flow_item_vxlan),
+		.merge = nfp_flow_merge_vxlan,
 	},
 };
 
@@ -1187,20 +1291,52 @@ nfp_flow_item_check(const struct rte_flow_item *item,
 	return ret;
 }
 
+static bool
+nfp_flow_is_tun_item(const struct rte_flow_item *item)
+{
+	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN)
+		return true;
+
+	return false;
+}
+
+static bool
+nfp_flow_inner_item_get(const struct rte_flow_item items[],
+		const struct rte_flow_item **inner_item)
+{
+	const struct rte_flow_item *item;
+
+	*inner_item = items;
+
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		if (nfp_flow_is_tun_item(item)) {
+			*inner_item = ++item;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static int
 nfp_flow_compile_item_proc(const struct rte_flow_item items[],
 		struct rte_flow *nfp_flow,
 		char **mbuf_off_exact,
-		char **mbuf_off_mask)
+		char **mbuf_off_mask,
+		bool is_outer_layer)
 {
 	int i;
 	int ret = 0;
+	bool continue_flag = true;
 	const struct rte_flow_item *item;
 	const struct nfp_flow_item_proc *proc_list;
 
 	proc_list = nfp_flow_item_proc_list;
-	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END && continue_flag; ++item) {
 		const struct nfp_flow_item_proc *proc = NULL;
+
+		if (nfp_flow_is_tun_item(item))
+			continue_flag = false;
 
 		for (i = 0; proc_list->next_item && proc_list->next_item[i]; ++i) {
 			if (proc_list->next_item[i] == item->type) {
@@ -1230,14 +1366,14 @@ nfp_flow_compile_item_proc(const struct rte_flow_item items[],
 		}
 
 		ret = proc->merge(nfp_flow, mbuf_off_exact, item,
-				proc, false);
+				proc, false, is_outer_layer);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "nfp flow item %d exact merge failed", item->type);
 			break;
 		}
 
 		ret = proc->merge(nfp_flow, mbuf_off_mask, item,
-				proc, true);
+				proc, true, is_outer_layer);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "nfp flow item %d mask merge failed", item->type);
 			break;
@@ -1257,6 +1393,9 @@ nfp_flow_compile_items(__rte_unused struct nfp_flower_representor *representor,
 	int ret;
 	char *mbuf_off_mask;
 	char *mbuf_off_exact;
+	bool is_tun_flow = false;
+	bool is_outer_layer = true;
+	const struct rte_flow_item *loop_item;
 
 	mbuf_off_exact = nfp_flow->payload.unmasked_data +
 			sizeof(struct nfp_flower_meta_tci) +
@@ -1265,12 +1404,27 @@ nfp_flow_compile_items(__rte_unused struct nfp_flower_representor *representor,
 			sizeof(struct nfp_flower_meta_tci) +
 			sizeof(struct nfp_flower_in_port);
 
+	/* Check if this is a tunnel flow and get the inner item*/
+	is_tun_flow = nfp_flow_inner_item_get(items, &loop_item);
+	if (is_tun_flow)
+		is_outer_layer = false;
+
 	/* Go over items */
-	ret = nfp_flow_compile_item_proc(items, nfp_flow,
-			&mbuf_off_exact, &mbuf_off_mask);
+	ret = nfp_flow_compile_item_proc(loop_item, nfp_flow,
+			&mbuf_off_exact, &mbuf_off_mask, is_outer_layer);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "nfp flow item compile failed.");
 		return -EINVAL;
+	}
+
+	/* Go over inner items */
+	if (is_tun_flow) {
+		ret = nfp_flow_compile_item_proc(items, nfp_flow,
+				&mbuf_off_exact, &mbuf_off_mask, true);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "nfp flow outer item compile failed.");
+			return -EINVAL;
+		}
 	}
 
 	return 0;
@@ -2119,12 +2273,35 @@ nfp_flow_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+nfp_flow_tunnel_match(__rte_unused struct rte_eth_dev *dev,
+		__rte_unused struct rte_flow_tunnel *tunnel,
+		__rte_unused struct rte_flow_item **pmd_items,
+		uint32_t *num_of_items,
+		__rte_unused struct rte_flow_error *err)
+{
+	*num_of_items = 0;
+
+	return 0;
+}
+
+static int
+nfp_flow_tunnel_item_release(__rte_unused struct rte_eth_dev *dev,
+		__rte_unused struct rte_flow_item *pmd_items,
+		__rte_unused uint32_t num_of_items,
+		__rte_unused struct rte_flow_error *err)
+{
+	return 0;
+}
+
 static const struct rte_flow_ops nfp_flow_ops = {
 	.validate                    = nfp_flow_validate,
 	.create                      = nfp_flow_create,
 	.destroy                     = nfp_flow_destroy,
 	.flush                       = nfp_flow_flush,
 	.query                       = nfp_flow_query,
+	.tunnel_match                = nfp_flow_tunnel_match,
+	.tunnel_item_release         = nfp_flow_tunnel_item_release,
 };
 
 int
