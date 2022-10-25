@@ -28,6 +28,68 @@ gve_write_version(uint8_t *driver_version_register)
 }
 
 static int
+gve_alloc_queue_page_list(struct gve_priv *priv, uint32_t id, uint32_t pages)
+{
+	char z_name[RTE_MEMZONE_NAMESIZE];
+	struct gve_queue_page_list *qpl;
+	const struct rte_memzone *mz;
+	dma_addr_t page_bus;
+	uint32_t i;
+
+	if (priv->num_registered_pages + pages >
+	    priv->max_registered_pages) {
+		PMD_DRV_LOG(ERR, "Pages %" PRIu64 " > max registered pages %" PRIu64,
+			    priv->num_registered_pages + pages,
+			    priv->max_registered_pages);
+		return -EINVAL;
+	}
+	qpl = &priv->qpl[id];
+	snprintf(z_name, sizeof(z_name), "gve_%s_qpl%d", priv->pci_dev->device.name, id);
+	mz = rte_memzone_reserve_aligned(z_name, pages * PAGE_SIZE,
+					 rte_socket_id(),
+					 RTE_MEMZONE_IOVA_CONTIG, PAGE_SIZE);
+	if (mz == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to alloc %s.", z_name);
+		return -ENOMEM;
+	}
+	qpl->page_buses = rte_zmalloc("qpl page buses", pages * sizeof(dma_addr_t), 0);
+	if (qpl->page_buses == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to alloc qpl %u page buses", id);
+		return -ENOMEM;
+	}
+	page_bus = mz->iova;
+	for (i = 0; i < pages; i++) {
+		qpl->page_buses[i] = page_bus;
+		page_bus += PAGE_SIZE;
+	}
+	qpl->id = id;
+	qpl->mz = mz;
+	qpl->num_entries = pages;
+
+	priv->num_registered_pages += pages;
+
+	return 0;
+}
+
+static void
+gve_free_qpls(struct gve_priv *priv)
+{
+	uint16_t nb_txqs = priv->max_nb_txq;
+	uint16_t nb_rxqs = priv->max_nb_rxq;
+	uint32_t i;
+
+	for (i = 0; i < nb_txqs + nb_rxqs; i++) {
+		if (priv->qpl[i].mz != NULL)
+			rte_memzone_free(priv->qpl[i].mz);
+		if (priv->qpl[i].page_buses != NULL)
+			rte_free(priv->qpl[i].page_buses);
+	}
+
+	if (priv->qpl != NULL)
+		rte_free(priv->qpl);
+}
+
+static int
 gve_dev_configure(struct rte_eth_dev *dev)
 {
 	struct gve_priv *priv = dev->data->dev_private;
@@ -37,6 +99,43 @@ gve_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
 		priv->enable_rsc = 1;
+
+	return 0;
+}
+
+static int
+gve_refill_pages(struct gve_rx_queue *rxq)
+{
+	struct rte_mbuf *nmb;
+	uint16_t i;
+	int diag;
+
+	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0], rxq->nb_rx_desc);
+	if (diag < 0) {
+		for (i = 0; i < rxq->nb_rx_desc - 1; i++) {
+			nmb = rte_pktmbuf_alloc(rxq->mpool);
+			if (!nmb)
+				break;
+			rxq->sw_ring[i] = nmb;
+		}
+		if (i < rxq->nb_rx_desc - 1)
+			return -ENOMEM;
+	}
+	rxq->nb_avail = 0;
+	rxq->next_avail = rxq->nb_rx_desc - 1;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		if (rxq->is_gqi_qpl) {
+			rxq->rx_data_ring[i].addr = rte_cpu_to_be_64(i * PAGE_SIZE);
+		} else {
+			if (i == rxq->nb_rx_desc - 1)
+				break;
+			nmb = rxq->sw_ring[i];
+			rxq->rx_data_ring[i].addr = rte_cpu_to_be_64(rte_mbuf_data_iova(nmb));
+		}
+	}
+
+	rte_write32(rte_cpu_to_be_32(rxq->next_avail), rxq->qrx_tail);
 
 	return 0;
 }
@@ -72,16 +171,70 @@ gve_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 static int
 gve_dev_start(struct rte_eth_dev *dev)
 {
+	uint16_t num_queues = dev->data->nb_tx_queues;
+	struct gve_priv *priv = dev->data->dev_private;
+	struct gve_tx_queue *txq;
+	struct gve_rx_queue *rxq;
+	uint16_t i;
+	int err;
+
+	priv->txqs = (struct gve_tx_queue **)dev->data->tx_queues;
+	err = gve_adminq_create_tx_queues(priv, num_queues);
+	if (err) {
+		PMD_DRV_LOG(ERR, "failed to create %u tx queues.", num_queues);
+		return err;
+	}
+	for (i = 0; i < num_queues; i++) {
+		txq = priv->txqs[i];
+		txq->qtx_tail =
+		&priv->db_bar2[rte_be_to_cpu_32(txq->qres->db_index)];
+		txq->qtx_head =
+		&priv->cnt_array[rte_be_to_cpu_32(txq->qres->counter_index)];
+
+		rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), txq->ntfy_addr);
+	}
+
+	num_queues = dev->data->nb_rx_queues;
+	priv->rxqs = (struct gve_rx_queue **)dev->data->rx_queues;
+	err = gve_adminq_create_rx_queues(priv, num_queues);
+	if (err) {
+		PMD_DRV_LOG(ERR, "failed to create %u rx queues.", num_queues);
+		goto err_tx;
+	}
+	for (i = 0; i < num_queues; i++) {
+		rxq = priv->rxqs[i];
+		rxq->qrx_tail =
+		&priv->db_bar2[rte_be_to_cpu_32(rxq->qres->db_index)];
+
+		rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), rxq->ntfy_addr);
+
+		err = gve_refill_pages(rxq);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to refill for RX");
+			goto err_rx;
+		}
+	}
+
 	dev->data->dev_started = 1;
 	gve_link_update(dev, 0);
 
 	return 0;
+
+err_rx:
+	gve_stop_rx_queues(dev);
+err_tx:
+	gve_stop_tx_queues(dev);
+	return err;
 }
 
 static int
 gve_dev_stop(struct rte_eth_dev *dev)
 {
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
+
+	gve_stop_tx_queues(dev);
+	gve_stop_rx_queues(dev);
+
 	dev->data->dev_started = 0;
 
 	return 0;
@@ -90,13 +243,30 @@ gve_dev_stop(struct rte_eth_dev *dev)
 static int
 gve_dev_close(struct rte_eth_dev *dev)
 {
+	struct gve_priv *priv = dev->data->dev_private;
+	struct gve_tx_queue *txq;
+	struct gve_rx_queue *rxq;
 	int err = 0;
+	uint16_t i;
 
 	if (dev->data->dev_started) {
 		err = gve_dev_stop(dev);
 		if (err != 0)
 			PMD_DRV_LOG(ERR, "Failed to stop dev.");
 	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		gve_tx_queue_release(txq);
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		gve_rx_queue_release(rxq);
+	}
+
+	gve_free_qpls(priv);
+	rte_free(priv->adminq);
 
 	dev->data->mac_addrs = NULL;
 
@@ -184,6 +354,8 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_stop             = gve_dev_stop,
 	.dev_close            = gve_dev_close,
 	.dev_infos_get        = gve_dev_info_get,
+	.rx_queue_setup       = gve_rx_queue_setup,
+	.tx_queue_setup       = gve_tx_queue_setup,
 	.link_update          = gve_link_update,
 	.mtu_set              = gve_dev_mtu_set,
 };
@@ -321,7 +493,9 @@ free_cnt_array:
 static int
 gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 {
+	uint16_t pages;
 	int num_ntfy;
+	uint32_t i;
 	int err;
 
 	/* Set up the adminq */
@@ -372,10 +546,40 @@ gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 	PMD_DRV_LOG(INFO, "Max TX queues %d, Max RX queues %d",
 		    priv->max_nb_txq, priv->max_nb_rxq);
 
+	/* In GQI_QPL queue format:
+	 * Allocate queue page lists according to max queue number
+	 * tx qpl id should start from 0 while rx qpl id should start
+	 * from priv->max_nb_txq
+	 */
+	if (priv->queue_format == GVE_GQI_QPL_FORMAT) {
+		priv->qpl = rte_zmalloc("gve_qpl",
+					(priv->max_nb_txq + priv->max_nb_rxq) *
+					sizeof(struct gve_queue_page_list), 0);
+		if (priv->qpl == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc qpl.");
+			err = -ENOMEM;
+			goto free_adminq;
+		}
+
+		for (i = 0; i < priv->max_nb_txq + priv->max_nb_rxq; i++) {
+			if (i < priv->max_nb_txq)
+				pages = priv->tx_pages_per_qpl;
+			else
+				pages = priv->rx_data_slot_cnt;
+			err = gve_alloc_queue_page_list(priv, i, pages);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Failed to alloc qpl %u.", i);
+				goto err_qpl;
+			}
+		}
+	}
+
 setup_device:
 	err = gve_setup_device_resources(priv);
 	if (!err)
 		return 0;
+err_qpl:
+	gve_free_qpls(priv);
 free_adminq:
 	gve_adminq_free(priv);
 	return err;

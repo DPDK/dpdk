@@ -50,15 +50,35 @@ union gve_tx_desc {
 	struct gve_tx_seg_desc seg; /* subsequent descs for a packet */
 };
 
+struct gve_tx_iovec {
+	uint32_t iov_base; /* offset in fifo */
+	uint32_t iov_len;
+};
+
 struct gve_tx_queue {
 	volatile union gve_tx_desc *tx_desc_ring;
 	const struct rte_memzone *mz;
 	uint64_t tx_ring_phys_addr;
+	struct rte_mbuf **sw_ring;
+	volatile rte_be32_t *qtx_tail;
+	volatile rte_be32_t *qtx_head;
 
+	uint32_t tx_tail;
 	uint16_t nb_tx_desc;
+	uint16_t nb_free;
+	uint32_t next_to_clean;
+	uint16_t free_thresh;
 
 	/* Only valid for DQO_QPL queue format */
+	uint16_t sw_tail;
+	uint16_t sw_ntc;
+	uint16_t sw_nb_free;
+	uint32_t fifo_size;
+	uint32_t fifo_head;
+	uint32_t fifo_avail;
+	uint64_t fifo_base;
 	struct gve_queue_page_list *qpl;
+	struct gve_tx_iovec *iov_ring;
 
 	uint16_t port_id;
 	uint16_t queue_id;
@@ -72,6 +92,8 @@ struct gve_tx_queue {
 
 	/* Only valid for DQO_RDA queue format */
 	struct gve_tx_queue *complq;
+
+	uint8_t is_gqi_qpl;
 };
 
 struct gve_rx_queue {
@@ -80,9 +102,17 @@ struct gve_rx_queue {
 	const struct rte_memzone *mz;
 	const struct rte_memzone *data_mz;
 	uint64_t rx_ring_phys_addr;
+	struct rte_mbuf **sw_ring;
+	struct rte_mempool *mpool;
 
+	uint16_t rx_tail;
 	uint16_t nb_rx_desc;
+	uint16_t expected_seqno; /* the next expected seqno */
+	uint16_t free_thresh;
+	uint32_t next_avail;
+	uint32_t nb_avail;
 
+	volatile rte_be32_t *qrx_tail;
 	volatile rte_be32_t *ntfy_addr;
 
 	/* only valid for GQI_QPL queue format */
@@ -99,6 +129,8 @@ struct gve_rx_queue {
 
 	/* Only valid for DQO_RDA queue format */
 	struct gve_rx_queue *bufq;
+
+	uint8_t is_gqi_qpl;
 };
 
 struct gve_priv {
@@ -237,5 +269,25 @@ gve_clear_device_rings_ok(struct gve_priv *priv)
 	rte_bit_relaxed_clear32(GVE_PRIV_FLAGS_DEVICE_RINGS_OK,
 				&priv->state_flags);
 }
+
+int
+gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
+		   unsigned int socket_id, const struct rte_eth_rxconf *conf,
+		   struct rte_mempool *pool);
+int
+gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
+		   unsigned int socket_id, const struct rte_eth_txconf *conf);
+
+void
+gve_tx_queue_release(void *txq);
+
+void
+gve_rx_queue_release(void *rxq);
+
+void
+gve_stop_tx_queues(struct rte_eth_dev *dev);
+
+void
+gve_stop_rx_queues(struct rte_eth_dev *dev);
 
 #endif /* _GVE_ETHDEV_H_ */
