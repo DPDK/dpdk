@@ -1643,6 +1643,8 @@ nfp_flow_merge_gre_key(struct nfp_app_fw_flower *app_fw_flower,
 		tun6 = (struct nfp_flower_ipv6_gre_tun *)*mbuf_off;
 		tun6->tun_key = tun_key;
 		tun6->tun_flags = rte_cpu_to_be_16(NFP_FL_GRE_FLAG_KEY);
+		if (!is_mask)
+			ret = nfp_tun_add_ipv6_off(app_fw_flower, tun6->ipv6.ipv6_dst);
 	} else {
 		tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
 		tun4->tun_key = tun_key;
