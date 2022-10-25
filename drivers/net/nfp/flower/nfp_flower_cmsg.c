@@ -304,3 +304,121 @@ nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	return 0;
 }
+
+int
+nfp_flower_cmsg_tun_off_v4(struct nfp_app_fw_flower *app_fw_flower)
+{
+	uint16_t cnt;
+	uint32_t count = 0;
+	struct rte_mbuf *mbuf;
+	struct nfp_flow_priv *priv;
+	struct nfp_ipv4_addr_entry *entry;
+	struct nfp_flower_cmsg_tun_ipv4_addr *msg;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun addr");
+		return -ENOMEM;
+	}
+
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_IPS, sizeof(*msg));
+
+	priv = app_fw_flower->flow_priv;
+	rte_spinlock_lock(&priv->ipv4_off_lock);
+	LIST_FOREACH(entry, &priv->ipv4_off_list, next) {
+		if (count >= NFP_FL_IPV4_ADDRS_MAX) {
+			rte_spinlock_unlock(&priv->ipv4_off_lock);
+			PMD_DRV_LOG(ERR, "IPv4 offload exceeds limit.");
+			return -ERANGE;
+		}
+		msg->ipv4_addr[count] = entry->ipv4_addr;
+		count++;
+	}
+	msg->count = rte_cpu_to_be_32(count);
+	rte_spinlock_unlock(&priv->ipv4_off_lock);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int
+nfp_flower_cmsg_pre_tunnel_rule(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		uint16_t mac_idx,
+		bool is_del)
+{
+	uint16_t cnt;
+	struct rte_mbuf *mbuf;
+	struct nfp_flower_meta_tci *meta_tci;
+	struct nfp_flower_cmsg_pre_tun_rule *msg;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for pre tunnel rule");
+		return -ENOMEM;
+	}
+
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_PRE_TUN_RULE, sizeof(*msg));
+
+	meta_tci = (struct nfp_flower_meta_tci *)((char *)nfp_flow_meta +
+			sizeof(struct nfp_fl_rule_metadata));
+	if (meta_tci->tci)
+		msg->vlan_tci = meta_tci->tci;
+	else
+		msg->vlan_tci = 0xffff;
+
+	if (is_del)
+		msg->flags = rte_cpu_to_be_32(NFP_TUN_PRE_TUN_RULE_DEL);
+
+	msg->port_idx = rte_cpu_to_be_16(mac_idx);
+	msg->host_ctx_id = nfp_flow_meta->host_ctx_id;
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int
+nfp_flower_cmsg_tun_mac_rule(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_ether_addr *mac,
+		uint16_t mac_idx,
+		bool is_del)
+{
+	uint16_t cnt;
+	struct rte_mbuf *mbuf;
+	struct nfp_flower_cmsg_tun_mac *msg;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for tunnel mac");
+		return -ENOMEM;
+	}
+
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_MAC, sizeof(*msg));
+
+	msg->count = rte_cpu_to_be_16(1);
+	msg->index = rte_cpu_to_be_16(mac_idx);
+	rte_ether_addr_copy(mac, &msg->addr);
+	if (is_del)
+		msg->flags = rte_cpu_to_be_16(NFP_TUN_MAC_OFFLOAD_DEL_FLAG);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}

@@ -195,6 +195,91 @@ struct nfp_flower_cmsg_tun_neigh_v6 {
 	struct nfp_flower_tun_neigh common;
 };
 
+#define NFP_TUN_PRE_TUN_RULE_DEL    (1 << 0)
+#define NFP_TUN_PRE_TUN_IDX_BIT     (1 << 3)
+#define NFP_TUN_PRE_TUN_IPV6_BIT    (1 << 7)
+
+/*
+ * NFP_FLOWER_CMSG_TYPE_PRE_TUN_RULE
+ * Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *       +---------------------------------------------------------------+
+ *     0 |                             FLAGS                             |
+ *       +---------------------------------------------------------------+
+ *     1 |         MAC_IDX               |            VLAN_ID            |
+ *       +---------------------------------------------------------------+
+ *     2 |                           HOST_CTX                            |
+ *       +---------------------------------------------------------------+
+ */
+struct nfp_flower_cmsg_pre_tun_rule {
+	rte_be32_t flags;
+	rte_be16_t port_idx;
+	rte_be16_t vlan_tci;
+	rte_be32_t host_ctx_id;
+};
+
+#define NFP_TUN_MAC_OFFLOAD_DEL_FLAG  0x2
+
+/*
+ * NFP_FLOWER_CMSG_TYPE_TUN_MAC
+ *     Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *    Word  +-----------------------+---+-+-+---------------+---------------+
+ *       0  |              spare    |NBI|D|F| Amount of MAC’s in this msg   |
+ *          +---------------+-------+---+-+-+---------------+---------------+
+ *       1  |            Index 0            |     MAC[0]    |     MAC[1]    |
+ *          +---------------+---------------+---------------+---------------+
+ *       2  |     MAC[2]    |     MAC[3]    |     MAC[4]    |     MAC[5]    |
+ *          +---------------+---------------+---------------+---------------+
+ *       3  |            Index 1            |     MAC[0]    |     MAC[1]    |
+ *          +---------------+---------------+---------------+---------------+
+ *       4  |     MAC[2]    |     MAC[3]    |     MAC[4]    |     MAC[5]    |
+ *          +---------------+---------------+---------------+---------------+
+ *                                        ...
+ *          +---------------+---------------+---------------+---------------+
+ *     2N-1 |            Index N            |     MAC[0]    |     MAC[1]    |
+ *          +---------------+---------------+---------------+---------------+
+ *     2N   |     MAC[2]    |     MAC[3]    |     MAC[4]    |     MAC[5]    |
+ *          +---------------+---------------+---------------+---------------+
+ *
+ *    F:   Flush bit. Set if entire table must be flushed. Rest of info in cmsg
+ *        will be ignored. Not implemented.
+ *    D:   Delete bit. Set if entry must be deleted instead of added
+ *    NBI: Network Block Interface. Set to 0
+ *    The amount of MAC’s per control message is limited only by the packet
+ *    buffer size. A 2048B buffer can fit 253 MAC address and a 10240B buffer
+ *    1277 MAC addresses.
+ */
+struct nfp_flower_cmsg_tun_mac {
+	rte_be16_t flags;
+	rte_be16_t count;           /**< Should always be 1 */
+	rte_be16_t index;
+	struct rte_ether_addr addr;
+};
+
+#define NFP_FL_IPV4_ADDRS_MAX        32
+
+/*
+ * NFP_FLOWER_CMSG_TYPE_TUN_IPS
+ *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *          +---------------------------------------------------------------+
+ *        0 |                    Number of IP Addresses                     |
+ *          +---------------------------------------------------------------+
+ *        1 |                        IP Address #1                          |
+ *          +---------------------------------------------------------------+
+ *        2 |                        IP Address #2                          |
+ *          +---------------------------------------------------------------+
+ *          |                             ...                               |
+ *          +---------------------------------------------------------------+
+ *       32 |                        IP Address #32                         |
+ *          +---------------------------------------------------------------+
+ */
+struct nfp_flower_cmsg_tun_ipv4_addr {
+	rte_be32_t count;
+	rte_be32_t ipv4_addr[NFP_FL_IPV4_ADDRS_MAX];
+};
+
 /*
  * NFP_FLOWER_CMSG_TYPE_FLOW_STATS
  *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
@@ -716,5 +801,14 @@ int nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_cmsg_tun_neigh_v4 *payload);
 int nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_cmsg_tun_neigh_v6 *payload);
+int nfp_flower_cmsg_tun_off_v4(struct nfp_app_fw_flower *app_fw_flower);
+int nfp_flower_cmsg_pre_tunnel_rule(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		uint16_t mac_idx,
+		bool is_del);
+int nfp_flower_cmsg_tun_mac_rule(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_ether_addr *mac,
+		uint16_t mac_idx,
+		bool is_del);
 
 #endif /* _NFP_CMSG_H_ */

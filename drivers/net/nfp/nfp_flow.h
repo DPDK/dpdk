@@ -6,6 +6,7 @@
 #ifndef _NFP_FLOW_H_
 #define _NFP_FLOW_H_
 
+#include <sys/queue.h>
 #include <rte_bitops.h>
 #include <ethdev_driver.h>
 
@@ -93,6 +94,7 @@ enum nfp_flower_tun_type {
 enum nfp_flow_type {
 	NFP_FLOW_COMMON,
 	NFP_FLOW_ENCAP,
+	NFP_FLOW_DECAP,
 };
 
 struct nfp_fl_key_ls {
@@ -169,6 +171,14 @@ struct nfp_fl_stats {
 	uint64_t bytes;
 };
 
+struct nfp_ipv4_addr_entry {
+	LIST_ENTRY(nfp_ipv4_addr_entry) next;
+	rte_be32_t ipv4_addr;
+	int ref_count;
+};
+
+#define NFP_TUN_PRE_TUN_RULE_LIMIT  32
+
 struct nfp_flow_priv {
 	uint32_t hash_seed; /**< Hash seed for hash tables in this structure. */
 	uint64_t flower_version; /**< Flow version, always increase. */
@@ -184,6 +194,13 @@ struct nfp_flow_priv {
 	struct nfp_fl_stats_id stats_ids; /**< The stats id ring. */
 	struct nfp_fl_stats *stats; /**< Store stats of flow. */
 	rte_spinlock_t stats_lock; /** < Lock the update of 'stats' field. */
+	/* pre tunnel rule */
+	uint16_t pre_tun_cnt; /**< The size of pre tunnel rule */
+	uint8_t pre_tun_bitmap[NFP_TUN_PRE_TUN_RULE_LIMIT]; /**< Bitmap of pre tunnel rule */
+	struct rte_hash *pre_tun_table; /**< Hash table to store pre tunnel rule */
+	/* IPv4 off */
+	LIST_HEAD(, nfp_ipv4_addr_entry) ipv4_off_list; /**< Store ipv4 off */
+	rte_spinlock_t ipv4_off_lock; /**< Lock the ipv4 off list */
 	/* neighbor next */
 	LIST_HEAD(, nfp_fl_tun)nn_list; /**< Store nn entry */
 };
