@@ -493,6 +493,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 {
 	struct rte_eth_dev *ethdev;
 	bool outer_ip4_flag = false;
+	bool outer_ip6_flag = false;
 	const struct rte_flow_item *item;
 	struct nfp_flower_representor *representor;
 	const struct rte_flow_item_port_id *port_id;
@@ -535,6 +536,8 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
 			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV6;
 			key_ls->key_size += sizeof(struct nfp_flower_ipv6);
+			if (!outer_ip6_flag)
+				outer_ip6_flag = true;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_TCP detected");
@@ -553,8 +556,9 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_VXLAN detected");
-			/* Clear IPv4 bits */
+			/* Clear IPv4 and IPv6 bits */
 			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
 			key_ls->tun_type = NFP_FL_TUN_VXLAN;
 			key_ls->key_layer |= NFP_FLOWER_LAYER_VXLAN;
 			if (outer_ip4_flag) {
@@ -564,6 +568,19 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				 * in `struct nfp_flower_ipv4_udp_tun`
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+			} else if (outer_ip6_flag) {
+				key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
+				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
+				key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
+				key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
+				/*
+				 * The outer l3 layer information is
+				 * in `struct nfp_flower_ipv6_udp_tun`
+				 */
+				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
+			} else {
+				PMD_DRV_LOG(ERR, "No outer IP layer for VXLAN tunnel.");
+				return -EINVAL;
 			}
 			break;
 		default:
@@ -884,42 +901,61 @@ nfp_flow_merge_ipv6(struct rte_flow *nfp_flow,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
 		bool is_mask,
-		__rte_unused bool is_outer_layer)
+		bool is_outer_layer)
 {
 	struct nfp_flower_ipv6 *ipv6;
 	const struct rte_ipv6_hdr *hdr;
 	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_ipv6 *spec;
 	const struct rte_flow_item_ipv6 *mask;
+	struct nfp_flower_ipv6_udp_tun *ipv6_udp_tun;
 
 	spec = item->spec;
 	mask = item->mask ? item->mask : proc->mask_default;
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
 
-	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
-		goto ipv6_end;
-	}
+	if (is_outer_layer && nfp_flow_is_tunnel(nfp_flow)) {
+		if (spec == NULL) {
+			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
+			return 0;
+		}
 
-	/*
-	 * reserve space for L4 info.
-	 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv4
-	 */
-	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP)
-		*mbuf_off += sizeof(struct nfp_flower_tp_ports);
+		hdr = is_mask ? &mask->hdr : &spec->hdr;
+		ipv6_udp_tun = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
 
-	hdr = is_mask ? &mask->hdr : &spec->hdr;
-	ipv6 = (struct nfp_flower_ipv6 *)*mbuf_off;
+		ipv6_udp_tun->ip_ext.tos = (hdr->vtc_flow &
+				RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
+		ipv6_udp_tun->ip_ext.ttl = hdr->hop_limits;
+		memcpy(ipv6_udp_tun->ipv6.ipv6_src, hdr->src_addr,
+				sizeof(ipv6_udp_tun->ipv6.ipv6_src));
+		memcpy(ipv6_udp_tun->ipv6.ipv6_dst, hdr->dst_addr,
+				sizeof(ipv6_udp_tun->ipv6.ipv6_dst));
+	} else {
+		if (spec == NULL) {
+			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
+			goto ipv6_end;
+		}
 
-	ipv6->ip_ext.tos   = (hdr->vtc_flow & RTE_IPV6_HDR_TC_MASK) >>
-			RTE_IPV6_HDR_TC_SHIFT;
-	ipv6->ip_ext.proto = hdr->proto;
-	ipv6->ip_ext.ttl   = hdr->hop_limits;
-	memcpy(ipv6->ipv6_src, hdr->src_addr, sizeof(ipv6->ipv6_src));
-	memcpy(ipv6->ipv6_dst, hdr->dst_addr, sizeof(ipv6->ipv6_dst));
+		/*
+		 * reserve space for L4 info.
+		 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv6
+		 */
+		if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP)
+			*mbuf_off += sizeof(struct nfp_flower_tp_ports);
+
+		hdr = is_mask ? &mask->hdr : &spec->hdr;
+		ipv6 = (struct nfp_flower_ipv6 *)*mbuf_off;
+
+		ipv6->ip_ext.tos   = (hdr->vtc_flow & RTE_IPV6_HDR_TC_MASK) >>
+				RTE_IPV6_HDR_TC_SHIFT;
+		ipv6->ip_ext.proto = hdr->proto;
+		ipv6->ip_ext.ttl   = hdr->hop_limits;
+		memcpy(ipv6->ipv6_src, hdr->src_addr, sizeof(ipv6->ipv6_src));
+		memcpy(ipv6->ipv6_dst, hdr->dst_addr, sizeof(ipv6->ipv6_dst));
 
 ipv6_end:
-	*mbuf_off += sizeof(struct nfp_flower_ipv6);
+		*mbuf_off += sizeof(struct nfp_flower_ipv6);
+	}
 
 	return 0;
 }
@@ -1088,7 +1124,7 @@ nfp_flow_merge_sctp(struct rte_flow *nfp_flow,
 }
 
 static int
-nfp_flow_merge_vxlan(__rte_unused struct rte_flow *nfp_flow,
+nfp_flow_merge_vxlan(struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
@@ -1097,8 +1133,15 @@ nfp_flow_merge_vxlan(__rte_unused struct rte_flow *nfp_flow,
 {
 	const struct rte_vxlan_hdr *hdr;
 	struct nfp_flower_ipv4_udp_tun *tun4;
+	struct nfp_flower_ipv6_udp_tun *tun6;
+	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_vxlan *spec;
 	const struct rte_flow_item_vxlan *mask;
+	struct nfp_flower_ext_meta *ext_meta = NULL;
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META)
+		ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
 
 	spec = item->spec;
 	if (spec == NULL) {
@@ -1109,11 +1152,21 @@ nfp_flow_merge_vxlan(__rte_unused struct rte_flow *nfp_flow,
 	mask = item->mask ? item->mask : proc->mask_default;
 	hdr = is_mask ? &mask->hdr : &spec->hdr;
 
-	tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
-	tun4->tun_id = hdr->vx_vni;
+	if (ext_meta && (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+			NFP_FLOWER_LAYER2_TUN_IPV6)) {
+		tun6 = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
+		tun6->tun_id = hdr->vx_vni;
+	} else {
+		tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
+		tun4->tun_id = hdr->vx_vni;
+	}
 
 vxlan_end:
-	*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
+	if (ext_meta && (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+			NFP_FLOWER_LAYER2_TUN_IPV6))
+		*mbuf_off += sizeof(struct nfp_flower_ipv6_udp_tun);
+	else
+		*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
 
 	return 0;
 }
@@ -1122,7 +1175,8 @@ vxlan_end:
 static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH,
-			RTE_FLOW_ITEM_TYPE_IPV4),
+			RTE_FLOW_ITEM_TYPE_IPV4,
+			RTE_FLOW_ITEM_TYPE_IPV6),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VLAN,
@@ -1395,6 +1449,7 @@ nfp_flow_compile_items(__rte_unused struct nfp_flower_representor *representor,
 	char *mbuf_off_exact;
 	bool is_tun_flow = false;
 	bool is_outer_layer = true;
+	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item *loop_item;
 
 	mbuf_off_exact = nfp_flow->payload.unmasked_data +
@@ -1403,6 +1458,12 @@ nfp_flow_compile_items(__rte_unused struct nfp_flower_representor *representor,
 	mbuf_off_mask  = nfp_flow->payload.mask_data +
 			sizeof(struct nfp_flower_meta_tci) +
 			sizeof(struct nfp_flower_in_port);
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META) {
+		mbuf_off_exact += sizeof(struct nfp_flower_ext_meta);
+		mbuf_off_mask += sizeof(struct nfp_flower_ext_meta);
+	}
 
 	/* Check if this is a tunnel flow and get the inner item*/
 	is_tun_flow = nfp_flow_inner_item_get(items, &loop_item);
