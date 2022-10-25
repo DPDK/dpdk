@@ -80,16 +80,12 @@ processx4_step2(const struct lcore_conf *qconf,
 	}
 }
 
-/*
- * Buffer optimized handling of packets, invoked
- * from main_loop.
- */
 static inline void
-l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
-			uint16_t portid, struct lcore_conf *qconf)
+l3fwd_lpm_process_packets(int nb_rx, struct rte_mbuf **pkts_burst,
+			  uint16_t portid, uint16_t *dst_port,
+			  struct lcore_conf *qconf, const uint8_t do_step3)
 {
 	int32_t i = 0, j = 0;
-	uint16_t dst_port[MAX_PKT_BURST];
 	int32x4_t dip;
 	uint32_t ipv4_flag;
 	const int32_t k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
@@ -100,7 +96,6 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i],
 							void *));
 		}
-
 		for (j = 0; j != k - FWDSTEP; j += FWDSTEP) {
 			for (i = 0; i < FWDSTEP; i++) {
 				rte_prefetch0(rte_pktmbuf_mtod(
@@ -111,11 +106,15 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 			processx4_step1(&pkts_burst[j], &dip, &ipv4_flag);
 			processx4_step2(qconf, dip, ipv4_flag, portid,
 					&pkts_burst[j], &dst_port[j]);
+			if (do_step3)
+				processx4_step3(&pkts_burst[j], &dst_port[j]);
 		}
 
 		processx4_step1(&pkts_burst[j], &dip, &ipv4_flag);
 		processx4_step2(qconf, dip, ipv4_flag, portid, &pkts_burst[j],
 				&dst_port[j]);
+		if (do_step3)
+			processx4_step3(&pkts_burst[j], &dst_port[j]);
 
 		j += FWDSTEP;
 	}
@@ -138,26 +137,44 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 							void *));
 			j++;
 		}
-
 		j -= m;
 		/* Classify last up to 3 packets one by one */
 		switch (m) {
 		case 3:
 			dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j],
 						       portid);
+			if (do_step3)
+				process_packet(pkts_burst[j], &dst_port[j]);
 			j++;
 			/* fallthrough */
 		case 2:
 			dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j],
 						       portid);
+			if (do_step3)
+				process_packet(pkts_burst[j], &dst_port[j]);
 			j++;
 			/* fallthrough */
 		case 1:
 			dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j],
 						       portid);
+			if (do_step3)
+				process_packet(pkts_burst[j], &dst_port[j]);
 		}
 	}
+}
 
+/*
+ * Buffer optimized handling of packets, invoked
+ * from main_loop.
+ */
+static inline void
+l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst, uint16_t portid,
+		       struct lcore_conf *qconf)
+{
+	uint16_t dst_port[MAX_PKT_BURST];
+
+	l3fwd_lpm_process_packets(nb_rx, pkts_burst, portid, dst_port, qconf,
+				  0);
 	send_packets_multi(qconf, pkts_burst, dst_port, nb_rx);
 }
 

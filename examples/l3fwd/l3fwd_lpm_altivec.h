@@ -96,11 +96,11 @@ processx4_step2(const struct lcore_conf *qconf,
  * from main_loop.
  */
 static inline void
-l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
-			uint8_t portid, struct lcore_conf *qconf)
+l3fwd_lpm_process_packets(int nb_rx, struct rte_mbuf **pkts_burst,
+			  uint8_t portid, uint16_t *dst_port,
+			  struct lcore_conf *qconf, const uint8_t do_step3)
 {
 	int32_t j;
-	uint16_t dst_port[MAX_PKT_BURST];
 	__vector unsigned int dip[MAX_PKT_BURST / FWDSTEP];
 	uint32_t ipv4_flag[MAX_PKT_BURST / FWDSTEP];
 	const int32_t k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
@@ -114,22 +114,41 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 				ipv4_flag[j / FWDSTEP],
 				portid, &pkts_burst[j], &dst_port[j]);
 
+	if (do_step3)
+		for (j = 0; j != k; j += FWDSTEP)
+			processx4_step3(&pkts_burst[j], &dst_port[j]);
+
 	/* Classify last up to 3 packets one by one */
 	switch (nb_rx % FWDSTEP) {
 	case 3:
 		dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j], portid);
+		if (do_step3)
+			process_packet(pkts_burst[j], &dst_port[j]);
 		j++;
 		/* fall-through */
 	case 2:
 		dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j], portid);
+		if (do_step3)
+			process_packet(pkts_burst[j], &dst_port[j]);
 		j++;
 		/* fall-through */
 	case 1:
 		dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j], portid);
+		if (do_step3)
+			process_packet(pkts_burst[j], &dst_port[j]);
 		j++;
 		/* fall-through */
 	}
+}
 
+static inline void
+l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst, uint8_t portid,
+		       struct lcore_conf *qconf)
+{
+	uint16_t dst_port[MAX_PKT_BURST];
+
+	l3fwd_lpm_process_packets(nb_rx, pkts_burst, portid, dst_port, qconf,
+				  0);
 	send_packets_multi(qconf, pkts_burst, dst_port, nb_rx);
 }
 
