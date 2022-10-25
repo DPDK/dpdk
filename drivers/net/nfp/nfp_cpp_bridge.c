@@ -379,6 +379,7 @@ nfp_cpp_bridge_service_func(void *args)
 	struct nfp_cpp *cpp;
 	struct nfp_pf_dev *pf_dev;
 	int sockfd, datafd, op, ret;
+	struct timeval timeout = {1, 0};
 
 	unlink("/tmp/nfp_cpp");
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -387,6 +388,8 @@ nfp_cpp_bridge_service_func(void *args)
 			__func__);
 		return -EIO;
 	}
+
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
 	memset(&address, 0, sizeof(struct sockaddr));
 
@@ -415,6 +418,9 @@ nfp_cpp_bridge_service_func(void *args)
 	while (rte_service_runstate_get(pf_dev->cpp_bridge_id) != 0) {
 		datafd = accept(sockfd, NULL, NULL);
 		if (datafd < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				continue;
+
 			RTE_LOG(ERR, PMD, "%s: accept call error (%d)\n",
 					  __func__, errno);
 			RTE_LOG(ERR, PMD, "%s: service failed\n", __func__);
