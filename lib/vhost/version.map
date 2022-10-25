@@ -94,6 +94,9 @@ EXPERIMENTAL {
 	rte_vhost_async_try_dequeue_burst;
 	rte_vhost_driver_get_vdpa_dev_type;
 	rte_vhost_clear_queue;
+
+	# added in 22.11
+	rte_vhost_async_dma_unconfigure;
 };
 
 INTERNAL {

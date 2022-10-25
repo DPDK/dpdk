@@ -183,6 +183,11 @@ New Features
 
   * Added support to set device link down/up.
 
+* **Added DMA vChannel unconfiguration for async vhost.**
+
+  Added support to unconfigure DMA vChannel that is no longer used
+  by the vhost library.
+
 * **Added support for MACsec in rte_security.**
 
   Added MACsec transform for rte_security session and added new API
