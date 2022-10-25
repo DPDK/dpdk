@@ -1799,7 +1799,7 @@ nfp_flow_pre_tun_v4_process(struct nfp_fl_act_pre_tun *pre_tun,
 	pre_tun->ipv4_dst     = ipv4_dst;
 }
 
-__rte_unused static void
+static void
 nfp_flow_pre_tun_v6_process(struct nfp_fl_act_pre_tun *pre_tun,
 		const uint8_t ipv6_dst[])
 {
@@ -1885,7 +1885,7 @@ nfp_flower_del_tun_neigh_v4(struct nfp_app_fw_flower *app_fw_flower,
 	return nfp_flower_cmsg_tun_neigh_v4_rule(app_fw_flower, &payload);
 }
 
-__rte_unused static int
+static int
 nfp_flower_add_tun_neigh_v6_encap(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		struct nfp_fl_tun *tun,
@@ -2014,6 +2014,42 @@ nfp_flow_action_vxlan_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
+nfp_flow_action_vxlan_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
+		char *act_data,
+		char *actions,
+		const struct vxlan_data *vxlan_data,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct nfp_fl_tun *tun)
+{
+	struct nfp_fl_act_pre_tun *pre_tun;
+	struct nfp_fl_act_set_tun *set_tun;
+	const struct rte_flow_item_eth *eth;
+	const struct rte_flow_item_ipv6 *ipv6;
+	const struct rte_flow_item_vxlan *vxlan;
+	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
+	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
+
+	eth   = (const struct rte_flow_item_eth *)vxlan_data->items[0].spec;
+	ipv6  = (const struct rte_flow_item_ipv6 *)vxlan_data->items[1].spec;
+	vxlan = (const struct rte_flow_item_vxlan *)vxlan_data->items[3].spec;
+
+	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
+	memset(pre_tun, 0, act_pre_size);
+	nfp_flow_pre_tun_v6_process(pre_tun, ipv6->hdr.dst_addr);
+
+	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
+	memset(set_tun, 0, act_set_size);
+	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_VXLAN, vxlan->hdr.vx_vni,
+			ipv6->hdr.hop_limits,
+			(ipv6->hdr.vtc_flow >> RTE_IPV6_HDR_TC_SHIFT) & 0xff);
+	set_tun->tun_flags = vxlan->hdr.vx_flags;
+
+	/* Send the tunnel neighbor cmsg to fw */
+	return nfp_flower_add_tun_neigh_v6_encap(app_fw_flower, nfp_flow_meta,
+			tun, &eth->hdr, ipv6);
+}
+
+static int
 nfp_flow_action_vxlan_encap(struct nfp_app_fw_flower *app_fw_flower,
 		char *act_data,
 		char *actions,
@@ -2027,7 +2063,8 @@ nfp_flow_action_vxlan_encap(struct nfp_app_fw_flower *app_fw_flower,
 
 	vxlan_data = action->conf;
 	if (vxlan_data->items[0].type != RTE_FLOW_ITEM_TYPE_ETH ||
-			vxlan_data->items[1].type != RTE_FLOW_ITEM_TYPE_IPV4 ||
+			(vxlan_data->items[1].type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+			vxlan_data->items[1].type != RTE_FLOW_ITEM_TYPE_IPV6) ||
 			vxlan_data->items[2].type != RTE_FLOW_ITEM_TYPE_UDP ||
 			vxlan_data->items[3].type != RTE_FLOW_ITEM_TYPE_VXLAN ||
 			vxlan_data->items[4].type != RTE_FLOW_ITEM_TYPE_END) {
@@ -2048,8 +2085,9 @@ nfp_flow_action_vxlan_encap(struct nfp_app_fw_flower *app_fw_flower,
 	if (vxlan_data->items[1].type == RTE_FLOW_ITEM_TYPE_IPV4)
 		return nfp_flow_action_vxlan_encap_v4(app_fw_flower, act_data,
 				actions, vxlan_data, nfp_flow_meta, tun);
-
-	return 0;
+	else
+		return nfp_flow_action_vxlan_encap_v6(app_fw_flower, act_data,
+				actions, vxlan_data, nfp_flow_meta, tun);
 }
 
 static int
