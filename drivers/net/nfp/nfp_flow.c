@@ -413,7 +413,7 @@ nfp_stats_id_free(struct nfp_flow_priv *priv, uint32_t ctx)
 	return 0;
 }
 
-__rte_unused static int
+static int
 nfp_tun_add_ipv4_off(struct nfp_app_fw_flower *app_fw_flower,
 		rte_be32_t ipv4)
 {
@@ -908,6 +908,9 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
 			key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
 			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VXLAN_DECAP detected");
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -1315,7 +1318,7 @@ nfp_flow_merge_sctp(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
-nfp_flow_merge_vxlan(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
+nfp_flow_merge_vxlan(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
@@ -1323,6 +1326,7 @@ nfp_flow_merge_vxlan(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		bool is_mask,
 		__rte_unused bool is_outer_layer)
 {
+	int ret = 0;
 	const struct rte_vxlan_hdr *hdr;
 	struct nfp_flower_ipv4_udp_tun *tun4;
 	struct nfp_flower_ipv6_udp_tun *tun6;
@@ -1351,6 +1355,8 @@ nfp_flow_merge_vxlan(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	} else {
 		tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
 		tun4->tun_id = hdr->vx_vni;
+		if (!is_mask)
+			ret = nfp_tun_add_ipv4_off(app_fw_flower, tun4->ipv4.dst);
 	}
 
 vxlan_end:
@@ -1360,7 +1366,7 @@ vxlan_end:
 	else
 		*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
 
-	return 0;
+	return ret;
 }
 
 /* Graph of supported items and associated process function */
@@ -2049,7 +2055,7 @@ nfp_flower_add_tun_neigh_v4_encap(struct nfp_app_fw_flower *app_fw_flower,
 	return nfp_flower_cmsg_tun_neigh_v4_rule(app_fw_flower, &payload);
 }
 
-__rte_unused static int
+static int
 nfp_flower_add_tun_neigh_v4_decap(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow)
 {
@@ -2427,7 +2433,7 @@ nfp_pre_tun_table_delete(struct nfp_flow_priv *priv,
 	return true;
 }
 
-__rte_unused static int
+static int
 nfp_pre_tun_table_check_add(struct nfp_flower_representor *repr,
 		uint16_t *index)
 {
@@ -2567,6 +2573,49 @@ free_entry:
 	rte_free(entry);
 
 	return ret;
+}
+
+static int
+nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
+		__rte_unused const struct rte_flow_action *action,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct rte_flow *nfp_flow)
+{
+	int ret;
+	uint16_t nfp_mac_idx = 0;
+	struct nfp_flower_meta_tci *meta_tci;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	ret = nfp_pre_tun_table_check_add(repr, &nfp_mac_idx);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Pre tunnel table add failed");
+		return -EINVAL;
+	}
+
+	nfp_mac_idx = (nfp_mac_idx << 8) |
+			NFP_FLOWER_CMSG_PORT_TYPE_OTHER_PORT |
+			NFP_TUN_PRE_TUN_IDX_BIT;
+
+	app_fw_flower = repr->app_fw_flower;
+	ret = nfp_flower_cmsg_tun_mac_rule(app_fw_flower, &repr->mac_addr,
+			nfp_mac_idx, false);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Send tunnel mac rule failed");
+		return -EINVAL;
+	}
+
+	ret = nfp_flower_cmsg_pre_tunnel_rule(app_fw_flower, nfp_flow_meta,
+			nfp_mac_idx, false);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Send pre tunnel rule failed");
+		return -EINVAL;
+	}
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4)
+		return nfp_flower_add_tun_neigh_v4_decap(app_fw_flower, nfp_flow);
+	else
+		return -ENOTSUP;
 }
 
 static int
@@ -2743,6 +2792,17 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			position += sizeof(struct nfp_fl_act_pre_tun);
 			position += sizeof(struct nfp_fl_act_set_tun);
 			nfp_flow->type = NFP_FLOW_ENCAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+			PMD_DRV_LOG(DEBUG, "process action tunnel decap");
+			ret = nfp_flow_action_tunnel_decap(representor, action,
+					nfp_flow_meta, nfp_flow);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Failed when process tunnel decap");
+				return ret;
+			}
+			nfp_flow->type = NFP_FLOW_DECAP;
+			nfp_flow->install_flag = false;
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
@@ -3214,6 +3274,11 @@ nfp_flow_tunnel_decap_set(__rte_unused struct rte_eth_dev *dev,
 	}
 
 	switch (tunnel->type) {
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+		nfp_action->type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
+		*pmd_actions = nfp_action;
+		*num_of_actions = 1;
+		break;
 	default:
 		*pmd_actions = NULL;
 		*num_of_actions = 0;
