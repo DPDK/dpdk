@@ -1099,11 +1099,11 @@ nfp_flow_merge_eth(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	eth = (void *)*mbuf_off;
 
 	if (is_mask) {
-		memcpy(eth->mac_src, mask->src.addr_bytes, RTE_ETHER_ADDR_LEN);
-		memcpy(eth->mac_dst, mask->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
+		memcpy(eth->mac_src, mask->hdr.src_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+		memcpy(eth->mac_dst, mask->hdr.dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 	} else {
-		memcpy(eth->mac_src, spec->src.addr_bytes, RTE_ETHER_ADDR_LEN);
-		memcpy(eth->mac_dst, spec->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
+		memcpy(eth->mac_src, spec->hdr.src_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+		memcpy(eth->mac_dst, spec->hdr.dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 	}
 
 	eth->mpls_lse = 0;
@@ -1136,10 +1136,10 @@ nfp_flow_merge_vlan(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	mask = item->mask ? item->mask : proc->mask_default;
 	if (is_mask) {
 		meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.mask_data;
-		meta_tci->tci |= mask->tci;
+		meta_tci->tci |= mask->hdr.vlan_tci;
 	} else {
 		meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
-		meta_tci->tci |= spec->tci;
+		meta_tci->tci |= spec->hdr.vlan_tci;
 	}
 
 	return 0;

@@ -1552,19 +1552,19 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_item_eth bcast = {
-		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	};
 	struct rte_flow_item_eth ipv6_multi_spec = {
-		.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = "\x33\x33\x00\x00\x00\x00",
 	};
 	struct rte_flow_item_eth ipv6_multi_mask = {
-		.dst.addr_bytes = "\xff\xff\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = "\xff\xff\x00\x00\x00\x00",
 	};
 	struct rte_flow_item_eth unicast = {
-		.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
 	};
 	struct rte_flow_item_eth unicast_mask = {
-		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	};
 	const unsigned int vlan_filter_n = priv->vlan_filter_n;
 	const struct rte_ether_addr cmp = {
@@ -1637,9 +1637,9 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		return 0;
 	if (dev->data->promiscuous) {
 		struct rte_flow_item_eth promisc = {
-			.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-			.type = 0,
+			.hdr.dst_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.hdr.ether_type = 0,
 		};
 
 		ret = mlx5_ctrl_flow(dev, &promisc, &promisc);
@@ -1648,9 +1648,9 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	}
 	if (dev->data->all_multicast) {
 		struct rte_flow_item_eth multicast = {
-			.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
-			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-			.type = 0,
+			.hdr.dst_addr.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+			.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.hdr.ether_type = 0,
 		};
 
 		ret = mlx5_ctrl_flow(dev, &multicast, &multicast);
@@ -1662,7 +1662,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 			uint16_t vlan = priv->vlan_filter[i];
 
 			struct rte_flow_item_vlan vlan_spec = {
-				.tci = rte_cpu_to_be_16(vlan),
+				.hdr.vlan_tci = rte_cpu_to_be_16(vlan),
 			};
 			struct rte_flow_item_vlan vlan_mask =
 				rte_flow_item_vlan_mask;
@@ -1697,14 +1697,14 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 
 		if (!memcmp(mac, &cmp, sizeof(*mac)))
 			continue;
-		memcpy(&unicast.dst.addr_bytes,
+		memcpy(&unicast.hdr.dst_addr.addr_bytes,
 		       mac->addr_bytes,
 		       RTE_ETHER_ADDR_LEN);
 		for (j = 0; j != vlan_filter_n; ++j) {
 			uint16_t vlan = priv->vlan_filter[j];
 
 			struct rte_flow_item_vlan vlan_spec = {
-				.tci = rte_cpu_to_be_16(vlan),
+				.hdr.vlan_tci = rte_cpu_to_be_16(vlan),
 			};
 			struct rte_flow_item_vlan vlan_mask =
 				rte_flow_item_vlan_mask;

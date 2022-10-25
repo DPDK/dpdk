@@ -310,15 +310,15 @@ static int cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
 	 * Mask bits of destination MAC address must be full
 	 * of 1 or full of 0.
 	 */
-	if (!rte_is_zero_ether_addr(&eth_mask->src) ||
-	    (!rte_is_zero_ether_addr(&eth_mask->dst) &&
-	     !rte_is_broadcast_ether_addr(&eth_mask->dst))) {
+	if (!rte_is_zero_ether_addr(&eth_mask->hdr.src_addr) ||
+	    (!rte_is_zero_ether_addr(&eth_mask->hdr.dst_addr) &&
+	     !rte_is_broadcast_ether_addr(&eth_mask->hdr.dst_addr))) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 				item, "Invalid ether address mask");
 		return -rte_errno;
 	}
 
-	if ((eth_mask->type & UINT16_MAX) != UINT16_MAX) {
+	if ((eth_mask->hdr.ether_type & UINT16_MAX) != UINT16_MAX) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 				item, "Invalid ethertype mask");
 		return -rte_errno;
@@ -328,13 +328,13 @@ static int cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
 	 * If mask bits of destination MAC address
 	 * are full of 1, set RTE_ETHTYPE_FLAGS_MAC.
 	 */
-	if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
-		filter->mac_addr = eth_spec->dst;
+	if (rte_is_broadcast_ether_addr(&eth_mask->hdr.dst_addr)) {
+		filter->mac_addr = eth_spec->hdr.dst_addr;
 		filter->flags |= RTE_ETHTYPE_FLAGS_MAC;
 	} else {
 		filter->flags &= ~RTE_ETHTYPE_FLAGS_MAC;
 	}
-	filter->ether_type = rte_be_to_cpu_16(eth_spec->type);
+	filter->ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
 
 	/* Check if the next non-void item is END. */
 	item = next_no_void_pattern(pattern, item);

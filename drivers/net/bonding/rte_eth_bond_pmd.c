@@ -122,15 +122,15 @@ is_lacp_packets(uint16_t ethertype, uint8_t subtype, struct rte_mbuf *mbuf)
  */
 
 static struct rte_flow_item_eth flow_item_eth_type_8023ad = {
-	.dst.addr_bytes = { 0 },
-	.src.addr_bytes = { 0 },
-	.type = RTE_BE16(RTE_ETHER_TYPE_SLOW),
+	.hdr.dst_addr.addr_bytes = { 0 },
+	.hdr.src_addr.addr_bytes = { 0 },
+	.hdr.ether_type = RTE_BE16(RTE_ETHER_TYPE_SLOW),
 };
 
 static struct rte_flow_item_eth flow_item_eth_mask_type_8023ad = {
-	.dst.addr_bytes = { 0 },
-	.src.addr_bytes = { 0 },
-	.type = 0xFFFF,
+	.hdr.dst_addr.addr_bytes = { 0 },
+	.hdr.src_addr.addr_bytes = { 0 },
+	.hdr.ether_type = 0xFFFF,
 };
 
 static struct rte_flow_item flow_item_8023ad[] = {

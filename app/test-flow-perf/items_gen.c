@@ -37,10 +37,10 @@ add_vlan(struct rte_flow_item *items,
 	__rte_unused struct additional_para para)
 {
 	static struct rte_flow_item_vlan vlan_spec = {
-		.tci = RTE_BE16(VLAN_VALUE),
+		.hdr.vlan_tci = RTE_BE16(VLAN_VALUE),
 	};
 	static struct rte_flow_item_vlan vlan_mask = {
-		.tci = RTE_BE16(0xffff),
+		.hdr.vlan_tci = RTE_BE16(0xffff),
 	};
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_VLAN;

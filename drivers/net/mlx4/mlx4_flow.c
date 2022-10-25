@@ -207,17 +207,17 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 		uint32_t sum_dst = 0;
 		uint32_t sum_src = 0;
 
-		for (i = 0; i != sizeof(mask->dst.addr_bytes); ++i) {
-			sum_dst += mask->dst.addr_bytes[i];
-			sum_src += mask->src.addr_bytes[i];
+		for (i = 0; i != sizeof(mask->hdr.dst_addr.addr_bytes); ++i) {
+			sum_dst += mask->hdr.dst_addr.addr_bytes[i];
+			sum_src += mask->hdr.src_addr.addr_bytes[i];
 		}
 		if (sum_src) {
 			msg = "mlx4 does not support source MAC matching";
 			goto error;
 		} else if (!sum_dst) {
 			flow->promisc = 1;
-		} else if (sum_dst == 1 && mask->dst.addr_bytes[0] == 1) {
-			if (!(spec->dst.addr_bytes[0] & 1)) {
+		} else if (sum_dst == 1 && mask->hdr.dst_addr.addr_bytes[0] == 1) {
+			if (!(spec->hdr.dst_addr.addr_bytes[0] & 1)) {
 				msg = "mlx4 does not support the explicit"
 					" exclusion of all multicast traffic";
 				goto error;
@@ -251,8 +251,8 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 		flow->promisc = 1;
 		return 0;
 	}
-	memcpy(eth->val.dst_mac, spec->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
-	memcpy(eth->mask.dst_mac, mask->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
+	memcpy(eth->val.dst_mac, spec->hdr.dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+	memcpy(eth->mask.dst_mac, mask->hdr.dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 	/* Remove unwanted bits from values. */
 	for (i = 0; i < RTE_ETHER_ADDR_LEN; ++i)
 		eth->val.dst_mac[i] &= eth->mask.dst_mac[i];
@@ -297,12 +297,12 @@ mlx4_flow_merge_vlan(struct rte_flow *flow,
 	struct ibv_flow_spec_eth *eth;
 	const char *msg;
 
-	if (!mask || !mask->tci) {
+	if (!mask || !mask->hdr.vlan_tci) {
 		msg = "mlx4 cannot match all VLAN traffic while excluding"
 			" non-VLAN traffic, TCI VID must be specified";
 		goto error;
 	}
-	if (mask->tci != RTE_BE16(0x0fff)) {
+	if (mask->hdr.vlan_tci != RTE_BE16(0x0fff)) {
 		msg = "mlx4 does not support partial TCI VID matching";
 		goto error;
 	}
@@ -310,8 +310,8 @@ mlx4_flow_merge_vlan(struct rte_flow *flow,
 		return 0;
 	eth = (void *)((uintptr_t)flow->ibv_attr + flow->ibv_attr_size -
 		       sizeof(*eth));
-	eth->val.vlan_tag = spec->tci;
-	eth->mask.vlan_tag = mask->tci;
+	eth->val.vlan_tag = spec->hdr.vlan_tci;
+	eth->mask.vlan_tag = mask->hdr.vlan_tci;
 	eth->val.vlan_tag &= eth->mask.vlan_tag;
 	if (flow->ibv_attr->type == IBV_FLOW_ATTR_ALL_DEFAULT)
 		flow->ibv_attr->type = IBV_FLOW_ATTR_NORMAL;
@@ -582,7 +582,7 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 				       RTE_FLOW_ITEM_TYPE_IPV4),
 		.mask_support = &(const struct rte_flow_item_eth){
 			/* Only destination MAC can be matched. */
-			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		},
 		.mask_default = &rte_flow_item_eth_mask,
 		.mask_sz = sizeof(struct rte_flow_item_eth),
@@ -593,7 +593,7 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_IPV4),
 		.mask_support = &(const struct rte_flow_item_vlan){
 			/* Only TCI VID matching is supported. */
-			.tci = RTE_BE16(0x0fff),
+			.hdr.vlan_tci = RTE_BE16(0x0fff),
 		},
 		.mask_default = &rte_flow_item_vlan_mask,
 		.mask_sz = sizeof(struct rte_flow_item_vlan),
@@ -1304,14 +1304,14 @@ mlx4_flow_internal(struct mlx4_priv *priv, struct rte_flow_error *error)
 	};
 	struct rte_flow_item_eth eth_spec;
 	const struct rte_flow_item_eth eth_mask = {
-		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	};
 	const struct rte_flow_item_eth eth_allmulti = {
-		.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = "\x01\x00\x00\x00\x00\x00",
 	};
 	struct rte_flow_item_vlan vlan_spec;
 	const struct rte_flow_item_vlan vlan_mask = {
-		.tci = RTE_BE16(0x0fff),
+		.hdr.vlan_tci = RTE_BE16(0x0fff),
 	};
 	struct rte_flow_item pattern[] = {
 		{
@@ -1356,12 +1356,12 @@ mlx4_flow_internal(struct mlx4_priv *priv, struct rte_flow_error *error)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
-	struct rte_ether_addr *rule_mac = &eth_spec.dst;
+	struct rte_ether_addr *rule_mac = &eth_spec.hdr.dst_addr;
 	rte_be16_t *rule_vlan =
 		(ETH_DEV(priv)->data->dev_conf.rxmode.offloads &
 		 RTE_ETH_RX_OFFLOAD_VLAN_FILTER) &&
 		!ETH_DEV(priv)->data->promiscuous ?
-		&vlan_spec.tci :
+		&vlan_spec.hdr.vlan_tci :
 		NULL;
 	uint16_t vlan = 0;
 	struct rte_flow *flow;
@@ -1399,7 +1399,7 @@ next_vlan:
 		if (i < RTE_DIM(priv->mac))
 			mac = &priv->mac[i];
 		else
-			mac = &eth_mask.dst;
+			mac = &eth_mask.hdr.dst_addr;
 		if (rte_is_zero_ether_addr(mac))
 			continue;
 		/* Check if MAC flow rule is already present. */

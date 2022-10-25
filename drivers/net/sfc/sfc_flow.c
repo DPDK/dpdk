@@ -280,12 +280,12 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 	const struct rte_flow_item_eth *spec = NULL;
 	const struct rte_flow_item_eth *mask = NULL;
 	const struct rte_flow_item_eth supp_mask = {
-		.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-		.src.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-		.type = 0xffff,
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+		.hdr.src_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+		.hdr.ether_type = 0xffff,
 	};
 	const struct rte_flow_item_eth ifrm_supp_mask = {
-		.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 	const uint8_t ig_mask[EFX_MAC_ADDR_LEN] = {
 		0x01, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -319,15 +319,15 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 	if (spec == NULL)
 		return 0;
 
-	if (rte_is_same_ether_addr(&mask->dst, &supp_mask.dst)) {
+	if (rte_is_same_ether_addr(&mask->hdr.dst_addr, &supp_mask.hdr.dst_addr)) {
 		efx_spec->efs_match_flags |= is_ifrm ?
 			EFX_FILTER_MATCH_IFRM_LOC_MAC :
 			EFX_FILTER_MATCH_LOC_MAC;
-		rte_memcpy(loc_mac, spec->dst.addr_bytes,
+		rte_memcpy(loc_mac, spec->hdr.dst_addr.addr_bytes,
 			   EFX_MAC_ADDR_LEN);
-	} else if (memcmp(mask->dst.addr_bytes, ig_mask,
+	} else if (memcmp(mask->hdr.dst_addr.addr_bytes, ig_mask,
 			  EFX_MAC_ADDR_LEN) == 0) {
-		if (rte_is_unicast_ether_addr(&spec->dst))
+		if (rte_is_unicast_ether_addr(&spec->hdr.dst_addr))
 			efx_spec->efs_match_flags |= is_ifrm ?
 				EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST :
 				EFX_FILTER_MATCH_UNKNOWN_UCAST_DST;
@@ -335,7 +335,7 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 			efx_spec->efs_match_flags |= is_ifrm ?
 				EFX_FILTER_MATCH_IFRM_UNKNOWN_MCAST_DST :
 				EFX_FILTER_MATCH_UNKNOWN_MCAST_DST;
-	} else if (!rte_is_zero_ether_addr(&mask->dst)) {
+	} else if (!rte_is_zero_ether_addr(&mask->hdr.dst_addr)) {
 		goto fail_bad_mask;
 	}
 
@@ -344,11 +344,11 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 	 * ethertype masks are equal to zero in inner frame,
 	 * so these fields are filled in only for the outer frame
 	 */
-	if (rte_is_same_ether_addr(&mask->src, &supp_mask.src)) {
+	if (rte_is_same_ether_addr(&mask->hdr.src_addr, &supp_mask.hdr.src_addr)) {
 		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_REM_MAC;
-		rte_memcpy(efx_spec->efs_rem_mac, spec->src.addr_bytes,
+		rte_memcpy(efx_spec->efs_rem_mac, spec->hdr.src_addr.addr_bytes,
 			   EFX_MAC_ADDR_LEN);
-	} else if (!rte_is_zero_ether_addr(&mask->src)) {
+	} else if (!rte_is_zero_ether_addr(&mask->hdr.src_addr)) {
 		goto fail_bad_mask;
 	}
 
@@ -356,10 +356,10 @@ sfc_flow_parse_eth(const struct rte_flow_item *item,
 	 * Ether type is in big-endian byte order in item and
 	 * in little-endian in efx_spec, so byte swap is used
 	 */
-	if (mask->type == supp_mask.type) {
+	if (mask->hdr.ether_type == supp_mask.hdr.ether_type) {
 		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ETHER_TYPE;
-		efx_spec->efs_ether_type = rte_bswap16(spec->type);
-	} else if (mask->type != 0) {
+		efx_spec->efs_ether_type = rte_bswap16(spec->hdr.ether_type);
+	} else if (mask->hdr.ether_type != 0) {
 		goto fail_bad_mask;
 	}
 
@@ -394,8 +394,8 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 	const struct rte_flow_item_vlan *spec = NULL;
 	const struct rte_flow_item_vlan *mask = NULL;
 	const struct rte_flow_item_vlan supp_mask = {
-		.tci = rte_cpu_to_be_16(RTE_ETH_VLAN_ID_MAX),
-		.inner_type = RTE_BE16(0xffff),
+		.hdr.vlan_tci = rte_cpu_to_be_16(RTE_ETH_VLAN_ID_MAX),
+		.hdr.eth_proto = RTE_BE16(0xffff),
 	};
 
 	rc = sfc_flow_parse_init(item,
@@ -414,9 +414,9 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 	 * If two VLAN items are included, the first matches
 	 * the outer tag and the next matches the inner tag.
 	 */
-	if (mask->tci == supp_mask.tci) {
+	if (mask->hdr.vlan_tci == supp_mask.hdr.vlan_tci) {
 		/* Apply mask to keep VID only */
-		vid = rte_bswap16(spec->tci & mask->tci);
+		vid = rte_bswap16(spec->hdr.vlan_tci & mask->hdr.vlan_tci);
 
 		if (!(efx_spec->efs_match_flags &
 		      EFX_FILTER_MATCH_OUTER_VID)) {
@@ -445,13 +445,13 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 				   "VLAN TPID matching is not supported");
 		return -rte_errno;
 	}
-	if (mask->inner_type == supp_mask.inner_type) {
+	if (mask->hdr.eth_proto == supp_mask.hdr.eth_proto) {
 		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ETHER_TYPE;
-		efx_spec->efs_ether_type = rte_bswap16(spec->inner_type);
-	} else if (mask->inner_type) {
+		efx_spec->efs_ether_type = rte_bswap16(spec->hdr.eth_proto);
+	} else if (mask->hdr.eth_proto) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM, item,
-				   "Bad mask for VLAN inner_type");
+				   "Bad mask for VLAN inner type");
 		return -rte_errno;
 	}
 

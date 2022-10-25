@@ -199,10 +199,10 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 			 * Destination MAC address mask must not be partially
 			 * set. Should be all 1's or all 0's.
 			 */
-			if ((!rte_is_zero_ether_addr(&eth_mask->src) &&
-			     !rte_is_broadcast_ether_addr(&eth_mask->src)) ||
-			    (!rte_is_zero_ether_addr(&eth_mask->dst) &&
-			     !rte_is_broadcast_ether_addr(&eth_mask->dst))) {
+			if ((!rte_is_zero_ether_addr(&eth_mask->hdr.src_addr) &&
+			     !rte_is_broadcast_ether_addr(&eth_mask->hdr.src_addr)) ||
+			    (!rte_is_zero_ether_addr(&eth_mask->hdr.dst_addr) &&
+			     !rte_is_broadcast_ether_addr(&eth_mask->hdr.dst_addr))) {
 				rte_flow_error_set(error,
 						   EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -212,8 +212,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 			}
 
 			/* Mask is not allowed. Only exact matches are */
-			if (eth_mask->type &&
-			    eth_mask->type != RTE_BE16(0xffff)) {
+			if (eth_mask->hdr.ether_type &&
+			    eth_mask->hdr.ether_type != RTE_BE16(0xffff)) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -221,8 +221,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				return -rte_errno;
 			}
 
-			if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
-				dst = &eth_spec->dst;
+			if (rte_is_broadcast_ether_addr(&eth_mask->hdr.dst_addr)) {
+				dst = &eth_spec->hdr.dst_addr;
 				if (!rte_is_valid_assigned_ether_addr(dst)) {
 					rte_flow_error_set(error,
 							   EINVAL,
@@ -234,7 +234,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 					return -rte_errno;
 				}
 				rte_memcpy(filter->dst_macaddr,
-					   &eth_spec->dst, RTE_ETHER_ADDR_LEN);
+					   &eth_spec->hdr.dst_addr, RTE_ETHER_ADDR_LEN);
 				en |= use_ntuple ?
 					NTUPLE_FLTR_ALLOC_INPUT_EN_DST_MACADDR :
 					EM_FLOW_ALLOC_INPUT_EN_DST_MACADDR;
@@ -245,8 +245,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				PMD_DRV_LOG(DEBUG,
 					    "Creating a priority flow\n");
 			}
-			if (rte_is_broadcast_ether_addr(&eth_mask->src)) {
-				src = &eth_spec->src;
+			if (rte_is_broadcast_ether_addr(&eth_mask->hdr.src_addr)) {
+				src = &eth_spec->hdr.src_addr;
 				if (!rte_is_valid_assigned_ether_addr(src)) {
 					rte_flow_error_set(error,
 							   EINVAL,
@@ -258,7 +258,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 					return -rte_errno;
 				}
 				rte_memcpy(filter->src_macaddr,
-					   &eth_spec->src, RTE_ETHER_ADDR_LEN);
+					   &eth_spec->hdr.src_addr, RTE_ETHER_ADDR_LEN);
 				en |= use_ntuple ?
 					NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_MACADDR :
 					EM_FLOW_ALLOC_INPUT_EN_SRC_MACADDR;
@@ -270,9 +270,9 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 			   *  PMD_DRV_LOG(ERR, "Handle this condition\n");
 			   * }
 			   */
-			if (eth_mask->type) {
+			if (eth_mask->hdr.ether_type) {
 				filter->ethertype =
-					rte_be_to_cpu_16(eth_spec->type);
+					rte_be_to_cpu_16(eth_spec->hdr.ether_type);
 				en |= en_ethertype;
 			}
 			if (inner)
@@ -295,11 +295,11 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 						   " supported");
 				return -rte_errno;
 			}
-			if (vlan_mask->tci &&
-			    vlan_mask->tci == RTE_BE16(0x0fff)) {
+			if (vlan_mask->hdr.vlan_tci &&
+			    vlan_mask->hdr.vlan_tci == RTE_BE16(0x0fff)) {
 				/* Only the VLAN ID can be matched. */
 				filter->l2_ovlan =
-					rte_be_to_cpu_16(vlan_spec->tci &
+					rte_be_to_cpu_16(vlan_spec->hdr.vlan_tci &
 							 RTE_BE16(0x0fff));
 				en |= EM_FLOW_ALLOC_INPUT_EN_OVLAN_VID;
 			} else {
@@ -310,8 +310,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 						   "VLAN mask is invalid");
 				return -rte_errno;
 			}
-			if (vlan_mask->inner_type &&
-			    vlan_mask->inner_type != RTE_BE16(0xffff)) {
+			if (vlan_mask->hdr.eth_proto &&
+			    vlan_mask->hdr.eth_proto != RTE_BE16(0xffff)) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -319,9 +319,9 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 						   " valid");
 				return -rte_errno;
 			}
-			if (vlan_mask->inner_type) {
+			if (vlan_mask->hdr.eth_proto) {
 				filter->ethertype =
-					rte_be_to_cpu_16(vlan_spec->inner_type);
+					rte_be_to_cpu_16(vlan_spec->hdr.eth_proto);
 				en |= en_ethertype;
 			}
 

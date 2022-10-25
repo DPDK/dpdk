@@ -1682,9 +1682,9 @@ parse_eth_item(const struct rte_flow_item_eth *item,
 		struct rte_ether_hdr *eth)
 {
 	memcpy(eth->src_addr.addr_bytes,
-			item->src.addr_bytes, sizeof(eth->src_addr));
+			item->hdr.src_addr.addr_bytes, sizeof(eth->src_addr));
 	memcpy(eth->dst_addr.addr_bytes,
-			item->dst.addr_bytes, sizeof(eth->dst_addr));
+			item->hdr.dst_addr.addr_bytes, sizeof(eth->dst_addr));
 }
 
 static void

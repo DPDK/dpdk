@@ -109,12 +109,12 @@ struct mlx5dr_definer_conv_data {
 
 /* Xmacro used to create generic item setter from items */
 #define LIST_OF_FIELDS_INFO \
-	X(SET_BE16,	eth_type,		v->type,		rte_flow_item_eth) \
-	X(SET_BE32P,	eth_smac_47_16,		&v->src.addr_bytes[0],	rte_flow_item_eth) \
-	X(SET_BE16P,	eth_smac_15_0,		&v->src.addr_bytes[4],	rte_flow_item_eth) \
-	X(SET_BE32P,	eth_dmac_47_16,		&v->dst.addr_bytes[0],	rte_flow_item_eth) \
-	X(SET_BE16P,	eth_dmac_15_0,		&v->dst.addr_bytes[4],	rte_flow_item_eth) \
-	X(SET_BE16,	tci,			v->tci,			rte_flow_item_vlan) \
+	X(SET_BE16,	eth_type,		v->hdr.ether_type,		rte_flow_item_eth) \
+	X(SET_BE32P,	eth_smac_47_16,		&v->hdr.src_addr.addr_bytes[0],	rte_flow_item_eth) \
+	X(SET_BE16P,	eth_smac_15_0,		&v->hdr.src_addr.addr_bytes[4],	rte_flow_item_eth) \
+	X(SET_BE32P,	eth_dmac_47_16,		&v->hdr.dst_addr.addr_bytes[0],	rte_flow_item_eth) \
+	X(SET_BE16P,	eth_dmac_15_0,		&v->hdr.dst_addr.addr_bytes[4],	rte_flow_item_eth) \
+	X(SET_BE16,	tci,			v->hdr.vlan_tci,		rte_flow_item_vlan) \
 	X(SET,		ipv4_ihl,		v->ihl,			rte_ipv4_hdr) \
 	X(SET,		ipv4_tos,		v->type_of_service,	rte_ipv4_hdr) \
 	X(SET,		ipv4_time_to_live,	v->time_to_live,	rte_ipv4_hdr) \
@@ -416,7 +416,7 @@ mlx5dr_definer_conv_item_eth(struct mlx5dr_definer_conv_data *cd,
 		return rte_errno;
 	}
 
-	if (m->type) {
+	if (m->hdr.ether_type) {
 		fc = &cd->fc[DR_CALC_FNAME(ETH_TYPE, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_eth_type_set;
@@ -424,7 +424,7 @@ mlx5dr_definer_conv_item_eth(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	/* Check SMAC 47_16 */
-	if (memcmp(m->src.addr_bytes, empty_mac, 4)) {
+	if (memcmp(m->hdr.src_addr.addr_bytes, empty_mac, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(ETH_SMAC_48_16, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_eth_smac_47_16_set;
@@ -432,7 +432,7 @@ mlx5dr_definer_conv_item_eth(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	/* Check SMAC 15_0 */
-	if (memcmp(m->src.addr_bytes + 4, empty_mac + 4, 2)) {
+	if (memcmp(m->hdr.src_addr.addr_bytes + 4, empty_mac + 4, 2)) {
 		fc = &cd->fc[DR_CALC_FNAME(ETH_SMAC_15_0, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_eth_smac_15_0_set;
@@ -440,7 +440,7 @@ mlx5dr_definer_conv_item_eth(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	/* Check DMAC 47_16 */
-	if (memcmp(m->dst.addr_bytes, empty_mac, 4)) {
+	if (memcmp(m->hdr.dst_addr.addr_bytes, empty_mac, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(ETH_DMAC_48_16, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_eth_dmac_47_16_set;
@@ -448,7 +448,7 @@ mlx5dr_definer_conv_item_eth(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	/* Check DMAC 15_0 */
-	if (memcmp(m->dst.addr_bytes + 4, empty_mac + 4, 2)) {
+	if (memcmp(m->hdr.dst_addr.addr_bytes + 4, empty_mac + 4, 2)) {
 		fc = &cd->fc[DR_CALC_FNAME(ETH_DMAC_15_0, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_eth_dmac_15_0_set;
@@ -493,14 +493,14 @@ mlx5dr_definer_conv_item_vlan(struct mlx5dr_definer_conv_data *cd,
 		DR_CALC_SET(fc, eth_l2, first_vlan_qualifier, inner);
 	}
 
-	if (m->tci) {
+	if (m->hdr.vlan_tci) {
 		fc = &cd->fc[DR_CALC_FNAME(VLAN_TCI, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_tci_set;
 		DR_CALC_SET(fc, eth_l2, tci, inner);
 	}
 
-	if (m->inner_type) {
+	if (m->hdr.eth_proto) {
 		fc = &cd->fc[DR_CALC_FNAME(ETH_TYPE, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_eth_type_set;

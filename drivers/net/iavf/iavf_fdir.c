@@ -850,27 +850,27 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 			}
 
 			if (eth_spec && eth_mask) {
-				if (!rte_is_zero_ether_addr(&eth_mask->dst)) {
+				if (!rte_is_zero_ether_addr(&eth_mask->hdr.dst_addr)) {
 					input_set |= IAVF_INSET_DMAC;
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr1,
 									ETH,
 									DST);
-				} else if (!rte_is_zero_ether_addr(&eth_mask->src)) {
+				} else if (!rte_is_zero_ether_addr(&eth_mask->hdr.src_addr)) {
 					input_set |= IAVF_INSET_SMAC;
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr1,
 									ETH,
 									SRC);
 				}
 
-				if (eth_mask->type) {
-					if (eth_mask->type != RTE_BE16(0xffff)) {
+				if (eth_mask->hdr.ether_type) {
+					if (eth_mask->hdr.ether_type != RTE_BE16(0xffff)) {
 						rte_flow_error_set(error, EINVAL,
 							RTE_FLOW_ERROR_TYPE_ITEM,
 							item, "Invalid type mask.");
 						return -rte_errno;
 					}
 
-					ether_type = rte_be_to_cpu_16(eth_spec->type);
+					ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
 					if (ether_type == RTE_ETHER_TYPE_IPV4 ||
 						ether_type == RTE_ETHER_TYPE_IPV6) {
 						rte_flow_error_set(error, EINVAL,

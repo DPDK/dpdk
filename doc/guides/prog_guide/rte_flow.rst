@@ -840,9 +840,7 @@ instead of using the ``type`` field.
 If the ``type`` and ``has_vlan`` fields are not specified, then both tagged
 and untagged packets will match the pattern.
 
-- ``dst``: destination MAC.
-- ``src``: source MAC.
-- ``type``: EtherType or TPID.
+- ``hdr``:  header definition (``rte_ether.h``).
 - ``has_vlan``: packet header contains at least one VLAN.
 - Default ``mask`` matches destination and source addresses only.
 
@@ -861,8 +859,7 @@ instead of using the ``inner_type field``.
 If the ``inner_type`` and ``has_more_vlan`` fields are not specified,
 then any tagged packets will match the pattern.
 
-- ``tci``: tag control information.
-- ``inner_type``: inner EtherType or TPID.
+- ``hdr``:  header definition (``rte_ether.h``).
 - ``has_more_vlan``: packet header contains at least one more VLAN, after this VLAN.
 - Default ``mask`` matches the VID part of TCI only (lower 12 bits).
 

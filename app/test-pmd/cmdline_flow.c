@@ -3648,19 +3648,19 @@ static const struct token token_list[] = {
 		.name = "dst",
 		.help = "destination MAC",
 		.next = NEXT(item_eth, NEXT_ENTRY(COMMON_MAC_ADDR), item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, dst)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, hdr.dst_addr)),
 	},
 	[ITEM_ETH_SRC] = {
 		.name = "src",
 		.help = "source MAC",
 		.next = NEXT(item_eth, NEXT_ENTRY(COMMON_MAC_ADDR), item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, src)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, hdr.src_addr)),
 	},
 	[ITEM_ETH_TYPE] = {
 		.name = "type",
 		.help = "EtherType",
 		.next = NEXT(item_eth, NEXT_ENTRY(COMMON_UNSIGNED), item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, type)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, hdr.ether_type)),
 	},
 	[ITEM_ETH_HAS_VLAN] = {
 		.name = "has_vlan",
@@ -3681,7 +3681,7 @@ static const struct token token_list[] = {
 		.help = "tag control information",
 		.next = NEXT(item_vlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, tci)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, hdr.vlan_tci)),
 	},
 	[ITEM_VLAN_PCP] = {
 		.name = "pcp",
@@ -3689,7 +3689,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
-						  tci, "\xe0\x00")),
+						  hdr.vlan_tci, "\xe0\x00")),
 	},
 	[ITEM_VLAN_DEI] = {
 		.name = "dei",
@@ -3697,7 +3697,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
-						  tci, "\x10\x00")),
+						  hdr.vlan_tci, "\x10\x00")),
 	},
 	[ITEM_VLAN_VID] = {
 		.name = "vid",
@@ -3705,7 +3705,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
-						  tci, "\x0f\xff")),
+						  hdr.vlan_tci, "\x0f\xff")),
 	},
 	[ITEM_VLAN_INNER_TYPE] = {
 		.name = "inner_type",
@@ -3713,7 +3713,7 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan,
-					     inner_type)),
+					     hdr.eth_proto)),
 	},
 	[ITEM_VLAN_HAS_MORE_VLAN] = {
 		.name = "has_more_vlan",
@@ -7534,10 +7534,10 @@ parse_setup_vxlan_encap_data(struct action_vxlan_encap_data *action_vxlan_encap_
 				.type = RTE_FLOW_ITEM_TYPE_END,
 			},
 		},
-		.item_eth.type = 0,
+		.item_eth.hdr.ether_type = 0,
 		.item_vlan = {
-			.tci = vxlan_encap_conf.vlan_tci,
-			.inner_type = 0,
+			.hdr.vlan_tci = vxlan_encap_conf.vlan_tci,
+			.hdr.eth_proto = 0,
 		},
 		.item_ipv4.hdr = {
 			.src_addr = vxlan_encap_conf.ipv4_src,
@@ -7549,9 +7549,9 @@ parse_setup_vxlan_encap_data(struct action_vxlan_encap_data *action_vxlan_encap_
 		},
 		.item_vxlan.flags = 0,
 	};
-	memcpy(action_vxlan_encap_data->item_eth.dst.addr_bytes,
+	memcpy(action_vxlan_encap_data->item_eth.hdr.dst_addr.addr_bytes,
 	       vxlan_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
-	memcpy(action_vxlan_encap_data->item_eth.src.addr_bytes,
+	memcpy(action_vxlan_encap_data->item_eth.hdr.src_addr.addr_bytes,
 	       vxlan_encap_conf.eth_src, RTE_ETHER_ADDR_LEN);
 	if (!vxlan_encap_conf.select_ipv4) {
 		memcpy(&action_vxlan_encap_data->item_ipv6.hdr.src_addr,
@@ -7669,10 +7669,10 @@ parse_setup_nvgre_encap_data(struct action_nvgre_encap_data *action_nvgre_encap_
 				.type = RTE_FLOW_ITEM_TYPE_END,
 			},
 		},
-		.item_eth.type = 0,
+		.item_eth.hdr.ether_type = 0,
 		.item_vlan = {
-			.tci = nvgre_encap_conf.vlan_tci,
-			.inner_type = 0,
+			.hdr.vlan_tci = nvgre_encap_conf.vlan_tci,
+			.hdr.eth_proto = 0,
 		},
 		.item_ipv4.hdr = {
 		       .src_addr = nvgre_encap_conf.ipv4_src,
@@ -7682,9 +7682,9 @@ parse_setup_nvgre_encap_data(struct action_nvgre_encap_data *action_nvgre_encap_
 		.item_nvgre.protocol = RTE_BE16(RTE_ETHER_TYPE_TEB),
 		.item_nvgre.flow_id = 0,
 	};
-	memcpy(action_nvgre_encap_data->item_eth.dst.addr_bytes,
+	memcpy(action_nvgre_encap_data->item_eth.hdr.dst_addr.addr_bytes,
 	       nvgre_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
-	memcpy(action_nvgre_encap_data->item_eth.src.addr_bytes,
+	memcpy(action_nvgre_encap_data->item_eth.hdr.src_addr.addr_bytes,
 	       nvgre_encap_conf.eth_src, RTE_ETHER_ADDR_LEN);
 	if (!nvgre_encap_conf.select_ipv4) {
 		memcpy(&action_nvgre_encap_data->item_ipv6.hdr.src_addr,
@@ -7745,10 +7745,10 @@ parse_vc_action_l2_encap(struct context *ctx, const struct token *token,
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
 	struct action_raw_encap_data *action_encap_data;
-	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
 	struct rte_flow_item_vlan vlan = {
-		.tci = mplsoudp_encap_conf.vlan_tci,
-		.inner_type = 0,
+		.hdr.vlan_tci = mplsoudp_encap_conf.vlan_tci,
+		.hdr.eth_proto = 0,
 	};
 	uint8_t *header;
 	int ret;
@@ -7775,22 +7775,22 @@ parse_vc_action_l2_encap(struct context *ctx, const struct token *token,
 	};
 	header = action_encap_data->data;
 	if (l2_encap_conf.select_vlan)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	else if (l2_encap_conf.select_ipv4)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	else
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	memcpy(eth.dst.addr_bytes,
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+	memcpy(eth.hdr.dst_addr.addr_bytes,
 	       l2_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
-	memcpy(eth.src.addr_bytes,
+	memcpy(eth.hdr.src_addr.addr_bytes,
 	       l2_encap_conf.eth_src, RTE_ETHER_ADDR_LEN);
 	memcpy(header, &eth, sizeof(eth));
 	header += sizeof(eth);
 	if (l2_encap_conf.select_vlan) {
 		if (l2_encap_conf.select_ipv4)
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 		else
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 		memcpy(header, &vlan, sizeof(vlan));
 		header += sizeof(vlan);
 	}
@@ -7809,10 +7809,10 @@ parse_vc_action_l2_decap(struct context *ctx, const struct token *token,
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
 	struct action_raw_decap_data *action_decap_data;
-	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
 	struct rte_flow_item_vlan vlan = {
-		.tci = mplsoudp_encap_conf.vlan_tci,
-		.inner_type = 0,
+		.hdr.vlan_tci = mplsoudp_encap_conf.vlan_tci,
+		.hdr.eth_proto = 0,
 	};
 	uint8_t *header;
 	int ret;
@@ -7839,7 +7839,7 @@ parse_vc_action_l2_decap(struct context *ctx, const struct token *token,
 	};
 	header = action_decap_data->data;
 	if (l2_decap_conf.select_vlan)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	memcpy(header, &eth, sizeof(eth));
 	header += sizeof(eth);
 	if (l2_decap_conf.select_vlan) {
@@ -7863,10 +7863,10 @@ parse_vc_action_mplsogre_encap(struct context *ctx, const struct token *token,
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
 	struct action_raw_encap_data *action_encap_data;
-	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
 	struct rte_flow_item_vlan vlan = {
-		.tci = mplsogre_encap_conf.vlan_tci,
-		.inner_type = 0,
+		.hdr.vlan_tci = mplsogre_encap_conf.vlan_tci,
+		.hdr.eth_proto = 0,
 	};
 	struct rte_flow_item_ipv4 ipv4 = {
 		.hdr =  {
@@ -7915,22 +7915,22 @@ parse_vc_action_mplsogre_encap(struct context *ctx, const struct token *token,
 	};
 	header = action_encap_data->data;
 	if (mplsogre_encap_conf.select_vlan)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	else if (mplsogre_encap_conf.select_ipv4)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	else
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	memcpy(eth.dst.addr_bytes,
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+	memcpy(eth.hdr.dst_addr.addr_bytes,
 	       mplsogre_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
-	memcpy(eth.src.addr_bytes,
+	memcpy(eth.hdr.src_addr.addr_bytes,
 	       mplsogre_encap_conf.eth_src, RTE_ETHER_ADDR_LEN);
 	memcpy(header, &eth, sizeof(eth));
 	header += sizeof(eth);
 	if (mplsogre_encap_conf.select_vlan) {
 		if (mplsogre_encap_conf.select_ipv4)
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 		else
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 		memcpy(header, &vlan, sizeof(vlan));
 		header += sizeof(vlan);
 	}
@@ -7969,8 +7969,8 @@ parse_vc_action_mplsogre_decap(struct context *ctx, const struct token *token,
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
 	struct action_raw_decap_data *action_decap_data;
-	struct rte_flow_item_eth eth = { .type = 0, };
-	struct rte_flow_item_vlan vlan = {.tci = 0};
+	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
+	struct rte_flow_item_vlan vlan = {.hdr.vlan_tci = 0};
 	struct rte_flow_item_ipv4 ipv4 = {
 		.hdr =  {
 			.next_proto_id = IPPROTO_GRE,
@@ -8010,22 +8010,22 @@ parse_vc_action_mplsogre_decap(struct context *ctx, const struct token *token,
 	};
 	header = action_decap_data->data;
 	if (mplsogre_decap_conf.select_vlan)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	else if (mplsogre_encap_conf.select_ipv4)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	else
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	memcpy(eth.dst.addr_bytes,
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+	memcpy(eth.hdr.dst_addr.addr_bytes,
 	       mplsogre_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
-	memcpy(eth.src.addr_bytes,
+	memcpy(eth.hdr.src_addr.addr_bytes,
 	       mplsogre_encap_conf.eth_src, RTE_ETHER_ADDR_LEN);
 	memcpy(header, &eth, sizeof(eth));
 	header += sizeof(eth);
 	if (mplsogre_encap_conf.select_vlan) {
 		if (mplsogre_encap_conf.select_ipv4)
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 		else
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 		memcpy(header, &vlan, sizeof(vlan));
 		header += sizeof(vlan);
 	}
@@ -8056,10 +8056,10 @@ parse_vc_action_mplsoudp_encap(struct context *ctx, const struct token *token,
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
 	struct action_raw_encap_data *action_encap_data;
-	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
 	struct rte_flow_item_vlan vlan = {
-		.tci = mplsoudp_encap_conf.vlan_tci,
-		.inner_type = 0,
+		.hdr.vlan_tci = mplsoudp_encap_conf.vlan_tci,
+		.hdr.eth_proto = 0,
 	};
 	struct rte_flow_item_ipv4 ipv4 = {
 		.hdr =  {
@@ -8109,22 +8109,22 @@ parse_vc_action_mplsoudp_encap(struct context *ctx, const struct token *token,
 	};
 	header = action_encap_data->data;
 	if (mplsoudp_encap_conf.select_vlan)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	else if (mplsoudp_encap_conf.select_ipv4)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	else
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	memcpy(eth.dst.addr_bytes,
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+	memcpy(eth.hdr.dst_addr.addr_bytes,
 	       mplsoudp_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
-	memcpy(eth.src.addr_bytes,
+	memcpy(eth.hdr.src_addr.addr_bytes,
 	       mplsoudp_encap_conf.eth_src, RTE_ETHER_ADDR_LEN);
 	memcpy(header, &eth, sizeof(eth));
 	header += sizeof(eth);
 	if (mplsoudp_encap_conf.select_vlan) {
 		if (mplsoudp_encap_conf.select_ipv4)
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 		else
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 		memcpy(header, &vlan, sizeof(vlan));
 		header += sizeof(vlan);
 	}
@@ -8163,8 +8163,8 @@ parse_vc_action_mplsoudp_decap(struct context *ctx, const struct token *token,
 	struct buffer *out = buf;
 	struct rte_flow_action *action;
 	struct action_raw_decap_data *action_decap_data;
-	struct rte_flow_item_eth eth = { .type = 0, };
-	struct rte_flow_item_vlan vlan = {.tci = 0};
+	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
+	struct rte_flow_item_vlan vlan = {.hdr.vlan_tci = 0};
 	struct rte_flow_item_ipv4 ipv4 = {
 		.hdr =  {
 			.next_proto_id = IPPROTO_UDP,
@@ -8206,22 +8206,22 @@ parse_vc_action_mplsoudp_decap(struct context *ctx, const struct token *token,
 	};
 	header = action_decap_data->data;
 	if (mplsoudp_decap_conf.select_vlan)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	else if (mplsoudp_encap_conf.select_ipv4)
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	else
-		eth.type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	memcpy(eth.dst.addr_bytes,
+		eth.hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+	memcpy(eth.hdr.dst_addr.addr_bytes,
 	       mplsoudp_encap_conf.eth_dst, RTE_ETHER_ADDR_LEN);
-	memcpy(eth.src.addr_bytes,
+	memcpy(eth.hdr.src_addr.addr_bytes,
 	       mplsoudp_encap_conf.eth_src, RTE_ETHER_ADDR_LEN);
 	memcpy(header, &eth, sizeof(eth));
 	header += sizeof(eth);
 	if (mplsoudp_encap_conf.select_vlan) {
 		if (mplsoudp_encap_conf.select_ipv4)
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 		else
-			vlan.inner_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+			vlan.hdr.eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 		memcpy(header, &vlan, sizeof(vlan));
 		header += sizeof(vlan);
 	}

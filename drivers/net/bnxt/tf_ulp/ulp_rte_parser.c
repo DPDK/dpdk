@@ -627,13 +627,13 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 	/* Perform validations */
 	if (eth_spec) {
 		/* Todo: work around to avoid multicast and broadcast addr */
-		if (ulp_rte_parser_is_bcmc_addr(&eth_spec->dst))
+		if (ulp_rte_parser_is_bcmc_addr(&eth_spec->hdr.dst_addr))
 			return BNXT_TF_RC_PARSE_ERR;
 
-		if (ulp_rte_parser_is_bcmc_addr(&eth_spec->src))
+		if (ulp_rte_parser_is_bcmc_addr(&eth_spec->hdr.src_addr))
 			return BNXT_TF_RC_PARSE_ERR;
 
-		eth_type = eth_spec->type;
+		eth_type = eth_spec->hdr.ether_type;
 	}
 
 	if (ulp_rte_prsr_fld_size_validate(params, &idx,
@@ -646,22 +646,22 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 	 * header fields
 	 */
 	dmac_idx = idx;
-	size = sizeof(((struct rte_flow_item_eth *)NULL)->dst.addr_bytes);
+	size = sizeof(((struct rte_flow_item_eth *)NULL)->hdr.dst_addr.addr_bytes);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(eth_spec, dst.addr_bytes),
-			      ulp_deference_struct(eth_mask, dst.addr_bytes),
+			      ulp_deference_struct(eth_spec, hdr.dst_addr.addr_bytes),
+			      ulp_deference_struct(eth_mask, hdr.dst_addr.addr_bytes),
 			      ULP_PRSR_ACT_DEFAULT);
 
-	size = sizeof(((struct rte_flow_item_eth *)NULL)->src.addr_bytes);
+	size = sizeof(((struct rte_flow_item_eth *)NULL)->hdr.src_addr.addr_bytes);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(eth_spec, src.addr_bytes),
-			      ulp_deference_struct(eth_mask, src.addr_bytes),
+			      ulp_deference_struct(eth_spec, hdr.src_addr.addr_bytes),
+			      ulp_deference_struct(eth_mask, hdr.src_addr.addr_bytes),
 			      ULP_PRSR_ACT_DEFAULT);
 
-	size = sizeof(((struct rte_flow_item_eth *)NULL)->type);
+	size = sizeof(((struct rte_flow_item_eth *)NULL)->hdr.ether_type);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(eth_spec, type),
-			      ulp_deference_struct(eth_mask, type),
+			      ulp_deference_struct(eth_spec, hdr.ether_type),
+			      ulp_deference_struct(eth_mask, hdr.ether_type),
 			      ULP_PRSR_ACT_MATCH_IGNORE);
 
 	/* Update the protocol hdr bitmap */
@@ -706,15 +706,15 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 	uint32_t size;
 
 	if (vlan_spec) {
-		vlan_tag = ntohs(vlan_spec->tci);
+		vlan_tag = ntohs(vlan_spec->hdr.vlan_tci);
 		priority = htons(vlan_tag >> ULP_VLAN_PRIORITY_SHIFT);
 		vlan_tag &= ULP_VLAN_TAG_MASK;
 		vlan_tag = htons(vlan_tag);
-		eth_type = vlan_spec->inner_type;
+		eth_type = vlan_spec->hdr.eth_proto;
 	}
 
 	if (vlan_mask) {
-		vlan_tag_mask = ntohs(vlan_mask->tci);
+		vlan_tag_mask = ntohs(vlan_mask->hdr.vlan_tci);
 		priority_mask = htons(vlan_tag_mask >> ULP_VLAN_PRIORITY_SHIFT);
 		vlan_tag_mask &= 0xfff;
 
@@ -741,7 +741,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 	 * Copy the rte_flow_item for vlan into hdr_field using Vlan
 	 * header fields
 	 */
-	size = sizeof(((struct rte_flow_item_vlan *)NULL)->tci);
+	size = sizeof(((struct rte_flow_item_vlan *)NULL)->hdr.vlan_tci);
 	/*
 	 * The priority field is ignored since OVS is setting it as
 	 * wild card match and it is not supported. This is a work
@@ -757,10 +757,10 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 			      (vlan_mask) ? &vlan_tag_mask : NULL,
 			      ULP_PRSR_ACT_DEFAULT);
 
-	size = sizeof(((struct rte_flow_item_vlan *)NULL)->inner_type);
+	size = sizeof(((struct rte_flow_item_vlan *)NULL)->hdr.eth_proto);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
-			      ulp_deference_struct(vlan_spec, inner_type),
-			      ulp_deference_struct(vlan_mask, inner_type),
+			      ulp_deference_struct(vlan_spec, hdr.eth_proto),
+			      ulp_deference_struct(vlan_mask, hdr.eth_proto),
 			      ULP_PRSR_ACT_MATCH_IGNORE);
 
 	/* Get the outer tag and inner tag counts */
@@ -1673,14 +1673,14 @@ ulp_rte_enc_eth_hdr_handler(struct ulp_rte_parser_params *params,
 	uint32_t size;
 
 	field = &params->enc_field[BNXT_ULP_ENC_FIELD_ETH_DMAC];
-	size = sizeof(eth_spec->dst.addr_bytes);
-	field = ulp_rte_parser_fld_copy(field, eth_spec->dst.addr_bytes, size);
+	size = sizeof(eth_spec->hdr.dst_addr.addr_bytes);
+	field = ulp_rte_parser_fld_copy(field, eth_spec->hdr.dst_addr.addr_bytes, size);
 
-	size = sizeof(eth_spec->src.addr_bytes);
-	field = ulp_rte_parser_fld_copy(field, eth_spec->src.addr_bytes, size);
+	size = sizeof(eth_spec->hdr.src_addr.addr_bytes);
+	field = ulp_rte_parser_fld_copy(field, eth_spec->hdr.src_addr.addr_bytes, size);
 
-	size = sizeof(eth_spec->type);
-	field = ulp_rte_parser_fld_copy(field, &eth_spec->type, size);
+	size = sizeof(eth_spec->hdr.ether_type);
+	field = ulp_rte_parser_fld_copy(field, &eth_spec->hdr.ether_type, size);
 
 	ULP_BITMAP_SET(params->enc_hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_ETH);
 }
@@ -1704,11 +1704,11 @@ ulp_rte_enc_vlan_hdr_handler(struct ulp_rte_parser_params *params,
 			       BNXT_ULP_HDR_BIT_OI_VLAN);
 	}
 
-	size = sizeof(vlan_spec->tci);
-	field = ulp_rte_parser_fld_copy(field, &vlan_spec->tci, size);
+	size = sizeof(vlan_spec->hdr.vlan_tci);
+	field = ulp_rte_parser_fld_copy(field, &vlan_spec->hdr.vlan_tci, size);
 
-	size = sizeof(vlan_spec->inner_type);
-	field = ulp_rte_parser_fld_copy(field, &vlan_spec->inner_type, size);
+	size = sizeof(vlan_spec->hdr.eth_proto);
+	field = ulp_rte_parser_fld_copy(field, &vlan_spec->hdr.eth_proto, size);
 }
 
 /* Function to handle the parsing of RTE Flow item ipv4 Header. */

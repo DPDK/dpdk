@@ -986,7 +986,7 @@ i40e_hash_parse_queue_region(const struct rte_eth_dev *dev,
 	vlan_spec = pattern->spec;
 	vlan_mask = pattern->mask;
 	if (!vlan_spec || !vlan_mask ||
-	    (rte_be_to_cpu_16(vlan_mask->tci) >> 13) != 7)
+	    (rte_be_to_cpu_16(vlan_mask->hdr.vlan_tci) >> 13) != 7)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, pattern,
 					  "Pattern error.");
@@ -1033,7 +1033,7 @@ i40e_hash_parse_queue_region(const struct rte_eth_dev *dev,
 
 	rss_conf->region_queue_num = (uint8_t)rss_act->queue_num;
 	rss_conf->region_queue_start = rss_act->queue[0];
-	rss_conf->region_priority = rte_be_to_cpu_16(vlan_spec->tci) >> 13;
+	rss_conf->region_priority = rte_be_to_cpu_16(vlan_spec->hdr.vlan_tci) >> 13;
 	return 0;
 }
 

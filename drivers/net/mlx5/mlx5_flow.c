@@ -301,13 +301,13 @@ mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 		return RTE_FLOW_ITEM_TYPE_VOID;
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_ETH:
-		MLX5_XSET_ITEM_MASK_SPEC(eth, type);
+		MLX5_XSET_ITEM_MASK_SPEC(eth, hdr.ether_type);
 		if (!mask)
 			return RTE_FLOW_ITEM_TYPE_VOID;
 		ret = mlx5_ethertype_to_item_type(spec, mask, false);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VLAN:
-		MLX5_XSET_ITEM_MASK_SPEC(vlan, inner_type);
+		MLX5_XSET_ITEM_MASK_SPEC(vlan, hdr.eth_proto);
 		if (!mask)
 			return RTE_FLOW_ITEM_TYPE_VOID;
 		ret = mlx5_ethertype_to_item_type(spec, mask, false);
@@ -2431,9 +2431,9 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_eth *mask = item->mask;
 	const struct rte_flow_item_eth nic_mask = {
-		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-		.type = RTE_BE16(0xffff),
+		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.ether_type = RTE_BE16(0xffff),
 		.has_vlan = ext_vlan_sup ? 1 : 0,
 	};
 	int ret;
@@ -2493,8 +2493,8 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	const struct rte_flow_item_vlan nic_mask = {
-		.tci = RTE_BE16(UINT16_MAX),
-		.inner_type = RTE_BE16(UINT16_MAX),
+		.hdr.vlan_tci = RTE_BE16(UINT16_MAX),
+		.hdr.eth_proto = RTE_BE16(UINT16_MAX),
 	};
 	uint16_t vlan_tag = 0;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
@@ -2522,7 +2522,7 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret)
 		return ret;
-	if (!tunnel && mask->tci != RTE_BE16(0x0fff)) {
+	if (!tunnel && mask->hdr.vlan_tci != RTE_BE16(0x0fff)) {
 		struct mlx5_priv *priv = dev->data->dev_private;
 
 		if (priv->vmwa_context) {
@@ -2542,8 +2542,8 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 		}
 	}
 	if (spec) {
-		vlan_tag = spec->tci;
-		vlan_tag &= mask->tci;
+		vlan_tag = spec->hdr.vlan_tci;
+		vlan_tag &= mask->hdr.vlan_tci;
 	}
 	/*
 	 * From verbs perspective an empty VLAN is equivalent
@@ -7877,10 +7877,10 @@ mlx5_flow_lacp_miss(struct rte_eth_dev *dev)
 	 * a multicast dst mac causes kernel to give low priority to this flow.
 	 */
 	static const struct rte_flow_item_eth lacp_spec = {
-		.type = RTE_BE16(0x8809),
+		.hdr.ether_type = RTE_BE16(0x8809),
 	};
 	static const struct rte_flow_item_eth lacp_mask = {
-		.type = 0xffff,
+		.hdr.ether_type = 0xffff,
 	};
 	const struct rte_flow_attr attr = {
 		.ingress = 1,

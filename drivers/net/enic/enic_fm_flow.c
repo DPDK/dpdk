@@ -462,10 +462,10 @@ enic_fm_copy_item_vlan(struct copy_item_args *arg)
 	eth_val = (void *)&fm_data->l2.eth;
 
 	/*
-	 * Outer TPID cannot be matched. If inner_type is 0, use what is
+	 * Outer TPID cannot be matched. If protocol is 0, use what is
 	 * in the eth header.
 	 */
-	if (eth_mask->ether_type && mask->inner_type)
+	if (eth_mask->ether_type && mask->hdr.eth_proto)
 		return -ENOTSUP;
 
 	/*
@@ -473,14 +473,14 @@ enic_fm_copy_item_vlan(struct copy_item_args *arg)
 	 * L2, regardless of vlan stripping settings. So, the inner type
 	 * from vlan becomes the ether type of the eth header.
 	 */
-	if (mask->inner_type) {
-		eth_mask->ether_type = mask->inner_type;
-		eth_val->ether_type = spec->inner_type;
+	if (mask->hdr.eth_proto) {
+		eth_mask->ether_type = mask->hdr.eth_proto;
+		eth_val->ether_type = spec->hdr.eth_proto;
 	}
 	fm_data->fk_header_select |= FKH_ETHER | FKH_QTAG;
 	fm_mask->fk_header_select |= FKH_ETHER | FKH_QTAG;
-	fm_data->fk_vlan = rte_be_to_cpu_16(spec->tci);
-	fm_mask->fk_vlan = rte_be_to_cpu_16(mask->tci);
+	fm_data->fk_vlan = rte_be_to_cpu_16(spec->hdr.vlan_tci);
+	fm_mask->fk_vlan = rte_be_to_cpu_16(mask->hdr.vlan_tci);
 	return 0;
 }
 
@@ -1385,7 +1385,7 @@ enic_fm_copy_vxlan_encap(struct enic_flowman *fm,
 
 		ENICPMD_LOG(DEBUG, "vxlan-encap: vlan");
 		spec = item->spec;
-		fm_op.encap.outer_vlan = rte_be_to_cpu_16(spec->tci);
+		fm_op.encap.outer_vlan = rte_be_to_cpu_16(spec->hdr.vlan_tci);
 		item++;
 		flow_item_skip_void(&item);
 	}

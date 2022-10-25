@@ -417,16 +417,16 @@ flow_verbs_translate_item_eth(struct mlx5_flow *dev_flow,
 	if (spec) {
 		unsigned int i;
 
-		memcpy(&eth.val.dst_mac, spec->dst.addr_bytes,
+		memcpy(&eth.val.dst_mac, spec->hdr.dst_addr.addr_bytes,
 			RTE_ETHER_ADDR_LEN);
-		memcpy(&eth.val.src_mac, spec->src.addr_bytes,
+		memcpy(&eth.val.src_mac, spec->hdr.src_addr.addr_bytes,
 			RTE_ETHER_ADDR_LEN);
-		eth.val.ether_type = spec->type;
-		memcpy(&eth.mask.dst_mac, mask->dst.addr_bytes,
+		eth.val.ether_type = spec->hdr.ether_type;
+		memcpy(&eth.mask.dst_mac, mask->hdr.dst_addr.addr_bytes,
 			RTE_ETHER_ADDR_LEN);
-		memcpy(&eth.mask.src_mac, mask->src.addr_bytes,
+		memcpy(&eth.mask.src_mac, mask->hdr.src_addr.addr_bytes,
 			RTE_ETHER_ADDR_LEN);
-		eth.mask.ether_type = mask->type;
+		eth.mask.ether_type = mask->hdr.ether_type;
 		/* Remove unwanted bits from values. */
 		for (i = 0; i < RTE_ETHER_ADDR_LEN; ++i) {
 			eth.val.dst_mac[i] &= eth.mask.dst_mac[i];
@@ -502,11 +502,11 @@ flow_verbs_translate_item_vlan(struct mlx5_flow *dev_flow,
 	if (!mask)
 		mask = &rte_flow_item_vlan_mask;
 	if (spec) {
-		eth.val.vlan_tag = spec->tci;
-		eth.mask.vlan_tag = mask->tci;
+		eth.val.vlan_tag = spec->hdr.vlan_tci;
+		eth.mask.vlan_tag = mask->hdr.vlan_tci;
 		eth.val.vlan_tag &= eth.mask.vlan_tag;
-		eth.val.ether_type = spec->inner_type;
-		eth.mask.ether_type = mask->inner_type;
+		eth.val.ether_type = spec->hdr.eth_proto;
+		eth.mask.ether_type = mask->hdr.eth_proto;
 		eth.val.ether_type &= eth.mask.ether_type;
 	}
 	if (!(item_flags & l2m))
@@ -515,7 +515,7 @@ flow_verbs_translate_item_vlan(struct mlx5_flow *dev_flow,
 		flow_verbs_item_vlan_update(&dev_flow->verbs.attr, &eth);
 	if (!tunnel)
 		dev_flow->handle->vf_vlan.tag =
-			rte_be_to_cpu_16(spec->tci) & 0x0fff;
+			rte_be_to_cpu_16(spec->hdr.vlan_tci) & 0x0fff;
 }
 
 /**
@@ -1305,10 +1305,10 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			if (items->mask != NULL && items->spec != NULL) {
 				ether_type =
 					((const struct rte_flow_item_eth *)
-					 items->spec)->type;
+					 items->spec)->hdr.ether_type;
 				ether_type &=
 					((const struct rte_flow_item_eth *)
-					 items->mask)->type;
+					 items->mask)->hdr.ether_type;
 				if (ether_type == RTE_BE16(RTE_ETHER_TYPE_VLAN))
 					is_empty_vlan = true;
 				ether_type = rte_be_to_cpu_16(ether_type);
@@ -1328,10 +1328,10 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			if (items->mask != NULL && items->spec != NULL) {
 				ether_type =
 					((const struct rte_flow_item_vlan *)
-					 items->spec)->inner_type;
+					 items->spec)->hdr.eth_proto;
 				ether_type &=
 					((const struct rte_flow_item_vlan *)
-					 items->mask)->inner_type;
+					 items->mask)->hdr.eth_proto;
 				ether_type = rte_be_to_cpu_16(ether_type);
 			} else {
 				ether_type = 0;

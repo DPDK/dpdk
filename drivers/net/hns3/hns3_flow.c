@@ -493,28 +493,28 @@ hns3_parse_eth(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (item->mask) {
 		eth_mask = item->mask;
-		if (eth_mask->type) {
+		if (eth_mask->hdr.ether_type) {
 			hns3_set_bit(rule->input_set, INNER_ETH_TYPE, 1);
 			rule->key_conf.mask.ether_type =
-			    rte_be_to_cpu_16(eth_mask->type);
+			    rte_be_to_cpu_16(eth_mask->hdr.ether_type);
 		}
-		if (!rte_is_zero_ether_addr(&eth_mask->src)) {
+		if (!rte_is_zero_ether_addr(&eth_mask->hdr.src_addr)) {
 			hns3_set_bit(rule->input_set, INNER_SRC_MAC, 1);
 			memcpy(rule->key_conf.mask.src_mac,
-			       eth_mask->src.addr_bytes, RTE_ETHER_ADDR_LEN);
+			       eth_mask->hdr.src_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 		}
-		if (!rte_is_zero_ether_addr(&eth_mask->dst)) {
+		if (!rte_is_zero_ether_addr(&eth_mask->hdr.dst_addr)) {
 			hns3_set_bit(rule->input_set, INNER_DST_MAC, 1);
 			memcpy(rule->key_conf.mask.dst_mac,
-			       eth_mask->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
+			       eth_mask->hdr.dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 		}
 	}
 
 	eth_spec = item->spec;
-	rule->key_conf.spec.ether_type = rte_be_to_cpu_16(eth_spec->type);
-	memcpy(rule->key_conf.spec.src_mac, eth_spec->src.addr_bytes,
+	rule->key_conf.spec.ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
+	memcpy(rule->key_conf.spec.src_mac, eth_spec->hdr.src_addr.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
-	memcpy(rule->key_conf.spec.dst_mac, eth_spec->dst.addr_bytes,
+	memcpy(rule->key_conf.spec.dst_mac, eth_spec->hdr.dst_addr.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
 	return 0;
 }
@@ -538,17 +538,17 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (item->mask) {
 		vlan_mask = item->mask;
-		if (vlan_mask->tci) {
+		if (vlan_mask->hdr.vlan_tci) {
 			if (rule->key_conf.vlan_num == 1) {
 				hns3_set_bit(rule->input_set, INNER_VLAN_TAG1,
 					     1);
 				rule->key_conf.mask.vlan_tag1 =
-				    rte_be_to_cpu_16(vlan_mask->tci);
+				    rte_be_to_cpu_16(vlan_mask->hdr.vlan_tci);
 			} else {
 				hns3_set_bit(rule->input_set, INNER_VLAN_TAG2,
 					     1);
 				rule->key_conf.mask.vlan_tag2 =
-				    rte_be_to_cpu_16(vlan_mask->tci);
+				    rte_be_to_cpu_16(vlan_mask->hdr.vlan_tci);
 			}
 		}
 	}
@@ -556,10 +556,10 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	vlan_spec = item->spec;
 	if (rule->key_conf.vlan_num == 1)
 		rule->key_conf.spec.vlan_tag1 =
-		    rte_be_to_cpu_16(vlan_spec->tci);
+		    rte_be_to_cpu_16(vlan_spec->hdr.vlan_tci);
 	else
 		rule->key_conf.spec.vlan_tag2 =
-		    rte_be_to_cpu_16(vlan_spec->tci);
+		    rte_be_to_cpu_16(vlan_spec->hdr.vlan_tci);
 	return 0;
 }
 

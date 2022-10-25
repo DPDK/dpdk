@@ -189,14 +189,14 @@ mrvl_parse_mac(const struct rte_flow_item_eth *spec,
 	const uint8_t *k, *m;
 
 	if (parse_dst) {
-		k = spec->dst.addr_bytes;
-		m = mask->dst.addr_bytes;
+		k = spec->hdr.dst_addr.addr_bytes;
+		m = mask->hdr.dst_addr.addr_bytes;
 
 		flow->table_key.proto_field[flow->rule.num_fields].field.eth =
 			MV_NET_ETH_F_DA;
 	} else {
-		k = spec->src.addr_bytes;
-		m = mask->src.addr_bytes;
+		k = spec->hdr.src_addr.addr_bytes;
+		m = mask->hdr.src_addr.addr_bytes;
 
 		flow->table_key.proto_field[flow->rule.num_fields].field.eth =
 			MV_NET_ETH_F_SA;
@@ -275,7 +275,7 @@ mrvl_parse_type(const struct rte_flow_item_eth *spec,
 	mrvl_alloc_key_mask(key_field);
 	key_field->size = 2;
 
-	k = rte_be_to_cpu_16(spec->type);
+	k = rte_be_to_cpu_16(spec->hdr.ether_type);
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
 	flow->table_key.proto_field[flow->rule.num_fields].proto =
@@ -311,7 +311,7 @@ mrvl_parse_vlan_id(const struct rte_flow_item_vlan *spec,
 	mrvl_alloc_key_mask(key_field);
 	key_field->size = 2;
 
-	k = rte_be_to_cpu_16(spec->tci) & MRVL_VLAN_ID_MASK;
+	k = rte_be_to_cpu_16(spec->hdr.vlan_tci) & MRVL_VLAN_ID_MASK;
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
 	flow->table_key.proto_field[flow->rule.num_fields].proto =
@@ -347,7 +347,7 @@ mrvl_parse_vlan_pri(const struct rte_flow_item_vlan *spec,
 	mrvl_alloc_key_mask(key_field);
 	key_field->size = 1;
 
-	k = (rte_be_to_cpu_16(spec->tci) & MRVL_VLAN_PRI_MASK) >> 13;
+	k = (rte_be_to_cpu_16(spec->hdr.vlan_tci) & MRVL_VLAN_PRI_MASK) >> 13;
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
 	flow->table_key.proto_field[flow->rule.num_fields].proto =
@@ -856,19 +856,19 @@ mrvl_parse_eth(const struct rte_flow_item *item, struct rte_flow *flow,
 
 	memset(&zero, 0, sizeof(zero));
 
-	if (memcmp(&mask->dst, &zero, sizeof(mask->dst))) {
+	if (memcmp(&mask->hdr.dst_addr, &zero, sizeof(mask->hdr.dst_addr))) {
 		ret = mrvl_parse_dmac(spec, mask, flow);
 		if (ret)
 			goto out;
 	}
 
-	if (memcmp(&mask->src, &zero, sizeof(mask->src))) {
+	if (memcmp(&mask->hdr.src_addr, &zero, sizeof(mask->hdr.src_addr))) {
 		ret = mrvl_parse_smac(spec, mask, flow);
 		if (ret)
 			goto out;
 	}
 
-	if (mask->type) {
+	if (mask->hdr.ether_type) {
 		MRVL_LOG(WARNING, "eth type mask is ignored");
 		ret = mrvl_parse_type(spec, mask, flow);
 		if (ret)
@@ -905,7 +905,7 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 	if (ret)
 		return ret;
 
-	m = rte_be_to_cpu_16(mask->tci);
+	m = rte_be_to_cpu_16(mask->hdr.vlan_tci);
 	if (m & MRVL_VLAN_ID_MASK) {
 		MRVL_LOG(WARNING, "vlan id mask is ignored");
 		ret = mrvl_parse_vlan_id(spec, mask, flow);
@@ -920,12 +920,12 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 			goto out;
 	}
 
-	if (mask->inner_type) {
+	if (mask->hdr.eth_proto) {
 		struct rte_flow_item_eth spec_eth = {
-			.type = spec->inner_type,
+			.hdr.ether_type = spec->hdr.eth_proto,
 		};
 		struct rte_flow_item_eth mask_eth = {
-			.type = mask->inner_type,
+			.hdr.ether_type = mask->hdr.eth_proto,
 		};
 
 		/* TPID is not supported so if ETH_TYPE was selected,

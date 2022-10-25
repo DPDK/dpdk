@@ -1701,18 +1701,18 @@ static const struct sfc_mae_field_locator flocs_eth[] = {
 		 * The field is handled by sfc_mae_rule_process_pattern_data().
 		 */
 		SFC_MAE_FIELD_HANDLING_DEFERRED,
-		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, type),
-		offsetof(struct rte_flow_item_eth, type),
+		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, hdr.ether_type),
+		offsetof(struct rte_flow_item_eth, hdr.ether_type),
 	},
 	{
 		EFX_MAE_FIELD_ETH_DADDR_BE,
-		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, dst),
-		offsetof(struct rte_flow_item_eth, dst),
+		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, hdr.dst_addr),
+		offsetof(struct rte_flow_item_eth, hdr.dst_addr),
 	},
 	{
 		EFX_MAE_FIELD_ETH_SADDR_BE,
-		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, src),
-		offsetof(struct rte_flow_item_eth, src),
+		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, hdr.src_addr),
+		offsetof(struct rte_flow_item_eth, hdr.src_addr),
 	},
 };
 
@@ -1770,8 +1770,8 @@ sfc_mae_rule_parse_item_eth(const struct rte_flow_item *item,
 		 * sfc_mae_rule_process_pattern_data() will consider them
 		 * altogether when the rest of the items have been parsed.
 		 */
-		ethertypes[0].value = item_spec->type;
-		ethertypes[0].mask = item_mask->type;
+		ethertypes[0].value = item_spec->hdr.ether_type;
+		ethertypes[0].mask = item_mask->hdr.ether_type;
 		if (item_mask->has_vlan) {
 			pdata->has_ovlan_mask = B_TRUE;
 			if (item_spec->has_vlan)
@@ -1794,8 +1794,8 @@ static const struct sfc_mae_field_locator flocs_vlan[] = {
 	/* Outermost tag */
 	{
 		EFX_MAE_FIELD_VLAN0_TCI_BE,
-		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, tci),
-		offsetof(struct rte_flow_item_vlan, tci),
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, hdr.vlan_tci),
+		offsetof(struct rte_flow_item_vlan, hdr.vlan_tci),
 	},
 	{
 		/*
@@ -1803,15 +1803,15 @@ static const struct sfc_mae_field_locator flocs_vlan[] = {
 		 * The field is handled by sfc_mae_rule_process_pattern_data().
 		 */
 		SFC_MAE_FIELD_HANDLING_DEFERRED,
-		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, inner_type),
-		offsetof(struct rte_flow_item_vlan, inner_type),
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, hdr.eth_proto),
+		offsetof(struct rte_flow_item_vlan, hdr.eth_proto),
 	},
 
 	/* Innermost tag */
 	{
 		EFX_MAE_FIELD_VLAN1_TCI_BE,
-		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, tci),
-		offsetof(struct rte_flow_item_vlan, tci),
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, hdr.vlan_tci),
+		offsetof(struct rte_flow_item_vlan, hdr.vlan_tci),
 	},
 	{
 		/*
@@ -1819,8 +1819,8 @@ static const struct sfc_mae_field_locator flocs_vlan[] = {
 		 * The field is handled by sfc_mae_rule_process_pattern_data().
 		 */
 		SFC_MAE_FIELD_HANDLING_DEFERRED,
-		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, inner_type),
-		offsetof(struct rte_flow_item_vlan, inner_type),
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, hdr.eth_proto),
+		offsetof(struct rte_flow_item_vlan, hdr.eth_proto),
 	},
 };
 
@@ -1899,9 +1899,9 @@ sfc_mae_rule_parse_item_vlan(const struct rte_flow_item *item,
 		 * sfc_mae_rule_process_pattern_data() will consider them
 		 * altogether when the rest of the items have been parsed.
 		 */
-		et[pdata->nb_vlan_tags + 1].value = item_spec->inner_type;
-		et[pdata->nb_vlan_tags + 1].mask = item_mask->inner_type;
-		pdata->tci_masks[pdata->nb_vlan_tags] = item_mask->tci;
+		et[pdata->nb_vlan_tags + 1].value = item_spec->hdr.eth_proto;
+		et[pdata->nb_vlan_tags + 1].mask = item_mask->hdr.eth_proto;
+		pdata->tci_masks[pdata->nb_vlan_tags] = item_mask->hdr.vlan_tci;
 		if (item_mask->has_more_vlan) {
 			if (pdata->nb_vlan_tags ==
 			    SFC_MAE_MATCH_VLAN_MAX_NTAGS) {

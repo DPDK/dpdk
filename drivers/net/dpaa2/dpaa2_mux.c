@@ -150,7 +150,7 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 		kg_cfg.num_extracts = 1;
 
 		spec = (const struct rte_flow_item_eth *)pattern[0]->spec;
-		eth_type = rte_constant_bswap16(spec->type);
+		eth_type = rte_constant_bswap16(spec->hdr.ether_type);
 		memcpy((void *)key_iova, (const void *)&eth_type,
 							sizeof(rte_be16_t));
 		memcpy(mask_iova, pattern[0]->mask, sizeof(uint16_t));

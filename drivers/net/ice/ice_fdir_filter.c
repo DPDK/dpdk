@@ -1971,17 +1971,17 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			if (!(eth_spec && eth_mask))
 				break;
 
-			if (!rte_is_zero_ether_addr(&eth_mask->dst))
+			if (!rte_is_zero_ether_addr(&eth_mask->hdr.dst_addr))
 				*input_set |= ICE_INSET_DMAC;
-			if (!rte_is_zero_ether_addr(&eth_mask->src))
+			if (!rte_is_zero_ether_addr(&eth_mask->hdr.src_addr))
 				*input_set |= ICE_INSET_SMAC;
 
 			next_type = (item + 1)->type;
 			/* Ignore this field except for ICE_FLTR_PTYPE_NON_IP_L2 */
-			if (eth_mask->type == RTE_BE16(0xffff) &&
+			if (eth_mask->hdr.ether_type == RTE_BE16(0xffff) &&
 			    next_type == RTE_FLOW_ITEM_TYPE_END) {
 				*input_set |= ICE_INSET_ETHERTYPE;
-				ether_type = rte_be_to_cpu_16(eth_spec->type);
+				ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
 
 				if (ether_type == RTE_ETHER_TYPE_IPV4 ||
 				    ether_type == RTE_ETHER_TYPE_IPV6) {
@@ -1997,11 +1997,11 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				     &filter->input.ext_data_outer :
 				     &filter->input.ext_data;
 			rte_memcpy(&p_ext_data->src_mac,
-				   &eth_spec->src, RTE_ETHER_ADDR_LEN);
+				   &eth_spec->hdr.src_addr, RTE_ETHER_ADDR_LEN);
 			rte_memcpy(&p_ext_data->dst_mac,
-				   &eth_spec->dst, RTE_ETHER_ADDR_LEN);
+				   &eth_spec->hdr.dst_addr, RTE_ETHER_ADDR_LEN);
 			rte_memcpy(&p_ext_data->ether_type,
-				   &eth_spec->type, sizeof(eth_spec->type));
+				   &eth_spec->hdr.ether_type, sizeof(eth_spec->hdr.ether_type));
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			flow_type = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;

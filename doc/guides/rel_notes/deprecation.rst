@@ -68,6 +68,8 @@ Deprecation Notices
   should start with relevant protocol header structure from lib/net/.
   The individual protocol header fields and the protocol header struct
   may be kept together in a union as a first migration step.
+  In future (target is DPDK 23.11), the protocol header fields will be cleaned
+  and only protocol header struct will remain.
 
   These items are not compliant (not including struct from lib/net/):
 

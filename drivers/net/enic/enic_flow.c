@@ -656,17 +656,17 @@ enic_copy_item_eth_v2(struct copy_item_args *arg)
 	if (!mask)
 		mask = &rte_flow_item_eth_mask;
 
-	memcpy(enic_spec.dst_addr.addr_bytes, spec->dst.addr_bytes,
+	memcpy(enic_spec.dst_addr.addr_bytes, spec->hdr.dst_addr.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
-	memcpy(enic_spec.src_addr.addr_bytes, spec->src.addr_bytes,
+	memcpy(enic_spec.src_addr.addr_bytes, spec->hdr.src_addr.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
 
-	memcpy(enic_mask.dst_addr.addr_bytes, mask->dst.addr_bytes,
+	memcpy(enic_mask.dst_addr.addr_bytes, mask->hdr.dst_addr.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
-	memcpy(enic_mask.src_addr.addr_bytes, mask->src.addr_bytes,
+	memcpy(enic_mask.src_addr.addr_bytes, mask->hdr.src_addr.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
-	enic_spec.ether_type = spec->type;
-	enic_mask.ether_type = mask->type;
+	enic_spec.ether_type = spec->hdr.ether_type;
+	enic_mask.ether_type = mask->hdr.ether_type;
 
 	/* outer header */
 	memcpy(gp->layer[FILTER_GENERIC_1_L2].mask, &enic_mask,
@@ -715,16 +715,16 @@ enic_copy_item_vlan_v2(struct copy_item_args *arg)
 		struct rte_vlan_hdr *vlan;
 
 		vlan = (struct rte_vlan_hdr *)(eth_mask + 1);
-		vlan->eth_proto = mask->inner_type;
+		vlan->eth_proto = mask->hdr.eth_proto;
 		vlan = (struct rte_vlan_hdr *)(eth_val + 1);
-		vlan->eth_proto = spec->inner_type;
+		vlan->eth_proto = spec->hdr.eth_proto;
 	} else {
-		eth_mask->ether_type = mask->inner_type;
-		eth_val->ether_type = spec->inner_type;
+		eth_mask->ether_type = mask->hdr.eth_proto;
+		eth_val->ether_type = spec->hdr.eth_proto;
 	}
 	/* For TCI, use the vlan mask/val fields (little endian). */
-	gp->mask_vlan = rte_be_to_cpu_16(mask->tci);
-	gp->val_vlan = rte_be_to_cpu_16(spec->tci);
+	gp->mask_vlan = rte_be_to_cpu_16(mask->hdr.vlan_tci);
+	gp->val_vlan = rte_be_to_cpu_16(spec->hdr.vlan_tci);
 	return 0;
 }
 

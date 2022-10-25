@@ -101,7 +101,7 @@ ipn3ke_pattern_vxlan(const struct rte_flow_item patterns[],
 			eth = item->spec;
 
 			rte_memcpy(&parser->key[0],
-					eth->src.addr_bytes,
+					eth->hdr.src_addr.addr_bytes,
 					RTE_ETHER_ADDR_LEN);
 			break;
 
@@ -165,7 +165,7 @@ ipn3ke_pattern_mac(const struct rte_flow_item patterns[],
 			eth = item->spec;
 
 			rte_memcpy(parser->key,
-					eth->src.addr_bytes,
+					eth->hdr.src_addr.addr_bytes,
 					RTE_ETHER_ADDR_LEN);
 			break;
 
@@ -227,13 +227,13 @@ ipn3ke_pattern_qinq(const struct rte_flow_item patterns[],
 			if (!outer_vlan) {
 				outer_vlan = item->spec;
 
-				tci = rte_be_to_cpu_16(outer_vlan->tci);
+				tci = rte_be_to_cpu_16(outer_vlan->hdr.vlan_tci);
 				parser->key[0]  = (tci & 0xff0) >> 4;
 				parser->key[1] |= (tci & 0x00f) << 4;
 			} else {
 				inner_vlan = item->spec;
 
-				tci = rte_be_to_cpu_16(inner_vlan->tci);
+				tci = rte_be_to_cpu_16(inner_vlan->hdr.vlan_tci);
 				parser->key[1] |= (tci & 0xf00) >> 8;
 				parser->key[2]  = (tci & 0x0ff);
 			}
