@@ -10,14 +10,27 @@
 #include <rte_malloc.h>
 
 #include "nfp_common.h"
+#include "nfp_ctrl.h"
 #include "nfp_flow.h"
 #include "nfp_logs.h"
+#include "nfp_rxtx.h"
 #include "flower/nfp_flower.h"
 #include "flower/nfp_flower_cmsg.h"
 #include "flower/nfp_flower_ctrl.h"
 #include "flower/nfp_flower_representor.h"
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
+
+/*
+ * Maximum number of items in struct rte_flow_action_vxlan_encap.
+ * ETH / IPv4(6) / UDP / VXLAN / END
+ */
+#define ACTION_VXLAN_ENCAP_ITEMS_NUM 5
+
+struct vxlan_data {
+	struct rte_flow_action_vxlan_encap conf;
+	struct rte_flow_item items[ACTION_VXLAN_ENCAP_ITEMS_NUM];
+};
 
 /* Static initializer for a list of subsequent item types */
 #define NEXT_ITEM(...) \
@@ -723,6 +736,11 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 					sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 				tc_hl_flag = true;
 			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
+			key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
@@ -1772,7 +1790,7 @@ nfp_flow_action_set_tc(char *act_data,
 	tc_hl->reserved = 0;
 }
 
-__rte_unused static void
+static void
 nfp_flow_pre_tun_v4_process(struct nfp_fl_act_pre_tun *pre_tun,
 		rte_be32_t ipv4_dst)
 {
@@ -1791,7 +1809,7 @@ nfp_flow_pre_tun_v6_process(struct nfp_fl_act_pre_tun *pre_tun,
 	memcpy(pre_tun->ipv6_dst, ipv6_dst, sizeof(pre_tun->ipv6_dst));
 }
 
-__rte_unused static void
+static void
 nfp_flow_set_tun_process(struct nfp_fl_act_set_tun *set_tun,
 		enum nfp_flower_tun_type tun_type,
 		uint64_t tun_id,
@@ -1812,7 +1830,7 @@ nfp_flow_set_tun_process(struct nfp_fl_act_set_tun *set_tun,
 	set_tun->tos            = tos;
 }
 
-__rte_unused static int
+static int
 nfp_flower_add_tun_neigh_v4_encap(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		struct nfp_fl_tun *tun,
@@ -1922,7 +1940,7 @@ nfp_flower_del_tun_neigh_v6(struct nfp_app_fw_flower *app_fw_flower,
 	return nfp_flower_cmsg_tun_neigh_v6_rule(app_fw_flower, &payload);
 }
 
-__rte_unused static int
+static int
 nfp_flower_del_tun_neigh(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow)
 {
@@ -1961,7 +1979,81 @@ nfp_flower_del_tun_neigh(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
-nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
+nfp_flow_action_vxlan_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
+		char *act_data,
+		char *actions,
+		const struct vxlan_data *vxlan_data,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct nfp_fl_tun *tun)
+{
+	struct nfp_fl_act_pre_tun *pre_tun;
+	struct nfp_fl_act_set_tun *set_tun;
+	const struct rte_flow_item_eth *eth;
+	const struct rte_flow_item_ipv4 *ipv4;
+	const struct rte_flow_item_vxlan *vxlan;
+	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
+	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
+
+	eth   = (const struct rte_flow_item_eth *)vxlan_data->items[0].spec;
+	ipv4  = (const struct rte_flow_item_ipv4 *)vxlan_data->items[1].spec;
+	vxlan = (const struct rte_flow_item_vxlan *)vxlan_data->items[3].spec;
+
+	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
+	memset(pre_tun, 0, act_pre_size);
+	nfp_flow_pre_tun_v4_process(pre_tun, ipv4->hdr.dst_addr);
+
+	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
+	memset(set_tun, 0, act_set_size);
+	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_VXLAN, vxlan->hdr.vx_vni,
+			ipv4->hdr.time_to_live, ipv4->hdr.type_of_service);
+	set_tun->tun_flags = vxlan->hdr.vx_flags;
+
+	/* Send the tunnel neighbor cmsg to fw */
+	return nfp_flower_add_tun_neigh_v4_encap(app_fw_flower, nfp_flow_meta,
+			tun, &eth->hdr, ipv4);
+}
+
+static int
+nfp_flow_action_vxlan_encap(struct nfp_app_fw_flower *app_fw_flower,
+		char *act_data,
+		char *actions,
+		const struct rte_flow_action *action,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct nfp_fl_tun *tun)
+{
+	size_t act_len;
+	size_t act_pre_size;
+	const struct vxlan_data *vxlan_data;
+
+	vxlan_data = action->conf;
+	if (vxlan_data->items[0].type != RTE_FLOW_ITEM_TYPE_ETH ||
+			vxlan_data->items[1].type != RTE_FLOW_ITEM_TYPE_IPV4 ||
+			vxlan_data->items[2].type != RTE_FLOW_ITEM_TYPE_UDP ||
+			vxlan_data->items[3].type != RTE_FLOW_ITEM_TYPE_VXLAN ||
+			vxlan_data->items[4].type != RTE_FLOW_ITEM_TYPE_END) {
+		PMD_DRV_LOG(ERR, "Not an valid vxlan action conf.");
+		return -EINVAL;
+	}
+
+	/*
+	 * Pre_tunnel action must be the first on the action list.
+	 * If other actions already exist, they need to be pushed forward.
+	 */
+	act_len = act_data - actions;
+	if (act_len != 0) {
+		act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
+		memmove(actions + act_pre_size, actions, act_len);
+	}
+
+	if (vxlan_data->items[1].type == RTE_FLOW_ITEM_TYPE_IPV4)
+		return nfp_flow_action_vxlan_encap_v4(app_fw_flower, act_data,
+				actions, vxlan_data, nfp_flow_meta, tun);
+
+	return 0;
+}
+
+static int
+nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
 {
@@ -2117,6 +2209,20 @@ nfp_flow_compile_action(__rte_unused struct nfp_flower_representor *representor,
 				position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 				tc_hl_flag = true;
 			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP");
+			ret = nfp_flow_action_vxlan_encap(representor->app_fw_flower,
+					position, action_data, action, nfp_flow_meta,
+					&nfp_flow->tun);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Failed when process"
+						" RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP");
+				return ret;
+			}
+			position += sizeof(struct nfp_fl_act_pre_tun);
+			position += sizeof(struct nfp_fl_act_set_tun);
+			nfp_flow->type = NFP_FLOW_ENCAP;
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
@@ -2409,6 +2515,22 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 		ret = -EINVAL;
 		goto exit;
 	}
+
+	switch (nfp_flow->type) {
+	case NFP_FLOW_COMMON:
+		break;
+	case NFP_FLOW_ENCAP:
+		/* Delete the entry from nn table */
+		ret = nfp_flower_del_tun_neigh(app_fw_flower, nfp_flow);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid nfp flow type %d.", nfp_flow->type);
+		ret = -EINVAL;
+		break;
+	}
+
+	if (ret != 0)
+		goto exit;
 
 	/* Delete the flow from hardware */
 	if (nfp_flow->install_flag) {
