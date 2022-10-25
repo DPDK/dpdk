@@ -822,8 +822,9 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GRE detected");
-			/* Clear IPv4 bits */
+			/* Clear IPv4 and IPv6 bits */
 			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
 			key_ls->tun_type = NFP_FL_TUN_GRE;
 			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
 			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GRE;
@@ -835,6 +836,17 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				 * in `struct nfp_flower_ipv4_gre_tun`
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+			} else if (outer_ip6_flag) {
+				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
+				key_ls->key_size += sizeof(struct nfp_flower_ipv6_gre_tun);
+				/*
+				 * The outer l3 layer information is
+				 * in `struct nfp_flower_ipv6_gre_tun`
+				 */
+				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
+			} else {
+				PMD_DRV_LOG(ERR, "No outer IP layer for GRE tunnel.");
+				return -1;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
@@ -1562,38 +1574,59 @@ geneve_end:
 
 static int
 nfp_flow_merge_gre(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
-		__rte_unused struct rte_flow *nfp_flow,
+		struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		__rte_unused const struct rte_flow_item *item,
 		__rte_unused const struct nfp_flow_item_proc *proc,
 		bool is_mask,
 		__rte_unused bool is_outer_layer)
 {
+	struct nfp_flower_meta_tci *meta_tci;
+	struct nfp_flower_ext_meta *ext_meta;
 	struct nfp_flower_ipv4_gre_tun *tun4;
+	struct nfp_flower_ipv6_gre_tun *tun6;
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
 
 	/* NVGRE is the only supported GRE tunnel type */
-	tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
-	if (is_mask)
-		tun4->ethertype = rte_cpu_to_be_16(~0);
-	else
-		tun4->ethertype = rte_cpu_to_be_16(0x6558);
+	if (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+			NFP_FLOWER_LAYER2_TUN_IPV6) {
+		tun6 = (struct nfp_flower_ipv6_gre_tun *)*mbuf_off;
+		if (is_mask)
+			tun6->ethertype = rte_cpu_to_be_16(~0);
+		else
+			tun6->ethertype = rte_cpu_to_be_16(0x6558);
+	} else {
+		tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
+		if (is_mask)
+			tun4->ethertype = rte_cpu_to_be_16(~0);
+		else
+			tun4->ethertype = rte_cpu_to_be_16(0x6558);
+	}
 
 	return 0;
 }
 
 static int
 nfp_flow_merge_gre_key(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
-		__rte_unused struct rte_flow *nfp_flow,
+		struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
-		__rte_unused const struct nfp_flow_item_proc *proc,
+		const struct nfp_flow_item_proc *proc,
 		bool is_mask,
 		__rte_unused bool is_outer_layer)
 {
 	rte_be32_t tun_key;
 	const rte_be32_t *spec;
 	const rte_be32_t *mask;
+	struct nfp_flower_meta_tci *meta_tci;
+	struct nfp_flower_ext_meta *ext_meta;
 	struct nfp_flower_ipv4_gre_tun *tun4;
+	struct nfp_flower_ipv6_gre_tun *tun6;
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
 
 	spec = item->spec;
 	if (spec == NULL) {
@@ -1604,12 +1637,23 @@ nfp_flow_merge_gre_key(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	mask = item->mask ? item->mask : proc->mask_default;
 	tun_key = is_mask ? *mask : *spec;
 
-	tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
-	tun4->tun_key = tun_key;
-	tun4->tun_flags = rte_cpu_to_be_16(NFP_FL_GRE_FLAG_KEY);
+	if (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+			NFP_FLOWER_LAYER2_TUN_IPV6) {
+		tun6 = (struct nfp_flower_ipv6_gre_tun *)*mbuf_off;
+		tun6->tun_key = tun_key;
+		tun6->tun_flags = rte_cpu_to_be_16(NFP_FL_GRE_FLAG_KEY);
+	} else {
+		tun4 = (struct nfp_flower_ipv4_gre_tun *)*mbuf_off;
+		tun4->tun_key = tun_key;
+		tun4->tun_flags = rte_cpu_to_be_16(NFP_FL_GRE_FLAG_KEY);
+	}
 
 gre_key_end:
-	*mbuf_off += sizeof(struct nfp_flower_ipv4_gre_tun);
+	if (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+			NFP_FLOWER_LAYER2_TUN_IPV6)
+		*mbuf_off += sizeof(struct nfp_flower_ipv6_gre_tun);
+	else
+		*mbuf_off += sizeof(struct nfp_flower_ipv4_gre_tun);
 
 	return 0;
 }
@@ -1675,7 +1719,8 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_TCP,
 			RTE_FLOW_ITEM_TYPE_UDP,
-			RTE_FLOW_ITEM_TYPE_SCTP),
+			RTE_FLOW_ITEM_TYPE_SCTP,
+			RTE_FLOW_ITEM_TYPE_GRE),
 		.mask_support = &(const struct rte_flow_item_ipv6){
 			.hdr = {
 				.vtc_flow   = RTE_BE32(0x0ff00000),
