@@ -280,6 +280,29 @@ struct nfp_flower_cmsg_tun_ipv4_addr {
 	rte_be32_t ipv4_addr[NFP_FL_IPV4_ADDRS_MAX];
 };
 
+#define NFP_FL_IPV6_ADDRS_MAX        4
+
+/*
+ * NFP_FLOWER_CMSG_TYPE_TUN_IP_V6
+ *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *          +---------------------------------------------------------------+
+ *        0 |                    Number of IP Addresses                     |
+ *          +---------------------------------------------------------------+
+ *        1 |                        IP Address1 #1                         |
+ *          +---------------------------------------------------------------+
+ *        2 |                        IP Address1 #2                         |
+ *          +---------------------------------------------------------------+
+ *          |                             ...                               |
+ *          +---------------------------------------------------------------+
+ *       16 |                        IP Address4 #4                         |
+ *          +---------------------------------------------------------------+
+ */
+struct nfp_flower_cmsg_tun_ipv6_addr {
+	rte_be32_t count;
+	uint8_t ipv6_addr[NFP_FL_IPV6_ADDRS_MAX * 16];
+};
+
 /*
  * NFP_FLOWER_CMSG_TYPE_FLOW_STATS
  *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
@@ -802,6 +825,7 @@ int nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 int nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_cmsg_tun_neigh_v6 *payload);
 int nfp_flower_cmsg_tun_off_v4(struct nfp_app_fw_flower *app_fw_flower);
+int nfp_flower_cmsg_tun_off_v6(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_pre_tunnel_rule(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		uint16_t mac_idx,

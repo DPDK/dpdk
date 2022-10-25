@@ -177,6 +177,12 @@ struct nfp_ipv4_addr_entry {
 	int ref_count;
 };
 
+struct nfp_ipv6_addr_entry {
+	LIST_ENTRY(nfp_ipv6_addr_entry) next;
+	uint8_t ipv6_addr[16];
+	int ref_count;
+};
+
 #define NFP_TUN_PRE_TUN_RULE_LIMIT  32
 
 struct nfp_flow_priv {
@@ -201,6 +207,9 @@ struct nfp_flow_priv {
 	/* IPv4 off */
 	LIST_HEAD(, nfp_ipv4_addr_entry) ipv4_off_list; /**< Store ipv4 off */
 	rte_spinlock_t ipv4_off_lock; /**< Lock the ipv4 off list */
+	/* IPv6 off */
+	LIST_HEAD(, nfp_ipv6_addr_entry) ipv6_off_list; /**< Store ipv6 off */
+	rte_spinlock_t ipv6_off_lock; /**< Lock the ipv6 off list */
 	/* neighbor next */
 	LIST_HEAD(, nfp_fl_tun)nn_list; /**< Store nn entry */
 };

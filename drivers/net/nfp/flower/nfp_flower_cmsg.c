@@ -348,6 +348,48 @@ nfp_flower_cmsg_tun_off_v4(struct nfp_app_fw_flower *app_fw_flower)
 }
 
 int
+nfp_flower_cmsg_tun_off_v6(struct nfp_app_fw_flower *app_fw_flower)
+{
+	uint16_t cnt;
+	uint32_t count = 0;
+	struct rte_mbuf *mbuf;
+	struct nfp_flow_priv *priv;
+	struct nfp_ipv6_addr_entry *entry;
+	struct nfp_flower_cmsg_tun_ipv6_addr *msg;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun addr");
+		return -ENOMEM;
+	}
+
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_IPS_V6, sizeof(*msg));
+
+	priv = app_fw_flower->flow_priv;
+	rte_spinlock_lock(&priv->ipv6_off_lock);
+	LIST_FOREACH(entry, &priv->ipv6_off_list, next) {
+		if (count >= NFP_FL_IPV6_ADDRS_MAX) {
+			rte_spinlock_unlock(&priv->ipv6_off_lock);
+			PMD_DRV_LOG(ERR, "IPv6 offload exceeds limit.");
+			return -ERANGE;
+		}
+		memcpy(&msg->ipv6_addr[count * 16], entry->ipv6_addr, 16UL);
+		count++;
+	}
+	msg->count = rte_cpu_to_be_32(count);
+	rte_spinlock_unlock(&priv->ipv6_off_lock);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int
 nfp_flower_cmsg_pre_tunnel_rule(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		uint16_t mac_idx,

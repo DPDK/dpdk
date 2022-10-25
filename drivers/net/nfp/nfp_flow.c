@@ -476,16 +476,95 @@ nfp_tun_del_ipv4_off(struct nfp_app_fw_flower *app_fw_flower,
 	return 0;
 }
 
+__rte_unused static int
+nfp_tun_add_ipv6_off(struct nfp_app_fw_flower *app_fw_flower,
+		uint8_t ipv6[])
+{
+	struct nfp_flow_priv *priv;
+	struct nfp_ipv6_addr_entry *entry;
+	struct nfp_ipv6_addr_entry *tmp_entry;
+
+	priv = app_fw_flower->flow_priv;
+
+	rte_spinlock_lock(&priv->ipv6_off_lock);
+	LIST_FOREACH(entry, &priv->ipv6_off_list, next) {
+		if (!memcmp(entry->ipv6_addr, ipv6, sizeof(entry->ipv6_addr))) {
+			entry->ref_count++;
+			rte_spinlock_unlock(&priv->ipv6_off_lock);
+			return 0;
+		}
+	}
+	rte_spinlock_unlock(&priv->ipv6_off_lock);
+
+	tmp_entry = rte_zmalloc("nfp_ipv6_off", sizeof(struct nfp_ipv6_addr_entry), 0);
+	if (tmp_entry == NULL) {
+		PMD_DRV_LOG(ERR, "Mem error when offloading IP6 address.");
+		return -ENOMEM;
+	}
+	memcpy(tmp_entry->ipv6_addr, ipv6, sizeof(tmp_entry->ipv6_addr));
+	tmp_entry->ref_count = 1;
+
+	rte_spinlock_lock(&priv->ipv6_off_lock);
+	LIST_INSERT_HEAD(&priv->ipv6_off_list, tmp_entry, next);
+	rte_spinlock_unlock(&priv->ipv6_off_lock);
+
+	return nfp_flower_cmsg_tun_off_v6(app_fw_flower);
+}
+
+static int
+nfp_tun_del_ipv6_off(struct nfp_app_fw_flower *app_fw_flower,
+		uint8_t ipv6[])
+{
+	struct nfp_flow_priv *priv;
+	struct nfp_ipv6_addr_entry *entry;
+
+	priv = app_fw_flower->flow_priv;
+
+	rte_spinlock_lock(&priv->ipv6_off_lock);
+	LIST_FOREACH(entry, &priv->ipv6_off_list, next) {
+		if (!memcmp(entry->ipv6_addr, ipv6, sizeof(entry->ipv6_addr))) {
+			entry->ref_count--;
+			if (entry->ref_count == 0) {
+				LIST_REMOVE(entry, next);
+				rte_free(entry);
+				rte_spinlock_unlock(&priv->ipv6_off_lock);
+				return nfp_flower_cmsg_tun_off_v6(app_fw_flower);
+			}
+			break;
+		}
+	}
+	rte_spinlock_unlock(&priv->ipv6_off_lock);
+
+	return 0;
+}
+
 static int
 nfp_tun_check_ip_off_del(struct nfp_flower_representor *repr,
 		struct rte_flow *nfp_flow)
 {
 	int ret;
+	uint32_t key_layer2 = 0;
 	struct nfp_flower_ipv4_udp_tun *udp4;
+	struct nfp_flower_ipv6_udp_tun *udp6;
+	struct nfp_flower_meta_tci *meta_tci;
+	struct nfp_flower_ext_meta *ext_meta = NULL;
 
-	udp4 = (struct nfp_flower_ipv4_udp_tun *)(nfp_flow->payload.mask_data -
-			sizeof(struct nfp_flower_ipv4_udp_tun));
-	ret = nfp_tun_del_ipv4_off(repr->app_fw_flower, udp4->ipv4.dst);
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META)
+		ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
+
+	if (ext_meta != NULL)
+		key_layer2 = rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2);
+
+	if (key_layer2 & NFP_FLOWER_LAYER2_TUN_IPV6) {
+		udp6 = (struct nfp_flower_ipv6_udp_tun *)(nfp_flow->payload.mask_data -
+				sizeof(struct nfp_flower_ipv6_udp_tun));
+		ret = nfp_tun_del_ipv6_off(repr->app_fw_flower, udp6->ipv6.ipv6_dst);
+	} else {
+		udp4 = (struct nfp_flower_ipv4_udp_tun *)(nfp_flow->payload.mask_data -
+				sizeof(struct nfp_flower_ipv4_udp_tun));
+		ret = nfp_tun_del_ipv4_off(repr->app_fw_flower, udp4->ipv4.dst);
+	}
 
 	return ret;
 }
@@ -2078,6 +2157,59 @@ nfp_flower_add_tun_neigh_v6_encap(struct nfp_app_fw_flower *app_fw_flower,
 	return nfp_flower_cmsg_tun_neigh_v6_rule(app_fw_flower, &payload);
 }
 
+__rte_unused static int
+nfp_flower_add_tun_neigh_v6_decap(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_flow *nfp_flow)
+{
+	struct nfp_fl_tun *tmp;
+	struct nfp_fl_tun *tun;
+	struct nfp_flow_priv *priv;
+	struct nfp_flower_ipv6 *ipv6;
+	struct nfp_flower_mac_mpls *eth;
+	struct nfp_flower_in_port *port;
+	struct nfp_flower_meta_tci *meta_tci;
+	struct nfp_flower_cmsg_tun_neigh_v6 payload;
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	port = (struct nfp_flower_in_port *)(meta_tci + 1);
+	eth = (struct nfp_flower_mac_mpls *)(port + 1);
+
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP)
+		ipv6 = (struct nfp_flower_ipv6 *)((char *)eth +
+				sizeof(struct nfp_flower_mac_mpls) +
+				sizeof(struct nfp_flower_tp_ports));
+	else
+		ipv6 = (struct nfp_flower_ipv6 *)((char *)eth +
+				sizeof(struct nfp_flower_mac_mpls));
+
+	tun = &nfp_flow->tun;
+	tun->payload.v6_flag = 1;
+	memcpy(tun->payload.dst.dst_ipv6, ipv6->ipv6_src, sizeof(tun->payload.dst.dst_ipv6));
+	memcpy(tun->payload.src.src_ipv6, ipv6->ipv6_dst, sizeof(tun->payload.src.src_ipv6));
+	memcpy(tun->payload.dst_addr, eth->mac_src, RTE_ETHER_ADDR_LEN);
+	memcpy(tun->payload.src_addr, eth->mac_dst, RTE_ETHER_ADDR_LEN);
+
+	tun->ref_cnt = 1;
+	priv = app_fw_flower->flow_priv;
+	LIST_FOREACH(tmp, &priv->nn_list, next) {
+		if (memcmp(&tmp->payload, &tun->payload, sizeof(struct nfp_fl_tun_entry)) == 0) {
+			tmp->ref_cnt++;
+			return 0;
+		}
+	}
+
+	LIST_INSERT_HEAD(&priv->nn_list, tun, next);
+
+	memset(&payload, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v6));
+	memcpy(payload.dst_ipv6, ipv6->ipv6_src, sizeof(payload.dst_ipv6));
+	memcpy(payload.src_ipv6, ipv6->ipv6_dst, sizeof(payload.src_ipv6));
+	memcpy(payload.common.dst_mac, eth->mac_src, RTE_ETHER_ADDR_LEN);
+	memcpy(payload.common.src_mac, eth->mac_dst, RTE_ETHER_ADDR_LEN);
+	payload.common.port_id = port->in_port;
+
+	return nfp_flower_cmsg_tun_neigh_v6_rule(app_fw_flower, &payload);
+}
+
 static int
 nfp_flower_del_tun_neigh_v6(struct nfp_app_fw_flower *app_fw_flower,
 		uint8_t *ipv6)
@@ -2401,6 +2533,9 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 	nfp_mac_idx = (find_entry->mac_index << 8) |
 			NFP_FLOWER_CMSG_PORT_TYPE_OTHER_PORT |
 			NFP_TUN_PRE_TUN_IDX_BIT;
+	if (nfp_flow->tun.payload.v6_flag != 0)
+		nfp_mac_idx |= NFP_TUN_PRE_TUN_IPV6_BIT;
+
 	ret = nfp_flower_cmsg_tun_mac_rule(repr->app_fw_flower, &repr->mac_addr,
 			nfp_mac_idx, true);
 	if (ret != 0) {
@@ -3262,6 +3397,10 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	/* ipv4 off list */
 	rte_spinlock_init(&priv->ipv4_off_lock);
 	LIST_INIT(&priv->ipv4_off_list);
+
+	/* ipv6 off list */
+	rte_spinlock_init(&priv->ipv6_off_lock);
+	LIST_INIT(&priv->ipv6_off_list);
 
 	/* neighbor next list */
 	LIST_INIT(&priv->nn_list);
