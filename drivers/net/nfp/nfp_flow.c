@@ -771,8 +771,9 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GENEVE detected");
-			/* Clear IPv4 bits */
+			/* Clear IPv4 and IPv6 bits */
 			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
 			key_ls->tun_type = NFP_FL_TUN_GENEVE;
 			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
 			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GENEVE;
@@ -784,6 +785,17 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				 * in `struct nfp_flower_ipv4_udp_tun`
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+			} else if (outer_ip6_flag) {
+				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
+				key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
+				/*
+				 * The outer l3 layer information is
+				 * in `struct nfp_flower_ipv6_udp_tun`
+				 */
+				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
+			} else {
+				PMD_DRV_LOG(ERR, "No outer IP layer for GENEVE tunnel.");
+				return -EINVAL;
 			}
 			break;
 		default:
@@ -1415,7 +1427,7 @@ vxlan_end:
 
 static int
 nfp_flow_merge_geneve(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
-		__rte_unused struct rte_flow *nfp_flow,
+		struct rte_flow *nfp_flow,
 		char **mbuf_off,
 		const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc,
@@ -1423,9 +1435,16 @@ nfp_flow_merge_geneve(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		__rte_unused bool is_outer_layer)
 {
 	struct nfp_flower_ipv4_udp_tun *tun4;
+	struct nfp_flower_ipv6_udp_tun *tun6;
+	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_geneve *spec;
 	const struct rte_flow_item_geneve *mask;
 	const struct rte_flow_item_geneve *geneve;
+	struct nfp_flower_ext_meta *ext_meta = NULL;
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META)
+		ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
 
 	spec = item->spec;
 	if (spec == NULL) {
@@ -1436,12 +1455,24 @@ nfp_flow_merge_geneve(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	mask = item->mask ? item->mask : proc->mask_default;
 	geneve = is_mask ? mask : spec;
 
-	tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
-	tun4->tun_id = rte_cpu_to_be_32((geneve->vni[0] << 16) |
-			(geneve->vni[1] << 8) | (geneve->vni[2]));
+	if (ext_meta && (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+			NFP_FLOWER_LAYER2_TUN_IPV6)) {
+		tun6 = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
+		tun6->tun_id = rte_cpu_to_be_32((geneve->vni[0] << 16) |
+				(geneve->vni[1] << 8) | (geneve->vni[2]));
+	} else {
+		tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
+		tun4->tun_id = rte_cpu_to_be_32((geneve->vni[0] << 16) |
+				(geneve->vni[1] << 8) | (geneve->vni[2]));
+	}
 
 geneve_end:
-	*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
+	if (ext_meta && (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
+			NFP_FLOWER_LAYER2_TUN_IPV6)) {
+		*mbuf_off += sizeof(struct nfp_flower_ipv6_udp_tun);
+	} else {
+		*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
+	}
 
 	return 0;
 }
