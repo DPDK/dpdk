@@ -82,6 +82,27 @@ struct l3fwd_event_resources {
 	uint64_t vector_tmo_ns;
 };
 
+#if defined(RTE_ARCH_X86)
+#include "l3fwd_sse.h"
+#elif defined __ARM_NEON
+#include "l3fwd_neon.h"
+#elif defined(RTE_ARCH_PPC_64)
+#include "l3fwd_altivec.h"
+#else
+static inline uint16_t
+process_dst_port(uint16_t *dst_ports, uint16_t nb_elem)
+{
+	int i;
+
+	for (i = 0; i < nb_elem; i++) {
+		if (dst_ports[i] != dst_ports[0])
+			return BAD_PORT;
+	}
+
+	return dst_ports[0];
+}
+#endif
+
 static inline void
 event_vector_attr_validate(struct rte_event_vector *vec, struct rte_mbuf *mbuf)
 {
@@ -103,7 +124,57 @@ event_vector_txq_set(struct rte_event_vector *vec, uint16_t txq)
 	}
 }
 
+static inline uint16_t
+filter_bad_packets(struct rte_mbuf **mbufs, uint16_t *dst_port,
+		   uint16_t nb_pkts)
+{
+	uint16_t *des_pos, free = 0;
+	struct rte_mbuf **pos;
+	int i;
 
+	/* Filter out and free bad packets */
+	for (i = 0; i < nb_pkts; i++) {
+		if (dst_port[i] == BAD_PORT) {
+			rte_pktmbuf_free(mbufs[i]);
+			if (!free) {
+				pos = &mbufs[i];
+				des_pos = &dst_port[i];
+			}
+			free++;
+			continue;
+		}
+
+		if (free) {
+			*pos = mbufs[i];
+			pos++;
+			*des_pos = dst_port[i];
+			des_pos++;
+		}
+	}
+
+	return nb_pkts - free;
+}
+
+static inline void
+process_event_vector(struct rte_event_vector *vec, uint16_t *dst_port)
+{
+	uint16_t port, i;
+
+	vec->nb_elem = filter_bad_packets(vec->mbufs, dst_port, vec->nb_elem);
+	/* Verify destination array */
+	port = process_dst_port(dst_port, vec->nb_elem);
+	if (port == BAD_PORT) {
+		vec->attr_valid = 0;
+		for (i = 0; i < vec->nb_elem; i++) {
+			vec->mbufs[i]->port = dst_port[i];
+			rte_event_eth_tx_adapter_txq_set(vec->mbufs[i], 0);
+		}
+	} else {
+		vec->attr_valid = 1;
+		vec->port = port;
+		vec->queue = 0;
+	}
+}
 
 struct l3fwd_event_resources *l3fwd_get_eventdev_rsrc(void);
 void l3fwd_event_resource_setup(struct rte_eth_conf *port_conf);

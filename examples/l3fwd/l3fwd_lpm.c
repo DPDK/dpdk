@@ -425,24 +425,27 @@ lpm_event_main_loop_tx_q_burst(__rte_unused void *dummy)
 }
 
 static __rte_always_inline void
-lpm_process_event_vector(struct rte_event_vector *vec, struct lcore_conf *lconf)
+lpm_process_event_vector(struct rte_event_vector *vec, struct lcore_conf *lconf,
+			 uint16_t *dst_port)
 {
 	struct rte_mbuf **mbufs = vec->mbufs;
 	int i;
 
-	/* Process first packet to init vector attributes */
-	lpm_process_event_pkt(lconf, mbufs[0]);
+#if defined RTE_ARCH_X86 || defined __ARM_NEON || defined RTE_ARCH_PPC_64
 	if (vec->attr_valid) {
-		if (mbufs[0]->port != BAD_PORT)
-			vec->port = mbufs[0]->port;
-		else
-			vec->attr_valid = 0;
+		l3fwd_lpm_process_packets(vec->nb_elem, mbufs, vec->port,
+					  dst_port, lconf, 1);
+	} else {
+		for (i = 0; i < vec->nb_elem; i++)
+			l3fwd_lpm_process_packets(1, &mbufs[i], mbufs[i]->port,
+						  &dst_port[i], lconf, 1);
 	}
+#else
+	for (i = 0; i < vec->nb_elem; i++)
+		dst_port[i] = lpm_process_event_pkt(lconf, mbufs[i]);
+#endif
 
-	for (i = 1; i < vec->nb_elem; i++) {
-		lpm_process_event_pkt(lconf, mbufs[i]);
-		event_vector_attr_validate(vec, mbufs[i]);
-	}
+	process_event_vector(vec, dst_port);
 }
 
 /* Same eventdev loop for single and burst of vector */
@@ -458,6 +461,7 @@ lpm_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 	struct rte_event events[MAX_PKT_BURST];
 	int i, nb_enq = 0, nb_deq = 0;
 	struct lcore_conf *lconf;
+	uint16_t *dst_port_list;
 	unsigned int lcore_id;
 
 	if (event_p_id < 0)
@@ -465,7 +469,11 @@ lpm_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 
 	lcore_id = rte_lcore_id();
 	lconf = &lcore_conf[lcore_id];
-
+	dst_port_list =
+		rte_zmalloc("", sizeof(uint16_t) * evt_rsrc->vector_size,
+			    RTE_CACHE_LINE_SIZE);
+	if (dst_port_list == NULL)
+		return;
 	RTE_LOG(INFO, L3FWD, "entering %s on lcore %u\n", __func__, lcore_id);
 
 	while (!force_quit) {
@@ -483,10 +491,8 @@ lpm_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 				events[i].op = RTE_EVENT_OP_FORWARD;
 			}
 
-			lpm_process_event_vector(events[i].vec, lconf);
-
-			if (flags & L3FWD_EVENT_TX_DIRECT)
-				event_vector_txq_set(events[i].vec, 0);
+			lpm_process_event_vector(events[i].vec, lconf,
+						 dst_port_list);
 		}
 
 		if (flags & L3FWD_EVENT_TX_ENQ) {
@@ -510,6 +516,7 @@ lpm_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 
 	l3fwd_event_worker_cleanup(event_d_id, event_p_id, events, nb_enq,
 				   nb_deq, 1);
+	rte_free(dst_port_list);
 }
 
 int __rte_noinline

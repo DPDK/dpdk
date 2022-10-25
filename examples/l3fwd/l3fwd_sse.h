@@ -194,4 +194,48 @@ send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
 	}
 }
 
+static __rte_always_inline uint16_t
+process_dst_port(uint16_t *dst_ports, uint16_t nb_elem)
+{
+	uint16_t i = 0, res;
+
+	while (nb_elem > 7) {
+		__m128i dp = _mm_set1_epi16(dst_ports[0]);
+		__m128i dp1;
+
+		dp1 = _mm_loadu_si128((__m128i *)&dst_ports[i]);
+		dp1 = _mm_cmpeq_epi16(dp1, dp);
+		res = _mm_movemask_epi8(dp1);
+		if (res != 0xFFFF)
+			return BAD_PORT;
+
+		nb_elem -= 8;
+		i += 8;
+	}
+
+	while (nb_elem > 3) {
+		__m128i dp = _mm_set1_epi16(dst_ports[0]);
+		__m128i dp1;
+
+		dp1 = _mm_loadu_si128((__m128i *)&dst_ports[i]);
+		dp1 = _mm_cmpeq_epi16(dp1, dp);
+		dp1 = _mm_unpacklo_epi16(dp1, dp1);
+		res = _mm_movemask_ps((__m128)dp1);
+		if (res != 0xF)
+			return BAD_PORT;
+
+		nb_elem -= 4;
+		i += 4;
+	}
+
+	while (nb_elem) {
+		if (dst_ports[i] != dst_ports[0])
+			return BAD_PORT;
+		nb_elem--;
+		i++;
+	}
+
+	return dst_ports[0];
+}
+
 #endif /* _L3FWD_SSE_H_ */
