@@ -769,6 +769,23 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				return -EINVAL;
 			}
 			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GENEVE detected");
+			/* Clear IPv4 bits */
+			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+			key_ls->tun_type = NFP_FL_TUN_GENEVE;
+			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
+			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GENEVE;
+			key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
+			if (outer_ip4_flag) {
+				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
+				/*
+				 * The outer l3 layer information is
+				 * in `struct nfp_flower_ipv4_udp_tun`
+				 */
+				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+			}
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
 			return -ENOTSUP;
@@ -960,10 +977,20 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 static bool
 nfp_flow_is_tunnel(struct rte_flow *nfp_flow)
 {
+	uint32_t key_layer2;
+	struct nfp_flower_ext_meta *ext_meta;
 	struct nfp_flower_meta_tci *meta_tci;
 
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
 	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_VXLAN)
+		return true;
+
+	if (!(meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META))
+		return false;
+
+	ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
+	key_layer2 = rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2);
+	if (key_layer2 & NFP_FLOWER_LAYER2_GENEVE)
 		return true;
 
 	return false;
@@ -1386,6 +1413,39 @@ vxlan_end:
 	return ret;
 }
 
+static int
+nfp_flow_merge_geneve(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
+		__rte_unused struct rte_flow *nfp_flow,
+		char **mbuf_off,
+		const struct rte_flow_item *item,
+		const struct nfp_flow_item_proc *proc,
+		bool is_mask,
+		__rte_unused bool is_outer_layer)
+{
+	struct nfp_flower_ipv4_udp_tun *tun4;
+	const struct rte_flow_item_geneve *spec;
+	const struct rte_flow_item_geneve *mask;
+	const struct rte_flow_item_geneve *geneve;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge geneve: no item->spec!");
+		goto geneve_end;
+	}
+
+	mask = item->mask ? item->mask : proc->mask_default;
+	geneve = is_mask ? mask : spec;
+
+	tun4 = (struct nfp_flower_ipv4_udp_tun *)*mbuf_off;
+	tun4->tun_id = rte_cpu_to_be_32((geneve->vni[0] << 16) |
+			(geneve->vni[1] << 8) | (geneve->vni[2]));
+
+geneve_end:
+	*mbuf_off += sizeof(struct nfp_flower_ipv4_udp_tun);
+
+	return 0;
+}
+
 /* Graph of supported items and associated process function */
 static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
@@ -1474,7 +1534,8 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.merge = nfp_flow_merge_tcp,
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
-		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VXLAN),
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VXLAN,
+			RTE_FLOW_ITEM_TYPE_GENEVE),
 		.mask_support = &(const struct rte_flow_item_udp){
 			.hdr = {
 				.src_port = RTE_BE16(0xffff),
@@ -1506,6 +1567,15 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.mask_default = &rte_flow_item_vxlan_mask,
 		.mask_sz = sizeof(struct rte_flow_item_vxlan),
 		.merge = nfp_flow_merge_vxlan,
+	},
+	[RTE_FLOW_ITEM_TYPE_GENEVE] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
+		.mask_support = &(const struct rte_flow_item_geneve){
+			.vni = "\xff\xff\xff",
+		},
+		.mask_default = &rte_flow_item_geneve_mask,
+		.mask_sz = sizeof(struct rte_flow_item_geneve),
+		.merge = nfp_flow_merge_geneve,
 	},
 };
 
@@ -1563,7 +1633,8 @@ nfp_flow_item_check(const struct rte_flow_item *item,
 static bool
 nfp_flow_is_tun_item(const struct rte_flow_item *item)
 {
-	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN)
+	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN ||
+			item->type == RTE_FLOW_ITEM_TYPE_GENEVE)
 		return true;
 
 	return false;
