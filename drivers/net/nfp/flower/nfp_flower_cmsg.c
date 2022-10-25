@@ -275,3 +275,32 @@ nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	return 0;
 }
+
+int
+nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_flower_cmsg_tun_neigh_v6 *payload)
+{
+	uint16_t cnt;
+	size_t msg_len;
+	struct rte_mbuf *mbuf;
+	struct nfp_flower_cmsg_tun_neigh_v6 *msg;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun neigh");
+		return -ENOMEM;
+	}
+
+	msg_len = sizeof(struct nfp_flower_cmsg_tun_neigh_v6);
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V6, msg_len);
+	memcpy(msg, payload, msg_len);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}

@@ -160,6 +160,42 @@ struct nfp_flower_cmsg_tun_neigh_v4 {
 };
 
 /*
+ * NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V6
+ *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *          +---------------------------------------------------------------+
+ *        0 |                          DST_IPV6 [0]                         |
+ *          +---------------------------------------------------------------+
+ *        1 |                          DST_IPV6 [1]                         |
+ *          +---------------------------------------------------------------+
+ *        2 |                          DST_IPV6 [2]                         |
+ *          +---------------------------------------------------------------+
+ *        3 |                          DST_IPV6 [3]                         |
+ *          +---------------------------------------------------------------+
+ *        4 |                          SRC_IPV6 [0]                         |
+ *          +---------------------------------------------------------------+
+ *        5 |                          SRC_IPV6 [1]                         |
+ *          +---------------------------------------------------------------+
+ *        6 |                          SRC_IPV6 [2]                         |
+ *          +---------------------------------------------------------------+
+ *        7 |                          SRC_IPV6 [3]                         |
+ *          +---------------------------------------------------------------+
+ *        8 |                       DST_MAC_B5_B4_B3_B2                     |
+ *          +-------------------------------+-------------------------------+
+ *        9 |             DST_MAC_B1_B0     |        SRC_MAC_B5_B4          |
+ *          +-------------------------------+-------------------------------+
+ *       10 |                       SRC_MAC_B3_B2_B1_B0                     |
+ *          +---------------+---------------+---------------+---------------+
+ *       11 |                    Egress Port (NFP internal)                 |
+ *          +---------------------------------------------------------------+
+ */
+struct nfp_flower_cmsg_tun_neigh_v6 {
+	uint8_t dst_ipv6[16];
+	uint8_t src_ipv6[16];
+	struct nfp_flower_tun_neigh common;
+};
+
+/*
  * NFP_FLOWER_CMSG_TYPE_FLOW_STATS
  *    Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
  *    -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
@@ -629,6 +665,8 @@ struct nfp_fl_act_pre_tun {
 	};
 };
 
+#define NFP_FL_PRE_TUN_IPV6    (1 << 0)
+
 /*
  * Set tunnel
  *    3                   2                   1
@@ -676,5 +714,7 @@ int nfp_flower_cmsg_flow_add(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *flow);
 int nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_cmsg_tun_neigh_v4 *payload);
+int nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_flower_cmsg_tun_neigh_v6 *payload);
 
 #endif /* _NFP_CMSG_H_ */
