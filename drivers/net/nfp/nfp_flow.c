@@ -38,6 +38,12 @@ struct vxlan_data {
 		__VA_ARGS__, RTE_FLOW_ITEM_TYPE_END, \
 	})
 
+/* Data length of various conf of raw encap action */
+#define GENEVE_V4_LEN    (sizeof(struct rte_ether_hdr) + \
+				sizeof(struct rte_ipv4_hdr) + \
+				sizeof(struct rte_udp_hdr) + \
+				sizeof(struct rte_flow_item_geneve))
+
 /* Process structure associated with a flow item */
 struct nfp_flow_item_proc {
 	/* Bit-mask for fields supported by this PMD. */
@@ -905,6 +911,11 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
+			key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_RAW_ENCAP detected");
 			key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
 			key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
 			break;
@@ -2623,6 +2634,88 @@ nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
 }
 
 static int
+nfp_flow_action_geneve_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
+		char *act_data,
+		char *actions,
+		const struct rte_flow_action_raw_encap *raw_encap,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct nfp_fl_tun *tun)
+{
+	uint64_t tun_id;
+	const struct rte_ether_hdr *eth;
+	const struct rte_flow_item_udp *udp;
+	const struct rte_flow_item_ipv4 *ipv4;
+	const struct rte_flow_item_geneve *geneve;
+	struct nfp_fl_act_pre_tun *pre_tun;
+	struct nfp_fl_act_set_tun *set_tun;
+	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
+	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
+
+	eth    = (const struct rte_ether_hdr *)raw_encap->data;
+	ipv4   = (const struct rte_flow_item_ipv4 *)(eth + 1);
+	udp    = (const struct rte_flow_item_udp *)(ipv4 + 1);
+	geneve = (const struct rte_flow_item_geneve *)(udp + 1);
+
+	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
+	memset(pre_tun, 0, act_pre_size);
+	nfp_flow_pre_tun_v4_process(pre_tun, ipv4->hdr.dst_addr);
+
+	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
+	memset(set_tun, 0, act_set_size);
+	tun_id = (geneve->vni[0] << 16) | (geneve->vni[1] << 8) | geneve->vni[2];
+	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_GENEVE, tun_id,
+			ipv4->hdr.time_to_live, ipv4->hdr.type_of_service);
+	set_tun->tun_proto = geneve->protocol;
+
+	/* Send the tunnel neighbor cmsg to fw */
+	return nfp_flower_add_tun_neigh_v4_encap(app_fw_flower, nfp_flow_meta,
+			tun, eth, ipv4);
+}
+
+static int
+nfp_flow_action_raw_encap(struct nfp_app_fw_flower *app_fw_flower,
+		char *act_data,
+		char *actions,
+		const struct rte_flow_action *action,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		struct nfp_fl_tun *tun)
+{
+	int ret;
+	size_t act_len;
+	size_t act_pre_size;
+	const struct rte_flow_action_raw_encap *raw_encap;
+
+	raw_encap = action->conf;
+	if (raw_encap->data == NULL) {
+		PMD_DRV_LOG(ERR, "The raw encap action conf is NULL.");
+		return -EINVAL;
+	}
+
+	/* Pre_tunnel action must be the first on action list.
+	 * If other actions already exist, they need to be
+	 * pushed forward.
+	 */
+	act_len = act_data - actions;
+	if (act_len != 0) {
+		act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
+		memmove(actions + act_pre_size, actions, act_len);
+	}
+
+	switch (raw_encap->size) {
+	case GENEVE_V4_LEN:
+		ret = nfp_flow_action_geneve_encap_v4(app_fw_flower, act_data,
+				actions, raw_encap, nfp_flow_meta, tun);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Not an valid raw encap action conf.");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int
 nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
@@ -2791,6 +2884,20 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			if (ret != 0) {
 				PMD_DRV_LOG(ERR, "Failed when process"
 						" RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP");
+				return ret;
+			}
+			position += sizeof(struct nfp_fl_act_pre_tun);
+			position += sizeof(struct nfp_fl_act_set_tun);
+			nfp_flow->type = NFP_FLOW_ENCAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_RAW_ENCAP");
+			ret = nfp_flow_action_raw_encap(representor->app_fw_flower,
+					position, action_data, action, nfp_flow_meta,
+					&nfp_flow->tun);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Failed when process"
+						" RTE_FLOW_ACTION_TYPE_RAW_ENCAP");
 				return ret;
 			}
 			position += sizeof(struct nfp_fl_act_pre_tun);
