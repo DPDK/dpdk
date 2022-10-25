@@ -320,8 +320,6 @@ rte_rib6_find_existing(const char *name);
  *
  * @param rib
  *   RIB object handle
- * @return
- *   None
  */
 void
 rte_rib6_free(struct rte_rib6 *rib);

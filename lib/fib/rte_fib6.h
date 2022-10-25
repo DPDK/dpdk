@@ -115,8 +115,6 @@ rte_fib6_find_existing(const char *name);
  *
  * @param fib
  *   FIB object handle
- * @return
- *   None
  */
 void
 rte_fib6_free(struct rte_fib6 *fib);

@@ -115,8 +115,6 @@ rte_reorder_reset(struct rte_reorder_buffer *b);
  *
  * @param b
  *   reorder buffer instance
- * @return
- *   None
  */
 void
 rte_reorder_free(struct rte_reorder_buffer *b);
