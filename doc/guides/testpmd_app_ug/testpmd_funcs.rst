@@ -2891,7 +2891,7 @@ following sections.
        [queues_number {number}] [queues_size {size}]
        [counters_number {number}]
        [aging_counters_number {number}]
-       [meters_number {number}]
+       [meters_number {number}] [flags {number}]
 
 - Create a pattern template::
    flow pattern_template {port_id} create [pattern_template_id {id}]
@@ -3042,7 +3042,7 @@ for asynchronous flow creation/destruction operations. It is bound to
        [queues_number {number}] [queues_size {size}]
        [counters_number {number}]
        [aging_counters_number {number}]
-       [meters_number {number}]
+       [meters_number {number}] [flags {number}]
 
 If successful, it will show::
 
