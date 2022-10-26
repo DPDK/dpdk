@@ -1132,6 +1132,28 @@ rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 				  NULL, rte_strerror(ENOTSUP));
 }
 
+int
+rte_flow_get_q_aged_flows(uint16_t port_id, uint32_t queue_id, void **contexts,
+			  uint32_t nb_contexts, struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	int ret;
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (likely(!!ops->get_q_aged_flows)) {
+		fts_enter(dev);
+		ret = ops->get_q_aged_flows(dev, queue_id, contexts,
+					    nb_contexts, error);
+		fts_exit(dev);
+		return flow_err(port_id, ret, error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
 struct rte_flow_action_handle *
 rte_flow_action_handle_create(uint16_t port_id,
 			      const struct rte_flow_indir_action_conf *conf,

@@ -2639,6 +2639,7 @@ enum rte_flow_action_type {
 	 * flow.
 	 *
 	 * See struct rte_flow_action_age.
+	 * See function rte_flow_get_q_aged_flows
 	 * See function rte_flow_get_aged_flows
 	 * see enum RTE_ETH_EVENT_FLOW_AGED
 	 * See struct rte_flow_query_age
@@ -2784,8 +2785,8 @@ struct rte_flow_action_queue {
  * on the flow. RTE_ETH_EVENT_FLOW_AGED event is triggered when a
  * port detects new aged-out flows.
  *
- * The flow context and the flow handle will be reported by the
- * rte_flow_get_aged_flows API.
+ * The flow context and the flow handle will be reported by the either
+ * rte_flow_get_aged_flows or rte_flow_get_q_aged_flows APIs.
  */
 struct rte_flow_action_age {
 	uint32_t timeout:24; /**< Time in seconds. */
@@ -4313,6 +4314,50 @@ __rte_experimental
 int
 rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get aged-out flows of a given port on the given flow queue.
+ *
+ * If application configure port attribute with RTE_FLOW_PORT_FLAG_STRICT_QUEUE,
+ * there is no RTE_ETH_EVENT_FLOW_AGED event and this function must be called to
+ * get the aged flows synchronously.
+ *
+ * If application configure port attribute without
+ * RTE_FLOW_PORT_FLAG_STRICT_QUEUE, RTE_ETH_EVENT_FLOW_AGED event will be
+ * triggered at least one new aged out flow was detected on any flow queue after
+ * the last call to rte_flow_get_q_aged_flows.
+ * In addition, the @p queue_id will be ignored.
+ * This function can be called to get the aged flows asynchronously from the
+ * event callback or synchronously regardless the event.
+ *
+ * @param[in] port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] queue_id
+ *   Flow queue to query. Ignored when RTE_FLOW_PORT_FLAG_STRICT_QUEUE not set.
+ * @param[in, out] contexts
+ *   The address of an array of pointers to the aged-out flows contexts.
+ * @param[in] nb_contexts
+ *   The length of context array pointers.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   if nb_contexts is 0, return the amount of all aged contexts.
+ *   if nb_contexts is not 0 , return the amount of aged flows reported
+ *   in the context array, otherwise negative errno value.
+ *
+ * @see rte_flow_action_age
+ * @see RTE_ETH_EVENT_FLOW_AGED
+ * @see rte_flow_port_flag
+ */
+__rte_experimental
+int
+rte_flow_get_q_aged_flows(uint16_t port_id, uint32_t queue_id, void **contexts,
+			  uint32_t nb_contexts, struct rte_flow_error *error);
 
 /**
  * Specify indirect action object configuration

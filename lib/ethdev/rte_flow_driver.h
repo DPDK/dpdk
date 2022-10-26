@@ -84,6 +84,13 @@ struct rte_flow_ops {
 		 void **context,
 		 uint32_t nb_contexts,
 		 struct rte_flow_error *err);
+	/** See rte_flow_get_q_aged_flows() */
+	int (*get_q_aged_flows)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 void **contexts,
+		 uint32_t nb_contexts,
+		 struct rte_flow_error *error);
 	/** See rte_flow_action_handle_create() */
 	struct rte_flow_action_handle *(*action_handle_create)
 		(struct rte_eth_dev *dev,

@@ -129,6 +129,7 @@ enum index {
 	/* Queue arguments. */
 	QUEUE_CREATE,
 	QUEUE_DESTROY,
+	QUEUE_AGED,
 	QUEUE_INDIRECT_ACTION,
 
 	/* Queue create arguments. */
@@ -1170,6 +1171,7 @@ static const enum index next_table_destroy_attr[] = {
 static const enum index next_queue_subcmd[] = {
 	QUEUE_CREATE,
 	QUEUE_DESTROY,
+	QUEUE_AGED,
 	QUEUE_INDIRECT_ACTION,
 	ZERO,
 };
@@ -2966,6 +2968,13 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_QUEUE_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, queue)),
 		.call = parse_qo_destroy,
+	},
+	[QUEUE_AGED] = {
+		.name = "aged",
+		.help = "list and destroy aged flows",
+		.next = NEXT(next_aged_attr, NEXT_ENTRY(COMMON_QUEUE_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, queue)),
+		.call = parse_aged,
 	},
 	[QUEUE_INDIRECT_ACTION] = {
 		.name = "indirect_action",
@@ -8654,8 +8663,8 @@ parse_aged(struct context *ctx, const struct token *token,
 	/* Nothing else to do if there is no buffer. */
 	if (!out)
 		return len;
-	if (!out->command) {
-		if (ctx->curr != AGED)
+	if (!out->command || out->command == QUEUE) {
+		if (ctx->curr != AGED && ctx->curr != QUEUE_AGED)
 			return -1;
 		if (sizeof(*out) > size)
 			return -1;
@@ -10609,6 +10618,10 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case PULL:
 		port_queue_flow_pull(in->port, in->queue);
+		break;
+	case QUEUE_AGED:
+		port_queue_flow_aged(in->port, in->queue,
+				     in->args.aged.destroy);
 		break;
 	case QUEUE_INDIRECT_ACTION_CREATE:
 		port_queue_action_handle_create(

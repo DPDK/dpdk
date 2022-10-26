@@ -2509,6 +2509,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 		       const struct rte_flow_action *actions)
 {
 	struct rte_flow_op_attr op_attr = { .postpone = postpone };
+	struct rte_flow_attr flow_attr = { 0 };
 	struct rte_flow *flow;
 	struct rte_port *port;
 	struct port_flow *pf;
@@ -2568,7 +2569,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	}
 	job->type = QUEUE_JOB_TYPE_FLOW_CREATE;
 
-	pf = port_flow_new(NULL, pattern, actions, &error);
+	pf = port_flow_new(&flow_attr, pattern, actions, &error);
 	if (!pf) {
 		free(job);
 		return port_flow_complain(&error);
@@ -2903,6 +2904,162 @@ port_queue_flow_push(portid_t port_id, queueid_t queue_id)
 	}
 	printf("Queue #%u operations pushed\n", queue_id);
 	return ret;
+}
+
+/** Pull queue operation results from the queue. */
+static int
+port_queue_aged_flow_destroy(portid_t port_id, queueid_t queue_id,
+			     const uint32_t *rule, int nb_flows)
+{
+	struct rte_port *port = &ports[port_id];
+	struct rte_flow_op_result *res;
+	struct rte_flow_error error;
+	uint32_t n = nb_flows;
+	int ret = 0;
+	int i;
+
+	res = calloc(port->queue_sz, sizeof(struct rte_flow_op_result));
+	if (!res) {
+		printf("Failed to allocate memory for pulled results\n");
+		return -ENOMEM;
+	}
+
+	memset(&error, 0x66, sizeof(error));
+	while (nb_flows > 0) {
+		int success = 0;
+
+		if (n > port->queue_sz)
+			n = port->queue_sz;
+		ret = port_queue_flow_destroy(port_id, queue_id, true, n, rule);
+		if (ret < 0) {
+			free(res);
+			return ret;
+		}
+		ret = rte_flow_push(port_id, queue_id, &error);
+		if (ret < 0) {
+			printf("Failed to push operations in the queue: %s\n",
+			       strerror(-ret));
+			free(res);
+			return ret;
+		}
+		while (success < nb_flows) {
+			ret = rte_flow_pull(port_id, queue_id, res,
+					    port->queue_sz, &error);
+			if (ret < 0) {
+				printf("Failed to pull a operation results: %s\n",
+				       strerror(-ret));
+				free(res);
+				return ret;
+			}
+
+			for (i = 0; i < ret; i++) {
+				if (res[i].status == RTE_FLOW_OP_SUCCESS)
+					success++;
+			}
+		}
+		rule += n;
+		nb_flows -= n;
+		n = nb_flows;
+	}
+
+	free(res);
+	return ret;
+}
+
+/** List simply and destroy all aged flows per queue. */
+void
+port_queue_flow_aged(portid_t port_id, uint32_t queue_id, uint8_t destroy)
+{
+	void **contexts;
+	int nb_context, total = 0, idx;
+	uint32_t *rules = NULL;
+	struct rte_port *port;
+	struct rte_flow_error error;
+	enum age_action_context_type *type;
+	union {
+		struct port_flow *pf;
+		struct port_indirect_action *pia;
+	} ctx;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return;
+	port = &ports[port_id];
+	if (queue_id >= port->queue_nb) {
+		printf("Error: queue #%u is invalid\n", queue_id);
+		return;
+	}
+	total = rte_flow_get_q_aged_flows(port_id, queue_id, NULL, 0, &error);
+	if (total < 0) {
+		port_flow_complain(&error);
+		return;
+	}
+	printf("Port %u queue %u total aged flows: %d\n",
+	       port_id, queue_id, total);
+	if (total == 0)
+		return;
+	contexts = calloc(total, sizeof(void *));
+	if (contexts == NULL) {
+		printf("Cannot allocate contexts for aged flow\n");
+		return;
+	}
+	printf("%-20s\tID\tGroup\tPrio\tAttr\n", "Type");
+	nb_context = rte_flow_get_q_aged_flows(port_id, queue_id, contexts,
+					       total, &error);
+	if (nb_context > total) {
+		printf("Port %u queue %u get aged flows count(%d) > total(%d)\n",
+		       port_id, queue_id, nb_context, total);
+		free(contexts);
+		return;
+	}
+	if (destroy) {
+		rules = malloc(sizeof(uint32_t) * nb_context);
+		if (rules == NULL)
+			printf("Cannot allocate memory for destroy aged flow\n");
+	}
+	total = 0;
+	for (idx = 0; idx < nb_context; idx++) {
+		if (!contexts[idx]) {
+			printf("Error: get Null context in port %u queue %u\n",
+			       port_id, queue_id);
+			continue;
+		}
+		type = (enum age_action_context_type *)contexts[idx];
+		switch (*type) {
+		case ACTION_AGE_CONTEXT_TYPE_FLOW:
+			ctx.pf = container_of(type, struct port_flow, age_type);
+			printf("%-20s\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32
+								 "\t%c%c%c\t\n",
+			       "Flow",
+			       ctx.pf->id,
+			       ctx.pf->rule.attr->group,
+			       ctx.pf->rule.attr->priority,
+			       ctx.pf->rule.attr->ingress ? 'i' : '-',
+			       ctx.pf->rule.attr->egress ? 'e' : '-',
+			       ctx.pf->rule.attr->transfer ? 't' : '-');
+			if (rules != NULL) {
+				rules[total] = ctx.pf->id;
+				total++;
+			}
+			break;
+		case ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION:
+			ctx.pia = container_of(type,
+					       struct port_indirect_action,
+					       age_type);
+			printf("%-20s\t%" PRIu32 "\n", "Indirect action",
+			       ctx.pia->id);
+			break;
+		default:
+			printf("Error: invalid context type %u\n", port_id);
+			break;
+		}
+	}
+	if (rules != NULL) {
+		port_queue_aged_flow_destroy(port_id, queue_id, rules, total);
+		free(rules);
+	}
+	printf("\n%d flows destroyed\n", total);
+	free(contexts);
 }
 
 /** Pull queue operation results from the queue. */

@@ -2995,6 +2995,10 @@ following sections.
 
    flow aged {port_id} [destroy]
 
+- Enqueue list and destroy aged flow rules::
+
+   flow queue {port_id} aged {queue_id} [destroy]
+
 - Tunnel offload - create a tunnel stub::
 
    flow tunnel create {port_id} type {tunnel_type}
@@ -4307,6 +4311,77 @@ If attach ``destroy`` parameter, the command will destroy all the list aged flow
    4 flows be destroyed
    testpmd> flow aged 0
    Port 0 total aged flows: 0
+
+
+Enqueueing listing and destroying aged flow rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow queue aged`` simply lists aged flow rules be get from
+``rte_flow_get_q_aged_flows`` API, and ``destroy`` parameter can be used to
+destroy those flow rules in PMD::
+
+   flow queue {port_id} aged {queue_id} [destroy]
+
+Listing current aged flow rules::
+
+   testpmd> flow queue 0 aged 0
+   Port 0 queue 0 total aged flows: 0
+   testpmd> flow queue 0 create 0 ingress tanle 0 item_template 0 action_template 0
+      pattern eth / ipv4 src is 2.2.2.14 / end
+      actions age timeout 5 / queue index 0 /  end
+   Flow rule #0 creation enqueued
+   testpmd> flow queue 0 create 0 ingress tanle 0 item_template 0 action_template 0
+      pattern eth / ipv4 src is 2.2.2.15 / end
+      actions age timeout 4 / queue index 0 /  end
+   Flow rule #1 creation enqueued
+   testpmd> flow queue 0 create 0 ingress tanle 0 item_template 0 action_template 0
+      pattern eth / ipv4 src is 2.2.2.16 / end
+      actions age timeout 4 / queue index 0 /  end
+   Flow rule #2 creation enqueued
+   testpmd> flow queue 0 create 0 ingress tanle 0 item_template 0 action_template 0
+      pattern eth / ipv4 src is 2.2.2.17 / end
+      actions age timeout 4 / queue index 0 /  end
+   Flow rule #3 creation enqueued
+   testpmd> flow pull 0 queue 0
+   Queue #0 pulled 4 operations (0 failed, 4 succeeded)
+
+Aged Rules are simply list as command ``flow queue {port_id} list {queue_id}``,
+but strip the detail rule information, all the aged flows are sorted by the
+longest timeout time. For example, if those rules is configured in the same time,
+ID 2 will be the first aged out rule, the next will be ID 3, ID 1, ID 0::
+
+   testpmd> flow queue 0 aged 0
+   Port 0 queue 0 total aged flows: 4
+   ID      Group   Prio    Attr
+   2       0       0       ---
+   3       0       0       ---
+   1       0       0       ---
+   0       0       0       ---
+
+   0 flows destroyed
+
+If attach ``destroy`` parameter, the command will destroy all the list aged flow rules::
+
+   testpmd> flow queue 0 aged 0 destroy
+   Port 0 queue 0 total aged flows: 4
+   ID      Group   Prio    Attr
+   2       0       0       ---
+   3       0       0       ---
+   1       0       0       ---
+   0       0       0       ---
+   Flow rule #2 destruction enqueued
+   Flow rule #3 destruction enqueued
+   Flow rule #1 destruction enqueued
+   Flow rule #0 destruction enqueued
+
+   4 flows destroyed
+   testpmd> flow queue 0 aged 0
+   Port 0 total aged flows: 0
+
+.. note::
+
+   The queue must be empty before attaching ``destroy`` parameter.
+
 
 Creating indirect actions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
