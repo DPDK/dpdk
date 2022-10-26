@@ -478,6 +478,12 @@ service_runner_func(void *arg)
 		cs->loops++;
 	}
 
+	/* Switch off this core for all services, to ensure that future
+	 * calls to may_be_active() know this core is switched off.
+	 */
+	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++)
+		cs->service_active_on_lcore[i] = 0;
+
 	/* Use SEQ CST memory ordering to avoid any re-ordering around
 	 * this store, ensuring that once this store is visible, the service
 	 * lcore thread really is done in service cores code.
@@ -773,11 +779,6 @@ rte_service_lcore_stop(uint32_t lcore)
 		int32_t only_core = (1 ==
 			__atomic_load_n(&rte_services[i].num_mapped_cores,
 				__ATOMIC_RELAXED));
-
-		/* Switch off this core for all services, to ensure that future
-		 * calls to may_be_active() know this core is switched off.
-		 */
-		cs->service_active_on_lcore[i] = 0;
 
 		/* if the core is mapped, and the service is running, and this
 		 * is the only core that is mapped, the service would cease to
