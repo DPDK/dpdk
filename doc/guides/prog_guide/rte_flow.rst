@@ -2773,6 +2773,25 @@ shared AGE action, or a flow rule using the AGE action:
    | ``sec_since_last_hit``       | out | Seconds since last traffic hit         |
    +------------------------------+-----+----------------------------------------+
 
+Update structure to modify the parameters of an indirect AGE action.
+The update structure is used by ``rte_flow_action_handle_update()`` function.
+
+.. _table_rte_flow_update_age:
+
+.. table:: AGE update
+
+   +-------------------+--------------------------------------------------------------+
+   | Field             | Value                                                        |
+   +===================+==============================================================+
+   | ``reserved``      | 6 bits reserved, must be zero                                |
+   +-------------------+--------------------------------------------------------------+
+   | ``timeout_valid`` | 1 bit, timeout value is valid                                |
+   +-------------------+--------------------------------------------------------------+
+   | ``timeout``       | 24 bits timeout value                                        |
+   +-------------------+--------------------------------------------------------------+
+   | ``touch``         | 1 bit, touch the AGE action to set ``sec_since_last_hit`` 0  |
+   +-------------------+--------------------------------------------------------------+
+
 Action: ``SAMPLE``
 ^^^^^^^^^^^^^^^^^^
 

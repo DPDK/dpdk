@@ -1886,6 +1886,7 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 	if (!pia)
 		return -EINVAL;
 	switch (pia->type) {
+	case RTE_FLOW_ACTION_TYPE_AGE:
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		update = action->conf;
 		break;
@@ -2816,17 +2817,23 @@ port_queue_action_handle_update(portid_t port_id,
 		return -EINVAL;
 	}
 
-	if (pia->type == RTE_FLOW_ACTION_TYPE_METER_MARK) {
+	switch (pia->type) {
+	case RTE_FLOW_ACTION_TYPE_AGE:
+		update = action->conf;
+		break;
+	case RTE_FLOW_ACTION_TYPE_METER_MARK:
 		rte_memcpy(&mtr_update.meter_mark, action->conf,
 			sizeof(struct rte_flow_action_meter_mark));
 		mtr_update.profile_valid = 1;
-		mtr_update.policy_valid  = 1;
-		mtr_update.color_mode_valid  = 1;
-		mtr_update.init_color_valid  = 1;
-		mtr_update.state_valid  = 1;
+		mtr_update.policy_valid = 1;
+		mtr_update.color_mode_valid = 1;
+		mtr_update.init_color_valid = 1;
+		mtr_update.state_valid = 1;
 		update = &mtr_update;
-	} else {
+		break;
+	default:
 		update = action;
+		break;
 	}
 
 	if (rte_flow_async_action_handle_update(port_id, queue_id, &attr,

@@ -2643,6 +2643,7 @@ enum rte_flow_action_type {
 	 * See function rte_flow_get_aged_flows
 	 * see enum RTE_ETH_EVENT_FLOW_AGED
 	 * See struct rte_flow_query_age
+	 * See struct rte_flow_update_age
 	 */
 	RTE_FLOW_ACTION_TYPE_AGE,
 
@@ -2807,6 +2808,33 @@ struct rte_flow_query_age {
 	/** sec_since_last_hit value is valid. */
 	uint32_t sec_since_last_hit_valid:1;
 	uint32_t sec_since_last_hit:24; /**< Seconds since last traffic hit. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_AGE
+ *
+ * Update indirect AGE action attributes:
+ *  - Timeout can be updated including stop/start action:
+ *     +-------------+-------------+------------------------------+
+ *     | Old Timeout | New Timeout | Updating                     |
+ *     +=============+=============+==============================+
+ *     | 0           | positive    | Start aging with new value   |
+ *     +-------------+-------------+------------------------------+
+ *     | positive    | 0           | Stop aging			  |
+ *     +-------------+-------------+------------------------------+
+ *     | positive    | positive    | Change timeout to new value  |
+ *     +-------------+-------------+------------------------------+
+ *  - sec_since_last_hit can be reset.
+ */
+struct rte_flow_update_age {
+	uint32_t reserved:6; /**< Reserved, must be zero. */
+	uint32_t timeout_valid:1; /**< The timeout is valid for update. */
+	uint32_t timeout:24; /**< Time in seconds. */
+	/** Means that aging should assume packet passed the aging. */
+	uint32_t touch:1;
 };
 
 /**

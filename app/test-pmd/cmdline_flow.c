@@ -586,6 +586,9 @@ enum index {
 	ACTION_SET_IPV6_DSCP_VALUE,
 	ACTION_AGE,
 	ACTION_AGE_TIMEOUT,
+	ACTION_AGE_UPDATE,
+	ACTION_AGE_UPDATE_TIMEOUT,
+	ACTION_AGE_UPDATE_TOUCH,
 	ACTION_SAMPLE,
 	ACTION_SAMPLE_RATIO,
 	ACTION_SAMPLE_INDEX,
@@ -1874,6 +1877,7 @@ static const enum index next_action[] = {
 	ACTION_SET_IPV4_DSCP,
 	ACTION_SET_IPV6_DSCP,
 	ACTION_AGE,
+	ACTION_AGE_UPDATE,
 	ACTION_SAMPLE,
 	ACTION_INDIRECT,
 	ACTION_MODIFY_FIELD,
@@ -2110,6 +2114,14 @@ static const enum index action_age[] = {
 	ZERO,
 };
 
+static const enum index action_age_update[] = {
+	ACTION_AGE_UPDATE,
+	ACTION_AGE_UPDATE_TIMEOUT,
+	ACTION_AGE_UPDATE_TOUCH,
+	ACTION_NEXT,
+	ZERO,
+};
+
 static const enum index action_sample[] = {
 	ACTION_SAMPLE,
 	ACTION_SAMPLE_RATIO,
@@ -2188,6 +2200,9 @@ static int parse_vc_spec(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
 static int parse_vc_conf(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
+static int parse_vc_conf_timeout(struct context *, const struct token *,
+				 const char *, unsigned int, void *,
+				 unsigned int);
 static int parse_vc_item_ecpri_type(struct context *, const struct token *,
 				    const char *, unsigned int,
 				    void *, unsigned int);
@@ -6206,6 +6221,30 @@ static const struct token token_list[] = {
 		.next = NEXT(action_age, NEXT_ENTRY(COMMON_UNSIGNED)),
 		.call = parse_vc_conf,
 	},
+	[ACTION_AGE_UPDATE] = {
+		.name = "age_update",
+		.help = "update aging parameter",
+		.next = NEXT(action_age_update),
+		.priv = PRIV_ACTION(AGE,
+				    sizeof(struct rte_flow_update_age)),
+		.call = parse_vc,
+	},
+	[ACTION_AGE_UPDATE_TIMEOUT] = {
+		.name = "timeout",
+		.help = "age timeout update value",
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_update_age,
+					   timeout, 24)),
+		.next = NEXT(action_age_update, NEXT_ENTRY(COMMON_UNSIGNED)),
+		.call = parse_vc_conf_timeout,
+	},
+	[ACTION_AGE_UPDATE_TOUCH] = {
+		.name = "touch",
+		.help = "this flow is touched",
+		.next = NEXT(action_age_update, NEXT_ENTRY(COMMON_BOOLEAN)),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_update_age,
+					   touch, 1)),
+		.call = parse_vc_conf,
+	},
 	[ACTION_SAMPLE] = {
 		.name = "sample",
 		.help = "set a sample action",
@@ -7042,6 +7081,33 @@ parse_vc_conf(struct context *ctx, const struct token *token,
 	/* Point to selected object. */
 	ctx->object = out->args.vc.data;
 	ctx->objmask = NULL;
+	return len;
+}
+
+/** Parse action configuration field. */
+static int
+parse_vc_conf_timeout(struct context *ctx, const struct token *token,
+		      const char *str, unsigned int len,
+		      void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_update_age *update;
+
+	(void)size;
+	if (ctx->curr != ACTION_AGE_UPDATE_TIMEOUT)
+		return -1;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Update the timeout is valid. */
+	update = (struct rte_flow_update_age *)out->args.vc.data;
+	update->timeout_valid = 1;
 	return len;
 }
 
