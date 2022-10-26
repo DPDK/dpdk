@@ -42,6 +42,22 @@ ipsec_mb_enqueue_burst(void *__qp, struct rte_crypto_op **ops,
 	return nb_enqueued;
 }
 
+static int
+ipsec_mb_mp_request_register(void)
+{
+	RTE_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	IPSEC_MB_LOG(INFO, "Starting register MP IPC request\n");
+	return rte_mp_action_register(IPSEC_MB_MP_MSG,
+				ipsec_mb_ipc_request);
+}
+
+static void
+ipsec_mb_mp_request_unregister(void)
+{
+	RTE_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	rte_mp_action_unregister(IPSEC_MB_MP_MSG);
+}
+
 int
 ipsec_mb_create(struct rte_vdev_device *vdev,
 	enum ipsec_mb_pmd_types pmd_type)
@@ -152,7 +168,10 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 	IPSEC_MB_LOG(INFO, "IPSec Multi-buffer library version used: %s\n",
 		     imb_get_version_str());
 
-	return 0;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		retval = ipsec_mb_mp_request_register();
+
+	return retval;
 }
 
 int
@@ -186,6 +205,9 @@ ipsec_mb_remove(struct rte_vdev_device *vdev)
 
 	for (qp_id = 0; qp_id < cryptodev->data->nb_queue_pairs; qp_id++)
 		ipsec_mb_qp_release(cryptodev, qp_id);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		ipsec_mb_mp_request_unregister();
 
 	return rte_cryptodev_pmd_destroy(cryptodev);
 }

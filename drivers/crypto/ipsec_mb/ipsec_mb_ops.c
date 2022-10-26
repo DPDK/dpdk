@@ -3,6 +3,7 @@
  */
 
 #include <string.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -93,6 +94,46 @@ ipsec_mb_info_get(struct rte_cryptodev *dev,
 	}
 }
 
+static int
+ipsec_mb_secondary_qp_op(int dev_id, int qp_id,
+		const struct rte_cryptodev_qp_conf *qp_conf,
+		int socket_id, enum ipsec_mb_mp_req_type op_type)
+{
+	int ret;
+	struct rte_mp_msg qp_req_msg;
+	struct rte_mp_msg *qp_resp_msg;
+	struct rte_mp_reply qp_resp;
+	struct ipsec_mb_mp_param *req_param;
+	struct ipsec_mb_mp_param *resp_param;
+	struct timespec ts = {.tv_sec = 1, .tv_nsec = 0};
+
+	memset(&qp_req_msg, 0, sizeof(IPSEC_MB_MP_MSG));
+	memcpy(qp_req_msg.name, IPSEC_MB_MP_MSG, sizeof(IPSEC_MB_MP_MSG));
+	req_param = (struct ipsec_mb_mp_param *)&qp_req_msg.param;
+
+	qp_req_msg.len_param = sizeof(struct ipsec_mb_mp_param);
+	req_param->type = op_type;
+	req_param->dev_id = dev_id;
+	req_param->qp_id = qp_id;
+	req_param->socket_id = socket_id;
+	req_param->process_id = getpid();
+	if (qp_conf) {
+		req_param->nb_descriptors = qp_conf->nb_descriptors;
+		req_param->mp_session = (void *)qp_conf->mp_session;
+	}
+
+	qp_req_msg.num_fds = 0;
+	ret = rte_mp_request_sync(&qp_req_msg, &qp_resp, &ts);
+	if (ret) {
+		RTE_LOG(ERR, USER1, "Create MR request to primary process failed.");
+		return -1;
+	}
+	qp_resp_msg = &qp_resp.msgs[0];
+	resp_param = (struct ipsec_mb_mp_param *)qp_resp_msg->param;
+
+	return resp_param->result;
+}
+
 /** Release queue pair */
 int
 ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
@@ -100,7 +141,10 @@ ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	struct ipsec_mb_qp *qp = dev->data->queue_pairs[qp_id];
 	struct rte_ring *r = NULL;
 
-	if (qp != NULL && rte_eal_process_type() == RTE_PROC_PRIMARY) {
+	if (qp != NULL)
+		return 0;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		r = rte_ring_lookup(qp->name);
 		rte_ring_free(r);
 
@@ -115,6 +159,9 @@ ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 #endif
 		rte_free(qp);
 		dev->data->queue_pairs[qp_id] = NULL;
+	} else { /* secondary process */
+		return ipsec_mb_secondary_qp_op(dev->data->dev_id, qp_id,
+					NULL, 0, RTE_IPSEC_MB_MP_REQ_QP_FREE);
 	}
 	return 0;
 }
@@ -222,9 +269,13 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 #endif
 		qp = dev->data->queue_pairs[qp_id];
 		if (qp == NULL) {
-			IPSEC_MB_LOG(ERR, "Primary process hasn't configured device qp.");
-			return -EINVAL;
+			IPSEC_MB_LOG(DEBUG, "Secondary process setting up device qp.");
+			return ipsec_mb_secondary_qp_op(dev->data->dev_id, qp_id,
+						qp_conf, socket_id,	RTE_IPSEC_MB_MP_REQ_QP_SET);
 		}
+
+		IPSEC_MB_LOG(ERR, "Queue pair already setup'ed.");
+		return -EINVAL;
 	} else {
 		/* Free memory prior to re-allocation if needed. */
 		if (dev->data->queue_pairs[qp_id] != NULL)
@@ -293,6 +344,78 @@ qp_setup_cleanup:
 		rte_memzone_free(qp->mb_mgr_mz);
 #endif
 	rte_free(qp);
+	return ret;
+}
+
+int
+ipsec_mb_ipc_request(const struct rte_mp_msg *mp_msg, const void *peer)
+{
+	struct rte_mp_msg ipc_resp;
+	struct ipsec_mb_mp_param *resp_param =
+		(struct ipsec_mb_mp_param *)ipc_resp.param;
+	const struct ipsec_mb_mp_param *req_param =
+		(const struct ipsec_mb_mp_param *)mp_msg->param;
+
+	int ret;
+	struct rte_cryptodev *dev;
+	struct ipsec_mb_qp *qp;
+	struct rte_cryptodev_qp_conf queue_conf;
+	int dev_id = req_param->dev_id;
+	int qp_id = req_param->qp_id;
+
+	queue_conf.nb_descriptors = req_param->nb_descriptors;
+	queue_conf.mp_session = (struct rte_mempool *)req_param->mp_session;
+	memset(resp_param, 0, sizeof(struct ipsec_mb_mp_param));
+	memcpy(ipc_resp.name, IPSEC_MB_MP_MSG, sizeof(IPSEC_MB_MP_MSG));
+
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
+		goto out;
+	}
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+	switch (req_param->type) {
+	case RTE_IPSEC_MB_MP_REQ_QP_SET:
+		qp = dev->data->queue_pairs[qp_id];
+		if (qp)	{
+			CDEV_LOG_DEBUG("qp %d on dev %d is initialised", qp_id, dev_id);
+			goto out;
+		}
+
+		ret = ipsec_mb_qp_setup(dev, qp_id,	&queue_conf, req_param->socket_id);
+		if (!ret) {
+			qp = dev->data->queue_pairs[qp_id];
+			if (!qp) {
+				CDEV_LOG_DEBUG("qp %d on dev %d is not initialised",
+					qp_id, dev_id);
+				goto out;
+			}
+			qp->qp_used_by_pid = req_param->process_id;
+		}
+		resp_param->result = ret;
+		break;
+	case RTE_IPSEC_MB_MP_REQ_QP_FREE:
+		qp = dev->data->queue_pairs[qp_id];
+		if (!qp) {
+			CDEV_LOG_DEBUG("qp %d on dev %d is not initialised",
+				qp_id, dev_id);
+			goto out;
+		}
+
+		if (qp->qp_used_by_pid != req_param->process_id) {
+			CDEV_LOG_ERR("Unable to release qp_id=%d", qp_id);
+			goto out;
+		}
+
+		qp->qp_used_by_pid = 0;
+		resp_param->result = ipsec_mb_qp_release(dev, qp_id);
+		break;
+	default:
+		CDEV_LOG_ERR("invalid mp request type\n");
+	}
+
+out:
+	ret = rte_mp_reply(&ipc_resp, peer);
 	return ret;
 }
 
