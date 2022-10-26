@@ -316,7 +316,8 @@ struct rte_port {
 	queueid_t               queue_nb; /**< nb. of queues for flow rules */
 	uint32_t                queue_sz; /**< size of a queue for flow rules */
 	uint8_t                 slave_flag : 1, /**< bonding slave port */
-				bond_flag : 1; /**< port is bond device */
+				bond_flag : 1, /**< port is bond device */
+				fwd_mac_swap : 1; /**< swap packet MAC before forward */
 	struct port_template    *pattern_templ_list; /**< Pattern templates. */
 	struct port_template    *actions_templ_list; /**< Actions templates. */
 	struct port_table       *table_list; /**< Flow tables. */

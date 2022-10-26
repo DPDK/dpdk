@@ -4214,10 +4214,11 @@ init_port(void)
 				"rte_zmalloc(%d struct rte_port) failed\n",
 				RTE_MAX_ETHPORTS);
 	}
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		ports[i].fwd_mac_swap = 1;
 		ports[i].xstats_info.allocated = false;
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		LIST_INIT(&ports[i].flow_tunnel_list);
+	}
 	/* Initialize ports NUMA structures */
 	memset(port_numa, NUMA_NO_CONFIG, RTE_MAX_ETHPORTS);
 	memset(rxring_numa, NUMA_NO_CONFIG, RTE_MAX_ETHPORTS);
