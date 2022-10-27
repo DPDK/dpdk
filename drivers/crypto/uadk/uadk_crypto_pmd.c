@@ -208,6 +208,55 @@ static struct rte_cryptodev_ops uadk_crypto_pmd_ops = {
 		.sym_session_clear	= NULL,
 };
 
+static uint16_t
+uadk_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
+			  uint16_t nb_ops)
+{
+	struct uadk_qp *qp = queue_pair;
+	struct rte_crypto_op *op;
+	uint16_t enqd = 0;
+	int i, ret;
+
+	for (i = 0; i < nb_ops; i++) {
+		op = ops[i];
+		op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+
+		if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
+			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
+			ret = rte_ring_enqueue(qp->processed_pkts, (void *)op);
+			if (ret < 0)
+				goto enqueue_err;
+			qp->qp_stats.enqueued_count++;
+			enqd++;
+		} else {
+			/* increment count if failed to enqueue op */
+			qp->qp_stats.enqueue_err_count++;
+		}
+	}
+
+	return enqd;
+
+enqueue_err:
+	qp->qp_stats.enqueue_err_count++;
+	return enqd;
+}
+
+static uint16_t
+uadk_crypto_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
+			  uint16_t nb_ops)
+{
+	struct uadk_qp *qp = queue_pair;
+	unsigned int nb_dequeued;
+
+	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts,
+			(void **)ops, nb_ops, NULL);
+	qp->qp_stats.dequeued_count += nb_dequeued;
+
+	return nb_dequeued;
+}
+
 static int
 uadk_cryptodev_probe(struct rte_vdev_device *vdev)
 {
@@ -244,8 +293,8 @@ uadk_cryptodev_probe(struct rte_vdev_device *vdev)
 
 	dev->dev_ops = &uadk_crypto_pmd_ops;
 	dev->driver_id = uadk_cryptodev_driver_id;
-	dev->dequeue_burst = NULL;
-	dev->enqueue_burst = NULL;
+	dev->dequeue_burst = uadk_crypto_dequeue_burst;
+	dev->enqueue_burst = uadk_crypto_enqueue_burst;
 	dev->feature_flags = RTE_CRYPTODEV_FF_HW_ACCELERATED;
 	priv = dev->data->dev_private;
 	priv->version = version;
