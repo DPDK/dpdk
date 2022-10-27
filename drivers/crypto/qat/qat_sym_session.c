@@ -2052,7 +2052,12 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 	hash_offset = cdesc->cd_cur_ptr-((uint8_t *)&cdesc->cd);
 	hash = (struct icp_qat_hw_auth_setup *)cdesc->cd_cur_ptr;
 	hash->auth_config.reserved = 0;
-	hash->auth_config.config =
+	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL)
+		hash->auth_config.config =
+			ICP_QAT_HW_AUTH_CONFIG_BUILD(cdesc->auth_mode,
+				cdesc->qat_hash_alg, 4);
+	else
+		hash->auth_config.config =
 			ICP_QAT_HW_AUTH_CONFIG_BUILD(cdesc->auth_mode,
 				cdesc->qat_hash_alg, digestsize);
 
@@ -2420,10 +2425,16 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 	/* Auth CD config setup */
 	hash_cd_ctrl->hash_cfg_offset = hash_offset >> 3;
 	hash_cd_ctrl->hash_flags = ICP_QAT_FW_AUTH_HDR_FLAG_NO_NESTED;
-	hash_cd_ctrl->inner_res_sz = digestsize;
-	hash_cd_ctrl->final_sz = digestsize;
 	hash_cd_ctrl->inner_state1_sz = state1_size;
-	auth_param->auth_res_sz = digestsize;
+	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
+		hash_cd_ctrl->inner_res_sz = 4;
+		hash_cd_ctrl->final_sz = 4;
+		auth_param->auth_res_sz = 4;
+	} else {
+		hash_cd_ctrl->inner_res_sz = digestsize;
+		hash_cd_ctrl->final_sz = digestsize;
+		auth_param->auth_res_sz = digestsize;
+	}
 
 	hash_cd_ctrl->inner_state2_sz  = state2_size;
 	hash_cd_ctrl->inner_state2_offset = hash_cd_ctrl->hash_cfg_offset +
