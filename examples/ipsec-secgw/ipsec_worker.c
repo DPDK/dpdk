@@ -25,6 +25,9 @@ struct port_drv_mode_data {
 
 typedef void (*ipsec_worker_fn_t)(void);
 
+int ip_reassembly_dynfield_offset = -1;
+uint64_t ip_reassembly_dynflag;
+
 static inline enum pkt_type
 process_ipsec_get_pkt_type(struct rte_mbuf *pkt, uint8_t **nlp)
 {
@@ -417,6 +420,10 @@ process_ipsec_ev_inbound(struct ipsec_ctx *ctx, struct route_table *rt,
 
 	/* Get pkt from event */
 	pkt = ev->mbuf;
+	if (is_ip_reassembly_incomplete(pkt) > 0) {
+		free_reassembly_fail_pkt(pkt);
+		return PKT_DROPPED;
+	}
 
 	/* Check the packet type */
 	type = process_ipsec_get_pkt_type(pkt, &nlp);
@@ -526,7 +533,6 @@ route_and_send_pkt:
 	return PKT_FORWARDED;
 
 drop_pkt_and_exit:
-	RTE_LOG(ERR, IPSEC, "Inbound packet dropped\n");
 	free_pkts(&pkt, 1);
 	ev->mbuf = NULL;
 	return PKT_DROPPED;
@@ -859,6 +865,10 @@ process_ipsec_ev_inbound_vector(struct ipsec_ctx *ctx, struct route_table *rt,
 	for (i = 0; i < vec->nb_elem; i++) {
 		/* Get pkt from event */
 		pkt = vec->mbufs[i];
+		if (is_ip_reassembly_incomplete(pkt) > 0) {
+			free_reassembly_fail_pkt(pkt);
+			continue;
+		}
 
 		if (pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) {
 			if (unlikely(pkt->ol_flags &
@@ -1150,6 +1160,23 @@ ipsec_event_port_flush(uint8_t eventdev_id __rte_unused, struct rte_event ev,
 /* Workers registered */
 #define IPSEC_EVENTMODE_WORKERS		2
 
+static void
+ipsec_ip_reassembly_dyn_offset_get(void)
+{
+	/* Retrieve reassembly dynfield offset if available */
+	if (ip_reassembly_dynfield_offset < 0)
+		ip_reassembly_dynfield_offset = rte_mbuf_dynfield_lookup(
+				RTE_MBUF_DYNFIELD_IP_REASSEMBLY_NAME, NULL);
+
+	if (ip_reassembly_dynflag == 0) {
+		int ip_reassembly_dynflag_offset;
+		ip_reassembly_dynflag_offset = rte_mbuf_dynflag_lookup(
+				RTE_MBUF_DYNFLAG_IP_REASSEMBLY_INCOMPLETE_NAME, NULL);
+		if (ip_reassembly_dynflag_offset >= 0)
+			ip_reassembly_dynflag = RTE_BIT64(ip_reassembly_dynflag_offset);
+	}
+}
+
 /*
  * Event mode worker
  * Operating parameters : non-burst - Tx internal port - driver mode
@@ -1337,6 +1364,8 @@ ipsec_wrkr_non_burst_int_port_app_mode(struct eh_event_link_info *links,
 
 	RTE_LOG(INFO, IPSEC, " -- lcoreid=%u event_port_id=%u\n", lcore_id,
 		links[0].event_port_id);
+
+	ipsec_ip_reassembly_dyn_offset_get();
 
 	while (!force_quit) {
 		/* Read packet from event queues */
@@ -1605,6 +1634,8 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
 			lcore_id, portid, queueid);
 	}
+
+	ipsec_ip_reassembly_dyn_offset_get();
 
 	while (!force_quit) {
 		cur_tsc = rte_rdtsc();

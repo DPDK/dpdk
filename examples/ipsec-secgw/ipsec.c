@@ -53,6 +53,8 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 	ipsec->replay_win_sz = app_sa_prm.window_size;
 	ipsec->options.esn = app_sa_prm.enable_esn;
 	ipsec->options.udp_encap = sa->udp_encap;
+	if (IS_HW_REASSEMBLY_EN(sa->flags))
+		ipsec->options.ip_reassembly_en = 1;
 }
 
 int

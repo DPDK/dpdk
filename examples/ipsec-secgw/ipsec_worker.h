@@ -130,6 +130,11 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 	uint64_t tx_offload;
 	uint16_t l3len;
 
+	if (is_ip_reassembly_incomplete(pkt) > 0) {
+		free_reassembly_fail_pkt(pkt);
+		return;
+	}
+
 	tun_type = ptype & RTE_PTYPE_TUNNEL_MASK;
 	l3_type = ptype & RTE_PTYPE_L3_MASK;
 

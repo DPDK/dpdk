@@ -5,6 +5,7 @@
 #define _IPSEC_SECGW_H_
 
 #include <stdbool.h>
+#include <rte_ethdev.h>
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 
@@ -103,6 +104,7 @@ struct ipsec_core_statistics {
 	uint64_t rx_call;
 	uint64_t tx_call;
 	uint64_t dropped;
+	uint64_t frag_dropped;
 	uint64_t burst_rx;
 
 	struct {
@@ -142,7 +144,8 @@ extern volatile bool force_quit;
 extern uint32_t nb_bufs_in_pool;
 
 extern bool per_port_pool;
-
+extern int ip_reassembly_dynfield_offset;
+extern uint64_t ip_reassembly_dynflag;
 extern uint32_t mtu_size;
 extern uint32_t frag_tbl_sz;
 extern uint32_t qp_desc_nb;
@@ -185,6 +188,44 @@ core_stats_update_drop(int n)
 {
 	int lcore_id = rte_lcore_id();
 	core_statistics[lcore_id].dropped += n;
+}
+
+static inline void
+core_stats_update_frag_drop(int n)
+{
+	int lcore_id = rte_lcore_id();
+	core_statistics[lcore_id].frag_dropped += n;
+}
+
+static inline int
+is_ip_reassembly_incomplete(struct rte_mbuf *mbuf)
+{
+	if (ip_reassembly_dynflag == 0)
+		return -1;
+	return (mbuf->ol_flags & ip_reassembly_dynflag) != 0;
+}
+
+static inline void
+free_reassembly_fail_pkt(struct rte_mbuf *mb)
+{
+	if (ip_reassembly_dynfield_offset >= 0) {
+		rte_eth_ip_reassembly_dynfield_t dynfield;
+		uint32_t frag_cnt = 0;
+
+		while (mb) {
+			dynfield = *RTE_MBUF_DYNFIELD(mb,
+					ip_reassembly_dynfield_offset,
+					rte_eth_ip_reassembly_dynfield_t *);
+			rte_pktmbuf_free(mb);
+			mb = dynfield.next_frag;
+			frag_cnt++;
+		}
+
+		core_stats_update_frag_drop(frag_cnt);
+	} else {
+		rte_pktmbuf_free(mb);
+		core_stats_update_drop(1);
+	}
 }
 
 /* helper routine to free bulk of packets */

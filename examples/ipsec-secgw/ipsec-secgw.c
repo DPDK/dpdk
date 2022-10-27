@@ -274,6 +274,7 @@ static void
 print_stats_cb(__rte_unused void *param)
 {
 	uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
+	uint64_t total_frag_packets_dropped = 0;
 	float burst_percent, rx_per_call, tx_per_call;
 	unsigned int coreid;
 
@@ -303,6 +304,7 @@ print_stats_cb(__rte_unused void *param)
 			   "\nPackets received: %20"PRIu64
 			   "\nPackets sent: %24"PRIu64
 			   "\nPackets dropped: %21"PRIu64
+			   "\nFrag Packets dropped: %16"PRIu64
 			   "\nBurst percent: %23.2f"
 			   "\nPackets per Rx call: %17.2f"
 			   "\nPackets per Tx call: %17.2f",
@@ -310,21 +312,25 @@ print_stats_cb(__rte_unused void *param)
 			   core_statistics[coreid].rx,
 			   core_statistics[coreid].tx,
 			   core_statistics[coreid].dropped,
+			   core_statistics[coreid].frag_dropped,
 			   burst_percent,
 			   rx_per_call,
 			   tx_per_call);
 
 		total_packets_dropped += core_statistics[coreid].dropped;
+		total_frag_packets_dropped += core_statistics[coreid].frag_dropped;
 		total_packets_tx += core_statistics[coreid].tx;
 		total_packets_rx += core_statistics[coreid].rx;
 	}
 	printf("\nAggregate statistics ==============================="
 		   "\nTotal packets received: %14"PRIu64
 		   "\nTotal packets sent: %18"PRIu64
-		   "\nTotal packets dropped: %15"PRIu64,
+		   "\nTotal packets dropped: %15"PRIu64
+		   "\nTotal frag packets dropped: %10"PRIu64,
 		   total_packets_rx,
 		   total_packets_tx,
-		   total_packets_dropped);
+		   total_packets_dropped,
+		   total_frag_packets_dropped);
 	printf("\n====================================================\n");
 
 	rte_eal_alarm_set(stats_interval * US_PER_S, print_stats_cb, NULL);
@@ -1867,7 +1873,8 @@ parse_ptype_cb(uint16_t port __rte_unused, uint16_t queue __rte_unused,
 }
 
 static void
-port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
+port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
+	  uint8_t hw_reassembly)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
@@ -1877,6 +1884,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	struct lcore_conf *qconf;
 	struct rte_ether_addr ethaddr;
 	struct rte_eth_conf local_port_conf = port_conf;
+	struct rte_eth_ip_reassembly_params reass_capa = {0};
 	int ptype_supported;
 
 	ret = rte_eth_dev_info_get(portid, &dev_info);
@@ -2052,6 +2060,12 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 
 
 		}
+	}
+
+	if (hw_reassembly) {
+		rte_eth_ip_reassembly_capability_get(portid, &reass_capa);
+		reass_capa.timeout_ms = frag_ttl_ns;
+		rte_eth_ip_reassembly_conf_set(portid, &reass_capa);
 	}
 	printf("\n");
 }
@@ -2598,6 +2612,7 @@ update_lcore_statistics(struct ipsec_core_statistics *total, uint32_t coreid)
 
 	total->rx = lcore_stats->rx;
 	total->dropped = lcore_stats->dropped;
+	total->frag_dropped = lcore_stats->frag_dropped;
 	total->tx = lcore_stats->tx;
 
 	/* outbound stats */
@@ -2876,6 +2891,7 @@ main(int32_t argc, char **argv)
 	uint16_t portid, nb_crypto_qp, nb_ports = 0;
 	uint64_t req_rx_offloads[RTE_MAX_ETHPORTS];
 	uint64_t req_tx_offloads[RTE_MAX_ETHPORTS];
+	uint8_t req_hw_reassembly[RTE_MAX_ETHPORTS];
 	struct eh_conf *eh_conf = NULL;
 	uint32_t ipv4_cksum_port_mask = 0;
 	size_t sess_sz;
@@ -2993,10 +3009,10 @@ main(int32_t argc, char **argv)
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
-		sa_check_offloads(portid, &req_rx_offloads[portid],
-				&req_tx_offloads[portid]);
-		port_init(portid, req_rx_offloads[portid],
-				req_tx_offloads[portid]);
+		sa_check_offloads(portid, &req_rx_offloads[portid], &req_tx_offloads[portid],
+				  &req_hw_reassembly[portid]);
+		port_init(portid, req_rx_offloads[portid], req_tx_offloads[portid],
+			  req_hw_reassembly[portid]);
 		if ((req_tx_offloads[portid] & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM))
 			ipv4_cksum_port_mask |= 1U << portid;
 	}

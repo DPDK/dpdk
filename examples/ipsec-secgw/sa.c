@@ -786,6 +786,11 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			continue;
 		}
 
+		if (strcmp(tokens[ti], "reassembly_en") == 0) {
+			rule->flags |= SA_REASSEMBLY_ENABLE;
+			continue;
+		}
+
 		if (strcmp(tokens[ti], "esn") == 0) {
 			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
 			if (status->status < 0)
@@ -1813,7 +1818,7 @@ outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
  */
 int
 sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
-		uint64_t *tx_offloads)
+		uint64_t *tx_offloads, uint8_t *hw_reassembly)
 {
 	struct ipsec_sa *rule;
 	uint32_t idx_sa;
@@ -1839,6 +1844,11 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 				&& rule->portid == port_id)
 			*rx_offloads |= RTE_ETH_RX_OFFLOAD_SECURITY;
+		if (IS_HW_REASSEMBLY_EN(rule->flags)) {
+			*rx_offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
+			*tx_offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+			*hw_reassembly = 1;
+		}
 	}
 
 	/* Check for outbound rules that use offloads and use this port */

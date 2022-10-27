@@ -538,7 +538,7 @@ The SA rule syntax is shown as follows:
 
     sa <dir> <spi> <cipher_algo> <cipher_key> <auth_algo> <auth_key>
     <mode> <src_ip> <dst_ip> <action_type> <port_id> <fallback>
-    <flow-direction> <port_id> <queue_id> <udp-encap>
+    <flow-direction> <port_id> <queue_id> <udp-encap> <reassembly_en>
 
 where each options means:
 
@@ -793,6 +793,16 @@ where each options means:
  * Syntax:
 
    * *esn N* N is the initial ESN value
+
+ ``<reassembly_en>``
+
+ * Option to enable HW reassembly per SA.
+
+ * Optional: Yes, it is disabled by default
+
+ * Syntax:
+
+   * *reassembly_en*
 
 Example SA rules:
 

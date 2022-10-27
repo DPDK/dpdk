@@ -132,6 +132,7 @@ struct ipsec_sa {
 #define IP4_TRANSPORT (1 << 3)
 #define IP6_TRANSPORT (1 << 4)
 #define SA_TELEMETRY_ENABLE (1 << 5)
+#define SA_REASSEMBLY_ENABLE (1 << 6)
 
 	struct ip_addr src;
 	struct ip_addr dst;
@@ -208,6 +209,7 @@ struct ipsec_mbuf_metadata {
 
 #define IS_IP6_TUNNEL(flags) ((flags) & IP6_TUNNEL)
 
+#define IS_HW_REASSEMBLY_EN(flags) ((flags) & SA_REASSEMBLY_ENABLE)
 /*
  * Macro for getting ipsec_sa flags statuses without version of protocol
  * used for transport (IP4_TRANSPORT and IP6_TRANSPORT flags).
@@ -434,7 +436,7 @@ rt_init(struct socket_ctx *ctx, int32_t socket_id);
 
 int
 sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
-		uint64_t *tx_offloads);
+		uint64_t *tx_offloads, uint8_t *hw_reassembly);
 
 int
 add_dst_ethaddr(uint16_t port, const struct rte_ether_addr *addr);
