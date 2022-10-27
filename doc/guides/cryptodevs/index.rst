@@ -30,5 +30,6 @@ Crypto Device Drivers
     scheduler
     snow3g
     qat
+    uadk
     virtio
     zuc

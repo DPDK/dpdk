@@ -1064,6 +1064,12 @@ M: Kai Ji <kai.ji@intel.com>
 F: drivers/crypto/scheduler/
 F: doc/guides/cryptodevs/scheduler.rst
 
+HiSilicon UADK crypto
+M: Zhangfei Gao <zhangfei.gao@linaro.org>
+F: drivers/crypto/uadk/
+F: doc/guides/cryptodevs/uadk.rst
+F: doc/guides/cryptodevs/features/uadk.ini
+
 Intel QuickAssist
 M: Kai Ji <kai.ji@intel.com>
 F: drivers/crypto/qat/

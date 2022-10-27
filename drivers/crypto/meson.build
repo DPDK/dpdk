@@ -18,6 +18,7 @@ drivers = [
         'octeontx',
         'openssl',
         'scheduler',
+        'uadk',
         'virtio',
 ]
 
