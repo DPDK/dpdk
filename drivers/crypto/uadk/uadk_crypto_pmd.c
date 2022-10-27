@@ -18,6 +18,258 @@
 static uint8_t uadk_cryptodev_driver_id;
 
 static const struct rte_cryptodev_capabilities uadk_crypto_v2_capabilities[] = {
+	{	/* MD5 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_MD5_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 16,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* MD5 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_MD5,
+				.block_size = 64,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA1 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 20,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA1 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA1,
+				.block_size = 64,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 20,
+					.max = 20,
+					.increment = 0
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA224 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA224_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 28,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA224 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA224,
+				.block_size = 64,
+					.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 28,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA256 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA256_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 32,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA256 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA256,
+				.block_size = 64,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA384 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,
+				.block_size = 128,
+				.key_size = {
+					.min = 1,
+					.max = 128,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 48,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA384 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA384,
+				.block_size = 128,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 48,
+					.max = 48,
+					.increment = 0
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA512 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA512_HMAC,
+				.block_size = 128,
+				.key_size = {
+					.min = 1,
+					.max = 128,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA512 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA512,
+				.block_size = 128,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 64,
+					.max = 64,
+					.increment = 0
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
 	{	/* AES ECB */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -132,6 +384,11 @@ uadk_crypto_pmd_close(struct rte_cryptodev *dev)
 	if (priv->env_cipher_init) {
 		wd_cipher_env_uninit();
 		priv->env_cipher_init = false;
+	}
+
+	if (priv->env_auth_init) {
+		wd_digest_env_uninit();
+		priv->env_auth_init = false;
 	}
 
 	return 0;
@@ -292,9 +549,19 @@ uadk_get_chain_order(const struct rte_crypto_sym_xform *xform)
 	enum uadk_chain_order res = UADK_CHAIN_NOT_SUPPORTED;
 
 	if (xform != NULL) {
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+			if (xform->next == NULL)
+				res = UADK_CHAIN_ONLY_AUTH;
+			else if (xform->next->type ==
+					RTE_CRYPTO_SYM_XFORM_CIPHER)
+				res = UADK_CHAIN_AUTH_CIPHER;
+		}
+
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 			if (xform->next == NULL)
 				res = UADK_CHAIN_ONLY_CIPHER;
+			else if (xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
+				res = UADK_CHAIN_CIPHER_AUTH;
 		}
 	}
 
@@ -381,12 +648,119 @@ env_uninit:
 	return ret;
 }
 
+/* Set session auth parameters */
+static int
+uadk_set_session_auth_parameters(struct rte_cryptodev *dev,
+				 struct uadk_crypto_session *sess,
+				 struct rte_crypto_sym_xform *xform)
+{
+	struct uadk_crypto_priv *priv = dev->data->dev_private;
+	struct wd_digest_sess_setup setup = {0};
+	struct sched_params params = {0};
+	int ret;
+
+	if (!priv->env_auth_init) {
+		ret = wd_digest_env_init(NULL);
+		if (ret < 0)
+			return -EINVAL;
+		priv->env_auth_init = true;
+	}
+
+	sess->auth.operation = xform->auth.op;
+	sess->auth.digest_length = xform->auth.digest_length;
+
+	switch (xform->auth.algo) {
+	case RTE_CRYPTO_AUTH_MD5:
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
+		setup.mode = (xform->auth.algo == RTE_CRYPTO_AUTH_MD5) ?
+			     WD_DIGEST_NORMAL : WD_DIGEST_HMAC;
+		setup.alg = WD_DIGEST_MD5;
+		sess->auth.req.out_buf_bytes = 16;
+		sess->auth.req.out_bytes = 16;
+		break;
+	case RTE_CRYPTO_AUTH_SHA1:
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+		setup.mode = (xform->auth.algo == RTE_CRYPTO_AUTH_SHA1) ?
+			     WD_DIGEST_NORMAL : WD_DIGEST_HMAC;
+		setup.alg = WD_DIGEST_SHA1;
+		sess->auth.req.out_buf_bytes = 20;
+		sess->auth.req.out_bytes = 20;
+		break;
+	case RTE_CRYPTO_AUTH_SHA224:
+	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+		setup.mode = (xform->auth.algo == RTE_CRYPTO_AUTH_SHA224) ?
+			     WD_DIGEST_NORMAL : WD_DIGEST_HMAC;
+		setup.alg = WD_DIGEST_SHA224;
+		sess->auth.req.out_buf_bytes = 28;
+		sess->auth.req.out_bytes = 28;
+		break;
+	case RTE_CRYPTO_AUTH_SHA256:
+	case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		setup.mode = (xform->auth.algo == RTE_CRYPTO_AUTH_SHA256) ?
+			     WD_DIGEST_NORMAL : WD_DIGEST_HMAC;
+		setup.alg = WD_DIGEST_SHA256;
+		sess->auth.req.out_buf_bytes = 32;
+		sess->auth.req.out_bytes = 32;
+		break;
+	case RTE_CRYPTO_AUTH_SHA384:
+	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		setup.mode = (xform->auth.algo == RTE_CRYPTO_AUTH_SHA384) ?
+			     WD_DIGEST_NORMAL : WD_DIGEST_HMAC;
+		setup.alg = WD_DIGEST_SHA384;
+		sess->auth.req.out_buf_bytes = 48;
+		sess->auth.req.out_bytes = 48;
+		break;
+	case RTE_CRYPTO_AUTH_SHA512:
+	case RTE_CRYPTO_AUTH_SHA512_HMAC:
+		setup.mode = (xform->auth.algo == RTE_CRYPTO_AUTH_SHA512) ?
+			     WD_DIGEST_NORMAL : WD_DIGEST_HMAC;
+		setup.alg = WD_DIGEST_SHA512;
+		sess->auth.req.out_buf_bytes = 64;
+		sess->auth.req.out_bytes = 64;
+		break;
+	default:
+		ret = -ENOTSUP;
+		goto env_uninit;
+	}
+
+	params.numa_id = -1;	/* choose nearby numa node */
+	setup.sched_param = &params;
+	sess->handle_digest = wd_digest_alloc_sess(&setup);
+	if (!sess->handle_digest) {
+		UADK_LOG(ERR, "uadk failed to alloc session!\n");
+		ret = -EINVAL;
+		goto env_uninit;
+	}
+
+	/* if mode is HMAC, should set key */
+	if (setup.mode == WD_DIGEST_HMAC) {
+		ret = wd_digest_set_key(sess->handle_digest,
+					xform->auth.key.data,
+					xform->auth.key.length);
+		if (ret) {
+			UADK_LOG(ERR, "uadk failed to alloc session!\n");
+			wd_digest_free_sess(sess->handle_digest);
+			sess->handle_digest = 0;
+			ret = -EINVAL;
+			goto env_uninit;
+		}
+	}
+
+	return 0;
+
+env_uninit:
+	wd_digest_env_uninit();
+	priv->env_auth_init = false;
+	return ret;
+}
+
 static int
 uadk_crypto_sym_session_configure(struct rte_cryptodev *dev,
 				  struct rte_crypto_sym_xform *xform,
 				  struct rte_cryptodev_sym_session *session)
 {
 	struct rte_crypto_sym_xform *cipher_xform = NULL;
+	struct rte_crypto_sym_xform *auth_xform = NULL;
 	struct uadk_crypto_session *sess = CRYPTODEV_GET_SYM_SESS_PRIV(session);
 	int ret;
 
@@ -400,6 +774,17 @@ uadk_crypto_sym_session_configure(struct rte_cryptodev *dev,
 	case UADK_CHAIN_ONLY_CIPHER:
 		cipher_xform = xform;
 		break;
+	case UADK_CHAIN_ONLY_AUTH:
+		auth_xform = xform;
+		break;
+	case UADK_CHAIN_CIPHER_AUTH:
+		cipher_xform = xform;
+		auth_xform = xform->next;
+		break;
+	case UADK_CHAIN_AUTH_CIPHER:
+		auth_xform = xform;
+		cipher_xform = xform->next;
+		break;
 	default:
 		return -ENOTSUP;
 	}
@@ -409,6 +794,15 @@ uadk_crypto_sym_session_configure(struct rte_cryptodev *dev,
 		if (ret != 0) {
 			UADK_LOG(ERR,
 				"Invalid/unsupported cipher parameters");
+			return ret;
+		}
+	}
+
+	if (auth_xform) {
+		ret = uadk_set_session_auth_parameters(dev, sess, auth_xform);
+		if (ret != 0) {
+			UADK_LOG(ERR,
+				"Invalid/unsupported auth parameters");
 			return ret;
 		}
 	}
@@ -430,6 +824,11 @@ uadk_crypto_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 	if (sess->handle_cipher) {
 		wd_cipher_free_sess(sess->handle_cipher);
 		sess->handle_cipher = 0;
+	}
+
+	if (sess->handle_digest) {
+		wd_digest_free_sess(sess->handle_digest);
+		sess->handle_digest = 0;
 	}
 }
 
@@ -481,6 +880,49 @@ uadk_process_cipher_op(struct rte_crypto_op *op,
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 }
 
+static void
+uadk_process_auth_op(struct uadk_qp *qp, struct rte_crypto_op *op,
+		     struct uadk_crypto_session *sess,
+		     struct rte_mbuf *msrc, struct rte_mbuf *mdst)
+{
+	uint32_t srclen = op->sym->auth.data.length;
+	uint32_t off = op->sym->auth.data.offset;
+	uint8_t *dst = qp->temp_digest;
+	int ret;
+
+	if (!sess) {
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return;
+	}
+
+	sess->auth.req.in = rte_pktmbuf_mtod_offset(msrc, uint8_t *, off);
+	sess->auth.req.in_bytes = srclen;
+	sess->auth.req.out = dst;
+
+	do {
+		ret = wd_do_digest_sync(sess->handle_digest, &sess->auth.req);
+	} while (ret == -WD_EBUSY);
+
+	if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		if (memcmp(dst, op->sym->auth.digest.data,
+				sess->auth.digest_length) != 0) {
+			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+		}
+	} else {
+		uint8_t *auth_dst;
+
+		auth_dst = op->sym->auth.digest.data;
+		if (auth_dst == NULL)
+			auth_dst = rte_pktmbuf_mtod_offset(mdst, uint8_t *,
+					op->sym->auth.data.offset +
+					op->sym->auth.data.length);
+		memcpy(auth_dst, dst, sess->auth.digest_length);
+	}
+
+	if (ret)
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+}
+
 static uint16_t
 uadk_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			  uint16_t nb_ops)
@@ -506,6 +948,17 @@ uadk_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 		switch (sess->chain_order) {
 		case UADK_CHAIN_ONLY_CIPHER:
+			uadk_process_cipher_op(op, sess, msrc, mdst);
+			break;
+		case UADK_CHAIN_ONLY_AUTH:
+			uadk_process_auth_op(qp, op, sess, msrc, mdst);
+			break;
+		case UADK_CHAIN_CIPHER_AUTH:
+			uadk_process_cipher_op(op, sess, msrc, mdst);
+			uadk_process_auth_op(qp, op, sess, mdst, mdst);
+			break;
+		case UADK_CHAIN_AUTH_CIPHER:
+			uadk_process_auth_op(qp, op, sess, msrc, mdst);
 			uadk_process_cipher_op(op, sess, msrc, mdst);
 			break;
 		default:

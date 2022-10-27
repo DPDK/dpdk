@@ -27,11 +27,15 @@ struct uadk_qp {
 
 enum uadk_chain_order {
 	UADK_CHAIN_ONLY_CIPHER,
+	UADK_CHAIN_ONLY_AUTH,
+	UADK_CHAIN_CIPHER_AUTH,
+	UADK_CHAIN_AUTH_CIPHER,
 	UADK_CHAIN_NOT_SUPPORTED
 };
 
 struct uadk_crypto_session {
 	handle_t handle_cipher;
+	handle_t handle_digest;
 	enum uadk_chain_order chain_order;
 
 	/* IV parameters */
@@ -45,6 +49,13 @@ struct uadk_crypto_session {
 		enum rte_crypto_cipher_operation direction;
 		struct wd_cipher_req req;
 	} cipher;
+
+	/* Authentication Parameters */
+	struct {
+		struct wd_digest_req req;
+		enum rte_crypto_auth_operation operation;
+		uint16_t digest_length;
+	} auth;
 } __rte_cache_aligned;
 
 enum uadk_crypto_version {
@@ -54,6 +65,7 @@ enum uadk_crypto_version {
 
 struct uadk_crypto_priv {
 	bool env_cipher_init;
+	bool env_auth_init;
 	enum uadk_crypto_version version;
 } __rte_cache_aligned;
 
