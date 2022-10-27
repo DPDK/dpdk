@@ -85,7 +85,10 @@ optional_libs = [
         'vhost',
 ]
 
-dpdk_libs_deprecated += ['kni']
+dpdk_libs_deprecated += [
+        'flow_classify',
+        'kni',
+]
 
 disabled_libs = []
 opt_disabled_libs = run_command(list_dir_globs, get_option('disable_libs'),

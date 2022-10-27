@@ -96,3 +96,9 @@ Deprecation Notices
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,
   so that application can reset that particular queue pair.
+
+* flow_classify: The flow_classify library and example have no maintainer.
+  The library is experimental and, as such, it could be removed from DPDK.
+  Its removal has been postponed to let potential users report interest
+  in maintaining it.
+  In the absence of such interest, this library will be removed in DPDK 23.11.

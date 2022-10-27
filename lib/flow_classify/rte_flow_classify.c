@@ -259,6 +259,9 @@ rte_flow_classifier_create(struct rte_flow_classifier_params *params)
 	struct rte_flow_classifier *cls;
 	int ret;
 
+	RTE_FLOW_CLASSIFY_LOG(WARNING,
+		"WARNING: flow_classify is deprecated and will be removed in DPDK 23.11\n");
+
 	/* Check input parameters */
 	ret = rte_flow_classifier_check_params(params);
 	if (ret != 0) {

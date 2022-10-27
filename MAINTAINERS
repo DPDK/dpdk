@@ -1453,7 +1453,7 @@ F: doc/guides/prog_guide/ipsec_lib.rst
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: app/test-sad/
 
-Flow Classify - EXPERIMENTAL
+Flow Classify - EXPERIMENTAL - UNMAINTAINED
 F: lib/flow_classify/
 F: app/test/test_flow_classify*
 F: doc/guides/prog_guide/flow_classify_lib.rst
