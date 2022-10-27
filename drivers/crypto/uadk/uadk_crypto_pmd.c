@@ -18,6 +18,86 @@
 static uint8_t uadk_cryptodev_driver_id;
 
 static const struct rte_cryptodev_capabilities uadk_crypto_v2_capabilities[] = {
+	{	/* AES ECB */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_ECB,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.iv_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* AES CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_CBC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* AES XTS */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_XTS,
+				.block_size = 1,
+				.key_size = {
+					.min = 32,
+					.max = 64,
+					.increment = 32
+				},
+				.iv_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* DES CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_DES_CBC,
+				.block_size = 8,
+				.key_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
 	/* End of capabilities */
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
@@ -45,8 +125,15 @@ uadk_crypto_pmd_stop(struct rte_cryptodev *dev __rte_unused)
 
 /* Close device */
 static int
-uadk_crypto_pmd_close(struct rte_cryptodev *dev __rte_unused)
+uadk_crypto_pmd_close(struct rte_cryptodev *dev)
 {
+	struct uadk_crypto_priv *priv = dev->data->dev_private;
+
+	if (priv->env_cipher_init) {
+		wd_cipher_env_uninit();
+		priv->env_cipher_init = false;
+	}
+
 	return 0;
 }
 
@@ -193,6 +280,159 @@ qp_setup_cleanup:
 	return -EINVAL;
 }
 
+static unsigned int
+uadk_crypto_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
+{
+	return sizeof(struct uadk_crypto_session);
+}
+
+static enum uadk_chain_order
+uadk_get_chain_order(const struct rte_crypto_sym_xform *xform)
+{
+	enum uadk_chain_order res = UADK_CHAIN_NOT_SUPPORTED;
+
+	if (xform != NULL) {
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+			if (xform->next == NULL)
+				res = UADK_CHAIN_ONLY_CIPHER;
+		}
+	}
+
+	return res;
+}
+
+static int
+uadk_set_session_cipher_parameters(struct rte_cryptodev *dev,
+				   struct uadk_crypto_session *sess,
+				   struct rte_crypto_sym_xform *xform)
+{
+	struct uadk_crypto_priv *priv = dev->data->dev_private;
+	struct rte_crypto_cipher_xform *cipher = &xform->cipher;
+	struct wd_cipher_sess_setup setup = {0};
+	struct sched_params params = {0};
+	int ret;
+
+	if (!priv->env_cipher_init) {
+		ret = wd_cipher_env_init(NULL);
+		if (ret < 0)
+			return -EINVAL;
+		priv->env_cipher_init = true;
+	}
+
+	sess->cipher.direction = cipher->op;
+	sess->iv.offset = cipher->iv.offset;
+	sess->iv.length = cipher->iv.length;
+
+	switch (cipher->algo) {
+	/* Cover supported cipher algorithms */
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		setup.alg = WD_CIPHER_AES;
+		setup.mode = WD_CIPHER_CTR;
+		sess->cipher.req.out_bytes = 64;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_ECB:
+		setup.alg = WD_CIPHER_AES;
+		setup.mode = WD_CIPHER_ECB;
+		sess->cipher.req.out_bytes = 16;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+		setup.alg = WD_CIPHER_AES;
+		setup.mode = WD_CIPHER_CBC;
+		if (cipher->key.length == 16)
+			sess->cipher.req.out_bytes = 16;
+		else
+			sess->cipher.req.out_bytes = 64;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_XTS:
+		setup.alg = WD_CIPHER_AES;
+		setup.mode = WD_CIPHER_XTS;
+		if (cipher->key.length == 16)
+			sess->cipher.req.out_bytes = 32;
+		else
+			sess->cipher.req.out_bytes = 512;
+		break;
+	default:
+		ret = -ENOTSUP;
+		goto env_uninit;
+	}
+
+	params.numa_id = -1;	/* choose nearby numa node */
+	setup.sched_param = &params;
+	sess->handle_cipher = wd_cipher_alloc_sess(&setup);
+	if (!sess->handle_cipher) {
+		UADK_LOG(ERR, "uadk failed to alloc session!\n");
+		ret = -EINVAL;
+		goto env_uninit;
+	}
+
+	ret = wd_cipher_set_key(sess->handle_cipher, cipher->key.data, cipher->key.length);
+	if (ret) {
+		wd_cipher_free_sess(sess->handle_cipher);
+		UADK_LOG(ERR, "uadk failed to set key!\n");
+		ret = -EINVAL;
+		goto env_uninit;
+	}
+
+	return 0;
+
+env_uninit:
+	wd_cipher_env_uninit();
+	priv->env_cipher_init = false;
+	return ret;
+}
+
+static int
+uadk_crypto_sym_session_configure(struct rte_cryptodev *dev,
+				  struct rte_crypto_sym_xform *xform,
+				  struct rte_cryptodev_sym_session *session)
+{
+	struct rte_crypto_sym_xform *cipher_xform = NULL;
+	struct uadk_crypto_session *sess = CRYPTODEV_GET_SYM_SESS_PRIV(session);
+	int ret;
+
+	if (unlikely(!sess)) {
+		UADK_LOG(ERR, "Session not available");
+		return -EINVAL;
+	}
+
+	sess->chain_order = uadk_get_chain_order(xform);
+	switch (sess->chain_order) {
+	case UADK_CHAIN_ONLY_CIPHER:
+		cipher_xform = xform;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (cipher_xform) {
+		ret = uadk_set_session_cipher_parameters(dev, sess, cipher_xform);
+		if (ret != 0) {
+			UADK_LOG(ERR,
+				"Invalid/unsupported cipher parameters");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static void
+uadk_crypto_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
+			      struct rte_cryptodev_sym_session *session)
+{
+	struct uadk_crypto_session *sess = CRYPTODEV_GET_SYM_SESS_PRIV(session);
+
+	if (unlikely(sess == NULL)) {
+		UADK_LOG(ERR, "Session not available");
+		return;
+	}
+
+	if (sess->handle_cipher) {
+		wd_cipher_free_sess(sess->handle_cipher);
+		sess->handle_cipher = 0;
+	}
+}
+
 static struct rte_cryptodev_ops uadk_crypto_pmd_ops = {
 		.dev_configure		= uadk_crypto_pmd_config,
 		.dev_start		= uadk_crypto_pmd_start,
@@ -203,16 +443,51 @@ static struct rte_cryptodev_ops uadk_crypto_pmd_ops = {
 		.dev_infos_get		= uadk_crypto_pmd_info_get,
 		.queue_pair_setup	= uadk_crypto_pmd_qp_setup,
 		.queue_pair_release	= uadk_crypto_pmd_qp_release,
-		.sym_session_get_size	= NULL,
-		.sym_session_configure	= NULL,
-		.sym_session_clear	= NULL,
+		.sym_session_get_size	= uadk_crypto_sym_session_get_size,
+		.sym_session_configure	= uadk_crypto_sym_session_configure,
+		.sym_session_clear	= uadk_crypto_sym_session_clear,
 };
+
+static void
+uadk_process_cipher_op(struct rte_crypto_op *op,
+		       struct uadk_crypto_session *sess,
+		       struct rte_mbuf *msrc, struct rte_mbuf *mdst)
+{
+	uint32_t off = op->sym->cipher.data.offset;
+	int ret;
+
+	if (!sess) {
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return;
+	}
+
+	sess->cipher.req.src = rte_pktmbuf_mtod_offset(msrc, uint8_t *, off);
+	sess->cipher.req.in_bytes = op->sym->cipher.data.length;
+	sess->cipher.req.dst = rte_pktmbuf_mtod_offset(mdst, uint8_t *, off);
+	sess->cipher.req.out_buf_bytes = sess->cipher.req.in_bytes;
+	sess->cipher.req.iv_bytes = sess->iv.length;
+	sess->cipher.req.iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+							sess->iv.offset);
+	if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+		sess->cipher.req.op_type = WD_CIPHER_ENCRYPTION;
+	else
+		sess->cipher.req.op_type = WD_CIPHER_DECRYPTION;
+
+	do {
+		ret = wd_do_cipher_sync(sess->handle_cipher, &sess->cipher.req);
+	} while (ret == -WD_EBUSY);
+
+	if (ret)
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+}
 
 static uint16_t
 uadk_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			  uint16_t nb_ops)
 {
 	struct uadk_qp *qp = queue_pair;
+	struct uadk_crypto_session *sess = NULL;
+	struct rte_mbuf *msrc, *mdst;
 	struct rte_crypto_op *op;
 	uint16_t enqd = 0;
 	int i, ret;
@@ -220,6 +495,23 @@ uadk_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	for (i = 0; i < nb_ops; i++) {
 		op = ops[i];
 		op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		msrc = op->sym->m_src;
+		mdst = op->sym->m_dst ? op->sym->m_dst : op->sym->m_src;
+
+		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			if (likely(op->sym->session != NULL))
+				sess = CRYPTODEV_GET_SYM_SESS_PRIV(
+					op->sym->session);
+		}
+
+		switch (sess->chain_order) {
+		case UADK_CHAIN_ONLY_CIPHER:
+			uadk_process_cipher_op(op, sess, msrc, mdst);
+			break;
+		default:
+			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			break;
+		}
 
 		if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
 			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -295,7 +587,8 @@ uadk_cryptodev_probe(struct rte_vdev_device *vdev)
 	dev->driver_id = uadk_cryptodev_driver_id;
 	dev->dequeue_burst = uadk_crypto_dequeue_burst;
 	dev->enqueue_burst = uadk_crypto_enqueue_burst;
-	dev->feature_flags = RTE_CRYPTODEV_FF_HW_ACCELERATED;
+	dev->feature_flags = RTE_CRYPTODEV_FF_HW_ACCELERATED |
+			     RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO;
 	priv = dev->data->dev_private;
 	priv->version = version;
 

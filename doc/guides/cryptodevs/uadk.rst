@@ -23,6 +23,12 @@ Features
 
 UADK crypto PMD has support for:
 
+Cipher algorithms:
+
+* ``RTE_CRYPTO_CIPHER_AES_ECB``
+* ``RTE_CRYPTO_CIPHER_AES_CBC``
+* ``RTE_CRYPTO_CIPHER_AES_XTS``
+* ``RTE_CRYPTO_CIPHER_DES_CBC``
 
 Test steps
 ----------

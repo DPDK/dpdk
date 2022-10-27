@@ -25,12 +25,35 @@ struct uadk_qp {
 	uint8_t temp_digest[DIGEST_LENGTH_MAX];
 } __rte_cache_aligned;
 
+enum uadk_chain_order {
+	UADK_CHAIN_ONLY_CIPHER,
+	UADK_CHAIN_NOT_SUPPORTED
+};
+
+struct uadk_crypto_session {
+	handle_t handle_cipher;
+	enum uadk_chain_order chain_order;
+
+	/* IV parameters */
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} iv;
+
+	/* Cipher Parameters */
+	struct {
+		enum rte_crypto_cipher_operation direction;
+		struct wd_cipher_req req;
+	} cipher;
+} __rte_cache_aligned;
+
 enum uadk_crypto_version {
 	UADK_CRYPTO_V2,
 	UADK_CRYPTO_V3,
 };
 
 struct uadk_crypto_priv {
+	bool env_cipher_init;
 	enum uadk_crypto_version version;
 } __rte_cache_aligned;
 
