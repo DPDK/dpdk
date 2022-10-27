@@ -104,3 +104,9 @@ Test steps
       mount -t hugetlbfs none /mnt/huge_2mb -o pagesize=2MB
 
 #. Run test app
+
+   .. code-block:: console
+
+      sudo dpdk-test --vdev=crypto_uadk --log-level=6
+      RTE>>cryptodev_uadk_autotest
+      RTE>>quit

@@ -232,6 +232,11 @@ New Features
   * Added support for in-place SGL, out-of-place SGL in SGL out,
     out-of-place LB in SGL out, and out-of-place SGL in LB out.
 
+* **Added UADK crypto driver.**
+
+  Added a new crypto driver for the UADK library. See the
+  :doc:`../cryptodevs/uadk` guide for more details on this new driver.
+
 * **Added bbdev operation for FFT processing.**
 
   Added a new operation type in bbdev for FFT processing with new functions

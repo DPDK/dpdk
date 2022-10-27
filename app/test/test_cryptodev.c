@@ -16539,6 +16539,12 @@ test_cryptodev_qat(void)
 }
 
 static int
+test_cryptodev_uadk(void)
+{
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_UADK_PMD));
+}
+
+static int
 test_cryptodev_virtio(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
@@ -16881,6 +16887,7 @@ REGISTER_TEST_COMMAND(cryptodev_sw_mvsam_autotest, test_cryptodev_mrvl);
 REGISTER_TEST_COMMAND(cryptodev_dpaa2_sec_autotest, test_cryptodev_dpaa2_sec);
 REGISTER_TEST_COMMAND(cryptodev_dpaa_sec_autotest, test_cryptodev_dpaa_sec);
 REGISTER_TEST_COMMAND(cryptodev_ccp_autotest, test_cryptodev_ccp);
+REGISTER_TEST_COMMAND(cryptodev_uadk_autotest, test_cryptodev_uadk);
 REGISTER_TEST_COMMAND(cryptodev_virtio_autotest, test_cryptodev_virtio);
 REGISTER_TEST_COMMAND(cryptodev_octeontx_autotest, test_cryptodev_octeontx);
 REGISTER_TEST_COMMAND(cryptodev_caam_jr_autotest, test_cryptodev_caam_jr);
