@@ -1257,8 +1257,6 @@ rte_sched_subport_config(struct rte_sched_port *port,
 
 		n_subports++;
 
-		subport_profile_id = 0;
-
 		/* Port */
 		port->subports[subport_id] = s;
 
