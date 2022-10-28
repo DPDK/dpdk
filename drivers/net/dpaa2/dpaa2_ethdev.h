@@ -107,6 +107,15 @@
 #define DPAA2_PKT_TYPE_VLAN_1		0x0160
 #define DPAA2_PKT_TYPE_VLAN_2		0x0260
 
+/* Global pool used by driver for SG list TX */
+extern struct rte_mempool *dpaa2_tx_sg_pool;
+/* Maximum SG segments */
+#define DPAA2_MAX_SGS 128
+/* SG pool size */
+#define DPAA2_POOL_SIZE 2048
+/* SG pool cache size */
+#define DPAA2_POOL_CACHE_SIZE 256
+
 /* enable timestamp in mbuf*/
 extern bool dpaa2_enable_ts[];
 extern uint64_t dpaa2_timestamp_rx_dynflag;
