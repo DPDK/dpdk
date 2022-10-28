@@ -1741,20 +1741,11 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	slave_eth_dev->data->dev_conf.link_speeds =
 			bonded_eth_dev->data->dev_conf.link_speeds;
 
-	slave_eth_dev->data->dev_conf.txmode.offloads |=
-		bonded_eth_dev->data->dev_conf.txmode.offloads;
+	slave_eth_dev->data->dev_conf.txmode.offloads =
+			bonded_eth_dev->data->dev_conf.txmode.offloads;
 
-	slave_eth_dev->data->dev_conf.txmode.offloads &=
-		(bonded_eth_dev->data->dev_conf.txmode.offloads |
-		~internals->tx_offload_capa);
-
-	slave_eth_dev->data->dev_conf.rxmode.offloads |=
-		bonded_eth_dev->data->dev_conf.rxmode.offloads;
-
-	slave_eth_dev->data->dev_conf.rxmode.offloads &=
-		(bonded_eth_dev->data->dev_conf.rxmode.offloads |
-		~internals->rx_offload_capa);
-
+	slave_eth_dev->data->dev_conf.rxmode.offloads =
+			bonded_eth_dev->data->dev_conf.rxmode.offloads;
 
 	nb_rx_queues = bonded_eth_dev->data->nb_rx_queues;
 	nb_tx_queues = bonded_eth_dev->data->nb_tx_queues;
