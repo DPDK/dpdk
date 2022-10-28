@@ -157,7 +157,7 @@ cfg_load_subport_profile(struct rte_cfgfile *cfg,
 
 	profiles = rte_cfgfile_num_sections(cfg, "subport profile",
 					   sizeof("subport profile") - 1);
-	subport_params[0].n_pipe_profiles = profiles;
+	port_params.n_subport_profiles = profiles;
 
 	for (i = 0; i < profiles; i++) {
 		char sec_name[32];
