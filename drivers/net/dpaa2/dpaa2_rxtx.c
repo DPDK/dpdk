@@ -381,9 +381,12 @@ eth_fd_to_mbuf(const struct qbman_fd *fd,
 static int __rte_noinline __rte_hot
 eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		  struct qbman_fd *fd,
+		  struct sw_buf_free *free_buf,
+		  uint32_t *free_count,
+		  uint32_t pkt_id,
 		  uint16_t bpid)
 {
-	struct rte_mbuf *cur_seg = mbuf, *prev_seg, *mi, *temp;
+	struct rte_mbuf *cur_seg = mbuf, *mi, *temp;
 	struct qbman_sge *sgt, *sge = NULL;
 	int i, offset = 0;
 
@@ -452,10 +455,11 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 						mempool_to_bpid(cur_seg->pool));
 				}
 			}
-			cur_seg = cur_seg->next;
 		} else if (RTE_MBUF_HAS_EXTBUF(cur_seg)) {
+			free_buf[*free_count].seg = cur_seg;
+			free_buf[*free_count].pkt_id = pkt_id;
+			++*free_count;
 			DPAA2_SET_FLE_IVP(sge);
-			cur_seg = cur_seg->next;
 		} else {
 			/* Get owner MBUF from indirect buffer */
 			mi = rte_mbuf_from_indirect(cur_seg);
@@ -469,11 +473,11 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 						   mempool_to_bpid(mi->pool));
 				rte_mbuf_refcnt_update(mi, 1);
 			}
-			prev_seg = cur_seg;
-			cur_seg = cur_seg->next;
-			prev_seg->next = NULL;
-			rte_pktmbuf_free(prev_seg);
+			free_buf[*free_count].seg = cur_seg;
+			free_buf[*free_count].pkt_id = pkt_id;
+			++*free_count;
 		}
+		cur_seg = cur_seg->next;
 	}
 	DPAA2_SG_SET_FINAL(sge, true);
 	return 0;
@@ -481,11 +485,19 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 
 static void
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
-	       struct qbman_fd *fd, uint16_t bpid) __rte_unused;
+	       struct qbman_fd *fd,
+	       struct sw_buf_free *buf_to_free,
+	       uint32_t *free_count,
+	       uint32_t pkt_id,
+	       uint16_t bpid) __rte_unused;
 
 static void __rte_noinline __rte_hot
 eth_mbuf_to_fd(struct rte_mbuf *mbuf,
-	       struct qbman_fd *fd, uint16_t bpid)
+	       struct qbman_fd *fd,
+	       struct sw_buf_free *buf_to_free,
+	       uint32_t *free_count,
+	       uint32_t pkt_id,
+	       uint16_t bpid)
 {
 	DPAA2_MBUF_TO_CONTIG_FD(mbuf, fd, bpid);
 
@@ -501,6 +513,9 @@ eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 			rte_mbuf_refcnt_update(mbuf, -1);
 		}
 	} else if (RTE_MBUF_HAS_EXTBUF(mbuf)) {
+		buf_to_free[*free_count].seg = mbuf;
+		buf_to_free[*free_count].pkt_id = pkt_id;
+		++*free_count;
 		DPAA2_SET_FD_IVP(fd);
 	} else {
 		struct rte_mbuf *mi;
@@ -510,7 +525,10 @@ eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 			DPAA2_SET_FD_IVP(fd);
 		else
 			rte_mbuf_refcnt_update(mi, 1);
-		rte_pktmbuf_free(mbuf);
+
+		buf_to_free[*free_count].seg = mbuf;
+		buf_to_free[*free_count].pkt_id = pkt_id;
+		++*free_count;
 	}
 }
 
@@ -1183,7 +1201,8 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
 	struct dpaa2_dev_priv *priv = eth_data->dev_private;
 	uint32_t flags[MAX_TX_RING_SLOTS] = {0};
-	struct rte_mbuf **orig_bufs = bufs;
+	struct sw_buf_free buf_to_free[DPAA2_MAX_SGS * dpaa2_dqrr_size];
+	uint32_t free_count = 0;
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
@@ -1276,11 +1295,17 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					mp = (*bufs)->pool;
 					if (eth_mbuf_to_sg_fd(*bufs,
 							      &fd_arr[loop],
+							      buf_to_free,
+							      &free_count,
+							      loop,
 							      mempool_to_bpid(mp)))
 						goto send_n_return;
 				} else {
 					eth_mbuf_to_fd(*bufs,
-						       &fd_arr[loop], 0);
+							&fd_arr[loop],
+							buf_to_free,
+							&free_count,
+							loop, 0);
 				}
 				bufs++;
 #ifdef RTE_LIBRTE_IEEE1588
@@ -1325,11 +1350,17 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					if (eth_mbuf_to_sg_fd(*bufs,
 							&fd_arr[loop],
+							buf_to_free,
+							&free_count,
+							loop,
 							bpid))
 						goto send_n_return;
 				} else {
 					eth_mbuf_to_fd(*bufs,
-						       &fd_arr[loop], bpid);
+							&fd_arr[loop],
+							buf_to_free,
+							&free_count,
+							loop, bpid);
 				}
 			}
 #ifdef RTE_LIBRTE_IEEE1588
@@ -1362,12 +1393,9 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	}
 	dpaa2_q->tx_pkts += num_tx;
 
-	loop = 0;
-	while (loop < num_tx) {
-		if (unlikely(RTE_MBUF_HAS_EXTBUF(*orig_bufs)))
-			rte_pktmbuf_free(*orig_bufs);
-		orig_bufs++;
-		loop++;
+	for (loop = 0; loop < free_count; loop++) {
+		if (buf_to_free[loop].pkt_id < num_tx)
+			rte_pktmbuf_free_seg(buf_to_free[loop].seg);
 	}
 
 	return num_tx;
@@ -1397,12 +1425,9 @@ send_n_return:
 skip_tx:
 	dpaa2_q->tx_pkts += num_tx;
 
-	loop = 0;
-	while (loop < num_tx) {
-		if (unlikely(RTE_MBUF_HAS_EXTBUF(*orig_bufs)))
-			rte_pktmbuf_free(*orig_bufs);
-		orig_bufs++;
-		loop++;
+	for (loop = 0; loop < free_count; loop++) {
+		if (buf_to_free[loop].pkt_id < num_tx)
+			rte_pktmbuf_free_seg(buf_to_free[loop].seg);
 	}
 
 	return num_tx;
@@ -1488,6 +1513,8 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	int32_t ret;
 	uint16_t num_tx = 0;
 	uint16_t bpid;
+	struct sw_buf_free buf_to_free[DPAA2_MAX_SGS * dpaa2_dqrr_size];
+	uint32_t free_count = 0;
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
@@ -1600,11 +1627,17 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					if (eth_mbuf_to_sg_fd(*bufs,
 							      &fd_arr[loop],
+							      buf_to_free,
+							      &free_count,
+							      loop,
 							      bpid))
 						goto send_n_return;
 				} else {
 					eth_mbuf_to_fd(*bufs,
-						       &fd_arr[loop], bpid);
+							&fd_arr[loop],
+							buf_to_free,
+							&free_count,
+							loop, bpid);
 				}
 			}
 			bufs++;
@@ -1633,6 +1666,11 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		nb_pkts -= loop;
 	}
 	dpaa2_q->tx_pkts += num_tx;
+	for (loop = 0; loop < free_count; loop++) {
+		if (buf_to_free[loop].pkt_id < num_tx)
+			rte_pktmbuf_free_seg(buf_to_free[loop].seg);
+	}
+
 	return num_tx;
 
 send_n_return:
@@ -1657,6 +1695,11 @@ send_n_return:
 	}
 skip_tx:
 	dpaa2_q->tx_pkts += num_tx;
+	for (loop = 0; loop < free_count; loop++) {
+		if (buf_to_free[loop].pkt_id < num_tx)
+			rte_pktmbuf_free_seg(buf_to_free[loop].seg);
+	}
+
 	return num_tx;
 }
 

@@ -115,6 +115,15 @@ extern struct rte_mempool *dpaa2_tx_sg_pool;
 #define DPAA2_POOL_SIZE 2048
 /* SG pool cache size */
 #define DPAA2_POOL_CACHE_SIZE 256
+/* structure to free external and indirect
+ * buffers.
+ */
+struct sw_buf_free {
+	/* To which packet this segment belongs */
+	uint16_t pkt_id;
+	/* The actual segment */
+	struct rte_mbuf *seg;
+};
 
 /* enable timestamp in mbuf*/
 extern bool dpaa2_enable_ts[];
