@@ -86,11 +86,13 @@ struct rte_mempool_cache {
 	uint32_t size;	      /**< Size of the cache */
 	uint32_t flushthresh; /**< Threshold before we flush excess elements */
 	uint32_t len;	      /**< Current cache count */
-	/*
+	/**
+	 * Cache objects
+	 *
 	 * Cache is allocated to this size to allow it to overflow in certain
 	 * cases to avoid needless emptying of cache.
 	 */
-	void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2]; /**< Cache objects */
+	void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2] __rte_cache_aligned;
 } __rte_cache_aligned;
 
 /**
