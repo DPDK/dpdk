@@ -5,6 +5,7 @@
 #ifndef RTE_PMD_MLX5_COMMON_UTILS_H_
 #define RTE_PMD_MLX5_COMMON_UTILS_H_
 
+#include <rte_compat.h>
 #include <rte_rwlock.h>
 
 #include "mlx5_common.h"

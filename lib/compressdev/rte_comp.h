@@ -16,6 +16,7 @@
 extern "C" {
 #endif
 
+#include <rte_compat.h>
 #include <rte_mbuf.h>
 
 /**

@@ -20,6 +20,7 @@ extern "C" {
 
 #include <string.h>
 
+#include <rte_compat.h>
 #include <rte_mbuf.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>

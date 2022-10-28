@@ -8,6 +8,7 @@
 #define json_t void *
 #endif
 
+#include <rte_compat.h>
 #include "rte_metrics.h"
 
 #ifndef _RTE_METRICS_TELEMETRY_H_

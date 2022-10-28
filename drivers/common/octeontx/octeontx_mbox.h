@@ -5,6 +5,7 @@
 #ifndef __OCTEONTX_MBOX_H__
 #define __OCTEONTX_MBOX_H__
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
 

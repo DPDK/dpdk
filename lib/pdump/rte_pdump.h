@@ -13,6 +13,7 @@
  */
 
 #include <stdint.h>
+#include <rte_compat.h>
 #include <rte_bpf.h>
 
 #ifdef __cplusplus

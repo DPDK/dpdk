@@ -8,6 +8,7 @@
 #ifndef _DPAA2_HW_PVT_H_
 #define _DPAA2_HW_PVT_H_
 
+#include <rte_compat.h>
 #include <rte_eventdev.h>
 #include <dpaax_iova_table.h>
 

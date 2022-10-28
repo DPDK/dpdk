@@ -5,6 +5,8 @@
 #ifndef _RTE_PMD_DPAA2_QDMA_H_
 #define _RTE_PMD_DPAA2_QDMA_H_
 
+#include <rte_compat.h>
+
 /** States if the source addresses is physical. */
 #define RTE_DPAA2_QDMA_JOB_SRC_PHY		(1ULL << 30)
 

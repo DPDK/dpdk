@@ -11,6 +11,8 @@
 #include <mc/fsl_dpio.h>
 #include <mc/fsl_mc_sys.h>
 
+#include <rte_compat.h>
+
 struct dpaa2_io_portal_t {
 	struct dpaa2_dpio_dev *dpio_dev;
 	struct dpaa2_dpio_dev *ethrx_dpio_dev;

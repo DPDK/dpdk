@@ -28,6 +28,7 @@
 #include <netinet/ip6.h>
 #endif
 
+#include <rte_compat.h>
 #include <rte_byteorder.h>
 #include <rte_mbuf.h>
 

@@ -5,6 +5,8 @@
 #ifndef RTE_PMD_PRIVATE_MLX5_H_
 #define RTE_PMD_PRIVATE_MLX5_H_
 
+#include <rte_compat.h>
+
 /**
  * @file
  * MLX5 public header.

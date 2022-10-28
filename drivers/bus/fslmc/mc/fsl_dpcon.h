@@ -7,6 +7,8 @@
 #ifndef __FSL_DPCON_H
 #define __FSL_DPCON_H
 
+#include <rte_compat.h>
+
 /* Data Path Concentrator API
  * Contains initialization APIs and runtime control APIs for DPCON
  */

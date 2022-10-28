@@ -17,6 +17,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include <rte_compat.h>
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change, or be removed, without prior notice

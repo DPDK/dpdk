@@ -23,7 +23,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "rte_compat.h"
 
 /*
  * Application Programmer's Interface (API)

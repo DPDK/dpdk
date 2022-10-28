@@ -8,7 +8,6 @@
 
 #include <stdint.h>
 
-#include <rte_compat.h>
 
 /**
  * @file rte_ipsec_sad.h

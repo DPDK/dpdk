@@ -210,6 +210,7 @@
 extern "C" {
 #endif
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_mbuf_pool_ops.h>

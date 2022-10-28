@@ -10,6 +10,7 @@
  * RTE Power Management
  */
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_power_guest_channel.h>

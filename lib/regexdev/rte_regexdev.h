@@ -198,6 +198,7 @@
 extern "C" {
 #endif
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_dev.h>
 #include <rte_mbuf.h>

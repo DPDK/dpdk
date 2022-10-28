@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <dpaa_rbtree.h>
+#include <rte_compat.h>
 #include <rte_eventdev.h>
 
 /* FQ lookups (turn this on for 64bit user-space) */

@@ -5,6 +5,7 @@
 #ifndef _RTE_LPM_SVE_H_
 #define _RTE_LPM_SVE_H_
 
+#include <rte_compat.h>
 #include <rte_vect.h>
 
 #ifdef __cplusplus

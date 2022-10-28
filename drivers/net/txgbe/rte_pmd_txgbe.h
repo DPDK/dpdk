@@ -12,7 +12,6 @@
 #ifndef _PMD_TXGBE_H_
 #define _PMD_TXGBE_H_
 
-#include <rte_compat.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 

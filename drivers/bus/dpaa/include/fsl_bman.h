@@ -7,6 +7,8 @@
 #ifndef __FSL_BMAN_H
 #define __FSL_BMAN_H
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

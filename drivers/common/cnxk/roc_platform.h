@@ -5,6 +5,7 @@
 #ifndef _ROC_PLATFORM_H_
 #define _ROC_PLATFORM_H_
 
+#include <rte_compat.h>
 #include <rte_alarm.h>
 #include <rte_bitmap.h>
 #include <bus_pci_driver.h>

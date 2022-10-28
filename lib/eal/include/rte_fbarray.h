@@ -36,7 +36,6 @@ extern "C" {
 
 #include <stdio.h>
 
-#include <rte_compat.h>
 #include <rte_rwlock.h>
 
 #define RTE_FBARRAY_NAME_LEN 64

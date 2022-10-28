@@ -10,6 +10,7 @@
 #define	__PROCESS_H
 
 #include <compat.h>
+#include <rte_compat.h>
 #include <rte_ethdev.h>
 
 /* The process device underlies process-wide user/kernel interactions, such as

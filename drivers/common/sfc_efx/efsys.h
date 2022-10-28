@@ -12,6 +12,7 @@
 
 #include <stdbool.h>
 
+#include <rte_compat.h>
 #include <rte_spinlock.h>
 #include <rte_byteorder.h>
 #include <rte_debug.h>

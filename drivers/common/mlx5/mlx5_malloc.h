@@ -5,6 +5,8 @@
 #ifndef MLX5_MALLOC_H_
 #define MLX5_MALLOC_H_
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

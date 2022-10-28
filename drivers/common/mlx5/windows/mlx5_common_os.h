@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+#include <rte_compat.h>
 #include <rte_errno.h>
 #include <rte_interrupts.h>
 

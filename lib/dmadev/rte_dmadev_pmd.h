@@ -16,6 +16,7 @@
 
 #include <dev_driver.h>
 
+#include <rte_compat.h>
 #include "rte_dmadev.h"
 
 #ifdef __cplusplus

@@ -3,7 +3,6 @@
  */
 
 #include <rte_log.h>
-#include <rte_compat.h>
 #include <rte_dev.h>
 
 int

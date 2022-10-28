@@ -15,6 +15,7 @@
  */
 
 #include <stdio.h>
+#include <rte_compat.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 

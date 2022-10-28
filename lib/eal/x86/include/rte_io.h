@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include <rte_compat.h>
 #include "rte_cpuflags.h"
 
 #define RTE_NATIVE_WRITE32_WC

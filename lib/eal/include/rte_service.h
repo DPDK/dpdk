@@ -30,6 +30,7 @@ extern "C" {
 #include<stdio.h>
 #include <stdint.h>
 
+#include <rte_compat.h>
 #include <rte_config.h>
 #include <rte_lcore.h>
 

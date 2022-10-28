@@ -17,7 +17,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <rte_compat.h>
 #include "generic/rte_atomic.h"
 
 #define	rte_mb()  asm volatile("sync" : : : "memory")

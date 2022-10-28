@@ -11,6 +11,7 @@
 #include <sys/queue.h>
 
 
+#include <rte_compat.h>
 #include <rte_rwlock.h>
 #include <rte_bitmap.h>
 #include <rte_mbuf.h>

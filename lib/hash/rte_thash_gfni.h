@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include <rte_compat.h>
 #include <rte_log.h>
 
 #ifdef RTE_ARCH_X86

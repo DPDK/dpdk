@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 
+#include <rte_compat.h>
 #include "rte_comp.h"
 
 /**

@@ -17,6 +17,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_ether.h>
 #include <rte_icmp.h>

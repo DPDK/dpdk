@@ -27,6 +27,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <rte_compat.h>
 #include <rte_cpuflags.h>
 
 #include "rte_bbdev_op.h"

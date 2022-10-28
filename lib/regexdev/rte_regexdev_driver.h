@@ -14,6 +14,7 @@
  * RegEx lib.
  */
 
+#include <rte_compat.h>
 #include "rte_regexdev.h"
 
 #ifdef __cplusplus

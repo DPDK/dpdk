@@ -10,7 +10,6 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_cycles.h>
-#include <rte_compat.h>
 
 #include "eth_bond_private.h"
 

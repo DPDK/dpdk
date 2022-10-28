@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <rte_common.h>
 #include <rte_atomic.h>
-#include <rte_compat.h>
 
 /**
  * Pause CPU execution for a short while

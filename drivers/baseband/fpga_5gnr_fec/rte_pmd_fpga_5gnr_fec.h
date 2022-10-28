@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <rte_compat.h>
+
 /**
  * @file rte_pmd_fpga_5gnr_fec.h
  *

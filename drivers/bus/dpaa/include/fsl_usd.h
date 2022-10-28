@@ -13,6 +13,8 @@
 #include <dpaa_list.h>
 #include <fsl_qman.h>
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

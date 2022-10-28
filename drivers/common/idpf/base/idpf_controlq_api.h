@@ -9,6 +9,8 @@
 #include "idpf_mem.h"
 #else /* !__KERNEL__ */
 #include "idpf_osdep.h"
+
+#include <rte_compat.h>
 #endif /* !__KERNEL__ */
 
 struct idpf_hw;

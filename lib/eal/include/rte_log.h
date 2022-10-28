@@ -24,7 +24,6 @@ extern "C" {
 
 #include <rte_common.h>
 #include <rte_config.h>
-#include <rte_compat.h>
 
 /* SDK log type */
 #define RTE_LOGTYPE_EAL        0 /**< Log related to eal. */

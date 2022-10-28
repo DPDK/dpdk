@@ -17,6 +17,7 @@
  * and burst transmit packets to KNI interfaces.
  */
 
+#include <rte_compat.h>
 #include <rte_pci.h>
 #include <rte_ether.h>
 

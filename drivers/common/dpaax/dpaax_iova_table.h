@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
+#include <rte_compat.h>
 #include <rte_eal.h>
 #include <rte_branch_prediction.h>
 #include <rte_memory.h>

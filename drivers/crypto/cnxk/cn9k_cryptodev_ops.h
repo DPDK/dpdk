@@ -5,6 +5,7 @@
 #ifndef _CN9K_CRYPTODEV_OPS_H_
 #define _CN9K_CRYPTODEV_OPS_H_
 
+#include <rte_compat.h>
 #include <cryptodev_pmd.h>
 
 extern struct rte_cryptodev_ops cn9k_cpt_ops;

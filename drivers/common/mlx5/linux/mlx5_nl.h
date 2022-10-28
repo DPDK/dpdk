@@ -7,6 +7,7 @@
 
 #include <linux/netlink.h>
 
+#include <rte_compat.h>
 #include <rte_ether.h>
 
 #include "mlx5_common.h"

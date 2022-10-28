@@ -14,6 +14,7 @@
  * processing (ESP/AH).
  */
 
+#include <rte_compat.h>
 #include <rte_ipsec_sa.h>
 #include <rte_mbuf.h>
 

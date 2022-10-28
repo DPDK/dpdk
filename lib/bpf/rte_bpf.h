@@ -16,6 +16,7 @@
  * (https://www.kernel.org/doc/Documentation/networking/filter.txt).
  */
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <bpf_def.h>

@@ -14,7 +14,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include <rte_compat.h>
 #include <rte_rcu_qsbr.h>
 
 #ifdef __cplusplus

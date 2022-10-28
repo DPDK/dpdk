@@ -6,6 +6,8 @@
 #ifndef _DPAA_SEC_EVENT_H_
 #define _DPAA_SEC_EVENT_H_
 
+#include <rte_compat.h>
+
 __rte_internal
 int dpaa_sec_eventq_attach(const struct rte_cryptodev *dev,
 		int qp_id,

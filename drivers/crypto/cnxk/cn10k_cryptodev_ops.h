@@ -5,6 +5,7 @@
 #ifndef _CN10K_CRYPTODEV_OPS_H_
 #define _CN10K_CRYPTODEV_OPS_H_
 
+#include <rte_compat.h>
 #include <cryptodev_pmd.h>
 #include <rte_cryptodev.h>
 #include <rte_eventdev.h>

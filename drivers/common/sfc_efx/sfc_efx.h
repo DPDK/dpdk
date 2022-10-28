@@ -15,6 +15,8 @@
 #include "efx.h"
 #include "efsys.h"
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

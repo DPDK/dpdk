@@ -9,6 +9,8 @@
 #include "iavf_alloc.h"
 #include "virtchnl.h"
 
+#include <rte_compat.h>
+
 /* Prototypes for shared code functions that are not in
  * the standard function pointer structures.  These are
  * mostly because they are needed even before the init

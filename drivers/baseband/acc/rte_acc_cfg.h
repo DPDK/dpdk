@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <rte_compat.h>
 #include "rte_acc_common_cfg.h"
 
 #ifdef __cplusplus

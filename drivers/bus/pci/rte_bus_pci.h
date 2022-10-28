@@ -22,6 +22,7 @@ extern "C" {
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <rte_compat.h>
 #include <rte_debug.h>
 #include <rte_interrupts.h>
 #include <rte_pci.h>

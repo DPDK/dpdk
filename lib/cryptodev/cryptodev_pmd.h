@@ -20,6 +20,7 @@ extern "C" {
 #include <string.h>
 
 #include <dev_driver.h>
+#include <rte_compat.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_common.h>

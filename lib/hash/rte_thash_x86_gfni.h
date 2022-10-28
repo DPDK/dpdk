@@ -12,6 +12,7 @@
  * using Galois Fields New Instructions.
  */
 
+#include <rte_compat.h>
 #include <rte_vect.h>
 
 #ifdef __cplusplus

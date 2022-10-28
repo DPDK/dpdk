@@ -11,6 +11,7 @@
  * NXP dpaa2 PMD specific functions.
  */
 
+#include <rte_compat.h>
 #include <rte_flow.h>
 
 /**

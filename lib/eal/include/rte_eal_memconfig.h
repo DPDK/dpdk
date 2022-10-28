@@ -7,7 +7,6 @@
 
 #include <stdbool.h>
 
-#include <rte_compat.h>
 
 /**
  * @file

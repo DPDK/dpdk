@@ -16,6 +16,7 @@
  * process, enqueue and move streams of objects to the next nodes.
  */
 
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>

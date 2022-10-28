@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <rte_compat.h>
 #include <rte_config.h>
 #include <rte_spinlock.h>
 #include <rte_debug.h>

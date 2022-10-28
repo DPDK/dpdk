@@ -5,6 +5,8 @@
 #ifndef _CPT_PMD_OPS_HELPER_H_
 #define _CPT_PMD_OPS_HELPER_H_
 
+#include <rte_compat.h>
+
 /*
  * This file defines the agreement between the common layer and the individual
  * crypto drivers for OCTEON TX series. Control path in otx* directory can

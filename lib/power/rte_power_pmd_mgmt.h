@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 
+#include <rte_compat.h>
 #include <rte_log.h>
 #include <rte_power.h>
 

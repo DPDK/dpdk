@@ -33,6 +33,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_atomic.h>

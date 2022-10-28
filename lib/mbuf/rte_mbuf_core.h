@@ -18,7 +18,6 @@
 
 #include <stdint.h>
 
-#include <rte_compat.h>
 #include <rte_byteorder.h>
 
 #ifdef __cplusplus

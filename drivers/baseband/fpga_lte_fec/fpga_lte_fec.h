@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <rte_compat.h>
+
 /**
  * @file fpga_lte_fec.h
  *

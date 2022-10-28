@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <sys/eventfd.h>
 
+#include <rte_compat.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
 

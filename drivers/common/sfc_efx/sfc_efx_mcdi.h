@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 
+#include <rte_compat.h>
 #include <rte_spinlock.h>
 
 #include "efsys.h"

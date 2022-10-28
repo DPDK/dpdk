@@ -8,6 +8,8 @@
 #ifndef _DPAA2_HW_DPBP_H_
 #define _DPAA2_HW_DPBP_H_
 
+#include <rte_compat.h>
+
 #define DPAA2_MAX_BUF_POOLS	8
 
 struct buf_pool_cfg {

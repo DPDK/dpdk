@@ -7,6 +7,7 @@
 #define RTE_PMD_MLX5_COMMON_MP_H_
 
 #include <mlx5_glue.h>
+#include <rte_compat.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 

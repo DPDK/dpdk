@@ -10,6 +10,7 @@
  * RTE Intel Uncore Frequency Management
  */
 
+#include <rte_compat.h>
 #include "rte_power.h"
 
 #ifdef __cplusplus

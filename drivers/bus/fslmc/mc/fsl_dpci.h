@@ -9,6 +9,8 @@
 
 #include <fsl_dpopr.h>
 
+#include <rte_compat.h>
+
 /* Data Path Communication Interface API
  * Contains initialization APIs and runtime control APIs for DPCI
  */

@@ -9,6 +9,7 @@
 
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
+#include <rte_compat.h>
 #include <rte_kvargs.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_pool_ops.h>

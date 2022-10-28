@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 
+#include <rte_compat.h>
 #include <rte_pci.h>
 #include <bus_pci_driver.h>
 #include <rte_debug.h>

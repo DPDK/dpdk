@@ -5,6 +5,7 @@
 #ifndef _ICE_ETHDEV_H_
 #define _ICE_ETHDEV_H_
 
+#include <rte_compat.h>
 #include <rte_kvargs.h>
 #include <rte_time.h>
 

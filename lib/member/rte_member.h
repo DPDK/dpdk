@@ -65,6 +65,7 @@ extern "C" {
 #include <stdbool.h>
 #include <inttypes.h>
 
+#include <rte_compat.h>
 #include <rte_common.h>
 
 /** The set ID type that stored internally in hash table based set summary. */

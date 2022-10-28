@@ -21,7 +21,6 @@ extern "C" {
 
 #include <rte_bitops.h>
 #include <rte_common.h>
-#include <rte_compat.h>
 #include <rte_config.h>
 #include <rte_fbarray.h>
 

@@ -10,6 +10,8 @@
 
 #include <fman.h>
 
+#include <rte_compat.h>
+
 /* Configuration information related to a specific ethernet port */
 struct fm_eth_port_cfg {
 	/**< A list of PCD FQ ranges, obtained from FMC configuration */

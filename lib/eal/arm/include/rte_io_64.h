@@ -14,6 +14,7 @@ extern "C" {
 #define RTE_OVERRIDE_IO_H
 
 #include "generic/rte_io.h"
+#include <rte_compat.h>
 #include "rte_atomic_64.h"
 
 static __rte_always_inline uint8_t

@@ -7,6 +7,8 @@
 
 #include "mlx5_devx_cmds.h"
 
+#include <rte_compat.h>
+
 /* The standard page size */
 #define MLX5_LOG_PAGE_SIZE 12
 
