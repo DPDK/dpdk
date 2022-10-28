@@ -786,8 +786,7 @@ uint16_t dpaa_eth_queue_rx(void *q,
 
 static int
 dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
-		struct qm_fd *fd,
-		struct dpaa_bp_info *bp_info)
+		struct qm_fd *fd)
 {
 	struct rte_mbuf *cur_seg = mbuf, *prev_seg = NULL;
 	struct rte_mbuf *temp, *mi;
@@ -796,7 +795,7 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 
 	DPAA_DP_LOG(DEBUG, "Creating SG FD to transmit");
 
-	temp = rte_pktmbuf_alloc(bp_info->mp);
+	temp = rte_pktmbuf_alloc(dpaa_tx_sg_pool);
 	if (!temp) {
 		DPAA_PMD_ERR("Failure in allocation of mbuf");
 		return -1;
@@ -832,7 +831,7 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 	fd->format = QM_FD_SG;
 	fd->addr = temp->buf_iova;
 	fd->offset = temp->data_off;
-	fd->bpid = bp_info ? bp_info->bpid : 0xff;
+	fd->bpid = DPAA_MEMPOOL_TO_BPID(dpaa_tx_sg_pool);
 	fd->length20 = mbuf->pkt_len;
 
 	while (i < DPAA_SGT_MAX_ENTRIES) {
@@ -950,7 +949,7 @@ tx_on_dpaa_pool(struct rte_mbuf *mbuf,
 		tx_on_dpaa_pool_unsegmented(mbuf, bp_info, fd_arr);
 	} else if (mbuf->nb_segs > 1 &&
 		   mbuf->nb_segs <= DPAA_SGT_MAX_ENTRIES) {
-		if (dpaa_eth_mbuf_to_sg_fd(mbuf, fd_arr, bp_info)) {
+		if (dpaa_eth_mbuf_to_sg_fd(mbuf, fd_arr)) {
 			DPAA_PMD_DEBUG("Unable to create Scatter Gather FD");
 			return 1;
 		}
