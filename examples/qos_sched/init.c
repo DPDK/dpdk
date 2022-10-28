@@ -280,20 +280,33 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 static int
 app_load_cfg_profile(const char *profile)
 {
+	int ret  = 0;
 	if (profile == NULL)
 		return 0;
 	struct rte_cfgfile *file = rte_cfgfile_load(profile, 0);
 	if (file == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot load configuration profile %s\n", profile);
 
-	cfg_load_port(file, &port_params);
-	cfg_load_subport(file, subport_params);
-	cfg_load_subport_profile(file, subport_profile);
-	cfg_load_pipe(file, pipe_profiles);
+	ret = cfg_load_port(file, &port_params);
+	if (ret)
+		goto _app_load_cfg_profile_error_return;
 
+	ret = cfg_load_subport(file, subport_params);
+	if (ret)
+		goto _app_load_cfg_profile_error_return;
+
+	ret = cfg_load_subport_profile(file, subport_profile);
+	if (ret)
+		goto _app_load_cfg_profile_error_return;
+
+	ret = cfg_load_pipe(file, pipe_profiles);
+	if (ret)
+		goto _app_load_cfg_profile_error_return;
+
+_app_load_cfg_profile_error_return:
 	rte_cfgfile_close(file);
 
-	return 0;
+	return ret;
 }
 
 int app_init(void)
