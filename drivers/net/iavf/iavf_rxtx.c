@@ -2417,43 +2417,45 @@ iavf_fill_ctx_desc_tunnelling_field(volatile uint64_t *qw0,
 	break;
 	}
 
-	/* L4TUNT: L4 Tunneling Type */
-	switch (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
-	case RTE_MBUF_F_TX_TUNNEL_IPIP:
-		/* for non UDP / GRE tunneling, set to 00b */
-		break;
-	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
-	case RTE_MBUF_F_TX_TUNNEL_GTP:
-	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
-		eip_typ |= IAVF_TXD_CTX_UDP_TUNNELING;
-		break;
-	case RTE_MBUF_F_TX_TUNNEL_GRE:
-		eip_typ |= IAVF_TXD_CTX_GRE_TUNNELING;
-		break;
-	default:
-		PMD_TX_LOG(ERR, "Tunnel type not supported");
-		return;
+	if (!(m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
+		/* L4TUNT: L4 Tunneling Type */
+		switch (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+		case RTE_MBUF_F_TX_TUNNEL_IPIP:
+			/* for non UDP / GRE tunneling, set to 00b */
+			break;
+		case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+		case RTE_MBUF_F_TX_TUNNEL_GTP:
+		case RTE_MBUF_F_TX_TUNNEL_GENEVE:
+			eip_typ |= IAVF_TXD_CTX_UDP_TUNNELING;
+			break;
+		case RTE_MBUF_F_TX_TUNNEL_GRE:
+			eip_typ |= IAVF_TXD_CTX_GRE_TUNNELING;
+			break;
+		default:
+			PMD_TX_LOG(ERR, "Tunnel type not supported");
+			return;
+		}
+
+		/* L4TUNLEN: L4 Tunneling Length, in Words
+		 *
+		 * We depend on app to set rte_mbuf.l2_len correctly.
+		 * For IP in GRE it should be set to the length of the GRE
+		 * header;
+		 * For MAC in GRE or MAC in UDP it should be set to the length
+		 * of the GRE or UDP headers plus the inner MAC up to including
+		 * its last Ethertype.
+		 * If MPLS labels exists, it should include them as well.
+		 */
+		eip_typ |= (m->l2_len >> 1) << IAVF_TXD_CTX_QW0_NATLEN_SHIFT;
+
+		/**
+		 * Calculate the tunneling UDP checksum.
+		 * Shall be set only if L4TUNT = 01b and EIPT is not zero
+		 */
+		if (!(eip_typ & IAVF_TX_CTX_EXT_IP_NONE) &&
+		    (eip_typ & IAVF_TXD_CTX_UDP_TUNNELING))
+			eip_typ |= IAVF_TXD_CTX_QW0_L4T_CS_MASK;
 	}
-
-	/* L4TUNLEN: L4 Tunneling Length, in Words
-	 *
-	 * We depend on app to set rte_mbuf.l2_len correctly.
-	 * For IP in GRE it should be set to the length of the GRE
-	 * header;
-	 * For MAC in GRE or MAC in UDP it should be set to the length
-	 * of the GRE or UDP headers plus the inner MAC up to including
-	 * its last Ethertype.
-	 * If MPLS labels exists, it should include them as well.
-	 */
-	eip_typ |= (m->l2_len >> 1) << IAVF_TXD_CTX_QW0_NATLEN_SHIFT;
-
-	/**
-	 * Calculate the tunneling UDP checksum.
-	 * Shall be set only if L4TUNT = 01b and EIPT is not zero
-	 */
-	if (!(eip_typ & IAVF_TX_CTX_EXT_IP_NONE) &&
-	    (eip_typ & IAVF_TXD_CTX_UDP_TUNNELING))
-		eip_typ |= IAVF_TXD_CTX_QW0_L4T_CS_MASK;
 
 	*qw0 = eip_typ << IAVF_TXD_CTX_QW0_TUN_PARAMS_EIPT_SHIFT |
 		eip_len << IAVF_TXD_CTX_QW0_TUN_PARAMS_EIPLEN_SHIFT |
@@ -2591,7 +2593,8 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 	}
 
 	/* Set MACLEN */
-	if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+	if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK &&
+			!(m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD))
 		offset |= (m->outer_l2_len >> 1)
 			<< IAVF_TX_DESC_LENGTH_MACLEN_SHIFT;
 	else
@@ -2844,7 +2847,10 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			txe->mbuf = mb_seg;
 
-			if (mb_seg->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+			if ((mb_seg->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) &&
+					(mb_seg->ol_flags &
+						(RTE_MBUF_F_TX_TCP_SEG |
+						RTE_MBUF_F_TX_UDP_SEG))) {
 				slen = tlen + mb_seg->l2_len + mb_seg->l3_len +
 						mb_seg->outer_l3_len + ipseclen;
 				if (mb_seg->ol_flags & RTE_MBUF_F_TX_L4_MASK)
