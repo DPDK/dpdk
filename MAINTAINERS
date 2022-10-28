@@ -577,7 +577,6 @@ F: drivers/bus/vdev/
 F: app/test/test_vdev.c
 
 VMBUS bus driver
-M: Stephen Hemminger <sthemmin@microsoft.com>
 M: Long Li <longli@microsoft.com>
 F: drivers/bus/vmbus/
 
@@ -852,7 +851,6 @@ F: drivers/net/vdev_netvsc/
 F: doc/guides/nics/vdev_netvsc.rst
 
 Microsoft Hyper-V netvsc
-M: Stephen Hemminger <sthemmin@microsoft.com>
 M: Long Li <longli@microsoft.com>
 F: drivers/net/netvsc/
 F: doc/guides/nics/netvsc.rst
