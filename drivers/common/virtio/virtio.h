@@ -162,6 +162,7 @@ struct virtio_dev_specific_ops {
 	void * (*get_queue_offset)(void *state);
 	uint32_t (*get_state_size)(uint16_t num_queues);
 	void (*dev_cfg_dump)(void *f_hdr);
+	void (*dev_state_init)(void *state);
 };
 
 /*

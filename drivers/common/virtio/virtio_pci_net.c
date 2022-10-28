@@ -17,6 +17,8 @@
 struct virtio_net_dev_state {
 	struct virtio_dev_common_state common_state;
 	struct virtio_net_config net_dev_cfg;
+	struct virtio_field_hdr rx_mod_hdr;
+	union virtnet_rx_mode rxomd;
 	struct virtio_dev_queue_info q_info[];
 } __rte_packed;
 
@@ -86,10 +88,23 @@ modern_net_dev_cfg_dump(void *f_hdr)
 		  dev_cfg->status, dev_cfg->max_virtqueue_pairs, dev_cfg->mtu);
 }
 
+static void
+modern_net_dev_state_init(void *state)
+{
+	struct virtio_net_dev_state *state_net = state;
+
+	/*Set to promisc mod, this is WA to fix ipv6 issue RM:3229948*/
+	state_net->rx_mod_hdr.type = rte_cpu_to_le_32(VIRTIO_NET_RX_MODE_CFG);
+	state_net->rx_mod_hdr.size = rte_cpu_to_le_32(sizeof(union virtnet_rx_mode));
+	state_net->rxomd.promisc = 1;
+	state_net->rxomd.val = rte_cpu_to_le_32(state_net->rxomd.val);
+}
+
 const struct virtio_dev_specific_ops virtio_net_dev_pci_modern_ops = {
 	.get_queue_num = modern_net_get_queue_num,
 	.get_dev_cfg_size = modern_net_get_dev_cfg_size,
 	.get_queue_offset = modern_net_get_queue_offset,
 	.get_state_size = modern_net_get_state_size,
 	.dev_cfg_dump = modern_net_dev_cfg_dump,
+	.dev_state_init = modern_net_dev_state_init,
 };

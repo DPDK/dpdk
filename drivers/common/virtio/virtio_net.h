@@ -57,6 +57,21 @@
 	VIRTIO_NET_HASH_TYPE_TCP_EX | \
 	VIRTIO_NET_HASH_TYPE_UDP_EX)
 
+/**
+ * virtnet rx mode fileds
+ */
+union virtnet_rx_mode {
+	uint32_t val;
+	struct {
+		unsigned int promisc:1;
+		unsigned int allmulti:1;
+		unsigned int alluni:1;
+		unsigned int nomulti:1;
+		unsigned int nouni:1;
+		unsigned int nobcast:1;
+	};
+};
+
 /*
  * This structure is just a reference to read net device specific
  * config space; it is just a shadow structure.

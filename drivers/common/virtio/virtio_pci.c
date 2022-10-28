@@ -842,6 +842,9 @@ virtio_pci_dev_state_bar_copy(struct virtio_pci_dev *vpdev, void *state, int sta
 	/* Read config generation after read dev config in case it change */
 	state_info->common_cfg.config_generation = rte_read8(&vpdev->common_cfg->config_generation);
 
+	if(hw->virtio_dev_sp_ops->dev_state_init)
+		hw->virtio_dev_sp_ops->dev_state_init(state);
+
 	/* Queue state info init */
 	q_info = hw->virtio_dev_sp_ops->get_queue_offset(state);
 	for(qid = 0; qid < num_queues; qid++) {
