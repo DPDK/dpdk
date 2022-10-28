@@ -42,6 +42,7 @@ dpdk_driver_classes = []
 dpdk_drivers = []
 dpdk_extra_ldflags = []
 dpdk_libs_deprecated = []
+dpdk_apps_disabled = []
 dpdk_libs_disabled = []
 dpdk_drvs_disabled = []
 testpmd_drivers_sources = []
@@ -115,8 +116,21 @@ if meson.is_subproject()
     subdir('buildtools/subproject')
 endif
 
-# final output, list all the libs and drivers to be built
-# this does not affect any part of the build, for information only.
+# Final output, list all the parts to be built.
+# This does not affect any part of the build, for information only.
+output_message = '\n=================\nApplications Enabled\n=================\n'
+output_message += '\napps:\n\t'
+output_count = 0
+foreach app:enabled_apps
+    output_message += app + ', '
+    output_count += 1
+    if output_count == 8
+        output_message += '\n\t'
+        output_count = 0
+    endif
+endforeach
+message(output_message + '\n')
+
 output_message = '\n=================\nLibraries Enabled\n=================\n'
 output_message += '\nlibs:\n\t'
 output_count = 0
@@ -147,6 +161,11 @@ endforeach
 message(output_message + '\n')
 
 output_message = '\n=================\nContent Skipped\n=================\n'
+output_message += '\napps:\n\t'
+foreach app:dpdk_apps_disabled
+    reason = get_variable(app.underscorify() + '_disable_reason')
+    output_message += app + ':\t' + reason + '\n\t'
+endforeach
 output_message += '\nlibs:\n\t'
 foreach lib:dpdk_libs_disabled
     reason = get_variable(lib.underscorify() + '_disable_reason')
