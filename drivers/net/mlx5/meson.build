@@ -9,6 +9,11 @@ if not (is_linux or is_windows)
 endif
 
 deps += ['hash', 'common_mlx5']
+if not ('mlx5' in common_drivers)
+    # avoid referencing undefined variables from common/mlx5
+    subdir_done()
+endif
+
 headers = files('rte_pmd_mlx5.h')
 sources = files(
         'mlx5.c',

@@ -9,6 +9,11 @@ endif
 
 fmt_name = 'mlx5_crypto'
 deps += ['common_mlx5', 'eal', 'cryptodev']
+if not ('mlx5' in common_drivers)
+    # avoid referencing undefined variables from common/mlx5
+    subdir_done()
+endif
+
 sources = files(
         'mlx5_crypto.c',
         'mlx5_crypto_dek.c',
