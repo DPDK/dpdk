@@ -8,7 +8,6 @@ dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_common_mlx5_glue.so'
 LIB_GLUE_VERSION = abi_version
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
-mlx5_config = configuration_data()
 if dlopen_ibverbs
     dpdk_conf.set('RTE_IBVERBS_LINK_DLOPEN', 1)
     cflags += [
@@ -232,7 +231,6 @@ foreach arg:has_member_args
     file_prefix = '#include <' + arg[1] + '>'
     mlx5_config.set(arg[0], cc.has_member(arg[2], arg[3], prefix : file_prefix, dependencies: libs))
 endforeach
-configure_file(output : 'mlx5_autoconf.h', configuration : mlx5_config)
 
 # Build Glue Library
 if dlopen_ibverbs
@@ -243,6 +241,7 @@ if dlopen_ibverbs
     dlopen_install_dir = [ eal_pmd_path + '-glue' ]
     dlopen_includes = [global_inc]
     dlopen_includes += include_directories('../../../../lib/eal/include/generic')
+    dlopen_includes += include_directories('..')
     shared_lib = shared_library(
             dlopen_lib_name,
             dlopen_sources,

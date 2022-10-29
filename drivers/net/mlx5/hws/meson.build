@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2022 NVIDIA Corporation & Affiliates
 
+if not (is_linux and mlx5_config.get('HAVE_IBV_FLOW_DV_SUPPORT', false))
+    subdir_done()
+endif
+
 includes += include_directories('.')
 sources += files(
         'mlx5dr_context.c',

@@ -37,4 +37,6 @@ else
     cflags += [ '-UPEDANTIC' ]
 endif
 
+mlx5_config = configuration_data()
 subdir(exec_env)
+configure_file(output: 'mlx5_autoconf.h', configuration: mlx5_config)

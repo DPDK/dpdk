@@ -78,6 +78,4 @@ testpmd_sources += files('mlx5_testpmd.c')
 
 subdir(exec_env)
 
-if (is_linux and mlx5_config.get('HAVE_IBV_FLOW_DV_SUPPORT', false))
-    subdir('hws')
-endif
+subdir('hws')
