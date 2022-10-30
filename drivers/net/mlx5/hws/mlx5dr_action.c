@@ -83,7 +83,7 @@ static int mlx5dr_action_get_shared_stc_nic(struct mlx5dr_context *ctx,
 
 	pthread_spin_lock(&ctx->ctrl_lock);
 	if (ctx->common_res[tbl_type].shared_stc[stc_type]) {
-		rte_atomic32_add(&ctx->common_res[tbl_type].shared_stc[stc_type]->refcount, 1);
+		ctx->common_res[tbl_type].shared_stc[stc_type]->refcount++;
 		pthread_spin_unlock(&ctx->ctrl_lock);
 		return 0;
 	}
@@ -123,9 +123,7 @@ static int mlx5dr_action_get_shared_stc_nic(struct mlx5dr_context *ctx,
 	}
 
 	ctx->common_res[tbl_type].shared_stc[stc_type] = shared_stc;
-
-	rte_atomic32_init(&ctx->common_res[tbl_type].shared_stc[stc_type]->refcount);
-	rte_atomic32_set(&ctx->common_res[tbl_type].shared_stc[stc_type]->refcount, 1);
+	ctx->common_res[tbl_type].shared_stc[stc_type]->refcount = 1;
 
 	pthread_spin_unlock(&ctx->ctrl_lock);
 
@@ -145,7 +143,7 @@ static void mlx5dr_action_put_shared_stc_nic(struct mlx5dr_context *ctx,
 	struct mlx5dr_action_shared_stc *shared_stc;
 
 	pthread_spin_lock(&ctx->ctrl_lock);
-	if (!rte_atomic32_dec_and_test(&ctx->common_res[tbl_type].shared_stc[stc_type]->refcount)) {
+	if (--ctx->common_res[tbl_type].shared_stc[stc_type]->refcount) {
 		pthread_spin_unlock(&ctx->ctrl_lock);
 		return;
 	}

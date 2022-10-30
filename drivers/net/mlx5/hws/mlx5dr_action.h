@@ -70,7 +70,7 @@ struct mlx5dr_action_default_stc {
 
 struct mlx5dr_action_shared_stc {
 	struct mlx5dr_pool_chunk remove_header;
-	rte_atomic32_t refcount;
+	uint32_t refcount;
 };
 
 struct mlx5dr_actions_apply_data {

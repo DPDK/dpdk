@@ -35,7 +35,7 @@ struct mlx5dr_pat_cached_pattern {
 		uint8_t *data;
 		uint16_t num_of_actions;
 	} mh_data;
-	rte_atomic32_t refcount;
+	uint32_t refcount;
 	LIST_ENTRY(mlx5dr_pat_cached_pattern) next;
 };
 

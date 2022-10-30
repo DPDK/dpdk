@@ -128,7 +128,7 @@ mlx5dr_pat_get_existing_cached_pattern(struct mlx5dr_pattern_cache *cache,
 		/* LRU: move it to be first in the list */
 		LIST_REMOVE(cached_pattern, next);
 		LIST_INSERT_HEAD(&cache->head, cached_pattern, next);
-		rte_atomic32_add(&cached_pattern->refcount, 1);
+		cached_pattern->refcount++;
 	}
 
 	return cached_pattern;
@@ -179,9 +179,7 @@ mlx5dr_pat_add_pattern_to_cache(struct mlx5dr_pattern_cache *cache,
 	       num_of_actions * MLX5DR_MODIFY_ACTION_SIZE);
 
 	LIST_INSERT_HEAD(&cache->head, cached_pattern, next);
-
-	rte_atomic32_init(&cached_pattern->refcount);
-	rte_atomic32_set(&cached_pattern->refcount, 1);
+	cached_pattern->refcount = 1;
 
 	return cached_pattern;
 
@@ -212,7 +210,7 @@ mlx5dr_pat_put_pattern(struct mlx5dr_pattern_cache *cache,
 		goto out;
 	}
 
-	if (!rte_atomic32_dec_and_test(&cached_pattern->refcount))
+	if (--cached_pattern->refcount)
 		goto out;
 
 	mlx5dr_pat_remove_pattern(cached_pattern);
