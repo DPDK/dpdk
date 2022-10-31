@@ -3431,6 +3431,8 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	 */
 	internals->rx_desc_lim.nb_max = UINT16_MAX;
 	internals->tx_desc_lim.nb_max = UINT16_MAX;
+	internals->rx_desc_lim.nb_align = 1;
+	internals->tx_desc_lim.nb_align = 1;
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
