@@ -1208,3 +1208,276 @@ idpf_stop_queues(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(WARNING, "Fail to stop Tx queue %d", i);
 	}
 }
+
+static void
+idpf_split_rx_bufq_refill(struct idpf_rx_queue *rx_bufq)
+{
+	volatile struct virtchnl2_splitq_rx_buf_desc *rx_buf_ring;
+	volatile struct virtchnl2_splitq_rx_buf_desc *rx_buf_desc;
+	uint16_t nb_refill = rx_bufq->rx_free_thresh;
+	uint16_t nb_desc = rx_bufq->nb_rx_desc;
+	uint16_t next_avail = rx_bufq->rx_tail;
+	struct rte_mbuf *nmb[rx_bufq->rx_free_thresh];
+	struct rte_eth_dev *dev;
+	uint64_t dma_addr;
+	uint16_t delta;
+	int i;
+
+	if (rx_bufq->nb_rx_hold < rx_bufq->rx_free_thresh)
+		return;
+
+	rx_buf_ring = rx_bufq->rx_ring;
+	delta = nb_desc - next_avail;
+	if (unlikely(delta < nb_refill)) {
+		if (likely(rte_pktmbuf_alloc_bulk(rx_bufq->mp, nmb, delta) == 0)) {
+			for (i = 0; i < delta; i++) {
+				rx_buf_desc = &rx_buf_ring[next_avail + i];
+				rx_bufq->sw_ring[next_avail + i] = nmb[i];
+				dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb[i]));
+				rx_buf_desc->hdr_addr = 0;
+				rx_buf_desc->pkt_addr = dma_addr;
+			}
+			nb_refill -= delta;
+			next_avail = 0;
+			rx_bufq->nb_rx_hold -= delta;
+		} else {
+			dev = &rte_eth_devices[rx_bufq->port_id];
+			dev->data->rx_mbuf_alloc_failed += nb_desc - next_avail;
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
+				   rx_bufq->port_id, rx_bufq->queue_id);
+			return;
+		}
+	}
+
+	if (nb_desc - next_avail >= nb_refill) {
+		if (likely(rte_pktmbuf_alloc_bulk(rx_bufq->mp, nmb, nb_refill) == 0)) {
+			for (i = 0; i < nb_refill; i++) {
+				rx_buf_desc = &rx_buf_ring[next_avail + i];
+				rx_bufq->sw_ring[next_avail + i] = nmb[i];
+				dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb[i]));
+				rx_buf_desc->hdr_addr = 0;
+				rx_buf_desc->pkt_addr = dma_addr;
+			}
+			next_avail += nb_refill;
+			rx_bufq->nb_rx_hold -= nb_refill;
+		} else {
+			dev = &rte_eth_devices[rx_bufq->port_id];
+			dev->data->rx_mbuf_alloc_failed += nb_desc - next_avail;
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
+				   rx_bufq->port_id, rx_bufq->queue_id);
+		}
+	}
+
+	IDPF_PCI_REG_WRITE(rx_bufq->qrx_tail, next_avail);
+
+	rx_bufq->rx_tail = next_avail;
+}
+
+uint16_t
+idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		      uint16_t nb_pkts)
+{
+	volatile struct virtchnl2_rx_flex_desc_adv_nic_3 *rx_desc_ring;
+	volatile struct virtchnl2_rx_flex_desc_adv_nic_3 *rx_desc;
+	uint16_t pktlen_gen_bufq_id;
+	struct idpf_rx_queue *rxq;
+	struct rte_mbuf *rxm;
+	uint16_t rx_id_bufq1;
+	uint16_t rx_id_bufq2;
+	uint16_t pkt_len;
+	uint16_t bufq_id;
+	uint16_t gen_id;
+	uint16_t rx_id;
+	uint16_t nb_rx;
+
+	nb_rx = 0;
+	rxq = rx_queue;
+
+	if (unlikely(rxq == NULL) || unlikely(!rxq->q_started))
+		return nb_rx;
+
+	rx_id = rxq->rx_tail;
+	rx_id_bufq1 = rxq->bufq1->rx_next_avail;
+	rx_id_bufq2 = rxq->bufq2->rx_next_avail;
+	rx_desc_ring = rxq->rx_ring;
+
+	while (nb_rx < nb_pkts) {
+		rx_desc = &rx_desc_ring[rx_id];
+
+		pktlen_gen_bufq_id =
+			rte_le_to_cpu_16(rx_desc->pktlen_gen_bufq_id);
+		gen_id = (pktlen_gen_bufq_id &
+			  VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) >>
+			VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S;
+		if (gen_id != rxq->expected_gen_id)
+			break;
+
+		pkt_len = (pktlen_gen_bufq_id &
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_LEN_PBUF_M) >>
+			VIRTCHNL2_RX_FLEX_DESC_ADV_LEN_PBUF_S;
+		if (pkt_len == 0)
+			PMD_RX_LOG(ERR, "Packet length is 0");
+
+		rx_id++;
+		if (unlikely(rx_id == rxq->nb_rx_desc)) {
+			rx_id = 0;
+			rxq->expected_gen_id ^= 1;
+		}
+
+		bufq_id = (pktlen_gen_bufq_id &
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_BUFQ_ID_M) >>
+			VIRTCHNL2_RX_FLEX_DESC_ADV_BUFQ_ID_S;
+		if (bufq_id == 0) {
+			rxm = rxq->bufq1->sw_ring[rx_id_bufq1];
+			rx_id_bufq1++;
+			if (unlikely(rx_id_bufq1 == rxq->bufq1->nb_rx_desc))
+				rx_id_bufq1 = 0;
+			rxq->bufq1->nb_rx_hold++;
+		} else {
+			rxm = rxq->bufq2->sw_ring[rx_id_bufq2];
+			rx_id_bufq2++;
+			if (unlikely(rx_id_bufq2 == rxq->bufq2->nb_rx_desc))
+				rx_id_bufq2 = 0;
+			rxq->bufq2->nb_rx_hold++;
+		}
+
+		rxm->pkt_len = pkt_len;
+		rxm->data_len = pkt_len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rxm->next = NULL;
+		rxm->nb_segs = 1;
+		rxm->port = rxq->port_id;
+
+		rx_pkts[nb_rx++] = rxm;
+	}
+
+	if (nb_rx > 0) {
+		rxq->rx_tail = rx_id;
+		if (rx_id_bufq1 != rxq->bufq1->rx_next_avail)
+			rxq->bufq1->rx_next_avail = rx_id_bufq1;
+		if (rx_id_bufq2 != rxq->bufq2->rx_next_avail)
+			rxq->bufq2->rx_next_avail = rx_id_bufq2;
+
+		idpf_split_rx_bufq_refill(rxq->bufq1);
+		idpf_split_rx_bufq_refill(rxq->bufq2);
+	}
+
+	return nb_rx;
+}
+
+static inline void
+idpf_update_rx_tail(struct idpf_rx_queue *rxq, uint16_t nb_hold,
+		    uint16_t rx_id)
+{
+	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
+
+	if (nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG,
+			   "port_id=%u queue_id=%u rx_tail=%u nb_hold=%u",
+			   rxq->port_id, rxq->queue_id, rx_id, nb_hold);
+		rx_id = (uint16_t)((rx_id == 0) ?
+				   (rxq->nb_rx_desc - 1) : (rx_id - 1));
+		IDPF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		nb_hold = 0;
+	}
+	rxq->nb_rx_hold = nb_hold;
+}
+
+uint16_t
+idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts)
+{
+	volatile union virtchnl2_rx_desc *rx_ring;
+	volatile union virtchnl2_rx_desc *rxdp;
+	union virtchnl2_rx_desc rxd;
+	struct idpf_rx_queue *rxq;
+	uint16_t rx_id, nb_hold;
+	struct rte_eth_dev *dev;
+	uint16_t rx_packet_len;
+	struct rte_mbuf *rxm;
+	struct rte_mbuf *nmb;
+	uint16_t rx_status0;
+	uint64_t dma_addr;
+	uint16_t nb_rx;
+
+	nb_rx = 0;
+	nb_hold = 0;
+	rxq = rx_queue;
+
+	if (unlikely(rxq == NULL) || unlikely(!rxq->q_started))
+		return nb_rx;
+
+	rx_id = rxq->rx_tail;
+	rx_ring = rxq->rx_ring;
+
+	while (nb_rx < nb_pkts) {
+		rxdp = &rx_ring[rx_id];
+		rx_status0 = rte_le_to_cpu_16(rxdp->flex_nic_wb.status_error0);
+
+		/* Check the DD bit first */
+		if ((rx_status0 & (1 << VIRTCHNL2_RX_FLEX_DESC_STATUS0_DD_S)) == 0)
+			break;
+
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(nmb == NULL)) {
+			dev = &rte_eth_devices[rxq->port_id];
+			dev->data->rx_mbuf_alloc_failed++;
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", rxq->port_id, rxq->queue_id);
+			break;
+		}
+		rxd = *rxdp; /* copy descriptor in ring to temp variable*/
+
+		nb_hold++;
+		rxm = rxq->sw_ring[rx_id];
+		rxq->sw_ring[rx_id] = nmb;
+		rx_id++;
+		if (unlikely(rx_id == rxq->nb_rx_desc))
+			rx_id = 0;
+
+		/* Prefetch next mbuf */
+		rte_prefetch0(rxq->sw_ring[rx_id]);
+
+		/* When next RX descriptor is on a cache line boundary,
+		 * prefetch the next 4 RX descriptors and next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(rxq->sw_ring[rx_id]);
+		}
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		rxdp->read.hdr_addr = 0;
+		rxdp->read.pkt_addr = dma_addr;
+
+		rx_packet_len = (rte_cpu_to_le_16(rxd.flex_nic_wb.pkt_len) &
+				 VIRTCHNL2_RX_FLEX_DESC_PKT_LEN_M);
+
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_prefetch0(RTE_PTR_ADD(rxm->buf_addr, RTE_PKTMBUF_HEADROOM));
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = rx_packet_len;
+		rxm->data_len = rx_packet_len;
+		rxm->port = rxq->port_id;
+
+		rx_pkts[nb_rx++] = rxm;
+	}
+	rxq->rx_tail = rx_id;
+
+	idpf_update_rx_tail(rxq, nb_hold, rx_id);
+
+	return nb_rx;
+}
+
+void
+idpf_set_rx_function(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+
+	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT)
+		dev->rx_pkt_burst = idpf_splitq_recv_pkts;
+	else
+		dev->rx_pkt_burst = idpf_singleq_recv_pkts;
+}
