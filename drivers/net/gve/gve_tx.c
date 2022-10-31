@@ -463,7 +463,7 @@ gve_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 static inline void
 gve_reset_txq(struct gve_tx_queue *txq)
 {
-	struct rte_mbuf **sw_ring = txq->sw_ring;
+	struct rte_mbuf **sw_ring;
 	uint32_t size, i;
 
 	if (txq == NULL) {
@@ -475,6 +475,7 @@ gve_reset_txq(struct gve_tx_queue *txq)
 	for (i = 0; i < size; i++)
 		((volatile char *)txq->tx_desc_ring)[i] = 0;
 
+	sw_ring = txq->sw_ring;
 	for (i = 0; i < txq->nb_tx_desc; i++) {
 		sw_ring[i] = NULL;
 		if (txq->is_gqi_qpl) {

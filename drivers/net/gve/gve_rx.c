@@ -150,7 +150,7 @@ gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 static inline void
 gve_reset_rxq(struct gve_rx_queue *rxq)
 {
-	struct rte_mbuf **sw_ring = rxq->sw_ring;
+	struct rte_mbuf **sw_ring;
 	uint32_t size, i;
 
 	if (rxq == NULL) {
@@ -166,6 +166,7 @@ gve_reset_rxq(struct gve_rx_queue *rxq)
 	for (i = 0; i < size; i++)
 		((volatile char *)rxq->rx_data_ring)[i] = 0;
 
+	sw_ring = rxq->sw_ring;
 	for (i = 0; i < rxq->nb_rx_desc; i++)
 		sw_ring[i] = NULL;
 
