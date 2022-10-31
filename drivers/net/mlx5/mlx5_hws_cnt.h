@@ -506,6 +506,7 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
 		rte_ring_dequeue_zc_burst_elem_start(qcache, sizeof(cnt_id_t),
 				1, &zcdc, NULL);
 		*cnt_id = *(cnt_id_t *)zcdc.ptr1;
+		iidx = mlx5_hws_cnt_iidx(cpool, *cnt_id);
 	}
 	__hws_cnt_query_raw(cpool, *cnt_id, &cpool->pool[iidx].reset.hits,
 			    &cpool->pool[iidx].reset.bytes);
