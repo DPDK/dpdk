@@ -1281,6 +1281,7 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	volatile struct virtchnl2_rx_flex_desc_adv_nic_3 *rx_desc;
 	uint16_t pktlen_gen_bufq_id;
 	struct idpf_rx_queue *rxq;
+	const uint32_t *ptype_tbl;
 	struct rte_mbuf *rxm;
 	uint16_t rx_id_bufq1;
 	uint16_t rx_id_bufq2;
@@ -1300,6 +1301,7 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_id_bufq1 = rxq->bufq1->rx_next_avail;
 	rx_id_bufq2 = rxq->bufq2->rx_next_avail;
 	rx_desc_ring = rxq->rx_ring;
+	ptype_tbl = rxq->adapter->ptype_tbl;
 
 	while (nb_rx < nb_pkts) {
 		rx_desc = &rx_desc_ring[rx_id];
@@ -1347,6 +1349,10 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->next = NULL;
 		rxm->nb_segs = 1;
 		rxm->port = rxq->port_id;
+		rxm->packet_type =
+			ptype_tbl[(rte_le_to_cpu_16(rx_desc->ptype_err_fflags0) &
+				   VIRTCHNL2_RX_FLEX_DESC_ADV_PTYPE_M) >>
+				  VIRTCHNL2_RX_FLEX_DESC_ADV_PTYPE_S];
 
 		rx_pkts[nb_rx++] = rxm;
 	}
@@ -1533,6 +1539,7 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	volatile union virtchnl2_rx_desc *rxdp;
 	union virtchnl2_rx_desc rxd;
 	struct idpf_rx_queue *rxq;
+	const uint32_t *ptype_tbl;
 	uint16_t rx_id, nb_hold;
 	struct rte_eth_dev *dev;
 	uint16_t rx_packet_len;
@@ -1551,6 +1558,7 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
+	ptype_tbl = rxq->adapter->ptype_tbl;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -1603,6 +1611,9 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->pkt_len = rx_packet_len;
 		rxm->data_len = rx_packet_len;
 		rxm->port = rxq->port_id;
+		rxm->packet_type =
+			ptype_tbl[(uint8_t)(rte_cpu_to_le_16(rxd.flex_nic_wb.ptype_flex_flags0) &
+					    VIRTCHNL2_RX_FLEX_DESC_PTYPE_M)];
 
 		rx_pkts[nb_rx++] = rxm;
 	}

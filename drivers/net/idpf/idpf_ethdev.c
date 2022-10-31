@@ -686,6 +686,12 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 		goto err_api;
 	}
 
+	ret = idpf_get_pkt_type(adapter);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to set ptype table");
+		goto err_api;
+	}
+
 	adapter->caps = rte_zmalloc("idpf_caps",
 				sizeof(struct virtchnl2_get_capabilities), 0);
 	if (adapter->caps == NULL) {

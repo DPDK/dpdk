@@ -23,6 +23,10 @@
 
 #define IDPF_TX_MAX_MTU_SEG	10
 
+#define IDPF_GET_PTYPE_SIZE(p) \
+	(sizeof(struct virtchnl2_ptype) + \
+	(((p)->proto_id_count ? ((p)->proto_id_count - 1) : 0) * sizeof((p)->proto_id[0])))
+
 struct idpf_rx_queue {
 	struct idpf_adapter *adapter;   /* the adapter this queue belongs to */
 	struct rte_mempool *mp;         /* mbuf pool to populate Rx ring */
@@ -150,4 +154,5 @@ void idpf_stop_queues(struct rte_eth_dev *dev);
 
 void idpf_set_rx_function(struct rte_eth_dev *dev);
 void idpf_set_tx_function(struct rte_eth_dev *dev);
+
 #endif /* _IDPF_RXTX_H_ */
