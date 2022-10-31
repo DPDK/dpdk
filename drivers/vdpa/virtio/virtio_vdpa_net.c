@@ -54,11 +54,18 @@ virtio_vdpa_net_queue_num_unit_get(void)
 	return VIRTIO_VDPA_NET_QUEUE_NUM_UNIT;
 }
 
+static void
+virtio_vdpa_net_add_vdap_feature(uint64_t *features)
+{
+	*features |= (1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE);
+}
+
 struct virtio_vdpa_device_callback virtio_vdpa_net_callback = {
 	.vhost_feature_get = virtio_vdpa_net_vhost_feature_get,
 	.dirty_desc_get = virtio_vdpa_net_dirty_desc_get,
 	.reg_dev_intr = NULL,
 	.unreg_dev_intr = NULL,
 	.vdpa_queue_num_unit_get = virtio_vdpa_net_queue_num_unit_get,
+	.add_vdpa_feature = virtio_vdpa_net_add_vdap_feature,
 };
 

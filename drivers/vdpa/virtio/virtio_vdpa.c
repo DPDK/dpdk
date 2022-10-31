@@ -208,6 +208,8 @@ virtio_vdpa_features_get(struct rte_vdpa_device *vdev, uint64_t *features)
 
 	*features |= (1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
 	*features |= (1ULL << VHOST_F_LOG_ALL);
+	if (priv->dev_ops->add_vdpa_feature)
+		priv->dev_ops->add_vdpa_feature(features);
 	DRV_LOG(INFO, "%s hw feature is 0x%" PRIx64, priv->vdev->device->name, *features);
 
 	return 0;
