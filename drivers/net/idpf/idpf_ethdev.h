@@ -33,6 +33,9 @@
 #define IDPF_CTLQ_LEN		64
 #define IDPF_DFLT_MBX_BUF_SIZE	4096
 
+#define IDPF_DFLT_Q_VEC_NUM	1
+#define IDPF_DFLT_INTERVAL	16
+
 #define IDPF_MIN_BUF_SIZE	1024
 #define IDPF_MAX_FRAME_SIZE	9728
 #define IDPF_MIN_FRAME_SIZE	14
@@ -92,6 +95,11 @@ struct idpf_vport {
 	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
 	uint16_t max_pkt_len; /* Maximum packet length */
 
+	/* MSIX info*/
+	struct virtchnl2_queue_vector *qv_map; /* queue vector mapping */
+	uint16_t max_vectors;
+	struct virtchnl2_alloc_vectors *recv_vectors;
+
 	/* Chunk info */
 	struct idpf_chunks_info chunks_info;
 
@@ -123,6 +131,8 @@ struct idpf_adapter {
 	uint16_t cur_vports;
 	uint16_t cur_vport_nb;
 	uint16_t cur_vport_idx;
+
+	uint16_t used_vecs_num;
 
 	/* Max config queue number per VC message */
 	uint32_t max_rxq_per_msg;
@@ -198,6 +208,9 @@ int idpf_switch_queue(struct idpf_vport *vport, uint16_t qid,
 		      bool rx, bool on);
 int idpf_vc_ena_dis_queues(struct idpf_vport *vport, bool enable);
 int idpf_vc_ena_dis_vport(struct idpf_vport *vport, bool enable);
+int idpf_vc_config_irq_map_unmap(struct idpf_vport *vport, bool map);
+int idpf_vc_alloc_vectors(struct idpf_vport *vport, uint16_t num_vectors);
+int idpf_vc_dealloc_vectors(struct idpf_vport *vport);
 int idpf_vc_query_ptype_info(struct idpf_adapter *adapter);
 int idpf_read_one_msg(struct idpf_adapter *adapter, uint32_t ops,
 		      uint16_t buf_len, uint8_t *buf);
