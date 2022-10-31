@@ -158,6 +158,12 @@ New Features
 
   * Added protocol based buffer split support in scalar path.
 
+* **Added Intel idpf driver.**
+
+  Added the new ``idpf`` net driver
+  for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2000.
+  See the :doc:`../nics/idpf` NIC guide for more details on this new driver.
+
 * **Updated Marvell cnxk driver.**
 
   * Added support for flow action REPRESENTED_PORT.

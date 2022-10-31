@@ -769,6 +769,15 @@ F: drivers/net/ice/
 F: doc/guides/nics/ice.rst
 F: doc/guides/nics/features/ice.ini
 
+Intel idpf
+M: Jingjing Wu <jingjing.wu@intel.com>
+M: Beilei Xing <beilei.xing@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+F: drivers/net/idpf/
+F: drivers/common/idpf/
+F: doc/guides/nics/idpf.rst
+F: doc/guides/nics/features/idpf.ini
+
 Intel igc
 M: Junfeng Guo <junfeng.guo@intel.com>
 M: Simei Su <simei.su@intel.com>
