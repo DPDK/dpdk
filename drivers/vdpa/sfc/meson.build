@@ -8,7 +8,6 @@ if ((arch_subdir != 'x86' or not dpdk_conf.get('RTE_ARCH_64')) and
     reason = 'only supported on x86_64 and aarch64'
 endif
 
-fmt_name = 'sfc_vdpa'
 extra_flags = []
 
 foreach flag: extra_flags
