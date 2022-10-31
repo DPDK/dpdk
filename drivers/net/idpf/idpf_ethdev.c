@@ -30,6 +30,22 @@ static const char * const idpf_valid_args[] = {
 };
 
 static int
+idpf_dev_link_update(struct rte_eth_dev *dev,
+		     __rte_unused int wait_to_complete)
+{
+	struct rte_eth_link new_link;
+
+	memset(&new_link, 0, sizeof(new_link));
+
+	new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	new_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+				  RTE_ETH_LINK_SPEED_FIXED);
+
+	return rte_eth_linkstatus_set(dev, &new_link);
+}
+
+static int
 idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
@@ -263,6 +279,42 @@ idpf_dev_configure(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "RMV interrupt is not supported");
 		return -ENOTSUP;
 	}
+
+	return 0;
+}
+
+static int
+idpf_dev_start(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	int ret;
+
+	if (dev->data->mtu > vport->max_mtu) {
+		PMD_DRV_LOG(ERR, "MTU should be less than %d", vport->max_mtu);
+		return -EINVAL;
+	}
+
+	vport->max_pkt_len = dev->data->mtu + IDPF_ETH_OVERHEAD;
+
+	/* TODO: start queues */
+
+	ret = idpf_vc_ena_dis_vport(vport, true);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to enable vport");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+idpf_dev_stop(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+
+	idpf_vc_ena_dis_vport(vport, false);
+
+	/* TODO: stop queues */
 
 	return 0;
 }
@@ -656,6 +708,9 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.rx_queue_setup			= idpf_rx_queue_setup,
 	.tx_queue_setup			= idpf_tx_queue_setup,
 	.dev_infos_get			= idpf_dev_info_get,
+	.dev_start			= idpf_dev_start,
+	.dev_stop			= idpf_dev_stop,
+	.link_update			= idpf_dev_link_update,
 };
 
 static uint16_t

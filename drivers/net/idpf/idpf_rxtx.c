@@ -334,6 +334,11 @@ idpf_rx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (check_rx_thresh(nb_desc, rx_free_thresh) != 0)
 		return -EINVAL;
 
+	if (rx_conf->rx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
+		return -EINVAL;
+	}
+
 	/* Setup Rx description queue */
 	rxq = rte_zmalloc_socket("idpf rxq",
 				 sizeof(struct idpf_rx_queue),
@@ -465,6 +470,11 @@ idpf_rx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (check_rx_thresh(nb_desc, rx_free_thresh) != 0)
 		return -EINVAL;
 
+	if (rx_conf->rx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
+		return -EINVAL;
+	}
+
 	/* Setup Rx description queue */
 	rxq = rte_zmalloc_socket("idpf rxq",
 				 sizeof(struct idpf_rx_queue),
@@ -568,6 +578,11 @@ idpf_tx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		tx_conf->tx_free_thresh : IDPF_DEFAULT_TX_FREE_THRESH);
 	if (check_tx_thresh(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
 		return -EINVAL;
+
+	if (tx_conf->tx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
+		return -EINVAL;
+	}
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("idpf split txq",
@@ -690,6 +705,11 @@ idpf_tx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		tx_conf->tx_free_thresh : IDPF_DEFAULT_TX_FREE_THRESH);
 	if (check_tx_thresh(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
 		return -EINVAL;
+
+	if (tx_conf->tx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
+		return -EINVAL;
+	}
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("idpf txq",
