@@ -72,6 +72,55 @@ check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
 }
 
 static void
+release_rxq_mbufs(struct idpf_rx_queue *rxq)
+{
+	uint16_t i;
+
+	if (rxq->sw_ring == NULL)
+		return;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		if (rxq->sw_ring[i] != NULL) {
+			rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+			rxq->sw_ring[i] = NULL;
+		}
+	}
+}
+
+static void
+release_txq_mbufs(struct idpf_tx_queue *txq)
+{
+	uint16_t nb_desc, i;
+
+	if (txq == NULL || txq->sw_ring == NULL) {
+		PMD_DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
+		return;
+	}
+
+	if (txq->sw_nb_desc != 0) {
+		/* For split queue model, descriptor ring */
+		nb_desc = txq->sw_nb_desc;
+	} else {
+		/* For single queue model */
+		nb_desc = txq->nb_tx_desc;
+	}
+	for (i = 0; i < nb_desc; i++) {
+		if (txq->sw_ring[i].mbuf != NULL) {
+			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+			txq->sw_ring[i].mbuf = NULL;
+		}
+	}
+}
+
+static const struct idpf_rxq_ops def_rxq_ops = {
+	.release_mbufs = release_rxq_mbufs,
+};
+
+static const struct idpf_txq_ops def_txq_ops = {
+	.release_mbufs = release_txq_mbufs,
+};
+
+static void
 reset_split_rx_descq(struct idpf_rx_queue *rxq)
 {
 	uint16_t len;
@@ -120,6 +169,14 @@ reset_split_rx_bufq(struct idpf_rx_queue *rxq)
 
 	rxq->bufq1 = NULL;
 	rxq->bufq2 = NULL;
+}
+
+static inline void
+reset_split_rx_queue(struct idpf_rx_queue *rxq)
+{
+	reset_split_rx_descq(rxq);
+	reset_split_rx_bufq(rxq->bufq1);
+	reset_split_rx_bufq(rxq->bufq2);
 }
 
 static void
@@ -301,6 +358,7 @@ idpf_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *bufq,
 	bufq->q_set = true;
 	bufq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_buf_qtail_start +
 			 queue_idx * vport->chunks_info.rx_buf_qtail_spacing);
+	bufq->ops = &def_rxq_ops;
 
 	/* TODO: allow bulk or vec */
 
@@ -527,6 +585,7 @@ idpf_rx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	dev->data->rx_queues[queue_idx] = rxq;
 	rxq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_qtail_start +
 			queue_idx * vport->chunks_info.rx_qtail_spacing);
+	rxq->ops = &def_rxq_ops;
 
 	return 0;
 }
@@ -621,6 +680,7 @@ idpf_tx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	reset_split_tx_descq(txq);
 	txq->qtx_tail = hw->hw_addr + (vport->chunks_info.tx_qtail_start +
 			queue_idx * vport->chunks_info.tx_qtail_spacing);
+	txq->ops = &def_txq_ops;
 
 	/* Allocate the TX completion queue data structure. */
 	txq->complq = rte_zmalloc_socket("idpf splitq cq",
@@ -748,6 +808,7 @@ idpf_tx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->qtx_tail = hw->hw_addr + (vport->chunks_info.tx_qtail_start +
 			queue_idx * vport->chunks_info.tx_qtail_spacing);
+	txq->ops = &def_txq_ops;
 
 	return 0;
 }
@@ -978,4 +1039,91 @@ idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	return err;
+}
+
+int
+idpf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_rx_queue *rxq;
+	int err;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	err = idpf_switch_queue(vport, rx_queue_id, true, false);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
+			    rx_queue_id);
+		return err;
+	}
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		rxq->ops->release_mbufs(rxq);
+		reset_single_rx_queue(rxq);
+	} else {
+		rxq->bufq1->ops->release_mbufs(rxq->bufq1);
+		rxq->bufq2->ops->release_mbufs(rxq->bufq2);
+		reset_split_rx_queue(rxq);
+	}
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+int
+idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_tx_queue *txq;
+	int err;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	err = idpf_switch_queue(vport, tx_queue_id, false, false);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u off",
+			    tx_queue_id);
+		return err;
+	}
+
+	txq = dev->data->tx_queues[tx_queue_id];
+	txq->ops->release_mbufs(txq);
+	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		reset_single_tx_queue(txq);
+	} else {
+		reset_split_tx_descq(txq);
+		reset_split_tx_complq(txq->complq);
+	}
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+void
+idpf_stop_queues(struct rte_eth_dev *dev)
+{
+	struct idpf_rx_queue *rxq;
+	struct idpf_tx_queue *txq;
+	int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq == NULL)
+			continue;
+
+		if (idpf_rx_queue_stop(dev, i) != 0)
+			PMD_DRV_LOG(WARNING, "Fail to stop Rx queue %d", i);
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (txq == NULL)
+			continue;
+
+		if (idpf_tx_queue_stop(dev, i) != 0)
+			PMD_DRV_LOG(WARNING, "Fail to stop Tx queue %d", i);
+	}
 }

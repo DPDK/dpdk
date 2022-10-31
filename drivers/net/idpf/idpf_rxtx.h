@@ -51,6 +51,7 @@ struct idpf_rx_queue {
 	bool q_set;             /* if rx queue has been configured */
 	bool q_started;         /* if rx queue has been started */
 	bool rx_deferred_start; /* don't start this queue in dev start */
+	const struct idpf_rxq_ops *ops;
 
 	/* only valid for split queue mode */
 	uint8_t expected_gen_id;
@@ -97,6 +98,7 @@ struct idpf_tx_queue {
 	bool q_set;		/* if tx queue has been configured */
 	bool q_started;		/* if tx queue has been started */
 	bool tx_deferred_start; /* don't start this queue in dev start */
+	const struct idpf_txq_ops *ops;
 
 	/* only valid for split queue mode */
 	uint16_t sw_nb_desc;
@@ -107,16 +109,27 @@ struct idpf_tx_queue {
 	struct idpf_tx_queue *complq;
 };
 
+struct idpf_rxq_ops {
+	void (*release_mbufs)(struct idpf_rx_queue *rxq);
+};
+
+struct idpf_txq_ops {
+	void (*release_mbufs)(struct idpf_tx_queue *txq);
+};
+
 int idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp);
 int idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int idpf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int idpf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf);
 int idpf_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
+void idpf_stop_queues(struct rte_eth_dev *dev);
 #endif /* _IDPF_RXTX_H_ */
