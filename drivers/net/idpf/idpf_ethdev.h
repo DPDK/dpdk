@@ -24,7 +24,9 @@
 #define IDPF_DEFAULT_TXQ_NUM	16
 
 #define IDPF_INVALID_VPORT_IDX	0xffff
+#define IDPF_TXQ_PER_GRP	1
 #define IDPF_TX_COMPLQ_PER_GRP	1
+#define IDPF_RXQ_PER_GRP	1
 #define IDPF_RX_BUFQ_PER_GRP	2
 
 #define IDPF_CTLQ_ID		-1
@@ -182,6 +184,13 @@ int idpf_vc_check_api_version(struct idpf_adapter *adapter);
 int idpf_vc_get_caps(struct idpf_adapter *adapter);
 int idpf_vc_create_vport(struct idpf_adapter *adapter);
 int idpf_vc_destroy_vport(struct idpf_vport *vport);
+int idpf_vc_config_rxqs(struct idpf_vport *vport);
+int idpf_vc_config_rxq(struct idpf_vport *vport, uint16_t rxq_id);
+int idpf_vc_config_txqs(struct idpf_vport *vport);
+int idpf_vc_config_txq(struct idpf_vport *vport, uint16_t txq_id);
+int idpf_switch_queue(struct idpf_vport *vport, uint16_t qid,
+		      bool rx, bool on);
+int idpf_vc_ena_dis_queues(struct idpf_vport *vport, bool enable);
 int idpf_vc_ena_dis_vport(struct idpf_vport *vport, bool enable);
 int idpf_read_one_msg(struct idpf_adapter *adapter, uint32_t ops,
 		      uint16_t buf_len, uint8_t *buf);

@@ -334,11 +334,6 @@ idpf_rx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (check_rx_thresh(nb_desc, rx_free_thresh) != 0)
 		return -EINVAL;
 
-	if (rx_conf->rx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
-		return -EINVAL;
-	}
-
 	/* Setup Rx description queue */
 	rxq = rte_zmalloc_socket("idpf rxq",
 				 sizeof(struct idpf_rx_queue),
@@ -354,6 +349,7 @@ idpf_rx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->rx_free_thresh = rx_free_thresh;
 	rxq->queue_id = vport->chunks_info.rx_start_qid + queue_idx;
 	rxq->port_id = dev->data->port_id;
+	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->rx_hdr_len = 0;
 	rxq->adapter = adapter;
 	rxq->offloads = offloads;
@@ -470,11 +466,6 @@ idpf_rx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (check_rx_thresh(nb_desc, rx_free_thresh) != 0)
 		return -EINVAL;
 
-	if (rx_conf->rx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
-		return -EINVAL;
-	}
-
 	/* Setup Rx description queue */
 	rxq = rte_zmalloc_socket("idpf rxq",
 				 sizeof(struct idpf_rx_queue),
@@ -490,6 +481,7 @@ idpf_rx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->rx_free_thresh = rx_free_thresh;
 	rxq->queue_id = vport->chunks_info.rx_start_qid + queue_idx;
 	rxq->port_id = dev->data->port_id;
+	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->rx_hdr_len = 0;
 	rxq->adapter = adapter;
 	rxq->offloads = offloads;
@@ -579,11 +571,6 @@ idpf_tx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (check_tx_thresh(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
 		return -EINVAL;
 
-	if (tx_conf->tx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
-		return -EINVAL;
-	}
-
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("idpf split txq",
 				 sizeof(struct idpf_tx_queue),
@@ -600,6 +587,7 @@ idpf_tx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->queue_id = vport->chunks_info.tx_start_qid + queue_idx;
 	txq->port_id = dev->data->port_id;
 	txq->offloads = offloads;
+	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	/* Allocate software ring */
 	txq->sw_nb_desc = 2 * nb_desc;
@@ -706,11 +694,6 @@ idpf_tx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (check_tx_thresh(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
 		return -EINVAL;
 
-	if (tx_conf->tx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Queue start is not supported currently.");
-		return -EINVAL;
-	}
-
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("idpf txq",
 				 sizeof(struct idpf_tx_queue),
@@ -729,6 +712,7 @@ idpf_tx_single_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->queue_id = vport->chunks_info.tx_start_qid + queue_idx;
 	txq->port_id = dev->data->port_id;
 	txq->offloads = offloads;
+	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	/* Allocate software ring */
 	txq->sw_ring =
@@ -781,4 +765,217 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	else
 		return idpf_tx_split_queue_setup(dev, queue_idx, nb_desc,
 						 socket_id, tx_conf);
+}
+static int
+idpf_alloc_single_rxq_mbufs(struct idpf_rx_queue *rxq)
+{
+	volatile struct virtchnl2_singleq_rx_buf_desc *rxd;
+	struct rte_mbuf *mbuf = NULL;
+	uint64_t dma_addr;
+	uint16_t i;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		mbuf = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(mbuf == NULL)) {
+			PMD_DRV_LOG(ERR, "Failed to allocate mbuf for RX");
+			return -ENOMEM;
+		}
+
+		rte_mbuf_refcnt_set(mbuf, 1);
+		mbuf->next = NULL;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->nb_segs = 1;
+		mbuf->port = rxq->port_id;
+
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+
+		rxd = &((volatile struct virtchnl2_singleq_rx_buf_desc *)(rxq->rx_ring))[i];
+		rxd->pkt_addr = dma_addr;
+		rxd->hdr_addr = 0;
+		rxd->rsvd1 = 0;
+		rxd->rsvd2 = 0;
+		rxq->sw_ring[i] = mbuf;
+	}
+
+	return 0;
+}
+
+static int
+idpf_alloc_split_rxq_mbufs(struct idpf_rx_queue *rxq)
+{
+	volatile struct virtchnl2_splitq_rx_buf_desc *rxd;
+	struct rte_mbuf *mbuf = NULL;
+	uint64_t dma_addr;
+	uint16_t i;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		mbuf = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(mbuf == NULL)) {
+			PMD_DRV_LOG(ERR, "Failed to allocate mbuf for RX");
+			return -ENOMEM;
+		}
+
+		rte_mbuf_refcnt_set(mbuf, 1);
+		mbuf->next = NULL;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->nb_segs = 1;
+		mbuf->port = rxq->port_id;
+
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+
+		rxd = &((volatile struct virtchnl2_splitq_rx_buf_desc *)(rxq->rx_ring))[i];
+		rxd->qword0.buf_id = i;
+		rxd->qword0.rsvd0 = 0;
+		rxd->qword0.rsvd1 = 0;
+		rxd->pkt_addr = dma_addr;
+		rxd->hdr_addr = 0;
+		rxd->rsvd2 = 0;
+
+		rxq->sw_ring[i] = mbuf;
+	}
+
+	rxq->nb_rx_hold = 0;
+	rxq->rx_tail = rxq->nb_rx_desc - 1;
+
+	return 0;
+}
+
+int
+idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct idpf_rx_queue *rxq;
+	int err;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	if (rxq == NULL || !rxq->q_set) {
+		PMD_DRV_LOG(ERR, "RX queue %u not available or setup",
+					rx_queue_id);
+		return -EINVAL;
+	}
+
+	if (rxq->bufq1 == NULL) {
+		/* Single queue */
+		err = idpf_alloc_single_rxq_mbufs(rxq);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf");
+			return err;
+		}
+
+		rte_wmb();
+
+		/* Init the RX tail register. */
+		IDPF_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+	} else {
+		/* Split queue */
+		err = idpf_alloc_split_rxq_mbufs(rxq->bufq1);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
+			return err;
+		}
+		err = idpf_alloc_split_rxq_mbufs(rxq->bufq2);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
+			return err;
+		}
+
+		rte_wmb();
+
+		/* Init the RX tail register. */
+		IDPF_PCI_REG_WRITE(rxq->bufq1->qrx_tail, rxq->bufq1->rx_tail);
+		IDPF_PCI_REG_WRITE(rxq->bufq2->qrx_tail, rxq->bufq2->rx_tail);
+	}
+
+	return err;
+}
+
+int
+idpf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_rx_queue *rxq =
+		dev->data->rx_queues[rx_queue_id];
+	int err = 0;
+
+	err = idpf_vc_config_rxq(vport, rx_queue_id);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Fail to configure Rx queue %u", rx_queue_id);
+		return err;
+	}
+
+	err = idpf_rx_queue_init(dev, rx_queue_id);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to init RX queue %u",
+			    rx_queue_id);
+		return err;
+	}
+
+	/* Ready to switch the queue on */
+	err = idpf_switch_queue(vport, rx_queue_id, true, true);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
+			    rx_queue_id);
+	} else {
+		rxq->q_started = true;
+		dev->data->rx_queue_state[rx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return err;
+}
+
+int
+idpf_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct idpf_tx_queue *txq;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	txq = dev->data->tx_queues[tx_queue_id];
+
+	/* Init the RX tail register. */
+	IDPF_PCI_REG_WRITE(txq->qtx_tail, 0);
+
+	return 0;
+}
+
+int
+idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_tx_queue *txq =
+		dev->data->tx_queues[tx_queue_id];
+	int err = 0;
+
+	err = idpf_vc_config_txq(vport, tx_queue_id);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Fail to configure Tx queue %u", tx_queue_id);
+		return err;
+	}
+
+	err = idpf_tx_queue_init(dev, tx_queue_id);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to init TX queue %u",
+			    tx_queue_id);
+		return err;
+	}
+
+	/* Ready to switch the queue on */
+	err = idpf_switch_queue(vport, tx_queue_id, false, true);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
+			    tx_queue_id);
+	} else {
+		txq->q_started = true;
+		dev->data->tx_queue_state[tx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return err;
 }

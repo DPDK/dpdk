@@ -284,6 +284,39 @@ idpf_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
+idpf_start_queues(struct rte_eth_dev *dev)
+{
+	struct idpf_rx_queue *rxq;
+	struct idpf_tx_queue *txq;
+	int err = 0;
+	int i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (txq == NULL || txq->tx_deferred_start)
+			continue;
+		err = idpf_tx_queue_start(dev, i);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start Tx queue %u", i);
+			return err;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq == NULL || rxq->rx_deferred_start)
+			continue;
+		err = idpf_rx_queue_start(dev, i);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start Rx queue %u", i);
+			return err;
+		}
+	}
+
+	return err;
+}
+
+static int
 idpf_dev_start(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
@@ -296,11 +329,16 @@ idpf_dev_start(struct rte_eth_dev *dev)
 
 	vport->max_pkt_len = dev->data->mtu + IDPF_ETH_OVERHEAD;
 
-	/* TODO: start queues */
+	ret = idpf_start_queues(dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to start queues");
+		return ret;
+	}
 
 	ret = idpf_vc_ena_dis_vport(vport, true);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to enable vport");
+		/* TODO: stop queues */
 		return ret;
 	}
 
@@ -711,6 +749,8 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.dev_start			= idpf_dev_start,
 	.dev_stop			= idpf_dev_stop,
 	.link_update			= idpf_dev_link_update,
+	.rx_queue_start			= idpf_rx_queue_start,
+	.tx_queue_start			= idpf_tx_queue_start,
 };
 
 static uint16_t
