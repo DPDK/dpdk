@@ -1210,7 +1210,7 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 	struct virtchnl_proto_hdr *hdr2;
 	int i, shift_count = 1;
 	int tun_lvl = proto_hdrs->tunnel_level;
-	int phdrs_count = proto_hdrs->count;
+	int phdrs_count = 0;
 
 	if (!(phint & IAVF_PHINT_GTPU_MSK) && !(phint & IAVF_PHINT_GRE))
 		return;
@@ -1219,6 +1219,7 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 		if (phint & IAVF_PHINT_LAYERS_MSK)
 			shift_count = 2;
 
+		phdrs_count = proto_hdrs->count;
 		/* shift headers layer */
 		for (i = phdrs_count - 1 + shift_count;
 		     i > shift_count - 1; i--) {
