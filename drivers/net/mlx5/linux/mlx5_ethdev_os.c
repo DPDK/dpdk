@@ -1675,10 +1675,7 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
  */
 int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev)
 {
-	struct {
-		struct ethtool_sset_info hdr;
-		uint32_t buf[1];
-	} sset_info;
+	struct ethtool_sset_info *sset_info = NULL;
 	struct ethtool_drvinfo drvinfo;
 	struct ifreq ifr;
 	struct ethtool_gstrings *strings = NULL;
@@ -1689,15 +1686,21 @@ int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev)
 	int32_t i;
 	int ret;
 
-	sset_info.hdr.cmd = ETHTOOL_GSSET_INFO;
-	sset_info.hdr.reserved = 0;
-	sset_info.hdr.sset_mask = 1ULL << ETH_SS_PRIV_FLAGS;
+	sset_info = mlx5_malloc(0, sizeof(struct ethtool_sset_info) +
+			sizeof(uint32_t), 0, SOCKET_ID_ANY);
+	if (sset_info == NULL) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	sset_info->cmd = ETHTOOL_GSSET_INFO;
+	sset_info->reserved = 0;
+	sset_info->sset_mask = 1ULL << ETH_SS_PRIV_FLAGS;
 	ifr.ifr_data = (caddr_t)&sset_info;
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (!ret) {
-		const uint32_t *sset_lengths = sset_info.hdr.data;
+		const uint32_t *sset_lengths = sset_info->data;
 
-		len = sset_info.hdr.sset_mask ? sset_lengths[0] : 0;
+		len = sset_info->sset_mask ? sset_lengths[0] : 0;
 	} else if (ret == -EOPNOTSUPP) {
 		drvinfo.cmd = ETHTOOL_GDRVINFO;
 		ifr.ifr_data = (caddr_t)&drvinfo;
@@ -1770,5 +1773,6 @@ int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev)
 	ret = !!(flags.data & (1U << i));
 exit:
 	mlx5_free(strings);
+	mlx5_free(sset_info);
 	return ret;
 }
