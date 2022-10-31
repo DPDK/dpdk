@@ -396,6 +396,7 @@ mlx5_hws_cnt_pool_put(struct mlx5_hws_cnt_pool *cpool,
 	uint32_t iidx;
 
 	iidx = mlx5_hws_cnt_iidx(cpool, *cnt_id);
+	MLX5_ASSERT(cpool->pool[iidx].in_used);
 	cpool->pool[iidx].in_used = false;
 	cpool->pool[iidx].query_gen_when_free =
 		__atomic_load_n(&cpool->query_gen, __ATOMIC_RELAXED);
@@ -475,6 +476,7 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
 		__hws_cnt_query_raw(cpool, *cnt_id,
 				    &cpool->pool[iidx].reset.hits,
 				    &cpool->pool[iidx].reset.bytes);
+		MLX5_ASSERT(!cpool->pool[iidx].in_used);
 		cpool->pool[iidx].in_used = true;
 		cpool->pool[iidx].age_idx = age_idx;
 		return 0;
@@ -511,6 +513,7 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
 			    &cpool->pool[iidx].reset.bytes);
 	rte_ring_dequeue_zc_elem_finish(qcache, 1);
 	cpool->pool[iidx].share = 0;
+	MLX5_ASSERT(!cpool->pool[iidx].in_used);
 	cpool->pool[iidx].in_used = true;
 	cpool->pool[iidx].age_idx = age_idx;
 	return 0;
