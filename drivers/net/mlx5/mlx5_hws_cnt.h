@@ -281,11 +281,10 @@ __hws_cnt_r2rcpy(struct rte_ring_zc_data *zcdd, struct rte_ring_zc_data *zcds,
 		d3 = zcdd->ptr2;
 	}
 	memcpy(d1, s1, n1 * sizeof(cnt_id_t));
-	if (n2 != 0) {
+	if (n2 != 0)
 		memcpy(d2, s2, n2 * sizeof(cnt_id_t));
-		if (n3 != 0)
-			memcpy(d3, s3, n3 * sizeof(cnt_id_t));
-	}
+	if (n3 != 0)
+		memcpy(d3, s3, n3 * sizeof(cnt_id_t));
 }
 
 static __rte_always_inline int
