@@ -7,7 +7,6 @@ if not is_linux
     subdir_done()
 endif
 
-fmt_name = 'mlx5_compress'
 deps += ['common_mlx5', 'eal', 'compressdev']
 sources = files(
         'mlx5_compress.c',

@@ -7,7 +7,6 @@ if not (is_linux or is_windows)
     subdir_done()
 endif
 
-fmt_name = 'mlx5_crypto'
 deps += ['common_mlx5', 'eal', 'cryptodev']
 sources = files(
         'mlx5_crypto.c',
