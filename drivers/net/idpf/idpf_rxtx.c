@@ -1209,6 +1209,73 @@ idpf_stop_queues(struct rte_eth_dev *dev)
 	}
 }
 
+#define IDPF_RX_FLEX_DESC_ADV_STATUS0_XSUM_S				\
+	(RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_IPE_S) |     \
+	 RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_L4E_S) |     \
+	 RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_EIPE_S) |    \
+	 RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_EUDPE_S))
+
+static inline uint64_t
+idpf_splitq_rx_csum_offload(uint8_t err)
+{
+	uint64_t flags = 0;
+
+	if (unlikely((err & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_L3L4P_S)) == 0))
+		return flags;
+
+	if (likely((err & IDPF_RX_FLEX_DESC_ADV_STATUS0_XSUM_S) == 0)) {
+		flags |= (RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			  RTE_MBUF_F_RX_L4_CKSUM_GOOD);
+		return flags;
+	}
+
+	if (unlikely((err & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_IPE_S)) != 0))
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+	else
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+
+	if (unlikely((err & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_L4E_S)) != 0))
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+	else
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+
+	if (unlikely((err & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_EIPE_S)) != 0))
+		flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+
+	if (unlikely((err & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_EUDPE_S)) != 0))
+		flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
+	else
+		flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
+
+	return flags;
+}
+
+#define IDPF_RX_FLEX_DESC_ADV_HASH1_S  0
+#define IDPF_RX_FLEX_DESC_ADV_HASH2_S  16
+#define IDPF_RX_FLEX_DESC_ADV_HASH3_S  24
+
+static inline uint64_t
+idpf_splitq_rx_rss_offload(struct rte_mbuf *mb,
+			   volatile struct virtchnl2_rx_flex_desc_adv_nic_3 *rx_desc)
+{
+	uint8_t status_err0_qw0;
+	uint64_t flags = 0;
+
+	status_err0_qw0 = rx_desc->status_err0_qw0;
+
+	if ((status_err0_qw0 & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_RSS_VALID_S)) != 0) {
+		flags |= RTE_MBUF_F_RX_RSS_HASH;
+		mb->hash.rss = (rte_le_to_cpu_16(rx_desc->hash1) <<
+				IDPF_RX_FLEX_DESC_ADV_HASH1_S) |
+			((uint32_t)(rx_desc->ff2_mirrid_hash2.hash2) <<
+			 IDPF_RX_FLEX_DESC_ADV_HASH2_S) |
+			((uint32_t)(rx_desc->hash3) <<
+			 IDPF_RX_FLEX_DESC_ADV_HASH3_S);
+	}
+
+	return flags;
+}
+
 static void
 idpf_split_rx_bufq_refill(struct idpf_rx_queue *rx_bufq)
 {
@@ -1282,9 +1349,11 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t pktlen_gen_bufq_id;
 	struct idpf_rx_queue *rxq;
 	const uint32_t *ptype_tbl;
+	uint8_t status_err0_qw1;
 	struct rte_mbuf *rxm;
 	uint16_t rx_id_bufq1;
 	uint16_t rx_id_bufq2;
+	uint64_t pkt_flags;
 	uint16_t pkt_len;
 	uint16_t bufq_id;
 	uint16_t gen_id;
@@ -1349,10 +1418,17 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->next = NULL;
 		rxm->nb_segs = 1;
 		rxm->port = rxq->port_id;
+		rxm->ol_flags = 0;
 		rxm->packet_type =
 			ptype_tbl[(rte_le_to_cpu_16(rx_desc->ptype_err_fflags0) &
 				   VIRTCHNL2_RX_FLEX_DESC_ADV_PTYPE_M) >>
 				  VIRTCHNL2_RX_FLEX_DESC_ADV_PTYPE_S];
+
+		status_err0_qw1 = rx_desc->status_err0_qw1;
+		pkt_flags = idpf_splitq_rx_csum_offload(status_err0_qw1);
+		pkt_flags |= idpf_splitq_rx_rss_offload(rxm, rx_desc);
+
+		rxm->ol_flags |= pkt_flags;
 
 		rx_pkts[nb_rx++] = rxm;
 	}
@@ -1513,6 +1589,48 @@ idpf_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
+#define IDPF_RX_FLEX_DESC_STATUS0_XSUM_S				\
+	(RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_IPE_S) |		\
+	 RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_L4E_S) |		\
+	 RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S) |	\
+	 RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S))
+
+/* Translate the rx descriptor status and error fields to pkt flags */
+static inline uint64_t
+idpf_rxd_to_pkt_flags(uint16_t status_error)
+{
+	uint64_t flags = 0;
+
+	if (unlikely((status_error & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_L3L4P_S)) == 0))
+		return flags;
+
+	if (likely((status_error & IDPF_RX_FLEX_DESC_STATUS0_XSUM_S) == 0)) {
+		flags |= (RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+			  RTE_MBUF_F_RX_L4_CKSUM_GOOD);
+		return flags;
+	}
+
+	if (unlikely((status_error & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_IPE_S)) != 0))
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+	else
+		flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+
+	if (unlikely((status_error & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_L4E_S)) != 0))
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+	else
+		flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+
+	if (unlikely((status_error & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S)) != 0))
+		flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+
+	if (unlikely((status_error & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S)) != 0))
+		flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
+	else
+		flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
+
+	return flags;
+}
+
 static inline void
 idpf_update_rx_tail(struct idpf_rx_queue *rxq, uint16_t nb_hold,
 		    uint16_t rx_id)
@@ -1546,6 +1664,7 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *nmb;
 	uint16_t rx_status0;
+	uint64_t pkt_flags;
 	uint64_t dma_addr;
 	uint16_t nb_rx;
 
@@ -1611,9 +1730,13 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->pkt_len = rx_packet_len;
 		rxm->data_len = rx_packet_len;
 		rxm->port = rxq->port_id;
+		rxm->ol_flags = 0;
+		pkt_flags = idpf_rxd_to_pkt_flags(rx_status0);
 		rxm->packet_type =
 			ptype_tbl[(uint8_t)(rte_cpu_to_le_16(rxd.flex_nic_wb.ptype_flex_flags0) &
 					    VIRTCHNL2_RX_FLEX_DESC_PTYPE_M)];
+
+		rxm->ol_flags |= pkt_flags;
 
 		rx_pkts[nb_rx++] = rxm;
 	}

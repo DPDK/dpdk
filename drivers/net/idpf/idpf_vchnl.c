@@ -528,6 +528,24 @@ idpf_vc_get_caps(struct idpf_adapter *adapter)
 
 	memset(&caps_msg, 0, sizeof(struct virtchnl2_get_capabilities));
 
+	caps_msg.csum_caps =
+		VIRTCHNL2_CAP_TX_CSUM_L3_IPV4          |
+		VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_TCP      |
+		VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_UDP      |
+		VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_SCTP     |
+		VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_TCP      |
+		VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_UDP      |
+		VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_SCTP     |
+		VIRTCHNL2_CAP_TX_CSUM_GENERIC          |
+		VIRTCHNL2_CAP_RX_CSUM_L3_IPV4          |
+		VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_TCP      |
+		VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_UDP      |
+		VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_SCTP     |
+		VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_TCP      |
+		VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_UDP      |
+		VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_SCTP     |
+		VIRTCHNL2_CAP_RX_CSUM_GENERIC;
+
 	caps_msg.rss_caps =
 		VIRTCHNL2_CAP_RSS_IPV4_TCP             |
 		VIRTCHNL2_CAP_RSS_IPV4_UDP             |
