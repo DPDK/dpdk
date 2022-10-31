@@ -48,6 +48,20 @@
 #define IDPF_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + IDPF_VLAN_TAG_SIZE * 2)
 
+#define IDPF_RSS_OFFLOAD_ALL (				\
+		RTE_ETH_RSS_IPV4                |	\
+		RTE_ETH_RSS_FRAG_IPV4           |	\
+		RTE_ETH_RSS_NONFRAG_IPV4_TCP    |	\
+		RTE_ETH_RSS_NONFRAG_IPV4_UDP    |	\
+		RTE_ETH_RSS_NONFRAG_IPV4_SCTP   |	\
+		RTE_ETH_RSS_NONFRAG_IPV4_OTHER  |	\
+		RTE_ETH_RSS_IPV6                |	\
+		RTE_ETH_RSS_FRAG_IPV6           |	\
+		RTE_ETH_RSS_NONFRAG_IPV6_TCP    |	\
+		RTE_ETH_RSS_NONFRAG_IPV6_UDP    |	\
+		RTE_ETH_RSS_NONFRAG_IPV6_SCTP   |	\
+		RTE_ETH_RSS_NONFRAG_IPV6_OTHER)
+
 #define IDPF_ADAPTER_NAME_LEN	(PCI_PRI_STR_SIZE + 1)
 
 /* Message type read in virtual channel from PF */
@@ -90,10 +104,19 @@ struct idpf_vport {
 	uint16_t max_mtu;
 	uint8_t default_mac_addr[VIRTCHNL_ETH_LENGTH_OF_ADDRESS];
 
+	enum virtchnl_rss_algorithm rss_algorithm;
+	uint16_t rss_key_size;
+	uint16_t rss_lut_size;
+
 	uint16_t sw_idx; /* SW idx */
 
 	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
 	uint16_t max_pkt_len; /* Maximum packet length */
+
+	/* RSS info */
+	uint32_t *rss_lut;
+	uint8_t *rss_key;
+	uint64_t rss_hf;
 
 	/* MSIX info*/
 	struct virtchnl2_queue_vector *qv_map; /* queue vector mapping */
@@ -200,6 +223,9 @@ int idpf_get_pkt_type(struct idpf_adapter *adapter);
 int idpf_vc_get_caps(struct idpf_adapter *adapter);
 int idpf_vc_create_vport(struct idpf_adapter *adapter);
 int idpf_vc_destroy_vport(struct idpf_vport *vport);
+int idpf_vc_set_rss_key(struct idpf_vport *vport);
+int idpf_vc_set_rss_lut(struct idpf_vport *vport);
+int idpf_vc_set_rss_hash(struct idpf_vport *vport);
 int idpf_vc_config_rxqs(struct idpf_vport *vport);
 int idpf_vc_config_rxq(struct idpf_vport *vport, uint16_t rxq_id);
 int idpf_vc_config_txqs(struct idpf_vport *vport);
