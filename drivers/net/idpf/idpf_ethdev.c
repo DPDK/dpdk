@@ -59,6 +59,8 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mtu = dev_info->max_rx_pktlen - IDPF_ETH_OVERHEAD;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = IDPF_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = IDPF_DEFAULT_TX_RS_THRESH,
@@ -349,6 +351,7 @@ idpf_dev_start(struct rte_eth_dev *dev)
 	}
 
 	idpf_set_rx_function(dev);
+	idpf_set_tx_function(dev);
 
 	ret = idpf_vc_ena_dis_vport(vport, true);
 	if (ret != 0) {

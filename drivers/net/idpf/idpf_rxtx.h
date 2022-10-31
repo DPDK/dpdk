@@ -21,6 +21,8 @@
 #define IDPF_DEFAULT_TX_RS_THRESH	32
 #define IDPF_DEFAULT_TX_FREE_THRESH	32
 
+#define IDPF_TX_MAX_MTU_SEG	10
+
 struct idpf_rx_queue {
 	struct idpf_adapter *adapter;   /* the adapter this queue belongs to */
 	struct rte_mempool *mp;         /* mbuf pool to populate Rx ring */
@@ -137,7 +139,15 @@ uint16_t idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts);
 uint16_t idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			       uint16_t nb_pkts);
+uint16_t idpf_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+				uint16_t nb_pkts);
+uint16_t idpf_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts);
+uint16_t idpf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts);
+
 void idpf_stop_queues(struct rte_eth_dev *dev);
 
 void idpf_set_rx_function(struct rte_eth_dev *dev);
+void idpf_set_tx_function(struct rte_eth_dev *dev);
 #endif /* _IDPF_RXTX_H_ */
