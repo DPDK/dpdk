@@ -124,12 +124,15 @@ int idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 int idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int idpf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int idpf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+void idpf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+
 int idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf);
 int idpf_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+void idpf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 void idpf_stop_queues(struct rte_eth_dev *dev);
 #endif /* _IDPF_RXTX_H_ */

@@ -758,6 +758,8 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.tx_queue_start			= idpf_tx_queue_start,
 	.rx_queue_stop			= idpf_rx_queue_stop,
 	.tx_queue_stop			= idpf_tx_queue_stop,
+	.rx_queue_release		= idpf_dev_rx_queue_release,
+	.tx_queue_release		= idpf_dev_tx_queue_release,
 };
 
 static uint16_t
