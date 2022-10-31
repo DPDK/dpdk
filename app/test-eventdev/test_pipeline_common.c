@@ -372,8 +372,8 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 			if (opt->vector_size < limits.min_sz ||
 			    opt->vector_size > limits.max_sz) {
 				evt_err("Vector size [%d] not within limits max[%d] min[%d]",
-					opt->vector_size, limits.min_sz,
-					limits.max_sz);
+					opt->vector_size, limits.max_sz,
+					limits.min_sz);
 				return -EINVAL;
 			}
 
