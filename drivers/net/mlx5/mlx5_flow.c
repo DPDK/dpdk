@@ -9061,7 +9061,7 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 {
 	struct mlx5_counter_stats_mem_mng *mem_mng;
 	volatile struct flow_counter_stats *raw_data;
-	int raws_n = MLX5_CNT_CONTAINER_RESIZE + MLX5_MAX_PENDING_QUERIES;
+	int raws_n = MLX5_CNT_MR_ALLOC_BULK + MLX5_MAX_PENDING_QUERIES;
 	int size = (sizeof(struct flow_counter_stats) *
 			MLX5_COUNTERS_PER_POOL +
 			sizeof(struct mlx5_counter_stats_raw)) * raws_n +
@@ -9099,7 +9099,7 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 	}
 	for (i = 0; i < MLX5_MAX_PENDING_QUERIES; ++i)
 		LIST_INSERT_HEAD(&sh->sws_cmng.free_stat_raws,
-				 mem_mng->raws + MLX5_CNT_CONTAINER_RESIZE + i,
+				 mem_mng->raws + MLX5_CNT_MR_ALLOC_BULK + i,
 				 next);
 	LIST_INSERT_HEAD(&sh->sws_cmng.mem_mngs, mem_mng, next);
 	sh->sws_cmng.mem_mng = mem_mng;
@@ -9123,14 +9123,13 @@ mlx5_flow_set_counter_stat_mem(struct mlx5_dev_ctx_shared *sh,
 {
 	struct mlx5_flow_counter_mng *cmng = &sh->sws_cmng;
 	/* Resize statistic memory once used out. */
-	if (!(pool->index % MLX5_CNT_CONTAINER_RESIZE) &&
+	if (!(pool->index % MLX5_CNT_MR_ALLOC_BULK) &&
 	    mlx5_flow_create_counter_stat_mem_mng(sh)) {
 		DRV_LOG(ERR, "Cannot resize counter stat mem.");
 		return -1;
 	}
 	rte_spinlock_lock(&pool->sl);
-	pool->raw = cmng->mem_mng->raws + pool->index %
-		    MLX5_CNT_CONTAINER_RESIZE;
+	pool->raw = cmng->mem_mng->raws + pool->index % MLX5_CNT_MR_ALLOC_BULK;
 	rte_spinlock_unlock(&pool->sl);
 	pool->raw_hw = NULL;
 	return 0;
@@ -9172,13 +9171,13 @@ void
 mlx5_flow_query_alarm(void *arg)
 {
 	struct mlx5_dev_ctx_shared *sh = arg;
-	int ret;
-	uint16_t pool_index = sh->sws_cmng.pool_index;
 	struct mlx5_flow_counter_mng *cmng = &sh->sws_cmng;
+	uint16_t pool_index = cmng->pool_index;
 	struct mlx5_flow_counter_pool *pool;
 	uint16_t n_valid;
+	int ret;
 
-	if (sh->sws_cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
+	if (cmng->pending_queries >= MLX5_MAX_PENDING_QUERIES)
 		goto set_alarm;
 	rte_spinlock_lock(&cmng->pool_update_sl);
 	pool = cmng->pools[pool_index];
@@ -9190,8 +9189,7 @@ mlx5_flow_query_alarm(void *arg)
 	if (pool->raw_hw)
 		/* There is a pool query in progress. */
 		goto set_alarm;
-	pool->raw_hw =
-		LIST_FIRST(&sh->sws_cmng.free_stat_raws);
+	pool->raw_hw = LIST_FIRST(&cmng->free_stat_raws);
 	if (!pool->raw_hw)
 		/* No free counter statistics raw memory. */
 		goto set_alarm;
@@ -9217,12 +9215,12 @@ mlx5_flow_query_alarm(void *arg)
 		goto set_alarm;
 	}
 	LIST_REMOVE(pool->raw_hw, next);
-	sh->sws_cmng.pending_queries++;
+	cmng->pending_queries++;
 	pool_index++;
 	if (pool_index >= n_valid)
 		pool_index = 0;
 set_alarm:
-	sh->sws_cmng.pool_index = pool_index;
+	cmng->pool_index = pool_index;
 	mlx5_set_query_alarm(sh);
 }
 
@@ -9753,7 +9751,7 @@ mlx5_flow_dev_dump_sh_all(struct rte_eth_dev *dev,
 	}
 
 	/* get counter */
-	MLX5_ASSERT(cmng->n_valid <= cmng->n);
+	MLX5_ASSERT(cmng->n_valid <= MLX5_COUNTER_POOLS_MAX_NUM);
 	max = MLX5_COUNTERS_PER_POOL * cmng->n_valid;
 	for (j = 1; j <= max; j++) {
 		action = NULL;

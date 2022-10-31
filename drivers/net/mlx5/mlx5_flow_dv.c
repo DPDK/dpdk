@@ -6091,7 +6091,7 @@ flow_dv_counter_get_by_idx(struct rte_eth_dev *dev,
 
 	/* Decrease to original index and clear shared bit. */
 	idx = (idx - 1) & (MLX5_CNT_SHARED_OFFSET - 1);
-	MLX5_ASSERT(idx / MLX5_COUNTERS_PER_POOL < cmng->n);
+	MLX5_ASSERT(idx / MLX5_COUNTERS_PER_POOL < MLX5_COUNTER_POOLS_MAX_NUM);
 	pool = cmng->pools[idx / MLX5_COUNTERS_PER_POOL];
 	MLX5_ASSERT(pool);
 	if (ppool)
@@ -6168,39 +6168,6 @@ out:
 }
 
 /**
- * Resize a counter container.
- *
- * @param[in] dev
- *   Pointer to the Ethernet device structure.
- *
- * @return
- *   0 on success, otherwise negative errno value and rte_errno is set.
- */
-static int
-flow_dv_container_resize(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_counter_mng *cmng = &priv->sh->sws_cmng;
-	void *old_pools = cmng->pools;
-	uint32_t resize = cmng->n + MLX5_CNT_CONTAINER_RESIZE;
-	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * resize;
-	void *pools = mlx5_malloc(MLX5_MEM_ZERO, mem_size, 0, SOCKET_ID_ANY);
-
-	if (!pools) {
-		rte_errno = ENOMEM;
-		return -ENOMEM;
-	}
-	if (old_pools)
-		memcpy(pools, old_pools, cmng->n *
-				       sizeof(struct mlx5_flow_counter_pool *));
-	cmng->n = resize;
-	cmng->pools = pools;
-	if (old_pools)
-		mlx5_free(old_pools);
-	return 0;
-}
-
-/**
  * Query a devx flow counter.
  *
  * @param[in] dev
@@ -6251,8 +6218,6 @@ _flow_dv_query_count(struct rte_eth_dev *dev, uint32_t counter, uint64_t *pkts,
  *   The devX counter handle.
  * @param[in] age
  *   Whether the pool is for counter that was allocated for aging.
- * @param[in/out] cont_cur
- *   Pointer to the container pointer, it will be update in pool resize.
  *
  * @return
  *   The pool container pointer on success, NULL otherwise and rte_errno is set.
@@ -6264,9 +6229,14 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_flow_counter_mng *cmng = &priv->sh->sws_cmng;
-	bool fallback = priv->sh->sws_cmng.counter_fallback;
+	bool fallback = cmng->counter_fallback;
 	uint32_t size = sizeof(*pool);
 
+	if (cmng->n_valid == MLX5_COUNTER_POOLS_MAX_NUM) {
+		DRV_LOG(ERR, "All counter is in used, try again later.");
+		rte_errno = EAGAIN;
+		return NULL;
+	}
 	size += MLX5_COUNTERS_PER_POOL * MLX5_CNT_SIZE;
 	size += (!age ? 0 : MLX5_COUNTERS_PER_POOL * MLX5_AGE_SIZE);
 	pool = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
@@ -6285,11 +6255,6 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	pool->time_of_last_age_check = MLX5_CURR_TIME_SEC;
 	rte_spinlock_lock(&cmng->pool_update_sl);
 	pool->index = cmng->n_valid;
-	if (pool->index == cmng->n && flow_dv_container_resize(dev)) {
-		mlx5_free(pool);
-		rte_spinlock_unlock(&cmng->pool_update_sl);
-		return NULL;
-	}
 	cmng->pools[pool->index] = pool;
 	cmng->n_valid++;
 	if (unlikely(fallback)) {
@@ -12511,7 +12476,7 @@ flow_dv_aso_age_release(struct rte_eth_dev *dev, uint32_t age_idx)
 }
 
 /**
- * Resize the ASO age pools array by MLX5_CNT_CONTAINER_RESIZE pools.
+ * Resize the ASO age pools array by MLX5_ASO_AGE_CONTAINER_RESIZE pools.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
@@ -12525,7 +12490,7 @@ flow_dv_aso_age_pools_resize(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
 	void *old_pools = mng->pools;
-	uint32_t resize = mng->n + MLX5_CNT_CONTAINER_RESIZE;
+	uint32_t resize = mng->n + MLX5_ASO_AGE_CONTAINER_RESIZE;
 	uint32_t mem_size = sizeof(struct mlx5_aso_age_pool *) * resize;
 	void *pools = mlx5_malloc(MLX5_MEM_ZERO, mem_size, 0, SOCKET_ID_ANY);
 

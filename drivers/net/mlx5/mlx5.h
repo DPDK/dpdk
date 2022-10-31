@@ -386,11 +386,10 @@ struct mlx5_hw_q {
 } __rte_cache_aligned;
 
 
-
-
+#define MLX5_COUNTER_POOLS_MAX_NUM (1 << 15)
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
-#define MLX5_CNT_CONTAINER_RESIZE 64
+#define MLX5_CNT_MR_ALLOC_BULK 64
 #define MLX5_CNT_SHARED_OFFSET 0x80000000
 #define IS_BATCH_CNT(cnt) (((cnt) & (MLX5_CNT_SHARED_OFFSET - 1)) >= \
 			   MLX5_CNT_BATCH_OFFSET)
@@ -549,7 +548,6 @@ TAILQ_HEAD(mlx5_counter_pools, mlx5_flow_counter_pool);
 /* Counter global management structure. */
 struct mlx5_flow_counter_mng {
 	volatile uint16_t n_valid; /* Number of valid pools. */
-	uint16_t n; /* Number of pools. */
 	uint16_t last_pool_idx; /* Last used pool index */
 	int min_id; /* The minimum counter ID in the pools. */
 	int max_id; /* The maximum counter ID in the pools. */
@@ -621,6 +619,7 @@ struct mlx5_aso_age_action {
 };
 
 #define MLX5_ASO_AGE_ACTIONS_PER_POOL 512
+#define MLX5_ASO_AGE_CONTAINER_RESIZE 64
 
 struct mlx5_aso_age_pool {
 	struct mlx5_devx_obj *flow_hit_aso_obj;
