@@ -7872,7 +7872,7 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 			 * time to update the AGE.
 			 */
 			mlx5_hws_age_nb_cnt_decrease(priv, age_idx);
-		ret = mlx5_hws_cnt_shared_put(priv->hws_cpool, &act_idx);
+		mlx5_hws_cnt_shared_put(priv->hws_cpool, &act_idx);
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
 		ret = flow_hw_conntrack_destroy(dev, act_idx, error);

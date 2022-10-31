@@ -58,13 +58,14 @@ __hws_cnt_id_load(struct mlx5_hws_cnt_pool *cpool)
 
 static void
 __mlx5_hws_cnt_svc(struct mlx5_dev_ctx_shared *sh,
-		struct mlx5_hws_cnt_pool *cpool)
+		   struct mlx5_hws_cnt_pool *cpool)
 {
 	struct rte_ring *reset_list = cpool->wait_reset_list;
 	struct rte_ring *reuse_list = cpool->reuse_list;
 	uint32_t reset_cnt_num;
 	struct rte_ring_zc_data zcdr = {0};
 	struct rte_ring_zc_data zcdu = {0};
+	uint32_t ret __rte_unused;
 
 	reset_cnt_num = rte_ring_count(reset_list);
 	do {
@@ -72,17 +73,19 @@ __mlx5_hws_cnt_svc(struct mlx5_dev_ctx_shared *sh,
 		mlx5_aso_cnt_query(sh, cpool);
 		zcdr.n1 = 0;
 		zcdu.n1 = 0;
-		rte_ring_enqueue_zc_burst_elem_start(reuse_list,
-				sizeof(cnt_id_t), reset_cnt_num, &zcdu,
-				NULL);
-		rte_ring_dequeue_zc_burst_elem_start(reset_list,
-				sizeof(cnt_id_t), reset_cnt_num, &zcdr,
-				NULL);
+		ret = rte_ring_enqueue_zc_burst_elem_start(reuse_list,
+							   sizeof(cnt_id_t),
+							   reset_cnt_num, &zcdu,
+							   NULL);
+		MLX5_ASSERT(ret == reset_cnt_num);
+		ret = rte_ring_dequeue_zc_burst_elem_start(reset_list,
+							   sizeof(cnt_id_t),
+							   reset_cnt_num, &zcdr,
+							   NULL);
+		MLX5_ASSERT(ret == reset_cnt_num);
 		__hws_cnt_r2rcpy(&zcdu, &zcdr, reset_cnt_num);
-		rte_ring_dequeue_zc_elem_finish(reset_list,
-				reset_cnt_num);
-		rte_ring_enqueue_zc_elem_finish(reuse_list,
-				reset_cnt_num);
+		rte_ring_dequeue_zc_elem_finish(reset_list, reset_cnt_num);
+		rte_ring_enqueue_zc_elem_finish(reuse_list, reset_cnt_num);
 		reset_cnt_num = rte_ring_count(reset_list);
 	} while (reset_cnt_num > 0);
 }
