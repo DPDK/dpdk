@@ -10,6 +10,8 @@
 #include "idpf_rxtx.h"
 #include "idpf_rxtx_vec_common.h"
 
+static int idpf_timestamp_dynfield_offset = -1;
+
 static int
 check_rx_thresh(uint16_t nb_desc, uint16_t thresh)
 {
@@ -900,6 +902,24 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return idpf_tx_split_queue_setup(dev, queue_idx, nb_desc,
 						 socket_id, tx_conf);
 }
+
+static int
+idpf_register_ts_mbuf(struct idpf_rx_queue *rxq)
+{
+	int err;
+	if ((rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0) {
+		/* Register mbuf field and flag for Rx timestamp */
+		err = rte_mbuf_dyn_rx_timestamp_register(&idpf_timestamp_dynfield_offset,
+							 &idpf_timestamp_dynflag);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR,
+				"Cannot register mbuf field/flag for timestamp");
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
 static int
 idpf_alloc_single_rxq_mbufs(struct idpf_rx_queue *rxq)
 {
@@ -991,6 +1011,13 @@ idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		PMD_DRV_LOG(ERR, "RX queue %u not available or setup",
 					rx_queue_id);
 		return -EINVAL;
+	}
+
+	err = idpf_register_ts_mbuf(rxq);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "fail to regidter timestamp mbuf %u",
+					rx_queue_id);
+		return -EIO;
 	}
 
 	if (rxq->bufq1 == NULL) {
@@ -1354,6 +1381,7 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct idpf_rx_queue *rxq;
 	const uint32_t *ptype_tbl;
 	uint8_t status_err0_qw1;
+	struct idpf_adapter *ad;
 	struct rte_mbuf *rxm;
 	uint16_t rx_id_bufq1;
 	uint16_t rx_id_bufq2;
@@ -1363,9 +1391,11 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t gen_id;
 	uint16_t rx_id;
 	uint16_t nb_rx;
+	uint64_t ts_ns;
 
 	nb_rx = 0;
 	rxq = rx_queue;
+	ad = rxq->adapter;
 
 	if (unlikely(rxq == NULL) || unlikely(!rxq->q_started))
 		return nb_rx;
@@ -1375,6 +1405,9 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_id_bufq2 = rxq->bufq2->rx_next_avail;
 	rx_desc_ring = rxq->rx_ring;
 	ptype_tbl = rxq->adapter->ptype_tbl;
+
+	if ((rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0)
+		rxq->hw_register_set = 1;
 
 	while (nb_rx < nb_pkts) {
 		rx_desc = &rx_desc_ring[rx_id];
@@ -1431,6 +1464,18 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		status_err0_qw1 = rx_desc->status_err0_qw1;
 		pkt_flags = idpf_splitq_rx_csum_offload(status_err0_qw1);
 		pkt_flags |= idpf_splitq_rx_rss_offload(rxm, rx_desc);
+		if (idpf_timestamp_dynflag > 0 &&
+		    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
+			/* timestamp */
+			ts_ns = idpf_tstamp_convert_32b_64b(ad,
+				rxq->hw_register_set,
+				rte_le_to_cpu_32(rx_desc->ts_high));
+			rxq->hw_register_set = 0;
+			*RTE_MBUF_DYNFIELD(rxm,
+					   idpf_timestamp_dynfield_offset,
+					   rte_mbuf_timestamp_t *) = ts_ns;
+			rxm->ol_flags |= idpf_timestamp_dynflag;
+		}
 
 		rxm->ol_flags |= pkt_flags;
 
@@ -1732,17 +1777,21 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	const uint32_t *ptype_tbl;
 	uint16_t rx_id, nb_hold;
 	struct rte_eth_dev *dev;
+	struct idpf_adapter *ad;
 	uint16_t rx_packet_len;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *nmb;
 	uint16_t rx_status0;
 	uint64_t pkt_flags;
 	uint64_t dma_addr;
+	uint64_t ts_ns;
 	uint16_t nb_rx;
 
 	nb_rx = 0;
 	nb_hold = 0;
 	rxq = rx_queue;
+
+	ad = rxq->adapter;
 
 	if (unlikely(rxq == NULL) || unlikely(!rxq->q_started))
 		return nb_rx;
@@ -1750,6 +1799,9 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
 	ptype_tbl = rxq->adapter->ptype_tbl;
+
+	if ((rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0)
+		rxq->hw_register_set = 1;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -1809,6 +1861,19 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					    VIRTCHNL2_RX_FLEX_DESC_PTYPE_M)];
 
 		rxm->ol_flags |= pkt_flags;
+
+		if (idpf_timestamp_dynflag > 0 &&
+		   (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0) {
+			/* timestamp */
+			ts_ns = idpf_tstamp_convert_32b_64b(ad,
+				rxq->hw_register_set,
+				rte_le_to_cpu_32(rxd.flex_nic_wb.flex_ts.ts_high));
+			rxq->hw_register_set = 0;
+			*RTE_MBUF_DYNFIELD(rxm,
+					   idpf_timestamp_dynfield_offset,
+					   rte_mbuf_timestamp_t *) = ts_ns;
+			rxm->ol_flags |= idpf_timestamp_dynflag;
+		}
 
 		rx_pkts[nb_rx++] = rxm;
 	}

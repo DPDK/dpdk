@@ -167,6 +167,9 @@ struct idpf_adapter {
 	bool tx_vec_allowed;
 	bool rx_use_avx512;
 	bool tx_use_avx512;
+
+	/* For PTP */
+	uint64_t time_hw;
 };
 
 TAILQ_HEAD(idpf_adapter_list, idpf_adapter);
