@@ -4,9 +4,11 @@
 
 #include <ethdev_driver.h>
 #include <rte_net.h>
+#include <rte_vect.h>
 
 #include "idpf_ethdev.h"
 #include "idpf_rxtx.h"
+#include "idpf_rxtx_vec_common.h"
 
 static int
 check_rx_thresh(uint16_t nb_desc, uint16_t thresh)
@@ -252,6 +254,8 @@ reset_single_rx_queue(struct idpf_rx_queue *rxq)
 
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
+	rxq->rxrearm_start = 0;
+	rxq->rxrearm_nb = 0;
 }
 
 static void
@@ -2073,25 +2077,166 @@ idpf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	return i;
 }
 
+static void __rte_cold
+release_rxq_mbufs_vec(struct idpf_rx_queue *rxq)
+{
+	const uint16_t mask = rxq->nb_rx_desc - 1;
+	uint16_t i;
+
+	if (rxq->sw_ring == NULL || rxq->rxrearm_nb >= rxq->nb_rx_desc)
+		return;
+
+	/* free all mbufs that are valid in the ring */
+	if (rxq->rxrearm_nb == 0) {
+		for (i = 0; i < rxq->nb_rx_desc; i++) {
+			if (rxq->sw_ring[i] != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+		}
+	} else {
+		for (i = rxq->rx_tail; i != rxq->rxrearm_start; i = (i + 1) & mask) {
+			if (rxq->sw_ring[i] != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+		}
+	}
+
+	rxq->rxrearm_nb = rxq->nb_rx_desc;
+
+	/* set all entries to NULL */
+	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
+}
+
+static const struct idpf_rxq_ops def_singleq_rx_ops_vec = {
+	.release_mbufs = release_rxq_mbufs_vec,
+};
+
+static inline int
+idpf_singleq_rx_vec_setup_default(struct idpf_rx_queue *rxq)
+{
+	uintptr_t p;
+	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
+
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.port = rxq->port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	p = (uintptr_t)&mb_def.rearm_data;
+	rxq->mbuf_initializer = *(uint64_t *)p;
+	return 0;
+}
+
+int __rte_cold
+idpf_singleq_rx_vec_setup(struct idpf_rx_queue *rxq)
+{
+	rxq->ops = &def_singleq_rx_ops_vec;
+	return idpf_singleq_rx_vec_setup_default(rxq);
+}
+
 void
 idpf_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
+#ifdef RTE_ARCH_X86
+	struct idpf_adapter *ad = vport->adapter;
+	struct idpf_rx_queue *rxq;
+	int i;
 
+	if (idpf_rx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH &&
+	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+		ad->rx_vec_allowed = true;
+
+		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
+#ifdef CC_AVX512_SUPPORT
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
+			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
+				ad->rx_use_avx512 = true;
+#else
+		PMD_DRV_LOG(NOTICE,
+			    "AVX512 is not supported in build env");
+#endif /* CC_AVX512_SUPPORT */
+	} else {
+		ad->rx_vec_allowed = false;
+	}
+#endif /* RTE_ARCH_X86 */
+
+#ifdef RTE_ARCH_X86
+	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
+		dev->rx_pkt_burst = idpf_splitq_recv_pkts;
+	} else {
+		if (ad->rx_vec_allowed) {
+			for (i = 0; i < dev->data->nb_tx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
+				(void)idpf_singleq_rx_vec_setup(rxq);
+			}
+#ifdef CC_AVX512_SUPPORT
+			if (ad->rx_use_avx512) {
+				dev->rx_pkt_burst = idpf_singleq_recv_pkts_avx512;
+				return;
+			}
+#endif /* CC_AVX512_SUPPORT */
+		}
+
+		dev->rx_pkt_burst = idpf_singleq_recv_pkts;
+	}
+#else
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT)
 		dev->rx_pkt_burst = idpf_splitq_recv_pkts;
 	else
 		dev->rx_pkt_burst = idpf_singleq_recv_pkts;
+#endif /* RTE_ARCH_X86 */
 }
 
 void
 idpf_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
+#ifdef RTE_ARCH_X86
+	struct idpf_adapter *ad = vport->adapter;
+#ifdef CC_AVX512_SUPPORT
+	struct idpf_tx_queue *txq;
+	int i;
+#endif /* CC_AVX512_SUPPORT */
+
+	if (idpf_rx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH &&
+	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+		ad->tx_vec_allowed = true;
+		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
+#ifdef CC_AVX512_SUPPORT
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
+			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
+				ad->tx_use_avx512 = true;
+#else
+		PMD_DRV_LOG(NOTICE,
+			    "AVX512 is not supported in build env");
+#endif /* CC_AVX512_SUPPORT */
+	} else {
+		ad->tx_vec_allowed = false;
+	}
+#endif /* RTE_ARCH_X86 */
+
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
 		dev->tx_pkt_burst = idpf_splitq_xmit_pkts;
 		dev->tx_pkt_prepare = idpf_prep_pkts;
 	} else {
+#ifdef RTE_ARCH_X86
+		if (ad->tx_vec_allowed) {
+#ifdef CC_AVX512_SUPPORT
+			if (ad->tx_use_avx512) {
+				for (i = 0; i < dev->data->nb_tx_queues; i++) {
+					txq = dev->data->tx_queues[i];
+					if (txq == NULL)
+						continue;
+					idpf_singleq_tx_vec_setup_avx512(txq);
+				}
+				dev->tx_pkt_burst = idpf_singleq_xmit_pkts_avx512;
+				dev->tx_pkt_prepare = idpf_prep_pkts;
+				return;
+			}
+#endif /* CC_AVX512_SUPPORT */
+		}
+#endif /* RTE_ARCH_X86 */
 		dev->tx_pkt_burst = idpf_singleq_xmit_pkts;
 		dev->tx_pkt_prepare = idpf_prep_pkts;
 	}

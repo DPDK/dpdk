@@ -18,6 +18,12 @@
 #define IDPF_RX_MAX_BURST		32
 #define IDPF_DEFAULT_RX_FREE_THRESH	32
 
+/* used for Vector PMD */
+#define IDPF_VPMD_RX_MAX_BURST	32
+#define IDPF_VPMD_TX_MAX_BURST	32
+#define IDPF_VPMD_DESCS_PER_LOOP	4
+#define IDPF_RXQ_REARM_THRESH	64
+
 #define IDPF_DEFAULT_TX_RS_THRESH	32
 #define IDPF_DEFAULT_TX_FREE_THRESH	32
 
@@ -54,6 +60,11 @@ struct idpf_rx_queue {
 	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
 	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
 
+	/* used for VPMD */
+	uint16_t rxrearm_nb;       /* number of remaining to be re-armed */
+	uint16_t rxrearm_start;    /* the idx we start the re-arming from */
+	uint64_t mbuf_initializer; /* value to init mbufs */
+
 	uint16_t rx_nb_avail;
 	uint16_t rx_next_avail;
 
@@ -82,6 +93,10 @@ struct idpf_tx_entry {
 	struct rte_mbuf *mbuf;
 	uint16_t next_id;
 	uint16_t last_id;
+};
+
+struct idpf_tx_vec_entry {
+	struct rte_mbuf *mbuf;
 };
 
 /* Structure associated with each TX queue. */
@@ -149,6 +164,7 @@ int idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp);
+int idpf_singleq_tx_vec_setup_avx512(struct idpf_tx_queue *txq);
 int idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int idpf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int idpf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
@@ -157,16 +173,21 @@ void idpf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 int idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf);
+int idpf_singleq_rx_vec_setup(struct idpf_rx_queue *rxq);
 int idpf_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 void idpf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 uint16_t idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts);
+uint16_t idpf_singleq_recv_pkts_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
+				       uint16_t nb_pkts);
 uint16_t idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			       uint16_t nb_pkts);
 uint16_t idpf_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
+uint16_t idpf_singleq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+				       uint16_t nb_pkts);
 uint16_t idpf_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
 uint16_t idpf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,

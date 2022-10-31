@@ -162,6 +162,11 @@ struct idpf_adapter {
 	uint32_t max_txq_per_msg;
 
 	uint32_t ptype_tbl[IDPF_MAX_PKT_TYPE] __rte_cache_min_aligned;
+
+	bool rx_vec_allowed;
+	bool tx_vec_allowed;
+	bool rx_use_avx512;
+	bool tx_use_avx512;
 };
 
 TAILQ_HEAD(idpf_adapter_list, idpf_adapter);
