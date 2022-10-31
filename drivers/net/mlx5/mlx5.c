@@ -447,22 +447,38 @@ mlx5_flow_aging_init(struct mlx5_dev_ctx_shared *sh)
  *
  * @param[in] sh
  *   Pointer to mlx5_dev_ctx_shared object to free
+ *
+ * @return
+ *   0 on success, otherwise negative errno value and rte_errno is set.
  */
-static void
+static int
 mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 {
 	int i;
+	void *pools;
 
+	pools = mlx5_malloc(MLX5_MEM_ZERO,
+				sizeof(struct mlx5_flow_counter_pool *) *
+				MLX5_COUNTER_POOLS_MAX_NUM,
+				0, SOCKET_ID_ANY);
+	if (!pools) {
+		DRV_LOG(ERR,
+			"Counter management allocation was failed.");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
 	memset(&sh->cmng, 0, sizeof(sh->cmng));
 	TAILQ_INIT(&sh->cmng.flow_counters);
 	sh->cmng.min_id = MLX5_CNT_BATCH_OFFSET;
 	sh->cmng.max_id = -1;
 	sh->cmng.last_pool_idx = POOL_IDX_INVALID;
+	sh->cmng.pools = pools;
 	rte_spinlock_init(&sh->cmng.pool_update_sl);
 	for (i = 0; i < MLX5_COUNTER_TYPE_MAX; i++) {
 		TAILQ_INIT(&sh->cmng.counters[i]);
 		rte_spinlock_init(&sh->cmng.csl[i]);
 	}
+	return 0;
 }
 
 /**
@@ -520,8 +536,7 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 					claim_zero
 					 (mlx5_flow_os_destroy_flow_action
 					  (cnt->action));
-				if (fallback && MLX5_POOL_GET_CNT
-				    (pool, j)->dcs_when_free)
+				if (fallback && cnt->dcs_when_free)
 					claim_zero(mlx5_devx_cmd_destroy
 						   (cnt->dcs_when_free));
 			}
@@ -1002,8 +1017,12 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		err = rte_errno;
 		goto error;
 	}
+	err = mlx5_flow_counters_mng_init(sh);
+	if (err) {
+		DRV_LOG(ERR, "Fail to initialize counters manage.");
+		goto error;
+	}
 	mlx5_flow_aging_init(sh);
-	mlx5_flow_counters_mng_init(sh);
 	mlx5_flow_ipool_create(sh, config);
 	/* Add device to memory callback list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
