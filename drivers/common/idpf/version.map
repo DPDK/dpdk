@@ -1,0 +1,12 @@
+INTERNAL {
+	global:
+
+	idpf_ctlq_deinit;
+	idpf_ctlq_init;
+	idpf_ctlq_clean_sq;
+	idpf_ctlq_recv;
+	idpf_ctlq_send;
+	idpf_ctlq_post_rx_buffs;
+
+	local: *;
+};
