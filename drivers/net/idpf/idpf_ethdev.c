@@ -67,7 +67,9 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		RTE_ETH_RX_OFFLOAD_TCP_CKSUM            |
 		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 
-	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+	dev_info->tx_offload_capa =
+		RTE_ETH_TX_OFFLOAD_TCP_TSO		|
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = IDPF_DEFAULT_TX_FREE_THRESH,

@@ -23,6 +23,16 @@
 
 #define IDPF_TX_MAX_MTU_SEG	10
 
+#define IDPF_MIN_TSO_MSS	88
+#define IDPF_MAX_TSO_MSS	9728
+#define IDPF_MAX_TSO_FRAME_SIZE	262143
+#define IDPF_TX_MAX_MTU_SEG     10
+
+#define IDPF_TX_OFFLOAD_MASK RTE_MBUF_F_TX_TCP_SEG
+
+#define IDPF_TX_OFFLOAD_NOTSUP_MASK \
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IDPF_TX_OFFLOAD_MASK)
+
 #define IDPF_GET_PTYPE_SIZE(p) \
 	(sizeof(struct virtchnl2_ptype) + \
 	(((p)->proto_id_count ? ((p)->proto_id_count - 1) : 0) * sizeof((p)->proto_id[0])))
@@ -113,6 +123,18 @@ struct idpf_tx_queue {
 	uint32_t tx_start_qid;
 	uint8_t expected_gen_id;
 	struct idpf_tx_queue *complq;
+};
+
+/* Offload features */
+union idpf_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /* L3 (IP) Header Length. */
+		uint64_t l4_len:8; /* L4 Header Length. */
+		uint64_t tso_segsz:16; /* TCP TSO segment size */
+		/* uint64_t unused : 24; */
+	};
 };
 
 struct idpf_rxq_ops {
