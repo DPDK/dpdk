@@ -48,7 +48,17 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.tx_rs_thresh = IDPF_DEFAULT_TX_RS_THRESH,
 	};
 
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = IDPF_DEFAULT_RX_FREE_THRESH,
+	};
+
 	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = IDPF_MAX_RING_DESC,
+		.nb_min = IDPF_MIN_RING_DESC,
+		.nb_align = IDPF_ALIGN_RING_DESC,
+	};
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = IDPF_MAX_RING_DESC,
 		.nb_min = IDPF_MIN_RING_DESC,
 		.nb_align = IDPF_ALIGN_RING_DESC,
@@ -643,6 +653,7 @@ err:
 static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.dev_configure			= idpf_dev_configure,
 	.dev_close			= idpf_dev_close,
+	.rx_queue_setup			= idpf_rx_queue_setup,
 	.tx_queue_setup			= idpf_tx_queue_setup,
 	.dev_infos_get			= idpf_dev_info_get,
 };

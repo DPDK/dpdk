@@ -15,8 +15,50 @@
 /* Base address of the HW descriptor ring should be 128B aligned. */
 #define IDPF_RING_BASE_ALIGN	128
 
+#define IDPF_RX_MAX_BURST		32
+#define IDPF_DEFAULT_RX_FREE_THRESH	32
+
 #define IDPF_DEFAULT_TX_RS_THRESH	32
 #define IDPF_DEFAULT_TX_FREE_THRESH	32
+
+struct idpf_rx_queue {
+	struct idpf_adapter *adapter;   /* the adapter this queue belongs to */
+	struct rte_mempool *mp;         /* mbuf pool to populate Rx ring */
+	const struct rte_memzone *mz;   /* memzone for Rx ring */
+	volatile void *rx_ring;
+	struct rte_mbuf **sw_ring;      /* address of SW ring */
+	uint64_t rx_ring_phys_addr;     /* Rx ring DMA address */
+
+	uint16_t nb_rx_desc;            /* ring length */
+	uint16_t rx_tail;               /* current value of tail */
+	volatile uint8_t *qrx_tail;     /* register address of tail */
+	uint16_t rx_free_thresh;        /* max free RX desc to hold */
+	uint16_t nb_rx_hold;            /* number of held free RX desc */
+	struct rte_mbuf *pkt_first_seg; /* first segment of current packet */
+	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
+	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
+
+	uint16_t rx_nb_avail;
+	uint16_t rx_next_avail;
+
+	uint16_t port_id;       /* device port ID */
+	uint16_t queue_id;      /* Rx queue index */
+	uint16_t rx_buf_len;    /* The packet buffer size */
+	uint16_t rx_hdr_len;    /* The header buffer size */
+	uint16_t max_pkt_len;   /* Maximum packet length */
+	uint8_t rxdid;
+
+	bool q_set;             /* if rx queue has been configured */
+	bool q_started;         /* if rx queue has been started */
+
+	/* only valid for split queue mode */
+	uint8_t expected_gen_id;
+	struct idpf_rx_queue *bufq1;
+	struct idpf_rx_queue *bufq2;
+
+	uint64_t offloads;
+	uint32_t hw_register_set;
+};
 
 struct idpf_tx_entry {
 	struct rte_mbuf *mbuf;
@@ -63,6 +105,10 @@ struct idpf_tx_queue {
 	struct idpf_tx_queue *complq;
 };
 
+int idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			uint16_t nb_desc, unsigned int socket_id,
+			const struct rte_eth_rxconf *rx_conf,
+			struct rte_mempool *mp);
 int idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf);
