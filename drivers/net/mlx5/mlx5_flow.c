@@ -1084,9 +1084,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.isolate = mlx5_flow_isolate,
 	.query = mlx5_flow_query,
 	.dev_dump = mlx5_flow_dev_dump,
-#ifdef MLX5_HAVE_RTE_FLOW_Q_AGE
 	.get_q_aged_flows = mlx5_flow_get_q_aged_flows,
-#endif
 	.get_aged_flows = mlx5_flow_get_aged_flows,
 	.action_handle_create = mlx5_action_handle_create,
 	.action_handle_destroy = mlx5_action_handle_destroy,

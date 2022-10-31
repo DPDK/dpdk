@@ -7032,10 +7032,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	if (_queue_attr)
 		mlx5_free(_queue_attr);
-#ifdef MLX5_HAVE_RTE_FLOW_Q_AGE
 	if (port_attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE)
 		priv->hws_strict_queue = 1;
-#endif
 	return 0;
 err:
 	if (priv->hws_ctpool) {

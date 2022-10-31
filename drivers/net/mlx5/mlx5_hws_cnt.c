@@ -846,7 +846,6 @@ int
 mlx5_hws_age_action_update(struct mlx5_priv *priv, uint32_t idx,
 			   const void *update, struct rte_flow_error *error)
 {
-#ifdef MLX5_HAVE_RTE_FLOW_Q_AGE
 	const struct rte_flow_update_age *update_ade = update;
 	struct mlx5_age_info *age_info = GET_PORT_AGE_INFO(priv);
 	struct mlx5_indexed_pool *ipool = age_info->ages_ipool;
@@ -899,14 +898,6 @@ mlx5_hws_age_action_update(struct mlx5_priv *priv, uint32_t idx,
 					 __ATOMIC_RELAXED);
 	}
 	return 0;
-#else
-	RTE_SET_USED(priv);
-	RTE_SET_USED(idx);
-	RTE_SET_USED(update);
-	return rte_flow_error_set(error, ENOTSUP,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				  "update age action not supported");
-#endif
 }
 
 /**
@@ -1193,9 +1184,7 @@ mlx5_hws_age_pool_init(struct rte_eth_dev *dev,
 	uint32_t nb_ages_updated;
 	int ret;
 
-#ifdef MLX5_HAVE_RTE_FLOW_Q_AGE
 	strict_queue = !!(attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE);
-#endif
 	MLX5_ASSERT(priv->hws_cpool);
 	nb_alloc_cnts = mlx5_hws_cnt_pool_get_size(priv->hws_cpool);
 	if (strict_queue) {
