@@ -172,6 +172,21 @@ updateQtop(uint8_t acc, uint8_t qg, struct rte_acc_conf *acc_conf, struct acc_de
 	}
 }
 
+/* Check device Qmgr is enabled for protection */
+static inline bool
+acc200_check_device_enable(struct rte_bbdev *dev)
+{
+	uint32_t reg_aq, qg;
+	struct acc_device *d = dev->data->dev_private;
+
+	for (qg = 0; qg < ACC200_NUM_QGRPS; qg++) {
+		reg_aq = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, 0));
+		if (reg_aq & ACC_QUEUE_ENABLE)
+			return true;
+	}
+	return false;
+}
+
 /* Fetch configuration enabled for the PF/VF using MMIO Read (slow). */
 static inline void
 fetch_acc200_config(struct rte_bbdev *dev)
@@ -189,6 +204,12 @@ fetch_acc200_config(struct rte_bbdev *dev)
 	/* No need to retrieve the configuration is already done. */
 	if (d->configured)
 		return;
+
+	if (!acc200_check_device_enable(dev)) {
+		rte_bbdev_log(NOTICE, "%s has no queue enabled and can't be used.",
+				dev->data->name);
+		return;
+	}
 
 	/* Choose correct registry addresses for the device type. */
 	if (d->pf_device)
@@ -450,6 +471,12 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	if (!d->pf_device && d->acc_conf.pf_mode_en) {
 		rte_bbdev_log(NOTICE,
 				"%s has PF mode enabled. This VF can't be used.",
+				dev->data->name);
+		return -ENODEV;
+	}
+
+	if (!acc200_check_device_enable(dev)) {
+		rte_bbdev_log(NOTICE, "%s has no queue enabled and can't be used.",
 				dev->data->name);
 		return -ENODEV;
 	}
