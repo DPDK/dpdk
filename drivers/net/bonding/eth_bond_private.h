@@ -179,6 +179,8 @@ struct bond_dev_private {
 	struct rte_kvargs *kvlist;
 	uint8_t slave_update_idx;
 
+	bool kvargs_processing_is_done;
+
 	uint32_t candidate_max_rx_pktlen;
 	uint32_t max_rx_pktlen;
 

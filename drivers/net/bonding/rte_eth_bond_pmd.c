@@ -2170,7 +2170,7 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 }
 
 static void
-bond_ethdev_cfg_cleanup(struct rte_eth_dev *dev)
+bond_ethdev_cfg_cleanup(struct rte_eth_dev *dev, bool remove)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	uint16_t bond_port_id = internals->port_id;
@@ -2182,10 +2182,15 @@ bond_ethdev_cfg_cleanup(struct rte_eth_dev *dev)
 
 	while (internals->slave_count != skipped) {
 		uint16_t port_id = internals->slaves[skipped].port_id;
+		int ret;
 
-		if (rte_eth_dev_stop(port_id) != 0) {
+		ret = rte_eth_dev_stop(port_id);
+		if (ret != 0) {
 			RTE_BOND_LOG(ERR, "Failed to stop device on port %u",
 				     port_id);
+		}
+
+		if (ret != 0 || !remove) {
 			skipped++;
 			continue;
 		}
@@ -2209,7 +2214,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 
 	RTE_BOND_LOG(INFO, "Closing bonded device %s", dev->device->name);
 
-	bond_ethdev_cfg_cleanup(dev);
+	bond_ethdev_cfg_cleanup(dev, true);
 
 	bond_ethdev_free_queues(dev);
 	rte_bitmap_reset(internals->vlan_filter_bmp);
@@ -3644,7 +3649,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	unsigned i, j;
 
 
-	bond_ethdev_cfg_cleanup(dev);
+	bond_ethdev_cfg_cleanup(dev, false);
 
 	/*
 	 * If RSS is enabled, fill table with default values and
@@ -3733,8 +3738,10 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	 * if no kvlist, it means that this bonded device has been created
 	 * through the bonding api.
 	 */
-	if (!kvlist)
+	if (!kvlist || internals->kvargs_processing_is_done)
 		return 0;
+
+	internals->kvargs_processing_is_done = true;
 
 	/* Parse MAC address for bonded device */
 	arg_count = rte_kvargs_count(kvlist, PMD_BOND_MAC_ADDR_KVARG);
