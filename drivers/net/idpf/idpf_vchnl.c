@@ -55,7 +55,7 @@ idpf_vc_clean(struct idpf_adapter *adapter)
 }
 
 static int
-idpf_send_vc_msg(struct idpf_adapter *adapter, enum virtchnl_ops op,
+idpf_send_vc_msg(struct idpf_adapter *adapter, uint32_t op,
 		 uint16_t msg_size, uint8_t *msg)
 {
 	struct idpf_ctlq_msg *ctlq_msg;
@@ -118,7 +118,7 @@ idpf_read_msg_from_cp(struct idpf_adapter *adapter, uint16_t buf_len,
 	struct idpf_ctlq_msg ctlq_msg;
 	struct idpf_dma_mem *dma_mem = NULL;
 	enum idpf_vc_result result = IDPF_MSG_NON;
-	enum virtchnl_ops opcode;
+	uint32_t opcode;
 	uint16_t pending = 1;
 	int ret;
 
@@ -132,7 +132,7 @@ idpf_read_msg_from_cp(struct idpf_adapter *adapter, uint16_t buf_len,
 
 	rte_memcpy(buf, ctlq_msg.ctx.indirect.payload->va, buf_len);
 
-	opcode = (enum virtchnl_ops)rte_le_to_cpu_32(ctlq_msg.cookie.mbx.chnl_opcode);
+	opcode = rte_le_to_cpu_32(ctlq_msg.cookie.mbx.chnl_opcode);
 	adapter->cmd_retval =
 		(enum virtchnl_status_code)rte_le_to_cpu_32(ctlq_msg.cookie.mbx.chnl_retval);
 

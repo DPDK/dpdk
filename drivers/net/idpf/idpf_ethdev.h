@@ -137,7 +137,7 @@ struct idpf_adapter {
 	struct virtchnl2_version_info virtchnl_version;
 	struct virtchnl2_get_capabilities *caps;
 
-	volatile enum virtchnl_ops pend_cmd; /* pending command not finished */
+	volatile uint32_t pend_cmd; /* pending command not finished */
 	uint32_t cmd_retval; /* return value of the cmd response from ipf */
 	uint8_t *mbx_resp; /* buffer to store the mailbox response from ipf */
 
@@ -195,7 +195,7 @@ notify_cmd(struct idpf_adapter *adapter, int msg_ret)
 	adapter->cmd_retval = msg_ret;
 	/* Return value may be checked in anither thread, need to ensure the coherence. */
 	rte_wmb();
-	adapter->pend_cmd = VIRTCHNL_OP_UNKNOWN;
+	adapter->pend_cmd = VIRTCHNL2_OP_UNKNOWN;
 }
 
 /* clear current command. Only call in case execute
@@ -206,15 +206,15 @@ clear_cmd(struct idpf_adapter *adapter)
 {
 	/* Return value may be checked in anither thread, need to ensure the coherence. */
 	rte_wmb();
-	adapter->pend_cmd = VIRTCHNL_OP_UNKNOWN;
+	adapter->pend_cmd = VIRTCHNL2_OP_UNKNOWN;
 	adapter->cmd_retval = VIRTCHNL_STATUS_SUCCESS;
 }
 
 /* Check there is pending cmd in execution. If none, set new command. */
 static inline bool
-atomic_set_cmd(struct idpf_adapter *adapter, enum virtchnl_ops ops)
+atomic_set_cmd(struct idpf_adapter *adapter, uint32_t ops)
 {
-	enum virtchnl_ops op_unk = VIRTCHNL_OP_UNKNOWN;
+	uint32_t op_unk = VIRTCHNL2_OP_UNKNOWN;
 	bool ret = __atomic_compare_exchange(&adapter->pend_cmd, &op_unk, &ops,
 					    0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
 
