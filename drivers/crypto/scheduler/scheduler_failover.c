@@ -50,12 +50,18 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	enqueued_ops = failover_worker_enqueue(&qp_ctx->primary_worker,
 			ops, nb_ops, PRIMARY_WORKER_IDX);
 
-	if (enqueued_ops < nb_ops)
+	if (enqueued_ops < nb_ops) {
+		scheduler_retrieve_session(&ops[enqueued_ops],
+						nb_ops - enqueued_ops);
 		enqueued_ops += failover_worker_enqueue(
 				&qp_ctx->secondary_worker,
 				&ops[enqueued_ops],
 				nb_ops - enqueued_ops,
 				SECONDARY_WORKER_IDX);
+		if (enqueued_ops < nb_ops)
+			scheduler_retrieve_session(&ops[enqueued_ops],
+						nb_ops - enqueued_ops);
+	}
 
 	return enqueued_ops;
 }

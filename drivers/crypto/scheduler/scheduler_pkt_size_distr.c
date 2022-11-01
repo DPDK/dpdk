@@ -89,9 +89,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 				ops[i]->sym->auth.data.length;
 		/* decide the target op based on the job length */
 		target[0] = !(job_len[0] & psd_qp_ctx->threshold);
-		if (ops[i]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			ops[i]->sym->session =
-				sess_ctx[0]->worker_sess[target[0]];
 		p_enq_op = &enq_ops[target[0]];
 
 		/* stop schedule cops before the queue is full, this shall
@@ -103,6 +100,9 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
+		if (ops[i]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+			ops[i]->sym->session =
+				sess_ctx[0]->worker_sess[target[0]];
 		sched_ops[p_enq_op->worker_idx][p_enq_op->pos] = ops[i];
 		p_enq_op->pos++;
 
@@ -110,9 +110,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len[1] += (ops[i + 1]->sym->cipher.data.length == 0) *
 				ops[i+1]->sym->auth.data.length;
 		target[1] = !(job_len[1] & psd_qp_ctx->threshold);
-		if (ops[i + 1]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			ops[i + 1]->sym->session =
-				sess_ctx[1]->worker_sess[target[1]];
 		p_enq_op = &enq_ops[target[1]];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->worker_idx] ==
@@ -121,6 +118,9 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
+		if (ops[i + 1]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+			ops[i + 1]->sym->session =
+				sess_ctx[1]->worker_sess[target[1]];
 		sched_ops[p_enq_op->worker_idx][p_enq_op->pos] = ops[i+1];
 		p_enq_op->pos++;
 
@@ -128,9 +128,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len[2] += (ops[i + 2]->sym->cipher.data.length == 0) *
 				ops[i + 2]->sym->auth.data.length;
 		target[2] = !(job_len[2] & psd_qp_ctx->threshold);
-		if (ops[i + 2]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			ops[i + 2]->sym->session =
-				sess_ctx[2]->worker_sess[target[2]];
 		p_enq_op = &enq_ops[target[2]];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->worker_idx] ==
@@ -139,6 +136,9 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
+		if (ops[i + 2]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+			ops[i + 2]->sym->session =
+				sess_ctx[2]->worker_sess[target[2]];
 		sched_ops[p_enq_op->worker_idx][p_enq_op->pos] = ops[i+2];
 		p_enq_op->pos++;
 
@@ -146,9 +146,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len[3] += (ops[i + 3]->sym->cipher.data.length == 0) *
 				ops[i + 3]->sym->auth.data.length;
 		target[3] = !(job_len[3] & psd_qp_ctx->threshold);
-		if (ops[i + 3]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			ops[i + 3]->sym->session =
-				sess_ctx[3]->worker_sess[target[3]];
 		p_enq_op = &enq_ops[target[3]];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->worker_idx] ==
@@ -157,6 +154,9 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
+		if (ops[i + 3]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+			ops[i + 3]->sym->session =
+				sess_ctx[3]->worker_sess[target[3]];
 		sched_ops[p_enq_op->worker_idx][p_enq_op->pos] = ops[i+3];
 		p_enq_op->pos++;
 	}
@@ -171,8 +171,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len += (ops[i]->sym->cipher.data.length == 0) *
 				ops[i]->sym->auth.data.length;
 		target = !(job_len & psd_qp_ctx->threshold);
-		if (ops[i]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-			ops[i]->sym->session = sess_ctx->worker_sess[target];
 		p_enq_op = &enq_ops[target];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->worker_idx] ==
@@ -181,6 +179,8 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 			break;
 		}
 
+		if (ops[i]->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+			ops[i]->sym->session = sess_ctx->worker_sess[target];
 		sched_ops[p_enq_op->worker_idx][p_enq_op->pos] = ops[i];
 		p_enq_op->pos++;
 	}
@@ -251,7 +251,7 @@ schedule_dequeue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		nb_deq_ops_sec = rte_cryptodev_dequeue_burst(worker->dev_id,
 				worker->qp_id, &ops[nb_deq_ops_pri],
 				nb_ops - nb_deq_ops_pri);
-		scheduler_retrieve_session(ops, nb_deq_ops_sec);
+		scheduler_retrieve_session(&ops[nb_deq_ops_pri], nb_deq_ops_sec);
 		worker->nb_inflight_cops -= nb_deq_ops_sec;
 
 		if (!worker->nb_inflight_cops)
