@@ -1435,93 +1435,6 @@ acc101_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	}
 }
 
-/**
- * Fills descriptor with data pointers of one block type.
- *
- * @param desc
- *   Pointer to DMA descriptor.
- * @param input
- *   Pointer to pointer to input data which will be encoded. It can be changed
- *   and points to next segment in scatter-gather case.
- * @param offset
- *   Input offset in rte_mbuf structure. It is used for calculating the point
- *   where data is starting.
- * @param cb_len
- *   Length of currently processed Code Block
- * @param seg_total_left
- *   It indicates how many bytes still left in segment (mbuf) for further
- *   processing.
- * @param op_flags
- *   Store information about device capabilities
- * @param next_triplet
- *   Index for ACC100 DMA Descriptor triplet
- * @param scattergather
- *   Flag to support scatter-gather for the mbuf
- *
- * @return
- *   Returns index of next triplet on success, other value if lengths of
- *   pkt and processed cb do not match.
- *
- */
-static inline int
-acc100_dma_fill_blk_type_in(struct acc_dma_req_desc *desc,
-		struct rte_mbuf **input, uint32_t *offset, uint32_t cb_len,
-		uint32_t *seg_total_left, int next_triplet,
-		bool scattergather)
-{
-	uint32_t part_len;
-	struct rte_mbuf *m = *input;
-
-	if (scattergather)
-		part_len = (*seg_total_left < cb_len) ? *seg_total_left : cb_len;
-	else
-		part_len = cb_len;
-	cb_len -= part_len;
-	*seg_total_left -= part_len;
-
-	desc->data_ptrs[next_triplet].address =
-			rte_pktmbuf_iova_offset(m, *offset);
-	desc->data_ptrs[next_triplet].blen = part_len;
-	desc->data_ptrs[next_triplet].blkid = ACC_DMA_BLKID_IN;
-	desc->data_ptrs[next_triplet].last = 0;
-	desc->data_ptrs[next_triplet].dma_ext = 0;
-	*offset += part_len;
-	next_triplet++;
-
-	while (cb_len > 0) {
-		if (next_triplet < ACC_DMA_MAX_NUM_POINTERS_IN && m->next != NULL) {
-
-			m = m->next;
-			*seg_total_left = rte_pktmbuf_data_len(m);
-			part_len = (*seg_total_left < cb_len) ?
-					*seg_total_left :
-					cb_len;
-			desc->data_ptrs[next_triplet].address =
-					rte_pktmbuf_iova_offset(m, 0);
-			desc->data_ptrs[next_triplet].blen = part_len;
-			desc->data_ptrs[next_triplet].blkid =
-					ACC_DMA_BLKID_IN;
-			desc->data_ptrs[next_triplet].last = 0;
-			desc->data_ptrs[next_triplet].dma_ext = 0;
-			cb_len -= part_len;
-			*seg_total_left -= part_len;
-			/* Initializing offset for next segment (mbuf) */
-			*offset = part_len;
-			next_triplet++;
-		} else {
-			rte_bbdev_log(ERR,
-				"Some data still left for processing: "
-				"data_left: %u, next_triplet: %u, next_mbuf: %p",
-				cb_len, next_triplet, m->next);
-			return -EINVAL;
-		}
-	}
-	/* Storing new mbuf as it could be changed in scatter-gather case*/
-	*input = m;
-
-	return next_triplet;
-}
-
 /* May need to pad LDPC Encoder input to avoid small beat for ACC100. */
 static inline uint16_t
 pad_le_in(uint16_t blen, struct acc_queue *q)
@@ -1565,7 +1478,7 @@ acc100_dma_desc_le_fill(struct rte_bbdev_enc_op *op,
 		return -1;
 	}
 
-	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset,
+	next_triplet = acc_dma_fill_blk_type_in(desc, input, in_offset,
 			pad_le_in(in_length_in_bytes, q), seg_total_left, next_triplet, false);
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
@@ -1653,7 +1566,7 @@ acc100_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 		return -1;
 	}
 
-	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset, kw,
+	next_triplet = acc_dma_fill_blk_type_in(desc, input, in_offset, kw,
 			seg_total_left, next_triplet,
 			check_bit(op->turbo_dec.op_flags,
 			RTE_BBDEV_TURBO_DEC_SCATTER_GATHER));
@@ -1756,7 +1669,7 @@ acc100_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 		return -1;
 	}
 
-	next_triplet = acc100_dma_fill_blk_type_in(desc, input,
+	next_triplet = acc_dma_fill_blk_type_in(desc, input,
 			in_offset, input_length,
 			seg_total_left, next_triplet,
 			check_bit(op->ldpc_dec.op_flags,
