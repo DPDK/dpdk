@@ -161,7 +161,7 @@ New Features
 * **Added Intel idpf driver.**
 
   Added the new ``idpf`` net driver
-  for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2000.
+  for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
   See the :doc:`../nics/idpf` NIC guide for more details on this new driver.
 
 * **Updated Marvell cnxk driver.**
