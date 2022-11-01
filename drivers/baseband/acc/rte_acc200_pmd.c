@@ -1238,8 +1238,7 @@ acc200_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 	fcw->raw_decoder_input_on = 0;
 	fcw->max_iter = RTE_MAX((uint8_t) op->turbo_dec.iter_max, 2);
 	fcw->min_iter = 2;
-	fcw->half_iter_on = !check_bit(op->turbo_dec.op_flags,
-			RTE_BBDEV_TURBO_HALF_ITERATION_EVEN);
+	fcw->half_iter_on = check_bit(op->turbo_dec.op_flags, RTE_BBDEV_TURBO_HALF_ITERATION_EVEN);
 
 	fcw->early_stop_en = check_bit(op->turbo_dec.op_flags,
 			RTE_BBDEV_TURBO_EARLY_TERMINATION) & !fcw->soft_output_en;
