@@ -908,6 +908,7 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 		struct rte_bbdev_stats *queue_stats)
 {
 	union acc_enqueue_reg_fmt enq_req;
+	union acc_dma_desc *desc;
 #ifdef RTE_BBDEV_OFFLOAD_COST
 	uint64_t start_time = 0;
 	queue_stats->acc_offload_cycles = 0;
@@ -915,13 +916,17 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 	RTE_SET_USED(queue_stats);
 #endif
 
+	/* Set Sdone and IRQ enable bit on last descriptor. */
+	desc = acc_desc(q, n - 1);
+	desc->req.sdone_enable = 1;
+	desc->req.irq_enable = q->irq_enable;
+
 	enq_req.val = 0;
 	/* Setting offset, 100b for 256 DMA Desc */
 	enq_req.addr_offset = ACC_DESC_OFFSET;
 
 	/* Split ops into batches */
 	do {
-		union acc_dma_desc *desc;
 		uint16_t enq_batch_size;
 		uint64_t offset;
 		rte_iova_t req_elem_addr;
