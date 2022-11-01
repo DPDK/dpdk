@@ -888,8 +888,7 @@ acc100_queue_release(struct rte_bbdev *dev, uint16_t q_id)
 
 	if (q != NULL) {
 		/* Mark the Queue as un-assigned */
-		d->q_assigned_bit_map[q->qgrp_id] &= (0xFFFFFFFFFFFFFFFF -
-				(uint64_t) (1 << q->aq_id));
+		d->q_assigned_bit_map[q->qgrp_id] &= (~0ULL - (1 << (uint64_t) q->aq_id));
 		rte_free(q->companion_ring_addr);
 		rte_free(q->lb_in);
 		rte_free(q->lb_out);
