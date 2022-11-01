@@ -479,6 +479,11 @@ acc100_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	/* Read the populated cfg from ACC100 registers */
 	fetch_acc100_config(dev);
 
+	for (value = 0; value <= 2; value++) {
+		acc_reg_write(d, reg_addr->pmon_ctrl_a, value);
+		acc_reg_write(d, reg_addr->pmon_ctrl_b, value);
+	}
+
 	/* Release AXI from PF */
 	if (d->pf_device)
 		acc_reg_write(d, HWPfDmaAxiControl, 1);

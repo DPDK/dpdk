@@ -146,8 +146,8 @@ static const struct acc100_registry_addr pf_reg_addr = {
 	.depth_log1_offset = HWPfQmgrGrpDepthLog21Vf,
 	.qman_group_func = HWPfQmgrGrpFunction0,
 	.ddr_range = HWPfDmaVfDdrBaseRw,
-	.pmon_ctrl_a = HWVfPmACntrlRegVf,
-	.pmon_ctrl_b = HWVfPmBCntrlRegVf,
+	.pmon_ctrl_a = HWPfPermonACntrlRegVf,
+	.pmon_ctrl_b = HWPfPermonBCntrlRegVf,
 };
 
 /* Structure holding registry addresses for VF */
@@ -177,6 +177,8 @@ static const struct acc100_registry_addr vf_reg_addr = {
 	.depth_log1_offset = HWVfQmgrGrpDepthLog21Vf,
 	.qman_group_func = HWVfQmgrGrpFunction0Vf,
 	.ddr_range = HWVfDmaDdrBaseRangeRoVf,
+	.pmon_ctrl_a = HWVfPmACntrlRegVf,
+	.pmon_ctrl_b = HWVfPmBCntrlRegVf,
 };
 
 #endif /* _RTE_ACC100_PMD_H_ */
