@@ -39,7 +39,15 @@ mlx5_test_host_shaper_disable(void *args)
 	uint16_t port_id = port_rxq_id & 0xffff;
 	uint16_t qid = (port_rxq_id >> 16) & 0xffff;
 	struct rte_eth_rxq_info qinfo;
+	struct rte_port *port;
 
+	port = &ports[port_id];
+	if (port->port_status != RTE_PORT_STARTED) {
+		printf("%s port_status(%d) is incorrect, stop avail_thresh "
+		       "event processing.\n",
+		       __func__, port->port_status);
+		return;
+	}
 	printf("%s disable shaper\n", __func__);
 	if (rte_eth_rx_queue_info_get(port_id, qid, &qinfo)) {
 		printf("rx_queue_info_get returns error\n");
