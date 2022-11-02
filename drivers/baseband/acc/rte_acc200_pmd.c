@@ -105,9 +105,9 @@ aqDepth(int qg_idx, struct rte_acc_conf *acc_conf)
 	qtopFromAcc(&q_top, acc_enum, acc_conf);
 
 	if (unlikely(q_top == NULL))
-		return 0;
+		return 1;
 
-	return q_top->aq_depth_log2;
+	return RTE_MAX(1, q_top->aq_depth_log2);
 }
 
 /* Return the AQ depth for a Queue Group Index. */
