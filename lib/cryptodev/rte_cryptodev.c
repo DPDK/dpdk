@@ -141,15 +141,6 @@ rte_crypto_auth_algorithm_strings[] = {
 	[RTE_CRYPTO_AUTH_SHA512]	= "sha2-512",
 	[RTE_CRYPTO_AUTH_SHA512_HMAC]	= "sha2-512-hmac",
 
-	[RTE_CRYPTO_AUTH_SHA3_224]	= "sha3-224",
-	[RTE_CRYPTO_AUTH_SHA3_224_HMAC] = "sha3-224-hmac",
-	[RTE_CRYPTO_AUTH_SHA3_256]	= "sha3-256",
-	[RTE_CRYPTO_AUTH_SHA3_256_HMAC] = "sha3-256-hmac",
-	[RTE_CRYPTO_AUTH_SHA3_384]	= "sha3-384",
-	[RTE_CRYPTO_AUTH_SHA3_384_HMAC] = "sha3-384-hmac",
-	[RTE_CRYPTO_AUTH_SHA3_512]	= "sha3-512",
-	[RTE_CRYPTO_AUTH_SHA3_512_HMAC]	= "sha3-512-hmac",
-
 	[RTE_CRYPTO_AUTH_KASUMI_F9]	= "kasumi-f9",
 	[RTE_CRYPTO_AUTH_SNOW3G_UIA2]	= "snow3g-uia2",
 	[RTE_CRYPTO_AUTH_ZUC_EIA3]	= "zuc-eia3"
