@@ -5,6 +5,7 @@
 #include <bus_vdev_driver.h>
 #include <rte_common.h>
 #include <rte_cryptodev.h>
+#include <rte_errno.h>
 
 #include "ipsec_mb_private.h"
 
@@ -46,7 +47,6 @@ static int
 ipsec_mb_mp_request_register(void)
 {
 	RTE_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	IPSEC_MB_LOG(INFO, "Starting register MP IPC request\n");
 	return rte_mp_action_register(IPSEC_MB_MP_MSG,
 				ipsec_mb_ipc_request);
 }
@@ -168,9 +168,16 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 	IPSEC_MB_LOG(INFO, "IPSec Multi-buffer library version used: %s\n",
 		     imb_get_version_str());
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		retval = ipsec_mb_mp_request_register();
+		if (retval && (rte_errno == EEXIST))
+			/* Safe to proceed, return 0 */
+			return 0;
 
+		if (retval)
+			IPSEC_MB_LOG(ERR,
+				"IPSec Multi-buffer register MP request failed.\n");
+	}
 	return retval;
 }
 
