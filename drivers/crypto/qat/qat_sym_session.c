@@ -520,19 +520,7 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 	int ret;
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-		OSSL_PROVIDER * legacy;
-		OSSL_PROVIDER *deflt;
-
-		/* Load Multiple providers into the default (NULL) library context */
-		legacy = OSSL_PROVIDER_load(NULL, "legacy");
-		if (legacy == NULL)
-			return -EINVAL;
-
-		deflt = OSSL_PROVIDER_load(NULL, "default");
-		if (deflt == NULL) {
-			OSSL_PROVIDER_unload(legacy);
-			return -EINVAL;
-		}
+	ossl_legacy_provider_load();
 #endif
 	ret = qat_sym_session_set_parameters(dev, xform,
 			CRYPTODEV_GET_SYM_SESS_PRIV(sess),
@@ -545,8 +533,7 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 	}
 
 # if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-		OSSL_PROVIDER_unload(legacy);
-		OSSL_PROVIDER_unload(deflt);
+	ossl_legacy_provider_unload();
 # endif
 	return 0;
 }
@@ -2639,7 +2626,8 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 		return ret;
 	qat_sym_session_finalize(session);
 
-	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)cdev, session);
+	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)cdev,
+			(void *)session);
 }
 
 int
@@ -2668,6 +2656,9 @@ qat_security_session_create(void *dev,
 		return ret;
 	}
 
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+	ossl_legacy_provider_unload();
+#endif
 	return 0;
 }
 
@@ -2684,9 +2675,6 @@ qat_security_session_destroy(void *dev __rte_unused,
 		memset(s, 0, qat_sym_session_get_private_size(dev));
 	}
 
-# if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-	ossl_legacy_provider_unload();
-# endif
 	return 0;
 }
 
