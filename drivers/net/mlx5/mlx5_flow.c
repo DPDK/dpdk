@@ -5932,7 +5932,8 @@ flow_check_match_action(const struct rte_flow_action actions[],
 			ratio = sample->ratio;
 			sub_type = ((const struct rte_flow_action *)
 					(sample->actions))->type;
-			if (ratio == 1 && attr->transfer)
+			if (ratio == 1 && attr->transfer &&
+			    sub_type != RTE_FLOW_ACTION_TYPE_END)
 				fdb_mirror = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
@@ -6104,9 +6105,11 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 				break;
 			case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 			case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
-				push_vlan_idx = action_idx;
-				if (push_vlan_idx < sample_action_pos)
+				if (action_idx < sample_action_pos &&
+				    push_vlan_idx == -1) {
 					set_tag_idx = action_idx;
+					push_vlan_idx = action_idx;
+				}
 				break;
 			default:
 				break;
@@ -6169,18 +6172,20 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 			.data = tag_id,
 		};
 		/* Prepare the suffix subflow items. */
-		for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-			if (items->type == RTE_FLOW_ITEM_TYPE_PORT_ID ||
-			    items->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR) {
-				memcpy(sfx_items, items, sizeof(*sfx_items));
-				sfx_items++;
-			}
-		}
 		tag_spec = (void *)(sfx_items + SAMPLE_SUFFIX_ITEM);
 		tag_spec->data = tag_id;
 		tag_spec->id = set_tag->id;
 		tag_mask = tag_spec + 1;
 		tag_mask->data = UINT32_MAX;
+		for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+			if (items->type == RTE_FLOW_ITEM_TYPE_PORT_ID ||
+			    items->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR ||
+			    items->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) {
+				memcpy(sfx_items, items, sizeof(*sfx_items));
+				sfx_items++;
+				break;
+			}
+		}
 		sfx_items[0] = (struct rte_flow_item){
 			.type = (enum rte_flow_item_type)
 				MLX5_RTE_FLOW_ITEM_TYPE_TAG,
@@ -6755,6 +6760,8 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 	uint16_t jump_table = 0;
 	const uint32_t next_ft_step = 1;
 	int ret = 0;
+	struct mlx5_priv *item_port_priv = NULL;
+	const struct rte_flow_item *item;
 
 	if (priv->sampler_en)
 		actions_n = flow_check_match_action(actions, attr,
@@ -6774,8 +6781,36 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "no memory to split "
 						  "sample flow");
+		for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+			if (item->type == RTE_FLOW_ITEM_TYPE_PORT_ID) {
+				const struct rte_flow_item_port_id *spec;
+
+				spec = (const struct rte_flow_item_port_id *)item->spec;
+				if (spec)
+					item_port_priv =
+						mlx5_port_to_eswitch_info(spec->id, true);
+				break;
+			} else if (item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) {
+				const struct rte_flow_item_ethdev *spec;
+
+				spec = (const struct rte_flow_item_ethdev *)item->spec;
+				if (spec)
+					item_port_priv =
+						mlx5_port_to_eswitch_info(spec->port_id, true);
+				break;
+			} else if (item->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR) {
+				const struct rte_flow_item_ethdev *spec;
+
+				spec = (const struct rte_flow_item_ethdev *)item->spec;
+				if (spec)
+					item_port_priv =
+						mlx5_port_to_eswitch_info(spec->port_id, true);
+				break;
+			}
+		}
 		/* The representor_id is UINT16_MAX for uplink. */
-		fdb_tx = (attr->transfer && priv->representor_id != UINT16_MAX);
+		fdb_tx = (attr->transfer &&
+			  flow_source_vport_representor(priv, item_port_priv));
 		/*
 		 * When reg_c_preserve is set, metadata registers Cx preserve
 		 * their value even through packet duplication.

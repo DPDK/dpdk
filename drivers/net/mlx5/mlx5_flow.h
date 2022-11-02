@@ -2118,6 +2118,25 @@ rte_col_2_mlx5_col(enum rte_color rcol)
 	return MLX5_FLOW_COLOR_UNDEFINED;
 }
 
+/**
+ * Indicates whether flow source vport is representor port.
+ *
+ * @param[in] priv
+ *   Pointer to device private context structure.
+ * @param[in] act_priv
+ *   Pointer to actual device private context structure if have.
+ *
+ * @return
+ *   True when the flow source vport is representor port, false otherwise.
+ */
+static inline bool
+flow_source_vport_representor(struct mlx5_priv *priv, struct mlx5_priv *act_priv)
+{
+	MLX5_ASSERT(priv);
+	return (!act_priv ? (priv->representor_id != UINT16_MAX) :
+		 (act_priv->representor_id != UINT16_MAX));
+}
+
 /* All types of Ethernet patterns used in control flow rules. */
 enum mlx5_flow_ctrl_rx_eth_pattern_type {
 	MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL = 0,
