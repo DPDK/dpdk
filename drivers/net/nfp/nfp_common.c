@@ -1386,7 +1386,7 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
 	int ret;
 	uint32_t i;
 
-	if (idx > NFP_NET_N_VXLAN_PORTS) {
+	if (idx >= NFP_NET_N_VXLAN_PORTS) {
 		PMD_DRV_LOG(ERR, "The idx value is out of range.");
 		return -ERANGE;
 	}
