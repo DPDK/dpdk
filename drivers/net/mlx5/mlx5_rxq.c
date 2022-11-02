@@ -899,16 +899,20 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* Try to reuse shared RXQ. */
 		rxq_ctrl = mlx5_shared_rxq_get(dev, conf->share_group,
 					       conf->share_qid);
+		res = mlx5_rx_queue_pre_setup(dev, idx, &desc, &rxq_ctrl);
+		if (res)
+			return res;
 		if (rxq_ctrl != NULL &&
 		    !mlx5_shared_rxq_match(rxq_ctrl, dev, idx, desc, socket,
 					   conf, mp)) {
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}
+	} else {
+		res = mlx5_rx_queue_pre_setup(dev, idx, &desc, &rxq_ctrl);
+		if (res)
+			return res;
 	}
-	res = mlx5_rx_queue_pre_setup(dev, idx, &desc, &rxq_ctrl);
-	if (res)
-		return res;
 	/* Allocate RXQ. */
 	rxq = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*rxq), 0,
 			  SOCKET_ID_ANY);
