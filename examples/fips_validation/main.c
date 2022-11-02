@@ -12,6 +12,7 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_string_fns.h>
+#include <rte_random.h>
 
 #include "fips_validation.h"
 #include "fips_dev_self_test.h"
@@ -761,7 +762,7 @@ prepare_auth_op(void)
 		}
 
 		for (i = 0; i < vec.iv.len; i++) {
-			int random = rand();
+			int random = rte_rand();
 			vec.iv.val[i] = (uint8_t)random;
 		}
 	}
