@@ -610,8 +610,8 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 
 	/* Most queue types will store 1 ptr per descriptor */
 	new->q.info = rte_calloc_socket("ionic",
-				num_descs * num_segs, sizeof(void *),
-				page_size, socket_id);
+				(uint64_t)num_descs * num_segs,
+				sizeof(void *), page_size, socket_id);
 	if (!new->q.info) {
 		IONIC_PRINT(ERR, "Cannot allocate queue info");
 		err = -ENOMEM;
