@@ -1138,7 +1138,6 @@ mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket)
 			      &share_cache->dereg_mr_cb);
 	rte_rwlock_init(&share_cache->rwlock);
 	rte_rwlock_init(&share_cache->mprwlock);
-	share_cache->mempool_cb_reg_n = 0;
 	/* Initialize B-tree and allocate memory for global MR cache table. */
 	return mlx5_mr_btree_init(&share_cache->cache,
 				  MLX5_MR_BTREE_CACHE_N * 2, socket);
