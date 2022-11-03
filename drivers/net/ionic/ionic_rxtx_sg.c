@@ -175,7 +175,7 @@ ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 		rte_prefetch0(&desc_base[q->head_idx]);
 	rte_prefetch0(IONIC_INFO_PTR(q, q->head_idx));
 
-	if (tx_pkts) {
+	if (nb_pkts) {
 		rte_mbuf_prefetch_part1(tx_pkts[0]);
 		rte_mbuf_prefetch_part2(tx_pkts[0]);
 	}
