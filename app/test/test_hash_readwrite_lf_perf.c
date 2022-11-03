@@ -1102,7 +1102,6 @@ test_hash_multi_add_lookup(struct rwc_perf *rwc_perf_results, int rwc_lf,
 					rte_eal_remote_launch(test_rwc_reader,
 						(void *)(uintptr_t)read_type,
 						enabled_core_ids[i]);
-				write_type = WRITE_KEY_SHIFT;
 				pos_core = 0;
 
 				/* Launch writers */
