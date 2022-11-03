@@ -9717,8 +9717,8 @@ flow_dv_translate_item_mpls(void *key, const struct rte_flow_item *item,
  *   Flow matcher value.
  * @param[in] reg_type
  *   Type of device metadata register
- * @param[in] value
- *   Register value
+ * @param[in] data
+ *   Register data
  * @param[in] mask
  *   Register mask
  */
@@ -17122,7 +17122,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	tbl_data = container_of(tbl_rsc, struct mlx5_flow_tbl_data_entry, tbl);
 	if (priority < RTE_COLOR_RED)
 		flow_dv_match_meta_reg(matcher.mask.buf,
-			(enum modify_reg)color_reg_c_idx, 0, color_mask);
+			(enum modify_reg)color_reg_c_idx, color_mask, color_mask);
 	matcher.priority = priority;
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
