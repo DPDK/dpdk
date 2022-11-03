@@ -2247,9 +2247,6 @@ int mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 int mlx5_flow_validate_action_default_miss(uint64_t action_flags,
 				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error);
-int mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
-				  const struct rte_flow_attr *attributes,
-				  struct rte_flow_error *error);
 int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 			      const uint8_t *mask,
 			      const uint8_t *nic_mask,

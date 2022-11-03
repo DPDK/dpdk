@@ -2298,53 +2298,6 @@ mlx5_validate_action_ct(struct rte_eth_dev *dev,
 }
 
 /**
- * Verify the @p attributes will be correctly understood by the NIC and store
- * them in the @p flow if everything is correct.
- *
- * @param[in] dev
- *   Pointer to the Ethernet device structure.
- * @param[in] attributes
- *   Pointer to flow attributes
- * @param[out] error
- *   Pointer to error structure.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-int
-mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
-			      const struct rte_flow_attr *attributes,
-			      struct rte_flow_error *error)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t priority_max = priv->sh->flow_max_priority - 1;
-
-	if (attributes->group)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-					  NULL, "groups is not supported");
-	if (attributes->priority != MLX5_FLOW_LOWEST_PRIO_INDICATOR &&
-	    attributes->priority >= priority_max)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-					  NULL, "priority out of range");
-	if (attributes->egress)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
-					  "egress is not supported");
-	if (attributes->transfer && !priv->sh->config.dv_esw_en)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
-					  NULL, "transfer is not supported");
-	if (!attributes->ingress)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-					  NULL,
-					  "ingress attribute is mandatory");
-	return 0;
-}
-
-/**
  * Validate ICMP6 item.
  *
  * @param[in] item
@@ -6345,7 +6298,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			ret = -rte_errno;
 			goto exit;
 		}
-	} else if (attr->egress && !attr->transfer) {
+	} else if (attr->egress) {
 		/*
 		 * All the actions on NIC Tx should have a metadata register
 		 * copy action to copy reg_a from WQE to reg_c[meta]
@@ -7094,7 +7047,7 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		    flow->drv_type < MLX5_FLOW_TYPE_MAX);
 	memset(rss_desc, 0, offsetof(struct mlx5_flow_rss_desc, queue));
 	/* RSS Action only works on NIC RX domain */
-	if (attr->ingress && !attr->transfer)
+	if (attr->ingress)
 		rss = flow_get_rss_action(dev, p_actions_rx);
 	if (rss) {
 		if (flow_rss_workspace_adjust(wks, rss_desc, rss->queue_num))
@@ -7192,11 +7145,11 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	 * we might create the extra rte_flow for each unique
 	 * MARK/FLAG action ID.
 	 *
-	 * The table is updated for ingress Flows only, because
+	 * The table is updated for ingress and transfer flows only, because
 	 * the egress Flows belong to the different device and
 	 * copy table should be updated in peer NIC Rx domain.
 	 */
-	if (attr->ingress &&
+	if ((attr->ingress || attr->transfer) &&
 	    (external || attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP)) {
 		ret = flow_mreg_update_copy_table(dev, flow, actions, error);
 		if (ret)
@@ -7268,7 +7221,7 @@ mlx5_flow_create_esw_table_zero_flow(struct rte_eth_dev *dev)
 	const struct rte_flow_attr attr = {
 		.group = 0,
 		.priority = 0,
-		.ingress = 1,
+		.ingress = 0,
 		.egress = 0,
 		.transfer = 1,
 	};
@@ -7312,7 +7265,7 @@ mlx5_flow_create_devx_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sq_num)
 	struct rte_flow_attr attr = {
 		.group = 0,
 		.priority = MLX5_FLOW_LOWEST_PRIO_INDICATOR,
-		.ingress = 1,
+		.ingress = 0,
 		.egress = 0,
 		.transfer = 1,
 	};

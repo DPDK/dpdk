@@ -3370,8 +3370,7 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
 	ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, conf->index, error);
 	if (ret < 0)
 		return ret;
-	if (!attr->transfer && attr->ingress &&
-	    (action_flags & terminal_action_flags))
+	if (attr->ingress && (action_flags & terminal_action_flags))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "set_tag has no effect"
@@ -5928,7 +5927,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 						  "action");
 		}
 	}
-	if (attr->ingress && !attr->transfer) {
+	if (attr->ingress) {
 		if (!(sub_action_flags & (MLX5_FLOW_ACTION_QUEUE |
 					  MLX5_FLOW_ACTION_RSS)))
 			return rte_flow_error_set(error, EINVAL,
@@ -5936,7 +5935,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 						  NULL,
 						  "Ingress must has a dest "
 						  "QUEUE for Sample");
-	} else if (attr->egress && !attr->transfer) {
+	} else if (attr->egress) {
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
@@ -5979,8 +5978,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 						  NULL, "encap and decap "
 						  "combination aren't "
 						  "supported");
-		if (!attr->transfer && attr->ingress && (sub_action_flags &
-							MLX5_FLOW_ACTION_ENCAP))
+		if (attr->ingress && (sub_action_flags & MLX5_FLOW_ACTION_ENCAP))
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "encap is not supported"
@@ -6769,23 +6767,16 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					  NULL,
 					  "priority out of range");
-	if (attributes->transfer) {
-		if (!priv->sh->config.dv_esw_en)
-			return rte_flow_error_set
-				(error, ENOTSUP,
-				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				 "E-Switch dr is not supported");
-		if (attributes->egress)
-			return rte_flow_error_set
-				(error, ENOTSUP,
-				 RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, attributes,
-				 "egress is not supported");
-	}
-	if (!(attributes->egress ^ attributes->ingress))
+	if (attributes->transfer && !priv->sh->config.dv_esw_en)
 		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "E-Switch dr is not supported");
+	if (attributes->ingress + attributes->egress + attributes->transfer != 1) {
+		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "must specify exactly one of "
-					  "ingress or egress");
+					  "ingress, egress or transfer");
+	}
 	return ret;
 }
 
@@ -8105,11 +8096,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					"tunnel set decap rule must terminate "
 					"with JUMP");
-		if (!attr->ingress)
+		if (attr->egress)
 			return rte_flow_error_set
 					(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					"tunnel flows for ingress traffic only");
+					"tunnel flows for ingress and transfer traffic only");
 	}
 	if (action_flags & MLX5_FLOW_ACTION_TUNNEL_MATCH) {
 		uint64_t bad_actions_mask = MLX5_FLOW_ACTION_JUMP    |
@@ -8214,7 +8205,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							  "push VLAN action not supported "
 							  "for ingress");
 		}
-		if (!attr->transfer && attr->ingress) {
+		if (attr->ingress) {
 			if (action_flags & MLX5_FLOW_ACTION_ENCAP)
 				return rte_flow_error_set
 						(error, ENOTSUP,
@@ -8336,8 +8327,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	 * hairpin default egress flow with TX_QUEUE item, other flows not
 	 * work due to metadata regC0 mismatch.
 	 */
-	if ((!attr->transfer && attr->egress) && priv->representor &&
-	    !(item_flags & MLX5_FLOW_ITEM_SQ))
+	if (attr->egress && priv->representor && !(item_flags & MLX5_FLOW_ITEM_SQ))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  NULL,
@@ -13666,7 +13656,7 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 	    !(wks.item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) &&
 	    !(wks.item_flags & MLX5_FLOW_ITEM_PORT_REPRESENTOR) &&
 	    priv->sh->esw_mode &&
-	    !(attr->egress && !attr->transfer) &&
+	    !attr->egress &&
 	    attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP) {
 		if (flow_dv_translate_item_port_id_all(dev, match_mask,
 						   match_value, NULL, attr))

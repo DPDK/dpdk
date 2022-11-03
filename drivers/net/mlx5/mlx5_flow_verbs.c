@@ -1195,6 +1195,54 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
 }
 
 /**
+ * Validates @p attributes of the flow rule.
+ *
+ * This function is used if and only if legacy Verbs flow engine is used.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] attributes
+ *   Pointer to flow attributes
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_verbs_validate_attributes(struct rte_eth_dev *dev,
+			       const struct rte_flow_attr *attributes,
+			       struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t priority_max = priv->sh->flow_max_priority - 1;
+
+	if (attributes->group)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+					  NULL, "groups is not supported");
+	if (attributes->priority != MLX5_FLOW_LOWEST_PRIO_INDICATOR &&
+	    attributes->priority >= priority_max)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					  NULL, "priority out of range");
+	if (attributes->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "egress is not supported");
+	if (attributes->transfer)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+					  NULL, "transfer is not supported");
+	if (!attributes->ingress)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+					  NULL,
+					  "ingress attribute is mandatory");
+	return 0;
+}
+
+/**
  * Internal validation function. For validating both actions and items.
  *
  * @param[in] dev
@@ -1236,7 +1284,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 
 	if (items == NULL)
 		return -1;
-	ret = mlx5_flow_validate_attributes(dev, attr, error);
+	ret = flow_verbs_validate_attributes(dev, attr, error);
 	if (ret < 0)
 		return ret;
 	is_root = ret;
