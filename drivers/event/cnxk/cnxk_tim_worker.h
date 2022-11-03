@@ -217,6 +217,7 @@ cnxk_tim_insert_chunk(struct cnxk_tim_bkt *const bkt,
 	if (unlikely(rte_mempool_get(tim_ring->chunk_pool, (void **)&chunk)))
 		return NULL;
 
+	RTE_MEMPOOL_CHECK_COOKIES(tim_ring->chunk_pool, (void **)&chunk, 1, 0);
 	*(uint64_t *)(chunk + tim_ring->nb_chunk_slots) = 0;
 	if (bkt->nb_entry) {
 		*(uint64_t *)(((struct cnxk_tim_ent *)(uintptr_t)
