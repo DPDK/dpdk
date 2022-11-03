@@ -475,6 +475,11 @@ timed_lookups_multi(unsigned int with_hash, unsigned int with_data,
 					(const void **)keys_burst,
 					&signatures[j * BURST_SIZE],
 					BURST_SIZE, positions_burst);
+				if (ret != 0) {
+					printf("rte_hash_lookup_with_hash_bulk failed with %d\n",
+						ret);
+					return -1;
+				}
 				for (k = 0; k < BURST_SIZE; k++) {
 					if (positions_burst[k] !=
 							positions[j *
@@ -487,10 +492,14 @@ timed_lookups_multi(unsigned int with_hash, unsigned int with_data,
 					}
 				}
 			} else {
-				rte_hash_lookup_bulk(h[table_index],
+				ret = rte_hash_lookup_bulk(h[table_index],
 						(const void **) keys_burst,
 						BURST_SIZE,
 						positions_burst);
+				if (ret != 0) {
+					printf("rte_hash_lookup_bulk failed with %d\n", ret);
+					return -1;
+				}
 				for (k = 0; k < BURST_SIZE; k++) {
 					if (positions_burst[k] != positions[j * BURST_SIZE + k]) {
 						printf("Key looked up in %d, should be in %d\n",
