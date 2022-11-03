@@ -291,6 +291,12 @@ New Features
   sysfs entries to adjust the minimum and maximum uncore frequency values,
   which works on Linux with Intel hardware only.
 
+* **Added security performance test application.**
+
+  Added new application to test ``rte_security`` session create/destroy
+  performance.
+  See the :doc:`../tools/securityperf` for more details.
+
 * **Updated IPsec sample application.**
 
   Added support for lookaside sessions in event mode.

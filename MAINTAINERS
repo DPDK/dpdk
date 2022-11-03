@@ -1728,6 +1728,12 @@ M: Wisam Jaddo <wisamm@nvidia.com>
 F: app/test-flow-perf/
 F: doc/guides/tools/flow-perf.rst
 
+Security performance tool
+M: Anoob Joseph <anoobj@marvell.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: app/test-security-perf/
+F: doc/guides/tools/securityperf.rst
+
 Compression performance test application
 T: git://dpdk.org/next/dpdk-next-crypto
 F: app/test-compress-perf/
