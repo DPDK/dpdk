@@ -38,7 +38,7 @@ if binutils_ok
 
     # check if all required flags already enabled (variant a).
     dlb2_avx512_on = false
-    if cc.get_define(f, args: machine_args) == '__AVX512VL__'
+    if cc.get_define('__AVX512VL__', args: machine_args) != ''
         dlb2_avx512_on = true
     endif
 
