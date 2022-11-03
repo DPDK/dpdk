@@ -659,10 +659,6 @@ i40e_hash_config_pctype_symmetric(struct i40e_hw *hw,
 	struct i40e_pf *pf = &((struct i40e_adapter *)hw->back)->pf;
 	uint32_t reg;
 
-	/* For X722, get translated pctype in fd pctype register */
-	if (hw->mac.type == I40E_MAC_X722)
-		pctype = i40e_read_rx_ctl(hw, I40E_GLQF_FD_PCTYPES(pctype));
-
 	reg = i40e_read_rx_ctl(hw, I40E_GLQF_HSYM(pctype));
 	if (symmetric) {
 		if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK)
