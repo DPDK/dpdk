@@ -401,6 +401,7 @@ ifcvf_hw_disable(struct ifcvf_hw *hw)
 	u32 i;
 	struct ifcvf_pci_common_cfg *cfg;
 	u32 ring_state;
+	int q_disable_try;
 
 	cfg = hw->common_cfg;
 	if (!cfg) {
@@ -418,6 +419,20 @@ ifcvf_hw_disable(struct ifcvf_hw *hw)
 			DEBUGOUT("live migration cfg in HW is NULL.\n");
 			continue;
 		}
+
+		/* Some ifc hardware require synchronization between disabling a
+		 * queue and saving queue-state from LM registers. When queue is
+		 * disabled from vDPA driver, ifc device stops executing new
+		 * virtio-cmds and then updates LM registers with used/avail
+		 * index. Before saving the queue-state, vDPA driver waits until
+		 * the queue is disabled from backend.
+		 */
+		q_disable_try = 10;
+		while (q_disable_try-- && IFCVF_READ_REG16(&cfg->queue_enable))
+			msec_delay(10);
+
+		if (!q_disable_try)
+			WARNINGOUT("Failed to disable Q:%u, Saved state could be invalid\n", i);
 
 		if (hw->device_type == IFCVF_BLK)
 			ring_state = *(u32 *)(hw->lm_cfg +
