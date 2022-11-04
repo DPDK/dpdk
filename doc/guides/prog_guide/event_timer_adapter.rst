@@ -107,18 +107,19 @@ to ``rte_event_timer_adapter_create()``.
 
 .. code-block:: c
 
-	#define NSECPERSEC 1E9 // No of ns in 1 sec
+	#define NSECPERSEC 1E9
 	const struct rte_event_timer_adapter_conf adapter_config = {
                 .event_dev_id = event_dev_id,
                 .timer_adapter_id = 0,
+		.socket_id = rte_socket_id(),
                 .clk_src = RTE_EVENT_TIMER_ADAPTER_CPU_CLK,
-                .timer_tick_ns = NSECPERSEC / 10, // 100 milliseconds
-                .max_tmo_nsec = 180 * NSECPERSEC // 2 minutes
+                .timer_tick_ns = NSECPERSEC / 10,
+                .max_tmo_ns = 180 * NSECPERSEC,
                 .nb_timers = 40000,
-                .timer_adapter_flags = 0,
+                .flags = 0,
 	};
 
-	struct rte_event_timer_adapter *adapter = NULL;
+	struct rte_event_timer_adapter *adapter;
 	adapter = rte_event_timer_adapter_create(&adapter_config);
 
 	if (adapter == NULL) { ... };
