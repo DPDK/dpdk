@@ -36,6 +36,9 @@ TAGS
 # ignore python bytecode files
 *.pyc
 
+# DTS results
+dts/output
+
 # ignore default build directory, and directories from test-meson-builds.sh
 build
 build-*

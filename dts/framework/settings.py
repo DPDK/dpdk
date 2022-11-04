@@ -57,6 +57,8 @@ def _env_arg(env_var: str) -> Any:
 @dataclass(slots=True, frozen=True)
 class _Settings:
     config_file_path: str
+    output_dir: str
+    verbose: bool
 
 
 def _get_parser() -> argparse.ArgumentParser:
@@ -71,6 +73,25 @@ def _get_parser() -> argparse.ArgumentParser:
         "and targets.",
     )
 
+    parser.add_argument(
+        "--output-dir",
+        "--output",
+        action=_env_arg("DTS_OUTPUT_DIR"),
+        default="output",
+        required=False,
+        help="[DTS_OUTPUT_DIR] Output directory where dts logs and results are saved.",
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action=_env_arg("DTS_VERBOSE"),
+        default="N",
+        required=False,
+        help="[DTS_VERBOSE] Set to 'Y' to enable verbose output, logging all messages "
+        "to the console.",
+    )
+
     return parser
 
 
@@ -78,6 +99,8 @@ def _get_settings() -> _Settings:
     parsed_args = _get_parser().parse_args()
     return _Settings(
         config_file_path=parsed_args.config_file,
+        output_dir=parsed_args.output_dir,
+        verbose=(parsed_args.verbose == "Y"),
     )
 
 
