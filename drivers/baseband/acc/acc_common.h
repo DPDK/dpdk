@@ -123,6 +123,14 @@
 #define ACC_HARQ_ALIGN_64B          64
 #define ACC_MAX_ZC                  384
 
+/* De-ratematch code rate limitation for recommended operation */
+#define ACC_LIM_03 2  /* 0.03 */
+#define ACC_LIM_09 6  /* 0.09 */
+#define ACC_LIM_14 9  /* 0.14 */
+#define ACC_LIM_21 14 /* 0.21 */
+#define ACC_LIM_31 20 /* 0.31 */
+#define ACC_MAX_E (128 * 1024 - 2)
+
 /* Helper macro for logging */
 #define rte_acc_log(level, fmt, ...) \
 	rte_log(RTE_LOG_ ## level, RTE_LOG_NOTICE, fmt "\n", \

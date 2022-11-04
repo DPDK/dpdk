@@ -761,6 +761,14 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		ret = -ENOMEM;
 		goto free_lb_out;
 	}
+	q->derm_buffer = rte_zmalloc_socket(dev->device->driver->name,
+			RTE_BBDEV_TURBO_MAX_CB_SIZE * 10,
+			RTE_CACHE_LINE_SIZE, conf->socket);
+	if (q->derm_buffer == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate derm_buffer memory");
+		ret = -ENOMEM;
+		goto free_companion_ring_addr;
+	}
 
 	/*
 	 * Software queue ring wraps synchronously with the HW when it reaches
@@ -781,7 +789,7 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	q_idx = acc100_find_free_queue_idx(dev, conf);
 	if (q_idx == -1) {
 		ret = -EINVAL;
-		goto free_companion_ring_addr;
+		goto free_derm_buffer;
 	}
 
 	q->qgrp_id = (q_idx >> ACC100_GRP_ID_SHIFT) & 0xF;
@@ -809,6 +817,9 @@ acc100_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	dev->data->queues[queue_id].queue_private = q;
 	return 0;
 
+free_derm_buffer:
+	rte_free(q->derm_buffer);
+	q->derm_buffer = NULL;
 free_companion_ring_addr:
 	rte_free(q->companion_ring_addr);
 	q->companion_ring_addr = NULL;
@@ -894,6 +905,7 @@ acc100_queue_release(struct rte_bbdev *dev, uint16_t q_id)
 	if (q != NULL) {
 		/* Mark the Queue as un-assigned */
 		d->q_assigned_bit_map[q->qgrp_id] &= (~0ULL - (1 << (uint64_t) q->aq_id));
+		rte_free(q->derm_buffer);
 		rte_free(q->companion_ring_addr);
 		rte_free(q->lb_in);
 		rte_free(q->lb_out);
@@ -3026,6 +3038,36 @@ harq_loopback(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	return 1;
 }
 
+/* Assess whether a work around is recommended for the deRM corner cases */
+static inline bool
+derm_workaround_recommended(struct rte_bbdev_op_ldpc_dec *ldpc_dec, struct acc_queue *q)
+{
+	if (!is_acc100(q))
+		return false;
+	int32_t e = ldpc_dec->cb_params.e;
+	int q_m = ldpc_dec->q_m;
+	int z_c = ldpc_dec->z_c;
+	int K = (ldpc_dec->basegraph == 1 ? ACC_K_ZC_1 : ACC_K_ZC_2) * z_c;
+	bool recommended = false;
+
+	if (ldpc_dec->basegraph == 1) {
+		if ((q_m == 4) && (z_c >= 320) && (e * ACC_LIM_31 > K * 64))
+			recommended = true;
+		else if ((e * ACC_LIM_21 > K * 64))
+			recommended = true;
+	} else {
+		if (q_m <= 2) {
+			if ((z_c >= 208) && (e * ACC_LIM_09 > K * 64))
+				recommended = true;
+			else if ((z_c < 208) && (e * ACC_LIM_03 > K * 64))
+				recommended = true;
+		} else if (e * ACC_LIM_14 > K * 64)
+			recommended = true;
+	}
+
+	return recommended;
+}
+
 /** Enqueue one decode operations for ACC100 device in CB mode */
 static inline int
 enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
@@ -3083,6 +3125,10 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	} else {
 		struct acc_fcw_ld *fcw;
 		uint32_t seg_total_left;
+
+		if (derm_workaround_recommended(&op->ldpc_dec, q))
+			rte_bbdev_log(INFO, "Corner case may require deRM pre-processing");
+
 		fcw = &desc->req.fcw_ld;
 		q->d->fcw_ld_fill(op, fcw, harq_layout);
 
