@@ -1756,6 +1756,7 @@ DTS
 M: Lijuan Tu <lijuan.tu@intel.com>
 M: Owen Hilyard <ohilyard@iol.unh.edu>
 F: dts/
+F: devtools/dts-check-format.sh
 F: doc/guides/tools/dts.rst
 
 
