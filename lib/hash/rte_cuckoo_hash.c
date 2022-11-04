@@ -521,6 +521,7 @@ rte_hash_free(struct rte_hash *h)
 	rte_free(h->buckets_ext);
 	rte_free(h->tbl_chng_cnt);
 	rte_free(h->ext_bkt_to_free);
+	rte_free(h->hash_rcu_cfg);
 	rte_free(h);
 	rte_free(te);
 }
