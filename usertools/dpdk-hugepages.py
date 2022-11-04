@@ -272,6 +272,9 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
         args.reserve = args.setup
         args.mount = True
 
+    if not (args.show or args.mount or args.unmount or args.clear or args.reserve):
+        parser.error("no action specified")
+
     if args.pagesize:
         pagesize_kb = get_memsize(args.pagesize)
     else:
