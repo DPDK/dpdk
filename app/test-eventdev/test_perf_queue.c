@@ -16,17 +16,6 @@ perf_queue_nb_event_queues(struct evt_options *opt)
 }
 
 static __rte_always_inline void
-mark_fwd_latency(struct rte_event *const ev,
-		const uint8_t nb_stages)
-{
-	if (unlikely((ev->queue_id % nb_stages) == 0)) {
-		struct perf_elt *const m = ev->event_ptr;
-
-		m->timestamp = rte_get_timer_cycles();
-	}
-}
-
-static __rte_always_inline void
 fwd_event(struct rte_event *const ev, uint8_t *const sched_type_list,
 		const uint8_t nb_stages)
 {
@@ -39,9 +28,12 @@ fwd_event(struct rte_event *const ev, uint8_t *const sched_type_list,
 static int
 perf_queue_worker(void *arg, const int enable_fwd_latency)
 {
+	struct perf_elt *pe = NULL;
 	uint16_t enq = 0, deq = 0;
 	struct rte_event ev;
 	PERF_WORKER_INIT;
+	uint8_t stage;
+
 
 	while (t->done == false) {
 		deq = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
@@ -51,30 +43,20 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 			continue;
 		}
 
-		if (prod_crypto_type &&
-		    (ev.event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
-			struct rte_crypto_op *op = ev.event_ptr;
-
-			if (op->status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
-				if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
-					if (op->sym->m_dst == NULL)
-						ev.event_ptr = op->sym->m_src;
-					else
-						ev.event_ptr = op->sym->m_dst;
-					rte_crypto_op_free(op);
-				}
-			} else {
-				rte_crypto_op_free(op);
+		if (prod_crypto_type && (ev.event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
+			if (perf_handle_crypto_ev(&ev, &pe, enable_fwd_latency))
 				continue;
-			}
+		} else {
+			pe = ev.event_ptr;
 		}
 
-		if (enable_fwd_latency && !prod_timer_type)
+		stage = ev.queue_id % nb_stages;
+		if (enable_fwd_latency && !prod_timer_type && stage == 0)
 		/* first q in pipeline, mark timestamp to compute fwd latency */
-			mark_fwd_latency(&ev, nb_stages);
+			perf_mark_fwd_latency(pe);
 
 		/* last stage in pipeline */
-		if (unlikely((ev.queue_id % nb_stages) == laststage)) {
+		if (unlikely(stage == laststage)) {
 			if (enable_fwd_latency)
 				cnt = perf_process_last_stage_latency(pool, prod_crypto_type,
 					&ev, w, bufs, sz, cnt);
@@ -84,8 +66,7 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 		} else {
 			fwd_event(&ev, sched_type_list, nb_stages);
 			do {
-				enq = rte_event_enqueue_burst(dev, port, &ev,
-							      1);
+				enq = rte_event_enqueue_burst(dev, port, &ev, 1);
 			} while (!enq && !t->done);
 		}
 	}
@@ -101,7 +82,9 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 	/* +1 to avoid prefetch out of array check */
 	struct rte_event ev[BURST_SIZE + 1];
 	uint16_t enq = 0, nb_rx = 0;
+	struct perf_elt *pe = NULL;
 	PERF_WORKER_INIT;
+	uint8_t stage;
 	uint16_t i;
 
 	while (t->done == false) {
@@ -113,35 +96,21 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 		}
 
 		for (i = 0; i < nb_rx; i++) {
-			if (prod_crypto_type &&
-			    (ev[i].event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
-				struct rte_crypto_op *op = ev[i].event_ptr;
-
-				if (op->status ==
-				    RTE_CRYPTO_OP_STATUS_SUCCESS) {
-					if (op->sym->m_dst == NULL)
-						ev[i].event_ptr =
-							op->sym->m_src;
-					else
-						ev[i].event_ptr =
-							op->sym->m_dst;
-					rte_crypto_op_free(op);
-				} else {
-					rte_crypto_op_free(op);
+			if (prod_crypto_type && (ev[i].event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
+				if (perf_handle_crypto_ev(&ev[i], &pe, enable_fwd_latency))
 					continue;
-				}
 			}
 
-			if (enable_fwd_latency && !prod_timer_type) {
+			stage = ev[i].queue_id % nb_stages;
+			if (enable_fwd_latency && !prod_timer_type && stage == 0) {
 				rte_prefetch0(ev[i+1].event_ptr);
 				/* first queue in pipeline.
 				 * mark time stamp to compute fwd latency
 				 */
-				mark_fwd_latency(&ev[i], nb_stages);
+				perf_mark_fwd_latency(ev[i].event_ptr);
 			}
 			/* last stage in pipeline */
-			if (unlikely((ev[i].queue_id % nb_stages) ==
-						 laststage)) {
+			if (unlikely(stage == laststage)) {
 				if (enable_fwd_latency)
 					cnt = perf_process_last_stage_latency(pool,
 						prod_crypto_type, &ev[i], w, bufs, sz, cnt);
