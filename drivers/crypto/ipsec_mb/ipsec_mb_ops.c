@@ -274,9 +274,6 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			return ipsec_mb_secondary_qp_op(dev->data->dev_id, qp_id,
 						qp_conf, socket_id,	RTE_IPSEC_MB_MP_REQ_QP_SET);
 		}
-
-		IPSEC_MB_LOG(ERR, "Queue pair already setup'ed.");
-		return -EINVAL;
 	} else {
 		/* Free memory prior to re-allocation if needed. */
 		if (dev->data->queue_pairs[qp_id] != NULL)
