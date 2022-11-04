@@ -108,7 +108,7 @@ struct perf_elt {
 				rte_lcore_id(), dev, port)
 
 static __rte_always_inline int
-perf_process_last_stage(struct rte_mempool *const pool,
+perf_process_last_stage(struct rte_mempool *const pool, uint8_t prod_crypto_type,
 		struct rte_event *const ev, struct worker_data *const w,
 		void *bufs[], int const buf_sz, uint8_t count)
 {
@@ -119,7 +119,7 @@ perf_process_last_stage(struct rte_mempool *const pool,
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	w->processed_pkts++;
 
-	if (ev->event_type == RTE_EVENT_TYPE_CRYPTODEV &&
+	if (prod_crypto_type &&
 			((struct rte_crypto_op *)ev->event_ptr)->type ==
 				RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 		struct rte_crypto_op *op = ev->event_ptr;
@@ -137,7 +137,7 @@ perf_process_last_stage(struct rte_mempool *const pool,
 }
 
 static __rte_always_inline uint8_t
-perf_process_last_stage_latency(struct rte_mempool *const pool,
+perf_process_last_stage_latency(struct rte_mempool *const pool, uint8_t prod_crypto_type,
 		struct rte_event *const ev, struct worker_data *const w,
 		void *bufs[], int const buf_sz, uint8_t count)
 {
@@ -151,9 +151,8 @@ perf_process_last_stage_latency(struct rte_mempool *const pool,
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	w->processed_pkts++;
 
-	if (ev->event_type == RTE_EVENT_TYPE_CRYPTODEV &&
-			((struct rte_crypto_op *)m)->type ==
-				RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+	if (prod_crypto_type &&
+			((struct rte_crypto_op *)m)->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 		rte_free(((struct rte_crypto_op *)m)->asym->modex.result.data);
 		rte_crypto_op_free((struct rte_crypto_op *)m);
 	} else {

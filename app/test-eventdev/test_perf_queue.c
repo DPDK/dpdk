@@ -76,10 +76,10 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 		/* last stage in pipeline */
 		if (unlikely((ev.queue_id % nb_stages) == laststage)) {
 			if (enable_fwd_latency)
-				cnt = perf_process_last_stage_latency(pool,
+				cnt = perf_process_last_stage_latency(pool, prod_crypto_type,
 					&ev, w, bufs, sz, cnt);
 			else
-				cnt = perf_process_last_stage(pool,
+				cnt = perf_process_last_stage(pool, prod_crypto_type,
 					&ev, w, bufs, sz, cnt);
 		} else {
 			fwd_event(&ev, sched_type_list, nb_stages);
@@ -143,10 +143,10 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 			if (unlikely((ev[i].queue_id % nb_stages) ==
 						 laststage)) {
 				if (enable_fwd_latency)
-					cnt = perf_process_last_stage_latency(
-						pool, &ev[i], w, bufs, sz, cnt);
+					cnt = perf_process_last_stage_latency(pool,
+						prod_crypto_type, &ev[i], w, bufs, sz, cnt);
 				else
-					cnt = perf_process_last_stage(pool,
+					cnt = perf_process_last_stage(pool, prod_crypto_type,
 						&ev[i], w, bufs, sz, cnt);
 
 				ev[i].op = RTE_EVENT_OP_RELEASE;
