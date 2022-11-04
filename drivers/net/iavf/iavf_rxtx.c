@@ -1085,7 +1085,9 @@ iavf_flex_rxd_error_to_pkt_flags(uint16_t stat_err0)
 		return 0;
 
 	if (likely(!(stat_err0 & IAVF_RX_FLEX_ERR0_BITS))) {
-		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		flags |= (PKT_RX_IP_CKSUM_GOOD |
+			PKT_RX_L4_CKSUM_GOOD |
+			PKT_RX_OUTER_L4_CKSUM_GOOD);
 		return flags;
 	}
 
@@ -1101,6 +1103,11 @@ iavf_flex_rxd_error_to_pkt_flags(uint16_t stat_err0)
 
 	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S)))
 		flags |= PKT_RX_EIP_CKSUM_BAD;
+
+	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S)))
+		flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
+	else
+		flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
 
 	return flags;
 }
