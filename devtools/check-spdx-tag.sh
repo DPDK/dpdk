@@ -23,7 +23,7 @@ check_spdx() {
 	':^.git*' ':^.ci/*' ':^.travis.yml' \
 	':^README' ':^MAINTAINERS' ':^VERSION' ':^ABI_VERSION' \
 	':^*/Kbuild' ':^*/README' \
-	':^license/' ':^config/' ':^buildtools/' \
+	':^license/' ':^config/' ':^buildtools/' ':^*/poetry.lock' \
 	':^*.cocci' ':^*.abignore' \
 	':^*.map' ':^*.ini' ':^*.data' ':^*.json' ':^*.cfg' ':^*.txt' \
 	':^*.svg' ':^*.png' \

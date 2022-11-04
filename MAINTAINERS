@@ -1752,6 +1752,12 @@ M: Reshma Pattan <reshma.pattan@intel.com>
 F: app/proc-info/
 F: doc/guides/tools/proc_info.rst
 
+DTS
+M: Lijuan Tu <lijuan.tu@intel.com>
+M: Owen Hilyard <ohilyard@iol.unh.edu>
+F: dts/
+F: doc/guides/tools/dts.rst
+
 
 Other Example Applications
 --------------------------

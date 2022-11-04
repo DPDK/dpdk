@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2022 University of New Hampshire
+
+[tool.poetry]
+name = "dts"
+version = "0.1.0"
+description = ""
+authors = ["Owen Hilyard <ohilyard@iol.unh.edu>", "dts@dpdk.org"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pexpect = "^4.8.0"
+warlock = "^2.0.1"
+PyYAML = "^6.0"
+types-PyYAML = "^6.0.8"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.961"
+black = "^22.6.0"
+isort = "^5.10.1"
+pylama = "^8.4.1"
+pyflakes = "2.5.0"
+toml = "^0.10.2"
+
+[tool.poetry.scripts]
+dts = "main:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pylama]
+linters = "pep8,pylint,mccabe,mypy,pycodestyle,pyflakes"
+format = "pylint"
+max_line_length = 88 # https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
+
+[tool.mypy]
+python_version = "3.10"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+target-version = ['py310']
+include = '\.pyi?$'
+line-length = 88 # https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
