@@ -998,6 +998,10 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				RTE_CACHE_LINE_SIZE, opt->socket_id);
 			p->t = t;
 
+			ret = perf_event_crypto_adapter_setup(t, p);
+			if (ret)
+				return ret;
+
 			m_data.request_info.cdev_id = p->ca.cdev_id;
 			m_data.request_info.queue_pair_id = p->ca.cdev_qp_id;
 			m_data.response_info.sched_type = RTE_SCHED_TYPE_ATOMIC;
@@ -1013,12 +1017,14 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 					if (sess == NULL)
 						return -ENOMEM;
 
-					rte_cryptodev_session_event_mdata_set(
+					ret = rte_cryptodev_session_event_mdata_set(
 						cdev_id,
 						sess,
 						RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 						RTE_CRYPTO_OP_WITH_SESSION,
 						&m_data, sizeof(m_data));
+					if (ret)
+						return ret;
 					p->ca.crypto_sess[flow_id] = sess;
 				} else {
 					void *sess;
@@ -1026,12 +1032,14 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 					sess = cryptodev_asym_sess_create(p, t);
 					if (sess == NULL)
 						return -ENOMEM;
-					rte_cryptodev_session_event_mdata_set(
+					ret = rte_cryptodev_session_event_mdata_set(
 						cdev_id,
 						sess,
 						RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
 						RTE_CRYPTO_OP_WITH_SESSION,
 						&m_data, sizeof(m_data));
+					if (ret)
+						return ret;
 					p->ca.crypto_sess[flow_id] = sess;
 				}
 			}
@@ -1045,10 +1053,6 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				evt_err("failed to setup port %d", port);
 				return ret;
 			}
-
-			ret = perf_event_crypto_adapter_setup(t, p);
-			if (ret)
-				return ret;
 
 			qp_id++;
 			prod++;
