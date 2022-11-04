@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "title": "DTS Config Schema",
+  "definitions": {
+    "node_name": {
+      "type": "string",
+      "description": "A unique identifier for a node"
+    }
+  },
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "A unique identifier for this node"
+          },
+          "hostname": {
+            "type": "string",
+            "description": "A hostname from which the node running DTS can access this node. This can also be an IP address."
+          },
+          "user": {
+            "type": "string",
+            "description": "The user to access this node with."
+          },
+          "password": {
+            "type": "string",
+            "description": "The password to use on this node. Use only as a last resort. SSH keys are STRONGLY preferred."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "hostname",
+          "user"
+        ]
+      },
+      "minimum": 1
+    },
+    "executions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "system_under_test": {
+            "$ref": "#/definitions/node_name"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "system_under_test"
+        ]
+      },
+      "minimum": 1
+    }
+  },
+  "required": [
+    "executions",
+    "nodes"
+  ],
+  "additionalProperties": false
+}

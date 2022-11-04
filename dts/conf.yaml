@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2022 The DPDK contributors
+
+executions:
+  - system_under_test: "SUT 1"
+nodes:
+  - name: "SUT 1"
+    hostname: sut1.change.me.localhost
+    user: root
