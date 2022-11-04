@@ -194,8 +194,7 @@ power_init_for_setting_uncore_freq(struct uncore_power_info *ui)
 
 	fclose(f_base_min);
 	fclose(f_base_max);
-	fclose(f_max);
-	fclose(f_min);
+	/* f_min and f_max are stored, no need to close */
 
 	return 0;
 
