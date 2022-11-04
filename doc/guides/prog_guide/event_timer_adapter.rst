@@ -107,18 +107,19 @@ to ``rte_event_timer_adapter_create()``.
 
 .. code-block:: c
 
-	#define NSECPERSEC 1E9 // No of ns in 1 sec
+	#define NSECPERSEC 1E9
 	const struct rte_event_timer_adapter_conf adapter_config = {
                 .event_dev_id = event_dev_id,
                 .timer_adapter_id = 0,
+		.socket_id = rte_socket_id(),
                 .clk_src = RTE_EVENT_TIMER_ADAPTER_CPU_CLK,
-                .timer_tick_ns = NSECPERSEC / 10, // 100 milliseconds
-                .max_tmo_nsec = 180 * NSECPERSEC // 2 minutes
+                .timer_tick_ns = NSECPERSEC / 10,
+                .max_tmo_ns = 180 * NSECPERSEC,
                 .nb_timers = 40000,
-                .timer_adapter_flags = 0,
+                .flags = 0,
 	};
 
-	struct rte_event_timer_adapter *adapter = NULL;
+	struct rte_event_timer_adapter *adapter;
 	adapter = rte_event_timer_adapter_create(&adapter_config);
 
 	if (adapter == NULL) { ... };
@@ -145,9 +146,9 @@ to support timers of the respective type. A periodic timer expires at a fixed
 time interval repeatedly till it is cancelled. A non-periodic timer expires only
 once. The periodic capability flag, ``RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC``,
 can be set for implementations that support periodic mode if desired. To
-configure an adapter in periodic mode, ``timer_adapter_flags`` of
+configure an adapter in periodic mode, ``flags`` of
 ``rte_event_timer_adapter_conf`` is set to include the periodic flag
-``RTE_EVENT_TIMER_ADAPTER_F_PERIODIC``. Maximum timeout (``max_tmo_nsec``) does
+``RTE_EVENT_TIMER_ADAPTER_F_PERIODIC``. Maximum timeout (``max_tmo_ns``) does
 not apply to periodic mode.
 
 Retrieve Event Timer Adapter Contextual Information
