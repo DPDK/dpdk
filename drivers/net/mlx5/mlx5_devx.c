@@ -907,6 +907,7 @@ mlx5_devx_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 		rte_errno = errno;
 		goto error;
 	}
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (hrxq->hws_flags) {
 		hrxq->action = mlx5dr_action_create_dest_tir
@@ -916,6 +917,7 @@ mlx5_devx_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 			goto error;
 		return 0;
 	}
+#endif
 	if (mlx5_flow_os_create_flow_action_dest_devx_tir(hrxq->tir,
 							  &hrxq->action)) {
 		rte_errno = errno;

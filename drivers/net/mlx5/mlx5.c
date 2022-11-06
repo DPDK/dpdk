@@ -1833,12 +1833,14 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 	int err = 0;
 
 	/* Tables are only used in DV and DR modes. */
-#ifdef HAVE_MLX5_HWS_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_NAME_SIZE];
 
+#ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2)
 		return mlx5_alloc_hw_group_hash_list(priv);
+#endif
 	MLX5_ASSERT(sh);
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
 	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
