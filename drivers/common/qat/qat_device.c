@@ -361,7 +361,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	int sym_ret = 0, asym_ret = 0, comp_ret = 0;
 	int num_pmds_created = 0;
-	uint16_t capa;
+	uint16_t capa = 0;
 	struct qat_pci_device *qat_pci_dev;
 	struct qat_dev_hw_spec_funcs *ops_hw;
 	struct qat_dev_cmd_param qat_dev_cmd_param[] = {
