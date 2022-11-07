@@ -9,7 +9,7 @@ endif
 
 fmt_name = 'mlx5_compress'
 deps += ['common_mlx5', 'eal', 'compressdev']
-if not ('mlx5' in common_drivers)
+if not dpdk_conf.has('RTE_COMMON_MLX5')
     # avoid referencing undefined variables from common/mlx5
     subdir_done()
 endif

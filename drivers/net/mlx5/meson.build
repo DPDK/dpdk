@@ -9,7 +9,7 @@ if not (is_linux or is_windows)
 endif
 
 deps += ['hash', 'common_mlx5']
-if not ('mlx5' in common_drivers)
+if not dpdk_conf.has('RTE_COMMON_MLX5')
     # avoid referencing undefined variables from common/mlx5
     subdir_done()
 endif
