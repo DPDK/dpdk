@@ -108,7 +108,8 @@ static void mlx5dr_context_check_hws_supp(struct mlx5dr_context *ctx)
 	}
 
 	/* Current solution requires all rules to set reparse bit */
-	if ((!caps->nic_ft.reparse || !caps->fdb_ft.reparse) ||
+	if ((!caps->nic_ft.reparse ||
+	     (!caps->fdb_ft.reparse && caps->eswitch_manager)) ||
 	    !IS_BIT_SET(caps->rtc_reparse_mode, MLX5_IFC_RTC_REPARSE_ALWAYS)) {
 		DR_LOG(INFO, "Required HWS reparse cap not supported");
 		return;
