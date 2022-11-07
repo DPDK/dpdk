@@ -2801,6 +2801,41 @@ fill_xstats_display_info(void)
 		fill_xstats_display_info_for_port(pi);
 }
 
+/*
+ * Some capabilities (like, rx_offload_capa and tx_offload_capa) of bonding
+ * device in dev_info is zero when no slave is added. And its capability
+ * will be updated when add a new slave device. So adding a slave device need
+ * to update the port configurations of bonding device.
+ */
+static void
+update_bonding_port_dev_conf(portid_t bond_pid)
+{
+#ifdef RTE_NET_BOND
+	struct rte_port *port = &ports[bond_pid];
+	uint16_t i;
+	int ret;
+
+	ret = eth_dev_info_get_print_err(bond_pid, &port->dev_info);
+	if (ret != 0) {
+		fprintf(stderr, "Failed to get dev info for port = %u\n",
+			bond_pid);
+		return;
+	}
+
+	if (port->dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+		port->dev_conf.txmode.offloads |=
+				RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+	/* Apply Tx offloads configuration */
+	for (i = 0; i < port->dev_info.max_tx_queues; i++)
+		port->txq[i].conf.offloads = port->dev_conf.txmode.offloads;
+
+	port->dev_conf.rx_adv_conf.rss_conf.rss_hf &=
+				port->dev_info.flow_type_rss_offloads;
+#else
+	RTE_SET_USED(bond_pid);
+#endif
+}
+
 int
 start_port(portid_t pid)
 {
@@ -2863,6 +2898,11 @@ start_port(portid_t pid)
 					"Port %d doesn't support hairpin queues\n",
 					pi);
 				return -1;
+			}
+
+			if (port->bond_flag == 1 && port->update_conf == 1) {
+				update_bonding_port_dev_conf(pi);
+				port->update_conf = 0;
 			}
 
 			/* configure port */

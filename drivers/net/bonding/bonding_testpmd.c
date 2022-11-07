@@ -625,6 +625,7 @@ static void cmd_add_bonding_slave_parsed(void *parsed_result,
 			slave_port_id, master_port_id);
 		return;
 	}
+	ports[master_port_id].update_conf = 1;
 	init_port_config();
 	set_port_slave_flag(slave_port_id);
 }
@@ -762,6 +763,7 @@ static void cmd_create_bonded_device_parsed(void *parsed_result,
 		fprintf(stderr, "Failed to enable promiscuous mode for port %u: %s - ignore\n",
 			port_id, rte_strerror(-ret));
 
+	ports[port_id].update_conf = 1;
 	ports[port_id].bond_flag = 1;
 	ports[port_id].need_setup = 0;
 	ports[port_id].port_status = RTE_PORT_STOPPED;
