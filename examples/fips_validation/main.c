@@ -863,7 +863,7 @@ prepare_hmac_xform(struct rte_crypto_sym_xform *xform)
 	if (rte_cryptodev_sym_capability_check_auth(cap,
 			auth_xform->key.length,
 			auth_xform->digest_length, 0) != 0) {
-		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+		RTE_LOG(ERR, USER1, "PMD %s key length %u Digest length %u\n",
 				info.device_name, auth_xform->key.length,
 				auth_xform->digest_length);
 		return -EPERM;
@@ -992,7 +992,7 @@ prepare_cmac_xform(struct rte_crypto_sym_xform *xform)
 	if (rte_cryptodev_sym_capability_check_auth(cap,
 			auth_xform->key.length,
 			auth_xform->digest_length, 0) != 0) {
-		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+		RTE_LOG(ERR, USER1, "PMD %s key length %u Digest length %u\n",
 				info.device_name, auth_xform->key.length,
 				auth_xform->digest_length);
 		return -EPERM;
