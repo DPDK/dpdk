@@ -233,6 +233,8 @@ F: lib/eal/include/rte_service_component.h
 F: lib/eal/common/rte_service.c
 F: doc/guides/prog_guide/service_cores.rst
 F: app/test/test_service_cores.c
+F: examples/service_cores/
+F: doc/guides/sample_app_ug/service_cores.rst
 
 Bitops
 M: Joyce Kong <joyce.kong@arm.com>
@@ -1826,11 +1828,6 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 M: John McNamara <john.mcnamara@intel.com>
 F: examples/rxtx_callbacks/
 F: doc/guides/sample_app_ug/rxtx_callbacks.rst
-
-Service cores example
-M: Harry van Haaren <harry.van.haaren@intel.com>
-F: examples/service_cores/
-F: doc/guides/sample_app_ug/service_cores.rst
 
 Skeleton example
 M: Bruce Richardson <bruce.richardson@intel.com>
