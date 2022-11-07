@@ -204,6 +204,7 @@ struct port_table {
 	uint32_t id; /**< Table ID. */
 	uint32_t nb_pattern_templates; /**< Number of pattern templates. */
 	uint32_t nb_actions_templates; /**< Number of actions templates. */
+	struct rte_flow_attr flow_attr; /**< Flow attributes. */
 	struct rte_flow_template_table *table; /**< PMD opaque template object */
 };
 

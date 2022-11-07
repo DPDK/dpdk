@@ -2448,6 +2448,8 @@ port_flow_template_table_create(portid_t port_id, uint32_t id,
 	}
 	pt->nb_pattern_templates = nb_pattern_templates;
 	pt->nb_actions_templates = nb_actions_templates;
+	rte_memcpy(&pt->flow_attr, &table_attr->flow_attr,
+		   sizeof(struct rte_flow_attr));
 	printf("Template table #%u created\n", pt->id);
 	return 0;
 }
@@ -2510,7 +2512,6 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 		       const struct rte_flow_action *actions)
 {
 	struct rte_flow_op_attr op_attr = { .postpone = postpone };
-	struct rte_flow_attr flow_attr = { 0 };
 	struct rte_flow *flow;
 	struct rte_port *port;
 	struct port_flow *pf;
@@ -2570,7 +2571,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	}
 	job->type = QUEUE_JOB_TYPE_FLOW_CREATE;
 
-	pf = port_flow_new(&flow_attr, pattern, actions, &error);
+	pf = port_flow_new(&pt->flow_attr, pattern, actions, &error);
 	if (!pf) {
 		free(job);
 		return port_flow_complain(&error);
