@@ -697,6 +697,13 @@ mlx5dr_action_create_generic(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
+	if (mlx5dr_action_is_hws_flags(flags) &&
+	    !(ctx->flags & MLX5DR_CONTEXT_FLAG_HWS_SUPPORT)) {
+		DR_LOG(ERR, "Cannot create HWS action since HWS is not supported");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
 	action = simple_calloc(1, sizeof(*action));
 	if (!action) {
 		DR_LOG(ERR, "Failed to allocate memory for action [%d]", action_type);
