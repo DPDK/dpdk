@@ -15246,10 +15246,26 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			test_ipsec_proto_known_vec,
 			&pkt_des_cbc_hmac_sha512),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 3DES-CBC HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_3des_cbc_hmac_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 3DES-CBC HMAC-SHA384 [24B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_3des_cbc_hmac_sha384),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 3DES-CBC HMAC-SHA512 [32B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_3des_cbc_hmac_sha512),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Outbound known vector (ESP tunnel mode IPv6 DES-CBC HMAC-SHA256 [16B ICV])",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec,
 			&pkt_des_cbc_hmac_sha256_v6),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv6 3DES-CBC HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_3des_cbc_hmac_sha256_v6),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Outbound known vector (AH tunnel mode IPv4 HMAC-SHA256)",
 			ut_setup_security, ut_teardown,
@@ -15340,10 +15356,26 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			test_ipsec_proto_known_vec_inb,
 			&pkt_des_cbc_hmac_sha512),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 3DES-CBC HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_3des_cbc_hmac_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 3DES-CBC HMAC-SHA384 [24B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_3des_cbc_hmac_sha384),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 3DES-CBC HMAC-SHA512 [32B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_3des_cbc_hmac_sha512),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Inbound known vector (ESP tunnel mode IPv6 DES-CBC HMAC-SHA256 [16B ICV])",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb,
 			&pkt_des_cbc_hmac_sha256_v6),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv6 3DES-CBC HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_3des_cbc_hmac_sha256_v6),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Inbound known vector (AH tunnel mode IPv4 HMAC-SHA256)",
 			ut_setup_security, ut_teardown,
