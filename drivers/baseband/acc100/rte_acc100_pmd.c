@@ -3710,8 +3710,6 @@ dequeue_enc_one_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op **ref_op,
 	/* Clearing status, it will be set based on response */
 	op->status = 0;
 
-	op->status |= ((rsp.input_err)
-			? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 
@@ -3782,8 +3780,6 @@ dequeue_enc_one_op_tb(struct acc100_queue *q, struct rte_bbdev_enc_op **ref_op,
 		rte_bbdev_log_debug("Resp. desc %p: %x", desc,
 				rsp.val);
 
-		op->status |= ((rsp.input_err)
-				? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 		op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 
