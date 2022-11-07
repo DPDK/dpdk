@@ -131,7 +131,6 @@ F: .github/workflows/build.yml
 F: .ci/
 
 Driver information
-M: Neil Horman <nhorman@tuxdriver.com>
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
 F: buildtools/coff.py
 F: buildtools/gen-pmdinfo-cfile.py
