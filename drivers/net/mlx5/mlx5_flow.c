@@ -3729,6 +3729,7 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 	int queue_action = 0;
 	int action_n = 0;
 	int split = 0;
+	int push_vlan = 0;
 	const struct rte_flow_action_queue *queue;
 	const struct rte_flow_action_rss *rss;
 	const struct rte_flow_action_raw_encap *raw_encap;
@@ -3737,6 +3738,8 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 	if (!attr->ingress)
 		return 0;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		if (actions->type == RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN)
+			push_vlan = 1;
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			queue = actions->conf;
@@ -3761,9 +3764,13 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 			split++;
+			action_n++;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			if (push_vlan)
+				split++;
 			action_n++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
@@ -4177,18 +4184,31 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	struct mlx5_rte_flow_item_tag *tag_item;
 	struct rte_flow_item *item;
 	char *addr;
+	int push_vlan = 0;
 	int encap = 0;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		if (actions->type == RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN)
+			push_vlan = 1;
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 			rte_memcpy(actions_tx, actions,
 			       sizeof(struct rte_flow_action));
 			actions_tx++;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			if (push_vlan) {
+				rte_memcpy(actions_tx, actions,
+					   sizeof(struct rte_flow_action));
+				actions_tx++;
+			} else {
+				rte_memcpy(actions_rx, actions,
+					   sizeof(struct rte_flow_action));
+				actions_rx++;
+			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (encap) {
