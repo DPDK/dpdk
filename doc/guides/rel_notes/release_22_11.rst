@@ -238,6 +238,10 @@ New Features
   * Added support for in-place SGL, out-of-place SGL in SGL out,
     out-of-place LB in SGL out, and out-of-place SGL in LB out.
 
+* **Updated ipsec_mb crypto driver.**
+
+  Added SNOW-3G and ZUC support for ARM platform.
+
 * **Added UADK crypto driver.**
 
   Added a new crypto driver for the UADK library. See the
