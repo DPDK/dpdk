@@ -524,6 +524,7 @@ static int mlx5dr_send_ring_open_sq(struct mlx5dr_context *ctx,
 	size_t sq_log_buf_sz;
 	size_t buf_aligned;
 	size_t sq_buf_sz;
+	size_t page_size;
 	size_t buf_sz;
 	int err;
 
@@ -532,8 +533,9 @@ static int mlx5dr_send_ring_open_sq(struct mlx5dr_context *ctx,
 	sq_buf_sz = 1 << (sq_log_buf_sz + log2above(MLX5_SEND_WQE_BB));
 	sq->reg_addr = queue->uar->reg_addr;
 
-	buf_aligned = align(sq_buf_sz, sysconf(_SC_PAGESIZE));
-	err = posix_memalign((void **)&sq->buf, sysconf(_SC_PAGESIZE), buf_aligned);
+	page_size = sysconf(_SC_PAGESIZE);
+	buf_aligned = align(sq_buf_sz, page_size);
+	err = posix_memalign((void **)&sq->buf, page_size, buf_aligned);
 	if (err) {
 		rte_errno = ENOMEM;
 		return err;
