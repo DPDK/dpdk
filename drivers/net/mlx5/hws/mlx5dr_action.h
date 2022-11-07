@@ -6,7 +6,7 @@
 #define MLX5DR_ACTION_H_
 
 /* Max number of STEs needed for a rule (including match) */
-#define MLX5DR_ACTION_MAX_STE 7
+#define MLX5DR_ACTION_MAX_STE 10
 
 enum mlx5dr_action_stc_idx {
 	MLX5DR_ACTION_STC_IDX_CTRL = 0,
