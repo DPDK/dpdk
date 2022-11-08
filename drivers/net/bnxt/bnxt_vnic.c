@@ -1335,6 +1335,9 @@ int bnxt_rte_flow_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f,
 	}
 
 	vnic->ring_select_mode = _bnxt_rte_to_hwrm_ring_select_mode(hash_f);
+	vnic->hash_f_local = hash_f;
+	/* shadow copy types as !hash_f is always true with default func */
+	vnic->rss_types_local = types;
 	return 0;
 }
 
@@ -1359,6 +1362,8 @@ int bnxt_rte_eth_to_hwrm_ring_select_mode(struct bnxt *bp, uint64_t types,
 	 */
 	vnic->ring_select_mode =
 		HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ;
+	vnic->hash_f_local =
+		HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ;
 	return 0;
 }
 
@@ -1366,6 +1371,12 @@ void bnxt_hwrm_rss_to_rte_hash_conf(struct bnxt_vnic_info *vnic,
 				    uint64_t *rss_conf)
 {
 	uint32_t hash_types;
+
+	/* check for local shadow rte types */
+	if (vnic->rss_types_local != 0) {
+		*rss_conf = vnic->rss_types_local;
+		return;
+	}
 
 	hash_types = vnic->hash_type;
 	*rss_conf = 0;

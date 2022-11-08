@@ -79,6 +79,8 @@ struct bnxt_vnic_info {
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
 	STAILQ_HEAD(, rte_flow)	flow_list;
 	uint8_t		ring_select_mode;
+	enum rte_eth_hash_function hash_f_local;
+	uint64_t	rss_types_local;
 };
 
 struct bnxt_vnic_queue_db {

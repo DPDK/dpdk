@@ -1917,6 +1917,66 @@ void bnxt_flow_cnt_alarm_cb(void *arg)
 			  (void *)bp);
 }
 
+/* Query an requested flow rule. */
+static int
+bnxt_flow_query_all(struct rte_flow *flow,
+		    const struct rte_flow_action *actions, void *data,
+		    struct rte_flow_error *error)
+{
+	struct rte_flow_action_rss *rss_conf;
+	struct bnxt_vnic_info *vnic;
+
+	vnic = flow->vnic;
+	if (vnic == NULL)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_HANDLE, flow,
+					  "Invalid flow: failed to query flow.");
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			/* Full details of rte_flow_action_rss not available yet TBD*/
+			rss_conf = (struct rte_flow_action_rss *)data;
+
+			/* toeplitz is default */
+			if (vnic->ring_select_mode ==
+					HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ)
+				rss_conf->func = vnic->hash_f_local;
+			else
+				rss_conf->func = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION, actions,
+						  "action is not supported");
+		}
+	}
+
+	return 0;
+}
+
+static int
+bnxt_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
+		const struct rte_flow_action *actions, void *data,
+		struct rte_flow_error *error)
+{
+	struct bnxt *bp = dev->data->dev_private;
+	int ret = 0;
+
+	if (bp == NULL)
+		return -ENODEV;
+
+	bnxt_acquire_flow_lock(bp);
+	ret = bnxt_flow_query_all(flow, actions, data, error);
+	bnxt_release_flow_lock(bp);
+
+	return ret;
+}
 
 static struct rte_flow *
 bnxt_flow_create(struct rte_eth_dev *dev,
@@ -2374,4 +2434,5 @@ const struct rte_flow_ops bnxt_flow_ops = {
 	.create = bnxt_flow_create,
 	.destroy = bnxt_flow_destroy,
 	.flush = bnxt_flow_flush,
+	.query = bnxt_flow_query,
 };
