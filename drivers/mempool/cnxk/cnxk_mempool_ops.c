@@ -123,6 +123,14 @@ cnxk_mempool_free(struct rte_mempool *mp)
 	int rc = 0;
 
 	plt_npa_dbg("aura_handle=0x%" PRIx64, mp->pool_id);
+
+	/* It can happen that rte_mempool_free() is called immediately after
+	 * rte_mempool_create_empty(). In such cases the NPA pool will not be
+	 * allocated.
+	 */
+	if (roc_npa_aura_handle_to_base(mp->pool_id) == 0)
+		return;
+
 	rc = roc_npa_pool_destroy(mp->pool_id);
 	if (rc)
 		plt_err("Failed to free pool or aura rc=%d", rc);
