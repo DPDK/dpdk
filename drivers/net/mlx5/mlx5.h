@@ -832,8 +832,6 @@ struct mlx5_meter_policy_action_container {
 
 /* Flow meter policy parameter structure. */
 struct mlx5_flow_meter_policy {
-	struct rte_eth_dev *dev;
-	/* The port dev on which policy is created. */
 	uint32_t is_rss:1;
 	/* Is RSS policy table. */
 	uint32_t ingress:1;
