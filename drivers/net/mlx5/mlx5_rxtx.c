@@ -3490,6 +3490,8 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 		} else if (mbuf->ol_flags & PKT_TX_DYNF_NOINLINE ||
 			   nxlen > txq->inlen_send) {
 			return mlx5_tx_packet_multi_send(txq, loc, olx);
+		} else if (nxlen <= MLX5_ESEG_MIN_INLINE_SIZE) {
+			inlen = MLX5_ESEG_MIN_INLINE_SIZE;
 		} else {
 			goto do_first;
 		}
