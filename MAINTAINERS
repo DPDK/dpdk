@@ -442,7 +442,7 @@ F: doc/guides/sample_app_ug/bbdev_app.rst
 
 Crypto API
 M: Akhil Goyal <gakhil@marvell.com>
-M: Fan Zhang <royzhang1980@gmail.com>
+M: Fan Zhang <fanzhang.oss@gmail.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/cryptodev/
 F: app/test/test_cryptodev*
@@ -456,7 +456,7 @@ F: doc/guides/prog_guide/rte_security.rst
 F: app/test/test_security*
 
 Compression API - EXPERIMENTAL
-M: Fan Zhang <royzhang1980@gmail.com>
+M: Fan Zhang <fanzhang.oss@gmail.com>
 M: Ashish Gupta <ashish.gupta@marvell.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/compressdev/
