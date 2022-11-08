@@ -846,8 +846,10 @@ struct mlx5_flow_meter_policy {
 	/* Is queue action in policy table. */
 	uint32_t is_hierarchy:1;
 	/* Is meter action in policy table. */
-	uint32_t hierarchy_drop_cnt:1;
-	/* Is any meter in hierarchy contains drop_cnt. */
+	uint32_t match_port:1;
+	/* If policy flows match src port. */
+	uint32_t hierarchy_match_port:1;
+	/* Is any meter in hierarchy contains policy flow that matches src port. */
 	uint32_t skip_r:1;
 	/* If red color policy is skipped. */
 	uint32_t skip_y:1;

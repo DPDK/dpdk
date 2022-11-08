@@ -511,6 +511,9 @@ Limitations
     if meter has drop count
     or meter hierarchy contains any meter that uses drop count,
     it cannot be used by flow rule matching all ports.
+  - When using DV flow engine (``dv_flow_en`` = 1),
+    if meter hierarchy contains any meter that has MODIFY_FIELD/SET_TAG,
+    it cannot be used by flow matching all ports.
   - When using HWS flow engine (``dv_flow_en`` = 2),
     only meter mark action is supported.
 

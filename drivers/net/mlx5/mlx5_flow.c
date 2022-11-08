@@ -5472,7 +5472,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
 			if (mlx5_flow_get_item_vport_id(dev, items, &flow_src_port, NULL, error))
 				return -rte_errno;
-			if (!fm->def_policy && wks->policy->is_hierarchy &&
+			if (!fm->def_policy && wks->policy->hierarchy_match_port &&
 			    flow_src_port != priv->representor_id) {
 				if (flow_drv_mtr_hierarchy_rule_create(dev,
 								flow, fm,
