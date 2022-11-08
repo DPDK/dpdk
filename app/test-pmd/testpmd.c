@@ -216,7 +216,7 @@ uint16_t stats_period; /**< Period to show statistics (disabled by default) */
  * In container, it cannot terminate the process which running with 'stats-period'
  * option. Set flag to exit stats period loop after received SIGINT/SIGTERM.
  */
-uint8_t f_quit;
+static volatile uint8_t f_quit;
 uint8_t cl_quit; /* Quit testpmd from cmdline. */
 
 /*
