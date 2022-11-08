@@ -2293,6 +2293,42 @@ port_flow_pattern_template_destroy(portid_t port_id, uint32_t n,
 	return ret;
 }
 
+/** Flush pattern template */
+int
+port_flow_pattern_template_flush(portid_t port_id)
+{
+	struct rte_port *port;
+	struct port_template **tmp;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	tmp = &port->pattern_templ_list;
+	while (*tmp) {
+		struct rte_flow_error error;
+		struct port_template *pit = *tmp;
+
+		/*
+		 * Poisoning to make sure PMDs update it in case
+		 * of error.
+		 */
+		memset(&error, 0x33, sizeof(error));
+		if (pit->template.pattern_template &&
+		    rte_flow_pattern_template_destroy(port_id,
+			pit->template.pattern_template, &error)) {
+			printf("Pattern template #%u not destroyed\n", pit->id);
+			ret = port_flow_complain(&error);
+			tmp = &pit->next;
+		} else {
+			*tmp = pit->next;
+			free(pit);
+		}
+	}
+	return ret;
+}
+
 /** Create actions template */
 int
 port_flow_actions_template_create(portid_t port_id, uint32_t id,
@@ -2369,6 +2405,43 @@ port_flow_actions_template_destroy(portid_t port_id, uint32_t n,
 		if (i == n)
 			tmp = &(*tmp)->next;
 		++c;
+	}
+	return ret;
+}
+
+/** Flush actions template */
+int
+port_flow_actions_template_flush(portid_t port_id)
+{
+	struct rte_port *port;
+	struct port_template **tmp;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	tmp = &port->actions_templ_list;
+	while (*tmp) {
+		struct rte_flow_error error;
+		struct port_template *pat = *tmp;
+
+		/*
+		 * Poisoning to make sure PMDs update it in case
+		 * of error.
+		 */
+		memset(&error, 0x33, sizeof(error));
+
+		if (pat->template.actions_template &&
+		    rte_flow_actions_template_destroy(port_id,
+			pat->template.actions_template, &error)) {
+			ret = port_flow_complain(&error);
+			printf("Actions template #%u not destroyed\n", pat->id);
+			tmp = &pat->next;
+		} else {
+			*tmp = pat->next;
+			free(pat);
+		}
 	}
 	return ret;
 }
@@ -2499,6 +2572,44 @@ port_flow_template_table_destroy(portid_t port_id,
 		if (i == n)
 			tmp = &(*tmp)->next;
 		++c;
+	}
+	return ret;
+}
+
+/** Flush table */
+int
+port_flow_template_table_flush(portid_t port_id)
+{
+	struct rte_port *port;
+	struct port_table **tmp;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	tmp = &port->table_list;
+	while (*tmp) {
+		struct rte_flow_error error;
+		struct port_table *pt = *tmp;
+
+		/*
+		 * Poisoning to make sure PMDs update it in case
+		 * of error.
+		 */
+		memset(&error, 0x33, sizeof(error));
+
+		if (pt->table &&
+		    rte_flow_template_table_destroy(port_id,
+						   pt->table,
+						   &error)) {
+			ret = port_flow_complain(&error);
+			printf("Template table #%u not destroyed\n", pt->id);
+			tmp = &pt->next;
+		} else {
+			*tmp = pt->next;
+			free(pt);
+		}
 	}
 	return ret;
 }

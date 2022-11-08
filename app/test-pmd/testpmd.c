@@ -3276,6 +3276,9 @@ flush_port_owned_resources(portid_t pi)
 	mcast_addr_pool_destroy(pi);
 	port_flow_flush(pi);
 	port_flex_item_flush(pi);
+	port_flow_template_table_flush(pi);
+	port_flow_pattern_template_flush(pi);
+	port_flow_actions_template_flush(pi);
 	port_action_handle_flush(pi);
 }
 
