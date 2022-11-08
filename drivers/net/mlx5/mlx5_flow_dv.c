@@ -17056,6 +17056,9 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 		if (item && item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
 			ret = flow_dv_translate_item_represented_port(dev, value.buf,
 						item, attr, MLX5_SET_MATCHER_SW_V);
+		else if (item && item->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR)
+			ret = flow_dv_translate_item_port_representor(dev, value.buf,
+								      MLX5_SET_MATCHER_SW_V);
 		else
 			ret = flow_dv_translate_item_port_id(dev, value.buf,
 						item, attr, MLX5_SET_MATCHER_SW_V);
@@ -17110,6 +17113,9 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 		if (item && item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
 			ret = flow_dv_translate_item_represented_port(dev, matcher.mask.buf,
 						item, attr, MLX5_SET_MATCHER_SW_M);
+		else if (item && item->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR)
+			ret = flow_dv_translate_item_port_representor(dev, matcher.mask.buf,
+								      MLX5_SET_MATCHER_SW_M);
 		else
 			ret = flow_dv_translate_item_port_id(dev, matcher.mask.buf,
 						item, attr, MLX5_SET_MATCHER_SW_M);

@@ -5469,6 +5469,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
 		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+		case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
 			if (mlx5_flow_get_item_vport_id(dev, items, &flow_src_port, NULL, error))
 				return -rte_errno;
 			if (!fm->def_policy && wks->policy->is_hierarchy &&
@@ -5480,11 +5481,6 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 								error))
 					return -rte_errno;
 			}
-			memcpy(sfx_items, items, sizeof(*sfx_items));
-			sfx_items++;
-			break;
-		case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
-			flow_src_port = 0;
 			memcpy(sfx_items, items, sizeof(*sfx_items));
 			sfx_items++;
 			break;
@@ -11402,27 +11398,43 @@ int mlx5_flow_get_item_vport_id(struct rte_eth_dev *dev,
 				struct rte_flow_error *error)
 {
 	struct mlx5_priv *port_priv;
-	const struct rte_flow_item_port_id *pid_v;
+	const struct rte_flow_item_port_id *pid_v = NULL;
+	const struct rte_flow_item_ethdev *dev_v = NULL;
 	uint32_t esw_mgr_port;
+	uint32_t src_port;
 
-	if (item->type != RTE_FLOW_ITEM_TYPE_PORT_ID &&
-	    item->type != RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT)
-		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
-					  NULL, "Incorrect item type.");
-	pid_v = item->spec;
-	if (!pid_v) {
-		if (all_ports)
-			*all_ports = (item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT);
-		return 0;
-	}
 	if (all_ports)
 		*all_ports = false;
-	esw_mgr_port = (item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) ?
-				MLX5_REPRESENTED_PORT_ESW_MGR : MLX5_PORT_ESW_MGR;
-	if (pid_v->id == esw_mgr_port) {
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_PORT_ID:
+		pid_v = item->spec;
+		if (!pid_v)
+			return 0;
+		src_port = pid_v->id;
+		esw_mgr_port = MLX5_PORT_ESW_MGR;
+		break;
+	case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+		dev_v = item->spec;
+		if (!dev_v) {
+			if (all_ports)
+				*all_ports = true;
+			return 0;
+		}
+		src_port = dev_v->port_id;
+		esw_mgr_port = MLX5_REPRESENTED_PORT_ESW_MGR;
+		break;
+	case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
+		src_port = MLX5_REPRESENTED_PORT_ESW_MGR;
+		esw_mgr_port = MLX5_REPRESENTED_PORT_ESW_MGR;
+		break;
+	default:
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  NULL, "Incorrect item type.");
+	}
+	if (src_port == esw_mgr_port) {
 		*vport_id = mlx5_flow_get_esw_manager_vport_id(dev);
 	} else {
-		port_priv = mlx5_port_to_eswitch_info(pid_v->id, false);
+		port_priv = mlx5_port_to_eswitch_info(src_port, false);
 		if (!port_priv)
 			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 						  NULL, "Failed to get port info.");
