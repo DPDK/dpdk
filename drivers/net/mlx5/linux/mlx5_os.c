@@ -1676,6 +1676,9 @@ err_secondary:
 	return eth_dev;
 error:
 	if (priv) {
+		priv->sh->port[priv->dev_port - 1].nl_ih_port_id =
+							       RTE_MAX_ETHPORTS;
+		rte_io_wmb();
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		if (eth_dev &&
 		    priv->sh &&
