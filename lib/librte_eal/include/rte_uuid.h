@@ -37,6 +37,9 @@ typedef unsigned char rte_uuid_t[16];
 	((e) >> 8) & 0xff, (e) & 0xff		\
 }
 
+/** UUID string length */
+#define RTE_UUID_STRLEN	(36 + 1)
+
 /**
  * Test if UUID is all zeros.
  *
@@ -95,7 +98,6 @@ int	rte_uuid_parse(const char *in, rte_uuid_t uu);
  * @param len
  *    Sizeof the available string buffer
  */
-#define RTE_UUID_STRLEN	(36 + 1)
 void	rte_uuid_unparse(const rte_uuid_t uu, char *out, size_t len);
 
 #ifdef __cplusplus
