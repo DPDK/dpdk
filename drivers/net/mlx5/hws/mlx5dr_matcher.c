@@ -36,6 +36,30 @@ static void mlx5dr_matcher_destroy_end_ft(struct mlx5dr_matcher *matcher)
 	mlx5dr_table_destroy_default_ft(matcher->tbl, matcher->end_ft);
 }
 
+static int mlx5dr_matcher_free_rtc_pointing(uint32_t fw_ft_type,
+					    enum mlx5dr_table_type type,
+					    struct mlx5dr_devx_obj *devx_obj)
+{
+	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
+	int ret;
+
+	if (type != MLX5DR_TABLE_TYPE_FDB)
+		return 0;
+
+	ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
+	ft_attr.type = fw_ft_type;
+	ft_attr.rtc_id_0 = 0;
+	ft_attr.rtc_id_1 = 0;
+
+	ret = mlx5dr_cmd_flow_table_modify(devx_obj, &ft_attr);
+	if (ret) {
+		DR_LOG(ERR, "Failed to disconnect previous RTC");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int mlx5dr_matcher_connect(struct mlx5dr_matcher *matcher)
 {
 	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
@@ -147,6 +171,17 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 	}
 
 	LIST_REMOVE(matcher, next);
+
+	if (!next) {
+		/* ft no longer points to any RTC, drop refcount */
+		ret = mlx5dr_matcher_free_rtc_pointing(tbl->fw_ft_type,
+						       tbl->type,
+						       prev_ft);
+		if (ret) {
+			DR_LOG(ERR, "Failed to reset last RTC refcount");
+			return ret;
+		}
+	}
 
 	return 0;
 }
