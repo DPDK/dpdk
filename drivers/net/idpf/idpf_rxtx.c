@@ -1692,6 +1692,8 @@ idpf_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		if (unlikely((tx_id % 32) == 0))
 			txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_RE;
+		if (ol_flags & IDPF_TX_CKSUM_OFFLOAD_MASK)
+			txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_CS_EN;
 		txq->nb_free = (uint16_t)(txq->nb_free - nb_used);
 		txq->nb_used = (uint16_t)(txq->nb_used + nb_used);
 	}
@@ -2074,6 +2076,9 @@ idpf_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* Update txq RS bit counters */
 			txq->nb_used = 0;
 		}
+
+		if (ol_flags & IDPF_TX_CKSUM_OFFLOAD_MASK)
+			td_cmd |= IDPF_TX_FLEX_DESC_CMD_CS_EN;
 
 		txd->qw1.cmd_dtype |= rte_cpu_to_le_16(td_cmd << IDPF_FLEX_TXD_QW1_CMD_S);
 	}

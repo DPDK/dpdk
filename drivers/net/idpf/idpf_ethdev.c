@@ -71,6 +71,10 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	dev_info->tx_offload_capa =
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM		|
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM		|
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM		|
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM		|
 		RTE_ETH_TX_OFFLOAD_TCP_TSO		|
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS		|
 		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
