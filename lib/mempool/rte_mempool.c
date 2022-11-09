@@ -1272,7 +1272,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 #ifdef RTE_LIBRTE_MEMPOOL_STATS
 	rte_mempool_ops_get_info(mp, &info);
 	memset(&sum, 0, sizeof(sum));
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE + 1; lcore_id++) {
 		sum.put_bulk += mp->stats[lcore_id].put_bulk;
 		sum.put_objs += mp->stats[lcore_id].put_objs;
 		sum.put_common_pool_bulk += mp->stats[lcore_id].put_common_pool_bulk;

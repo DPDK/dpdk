@@ -238,8 +238,11 @@ struct rte_mempool {
 	struct rte_mempool_memhdr_list mem_list; /**< List of memory chunks */
 
 #ifdef RTE_LIBRTE_MEMPOOL_STATS
-	/** Per-lcore statistics. */
-	struct rte_mempool_debug_stats stats[RTE_MAX_LCORE];
+	/** Per-lcore statistics.
+	 *
+	 * Plus one, for unregistered non-EAL threads.
+	 */
+	struct rte_mempool_debug_stats stats[RTE_MAX_LCORE + 1];
 #endif
 }  __rte_cache_aligned;
 
@@ -304,11 +307,13 @@ struct rte_mempool {
  *   Number to add to the statistics.
  */
 #ifdef RTE_LIBRTE_MEMPOOL_STATS
-#define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {                  \
-		unsigned __lcore_id = rte_lcore_id();           \
-		if (__lcore_id < RTE_MAX_LCORE) {               \
-			mp->stats[__lcore_id].name += n;        \
-		}                                               \
+#define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {                                  \
+		unsigned int __lcore_id = rte_lcore_id();                       \
+		if (likely(__lcore_id < RTE_MAX_LCORE))                         \
+			(mp)->stats[__lcore_id].name += (n);                    \
+		else                                                            \
+			__atomic_fetch_add(&((mp)->stats[RTE_MAX_LCORE].name),  \
+					   (n), __ATOMIC_RELAXED);              \
 	} while (0)
 #else
 #define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {} while (0)
