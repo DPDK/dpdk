@@ -221,6 +221,7 @@ int idpf_clean_arq_element(struct idpf_hw *hw,
 {
 	struct idpf_ctlq_msg msg = { 0 };
 	int status;
+	u16 msg_data_len;
 
 	*pending = 1;
 
@@ -234,7 +235,8 @@ int idpf_clean_arq_element(struct idpf_hw *hw,
 	e->desc.datalen = msg.data_len;
 	if (msg.data_len > 0) {
 		e->buf_len = msg.data_len;
-		idpf_memcpy(e->msg_buf, msg.ctx.indirect.payload->va, msg.data_len,
+		msg_data_len = msg.data_len;
+		idpf_memcpy(e->msg_buf, msg.ctx.indirect.payload->va, msg_data_len,
 			    IDPF_DMA_TO_NONDMA);
 	}
 	return status;
