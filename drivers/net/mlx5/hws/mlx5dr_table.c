@@ -131,8 +131,8 @@ free_ft_obj:
 void mlx5dr_table_destroy_default_ft(struct mlx5dr_table *tbl,
 				     struct mlx5dr_devx_obj *ft_obj)
 {
-	mlx5dr_table_down_default_fdb_miss_tbl(tbl);
 	mlx5dr_cmd_destroy_obj(ft_obj);
+	mlx5dr_table_down_default_fdb_miss_tbl(tbl);
 }
 
 static int mlx5dr_table_init(struct mlx5dr_table *tbl)
