@@ -963,8 +963,7 @@ prepare_rsa_op(void)
 		asym->rsa.message.data = msg.val;
 		asym->rsa.message.length = msg.len;
 
-		if (vec.rsa.signature.val)
-			rte_free(vec.rsa.signature.val);
+		rte_free(vec.rsa.signature.val);
 
 		vec.rsa.signature.val = rte_zmalloc(NULL, vec.rsa.n.len, 0);
 		vec.rsa.signature.len = vec.rsa.n.len;
@@ -1012,11 +1011,9 @@ prepare_ecdsa_op(void)
 		asym->ecdsa.k.data = vec.ecdsa.k.val;
 		asym->ecdsa.k.length = vec.ecdsa.k.len;
 
-		if (vec.ecdsa.r.val)
-			rte_free(vec.ecdsa.r.val);
+		rte_free(vec.ecdsa.r.val);
 
-		if (vec.ecdsa.s.val)
-			rte_free(vec.ecdsa.s.val);
+		rte_free(vec.ecdsa.s.val);
 
 		vec.ecdsa.r.len = info.interim_info.ecdsa_data.curve_len;
 		vec.ecdsa.r.val = rte_zmalloc(NULL, vec.ecdsa.r.len, 0);
@@ -1061,11 +1058,9 @@ prepare_ecfpm_op(void)
 	asym->ecpm.scalar.data = vec.ecdsa.pkey.val;
 	asym->ecpm.scalar.length = vec.ecdsa.pkey.len;
 
-	if (vec.ecdsa.qx.val)
-		rte_free(vec.ecdsa.qx.val);
+	rte_free(vec.ecdsa.qx.val);
 
-	if (vec.ecdsa.qy.val)
-		rte_free(vec.ecdsa.qy.val);
+	rte_free(vec.ecdsa.qy.val);
 
 	vec.ecdsa.qx.len = info.interim_info.ecdsa_data.curve_len;
 	vec.ecdsa.qx.val = rte_zmalloc(NULL, vec.ecdsa.qx.len, 0);

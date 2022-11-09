@@ -1017,8 +1017,7 @@ main(int argc, char *argv[])
 
 	print_stats();
 
-	if (pd)
-		rte_free(pd);
+	rte_free(pd);
 	rte_free(pr);
 
 	/* clean up the EAL */
