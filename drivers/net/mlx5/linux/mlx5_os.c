@@ -1640,6 +1640,9 @@ err_secondary:
 	return eth_dev;
 error:
 	if (priv) {
+		priv->sh->port[priv->dev_port - 1].nl_ih_port_id =
+							       RTE_MAX_ETHPORTS;
+		rte_io_wmb();
 		if (priv->mreg_cp_tbl)
 			mlx5_hlist_destroy(priv->mreg_cp_tbl);
 		if (priv->sh)
