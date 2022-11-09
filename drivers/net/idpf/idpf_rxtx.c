@@ -213,7 +213,11 @@ idpf_tx_queue_release(void *txq)
 	if (q == NULL)
 		return;
 
-	rte_free(q->complq);
+	if (q->complq) {
+		rte_memzone_free(q->complq->mz);
+		rte_free(q->complq);
+	}
+
 	q->ops->release_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
