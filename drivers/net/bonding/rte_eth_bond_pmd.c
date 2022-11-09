@@ -3643,7 +3643,6 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	const char *name = dev->device->name;
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_kvargs *kvlist = internals->kvlist;
-	uint64_t offloads;
 	int arg_count;
 	uint16_t port_id = dev - rte_eth_devices;
 	uint32_t link_speeds;
@@ -3706,16 +3705,6 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 						(i * RTE_ETH_RETA_GROUP_SIZE + j) %
 						dev->data->nb_rx_queues;
 		}
-	}
-
-	offloads = dev->data->dev_conf.txmode.offloads;
-	if ((offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) &&
-			(internals->mode == BONDING_MODE_8023AD ||
-			internals->mode == BONDING_MODE_BROADCAST)) {
-		RTE_BOND_LOG(WARNING,
-			"bond mode broadcast & 8023AD don't support MBUF_FAST_FREE offload, force disable it.");
-		offloads &= ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
-		dev->data->dev_conf.txmode.offloads = offloads;
 	}
 
 	link_speeds = dev->data->dev_conf.link_speeds;

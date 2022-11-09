@@ -544,6 +544,11 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 			return ret;
 	}
 
+	/* Bond mode Broadcast & 8023AD don't support MBUF_FAST_FREE offload. */
+	if (internals->mode == BONDING_MODE_8023AD ||
+	    internals->mode == BONDING_MODE_BROADCAST)
+		internals->tx_offload_capa &= ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+
 	bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf &=
 			internals->flow_type_rss_offloads;
 
