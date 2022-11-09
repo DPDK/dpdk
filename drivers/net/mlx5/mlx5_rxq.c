@@ -1533,7 +1533,6 @@ mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint16_t idx,
 	    MLX5_MAX_TCP_HDR_OFFSET)
 		max_lro_size -= MLX5_MAX_TCP_HDR_OFFSET;
 	max_lro_size = RTE_MIN(max_lro_size, MLX5_MAX_LRO_SIZE);
-	MLX5_ASSERT(max_lro_size >= MLX5_LRO_SEG_CHUNK_SIZE);
 	max_lro_size /= MLX5_LRO_SEG_CHUNK_SIZE;
 	if (priv->max_lro_msg_size)
 		priv->max_lro_msg_size =
