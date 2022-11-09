@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation.
  * Copyright(c) 2016 6WIND S.A.
+ * Copyright(c) 2022 SmartShare Systems
  */
 
 #ifndef _RTE_MEMPOOL_H_
@@ -86,6 +87,19 @@ struct rte_mempool_cache {
 	uint32_t size;	      /**< Size of the cache */
 	uint32_t flushthresh; /**< Threshold before we flush excess elements */
 	uint32_t len;	      /**< Current cache count */
+#ifdef RTE_LIBRTE_MEMPOOL_STATS
+	uint32_t unused;
+	/*
+	 * Alternative location for the most frequently updated mempool statistics (per-lcore),
+	 * providing faster update access when using a mempool cache.
+	 */
+	struct {
+		uint64_t put_bulk;          /**< Number of puts. */
+		uint64_t put_objs;          /**< Number of objects successfully put. */
+		uint64_t get_success_bulk;  /**< Successful allocation number. */
+		uint64_t get_success_objs;  /**< Objects successfully allocated. */
+	} stats;                        /**< Statistics */
+#endif
 	/**
 	 * Cache objects
 	 *
@@ -317,6 +331,22 @@ struct rte_mempool {
 	} while (0)
 #else
 #define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {} while (0)
+#endif
+
+/**
+ * @internal When stats is enabled, store some statistics.
+ *
+ * @param cache
+ *   Pointer to the memory pool cache.
+ * @param name
+ *   Name of the statistics field to increment in the memory pool cache.
+ * @param n
+ *   Number to add to the statistics.
+ */
+#ifdef RTE_LIBRTE_MEMPOOL_STATS
+#define RTE_MEMPOOL_CACHE_STAT_ADD(cache, name, n) ((cache)->stats.name += (n))
+#else
+#define RTE_MEMPOOL_CACHE_STAT_ADD(cache, name, n) do {} while (0)
 #endif
 
 /**
@@ -1333,13 +1363,17 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 {
 	void **cache_objs;
 
-	/* increment stat now, adding in mempool always success */
-	RTE_MEMPOOL_STAT_ADD(mp, put_bulk, 1);
-	RTE_MEMPOOL_STAT_ADD(mp, put_objs, n);
-
-	/* No cache provided or the request itself is too big for the cache */
-	if (unlikely(cache == NULL || n > cache->flushthresh))
+	/* No cache provided */
+	if (unlikely(cache == NULL))
 		goto driver_enqueue;
+
+	/* increment stat now, adding in mempool always success */
+	RTE_MEMPOOL_CACHE_STAT_ADD(cache, put_bulk, 1);
+	RTE_MEMPOOL_CACHE_STAT_ADD(cache, put_objs, n);
+
+	/* The request itself is too big for the cache */
+	if (unlikely(n > cache->flushthresh))
+		goto driver_enqueue_stats_incremented;
 
 	/*
 	 * The cache follows the following algorithm:
@@ -1363,6 +1397,12 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 	return;
 
 driver_enqueue:
+
+	/* increment stat now, adding in mempool always success */
+	RTE_MEMPOOL_STAT_ADD(mp, put_bulk, 1);
+	RTE_MEMPOOL_STAT_ADD(mp, put_objs, n);
+
+driver_enqueue_stats_incremented:
 
 	/* push objects to the backend */
 	rte_mempool_ops_enqueue_bulk(mp, obj_table, n);
@@ -1470,8 +1510,8 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	if (remaining == 0) {
 		/* The entire request is satisfied from the cache. */
 
-		RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
-		RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
+		RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_bulk, 1);
+		RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_objs, n);
 
 		return 0;
 	}
@@ -1500,8 +1540,8 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 
 	cache->len = cache->size;
 
-	RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
-	RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
+	RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_bulk, 1);
+	RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_objs, n);
 
 	return 0;
 
@@ -1523,8 +1563,13 @@ driver_dequeue:
 		RTE_MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
 		RTE_MEMPOOL_STAT_ADD(mp, get_fail_objs, n);
 	} else {
-		RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
-		RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
+		if (likely(cache != NULL)) {
+			RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_bulk, 1);
+			RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_objs, n);
+		} else {
+			RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+			RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
+		}
 	}
 
 	return ret;
