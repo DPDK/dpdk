@@ -81,12 +81,10 @@ gve_free_qpls(struct gve_priv *priv)
 	for (i = 0; i < nb_txqs + nb_rxqs; i++) {
 		if (priv->qpl[i].mz != NULL)
 			rte_memzone_free(priv->qpl[i].mz);
-		if (priv->qpl[i].page_buses != NULL)
-			rte_free(priv->qpl[i].page_buses);
+		rte_free(priv->qpl[i].page_buses);
 	}
 
-	if (priv->qpl != NULL)
-		rte_free(priv->qpl);
+	rte_free(priv->qpl);
 }
 
 static int

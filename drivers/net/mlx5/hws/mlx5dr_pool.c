@@ -537,8 +537,7 @@ static void mlx5dr_onesize_element_db_uninit(struct mlx5dr_pool *pool)
 	for (i = 0; i < MLX5DR_POOL_RESOURCE_ARR_SZ; i++) {
 		elem = pool->db.element_manager->elements[i];
 		if (elem) {
-			if (elem->bitmap)
-				rte_free(elem->bitmap);
+			rte_free(elem->bitmap);
 			simple_free(elem);
 			pool->db.element_manager->elements[i] = NULL;
 		}

@@ -7039,10 +7039,8 @@ err:
 	if (dr_ctx)
 		claim_zero(mlx5dr_context_close(dr_ctx));
 	for (i = 0; i < nb_q_updated; i++) {
-		if (priv->hw_q[i].indir_iq)
-			rte_ring_free(priv->hw_q[i].indir_iq);
-		if (priv->hw_q[i].indir_cq)
-			rte_ring_free(priv->hw_q[i].indir_cq);
+		rte_ring_free(priv->hw_q[i].indir_iq);
+		rte_ring_free(priv->hw_q[i].indir_cq);
 	}
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
