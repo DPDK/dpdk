@@ -3,11 +3,10 @@
 # Copyright(c) 2022 University of New Hampshire
 
 usage() {
-	echo "Run formatting and linting programs for DTS. Usage:"
-
+	echo "Usage: $(basename $0) [options] [directory]"
+	echo 'Options:'
 	# Get source code comments after getopts arguments and print them both
 	grep -E '[a-zA-Z]+\) +#' "$0" | tr -d '#'
-	exit 0
 }
 
 format=true
@@ -17,7 +16,9 @@ lint=true
 while getopts "hfl" arg; do
 	case $arg in
 	h) # Display this message
+		echo 'Run formatting and linting programs for DTS.'
 		usage
+		exit 0
 		;;
 	f) # Don't run formatters
 		format=false
@@ -25,17 +26,27 @@ while getopts "hfl" arg; do
 	l) # Don't run linter
 		lint=false
 		;;
-	*)
+	?)
+		usage
+		exit 1
 	esac
 done
+shift $(($OPTIND - 1))
 
+directory=$(realpath --relative-base=$(pwd) ${1:-$(dirname $0)/../dts})
+cd $directory || exit 1
+
+heading() {
+	echo $*
+	echo $* | sed 's/./-/g' # underline
+}
 
 errors=0
 
 if $format; then
 	if command -v git > /dev/null; then
 		if git rev-parse --is-inside-work-tree >&-; then
-			echo "Formatting:"
+			heading "Formatting in $directory/"
 			if command -v black > /dev/null; then
 				echo "Formatting code with black:"
 				black .
@@ -72,7 +83,7 @@ if $lint; then
 	if $format; then
 		echo
 	fi
-	echo "Linting:"
+	heading "Linting in $directory/"
 	if command -v pylama > /dev/null; then
 		pylama .
 		errors=$((errors + $?))
@@ -83,5 +94,6 @@ if $lint; then
 fi
 
 echo
+heading "Summary for $directory/"
 echo "Found $errors errors"
 exit $errors
