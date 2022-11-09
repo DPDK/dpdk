@@ -47,6 +47,8 @@
 
 /* mempool defines */
 #define RTE_MEMPOOL_CACHE_MAX_SIZE 512
+/* RTE_LIBRTE_MEMPOOL_STATS is not set */
+/* RTE_LIBRTE_MEMPOOL_DEBUG is not set */
 
 /* mbuf defines */
 #define RTE_MBUF_DEFAULT_MEMPOOL_OPS "ring_mp_mc"

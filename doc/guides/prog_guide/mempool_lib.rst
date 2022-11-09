@@ -20,11 +20,17 @@ Cookies
 In debug mode, cookies are added at the beginning and end of allocated blocks.
 The allocated objects then contain overwrite protection fields to help debugging buffer overflows.
 
+Debug mode is disabled by default,
+but can be enabled by setting ``RTE_LIBRTE_MEMPOOL_DEBUG`` in ``config/rte_config.h``.
+
 Stats
 -----
 
-In debug mode, statistics about get from/put in the pool are stored in the mempool structure.
+In stats mode, statistics about get from/put in the pool are stored in the mempool structure.
 Statistics are per-lcore to avoid concurrent access to statistics counters.
+
+Stats mode is disabled by default,
+but can be enabled by setting ``RTE_LIBRTE_MEMPOOL_STATS`` in ``config/rte_config.h``.
 
 Memory Alignment Constraints on x86 architecture
 ------------------------------------------------

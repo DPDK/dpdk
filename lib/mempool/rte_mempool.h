@@ -56,7 +56,7 @@ extern "C" {
 #define RTE_MEMPOOL_HEADER_COOKIE2  0xf2eef2eedadd2e55ULL /**< Header cookie. */
 #define RTE_MEMPOOL_TRAILER_COOKIE  0xadd2e55badbadbadULL /**< Trailer cookie.*/
 
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+#ifdef RTE_LIBRTE_MEMPOOL_STATS
 /**
  * A structure that stores the mempool statistics (per-lcore).
  * Note: Cache stats (put_cache_bulk/objs, get_cache_bulk/objs) are not
@@ -237,7 +237,7 @@ struct rte_mempool {
 	uint32_t nb_mem_chunks;          /**< Number of memory chunks */
 	struct rte_mempool_memhdr_list mem_list; /**< List of memory chunks */
 
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+#ifdef RTE_LIBRTE_MEMPOOL_STATS
 	/** Per-lcore statistics. */
 	struct rte_mempool_debug_stats stats[RTE_MAX_LCORE];
 #endif
@@ -292,17 +292,18 @@ struct rte_mempool {
 	| RTE_MEMPOOL_F_SC_GET \
 	| RTE_MEMPOOL_F_NO_IOVA_CONTIG \
 	)
+
 /**
- * @internal When debug is enabled, store some statistics.
+ * @internal When stats is enabled, store some statistics.
  *
  * @param mp
  *   Pointer to the memory pool.
  * @param name
  *   Name of the statistics field to increment in the memory pool.
  * @param n
- *   Number to add to the object-oriented statistics.
+ *   Number to add to the statistics.
  */
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+#ifdef RTE_LIBRTE_MEMPOOL_STATS
 #define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {                  \
 		unsigned __lcore_id = rte_lcore_id();           \
 		if (__lcore_id < RTE_MAX_LCORE) {               \
