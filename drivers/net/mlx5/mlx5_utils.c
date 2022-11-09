@@ -479,7 +479,7 @@ _mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 	mlx5_ipool_lock(pool);
 	gc = pool->gc;
 	if (ilc->lc != gc) {
-		if (!(--ilc->lc->ref_cnt))
+		if (ilc->lc && !(--ilc->lc->ref_cnt))
 			olc = ilc->lc;
 		gc->ref_cnt++;
 		ilc->lc = gc;
