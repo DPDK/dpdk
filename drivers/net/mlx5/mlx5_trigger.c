@@ -1089,6 +1089,22 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	else
 		rte_net_mlx5_dynf_inline_mask = 0;
 	if (dev->data->nb_rx_queues > 0) {
+		uint32_t max_lro_msg_size = priv->max_lro_msg_size;
+
+		if (max_lro_msg_size < MLX5_LRO_SEG_CHUNK_SIZE) {
+			uint32_t i;
+			struct mlx5_rxq_priv *rxq;
+
+			for (i = 0; i != priv->rxqs_n; ++i) {
+				rxq = mlx5_rxq_get(dev, i);
+				if (rxq && rxq->ctrl && rxq->ctrl->rxq.lro) {
+					DRV_LOG(ERR, "port %u invalid max LRO size",
+						dev->data->port_id);
+					rte_errno = EINVAL;
+					return -rte_errno;
+				}
+			}
+		}
 		ret = mlx5_dev_configure_rss_reta(dev);
 		if (ret) {
 			DRV_LOG(ERR, "port %u reta config failed: %s",
