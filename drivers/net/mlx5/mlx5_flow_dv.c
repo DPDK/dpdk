@@ -9601,13 +9601,9 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
 		memcpy(&opt_data_key, data,
 			RTE_MIN((uint32_t)(geneve_opt_v->option_len * 4),
 				sizeof(opt_data_key)));
-		MLX5_ASSERT((uint32_t)(geneve_opt_v->option_len * 4) <=
-				sizeof(opt_data_key));
 		memcpy(&opt_data_mask, geneve_opt_m->data,
 			RTE_MIN((uint32_t)(geneve_opt_v->option_len * 4),
 				sizeof(opt_data_mask)));
-		MLX5_ASSERT((uint32_t)(geneve_opt_v->option_len * 4) <=
-				sizeof(opt_data_mask));
 		MLX5_SET(fte_match_set_misc3, misc3_v,
 				geneve_tlv_option_0_data,
 			rte_be_to_cpu_32(opt_data_key & opt_data_mask));
