@@ -105,6 +105,8 @@ struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
 	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd) }
 };
 
+struct offloads tx_offloads;
+
 /*
  * To hold ethernet header per port, which will be applied
  * to outgoing packets.
@@ -3017,16 +3019,17 @@ main(int32_t argc, char **argv)
 			ipv4_cksum_port_mask |= 1U << portid;
 	}
 
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (rte_lcore_is_enabled(lcore_id) == 0)
-			continue;
+	tx_offloads.ipv4_offloads = RTE_MBUF_F_TX_IPV4;
+	tx_offloads.ipv6_offloads = RTE_MBUF_F_TX_IPV6;
+	/* Update per lcore checksum offload support only if all ports support it */
+	if (ipv4_cksum_port_mask == enabled_port_mask)
+		tx_offloads.ipv4_offloads |= RTE_MBUF_F_TX_IP_CKSUM;
 
+	lcore_id = 0;
+	RTE_LCORE_FOREACH(lcore_id) {
 		/* Pre-populate pkt offloads based on capabilities */
-		lcore_conf[lcore_id].outbound.ipv4_offloads = RTE_MBUF_F_TX_IPV4;
-		lcore_conf[lcore_id].outbound.ipv6_offloads = RTE_MBUF_F_TX_IPV6;
-		/* Update per lcore checksum offload support only if all ports support it */
-		if (ipv4_cksum_port_mask == enabled_port_mask)
-			lcore_conf[lcore_id].outbound.ipv4_offloads |= RTE_MBUF_F_TX_IP_CKSUM;
+		lcore_conf[lcore_id].outbound.ipv4_offloads = tx_offloads.ipv4_offloads;
+		lcore_conf[lcore_id].outbound.ipv6_offloads = tx_offloads.ipv6_offloads;
 	}
 
 	/*

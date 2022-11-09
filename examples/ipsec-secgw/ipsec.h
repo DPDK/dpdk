@@ -242,6 +242,13 @@ struct ipsec_ctx {
 	uint32_t lcore_id;
 };
 
+struct offloads {
+	uint64_t ipv4_offloads;
+	uint64_t ipv6_offloads;
+};
+
+extern struct offloads tx_offloads;
+
 struct cdev_key {
 	uint16_t lcore_id;
 	uint8_t cipher_algo;
