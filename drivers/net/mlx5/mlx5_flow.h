@@ -2516,6 +2516,8 @@ mlx5_get_tof(const struct rte_flow_item *items,
 	     enum mlx5_tof_rule_type *rule_type);
 void
 flow_hw_resource_release(struct rte_eth_dev *dev);
+void
+flow_hw_rxq_flag_set(struct rte_eth_dev *dev, bool enable);
 int flow_dv_action_validate(struct rte_eth_dev *dev,
 			    const struct rte_flow_indir_action_conf *conf,
 			    const struct rte_flow_action *action,

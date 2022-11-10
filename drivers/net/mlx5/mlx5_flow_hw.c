@@ -156,34 +156,6 @@ static const struct rte_flow_item_eth ctrl_rx_eth_bcast_spec = {
 };
 
 /**
- * Set rxq flag.
- *
- * @param[in] dev
- *   Pointer to the rte_eth_dev structure.
- * @param[in] enable
- *   Flag to enable or not.
- */
-static void
-flow_hw_rxq_flag_set(struct rte_eth_dev *dev, bool enable)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int i;
-
-	if ((!priv->mark_enabled && !enable) ||
-	    (priv->mark_enabled && enable))
-		return;
-	for (i = 0; i < priv->rxqs_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
-
-		/* With RXQ start/stop feature, RXQ might be stopped. */
-		if (!rxq_ctrl)
-			continue;
-		rxq_ctrl->rxq.mark = enable;
-	}
-	priv->mark_enabled = enable;
-}
-
-/**
  * Set the hash fields according to the @p rss_desc information.
  *
  * @param[in] rss_desc
@@ -462,6 +434,10 @@ __flow_hw_action_template_destroy(struct rte_eth_dev *dev,
 		mlx5_ipool_free(priv->acts_ipool, data->idx);
 	}
 
+	if (acts->mark)
+		if (!__atomic_sub_fetch(&priv->hws_mark_refcnt, 1, __ATOMIC_RELAXED))
+			flow_hw_rxq_flag_set(dev, false);
+
 	if (acts->jump) {
 		struct mlx5_flow_group *grp;
 
@@ -484,6 +460,7 @@ __flow_hw_action_template_destroy(struct rte_eth_dev *dev,
 		if (acts->mhdr->action)
 			mlx5dr_action_destroy(acts->mhdr->action);
 		mlx5_free(acts->mhdr);
+		acts->mhdr = NULL;
 	}
 	if (mlx5_hws_cnt_id_valid(acts->cnt_id)) {
 		mlx5_hws_cnt_shared_put(priv->hws_cpool, &acts->cnt_id);
@@ -1422,6 +1399,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 				goto err;
 			acts->rule_acts[action_pos].action =
 				priv->hw_tag[!!attr->group];
+			__atomic_add_fetch(&priv->hws_mark_refcnt, 1, __ATOMIC_RELAXED);
 			flow_hw_rxq_flag_set(dev, true);
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:

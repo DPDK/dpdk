@@ -1747,6 +1747,7 @@ struct mlx5_priv {
 	uint32_t flex_item_map; /* Map of allocated flex item elements. */
 	uint32_t nb_queue; /* HW steering queue number. */
 	struct mlx5_hws_cnt_pool *hws_cpool; /* HW steering's counter pool. */
+	uint32_t hws_mark_refcnt; /* HWS mark action reference counter. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	/* Item template list. */
 	LIST_HEAD(flow_hw_itt, rte_flow_pattern_template) flow_hw_itt;

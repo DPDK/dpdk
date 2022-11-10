@@ -7500,6 +7500,34 @@ mlx5_flow_stop_default(struct rte_eth_dev *dev)
 }
 
 /**
+ * Set rxq flag.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] enable
+ *   Flag to enable or not.
+ */
+void
+flow_hw_rxq_flag_set(struct rte_eth_dev *dev, bool enable)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+
+	if ((!priv->mark_enabled && !enable) ||
+	    (priv->mark_enabled && enable))
+		return;
+	for (i = 0; i < priv->rxqs_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
+
+		/* With RXQ start/stop feature, RXQ might be stopped. */
+		if (!rxq_ctrl)
+			continue;
+		rxq_ctrl->rxq.mark = enable;
+	}
+	priv->mark_enabled = enable;
+}
+
+/**
  * Start all default actions for flows.
  *
  * @param dev

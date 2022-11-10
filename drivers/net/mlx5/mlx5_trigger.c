@@ -1424,7 +1424,12 @@ continue_dev_stop:
 	mlx5_mp_os_req_stop_rxtx(dev);
 	rte_delay_us_sleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
-	mlx5_flow_stop_default(dev);
+	if (priv->sh->config.dv_flow_en == 2) {
+		if (!__atomic_load_n(&priv->hws_mark_refcnt, __ATOMIC_RELAXED))
+			flow_hw_rxq_flag_set(dev, false);
+	} else {
+		mlx5_flow_stop_default(dev);
+	}
 	/* Control flows for default traffic can be removed firstly. */
 	mlx5_traffic_disable(dev);
 	/* All RX queue flags will be cleared in the flush interface. */

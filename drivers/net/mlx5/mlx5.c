@@ -2010,7 +2010,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	 * If default mreg copy action is removed at the stop stage,
 	 * the search will return none and nothing will be done anymore.
 	 */
-	mlx5_flow_stop_default(dev);
+	if (priv->sh->config.dv_flow_en != 2)
+		mlx5_flow_stop_default(dev);
 	mlx5_traffic_disable(dev);
 	/*
 	 * If all the flows are already flushed in the device stop stage,
