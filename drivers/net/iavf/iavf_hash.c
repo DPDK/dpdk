@@ -904,7 +904,6 @@ iavf_hash_parse_action(struct iavf_pattern_match_item *match_item,
 		       uint64_t pattern_hint, struct iavf_rss_meta *rss_meta,
 		       struct rte_flow_error *error)
 {
-	struct virtchnl_proto_hdrs *proto_hdrs;
 	enum rte_flow_action_type action_type;
 	const struct rte_flow_action_rss *rss;
 	const struct rte_flow_action *action;
@@ -961,8 +960,10 @@ iavf_hash_parse_action(struct iavf_pattern_match_item *match_item,
 				return rte_flow_error_set(error, ENOTSUP,
 						RTE_FLOW_ERROR_TYPE_ACTION,
 						action, "RSS type not supported");
-			proto_hdrs = match_item->meta;
-			rss_meta->proto_hdrs = *proto_hdrs;
+
+			memcpy(&rss_meta->proto_hdrs, match_item->meta,
+			       sizeof(struct virtchnl_proto_hdrs));
+
 			iavf_refine_proto_hdrs(&rss_meta->proto_hdrs,
 					       rss_type, pattern_hint);
 			break;
