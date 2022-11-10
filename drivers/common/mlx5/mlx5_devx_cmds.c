@@ -111,7 +111,7 @@ mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
 					 MLX5_ST_SZ_BYTES(access_register_out) +
 					 sizeof(uint32_t) * dw_cnt);
 	if (rc || MLX5_FW_STATUS(out)) {
-		DEVX_DRV_LOG(ERR, out, "read access", "NIC register", reg_id);
+		DEVX_DRV_LOG(DEBUG, out, "read access", "NIC register", reg_id);
 		return MLX5_DEVX_ERR_RC(rc);
 	}
 	memcpy(data, &out[MLX5_ST_SZ_DW(access_register_out)],
