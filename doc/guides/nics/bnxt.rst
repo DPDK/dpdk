@@ -1,16 +1,16 @@
 .. SPDX-License-Identifier: BSD-3-Clause
    Copyright 2020 Broadcom Inc.
 
+.. include:: <isonum.txt>
+
 BNXT Poll Mode Driver
 =====================
 
 The Broadcom BNXT PMD (**librte_net_bnxt**) implements support for adapters
-based on Ethernet controllers and SoCs belonging to the Broadcom
-BCM5741X/BCM575XX NetXtreme-E® Family of Ethernet Network Controllers,
-the Broadcom BCM588XX Stingray Family of Smart NIC Adapters, and the Broadcom
-StrataGX® BCM5873X Series of Communications Processors.
+based on Ethernet controllers belonging to the Broadcom
+BCM5741X/BCM575XX NetXtreme-E\ |reg| Family of Ethernet Network Controllers.
 
-A complete list with links to reference material is in the Appendix section.
+A complete list is in the Supported Network Adapters section.
 
 CPU Support
 -----------
@@ -104,8 +104,9 @@ Trusted VF
 By default, VFs are *not* allowed to perform privileged operations, such as
 modifying the VF’s MAC address in the guest. These security measures are
 designed to prevent possible attacks.
-However, when a DPDK application can be trusted (e.g., OVS-DPDK, here), these
-operations performed by a VF would be legitimate and can be allowed.
+However, when a DPDK application can be trusted (e.g., OVS-DPDK,
+`here <https://docs.openvswitch.org/en/latest/intro/install/dpdk/>`_),
+these operations performed by a VF would be legitimate and better be allowed.
 
 To enable VF to request "trusted mode," a new trusted VF concept was introduced
 in Linux kernel 4.4 and allowed VFs to become “trusted” and perform some
@@ -122,12 +123,12 @@ Note that control commands, e.g., ethtool, will work via the kernel PF driver,
 Operations supported by trusted VF:
 
 * MAC address configuration
+* Promiscuous mode setting
 * Flow rule creation
 
 Operations *not* supported by trusted VF:
 
 * Firmware upgrade
-* Promiscuous mode setting
 
 Running on PF
 ~~~~~~~~~~~~~
@@ -240,7 +241,8 @@ filtering on MAC address used to accept packets.
 .. code-block:: console
 
     testpmd> show port (port_id) macs
-    testpmd> mac_addr (add|remove) (port_id) (XX:XX:XX:XX:XX:XX)
+    testpmd> mac_addr add port_id XX:XX:XX:XX:XX:XX
+    testpmd> mac_addr remove port_id XX:XX:XX:XX:XX:XX
 
 Multicast MAC Filter
 ^^^^^^^^^^^^^^^^^^^^
@@ -251,7 +253,8 @@ filtering on multicast MAC address used to accept packets.
 .. code-block:: console
 
     testpmd> show port (port_id) mcast_macs
-    testpmd> mcast_addr (add|remove) (port_id) (XX:XX:XX:XX:XX:XX)
+    testpmd> mcast_addr add port_id XX:XX:XX:XX:XX:XX
+    testpmd> mcast_addr remove port_id XX:XX:XX:XX:XX:XX
 
 Application adds (or removes) Multicast addresses to enable (or disable)
 allowlist filtering to accept packets.
@@ -640,63 +643,38 @@ hardware. For example, applications can offload packet classification only
 DPDK offers the Generic Flow API (rte_flow API) to configure hardware to
 perform flow processing.
 
-Listed below are the rte_flow APIs BNXT PMD supports:
+TruFlow\ |reg|
+^^^^^^^^^^^^^^
 
-* rte_flow_validate
-* rte_flow_create
-* rte_flow_destroy
-* rte_flow_flush
+To fully support the generic flow offload, TruFlow was introduced in BNXT PMD.
+Before TruFlow, hardware flow processing resources were
+mapped to and handled by firmware.
+With TruFlow, hardware flow processing resources are
+mapped to and handled by driver.
 
-Host Based Flow Table Management
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Alleviating the limitations of firmware-based feature development,
+TruFlow not only increases the flow offload feature velocity
+but also improves the control plane performance (i.e., higher flow update rate).
 
-Starting with 20.05 BNXT PMD supports host based flow table management. This is
-a new mechanism that should allow higher flow scalability than what is currently
-supported. This new approach also defines a new rte_flow parser, and mapper
-which currently supports basic packet classification in the receive path.
+Flow APIs, Items, and Actions
+-----------------------------
 
-The feature uses a newly implemented control-plane firmware interface which
-optimizes flow insertions and deletions.
+BNXT PMD supports thread-safe rte_flow operations for rte_flow APIs
+and rich set of flow items (i.e., matching patterns) and actions.
+Refer to the "Supported APIs" section for the list of rte_flow APIs
+as well as flow items and actions.
 
-This feature is currently supported on Whitney+, Stingray and Thor devices.
+Flow Persistency
+----------------
 
-Notes
------
-
-- On stopping a device port, all the flows created on a port by the
-  application will be flushed from the hardware and any tables maintained
-  by the PMD. After stopping the device port, all flows on the port become
-  invalid and are not represented in the system anymore.
-  Instead of destroying or flushing such flows an application should discard
-  all references to these flows and re-create the flows as required after the
-  port is restarted.
-
-- While an application is free to use the group id attribute to group flows
-  together using a specific criteria, the BNXT PMD currently associates this
-  group id to a VNIC id. One such case is grouping of flows which are filtered
-  on the same source or destination MAC address. This allows packets of such
-  flows to be directed to one or more queues associated with the VNIC id.
-  This implementation is supported only when TRUFLOW functionality is disabled.
-
-- An application can issue a VXLAN decap offload request using rte_flow API
-  either as a single rte_flow request or a combination of two stages.
-  The PMD currently supports the two stage offload design.
-  In this approach the offload request may come as two flow offload requests
-  Flow1 & Flow2.  The match criteria for Flow1 is O_DMAC, O_SMAC, O_DST_IP,
-  O_UDP_DPORT and actions are COUNT, MARK, JUMP. The match criteria for Flow2
-  is O_SRC_IP, O_DST_IP, VNI and inner header fields.
-  Flow1 and Flow2 flow offload requests can come in any order. If Flow2 flow
-  offload request comes first then Flow2 can’t be offloaded as there is
-  no O_DMAC information in Flow2. In this case, Flow2 will be deferred until
-  Flow1 flow offload request arrives. When Flow1 flow offload request is
-  received it will have O_DMAC information. Using Flow1’s O_DMAC, driver
-  creates an L2 context entry in the hardware as part of offloading Flow1.
-  Flow2 will now use Flow1’s O_DMAC to get the L2 context id associated with
-  this O_DMAC and other flow fields that are cached already at the time
-  of deferring Flow2 for offloading. Flow2 that arrive after Flow1 is offloaded
-  will be directly programmed and not cached.
-
-- PMD supports thread-safe rte_flow operations.
+On stopping a device port, all the flows created on a port
+by the application will be flushed from the hardware
+and any tables maintained by the PMD.
+After stopping the device port, all flows on the port become invalid
+and are not represented in the system anymore.
+Instead of destroying or flushing such flows an application should discard
+all references to these flows and re-create the flows as required
+after the port is restarted.
 
 Note: A VNIC represents a virtual interface in the hardware. It is a resource
 in the RX path of the chip and is used to setup various target actions such as
@@ -704,6 +682,7 @@ RSS, MAC filtering etc. for the physical function in use.
 
 Virtual Function Port Representors
 ----------------------------------
+
 The BNXT PMD supports the creation of VF port representors for the control
 and monitoring of BNXT virtual function devices. Each port representor
 corresponds to a single virtual function of that device that is connected to a
@@ -725,48 +704,6 @@ of VF IDs of the VFs for which the representors are needed by using the
 Note that currently hot-plugging of representor ports is not supported so all
 the required representors must be specified on the creation of the PF or the
 trusted VF.
-
-Representors on Stingray SoC
-----------------------------
-A representor created on X86 host typically represents a VF running in the same
-X86 domain. But in case of the SoC, the application can run on the CPU complex
-inside the SoC. The representor can be created on the SoC to represent a PF or a
-VF running in the x86 domain. Since the representator creation requires passing
-the bus:device.function of the PCI device endpoint which is not necessarily in the
-same host domain, additional dev args have been added to the PMD.
-
-* rep_is_vf - false to indicate VF representor
-* rep_is_pf - true to indicate PF representor
-* rep_based_pf - Physical index of the PF
-* rep_q_r2f - Logical COS Queue index for the rep to endpoint direction
-* rep_q_f2r - Logical COS Queue index for the endpoint to rep direction
-* rep_fc_r2f - Flow control for the representor to endpoint direction
-* rep_fc_f2r - Flow control for the endpoint to representor direction
-
-The sample command line with the new ``devargs`` looks like this::
-
-  -a 0000:06:02.0,representor=[1],rep-based-pf=8,\
-	rep-is-pf=1,rep-q-r2f=1,rep-fc-r2f=0,rep-q-f2r=1,rep-fc-f2r=1
-
-.. code-block:: console
-
-	dpdk-testpmd -l1-4 -n2 -a 0008:01:00.0,\
-	representor=[0], rep-based-pf=8,rep-is-pf=0,rep-q-r2f=1,rep-fc-r2f=1,\
-	rep-q-f2r=0,rep-fc-f2r=1 --log-level="pmd.*",8 -- -i --rxq=3 --txq=3
-
-Number of flows supported
--------------------------
-The number of flows that can be support can be changed using the devargs
-parameter ``max_num_kflows``. The default number of flows supported is 16K each
-in ingress and egress path.
-
-Selecting EM vs EEM
--------------------
-Broadcom devices can support filter creation in the onchip memory or the
-external memory. This is referred to as EM or EEM mode respectively.
-The decision for internal/external EM support is based on the ``devargs``
-parameter ``max_num_kflows``.  If this is set by the user, external EM is used.
-Otherwise EM support is enabled with flows created in internal memory.
 
 Application Support
 -------------------
@@ -850,36 +787,32 @@ DPDK implements a light-weight library to allow PMDs to be bonded together and p
 Vector Processing
 -----------------
 
+Vector mode provides significantly improved performance over scalar mode,
+using SIMD (Single Instruction Multiple Data) instructions
+to operate on multiple packets in parallel.
+
 The BNXT PMD provides vectorized burst transmit/receive function implementations
-on x86-based platforms using SSE (Streaming SIMD Extensions) and AVX2 (Advanced
-Vector Extensions 2) instructions, and on Arm-based platforms using Arm Neon
-Advanced SIMD instructions. Vector processing support is currently implemented
-only for Intel/AMD and Arm CPU architectures.
+on x86-based platforms and ARM-based platforms.
+The BNXT PMD supports SSE (Streaming SIMD Extensions)
+and AVX2 (Advanced Vector Extensions 2) instructions for x86-based platforms,
+and NEON instructions for ARM-based platforms.
 
-Vector processing provides significantly improved performance over scalar
-processing. This improved performance is derived from a number of optimizations:
+The BNXT Vector PMD is enabled in DPDK builds by default.
+However, the vector mode is disabled when applying SIMD instructions
+does not improve the performance due to non-uniform packet handling.
+TX and RX vector mode can be enabled independently from each other,
+and the decision to disable vector mode is made at run-time
+when the port is started.
 
-* Using SIMD instructions to operate on multiple packets in parallel.
-* Using SIMD instructions to do more work per instruction than is possible
-  with scalar instructions, for example by leveraging 128-bit and 256-bi
-  load/store instructions or by using SIMD shuffle and permute operations.
-* Batching
+The vector mode is disabled with TX and RX offloads.
+However, a limited set of offloads can be enabled in a vector mode.
+Listed below are the TX and RX offloads with which the vector mode can be enabled:
 
-    * TX: transmit completions are processed in bulk.
-    * RX: bulk allocation of mbufs is used when allocating rxq buffers.
-
-* Simplifications enabled by not supporting chained mbufs in vector mode.
-* Simplifications enabled by not supporting some stateless offloads in vector
-  mode:
-
-    * TX: only the following reduced set of transmit offloads is supported in
-      vector mode::
+    * TX offloads supported in vector mode
 
        RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
 
-    * RX: only the following reduced set of receive offloads is supported in
-      vector mode (note that jumbo MTU is allowed only when the MTU setting
-      does not require `RTE_ETH_RX_OFFLOAD_SCATTER` to be enabled)::
+    * RX offloads supported in vector mode
 
        RTE_ETH_RX_OFFLOAD_VLAN_STRIP
        RTE_ETH_RX_OFFLOAD_KEEP_CRC
@@ -891,82 +824,248 @@ processing. This improved performance is derived from a number of optimizations:
        RTE_ETH_RX_OFFLOAD_RSS_HASH
        RTE_ETH_RX_OFFLOAD_VLAN_FILTER
 
-The BNXT Vector PMD is enabled in DPDK builds by default. The decision to enable
-vector processing is made at run-time when the port is started; if no transmit
-offloads outside the set supported for vector mode are enabled then vector mode
-transmit will be enabled, and if no receive offloads outside the set supported
-for vector mode are enabled then vector mode receive will be enabled.  Offload
-configuration changes that impact the decision to enable vector mode are allowed
-only when the port is stopped.
+Note that the offload configuration changes impacting the vector mode enablement
+are allowed only when the port is stopped.
 
-Note that TX (or RX) vector mode can be enabled independently from RX (or TX)
-vector mode.
+Performance Report
+------------------
 
-Appendix
---------
+Broadcom DPDK performance has been reported since 19.08 release.
+The reports provide not only the performance results
+but also test scenarios including test topology and detailed configurations.
+See the reports at `DPDK performance link <https://core.dpdk.org/perf-reports/>`.
 
-Supported Chipsets and Adapters
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Supported Network Adapters
+--------------------------
 
-BCM5730x NetXtreme-C® Family of Ethernet Network Controllers
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Listed below are BCM57400 and BCM57500 NetXtreme-E\ |reg| family
+of Ethernet network adapters.
+More information can be found in the `NetXtreme\ |reg| Brand section
+<https://www.broadcom.com/products/ethernet-connectivity/network-adapters/>`_
+of the `Broadcom website <http://www.broadcom.com/>`_.
 
-Information about Ethernet adapters in the NetXtreme family of adapters can be
-found in the `NetXtreme® Brand section <https://www.broadcom.com/products/ethernet-connectivity/network-adapters/>`_ of the `Broadcom website <http://www.broadcom.com/>`_.
+BCM57400 NetXtreme-E\ |reg| Family of Ethernet Network Controllers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ``M150c ... Single-port 40/50 Gigabit Ethernet Adapter``
-* ``P150c ... Single-port 40/50 Gigabit Ethernet Adapter``
-* ``P225c ... Dual-port 10/25 Gigabit Ethernet Adapter``
+PCIe NICs
+^^^^^^^^^
 
-BCM574xx/575xx NetXtreme-E® Family of Ethernet Network Controllers
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Information about Ethernet adapters in the NetXtreme family of adapters can be
-found in the `NetXtreme® Brand section <https://www.broadcom.com/products/ethernet-connectivity/network-adapters/>`_ of the `Broadcom website <http://www.broadcom.com/>`_.
-
-* ``M125P .... Single-port OCP 2.0 10/25 Gigabit Ethernet Adapter``
-* ``M150P .... Single-port OCP 2.0 50 Gigabit Ethernet Adapter``
-* ``M150PM ... Single-port OCP 2.0 Multi-Host 50 Gigabit Ethernet Adapter``
-* ``M210P .... Dual-port OCP 2.0 10 Gigabit Ethernet Adapter``
-* ``M210TP ... Dual-port OCP 2.0 10 Gigabit Ethernet Adapter``
-* ``M1100G ... Single-port OCP 2.0 10/25/50/100 Gigabit Ethernet Adapter``
-* ``N150G .... Single-port OCP 3.0 50 Gigabit Ethernet Adapter``
-* ``M225P .... Dual-port OCP 2.0 10/25 Gigabit Ethernet Adapter``
-* ``N210P .... Dual-port OCP 3.0 10 Gigabit Ethernet Adapter``
-* ``N210TP ... Dual-port OCP 3.0 10 Gigabit Ethernet Adapter``
-* ``N225P .... Dual-port OCP 3.0 10/25 Gigabit Ethernet Adapter``
-* ``N250G .... Dual-port OCP 3.0 50 Gigabit Ethernet Adapter``
-* ``N410SG ... Quad-port OCP 3.0 10 Gigabit Ethernet Adapter``
-* ``N410SGBT . Quad-port OCP 3.0 10 Gigabit Ethernet Adapter``
-* ``N425G .... Quad-port OCP 3.0 10/25 Gigabit Ethernet Adapter``
-* ``N1100G ... Single-port OCP 3.0 10/25/50/100 Gigabit Ethernet Adapter``
-* ``N2100G ... Dual-port OCP 3.0 10/25/50/100 Gigabit Ethernet Adapter``
-* ``N2200G ... Dual-port OCP 3.0 10/25/50/100/200 Gigabit Ethernet Adapter``
-* ``P150P .... Single-port 50 Gigabit Ethernet Adapter``
 * ``P210P .... Dual-port 10 Gigabit Ethernet Adapter``
-* ``P210TP ... Dual-port 10 Gigabit Ethernet Adapter``
-* ``P225P .... Dual-port 10/25 Gigabit Ethernet Adapter``
+* ``P210TP ... Dual-port 10 Gigabit Ethernet Adapter``
+* ``P225P .... Dual-port 25 Gigabit Ethernet Adapter``
+* ``P150P .... Single-port 50 Gigabit Ethernet Adapter``
+
+OCP 2.0 NICs
+^^^^^^^^^^^^
+
+* ``M210P .... Dual-port 10 Gigabit Ethernet Adapter``
+* ``M210TP ... Dual-port 10 Gigabit Ethernet Adapter``
+* ``M125P .... Single-port 25 Gigabit Ethernet Adapter``
+* ``M225P .... Dual-port 25 Gigabit Ethernet Adapter``
+* ``M150P .... Single-port 50 Gigabit Ethernet Adapter``
+* ``M150PM ... Single-port Multi-Host 50 Gigabit Ethernet Adapter``
+
+OCP 3.0 NICs
+^^^^^^^^^^^^
+
+* ``N210P .... Dual-port 10 Gigabit Ethernet Adapter``
+* ``N210TP ... Dual-port 10 Gigabit Ethernet Adapter``
+* ``N225P  ... Dual-port 10 Gigabit Ethernet Adapter``
+
+BCM57500 NetXtreme-E\ |reg| Family of Ethernet Network Controllers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PCIe NICs
+^^^^^^^^^
+
 * ``P410SG ... Quad-port 10 Gigabit Ethernet Adapter``
 * ``P410SGBT . Quad-port 10 Gigabit Ethernet Adapter``
-* ``P425G .... Quad-port 10/25 Gigabit Ethernet Adapter``
-* ``P1100G ... Single-port 10/25/50/100 Gigabit Ethernet Adapter``
-* ``P2100G ... Dual-port 10/25/50/100 Gigabit Ethernet Adapter``
-* ``P2200G ... Dual-port 10/25/50/100/200 Gigabit Ethernet Adapter``
+* ``P425G .... Quad-port 25 Gigabit Ethernet Adapter``
+* ``P1100G ... Single-port 100 Gigabit Ethernet Adapter``
+* ``P2100G ... Dual-port 100 Gigabit Ethernet Adapter``
+* ``P2200G ... Dual-port 200 Gigabit Ethernet Adapter``
 
-BCM588xx NetXtreme-S® Family of SmartNIC Network Controllers
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OCP 2.0 NICs
+^^^^^^^^^^^^
 
-Information about the Stingray family of SmartNIC adapters can be found in the
-`Stingray® Brand section <https://www.broadcom.com/products/ethernet-connectivity/smartnic/>`_ of the `Broadcom website <http://www.broadcom.com/>`_.
+* ``M1100G ... Single-port OCP 2.0 10/25/50/100 Gigabit Ethernet Adapter``
 
-* ``PS225 ... Dual-port 25 Gigabit Ethernet SmartNIC``
+OCP 3.0 NICs
+^^^^^^^^^^^^
 
-BCM5873x StrataGX® Family of Communications Processors
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ``N410SG ... Quad-port 10 Gigabit Ethernet Adapter``
+* ``N410SGBT . Quad-port 10 Gigabit Ethernet Adapter``
+* ``N425G .... Quad-port 25 Gigabit Ethernet Adapter``
+* ``N150G .... Single-port 50 Gigabit Ethernet Adapter``
+* ``N250G .... Dual-port 50 Gigabit Ethernet Adapter``
+* ``N1100G ... Single-port 100 Gigabit Ethernet Adapter``
+* ``N2100G ... Dual-port 100 Gigabit Ethernet Adapter``
+* ``N2200G ... Dual-port 200 Gigabit Ethernet Adapter``
 
-These ARM-based processors target a broad range of networking applications,
-including virtual CPE (vCPE) and NFV appliances, 10G service routers and
-gateways, control plane processing for Ethernet switches, and network-attached
-storage (NAS).
+Supported Firmware Versions
+---------------------------
 
-* ``StrataGX BCM58732 ... Octal-Core 3.0GHz 64-bit ARM®v8 Cortex®-A72 based SoC``
+Shown below are Ethernet Network Adapters and their supported firmware versions
+(refer to section “Supported Network Adapters” for the list of adapters):
+
+* ``BCM57400 NetXtreme-E\ |reg| Family`` ... Firmware 219.0.0 or later
+* ``BCM57500 NetXtreme-E\ |reg| Family`` ... Firmware 219.0.0 or later
+
+Shown below are DPDK LTS releases and their supported firmware versions:
+* ``DPDK Release 19.11`` ... Firmware 219.0.103 or later
+* ``DPDK Release 20.11`` ... Firmware 219.0.103 or later
+* ``DPDK Release 21.11`` ... Firmware 221.0.101 or later
+
+Supported APIs
+--------------
+
+rte_eth APIs
+~~~~~~~~~~~~
+
+Listed below are the rte_eth functions supported:
+* ``rte_eth_allmulticast_disable``
+* ``rte_eth_allmulticast_enable``
+* ``rte_eth_allmulticast_get``
+* ``rte_eth_dev_close``
+* ``rte_eth_dev_conf_get``
+* ``rte_eth_dev_configure``
+* ``rte_eth_dev_default_mac_addr_set``
+* ``rte_eth_dev_flow_ctrl_get``
+* ``rte_eth_dev_flow_ctrl_set``
+* ``rte_eth_dev_fw_version_get``
+* ``rte_eth_dev_get_eeprom``
+* ``rte_eth_dev_get_eeprom``
+* ``rte_eth_dev_get_eeprom_length``
+* ``rte_eth_dev_get_eeprom_length``
+* ``rte_eth_dev_get_module_eeprom``
+* ``rte_eth_dev_get_module_info``
+* ``rte_eth_dev_get_mtu``
+* ``rte_eth_dev_get_name_by_port rte_eth_dev_get_port_by_name``
+* ``rte_eth_dev_get_supported_ptypes``
+* ``rte_eth_dev_get_vlan_offload``
+* ``rte_eth_dev_info_get``
+* ``rte_eth_dev_infos_get``
+* ``rte_eth_dev_mac_addr_add``
+* ``rte_eth_dev_mac_addr_remove``
+* ``rte_eth_dev_macaddr_get``
+* ``rte_eth_dev_macaddrs_get``
+* ``rte_eth_dev_owner_get``
+* ``rte_eth_dev_rss_hash_conf_get``
+* ``rte_eth_dev_rss_hash_update``
+* ``rte_eth_dev_rss_reta_query``
+* ``rte_eth_dev_rss_reta_update``
+* ``rte_eth_dev_rx_intr_disable``
+* ``rte_eth_dev_rx_intr_enable``
+* ``rte_eth_dev_rx_queue_start``
+* ``rte_eth_dev_rx_queue_stop``
+* ``rte_eth_dev_set_eeprom``
+* ``rte_eth_dev_set_link_down``
+* ``rte_eth_dev_set_link_up``
+* ``rte_eth_dev_set_mc_addr_list``
+* ``rte_eth_dev_set_mtu``
+* ``rte_eth_dev_set_vlan_ether_type``
+* ``rte_eth_dev_set_vlan_offload``
+* ``rte_eth_dev_set_vlan_pvid``
+* ``rte_eth_dev_start``
+* ``rte_eth_dev_stop``
+* ``rte_eth_dev_supported_ptypes_get``
+* ``rte_eth_dev_tx_queue_start``
+* ``rte_eth_dev_tx_queue_stop``
+* ``rte_eth_dev_udp_tunnel_port_add``
+* ``rte_eth_dev_udp_tunnel_port_delete``
+* ``rte_eth_dev_vlan_filter``
+* ``rte_eth_led_off``
+* ``rte_eth_led_on``
+* ``rte_eth_link_get``
+* ``rte_eth_link_get_nowait``
+* ``rte_eth_macaddr_get``
+* ``rte_eth_macaddrs_get``
+* ``rte_eth_promiscuous_disable``
+* ``rte_eth_promiscuous_enable``
+* ``rte_eth_promiscuous_get``
+* ``rte_eth_rx_burst_mode_get``
+* ``rte_eth_rx_queue_info_get``
+* ``rte_eth_rx_queue_setup``
+* ``rte_eth_stats_get``
+* ``rte_eth_stats_reset``
+* ``rte_eth_timesync_adjust_time``
+* ``rte_eth_timesync_disable``
+* ``rte_eth_timesync_enable``
+* ``rte_eth_timesync_read_rx_timestamp``
+* ``rte_eth_timesync_read_time``
+* ``rte_eth_timesync_read_tx_timestamp``
+* ``rte_eth_timesync_write_time``
+* ``rte_eth_tx_burst_mode_get``
+* ``rte_eth_tx_queue_info_get``
+* ``rte_eth_tx_queue_setup``
+* ``rte_eth_xstats_get``
+* ``rte_eth_xstats_get_names``
+
+rte_flow APIs
+~~~~~~~~~~~~~
+
+Listed below are the rte_flow functions supported:
+* ``rte_flow_ops_get``
+* ``rte_flow_validate``
+* ``rte_flow_create``
+* ``rte_flow_destroy``
+* ``rte_flow_flush``
+* ``rte_flow_tunnel_action_decap_release``
+* ``rte_flow_tunnel_decap_set``
+* ``rte_flow_tunnel_item_release``
+* ``rte_flow_tunnel_match``
+
+rte_flow Items
+~~~~~~~~~~~~~~
+
+Refer to "Table 1.2 rte_flow items availability in networking drivers" in
+`Overview of Networking Drivers <https://doc.dpdk.org/guides/nics/overview.html>`.
+
+Listed below are the rte_flow items supported:
+
+* ``any``
+* ``eth``
+* ``gre``
+* ``icmp``
+* ``icmp6``
+* ``ipv4``
+* ``ipv6``
+* ``pf``
+* ``phy_port``
+* ``port_id``
+* ``port_representor``
+* ``represented_port``
+* ``tcp``
+* ``udp``
+* ``vf``
+* ``vlan``
+* ``vxlan``
+
+rte_flow Actions
+~~~~~~~~~~~~~~~~
+
+Refer to "Table 1.3 rte_flow actions availability in networking drivers" in
+`Overview of Networking Drivers <https://doc.dpdk.org/guides/nics/overview.html>`.
+
+Listed below are the rte_flow actions supported:
+
+* ``count``
+* ``dec_ttl``
+* ``drop``
+* ``of_pop_vlan``
+* ``of_push_vlan``
+* ``of_set_vlan_pcp``
+* ``of_set_vlan_vid``
+* ``pf``
+* ``phy_port``
+* ``port_id``
+* ``port_representor``
+* ``represented_port``
+* ``rss``
+* ``set_ipv4_dst``
+* ``set_ipv4_src``
+* ``set_tp_dst``
+* ``set_tp_src``
+* ``vf``
+* ``vxlan_decap``
+* ``vxlan_encap``
