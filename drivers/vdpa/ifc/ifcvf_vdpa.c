@@ -1098,7 +1098,12 @@ ifcvf_dev_config(int vid)
 	internal = list->internal;
 	internal->vid = vid;
 	rte_atomic32_set(&internal->dev_attached, 1);
-	update_datapath(internal);
+	if (update_datapath(internal) < 0) {
+		DRV_LOG(ERR, "failed to update datapath for vDPA device %s",
+			vdev->device->name);
+		rte_atomic32_set(&internal->dev_attached, 0);
+		return -1;
+	}
 
 	hw = &internal->hw;
 	for (i = 0; i < hw->nr_vring; i++) {
@@ -1146,7 +1151,12 @@ ifcvf_dev_close(int vid)
 		internal->sw_fallback_running = false;
 	} else {
 		rte_atomic32_set(&internal->dev_attached, 0);
-		update_datapath(internal);
+		if (update_datapath(internal) < 0) {
+			DRV_LOG(ERR, "failed to update datapath for vDPA device %s",
+				vdev->device->name);
+			internal->configured = 0;
+			return -1;
+		}
 	}
 
 	internal->configured = 0;
@@ -1752,7 +1762,15 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 
 	rte_atomic32_set(&internal->started, 1);
-	update_datapath(internal);
+	if (update_datapath(internal) < 0) {
+		DRV_LOG(ERR, "failed to update datapath %s", pci_dev->name);
+		rte_atomic32_set(&internal->started, 0);
+		rte_vdpa_unregister_device(internal->vdev);
+		pthread_mutex_lock(&internal_list_lock);
+		TAILQ_REMOVE(&internal_list, list, next);
+		pthread_mutex_unlock(&internal_list_lock);
+		goto error;
+	}
 
 	rte_kvargs_free(kvlist);
 	return 0;
@@ -1781,7 +1799,8 @@ ifcvf_pci_remove(struct rte_pci_device *pci_dev)
 
 	internal = list->internal;
 	rte_atomic32_set(&internal->started, 0);
-	update_datapath(internal);
+	if (update_datapath(internal) < 0)
+		DRV_LOG(ERR, "failed to update datapath %s", pci_dev->name);
 
 	rte_pci_unmap_device(internal->pdev);
 	rte_vfio_container_destroy(internal->vfio_container_fd);
