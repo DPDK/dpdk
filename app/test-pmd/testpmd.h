@@ -80,6 +80,9 @@ extern uint8_t cl_quit;
 
 #define MIN_TOTAL_NUM_MBUFS 1024
 
+/* Maximum number of pools supported per Rx queue */
+#define MAX_MEMPOOL 8
+
 typedef uint8_t  lcoreid_t;
 typedef uint16_t portid_t;
 typedef uint16_t queueid_t;

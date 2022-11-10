@@ -150,8 +150,8 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		print_ether_addr(" - dst=", &eth_hdr->dst_addr,
 				 print_buf, buf_size, &cur_len);
 		MKDUMPSTR(print_buf, buf_size, cur_len,
-			  " - type=0x%04x - length=%u - nb_segs=%d",
-			  eth_type, (unsigned int) mb->pkt_len,
+			  " - pool=%s - type=0x%04x - length=%u - nb_segs=%d",
+			  mb->pool->name, eth_type, (unsigned int) mb->pkt_len,
 			  (int)mb->nb_segs);
 		ol_flags = mb->ol_flags;
 		if (ol_flags & RTE_MBUF_F_RX_RSS_HASH) {

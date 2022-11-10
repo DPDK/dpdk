@@ -2653,12 +2653,20 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	       struct rte_eth_rxconf *rx_conf, struct rte_mempool *mp)
 {
 	union rte_eth_rxseg rx_useg[MAX_SEGS_BUFFER_SPLIT] = {};
+	struct rte_mempool *rx_mempool[MAX_MEMPOOL] = {};
+	struct rte_mempool *mpx;
 	unsigned int i, mp_n;
 	uint32_t prev_hdrs = 0;
 	int ret;
 
-	if (rx_pkt_nb_segs <= 1 ||
-	    (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) == 0) {
+	/* Verify Rx queue configuration is single pool and segment or
+	 * multiple pool/segment.
+	 * @see rte_eth_rxconf::rx_mempools
+	 * @see rte_eth_rxconf::rx_seg
+	 */
+	if (!(mbuf_data_size_n > 1) && !(rx_pkt_nb_segs > 1 ||
+	    ((rx_conf->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) != 0))) {
+		/* Single pool/segment configuration */
 		rx_conf->rx_seg = NULL;
 		rx_conf->rx_nseg = 0;
 		ret = rte_eth_rx_queue_setup(port_id, rx_queue_id,
@@ -2666,34 +2674,48 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 					     rx_conf, mp);
 		goto exit;
 	}
-	for (i = 0; i < rx_pkt_nb_segs; i++) {
-		struct rte_eth_rxseg_split *rx_seg = &rx_useg[i].split;
-		struct rte_mempool *mpx;
-		/*
-		 * Use last valid pool for the segments with number
-		 * exceeding the pool index.
-		 */
-		mp_n = (i >= mbuf_data_size_n) ? mbuf_data_size_n - 1 : i;
-		mpx = mbuf_pool_find(socket_id, mp_n);
-		/* Handle zero as mbuf data buffer size. */
-		rx_seg->offset = i < rx_pkt_nb_offs ?
-				   rx_pkt_seg_offsets[i] : 0;
-		rx_seg->mp = mpx ? mpx : mp;
-		if (rx_pkt_hdr_protos[i] != 0 && rx_pkt_seg_lengths[i] == 0) {
-			rx_seg->proto_hdr = rx_pkt_hdr_protos[i] & ~prev_hdrs;
-			prev_hdrs |= rx_seg->proto_hdr;
-		} else {
-			rx_seg->length = rx_pkt_seg_lengths[i] ?
-					rx_pkt_seg_lengths[i] :
-					mbuf_data_size[mp_n];
+
+	if (rx_pkt_nb_segs > 1 ||
+	    rx_conf->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) {
+		/* multi-segment configuration */
+		for (i = 0; i < rx_pkt_nb_segs; i++) {
+			struct rte_eth_rxseg_split *rx_seg = &rx_useg[i].split;
+			/*
+			 * Use last valid pool for the segments with number
+			 * exceeding the pool index.
+			 */
+			mp_n = (i >= mbuf_data_size_n) ? mbuf_data_size_n - 1 : i;
+			mpx = mbuf_pool_find(socket_id, mp_n);
+			/* Handle zero as mbuf data buffer size. */
+			rx_seg->offset = i < rx_pkt_nb_offs ?
+					   rx_pkt_seg_offsets[i] : 0;
+			rx_seg->mp = mpx ? mpx : mp;
+			if (rx_pkt_hdr_protos[i] != 0 && rx_pkt_seg_lengths[i] == 0) {
+				rx_seg->proto_hdr = rx_pkt_hdr_protos[i] & ~prev_hdrs;
+				prev_hdrs |= rx_seg->proto_hdr;
+			} else {
+				rx_seg->length = rx_pkt_seg_lengths[i] ?
+						rx_pkt_seg_lengths[i] :
+						mbuf_data_size[mp_n];
+			}
 		}
+		rx_conf->rx_nseg = rx_pkt_nb_segs;
+		rx_conf->rx_seg = rx_useg;
+	} else {
+		/* multi-pool configuration */
+		for (i = 0; i < mbuf_data_size_n; i++) {
+			mpx = mbuf_pool_find(socket_id, i);
+			rx_mempool[i] = mpx ? mpx : mp;
+		}
+		rx_conf->rx_mempools = rx_mempool;
+		rx_conf->rx_nmempool = mbuf_data_size_n;
 	}
-	rx_conf->rx_nseg = rx_pkt_nb_segs;
-	rx_conf->rx_seg = rx_useg;
 	ret = rte_eth_rx_queue_setup(port_id, rx_queue_id, nb_rx_desc,
 				    socket_id, rx_conf, NULL);
 	rx_conf->rx_seg = NULL;
 	rx_conf->rx_nseg = 0;
+	rx_conf->rx_mempools = NULL;
+	rx_conf->rx_nmempool = 0;
 exit:
 	ports[port_id].rxq[rx_queue_id].state = rx_conf->rx_deferred_start ?
 						RTE_ETH_QUEUE_STATE_STOPPED :
