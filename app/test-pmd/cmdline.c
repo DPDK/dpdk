@@ -3445,18 +3445,14 @@ parse_hdrs_list(const char *str, const char *item_name, unsigned int max_items,
 	unsigned int nb_item;
 	char *cur;
 	char *tmp;
-	unsigned int cur_item, prev_items = 0;
 
 	nb_item = 0;
 	char *str2 = strdup(str);
 	cur = strtok_r(str2, ",", &tmp);
 	while (cur != NULL) {
-		cur_item = get_ptype(cur);
-		cur_item &= ~prev_items;
-		parsed_items[nb_item] = cur_item;
+		parsed_items[nb_item] = get_ptype(cur);
 		cur = strtok_r(NULL, ",", &tmp);
 		nb_item++;
-		prev_items |= cur_item;
 	}
 	if (nb_item > max_items)
 		fprintf(stderr, "Number of %s = %u > %u (maximum items)\n",

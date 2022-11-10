@@ -2654,6 +2654,7 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 {
 	union rte_eth_rxseg rx_useg[MAX_SEGS_BUFFER_SPLIT] = {};
 	unsigned int i, mp_n;
+	uint32_t prev_hdrs = 0;
 	int ret;
 
 	if (rx_pkt_nb_segs <= 1 ||
@@ -2679,7 +2680,8 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 				   rx_pkt_seg_offsets[i] : 0;
 		rx_seg->mp = mpx ? mpx : mp;
 		if (rx_pkt_hdr_protos[i] != 0 && rx_pkt_seg_lengths[i] == 0) {
-			rx_seg->proto_hdr = rx_pkt_hdr_protos[i];
+			rx_seg->proto_hdr = rx_pkt_hdr_protos[i] & ~prev_hdrs;
+			prev_hdrs |= rx_seg->proto_hdr;
 		} else {
 			rx_seg->length = rx_pkt_seg_lengths[i] ?
 					rx_pkt_seg_lengths[i] :
