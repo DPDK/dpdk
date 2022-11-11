@@ -38,6 +38,7 @@
 #define NSEC2TICK(__ns, __freq) (((__ns) * (__freq)) / 1E9)
 
 #define CN9K_SSOW_GET_BASE_ADDR(_GW) ((_GW)-SSOW_LF_GWS_OP_GET_WORK0)
+#define CN9K_DUAL_WS_NB_WS	     2
 
 #define CN10K_GW_MODE_NONE     0
 #define CN10K_GW_MODE_PREF     1

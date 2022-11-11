@@ -693,3 +693,17 @@ cnxk_sso_remove(struct rte_pci_device *pci_dev)
 {
 	return rte_event_pmd_pci_remove(pci_dev, cnxk_sso_fini);
 }
+
+void
+cn9k_sso_set_rsrc(void *arg)
+{
+	struct cnxk_sso_evdev *dev = arg;
+
+	if (dev->dual_ws)
+		dev->max_event_ports = dev->sso.max_hws / CN9K_DUAL_WS_NB_WS;
+	else
+		dev->max_event_ports = dev->sso.max_hws;
+	dev->max_event_queues = dev->sso.max_hwgrp > RTE_EVENT_MAX_QUEUES_PER_DEV ?
+					RTE_EVENT_MAX_QUEUES_PER_DEV :
+					dev->sso.max_hwgrp;
+}

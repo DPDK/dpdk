@@ -8,11 +8,17 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     subdir_done()
 endif
 
+if meson.is_cross_build()
+        soc_type = meson.get_cross_property('platform', '')
+else
+        soc_type = platform
+endif
+
+if soc_type != 'cn9k' and soc_type != 'cn10k'
+        soc_type = 'all'
+endif
+
 sources = files(
-        'cn9k_eventdev.c',
-        'cn9k_worker.c',
-        'cn10k_eventdev.c',
-        'cn10k_worker.c',
         'cnxk_eventdev.c',
         'cnxk_eventdev_adptr.c',
         'cnxk_eventdev_selftest.c',
@@ -21,7 +27,10 @@ sources = files(
         'cnxk_tim_worker.c',
 )
 
+if soc_type == 'cn9k' or soc_type == 'all'
 sources += files(
+        'cn9k_eventdev.c',
+        'cn9k_worker.c',
         'deq/cn9k/deq_0_15_burst.c',
         'deq/cn9k/deq_16_31_burst.c',
         'deq/cn9k/deq_32_47_burst.c',
@@ -192,8 +201,12 @@ sources += files(
         'tx/cn9k/tx_96_111_dual_seg.c',
         'tx/cn9k/tx_112_127_dual_seg.c',
 )
+endif
 
+if soc_type == 'cn10k' or soc_type == 'all'
 sources += files(
+        'cn10k_eventdev.c',
+        'cn10k_worker.c',
         'deq/cn10k/deq_0_15_burst.c',
         'deq/cn10k/deq_16_31_burst.c',
         'deq/cn10k/deq_32_47_burst.c',
@@ -278,6 +291,7 @@ sources += files(
         'tx/cn10k/tx_96_111_seg.c',
         'tx/cn10k/tx_112_127_seg.c',
 )
+endif
 
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']
 foreach flag: extra_flags
