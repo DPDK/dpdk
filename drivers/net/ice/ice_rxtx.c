@@ -1966,6 +1966,10 @@ ice_recv_scattered_pkts(void *rx_queue,
 			} else
 				rxm->data_len = (uint16_t)(rx_packet_len -
 							   RTE_ETHER_CRC_LEN);
+		} else if (rx_packet_len == 0) {
+			rte_pktmbuf_free_seg(rxm);
+			first_seg->nb_segs--;
+			last_seg->next = NULL;
 		}
 
 		first_seg->port = rxq->port_id;
