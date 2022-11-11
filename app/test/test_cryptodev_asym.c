@@ -904,6 +904,12 @@ testsuite_teardown(void)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 
+	/* Reset device */
+	ts_params->qp_conf.mp_session = NULL;
+	ts_params->conf.ff_disable = 0;
+	if (rte_cryptodev_configure(ts_params->valid_devs[0], &ts_params->conf))
+		RTE_LOG(DEBUG, USER1, "Could not reset cryptodev\n");
+
 	if (ts_params->op_mpool != NULL) {
 		RTE_LOG(DEBUG, USER1, "CRYPTO_OP_POOL count %u\n",
 		rte_mempool_avail_count(ts_params->op_mpool));
