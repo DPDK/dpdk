@@ -6394,8 +6394,10 @@ test_snow3g_decryption_with_digest_test_case_1(void)
 	 */
 	snow3g_hash_test_vector_setup(&snow3g_test_case_7, &snow3g_hash_data);
 
-	return test_snow3g_decryption(&snow3g_test_case_7) &
-			test_snow3g_authentication_verify(&snow3g_hash_data);
+	if (test_snow3g_decryption(&snow3g_test_case_7))
+		return TEST_FAILED;
+
+	return test_snow3g_authentication_verify(&snow3g_hash_data);
 }
 
 static int
