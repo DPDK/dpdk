@@ -514,9 +514,9 @@ gve_release_txq_mbufs(struct gve_tx_queue *txq)
 }
 
 void
-gve_tx_queue_release(void *txq)
+gve_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct gve_tx_queue *q = txq;
+	struct gve_tx_queue *q = dev->data->tx_queues[qid];
 
 	if (!q)
 		return;
@@ -553,7 +553,7 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 
 	/* Free memory if needed. */
 	if (dev->data->tx_queues[queue_id]) {
-		gve_tx_queue_release(dev->data->tx_queues[queue_id]);
+		gve_tx_queue_release(dev, queue_id);
 		dev->data->tx_queues[queue_id] = NULL;
 	}
 

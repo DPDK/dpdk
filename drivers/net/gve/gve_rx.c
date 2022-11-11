@@ -192,9 +192,9 @@ gve_release_rxq_mbufs(struct gve_rx_queue *rxq)
 }
 
 void
-gve_rx_queue_release(void *rxq)
+gve_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct gve_rx_queue *q = rxq;
+	struct gve_rx_queue *q = dev->data->rx_queues[qid];
 
 	if (!q)
 		return;
@@ -232,7 +232,7 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	/* Free memory if needed. */
 	if (dev->data->rx_queues[queue_id]) {
-		gve_rx_queue_release(dev->data->rx_queues[queue_id]);
+		gve_rx_queue_release(dev, queue_id);
 		dev->data->rx_queues[queue_id] = NULL;
 	}
 

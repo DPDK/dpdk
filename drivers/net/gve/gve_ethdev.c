@@ -244,8 +244,6 @@ static int
 gve_dev_close(struct rte_eth_dev *dev)
 {
 	struct gve_priv *priv = dev->data->dev_private;
-	struct gve_tx_queue *txq;
-	struct gve_rx_queue *rxq;
 	int err = 0;
 	uint16_t i;
 
@@ -255,15 +253,11 @@ gve_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, "Failed to stop dev.");
 	}
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txq = dev->data->tx_queues[i];
-		gve_tx_queue_release(txq);
-	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		gve_tx_queue_release(dev, i);
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		gve_rx_queue_release(rxq);
-	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		gve_rx_queue_release(dev, i);
 
 	gve_free_qpls(priv);
 	rte_free(priv->adminq);
@@ -362,6 +356,8 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_infos_get        = gve_dev_info_get,
 	.rx_queue_setup       = gve_rx_queue_setup,
 	.tx_queue_setup       = gve_tx_queue_setup,
+	.rx_queue_release     = gve_rx_queue_release,
+	.tx_queue_release     = gve_tx_queue_release,
 	.link_update          = gve_link_update,
 	.mtu_set              = gve_dev_mtu_set,
 };

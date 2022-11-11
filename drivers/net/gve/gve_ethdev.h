@@ -291,10 +291,10 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 		   unsigned int socket_id, const struct rte_eth_txconf *conf);
 
 void
-gve_tx_queue_release(void *txq);
+gve_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 void
-gve_rx_queue_release(void *rxq);
+gve_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 void
 gve_stop_tx_queues(struct rte_eth_dev *dev);
