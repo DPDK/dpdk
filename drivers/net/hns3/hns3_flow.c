@@ -1722,6 +1722,105 @@ hns3_flow_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	return hns3_parse_fdir_filter(dev, pattern, actions, &fdir_rule, error);
 }
 
+static int
+hns3_flow_create_rss_rule(struct rte_eth_dev *dev,
+			  const struct rte_flow_action *act,
+			  struct rte_flow *flow)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_rss_conf_ele *rss_filter_ptr;
+	const struct hns3_rss_conf *rss_conf;
+	int ret;
+
+	rss_filter_ptr = rte_zmalloc("hns3 rss filter",
+				     sizeof(struct hns3_rss_conf_ele), 0);
+	if (rss_filter_ptr == NULL) {
+		hns3_err(hw, "failed to allocate hns3_rss_filter memory");
+		return -ENOMEM;
+	}
+
+	/*
+	 * After all the preceding tasks are successfully configured, configure
+	 * rules to the hardware to simplify the rollback of rules in the
+	 * hardware.
+	 */
+	rss_conf = (const struct hns3_rss_conf *)act->conf;
+	ret = hns3_flow_parse_rss(dev, rss_conf, true);
+	if (ret != 0) {
+		rte_free(rss_filter_ptr);
+		return ret;
+	}
+
+	hns3_rss_conf_copy(&rss_filter_ptr->filter_info, &rss_conf->conf);
+	rss_filter_ptr->filter_info.valid = true;
+	TAILQ_INSERT_TAIL(&hw->flow_rss_list, rss_filter_ptr, entries);
+	flow->rule = rss_filter_ptr;
+	flow->filter_type = RTE_ETH_FILTER_HASH;
+
+	return 0;
+}
+
+static int
+hns3_flow_create_fdir_rule(struct rte_eth_dev *dev,
+			   const struct rte_flow_item pattern[],
+			   const struct rte_flow_action actions[],
+			   struct rte_flow_error *error,
+			   struct rte_flow *flow)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_fdir_rule_ele *fdir_rule_ptr;
+	struct hns3_fdir_rule fdir_rule;
+	int ret;
+
+	memset(&fdir_rule, 0, sizeof(struct hns3_fdir_rule));
+	ret = hns3_parse_fdir_filter(dev, pattern, actions, &fdir_rule, error);
+	if (ret != 0)
+		return ret;
+
+	if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER) {
+		ret = hns3_counter_new(dev, fdir_rule.act_cnt.shared,
+				       fdir_rule.act_cnt.id, error);
+		if (ret != 0)
+			return ret;
+
+		flow->counter_id = fdir_rule.act_cnt.id;
+	}
+
+	fdir_rule_ptr = rte_zmalloc("hns3 fdir rule",
+				    sizeof(struct hns3_fdir_rule_ele), 0);
+	if (fdir_rule_ptr == NULL) {
+		hns3_err(hw, "failed to allocate fdir_rule memory.");
+		ret = -ENOMEM;
+		goto err_malloc;
+	}
+
+	/*
+	 * After all the preceding tasks are successfully configured, configure
+	 * rules to the hardware to simplify the rollback of rules in the
+	 * hardware.
+	 */
+	ret = hns3_fdir_filter_program(hns, &fdir_rule, false);
+	if (ret != 0)
+		goto err_fdir_filter;
+
+	memcpy(&fdir_rule_ptr->fdir_conf, &fdir_rule,
+		sizeof(struct hns3_fdir_rule));
+	TAILQ_INSERT_TAIL(&hw->flow_fdir_list, fdir_rule_ptr, entries);
+	flow->rule = fdir_rule_ptr;
+	flow->filter_type = RTE_ETH_FILTER_FDIR;
+
+	return 0;
+
+err_fdir_filter:
+	rte_free(fdir_rule_ptr);
+err_malloc:
+	if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER)
+		hns3_counter_release(dev, fdir_rule.act_cnt.id);
+
+	return ret;
+}
+
 /*
  * Create or destroy a flow rule.
  * Theorically one rule can match more than one filters.
@@ -1736,13 +1835,9 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	const struct hns3_rss_conf *rss_conf;
-	struct hns3_fdir_rule_ele *fdir_rule_ptr;
-	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_flow_mem *flow_node;
 	const struct rte_flow_action *act;
 	struct rte_flow *flow;
-	struct hns3_fdir_rule fdir_rule;
 	int ret;
 
 	ret = hns3_flow_validate(dev, attr, pattern, actions, error);
@@ -1768,77 +1863,20 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	TAILQ_INSERT_TAIL(&hw->flow_list, flow_node, entries);
 
 	act = hns3_find_rss_general_action(pattern, actions);
-	if (act) {
-		rss_conf = act->conf;
-
-		ret = hns3_flow_parse_rss(dev, rss_conf, true);
-		if (ret)
-			goto err;
-
-		rss_filter_ptr = rte_zmalloc("hns3 rss filter",
-					     sizeof(struct hns3_rss_conf_ele),
-					     0);
-		if (rss_filter_ptr == NULL) {
-			hns3_err(hw,
-				    "Failed to allocate hns3_rss_filter memory");
-			ret = -ENOMEM;
-			goto err;
-		}
-		hns3_rss_conf_copy(&rss_filter_ptr->filter_info,
-				   &rss_conf->conf);
-		rss_filter_ptr->filter_info.valid = true;
-		TAILQ_INSERT_TAIL(&hw->flow_rss_list, rss_filter_ptr, entries);
-
-		flow->rule = rss_filter_ptr;
-		flow->filter_type = RTE_ETH_FILTER_HASH;
+	if (act)
+		ret = hns3_flow_create_rss_rule(dev, act, flow);
+	else
+		ret = hns3_flow_create_fdir_rule(dev, pattern, actions,
+						 error, flow);
+	if (ret == 0)
 		return flow;
-	}
 
-	memset(&fdir_rule, 0, sizeof(struct hns3_fdir_rule));
-	ret = hns3_parse_fdir_filter(dev, pattern, actions, &fdir_rule, error);
-	if (ret)
-		goto out;
-
-	if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER) {
-		ret = hns3_counter_new(dev, fdir_rule.act_cnt.shared,
-				       fdir_rule.act_cnt.id, error);
-		if (ret)
-			goto out;
-
-		flow->counter_id = fdir_rule.act_cnt.id;
-	}
-
-	fdir_rule_ptr = rte_zmalloc("hns3 fdir rule",
-				    sizeof(struct hns3_fdir_rule_ele),
-				    0);
-	if (fdir_rule_ptr == NULL) {
-		hns3_err(hw, "failed to allocate fdir_rule memory.");
-		ret = -ENOMEM;
-		goto err_fdir;
-	}
-
-	ret = hns3_fdir_filter_program(hns, &fdir_rule, false);
-	if (!ret) {
-		memcpy(&fdir_rule_ptr->fdir_conf, &fdir_rule,
-			sizeof(struct hns3_fdir_rule));
-		TAILQ_INSERT_TAIL(&hw->flow_fdir_list, fdir_rule_ptr, entries);
-		flow->rule = fdir_rule_ptr;
-		flow->filter_type = RTE_ETH_FILTER_FDIR;
-
-		return flow;
-	}
-
-	rte_free(fdir_rule_ptr);
-err_fdir:
-	if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER)
-		hns3_counter_release(dev, fdir_rule.act_cnt.id);
-err:
 	rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to create flow");
-out:
 	TAILQ_REMOVE(&hw->flow_list, flow_node, entries);
 	rte_free(flow_node);
 	rte_free(flow);
+
 	return NULL;
 }
 
