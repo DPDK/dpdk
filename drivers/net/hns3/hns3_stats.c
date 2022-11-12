@@ -1094,7 +1094,7 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-int
+static int
 hns3_tqp_stats_init(struct hns3_hw *hw)
 {
 	struct hns3_tqp_stats *tqp_stats = &hw->tqp_stats;
@@ -1118,7 +1118,7 @@ hns3_tqp_stats_init(struct hns3_hw *hw)
 	return 0;
 }
 
-void
+static void
 hns3_tqp_stats_uninit(struct hns3_hw *hw)
 {
 	struct hns3_tqp_stats *tqp_stats = &hw->tqp_stats;
@@ -1138,4 +1138,21 @@ hns3_tqp_stats_clear(struct hns3_hw *hw)
 	stats->rcb_tx_ring_pktnum_rcd = 0;
 	memset(stats->rcb_rx_ring_pktnum, 0, sizeof(uint64_t) * hw->tqps_num);
 	memset(stats->rcb_tx_ring_pktnum, 0, sizeof(uint64_t) * hw->tqps_num);
+}
+
+int
+hns3_stats_init(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+
+	if (!hns->is_vf)
+		hns3_mac_stats_reset(hw);
+
+	return hns3_tqp_stats_init(hw);
+}
+
+void
+hns3_stats_uninit(struct hns3_hw *hw)
+{
+	hns3_tqp_stats_uninit(hw);
 }

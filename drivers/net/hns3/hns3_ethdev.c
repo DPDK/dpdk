@@ -4810,7 +4810,7 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
-	ret = hns3_tqp_stats_init(hw);
+	ret = hns3_stats_init(hw);
 	if (ret)
 		goto err_get_config;
 
@@ -4844,7 +4844,7 @@ err_fdir:
 	(void)hns3_firmware_compat_config(hw, false);
 	hns3_uninit_umv_space(hw);
 err_init_hw:
-	hns3_tqp_stats_uninit(hw);
+	hns3_stats_uninit(hw);
 err_get_config:
 	hns3_pf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
@@ -4878,7 +4878,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	hns3_fdir_filter_uninit(hns);
 	(void)hns3_firmware_compat_config(hw, false);
 	hns3_uninit_umv_space(hw);
-	hns3_tqp_stats_uninit(hw);
+	hns3_stats_uninit(hw);
 	hns3_pf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3_interrupt_handler,
