@@ -1504,7 +1504,6 @@ static int
 hns3_config_rss_filter(struct hns3_hw *hw,
 		       const struct hns3_rss_conf *conf, bool add)
 {
-	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_rss_conf *rss_info;
 	uint64_t flow_types;
 	uint16_t num;
@@ -1575,13 +1574,6 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 	ret = hns3_rss_conf_copy(rss_info, &rss_flow_conf);
 	if (ret)
 		hns3_err(hw, "RSS config init fail(%d)", ret);
-
-	/*
-	 * When create a new RSS rule, the old rule will be overlaid and set
-	 * invalid.
-	 */
-	TAILQ_FOREACH(rss_filter_ptr, &hw->flow_rss_list, entries)
-		rss_filter_ptr->filter_info.valid = false;
 
 	return ret;
 }
@@ -1729,6 +1721,7 @@ hns3_flow_create_rss_rule(struct rte_eth_dev *dev,
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_rss_conf_ele *rss_filter_ptr;
+	struct hns3_rss_conf_ele *filter_ptr;
 	const struct hns3_rss_conf *rss_conf;
 	int ret;
 
@@ -1753,6 +1746,14 @@ hns3_flow_create_rss_rule(struct rte_eth_dev *dev,
 
 	hns3_rss_conf_copy(&rss_filter_ptr->filter_info, &rss_conf->conf);
 	rss_filter_ptr->filter_info.valid = true;
+
+	/*
+	 * When create a new RSS rule, the old rule will be overlaid and set
+	 * invalid.
+	 */
+	TAILQ_FOREACH(filter_ptr, &hw->flow_rss_list, entries)
+		filter_ptr->filter_info.valid = false;
+
 	TAILQ_INSERT_TAIL(&hw->flow_rss_list, rss_filter_ptr, entries);
 	flow->rule = rss_filter_ptr;
 	flow->filter_type = RTE_ETH_FILTER_HASH;
