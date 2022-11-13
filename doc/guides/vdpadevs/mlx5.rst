@@ -86,8 +86,13 @@ for an additional list of options shared with other mlx5 drivers.
 
 - ``event_core`` parameter [int]
 
-  CPU core number to set polling thread affinity to, default to control plane
-  cpu.
+  The CPU core number of the timer thread, default: EAL main lcore.
+
+.. note::
+
+   This core can be shared among different mlx5 vDPA devices as `event_core`
+   but using it also for other tasks may affect the performance and the latency
+   of the mlx5 vDPA devices.
 
 - ``max_conf_threads`` parameter [int]
 
