@@ -704,3 +704,20 @@ i40e: Vlan filtering of VF
 For i40e driver 2.17.15, configuring VLAN filters from the DPDK VF is unsupported.
 When applying VLAN filters on the VF it must first be configured from the
 corresponding PF.
+
+ice: VF inserts VLAN tag incorrectly on AVX-512 Tx path
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When the kernel driver requests the VF to use the L2TAG2 field of the Tx context
+descriptor to insert the hardware offload VLAN tag,
+AVX-512 Tx path cannot handle this case correctly
+due to its lack of support for the Tx context descriptor.
+
+The VLAN tag will be inserted to the wrong location (inner of QinQ)
+on AVX-512 Tx path.
+That is inconsistent with the behavior of PF (outer of QinQ).
+The ice kernel driver version newer than 1.8.9 requests to use L2TAG2
+and has this issue.
+
+Set the parameter `--force-max-simd-bitwidth` as 64/128/256
+to avoid selecting AVX-512 Tx path.
