@@ -2623,7 +2623,7 @@ flow_hw_async_flow_destroy(struct rte_eth_dev *dev,
 error:
 	return rte_flow_error_set(error, rte_errno,
 			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			"fail to create rte flow");
+			"fail to destroy rte flow");
 }
 
 /**
