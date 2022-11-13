@@ -250,9 +250,6 @@ iavf_tx_vec_queue_default(struct iavf_tx_queue *txq)
 	if (txq->offloads & IAVF_TX_NO_VECTOR_FLAGS)
 		return -1;
 
-	if (txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
-		return -1;
-
 	if (txq->offloads & IAVF_TX_VECTOR_OFFLOAD)
 		return IAVF_VECTOR_OFFLOAD_PATH;
 
