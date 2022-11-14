@@ -2555,11 +2555,16 @@ ice_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	/* Since stop will make link down, then the link event will be
-	 * triggered, disable the irq firstly to avoid the port_infoe etc
-	 * resources deallocation causing the interrupt service thread
-	 * crash.
+	 * triggered, disable the irq firstly.
 	 */
 	ice_pf_disable_irq0(hw);
+
+	/* Unregister callback func from eal lib, use sync version to
+	 * make sure all active interrupt callbacks is done, then it's
+	 * safe to free all resources.
+	 */
+	rte_intr_callback_unregister_sync(intr_handle,
+					  ice_interrupt_handler, dev);
 
 	ret = ice_dev_stop(dev);
 
@@ -2594,10 +2599,6 @@ ice_dev_close(struct rte_eth_dev *dev)
 
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
-
-	/* unregister callback func from eal lib */
-	rte_intr_callback_unregister(intr_handle,
-				     ice_interrupt_handler, dev);
 
 	return ret;
 }
