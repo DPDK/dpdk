@@ -1138,6 +1138,10 @@ mlx5_hw_representor_port_allowed_start(struct rte_eth_dev *dev)
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   The following error values are defined:
+ *
+ *   - -EAGAIN: If port representor cannot be started,
+ *     because transfer proxy port is not started.
  */
 int
 mlx5_dev_start(struct rte_eth_dev *dev)
@@ -1394,6 +1398,13 @@ mlx5_hw_proxy_port_allowed_stop(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   The following error values are defined:
+ *
+ *   - -EBUSY: If transfer proxy port cannot be stopped,
+ *     because other port representors are still running.
  */
 int
 mlx5_dev_stop(struct rte_eth_dev *dev)

@@ -161,6 +161,19 @@ Limitations
   - NIC ConnectX-5 and before are not supported.
   - Partial match with item template is not supported.
   - IPv6 5-tuple matching is not supported.
+  - With E-Switch enabled, ports which share the E-Switch domain
+    should be started and stopped in a specific order:
+
+    - When starting ports, the transfer proxy port should be started first
+      and port representors should follow.
+    - When stopping ports, all of the port representors
+      should be stopped before stopping the transfer proxy port.
+
+    If ports are started/stopped in an incorrect order,
+    ``rte_eth_dev_start()``/``rte_eth_dev_stop()`` will return an appropriate error code:
+
+    - ``-EAGAIN`` for ``rte_eth_dev_start()``.
+    - ``-EBUSY`` for ``rte_eth_dev_stop()``.
 
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
