@@ -60,4 +60,18 @@ if [ -n "$local_miss_maps" ] ; then
     ret=1
 fi
 
+find_empty_maps ()
+{
+    for map in $@ ; do
+        [ $(buildtools/map-list-symbol.sh $map | wc -l) != '0' ] || echo $map
+    done
+}
+
+empty_maps=$(find_empty_maps $@)
+if [ -n "$empty_maps" ] ; then
+    echo "Found empty maps:"
+    echo "$empty_maps"
+    ret=1
+fi
+
 exit $ret
