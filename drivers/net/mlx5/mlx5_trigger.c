@@ -1377,9 +1377,9 @@ mlx5_hw_proxy_port_allowed_stop(struct rte_eth_dev *dev)
 			representor_started = true;
 	}
 	if (representor_started) {
-		DRV_LOG(INFO, "Failed to stop port %u: attached representor ports"
-			      " must be stopped before stopping transfer proxy port",
-			      dev->data->port_id);
+		DRV_LOG(ERR, "Failed to stop port %u: attached representor ports"
+			     " must be stopped before stopping transfer proxy port",
+			     dev->data->port_id);
 		rte_errno = EBUSY;
 		return -rte_errno;
 	}
