@@ -13,7 +13,7 @@ with open(out_file, 'w') as out:
     subprocess.run(doxygen_command, check=True, stdout=out)
 with open(out_file) as out, open(dep_file, 'w') as dep:
     print(f'{out_dir}:', end=' ', file=dep)
-    for line in out:
+    for line in sorted(out):
         match = re.match(pattern, line)
         if match:
             print(match.group(1), end=' ', file=dep)
