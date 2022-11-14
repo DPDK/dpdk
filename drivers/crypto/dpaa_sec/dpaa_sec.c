@@ -754,14 +754,14 @@ mbuf_dump:
 	printf("ctx info:\n");
 	printf("job->sg[0] output info:\n");
 	memcpy(&sg[0], &job->sg[0], sizeof(sg[0]));
-	printf("\taddr = %"PRIx64",\n\tlen = %d,\n\tfinal = %d,\n\textention = %d"
+	printf("\taddr = %"PRIx64",\n\tlen = %d,\n\tfinal = %d,\n\textension = %d"
 		"\n\tbpid = %d\n\toffset = %d\n",
 		(uint64_t)sg[0].addr, sg[0].length, sg[0].final,
 		sg[0].extension, sg[0].bpid, sg[0].offset);
 	printf("\njob->sg[1] input info:\n");
 	memcpy(&sg[1], &job->sg[1], sizeof(sg[1]));
 	hw_sg_to_cpu(&sg[1]);
-	printf("\taddr = %"PRIx64",\n\tlen = %d,\n\tfinal = %d,\n\textention = %d"
+	printf("\taddr = %"PRIx64",\n\tlen = %d,\n\tfinal = %d,\n\textension = %d"
 		"\n\tbpid = %d\n\toffset = %d\n",
 		(uint64_t)sg[1].addr, sg[1].length, sg[1].final,
 		sg[1].extension, sg[1].bpid, sg[1].offset);

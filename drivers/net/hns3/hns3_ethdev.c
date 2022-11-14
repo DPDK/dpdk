@@ -1661,7 +1661,7 @@ err_pause_addr_cfg:
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				       mac_addr);
 		hns3_warn(hw,
-			  "Failed to roll back to del setted mac addr(%s): %d",
+			  "Failed to roll back to del set mac addr(%s): %d",
 			  mac_str, ret_val);
 	}
 
