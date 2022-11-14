@@ -15,6 +15,8 @@
 #define CPT_COMP_INSTERR  (0x5ull)
 #define CPT_COMP_WARN	  (0x6ull) /* [CN10K, .) */
 
+#define CPT_COMP_HWGOOD_MASK ((1U << CPT_COMP_WARN) | (1U << CPT_COMP_GOOD))
+
 #define CPT_LF_INT_VEC_MISC	(0x0ull)
 #define CPT_LF_INT_VEC_DONE	(0x1ull)
 #define CPT_LF_CTL		(0x10ull)

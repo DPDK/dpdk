@@ -801,8 +801,6 @@ cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *re
 	const uint16_t m_len = res->rlen;
 
 	switch (res->uc_compcode) {
-	case ROC_IE_OT_UCC_SUCCESS:
-		break;
 	case ROC_IE_OT_UCC_SUCCESS_PKT_IP_BADCSUM:
 		mbuf->ol_flags &= ~RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;

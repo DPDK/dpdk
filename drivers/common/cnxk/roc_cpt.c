@@ -1085,7 +1085,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	plt_free(dptr);
 	plt_free(hw_res);
 
-	if (res.cn10k.compcode != CPT_COMP_WARN) {
+	if (res.cn10k.compcode != CPT_COMP_GOOD || res.cn10k.uc_compcode) {
 		plt_err("Write SA operation timed out");
 		return -ETIMEDOUT;
 	}
