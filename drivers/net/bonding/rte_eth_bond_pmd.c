@@ -198,7 +198,7 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 	if (slave_info.max_rx_queues < bond_dev->data->nb_rx_queues ||
 			slave_info.max_tx_queues < bond_dev->data->nb_tx_queues) {
 		RTE_BOND_LOG(ERR,
-			"%s: Slave %d capabilities doesn't allow to allocate additional queues",
+			"%s: Slave %d capabilities doesn't allow allocating additional queues",
 			__func__, slave_port);
 		return -1;
 	}
