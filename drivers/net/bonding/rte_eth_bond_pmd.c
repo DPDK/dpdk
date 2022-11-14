@@ -2155,6 +2155,10 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	RTE_BOND_LOG(INFO, "Closing bonded device %s", dev->device->name);
+
+	/* Flush flows in all back-end devices before removing them */
+	bond_flow_ops.flush(dev, &ferror);
+
 	while (internals->slave_count != skipped) {
 		uint16_t port_id = internals->slaves[skipped].port_id;
 
@@ -2172,7 +2176,6 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 			skipped++;
 		}
 	}
-	bond_flow_ops.flush(dev, &ferror);
 	bond_ethdev_free_queues(dev);
 	rte_bitmap_reset(internals->vlan_filter_bmp);
 	rte_bitmap_free(internals->vlan_filter_bmp);
