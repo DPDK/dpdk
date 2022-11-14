@@ -269,8 +269,8 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 			uint32_t nb_slaves =
 				rte_cryptodev_scheduler_workers_get(cdev_id,
 								NULL);
-			/* scheduler session header + 1 session per worker qp */
-			sessions_needed = 1 + enabled_cdev_count *
+			/* scheduler session header per lcore + 1 session per worker qp */
+			sessions_needed = nb_lcores + enabled_cdev_count *
 				opts->nb_qps * nb_slaves;
 #endif
 		} else
