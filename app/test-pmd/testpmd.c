@@ -3182,6 +3182,7 @@ stop_port(portid_t pid)
 	int need_check_link_status = 0;
 	portid_t peer_pl[RTE_MAX_ETHPORTS];
 	int peer_pi;
+	int ret;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return;
@@ -3231,9 +3232,14 @@ stop_port(portid_t pid)
 		if (port->flow_list)
 			port_flow_flush(pi);
 
-		if (eth_dev_stop_mp(pi) != 0)
+		ret = eth_dev_stop_mp(pi);
+		if (ret != 0) {
 			RTE_LOG(ERR, EAL, "rte_eth_dev_stop failed for port %u\n",
 				pi);
+			/* Allow to retry stopping the port. */
+			port->port_status = RTE_PORT_STARTED;
+			continue;
+		}
 
 		if (port->port_status == RTE_PORT_HANDLING)
 			port->port_status = RTE_PORT_STOPPED;

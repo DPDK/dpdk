@@ -2705,6 +2705,7 @@ int rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t tx_queue_id);
  *   The port identifier of the Ethernet device.
  * @return
  *   - 0: Success, Ethernet device started.
+ *   - -EAGAIN: If start operation must be retried.
  *   - <0: Error code of the driver device start function.
  */
 int rte_eth_dev_start(uint16_t port_id);
@@ -2717,6 +2718,7 @@ int rte_eth_dev_start(uint16_t port_id);
  *   The port identifier of the Ethernet device.
  * @return
  *   - 0: Success, Ethernet device stopped.
+ *   - -EBUSY: If stopping the port is not allowed in current state.
  *   - <0: Error code of the driver device stop function.
  */
 int rte_eth_dev_stop(uint16_t port_id);
