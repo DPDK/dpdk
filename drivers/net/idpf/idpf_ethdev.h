@@ -127,6 +127,8 @@ struct idpf_vport {
 	struct idpf_chunks_info chunks_info;
 
 	uint16_t devarg_id;
+
+	bool stopped;
 };
 
 struct idpf_adapter {
