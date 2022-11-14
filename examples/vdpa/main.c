@@ -214,6 +214,8 @@ start_vdpa(struct vdpa_port *vport)
 	if (client_mode)
 		vport->flags |= RTE_VHOST_USER_CLIENT;
 
+	vport->flags |= RTE_VHOST_USER_IOMMU_SUPPORT;
+
 	if (access(socket_path, F_OK) != -1 && !client_mode) {
 		RTE_LOG(ERR, VDPA,
 			"%s exists, please remove it or specify another file and try again.\n",
