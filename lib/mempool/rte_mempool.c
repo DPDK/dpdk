@@ -1495,6 +1495,7 @@ mempool_info_cb(struct rte_mempool *mp, void *arg)
 {
 	struct mempool_info_cb_arg *info = (struct mempool_info_cb_arg *)arg;
 	const struct rte_memzone *mz;
+	uint64_t cache_count, common_count;
 
 	if (strncmp(mp->name, info->pool_name, RTE_MEMZONE_NAMESIZE))
 		return;
@@ -1513,6 +1514,18 @@ mempool_info_cb(struct rte_mempool *mp, void *arg)
 	rte_tel_data_add_dict_int(info->d, "ops_index", mp->ops_index);
 	rte_tel_data_add_dict_uint(info->d, "populated_size",
 				  mp->populated_size);
+
+	cache_count = 0;
+	if (mp->cache_size > 0) {
+		int lcore_id;
+		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
+			cache_count += mp->local_cache[lcore_id].len;
+	}
+	rte_tel_data_add_dict_uint(info->d, "total_cache_count", cache_count);
+	common_count = rte_mempool_ops_get_count(mp);
+	if ((cache_count + common_count) > mp->size)
+		common_count = mp->size - cache_count;
+	rte_tel_data_add_dict_uint(info->d, "common_pool_count", common_count);
 
 	mz = mp->mz;
 	rte_tel_data_add_dict_string(info->d, "mz_name", mz->name);
