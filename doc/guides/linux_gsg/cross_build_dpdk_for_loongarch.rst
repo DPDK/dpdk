@@ -81,7 +81,7 @@ To cross-compile DPDK for generic LoongArch we can use the following command:
 
 .. code-block:: console
 
-   meson cross-build --cross-file config/loongarch/loongarch_loongarch64_linux_gcc
+   meson setup cross-build --cross-file config/loongarch/loongarch_loongarch64_linux_gcc
    ninja -C cross-build
 
 Supported cross-compilation targets

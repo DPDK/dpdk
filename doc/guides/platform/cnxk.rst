@@ -587,14 +587,14 @@ CN9K:
 
 .. code-block:: console
 
-        meson -Dplatform=cn9k build
+        meson setup -Dplatform=cn9k build
         ninja -C build
 
 CN10K:
 
 .. code-block:: console
 
-        meson -Dplatform=cn10k build
+        meson setup -Dplatform=cn10k build
         ninja -C build
 
 Cross Compilation
@@ -606,14 +606,14 @@ CN9K:
 
 .. code-block:: console
 
-        meson build --cross-file config/arm/arm64_cn9k_linux_gcc
+        meson setup build --cross-file config/arm/arm64_cn9k_linux_gcc
         ninja -C build
 
 CN10K:
 
 .. code-block:: console
 
-        meson build --cross-file config/arm/arm64_cn10k_linux_gcc
+        meson setup build --cross-file config/arm/arm64_cn10k_linux_gcc
         ninja -C build
 
 .. note::

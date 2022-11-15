@@ -282,7 +282,7 @@ CFLAGS environment prior to the meson build step. I.e.,
 .. code-block:: console
 
     export CFLAGS="-DRTE_LIBRTE_ARK_MIN_TX_PKTLEN=60"
-    meson build
+    meson setup build
 
 
 Supported ARK RTL PCIe Instances

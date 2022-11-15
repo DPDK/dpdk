@@ -61,7 +61,7 @@ rdma-core library with corresponding kernel drivers is required.
 
 .. code-block:: console
 
-        meson build
+        meson setup build
         ninja -C build
 
 Cross Compilation
@@ -115,5 +115,5 @@ Then, untar the tarball at the cross toolchain directory on the x86 host.
 
 .. code-block:: console
 
-        meson build --cross-file config/arm/arm64_bluefield_linux_gcc
+        meson setup build --cross-file config/arm/arm64_bluefield_linux_gcc
         ninja -C build

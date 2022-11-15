@@ -87,7 +87,7 @@ Test steps
 
       cd dpdk
       mkdir build
-      meson build (--reconfigure)
+      meson setup build (--reconfigure)
       cd build
       ninja
       sudo ninja install

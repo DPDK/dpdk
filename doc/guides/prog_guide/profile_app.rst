@@ -42,7 +42,7 @@ and recompile the DPDK:
 
 .. code-block:: console
 
-   meson build
+   meson setup build
    meson configure build -Dc_args=-DRTE_ETHDEV_PROFILE_WITH_VTUNE
    ninja -C build
 
@@ -103,7 +103,7 @@ Example:
 
 .. code-block:: console
 
-   meson --cross config/arm/arm64_armv8_linux_gcc -Dc_args='-DRTE_ARM_EAL_RDTSC_USE_PMU' build
+   meson setup --cross config/arm/arm64_armv8_linux_gcc -Dc_args='-DRTE_ARM_EAL_RDTSC_USE_PMU' build
 
 .. warning::
 

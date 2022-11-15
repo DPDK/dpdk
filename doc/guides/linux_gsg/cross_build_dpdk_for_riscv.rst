@@ -68,13 +68,13 @@ Cross Compiling DPDK with GNU toolchain using Meson
 
 To cross-compile DPDK for a desired target machine use the following command::
 
-   meson cross-build --cross-file <target_machine_configuration>
+   meson setup cross-build --cross-file <target_machine_configuration>
    ninja -C cross-build
 
 For example if the target machine is a generic rv64gc RISC-V, use the following
 command::
 
-   meson riscv64-build-gcc --cross-file config/riscv/riscv64_linux_gcc
+   meson setup riscv64-build-gcc --cross-file config/riscv/riscv64_linux_gcc
    ninja -C riscv64-build-gcc
 
 If riscv-gnu-toolchain is used, binary names should be updated to match. Update

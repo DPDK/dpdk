@@ -44,7 +44,7 @@ Building DPDK
 The following commands can be used to build and install DPDK on a system.
 The final, install, step generally needs to be run as root::
 
-  meson build
+  meson setup build
   cd build
   ninja
   ninja install

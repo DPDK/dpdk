@@ -24,8 +24,8 @@ You need to indicate to meson where CUDA headers files are through the CFLAGS va
 Three ways:
 
 - Set ``export CFLAGS=-I/usr/local/cuda/include`` before building
-- Add CFLAGS in the meson command line ``CFLAGS=-I/usr/local/cuda/include meson build``
-- Add the ``-Dc_args`` in meson command line ``meson build -Dc_args=-I/usr/local/cuda/include``
+- Add CFLAGS in the meson command line ``CFLAGS=-I/usr/local/cuda/include meson setup build``
+- Add the ``-Dc_args`` in meson command line ``meson setup build -Dc_args=-I/usr/local/cuda/include``
 
 If headers are not found, the CUDA GPU driver library is not built.
 
@@ -51,7 +51,7 @@ An example would be:
 
 .. code-block:: console
 
-  $ meson build -Dc_args="-I/usr/local/cuda/include -I/path/to/gdrcopy/include"
+  $ meson setup build -Dc_args="-I/usr/local/cuda/include -I/path/to/gdrcopy/include"
 
 If headers are not found, the CUDA GPU driver library is built without the CPU map capability
 and will return error if the application invokes the gpudev ``rte_gpu_mem_cpu_map`` function.

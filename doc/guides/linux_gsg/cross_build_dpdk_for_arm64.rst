@@ -167,19 +167,19 @@ Cross Compiling DPDK with GNU toolchain using Meson
 To cross-compile DPDK on a desired target machine we can use the following
 command::
 
-   meson cross-build --cross-file <target_machine_configuration>
+   meson setup cross-build --cross-file <target_machine_configuration>
    ninja -C cross-build
 
 For example if the target machine is aarch64 we can use the following
 command, provided the cross file has been modified accordingly::
 
-   meson aarch64-build-gcc --cross-file config/arm/arm64_armv8_linux_gcc
+   meson setup aarch64-build-gcc --cross-file config/arm/arm64_armv8_linux_gcc
    ninja -C aarch64-build-gcc
 
 If the target machine is aarch32 we can use the following command,
 provided the cross file has been modified accordingly::
 
-   meson aarch32-build --cross-file config/arm/arm32_armv8_linux_gcc
+   meson setup aarch32-build --cross-file config/arm/arm32_armv8_linux_gcc
    ninja -C aarch32-build
 
 LLVM/Clang toolchain
@@ -230,7 +230,7 @@ Assuming the file with augmented ``c_args`` and ``c_link_args``
 is named ``arm64_armv8_linux_clang``,
 use the following command to cross-compile DPDK for the target machine::
 
-   meson aarch64-build-clang --cross-file config/arm/arm64_armv8_linux_clang
+   meson setup aarch64-build-clang --cross-file config/arm/arm64_armv8_linux_clang
    ninja -C aarch64-build-clang
 
 Cross Compiling DPDK with LLVM/Clang toolchain using Meson on Ubuntu 18.04
@@ -247,7 +247,7 @@ On Ubuntu 18.04, these packages are needed:
 
 Use the following command to cross-compile DPDK for the target machine::
 
-   meson aarch64-build-clang --cross-file config/arm/arm64_armv8_linux_clang_ubuntu1804
+   meson setup aarch64-build-clang --cross-file config/arm/arm64_armv8_linux_clang_ubuntu1804
    ninja -C aarch64-build-clang
 
 Building for an aarch64 SoC on an aarch64 build machine
@@ -258,7 +258,7 @@ you don't need a separate cross toolchain, just a different set of
 configuration options. To build for an aarch64 SoC, use the -Dplatform meson
 option::
 
-   meson soc_build -Dplatform=<target_soc>
+   meson setup soc_build -Dplatform=<target_soc>
 
 Substitute <target_soc> with one of the supported SoCs
 

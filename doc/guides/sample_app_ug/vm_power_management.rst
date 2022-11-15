@@ -255,7 +255,7 @@ To build just the ``vm_power_manager`` application using ``meson``/``ninja``:
 .. code-block:: console
 
    cd dpdk
-   meson build
+   meson setup build
    cd build
    ninja
    meson configure -Dexamples=vm_power_manager
@@ -494,7 +494,7 @@ To build just the ``vm_power_manager`` application using ``meson``/``ninja``:
 .. code-block:: console
 
    cd dpdk
-   meson build
+   meson setup build
    cd build
    ninja
    meson configure -Dexamples=vm_power_manager/guest_cli
