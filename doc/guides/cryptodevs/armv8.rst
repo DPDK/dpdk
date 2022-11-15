@@ -47,7 +47,7 @@ To build DPDK with this virtual crypto PMD, the user is required to:
 
 .. code-block:: console
 
-   meson build
+   meson setup build
    ninja -C build
 
 The corresponding device can be created only if the following features

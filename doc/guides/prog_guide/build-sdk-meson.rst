@@ -9,7 +9,7 @@ Summary
 For many platforms, compiling and installing DPDK should work using the
 following set of commands::
 
-	meson build
+	meson setup build
 	cd build
 	ninja
 	ninja install
@@ -57,12 +57,12 @@ Configuring the Build
 ----------------------
 
 To configure a build, run the meson tool, passing the path to the directory
-to be used for the build e.g. ``meson build``, as shown above. If calling
+to be used for the build e.g. ``meson setup build``, as shown above. If calling
 meson from somewhere other than the root directory of the DPDK project the
 path to the root directory should be passed as the first parameter, and the
 build path as the second. For example, to build DPDK in /tmp/dpdk-build::
 
-	user@host:/tmp$ meson ~user/dpdk dpdk-build
+	user@host:/tmp$ meson setup ~user/dpdk dpdk-build
 
 Meson will then configure the build based on settings in the project's
 meson.build files, and by checking the build environment for e.g. compiler
@@ -80,24 +80,29 @@ available run ``meson configure`` in the build directory.
 Examples of adjusting the defaults when doing initial meson configuration.
 Project-specific options are passed used -Doption=value::
 
-	meson --werror werrorbuild  # build with warnings as errors
+	# build with warnings as errors
+	meson setup --werror werrorbuild
 
-	meson --buildtype=debug debugbuild  # build for debugging
+	# build for debugging
+	meson setup --buildtype=debug debugbuild
 
-	meson -Dexamples=l3fwd,l2fwd fwdbuild  # build some examples as
-					# part of the normal DPDK build
+	# build some examples as part of the normal DPDK build
+	meson setup -Dexamples=l3fwd,l2fwd fwdbuild
 
-	meson -Dmax_lcores=8 smallbuild  # scale build for smaller systems
+	# scale build for smaller systems
+	meson setup -Dmax_lcores=8 smallbuild
 
-	meson -Denable_docs=true fullbuild  # build and install docs
+	# build and install docs
+	meson setup -Denable_docs=true fullbuild
 
-	meson -Dcpu_instruction_set=generic  # use builder-independent baseline -march
+	# use builder-independent baseline -march
+	meson setup -Dcpu_instruction_set=generic
 
-	meson -Ddisable_drivers=event/*,net/tap  # disable tap driver and all
-					# eventdev PMDs for a smaller build
+	# disable tap driver and all eventdev PMDs for a smaller build
+	meson setup -Ddisable_drivers=event/*,net/tap
 
-	meson -Denable_trace_fp=true tracebuild # build with fast path traces
-					# enabled
+	# build with fast path traces enabled
+	meson setup -Denable_trace_fp=true tracebuild
 
 Examples of setting some of the same options using meson configure::
 
@@ -135,7 +140,7 @@ As well as those settings taken from ``meson configure``, other options
 such as the compiler to use can be passed via environment variables. For
 example::
 
-	CC=clang meson clang-build
+	CC=clang meson setup clang-build
 
 .. note::
 
@@ -188,12 +193,12 @@ Cross Compiling DPDK
 To cross-compile DPDK on a desired target machine we can use the following
 command::
 
-	meson cross-build --cross-file <target_machine_configuration>
+	meson setup cross-build --cross-file <target_machine_configuration>
 
 For example if the target machine is arm64 we can use the following
 command::
 
-        meson arm-build --cross-file config/arm/arm64_armv8_linux_gcc
+        meson setup arm-build --cross-file config/arm/arm64_armv8_linux_gcc
 
 where config/arm/arm64_armv8_linux_gcc contains settings for the compilers
 and other build tools to be used, as well as characteristics of the target

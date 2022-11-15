@@ -94,14 +94,14 @@ drivers can be compiled with the following steps,
 
 .. code-block:: console
 
-        meson build -Dexamples=<application>
+        meson setup build -Dexamples=<application>
         ninja -C build
 
 The example applications can be compiled using the following:
 
 .. code-block:: console
 
-        meson build -Dexamples=<application>
+        meson setup build -Dexamples=<application>
         ninja -C build
 
 Cross Compilation
@@ -127,7 +127,7 @@ Now this build system can be used to build applications for **OCTEON TX** :sup:`
 .. code-block:: console
 
         cd <dpdk directory>
-        meson build --cross-file config/arm/arm64_thunderx_linux_gcc
+        meson setup build --cross-file config/arm/arm64_thunderx_linux_gcc
         ninja -C build
 
 The example applications can be compiled using the following:
@@ -135,7 +135,7 @@ The example applications can be compiled using the following:
 .. code-block:: console
 
         cd <dpdk directory>
-        meson build --cross-file config/arm/arm64_thunderx_linux_gcc -Dexamples=<application>
+        meson setup build --cross-file config/arm/arm64_thunderx_linux_gcc -Dexamples=<application>
         ninja -C build
 
 .. note::
