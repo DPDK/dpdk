@@ -4116,7 +4116,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 free_flow_table:
 	rte_hash_free(priv->flow_table);
 free_mask_table:
-	rte_free(priv->mask_table);
+	rte_hash_free(priv->mask_table);
 free_stats:
 	rte_free(priv->stats);
 free_stats_id:
