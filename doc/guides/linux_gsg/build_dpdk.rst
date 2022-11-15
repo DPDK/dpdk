@@ -42,7 +42,7 @@ To configure a DPDK build use:
 
 .. code-block:: console
 
-     meson <options> build
+     meson setup <options> build
 
 where "build" is the desired output build directory, and "<options>" can be
 empty or one of a number of meson or DPDK-specific build options, described
@@ -100,7 +100,7 @@ automatically built as part of a meson build too.
 To do so, pass a comma-separated list of the examples to build to the
 `-Dexamples` meson option as below::
 
-  meson -Dexamples=l2fwd,l3fwd build
+  meson setup -Dexamples=l2fwd,l3fwd build
 
 As with other meson options, this can also be set post-initial-config using `meson configure` in the build directory.
 There is also a special value "all" to request that all example applications whose
@@ -126,12 +126,12 @@ The following meson command can be used on RHEL/Fedora systems to configure a 32
 assuming the relevant 32-bit development packages, such as a 32-bit libc, are installed::
 
   PKG_CONFIG_LIBDIR=/usr/lib/pkgconfig \
-      meson -Dc_args='-m32' -Dc_link_args='-m32' build
+      meson setup -Dc_args='-m32' -Dc_link_args='-m32' build
 
 For Debian/Ubuntu systems, the equivalent command is::
 
   PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig \
-      meson -Dc_args='-m32' -Dc_link_args='-m32' build
+      meson setup -Dc_args='-m32' -Dc_link_args='-m32' build
 
 Once the build directory has been configured,
 DPDK can be compiled using ``ninja`` as described above.

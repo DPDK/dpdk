@@ -114,7 +114,8 @@ following command:
 
 .. code-block:: console
 
-   meson -Dlib_musdk_dir=/path/to/musdk build ninja -C build
+   meson setup build --cross-file config/arm/arm64_armada_linux_gcc
+   ninja -C build
 
 
 Usage Example

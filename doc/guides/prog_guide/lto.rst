@@ -30,4 +30,4 @@ Link time optimization can be enabled by setting meson built-in 'b_lto' option:
 
 .. code-block:: console
 
-    meson build -Db_lto=true
+    meson setup build -Db_lto=true

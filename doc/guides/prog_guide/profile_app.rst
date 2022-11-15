@@ -42,7 +42,7 @@ and recompile the DPDK:
 
 .. code-block:: console
 
-   meson build
+   meson setup build
    meson configure build -Dc_args=-DRTE_ETHDEV_PROFILE_WITH_VTUNE
    ninja -C build
 

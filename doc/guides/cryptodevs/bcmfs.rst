@@ -70,7 +70,7 @@ for cross compiling on x86 platform.
 .. code-block:: console
 
     cd <DPDK-source-directory>
-    meson <dest-dir> --cross-file config/arm/arm64_stingray_linux_gcc
+    meson setup <dest-dir> --cross-file config/arm/arm64_stingray_linux_gcc
     cd <dest-dir>
     ninja
 

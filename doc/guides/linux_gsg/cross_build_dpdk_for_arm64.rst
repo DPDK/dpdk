@@ -91,11 +91,11 @@ To install it in Ubuntu::
 To cross-compile DPDK on a desired target machine we can use the following
 command::
 
-	meson cross-build --cross-file <target_machine_configuration>
+	meson setup cross-build --cross-file <target_machine_configuration>
 	ninja -C cross-build
 
 For example if the target machine is arm64 we can use the following
 command::
 
-	meson arm64-build --cross-file config/arm/arm64_armv8_linux_gcc
+	meson setup arm64-build --cross-file config/arm/arm64_armv8_linux_gcc
 	ninja -C arm64-build

@@ -145,7 +145,7 @@ To build with a non-zero minimum tx packet length, set the above macro in your
 CFLAGS environment prior to the meson build step. I.e.,
 
     export CFLAGS="-DRTE_LIBRTE_ARK_MIN_TX_PKTLEN=60"
-    meson build
+    meson setup build
 
 
 Supported ARK RTL PCIe Instances
