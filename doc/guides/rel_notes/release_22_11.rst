@@ -185,6 +185,7 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added full support for queue-based async HW steering.
+
     - Support of FDB.
     - Support of control flow and isolate mode.
     - Support of conntrack.
