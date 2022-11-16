@@ -2894,9 +2894,10 @@ following sections.
        [meters_number {number}] [flags {number}]
 
 - Create a pattern template::
+
    flow pattern_template {port_id} create [pattern_template_id {id}]
        [relaxed {boolean}] [ingress] [egress] [transfer]
-	   template {item} [/ {item} [...]] / end
+       template {item} [/ {item} [...]] / end
 
 - Destroy a pattern template::
 
