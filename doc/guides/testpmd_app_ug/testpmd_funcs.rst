@@ -4361,7 +4361,7 @@ Listing and destroying aged flow rules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``flow aged`` simply lists aged flow rules be get from api ``rte_flow_get_aged_flows``,
-and ``destroy`` parameter can be used to destroy those flow rules in PMD.
+and ``destroy`` parameter can be used to destroy those flow rules in PMD::
 
    flow aged {port_id} [destroy]
 
@@ -4396,7 +4396,7 @@ will be ID 3, ID 1, ID 0::
    1       0       0       i--
    0       0       0       i--
 
-If attach ``destroy`` parameter, the command will destroy all the list aged flow rules.
+If attach ``destroy`` parameter, the command will destroy all the list aged flow rules::
 
    testpmd> flow aged 0 destroy
    Port 0 total aged flows: 4
