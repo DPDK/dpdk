@@ -108,6 +108,12 @@ New Features
   Each flag has a corresponding capability flag
   in ``struct rte_eth_hairpin_queue_cap``.
 
+* **Added strict queue to pre-configuration flow hints.**
+
+  * Added flags option to ``rte_flow_configure`` and ``rte_flow_info_get``.
+  * Added ``RTE_FLOW_PORT_FLAG_STRICT_QUEUE`` flag to indicate all operations
+    for a given flow rule will strictly happen on the same flow queue.
+
 * **Added configuration for asynchronous flow connection tracking.**
 
   Added connection tracking action number hint to ``rte_flow_configure``
