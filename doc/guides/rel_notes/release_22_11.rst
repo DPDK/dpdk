@@ -190,6 +190,7 @@ New Features
     - Support of control flow and isolate mode.
     - Support of conntrack.
     - Support of counter.
+    - Support of aging.
     - Support of meter.
     - Support of modify fields.
 
