@@ -9493,9 +9493,13 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 			geneve_opt_v->option_type &&
 			geneve_opt_resource->length ==
 			geneve_opt_v->option_len) {
-			/* We already have GENEVE TLV option obj allocated. */
-			__atomic_fetch_add(&geneve_opt_resource->refcnt, 1,
-					   __ATOMIC_RELAXED);
+			/*
+			 * We already have GENEVE TLV option obj allocated.
+			 * Increasing refcnt only in SWS. HWS uses it as global.
+			 */
+			if (priv->sh->config.dv_flow_en == 1)
+				__atomic_fetch_add(&geneve_opt_resource->refcnt, 1,
+						   __ATOMIC_RELAXED);
 		} else {
 			ret = rte_flow_error_set(error, ENOMEM,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -9571,11 +9575,14 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
 		return -1;
 	MLX5_ITEM_UPDATE(item, key_type, geneve_opt_v, geneve_opt_m,
 			 &rte_flow_item_geneve_opt_mask);
-	ret = flow_dev_geneve_tlv_option_resource_register(dev, item,
-							   error);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to create geneve_tlv_obj");
-		return ret;
+	/* Register resource requires item spec. */
+	if (key_type & MLX5_SET_MATCHER_V) {
+		ret = flow_dev_geneve_tlv_option_resource_register(dev, item,
+								   error);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to create geneve_tlv_obj");
+			return ret;
+		}
 	}
 	/*
 	 * Set the option length in GENEVE header if not requested.
@@ -15226,11 +15233,9 @@ flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
 				    &resource->entry);
 }
 
-static void
-flow_dv_geneve_tlv_option_resource_release(struct rte_eth_dev *dev)
+void
+flow_dev_geneve_tlv_option_resource_release(struct mlx5_dev_ctx_shared *sh)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_geneve_tlv_option_resource *geneve_opt_resource =
 				sh->geneve_tlv_option_resource;
 	rte_spinlock_lock(&sh->geneve_tlv_opt_sl);
@@ -15318,7 +15323,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	else if (flow->age)
 		flow_dv_aso_age_release(dev, flow->age);
 	if (flow->geneve_tlv_option) {
-		flow_dv_geneve_tlv_option_resource_release(dev);
+		flow_dev_geneve_tlv_option_resource_release(priv->sh);
 		flow->geneve_tlv_option = 0;
 	}
 	while (flow->dev_handles) {

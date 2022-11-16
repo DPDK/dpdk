@@ -1757,7 +1757,13 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	} while (++i < sh->bond.n_port);
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
-	MLX5_ASSERT(sh->geneve_tlv_option_resource == NULL);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	/* HWS manages geneve_tlv_option resource as global. */
+	if (sh->config.dv_flow_en == 2)
+		flow_dev_geneve_tlv_option_resource_release(sh);
+	else
+#endif
+		MLX5_ASSERT(sh->geneve_tlv_option_resource == NULL);
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	mlx5_lwm_unset(sh);
 	mlx5_free(sh);
