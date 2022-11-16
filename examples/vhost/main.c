@@ -908,17 +908,10 @@ enqueue_pkts(struct vhost_dev *vdev, struct rte_mbuf **pkts, uint16_t rx_count)
 	if (builtin_net_driver) {
 		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ, pkts, rx_count);
 	} else if (async_vhost_driver) {
-		uint16_t enqueue_fail = 0;
-
 		complete_async_pkts(vdev);
 		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
 					VIRTIO_RXQ, pkts, rx_count);
 		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count, __ATOMIC_SEQ_CST);
-
-		enqueue_fail = rx_count - enqueue_count;
-		if (enqueue_fail)
-			free_pkts(&pkts[enqueue_count], enqueue_fail);
-
 	} else {
 		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
 						pkts, rx_count);
@@ -944,8 +937,13 @@ drain_vhost(struct vhost_dev *vdev)
 				__ATOMIC_SEQ_CST);
 	}
 
-	if (!async_vhost_driver)
+	if (!async_vhost_driver) {
 		free_pkts(m, nr_xmit);
+	} else {
+		uint16_t enqueue_fail = nr_xmit - ret;
+		if (enqueue_fail > 0)
+			free_pkts(&m[ret], enqueue_fail);
+	}
 }
 
 static __rte_always_inline void
@@ -1249,8 +1247,13 @@ drain_eth_rx(struct vhost_dev *vdev)
 				__ATOMIC_SEQ_CST);
 	}
 
-	if (!async_vhost_driver)
+	if (!async_vhost_driver) {
 		free_pkts(pkts, rx_count);
+	} else {
+		uint16_t enqueue_fail = rx_count - enqueue_count;
+		if (enqueue_fail > 0)
+			free_pkts(&pkts[enqueue_count], enqueue_fail);
+	}
 }
 
 static __rte_always_inline void
