@@ -4240,7 +4240,7 @@ Disabling isolated mode::
  testpmd>
 
 Dumping HW internal information
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``flow dump`` dumps the hardware's internal representation information of
 all flows. It is bound to ``rte_flow_dev_dump()``::
@@ -4256,7 +4256,7 @@ Otherwise, it will complain error occurred::
    Caught error type [...] ([...]): [...]
 
 Listing and destroying aged flow rules
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``flow aged`` simply lists aged flow rules be get from api ``rte_flow_get_aged_flows``,
 and ``destroy`` parameter can be used to destroy those flow rules in PMD.
