@@ -54,6 +54,36 @@
 
 #define NIX_NB_SEGS_TO_SEGDW(x) ((NIX_SEGDW_MAGIC >> ((x) << 2)) & 0xF)
 
+static __plt_always_inline uint8_t
+cn10k_nix_mbuf_sg_dwords(struct rte_mbuf *m)
+{
+	uint32_t nb_segs = m->nb_segs;
+	uint16_t aura0, aura;
+	int segw, sg_segs;
+
+	aura0 = roc_npa_aura_handle_to_aura(m->pool->pool_id);
+
+	nb_segs--;
+	segw = 2;
+	sg_segs = 1;
+	while (nb_segs) {
+		m = m->next;
+		aura = roc_npa_aura_handle_to_aura(m->pool->pool_id);
+		if (aura != aura0) {
+			segw += 2 + (sg_segs == 2);
+			sg_segs = 0;
+		} else {
+			segw += (sg_segs == 0); /* SUBDC */
+			segw += 1;		/* IOVA */
+			sg_segs += 1;
+			sg_segs %= 3;
+		}
+		nb_segs--;
+	}
+
+	return (segw + 1) / 2;
+}
+
 static __plt_always_inline void
 cn10k_nix_vwqe_wait_fc(struct cn10k_eth_txq *txq, int64_t req)
 {
@@ -915,15 +945,15 @@ cn10k_nix_xmit_prepare_tstamp(struct cn10k_eth_txq *txq, uintptr_t lmt_addr,
 static __rte_always_inline uint16_t
 cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 {
+	uint64_t prefree = 0, aura0, aura, nb_segs, segdw;
 	struct nix_send_hdr_s *send_hdr;
-	union nix_send_sg_s *sg;
+	union nix_send_sg_s *sg, l_sg;
+	union nix_send_sg2_s l_sg2;
 	struct rte_mbuf *m_next;
-	uint64_t *slist, sg_u;
+	uint8_t off, is_sg2;
 	uint64_t len, dlen;
 	uint64_t ol_flags;
-	uint64_t nb_segs;
-	uint64_t segdw;
-	uint8_t off, i;
+	uint64_t *slist;
 
 	send_hdr = (struct nix_send_hdr_s *)cmd;
 
@@ -938,20 +968,22 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		ol_flags = m->ol_flags;
 
 	/* Start from second segment, first segment is already there */
-	i = 1;
-	sg_u = sg->u;
-	len -= sg_u & 0xFFFF;
+	is_sg2 = 0;
+	l_sg.u = sg->u;
+	len -= l_sg.u & 0xFFFF;
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
 	slist = &cmd[3 + off + 1];
 
 	/* Set invert df if buffer is not to be freed by H/W */
-	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
-		sg_u |= (cnxk_nix_prefree_seg(m) << 55);
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		prefree = cnxk_nix_prefree_seg(m);
+		l_sg.i1 = prefree;
+	}
 
-		/* Mark mempool object as "put" since it is freed by NIX */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	if (!(sg_u & (1ULL << 55)))
+	/* Mark mempool object as "put" since it is freed by NIX */
+	if (!prefree)
 		RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 	rte_io_wmb();
 #endif
@@ -964,55 +996,103 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 	if (!(flags & NIX_TX_MULTI_SEG_F))
 		goto done;
 
+	aura0 = send_hdr->w0.aura;
 	m = m_next;
 	if (!m)
 		goto done;
 
 	/* Fill mbuf segments */
 	do {
+		uint64_t iova;
+
+		/* Save the current mbuf properties. These can get cleared in
+		 * cnxk_nix_prefree_seg()
+		 */
 		m_next = m->next;
+		iova = rte_mbuf_data_iova(m);
 		dlen = m->data_len;
 		len -= dlen;
-		sg_u = sg_u | ((uint64_t)dlen << (i << 4));
-		*slist = rte_mbuf_data_iova(m);
-		/* Set invert df if buffer is not to be freed by H/W */
-		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
-			sg_u |= (cnxk_nix_prefree_seg(m) << (i + 55));
-			/* Mark mempool object as "put" since it is freed by NIX
-			 */
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-		if (!(sg_u & (1ULL << (i + 55))))
-			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
-#endif
-		slist++;
-		i++;
+
 		nb_segs--;
-		if (i > 2 && nb_segs) {
-			i = 0;
-			/* Next SG subdesc */
-			*(uint64_t *)slist = sg_u & 0xFC00000000000000;
-			sg->u = sg_u;
-			sg->segs = 3;
+		aura = aura0;
+		prefree = 0;
+
+		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+			aura = roc_npa_aura_handle_to_aura(m->pool->pool_id);
+			prefree = cnxk_nix_prefree_seg(m);
+			is_sg2 = aura != aura0 && !prefree;
+		}
+
+		if (unlikely(is_sg2)) {
+			/* This mbuf belongs to a different pool and
+			 * DF bit is not to be set, so use SG2 subdesc
+			 * so that it is freed to the appropriate pool.
+			 */
+
+			/* Write the previous descriptor out */
+			sg->u = l_sg.u;
+
+			/* If the current SG subdc does not have any
+			 * iovas in it, then the SG2 subdc can overwrite
+			 * that SG subdc.
+			 *
+			 * If the current SG subdc has 2 iovas in it, then
+			 * the current iova word should be left empty.
+			 */
+			slist += (-1 + (int)l_sg.segs);
 			sg = (union nix_send_sg_s *)slist;
-			sg_u = sg->u;
+
+			l_sg2.u = l_sg.u & 0xC00000000000000; /* LD_TYPE */
+			l_sg2.subdc = NIX_SUBDC_SG2;
+			l_sg2.aura = aura;
+			l_sg2.seg1_size = dlen;
+			l_sg.u = l_sg2.u;
+
+			slist++;
+			*slist = iova;
+			slist++;
+		} else {
+			*slist = iova;
+			/* Set invert df if buffer is not to be freed by H/W */
+			l_sg.u |= (prefree << (l_sg.segs + 55));
+			/* Set the segment length */
+			l_sg.u |= ((uint64_t)dlen << (l_sg.segs << 4));
+			l_sg.segs += 1;
+			slist++;
+		}
+
+		if ((is_sg2 || l_sg.segs > 2) && nb_segs) {
+			sg->u = l_sg.u;
+			/* Next SG subdesc */
+			sg = (union nix_send_sg_s *)slist;
+			l_sg.u &= 0xC00000000000000; /* LD_TYPE */
+			l_sg.subdc = NIX_SUBDC_SG;
 			slist++;
 		}
 		m->next = NULL;
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		/* Mark mempool object as "put" since it is freed by NIX
+		 */
+		if (!prefree)
+			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
+#endif
 		m = m_next;
 	} while (nb_segs);
 
 done:
 	/* Add remaining bytes of security data to last seg */
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F && ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD && len) {
-		uint8_t shft = ((i - 1) << 4);
+		uint8_t shft = (l_sg.subdc == NIX_SUBDC_SG) ? ((l_sg.segs - 1) << 4) : 0;
 
-		dlen = ((sg_u >> shft) & 0xFFFFULL) + len;
-		sg_u = sg_u & ~(0xFFFFULL << shft);
-		sg_u |= dlen << shft;
+		dlen = ((l_sg.u >> shft) & 0xFFFFULL) + len;
+		l_sg.u = l_sg.u & ~(0xFFFFULL << shft);
+		l_sg.u |= dlen << shft;
 	}
 
-	sg->u = sg_u;
-	sg->segs = i;
+	/* Write the last subdc out */
+	sg->u = l_sg.u;
+
 	segdw = (uint64_t *)slist - (uint64_t *)&cmd[2 + off];
 	/* Roundup extra dwords to multiple of 2 */
 	segdw = (segdw >> 1) + (segdw & 0x1);
@@ -1827,7 +1907,12 @@ again:
 				struct rte_mbuf *m = tx_pkts[j];
 
 				/* Get dwords based on nb_segs. */
-				segdw[j] = NIX_NB_SEGS_TO_SEGDW(m->nb_segs);
+				if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F &&
+				      flags & NIX_TX_MULTI_SEG_F))
+					segdw[j] = NIX_NB_SEGS_TO_SEGDW(m->nb_segs);
+				else
+					segdw[j] = cn10k_nix_mbuf_sg_dwords(m);
+
 				/* Add dwords based on offloads. */
 				segdw[j] += 1 + /* SEND HDR */
 					    !!(flags & NIX_TX_NEED_EXT_HDR) +
