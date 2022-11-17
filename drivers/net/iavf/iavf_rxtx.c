@@ -2424,6 +2424,7 @@ iavf_fill_ctx_desc_tunnelling_field(volatile uint64_t *qw0,
 			/* for non UDP / GRE tunneling, set to 00b */
 			break;
 		case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+		case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
 		case RTE_MBUF_F_TX_TUNNEL_GTP:
 		case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 			eip_typ |= IAVF_TXD_CTX_UDP_TUNNELING;
