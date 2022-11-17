@@ -2119,6 +2119,12 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->hrxqs)
 		mlx5_list_destroy(priv->hrxqs);
 	mlx5_free(priv->ext_rxqs);
+	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
+	/*
+	 * The interrupt handler port id must be reset before priv is reset
+	 * since 'mlx5_dev_interrupt_nl_cb' uses priv.
+	 */
+	rte_io_wmb();
 	/*
 	 * Free the shared context in last turn, because the cleanup
 	 * routines above may use some shared fields, like
@@ -2144,12 +2150,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		if (!c)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 	}
-	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
-	/*
-	 * The interrupt handler port id must be reset before priv is reset
-	 * since 'mlx5_dev_interrupt_nl_cb' uses priv.
-	 */
-	rte_io_wmb();
 	memset(priv, 0, sizeof(*priv));
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 	/*
