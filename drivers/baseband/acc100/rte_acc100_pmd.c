@@ -2073,6 +2073,7 @@ acc100_dma_enqueue(struct acc100_queue *q, uint16_t n,
 		struct rte_bbdev_stats *queue_stats)
 {
 	union acc100_enqueue_reg_fmt enq_req;
+	union acc100_dma_desc *desc;
 #ifdef RTE_BBDEV_OFFLOAD_COST
 	uint64_t start_time = 0;
 	queue_stats->acc_offload_cycles = 0;
@@ -2080,13 +2081,17 @@ acc100_dma_enqueue(struct acc100_queue *q, uint16_t n,
 	RTE_SET_USED(queue_stats);
 #endif
 
+	/* Set Sdone and IRQ enable bit on last descriptor. */
+	desc = q->ring_addr + ((q->sw_ring_head + n - 1) & q->sw_ring_wrap_mask);
+	desc->req.sdone_enable = 1;
+	desc->req.irq_enable = q->irq_enable;
+
 	enq_req.val = 0;
 	/* Setting offset, 100b for 256 DMA Desc */
 	enq_req.addr_offset = ACC100_DESC_OFFSET;
 
 	/* Split ops into batches */
 	do {
-		union acc100_dma_desc *desc;
 		uint16_t enq_batch_size;
 		uint64_t offset;
 		rte_iova_t req_elem_addr;
@@ -2638,7 +2643,6 @@ enqueue_enc_one_op_tb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 
 	/* Set SDone on last CB descriptor for TB mode. */
 	desc->req.sdone_enable = 1;
-	desc->req.irq_enable = q->irq_enable;
 
 	return current_enqueued_cbs;
 }
@@ -3202,7 +3206,6 @@ enqueue_ldpc_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 #endif
 	/* Set SDone on last CB descriptor for TB mode */
 	desc->req.sdone_enable = 1;
-	desc->req.irq_enable = q->irq_enable;
 
 	return current_enqueued_cbs;
 }
@@ -3304,7 +3307,6 @@ enqueue_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 #endif
 	/* Set SDone on last CB descriptor for TB mode */
 	desc->req.sdone_enable = 1;
-	desc->req.irq_enable = q->irq_enable;
 
 	return current_enqueued_cbs;
 }
@@ -3407,7 +3409,6 @@ acc100_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
 	struct acc100_queue *q = q_data->queue_private;
 	int32_t avail = acc100_ring_avail_enq(q);
 	uint16_t i;
-	union acc100_dma_desc *desc;
 	int ret;
 
 	for (i = 0; i < num; ++i) {
@@ -3423,12 +3424,6 @@ acc100_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
 
 	if (unlikely(i == 0))
 		return 0; /* Nothing to enqueue */
-
-	/* Set SDone in last CB in enqueued ops for CB mode*/
-	desc = q->ring_addr + ((q->sw_ring_head + i - 1)
-			& q->sw_ring_wrap_mask);
-	desc->req.sdone_enable = 1;
-	desc->req.irq_enable = q->irq_enable;
 
 	acc100_dma_enqueue(q, i, &q_data->queue_stats);
 
@@ -3463,7 +3458,6 @@ acc100_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 	struct acc100_queue *q = q_data->queue_private;
 	int32_t avail = acc100_ring_avail_enq(q);
 	uint16_t i = 0;
-	union acc100_dma_desc *desc;
 	int ret, desc_idx = 0;
 	int16_t enq, left = num;
 
@@ -3490,12 +3484,6 @@ acc100_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 
 	if (unlikely(i == 0))
 		return 0; /* Nothing to enqueue */
-
-	/* Set SDone in last CB in enqueued ops for CB mode*/
-	desc = q->ring_addr + ((q->sw_ring_head + desc_idx - 1)
-			& q->sw_ring_wrap_mask);
-	desc->req.sdone_enable = 1;
-	desc->req.irq_enable = q->irq_enable;
 
 	acc100_dma_enqueue(q, desc_idx, &q_data->queue_stats);
 
@@ -3593,7 +3581,6 @@ acc100_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
 	struct acc100_queue *q = q_data->queue_private;
 	int32_t avail = acc100_ring_avail_enq(q);
 	uint16_t i;
-	union acc100_dma_desc *desc;
 	int ret;
 
 	for (i = 0; i < num; ++i) {
@@ -3609,12 +3596,6 @@ acc100_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
 
 	if (unlikely(i == 0))
 		return 0; /* Nothing to enqueue */
-
-	/* Set SDone in last CB in enqueued ops for CB mode*/
-	desc = q->ring_addr + ((q->sw_ring_head + i - 1)
-			& q->sw_ring_wrap_mask);
-	desc->req.sdone_enable = 1;
-	desc->req.irq_enable = q->irq_enable;
 
 	acc100_dma_enqueue(q, i, &q_data->queue_stats);
 
@@ -3681,7 +3662,6 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 	struct acc100_queue *q = q_data->queue_private;
 	int32_t avail = acc100_ring_avail_enq(q);
 	uint16_t i;
-	union acc100_dma_desc *desc;
 	int ret;
 	bool same_op = false;
 	for (i = 0; i < num; ++i) {
@@ -3706,13 +3686,6 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 
 	if (unlikely(i == 0))
 		return 0; /* Nothing to enqueue */
-
-	/* Set SDone in last CB in enqueued ops for CB mode*/
-	desc = q->ring_addr + ((q->sw_ring_head + i - 1)
-			& q->sw_ring_wrap_mask);
-
-	desc->req.sdone_enable = 1;
-	desc->req.irq_enable = q->irq_enable;
 
 	acc100_dma_enqueue(q, i, &q_data->queue_stats);
 
