@@ -306,6 +306,8 @@ Limitations
     TCP header (122B).
   - Rx queue with LRO offload enabled, receiving a non-LRO packet, can forward
     it with size limited to max LRO size, not to max RX packet length.
+  - The driver rounds down the port configuration value ``max_lro_pkt_size``
+    (from ``rte_eth_rxmode``) to a multiple of 256 due to hardware limitation.
   - LRO can be used with outer header of TCP packets of the standard format:
         eth (with or without vlan) / ipv4 or ipv6 / tcp / payload
 
