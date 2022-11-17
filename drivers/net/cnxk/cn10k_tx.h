@@ -85,6 +85,22 @@ cn10k_nix_mbuf_sg_dwords(struct rte_mbuf *m)
 }
 
 static __plt_always_inline void
+cn10k_nix_tx_mbuf_validate(struct rte_mbuf *m, const uint32_t flags)
+{
+#ifdef RTE_LIBRTE_MBUF_DEBUG
+	uint16_t segdw;
+
+	segdw = cn10k_nix_mbuf_sg_dwords(m);
+	segdw += 1 + !!(flags & NIX_TX_NEED_EXT_HDR) + !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
+
+	PLT_ASSERT(segdw <= 8);
+#else
+	RTE_SET_USED(m);
+	RTE_SET_USED(flags);
+#endif
+}
+
+static __plt_always_inline void
 cn10k_nix_vwqe_wait_fc(struct cn10k_eth_txq *txq, int64_t req)
 {
 	int64_t cached, refill;
@@ -1307,6 +1323,8 @@ again:
 	}
 
 	for (i = 0; i < burst; i++) {
+		cn10k_nix_tx_mbuf_validate(tx_pkts[i], flags);
+
 		/* Perform header writes for TSO, barrier at
 		 * lmt steorl will suffice.
 		 */
@@ -1905,6 +1923,8 @@ again:
 
 			for (j = 0; j < NIX_DESCS_PER_LOOP; j++) {
 				struct rte_mbuf *m = tx_pkts[j];
+
+				cn10k_nix_tx_mbuf_validate(m, flags);
 
 				/* Get dwords based on nb_segs. */
 				if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F &&
