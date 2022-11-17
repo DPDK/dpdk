@@ -956,6 +956,14 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 	rte_io_wmb();
 #endif
 	m->next = NULL;
+
+	/* Quickly handle single segmented packets. With this if-condition
+	 * compiler will completely optimize out the below do-while loop
+	 * from the Tx handler when NIX_TX_MULTI_SEG_F offload is not set.
+	 */
+	if (!(flags & NIX_TX_MULTI_SEG_F))
+		goto done;
+
 	m = m_next;
 	if (!m)
 		goto done;
@@ -1360,6 +1368,30 @@ cn10k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
 	}
 }
 
+static __rte_always_inline uint16_t
+cn10k_nix_prepare_mseg_vec_noff(struct rte_mbuf *m, uint64_t *cmd,
+				uint64x2_t *cmd0, uint64x2_t *cmd1,
+				uint64x2_t *cmd2, uint64x2_t *cmd3,
+				const uint32_t flags)
+{
+	uint16_t segdw;
+
+	vst1q_u64(cmd, *cmd0); /* Send hdr */
+	if (flags & NIX_TX_NEED_EXT_HDR) {
+		vst1q_u64(cmd + 2, *cmd2); /* ext hdr */
+		vst1q_u64(cmd + 4, *cmd1); /* sg */
+	} else {
+		vst1q_u64(cmd + 2, *cmd1); /* sg */
+	}
+
+	segdw = cn10k_nix_prepare_mseg(m, cmd, flags);
+
+	if (flags & NIX_TX_OFFLOAD_TSTAMP_F)
+		vst1q_u64(cmd + segdw * 2 - 2, *cmd3);
+
+	return segdw;
+}
+
 static __rte_always_inline void
 cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 				union nix_send_hdr_w0_u *sh,
@@ -1389,17 +1421,6 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
-
-	/* Set invert df if buffer is not to be freed by H/W */
-	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
-		sg_u |= (cnxk_nix_prefree_seg(m) << 55);
-		/* Mark mempool object as "put" since it is freed by NIX */
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	if (!(sg_u & (1ULL << 55)))
-		RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
-	rte_io_wmb();
-#endif
-
 	m->next = NULL;
 	m = m_next;
 	/* Fill mbuf segments */
@@ -1409,16 +1430,6 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 		len -= dlen;
 		sg_u = sg_u | ((uint64_t)dlen << (i << 4));
 		*slist = rte_mbuf_data_iova(m);
-		/* Set invert df if buffer is not to be freed by H/W */
-		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
-			sg_u |= (cnxk_nix_prefree_seg(m) << (i + 55));
-			/* Mark mempool object as "put" since it is freed by NIX
-			 */
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-		if (!(sg_u & (1ULL << (i + 55))))
-			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
-		rte_io_wmb();
-#endif
 		slist++;
 		i++;
 		nb_segs--;
@@ -1456,21 +1467,8 @@ cn10k_nix_prepare_mseg_vec(struct rte_mbuf *m, uint64_t *cmd, uint64x2_t *cmd0,
 	union nix_send_hdr_w0_u sh;
 	union nix_send_sg_s sg;
 
-	if (m->nb_segs == 1) {
-		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
-			sg.u = vgetq_lane_u64(cmd1[0], 0);
-			sg.u |= (cnxk_nix_prefree_seg(m) << 55);
-			cmd1[0] = vsetq_lane_u64(sg.u, cmd1[0], 0);
-		}
-
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-		sg.u = vgetq_lane_u64(cmd1[0], 0);
-		if (!(sg.u & (1ULL << 55)))
-			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
-		rte_io_wmb();
-#endif
+	if (m->nb_segs == 1)
 		return;
-	}
 
 	sh.u = vgetq_lane_u64(cmd0[0], 0);
 	sg.u = vgetq_lane_u64(cmd1[0], 0);
@@ -1491,16 +1489,32 @@ cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 			       uint64_t *lmt_addr, __uint128_t *data128,
 			       uint8_t *shift, const uint16_t flags)
 {
-	uint8_t j, off, lmt_used;
+	uint8_t j, off, lmt_used = 0;
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		off = 0;
+		for (j = 0; j < NIX_DESCS_PER_LOOP; j++) {
+			if (off + segdw[j] > 8) {
+				*data128 |= ((__uint128_t)off - 1) << *shift;
+				*shift += 3;
+				lmt_used++;
+				lmt_addr += 16;
+				off = 0;
+			}
+			off += cn10k_nix_prepare_mseg_vec_noff(mbufs[j],
+					lmt_addr + off * 2, &cmd0[j], &cmd1[j],
+					&cmd2[j], &cmd3[j], flags);
+		}
+		*data128 |= ((__uint128_t)off - 1) << *shift;
+		*shift += 3;
+		lmt_used++;
+		return lmt_used;
+	}
 
 	if (!(flags & NIX_TX_NEED_EXT_HDR) &&
 	    !(flags & NIX_TX_OFFLOAD_TSTAMP_F)) {
 		/* No segments in 4 consecutive packets. */
 		if ((segdw[0] + segdw[1] + segdw[2] + segdw[3]) <= 8) {
-			for (j = 0; j < NIX_DESCS_PER_LOOP; j++)
-				cn10k_nix_prepare_mseg_vec(mbufs[j], NULL,
-							   &cmd0[j], &cmd1[j],
-							   segdw[j], flags);
 			vst1q_u64(lmt_addr, cmd0[0]);
 			vst1q_u64(lmt_addr + 2, cmd1[0]);
 			vst1q_u64(lmt_addr + 4, cmd0[1]);
@@ -1517,18 +1531,10 @@ cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 		}
 	}
 
-	lmt_used = 0;
 	for (j = 0; j < NIX_DESCS_PER_LOOP;) {
 		/* Fit consecutive packets in same LMTLINE. */
 		if ((segdw[j] + segdw[j + 1]) <= 8) {
 			if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
-				cn10k_nix_prepare_mseg_vec(mbufs[j], NULL,
-							   &cmd0[j], &cmd1[j],
-							   segdw[j], flags);
-				cn10k_nix_prepare_mseg_vec(mbufs[j + 1], NULL,
-							   &cmd0[j + 1],
-							   &cmd1[j + 1],
-							   segdw[j + 1], flags);
 				/* TSTAMP takes 4 each, no segs. */
 				vst1q_u64(lmt_addr, cmd0[j]);
 				vst1q_u64(lmt_addr + 2, cmd2[j]);
@@ -1643,23 +1649,11 @@ cn10k_nix_xmit_store(struct rte_mbuf *mbuf, uint8_t segdw, uintptr_t laddr,
 {
 	uint8_t off;
 
-	/* Handle no fast free when security is enabled without mseg */
-	if ((flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) &&
-	    (flags & NIX_TX_OFFLOAD_SECURITY_F) &&
-	    !(flags & NIX_TX_MULTI_SEG_F)) {
-		union nix_send_sg_s sg;
-
-		sg.u = vgetq_lane_u64(cmd1, 0);
-		sg.u |= (cnxk_nix_prefree_seg(mbuf) << 55);
-		cmd1 = vsetq_lane_u64(sg.u, cmd1, 0);
-
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-		sg.u = vgetq_lane_u64(cmd1, 0);
-		if (!(sg.u & (1ULL << 55)))
-			RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1,
-						0);
-		rte_io_wmb();
-#endif
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		cn10k_nix_prepare_mseg_vec_noff(mbuf, LMT_OFF(laddr, 0, 0),
+						&cmd0, &cmd1, &cmd2, &cmd3,
+						flags);
+		return;
 	}
 	if (flags & NIX_TX_MULTI_SEG_F) {
 		if ((flags & NIX_TX_NEED_EXT_HDR) &&
