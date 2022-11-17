@@ -3464,12 +3464,27 @@ acc100_enqueue_enc_tb(struct rte_bbdev_queue_data *q_data,
 	return i;
 }
 
+/* Check room in AQ for the enqueues batches into Qmgr */
+static inline int32_t
+acc100_aq_avail(struct rte_bbdev_queue_data *q_data, uint16_t num_ops)
+{
+	struct acc100_queue *q = q_data->queue_private;
+	int32_t aq_avail = q->aq_depth -
+			((q->aq_enqueued - q->aq_dequeued +
+			ACC100_MAX_QUEUE_DEPTH) % ACC100_MAX_QUEUE_DEPTH)
+			- (num_ops >> 7);
+
+	return aq_avail;
+}
+
 /* Enqueue encode operations for ACC100 device. */
 static uint16_t
 acc100_enqueue_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
-	if (unlikely(num == 0))
+	int32_t aq_avail = acc100_aq_avail(q_data, num);
+
+	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->turbo_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
 		return acc100_enqueue_enc_tb(q_data, ops, num);
@@ -3482,7 +3497,9 @@ static uint16_t
 acc100_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
-	if (unlikely(num == 0))
+	int32_t aq_avail = acc100_aq_avail(q_data, num);
+
+	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->ldpc_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
 		return acc100_enqueue_enc_tb(q_data, ops, num);
@@ -3667,7 +3684,9 @@ static uint16_t
 acc100_enqueue_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
-	if (unlikely(num == 0))
+	int32_t aq_avail = acc100_aq_avail(q_data, num);
+
+	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
 		return acc100_enqueue_dec_tb(q_data, ops, num);
@@ -3680,11 +3699,9 @@ static uint16_t
 acc100_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
-	struct acc100_queue *q = q_data->queue_private;
-	int32_t aq_avail = q->aq_depth +
-			(q->aq_dequeued - q->aq_enqueued) / 128;
+	int32_t aq_avail = acc100_aq_avail(q_data, num);
 
-	if (unlikely((aq_avail == 0) || (num == 0)))
+	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 
 	if (ops[0]->ldpc_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
