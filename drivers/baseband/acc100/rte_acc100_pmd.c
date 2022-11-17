@@ -1318,6 +1318,14 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc100_fcw_ld *fcw,
 						op->ldpc_dec.tb_params.ea :
 						op->ldpc_dec.tb_params.eb;
 
+	if (unlikely(check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE) &&
+			(op->ldpc_dec.harq_combined_input.length == 0))) {
+		rte_bbdev_log(WARNING, "Null HARQ input size provided");
+		/* Disable HARQ input in that case to carry forward. */
+		op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
+	}
+
 	fcw->hcin_en = check_bit(op->ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE);
 	fcw->hcout_en = check_bit(op->ldpc_dec.op_flags,
