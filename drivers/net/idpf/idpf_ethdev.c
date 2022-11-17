@@ -552,6 +552,8 @@ idpf_dev_start(struct rte_eth_dev *dev)
 	uint16_t req_vecs_num;
 	int ret;
 
+	vport->stopped = 0;
+
 	if (dev->data->mtu > vport->max_mtu) {
 		PMD_DRV_LOG(ERR, "MTU should be less than %d", vport->max_mtu);
 		ret = -EINVAL;
