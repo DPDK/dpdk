@@ -170,6 +170,8 @@
 #define ACC100_PRQ_DDR_VER       0x10092020
 #define ACC100_MS_IN_US         (1000)
 #define ACC100_DDR_TRAINING_MAX (5000)
+#define ACC100_HARQ_ALIGN_COMP   256
+#define ACC100_HARQ_ALIGN_64B    64
 
 /* ACC100 DMA Descriptor triplet */
 struct acc100_dma_triplet {
