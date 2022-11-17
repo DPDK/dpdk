@@ -1438,6 +1438,8 @@ acc100_fcw_ld_fill(const struct rte_bbdev_dec_op *op, struct acc100_fcw_ld *fcw,
  *   Store information about device capabilities
  * @param next_triplet
  *   Index for ACC100 DMA Descriptor triplet
+ * @param scattergather
+ *   Flag to support scatter-gather for the mbuf
  *
  * @return
  *   Returns index of next triplet on success, other value if lengths of
@@ -1447,12 +1449,16 @@ acc100_fcw_ld_fill(const struct rte_bbdev_dec_op *op, struct acc100_fcw_ld *fcw,
 static inline int
 acc100_dma_fill_blk_type_in(struct acc100_dma_req_desc *desc,
 		struct rte_mbuf **input, uint32_t *offset, uint32_t cb_len,
-		uint32_t *seg_total_left, int next_triplet)
+		uint32_t *seg_total_left, int next_triplet,
+		bool scattergather)
 {
 	uint32_t part_len;
 	struct rte_mbuf *m = *input;
 
-	part_len = (*seg_total_left < cb_len) ? *seg_total_left : cb_len;
+	if (scattergather)
+		part_len = (*seg_total_left < cb_len) ? *seg_total_left : cb_len;
+	else
+		part_len = cb_len;
 	cb_len -= part_len;
 	*seg_total_left -= part_len;
 
@@ -1588,7 +1594,9 @@ acc100_dma_desc_te_fill(struct rte_bbdev_enc_op *op,
 	}
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset,
-			length, seg_total_left, next_triplet);
+			length, seg_total_left, next_triplet,
+			check_bit(op->turbo_enc.op_flags,
+			RTE_BBDEV_TURBO_ENC_SCATTER_GATHER));
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
@@ -1624,6 +1632,19 @@ acc100_dma_desc_te_fill(struct rte_bbdev_enc_op *op,
 	return 0;
 }
 
+/* May need to pad LDPC Encoder input to avoid small beat for ACC100. */
+static inline uint16_t
+pad_le_in(uint16_t blen)
+{
+	uint16_t last_beat;
+
+	last_beat = blen % 64;
+	if ((last_beat > 0) && (last_beat <= 8))
+		blen += 8;
+
+	return blen;
+}
+
 static inline int
 acc100_dma_desc_le_fill(struct rte_bbdev_enc_op *op,
 		struct acc100_dma_req_desc *desc, struct rte_mbuf **input,
@@ -1652,8 +1673,7 @@ acc100_dma_desc_le_fill(struct rte_bbdev_enc_op *op,
 	}
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset,
-			in_length_in_bytes,
-			seg_total_left, next_triplet);
+			pad_le_in(in_length_in_bytes), seg_total_left, next_triplet, false);
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
@@ -1741,7 +1761,9 @@ acc100_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	}
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input, in_offset, kw,
-			seg_total_left, next_triplet);
+			seg_total_left, next_triplet,
+			check_bit(op->turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_DEC_SCATTER_GATHER));
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
 				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
@@ -1843,7 +1865,9 @@ acc100_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 
 	next_triplet = acc100_dma_fill_blk_type_in(desc, input,
 			in_offset, input_length,
-			seg_total_left, next_triplet);
+			seg_total_left, next_triplet,
+			check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_DEC_SCATTER_GATHER));
 
 	if (unlikely(next_triplet < 0)) {
 		rte_bbdev_log(ERR,
@@ -2378,7 +2402,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op **ops,
 	acc100_header_init(&desc->req);
 	desc->req.numCBs = num;
 
-	in_length_in_bytes = ops[0]->ldpc_enc.input.data->data_len;
+	in_length_in_bytes = pad_le_in(ops[0]->ldpc_enc.input.data->data_len);
 	out_length = (enc->cb_params.e + 7) >> 3;
 	desc->req.m2dlen = 1 + num;
 	desc->req.d2mlen = num;
@@ -2988,10 +3012,9 @@ enqueue_ldpc_dec_one_op_cb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		fcw = &desc->req.fcw_ld;
 		acc100_fcw_ld_fill(op, fcw, harq_layout);
 
-		/* Special handling when overusing mbuf */
-		if (fcw->rm_e < ACC100_MAX_E_MBUF)
-			seg_total_left = rte_pktmbuf_data_len(input)
-					- in_offset;
+		/* Special handling when using mbuf or not */
+		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DEC_SCATTER_GATHER))
+			seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 		else
 			seg_total_left = fcw->rm_e;
 
@@ -3066,7 +3089,10 @@ enqueue_ldpc_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 
 	while (mbuf_total_left > 0 && r < c) {
 
-		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
+		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DEC_SCATTER_GATHER))
+			seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
+		else
+			seg_total_left = op->ldpc_dec.input.length;
 
 		/* Set up DMA descriptor */
 		desc = q->ring_addr + ((q->sw_ring_head + total_enqueued_cbs)
@@ -3093,7 +3119,9 @@ enqueue_ldpc_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
 #endif
 
-		if (seg_total_left == 0) {
+		if (check_bit(op->ldpc_dec.op_flags,
+				RTE_BBDEV_LDPC_DEC_SCATTER_GATHER)
+				&& (seg_total_left == 0)) {
 			/* Go to the next mbuf */
 			input = input->next;
 			in_offset = 0;
@@ -3694,8 +3722,6 @@ dequeue_enc_one_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op **ref_op,
 	/* Clearing status, it will be set based on response */
 	op->status = 0;
 
-	op->status |= ((rsp.input_err)
-			? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 
@@ -3766,8 +3792,6 @@ dequeue_enc_one_op_tb(struct acc100_queue *q, struct rte_bbdev_enc_op **ref_op,
 		rte_bbdev_log_debug("Resp. desc %p: %x", desc,
 				rsp.val);
 
-		op->status |= ((rsp.input_err)
-				? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 		op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 
@@ -3947,8 +3971,7 @@ dequeue_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op **ref_op,
 		rte_bbdev_log_debug("Resp. desc %p: %x", desc,
 				rsp.val);
 
-		op->status |= ((rsp.input_err)
-				? (1 << RTE_BBDEV_DATA_ERROR) : 0);
+		op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 		op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 
