@@ -635,3 +635,110 @@ Tested Platforms
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* Intel\ |reg| platforms with Intel\ |reg| NICs combinations
+
+  * CPU
+
+    * Intel\ |reg| Atom\ |trade| CPU C3758 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| CPU D-1553N @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2680 v2 @ 2.80GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2699 v3 @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2699 v4 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| D-2796NT CPU @ 2.00GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6139 CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6140M CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6252N CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6348 CPU @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8180M CPU @ 2.50GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8280M CPU @ 2.70GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8380 CPU @ 2.30GHz
+
+  * OS:
+
+    * Fedora 36
+    * FreeBSD 13.1
+    * Red Hat Enterprise Linux Server release 8.6
+    * Red Hat Enterprise Linux Server release 9
+    * CentOS 7.9
+    * Ubuntu 20.04.5
+    * Ubuntu 22.04.1
+    * Ubuntu 22.10
+    * SUSE Linux Enterprise Server 15 SP4
+
+  * NICs:
+
+    * Intel\ |reg| Ethernet Controller E810-C for SFP (4x25G)
+
+      * Firmware version: 4.10 0x800151d8 1.3310.0
+      * Device id (pf/vf): 8086:1593 / 8086:1889
+      * Driver version(out-tree): 1.10.6 (ice)
+      * Driver version(in-tree): 5.15.0-46-generic / 4.18.0-372.9.1.rt7.166.el8.x86_64 (ice)
+      * OS Default DDP: 1.3.30.0
+      * COMMS DDP: 1.3.37.0
+      * Wireless Edge DDP: 1.3.10.0
+
+    * Intel\ |reg| Ethernet Controller E810-C for QSFP (2x100G)
+
+      * Firmware version: 4.10 0x8001518e 1.3310.0
+      * Device id (pf/vf): 8086:1592 / 8086:1889
+      * Driver version: 1.10.6 (ice)
+      * OS Default DDP: 1.3.30.0
+      * COMMS DDP: 1.3.37.0
+      * Wireless Edge DDP: 1.3.10.0
+
+    * Intel\ |reg| Ethernet Controller E810-XXV for SFP (2x25G)
+
+      * Firmware version: 4.10 0x80015188 1.3310.0
+      * Device id (pf/vf): 8086:159b / 8086:1889
+      * Driver version: 1.10.6 (ice)
+      * OS Default DDP: 1.3.30.0
+      * COMMS DDP: 1.3.37.0
+
+    * Intel\ |reg| 82599ES 10 Gigabit Ethernet Controller
+
+      * Firmware version: 0x61bf0001
+      * Device id (pf/vf): 8086:10fb / 8086:10ed
+      * Driver version(out-tree): 5.16.5 (ixgbe)
+      * Driver version(in-tree): 5.15.0-46-generic (ixgbe)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+      * Firmware version: 9.00 0x8000cead 1.3179.0
+      * Device id (pf/vf): 8086:1572 / 8086:154c
+      * Driver version(out-tree): 2.20.12 (i40e)
+      * Driver version(in-tree): 5.15.0-46-generic (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GbE SFP+ (2x10G)
+
+      * Firmware version: 6.00 0x800039ec 1.3179.0
+      * Device id (pf/vf): 8086:37d0 / 8086:37cd
+      * Driver version(out-tree): 2.20.12 (i40e)
+      * Driver version(in-tree): 5.15.0-46-generic (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GBASE-T
+
+      * Firmware version: 6.00 0x800039aa 1.2935.0
+      * Device id (pf/vf): 8086:37d2 / 8086:37cd
+      * Driver version(out-tree): 2.20.12 (i40e)
+      * Driver version(in-tree): 5.15.0-46-generic (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XXV710-DA2 (2x25G)
+
+      * Firmware version: 9.00 0x8000ce90 1.3179.0
+      * Device id (pf/vf): 8086:158b / 8086:154c
+      * Driver version(out-tree): 2.20.12 (i40e)
+      * Driver version(in-tree): 5.15.0-46-generic (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+      * Firmware version(PF): 9.00 0x8000ce86 1.3179.0
+      * Device id (pf/vf): 8086:1583 / 8086:154c
+      * Driver version(out-tree): 2.20.12 (i40e)
+      * Driver version(in-tree): 5.15.0-46-generic (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter X710-T2L
+
+      * Firmware version: 9.00 0x8000ce67 1.3179.0
+      * Device id (pf): 8086:15ff
+      * Driver version: 2.20.12 (i40e)
