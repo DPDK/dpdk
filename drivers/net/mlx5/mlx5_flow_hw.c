@@ -1346,6 +1346,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	bool actions_end = false;
 	uint32_t type;
 	bool reformat_used = false;
+	unsigned int of_vlan_offset;
 	uint16_t action_pos;
 	uint16_t jump_pos;
 	uint32_t ct_idx;
@@ -1413,9 +1414,11 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 					(priv, acts, actions->type,
 					 actions - action_start, action_pos))
 				goto err;
-			actions += is_of_vlan_pcp_present(actions) ?
+			of_vlan_offset = is_of_vlan_pcp_present(actions) ?
 					MLX5_HW_VLAN_PUSH_PCP_IDX :
 					MLX5_HW_VLAN_PUSH_VID_IDX;
+			actions += of_vlan_offset;
+			masks += of_vlan_offset;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			action_pos = at->actions_off[actions - at->actions];
