@@ -905,7 +905,8 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
 	if (lro) {
 		tir_attr->lro_timeout_period_usecs = priv->config.lro.timeout;
-		tir_attr->lro_max_msg_sz = priv->max_lro_msg_size;
+		tir_attr->lro_max_msg_sz =
+			priv->max_lro_msg_size / MLX5_LRO_SEG_CHUNK_SIZE;
 		tir_attr->lro_enable_mask =
 				MLX5_TIRC_LRO_ENABLE_MASK_IPV4_LRO |
 				MLX5_TIRC_LRO_ENABLE_MASK_IPV6_LRO;
