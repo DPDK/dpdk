@@ -5035,13 +5035,11 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				" the width of a field");
 	if (action_modify_field->dst.field != RTE_FLOW_FIELD_VALUE &&
 	    action_modify_field->dst.field != RTE_FLOW_FIELD_POINTER) {
-		if ((action_modify_field->dst.offset +
-		     action_modify_field->width > dst_width) ||
-		    (action_modify_field->dst.offset % 32))
+		if (action_modify_field->dst.offset +
+		    action_modify_field->width > dst_width)
 			return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"destination offset is too big"
-					" or not aligned to 4 bytes");
+					"destination offset is too big");
 		if (action_modify_field->dst.level &&
 		    action_modify_field->dst.field != RTE_FLOW_FIELD_TAG)
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5056,13 +5054,11 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"modify field action is not"
 					" supported for group 0");
-		if ((action_modify_field->src.offset +
-		     action_modify_field->width > src_width) ||
-		    (action_modify_field->src.offset % 32))
+		if (action_modify_field->src.offset +
+		    action_modify_field->width > src_width)
 			return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"source offset is too big"
-					" or not aligned to 4 bytes");
+					"source offset is too big");
 		if (action_modify_field->src.level &&
 		    action_modify_field->src.field != RTE_FLOW_FIELD_TAG)
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5132,11 +5128,10 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 					"cannot modify meta without"
 					" extensive registers available");
 	}
-	if (action_modify_field->operation != RTE_FLOW_MODIFY_SET)
+	if (action_modify_field->operation == RTE_FLOW_MODIFY_SUB)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
-				"add and sub operations"
-				" are not supported");
+				"sub operations are not supported");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_IPV4_ECN ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_IPV4_ECN ||
 	    action_modify_field->dst.field == RTE_FLOW_FIELD_IPV6_ECN ||

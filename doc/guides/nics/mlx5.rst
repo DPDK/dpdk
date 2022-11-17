@@ -449,17 +449,23 @@ Limitations
 
 - Modify Field flow:
 
-  - Supports the 'set' operation only for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action.
+  - Supports the 'set' and 'add' operations for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action.
   - Modification of an arbitrary place in a packet via the special ``RTE_FLOW_FIELD_START`` Field ID is not supported.
   - Modification of the 802.1Q Tag, VXLAN Network or GENEVE Network ID's is not supported.
   - Encapsulation levels are not supported, can modify outermost header fields only.
-  - Offsets must be 32-bits aligned, cannot skip past the boundary of a field.
+  - Offsets cannot skip past the boundary of a field.
   - If the field type is ``RTE_FLOW_FIELD_MAC_TYPE``
     and packet contains one or more VLAN headers,
     the meaningful type field following the last VLAN header
     is used as modify field operation argument.
     The modify field action is not intended to modify VLAN headers type field,
     dedicated VLAN push and pop actions should be used instead.
+  - For packet fields (e.g. MAC addresses, IPv4 addresses or L4 ports)
+    offset specifies the number of bits to skip from field's start,
+    starting from MSB in the first byte, in the network order.
+  - For flow metadata fields (e.g. META or TAG)
+    offset specifies the number of bits to skip from field's start,
+    starting from LSB in the least significant byte, in the host order.
 
 - Age action:
 
