@@ -2862,9 +2862,9 @@ port_queue_action_handle_destroy(portid_t port_id,
 			job->type = QUEUE_JOB_TYPE_ACTION_DESTROY;
 			job->pia = pia;
 
-			if (pia->handle &&
-			    rte_flow_async_action_handle_destroy(port_id,
+			if (rte_flow_async_action_handle_destroy(port_id,
 				queue_id, &attr, pia->handle, job, &error)) {
+				free(job);
 				ret = port_flow_complain(&error);
 				continue;
 			}
