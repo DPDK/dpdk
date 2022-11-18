@@ -288,18 +288,18 @@ resolve_mcgt8_avx512x1(uint32_t result[],
  * Use two sets of metadata, each serves 16 flows max.
  */
 static inline int
-search_avx512x16x2(const struct rte_acl_ctx *ctx, const uint8_t **data,
+search_avx512x16x2(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t total_packets, uint32_t categories)
 {
 	uint32_t i, *pm;
 	const struct rte_acl_match_results *pr;
 	struct acl_flow_avx512 flow;
-	uint32_t match[ctx->build.num_tries * total_packets];
+	uint32_t match[build->num_tries * total_packets];
 
-	for (i = 0, pm = match; i != ctx->build.num_tries; i++, pm += total_packets) {
+	for (i = 0, pm = match; i != build->num_tries; i++, pm += total_packets) {
 
 		/* setup for next trie */
-		acl_set_flow_avx512(&flow, ctx, i, data, pm, total_packets);
+		acl_set_flow_avx512(&flow, build, i, data, pm, total_packets);
 
 		/* process the trie */
 		_F_(search_trie)(&flow);
@@ -307,17 +307,17 @@ search_avx512x16x2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 	/* resolve matches */
 	pr = (const struct rte_acl_match_results *)
-		(ctx->build.trans_table + ctx->build.match_index);
+		(build->trans_table + build->match_index);
 
 	if (categories == 1)
 		_F_(resolve_single_cat)(results, pr, match, total_packets,
-			ctx->build.num_tries);
+			build->num_tries);
 	else if (categories <= RTE_ACL_MAX_CATEGORIES / 2)
 		resolve_mcle8_avx512x1(results, pr, match, total_packets,
-			categories, ctx->build.num_tries);
+			categories, build->num_tries);
 	else
 		resolve_mcgt8_avx512x1(results, pr, match, total_packets,
-			categories, ctx->build.num_tries);
+			categories, build->num_tries);
 
 	return 0;
 }

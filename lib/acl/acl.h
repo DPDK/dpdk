@@ -199,37 +199,37 @@ int rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	uint32_t num_categories, uint32_t data_index_sz, size_t max_size);
 
 typedef int (*rte_acl_classify_t)
-(const struct rte_acl_ctx *, const uint8_t **, uint32_t *, uint32_t, uint32_t);
+(const struct rte_acl_build *, const uint8_t **, uint32_t *, uint32_t, uint32_t);
 
 /*
  * Different implementations of ACL classify.
  */
 int
-rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_scalar(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 int
-rte_acl_classify_sse(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_sse(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 int
-rte_acl_classify_avx2(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_avx2(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 int
-rte_acl_classify_avx512x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_avx512x16(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 int
-rte_acl_classify_avx512x32(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_avx512x32(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 int
-rte_acl_classify_neon(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_neon(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 int
-rte_acl_classify_altivec(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_altivec(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories);
 
 #ifdef __cplusplus

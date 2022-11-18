@@ -52,7 +52,7 @@ static const rte_xmm_t xmm_range_base = {
  * its priority for each category.
  */
 static inline void
-resolve_priority_sse(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
+resolve_priority_sse(uint64_t transition, int n, const struct rte_acl_build *build,
 	struct parms *parms, const struct rte_acl_match_results *p,
 	uint32_t categories)
 {
@@ -73,7 +73,7 @@ resolve_priority_sse(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
 			(const xmm_t *)&p[transition].priority[x]);
 
 		/* if this is not the first completed trie */
-		if (parms[n].cmplt->count != ctx->build.num_tries) {
+		if (parms[n].cmplt->count != build->num_tries) {
 
 			/* get running best results and their priorities */
 			results1 = _mm_loadu_si128(saved_results);
@@ -96,7 +96,7 @@ resolve_priority_sse(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
  * Extract transitions from an XMM register and check for any matches
  */
 static void
-acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
+acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_build *build,
 	struct parms *parms, struct acl_flow_data *flows)
 {
 	uint64_t transition1, transition2;
@@ -108,9 +108,9 @@ acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
 	*indices = _mm_shuffle_epi32(*indices, SHUFFLE32_SWAP64);
 	transition2 = _mm_cvtsi128_si64(*indices);
 
-	transition1 = acl_match_check(transition1, slot, ctx,
+	transition1 = acl_match_check(transition1, slot, build,
 		parms, flows, resolve_priority_sse);
-	transition2 = acl_match_check(transition2, slot + 1, ctx,
+	transition2 = acl_match_check(transition2, slot + 1, build,
 		parms, flows, resolve_priority_sse);
 
 	/* update indices with new transitions. */
@@ -121,7 +121,7 @@ acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
  * Check for any match in 4 transitions (contained in 2 SSE registers)
  */
 static __rte_always_inline void
-acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
+acl_match_check_x4(int slot, const struct rte_acl_build *build, struct parms *parms,
 	struct acl_flow_data *flows, xmm_t *indices1, xmm_t *indices2,
 	xmm_t match_mask)
 {
@@ -134,8 +134,8 @@ acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
 	temp = _mm_and_si128(match_mask, temp);
 
 	while (!_mm_testz_si128(temp, temp)) {
-		acl_process_matches(indices1, slot, ctx, parms, flows);
-		acl_process_matches(indices2, slot + 2, ctx, parms, flows);
+		acl_process_matches(indices1, slot, build, parms, flows);
+		acl_process_matches(indices2, slot + 2, build, parms, flows);
 
 		temp = (xmm_t)_mm_shuffle_ps((__m128)*indices1,
 					(__m128)*indices2,
@@ -191,7 +191,7 @@ transition4(xmm_t next_input, const uint64_t *trans,
  * Execute trie traversal with 8 traversals in parallel
  */
 static inline int
-search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
+search_sse_8(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t total_packets, uint32_t categories)
 {
 	int n;
@@ -203,11 +203,11 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	xmm_t indices1, indices2, indices3, indices4;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
-		total_packets, categories, ctx->build.trans_table);
+		total_packets, categories, build->trans_table);
 
 	for (n = 0; n < MAX_SEARCHES_SSE8; n++) {
 		cmplt[n].count = 0;
-		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
+		index_array[n] = acl_start_next_trie(&flows, parms, n, build);
 	}
 
 	/*
@@ -224,9 +224,9 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	indices4 = _mm_loadu_si128((xmm_t *) &index_array[6]);
 
 	 /* Check for any matches. */
-	acl_match_check_x4(0, ctx, parms, &flows,
+	acl_match_check_x4(0, build, parms, &flows,
 		&indices1, &indices2, xmm_match_mask.x);
-	acl_match_check_x4(4, ctx, parms, &flows,
+	acl_match_check_x4(4, build, parms, &flows,
 		&indices3, &indices4, xmm_match_mask.x);
 
 	while (flows.started > 0) {
@@ -267,9 +267,9 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 			&indices3, &indices4);
 
 		 /* Check for any matches. */
-		acl_match_check_x4(0, ctx, parms, &flows,
+		acl_match_check_x4(0, build, parms, &flows,
 			&indices1, &indices2, xmm_match_mask.x);
-		acl_match_check_x4(4, ctx, parms, &flows,
+		acl_match_check_x4(4, build, parms, &flows,
 			&indices3, &indices4, xmm_match_mask.x);
 	}
 
@@ -280,7 +280,7 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
  * Execute trie traversal with 4 traversals in parallel
  */
 static inline int
-search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
+search_sse_4(const struct rte_acl_build *build, const uint8_t **data,
 	 uint32_t *results, int total_packets, uint32_t categories)
 {
 	int n;
@@ -291,18 +291,18 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	xmm_t input, indices1, indices2;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
-		total_packets, categories, ctx->build.trans_table);
+		total_packets, categories, build->trans_table);
 
 	for (n = 0; n < MAX_SEARCHES_SSE4; n++) {
 		cmplt[n].count = 0;
-		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
+		index_array[n] = acl_start_next_trie(&flows, parms, n, build);
 	}
 
 	indices1 = _mm_loadu_si128((xmm_t *) &index_array[0]);
 	indices2 = _mm_loadu_si128((xmm_t *) &index_array[2]);
 
 	/* Check for any matches. */
-	acl_match_check_x4(0, ctx, parms, &flows,
+	acl_match_check_x4(0, build, parms, &flows,
 		&indices1, &indices2, xmm_match_mask.x);
 
 	while (flows.started > 0) {
@@ -320,7 +320,7 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		input = transition4(input, flows.trans, &indices1, &indices2);
 
 		/* Check for any matches. */
-		acl_match_check_x4(0, ctx, parms, &flows,
+		acl_match_check_x4(0, build, parms, &flows,
 			&indices1, &indices2, xmm_match_mask.x);
 	}
 

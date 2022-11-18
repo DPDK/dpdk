@@ -87,7 +87,7 @@ transition8(ymm_t next_input, const uint64_t *trans, ymm_t *tr_lo, ymm_t *tr_hi)
  * tr_hi contains high 32 bits for 8 transition.
  */
 static inline void
-acl_process_matches_avx2x8(const struct rte_acl_ctx *ctx,
+acl_process_matches_avx2x8(const struct rte_acl_build *build,
 	struct parms *parms, struct acl_flow_data *flows, uint32_t slot,
 	ymm_t matches, ymm_t *tr_lo, ymm_t *tr_hi)
 {
@@ -113,9 +113,9 @@ acl_process_matches_avx2x8(const struct rte_acl_ctx *ctx,
 		l1 = _mm_srli_si128(l1, sizeof(uint32_t));
 
 		tr[i] = acl_match_check(tr[i], slot + i,
-			ctx, parms, flows, resolve_priority_sse);
+			build, parms, flows, resolve_priority_sse);
 		tr[i + 4] = acl_match_check(tr[i + 4], slot + i + 4,
-			ctx, parms, flows, resolve_priority_sse);
+			build, parms, flows, resolve_priority_sse);
 	}
 
 	/* Collect new transitions into 2 YMM registers. */
@@ -131,7 +131,7 @@ acl_process_matches_avx2x8(const struct rte_acl_ctx *ctx,
 }
 
 static inline void
-acl_match_check_avx2x8(const struct rte_acl_ctx *ctx, struct parms *parms,
+acl_match_check_avx2x8(const struct rte_acl_build *build, struct parms *parms,
 	struct acl_flow_data *flows, uint32_t slot,
 	ymm_t *tr_lo, ymm_t *tr_hi, ymm_t match_mask)
 {
@@ -145,7 +145,7 @@ acl_match_check_avx2x8(const struct rte_acl_ctx *ctx, struct parms *parms,
 
 	while (msk != 0) {
 
-		acl_process_matches_avx2x8(ctx, parms, flows, slot,
+		acl_process_matches_avx2x8(build, parms, flows, slot,
 			matches, tr_lo, tr_hi);
 		temp = _mm256_and_si256(match_mask, *tr_lo);
 		matches = _mm256_cmpeq_epi32(temp, match_mask);
@@ -157,7 +157,7 @@ acl_match_check_avx2x8(const struct rte_acl_ctx *ctx, struct parms *parms,
  * Execute trie traversal for up to 16 flows in parallel.
  */
 static inline int
-search_avx2x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
+search_avx2x16(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t total_packets, uint32_t categories)
 {
 	uint32_t n;
@@ -169,11 +169,11 @@ search_avx2x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	ymm_t t0, t1;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
-		total_packets, categories, ctx->build.trans_table);
+		total_packets, categories, build->trans_table);
 
 	for (n = 0; n < RTE_DIM(cmplt); n++) {
 		cmplt[n].count = 0;
-		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
+		index_array[n] = acl_start_next_trie(&flows, parms, n, build);
 	}
 
 	t0 = _mm256_set_epi64x(index_array[5], index_array[4],
@@ -191,9 +191,9 @@ search_avx2x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	ACL_TR_HILO(mm256, __m256, t0, t1, tr_lo[1], tr_hi[1]);
 
 	 /* Check for any matches. */
-	acl_match_check_avx2x8(ctx, parms, &flows, 0, &tr_lo[0], &tr_hi[0],
+	acl_match_check_avx2x8(build, parms, &flows, 0, &tr_lo[0], &tr_hi[0],
 		ymm_match_mask.y);
-	acl_match_check_avx2x8(ctx, parms, &flows, 8, &tr_lo[1], &tr_hi[1],
+	acl_match_check_avx2x8(build, parms, &flows, 8, &tr_lo[1], &tr_hi[1],
 		ymm_match_mask.y);
 
 	while (flows.started > 0) {
@@ -245,9 +245,9 @@ search_avx2x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
 			&tr_lo[1], &tr_hi[1]);
 
 		 /* Check for any matches. */
-		acl_match_check_avx2x8(ctx, parms, &flows, 0,
+		acl_match_check_avx2x8(build, parms, &flows, 0,
 			&tr_lo[0], &tr_hi[0], ymm_match_mask.y);
-		acl_match_check_avx2x8(ctx, parms, &flows, 8,
+		acl_match_check_avx2x8(build, parms, &flows, 8,
 			&tr_lo[1], &tr_hi[1], ymm_match_mask.y);
 	}
 

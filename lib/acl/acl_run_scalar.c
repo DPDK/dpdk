@@ -13,7 +13,7 @@
  */
 static inline void
 resolve_priority_scalar(uint64_t transition, int n,
-	const struct rte_acl_ctx *ctx, struct parms *parms,
+	const struct rte_acl_build *build, struct parms *parms,
 	const struct rte_acl_match_results *p, uint32_t categories)
 {
 	uint32_t i;
@@ -30,7 +30,7 @@ resolve_priority_scalar(uint64_t transition, int n,
 	priority = p[transition].priority;
 
 	/* if this is not the first completed trie */
-	if (parms[n].cmplt->count != ctx->build.num_tries) {
+	if (parms[n].cmplt->count != build->num_tries) {
 		for (i = 0; i < categories; i += RTE_ACL_RESULTS_MULTIPLIER) {
 
 			if (saved_priority[i] <= priority[i]) {
@@ -107,7 +107,7 @@ scalar_transition(const uint64_t *trans_table, uint64_t transition,
 }
 
 int
-rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_scalar(const struct rte_acl_build *build, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories)
 {
 	int n;
@@ -119,11 +119,11 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	struct parms parms[MAX_SEARCHES_SCALAR];
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results, num,
-		categories, ctx->build.trans_table);
+		categories, build->trans_table);
 
 	for (n = 0; n < MAX_SEARCHES_SCALAR; n++) {
 		cmplt[n].count = 0;
-		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
+		index_array[n] = acl_start_next_trie(&flows, parms, n, build);
 	}
 
 	transition0 = index_array[0];
@@ -131,9 +131,9 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 	while ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
 		transition0 = acl_match_check(transition0,
-			0, ctx, parms, &flows, resolve_priority_scalar);
+			0, build, parms, &flows, resolve_priority_scalar);
 		transition1 = acl_match_check(transition1,
-			1, ctx, parms, &flows, resolve_priority_scalar);
+			1, build, parms, &flows, resolve_priority_scalar);
 	}
 
 	while (flows.started > 0) {
@@ -154,9 +154,9 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 		while ((transition0 | transition1) & RTE_ACL_NODE_MATCH) {
 			transition0 = acl_match_check(transition0,
-				0, ctx, parms, &flows, resolve_priority_scalar);
+				0, build, parms, &flows, resolve_priority_scalar);
 			transition1 = acl_match_check(transition1,
-				1, ctx, parms, &flows, resolve_priority_scalar);
+				1, build, parms, &flows, resolve_priority_scalar);
 		}
 	}
 	return 0;

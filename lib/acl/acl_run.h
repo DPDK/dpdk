@@ -108,10 +108,10 @@ alloc_completion(struct completion *p, uint32_t size, uint32_t tries,
  */
 static inline void
 resolve_single_priority(uint64_t transition, int n,
-	const struct rte_acl_ctx *ctx, struct parms *parms,
+	const struct rte_acl_build *build, struct parms *parms,
 	const struct rte_acl_match_results *p)
 {
-	if (parms[n].cmplt->count == ctx->build.num_tries ||
+	if (parms[n].cmplt->count == build->num_tries ||
 			parms[n].cmplt->priority[0] <=
 			p[transition].priority[0]) {
 
@@ -126,19 +126,19 @@ resolve_single_priority(uint64_t transition, int n,
  */
 static inline uint64_t
 acl_start_next_trie(struct acl_flow_data *flows, struct parms *parms, int n,
-	const struct rte_acl_ctx *ctx)
+	const struct rte_acl_build *build)
 {
 	uint64_t transition;
 
 	/* if there are any more packets to process */
 	if (flows->num_packets < flows->total_packets) {
 		parms[n].data = flows->data[flows->num_packets];
-		parms[n].data_index = ctx->build.trie[flows->trie].data_index;
+		parms[n].data_index = build->trie[flows->trie].data_index;
 
 		/* if this is the first trie for this packet */
 		if (flows->trie == 0) {
 			flows->last_cmplt = alloc_completion(flows->cmplt_array,
-				flows->cmplt_size, ctx->build.num_tries,
+				flows->cmplt_size, build->num_tries,
 				flows->results +
 				flows->num_packets * flows->categories);
 		}
@@ -147,14 +147,14 @@ acl_start_next_trie(struct acl_flow_data *flows, struct parms *parms, int n,
 		parms[n].cmplt = flows->last_cmplt;
 		transition =
 			flows->trans[parms[n].data[*parms[n].data_index++] +
-			ctx->build.trie[flows->trie].root_index];
+			build->trie[flows->trie].root_index];
 
 		/*
 		 * if this is the last trie for this packet,
 		 * then setup next packet.
 		 */
 		flows->trie++;
-		if (flows->trie >= ctx->build.num_tries) {
+		if (flows->trie >= build->num_tries) {
 			flows->trie = 0;
 			flows->num_packets++;
 		}
@@ -164,7 +164,7 @@ acl_start_next_trie(struct acl_flow_data *flows, struct parms *parms, int n,
 
 	/* no more tries to process, set slot to an idle position */
 	} else {
-		transition = ctx->build.idle;
+		transition = build->idle;
 		parms[n].data = (const uint8_t *)idle;
 		parms[n].data_index = idle;
 	}
@@ -190,7 +190,7 @@ acl_set_flow(struct acl_flow_data *flows, struct completion *cmplt,
 }
 
 typedef void (*resolve_priority_t)
-(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
+(uint64_t transition, int n, const struct rte_acl_build *build,
 	struct parms *parms, const struct rte_acl_match_results *p,
 	uint32_t categories);
 
@@ -201,13 +201,13 @@ typedef void (*resolve_priority_t)
  */
 static inline uint64_t
 acl_match_check(uint64_t transition, int slot,
-	const struct rte_acl_ctx *ctx, struct parms *parms,
+	const struct rte_acl_build *build, struct parms *parms,
 	struct acl_flow_data *flows, resolve_priority_t resolve_priority)
 {
 	const struct rte_acl_match_results *p;
 
 	p = (const struct rte_acl_match_results *)
-		(flows->trans + ctx->build.match_index);
+		(flows->trans + build->match_index);
 
 	if (transition & RTE_ACL_NODE_MATCH) {
 
@@ -217,17 +217,17 @@ acl_match_check(uint64_t transition, int slot,
 
 		/* Resolve priorities for this trie and running results */
 		if (flows->categories == 1)
-			resolve_single_priority(transition, slot, ctx,
+			resolve_single_priority(transition, slot, build,
 				parms, p);
 		else
-			resolve_priority(transition, slot, ctx, parms,
+			resolve_priority(transition, slot, build, parms,
 				p, flows->categories);
 
 		/* Count down completed tries for this search request */
 		parms[slot].cmplt->count--;
 
 		/* Fill the slot with the next trie or idle trie */
-		transition = acl_start_next_trie(flows, parms, slot, ctx);
+		transition = acl_start_next_trie(flows, parms, slot, build);
 	}
 
 	return transition;

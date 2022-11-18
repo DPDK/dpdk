@@ -24,7 +24,7 @@ EAL_REGISTER_TAILQ(rte_acl_tailq)
  * then the dummy one would be used instead for AVX512 classify method.
  */
 int
-rte_acl_classify_avx512x16(__rte_unused const struct rte_acl_ctx *ctx,
+rte_acl_classify_avx512x16(__rte_unused const struct rte_acl_build *build,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
 	__rte_unused uint32_t num,
@@ -34,7 +34,7 @@ rte_acl_classify_avx512x16(__rte_unused const struct rte_acl_ctx *ctx,
 }
 
 int
-rte_acl_classify_avx512x32(__rte_unused const struct rte_acl_ctx *ctx,
+rte_acl_classify_avx512x32(__rte_unused const struct rte_acl_build *build,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
 	__rte_unused uint32_t num,
@@ -50,7 +50,7 @@ rte_acl_classify_avx512x32(__rte_unused const struct rte_acl_ctx *ctx,
  * then the dummy one would be used instead for AVX2 classify method.
  */
 int
-rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
+rte_acl_classify_avx2(__rte_unused const struct rte_acl_build *build,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
 	__rte_unused uint32_t num,
@@ -62,7 +62,7 @@ rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 
 #ifndef RTE_ARCH_X86
 int
-rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
+rte_acl_classify_sse(__rte_unused const struct rte_acl_build *build,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
 	__rte_unused uint32_t num,
@@ -74,7 +74,7 @@ rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 
 #ifndef RTE_ARCH_ARM
 int
-rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
+rte_acl_classify_neon(__rte_unused const struct rte_acl_build *build,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
 	__rte_unused uint32_t num,
@@ -86,7 +86,7 @@ rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
 
 #ifndef RTE_ARCH_PPC_64
 int
-rte_acl_classify_altivec(__rte_unused const struct rte_acl_ctx *ctx,
+rte_acl_classify_altivec(__rte_unused const struct rte_acl_build *build,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
 	__rte_unused uint32_t num,
@@ -297,7 +297,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
 			((RTE_ACL_RESULTS_MULTIPLIER - 1) & categories) != 0)
 		return -EINVAL;
 
-	return classify_fns[alg](ctx, data, results, num, categories);
+	return classify_fns[alg](&ctx->build, data, results, num, categories);
 }
 
 int
