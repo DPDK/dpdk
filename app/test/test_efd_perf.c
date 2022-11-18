@@ -153,7 +153,6 @@ setup_keys_and_data(struct efd_perf_params *params, unsigned int cycle)
 		qsort(keys, KEYS_TO_ADD, MAX_KEYSIZE, key_compare);
 
 		/* Sift through the list of keys and look for duplicates */
-		int num_duplicates = 0;
 		for (i = 0; i < KEYS_TO_ADD - 1; i++) {
 			if (memcmp(keys[i], keys[i + 1], params->key_size) == 0) {
 				/* This key already exists, try again */
