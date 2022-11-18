@@ -614,12 +614,16 @@ rte_acl_dump(const struct rte_acl_ctx *ctx)
 	printf("acl context <%s>@%p\n", ctx->name, ctx);
 	printf("  socket_id=%"PRId32"\n", ctx->socket_id);
 	printf("  alg=%"PRId32"\n", ctx->alg);
-	printf("  first_load_sz=%"PRIu32"\n", ctx->build->first_load_sz);
+	if (ctx->build) {
+		printf("  first_load_sz=%"PRIu32"\n", ctx->build->first_load_sz);
+		printf("  num_categories=%"PRIu32"\n", ctx->build->num_categories);
+		printf("  num_tries=%"PRIu32"\n", ctx->build->num_tries);
+	}
+	else
+		printf("  build not created yet\n");
 	printf("  max_rules=%"PRIu32"\n", ctx->max_rules);
 	printf("  rule_size=%"PRIu32"\n", ctx->rule_sz);
 	printf("  num_rules=%"PRIu32"\n", ctx->num_rules);
-	printf("  num_categories=%"PRIu32"\n", ctx->build->num_categories);
-	printf("  num_tries=%"PRIu32"\n", ctx->build->num_tries);
 }
 
 /*
