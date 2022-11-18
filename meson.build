@@ -83,14 +83,18 @@ subdir('usertools')
 subdir('app')
 
 # build docs
-subdir('doc')
+if get_option('enable_docs')
+    subdir('doc')
+endif
 
 # build any examples explicitly requested - useful for developers - and
 # install any example code into the appropriate install path
 subdir('examples')
-install_subdir('examples',
-        install_dir: get_option('datadir') + '/dpdk',
-        exclude_files: ex_file_excludes)
+if get_option('install_example_src')
+    install_subdir('examples',
+            install_dir: get_option('datadir') + '/dpdk',
+            exclude_files: ex_file_excludes)
+endif
 
 # build kernel modules if enabled
 if get_option('enable_kmods')
