@@ -103,14 +103,12 @@ rte_service_init(void)
 	}
 
 	int i;
-	int count = 0;
 	struct rte_config *cfg = rte_eal_get_configuration();
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
 		if (lcore_config[i].core_role == ROLE_SERVICE) {
 			if ((unsigned int)i == cfg->main_lcore)
 				continue;
 			rte_service_lcore_add(i);
-			count++;
 		}
 	}
 
