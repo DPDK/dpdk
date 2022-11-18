@@ -867,7 +867,6 @@ _cancel_thread(void *args)
 {
 	RTE_SET_USED(args);
 	struct rte_event_timer *ev_tim = NULL;
-	uint64_t cancel_count = 0;
 	uint16_t ret;
 
 	while (!arm_done || rte_ring_count(timer_producer_ring) > 0) {
@@ -877,7 +876,6 @@ _cancel_thread(void *args)
 		ret = rte_event_timer_cancel_burst(timdev, &ev_tim, 1);
 		TEST_ASSERT_EQUAL(ret, 1, "Failed to cancel timer");
 		rte_mempool_put(eventdev_test_mempool, (void *)ev_tim);
-		cancel_count++;
 	}
 
 	return TEST_SUCCESS;
