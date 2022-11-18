@@ -182,10 +182,13 @@ foreach l:libraries
 
     enabled_libs += name
     dpdk_conf.set('RTE_LIB_' + name.to_upper(), 1)
-    install_headers(headers)
-    install_headers(indirect_headers)
-    if get_option('enable_driver_sdk')
-        install_headers(driver_sdk_headers)
+
+    if get_option('install_headers')
+        install_headers(headers)
+        install_headers(indirect_headers)
+        if get_option('enable_driver_sdk')
+            install_headers(driver_sdk_headers)
+        endif
     endif
     dpdk_chkinc_headers += headers
     dpdk_chkinc_headers += driver_sdk_headers

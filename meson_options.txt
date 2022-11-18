@@ -54,4 +54,6 @@ option('use_hpet', type: 'boolean', value: false, description:
        'use HPET timer in EAL')
 option('install_example_src', type: 'boolean', value: false, description:
        'install example source code along with binary files')
+option('install_headers', type: 'boolean', value: true, description:
+       'install library headers')
 
