@@ -620,7 +620,7 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 	/* Function receive frames for a given device and VQ */
 	struct qbman_result *dq_storage;
 	uint32_t fqid = dpaa2_q->fqid;
-	int ret, num_rx = 0, num_pulled;
+	int ret, num_rx = 0;
 	uint8_t pending, status;
 	struct qbman_swp *swp;
 	const struct qbman_fd *fd;
@@ -660,7 +660,6 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 	while (!qbman_check_command_complete(dq_storage))
 		;
 
-	num_pulled = 0;
 	pending = 1;
 	do {
 		/* Loop until the dq_storage is updated with
@@ -695,7 +694,6 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 
 		dq_storage++;
 		num_rx++;
-		num_pulled++;
 	} while (pending);
 
 	dpaa2_q->err_pkts += num_rx;
