@@ -451,6 +451,21 @@ acl_add_rules(struct rte_acl_ctx *ctx, const void *rules, uint32_t num)
 }
 
 static int
+acl_upd_rule(struct rte_acl_ctx *ctx, const void *rule, uint32_t idx)
+{
+	uint8_t *pos;
+
+	if (idx >= ctx->num_rules)
+		return -ENOENT;
+
+	pos = ctx->rules;
+	pos += ctx->rule_sz * idx;
+	memcpy(pos, rule, ctx->rule_sz);
+
+	return 0;
+}
+
+static int
 acl_del_rule(struct rte_acl_ctx *ctx, uint32_t idx)
 {
 	uint8_t *pos;
@@ -534,6 +549,22 @@ rte_acl_del_rule(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rule)
 		return rc;
 
 	return acl_del_rule(ctx, idx);
+}
+
+int rte_acl_upd_rule(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rule,
+	const struct rte_acl_rule *upd_rule)
+{
+	uint32_t idx;
+	int32_t rc;
+
+	if (!ctx || !rule || !ctx->cmp_rules || !ctx->rule_sz)
+		return -EINVAL;
+
+	rc = acl_get_rule(ctx, rule, &idx);
+	if (rc < 0)
+		return rc;
+
+	return acl_upd_rule(ctx, upd_rule, idx);
 }
 
 /*

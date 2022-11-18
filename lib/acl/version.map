@@ -15,6 +15,7 @@ DPDK_23 {
 	rte_acl_reset;
 	rte_acl_reset_rules;
 	rte_acl_set_ctx_classify;
+	rte_acl_upd_rule;
 
 	local: *;
 };

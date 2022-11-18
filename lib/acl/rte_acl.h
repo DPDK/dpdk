@@ -197,6 +197,24 @@ rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
 	uint32_t num);
 
 /**
+ * Update rule from an existing ACL context.
+ * This function is not multi-thread safe.
+ *
+ * @param ctx
+ *   ACL context to update pattern from.
+ * @param rule
+ *   Rules to update from the ACL context.
+ * @param upd_rule
+ *   Rule to update ACL context with.
+ * @return
+ *   - -ENOENT if rule does not exist in ACL context.
+ *   - Zero if operation completed successfully.
+ */
+int
+rte_acl_upd_rule(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rule,
+	const struct rte_acl_rule *upd_rule);
+
+/**
  * Delete rule from an existing ACL context.
  * This function is not multi-thread safe.
  *
