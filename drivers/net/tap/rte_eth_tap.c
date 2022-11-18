@@ -635,6 +635,16 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 					0x00);
 		}
 
+		/* Do VLAN tag insertion */
+		// Normally this would be unlikely, but not for our specific use case
+		if (likely(mbuf->ol_flags & RTE_MBUF_F_TX_VLAN)) {
+			int error = rte_vlan_insert(&mbuf);
+			if (unlikely(error)) {
+				rte_pktmbuf_free(mbuf);
+				continue;
+			}
+		}
+
 		k = 0;
 		iovecs[k].iov_base = &pi;
 		iovecs[k].iov_len = sizeof(pi);
