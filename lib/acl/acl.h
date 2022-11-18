@@ -163,6 +163,8 @@ struct rte_acl_bld_trie {
 	struct rte_acl_node *trie;
 };
 
+typedef int(* rte_rule_cmp_t) (const void *rule1, const void *rule2);
+
 struct rte_acl_ctx {
 	char                name[RTE_ACL_NAMESIZE];
 	/** Name of the ACL context. */
@@ -174,6 +176,7 @@ struct rte_acl_ctx {
 	uint32_t            max_rules;
 	uint32_t            rule_sz;
 	uint32_t            num_rules;
+	rte_rule_cmp_t      cmp_rules;
 	uint32_t            num_categories;
 	uint32_t            num_tries;
 	uint32_t            match_index;

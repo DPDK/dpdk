@@ -122,14 +122,17 @@ RTE_ACL_RULE_DEF(rte_acl_rule,);
 /** Max number of characters in name.*/
 #define	RTE_ACL_NAMESIZE		32
 
+typedef int(* rte_rule_cmp_t) (const void *rule1, const void *rule2);
+
 /**
  * Parameters used when creating the ACL context.
  */
 struct rte_acl_param {
-	const char *name;         /**< Name of the ACL context. */
-	int         socket_id;    /**< Socket ID to allocate memory for. */
-	uint32_t    rule_size;    /**< Size of each rule. */
-	uint32_t    max_rule_num; /**< Maximum number of rules. */
+	const char     *name;        /**< Name of the ACL context. */
+	int            socket_id;    /**< Socket ID to allocate memory for. */
+	uint32_t       rule_size;    /**< Size of each rule. */
+	uint32_t       max_rule_num; /**< Maximum number of rules. */
+	rte_rule_cmp_t cmp_rules;    /**< Rules compare function. */
 };
 
 
@@ -192,6 +195,22 @@ rte_acl_free(struct rte_acl_ctx *ctx);
 int
 rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
 	uint32_t num);
+
+/**
+ * Delete rule from an existing ACL context.
+ * This function is not multi-thread safe.
+ *
+ * @param ctx
+ *   ACL context to delete pattern from.
+ * @param rule
+ *   Rules to delete from the ACL context.
+ *   Note that rule is expected to be pointer from the ACL context.
+ * @return
+ *   - -EINVAL if the parameters are invalid.
+ *   - Zero if operation completed successfully.
+ */
+int
+rte_acl_del_rule(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rule);
 
 /**
  * Delete all rules from the ACL context.

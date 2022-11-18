@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <search.h>
+
 #include <rte_eal_memconfig.h>
 #include <rte_string_fns.h>
 #include <rte_acl.h>
@@ -417,6 +419,7 @@ rte_acl_create(const struct rte_acl_param *param)
 		ctx->rules = ctx + 1;
 		ctx->max_rules = param->max_rule_num;
 		ctx->rule_sz = param->rule_size;
+		ctx->cmp_rules = param->cmp_rules;
 		ctx->socket_id = param->socket_id;
 		ctx->alg = acl_get_best_alg();
 		strlcpy(ctx->name, param->name, sizeof(ctx->name));
@@ -443,6 +446,23 @@ acl_add_rules(struct rte_acl_ctx *ctx, const void *rules, uint32_t num)
 	pos += ctx->rule_sz * ctx->num_rules;
 	memcpy(pos, rules, num * ctx->rule_sz);
 	ctx->num_rules += num;
+
+	return 0;
+}
+
+static int
+acl_del_rule(struct rte_acl_ctx *ctx, uint32_t idx)
+{
+	uint8_t *pos;
+	uint8_t *last;
+
+	pos = last = ctx->rules;
+	pos += ctx->rule_sz * idx;
+	last += ctx->rule_sz * (ctx->num_rules - 1);
+
+	if (last != pos)
+		memcpy(pos, last, ctx->rule_sz);
+	ctx->num_rules--;
 
 	return 0;
 }
@@ -481,6 +501,39 @@ rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
 	}
 
 	return acl_add_rules(ctx, rules, num);
+}
+
+static int
+acl_get_rule(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rule,
+	uint32_t *idx)
+{
+	struct rte_acl_rule *match;
+	size_t num_rules = ctx->num_rules;
+
+	match = lfind(rule, ctx->rules, &num_rules,
+			ctx->rule_sz, ctx->cmp_rules);
+	if (match == NULL)
+		return -ENOENT;
+
+	*idx = RTE_PTR_DIFF(match, ctx->rules) / ctx->rule_sz;
+
+	return 0;
+}
+
+int
+rte_acl_del_rule(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rule)
+{
+	uint32_t idx;
+	int32_t rc;
+
+	if (!ctx || !rule || !ctx->cmp_rules || !ctx->rule_sz)
+		return -EINVAL;
+
+	rc = acl_get_rule(ctx, rule, &idx);
+	if (rc < 0)
+		return rc;
+
+	return acl_del_rule(ctx, idx);
 }
 
 /*

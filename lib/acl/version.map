@@ -7,6 +7,7 @@ DPDK_23 {
 	rte_acl_classify_alg;
 	rte_acl_classify_scalar;
 	rte_acl_create;
+	rte_acl_del_rule;
 	rte_acl_dump;
 	rte_acl_find_existing;
 	rte_acl_free;
