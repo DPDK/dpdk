@@ -1713,10 +1713,11 @@ int bnxt_flush_rx_cmp(struct bnxt_cp_ring_info *cpr)
 		nb_rx++;
 	} while (nb_rx < ring_mask);
 
-	cpr->cp_raw_cons = raw_cons;
-
-	/* Ring the completion queue doorbell. */
-	bnxt_db_cq(cpr);
+	if (nb_rx) {
+		cpr->cp_raw_cons = raw_cons;
+		/* Ring the completion queue doorbell. */
+		bnxt_db_cq(cpr);
+	}
 
 	return 0;
 }
