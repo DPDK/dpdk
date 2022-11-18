@@ -1135,6 +1135,8 @@ nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq, struct rte_mbuf *mb)
 	txd.lso_hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
 	txd.lso_totsegs = (mb->pkt_len + mb->tso_segsz) / mb->tso_segsz;
 
+	return txd.raw;
+
 clean_txd:
 	txd.l3_offset = 0;
 	txd.l4_offset = 0;
