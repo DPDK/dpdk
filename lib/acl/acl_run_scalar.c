@@ -30,7 +30,7 @@ resolve_priority_scalar(uint64_t transition, int n,
 	priority = p[transition].priority;
 
 	/* if this is not the first completed trie */
-	if (parms[n].cmplt->count != ctx->num_tries) {
+	if (parms[n].cmplt->count != ctx->build.num_tries) {
 		for (i = 0; i < categories; i += RTE_ACL_RESULTS_MULTIPLIER) {
 
 			if (saved_priority[i] <= priority[i]) {
@@ -119,7 +119,7 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	struct parms parms[MAX_SEARCHES_SCALAR];
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results, num,
-		categories, ctx->trans_table);
+		categories, ctx->build.trans_table);
 
 	for (n = 0; n < MAX_SEARCHES_SCALAR; n++) {
 		cmplt[n].count = 0;

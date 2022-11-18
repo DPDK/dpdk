@@ -25,10 +25,10 @@ acl_set_flow_avx512(struct acl_flow_avx512 *flow, const struct rte_acl_ctx *ctx,
 {
 	flow->num_packets = 0;
 	flow->total_packets = total_packets;
-	flow->first_load_sz = ctx->first_load_sz;
-	flow->root_index = ctx->trie[trie].root_index;
-	flow->trans = ctx->trans_table;
-	flow->data_index = ctx->trie[trie].data_index;
+	flow->first_load_sz = ctx->build.first_load_sz;
+	flow->root_index = ctx->build.trie[trie].root_index;
+	flow->trans = ctx->build.trans_table;
+	flow->data_index = ctx->build.trie[trie].data_index;
 	flow->idata = data;
 	flow->matches = matches;
 }

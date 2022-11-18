@@ -775,9 +775,9 @@ acl_merge_trie(struct acl_build_context *context,
 static void
 acl_build_reset(struct rte_acl_ctx *ctx)
 {
-	rte_free(ctx->mem);
-	memset(&ctx->num_categories, 0,
-		sizeof(*ctx) - offsetof(struct rte_acl_ctx, num_categories));
+	rte_free(ctx->build.mem);
+	memset(&ctx->build, 0,
+		sizeof(struct rte_acl_build));
 }
 
 static void
@@ -1488,11 +1488,11 @@ acl_set_data_indexes(struct rte_acl_ctx *ctx)
 	uint32_t i, n, ofs;
 
 	ofs = 0;
-	for (i = 0; i != ctx->num_tries; i++) {
-		n = ctx->trie[i].num_data_indexes;
-		memcpy(ctx->data_indexes + ofs, ctx->trie[i].data_index,
-			n * sizeof(ctx->data_indexes[0]));
-		ctx->trie[i].data_index = ctx->data_indexes + ofs;
+	for (i = 0; i != ctx->build.num_tries; i++) {
+		n = ctx->build.trie[i].num_data_indexes;
+		memcpy(ctx->build.data_indexes + ofs, ctx->build.trie[i].data_index,
+			n * sizeof(ctx->build.data_indexes[0]));
+		ctx->build.trie[i].data_index = ctx->build.data_indexes + ofs;
 		ofs += ACL_MAX_INDEXES;
 	}
 }
@@ -1650,16 +1650,16 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 			rc = rte_acl_gen(ctx, bcx.tries, bcx.bld_tries,
 				bcx.num_tries, bcx.cfg.num_categories,
 				ACL_MAX_INDEXES * RTE_DIM(bcx.tries) *
-				sizeof(ctx->data_indexes[0]), max_size);
+				sizeof(ctx->build.data_indexes[0]), max_size);
 			if (rc == 0) {
 				/* set data indexes. */
 				acl_set_data_indexes(ctx);
 
 				/* determine can we always do 4B load */
-				ctx->first_load_sz = get_first_load_size(cfg);
+				ctx->build.first_load_sz = get_first_load_size(cfg);
 
 				/* copy in build config. */
-				ctx->config = *cfg;
+				ctx->build.config = *cfg;
 			}
 		}
 

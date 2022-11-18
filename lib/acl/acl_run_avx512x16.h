@@ -294,9 +294,9 @@ search_avx512x16x2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t i, *pm;
 	const struct rte_acl_match_results *pr;
 	struct acl_flow_avx512 flow;
-	uint32_t match[ctx->num_tries * total_packets];
+	uint32_t match[ctx->build.num_tries * total_packets];
 
-	for (i = 0, pm = match; i != ctx->num_tries; i++, pm += total_packets) {
+	for (i = 0, pm = match; i != ctx->build.num_tries; i++, pm += total_packets) {
 
 		/* setup for next trie */
 		acl_set_flow_avx512(&flow, ctx, i, data, pm, total_packets);
@@ -307,17 +307,17 @@ search_avx512x16x2(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 	/* resolve matches */
 	pr = (const struct rte_acl_match_results *)
-		(ctx->trans_table + ctx->match_index);
+		(ctx->build.trans_table + ctx->build.match_index);
 
 	if (categories == 1)
 		_F_(resolve_single_cat)(results, pr, match, total_packets,
-			ctx->num_tries);
+			ctx->build.num_tries);
 	else if (categories <= RTE_ACL_MAX_CATEGORIES / 2)
 		resolve_mcle8_avx512x1(results, pr, match, total_packets,
-			categories, ctx->num_tries);
+			categories, ctx->build.num_tries);
 	else
 		resolve_mcgt8_avx512x1(results, pr, match, total_packets,
-			categories, ctx->num_tries);
+			categories, ctx->build.num_tries);
 
 	return 0;
 }

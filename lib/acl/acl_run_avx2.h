@@ -169,7 +169,7 @@ search_avx2x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	ymm_t t0, t1;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
-		total_packets, categories, ctx->trans_table);
+		total_packets, categories, ctx->build.trans_table);
 
 	for (n = 0; n < RTE_DIM(cmplt); n++) {
 		cmplt[n].count = 0;

@@ -52,7 +52,7 @@ acl_gen_log_stats(const struct rte_acl_ctx *ctx,
 		indices->dfa_index * sizeof(uint64_t),
 		counts->match,
 		counts->match * sizeof(struct rte_acl_match_results),
-		ctx->mem_sz,
+		ctx->build.mem_sz,
 		max_size);
 }
 
@@ -516,16 +516,16 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 			trie[n].root_index = node_bld_trie[n].trie->node_index;
 	}
 
-	ctx->mem = mem;
-	ctx->mem_sz = total_size;
-	ctx->data_indexes = mem;
-	ctx->num_tries = num_tries;
-	ctx->num_categories = num_categories;
-	ctx->match_index = match_index;
-	ctx->no_match = no_match;
-	ctx->idle = node_array[RTE_ACL_DFA_SIZE];
-	ctx->trans_table = node_array;
-	memcpy(ctx->trie, trie, sizeof(ctx->trie));
+	ctx->build.mem = mem;
+	ctx->build.mem_sz = total_size;
+	ctx->build.data_indexes = mem;
+	ctx->build.num_tries = num_tries;
+	ctx->build.num_categories = num_categories;
+	ctx->build.match_index = match_index;
+	ctx->build.no_match = no_match;
+	ctx->build.idle = node_array[RTE_ACL_DFA_SIZE];
+	ctx->build.trans_table = node_array;
+	memcpy(ctx->build.trie, trie, sizeof(ctx->build.trie));
 
 	acl_gen_log_stats(ctx, &counts, &indices, max_size);
 	return 0;

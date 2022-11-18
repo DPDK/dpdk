@@ -73,7 +73,7 @@ resolve_priority_sse(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
 			(const xmm_t *)&p[transition].priority[x]);
 
 		/* if this is not the first completed trie */
-		if (parms[n].cmplt->count != ctx->num_tries) {
+		if (parms[n].cmplt->count != ctx->build.num_tries) {
 
 			/* get running best results and their priorities */
 			results1 = _mm_loadu_si128(saved_results);
@@ -203,7 +203,7 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	xmm_t indices1, indices2, indices3, indices4;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
-		total_packets, categories, ctx->trans_table);
+		total_packets, categories, ctx->build.trans_table);
 
 	for (n = 0; n < MAX_SEARCHES_SSE8; n++) {
 		cmplt[n].count = 0;
@@ -291,7 +291,7 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	xmm_t input, indices1, indices2;
 
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
-		total_packets, categories, ctx->trans_table);
+		total_packets, categories, ctx->build.trans_table);
 
 	for (n = 0; n < MAX_SEARCHES_SSE4; n++) {
 		cmplt[n].count = 0;

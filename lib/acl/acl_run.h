@@ -111,7 +111,7 @@ resolve_single_priority(uint64_t transition, int n,
 	const struct rte_acl_ctx *ctx, struct parms *parms,
 	const struct rte_acl_match_results *p)
 {
-	if (parms[n].cmplt->count == ctx->num_tries ||
+	if (parms[n].cmplt->count == ctx->build.num_tries ||
 			parms[n].cmplt->priority[0] <=
 			p[transition].priority[0]) {
 
@@ -133,12 +133,12 @@ acl_start_next_trie(struct acl_flow_data *flows, struct parms *parms, int n,
 	/* if there are any more packets to process */
 	if (flows->num_packets < flows->total_packets) {
 		parms[n].data = flows->data[flows->num_packets];
-		parms[n].data_index = ctx->trie[flows->trie].data_index;
+		parms[n].data_index = ctx->build.trie[flows->trie].data_index;
 
 		/* if this is the first trie for this packet */
 		if (flows->trie == 0) {
 			flows->last_cmplt = alloc_completion(flows->cmplt_array,
-				flows->cmplt_size, ctx->num_tries,
+				flows->cmplt_size, ctx->build.num_tries,
 				flows->results +
 				flows->num_packets * flows->categories);
 		}
@@ -147,14 +147,14 @@ acl_start_next_trie(struct acl_flow_data *flows, struct parms *parms, int n,
 		parms[n].cmplt = flows->last_cmplt;
 		transition =
 			flows->trans[parms[n].data[*parms[n].data_index++] +
-			ctx->trie[flows->trie].root_index];
+			ctx->build.trie[flows->trie].root_index];
 
 		/*
 		 * if this is the last trie for this packet,
 		 * then setup next packet.
 		 */
 		flows->trie++;
-		if (flows->trie >= ctx->num_tries) {
+		if (flows->trie >= ctx->build.num_tries) {
 			flows->trie = 0;
 			flows->num_packets++;
 		}
@@ -164,7 +164,7 @@ acl_start_next_trie(struct acl_flow_data *flows, struct parms *parms, int n,
 
 	/* no more tries to process, set slot to an idle position */
 	} else {
-		transition = ctx->idle;
+		transition = ctx->build.idle;
 		parms[n].data = (const uint8_t *)idle;
 		parms[n].data_index = idle;
 	}
@@ -207,7 +207,7 @@ acl_match_check(uint64_t transition, int slot,
 	const struct rte_acl_match_results *p;
 
 	p = (const struct rte_acl_match_results *)
-		(flows->trans + ctx->match_index);
+		(flows->trans + ctx->build.match_index);
 
 	if (transition & RTE_ACL_NODE_MATCH) {
 
