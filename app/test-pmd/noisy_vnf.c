@@ -56,8 +56,8 @@ do_write(char *vnf_mem)
 static inline void
 do_read(char *vnf_mem)
 {
+	uint64_t r __rte_unused;
 	uint64_t i = rte_rand();
-	uint64_t r;
 
 	r = vnf_mem[i % ((noisy_lkup_mem_sz * 1024 * 1024) /
 			RTE_CACHE_LINE_SIZE)];
