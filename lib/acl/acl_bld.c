@@ -767,19 +767,6 @@ acl_merge_trie(struct acl_build_context *context,
 	return 0;
 }
 
-/*
- * Reset current runtime fields before next build:
- *  - free allocated RT memory.
- *  - reset all RT related fields to zero.
- */
-static void
-acl_build_reset(struct rte_acl_ctx *ctx)
-{
-	rte_free(ctx->build.mem);
-	memset(&ctx->build, 0,
-		sizeof(struct rte_acl_build));
-}
-
 static void
 acl_gen_full_range(struct acl_build_context *context, struct rte_acl_node *root,
 	struct rte_acl_node *end, int size, int level)
@@ -1618,6 +1605,33 @@ get_first_load_size(const struct rte_acl_config *cfg)
 	return (ofs < max_ofs) ? sizeof(uint32_t) : sizeof(uint8_t);
 }
 
+static struct rte_acl_build*
+rte_acl_build_alloc(struct rte_acl_ctx *ctx)
+{
+	struct rte_acl_build *build;
+
+	build = rte_zmalloc_socket(ctx->name, sizeof(struct rte_acl_build),
+			RTE_CACHE_LINE_SIZE, ctx->socket_id);
+	if (build == NULL) {
+		RTE_LOG(ERR, ACL,
+			"allocation of %zu bytes on socket %d for %s failed\n",
+			sizeof(struct rte_acl_build), ctx->socket_id, ctx->name);
+		return NULL;
+	}
+
+	return build;
+}
+
+void
+rte_acl_build_free(struct rte_acl_build *build)
+{
+	if (build == NULL)
+		return;
+
+	rte_free(build->mem);
+	rte_free(build);
+}
+
 int
 rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 {
@@ -1625,12 +1639,15 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 	uint32_t n;
 	size_t max_size;
 	struct acl_build_context bcx;
+	struct rte_acl_build *build;
 
 	rc = acl_check_bld_param(ctx, cfg);
 	if (rc != 0)
 		return rc;
 
-	acl_build_reset(ctx);
+	build = rte_acl_build_alloc(ctx);
+	if (build == NULL)
+		return -ENOMEM;
 
 	if (cfg->max_size == 0) {
 		n = NODE_MIN;
@@ -1647,19 +1664,19 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 
 		if (rc == 0) {
 			/* allocate and fill run-time  structures. */
-			rc = rte_acl_gen(ctx, bcx.tries, bcx.bld_tries,
+			rc = rte_acl_gen(ctx, build, bcx.tries, bcx.bld_tries,
 				bcx.num_tries, bcx.cfg.num_categories,
 				ACL_MAX_INDEXES * RTE_DIM(bcx.tries) *
-				sizeof(ctx->build.data_indexes[0]), max_size);
+				sizeof(build->data_indexes[0]), max_size);
 			if (rc == 0) {
 				/* set data indexes. */
-				acl_set_data_indexes(&ctx->build);
+				acl_set_data_indexes(build);
 
 				/* determine can we always do 4B load */
-				ctx->build.first_load_sz = get_first_load_size(cfg);
+				build->first_load_sz = get_first_load_size(cfg);
 
 				/* copy in build config. */
-				ctx->build.config = *cfg;
+				build->config = *cfg;
 			}
 		}
 
@@ -1668,6 +1685,9 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 		/* cleanup after build. */
 		tb_free_pool(&bcx.pool);
 	}
+
+	rte_acl_build_free(ctx->build);
+	ctx->build = build;
 
 	return rc;
 }

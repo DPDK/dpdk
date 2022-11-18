@@ -32,6 +32,7 @@ struct rte_acl_indices {
 
 static void
 acl_gen_log_stats(const struct rte_acl_ctx *ctx,
+	const struct rte_acl_build *build,
 	const struct acl_node_counters *counts,
 	const struct rte_acl_indices *indices,
 	size_t max_size)
@@ -52,7 +53,7 @@ acl_gen_log_stats(const struct rte_acl_ctx *ctx,
 		indices->dfa_index * sizeof(uint64_t),
 		counts->match,
 		counts->match * sizeof(struct rte_acl_match_results),
-		ctx->build.mem_sz,
+		build->mem_sz,
 		max_size);
 }
 
@@ -445,9 +446,10 @@ acl_calc_counts_indices(struct acl_node_counters *counts,
  * Generate the runtime structure using build structure
  */
 int
-rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
-	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	uint32_t num_categories, uint32_t data_index_sz, size_t max_size)
+rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_build *build,
+	struct rte_acl_trie *trie, struct rte_acl_bld_trie *node_bld_trie,
+	uint32_t num_tries, uint32_t num_categories, uint32_t data_index_sz,
+	size_t max_size)
 {
 	void *mem;
 	size_t total_size;
@@ -516,17 +518,17 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 			trie[n].root_index = node_bld_trie[n].trie->node_index;
 	}
 
-	ctx->build.mem = mem;
-	ctx->build.mem_sz = total_size;
-	ctx->build.data_indexes = mem;
-	ctx->build.num_tries = num_tries;
-	ctx->build.num_categories = num_categories;
-	ctx->build.match_index = match_index;
-	ctx->build.no_match = no_match;
-	ctx->build.idle = node_array[RTE_ACL_DFA_SIZE];
-	ctx->build.trans_table = node_array;
-	memcpy(ctx->build.trie, trie, sizeof(ctx->build.trie));
+	build->mem = mem;
+	build->mem_sz = total_size;
+	build->data_indexes = mem;
+	build->num_tries = num_tries;
+	build->num_categories = num_categories;
+	build->match_index = match_index;
+	build->no_match = no_match;
+	build->idle = node_array[RTE_ACL_DFA_SIZE];
+	build->trans_table = node_array;
+	memcpy(build->trie, trie, sizeof(build->trie));
 
-	acl_gen_log_stats(ctx, &counts, &indices, max_size);
+	acl_gen_log_stats(ctx, build, &counts, &indices, max_size);
 	return 0;
 }

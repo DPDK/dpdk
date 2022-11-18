@@ -191,12 +191,15 @@ struct rte_acl_ctx {
 	uint32_t            rule_sz;
 	uint32_t            num_rules;
 	rte_rule_cmp_t      cmp_rules;
-	struct rte_acl_build build;
+	struct rte_acl_build *build;
 };
 
-int rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
-	struct rte_acl_bld_trie *node_bld_trie, uint32_t num_tries,
-	uint32_t num_categories, uint32_t data_index_sz, size_t max_size);
+void rte_acl_build_free(struct rte_acl_build *build);
+
+int rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_build *build,
+	struct rte_acl_trie *trie, struct rte_acl_bld_trie *node_bld_trie,
+	uint32_t num_tries, uint32_t num_categories, uint32_t data_index_sz,
+	size_t max_size);
 
 typedef int (*rte_acl_classify_t)
 (const struct rte_acl_build *, const uint8_t **, uint32_t *, uint32_t, uint32_t);

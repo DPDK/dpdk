@@ -297,7 +297,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
 			((RTE_ACL_RESULTS_MULTIPLIER - 1) & categories) != 0)
 		return -EINVAL;
 
-	return classify_fns[alg](&ctx->build, data, results, num, categories);
+	return classify_fns[alg](ctx->build, data, results, num, categories);
 }
 
 int
@@ -359,7 +359,7 @@ rte_acl_free(struct rte_acl_ctx *ctx)
 
 	rte_mcfg_tailq_write_unlock();
 
-	rte_free(ctx->build.mem);
+	rte_acl_build_free(ctx->build);
 	rte_free(ctx);
 	rte_free(te);
 }
@@ -586,7 +586,7 @@ rte_acl_reset(struct rte_acl_ctx *ctx)
 {
 	if (ctx != NULL) {
 		rte_acl_reset_rules(ctx);
-		rte_acl_build(ctx, &ctx->build.config);
+		rte_acl_build(ctx, &ctx->build->config);
 	}
 }
 
@@ -601,12 +601,12 @@ rte_acl_dump(const struct rte_acl_ctx *ctx)
 	printf("acl context <%s>@%p\n", ctx->name, ctx);
 	printf("  socket_id=%"PRId32"\n", ctx->socket_id);
 	printf("  alg=%"PRId32"\n", ctx->alg);
-	printf("  first_load_sz=%"PRIu32"\n", ctx->build.first_load_sz);
+	printf("  first_load_sz=%"PRIu32"\n", ctx->build->first_load_sz);
 	printf("  max_rules=%"PRIu32"\n", ctx->max_rules);
 	printf("  rule_size=%"PRIu32"\n", ctx->rule_sz);
 	printf("  num_rules=%"PRIu32"\n", ctx->num_rules);
-	printf("  num_categories=%"PRIu32"\n", ctx->build.num_categories);
-	printf("  num_tries=%"PRIu32"\n", ctx->build.num_tries);
+	printf("  num_categories=%"PRIu32"\n", ctx->build->num_categories);
+	printf("  num_tries=%"PRIu32"\n", ctx->build->num_tries);
 }
 
 /*
