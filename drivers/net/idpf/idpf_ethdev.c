@@ -115,6 +115,24 @@ idpf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu __rte_unused)
 	return 0;
 }
 
+static const uint32_t *
+idpf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	return ptypes;
+}
+
 static int
 idpf_init_vport_req_info(struct rte_eth_dev *dev)
 {
@@ -1047,6 +1065,7 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.rx_queue_release		= idpf_dev_rx_queue_release,
 	.tx_queue_release		= idpf_dev_tx_queue_release,
 	.mtu_set			= idpf_dev_mtu_set,
+	.dev_supported_ptypes_get	= idpf_dev_supported_ptypes_get,
 };
 
 static uint16_t
