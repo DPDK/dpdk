@@ -519,7 +519,6 @@ static inline int bm_shutdown_pool(struct bm_portal *p, u32 bpid)
 	struct bm_mc_command *bm_cmd;
 	struct bm_mc_result *bm_res;
 
-	int aq_count = 0;
 	bool stop = false;
 
 	while (!stop) {
@@ -532,8 +531,7 @@ static inline int bm_shutdown_pool(struct bm_portal *p, u32 bpid)
 		if (!(bm_res->verb & BM_MCR_VERB_ACQUIRE_BUFCOUNT)) {
 			/* Pool is empty */
 			stop = true;
-		} else
-			++aq_count;
+		}
 	};
 	return 0;
 }
