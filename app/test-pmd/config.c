@@ -1787,7 +1787,6 @@ port_action_handle_destroy(portid_t port_id,
 {
 	struct rte_port *port;
 	struct port_indirect_action **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -1822,7 +1821,6 @@ port_action_handle_destroy(portid_t port_id,
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
@@ -2251,7 +2249,6 @@ port_flow_pattern_template_destroy(portid_t port_id, uint32_t n,
 {
 	struct rte_port *port;
 	struct port_template **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -2288,7 +2285,6 @@ port_flow_pattern_template_destroy(portid_t port_id, uint32_t n,
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
@@ -2368,7 +2364,6 @@ port_flow_actions_template_destroy(portid_t port_id, uint32_t n,
 {
 	struct rte_port *port;
 	struct port_template **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -2404,7 +2399,6 @@ port_flow_actions_template_destroy(portid_t port_id, uint32_t n,
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
@@ -2534,7 +2528,6 @@ port_flow_template_table_destroy(portid_t port_id,
 {
 	struct rte_port *port;
 	struct port_table **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -2571,7 +2564,6 @@ port_flow_template_table_destroy(portid_t port_id,
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
@@ -2719,7 +2711,6 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 	struct rte_flow_op_attr op_attr = { .postpone = postpone };
 	struct rte_port *port;
 	struct port_flow **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 	struct queue_job *job;
 
@@ -2768,7 +2759,6 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
@@ -2836,7 +2826,6 @@ port_queue_action_handle_destroy(portid_t port_id,
 	const struct rte_flow_op_attr attr = { .postpone = postpone};
 	struct rte_port *port;
 	struct port_indirect_action **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 	struct queue_job *job;
 
@@ -2886,7 +2875,6 @@ port_queue_action_handle_destroy(portid_t port_id,
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
@@ -3304,7 +3292,6 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
 {
 	struct rte_port *port;
 	struct port_flow **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -3337,7 +3324,6 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
