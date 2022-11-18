@@ -293,8 +293,6 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			break;
 		}
 
-		nb_hold++;
-
 		/*
 		 * Grab the mbuf and refill the descriptor with the
 		 * previously allocated mbuf
@@ -365,6 +363,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxds->fld.dd = 0;
 		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xff;
 		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;
+		nb_hold++;
 
 		rxq->rd_p++;
 		if (unlikely(rxq->rd_p == rxq->rx_count)) /* wrapping?*/
