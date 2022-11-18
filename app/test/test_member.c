@@ -573,7 +573,6 @@ setup_keys_and_data(void)
 		qsort(generated_keys, MAX_ENTRIES, KEY_SIZE, key_compare);
 
 		/* Sift through the list of keys and look for duplicates */
-		int num_duplicates = 0;
 		for (i = 0; i < MAX_ENTRIES - 1; i++) {
 			if (memcmp(generated_keys[i], generated_keys[i + 1],
 					KEY_SIZE) == 0) {
