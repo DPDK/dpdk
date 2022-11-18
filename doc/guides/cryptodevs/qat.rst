@@ -168,8 +168,8 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology C62x``
 * ``Intel QuickAssist Technology C3xxx``
 * ``Intel QuickAssist Technology D15xx``
-* ``Intel QuickAssist Technology C4xxx``
 * ``Intel QuickAssist Technology 4xxx``
+* ``Intel QuickAssist Technology 401xxx``
 
 The QAT ASYM PMD has support for:
 
@@ -393,9 +393,15 @@ to see the full table)
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 3   | C4xxx    | p             | qat_c4xxx     | c4xxx      | 18a0   | 1    | 18a1   | 128    |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | No  | No  | 4   | 4xxx     | N/A           | qat_4xxx      | 4xxx       | 4940   | 4    | 4941   | 16     |
+   | Yes | Yes | No  | 4   | 4xxx     | linux/5.11+   | qat_4xxx      | 4xxx       | 4940   | 4    | 4941   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | No  | No  | 4   | 401xxx   | N/A           | qat_401xxx    | 4xxx       | 4942   | 2    | 4943   | 16     |
+   | Yes | Yes | Yes | 4   | 4xxx     | linux/5.17+   | qat_4xxx      | 4xxx       | 4940   | 4    | 4941   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | No  | No  | 4   | 4xxx     | IDZ/ N/A      | qat_4xxx      | 4xxx       | 4940   | 4    | 4941   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | Yes | Yes | 4   | 401xxx   | linux/5.19+   | qat_401xxx    | 4xxx       | 4942   | 2    | 4943   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | No  | No  | 4   | 401xxx   | IDZ/ N/A      | qat_401xxx    | 4xxx       | 4942   | 2    | 4943   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
 
 * Note: Symmetric mixed crypto algorithms feature on Gen 2 works only with IDZ driver version 4.9.0+
@@ -415,6 +421,11 @@ If you are running on a kernel which includes a driver for your device, see
 `Installation using kernel.org driver`_ below. Otherwise see
 `Installation using IDZ QAT driver`_.
 
+.. note::
+
+   The asymmetric service is not supported by DPDK QAT PMD for the Gen 3 platform.
+   The actual crypto services enabled on the system depend
+   on QAT driver capabilities and hardware slice configuration.
 
 Installation using kernel.org driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
