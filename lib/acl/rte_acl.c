@@ -293,15 +293,20 @@ rte_acl_classify_alg(struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories,
 	enum rte_acl_classify_alg alg)
 {
-	int rv;
+	int rv = 0;
 	struct rte_acl_build *build;
 
 	if (categories != 1 &&
 			((RTE_ACL_RESULTS_MULTIPLIER - 1) & categories) != 0)
 		return -EINVAL;
 
+	// In a setup with no rules, build will be NULL
+	if (ctx->num_rules == 0)
+		return rv;
+
 	build = rte_acl_build_lock(ctx);
-	rv = classify_fns[alg](build, data, results, num, categories);
+	if (build != NULL)
+		rv = classify_fns[alg](build, data, results, num, categories);
 	rte_acl_build_unlock(build);
 
 	return rv;
