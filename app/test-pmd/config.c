@@ -1842,7 +1842,6 @@ port_shared_action_destroy(portid_t port_id,
 {
 	struct rte_port *port;
 	struct port_shared_action **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -1877,7 +1876,6 @@ port_shared_action_destroy(portid_t port_id,
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
@@ -2186,7 +2184,6 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
 {
 	struct rte_port *port;
 	struct port_flow **tmp;
-	uint32_t c = 0;
 	int ret = 0;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -2219,7 +2216,6 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
 		}
 		if (i == n)
 			tmp = &(*tmp)->next;
-		++c;
 	}
 	return ret;
 }
