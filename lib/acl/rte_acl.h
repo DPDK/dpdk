@@ -313,7 +313,7 @@ enum rte_acl_classify_alg {
  *   -EINVAL for incorrect arguments.
  */
 extern int
-rte_acl_classify(const struct rte_acl_ctx *ctx,
+rte_acl_classify(struct rte_acl_ctx *ctx,
 		 const uint8_t **data,
 		 uint32_t *results, uint32_t num,
 		 uint32_t categories);
@@ -353,7 +353,7 @@ rte_acl_classify(const struct rte_acl_ctx *ctx,
  *   -EINVAL for incorrect arguments.
  */
 extern int
-rte_acl_classify_alg(const struct rte_acl_ctx *ctx,
+rte_acl_classify_alg(struct rte_acl_ctx *ctx,
 		 const uint8_t **data,
 		 uint32_t *results, uint32_t num,
 		 uint32_t categories,

@@ -9,6 +9,9 @@
 extern"C" {
 #endif /* __cplusplus */
 
+#include <rte_atomic.h>
+#include <rte_rwlock.h>
+
 #define RTE_ACL_QUAD_MAX	5
 #define RTE_ACL_QUAD_SIZE	4
 #define RTE_ACL_QUAD_SINGLE	UINT64_C(0x7f7f7f7f00000000)
@@ -166,6 +169,7 @@ struct rte_acl_bld_trie {
 typedef int(* rte_rule_cmp_t) (const void *rule1, const void *rule2);
 
 struct rte_acl_build {
+	rte_atomic32_t      refcnt;
 	uint32_t            first_load_sz;
 	uint32_t            num_categories;
 	uint32_t            num_tries;
@@ -191,10 +195,31 @@ struct rte_acl_ctx {
 	uint32_t            rule_sz;
 	uint32_t            num_rules;
 	rte_rule_cmp_t      cmp_rules;
+	rte_rwlock_t        lock;
 	struct rte_acl_build *build;
 };
 
 void rte_acl_build_free(struct rte_acl_build *build);
+
+static inline struct rte_acl_build *
+rte_acl_build_lock(struct rte_acl_ctx *ctx)
+{
+	struct rte_acl_build *build;
+
+	rte_rwlock_read_lock(&ctx->lock);
+	build = ctx->build;
+	rte_atomic32_inc(&build->refcnt);
+	rte_rwlock_read_unlock(&ctx->lock);
+
+	return build;
+}
+
+static inline void
+rte_acl_build_unlock(struct rte_acl_build *build)
+{
+	if (rte_atomic32_dec_and_test(&build->refcnt))
+		rte_acl_build_free(build);
+}
 
 int rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_build *build,
 	struct rte_acl_trie *trie, struct rte_acl_bld_trie *node_bld_trie,

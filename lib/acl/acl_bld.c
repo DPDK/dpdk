@@ -1619,6 +1619,8 @@ rte_acl_build_alloc(struct rte_acl_ctx *ctx)
 		return NULL;
 	}
 
+	rte_atomic32_inc(&build->refcnt);
+
 	return build;
 }
 
@@ -1639,7 +1641,7 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 	uint32_t n;
 	size_t max_size;
 	struct acl_build_context bcx;
-	struct rte_acl_build *build;
+	struct rte_acl_build *build, *old;
 
 	rc = acl_check_bld_param(ctx, cfg);
 	if (rc != 0)
@@ -1686,8 +1688,12 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 		tb_free_pool(&bcx.pool);
 	}
 
-	rte_acl_build_free(ctx->build);
+	old = ctx->build;
+	rte_rwlock_write_lock(&ctx->lock);
 	ctx->build = build;
+	rte_rwlock_write_unlock(&ctx->lock);
+	if (old)
+		rte_acl_build_unlock(old);
 
 	return rc;
 }

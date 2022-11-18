@@ -289,19 +289,26 @@ rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
 }
 
 int
-rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify_alg(struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories,
 	enum rte_acl_classify_alg alg)
 {
+	int rv;
+	struct rte_acl_build *build;
+
 	if (categories != 1 &&
 			((RTE_ACL_RESULTS_MULTIPLIER - 1) & categories) != 0)
 		return -EINVAL;
 
-	return classify_fns[alg](ctx->build, data, results, num, categories);
+	build = rte_acl_build_lock(ctx);
+	rv = classify_fns[alg](build, data, results, num, categories);
+	rte_acl_build_unlock(build);
+
+	return rv;
 }
 
 int
-rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
+rte_acl_classify(struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories)
 {
 	return rte_acl_classify_alg(ctx, data, results, num, categories,
@@ -416,6 +423,7 @@ rte_acl_create(const struct rte_acl_param *param)
 			goto exit;
 		}
 		/* init new allocated context. */
+		rte_rwlock_init(&ctx->lock);
 		ctx->rules = ctx + 1;
 		ctx->max_rules = param->max_rule_num;
 		ctx->rule_sz = param->rule_size;
