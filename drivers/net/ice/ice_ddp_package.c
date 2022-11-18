@@ -439,7 +439,6 @@ ice_dump_switch(struct rte_eth_dev *dev, uint8_t **buff2, uint32_t *size)
 	int i = 0;
 	uint16_t tbl_id = 0;
 	uint32_t tbl_idx = 0;
-	int tbl_cnt = 0;
 	uint8_t *buffer = *buff2;
 
 	hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -481,10 +480,8 @@ ice_dump_switch(struct rte_eth_dev *dev, uint8_t **buff2, uint32_t *size)
 
 		free(buff);
 
-		tbl_cnt++;
 		if (tbl_idx == 0xffffffff) {
 			tbl_idx = 0;
-			tbl_cnt = 0;
 			memset(buffer, '\n', sizeof(char));
 			buffer++;
 			offset = 0;
