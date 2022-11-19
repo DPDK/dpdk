@@ -43,7 +43,7 @@ Features and Limitations of virtio PMD
 In this release, the virtio PMD provides the basic functionality of packet reception and transmission.
 
 *   It supports merge-able buffers per packet when receiving packets and scattered buffer per packet
-    when transmitting packets. The packet size supported is from 64 to 1518.
+    when transmitting packets. The packet size supported is from 64 to 9728.
 
 *   It supports multicast packets and promiscuous mode.
 
