@@ -30,14 +30,22 @@ Limitations
   (if length and/or offset of data to be ciphered is not byte-aligned).
 
 
+KASUMI PMD vs AESNI MB PMD
+--------------------------
+
+AESNI MB PMD also supports KASUMI cipher and authentication algorithms.
+It is recommended to use the AESNI MB PMD,
+which offers better performance on Intel processors.
+Take a look at the PMD documentation (:doc:`aesni_mb`) for more information.
+
 Installation
 ------------
 
 To build DPDK with the KASUMI_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.2, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.2.zip>`_.
+The latest version of the library supported by this PMD is v1.3, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
 
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK:
@@ -78,8 +86,8 @@ and the external crypto libraries supported by them:
    DPDK version   Crypto library version
    =============  ================================
    16.11 - 19.11  LibSSO KASUMI
-   20.02 - 21.08  Multi-buffer library 0.53 - 1.2*
-   21.11+         Multi-buffer library 1.0  - 1.2*
+   20.02 - 21.08  Multi-buffer library 0.53 - 1.3*
+   21.11+         Multi-buffer library 1.0  - 1.3*
    =============  ================================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.

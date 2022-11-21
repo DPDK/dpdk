@@ -16,6 +16,14 @@ AEAD algorithms:
 
 * RTE_CRYPTO_AEAD_CHACHA20_POLY1305
 
+Chaha20_Poly1305 PMD vs AESNI MB PMD
+------------------------------------
+
+AESNI MB PMD also supports CHACHA20-POLY1305 algorithms.
+It is recommended to use the AESNI MB PMD,
+which offers better performance on Intel processors,
+when single-segment buffers are used.
+Take a look at the PMD documentation (:doc:`aesni_mb`) for more information.
 
 Installation
 ------------
@@ -23,8 +31,8 @@ Installation
 To build DPDK with the Chacha20-poly1305 PMD the user is required to download
 the multi-buffer library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.0, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.0.zip>`_.
+The latest version of the library supported by this PMD is v1.3, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
 
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK:
@@ -64,7 +72,7 @@ and the external crypto libraries supported by them:
    =============  ================================
    DPDK version   Crypto library version
    =============  ================================
-   21.11+         Multi-buffer library 1.0*
+   21.11+         Multi-buffer library 1.0-1.3*
    =============  ================================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.

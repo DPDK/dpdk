@@ -21,6 +21,10 @@ Authentication algorithm:
 
 * RTE_CRYPTO_AUTH_ZUC_EIA3
 
+.. note::
+
+   The latest v1.3 add ARM64 port of ipsec-mb library support ARM platform.
+
 Limitations
 -----------
 
@@ -28,6 +32,13 @@ Limitations
 * ZUC (EIA3) supported only if hash offset field is byte-aligned.
 * ZUC (EEA3) supported only if cipher length, cipher offset fields are byte-aligned.
 
+ZUC PMD vs AESNI MB PMD
+-----------------------
+
+AESNI MB PMD also supports ZUC cipher and authentication algorithms.
+It is recommended to use the AESNI MB PMD,
+which offers better performance on Intel processors.
+Take a look at the PMD documentation (:doc:`aesni_mb`) for more information.
 
 Installation
 ------------
@@ -37,8 +48,8 @@ library and compile it on their user system before building DPDK.
 
 For x86 system, the multi-buffer library is available
 `here <https://github.com/01org/intel-ipsec-mb>`_.
-The latest version of the library supported by this PMD is v1.2, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.2.zip>`_.
+The latest version of the library supported by this PMD is v1.3, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
 
 For Arm system, ARM64 port of the multi-buffer library can be downloaded from
 `<https://gitlab.arm.com/arm-reference-solutions/ipsec-mb/-/tree/main/>`_. The
@@ -83,8 +94,8 @@ and the external crypto libraries supported by them:
    DPDK version   Crypto library version
    =============  ================================
    16.11 - 19.11  LibSSO ZUC
-   20.02 - 21.08  Multi-buffer library 0.53 - 1.2*
-   21.11+         Multi-buffer library 1.0  - 1.2*
+   20.02 - 21.08  Multi-buffer library 0.53 - 1.3*
+   21.11+         Multi-buffer library 1.0  - 1.3*
    =============  ================================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.

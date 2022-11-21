@@ -1,16 +1,14 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2015-2018 Intel Corporation.
 
-AESN-NI Multi Buffer Crypto Poll Mode Driver
-============================================
+AES-NI Multi Buffer Crypto Poll Mode Driver
+===========================================
 
 
 The AESNI MB PMD (**librte_crypto_aesni_mb**) provides poll mode crypto driver
 support for utilizing Intel multi buffer library, see the white paper
 `Fast Multi-buffer IPsec Implementations on Intel® Architecture Processors
 <https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/fast-multi-buffer-ipsec-implementations-ia-processors-paper.pdf>`_.
-
-The AES-NI MB PMD has current only been tested on Fedora 21 64-bit with gcc.
 
 The AES-NI MB PMD supports synchronous mode of operation with
 ``rte_cryptodev_sym_cpu_crypto_process`` function call.
@@ -77,6 +75,23 @@ Limitations
 * RTE_CRYPTO_CIPHER_DES_DOCSISBPI is not supported for combined Crypto-CRC
   DOCSIS security protocol.
 
+AESNI MB PMD selection over SNOW3G/ZUC/KASUMI PMDs
+--------------------------------------------------
+
+This PMD supports wireless cipher suite (SNOW3G, ZUC and KASUMI).
+On Intel processors, it is recommended to use this PMD
+instead of SNOW3G, ZUC and KASUMI PMDs, as it enables algorithm mixing
+(e.g. cipher algorithm SNOW3G-UEA2 with authentication algorithm AES-CMAC-128)
+and performance over IMIX (packet size mix) traffic is significantly higher.
+
+AESNI MB PMD selection over CHACHA20-POLY1305 PMD
+-------------------------------------------------
+
+This PMD supports Chacha20-Poly1305 algorithm.
+On Intel processors, it is recommended to use this PMD instead of CHACHA20-POLY1305 PMD,
+as it delivers better performance on single segment buffers.
+For multi-segment buffers, it is still recommended to use CHACHA20-POLY1305 PMD,
+until the new SGL API is introduced in the AESNI MB PMD.
 
 Installation
 ------------
@@ -84,8 +99,8 @@ Installation
 To build DPDK with the AESNI_MB_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.2, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.2.zip>`_.
+The latest version of the library supported by this PMD is v1.3, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
 
 .. code-block:: console
 
@@ -130,8 +145,8 @@ and the Multi-Buffer library version supported by them:
    18.05 - 19.02   0.49 - 0.52
    19.05 - 19.08   0.52
    19.11 - 20.08   0.52 - 0.55
-   20.11 - 21.08   0.53 - 1.2*
-   21.11+          1.0  - 1.2*
+   20.11 - 21.08   0.53 - 1.3*
+   21.11+          1.0  - 1.3*
    ==============  ============================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.
