@@ -11793,10 +11793,12 @@ instr_hdr_validate_export(struct instruction *instr, FILE *f)
 		"\t\t.type = %s,\n"
 		"\t\t.valid = {\n"
 		"\t\t\t.header_id = %u,\n"
+		"\t\t\t.struct_id = %u,\n"
 		"\t\t},\n"
 		"\t},\n",
 		instr_type_to_name(instr),
-		instr->valid.header_id);
+		instr->valid.header_id,
+		instr->valid.struct_id);
 }
 
 static void
