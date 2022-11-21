@@ -114,8 +114,9 @@ pci_common_set(struct rte_pci_device *dev)
 		/* Otherwise, it uses the internal, canonical form. */
 		dev->device.name = dev->name;
 
-	if (asprintf(&dev->bus_info, "vendor_id=%"PRIx16", device_id=%"PRIx16,
-			dev->id.vendor_id, dev->id.device_id) != -1)
+	if (dev->bus_info != NULL ||
+			asprintf(&dev->bus_info, "vendor_id=%"PRIx16", device_id=%"PRIx16,
+				dev->id.vendor_id, dev->id.device_id) != -1)
 		dev->device.bus_info = dev->bus_info;
 }
 
