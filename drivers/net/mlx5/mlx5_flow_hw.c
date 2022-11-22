@@ -7180,9 +7180,9 @@ void flow_hw_init_tags_set(struct rte_eth_dev *dev)
 	uint32_t meta_mode = priv->sh->config.dv_xmeta_en;
 	uint8_t masks = (uint8_t)priv->sh->cdev->config.hca_attr.set_reg_c;
 	uint32_t i, j;
-	enum modify_reg copy[MLX5_FLOW_HW_TAGS_MAX] = {REG_NON};
+	uint8_t reg_off;
 	uint8_t unset = 0;
-	uint8_t copy_masks = 0;
+	uint8_t common_masks = 0;
 
 	/*
 	 * The CAPA is global for common device but only used in net.
@@ -7197,29 +7197,35 @@ void flow_hw_init_tags_set(struct rte_eth_dev *dev)
 	if (meta_mode == MLX5_XMETA_MODE_META32_HWS)
 		unset |= 1 << (REG_C_1 - REG_C_0);
 	masks &= ~unset;
+	/*
+	 * If available tag registers were previously calculated,
+	 * calculate a bitmask with an intersection of sets of:
+	 * - registers supported by current port,
+	 * - previously calculated available tag registers.
+	 */
 	if (mlx5_flow_hw_avl_tags_init_cnt) {
 		MLX5_ASSERT(mlx5_flow_hw_aso_tag == priv->mtr_color_reg);
 		for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
-			if (mlx5_flow_hw_avl_tags[i] != REG_NON && !!((1 << i) & masks)) {
-				copy[mlx5_flow_hw_avl_tags[i] - REG_C_0] =
-						mlx5_flow_hw_avl_tags[i];
-				copy_masks |= (1 << (mlx5_flow_hw_avl_tags[i] - REG_C_0));
-			}
+			if (mlx5_flow_hw_avl_tags[i] == REG_NON)
+				continue;
+			reg_off = mlx5_flow_hw_avl_tags[i] - REG_C_0;
+			if ((1 << reg_off) & masks)
+				common_masks |= (1 << reg_off);
 		}
-		if (copy_masks != masks) {
-			j = 0;
-			for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++)
-				if (!!((1 << i) & copy_masks))
-					mlx5_flow_hw_avl_tags[j++] = copy[i];
-		}
-	} else {
-		j = 0;
-		for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
-			if (!!((1 << i) & masks))
-				mlx5_flow_hw_avl_tags[j++] =
-					(enum modify_reg)(i + (uint32_t)REG_C_0);
-		}
+		if (common_masks != masks)
+			masks = common_masks;
+		else
+			goto after_avl_tags;
 	}
+	j = 0;
+	for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
+		if ((1 << i) & masks)
+			mlx5_flow_hw_avl_tags[j++] = (enum modify_reg)(i + (uint32_t)REG_C_0);
+	}
+	/* Clear the rest of unusable tag indexes. */
+	for (; j < MLX5_FLOW_HW_TAGS_MAX; j++)
+		mlx5_flow_hw_avl_tags[j] = REG_NON;
+after_avl_tags:
 	priv->sh->hws_tags = 1;
 	mlx5_flow_hw_aso_tag = (enum modify_reg)priv->mtr_color_reg;
 	mlx5_flow_hw_avl_tags_init_cnt++;
