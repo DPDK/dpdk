@@ -31,9 +31,11 @@
  */
 #define NFP_NET_MAX_TX_DESC (32 * 1024)
 #define NFP_NET_MIN_TX_DESC 256
+#define NFP3800_NET_MIN_TX_DESC 512
 
 #define NFP_NET_MAX_RX_DESC (32 * 1024)
 #define NFP_NET_MIN_RX_DESC 256
+#define NFP3800_NET_MIN_RX_DESC 512
 
 /* Descriptor alignment */
 #define NFP_ALIGN_RING_DESC 128
@@ -57,6 +59,7 @@
 #define NFDK_DESC_TX_DMA_LEN_HEAD       0x0fff
 #define NFDK_DESC_TX_TYPE_HEAD          0xf000
 #define NFDK_DESC_TX_DMA_LEN            0x3fff
+#define NFD3_TX_DESC_PER_SIMPLE_PKT     1
 #define NFDK_TX_DESC_PER_SIMPLE_PKT     2
 #define NFDK_DESC_TX_TYPE_TSO           2
 #define NFDK_DESC_TX_TYPE_SIMPLE        8

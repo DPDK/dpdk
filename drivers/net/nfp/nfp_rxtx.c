@@ -439,6 +439,9 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 		       const struct rte_eth_rxconf *rx_conf,
 		       struct rte_mempool *mp)
 {
+	int ret;
+	uint16_t min_rx_desc;
+	uint16_t max_rx_desc;
 	const struct rte_memzone *tz;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_hw *hw;
@@ -448,11 +451,14 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	ret = nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
+	if (ret != 0)
+		return ret;
+
 	/* Validating number of descriptors */
 	rx_desc_sz = nb_desc * sizeof(struct nfp_net_rx_desc);
 	if (rx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
-	    nb_desc > NFP_NET_MAX_RX_DESC ||
-	    nb_desc < NFP_NET_MIN_RX_DESC) {
+	    nb_desc > max_rx_desc || nb_desc < min_rx_desc) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
@@ -502,7 +508,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
 				   sizeof(struct nfp_net_rx_desc) *
-				   NFP_NET_MAX_RX_DESC, NFP_MEMZONE_ALIGN,
+				   max_rx_desc, NFP_MEMZONE_ALIGN,
 				   socket_id);
 
 	if (tz == NULL) {
@@ -628,6 +634,9 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		       uint16_t nb_desc, unsigned int socket_id,
 		       const struct rte_eth_txconf *tx_conf)
 {
+	int ret;
+	uint16_t min_tx_desc;
+	uint16_t max_tx_desc;
 	const struct rte_memzone *tz;
 	struct nfp_net_txq *txq;
 	uint16_t tx_free_thresh;
@@ -638,11 +647,14 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	PMD_INIT_FUNC_TRACE();
 
+	ret = nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
+	if (ret != 0)
+		return ret;
+
 	/* Validating number of descriptors */
 	tx_desc_sz = nb_desc * sizeof(struct nfp_net_nfd3_tx_desc);
-	if (tx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
-	    nb_desc > NFP_NET_MAX_TX_DESC ||
-	    nb_desc < NFP_NET_MIN_TX_DESC) {
+	if ((NFD3_TX_DESC_PER_SIMPLE_PKT * tx_desc_sz) % NFP_ALIGN_RING_DESC != 0 ||
+	     nb_desc > max_tx_desc || nb_desc < min_tx_desc) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
@@ -688,7 +700,8 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
 				   sizeof(struct nfp_net_nfd3_tx_desc) *
-				   NFP_NET_MAX_TX_DESC, NFP_MEMZONE_ALIGN,
+				   NFD3_TX_DESC_PER_SIMPLE_PKT *
+				   max_tx_desc, NFP_MEMZONE_ALIGN,
 				   socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");
@@ -697,7 +710,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -ENOMEM;
 	}
 
-	txq->tx_count = nb_desc;
+	txq->tx_count = nb_desc * NFD3_TX_DESC_PER_SIMPLE_PKT;
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->tx_pthresh = tx_conf->tx_thresh.pthresh;
 	txq->tx_hthresh = tx_conf->tx_thresh.hthresh;
@@ -716,7 +729,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	/* mbuf pointers array for referencing mbufs linked to TX descriptors */
 	txq->txbufs = rte_zmalloc_socket("txq->txbufs",
-					 sizeof(*txq->txbufs) * nb_desc,
+					 sizeof(*txq->txbufs) * txq->tx_count,
 					 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq->txbufs == NULL) {
 		nfp_net_tx_queue_release(dev, queue_idx);
@@ -735,7 +748,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 * of descriptors in log2 format
 	 */
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(queue_idx), txq->dma);
-	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(nb_desc));
+	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(txq->tx_count));
 
 	return 0;
 }
@@ -760,7 +773,8 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 	PMD_TX_LOG(DEBUG, "working for queue %u at pos %d and %u packets",
 		   txq->qidx, txq->wr_p, nb_pkts);
 
-	if ((nfp_net_nfd3_free_tx_desc(txq) < nb_pkts) || (nfp_net_nfd3_txq_full(txq)))
+	if (nfp_net_nfd3_free_tx_desc(txq) < NFD3_TX_DESC_PER_SIMPLE_PKT * nb_pkts ||
+	    nfp_net_nfd3_txq_full(txq))
 		nfp_net_tx_free_bufs(txq);
 
 	free_descs = (uint16_t)nfp_net_nfd3_free_tx_desc(txq);
@@ -879,6 +893,9 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf)
 {
+	int ret;
+	uint16_t min_tx_desc;
+	uint16_t max_tx_desc;
 	const struct rte_memzone *tz;
 	struct nfp_net_txq *txq;
 	uint16_t tx_free_thresh;
@@ -889,11 +906,15 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	ret = nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
+	if (ret != 0)
+		return ret;
+
 	/* Validating number of descriptors */
 	tx_desc_sz = nb_desc * sizeof(struct nfp_net_nfdk_tx_desc);
-	if (((NFDK_TX_DESC_PER_SIMPLE_PKT * tx_desc_sz) % NFP_ALIGN_RING_DESC) != 0 ||
-	    ((NFDK_TX_DESC_PER_SIMPLE_PKT * nb_desc) % NFDK_TX_DESC_BLOCK_CNT) != 0 ||
-	      nb_desc > NFP_NET_MAX_TX_DESC || nb_desc < NFP_NET_MIN_TX_DESC) {
+	if ((NFDK_TX_DESC_PER_SIMPLE_PKT * tx_desc_sz) % NFP_ALIGN_RING_DESC != 0 ||
+	    (NFDK_TX_DESC_PER_SIMPLE_PKT * nb_desc) % NFDK_TX_DESC_BLOCK_CNT != 0 ||
+	     nb_desc > max_tx_desc || nb_desc < min_tx_desc) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
@@ -938,7 +959,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
 				sizeof(struct nfp_net_nfdk_tx_desc) *
 				NFDK_TX_DESC_PER_SIMPLE_PKT *
-				NFP_NET_MAX_TX_DESC, NFP_MEMZONE_ALIGN,
+				max_tx_desc, NFP_MEMZONE_ALIGN,
 				socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");

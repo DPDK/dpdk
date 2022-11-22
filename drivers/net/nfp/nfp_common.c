@@ -715,11 +715,89 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 }
 
 int
+nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
+		uint16_t *min_rx_desc,
+		uint16_t *max_rx_desc)
+{
+	*max_rx_desc = NFP_NET_MAX_RX_DESC;
+
+	switch (hw->device_id) {
+	case PCI_DEVICE_ID_NFP3800_PF_NIC:
+	case PCI_DEVICE_ID_NFP3800_VF_NIC:
+		*min_rx_desc = NFP3800_NET_MIN_RX_DESC;
+		return 0;
+	case PCI_DEVICE_ID_NFP4000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_VF_NIC:
+		*min_rx_desc = NFP_NET_MIN_RX_DESC;
+		return 0;
+	default:
+		PMD_DRV_LOG(ERR, "Unknown NFP device id.");
+		return -EINVAL;
+	}
+}
+
+int
+nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
+		uint16_t *min_tx_desc,
+		uint16_t *max_tx_desc)
+{
+	uint16_t tx_dpp;
+
+	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
+	case NFP_NET_CFG_VERSION_DP_NFD3:
+		tx_dpp = NFD3_TX_DESC_PER_SIMPLE_PKT;
+		break;
+	case NFP_NET_CFG_VERSION_DP_NFDK:
+		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {
+			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
+				NFD_CFG_MAJOR_VERSION_of(hw->ver));
+			return -EINVAL;
+		}
+		tx_dpp = NFDK_TX_DESC_PER_SIMPLE_PKT;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
+		return -EINVAL;
+	}
+
+	*max_tx_desc = NFP_NET_MAX_TX_DESC / tx_dpp;
+
+	switch (hw->device_id) {
+	case PCI_DEVICE_ID_NFP3800_PF_NIC:
+	case PCI_DEVICE_ID_NFP3800_VF_NIC:
+		*min_tx_desc = NFP3800_NET_MIN_TX_DESC / tx_dpp;
+		return 0;
+	case PCI_DEVICE_ID_NFP4000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_VF_NIC:
+		*min_tx_desc = NFP_NET_MIN_TX_DESC / tx_dpp;
+		return 0;
+	default:
+		PMD_DRV_LOG(ERR, "Unknown NFP device id.");
+		return -EINVAL;
+	}
+}
+
+int
 nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
+	int ret;
+	uint16_t min_rx_desc;
+	uint16_t max_rx_desc;
+	uint16_t min_tx_desc;
+	uint16_t max_tx_desc;
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	ret = nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
+	if (ret != 0)
+		return ret;
+
+	ret = nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
+	if (ret != 0)
+		return ret;
 
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
@@ -781,14 +859,14 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
-		.nb_max = NFP_NET_MAX_RX_DESC,
-		.nb_min = NFP_NET_MIN_RX_DESC,
+		.nb_max = max_rx_desc,
+		.nb_min = min_rx_desc,
 		.nb_align = NFP_ALIGN_RING_DESC,
 	};
 
 	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
-		.nb_max = NFP_NET_MAX_TX_DESC,
-		.nb_min = NFP_NET_MIN_TX_DESC,
+		.nb_max = max_tx_desc,
+		.nb_min = min_tx_desc,
 		.nb_align = NFP_ALIGN_RING_DESC,
 		.nb_seg_max = NFP_TX_MAX_SEG,
 		.nb_mtu_seg_max = NFP_TX_MAX_MTU_SEG,
