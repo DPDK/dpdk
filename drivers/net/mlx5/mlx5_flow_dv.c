@@ -13793,7 +13793,12 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 	 * is the suffix flow.
 	 */
 	dev_flow->handle->layers |= wks.item_flags;
-	dev_flow->flow->geneve_tlv_option = wks.geneve_tlv_option;
+	/*
+	 * Update geneve_tlv_option flag only it is set in workspace.
+	 * Avoid be overwritten by other sub mlx5_flows.
+	 */
+	if (wks.geneve_tlv_option)
+		dev_flow->flow->geneve_tlv_option = wks.geneve_tlv_option;
 	return 0;
 }
 
