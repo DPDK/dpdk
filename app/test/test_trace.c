@@ -189,6 +189,19 @@ test_generic_trace_points(void)
 	return TEST_SUCCESS;
 }
 
+static int
+test_trace_dump(void)
+{
+	rte_trace_dump(stdout);
+	return 0;
+}
+
+static int
+test_trace_metadata_dump(void)
+{
+	return rte_trace_metadata_dump(stdout);
+}
+
 static struct unit_test_suite trace_tests = {
 	.suite_name = "trace autotest",
 	.setup = NULL,
@@ -201,6 +214,8 @@ static struct unit_test_suite trace_tests = {
 		TEST_CASE(test_trace_point_globbing),
 		TEST_CASE(test_trace_point_regex),
 		TEST_CASE(test_trace_points_lookup),
+		TEST_CASE(test_trace_dump),
+		TEST_CASE(test_trace_metadata_dump),
 		TEST_CASES_END()
 	}
 };
@@ -212,20 +227,3 @@ test_trace(void)
 }
 
 REGISTER_TEST_COMMAND(trace_autotest, test_trace);
-
-static int
-test_trace_dump(void)
-{
-	rte_trace_dump(stdout);
-	return 0;
-}
-
-REGISTER_TEST_COMMAND(trace_dump, test_trace_dump);
-
-static int
-test_trace_metadata_dump(void)
-{
-	return rte_trace_metadata_dump(stdout);
-}
-
-REGISTER_TEST_COMMAND(trace_metadata_dump, test_trace_metadata_dump);

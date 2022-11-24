@@ -359,9 +359,6 @@ rte_trace_metadata_dump(FILE *f)
 	char *ctf_meta = trace->ctf_meta;
 	int rc;
 
-	if (!rte_trace_is_enabled())
-		return 0;
-
 	if (ctf_meta == NULL)
 		return -EINVAL;
 
