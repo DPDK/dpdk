@@ -6,86 +6,40 @@
 DPDK Release 22.11
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_22_11.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
 
 * **Added initial LoongArch architecture support.**
 
   Added EAL implementation for LoongArch architecture.
-  The initial devices the porting was tested on included Loongson 3A5000,
+  The initial port was tested on Loongson 3A5000,
   Loongson 3C5000 and Loongson 3C5000L.
   In theory this implementation should work with any target based on
   ``LoongArch`` ISA.
 
 * **Added support for multiple mbuf pools per ethdev Rx queue.**
 
-  The capability allows application to provide many mempools
-  of different size, and PMD and/or NIC to choose a memory pool
-  based on the packet's length and/or Rx buffers availability.
+  Added a capability which allows an application to provide many mempools
+  of different size, and PMDs and/or NICs to choose a memory pool
+  based on the packet's length and/or Rx buffer availability.
 
 * **Added support for congestion management in ethdev.**
 
   Added new API functions ``rte_eth_cman_config_init()``,
-  ``rte_eth_cman_config_get()``, ``rte_eth_cman_config_set()``,
-  ``rte_eth_cman_info_get()`` to support congestion management.
+  ``rte_eth_cman_config_get()``, ``rte_eth_cman_config_set()``
+  and ``rte_eth_cman_info_get()`` to support congestion management.
 
 * **Added protocol header based buffer split.**
 
   * Added ``rte_eth_buffer_split_get_supported_hdr_ptypes()`` to get supported
     header protocols to split at.
-  * Supported protocol-based buffer split using added ``proto_hdr``
-    in structure ``rte_eth_rxseg_split``.
+  * Added support for protocol-based buffer split using new ``proto_hdr``
+    field in structure ``rte_eth_rxseg_split``.
 
 * **Added proactive error handling mode for ethdev.**
 
   Added proactive error handling mode for ethdev,
-  and three events were introduced: ``RTE_ETH_EVENT_ERR_RECOVERING``
+  and introduced three new events: ``RTE_ETH_EVENT_ERR_RECOVERING``
   to report that the port is recovering from an error,
   ``RTE_ETH_EVENT_RECOVER_SUCCESS`` and ``RTE_ETH_EVENT_RECOVER_FAILED``.
 
@@ -118,32 +72,33 @@ New Features
 
   Added connection tracking action number hint to ``rte_flow_configure``
   and ``rte_flow_info_get``.
-  PMD can prepare the connection tracking resources according to the hint.
+  The PMD can prepare the connection tracking resources according to the hint.
 
 * **Added support for queue-based async query in flow API.**
 
-  Added new function ``rte_flow_async_action_handle_query()``,
+  Added new function ``rte_flow_async_action_handle_query()``
   to query the action asynchronously.
 
 * **Extended metering and marking support in the flow API.**
 
-  * Added METER_COLOR item to match color marker set by a meter.
+  * Added ``METER_COLOR`` item to match color marker set by a meter.
   * Added ability to set color marker via modify field flow API.
-  * Added meter API to get a pointer to profile/policy by their ID.
-  * Added METER_MARK action for metering with lockless profile/policy access.
+  * Added meter API to get a pointer to the profile/policy by their ID.
+  * Added ``METER_MARK`` action for metering with lockless profile/policy access.
 
 * **Added flow offload action to route packets to kernel.**
 
-  Added new flow action which allows application to re-route packets
+  Added new flow action which allows an application to re-route packets
   directly to the kernel without software involvement.
 
 * **Updated AF_XDP driver.**
 
-  * Made compatible with libbpf v0.8.0 (when used with libxdp).
+  * Updated AF_XDP driver to make it compatible with libbpf v0.8.0
+    (when used with libxdp).
 
 * **Updated AMD Pensando ionic driver.**
 
-  * Updated to reflect that Pensando has been acquired by AMD.
+  * Updated ionic driver to reflect that Pensando has been acquired by AMD.
   * Enhanced data path to provide substantial performance improvements.
   * Added support for mbuf fast free.
   * Added support for advertising packet types.
@@ -151,7 +106,7 @@ New Features
   * Added Q-in-CMB feature controlled by device option ``ionic_cmb``.
   * Added optimized handlers for non-scattered Rx and Tx.
 
-* **Added GVE net PMD**
+* **Added GVE net PMD.**
 
   * Added the new ``gve`` net driver for Google Virtual Ethernet devices.
   * See the :doc:`../nics/gve` NIC guide for more details on this new driver.
@@ -172,25 +127,25 @@ New Features
 
 * **Updated Marvell cnxk driver.**
 
-  * Added support for flow action REPRESENTED_PORT.
+  * Added support for flow action ``REPRESENTED_PORT``.
   * Added support for congestion management.
 
 * **Added Microsoft mana driver.**
 
-  Disabled by default because of missing dependency.
+  The driver has been disabled by default because of a, currently, missing dependency.
 
 * **Updated Netronome nfp driver.**
 
   Added flow API support:
 
-  * Added the support of flower firmware.
+  * Added support for the flower firmware.
   * Added the flower service infrastructure.
   * Added the control message interactive channels between PMD and firmware.
-  * Added the support of representor port.
+  * Added support for a representor port.
 
 * **Updated NVIDIA mlx5 driver.**
 
-  * Added full support for queue-based async HW steering.
+  * Added full support for queue-based async hardware steering.
 
     - Support of FDB.
     - Support of control flow and isolate mode.
@@ -202,7 +157,7 @@ New Features
 
 * **Updated NXP dpaa2 driver.**
 
-  * Added support for flow action REPRESENTED_PORT.
+  * Added support for flow action ``REPRESENTED_PORT``.
 
 * **Updated Wangxun ngbe driver.**
 
@@ -216,8 +171,8 @@ New Features
 * **Added non-blocking notify API to vhost library.**
 
   Added ``rte_vhost_vring_call_nonblock`` API to notify the guest that
-  used descriptors have been added to the vring in non-blocking way.
-  User should check the return value of this API and try again if needed.
+  used descriptors have been added to the vring in n aon-blocking way.
+  The user should check the return value of this API and try again if needed.
 
 * **Added support for MACsec in rte_security.**
 
@@ -237,7 +192,7 @@ New Features
 
 * **Updated Marvell cnxk crypto driver.**
 
-  * Added AES-CCM support in lookaside protocol (IPsec) for CN9K & CN10K.
+  * Added AES-CCM support in lookaside protocol (IPsec) for CN9K and  CN10K.
   * Added AES & DES DOCSIS algorithm support in lookaside crypto for CN9K.
 
 * **Updated aesni_mb crypto driver.**
@@ -259,7 +214,7 @@ New Features
 * **Added bbdev operation for FFT processing.**
 
   Added a new operation type in bbdev for FFT processing with new functions
-  ``rte_bbdev_enqueue_fft_ops``, ``rte_bbdev_dequeue_fft_ops``,
+  ``rte_bbdev_enqueue_fft_ops`` and ``rte_bbdev_dequeue_fft_ops``,
   and related structures.
 
 * **Added Intel ACC200 bbdev driver.**
@@ -285,13 +240,13 @@ New Features
 
 * **Added event crypto adapter vectorization support.**
 
-  Added support to aggregate crypto operations processed by event crypto adapter
-  into single event containing ``rte_event_vector``
+  Added support for aggregating crypto operations processed by event crypto adapter
+  into a single event containing ``rte_event_vector``
   whose event type is ``RTE_EVENT_TYPE_CRYPTODEV_VECTOR``.
 
 * **Added NitroSketch in membership library.**
 
-  Added a new data structure called sketch into membership library,
+  Added a new data structure called sketch into the membership library,
   to profile the traffic efficiently.
   NitroSketch provides high-fidelity approximate measurements
   and appears as a promising alternative to traditional approaches
@@ -320,7 +275,7 @@ New Features
   Added support for asymmetric crypto algorithms.
   See the :doc:`../sample_app_ug/fips_validation` for more details.
 
-* **Rewritten pmdinfo script.**
+* **Rewrote pmdinfo script.**
 
   The ``dpdk-pmdinfo.py`` script was rewritten to produce valid JSON only.
   PCI-IDs parsing has been removed.
@@ -335,28 +290,19 @@ New Features
 Removed Items
 -------------
 
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * mem: Removed not implemented and deprecated ``rte_malloc_set_limit``.
 
 * ethdev: removed ``RTE_FLOW_ITEM_TYPE_PF``;
-  use ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT``.
+  use ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT`` instead.
 
 * ethdev: removed ``RTE_FLOW_ITEM_TYPE_VF``;
-  use ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT``.
+  use ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT`` instead.
 
 * ethdev: removed ``RTE_FLOW_ITEM_TYPE_PHY_PORT``;
-  use ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT``.
+  use ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT`` instead.
 
 * ethdev: removed ``RTE_FLOW_ACTION_TYPE_PHY_PORT``;
-  use ``RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT``.
+  use ``RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT`` instead.
 
 * ethdev: removed ``OF_SET_MPLS_TTL``, ``OF_DEC_MPLS_TTL``,
   ``OF_SET_NW_TTL``, ``OF_COPY_TTL_OUT`` and ``OF_COPY_TTL_IN``
@@ -370,42 +316,30 @@ Removed Items
 API Changes
 -----------
 
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-* eal: RTE_FUNC_PTR_OR_* macros have been marked deprecated and will be removed
+* eal: ``RTE_FUNC_PTR_OR_*`` macros have been marked deprecated and will be removed
   in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
   to update their code.
 
-* eal: Updated ``rte_eal_remote_launch`` so it returns -EPIPE in case of
+* eal: Updated ``rte_eal_remote_launch`` so it returns ``-EPIPE`` in case of
   a read or write error on the pipe, instead of calling ``rte_panic``.
 
-* eal: Updated return types for rte_{bsf,fls} inline functions
+* eal: Updated return types for ``rte_{bsf,fls}`` inline functions
   to be consistently ``uint32_t``.
 
-* mempool: Deprecated helper macro ``MEMPOOL_HEADER_SIZE()`` is removed.
+* mempool: Deprecated helper macro ``MEMPOOL_HEADER_SIZE()`` has been removed.
   The replacement macro ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
 
 * mempool: Deprecated macro to register mempool driver
-  ``MEMPOOL_REGISTER_OPS()`` is removed. Use replacement macro
+  ``MEMPOOL_REGISTER_OPS()`` has been removed. Use replacement macro
   ``RTE_MEMPOOL_REGISTER_OPS()`` instead.
 
 * mempool: Deprecated macros ``MEMPOOL_PG_NUM_DEFAULT`` and
-  ``MEMPOOL_PG_SHIFT_MAX`` are removed. These macros are not used and
+  ``MEMPOOL_PG_SHIFT_MAX`` have been removed. These macros are not used and
   not required any more.
 
 * mbuf: Removed deprecated ``PKT_*`` flags.
   Use corresponding flags with ``RTE_MBUF_F_`` prefix instead.
-  Application can use ``devtools/cocci/prefix_mbuf_offload_flags.cocci``
+  Applications can use ``devtools/cocci/prefix_mbuf_offload_flags.cocci``
   to replace all occurrences of old mbuf flags in C code.
 
 * bus: Changed the device numa node to -1 when NUMA information is unavailable.
@@ -502,7 +436,7 @@ API Changes
   from experimental to stable.
 
 * ethdev: Banned the use of attributes ``ingress``/``egress`` in "transfer"
-  flows, as the final step of deprecation process that had been started
+  flows, as the final step of the deprecation process that had been started
   in DPDK 21.11. See items ``PORT_REPRESENTOR``, ``REPRESENTED_PORT``.
 
 * vhost: Promoted ``rte_vhost_vring_stats_get()``,
@@ -523,7 +457,7 @@ API Changes
   The API ``rte_security_session_create`` was updated to take only one mempool
   which has enough space to hold session and driver private data.
 
-* security: MACsec support is added which resulted in updates
+* security: MACsec support has been added which resulted in updates
   to structures ``rte_security_macsec_xform``, ``rte_security_macsec_stats``
   and security capability structure ``rte_security_capability``
   to accommodate MACsec capabilities.
@@ -566,18 +500,6 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * eal: Updated EAL thread names from ``lcore-worker-<lcore_id>`` to
   ``rte-worker-<lcore_id>`` so that DPDK can accommodate lcores higher than 99.
 
@@ -605,45 +527,14 @@ ABI Changes
   to ``rte_event_queue_conf`` structure.
 
 * eventdev: The field ``*u64s`` in the structure ``rte_event_vector`` is replaced
-  with ``u64s`` as the field is supposed to hold array of uint64_t values.
+  with ``u64s`` as the field is supposed to hold an array of ``uint64_t`` values.
 
 * eventdev: The structure ``rte_event_vector`` was updated to include a new bit
   field ``elem_offset:12``. The bits are taken from the bitfield ``rsvd:15``.
 
 
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
