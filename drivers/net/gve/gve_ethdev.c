@@ -320,6 +320,64 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
+gve_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct gve_tx_queue *txq = dev->data->tx_queues[i];
+		if (txq == NULL)
+			continue;
+
+		stats->opackets += txq->packets;
+		stats->obytes += txq->bytes;
+		stats->oerrors += txq->errors;
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct gve_rx_queue *rxq = dev->data->rx_queues[i];
+		if (rxq == NULL)
+			continue;
+
+		stats->ipackets += rxq->packets;
+		stats->ibytes += rxq->bytes;
+		stats->ierrors += rxq->errors;
+		stats->rx_nombuf += rxq->no_mbufs;
+	}
+
+	return 0;
+}
+
+static int
+gve_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct gve_tx_queue *txq = dev->data->tx_queues[i];
+		if (txq == NULL)
+			continue;
+
+		txq->packets  = 0;
+		txq->bytes = 0;
+		txq->errors = 0;
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct gve_rx_queue *rxq = dev->data->rx_queues[i];
+		if (rxq == NULL)
+			continue;
+
+		rxq->packets  = 0;
+		rxq->bytes = 0;
+		rxq->errors = 0;
+		rxq->no_mbufs = 0;
+	}
+
+	return 0;
+}
+
+static int
 gve_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct gve_priv *priv = dev->data->dev_private;
@@ -357,6 +415,8 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.rx_queue_release     = gve_rx_queue_release,
 	.tx_queue_release     = gve_tx_queue_release,
 	.link_update          = gve_link_update,
+	.stats_get            = gve_dev_stats_get,
+	.stats_reset          = gve_dev_stats_reset,
 	.mtu_set              = gve_dev_mtu_set,
 };
 

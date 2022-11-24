@@ -260,6 +260,7 @@ gve_tx_burst_qpl(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct rte_mbuf *tx_pkt, *first;
 	uint16_t sw_id = txq->sw_tail;
 	uint16_t nb_used, i;
+	uint64_t bytes = 0;
 	uint16_t nb_tx = 0;
 	uint32_t hlen;
 
@@ -355,6 +356,8 @@ gve_tx_burst_qpl(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		txq->nb_free -= nb_used;
 		txq->sw_nb_free -= first->nb_segs;
 		tx_tail += nb_used;
+
+		bytes += first->pkt_len;
 	}
 
 end_of_tx:
@@ -362,6 +365,10 @@ end_of_tx:
 		rte_write32(rte_cpu_to_be_32(tx_tail), txq->qtx_tail);
 		txq->tx_tail = tx_tail;
 		txq->sw_tail = sw_id;
+
+		txq->packets += nb_tx;
+		txq->bytes += bytes;
+		txq->errors += nb_pkts - nb_tx;
 	}
 
 	return nb_tx;
@@ -380,6 +387,7 @@ gve_tx_burst_ra(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct rte_mbuf *tx_pkt, *first;
 	uint16_t nb_used, hlen, i;
 	uint64_t ol_flags, addr;
+	uint64_t bytes = 0;
 	uint16_t nb_tx = 0;
 
 	txr = txq->tx_desc_ring;
@@ -438,12 +446,17 @@ gve_tx_burst_ra(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		txq->nb_free -= nb_used;
 		tx_tail += nb_used;
+
+		bytes += first->pkt_len;
 	}
 
 end_of_tx:
 	if (nb_tx) {
 		rte_write32(rte_cpu_to_be_32(tx_tail), txq->qtx_tail);
 		txq->tx_tail = tx_tail;
+
+		txq->packets += nb_tx;
+		txq->bytes += bytes;
 	}
 
 	return nb_tx;
