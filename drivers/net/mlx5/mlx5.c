@@ -1656,6 +1656,12 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 			dev->data->port_id);
 	if (priv->hrxqs)
 		mlx5_list_destroy(priv->hrxqs);
+	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
+	/*
+	 * The interrupt handler port id must be reset before priv is reset
+	 * since 'mlx5_dev_interrupt_nl_cb' uses priv.
+	 */
+	rte_io_wmb();
 	/*
 	 * Free the shared context in last turn, because the cleanup
 	 * routines above may use some shared fields, like
