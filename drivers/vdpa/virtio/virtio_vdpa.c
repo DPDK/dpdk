@@ -427,6 +427,26 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 	}
 	priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_STATE_DISABLED;
 	priv->vrings[vq_idx]->enable = false;
+
+	if (priv->configured) {
+		struct rte_vhost_vring vq;
+
+		ret = rte_vhost_get_vhost_vring(priv->vid, vq_idx, &vq);
+		if (ret) {
+			DRV_LOG(ERR, "%s virtq %d fail to get hardware idx",
+							priv->vdev->device->name, vq_idx);
+			return ret;
+		}
+
+		DRV_LOG(INFO, "%s virtq %d set hardware idx:%d",
+				priv->vdev->device->name, vq_idx, vq.used->idx);
+		ret = rte_vhost_set_vring_base(priv->vid, vq_idx, vq.used->idx, vq.used->idx);
+		if (ret) {
+			DRV_LOG(ERR, "%s virtq %d fail to set hardware idx",
+							priv->vdev->device->name, vq_idx);
+			return ret;
+		}
+	}
 	return 0;
 }
 
@@ -984,7 +1004,7 @@ virtio_vdpa_dev_close(int vid)
 
 	/* Set_vring_base */
 	for(i = 0; i < num_vr; i++) {
-		if (tmp_hw_idx[i].flag) {
+		if (tmp_hw_idx[i].flag && priv->vrings[i]->enable) {
 			DRV_LOG(INFO, "%s vid %d qid %d set last_avail_idx:%d,last_used_idx:%d",
 				vdev->device->name, vid,
 				i, tmp_hw_idx[i].last_avail_idx, tmp_hw_idx[i].last_used_idx);
