@@ -54,9 +54,6 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
-* ethdev: Announce moving from dedicated modify function for each field,
-  to using the general ``rte_flow_modify_field`` action.
-
 * ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
   should start with relevant protocol header.
   Some matching pattern structures implements this by duplicating protocol header
@@ -87,10 +84,9 @@ Deprecation Notices
   ``DEC_TTL``, ``SET_TTL``, ``SET_MAC_SRC``, ``SET_MAC_DST``, ``INC_TCP_SEQ``,
   ``DEC_TCP_SEQ``, ``INC_TCP_ACK``, ``DEC_TCP_ACK``, ``SET_IPV4_DSCP``,
   ``SET_IPV6_DSCP``, ``SET_TAG``, ``SET_META`` are marked as legacy and
-  superseded by the generic MODIFY_FIELD action.
-  The legacy actions should be deprecated in 22.07, once MODIFY_FIELD
-  alternative is implemented.
-  The legacy actions should be removed in DPDK 22.11.
+  superseded by the generic ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD``.
+  The legacy actions should be removed
+  once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
