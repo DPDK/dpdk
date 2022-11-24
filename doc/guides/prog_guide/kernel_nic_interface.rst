@@ -11,8 +11,9 @@ Kernel NIC Interface
    KNI is deprecated and will be removed in future.
    See :doc:`../rel_notes/deprecation`.
 
-   For an alternative to KNI, that does not require any out-of-tree Linux kernel modules,
-   or a custom library, see :ref:`virtio_user_as_exception_path`.
+   :ref:`virtio_user_as_exception_path` alternative is the preferred way
+   for interfacing with the Linux network stack
+   as it is an in-kernel solution and has similar performance expectations.
 
 .. note::
 
@@ -21,14 +22,39 @@ Kernel NIC Interface
 
 The DPDK Kernel NIC Interface (KNI) allows userspace applications access to the Linux* control plane.
 
-The benefits of using the DPDK KNI are:
+KNI provides an interface with the kernel network stack
+and allows management of DPDK ports using standard Linux net tools
+such as ``ethtool``, ``iproute2`` and ``tcpdump``.
+
+The main use case of KNI is to get/receive exception packets from/to Linux network stack
+while main datapath IO is done bypassing the networking stack.
+
+There are other alternatives to KNI, all are available in the upstream Linux:
+
+#. :ref:`virtio_user_as_exception_path`
+
+#. :doc:`../nics/tap` as wrapper to `Linux tun/tap
+   <https://www.kernel.org/doc/Documentation/networking/tuntap.txt>`_
+
+The benefits of using the KNI against alternatives are:
 
 *   Faster than existing Linux TUN/TAP interfaces
     (by eliminating system calls and copy_to_user()/copy_from_user() operations.
 
-*   Allows management of DPDK ports using standard Linux net tools such as ethtool, ifconfig and tcpdump.
+The disadvantages of the KNI are:
 
-*   Allows an interface with the kernel network stack.
+* It is out-of-tree Linux kernel module
+  which makes updating and distributing the driver more difficult.
+  Most users end up building the KNI driver from source
+  which requires the packages and tools to build kernel modules.
+
+* As it shares memory between userspace and kernelspace,
+  and kernel part directly uses input provided by userspace, it is not safe.
+  This makes hard to upstream the module.
+
+* Requires dedicated kernel cores.
+
+* Only a subset of net devices control commands are supported by KNI.
 
 The components of an application using the DPDK Kernel NIC Interface are shown in :numref:`figure_kernel_nic_intf`.
 
