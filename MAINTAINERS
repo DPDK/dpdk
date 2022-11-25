@@ -95,6 +95,7 @@ F: devtools/update-patches.py
 F: devtools/words-case.txt
 F: license/
 F: .editorconfig
+F: .mailmap
 
 Build System
 M: Bruce Richardson <bruce.richardson@intel.com>

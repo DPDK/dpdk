@@ -231,6 +231,28 @@ check_release_notes() { # <patch>
 		grep -v $current_rel_notes
 }
 
+check_names() { # <patch>
+	res=0
+
+	old_IFS=$IFS
+	IFS='
+'
+	for contributor in $(sed -rn '1,/^--- / {s/.*: (.*<.*@.*>)/\1/p}' $1); do
+		! grep -qE "^$contributor($| <)" .mailmap || continue
+		name=${contributor%% <*}
+		if grep -q "^$name <" .mailmap; then
+			reason="$name mail differs from primary mail"
+		else
+			reason="$contributor is unknown"
+		fi
+		echo "$reason, please fix the commit message or update .mailmap."
+		res=1
+	done
+	IFS=$old_IFS
+
+	return $res
+}
+
 number=0
 range='origin/main..'
 quiet=false
@@ -328,6 +350,14 @@ check () { # <patch-file> <commit>
 
 	! $verbose || printf '\nChecking release notes updates:\n'
 	report=$(check_release_notes "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$subject"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking names in commit log:\n'
+	report=$(check_names "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"
