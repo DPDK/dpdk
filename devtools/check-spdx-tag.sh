@@ -20,7 +20,7 @@ check_spdx() {
 	echo "--------------------------"
     fi
     git grep -L SPDX-License-Identifier -- \
-	':^.git*' ':^.ci/*' ':^.travis.yml' \
+	':^.git*' ':^.mailmap' ':^.ci/*' ':^.travis.yml' \
 	':^README' ':^MAINTAINERS' ':^VERSION' ':^ABI_VERSION' \
 	':^*/Kbuild' ':^*/README' \
 	':^license/' ':^config/' ':^buildtools/' ':^*/poetry.lock' \
