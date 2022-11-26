@@ -5534,8 +5534,8 @@ flow_dv_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  *   Pointer to the RSS action in sample action list.
  * @param[out] count
  *   Pointer to the COUNT action in sample action list.
- * @param[out] fdb_mirror_limit
- *   Pointer to the FDB mirror limitation flag.
+ * @param[out] fdb_mirror
+ *   Pointer to the FDB mirror flag.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -5551,8 +5551,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			       const struct rte_flow_action_rss *rss,
 			       const struct rte_flow_action_rss **sample_rss,
 			       const struct rte_flow_action_count **count,
-			       int *fdb_mirror_limit,
-			       struct mlx5_priv *act_priv,
+			       int *fdb_mirror,
 			       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5739,9 +5738,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 						  NULL,
 						  "E-Switch must has a dest "
 						  "port for mirroring");
-		if (!priv->config.hca_attr.reg_c_preserve &&
-		     flow_source_vport_representor(priv, act_priv))
-			*fdb_mirror_limit = 1;
+		*fdb_mirror = 1;
 	}
 	/* Continue validation for Xcap actions.*/
 	if ((sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) &&
@@ -6798,7 +6795,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	uint16_t ether_type = 0;
 	int actions_n = 0;
 	uint8_t item_ipv6_proto = 0;
-	int fdb_mirror_limit = 0;
+	int fdb_mirror = 0;
 	int modify_after_mirror = 0;
 	const struct rte_flow_item *geneve_item = NULL;
 	const struct rte_flow_item *gre_item = NULL;
@@ -6864,6 +6861,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_action_age *non_shared_age = NULL;
 	const struct rte_flow_action_count *count = NULL;
 	struct mlx5_priv *act_priv = NULL;
+	int aso_after_sample = 0;
 
 	if (items == NULL)
 		return -1;
@@ -7613,12 +7611,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							   error);
 			if (ret)
 				return ret;
-			if ((action_flags & MLX5_FLOW_ACTION_SAMPLE) &&
-			    fdb_mirror_limit)
-				return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  NULL,
-						  "sample and jump action combination is not supported");
 			++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
@@ -7698,6 +7690,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
 						   NULL,
 						   "duplicate age actions set");
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				aso_after_sample = 1;
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			++actions_n;
 			break;
@@ -7725,6 +7719,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						RTE_FLOW_ERROR_TYPE_ACTION,
 						NULL,
 						"old age action and count must be in the same sub flow");
+			} else {
+				if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+					aso_after_sample = 1;
 			}
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			++actions_n;
@@ -7767,8 +7764,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							     attr, item_flags,
 							     rss, &sample_rss,
 							     &sample_count,
-							     &fdb_mirror_limit,
-							     act_priv,
+							     &fdb_mirror,
 							     error);
 			if (ret < 0)
 				return ret;
@@ -7802,6 +7798,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							     error);
 			if (ret < 0)
 				return ret;
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				aso_after_sample = 1;
 			action_flags |= MLX5_FLOW_ACTION_CT;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET:
@@ -8054,11 +8052,24 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					  NULL, "too many header modify"
 					  " actions to support");
 	}
-	/* Eswitch egress mirror and modify flow has limitation on CX5 */
-	if (fdb_mirror_limit && modify_after_mirror)
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-				"sample before modify action is not supported");
+	if (fdb_mirror) {
+		if (!priv->sh->cdev->config.hca_attr.reg_c_preserve &&
+		    flow_source_vport_representor(priv, act_priv)) {
+			/* Eswitch egress mirror and modify flow has limitation on CX5 */
+			if (modify_after_mirror)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+						"sample before modify action is not supported");
+			if (action_flags & MLX5_FLOW_ACTION_JUMP)
+				return rte_flow_error_set(error, EINVAL,
+							RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+							"sample and jump action combination is not supported");
+		}
+		if (aso_mask > 0 && aso_after_sample && fdb_mirror)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+						  "sample before ASO action is not supported");
+	}
 	/*
 	 * Validation the NIC Egress flow on representor, except implicit
 	 * hairpin default egress flow with TX_QUEUE item, other flows not
