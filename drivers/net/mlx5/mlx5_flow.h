@@ -1111,6 +1111,7 @@ struct mlx5_flow_workspace {
 	uint32_t skip_matcher_reg:1;
 	/* Indicates if need to skip matcher register in translate. */
 	uint32_t mark:1; /* Indicates if flow contains mark action. */
+	uint32_t vport_meta_tag; /* Used for vport index match. */
 };
 
 struct mlx5_flow_split_info {
@@ -1465,6 +1466,25 @@ mlx5_translate_tunnel_etypes(uint64_t pattern_flags)
 	else if (pattern_flags & MLX5_FLOW_LAYER_MPLS)
 		return RTE_ETHER_TYPE_MPLS;
 	return 0;
+}
+
+/**
+ * Indicates whether flow source vport is representor port.
+ *
+ * @param[in] priv
+ *   Pointer to device private context structure.
+ * @param[in] act_priv
+ *   Pointer to actual device private context structure if have.
+ *
+ * @return
+ *   True when the flow source vport is representor port, false otherwise.
+ */
+static inline bool
+flow_source_vport_representor(struct mlx5_priv *priv, struct mlx5_priv *act_priv)
+{
+	MLX5_ASSERT(priv);
+	return (!act_priv ? (priv->representor_id != UINT16_MAX) :
+		 (act_priv->representor_id != UINT16_MAX));
 }
 
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,
