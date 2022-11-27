@@ -58,7 +58,7 @@ The following is an example command to run the application configured for the VX
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-pipeline -c 0x3 -- -s examples/vxlan.cli
+    $ ./<build_dir>/examples/dpdk-pipeline -c 0x3 -- -s examples/pipeline/examples/vxlan.cli
 
 The application should start successfully and display as follows:
 
