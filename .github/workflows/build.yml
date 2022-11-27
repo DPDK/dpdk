@@ -26,8 +26,7 @@ jobs:
       MINGW: ${{ matrix.config.cross == 'mingw' }}
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
-      REF_GIT_REPO: https://dpdk.org/git/dpdk-stable
-      REF_GIT_TAG: v22.11.1
+      REF_GIT_TAG: v23.03
       RISCV64: ${{ matrix.config.cross == 'riscv64' }}
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
 
