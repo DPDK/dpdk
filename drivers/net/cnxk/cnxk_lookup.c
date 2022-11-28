@@ -294,8 +294,8 @@ nix_create_rx_ol_flags_array(void *mem)
 				   errcode == NIX_RX_PERRCODE_OL3_LEN) {
 				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			} else {
-				val |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-				val |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+				val |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				val |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 			}
 			break;
 		}
