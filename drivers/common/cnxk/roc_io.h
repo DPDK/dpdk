@@ -7,6 +7,7 @@
 
 #include "roc_platform.h" /* for __plt_always_inline macro */
 
+#ifndef ROC_LMT_BASE_ID_GET
 #define ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id)                                  \
 	do {                                                                   \
 		/* 32 Lines per core */                                        \
@@ -14,7 +15,10 @@
 		/* Each line is of 128B */                                     \
 		(lmt_addr) += ((uint64_t)lmt_id << ROC_LMT_LINE_SIZE_LOG2);    \
 	} while (0)
+#endif
 
+/* Define it if not defined in roc_platform.h */
+#ifndef ROC_LMT_CPT_BASE_ID_GET
 #define ROC_LMT_CPT_BASE_ID_GET(lmt_addr, lmt_id)                              \
 	do {                                                                   \
 		/* 16 Lines per core */                                        \
@@ -23,6 +27,7 @@
 		/* Each line is of 128B */                                     \
 		(lmt_addr) += ((uint64_t)lmt_id << ROC_LMT_LINE_SIZE_LOG2);    \
 	} while (0)
+#endif
 
 #define roc_load_pair(val0, val1, addr)                                        \
 	({                                                                     \

@@ -1033,7 +1033,8 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	uint64_t *dptr;
 	int i;
 
-	ROC_LMT_CPT_BASE_ID_GET(lmt_base, lmt_id);
+	/* Use this lcore's LMT line as no one else is using it */
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
 	inst = (struct cpt_inst_s *)lmt_base;
 
 	memset(inst, 0, sizeof(struct cpt_inst_s));
