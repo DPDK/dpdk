@@ -846,12 +846,77 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
+static void
+nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
+		struct rte_mbuf *pkt,
+		uint8_t layer)
+{
+	uint16_t vlan_tci;
+	uint16_t tpid;
+
+	tpid = RTE_ETHER_TYPE_VLAN;
+	vlan_tci = pkt->vlan_tci;
+
+	meta_data->data[layer] = rte_cpu_to_be_32(tpid << 16 | vlan_tci);
+}
+
+static void
+nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
+		struct nfp_net_txq *txq,
+		struct rte_mbuf *pkt)
+{
+	uint8_t vlan_layer = 0;
+	struct nfp_net_hw *hw;
+	uint32_t meta_info;
+	uint8_t layer = 0;
+	char *meta;
+
+	hw = txq->hw;
+
+	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
+			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN) != 0) {
+		if (meta_data->length == 0)
+			meta_data->length = NFP_NET_META_HEADER_SIZE;
+		meta_data->length += NFP_NET_META_FIELD_SIZE;
+		meta_data->header |= NFP_NET_META_VLAN;
+	}
+
+	if (meta_data->length == 0)
+		return;
+
+	meta_info = meta_data->header;
+	meta_data->header = rte_cpu_to_be_32(meta_data->header);
+	meta = rte_pktmbuf_prepend(pkt, meta_data->length);
+	memcpy(meta, &meta_data->header, sizeof(meta_data->header));
+	meta += NFP_NET_META_HEADER_SIZE;
+
+	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, layer++,
+			meta += NFP_NET_META_FIELD_SIZE) {
+		switch (meta_info & NFP_NET_META_FIELD_MASK) {
+		case NFP_NET_META_VLAN:
+			if (vlan_layer > 0) {
+				PMD_DRV_LOG(ERR, "At most 1 layers of vlan is supported");
+				return;
+			}
+			nfp_net_set_meta_vlan(meta_data, pkt, layer);
+			vlan_layer++;
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "The metadata type not supported");
+			return;
+		}
+
+		memcpy(meta, &meta_data->data[layer], sizeof(meta_data->data[layer]));
+	}
+}
+
 uint16_t
 nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct nfp_net_txq *txq;
 	struct nfp_net_hw *hw;
 	struct nfp_net_nfd3_tx_desc *txds, txd;
+	struct nfp_net_meta_raw meta_data;
 	struct rte_mbuf *pkt;
 	uint64_t dma_addr;
 	int pkt_size, dma_size;
@@ -882,12 +947,15 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		   txq->qidx, nb_pkts);
 	/* Sending packets */
 	while ((i < nb_pkts) && free_descs) {
+		memset(&meta_data, 0, sizeof(meta_data));
 		/* Grabbing the mbuf linked to the current descriptor */
 		lmbuf = &txq->txbufs[txq->wr_p].mbuf;
 		/* Warming the cache for releasing the mbuf later on */
 		RTE_MBUF_PREFETCH_TO_FREE(*lmbuf);
 
 		pkt = *(tx_pkts + i);
+
+		nfp_net_nfd3_set_meta_data(&meta_data, txq, pkt);
 
 		if (unlikely(pkt->nb_segs > 1 &&
 			     !(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {
@@ -906,12 +974,6 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		txd.data_len = pkt->pkt_len;
 		nfp_net_nfd3_tx_tso(txq, &txd, pkt);
 		nfp_net_nfd3_tx_cksum(txq, &txd, pkt);
-
-		if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) &&
-		    (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)) {
-			txd.flags |= PCIE_DESC_TX_VLAN;
-			txd.vlan = pkt->vlan_tci;
-		}
 
 		/*
 		 * mbuf data_len is the data in one segment and pkt_len data
@@ -961,6 +1023,9 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 				txds->offset_eop = PCIE_DESC_TX_EOP;
 			else
 				txds->offset_eop = 0;
+
+			/* Set the meta_len */
+			txds->offset_eop |= meta_data.length;
 
 			pkt = pkt->next;
 			/* Referencing next free TX descriptor */

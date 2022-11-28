@@ -417,8 +417,10 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 
 	hw->mtu = dev->data->mtu;
 
-	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
-		ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) {
+		if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
+			ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
+	}
 
 	/* L2 broadcast */
 	if (hw->cap & NFP_NET_CFG_CTRL_L2BC)

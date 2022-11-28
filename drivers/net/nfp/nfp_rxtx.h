@@ -27,6 +27,25 @@
 
 /* Maximum number of supported VLANs in parsed form packet metadata. */
 #define NFP_META_MAX_VLANS       2
+/* Maximum number of NFP packet metadata fields. */
+#define NFP_META_MAX_FIELDS      8
+
+/*
+ * struct nfp_net_meta_raw - Raw memory representation of packet metadata
+ *
+ * Describe the raw metadata format, useful when preparing metadata for a
+ * transmission mbuf.
+ *
+ * @header: NFD3 Contains the 8 4-bit type fields
+ * @data: Array of each fields data member
+ * @length: Keep track of number of valid fields in @header and data. Not part
+ *          of the raw metadata.
+ */
+struct nfp_net_meta_raw {
+	uint32_t header;
+	uint32_t data[NFP_META_MAX_FIELDS];
+	uint8_t length;
+};
 
 /*
  * struct nfp_meta_parsed - Record metadata parsed from packet
@@ -124,7 +143,7 @@ struct nfp_net_nfd3_tx_desc {
 			uint8_t dma_addr_hi; /* High bits of host buf address */
 			__le16 dma_len;     /* Length to DMA for this desc */
 			uint8_t offset_eop; /* Offset in buf where pkt starts +
-					     * highest bit is eop flag.
+					     * highest bit is eop flag, low 7bit is meta_len.
 					     */
 			__le32 dma_addr_lo; /* Low 32bit of host buf addr */
 
