@@ -30,8 +30,18 @@
 #define NFP_NET_META_FIELD_SIZE         4
 #define NFP_NET_META_FIELD_MASK ((1 << NFP_NET_META_FIELD_SIZE) - 1)
 
+/* Working with metadata vlan api (NFD version >= 2.0) */
+#define NFP_NET_META_VLAN_INFO          16
+#define NFP_NET_META_VLAN_OFFLOAD       31
+#define NFP_NET_META_VLAN_TPID          3
+#define NFP_NET_META_VLAN_MASK          ((1 << NFP_NET_META_VLAN_INFO) - 1)
+#define NFP_NET_META_VLAN_TPID_MASK     ((1 << NFP_NET_META_VLAN_TPID) - 1)
+#define NFP_NET_META_TPID(d)            (((d) >> NFP_NET_META_VLAN_INFO) & \
+						NFP_NET_META_VLAN_TPID_MASK)
+
 /* Prepend field types */
 #define NFP_NET_META_HASH               1 /* next field carries hash type */
+#define NFP_NET_META_VLAN               4
 
 /* Hash type pre-pended when a RSS hash was computed */
 #define NFP_NET_RSS_NONE                0

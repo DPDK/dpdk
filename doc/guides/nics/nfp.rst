@@ -271,3 +271,25 @@ the header. The hash value is 32 bit which need 1 data field.
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                            Hash value                         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+NFP_NET_META_VLAN
+Metadata with L2 (1W/4B)
+::
+
+   ----------------------------------------------------------------
+      3                   2                   1                   0
+    1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |f|            reserved   | tpid| PCP |p|   vlan outermost VID  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                                   ^                               ^
+                             NOTE: |             TCI               |
+                                   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   f 0 -> not stripping
+   1 -> stripping
+
+   tpid 0 -> RTE_ETHER_TYPE_VLAN 0x8100 IEEE 802.1Q VLAN tagging
+        1 -> RTE_ETHER_TYPE_QINQ 0x88a8 IEEE 802.1ad QINQ tagging
+   Tpid just be stored, now we don't handle it
+
+   The vlan[0] is the innermost VLAN

@@ -25,6 +25,9 @@
 #define RTE_MBUF_DMA_ADDR_DEFAULT(mb) \
 	((uint64_t)((mb)->buf_iova + RTE_PKTMBUF_HEADROOM))
 
+/* Maximum number of supported VLANs in parsed form packet metadata. */
+#define NFP_META_MAX_VLANS       2
+
 /*
  * struct nfp_meta_parsed - Record metadata parsed from packet
  *
@@ -33,10 +36,29 @@
  *
  * @hash: RSS hash value
  * @hash_type: RSS hash type
+ * @vlan_layer: The layers of VLAN info which are passed from nic.
+ *              Only this number of entries of the @vlan array are valid.
+ *
+ * @vlan: Holds information parses from NFP_NET_META_VLAN. The inner most vlan
+ *        starts at position 0 and only @vlan_layer entries contain valid
+ *        information.
+ *
+ *        Currently only 1 layer of vlan is supported,
+ *        vlan[0] - vlan strip info
+ *
+ * @vlan.offload:  Flag indicates whether VLAN is offloaded
+ * @vlan.tpid: Vlan TPID
+ * @vlan.tci: Vlan TCI including PCP + Priority + VID
  */
 struct nfp_meta_parsed {
 	uint32_t hash;
 	uint8_t hash_type;
+	uint8_t vlan_layer;
+	struct {
+		uint8_t offload;
+		uint8_t tpid;
+		uint16_t tci;
+	} vlan[NFP_META_MAX_VLANS];
 };
 
 /*

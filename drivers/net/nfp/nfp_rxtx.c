@@ -124,6 +124,7 @@ nfp_net_parse_meta(struct nfp_meta_parsed *meta,
 		struct rte_mbuf *mbuf)
 {
 	uint32_t meta_info;
+	uint32_t vlan_info;
 	uint8_t *meta_offset;
 	struct nfp_net_hw *hw = rxq->hw;
 
@@ -144,6 +145,15 @@ nfp_net_parse_meta(struct nfp_meta_parsed *meta,
 			/* Hash value is in the data field */
 			meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
 			meta->hash_type = meta_info & NFP_NET_META_FIELD_MASK;
+			break;
+		case NFP_NET_META_VLAN:
+			vlan_info = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
+			meta->vlan[meta->vlan_layer].offload =
+					vlan_info >> NFP_NET_META_VLAN_OFFLOAD;
+			meta->vlan[meta->vlan_layer].tci =
+					vlan_info & NFP_NET_META_VLAN_MASK;
+			meta->vlan[meta->vlan_layer].tpid = NFP_NET_META_TPID(vlan_info);
+			++meta->vlan_layer;
 			break;
 		default:
 			/* Unsupported metadata can be a performance issue */
@@ -210,6 +220,40 @@ nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 		break;
 	default:
 		mbuf->packet_type |= RTE_PTYPE_INNER_L4_MASK;
+	}
+}
+
+/*
+ * nfp_net_parse_meta_vlan() - Set mbuf vlan_strip data based on metadata info
+ *
+ * The VLAN info TPID and TCI are prepended to the packet data.
+ * Extract and decode it and set the mbuf fields.
+ */
+static void
+nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
+		struct nfp_net_rx_desc *rxd,
+		struct nfp_net_rxq *rxq,
+		struct rte_mbuf *mb)
+{
+	struct nfp_net_hw *hw = rxq->hw;
+
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN) == 0)
+		return;
+
+	/*
+	 * The nic support the two way to send the VLAN info,
+	 * 1. According the metadata to send the VLAN info
+	 * 2. According the descriptor to sned the VLAN info
+	 *
+	 * If the nic doesn't send the VLAN info, it is not necessary
+	 * to do anything.
+	 */
+	if (meta->vlan_layer >= 1 && meta->vlan[0].offload != 0) {
+		mb->vlan_tci = rte_cpu_to_le_32(meta->vlan[0].tci);
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+	} else if ((rxd->rxd.flags & PCIE_DESC_RX_VLAN) != 0) {
+		mb->vlan_tci = rte_cpu_to_le_32(rxd->rxd.vlan);
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 	}
 }
 
@@ -349,15 +393,10 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		memset(&meta, 0, sizeof(meta));
 		nfp_net_parse_meta(&meta, rxds, rxq, mb);
 		nfp_net_parse_meta_hash(&meta, rxds, rxq, mb);
+		nfp_net_parse_meta_vlan(&meta, rxds, rxq, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);
-
-		if ((rxds->rxd.flags & PCIE_DESC_RX_VLAN) &&
-		    (hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN)) {
-			mb->vlan_tci = rte_cpu_to_le_32(rxds->rxd.vlan);
-			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
-		}
 
 		/* Adding the mbuf to the mbuf array passed by the app */
 		rx_pkts[avail++] = mb;
