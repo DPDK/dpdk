@@ -1235,6 +1235,7 @@ roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 		return NIX_ERR_QUEUE_INVALID_RANGE;
 
 	sq->roc_nix = roc_nix;
+	sq->tc = ROC_NIX_PFC_CLASS_INVALID;
 	/*
 	 * Allocate memory for flow control updates from HW.
 	 * Alloc one cache line, so that fits all FC_STYPE modes.
