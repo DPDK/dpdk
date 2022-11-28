@@ -9,7 +9,7 @@ static inline bool
 roc_errata_nix_has_no_drop_re(void)
 {
 	return (roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
-		roc_model_is_cnf10kb_a0());
+		roc_model_is_cnf10kb_a0() || roc_model_is_cn10ka_a1());
 }
 
 /* Errata NIX-34873 */
