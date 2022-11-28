@@ -16603,8 +16603,11 @@ flow_dv_create_policy_rules(struct rte_eth_dev *dev,
 			     struct mlx5_flow_meter_policy *mtr_policy)
 {
 	int i;
+	int ret = 0;
 	uint16_t sub_policy_num;
+	struct mlx5_flow_workspace *wks = mlx5_flow_push_thread_workspace();
 
+	RTE_SET_USED(wks);
 	for (i = 0; i < MLX5_MTR_DOMAIN_MAX; i++) {
 		sub_policy_num = (mtr_policy->sub_policy_num >>
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * i)) &
@@ -16616,10 +16619,13 @@ flow_dv_create_policy_rules(struct rte_eth_dev *dev,
 			mtr_policy->sub_policys[i][0], i)) {
 			DRV_LOG(ERR, "Failed to create policy action "
 				"list per domain.");
-			return -1;
+			ret = -1;
+			goto exit;
 		}
 	}
-	return 0;
+exit:
+	mlx5_flow_pop_thread_workspace();
+	return ret;
 }
 
 static int
