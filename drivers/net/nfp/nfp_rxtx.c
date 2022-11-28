@@ -237,23 +237,30 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 {
 	struct nfp_net_hw *hw = rxq->hw;
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN) == 0)
+	/* Skip if hardware don't support setting vlan. */
+	if ((hw->ctrl & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) == 0)
 		return;
 
 	/*
 	 * The nic support the two way to send the VLAN info,
-	 * 1. According the metadata to send the VLAN info
-	 * 2. According the descriptor to sned the VLAN info
+	 * 1. According the metadata to send the VLAN info when NFP_NET_CFG_CTRL_RXVLAN_V2
+	 * is set
+	 * 2. According the descriptor to sned the VLAN info when NFP_NET_CFG_CTRL_RXVLAN
+	 * is set
 	 *
 	 * If the nic doesn't send the VLAN info, it is not necessary
 	 * to do anything.
 	 */
-	if (meta->vlan_layer >= 1 && meta->vlan[0].offload != 0) {
-		mb->vlan_tci = rte_cpu_to_le_32(meta->vlan[0].tci);
-		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
-	} else if ((rxd->rxd.flags & PCIE_DESC_RX_VLAN) != 0) {
-		mb->vlan_tci = rte_cpu_to_le_32(rxd->rxd.vlan);
-		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0) {
+		if (meta->vlan_layer >= 1 && meta->vlan[0].offload != 0) {
+			mb->vlan_tci = rte_cpu_to_le_32(meta->vlan[0].tci);
+			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+		}
+	} else if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN) != 0) {
+		if ((rxd->rxd.flags & PCIE_DESC_RX_VLAN) != 0) {
+			mb->vlan_tci = rte_cpu_to_le_32(rxd->rxd.vlan);
+			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+		}
 	}
 }
 

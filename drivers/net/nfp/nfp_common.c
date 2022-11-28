@@ -195,7 +195,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			NFD_CFG_MAJOR_VERSION_of(hw->ver),
 			NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
 
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 			hw->cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
 			hw->cap & NFP_NET_CFG_CTRL_L2BC      ? "L2BCFILT "  : "",
 			hw->cap & NFP_NET_CFG_CTRL_L2MC      ? "L2MCFILT "  : "",
@@ -203,6 +203,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			hw->cap & NFP_NET_CFG_CTRL_TXCSUM    ? "TXCSUM "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_RXVLAN    ? "RXVLAN "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_TXVLAN    ? "TXVLAN "    : "",
+			hw->cap & NFP_NET_CFG_CTRL_RXVLAN_V2 ? "RXVLANv2 "  : "",
 			hw->cap & NFP_NET_CFG_CTRL_RXQINQ    ? "RXQINQ "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_SCATTER   ? "SCATTER "   : "",
 			hw->cap & NFP_NET_CFG_CTRL_GATHER    ? "GATHER "    : "",
@@ -214,6 +215,15 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 
 	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u",
 			hw->max_rx_queues, hw->max_tx_queues);
+}
+
+static inline void
+nfp_net_enbable_rxvlan_cap(struct nfp_net_hw *hw, uint32_t *ctrl)
+{
+	if ((hw->cap & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0)
+		*ctrl |= NFP_NET_CFG_CTRL_RXVLAN_V2;
+	else if ((hw->cap & NFP_NET_CFG_CTRL_RXVLAN) != 0)
+		*ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
 }
 
 void
@@ -397,10 +407,8 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 			ctrl |= NFP_NET_CFG_CTRL_RXCSUM;
 	}
 
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
-		if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN)
-			ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
-	}
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+		nfp_net_enbable_rxvlan_cap(hw, &ctrl);
 
 	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) {
 		if (hw->cap & NFP_NET_CFG_CTRL_RXQINQ)
@@ -849,7 +857,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	/* Next should change when PF support is implemented */
 	dev_info->max_mac_addrs = 1;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN)
+	if (hw->cap & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2))
 		dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RXQINQ)
@@ -1129,21 +1137,22 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	uint32_t new_ctrl, update;
 	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
+	uint32_t rxvlan_ctrl;
 	int ret;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	dev_conf = &dev->data->dev_conf;
 	new_ctrl = hw->ctrl;
+	rxvlan_ctrl = 0;
 
-	/*
-	 * Vlan stripping setting
-	 * Enable or disable VLAN stripping
-	 */
+	nfp_net_enbable_rxvlan_cap(hw, &rxvlan_ctrl);
+
+	/* VLAN stripping setting */
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-			new_ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
+			new_ctrl |= rxvlan_ctrl;
 		else
-			new_ctrl &= ~NFP_NET_CFG_CTRL_RXVLAN;
+			new_ctrl &= ~rxvlan_ctrl;
 	}
 
 	/* QinQ stripping setting */
