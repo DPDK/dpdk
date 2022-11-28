@@ -200,9 +200,17 @@ if [ "$ABI_CHECKS" = "true" ]; then
     fi
 
     if [ ! -d reference ]; then
+        REF_OPTS="$OPTS"
+        # We only care about the drivers and libs, disable developer checks and
+        # don't try to link apps.
+        REF_OPTS="$REF_OPTS -Dcheck_includes=false"
+        REF_OPTS="$REF_OPTS -Ddeveloper_mode=disabled"
+        REF_OPTS="$REF_OPTS -Ddisable_apps=*"
+        REF_OPTS="$REF_OPTS -Denable_docs=false"
+        REF_OPTS="$REF_OPTS -Dexamples="
         refsrcdir=$(readlink -f $(pwd)/../dpdk-$REF_GIT_TAG)
         git clone --single-branch -b "$REF_GIT_TAG" $REF_GIT_REPO $refsrcdir
-        meson setup $OPTS -Dexamples= $refsrcdir $refsrcdir/build
+        meson setup $REF_OPTS $refsrcdir $refsrcdir/build
         ninja -C $refsrcdir/build
         DESTDIR=$(pwd)/reference meson install -C $refsrcdir/build
         find reference/usr/local -name '*.a' -delete
