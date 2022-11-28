@@ -405,6 +405,9 @@ typedef void (*link_status_t)(struct roc_nix *roc_nix,
 /* PTP info update callback */
 typedef int (*ptp_info_update_t)(struct roc_nix *roc_nix, bool enable);
 
+/* Queue Error get callback */
+typedef void (*q_err_get_t)(struct roc_nix *roc_nix, void *data);
+
 /* Link status get callback */
 typedef void (*link_info_get_t)(struct roc_nix *roc_nix,
 				struct roc_nix_link_info *link);
@@ -783,6 +786,8 @@ void __roc_api roc_nix_mac_link_cb_unregister(struct roc_nix *roc_nix);
 int __roc_api roc_nix_mac_link_info_get_cb_register(
 	struct roc_nix *roc_nix, link_info_get_t link_info_get);
 void __roc_api roc_nix_mac_link_info_get_cb_unregister(struct roc_nix *roc_nix);
+int __roc_api roc_nix_q_err_cb_register(struct roc_nix *roc_nix, q_err_get_t sq_err_handle);
+void __roc_api roc_nix_q_err_cb_unregister(struct roc_nix *roc_nix);
 
 /* Ops */
 int __roc_api roc_nix_switch_hdr_set(struct roc_nix *roc_nix,

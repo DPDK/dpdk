@@ -1089,9 +1089,8 @@ sq_cn9k_fini(struct nix *nix, struct roc_nix_sq *sq)
 	while (count) {
 		void *next_sqb;
 
-		next_sqb = *(void **)((uintptr_t)sqb_buf +
-				      (uint32_t)((sqes_per_sqb - 1) *
-						 sq->max_sqe_sz));
+		next_sqb = *(void **)((uint64_t *)sqb_buf +
+				      (uint32_t)((sqes_per_sqb - 1) * (0x2 >> sq->max_sqe_sz) * 8));
 		roc_npa_aura_op_free(sq->aura_handle, 1, (uint64_t)sqb_buf);
 		sqb_buf = next_sqb;
 		count--;
@@ -1206,9 +1205,8 @@ sq_fini(struct nix *nix, struct roc_nix_sq *sq)
 	while (count) {
 		void *next_sqb;
 
-		next_sqb = *(void **)((uintptr_t)sqb_buf +
-				      (uint32_t)((sqes_per_sqb - 1) *
-						 sq->max_sqe_sz));
+		next_sqb = *(void **)((uint64_t *)sqb_buf +
+				      (uint32_t)((sqes_per_sqb - 1) * (0x2 >> sq->max_sqe_sz) * 8));
 		roc_npa_aura_op_free(sq->aura_handle, 1, (uint64_t)sqb_buf);
 		sqb_buf = next_sqb;
 		count--;
@@ -1385,4 +1383,26 @@ roc_nix_sq_head_tail_get(struct roc_nix *roc_nix, uint16_t qid, uint32_t *head,
 
 	/* Update tail index as per used sqb count */
 	*tail += (sqes_per_sqb * (sqb_cnt - 1));
+}
+
+int
+roc_nix_q_err_cb_register(struct roc_nix *roc_nix, q_err_get_t sq_err_handle)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	if (sq_err_handle == NULL)
+		return NIX_ERR_PARAM;
+
+	dev->ops->q_err_cb = (q_err_cb_t)sq_err_handle;
+	return 0;
+}
+
+void
+roc_nix_q_err_cb_unregister(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	dev->ops->q_err_cb = NULL;
 }

@@ -607,6 +607,136 @@ exit:
 	return -EFAULT;
 }
 
+void
+nix_tm_sq_free_sqe_buffer(uint64_t *sqe, int head_off, int end_off, int instr_sz)
+{
+	int i, j, inc = (8 * (0x2 >> instr_sz)), segs;
+	struct nix_send_hdr_s *send_hdr;
+	uint64_t *ptr, aura_handle;
+	struct idev_cfg *idev;
+
+	if (!sqe)
+		return;
+
+	idev = idev_get_cfg();
+	if (idev == NULL)
+		return;
+
+	ptr = sqe + (head_off * inc);
+	for (i = head_off; i < end_off; i++) {
+		ptr = sqe + (i * inc);
+		send_hdr = (struct nix_send_hdr_s *)(ptr);
+		aura_handle = roc_npa_aura_handle_gen(send_hdr->w0.aura, idev->npa->base);
+		ptr += 2;
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_EXT)
+			ptr += 2;
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_AGE_AND_STATS)
+			ptr += 2;
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_JUMP) {
+			ptr += 1;
+			ptr = (uint64_t *)*ptr;
+		}
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_CRC)
+			ptr += 2;
+		/* We are not parsing immediate send descriptor */
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_IMM)
+			continue;
+		while (1) {
+			if (((*ptr >> 60) & 0xF) == NIX_SUBDC_SG) {
+				segs = (*ptr >> 48) & 0x3;
+				ptr += 1;
+				for (j = 0; j < segs; j++) {
+					roc_npa_aura_op_free(aura_handle, 0, *ptr);
+					ptr += 1;
+				}
+				if (segs == 2)
+					ptr += 1;
+			} else if (((*ptr >> 60) & 0xF) == NIX_SUBDC_SG2) {
+				uint64_t aura = (*ptr >> 16) & 0xFFFFF;
+
+				aura = roc_npa_aura_handle_gen(aura, idev->npa->base);
+				ptr += 1;
+				roc_npa_aura_op_free(aura, 0, *ptr);
+				ptr += 1;
+			} else
+				break;
+		}
+	}
+}
+
+int
+roc_nix_tm_sq_free_pending_sqe(struct nix *nix, int q)
+{
+	int head_off, count, rc = 0, tail_off;
+	struct roc_nix_sq *sq = nix->sqs[q];
+	void *sqb_buf, *dat, *tail_sqb;
+	struct dev *dev = &nix->dev;
+	struct ndc_sync_op *ndc_req;
+	uint16_t sqes_per_sqb;
+	struct mbox *mbox;
+
+	mbox = dev->mbox;
+	/* Sync NDC-NIX-TX for LF */
+	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox);
+	if (ndc_req == NULL)
+		return -EFAULT;
+
+	ndc_req->nix_lf_tx_sync = 1;
+	if (mbox_process(mbox))
+		rc |= NIX_ERR_NDC_SYNC;
+
+	if (rc)
+		plt_err("NDC_SYNC failed rc %d", rc);
+
+	rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_SQ, q, (void *)&dat);
+
+	if (roc_model_is_cn9k()) {
+		volatile struct nix_sq_ctx_s *ctx = (struct nix_sq_ctx_s *)dat;
+
+		/* We will cleanup SQE buffers only when we received MNQ interrupt */
+		if (!ctx->mnq_dis)
+			return -EFAULT;
+
+		count = ctx->sqb_count;
+		sqb_buf = (void *)ctx->head_sqb;
+		tail_sqb = (void *)ctx->tail_sqb;
+		head_off = ctx->head_offset;
+		tail_off = ctx->tail_offset;
+	} else {
+		volatile struct nix_cn10k_sq_ctx_s *ctx = (struct nix_cn10k_sq_ctx_s *)dat;
+
+		/* We will cleanup SQE buffers only when we received MNQ interrupt */
+		if (!ctx->mnq_dis)
+			return -EFAULT;
+
+		count = ctx->sqb_count;
+		/* Free SQB's that are used */
+		sqb_buf = (void *)ctx->head_sqb;
+		tail_sqb = (void *)ctx->tail_sqb;
+		head_off = ctx->head_offset;
+		tail_off = ctx->tail_offset;
+	}
+	sqes_per_sqb = 1 << sq->sqes_per_sqb_log2;
+	/* Free SQB's that are used */
+	while (count) {
+		void *next_sqb;
+
+		if (sqb_buf == tail_sqb)
+			nix_tm_sq_free_sqe_buffer(sqb_buf, head_off, tail_off, sq->max_sqe_sz);
+		else
+			nix_tm_sq_free_sqe_buffer(sqb_buf, head_off, (sqes_per_sqb - 1),
+						  sq->max_sqe_sz);
+		next_sqb = *(void **)((uint64_t *)sqb_buf +
+				      (uint32_t)((sqes_per_sqb - 1) * (0x2 >> sq->max_sqe_sz) * 8));
+		roc_npa_aura_op_free(sq->aura_handle, 1, (uint64_t)sqb_buf);
+		sqb_buf = next_sqb;
+		head_off = 0;
+		count--;
+	}
+
+	return 0;
+}
+
 /* Flush and disable tx queue and its parent SMQ */
 int
 nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
@@ -635,7 +765,7 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 
 	/* Find the node for this SQ */
 	node = nix_tm_node_search(nix, qid, tree);
-	if (!node || !(node->flags & NIX_TM_NODE_ENABLED)) {
+	if (!node) {
 		plt_err("Invalid node/state for sq %u", qid);
 		return -EFAULT;
 	}
@@ -691,8 +821,13 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 		/* Wait for sq entries to be flushed */
 		rc = roc_nix_tm_sq_flush_spin(sq);
 		if (rc) {
-			plt_err("Failed to drain sq %u, rc=%d\n", sq->qid, rc);
-			return rc;
+			rc = roc_nix_tm_sq_free_pending_sqe(nix, sq->qid);
+			if (rc) {
+				plt_err("Failed to drain sq %u, rc=%d\n", sq->qid, rc);
+				return rc;
+			}
+			/* Freed all pending SQEs for this SQ, so disable this node */
+			sibling->flags &= ~NIX_TM_NODE_ENABLED;
 		}
 	}
 

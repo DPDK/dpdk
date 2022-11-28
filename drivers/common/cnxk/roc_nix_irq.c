@@ -249,9 +249,9 @@ nix_lf_q_irq(void *param)
 {
 	struct nix_qint *qint = (struct nix_qint *)param;
 	uint8_t irq, qintx = qint->qintx;
+	int q, cq, rq, sq, intr_cb = 0;
 	struct nix *nix = qint->nix;
 	struct dev *dev = &nix->dev;
-	int q, cq, rq, sq;
 	uint64_t intr;
 	uint8_t rc;
 
@@ -301,8 +301,10 @@ nix_lf_q_irq(void *param)
 
 		/* Detect Meta-descriptor enqueue error */
 		rc = nix_lf_sq_debug_reg(nix, NIX_LF_MNQ_ERR_DBG);
-		if (rc)
+		if (rc) {
 			plt_err("SQ=%d NIX_SQINT_MNQ_ERR, errcode %x", sq, rc);
+			intr_cb = 1;
+		}
 
 		/* Detect Send error */
 		rc = nix_lf_sq_debug_reg(nix, NIX_LF_SEND_ERR_DBG);
@@ -321,6 +323,10 @@ nix_lf_q_irq(void *param)
 	/* Dump registers to std out */
 	roc_nix_lf_reg_dump(nix_priv_to_roc_nix(nix), NULL);
 	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix), NULL);
+
+	/* Call reset callback */
+	if (intr_cb && dev->ops->q_err_cb)
+		dev->ops->q_err_cb(nix_priv_to_roc_nix(nix), NULL);
 }
 
 int

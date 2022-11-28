@@ -406,6 +406,8 @@ int nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 			 bool enable, bool force_flush);
 void nix_rq_vwqe_flush(struct roc_nix_rq *rq, uint16_t vwqe_interval);
 int nix_tm_mark_init(struct nix *nix);
+void nix_tm_sq_free_sqe_buffer(uint64_t *sqe, int head_off, int end_off, int instr_sz);
+int roc_nix_tm_sq_free_pending_sqe(struct nix *nix, int q);
 
 /*
  * TM priv utils.

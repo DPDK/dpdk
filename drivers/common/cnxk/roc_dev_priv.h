@@ -30,6 +30,9 @@ typedef void (*link_info_t)(void *roc_nix,
 /* PTP info callback */
 typedef int (*ptp_info_t)(void *roc_nix, bool enable);
 
+/* Queue Error get callback */
+typedef void (*q_err_cb_t)(void *roc_nix, void *data);
+
 /* Link status get callback */
 typedef void (*link_status_get_t)(void *roc_nix,
 				  struct cgx_link_user_info *link);
@@ -38,6 +41,7 @@ struct dev_ops {
 	link_info_t link_status_update;
 	ptp_info_t ptp_info_update;
 	link_status_get_t link_status_get;
+	q_err_cb_t q_err_cb;
 };
 
 #define dev_is_vf(dev) ((dev)->hwcap & DEV_HWCAP_F_VF)

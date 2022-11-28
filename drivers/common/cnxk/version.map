@@ -227,6 +227,8 @@ INTERNAL {
 	roc_nix_ptp_rx_ena_dis;
 	roc_nix_ptp_sync_time_adjust;
 	roc_nix_ptp_tx_ena_dis;
+	roc_nix_q_err_cb_register;
+	roc_nix_q_err_cb_unregister;
 	roc_nix_queues_ctx_dump;
 	roc_nix_ras_intr_ena_dis;
 	roc_nix_reassembly_configure;
