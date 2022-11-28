@@ -455,7 +455,9 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct eth_dev_ops *dev_ops = eth_dev->dev_ops;
+	struct roc_nix *nix = &dev->nix;
 	struct cnxk_eth_txq_sp *txq_sp;
+	struct roc_nix_cq *cq;
 	struct roc_nix_sq *sq;
 	size_t txq_sz;
 	int rc;
@@ -479,6 +481,19 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	sq->nb_desc = nb_desc;
 	sq->max_sqe_sz = nix_sq_max_sqe_sz(dev);
 	sq->tc = ROC_NIX_PFC_CLASS_INVALID;
+
+	if (nix->tx_compl_ena) {
+		sq->cqid = sq->qid + dev->nb_rxq;
+		sq->cq_ena = 1;
+		cq = &dev->cqs[sq->cqid];
+		cq->qid = sq->cqid;
+		cq->nb_desc = nb_desc;
+		rc = roc_nix_cq_init(&dev->nix, cq);
+		if (rc) {
+			plt_err("Failed to init cq=%d, rc=%d", cq->qid, rc);
+			return rc;
+		}
+	}
 
 	rc = roc_nix_sq_init(&dev->nix, sq);
 	if (rc) {
@@ -513,7 +528,7 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	return 0;
 }
 
-static void
+void
 cnxk_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 {
 	void *txq = eth_dev->data->tx_queues[qid];
@@ -1234,7 +1249,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	if (roc_nix_is_lbk(nix))
 		nix->enable_loop = eth_dev->data->dev_conf.lpbk_mode;
 
-	nix->tx_compl_ena = 0;
+	nix->tx_compl_ena = dev->tx_compl_ena;
 
 	/* Alloc a nix lf */
 	rc = roc_nix_lf_alloc(nix, nb_rxq, nb_txq, rx_cfg);
@@ -1277,6 +1292,15 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 			goto free_nix_lf;
 		}
 		dev->sqs = qs;
+
+		if (nix->tx_compl_ena) {
+			qs = plt_zmalloc(sizeof(struct roc_nix_cq) * nb_txq, 0);
+			if (!qs) {
+				plt_err("Failed to alloc cqs");
+				goto free_nix_lf;
+			}
+			dev->cqs = qs;
+		}
 	}
 
 	/* Re-enable NIX LF error interrupts */

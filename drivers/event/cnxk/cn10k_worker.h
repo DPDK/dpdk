@@ -559,6 +559,9 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	if (cn10k_sso_sq_depth(txq) <= 0)
 		return 0;
 
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
+		handle_tx_completion_pkts(txq, 1, 1);
+
 	cn10k_nix_tx_skeleton(txq, cmd, flags, 0);
 	/* Perform header writes before barrier
 	 * for TSO
@@ -566,7 +569,7 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		cn10k_nix_xmit_prepare_tso(m, flags);
 
-	cn10k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, &sec,
+	cn10k_nix_xmit_prepare(txq, m, cmd, flags, txq->lso_tun_fmt, &sec,
 			       txq->mark_flag, txq->mark_fmt);
 
 	laddr = lmt_addr;
@@ -581,7 +584,7 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
 
 	if (flags & NIX_TX_MULTI_SEG_F)
-		segdw = cn10k_nix_prepare_mseg(m, (uint64_t *)laddr, flags);
+		segdw = cn10k_nix_prepare_mseg(txq, m, (uint64_t *)laddr, flags);
 	else
 		segdw = cn10k_nix_tx_ext_subs(flags) + 2;
 

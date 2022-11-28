@@ -152,6 +152,21 @@
 
 #define CNXK_TX_MARK_FMT_MASK (0xFFFFFFFFFFFFull)
 
+struct cnxk_eth_txq_comp {
+	uintptr_t desc_base;
+	uintptr_t cq_door;
+	int64_t *cq_status;
+	uint64_t wdata;
+	uint32_t head;
+	uint32_t qmask;
+	uint32_t nb_desc_mask;
+	uint32_t available;
+	uint32_t sqe_id;
+	bool ena;
+	struct rte_mbuf **ptr;
+	rte_spinlock_t ext_buf_lock;
+};
+
 struct cnxk_fc_cfg {
 	enum rte_eth_fc_mode mode;
 	uint8_t rx_pause;
@@ -366,6 +381,7 @@ struct cnxk_eth_dev {
 	uint16_t flags;
 	uint8_t ptype_disable;
 	bool scalar_ena;
+	bool tx_compl_ena;
 	bool tx_mark;
 	bool ptp_en;
 	bool rx_mark_update; /* Enable/Disable mark update to mbuf */
@@ -544,6 +560,7 @@ int cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    const struct rte_eth_rxconf *rx_conf,
 			    struct rte_mempool *mp);
 int cnxk_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid);
+void cnxk_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid);
 int cnxk_nix_dev_start(struct rte_eth_dev *eth_dev);
 int cnxk_nix_timesync_enable(struct rte_eth_dev *eth_dev);

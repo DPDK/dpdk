@@ -50,6 +50,7 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	uint64_t conf = dev->tx_offloads;
+	struct roc_nix *nix = &dev->nix;
 	uint16_t flags = 0;
 
 	/* Fastpath is dependent on these enums */
@@ -113,6 +114,9 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (dev->tx_mark)
 		flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
 
+	if (nix->tx_compl_ena)
+		flags |= NIX_TX_OFFLOAD_MBUF_NOFF_F;
+
 	return flags;
 }
 
@@ -166,11 +170,55 @@ nix_form_default_desc(struct cnxk_eth_dev *dev, struct cn9k_eth_txq *txq,
 }
 
 static int
+cn9k_nix_tx_compl_setup(struct cnxk_eth_dev *dev,
+		struct cn9k_eth_txq *txq,
+		struct roc_nix_sq *sq, uint16_t nb_desc)
+{
+	struct roc_nix_cq *cq;
+
+	cq = &dev->cqs[sq->cqid];
+	txq->tx_compl.desc_base = (uintptr_t)cq->desc_base;
+	txq->tx_compl.cq_door = cq->door;
+	txq->tx_compl.cq_status = cq->status;
+	txq->tx_compl.wdata = cq->wdata;
+	txq->tx_compl.head = cq->head;
+	txq->tx_compl.qmask = cq->qmask;
+	/* Total array size holding buffers is equal to
+	 * number of entries in cq and sq
+	 * max buffer in array = desc in cq + desc in sq
+	 */
+	txq->tx_compl.nb_desc_mask = (2 * rte_align32pow2(nb_desc)) - 1;
+	txq->tx_compl.ena = true;
+
+	txq->tx_compl.ptr = (struct rte_mbuf **)plt_zmalloc(txq->tx_compl.nb_desc_mask *
+			sizeof(struct rte_mbuf *), 0);
+	if (!txq->tx_compl.ptr)
+		return -1;
+
+	return 0;
+}
+
+static void
+cn9k_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	struct cn9k_eth_txq *txq;
+
+	cnxk_nix_tx_queue_release(eth_dev, qid);
+	txq = eth_dev->data->tx_queues[qid];
+
+	if (nix->tx_compl_ena)
+		plt_free(txq->tx_compl.ptr);
+}
+
+static int
 cn9k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			uint16_t nb_desc, unsigned int socket,
 			const struct rte_eth_txconf *tx_conf)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
 	uint64_t mark_fmt, mark_flag;
 	struct roc_cpt_lf *inl_lf;
 	struct cn9k_eth_txq *txq;
@@ -190,6 +238,11 @@ cn9k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	/* Update fast path queue */
 	txq = eth_dev->data->tx_queues[qid];
 	txq->fc_mem = sq->fc;
+	if (nix->tx_compl_ena) {
+		rc = cn9k_nix_tx_compl_setup(dev, txq, sq, nb_desc);
+		if (rc)
+			return rc;
+	}
 	txq->lmt_addr = sq->lmt_addr;
 	txq->io_addr = sq->io_addr;
 	txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
@@ -634,6 +687,7 @@ nix_eth_dev_ops_override(void)
 	/* Update platform specific ops */
 	cnxk_eth_dev_ops.dev_configure = cn9k_nix_configure;
 	cnxk_eth_dev_ops.tx_queue_setup = cn9k_nix_tx_queue_setup;
+	cnxk_eth_dev_ops.tx_queue_release = cn9k_nix_tx_queue_release;
 	cnxk_eth_dev_ops.rx_queue_setup = cn9k_nix_rx_queue_setup;
 	cnxk_eth_dev_ops.tx_queue_stop = cn9k_nix_tx_queue_stop;
 	cnxk_eth_dev_ops.dev_start = cn9k_nix_dev_start;

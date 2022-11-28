@@ -24,6 +24,7 @@ struct cn9k_eth_txq {
 	uint16_t cpt_desc;
 	uint64_t mark_flag : 8;
 	uint64_t mark_fmt : 48;
+	struct cnxk_eth_txq_comp tx_compl;
 } __plt_cache_aligned;
 
 struct cn9k_eth_rxq {

@@ -231,6 +231,7 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 
 #define CNXK_RSS_RETA_SIZE	"reta_size"
 #define CNXK_SCL_ENABLE		"scalar_enable"
+#define CNXK_TX_COMPL_ENA       "tx_compl_ena"
 #define CNXK_MAX_SQB_COUNT	"max_sqb_count"
 #define CNXK_FLOW_PREALLOC_SIZE "flow_prealloc_size"
 #define CNXK_FLOW_MAX_PRIORITY	"flow_max_priority"
@@ -266,6 +267,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	struct sdp_channel sdp_chan;
 	uint16_t rss_tag_as_xor = 0;
 	uint16_t scalar_enable = 0;
+	uint16_t tx_compl_ena = 0;
 	uint16_t custom_sa_act = 0;
 	struct rte_kvargs *kvlist;
 	uint16_t no_inl_dev = 0;
@@ -285,6 +287,8 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &reta_sz);
 	rte_kvargs_process(kvlist, CNXK_SCL_ENABLE, &parse_flag,
 			   &scalar_enable);
+	rte_kvargs_process(kvlist, CNXK_TX_COMPL_ENA, &parse_flag,
+			   &tx_compl_ena);
 	rte_kvargs_process(kvlist, CNXK_MAX_SQB_COUNT, &parse_sqb_count,
 			   &sqb_count);
 	rte_kvargs_process(kvlist, CNXK_FLOW_PREALLOC_SIZE,
@@ -319,6 +323,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 
 null_devargs:
 	dev->scalar_ena = !!scalar_enable;
+	dev->tx_compl_ena = !!tx_compl_ena;
 	dev->inb.no_inl_dev = !!no_inl_dev;
 	dev->inb.min_spi = ipsec_in_min_spi;
 	dev->inb.max_spi = ipsec_in_max_spi;
@@ -349,6 +354,7 @@ exit:
 RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_RSS_RETA_SIZE "=<64|128|256>"
 			      CNXK_SCL_ENABLE "=1"
+			      CNXK_TX_COMPL_ENA "=1"
 			      CNXK_MAX_SQB_COUNT "=<8-512>"
 			      CNXK_FLOW_PREALLOC_SIZE "=<1-32>"
 			      CNXK_FLOW_MAX_PRIORITY "=<1-32>"

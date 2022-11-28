@@ -369,6 +369,20 @@ Runtime Config Options
    specified should match all the channels(or rings) configured on the SDP
    interface.
 
+- ``Transmit completion handler`` (default ``0``)
+
+   When transmit completion handler is enabled,
+   the PMD invokes the callback handler provided by the application
+   for every packet which has external buf attached to mbuf
+   and frees main mbuf, external buffer is provided to applicatoin.
+   Once external buffer is handed over to application,
+   it is application responsibility either to free or reuse external buffer
+   using ``tx_compl_ena`` devargs parameter.
+
+   For example::
+
+      -a 0002:01:00.1,tx_compl_ena=1
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the

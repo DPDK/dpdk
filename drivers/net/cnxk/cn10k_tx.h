@@ -643,6 +643,28 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 }
 #endif
 
+static __rte_always_inline uint64_t
+cn10k_nix_prefree_seg(struct rte_mbuf *m, struct cn10k_eth_txq *txq,
+		struct nix_send_hdr_s *send_hdr)
+{
+	uint32_t sqe_id;
+
+	if (RTE_MBUF_HAS_EXTBUF(m)) {
+		if (send_hdr->w0.pnc) {
+			txq->tx_compl.ptr[send_hdr->w1.sqe_id]->next = m;
+		} else {
+			sqe_id = __atomic_fetch_add(&txq->tx_compl.sqe_id, 1, __ATOMIC_RELAXED);
+			send_hdr->w0.pnc = 1;
+			send_hdr->w1.sqe_id = sqe_id &
+				txq->tx_compl.nb_desc_mask;
+			txq->tx_compl.ptr[send_hdr->w1.sqe_id] = m;
+		}
+		return 1;
+	} else {
+		return cnxk_nix_prefree_seg(m);
+	}
+}
+
 static __rte_always_inline void
 cn10k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 {
@@ -696,7 +718,8 @@ cn10k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 }
 
 static __rte_always_inline void
-cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
+cn10k_nix_xmit_prepare(struct cn10k_eth_txq *txq,
+		       struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		       const uint64_t lso_tun_fmt, bool *sec, uint8_t mark_flag,
 		       uint64_t mark_fmt)
 {
@@ -888,7 +911,7 @@ cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 			 *		is greater than 1
 			 * DF bit = 0 otherwise
 			 */
-			send_hdr->w0.df = cnxk_nix_prefree_seg(m);
+			send_hdr->w0.df = cn10k_nix_prefree_seg(m, txq, send_hdr);
 		}
 		/* Mark mempool object as "put" since it is freed by NIX */
 		if (!send_hdr->w0.df)
@@ -959,7 +982,8 @@ cn10k_nix_xmit_prepare_tstamp(struct cn10k_eth_txq *txq, uintptr_t lmt_addr,
 }
 
 static __rte_always_inline uint16_t
-cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
+cn10k_nix_prepare_mseg(struct cn10k_eth_txq *txq,
+		       struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 {
 	uint64_t prefree = 0, aura0, aura, nb_segs, segdw;
 	struct nix_send_hdr_s *send_hdr;
@@ -993,7 +1017,7 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 
 	/* Set invert df if buffer is not to be freed by H/W */
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
-		prefree = cnxk_nix_prefree_seg(m);
+		prefree = cn10k_nix_prefree_seg(m, txq, send_hdr);
 		l_sg.i1 = prefree;
 	}
 
@@ -1035,7 +1059,7 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
 			aura = roc_npa_aura_handle_to_aura(m->pool->pool_id);
-			prefree = cnxk_nix_prefree_seg(m);
+			prefree = cn10k_nix_prefree_seg(m, txq, send_hdr);
 			is_sg2 = aura != aura0 && !prefree;
 		}
 
@@ -1119,6 +1143,83 @@ done:
 	return segdw;
 }
 
+static inline uint16_t
+nix_tx_compl_nb_pkts(struct cn10k_eth_txq *txq, const uint64_t wdata,
+		const uint16_t pkts, const uint32_t qmask)
+{
+	uint32_t available = txq->tx_compl.available;
+
+	/* Update the available count if cached value is not enough */
+	if (unlikely(available < pkts)) {
+		uint64_t reg, head, tail;
+
+		/* Use LDADDA version to avoid reorder */
+		reg = roc_atomic64_add_sync(wdata, txq->tx_compl.cq_status);
+		/* CQ_OP_STATUS operation error */
+		if (reg & BIT_ULL(NIX_CQ_OP_STAT_OP_ERR) ||
+				reg & BIT_ULL(NIX_CQ_OP_STAT_CQ_ERR))
+			return 0;
+
+		tail = reg & 0xFFFFF;
+		head = (reg >> 20) & 0xFFFFF;
+		if (tail < head)
+			available = tail - head + qmask + 1;
+		else
+			available = tail - head;
+
+		txq->tx_compl.available = available;
+	}
+	return RTE_MIN(pkts, available);
+}
+
+static inline void
+handle_tx_completion_pkts(struct cn10k_eth_txq *txq, const uint16_t pkts,
+			  uint8_t mt_safe)
+{
+#define CNXK_NIX_CQ_ENTRY_SZ 128
+#define CQE_SZ(x)            ((x) * CNXK_NIX_CQ_ENTRY_SZ)
+
+	uint16_t tx_pkts = 0, nb_pkts;
+	const uintptr_t desc = txq->tx_compl.desc_base;
+	const uint64_t wdata = txq->tx_compl.wdata;
+	const uint32_t qmask = txq->tx_compl.qmask;
+	uint32_t head = txq->tx_compl.head;
+	struct nix_cqe_hdr_s *tx_compl_cq;
+	struct nix_send_comp_s *tx_compl_s0;
+	struct rte_mbuf *m_next, *m;
+
+	if (mt_safe)
+		rte_spinlock_lock(&txq->tx_compl.ext_buf_lock);
+
+	nb_pkts = nix_tx_compl_nb_pkts(txq, wdata, pkts, qmask);
+	while (tx_pkts < nb_pkts) {
+		rte_prefetch_non_temporal((void *)(desc +
+					(CQE_SZ((head + 2) & qmask))));
+		tx_compl_cq = (struct nix_cqe_hdr_s *)
+			(desc + CQE_SZ(head));
+		tx_compl_s0 = (struct nix_send_comp_s *)
+			((uint64_t *)tx_compl_cq + 1);
+		m = txq->tx_compl.ptr[tx_compl_s0->sqe_id];
+		while (m->next != NULL) {
+			m_next = m->next;
+			rte_pktmbuf_free_seg(m);
+			m = m_next;
+		}
+		rte_pktmbuf_free_seg(m);
+
+		head++;
+		head &= qmask;
+		tx_pkts++;
+	}
+	txq->tx_compl.head = head;
+	txq->tx_compl.available -= nb_pkts;
+
+	plt_write64((wdata | nb_pkts), txq->tx_compl.cq_door);
+
+	if (mt_safe)
+		rte_spinlock_unlock(&txq->tx_compl.ext_buf_lock);
+}
+
 static __rte_always_inline uint16_t
 cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
 		    uint16_t pkts, uint64_t *cmd, const uint16_t flags)
@@ -1138,6 +1239,9 @@ cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
 	uintptr_t laddr;
 	uint64_t data;
 	bool sec;
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
+		handle_tx_completion_pkts(txq, pkts, flags & NIX_TX_VWQE_F);
 
 	if (!(flags & NIX_TX_VWQE_F)) {
 		NIX_XMIT_FC_OR_RETURN(txq, pkts);
@@ -1181,7 +1285,7 @@ again:
 		if (flags & NIX_TX_OFFLOAD_TSO_F)
 			cn10k_nix_xmit_prepare_tso(tx_pkts[i], flags);
 
-		cn10k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt,
+		cn10k_nix_xmit_prepare(txq, tx_pkts[i], cmd, flags, lso_tun_fmt,
 				       &sec, mark_flag, mark_fmt);
 
 		laddr = (uintptr_t)LMT_OFF(lbase, lnum, 0);
@@ -1285,6 +1389,9 @@ cn10k_nix_xmit_pkts_mseg(void *tx_queue, uint64_t *ws,
 	uintptr_t laddr;
 	bool sec;
 
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
+		handle_tx_completion_pkts(txq, pkts, flags & NIX_TX_VWQE_F);
+
 	if (!(flags & NIX_TX_VWQE_F)) {
 		NIX_XMIT_FC_OR_RETURN(txq, pkts);
 		/* Reduce the cached count */
@@ -1331,7 +1438,7 @@ again:
 		if (flags & NIX_TX_OFFLOAD_TSO_F)
 			cn10k_nix_xmit_prepare_tso(tx_pkts[i], flags);
 
-		cn10k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt,
+		cn10k_nix_xmit_prepare(txq, tx_pkts[i], cmd, flags, lso_tun_fmt,
 				       &sec, mark_flag, mark_fmt);
 
 		laddr = (uintptr_t)LMT_OFF(lbase, lnum, 0);
@@ -1345,7 +1452,7 @@ again:
 		/* Move NIX desc to LMT/NIXTX area */
 		cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
 		/* Store sg list directly on lmt line */
-		segdw = cn10k_nix_prepare_mseg(tx_pkts[i], (uint64_t *)laddr,
+		segdw = cn10k_nix_prepare_mseg(txq, tx_pkts[i], (uint64_t *)laddr,
 					       flags);
 		cn10k_nix_xmit_prepare_tstamp(txq, laddr, tx_pkts[i]->ol_flags,
 					      segdw, flags);
@@ -1467,7 +1574,8 @@ cn10k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
 }
 
 static __rte_always_inline uint16_t
-cn10k_nix_prepare_mseg_vec_noff(struct rte_mbuf *m, uint64_t *cmd,
+cn10k_nix_prepare_mseg_vec_noff(struct cn10k_eth_txq *txq,
+				struct rte_mbuf *m, uint64_t *cmd,
 				uint64x2_t *cmd0, uint64x2_t *cmd1,
 				uint64x2_t *cmd2, uint64x2_t *cmd3,
 				const uint32_t flags)
@@ -1482,7 +1590,7 @@ cn10k_nix_prepare_mseg_vec_noff(struct rte_mbuf *m, uint64_t *cmd,
 		vst1q_u64(cmd + 2, *cmd1); /* sg */
 	}
 
-	segdw = cn10k_nix_prepare_mseg(m, cmd, flags);
+	segdw = cn10k_nix_prepare_mseg(txq, m, cmd, flags);
 
 	if (flags & NIX_TX_OFFLOAD_TSTAMP_F)
 		vst1q_u64(cmd + segdw * 2 - 2, *cmd3);
@@ -1581,7 +1689,8 @@ cn10k_nix_prepare_mseg_vec(struct rte_mbuf *m, uint64_t *cmd, uint64x2_t *cmd0,
 #define NIX_DESCS_PER_LOOP 4
 
 static __rte_always_inline uint8_t
-cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
+cn10k_nix_prep_lmt_mseg_vector(struct cn10k_eth_txq *txq,
+			       struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 			       uint64x2_t *cmd1, uint64x2_t *cmd2,
 			       uint64x2_t *cmd3, uint8_t *segdw,
 			       uint64_t *lmt_addr, __uint128_t *data128,
@@ -1599,7 +1708,7 @@ cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 				lmt_addr += 16;
 				off = 0;
 			}
-			off += cn10k_nix_prepare_mseg_vec_noff(mbufs[j],
+			off += cn10k_nix_prepare_mseg_vec_noff(txq, mbufs[j],
 					lmt_addr + off * 2, &cmd0[j], &cmd1[j],
 					&cmd2[j], &cmd3[j], flags);
 		}
@@ -1741,14 +1850,15 @@ cn10k_nix_lmt_next(uint8_t dw, uintptr_t laddr, uint8_t *lnum, uint8_t *loff,
 }
 
 static __rte_always_inline void
-cn10k_nix_xmit_store(struct rte_mbuf *mbuf, uint8_t segdw, uintptr_t laddr,
+cn10k_nix_xmit_store(struct cn10k_eth_txq *txq,
+		     struct rte_mbuf *mbuf, uint8_t segdw, uintptr_t laddr,
 		     uint64x2_t cmd0, uint64x2_t cmd1, uint64x2_t cmd2,
 		     uint64x2_t cmd3, const uint16_t flags)
 {
 	uint8_t off;
 
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
-		cn10k_nix_prepare_mseg_vec_noff(mbuf, LMT_OFF(laddr, 0, 0),
+		cn10k_nix_prepare_mseg_vec_noff(txq, mbuf, LMT_OFF(laddr, 0, 0),
 						&cmd0, &cmd1, &cmd2, &cmd3,
 						flags);
 		return;
@@ -1816,9 +1926,12 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 	uint64x2_t sgdesc01_w0, sgdesc23_w0;
 	uint64x2_t sgdesc01_w1, sgdesc23_w1;
 	struct cn10k_eth_txq *txq = tx_queue;
+	uint64x2_t xmask01_w0, xmask23_w0;
+	uint64x2_t xmask01_w1, xmask23_w1;
 	rte_iova_t io_addr = txq->io_addr;
 	uintptr_t laddr = txq->lmt_base;
 	uint8_t c_lnum, c_shft, c_loff;
+	struct nix_send_hdr_s send_hdr;
 	uint64x2_t ltypes01, ltypes23;
 	uint64x2_t xtmp128, ytmp128;
 	uint64x2_t xmask01, xmask23;
@@ -1830,6 +1943,9 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 		__uint128_t data128;
 		uint64_t data[2];
 	} wd;
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
+		handle_tx_completion_pkts(txq, pkts, flags & NIX_TX_VWQE_F);
 
 	if (!(flags & NIX_TX_VWQE_F)) {
 		NIX_XMIT_FC_OR_RETURN(txq, pkts);
@@ -2664,8 +2780,10 @@ again:
 		    !(flags & NIX_TX_MULTI_SEG_F) &&
 		    !(flags & NIX_TX_OFFLOAD_SECURITY_F)) {
 			/* Set don't free bit if reference count > 1 */
-			xmask01 = vdupq_n_u64(0);
-			xmask23 = xmask01;
+			xmask01_w0 = vdupq_n_u64(0);
+			xmask01_w1 = vdupq_n_u64(0);
+			xmask23_w0 = xmask01_w0;
+			xmask23_w1 = xmask01_w1;
 
 			/* Move mbufs to iova */
 			mbuf0 = (uint64_t *)tx_pkts[0];
@@ -2673,35 +2791,62 @@ again:
 			mbuf2 = (uint64_t *)tx_pkts[2];
 			mbuf3 = (uint64_t *)tx_pkts[3];
 
-			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf0))
-				xmask01 = vsetq_lane_u64(0x80000, xmask01, 0);
-			else
+			send_hdr.w0.u = 0;
+			send_hdr.w1.u = 0;
+
+			if (cn10k_nix_prefree_seg((struct rte_mbuf *)mbuf0, txq, &send_hdr)) {
+				send_hdr.w0.df = 1;
+				xmask01_w0 = vsetq_lane_u64(send_hdr.w0.u, xmask01_w0, 0);
+				xmask01_w1 = vsetq_lane_u64(send_hdr.w1.u, xmask01_w1, 0);
+			} else {
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf0)->pool,
 					(void **)&mbuf0, 1, 0);
+			}
 
-			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf1))
-				xmask01 = vsetq_lane_u64(0x80000, xmask01, 1);
-			else
+			send_hdr.w0.u = 0;
+			send_hdr.w1.u = 0;
+
+			if (cn10k_nix_prefree_seg((struct rte_mbuf *)mbuf1, txq, &send_hdr)) {
+				send_hdr.w0.df = 1;
+				xmask01_w0 = vsetq_lane_u64(send_hdr.w0.u, xmask01_w0, 1);
+				xmask01_w1 = vsetq_lane_u64(send_hdr.w1.u, xmask01_w1, 1);
+			} else {
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf1)->pool,
 					(void **)&mbuf1, 1, 0);
+			}
 
-			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf2))
-				xmask23 = vsetq_lane_u64(0x80000, xmask23, 0);
-			else
+			send_hdr.w0.u = 0;
+			send_hdr.w1.u = 0;
+
+			if (cn10k_nix_prefree_seg((struct rte_mbuf *)mbuf2, txq, &send_hdr)) {
+				send_hdr.w0.df = 1;
+				xmask23_w0 = vsetq_lane_u64(send_hdr.w0.u, xmask23_w0, 0);
+				xmask23_w1 = vsetq_lane_u64(send_hdr.w1.u, xmask23_w1, 0);
+			} else {
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf2)->pool,
 					(void **)&mbuf2, 1, 0);
+			}
 
-			if (cnxk_nix_prefree_seg((struct rte_mbuf *)mbuf3))
-				xmask23 = vsetq_lane_u64(0x80000, xmask23, 1);
-			else
+			send_hdr.w0.u = 0;
+			send_hdr.w1.u = 0;
+
+			if (cn10k_nix_prefree_seg((struct rte_mbuf *)mbuf3, txq, &send_hdr)) {
+				send_hdr.w0.df = 1;
+				xmask23_w0 = vsetq_lane_u64(send_hdr.w0.u, xmask23_w0, 1);
+				xmask23_w1 = vsetq_lane_u64(send_hdr.w1.u, xmask23_w1, 1);
+			} else {
 				RTE_MEMPOOL_CHECK_COOKIES(
 					((struct rte_mbuf *)mbuf3)->pool,
 					(void **)&mbuf3, 1, 0);
-			senddesc01_w0 = vorrq_u64(senddesc01_w0, xmask01);
-			senddesc23_w0 = vorrq_u64(senddesc23_w0, xmask23);
+			}
+
+			senddesc01_w0 = vorrq_u64(senddesc01_w0, xmask01_w0);
+			senddesc23_w0 = vorrq_u64(senddesc23_w0, xmask23_w0);
+			senddesc01_w1 = vorrq_u64(senddesc01_w1, xmask01_w1);
+			senddesc23_w1 = vorrq_u64(senddesc23_w1, xmask23_w1);
 		} else if (!(flags & NIX_TX_MULTI_SEG_F) &&
 			   !(flags & NIX_TX_OFFLOAD_SECURITY_F)) {
 			/* Move mbufs to iova */
@@ -2773,7 +2918,7 @@ again:
 						   &shift, &wd.data128, &next);
 
 			/* Store mbuf0 to LMTLINE/CPT NIXTX area */
-			cn10k_nix_xmit_store(tx_pkts[0], segdw[0], next,
+			cn10k_nix_xmit_store(txq, tx_pkts[0], segdw[0], next,
 					     cmd0[0], cmd1[0], cmd2[0], cmd3[0],
 					     flags);
 
@@ -2789,7 +2934,7 @@ again:
 						   &shift, &wd.data128, &next);
 
 			/* Store mbuf1 to LMTLINE/CPT NIXTX area */
-			cn10k_nix_xmit_store(tx_pkts[1], segdw[1], next,
+			cn10k_nix_xmit_store(txq, tx_pkts[1], segdw[1], next,
 					     cmd0[1], cmd1[1], cmd2[1], cmd3[1],
 					     flags);
 
@@ -2805,7 +2950,7 @@ again:
 						   &shift, &wd.data128, &next);
 
 			/* Store mbuf2 to LMTLINE/CPT NIXTX area */
-			cn10k_nix_xmit_store(tx_pkts[2], segdw[2], next,
+			cn10k_nix_xmit_store(txq, tx_pkts[2], segdw[2], next,
 					     cmd0[2], cmd1[2], cmd2[2], cmd3[2],
 					     flags);
 
@@ -2821,7 +2966,7 @@ again:
 						   &shift, &wd.data128, &next);
 
 			/* Store mbuf3 to LMTLINE/CPT NIXTX area */
-			cn10k_nix_xmit_store(tx_pkts[3], segdw[3], next,
+			cn10k_nix_xmit_store(txq, tx_pkts[3], segdw[3], next,
 					     cmd0[3], cmd1[3], cmd2[3], cmd3[3],
 					     flags);
 
@@ -2829,7 +2974,7 @@ again:
 			uint8_t j;
 
 			segdw[4] = 8;
-			j = cn10k_nix_prep_lmt_mseg_vector(tx_pkts, cmd0, cmd1,
+			j = cn10k_nix_prep_lmt_mseg_vector(txq, tx_pkts, cmd0, cmd1,
 							  cmd2, cmd3, segdw,
 							  (uint64_t *)
 							  LMT_OFF(laddr, lnum,
