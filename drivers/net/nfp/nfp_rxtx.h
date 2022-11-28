@@ -43,8 +43,9 @@
  *        starts at position 0 and only @vlan_layer entries contain valid
  *        information.
  *
- *        Currently only 1 layer of vlan is supported,
+ *        Currently only 2 layers of vlan are supported,
  *        vlan[0] - vlan strip info
+ *        vlan[1] - qinq strip info
  *
  * @vlan.offload:  Flag indicates whether VLAN is offloaded
  * @vlan.tpid: Vlan TPID

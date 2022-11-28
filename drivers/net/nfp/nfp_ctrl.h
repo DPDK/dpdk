@@ -93,6 +93,7 @@
 #define   NFP_NET_CFG_CTRL_SCATTER        (0x1 <<  8) /* Scatter DMA */
 #define   NFP_NET_CFG_CTRL_GATHER         (0x1 <<  9) /* Gather DMA */
 #define   NFP_NET_CFG_CTRL_LSO            (0x1 << 10) /* LSO/TSO */
+#define   NFP_NET_CFG_CTRL_RXQINQ         (0x1 << 13) /* Enable QINQ strip */
 #define   NFP_NET_CFG_CTRL_RINGCFG        (0x1 << 16) /* Ring runtime changes */
 #define   NFP_NET_CFG_CTRL_RSS            (0x1 << 17) /* RSS */
 #define   NFP_NET_CFG_CTRL_IRQMOD         (0x1 << 18) /* Interrupt moderation */

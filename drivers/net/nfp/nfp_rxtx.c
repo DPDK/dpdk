@@ -258,6 +258,46 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 }
 
 /*
+ * nfp_net_parse_meta_qinq() - Set mbuf qinq_strip data based on metadata info
+ *
+ * The out VLAN tci are prepended to the packet data.
+ * Extract and decode it and set the mbuf fields.
+ *
+ * If both RTE_MBUF_F_RX_VLAN and NFP_NET_CFG_CTRL_RXQINQ are set, the 2 VLANs
+ *   have been stripped by the hardware and their TCIs are saved in
+ *   mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
+ * If NFP_NET_CFG_CTRL_RXQINQ is set and RTE_MBUF_F_RX_VLAN is unset, only the
+ *   outer VLAN is removed from packet data, but both tci are saved in
+ *   mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
+ *
+ * qinq set & vlan set : meta->vlan_layer>=2, meta->vlan[0].offload=1, meta->vlan[1].offload=1
+ * qinq set & vlan not set: meta->vlan_layer>=2, meta->vlan[1].offload=1,meta->vlan[0].offload=0
+ * qinq not set & vlan set: meta->vlan_layer=1, meta->vlan[0].offload=1
+ * qinq not set & vlan not set: meta->vlan_layer=0
+ */
+static void
+nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
+		struct nfp_net_rxq *rxq,
+		struct rte_mbuf *mb)
+{
+	struct nfp_net_hw *hw = rxq->hw;
+
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXQINQ) == 0 ||
+			(hw->cap & NFP_NET_CFG_CTRL_RXQINQ) == 0)
+		return;
+
+	if (meta->vlan_layer < NFP_META_MAX_VLANS)
+		return;
+
+	if (meta->vlan[0].offload == 0)
+		mb->vlan_tci = rte_cpu_to_le_16(meta->vlan[0].tci);
+	mb->vlan_tci_outer = rte_cpu_to_le_16(meta->vlan[1].tci);
+	PMD_RX_LOG(DEBUG, "Received outer vlan is %u inter vlan is %u",
+			mb->vlan_tci_outer, mb->vlan_tci);
+	mb->ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
+}
+
+/*
  * RX path design:
  *
  * There are some decisions to take:
@@ -394,6 +434,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		nfp_net_parse_meta(&meta, rxds, rxq, mb);
 		nfp_net_parse_meta_hash(&meta, rxds, rxq, mb);
 		nfp_net_parse_meta_vlan(&meta, rxds, rxq, mb);
+		nfp_net_parse_meta_qinq(&meta, rxq, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);

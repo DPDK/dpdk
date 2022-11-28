@@ -293,3 +293,4 @@ Metadata with L2 (1W/4B)
    Tpid just be stored, now we don't handle it
 
    The vlan[0] is the innermost VLAN
+   The vlan[1] is the QinQ info

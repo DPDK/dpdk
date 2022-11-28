@@ -195,7 +195,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			NFD_CFG_MAJOR_VERSION_of(hw->ver),
 			NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
 
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 			hw->cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
 			hw->cap & NFP_NET_CFG_CTRL_L2BC      ? "L2BCFILT "  : "",
 			hw->cap & NFP_NET_CFG_CTRL_L2MC      ? "L2MCFILT "  : "",
@@ -203,6 +203,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			hw->cap & NFP_NET_CFG_CTRL_TXCSUM    ? "TXCSUM "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_RXVLAN    ? "RXVLAN "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_TXVLAN    ? "TXVLAN "    : "",
+			hw->cap & NFP_NET_CFG_CTRL_RXQINQ    ? "RXQINQ "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_SCATTER   ? "SCATTER "   : "",
 			hw->cap & NFP_NET_CFG_CTRL_GATHER    ? "GATHER "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR ? "LIVE_ADDR " : "",
@@ -399,6 +400,11 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
 		if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN)
 			ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
+	}
+
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) {
+		if (hw->cap & NFP_NET_CFG_CTRL_RXQINQ)
+			ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
 	hw->mtu = dev->data->mtu;
@@ -846,6 +852,9 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN)
 		dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
+	if (hw->cap & NFP_NET_CFG_CTRL_RXQINQ)
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
+
 	if (hw->cap & NFP_NET_CFG_CTRL_RXCSUM)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
 					     RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
@@ -1135,6 +1144,14 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			new_ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
 		else
 			new_ctrl &= ~NFP_NET_CFG_CTRL_RXVLAN;
+	}
+
+	/* QinQ stripping setting */
+	if (mask & RTE_ETH_QINQ_STRIP_MASK) {
+		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
+			new_ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
+		else
+			new_ctrl &= ~NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
 	if (new_ctrl == hw->ctrl)
