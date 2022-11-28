@@ -846,6 +846,33 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
+/*
+ * nfp_net_nfd3_tx_vlan() - Set vlan info in the nfd3 tx desc
+ *
+ * If enable NFP_NET_CFG_CTRL_TXVLAN_V2
+ *	Vlan_info is stored in the meta and
+ *	is handled in the nfp_net_nfd3_set_meta_vlan
+ * else if enable NFP_NET_CFG_CTRL_TXVLAN
+ *	Vlan_info is stored in the tx_desc and
+ *	is handled in the nfp_net_nfd3_tx_vlan
+ */
+static void
+nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
+		struct nfp_net_nfd3_tx_desc *txd,
+		struct rte_mbuf *mb)
+{
+	struct nfp_net_hw *hw = txq->hw;
+
+	if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0 ||
+		(hw->cap & NFP_NET_CFG_CTRL_TXVLAN) == 0)
+		return;
+
+	if ((mb->ol_flags & RTE_MBUF_F_TX_VLAN) != 0) {
+		txd->flags |= PCIE_DESC_TX_VLAN;
+		txd->vlan = mb->vlan_tci;
+	}
+}
+
 static void
 nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 		struct rte_mbuf *pkt,
@@ -874,7 +901,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 	hw = txq->hw;
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
-			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN) != 0) {
+			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
 		if (meta_data->length == 0)
 			meta_data->length = NFP_NET_META_HEADER_SIZE;
 		meta_data->length += NFP_NET_META_FIELD_SIZE;
@@ -974,6 +1001,7 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		txd.data_len = pkt->pkt_len;
 		nfp_net_nfd3_tx_tso(txq, &txd, pkt);
 		nfp_net_nfd3_tx_cksum(txq, &txd, pkt);
+		nfp_net_nfd3_tx_vlan(txq, &txd, pkt);
 
 		/*
 		 * mbuf data_len is the data in one segment and pkt_len data

@@ -103,7 +103,7 @@
 #define   NFP_NET_CFG_CTRL_MSIXAUTO       (0x1 << 20) /* MSI-X auto-masking */
 #define   NFP_NET_CFG_CTRL_TXRWB          (0x1 << 21) /* Write-back of TX ring*/
 #define   NFP_NET_CFG_CTRL_L2SWITCH       (0x1 << 22) /* L2 Switch */
-#define   NFP_NET_CFG_CTRL_L2SWITCH_LOCAL (0x1 << 23) /* Switch to local */
+#define   NFP_NET_CFG_CTRL_TXVLAN_V2      (0x1 << 23) /* Enable VLAN insert with metadata */
 #define   NFP_NET_CFG_CTRL_VXLAN          (0x1 << 24) /* Enable VXLAN */
 #define   NFP_NET_CFG_CTRL_NVGRE          (0x1 << 25) /* Enable NVGRE */
 #define   NFP_NET_CFG_CTRL_MSIX_TX_OFF    (0x1 << 26) /* Disable MSIX for TX */

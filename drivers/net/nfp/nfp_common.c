@@ -195,7 +195,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			NFD_CFG_MAJOR_VERSION_of(hw->ver),
 			NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
 
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 			hw->cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
 			hw->cap & NFP_NET_CFG_CTRL_L2BC      ? "L2BCFILT "  : "",
 			hw->cap & NFP_NET_CFG_CTRL_L2MC      ? "L2MCFILT "  : "",
@@ -204,6 +204,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			hw->cap & NFP_NET_CFG_CTRL_RXVLAN    ? "RXVLAN "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_TXVLAN    ? "TXVLAN "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_RXVLAN_V2 ? "RXVLANv2 "  : "",
+			hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2 ? "TXVLANv2 "  : "",
 			hw->cap & NFP_NET_CFG_CTRL_RXQINQ    ? "RXQINQ "    : "",
 			hw->cap & NFP_NET_CFG_CTRL_SCATTER   ? "SCATTER "   : "",
 			hw->cap & NFP_NET_CFG_CTRL_GATHER    ? "GATHER "    : "",
@@ -418,7 +419,9 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	hw->mtu = dev->data->mtu;
 
 	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) {
-		if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
+		if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2)
+			ctrl |= NFP_NET_CFG_CTRL_TXVLAN_V2;
+		else if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
 	}
 
@@ -870,7 +873,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 					     RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 					     RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
+	if (hw->cap & (NFP_NET_CFG_CTRL_TXVLAN | NFP_NET_CFG_CTRL_TXVLAN_V2))
 		dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_TXCSUM)
