@@ -15,6 +15,7 @@ cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 	RTE_SET_USED(eth_dev);
 
 	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,	      /* LA */
 		RTE_PTYPE_L2_ETHER_QINQ,      /* LB */
 		RTE_PTYPE_L2_ETHER_VLAN,      /* LB */
 		RTE_PTYPE_L2_ETHER_TIMESYNC,  /* LB */
@@ -88,19 +89,25 @@ nix_create_non_tunnel_ptype_array(uint16_t *ptype)
 		case NPC_LT_LB_CTAG:
 			val |= RTE_PTYPE_L2_ETHER_VLAN;
 			break;
+		default:
+			val |= RTE_PTYPE_L2_ETHER;
 		}
 
 		switch (lc) {
 		case NPC_LT_LC_ARP:
+			val = (val & ~RTE_PTYPE_L2_MASK);
 			val |= RTE_PTYPE_L2_ETHER_ARP;
 			break;
 		case NPC_LT_LC_NSH:
+			val = (val & ~RTE_PTYPE_L2_MASK);
 			val |= RTE_PTYPE_L2_ETHER_NSH;
 			break;
 		case NPC_LT_LC_FCOE:
+			val = (val & ~RTE_PTYPE_L2_MASK);
 			val |= RTE_PTYPE_L2_ETHER_FCOE;
 			break;
 		case NPC_LT_LC_MPLS:
+			val = (val & ~RTE_PTYPE_L2_MASK);
 			val |= RTE_PTYPE_L2_ETHER_MPLS;
 			break;
 		case NPC_LT_LC_IP:
@@ -116,6 +123,7 @@ nix_create_non_tunnel_ptype_array(uint16_t *ptype)
 			val |= RTE_PTYPE_L3_IPV6_EXT;
 			break;
 		case NPC_LT_LC_PTP:
+			val = (val & ~RTE_PTYPE_L2_MASK);
 			val |= RTE_PTYPE_L2_ETHER_TIMESYNC;
 			break;
 		}
