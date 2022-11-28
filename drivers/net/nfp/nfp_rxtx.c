@@ -1072,6 +1072,63 @@ xmit_end:
 	return i;
 }
 
+static void
+nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
+		struct nfp_net_txq *txq,
+		uint64_t *metadata)
+{
+	char *meta;
+	uint8_t layer = 0;
+	uint32_t meta_type;
+	struct nfp_net_hw *hw;
+	uint32_t header_offset;
+	uint8_t vlan_layer = 0;
+	struct nfp_net_meta_raw meta_data;
+
+	memset(&meta_data, 0, sizeof(meta_data));
+	hw = txq->hw;
+
+	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
+			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
+		if (meta_data.length == 0)
+			meta_data.length = NFP_NET_META_HEADER_SIZE;
+		meta_data.length += NFP_NET_META_FIELD_SIZE;
+		meta_data.header |= NFP_NET_META_VLAN;
+	}
+
+	if (meta_data.length == 0)
+		return;
+
+	meta_type = meta_data.header;
+	header_offset = meta_type << NFP_NET_META_NFDK_LENGTH;
+	meta_data.header = header_offset | meta_data.length;
+	meta_data.header = rte_cpu_to_be_32(meta_data.header);
+	meta = rte_pktmbuf_prepend(pkt, meta_data.length);
+	memcpy(meta, &meta_data.header, sizeof(meta_data.header));
+	meta += NFP_NET_META_HEADER_SIZE;
+
+	for (; meta_type != 0; meta_type >>= NFP_NET_META_FIELD_SIZE, layer++,
+			meta += NFP_NET_META_FIELD_SIZE) {
+		switch (meta_type & NFP_NET_META_FIELD_MASK) {
+		case NFP_NET_META_VLAN:
+			if (vlan_layer > 0) {
+				PMD_DRV_LOG(ERR, "At most 1 layers of vlan is supported");
+				return;
+			}
+			nfp_net_set_meta_vlan(&meta_data, pkt, layer);
+			vlan_layer++;
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "The metadata type not supported");
+			return;
+		}
+
+		memcpy(meta, &meta_data.data[layer], sizeof(meta_data.data[layer]));
+	}
+
+	*metadata = NFDK_DESC_TX_CHAIN_META;
+}
+
 static int
 nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t queue_idx,
@@ -1405,6 +1462,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		RTE_MBUF_PREFETCH_TO_FREE(*lmbuf);
 
 		temp_pkt = pkt;
+		nfp_net_nfdk_set_meta_data(pkt, txq, &metadata);
 
 		if (unlikely(pkt->nb_segs > 1 &&
 				!(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {

@@ -30,6 +30,7 @@
 #define NFP_NET_META_FIELD_SIZE         4
 #define NFP_NET_META_FIELD_MASK ((1 << NFP_NET_META_FIELD_SIZE) - 1)
 #define NFP_NET_META_HEADER_SIZE        4
+#define NFP_NET_META_NFDK_LENGTH        8
 
 /* Working with metadata vlan api (NFD version >= 2.0) */
 #define NFP_NET_META_VLAN_INFO          16

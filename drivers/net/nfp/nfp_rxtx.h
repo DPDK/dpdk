@@ -36,7 +36,7 @@
  * Describe the raw metadata format, useful when preparing metadata for a
  * transmission mbuf.
  *
- * @header: NFD3 Contains the 8 4-bit type fields
+ * @header: NFD3 or NFDk field type header (see format in nfp.rst)
  * @data: Array of each fields data member
  * @length: Keep track of number of valid fields in @header and data. Not part
  *          of the raw metadata.
@@ -121,6 +121,7 @@ struct nfp_meta_parsed {
 #define NFDK_DESC_TX_TYPE_SIMPLE        8
 #define NFDK_DESC_TX_TYPE_GATHER        1
 #define NFDK_DESC_TX_EOP                BIT(14)
+#define NFDK_DESC_TX_CHAIN_META         BIT(3)
 #define NFDK_DESC_TX_L4_CSUM            BIT(1)
 #define NFDK_DESC_TX_L3_CSUM            BIT(0)
 
