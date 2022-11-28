@@ -1750,6 +1750,16 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.cman_config_get = cnxk_nix_cman_config_get,
 };
 
+void
+cnxk_eth_dev_q_err_cb(struct roc_nix *nix, void *data)
+{
+	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
+	struct rte_eth_dev *eth_dev = dev->eth_dev;
+
+	/* Set the flag and execute application callbacks */
+	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_RESET, data);
+}
+
 static int
 cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -1803,6 +1813,9 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	/* Register up msg callbacks */
 	roc_nix_mac_link_info_get_cb_register(nix,
 					      cnxk_eth_dev_link_status_get_cb);
+
+	/* Register up msg callbacks */
+	roc_nix_q_err_cb_register(nix, cnxk_eth_dev_q_err_cb);
 
 	/* Register callback for inline meta pool create */
 	roc_nix_inl_meta_pool_cb_register(cnxk_nix_inl_meta_pool_cb);
