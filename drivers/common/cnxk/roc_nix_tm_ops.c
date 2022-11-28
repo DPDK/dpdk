@@ -550,15 +550,74 @@ cleanup:
 }
 
 int
+roc_nix_tm_hierarchy_xmit_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree tree)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	struct roc_nix_sq *sq;
+	uint16_t sq_id;
+	int rc;
+
+	if (tree >= ROC_NIX_TM_TREE_MAX)
+		return NIX_ERR_PARAM;
+
+	list = nix_tm_node_list(nix, tree);
+
+	/* Update SQ Sched Data while SQ is idle */
+	TAILQ_FOREACH(node, list, node) {
+		if (!nix_tm_is_leaf(nix, node->lvl))
+			continue;
+
+		rc = nix_tm_sq_sched_conf(nix, node, false);
+		if (rc) {
+			plt_err("SQ %u sched update failed, rc=%d", node->id,
+				rc);
+			return rc;
+		}
+	}
+
+	/* Finally XON all SMQ's */
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+
+		rc = nix_tm_smq_xoff(nix, node, false);
+		if (rc) {
+			plt_err("Failed to enable smq %u, rc=%d", node->hw_id,
+				rc);
+			return rc;
+		}
+	}
+
+	/* Enable xmit as all the topology is ready */
+	TAILQ_FOREACH(node, list, node) {
+		if (!nix_tm_is_leaf(nix, node->lvl))
+			continue;
+
+		sq_id = node->id;
+		sq = nix->sqs[sq_id];
+
+		rc = roc_nix_tm_sq_aura_fc(sq, true);
+		if (rc) {
+			plt_err("TM sw xon failed on SQ %u, rc=%d", node->id,
+				rc);
+			return rc;
+		}
+		node->flags |= NIX_TM_NODE_ENABLED;
+	}
+
+	return 0;
+}
+
+int
 roc_nix_tm_hierarchy_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree tree,
 			    bool xmit_enable)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct nix_tm_node_list *list;
 	struct nix_tm_node *node;
-	struct roc_nix_sq *sq;
 	uint32_t tree_mask;
-	uint16_t sq_id;
 	int rc;
 
 	if (tree >= ROC_NIX_TM_TREE_MAX)
@@ -613,55 +672,12 @@ roc_nix_tm_hierarchy_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree tree,
 			node->flags |= NIX_TM_NODE_ENABLED;
 	}
 
-	if (!xmit_enable)
-		goto skip_sq_update;
+	if (xmit_enable)
+		rc = roc_nix_tm_hierarchy_xmit_enable(roc_nix, tree);
 
-	/* Update SQ Sched Data while SQ is idle */
-	TAILQ_FOREACH(node, list, node) {
-		if (!nix_tm_is_leaf(nix, node->lvl))
-			continue;
-
-		rc = nix_tm_sq_sched_conf(nix, node, false);
-		if (rc) {
-			plt_err("SQ %u sched update failed, rc=%d", node->id,
-				rc);
-			return rc;
-		}
-	}
-
-	/* Finally XON all SMQ's */
-	TAILQ_FOREACH(node, list, node) {
-		if (node->hw_lvl != NIX_TXSCH_LVL_SMQ)
-			continue;
-
-		rc = nix_tm_smq_xoff(nix, node, false);
-		if (rc) {
-			plt_err("Failed to enable smq %u, rc=%d", node->hw_id,
-				rc);
-			return rc;
-		}
-	}
-
-	/* Enable xmit as all the topology is ready */
-	TAILQ_FOREACH(node, list, node) {
-		if (!nix_tm_is_leaf(nix, node->lvl))
-			continue;
-
-		sq_id = node->id;
-		sq = nix->sqs[sq_id];
-
-		rc = roc_nix_tm_sq_aura_fc(sq, true);
-		if (rc) {
-			plt_err("TM sw xon failed on SQ %u, rc=%d", node->id,
-				rc);
-			return rc;
-		}
-		node->flags |= NIX_TM_NODE_ENABLED;
-	}
-
-skip_sq_update:
-	nix->tm_flags |= NIX_TM_HIERARCHY_ENA;
-	return 0;
+	if (!rc)
+		nix->tm_flags |= NIX_TM_HIERARCHY_ENA;
+	return rc;
 }
 
 int

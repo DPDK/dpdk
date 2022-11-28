@@ -273,6 +273,7 @@ INTERNAL {
 	roc_nix_tm_tree_type_get;
 	roc_nix_tm_hierarchy_disable;
 	roc_nix_tm_hierarchy_enable;
+	roc_nix_tm_hierarchy_xmit_enable;
 	roc_nix_tm_init;
 	roc_nix_tm_is_user_hierarchy_enabled;
 	roc_nix_tm_leaf_cnt;

@@ -672,6 +672,8 @@ int __roc_api roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix);
 int __roc_api roc_nix_tm_hierarchy_enable(struct roc_nix *roc_nix,
 					  enum roc_nix_tm_tree tree,
 					  bool xmit_enable);
+int __roc_api roc_nix_tm_hierarchy_xmit_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree tree);
+
 
 /*
  * TM utilities API.
