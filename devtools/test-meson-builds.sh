@@ -206,8 +206,11 @@ build () # <directory> <target cc | cross file> <ABI check> [meson options]
 			fi
 
 			rm -rf $abirefdir/build
+			# We only care about the drivers and libs, disable
+			# developer checks and don't try to link apps.
 			config $abirefdir/src $abirefdir/build ABI $cross \
-				-Dexamples= $*
+				$* -Dcheck_includes=false -Ddeveloper_mode=disabled \
+				-Ddisable_apps=* -Dexamples=
 			compile $abirefdir/build
 			install_target $abirefdir/build $abirefdir/$targetdir
 
