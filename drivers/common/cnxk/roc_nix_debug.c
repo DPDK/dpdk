@@ -665,8 +665,14 @@ nix_lf_cq_dump(__io struct nix_cq_ctx_s *ctx, FILE *file)
 		 ctx->cq_err_int_ena, ctx->cq_err_int);
 	nix_dump(file, "W3: qsize \t\t\t%d\nW3: caching \t\t\t%d", ctx->qsize,
 		 ctx->caching);
-	nix_dump(file, "W3: substream \t\t\t0x%03x\nW3: ena \t\t\t%d", ctx->substream,
-		 ctx->ena);
+	nix_dump(file, "W3: substream \t\t\t0x%03x\nW3: ena \t\t\t%d\nW3: lbp_ena \t\t\t%d",
+		 ctx->substream, ctx->ena, ctx->lbp_ena);
+	nix_dump(file,
+		 "W3: lbpid_high \t\t\t0x%03x\nW3: lbpid_med \t\t\t0x%03x\n"
+		 "W3: lbpid_low \t\t\t0x%03x\n(W3: lbpid) \t\t\t0x%03x",
+		 ctx->lbpid_high, ctx->lbpid_med, ctx->lbpid_low,
+		 ctx->lbpid_high << 6 | ctx->lbpid_med << 3 | ctx->lbpid_low);
+	nix_dump(file, "W3: lbp_frac \t\t\t%d\n", ctx->lbp_frac);
 	nix_dump(file, "W3: drop_ena \t\t\t%d\nW3: drop \t\t\t%d", ctx->drop_ena,
 		 ctx->drop);
 	nix_dump(file, "W3: bp \t\t\t\t%d\n", ctx->bp);

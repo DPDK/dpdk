@@ -861,6 +861,7 @@
 #define NIX_CQERRINT_DOOR_ERR  (0x0ull)
 #define NIX_CQERRINT_WR_FULL   (0x1ull)
 #define NIX_CQERRINT_CQE_FAULT (0x2ull)
+#define NIX_CQERRINT_CPT_DROP  (0x3ull) /* [CN10KB, .) */
 
 #define NIX_LINK_SDP (0xdull) /* [CN10K, .) */
 #define NIX_LINK_CPT (0xeull) /* [CN10K, .) */
@@ -1009,11 +1010,12 @@ struct nix_cqe_hdr_s {
 /* NIX completion queue context structure */
 struct nix_cq_ctx_s {
 	uint64_t base : 64; /* W0 */
-	uint64_t rsvd_67_64 : 4;
+	uint64_t lbp_ena : 1;
+	uint64_t lbpid_low : 3;
 	uint64_t bp_ena : 1;
-	uint64_t rsvd_71_69 : 3;
+	uint64_t lbpid_med : 3;
 	uint64_t bpid : 9;
-	uint64_t rsvd_83_81 : 3;
+	uint64_t lbpid_high : 3;
 	uint64_t qint_idx : 7;
 	uint64_t cq_err : 1;
 	uint64_t cint_idx : 7;
@@ -1027,10 +1029,14 @@ struct nix_cq_ctx_s {
 	uint64_t drop : 8;
 	uint64_t drop_ena : 1;
 	uint64_t ena : 1;
-	uint64_t rsvd_211_210 : 2;
-	uint64_t substream : 20;
+	uint64_t cpt_drop_err_en : 1;
+	uint64_t rsvd_211 : 1;
+	uint64_t substream : 12;
+	uint64_t stash_thresh : 4;
+	uint64_t lbp_frac : 4;
 	uint64_t caching : 1;
-	uint64_t rsvd_235_233 : 3;
+	uint64_t stashing : 1;
+	uint64_t rsvd_235_234 : 2;
 	uint64_t qsize : 4;
 	uint64_t cq_err_int : 8;
 	uint64_t cq_err_int_ena : 8;

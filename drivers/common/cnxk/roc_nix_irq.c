@@ -287,6 +287,9 @@ nix_lf_q_irq(void *param)
 
 		if (irq & BIT_ULL(NIX_CQERRINT_CQE_FAULT))
 			plt_err("CQ=%d NIX_CQERRINT_CQE_FAULT", cq);
+
+		if (irq & BIT_ULL(NIX_CQERRINT_CPT_DROP))
+			plt_err("CQ=%d NIX_CQERRINT_CPT_DROP", cq);
 	}
 
 	/* Handle SQ interrupts */

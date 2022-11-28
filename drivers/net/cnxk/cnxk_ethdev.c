@@ -49,8 +49,9 @@ nix_inl_cq_sz_clamp_up(struct roc_nix *nix, struct rte_mempool *mp,
 	struct roc_nix_rq *inl_rq;
 	uint64_t limit;
 
+	/* For CN10KB and above, LBP needs minimum CQ size */
 	if (!roc_errata_cpt_hang_on_x2p_bp())
-		return nb_desc;
+		return RTE_MAX(nb_desc, (uint32_t)4096);
 
 	/* CQ should be able to hold all buffers in first pass RQ's aura
 	 * this RQ's aura.
@@ -695,7 +696,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	first_skip += RTE_PKTMBUF_HEADROOM;
 	first_skip += rte_pktmbuf_priv_size(lpb_pool);
 	rq->first_skip = first_skip;
-	rq->later_skip = sizeof(struct rte_mbuf) + rte_pktmbuf_priv_size(mp);
+	rq->later_skip = sizeof(struct rte_mbuf) + rte_pktmbuf_priv_size(lpb_pool);
 	rq->lpb_size = lpb_pool->elt_size;
 	if (roc_errata_nix_no_meta_aura())
 		rq->lpb_drop_ena = !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY);

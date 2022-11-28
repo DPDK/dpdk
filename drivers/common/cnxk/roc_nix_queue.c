@@ -743,6 +743,8 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct mbox *mbox = (&nix->dev)->mbox;
 	volatile struct nix_cq_ctx_s *cq_ctx;
+	uint16_t drop_thresh = NIX_CQ_THRESH_LEVEL;
+	uint16_t cpt_lbpid = nix->bpid[0];
 	enum nix_q_size qsize;
 	size_t desc_sz;
 	int rc;
@@ -797,6 +799,16 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	cq_ctx->avg_level = 0xff;
 	cq_ctx->cq_err_int_ena = BIT(NIX_CQERRINT_CQE_FAULT);
 	cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_DOOR_ERR);
+	if (roc_model_is_cn10kb() && roc_nix_inl_inb_is_enabled(roc_nix)) {
+		cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_CPT_DROP);
+		cq_ctx->cpt_drop_err_en = 1;
+		cq_ctx->lbp_ena = 1;
+		cq_ctx->lbpid_low = cpt_lbpid & 0x7;
+		cq_ctx->lbpid_med = (cpt_lbpid >> 3) & 0x7;
+		cq_ctx->lbpid_high = (cpt_lbpid >> 6) & 0x7;
+		cq_ctx->lbp_frac = NIX_CQ_LPB_THRESH_FRAC;
+		drop_thresh = NIX_CQ_SEC_THRESH_LEVEL;
+	}
 
 	/* Many to one reduction */
 	cq_ctx->qint_idx = cq->qid % nix->qints;
@@ -812,7 +824,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 		cq_ctx->drop_ena = 1;
 		cq->drop_thresh = min_rx_drop;
 	} else {
-		cq->drop_thresh = NIX_CQ_THRESH_LEVEL;
+		cq->drop_thresh = drop_thresh;
 		/* Drop processing or red drop cannot be enabled due to
 		 * due to packets coming for second pass from CPT.
 		 */
