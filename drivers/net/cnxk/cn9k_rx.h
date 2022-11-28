@@ -260,8 +260,8 @@ nix_rx_sec_mbuf_err_update(const union nix_rx_parse_u *rx, uint16_t res,
 }
 
 static __rte_always_inline uint64_t
-nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
-		       uintptr_t sa_base, uint64_t *rearm_val, uint16_t *len)
+nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m, uintptr_t sa_base,
+		       uint64_t *rearm_val, uint16_t *len, uint32_t packet_type)
 {
 	uintptr_t res_sg0 = ((uintptr_t)cq + ROC_ONF_IPSEC_INB_RES_OFF - 8);
 	const union nix_rx_parse_u *rx =
@@ -315,15 +315,18 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	ip = (struct rte_ipv4_hdr *)(data + ROC_ONF_IPSEC_INB_SPI_SEQ_SZ +
 				     ROC_ONF_IPSEC_INB_MAX_L2_SZ);
 
+	packet_type = (packet_type & ~(RTE_PTYPE_L3_MASK | RTE_PTYPE_TUNNEL_MASK));
 	if (((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) ==
 	    IPVERSION) {
 		*len = rte_be_to_cpu_16(ip->total_length) + lcptr;
+		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
 	} else {
 		PLT_ASSERT(((ip->version_ihl & 0xf0) >>
 			    RTE_IPV4_IHL_MULTIPLIER) == 6);
 		ip6 = (struct rte_ipv6_hdr *)ip;
 		*len = rte_be_to_cpu_16(ip6->payload_len) +
 		       sizeof(struct rte_ipv6_hdr) + lcptr;
+		packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 	}
 
 	/* Update data offset */
@@ -332,6 +335,7 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	*rearm_val = *rearm_val & ~(BIT_ULL(16) - 1);
 	*rearm_val |= data_off;
 
+	m->packet_type = packet_type;
 	return RTE_MBUF_F_RX_SEC_OFFLOAD;
 }
 
@@ -363,14 +367,7 @@ cn9k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		/* Get SA Base from lookup mem */
 		sa_base = cnxk_nix_sa_base_get(port, lookup_mem);
 
-		ol_flags |= nix_rx_sec_mbuf_update(cq, mbuf, sa_base, &val,
-						   &len);
-
-		/* Only Tunnel inner IPv4 is supported */
-		packet_type = (packet_type &
-			       ~(RTE_PTYPE_L3_MASK | RTE_PTYPE_TUNNEL_MASK));
-		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-		mbuf->packet_type = packet_type;
+		ol_flags |= nix_rx_sec_mbuf_update(cq, mbuf, sa_base, &val, &len, packet_type);
 		goto skip_parse;
 	}
 
