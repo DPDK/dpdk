@@ -213,3 +213,61 @@ PF vNIC.
 The ctrl vNIC service handling various control message, like the creation and
 configuration of representor port, the pattern and action of flow rules, the
 statistics of flow rules, and so on.
+
+Metadata Format
+---------------
+
+The NFP packet metadata format
+
+The packet metadata starts with a field type header that can contain up-to
+8 4-bit datatype specifiers (32-bits in total). This is followed by up to 8
+32-bit words of data for each field described in the header. And directly
+following the metadata (header and data) comes the packet.
+
+The order of type is correspond with the data, but the nums of data field are
+decided by the corresponding type, if the type need N data field, it need to
+be wrote N times in the heads.
+::
+
+       3                   2                   1                   0
+   2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Type7 | Type6 | Type5 | Type4 | Type3 | Type2 | Type1 | Type0 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 0                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 1                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 2                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 3                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 4                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 5                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 6                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Data for field 7                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          Packet Data                          |
+   |                              ...                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+There are two classes of metadata one for ingress and one for egress. In each
+class the supported NFP types are:
+
+RX
+~~
+
+NFP_NET_META_HASH
+The hash type is 4 bit which is next field type after NFP_NET_META_HASH in
+the header. The hash value is 32 bit which need 1 data field.
+::
+
+   -----------------------------------------------------------------
+       3                   2                   1                   0
+   2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                            Hash value                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+

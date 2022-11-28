@@ -26,6 +26,20 @@
 	((uint64_t)((mb)->buf_iova + RTE_PKTMBUF_HEADROOM))
 
 /*
+ * struct nfp_meta_parsed - Record metadata parsed from packet
+ *
+ * Parsed NFP packet metadata are recorded in this struct. The content is
+ * read-only after it have been recorded during parsing by nfp_net_parse_meta().
+ *
+ * @hash: RSS hash value
+ * @hash_type: RSS hash type
+ */
+struct nfp_meta_parsed {
+	uint32_t hash;
+	uint8_t hash_type;
+};
+
+/*
  * The maximum number of descriptors is limited by design as
  * DPDK uses uint16_t variables for these values
  */

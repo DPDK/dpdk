@@ -116,60 +116,65 @@ nfp_net_rx_queue_count(void *rx_queue)
 	return count;
 }
 
-/*
- * nfp_net_set_hash - Set mbuf hash data
- *
- * The RSS hash and hash-type are pre-pended to the packet data.
- * Extract and decode it and set the mbuf fields.
- */
-static inline void
-nfp_net_set_hash(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
-		 struct rte_mbuf *mbuf)
+/* nfp_net_parse_meta() - Parse the metadata from packet */
+static void
+nfp_net_parse_meta(struct nfp_meta_parsed *meta,
+		struct nfp_net_rx_desc *rxd,
+		struct nfp_net_rxq *rxq,
+		struct rte_mbuf *mbuf)
 {
-	struct nfp_net_hw *hw = rxq->hw;
-	uint8_t *meta_offset;
 	uint32_t meta_info;
-	uint32_t hash = 0;
-	uint32_t hash_type = 0;
+	uint8_t *meta_offset;
+	struct nfp_net_hw *hw = rxq->hw;
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
+	if (unlikely((NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2) ||
+			NFP_DESC_META_LEN(rxd) == 0))
 		return;
 
-	/* this is true for new firmwares */
-	if (likely(((hw->cap & NFP_NET_CFG_CTRL_RSS2) ||
-	    (NFD_CFG_MAJOR_VERSION_of(hw->ver) == 4)) &&
-	     NFP_DESC_META_LEN(rxd))) {
-		/*
-		 * new metadata api:
-		 * <----  32 bit  ----->
-		 * m    field type word
-		 * e     data field #2
-		 * t     data field #1
-		 * a     data field #0
-		 * ====================
-		 *    packet data
-		 *
-		 * Field type word contains up to 8 4bit field types
-		 * A 4bit field type refers to a data field word
-		 * A data field word can have several 4bit field types
-		 */
-		meta_offset = rte_pktmbuf_mtod(mbuf, uint8_t *);
-		meta_offset -= NFP_DESC_META_LEN(rxd);
-		meta_info = rte_be_to_cpu_32(*(uint32_t *)meta_offset);
-		meta_offset += 4;
-		/* NFP PMD just supports metadata for hashing */
+	meta_offset = rte_pktmbuf_mtod(mbuf, uint8_t *);
+	meta_offset -= NFP_DESC_META_LEN(rxd);
+	meta_info = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
+	meta_offset += 4;
+
+	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, meta_offset += 4) {
 		switch (meta_info & NFP_NET_META_FIELD_MASK) {
 		case NFP_NET_META_HASH:
-			/* next field type is about the hash type */
+			/* Next field type is about the hash type */
 			meta_info >>= NFP_NET_META_FIELD_SIZE;
-			/* hash value is in the data field */
-			hash = rte_be_to_cpu_32(*(uint32_t *)meta_offset);
-			hash_type = meta_info & NFP_NET_META_FIELD_MASK;
+			/* Hash value is in the data field */
+			meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
+			meta->hash_type = meta_info & NFP_NET_META_FIELD_MASK;
 			break;
 		default:
 			/* Unsupported metadata can be a performance issue */
 			return;
 		}
+	}
+}
+
+/*
+ * nfp_net_parse_meta_hash() - Set mbuf hash data based on the metadata info
+ *
+ * The RSS hash and hash-type are prepended to the packet data.
+ * Extract and decode it and set the mbuf fields.
+ */
+static void
+nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
+		struct nfp_net_rx_desc *rxd,
+		struct nfp_net_rxq *rxq,
+		struct rte_mbuf *mbuf)
+{
+	uint32_t hash;
+	uint32_t hash_type;
+	struct nfp_net_hw *hw = rxq->hw;
+
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+		return;
+
+	if (likely((hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0 &&
+			NFP_DESC_META_LEN(rxd) != 0)) {
+		hash = meta->hash;
+		hash_type = meta->hash_type;
 	} else {
 		if (!(rxd->rxd.flags & PCIE_DESC_RX_RSS))
 			return;
@@ -245,6 +250,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct nfp_net_hw *hw;
 	struct rte_mbuf *mb;
 	struct rte_mbuf *new_mb;
+	struct nfp_meta_parsed meta;
 	uint16_t nb_hold;
 	uint64_t dma_addr;
 	uint16_t avail;
@@ -338,11 +344,11 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		/* No scatter mode supported */
 		mb->nb_segs = 1;
 		mb->next = NULL;
-
 		mb->port = rxq->port_id;
 
-		/* Checking the RSS flag */
-		nfp_net_set_hash(rxq, rxds, mb);
+		memset(&meta, 0, sizeof(meta));
+		nfp_net_parse_meta(&meta, rxds, rxq, mb);
+		nfp_net_parse_meta_hash(&meta, rxds, rxq, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);
