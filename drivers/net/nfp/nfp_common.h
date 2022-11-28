@@ -404,6 +404,7 @@ nfp_pci_queue(struct rte_pci_device *pdev, uint16_t queue)
 /* Prototypes for common NFP functions */
 int nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update);
 int nfp_net_configure(struct rte_eth_dev *dev);
+void nfp_net_log_device_information(const struct nfp_net_hw *hw);
 void nfp_net_enable_queues(struct rte_eth_dev *dev);
 void nfp_net_disable_queues(struct rte_eth_dev *dev);
 void nfp_net_params_setup(struct nfp_net_hw *hw);

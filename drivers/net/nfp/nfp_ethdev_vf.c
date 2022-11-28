@@ -383,33 +383,12 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	else
 		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
 
-	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d",
-			   NFD_CFG_MAJOR_VERSION_of(hw->ver),
-			   NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
-
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
-		     hw->cap & NFP_NET_CFG_CTRL_PROMISC ? "PROMISC " : "",
-		     hw->cap & NFP_NET_CFG_CTRL_L2BC    ? "L2BCFILT " : "",
-		     hw->cap & NFP_NET_CFG_CTRL_L2MC    ? "L2MCFILT " : "",
-		     hw->cap & NFP_NET_CFG_CTRL_RXCSUM  ? "RXCSUM "  : "",
-		     hw->cap & NFP_NET_CFG_CTRL_TXCSUM  ? "TXCSUM "  : "",
-		     hw->cap & NFP_NET_CFG_CTRL_RXVLAN  ? "RXVLAN "  : "",
-		     hw->cap & NFP_NET_CFG_CTRL_TXVLAN  ? "TXVLAN "  : "",
-		     hw->cap & NFP_NET_CFG_CTRL_SCATTER ? "SCATTER " : "",
-		     hw->cap & NFP_NET_CFG_CTRL_GATHER  ? "GATHER "  : "",
-		     hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR ? "LIVE_ADDR "  : "",
-		     hw->cap & NFP_NET_CFG_CTRL_LSO     ? "TSO "     : "",
-		     hw->cap & NFP_NET_CFG_CTRL_LSO2     ? "TSOv2 "     : "",
-		     hw->cap & NFP_NET_CFG_CTRL_RSS     ? "RSS "     : "",
-		     hw->cap & NFP_NET_CFG_CTRL_RSS2     ? "RSSv2 "     : "");
-
 	hw->ctrl = 0;
 
 	hw->stride_rx = stride;
 	hw->stride_tx = stride;
 
-	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u",
-		     hw->max_rx_queues, hw->max_tx_queues);
+	nfp_net_log_device_information(hw);
 
 	/* Initializing spinlock for reconfigs */
 	rte_spinlock_init(&hw->reconfig_lock);

@@ -189,6 +189,33 @@ nfp_net_configure(struct rte_eth_dev *dev)
 }
 
 void
+nfp_net_log_device_information(const struct nfp_net_hw *hw)
+{
+	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d",
+			NFD_CFG_MAJOR_VERSION_of(hw->ver),
+			NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
+
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
+			hw->cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
+			hw->cap & NFP_NET_CFG_CTRL_L2BC      ? "L2BCFILT "  : "",
+			hw->cap & NFP_NET_CFG_CTRL_L2MC      ? "L2MCFILT "  : "",
+			hw->cap & NFP_NET_CFG_CTRL_RXCSUM    ? "RXCSUM "    : "",
+			hw->cap & NFP_NET_CFG_CTRL_TXCSUM    ? "TXCSUM "    : "",
+			hw->cap & NFP_NET_CFG_CTRL_RXVLAN    ? "RXVLAN "    : "",
+			hw->cap & NFP_NET_CFG_CTRL_TXVLAN    ? "TXVLAN "    : "",
+			hw->cap & NFP_NET_CFG_CTRL_SCATTER   ? "SCATTER "   : "",
+			hw->cap & NFP_NET_CFG_CTRL_GATHER    ? "GATHER "    : "",
+			hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR ? "LIVE_ADDR " : "",
+			hw->cap & NFP_NET_CFG_CTRL_LSO       ? "TSO "       : "",
+			hw->cap & NFP_NET_CFG_CTRL_LSO2      ? "TSOv2 "     : "",
+			hw->cap & NFP_NET_CFG_CTRL_RSS       ? "RSS "       : "",
+			hw->cap & NFP_NET_CFG_CTRL_RSS2      ? "RSSv2 "     : "");
+
+	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u",
+			hw->max_rx_queues, hw->max_tx_queues);
+}
+
+void
 nfp_net_enable_queues(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
