@@ -8,7 +8,7 @@ cd $(dirname $0)/..
 export LC_ALL=C
 
 if [ $# = 0 ] ; then
-    set -- $(find lib drivers -name '*.map')
+    set -- $(find lib drivers -name '*.map' -a ! -path drivers/version.map)
 fi
 
 ret=0
