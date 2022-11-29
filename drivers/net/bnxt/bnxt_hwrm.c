@@ -1031,6 +1031,21 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RING_SELECT_MODE_TOEPLITZ_CHKSM_CAP)
 		bp->vnic_cap_flags |= BNXT_VNIC_CAP_CHKSM_MODE;
 
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_L2_CQE_MODE_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_L2_CQE_MODE;
+
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RSS_IPSEC_AH_SPI_IPV4_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_AH_SPI4_CAP;
+
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RSS_IPSEC_AH_SPI_IPV6_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_AH_SPI6_CAP;
+
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RSS_IPSEC_ESP_SPI_IPV4_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_ESP_SPI4_CAP;
+
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RSS_IPSEC_ESP_SPI_IPV6_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_ESP_SPI6_CAP;
+
 	bp->max_tpa_v2 = rte_le_to_cpu_16(resp->max_aggs_supported);
 
 	HWRM_UNLOCK();
@@ -2412,6 +2427,52 @@ int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+static uint32_t bnxt_sanitize_rss_type(struct bnxt *bp, uint32_t types)
+{
+	uint32_t hwrm_type = types;
+
+	if (types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV4 &&
+	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_ESP_SPI4_CAP))
+		hwrm_type &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV4;
+	if (types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV6 &&
+	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_ESP_SPI6_CAP))
+		hwrm_type &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV6;
+
+	if (types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV4 &&
+	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_AH_SPI4_CAP))
+		hwrm_type &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV4;
+
+	if (types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV6 &&
+	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_AH_SPI6_CAP))
+		hwrm_type &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV6;
+
+	return hwrm_type;
+}
+
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+static int
+bnxt_hwrm_vnic_rss_qcfg_p5(struct bnxt *bp)
+{
+	struct hwrm_vnic_rss_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_vnic_rss_qcfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(&req, HWRM_VNIC_RSS_QCFG, BNXT_USE_CHIMP_MB);
+	/* vnic_id and rss_ctx_idx must be set to INVALID to read the
+	 * global hash mode.
+	 */
+	req.vnic_id = rte_cpu_to_le_16(BNXT_DFLT_VNIC_ID_INVALID);
+	req.rss_ctx_idx = rte_cpu_to_le_16(BNXT_RSS_CTX_IDX_INVALID);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req),
+				    BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	PMD_DRV_LOG(DEBUG, "RSS QCFG: Hash level %d\n", resp->hash_mode_flags);
+
+	return rc;
+}
+#endif
+
 static int
 bnxt_hwrm_vnic_rss_cfg_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
@@ -2425,7 +2486,10 @@ bnxt_hwrm_vnic_rss_cfg_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		HWRM_PREP(&req, HWRM_VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
 		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-		req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+		req.hash_type = rte_cpu_to_le_32(bnxt_sanitize_rss_type(bp, vnic->hash_type));
+		/* Update req with vnic ring_select_mode for P7 */
+		if (BNXT_CHIP_P7(bp))
+			req.ring_select_mode = vnic->ring_select_mode;
 		/* When the vnic_id in the request field is a valid
 		 * one, the hash_mode_flags in the request field must
 		 * be set to DEFAULT. And any request to change the
@@ -2524,7 +2588,7 @@ bnxt_hwrm_vnic_rss_cfg_non_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	HWRM_PREP(&req, HWRM_VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
-	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+	req.hash_type = rte_cpu_to_le_32(bnxt_sanitize_rss_type(bp, vnic->hash_type));
 	req.hash_mode_flags = vnic->hash_mode;
 
 	req.ring_grp_tbl_addr =
@@ -2550,29 +2614,18 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 	if (!vnic->rss_table)
 		return 0;
 
-	if (BNXT_CHIP_P5(bp)) {
-		rc = bnxt_hwrm_vnic_rss_cfg_p5(bp, vnic);
-		if (rc)
-			return rc;
-		/* Configuring the hash mode has to be done in a
-		 * different VNIC_RSS_CFG HWRM command by setting
-		 * vnic_id & rss_ctx_id to INVALID. The only
-		 * exception to this is if the USER doesn't want
-		 * to change the default behavior. So, ideally
-		 * bnxt_hwrm_vnic_rss_cfg_hash_mode_p5 should be
-		 * called when user is explicitly changing the hash
-		 * mode. However, this logic will unconditionally
-		 * call bnxt_hwrm_vnic_rss_cfg_hash_mode_p5 to
-		 * simplify the logic as there is no harm in calling
-		 * bnxt_hwrm_vnic_rss_cfg_hash_mode_p5 even when
-		 * user is not setting it explicitly. Because, this
-		 * routine will convert the default value to inner
-		 * which is our adapter's default behavior.
-		 */
-		return bnxt_hwrm_vnic_rss_cfg_hash_mode_p5(bp, vnic);
-	}
+	/* Handle all the non-thor skus rss here */
+	if (!BNXT_CHIP_P5_P7(bp))
+		return bnxt_hwrm_vnic_rss_cfg_non_p5(bp, vnic);
 
-	return bnxt_hwrm_vnic_rss_cfg_non_p5(bp, vnic);
+	/* Handle Thor2 and Thor skus rss here */
+	rc = bnxt_hwrm_vnic_rss_cfg_p5(bp, vnic);
+
+	/* configure hash mode for Thor/Thor2 */
+	if (!rc)
+		return bnxt_hwrm_vnic_rss_cfg_hash_mode_p5(bp, vnic);
+
+	return rc;
 }
 
 int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
@@ -5343,7 +5396,7 @@ int bnxt_hwrm_clear_ntuple_filter(struct bnxt *bp,
 	return 0;
 }
 
-static int
+int
 bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
@@ -5363,8 +5416,9 @@ bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		HWRM_PREP(&req, HWRM_VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
 		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-		req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+		req.hash_type = rte_cpu_to_le_32(bnxt_sanitize_rss_type(bp, vnic->hash_type));
 		req.hash_mode_flags = vnic->hash_mode;
+		req.ring_select_mode = vnic->ring_select_mode;
 
 		req.ring_grp_tbl_addr =
 		    rte_cpu_to_le_64(vnic->rss_table_dma_addr +

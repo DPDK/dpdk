@@ -357,6 +357,7 @@ void bnxt_free_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_hwrm_config_host_mtu(struct bnxt *bp);
 int bnxt_vnic_rss_clear_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic);
+int bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp);
 int bnxt_hwrm_func_backing_store_cfg_v2(struct bnxt *bp,
 					struct bnxt_ctx_mem *ctxm);

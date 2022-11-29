@@ -996,8 +996,12 @@ uint64_t bnxt_eth_rss_support(struct bnxt *bp)
 		  RTE_ETH_RSS_LEVEL_MASK;
 
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_CHKSM_MODE)
-		support |= (RTE_ETH_RSS_IPV4_CHKSUM |
-			    RTE_ETH_RSS_L4_CHKSUM);
+		support |= RTE_ETH_RSS_IPV4_CHKSUM |
+			   RTE_ETH_RSS_L4_CHKSUM;
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_AH_SPI_CAP)
+		support |= RTE_ETH_RSS_AH;
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_ESP_SPI_CAP)
+		support |= RTE_ETH_RSS_ESP;
 
 	return support;
 }

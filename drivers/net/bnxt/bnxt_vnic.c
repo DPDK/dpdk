@@ -268,6 +268,8 @@ uint32_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 	if ((rte_type & RTE_ETH_RSS_IPV4) ||
 	    (rte_type & RTE_ETH_RSS_ECPRI))
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
+	if (rte_type & RTE_ETH_RSS_ECPRI)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
 	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
 	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
@@ -278,9 +280,12 @@ uint32_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
 	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
-	if (rte_type & RTE_ETH_RSS_IPV4_CHKSUM)
-		hwrm_type |=
-			HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ_CHECKSUM;
+	if (rte_type & RTE_ETH_RSS_ESP)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV4 |
+			     HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV6;
+	if (rte_type & RTE_ETH_RSS_AH)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV4 |
+			     HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV6;
 
 	return hwrm_type;
 }
@@ -1327,7 +1332,9 @@ int bnxt_rte_flow_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f,
 			/* Checksum mode cannot with hash func makes no sense */
 			vnic->ring_select_mode =
 				HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ_CHECKSUM;
+			vnic->hash_f_local = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
 			/* shadow copy types as !hash_f is always true with default func */
+			vnic->rss_types_local = types;
 			return 0;
 		}
 		PMD_DRV_LOG(ERR, "Hash function not supported with checksun type\n");
