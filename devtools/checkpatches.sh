@@ -254,7 +254,7 @@ check_names() { # <patch>
 	old_IFS=$IFS
 	IFS='
 '
-	for contributor in $(sed -rn '1,/^--- / {s/.*: (.*<.*@.*>)/\1/p}' $1); do
+	for contributor in $(sed -rn '/^$/,/^--- / {s/.*: (.*<.*@.*>)/\1/p}' $1); do
 		! grep -qE "^$contributor($| <)" .mailmap || continue
 		name=${contributor%% <*}
 		if grep -q "^$name <" .mailmap; then
