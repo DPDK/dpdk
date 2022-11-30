@@ -109,6 +109,7 @@ struct ipsec_test_flags {
 	bool dec_ttl_or_hop_limit;
 	bool ah;
 	uint32_t plaintext_len;
+	int nb_segs_in_mbuf;
 };
 
 struct crypto_param {
@@ -288,7 +289,7 @@ void test_ipsec_td_update(struct ipsec_test_data td_inb[],
 void test_ipsec_display_alg(const struct crypto_param *param1,
 			    const struct crypto_param *param2);
 
-int test_ipsec_post_process(struct rte_mbuf *m,
+int test_ipsec_post_process(const struct rte_mbuf *m,
 			    const struct ipsec_test_data *td,
 			    struct ipsec_test_data *res_d, bool silent,
 			    const struct ipsec_test_flags *flags);

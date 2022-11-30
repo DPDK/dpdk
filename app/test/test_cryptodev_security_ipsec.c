@@ -664,12 +664,12 @@ test_ipsec_tunnel_hdr_len_get(const struct ipsec_test_data *td)
 }
 
 static int
-test_ipsec_iv_verify_push(struct rte_mbuf *m, const struct ipsec_test_data *td)
+test_ipsec_iv_verify_push(const uint8_t *output_text, const struct ipsec_test_data *td)
 {
 	static uint8_t iv_queue[IV_LEN_MAX * IPSEC_TEST_PACKETS_MAX];
-	uint8_t *iv_tmp, *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	int i, iv_pos, iv_len;
 	static int index;
+	uint8_t *iv_tmp;
 
 	if (td->aead)
 		iv_len = td->xform.aead.aead.iv.length - td->salt.len;
@@ -704,12 +704,12 @@ test_ipsec_iv_verify_push(struct rte_mbuf *m, const struct ipsec_test_data *td)
 }
 
 static int
-test_ipsec_l3_csum_verify(struct rte_mbuf *m)
+test_ipsec_l3_csum_verify(uint8_t *output_text)
 {
 	uint16_t actual_cksum, expected_cksum;
 	struct rte_ipv4_hdr *ip;
 
-	ip = rte_pktmbuf_mtod(m, struct rte_ipv4_hdr *);
+	ip = (struct rte_ipv4_hdr *)output_text;
 
 	if (!is_ipv4((void *)ip))
 		return TEST_SKIPPED;
@@ -727,26 +727,16 @@ test_ipsec_l3_csum_verify(struct rte_mbuf *m)
 }
 
 static int
-test_ipsec_l4_csum_verify(struct rte_mbuf *m)
+test_ipsec_l4_csum_verify(uint8_t *output_text)
 {
 	uint16_t actual_cksum = 0, expected_cksum = 0;
-	uint32_t len = rte_pktmbuf_pkt_len(m);
-	uint8_t data_arr[IPSEC_TEXT_MAX_LEN];
 	struct rte_ipv4_hdr *ipv4;
 	struct rte_ipv6_hdr *ipv6;
-	uint8_t *data = data_arr;
 	struct rte_tcp_hdr *tcp;
 	struct rte_udp_hdr *udp;
-	const uint8_t *ptr;
 	void *ip, *l4;
 
-	ptr = rte_pktmbuf_read(m, 0, len, data_arr);
-	if (!ptr)
-		return -EINVAL;
-	else if (ptr != data_arr)
-		data = rte_pktmbuf_mtod_offset(m, uint8_t *, 0);
-
-	ip = (struct rte_ipv4_hdr *)data;
+	ip = output_text;
 
 	if (is_ipv4(ip)) {
 		ipv4 = ip;
@@ -823,14 +813,11 @@ test_ipsec_ttl_or_hop_decrement_verify(void *received, void *expected)
 }
 
 static int
-test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
-		     bool silent, const struct ipsec_test_flags *flags)
+test_ipsec_td_verify(uint8_t *output_text, uint32_t len, uint32_t ol_flags,
+		const struct ipsec_test_data *td, bool silent, const struct ipsec_test_flags *flags)
 {
-	uint32_t skip, len = rte_pktmbuf_pkt_len(m);
 	uint8_t td_output_text[IPSEC_TEXT_MAX_LEN];
-	uint8_t data_arr[IPSEC_TEXT_MAX_LEN];
-	uint8_t *output_text = data_arr;
-	const uint8_t *ptr;
+	uint32_t skip;
 	int ret;
 
 	/* For tests with status as error for test success, skip verification */
@@ -840,12 +827,6 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	     flags->tunnel_hdr_verify ||
 	     td->ar_packet))
 		return TEST_SUCCESS;
-
-	ptr = rte_pktmbuf_read(m, 0, len, data_arr);
-	if (!ptr)
-		return -EINVAL;
-	else if (ptr != data_arr)
-		output_text = rte_pktmbuf_mtod_offset(m, uint8_t *, 0);
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
 	   flags->udp_encap) {
@@ -870,15 +851,10 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		}
 	}
 
-	skip = test_ipsec_tunnel_hdr_len_get(td);
-
-	len -= skip;
-	output_text += skip;
-
 	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
 				flags->ip_csum) {
-		if (m->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_GOOD)
-			ret = test_ipsec_l3_csum_verify(m);
+		if (ol_flags & RTE_MBUF_F_RX_IP_CKSUM_GOOD)
+			ret = test_ipsec_l3_csum_verify(output_text);
 		else
 			ret = TEST_FAILED;
 
@@ -890,8 +866,8 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 
 	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
 				flags->l4_csum) {
-		if (m->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD)
-			ret = test_ipsec_l4_csum_verify(m);
+		if (ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD)
+			ret = test_ipsec_l4_csum_verify(output_text);
 		else
 			ret = TEST_FAILED;
 
@@ -900,6 +876,11 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 
 		return ret;
 	}
+
+	skip = test_ipsec_tunnel_hdr_len_get(td);
+
+	len -= skip;
+	output_text += skip;
 
 	memcpy(td_output_text, td->output_text.data + skip, len);
 
@@ -932,25 +913,13 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 }
 
 static int
-test_ipsec_res_d_prepare(struct rte_mbuf *m, const struct ipsec_test_data *td,
-		   struct ipsec_test_data *res_d)
+test_ipsec_res_d_prepare(const uint8_t *output_text, uint32_t len,
+		const struct ipsec_test_data *td, struct ipsec_test_data *res_d)
 {
-	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
-	uint32_t len = rte_pktmbuf_pkt_len(m);
-	struct rte_mbuf *next = m;
-	uint32_t off = 0;
-
 	memcpy(res_d, td, sizeof(*res_d));
 
-	while (next && off < len) {
-		output_text = rte_pktmbuf_mtod(next, uint8_t *);
-		if (off + next->data_len > sizeof(res_d->input_text.data))
-			break;
-		memcpy(&res_d->input_text.data[off], output_text, next->data_len);
-		off += next->data_len;
-		next = next->next;
-	}
-	res_d->input_text.len = off;
+	memcpy(&res_d->input_text.data, output_text, len);
+	res_d->input_text.len = len;
 
 	res_d->ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 	if (res_d->aead) {
@@ -1069,19 +1038,27 @@ test_ipsec_iph6_hdr_validate(const struct rte_ipv6_hdr *iph6,
 }
 
 int
-test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
+test_ipsec_post_process(const struct rte_mbuf *m, const struct ipsec_test_data *td,
 			struct ipsec_test_data *res_d, bool silent,
 			const struct ipsec_test_flags *flags)
 {
-	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
+	uint32_t len = rte_pktmbuf_pkt_len(m);
+	uint8_t output_text[IPSEC_TEXT_MAX_LEN];
+	const uint8_t *output;
 	int ret;
+
+	/* Copy mbuf payload to continuous buffer */
+	output = rte_pktmbuf_read(m, 0, len, output_text);
+	if (output != output_text)
+		/* Single segment mbuf, copy manually */
+		memcpy(output_text, output, len);
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		const struct rte_ipv4_hdr *iph4;
 		const struct rte_ipv6_hdr *iph6;
 
 		if (flags->iv_gen) {
-			ret = test_ipsec_iv_verify_push(m, td);
+			ret = test_ipsec_iv_verify_push(output_text, td);
 			if (ret != TEST_SUCCESS)
 				return ret;
 		}
@@ -1181,9 +1158,9 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	 */
 
 	if (res_d == NULL)
-		return test_ipsec_td_verify(m, td, silent, flags);
+		return test_ipsec_td_verify(output_text, len, m->ol_flags, td, silent, flags);
 	else
-		return test_ipsec_res_d_prepare(m, td, res_d);
+		return test_ipsec_res_d_prepare(output_text, len, td, res_d);
 }
 
 int

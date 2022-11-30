@@ -9348,6 +9348,7 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 				0xe82c, 0x4887};
 	const struct rte_ipv4_hdr *ipv4 =
 			(const struct rte_ipv4_hdr *)td[0].output_text.data;
+	int nb_segs = flags->nb_segs_in_mbuf ? flags->nb_segs_in_mbuf : 1;
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_security_capability_idx sec_cap_idx;
@@ -9356,9 +9357,9 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 	uint8_t dev_id = ts_params->valid_devs[0];
 	enum rte_security_ipsec_sa_direction dir;
 	struct ipsec_test_data *res_d_tmp = NULL;
+	uint8_t input_text[IPSEC_TEXT_MAX_LEN];
 	int salt_len, i, ret = TEST_SUCCESS;
 	struct rte_security_ctx *ctx;
-	uint8_t *input_text;
 	uint32_t src, dst;
 	uint32_t verify;
 
@@ -9543,19 +9544,15 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			}
 		}
 
-		/* Setup source mbuf payload */
-		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
-		memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
-				rte_pktmbuf_tailroom(ut_params->ibuf));
-
-		input_text = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-				td[i].input_text.len);
-
-		memcpy(input_text, td[i].input_text.data,
-		       td[i].input_text.len);
-
+		/* Copy test data before modification */
+		memcpy(input_text, td[i].input_text.data, td[i].input_text.len);
 		if (test_ipsec_pkt_update(input_text, flags))
 			return TEST_FAILED;
+
+		/* Setup source mbuf payload */
+		ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool, td[i].input_text.len,
+				nb_segs, 0);
+		pktmbuf_write(ut_params->ibuf, 0, td[i].input_text.len, input_text);
 
 		/* Generate crypto op data structure */
 		ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -10249,6 +10246,30 @@ test_ipsec_proto_ipv6_set_dscp_1_inner_0(const void *data __rte_unused)
 	flags.ipv6 = true;
 	flags.tunnel_ipv6 = true;
 	flags.dscp = TEST_IPSEC_SET_DSCP_1_INNER_0;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_sgl(const void *data __rte_unused)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	struct ipsec_test_flags flags = {
+		.nb_segs_in_mbuf = 5
+	};
+
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN10K_PMD)))
+		return TEST_SKIPPED;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. "
+				"Test Skipped.\n");
+		return TEST_SKIPPED;
+	}
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -15564,6 +15585,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Tunnel header IPv6 decrement inner hop limit",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_ipv6_hop_limit_decrement),
+		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_sgl),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
