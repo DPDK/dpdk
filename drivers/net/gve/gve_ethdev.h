@@ -26,6 +26,7 @@
 
 #define GVE_DEFAULT_RX_FREE_THRESH  512
 #define GVE_DEFAULT_TX_FREE_THRESH  256
+#define GVE_DEFAULT_TX_RS_THRESH    256
 #define GVE_TX_MAX_FREE_SZ          512
 
 #define GVE_MIN_BUF_SIZE	    1024
@@ -48,6 +49,13 @@ struct gve_queue_page_list {
 union gve_tx_desc {
 	struct gve_tx_pkt_desc pkt; /* first desc for a packet */
 	struct gve_tx_seg_desc seg; /* subsequent descs for a packet */
+};
+
+/* Tx desc for DQO format */
+union gve_tx_desc_dqo {
+	struct gve_tx_pkt_desc_dqo pkt;
+	struct gve_tx_tso_context_desc_dqo tso_ctx;
+	struct gve_tx_general_context_desc_dqo general_ctx;
 };
 
 /* Offload features */
@@ -78,8 +86,10 @@ struct gve_tx_queue {
 	uint32_t tx_tail;
 	uint16_t nb_tx_desc;
 	uint16_t nb_free;
+	uint16_t nb_used;
 	uint32_t next_to_clean;
 	uint16_t free_thresh;
+	uint16_t rs_thresh;
 
 	/* Only valid for DQO_QPL queue format */
 	uint16_t sw_tail;
@@ -102,6 +112,18 @@ struct gve_tx_queue {
 	const struct rte_memzone *qres_mz;
 	struct gve_queue_resources *qres;
 
+	/* newly added for DQO*/
+	volatile union gve_tx_desc_dqo *tx_ring;
+	struct gve_tx_compl_desc *compl_ring;
+	const struct rte_memzone *compl_ring_mz;
+	uint64_t compl_ring_phys_addr;
+	uint32_t complq_tail;
+	uint16_t sw_size;
+	uint8_t cur_gen_bit;
+	uint32_t last_desc_cleaned;
+	void **txqs;
+	uint16_t re_cnt;
+
 	/* Only valid for DQO_RDA queue format */
 	struct gve_tx_queue *complq;
 
@@ -121,6 +143,7 @@ struct gve_rx_queue {
 	uint16_t nb_rx_desc;
 	uint16_t expected_seqno; /* the next expected seqno */
 	uint16_t free_thresh;
+	uint16_t nb_rx_hold;
 	uint32_t next_avail;
 	uint32_t nb_avail;
 
@@ -138,6 +161,14 @@ struct gve_rx_queue {
 	uint16_t queue_id;
 	uint16_t ntfy_id;
 	uint16_t rx_buf_len;
+
+	/* newly added for DQO*/
+	volatile struct gve_rx_desc_dqo *rx_ring;
+	struct gve_rx_compl_desc_dqo *compl_ring;
+	const struct rte_memzone *compl_ring_mz;
+	uint64_t compl_ring_phys_addr;
+	uint8_t cur_gen_bit;
+	uint16_t bufq_tail;
 
 	/* Only valid for DQO_RDA queue format */
 	struct gve_rx_queue *bufq;
@@ -307,5 +338,35 @@ gve_rx_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t
 gve_tx_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+
+/* Below functions are used for DQO */
+
+int
+gve_rx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
+		       uint16_t nb_desc, unsigned int socket_id,
+		       const struct rte_eth_rxconf *conf,
+		       struct rte_mempool *pool);
+int
+gve_tx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
+		       uint16_t nb_desc, unsigned int socket_id,
+		       const struct rte_eth_txconf *conf);
+
+void
+gve_tx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid);
+
+void
+gve_rx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid);
+
+void
+gve_stop_tx_queues_dqo(struct rte_eth_dev *dev);
+
+void
+gve_stop_rx_queues_dqo(struct rte_eth_dev *dev);
+
+uint16_t
+gve_rx_burst_dqo(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+
+uint16_t
+gve_tx_burst_dqo(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
 #endif /* _GVE_ETHDEV_H_ */

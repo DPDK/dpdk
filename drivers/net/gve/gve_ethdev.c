@@ -78,6 +78,9 @@ gve_free_qpls(struct gve_priv *priv)
 	uint16_t nb_rxqs = priv->max_nb_rxq;
 	uint32_t i;
 
+	if (priv->queue_format != GVE_GQI_QPL_FORMAT)
+		return;
+
 	for (i = 0; i < nb_txqs + nb_rxqs; i++) {
 		if (priv->qpl[i].mz != NULL)
 			rte_memzone_free(priv->qpl[i].mz);
@@ -134,6 +137,41 @@ gve_refill_pages(struct gve_rx_queue *rxq)
 	}
 
 	rte_write32(rte_cpu_to_be_32(rxq->next_avail), rxq->qrx_tail);
+
+	return 0;
+}
+
+static int
+gve_refill_dqo(struct gve_rx_queue *rxq)
+{
+	struct rte_mbuf *nmb;
+	uint16_t i;
+	int diag;
+
+	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0], rxq->nb_rx_desc);
+	if (diag < 0) {
+		for (i = 0; i < rxq->nb_rx_desc - 1; i++) {
+			nmb = rte_pktmbuf_alloc(rxq->mpool);
+			if (!nmb)
+				break;
+			rxq->sw_ring[i] = nmb;
+		}
+		if (i < rxq->nb_rx_desc - 1)
+			return -ENOMEM;
+	}
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		if (i == rxq->nb_rx_desc - 1)
+			break;
+		nmb = rxq->sw_ring[i];
+		rxq->rx_ring[i].buf_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		rxq->rx_ring[i].buf_id = rte_cpu_to_le_16(i);
+	}
+
+	rxq->nb_rx_hold = 0;
+	rxq->bufq_tail = rxq->nb_rx_desc - 1;
+
+	rte_write32(rxq->bufq_tail, rxq->qrx_tail);
 
 	return 0;
 }
@@ -206,7 +244,10 @@ gve_dev_start(struct rte_eth_dev *dev)
 
 		rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), rxq->ntfy_addr);
 
-		err = gve_refill_pages(rxq);
+		if (gve_is_gqi(priv))
+			err = gve_refill_pages(rxq);
+		else
+			err = gve_refill_dqo(rxq);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to refill for RX");
 			goto err_rx;
@@ -251,11 +292,19 @@ gve_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, "Failed to stop dev.");
 	}
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		gve_tx_queue_release(dev, i);
+	if (gve_is_gqi(priv)) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			gve_tx_queue_release(dev, i);
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		gve_rx_queue_release(dev, i);
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			gve_rx_queue_release(dev, i);
+	} else {
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			gve_tx_queue_release_dqo(dev, i);
+
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			gve_rx_queue_release_dqo(dev, i);
+	}
 
 	gve_free_qpls(priv);
 	rte_free(priv->adminq);
@@ -299,6 +348,7 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = GVE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = GVE_DEFAULT_TX_RS_THRESH,
 		.offloads = 0,
 	};
 
@@ -359,6 +409,16 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.link_update          = gve_link_update,
 	.mtu_set              = gve_dev_mtu_set,
 };
+
+static void
+gve_eth_dev_ops_override(struct eth_dev_ops *local_eth_dev_ops)
+{
+	/* override eth_dev ops for DQO */
+	local_eth_dev_ops->tx_queue_setup = gve_tx_queue_setup_dqo;
+	local_eth_dev_ops->rx_queue_setup = gve_rx_queue_setup_dqo;
+	local_eth_dev_ops->tx_queue_release = gve_tx_queue_release_dqo;
+	local_eth_dev_ops->rx_queue_release = gve_rx_queue_release_dqo;
+}
 
 static void
 gve_free_counter_array(struct gve_priv *priv)
@@ -595,14 +655,13 @@ gve_teardown_priv_resources(struct gve_priv *priv)
 static int
 gve_dev_init(struct rte_eth_dev *eth_dev)
 {
+	static struct eth_dev_ops gve_local_eth_dev_ops = gve_eth_dev_ops;
 	struct gve_priv *priv = eth_dev->data->dev_private;
 	int max_tx_queues, max_rx_queues;
 	struct rte_pci_device *pci_dev;
 	struct gve_registers *reg_bar;
 	rte_be32_t *db_bar;
 	int err;
-
-	eth_dev->dev_ops = &gve_eth_dev_ops;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -642,8 +701,13 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = gve_rx_burst;
 		eth_dev->tx_pkt_burst = gve_tx_burst;
 	} else {
-		PMD_DRV_LOG(ERR, "DQO_RDA is not implemented and will be added in the future");
+		/* override Tx/Rx setup/release eth_dev ops */
+		gve_eth_dev_ops_override(&gve_local_eth_dev_ops);
+		eth_dev->rx_pkt_burst = gve_rx_burst_dqo;
+		eth_dev->tx_pkt_burst = gve_tx_burst_dqo;
 	}
+
+	eth_dev->dev_ops = &gve_local_eth_dev_ops;
 
 	eth_dev->data->mac_addrs = &priv->dev_addr;
 
