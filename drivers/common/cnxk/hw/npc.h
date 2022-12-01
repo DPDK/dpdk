@@ -219,8 +219,7 @@ enum npc_kpu_lc_ltype {
 enum npc_kpu_ld_ltype {
 	NPC_LT_LD_TCP = 1,
 	NPC_LT_LD_UDP,
-	NPC_LT_LD_ICMP,
-	NPC_LT_LD_SCTP,
+	NPC_LT_LD_SCTP = 4,
 	NPC_LT_LD_ICMP6,
 	NPC_LT_LD_CUSTOM0,
 	NPC_LT_LD_CUSTOM1,
@@ -231,6 +230,7 @@ enum npc_kpu_ld_ltype {
 	NPC_LT_LD_NSH,
 	NPC_LT_LD_TU_MPLS_IN_NSH,
 	NPC_LT_LD_TU_MPLS_IN_IP,
+	NPC_LT_LD_ICMP,
 };
 
 enum npc_kpu_le_ltype {
@@ -276,14 +276,14 @@ enum npc_kpu_lg_ltype {
 enum npc_kpu_lh_ltype {
 	NPC_LT_LH_TU_TCP = 1,
 	NPC_LT_LH_TU_UDP,
-	NPC_LT_LH_TU_ICMP,
-	NPC_LT_LH_TU_SCTP,
+	NPC_LT_LH_TU_SCTP = 4,
 	NPC_LT_LH_TU_ICMP6,
+	NPC_LT_LH_CUSTOM0,
+	NPC_LT_LH_CUSTOM1,
 	NPC_LT_LH_TU_IGMP = 8,
 	NPC_LT_LH_TU_ESP,
 	NPC_LT_LH_TU_AH,
-	NPC_LT_LH_CUSTOM0 = 0xE,
-	NPC_LT_LH_CUSTOM1 = 0xF,
+	NPC_LT_LH_TU_ICMP = 0xF,
 };
 
 enum npc_kpu_lb_uflag {
