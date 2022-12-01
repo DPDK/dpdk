@@ -1259,6 +1259,11 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			goto error;
 	}
 	internal->sw_lm = sw_fallback_lm;
+	if (!internal->sw_lm && !internal->hw.lm_cfg) {
+		DRV_LOG(ERR, "Device %s does not support HW assist live migration, please enable sw-live-migration!",
+			pci_dev->name);
+		goto error;
+	}
 
 	internal->vdev = rte_vdpa_register_device(&pci_dev->device, &ifcvf_ops);
 	if (internal->vdev == NULL) {
