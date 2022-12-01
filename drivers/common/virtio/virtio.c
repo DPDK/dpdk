@@ -554,7 +554,7 @@ virtio_pci_dev_state_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int 
 	struct vfio_irq_set *irq_set;
 	struct virtio_dev_queue_info *q_info;
 	struct virtio_dev_common_state *state_info;
-	int ret;
+	int ret, *data;
 
 	irq_set = rte_zmalloc(NULL, (sizeof(struct vfio_irq_set) + sizeof(int)), 0);
 	if (irq_set == NULL) {
@@ -567,7 +567,8 @@ virtio_pci_dev_state_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int 
 			 VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = vec;
-	*(int *)&irq_set->data = fd;
+	data = (int *)&irq_set->data;
+	*data = fd;
 
 	ret = ioctl(vpdev->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	rte_free(irq_set);
@@ -593,7 +594,7 @@ virtio_pci_dev_state_interrupt_disable(struct virtio_pci_dev *vpdev, int vec, vo
 	struct vfio_irq_set *irq_set;
 	struct virtio_dev_queue_info *q_info;
 	struct virtio_dev_common_state *state_info;
-	int ret;
+	int ret, *data;
 
 	irq_set = rte_zmalloc(NULL, (sizeof(struct vfio_irq_set) + sizeof(int)), 0);
 	if (irq_set == NULL) {
@@ -606,7 +607,8 @@ virtio_pci_dev_state_interrupt_disable(struct virtio_pci_dev *vpdev, int vec, vo
 			 VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = vec;
-	*(int *)&irq_set->data = VFIO_FD_INVALID;
+	data = (int *)&irq_set->data;
+	*data = VFIO_FD_INVALID;
 
 	ret = ioctl(vpdev->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	rte_free(irq_set);
@@ -631,7 +633,7 @@ virtio_pci_dev_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int vec)
 {
 	struct virtio_hw *hw = &vpdev->hw;
 	struct vfio_irq_set *irq_set;
-	int ret;
+	int ret, *data;
 
 	irq_set = rte_zmalloc(NULL, (sizeof(struct vfio_irq_set) + sizeof(int)), 0);
 	if (irq_set == NULL) {
@@ -644,7 +646,8 @@ virtio_pci_dev_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int vec)
 			 VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = vec;
-	*(int *)&irq_set->data = fd;
+	data = (int *)&irq_set->data;
+	*data = fd;
 
 	ret = ioctl(vpdev->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	rte_free(irq_set);
@@ -679,7 +682,7 @@ virtio_pci_dev_interrupt_disable(struct virtio_pci_dev *vpdev, int vec)
 {
 	struct virtio_hw *hw = &vpdev->hw;
 	struct vfio_irq_set *irq_set;
-	int ret;
+	int ret, *data;
 
 	irq_set = rte_zmalloc(NULL, (sizeof(struct vfio_irq_set) + sizeof(int)), 0);
 	if (irq_set == NULL) {
@@ -692,7 +695,8 @@ virtio_pci_dev_interrupt_disable(struct virtio_pci_dev *vpdev, int vec)
 			 VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = vec;
-	*(int *)&irq_set->data = VFIO_FD_INVALID;
+	data = (int *)&irq_set->data;
+	*data = VFIO_FD_INVALID;
 
 	ret = ioctl(vpdev->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	rte_free(irq_set);
