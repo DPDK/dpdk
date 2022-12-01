@@ -193,6 +193,7 @@ npc_parse_la(struct npc_parse_state *pst)
 	if (pst->pattern->type != ROC_NPC_ITEM_TYPE_ETH)
 		return 0;
 
+	pst->has_eth_type = true;
 	eth_item = pst->pattern->spec;
 
 	lid = NPC_LID_LA;

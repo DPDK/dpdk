@@ -196,6 +196,7 @@ struct npc_parse_state {
 	bool set_vlan_ltype_mask;
 	bool set_ipv6ext_ltype_mask;
 	bool is_second_pass_rule;
+	bool has_eth_type;
 };
 
 enum npc_kpu_parser_flag {

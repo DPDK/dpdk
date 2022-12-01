@@ -551,6 +551,8 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 	struct idev_cfg *idev;
 	uint16_t pf_func = 0;
 	uint16_t ctr = ~(0);
+	uint32_t la_offset;
+	uint64_t mask;
 	int rc, idx;
 	int entry;
 
@@ -617,16 +619,31 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 			flow->npc_action &= ~(GENMASK(19, 4));
 			flow->npc_action |= (uint64_t)pf_func << 4;
 
-			npc_mcam_set_channel(flow, req, inl_dev->channel,
-					     inl_dev->chan_mask, false);
+			npc_mcam_set_channel(flow, req, inl_dev->channel, inl_dev->chan_mask,
+					     false);
 		} else if (npc->is_sdp_link) {
-			npc_mcam_set_channel(flow, req, npc->sdp_channel,
-					     npc->sdp_channel_mask,
+			npc_mcam_set_channel(flow, req, npc->sdp_channel, npc->sdp_channel_mask,
 					     pst->is_second_pass_rule);
 		} else {
-			npc_mcam_set_channel(flow, req, npc->channel,
-					     (BIT_ULL(12) - 1),
+			npc_mcam_set_channel(flow, req, npc->channel, (BIT_ULL(12) - 1),
 					     pst->is_second_pass_rule);
+		}
+		/* Always match both 1st pass and 2nd pass ltypes for all rules */
+		if (!pst->is_second_pass_rule && pst->has_eth_type) {
+			la_offset = __builtin_popcount(npc->keyx_supp_nmask[flow->nix_intf] &
+						       ((1ULL << 9 /* LA offset */) - 1));
+			la_offset *= 4;
+
+			mask = ~((0xfULL << la_offset));
+			/* Mask ltype ETHER (0x2) and CPT_HDR (0xa)  */
+			req->entry_data.kw[0] &= mask;
+			req->entry_data.kw_mask[0] &= mask;
+			req->entry_data.kw[0] |= (0x2ULL << la_offset);
+			req->entry_data.kw_mask[0] |= (0x7ULL << la_offset);
+			flow->mcam_data[0] &= mask;
+			flow->mcam_mask[0] &= mask;
+			flow->mcam_data[0] |= (0x2ULL << la_offset);
+			flow->mcam_mask[0] |= (0x7ULL << la_offset);
 		}
 	} else {
 		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
