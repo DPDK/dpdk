@@ -1746,6 +1746,11 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			goto error;
 	}
 	internal->sw_lm = sw_fallback_lm;
+	if (!internal->sw_lm && !internal->hw.lm_cfg) {
+		DRV_LOG(ERR, "Device %s does not support HW assist live migration, please enable sw-live-migration!",
+			pci_dev->name);
+		goto error;
+	}
 
 	pthread_mutex_lock(&internal_list_lock);
 	TAILQ_INSERT_TAIL(&internal_list, list, next);
