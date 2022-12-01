@@ -224,34 +224,35 @@ foreach l:libraries
         # RTE_BUILD_SHARED_LIB defined
         cflags += '-DRTE_BUILD_SHARED_LIB'
     endif
-    version_map = '@0@/@1@/version.map'.format(
-            meson.current_source_dir(), l)
-    implib = 'librte_' + l + '.dll.a'
 
-    def_file = custom_target(libname + '_def',
-            command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-            input: version_map,
-            output: '@0@_exports.def'.format(libname))
-
-    mingw_map = custom_target(libname + '_mingw',
-            command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-            input: version_map,
-            output: '@0@_mingw.map'.format(libname))
+    version_map = '@0@/@1@/version.map'.format(meson.current_source_dir(), l)
+    lk_deps = [version_map]
 
     if is_ms_linker
+        def_file = custom_target(libname + '_def',
+                command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                input: version_map,
+                output: '@0@_exports.def'.format(libname))
+        lk_deps += [def_file]
+
         lk_args = ['-Wl,/def:' + def_file.full_path()]
         if meson.version().version_compare('<0.54.0')
-            lk_args += ['-Wl,/implib:lib\\' + implib]
+            lk_args += ['-Wl,/implib:lib\\librte_' + l + '.dll.a']
         endif
     else
         if is_windows
+            mingw_map = custom_target(libname + '_mingw',
+                    command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                    input: version_map,
+                    output: '@0@_mingw.map'.format(libname))
+            lk_deps += [mingw_map]
+
             lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
         else
             lk_args = ['-Wl,--version-script=' + version_map]
         endif
     endif
 
-    lk_deps = [version_map, def_file, mingw_map]
     if developer_mode and not is_windows
         # on unix systems check the output of the
         # check-symbols.sh script, using it as a

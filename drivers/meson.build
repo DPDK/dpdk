@@ -206,7 +206,6 @@ foreach subpath:subdirs
 
         # now build the shared driver
         version_map = '@0@/@1@/version.map'.format(meson.current_source_dir(), drv_path)
-        implib = 'lib' + lib_name + '.dll.a'
 
         lk_deps = []
         lk_args = []
@@ -227,25 +226,25 @@ foreach subpath:subdirs
             endif
         endif
 
-        def_file = custom_target(lib_name + '_def',
-                command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                input: version_map,
-                output: '@0@_exports.def'.format(lib_name))
-
-        mingw_map = custom_target(lib_name + '_mingw',
-                command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                input: version_map,
-                output: '@0@_mingw.map'.format(lib_name))
-
-        lk_deps += [def_file, mingw_map]
-
         if is_windows
             if is_ms_linker
+                def_file = custom_target(lib_name + '_def',
+                        command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                        input: version_map,
+                        output: '@0@_exports.def'.format(lib_name))
+                lk_deps += [def_file]
+
                 lk_args = ['-Wl,/def:' + def_file.full_path()]
                 if meson.version().version_compare('<0.54.0')
-                    lk_args += ['-Wl,/implib:drivers\\' + implib]
+                    lk_args += ['-Wl,/implib:drivers\\lib' + lib_name + '.dll.a']
                 endif
             else
+                mingw_map = custom_target(lib_name + '_mingw',
+                        command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                        input: version_map,
+                        output: '@0@_mingw.map'.format(lib_name))
+                lk_deps += [mingw_map]
+
                 lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
             endif
         else
