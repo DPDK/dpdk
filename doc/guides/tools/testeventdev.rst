@@ -176,7 +176,8 @@ The following are the application command-line options:
 
        Set producer enqueue burst size. Can be used to configure the number of
        events the producer(s) will enqueue as a burst to the event device.
-       Only applicable for `perf_queue` test.
+       Only applicable for `perf_queue` and `perf_atq` test in combination with
+       CPU (default) or crypto device (``--prod_type_cryptodev``) producers.
 
 * ``--nb_eth_queues``
 

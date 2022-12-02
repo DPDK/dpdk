@@ -554,6 +554,233 @@ perf_event_crypto_producer(void *arg)
 	return 0;
 }
 
+static void
+crypto_adapter_enq_op_new_burst(struct prod_data *p)
+{
+	const struct test_perf *t = p->t;
+	const struct evt_options *opt = t->opt;
+
+	struct rte_mbuf *m, *pkts_burst[MAX_PROD_ENQ_BURST_SIZE];
+	struct rte_crypto_op *ops_burst[MAX_PROD_ENQ_BURST_SIZE];
+	const uint32_t burst_size = opt->prod_enq_burst_sz;
+	uint8_t *result[MAX_PROD_ENQ_BURST_SIZE];
+	const uint32_t nb_flows = t->nb_flows;
+	const uint64_t nb_pkts = t->nb_pkts;
+	uint16_t len, enq, nb_alloc, offset;
+	struct rte_mempool *pool = t->pool;
+	uint16_t qp_id = p->ca.cdev_qp_id;
+	uint8_t cdev_id = p->ca.cdev_id;
+	uint64_t alloc_failures = 0;
+	uint32_t flow_counter = 0;
+	uint64_t count = 0;
+	uint32_t  i;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d queue %d cdev_id %u cdev_qp_id %u\n",
+		       __func__, rte_lcore_id(), p->queue_id, p->ca.cdev_id,
+		       p->ca.cdev_qp_id);
+
+	offset = sizeof(struct perf_elt);
+	len = RTE_MAX(RTE_ETHER_MIN_LEN + offset, opt->mbuf_sz);
+
+	while (count < nb_pkts && t->done == false) {
+		if (opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			struct rte_crypto_sym_op *sym_op;
+			int ret;
+
+			nb_alloc = rte_crypto_op_bulk_alloc(t->ca_op_pool,
+					RTE_CRYPTO_OP_TYPE_SYMMETRIC, ops_burst, burst_size);
+			if (unlikely(nb_alloc != burst_size)) {
+				alloc_failures++;
+				continue;
+			}
+
+			ret = rte_pktmbuf_alloc_bulk(pool, pkts_burst, burst_size);
+			if (unlikely(ret != 0)) {
+				alloc_failures++;
+				rte_mempool_put_bulk(t->ca_op_pool, (void **)ops_burst, burst_size);
+				continue;
+			}
+
+			for (i = 0; i < burst_size; i++) {
+				m = pkts_burst[i];
+				rte_pktmbuf_append(m, len);
+				sym_op = ops_burst[i]->sym;
+				sym_op->m_src = m;
+				sym_op->cipher.data.offset = offset;
+				sym_op->cipher.data.length = len - offset;
+				rte_crypto_op_attach_sym_session(ops_burst[i],
+						p->ca.crypto_sess[flow_counter++ % nb_flows]);
+			}
+		} else {
+			struct rte_crypto_asym_op *asym_op;
+
+			nb_alloc = rte_crypto_op_bulk_alloc(t->ca_op_pool,
+					RTE_CRYPTO_OP_TYPE_ASYMMETRIC, ops_burst, burst_size);
+			if (unlikely(nb_alloc != burst_size)) {
+				alloc_failures++;
+				continue;
+			}
+
+			if (rte_mempool_get_bulk(pool, (void **)result, burst_size)) {
+				alloc_failures++;
+				rte_mempool_put_bulk(t->ca_op_pool, (void **)ops_burst, burst_size);
+				continue;
+			}
+
+			for (i = 0; i < burst_size; i++) {
+				asym_op = ops_burst[i]->asym;
+				asym_op->modex.base.data = modex_test_case.base.data;
+				asym_op->modex.base.length = modex_test_case.base.len;
+				asym_op->modex.result.data = result[i];
+				asym_op->modex.result.length = modex_test_case.result_len;
+				rte_crypto_op_attach_asym_session(ops_burst[i],
+						p->ca.crypto_sess[flow_counter++ % nb_flows]);
+			}
+		}
+
+		enq = 0;
+		while (!t->done) {
+			enq += rte_cryptodev_enqueue_burst(cdev_id, qp_id, ops_burst + enq,
+					burst_size - enq);
+			if (enq == burst_size)
+				break;
+		}
+
+		count += burst_size;
+	}
+
+	if (opt->verbose_level > 1 && alloc_failures)
+		printf("%s(): lcore %d allocation failures: %"PRIu64"\n",
+		       __func__, rte_lcore_id(), alloc_failures);
+}
+
+static void
+crypto_adapter_enq_op_fwd_burst(struct prod_data *p)
+{
+	const struct test_perf *t = p->t;
+	const struct evt_options *opt = t->opt;
+
+	struct rte_mbuf *m, *pkts_burst[MAX_PROD_ENQ_BURST_SIZE];
+	struct rte_crypto_op *ops_burst[MAX_PROD_ENQ_BURST_SIZE];
+	const uint32_t burst_size = opt->prod_enq_burst_sz;
+	struct rte_event ev[MAX_PROD_ENQ_BURST_SIZE];
+	uint8_t *result[MAX_PROD_ENQ_BURST_SIZE];
+	const uint32_t nb_flows = t->nb_flows;
+	const uint64_t nb_pkts = t->nb_pkts;
+	uint16_t len, enq, nb_alloc, offset;
+	struct rte_mempool *pool = t->pool;
+	const uint8_t dev_id = p->dev_id;
+	const uint8_t port = p->port_id;
+	uint64_t alloc_failures = 0;
+	uint32_t flow_counter = 0;
+	uint64_t count = 0;
+	uint32_t  i;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d port %d queue %d cdev_id %u cdev_qp_id %u\n",
+		       __func__, rte_lcore_id(), port, p->queue_id,
+		       p->ca.cdev_id, p->ca.cdev_qp_id);
+
+	offset = sizeof(struct perf_elt);
+	len = RTE_MAX(RTE_ETHER_MIN_LEN + offset, opt->mbuf_sz);
+
+	for (i = 0; i < burst_size; i++) {
+		ev[i].event = 0;
+		ev[i].op = RTE_EVENT_OP_NEW;
+		ev[i].queue_id = p->queue_id;
+		ev[i].sched_type = RTE_SCHED_TYPE_ATOMIC;
+		ev[i].event_type = RTE_EVENT_TYPE_CPU;
+	}
+
+	while (count < nb_pkts && t->done == false) {
+		if (opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			struct rte_crypto_sym_op *sym_op;
+			int ret;
+
+			nb_alloc = rte_crypto_op_bulk_alloc(t->ca_op_pool,
+					RTE_CRYPTO_OP_TYPE_SYMMETRIC, ops_burst, burst_size);
+			if (unlikely(nb_alloc != burst_size)) {
+				alloc_failures++;
+				continue;
+			}
+
+			ret = rte_pktmbuf_alloc_bulk(pool, pkts_burst, burst_size);
+			if (unlikely(ret != 0)) {
+				alloc_failures++;
+				rte_mempool_put_bulk(t->ca_op_pool, (void **)ops_burst, burst_size);
+				continue;
+			}
+
+			for (i = 0; i < burst_size; i++) {
+				m = pkts_burst[i];
+				rte_pktmbuf_append(m, len);
+				sym_op = ops_burst[i]->sym;
+				sym_op->m_src = m;
+				sym_op->cipher.data.offset = offset;
+				sym_op->cipher.data.length = len - offset;
+				rte_crypto_op_attach_sym_session(ops_burst[i],
+						p->ca.crypto_sess[flow_counter++ % nb_flows]);
+				ev[i].event_ptr = ops_burst[i];
+			}
+		} else {
+			struct rte_crypto_asym_op *asym_op;
+
+			nb_alloc = rte_crypto_op_bulk_alloc(t->ca_op_pool,
+					RTE_CRYPTO_OP_TYPE_ASYMMETRIC, ops_burst, burst_size);
+			if (unlikely(nb_alloc != burst_size)) {
+				alloc_failures++;
+				continue;
+			}
+
+			if (rte_mempool_get_bulk(pool, (void **)result, burst_size)) {
+				alloc_failures++;
+				rte_mempool_put_bulk(t->ca_op_pool, (void **)ops_burst, burst_size);
+				continue;
+			}
+
+			for (i = 0; i < burst_size; i++) {
+				asym_op = ops_burst[i]->asym;
+				asym_op->modex.base.data = modex_test_case.base.data;
+				asym_op->modex.base.length = modex_test_case.base.len;
+				asym_op->modex.result.data = result[i];
+				asym_op->modex.result.length = modex_test_case.result_len;
+				rte_crypto_op_attach_asym_session(ops_burst[i],
+						p->ca.crypto_sess[flow_counter++ % nb_flows]);
+				ev[i].event_ptr = ops_burst[i];
+			}
+		}
+
+		enq = 0;
+		while (!t->done) {
+			enq += rte_event_crypto_adapter_enqueue(dev_id, port, ev + enq,
+					burst_size - enq);
+			if (enq == burst_size)
+				break;
+		}
+
+		count += burst_size;
+	}
+
+	if (opt->verbose_level > 1 && alloc_failures)
+		printf("%s(): lcore %d allocation failures: %"PRIu64"\n",
+		       __func__, rte_lcore_id(), alloc_failures);
+}
+
+static inline int
+perf_event_crypto_producer_burst(void *arg)
+{
+	struct prod_data *p = arg;
+	struct evt_options *opt = p->t->opt;
+
+	if (opt->crypto_adptr_mode == RTE_EVENT_CRYPTO_ADAPTER_OP_NEW)
+		crypto_adapter_enq_op_new_burst(p);
+	else
+		crypto_adapter_enq_op_fwd_burst(p);
+
+	return 0;
+}
+
 static int
 perf_producer_wrapper(void *arg)
 {
@@ -580,8 +807,12 @@ perf_producer_wrapper(void *arg)
 	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR &&
 			t->opt->timdev_use_burst)
 		return perf_event_timer_producer_burst(arg);
-	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR)
-		return perf_event_crypto_producer(arg);
+	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
+		if (t->opt->prod_enq_burst_sz > 1)
+			return perf_event_crypto_producer_burst(arg);
+		else
+			return perf_event_crypto_producer(arg);
+	}
 	return 0;
 }
 
