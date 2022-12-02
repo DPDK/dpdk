@@ -796,3 +796,12 @@ Tested Platforms
   * OFED:
 
     * MLNX_OFED 5.8-1.0.1.1
+
+22.11.1 Release Notes
+---------------------
+
+
+22.11.1 Fixes
+~~~~~~~~~~~~~
+
+* drivers: fix symbol exports when map is omitted
