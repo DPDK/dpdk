@@ -61,6 +61,7 @@
 #include <rte_pmd_bnxt.h>
 #endif
 #include "testpmd.h"
+#include "cmdline_cman.h"
 #include "cmdline_mtr.h"
 #include "cmdline_tm.h"
 #include "bpf_cmd.h"
@@ -609,6 +610,17 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set port (port_id) fec_mode auto|off|rs|baser\n"
 			"    set fec mode for a specific port\n\n"
+
+			"show port cman capa (port_id)\n"
+			"    Show congestion management capabilities\n\n"
+
+			"show port cman config (port_id)\n"
+			"    Show congestion management configuration\n\n"
+
+			"set port cman config (port_id) (queue_id) default | "
+			"[obj (queue|queue_mempool) mode red (min_thresh) "
+			"(max_thresh) (prob_inv)]\n"
+			"    Set congestion management configuration\n\n"
 
 			, list_pkt_forwarding_modes()
 		);
@@ -12851,6 +12863,9 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_show_capability,
 	(cmdline_parse_inst_t *)&cmd_set_flex_is_pattern,
 	(cmdline_parse_inst_t *)&cmd_set_flex_spec_pattern,
+	(cmdline_parse_inst_t *)&cmd_show_port_cman_capa,
+	(cmdline_parse_inst_t *)&cmd_show_port_cman_config,
+	(cmdline_parse_inst_t *)&cmd_set_port_cman_config,
 	NULL,
 };
 

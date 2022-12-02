@@ -7,6 +7,7 @@ cflags += '-Wno-deprecated-declarations'
 sources = files(
         '5tswap.c',
         'cmdline.c',
+        'cmdline_cman.c',
         'cmdline_flow.c',
         'cmdline_mtr.c',
         'cmdline_tm.c',

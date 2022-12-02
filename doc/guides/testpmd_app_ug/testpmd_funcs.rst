@@ -2843,6 +2843,35 @@ where:
 * ``red`` enable 1, disable 0 marking IP ecn for yellow marked packets with ecn of 2'b01  or 2'b10
   to ecn of 2'b11 when IP is caring TCP or SCTP
 
+Congestion Management
+---------------------
+
+Get capabilities
+~~~~~~~~~~~~~~~~
+
+Retrieve congestion management capabilities supported by driver for given port.
+Below example command retrieves capabilities for port 0::
+
+   testpmd> show port cman capa 0
+
+Get configuration
+~~~~~~~~~~~~~~~~~
+
+Retrieve congestion management configuration for given port.
+Below example command retrieves configuration for port 0::
+
+   testpmd> show port cman config 0
+
+Set configuration
+~~~~~~~~~~~~~~~~~
+
+Configures congestion management settings on given queue
+or mempool associated with queue.
+Below example command configures RED as congestion management algorithm
+for port 0 and queue 0::
+
+   testpmd> set port cman config 0 0 obj queue mode red 10 100 1
+
 Filter Functions
 ----------------
 
