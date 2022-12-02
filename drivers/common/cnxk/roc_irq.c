@@ -125,6 +125,17 @@ dev_irqs_disable(struct plt_intr_handle *intr_handle)
 }
 
 int
+dev_irq_reconfigure(struct plt_intr_handle *intr_handle, uint16_t max_intr)
+{
+	/* Disable interrupts if enabled. */
+	if (plt_intr_max_intr_get(intr_handle))
+		dev_irqs_disable(intr_handle);
+
+	plt_intr_max_intr_set(intr_handle, max_intr);
+	return irq_init(intr_handle);
+}
+
+int
 dev_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb,
 		 void *data, unsigned int vec)
 {

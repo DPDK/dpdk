@@ -19,6 +19,8 @@ roc_tim_to_tim_priv(struct roc_tim *roc_tim)
 	return (struct tim *)&roc_tim->reserved[0];
 }
 
+int tim_free_lf_count_get(struct dev *dev, uint16_t *nb_lfs);
+
 /* TIM IRQ*/
 int tim_register_irq_priv(struct roc_tim *roc_tim,
 			  struct plt_intr_handle *handle, uint8_t ring_id,

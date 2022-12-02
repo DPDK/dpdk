@@ -89,6 +89,7 @@ struct dev {
 	struct dev_ops *ops;
 	void *roc_nix;
 	void *roc_cpt;
+	void *roc_tim;
 	bool disable_shared_lmt; /* false(default): shared lmt mode enabled */
 	const struct plt_memzone *lmt_mz;
 } __plt_cache_aligned;
@@ -110,5 +111,9 @@ int dev_irq_register(struct plt_intr_handle *intr_handle,
 void dev_irq_unregister(struct plt_intr_handle *intr_handle,
 			plt_intr_callback_fn cb, void *data, unsigned int vec);
 int dev_irqs_disable(struct plt_intr_handle *intr_handle);
+int dev_irq_reconfigure(struct plt_intr_handle *intr_handle, uint16_t max_intr);
+
+int dev_mbox_register_irq(struct plt_pci_device *pci_dev, struct dev *dev);
+int dev_vf_flr_register_irqs(struct plt_pci_device *pci_dev, struct dev *dev);
 
 #endif /* _ROC_DEV_PRIV_H */

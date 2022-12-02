@@ -656,11 +656,57 @@ fail:
 	return rc;
 }
 
+static int
+sso_update_msix_vec_count(struct roc_sso *roc_sso, uint16_t sso_vec_cnt)
+{
+	struct plt_pci_device *pci_dev = roc_sso->pci_dev;
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	uint16_t mbox_vec_cnt, npa_vec_cnt;
+	struct dev *dev = &sso->dev;
+	struct idev_cfg *idev;
+	int rc;
+
+	idev = idev_get_cfg();
+	if (idev == NULL)
+		return -ENODEV;
+
+	mbox_vec_cnt = RVU_PF_INT_VEC_AFPF_MBOX + 1;
+
+	/* Allocating vectors for the first time */
+	if (plt_intr_max_intr_get(pci_dev->intr_handle) == 0) {
+		npa_vec_cnt = idev->npa_refcnt ? 0 : NPA_LF_INT_VEC_POISON + 1;
+		return dev_irq_reconfigure(pci_dev->intr_handle, mbox_vec_cnt + npa_vec_cnt);
+	}
+
+	npa_vec_cnt = (dev->npa.pci_dev == pci_dev) ? NPA_LF_INT_VEC_POISON + 1 : 0;
+
+	/* Re-configure to include SSO vectors */
+	rc = dev_irq_reconfigure(pci_dev->intr_handle, mbox_vec_cnt + npa_vec_cnt + sso_vec_cnt);
+	if (rc)
+		return rc;
+
+	rc = dev_mbox_register_irq(pci_dev, dev);
+	if (rc)
+		return rc;
+
+	if (!dev_is_vf(dev)) {
+		rc = dev_vf_flr_register_irqs(pci_dev, dev);
+		if (rc)
+			return rc;
+	}
+
+	if (npa_vec_cnt)
+		rc = npa_register_irqs(&dev->npa);
+
+	return rc;
+}
+
 int
-roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp)
+roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp, uint16_t nb_tim_lfs)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct sso_lf_alloc_rsp *rsp_hwgrp;
+	uint16_t sso_vec_cnt, free_tim_lfs;
 	int rc;
 
 	if (!nb_hwgrp || roc_sso->max_hwgrp < nb_hwgrp)
@@ -701,6 +747,30 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp)
 	rc = sso_msix_fill(roc_sso, nb_hws, nb_hwgrp);
 	if (rc < 0) {
 		plt_err("Unable to get MSIX offsets for SSO LFs");
+		goto sso_msix_fail;
+	}
+
+	/* 1 error interrupt per SSO HWS/HWGRP */
+	sso_vec_cnt = nb_hws + nb_hwgrp;
+
+	if (sso->dev.roc_tim) {
+		nb_tim_lfs = ((struct roc_tim *)sso->dev.roc_tim)->nb_lfs;
+	} else {
+		rc = tim_free_lf_count_get(&sso->dev, &free_tim_lfs);
+		if (rc < 0) {
+			plt_err("Failed to get TIM resource count");
+			goto sso_msix_fail;
+		}
+
+		nb_tim_lfs = nb_tim_lfs ? PLT_MIN(nb_tim_lfs, free_tim_lfs) : free_tim_lfs;
+	}
+
+	/* 2 error interrupt per TIM LF */
+	sso_vec_cnt += 2 * nb_tim_lfs;
+
+	rc = sso_update_msix_vec_count(roc_sso, sso_vec_cnt);
+	if (rc < 0) {
+		plt_err("Failed to update SSO MSIX vector count");
 		goto sso_msix_fail;
 	}
 
@@ -767,6 +837,12 @@ roc_sso_dev_init(struct roc_sso *roc_sso)
 	memset(sso, 0, sizeof(*sso));
 	pci_dev = roc_sso->pci_dev;
 	plt_spinlock_init(&sso->mbox_lock);
+
+	rc = sso_update_msix_vec_count(roc_sso, 0);
+	if (rc < 0) {
+		plt_err("Failed to set SSO MSIX vector count");
+		return rc;
+	}
 
 	rc = dev_init(&sso->dev, pci_dev);
 	if (rc < 0) {
