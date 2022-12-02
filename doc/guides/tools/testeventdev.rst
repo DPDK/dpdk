@@ -185,18 +185,18 @@ The following are the application command-line options:
 
 * ``--enable_vector``
 
-       Enable event vector for Rx/Tx adapters.
-       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+       Enable event vector for Rx/Tx/crypto adapters.
+       Only applicable for `pipeline_*` and `perf_*` tests.
 
 * ``--vector_size``
 
-       Vector size to configure for the Rx adapter.
-       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+       Vector size to configure for the Rx/crypto adapter.
+       Only applicable for `pipeline_*` and `perf_*` tests.
 
 * ``--vector_tmo_ns``
 
-       Vector timeout nanoseconds to be configured for the Rx adapter.
-       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+       Vector timeout nanoseconds to be configured for the Rx/crypto adapter.
+       Only applicable for `pipeline_*` and `perf_*` tests.
 
 * ``--per_port_pool``
 

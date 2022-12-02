@@ -71,6 +71,7 @@ struct test_perf {
 	struct rte_mempool *ca_op_pool;
 	struct rte_mempool *ca_sess_pool;
 	struct rte_mempool *ca_asym_sess_pool;
+	struct rte_mempool *ca_vector_pool;
 } __rte_cache_aligned;
 
 struct perf_elt {
@@ -103,6 +104,8 @@ struct perf_elt {
 	uint8_t cnt = 0;\
 	void *bufs[16] __rte_cache_aligned;\
 	int const sz = RTE_DIM(bufs);\
+	uint8_t stage;\
+	struct perf_elt *pe = NULL;\
 	if (opt->verbose_level > 1)\
 		printf("%s(): lcore %d dev_id %d port=%d\n", __func__,\
 				rte_lcore_id(), dev, port)
@@ -143,6 +146,64 @@ perf_handle_crypto_ev(struct rte_event *ev, struct perf_elt **pe, int enable_fwd
 	return 0;
 }
 
+static __rte_always_inline struct perf_elt *
+perf_elt_from_vec_get(struct rte_event_vector *vec)
+{
+	/* Timestamp for vector event stored in first element */
+	struct rte_crypto_op *cop = vec->ptrs[0];
+	struct rte_mbuf *m;
+
+	if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		m = cop->sym->m_dst == NULL ? cop->sym->m_src : cop->sym->m_dst;
+		return rte_pktmbuf_mtod(m, struct perf_elt *);
+	} else {
+		return RTE_PTR_ADD(cop->asym->modex.result.data, cop->asym->modex.result.length);
+	}
+}
+
+static __rte_always_inline int
+perf_handle_crypto_vector_ev(struct rte_event *ev, struct perf_elt **pe,
+		const int enable_fwd_latency)
+{
+	struct rte_event_vector *vec = ev->vec;
+	struct rte_crypto_op *cop;
+	struct rte_mbuf *m;
+	int i, n = 0;
+	void *data;
+
+	for (i = 0; i < vec->nb_elem; i++) {
+		cop = vec->ptrs[i];
+		if (unlikely(cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS)) {
+			if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+				m = cop->sym->m_dst == NULL ? cop->sym->m_src : cop->sym->m_dst;
+				rte_pktmbuf_free(m);
+			} else {
+				data = cop->asym->modex.result.data;
+				rte_mempool_put(rte_mempool_from_obj(data), data);
+			}
+			rte_crypto_op_free(cop);
+			continue;
+		}
+		vec->ptrs[n++] = cop;
+	}
+
+	/* All cops failed, free the vector */
+	if (n == 0) {
+		rte_mempool_put(rte_mempool_from_obj(vec), vec);
+		return -ENOENT;
+	}
+
+	vec->nb_elem = n;
+
+	/* Forward latency not enabled - perf data will be not accessed */
+	if (!enable_fwd_latency)
+		return 0;
+
+	/* Get pointer to perf data */
+	*pe = perf_elt_from_vec_get(vec);
+
+	return 0;
+}
 
 static __rte_always_inline int
 perf_process_last_stage(struct rte_mempool *const pool, uint8_t prod_crypto_type,
@@ -195,9 +256,8 @@ perf_process_last_stage_latency(struct rte_mempool *const pool, uint8_t prod_cry
 	struct perf_elt *pe;
 	void *to_free_in_bulk;
 
-	/* release fence here ensures event_prt is
-	 * stored before updating the number of
-	 * processed packets for worker lcores
+	/* Release fence here ensures event_prt is stored before updating the number of processed
+	 * packets for worker lcores.
 	 */
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	w->processed_pkts++;
@@ -237,6 +297,42 @@ perf_process_last_stage_latency(struct rte_mempool *const pool, uint8_t prod_cry
 	return count;
 }
 
+static __rte_always_inline void
+perf_process_vector_last_stage(struct rte_mempool *const pool,
+		struct rte_mempool *const ca_pool, struct rte_event *const ev,
+		struct worker_data *const w, const bool enable_fwd_latency)
+{
+	struct rte_event_vector *vec = ev->vec;
+	struct rte_crypto_op *cop;
+	void *bufs[vec->nb_elem];
+	struct perf_elt *pe;
+	uint64_t latency;
+	int i;
+
+	/* Release fence here ensures event_prt is stored before updating the number of processed
+	 * packets for worker lcores.
+	 */
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	w->processed_pkts += vec->nb_elem;
+
+	if (enable_fwd_latency) {
+		pe = perf_elt_from_vec_get(vec);
+		latency = rte_get_timer_cycles() - pe->timestamp;
+		w->latency += latency;
+	}
+
+	for (i = 0; i < vec->nb_elem; i++) {
+		cop = vec->ptrs[i];
+		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+			bufs[i] = cop->sym->m_dst == NULL ? cop->sym->m_src : cop->sym->m_dst;
+		else
+			bufs[i] = cop->asym->modex.result.data;
+	}
+
+	rte_mempool_put_bulk(pool, bufs, vec->nb_elem);
+	rte_mempool_put_bulk(ca_pool, (void * const *)vec->ptrs, vec->nb_elem);
+	rte_mempool_put(rte_mempool_from_obj(vec), vec);
+}
 
 static inline int
 perf_nb_event_ports(struct evt_options *opt)

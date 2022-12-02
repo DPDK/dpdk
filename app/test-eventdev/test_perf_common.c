@@ -827,9 +827,12 @@ perf_event_timer_adapter_setup(struct test_perf *t)
 static int
 perf_event_crypto_adapter_setup(struct test_perf *t, struct prod_data *p)
 {
+	struct rte_event_crypto_adapter_queue_conf conf;
 	struct evt_options *opt = t->opt;
 	uint32_t cap;
 	int ret;
+
+	memset(&conf, 0, sizeof(conf));
 
 	ret = rte_event_crypto_adapter_caps_get(p->dev_id, p->ca.cdev_id, &cap);
 	if (ret) {
@@ -849,18 +852,52 @@ perf_event_crypto_adapter_setup(struct test_perf *t, struct prod_data *p)
 		return -ENOTSUP;
 	}
 
-	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
-		struct rte_event_crypto_adapter_queue_conf conf;
+	if (opt->ena_vector) {
+		struct rte_event_crypto_adapter_vector_limits limits;
 
-		memset(&conf, 0, sizeof(conf));
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_EVENT_VECTOR)) {
+			evt_err("Crypto adapter doesn't support event vector");
+			return -EINVAL;
+		}
+
+		ret = rte_event_crypto_adapter_vector_limits_get(p->dev_id, p->ca.cdev_id, &limits);
+		if (ret) {
+			evt_err("Failed to get crypto adapter's vector limits");
+			return ret;
+		}
+
+		if (opt->vector_size < limits.min_sz || opt->vector_size > limits.max_sz) {
+			evt_err("Vector size [%d] not within limits max[%d] min[%d]",
+				opt->vector_size, limits.max_sz, limits.min_sz);
+			return -EINVAL;
+		}
+
+		if (limits.log2_sz && !rte_is_power_of_2(opt->vector_size)) {
+			evt_err("Vector size [%d] not power of 2", opt->vector_size);
+			return -EINVAL;
+		}
+
+		if (opt->vector_tmo_nsec > limits.max_timeout_ns ||
+			opt->vector_tmo_nsec < limits.min_timeout_ns) {
+			evt_err("Vector timeout [%" PRIu64 "] not within limits "
+				"max[%" PRIu64 "] min[%" PRIu64 "]",
+				opt->vector_tmo_nsec, limits.max_timeout_ns, limits.min_timeout_ns);
+			return -EINVAL;
+		}
+
+		conf.vector_mp = t->ca_vector_pool;
+		conf.vector_sz = opt->vector_size;
+		conf.vector_timeout_ns = opt->vector_tmo_nsec;
+		conf.flags |= RTE_EVENT_CRYPTO_ADAPTER_EVENT_VECTOR;
+	}
+
+	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
 		conf.ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
 		conf.ev.queue_id = p->queue_id;
-		ret = rte_event_crypto_adapter_queue_pair_add(
-			TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id, &conf);
-	} else {
-		ret = rte_event_crypto_adapter_queue_pair_add(
-			TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id, NULL);
 	}
+
+	ret = rte_event_crypto_adapter_queue_pair_add(
+		TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id, &conf);
 
 	return ret;
 }
@@ -1411,6 +1448,19 @@ perf_cryptodev_setup(struct evt_test *test, struct evt_options *opt)
 		goto err;
 	}
 
+	if (opt->ena_vector) {
+		unsigned int nb_elem = (opt->pool_sz / opt->vector_size) * 2;
+		nb_elem = RTE_MAX(512U, nb_elem);
+		nb_elem += evt_nr_active_lcores(opt->wlcores) * 32;
+		t->ca_vector_pool = rte_event_vector_pool_create("vector_pool", nb_elem, 32,
+				opt->vector_size, opt->socket_id);
+		if (t->ca_vector_pool == NULL) {
+			evt_err("Failed to create event vector pool");
+			ret = -ENOMEM;
+			goto err;
+		}
+	}
+
 	/*
 	 * Calculate number of needed queue pairs, based on the amount of
 	 * available number of logical cores and crypto devices. For instance,
@@ -1467,6 +1517,7 @@ err:
 	rte_mempool_free(t->ca_op_pool);
 	rte_mempool_free(t->ca_sess_pool);
 	rte_mempool_free(t->ca_asym_sess_pool);
+	rte_mempool_free(t->ca_vector_pool);
 
 	return ret;
 }
@@ -1507,6 +1558,7 @@ perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt)
 	rte_mempool_free(t->ca_op_pool);
 	rte_mempool_free(t->ca_sess_pool);
 	rte_mempool_free(t->ca_asym_sess_pool);
+	rte_mempool_free(t->ca_vector_pool);
 }
 
 int
