@@ -41,7 +41,8 @@ rte_srand(uint64_t seedval);
  *
  * The generator is not cryptographically secure.
  *
- * If called from lcore threads, this function is thread-safe.
+ * If called from EAL threads or registered non-EAL threads, this function
+ * is thread-safe.
  *
  * @return
  *   A pseudo-random value between 0 and (1<<64)-1.
@@ -55,7 +56,8 @@ rte_rand(void);
  * This function returns an uniformly distributed (unbiased) random
  * number less than a user-specified maximum value.
  *
- * If called from lcore threads, this function is thread-safe.
+ * If called from EAL threads or registered non-EAL threads, this function
+ * is thread-safe.
  *
  * @param upper_bound
  *   The upper bound of the generated number.
@@ -75,7 +77,9 @@ rte_rand_max(uint64_t upper_bound);
  * number uniformly distributed over the interval [0.0, 1.0).
  *
  * The generator is not cryptographically secure.
- * If called from lcore threads, this function is thread-safe.
+ *
+ * If called from EAL threads or registered non-EAL threads, this function
+ * is thread-safe.
  *
  * @return
  *   A pseudo-random value between 0 and 1.0.
