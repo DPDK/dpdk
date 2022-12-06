@@ -163,7 +163,7 @@ if [ "$ABI_CHECKS" = "true" ]; then
     if [ ! -d reference ]; then
         refsrcdir=$(readlink -f $(pwd)/../dpdk-$REF_GIT_TAG)
         git clone --single-branch -b "$REF_GIT_TAG" $REF_GIT_REPO $refsrcdir
-        meson $OPTS -Dexamples= $refsrcdir $refsrcdir/build
+        meson setup $OPTS -Dexamples= $refsrcdir $refsrcdir/build
         ninja -C $refsrcdir/build
         DESTDIR=$(pwd)/reference ninja -C $refsrcdir/build install
         devtools/gen-abi.sh reference

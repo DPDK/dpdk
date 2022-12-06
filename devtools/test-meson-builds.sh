@@ -124,8 +124,8 @@ config () # <dir> <builddir> <meson options>
 		options="$options -D$option"
 	done
 	options="$options $*"
-	echo "$MESON $options $dir $builddir" >&$verbose
-	$MESON $options $dir $builddir
+	echo "$MESON setup $options $dir $builddir" >&$verbose
+	$MESON setup $options $dir $builddir
 }
 
 compile () # <builddir>
