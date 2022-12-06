@@ -1679,7 +1679,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 log_min_hairpin_wq_data_sz[0x5];
 	u8 reserved_at_3e8[0x3];
 	u8 log_max_vlan_list[0x5];
-	u8 reserved_at_3f0[0x3];
+	u8 reserved_at_3f0[0x1];
+	u8 aes_xts_single_block_le_tweak[1];
+	u8 aes_xts_multi_block_be_tweak[1];
 	u8 log_max_current_mc_list[0x5];
 	u8 reserved_at_3f8[0x3];
 	u8 log_max_current_uc_list[0x5];

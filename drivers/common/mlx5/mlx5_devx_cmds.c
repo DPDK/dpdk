@@ -1013,7 +1013,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->flow_access_aso_opc_mod = MLX5_GET(cmd_hca_cap, hcattr,
 			flow_access_aso_opc_mod);
 	if (attr->crypto) {
-		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts);
+		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts) ||
+		MLX5_GET(cmd_hca_cap, hcattr, aes_xts_multi_block_be_tweak) ||
+		MLX5_GET(cmd_hca_cap, hcattr, aes_xts_single_block_le_tweak);
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_CRYPTO |
 				MLX5_HCA_CAP_OPMOD_GET_CUR);
