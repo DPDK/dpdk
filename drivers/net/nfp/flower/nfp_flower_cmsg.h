@@ -9,6 +9,8 @@
 #include <rte_byteorder.h>
 #include <rte_ether.h>
 
+#include "../nfp_flow.h"
+
 struct nfp_flower_cmsg_hdr {
 	rte_be16_t pad;
 	uint8_t type;

@@ -10,7 +10,6 @@
 #include "../nfp_logs.h"
 #include "../nfp_ctrl.h"
 #include "../nfp_rxtx.h"
-#include "../nfp_flow.h"
 #include "../nfpcore/nfp_mip.h"
 #include "../nfpcore/nfp_rtsym.h"
 #include "../nfpcore/nfp_nsp.h"
