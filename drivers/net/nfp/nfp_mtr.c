@@ -541,12 +541,362 @@ nfp_mtr_policy_delete(struct rte_eth_dev *dev,
 	return 0;
 }
 
+struct nfp_mtr *
+nfp_mtr_find_by_mtr_id(struct nfp_mtr_priv *priv, uint32_t mtr_id)
+{
+	struct nfp_mtr *mtr;
+
+	LIST_FOREACH(mtr, &priv->mtrs, next)
+		if (mtr->mtr_id == mtr_id)
+			break;
+
+	return mtr;
+}
+
+static int
+nfp_mtr_validate(uint32_t meter_id,
+		struct rte_mtr_params *params,
+		struct rte_mtr_error *error)
+{
+	/* Params must not be NULL */
+	if (params == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+				NULL, "Meter params is null.");
+	}
+
+	/* Meter policy ID must be valid. */
+	if (meter_id >= NFP_MAX_MTR_CNT) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Meter id not valid.");
+	}
+
+	if (params->use_prev_mtr_color != 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+				NULL, "Feature use_prev_mtr_color not support");
+	}
+
+	return 0;
+}
+
+static void
+nfp_mtr_config(uint32_t mtr_id,
+		int shared,
+		struct rte_mtr_params *params,
+		struct nfp_mtr_profile *mtr_profile,
+		struct nfp_mtr_policy *mtr_policy,
+		struct nfp_mtr *mtr)
+{
+	mtr->mtr_id = mtr_id;
+
+	if (shared != 0)
+		mtr->shared = true;
+
+	if (params->meter_enable != 0)
+		mtr->enable = true;
+
+	mtr->mtr_profile = mtr_profile;
+	mtr->mtr_policy = mtr_policy;
+}
+
+/**
+ * Create meter rules.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_id
+ *   Meter id.
+ * @param[in] params
+ *   Pointer to rte meter parameters.
+ * @param[in] shared
+ *   Meter shared with other flow or not.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise and rte_errno is set.
+ */
+static int
+nfp_mtr_create(struct rte_eth_dev *dev,
+		uint32_t mtr_id,
+		struct rte_mtr_params *params,
+		int shared,
+		struct rte_mtr_error *error)
+{
+	int ret;
+	struct nfp_mtr *mtr;
+	struct nfp_mtr_priv *priv;
+	struct nfp_mtr_policy *mtr_policy;
+	struct nfp_mtr_profile *mtr_profile;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if meter id exist */
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr != NULL) {
+		return -rte_mtr_error_set(error, EEXIST,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Meter already exist");
+	}
+
+	/* Check input meter params */
+	ret = nfp_mtr_validate(mtr_id, params, error);
+	if (ret != 0)
+		return ret;
+
+	mtr_profile = nfp_mtr_profile_search(priv, params->meter_profile_id);
+	if (mtr_profile == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+				NULL, "Request meter profile not exist");
+	}
+
+	if (mtr_profile->in_use) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+				NULL, "Request meter profile is been used");
+	}
+
+	mtr_policy = nfp_mtr_policy_search(priv, params->meter_policy_id);
+	if (mtr_policy == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+				NULL, "Request meter policy not exist");
+	}
+
+	/* Meter param memory alloc */
+	mtr = rte_zmalloc(NULL, sizeof(struct nfp_mtr), 0);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, ENOMEM,
+				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Meter param alloc failed");
+	}
+
+	nfp_mtr_config(mtr_id, shared, params, mtr_profile, mtr_policy, mtr);
+
+	/* Update profile/policy status */
+	mtr->mtr_policy->ref_cnt++;
+	mtr->mtr_profile->in_use = true;
+
+	/* Insert mtr into mtr list */
+	LIST_INSERT_HEAD(&priv->mtrs, mtr, next);
+
+	return 0;
+}
+
+/**
+ * Destroy meter rules.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_id
+ *   Meter id.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise and rte_errno is set.
+ */
+static int
+nfp_mtr_destroy(struct rte_eth_dev *dev,
+		uint32_t mtr_id,
+		struct rte_mtr_error *error)
+{
+	struct nfp_mtr *mtr;
+	struct nfp_mtr_priv *priv;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if meter id exist */
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Request meter not exist");
+	}
+
+	if (mtr->ref_cnt > 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Meter object is being used");
+	}
+
+	/* Update profile/policy status */
+	mtr->mtr_policy->ref_cnt--;
+	mtr->mtr_profile->in_use = false;
+
+	/* Remove mtr from mtr list */
+	LIST_REMOVE(mtr, next);
+	rte_free(mtr);
+
+	return 0;
+}
+
+/**
+ * Enable meter object.
+ *
+ * @param[in] dev
+ *   Pointer to the device.
+ * @param[in] mtr_id
+ *   Id of the meter.
+ * @param[out] error
+ *   Pointer to the error.
+ *
+ * @returns
+ *   0 in success, negative value otherwise and rte_errno is set..
+ */
+static int
+nfp_mtr_enable(struct rte_eth_dev *dev,
+		uint32_t mtr_id,
+		struct rte_mtr_error *error)
+{
+	struct nfp_mtr *mtr;
+	struct nfp_mtr_priv *priv;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if meter id exist */
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Request meter not exist");
+	}
+
+	mtr->enable = true;
+
+	return 0;
+}
+
+/**
+ * Disable meter object.
+ *
+ * @param[in] dev
+ *   Pointer to the device.
+ * @param[in] mtr_id
+ *   Id of the meter.
+ * @param[out] error
+ *   Pointer to the error.
+ *
+ * @returns
+ *   0 on success, negative value otherwise and rte_errno is set..
+ */
+static int
+nfp_mtr_disable(struct rte_eth_dev *dev,
+		uint32_t mtr_id,
+		struct rte_mtr_error *error)
+{
+	struct nfp_mtr *mtr;
+	struct nfp_mtr_priv *priv;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if meter id exist */
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Request meter not exist");
+	}
+
+	if (mtr->ref_cnt > 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Can't disable a used meter");
+	}
+
+	mtr->enable = false;
+
+	return 0;
+}
+
+/**
+ * Callback to update meter profile.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_id
+ *   Meter id.
+ * @param[in] mtr_profile_id
+ *   To be updated meter profile id.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise and rte_errno is set.
+ */
+static int
+nfp_mtr_profile_update(struct rte_eth_dev *dev,
+		uint32_t mtr_id,
+		uint32_t mtr_profile_id,
+		struct rte_mtr_error *error)
+{
+	struct nfp_mtr *mtr;
+	struct nfp_mtr_priv *priv;
+	struct nfp_mtr_profile *mtr_profile;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if meter id exist */
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Request meter not exist");
+	}
+
+	if (mtr->ref_cnt > 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Request meter is been used");
+	}
+
+	if (mtr->mtr_profile->profile_id == mtr_profile_id)
+		return 0;
+
+	mtr_profile = nfp_mtr_profile_search(priv, mtr_profile_id);
+	if (mtr_profile == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+				NULL, "Request meter profile not exist");
+	}
+
+	if (mtr_profile->in_use) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+				NULL, "Request meter profile is been used");
+	}
+
+	mtr_profile->in_use = true;
+	mtr->mtr_profile->in_use = false;
+	mtr->mtr_profile = mtr_profile;
+
+	return 0;
+}
+
 static const struct rte_mtr_ops nfp_mtr_ops = {
 	.capabilities_get      = nfp_mtr_cap_get,
 	.meter_profile_add     = nfp_mtr_profile_add,
 	.meter_profile_delete  = nfp_mtr_profile_delete,
 	.meter_policy_add      = nfp_mtr_policy_add,
 	.meter_policy_delete   = nfp_mtr_policy_delete,
+	.create                = nfp_mtr_create,
+	.destroy               = nfp_mtr_destroy,
+	.meter_enable          = nfp_mtr_enable,
+	.meter_disable         = nfp_mtr_disable,
+	.meter_profile_update  = nfp_mtr_profile_update,
 };
 
 int
@@ -577,6 +927,7 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
 	app_fw_flower->mtr_priv = priv;
 
+	LIST_INIT(&priv->mtrs);
 	LIST_INIT(&priv->profiles);
 	LIST_INIT(&priv->policies);
 
@@ -586,6 +937,7 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 void
 nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 {
+	struct nfp_mtr *mtr;
 	struct nfp_mtr_priv *priv;
 	struct nfp_mtr_policy *mtr_policy;
 	struct nfp_mtr_profile *mtr_profile;
@@ -593,6 +945,11 @@ nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
 	priv = app_fw_flower->mtr_priv;
+
+	LIST_FOREACH(mtr, &priv->mtrs, next) {
+		LIST_REMOVE(mtr, next);
+		rte_free(mtr);
+	}
 
 	LIST_FOREACH(mtr_profile, &priv->profiles, next) {
 		LIST_REMOVE(mtr_profile, next);

@@ -96,17 +96,41 @@ struct nfp_mtr_policy {
 };
 
 /**
+ * Struct nfp_mtr - meter object information
+ * @next:        next meter object
+ * @mtr_id:      meter id
+ * @ref_cnt:     reference count by flow
+ * @shared:      if meter can be used by multiple flows
+ * @enable:      if meter is enable to use
+ * @mtr_profile: the pointer of profile
+ * @mtr_policy:  the pointer of policy
+ */
+struct nfp_mtr {
+	LIST_ENTRY(nfp_mtr) next;
+	uint32_t mtr_id;
+	uint32_t ref_cnt;
+	bool shared;
+	bool enable;
+	struct nfp_mtr_profile *mtr_profile;
+	struct nfp_mtr_policy *mtr_policy;
+};
+
+/**
  * Struct nfp_mtr_priv - meter private data
  * @profiles:        the head node of profile list
  * @policies:        the head node of policy list
+ * @mtrs:            the head node of mtrs list
  */
 struct nfp_mtr_priv {
 	LIST_HEAD(, nfp_mtr_profile) profiles;
 	LIST_HEAD(, nfp_mtr_policy) policies;
+	LIST_HEAD(, nfp_mtr) mtrs;
 };
 
 int nfp_net_mtr_ops_get(struct rte_eth_dev *dev, void *arg);
 int nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev);
 void nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev);
+struct nfp_mtr *nfp_mtr_find_by_mtr_id(struct nfp_mtr_priv *priv,
+		uint32_t mtr_id);
 
 #endif /* __NFP_MTR_H__ */
