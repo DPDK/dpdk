@@ -89,6 +89,8 @@ struct pmd_internals {
 /**< use abstract socket address */
 
 	char *socket_filename;			/**< pointer to socket filename */
+	uid_t owner_uid;			/**< socket owner uid */
+	gid_t owner_gid;			/**< socket owner gid */
 	char secret[ETH_MEMIF_SECRET_SIZE]; /**< secret (optional security parameter) */
 
 	struct memif_control_channel *cc;	/**< control channel */

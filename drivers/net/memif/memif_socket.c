@@ -889,7 +889,7 @@ memif_listener_handler(void *arg)
 }
 
 static struct memif_socket *
-memif_socket_create(char *key, uint8_t listener, bool is_abstract)
+memif_socket_create(char *key, uint8_t listener, bool is_abstract, uid_t owner_uid, gid_t owner_gid)
 {
 	struct memif_socket *sock;
 	struct sockaddr_un un = { 0 };
@@ -940,6 +940,14 @@ memif_socket_create(char *key, uint8_t listener, bool is_abstract)
 			goto error;
 
 		MIF_LOG(DEBUG, "Memif listener socket %s created.", sock->filename);
+
+		if (!is_abstract && (owner_uid != (uid_t)-1 || owner_gid != (gid_t)-1)) {
+			ret = chown(sock->filename, owner_uid, owner_gid);
+			if (ret < 0) {
+				MIF_LOG(ERR, "Failed to change listener socket owner");
+				goto error;
+			}
+		}
 
 		/* Allocate interrupt instance */
 		sock->intr_handle =
@@ -1017,7 +1025,8 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 	if (ret < 0) {
 		socket = memif_socket_create(key,
 			(pmd->role == MEMIF_ROLE_CLIENT) ? 0 : 1,
-			pmd->flags & ETH_MEMIF_FLAG_SOCKET_ABSTRACT);
+			pmd->flags & ETH_MEMIF_FLAG_SOCKET_ABSTRACT,
+			pmd->owner_uid, pmd->owner_gid);
 		if (socket == NULL)
 			return -1;
 		ret = rte_hash_add_key_data(hash, key, socket);

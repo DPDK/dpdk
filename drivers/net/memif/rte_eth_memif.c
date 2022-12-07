@@ -37,6 +37,8 @@
 #define ETH_MEMIF_RING_SIZE_ARG		"rsize"
 #define ETH_MEMIF_SOCKET_ARG		"socket"
 #define ETH_MEMIF_SOCKET_ABSTRACT_ARG	"socket-abstract"
+#define ETH_MEMIF_OWNER_UID_ARG		"owner-uid"
+#define ETH_MEMIF_OWNER_GID_ARG		"owner-gid"
 #define ETH_MEMIF_MAC_ARG		"mac"
 #define ETH_MEMIF_ZC_ARG		"zero-copy"
 #define ETH_MEMIF_SECRET_ARG		"secret"
@@ -48,6 +50,8 @@ static const char * const valid_arguments[] = {
 	ETH_MEMIF_RING_SIZE_ARG,
 	ETH_MEMIF_SOCKET_ARG,
 	ETH_MEMIF_SOCKET_ABSTRACT_ARG,
+	ETH_MEMIF_OWNER_UID_ARG,
+	ETH_MEMIF_OWNER_GID_ARG,
 	ETH_MEMIF_MAC_ARG,
 	ETH_MEMIF_ZC_ARG,
 	ETH_MEMIF_SECRET_ARG,
@@ -1515,7 +1519,7 @@ static const struct eth_dev_ops ops = {
 static int
 memif_create(struct rte_vdev_device *vdev, enum memif_role_t role,
 	     memif_interface_id_t id, uint32_t flags,
-	     const char *socket_filename,
+	     const char *socket_filename, uid_t owner_uid, gid_t owner_gid,
 	     memif_log2_ring_size_t log2_ring_size,
 	     uint16_t pkt_buffer_size, const char *secret,
 	     struct rte_ether_addr *ether_addr)
@@ -1554,6 +1558,8 @@ memif_create(struct rte_vdev_device *vdev, enum memif_role_t role,
 	/* Zero-copy flag irelevant to server. */
 	if (pmd->role == MEMIF_ROLE_SERVER)
 		pmd->flags &= ~ETH_MEMIF_FLAG_ZERO_COPY;
+	pmd->owner_uid = owner_uid;
+	pmd->owner_gid = owner_gid;
 
 	ret = memif_socket_init(eth_dev, socket_filename);
 	if (ret < 0)
@@ -1741,6 +1747,30 @@ memif_set_is_socket_abstract(const char *key __rte_unused, const char *value, vo
 }
 
 static int
+memif_set_owner(const char *key, const char *value, void *extra_args)
+{
+	RTE_ASSERT(sizeof(uid_t) == sizeof(uint32_t));
+	RTE_ASSERT(sizeof(gid_t) == sizeof(uint32_t));
+
+	unsigned long val;
+	char *end = NULL;
+	uint32_t *id = (uint32_t *)extra_args;
+
+	val = strtoul(value, &end, 10);
+	if (*value == '\0' || *end != '\0') {
+		MIF_LOG(ERR, "Failed to parse %s: %s.", key, value);
+		return -EINVAL;
+	}
+	if (val >= UINT32_MAX) {
+		MIF_LOG(ERR, "Invalid %s: %s.", key, value);
+		return -ERANGE;
+	}
+
+	*id = val;
+	return 0;
+}
+
+static int
 memif_set_mac(const char *key __rte_unused, const char *value, void *extra_args)
 {
 	struct rte_ether_addr *ether_addr = (struct rte_ether_addr *)extra_args;
@@ -1772,6 +1802,8 @@ rte_pmd_memif_probe(struct rte_vdev_device *vdev)
 	uint16_t pkt_buffer_size = ETH_MEMIF_DEFAULT_PKT_BUFFER_SIZE;
 	memif_log2_ring_size_t log2_ring_size = ETH_MEMIF_DEFAULT_RING_SIZE;
 	const char *socket_filename = ETH_MEMIF_DEFAULT_SOCKET_FILENAME;
+	uid_t owner_uid = -1;
+	gid_t owner_gid = -1;
 	uint32_t flags = 0;
 	const char *secret = NULL;
 	struct rte_ether_addr *ether_addr = rte_zmalloc("",
@@ -1855,6 +1887,14 @@ rte_pmd_memif_probe(struct rte_vdev_device *vdev)
 					 &memif_set_is_socket_abstract, &flags);
 		if (ret < 0)
 			goto exit;
+		ret = rte_kvargs_process(kvlist, ETH_MEMIF_OWNER_UID_ARG,
+					 &memif_set_owner, &owner_uid);
+		if (ret < 0)
+			goto exit;
+		ret = rte_kvargs_process(kvlist, ETH_MEMIF_OWNER_GID_ARG,
+					 &memif_set_owner, &owner_gid);
+		if (ret < 0)
+			goto exit;
 		ret = rte_kvargs_process(kvlist, ETH_MEMIF_MAC_ARG,
 					 &memif_set_mac, ether_addr);
 		if (ret < 0)
@@ -1876,7 +1916,7 @@ rte_pmd_memif_probe(struct rte_vdev_device *vdev)
 	}
 
 	/* create interface */
-	ret = memif_create(vdev, role, id, flags, socket_filename,
+	ret = memif_create(vdev, role, id, flags, socket_filename, owner_uid, owner_gid,
 			   log2_ring_size, pkt_buffer_size, secret, ether_addr);
 
 exit:
@@ -1909,7 +1949,9 @@ RTE_PMD_REGISTER_PARAM_STRING(net_memif,
 			      ETH_MEMIF_PKT_BUFFER_SIZE_ARG "=<int>"
 			      ETH_MEMIF_RING_SIZE_ARG "=<int>"
 			      ETH_MEMIF_SOCKET_ARG "=<string>"
-				  ETH_MEMIF_SOCKET_ABSTRACT_ARG "=yes|no"
+			      ETH_MEMIF_SOCKET_ABSTRACT_ARG "=yes|no"
+			      ETH_MEMIF_OWNER_UID_ARG "=<int>"
+			      ETH_MEMIF_OWNER_GID_ARG "=<int>"
 			      ETH_MEMIF_MAC_ARG "=xx:xx:xx:xx:xx:xx"
 			      ETH_MEMIF_ZC_ARG "=yes|no"
 			      ETH_MEMIF_SECRET_ARG "=<string>");
