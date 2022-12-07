@@ -585,14 +585,15 @@ eca_crypto_adapter_enq_run(struct event_crypto_adapter *adapter,
 	if (adapter->mode == RTE_EVENT_CRYPTO_ADAPTER_OP_NEW)
 		return 0;
 
-	if (unlikely(adapter->stop_enq_to_cryptodev)) {
-		nb_enqueued += eca_crypto_enq_flush(adapter);
-
-		if (unlikely(adapter->stop_enq_to_cryptodev))
-			goto skip_event_dequeue_burst;
-	}
-
 	for (nb_enq = 0; nb_enq < max_enq; nb_enq += n) {
+
+		if (unlikely(adapter->stop_enq_to_cryptodev)) {
+			nb_enqueued += eca_crypto_enq_flush(adapter);
+
+			if (unlikely(adapter->stop_enq_to_cryptodev))
+				break;
+		}
+
 		stats->event_poll_count++;
 		n = rte_event_dequeue_burst(event_dev_id,
 					    event_port_id, ev, BATCH_SIZE, 0);
@@ -602,8 +603,6 @@ eca_crypto_adapter_enq_run(struct event_crypto_adapter *adapter,
 
 		nb_enqueued += eca_enq_to_cryptodev(adapter, ev, n);
 	}
-
-skip_event_dequeue_burst:
 
 	if ((++adapter->transmit_loop_count &
 		(CRYPTO_ENQ_FLUSH_THRESHOLD - 1)) == 0) {
