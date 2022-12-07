@@ -53,7 +53,7 @@ struct event_crypto_adapter {
 	uint8_t eventdev_id;
 	/* Event port identifier */
 	uint8_t event_port_id;
-	/* Store event device's implicit release capability */
+	/* Store event port's implicit release capability */
 	uint8_t implicit_release_disabled;
 	/* Flag to indicate backpressure at cryptodev
 	 * Stop further dequeuing events from eventdev
@@ -320,7 +320,6 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 {
 	struct event_crypto_adapter *adapter;
 	char mem_name[CRYPTO_ADAPTER_NAME_LEN];
-	struct rte_event_dev_info dev_info;
 	int socket_id;
 	uint8_t i;
 	int ret;
@@ -361,17 +360,6 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 		return -ENOMEM;
 	}
 
-	ret = rte_event_dev_info_get(dev_id, &dev_info);
-	if (ret < 0) {
-		RTE_EDEV_LOG_ERR("Failed to get info for eventdev %d: %s!",
-				 dev_id, dev_info.driver_name);
-		eca_circular_buffer_free(&adapter->ebuf);
-		rte_free(adapter);
-		return ret;
-	}
-
-	adapter->implicit_release_disabled = (dev_info.event_dev_cap &
-			RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE);
 	adapter->eventdev_id = dev_id;
 	adapter->socket_id = socket_id;
 	adapter->conf_cb = conf_cb;
@@ -837,6 +825,7 @@ eca_init_service(struct event_crypto_adapter *adapter, uint8_t id)
 	struct rte_event_crypto_adapter_conf adapter_conf;
 	struct rte_service_spec service;
 	int ret;
+	uint32_t impl_rel;
 
 	if (adapter->service_inited)
 		return 0;
@@ -866,6 +855,19 @@ eca_init_service(struct event_crypto_adapter *adapter, uint8_t id)
 
 	adapter->max_nb = adapter_conf.max_nb;
 	adapter->event_port_id = adapter_conf.event_port_id;
+
+	if (rte_event_port_attr_get(adapter->eventdev_id,
+				adapter->event_port_id,
+				RTE_EVENT_PORT_ATTR_IMPLICIT_RELEASE_DISABLE,
+				&impl_rel)) {
+		RTE_EDEV_LOG_ERR("Failed to get port info for eventdev %" PRId32,
+				 adapter->eventdev_id);
+		eca_circular_buffer_free(&adapter->ebuf);
+		rte_free(adapter);
+		return -EINVAL;
+	}
+
+	adapter->implicit_release_disabled = (uint8_t)impl_rel;
 	adapter->service_inited = 1;
 
 	return ret;
