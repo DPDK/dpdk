@@ -753,7 +753,7 @@ eca_crypto_adapter_deq_run(struct event_crypto_adapter *adapter,
 				for (i = nb_enqueued; i < n; i++)
 					eca_circular_buffer_add(
 						&adapter->ebuf,
-						ops[nb_enqueued]);
+						ops[i]);
 
 check:
 				nb_deq += n;
