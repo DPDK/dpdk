@@ -497,6 +497,9 @@ eca_enq_to_cryptodev(struct event_crypto_adapter *adapter, struct rte_event *ev,
 								cdev_id,
 								qp_id,
 								&nb_enqueued);
+			stats->crypto_enq_count += nb_enqueued;
+			n += nb_enqueued;
+
 			/**
 			 * If some crypto ops failed to flush to cdev and
 			 * space for another batch is not available, stop
@@ -507,9 +510,6 @@ eca_enq_to_cryptodev(struct event_crypto_adapter *adapter, struct rte_event *ev,
 							&qp_info->cbuf)))
 				adapter->stop_enq_to_cryptodev = true;
 		}
-
-		stats->crypto_enq_count += nb_enqueued;
-		n += nb_enqueued;
 	}
 
 	return n;
