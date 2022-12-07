@@ -270,6 +270,17 @@ void
 rte_acl_reset(struct rte_acl_ctx *ctx);
 
 /**
+ * Retrieve the number of rules in an existing ACL context.
+ *
+ * @param ctx
+ *   ACL context to get the number of rules.
+ * @return
+ *   - The number of rules that the context currently has.
+ */
+int
+rte_acl_get_num_rules(struct rte_acl_ctx *ctx);
+
+/**
  *  Available implementations of ACL classify.
  */
 enum rte_acl_classify_alg {

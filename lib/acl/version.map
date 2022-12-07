@@ -11,6 +11,7 @@ DPDK_23 {
 	rte_acl_dump;
 	rte_acl_find_existing;
 	rte_acl_free;
+	rte_acl_get_num_rules;
 	rte_acl_list_dump;
 	rte_acl_reset;
 	rte_acl_reset_rules;

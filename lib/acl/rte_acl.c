@@ -604,6 +604,17 @@ rte_acl_reset(struct rte_acl_ctx *ctx)
 }
 
 /*
+ * Get the number of rules in a context.
+ */
+int
+rte_acl_get_num_rules(struct rte_acl_ctx *ctx)
+{
+	if (ctx == NULL)
+		return 0;
+	return ctx->num_rules;
+}
+
+/*
  * Dump ACL context to the stdout.
  */
 void
