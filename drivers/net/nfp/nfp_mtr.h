@@ -6,6 +6,8 @@
 #ifndef __NFP_MTR_H__
 #define __NFP_MTR_H__
 
+#include <rte_mtr.h>
+
 /**
  * The max meter count is determined by firmware.
  * The max count is 65536 defined by OF_METER_COUNT.
@@ -80,11 +82,27 @@ struct nfp_mtr_profile {
 };
 
 /**
+ * Struct nfp_mtr_policy - meter policy information
+ * @next:        next meter policy object
+ * @policy_id:   meter policy id
+ * @ref_cnt:     reference count by meter
+ * @policy:      RTE_FLOW policy information
+ */
+struct nfp_mtr_policy {
+	LIST_ENTRY(nfp_mtr_policy) next;
+	uint32_t policy_id;
+	uint32_t ref_cnt;
+	struct rte_mtr_meter_policy_params policy;
+};
+
+/**
  * Struct nfp_mtr_priv - meter private data
  * @profiles:        the head node of profile list
+ * @policies:        the head node of policy list
  */
 struct nfp_mtr_priv {
 	LIST_HEAD(, nfp_mtr_profile) profiles;
+	LIST_HEAD(, nfp_mtr_policy) policies;
 };
 
 int nfp_net_mtr_ops_get(struct rte_eth_dev *dev, void *arg);

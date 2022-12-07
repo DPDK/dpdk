@@ -371,10 +371,182 @@ nfp_mtr_profile_delete(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static struct nfp_mtr_policy *
+nfp_mtr_policy_search(struct nfp_mtr_priv *priv, uint32_t mtr_policy_id)
+{
+	struct nfp_mtr_policy *mtr_policy;
+
+	LIST_FOREACH(mtr_policy, &priv->policies, next)
+		if (mtr_policy->policy_id == mtr_policy_id)
+			break;
+
+	return mtr_policy;
+}
+
+static int
+nfp_mtr_policy_validate(uint32_t mtr_policy_id,
+		struct rte_mtr_meter_policy_params *policy,
+		struct rte_mtr_error *error)
+{
+	const struct rte_flow_action *action;
+
+	/* Policy must not be NULL */
+	if (policy == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY,
+				NULL, "Meter policy is null.");
+	}
+
+	/* Meter policy ID must be valid. */
+	if (mtr_policy_id >= NFP_MAX_POLICY_CNT) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+				NULL, "Meter policy id not valid.");
+	}
+
+	/* Check green action
+	 * Actions equal NULL means end action
+	 */
+	action = policy->actions[RTE_COLOR_GREEN];
+	if (action != NULL && action->type != RTE_FLOW_ACTION_TYPE_VOID) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY,
+				NULL, "Green action must be void or end");
+	}
+
+	/* Check yellow action
+	 * Actions equal NULL means end action
+	 */
+	action = policy->actions[RTE_COLOR_YELLOW];
+	if (action != NULL && action->type != RTE_FLOW_ACTION_TYPE_VOID) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY,
+				NULL, "Yellow action must be void or end");
+	}
+
+	/* Check red action */
+	action = policy->actions[RTE_COLOR_RED];
+	if (action == NULL || action->type != RTE_FLOW_ACTION_TYPE_DROP) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY,
+				NULL, "Red action must be drop");
+	}
+
+	return 0;
+}
+
+/**
+ * Callback to add MTR policy.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_policy_id
+ *   Meter policy id.
+ * @param[in] policy
+ *   Pointer to meter policy detail.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise and rte_errno is set.
+ */
+static int
+nfp_mtr_policy_add(struct rte_eth_dev *dev,
+		uint32_t mtr_policy_id,
+		struct rte_mtr_meter_policy_params *policy,
+		struct rte_mtr_error *error)
+{
+	int ret;
+	struct nfp_mtr_priv *priv;
+	struct nfp_mtr_policy *mtr_policy;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if mtr policy id exist */
+	mtr_policy = nfp_mtr_policy_search(priv, mtr_policy_id);
+	if (mtr_policy != NULL) {
+		return -rte_mtr_error_set(error, EEXIST,
+				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+				NULL, "Meter policy already exist");
+	}
+
+	/* Check input params */
+	ret = nfp_mtr_policy_validate(mtr_policy_id, policy, error);
+	if (ret != 0)
+		return ret;
+
+	/* Meter policy memory alloc */
+	mtr_policy = rte_zmalloc(NULL, sizeof(struct nfp_mtr_policy), 0);
+	if (mtr_policy == NULL) {
+		return -rte_mtr_error_set(error, ENOMEM,
+				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Meter policy alloc failed");
+	}
+
+	mtr_policy->policy_id = mtr_policy_id;
+	rte_memcpy(&mtr_policy->policy, policy,
+			sizeof(struct rte_mtr_meter_policy_params));
+
+	/* Insert policy into policy list */
+	LIST_INSERT_HEAD(&priv->policies, mtr_policy, next);
+
+	return 0;
+}
+
+/**
+ * Callback to delete MTR policy.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_policy_id
+ *   Meter policy id.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise and rte_errno is set.
+ */
+static int
+nfp_mtr_policy_delete(struct rte_eth_dev *dev,
+		uint32_t mtr_policy_id,
+		struct rte_mtr_error *error)
+{
+	struct nfp_mtr_priv *priv;
+	struct nfp_mtr_policy *mtr_policy;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if mtr policy id exist */
+	mtr_policy = nfp_mtr_policy_search(priv, mtr_policy_id);
+	if (mtr_policy == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+				NULL, "Request meter policy not exist");
+	}
+
+	if (mtr_policy->ref_cnt > 0) {
+		return -rte_mtr_error_set(error, EBUSY,
+				RTE_MTR_ERROR_TYPE_METER_POLICY,
+				NULL, "Request mtr policy is been used");
+	}
+
+	/* Remove profile from profile list */
+	LIST_REMOVE(mtr_policy, next);
+	rte_free(mtr_policy);
+
+	return 0;
+}
+
 static const struct rte_mtr_ops nfp_mtr_ops = {
 	.capabilities_get      = nfp_mtr_cap_get,
 	.meter_profile_add     = nfp_mtr_profile_add,
 	.meter_profile_delete  = nfp_mtr_profile_delete,
+	.meter_policy_add      = nfp_mtr_policy_add,
+	.meter_policy_delete   = nfp_mtr_policy_delete,
 };
 
 int
@@ -406,6 +578,7 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 	app_fw_flower->mtr_priv = priv;
 
 	LIST_INIT(&priv->profiles);
+	LIST_INIT(&priv->policies);
 
 	return 0;
 }
@@ -414,6 +587,7 @@ void
 nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 {
 	struct nfp_mtr_priv *priv;
+	struct nfp_mtr_policy *mtr_policy;
 	struct nfp_mtr_profile *mtr_profile;
 	struct nfp_app_fw_flower *app_fw_flower;
 
@@ -423,6 +597,11 @@ nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 	LIST_FOREACH(mtr_profile, &priv->profiles, next) {
 		LIST_REMOVE(mtr_profile, next);
 		rte_free(mtr_profile);
+	}
+
+	LIST_FOREACH(mtr_policy, &priv->policies, next) {
+		LIST_REMOVE(mtr_policy, next);
+		rte_free(mtr_policy);
 	}
 
 	rte_free(priv);
