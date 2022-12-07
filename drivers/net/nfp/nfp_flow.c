@@ -356,7 +356,7 @@ nfp_flow_alloc(struct nfp_fl_key_ls *key_layer)
 		goto free_flow;
 
 	nfp_flow->length = len;
-
+	nfp_flow->mtr_id       = NFP_MAX_MTR_CNT;
 	payload                = &nfp_flow->payload;
 	payload->meta          = (struct nfp_fl_rule_metadata *)tmp;
 	payload->unmasked_data = tmp + sizeof(struct nfp_fl_rule_metadata);
@@ -866,6 +866,7 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
 	int ret = 0;
+	bool meter_flag = false;
 	bool tc_hl_flag = false;
 	bool mac_set_flag = false;
 	bool ip_set_flag = false;
@@ -1011,6 +1012,16 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_RAW_DECAP detected");
+			break;
+		case RTE_FLOW_ACTION_TYPE_METER:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_METER detected");
+			if (!meter_flag) {
+				key_ls->act_size += sizeof(struct nfp_fl_act_meter);
+				meter_flag = true;
+			} else {
+				PMD_DRV_LOG(ERR, "Only support one meter action.");
+				return -ENOTSUP;
+			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
@@ -3233,6 +3244,48 @@ nfp_flow_action_raw_encap(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
+nfp_flow_action_meter(struct nfp_flower_representor *representor,
+		const struct rte_flow_action *action,
+		char *act_data,
+		uint32_t *mtr_id)
+{
+	struct nfp_mtr *mtr;
+	struct nfp_fl_act_meter *fl_meter;
+	struct nfp_app_fw_flower *app_fw_flower;
+	const struct rte_flow_action_meter *meter;
+	size_t act_size = sizeof(struct nfp_fl_act_meter);
+
+	meter = action->conf;
+	fl_meter = (struct nfp_fl_act_meter *)act_data;
+	app_fw_flower = representor->app_fw_flower;
+
+	mtr = nfp_mtr_find_by_mtr_id(app_fw_flower->mtr_priv, meter->mtr_id);
+	if (mtr == NULL) {
+		PMD_DRV_LOG(ERR, "Meter id not exist");
+		return -EINVAL;
+	}
+
+	if (!mtr->enable) {
+		PMD_DRV_LOG(ERR, "Requested meter disable");
+		return -EINVAL;
+	}
+
+	if (!mtr->shared && mtr->ref_cnt > 0) {
+		PMD_DRV_LOG(ERR, "Can't use a used unshared meter");
+		return -EINVAL;
+	}
+
+	*mtr_id = meter->mtr_id;
+
+	fl_meter->head.jump_id = NFP_FL_ACTION_OPCODE_METER;
+	fl_meter->head.len_lw = act_size >> NFP_FL_LW_SIZ;
+	fl_meter->reserved = 0;
+	fl_meter->profile_id = rte_cpu_to_be_32(mtr->mtr_profile->profile_id);
+
+	return 0;
+}
+
+static int
 nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
@@ -3434,6 +3487,14 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			nfp_flow->install_flag = false;
 			if (action->conf != NULL)
 				nfp_flow->tun.payload.v6_flag = 1;
+			break;
+		case RTE_FLOW_ACTION_TYPE_METER:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_METER");
+			ret = nfp_flow_action_meter(representor, action,
+					position, &nfp_flow->mtr_id);
+			if (ret != 0)
+				return -EINVAL;
+			position += sizeof(struct nfp_fl_act_meter);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
@@ -3685,6 +3746,18 @@ nfp_flow_create(struct rte_eth_dev *dev,
 		goto flow_teardown;
 	}
 
+	/* Update meter object ref count */
+	if (nfp_flow->mtr_id != NFP_MAX_MTR_CNT) {
+		ret = nfp_mtr_update_ref_cnt(app_fw_flower->mtr_priv,
+				nfp_flow->mtr_id, true);
+		if (ret != 0) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "Update meter ref_cnt failed.");
+			goto flow_teardown;
+		}
+	}
+
 	return nfp_flow;
 
 flow_teardown:
@@ -3775,6 +3848,17 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 				NULL, "Delete flow from the flow table failed.");
 		ret = -EINVAL;
 		goto exit;
+	}
+
+	/* Update meter object ref count */
+	if (nfp_flow->mtr_id != NFP_MAX_MTR_CNT) {
+		ret = nfp_mtr_update_ref_cnt(app_fw_flower->mtr_priv,
+				nfp_flow->mtr_id, false);
+		if (ret != 0) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "Update meter ref_cnt failed.");
+		}
 	}
 
 exit:

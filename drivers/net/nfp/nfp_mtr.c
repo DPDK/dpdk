@@ -1125,3 +1125,19 @@ nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 
 	rte_free(priv);
 }
+
+int
+nfp_mtr_update_ref_cnt(struct nfp_mtr_priv *priv,
+		uint32_t mtr_id,
+		bool add)
+{
+	struct nfp_mtr *mtr;
+
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr == NULL)
+		return -EINVAL;
+
+	mtr->ref_cnt += add ? 1 : -1;
+
+	return 0;
+}

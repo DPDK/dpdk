@@ -222,6 +222,7 @@ struct rte_flow {
 	struct nfp_fl_tun tun;
 	size_t length;
 	uint32_t hash_key;
+	uint32_t mtr_id;
 	bool install_flag;
 	enum nfp_flow_type type;
 };

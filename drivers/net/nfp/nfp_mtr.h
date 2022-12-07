@@ -176,5 +176,7 @@ struct nfp_mtr *nfp_mtr_find_by_mtr_id(struct nfp_mtr_priv *priv,
 		uint32_t mtr_id);
 struct nfp_mtr *nfp_mtr_find_by_profile_id(struct nfp_mtr_priv *priv,
 		uint32_t profile_id);
+int nfp_mtr_update_ref_cnt(struct nfp_mtr_priv *priv,
+		uint32_t mtr_id, bool add);
 
 #endif /* __NFP_MTR_H__ */
