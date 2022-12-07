@@ -793,6 +793,9 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 			return;
 		}
 
+		mem_set_dump(vq->desc_packed, len, true);
+		mem_set_dump(vq->driver_event, len, true);
+		mem_set_dump(vq->device_event, len, true);
 		vq->access_ok = true;
 		return;
 	}
@@ -846,6 +849,9 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 			"some packets maybe resent for Tx and dropped for Rx\n");
 	}
 
+	mem_set_dump(vq->desc, len, true);
+	mem_set_dump(vq->avail, len, true);
+	mem_set_dump(vq->used, len, true);
 	vq->access_ok = true;
 
 	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "mapped address desc: %p\n", vq->desc);
@@ -1224,6 +1230,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 	region->mmap_addr = mmap_addr;
 	region->mmap_size = mmap_size;
 	region->host_user_addr = (uint64_t)(uintptr_t)mmap_addr + mmap_offset;
+	mem_set_dump(mmap_addr, mmap_size, false);
 
 	if (dev->async_copy) {
 		if (add_guest_pages(dev, region, alignment) < 0) {
@@ -1528,6 +1535,7 @@ inflight_mem_alloc(struct virtio_net *dev, const char *name, size_t size, int *f
 		return NULL;
 	}
 
+	mem_set_dump(ptr, size, false);
 	*fd = mfd;
 	return ptr;
 }
@@ -1736,6 +1744,7 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev,
 		dev->inflight_info->fd = -1;
 	}
 
+	mem_set_dump(addr, mmap_size, false);
 	dev->inflight_info->fd = fd;
 	dev->inflight_info->addr = addr;
 	dev->inflight_info->size = mmap_size;
@@ -2283,6 +2292,7 @@ vhost_user_set_log_base(struct virtio_net **pdev,
 	dev->log_addr = (uint64_t)(uintptr_t)addr;
 	dev->log_base = dev->log_addr + off;
 	dev->log_size = size;
+	mem_set_dump(addr, size, false);
 
 	for (i = 0; i < dev->nr_vring; i++) {
 		struct vhost_virtqueue *vq = dev->virtqueue[i];

@@ -13,6 +13,7 @@
 #include <linux/virtio_net.h>
 #include <sys/socket.h>
 #include <linux/if.h>
+#include <sys/mman.h>
 
 #include <rte_log.h>
 #include <rte_ether.h>
@@ -986,5 +987,16 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	}
 
 	return true;
+}
+
+static __rte_always_inline void
+mem_set_dump(__rte_unused void *ptr, __rte_unused size_t size, __rte_unused bool enable)
+{
+#ifdef MADV_DONTDUMP
+	if (madvise(ptr, size, enable ? MADV_DODUMP : MADV_DONTDUMP) == -1) {
+		rte_log(RTE_LOG_INFO, vhost_config_log_level,
+			"VHOST_CONFIG: could not set coredump preference (%s).\n", strerror(errno));
+	}
+#endif
 }
 #endif /* _VHOST_NET_CDEV_H_ */
