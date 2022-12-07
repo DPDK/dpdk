@@ -681,7 +681,7 @@ eca_circular_buffer_flush_to_evdev(struct event_crypto_adapter *adapter,
 	else
 		return 0;  /* buffer empty */
 
-	nb_ops_flushed =  eca_ops_enqueue_burst(adapter, ops, n);
+	nb_ops_flushed =  eca_ops_enqueue_burst(adapter, &ops[*headp], n);
 	bufp->count -= nb_ops_flushed;
 	if (!bufp->count) {
 		*headp = 0;
