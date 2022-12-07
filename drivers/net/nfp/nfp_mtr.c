@@ -553,6 +553,48 @@ nfp_mtr_find_by_mtr_id(struct nfp_mtr_priv *priv, uint32_t mtr_id)
 	return mtr;
 }
 
+struct nfp_mtr *
+nfp_mtr_find_by_profile_id(struct nfp_mtr_priv *priv, uint32_t profile_id)
+{
+	struct nfp_mtr *mtr;
+
+	LIST_FOREACH(mtr, &priv->mtrs, next)
+		if (mtr->mtr_profile->profile_id == profile_id)
+			break;
+
+	return mtr;
+}
+
+static int
+nfp_mtr_stats_mask_validate(uint64_t stats_mask, struct rte_mtr_error *error)
+{
+	if ((stats_mask & RTE_MTR_STATS_N_PKTS_YELLOW) != 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+				NULL, "RTE_MTR_STATS_N_PKTS_YELLOW not support");
+	}
+
+	if ((stats_mask & RTE_MTR_STATS_N_PKTS_RED) != 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+				NULL, "RTE_MTR_STATS_N_PKTS_RED not support");
+	}
+
+	if ((stats_mask & RTE_MTR_STATS_N_BYTES_YELLOW) != 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+				NULL, "RTE_MTR_STATS_N_BYTES_YELLOW not support");
+	}
+
+	if ((stats_mask & RTE_MTR_STATS_N_BYTES_RED) != 0) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+				NULL, "RTE_MTR_STATS_N_BYTES_RED not support");
+	}
+
+	return 0;
+}
+
 static int
 nfp_mtr_validate(uint32_t meter_id,
 		struct rte_mtr_params *params,
@@ -578,7 +620,7 @@ nfp_mtr_validate(uint32_t meter_id,
 				NULL, "Feature use_prev_mtr_color not support");
 	}
 
-	return 0;
+	return nfp_mtr_stats_mask_validate(params->stats_mask, error);
 }
 
 static void
@@ -599,6 +641,7 @@ nfp_mtr_config(uint32_t mtr_id,
 
 	mtr->mtr_profile = mtr_profile;
 	mtr->mtr_policy = mtr_policy;
+	mtr->stats_mask = params->stats_mask;
 }
 
 /**
@@ -886,6 +929,119 @@ nfp_mtr_profile_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Callback to update meter stats mask.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_id
+ *   Meter id.
+ * @param[in] stats_mask
+ *   To be updated stats_mask.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise and rte_errno is set.
+ */
+static int
+nfp_mtr_stats_update(struct rte_eth_dev *dev,
+		uint32_t mtr_id,
+		uint64_t stats_mask,
+		struct rte_mtr_error *error)
+{
+	int ret;
+	struct nfp_mtr *mtr;
+	struct nfp_mtr_priv *priv;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if meter id exist */
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, EEXIST,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Request meter id not exist");
+	}
+
+	ret = nfp_mtr_stats_mask_validate(stats_mask, error);
+	if (ret != 0)
+		return ret;
+
+	mtr->stats_mask = stats_mask;
+
+	return 0;
+}
+
+/**
+ * Callback to read meter statistics.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_id
+ *   Meter id.
+ * @param[out] stats
+ *   Pointer to store the statistics.
+ * @param[out] stats_mask
+ *   Pointer to store the stats_mask.
+ * @param[in] clear
+ *   Statistic to be cleared after read or not.
+ * @param[out] error
+ *   Pointer to rte meter error structure.
+ *
+ * @return
+ *   0 on success, a negative value otherwise and rte_errno is set.
+ */
+static int
+nfp_mtr_stats_read(struct rte_eth_dev *dev,
+		uint32_t mtr_id,
+		struct rte_mtr_stats *stats,
+		uint64_t *stats_mask,
+		int clear,
+		struct rte_mtr_error *error)
+{
+	struct nfp_mtr *mtr;
+	struct nfp_mtr_priv *priv;
+	struct nfp_mtr_stats curr;
+	struct nfp_mtr_stats *prev;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
+	priv = representor->app_fw_flower->mtr_priv;
+
+	/* Check if meter id exist */
+	mtr = nfp_mtr_find_by_mtr_id(priv, mtr_id);
+	if (mtr == NULL) {
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_MTR_ID,
+				NULL, "Request meter not exist");
+	}
+
+	*stats_mask = mtr->stats_mask;
+
+	rte_spinlock_lock(&priv->mtr_stats_lock);
+	rte_memcpy(&curr, &mtr->mtr_stats.curr, sizeof(curr));
+	rte_spinlock_unlock(&priv->mtr_stats_lock);
+
+	prev = &mtr->mtr_stats.prev;
+
+	stats->n_pkts[RTE_COLOR_GREEN] = curr.pass_pkts - prev->pass_pkts;
+	stats->n_bytes[RTE_COLOR_GREEN] = curr.pass_bytes - prev->pass_bytes;
+	stats->n_pkts_dropped = curr.drop_pkts - prev->drop_pkts;
+	stats->n_bytes_dropped = curr.drop_bytes - prev->drop_bytes;
+
+	if (clear != 0) {
+		prev->pass_pkts = curr.pass_pkts;
+		prev->pass_bytes = curr.pass_bytes;
+		prev->drop_pkts = curr.drop_pkts;
+		prev->drop_bytes = curr.drop_bytes;
+	}
+
+	return 0;
+}
+
 static const struct rte_mtr_ops nfp_mtr_ops = {
 	.capabilities_get      = nfp_mtr_cap_get,
 	.meter_profile_add     = nfp_mtr_profile_add,
@@ -897,6 +1053,8 @@ static const struct rte_mtr_ops nfp_mtr_ops = {
 	.meter_enable          = nfp_mtr_enable,
 	.meter_disable         = nfp_mtr_disable,
 	.meter_profile_update  = nfp_mtr_profile_update,
+	.stats_update          = nfp_mtr_stats_update,
+	.stats_read            = nfp_mtr_stats_read,
 };
 
 int
@@ -927,9 +1085,13 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
 	app_fw_flower->mtr_priv = priv;
 
+	priv->drain_tsc = rte_get_tsc_hz();
+
 	LIST_INIT(&priv->mtrs);
 	LIST_INIT(&priv->profiles);
 	LIST_INIT(&priv->policies);
+
+	rte_spinlock_init(&priv->mtr_stats_lock);
 
 	return 0;
 }

@@ -525,3 +525,32 @@ nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 
 	return 0;
 }
+
+int
+nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_cfg_head *head)
+{
+	char *msg;
+	uint16_t cnt;
+	uint32_t len;
+	struct rte_mbuf *mbuf;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos stats");
+		return -ENOMEM;
+	}
+
+	len = sizeof(struct nfp_cfg_head);
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_STATS, len);
+	rte_memcpy(msg, head, len);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}

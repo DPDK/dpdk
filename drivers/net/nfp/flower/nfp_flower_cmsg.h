@@ -928,5 +928,7 @@ int nfp_flower_cmsg_qos_add(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_profile_conf *conf);
 int nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_profile_conf *conf);
+int nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_cfg_head *head);
 
 #endif /* _NFP_CMSG_H_ */

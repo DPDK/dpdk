@@ -67,6 +67,22 @@ struct nfp_profile_conf {
 };
 
 /**
+ * Struct nfp_mtr_stats_reply - meter stats, read from firmware
+ * @head:          config head information
+ * @pass_bytes:    count of passed bytes
+ * @pass_pkts:     count of passed packets
+ * @drop_bytes:    count of dropped bytes
+ * @drop_pkts:     count of dropped packets
+ */
+struct nfp_mtr_stats_reply {
+	struct nfp_cfg_head head;
+	rte_be64_t pass_bytes;
+	rte_be64_t pass_pkts;
+	rte_be64_t drop_bytes;
+	rte_be64_t drop_pkts;
+};
+
+/**
  * Struct nfp_mtr_profile - meter profile, stored in driver
  * Can only be used by one meter
  * @next:        next meter profile object
@@ -96,6 +112,20 @@ struct nfp_mtr_policy {
 };
 
 /**
+ * Struct nfp_mtr_stats - meter stats information
+ * @pass_bytes:        count of passed bytes for meter
+ * @pass_pkts:         count of passed packets for meter
+ * @drop_bytes:        count of dropped bytes for meter
+ * @drop_pkts:         count of dropped packets for meter
+ */
+struct nfp_mtr_stats {
+	uint64_t pass_bytes;
+	uint64_t pass_pkts;
+	uint64_t drop_bytes;
+	uint64_t drop_pkts;
+};
+
+/**
  * Struct nfp_mtr - meter object information
  * @next:        next meter object
  * @mtr_id:      meter id
@@ -104,6 +134,9 @@ struct nfp_mtr_policy {
  * @enable:      if meter is enable to use
  * @mtr_profile: the pointer of profile
  * @mtr_policy:  the pointer of policy
+ * @stats_mask:  supported meter stats mask
+ * @curr:        current meter stats
+ * @prev:        previous meter stats
  */
 struct nfp_mtr {
 	LIST_ENTRY(nfp_mtr) next;
@@ -113,6 +146,11 @@ struct nfp_mtr {
 	bool enable;
 	struct nfp_mtr_profile *mtr_profile;
 	struct nfp_mtr_policy *mtr_policy;
+	uint64_t stats_mask;
+	struct {
+		struct nfp_mtr_stats curr;
+		struct nfp_mtr_stats prev;
+	} mtr_stats;
 };
 
 /**
@@ -120,11 +158,15 @@ struct nfp_mtr {
  * @profiles:        the head node of profile list
  * @policies:        the head node of policy list
  * @mtrs:            the head node of mtrs list
+ * @mtr_stats_lock:  spinlock for meter stats
+ * @drain_tsc:       clock period
  */
 struct nfp_mtr_priv {
 	LIST_HEAD(, nfp_mtr_profile) profiles;
 	LIST_HEAD(, nfp_mtr_policy) policies;
 	LIST_HEAD(, nfp_mtr) mtrs;
+	rte_spinlock_t mtr_stats_lock;
+	uint64_t drain_tsc;
 };
 
 int nfp_net_mtr_ops_get(struct rte_eth_dev *dev, void *arg);
@@ -132,5 +174,7 @@ int nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev);
 void nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev);
 struct nfp_mtr *nfp_mtr_find_by_mtr_id(struct nfp_mtr_priv *priv,
 		uint32_t mtr_id);
+struct nfp_mtr *nfp_mtr_find_by_profile_id(struct nfp_mtr_priv *priv,
+		uint32_t profile_id);
 
 #endif /* __NFP_MTR_H__ */

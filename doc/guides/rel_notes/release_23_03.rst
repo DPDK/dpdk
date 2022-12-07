@@ -59,6 +59,10 @@ New Features
 
   * Added multi-process support.
 
+* **Updated Corigine nfp driver.**
+
+  * Added support for meter options.
+
 * **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 
   * Added support for SHA3 224/256/384/512 plain hash in QAT GEN 3.
