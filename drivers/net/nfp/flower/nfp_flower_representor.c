@@ -553,6 +553,7 @@ static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 	.mac_addr_set         = nfp_flower_repr_mac_addr_set,
 
 	.flow_ops_get         = nfp_net_flow_ops_get,
+	.mtr_ops_get          = nfp_net_mtr_ops_get,
 };
 
 static uint32_t

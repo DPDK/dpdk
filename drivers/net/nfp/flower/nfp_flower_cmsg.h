@@ -9,6 +9,7 @@
 #include <rte_byteorder.h>
 #include <rte_ether.h>
 
+#include "../nfp_mtr.h"
 #include "../nfp_flow.h"
 
 struct nfp_flower_cmsg_hdr {
@@ -923,5 +924,9 @@ int nfp_flower_cmsg_tun_mac_rule(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_ether_addr *mac,
 		uint16_t mac_idx,
 		bool is_del);
+int nfp_flower_cmsg_qos_add(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_profile_conf *conf);
+int nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_profile_conf *conf);
 
 #endif /* _NFP_CMSG_H_ */

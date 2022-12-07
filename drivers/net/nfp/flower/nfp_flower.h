@@ -76,6 +76,7 @@ struct nfp_app_fw_flower {
 	uint64_t ext_features;
 
 	struct nfp_flow_priv *flow_priv;
+	struct nfp_mtr_priv *mtr_priv;
 };
 
 static inline bool

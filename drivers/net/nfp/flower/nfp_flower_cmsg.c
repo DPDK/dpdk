@@ -467,3 +467,61 @@ nfp_flower_cmsg_tun_mac_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	return 0;
 }
+
+int
+nfp_flower_cmsg_qos_add(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_profile_conf *conf)
+{
+	char *msg;
+	uint16_t cnt;
+	uint32_t len;
+	struct rte_mbuf *mbuf;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos add");
+		return -ENOMEM;
+	}
+
+	len = sizeof(struct nfp_profile_conf);
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_MOD, len);
+	rte_memcpy(msg, conf, len);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int
+nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_profile_conf *conf)
+{
+	char *msg;
+	uint16_t cnt;
+	uint32_t len;
+	struct rte_mbuf *mbuf;
+
+	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
+	if (mbuf == NULL) {
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos delete");
+		return -ENOMEM;
+	}
+
+	len = sizeof(struct nfp_profile_conf);
+	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_DEL, len);
+	rte_memcpy(msg, conf, len);
+
+	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
+	if (cnt == 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg through ctrl vnic failed.");
+		rte_pktmbuf_free(mbuf);
+		return -EIO;
+	}
+
+	return 0;
+}

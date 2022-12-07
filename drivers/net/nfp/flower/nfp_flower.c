@@ -194,6 +194,8 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 	pf_dev = hw->pf_dev;
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
 
+	nfp_mtr_priv_uninit(pf_dev);
+
 	/*
 	 * We assume that the DPDK application is stopping all the
 	 * threads/queues before calling the device close function.
@@ -1097,13 +1099,19 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 		goto app_cleanup;
 	}
 
+	ret = nfp_mtr_priv_init(pf_dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Error initializing metering private data");
+		goto flow_priv_cleanup;
+	}
+
 	/* Allocate memory for the PF AND ctrl vNIC here (hence the * 2) */
 	pf_hw = rte_zmalloc_socket("nfp_pf_vnic", 2 * sizeof(struct nfp_net_adapter),
 			RTE_CACHE_LINE_SIZE, numa_node);
 	if (pf_hw == NULL) {
 		PMD_INIT_LOG(ERR, "Could not malloc nfp pf vnic");
 		ret = -ENOMEM;
-		goto flow_priv_cleanup;
+		goto mtr_priv_cleanup;
 	}
 
 	/* Map the PF ctrl bar */
@@ -1193,6 +1201,8 @@ pf_cpp_area_cleanup:
 	nfp_cpp_area_free(pf_dev->ctrl_area);
 vnic_cleanup:
 	rte_free(pf_hw);
+mtr_priv_cleanup:
+	nfp_mtr_priv_uninit(pf_dev);
 flow_priv_cleanup:
 	nfp_flow_priv_uninit(pf_dev);
 app_cleanup:
