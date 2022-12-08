@@ -724,7 +724,7 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 		goto load_fw;
 	/* Then try the PCI name */
 	snprintf(fw_name, sizeof(fw_name), "%s/pci-%s.nffw", DEFAULT_FW_PATH,
-			dev->device.name);
+			dev->name);
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
