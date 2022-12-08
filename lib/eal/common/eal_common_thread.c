@@ -85,9 +85,8 @@ thread_update_affinity(rte_cpuset_t *cpusetp)
 int
 rte_thread_set_affinity(rte_cpuset_t *cpusetp)
 {
-	if (pthread_setaffinity_np(pthread_self(), sizeof(rte_cpuset_t),
-			cpusetp) != 0) {
-		RTE_LOG(ERR, EAL, "pthread_setaffinity_np failed\n");
+	if (rte_thread_set_affinity_by_id(rte_thread_self(), cpusetp) != 0) {
+		RTE_LOG(ERR, EAL, "rte_thread_set_affinity_by_id failed\n");
 		return -1;
 	}
 
@@ -166,7 +165,7 @@ __rte_thread_uninit(void)
 }
 
 /* main loop of threads */
-__rte_noreturn void *
+__rte_noreturn uint32_t
 eal_thread_loop(void *arg)
 {
 	unsigned int lcore_id = (uintptr_t)arg;
@@ -223,8 +222,7 @@ eal_thread_loop(void *arg)
 	}
 
 	/* never reached */
-	/* pthread_exit(NULL); */
-	/* return NULL; */
+	/* return 0; */
 }
 
 enum __rte_ctrl_thread_status {
@@ -253,8 +251,7 @@ static void *ctrl_thread_init(void *arg)
 	void *routine_arg = params->arg;
 
 	__rte_thread_init(rte_lcore_id(), cpuset);
-	params->ret = pthread_setaffinity_np(pthread_self(), sizeof(*cpuset),
-		cpuset);
+	params->ret = rte_thread_set_affinity_by_id(rte_thread_self(), cpuset);
 	if (params->ret != 0) {
 		__atomic_store_n(&params->ctrl_thread_status,
 			CTRL_THREAD_ERROR, __ATOMIC_RELEASE);
@@ -338,8 +335,7 @@ rte_thread_register(void)
 		rte_errno = EINVAL;
 		return -1;
 	}
-	if (pthread_getaffinity_np(pthread_self(), sizeof(cpuset),
-			&cpuset) != 0)
+	if (rte_thread_get_affinity_by_id(rte_thread_self(), &cpuset) != 0)
 		CPU_ZERO(&cpuset);
 	lcore_id = eal_lcore_non_eal_allocate();
 	if (lcore_id >= RTE_MAX_LCORE)

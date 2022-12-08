@@ -36,18 +36,6 @@
 int eal_create_cpu_map(void);
 
 /**
- * Create a thread.
- *
- * @param thread
- *   The location to store the thread id if successful.
- * @param lcore_id
- *   The lcore_id of this worker thread.
- * @return
- *   0 for success, -1 if the thread is not created.
- */
-int eal_thread_create(pthread_t *thread, unsigned int lcore_id);
-
-/**
  * Get system NUMA node number for a socket ID.
  *
  * @param socket_id

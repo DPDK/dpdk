@@ -14,7 +14,7 @@
  * @param arg
  *   The lcore_id (passed as an integer) of this worker thread.
  */
-__rte_noreturn void *eal_thread_loop(void *arg);
+__rte_noreturn uint32_t eal_thread_loop(void *arg);
 
 /**
  * Get the NUMA socket id from cpu id.

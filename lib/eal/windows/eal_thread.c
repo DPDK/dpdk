@@ -70,31 +70,6 @@ eal_thread_ack_command(void)
 		rte_panic("cannot write on configuration pipe\n");
 }
 
-/* function to create threads */
-int
-eal_thread_create(pthread_t *thread, unsigned int lcore_id)
-{
-	HANDLE th;
-
-	th = CreateThread(NULL, 0,
-		(LPTHREAD_START_ROUTINE)(ULONG_PTR)eal_thread_loop,
-						(LPVOID)(uintptr_t)lcore_id,
-						CREATE_SUSPENDED,
-						(LPDWORD)thread);
-	if (!th)
-		return -1;
-
-	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
-	SetThreadPriority(th, THREAD_PRIORITY_NORMAL);
-
-	if (ResumeThread(th) == (DWORD)-1) {
-		(void)CloseHandle(th);
-		return -1;
-	}
-
-	return 0;
-}
-
 /* get current thread ID */
 int
 rte_sys_gettid(void)

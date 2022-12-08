@@ -909,6 +909,12 @@ is_iommu_enabled(void)
 	return n > 2;
 }
 
+static __rte_noreturn void *
+eal_worker_thread_loop(void *arg)
+{
+	eal_thread_loop(arg);
+}
+
 static int
 eal_worker_thread_create(unsigned int lcore_id)
 {
@@ -943,8 +949,8 @@ eal_worker_thread_create(unsigned int lcore_id)
 		}
 	}
 
-	if (pthread_create(&lcore_config[lcore_id].thread_id, attrp,
-			eal_thread_loop, (void *)(uintptr_t)lcore_id) == 0)
+	if (pthread_create((pthread_t *)&lcore_config[lcore_id].thread_id.opaque_id,
+			attrp, eal_worker_thread_loop, (void *)(uintptr_t)lcore_id) == 0)
 		ret = 0;
 
 out:
@@ -1220,7 +1226,7 @@ rte_eal_init(int argc, char **argv)
 
 	eal_check_mem_on_local_socket();
 
-	if (pthread_setaffinity_np(pthread_self(), sizeof(rte_cpuset_t),
+	if (rte_thread_set_affinity_by_id(rte_thread_self(),
 			&lcore_config[config->main_lcore].cpuset) != 0) {
 		rte_eal_init_alert("Cannot set affinity");
 		rte_errno = EINVAL;
@@ -1255,14 +1261,14 @@ rte_eal_init(int argc, char **argv)
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, sizeof(thread_name),
 			"rte-worker-%d", i);
-		ret = rte_thread_setname(lcore_config[i].thread_id,
-						thread_name);
+		ret = rte_thread_setname((pthread_t)lcore_config[i].thread_id.opaque_id,
+			thread_name);
 		if (ret != 0)
 			RTE_LOG(DEBUG, EAL,
 				"Cannot set name for lcore thread\n");
 
-		ret = pthread_setaffinity_np(lcore_config[i].thread_id,
-			sizeof(rte_cpuset_t), &lcore_config[i].cpuset);
+		ret = rte_thread_set_affinity_by_id(lcore_config[i].thread_id,
+			&lcore_config[i].cpuset);
 		if (ret != 0)
 			rte_panic("Cannot set affinity\n");
 	}
