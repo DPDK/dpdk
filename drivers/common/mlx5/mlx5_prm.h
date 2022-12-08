@@ -2123,10 +2123,11 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 hairpin_sq_wqe_bb_size[0x5];
 	u8 hairpin_sq_wq_in_host_mem[0x1];
 	u8 hairpin_data_buffer_locked[0x1];
-	u8 reserved_at_16a[0x36];
-	u8 reserved_at_1a0[0xb];
+	u8 reserved_at_16a[0x16];
+	u8 reserved_at_180[0x20];
+	u8 reserved_at_1a0[0xa];
 	u8 format_select_dw_8_6_ext[0x1];
-	u8 reserved_at_1ac[0x14];
+	u8 reserved_at_1ac[0x15];
 	u8 general_obj_types_127_64[0x40];
 	u8 reserved_at_200[0x53];
 	u8 flow_counter_bulk_log_max_alloc[0x5];
