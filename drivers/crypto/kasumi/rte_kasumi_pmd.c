@@ -385,12 +385,13 @@ process_op_bit(struct rte_crypto_op *op, struct kasumi_session *session,
 		op->sym->session = NULL;
 	}
 
-	enqueued_op = rte_ring_enqueue_burst(qp->processed_ops, (void **)&op,
-				processed_op, NULL);
+	if (unlikely(processed_op != 1))
+		return 0;
+	enqueued_op = rte_ring_enqueue(qp->processed_ops, op);
 	qp->qp_stats.enqueued_count += enqueued_op;
 	*accumulated_enqueued_ops += enqueued_op;
 
-	return enqueued_op;
+	return 1;
 }
 
 static uint16_t
