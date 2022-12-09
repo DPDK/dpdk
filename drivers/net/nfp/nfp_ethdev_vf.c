@@ -333,6 +333,13 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
+	if (hw->max_rx_queues == 0 || hw->max_tx_queues == 0) {
+		PMD_DRV_LOG(ERR,
+			    "Device %s can not be used, there are no valid queue "
+			    "pairs for use, please try to generate less VFs",
+			    pci_dev->name);
+		return -ENODEV;
+	}
 
 	/* Work out where in the BAR the queues start. */
 	switch (pci_dev->id.device_id) {
