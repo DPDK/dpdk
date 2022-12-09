@@ -3809,6 +3809,7 @@ nfp_flow_stats_get(struct rte_eth_dev *dev,
 		struct rte_flow *nfp_flow,
 		void *data)
 {
+	bool reset;
 	uint32_t ctx_id;
 	struct rte_flow *flow;
 	struct nfp_flow_priv *priv;
@@ -3823,6 +3824,7 @@ nfp_flow_stats_get(struct rte_eth_dev *dev,
 	}
 
 	query = (struct rte_flow_query_count *)data;
+	reset = query->reset;
 	memset(query, 0, sizeof(*query));
 
 	ctx_id = rte_be_to_cpu_32(nfp_flow->payload.meta->host_ctx_id);
@@ -3834,7 +3836,7 @@ nfp_flow_stats_get(struct rte_eth_dev *dev,
 		query->bytes = stats->bytes;
 		query->hits_set = 1;
 		query->bytes_set = 1;
-		if (query->reset != 0) {
+		if (reset) {
 			stats->pkts = 0;
 			stats->bytes = 0;
 		}
