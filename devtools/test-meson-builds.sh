@@ -19,6 +19,7 @@ srcdir=$(dirname $(readlink -f $0))/..
 # - DPDK_MESON_OPTIONS
 #
 # - DPDK_ABI_REF_DIR
+# - DPDK_ABI_REF_SRC
 # - DPDK_ABI_REF_VERSION
 #
 # - DPDK_BUILD_TEST_EXAMPLES
@@ -187,10 +188,15 @@ build () # <directory> <target cc | cross file> <ABI check> [meson options]
 		if [ ! -d $abirefdir/$targetdir ]; then
 			# clone current sources
 			if [ ! -d $abirefdir/src ]; then
-				git clone --local --no-hardlinks \
+				abirefsrc=${DPDK_ABI_REF_SRC:-$srcdir}
+				abirefcloneopts=
+				if [ -d $abirefsrc ]; then
+					abirefcloneopts="--local --no-hardlinks"
+				fi
+				git clone $abirefcloneopts \
 					--single-branch \
 					-b $DPDK_ABI_REF_VERSION \
-					$srcdir $abirefdir/src
+					$abirefsrc $abirefdir/src
 			fi
 
 			rm -rf $abirefdir/build
