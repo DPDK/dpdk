@@ -4821,13 +4821,14 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 	if (!fdb_tx) {
 		/* Prepare the prefix tag action. */
 		set_tag = (void *)(actions_pre + actions_n + 1);
-		ret = mlx5_flow_get_reg_id(dev, MLX5_SAMPLE_ID, 0, error);
 		/* Trust VF/SF on CX5 not supported meter so that the reserved
 		 * metadata regC is REG_NON, back to use application tag
 		 * index 0.
 		 */
-		if (unlikely(ret == REG_NON))
+		if (unlikely(priv->mtr_color_reg == REG_NON))
 			ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, 0, error);
+		else
+			ret = mlx5_flow_get_reg_id(dev, MLX5_SAMPLE_ID, 0, error);
 		if (ret < 0)
 			return ret;
 		set_tag->id = ret;
