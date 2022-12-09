@@ -492,7 +492,9 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 {
 	struct nfp_net_hw *hw;
 	struct rte_eth_link link;
+	struct nfp_eth_table *nfp_eth_table;
 	uint32_t nn_link_status;
+	uint32_t i;
 	int ret;
 
 	static const uint32_t ls_to_ethtool[] = {
@@ -519,13 +521,28 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
-	nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
-			 NFP_NET_CFG_STS_LINK_RATE_MASK;
+	if (hw->pf_dev != NULL) {
+		nfp_eth_table = hw->pf_dev->nfp_eth_table;
+		if (nfp_eth_table != NULL) {
+			link.link_speed = nfp_eth_table->ports[hw->idx].speed;
+			for (i = 0; i < RTE_DIM(ls_to_ethtool); i++) {
+				if (ls_to_ethtool[i] == link.link_speed)
+					break;
+			}
+			if (i == RTE_DIM(ls_to_ethtool))
+				link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		} else {
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		}
+	} else {
+		nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
+				NFP_NET_CFG_STS_LINK_RATE_MASK;
 
-	if (nn_link_status >= RTE_DIM(ls_to_ethtool))
-		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-	else
-		link.link_speed = ls_to_ethtool[nn_link_status];
+		if (nn_link_status >= RTE_DIM(ls_to_ethtool))
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		else
+			link.link_speed = ls_to_ethtool[nn_link_status];
+	}
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == 0) {
