@@ -12,6 +12,16 @@ PIPEFAIL=""
 set -o | grep -q pipefail && set -o pipefail && PIPEFAIL=1
 
 srcdir=$(dirname $(readlink -f $0))/..
+
+# Load config options:
+# - DPDK_BUILD_TEST_DIR
+#
+# - DPDK_MESON_OPTIONS
+#
+# - DPDK_ABI_REF_DIR
+# - DPDK_ABI_REF_VERSION
+#
+# - DPDK_BUILD_TEST_EXAMPLES
 . $srcdir/devtools/load-devel-config
 
 MESON=${MESON:-meson}
