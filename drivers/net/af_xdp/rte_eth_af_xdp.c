@@ -39,6 +39,7 @@
 #include <rte_power_intrinsics.h>
 
 #include "compat.h"
+#include "eal_filesystem.h"
 
 #ifndef SO_PREFER_BUSY_POLL
 #define SO_PREFER_BUSY_POLL 69
@@ -2038,9 +2039,6 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		return -EINVAL;
 	}
 
-	if (dev->device.numa_node == SOCKET_ID_ANY)
-		dev->device.numa_node = rte_socket_id();
-
 	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
 			     &xsk_queue_cnt, &shared_umem, prog_path,
 			     &busy_budget, &force_copy) < 0) {
@@ -2051,6 +2049,19 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	if (strlen(if_name) == 0) {
 		AF_XDP_LOG(ERR, "Network interface must be specified\n");
 		return -EINVAL;
+	}
+
+	/* get numa node id from net sysfs */
+	if (dev->device.numa_node == SOCKET_ID_ANY) {
+		unsigned long numa = 0;
+		char numa_path[PATH_MAX];
+
+		snprintf(numa_path, sizeof(numa_path), "/sys/class/net/%s/device/numa_node",
+			 if_name);
+		if (eal_parse_sysfs_value(numa_path, &numa) != 0)
+			dev->device.numa_node = rte_socket_id();
+		else
+			dev->device.numa_node = numa;
 	}
 
 	busy_budget = busy_budget == -1 ? ETH_AF_XDP_DFLT_BUSY_BUDGET :
