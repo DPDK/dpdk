@@ -6,3 +6,4 @@ sources = files('iavf_adminq.c', 'iavf_common.c', 'iavf_impl.c')
 if cc.has_argument('-Wno-pointer-to-int-cast')
         cflags += '-Wno-pointer-to-int-cast'
 endif
+pmd_supports_disable_iova_as_pa = true

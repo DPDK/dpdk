@@ -56,8 +56,13 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 		}
 	}
 
+#if RTE_IOVA_AS_PA
 	const __m512i iova_offsets =  _mm512_set1_epi64
 		(offsetof(struct rte_mbuf, buf_iova));
+#else
+	const __m512i iova_offsets =  _mm512_set1_epi64
+		(offsetof(struct rte_mbuf, buf_addr));
+#endif
 	const __m512i headroom = _mm512_set1_epi64(RTE_PKTMBUF_HEADROOM);
 
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
@@ -1092,8 +1097,7 @@ ice_vtx1(volatile struct ice_tx_desc *txdp,
 	if (do_offload)
 		ice_txd_enable_offload(pkt, &high_qw);
 
-	__m128i descriptor = _mm_set_epi64x(high_qw,
-				pkt->buf_iova + pkt->data_off);
+	__m128i descriptor = _mm_set_epi64x(high_qw, rte_pktmbuf_iova(pkt));
 	_mm_store_si128((__m128i *)txdp, descriptor);
 }
 
@@ -1132,14 +1136,10 @@ ice_vtx(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkt,
 
 		__m512i desc0_3 =
 			_mm512_set_epi64
-				(hi_qw3,
-				 pkt[3]->buf_iova + pkt[3]->data_off,
-				 hi_qw2,
-				 pkt[2]->buf_iova + pkt[2]->data_off,
-				 hi_qw1,
-				 pkt[1]->buf_iova + pkt[1]->data_off,
-				 hi_qw0,
-				 pkt[0]->buf_iova + pkt[0]->data_off);
+				(hi_qw3, rte_pktmbuf_iova(pkt[3]),
+				 hi_qw2, rte_pktmbuf_iova(pkt[2]),
+				 hi_qw1, rte_pktmbuf_iova(pkt[1]),
+				 hi_qw0, rte_pktmbuf_iova(pkt[0]));
 		_mm512_storeu_si512((void *)txdp, desc0_3);
 	}
 
