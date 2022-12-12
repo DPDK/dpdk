@@ -284,7 +284,7 @@ l2fwd_event_loop_burst(struct l2fwd_resources *rsrc,
 		}
 	}
 
-	l2fwd_event_worker_cleanup(event_d_id, port_id, ev, nb_rx, nb_tx, 0);
+	l2fwd_event_worker_cleanup(event_d_id, port_id, ev, nb_tx, nb_rx, 0);
 }
 
 static __rte_always_inline void
@@ -468,7 +468,7 @@ l2fwd_event_loop_vector(struct l2fwd_resources *rsrc, const uint32_t flags)
 		}
 	}
 
-	l2fwd_event_worker_cleanup(event_d_id, port_id, ev, nb_rx, nb_tx, 1);
+	l2fwd_event_worker_cleanup(event_d_id, port_id, ev, nb_tx, nb_rx, 1);
 }
 
 static void __rte_noinline
