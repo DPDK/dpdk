@@ -309,7 +309,6 @@ virtio_vdpa_cmd_get_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
 	result = (struct virtio_admin_migration_get_internal_status_result *)
 			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
 	result->internal_status = rte_le_to_cpu_16(result->internal_status);
-	RTE_VERIFY(result->internal_status >= VIRTIO_S_INIT);
 	RTE_VERIFY(result->internal_status <= VIRTIO_S_FREEZED);
 	*status = (enum virtio_internal_status)result->internal_status;
 
