@@ -367,11 +367,7 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 					(u16)(ring_state & IFCVF_16_BIT_MASK);
 				hw->vring[i].last_used_idx =
 					(u16)(ring_state >> 16);
-				if (hw->vring[i].last_avail_idx !=
-					hw->vring[i].last_used_idx) {
-					ifcvf_notify_queue(hw, i);
-					usleep(10);
-				}
+				usleep(10);
 			} while (hw->vring[i].last_avail_idx !=
 				hw->vring[i].last_used_idx);
 		}
