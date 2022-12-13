@@ -12114,13 +12114,8 @@ i40e_set_mac_max_frame(struct rte_eth_dev *dev, uint16_t size)
 	enum i40e_status_code status;
 	bool can_be_set = true;
 
-	/*
-	 * I40E_MEDIA_TYPE_BASET link up can be ignored
-	 * I40E_MEDIA_TYPE_BASET link down that hw->phy.media_type
-	 * is I40E_MEDIA_TYPE_UNKNOWN
-	 */
-	if (hw->phy.media_type != I40E_MEDIA_TYPE_BASET &&
-	    hw->phy.media_type != I40E_MEDIA_TYPE_UNKNOWN) {
+	/* I40E_MEDIA_TYPE_BASET link up can be ignored */
+	if (hw->phy.media_type != I40E_MEDIA_TYPE_BASET) {
 		do {
 			update_link_reg(hw, &link);
 			if (link.link_status)
