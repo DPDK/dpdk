@@ -4941,6 +4941,87 @@ get_bbdev_queue_stats(uint16_t dev_id, uint16_t queue_id,
 }
 
 static int
+offload_latency_test_fft(struct rte_mempool *mempool, struct test_buffers *bufs,
+		struct rte_bbdev_fft_op *ref_op, uint16_t dev_id,
+		uint16_t queue_id, const uint16_t num_to_process,
+		uint16_t burst_sz, struct test_time_stats *time_st)
+{
+	int i, dequeued, ret;
+	struct rte_bbdev_fft_op *ops_enq[MAX_BURST], *ops_deq[MAX_BURST];
+	uint64_t enq_start_time, deq_start_time;
+	uint64_t enq_sw_last_time, deq_last_time;
+	struct rte_bbdev_stats stats;
+
+	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
+		uint16_t enq = 0, deq = 0;
+
+		if (unlikely(num_to_process - dequeued < burst_sz))
+			burst_sz = num_to_process - dequeued;
+
+		rte_bbdev_fft_op_alloc_bulk(mempool, ops_enq, burst_sz);
+		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+			copy_reference_fft_op(ops_enq, burst_sz, dequeued,
+					bufs->inputs,
+					bufs->hard_outputs, bufs->soft_outputs,
+					ref_op);
+
+		/* Start time meas for enqueue function offload latency */
+		enq_start_time = rte_rdtsc_precise();
+		do {
+			enq += rte_bbdev_enqueue_fft_ops(dev_id, queue_id,
+					&ops_enq[enq], burst_sz - enq);
+		} while (unlikely(burst_sz != enq));
+
+		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
+		TEST_ASSERT_SUCCESS(ret,
+				"Failed to get stats for queue (%u) of device (%u)",
+				queue_id, dev_id);
+
+		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time -
+				stats.acc_offload_cycles;
+		time_st->enq_sw_max_time = RTE_MAX(time_st->enq_sw_max_time,
+				enq_sw_last_time);
+		time_st->enq_sw_min_time = RTE_MIN(time_st->enq_sw_min_time,
+				enq_sw_last_time);
+		time_st->enq_sw_total_time += enq_sw_last_time;
+
+		time_st->enq_acc_max_time = RTE_MAX(time_st->enq_acc_max_time,
+				stats.acc_offload_cycles);
+		time_st->enq_acc_min_time = RTE_MIN(time_st->enq_acc_min_time,
+				stats.acc_offload_cycles);
+		time_st->enq_acc_total_time += stats.acc_offload_cycles;
+
+		/* give time for device to process ops */
+		rte_delay_us(WAIT_OFFLOAD_US);
+
+		/* Start time meas for dequeue function offload latency */
+		deq_start_time = rte_rdtsc_precise();
+		/* Dequeue one operation */
+		do {
+			deq += rte_bbdev_dequeue_fft_ops(dev_id, queue_id,
+					&ops_deq[deq], enq);
+		} while (unlikely(deq == 0));
+
+		deq_last_time = rte_rdtsc_precise() - deq_start_time;
+		time_st->deq_max_time = RTE_MAX(time_st->deq_max_time,
+				deq_last_time);
+		time_st->deq_min_time = RTE_MIN(time_st->deq_min_time,
+				deq_last_time);
+		time_st->deq_total_time += deq_last_time;
+
+		/* Dequeue remaining operations if needed*/
+		while (burst_sz != deq)
+			deq += rte_bbdev_dequeue_fft_ops(dev_id, queue_id,
+					&ops_deq[deq], burst_sz - deq);
+
+		rte_bbdev_fft_op_free_bulk(ops_enq, deq);
+		dequeued += deq;
+	}
+
+	return i;
+}
+
+static int
 offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 		struct rte_bbdev_dec_op *ref_op, uint16_t dev_id,
 		uint16_t queue_id, const uint16_t num_to_process,
