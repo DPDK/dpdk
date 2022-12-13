@@ -37,6 +37,7 @@ gve_rx_refill_dqo(struct gve_rx_queue *rxq)
 			next_avail = 0;
 			rxq->nb_rx_hold -= delta;
 		} else {
+			rxq->no_mbufs += nb_desc - next_avail;
 			dev = &rte_eth_devices[rxq->port_id];
 			dev->data->rx_mbuf_alloc_failed += nb_desc - next_avail;
 			PMD_DRV_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
@@ -57,6 +58,7 @@ gve_rx_refill_dqo(struct gve_rx_queue *rxq)
 			next_avail += nb_refill;
 			rxq->nb_rx_hold -= nb_refill;
 		} else {
+			rxq->no_mbufs += nb_desc - next_avail;
 			dev = &rte_eth_devices[rxq->port_id];
 			dev->data->rx_mbuf_alloc_failed += nb_desc - next_avail;
 			PMD_DRV_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
@@ -80,7 +82,9 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t pkt_len;
 	uint16_t rx_id;
 	uint16_t nb_rx;
+	uint64_t bytes;
 
+	bytes = 0;
 	nb_rx = 0;
 	rxq = rx_queue;
 	rx_id = rxq->rx_tail;
@@ -93,6 +97,11 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		/* check status */
 		if (rx_desc->generation != rxq->cur_gen_bit)
 			break;
+
+		if (unlikely(rx_desc->rx_error)) {
+			rxq->errors++;
+			continue;
+		}
 
 		pkt_len = rx_desc->packet_len;
 
@@ -114,6 +123,7 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->ol_flags = 0;
 
 		rx_pkts[nb_rx++] = rxm;
+		bytes += pkt_len;
 	}
 
 	if (nb_rx > 0) {
@@ -122,6 +132,9 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxq->next_avail = rx_id_bufq;
 
 		gve_rx_refill_dqo(rxq);
+
+		rxq->packets += nb_rx;
+		rxq->bytes += bytes;
 	}
 
 	return nb_rx;

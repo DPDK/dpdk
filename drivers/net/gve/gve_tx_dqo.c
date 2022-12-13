@@ -81,10 +81,12 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t nb_used;
 	uint16_t tx_id;
 	uint16_t sw_id;
+	uint64_t bytes;
 
 	sw_ring = txq->sw_ring;
 	txr = txq->tx_ring;
 
+	bytes = 0;
 	mask = txq->nb_tx_desc - 1;
 	sw_mask = txq->sw_size - 1;
 	tx_id = txq->tx_tail;
@@ -119,6 +121,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			tx_id = (tx_id + 1) & mask;
 			sw_id = (sw_id + 1) & sw_mask;
 
+			bytes += tx_pkt->pkt_len;
 			tx_pkt = tx_pkt->next;
 		} while (tx_pkt);
 
@@ -142,6 +145,9 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txd->pkt.report_event = true;
 			txq->re_cnt = 0;
 		}
+
+		txq->packets += nb_tx;
+		txq->bytes += bytes;
 	}
 
 	return nb_tx;
