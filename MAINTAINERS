@@ -131,7 +131,6 @@ F: devtools/check-meson.py
 Public CI
 M: Aaron Conole <aconole@redhat.com>
 M: Michael Santana <maicolgabriel@hotmail.com>
-F: .travis.yml
 F: .github/workflows/build.yml
 F: .ci/
 

@@ -9,25 +9,6 @@ fi
 # Builds are run as root in containers, no need for sudo
 [ "$(id -u)" != '0' ] || alias sudo=
 
-on_error() {
-    if [ $? = 0 ]; then
-        exit
-    fi
-    FILES_TO_PRINT="build/meson-logs/testlog.txt"
-    FILES_TO_PRINT="$FILES_TO_PRINT build/.ninja_log"
-    FILES_TO_PRINT="$FILES_TO_PRINT build/meson-logs/meson-log.txt"
-    FILES_TO_PRINT="$FILES_TO_PRINT build/gdb.log"
-
-    for pr_file in $FILES_TO_PRINT; do
-        if [ -e "$pr_file" ]; then
-            cat "$pr_file"
-        fi
-    done
-}
-# We capture the error logs as artifacts in Github Actions, no need to dump
-# them via a EXIT handler.
-[ -n "$GITHUB_WORKFLOW" ] || trap on_error EXIT
-
 install_libabigail() {
     version=$1
     instdir=$2

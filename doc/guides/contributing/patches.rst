@@ -35,10 +35,6 @@ It is also worth registering for the DPDK `Patchwork <https://patches.dpdk.org/p
 If you are using the GitHub service, pushing to a branch will trigger GitHub
 Actions to automatically build your changes and run unit tests and ABI checks.
 
-Additionally, a Travis configuration is available in DPDK but Travis free usage
-is limited to a few builds.
-You can link your repository to the ``travis-ci.com`` build service.
-
 The development process requires some familiarity with the ``git`` version control system.
 Refer to the `Pro Git Book <http://www.git-scm.com/book/>`_ for further information.
 
