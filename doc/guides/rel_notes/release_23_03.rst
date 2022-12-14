@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Intel QuickAssist Technology (QAT) crypto driver.**
+
+  * Added support for SHA3 224/256/384/512 plain hash in QAT GEN 3.
+  * Added support for SHA3 256 plain hash in QAT GEN 2.
+
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
   * eventdev reconfig logic is enhanced to increment the

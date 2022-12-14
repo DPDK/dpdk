@@ -718,6 +718,22 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA512;
 		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
 		break;
+	case RTE_CRYPTO_AUTH_SHA3_224:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA3_224;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_256:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA3_256;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_384:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA3_384;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_512:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA3_512;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA1;
 		break;
@@ -1018,6 +1034,18 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA512_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_224:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA3_224_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_256:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA3_256_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_384:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA3_384_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_512:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA3_512_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
@@ -1071,6 +1099,14 @@ static int qat_hash_get_digest_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 		return ICP_QAT_HW_SHA384_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
 		return ICP_QAT_HW_SHA512_STATE1_SZ;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_224:
+		return ICP_QAT_HW_SHA3_224_STATE1_SZ;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_256:
+		return ICP_QAT_HW_SHA3_256_STATE1_SZ;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_384:
+		return ICP_QAT_HW_SHA3_384_STATE1_SZ;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_512:
+		return ICP_QAT_HW_SHA3_512_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
 		return ICP_QAT_HW_MD5_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
@@ -2228,6 +2264,30 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 			return -EFAULT;
 		}
 		state2_size = ICP_QAT_HW_SHA512_STATE2_SZ;
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_224:
+		/* Plain SHA3-224 */
+		memset(cdesc->cd_cur_ptr, 0, state1_size);
+		state1_size = qat_hash_get_state1_size(
+				cdesc->qat_hash_alg);
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_256:
+		/* Plain SHA3-256 */
+		memset(cdesc->cd_cur_ptr, 0, state1_size);
+		state1_size = qat_hash_get_state1_size(
+				cdesc->qat_hash_alg);
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_384:
+		/* Plain SHA3-384 */
+		memset(cdesc->cd_cur_ptr, 0, state1_size);
+		state1_size = qat_hash_get_state1_size(
+				cdesc->qat_hash_alg);
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_SHA3_512:
+		/* Plain SHA3-512 */
+		memset(cdesc->cd_cur_ptr, 0, state1_size);
+		state1_size = qat_hash_get_state1_size(
+				cdesc->qat_hash_alg);
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
 		state1_size = ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ;
