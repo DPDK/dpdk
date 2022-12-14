@@ -3352,8 +3352,8 @@ bond_mode_name(uint8_t mode)
 	}
 }
 
-static int
-bond_ethdev_priv_dump(struct rte_eth_dev *dev, FILE *f)
+static void
+dump_basic(const struct rte_eth_dev *dev, FILE *f)
 {
 	struct bond_dev_private instant_priv;
 	const struct bond_dev_private *internals = &instant_priv;
@@ -3427,6 +3427,145 @@ bond_ethdev_priv_dump(struct rte_eth_dev *dev, FILE *f)
 		fprintf(f, "\tUser Defined Primary: [%u]\n", internals->primary_port);
 	if (internals->slave_count > 0)
 		fprintf(f, "\tCurrent Primary: [%u]\n", internals->current_primary_port);
+}
+
+static void
+dump_lacp_conf(const struct rte_eth_bond_8023ad_conf *conf, FILE *f)
+{
+	fprintf(f, "\tfast period: %u ms\n", conf->fast_periodic_ms);
+	fprintf(f, "\tslow period: %u ms\n", conf->slow_periodic_ms);
+	fprintf(f, "\tshort timeout: %u ms\n", conf->short_timeout_ms);
+	fprintf(f, "\tlong timeout: %u ms\n", conf->long_timeout_ms);
+	fprintf(f, "\taggregate wait timeout: %u ms\n",
+			conf->aggregate_wait_timeout_ms);
+	fprintf(f, "\ttx period: %u ms\n", conf->tx_period_ms);
+	fprintf(f, "\trx marker period: %u ms\n", conf->rx_marker_period_ms);
+	fprintf(f, "\tupdate timeout: %u ms\n", conf->update_timeout_ms);
+	switch (conf->agg_selection) {
+	case AGG_BANDWIDTH:
+		fprintf(f, "\taggregation mode: bandwidth\n");
+		break;
+	case AGG_STABLE:
+		fprintf(f, "\taggregation mode: stable\n");
+		break;
+	case AGG_COUNT:
+		fprintf(f, "\taggregation mode: count\n");
+		break;
+	default:
+		fprintf(f, "\taggregation mode: invalid\n");
+		break;
+	}
+	fprintf(f, "\n");
+}
+
+static void
+dump_lacp_port_param(const struct port_params *params, FILE *f)
+{
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	fprintf(f, "\t\tsystem priority: %u\n", params->system_priority);
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, &params->system);
+	fprintf(f, "\t\tsystem mac address: %s\n", buf);
+	fprintf(f, "\t\tport key: %u\n", params->key);
+	fprintf(f, "\t\tport priority: %u\n", params->port_priority);
+	fprintf(f, "\t\tport number: %u\n", params->port_number);
+}
+
+static void
+dump_lacp_slave(const struct rte_eth_bond_8023ad_slave_info *info, FILE *f)
+{
+	char a_state[256] = { 0 };
+	char p_state[256] = { 0 };
+	int a_len = 0;
+	int p_len = 0;
+	uint32_t i;
+
+	static const char * const state[] = {
+		"ACTIVE",
+		"TIMEOUT",
+		"AGGREGATION",
+		"SYNCHRONIZATION",
+		"COLLECTING",
+		"DISTRIBUTING",
+		"DEFAULTED",
+		"EXPIRED"
+	};
+	static const char * const selection[] = {
+		"UNSELECTED",
+		"STANDBY",
+		"SELECTED"
+	};
+
+	for (i = 0; i < RTE_DIM(state); i++) {
+		if ((info->actor_state >> i) & 1)
+			a_len += snprintf(&a_state[a_len],
+						RTE_DIM(a_state) - a_len, "%s ",
+						state[i]);
+
+		if ((info->partner_state >> i) & 1)
+			p_len += snprintf(&p_state[p_len],
+						RTE_DIM(p_state) - p_len, "%s ",
+						state[i]);
+	}
+	fprintf(f, "\tAggregator port id: %u\n", info->agg_port_id);
+	fprintf(f, "\tselection: %s\n", selection[info->selected]);
+	fprintf(f, "\tActor detail info:\n");
+	dump_lacp_port_param(&info->actor, f);
+	fprintf(f, "\t\tport state: %s\n", a_state);
+	fprintf(f, "\tPartner detail info:\n");
+	dump_lacp_port_param(&info->partner, f);
+	fprintf(f, "\t\tport state: %s\n", p_state);
+	fprintf(f, "\n");
+}
+
+static void
+dump_lacp(uint16_t port_id, FILE *f)
+{
+	struct rte_eth_bond_8023ad_slave_info slave_info;
+	struct rte_eth_bond_8023ad_conf port_conf;
+	uint16_t slaves[RTE_MAX_ETHPORTS];
+	int num_active_slaves;
+	int i, ret;
+
+	fprintf(f, "  - Lacp info:\n");
+
+	num_active_slaves = rte_eth_bond_active_slaves_get(port_id, slaves,
+			RTE_MAX_ETHPORTS);
+	if (num_active_slaves < 0) {
+		fprintf(f, "\tFailed to get active slave list for port %u\n",
+				port_id);
+		return;
+	}
+
+	fprintf(f, "\tIEEE802.3 port: %u\n", port_id);
+	ret = rte_eth_bond_8023ad_conf_get(port_id, &port_conf);
+	if (ret) {
+		fprintf(f, "\tGet bonded device %u 8023ad config failed\n",
+			port_id);
+		return;
+	}
+	dump_lacp_conf(&port_conf, f);
+
+	for (i = 0; i < num_active_slaves; i++) {
+		ret = rte_eth_bond_8023ad_slave_info(port_id, slaves[i],
+				&slave_info);
+		if (ret) {
+			fprintf(f, "\tGet slave device %u 8023ad info failed\n",
+				slaves[i]);
+			return;
+		}
+		fprintf(f, "\tSlave Port: %u\n", slaves[i]);
+		dump_lacp_slave(&slave_info, f);
+	}
+}
+
+static int
+bond_ethdev_priv_dump(struct rte_eth_dev *dev, FILE *f)
+{
+	const struct bond_dev_private *internals = dev->data->dev_private;
+
+	dump_basic(dev, f);
+	if (internals->mode == BONDING_MODE_8023AD)
+		dump_lacp(dev->data->port_id, f);
 
 	return 0;
 }
