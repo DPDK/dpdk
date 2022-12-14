@@ -621,7 +621,8 @@ Enable one of the specific aggregators mode when in mode 4 (link-aggregation-802
 show bonding config
 ~~~~~~~~~~~~~~~~~~~
 
-Show the current configuration of a Link Bonding device::
+Show the current configuration of a Link Bonding device,
+it also shows link-aggregation-802.3ad information if the link mode is mode 4::
 
    testpmd> show bonding config (port id)
 
@@ -630,15 +631,9 @@ to show the configuration a Link Bonding device (port 9) with 3 slave devices (1
 in balance mode with a transmission policy of layer 2+3::
 
    testpmd> show bonding config 9
-        Bonding mode: 2
+     - Dev basic:
+        Bonding mode: BALANCE(2)
         Balance Xmit Policy: BALANCE_XMIT_POLICY_LAYER23
         Slaves (3): [1 3 4]
         Active Slaves (3): [1 3 4]
         Primary: [3]
-
-show bonding lacp info
-~~~~~~~~~~~~~~~~~~~~~~
-
-Show information about the Link Bonding device in mode 4 (link-aggregation-802.3ad)::
-
-   testpmd> show bonding lacp info (port_id)
