@@ -76,6 +76,7 @@ New Features
 
   * Added support for SHA3 224/256/384/512 plain hash in QAT GEN 3.
   * Added support for SHA3 256 plain hash in QAT GEN 2.
+  * Added support for asymmetric crypto in QAT GEN3.
 
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
