@@ -861,8 +861,30 @@ m_ifcvf_stop(struct ifcvf_internal *internal)
 	struct ifcvf_hw *hw = &internal->hw;
 	uint64_t m_vring_iova = IFCVF_MEDIATED_VRING;
 	uint64_t size, len;
+	u32 ring_state = 0;
 
 	vid = internal->vid;
+
+	/* to make sure no packet is lost for blk device
+	 * do not stop until last_avail_idx == last_used_idx
+	 */
+	if (internal->hw.device_type == IFCVF_BLK) {
+		for (i = 0; i < hw->nr_vring; i++) {
+			do {
+				if (hw->lm_cfg != NULL)
+					ring_state = *(u32 *)(hw->lm_cfg +
+						IFCVF_LM_RING_STATE_OFFSET +
+						i * IFCVF_LM_CFG_SIZE);
+				hw->vring[i].last_avail_idx =
+					(u16)(ring_state & IFCVF_16_BIT_MASK);
+				hw->vring[i].last_used_idx =
+					(u16)(ring_state >> 16);
+				usleep(10);
+			} while (hw->vring[i].last_avail_idx !=
+				hw->vring[i].last_used_idx);
+		}
+	}
+
 	ifcvf_stop_hw(hw);
 
 	for (i = 0; i < hw->nr_vring; i++) {
