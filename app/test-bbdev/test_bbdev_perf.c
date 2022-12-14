@@ -166,7 +166,6 @@ struct thread_params {
 	struct rte_bbdev_fft_op *fft_ops[MAX_BURST];
 };
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 /* Stores time statistics */
 struct test_time_stats {
 	/* Stores software enqueue total working time */
@@ -188,7 +187,6 @@ struct test_time_stats {
 	/* Stores maximum value of dequeue working time */
 	uint64_t deq_max_time;
 };
-#endif
 
 typedef int (test_case_function)(struct active_device *ad,
 		struct test_op_params *op_params);
@@ -4916,7 +4914,6 @@ validation_test(struct active_device *ad, struct test_op_params *op_params)
 	return validation_latency_test(ad, op_params, false);
 }
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 static int
 get_bbdev_queue_stats(uint16_t dev_id, uint16_t queue_id,
 		struct rte_bbdev_stats *stats)
@@ -5366,19 +5363,11 @@ offload_latency_test_ldpc_enc(struct rte_mempool *mempool,
 
 	return i;
 }
-#endif
 
 static int
 offload_cost_test(struct active_device *ad,
 		struct test_op_params *op_params)
 {
-#ifndef RTE_BBDEV_OFFLOAD_COST
-	RTE_SET_USED(ad);
-	RTE_SET_USED(op_params);
-	printf("Offload latency test is disabled.\n");
-	printf("Set RTE_BBDEV_OFFLOAD_COST to 'y' to turn the test on.\n");
-	return TEST_SKIPPED;
-#else
 	int iter;
 	uint16_t burst_sz = op_params->burst_sz;
 	const uint16_t num_to_process = op_params->num_to_process;
@@ -5491,10 +5480,8 @@ offload_cost_test(struct active_device *ad,
 			stats.dequeue_err_count);
 
 	return TEST_SUCCESS;
-#endif
 }
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 static int
 offload_latency_empty_q_test_dec(uint16_t dev_id, uint16_t queue_id,
 		const uint16_t num_to_process, uint16_t burst_sz,
@@ -5562,19 +5549,10 @@ offload_latency_empty_q_test_enc(uint16_t dev_id, uint16_t queue_id,
 	return i;
 }
 
-#endif
-
 static int
 offload_latency_empty_q_test(struct active_device *ad,
 		struct test_op_params *op_params)
 {
-#ifndef RTE_BBDEV_OFFLOAD_COST
-	RTE_SET_USED(ad);
-	RTE_SET_USED(op_params);
-	printf("Offload latency empty dequeue test is disabled.\n");
-	printf("Set RTE_BBDEV_OFFLOAD_COST to 'y' to turn the test on.\n");
-	return TEST_SKIPPED;
-#else
 	int iter;
 	uint64_t deq_total_time, deq_min_time, deq_max_time;
 	uint16_t burst_sz = op_params->burst_sz;
@@ -5624,7 +5602,6 @@ offload_latency_empty_q_test(struct active_device *ad,
 			rte_get_tsc_hz());
 
 	return TEST_SUCCESS;
-#endif
 }
 
 static int
