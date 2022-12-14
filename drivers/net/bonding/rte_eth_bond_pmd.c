@@ -3329,6 +3329,108 @@ end:
 	rte_spinlock_unlock(&internals->lock);
 }
 
+static const char *
+bond_mode_name(uint8_t mode)
+{
+	switch (mode) {
+	case BONDING_MODE_ROUND_ROBIN:
+		return "ROUND_ROBIN";
+	case BONDING_MODE_ACTIVE_BACKUP:
+		return "ACTIVE_BACKUP";
+	case BONDING_MODE_BALANCE:
+		return "BALANCE";
+	case BONDING_MODE_BROADCAST:
+		return "BROADCAST";
+	case BONDING_MODE_8023AD:
+		return "8023AD";
+	case BONDING_MODE_TLB:
+		return "TLB";
+	case BONDING_MODE_ALB:
+		return "ALB";
+	default:
+		return "Unknown";
+	}
+}
+
+static int
+bond_ethdev_priv_dump(struct rte_eth_dev *dev, FILE *f)
+{
+	struct bond_dev_private instant_priv;
+	const struct bond_dev_private *internals = &instant_priv;
+	int mode, i;
+
+	/* Obtain a instance of dev_private to prevent data from being modified. */
+	memcpy(&instant_priv, dev->data->dev_private, sizeof(struct bond_dev_private));
+	mode = internals->mode;
+
+	fprintf(f, "  - Dev basic:\n");
+	fprintf(f, "\tBonding mode: %s(%d)\n", bond_mode_name(mode), mode);
+
+	if (mode == BONDING_MODE_BALANCE || mode == BONDING_MODE_8023AD) {
+		fprintf(f, "\tBalance Xmit Policy: ");
+		switch (internals->balance_xmit_policy) {
+		case BALANCE_XMIT_POLICY_LAYER2:
+			fprintf(f, "BALANCE_XMIT_POLICY_LAYER2");
+			break;
+		case BALANCE_XMIT_POLICY_LAYER23:
+			fprintf(f, "BALANCE_XMIT_POLICY_LAYER23");
+			break;
+		case BALANCE_XMIT_POLICY_LAYER34:
+			fprintf(f, "BALANCE_XMIT_POLICY_LAYER34");
+			break;
+		default:
+			fprintf(f, "Unknown");
+		}
+		fprintf(f, "\n");
+	}
+
+	if (mode == BONDING_MODE_8023AD) {
+		fprintf(f, "\tIEEE802.3AD Aggregator Mode: ");
+		switch (internals->mode4.agg_selection) {
+		case AGG_BANDWIDTH:
+			fprintf(f, "bandwidth");
+			break;
+		case AGG_STABLE:
+			fprintf(f, "stable");
+			break;
+		case AGG_COUNT:
+			fprintf(f, "count");
+			break;
+		default:
+			fprintf(f, "unknown");
+		}
+		fprintf(f, "\n");
+	}
+
+	if (internals->slave_count > 0) {
+		fprintf(f, "\tSlaves (%u): [", internals->slave_count);
+		for (i = 0; i < internals->slave_count - 1; i++)
+			fprintf(f, "%u ", internals->slaves[i].port_id);
+
+		fprintf(f, "%u]\n", internals->slaves[internals->slave_count - 1].port_id);
+	} else {
+		fprintf(f, "\tSlaves: []\n");
+	}
+
+	if (internals->active_slave_count > 0) {
+		fprintf(f, "\tActive Slaves (%u): [", internals->active_slave_count);
+		for (i = 0; i < internals->active_slave_count - 1; i++)
+			fprintf(f, "%u ", internals->active_slaves[i]);
+
+		fprintf(f, "%u]\n", internals->active_slaves[internals->active_slave_count - 1]);
+
+	} else {
+		fprintf(f, "\tActive Slaves: []\n");
+	}
+
+	if (internals->user_defined_primary_port)
+		fprintf(f, "\tUser Defined Primary: [%u]\n", internals->primary_port);
+	if (internals->slave_count > 0)
+		fprintf(f, "\tCurrent Primary: [%u]\n", internals->current_primary_port);
+
+	return 0;
+}
+
 const struct eth_dev_ops default_dev_ops = {
 	.dev_start            = bond_ethdev_start,
 	.dev_stop             = bond_ethdev_stop,
@@ -3355,7 +3457,8 @@ const struct eth_dev_ops default_dev_ops = {
 	.mac_addr_set         = bond_ethdev_mac_address_set,
 	.mac_addr_add         = bond_ethdev_mac_addr_add,
 	.mac_addr_remove      = bond_ethdev_mac_addr_remove,
-	.flow_ops_get         = bond_flow_ops_get
+	.flow_ops_get         = bond_flow_ops_get,
+	.eth_dev_priv_dump    = bond_ethdev_priv_dump,
 };
 
 static int
