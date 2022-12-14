@@ -15,9 +15,7 @@
 #include <rte_hexdump.h>
 #include <rte_pci.h>
 #include <bus_pci_driver.h>
-#ifdef RTE_BBDEV_OFFLOAD_COST
 #include <rte_cycles.h>
-#endif
 
 #include <rte_bbdev.h>
 #include <rte_bbdev_pmd.h>

@@ -917,12 +917,8 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 {
 	union acc_enqueue_reg_fmt enq_req;
 	union acc_dma_desc *desc;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	uint64_t start_time = 0;
 	queue_stats->acc_offload_cycles = 0;
-#else
-	RTE_SET_USED(queue_stats);
-#endif
 
 	/* Set Sdone and IRQ enable bit on last descriptor. */
 	desc = acc_desc(q, n - 1);
@@ -964,17 +960,13 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 
 		rte_wmb();
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 		/* Start time measurement for enqueue function offload. */
 		start_time = rte_rdtsc_precise();
-#endif
+
 		rte_acc_log(DEBUG, "Debug : MMIO Enqueue");
 		mmio_write(q->mmio_reg_enqueue, enq_req.val);
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
-		queue_stats->acc_offload_cycles +=
-				rte_rdtsc_precise() - start_time;
-#endif
+		queue_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 
 		q->aq_enqueued++;
 		q->sw_ring_head += enq_batch_size;

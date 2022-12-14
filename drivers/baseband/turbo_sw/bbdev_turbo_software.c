@@ -584,11 +584,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	struct bblib_turbo_encoder_response turbo_resp;
 	struct bblib_rate_match_dl_request rm_req;
 	struct bblib_rate_match_dl_response rm_resp;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	uint64_t start_time;
-#else
-	RTE_SET_USED(q_stats);
-#endif
 
 	k_idx = compute_idx(k);
 	in = rte_pktmbuf_mtod_offset(m_in, uint8_t *, in_offset);
@@ -622,14 +618,10 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		}
 
 		crc_resp.data = in;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 		start_time = rte_rdtsc_precise();
-#endif
 		/* CRC24A generation */
 		bblib_lte_crc24a_gen(&crc_req, &crc_resp);
-#ifdef RTE_BBDEV_OFFLOAD_COST
 		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
 	} else if (enc->op_flags & RTE_BBDEV_TURBO_CRC_24B_ATTACH) {
 		/* CRC24B */
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
@@ -658,14 +650,10 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		}
 
 		crc_resp.data = in;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 		start_time = rte_rdtsc_precise();
-#endif
 		/* CRC24B generation */
 		bblib_lte_crc24b_gen(&crc_req, &crc_resp);
-#ifdef RTE_BBDEV_OFFLOAD_COST
 		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
 	}
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	else {
@@ -717,18 +705,16 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	turbo_resp.output_win_1 = out1;
 	turbo_resp.output_win_2 = out2;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	start_time = rte_rdtsc_precise();
-#endif
+
 	/* Turbo encoding */
 	if (bblib_turbo_encoder(&turbo_req, &turbo_resp) != 0) {
 		op->status |= 1 << RTE_BBDEV_DRV_ERROR;
 		rte_bbdev_log(ERR, "Turbo Encoder failed");
 		return;
 	}
-#ifdef RTE_BBDEV_OFFLOAD_COST
+
 	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
 
 	/* Restore 3 first bytes of next CB if they were overwritten by CRC*/
 	if (first_3_bytes != 0)
@@ -791,18 +777,16 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		else
 			rm_req.bypass_rvidx = 0;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 		start_time = rte_rdtsc_precise();
-#endif
+
 		/* Rate-Matching */
 		if (bblib_rate_match_dl(&rm_req, &rm_resp) != 0) {
 			op->status |= 1 << RTE_BBDEV_DRV_ERROR;
 			rte_bbdev_log(ERR, "Rate matching failed");
 			return;
 		}
-#ifdef RTE_BBDEV_OFFLOAD_COST
+
 		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
 
 		/* SW fills an entire last byte even if E%8 != 0. Clear the
 		 * superfluous data bits for consistency with HW device.
@@ -873,11 +857,7 @@ process_ldpc_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	uint16_t in_length_in_bits = K - enc->n_filler;
 	uint16_t in_length_in_bytes = (in_length_in_bits + 7) >> 3;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	uint64_t start_time = rte_rdtsc_precise();
-#else
-	RTE_SET_USED(q_stats);
-#endif
 
 	in = rte_pktmbuf_mtod_offset(m_in, uint8_t *, in_offset);
 
@@ -977,9 +957,7 @@ process_ldpc_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	rte_memcpy(rm_out, q->deint_output, out_len);
 	enc->output.length += out_len;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
 #else
 	RTE_SET_USED(q);
 	RTE_SET_USED(op);
@@ -1179,9 +1157,7 @@ enqueue_enc_all_ops(struct turbo_sw_queue *q, struct rte_bbdev_enc_op **ops,
 		uint16_t nb_ops, struct rte_bbdev_stats *queue_stats)
 {
 	uint16_t i;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	queue_stats->acc_offload_cycles = 0;
-#endif
 
 	for (i = 0; i < nb_ops; ++i)
 		enqueue_enc_one_op(q, ops[i], queue_stats);
@@ -1196,9 +1172,7 @@ enqueue_ldpc_enc_all_ops(struct turbo_sw_queue *q,
 		uint16_t nb_ops, struct rte_bbdev_stats *queue_stats)
 {
 	uint16_t i;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	queue_stats->acc_offload_cycles = 0;
-#endif
 
 	for (i = 0; i < nb_ops; ++i)
 		enqueue_ldpc_enc_one_op(q, ops[i], queue_stats);
@@ -1245,11 +1219,7 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	struct bblib_turbo_decoder_request turbo_req;
 	struct bblib_turbo_decoder_response turbo_resp;
 	struct rte_bbdev_op_turbo_dec *dec = &op->turbo_dec;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	uint64_t start_time;
-#else
-	RTE_SET_USED(q_stats);
-#endif
 
 	k_idx = compute_idx(k);
 
@@ -1274,14 +1244,11 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		deint_req.ncb = ncb;
 		deint_resp.pinteleavebuffer = q->deint_output;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
-	start_time = rte_rdtsc_precise();
-#endif
+		start_time = rte_rdtsc_precise();
 		/* Sub-block De-Interleaving */
 		bblib_deinterleave_ul(&deint_req, &deint_resp);
-#ifdef RTE_BBDEV_OFFLOAD_COST
-	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
+
+		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 	} else
 		move_padding_bytes(in, q->deint_output, k, ncb);
 
@@ -1301,14 +1268,12 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	adapter_req.pinteleavebuffer = adapter_input;
 	adapter_resp.pharqout = q->adapter_output;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	start_time = rte_rdtsc_precise();
-#endif
+
 	/* Turbo decode adaptation */
 	bblib_turbo_adapter_ul(&adapter_req, &adapter_resp);
-#ifdef RTE_BBDEV_OFFLOAD_COST
+
 	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
 
 	out = (uint8_t *)mbuf_append(m_out_head, m_out,
 			((k - crc24_overlap) >> 3));
@@ -1335,14 +1300,12 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	turbo_resp.cb_buf = q->code_block;
 	turbo_resp.output = out;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	start_time = rte_rdtsc_precise();
-#endif
+
 	/* Turbo decode */
 	iter_cnt = bblib_turbo_decoder(&turbo_req, &turbo_resp);
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
+
 	dec->hard_output.length += (k >> 3);
 
 	if (iter_cnt > 0) {
@@ -1405,11 +1368,7 @@ process_ldpc_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	K = sys_cols * dec->z_c;
 	parity_offset = K - 2 * dec->z_c;
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	uint64_t start_time = rte_rdtsc_precise();
-#else
-	RTE_SET_USED(q_stats);
-#endif
 
 	in = rte_pktmbuf_mtod_offset(m_in, uint8_t *, in_offset);
 
@@ -1524,9 +1483,8 @@ process_ldpc_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 			op->status |= 1 << RTE_BBDEV_CRC_ERROR;
 	}
 
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
-#endif
+
 	if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
 		harq_out = NULL;
 		if (m_harq_out != NULL) {
@@ -1757,9 +1715,7 @@ enqueue_dec_all_ops(struct turbo_sw_queue *q, struct rte_bbdev_dec_op **ops,
 		uint16_t nb_ops, struct rte_bbdev_stats *queue_stats)
 {
 	uint16_t i;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	queue_stats->acc_offload_cycles = 0;
-#endif
 
 	for (i = 0; i < nb_ops; ++i)
 		enqueue_dec_one_op(q, ops[i], queue_stats);
@@ -1774,9 +1730,7 @@ enqueue_ldpc_dec_all_ops(struct turbo_sw_queue *q,
 		uint16_t nb_ops, struct rte_bbdev_stats *queue_stats)
 {
 	uint16_t i;
-#ifdef RTE_BBDEV_OFFLOAD_COST
 	queue_stats->acc_offload_cycles = 0;
-#endif
 
 	for (i = 0; i < nb_ops; ++i)
 		enqueue_ldpc_dec_one_op(q, ops[i], queue_stats);
