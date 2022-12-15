@@ -175,6 +175,7 @@ usage(char* progname)
 	       "disable print of designated event or all of them.\n");
 	printf("  --flow-isolate-all: "
 	       "requests flow API isolated mode on all ports at initialization time.\n");
+	printf("  --disable-flow-flush: disable port flow flush when stop port.\n");
 	printf("  --tx-offloads=0xXXXXXXXX: hexadecimal bitmask of TX queue offloads\n");
 	printf("  --rx-offloads=0xXXXXXXXX: hexadecimal bitmask of RX queue offloads\n");
 	printf("  --hot-plug: enable hot plug for device.\n");
@@ -667,6 +668,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rxfreet",                    1, 0, 0 },
 		{ "no-flush-rx",	0, 0, 0 },
 		{ "flow-isolate-all",	        0, 0, 0 },
+		{ "disable-flow-flush",         0, 0, 0 },
 		{ "rxoffs",			1, 0, 0 },
 		{ "rxpkts",			1, 0, 0 },
 		{ "rxhdrs",			1, 0, 0 },
@@ -1330,6 +1332,8 @@ launch_args_parse(int argc, char** argv)
 				rmv_interrupt = 0;
 			if (!strcmp(lgopts[opt_idx].name, "flow-isolate-all"))
 				flow_isolate_all = 1;
+			if (!strcmp(lgopts[opt_idx].name, "disable-flow-flush"))
+				no_flow_flush = 1;
 			if (!strcmp(lgopts[opt_idx].name, "tx-offloads")) {
 				char *end = NULL;
 				n = strtoull(optarg, &end, 16);

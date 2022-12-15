@@ -384,6 +384,11 @@ uint8_t no_flush_rx = 0; /* flush by default */
 uint8_t flow_isolate_all;
 
 /*
+ * Disable port flow flush when stop port.
+ */
+uint8_t no_flow_flush = 0; /* do flow flush by default */
+
+/*
  * Avoids to check link status when starting/stopping a port.
  */
 uint8_t no_link_check = 0; /* check by default */
@@ -3278,7 +3283,7 @@ stop_port(portid_t pid)
 			}
 		}
 
-		if (port->flow_list)
+		if (port->flow_list && !no_flow_flush)
 			port_flow_flush(pi);
 
 		ret = eth_dev_stop_mp(pi);

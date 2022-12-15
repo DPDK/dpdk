@@ -436,6 +436,11 @@ The command line options are:
 
     Ports that do not support this mode are automatically discarded.
 
+*   ``--disable-flow-flush``
+
+    Disable port flow flush when stopping port.
+    This allows testing keep flow rules or shared flow objects across restart.
+
 *   ``--tx-offloads=0xXXXXXXXX``
 
     Set the hexadecimal bitmask of TX queue offloads.
