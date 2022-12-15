@@ -9,3 +9,5 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 sources = files('octeontx_mbox.c')
+
+require_iova_in_mbuf = false
