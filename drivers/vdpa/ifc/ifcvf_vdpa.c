@@ -1874,6 +1874,13 @@ static const struct rte_pci_id pci_id_ifcvf_map[] = {
 	  .subsystem_device_id = IFCVF_SUBSYS_BLK_DEVICE_ID,
 	},
 
+	{ .class_id = RTE_CLASS_ANY_ID,
+	  .vendor_id = IFCVF_VENDOR_ID,
+	  .device_id = IFCVF_BLK_MODERN_DEVICE_ID,
+	  .subsystem_vendor_id = IFCVF_SUBSYS_VENDOR_ID,
+	  .subsystem_device_id = IFCVF_SUBSYS_DEFAULT_DEVICE_ID,
+	}, /* virtio-blk devices with default subsystem IDs */
+
 	{ .vendor_id = 0, /* sentinel */
 	},
 };
