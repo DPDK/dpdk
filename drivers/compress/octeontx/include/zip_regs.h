@@ -687,6 +687,7 @@ union zip_zptr_s {
 #define ZIP_COMP_E_TIMEOUT       (0xc)
 #define ZIP_COMP_E_INSTR_ERR     (0xd)
 #define ZIP_COMP_E_HCTX_ERR      (0xe)
+#define ZIP_COMP_E_PTR_ERR       (0xf)
 #define ZIP_COMP_E_STOP          (3)
 
 /**

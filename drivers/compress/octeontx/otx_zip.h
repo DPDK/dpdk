@@ -55,6 +55,10 @@ extern int octtx_zip_logtype_driver;
 				ZIP_MAX_NCBP_SIZE)/* ~8072ull */
 
 #define ZIP_BUF_SIZE	256
+#define ZIP_BURST_SIZE	64
+
+#define ZIP_MAXSEG_SIZE      59460
+#define ZIP_EXTRABUF_SIZE    4096
 
 #define ZIP_SGPTR_ALIGN	16
 #define ZIP_CMDQ_ALIGN	128
@@ -67,7 +71,7 @@ extern int octtx_zip_logtype_driver;
 	((_align) * (((x) + (_align) - 1) / (_align)))
 
 /**< ZIP PMD device name */
-#define COMPRESSDEV_NAME_ZIP_PMD	compress_octeonx
+#define COMPRESSDEV_NAME_ZIP_PMD	compress_octeontx
 
 #define ZIP_PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, \
@@ -95,18 +99,18 @@ struct zip_stream;
 struct zipvf_qp;
 
 /* Algorithm handler function prototype */
-typedef int (*comp_func_t)(struct rte_comp_op *op,
-			   struct zipvf_qp *qp, struct zip_stream *zstrm);
+typedef int (*comp_func_t)(struct rte_comp_op *op, struct zipvf_qp *qp,
+			   struct zip_stream *zstrm, int num);
 
 /**
  * ZIP private stream structure
  */
 struct zip_stream {
-	union zip_inst_s *inst;
+	union zip_inst_s *inst[ZIP_BURST_SIZE];
 	/* zip instruction pointer */
 	comp_func_t func;
 	/* function to process comp operation */
-	void *bufs[MAX_BUFS_PER_STREAM];
+	void *bufs[MAX_BUFS_PER_STREAM * ZIP_BURST_SIZE];
 } __rte_cache_aligned;
 
 
@@ -162,11 +166,10 @@ struct zip_vf {
 
 
 static inline void
-zipvf_prepare_in_buf(struct zip_stream *zstrm, struct rte_comp_op *op)
+zipvf_prepare_in_buf(union zip_inst_s *inst, struct rte_comp_op *op)
 {
 	uint32_t offset, inlen;
 	struct rte_mbuf *m_src;
-	union zip_inst_s *inst = zstrm->inst;
 
 	inlen = op->src.length;
 	offset = op->src.offset;
@@ -180,11 +183,10 @@ zipvf_prepare_in_buf(struct zip_stream *zstrm, struct rte_comp_op *op)
 }
 
 static inline void
-zipvf_prepare_out_buf(struct zip_stream *zstrm, struct rte_comp_op *op)
+zipvf_prepare_out_buf(union zip_inst_s *inst, struct rte_comp_op *op)
 {
 	uint32_t offset;
 	struct rte_mbuf *m_dst;
-	union zip_inst_s *inst = zstrm->inst;
 
 	offset = op->dst.offset;
 	m_dst = op->m_dst;
@@ -195,14 +197,15 @@ zipvf_prepare_out_buf(struct zip_stream *zstrm, struct rte_comp_op *op)
 			rte_pktmbuf_iova_offset(m_dst, offset);
 	inst->s.totaloutputlength = rte_pktmbuf_pkt_len(m_dst) -
 			op->dst.offset;
+	if (inst->s.totaloutputlength == ZIP_MAXSEG_SIZE)
+		inst->s.totaloutputlength += ZIP_EXTRABUF_SIZE; /* DSTOP */
+
 	inst->s.out_ptr_ctl.s.length = inst->s.totaloutputlength;
 }
 
 static inline void
-zipvf_prepare_cmd_stateless(struct rte_comp_op *op, struct zip_stream *zstrm)
+zipvf_prepare_cmd_stateless(struct rte_comp_op *op, union zip_inst_s *inst)
 {
-	union zip_inst_s *inst = zstrm->inst;
-
 	/* set flush flag to always 1*/
 	inst->s.ef = 1;
 
@@ -215,8 +218,8 @@ zipvf_prepare_cmd_stateless(struct rte_comp_op *op, struct zip_stream *zstrm)
 	inst->s.adlercrc32 = op->input_chksum;
 
 	/* Prepare gather buffers */
-	zipvf_prepare_in_buf(zstrm, op);
-	zipvf_prepare_out_buf(zstrm, op);
+	zipvf_prepare_in_buf(inst, op);
+	zipvf_prepare_out_buf(inst, op);
 }
 
 #ifdef ZIP_DBG
@@ -224,6 +227,7 @@ static inline void
 zip_dump_instruction(void *inst)
 {
 	union zip_inst_s *cmd83 = (union zip_inst_s *)inst;
+
 	printf("####### START ########\n");
 	printf("doneint:%d totaloutputlength:%d\n", cmd83->s.doneint,
 		cmd83->s.totaloutputlength);
@@ -265,9 +269,8 @@ void
 zipvf_push_command(struct zipvf_qp *qp, union zip_inst_s *zcmd);
 
 int
-zip_process_op(struct rte_comp_op *op,
-				struct zipvf_qp *qp,
-				struct zip_stream *zstrm);
+zip_process_op(struct rte_comp_op *op, struct zipvf_qp *qp,
+	       struct zip_stream *zstrm, int num);
 
 uint64_t
 zip_reg_read64(uint8_t *hw_addr, uint64_t offset);
