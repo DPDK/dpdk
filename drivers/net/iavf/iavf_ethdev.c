@@ -2562,9 +2562,6 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	if (iavf_dev_event_handler_init())
-		goto init_vf_err;
-
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 		/* register callback func to eal lib */
 		rte_intr_callback_register(pci_dev->intr_handle,
@@ -2718,8 +2715,6 @@ iavf_dev_uninit(struct rte_eth_dev *dev)
 		return -EPERM;
 
 	iavf_dev_close(dev);
-
-	iavf_dev_event_handler_fini();
 
 	return 0;
 }

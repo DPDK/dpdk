@@ -2,7 +2,6 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
@@ -12,7 +11,6 @@
 #include <inttypes.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
-#include <rte_os_shim.h>
 
 #include <rte_debug.h>
 #include <rte_alarm.h>
@@ -28,146 +26,6 @@
 
 #define MAX_TRY_TIMES 2000
 #define ASQ_DELAY_MS  1
-
-#define MAX_EVENT_PENDING 16
-
-struct iavf_event_element {
-	TAILQ_ENTRY(iavf_event_element) next;
-	struct rte_eth_dev *dev;
-	enum rte_eth_event_type event;
-	void *param;
-	size_t param_alloc_size;
-	uint8_t param_alloc_data[0];
-};
-
-struct iavf_event_handler {
-	uint32_t ndev;
-	pthread_t tid;
-	int fd[2];
-	pthread_mutex_t lock;
-	TAILQ_HEAD(event_lsit, iavf_event_element) pending;
-};
-
-static struct iavf_event_handler event_handler = {
-	.fd = {-1, -1},
-};
-
-#ifndef TAILQ_FOREACH_SAFE
-#define TAILQ_FOREACH_SAFE(var, head, field, tvar) \
-	for ((var) = TAILQ_FIRST((head)); \
-		(var) && ((tvar) = TAILQ_NEXT((var), field), 1); \
-	(var) = (tvar))
-#endif
-
-static void *
-iavf_dev_event_handle(void *param __rte_unused)
-{
-	struct iavf_event_handler *handler = &event_handler;
-	TAILQ_HEAD(event_list, iavf_event_element) pending;
-
-	while (true) {
-		char unused[MAX_EVENT_PENDING];
-		ssize_t nr = read(handler->fd[0], &unused, sizeof(unused));
-		if (nr <= 0)
-			break;
-
-		TAILQ_INIT(&pending);
-		pthread_mutex_lock(&handler->lock);
-		TAILQ_CONCAT(&pending, &handler->pending, next);
-		pthread_mutex_unlock(&handler->lock);
-
-		struct iavf_event_element *pos, *save_next;
-		TAILQ_FOREACH_SAFE(pos, &pending, next, save_next) {
-			TAILQ_REMOVE(&pending, pos, next);
-			rte_eth_dev_callback_process(pos->dev, pos->event, pos->param);
-			rte_free(pos);
-		}
-	}
-
-	return NULL;
-}
-
-static void
-iavf_dev_event_post(struct rte_eth_dev *dev,
-		enum rte_eth_event_type event,
-		void *param, size_t param_alloc_size)
-{
-	struct iavf_event_handler *handler = &event_handler;
-	char notify_byte;
-	struct iavf_event_element *elem = rte_malloc(NULL, sizeof(*elem) + param_alloc_size, 0);
-	if (!elem)
-		return;
-
-	elem->dev = dev;
-	elem->event = event;
-	elem->param = param;
-	elem->param_alloc_size = param_alloc_size;
-	if (param && param_alloc_size) {
-		rte_memcpy(elem->param_alloc_data, param, param_alloc_size);
-		elem->param = elem->param_alloc_data;
-	}
-
-	pthread_mutex_lock(&handler->lock);
-	TAILQ_INSERT_TAIL(&handler->pending, elem, next);
-	pthread_mutex_unlock(&handler->lock);
-
-	ssize_t nw = write(handler->fd[1], &notify_byte, 1);
-	RTE_SET_USED(nw);
-}
-
-int
-iavf_dev_event_handler_init(void)
-{
-	struct iavf_event_handler *handler = &event_handler;
-
-	if (__atomic_add_fetch(&handler->ndev, 1, __ATOMIC_RELAXED) != 1)
-		return 0;
-#if defined(RTE_EXEC_ENV_WINDOWS) && RTE_EXEC_ENV_WINDOWS != 0
-	int err = _pipe(handler->fd, MAX_EVENT_PENDING, O_BINARY);
-#else
-	int err = pipe(handler->fd);
-#endif
-	if (err != 0) {
-		__atomic_sub_fetch(&handler->ndev, 1, __ATOMIC_RELAXED);
-		return -1;
-	}
-
-	TAILQ_INIT(&handler->pending);
-	pthread_mutex_init(&handler->lock, NULL);
-
-	if (rte_ctrl_thread_create(&handler->tid, "iavf-event-thread",
-				NULL, iavf_dev_event_handle, NULL)) {
-		__atomic_sub_fetch(&handler->ndev, 1, __ATOMIC_RELAXED);
-		return -1;
-	}
-
-	return 0;
-}
-
-void
-iavf_dev_event_handler_fini(void)
-{
-	struct iavf_event_handler *handler = &event_handler;
-
-	if (__atomic_sub_fetch(&handler->ndev, 1, __ATOMIC_RELAXED) != 0)
-		return;
-
-	int unused = pthread_cancel(handler->tid);
-	RTE_SET_USED(unused);
-	close(handler->fd[0]);
-	close(handler->fd[1]);
-	handler->fd[0] = -1;
-	handler->fd[1] = -1;
-
-	pthread_join(handler->tid, NULL);
-	pthread_mutex_destroy(&handler->lock);
-
-	struct iavf_event_element *pos, *save_next;
-	TAILQ_FOREACH_SAFE(pos, &handler->pending, next, save_next) {
-		TAILQ_REMOVE(&handler->pending, pos, next);
-		rte_free(pos);
-	}
-}
 
 static uint32_t
 iavf_convert_link_speed(enum virtchnl_link_speed virt_link_speed)
@@ -420,8 +278,8 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
 		vf->vf_reset = true;
-		iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET,
-					      NULL, 0);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+					      NULL);
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
@@ -435,7 +293,7 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 			vf->link_speed = iavf_convert_link_speed(speed);
 		}
 		iavf_dev_link_update(dev, 0);
-		iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_LSC, NULL, 0);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 		break;
 	case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event");
@@ -501,8 +359,9 @@ iavf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 					desc.subtype =
 						RTE_ETH_EVENT_IPSEC_UNKNOWN;
 					desc.metadata = ev->ipsec_event_data;
-					iavf_dev_event_post(dev, RTE_ETH_EVENT_IPSEC,
-							&desc, sizeof(desc));
+					rte_eth_dev_callback_process(dev,
+							RTE_ETH_EVENT_IPSEC,
+							&desc);
 					return;
 				}
 
