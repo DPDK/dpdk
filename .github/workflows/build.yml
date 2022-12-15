@@ -93,10 +93,10 @@ jobs:
     - name: Update APT cache
       run: sudo apt update || true
     - name: Install packages
-      run: sudo apt install -y ccache libarchive-dev libbsd-dev libcrypto++-dev
-        libfdt-dev libibverbs-dev libjansson-dev libnuma-dev libpcap-dev
+      run: sudo apt install -y ccache libarchive-dev libbsd-dev libfdt-dev
+        libibverbs-dev libjansson-dev libnuma-dev libpcap-dev libssl-dev
         ninja-build python3-pip python3-pyelftools python3-setuptools
-        python3-wheel
+        python3-wheel zlib1g-dev
     - name: Install libabigail build dependencies if no cache is available
       if: env.ABI_CHECKS == 'true' && steps.libabigail-cache.outputs.cache-hit != 'true'
       run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev
@@ -174,10 +174,11 @@ jobs:
       run: docker exec -i dpdk dnf update -y
     - name: Install packages
       if: steps.image_cache.outputs.cache-hit != 'true'
-      run: docker exec -i dpdk dnf install -y ccache libatomic libbpf-devel
-        libfdt-devel libpcap-devel ninja-build numactl-devel openssl-devel
-        python3-pip python3-pyelftools python3-setuptools python3-wheel
-        rdma-core-devel zlib-devel
+      run: docker exec -i dpdk dnf install -y ccache jansson-devel
+        libarchive-devel libatomic libbsd-devel libbpf-devel libfdt-devel
+        libpcap-devel ninja-build numactl-devel openssl-devel python3-pip
+        python3-pyelftools python3-setuptools python3-wheel rdma-core-devel
+        zlib-devel
     - name: Save image in cache
       if: steps.image_cache.outputs.cache-hit != 'true'
       run: |
@@ -248,10 +249,12 @@ jobs:
     - name: Update
       run: docker exec -i dpdk dnf update -y || true
     - name: Install packages
-      run: docker exec -i dpdk dnf install -y ccache libatomic libbpf-devel
-        libfdt-devel libpcap-devel ninja-build numactl-devel openssl-devel
-        python3-pip python3-pyelftools python3-setuptools python3-wheel
-        rdma-core-devel zlib-devel ${{ matrix.config.compiler }}
+      run: docker exec -i dpdk dnf install -y ccache jansson-devel
+        libarchive-devel libatomic libbsd-devel libbpf-devel libfdt-devel
+        libpcap-devel ninja-build numactl-devel openssl-devel python3-pip
+        python3-pyelftools python3-setuptools python3-wheel rdma-core-devel
+        zlib-devel
+        ${{ matrix.config.compiler }}
     - name: Run setup
       run: docker exec -i dpdk .ci/linux-setup.sh
     - name: Build
