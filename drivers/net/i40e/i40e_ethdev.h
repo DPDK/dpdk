@@ -1560,7 +1560,7 @@ i40e_calc_itr_interval(bool is_pf, bool is_multi_drv)
 	uint16_t interval = 0;
 
 	if (is_multi_drv) {
-		interval = I40E_QUEUE_ITR_INTERVAL_MAX;
+		interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
 	} else {
 		if (is_pf)
 			interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
