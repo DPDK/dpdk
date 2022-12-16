@@ -437,6 +437,9 @@ rte_eal_init(int argc, char **argv)
 	 */
 	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MAIN);
 	rte_eal_mp_wait_lcore();
+
+	eal_mcfg_complete();
+
 	return fctret;
 }
 
