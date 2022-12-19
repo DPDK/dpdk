@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <rte_compat.h>
 
 /** Maximum length for string used in object. */
 #define RTE_TEL_MAX_STRING_LEN 128
@@ -154,6 +155,28 @@ rte_tel_data_add_array_container(struct rte_tel_data *d,
 		struct rte_tel_data *val, int keep);
 
 /**
+ * Convert an unsigned integer to hexadecimal encoded strings
+ * and add this string to an array.
+ * The array must have been started by rte_tel_data_start_array()
+ * with RTE_TEL_STRING_VAL as the type parameter.
+ *
+ * @param d
+ *   The data structure passed to the callback.
+ * @param val
+ *   The number to be returned in the array as a hexadecimal encoded strings.
+ * @param display_bitwidth
+ *   The display bit width of the 'val'. If 'display_bitwidth' is zero, the
+ *   value is stored in the array as no-padding zero hexadecimal encoded string,
+ *   or the value is stored as padding zero to specified hexadecimal width.
+ * @return
+ *   0 on success, negative errno on error.
+ */
+__rte_experimental
+int
+rte_tel_data_add_array_uint_hex(struct rte_tel_data *d, uint64_t val,
+		uint8_t display_bitwidth);
+
+/**
  * Add a string value to a dictionary.
  * The dict must have been started by rte_tel_data_start_dict().
  *
@@ -230,6 +253,30 @@ rte_tel_data_add_dict_u64(struct rte_tel_data *d,
 int
 rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
 		struct rte_tel_data *val, int keep);
+
+/**
+ * Convert an unsigned integer to hexadecimal encoded strings
+ * and add this string to an dictionary.
+ * The dict must have been started by rte_tel_data_start_dict().
+ *
+ * @param d
+ *   The data structure passed to the callback.
+ * @param name
+ *   The name of the value is to be stored in the dict.
+ *   Must contain only alphanumeric characters or the symbols: '_' or '/'.
+ * @param val
+ *   The number to be stored in the dict as a hexadecimal encoded strings.
+ * @param display_bitwidth
+ *   The display bit width of the 'val'. If 'display_bitwidth' is zero, the
+ *   value is stored in the array as no-padding zero hexadecimal encoded string,
+ *   or the value is stored as padding zero to specified hexadecimal width.
+ * @return
+ *   0 on success, negative errno on error.
+ */
+__rte_experimental
+int
+rte_tel_data_add_dict_uint_hex(struct rte_tel_data *d, const char *name,
+		uint64_t val, uint8_t display_bitwidth);
 
 /**
  * This telemetry callback is used when registering a telemetry command.

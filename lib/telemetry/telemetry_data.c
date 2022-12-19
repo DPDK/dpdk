@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #undef RTE_USE_LIBBSD
 #include <stdbool.h>
@@ -11,6 +12,8 @@
 #include <rte_string_fns.h>
 
 #include "telemetry_data.h"
+
+#define RTE_TEL_UINT_HEX_STR_BUF_LEN 64
 
 int
 rte_tel_data_start_array(struct rte_tel_data *d, enum rte_tel_value_type type)
@@ -95,6 +98,60 @@ rte_tel_data_add_array_container(struct rte_tel_data *d,
 	d->data.array[d->data_len].container.data = val;
 	d->data.array[d->data_len++].container.keep = !!keep;
 	return 0;
+}
+
+/* To suppress compiler warning about format string. */
+#if defined(RTE_TOOLCHAIN_GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#elif defined(RTE_TOOLCHAIN_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
+
+static int
+rte_tel_uint_to_hex_encoded_str(char *buf, size_t buf_len, uint64_t val,
+				uint8_t display_bitwidth)
+{
+#define RTE_TEL_HEX_FORMAT_LEN 16
+
+	uint8_t spec_hex_width = (display_bitwidth + 3) / 4;
+	char format[RTE_TEL_HEX_FORMAT_LEN];
+
+	if (display_bitwidth != 0) {
+		if (snprintf(format, RTE_TEL_HEX_FORMAT_LEN, "0x%%0%u" PRIx64,
+				spec_hex_width) >= RTE_TEL_HEX_FORMAT_LEN)
+			return -EINVAL;
+
+		if (snprintf(buf, buf_len, format, val) >= (int)buf_len)
+			return -EINVAL;
+	} else {
+		if (snprintf(buf, buf_len, "0x%" PRIx64, val) >= (int)buf_len)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+#if defined(RTE_TOOLCHAIN_GCC)
+#pragma GCC diagnostic pop
+#elif defined(RTE_TOOLCHAIN_CLANG)
+#pragma clang diagnostic pop
+#endif
+
+int
+rte_tel_data_add_array_uint_hex(struct rte_tel_data *d, uint64_t val,
+				uint8_t display_bitwidth)
+{
+	char hex_str[RTE_TEL_UINT_HEX_STR_BUF_LEN];
+	int ret;
+
+	ret = rte_tel_uint_to_hex_encoded_str(hex_str,
+			RTE_TEL_UINT_HEX_STR_BUF_LEN, val, display_bitwidth);
+	if (ret != 0)
+		return ret;
+
+	return rte_tel_data_add_array_string(d, hex_str);
 }
 
 static bool
@@ -202,6 +259,22 @@ rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
 	e->value.container.keep = !!keep;
 	const size_t bytes = strlcpy(e->name, name, RTE_TEL_MAX_STRING_LEN);
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
+}
+
+int
+rte_tel_data_add_dict_uint_hex(struct rte_tel_data *d, const char *name,
+			       uint64_t val, uint8_t display_bitwidth)
+{
+	char hex_str[RTE_TEL_UINT_HEX_STR_BUF_LEN];
+	int ret;
+
+	ret = rte_tel_uint_to_hex_encoded_str(hex_str,
+			RTE_TEL_UINT_HEX_STR_BUF_LEN, val, display_bitwidth);
+	if (ret != 0)
+		return ret;
+
+
+	return rte_tel_data_add_dict_string(d, name, hex_str);
 }
 
 struct rte_tel_data *
