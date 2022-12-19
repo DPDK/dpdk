@@ -2692,7 +2692,7 @@ cryptodev_handle_dev_info(const char *cmd __rte_unused,
 	rte_tel_data_start_dict(d);
 	rte_tel_data_add_dict_string(d, "device_name",
 		cryptodev_info.device->name);
-	rte_tel_data_add_dict_int(d, "max_nb_queue_pairs",
+	rte_tel_data_add_dict_u64(d, "max_nb_queue_pairs",
 		cryptodev_info.max_nb_queue_pairs);
 
 	return 0;
