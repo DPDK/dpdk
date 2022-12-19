@@ -6037,9 +6037,9 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 			eth_dev->data->nb_tx_queues);
 	rte_tel_data_add_dict_int(d, "port_id", eth_dev->data->port_id);
 	rte_tel_data_add_dict_int(d, "mtu", eth_dev->data->mtu);
-	rte_tel_data_add_dict_int(d, "rx_mbuf_size_min",
+	rte_tel_data_add_dict_u64(d, "rx_mbuf_size_min",
 			eth_dev->data->min_rx_buf_size);
-	rte_tel_data_add_dict_int(d, "rx_mbuf_alloc_fail",
+	rte_tel_data_add_dict_u64(d, "rx_mbuf_alloc_fail",
 			eth_dev->data->rx_mbuf_alloc_failed);
 	rte_ether_format_addr(mac_addr, sizeof(mac_addr),
 			eth_dev->data->mac_addrs);
@@ -6068,12 +6068,12 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 	rte_tel_data_add_dict_container(d, "rxq_state", rxq_state, 0);
 	rte_tel_data_add_dict_container(d, "txq_state", txq_state, 0);
 	rte_tel_data_add_dict_int(d, "numa_node", eth_dev->data->numa_node);
-	rte_tel_data_add_dict_int(d, "dev_flags", eth_dev->data->dev_flags);
-	rte_tel_data_add_dict_int(d, "rx_offloads",
+	rte_tel_data_add_dict_u64(d, "dev_flags", eth_dev->data->dev_flags);
+	rte_tel_data_add_dict_u64(d, "rx_offloads",
 			eth_dev->data->dev_conf.rxmode.offloads);
-	rte_tel_data_add_dict_int(d, "tx_offloads",
+	rte_tel_data_add_dict_u64(d, "tx_offloads",
 			eth_dev->data->dev_conf.txmode.offloads);
-	rte_tel_data_add_dict_int(d, "ethdev_rss_hf",
+	rte_tel_data_add_dict_u64(d, "ethdev_rss_hf",
 			eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
 
 	return 0;
