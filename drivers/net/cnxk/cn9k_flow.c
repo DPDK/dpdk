@@ -54,3 +54,18 @@ cn9k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 
 	return cnxk_flow_destroy(eth_dev, flow, error);
 }
+
+int
+cn9k_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_info,
+		   struct rte_flow_queue_info *queue_info, struct rte_flow_error *err)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(err);
+
+	memset(port_info, 0, sizeof(*port_info));
+	memset(queue_info, 0, sizeof(*queue_info));
+
+	port_info->max_nb_counters = CN9K_NPC_COUNTERS_MAX;
+
+	return 0;
+}

@@ -5,7 +5,6 @@
 #include "cnxk_ethdev.h"
 #include <rte_mtr_driver.h>
 
-#define NIX_MTR_COUNT_MAX      73 /* 64(leaf) + 8(mid) + 1(top) */
 #define NIX_MTR_COUNT_PER_FLOW 3  /* 1(leaf) + 1(mid) + 1(top) */
 
 #define NIX_BPF_STATS_MASK_ALL                                                 \

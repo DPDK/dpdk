@@ -112,6 +112,7 @@
 
 /* Default mark value used when none is provided. */
 #define CNXK_FLOW_ACTION_FLAG_DEFAULT 0xffff
+#define CNXK_NIX_MTR_COUNT_MAX	      73 /* 64(leaf) + 8(mid) + 1(top) */
 
 /* Default cycle counter mask */
 #define CNXK_CYCLECOUNTER_MASK     0xffffffffffffffffULL
