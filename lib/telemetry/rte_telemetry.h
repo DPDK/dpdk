@@ -2,15 +2,14 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#include <stdint.h>
-
-
 #ifndef _RTE_TELEMETRY_H_
 #define _RTE_TELEMETRY_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stdint.h>
 
 /** Maximum length for string used in object. */
 #define RTE_TEL_MAX_STRING_LEN 128
