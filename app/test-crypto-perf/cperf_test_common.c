@@ -197,9 +197,11 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 				RTE_CACHE_LINE_ROUNDUP(crypto_op_total_size);
 	uint32_t mbuf_size = sizeof(struct rte_mbuf) + options->segment_sz;
 	uint32_t max_size = options->max_buffer_size + options->digest_sz;
-	uint16_t segments_nb = (max_size % options->segment_sz) ?
-			(max_size / options->segment_sz) + 1 :
-			max_size / options->segment_sz;
+	uint32_t segment_data_len = options->segment_sz - options->headroom_sz -
+				    options->tailroom_sz;
+	uint16_t segments_nb = (max_size % segment_data_len) ?
+				(max_size / segment_data_len) + 1 :
+				(max_size / segment_data_len);
 	uint32_t obj_size = crypto_op_total_size_padded +
 				(mbuf_size * segments_nb);
 
