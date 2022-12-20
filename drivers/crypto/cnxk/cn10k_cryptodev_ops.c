@@ -296,6 +296,9 @@ cn10k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused, vo
 	qp_id = ec_mdata->request_info.queue_pair_id;
 	qp = rte_cryptodevs[cdev_id].data->queue_pairs[qp_id];
 
+	if (!qp->ca.enabled)
+		return -EINVAL;
+
 	/* Prepare w2 */
 	tag_type = qp->ca.vector_sz ? RTE_EVENT_TYPE_CRYPTODEV_VECTOR : RTE_EVENT_TYPE_CRYPTODEV;
 	rsp_info = &ec_mdata->response_info;
