@@ -104,6 +104,12 @@ ssize_t rte_ring_get_memsize_elem(unsigned int esize, unsigned int count);
 struct rte_ring *rte_ring_create_elem(const char *name, unsigned int esize,
 			unsigned int count, int socket_id, unsigned int flags);
 
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 120000)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#pragma GCC diagnostic ignored "-Wstringop-overread"
+#endif
+
 static __rte_always_inline void
 __rte_ring_enqueue_elems_32(struct rte_ring *r, const uint32_t size,
 		uint32_t idx, const void *obj_table, uint32_t n)
@@ -1075,6 +1081,10 @@ rte_ring_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 		*available = 0;
 	return 0;
 }
+
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 120000)
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef ALLOW_EXPERIMENTAL_API
 #include <rte_ring_peek.h>
