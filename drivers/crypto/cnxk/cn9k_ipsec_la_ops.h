@@ -13,13 +13,43 @@
 #include "cnxk_security_ar.h"
 
 static __rte_always_inline int32_t
-ipsec_po_out_rlen_get(struct cn9k_sec_session *sess, uint32_t plen)
+ipsec_po_out_rlen_get(struct cn9k_sec_session *sess, uint32_t plen, struct rte_mbuf *m_src)
 {
 	uint32_t enc_payload_len;
 	int adj_len = 0;
 
-	if (sess->sa.out_sa.common_sa.ctl.ipsec_mode == ROC_IE_SA_MODE_TRANSPORT)
+	if (sess->sa.out_sa.common_sa.ctl.ipsec_mode == ROC_IE_SA_MODE_TRANSPORT) {
 		adj_len = ROC_CPT_TUNNEL_IPV4_HDR_LEN;
+
+		uintptr_t data = (uintptr_t)m_src->buf_addr + m_src->data_off;
+		struct rte_ipv4_hdr *ip = (struct rte_ipv4_hdr *)data;
+
+		if (unlikely(((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) != IPVERSION)) {
+			struct rte_ipv6_hdr *ip6 = (struct rte_ipv6_hdr *)ip;
+			uint8_t *nxt_hdr = (uint8_t *)ip6;
+			uint8_t dest_op_cnt = 0;
+			int nh = ip6->proto;
+
+			PLT_ASSERT(((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) == 6);
+
+			adj_len = ROC_CPT_TUNNEL_IPV6_HDR_LEN;
+			nxt_hdr += ROC_CPT_TUNNEL_IPV6_HDR_LEN;
+			while (nh != -EINVAL) {
+				size_t ext_len = 0;
+
+				nh = rte_ipv6_get_next_ext(nxt_hdr, nh, &ext_len);
+				/* With multiple dest ops headers, the ESP hdr will be before
+				 * the 2nd dest ops and after the first dest ops header
+				 */
+				if ((nh == IPPROTO_DSTOPTS) && dest_op_cnt)
+					break;
+				else if (nh == IPPROTO_DSTOPTS)
+					dest_op_cnt++;
+				adj_len += ext_len;
+				nxt_hdr += ext_len;
+			}
+		}
+	}
 
 	enc_payload_len =
 		RTE_ALIGN_CEIL(plen + sess->rlens.roundup_len - adj_len, sess->rlens.roundup_byte);
@@ -41,7 +71,7 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_sec_session *sess, struct
 
 	pkt_len = rte_pktmbuf_pkt_len(m_src);
 	dlen = pkt_len + hdr_len;
-	rlen = ipsec_po_out_rlen_get(sess, pkt_len);
+	rlen = ipsec_po_out_rlen_get(sess, pkt_len, m_src);
 
 	extend_tail = rlen - dlen;
 	if (unlikely(extend_tail > rte_pktmbuf_tailroom(m_src))) {
