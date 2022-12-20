@@ -726,3 +726,50 @@ roc_se_ctx_swap(struct roc_se_ctx *se_ctx)
 
 	zs_ctx->zuc.otk_ctx.w0.u64 = htobe64(zs_ctx->zuc.otk_ctx.w0.u64);
 }
+
+void
+roc_se_ctx_init(struct roc_se_ctx *roc_se_ctx)
+{
+	struct se_ctx_s *ctx = &roc_se_ctx->se_ctx;
+	uint64_t ctx_len, *uc_ctx;
+	uint8_t i;
+
+	switch (roc_se_ctx->fc_type) {
+	case ROC_SE_FC_GEN:
+		ctx_len = sizeof(struct roc_se_context);
+		break;
+	case ROC_SE_PDCP:
+		ctx_len = sizeof(struct roc_se_zuc_snow3g_ctx);
+		break;
+	case ROC_SE_KASUMI:
+		ctx_len = sizeof(struct roc_se_kasumi_ctx);
+		break;
+	case ROC_SE_PDCP_CHAIN:
+		ctx_len = sizeof(struct roc_se_zuc_snow3g_chain_ctx);
+		break;
+	default:
+		ctx_len = 0;
+	}
+
+	ctx_len = PLT_ALIGN_CEIL(ctx_len, 8);
+
+	/* Skip w0 for swap */
+	uc_ctx = PLT_PTR_ADD(ctx, sizeof(ctx->w0));
+	for (i = 0; i < (ctx_len / 8); i++)
+		uc_ctx[i] = plt_cpu_to_be_64(((uint64_t *)uc_ctx)[i]);
+
+	/* Include w0 */
+	ctx_len += sizeof(ctx->w0);
+	ctx_len = PLT_ALIGN_CEIL(ctx_len, 8);
+
+	ctx->w0.s.aop_valid = 1;
+	ctx->w0.s.ctx_hdr_size = 0;
+
+	ctx->w0.s.ctx_size = PLT_ALIGN_FLOOR(ctx_len, 128);
+	if (ctx->w0.s.ctx_size == 0)
+		ctx->w0.s.ctx_size = 1;
+
+	ctx->w0.s.ctx_push_size = ctx_len / 8;
+	if (ctx->w0.s.ctx_push_size > 32)
+		ctx->w0.s.ctx_push_size = 32;
+}

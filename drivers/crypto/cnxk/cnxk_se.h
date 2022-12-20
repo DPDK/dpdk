@@ -6,6 +6,8 @@
 #define _CNXK_SE_H_
 #include <stdbool.h>
 
+#include <rte_cryptodev.h>
+
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_sg.h"
@@ -25,6 +27,7 @@ enum cpt_dp_thread_type {
 };
 
 struct cnxk_se_sess {
+	struct rte_cryptodev_sym_session rte_sess;
 	uint16_t cpt_op : 4;
 	uint16_t zsk_flag : 4;
 	uint16_t aes_gcm : 1;
@@ -51,10 +54,11 @@ struct cnxk_se_sess {
 	uint64_t cpt_inst_w2;
 	struct cnxk_cpt_qp *qp;
 	struct roc_se_ctx roc_se_ctx;
-} __rte_cache_aligned;
+	struct roc_cpt_lf *lf;
+} __rte_aligned(ROC_ALIGN);
 
-static __rte_always_inline int
-fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess);
+static __rte_always_inline int fill_sess_gmac(struct rte_crypto_sym_xform *xform,
+					      struct cnxk_se_sess *sess);
 
 static inline void
 cpt_pack_iv(uint8_t *iv_src, uint8_t *iv_dst)

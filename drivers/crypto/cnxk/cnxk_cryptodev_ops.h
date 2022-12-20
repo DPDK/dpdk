@@ -107,18 +107,15 @@ int cnxk_cpt_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id);
 
 unsigned int cnxk_cpt_sym_session_get_size(struct rte_cryptodev *dev);
 
-int cnxk_cpt_sym_session_configure(struct rte_cryptodev *dev,
-				   struct rte_crypto_sym_xform *xform,
+int cnxk_cpt_sym_session_configure(struct rte_cryptodev *dev, struct rte_crypto_sym_xform *xform,
 				   struct rte_cryptodev_sym_session *sess);
 
-int sym_session_configure(struct roc_cpt *roc_cpt,
-			  struct rte_crypto_sym_xform *xform,
-			  struct rte_cryptodev_sym_session *sess);
+int sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
+			  struct rte_cryptodev_sym_session *sess, bool is_session_less);
 
-void cnxk_cpt_sym_session_clear(struct rte_cryptodev *dev,
-		struct rte_cryptodev_sym_session *sess);
+void cnxk_cpt_sym_session_clear(struct rte_cryptodev *dev, struct rte_cryptodev_sym_session *sess);
 
-void sym_session_clear(struct rte_cryptodev_sym_session *sess);
+void sym_session_clear(struct rte_cryptodev_sym_session *sess, bool is_session_less);
 
 unsigned int cnxk_ae_session_size_get(struct rte_cryptodev *dev __rte_unused);
 

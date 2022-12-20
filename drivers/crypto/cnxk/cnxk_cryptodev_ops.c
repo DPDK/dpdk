@@ -626,6 +626,11 @@ cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
 
 	inst_w7.s.cptr = (uint64_t)&sess->roc_se_ctx.se_ctx;
 
+	if (roc_cpt->cpt_revision == ROC_CPT_REVISION_ID_106XX)
+		inst_w7.s.ctx_val = 1;
+	else
+		inst_w7.s.cptr += 8;
+
 	/* Set the engine group */
 	if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3)
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
@@ -636,18 +641,21 @@ cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
 }
 
 int
-sym_session_configure(struct roc_cpt *roc_cpt,
-		      struct rte_crypto_sym_xform *xform,
-		      struct rte_cryptodev_sym_session *sess)
+sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
+		      struct rte_cryptodev_sym_session *sess, bool is_session_less)
 {
 	enum cpt_dp_thread_type thr_type;
-	struct cnxk_se_sess *sess_priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+	struct cnxk_se_sess *sess_priv = (struct cnxk_se_sess *)sess;
 	int ret;
 
-	memset(sess_priv, 0, sizeof(struct cnxk_se_sess));
+	if (is_session_less)
+		memset(sess_priv, 0, sizeof(struct cnxk_se_sess));
+
 	ret = cnxk_sess_fill(roc_cpt, xform, sess_priv);
 	if (ret)
 		goto priv_put;
+
+	sess_priv->lf = roc_cpt->lf[0];
 
 	if (sess_priv->cpt_op & ROC_SE_OP_CIPHER_MASK) {
 		switch (sess_priv->roc_se_ctx.fc_type) {
@@ -690,6 +698,10 @@ sym_session_configure(struct roc_cpt *roc_cpt,
 	}
 
 	sess_priv->cpt_inst_w7 = cnxk_cpt_inst_w7_get(sess_priv, roc_cpt);
+
+	if (roc_cpt->cpt_revision == ROC_CPT_REVISION_ID_106XX)
+		roc_se_ctx_init(&sess_priv->roc_se_ctx);
+
 	return 0;
 
 priv_put:
@@ -704,25 +716,31 @@ cnxk_cpt_sym_session_configure(struct rte_cryptodev *dev,
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
 
-	return sym_session_configure(roc_cpt, xform, sess);
+	return sym_session_configure(roc_cpt, xform, sess, false);
 }
 
 void
-sym_session_clear(struct rte_cryptodev_sym_session *sess)
+sym_session_clear(struct rte_cryptodev_sym_session *sess, bool is_session_less)
 {
-	struct cnxk_se_sess *sess_priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+	struct cnxk_se_sess *sess_priv = (struct cnxk_se_sess *)sess;
+
+	/* Trigger CTX flush + invalidate to remove from CTX_CACHE */
+	roc_cpt_lf_ctx_flush(sess_priv->lf, &sess_priv->roc_se_ctx.se_ctx, true);
+
+	plt_delay_ms(1);
 
 	if (sess_priv->roc_se_ctx.auth_key != NULL)
 		plt_free(sess_priv->roc_se_ctx.auth_key);
 
-	memset(sess_priv, 0, cnxk_cpt_sym_session_get_size(NULL));
+	if (is_session_less)
+		memset(sess_priv, 0, cnxk_cpt_sym_session_get_size(NULL));
 }
 
 void
 cnxk_cpt_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 			   struct rte_cryptodev_sym_session *sess)
 {
-	return sym_session_clear(sess);
+	return sym_session_clear(sess, false);
 }
 
 unsigned int

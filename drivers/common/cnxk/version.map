@@ -99,6 +99,7 @@ INTERNAL {
 	roc_model;
 	roc_se_auth_key_set;
 	roc_se_ciph_key_set;
+	roc_se_ctx_init;
 	roc_nix_bpf_alloc;
 	roc_nix_bpf_config;
 	roc_nix_bpf_connect;

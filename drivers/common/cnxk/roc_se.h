@@ -300,14 +300,31 @@ struct roc_se_ctx {
 	uint64_t rsvd : 17;
 	union cpt_inst_w4 template_w4;
 	/* Below fields are accessed by hardware */
-	union {
-		struct roc_se_context fctx;
-		struct roc_se_zuc_snow3g_ctx zs_ctx;
-		struct roc_se_zuc_snow3g_chain_ctx zs_ch_ctx;
-		struct roc_se_kasumi_ctx k_ctx;
-	} se_ctx;
+	struct se_ctx_s {
+		/* Word0 */
+		union {
+			struct {
+				uint64_t rsvd : 48;
+
+				uint64_t ctx_push_size : 7;
+				uint64_t rsvd1 : 1;
+
+				uint64_t ctx_hdr_size : 2;
+				uint64_t aop_valid : 1;
+				uint64_t rsvd2 : 1;
+				uint64_t ctx_size : 4;
+			} s;
+			uint64_t u64;
+		} w0;
+		union {
+			struct roc_se_context fctx;
+			struct roc_se_zuc_snow3g_ctx zs_ctx;
+			struct roc_se_zuc_snow3g_chain_ctx zs_ch_ctx;
+			struct roc_se_kasumi_ctx k_ctx;
+		};
+	} se_ctx __plt_aligned(ROC_ALIGN);
 	uint8_t *auth_key;
-};
+} __plt_aligned(ROC_ALIGN);
 
 struct roc_se_fc_params {
 	union {
@@ -349,14 +366,13 @@ roc_se_zuc_bytes_swap(uint8_t *arr, int len)
 	}
 }
 
-int __roc_api roc_se_auth_key_set(struct roc_se_ctx *se_ctx,
-				  roc_se_auth_type type, const uint8_t *key,
-				  uint16_t key_len, uint16_t mac_len);
+int __roc_api roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
+				  const uint8_t *key, uint16_t key_len, uint16_t mac_len);
 
-int __roc_api roc_se_ciph_key_set(struct roc_se_ctx *se_ctx,
-				  roc_se_cipher_type type, const uint8_t *key,
-				  uint16_t key_len, uint8_t *salt);
+int __roc_api roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
+				  const uint8_t *key, uint16_t key_len, uint8_t *salt);
 
 void __roc_api roc_se_ctx_swap(struct roc_se_ctx *se_ctx);
+void __roc_api roc_se_ctx_init(struct roc_se_ctx *se_ctx);
 
 #endif /* __ROC_SE_H__ */

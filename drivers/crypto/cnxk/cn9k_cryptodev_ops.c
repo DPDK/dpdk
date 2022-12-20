@@ -49,11 +49,11 @@ cn9k_cpt_sym_temp_sess_create(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op)
 	if (rte_mempool_get(qp->sess_mp, (void **)&sess) < 0)
 		return NULL;
 
-	ret = sym_session_configure(qp->lf.roc_cpt, sym_op->xform, sess);
+	ret = sym_session_configure(qp->lf.roc_cpt, sym_op->xform, sess, true);
 	if (ret)
 		goto sess_put;
 
-	priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+	priv = (struct cnxk_se_sess *)sess;
 
 	sym_op->session = sess;
 
@@ -76,7 +76,7 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 
 		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			sym_op = op->sym;
-			sess = CRYPTODEV_GET_SYM_SESS_PRIV(sym_op->session);
+			sess = (struct cnxk_se_sess *)sym_op->session;
 			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst, false);
 			inst->w7.u64 = sess->cpt_inst_w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
@@ -90,7 +90,7 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 
 			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst, false);
 			if (unlikely(ret)) {
-				sym_session_clear(op->sym->session);
+				sym_session_clear(op->sym->session, true);
 				rte_mempool_put(qp->sess_mp, op->sym->session);
 			}
 			inst->w7.u64 = sess->cpt_inst_w7;
@@ -326,7 +326,7 @@ cn9k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused,
 		} else if (sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
-			priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+			priv = (struct cnxk_se_sess *)sess;
 			priv->qp = qp;
 			priv->cpt_inst_w2 = w2;
 		} else
@@ -361,7 +361,7 @@ cn9k_ca_meta_info_extract(struct rte_crypto_op *op,
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			struct cnxk_se_sess *priv;
 
-			priv = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
+			priv = (struct cnxk_se_sess *)op->sym->session;
 			*qp = priv->qp;
 			inst->w2.u64 = priv->cpt_inst_w2;
 		} else {
@@ -630,7 +630,7 @@ cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 temp_sess_free:
 	if (unlikely(cop->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
 		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
-			sym_session_clear(cop->sym->session);
+			sym_session_clear(cop->sym->session, true);
 			rte_mempool_put(qp->sess_mp, cop->sym->session);
 			cop->sym->session = NULL;
 		}
