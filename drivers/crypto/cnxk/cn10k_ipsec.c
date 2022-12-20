@@ -200,9 +200,12 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	/* Disable IP checksum verification by default */
 	param1.s.ip_csum_disable = ROC_IE_OT_SA_INNER_PKT_IP_CSUM_DISABLE;
 
+	/* Set the ip chksum flag in mbuf before enqueue.
+	 * Reset the flag in post process in case of errors
+	 */
 	if (ipsec_xfrm->options.ip_csum_enable) {
-		param1.s.ip_csum_disable =
-			ROC_IE_OT_SA_INNER_PKT_IP_CSUM_ENABLE;
+		param1.s.ip_csum_disable = ROC_IE_OT_SA_INNER_PKT_IP_CSUM_ENABLE;
+		sec_sess->ip_csum = RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	}
 
 	/* Disable L4 checksum verification by default */

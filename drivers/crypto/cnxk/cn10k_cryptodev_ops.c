@@ -801,13 +801,11 @@ cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *re
 	struct rte_mbuf *mbuf = cop->sym->m_src;
 	const uint16_t m_len = res->rlen;
 
-	mbuf->data_len = m_len;
-	mbuf->pkt_len = m_len;
-
 	switch (res->uc_compcode) {
 	case ROC_IE_OT_UCC_SUCCESS:
 		break;
 	case ROC_IE_OT_UCC_SUCCESS_PKT_IP_BADCSUM:
+		mbuf->ol_flags &= ~RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		break;
 	case ROC_IE_OT_UCC_SUCCESS_PKT_L4_GOODCSUM:
@@ -819,15 +817,17 @@ cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *re
 				  RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		break;
 	case ROC_IE_OT_UCC_SUCCESS_PKT_IP_GOODCSUM:
-		mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		break;
 	case ROC_IE_OT_UCC_SUCCESS_SA_SOFTEXP_FIRST:
+	case ROC_IE_OT_UCC_SUCCESS_SA_SOFTEXP_AGAIN:
 		cop->aux_flags = RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY;
 		break;
 	default:
-		plt_dp_err("Success with unknown microcode completion code");
-		break;
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return;
 	}
+	mbuf->data_len = m_len;
+	mbuf->pkt_len = m_len;
 }
 
 static inline void
@@ -843,7 +843,7 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 
 	if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
 	    cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-		if (likely(compcode == CPT_COMP_WARN)) {
+		if (likely(compcode == CPT_COMP_GOOD || compcode == CPT_COMP_WARN)) {
 			/* Success with additional info */
 			cn10k_cpt_sec_post_process(cop, res);
 		} else {
@@ -860,7 +860,7 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 		return;
 	}
 
-	if (likely(compcode == CPT_COMP_GOOD || compcode == CPT_COMP_WARN)) {
+	if (likely(compcode == CPT_COMP_GOOD)) {
 		if (unlikely(uc_compcode)) {
 			if (uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
 				cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
@@ -964,7 +964,7 @@ cn10k_cpt_crypto_adapter_vector_dequeue(uintptr_t get_work1)
 
 #ifdef CNXK_CRYPTODEV_DEBUG
 	res.u64[0] = __atomic_load_n(&vec_infl_req->res.u64[0], __ATOMIC_RELAXED);
-	PLT_ASSERT(res.cn10k.compcode == CPT_COMP_WARN);
+	PLT_ASSERT(res.cn10k.compcode == CPT_COMP_GOOD);
 	PLT_ASSERT(res.cn10k.uc_compcode == 0);
 #endif
 
