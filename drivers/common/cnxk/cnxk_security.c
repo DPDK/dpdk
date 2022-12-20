@@ -37,8 +37,8 @@ ipsec_hmac_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform,
 		roc_hash_sha1_gen(ipad, (uint32_t *)&hmac_opad_ipad[24]);
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
-		roc_hash_sha256_gen(opad, (uint32_t *)&hmac_opad_ipad[0]);
-		roc_hash_sha256_gen(ipad, (uint32_t *)&hmac_opad_ipad[64]);
+		roc_hash_sha256_gen(opad, (uint32_t *)&hmac_opad_ipad[0], 256);
+		roc_hash_sha256_gen(ipad, (uint32_t *)&hmac_opad_ipad[64], 256);
 		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		roc_hash_sha512_gen(opad, (uint64_t *)&hmac_opad_ipad[0], 384);

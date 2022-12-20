@@ -149,6 +149,53 @@ cpt_ciph_aes_key_type_set(struct roc_se_context *fctx, uint16_t key_len)
 	fctx->enc.aes_key = aes_key_type;
 }
 
+static void
+cpt_hmac_opad_ipad_gen(roc_se_auth_type auth_type, const uint8_t *key, uint16_t length,
+		       struct roc_se_hmac_context *hmac)
+{
+	uint8_t opad[128] = {[0 ... 127] = 0x5c};
+	uint8_t ipad[128] = {[0 ... 127] = 0x36};
+	uint32_t i;
+
+	/* HMAC OPAD and IPAD */
+	for (i = 0; i < 128 && i < length; i++) {
+		opad[i] = opad[i] ^ key[i];
+		ipad[i] = ipad[i] ^ key[i];
+	}
+
+	/* Precompute hash of HMAC OPAD and IPAD to avoid
+	 * per packet computation
+	 */
+	switch (auth_type) {
+	case ROC_SE_MD5_TYPE:
+		roc_hash_md5_gen(opad, (uint32_t *)hmac->opad);
+		roc_hash_md5_gen(ipad, (uint32_t *)hmac->ipad);
+		break;
+	case ROC_SE_SHA1_TYPE:
+		roc_hash_sha1_gen(opad, (uint32_t *)hmac->opad);
+		roc_hash_sha1_gen(ipad, (uint32_t *)hmac->ipad);
+		break;
+	case ROC_SE_SHA2_SHA224:
+		roc_hash_sha256_gen(opad, (uint32_t *)hmac->opad, 224);
+		roc_hash_sha256_gen(ipad, (uint32_t *)hmac->ipad, 224);
+		break;
+	case ROC_SE_SHA2_SHA256:
+		roc_hash_sha256_gen(opad, (uint32_t *)hmac->opad, 256);
+		roc_hash_sha256_gen(ipad, (uint32_t *)hmac->ipad, 256);
+		break;
+	case ROC_SE_SHA2_SHA384:
+		roc_hash_sha512_gen(opad, (uint64_t *)hmac->opad, 384);
+		roc_hash_sha512_gen(ipad, (uint64_t *)hmac->ipad, 384);
+		break;
+	case ROC_SE_SHA2_SHA512:
+		roc_hash_sha512_gen(opad, (uint64_t *)hmac->opad, 512);
+		roc_hash_sha512_gen(ipad, (uint64_t *)hmac->ipad, 512);
+		break;
+	default:
+		break;
+	}
+}
+
 static int
 cpt_pdcp_key_type_set(struct roc_se_zuc_snow3g_ctx *zs_ctx, uint16_t key_len)
 {
@@ -434,9 +481,8 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 		memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
 		memset(fctx->hmac.opad, 0, sizeof(fctx->hmac.opad));
 
-		if (key_len <= 64)
-			memcpy(fctx->hmac.opad, key, key_len);
-		fctx->enc.auth_input_type = 1;
+		cpt_hmac_opad_ipad_gen(type, key, key_len, &fctx->hmac);
+		fctx->enc.auth_input_type = 0;
 	}
 	return 0;
 }
