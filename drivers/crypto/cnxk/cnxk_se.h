@@ -244,7 +244,7 @@ fill_sg_comp_from_iov(struct roc_se_sglist_comp *list, uint32_t i,
 	uint32_t extra_len = extra_buf ? extra_buf->size : 0;
 	uint32_t size = *psize;
 
-	for (j = 0; (j < from->buf_cnt) && size; j++) {
+	for (j = 0; j < from->buf_cnt; j++) {
 		struct roc_se_sglist_comp *to = &list[i >> 2];
 		uint32_t buf_sz = from->bufs[j].size;
 		void *vaddr = from->bufs[j].vaddr;
@@ -311,6 +311,9 @@ fill_sg_comp_from_iov(struct roc_se_sglist_comp *list, uint32_t i,
 		if (extra_offset)
 			extra_offset -= size;
 		i++;
+
+		if (unlikely(!size))
+			break;
 	}
 
 	*psize = size;
@@ -367,7 +370,9 @@ fill_sg2_comp_from_iov(struct roc_se_sg2list_comp *list, uint32_t i, struct roc_
 	uint32_t extra_len = extra_buf ? extra_buf->size : 0;
 	uint32_t size = *psize;
 
-	for (j = 0; (j < from->buf_cnt) && size; j++) {
+	rte_prefetch2(psize);
+
+	for (j = 0; j < from->buf_cnt; j++) {
 		struct roc_se_sg2list_comp *to = &list[i / 3];
 		uint32_t buf_sz = from->bufs[j].size;
 		void *vaddr = from->bufs[j].vaddr;
@@ -433,6 +438,9 @@ fill_sg2_comp_from_iov(struct roc_se_sg2list_comp *list, uint32_t i, struct roc_
 		if (extra_offset)
 			extra_offset -= size;
 		i++;
+
+		if (unlikely(!size))
+			break;
 	}
 
 	*psize = size;
@@ -884,20 +892,10 @@ cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 
 	/* input data */
 	size = data_len;
-	if (size) {
-		i = fill_sg_comp_from_iov(gather_comp, i, params->src_iov, 0,
-					  &size, NULL, 0);
-		if (unlikely(size)) {
-			plt_dp_err("Insufficient dst IOV size, short by %dB",
-				   size);
-			return -1;
-		}
-	} else {
-		/*
-		 * Looks like we need to support zero data
-		 * gather ptr in case of hash & hmac
-		 */
-		i++;
+	i = fill_sg_comp_from_iov(gather_comp, i, params->src_iov, 0, &size, NULL, 0);
+	if (unlikely(size)) {
+		plt_dp_err("Insufficient dst IOV size, short by %dB", size);
+		return -1;
 	}
 	((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 	g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
@@ -1008,18 +1006,10 @@ cpt_digest_gen_sg_ver2_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 
 	/* input data */
 	size = data_len;
-	if (size) {
-		i = fill_sg2_comp_from_iov(gather_comp, i, params->src_iov, 0, &size, NULL, 0);
-		if (unlikely(size)) {
-			plt_dp_err("Insufficient dst IOV size, short by %dB", size);
-			return -1;
-		}
-	} else {
-		/*
-		 * Looks like we need to support zero data
-		 * gather ptr in case of hash & hmac
-		 */
-		i++;
+	i = fill_sg2_comp_from_iov(gather_comp, i, params->src_iov, 0, &size, NULL, 0);
+	if (unlikely(size)) {
+		plt_dp_err("Insufficient dst IOV size, short by %dB", size);
+		return -1;
 	}
 	cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 
