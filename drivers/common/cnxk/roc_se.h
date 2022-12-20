@@ -370,7 +370,7 @@ int __roc_api roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type ty
 				  const uint8_t *key, uint16_t key_len, uint16_t mac_len);
 
 int __roc_api roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
-				  const uint8_t *key, uint16_t key_len, uint8_t *salt);
+				  const uint8_t *key, uint16_t key_len);
 
 void __roc_api roc_se_ctx_swap(struct roc_se_ctx *se_ctx);
 void __roc_api roc_se_ctx_init(struct roc_se_ctx *se_ctx);

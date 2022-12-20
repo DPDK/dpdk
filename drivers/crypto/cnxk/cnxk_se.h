@@ -1708,7 +1708,7 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	}
 
 	if (unlikely(roc_se_ciph_key_set(&sess->roc_se_ctx, enc_type, aead_form->key.data,
-					 aead_form->key.length, NULL)))
+					 aead_form->key.length)))
 		return -1;
 
 	if (unlikely(roc_se_auth_key_set(&sess->roc_se_ctx, auth_type, NULL, 0,
@@ -1866,7 +1866,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		}
 
 	if (unlikely(roc_se_ciph_key_set(&sess->roc_se_ctx, enc_type, c_form->key.data,
-					 c_form->key.length, NULL)))
+					 c_form->key.length)))
 		return -1;
 
 	if ((enc_type >= ROC_SE_ZUC_EEA3) && (enc_type <= ROC_SE_AES_CTR_EEA2))
@@ -2072,7 +2072,7 @@ fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	}
 
 	if (unlikely(roc_se_ciph_key_set(&sess->roc_se_ctx, enc_type, a_form->key.data,
-					 a_form->key.length, NULL)))
+					 a_form->key.length)))
 		return -1;
 
 	if (unlikely(roc_se_auth_key_set(&sess->roc_se_ctx, auth_type, NULL, 0,
