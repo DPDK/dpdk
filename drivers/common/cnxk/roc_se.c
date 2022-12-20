@@ -308,6 +308,7 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 	struct roc_se_context *fctx;
 	uint8_t opcode_minor;
 	uint8_t pdcp_alg;
+	bool chained_op;
 	int ret;
 
 	if (se_ctx == NULL)
@@ -318,12 +319,12 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 	k_ctx = &se_ctx->se_ctx.k_ctx;
 	fctx = &se_ctx->se_ctx.fctx;
 
+	chained_op = se_ctx->ciph_then_auth || se_ctx->auth_then_ciph;
+
 	if ((type >= ROC_SE_ZUC_EIA3) && (type <= ROC_SE_KASUMI_F9_ECB)) {
 		uint8_t *zuc_const;
 		uint32_t keyx[4];
 		uint8_t *ci_key;
-		bool chained_op =
-			se_ctx->ciph_then_auth || se_ctx->auth_then_ciph;
 
 		if (!key_len)
 			return -1;
@@ -470,19 +471,25 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 	se_ctx->mac_len = mac_len;
 
 	if (key_len) {
-		se_ctx->hmac = 1;
+		/*
+		 * Chained operation (FC opcode) requires precomputed ipad and opad hashes, but for
+		 * auth only (HMAC opcode) this is not required
+		 */
+		if (chained_op) {
+			memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
+			memset(fctx->hmac.opad, 0, sizeof(fctx->hmac.opad));
+			cpt_hmac_opad_ipad_gen(type, key, key_len, &fctx->hmac);
+			fctx->enc.auth_input_type = 0;
+		} else {
+			se_ctx->hmac = 1;
 
-		se_ctx->auth_key = plt_zmalloc(key_len, 8);
-		if (se_ctx->auth_key == NULL)
-			return -1;
+			se_ctx->auth_key = plt_zmalloc(key_len, 8);
+			if (se_ctx->auth_key == NULL)
+				return -1;
 
-		memcpy(se_ctx->auth_key, key, key_len);
-		se_ctx->auth_key_len = key_len;
-		memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
-		memset(fctx->hmac.opad, 0, sizeof(fctx->hmac.opad));
-
-		cpt_hmac_opad_ipad_gen(type, key, key_len, &fctx->hmac);
-		fctx->enc.auth_input_type = 0;
+			memcpy(se_ctx->auth_key, key, key_len);
+			se_ctx->auth_key_len = key_len;
+		}
 	}
 	return 0;
 }
