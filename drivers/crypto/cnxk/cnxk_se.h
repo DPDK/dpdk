@@ -39,6 +39,8 @@ struct cnxk_se_sess {
 	uint16_t zs_auth : 4;
 	uint16_t dp_thr_type : 8;
 	uint16_t aad_length;
+	uint8_t is_sha3 : 1;
+	uint8_t rsvd : 7;
 	uint8_t mac_len;
 	uint8_t iv_length;
 	uint8_t auth_iv_length;
@@ -163,18 +165,26 @@ cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 		break;
 	case RTE_CRYPTO_AUTH_SHA224:
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_224:
+	case RTE_CRYPTO_AUTH_SHA3_224_HMAC:
 		ret = (mac_len <= 28) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA256:
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_256:
+	case RTE_CRYPTO_AUTH_SHA3_256_HMAC:
 		ret = (mac_len <= 32) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_384:
+	case RTE_CRYPTO_AUTH_SHA3_384_HMAC:
 		ret = (mac_len <= 48) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA512:
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_512:
+	case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
 		ret = (mac_len <= 64) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_NULL:
@@ -1848,7 +1858,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 static __rte_always_inline int
 fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 {
-	uint8_t zsk_flag = 0, zs_auth = 0, aes_gcm = 0, is_null = 0;
+	uint8_t zsk_flag = 0, zs_auth = 0, aes_gcm = 0, is_null = 0, is_sha3 = 0;
 	struct rte_crypto_auth_xform *a_form;
 	roc_se_auth_type auth_type = 0; /* NULL Auth type */
 
@@ -1899,6 +1909,26 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 	case RTE_CRYPTO_AUTH_SHA384:
 		auth_type = ROC_SE_SHA2_SHA384;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_224_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_224:
+		is_sha3 = 1;
+		auth_type = ROC_SE_SHA3_SHA224;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_256_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_256:
+		is_sha3 = 1;
+		auth_type = ROC_SE_SHA3_SHA256;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_384_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_384:
+		is_sha3 = 1;
+		auth_type = ROC_SE_SHA3_SHA384;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
+	case RTE_CRYPTO_AUTH_SHA3_512:
+		is_sha3 = 1;
+		auth_type = ROC_SE_SHA3_SHA512;
 		break;
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 	case RTE_CRYPTO_AUTH_MD5:
@@ -1959,6 +1989,7 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	sess->aes_gcm = aes_gcm;
 	sess->mac_len = a_form->digest_length;
 	sess->is_null = is_null;
+	sess->is_sha3 = is_sha3;
 	if (zsk_flag) {
 		sess->auth_iv_offset = a_form->iv.offset;
 		sess->auth_iv_length = a_form->iv.length;
