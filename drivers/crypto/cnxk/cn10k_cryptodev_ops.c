@@ -36,6 +36,7 @@ struct ops_burst {
 struct vec_request {
 	struct cpt_inflight_req *req;
 	struct rte_event_vector *vec;
+	union cpt_inst_w7 w7;
 	uint64_t w2;
 };
 
@@ -387,7 +388,7 @@ cn10k_ca_meta_info_extract(struct rte_crypto_op *op, struct cnxk_cpt_qp **qp, ui
 
 static inline void
 cn10k_cpt_vec_inst_fill(struct vec_request *vec_req, struct cpt_inst_s *inst,
-			struct cnxk_cpt_qp *qp)
+			struct cnxk_cpt_qp *qp, union cpt_inst_w7 w7)
 {
 	const union cpt_res_s res = {.cn10k.compcode = CPT_COMP_NOT_DONE};
 	struct cpt_inflight_req *infl_req = vec_req->req;
@@ -400,6 +401,8 @@ cn10k_cpt_vec_inst_fill(struct vec_request *vec_req, struct cpt_inst_s *inst,
 		.s.dlen = 0,
 	};
 
+	w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+
 	infl_req->vec = vec_req->vec;
 	infl_req->qp = qp;
 
@@ -410,7 +413,7 @@ cn10k_cpt_vec_inst_fill(struct vec_request *vec_req, struct cpt_inst_s *inst,
 	inst->w2.u64 = vec_req->w2;
 	inst->w3.u64 = CNXK_CPT_INST_W3(1, infl_req);
 	inst->w4.u64 = w4.u64;
-	inst->w7.u64 = ROC_CPT_DFLT_ENG_GRP_SE << 61;
+	inst->w7.u64 = w7.u64;
 }
 
 static void
@@ -451,7 +454,7 @@ cn10k_cpt_vec_submit(struct vec_request vec_tbl[], uint16_t vec_tbl_len, struct 
 again:
 	burst_size = RTE_MIN(PKTS_PER_STEORL, vec_tbl_len);
 	for (i = 0; i < burst_size; i++)
-		cn10k_cpt_vec_inst_fill(&vec_tbl[i], &inst[i * 2], qp);
+		cn10k_cpt_vec_inst_fill(&vec_tbl[i], &inst[i * 2], qp, vec_tbl[0].w7);
 
 	do {
 		fc.u64[0] = __atomic_load_n(fc_addr, __ATOMIC_RELAXED);
@@ -589,6 +592,10 @@ submit:
 		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
 		roc_lmt_submit_steorl(lmt_arg, io_addr);
 	}
+
+	/* Store w7 of last successfully filled instruction */
+	inst = &inst_base[2 * (i - 1)];
+	vec_tbl[0].w7 = inst->w7;
 
 	rte_io_wmb();
 
