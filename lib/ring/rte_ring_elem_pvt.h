@@ -10,6 +10,12 @@
 #ifndef _RTE_RING_ELEM_PVT_H_
 #define _RTE_RING_ELEM_PVT_H_
 
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 120000)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#pragma GCC diagnostic ignored "-Wstringop-overread"
+#endif
+
 static __rte_always_inline void
 __rte_ring_enqueue_elems_32(struct rte_ring *r, const uint32_t size,
 		uint32_t idx, const void *obj_table, uint32_t n)
@@ -381,5 +387,9 @@ end:
 		*available = entries - n;
 	return n;
 }
+
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 120000)
+#pragma GCC diagnostic pop
+#endif
 
 #endif /* _RTE_RING_ELEM_PVT_H_ */
