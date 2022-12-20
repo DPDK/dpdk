@@ -47,15 +47,15 @@ struct rte_vhost_async_channel_ops {
 	/**
 	 * instruct async engines to perform copies for a batch of packets
 	 *
-	 * @param vid
+	 *  vid
 	 *  id of vhost device to perform data copies
-	 * @param queue_id
+	 *  queue_id
 	 *  queue id to perform data copies
-	 * @param iov_iter
+	 *  iov_iter
 	 *  an array of IOV iterators
-	 * @param opaque_data
+	 *  opaque_data
 	 *  opaque data pair sending to DMA engine
-	 * @param count
+	 *  count
 	 *  number of elements in the "descs" array
 	 * @return
 	 *  number of IOV iterators processed, negative value means error
@@ -66,13 +66,13 @@ struct rte_vhost_async_channel_ops {
 		uint16_t count);
 	/**
 	 * check copy-completed packets from the async engine
-	 * @param vid
+	 *  vid
 	 *  id of vhost device to check copy completion
-	 * @param queue_id
+	 *  queue_id
 	 *  queue id to check copy completion
-	 * @param opaque_data
+	 *  opaque_data
 	 *  buffer to receive the opaque data pair from DMA engine
-	 * @param max_packets
+	 *  max_packets
 	 *  max number of packets could be completed
 	 * @return
 	 *  number of async descs completed, negative value means error
