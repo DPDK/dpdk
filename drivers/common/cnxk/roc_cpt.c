@@ -861,6 +861,9 @@ roc_cpt_dev_clear(struct roc_cpt *roc_cpt)
 	if (cpt == NULL)
 		return;
 
+	if (roc_cpt->nb_lf == 0)
+		return;
+
 	for (i = 0; i < roc_cpt->nb_lf; i++)
 		cpt->lf_msix_off[i] = 0;
 
