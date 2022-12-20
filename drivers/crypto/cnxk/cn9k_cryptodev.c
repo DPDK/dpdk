@@ -138,6 +138,7 @@ cn9k_cpt_pci_remove(struct rte_pci_device *pci_dev)
 	cnxk_crypto_sec_ctx_destroy(dev);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		dev->dev_ops = NULL;
 		vf = dev->data->dev_private;
 		ret = roc_cpt_dev_fini(&vf->cpt);
 		if (ret)
