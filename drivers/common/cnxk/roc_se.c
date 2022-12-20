@@ -462,8 +462,10 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 		return -1;
 
 	/* For GMAC auth, cipher must be NULL */
-	if (type == ROC_SE_GMAC_TYPE)
+	if (type == ROC_SE_GMAC_TYPE) {
 		fctx->enc.enc_cipher = 0;
+		se_ctx->template_w4.s.opcode_minor = BIT(5);
+	}
 
 	fctx->enc.hash_type = type;
 	se_ctx->hash_type = type;
@@ -529,6 +531,9 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
 		if (key == NULL)
 			return 0;
 	}
+
+	if (type == ROC_SE_AES_GCM)
+		se_ctx->template_w4.s.opcode_minor = BIT(5);
 
 	ret = cpt_ciph_type_set(type, se_ctx, key_len);
 	if (unlikely(ret))
