@@ -422,14 +422,12 @@ cn10k_sec_session_update(void *device, struct rte_security_session *sess,
 			 struct rte_security_session_conf *conf)
 {
 	struct rte_cryptodev *crypto_dev = device;
-	struct cn10k_sec_session *priv;
 	struct roc_cpt *roc_cpt;
 	struct cnxk_cpt_qp *qp;
 	struct cnxk_cpt_vf *vf;
 	int ret;
 
-	priv = SECURITY_GET_SESS_PRIV(sess);
-	if (priv == NULL)
+	if (sess == NULL)
 		return -EINVAL;
 
 	qp = crypto_dev->data->queue_pairs[0];
