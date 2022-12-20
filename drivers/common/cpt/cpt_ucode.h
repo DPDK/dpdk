@@ -41,30 +41,33 @@ cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 	uint16_t mac_len = auth->digest_length;
 	int ret;
 
+	if ((auth->algo != RTE_CRYPTO_AUTH_NULL) && (mac_len == 0))
+		return -1;
+
 	switch (auth->algo) {
 	case RTE_CRYPTO_AUTH_MD5:
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
-		ret = (mac_len == 16) ? 0 : -1;
+		ret = (mac_len <= 16) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA1:
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
-		ret = (mac_len == 20) ? 0 : -1;
+		ret = (mac_len <= 20) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA224:
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
-		ret = (mac_len == 28) ? 0 : -1;
+		ret = (mac_len <= 28) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA256:
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
-		ret = (mac_len == 32) ? 0 : -1;
+		ret = (mac_len <= 32) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
-		ret = (mac_len == 48) ? 0 : -1;
+		ret = (mac_len <= 48) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_SHA512:
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
-		ret = (mac_len == 64) ? 0 : -1;
+		ret = (mac_len <= 64) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_NULL:
 		ret = 0;
@@ -523,7 +526,7 @@ cpt_digest_gen_prep(uint32_t flags,
 
 	/*GP op header */
 	vq_cmd_w0.s.opcode.minor = 0;
-	vq_cmd_w0.s.param2 = ((uint16_t)hash_type << 8);
+	vq_cmd_w0.s.param2 = ((uint16_t)hash_type << 8) | mac_len;
 	if (ctx->hmac) {
 		vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_HMAC | CPT_DMA_MODE;
 		vq_cmd_w0.s.param1 = key_len;
