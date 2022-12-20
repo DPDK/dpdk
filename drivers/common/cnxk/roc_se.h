@@ -27,13 +27,6 @@
 #define ROC_SE_MAX_MAC_LEN  64
 
 #define ROC_SE_OFF_CTRL_LEN 8
-#define ROC_SE_DMA_MODE	    (1 << 7)
-
-#define ROC_SE_MAX_SG_IN_OUT_CNT 32
-#define ROC_SE_MAX_SG_CNT	 (ROC_SE_MAX_SG_IN_OUT_CNT / 2)
-
-#define ROC_SE_SG_LIST_HDR_SIZE (8u)
-#define ROC_SE_SG_ENTRY_SIZE	sizeof(struct roc_se_sglist_comp)
 
 #define ROC_SE_ZS_EA 0x1
 #define ROC_SE_ZS_IA 0x2
@@ -172,27 +165,6 @@ typedef enum {
 	ROC_SE_PDCP_MAC_LEN_64_BIT = 0x2,
 	ROC_SE_PDCP_MAC_LEN_128_BIT = 0x3
 } roc_se_pdcp_mac_len_type;
-
-struct roc_se_sglist_comp {
-	union {
-		uint64_t len;
-		struct {
-			uint16_t len[4];
-		} s;
-	} u;
-	uint64_t ptr[4];
-};
-
-struct roc_se_sg2list_comp {
-	union {
-		uint64_t len;
-		struct {
-			uint16_t len[3];
-			uint16_t valid_segs;
-		} s;
-	} u;
-	uint64_t ptr[3];
-};
 
 struct roc_se_enc_context {
 	uint64_t iv_source : 1;

@@ -8,11 +8,12 @@
 
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
+#include "cnxk_sg.h"
 
 #define SRC_IOV_SIZE                                                                               \
-	(sizeof(struct roc_se_iov_ptr) + (sizeof(struct roc_se_buf_ptr) * ROC_SE_MAX_SG_CNT))
+	(sizeof(struct roc_se_iov_ptr) + (sizeof(struct roc_se_buf_ptr) * ROC_MAX_SG_CNT))
 #define DST_IOV_SIZE                                                                               \
-	(sizeof(struct roc_se_iov_ptr) + (sizeof(struct roc_se_buf_ptr) * ROC_SE_MAX_SG_CNT))
+	(sizeof(struct roc_se_iov_ptr) + (sizeof(struct roc_se_buf_ptr) * ROC_MAX_SG_CNT))
 
 enum cpt_dp_thread_type {
 	CPT_DP_THREAD_TYPE_FC_CHAIN = 0x1,
@@ -193,272 +194,14 @@ cpt_fc_salt_update(struct roc_se_ctx *se_ctx, uint8_t *salt)
 	memcpy(fctx->enc.encr_iv, salt, 4);
 }
 
-static __rte_always_inline uint32_t
-fill_sg_comp(struct roc_se_sglist_comp *list, uint32_t i, phys_addr_t dma_addr,
-	     uint32_t size)
-{
-	struct roc_se_sglist_comp *to = &list[i >> 2];
-
-	to->u.s.len[i % 4] = rte_cpu_to_be_16(size);
-	to->ptr[i % 4] = rte_cpu_to_be_64(dma_addr);
-	i++;
-	return i;
-}
-
-static __rte_always_inline uint32_t
-fill_sg_comp_from_buf(struct roc_se_sglist_comp *list, uint32_t i,
-		      struct roc_se_buf_ptr *from)
-{
-	struct roc_se_sglist_comp *to = &list[i >> 2];
-
-	to->u.s.len[i % 4] = rte_cpu_to_be_16(from->size);
-	to->ptr[i % 4] = rte_cpu_to_be_64((uint64_t)from->vaddr);
-	i++;
-	return i;
-}
-
-static __rte_always_inline uint32_t
-fill_sg_comp_from_buf_min(struct roc_se_sglist_comp *list, uint32_t i,
-			  struct roc_se_buf_ptr *from, uint32_t *psize)
-{
-	struct roc_se_sglist_comp *to = &list[i >> 2];
-	uint32_t size = *psize;
-	uint32_t e_len;
-
-	e_len = (size > from->size) ? from->size : size;
-	to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
-	to->ptr[i % 4] = rte_cpu_to_be_64((uint64_t)from->vaddr);
-	*psize -= e_len;
-	i++;
-	return i;
-}
-
-/*
- * This fills the MC expected SGIO list
- * from IOV given by user.
- */
-static __rte_always_inline uint32_t
-fill_sg_comp_from_iov(struct roc_se_sglist_comp *list, uint32_t i,
-		      struct roc_se_iov_ptr *from, uint32_t from_offset,
-		      uint32_t *psize, struct roc_se_buf_ptr *extra_buf,
-		      uint32_t extra_offset)
-{
-	int32_t j;
-	uint32_t extra_len = extra_buf ? extra_buf->size : 0;
-	uint32_t size = *psize;
-
-	for (j = 0; j < from->buf_cnt; j++) {
-		struct roc_se_sglist_comp *to = &list[i >> 2];
-		uint32_t buf_sz = from->bufs[j].size;
-		void *vaddr = from->bufs[j].vaddr;
-		uint64_t e_vaddr;
-		uint32_t e_len;
-
-		if (unlikely(from_offset)) {
-			if (from_offset >= buf_sz) {
-				from_offset -= buf_sz;
-				continue;
-			}
-			e_vaddr = (uint64_t)vaddr + from_offset;
-			e_len = (size > (buf_sz - from_offset)) ?
-					(buf_sz - from_offset) :
-					size;
-			from_offset = 0;
-		} else {
-			e_vaddr = (uint64_t)vaddr;
-			e_len = (size > buf_sz) ? buf_sz : size;
-		}
-
-		to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
-		to->ptr[i % 4] = rte_cpu_to_be_64(e_vaddr);
-
-		if (extra_len && (e_len >= extra_offset)) {
-			/* Break the data at given offset */
-			uint32_t next_len = e_len - extra_offset;
-			uint64_t next_vaddr = e_vaddr + extra_offset;
-
-			if (!extra_offset) {
-				i--;
-			} else {
-				e_len = extra_offset;
-				size -= e_len;
-				to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
-			}
-
-			extra_len = RTE_MIN(extra_len, size);
-			/* Insert extra data ptr */
-			if (extra_len) {
-				i++;
-				to = &list[i >> 2];
-				to->u.s.len[i % 4] =
-					rte_cpu_to_be_16(extra_len);
-				to->ptr[i % 4] = rte_cpu_to_be_64(
-					(uint64_t)extra_buf->vaddr);
-				size -= extra_len;
-			}
-
-			next_len = RTE_MIN(next_len, size);
-			/* insert the rest of the data */
-			if (next_len) {
-				i++;
-				to = &list[i >> 2];
-				to->u.s.len[i % 4] = rte_cpu_to_be_16(next_len);
-				to->ptr[i % 4] = rte_cpu_to_be_64(next_vaddr);
-				size -= next_len;
-			}
-			extra_len = 0;
-
-		} else {
-			size -= e_len;
-		}
-		if (extra_offset)
-			extra_offset -= size;
-		i++;
-
-		if (unlikely(!size))
-			break;
-	}
-
-	*psize = size;
-	return (uint32_t)i;
-}
-
-static __rte_always_inline uint32_t
-fill_sg2_comp(struct roc_se_sg2list_comp *list, uint32_t i, phys_addr_t dma_addr, uint32_t size)
-{
-	struct roc_se_sg2list_comp *to = &list[i / 3];
-
-	to->u.s.len[i % 3] = (size);
-	to->ptr[i % 3] = (dma_addr);
-	to->u.s.valid_segs = (i % 3) + 1;
-	i++;
-	return i;
-}
-
-static __rte_always_inline uint32_t
-fill_sg2_comp_from_buf(struct roc_se_sg2list_comp *list, uint32_t i, struct roc_se_buf_ptr *from)
-{
-	struct roc_se_sg2list_comp *to = &list[i / 3];
-
-	to->u.s.len[i % 3] = (from->size);
-	to->ptr[i % 3] = ((uint64_t)from->vaddr);
-	to->u.s.valid_segs = (i % 3) + 1;
-	i++;
-	return i;
-}
-
-static __rte_always_inline uint32_t
-fill_sg2_comp_from_buf_min(struct roc_se_sg2list_comp *list, uint32_t i,
-			   struct roc_se_buf_ptr *from, uint32_t *psize)
-{
-	struct roc_se_sg2list_comp *to = &list[i / 3];
-	uint32_t size = *psize;
-	uint32_t e_len;
-
-	e_len = (size > from->size) ? from->size : size;
-	to->u.s.len[i % 3] = (e_len);
-	to->ptr[i % 3] = ((uint64_t)from->vaddr);
-	to->u.s.valid_segs = (i % 3) + 1;
-	*psize -= e_len;
-	i++;
-	return i;
-}
-
-static __rte_always_inline uint32_t
-fill_sg2_comp_from_iov(struct roc_se_sg2list_comp *list, uint32_t i, struct roc_se_iov_ptr *from,
-		       uint32_t from_offset, uint32_t *psize, struct roc_se_buf_ptr *extra_buf,
-		       uint32_t extra_offset)
-{
-	int32_t j;
-	uint32_t extra_len = extra_buf ? extra_buf->size : 0;
-	uint32_t size = *psize;
-
-	rte_prefetch2(psize);
-
-	for (j = 0; j < from->buf_cnt; j++) {
-		struct roc_se_sg2list_comp *to = &list[i / 3];
-		uint32_t buf_sz = from->bufs[j].size;
-		void *vaddr = from->bufs[j].vaddr;
-		uint64_t e_vaddr;
-		uint32_t e_len;
-
-		if (unlikely(from_offset)) {
-			if (from_offset >= buf_sz) {
-				from_offset -= buf_sz;
-				continue;
-			}
-			e_vaddr = (uint64_t)vaddr + from_offset;
-			e_len = (size > (buf_sz - from_offset)) ? (buf_sz - from_offset) : size;
-			from_offset = 0;
-		} else {
-			e_vaddr = (uint64_t)vaddr;
-			e_len = (size > buf_sz) ? buf_sz : size;
-		}
-
-		to->u.s.len[i % 3] = (e_len);
-		to->ptr[i % 3] = (e_vaddr);
-		to->u.s.valid_segs = (i % 3) + 1;
-
-		if (extra_len && (e_len >= extra_offset)) {
-			/* Break the data at given offset */
-			uint32_t next_len = e_len - extra_offset;
-			uint64_t next_vaddr = e_vaddr + extra_offset;
-
-			if (!extra_offset) {
-				i--;
-			} else {
-				e_len = extra_offset;
-				size -= e_len;
-				to->u.s.len[i % 3] = (e_len);
-			}
-
-			extra_len = RTE_MIN(extra_len, size);
-			/* Insert extra data ptr */
-			if (extra_len) {
-				i++;
-				to = &list[i / 3];
-				to->u.s.len[i % 3] = (extra_len);
-				to->ptr[i % 3] = ((uint64_t)extra_buf->vaddr);
-				to->u.s.valid_segs = (i % 3) + 1;
-				size -= extra_len;
-			}
-
-			next_len = RTE_MIN(next_len, size);
-			/* insert the rest of the data */
-			if (next_len) {
-				i++;
-				to = &list[i / 3];
-				to->u.s.len[i % 3] = (next_len);
-				to->ptr[i % 3] = (next_vaddr);
-				to->u.s.valid_segs = (i % 3) + 1;
-				size -= next_len;
-			}
-			extra_len = 0;
-
-		} else {
-			size -= e_len;
-		}
-		if (extra_offset)
-			extra_offset -= size;
-		i++;
-
-		if (unlikely(!size))
-			break;
-	}
-
-	*psize = size;
-	return (uint32_t)i;
-}
-
 static __rte_always_inline int
 sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t offset_ctrl,
 	     uint8_t *iv_s, int iv_len, uint8_t pack_iv, uint8_t pdcp_alg_type, int32_t inputlen,
 	     int32_t outputlen, uint32_t passthrough_len, uint32_t req_flags, int pdcp_flag,
 	     int decrypt)
 {
+	struct roc_sglist_comp *gather_comp, *scatter_comp;
 	void *m_vaddr = params->meta_buf.vaddr;
-	struct roc_se_sglist_comp *gather_comp;
-	struct roc_se_sglist_comp *scatter_comp;
 	struct roc_se_buf_ptr *aad_buf = NULL;
 	uint32_t mac_len = 0, aad_len = 0;
 	struct roc_se_ctx *se_ctx;
@@ -485,7 +228,7 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 
 	m_vaddr = (uint8_t *)m_vaddr + ROC_SE_OFF_CTRL_LEN + RTE_ALIGN_CEIL(iv_len, 8);
 
-	inst->w4.s.opcode_major |= (uint64_t)ROC_SE_DMA_MODE;
+	inst->w4.s.opcode_major |= (uint64_t)ROC_DMA_MODE_SG;
 
 	/* iv offset is 0 */
 	*offset_vaddr = offset_ctrl;
@@ -503,7 +246,7 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 	/* DPTR has SG list */
 
 	/* TODO Add error check if space will be sufficient */
-	gather_comp = (struct roc_se_sglist_comp *)((uint8_t *)m_vaddr + 8);
+	gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_vaddr + 8);
 
 	/*
 	 * Input Gather List
@@ -562,13 +305,13 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 	((uint16_t *)in_buffer)[1] = 0;
 	((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
-	g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+	g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 	/*
 	 * Output Scatter List
 	 */
 
 	i = 0;
-	scatter_comp = (struct roc_se_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
+	scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 	if (zsk_flags == 0x1) {
 		/* IV in SLIST only for EEA3 & UEA2 or for F8 */
@@ -626,9 +369,9 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 		}
 	}
 	((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
-	s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+	s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
-	size = g_size_bytes + s_size_bytes + ROC_SE_SG_LIST_HDR_SIZE;
+	size = g_size_bytes + s_size_bytes + ROC_SG_LIST_HDR_SIZE;
 
 	/* This is DPTR len in case of SG mode */
 	inst->w4.s.dlen = size;
@@ -643,18 +386,17 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 	      int32_t outputlen, uint32_t passthrough_len, uint32_t req_flags, int pdcp_flag,
 	      int decrypt)
 {
+	struct roc_sg2list_comp *gather_comp, *scatter_comp;
 	void *m_vaddr = params->meta_buf.vaddr;
-	uint32_t i, g_size_bytes;
-	struct roc_se_sg2list_comp *gather_comp;
-	struct roc_se_sg2list_comp *scatter_comp;
 	struct roc_se_buf_ptr *aad_buf = NULL;
-	struct roc_se_ctx *se_ctx;
-	uint64_t *offset_vaddr;
 	uint32_t mac_len = 0, aad_len = 0;
-	int zsk_flags;
-	uint32_t size;
 	union cpt_inst_w5 cpt_inst_w5;
 	union cpt_inst_w6 cpt_inst_w6;
+	struct roc_se_ctx *se_ctx;
+	uint32_t i, g_size_bytes;
+	uint64_t *offset_vaddr;
+	int zsk_flags;
+	uint32_t size;
 	uint8_t *iv_d;
 
 	se_ctx = params->ctx;
@@ -672,7 +414,7 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 
 	m_vaddr = (uint8_t *)m_vaddr + ROC_SE_OFF_CTRL_LEN + RTE_ALIGN_CEIL(iv_len, 8);
 
-	inst->w4.s.opcode_major |= (uint64_t)ROC_SE_DMA_MODE;
+	inst->w4.s.opcode_major |= (uint64_t)ROC_DMA_MODE_SG;
 
 	/* iv offset is 0 */
 	*offset_vaddr = offset_ctrl;
@@ -689,7 +431,7 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 	/* DPTR has SG list */
 
 	/* TODO Add error check if space will be sufficient */
-	gather_comp = (struct roc_se_sg2list_comp *)((uint8_t *)m_vaddr);
+	gather_comp = (struct roc_sg2list_comp *)((uint8_t *)m_vaddr);
 
 	/*
 	 * Input Gather List
@@ -746,13 +488,13 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 
 	cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 
-	g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_se_sg2list_comp);
+	g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_sg2list_comp);
 	/*
 	 * Output Scatter List
 	 */
 
 	i = 0;
-	scatter_comp = (struct roc_se_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
+	scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 	if (zsk_flags == 0x1) {
 		/* IV in SLIST only for EEA3 & UEA2 or for F8 */
@@ -829,16 +571,15 @@ static __rte_always_inline int
 cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_params *params,
 			    struct cpt_inst_s *inst)
 {
+	struct roc_sglist_comp *gather_comp, *scatter_comp;
 	void *m_vaddr = params->meta_buf.vaddr;
-	uint32_t size, i;
+	uint32_t g_size_bytes, s_size_bytes;
 	uint16_t data_len, mac_len, key_len;
+	union cpt_inst_w4 cpt_inst_w4;
 	roc_se_auth_type hash_type;
 	struct roc_se_ctx *ctx;
-	struct roc_se_sglist_comp *gather_comp;
-	struct roc_se_sglist_comp *scatter_comp;
 	uint8_t *in_buffer;
-	uint32_t g_size_bytes, s_size_bytes;
-	union cpt_inst_w4 cpt_inst_w4;
+	uint32_t size, i;
 
 	ctx = params->ctx;
 
@@ -851,13 +592,11 @@ cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 	cpt_inst_w4.s.opcode_minor = 0;
 	cpt_inst_w4.s.param2 = ((uint16_t)hash_type << 8) | mac_len;
 	if (ctx->hmac) {
-		cpt_inst_w4.s.opcode_major =
-			ROC_SE_MAJOR_OP_HMAC | ROC_SE_DMA_MODE;
+		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_HMAC | ROC_DMA_MODE_SG;
 		cpt_inst_w4.s.param1 = key_len;
 		cpt_inst_w4.s.dlen = data_len + RTE_ALIGN_CEIL(key_len, 8);
 	} else {
-		cpt_inst_w4.s.opcode_major =
-			ROC_SE_MAJOR_OP_HASH | ROC_SE_DMA_MODE;
+		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_HASH | ROC_DMA_MODE_SG;
 		cpt_inst_w4.s.param1 = 0;
 		cpt_inst_w4.s.dlen = data_len;
 	}
@@ -878,7 +617,7 @@ cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 	((uint16_t *)in_buffer)[1] = 0;
 
 	/* TODO Add error check if space will be sufficient */
-	gather_comp = (struct roc_se_sglist_comp *)((uint8_t *)m_vaddr + 8);
+	gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_vaddr + 8);
 
 	/*
 	 * Input gather list
@@ -901,15 +640,14 @@ cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 		return -1;
 	}
 	((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
-	g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+	g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
 	/*
 	 * Output Gather list
 	 */
 
 	i = 0;
-	scatter_comp = (struct roc_se_sglist_comp *)((uint8_t *)gather_comp +
-						     g_size_bytes);
+	scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 	if (flags & ROC_SE_VALID_MAC_BUF) {
 		if (unlikely(params->mac_buf.size < mac_len)) {
@@ -932,9 +670,9 @@ cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 	}
 
 	((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
-	s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+	s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
-	size = g_size_bytes + s_size_bytes + ROC_SE_SG_LIST_HDR_SIZE;
+	size = g_size_bytes + s_size_bytes + ROC_SG_LIST_HDR_SIZE;
 
 	/* This is DPTR len in case of SG mode */
 	cpt_inst_w4.s.dlen = size;
@@ -949,17 +687,16 @@ static __rte_always_inline int
 cpt_digest_gen_sg_ver2_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_params *params,
 			    struct cpt_inst_s *inst)
 {
+	struct roc_sg2list_comp *gather_comp, *scatter_comp;
 	void *m_vaddr = params->meta_buf.vaddr;
-	uint32_t size, i;
 	uint16_t data_len, mac_len, key_len;
-	roc_se_auth_type hash_type;
-	struct roc_se_ctx *ctx;
-	struct roc_se_sg2list_comp *gather_comp;
-	struct roc_se_sg2list_comp *scatter_comp;
+	union cpt_inst_w4 cpt_inst_w4;
 	union cpt_inst_w5 cpt_inst_w5;
 	union cpt_inst_w6 cpt_inst_w6;
+	roc_se_auth_type hash_type;
+	struct roc_se_ctx *ctx;
 	uint32_t g_size_bytes;
-	union cpt_inst_w4 cpt_inst_w4;
+	uint32_t size, i;
 
 	ctx = params->ctx;
 
@@ -993,7 +730,7 @@ cpt_digest_gen_sg_ver2_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 	/* DPTR has SG list */
 
 	/* TODO Add error check if space will be sufficient */
-	gather_comp = (struct roc_se_sg2list_comp *)((uint8_t *)m_vaddr + 0);
+	gather_comp = (struct roc_sg2list_comp *)((uint8_t *)m_vaddr + 0);
 
 	/*
 	 * Input gather list
@@ -1016,14 +753,14 @@ cpt_digest_gen_sg_ver2_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 	}
 	cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 
-	g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_se_sg2list_comp);
+	g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_sg2list_comp);
 
 	/*
 	 * Output Gather list
 	 */
 
 	i = 0;
-	scatter_comp = (struct roc_se_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
+	scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 	if (flags & ROC_SE_VALID_MAC_BUF) {
 		if (unlikely(params->mac_buf.size < mac_len)) {
@@ -1482,8 +1219,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
 
 	} else {
-
-		struct roc_se_sglist_comp *scatter_comp, *gather_comp;
+		struct roc_sglist_comp *scatter_comp, *gather_comp;
 		void *m_vaddr = params->meta_buf.vaddr;
 		uint32_t i, g_size_bytes, s_size_bytes;
 		uint8_t *in_buffer;
@@ -1494,7 +1230,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 		m_vaddr = PLT_PTR_ADD(m_vaddr, ROC_SE_OFF_CTRL_LEN + RTE_ALIGN_CEIL(hdr_len, 8));
 
-		cpt_inst_w4.s.opcode_major |= (uint64_t)ROC_SE_DMA_MODE;
+		cpt_inst_w4.s.opcode_major |= (uint64_t)ROC_DMA_MODE_SG;
 
 		/* DPTR has SG list */
 		in_buffer = m_vaddr;
@@ -1502,8 +1238,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		((uint16_t *)in_buffer)[0] = 0;
 		((uint16_t *)in_buffer)[1] = 0;
 
-		gather_comp =
-			(struct roc_se_sglist_comp *)((uint8_t *)m_vaddr + 8);
+		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_vaddr + 8);
 
 		/* Input Gather List */
 		i = 0;
@@ -1536,15 +1271,14 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 			}
 		}
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
-		g_size_bytes =
-			((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
 		/*
 		 * Output Scatter List
 		 */
 
 		i = 0;
-		scatter_comp = (struct roc_se_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
+		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 		if ((hdr_len)) {
 			i = fill_sg_comp(scatter_comp, i,
@@ -1573,10 +1307,9 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		}
 
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
-		s_size_bytes =
-			((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
-		size = g_size_bytes + s_size_bytes + ROC_SE_SG_LIST_HDR_SIZE;
+		size = g_size_bytes + s_size_bytes + ROC_SG_LIST_HDR_SIZE;
 
 		/* This is DPTR len in case of SG mode */
 		cpt_inst_w4.s.dlen = size;
@@ -1800,7 +1533,7 @@ cpt_kasumi_enc_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		}
 	}
 
-	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_SE_DMA_MODE;
+	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_DMA_MODE_SG;
 
 	/* Indicate ECB/CBC, direction, CTX from CPTR, IV from DPTR */
 	cpt_inst_w4.s.opcode_minor =
@@ -1841,11 +1574,11 @@ cpt_kasumi_dec_prep(uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_params *p
 	flags = se_ctx->zsk_flags;
 
 	cpt_inst_w4.u64 = 0;
-	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_SE_DMA_MODE;
+	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_DMA_MODE_SG;
 
 	/* indicates ECB/CBC, direction, ctx from cptr, iv from dptr */
-	cpt_inst_w4.s.opcode_minor = ((1 << 6) | (se_ctx->k_ecb << 5) |
-				      (dir << 4) | (0 << 3) | (flags & 0x7));
+	cpt_inst_w4.s.opcode_minor =
+		((1 << 6) | (se_ctx->k_ecb << 5) | (dir << 4) | (0 << 3) | (flags & 0x7));
 
 	/*
 	 * GP op header, lengths are expected in bits.
@@ -2290,28 +2023,8 @@ fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	return 0;
 }
 
-static __rte_always_inline void *
-alloc_op_meta(struct roc_se_buf_ptr *buf, int32_t len,
-	      struct rte_mempool *cpt_meta_pool,
-	      struct cpt_inflight_req *infl_req)
-{
-	uint8_t *mdata;
-
-	if (unlikely(rte_mempool_get(cpt_meta_pool, (void **)&mdata) < 0))
-		return NULL;
-
-	buf->vaddr = mdata;
-	buf->size = len;
-
-	infl_req->mdata = mdata;
-	infl_req->op_flags |= CPT_OP_FLAGS_METABUF;
-
-	return mdata;
-}
-
 static __rte_always_inline uint32_t
-prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec,
-		     uint32_t start_offset)
+prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_t start_offset)
 {
 	uint16_t index = 0;
 	void *seg_data = NULL;

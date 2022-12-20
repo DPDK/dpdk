@@ -30,10 +30,22 @@ cnxk_cpt_get_mlen(void)
 	/* For PDCP_CHAIN passthrough alignment */
 	len += 8;
 	len += ROC_SE_OFF_CTRL_LEN + ROC_CPT_AES_CBC_IV_LEN;
-	len += RTE_ALIGN_CEIL(
-		(ROC_SE_SG_LIST_HDR_SIZE +
-		 (RTE_ALIGN_CEIL(ROC_SE_MAX_SG_IN_OUT_CNT, 4) >> 2) * ROC_SE_SG_ENTRY_SIZE),
-		8);
+	len += RTE_ALIGN_CEIL((ROC_SG_LIST_HDR_SIZE +
+			       (RTE_ALIGN_CEIL(ROC_MAX_SG_IN_OUT_CNT, 4) >> 2) * ROC_SG_ENTRY_SIZE),
+			      8);
+
+	return len;
+}
+
+static int
+cnxk_cpt_sec_get_mlen(void)
+{
+	uint32_t len;
+
+	len = ROC_IE_ON_OUTB_DPTR_HDR + ROC_IE_ON_MAX_IV_LEN;
+	len += RTE_ALIGN_CEIL((ROC_SG_LIST_HDR_SIZE +
+			       (RTE_ALIGN_CEIL(ROC_MAX_SG_IN_OUT_CNT, 4) >> 2) * ROC_SG_ENTRY_SIZE),
+			      8);
 
 	return len;
 }
@@ -194,6 +206,11 @@ cnxk_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 	if (dev->feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) {
 		/* Get meta len */
 		mlen = cnxk_cpt_get_mlen();
+	}
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_SECURITY) {
+		/* Get meta len for security operations */
+		mlen = cnxk_cpt_sec_get_mlen();
 	}
 
 	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {

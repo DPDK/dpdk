@@ -158,4 +158,23 @@ pending_queue_free_cnt(uint64_t head, uint64_t tail, const uint64_t mask)
 	return mask - pending_queue_infl_cnt(head, tail, mask);
 }
 
+static __rte_always_inline void *
+alloc_op_meta(struct roc_se_buf_ptr *buf, int32_t len, struct rte_mempool *cpt_meta_pool,
+	      struct cpt_inflight_req *infl_req)
+{
+	uint8_t *mdata;
+
+	if (unlikely(rte_mempool_get(cpt_meta_pool, (void **)&mdata) < 0))
+		return NULL;
+
+	if (likely(buf)) {
+		buf->vaddr = mdata;
+		buf->size = len;
+	}
+
+	infl_req->mdata = mdata;
+	infl_req->op_flags |= CPT_OP_FLAGS_METABUF;
+
+	return mdata;
+}
 #endif /* _CNXK_CRYPTODEV_OPS_H_ */
