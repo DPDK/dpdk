@@ -78,6 +78,8 @@ INTERNAL {
 	roc_cpt_parse_hdr_dump;
 	roc_cpt_rxc_time_cfg;
 	roc_cpt_ctx_write;
+	roc_cpt_int_misc_cb_register;
+	roc_cpt_int_misc_cb_unregister;
 	roc_dpi_configure;
 	roc_dpi_dev_fini;
 	roc_dpi_dev_init;
