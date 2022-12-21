@@ -29,8 +29,6 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 
 	switch (compl_desc->type) {
 	case GVE_COMPL_TYPE_DQO_DESC:
-		if (compl_tag % 32)
-			return;
 		/* need to clean Descs from last_cleaned to compl_tag */
 		if (aim_txq->last_desc_cleaned > compl_tag)
 			nb_desc_clean = aim_txq->nb_tx_desc - aim_txq->last_desc_cleaned +
@@ -134,10 +132,6 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	/* update the tail pointer if any packets were processed */
 	if (nb_tx > 0) {
-		rte_write32(tx_id, txq->qtx_tail);
-		txq->tx_tail = tx_id;
-		txq->sw_tail = sw_id;
-
 		/* Request a descriptor completion on the last descriptor */
 		txq->re_cnt += nb_tx;
 		if (txq->re_cnt >= GVE_TX_MIN_RE_INTERVAL) {
@@ -145,6 +139,10 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txd->pkt.report_event = true;
 			txq->re_cnt = 0;
 		}
+
+		rte_write32(tx_id, txq->qtx_tail);
+		txq->tx_tail = tx_id;
+		txq->sw_tail = sw_id;
 
 		txq->packets += nb_tx;
 		txq->bytes += bytes;
