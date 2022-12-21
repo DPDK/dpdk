@@ -103,6 +103,9 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev,
 			return ret;
 		}
 	}
+	roc_cpt->opaque = dev;
+	/* Register callback to handle CPT_MISC_INT */
+	roc_cpt_int_misc_cb_register(cnxk_cpt_int_misc_cb, NULL);
 
 	return 0;
 }
@@ -162,6 +165,11 @@ cnxk_cpt_dev_close(struct rte_cryptodev *dev)
 		roc_ae_ec_grp_put();
 	}
 
+	ret = roc_cpt_int_misc_cb_unregister(cnxk_cpt_int_misc_cb, NULL);
+	if (ret < 0) {
+		plt_err("Could not unregister CPT_MISC_INT cb");
+		return ret;
+	}
 	roc_cpt_dev_clear(&vf->cpt);
 
 	return 0;

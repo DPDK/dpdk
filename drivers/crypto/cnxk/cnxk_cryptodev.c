@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <cryptodev_pmd.h>
 #include <rte_cryptodev.h>
 
 #include "roc_cpt.h"
@@ -55,4 +56,15 @@ cnxk_cpt_eng_grp_add(struct roc_cpt *roc_cpt)
 	}
 
 	return 0;
+}
+
+void
+cnxk_cpt_int_misc_cb(struct roc_cpt_lf *lf, __rte_unused void *args)
+{
+	struct roc_cpt *roc_cpt = lf->roc_cpt;
+
+	if (roc_cpt == NULL)
+		return;
+
+	rte_cryptodev_pmd_callback_process(roc_cpt->opaque, RTE_CRYPTODEV_EVENT_ERROR);
 }

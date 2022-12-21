@@ -31,5 +31,6 @@ struct cnxk_cpt_vf {
 uint64_t cnxk_cpt_default_ff_get(void);
 int cnxk_cpt_eng_grp_add(struct roc_cpt *roc_cpt);
 int cnxk_cpt_parse_devargs(struct rte_devargs *devargs, struct cnxk_cpt_vf *vf);
+void cnxk_cpt_int_misc_cb(struct roc_cpt_lf *lf, void *args);
 
 #endif /* _CNXK_CRYPTODEV_H_ */
