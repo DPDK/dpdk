@@ -1849,9 +1849,10 @@ int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,
 		key_convert = ICP_QAT_HW_CIPHER_NO_CONVERT;
 	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2
 		|| cdesc->qat_cipher_alg ==
-			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3)
+			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3) {
 		key_convert = ICP_QAT_HW_CIPHER_KEY_CONVERT;
-	else if (cdesc->qat_dir == ICP_QAT_HW_CIPHER_ENCRYPT)
+		cdesc->qat_dir = ICP_QAT_HW_CIPHER_ENCRYPT;
+	} else if (cdesc->qat_dir == ICP_QAT_HW_CIPHER_ENCRYPT)
 		key_convert = ICP_QAT_HW_CIPHER_NO_CONVERT;
 	else if (cdesc->qat_mode == ICP_QAT_HW_CIPHER_AEAD_MODE)
 		key_convert = ICP_QAT_HW_CIPHER_NO_CONVERT;
