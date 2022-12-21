@@ -451,6 +451,13 @@ typedef int (*cryptodev_session_event_mdata_set_t)(
 	enum rte_crypto_op_sess_type sess_type,
 	void *ev_mdata);
 
+/**
+ * @internal Query queue pair error interrupt event.
+ * @see rte_cryptodev_queue_pair_event_error_query()
+ */
+typedef int (*cryptodev_queue_pair_event_error_query_t)(struct rte_cryptodev *dev,
+					uint16_t qp_id);
+
 /** Crypto device operations function pointer table */
 struct rte_cryptodev_ops {
 	cryptodev_configure_t dev_configure;	/**< Configure device. */
@@ -497,6 +504,8 @@ struct rte_cryptodev_ops {
 	};
 	cryptodev_session_event_mdata_set_t session_ev_mdata_set;
 	/**< Set a Crypto or Security session even meta data. */
+	cryptodev_queue_pair_event_error_query_t queue_pair_event_error_query;
+	/**< Query queue error interrupt event */
 };
 
 

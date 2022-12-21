@@ -923,6 +923,25 @@ rte_cryptodev_callback_unregister(uint8_t dev_id,
 		enum rte_cryptodev_event_type event,
 		rte_cryptodev_cb_fn cb_fn, void *cb_arg);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Query a cryptodev queue pair if there are pending RTE_CRYPTODEV_EVENT_ERROR
+ * events.
+ *
+ * @param          dev_id	The device identifier.
+ * @param          qp_id	Queue pair index to be queried.
+ *
+ * @return
+ *   - 1 if requested queue has a pending event.
+ *   - 0 if no pending event is found.
+ *   - a negative value on failure
+ */
+__rte_experimental
+int
+rte_cryptodev_queue_pair_event_error_query(uint8_t dev_id, uint16_t qp_id);
+
 struct rte_cryptodev_callback;
 
 /** Structure to keep track of registered callbacks */
