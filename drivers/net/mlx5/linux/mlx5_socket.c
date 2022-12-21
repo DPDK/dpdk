@@ -21,6 +21,7 @@
 /* PMD socket service for tools. */
 
 #define MLX5_SOCKET_PATH "/var/tmp/dpdk_net_mlx5_%d"
+#define MLX5_ALL_PORT_IDS 0xffff
 
 int server_socket = -1; /* Unix socket for primary process. */
 struct rte_intr_handle *server_intr_handle; /* Interrupt handler. */
@@ -35,7 +36,7 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 	int ret;
 	struct cmsghdr *cmsg = NULL;
 	uint32_t data[MLX5_SENDMSG_MAX / sizeof(uint32_t)];
-	uint64_t flow_ptr = 0;
+	struct rte_flow *flow_ptr = NULL;
 	uint8_t  buf[CMSG_SPACE(sizeof(int))] = { 0 };
 	struct iovec io = {
 		.iov_base = data,
@@ -92,24 +93,36 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 	dump_req = (struct mlx5_flow_dump_req *)msg.msg_iov->iov_base;
 	if (dump_req) {
 		port_id = dump_req->port_id;
-		flow_ptr = dump_req->flow_id;
+		flow_ptr = (struct rte_flow *)((uintptr_t)dump_req->flow_id);
 	} else {
 		DRV_LOG(WARNING, "Invalid message");
 		goto error;
 	}
 
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		DRV_LOG(WARNING, "Invalid port %u", port_id);
-		goto error;
-	}
+	if (port_id == MLX5_ALL_PORT_IDS) {
+		/* Dump all port ids */
+		if (flow_ptr) {
+			DRV_LOG(WARNING, "Flow ptr unsupported with given port id");
+			goto error;
+		}
 
-	/* Dump flow. */
-	dev = &rte_eth_devices[port_id];
-	if (flow_ptr == 0)
-		ret = mlx5_flow_dev_dump(dev, NULL, file, NULL);
-	else
-		ret = mlx5_flow_dev_dump(dev,
-			(struct rte_flow *)((uintptr_t)flow_ptr), file, &err);
+		MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+			dev = &rte_eth_devices[port_id];
+			ret = mlx5_flow_dev_dump(dev, NULL, file, &err);
+			if (ret)
+				break;
+		}
+	} else {
+		/* Dump single port id */
+		if (!rte_eth_dev_is_valid_port(port_id)) {
+			DRV_LOG(WARNING, "Invalid port %u", port_id);
+			goto error;
+		}
+
+		/* Dump flow */
+		dev = &rte_eth_devices[port_id];
+		ret = mlx5_flow_dev_dump(dev, flow_ptr, file, &err);
+	}
 
 	/* Set-up the ancillary data and reply. */
 	msg.msg_controllen = 0;
