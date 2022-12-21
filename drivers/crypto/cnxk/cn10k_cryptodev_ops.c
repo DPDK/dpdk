@@ -1091,4 +1091,5 @@ struct rte_cryptodev_ops cn10k_cpt_ops = {
 
 	/* Event crypto ops */
 	.session_ev_mdata_set = cn10k_cpt_crypto_adapter_ev_mdata_set,
+	.queue_pair_event_error_query = cnxk_cpt_queue_pair_event_error_query,
 };

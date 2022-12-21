@@ -119,6 +119,7 @@ struct roc_cpt_lf {
 	uint64_t io_addr;
 	uint8_t *iq_vaddr;
 	struct roc_nix *inl_outb_nix;
+	uint8_t error_event_pending;
 } __plt_cache_aligned;
 
 struct roc_cpt {

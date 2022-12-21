@@ -125,6 +125,7 @@ int cnxk_ae_session_cfg(struct rte_cryptodev *dev,
 			struct rte_crypto_asym_xform *xform,
 			struct rte_cryptodev_asym_session *sess);
 void cnxk_cpt_dump_on_err(struct cnxk_cpt_qp *qp);
+int cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp_id);
 
 static __rte_always_inline void
 pending_queue_advance(uint64_t *index, const uint64_t mask)

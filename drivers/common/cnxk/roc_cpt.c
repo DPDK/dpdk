@@ -63,8 +63,10 @@ cpt_lf_misc_irq(void *param)
 	/* Clear interrupt */
 	plt_write64(intr, lf->rbase + CPT_LF_MISC_INT);
 
-	if (int_cb.cb != NULL)
+	if (int_cb.cb != NULL) {
+		lf->error_event_pending = 1;
 		int_cb.cb(lf, int_cb.cb_args);
+	}
 }
 
 static int

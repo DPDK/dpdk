@@ -841,3 +841,18 @@ cnxk_cpt_dump_on_err(struct cnxk_cpt_qp *qp)
 	plt_print("");
 	roc_cpt_afs_print(qp->lf.roc_cpt);
 }
+
+int
+cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp_id)
+{
+	struct cnxk_cpt_vf *vf = dev->data->dev_private;
+	struct roc_cpt *roc_cpt = &vf->cpt;
+	struct roc_cpt_lf *lf;
+
+	lf = roc_cpt->lf[qp_id];
+	if (lf && lf->error_event_pending) {
+		lf->error_event_pending = 0;
+		return 1;
+	}
+	return 0;
+}
