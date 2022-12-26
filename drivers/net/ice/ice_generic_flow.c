@@ -2030,6 +2030,14 @@ ice_flow_valid_attr(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
+	/* Not supported */
+	if (attr->transfer) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				   attr, "Not support transfer.");
+		return -rte_errno;
+	}
+
 	/* Check pipeline mode support to set classification stage */
 	if (ad->devargs.pipe_mode_support) {
 		if (attr->priority == 0)
