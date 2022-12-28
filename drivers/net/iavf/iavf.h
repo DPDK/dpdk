@@ -262,6 +262,7 @@ struct iavf_info {
 	struct iavf_qv_map *qv_map; /* queue vector mapping */
 	struct iavf_flow_list flow_list;
 	rte_spinlock_t flow_ops_lock;
+	rte_spinlock_t aq_lock;
 	struct iavf_parser_list rss_parser_list;
 	struct iavf_parser_list dist_parser_list;
 	struct iavf_parser_list ipsec_crypto_parser_list;
