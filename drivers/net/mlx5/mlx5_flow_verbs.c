@@ -2132,4 +2132,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
 	.query = flow_verbs_query,
 	.sync_domain = flow_verbs_sync_domain,
 	.discover_priorities = flow_verbs_discover_priorities,
+	.get_aged_flows = flow_null_get_aged_flows,
+	.counter_alloc = flow_null_counter_allocate,
+	.counter_free = flow_null_counter_free,
+	.counter_query = flow_null_counter_query,
 };

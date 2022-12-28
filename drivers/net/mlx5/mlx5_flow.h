@@ -2579,6 +2579,19 @@ int flow_dv_translate_items_hws(const struct rte_flow_item *items,
 int mlx5_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
 				  uint16_t *proxy_port_id,
 				  struct rte_flow_error *error);
+int flow_null_get_aged_flows(struct rte_eth_dev *dev,
+		    void **context,
+		    uint32_t nb_contexts,
+		    struct rte_flow_error *error);
+uint32_t flow_null_counter_allocate(struct rte_eth_dev *dev);
+void flow_null_counter_free(struct rte_eth_dev *dev,
+			uint32_t counter);
+int flow_null_counter_query(struct rte_eth_dev *dev,
+			uint32_t counter,
+			bool clear,
+		    uint64_t *pkts,
+			uint64_t *bytes,
+			void **action);
 
 int mlx5_flow_hw_flush_ctrl_flows(struct rte_eth_dev *dev);
 
