@@ -50,13 +50,12 @@ Compiling the Application
     * https://github.com/01org/intel-cmt-cat
 
 
-#. To compile the application export the path to PQoS lib
-   and the DPDK source tree and go to the example directory:
+To compile the application, export the path to PQoS lib:
 
-   .. code-block:: console
+.. code-block:: console
 
-       export PQOS_INSTALL_PATH=/path/to/libpqos
-
+   export CFLAGS=-I/path/to/intel-cmt-cat/include
+   export LDFLAGS=-L/path/to/intel-cmt-cat/lib
 
 To compile the sample application see :doc:`compiling`.
 
