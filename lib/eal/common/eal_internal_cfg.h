@@ -100,6 +100,7 @@ struct internal_config {
 	volatile unsigned int init_complete;
 	/**< indicates whether EAL has completed initialization */
 	unsigned int no_telemetry; /**< true to disable Telemetry */
+	unsigned int no_syslog; /**< true to disable syslog */
 	struct simd_bitwidth max_simd_bitwidth;
 	/**< max simd bitwidth path to use */
 	size_t huge_worker_stack_size; /**< worker thread stack size */

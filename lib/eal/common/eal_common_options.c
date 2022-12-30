@@ -63,6 +63,7 @@ eal_short_options[] =
 	"n:" /* memory channels */
 	"r:" /* memory ranks */
 	"v"  /* version */
+	"p" /* syslog */
 	;
 
 const struct option
@@ -350,6 +351,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->init_complete = 0;
 	internal_cfg->max_simd_bitwidth.bitwidth = RTE_VECT_DEFAULT_SIMD_BITWIDTH;
 	internal_cfg->max_simd_bitwidth.forced = 0;
+	internal_cfg->no_syslog = 0;
 }
 
 static int
@@ -1757,7 +1759,9 @@ eal_parse_common_option(int opt, const char *optarg,
 		 * even if info or warning messages are disabled */
 		RTE_LOG(CRIT, EAL, "RTE Version: '%s'\n", rte_version());
 		break;
-
+	case 'p':
+		conf->no_syslog = 1;
+		break;
 	/* long options */
 	case OPT_HUGE_UNLINK_NUM:
 		if (eal_parse_huge_unlink(optarg, &conf->hugepage_file) < 0) {
@@ -2227,6 +2231,9 @@ eal_common_usage(void)
 	       "                      must be specified once only.\n"
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 	       "  -v                  Display version information on startup\n"
+	       "  -p                  Enable EAL messages to be sent to syslog as well.\n"
+	       "                      Default behaviour is to print the messages to stdout\n"
+	       "                      respectively to stderr.\n"
 	       "  -h, --help          This help\n"
 	       "  --"OPT_IN_MEMORY"   Operate entirely in memory. This will\n"
 	       "                      disable secondary process support\n"

@@ -1166,11 +1166,13 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	if (eal_log_init(logid, internal_conf->syslog_facility) < 0) {
-		rte_eal_init_alert("Cannot init logging.");
-		rte_errno = ENOMEM;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
-		return -1;
+	if (internal_conf->no_syslog == 0) {
+		if (eal_log_init(logid, internal_conf->syslog_facility) < 0) {
+			rte_eal_init_alert("Cannot init logging.");
+			rte_errno = ENOMEM;
+			__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+			return -1;
+		}
 	}
 
 #ifdef VFIO_PRESENT
