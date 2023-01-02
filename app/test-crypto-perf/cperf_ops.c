@@ -690,7 +690,7 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 		.action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
 		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
 		{.ipsec = {
-			.spi = rte_lcore_id(),
+			.spi = rte_lcore_id() + 1,
 			/**< For testing sake, lcore_id is taken as SPI so that
 			 * for every core a different session is created.
 			 */
