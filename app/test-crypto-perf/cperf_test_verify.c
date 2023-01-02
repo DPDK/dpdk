@@ -38,14 +38,27 @@ struct cperf_op_result {
 static void
 cperf_verify_test_free(struct cperf_verify_ctx *ctx)
 {
-	if (ctx) {
-		if (ctx->sess)
+	if (ctx == NULL)
+		return;
+
+	if (ctx->sess != NULL) {
+		if (ctx->options->op_type == CPERF_ASYM_MODEX)
+			rte_cryptodev_asym_session_free(ctx->dev_id, ctx->sess);
+#ifdef RTE_LIB_SECURITY
+		else if (ctx->options->op_type == CPERF_PDCP ||
+			 ctx->options->op_type == CPERF_DOCSIS ||
+			 ctx->options->op_type == CPERF_IPSEC) {
+			struct rte_security_ctx *sec_ctx =
+				rte_cryptodev_get_sec_ctx(ctx->dev_id);
+			rte_security_session_destroy(sec_ctx, ctx->sess);
+		}
+#endif
+		else
 			rte_cryptodev_sym_session_free(ctx->dev_id, ctx->sess);
-
-		rte_mempool_free(ctx->pool);
-
-		rte_free(ctx);
 	}
+
+	rte_mempool_free(ctx->pool);
+	rte_free(ctx);
 }
 
 void *
