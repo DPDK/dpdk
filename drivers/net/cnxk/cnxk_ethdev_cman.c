@@ -68,6 +68,11 @@ nix_cman_config_validate(struct rte_eth_dev *eth_dev, const struct rte_eth_cman_
 		return -EINVAL;
 	}
 
+	if (config->mode_param.red.min_th > config->mode_param.red.max_th) {
+		plt_err("RED minimum threshold must be less or equal to maximum threshold");
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
