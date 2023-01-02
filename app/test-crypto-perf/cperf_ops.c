@@ -42,8 +42,7 @@ test_ipsec_vec_populate(struct rte_mbuf *m, const struct cperf_options *options,
 {
 	struct rte_ipv4_hdr *ip = rte_pktmbuf_mtod(m, struct rte_ipv4_hdr *);
 
-	if ((options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT) ||
-		(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)) {
+	if (options->is_outbound) {
 		memcpy(ip, test_vector->plaintext.data,
 		       sizeof(struct rte_ipv4_hdr));
 
@@ -645,8 +644,9 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset)
 {
-	struct rte_crypto_sym_xform xform = {0};
 	struct rte_crypto_sym_xform auth_xform = {0};
+	struct rte_crypto_sym_xform *crypto_xform;
+	struct rte_crypto_sym_xform xform = {0};
 
 	if (options->aead_algo != 0) {
 		/* Setup AEAD Parameters */
@@ -660,10 +660,10 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 		xform.aead.iv.length = test_vector->aead_iv.length;
 		xform.aead.digest_length = options->digest_sz;
 		xform.aead.aad_length = options->aead_aad_sz;
+		crypto_xform = &xform;
 	} else if (options->cipher_algo != 0 && options->auth_algo != 0) {
 		/* Setup Cipher Parameters */
 		xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-		xform.next = NULL;
 		xform.cipher.algo = options->cipher_algo;
 		xform.cipher.op = options->cipher_op;
 		xform.cipher.iv.offset = iv_offset;
@@ -680,7 +680,6 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 
 		/* Setup Auth Parameters */
 		auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-		auth_xform.next = NULL;
 		auth_xform.auth.algo = options->auth_algo;
 		auth_xform.auth.op = options->auth_op;
 		auth_xform.auth.iv.offset = iv_offset +
@@ -699,7 +698,15 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 			auth_xform.auth.iv.length = 0;
 		}
 
-		xform.next = &auth_xform;
+		if (options->is_outbound) {
+			crypto_xform = &xform;
+			xform.next = &auth_xform;
+			auth_xform.next = NULL;
+		} else {
+			crypto_xform = &auth_xform;
+			auth_xform.next = &xform;
+			xform.next = NULL;
+		}
 	} else {
 		return NULL;
 	}
@@ -729,22 +736,18 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 			.salt = CPERF_IPSEC_SALT,
 			.options = { 0 },
 			.replay_win_sz = 0,
-			.direction =
-				((options->cipher_op ==
-					RTE_CRYPTO_CIPHER_OP_ENCRYPT) &&
-				(options->auth_op ==
-					RTE_CRYPTO_AUTH_OP_GENERATE)) ||
-				(options->aead_op ==
-					RTE_CRYPTO_AEAD_OP_ENCRYPT) ?
-				RTE_SECURITY_IPSEC_SA_DIR_EGRESS :
-				RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.tunnel = tunnel,
 		} },
 		.userdata = NULL,
-		.crypto_xform = &xform
+		.crypto_xform = crypto_xform,
 	};
+
+	if (options->is_outbound)
+		sess_conf.ipsec.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
+	else
+		sess_conf.ipsec.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 
 	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
 				rte_cryptodev_get_sec_ctx(dev_id);

@@ -105,6 +105,7 @@ struct cperf_options {
 	uint32_t out_of_place:1;
 	uint32_t silent:1;
 	uint32_t csv:1;
+	uint32_t is_outbound:1;
 
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_cipher_operation cipher_op;

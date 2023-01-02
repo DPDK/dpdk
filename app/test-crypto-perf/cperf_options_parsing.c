@@ -1318,6 +1318,21 @@ cperf_options_check(struct cperf_options *options)
 		if (check_docsis_buffer_length(options) < 0)
 			return -EINVAL;
 	}
+
+	if (options->op_type == CPERF_IPSEC) {
+		if (options->aead_algo) {
+			if (options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT)
+				options->is_outbound = 1;
+			else
+				options->is_outbound = 0;
+		} else {
+			if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
+			    options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
+				options->is_outbound = 1;
+			else
+				options->is_outbound = 0;
+		}
+	}
 #endif
 
 	return 0;
