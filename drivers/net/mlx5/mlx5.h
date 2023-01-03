@@ -1463,6 +1463,8 @@ struct mlx5_dev_ctx_shared {
  * Caution, secondary process may rebuild the struct during port start.
  */
 struct mlx5_proc_priv {
+	void *hca_bar;
+	/* Mapped HCA PCI BAR area. */
 	size_t uar_table_sz;
 	/* Size of UAR register table. */
 	struct mlx5_uar_data uar_table[];
@@ -2163,6 +2165,8 @@ int mlx5_txpp_xstats_get_names(struct rte_eth_dev *dev,
 			       struct rte_eth_xstat_name *xstats_names,
 			       unsigned int n, unsigned int n_used);
 void mlx5_txpp_interrupt_handler(void *cb_arg);
+int mlx5_txpp_map_hca_bar(struct rte_eth_dev *dev);
+void mlx5_txpp_unmap_hca_bar(struct rte_eth_dev *dev);
 
 /* mlx5_rxtx.c */
 

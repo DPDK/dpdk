@@ -3043,6 +3043,7 @@ struct mlx5_ifc_health_buffer_bits {
 	u8 ext_synd[0x10];
 };
 
+/* HCA PCI BAR resource structure. */
 struct mlx5_ifc_initial_seg_bits {
 	u8 fw_rev_minor[0x10];
 	u8 fw_rev_major[0x10];
@@ -3070,7 +3071,9 @@ struct mlx5_ifc_initial_seg_bits {
 	u8 clear_int[0x1];
 	u8 health_syndrome[0x8];
 	u8 health_counter[0x18];
-	u8 reserved_8[0x17fc0];
+	u8 reserved_8[0x160];
+	u8 real_time[0x40];
+	u8 reserved_9[0x17e20];
 };
 
 struct mlx5_ifc_create_cq_out_bits {

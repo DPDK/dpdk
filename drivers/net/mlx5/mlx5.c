@@ -1977,8 +1977,12 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
 void
 mlx5_proc_priv_uninit(struct rte_eth_dev *dev)
 {
-	if (!dev->process_private)
+	struct mlx5_proc_priv *ppriv = dev->process_private;
+
+	if (!ppriv)
 		return;
+	if (ppriv->hca_bar)
+		mlx5_txpp_unmap_hca_bar(dev);
 	mlx5_free(dev->process_private);
 	dev->process_private = NULL;
 }
