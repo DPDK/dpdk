@@ -1482,7 +1482,7 @@ rte_fbarray_dump_metadata(struct rte_fbarray *arr, FILE *f)
 
 	if (fully_validate(arr->name, arr->elt_sz, arr->len)) {
 		fprintf(f, "Invalid file-backed array\n");
-		goto out;
+		return;
 	}
 
 	/* prevent array from changing under us */
@@ -1496,6 +1496,5 @@ rte_fbarray_dump_metadata(struct rte_fbarray *arr, FILE *f)
 
 	for (i = 0; i < msk->n_masks; i++)
 		fprintf(f, "msk idx %i: 0x%016" PRIx64 "\n", i, msk->data[i]);
-out:
 	rte_rwlock_read_unlock(&arr->rwlock);
 }
