@@ -817,7 +817,7 @@ mlx5_tx_wseg_init(struct mlx5_txq_data *restrict txq,
 	struct mlx5_wqe_wseg *ws;
 
 	ws = RTE_PTR_ADD(wqe, MLX5_WSEG_SIZE);
-	ws->operation = rte_cpu_to_be_32(MLX5_WAIT_COND_CYCLIC_BIGGER);
+	ws->operation = rte_cpu_to_be_32(MLX5_WAIT_COND_CYCLIC_SMALLER);
 	ws->lkey = RTE_BE32(0);
 	ws->va_high = RTE_BE32(0);
 	ws->va_low = RTE_BE32(0);
