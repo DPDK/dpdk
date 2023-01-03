@@ -3415,14 +3415,10 @@ rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 		if (!rte_event_eth_rx_adapter_caps_get(rx_adapter->eventdev_id,
 						      eth_dev_id,
 						      &caps)) {
-			if (caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-				ret = rxa_dev_instance_get(rx_adapter) ?
-						rxa_dev_instance_get(rx_adapter)
-								(eth_dev_id,
-								 rx_queue_id,
-								 rxa_inst_id)
-							: -EINVAL;
-			}
+			if (caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT &&
+			    rxa_dev_instance_get(rx_adapter))
+				ret = rxa_dev_instance_get(rx_adapter)(eth_dev_id, rx_queue_id,
+								       rxa_inst_id);
 		}
 
 		/* return if entry found */
