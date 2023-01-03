@@ -14,6 +14,7 @@ INTERNAL {
 
 	mlx5_dev_is_pci;
 	mlx5_dev_is_vf_pci;
+	mlx5_dev_to_pci_str;
 	mlx5_dev_mempool_unregister;
 	mlx5_dev_mempool_subscribe;
 

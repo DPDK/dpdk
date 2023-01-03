@@ -416,3 +416,33 @@ int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev)
 	RTE_SET_USED(dev);
 	return -ENOTSUP;
 }
+
+/**
+ * Unmaps HCA PCI BAR from the current process address space.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+void mlx5_txpp_unmap_hca_bar(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+}
+
+/**
+ * Maps HCA PCI BAR to the current process address space.
+ * Stores pointer in the process private structure allowing
+ * to read internal and real time counter directly from the HW.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success and not NULL pointer to mapped area in process structure.
+ *   negative otherwise and NULL pointer
+ */
+int mlx5_txpp_map_hca_bar(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+	rte_errno = ENOTSUP;
+	return -ENOTSUP;
+}
