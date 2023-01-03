@@ -407,6 +407,7 @@ rte_gpu_callback_register(int16_t dev_id, enum rte_gpu_event event,
 					callback->function == function &&
 					callback->user_data == user_data) {
 				GPU_LOG(INFO, "callback already registered");
+				rte_rwlock_write_unlock(&gpu_callback_lock);
 				return 0;
 			}
 		}
@@ -414,7 +415,9 @@ rte_gpu_callback_register(int16_t dev_id, enum rte_gpu_event event,
 		callback = malloc(sizeof(*callback));
 		if (callback == NULL) {
 			GPU_LOG(ERR, "cannot allocate callback");
-			return -ENOMEM;
+			rte_rwlock_write_unlock(&gpu_callback_lock);
+			rte_errno = ENOMEM;
+			return -rte_errno;
 		}
 		callback->function = function;
 		callback->user_data = user_data;
