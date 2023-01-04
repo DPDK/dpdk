@@ -1246,6 +1246,12 @@ virtio_dev_rx_batch_packed_copy(struct virtio_net *dev,
 			sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	}
 
+	if (rxvq_is_mergeable(dev)) {
+		vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+			ASSIGN_UNLESS_EQUAL(hdrs[i]->num_buffers, 1);
+		}
+	}
+
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
 		virtio_enqueue_offload(pkts[i], &hdrs[i]->hdr);
 
