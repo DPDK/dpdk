@@ -92,7 +92,6 @@ struct interface {
 
 TAILQ_HEAD(interface_list, interface);
 static struct interface_list interfaces = TAILQ_HEAD_INITIALIZER(interfaces);
-static struct interface *port2intf[RTE_MAX_ETHPORTS];
 
 /* Can do either pcap or pcapng format output */
 typedef union {
@@ -213,7 +212,6 @@ static void add_interface(uint16_t port, const char *name)
 
 	printf("Capturing on '%s'\n", name);
 
-	port2intf[port] = intf;
 	TAILQ_INSERT_TAIL(&interfaces, intf, next);
 }
 
