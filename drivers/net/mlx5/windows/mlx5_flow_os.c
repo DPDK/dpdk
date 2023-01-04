@@ -419,8 +419,8 @@ mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data)
 
 int
 mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
-			    uint64_t item_flags,
-			    uint8_t target_protocol,
+			    uint64_t item_flags __rte_unused,
+			    uint8_t target_protocol __rte_unused,
 			    struct rte_flow_error *error)
 {
 	const struct rte_flow_item_esp *mask = item->mask;
@@ -432,6 +432,11 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
+#ifndef HAVE_IBV_FLOW_SPEC_ESP
+	return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "ESP item not supported");
+#endif
 	if (!(item_flags & l3m))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,

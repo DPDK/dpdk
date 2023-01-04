@@ -81,6 +81,8 @@ has_member_args = [
 # [ "MACRO to define if found", "header for the search",
 #   "symbol to search" ]
 has_sym_args = [
+        [ 'HAVE_IBV_FLOW_SPEC_ESP', 'infiniband/verbs.h',
+            'IBV_FLOW_SPEC_ESP' ],
         [ 'HAVE_IBV_RX_HASH_IPSEC_SPI', 'infiniband/verbs.h',
             'IBV_RX_HASH_IPSEC_SPI' ],
         [ 'HAVE_IBV_RELAXED_ORDERING', 'infiniband/verbs.h',

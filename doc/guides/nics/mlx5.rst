@@ -274,6 +274,9 @@ Limitations
   extension header type = 0x85).
 - Match on GTP extension header is not supported in group 0.
 
+- When using DV/Verbs flow engine (``dv_flow_en`` = 1/0 respectively),
+  match on SPI field in ESP header for group 0 needs MLNX_OFED 5.6+.
+
 - Flex item:
 
   - Hardware support: BlueField-2.

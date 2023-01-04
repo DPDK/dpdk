@@ -24,6 +24,7 @@
 #include "mlx5.h"
 #include "mlx5_flow.h"
 #include "mlx5_rx.h"
+#include "mlx5_flow_os.h"
 
 #define VERBS_SPEC_INNER(item_flags) \
 	(!!((item_flags) & MLX5_FLOW_LAYER_TUNNEL) ? IBV_FLOW_SPEC_INNER : 0)
@@ -684,6 +685,42 @@ flow_verbs_translate_item_tcp(struct mlx5_flow *dev_flow,
  * @param[in] item_flags
  *   Parsed item flags.
  */
+#ifdef HAVE_IBV_FLOW_SPEC_ESP
+static void
+flow_verbs_translate_item_esp(struct mlx5_flow *dev_flow,
+			      const struct rte_flow_item *item,
+			      uint64_t item_flags __rte_unused)
+{
+	const struct rte_flow_item_esp *spec = item->spec;
+	const struct rte_flow_item_esp *mask = item->mask;
+	unsigned int size = sizeof(struct ibv_flow_spec_esp);
+	struct ibv_flow_spec_esp esp = {
+		.type = IBV_FLOW_SPEC_ESP | VERBS_SPEC_INNER(item_flags),
+		.size = size,
+	};
+
+	if (!mask)
+		mask = &rte_flow_item_esp_mask;
+	if (spec) {
+		esp.val.spi = spec->hdr.spi & mask->hdr.spi;
+		esp.mask.spi = mask->hdr.spi;
+	}
+	flow_verbs_spec_add(&dev_flow->verbs, &esp, size);
+}
+#endif
+
+/**
+ * Convert the @p item into a Verbs specification. This function assumes that
+ * the input is valid and that there is space to insert the requested item
+ * into the flow.
+ *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Parsed item flags.
+ */
 static void
 flow_verbs_translate_item_udp(struct mlx5_flow *dev_flow,
 			      const struct rte_flow_item *item,
@@ -1293,6 +1330,14 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		int ret = 0;
 
 		switch (items->type) {
+		case RTE_FLOW_ITEM_TYPE_ESP:
+			ret = mlx5_flow_os_validate_item_esp(items, item_flags,
+							  next_protocol,
+							  error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_ITEM_ESP;
+			break;
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
@@ -1879,6 +1924,18 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
 					       MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
+#ifdef HAVE_IBV_FLOW_SPEC_ESP
+		case RTE_FLOW_ITEM_TYPE_ESP:
+			flow_verbs_translate_item_esp(dev_flow, items,
+						      item_flags);
+			dev_flow->hash_fields |=
+				mlx5_flow_hashfields_adjust
+				(rss_desc, tunnel,
+				RTE_ETH_RSS_ESP,
+				IBV_RX_HASH_IPSEC_SPI);
+			item_flags |= MLX5_FLOW_ITEM_ESP;
+			break;
+#endif
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			flow_verbs_translate_item_vxlan(dev_flow, items,
 							item_flags);
