@@ -77,8 +77,11 @@ int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 		total_time = rte_get_timer_cycles() - start_time;
 	} while (status == MC_CMD_STATUS_READY && total_time <= time_to_wait);
 
-	if (status == MC_CMD_STATUS_READY)
+	if (status == MC_CMD_STATUS_READY) {
+		rte_spinlock_unlock(&mc_portal_lock);
+
 		return mc_status_to_error(MC_CMD_STATUS_TIMEOUT);
+	}
 
 	/* Read the response back into the command buffer */
 	mc_read_response(mc_io->regs, cmd);
