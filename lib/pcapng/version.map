@@ -8,5 +8,8 @@ EXPERIMENTAL {
 	rte_pcapng_write_packets;
 	rte_pcapng_write_stats;
 
+	# added in 23.03
+	rte_pcapng_add_interface;
+
 	local: *;
 };

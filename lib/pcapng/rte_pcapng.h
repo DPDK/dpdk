@@ -71,6 +71,31 @@ void
 rte_pcapng_close(rte_pcapng_t *self);
 
 /**
+ * Add interface information to the capture file
+ *
+ * @param self
+ *  The handle to the packet capture file
+ * @param port
+ *  The Ethernet port to report stats on.
+ * @param ifname (optional)
+ *  Interface name to record in the file.
+ *  If not specified, name will be constructed from port
+ * @param ifdescr (optional)
+ *  Interface description to record in the file.
+ * @param filter
+ *  Capture filter to record in the file.
+ *
+ * Interfaces must be added to the output file after opening
+ * and before any packet record. All ports used in packet capture
+ * must be added.
+ */
+__rte_experimental
+int
+rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
+			 const char *ifname, const char *ifdescr,
+			 const char *filter);
+
+/**
  * Direction flag
  * These should match Enhanced Packet Block flag bits
  */

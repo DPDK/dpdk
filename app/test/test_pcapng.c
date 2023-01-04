@@ -109,6 +109,13 @@ test_setup(void)
 		return -1;
 	}
 
+	/* Add interface to the file */
+	if (rte_pcapng_add_interface(pcapng, port_id,
+				     NULL, NULL, NULL) != 0) {
+		fprintf(stderr, "can not add port %u\n", port_id);
+		return -1;
+	}
+
 	/* Make a pool for cloned packets */
 	mp = rte_pktmbuf_pool_create_by_ops("pcapng_test_pool", IOV_MAX + NUM_PACKETS,
 					    0, 0,

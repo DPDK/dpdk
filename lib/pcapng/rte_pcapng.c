@@ -32,6 +32,9 @@
 /* Format of the capture file handle */
 struct rte_pcapng {
 	int  outfd;		/* output file */
+
+	unsigned int ports;	/* number of interfaces added */
+
 	/* DPDK port id to interface index in file */
 	uint32_t port_index[RTE_MAX_ETHPORTS];
 };
@@ -185,8 +188,10 @@ pcapng_section_block(rte_pcapng_t *self,
 }
 
 /* Write an interface block for a DPDK port */
-static int
-pcapng_add_interface(rte_pcapng_t *self, uint16_t port)
+int
+rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
+			 const char *ifname, const char *ifdescr,
+			 const char *filter)
 {
 	struct pcapng_interface_block *hdr;
 	struct rte_eth_dev_info dev_info;
@@ -197,7 +202,7 @@ pcapng_add_interface(rte_pcapng_t *self, uint16_t port)
 	const uint8_t tsresol = 9;	/* nanosecond resolution */
 	uint32_t len;
 	void *buf;
-	char ifname[IF_NAMESIZE];
+	char ifname_buf[IF_NAMESIZE];
 	char ifhw[256];
 	uint64_t speed = 0;
 
@@ -205,8 +210,14 @@ pcapng_add_interface(rte_pcapng_t *self, uint16_t port)
 		return -1;
 
 	/* make something like an interface name */
-	if (if_indextoname(dev_info.if_index, ifname) == NULL)
-		snprintf(ifname, IF_NAMESIZE, "dpdk:%u", port);
+	if (ifname == NULL) {
+		/* Use kernel name if available */
+		ifname = if_indextoname(dev_info.if_index, ifname_buf);
+		if (ifname == NULL) {
+			snprintf(ifname_buf, IF_NAMESIZE, "dpdk:%u", port);
+			ifname = ifname_buf;
+		}
+	}
 
 	/* make a useful device hardware string */
 	dev = dev_info.device;
@@ -230,10 +241,14 @@ pcapng_add_interface(rte_pcapng_t *self, uint16_t port)
 	len += pcapng_optlen(sizeof(tsresol));	/* timestamp */
 	len += pcapng_optlen(strlen(ifname));	/* ifname */
 
+	if (ifdescr)
+		len += pcapng_optlen(strlen(ifdescr));
 	if (ea)
 		len += pcapng_optlen(RTE_ETHER_ADDR_LEN); /* macaddr */
 	if (speed != 0)
 		len += pcapng_optlen(sizeof(uint64_t));
+	if (filter)
+		len += pcapng_optlen(strlen(filter) + 1);
 	if (dev)
 		len += pcapng_optlen(strlen(ifhw));
 
@@ -256,6 +271,9 @@ pcapng_add_interface(rte_pcapng_t *self, uint16_t port)
 				&tsresol, sizeof(tsresol));
 	opt = pcapng_add_option(opt, PCAPNG_IFB_NAME,
 				ifname, strlen(ifname));
+	if (ifdescr)
+		opt = pcapng_add_option(opt, PCAPNG_IFB_DESCRIPTION,
+					ifdescr, strlen(ifdescr));
 	if (ea)
 		opt = pcapng_add_option(opt, PCAPNG_IFB_MACADDR,
 					ea, RTE_ETHER_ADDR_LEN);
@@ -265,31 +283,29 @@ pcapng_add_interface(rte_pcapng_t *self, uint16_t port)
 	if (dev)
 		opt = pcapng_add_option(opt, PCAPNG_IFB_HARDWARE,
 					 ifhw, strlen(ifhw));
+	if (filter) {
+		/* Encoding is that the first octet indicates string vs BPF */
+		size_t len;
+		char *buf;
+
+		len = strlen(filter) + 1;
+		buf = alloca(len);
+		*buf = '\0';
+		memcpy(buf + 1, filter, len);
+
+		opt = pcapng_add_option(opt, PCAPNG_IFB_FILTER,
+					buf, len);
+	}
+
 	opt = pcapng_add_option(opt, PCAPNG_OPT_END, NULL, 0);
 
 	/* clone block_length after optionsa */
 	memcpy(opt, &hdr->block_length, sizeof(uint32_t));
 
+	/* remember the file index */
+	self->port_index[port] = self->ports++;
+
 	return write(self->outfd, buf, len);
-}
-
-/*
- * Write the list of possible interfaces at the start
- * of the file.
- */
-static int
-pcapng_interfaces(rte_pcapng_t *self)
-{
-	uint16_t port_id;
-	uint16_t index = 0;
-
-	RTE_ETH_FOREACH_DEV(port_id) {
-		/* The list if ports in pcapng needs to be contiguous */
-		self->port_index[port_id] = index++;
-		if (pcapng_add_interface(self, port_id) < 0)
-			return -1;
-	}
-	return 0;
 }
 
 /*
@@ -598,6 +614,13 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 			return -1;
 		}
 
+		/* check that this interface was added. */
+		epb->interface_id = self->port_index[m->port];
+		if (unlikely(epb->interface_id > RTE_MAX_ETHPORTS)) {
+			rte_errno = EINVAL;
+			return -1;
+		}
+
 		/*
 		 * Handle case of highly fragmented and large burst size
 		 * Note: this assumes that max segments per mbuf < IOV_MAX
@@ -616,7 +639,6 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 		 * The DPDK port is recorded during pcapng_copy.
 		 * Map that to PCAPNG interface in file.
 		 */
-		epb->interface_id = self->port_index[m->port];
 		do {
 			iov[cnt].iov_base = rte_pktmbuf_mtod(m, void *);
 			iov[cnt].iov_len = rte_pktmbuf_data_len(m);
@@ -638,6 +660,7 @@ rte_pcapng_fdopen(int fd,
 		  const char *osname, const char *hardware,
 		  const char *appname, const char *comment)
 {
+	unsigned int i;
 	rte_pcapng_t *self;
 
 	self = malloc(sizeof(*self));
@@ -647,11 +670,11 @@ rte_pcapng_fdopen(int fd,
 	}
 
 	self->outfd = fd;
+	self->ports = 0;
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
+		self->port_index[i] = UINT32_MAX;
 
 	if (pcapng_section_block(self, osname, hardware, appname, comment) < 0)
-		goto fail;
-
-	if (pcapng_interfaces(self) < 0)
 		goto fail;
 
 	return self;
