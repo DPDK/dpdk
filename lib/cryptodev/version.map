@@ -150,11 +150,21 @@ EXPERIMENTAL {
 	__rte_cryptodev_trace_sym_session_get_user_data;
 	__rte_cryptodev_trace_sym_session_set_user_data;
 	__rte_cryptodev_trace_count;
+
+	# added 23.03
+	rte_cryptodev_asym_get_xform_string;
+	rte_cryptodev_get_aead_algo_string;
+	rte_cryptodev_get_auth_algo_string;
+	rte_cryptodev_get_cipher_algo_string;
 };
 
 INTERNAL {
 	global:
 
+	__rte_cryptodev_trace_asym_get_xform_string;
+	__rte_cryptodev_trace_get_aead_algo_string;
+	__rte_cryptodev_trace_get_auth_algo_string;
+	__rte_cryptodev_trace_get_cipher_algo_string;
 	cryptodev_fp_ops_reset;
 	cryptodev_fp_ops_set;
 	rte_cryptodev_allocate_driver;

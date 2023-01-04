@@ -406,6 +406,58 @@ int
 rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 		const char *xform_string);
 
+/**
+ * Provide the cipher algorithm string, given an algorithm enum.
+ *
+ * @param	algo_enum	cipher algorithm enum
+ *
+ * @return
+ * - Return NULL if enum is not valid
+ * - Return algo_string corresponding to enum
+ */
+__rte_experimental
+const char *
+rte_cryptodev_get_cipher_algo_string(enum rte_crypto_cipher_algorithm algo_enum);
+
+/**
+ * Provide the authentication algorithm string, given an algorithm enum.
+ *
+ * @param	algo_enum	auth algorithm enum
+ *
+ * @return
+ * - Return NULL if enum is not valid
+ * - Return algo_string corresponding to enum
+ */
+__rte_experimental
+const char *
+rte_cryptodev_get_auth_algo_string(enum rte_crypto_auth_algorithm algo_enum);
+
+/**
+ * Provide the AEAD algorithm string, given an algorithm enum.
+ *
+ * @param	algo_enum	AEAD algorithm enum
+ *
+ * @return
+ * - Return NULL if enum is not valid
+ * - Return algo_string corresponding to enum
+ */
+__rte_experimental
+const char *
+rte_cryptodev_get_aead_algo_string(enum rte_crypto_aead_algorithm algo_enum);
+
+/**
+ * Provide the Asymmetric xform string, given an xform enum.
+ *
+ * @param	xform_enum	xform type enum
+ *
+ * @return
+ * - Return NULL, if enum is not valid.
+ * - Return xform string, for valid enum.
+ */
+__rte_experimental
+const char *
+rte_cryptodev_asym_get_xform_string(enum rte_crypto_asym_xform_type xform_enum);
+
 
 /** Macro used at end of crypto PMD list */
 #define RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST() \

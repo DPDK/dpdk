@@ -190,6 +190,30 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_cryptodev_trace_get_aead_algo_string,
+	RTE_TRACE_POINT_ARGS(enum rte_crypto_aead_algorithm algo_enum,
+		const char *algo_string),
+	rte_trace_point_emit_int(algo_enum);
+	rte_trace_point_emit_string(algo_string);
+)
+
+RTE_TRACE_POINT(
+	rte_cryptodev_trace_get_auth_algo_string,
+	RTE_TRACE_POINT_ARGS(enum rte_crypto_auth_algorithm algo_enum,
+		const char *algo_string),
+	rte_trace_point_emit_int(algo_enum);
+	rte_trace_point_emit_string(algo_string);
+)
+
+RTE_TRACE_POINT(
+	rte_cryptodev_trace_get_cipher_algo_string,
+	RTE_TRACE_POINT_ARGS(enum rte_crypto_cipher_algorithm algo_enum,
+		const char *algo_string),
+	rte_trace_point_emit_int(algo_enum);
+	rte_trace_point_emit_string(algo_string);
+)
+
+RTE_TRACE_POINT(
 	rte_cryptodev_trace_get_dev_id,
 	RTE_TRACE_POINT_ARGS(const char *name, int ret),
 	rte_trace_point_emit_string(name);
@@ -349,6 +373,14 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_string(xform_string);
 	rte_trace_point_emit_int(xform_enum);
 	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_cryptodev_trace_asym_get_xform_string,
+	RTE_TRACE_POINT_ARGS(enum rte_crypto_asym_xform_type xform_enum,
+		const char *xform_string),
+	rte_trace_point_emit_int(xform_enum);
+	rte_trace_point_emit_string(xform_string);
 )
 
 RTE_TRACE_POINT(

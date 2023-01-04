@@ -177,6 +177,7 @@ enum rte_crypto_cipher_algorithm {
 };
 
 /** Cipher algorithm name strings */
+__rte_deprecated
 extern const char *
 rte_crypto_cipher_algorithm_strings[];
 
@@ -378,6 +379,7 @@ enum rte_crypto_auth_algorithm {
 };
 
 /** Authentication algorithm name strings */
+__rte_deprecated
 extern const char *
 rte_crypto_auth_algorithm_strings[];
 
@@ -482,6 +484,7 @@ enum rte_crypto_aead_algorithm {
 };
 
 /** AEAD algorithm name strings */
+__rte_deprecated
 extern const char *
 rte_crypto_aead_algorithm_strings[];
 

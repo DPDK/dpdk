@@ -72,6 +72,15 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_get_auth_algo_enum,
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_get_cipher_algo_enum,
 	lib.cryptodev.get.cipher.algo.enum)
 
+RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_get_aead_algo_string,
+	lib.cryptodev.get.aead.algo.string)
+
+RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_get_auth_algo_string,
+	lib.cryptodev.get.auth.algo.string)
+
+RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_get_cipher_algo_string,
+	lib.cryptodev.get.cipher.algo.string)
+
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_get_dev_id,
 	lib.cryptodev.get.dev.id)
 
@@ -125,6 +134,9 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_get_private_session_size,
 
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_get_xform_enum,
 	lib.cryptodev.asym.get.xform.enum)
+
+RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_get_xform_string,
+	lib.cryptodev.asym.get.xform.string)
 
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_xform_capability_check_modlen,
 	lib.cryptodev.asym.xform.capability.check.modlen)

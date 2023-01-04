@@ -1536,7 +1536,7 @@ display_cipher_info(struct l2fwd_crypto_options *options)
 {
 	printf("\n---- Cipher information ---\n");
 	printf("Algorithm: %s\n",
-		rte_crypto_cipher_algorithm_strings[options->cipher_xform.cipher.algo]);
+		rte_cryptodev_get_cipher_algo_string(options->cipher_xform.cipher.algo));
 	rte_hexdump(stdout, "Cipher key:",
 			options->cipher_xform.cipher.key.data,
 			options->cipher_xform.cipher.key.length);
@@ -1548,7 +1548,7 @@ display_auth_info(struct l2fwd_crypto_options *options)
 {
 	printf("\n---- Authentication information ---\n");
 	printf("Algorithm: %s\n",
-		rte_crypto_auth_algorithm_strings[options->auth_xform.auth.algo]);
+		rte_cryptodev_get_auth_algo_string(options->auth_xform.auth.algo));
 	rte_hexdump(stdout, "Auth key:",
 			options->auth_xform.auth.key.data,
 			options->auth_xform.auth.key.length);
@@ -1560,7 +1560,7 @@ display_aead_info(struct l2fwd_crypto_options *options)
 {
 	printf("\n---- AEAD information ---\n");
 	printf("Algorithm: %s\n",
-		rte_crypto_aead_algorithm_strings[options->aead_xform.aead.algo]);
+		rte_cryptodev_get_aead_algo_string(options->aead_xform.aead.algo));
 	rte_hexdump(stdout, "AEAD key:",
 			options->aead_xform.aead.key.data,
 			options->aead_xform.aead.key.length);
@@ -1864,7 +1864,7 @@ check_device_support_cipher_algo(const struct l2fwd_crypto_options *options,
 	if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
 		printf("Algorithm %s not supported by cryptodev %u"
 			" or device not of preferred type (%s)\n",
-			rte_crypto_cipher_algorithm_strings[opt_cipher_algo],
+			rte_cryptodev_get_cipher_algo_string(opt_cipher_algo),
 			cdev_id,
 			options->string_type);
 		return NULL;
@@ -1898,7 +1898,7 @@ check_device_support_auth_algo(const struct l2fwd_crypto_options *options,
 	if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
 		printf("Algorithm %s not supported by cryptodev %u"
 			" or device not of preferred type (%s)\n",
-			rte_crypto_auth_algorithm_strings[opt_auth_algo],
+			rte_cryptodev_get_auth_algo_string(opt_auth_algo),
 			cdev_id,
 			options->string_type);
 		return NULL;
@@ -1932,7 +1932,7 @@ check_device_support_aead_algo(const struct l2fwd_crypto_options *options,
 	if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
 		printf("Algorithm %s not supported by cryptodev %u"
 			" or device not of preferred type (%s)\n",
-			rte_crypto_aead_algorithm_strings[opt_aead_algo],
+			rte_cryptodev_get_aead_algo_string(opt_aead_algo),
 			cdev_id,
 			options->string_type);
 		return NULL;

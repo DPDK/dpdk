@@ -436,8 +436,8 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		if (!qat_is_cipher_alg_supported(
 			cipher_xform->algo, internals)) {
 			QAT_LOG(ERR, "%s not supported on this device",
-				rte_crypto_cipher_algorithm_strings
-					[cipher_xform->algo]);
+				rte_cryptodev_get_cipher_algo_string(
+					cipher_xform->algo));
 			ret = -ENOTSUP;
 			goto error_out;
 		}
@@ -772,8 +772,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:
 		if (!qat_is_auth_alg_supported(auth_xform->algo, internals)) {
 			QAT_LOG(ERR, "%s not supported on this device",
-				rte_crypto_auth_algorithm_strings
-				[auth_xform->algo]);
+				rte_cryptodev_get_auth_algo_string(auth_xform->algo));
 			return -ENOTSUP;
 		}
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3;

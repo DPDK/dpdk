@@ -823,7 +823,7 @@ static int openssl_set_asym_session_parameters(
 	if ((xform->xform_type != RTE_CRYPTO_ASYM_XFORM_DH) &&
 		(xform->next != NULL)) {
 		OPENSSL_LOG(ERR, "chained xfrms are not supported on %s",
-			rte_crypto_asym_xform_strings[xform->xform_type]);
+			rte_cryptodev_asym_get_xform_string(xform->xform_type));
 		return ret;
 	}
 

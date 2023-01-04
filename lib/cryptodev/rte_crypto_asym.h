@@ -30,6 +30,7 @@ extern "C" {
 struct rte_cryptodev_asym_session;
 
 /** asym xform type name strings */
+__rte_deprecated
 extern const char *
 rte_crypto_asym_xform_strings[];
 

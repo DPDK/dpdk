@@ -974,7 +974,7 @@ static inline void print_asym_capa(
 	int i = 0;
 
 	printf("\nxform type: %s\n===================\n",
-			rte_crypto_asym_xform_strings[capa->xform_type]);
+			rte_cryptodev_asym_get_xform_string(capa->xform_type));
 	printf("operation supported -");
 
 	for (i = 0; i < RTE_CRYPTO_ASYM_OP_LIST_END; i++) {

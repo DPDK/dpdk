@@ -1388,7 +1388,7 @@ cperf_options_dump(struct cperf_options *opts)
 			opts->op_type == CPERF_CIPHER_THEN_AUTH ||
 			opts->op_type == CPERF_AUTH_THEN_CIPHER) {
 		printf("# auth algorithm: %s\n",
-			rte_crypto_auth_algorithm_strings[opts->auth_algo]);
+			rte_cryptodev_get_auth_algo_string(opts->auth_algo));
 		printf("# auth operation: %s\n",
 			rte_crypto_auth_operation_strings[opts->auth_op]);
 		printf("# auth key size: %u\n", opts->auth_key_sz);
@@ -1401,7 +1401,7 @@ cperf_options_dump(struct cperf_options *opts)
 			opts->op_type == CPERF_CIPHER_THEN_AUTH ||
 			opts->op_type == CPERF_AUTH_THEN_CIPHER) {
 		printf("# cipher algorithm: %s\n",
-			rte_crypto_cipher_algorithm_strings[opts->cipher_algo]);
+			rte_cryptodev_get_cipher_algo_string(opts->cipher_algo));
 		printf("# cipher operation: %s\n",
 			rte_crypto_cipher_operation_strings[opts->cipher_op]);
 		printf("# cipher key size: %u\n", opts->cipher_key_sz);
@@ -1411,7 +1411,7 @@ cperf_options_dump(struct cperf_options *opts)
 
 	if (opts->op_type == CPERF_AEAD) {
 		printf("# aead algorithm: %s\n",
-			rte_crypto_aead_algorithm_strings[opts->aead_algo]);
+			rte_cryptodev_get_aead_algo_string(opts->aead_algo));
 		printf("# aead operation: %s\n",
 			rte_crypto_aead_operation_strings[opts->aead_op]);
 		printf("# aead key size: %u\n", opts->aead_key_sz);
