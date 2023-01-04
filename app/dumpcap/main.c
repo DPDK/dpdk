@@ -202,6 +202,9 @@ static void add_interface(uint16_t port, const char *name)
 {
 	struct interface *intf;
 
+	if (strlen(name) >= RTE_ETH_NAME_MAX_LEN)
+		rte_exit(EXIT_FAILURE, "invalid name for interface: '%s'\n", name);
+
 	intf = malloc(sizeof(*intf));
 	if (!intf)
 		rte_exit(EXIT_FAILURE, "no memory for interface\n");
