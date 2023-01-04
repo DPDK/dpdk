@@ -95,6 +95,8 @@ struct interface {
 	char name[RTE_ETH_NAME_MAX_LEN];
 
 	struct rte_rxtx_callback *rx_cb[RTE_MAX_QUEUES_PER_PORT];
+	const char *ifname;
+	const char *ifdescr;
 };
 
 TAILQ_HEAD(interface_list, interface);
@@ -113,6 +115,9 @@ static void usage(void)
 	       "  -i <interface>, --interface <interface>\n"
 	       "                           name or port index of interface\n"
 	       "  -f <capture filter>      packet filter in libpcap filter syntax\n");
+	printf("  --ifname <name>          name to use in the capture file\n");
+	printf("  --ifdescr <description>\n");
+	printf("                           description to use in the capture file\n");
 	printf("  -s <snaplen>, --snapshot-length <snaplen>\n"
 	       "                           packet snapshot length (def: %u)\n",
 	       RTE_MBUF_DEFAULT_BUF_SIZE);
@@ -336,6 +341,8 @@ static void parse_opts(int argc, char **argv)
 		{ "capture-comment", required_argument, NULL, 0 },
 		{ "file-prefix",     required_argument, NULL, 0 },
 		{ "help",            no_argument,       NULL, 'h' },
+		{ "ifdescr",	     required_argument, NULL, 0 },
+		{ "ifname",	     required_argument, NULL, 0 },
 		{ "interface",       required_argument, NULL, 'i' },
 		{ "list-interfaces", no_argument,       NULL, 'D' },
 		{ "no-promiscuous-mode", no_argument,   NULL, 'p' },
@@ -357,21 +364,32 @@ static void parse_opts(int argc, char **argv)
 			break;
 
 		switch (c) {
-		case 0:
-			if (!strcmp(long_options[option_index].name,
-				    "capture-comment")) {
+		case 0: {
+			const char *longopt
+				= long_options[option_index].name;
+
+			if (!strcmp(longopt, "capture-comment")) {
 				capture_comment = optarg;
-			} else if (!strcmp(long_options[option_index].name,
-					   "file-prefix")) {
+			} else if (!strcmp(longopt, "file-prefix")) {
 				file_prefix = optarg;
-			} else if (!strcmp(long_options[option_index].name,
-					   "temp-dir")) {
+			} else if (!strcmp(longopt, "temp-dir")) {
 				tmp_dir = optarg;
+			} else if (!strcmp(longopt, "ifdescr")) {
+				if (last_intf == NULL)
+					rte_exit(EXIT_FAILURE,
+						 "--ifdescr must be specified after a -i option\n");
+				last_intf->ifdescr = optarg;
+			} else if (!strcmp(longopt, "ifname")) {
+				if (last_intf == NULL)
+					rte_exit(EXIT_FAILURE,
+						 "--ifname must be specified after a -i option\n");
+				last_intf->ifname = optarg;
 			} else {
 				usage();
 				exit(1);
 			}
 			break;
+		}
 		case 'a':
 			auto_stop(optarg);
 			break;
@@ -745,6 +763,7 @@ static dumpcap_out_t create_output(void)
 	}
 
 	if (use_pcapng) {
+		struct interface *intf;
 		char *os = get_os_info();
 
 		ret.pcapng = rte_pcapng_fdopen(fd, os, NULL,
@@ -753,6 +772,12 @@ static dumpcap_out_t create_output(void)
 			rte_exit(EXIT_FAILURE, "pcapng_fdopen failed: %s\n",
 				 strerror(rte_errno));
 		free(os);
+
+		TAILQ_FOREACH(intf, &interfaces, next) {
+			rte_pcapng_add_interface(ret.pcapng, intf->port,
+						 intf->ifname, intf->ifdescr,
+						 intf->opts.filter);
+		}
 	} else {
 		pcap_t *pcap;
 
