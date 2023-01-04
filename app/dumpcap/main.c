@@ -202,6 +202,7 @@ static void add_interface(uint16_t port, const char *name)
 		rte_exit(EXIT_FAILURE, "no memory for interface\n");
 
 	memset(intf, 0, sizeof(*intf));
+	intf->port = port;
 	rte_strscpy(intf->name, name, sizeof(intf->name));
 
 	printf("Capturing on '%s'\n", name);
