@@ -1169,7 +1169,7 @@ struct nix_bp_cfg_req {
  * so maximum 256 channels are possible.
  */
 #define NIX_MAX_CHAN	 256
-#define NIX_CGX_MAX_CHAN 16
+#define NIX_CGX_MAX_CHAN 8
 #define NIX_LBK_MAX_CHAN 1
 struct nix_bp_cfg_rsp {
 	struct mbox_msghdr hdr;
