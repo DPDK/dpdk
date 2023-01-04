@@ -629,17 +629,6 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				RTE_ETH_TX_OFFLOAD_MULTI_SEGS))
 		pdata->multi_segs_tx = true;
 
-	if (pdata->multi_segs_tx)
-		dev->tx_pkt_burst = &axgbe_xmit_pkts_seg;
-	else if (txq->vector_disable ||
-			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128)
-		dev->tx_pkt_burst = &axgbe_xmit_pkts;
-	else
-#ifdef RTE_ARCH_X86
-		dev->tx_pkt_burst = &axgbe_xmit_pkts_vec;
-#else
-		dev->tx_pkt_burst = &axgbe_xmit_pkts;
-#endif
 
 	return 0;
 }
