@@ -723,6 +723,7 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)] = {0};
 	const struct flow_hw_port_info *port_info;
 	struct ibv_device_attr_ex attr_ex;
+	u32 res;
 	int ret;
 
 	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
@@ -798,6 +799,23 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 						     capability.cmd_hca_cap_2.
 						     format_select_dw_gtpu_first_ext_dw_0);
 
+	/* check cross-VHCA support in cap2 */
+	res =
+	MLX5_GET(query_hca_cap_out, out,
+		capability.cmd_hca_cap_2.cross_vhca_object_to_object_supported);
+
+	caps->cross_vhca_resources = (res & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_TIR) &&
+				     (res & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_FT) &&
+				     (res & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_FT_TO_RTC);
+
+	res =
+	MLX5_GET(query_hca_cap_out, out,
+		capability.cmd_hca_cap_2.allowed_object_for_other_vhca_access);
+
+	caps->cross_vhca_resources &= (res & MLX5_CROSS_VHCA_ALLOWED_OBJS_TIR) &&
+				      (res & MLX5_CROSS_VHCA_ALLOWED_OBJS_FT) &&
+				      (res & MLX5_CROSS_VHCA_ALLOWED_OBJS_RTC);
+
 	MLX5_SET(query_hca_cap_in, in, op_mod,
 		 MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
 		 MLX5_HCA_CAP_OPMOD_GET_CUR);
@@ -816,6 +834,12 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	caps->nic_ft.reparse = MLX5_GET(query_hca_cap_out, out,
 					capability.flow_table_nic_cap.
 					flow_table_properties_nic_receive.reparse);
+
+	/* check cross-VHCA support in flow table properties */
+	res =
+	MLX5_GET(query_hca_cap_out, out,
+		capability.flow_table_nic_cap.flow_table_properties_nic_receive.cross_vhca_object);
+	caps->cross_vhca_resources &= res;
 
 	if (caps->wqe_based_update) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
