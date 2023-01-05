@@ -3141,9 +3141,10 @@ struct mlx5_ifc_general_obj_in_cmd_hdr_bits {
 	u8 obj_id[0x20];
 	union {
 		struct {
-			u8 reserved_at_60[0x3];
+			u8 alias_object[0x1];
+			u8 reserved_at_61[0x2];
 			u8 log_obj_range[0x5];
-			u8 reserved_at_58[0x18];
+			u8 reserved_at_68[0x18];
 		};
 		u8 obj_offset[0x20];
 	};
@@ -3238,6 +3239,19 @@ struct mlx5_ifc_rtc_bits {
 	u8 reserved_at_160[0x8];
 	u8 miss_flow_table_id[0x18];
 	u8 reserved_at_180[0x280];
+};
+
+struct mlx5_ifc_alias_context_bits {
+	u8 vhca_id_to_be_accessed[0x10];
+	u8 reserved_at_10[0xd];
+	u8 status[0x3];
+	u8 object_id_to_be_accessed[0x20];
+	u8 reserved_at_40[0x40];
+	union {
+		u8 access_key_raw[0x100];
+		u8 access_key[8][0x20];
+	};
+	u8 metadata[0x80];
 };
 
 enum mlx5_ifc_stc_action_type {
@@ -3482,6 +3496,11 @@ struct mlx5_ifc_create_arg_in_bits {
 struct mlx5_ifc_create_header_modify_pattern_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_header_modify_pattern_in_bits pattern;
+};
+
+struct mlx5_ifc_create_alias_obj_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_alias_context_bits alias_ctx;
 };
 
 enum {

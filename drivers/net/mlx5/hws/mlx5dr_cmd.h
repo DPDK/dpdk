@@ -46,6 +46,13 @@ struct mlx5dr_cmd_rtc_create_attr {
 	bool is_jumbo;
 };
 
+struct mlx5dr_cmd_alias_obj_create_attr {
+	uint32_t obj_id;
+	uint16_t vhca_id;
+	uint16_t obj_type;
+	uint8_t access_key[32];
+};
+
 struct mlx5dr_cmd_stc_create_attr {
 	uint8_t log_obj_range;
 	uint8_t table_type;
@@ -216,6 +223,10 @@ struct mlx5dr_devx_obj *
 mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 					uint32_t pattern_length,
 					uint8_t *actions);
+
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_alias_obj_create(struct ibv_context *ctx,
+			    struct mlx5dr_cmd_alias_obj_create_attr *alias_attr);
 
 int mlx5dr_cmd_sq_modify_rdy(struct mlx5dr_devx_obj *devx_obj);
 

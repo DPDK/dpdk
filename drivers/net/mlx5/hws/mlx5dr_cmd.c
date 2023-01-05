@@ -744,6 +744,50 @@ int mlx5dr_cmd_allow_other_vhca_access(struct ibv_context *ctx,
 	return 0;
 }
 
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_alias_obj_create(struct ibv_context *ctx,
+			    struct mlx5dr_cmd_alias_obj_create_attr *alias_attr)
+{
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(create_alias_obj_in)] = {0};
+	struct mlx5dr_devx_obj *devx_obj;
+	void *attr;
+	void *key;
+
+	devx_obj = simple_malloc(sizeof(*devx_obj));
+	if (!devx_obj) {
+		DR_LOG(ERR, "Failed to allocate memory for ALIAS general object");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	attr = MLX5_ADDR_OF(create_alias_obj_in, in, hdr);
+	MLX5_SET(general_obj_in_cmd_hdr,
+		 attr, opcode, MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr,
+		 attr, obj_type, alias_attr->obj_type);
+	MLX5_SET(general_obj_in_cmd_hdr, attr, alias_object, 1);
+
+	attr = MLX5_ADDR_OF(create_alias_obj_in, in, alias_ctx);
+	MLX5_SET(alias_context, attr, vhca_id_to_be_accessed, alias_attr->vhca_id);
+	MLX5_SET(alias_context, attr, object_id_to_be_accessed, alias_attr->obj_id);
+
+	key = MLX5_ADDR_OF(alias_context, attr, access_key);
+	memcpy(key, alias_attr->access_key, sizeof(alias_attr->access_key));
+
+	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
+	if (!devx_obj->obj) {
+		DR_LOG(ERR, "Failed to create ALIAS OBJ");
+		simple_free(devx_obj);
+		rte_errno = errno;
+		return NULL;
+	}
+
+	devx_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+
+	return devx_obj;
+}
+
 int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 			  struct mlx5dr_cmd_query_caps *caps)
 {
