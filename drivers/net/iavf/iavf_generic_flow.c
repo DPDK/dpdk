@@ -2278,11 +2278,12 @@ iavf_flow_create(struct rte_eth_dev *dev,
 	}
 
 	flow->engine = engine;
+	rte_spinlock_lock(&vf->flow_ops_lock);
 	TAILQ_INSERT_TAIL(&vf->flow_list, flow, node);
+	rte_spinlock_unlock(&vf->flow_ops_lock);
 	PMD_DRV_LOG(INFO, "Succeeded to create (%d) flow", engine->type);
 
 free_flow:
-	rte_spinlock_unlock(&vf->flow_ops_lock);
 	return flow;
 }
 
