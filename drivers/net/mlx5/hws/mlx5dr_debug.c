@@ -177,6 +177,7 @@ mlx5dr_debug_dump_matcher_attr(FILE *f, struct mlx5dr_matcher *matcher)
 
 static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 {
+	bool is_shared = mlx5dr_context_shared_gvmi_used(matcher->tbl->ctx);
 	bool is_root = matcher->tbl->level == MLX5DR_ROOT_LEVEL;
 	enum mlx5dr_table_type tbl_type = matcher->tbl->type;
 	struct mlx5dr_devx_obj *ste_0, *ste_1 = NULL;
@@ -205,11 +206,13 @@ static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 		ste_1 = NULL;
 	}
 
-	ret = fprintf(f, ",%d,%d,%d,%d",
+	ret = fprintf(f, ",%d,%d,%d,%d,%d",
 		      matcher->match_ste.rtc_0 ? matcher->match_ste.rtc_0->id : 0,
 		      ste_0 ? (int)ste_0->id : -1,
 		      matcher->match_ste.rtc_1 ? matcher->match_ste.rtc_1->id : 0,
-		      ste_1 ? (int)ste_1->id : -1);
+		      ste_1 ? (int)ste_1->id : -1,
+		      is_shared && !is_root ?
+		      matcher->match_ste.aliased_rtc_0->id : 0);
 	if (ret < 0)
 		goto out_err;
 
@@ -253,18 +256,20 @@ out_err:
 
 static int mlx5dr_debug_dump_table(FILE *f, struct mlx5dr_table *tbl)
 {
+	bool is_shared = mlx5dr_context_shared_gvmi_used(tbl->ctx);
 	bool is_root = tbl->level == MLX5DR_ROOT_LEVEL;
 	struct mlx5dr_matcher *matcher;
 	int ret;
 
-	ret = fprintf(f, "%d,0x%" PRIx64 ",0x%" PRIx64 ",%d,%d,%d,%d\n",
+	ret = fprintf(f, "%d,0x%" PRIx64 ",0x%" PRIx64 ",%d,%d,%d,%d,%d\n",
 		      MLX5DR_DEBUG_RES_TYPE_TABLE,
 		      (uint64_t)(uintptr_t)tbl,
 		      (uint64_t)(uintptr_t)tbl->ctx,
 		      is_root ? 0 : tbl->ft->id,
 		      tbl->type,
 		      is_root ? 0 : tbl->fw_ft_type,
-		      tbl->level);
+		      tbl->level,
+		      is_shared && !is_root ? tbl->local_ft->id : 0);
 	if (ret < 0) {
 		rte_errno = EINVAL;
 		return rte_errno;
@@ -383,12 +388,17 @@ static int mlx5dr_debug_dump_context_attr(FILE *f, struct mlx5dr_context *ctx)
 {
 	int ret;
 
-	ret = fprintf(f, "%u,0x%" PRIx64 ",%d,%zu,%d\n",
+	ret = fprintf(f, "%u,0x%" PRIx64 ",%d,%zu,%d,%s,%d,%d\n",
 		      MLX5DR_DEBUG_RES_TYPE_CONTEXT_ATTR,
 		      (uint64_t)(uintptr_t)ctx,
 		      ctx->pd_num,
 		      ctx->queues,
-		      ctx->send_queue->num_entries);
+		      ctx->send_queue->num_entries,
+		      mlx5dr_context_shared_gvmi_used(ctx) ?
+		      mlx5_glue->get_device_name(ctx->ibv_ctx->device) : "None",
+		      ctx->caps->vhca_id,
+		      mlx5dr_context_shared_gvmi_used(ctx) ?
+		      ctx->caps->shared_vhca_id : 0xffff);
 	if (ret < 0) {
 		rte_errno = EINVAL;
 		return rte_errno;
