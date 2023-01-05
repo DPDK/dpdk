@@ -913,7 +913,7 @@ mlx5_devx_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 	if (hrxq->hws_flags) {
 		hrxq->action = mlx5dr_action_create_dest_tir
 			(priv->dr_ctx,
-			 (struct mlx5dr_devx_obj *)hrxq->tir, hrxq->hws_flags);
+			 (struct mlx5dr_devx_obj *)hrxq->tir, hrxq->hws_flags, true);
 		if (!hrxq->action)
 			goto error;
 		return 0;

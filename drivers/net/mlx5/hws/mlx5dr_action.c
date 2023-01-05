@@ -744,7 +744,10 @@ mlx5dr_action_create_dest_table(struct mlx5dr_context *ctx,
 		return NULL;
 
 	if (mlx5dr_action_is_root_flags(flags)) {
-		action->devx_obj = tbl->ft->obj;
+		if (mlx5dr_context_shared_gvmi_used(ctx))
+			action->devx_obj = tbl->local_ft->obj;
+		else
+			action->devx_obj = tbl->ft->obj;
 	} else {
 		ret = mlx5dr_action_create_stcs(action, tbl->ft);
 		if (ret)
@@ -758,10 +761,38 @@ free_action:
 	return NULL;
 }
 
+static int mlx5dr_action_get_dest_tir_obj(struct mlx5dr_context *ctx,
+					  struct mlx5dr_action *action,
+					  struct mlx5dr_devx_obj *obj,
+					  struct mlx5dr_devx_obj **ret_obj)
+{
+	int ret;
+
+	if (mlx5dr_context_shared_gvmi_used(ctx)) {
+		ret = mlx5dr_matcher_create_aliased_obj(ctx,
+							ctx->local_ibv_ctx,
+							ctx->ibv_ctx,
+							ctx->caps->vhca_id,
+							obj->id,
+							MLX5_GENERAL_OBJ_TYPE_TIR_ALIAS,
+							&action->alias.devx_obj);
+		if (ret) {
+			DR_LOG(ERR, "Failed to create tir alias");
+			return rte_errno;
+		}
+		*ret_obj = action->alias.devx_obj;
+	} else {
+		*ret_obj = obj;
+	}
+
+	return 0;
+}
+
 struct mlx5dr_action *
 mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 			      struct mlx5dr_devx_obj *obj,
-			      uint32_t flags)
+			      uint32_t flags,
+			      bool is_local)
 {
 	struct mlx5dr_action *action;
 	int ret;
@@ -773,6 +804,13 @@ mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
+	if (!is_local) {
+		DR_LOG(ERR, "TIR should be created on local ibv_device, flags: 0x%x",
+		       flags);
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
 	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_TIR);
 	if (!action)
 		return NULL;
@@ -780,13 +818,23 @@ mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 	if (mlx5dr_action_is_root_flags(flags)) {
 		action->devx_obj = obj->obj;
 	} else {
-		ret = mlx5dr_action_create_stcs(action, obj);
-		if (ret)
+		struct mlx5dr_devx_obj *cur_obj = NULL; /*compilation warn*/
+
+		ret = mlx5dr_action_get_dest_tir_obj(ctx, action, obj, &cur_obj);
+		if (ret) {
+			DR_LOG(ERR, "Failed to create tir alias (flags: %d)", flags);
 			goto free_action;
+		}
+
+		ret = mlx5dr_action_create_stcs(action, cur_obj);
+		if (ret)
+			goto clean_obj;
 	}
 
 	return action;
 
+clean_obj:
+	mlx5dr_cmd_destroy_obj(action->alias.devx_obj);
 free_action:
 	simple_free(action);
 	return NULL;
@@ -1589,6 +1637,10 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 {
 	switch (action->type) {
 	case MLX5DR_ACTION_TYP_TIR:
+		mlx5dr_action_destroy_stcs(action);
+		if (mlx5dr_context_shared_gvmi_used(action->ctx))
+			mlx5dr_cmd_destroy_obj(action->alias.devx_obj);
+		break;
 	case MLX5DR_ACTION_TYP_MISS:
 	case MLX5DR_ACTION_TYP_TAG:
 	case MLX5DR_ACTION_TYP_DROP:

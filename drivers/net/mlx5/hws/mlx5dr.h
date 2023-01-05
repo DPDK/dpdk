@@ -410,12 +410,15 @@ mlx5dr_action_create_dest_vport(struct mlx5dr_context *ctx,
  *	Direct rule TIR devx object.
  * @param[in] flags
  *	Action creation flags. (enum mlx5dr_action_flags)
+ * @param[in] is_local
+ *	indicates where the tir object was created, local gvmi or other gvmi
  * @return pointer to mlx5dr_action on success NULL otherwise.
  */
 struct mlx5dr_action *
 mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 			      struct mlx5dr_devx_obj *obj,
-			      uint32_t flags);
+			      uint32_t flags,
+			      bool is_local);
 
 /* Create direct rule TAG action.
  *

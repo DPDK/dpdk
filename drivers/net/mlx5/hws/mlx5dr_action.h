@@ -138,6 +138,9 @@ struct mlx5dr_action {
 					uint16_t vport_num;
 					uint16_t esw_owner_vhca_id;
 				} vport;
+				struct {
+					struct mlx5dr_devx_obj *devx_obj;
+				} alias;
 			};
 		};
 
