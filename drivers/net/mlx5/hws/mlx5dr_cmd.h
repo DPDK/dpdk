@@ -124,6 +124,12 @@ struct mlx5dr_cmd_sq_create_attr {
 	uint32_t ts_format;
 };
 
+struct mlx5dr_cmd_allow_other_vhca_access_attr {
+	uint16_t obj_type;
+	uint32_t obj_id;
+	uint8_t access_key[32];
+};
+
 struct mlx5dr_cmd_query_ft_caps {
 	uint8_t max_level;
 	uint8_t reparse;
@@ -230,4 +236,7 @@ void mlx5dr_cmd_set_attr_connect_miss_tbl(struct mlx5dr_context *ctx,
 					  uint32_t fw_ft_type,
 					  enum mlx5dr_table_type type,
 					  struct mlx5dr_cmd_ft_modify_attr *ft_attr);
+
+int mlx5dr_cmd_allow_other_vhca_access(struct ibv_context *ctx,
+				       struct mlx5dr_cmd_allow_other_vhca_access_attr *attr);
 #endif /* MLX5DR_CMD_H_ */

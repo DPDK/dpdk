@@ -716,6 +716,34 @@ int mlx5dr_cmd_sq_modify_rdy(struct mlx5dr_devx_obj *devx_obj)
 	return ret;
 }
 
+int mlx5dr_cmd_allow_other_vhca_access(struct ibv_context *ctx,
+				       struct mlx5dr_cmd_allow_other_vhca_access_attr *attr)
+{
+	uint32_t out[MLX5_ST_SZ_DW(allow_other_vhca_access_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(allow_other_vhca_access_in)] = {0};
+	void *key;
+	int ret;
+
+	MLX5_SET(allow_other_vhca_access_in,
+		 in, opcode, MLX5_CMD_OP_ALLOW_OTHER_VHCA_ACCESS);
+	MLX5_SET(allow_other_vhca_access_in,
+		 in, object_type_to_be_accessed, attr->obj_type);
+	MLX5_SET(allow_other_vhca_access_in,
+		 in, object_id_to_be_accessed, attr->obj_id);
+
+	key = MLX5_ADDR_OF(allow_other_vhca_access_in, in, access_key);
+	memcpy(key, attr->access_key, sizeof(attr->access_key));
+
+	ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	if (ret) {
+		DR_LOG(ERR, "Failed to execute ALLOW_OTHER_VHCA_ACCESS command");
+		rte_errno = errno;
+		return rte_errno;
+	}
+
+	return 0;
+}
+
 int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 			  struct mlx5dr_cmd_query_caps *caps)
 {

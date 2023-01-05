@@ -1133,6 +1133,7 @@ enum {
 	MLX5_CMD_SET_REGEX_REGISTERS = 0xb06,
 	MLX5_CMD_QUERY_REGEX_REGISTERS = 0xb07,
 	MLX5_CMD_OP_ACCESS_REGISTER_USER = 0xb0c,
+	MLX5_CMD_OP_ALLOW_OTHER_VHCA_ACCESS = 0xb16,
 };
 
 enum {
@@ -3154,6 +3155,28 @@ struct mlx5_ifc_general_obj_out_cmd_hdr_bits {
 	u8 syndrome[0x20];
 	u8 obj_id[0x20];
 	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_allow_other_vhca_access_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x50];
+	u8 object_type_to_be_accessed[0x10];
+	u8 object_id_to_be_accessed[0x20];
+	u8 reserved_at_c0[0x40];
+	union {
+		u8 access_key_raw[0x100];
+		u8 access_key[8][0x20];
+	};
+};
+
+struct mlx5_ifc_allow_other_vhca_access_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
 };
 
 struct mlx5_ifc_virtio_q_counters_bits {
