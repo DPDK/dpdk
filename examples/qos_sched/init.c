@@ -81,6 +81,7 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 	if (app_inited_port_mask & (1u << portid))
 		return 0;
 
+	memset(&rx_conf, 0, sizeof(struct rte_eth_rxconf));
 	rx_conf.rx_thresh.pthresh = rx_thresh.pthresh;
 	rx_conf.rx_thresh.hthresh = rx_thresh.hthresh;
 	rx_conf.rx_thresh.wthresh = rx_thresh.wthresh;
@@ -88,6 +89,7 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 	rx_conf.rx_drop_en = 0;
 	rx_conf.rx_deferred_start = 0;
 
+	memset(&tx_conf, 0, sizeof(struct rte_eth_txconf));
 	tx_conf.tx_thresh.pthresh = tx_thresh.pthresh;
 	tx_conf.tx_thresh.hthresh = tx_thresh.hthresh;
 	tx_conf.tx_thresh.wthresh = tx_thresh.wthresh;
