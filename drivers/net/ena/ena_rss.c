@@ -105,6 +105,7 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 			if (unlikely(rc != 0)) {
 				PMD_DRV_LOG(ERR,
 					"Cannot fill indirection table\n");
+				rte_spinlock_unlock(&adapter->admin_lock);
 				return rc;
 			}
 		}
