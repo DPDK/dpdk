@@ -837,6 +837,9 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 		MLX5_GET64(query_hca_cap_out, out,
 			   capability.cmd_hca_cap.match_definer_format_supported);
 
+	caps->vhca_id = MLX5_GET(query_hca_cap_out, out,
+				 capability.cmd_hca_cap.vhca_id);
+
 	caps->sq_ts_format = MLX5_GET(query_hca_cap_out, out,
 				      capability.cmd_hca_cap.sq_ts_format);
 
