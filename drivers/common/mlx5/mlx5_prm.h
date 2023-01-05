@@ -1932,7 +1932,9 @@ struct mlx5_ifc_flow_table_prop_layout_bits {
 	u8 metadata_reg_a_width[0x8];
 	u8 reserved_at_60[0xa];
 	u8 reparse[0x1];
-	u8 reserved_at_6b[0xd];
+	u8 reserved_at_6b[0x1];
+	u8 cross_vhca_object[0x1];
+	u8 reserved_at_6d[0xb];
 	u8 log_max_ft_num[0x8];
 	u8 reserved_at_80[0x10];
 	u8 log_max_flow_counter[0x8];
@@ -2084,6 +2086,19 @@ struct mlx5_ifc_flow_table_esw_cap_bits {
 	u8 reserved_at_0[0x800];
 	struct mlx5_ifc_ft_fields_support_bits ft_header_modify_esw_fdb;
 	u8 reserved_at_C00[0x7400];
+};
+
+enum mlx5_ifc_cross_vhca_object_to_object_supported_types {
+	MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_TIR = 1 << 10,
+	MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_FT = 1 << 11,
+	MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_FT_TO_FT = 1 << 12,
+	MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_FT_TO_RTC = 1 << 13,
+};
+
+enum mlx5_ifc_cross_vhca_allowed_objects_types {
+	MLX5_CROSS_VHCA_ALLOWED_OBJS_TIR = 1 << 0x8,
+	MLX5_CROSS_VHCA_ALLOWED_OBJS_FT = 1 << 0x9,
+	MLX5_CROSS_VHCA_ALLOWED_OBJS_RTC = 1 << 0xa,
 };
 
 /*
@@ -3114,6 +3129,8 @@ enum {
 	MLX5_GENERAL_OBJ_TYPE_RTC = 0x0041,
 	MLX5_GENERAL_OBJ_TYPE_STE = 0x0042,
 	MLX5_GENERAL_OBJ_TYPE_MODIFY_HEADER_PATTERN = 0x0043,
+	MLX5_GENERAL_OBJ_TYPE_FT_ALIAS = 0xff15,
+	MLX5_GENERAL_OBJ_TYPE_TIR_ALIAS = 0xff16,
 };
 
 struct mlx5_ifc_general_obj_in_cmd_hdr_bits {
