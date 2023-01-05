@@ -96,6 +96,8 @@ struct mlx5dr_context_attr {
 	size_t initial_log_ste_memory; /* Currently not in use */
 	/* Optional PD used for allocating res ources */
 	struct ibv_pd *pd;
+	/* Optional other ctx for resources allocation, all objects will be created on it */
+	struct ibv_context *shared_ibv_ctx;
 };
 
 struct mlx5dr_table_attr {

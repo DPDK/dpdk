@@ -291,6 +291,12 @@
 
 #define MAX_ACTIONS_DATA_IN_HEADER_MODIFY 512
 
+/* Alias FT id passed to the ALLOW_OTHER_VHCA_ACCESS & CREATE_GENERAL_OBJECT
+ * commands should have the following format:
+ * {table_type: 8bits, table_id: 24bits}.
+ */
+#define FT_ID_FT_TYPE_OFFSET 24
+
 /* Completion mode. */
 enum mlx5_completion_mode {
 	MLX5_COMP_ONLY_ERR = 0x0,

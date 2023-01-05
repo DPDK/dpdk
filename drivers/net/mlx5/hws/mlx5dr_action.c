@@ -1147,6 +1147,7 @@ mlx5dr_action_create_reformat_root(struct mlx5dr_action *action,
 {
 	enum mlx5dv_flow_table_type ft_type = 0; /*fix compilation warn*/
 	uint32_t verb_reformat_type = 0;
+	struct ibv_context *ibv_ctx;
 	int ret;
 
 	/* Convert action to FT type and verbs reformat type */
@@ -1157,8 +1158,9 @@ mlx5dr_action_create_reformat_root(struct mlx5dr_action *action,
 	mlx5dr_action_conv_reformat_to_verbs(action->type, &verb_reformat_type);
 
 	/* Create the reformat type for root table */
+	ibv_ctx = mlx5dr_context_get_local_ibv(action->ctx);
 	action->flow_action =
-		mlx5_glue->dv_create_flow_action_packet_reformat_root(action->ctx->ibv_ctx,
+		mlx5_glue->dv_create_flow_action_packet_reformat_root(ibv_ctx,
 								      data_sz,
 								      data,
 								      verb_reformat_type,
@@ -1496,14 +1498,17 @@ mlx5dr_action_create_modify_header_root(struct mlx5dr_action *action,
 					__be64 *actions)
 {
 	enum mlx5dv_flow_table_type ft_type = 0;
+	struct ibv_context *local_ibv_ctx;
 	int ret;
 
 	ret = mlx5dr_action_conv_flags_to_ft_type(action->flags, &ft_type);
 	if (ret)
 		return rte_errno;
 
+	local_ibv_ctx = mlx5dr_context_get_local_ibv(action->ctx);
+
 	action->flow_action =
-		mlx5_glue->dv_create_flow_action_modify_header_root(action->ctx->ibv_ctx,
+		mlx5_glue->dv_create_flow_action_modify_header_root(local_ibv_ctx,
 								    actions_sz,
 								    (uint64_t *)actions,
 								    ft_type);

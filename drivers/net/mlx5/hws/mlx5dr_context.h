@@ -22,13 +22,22 @@ struct mlx5dr_context_common_res {
 	struct mlx5dr_cmd_forward_tbl *default_miss;
 };
 
+struct mlx5dr_context_shared_gvmi_res {
+	struct mlx5dr_devx_obj *end_ft;
+	struct mlx5dr_devx_obj *aliased_end_ft;
+	uint32_t refcount;
+};
+
 struct mlx5dr_context {
 	struct ibv_context *ibv_ctx;
+	/* When local_ibv_ctx is not NULL means we are using shared_ibv for resources */
+	struct ibv_context *local_ibv_ctx;
 	struct mlx5dr_cmd_query_caps *caps;
 	struct ibv_pd *pd;
 	uint32_t pd_num;
 	struct mlx5dr_pool *stc_pool[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_context_common_res common_res[MLX5DR_TABLE_TYPE_MAX];
+	struct mlx5dr_context_shared_gvmi_res gvmi_res[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_pattern_cache *pattern_cache;
 	pthread_spinlock_t ctrl_lock;
 	enum mlx5dr_context_flags flags;
@@ -37,4 +46,17 @@ struct mlx5dr_context {
 	LIST_HEAD(table_head, mlx5dr_table) head;
 };
 
+static inline bool mlx5dr_context_shared_gvmi_used(struct mlx5dr_context *ctx)
+{
+	return ctx->local_ibv_ctx ? true : false;
+}
+
+static inline struct ibv_context *
+mlx5dr_context_get_local_ibv(struct mlx5dr_context *ctx)
+{
+	if (mlx5dr_context_shared_gvmi_used(ctx))
+		return ctx->local_ibv_ctx;
+
+	return ctx->ibv_ctx;
+}
 #endif /* MLX5DR_CONTEXT_H_ */

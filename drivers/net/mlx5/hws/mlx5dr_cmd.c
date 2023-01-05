@@ -217,18 +217,23 @@ void mlx5dr_cmd_set_attr_connect_miss_tbl(struct mlx5dr_context *ctx,
 {
 	struct mlx5dr_devx_obj *default_miss_tbl;
 
-	if (type != MLX5DR_TABLE_TYPE_FDB)
+	if (type != MLX5DR_TABLE_TYPE_FDB && !mlx5dr_context_shared_gvmi_used(ctx))
 		return;
 
-	default_miss_tbl = ctx->common_res[type].default_miss->ft;
-	if (!default_miss_tbl) {
-		assert(false);
-		return;
-	}
 	ft_attr->modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION;
 	ft_attr->type = fw_ft_type;
 	ft_attr->table_miss_action = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION_GOTO_TBL;
-	ft_attr->table_miss_id = default_miss_tbl->id;
+
+	if (type == MLX5DR_TABLE_TYPE_FDB) {
+		default_miss_tbl = ctx->common_res[type].default_miss->ft;
+		if (!default_miss_tbl) {
+			assert(false);
+			return;
+		}
+		ft_attr->table_miss_id = default_miss_tbl->id;
+	} else {
+		ft_attr->table_miss_id = ctx->gvmi_res[type].aliased_end_ft->id;
+	}
 }
 
 struct mlx5dr_devx_obj *

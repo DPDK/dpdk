@@ -42,6 +42,8 @@ struct mlx5dr_matcher_match_ste {
 	struct mlx5dr_devx_obj *rtc_0;
 	struct mlx5dr_devx_obj *rtc_1;
 	struct mlx5dr_pool *pool;
+	/* Currently not support FDB aliased */
+	struct mlx5dr_devx_obj *aliased_rtc_0;
 };
 
 struct mlx5dr_matcher_action_ste {
@@ -73,4 +75,11 @@ int mlx5dr_matcher_conv_items_to_prm(uint64_t *match_buf,
 				     uint8_t *match_criteria,
 				     bool is_value);
 
+int mlx5dr_matcher_create_aliased_obj(struct mlx5dr_context *ctx,
+				      struct ibv_context *ibv_owner,
+				      struct ibv_context *ibv_allowed,
+				      uint16_t vhca_id_to_be_accessed,
+				      uint32_t aliased_object_id,
+				      uint16_t object_type,
+				      struct mlx5dr_devx_obj **obj);
 #endif /* MLX5DR_MATCHER_H_ */

@@ -18,6 +18,7 @@
 #endif
 #include <rte_flow.h>
 #include <rte_gtp.h>
+#include <rte_random.h>
 
 #include "mlx5_prm.h"
 #include "mlx5_glue.h"

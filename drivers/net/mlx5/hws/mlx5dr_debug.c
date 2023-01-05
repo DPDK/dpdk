@@ -405,7 +405,7 @@ static int mlx5dr_debug_dump_context_info(FILE *f, struct mlx5dr_context *ctx)
 		      MLX5DR_DEBUG_RES_TYPE_CONTEXT,
 		      (uint64_t)(uintptr_t)ctx,
 		      ctx->flags & MLX5DR_CONTEXT_FLAG_HWS_SUPPORT,
-		      mlx5_glue->get_device_name(ctx->ibv_ctx->device),
+		      mlx5_glue->get_device_name(mlx5dr_context_get_local_ibv(ctx)->device),
 		      DEBUG_VERSION);
 	if (ret < 0) {
 		rte_errno = EINVAL;

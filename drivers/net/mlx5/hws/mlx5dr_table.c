@@ -40,7 +40,8 @@ mlx5dr_table_up_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 	assert(ctx->caps->eswitch_manager);
 	vport = ctx->caps->eswitch_manager_vport_number;
 
-	default_miss = mlx5dr_cmd_miss_ft_create(ctx->ibv_ctx, &ft_attr, vport);
+	default_miss = mlx5dr_cmd_miss_ft_create(mlx5dr_context_get_local_ibv(ctx),
+						 &ft_attr, vport);
 	if (!default_miss) {
 		DR_LOG(ERR, "Failed to default miss table type: 0x%x", tbl_type);
 		return rte_errno;
@@ -96,7 +97,8 @@ mlx5dr_table_connect_to_default_miss_tbl(struct mlx5dr_table *tbl,
 }
 
 struct mlx5dr_devx_obj *
-mlx5dr_table_create_default_ft(struct mlx5dr_table *tbl)
+mlx5dr_table_create_default_ft(struct ibv_context *ibv,
+			       struct mlx5dr_table *tbl)
 {
 	struct mlx5dr_cmd_ft_create_attr ft_attr = {0};
 	struct mlx5dr_devx_obj *ft_obj;
@@ -104,7 +106,7 @@ mlx5dr_table_create_default_ft(struct mlx5dr_table *tbl)
 
 	mlx5dr_table_init_next_ft_attr(tbl, &ft_attr);
 
-	ft_obj = mlx5dr_cmd_flow_table_create(tbl->ctx->ibv_ctx, &ft_attr);
+	ft_obj = mlx5dr_cmd_flow_table_create(ibv, &ft_attr);
 	if (ft_obj && tbl->type == MLX5DR_TABLE_TYPE_FDB) {
 		/* Take/create ref over the default miss */
 		ret = mlx5dr_table_up_default_fdb_miss_tbl(tbl);
@@ -128,6 +130,171 @@ free_ft_obj:
 	return NULL;
 }
 
+static int
+mlx5dr_table_init_check_hws_support(struct mlx5dr_context *ctx,
+				    struct mlx5dr_table *tbl)
+{
+	if (!(ctx->flags & MLX5DR_CONTEXT_FLAG_HWS_SUPPORT)) {
+		DR_LOG(ERR, "HWS not supported, cannot create mlx5dr_table");
+		rte_errno = EOPNOTSUPP;
+		return rte_errno;
+	}
+
+	if (mlx5dr_context_shared_gvmi_used(ctx) && tbl->type == MLX5DR_TABLE_TYPE_FDB) {
+		DR_LOG(ERR, "FDB with shared port resources is not supported");
+		rte_errno = EOPNOTSUPP;
+		return rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+mlx5dr_table_shared_gvmi_resource_create(struct mlx5dr_context *ctx,
+					 enum mlx5dr_table_type type,
+					 struct mlx5dr_context_shared_gvmi_res *gvmi_res)
+{
+	struct mlx5dr_cmd_ft_create_attr ft_attr = {0};
+	uint32_t calculated_ft_id;
+	int ret;
+
+	if (!mlx5dr_context_shared_gvmi_used(ctx))
+		return 0;
+
+	ft_attr.type = mlx5dr_table_get_res_fw_ft_type(type, false);
+	ft_attr.level = ctx->caps->nic_ft.max_level - 1;
+	ft_attr.rtc_valid = true;
+
+	gvmi_res->end_ft =
+		mlx5dr_cmd_flow_table_create(mlx5dr_context_get_local_ibv(ctx),
+					     &ft_attr);
+	if (!gvmi_res->end_ft) {
+		DR_LOG(ERR, "Failed to create end-ft");
+		return rte_errno;
+	}
+
+	calculated_ft_id =
+		mlx5dr_table_get_res_fw_ft_type(type, false) << FT_ID_FT_TYPE_OFFSET;
+	calculated_ft_id |= gvmi_res->end_ft->id;
+
+	/* create alias to that FT */
+	ret = mlx5dr_matcher_create_aliased_obj(ctx,
+						ctx->local_ibv_ctx,
+						ctx->ibv_ctx,
+						ctx->caps->vhca_id,
+						calculated_ft_id,
+						MLX5_GENERAL_OBJ_TYPE_FT_ALIAS,
+						&gvmi_res->aliased_end_ft);
+	if (ret) {
+		DR_LOG(ERR, "Failed to create alias end-ft");
+		goto free_end_ft;
+	}
+
+	return 0;
+
+free_end_ft:
+	mlx5dr_cmd_destroy_obj(gvmi_res->end_ft);
+
+	return rte_errno;
+}
+
+static void
+mlx5dr_table_shared_gvmi_resourse_destroy(struct mlx5dr_context *ctx,
+					  struct mlx5dr_context_shared_gvmi_res *gvmi_res)
+{
+	if (!mlx5dr_context_shared_gvmi_used(ctx))
+		return;
+
+	if (gvmi_res->aliased_end_ft) {
+		mlx5dr_cmd_destroy_obj(gvmi_res->aliased_end_ft);
+		gvmi_res->aliased_end_ft = NULL;
+	}
+	if (gvmi_res->end_ft) {
+		mlx5dr_cmd_destroy_obj(gvmi_res->end_ft);
+		gvmi_res->end_ft = NULL;
+	}
+}
+
+/* called under spinlock ctx->ctrl_lock */
+static struct mlx5dr_context_shared_gvmi_res *
+mlx5dr_table_get_shared_gvmi_res(struct mlx5dr_context *ctx, enum mlx5dr_table_type type)
+{
+	int ret;
+
+	if (!mlx5dr_context_shared_gvmi_used(ctx))
+		return NULL;
+
+	if (ctx->gvmi_res[type].aliased_end_ft) {
+		ctx->gvmi_res[type].refcount++;
+		return &ctx->gvmi_res[type];
+	}
+
+	ret = mlx5dr_table_shared_gvmi_resource_create(ctx, type, &ctx->gvmi_res[type]);
+	if (ret) {
+		DR_LOG(ERR, "Failed to create shared gvmi res for type: %d", type);
+		goto out;
+	}
+
+	ctx->gvmi_res[type].refcount = 1;
+
+	return &ctx->gvmi_res[type];
+
+out:
+	return NULL;
+}
+
+/* called under spinlock ctx->ctrl_lock */
+static void mlx5dr_table_put_shared_gvmi_res(struct mlx5dr_table *tbl)
+{
+	struct mlx5dr_context *ctx = tbl->ctx;
+
+	if (!mlx5dr_context_shared_gvmi_used(ctx))
+		return;
+
+	if (--ctx->gvmi_res[tbl->type].refcount)
+		return;
+
+	mlx5dr_table_shared_gvmi_resourse_destroy(ctx, &ctx->gvmi_res[tbl->type]);
+}
+
+static void mlx5dr_table_uninit_shared_ctx_res(struct mlx5dr_table *tbl)
+{
+	struct mlx5dr_context *ctx = tbl->ctx;
+
+	if (!mlx5dr_context_shared_gvmi_used(ctx))
+		return;
+
+	mlx5dr_cmd_destroy_obj(tbl->local_ft);
+
+	mlx5dr_table_put_shared_gvmi_res(tbl);
+}
+
+/* called under spin_lock ctx->ctrl_lock */
+static int mlx5dr_table_init_shared_ctx_res(struct mlx5dr_context *ctx, struct mlx5dr_table *tbl)
+{
+	if (!mlx5dr_context_shared_gvmi_used(ctx))
+		return 0;
+
+	/* create local-ft for root access */
+	tbl->local_ft =
+		mlx5dr_table_create_default_ft(mlx5dr_context_get_local_ibv(ctx), tbl);
+	if (!tbl->local_ft) {
+		DR_LOG(ERR, "Failed to create local-ft");
+		return rte_errno;
+	}
+
+	if (!mlx5dr_table_get_shared_gvmi_res(tbl->ctx, tbl->type)) {
+		DR_LOG(ERR, "Failed to shared gvmi resources");
+		goto clean_local_ft;
+	}
+
+	return 0;
+
+clean_local_ft:
+	mlx5dr_table_destroy_default_ft(tbl, tbl->local_ft);
+	return rte_errno;
+}
+
 void mlx5dr_table_destroy_default_ft(struct mlx5dr_table *tbl,
 				     struct mlx5dr_devx_obj *ft_obj)
 {
@@ -143,11 +310,9 @@ static int mlx5dr_table_init(struct mlx5dr_table *tbl)
 	if (mlx5dr_table_is_root(tbl))
 		return 0;
 
-	if (!(tbl->ctx->flags & MLX5DR_CONTEXT_FLAG_HWS_SUPPORT)) {
-		DR_LOG(ERR, "HWS not supported, cannot create mlx5dr_table");
-		rte_errno = EOPNOTSUPP;
-		return rte_errno;
-	}
+	ret = mlx5dr_table_init_check_hws_support(ctx, tbl);
+	if (ret)
+		return ret;
 
 	switch (tbl->type) {
 	case MLX5DR_TABLE_TYPE_NIC_RX:
@@ -165,7 +330,7 @@ static int mlx5dr_table_init(struct mlx5dr_table *tbl)
 	}
 
 	pthread_spin_lock(&ctx->ctrl_lock);
-	tbl->ft = mlx5dr_table_create_default_ft(tbl);
+	tbl->ft = mlx5dr_table_create_default_ft(tbl->ctx->ibv_ctx, tbl);
 	if (!tbl->ft) {
 		DR_LOG(ERR, "Failed to create flow table devx object");
 		pthread_spin_unlock(&ctx->ctrl_lock);
@@ -175,10 +340,17 @@ static int mlx5dr_table_init(struct mlx5dr_table *tbl)
 	ret = mlx5dr_action_get_default_stc(ctx, tbl->type);
 	if (ret)
 		goto tbl_destroy;
+
+	ret = mlx5dr_table_init_shared_ctx_res(ctx, tbl);
+	if (ret)
+		goto put_stc;
+
 	pthread_spin_unlock(&ctx->ctrl_lock);
 
 	return 0;
 
+put_stc:
+	mlx5dr_action_put_default_stc(ctx, tbl->type);
 tbl_destroy:
 	mlx5dr_table_destroy_default_ft(tbl, tbl->ft);
 	pthread_spin_unlock(&ctx->ctrl_lock);
@@ -192,6 +364,7 @@ static void mlx5dr_table_uninit(struct mlx5dr_table *tbl)
 	pthread_spin_lock(&tbl->ctx->ctrl_lock);
 	mlx5dr_action_put_default_stc(tbl->ctx, tbl->type);
 	mlx5dr_table_destroy_default_ft(tbl, tbl->ft);
+	mlx5dr_table_uninit_shared_ctx_res(tbl);
 	pthread_spin_unlock(&tbl->ctx->ctrl_lock);
 }
 

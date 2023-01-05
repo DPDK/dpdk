@@ -11,6 +11,8 @@ struct mlx5dr_cmd_ft_create_attr {
 	bool rtc_valid;
 };
 
+#define ACCESS_KEY_LEN	32
+
 struct mlx5dr_cmd_ft_modify_attr {
 	uint8_t type;
 	uint32_t rtc_id_0;
@@ -50,7 +52,7 @@ struct mlx5dr_cmd_alias_obj_create_attr {
 	uint32_t obj_id;
 	uint16_t vhca_id;
 	uint16_t obj_type;
-	uint8_t access_key[32];
+	uint8_t access_key[ACCESS_KEY_LEN];
 };
 
 struct mlx5dr_cmd_stc_create_attr {
@@ -134,7 +136,7 @@ struct mlx5dr_cmd_sq_create_attr {
 struct mlx5dr_cmd_allow_other_vhca_access_attr {
 	uint16_t obj_type;
 	uint32_t obj_id;
-	uint8_t access_key[32];
+	uint8_t access_key[ACCESS_KEY_LEN];
 };
 
 struct mlx5dr_cmd_query_ft_caps {
@@ -178,6 +180,7 @@ struct mlx5dr_cmd_query_caps {
 	uint32_t trivial_match_definer;
 	uint32_t vhca_id;
 	bool cross_vhca_resources;
+	uint32_t shared_vhca_id;
 	char fw_ver[64];
 };
 

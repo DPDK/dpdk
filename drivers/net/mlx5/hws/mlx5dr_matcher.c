@@ -19,31 +19,20 @@ static uint8_t mlx5dr_matcher_rules_to_tbl_depth(uint8_t log_num_of_rules)
 	return RTE_MIN(log_num_of_rules, MLX5DR_MATCHER_ASSURED_COL_TBL_DEPTH);
 }
 
-static int mlx5dr_matcher_create_end_ft(struct mlx5dr_matcher *matcher)
-{
-	struct mlx5dr_table *tbl = matcher->tbl;
-
-	matcher->end_ft = mlx5dr_table_create_default_ft(tbl);
-	if (!matcher->end_ft) {
-		DR_LOG(ERR, "Failed to create matcher end flow table");
-		return rte_errno;
-	}
-	return 0;
-}
-
 static void mlx5dr_matcher_destroy_end_ft(struct mlx5dr_matcher *matcher)
 {
 	mlx5dr_table_destroy_default_ft(matcher->tbl, matcher->end_ft);
 }
 
-static int mlx5dr_matcher_free_rtc_pointing(uint32_t fw_ft_type,
+static int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,
+					    uint32_t fw_ft_type,
 					    enum mlx5dr_table_type type,
 					    struct mlx5dr_devx_obj *devx_obj)
 {
 	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
 	int ret;
 
-	if (type != MLX5DR_TABLE_TYPE_FDB)
+	if (type != MLX5DR_TABLE_TYPE_FDB && !mlx5dr_context_shared_gvmi_used(ctx))
 		return 0;
 
 	ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
@@ -54,6 +43,136 @@ static int mlx5dr_matcher_free_rtc_pointing(uint32_t fw_ft_type,
 	ret = mlx5dr_cmd_flow_table_modify(devx_obj, &ft_attr);
 	if (ret) {
 		DR_LOG(ERR, "Failed to disconnect previous RTC");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int mlx5dr_matcher_shared_point_end_ft(struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
+	int ret;
+
+	mlx5dr_cmd_set_attr_connect_miss_tbl(matcher->tbl->ctx,
+					     matcher->tbl->fw_ft_type,
+					     matcher->tbl->type,
+					     &ft_attr);
+
+	ret = mlx5dr_cmd_flow_table_modify(matcher->end_ft, &ft_attr);
+	if (ret) {
+		DR_LOG(ERR, "Failed to connect new matcher to default miss alias RTC");
+		return ret;
+	}
+
+	ret = mlx5dr_matcher_free_rtc_pointing(matcher->tbl->ctx,
+					       matcher->tbl->fw_ft_type,
+					       matcher->tbl->type,
+					       matcher->end_ft);
+
+	return ret;
+}
+
+static int mlx5dr_matcher_shared_create_alias_rtc(struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_context *ctx = matcher->tbl->ctx;
+	int ret;
+
+	ret = mlx5dr_matcher_create_aliased_obj(ctx,
+						ctx->ibv_ctx,
+						ctx->local_ibv_ctx,
+						ctx->caps->shared_vhca_id,
+						matcher->match_ste.rtc_0->id,
+						MLX5_GENERAL_OBJ_TYPE_RTC,
+						&matcher->match_ste.aliased_rtc_0);
+	if (ret) {
+		DR_LOG(ERR, "Failed to allocate alias RTC");
+		return ret;
+	}
+	return 0;
+}
+
+static int mlx5dr_matcher_create_init_shared(struct mlx5dr_matcher *matcher)
+{
+	if (!mlx5dr_context_shared_gvmi_used(matcher->tbl->ctx))
+		return 0;
+
+	if (mlx5dr_matcher_shared_point_end_ft(matcher)) {
+		DR_LOG(ERR, "Failed to point shared matcher end flow table");
+		return rte_errno;
+	}
+
+	if (mlx5dr_matcher_shared_create_alias_rtc(matcher)) {
+		DR_LOG(ERR, "Failed to create alias RTC");
+		return rte_errno;
+	}
+
+	return 0;
+}
+
+static void mlx5dr_matcher_create_uninit_shared(struct mlx5dr_matcher *matcher)
+{
+	if (!mlx5dr_context_shared_gvmi_used(matcher->tbl->ctx))
+		return;
+
+	if (matcher->match_ste.aliased_rtc_0) {
+		mlx5dr_cmd_destroy_obj(matcher->match_ste.aliased_rtc_0);
+		matcher->match_ste.aliased_rtc_0 = NULL;
+	}
+}
+
+static int mlx5dr_matcher_create_end_ft(struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_table *tbl = matcher->tbl;
+
+	matcher->end_ft = mlx5dr_table_create_default_ft(tbl->ctx->ibv_ctx, tbl);
+	if (!matcher->end_ft) {
+		DR_LOG(ERR, "Failed to create matcher end flow table");
+		return rte_errno;
+	}
+	return 0;
+}
+
+static uint32_t
+mlx5dr_matcher_connect_get_rtc0(struct mlx5dr_matcher *matcher)
+{
+	if (!matcher->match_ste.aliased_rtc_0)
+		return matcher->match_ste.rtc_0->id;
+	else
+		return matcher->match_ste.aliased_rtc_0->id;
+}
+
+/* The function updates tbl->local_ft to the first RTC or 0 if no more matchers */
+static int mlx5dr_matcher_shared_update_local_ft(struct mlx5dr_table *tbl)
+{
+	struct mlx5dr_cmd_ft_modify_attr cur_ft_attr = {0};
+	struct mlx5dr_matcher *first_matcher;
+	int ret;
+
+	if (!mlx5dr_context_shared_gvmi_used(tbl->ctx))
+		return 0;
+
+	first_matcher = LIST_FIRST(&tbl->head);
+	if (!first_matcher) {
+		/* local ft no longer points to any RTC, drop refcount */
+		ret = mlx5dr_matcher_free_rtc_pointing(tbl->ctx,
+						       tbl->fw_ft_type,
+						       tbl->type,
+						       tbl->local_ft);
+		if (ret)
+			DR_LOG(ERR, "Failed to clear local FT to prev alias RTC");
+
+		return ret;
+	}
+
+	/* point local_ft to the first RTC */
+	cur_ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
+	cur_ft_attr.type = tbl->fw_ft_type;
+	cur_ft_attr.rtc_id_0 = mlx5dr_matcher_connect_get_rtc0(first_matcher);
+
+	ret = mlx5dr_cmd_flow_table_modify(tbl->local_ft, &cur_ft_attr);
+	if (ret) {
+		DR_LOG(ERR, "Failed to point local FT to alias RTC");
 		return ret;
 	}
 
@@ -121,6 +240,12 @@ connect:
 		goto remove_from_list;
 	}
 
+	ret = mlx5dr_matcher_shared_update_local_ft(tbl);
+	if (ret) {
+		DR_LOG(ERR, "Failed to update local_ft anchor in shared table");
+		goto remove_from_list;
+	}
+
 	return 0;
 
 remove_from_list:
@@ -174,13 +299,20 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 
 	if (!next) {
 		/* ft no longer points to any RTC, drop refcount */
-		ret = mlx5dr_matcher_free_rtc_pointing(tbl->fw_ft_type,
+		ret = mlx5dr_matcher_free_rtc_pointing(tbl->ctx,
+						       tbl->fw_ft_type,
 						       tbl->type,
 						       prev_ft);
 		if (ret) {
 			DR_LOG(ERR, "Failed to reset last RTC refcount");
 			return ret;
 		}
+	}
+
+	ret = mlx5dr_matcher_shared_update_local_ft(tbl);
+	if (ret) {
+		DR_LOG(ERR, "Failed to update local_ft in shared table");
+		return ret;
 	}
 
 	return 0;
@@ -204,6 +336,49 @@ static void mlx5dr_matcher_set_rtc_attr_sz(struct mlx5dr_matcher *matcher,
 		rtc_attr->log_size = is_match_rtc ? matcher->attr.table.sz_row_log : ste->order;
 		rtc_attr->log_depth = is_match_rtc ? matcher->attr.table.sz_col_log : 0;
 	}
+}
+
+int mlx5dr_matcher_create_aliased_obj(struct mlx5dr_context *ctx,
+				      struct ibv_context *ibv_owner,
+				      struct ibv_context *ibv_allowed,
+				      uint16_t vhca_id_to_be_accessed,
+				      uint32_t aliased_object_id,
+				      uint16_t object_type,
+				      struct mlx5dr_devx_obj **obj)
+{
+	struct mlx5dr_cmd_allow_other_vhca_access_attr allow_attr = {0};
+	struct mlx5dr_cmd_alias_obj_create_attr alias_attr = {0};
+	char key[ACCESS_KEY_LEN];
+	int ret;
+	int i;
+
+	if (!mlx5dr_context_shared_gvmi_used(ctx))
+		return 0;
+
+	for (i = 0; i < ACCESS_KEY_LEN; i++)
+		key[i] = rte_rand() & 0xFF;
+
+	memcpy(allow_attr.access_key, key, ACCESS_KEY_LEN);
+	allow_attr.obj_type = object_type;
+	allow_attr.obj_id = aliased_object_id;
+
+	ret = mlx5dr_cmd_allow_other_vhca_access(ibv_owner, &allow_attr);
+	if (ret) {
+		DR_LOG(ERR, "Failed to allow RTC to be aliased");
+		return ret;
+	}
+
+	memcpy(alias_attr.access_key, key, ACCESS_KEY_LEN);
+	alias_attr.obj_id = aliased_object_id;
+	alias_attr.obj_type = object_type;
+	alias_attr.vhca_id = vhca_id_to_be_accessed;
+	*obj = mlx5dr_cmd_alias_obj_create(ibv_allowed, &alias_attr);
+	if (!*obj) {
+		DR_LOG(ERR, "Failed to create alias object");
+		return rte_errno;
+	}
+
+	return 0;
 }
 
 static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
@@ -573,13 +748,20 @@ static int mlx5dr_matcher_create_and_connect(struct mlx5dr_matcher *matcher)
 	if (ret)
 		goto destroy_end_ft;
 
-	/* Connect the matcher to the matcher list */
-	ret = mlx5dr_matcher_connect(matcher);
+	/* Allocate and set shared resources */
+	ret = mlx5dr_matcher_create_init_shared(matcher);
 	if (ret)
 		goto destroy_rtc;
 
+	/* Connect the matcher to the matcher list */
+	ret = mlx5dr_matcher_connect(matcher);
+	if (ret)
+		goto destroy_shared;
+
 	return 0;
 
+destroy_shared:
+	mlx5dr_matcher_create_uninit_shared(matcher);
 destroy_rtc:
 	mlx5dr_matcher_destroy_rtc(matcher, true);
 destroy_end_ft:
@@ -594,6 +776,7 @@ unbind_mt:
 static void mlx5dr_matcher_destroy_and_disconnect(struct mlx5dr_matcher *matcher)
 {
 	mlx5dr_matcher_disconnect(matcher);
+	mlx5dr_matcher_create_uninit_shared(matcher);
 	mlx5dr_matcher_destroy_rtc(matcher, true);
 	mlx5dr_matcher_destroy_end_ft(matcher);
 	mlx5dr_matcher_unbind_at(matcher);
@@ -766,7 +949,8 @@ static int mlx5dr_matcher_init_root(struct mlx5dr_matcher *matcher)
 	attr.priority = matcher->attr.priority;
 
 	matcher->dv_matcher =
-		mlx5_glue->dv_create_flow_matcher_root(ctx->ibv_ctx, &attr);
+		mlx5_glue->dv_create_flow_matcher_root(mlx5dr_context_get_local_ibv(ctx),
+						       &attr);
 	if (!matcher->dv_matcher) {
 		DR_LOG(ERR, "Failed to create DV flow matcher");
 		rte_errno = errno;
