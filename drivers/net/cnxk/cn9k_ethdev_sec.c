@@ -556,6 +556,7 @@ cn9k_eth_sec_session_create(void *device,
 
 	if (!dev->outb.lf_base) {
 		plt_err("Could not allocate security session private data");
+		rte_spinlock_unlock(lock);
 		return -ENOMEM;
 	}
 
