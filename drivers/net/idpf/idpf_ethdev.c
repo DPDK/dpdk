@@ -56,9 +56,9 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = adapter->caps->max_rx_q;
 	dev_info->max_tx_queues = adapter->caps->max_tx_q;
 	dev_info->min_rx_bufsize = IDPF_MIN_BUF_SIZE;
-	dev_info->max_rx_pktlen = IDPF_MAX_FRAME_SIZE;
+	dev_info->max_rx_pktlen = vport->max_mtu + IDPF_ETH_OVERHEAD;
 
-	dev_info->max_mtu = dev_info->max_rx_pktlen - IDPF_ETH_OVERHEAD;
+	dev_info->max_mtu = vport->max_mtu;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->flow_type_rss_offloads = IDPF_RSS_OFFLOAD_ALL;
@@ -104,13 +104,22 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
-idpf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu __rte_unused)
+idpf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
+	struct idpf_vport *vport = dev->data->dev_private;
+
 	/* mtu setting is forbidden if port is start */
 	if (dev->data->dev_started) {
 		PMD_DRV_LOG(ERR, "port must be stopped before configuration");
 		return -EBUSY;
 	}
+
+	if (mtu > vport->max_mtu) {
+		PMD_DRV_LOG(ERR, "MTU should be less than %d", vport->max_mtu);
+		return -EINVAL;
+	}
+
+	vport->max_pkt_len = mtu + IDPF_ETH_OVERHEAD;
 
 	return 0;
 }
@@ -381,6 +390,10 @@ idpf_dev_configure(struct rte_eth_dev *dev)
 		return -1;
 	}
 
+	vport->max_pkt_len =
+		(dev->data->mtu == 0) ? IDPF_DEFAULT_MTU : dev->data->mtu +
+		IDPF_ETH_OVERHEAD;
+
 	return 0;
 }
 
@@ -513,39 +526,31 @@ idpf_dev_start(struct rte_eth_dev *dev)
 
 	vport->stopped = 0;
 
-	if (dev->data->mtu > vport->max_mtu) {
-		PMD_DRV_LOG(ERR, "MTU should be less than %d", vport->max_mtu);
-		ret = -EINVAL;
-		goto err_mtu;
-	}
-
-	vport->max_pkt_len = dev->data->mtu + IDPF_ETH_OVERHEAD;
-
 	req_vecs_num = IDPF_DFLT_Q_VEC_NUM;
 	if (req_vecs_num + adapter->used_vecs_num > num_allocated_vectors) {
 		PMD_DRV_LOG(ERR, "The accumulated request vectors' number should be less than %d",
 			    num_allocated_vectors);
 		ret = -EINVAL;
-		goto err_mtu;
+		goto err_vec;
 	}
 
 	ret = idpf_vc_alloc_vectors(vport, req_vecs_num);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to allocate interrupt vectors");
-		goto err_mtu;
+		goto err_vec;
 	}
 	adapter->used_vecs_num += req_vecs_num;
 
 	ret = idpf_config_rx_queues_irqs(dev);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to configure irqs");
-		goto err_mtu;
+		goto err_vec;
 	}
 
 	ret = idpf_start_queues(dev);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to start queues");
-		goto err_mtu;
+		goto err_vec;
 	}
 
 	idpf_set_rx_function(dev);
@@ -561,7 +566,7 @@ idpf_dev_start(struct rte_eth_dev *dev)
 
 err_vport:
 	idpf_stop_queues(dev);
-err_mtu:
+err_vec:
 	return ret;
 }
 
