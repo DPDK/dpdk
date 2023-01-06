@@ -911,11 +911,14 @@ rte_cryptodev_get_sec_ctx(uint8_t dev_id);
  * @param nb_elts
  *   The number of elements in the mempool.
  * @param elt_size
- *   The size of the element. This value will be ignored if it is smaller than
- *   the minimum session header size required for the system. For the user who
- *   want to use the same mempool for sym session and session private data it
- *   can be the maximum value of all existing devices' private data and session
- *   header sizes.
+ *   The size of the element. This should be the size of the cryptodev PMD
+ *   session private data obtained through
+ *   rte_cryptodev_sym_get_private_session_size() function call.
+ *   For the user who wants to use the same mempool for heterogeneous PMDs
+ *   this value should be the maximum value of their private session sizes.
+ *   Please note the created mempool will have bigger elt size than this
+ *   value as necessary session header and the possible padding are filled
+ *   into each elt.
  * @param cache_size
  *   The number of per-lcore cache elements
  * @param priv_size
@@ -926,8 +929,8 @@ rte_cryptodev_get_sec_ctx(uint8_t dev_id);
  *   constraint for the reserved zone.
  *
  * @return
- *  - On success return size of the session
- *  - On failure returns 0
+ *  - On success returns the created session mempool pointer
+ *  - On failure returns NULL
  */
 __rte_experimental
 struct rte_mempool *

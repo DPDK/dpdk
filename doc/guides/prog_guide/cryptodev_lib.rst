@@ -499,37 +499,29 @@ a flow. Crypto sessions cache this immutable data in a optimal way for the
 underlying PMD and this allows further acceleration of the offload of
 Crypto workloads.
 
-.. figure:: img/cryptodev_sym_sess.*
-
 The Crypto device framework provides APIs to create session mempool and allocate
 and initialize sessions for crypto devices, where sessions are mempool objects.
 The application has to use ``rte_cryptodev_sym_session_pool_create()`` to
-create the session header mempool that creates a mempool with proper element
-size automatically and stores necessary information for safely accessing the
-session in the mempool's private data field.
-
-To create a mempool for storing session private data, the application has two
-options. The first is to create another mempool with elt size equal to or
-bigger than the maximum session private data size of all crypto devices that
-will share the same session header. The creation of the mempool shall use the
-traditional ``rte_mempool_create()`` with the correct ``elt_size``. The other
-option is to change the ``elt_size`` parameter in
-``rte_cryptodev_sym_session_pool_create()`` to the correct value. The first
-option is more complex to implement but may result in better memory usage as
-a session header normally takes smaller memory footprint as the session private
-data.
+create the session mempool header and the private data with the size specified
+by the user through the ``elt_size`` parameter in the function.
+The session private data is for the driver to initialize and access
+during crypto operations, hence the ``elt_size`` should be big enough
+for all drivers that will share this mempool.
+To obtain the proper session private data size of a crypto device,
+the user can call ``rte_cryptodev_sym_get_private_session_size()`` function.
+In case of heterogeneous crypto devices which will share the same session mempool,
+the maximum session private data size of them should be passed.
 
 Once the session mempools have been created, ``rte_cryptodev_sym_session_create()``
-is used to allocate an uninitialized session from the given mempool.
-The session then must be initialized using ``rte_cryptodev_sym_session_init()``
-for each of the required crypto devices. A symmetric transform chain
-is used to specify the operation and its parameters. See the section below for
-details on transforms.
+is used to allocate and initialize the session from the given mempool.
+The created session can ONLY be used by the crypto devices sharing the same driver ID
+as the device ID passed into the function as the parameter.
+In addition, a symmetric transform chain is used to specify the operation and its parameters.
+See the section below for details on transforms.
 
-When a session is no longer used, user must call ``rte_cryptodev_sym_session_clear()``
-for each of the crypto devices that are using the session, to free all driver
-private session data. Once this is done, session should be freed using
-``rte_cryptodev_sym_session_free`` which returns them to their mempool.
+When a session is no longer used, user must call ``rte_cryptodev_sym_session_free()``
+to uninitialize the session data and return the session
+back to the mempool it belongs.
 
 
 Transforms and Transform Chaining
