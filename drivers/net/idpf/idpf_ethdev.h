@@ -89,8 +89,16 @@ struct idpf_chunks_info {
 	uint32_t rx_buf_qtail_spacing;
 };
 
+struct idpf_vport_param {
+	struct idpf_adapter *adapter;
+	uint16_t devarg_id; /* arg id from user */
+	uint16_t idx;       /* index in adapter->vports[]*/
+};
+
 struct idpf_vport {
 	struct idpf_adapter *adapter; /* Backreference to associated adapter */
+	struct virtchnl2_create_vport *vport_info; /* virtchnl response info handling */
+	uint16_t sw_idx; /* SW index in adapter->vports[]*/
 	uint16_t vport_id;
 	uint32_t txq_model;
 	uint32_t rxq_model;
@@ -107,8 +115,6 @@ struct idpf_vport {
 	enum virtchnl_rss_algorithm rss_algorithm;
 	uint16_t rss_key_size;
 	uint16_t rss_lut_size;
-
-	uint16_t sw_idx; /* SW idx */
 
 	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
 	uint16_t max_pkt_len; /* Maximum packet length */
@@ -146,16 +152,12 @@ struct idpf_adapter {
 	uint32_t txq_model; /* 0 - split queue model, non-0 - single queue model */
 	uint32_t rxq_model; /* 0 - split queue model, non-0 - single queue model */
 
-	/* Vport info */
-	uint8_t **vport_req_info;
-	uint8_t **vport_recv_info;
 	struct idpf_vport **vports;
 	uint16_t max_vport_nb;
 	uint16_t req_vports[IDPF_MAX_VPORT_NUM];
 	uint16_t req_vport_nb;
-	uint16_t cur_vports;
+	uint16_t cur_vports; /* bit mask of created vport */
 	uint16_t cur_vport_nb;
-	uint16_t cur_vport_idx;
 
 	uint16_t used_vecs_num;
 
@@ -231,7 +233,8 @@ void idpf_handle_virtchnl_msg(struct rte_eth_dev *dev);
 int idpf_vc_check_api_version(struct idpf_adapter *adapter);
 int idpf_get_pkt_type(struct idpf_adapter *adapter);
 int idpf_vc_get_caps(struct idpf_adapter *adapter);
-int idpf_vc_create_vport(struct idpf_adapter *adapter);
+int idpf_vc_create_vport(struct idpf_vport *vport,
+			 struct virtchnl2_create_vport *vport_info);
 int idpf_vc_destroy_vport(struct idpf_vport *vport);
 int idpf_vc_set_rss_key(struct idpf_vport *vport);
 int idpf_vc_set_rss_lut(struct idpf_vport *vport);

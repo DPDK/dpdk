@@ -583,11 +583,10 @@ idpf_vc_get_caps(struct idpf_adapter *adapter)
 }
 
 int
-idpf_vc_create_vport(struct idpf_adapter *adapter)
+idpf_vc_create_vport(struct idpf_vport *vport,
+		     struct virtchnl2_create_vport *vport_req_info)
 {
-	uint16_t idx = adapter->cur_vport_idx;
-	struct virtchnl2_create_vport *vport_req_info =
-		(struct virtchnl2_create_vport *)adapter->vport_req_info[idx];
+	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_create_vport vport_msg;
 	struct idpf_cmd_info args;
 	int err = -1;
@@ -615,16 +614,7 @@ idpf_vc_create_vport(struct idpf_adapter *adapter)
 		return err;
 	}
 
-	if (adapter->vport_recv_info[idx] == NULL) {
-		adapter->vport_recv_info[idx] = rte_zmalloc(NULL,
-						    IDPF_DFLT_MBX_BUF_SIZE, 0);
-		if (adapter->vport_recv_info[idx] == NULL) {
-			PMD_INIT_LOG(ERR, "Failed to alloc vport_recv_info.");
-			return -ENOMEM;
-		}
-	}
-	rte_memcpy(adapter->vport_recv_info[idx], args.out_buffer,
-		   IDPF_DFLT_MBX_BUF_SIZE);
+	rte_memcpy(vport->vport_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 	return 0;
 }
 

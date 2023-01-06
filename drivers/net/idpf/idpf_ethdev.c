@@ -134,29 +134,11 @@ idpf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 }
 
 static int
-idpf_init_vport_req_info(struct rte_eth_dev *dev)
+idpf_init_vport_req_info(struct rte_eth_dev *dev,
+			 struct virtchnl2_create_vport *vport_info)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 	struct idpf_adapter *adapter = vport->adapter;
-	struct virtchnl2_create_vport *vport_info;
-	uint16_t idx = adapter->cur_vport_idx;
-
-	if (idx == IDPF_INVALID_VPORT_IDX) {
-		PMD_INIT_LOG(ERR, "Invalid vport index.");
-		return -EINVAL;
-	}
-
-	if (adapter->vport_req_info[idx] == NULL) {
-		adapter->vport_req_info[idx] = rte_zmalloc(NULL,
-				sizeof(struct virtchnl2_create_vport), 0);
-		if (adapter->vport_req_info[idx] == NULL) {
-			PMD_INIT_LOG(ERR, "Failed to allocate vport_req_info");
-			return -ENOMEM;
-		}
-	}
-
-	vport_info =
-		(struct virtchnl2_create_vport *)adapter->vport_req_info[idx];
 
 	vport_info->vport_type = rte_cpu_to_le_16(VIRTCHNL2_VPORT_TYPE_DEFAULT);
 	if (adapter->txq_model == 0) {
@@ -187,35 +169,13 @@ idpf_init_vport_req_info(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
-idpf_parse_devarg_id(char *name)
-{
-	uint16_t val;
-	char *p;
-
-	p = strstr(name, "vport_");
-
-	if (p == NULL)
-		return -EINVAL;
-
-	p += sizeof("vport_") - 1;
-
-	val = strtoul(p, NULL, 10);
-
-	return val;
-}
-
 #define IDPF_RSS_KEY_LEN 52
 
 static int
-idpf_init_vport(struct rte_eth_dev *dev)
+idpf_init_vport(struct idpf_vport *vport)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_adapter *adapter = vport->adapter;
-	uint16_t idx = adapter->cur_vport_idx;
-	struct virtchnl2_create_vport *vport_info =
-		(struct virtchnl2_create_vport *)adapter->vport_recv_info[idx];
-	int i, type, ret;
+	struct virtchnl2_create_vport *vport_info = vport->vport_info;
+	int i, type;
 
 	vport->vport_id = vport_info->vport_id;
 	vport->txq_model = vport_info->txq_model;
@@ -231,7 +191,6 @@ idpf_init_vport(struct rte_eth_dev *dev)
 	vport->rss_key_size = RTE_MIN(IDPF_RSS_KEY_LEN,
 				     vport_info->rss_key_size);
 	vport->rss_lut_size = vport_info->rss_lut_size;
-	vport->sw_idx = idx;
 
 	for (i = 0; i < vport_info->chunks.num_chunks; i++) {
 		type = vport_info->chunks.chunks[i].type;
@@ -273,17 +232,6 @@ idpf_init_vport(struct rte_eth_dev *dev)
 			break;
 		}
 	}
-
-	ret = idpf_parse_devarg_id(dev->data->name);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Failed to parse devarg id.");
-		return -EINVAL;
-	}
-	vport->devarg_id = ret;
-
-	vport->dev_data = dev->data;
-
-	adapter->vports[idx] = vport;
 
 	return 0;
 }
@@ -662,9 +610,10 @@ idpf_dev_close(struct rte_eth_dev *dev)
 	vport->qv_map = NULL;
 
 	adapter->cur_vports &= ~RTE_BIT32(vport->devarg_id);
-
-	rte_free(vport);
+	adapter->cur_vport_nb--;
 	dev->data->dev_private = NULL;
+	adapter->vports[vport->sw_idx] = NULL;
+	rte_free(vport);
 
 	return 0;
 }
@@ -757,10 +706,7 @@ parse_vport(const char *key, const char *value, void *args)
 	}
 
 	for (i = 0; i < adapter->req_vport_nb; i++) {
-		if ((adapter->cur_vports & RTE_BIT32(adapter->req_vports[i])) == 0) {
-			adapter->cur_vports |= RTE_BIT32(adapter->req_vports[i]);
-			adapter->cur_vport_nb++;
-		} else {
+		if (adapter->cur_vports & RTE_BIT32(adapter->req_vports[i])) {
 			PMD_INIT_LOG(ERR, "Vport %d has been created",
 				     adapter->req_vports[i]);
 			return -EINVAL;
@@ -797,6 +743,8 @@ idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 	struct rte_devargs *devargs = pci_dev->device.devargs;
 	struct rte_kvargs *kvlist;
 	int ret;
+
+	adapter->req_vport_nb = 0;
 
 	if (devargs == NULL)
 		return 0;
@@ -981,26 +929,6 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 
 	adapter->max_vport_nb = adapter->caps->max_vports;
 
-	adapter->vport_req_info = rte_zmalloc("vport_req_info",
-					      adapter->max_vport_nb *
-					      sizeof(*adapter->vport_req_info),
-					      0);
-	if (adapter->vport_req_info == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate vport_req_info memory");
-		ret = -ENOMEM;
-		goto err_caps;
-	}
-
-	adapter->vport_recv_info = rte_zmalloc("vport_recv_info",
-					       adapter->max_vport_nb *
-					       sizeof(*adapter->vport_recv_info),
-					       0);
-	if (adapter->vport_recv_info == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate vport_recv_info memory");
-		ret = -ENOMEM;
-		goto err_vport_recv_info;
-	}
-
 	adapter->vports = rte_zmalloc("vports",
 				      adapter->max_vport_nb *
 				      sizeof(*adapter->vports),
@@ -1026,11 +954,6 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 	return ret;
 
 err_vports:
-	rte_free(adapter->vport_recv_info);
-	adapter->vport_recv_info = NULL;
-err_vport_recv_info:
-	rte_free(adapter->vport_req_info);
-	adapter->vport_req_info = NULL;
 err_caps:
 	rte_free(adapter->caps);
 	adapter->caps = NULL;
@@ -1063,17 +986,17 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 };
 
 static uint16_t
-idpf_get_vport_idx(struct idpf_vport **vports, uint16_t max_vport_nb)
+idpf_vport_idx_alloc(struct idpf_adapter *ad)
 {
 	uint16_t vport_idx;
 	uint16_t i;
 
-	for (i = 0; i < max_vport_nb; i++) {
-		if (vports[i] == NULL)
+	for (i = 0; i < ad->max_vport_nb; i++) {
+		if (ad->vports[i] == NULL)
 			break;
 	}
 
-	if (i == max_vport_nb)
+	if (i == ad->max_vport_nb)
 		vport_idx = IDPF_INVALID_VPORT_IDX;
 	else
 		vport_idx = i;
@@ -1082,35 +1005,50 @@ idpf_get_vport_idx(struct idpf_vport **vports, uint16_t max_vport_nb)
 }
 
 static int
-idpf_dev_init(struct rte_eth_dev *dev, void *init_params)
+idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_adapter *adapter = init_params;
+	struct idpf_vport_param *param = init_params;
+	struct idpf_adapter *adapter = param->adapter;
+	/* for sending create vport virtchnl msg prepare */
+	struct virtchnl2_create_vport vport_req_info;
 	int ret = 0;
 
 	dev->dev_ops = &idpf_eth_dev_ops;
 	vport->adapter = adapter;
+	vport->sw_idx = param->idx;
+	vport->devarg_id = param->devarg_id;
 
-	ret = idpf_init_vport_req_info(dev);
+	vport->vport_info = rte_zmalloc(NULL, IDPF_DFLT_MBX_BUF_SIZE, 0);
+	if (vport->vport_info == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate vport_info");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	memset(&vport_req_info, 0, sizeof(vport_req_info));
+	ret = idpf_init_vport_req_info(dev, &vport_req_info);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init vport req_info.");
 		goto err;
 	}
 
-	ret = idpf_vc_create_vport(adapter);
+	ret = idpf_vc_create_vport(vport, &vport_req_info);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to create vport.");
 		goto err_create_vport;
 	}
 
-	ret = idpf_init_vport(dev);
+	ret = idpf_init_vport(vport);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init vports.");
 		goto err_init_vport;
 	}
 
-	adapter->cur_vport_idx = idpf_get_vport_idx(adapter->vports,
-						    adapter->max_vport_nb);
+	vport->dev_data = dev->data;
+	adapter->vports[param->idx] = vport;
+	adapter->cur_vports |= RTE_BIT32(param->devarg_id);
+	adapter->cur_vport_nb++;
 
 	dev->data->mac_addrs = rte_zmalloc(NULL, RTE_ETHER_ADDR_LEN, 0);
 	if (dev->data->mac_addrs == NULL) {
@@ -1125,9 +1063,10 @@ idpf_dev_init(struct rte_eth_dev *dev, void *init_params)
 	return 0;
 
 err_init_vport:
+	adapter->vports[param->idx] = NULL;  /* reset */
 	idpf_vc_destroy_vport(vport);
 err_create_vport:
-	rte_free(vport->adapter->vport_req_info[vport->adapter->cur_vport_idx]);
+	rte_free(vport->vport_info);
 err:
 	return ret;
 }
@@ -1165,7 +1104,6 @@ static void
 idpf_adapter_rel(struct idpf_adapter *adapter)
 {
 	struct idpf_hw *hw = &adapter->hw;
-	int i;
 
 	idpf_ctlq_deinit(hw);
 
@@ -1175,24 +1113,6 @@ idpf_adapter_rel(struct idpf_adapter *adapter)
 	rte_free(adapter->mbx_resp);
 	adapter->mbx_resp = NULL;
 
-	if (adapter->vport_req_info != NULL) {
-		for (i = 0; i < adapter->max_vport_nb; i++) {
-			rte_free(adapter->vport_req_info[i]);
-			adapter->vport_req_info[i] = NULL;
-		}
-		rte_free(adapter->vport_req_info);
-		adapter->vport_req_info = NULL;
-	}
-
-	if (adapter->vport_recv_info != NULL) {
-		for (i = 0; i < adapter->max_vport_nb; i++) {
-			rte_free(adapter->vport_recv_info[i]);
-			adapter->vport_recv_info[i] = NULL;
-		}
-		rte_free(adapter->vport_recv_info);
-		adapter->vport_recv_info = NULL;
-	}
-
 	rte_free(adapter->vports);
 	adapter->vports = NULL;
 }
@@ -1201,6 +1121,7 @@ static int
 idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	       struct rte_pci_device *pci_dev)
 {
+	struct idpf_vport_param vport_param;
 	struct idpf_adapter *adapter;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int i, retval;
@@ -1241,28 +1162,40 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (adapter->req_vport_nb == 0) {
 		/* If no vport devarg, create vport 0 by default. */
+		vport_param.adapter = adapter;
+		vport_param.devarg_id = 0;
+		vport_param.idx = idpf_vport_idx_alloc(adapter);
+		if (vport_param.idx == IDPF_INVALID_VPORT_IDX) {
+			PMD_INIT_LOG(ERR, "No space for vport %u", vport_param.devarg_id);
+			return 0;
+		}
 		snprintf(name, sizeof(name), "idpf_%s_vport_0",
 			 pci_dev->device.name);
 		retval = rte_eth_dev_create(&pci_dev->device, name,
 					    sizeof(struct idpf_vport),
-					    NULL, NULL, idpf_dev_init,
-					    adapter);
+					    NULL, NULL, idpf_dev_vport_init,
+					    &vport_param);
 		if (retval != 0)
 			PMD_DRV_LOG(ERR, "Failed to create default vport 0");
-		adapter->cur_vports |= RTE_BIT32(0);
-		adapter->cur_vport_nb++;
 	} else {
 		for (i = 0; i < adapter->req_vport_nb; i++) {
+			vport_param.adapter = adapter;
+			vport_param.devarg_id = adapter->req_vports[i];
+			vport_param.idx = idpf_vport_idx_alloc(adapter);
+			if (vport_param.idx == IDPF_INVALID_VPORT_IDX) {
+				PMD_INIT_LOG(ERR, "No space for vport %u", vport_param.devarg_id);
+				break;
+			}
 			snprintf(name, sizeof(name), "idpf_%s_vport_%d",
 				 pci_dev->device.name,
 				 adapter->req_vports[i]);
 			retval = rte_eth_dev_create(&pci_dev->device, name,
 						    sizeof(struct idpf_vport),
-						    NULL, NULL, idpf_dev_init,
-						    adapter);
+						    NULL, NULL, idpf_dev_vport_init,
+						    &vport_param);
 			if (retval != 0)
 				PMD_DRV_LOG(ERR, "Failed to create vport %d",
-					    adapter->req_vports[i]);
+					    vport_param.devarg_id);
 		}
 	}
 
