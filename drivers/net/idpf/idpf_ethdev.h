@@ -137,6 +137,12 @@ struct idpf_vport {
 	bool stopped;
 };
 
+/* Struct used when parse driver specific devargs */
+struct idpf_devargs {
+	uint16_t req_vports[IDPF_MAX_VPORT_NUM];
+	uint16_t req_vport_nb;
+};
+
 struct idpf_adapter {
 	TAILQ_ENTRY(idpf_adapter) next;
 	struct idpf_hw hw;
@@ -154,8 +160,7 @@ struct idpf_adapter {
 
 	struct idpf_vport **vports;
 	uint16_t max_vport_nb;
-	uint16_t req_vports[IDPF_MAX_VPORT_NUM];
-	uint16_t req_vport_nb;
+
 	uint16_t cur_vports; /* bit mask of created vport */
 	uint16_t cur_vport_nb;
 

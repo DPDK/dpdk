@@ -619,29 +619,30 @@ idpf_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
-insert_value(struct idpf_adapter *adapter, uint16_t id)
+insert_value(struct idpf_devargs *devargs, uint16_t id)
 {
 	uint16_t i;
 
-	for (i = 0; i < adapter->req_vport_nb; i++) {
-		if (adapter->req_vports[i] == id)
+	/* ignore duplicate */
+	for (i = 0; i < devargs->req_vport_nb; i++) {
+		if (devargs->req_vports[i] == id)
 			return 0;
 	}
 
-	if (adapter->req_vport_nb >= RTE_DIM(adapter->req_vports)) {
+	if (devargs->req_vport_nb >= RTE_DIM(devargs->req_vports)) {
 		PMD_INIT_LOG(ERR, "Total vport number can't be > %d",
 			     IDPF_MAX_VPORT_NUM);
 		return -EINVAL;
 	}
 
-	adapter->req_vports[adapter->req_vport_nb] = id;
-	adapter->req_vport_nb++;
+	devargs->req_vports[devargs->req_vport_nb] = id;
+	devargs->req_vport_nb++;
 
 	return 0;
 }
 
 static const char *
-parse_range(const char *value, struct idpf_adapter *adapter)
+parse_range(const char *value, struct idpf_devargs *devargs)
 {
 	uint16_t lo, hi, i;
 	int n = 0;
@@ -652,13 +653,13 @@ parse_range(const char *value, struct idpf_adapter *adapter)
 	if (result == 1) {
 		if (lo >= IDPF_MAX_VPORT_NUM)
 			return NULL;
-		if (insert_value(adapter, lo) != 0)
+		if (insert_value(devargs, lo) != 0)
 			return NULL;
 	} else if (result == 2) {
 		if (lo > hi || hi >= IDPF_MAX_VPORT_NUM)
 			return NULL;
 		for (i = lo; i <= hi; i++) {
-			if (insert_value(adapter, i) != 0)
+			if (insert_value(devargs, i) != 0)
 				return NULL;
 		}
 	} else {
@@ -671,17 +672,16 @@ parse_range(const char *value, struct idpf_adapter *adapter)
 static int
 parse_vport(const char *key, const char *value, void *args)
 {
-	struct idpf_adapter *adapter = args;
+	struct idpf_devargs *devargs = args;
 	const char *pos = value;
-	int i;
 
-	adapter->req_vport_nb = 0;
+	devargs->req_vport_nb = 0;
 
 	if (*pos == '[')
 		pos++;
 
 	while (1) {
-		pos = parse_range(pos, adapter);
+		pos = parse_range(pos, devargs);
 		if (pos == NULL) {
 			PMD_INIT_LOG(ERR, "invalid value:\"%s\" for key:\"%s\", ",
 				     value, key);
@@ -696,21 +696,6 @@ parse_vport(const char *key, const char *value, void *args)
 		PMD_INIT_LOG(ERR, "invalid value:\"%s\" for key:\"%s\", ",
 			     value, key);
 		return -EINVAL;
-	}
-
-	if (adapter->cur_vport_nb + adapter->req_vport_nb >
-	    IDPF_MAX_VPORT_NUM) {
-		PMD_INIT_LOG(ERR, "Total vport number can't be > %d",
-			     IDPF_MAX_VPORT_NUM);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < adapter->req_vport_nb; i++) {
-		if (adapter->cur_vports & RTE_BIT32(adapter->req_vports[i])) {
-			PMD_INIT_LOG(ERR, "Vport %d has been created",
-				     adapter->req_vports[i]);
-			return -EINVAL;
-		}
 	}
 
 	return 0;
@@ -738,13 +723,14 @@ parse_bool(const char *key, const char *value, void *args)
 }
 
 static int
-idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
+idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter,
+		   struct idpf_devargs *idpf_args)
 {
 	struct rte_devargs *devargs = pci_dev->device.devargs;
 	struct rte_kvargs *kvlist;
-	int ret;
+	int i, ret;
 
-	adapter->req_vport_nb = 0;
+	idpf_args->req_vport_nb = 0;
 
 	if (devargs == NULL)
 		return 0;
@@ -755,8 +741,26 @@ idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 		return -EINVAL;
 	}
 
+	/* check parsed devargs */
+	if (adapter->cur_vport_nb + idpf_args->req_vport_nb >
+	    IDPF_MAX_VPORT_NUM) {
+		PMD_INIT_LOG(ERR, "Total vport number can't be > %d",
+			     IDPF_MAX_VPORT_NUM);
+		ret = -EINVAL;
+		goto bail;
+	}
+
+	for (i = 0; i < idpf_args->req_vport_nb; i++) {
+		if (adapter->cur_vports & RTE_BIT32(idpf_args->req_vports[i])) {
+			PMD_INIT_LOG(ERR, "Vport %d has been created",
+				     idpf_args->req_vports[i]);
+			ret = -EINVAL;
+			goto bail;
+		}
+	}
+
 	ret = rte_kvargs_process(kvlist, IDPF_VPORT, &parse_vport,
-				 adapter);
+				 idpf_args);
 	if (ret != 0)
 		goto bail;
 
@@ -1123,6 +1127,7 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	struct idpf_vport_param vport_param;
 	struct idpf_adapter *adapter;
+	struct idpf_devargs devargs;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int i, retval;
 	bool first_probe = false;
@@ -1154,13 +1159,13 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_spinlock_unlock(&idpf_adapter_lock);
 	}
 
-	retval = idpf_parse_devargs(pci_dev, adapter);
+	retval = idpf_parse_devargs(pci_dev, adapter, &devargs);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parse private devargs");
 		goto err;
 	}
 
-	if (adapter->req_vport_nb == 0) {
+	if (devargs.req_vport_nb == 0) {
 		/* If no vport devarg, create vport 0 by default. */
 		vport_param.adapter = adapter;
 		vport_param.devarg_id = 0;
@@ -1178,9 +1183,9 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (retval != 0)
 			PMD_DRV_LOG(ERR, "Failed to create default vport 0");
 	} else {
-		for (i = 0; i < adapter->req_vport_nb; i++) {
+		for (i = 0; i < devargs.req_vport_nb; i++) {
 			vport_param.adapter = adapter;
-			vport_param.devarg_id = adapter->req_vports[i];
+			vport_param.devarg_id = devargs.req_vports[i];
 			vport_param.idx = idpf_vport_idx_alloc(adapter);
 			if (vport_param.idx == IDPF_INVALID_VPORT_IDX) {
 				PMD_INIT_LOG(ERR, "No space for vport %u", vport_param.devarg_id);
@@ -1188,7 +1193,7 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			}
 			snprintf(name, sizeof(name), "idpf_%s_vport_%d",
 				 pci_dev->device.name,
-				 adapter->req_vports[i]);
+				 devargs.req_vports[i]);
 			retval = rte_eth_dev_create(&pci_dev->device, name,
 						    sizeof(struct idpf_vport),
 						    NULL, NULL, idpf_dev_vport_init,
