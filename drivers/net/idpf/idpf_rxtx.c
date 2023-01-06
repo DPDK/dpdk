@@ -1508,6 +1508,7 @@ idpf_split_tx_free(struct idpf_tx_queue *cq)
 	struct idpf_tx_entry *txe;
 	struct idpf_tx_queue *txq;
 	uint16_t gen, qid, q_head;
+	uint16_t nb_desc_clean;
 	uint8_t ctype;
 
 	txd = &compl_ring[next];
@@ -1525,20 +1526,24 @@ idpf_split_tx_free(struct idpf_tx_queue *cq)
 
 	switch (ctype) {
 	case IDPF_TXD_COMPLT_RE:
-		if (q_head == 0)
-			txq->last_desc_cleaned = txq->nb_tx_desc - 1;
-		else
-			txq->last_desc_cleaned = q_head - 1;
-		if (unlikely((txq->last_desc_cleaned % 32) == 0)) {
+		/* clean to q_head which indicates be fetched txq desc id + 1.
+		 * TODO: need to refine and remove the if condition.
+		 */
+		if (unlikely(q_head % 32)) {
 			PMD_DRV_LOG(ERR, "unexpected desc (head = %u) completion.",
 						q_head);
 			return;
 		}
-
+		if (txq->last_desc_cleaned > q_head)
+			nb_desc_clean = (txq->nb_tx_desc - txq->last_desc_cleaned) +
+				q_head;
+		else
+			nb_desc_clean = q_head - txq->last_desc_cleaned;
+		txq->nb_free += nb_desc_clean;
+		txq->last_desc_cleaned = q_head;
 		break;
 	case IDPF_TXD_COMPLT_RS:
-		txq->nb_free++;
-		txq->nb_used--;
+		/* q_head indicates sw_id when ctype is 2 */
 		txe = &txq->sw_ring[q_head];
 		if (txe->mbuf != NULL) {
 			rte_pktmbuf_free_seg(txe->mbuf);
@@ -1693,12 +1698,16 @@ idpf_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* fill the last descriptor with End of Packet (EOP) bit */
 		txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_EOP;
 
-		if (unlikely((tx_id % 32) == 0))
-			txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_RE;
 		if (ol_flags & IDPF_TX_CKSUM_OFFLOAD_MASK)
 			txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_CS_EN;
 		txq->nb_free = (uint16_t)(txq->nb_free - nb_used);
 		txq->nb_used = (uint16_t)(txq->nb_used + nb_used);
+
+		if (txq->nb_used >= 32) {
+			txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_RE;
+			/* Update txq RE bit counters */
+			txq->nb_used = 0;
+		}
 	}
 
 	/* update the tail pointer if any packets were processed */
