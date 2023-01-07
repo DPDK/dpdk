@@ -32,7 +32,7 @@ Compilation of the DPDK
 
     * For RHEL/Fedora systems these can be installed using ``dnf groupinstall "Development Tools"``
     * For Ubuntu/Debian systems these can be installed using ``apt install build-essential``
-    * For Alpine Linux, ``apk add alpine-sdk bsd-compat-headers libexecinfo-dev``
+    * For Alpine Linux, ``apk add alpine-sdk bsd-compat-headers``
 
 .. note::
 
