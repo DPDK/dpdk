@@ -582,7 +582,7 @@ txa_service_func(void *args)
 		RTE_ETH_FOREACH_DEV(i) {
 			uint16_t q;
 
-			if (i == txa->dev_count)
+			if (i >= txa->dev_count)
 				break;
 
 			dev = tdi[i].dev;
