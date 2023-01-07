@@ -270,6 +270,7 @@ test_reorder_drain(void)
 	}
 	if (robufs[0] != NULL)
 		rte_pktmbuf_free(robufs[0]);
+	memset(robufs, 0, sizeof(robufs));
 
 	/* Insert more packets
 	 * RB[] = {NULL, NULL, NULL, NULL}
@@ -306,6 +307,7 @@ test_reorder_drain(void)
 		if (robufs[i] != NULL)
 			rte_pktmbuf_free(robufs[i]);
 	}
+	memset(robufs, 0, sizeof(robufs));
 
 	/*
 	 * RB[] = {NULL, NULL, NULL, NULL}
