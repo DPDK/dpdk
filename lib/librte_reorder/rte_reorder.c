@@ -392,6 +392,7 @@ rte_reorder_drain(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
 	/* Try to fetch requested number of mbufs from ready buffer */
 	while ((drain_cnt < max_mbufs) && (ready_buf->tail != ready_buf->head)) {
 		mbufs[drain_cnt++] = ready_buf->entries[ready_buf->tail];
+		ready_buf->entries[ready_buf->tail] = NULL;
 		ready_buf->tail = (ready_buf->tail + 1) & ready_buf->mask;
 	}
 
