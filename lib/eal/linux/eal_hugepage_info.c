@@ -217,6 +217,8 @@ get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 	char buf[BUFSIZ];
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
+	const size_t hugepage_dir_len = (internal_conf->hugepage_dir != NULL) ?
+		strlen(internal_conf->hugepage_dir) : 0;
 	struct stat st;
 
 	/*
@@ -236,6 +238,7 @@ get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 
 	while (fgets(buf, sizeof(buf), fd)){
 		const char *pagesz_str;
+		size_t mountpt_len = 0;
 
 		if (rte_strsplit(buf, sizeof(buf), splitstr, _FIELDNAME_MAX,
 				split_tok) != _FIELDNAME_MAX) {
@@ -268,12 +271,16 @@ get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 			break;
 		}
 
+		mountpt_len = strlen(splitstr[MOUNTPT]);
+
 		/*
-		 * Ignore any mount that doesn't contain the --huge-dir
-		 * directory.
+		 * Ignore any mount that doesn't contain the --huge-dir directory
+		 * or where mount point is not a parent path of --huge-dir
 		 */
 		if (strncmp(internal_conf->hugepage_dir, splitstr[MOUNTPT],
-			strlen(splitstr[MOUNTPT])) != 0) {
+				mountpt_len) != 0 ||
+			(hugepage_dir_len > mountpt_len &&
+				internal_conf->hugepage_dir[mountpt_len] != '/')) {
 			continue;
 		}
 
@@ -281,7 +288,7 @@ get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 		 * We found a match, but only prefer it if it's a longer match
 		 * (so /mnt/1 is preferred over /mnt for matching /mnt/1/2)).
 		 */
-		if (strlen(splitstr[MOUNTPT]) > strlen(found))
+		if (mountpt_len > strlen(found))
 			strlcpy(found, splitstr[MOUNTPT], len);
 	} /* end while fgets */
 
