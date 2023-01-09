@@ -696,7 +696,7 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 		algo = digest_name_get(xform->auth.algo);
 		if (!algo)
 			return -EINVAL;
-		rte_memcpy(algo_name, algo, (sizeof(algo)+1));
+		strlcpy(algo_name, algo, sizeof(algo_name));
 
 		mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
 		sess->auth.hmac.ctx = EVP_MAC_CTX_new(mac);
