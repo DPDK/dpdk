@@ -12,18 +12,21 @@
 extern "C" {
 #endif
 
-__rte_internal
-static void
+static inline int
 __rte_lpm_lookup_vec(const struct rte_lpm *lpm, const uint32_t *ips,
 		uint32_t *__rte_restrict next_hops, const uint32_t n)
 {
-	uint32_t i = 0;
-	svuint32_t v_ip, v_idx, v_tbl24, v_tbl8, v_hop;
-	svuint32_t v_mask_xv, v_mask_v, v_mask_hop;
-	svbool_t pg = svwhilelt_b32(i, n);
+	uint32_t i;
+	uint64_t vl = svcntw();
+	svuint32_t v_ip, v_idx, v_tbl24, v_tbl8;
+	svuint32_t v_mask_xv, v_mask_v;
+	svbool_t pg = svptrue_b32();
 	svbool_t pv;
 
-	do {
+	for (i = 0; i < n; i++)
+		next_hops[i] = 0;
+
+	for (i = 0; i < n - vl; i += vl) {
 		v_ip = svld1(pg, &ips[i]);
 		/* Get indices for tbl24[] */
 		v_idx = svlsr_x(pg, v_ip, 8);
@@ -37,46 +40,61 @@ __rte_lpm_lookup_vec(const struct rte_lpm *lpm, const uint32_t *ips,
 		v_mask_xv = svdup_u32_z(pg, RTE_LPM_VALID_EXT_ENTRY_BITMASK);
 		/* Create predicate for tbl24 entries: (valid && !valid_group) */
 		pv = svcmpeq(pg, svand_z(pg, v_tbl24, v_mask_xv), v_mask_v);
-		/* Create mask for next_hop in table entry */
-		v_mask_hop = svdup_u32_z(pg, 0x00ffffff);
-		/* Extract next_hop and write back */
-		v_hop = svand_x(pv, v_tbl24, v_mask_hop);
-		svst1(pv, &next_hops[i], v_hop);
+		svst1(pv, &next_hops[i], v_tbl24);
 
 		/* Update predicate for tbl24 entries: (valid && valid_group) */
 		pv = svcmpeq(pg, svand_z(pg, v_tbl24, v_mask_xv), v_mask_xv);
-		/* Compute tbl8 index */
-		v_idx = svand_x(pv, v_tbl24, svdup_u32_z(pv, 0xffffff));
-		v_idx = svmul_x(pv, v_idx, RTE_LPM_TBL8_GROUP_NUM_ENTRIES);
-		v_idx = svadd_x(pv, svand_x(pv, v_ip, svdup_u32_z(pv, 0xff)),
-				v_idx);
-		/* Extract values from tbl8[] */
-		v_tbl8 = svld1_gather_index(pv, (const uint32_t *)lpm->tbl8,
+		if (svptest_any(pg, pv)) {
+			/* Compute tbl8 index */
+			v_idx = svand_x(pv, v_tbl24, svdup_u32_z(pv, 0xffffff));
+			v_idx = svmul_x(pv, v_idx, RTE_LPM_TBL8_GROUP_NUM_ENTRIES);
+			v_idx = svadd_x(pv, svand_x(pv, v_ip, svdup_u32_z(pv, 0xff)),
+					v_idx);
+			/* Extract values from tbl8[] */
+			v_tbl8 = svld1_gather_index(pv, (const uint32_t *)lpm->tbl8,
+							v_idx);
+			/* Update predicate for tbl8 entries: (valid) */
+			pv = svcmpeq(pv, svand_z(pv, v_tbl8, v_mask_v), v_mask_v);
+			svst1(pv, &next_hops[i], v_tbl8);
+		}
+	}
+
+	pg = svwhilelt_b32(i, n);
+	if (svptest_any(svptrue_b32(), pg)) {
+		v_ip = svld1(pg, &ips[i]);
+		/* Get indices for tbl24[] */
+		v_idx = svlsr_x(pg, v_ip, 8);
+		/* Extract values from tbl24[] */
+		v_tbl24 = svld1_gather_index(pg, (const uint32_t *)lpm->tbl24,
 						v_idx);
-		/* Update predicate for tbl8 entries: (valid) */
-		pv = svcmpeq(pv, svand_z(pv, v_tbl8, v_mask_v), v_mask_v);
-		/* Extract next_hop and write back */
-		v_hop = svand_x(pv, v_tbl8, v_mask_hop);
-		svst1(pv, &next_hops[i], v_hop);
 
-		i += svlen(v_ip);
-		pg = svwhilelt_b32(i, n);
-	} while (svptest_any(svptrue_b32(), pg));
+		/* Create mask with valid set */
+		v_mask_v = svdup_u32_z(pg, RTE_LPM_LOOKUP_SUCCESS);
+		/* Create mask with valid and valid_group set */
+		v_mask_xv = svdup_u32_z(pg, RTE_LPM_VALID_EXT_ENTRY_BITMASK);
+		/* Create predicate for tbl24 entries: (valid && !valid_group) */
+		pv = svcmpeq(pg, svand_z(pg, v_tbl24, v_mask_xv), v_mask_v);
+		svst1(pv, &next_hops[i], v_tbl24);
+
+		/* Update predicate for tbl24 entries: (valid && valid_group) */
+		pv = svcmpeq(pg, svand_z(pg, v_tbl24, v_mask_xv), v_mask_xv);
+		if (svptest_any(pg, pv)) {
+			/* Compute tbl8 index */
+			v_idx = svand_x(pv, v_tbl24, svdup_u32_z(pv, 0xffffff));
+			v_idx = svmul_x(pv, v_idx, RTE_LPM_TBL8_GROUP_NUM_ENTRIES);
+			v_idx = svadd_x(pv, svand_x(pv, v_ip, svdup_u32_z(pv, 0xff)),
+					v_idx);
+			/* Extract values from tbl8[] */
+			v_tbl8 = svld1_gather_index(pv, (const uint32_t *)lpm->tbl8,
+							v_idx);
+			/* Update predicate for tbl8 entries: (valid) */
+			pv = svcmpeq(pv, svand_z(pv, v_tbl8, v_mask_v), v_mask_v);
+			svst1(pv, &next_hops[i], v_tbl8);
+		}
+	}
+
+	return 0;
 }
-
-static inline void
-rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
-		uint32_t defv)
-{
-	uint32_t i, ips[4];
-
-	vst1q_s32((int32_t *)ips, ip);
-	for (i = 0; i < 4; i++)
-		hop[i] = defv;
-
-	__rte_lpm_lookup_vec(lpm, ips, hop, 4);
-}
-
 #ifdef __cplusplus
 }
 #endif

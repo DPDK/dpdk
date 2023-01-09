@@ -400,9 +400,11 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 #if defined(RTE_ARCH_ARM)
 #ifdef RTE_HAS_SVE_ACLE
 #include "rte_lpm_sve.h"
-#else
-#include "rte_lpm_neon.h"
+#undef rte_lpm_lookup_bulk
+#define rte_lpm_lookup_bulk(lpm, ips, next_hops, n) \
+		__rte_lpm_lookup_vec(lpm, ips, next_hops, n)
 #endif
+#include "rte_lpm_neon.h"
 #elif defined(RTE_ARCH_PPC_64)
 #include "rte_lpm_altivec.h"
 #elif defined(RTE_ARCH_X86)
