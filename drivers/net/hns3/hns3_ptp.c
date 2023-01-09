@@ -216,17 +216,21 @@ hns3_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 int
 hns3_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
+#define HNS3_PTP_SEC_H_OFFSET	32
+#define HNS3_PTP_SEC_H_MASK	0xFFFF
+
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t sec_hi, sec_lo;
 	uint64_t ns, sec;
 
 	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
-	sec = hns3_read_dev(hw, HNS3_CURR_TIME_OUT_L);
-	sec |= (uint64_t)(hns3_read_dev(hw, HNS3_CURR_TIME_OUT_H) & 0xFFFF)
-		<< 32;
-
 	ns = hns3_read_dev(hw, HNS3_CURR_TIME_OUT_NS);
+	sec_hi = hns3_read_dev(hw, HNS3_CURR_TIME_OUT_H) & HNS3_PTP_SEC_H_MASK;
+	sec_lo = hns3_read_dev(hw, HNS3_CURR_TIME_OUT_L);
+	sec = ((uint64_t)sec_hi << HNS3_PTP_SEC_H_OFFSET) | sec_lo;
+
 	ns += sec * NSEC_PER_SEC;
 	*ts = rte_ns_to_timespec(ns);
 
