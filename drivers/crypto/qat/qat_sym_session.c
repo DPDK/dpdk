@@ -1366,6 +1366,8 @@ static int qat_sym_do_precomputes_ipsec_mb(enum icp_qat_hw_auth_algo hash_alg,
 	/* init ipad and opad from key and xor with fixed values */
 	memset(ipad, 0, block_size);
 	memset(opad, 0, block_size);
+	RTE_VERIFY(auth_keylen <= sizeof(ipad));
+	RTE_VERIFY(auth_keylen <= sizeof(opad));
 	rte_memcpy(ipad, auth_key, auth_keylen);
 	rte_memcpy(opad, auth_key, auth_keylen);
 
