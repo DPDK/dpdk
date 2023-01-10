@@ -15,6 +15,8 @@ API_REG = "{\"action\":1,\"command\":\"clients\",\"data\":{\"client_path\":\""
 API_UNREG = "{\"action\":2,\"command\":\"clients\",\"data\":{\"client_path\":\""
 GLOBAL_METRICS_REQ = "{\"action\":0,\"command\":\"global_stat_values\",\"data\":null}"
 DEFAULT_FP = "/var/run/dpdk/default_client"
+DEFAULT_PREFIX = 'rte'
+RUNTIME_SOCKET_NAME = 'telemetry'
 
 class Socket:
 
@@ -36,6 +38,7 @@ class Client:
     def __init__(self): # Creates a client instance
         self.socket = Socket()
         self.file_path = None
+        self.run_path = None
         self.choice = None
         self.unregistered = 0
 
@@ -49,6 +52,10 @@ class Client:
     def getFilepath(self, file_path): # Gets arguments from Command-Line and assigns to instance of client
         self.file_path = file_path
 
+    def setRunpath(self, file_path):
+        self.run_path = os.path.join(get_dpdk_runtime_dir(args.file_prefix),
+                                     RUNTIME_SOCKET_NAME)
+
     def register(self): # Connects a client to DPDK-instance
         if os.path.exists(self.file_path):
             os.unlink(self.file_path)
@@ -57,7 +64,7 @@ class Client:
         except socket.error as msg:
             print ("Error - Socket binding error: " + str(msg) + "\n")
         self.socket.recv_fd.settimeout(2)
-        self.socket.send_fd.connect("/var/run/dpdk/rte/telemetry")
+        self.socket.send_fd.connect(self.run_path)
         JSON = (API_REG + self.file_path + "\"}}")
         self.socket.send_fd.sendall(JSON.encode())
 
@@ -113,15 +120,31 @@ class Client:
             except:
                 pass
 
+
+def get_dpdk_runtime_dir(fp):
+    """ Using the same logic as in DPDK's EAL, get the DPDK runtime directory
+    based on the file-prefix and user """
+    run_dir = os.environ.get('RUNTIME_DIRECTORY')
+    if not run_dir:
+        if (os.getuid() == 0):
+            run_dir = '/var/run'
+        else:
+            run_dir = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
+    return os.path.join(run_dir, 'dpdk', fp)
+
+
 if __name__ == "__main__":
 
     sleep_time = 1
     parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--file-prefix', default=DEFAULT_PREFIX,
+                        help='Provide file-prefix for DPDK runtime directory')
     parser.add_argument('sock_path', nargs='?', default=DEFAULT_FP,
                         help='Provide socket file path connected by legacy client')
     args = parser.parse_args()
 
     client = Client()
     client.getFilepath(args.sock_path)
+    client.setRunpath(args.file_prefix)
     client.register()
     client.interactiveMenu(sleep_time)
