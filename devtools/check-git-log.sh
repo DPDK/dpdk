@@ -113,7 +113,7 @@ words="$selfdir/words-case.txt"
 for word in $(cat $words); do
 	bad=$(echo "$headlines" | grep -iw $word | grep -vw $word)
 	if [ "$word" = "Tx" ]; then
-		bad=$(echo $bad | grep -v 'OCTEON\ TX')
+		bad=$(echo $bad | grep -v 'OCTEON TX')
 	fi
 	for bad_line in $bad; do
 		bad_word=$(echo $bad_line | cut -d":" -f2 | grep -iwo $word)
