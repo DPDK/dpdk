@@ -359,10 +359,10 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 				nh = (uint16_t)hopsv4[ipv4_arr_assem++];
 			else
 				nh = (uint16_t)hopsv6[ipv6_arr_assem++];
-			if (nh != FIB_DEFAULT_HOP)
-				hops[i] = nh != FIB_DEFAULT_HOP ?
-						  nh :
-						  events[i].mbuf->port;
+
+			hops[i] = nh != FIB_DEFAULT_HOP ?
+				  nh :
+				  events[i].mbuf->port;
 			process_packet(events[i].mbuf, &hops[i]);
 			events[i].mbuf->port = hops[i] != BAD_PORT ?
 						       hops[i] :
