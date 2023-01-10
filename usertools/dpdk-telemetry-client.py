@@ -6,6 +6,7 @@ import socket
 import os
 import sys
 import time
+import argparse
 
 BUFFER_SIZE = 200000
 
@@ -115,13 +116,12 @@ class Client:
 if __name__ == "__main__":
 
     sleep_time = 1
-    file_path = ""
-    if len(sys.argv) == 2:
-        file_path = sys.argv[1]
-    else:
-        print("Warning - No filepath passed, using default (" + DEFAULT_FP + ").")
-        file_path = DEFAULT_FP
+    parser = argparse.ArgumentParser()
+    parser.add_argument('sock_path', nargs='?', default=DEFAULT_FP,
+                        help='Provide socket file path connected by legacy client')
+    args = parser.parse_args()
+
     client = Client()
-    client.getFilepath(file_path)
+    client.getFilepath(args.sock_path)
     client.register()
     client.interactiveMenu(sleep_time)
