@@ -186,6 +186,7 @@ struct roc_nix_inl_dev {
 	uint32_t soft_exp_poll_freq; /* Polling disabled if 0 */
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
+	uint32_t max_ipsec_rules;
 	/* End of input parameters */
 
 #define ROC_NIX_INL_MEM_SZ (1280)

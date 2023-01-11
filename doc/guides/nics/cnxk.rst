@@ -348,6 +348,25 @@ Runtime Config Options
    set with this custom mask, inbound encrypted traffic from all ports with
    matching channel number pattern will be directed to the inline IPSec device.
 
+- ``Inline IPsec device flow rules`` (default ``none``)
+
+   For inline IPsec device, reserve number of rules specified by ``max_ipsec_rules``
+   and use them while installing rules with action as security.
+   Rule priority should be 0.
+   If specified number of rules not available,
+   then only available number of rules will be allocated and used.
+   If application try to insert more than allocated rules, flow creation will fail.
+
+   For example::
+
+      -a 0002:1d:00.0,max_ipsec_rules=100
+
+   With the above configuration, 100 rules will be allocated from 0-99 if available
+   and will be used for rules with action security.
+   If 100 rules are not available, and only 50 are available,
+   then only 50 rules will be allocated and used for flow rule creation.
+   If application try to add more than 50 rules, the flow creation will fail.
+
 - ``SDP device channel and mask`` (default ``none``)
    Set channel and channel mask configuration for the SDP device. This
    will be used when creating flow rules on the SDP device.

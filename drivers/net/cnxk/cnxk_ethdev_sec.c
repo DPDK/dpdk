@@ -13,6 +13,7 @@
 #define CNXK_NIX_INL_NB_META_BUFS     "nb_meta_bufs"
 #define CNXK_NIX_INL_META_BUF_SZ      "meta_buf_sz"
 #define CNXK_NIX_SOFT_EXP_POLL_FREQ   "soft_exp_poll_freq"
+#define CNXK_MAX_IPSEC_RULES	"max_ipsec_rules"
 
 /* Default soft expiry poll freq in usec */
 #define CNXK_NIX_SOFT_EXP_POLL_FREQ_DFLT 100
@@ -113,6 +114,22 @@ free_aura:
 free_mp:
 	rte_mempool_free(mp);
 	return rc;
+}
+
+static int
+parse_max_ipsec_rules(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint32_t val;
+
+	val = atoi(value);
+
+	if (val < 1 || val > 4095)
+		return -EINVAL;
+
+	*(uint32_t *)extra_args = val;
+
+	return 0;
 }
 
 int
@@ -271,6 +288,7 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	uint32_t ipsec_in_max_spi = BIT(8) - 1;
 	uint32_t ipsec_in_min_spi = 0;
 	struct inl_cpt_channel cpt_channel;
+	uint32_t max_ipsec_rules = 0;
 	struct rte_kvargs *kvlist;
 	uint32_t nb_meta_bufs = 0;
 	uint32_t meta_buf_sz = 0;
@@ -299,6 +317,7 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 			   &meta_buf_sz);
 	rte_kvargs_process(kvlist, CNXK_NIX_SOFT_EXP_POLL_FREQ,
 			   &parse_val_u32, &soft_exp_poll_freq);
+	rte_kvargs_process(kvlist, CNXK_MAX_IPSEC_RULES, &parse_max_ipsec_rules, &max_ipsec_rules);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -311,6 +330,7 @@ null_devargs:
 	inl_dev->nb_meta_bufs = nb_meta_bufs;
 	inl_dev->meta_buf_sz = meta_buf_sz;
 	inl_dev->soft_exp_poll_freq = soft_exp_poll_freq;
+	inl_dev->max_ipsec_rules = max_ipsec_rules;
 	return 0;
 exit:
 	return -EINVAL;
@@ -437,4 +457,5 @@ RTE_PMD_REGISTER_PARAM_STRING(cnxk_nix_inl,
 			      CNXK_INL_CPT_CHANNEL "=<1-4095>/<1-4095>"
 			      CNXK_NIX_INL_NB_META_BUFS "=<1-U32_MAX>"
 			      CNXK_NIX_INL_META_BUF_SZ "=<1-U32_MAX>"
-			      CNXK_NIX_SOFT_EXP_POLL_FREQ "=<0-U32_MAX>");
+			      CNXK_NIX_SOFT_EXP_POLL_FREQ "=<0-U32_MAX>"
+			      CNXK_MAX_IPSEC_RULES "=<1-4095>");

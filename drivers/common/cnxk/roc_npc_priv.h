@@ -396,6 +396,7 @@ struct npc {
 	struct npc_flow_list *flow_list;
 	struct npc_prio_flow_list_head *prio_flow_list;
 	struct plt_bitmap *rss_grp_entries;
+	struct npc_flow_list ipsec_list;
 };
 
 static inline struct npc *
@@ -404,22 +405,22 @@ roc_npc_to_npc_priv(struct roc_npc *npc)
 	return (struct npc *)npc->reserved;
 }
 
-int npc_mcam_free_counter(struct npc *npc, uint16_t ctr_id);
-int npc_mcam_read_counter(struct npc *npc, uint32_t ctr_id, uint64_t *count);
-int npc_mcam_clear_counter(struct npc *npc, uint32_t ctr_id);
-int npc_mcam_free_entry(struct npc *npc, uint32_t entry);
+int npc_mcam_free_counter(struct mbox *mbox, uint16_t ctr_id);
+int npc_mcam_read_counter(struct mbox *mbox, uint32_t ctr_id, uint64_t *count);
+int npc_mcam_clear_counter(struct mbox *mbox, uint32_t ctr_id);
+int npc_mcam_free_entry(struct mbox *mbox, uint32_t entry);
 int npc_mcam_free_all_entries(struct npc *npc);
 int npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 			     struct npc_parse_state *pst);
 int npc_mcam_alloc_entry(struct npc *npc, struct roc_npc_flow *mcam,
 			 struct roc_npc_flow *ref_mcam, int prio,
 			 int *resp_count);
-int npc_mcam_alloc_entries(struct npc *npc, int ref_mcam, int *alloc_entry,
-			   int req_count, int prio, int *resp_count);
+int npc_mcam_alloc_entries(struct mbox *mbox, int ref_mcam, int *alloc_entry, int req_count,
+			   int prio, int *resp_count, bool is_conti);
 
 int npc_mcam_ena_dis_entry(struct npc *npc, struct roc_npc_flow *mcam,
 			   bool enable);
-int npc_mcam_write_entry(struct npc *npc, struct roc_npc_flow *mcam);
+int npc_mcam_write_entry(struct mbox *mbox, struct roc_npc_flow *mcam);
 int npc_flow_enable_all_entries(struct npc *npc, bool enable);
 int npc_update_parse_state(struct npc_parse_state *pst,
 			   struct npc_parse_item_info *info, int lid, int lt,

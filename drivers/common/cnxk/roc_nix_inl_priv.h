@@ -90,6 +90,12 @@ struct nix_inl_dev {
 	bool ts_ena;
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
+
+	/* NPC */
+	int *ipsec_index;
+	uint32_t curr_ipsec_idx;
+	uint32_t max_ipsec_rules;
+	uint32_t alloc_ipsec_rules;
 };
 
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);

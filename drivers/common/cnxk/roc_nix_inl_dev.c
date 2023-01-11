@@ -807,7 +807,9 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	struct plt_pci_device *pci_dev;
 	struct nix_inl_dev *inl_dev;
 	struct idev_cfg *idev;
-	int rc;
+	int start_index;
+	int resp_count;
+	int rc, i;
 
 	pci_dev = roc_inl_dev->pci_dev;
 
@@ -890,6 +892,30 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 		if (rc)
 			goto cpt_release;
 	}
+	inl_dev->max_ipsec_rules = roc_inl_dev->max_ipsec_rules;
+
+	if (inl_dev->max_ipsec_rules && roc_inl_dev->is_multi_channel) {
+		inl_dev->ipsec_index =
+			plt_zmalloc(sizeof(int) * inl_dev->max_ipsec_rules, PLT_CACHE_LINE_SIZE);
+		if (inl_dev->ipsec_index == NULL) {
+			rc = NPC_ERR_NO_MEM;
+			goto cpt_release;
+		}
+		rc = npc_mcam_alloc_entries(inl_dev->dev.mbox, inl_dev->max_ipsec_rules,
+					    inl_dev->ipsec_index, inl_dev->max_ipsec_rules,
+					    NPC_MCAM_HIGHER_PRIO, &resp_count, 1);
+		if (rc) {
+			plt_free(inl_dev->ipsec_index);
+			goto cpt_release;
+		}
+
+		start_index = inl_dev->ipsec_index[0];
+		for (i = 0; i < resp_count; i++)
+			inl_dev->ipsec_index[i] = start_index + i;
+
+		inl_dev->curr_ipsec_idx = 0;
+		inl_dev->alloc_ipsec_rules = resp_count;
+	}
 
 	idev->nix_inl_dev = inl_dev;
 
@@ -914,6 +940,7 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 	struct plt_pci_device *pci_dev;
 	struct nix_inl_dev *inl_dev;
 	struct idev_cfg *idev;
+	uint32_t i;
 	int rc;
 
 	idev = idev_get_cfg();
@@ -926,6 +953,12 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 
 	inl_dev = idev->nix_inl_dev;
 	pci_dev = inl_dev->pci_dev;
+
+	if (inl_dev->ipsec_index && roc_inl_dev->is_multi_channel) {
+		for (i = inl_dev->curr_ipsec_idx; i < inl_dev->alloc_ipsec_rules; i++)
+			npc_mcam_free_entry(inl_dev->dev.mbox, inl_dev->ipsec_index[i]);
+		plt_free(inl_dev->ipsec_index);
+	}
 
 	if (inl_dev->set_soft_exp_poll) {
 		soft_exp_poll_thread_exit = true;

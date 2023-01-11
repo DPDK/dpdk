@@ -280,6 +280,8 @@ struct roc_npc_flow {
 	struct roc_npc_spi_to_sa_action_info spi_to_sa_info;
 	bool is_validate;
 	uint16_t match_id;
+	uint8_t is_inline_dev;
+	bool use_pre_alloc;
 
 	TAILQ_ENTRY(roc_npc_flow) next;
 };
@@ -378,6 +380,8 @@ int __roc_api roc_npc_mcam_read_counter(struct roc_npc *roc_npc,
 					uint32_t ctr_id, uint64_t *count);
 int __roc_api roc_npc_mcam_clear_counter(struct roc_npc *roc_npc,
 					 uint32_t ctr_id);
+int __roc_api roc_npc_inl_mcam_read_counter(uint32_t ctr_id, uint64_t *count);
+int __roc_api roc_npc_inl_mcam_clear_counter(uint32_t ctr_id);
 int __roc_api roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc);
 void __roc_api roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc);
 void __roc_api roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,

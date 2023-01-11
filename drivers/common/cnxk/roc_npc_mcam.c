@@ -5,11 +5,10 @@
 #include "roc_priv.h"
 
 static int
-npc_mcam_alloc_counter(struct npc *npc, uint16_t *ctr)
+npc_mcam_alloc_counter(struct mbox *mbox, uint16_t *ctr)
 {
 	struct npc_mcam_alloc_counter_req *req;
 	struct npc_mcam_alloc_counter_rsp *rsp;
-	struct mbox *mbox = npc->mbox;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_npc_mcam_alloc_counter(mbox);
@@ -24,10 +23,9 @@ npc_mcam_alloc_counter(struct npc *npc, uint16_t *ctr)
 }
 
 int
-npc_mcam_free_counter(struct npc *npc, uint16_t ctr_id)
+npc_mcam_free_counter(struct mbox *mbox, uint16_t ctr_id)
 {
 	struct npc_mcam_oper_counter_req *req;
-	struct mbox *mbox = npc->mbox;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_npc_mcam_free_counter(mbox);
@@ -38,11 +36,10 @@ npc_mcam_free_counter(struct npc *npc, uint16_t ctr_id)
 }
 
 int
-npc_mcam_read_counter(struct npc *npc, uint32_t ctr_id, uint64_t *count)
+npc_mcam_read_counter(struct mbox *mbox, uint32_t ctr_id, uint64_t *count)
 {
 	struct npc_mcam_oper_counter_req *req;
 	struct npc_mcam_oper_counter_rsp *rsp;
-	struct mbox *mbox = npc->mbox;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_npc_mcam_counter_stats(mbox);
@@ -57,10 +54,9 @@ npc_mcam_read_counter(struct npc *npc, uint32_t ctr_id, uint64_t *count)
 }
 
 int
-npc_mcam_clear_counter(struct npc *npc, uint32_t ctr_id)
+npc_mcam_clear_counter(struct mbox *mbox, uint32_t ctr_id)
 {
 	struct npc_mcam_oper_counter_req *req;
-	struct mbox *mbox = npc->mbox;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_npc_mcam_clear_counter(mbox);
@@ -71,10 +67,9 @@ npc_mcam_clear_counter(struct npc *npc, uint32_t ctr_id)
 }
 
 int
-npc_mcam_free_entry(struct npc *npc, uint32_t entry)
+npc_mcam_free_entry(struct mbox *mbox, uint32_t entry)
 {
 	struct npc_mcam_free_entry_req *req;
-	struct mbox *mbox = npc->mbox;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_npc_mcam_free_entry(mbox);
@@ -306,19 +301,18 @@ npc_update_kex_info(struct npc_xtract_info *xtract_info, uint64_t val)
 }
 
 int
-npc_mcam_alloc_entries(struct npc *npc, int ref_mcam, int *alloc_entry,
-		       int req_count, int prio, int *resp_count)
+npc_mcam_alloc_entries(struct mbox *mbox, int ref_mcam, int *alloc_entry, int req_count, int prio,
+		       int *resp_count, bool is_conti)
 {
 	struct npc_mcam_alloc_entry_req *req;
 	struct npc_mcam_alloc_entry_rsp *rsp;
-	struct mbox *mbox = npc->mbox;
 	int rc = -ENOSPC;
 	int i;
 
 	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox);
 	if (req == NULL)
 		return rc;
-	req->contig = 0;
+	req->contig = is_conti;
 	req->count = req_count;
 	req->priority = prio;
 	req->ref_entry = ref_mcam;
@@ -329,6 +323,8 @@ npc_mcam_alloc_entries(struct npc *npc, int ref_mcam, int *alloc_entry,
 	for (i = 0; i < rsp->count; i++)
 		alloc_entry[i] = rsp->entry_list[i];
 	*resp_count = rsp->count;
+	if (is_conti)
+		alloc_entry[0] = rsp->entry;
 	return 0;
 }
 
@@ -379,22 +375,21 @@ npc_mcam_ena_dis_entry(struct npc *npc, struct roc_npc_flow *mcam, bool enable)
 }
 
 int
-npc_mcam_write_entry(struct npc *npc, struct roc_npc_flow *mcam)
+npc_mcam_write_entry(struct mbox *mbox, struct roc_npc_flow *mcam)
 {
 	struct npc_mcam_write_entry_req *req;
-	struct mbox *mbox = npc->mbox;
 	struct mbox_msghdr *rsp;
 	int rc = -ENOSPC;
 	uint16_t ctr = 0;
 	int i;
 
 	if (mcam->use_ctr && mcam->ctr_id == NPC_COUNTER_NONE) {
-		rc = npc_mcam_alloc_counter(npc, &ctr);
+		rc = npc_mcam_alloc_counter(mbox, &ctr);
 		if (rc)
 			return rc;
 		mcam->ctr_id = ctr;
 
-		rc = npc_mcam_clear_counter(npc, mcam->ctr_id);
+		rc = npc_mcam_clear_counter(mbox, mcam->ctr_id);
 		if (rc)
 			return rc;
 	}
@@ -402,7 +397,7 @@ npc_mcam_write_entry(struct npc *npc, struct roc_npc_flow *mcam)
 	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
 	if (req == NULL) {
 		if (mcam->use_ctr)
-			npc_mcam_free_counter(npc, ctr);
+			npc_mcam_free_counter(mbox, ctr);
 
 		return rc;
 	}
@@ -558,22 +553,40 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 
 	PLT_SET_USED(pst);
 
+	idev = idev_get_cfg();
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (inl_dev && inl_dev->ipsec_index) {
+		if (flow->is_inline_dev)
+			mbox = inl_dev->dev.mbox;
+	}
+
 	if (flow->use_ctr) {
-		rc = npc_mcam_alloc_counter(npc, &ctr);
+		rc = npc_mcam_alloc_counter(mbox, &ctr);
 		if (rc)
 			return rc;
 
 		flow->ctr_id = ctr;
-		rc = npc_mcam_clear_counter(npc, flow->ctr_id);
+		rc = npc_mcam_clear_counter(mbox, flow->ctr_id);
 		if (rc)
 			return rc;
 	}
 
-	entry = npc_get_free_mcam_entry(mbox, flow, npc);
-	if (entry < 0) {
-		if (flow->use_ctr)
-			npc_mcam_free_counter(npc, ctr);
-		return NPC_ERR_MCAM_ALLOC;
+	if (flow->nix_intf == NIX_INTF_RX && flow->is_inline_dev && inl_dev &&
+	    inl_dev->ipsec_index && inl_dev->is_multi_channel) {
+		if (inl_dev->curr_ipsec_idx >= inl_dev->alloc_ipsec_rules)
+			return NPC_ERR_MCAM_ALLOC;
+		entry = inl_dev->ipsec_index[inl_dev->curr_ipsec_idx];
+		inl_dev->curr_ipsec_idx++;
+		flow->use_pre_alloc = 1;
+	} else {
+		entry = npc_get_free_mcam_entry(mbox, flow, npc);
+		if (entry < 0) {
+			if (flow->use_ctr)
+				npc_mcam_free_counter(mbox, ctr);
+			return NPC_ERR_MCAM_ALLOC;
+		}
 	}
 
 	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
@@ -605,10 +618,6 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 		req->entry_data.kw[idx] = flow->mcam_data[idx];
 		req->entry_data.kw_mask[idx] = flow->mcam_mask[idx];
 	}
-
-	idev = idev_get_cfg();
-	if (idev)
-		inl_dev = idev->nix_inl_dev;
 
 	if (flow->nix_intf == NIX_INTF_RX) {
 		if (inl_dev && inl_dev->is_multi_channel &&
@@ -847,8 +856,10 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 int
 npc_flow_enable_all_entries(struct npc *npc, bool enable)
 {
+	struct nix_inl_dev *inl_dev;
 	struct npc_flow_list *list;
 	struct roc_npc_flow *flow;
+	struct idev_cfg *idev;
 	int rc = 0, idx;
 
 	/* Free any MCAM counters and delete flow list */
@@ -856,7 +867,22 @@ npc_flow_enable_all_entries(struct npc *npc, bool enable)
 		list = &npc->flow_list[idx];
 		TAILQ_FOREACH(flow, list, next) {
 			flow->enable = enable;
-			rc = npc_mcam_write_entry(npc, flow);
+			rc = npc_mcam_write_entry(npc->mbox, flow);
+			if (rc)
+				return rc;
+		}
+	}
+
+	list = &npc->ipsec_list;
+	idev = idev_get_cfg();
+	if (!idev)
+		return 0;
+	inl_dev = idev->nix_inl_dev;
+
+	if (inl_dev) {
+		TAILQ_FOREACH(flow, list, next) {
+			flow->enable = enable;
+			rc = npc_mcam_write_entry(inl_dev->dev.mbox, flow);
 			if (rc)
 				return rc;
 		}
@@ -878,8 +904,8 @@ npc_flow_free_all_resources(struct npc *npc)
 		while ((flow = TAILQ_FIRST(&npc->flow_list[idx])) != NULL) {
 			npc_rss_group_free(npc, flow);
 			if (flow->ctr_id != NPC_COUNTER_NONE) {
-				rc |= npc_mcam_clear_counter(npc, flow->ctr_id);
-				rc |= npc_mcam_free_counter(npc, flow->ctr_id);
+				rc |= npc_mcam_clear_counter(npc->mbox, flow->ctr_id);
+				rc |= npc_mcam_free_counter(npc->mbox, flow->ctr_id);
 			}
 
 			npc_delete_prio_list_entry(npc, flow);
