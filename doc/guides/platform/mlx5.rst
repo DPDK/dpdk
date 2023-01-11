@@ -162,8 +162,9 @@ https://github.com/linux-rdma/rdma-core
 It is possible to build rdma-core as static libraries starting with version 21::
 
     cd build
-    CFLAGS=-fPIC cmake -DIN_PLACE=1 -DENABLE_STATIC=1 -GNinja ..
+    CFLAGS=-fPIC cmake -DENABLE_STATIC=1 -DNO_PYVERBS=1 -DNO_MAN_PAGES=1 -GNinja ..
     ninja
+    ninja install
 
 
 NVIDIA MLNX_OFED/EN
