@@ -299,12 +299,13 @@ cnxk_flow_validate(struct rte_eth_dev *eth_dev,
 	int rc;
 
 	memset(&flow, 0, sizeof(flow));
+	flow.is_validate = true;
 
-	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr,
-				in_pattern, in_actions, &flowkey_cfg);
+	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
+				&flowkey_cfg);
 	if (rc) {
-		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
-				   NULL, "Failed to map flow data");
+		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
+				   "Failed to map flow data");
 		return rc;
 	}
 
