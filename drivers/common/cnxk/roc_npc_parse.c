@@ -731,6 +731,7 @@ int
 npc_parse_le(struct npc_parse_state *pst)
 {
 	const struct roc_npc_item_info *pattern = pst->pattern;
+	const struct roc_npc_item_esp_hdr *esp = NULL;
 	char hw_mask[NPC_MAX_EXTRACT_HW_LEN];
 	struct npc_parse_item_info info;
 	int lid, lt, lflags;
@@ -787,6 +788,9 @@ npc_parse_le(struct npc_parse_state *pst)
 	case ROC_NPC_ITEM_TYPE_ESP:
 		lt = NPC_LT_LE_ESP;
 		info.len = pst->pattern->size;
+		esp = (const struct roc_npc_item_esp_hdr *)pattern->spec;
+		if (esp)
+			pst->flow->spi_to_sa_info.spi = esp->spi;
 		break;
 	default:
 		return 0;

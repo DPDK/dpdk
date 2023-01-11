@@ -268,7 +268,11 @@ struct mbox_msghdr {
 	M(NIX_READ_INLINE_IPSEC_CFG, 0x8023, nix_read_inline_ipsec_cfg,        \
 	  msg_req, nix_inline_ipsec_cfg)				       \
 	M(NIX_LF_INLINE_RQ_CFG, 0x8024, nix_lf_inline_rq_cfg,                  \
-	  nix_rq_cpt_field_mask_cfg_req, msg_rsp)
+	  nix_rq_cpt_field_mask_cfg_req, msg_rsp)                              \
+	M(NIX_SPI_TO_SA_ADD, 0x8026, nix_spi_to_sa_add, nix_spi_to_sa_add_req, \
+	  nix_spi_to_sa_add_rsp)                                               \
+	M(NIX_SPI_TO_SA_DELETE, 0x8027, nix_spi_to_sa_delete,                  \
+	  nix_spi_to_sa_delete_req, msg_rsp)
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
 #define MBOX_UP_CGX_MESSAGES                                                   \
@@ -2048,4 +2052,26 @@ struct sdp_chan_info_msg {
 	struct sdp_node_info info;
 };
 
+/* For SPI to SA index add */
+struct nix_spi_to_sa_add_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io sa_index;
+	uint32_t __io spi_index;
+	uint16_t __io match_id;
+	bool __io valid;
+};
+
+struct nix_spi_to_sa_add_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io hash_index;
+	uint8_t __io way;
+	uint8_t __io is_duplicate;
+};
+
+/* To free SPI to SA index */
+struct nix_spi_to_sa_delete_req {
+	struct mbox_msghdr hdr;
+	uint16_t __io hash_index;
+	uint8_t __io way;
+};
 #endif /* __ROC_MBOX_H__ */

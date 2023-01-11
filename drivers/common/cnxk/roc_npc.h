@@ -191,6 +191,14 @@ struct roc_npc_action_port_id {
 	uint32_t id;		/**< port ID. */
 };
 
+/**
+ * ESP Header
+ */
+struct roc_npc_item_esp_hdr {
+	uint32_t spi; /**< Security Parameters Index */
+	uint32_t seq; /**< packet sequence number */
+};
+
 struct roc_npc_action_queue {
 	uint16_t index; /**< Queue index to use. */
 };
@@ -242,6 +250,14 @@ struct roc_npc_flow_dump_data {
 	uint16_t ltype;
 };
 
+struct roc_npc_spi_to_sa_action_info {
+	uint32_t spi;
+	uint32_t hash_index;
+	uint8_t way;
+	bool duplicate;
+	bool has_action;
+};
+
 struct roc_npc_flow {
 	uint8_t nix_intf;
 	uint8_t enable;
@@ -261,6 +277,9 @@ struct roc_npc_flow {
 #define ROC_NPC_MAX_FLOW_PATTERNS 32
 	struct roc_npc_flow_dump_data dump_data[ROC_NPC_MAX_FLOW_PATTERNS];
 	uint16_t num_patterns;
+	struct roc_npc_spi_to_sa_action_info spi_to_sa_info;
+	bool is_validate;
+	uint16_t match_id;
 
 	TAILQ_ENTRY(roc_npc_flow) next;
 };
