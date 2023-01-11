@@ -464,13 +464,6 @@ static void mlx5dr_pool_general_element_db_uninit(struct mlx5dr_pool *pool)
  */
 static int mlx5dr_pool_general_element_db_init(struct mlx5dr_pool *pool)
 {
-	pool->db.element_manager = simple_calloc(1, sizeof(*pool->db.element_manager));
-	if (!pool->db.element_manager) {
-		DR_LOG(ERR, "No mem for general elemnt_manager");
-		rte_errno = ENOMEM;
-		return rte_errno;
-	}
-
 	pool->p_db_uninit = &mlx5dr_pool_general_element_db_uninit;
 	pool->p_get_chunk = &mlx5dr_pool_general_element_db_get_chunk;
 	pool->p_put_chunk = &mlx5dr_pool_general_element_db_put_chunk;
