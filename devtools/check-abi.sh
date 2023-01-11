@@ -34,20 +34,18 @@ else
 	ABIDIFF_OPTIONS="$ABIDIFF_OPTIONS --headers-dir2 $incdir2"
 fi
 
-error=
-for dump in $(find $refdir -name "*.dump"); do
+export newdir ABIDIFF_OPTIONS
+export diff_func='run_diff() {
+	dump=$1
 	name=$(basename $dump)
 	dump2=$(find $newdir -name $name)
 	if [ -z "$dump2" ] || [ ! -e "$dump2" ]; then
 		echo "Error: cannot find $name in $newdir" >&2
-		error=1
-		continue
+		return 1
 	fi
 	abidiff $ABIDIFF_OPTIONS $dump $dump2 || {
 		abiret=$?
-		echo "Error: ABI issue reported for 'abidiff $ABIDIFF_OPTIONS $dump $dump2'" >&2
-		error=1
-		echo
+		echo "Error: ABI issue reported for abidiff $ABIDIFF_OPTIONS $dump $dump2" >&2
 		if [ $(($abiret & 3)) -ne 0 ]; then
 			echo "ABIDIFF_ERROR|ABIDIFF_USAGE_ERROR, this could be a script or environment issue." >&2
 		fi
@@ -57,8 +55,13 @@ for dump in $(find $refdir -name "*.dump"); do
 		if [ $(($abiret & 8)) -ne 0 ]; then
 			echo "ABIDIFF_ABI_INCOMPATIBLE_CHANGE, this change breaks the ABI." >&2
 		fi
-		echo
+		return 1
 	}
-done
+}'
+
+error=
+find $refdir -name "*.dump" |
+xargs -n1 -P0 sh -c 'eval "$diff_func"; run_diff $0' ||
+error=1
 
 [ -z "$error" ] || [ -n "$warnonly" ]

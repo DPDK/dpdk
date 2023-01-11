@@ -22,5 +22,6 @@ for f in $(find $installdir -name "*.so.*"); do
 	fi
 
 	libname=$(basename $f)
-	abidw --out-file $dumpdir/${libname%.so*}.dump $f
-done
+	echo $dumpdir/${libname%.so*}.dump $f
+done |
+xargs -n2 -P0 abidw --out-file
