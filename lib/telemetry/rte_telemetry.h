@@ -119,7 +119,7 @@ rte_tel_data_add_array_string(struct rte_tel_data *d, const char *str);
  *   0 on success, negative errno on error
  */
 int
-rte_tel_data_add_array_int(struct rte_tel_data *d, int x);
+rte_tel_data_add_array_int(struct rte_tel_data *d, int64_t x);
 
 /**
  * Add an unsigned value to an array.
@@ -229,7 +229,7 @@ rte_tel_data_add_dict_string(struct rte_tel_data *d, const char *name,
  *   0 on success, negative errno on error, E2BIG on string truncation of name.
  */
 int
-rte_tel_data_add_dict_int(struct rte_tel_data *d, const char *name, int val);
+rte_tel_data_add_dict_int(struct rte_tel_data *d, const char *name, int64_t val);
 
 /**
  * Add an unsigned value to a dictionary.
