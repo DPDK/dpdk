@@ -88,7 +88,20 @@ default_port_conf_cb(uint16_t id, uint8_t event_dev_id, uint8_t *event_port_id,
 		rte_event_dev_stop(dev_id);
 
 	port_id = dev_conf.nb_event_ports;
+	if (conf_arg != NULL)
+		port_conf = conf_arg;
+	else {
+		port_conf = &def_port_conf;
+		ret = rte_event_port_default_conf_get(dev_id, (port_id - 1),
+						      port_conf);
+		if (ret < 0)
+			return ret;
+	}
+
 	dev_conf.nb_event_ports += 1;
+	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_SINGLE_LINK)
+		dev_conf.nb_single_link_event_port_queues += 1;
+
 	ret = rte_event_dev_configure(dev_id, &dev_conf);
 	if (ret < 0) {
 		EVTIM_LOG_ERR("failed to configure event dev %u\n", dev_id);
@@ -97,16 +110,6 @@ default_port_conf_cb(uint16_t id, uint8_t event_dev_id, uint8_t *event_port_id,
 				return -EIO;
 
 		return ret;
-	}
-
-	if (conf_arg != NULL)
-		port_conf = conf_arg;
-	else {
-		port_conf = &def_port_conf;
-		ret = rte_event_port_default_conf_get(dev_id, port_id,
-						      port_conf);
-		if (ret < 0)
-			return ret;
 	}
 
 	ret = rte_event_port_setup(dev_id, port_id, port_conf);
