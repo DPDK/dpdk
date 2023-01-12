@@ -622,6 +622,7 @@ acc100_dev_close(struct rte_bbdev *dev)
 		rte_free(d->tail_ptrs);
 		rte_free(d->info_ring);
 		rte_free(d->sw_rings_base);
+		rte_free(d->harq_layout);
 		d->sw_rings_base = NULL;
 		d->tail_ptrs = NULL;
 		d->info_ring = NULL;
