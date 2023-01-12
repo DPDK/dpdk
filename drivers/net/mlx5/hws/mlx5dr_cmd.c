@@ -264,6 +264,8 @@ mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
 		MLX5_IFC_RTC_STE_FORMAT_8DW);
 	MLX5_SET(rtc, attr, pd, rtc_attr->pd);
 	MLX5_SET(rtc, attr, update_index_mode, rtc_attr->update_index_mode);
+	MLX5_SET(rtc, attr, access_index_mode, rtc_attr->access_index_mode);
+	MLX5_SET(rtc, attr, num_hash_definer, rtc_attr->num_hash_definer);
 	MLX5_SET(rtc, attr, log_depth, rtc_attr->log_depth);
 	MLX5_SET(rtc, attr, log_hash_size, rtc_attr->log_size);
 	MLX5_SET(rtc, attr, table_type, rtc_attr->table_type);

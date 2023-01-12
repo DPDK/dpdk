@@ -41,6 +41,8 @@ struct mlx5dr_cmd_rtc_create_attr {
 	uint32_t ste_offset;
 	uint32_t miss_ft_id;
 	uint8_t update_index_mode;
+	uint8_t access_index_mode;
+	uint8_t num_hash_definer;
 	uint8_t log_depth;
 	uint8_t log_size;
 	uint8_t table_type;

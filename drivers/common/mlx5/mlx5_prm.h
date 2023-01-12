@@ -759,6 +759,7 @@ enum mlx5_modification_field {
 	MLX5_MODI_OUT_IP_ECN = 0x73,
 	MLX5_MODI_TUNNEL_HDR_DW_1 = 0x75,
 	MLX5_MODI_GTPU_FIRST_EXT_DW_0 = 0x76,
+	MLX5_MODI_HASH_RESULT = 0x81,
 };
 
 /* Total number of metadata reg_c's. */
@@ -2043,7 +2044,9 @@ struct mlx5_ifc_ft_fields_support_bits {
  * Table 1872 - Flow Table Fields Supported 2 Format
  */
 struct mlx5_ifc_ft_fields_support_2_bits {
-	u8 reserved_at_0[0xf];
+	u8 reserved_at_0[0xd];
+	u8 hash_result[0x1];
+	u8 reserved_at_e[0x1];
 	u8 tunnel_header_2_3[0x1];
 	u8 tunnel_header_0_1[0x1];
 	u8 macsec_syndrome[0x1];
@@ -2178,7 +2181,9 @@ struct mlx5_ifc_wqe_based_flow_table_cap_bits {
 	u8 log_max_num_rtc[0x5];
 	u8 reserved_at_18[0x3];
 	u8 log_max_num_header_modify_pattern[0x5];
-	u8 reserved_at_20[0x3];
+	u8 rtc_hash_split_table[0x1];
+	u8 rtc_linear_lookup_table[0x1];
+	u8 reserved_at_22[0x1];
 	u8 stc_alloc_log_granularity[0x5];
 	u8 reserved_at_28[0x3];
 	u8 stc_alloc_log_max[0x5];
@@ -2198,6 +2203,11 @@ struct mlx5_ifc_wqe_based_flow_table_cap_bits {
 	u8 header_insert_type[0x10];
 	u8 header_remove_type[0x10];
 	u8 trivial_match_definer[0x20];
+	u8 reserved_at_140[0x20];
+	u8 reserved_at_160[0x18];
+	u8 access_index_mode[0x8];
+	u8 reserved_at_180[0x20];
+	u8 linear_match_definer_reg_c3[0x20];
 };
 
 union mlx5_ifc_hca_cap_union_bits {
@@ -3215,6 +3225,11 @@ enum mlx5_ifc_rtc_update_mode {
 	MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET = 0x1,
 };
 
+enum mlx5_ifc_rtc_access_mode {
+	MLX5_IFC_RTC_STE_ACCESS_MODE_BY_HASH = 0x0,
+	MLX5_IFC_RTC_STE_ACCESS_MODE_LINEAR = 0x1,
+};
+
 enum mlx5_ifc_rtc_ste_format {
 	MLX5_IFC_RTC_STE_FORMAT_8DW = 0x4,
 	MLX5_IFC_RTC_STE_FORMAT_11DW = 0x5,
@@ -3225,6 +3240,8 @@ enum mlx5_ifc_rtc_reparse_mode {
 	MLX5_IFC_RTC_REPARSE_ALWAYS = 0x1,
 };
 
+#define MLX5_IFC_RTC_LINEAR_LOOKUP_TBL_LOG_MAX 16
+
 struct mlx5_ifc_rtc_bits {
 	u8 modify_field_select[0x40];
 	u8 reserved_at_40[0x40];
@@ -3232,7 +3249,10 @@ struct mlx5_ifc_rtc_bits {
 	u8 reparse_mode[0x2];
 	u8 reserved_at_84[0x4];
 	u8 pd[0x18];
-	u8 reserved_at_a0[0x13];
+	u8 reserved_at_a0[0x9];
+	u8 access_index_mode[0x3];
+	u8 num_hash_definer[0x4];
+	u8 reserved_at_b0[0x3];
 	u8 log_depth[0x5];
 	u8 log_hash_size[0x8];
 	u8 ste_format[0x8];
