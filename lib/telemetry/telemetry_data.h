@@ -28,7 +28,7 @@ struct container {
  */
 union tel_value {
 	char sval[RTE_TEL_MAX_STRING_LEN];
-	int ival;
+	int64_t ival;
 	uint64_t uval;
 	struct container container;
 };
