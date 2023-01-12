@@ -64,6 +64,10 @@ New Features
   * Added support for meter options.
   * Added support for rte_flow meter action.
 
+* **Added new algorithms to cryptodev.**
+
+  Added SHAKE-128 and SHAKE-256 symmetric secure hash algorithm.
+
 * **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 
   * Added support for SHA3 224/256/384/512 plain hash in QAT GEN 3.
