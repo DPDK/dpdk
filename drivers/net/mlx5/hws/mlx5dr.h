@@ -111,6 +111,16 @@ enum mlx5dr_matcher_flow_src {
 	MLX5DR_MATCHER_FLOW_SRC_VPORT = 0x2,
 };
 
+enum mlx5dr_matcher_insert_mode {
+	MLX5DR_MATCHER_INSERT_BY_HASH = 0x0,
+	MLX5DR_MATCHER_INSERT_BY_INDEX = 0x1,
+};
+
+enum mlx5dr_matcher_distribute_mode {
+	MLX5DR_MATCHER_DISTRIBUTE_BY_HASH = 0x0,
+	MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR = 0x1,
+};
+
 struct mlx5dr_matcher_attr {
 	/* Processing priority inside table */
 	uint32_t priority;
@@ -120,6 +130,9 @@ struct mlx5dr_matcher_attr {
 	enum mlx5dr_matcher_resource_mode mode;
 	/* Optimize insertion in case packet origin is the same for all rules */
 	enum mlx5dr_matcher_flow_src optimize_flow_src;
+	/* Define the insertion and distribution modes for this matcher */
+	enum mlx5dr_matcher_insert_mode insert_mode;
+	enum mlx5dr_matcher_distribute_mode distribute_mode;
 	union {
 		struct {
 			uint8_t sz_row_log;
@@ -135,7 +148,9 @@ struct mlx5dr_matcher_attr {
 struct mlx5dr_rule_attr {
 	uint16_t queue_id;
 	void *user_data;
-	/* Valid if matcher optimize_using_rule_idx is set */
+	/* Valid if matcher optimize_using_rule_idx is set or
+	 * if matcher is configured to insert rules by index.
+	 */
 	uint32_t rule_idx;
 	uint32_t burst:1;
 };

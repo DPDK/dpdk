@@ -4,6 +4,25 @@
 
 #include "mlx5dr_internal.h"
 
+enum mlx5dr_matcher_rtc_type {
+	DR_MATCHER_RTC_TYPE_MATCH,
+	DR_MATCHER_RTC_TYPE_STE_ARRAY,
+	DR_MATCHER_RTC_TYPE_MAX,
+};
+
+static const char * const mlx5dr_matcher_rtc_type_str[] = {
+	[DR_MATCHER_RTC_TYPE_MATCH] = "MATCH",
+	[DR_MATCHER_RTC_TYPE_STE_ARRAY] = "STE_ARRAY",
+	[DR_MATCHER_RTC_TYPE_MAX] = "UNKNOWN",
+};
+
+static const char *mlx5dr_matcher_rtc_type_to_str(enum mlx5dr_matcher_rtc_type rtc_type)
+{
+	if (rtc_type > DR_MATCHER_RTC_TYPE_MAX)
+		rtc_type = DR_MATCHER_RTC_TYPE_MAX;
+	return mlx5dr_matcher_rtc_type_str[rtc_type];
+}
+
 static bool mlx5dr_matcher_requires_col_tbl(uint8_t log_num_of_rules)
 {
 	/* Collision table concatenation is done only for large rule tables */
@@ -320,10 +339,11 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 
 static void mlx5dr_matcher_set_rtc_attr_sz(struct mlx5dr_matcher *matcher,
 					   struct mlx5dr_cmd_rtc_create_attr *rtc_attr,
-					   bool is_match_rtc,
+					   enum mlx5dr_matcher_rtc_type rtc_type,
 					   bool is_mirror)
 {
 	enum mlx5dr_matcher_flow_src flow_src = matcher->attr.optimize_flow_src;
+	bool is_match_rtc = rtc_type == DR_MATCHER_RTC_TYPE_MATCH;
 	struct mlx5dr_pool_chunk *ste = &matcher->action_ste.ste;
 
 	if ((flow_src == MLX5DR_MATCHER_FLOW_SRC_VPORT && !is_mirror) ||
@@ -382,9 +402,9 @@ int mlx5dr_matcher_create_aliased_obj(struct mlx5dr_context *ctx,
 }
 
 static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
-				     bool is_match_rtc)
+				     enum mlx5dr_matcher_rtc_type rtc_type)
 {
-	const char *rtc_type_str = is_match_rtc ? "match" : "action";
+	struct mlx5dr_matcher_attr *attr = &matcher->attr;
 	struct mlx5dr_cmd_rtc_create_attr rtc_attr = {0};
 	struct mlx5dr_context *ctx = matcher->tbl->ctx;
 	struct mlx5dr_action_default_stc *default_stc;
@@ -395,33 +415,57 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 	struct mlx5dr_pool_chunk *ste;
 	int ret;
 
-	if (is_match_rtc) {
+	switch (rtc_type) {
+	case DR_MATCHER_RTC_TYPE_MATCH:
 		rtc_0 = &matcher->match_ste.rtc_0;
 		rtc_1 = &matcher->match_ste.rtc_1;
 		ste_pool = matcher->match_ste.pool;
 		ste = &matcher->match_ste.ste;
-		ste->order = matcher->attr.table.sz_col_log +
-			     matcher->attr.table.sz_row_log;
-		rtc_attr.log_size = matcher->attr.table.sz_row_log;
-		rtc_attr.log_depth = matcher->attr.table.sz_col_log;
-		rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_HASH;
-		/* The first match template is used since all share the same definer */
-		rtc_attr.definer_id = mlx5dr_definer_get_id(matcher->mt[0]->definer);
-		rtc_attr.is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt[0]->definer);
+		ste->order = attr->table.sz_col_log + attr->table.sz_row_log;
+		rtc_attr.log_size = attr->table.sz_row_log;
+		rtc_attr.log_depth = attr->table.sz_col_log;
 		rtc_attr.miss_ft_id = matcher->end_ft->id;
+
+		if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH) {
+			/* The usual Hash Table */
+			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_HASH;
+			/* The first match template is used since all share the same definer */
+			rtc_attr.definer_id = mlx5dr_definer_get_id(matcher->mt[0]->definer);
+			rtc_attr.is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt[0]->definer);
+		} else if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX) {
+			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
+			rtc_attr.num_hash_definer = 1;
+
+			if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
+				/* Hash Split Table */
+				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_BY_HASH;
+				rtc_attr.definer_id =
+					mlx5dr_definer_get_id(matcher->mt[0]->definer);
+				rtc_attr.is_jumbo =
+					mlx5dr_definer_is_jumbo(matcher->mt[0]->definer);
+			} else if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR) {
+				/* Linear Lookup Table */
+				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_LINEAR;
+				rtc_attr.definer_id = ctx->caps->linear_match_definer;
+			}
+		}
+
 		/* Match pool requires implicit allocation */
 		ret = mlx5dr_pool_chunk_alloc(ste_pool, ste);
 		if (ret) {
-			DR_LOG(ERR, "Failed to allocate STE for %s RTC", rtc_type_str);
+			DR_LOG(ERR, "Failed to allocate STE for %s RTC",
+			       mlx5dr_matcher_rtc_type_to_str(rtc_type));
 			return ret;
 		}
-	} else {
+		break;
+
+	case DR_MATCHER_RTC_TYPE_STE_ARRAY:
 		rtc_0 = &matcher->action_ste.rtc_0;
 		rtc_1 = &matcher->action_ste.rtc_1;
 		ste_pool = matcher->action_ste.pool;
 		ste = &matcher->action_ste.ste;
 		ste->order = rte_log2_u32(matcher->action_ste.max_stes) +
-			     matcher->attr.table.sz_row_log;
+			     attr->table.sz_row_log;
 		rtc_attr.log_size = ste->order;
 		rtc_attr.log_depth = 0;
 		rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
@@ -429,6 +473,12 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		rtc_attr.definer_id = ctx->caps->trivial_match_definer;
 		rtc_attr.is_jumbo = false;
 		rtc_attr.miss_ft_id = 0;
+		break;
+
+	default:
+		DR_LOG(ERR, "HWS Invalid RTC type");
+		rte_errno = EINVAL;
+		return rte_errno;
 	}
 
 	devx_obj = mlx5dr_pool_chunk_get_base_devx_obj(ste_pool, ste);
@@ -437,7 +487,7 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 	rtc_attr.ste_base = devx_obj->id;
 	rtc_attr.ste_offset = ste->offset;
 	rtc_attr.table_type = mlx5dr_table_get_res_fw_ft_type(tbl->type, false);
-	mlx5dr_matcher_set_rtc_attr_sz(matcher, &rtc_attr, is_match_rtc, false);
+	mlx5dr_matcher_set_rtc_attr_sz(matcher, &rtc_attr, rtc_type, false);
 
 	/* STC is a single resource (devx_obj), use any STC for the ID */
 	stc_pool = ctx->stc_pool[tbl->type];
@@ -447,7 +497,8 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 
 	*rtc_0 = mlx5dr_cmd_rtc_create(ctx->ibv_ctx, &rtc_attr);
 	if (!*rtc_0) {
-		DR_LOG(ERR, "Failed to create matcher %s RTC", rtc_type_str);
+		DR_LOG(ERR, "Failed to create matcher RTC of type %s",
+		       mlx5dr_matcher_rtc_type_to_str(rtc_type));
 		goto free_ste;
 	}
 
@@ -458,11 +509,12 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 
 		devx_obj = mlx5dr_pool_chunk_get_base_devx_obj_mirror(stc_pool, &default_stc->default_hit);
 		rtc_attr.stc_base = devx_obj->id;
-		mlx5dr_matcher_set_rtc_attr_sz(matcher, &rtc_attr, is_match_rtc, true);
+		mlx5dr_matcher_set_rtc_attr_sz(matcher, &rtc_attr, rtc_type, true);
 
 		*rtc_1 = mlx5dr_cmd_rtc_create(ctx->ibv_ctx, &rtc_attr);
 		if (!*rtc_1) {
-			DR_LOG(ERR, "Failed to create peer matcher %s RTC0", rtc_type_str);
+			DR_LOG(ERR, "Failed to create peer matcher RTC of type %s",
+			       mlx5dr_matcher_rtc_type_to_str(rtc_type));
 			goto destroy_rtc_0;
 		}
 	}
@@ -472,36 +524,41 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 destroy_rtc_0:
 	mlx5dr_cmd_destroy_obj(*rtc_0);
 free_ste:
-	if (is_match_rtc)
+	if (rtc_type == DR_MATCHER_RTC_TYPE_MATCH)
 		mlx5dr_pool_chunk_free(ste_pool, ste);
 	return rte_errno;
 }
 
 static void mlx5dr_matcher_destroy_rtc(struct mlx5dr_matcher *matcher,
-				       bool is_match_rtc)
+				       enum mlx5dr_matcher_rtc_type rtc_type)
 {
 	struct mlx5dr_table *tbl = matcher->tbl;
 	struct mlx5dr_devx_obj *rtc_0, *rtc_1;
 	struct mlx5dr_pool_chunk *ste;
 	struct mlx5dr_pool *ste_pool;
 
-	if (is_match_rtc) {
+	switch (rtc_type) {
+	case DR_MATCHER_RTC_TYPE_MATCH:
 		rtc_0 = matcher->match_ste.rtc_0;
 		rtc_1 = matcher->match_ste.rtc_1;
 		ste_pool = matcher->match_ste.pool;
 		ste = &matcher->match_ste.ste;
-	} else {
+		break;
+	case DR_MATCHER_RTC_TYPE_STE_ARRAY:
 		rtc_0 = matcher->action_ste.rtc_0;
 		rtc_1 = matcher->action_ste.rtc_1;
 		ste_pool = matcher->action_ste.pool;
 		ste = &matcher->action_ste.ste;
+		break;
+	default:
+		return;
 	}
 
 	if (tbl->type == MLX5DR_TABLE_TYPE_FDB)
 		mlx5dr_cmd_destroy_obj(rtc_1);
 
 	mlx5dr_cmd_destroy_obj(rtc_0);
-	if (is_match_rtc)
+	if (rtc_type == DR_MATCHER_RTC_TYPE_MATCH)
 		mlx5dr_pool_chunk_free(ste_pool, ste);
 }
 
@@ -572,7 +629,7 @@ static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 	}
 
 	/* Allocate action RTC */
-	ret = mlx5dr_matcher_create_rtc(matcher, false);
+	ret = mlx5dr_matcher_create_rtc(matcher, DR_MATCHER_RTC_TYPE_STE_ARRAY);
 	if (ret) {
 		DR_LOG(ERR, "Failed to create action RTC");
 		goto free_ste_pool;
@@ -595,7 +652,7 @@ static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 	return 0;
 
 free_rtc:
-	mlx5dr_matcher_destroy_rtc(matcher, false);
+	mlx5dr_matcher_destroy_rtc(matcher, DR_MATCHER_RTC_TYPE_STE_ARRAY);
 free_ste_pool:
 	mlx5dr_pool_destroy(matcher->action_ste.pool);
 	return rte_errno;
@@ -609,7 +666,7 @@ static void mlx5dr_matcher_unbind_at(struct mlx5dr_matcher *matcher)
 		return;
 
 	mlx5dr_action_free_single_stc(tbl->ctx, tbl->type, &matcher->action_ste.stc);
-	mlx5dr_matcher_destroy_rtc(matcher, false);
+	mlx5dr_matcher_destroy_rtc(matcher, DR_MATCHER_RTC_TYPE_STE_ARRAY);
 	mlx5dr_pool_destroy(matcher->action_ste.pool);
 }
 
@@ -675,22 +732,94 @@ static void mlx5dr_matcher_unbind_mt(struct mlx5dr_matcher *matcher)
 }
 
 static int
-mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
-			    struct mlx5dr_matcher *matcher,
-			    bool is_root)
+mlx5dr_matcher_validate_insert_mode(struct mlx5dr_cmd_query_caps *caps,
+				    struct mlx5dr_matcher *matcher,
+				    bool is_root)
 {
 	struct mlx5dr_matcher_attr *attr = &matcher->attr;
-
-	if (matcher->tbl->type != MLX5DR_TABLE_TYPE_FDB  && attr->optimize_flow_src) {
-		DR_LOG(ERR, "NIC domain doesn't support flow_src");
-		goto not_supported;
-	}
 
 	if (is_root) {
 		if (attr->mode != MLX5DR_MATCHER_RESOURCE_MODE_RULE) {
 			DR_LOG(ERR, "Root matcher supports only rule resource mode");
 			goto not_supported;
 		}
+		if (attr->insert_mode != MLX5DR_MATCHER_INSERT_BY_HASH) {
+			DR_LOG(ERR, "Root matcher supports only insert by hash mode");
+			goto not_supported;
+		}
+		if (attr->distribute_mode != MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
+			DR_LOG(ERR, "Root matcher supports only distribute by hash mode");
+			goto not_supported;
+		}
+		if (attr->optimize_flow_src) {
+			DR_LOG(ERR, "Root matcher can't specify FDB direction");
+			goto not_supported;
+		}
+	}
+
+	switch (attr->insert_mode) {
+	case MLX5DR_MATCHER_INSERT_BY_HASH:
+		if (matcher->attr.distribute_mode != MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
+			DR_LOG(ERR, "Invalid matcher distribute mode");
+			goto not_supported;
+		}
+		break;
+
+	case MLX5DR_MATCHER_INSERT_BY_INDEX:
+		if (attr->table.sz_col_log) {
+			DR_LOG(ERR, "Matcher with INSERT_BY_INDEX supports only Nx1 table size");
+			goto not_supported;
+		}
+
+		if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
+			/* Hash Split Table */
+			if (!caps->rtc_hash_split_table) {
+				DR_LOG(ERR, "FW doesn't support insert by index and hash distribute");
+				goto not_supported;
+			}
+		} else if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR) {
+			/* Linear Lookup Table */
+			if (!caps->rtc_linear_lookup_table ||
+			    !IS_BIT_SET(caps->access_index_mode,
+					MLX5_IFC_RTC_STE_ACCESS_MODE_LINEAR)) {
+				DR_LOG(ERR, "FW doesn't support insert by index and linear distribute");
+				goto not_supported;
+			}
+
+			if (attr->table.sz_row_log > MLX5_IFC_RTC_LINEAR_LOOKUP_TBL_LOG_MAX) {
+				DR_LOG(ERR, "Matcher with linear distribute: rows exceed limit %d",
+				       MLX5_IFC_RTC_LINEAR_LOOKUP_TBL_LOG_MAX);
+				goto not_supported;
+			}
+		} else {
+			DR_LOG(ERR, "Matcher has unsupported distribute mode");
+			goto not_supported;
+		}
+		break;
+
+	default:
+		DR_LOG(ERR, "Matcher has unsupported insert mode");
+		goto not_supported;
+	}
+
+	return 0;
+
+not_supported:
+	rte_errno = EOPNOTSUPP;
+	return rte_errno;
+}
+
+static int
+mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
+			    struct mlx5dr_matcher *matcher,
+			    bool is_root)
+{
+	struct mlx5dr_matcher_attr *attr = &matcher->attr;
+
+	if (mlx5dr_matcher_validate_insert_mode(caps, matcher, is_root))
+		goto not_supported;
+
+	if (is_root) {
 		if (attr->optimize_flow_src) {
 			DR_LOG(ERR, "Root matcher can't specify FDB direction");
 			goto not_supported;
@@ -698,8 +827,14 @@ mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
 		return 0;
 	}
 
+	if (matcher->tbl->type != MLX5DR_TABLE_TYPE_FDB  && attr->optimize_flow_src) {
+		DR_LOG(ERR, "NIC domain doesn't support flow_src");
+		goto not_supported;
+	}
+
 	/* Convert number of rules to the required depth */
-	if (attr->mode == MLX5DR_MATCHER_RESOURCE_MODE_RULE)
+	if (attr->mode == MLX5DR_MATCHER_RESOURCE_MODE_RULE &&
+	    attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH)
 		attr->table.sz_col_log = mlx5dr_matcher_rules_to_tbl_depth(attr->rule.num_log);
 
 	if (attr->table.sz_col_log > caps->rtc_log_depth_max) {
@@ -744,7 +879,7 @@ static int mlx5dr_matcher_create_and_connect(struct mlx5dr_matcher *matcher)
 		goto unbind_at;
 
 	/* Allocate the RTC for the new matcher */
-	ret = mlx5dr_matcher_create_rtc(matcher, true);
+	ret = mlx5dr_matcher_create_rtc(matcher, DR_MATCHER_RTC_TYPE_MATCH);
 	if (ret)
 		goto destroy_end_ft;
 
@@ -763,7 +898,7 @@ static int mlx5dr_matcher_create_and_connect(struct mlx5dr_matcher *matcher)
 destroy_shared:
 	mlx5dr_matcher_create_uninit_shared(matcher);
 destroy_rtc:
-	mlx5dr_matcher_destroy_rtc(matcher, true);
+	mlx5dr_matcher_destroy_rtc(matcher, DR_MATCHER_RTC_TYPE_MATCH);
 destroy_end_ft:
 	mlx5dr_matcher_destroy_end_ft(matcher);
 unbind_at:
@@ -777,7 +912,7 @@ static void mlx5dr_matcher_destroy_and_disconnect(struct mlx5dr_matcher *matcher
 {
 	mlx5dr_matcher_disconnect(matcher);
 	mlx5dr_matcher_create_uninit_shared(matcher);
-	mlx5dr_matcher_destroy_rtc(matcher, true);
+	mlx5dr_matcher_destroy_rtc(matcher, DR_MATCHER_RTC_TYPE_MATCH);
 	mlx5dr_matcher_destroy_end_ft(matcher);
 	mlx5dr_matcher_unbind_at(matcher);
 	mlx5dr_matcher_unbind_mt(matcher);

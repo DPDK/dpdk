@@ -118,7 +118,8 @@ static int mlx5dr_rule_alloc_action_ste(struct mlx5dr_rule *rule,
 	int ret;
 
 	/* Use rule_idx for locking optimzation, otherwise allocate from pool */
-	if (matcher->attr.optimize_using_rule_idx) {
+	if (matcher->attr.optimize_using_rule_idx ||
+	    mlx5dr_matcher_is_insert_by_idx(matcher)) {
 		rule->action_ste_idx = attr->rule_idx * matcher->action_ste.max_stes;
 	} else {
 		struct mlx5dr_pool_chunk ste = {0};
@@ -138,7 +139,9 @@ void mlx5dr_rule_free_action_ste_idx(struct mlx5dr_rule *rule)
 {
 	struct mlx5dr_matcher *matcher = rule->matcher;
 
-	if (rule->action_ste_idx > -1 && !matcher->attr.optimize_using_rule_idx) {
+	if (rule->action_ste_idx > -1 &&
+	    !matcher->attr.optimize_using_rule_idx &&
+	    !mlx5dr_matcher_is_insert_by_idx(matcher)) {
 		struct mlx5dr_pool_chunk ste = {0};
 
 		/* This release is safe only when the rule match part was deleted */
@@ -244,9 +247,14 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 		mlx5dr_action_apply_setter(&apply, setter--, !i && is_jumbo);
 
 		if (i == 0) {
-			/* Handle last match STE */
-			mlx5dr_definer_create_tag(items, mt->fc, mt->fc_sz,
-						  (uint8_t *)dep_wqe->wqe_data.action);
+			/* Handle last match STE.
+			 * For hash split / linear lookup RTCs, packets reaching any STE
+			 * will always match and perform the specified actions, which
+			 * makes the tag irrelevant.
+			 */
+			if (likely(!mlx5dr_matcher_is_insert_by_idx(matcher)))
+				mlx5dr_definer_create_tag(items, mt->fc, mt->fc_sz,
+							  (uint8_t *)dep_wqe->wqe_data.action);
 
 			/* Rule has dependent WQEs, match dep_wqe is queued */
 			if (action_stes || apply.require_dep)
@@ -258,13 +266,14 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 			ste_attr.send_attr.notify_hw = !attr->burst;
 			ste_attr.send_attr.user_data = dep_wqe->user_data;
 			ste_attr.send_attr.rule = dep_wqe->rule;
-			ste_attr.direct_index = 0;
 			ste_attr.rtc_0 = dep_wqe->rtc_0;
 			ste_attr.rtc_1 = dep_wqe->rtc_1;
 			ste_attr.used_id_rtc_0 = &rule->rtc_0;
 			ste_attr.used_id_rtc_1 = &rule->rtc_1;
 			ste_attr.retry_rtc_0 = dep_wqe->retry_rtc_0;
 			ste_attr.retry_rtc_1 = dep_wqe->retry_rtc_1;
+			ste_attr.direct_index = mlx5dr_matcher_is_insert_by_idx(matcher) ?
+						attr->rule_idx : 0;
 		} else {
 			apply.next_direct_idx = --ste_attr.direct_index;
 		}
@@ -364,6 +373,8 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 	ste_attr.wqe_tag = &rule->tag;
 	ste_attr.wqe_tag_is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt[0]->definer);
 	ste_attr.gta_opcode = MLX5DR_WQE_GTA_OP_DEACTIVATE;
+	if (unlikely(mlx5dr_matcher_is_insert_by_idx(matcher)))
+		ste_attr.direct_index = attr->rule_idx;
 
 	mlx5dr_send_ste(queue, &ste_attr);
 

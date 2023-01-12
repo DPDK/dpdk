@@ -40,7 +40,7 @@ struct mlx5dr_rule {
 	};
 	uint32_t rtc_0; /* The RTC into which the STE was inserted */
 	uint32_t rtc_1; /* The RTC into which the STE was inserted */
-	int action_ste_idx; /* Action STE pool ID */
+	int action_ste_idx; /* STE array index */
 	uint8_t status; /* enum mlx5dr_rule_status */
 	uint8_t pending_wqes;
 };

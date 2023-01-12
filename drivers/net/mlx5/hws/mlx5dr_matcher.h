@@ -82,4 +82,10 @@ int mlx5dr_matcher_create_aliased_obj(struct mlx5dr_context *ctx,
 				      uint32_t aliased_object_id,
 				      uint16_t object_type,
 				      struct mlx5dr_devx_obj **obj);
+
+static inline bool mlx5dr_matcher_is_insert_by_idx(struct mlx5dr_matcher *matcher)
+{
+	return matcher->attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX;
+}
+
 #endif /* MLX5DR_MATCHER_H_ */
