@@ -8,13 +8,13 @@
 #include "rte_telemetry.h"
 
 enum tel_container_types {
-	RTE_TEL_NULL,	      /** null, used as error value */
-	RTE_TEL_STRING,	      /** basic string type, no included data */
-	RTE_TEL_DICT,	      /** name-value pairs, of individual value type */
-	RTE_TEL_ARRAY_STRING, /** array of string values only */
-	RTE_TEL_ARRAY_INT,    /** array of signed, 32-bit int values */
-	RTE_TEL_ARRAY_U64,    /** array of unsigned 64-bit int values */
-	RTE_TEL_ARRAY_CONTAINER, /** array of container structs */
+	TEL_NULL,            /** null, used as error value */
+	TEL_STRING,          /** basic string type, no included data */
+	TEL_DICT,            /** name-value pairs, of individual value type */
+	TEL_ARRAY_STRING,    /** array of string values only */
+	TEL_ARRAY_INT,       /** array of signed, 32-bit int values */
+	TEL_ARRAY_U64,      /** array of unsigned 64-bit int values */
+	TEL_ARRAY_CONTAINER, /** array of container structs */
 };
 
 struct container {

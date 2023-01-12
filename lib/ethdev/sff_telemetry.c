@@ -96,7 +96,7 @@ ssf_add_dict_string(struct rte_tel_data *d, const char *name_str, const char *va
 {
 	struct tel_dict_entry *e = &d->data.dict[d->data_len];
 
-	if (d->type != RTE_TEL_DICT)
+	if (d->type != TEL_DICT)
 		return;
 	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES) {
 		RTE_ETHDEV_LOG(ERR, "data_len has exceeded the maximum number of inserts\n");
