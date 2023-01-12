@@ -19,10 +19,10 @@ int
 rte_tel_data_start_array(struct rte_tel_data *d, enum rte_tel_value_type type)
 {
 	enum tel_container_types array_types[] = {
-			TEL_ARRAY_STRING, /* RTE_TEL_STRING_VAL = 0 */
-			TEL_ARRAY_INT,    /* RTE_TEL_INT_VAL = 1 */
-			TEL_ARRAY_U64,    /* RTE_TEL_U64_VAL = 2 */
-			TEL_ARRAY_CONTAINER, /* RTE_TEL_CONTAINER = 3 */
+			[RTE_TEL_STRING_VAL] = TEL_ARRAY_STRING,
+			[RTE_TEL_INT_VAL] = TEL_ARRAY_INT,
+			[RTE_TEL_U64_VAL] = TEL_ARRAY_U64,
+			[RTE_TEL_CONTAINER] = TEL_ARRAY_CONTAINER,
 	};
 	d->type = array_types[type];
 	d->data_len = 0;
