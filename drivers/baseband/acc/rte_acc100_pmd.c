@@ -8,7 +8,6 @@
 #include <rte_log.h>
 #include <dev_driver.h>
 #include <rte_malloc.h>
-#include <rte_mempool.h>
 #include <rte_byteorder.h>
 #include <rte_errno.h>
 #include <rte_branch_prediction.h>
@@ -1830,10 +1829,6 @@ validate_enc_op(struct rte_bbdev_enc_op *op, struct acc_queue *q)
 	if (!validate_op_required(q))
 		return 0;
 
-	if (op->mempool == NULL) {
-		rte_bbdev_log(ERR, "Invalid mempool pointer");
-		return -1;
-	}
 	if (turbo_enc->input.data == NULL) {
 		rte_bbdev_log(ERR, "Invalid input pointer");
 		return -1;
@@ -2677,10 +2672,6 @@ validate_dec_op(struct rte_bbdev_dec_op *op, struct acc_queue *q)
 	if (!validate_op_required(q))
 		return 0;
 
-	if (op->mempool == NULL) {
-		rte_bbdev_log(ERR, "Invalid mempool pointer");
-		return -1;
-	}
 	if (turbo_dec->input.data == NULL) {
 		rte_bbdev_log(ERR, "Invalid input pointer");
 		return -1;
