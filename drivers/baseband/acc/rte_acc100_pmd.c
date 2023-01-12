@@ -1390,7 +1390,7 @@ acc101_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		harq_in_length = RTE_MIN(harq_in_length, op->ldpc_dec.n_cb
 				- op->ldpc_dec.n_filler);
 		/* Alignment on next 64B - Already enforced from HC output */
-		harq_in_length = RTE_ALIGN_FLOOR(harq_in_length, 64);
+		harq_in_length = RTE_ALIGN_FLOOR(harq_in_length, ACC_HARQ_ALIGN_64B);
 		fcw->hcin_size0 = harq_in_length;
 		fcw->hcin_offset = 0;
 		fcw->hcin_size1 = 0;
@@ -1433,7 +1433,7 @@ acc101_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		/* Cannot exceed the pruned Ncb circular buffer */
 		harq_out_length = RTE_MIN(harq_out_length, ncb_p);
 		/* Alignment on next 64B */
-		harq_out_length = RTE_ALIGN_CEIL(harq_out_length, 64);
+		harq_out_length = RTE_ALIGN_CEIL(harq_out_length, ACC_HARQ_ALIGN_64B);
 		fcw->hcout_size0 = harq_out_length;
 		fcw->hcout_size1 = 0;
 		fcw->hcout_offset = 0;
