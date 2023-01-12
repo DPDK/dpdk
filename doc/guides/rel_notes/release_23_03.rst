@@ -55,6 +55,15 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated the eventdev reconfigure logic for service based adapters.**
+
+  * eventdev reconfig logic is enhanced to increment the
+    ``rte_event_dev_config::nb_single_link_event_port_queues`` parameter
+    if event port config is of type ``RTE_EVENT_PORT_CFG_SINGLE_LINK``.
+  * With this change, the application no longer needs to account for the
+    ``rte_event_dev_config::nb_single_link_event_port_queues`` parameter
+    required for eth_rx eventdev adapter.
+
 
 Removed Items
 -------------
