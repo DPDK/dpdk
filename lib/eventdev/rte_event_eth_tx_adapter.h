@@ -142,6 +142,20 @@ struct rte_event_eth_tx_adapter_stats {
 /**
  * Create a new ethernet Tx adapter with the specified identifier.
  *
+ * When this API is used for creating adapter instance,
+ * ``rte_event_dev_config::nb_event_ports`` is automatically incremented,
+ * and event device is reconfigured with additional event port during service
+ * initialization. This event device reconfigure logic also increments the
+ * ``rte_event_dev_config::nb_single_link_event_port_queues``
+ * parameter if the adapter event port config is of type
+ * ``RTE_EVENT_PORT_CFG_SINGLE_LINK``.
+ *
+ * Application no longer needs to account for the
+ * ``rte_event_dev_config::nb_event_ports`` and
+ * ``rte_event_dev_config::nb_single_link_event_port_queues``
+ * parameters required for eth Tx adapter in event device configure when
+ * the adapter is created with this API.
+ *
  * @param id
  *  The identifier of the ethernet Tx adapter.
  * @param dev_id

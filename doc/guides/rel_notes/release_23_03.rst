@@ -62,7 +62,7 @@ New Features
     if event port config is of type ``RTE_EVENT_PORT_CFG_SINGLE_LINK``.
   * With this change, the application no longer needs to account for the
     ``rte_event_dev_config::nb_single_link_event_port_queues`` parameter
-    required for eth_rx eventdev adapter.
+    required for eth_rx, eth_tx eventdev adapters.
 
 
 Removed Items

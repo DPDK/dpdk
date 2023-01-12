@@ -56,6 +56,24 @@ and needs to create an event port for it. The callback is expected to fill the
 
         err = rte_event_eth_tx_adapter_create(id, dev_id, &tx_p_conf);
 
+Event device configuration for service based adapter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``rte_event_eth_tx_adapter_create()`` is used for creating
+adapter instance, ``rte_event_dev_config::nb_event_ports`` is
+automatically incremented, and the event device is reconfigured
+with additional event port during service initialization.
+This event device reconfigure logic also increments
+the ``rte_event_dev_config::nb_single_link_event_port_queues``
+parameter if the adapter event port config is of type
+``RTE_EVENT_PORT_CFG_SINGLE_LINK``.
+
+Application no longer needs to configure the event device with
+``rte_event_dev_config::nb_event_ports`` and
+``rte_event_dev_config::nb_single_link_event_port_queues``
+parameters required for eth Tx adapter when the adapter is created
+using the above-mentioned API.
+
 Adding Tx Queues to the Adapter Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
