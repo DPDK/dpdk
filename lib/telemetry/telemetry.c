@@ -167,16 +167,16 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 	size_t used = 0;
 	unsigned int i;
 
-	if (d->type != TEL_DICT && d->type != TEL_ARRAY_U64 &&
+	if (d->type != TEL_DICT && d->type != TEL_ARRAY_UINT &&
 		d->type != TEL_ARRAY_INT && d->type != TEL_ARRAY_STRING)
 		return snprintf(out_buf, buf_len, "null");
 
 	used = rte_tel_json_empty_array(out_buf, buf_len, 0);
-	if (d->type == TEL_ARRAY_U64)
+	if (d->type == TEL_ARRAY_UINT)
 		for (i = 0; i < d->data_len; i++)
 			used = rte_tel_json_add_array_u64(out_buf,
 				buf_len, used,
-				d->data.array[i].u64val);
+				d->data.array[i].uval);
 	if (d->type == TEL_ARRAY_INT)
 		for (i = 0; i < d->data_len; i++)
 			used = rte_tel_json_add_array_int(out_buf,
@@ -204,7 +204,7 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 			case RTE_TEL_UINT_VAL:
 				used = rte_tel_json_add_obj_u64(out_buf,
 						buf_len, used,
-						v->name, v->value.u64val);
+						v->name, v->value.uval);
 				break;
 			case RTE_TEL_CONTAINER:
 			{
@@ -271,7 +271,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 			case RTE_TEL_UINT_VAL:
 				used = rte_tel_json_add_obj_u64(cb_data_buf,
 						buf_len, used,
-						v->name, v->value.u64val);
+						v->name, v->value.uval);
 				break;
 			case RTE_TEL_CONTAINER:
 			{
@@ -293,7 +293,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 
 	case TEL_ARRAY_STRING:
 	case TEL_ARRAY_INT:
-	case TEL_ARRAY_U64:
+	case TEL_ARRAY_UINT:
 	case TEL_ARRAY_CONTAINER:
 		used = rte_tel_json_empty_array(cb_data_buf, buf_len, 0);
 		for (i = 0; i < d->data_len; i++)
@@ -306,10 +306,10 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 				used = rte_tel_json_add_array_int(cb_data_buf,
 						buf_len, used,
 						d->data.array[i].ival);
-			else if (d->type == TEL_ARRAY_U64)
+			else if (d->type == TEL_ARRAY_UINT)
 				used = rte_tel_json_add_array_u64(cb_data_buf,
 						buf_len, used,
-						d->data.array[i].u64val);
+						d->data.array[i].uval);
 			else if (d->type == TEL_ARRAY_CONTAINER) {
 				char temp[buf_len];
 				const struct container *rec_data =

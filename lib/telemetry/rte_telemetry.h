@@ -121,6 +121,22 @@ int
 rte_tel_data_add_array_int(struct rte_tel_data *d, int x);
 
 /**
+ * Add an unsigned value to an array.
+ * The array must have been started by rte_tel_data_start_array() with
+ * RTE_TEL_UINT_VAL as the type parameter.
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param x
+ *   The number to be returned in the array
+ * @return
+ *   0 on success, negative errno on error
+ */
+__rte_experimental
+int
+rte_tel_data_add_array_uint(struct rte_tel_data *d, uint64_t x);
+
+ /**
  * Add a uint64_t to an array.
  * The array must have been started by rte_tel_data_start_array() with
  * RTE_TEL_UINT_VAL as the type parameter.
@@ -215,6 +231,25 @@ int
 rte_tel_data_add_dict_int(struct rte_tel_data *d, const char *name, int val);
 
 /**
+ * Add an unsigned value to a dictionary.
+ * The dict must have been started by rte_tel_data_start_dict().
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param name
+ *   The name the value is to be stored under in the dict
+ *   Must contain only alphanumeric characters or the symbols: '_' or '/'
+ * @param val
+ *   The number to be stored in the dict
+ * @return
+ *   0 on success, negative errno on error, E2BIG on string truncation of name.
+ */
+__rte_experimental
+int
+rte_tel_data_add_dict_uint(struct rte_tel_data *d,
+		const char *name, uint64_t val);
+
+ /**
  * Add a uint64_t value to a dictionary.
  * The dict must have been started by rte_tel_data_start_dict().
  *

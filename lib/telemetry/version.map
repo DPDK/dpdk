@@ -23,7 +23,9 @@ EXPERIMENTAL {
 	global:
 
 	# added in 23.03
+	rte_tel_data_add_array_uint;
 	rte_tel_data_add_array_uint_hex;
+	rte_tel_data_add_dict_uint;
 	rte_tel_data_add_dict_uint_hex;
 
 	local: *;
