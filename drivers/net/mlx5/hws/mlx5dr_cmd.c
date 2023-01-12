@@ -970,6 +970,22 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 		caps->stc_alloc_log_gran = MLX5_GET(query_hca_cap_out, out,
 						    capability.wqe_based_flow_table_cap.
 						    stc_alloc_log_granularity);
+
+		caps->rtc_hash_split_table = MLX5_GET(query_hca_cap_out, out,
+						      capability.wqe_based_flow_table_cap.
+						      rtc_hash_split_table);
+
+		caps->rtc_linear_lookup_table = MLX5_GET(query_hca_cap_out, out,
+							 capability.wqe_based_flow_table_cap.
+							 rtc_linear_lookup_table);
+
+		caps->access_index_mode = MLX5_GET(query_hca_cap_out, out,
+						   capability.wqe_based_flow_table_cap.
+						   access_index_mode);
+
+		caps->linear_match_definer = MLX5_GET(query_hca_cap_out, out,
+						      capability.wqe_based_flow_table_cap.
+						      linear_match_definer_reg_c3);
 	}
 
 	if (caps->eswitch_manager) {

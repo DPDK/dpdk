@@ -170,7 +170,11 @@ struct mlx5dr_cmd_query_caps {
 	uint8_t format_select_gtpu_dw_1;
 	uint8_t format_select_gtpu_dw_2;
 	uint8_t format_select_gtpu_ext_dw_0;
+	uint32_t linear_match_definer;
+	uint8_t access_index_mode;
 	bool full_dw_jumbo_support;
+	bool rtc_hash_split_table;
+	bool rtc_linear_lookup_table;
 	struct mlx5dr_cmd_query_ft_caps nic_ft;
 	struct mlx5dr_cmd_query_ft_caps fdb_ft;
 	bool eswitch_manager;
