@@ -2422,9 +2422,8 @@ enqueue_ldpc_enc_part_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	struct rte_mbuf *output_head, *output;
 	int i, next_triplet;
 	struct rte_bbdev_op_ldpc_enc *enc = &op->ldpc_enc;
-	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_descs) & q->sw_ring_wrap_mask);
 
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, total_enqueued_descs);
 	acc_fcw_le_fill(op, &desc->req.fcw_le, num_cbs, e);
 
 	/* This could be done at polling. */
@@ -2613,7 +2612,6 @@ enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	}
 #endif
 	uint8_t num_a, num_b;
-	uint16_t desc_idx;
 	uint8_t r = op->ldpc_enc.tb_params.r;
 	uint8_t cab =  op->ldpc_enc.tb_params.cab;
 	union acc_dma_desc *desc;
@@ -2655,16 +2653,15 @@ enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 
 	return_descs = enq_descs - init_enq_descs;
 	/* Keep total number of CBs in first TB. */
-	desc_idx = ((q->sw_ring_head + init_enq_descs) & q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, init_enq_descs);
 	desc->req.cbs_in_tb = return_descs; /** Actual number of descriptors. */
 	desc->req.op_addr = op;
 
 	/* Set SDone on last CB descriptor for TB mode. */
-	desc_idx = ((q->sw_ring_head + enq_descs - 1) & q->sw_ring_wrap_mask);
-	desc = q->ring_addr + desc_idx;
+	desc = acc_desc(q, enq_descs - 1);
 	desc->req.sdone_enable = 1;
 	desc->req.op_addr = op;
+
 	return return_descs;
 }
 
@@ -3275,7 +3272,7 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		h_out_length, mbuf_total_left, seg_total_left;
 	struct rte_mbuf *input, *h_output_head, *h_output,
 		*s_output_head, *s_output;
-	uint16_t desc_idx, current_enqueued_cbs = 0;
+	uint16_t current_enqueued_cbs = 0;
 	uint64_t fcw_offset;
 
 #ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
@@ -3290,9 +3287,8 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	}
 #endif
 
-	desc_idx = acc_desc_idx(q, total_enqueued_cbs);
-	desc = q->ring_addr + desc_idx;
-	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
+	desc = acc_desc(q, total_enqueued_cbs);
+	fcw_offset = (acc_desc_idx(q, total_enqueued_cbs) << 8) + ACC_DESC_FCW_OFFSET;
 	acc100_fcw_td_fill(op, &desc->req.fcw_td);
 
 	input = op->turbo_dec.input.data;
@@ -3777,7 +3773,6 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 
 	/* Clearing status, it will be set based on response */
 	op->status = 0;
-
 	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 
@@ -4023,8 +4018,8 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
 				__ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
-		rte_bbdev_log_debug("Resp. desc %p: %x", desc,
-				rsp.val);
+		rte_bbdev_log_debug("Resp. desc %p: %x r %d c %d\n",
+						desc, rsp.val, cb_idx, cbs_in_tb);
 
 		op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
@@ -4077,8 +4072,7 @@ acc100_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 		return 0;
 	}
 #endif
-	op = (q->ring_addr + (q->sw_ring_tail &
-			q->sw_ring_wrap_mask))->req.op_addr;
+	op = acc_op_tail(q, 0);
 	if (unlikely(ops == NULL || op == NULL))
 		return 0;
 	cbm = op->turbo_enc.code_block_mode;
@@ -4120,7 +4114,6 @@ acc100_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 	uint16_t i, dequeued_ops = 0, dequeued_descs = 0;
 	int ret, cbm;
 	struct rte_bbdev_enc_op *op;
-	union acc_dma_desc *desc;
 
 	if (q == NULL)
 		return 0;
@@ -4128,10 +4121,7 @@ acc100_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 	if (unlikely(ops == 0))
 		return 0;
 #endif
-	desc = q->ring_addr + (q->sw_ring_tail & q->sw_ring_wrap_mask);
-	if (unlikely(desc == NULL))
-		return 0;
-	op = desc->req.op_addr;
+	op = acc_op_tail(q, 0);
 	if (unlikely(ops == NULL || op == NULL))
 		return 0;
 	cbm = op->ldpc_enc.code_block_mode;
@@ -4227,8 +4217,7 @@ acc100_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 	dequeue_num = RTE_MIN(avail, num);
 
 	for (i = 0; i < dequeue_num; ++i) {
-		op = (q->ring_addr + ((q->sw_ring_tail + dequeued_cbs)
-			& q->sw_ring_wrap_mask))->req.op_addr;
+		op = acc_op_tail(q, dequeued_cbs);
 		if (unlikely(op == NULL))
 			break;
 		if (op->ldpc_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
