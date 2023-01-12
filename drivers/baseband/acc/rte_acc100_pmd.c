@@ -3423,9 +3423,9 @@ acc100_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 		}
 		avail--;
 		enq = RTE_MIN(left, ACC_MUX_5GDL_DESC);
-		if (check_mux(&ops[i], enq)) {
-			ret = enqueue_ldpc_enc_n_op_cb(q, &ops[i],
-					desc_idx, enq);
+		enq = check_mux(&ops[i], enq);
+		if (enq > 1) {
+			ret = enqueue_ldpc_enc_n_op_cb(q, &ops[i], desc_idx, enq);
 			if (ret < 0) {
 				acc_enqueue_invalid(q_data);
 				break;
