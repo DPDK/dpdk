@@ -925,7 +925,8 @@ mlx5dr_matcher_create_col_matcher(struct mlx5dr_matcher *matcher)
 	struct mlx5dr_matcher *col_matcher;
 	int ret;
 
-	if (matcher->attr.mode != MLX5DR_MATCHER_RESOURCE_MODE_RULE)
+	if (matcher->attr.mode != MLX5DR_MATCHER_RESOURCE_MODE_RULE ||
+	    matcher->attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX)
 		return 0;
 
 	if (!mlx5dr_matcher_requires_col_tbl(matcher->attr.rule.num_log))
@@ -972,7 +973,8 @@ free_col_matcher:
 static void
 mlx5dr_matcher_destroy_col_matcher(struct mlx5dr_matcher *matcher)
 {
-	if (matcher->attr.mode != MLX5DR_MATCHER_RESOURCE_MODE_RULE)
+	if (matcher->attr.mode != MLX5DR_MATCHER_RESOURCE_MODE_RULE ||
+	    matcher->attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX)
 		return;
 
 	if (matcher->col_matcher) {
