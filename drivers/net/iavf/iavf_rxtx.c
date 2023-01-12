@@ -2456,10 +2456,21 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 		offset |= (m->l3_len >> 2) << IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
 	}
 
-	if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
-		command |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
+	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
+		if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+			command |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
+		else
+			command |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
 		offset |= (m->l4_len >> 2) <<
 			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+
+		*qw1 = rte_cpu_to_le_64((((uint64_t)command <<
+			IAVF_TXD_DATA_QW1_CMD_SHIFT) & IAVF_TXD_DATA_QW1_CMD_MASK) |
+			(((uint64_t)offset << IAVF_TXD_DATA_QW1_OFFSET_SHIFT) &
+			IAVF_TXD_DATA_QW1_OFFSET_MASK) |
+			((uint64_t)l2tag1 << IAVF_TXD_DATA_QW1_L2TAG1_SHIFT));
+
+		return;
 	}
 
 	/* Enable L4 checksum offloads */
