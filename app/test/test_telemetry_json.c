@@ -37,9 +37,9 @@ test_basic_obj(void)
 	char buf[1024];
 	int used = 0;
 
-	used = rte_tel_json_add_obj_u64(buf, sizeof(buf), used,
+	used = rte_tel_json_add_obj_uint(buf, sizeof(buf), used,
 		"weddings", 4);
-	used = rte_tel_json_add_obj_u64(buf, sizeof(buf), used,
+	used = rte_tel_json_add_obj_uint(buf, sizeof(buf), used,
 		"funerals", 1);
 
 	printf("%s: buf = '%s', expected = '%s'\n", __func__, buf, expected);
@@ -80,8 +80,7 @@ test_overflow_obj(void)
 	int i, used = 0;
 
 	for (i = 0; i < (int)RTE_DIM(names); i++)
-		used = rte_tel_json_add_obj_u64(buf, sizeof(buf), used,
-				names[i], vals[i]);
+		used = rte_tel_json_add_obj_uint(buf, sizeof(buf), used, names[i], vals[i]);
 
 	printf("%s: buf = '%s', expected = '%s'\n", __func__, buf, expected);
 	if (buf[used - 1] != '}')
@@ -117,7 +116,7 @@ test_large_obj_element(void)
 	char buf[sizeof(str) - 5] = "XYZ";
 	int used = 0;
 
-	used = rte_tel_json_add_obj_u64(buf, sizeof(buf), used, str, 0);
+	used = rte_tel_json_add_obj_uint(buf, sizeof(buf), used, str, 0);
 	printf("%s: buf = '%s', expected = '%s'\n", __func__, buf, expected);
 	if (used != 0)
 		return -1;

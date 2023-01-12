@@ -174,7 +174,7 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 	used = rte_tel_json_empty_array(out_buf, buf_len, 0);
 	if (d->type == TEL_ARRAY_UINT)
 		for (i = 0; i < d->data_len; i++)
-			used = rte_tel_json_add_array_u64(out_buf,
+			used = rte_tel_json_add_array_uint(out_buf,
 				buf_len, used,
 				d->data.array[i].uval);
 	if (d->type == TEL_ARRAY_INT)
@@ -202,7 +202,7 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 						v->name, v->value.ival);
 				break;
 			case RTE_TEL_UINT_VAL:
-				used = rte_tel_json_add_obj_u64(out_buf,
+				used = rte_tel_json_add_obj_uint(out_buf,
 						buf_len, used,
 						v->name, v->value.uval);
 				break;
@@ -269,7 +269,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 						v->name, v->value.ival);
 				break;
 			case RTE_TEL_UINT_VAL:
-				used = rte_tel_json_add_obj_u64(cb_data_buf,
+				used = rte_tel_json_add_obj_uint(cb_data_buf,
 						buf_len, used,
 						v->name, v->value.uval);
 				break;
@@ -307,7 +307,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 						buf_len, used,
 						d->data.array[i].ival);
 			else if (d->type == TEL_ARRAY_UINT)
-				used = rte_tel_json_add_array_u64(cb_data_buf,
+				used = rte_tel_json_add_array_uint(cb_data_buf,
 						buf_len, used,
 						d->data.array[i].uval);
 			else if (d->type == TEL_ARRAY_CONTAINER) {

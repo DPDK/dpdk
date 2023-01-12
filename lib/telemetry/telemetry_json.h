@@ -136,19 +136,19 @@ rte_tel_json_add_array_string(char *buf, const int len, const int used,
 
 /* Appends an integer into the JSON array in the provided buffer. */
 static inline int
-rte_tel_json_add_array_int(char *buf, const int len, const int used, int val)
+rte_tel_json_add_array_int(char *buf, const int len, const int used, int64_t val)
 {
 	int ret, end = used - 1; /* strip off final delimiter */
 	if (used <= 2) /* assume empty, since minimum is '[]' */
-		return __json_snprintf(buf, len, "[%d]", val);
+		return __json_snprintf(buf, len, "[%"PRId64"]", val);
 
-	ret = __json_snprintf(buf + end, len - end, ",%d]", val);
+	ret = __json_snprintf(buf + end, len - end, ",%"PRId64"]", val);
 	return ret == 0 ? used : end + ret;
 }
 
 /* Appends a uint64_t into the JSON array in the provided buffer. */
 static inline int
-rte_tel_json_add_array_u64(char *buf, const int len, const int used,
+rte_tel_json_add_array_uint(char *buf, const int len, const int used,
 		uint64_t val)
 {
 	int ret, end = used - 1; /* strip off final delimiter */
@@ -180,7 +180,7 @@ rte_tel_json_add_array_json(char *buf, const int len, const int used,
  * provided buffer.
  */
 static inline int
-rte_tel_json_add_obj_u64(char *buf, const int len, const int used,
+rte_tel_json_add_obj_uint(char *buf, const int len, const int used,
 		const char *name, uint64_t val)
 {
 	int ret, end = used - 1;
@@ -199,14 +199,14 @@ rte_tel_json_add_obj_u64(char *buf, const int len, const int used,
  */
 static inline int
 rte_tel_json_add_obj_int(char *buf, const int len, const int used,
-		const char *name, int val)
+		const char *name, int64_t val)
 {
 	int ret, end = used - 1;
 	if (used <= 2) /* assume empty, since minimum is '{}' */
-		return __json_snprintf(buf, len, "{\"%s\":%d}", name,
+		return __json_snprintf(buf, len, "{\"%s\":%"PRId64"}", name,
 				val);
 
-	ret = __json_snprintf(buf + end, len - end, ",\"%s\":%d}",
+	ret = __json_snprintf(buf + end, len - end, ",\"%s\":%"PRId64"}",
 			name, val);
 	return ret == 0 ? used : end + ret;
 }
