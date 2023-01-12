@@ -664,7 +664,7 @@ acc100_find_free_queue_idx(struct rte_bbdev *dev,
 	for (aq_idx = 0; aq_idx < qtop->num_aqs_per_groups; aq_idx++) {
 		if (((d->q_assigned_bit_map[group_idx] >> aq_idx) & 0x1) == 0) {
 			/* Mark the Queue as assigned */
-			d->q_assigned_bit_map[group_idx] |= (1 << aq_idx);
+			d->q_assigned_bit_map[group_idx] |= (1ULL << aq_idx);
 			/* Report the AQ Index */
 			return (group_idx << ACC100_GRP_ID_SHIFT) + aq_idx;
 		}
