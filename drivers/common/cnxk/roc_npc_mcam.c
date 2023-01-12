@@ -727,15 +727,16 @@ npc_set_ipv6ext_ltype_mask(struct npc_parse_state *pst)
 	 * because for AH and ESP, LC LFLAG is zero and we don't want to match
 	 * zero in LFLAG.
 	 */
-	lcflag_offset =
-		__builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
-				   ((1ULL << NPC_LFLAG_LC_OFFSET) - 1));
-	lcflag_offset *= 4;
+	if (pst->npc->keyx_supp_nmask[pst->nix_intf] & (1ULL << NPC_LFLAG_LC_OFFSET)) {
+		lcflag_offset = __builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
+						   ((1ULL << NPC_LFLAG_LC_OFFSET) - 1));
+		lcflag_offset *= 4;
 
-	mask = (0xfULL << lcflag_offset);
-	val = pst->flow->mcam_data[0] & mask;
-	if (val)
-		pst->flow->mcam_mask[0] |= mask;
+		mask = (0xfULL << lcflag_offset);
+		val = pst->flow->mcam_data[0] & mask;
+		if (val)
+			pst->flow->mcam_mask[0] |= mask;
+	}
 }
 
 int
