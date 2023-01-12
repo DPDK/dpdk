@@ -1500,27 +1500,27 @@ mempool_info_cb(struct rte_mempool *mp, void *arg)
 		return;
 
 	rte_tel_data_add_dict_string(info->d, "name", mp->name);
-	rte_tel_data_add_dict_u64(info->d, "pool_id", mp->pool_id);
-	rte_tel_data_add_dict_u64(info->d, "flags", mp->flags);
+	rte_tel_data_add_dict_uint(info->d, "pool_id", mp->pool_id);
+	rte_tel_data_add_dict_uint(info->d, "flags", mp->flags);
 	rte_tel_data_add_dict_int(info->d, "socket_id", mp->socket_id);
-	rte_tel_data_add_dict_u64(info->d, "size", mp->size);
-	rte_tel_data_add_dict_u64(info->d, "cache_size", mp->cache_size);
-	rte_tel_data_add_dict_u64(info->d, "elt_size", mp->elt_size);
-	rte_tel_data_add_dict_u64(info->d, "header_size", mp->header_size);
-	rte_tel_data_add_dict_u64(info->d, "trailer_size", mp->trailer_size);
-	rte_tel_data_add_dict_u64(info->d, "private_data_size",
+	rte_tel_data_add_dict_uint(info->d, "size", mp->size);
+	rte_tel_data_add_dict_uint(info->d, "cache_size", mp->cache_size);
+	rte_tel_data_add_dict_uint(info->d, "elt_size", mp->elt_size);
+	rte_tel_data_add_dict_uint(info->d, "header_size", mp->header_size);
+	rte_tel_data_add_dict_uint(info->d, "trailer_size", mp->trailer_size);
+	rte_tel_data_add_dict_uint(info->d, "private_data_size",
 				  mp->private_data_size);
 	rte_tel_data_add_dict_int(info->d, "ops_index", mp->ops_index);
-	rte_tel_data_add_dict_u64(info->d, "populated_size",
+	rte_tel_data_add_dict_uint(info->d, "populated_size",
 				  mp->populated_size);
 
 	mz = mp->mz;
 	rte_tel_data_add_dict_string(info->d, "mz_name", mz->name);
-	rte_tel_data_add_dict_u64(info->d, "mz_len", mz->len);
-	rte_tel_data_add_dict_u64(info->d, "mz_hugepage_sz",
+	rte_tel_data_add_dict_uint(info->d, "mz_len", mz->len);
+	rte_tel_data_add_dict_uint(info->d, "mz_hugepage_sz",
 				  mz->hugepage_sz);
 	rte_tel_data_add_dict_int(info->d, "mz_socket_id", mz->socket_id);
-	rte_tel_data_add_dict_u64(info->d, "mz_flags", mz->flags);
+	rte_tel_data_add_dict_uint(info->d, "mz_flags", mz->flags);
 }
 
 static int

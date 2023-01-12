@@ -403,7 +403,7 @@ test_case_array_u64(void)
 
 	rte_tel_data_start_array(&response_data, RTE_TEL_UINT_VAL);
 	for (i = 0; i < 5; i++)
-		rte_tel_data_add_array_u64(&response_data, i);
+		rte_tel_data_add_array_uint(&response_data, i);
 	return CHECK_OUTPUT("[0,1,2,3,4]");
 }
 
@@ -441,7 +441,7 @@ test_case_add_dict_u64(void)
 
 	for (i = 0; i < 5; i++) {
 		sprintf(name_of_value, "dict_%d", i);
-		rte_tel_data_add_dict_u64(&response_data, name_of_value, i);
+		rte_tel_data_add_dict_uint(&response_data, name_of_value, i);
 	}
 	return CHECK_OUTPUT("{\"dict_0\":0,\"dict_1\":1,\"dict_2\":2,\"dict_3\":3,\"dict_4\":4}");
 }
@@ -460,8 +460,8 @@ test_dict_with_array_u64_values(void)
 	rte_tel_data_start_dict(&response_data);
 
 	for (i = 0; i < 10; i++) {
-		rte_tel_data_add_array_u64(child_data, i);
-		rte_tel_data_add_array_u64(child_data2, i);
+		rte_tel_data_add_array_uint(child_data, i);
+		rte_tel_data_add_array_uint(child_data2, i);
 	}
 
 	rte_tel_data_add_dict_container(&response_data, "dict_0",
@@ -486,8 +486,8 @@ test_array_with_array_u64_values(void)
 	rte_tel_data_start_array(&response_data, RTE_TEL_CONTAINER);
 
 	for (i = 0; i < 5; i++) {
-		rte_tel_data_add_array_u64(child_data, i);
-		rte_tel_data_add_array_u64(child_data2, i);
+		rte_tel_data_add_array_uint(child_data, i);
+		rte_tel_data_add_array_uint(child_data2, i);
 	}
 	rte_tel_data_add_array_container(&response_data, child_data, 0);
 	rte_tel_data_add_array_container(&response_data, child_data2, 0);

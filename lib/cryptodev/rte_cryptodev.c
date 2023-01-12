@@ -2859,13 +2859,13 @@ cryptodev_handle_dev_info(const char *cmd __rte_unused,
 	rte_tel_data_start_dict(d);
 	rte_tel_data_add_dict_string(d, "device_name",
 		cryptodev_info.device->name);
-	rte_tel_data_add_dict_u64(d, "max_nb_queue_pairs",
+	rte_tel_data_add_dict_uint(d, "max_nb_queue_pairs",
 		cryptodev_info.max_nb_queue_pairs);
 
 	return 0;
 }
 
-#define ADD_DICT_STAT(s) rte_tel_data_add_dict_u64(d, #s, cryptodev_stats.s)
+#define ADD_DICT_STAT(s) rte_tel_data_add_dict_uint(d, #s, cryptodev_stats.s)
 
 static int
 cryptodev_handle_dev_stats(const char *cmd __rte_unused,
@@ -2918,7 +2918,7 @@ crypto_caps_array(struct rte_tel_data *d,
 		memset(&caps_val, 0, CRYPTO_CAPS_SZ * sizeof(caps_val[0]));
 		rte_memcpy(caps_val, dev_caps, sizeof(capabilities[0]));
 		for (j = 0; j < CRYPTO_CAPS_SZ; j++)
-			rte_tel_data_add_array_u64(d, caps_val[j]);
+			rte_tel_data_add_array_uint(d, caps_val[j]);
 	}
 
 	return i;

@@ -3436,7 +3436,7 @@ rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 	return -EINVAL;
 }
 
-#define RXA_ADD_DICT(stats, s) rte_tel_data_add_dict_u64(d, #s, stats.s)
+#define RXA_ADD_DICT(stats, s) rte_tel_data_add_dict_uint(d, #s, stats.s)
 
 static int
 handle_rxa_stats(const char *cmd __rte_unused,
@@ -3461,7 +3461,7 @@ handle_rxa_stats(const char *cmd __rte_unused,
 	}
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "rx_adapter_id", rx_adapter_id);
+	rte_tel_data_add_dict_uint(d, "rx_adapter_id", rx_adapter_id);
 	RXA_ADD_DICT(rx_adptr_stats, rx_packets);
 	RXA_ADD_DICT(rx_adptr_stats, rx_poll_count);
 	RXA_ADD_DICT(rx_adptr_stats, rx_dropped);
@@ -3555,9 +3555,9 @@ handle_rxa_get_queue_conf(const char *cmd __rte_unused,
 	}
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "rx_adapter_id", rx_adapter_id);
-	rte_tel_data_add_dict_u64(d, "eth_dev_id", eth_dev_id);
-	rte_tel_data_add_dict_u64(d, "rx_queue_id", rx_queue_id);
+	rte_tel_data_add_dict_uint(d, "rx_adapter_id", rx_adapter_id);
+	rte_tel_data_add_dict_uint(d, "eth_dev_id", eth_dev_id);
+	rte_tel_data_add_dict_uint(d, "rx_queue_id", rx_queue_id);
 	RXA_ADD_DICT(queue_conf, rx_queue_flags);
 	RXA_ADD_DICT(queue_conf, servicing_weight);
 	RXA_ADD_DICT(queue_conf.ev, queue_id);
@@ -3627,9 +3627,9 @@ handle_rxa_get_queue_stats(const char *cmd __rte_unused,
 	}
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "rx_adapter_id", rx_adapter_id);
-	rte_tel_data_add_dict_u64(d, "eth_dev_id", eth_dev_id);
-	rte_tel_data_add_dict_u64(d, "rx_queue_id", rx_queue_id);
+	rte_tel_data_add_dict_uint(d, "rx_adapter_id", rx_adapter_id);
+	rte_tel_data_add_dict_uint(d, "eth_dev_id", eth_dev_id);
+	rte_tel_data_add_dict_uint(d, "rx_queue_id", rx_queue_id);
 	RXA_ADD_DICT(q_stats, rx_event_buf_count);
 	RXA_ADD_DICT(q_stats, rx_event_buf_size);
 	RXA_ADD_DICT(q_stats, rx_poll_count);
@@ -3755,9 +3755,9 @@ handle_rxa_instance_get(const char *cmd __rte_unused,
 	}
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "eth_dev_id", eth_dev_id);
-	rte_tel_data_add_dict_u64(d, "rx_queue_id", rx_queue_id);
-	rte_tel_data_add_dict_u64(d, "rxa_instance_id", instance_id);
+	rte_tel_data_add_dict_uint(d, "eth_dev_id", eth_dev_id);
+	rte_tel_data_add_dict_uint(d, "rx_queue_id", rx_queue_id);
+	rte_tel_data_add_dict_uint(d, "rxa_instance_id", instance_id);
 
 	return 0;
 

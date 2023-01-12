@@ -1645,7 +1645,7 @@ handle_queue_links(const char *cmd __rte_unused,
 		char qid_name[32];
 
 		snprintf(qid_name, 31, "qid_%u", queues[i]);
-		rte_tel_data_add_dict_u64(d, qid_name, priorities[i]);
+		rte_tel_data_add_dict_uint(d, qid_name, priorities[i]);
 	}
 
 	return 0;
@@ -1711,8 +1711,7 @@ eventdev_build_telemetry_data(int dev_id,
 
 	rte_tel_data_start_dict(d);
 	for (i = 0; i < num_xstats; i++)
-		rte_tel_data_add_dict_u64(d, xstat_names[i].name,
-					  values[i]);
+		rte_tel_data_add_dict_uint(d, xstat_names[i].name, values[i]);
 
 	free(xstat_names);
 	free(ids);

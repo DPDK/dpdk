@@ -225,9 +225,9 @@
 #define plt_tel_data_start_dict      rte_tel_data_start_dict
 #define plt_tel_data_add_dict_int    rte_tel_data_add_dict_int
 #define plt_tel_data_add_dict_ptr(d, n, v)			\
-	rte_tel_data_add_dict_u64(d, n, (uint64_t)v)
+	rte_tel_data_add_dict_uint(d, n, (uint64_t)v)
 #define plt_tel_data_add_dict_string rte_tel_data_add_dict_string
-#define plt_tel_data_add_dict_u64    rte_tel_data_add_dict_u64
+#define plt_tel_data_add_dict_u64    rte_tel_data_add_dict_uint
 #define plt_telemetry_register_cmd   rte_telemetry_register_cmd
 
 /* Log */

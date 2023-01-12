@@ -2555,8 +2555,8 @@ handle_app_stats(const char *cmd __rte_unused,
 	rte_tel_data_start_dict(d);
 	get_current_stat_values(values);
 	for (i = 0; i < NUM_TELSTATS; i++)
-		rte_tel_data_add_dict_u64(d, telstats_strings[i].name,
-				values[i]);
+		rte_tel_data_add_dict_uint(d, telstats_strings[i].name,
+					   values[i]);
 	return 0;
 }
 

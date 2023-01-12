@@ -53,10 +53,10 @@ copy_inb_sa_9k(struct rte_tel_data *d, uint32_t i, void *sa)
 	rte_tel_data_add_dict_string(d, str, strw0);
 
 	snprintf(str, sizeof(str), "insa_esnh_%u", i);
-	rte_tel_data_add_dict_u64(d, str, in_sa->common_sa.seq_t.th);
+	rte_tel_data_add_dict_uint(d, str, in_sa->common_sa.seq_t.th);
 
 	snprintf(str, sizeof(str), "insa_esnl_%u", i);
-	rte_tel_data_add_dict_u64(d, str, in_sa->common_sa.seq_t.tl);
+	rte_tel_data_add_dict_uint(d, str, in_sa->common_sa.seq_t.tl);
 
 	return 0;
 }
@@ -97,12 +97,12 @@ copy_outb_sa_10k(struct rte_tel_data *d, uint32_t i, void *sa)
 	rte_tel_data_start_array(outer_hdr, RTE_TEL_UINT_VAL);
 
 	for (j = 0; j < RTE_DIM(out_sa->outer_hdr.ipv6.src_addr); j++)
-		rte_tel_data_add_array_u64(outer_hdr,
-					   out_sa->outer_hdr.ipv6.src_addr[j]);
+		rte_tel_data_add_array_uint(outer_hdr,
+					    out_sa->outer_hdr.ipv6.src_addr[j]);
 
 	for (j = 0; j < RTE_DIM(out_sa->outer_hdr.ipv6.dst_addr); j++)
-		rte_tel_data_add_array_u64(outer_hdr,
-					   out_sa->outer_hdr.ipv6.dst_addr[j]);
+		rte_tel_data_add_array_uint(outer_hdr,
+					    out_sa->outer_hdr.ipv6.dst_addr[j]);
 
 	snprintf(str, sizeof(str), "outsa_outer_hdr_%u", i);
 	rte_tel_data_add_dict_container(d, str, outer_hdr, 0);
@@ -170,12 +170,12 @@ copy_inb_sa_10k(struct rte_tel_data *d, uint32_t i, void *sa)
 	rte_tel_data_start_array(outer_hdr, RTE_TEL_UINT_VAL);
 
 	for (j = 0; j < RTE_DIM(in_sa->outer_hdr.ipv6.src_addr); j++)
-		rte_tel_data_add_array_u64(outer_hdr,
-					   in_sa->outer_hdr.ipv6.src_addr[j]);
+		rte_tel_data_add_array_uint(outer_hdr,
+					    in_sa->outer_hdr.ipv6.src_addr[j]);
 
 	for (j = 0; j < RTE_DIM(in_sa->outer_hdr.ipv6.dst_addr); j++)
-		rte_tel_data_add_array_u64(outer_hdr,
-					   in_sa->outer_hdr.ipv6.dst_addr[j]);
+		rte_tel_data_add_array_uint(outer_hdr,
+					    in_sa->outer_hdr.ipv6.dst_addr[j]);
 
 	snprintf(str, sizeof(str), "insa_outer_hdr_%u", i);
 	rte_tel_data_add_dict_container(d, str, outer_hdr, 0);

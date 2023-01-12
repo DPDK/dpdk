@@ -1372,15 +1372,20 @@ handle_ta_info(const char *cmd __rte_unused, const char *params,
 	}
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "timer_adapter_id", adapter_id);
-	rte_tel_data_add_dict_u64(d, "min_resolution_ns", adapter_info.min_resolution_ns);
-	rte_tel_data_add_dict_u64(d, "max_tmo_ns", adapter_info.max_tmo_ns);
-	rte_tel_data_add_dict_u64(d, "event_dev_id", adapter_info.conf.event_dev_id);
-	rte_tel_data_add_dict_u64(d, "socket_id", adapter_info.conf.socket_id);
-	rte_tel_data_add_dict_u64(d, "clk_src", adapter_info.conf.clk_src);
-	rte_tel_data_add_dict_u64(d, "timer_tick_ns", adapter_info.conf.timer_tick_ns);
-	rte_tel_data_add_dict_u64(d, "nb_timers", adapter_info.conf.nb_timers);
-	rte_tel_data_add_dict_u64(d, "flags", adapter_info.conf.flags);
+	rte_tel_data_add_dict_uint(d, "timer_adapter_id", adapter_id);
+	rte_tel_data_add_dict_uint(d, "min_resolution_ns",
+				   adapter_info.min_resolution_ns);
+	rte_tel_data_add_dict_uint(d, "max_tmo_ns", adapter_info.max_tmo_ns);
+	rte_tel_data_add_dict_uint(d, "event_dev_id",
+				   adapter_info.conf.event_dev_id);
+	rte_tel_data_add_dict_uint(d, "socket_id",
+				   adapter_info.conf.socket_id);
+	rte_tel_data_add_dict_uint(d, "clk_src", adapter_info.conf.clk_src);
+	rte_tel_data_add_dict_uint(d, "timer_tick_ns",
+				   adapter_info.conf.timer_tick_ns);
+	rte_tel_data_add_dict_uint(d, "nb_timers",
+				   adapter_info.conf.nb_timers);
+	rte_tel_data_add_dict_uint(d, "flags", adapter_info.conf.flags);
 
 	return 0;
 }
@@ -1413,12 +1418,15 @@ handle_ta_stats(const char *cmd __rte_unused, const char *params,
 	}
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "timer_adapter_id", adapter_id);
-	rte_tel_data_add_dict_u64(d, "evtim_exp_count", stats.evtim_exp_count);
-	rte_tel_data_add_dict_u64(d, "ev_enq_count", stats.ev_enq_count);
-	rte_tel_data_add_dict_u64(d, "ev_inv_count", stats.ev_inv_count);
-	rte_tel_data_add_dict_u64(d, "evtim_retry_count", stats.evtim_retry_count);
-	rte_tel_data_add_dict_u64(d, "adapter_tick_count", stats.adapter_tick_count);
+	rte_tel_data_add_dict_uint(d, "timer_adapter_id", adapter_id);
+	rte_tel_data_add_dict_uint(d, "evtim_exp_count",
+				   stats.evtim_exp_count);
+	rte_tel_data_add_dict_uint(d, "ev_enq_count", stats.ev_enq_count);
+	rte_tel_data_add_dict_uint(d, "ev_inv_count", stats.ev_inv_count);
+	rte_tel_data_add_dict_uint(d, "evtim_retry_count",
+				   stats.evtim_retry_count);
+	rte_tel_data_add_dict_uint(d, "adapter_tick_count",
+				   stats.adapter_tick_count);
 
 	return 0;
 }

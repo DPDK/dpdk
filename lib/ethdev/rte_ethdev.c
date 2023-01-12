@@ -5820,11 +5820,11 @@ eth_dev_add_port_queue_stats(struct rte_tel_data *d, uint64_t *q_stats,
 		return;
 	rte_tel_data_start_array(q_data, RTE_TEL_UINT_VAL);
 	for (q = 0; q < RTE_ETHDEV_QUEUE_STAT_CNTRS; q++)
-		rte_tel_data_add_array_u64(q_data, q_stats[q]);
+		rte_tel_data_add_array_uint(q_data, q_stats[q]);
 	rte_tel_data_add_dict_container(d, stat_name, q_data, 0);
 }
 
-#define ADD_DICT_STAT(stats, s) rte_tel_data_add_dict_u64(d, #s, stats.s)
+#define ADD_DICT_STAT(stats, s) rte_tel_data_add_dict_uint(d, #s, stats.s)
 
 static int
 eth_dev_handle_port_stats(const char *cmd __rte_unused,
@@ -5909,8 +5909,8 @@ eth_dev_handle_port_xstats(const char *cmd __rte_unused,
 
 	rte_tel_data_start_dict(d);
 	for (i = 0; i < num_xstats; i++)
-		rte_tel_data_add_dict_u64(d, xstat_names[i].name,
-				eth_xstats[i].value);
+		rte_tel_data_add_dict_uint(d, xstat_names[i].name,
+					   eth_xstats[i].value);
 	free(eth_xstats);
 	return 0;
 }
@@ -5987,7 +5987,7 @@ eth_dev_handle_port_link_status(const char *cmd __rte_unused,
 		return 0;
 	}
 	rte_tel_data_add_dict_string(d, status_str, "UP");
-	rte_tel_data_add_dict_u64(d, "speed", link.link_speed);
+	rte_tel_data_add_dict_uint(d, "speed", link.link_speed);
 	rte_tel_data_add_dict_string(d, "duplex",
 			(link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
 				"full-duplex" : "half-duplex");
@@ -6037,9 +6037,9 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 			eth_dev->data->nb_tx_queues);
 	rte_tel_data_add_dict_int(d, "port_id", eth_dev->data->port_id);
 	rte_tel_data_add_dict_int(d, "mtu", eth_dev->data->mtu);
-	rte_tel_data_add_dict_u64(d, "rx_mbuf_size_min",
+	rte_tel_data_add_dict_uint(d, "rx_mbuf_size_min",
 			eth_dev->data->min_rx_buf_size);
-	rte_tel_data_add_dict_u64(d, "rx_mbuf_alloc_fail",
+	rte_tel_data_add_dict_uint(d, "rx_mbuf_alloc_fail",
 			eth_dev->data->rx_mbuf_alloc_failed);
 	rte_ether_format_addr(mac_addr, sizeof(mac_addr),
 			eth_dev->data->mac_addrs);

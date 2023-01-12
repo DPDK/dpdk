@@ -1139,17 +1139,18 @@ handle_eal_heap_info_request(const char *cmd __rte_unused, const char *params,
 	malloc_heap_get_stats(heap, &sock_stats);
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "Head id", heap_id);
+	rte_tel_data_add_dict_uint(d, "Head id", heap_id);
 	rte_tel_data_add_dict_string(d, "Name", heap->name);
-	rte_tel_data_add_dict_u64(d, "Heap_size",
-				  sock_stats.heap_totalsz_bytes);
-	rte_tel_data_add_dict_u64(d, "Free_size", sock_stats.heap_freesz_bytes);
-	rte_tel_data_add_dict_u64(d, "Alloc_size",
-				  sock_stats.heap_allocsz_bytes);
-	rte_tel_data_add_dict_u64(d, "Greatest_free_size",
-				  sock_stats.greatest_free_size);
-	rte_tel_data_add_dict_u64(d, "Alloc_count", sock_stats.alloc_count);
-	rte_tel_data_add_dict_u64(d, "Free_count", sock_stats.free_count);
+	rte_tel_data_add_dict_uint(d, "Heap_size",
+				   sock_stats.heap_totalsz_bytes);
+	rte_tel_data_add_dict_uint(d, "Free_size",
+				   sock_stats.heap_freesz_bytes);
+	rte_tel_data_add_dict_uint(d, "Alloc_size",
+				   sock_stats.heap_allocsz_bytes);
+	rte_tel_data_add_dict_uint(d, "Greatest_free_size",
+				   sock_stats.greatest_free_size);
+	rte_tel_data_add_dict_uint(d, "Alloc_count", sock_stats.alloc_count);
+	rte_tel_data_add_dict_uint(d, "Free_count", sock_stats.free_count);
 
 	return 0;
 }
@@ -1201,13 +1202,13 @@ handle_eal_memzone_info_request(const char *cmd __rte_unused,
 	mz = rte_fbarray_get(&mcfg->memzones, mz_idx);
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "Zone", mz_idx);
+	rte_tel_data_add_dict_uint(d, "Zone", mz_idx);
 	rte_tel_data_add_dict_string(d, "Name", mz->name);
-	rte_tel_data_add_dict_u64(d, "Length", mz->len);
+	rte_tel_data_add_dict_uint(d, "Length", mz->len);
 	snprintf(addr, ADDR_STR, "%p", mz->addr);
 	rte_tel_data_add_dict_string(d, "Address", addr);
 	rte_tel_data_add_dict_int(d, "Socket", mz->socket_id);
-	rte_tel_data_add_dict_u64(d, "Flags", mz->flags);
+	rte_tel_data_add_dict_uint(d, "Flags", mz->flags);
 
 	/* go through each page occupied by this memzone */
 	msl = rte_mem_virt2memseg_list(mz->addr);
@@ -1222,7 +1223,7 @@ handle_eal_memzone_info_request(const char *cmd __rte_unused,
 	ms_idx = RTE_PTR_DIFF(mz->addr, msl->base_va) / page_sz;
 	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
 
-	rte_tel_data_add_dict_u64(d, "Hugepage_size", page_sz);
+	rte_tel_data_add_dict_uint(d, "Hugepage_size", page_sz);
 	snprintf(addr, ADDR_STR, "%p", ms->addr);
 	rte_tel_data_add_dict_string(d, "Hugepage_base", addr);
 

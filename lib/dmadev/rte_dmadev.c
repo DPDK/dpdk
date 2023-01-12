@@ -944,7 +944,7 @@ dmadev_handle_dev_info(const char *cmd __rte_unused,
 	return 0;
 }
 
-#define ADD_DICT_STAT(s) rte_tel_data_add_dict_u64(d, #s, dma_stats.s)
+#define ADD_DICT_STAT(s) rte_tel_data_add_dict_uint(d, #s, dma_stats.s)
 
 static int
 dmadev_handle_dev_stats(const char *cmd __rte_unused,
