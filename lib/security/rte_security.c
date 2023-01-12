@@ -316,7 +316,7 @@ crypto_caps_array(struct rte_tel_data *d,
 	uint64_t caps_val[CRYPTO_CAPS_SZ];
 	unsigned int i = 0, j;
 
-	rte_tel_data_start_array(d, RTE_TEL_U64_VAL);
+	rte_tel_data_start_array(d, RTE_TEL_UINT_VAL);
 
 	while ((dev_caps = &capabilities[i++])->op !=
 	   RTE_CRYPTO_OP_TYPE_UNDEFINED) {
@@ -341,7 +341,7 @@ sec_caps_array(struct rte_tel_data *d,
 	uint64_t caps_val[SEC_CAPS_SZ];
 	unsigned int i = 0, j;
 
-	rte_tel_data_start_array(d, RTE_TEL_U64_VAL);
+	rte_tel_data_start_array(d, RTE_TEL_UINT_VAL);
 
 	while ((dev_caps = &capabilities[i++])->action !=
 	   RTE_SECURITY_ACTION_TYPE_NONE) {

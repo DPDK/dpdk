@@ -22,7 +22,7 @@ handle_telemetry_cmd_ipsec_sa_list(const char *cmd __rte_unused,
 		struct rte_tel_data *data)
 {
 	struct ipsec_telemetry_entry *entry;
-	rte_tel_data_start_array(data, RTE_TEL_U64_VAL);
+	rte_tel_data_start_array(data, RTE_TEL_UINT_VAL);
 
 	LIST_FOREACH(entry, &ipsec_telemetry_list, next) {
 		const struct rte_ipsec_sa *sa = entry->sa;

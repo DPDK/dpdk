@@ -94,7 +94,7 @@ copy_outb_sa_10k(struct rte_tel_data *d, uint32_t i, void *sa)
 		return -ENOMEM;
 	}
 
-	rte_tel_data_start_array(outer_hdr, RTE_TEL_U64_VAL);
+	rte_tel_data_start_array(outer_hdr, RTE_TEL_UINT_VAL);
 
 	for (j = 0; j < RTE_DIM(out_sa->outer_hdr.ipv6.src_addr); j++)
 		rte_tel_data_add_array_u64(outer_hdr,
@@ -167,7 +167,7 @@ copy_inb_sa_10k(struct rte_tel_data *d, uint32_t i, void *sa)
 		return -ENOMEM;
 	}
 
-	rte_tel_data_start_array(outer_hdr, RTE_TEL_U64_VAL);
+	rte_tel_data_start_array(outer_hdr, RTE_TEL_UINT_VAL);
 
 	for (j = 0; j < RTE_DIM(in_sa->outer_hdr.ipv6.src_addr); j++)
 		rte_tel_data_add_array_u64(outer_hdr,

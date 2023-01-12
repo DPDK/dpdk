@@ -43,9 +43,11 @@ struct rte_tel_data;
 enum rte_tel_value_type {
 	RTE_TEL_STRING_VAL, /** a string value */
 	RTE_TEL_INT_VAL,    /** a signed 32-bit int value */
-	RTE_TEL_U64_VAL,    /** an unsigned 64-bit int value */
+	RTE_TEL_UINT_VAL,  /** an unsigned 64-bit int value */
 	RTE_TEL_CONTAINER, /** a container struct */
 };
+
+#define RTE_TEL_U64_VAL RTE_TEL_UINT_VAL
 
 /**
  * Start an array of the specified type for returning from a callback
@@ -121,7 +123,7 @@ rte_tel_data_add_array_int(struct rte_tel_data *d, int x);
 /**
  * Add a uint64_t to an array.
  * The array must have been started by rte_tel_data_start_array() with
- * RTE_TEL_U64_VAL as the type parameter.
+ * RTE_TEL_UINT_VAL as the type parameter.
  *
  * @param d
  *   The data structure passed to the callback

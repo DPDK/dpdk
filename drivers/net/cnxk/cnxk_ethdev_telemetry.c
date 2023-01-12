@@ -52,7 +52,7 @@ ethdev_tel_handle_info(const char *cmd __rte_unused,
 	i_data = rte_tel_data_alloc();
 	if (i_data == NULL)
 		return -ENOMEM;
-	rte_tel_data_start_array(i_data, RTE_TEL_U64_VAL);
+	rte_tel_data_start_array(i_data, RTE_TEL_UINT_VAL);
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		/* Skip if port is unused */

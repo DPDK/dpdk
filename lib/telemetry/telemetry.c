@@ -201,7 +201,7 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 						buf_len, used,
 						v->name, v->value.ival);
 				break;
-			case RTE_TEL_U64_VAL:
+			case RTE_TEL_UINT_VAL:
 				used = rte_tel_json_add_obj_u64(out_buf,
 						buf_len, used,
 						v->name, v->value.u64val);
@@ -268,7 +268,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 						buf_len, used,
 						v->name, v->value.ival);
 				break;
-			case RTE_TEL_U64_VAL:
+			case RTE_TEL_UINT_VAL:
 				used = rte_tel_json_add_obj_u64(cb_data_buf,
 						buf_len, used,
 						v->name, v->value.u64val);

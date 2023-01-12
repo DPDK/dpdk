@@ -21,7 +21,7 @@ rte_tel_data_start_array(struct rte_tel_data *d, enum rte_tel_value_type type)
 	enum tel_container_types array_types[] = {
 			[RTE_TEL_STRING_VAL] = TEL_ARRAY_STRING,
 			[RTE_TEL_INT_VAL] = TEL_ARRAY_INT,
-			[RTE_TEL_U64_VAL] = TEL_ARRAY_U64,
+			[RTE_TEL_UINT_VAL] = TEL_ARRAY_U64,
 			[RTE_TEL_CONTAINER] = TEL_ARRAY_CONTAINER,
 	};
 	d->type = array_types[type];
@@ -230,7 +230,7 @@ rte_tel_data_add_dict_u64(struct rte_tel_data *d,
 		return -EINVAL;
 
 	d->data_len++;
-	e->type = RTE_TEL_U64_VAL;
+	e->type = RTE_TEL_UINT_VAL;
 	e->value.u64val = val;
 	const size_t bytes = strlcpy(e->name, name, RTE_TEL_MAX_STRING_LEN);
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
