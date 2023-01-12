@@ -287,6 +287,9 @@ eca_default_config_cb(uint8_t id, uint8_t dev_id,
 		rte_event_dev_stop(dev_id);
 	port_id = dev_conf.nb_event_ports;
 	dev_conf.nb_event_ports += 1;
+	if (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_SINGLE_LINK)
+		dev_conf.nb_single_link_event_port_queues += 1;
+
 	ret = rte_event_dev_configure(dev_id, &dev_conf);
 	if (ret) {
 		RTE_EDEV_LOG_ERR("failed to configure event dev %u\n", dev_id);
