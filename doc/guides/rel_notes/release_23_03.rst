@@ -68,6 +68,10 @@ New Features
 
   Added SHAKE-128 and SHAKE-256 symmetric secure hash algorithm.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  Added support for SHAKE hash algorithm in cn9k and cn10k.
+
 * **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 
   * Added support for SHA3 224/256/384/512 plain hash in QAT GEN 3.

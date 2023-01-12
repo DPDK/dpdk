@@ -192,6 +192,13 @@ cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 	case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
 		ret = (mac_len <= 64) ? 0 : -1;
 		break;
+	/* SHAKE itself doesn't have limitation of digest length,
+	 * but in microcode size of length field is limited to 8 bits
+	 */
+	case RTE_CRYPTO_AUTH_SHAKE_128:
+	case RTE_CRYPTO_AUTH_SHAKE_256:
+		ret = (mac_len <= UINT8_MAX) ? 0 : -1;
+		break;
 	case RTE_CRYPTO_AUTH_NULL:
 		ret = 0;
 		break;
@@ -1948,6 +1955,14 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	case RTE_CRYPTO_AUTH_SHA3_512:
 		is_sha3 = 1;
 		auth_type = ROC_SE_SHA3_SHA512;
+		break;
+	case RTE_CRYPTO_AUTH_SHAKE_128:
+		is_sha3 = 1;
+		auth_type = ROC_SE_SHA3_SHAKE128;
+		break;
+	case RTE_CRYPTO_AUTH_SHAKE_256:
+		is_sha3 = 1;
+		auth_type = ROC_SE_SHA3_SHAKE256;
 		break;
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 	case RTE_CRYPTO_AUTH_MD5:

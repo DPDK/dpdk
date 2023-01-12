@@ -85,8 +85,8 @@ typedef enum {
 	ROC_SE_SHA3_SHA256 = 11,
 	ROC_SE_SHA3_SHA384 = 12,
 	ROC_SE_SHA3_SHA512 = 13,
-	ROC_SE_SHA3_SHAKE256 = 14,
-	ROC_SE_SHA3_SHAKE512 = 15,
+	ROC_SE_SHA3_SHAKE128 = 14,
+	ROC_SE_SHA3_SHAKE256 = 15,
 
 	/* These are only for software use */
 	ROC_SE_ZUC_EIA3 = 0x90,
