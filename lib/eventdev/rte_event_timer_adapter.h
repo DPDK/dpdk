@@ -692,6 +692,33 @@ rte_event_timer_cancel_burst(const struct rte_event_timer_adapter *adapter,
 	return adapter->cancel_burst(adapter, evtims, nb_evtims);
 }
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get the number of ticks remaining until event timer expiry.
+ *
+ * @param adapter
+ *   A pointer to an event timer adapter structure
+ * @param evtim
+ *   A pointer to an rte_event_timer structure
+ * @param[out] ticks_remaining
+ *   Pointer to variable into which to write the number of ticks remaining
+ *   until event timer expiry
+ *
+ * @return
+ *   - 0: Success
+ *   - -EINVAL Invalid timer adapter identifier or the event timer is not in
+ *   the armed state or ticks_remaining is NULL
+ *   - -ENOTSUP The timer adapter implementation does not support this API.
+ */
+__rte_experimental
+int
+rte_event_timer_remaining_ticks_get(
+			const struct rte_event_timer_adapter *adapter,
+			const struct rte_event_timer *evtim,
+			uint64_t *ticks_remaining);
+
 #ifdef __cplusplus
 }
 #endif

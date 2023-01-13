@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include <rte_memzone.h>
 #include <rte_errno.h>
@@ -459,6 +460,22 @@ rte_event_timer_adapter_stats_reset(struct rte_event_timer_adapter *adapter)
 	ADAPTER_VALID_OR_ERR_RET(adapter, -EINVAL);
 	FUNC_PTR_OR_ERR_RET(adapter->ops->stats_reset, -EINVAL);
 	return adapter->ops->stats_reset(adapter);
+}
+
+int
+rte_event_timer_remaining_ticks_get(
+			const struct rte_event_timer_adapter *adapter,
+			const struct rte_event_timer *evtim,
+			uint64_t *ticks_remaining)
+{
+	ADAPTER_VALID_OR_ERR_RET(adapter, -EINVAL);
+	FUNC_PTR_OR_ERR_RET(adapter->ops->remaining_ticks_get, -ENOTSUP);
+
+	if (ticks_remaining == NULL)
+		return -EINVAL;
+
+	return adapter->ops->remaining_ticks_get(adapter, evtim,
+						 ticks_remaining);
 }
 
 /*
@@ -1075,6 +1092,41 @@ swtim_stats_reset(const struct rte_event_timer_adapter *adapter)
 	return 0;
 }
 
+static int
+swtim_remaining_ticks_get(const struct rte_event_timer_adapter *adapter,
+			  const struct rte_event_timer *evtim,
+			  uint64_t *ticks_remaining)
+{
+	uint64_t nsecs_per_adapter_tick, opaque, cycles_remaining;
+	enum rte_event_timer_state n_state;
+	double nsecs_per_cycle;
+	struct rte_timer *tim;
+	uint64_t cur_cycles;
+
+	/* Check that timer is armed */
+	n_state = __atomic_load_n(&evtim->state, __ATOMIC_ACQUIRE);
+	if (n_state != RTE_EVENT_TIMER_ARMED)
+		return -EINVAL;
+
+	opaque = evtim->impl_opaque[0];
+	tim = (struct rte_timer *)(uintptr_t)opaque;
+
+	cur_cycles = rte_get_timer_cycles();
+	if (cur_cycles > tim->expire) {
+		*ticks_remaining = 0;
+		return 0;
+	}
+
+	cycles_remaining = tim->expire - cur_cycles;
+	nsecs_per_cycle = (double)NSECPERSEC / rte_get_timer_hz();
+	nsecs_per_adapter_tick = adapter->data->conf.timer_tick_ns;
+
+	*ticks_remaining = (uint64_t)ceil((cycles_remaining * nsecs_per_cycle) /
+					  nsecs_per_adapter_tick);
+
+	return 0;
+}
+
 static uint16_t
 __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 		struct rte_event_timer **evtims,
@@ -1289,6 +1341,7 @@ static const struct event_timer_adapter_ops swtim_ops = {
 	.arm_burst = swtim_arm_burst,
 	.arm_tmo_tick_burst = swtim_arm_tmo_tick_burst,
 	.cancel_burst = swtim_cancel_burst,
+	.remaining_ticks_get = swtim_remaining_ticks_get,
 };
 
 static int

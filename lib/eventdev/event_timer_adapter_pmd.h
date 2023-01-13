@@ -52,6 +52,11 @@ typedef int (*rte_event_timer_adapter_stats_get_t)(
 typedef int (*rte_event_timer_adapter_stats_reset_t)(
 		const struct rte_event_timer_adapter *adapter);
 /**< @internal Reset statistics for event timer adapter */
+typedef int (*rte_event_timer_remaining_ticks_get_t)(
+		const struct rte_event_timer_adapter *adapter,
+		const struct rte_event_timer *evtim,
+		uint64_t *ticks_remaining);
+/**< @internal Get remaining ticks for event timer */
 
 /**
  * @internal Structure containing the functions exported by an event timer
@@ -74,6 +79,8 @@ struct event_timer_adapter_ops {
 	/**< Arm event timers with same expiration time */
 	rte_event_timer_cancel_burst_t		cancel_burst;
 	/**< Cancel one or more event timers */
+	rte_event_timer_remaining_ticks_get_t	remaining_ticks_get;
+	/**< Get remaining ticks for event timer */
 };
 
 /**
