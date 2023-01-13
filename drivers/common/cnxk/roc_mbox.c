@@ -50,14 +50,12 @@ mbox_reset(struct mbox *mbox, int devid)
 	struct mbox_hdr *rx_hdr =
 		(struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
 
-	plt_spinlock_lock(&mdev->mbox_lock);
 	mdev->msg_size = 0;
 	mdev->rsp_size = 0;
 	tx_hdr->msg_size = 0;
 	tx_hdr->num_msgs = 0;
 	rx_hdr->msg_size = 0;
 	rx_hdr->num_msgs = 0;
-	plt_spinlock_unlock(&mdev->mbox_lock);
 }
 
 int
@@ -167,7 +165,6 @@ mbox_alloc_msg_rsp(struct mbox *mbox, int devid, int size, int size_rsp)
 	struct mbox_dev *mdev = &mbox->dev[devid];
 	struct mbox_msghdr *msghdr = NULL;
 
-	plt_spinlock_lock(&mdev->mbox_lock);
 	size = PLT_ALIGN(size, MBOX_MSG_ALIGN);
 	size_rsp = PLT_ALIGN(size_rsp, MBOX_MSG_ALIGN);
 	/* Check if there is space in mailbox */
@@ -191,7 +188,6 @@ mbox_alloc_msg_rsp(struct mbox *mbox, int devid, int size, int size_rsp)
 	mdev->rsp_size += size_rsp;
 	msghdr->next_msgoff = mdev->msg_size + msgs_offset();
 exit:
-	plt_spinlock_unlock(&mdev->mbox_lock);
 
 	return msghdr;
 }
@@ -409,11 +405,14 @@ send_ready_msg(struct mbox *mbox, uint16_t *pcifunc)
 	struct ready_msg_rsp *rsp;
 	int rc;
 
-	mbox_alloc_msg_ready(mbox);
+	mbox_alloc_msg_ready(mbox_get(mbox));
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
-	if (rc)
+	if (rc) {
+		mbox_put(mbox);
 		return rc;
+	}
+	mbox_put(mbox);
 
 	if (rsp->hdr.ver != MBOX_VERSION) {
 		plt_err("Incompatible MBox versions(AF: 0x%04x Client: 0x%04x)",

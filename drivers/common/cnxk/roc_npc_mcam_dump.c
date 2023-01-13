@@ -620,15 +620,17 @@ roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 		fprintf(file, "\tDW%d_Mask:%016lX\n", i, flow->mcam_mask[i]);
 	}
 
-	mcam_read_req = mbox_alloc_msg_npc_mcam_read_entry(npc->mbox);
+	mcam_read_req = mbox_alloc_msg_npc_mcam_read_entry(mbox_get(npc->mbox));
 	if (mcam_read_req == NULL) {
 		plt_err("Failed to alloc msg");
+		mbox_put(npc->mbox);
 		return;
 	}
 
 	mcam_read_req->entry = flow->mcam_id;
 	rc = mbox_process_msg(npc->mbox, (void *)&mcam_read_rsp);
 	if (rc) {
+		mbox_put(npc->mbox);
 		plt_err("Failed to fetch MCAM entry:%d", flow->mcam_id);
 		return;
 	}
@@ -643,4 +645,5 @@ roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 	}
 
 	fprintf(file, "\n");
+	mbox_put(npc->mbox);
 }

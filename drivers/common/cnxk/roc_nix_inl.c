@@ -422,19 +422,19 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct nix_rq_cpt_field_mask_cfg_req *msk_req;
 	struct idev_cfg *idev = idev_get_cfg();
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct idev_nix_inl_cfg *inl_cfg;
 	uint64_t aura_handle;
 	int rc = -ENOSPC;
 	int i;
 
 	if (!idev)
-		return rc;
+		goto exit;
 
 	inl_cfg = &idev->inl_cfg;
 	msk_req = mbox_alloc_msg_nix_lf_inline_rq_cfg(mbox);
 	if (msk_req == NULL)
-		return rc;
+		goto exit;
 
 	for (i = 0; i < RQ_CTX_MASK_MAX; i++)
 		msk_req->rq_ctx_word_mask[i] = 0xFFFFFFFFFFFFFFFF;
@@ -479,7 +479,10 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 	msk_req->ipsec_cfg1.spb_cpt_sizem1 = (inl_cfg->buf_sz >> 7) - 1;
 	msk_req->ipsec_cfg1.spb_cpt_enable = enable;
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 bool
@@ -853,6 +856,7 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq, bool enable)
 	struct nix_inl_dev *inl_dev;
 	struct roc_nix_rq *inl_rq;
 	uint16_t inl_rq_id;
+	struct mbox *mbox;
 	struct dev *dev;
 	int rc;
 
@@ -950,20 +954,24 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq, bool enable)
 	inl_rq->sso_ena = true;
 
 	/* Prepare and send RQ init mbox */
+	mbox = mbox_get(dev->mbox);
 	if (roc_model_is_cn9k())
 		rc = nix_rq_cn9k_cfg(dev, inl_rq, inl_dev->qints, false, enable);
 	else
 		rc = nix_rq_cfg(dev, inl_rq, inl_dev->qints, false, enable);
 	if (rc) {
 		plt_err("Failed to prepare aq_enq msg, rc=%d", rc);
+		mbox_put(mbox);
 		return rc;
 	}
 
 	rc = mbox_process(dev->mbox);
 	if (rc) {
 		plt_err("Failed to send aq_enq msg, rc=%d", rc);
+		mbox_put(mbox);
 		return rc;
 	}
+	mbox_put(mbox);
 
 	/* Check meta aura */
 	if (enable && nix->need_meta_aura) {

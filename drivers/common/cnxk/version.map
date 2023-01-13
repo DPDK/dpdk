@@ -327,6 +327,8 @@ INTERNAL {
 	roc_npa_ctx_dump;
 	roc_npa_dev_fini;
 	roc_npa_dev_init;
+	roc_npa_dev_lock;
+	roc_npa_dev_unlock;
 	roc_npa_dump;
 	roc_npa_lf_init_cb_register;
 	roc_npa_pool_create;

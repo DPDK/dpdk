@@ -151,6 +151,21 @@ mbox_process_msg_tmo(struct mbox *mbox, void **msg, uint32_t tmo)
 	return mbox_get_rsp_tmo(mbox, 0, msg, tmo);
 }
 
+static inline struct mbox *
+mbox_get(struct mbox *mbox)
+{
+	struct mbox_dev *mdev = &mbox->dev[0];
+	plt_spinlock_lock(&mdev->mbox_lock);
+	return mbox;
+}
+
+static inline void
+mbox_put(struct mbox *mbox)
+{
+	struct mbox_dev *mdev = &mbox->dev[0];
+	plt_spinlock_unlock(&mdev->mbox_lock);
+}
+
 int send_ready_msg(struct mbox *mbox, uint16_t *pf_func /* out */);
 int reply_invalid_msg(struct mbox *mbox, int devid, uint16_t pf_func,
 		      uint16_t id);

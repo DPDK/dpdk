@@ -7,64 +7,73 @@
 
 #define PTP_FREQ_ADJUST (1 << 9)
 
-static inline struct mbox *
-get_mbox(struct roc_nix *roc_nix)
-{
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct dev *dev = &nix->dev;
-
-	return dev->mbox;
-}
-
 int
 roc_nix_ptp_rx_ena_dis(struct roc_nix *roc_nix, int enable)
 {
-	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	int rc;
 
-	if (roc_nix_is_vf_or_sdp(roc_nix) || roc_nix_is_lbk(roc_nix))
-		return NIX_ERR_PARAM;
+	if (roc_nix_is_vf_or_sdp(roc_nix) || roc_nix_is_lbk(roc_nix)) {
+		rc = NIX_ERR_PARAM;
+		goto exit;
+	}
 
 	if (enable)
 		mbox_alloc_msg_cgx_ptp_rx_enable(mbox);
 	else
 		mbox_alloc_msg_cgx_ptp_rx_disable(mbox);
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
 roc_nix_ptp_tx_ena_dis(struct roc_nix *roc_nix, int enable)
 {
-	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	int rc;
 
-	if (roc_nix_is_vf_or_sdp(roc_nix) || roc_nix_is_lbk(roc_nix))
-		return NIX_ERR_PARAM;
+	if (roc_nix_is_vf_or_sdp(roc_nix) || roc_nix_is_lbk(roc_nix)) {
+		rc = NIX_ERR_PARAM;
+		goto exit;
+	}
 
 	if (enable)
 		mbox_alloc_msg_nix_lf_ptp_tx_enable(mbox);
 	else
 		mbox_alloc_msg_nix_lf_ptp_tx_disable(mbox);
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
 roc_nix_ptp_clock_read(struct roc_nix *roc_nix, uint64_t *clock, uint64_t *tsc,
 		       uint8_t is_pmu)
 {
-	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct ptp_req *req;
 	struct ptp_rsp *rsp;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_ptp_op(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->op = PTP_OP_GET_CLOCK;
 	req->is_pmu = is_pmu;
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
-		return rc;
+		goto exit;
 
 	if (clock)
 		*clock = rsp->clk;
@@ -72,30 +81,42 @@ roc_nix_ptp_clock_read(struct roc_nix *roc_nix, uint64_t *clock, uint64_t *tsc,
 	if (tsc)
 		*tsc = rsp->tsc;
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
 roc_nix_ptp_sync_time_adjust(struct roc_nix *roc_nix, int64_t delta)
 {
-	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct ptp_req *req;
 	struct ptp_rsp *rsp;
 	int rc = -ENOSPC;
 
-	if (roc_nix_is_vf_or_sdp(roc_nix) || roc_nix_is_lbk(roc_nix))
-		return NIX_ERR_PARAM;
+	if (roc_nix_is_vf_or_sdp(roc_nix) || roc_nix_is_lbk(roc_nix)) {
+		rc = NIX_ERR_PARAM;
+		goto exit;
+	}
 
-	if ((delta <= -PTP_FREQ_ADJUST) || (delta >= PTP_FREQ_ADJUST))
-		return NIX_ERR_INVALID_RANGE;
+	if ((delta <= -PTP_FREQ_ADJUST) || (delta >= PTP_FREQ_ADJUST)) {
+		rc = NIX_ERR_INVALID_RANGE;
+		goto exit;
+	}
 
 	req = mbox_alloc_msg_ptp_op(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->op = PTP_OP_ADJFINE;
 	req->scaled_ppm = delta;
 
-	return mbox_process_msg(mbox, (void *)&rsp);
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int

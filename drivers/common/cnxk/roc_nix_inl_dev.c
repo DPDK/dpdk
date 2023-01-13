@@ -111,27 +111,36 @@ exit:
 static int
 nix_inl_cpt_ctx_cache_sync(struct nix_inl_dev *inl_dev)
 {
-	struct mbox *mbox = (&inl_dev->dev)->mbox;
+	struct mbox *mbox = mbox_get((&inl_dev->dev)->mbox);
 	struct msg_req *req;
+	int rc;
 
 	req = mbox_alloc_msg_cpt_ctx_cache_sync(mbox);
-	if (req == NULL)
-		return -ENOSPC;
+	if (req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
 nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 {
 	struct nix_inline_ipsec_lf_cfg *lf_cfg;
-	struct mbox *mbox = (&inl_dev->dev)->mbox;
+	struct mbox *mbox = mbox_get((&inl_dev->dev)->mbox);
 	uint64_t max_sa;
 	uint32_t sa_w;
+	int rc;
 
 	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
-	if (lf_cfg == NULL)
-		return -ENOSPC;
+	if (lf_cfg == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
 	if (ena) {
 
@@ -156,7 +165,10 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 		lf_cfg->enable = 0;
 	}
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -343,9 +355,11 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	max_sa = plt_align32pow2(ipsec_in_max_spi - ipsec_in_min_spi + 1);
 
 	/* Alloc NIX LF needed for single RQ */
-	req = mbox_alloc_msg_nix_lf_alloc(mbox);
-	if (req == NULL)
+	req = mbox_alloc_msg_nix_lf_alloc(mbox_get(mbox));
+	if (req == NULL) {
+		mbox_put(mbox);
 		return rc;
+	}
 	/* We will have per-port RQ if it is not with channel masking */
 	req->rq_cnt = inl_dev->nb_rqs;
 	req->sq_cnt = 1;
@@ -366,6 +380,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc) {
 		plt_err("Failed to alloc lf, rc=%d", rc);
+		mbox_put(mbox);
 		return rc;
 	}
 
@@ -373,16 +388,19 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	inl_dev->lf_rx_stats = rsp->lf_rx_stats;
 	inl_dev->qints = rsp->qints;
 	inl_dev->cints = rsp->cints;
+	mbox_put(mbox);
 
 	/* Get VWQE info if supported */
 	if (roc_model_is_cn10k()) {
-		mbox_alloc_msg_nix_get_hw_info(mbox);
+		mbox_alloc_msg_nix_get_hw_info(mbox_get(mbox));
 		rc = mbox_process_msg(mbox, (void *)&hw_info);
 		if (rc) {
 			plt_err("Failed to get HW info, rc=%d", rc);
+			mbox_put(mbox);
 			goto lf_free;
 		}
 		inl_dev->vwqe_interval = hw_info->vwqe_delay;
+		mbox_put(mbox);
 	}
 
 	/* Register nix interrupts */
@@ -438,8 +456,9 @@ free_mem:
 unregister_irqs:
 	nix_inl_nix_unregister_irqs(inl_dev);
 lf_free:
-	mbox_alloc_msg_nix_lf_free(mbox);
+	mbox_alloc_msg_nix_lf_free(mbox_get(mbox));
 	rc |= mbox_process(mbox);
+	mbox_put(mbox);
 	return rc;
 }
 
@@ -458,25 +477,33 @@ nix_inl_nix_release(struct nix_inl_dev *inl_dev)
 		plt_err("Failed to disable Inbound IPSec, rc=%d", rc);
 
 	/* Sync NDC-NIX for LF */
-	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox);
-	if (ndc_req == NULL)
+	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox_get(mbox));
+	if (ndc_req == NULL) {
+		mbox_put(mbox);
 		return rc;
+	}
 	ndc_req->nix_lf_rx_sync = 1;
 	rc = mbox_process(mbox);
 	if (rc)
 		plt_err("Error on NDC-NIX-RX LF sync, rc %d", rc);
+	mbox_put(mbox);
 
 	/* Unregister IRQs */
 	nix_inl_nix_unregister_irqs(inl_dev);
 
 	/* By default all associated mcam rules are deleted */
-	req = mbox_alloc_msg_nix_lf_free(mbox);
-	if (req == NULL)
+	req = mbox_alloc_msg_nix_lf_free(mbox_get(mbox));
+	if (req == NULL) {
+		mbox_put(mbox);
 		return -ENOSPC;
+	}
 
 	rc = mbox_process(mbox);
-	if (rc)
+	if (rc) {
+		mbox_put(mbox);
 		return rc;
+	}
+	mbox_put(mbox);
 
 	plt_free(inl_dev->rqs);
 	plt_free(inl_dev->inb_sa_base);
@@ -490,14 +517,14 @@ nix_inl_lf_attach(struct nix_inl_dev *inl_dev)
 {
 	struct msix_offset_rsp *msix_rsp;
 	struct dev *dev = &inl_dev->dev;
-	struct mbox *mbox = dev->mbox;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct rsrc_attach_req *req;
 	uint64_t nix_blkaddr;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_attach_resources(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->modify = true;
 	/* Attach 1 NIXLF, SSO HWS and SSO HWGRP */
 	req->nixlf = true;
@@ -510,13 +537,13 @@ nix_inl_lf_attach(struct nix_inl_dev *inl_dev)
 
 	rc = mbox_process(dev->mbox);
 	if (rc)
-		return rc;
+		goto exit;
 
 	/* Get MSIX vector offsets */
 	mbox_alloc_msg_msix_offset(mbox);
 	rc = mbox_process_msg(dev->mbox, (void **)&msix_rsp);
 	if (rc)
-		return rc;
+		goto exit;
 
 	inl_dev->nix_msixoff = msix_rsp->nix_msixoff;
 	inl_dev->ssow_msixoff = msix_rsp->ssow_msixoff[0];
@@ -532,27 +559,33 @@ nix_inl_lf_attach(struct nix_inl_dev *inl_dev)
 	inl_dev->sso_base = dev->bar2 + (RVU_BLOCK_ADDR_SSO << 20);
 	inl_dev->cpt_base = dev->bar2 + (RVU_BLOCK_ADDR_CPT0 << 20);
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
 nix_inl_lf_detach(struct nix_inl_dev *inl_dev)
 {
 	struct dev *dev = &inl_dev->dev;
-	struct mbox *mbox = dev->mbox;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct rsrc_detach_req *req;
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_detach_resources(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->partial = true;
 	req->nixlf = true;
 	req->ssow = true;
 	req->sso = true;
 	req->cptlfs = !!inl_dev->attach_cptlf;
 
-	return mbox_process(dev->mbox);
+	rc = mbox_process(dev->mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int

@@ -91,6 +91,7 @@ roc_npa_ctx_dump(void)
 {
 	struct npa_aq_enq_req *aq;
 	struct npa_aq_enq_rsp *rsp;
+	struct mbox *mbox;
 	struct npa_lf *lf;
 	uint32_t q;
 	int rc = 0;
@@ -98,23 +99,26 @@ roc_npa_ctx_dump(void)
 	lf = idev_npa_obj_get();
 	if (lf == NULL)
 		return NPA_ERR_DEVICE_NOT_BOUNDED;
+	mbox = mbox_get(lf->mbox);
 
 	for (q = 0; q < lf->nr_pools; q++) {
 		/* Skip disabled POOL */
 		if (plt_bitmap_get(lf->npa_bmp, q))
 			continue;
 
-		aq = mbox_alloc_msg_npa_aq_enq(lf->mbox);
-		if (aq == NULL)
-			return -ENOSPC;
+		aq = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 		aq->aura_id = q;
 		aq->ctype = NPA_AQ_CTYPE_POOL;
 		aq->op = NPA_AQ_INSTOP_READ;
 
-		rc = mbox_process_msg(lf->mbox, (void *)&rsp);
+		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc) {
 			plt_err("Failed to get pool(%d) context", q);
-			return rc;
+			goto exit;
 		}
 		npa_dump("============== pool=%d ===============\n", q);
 		npa_pool_dump(&rsp->pool);
@@ -125,22 +129,26 @@ roc_npa_ctx_dump(void)
 		if (plt_bitmap_get(lf->npa_bmp, q))
 			continue;
 
-		aq = mbox_alloc_msg_npa_aq_enq(lf->mbox);
-		if (aq == NULL)
-			return -ENOSPC;
+		aq = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 		aq->aura_id = q;
 		aq->ctype = NPA_AQ_CTYPE_AURA;
 		aq->op = NPA_AQ_INSTOP_READ;
 
-		rc = mbox_process_msg(lf->mbox, (void *)&rsp);
+		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc) {
 			plt_err("Failed to get aura(%d) context", q);
-			return rc;
+			goto exit;
 		}
 		npa_dump("============== aura=%d ===============\n", q);
 		npa_aura_dump(&rsp->aura);
 	}
 
+exit:
+	mbox_put(mbox);
 	return rc;
 }
 

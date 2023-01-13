@@ -52,13 +52,14 @@ nix_tm_node_reg_conf(struct nix *nix, struct nix_tm_node *node)
 	/* Need this trigger to configure TL1 */
 	if (!nix_tm_have_tl1_access(nix) && hw_lvl == NIX_TXSCH_LVL_TL2) {
 		/* Prepare default conf for TL1 */
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		req->lvl = NIX_TXSCH_LVL_TL1;
 
 		k = nix_tm_tl1_default_prep(nix, node->parent_hw_id, req->reg,
 					    req->regval);
 		req->num_regs = k;
 		rc = mbox_process(mbox);
+		mbox_put(mbox);
 		if (rc)
 			goto error;
 	}
@@ -76,7 +77,7 @@ nix_tm_node_reg_conf(struct nix *nix, struct nix_tm_node *node)
 		return 0;
 
 	/* Copy and send config mbox */
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 	req->lvl = hw_lvl;
 	req->num_regs = k;
 
@@ -85,6 +86,7 @@ nix_tm_node_reg_conf(struct nix *nix, struct nix_tm_node *node)
 	mbox_memcpy(req->regval_mask, regval_mask, sizeof(uint64_t) * k);
 
 	rc = mbox_process(mbox);
+	mbox_put(mbox);
 	if (rc)
 		goto error;
 
@@ -279,7 +281,7 @@ nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node)
 int
 nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct nix_txschq_config *req;
 	struct nix_tm_node *p;
 	int rc;
@@ -298,14 +300,17 @@ nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node)
 							    req->regval);
 			rc = mbox_process(mbox);
 			if (rc)
-				return rc;
+				goto exit;
 
 			p->flags |= NIX_TM_NODE_ENABLED;
 		}
 		p = p->parent;
 	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -395,7 +400,7 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 
 	/* Allocating TL3 resources */
 	if (!req) {
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		req->lvl = nix->tm_link_cfg_lvl;
 		k = 0;
 	}
@@ -417,10 +422,13 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	if (enable && sq_s->tc == ROC_NIX_PFC_CLASS_INVALID)
 		parent->tc_refcnt++;
 
-	return 0;
+	rc = 0;
+	goto exit;
 err:
 	plt_err("Failed to %s bp on link %u, rc=%d(%s)",
 		enable ? "enable" : "disable", link, rc, roc_error_msg_get(rc));
+exit:
+	mbox_put(mbox);
 	return rc;
 }
 
@@ -430,7 +438,7 @@ nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct nix_txschq_config *req = NULL, *rsp;
 	enum roc_nix_tm_tree tree = nix->tm_tree;
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct nix_tm_node_list *list;
 	struct nix_tm_node *node;
 	bool found = false;
@@ -484,10 +492,13 @@ nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled)
 	}
 
 	*is_enabled = found ? !!enable : false;
-	return 0;
+	rc = 0;
+	goto exit;
 err:
 	plt_err("Failed to get bp status on link %u, rc=%d(%s)", link, rc,
 		roc_error_msg_get(rc));
+exit:
+	mbox_put(mbox);
 	return rc;
 }
 
@@ -507,7 +518,7 @@ nix_tm_smq_xoff(struct nix *nix, struct nix_tm_node *node, bool enable)
 	if (rc)
 		return rc;
 
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 	req->lvl = NIX_TXSCH_LVL_SMQ;
 	req->num_regs = 1;
 
@@ -516,7 +527,9 @@ nix_tm_smq_xoff(struct nix *nix, struct nix_tm_node *node, bool enable)
 	req->regval_mask[0] =
 		enable ? ~(BIT_ULL(50) | BIT_ULL(49)) : ~BIT_ULL(50);
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -677,13 +690,16 @@ roc_nix_tm_sq_free_pending_sqe(struct nix *nix, int q)
 
 	mbox = dev->mbox;
 	/* Sync NDC-NIX-TX for LF */
-	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox);
-	if (ndc_req == NULL)
+	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox_get(mbox));
+	if (ndc_req == NULL) {
+		mbox_put(mbox);
 		return -EFAULT;
+	}
 
 	ndc_req->nix_lf_tx_sync = 1;
 	if (mbox_process(mbox))
 		rc |= NIX_ERR_NDC_SYNC;
+	mbox_put(mbox);
 
 	if (rc)
 		plt_err("NDC_SYNC failed rc %d", rc);
@@ -775,12 +791,14 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 		/* Though it enables both RX MCAM Entries and CGX Link
 		 * we assume all the rx queues are stopped way back.
 		 */
-		mbox_alloc_msg_nix_lf_start_rx(mbox);
+		mbox_alloc_msg_nix_lf_start_rx(mbox_get(mbox));
 		rc = mbox_process(mbox);
 		if (rc) {
+			mbox_put(mbox);
 			plt_err("cgx start failed, rc=%d", rc);
 			return rc;
 		}
+		mbox_put(mbox);
 	}
 
 	/* Disable backpressure */
@@ -841,16 +859,20 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 		goto cleanup;
 	}
 
-	req = mbox_alloc_msg_nix_rx_sw_sync(mbox);
-	if (!req)
+	req = mbox_alloc_msg_nix_rx_sw_sync(mbox_get(mbox));
+	if (!req) {
+		mbox_put(mbox);
 		return -ENOSPC;
+	}
 
 	rc = mbox_process(mbox);
+	mbox_put(mbox);
 cleanup:
 	/* Restore cgx state */
 	if (!roc_nix->io_enabled) {
-		mbox_alloc_msg_nix_lf_stop_rx(mbox);
+		mbox_alloc_msg_nix_lf_stop_rx(mbox_get(mbox));
 		rc |= mbox_process(mbox);
+		mbox_put(mbox);
 	}
 
 	return rc;
@@ -937,7 +959,7 @@ int
 nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 		     bool rr_quantum_only)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	uint16_t qid = node->id, smq;
 	uint64_t rr_quantum;
 	int rc;
@@ -952,15 +974,19 @@ nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 		plt_tm_dbg("Enabling sq(%u)->smq(%u), rr_quantum 0x%" PRIx64,
 			   qid, smq, rr_quantum);
 
-	if (qid > nix->nb_tx_queues)
-		return -EFAULT;
+	if (qid > nix->nb_tx_queues) {
+		rc = -EFAULT;
+		goto exit;
+	}
 
 	if (roc_model_is_cn9k()) {
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_SQ;
@@ -977,8 +1003,10 @@ nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_SQ;
@@ -996,6 +1024,8 @@ nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 	rc = mbox_process(mbox);
 	if (rc)
 		plt_err("Failed to set smq, rc=%d", rc);
+exit:
+	mbox_put(mbox);
 	return rc;
 }
 
@@ -1037,9 +1067,11 @@ nix_tm_release_resources(struct nix *nix, uint8_t hw_lvl, bool contig,
 		schq += pos;
 
 		/* Free to AF */
-		req = mbox_alloc_msg_nix_txsch_free(mbox);
-		if (req == NULL)
+		req = mbox_alloc_msg_nix_txsch_free(mbox_get(mbox));
+		if (req == NULL) {
+			mbox_put(mbox);
 			return rc;
+		}
 		req->flags = 0;
 		req->schq_lvl = hw_lvl;
 		req->schq = schq;
@@ -1047,9 +1079,10 @@ nix_tm_release_resources(struct nix *nix, uint8_t hw_lvl, bool contig,
 		if (rc) {
 			plt_err("failed to release hwres %s(%u) rc %d",
 				nix_tm_hwlvl2str(hw_lvl), schq, rc);
+			mbox_put(mbox);
 			return rc;
 		}
-
+		mbox_put(mbox);
 		plt_tm_dbg("Released hwres %s(%u)", nix_tm_hwlvl2str(hw_lvl),
 			   schq);
 		plt_bitmap_clear(bmp, schq);
@@ -1067,7 +1100,7 @@ nix_tm_release_resources(struct nix *nix, uint8_t hw_lvl, bool contig,
 int
 nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct nix_txsch_free_req *req;
 	struct plt_bitmap *bmp;
 	uint16_t avail, hw_id;
@@ -1093,13 +1126,14 @@ nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node)
 		plt_bitmap_set(bmp, hw_id);
 		node->hw_id = NIX_TM_HW_ID_INVALID;
 		node->flags &= ~NIX_TM_NODE_HWRES;
-		return 0;
+		rc = 0;
+		goto exit;
 	}
 
 	/* Free to AF */
 	req = mbox_alloc_msg_nix_txsch_free(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->flags = 0;
 	req->schq_lvl = node->hw_lvl;
 	req->schq = hw_id;
@@ -1107,7 +1141,7 @@ nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node)
 	if (rc) {
 		plt_err("failed to release hwres %s(%u) rc %d",
 			nix_tm_hwlvl2str(node->hw_lvl), hw_id, rc);
-		return rc;
+		goto exit;
 	}
 
 	/* Mark parent as dirty for reallocing it's children */
@@ -1118,7 +1152,10 @@ nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node)
 	node->flags &= ~NIX_TM_NODE_HWRES;
 	plt_tm_dbg("Released hwres %s(%u) to af",
 		   nix_tm_hwlvl2str(node->hw_lvl), hw_id);
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -1415,8 +1452,9 @@ nix_tm_alloc_txschq(struct nix *nix, enum roc_nix_tm_tree tree)
 	/* Alloc as needed */
 	do {
 		pend = false;
-		req = mbox_alloc_msg_nix_txsch_alloc(mbox);
+		req = mbox_alloc_msg_nix_txsch_alloc(mbox_get(mbox));
 		if (!req) {
+			mbox_put(mbox);
 			rc = -ENOMEM;
 			goto alloc_err;
 		}
@@ -1441,10 +1479,13 @@ nix_tm_alloc_txschq(struct nix *nix, enum roc_nix_tm_tree tree)
 		}
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
-		if (rc)
+		if (rc) {
+			mbox_put(mbox);
 			goto alloc_err;
+		}
 
 		nix_tm_copy_rsp_to_nix(nix, rsp);
+		mbox_put(mbox);
 	} while (pend);
 
 	nix->tm_link_cfg_lvl = rsp->link_cfg_lvl;

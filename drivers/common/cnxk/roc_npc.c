@@ -1013,13 +1013,15 @@ npc_vtag_cfg_delete(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	} tx_vtag_action;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
-	mbox = (&nix->dev)->mbox;
+	mbox = mbox_get((&nix->dev)->mbox);
 
 	tx_vtag_action.reg = flow->vtag_action;
 	vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox);
 
-	if (vtag_cfg == NULL)
-		return -ENOSPC;
+	if (vtag_cfg == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
 	vtag_cfg->cfg_type = VTAG_TX;
 	vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
@@ -1033,9 +1035,12 @@ npc_vtag_cfg_delete(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
-		return rc;
+		goto exit;
 
-	return 0;
+	rc =  0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -1129,10 +1134,12 @@ npc_vtag_insert_action_configure(struct mbox *mbox, struct roc_npc_flow *flow,
 		struct nix_tx_vtag_action_s act;
 	} tx_vtag_action;
 
-	vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox);
+	vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox_get(mbox));
 
-	if (vtag_cfg == NULL)
-		return -ENOSPC;
+	if (vtag_cfg == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
 	vtag_cfg->cfg_type = VTAG_TX;
 	vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
@@ -1152,12 +1159,13 @@ npc_vtag_insert_action_configure(struct mbox *mbox, struct roc_npc_flow *flow,
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
-		return rc;
+		goto exit;
 
 	if (rsp->vtag0_idx < 0 ||
 	    ((flow->vtag_insert_count == 2) && (rsp->vtag1_idx < 0))) {
 		plt_err("Failed to config TX VTAG action");
-		return -EINVAL;
+		rc =  -EINVAL;
+		goto exit;
 	}
 
 	tx_vtag_action.reg = 0;
@@ -1182,7 +1190,10 @@ npc_vtag_insert_action_configure(struct mbox *mbox, struct roc_npc_flow *flow,
 
 	flow->vtag_action = tx_vtag_action.reg;
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -1201,10 +1212,12 @@ npc_vtag_strip_action_configure(struct mbox *mbox,
 			(*strip_cnt)++;
 	}
 
-	vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox);
+	vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox_get(mbox));
 
-	if (vtag_cfg == NULL)
-		return -ENOSPC;
+	if (vtag_cfg == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
 	vtag_cfg->cfg_type = VTAG_RX;
 	vtag_cfg->rx.strip_vtag = 1;
@@ -1215,7 +1228,7 @@ npc_vtag_strip_action_configure(struct mbox *mbox,
 
 	rc = mbox_process(mbox);
 	if (rc)
-		return rc;
+		goto exit;
 
 	rx_vtag_action |= (NIX_RX_VTAGACTION_VTAG_VALID << 15);
 	rx_vtag_action |= ((uint64_t)NPC_LID_LB << 8);
@@ -1228,7 +1241,10 @@ npc_vtag_strip_action_configure(struct mbox *mbox,
 	}
 	flow->vtag_action = rx_vtag_action;
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -1538,16 +1554,19 @@ roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
 	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	struct mcam_entry *base_entry;
+	struct mbox *mbox = mbox_get(npc->mbox);
 	int idx, rc;
 
-	if (roc_nix_is_pf(roc_npc->roc_nix))
-		return 0;
+	if (roc_nix_is_pf(roc_npc->roc_nix)) {
+		rc = 0;
+		goto exit;
+	}
 
-	(void)mbox_alloc_msg_npc_read_base_steer_rule(npc->mbox);
-	rc = mbox_process_msg(npc->mbox, (void *)&base_rule_rsp);
+	(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
+	rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
 	if (rc) {
 		plt_err("Failed to fetch VF's base MCAM entry");
-		return rc;
+		goto exit;
 	}
 	base_entry = &base_rule_rsp->entry_data;
 	for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
@@ -1555,5 +1574,8 @@ roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
 		flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
 	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }

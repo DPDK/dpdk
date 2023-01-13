@@ -12,67 +12,79 @@ int
 sso_lf_alloc(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf,
 	     void **rsp)
 {
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc = -ENOSPC;
 
 	switch (lf_type) {
 	case SSO_LF_TYPE_HWS: {
 		struct ssow_lf_alloc_req *req;
 
-		req = mbox_alloc_msg_ssow_lf_alloc(dev->mbox);
+		req = mbox_alloc_msg_ssow_lf_alloc(mbox);
 		if (req == NULL)
-			return rc;
+			goto exit;
 		req->hws = nb_lf;
 	} break;
 	case SSO_LF_TYPE_HWGRP: {
 		struct sso_lf_alloc_req *req;
 
-		req = mbox_alloc_msg_sso_lf_alloc(dev->mbox);
+		req = mbox_alloc_msg_sso_lf_alloc(mbox);
 		if (req == NULL)
-			return rc;
+			goto exit;
 		req->hwgrps = nb_lf;
 	} break;
 	default:
 		break;
 	}
 
-	rc = mbox_process_msg(dev->mbox, rsp);
-	if (rc)
-		return -EIO;
+	rc = mbox_process_msg(mbox, rsp);
+	if (rc) {
+		rc = -EIO;
+		goto exit;
+	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
 sso_lf_free(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf)
 {
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc = -ENOSPC;
 
 	switch (lf_type) {
 	case SSO_LF_TYPE_HWS: {
 		struct ssow_lf_free_req *req;
 
-		req = mbox_alloc_msg_ssow_lf_free(dev->mbox);
+		req = mbox_alloc_msg_ssow_lf_free(mbox);
 		if (req == NULL)
-			return rc;
+			goto exit;
 		req->hws = nb_lf;
 	} break;
 	case SSO_LF_TYPE_HWGRP: {
 		struct sso_lf_free_req *req;
 
-		req = mbox_alloc_msg_sso_lf_free(dev->mbox);
+		req = mbox_alloc_msg_sso_lf_free(mbox);
 		if (req == NULL)
-			return rc;
+			goto exit;
 		req->hwgrps = nb_lf;
 	} break;
 	default:
 		break;
 	}
 
-	rc = mbox_process(dev->mbox);
-	if (rc)
-		return -EIO;
+	rc = mbox_process(mbox);
+	if (rc) {
+		rc = -EIO;
+		goto exit;
+	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -80,12 +92,13 @@ sso_rsrc_attach(struct roc_sso *roc_sso, enum sso_lf_type lf_type,
 		uint16_t nb_lf)
 {
 	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct rsrc_attach_req *req;
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_attach_resources(dev->mbox);
+	req = mbox_alloc_msg_attach_resources(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	switch (lf_type) {
 	case SSO_LF_TYPE_HWS:
 		req->ssow = nb_lf;
@@ -94,14 +107,20 @@ sso_rsrc_attach(struct roc_sso *roc_sso, enum sso_lf_type lf_type,
 		req->sso = nb_lf;
 		break;
 	default:
-		return SSO_ERR_PARAM;
+		rc = SSO_ERR_PARAM;
+		goto exit;
 	}
 
 	req->modify = true;
-	if (mbox_process(dev->mbox))
-		return -EIO;
+	if (mbox_process(mbox)) {
+		rc = -EIO;
+		goto exit;
+	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -109,11 +128,12 @@ sso_rsrc_detach(struct roc_sso *roc_sso, enum sso_lf_type lf_type)
 {
 	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 	struct rsrc_detach_req *req;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_detach_resources(dev->mbox);
+	req = mbox_alloc_msg_detach_resources(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	switch (lf_type) {
 	case SSO_LF_TYPE_HWS:
 		req->ssow = true;
@@ -122,14 +142,20 @@ sso_rsrc_detach(struct roc_sso *roc_sso, enum sso_lf_type lf_type)
 		req->sso = true;
 		break;
 	default:
-		return SSO_ERR_PARAM;
+		rc = SSO_ERR_PARAM;
+		goto exit;
 	}
 
 	req->partial = true;
-	if (mbox_process(dev->mbox))
-		return -EIO;
+	if (mbox_process(mbox)) {
+		rc = -EIO;
+		goto exit;
+	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -137,19 +163,24 @@ sso_rsrc_get(struct roc_sso *roc_sso)
 {
 	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 	struct free_rsrcs_rsp *rsrc_cnt;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc;
 
-	mbox_alloc_msg_free_rsrc_cnt(dev->mbox);
-	rc = mbox_process_msg(dev->mbox, (void **)&rsrc_cnt);
+	mbox_alloc_msg_free_rsrc_cnt(mbox);
+	rc = mbox_process_msg(mbox, (void **)&rsrc_cnt);
 	if (rc) {
 		plt_err("Failed to get free resource count\n");
-		return -EIO;
+		rc = -EIO;
+		goto exit;
 	}
 
 	roc_sso->max_hwgrp = rsrc_cnt->sso;
 	roc_sso->max_hws = rsrc_cnt->ssow;
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 void
@@ -195,17 +226,22 @@ sso_msix_fill(struct roc_sso *roc_sso, uint16_t nb_hws, uint16_t nb_hwgrp)
 	struct dev *dev = &sso->dev;
 	int i, rc;
 
-	mbox_alloc_msg_msix_offset(dev->mbox);
+	mbox_alloc_msg_msix_offset(mbox_get(dev->mbox));
 	rc = mbox_process_msg(dev->mbox, (void **)&rsp);
-	if (rc)
-		return -EIO;
+	if (rc) {
+		rc = -EIO;
+		goto exit;
+	}
 
 	for (i = 0; i < nb_hws; i++)
 		sso->hws_msix_offset[i] = rsp->ssow_msixoff[i];
 	for (i = 0; i < nb_hwgrp; i++)
 		sso->hwgrp_msix_offset[i] = rsp->sso_msixoff[i];
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(dev->mbox);
+	return rc;
 }
 
 /* Public Functions. */
@@ -288,26 +324,28 @@ roc_sso_hws_stats_get(struct roc_sso *roc_sso, uint8_t hws,
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct sso_hws_stats *req_rsp;
 	struct dev *dev = &sso->dev;
+	struct mbox *mbox;
 	int rc;
 
 	plt_spinlock_lock(&sso->mbox_lock);
+	mbox = mbox_get(dev->mbox);
 	req_rsp = (struct sso_hws_stats *)mbox_alloc_msg_sso_hws_get_stats(
-		dev->mbox);
+		mbox);
 	if (req_rsp == NULL) {
-		rc = mbox_process(dev->mbox);
+		rc = mbox_process(mbox);
 		if (rc) {
 			rc = -EIO;
 			goto fail;
 		}
 		req_rsp = (struct sso_hws_stats *)
-			mbox_alloc_msg_sso_hws_get_stats(dev->mbox);
+			mbox_alloc_msg_sso_hws_get_stats(mbox);
 		if (req_rsp == NULL) {
 			rc = -ENOSPC;
 			goto fail;
 		}
 	}
 	req_rsp->hws = hws;
-	rc = mbox_process_msg(dev->mbox, (void **)&req_rsp);
+	rc = mbox_process_msg(mbox, (void **)&req_rsp);
 	if (rc) {
 		rc = -EIO;
 		goto fail;
@@ -315,6 +353,7 @@ roc_sso_hws_stats_get(struct roc_sso *roc_sso, uint8_t hws,
 
 	stats->arbitration = req_rsp->arbitration;
 fail:
+	mbox_put(mbox);
 	plt_spinlock_unlock(&sso->mbox_lock);
 	return rc;
 }
@@ -326,26 +365,28 @@ roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint8_t hwgrp,
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct sso_grp_stats *req_rsp;
 	struct dev *dev = &sso->dev;
+	struct mbox *mbox;
 	int rc;
 
 	plt_spinlock_lock(&sso->mbox_lock);
+	mbox = mbox_get(dev->mbox);
 	req_rsp = (struct sso_grp_stats *)mbox_alloc_msg_sso_grp_get_stats(
-		dev->mbox);
+		mbox);
 	if (req_rsp == NULL) {
-		rc = mbox_process(dev->mbox);
+		rc = mbox_process(mbox);
 		if (rc) {
 			rc = -EIO;
 			goto fail;
 		}
 		req_rsp = (struct sso_grp_stats *)
-			mbox_alloc_msg_sso_grp_get_stats(dev->mbox);
+			mbox_alloc_msg_sso_grp_get_stats(mbox);
 		if (req_rsp == NULL) {
 			rc = -ENOSPC;
 			goto fail;
 		}
 	}
 	req_rsp->grp = hwgrp;
-	rc = mbox_process_msg(dev->mbox, (void **)&req_rsp);
+	rc = mbox_process_msg(mbox, (void **)&req_rsp);
 	if (rc) {
 		rc = -EIO;
 		goto fail;
@@ -361,6 +402,7 @@ roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint8_t hwgrp,
 	stats->ws_pc = req_rsp->ws_pc;
 
 fail:
+	mbox_put(mbox);
 	plt_spinlock_unlock(&sso->mbox_lock);
 	return rc;
 }
@@ -382,22 +424,24 @@ roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos,
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct dev *dev = &sso->dev;
 	struct sso_grp_qos_cfg *req;
+	struct mbox *mbox;
 	int i, rc;
 
 	plt_spinlock_lock(&sso->mbox_lock);
+	mbox = mbox_get(dev->mbox);
 	for (i = 0; i < nb_qos; i++) {
 		uint8_t iaq_prcnt = qos[i].iaq_prcnt;
 		uint8_t taq_prcnt = qos[i].taq_prcnt;
 
-		req = mbox_alloc_msg_sso_grp_qos_config(dev->mbox);
+		req = mbox_alloc_msg_sso_grp_qos_config(mbox);
 		if (req == NULL) {
-			rc = mbox_process(dev->mbox);
+			rc = mbox_process(mbox);
 			if (rc) {
 				rc = -EIO;
 				goto fail;
 			}
 
-			req = mbox_alloc_msg_sso_grp_qos_config(dev->mbox);
+			req = mbox_alloc_msg_sso_grp_qos_config(mbox);
 			if (req == NULL) {
 				rc = -ENOSPC;
 				goto fail;
@@ -412,10 +456,11 @@ roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos,
 			       100;
 	}
 
-	rc = mbox_process(dev->mbox);
+	rc = mbox_process(mbox);
 	if (rc)
 		rc = -EIO;
 fail:
+	mbox_put(mbox);
 	plt_spinlock_unlock(&sso->mbox_lock);
 	return rc;
 }
@@ -565,19 +610,25 @@ int
 sso_hwgrp_alloc_xaq(struct dev *dev, uint32_t npa_aura_id, uint16_t hwgrps)
 {
 	struct sso_hw_setconfig *req;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_sso_hw_setconfig(dev->mbox);
+	req = mbox_alloc_msg_sso_hw_setconfig(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->npa_pf_func = idev_npa_pffunc_get();
 	req->npa_aura_id = npa_aura_id;
 	req->hwgrps = hwgrps;
 
-	if (mbox_process(dev->mbox))
-		return -EIO;
+	if (mbox_process(dev->mbox)) {
+		rc = -EIO;
+		goto exit;
+	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -598,16 +649,25 @@ int
 sso_hwgrp_release_xaq(struct dev *dev, uint16_t hwgrps)
 {
 	struct sso_hw_xaq_release *req;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	int rc;
 
-	req = mbox_alloc_msg_sso_hw_release_xaq_aura(dev->mbox);
-	if (req == NULL)
-		return -EINVAL;
+	req = mbox_alloc_msg_sso_hw_release_xaq_aura(mbox);
+	if (req == NULL) {
+		rc =  -EINVAL;
+		goto exit;
+	}
 	req->hwgrps = hwgrps;
 
-	if (mbox_process(dev->mbox))
-		return -EIO;
+	if (mbox_process(mbox)) {
+		rc = -EIO;
+		goto exit;
+	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -630,10 +690,12 @@ roc_sso_hwgrp_set_priority(struct roc_sso *roc_sso, uint16_t hwgrp,
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct dev *dev = &sso->dev;
 	struct sso_grp_priority *req;
+	struct mbox *mbox;
 	int rc = -ENOSPC;
 
 	plt_spinlock_lock(&sso->mbox_lock);
-	req = mbox_alloc_msg_sso_grp_set_priority(dev->mbox);
+	mbox = mbox_get(dev->mbox);
+	req = mbox_alloc_msg_sso_grp_set_priority(mbox);
 	if (req == NULL)
 		goto fail;
 	req->grp = hwgrp;
@@ -641,17 +703,19 @@ roc_sso_hwgrp_set_priority(struct roc_sso *roc_sso, uint16_t hwgrp,
 	req->affinity = affinity;
 	req->priority = priority;
 
-	rc = mbox_process(dev->mbox);
+	rc = mbox_process(mbox);
 	if (rc) {
 		rc = -EIO;
 		goto fail;
 	}
+	mbox_put(mbox);
 	plt_spinlock_unlock(&sso->mbox_lock);
 	plt_sso_dbg("HWGRP %d weight %d affinity %d priority %d", hwgrp, weight,
 		    affinity, priority);
 
 	return 0;
 fail:
+	mbox_put(mbox);
 	plt_spinlock_unlock(&sso->mbox_lock);
 	return rc;
 }

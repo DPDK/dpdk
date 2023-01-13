@@ -22,12 +22,12 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	if (!lf)
 		return NPA_ERR_DEVICE_NOT_BOUNDED;
 
-	mbox = lf->mbox;
+	mbox = mbox_get(lf->mbox);
 	/* Set/clear sqb aura fc_ena */
 	aura_handle = sq->aura_handle;
 	req = mbox_alloc_msg_npa_aq_enq(mbox);
 	if (req == NULL)
-		return rc;
+		goto exit;
 
 	req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
 	req->ctype = NPA_AQ_CTYPE_AURA;
@@ -48,12 +48,14 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 
 	rc = mbox_process(mbox);
 	if (rc)
-		return rc;
+		goto exit;
 
 	/* Read back npa aura ctx */
 	req = mbox_alloc_msg_npa_aq_enq(mbox);
-	if (req == NULL)
-		return -ENOSPC;
+	if (req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
 	req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
 	req->ctype = NPA_AQ_CTYPE_AURA;
@@ -61,7 +63,7 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
-		return rc;
+		goto exit;
 
 	/* Init when enabled as there might be no triggers */
 	if (enable)
@@ -70,7 +72,10 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 		*(volatile uint64_t *)sq->fc = sq->aura_sqb_bufs;
 	/* Sync write barrier */
 	plt_wmb();
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -443,12 +448,14 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		/* Though it enables both RX MCAM Entries and CGX Link
 		 * we assume all the rx queues are stopped way back.
 		 */
-		mbox_alloc_msg_nix_lf_start_rx(mbox);
+		mbox_alloc_msg_nix_lf_start_rx(mbox_get(mbox));
 		rc = mbox_process(mbox);
 		if (rc) {
+			mbox_put(mbox);
 			plt_err("cgx start failed, rc=%d", rc);
 			return rc;
 		}
+		mbox_put(mbox);
 	}
 
 	/* XON all SMQ's */
@@ -543,8 +550,9 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 cleanup:
 	/* Restore cgx state */
 	if (!roc_nix->io_enabled) {
-		mbox_alloc_msg_nix_lf_stop_rx(mbox);
+		mbox_alloc_msg_nix_lf_stop_rx(mbox_get(mbox));
 		rc |= mbox_process(mbox);
+		mbox_put(mbox);
 	}
 	return rc;
 }
@@ -703,12 +711,13 @@ roc_nix_tm_node_suspend_resume(struct roc_nix *roc_nix, uint32_t node_id,
 		return 0;
 
 	/* send mbox for state change */
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 
 	req->lvl = node->hw_lvl;
 	req->num_regs =
 		nix_tm_sw_xoff_prep(node, suspend, req->reg, req->regval);
 	rc = mbox_process(mbox);
+	mbox_put(mbox);
 	if (!rc)
 		node->flags = flags;
 	return rc;
@@ -731,30 +740,40 @@ roc_nix_tm_prealloc_res(struct roc_nix *roc_nix, uint8_t lvl,
 
 	/* Preallocate contiguous */
 	if (nix->contig_rsvd[hw_lvl] < contig) {
-		req = mbox_alloc_msg_nix_txsch_alloc(mbox);
-		if (req == NULL)
+		req = mbox_alloc_msg_nix_txsch_alloc(mbox_get(mbox));
+		if (req == NULL) {
+			mbox_put(mbox);
 			return rc;
+		}
 		req->schq_contig[hw_lvl] = contig - nix->contig_rsvd[hw_lvl];
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
-		if (rc)
+		if (rc) {
+			mbox_put(mbox);
 			return rc;
+		}
 
 		nix_tm_copy_rsp_to_nix(nix, rsp);
+		mbox_put(mbox);
 	}
 
 	/* Preallocate contiguous */
 	if (nix->discontig_rsvd[hw_lvl] < discontig) {
-		req = mbox_alloc_msg_nix_txsch_alloc(mbox);
-		if (req == NULL)
+		req = mbox_alloc_msg_nix_txsch_alloc(mbox_get(mbox));
+		if (req == NULL) {
+			mbox_put(mbox);
 			return -ENOSPC;
+		}
 		req->schq[hw_lvl] = discontig - nix->discontig_rsvd[hw_lvl];
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
-		if (rc)
+		if (rc) {
+			mbox_put(mbox);
 			return rc;
+		}
 
 		nix_tm_copy_rsp_to_nix(nix, rsp);
+		mbox_put(mbox);
 	}
 
 	/* Save thresholds */
@@ -818,17 +837,20 @@ roc_nix_tm_node_shaper_update(struct roc_nix *roc_nix, uint32_t node_id,
 	node->flags &= ~NIX_TM_NODE_ENABLED;
 
 	/* Flush the specific node with SW_XOFF */
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 	req->lvl = node->hw_lvl;
 	k = nix_tm_sw_xoff_prep(node, true, req->reg, req->regval);
 	req->num_regs = k;
 
 	rc = mbox_process(mbox);
-	if (rc)
+	if (rc) {
+		mbox_put(mbox);
 		return rc;
+	}
+	mbox_put(mbox);
 
 	/* Update the PIR/CIR and clear SW XOFF */
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 	req->lvl = node->hw_lvl;
 
 	k = nix_tm_shaper_reg_prep(node, profile, req->reg, req->regval);
@@ -837,6 +859,7 @@ roc_nix_tm_node_shaper_update(struct roc_nix *roc_nix, uint32_t node_id,
 
 	req->num_regs = k;
 	rc = mbox_process(mbox);
+	mbox_put(mbox);
 	if (!rc)
 		node->flags |= NIX_TM_NODE_ENABLED;
 	return rc;
@@ -891,16 +914,17 @@ roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
 			return NIX_ERR_TM_SQ_UPDATE_FAIL;
 	} else {
 		/* XOFF Parent node */
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		req->lvl = node->parent->hw_lvl;
 		req->num_regs = nix_tm_sw_xoff_prep(node->parent, true,
 						    req->reg, req->regval);
 		rc = mbox_process(mbox);
+		mbox_put(mbox);
 		if (rc)
 			return rc;
 
 		/* XOFF this node and all other siblings */
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		req->lvl = node->hw_lvl;
 
 		k = 0;
@@ -911,10 +935,11 @@ roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
 			if (k >= MAX_REGS_PER_MBOX_MSG) {
 				req->num_regs = k;
 				rc = mbox_process(mbox);
+				mbox_put(mbox);
 				if (rc)
 					return rc;
 				k = 0;
-				req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+				req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 				req->lvl = node->hw_lvl;
 			}
 		}
@@ -922,20 +947,22 @@ roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
 		if (k) {
 			req->num_regs = k;
 			rc = mbox_process(mbox);
+			mbox_put(mbox);
 			if (rc)
 				return rc;
 			/* Update new weight for current node */
-			req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+			req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		}
 
 		req->lvl = node->hw_lvl;
 		req->num_regs = nix_tm_sched_reg_prep(nix, node, req->reg, req->regval);
 		rc = mbox_process(mbox);
+		mbox_put(mbox);
 		if (rc)
 			return rc;
 
 		/* XON this node and all other siblings */
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		req->lvl = node->hw_lvl;
 
 		k = 0;
@@ -946,10 +973,11 @@ roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
 			if (k >= MAX_REGS_PER_MBOX_MSG) {
 				req->num_regs = k;
 				rc = mbox_process(mbox);
+				mbox_put(mbox);
 				if (rc)
 					return rc;
 				k = 0;
-				req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+				req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 				req->lvl = node->hw_lvl;
 			}
 		}
@@ -957,15 +985,17 @@ roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
 		if (k) {
 			req->num_regs = k;
 			rc = mbox_process(mbox);
+			mbox_put(mbox);
 			if (rc)
 				return rc;
 			/* XON Parent node */
-			req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+			req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		}
 
 		req->lvl = node->parent->hw_lvl;
 		req->num_regs = nix_tm_sw_xoff_prep(node->parent, false, req->reg, req->regval);
 		rc = mbox_process(mbox);
+		mbox_put(mbox);
 		if (rc)
 			return rc;
 	}
@@ -1017,20 +1047,22 @@ roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate)
 	int rc;
 
 	if ((nix->tm_tree == ROC_NIX_TM_USER) ||
-	    !(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
+	    !(nix->tm_flags & NIX_TM_HIERARCHY_ENA)) {
 		return NIX_ERR_TM_INVALID_TREE;
+	}
 
 	node = nix_tm_node_search(nix, qid, nix->tm_tree);
 
 	/* check if we found a valid leaf node */
 	if (!node || !nix_tm_is_leaf(nix, node->lvl) || !node->parent ||
-	    node->parent->hw_id == NIX_TM_HW_ID_INVALID)
+	    node->parent->hw_id == NIX_TM_HW_ID_INVALID) {
 		return NIX_ERR_TM_INVALID_NODE;
+	}
 
 	parent = node->parent;
 	flags = parent->flags;
 
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 	req->lvl = NIX_TXSCH_LVL_MDQ;
 	reg = req->reg;
 	regval = req->regval;
@@ -1059,6 +1091,7 @@ roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate)
 exit:
 	req->num_regs = k;
 	rc = mbox_process(mbox);
+	mbox_put(mbox);
 	if (rc)
 		return rc;
 
@@ -1084,14 +1117,17 @@ roc_nix_tm_fini(struct roc_nix *roc_nix)
 		plt_err("Failed to freeup existing nodes or rsrcs, rc=%d", rc);
 
 	/* Free all other hw resources */
-	req = mbox_alloc_msg_nix_txsch_free(mbox);
-	if (req == NULL)
+	req = mbox_alloc_msg_nix_txsch_free(mbox_get(mbox));
+	if (req == NULL) {
+		mbox_put(mbox);
 		return;
+	}
 
 	req->flags = TXSCHQ_FREE_ALL;
 	rc = mbox_process(mbox);
 	if (rc)
 		plt_err("Failed to freeup all res, rc=%d", rc);
+	mbox_put(mbox);
 
 	for (hw_lvl = 0; hw_lvl < NIX_TXSCH_LVL_CNT; hw_lvl++) {
 		plt_bitmap_reset(nix->schq_bmp[hw_lvl]);
@@ -1110,7 +1146,7 @@ int
 roc_nix_tm_rsrc_count(struct roc_nix *roc_nix, uint16_t schq[ROC_TM_LVL_MAX])
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct free_rsrcs_rsp *rsp;
 	uint8_t hw_lvl;
 	int rc, i;
@@ -1119,7 +1155,7 @@ roc_nix_tm_rsrc_count(struct roc_nix *roc_nix, uint16_t schq[ROC_TM_LVL_MAX])
 	mbox_alloc_msg_free_rsrc_cnt(mbox);
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
-		return rc;
+		goto exit;
 
 	for (i = 0; i < ROC_TM_LVL_MAX; i++) {
 		hw_lvl = nix_tm_lvl2nix(nix, i);
@@ -1130,7 +1166,10 @@ roc_nix_tm_rsrc_count(struct roc_nix *roc_nix, uint16_t schq[ROC_TM_LVL_MAX])
 						rsp->schq[hw_lvl]);
 	}
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 void

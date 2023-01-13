@@ -332,17 +332,18 @@ roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data)
 int
 nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 {
-	struct mbox *mbox = dev->mbox;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc;
 
 	if (roc_model_is_cn9k()) {
 		struct nix_aq_enq_rsp *rsp;
 		struct nix_aq_enq_req *aq;
-		int rc;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = ctype;
@@ -350,7 +351,7 @@ nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
-			return rc;
+			goto exit;
 		if (ctype == NIX_AQ_CTYPE_RQ)
 			*ctx_p = &rsp->rq;
 		else if (ctype == NIX_AQ_CTYPE_SQ)
@@ -362,8 +363,10 @@ nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = ctype;
@@ -371,7 +374,7 @@ nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
-			return rc;
+			goto exit;
 
 		if (ctype == NIX_AQ_CTYPE_RQ)
 			*ctx_p = &rsp->rq;
@@ -380,7 +383,10 @@ nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 		else
 			*ctx_p = &rsp->cq;
 	}
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static inline void
@@ -739,14 +745,18 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 		}
 
 		/* Dump SQB Aura minimal info */
-		npa_aq = mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
-		if (npa_aq == NULL)
-			return -ENOSPC;
+		npa_aq = mbox_alloc_msg_npa_aq_enq(mbox_get(npa_lf->mbox));
+		if (npa_aq == NULL) {
+			rc = -ENOSPC;
+			mbox_put(npa_lf->mbox);
+			goto fail;
+		}
 		npa_aq->aura_id = sqb_aura;
 		npa_aq->ctype = NPA_AQ_CTYPE_AURA;
 		npa_aq->op = NPA_AQ_INSTOP_READ;
 
 		rc = mbox_process_msg(npa_lf->mbox, (void *)&npa_rsp);
+		mbox_put(npa_lf->mbox);
 		if (rc) {
 			plt_err("Failed to get sq's sqb_aura context");
 			continue;
@@ -1109,7 +1119,7 @@ nix_tm_dump_lvl(struct nix *nix, struct nix_tm_node_list *list, uint8_t hw_lvl)
 		if (!k)
 			continue;
 
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		req->read = 1;
 		req->lvl = node->hw_lvl;
 		req->num_regs = k;
@@ -1122,6 +1132,7 @@ nix_tm_dump_lvl(struct nix *nix, struct nix_tm_node_list *list, uint8_t hw_lvl)
 		} else {
 			nix_dump(file, "\t!!!Failed to dump registers!!!");
 		}
+		mbox_put(mbox);
 	}
 
 	if (found)
@@ -1134,7 +1145,7 @@ nix_tm_dump_lvl(struct nix *nix, struct nix_tm_node_list *list, uint8_t hw_lvl)
 		if (!k)
 			return;
 
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 		req->read = 1;
 		req->lvl = NIX_TXSCH_LVL_TL1;
 		req->num_regs = k;
@@ -1147,6 +1158,7 @@ nix_tm_dump_lvl(struct nix *nix, struct nix_tm_node_list *list, uint8_t hw_lvl)
 		} else {
 			nix_dump(file, "\t!!!Failed to dump registers!!!");
 		}
+		mbox_put(mbox);
 		nix_dump(file, "\n");
 	}
 }

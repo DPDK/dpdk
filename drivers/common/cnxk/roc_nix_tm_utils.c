@@ -1166,7 +1166,7 @@ roc_nix_tm_node_stats_get(struct roc_nix *roc_nix, uint32_t node_id, bool clear,
 
 	memset(n_stats, 0, sizeof(struct roc_nix_tm_node_stats));
 
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 	req->read = 1;
 	req->lvl = NIX_TXSCH_LVL_TL1;
 
@@ -1182,8 +1182,10 @@ roc_nix_tm_node_stats_get(struct roc_nix *roc_nix, uint32_t node_id, bool clear,
 	req->num_regs = i;
 
 	rc = mbox_process_msg(mbox, (void **)&rsp);
-	if (rc)
+	if (rc) {
+		mbox_put(mbox);
 		return rc;
+	}
 
 	/* Return stats */
 	n_stats->stats[ROC_NIX_TM_NODE_PKTS_DROPPED] = rsp->regval[0];
@@ -1194,13 +1196,14 @@ roc_nix_tm_node_stats_get(struct roc_nix *roc_nix, uint32_t node_id, bool clear,
 	n_stats->stats[ROC_NIX_TM_NODE_YELLOW_BYTES] = rsp->regval[5];
 	n_stats->stats[ROC_NIX_TM_NODE_RED_PKTS] = rsp->regval[6];
 	n_stats->stats[ROC_NIX_TM_NODE_RED_BYTES] = rsp->regval[7];
+	mbox_put(mbox);
 
 clear_stats:
 	if (!clear)
 		return 0;
 
 	/* Clear all the stats */
-	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
 	req->lvl = NIX_TXSCH_LVL_TL1;
 	i = 0;
 	req->reg[i++] = NIX_AF_TL1X_DROPPED_PACKETS(schq);
@@ -1213,7 +1216,9 @@ clear_stats:
 	req->reg[i++] = NIX_AF_TL1X_RED_BYTES(schq);
 	req->num_regs = i;
 
-	return mbox_process_msg(mbox, (void **)&rsp);
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	mbox_put(mbox);
+	return rc;
 }
 
 bool

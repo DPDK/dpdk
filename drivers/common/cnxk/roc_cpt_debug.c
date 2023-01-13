@@ -71,11 +71,14 @@ cpt_af_reg_read(struct roc_cpt *roc_cpt, uint64_t reg, uint64_t *val)
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
 	struct cpt_rd_wr_reg_msg *msg;
 	struct dev *dev = &cpt->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int ret;
 
-	msg = mbox_alloc_msg_cpt_rd_wr_register(dev->mbox);
-	if (msg == NULL)
-		return -EIO;
+	msg = mbox_alloc_msg_cpt_rd_wr_register(mbox);
+	if (msg == NULL) {
+		ret = -EIO;
+		goto exit;
+	}
 
 	msg->hdr.pcifunc = dev->pf_func;
 
@@ -84,12 +87,17 @@ cpt_af_reg_read(struct roc_cpt *roc_cpt, uint64_t reg, uint64_t *val)
 	msg->ret_val = val;
 
 	ret = mbox_process_msg(dev->mbox, (void *)&msg);
-	if (ret)
-		return -EIO;
+	if (ret) {
+		ret =  -EIO;
+		goto exit;
+	}
 
 	*val = msg->val;
 
-	return 0;
+	ret = 0;
+exit:
+	mbox_put(mbox);
+	return ret;
 }
 
 static int
@@ -99,16 +107,21 @@ cpt_sts_print(struct roc_cpt *roc_cpt)
 	struct dev *dev = &cpt->dev;
 	struct cpt_sts_req *req;
 	struct cpt_sts_rsp *rsp;
+	struct mbox *mbox = mbox_get(dev->mbox);
 	int ret;
 
-	req = mbox_alloc_msg_cpt_sts_get(dev->mbox);
-	if (req == NULL)
-		return -EIO;
+	req = mbox_alloc_msg_cpt_sts_get(mbox);
+	if (req == NULL) {
+		ret = -EIO;
+		goto exit;
+	}
 
 	req->blkaddr = 0;
 	ret = mbox_process_msg(dev->mbox, (void *)&rsp);
-	if (ret)
-		return -EIO;
+	if (ret) {
+		ret = -EIO;
+		goto exit;
+	}
 
 	plt_print("    %s:\t0x%016" PRIx64, "inst_req_pc", rsp->inst_req_pc);
 	plt_print("    %s:\t0x%016" PRIx64, "inst_lat_pc", rsp->inst_lat_pc);
@@ -161,7 +174,10 @@ cpt_sts_print(struct roc_cpt *roc_cpt)
 	plt_print("    %s:\t\t0x%016" PRIx64, "cptclk_cnt", rsp->cptclk_cnt);
 	plt_print("    %s:\t\t0x%016" PRIx64, "diag", rsp->diag);
 
-	return 0;
+	ret = 0;
+exit:
+	mbox_put(mbox);
+	return ret;
 }
 
 int

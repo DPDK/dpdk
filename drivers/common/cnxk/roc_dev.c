@@ -135,8 +135,6 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 	/* Enable interrupts */
 	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1S);
 
-	plt_spinlock_lock(&mdev->mbox_lock);
-
 	req_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
 	if (req_hdr->num_msgs != num_msg)
 		plt_err("Routed messages: %d received: %d", num_msg,
@@ -203,7 +201,6 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 
 		offset = mbox->rx_start + msg->next_msgoff;
 	}
-	plt_spinlock_unlock(&mdev->mbox_lock);
 
 	return req_hdr->num_msgs;
 }
@@ -225,6 +222,7 @@ vf_pf_process_msgs(struct dev *dev, uint16_t vf)
 
 	offset = mbox->rx_start + PLT_ALIGN(sizeof(*req_hdr), MBOX_MSG_ALIGN);
 
+	mbox_get(dev->mbox);
 	for (i = 0; i < req_hdr->num_msgs; i++) {
 		msg = (struct mbox_msghdr *)((uintptr_t)mdev->mbase + offset);
 		size = mbox->rx_start + msg->next_msgoff - offset;
@@ -278,6 +276,7 @@ vf_pf_process_msgs(struct dev *dev, uint16_t vf)
 		af_pf_wait_msg(dev, vf, routed);
 		mbox_reset(dev->mbox, 0);
 	}
+	mbox_put(dev->mbox);
 
 	/* Send mbox responses to VF */
 	if (mdev->num_msgs) {
@@ -1015,10 +1014,13 @@ static int
 dev_setup_shared_lmt_region(struct mbox *mbox, bool valid_iova, uint64_t iova)
 {
 	struct lmtst_tbl_setup_req *req;
+	int rc;
 
-	req = mbox_alloc_msg_lmtst_tbl_setup(mbox);
-	if (!req)
-		return -ENOSPC;
+	req = mbox_alloc_msg_lmtst_tbl_setup(mbox_get(mbox));
+	if (!req) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
 	/* This pcifunc is defined with primary pcifunc whose LMT address
 	 * will be shared. If call contains valid IOVA, following pcifunc
@@ -1028,7 +1030,10 @@ dev_setup_shared_lmt_region(struct mbox *mbox, bool valid_iova, uint64_t iova)
 	req->use_local_lmt_region = valid_iova;
 	req->lmt_iova = iova;
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 /* Total no of lines * size of each lmtline */

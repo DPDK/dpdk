@@ -763,4 +763,7 @@ int __roc_api roc_npa_pool_op_pc_reset(uint64_t aura_handle);
 int __roc_api roc_npa_aura_drop_set(uint64_t aura_handle, uint64_t limit,
 				    bool ena);
 
+void __roc_api roc_npa_dev_lock(void);
+void __roc_api roc_npa_dev_unlock(void);
+
 #endif /* _ROC_NPA_H_ */

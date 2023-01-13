@@ -54,7 +54,7 @@ static int
 nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 		      uint16_t reta[ROC_NIX_RSS_RETA_MAX], uint8_t lock_rx_ctx)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct nix_aq_enq_req *req;
 	uint16_t idx;
 	int rc;
@@ -67,10 +67,12 @@ nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 			 */
 			rc = mbox_process(mbox);
 			if (rc < 0)
-				return rc;
+				goto exit;
 			req = mbox_alloc_msg_nix_aq_enq(mbox);
-			if (!req)
-				return NIX_ERR_NO_MEM;
+			if (!req) {
+				rc =  NIX_ERR_NO_MEM;
+				goto exit;
+			}
 		}
 		req->rss.rq = reta[idx];
 		/* Fill AQ info */
@@ -88,10 +90,12 @@ nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 			 */
 			rc = mbox_process(mbox);
 			if (rc < 0)
-				return rc;
+				goto exit;
 			req = mbox_alloc_msg_nix_aq_enq(mbox);
-			if (!req)
-				return NIX_ERR_NO_MEM;
+			if (!req) {
+				rc =  NIX_ERR_NO_MEM;
+				goto exit;
+			}
 		}
 		req->rss.rq = reta[idx];
 		/* Fill AQ info */
@@ -102,16 +106,19 @@ nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 
 	rc = mbox_process(mbox);
 	if (rc < 0)
-		return rc;
+		goto exit;
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
 nix_rss_reta_set(struct nix *nix, uint8_t group,
 		 uint16_t reta[ROC_NIX_RSS_RETA_MAX], uint8_t lock_rx_ctx)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct nix_cn10k_aq_enq_req *req;
 	uint16_t idx;
 	int rc;
@@ -124,10 +131,12 @@ nix_rss_reta_set(struct nix *nix, uint8_t group,
 			 */
 			rc = mbox_process(mbox);
 			if (rc < 0)
-				return rc;
+				goto exit;
 			req = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-			if (!req)
-				return NIX_ERR_NO_MEM;
+			if (!req) {
+				rc =  NIX_ERR_NO_MEM;
+				goto exit;
+			}
 		}
 		req->rss.rq = reta[idx];
 		/* Fill AQ info */
@@ -145,10 +154,12 @@ nix_rss_reta_set(struct nix *nix, uint8_t group,
 			 */
 			rc = mbox_process(mbox);
 			if (rc < 0)
-				return rc;
+				goto exit;
 			req = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-			if (!req)
-				return NIX_ERR_NO_MEM;
+			if (!req) {
+				rc =  NIX_ERR_NO_MEM;
+				goto exit;
+			}
 		}
 		req->rss.rq = reta[idx];
 		/* Fill AQ info */
@@ -159,9 +170,12 @@ nix_rss_reta_set(struct nix *nix, uint8_t group,
 
 	rc = mbox_process(mbox);
 	if (rc < 0)
-		return rc;
+		goto exit;
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -205,25 +219,29 @@ roc_nix_rss_flowkey_set(struct roc_nix *roc_nix, uint8_t *alg_idx,
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct nix_rss_flowkey_cfg_rsp *rss_rsp;
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct nix_rss_flowkey_cfg *cfg;
 	int rc = -ENOSPC;
 
-	if (group >= ROC_NIX_RSS_GRPS)
-		return NIX_ERR_PARAM;
+	if (group >= ROC_NIX_RSS_GRPS) {
+		rc = NIX_ERR_PARAM;
+		goto exit;
+	}
 
 	cfg = mbox_alloc_msg_nix_rss_flowkey_cfg(mbox);
 	if (cfg == NULL)
-		return rc;
+		goto exit;
 	cfg->flowkey_cfg = flowkey;
 	cfg->mcam_index = mcam_index; /* -1 indicates default group */
 	cfg->group = group;	      /* 0 is default group */
 	rc = mbox_process_msg(mbox, (void *)&rss_rsp);
 	if (rc)
-		return rc;
+		goto exit;
 	if (alg_idx)
 		*alg_idx = rss_rsp->alg_idx;
 
+exit:
+	mbox_put(mbox);
 	return rc;
 }
 

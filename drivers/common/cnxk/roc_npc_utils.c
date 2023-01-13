@@ -269,11 +269,14 @@ npc_mcam_init(struct npc *npc, struct roc_npc_flow *flow, int mcam_id)
 {
 	struct npc_mcam_write_entry_req *req;
 	struct npc_mcam_write_entry_rsq *rsp;
+	struct mbox *mbox = mbox_get(npc->mbox);
 	int rc = 0, idx;
 
-	req = mbox_alloc_msg_npc_mcam_write_entry(npc->mbox);
-	if (req == NULL)
-		return -ENOSPC;
+	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
+	if (req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 	req->set_cntr = 0;
 	req->cntr = 0;
 	req->entry = mcam_id;
@@ -299,12 +302,15 @@ npc_mcam_init(struct npc *npc, struct roc_npc_flow *flow, int mcam_id)
 		req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
 	}
 
-	rc = mbox_process_msg(npc->mbox, (void *)&rsp);
+	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc != 0) {
 		plt_err("npc: mcam initialisation write failed");
-		return rc;
+		goto exit;
 	}
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -317,18 +323,21 @@ npc_mcam_move(struct mbox *mbox, uint16_t old_ent, uint16_t new_ent)
 	/* Old entry is disabled & it's contents are moved to new_entry,
 	 * new entry is enabled finally.
 	 */
-	req = mbox_alloc_msg_npc_mcam_shift_entry(mbox);
+	req = mbox_alloc_msg_npc_mcam_shift_entry(mbox_get(mbox));
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->curr_entry[0] = old_ent;
 	req->new_entry[0] = new_ent;
 	req->shift_count = 1;
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
-		return rc;
+		goto exit;
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 enum SHIFT_DIR {
@@ -567,9 +576,9 @@ npc_allocate_mcam_entry(struct mbox *mbox, int prio,
 	struct npc_mcam_alloc_entry_rsp *rsp;
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox);
+	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox_get(mbox));
 	if (req == NULL)
-		return rc;
+		goto exit;
 	req->contig = 1;
 	req->count = 1;
 	req->priority = prio;
@@ -577,14 +586,19 @@ npc_allocate_mcam_entry(struct mbox *mbox, int prio,
 
 	rc = mbox_process_msg(mbox, (void *)&rsp_cmd);
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (!rsp_cmd->count)
-		return -ENOSPC;
+	if (!rsp_cmd->count) {
+		rc = -ENOSPC;
+		goto exit;
+	}
 
 	mbox_memcpy(rsp_local, rsp_cmd, sizeof(*rsp));
 
-	return 0;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static void

@@ -65,12 +65,18 @@ int
 roc_nix_stats_reset(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	int rc;
 
-	if (mbox_alloc_msg_nix_stats_rst(mbox) == NULL)
-		return -ENOMEM;
+	if (mbox_alloc_msg_nix_stats_rst(mbox) == NULL) {
+		rc = -ENOMEM;
+		goto exit;
+	}
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
@@ -141,15 +147,17 @@ nix_stat_tx_queue_get(struct nix *nix, uint16_t qid,
 static int
 nix_stat_rx_queue_reset(struct nix *nix, uint16_t qid)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	int rc;
 
 	if (roc_model_is_cn9k()) {
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_RQ;
@@ -170,8 +178,10 @@ nix_stat_rx_queue_reset(struct nix *nix, uint16_t qid)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_RQ;
@@ -191,21 +201,26 @@ nix_stat_rx_queue_reset(struct nix *nix, uint16_t qid)
 	}
 
 	rc = mbox_process(mbox);
-	return rc ? NIX_ERR_AQ_WRITE_FAILED : 0;
+	rc = rc ? NIX_ERR_AQ_WRITE_FAILED : 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static int
 nix_stat_tx_queue_reset(struct nix *nix, uint16_t qid)
 {
-	struct mbox *mbox = (&nix->dev)->mbox;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	int rc;
 
 	if (roc_model_is_cn9k()) {
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_SQ;
@@ -223,8 +238,10 @@ nix_stat_tx_queue_reset(struct nix *nix, uint16_t qid)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-		if (!aq)
-			return -ENOSPC;
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_SQ;
@@ -243,7 +260,10 @@ nix_stat_tx_queue_reset(struct nix *nix, uint16_t qid)
 	}
 
 	rc = mbox_process(mbox);
-	return rc ? NIX_ERR_AQ_WRITE_FAILED : 0;
+	rc = rc ? NIX_ERR_AQ_WRITE_FAILED : 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -363,15 +383,17 @@ roc_nix_xstats_get(struct roc_nix *roc_nix, struct roc_nix_xstat *xstats,
 		return count;
 
 	if (roc_model_is_cn9k()) {
-		req = mbox_alloc_msg_cgx_stats(mbox);
-		if (!req)
-			return -ENOSPC;
+		req = mbox_alloc_msg_cgx_stats(mbox_get(mbox));
+		if (!req) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		req->hdr.pcifunc = roc_nix_get_pf_func(roc_nix);
 
 		rc = mbox_process_msg(mbox, (void *)&cgx_resp);
 		if (rc)
-			return rc;
+			goto exit;
 
 		for (i = 0; i < roc_nix_num_rx_xstats(); i++) {
 			xstats[count].value =
@@ -387,15 +409,17 @@ roc_nix_xstats_get(struct roc_nix *roc_nix, struct roc_nix_xstat *xstats,
 			count++;
 		}
 	} else {
-		req = mbox_alloc_msg_rpm_stats(mbox);
-		if (!req)
-			return -ENOSPC;
+		req = mbox_alloc_msg_rpm_stats(mbox_get(mbox));
+		if (!req) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
 		req->hdr.pcifunc = roc_nix_get_pf_func(roc_nix);
 
 		rc = mbox_process_msg(mbox, (void *)&rpm_resp);
 		if (rc)
-			return rc;
+			goto exit;
 
 		for (i = 0; i < roc_nix_num_rx_xstats(); i++) {
 			xstats[count].value =
@@ -412,7 +436,10 @@ roc_nix_xstats_get(struct roc_nix *roc_nix, struct roc_nix_xstat *xstats,
 		}
 	}
 
-	return count;
+	rc = count;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
