@@ -573,6 +573,26 @@ vhost_shadow_enqueue_packed(struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline void
+vhost_async_shadow_enqueue_packed(struct vhost_virtqueue *vq,
+				   uint32_t *len,
+				   uint16_t *id,
+				   uint16_t *count,
+				   uint16_t num_buffers)
+{
+	uint16_t i;
+	struct vhost_async *async = vq->async;
+
+	for (i = 0; i < num_buffers; i++) {
+		async->buffers_packed[async->buffer_idx_packed].id  = id[i];
+		async->buffers_packed[async->buffer_idx_packed].len = len[i];
+		async->buffers_packed[async->buffer_idx_packed].count = count[i];
+		async->buffer_idx_packed++;
+		if (async->buffer_idx_packed >= vq->size)
+			async->buffer_idx_packed -= vq->size;
+	}
+}
+
+static __rte_always_inline void
 vhost_shadow_enqueue_single_packed(struct virtio_net *dev,
 				   struct vhost_virtqueue *vq,
 				   uint32_t *len,
@@ -1653,23 +1673,6 @@ store_dma_desc_info_split(struct vring_used_elem *s_ring, struct vring_used_elem
 	}
 }
 
-static __rte_always_inline void
-store_dma_desc_info_packed(struct vring_used_elem_packed *s_ring,
-		struct vring_used_elem_packed *d_ring,
-		uint16_t ring_size, uint16_t s_idx, uint16_t d_idx, uint16_t count)
-{
-	size_t elem_size = sizeof(struct vring_used_elem_packed);
-
-	if (d_idx + count <= ring_size) {
-		rte_memcpy(d_ring + d_idx, s_ring + s_idx, count * elem_size);
-	} else {
-		uint16_t size = ring_size - d_idx;
-
-		rte_memcpy(d_ring + d_idx, s_ring + s_idx, size * elem_size);
-		rte_memcpy(d_ring, s_ring + s_idx + size, (count - size) * elem_size);
-	}
-}
-
 static __rte_noinline uint32_t
 virtio_dev_rx_async_submit_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint32_t count, int16_t dma_id, uint16_t vchan_id)
@@ -1828,7 +1831,8 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 	if (unlikely(mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec, *nr_buffers, true) < 0))
 		return -1;
 
-	vhost_shadow_enqueue_packed(vq, buffer_len, buffer_buf_id, buffer_desc_count, *nr_buffers);
+	vhost_async_shadow_enqueue_packed(vq, buffer_len, buffer_buf_id,
+					buffer_desc_count, *nr_buffers);
 
 	return 0;
 }
@@ -1858,6 +1862,7 @@ dma_error_handler_packed(struct vhost_virtqueue *vq, uint16_t slot_idx,
 {
 	uint16_t descs_err = 0;
 	uint16_t buffers_err = 0;
+	struct vhost_async *async = vq->async;
 	struct async_inflight_info *pkts_info = vq->async->pkts_info;
 
 	*pkt_idx -= nr_err;
@@ -1875,7 +1880,10 @@ dma_error_handler_packed(struct vhost_virtqueue *vq, uint16_t slot_idx,
 		vq->avail_wrap_counter ^= 1;
 	}
 
-	vq->shadow_used_idx -= buffers_err;
+	if (async->buffer_idx_packed >= buffers_err)
+		async->buffer_idx_packed -= buffers_err;
+	else
+		async->buffer_idx_packed = async->buffer_idx_packed + vq->size - buffers_err;
 }
 
 static __rte_noinline uint32_t
@@ -1927,23 +1935,11 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev, struct vhost_virtqueue
 		dma_error_handler_packed(vq, slot_idx, pkt_err, &pkt_idx);
 	}
 
-	if (likely(vq->shadow_used_idx)) {
-		/* keep used descriptors. */
-		store_dma_desc_info_packed(vq->shadow_used_packed, async->buffers_packed,
-					vq->size, 0, async->buffer_idx_packed,
-					vq->shadow_used_idx);
+	async->pkts_idx += pkt_idx;
+	if (async->pkts_idx >= vq->size)
+		async->pkts_idx -= vq->size;
 
-		async->buffer_idx_packed += vq->shadow_used_idx;
-		if (async->buffer_idx_packed >= vq->size)
-			async->buffer_idx_packed -= vq->size;
-
-		async->pkts_idx += pkt_idx;
-		if (async->pkts_idx >= vq->size)
-			async->pkts_idx -= vq->size;
-
-		vq->shadow_used_idx = 0;
-		async->pkts_inflight_n += pkt_idx;
-	}
+	async->pkts_inflight_n += pkt_idx;
 
 	return pkt_idx;
 }
