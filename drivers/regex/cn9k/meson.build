@@ -8,10 +8,10 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     subdir_done()
 endif
 
-lib = cc.find_library('librxp_compiler', required: false)
+lib = cc.find_library('rxp_compiler', required: false)
 if lib.found()
     ext_deps += lib
-    ext_deps += cc.find_library('libstdc++', required: true)
+    ext_deps += cc.find_library('stdc++', required: true)
     cflags += ['-DREE_COMPILER_SDK']
 endif
 
