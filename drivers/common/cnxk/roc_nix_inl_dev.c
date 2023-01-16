@@ -13,9 +13,7 @@
 #define NIX_INL_LF_RX_CFG                                                      \
 	(ROC_NIX_LF_RX_CFG_DROP_RE | ROC_NIX_LF_RX_CFG_L2_LEN_ERR |            \
 	 ROC_NIX_LF_RX_CFG_IP6_UDP_OPT | ROC_NIX_LF_RX_CFG_DIS_APAD |          \
-	 ROC_NIX_LF_RX_CFG_CSUM_IL4 | ROC_NIX_LF_RX_CFG_CSUM_OL4 |             \
-	 ROC_NIX_LF_RX_CFG_LEN_IL4 | ROC_NIX_LF_RX_CFG_LEN_IL3 |               \
-	 ROC_NIX_LF_RX_CFG_LEN_OL4 | ROC_NIX_LF_RX_CFG_LEN_OL3)
+	 ROC_NIX_LF_RX_CFG_LEN_IL3 | ROC_NIX_LF_RX_CFG_LEN_OL3)
 
 extern uint32_t soft_exp_consumer_cnt;
 static bool soft_exp_poll_thread_exit = true;
