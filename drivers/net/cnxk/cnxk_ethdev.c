@@ -1934,6 +1934,8 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct eth_dev_ops *dev_ops = eth_dev->dev_ops;
+	struct cnxk_pfc_cfg *pfc_cfg = &dev->pfc_cfg;
+	struct cnxk_fc_cfg *fc_cfg = &dev->fc_cfg;
 	struct rte_eth_pfc_queue_conf pfc_conf;
 	struct roc_nix *nix = &dev->nix;
 	struct rte_eth_fc_conf fc_conf;
@@ -1957,21 +1959,27 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	/* Restore 802.3 Flow control configuration */
 	memset(&pfc_conf, 0, sizeof(struct rte_eth_pfc_queue_conf));
 	memset(&fc_conf, 0, sizeof(struct rte_eth_fc_conf));
-	fc_conf.mode = RTE_ETH_FC_NONE;
-	rc = cnxk_nix_flow_ctrl_set(eth_dev, &fc_conf);
-
-	pfc_conf.mode = RTE_ETH_FC_NONE;
-	for (i = 0; i < RTE_MAX(eth_dev->data->nb_rx_queues,
-				eth_dev->data->nb_tx_queues);
-	     i++) {
-		pfc_conf.rx_pause.tc = ROC_NIX_PFC_CLASS_INVALID;
-		pfc_conf.rx_pause.tx_qid = i;
-		pfc_conf.tx_pause.tc = ROC_NIX_PFC_CLASS_INVALID;
-		pfc_conf.tx_pause.rx_qid = i;
-		rc = cnxk_nix_priority_flow_ctrl_queue_config(eth_dev,
-							      &pfc_conf);
-		if (rc && rc != -ENOTSUP)
-			plt_err("Failed to reset PFC. error code(%d)", rc);
+	if (fc_cfg->rx_pause || fc_cfg->tx_pause) {
+		fc_conf.mode = RTE_ETH_FC_NONE;
+		rc = cnxk_nix_flow_ctrl_set(eth_dev, &fc_conf);
+		if (rc < 0)
+			plt_err("Failed to reset control flow. error code(%d)",
+					rc);
+	}
+	if (pfc_cfg->rx_pause_en || pfc_cfg->tx_pause_en) {
+		for (i = 0; i < RTE_MAX(eth_dev->data->nb_rx_queues,
+					eth_dev->data->nb_tx_queues);
+		     i++) {
+			pfc_conf.mode = RTE_ETH_FC_NONE;
+			pfc_conf.rx_pause.tc = ROC_NIX_PFC_CLASS_INVALID;
+			pfc_conf.rx_pause.tx_qid = i;
+			pfc_conf.tx_pause.tc = ROC_NIX_PFC_CLASS_INVALID;
+			pfc_conf.tx_pause.rx_qid = i;
+			rc = cnxk_nix_priority_flow_ctrl_queue_config(eth_dev,
+					&pfc_conf);
+			if (rc && rc != -ENOTSUP)
+				plt_err("Failed to reset PFC. error code(%d)", rc);
+		}
 	}
 
 	/* Disable and free rte_meter entries */
