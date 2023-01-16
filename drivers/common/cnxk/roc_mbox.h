@@ -266,7 +266,7 @@ struct mbox_msghdr {
 	  msg_rsp)                                                             \
 	M(NIX_RX_SW_SYNC, 0x8022, nix_rx_sw_sync, msg_req, msg_rsp)            \
 	M(NIX_READ_INLINE_IPSEC_CFG, 0x8023, nix_read_inline_ipsec_cfg,        \
-	  msg_req, nix_inline_ipsec_cfg)				       \
+	  msg_req, nix_inline_ipsec_cfg)                                       \
 	M(NIX_LF_INLINE_RQ_CFG, 0x8024, nix_lf_inline_rq_cfg,                  \
 	  nix_rq_cpt_field_mask_cfg_req, msg_rsp)                              \
 	M(NIX_SPI_TO_SA_ADD, 0x8026, nix_spi_to_sa_add, nix_spi_to_sa_add_req, \
@@ -1198,6 +1198,8 @@ struct nix_inline_ipsec_cfg {
 		uint8_t __io cpt_slot;
 	} inst_qsel;
 	uint8_t __io enable;
+	uint16_t __io bpid;
+	uint32_t __io credit_th;
 };
 
 /* Per NIX LF inline IPSec configuration */
@@ -1503,6 +1505,8 @@ struct cpt_rx_inline_lf_cfg_msg {
 	uint16_t __io param2;
 	uint16_t __io opcode;
 	uint32_t __io credit;
+	uint32_t __io credit_th;
+	uint16_t __io bpid;
 	uint32_t __io reserved;
 };
 

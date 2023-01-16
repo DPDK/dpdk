@@ -278,9 +278,10 @@ roc_cpt_inline_ipsec_cfg(struct dev *cpt_dev, uint8_t lf_id,
 
 int
 roc_cpt_inline_ipsec_inb_cfg_read(struct roc_cpt *roc_cpt,
-				  struct nix_inline_ipsec_cfg *inb_cfg)
+				  struct roc_cpt_inline_ipsec_inb_cfg *cfg)
 {
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
+	struct nix_inline_ipsec_cfg *inb_cfg;
 	struct dev *dev = &cpt->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
 	struct msg_req *req;
@@ -293,6 +294,17 @@ roc_cpt_inline_ipsec_inb_cfg_read(struct roc_cpt *roc_cpt,
 	}
 
 	rc = mbox_process_msg(mbox, (void *)&inb_cfg);
+	if (rc) {
+		rc = -EIO;
+		goto exit;
+	}
+	cfg->cpt_credit = inb_cfg->cpt_credit;
+	cfg->egrp = inb_cfg->gen_cfg.egrp;
+	cfg->opcode = inb_cfg->gen_cfg.opcode;
+	cfg->param1 = inb_cfg->gen_cfg.param1;
+	cfg->param2 = inb_cfg->gen_cfg.param2;
+	cfg->bpid = inb_cfg->bpid;
+	cfg->credit_th = inb_cfg->credit_th;
 exit:
 	mbox_put(mbox);
 	return rc;

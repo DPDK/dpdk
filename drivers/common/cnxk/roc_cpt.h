@@ -148,6 +148,16 @@ struct roc_cpt_rxc_time_cfg {
 /* CPT MISC interrupt callback */
 typedef void (*roc_cpt_int_misc_cb_t)(struct roc_cpt_lf *lf, void *args);
 
+struct roc_cpt_inline_ipsec_inb_cfg {
+	uint32_t cpt_credit;
+	uint16_t opcode;
+	uint16_t param1;
+	uint16_t param2;
+	uint16_t bpid;
+	uint32_t credit_th;
+	uint8_t egrp;
+};
+
 int __roc_api roc_cpt_rxc_time_cfg(struct roc_cpt *roc_cpt,
 				   struct roc_cpt_rxc_time_cfg *cfg);
 int __roc_api roc_cpt_dev_init(struct roc_cpt *roc_cpt);
@@ -163,8 +173,8 @@ int __roc_api roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr,
 int __roc_api roc_cpt_lf_ctx_reload(struct roc_cpt_lf *lf, void *cptr);
 int __roc_api roc_cpt_inline_ipsec_cfg(struct dev *dev, uint8_t slot,
 				       struct roc_nix *nix);
-int __roc_api roc_cpt_inline_ipsec_inb_cfg_read(
-	struct roc_cpt *roc_cpt, struct nix_inline_ipsec_cfg *inb_cfg);
+int __roc_api roc_cpt_inline_ipsec_inb_cfg_read(struct roc_cpt *roc_cpt,
+					struct roc_cpt_inline_ipsec_inb_cfg *cfg);
 int __roc_api roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt,
 					   uint16_t param1, uint16_t param2,
 					   uint16_t opcode);
