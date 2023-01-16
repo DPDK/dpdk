@@ -6205,7 +6205,7 @@ flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 				   "cannot allocate resource memory");
 		return NULL;
 	}
-	rte_memcpy(&entry->ft_type,
+	rte_memcpy(RTE_PTR_ADD(entry, offsetof(typeof(*entry), ft_type)),
 		   RTE_PTR_ADD(ref, offsetof(typeof(*ref), ft_type)),
 		   key_len + data_len);
 	if (entry->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
