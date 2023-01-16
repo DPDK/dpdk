@@ -212,6 +212,9 @@ cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 	struct roc_nix *nix = &dev->nix;
 	int mode;
 
+	if (roc_nix_is_sdp(nix))
+		return 0;
+
 	mode = roc_nix_fc_mode_get(nix);
 	if (mode < 0)
 		return mode;
