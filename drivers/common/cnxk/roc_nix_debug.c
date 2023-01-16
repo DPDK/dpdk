@@ -693,6 +693,7 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 	struct npa_aq_enq_req *npa_aq;
 	struct dev *dev = &nix->dev;
 	int sq = nix->nb_tx_queues;
+	struct roc_nix_rq *inl_rq;
 	struct npa_lf *npa_lf;
 	volatile void *ctx;
 	uint32_t sqb_aura;
@@ -720,6 +721,25 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 		}
 		nix_dump(file, "============== port=%d rq=%d ===============",
 			 roc_nix->port_id, q);
+		if (roc_model_is_cn9k())
+			nix_cn9k_lf_rq_dump(ctx, file);
+		else
+			nix_lf_rq_dump(ctx, file);
+	}
+
+	/* Dump inline dev RQ for this port */
+	inl_rq = roc_nix_inl_dev_rq(roc_nix);
+	if (inl_rq) {
+		struct idev_cfg *idev = idev_get_cfg();
+		struct nix_inl_dev *inl_dev = idev->nix_inl_dev;
+
+		rc = nix_q_ctx_get(&inl_dev->dev, NIX_AQ_CTYPE_RQ, inl_rq->qid, &ctx);
+		if (rc) {
+			plt_err("Failed to get rq context");
+			goto fail;
+		}
+		nix_dump(file, "============== port=%d inl_rq=%d ===============", roc_nix->port_id,
+			 inl_rq->qid);
 		if (roc_model_is_cn9k())
 			nix_cn9k_lf_rq_dump(ctx, file);
 		else
