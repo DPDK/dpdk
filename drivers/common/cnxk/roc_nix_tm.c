@@ -1817,6 +1817,7 @@ nix_tm_free_resources(struct roc_nix *roc_nix, uint32_t tree_mask, bool hw_only)
 	enum roc_nix_tm_tree tree;
 	uint32_t profile_id;
 	int rc = 0;
+	int hw_lvl;
 
 	for (tree = 0; tree < ROC_NIX_TM_TREE_MAX; tree++) {
 		if (!(tree_mask & BIT(tree)))
@@ -1825,20 +1826,25 @@ nix_tm_free_resources(struct roc_nix *roc_nix, uint32_t tree_mask, bool hw_only)
 		plt_tm_dbg("Freeing resources of tree %u", tree);
 
 		list = nix_tm_node_list(nix, tree);
-		next_node = TAILQ_FIRST(list);
-		while (next_node) {
-			node = next_node;
-			next_node = TAILQ_NEXT(node, node);
+		/* Flush and free resources from leaf */
+		for (hw_lvl = NIX_TXSCH_LVL_SMQ; hw_lvl < NIX_TXSCH_LVL_CNT; hw_lvl++) {
+			next_node = TAILQ_FIRST(list);
+			while (next_node) {
+				node = next_node;
+				next_node = TAILQ_NEXT(node, node);
+				if (node->hw_lvl != hw_lvl)
+					continue;
 
-			if (!nix_tm_is_leaf(nix, node->lvl) &&
-			    node->flags & NIX_TM_NODE_HWRES) {
-				/* Clear xoff in path for flush to succeed */
-				rc = nix_tm_clear_path_xoff(nix, node);
-				if (rc)
-					return rc;
-				rc = nix_tm_free_node_resource(nix, node);
-				if (rc)
-					return rc;
+				if (!nix_tm_is_leaf(nix, node->lvl) &&
+				    node->flags & NIX_TM_NODE_HWRES) {
+					/* Clear xoff in path for flush to succeed */
+					rc = nix_tm_clear_path_xoff(nix, node);
+					if (rc)
+						return rc;
+					rc = nix_tm_free_node_resource(nix, node);
+					if (rc)
+						return rc;
+				}
 			}
 		}
 
