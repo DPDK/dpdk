@@ -112,7 +112,6 @@ static int
 dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 {
 	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
-	struct dlb2_hw_resource_info *dlb2_info = &handle->info;
 	int ret;
 
 	/* Query driver resources provisioned for this device */
@@ -169,8 +168,6 @@ dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 
 	handle->info.hw_rsrc_max.reorder_window_size =
 		dlb2->hw_rsrc_query_results.num_hist_list_entries;
-
-	rte_memcpy(dlb2_info, &handle->info.hw_rsrc_max, sizeof(*dlb2_info));
 
 	return 0;
 }
