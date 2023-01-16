@@ -83,6 +83,7 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
 			goto exit;
+		nix->cpt_lbpid = rsp->chan_bpid[0] & 0x1FF;
 	} else {
 		req = mbox_alloc_msg_nix_cpt_bp_disable(mbox);
 		if (req == NULL)
@@ -94,6 +95,7 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
 			goto exit;
+		nix->cpt_lbpid = 0;
 	}
 
 exit:

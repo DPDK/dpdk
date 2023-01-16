@@ -798,7 +798,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	struct mbox *mbox = (&nix->dev)->mbox;
 	volatile struct nix_cq_ctx_s *cq_ctx;
 	uint16_t drop_thresh = NIX_CQ_THRESH_LEVEL;
-	uint16_t cpt_lbpid = nix->bpid[0];
+	uint16_t cpt_lbpid = nix->cpt_lbpid;
 	enum nix_q_size qsize;
 	size_t desc_sz;
 	int rc;
@@ -860,11 +860,14 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	if (roc_model_is_cn10kb() && roc_nix_inl_inb_is_enabled(roc_nix)) {
 		cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_CPT_DROP);
 		cq_ctx->cpt_drop_err_en = 1;
-		cq_ctx->lbp_ena = 1;
-		cq_ctx->lbpid_low = cpt_lbpid & 0x7;
-		cq_ctx->lbpid_med = (cpt_lbpid >> 3) & 0x7;
-		cq_ctx->lbpid_high = (cpt_lbpid >> 6) & 0x7;
-		cq_ctx->lbp_frac = NIX_CQ_LPB_THRESH_FRAC;
+		/* Enable Late BP only when non zero CPT BPID */
+		if (cpt_lbpid) {
+			cq_ctx->lbp_ena = 1;
+			cq_ctx->lbpid_low = cpt_lbpid & 0x7;
+			cq_ctx->lbpid_med = (cpt_lbpid >> 3) & 0x7;
+			cq_ctx->lbpid_high = (cpt_lbpid >> 6) & 0x7;
+			cq_ctx->lbp_frac = NIX_CQ_LPB_THRESH_FRAC;
+		}
 		drop_thresh = NIX_CQ_SEC_THRESH_LEVEL;
 	}
 
@@ -959,6 +962,10 @@ roc_nix_cq_fini(struct roc_nix_cq *cq)
 		aq->cq.bp_ena = 0;
 		aq->cq_mask.ena = ~aq->cq_mask.ena;
 		aq->cq_mask.bp_ena = ~aq->cq_mask.bp_ena;
+		if (roc_model_is_cn10kb() && roc_nix_inl_inb_is_enabled(cq->roc_nix)) {
+			aq->cq.lbp_ena = 0;
+			aq->cq_mask.lbp_ena = ~aq->cq_mask.lbp_ena;
+		}
 	}
 
 	rc = mbox_process(mbox);
