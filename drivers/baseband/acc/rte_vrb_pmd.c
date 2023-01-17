@@ -33,10 +33,10 @@ queue_offset(bool pf_device, uint8_t vf_id, uint8_t qgrp_id, uint16_t aq_id)
 {
 	if (pf_device)
 		return ((vf_id << 12) + (qgrp_id << 7) + (aq_id << 3) +
-				HWPfQmgrIngressAq);
+				VRB1_PfQmgrIngressAq);
 	else
 		return ((qgrp_id << 7) + (aq_id << 3) +
-				HWVfQmgrIngressAq);
+				VRB1_VfQmgrIngressAq);
 }
 
 enum {UL_4G = 0, UL_5G, DL_4G, DL_5G, FFT, NUM_ACC};
@@ -313,8 +313,8 @@ acc200_check_ir(struct acc_device *acc200_dev)
 	ring_data = acc200_dev->info_ring + (acc200_dev->info_ring_head & ACC_INFO_RING_MASK);
 
 	while (ring_data->valid) {
-		if ((ring_data->int_nb < ACC200_PF_INT_DMA_DL_DESC_IRQ) || (
-				ring_data->int_nb > ACC200_PF_INT_DMA_DL5G_DESC_IRQ)) {
+		if ((ring_data->int_nb < ACC_PF_INT_DMA_DL_DESC_IRQ) || (
+				ring_data->int_nb > ACC_PF_INT_DMA_DL5G_DESC_IRQ)) {
 			rte_bbdev_log(WARNING, "InfoRing: ITR:%d Info:0x%x",
 				ring_data->int_nb, ring_data->detailed_info);
 			/* Initialize Info Ring entry and move forward. */
@@ -343,11 +343,11 @@ acc200_dev_interrupt_handler(void *cb_arg)
 					ring_data->val, ring_data->int_nb);
 
 			switch (ring_data->int_nb) {
-			case ACC200_PF_INT_DMA_DL_DESC_IRQ:
-			case ACC200_PF_INT_DMA_UL_DESC_IRQ:
-			case ACC200_PF_INT_DMA_FFT_DESC_IRQ:
-			case ACC200_PF_INT_DMA_UL5G_DESC_IRQ:
-			case ACC200_PF_INT_DMA_DL5G_DESC_IRQ:
+			case ACC_PF_INT_DMA_DL_DESC_IRQ:
+			case ACC_PF_INT_DMA_UL_DESC_IRQ:
+			case ACC_PF_INT_DMA_FFT_DESC_IRQ:
+			case ACC_PF_INT_DMA_UL5G_DESC_IRQ:
+			case ACC_PF_INT_DMA_DL5G_DESC_IRQ:
 				deq_intr_det.queue_id = get_queue_id_from_ring_info(
 						dev->data, *ring_data);
 				if (deq_intr_det.queue_id == UINT16_MAX) {
@@ -370,11 +370,11 @@ acc200_dev_interrupt_handler(void *cb_arg)
 					"ACC200 VF Interrupt received, Info Ring data: 0x%x\n",
 					ring_data->val);
 			switch (ring_data->int_nb) {
-			case ACC200_VF_INT_DMA_DL_DESC_IRQ:
-			case ACC200_VF_INT_DMA_UL_DESC_IRQ:
-			case ACC200_VF_INT_DMA_FFT_DESC_IRQ:
-			case ACC200_VF_INT_DMA_UL5G_DESC_IRQ:
-			case ACC200_VF_INT_DMA_DL5G_DESC_IRQ:
+			case ACC_VF_INT_DMA_DL_DESC_IRQ:
+			case ACC_VF_INT_DMA_UL_DESC_IRQ:
+			case ACC_VF_INT_DMA_FFT_DESC_IRQ:
+			case ACC_VF_INT_DMA_UL5G_DESC_IRQ:
+			case ACC_VF_INT_DMA_DL5G_DESC_IRQ:
 				/* VFs are not aware of their vf_id - it's set to 0.  */
 				ring_data->vf_id = 0;
 				deq_intr_det.queue_id = get_queue_id_from_ring_info(
@@ -498,7 +498,7 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 
 	/* Release AXI from PF. */
 	if (d->pf_device)
-		acc_reg_write(d, HWPfDmaAxiControl, 1);
+		acc_reg_write(d, VRB1_PfDmaAxiControl, 1);
 
 	acc_reg_write(d, d->reg_addr->dma_ring_ul5g_hi, phys_high);
 	acc_reg_write(d, d->reg_addr->dma_ring_ul5g_lo, phys_low);
@@ -3423,7 +3423,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	rte_memcpy(&d->acc_conf, conf, sizeof(d->acc_conf));
 
 	/* Check we are already out of PG. */
-	status = acc_reg_read(d, HWPfHiSectionPowerGatingAck);
+	status = acc_reg_read(d, VRB1_PfHiSectionPowerGatingAck);
 	if (status > 0) {
 		if (status != ACC200_PG_MASK_0) {
 			rte_bbdev_log(ERR, "Unexpected status %x %x",
@@ -3431,69 +3431,69 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 			return -ENODEV;
 		}
 		/* Clock gate sections that will be un-PG. */
-		acc_reg_write(d, HWPfHiClkGateHystReg, ACC200_CLK_DIS);
+		acc_reg_write(d, VRB1_PfHiClkGateHystReg, ACC200_CLK_DIS);
 		/* Un-PG required sections. */
-		acc_reg_write(d, HWPfHiSectionPowerGatingReq,
+		acc_reg_write(d, VRB1_PfHiSectionPowerGatingReq,
 				ACC200_PG_MASK_1);
-		status = acc_reg_read(d, HWPfHiSectionPowerGatingAck);
+		status = acc_reg_read(d, VRB1_PfHiSectionPowerGatingAck);
 		if (status != ACC200_PG_MASK_1) {
 			rte_bbdev_log(ERR, "Unexpected status %x %x",
 					status, ACC200_PG_MASK_1);
 			return -ENODEV;
 		}
-		acc_reg_write(d, HWPfHiSectionPowerGatingReq,
+		acc_reg_write(d, VRB1_PfHiSectionPowerGatingReq,
 				ACC200_PG_MASK_2);
-		status = acc_reg_read(d, HWPfHiSectionPowerGatingAck);
+		status = acc_reg_read(d, VRB1_PfHiSectionPowerGatingAck);
 		if (status != ACC200_PG_MASK_2) {
 			rte_bbdev_log(ERR, "Unexpected status %x %x",
 					status, ACC200_PG_MASK_2);
 			return -ENODEV;
 		}
-		acc_reg_write(d, HWPfHiSectionPowerGatingReq,
+		acc_reg_write(d, VRB1_PfHiSectionPowerGatingReq,
 				ACC200_PG_MASK_3);
-		status = acc_reg_read(d, HWPfHiSectionPowerGatingAck);
+		status = acc_reg_read(d, VRB1_PfHiSectionPowerGatingAck);
 		if (status != ACC200_PG_MASK_3) {
 			rte_bbdev_log(ERR, "Unexpected status %x %x",
 					status, ACC200_PG_MASK_3);
 			return -ENODEV;
 		}
 		/* Enable clocks for all sections. */
-		acc_reg_write(d, HWPfHiClkGateHystReg, ACC200_CLK_EN);
+		acc_reg_write(d, VRB1_PfHiClkGateHystReg, ACC200_CLK_EN);
 	}
 
 	/* Explicitly releasing AXI as this may be stopped after PF FLR/BME. */
-	address = HWPfDmaAxiControl;
+	address = VRB1_PfDmaAxiControl;
 	value = 1;
 	acc_reg_write(d, address, value);
 
 	/* Set the fabric mode. */
-	address = HWPfFabricM2iBufferReg;
+	address = VRB1_PfFabricM2iBufferReg;
 	value = ACC200_FABRIC_MODE;
 	acc_reg_write(d, address, value);
 
 	/* Set default descriptor signature. */
-	address = HWPfDmaDescriptorSignatuture;
+	address = VRB1_PfDmaDescriptorSignatuture;
 	value = 0;
 	acc_reg_write(d, address, value);
 
 	/* Enable the Error Detection in DMA. */
 	value = ACC200_CFG_DMA_ERROR;
-	address = HWPfDmaErrorDetectionEn;
+	address = VRB1_PfDmaErrorDetectionEn;
 	acc_reg_write(d, address, value);
 
 	/* AXI Cache configuration. */
 	value = ACC200_CFG_AXI_CACHE;
-	address = HWPfDmaAxcacheReg;
+	address = VRB1_PfDmaAxcacheReg;
 	acc_reg_write(d, address, value);
 
 	/* AXI Response configuration. */
-	acc_reg_write(d, HWPfDmaCfgRrespBresp, 0x0);
+	acc_reg_write(d, VRB1_PfDmaCfgRrespBresp, 0x0);
 
 	/* Default DMA Configuration (Qmgr Enabled). */
-	address = HWPfDmaConfig0Reg;
+	address = VRB1_PfDmaConfig0Reg;
 	value = 0;
 	acc_reg_write(d, address, value);
-	address = HWPfDmaQmanen;
+	address = VRB1_PfDmaQmanen;
 	value = 0;
 	acc_reg_write(d, address, value);
 
@@ -3501,18 +3501,18 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	rlim = 0;
 	alen = 1;
 	timestamp = 0;
-	address = HWPfDmaConfig1Reg;
+	address = VRB1_PfDmaConfig1Reg;
 	value = (1 << 31) + (rlim << 8) + (timestamp << 6) + alen;
 	acc_reg_write(d, address, value);
 
 	/* Default FFT configuration. */
-	address = HWPfFftConfig0;
+	address = VRB1_PfFftConfig0;
 	value = ACC200_FFT_CFG_0;
 	acc_reg_write(d, address, value);
 
 	/* Configure DMA Qmanager addresses. */
-	address = HWPfDmaQmgrAddrReg;
-	value = HWPfQmgrEgressQueuesTemplate;
+	address = VRB1_PfDmaQmgrAddrReg;
+	value = VRB1_PfQmgrEgressQueuesTemplate;
 	acc_reg_write(d, address, value);
 
 	/* ===== Qmgr Configuration ===== */
@@ -3523,12 +3523,10 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 			conf->q_dl_5g.num_qgroups +
 			conf->q_fft.num_qgroups;
 	for (qg_idx = 0; qg_idx < ACC200_NUM_QGRPS; qg_idx++) {
-		address = HWPfQmgrDepthLog2Grp +
-				ACC_BYTES_IN_WORD * qg_idx;
+		address = VRB1_PfQmgrDepthLog2Grp + ACC_BYTES_IN_WORD * qg_idx;
 		value = aqDepth(qg_idx, conf);
 		acc_reg_write(d, address, value);
-		address = HWPfQmgrTholdGrp +
-				ACC_BYTES_IN_WORD * qg_idx;
+		address = VRB1_PfQmgrTholdGrp + ACC_BYTES_IN_WORD * qg_idx;
 		value = (1 << 16) + (1 << (aqDepth(qg_idx, conf) - 1));
 		acc_reg_write(d, address, value);
 	}
@@ -3536,21 +3534,21 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	/* Template Priority in incremental order. */
 	for (template_idx = 0; template_idx < ACC_NUM_TMPL;
 			template_idx++) {
-		address = HWPfQmgrGrpTmplateReg0Indx + ACC_BYTES_IN_WORD * template_idx;
+		address = VRB1_PfQmgrGrpTmplateReg0Indx + ACC_BYTES_IN_WORD * template_idx;
 		value = ACC_TMPL_PRI_0;
 		acc_reg_write(d, address, value);
-		address = HWPfQmgrGrpTmplateReg1Indx + ACC_BYTES_IN_WORD * template_idx;
+		address = VRB1_PfQmgrGrpTmplateReg1Indx + ACC_BYTES_IN_WORD * template_idx;
 		value = ACC_TMPL_PRI_1;
 		acc_reg_write(d, address, value);
-		address = HWPfQmgrGrpTmplateReg2indx + ACC_BYTES_IN_WORD * template_idx;
+		address = VRB1_PfQmgrGrpTmplateReg2indx + ACC_BYTES_IN_WORD * template_idx;
 		value = ACC_TMPL_PRI_2;
 		acc_reg_write(d, address, value);
-		address = HWPfQmgrGrpTmplateReg3Indx + ACC_BYTES_IN_WORD * template_idx;
+		address = VRB1_PfQmgrGrpTmplateReg3Indx + ACC_BYTES_IN_WORD * template_idx;
 		value = ACC_TMPL_PRI_3;
 		acc_reg_write(d, address, value);
 	}
 
-	address = HWPfQmgrGrpPriority;
+	address = VRB1_PfQmgrGrpPriority;
 	value = ACC200_CFG_QMGR_HI_P;
 	acc_reg_write(d, address, value);
 
@@ -3558,7 +3556,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	for (template_idx = 0; template_idx < ACC_NUM_TMPL;
 			template_idx++) {
 		value = 0;
-		address = HWPfQmgrGrpTmplateReg4Indx
+		address = VRB1_PfQmgrGrpTmplateReg4Indx
 				+ ACC_BYTES_IN_WORD * template_idx;
 		acc_reg_write(d, address, value);
 	}
@@ -3571,7 +3569,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	for (template_idx = ACC200_SIG_UL_4G;
 			template_idx <= ACC200_SIG_UL_4G_LAST;
 			template_idx++) {
-		address = HWPfQmgrGrpTmplateReg4Indx
+		address = VRB1_PfQmgrGrpTmplateReg4Indx
 				+ ACC_BYTES_IN_WORD * template_idx;
 		acc_reg_write(d, address, value);
 	}
@@ -3586,9 +3584,9 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 			template_idx <= ACC200_SIG_UL_5G_LAST;
 			template_idx++) {
 		/* Check engine power-on status */
-		address = HwPfFecUl5gIbDebugReg + ACC_ENGINE_OFFSET * template_idx;
+		address = VRB1_PfFecUl5gIbDebugReg + ACC_ENGINE_OFFSET * template_idx;
 		status = (acc_reg_read(d, address) >> 4) & 0x7;
-		address = HWPfQmgrGrpTmplateReg4Indx
+		address = VRB1_PfQmgrGrpTmplateReg4Indx
 				+ ACC_BYTES_IN_WORD * template_idx;
 		if (status == 1) {
 			acc_reg_write(d, address, value);
@@ -3606,7 +3604,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	for (template_idx = ACC200_SIG_DL_4G;
 			template_idx <= ACC200_SIG_DL_4G_LAST;
 			template_idx++) {
-		address = HWPfQmgrGrpTmplateReg4Indx
+		address = VRB1_PfQmgrGrpTmplateReg4Indx
 				+ ACC_BYTES_IN_WORD * template_idx;
 		acc_reg_write(d, address, value);
 	}
@@ -3619,7 +3617,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	for (template_idx = ACC200_SIG_DL_5G;
 			template_idx <= ACC200_SIG_DL_5G_LAST;
 			template_idx++) {
-		address = HWPfQmgrGrpTmplateReg4Indx
+		address = VRB1_PfQmgrGrpTmplateReg4Indx
 				+ ACC_BYTES_IN_WORD * template_idx;
 		acc_reg_write(d, address, value);
 	}
@@ -3632,7 +3630,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	for (template_idx = ACC200_SIG_FFT;
 			template_idx <= ACC200_SIG_FFT_LAST;
 			template_idx++) {
-		address = HWPfQmgrGrpTmplateReg4Indx
+		address = VRB1_PfQmgrGrpTmplateReg4Indx
 				+ ACC_BYTES_IN_WORD * template_idx;
 		acc_reg_write(d, address, value);
 	}
@@ -3644,17 +3642,17 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 		acc = accFromQgid(qg_idx, conf);
 		value |= qman_func_id[acc] << (qg_idx * 4);
 	}
-	acc_reg_write(d, HWPfQmgrGrpFunction0, value);
+	acc_reg_write(d, VRB1_PfQmgrGrpFunction0, value);
 	value = 0;
 	for (qg_idx = 0; qg_idx < ACC_NUM_QGRPS_PER_WORD; qg_idx++) {
 		acc = accFromQgid(qg_idx + ACC_NUM_QGRPS_PER_WORD, conf);
 		value |= qman_func_id[acc] << (qg_idx * 4);
 	}
-	acc_reg_write(d, HWPfQmgrGrpFunction1, value);
+	acc_reg_write(d, VRB1_PfQmgrGrpFunction1, value);
 
 	/* Configuration of the Arbitration QGroup depth to 1. */
 	for (qg_idx = 0; qg_idx < ACC200_NUM_QGRPS; qg_idx++) {
-		address = HWPfQmgrArbQDepthGrp +
+		address = VRB1_PfQmgrArbQDepthGrp +
 				ACC_BYTES_IN_WORD * qg_idx;
 		value = 0;
 		acc_reg_write(d, address, value);
@@ -3664,7 +3662,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	uint32_t aram_address = 0;
 	for (qg_idx = 0; qg_idx < totalQgs; qg_idx++) {
 		for (vf_idx = 0; vf_idx < conf->num_vf_bundles; vf_idx++) {
-			address = HWPfQmgrVfBaseAddr + vf_idx
+			address = VRB1_PfQmgrVfBaseAddr + vf_idx
 					* ACC_BYTES_IN_WORD + qg_idx
 					* ACC_BYTES_IN_WORD * 64;
 			value = aram_address;
@@ -3682,36 +3680,36 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	}
 
 	/* Performance tuning. */
-	acc_reg_write(d, HWPfFabricI2Mdma_weight, 0x0FFF);
-	acc_reg_write(d, HWPfDma4gdlIbThld, 0x1f10);
+	acc_reg_write(d, VRB1_PfFabricI2Mdma_weight, 0x0FFF);
+	acc_reg_write(d, VRB1_PfDma4gdlIbThld, 0x1f10);
 
 	/* ==== HI Configuration ==== */
 
 	/* No Info Ring/MSI by default. */
-	address = HWPfHiInfoRingIntWrEnRegPf;
+	address = VRB1_PfHiInfoRingIntWrEnRegPf;
 	value = 0;
 	acc_reg_write(d, address, value);
-	address = HWPfHiCfgMsiIntWrEnRegPf;
+	address = VRB1_PfHiCfgMsiIntWrEnRegPf;
 	value = 0xFFFFFFFF;
 	acc_reg_write(d, address, value);
 	/* Prevent Block on Transmit Error. */
-	address = HWPfHiBlockTransmitOnErrorEn;
+	address = VRB1_PfHiBlockTransmitOnErrorEn;
 	value = 0;
 	acc_reg_write(d, address, value);
 	/* Prevents to drop MSI. */
-	address = HWPfHiMsiDropEnableReg;
+	address = VRB1_PfHiMsiDropEnableReg;
 	value = 0;
 	acc_reg_write(d, address, value);
 	/* Set the PF Mode register. */
-	address = HWPfHiPfMode;
+	address = VRB1_PfHiPfMode;
 	value = (conf->pf_mode_en) ? ACC_PF_VAL : 0;
 	acc_reg_write(d, address, value);
 
 	/* QoS overflow init. */
 	value = 1;
-	address = HWPfQosmonAEvalOverflow0;
+	address = VRB1_PfQosmonAEvalOverflow0;
 	acc_reg_write(d, address, value);
-	address = HWPfQosmonBEvalOverflow0;
+	address = VRB1_PfQosmonBEvalOverflow0;
 	acc_reg_write(d, address, value);
 
 	/* Configure the FFT RAM LUT. */
@@ -3781,10 +3779,10 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 	0x0191F, 0x0178E, 0x015FC, 0x0146A, 0x012D8, 0x01147, 0x00FB5, 0x00E23,
 	0x00C91, 0x00AFF, 0x0096D, 0x007DB, 0x00648, 0x004B6, 0x00324, 0x00192};
 
-	acc_reg_write(d, HWPfFftRamPageAccess, ACC200_FFT_RAM_EN + 64);
+	acc_reg_write(d, VRB1_PfFftRamPageAccess, ACC200_FFT_RAM_EN + 64);
 	for (i = 0; i < ACC200_FFT_RAM_SIZE; i++)
-		acc_reg_write(d, HWPfFftRamOff + i * 4, fft_lut[i]);
-	acc_reg_write(d, HWPfFftRamPageAccess, ACC200_FFT_RAM_DIS);
+		acc_reg_write(d, VRB1_PfFftRamOff + i * 4, fft_lut[i]);
+	acc_reg_write(d, VRB1_PfFftRamPageAccess, ACC200_FFT_RAM_DIS);
 
 	/* Enabling AQueues through the Queue hierarchy. */
 	for (vf_idx = 0; vf_idx < ACC200_NUM_VFS; vf_idx++) {
@@ -3792,7 +3790,7 @@ acc200_configure(const char *dev_name, struct rte_acc_conf *conf)
 			value = 0;
 			if (vf_idx < conf->num_vf_bundles && qg_idx < totalQgs)
 				value = (1 << aqNum(qg_idx, conf)) - 1;
-			address = HWPfQmgrAqEnableVf + vf_idx * ACC_BYTES_IN_WORD;
+			address = VRB1_PfQmgrAqEnableVf + vf_idx * ACC_BYTES_IN_WORD;
 			value += (qg_idx << 16);
 			acc_reg_write(d, address, value);
 		}
