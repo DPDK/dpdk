@@ -3,39 +3,39 @@
 
 .. include:: <isonum.txt>
 
-Intel\ |reg| ACC200 vRAN Dedicated Accelerator Poll Mode Driver
-===============================================================
+Intel\ |reg| vRAN Boost Poll Mode Driver (PMD)
+==============================================
 
-The Intel\ |reg| vRAN Dedicated Accelerator ACC200 peripheral enables
+The Intel\ |reg| vRAN Boost integrated accelerator enables
 cost-effective 4G and 5G next-generation virtualized Radio Access Network (vRAN)
-solutions integrated on Sapphire Rapids Edge Enhanced Processor (SPR-EE)
-Intel\ |reg| 7 based Xeon\ |reg| multi-core server processor.
-
+solutions.
+The Intel vRAN Boost v1.0 (VRB1 in the code) is specifically integrated on the
+4th Gen Intel\ |reg| Xeon\ |reg| Scalable processor with Intel\ |reg| vRAN Boost,
+also known as Sapphire Rapids Edge Enhanced (SPR-EE).
 
 Features
 --------
 
-The ACC200 includes a 5G Low Density Parity Check (LDPC) encoder/decoder,
+Intel vRAN Boost v1.0 includes a 5G Low Density Parity Check (LDPC) encoder/decoder,
 rate match/dematch, Hybrid Automatic Repeat Request (HARQ) with access to DDR
 memory for buffer management, a 4G Turbo encoder/decoder,
 a Fast Fourier Transform (FFT) block providing DFT/iDFT processing offload
 for the 5G Sounding Reference Signal (SRS), a Queue Manager (QMGR),
 and a DMA subsystem.
-There is no dedicated on-card memory for HARQ,
-this is using coherent memory on the CPU side.
+There is no dedicated on-card memory for HARQ, the coherent memory on the CPU side is being used.
 
-These correspond to the following features exposed by the PMD:
+These hardware blocks provide the following features exposed by the PMD:
 
 - LDPC Encode in the Downlink (5GNR)
 - LDPC Decode in the Uplink (5GNR)
 - Turbo Encode in the Downlink (4G)
 - Turbo Decode in the Uplink (4G)
 - FFT processing
-- SR-IOV with 16 VFs per PF
+- Single Root I/O Virtualization (SR-IOV) with 16 Virtual Functions (VFs) per Physical Function (PF)
 - Maximum of 256 queues per VF
-- MSI
+- Message Signaled Interrupts (MSIs)
 
-ACC200 PMD supports the following bbdev capabilities:
+The Intel vRAN Boost v1.0 PMD supports the following bbdev capabilities:
 
 * For the LDPC encode operation:
    - ``RTE_BBDEV_LDPC_CRC_24B_ATTACH``: set to attach CRC24B to CB(s).
@@ -104,7 +104,7 @@ Initialization
 --------------
 
 When the device first powers up, its PCI Physical Functions (PF)
-can be listed through these commands for ACC200:
+can be listed through these commands for VRB1:
 
 .. code-block:: console
 
@@ -123,7 +123,7 @@ Install the DPDK igb_uio driver, bind it with the PF PCI device ID and use
 ``lspci`` to confirm the PF device is under use by ``igb_uio`` DPDK UIO driver.
 
 The igb_uio driver may be bound to the PF PCI device using one of two methods
-for ACC200:
+for VRB1:
 
 #. PCI functions (physical or virtual, depending on the use case) can be bound
 to the UIO driver by repeating this command for every function.
@@ -252,7 +252,8 @@ from the VF and not only limited to the PF as captured above.
 
 See for more details: https://github.com/intel/pf-bb-config
 
-Specifically for the bbdev ACC200 PMD, the command below can be used:
+Specifically for the bbdev VRB1 PMD, the command below can be used
+(note that ACC200 was used previously to refer to VRB1):
 
 .. code-block:: console
 

@@ -1363,8 +1363,8 @@ F: drivers/baseband/acc/
 F: doc/guides/bbdevs/acc100.rst
 F: doc/guides/bbdevs/features/acc100.ini
 F: doc/guides/bbdevs/features/acc101.ini
-F: doc/guides/bbdevs/acc200.rst
-F: doc/guides/bbdevs/features/acc200.ini
+F: doc/guides/bbdevs/vrb1.rst
+F: doc/guides/bbdevs/features/vrb1.ini
 
 Null baseband
 M: Nicolas Chautru <nicolas.chautru@intel.com>
