@@ -285,13 +285,13 @@ struct __rte_packed acc_fcw_ld {
 		hcin_decomp_mode:3,
 		llr_pack_mode:1,
 		hcout_comp_mode:3,
-		saturate_input:1, /* Not supported in ACC200 */
+		saturate_input:1, /* Not supported in VRB1 */
 		dec_convllr:4,
 		hcout_convllr:4;
 	uint32_t itmax:7,
 		itstop:1,
 		so_it:7,
-		minsum_offset:1,  /* Not supported in ACC200 */
+		minsum_offset:1,  /* Not supported in VRB1 */
 		hcout_offset:16;
 	uint32_t hcout_size0:16,
 		hcout_size1:16;
@@ -301,7 +301,7 @@ struct __rte_packed acc_fcw_ld {
 	uint32_t negstop_it:7,
 		negstop_en:1,
 		tb_crc_select:2, /* Not supported in ACC100 */
-		dec_llrclip:2,  /* Not supported in ACC200 */
+		dec_llrclip:2,  /* Not supported in VRB1 */
 		tb_trailer_size:20; /* Not supported in ACC100 */
 };
 
@@ -322,7 +322,7 @@ struct __rte_packed acc_fcw_fft {
 		dft_shift:8,
 		cs_multiplier:16;
 	uint32_t bypass:2,
-		fp16_in:1, /* Not supported in ACC200 */
+		fp16_in:1, /* Not supported in VRB1 */
 		fp16_out:1,
 		exp_adj:4,
 		power_shift:4,
@@ -398,7 +398,7 @@ struct __rte_packed acc_dma_req_desc {
 				sdone_enable:1,
 				irq_enable:1,
 				timeStampEn:1,
-				dltb:1, /* Not supported in ACC200 */
+				dltb:1, /* Not supported in VRB1 */
 				res0:4,
 				numCBs:8,
 				m2dlen:4,
@@ -1118,7 +1118,7 @@ cmp_ldpc_dec_op(struct rte_bbdev_dec_op **ops) {
  * @param op_flags
  *   Store information about device capabilities
  * @param next_triplet
- *   Index for ACC200 DMA Descriptor triplet
+ *   Index for VRB1 DMA Descriptor triplet
  * @param scattergather
  *   Flag to support scatter-gather for the mbuf
  *

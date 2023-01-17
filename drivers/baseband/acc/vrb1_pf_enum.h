@@ -2,11 +2,11 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
-#ifndef ACC200_PF_ENUM_H
-#define ACC200_PF_ENUM_H
+#ifndef VRB1_PF_ENUM_H
+#define VRB1_PF_ENUM_H
 
 /*
- * ACC200 Register mapping on PF BAR0
+ * VRB1 Register mapping on PF BAR0
  * This is automatically generated from RDL, format may change with new RDL
  * Release.
  * Variable names are as is
@@ -105,4 +105,4 @@ enum {
 	ACC_PF_INT_APB_TIMEOUT = 15,
 };
 
-#endif /* ACC200_PF_ENUM_H */
+#endif /* VRB1_PF_ENUM_H */

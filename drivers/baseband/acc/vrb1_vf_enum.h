@@ -2,11 +2,11 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
-#ifndef ACC200_VF_ENUM_H
-#define ACC200_VF_ENUM_H
+#ifndef VRB1_VF_ENUM_H
+#define VRB1_VF_ENUM_H
 
 /*
- * ACC200 Register mapping on VF BAR0
+ * VRB1 Register mapping on VF BAR0
  * This is automatically generated from RDL, format may change with new RDL
  */
 enum {
@@ -80,4 +80,4 @@ enum {
 	ACC_VF_INT_DMA_MLD_DESC_IRQ = 10,
 };
 
-#endif /* ACC200_VF_ENUM_H */
+#endif /* VRB1_VF_ENUM_H */

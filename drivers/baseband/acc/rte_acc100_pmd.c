@@ -261,7 +261,7 @@ acc100_check_ir(struct acc_device *acc100_dev)
 				ring_data->int_nb >
 				ACC100_PF_INT_DMA_DL5G_DESC_IRQ)) {
 			rte_bbdev_log(WARNING, "InfoRing: ITR:%d Info:0x%x",
-				ring_data->int_nb, ring_data->detailed_info);
+					ring_data->int_nb, ring_data->detailed_info);
 			/* Initialize Info Ring entry and move forward */
 			ring_data->val = 0;
 		}
@@ -5191,5 +5191,5 @@ rte_acc_configure(const char *dev_name, struct rte_acc_conf *conf)
 	else if (pci_dev->id.device_id == ACC101_PF_DEVICE_ID)
 		return acc101_configure(dev_name, conf);
 	else
-		return acc200_configure(dev_name, conf);
+		return vrb1_configure(dev_name, conf);
 }

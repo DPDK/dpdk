@@ -6,8 +6,8 @@
 #define _VRB_PMD_H_
 
 #include "acc_common.h"
-#include "acc200_pf_enum.h"
-#include "acc200_vf_enum.h"
+#include "vrb1_pf_enum.h"
+#include "vrb1_vf_enum.h"
 #include "vrb_cfg.h"
 
 /* Helper macro for logging */
@@ -17,76 +17,77 @@
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 #define rte_bbdev_log_debug(fmt, ...) \
-		rte_bbdev_log(DEBUG, "acc200_pmd: " fmt, \
+		rte_bbdev_log(DEBUG, "vrb_pmd: " fmt, \
 		##__VA_ARGS__)
 #else
 #define rte_bbdev_log_debug(fmt, ...)
 #endif
 
-/* ACC200 PF and VF driver names */
-#define ACC200PF_DRIVER_NAME           intel_acc200_pf
-#define ACC200VF_DRIVER_NAME           intel_acc200_vf
+/* VRB1 PF and VF driver names */
+#define VRB_PF_DRIVER_NAME           intel_vran_boost_pf
+#define VRB_VF_DRIVER_NAME           intel_vran_boost_vf
 
-/* ACC200 PCI vendor & device IDs */
-#define RTE_ACC200_VENDOR_ID           (0x8086)
-#define RTE_ACC200_PF_DEVICE_ID        (0x57C0)
-#define RTE_ACC200_VF_DEVICE_ID        (0x57C1)
+/* VRB1 PCI vendor & device IDs */
+#define RTE_VRB1_VENDOR_ID           (0x8086)
+#define RTE_VRB1_PF_DEVICE_ID        (0x57C0)
+#define RTE_VRB1_VF_DEVICE_ID        (0x57C1)
 
-#define ACC200_VARIANT               2
+#define VRB1_VARIANT               2
 
-#define ACC200_MAX_PF_MSIX            (256+32)
-#define ACC200_MAX_VF_MSIX            (256+7)
+#define VRB_NUM_ACCS                 6
+#define VRB_MAX_QGRPS                32
 
-/* Values used in writing to the registers */
-#define ACC200_REG_IRQ_EN_ALL          0x1FF83FF  /* Enable all interrupts */
+#define ACC_STATUS_WAIT      10
+#define ACC_STATUS_TO        100
 
-/* Number of Virtual Functions ACC200 supports */
-#define ACC200_NUM_VFS                  16
-#define ACC200_NUM_QGRPS                16
-#define ACC200_NUM_AQS                  16
+/* VRB1 specific flags */
 
-#define ACC200_GRP_ID_SHIFT    10 /* Queue Index Hierarchy */
-#define ACC200_VF_ID_SHIFT     4  /* Queue Index Hierarchy */
-#define ACC200_WORDS_IN_ARAM_SIZE (256 * 1024 / 4)
+#define VRB1_NUM_VFS                  16
+#define VRB1_NUM_QGRPS                16
+#define VRB1_NUM_AQS                  16
+#define VRB1_GRP_ID_SHIFT    10 /* Queue Index Hierarchy */
+#define VRB1_VF_ID_SHIFT     4  /* Queue Index Hierarchy */
+#define VRB1_WORDS_IN_ARAM_SIZE (256 * 1024 / 4)
 
-/* Mapping of signals for the available engines */
-#define ACC200_SIG_UL_5G       0
-#define ACC200_SIG_UL_5G_LAST  4
-#define ACC200_SIG_DL_5G      10
-#define ACC200_SIG_DL_5G_LAST 11
-#define ACC200_SIG_UL_4G      12
-#define ACC200_SIG_UL_4G_LAST 16
-#define ACC200_SIG_DL_4G      21
-#define ACC200_SIG_DL_4G_LAST 23
-#define ACC200_SIG_FFT        24
-#define ACC200_SIG_FFT_LAST   24
+/* VRB1 Mapping of signals for the available engines */
+#define VRB1_SIG_UL_5G       0
+#define VRB1_SIG_UL_5G_LAST  4
+#define VRB1_SIG_DL_5G      10
+#define VRB1_SIG_DL_5G_LAST 11
+#define VRB1_SIG_UL_4G      12
+#define VRB1_SIG_UL_4G_LAST 16
+#define VRB1_SIG_DL_4G      21
+#define VRB1_SIG_DL_4G_LAST 23
+#define VRB1_SIG_FFT        24
+#define VRB1_SIG_FFT_LAST   24
 
-#define ACC200_NUM_ACCS       5
+#define VRB1_NUM_ACCS       5
 
-/* ACC200 Configuration */
-#define ACC200_FABRIC_MODE      0x8000103
-#define ACC200_CFG_DMA_ERROR    0x3DF
-#define ACC200_CFG_AXI_CACHE    0x11
-#define ACC200_CFG_QMGR_HI_P    0x0F0F
-#define ACC200_RESET_HARD       0x1FF
-#define ACC200_ENGINES_MAX      9
-#define ACC200_GPEX_AXIMAP_NUM  17
-#define ACC200_CLOCK_GATING_EN  0x30000
-#define ACC200_FFT_CFG_0        0x2001
-#define ACC200_FFT_RAM_EN       0x80008000
-#define ACC200_FFT_RAM_DIS      0x0
-#define ACC200_FFT_RAM_SIZE     512
-#define ACC200_CLK_EN           0x00010A01
-#define ACC200_CLK_DIS          0x01F10A01
-#define ACC200_PG_MASK_0        0x1F
-#define ACC200_PG_MASK_1        0xF
-#define ACC200_PG_MASK_2        0x1
-#define ACC200_PG_MASK_3        0x0
-#define ACC200_PG_MASK_FFT      1
-#define ACC200_PG_MASK_4GUL     4
-#define ACC200_PG_MASK_5GUL     8
-#define ACC200_STATUS_WAIT      10
-#define ACC200_STATUS_TO        100
+/* VRB1 Configuration */
+#define VRB1_FABRIC_MODE      0x8000103
+#define VRB1_CFG_DMA_ERROR    0x3DF
+#define VRB1_CFG_AXI_CACHE    0x11
+#define VRB1_CFG_QMGR_HI_P    0x0F0F
+#define VRB1_RESET_HARD       0x1FF
+#define VRB1_ENGINES_MAX      9
+#define VRB1_GPEX_AXIMAP_NUM  17
+#define VRB1_CLOCK_GATING_EN  0x30000
+#define VRB1_FFT_CFG_0        0x2001
+#define VRB1_FFT_RAM_EN       0x80008000
+#define VRB1_FFT_RAM_DIS      0x0
+#define VRB1_FFT_RAM_SIZE     512
+#define VRB1_CLK_EN           0x00010A01
+#define VRB1_CLK_DIS          0x01F10A01
+#define VRB1_PG_MASK_0        0x1F
+#define VRB1_PG_MASK_1        0xF
+#define VRB1_PG_MASK_2        0x1
+#define VRB1_PG_MASK_3        0x0
+#define VRB1_PG_MASK_FFT      1
+#define VRB1_PG_MASK_4GUL     4
+#define VRB1_PG_MASK_5GUL     8
+#define VRB1_REG_IRQ_EN_ALL          0x1FF83FF  /* Enable all interrupts */
+#define VRB1_MAX_PF_MSIX            (256+32)
+#define VRB1_MAX_VF_MSIX            (256+7)
 
 struct acc_registry_addr {
 	unsigned int dma_ring_dl5g_hi;
@@ -127,7 +128,7 @@ struct acc_registry_addr {
 };
 
 /* Structure holding registry addresses for PF */
-static const struct acc_registry_addr acc200_pf_reg_addr = {
+static const struct acc_registry_addr vrb1_pf_reg_addr = {
 	.dma_ring_dl5g_hi = VRB1_PfDmaFec5GdlDescBaseHiRegVf,
 	.dma_ring_dl5g_lo = VRB1_PfDmaFec5GdlDescBaseLoRegVf,
 	.dma_ring_ul5g_hi = VRB1_PfDmaFec5GulDescBaseHiRegVf,
@@ -166,7 +167,7 @@ static const struct acc_registry_addr acc200_pf_reg_addr = {
 };
 
 /* Structure holding registry addresses for VF */
-static const struct acc_registry_addr acc200_vf_reg_addr = {
+static const struct acc_registry_addr vrb1_vf_reg_addr = {
 	.dma_ring_dl5g_hi = VRB1_VfDmaFec5GdlDescBaseHiRegVf,
 	.dma_ring_dl5g_lo = VRB1_VfDmaFec5GdlDescBaseLoRegVf,
 	.dma_ring_ul5g_hi = VRB1_VfDmaFec5GulDescBaseHiRegVf,
