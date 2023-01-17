@@ -518,6 +518,8 @@ enum {
 typedef void (*acc10x_fcw_ld_fill_fun_t)(struct rte_bbdev_dec_op *op,
 		struct acc_fcw_ld *fcw,
 		union acc_harq_layout_data *harq_layout);
+typedef uint32_t (*queue_offset_fun_t)(bool pf_device, uint8_t vf_id,
+		uint8_t qgrp_id, uint16_t aq_id);
 
 /* Private data structure for each ACC100 device */
 struct acc_device {
@@ -551,7 +553,11 @@ struct acc_device {
 	bool pf_device; /**< True if this is a PF ACC100 device */
 	bool configured; /**< True if this ACC100 device is configured */
 	uint16_t device_variant;  /**< Device variant */
+	const struct acc_registry_addr *reg_addr;
 	acc10x_fcw_ld_fill_fun_t fcw_ld_fill;  /**< 5GUL FCW generation function */
+	queue_offset_fun_t queue_offset;  /* Device specific queue offset */
+	uint16_t num_qgroups;
+	uint16_t num_aqs;
 };
 
 /* Structure associated with each queue. */

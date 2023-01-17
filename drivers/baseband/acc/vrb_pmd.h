@@ -32,6 +32,8 @@
 #define RTE_ACC200_PF_DEVICE_ID        (0x57C0)
 #define RTE_ACC200_VF_DEVICE_ID        (0x57C1)
 
+#define ACC200_VARIANT               2
+
 #define ACC200_MAX_PF_MSIX            (256+32)
 #define ACC200_MAX_VF_MSIX            (256+7)
 
@@ -86,7 +88,7 @@
 #define ACC200_STATUS_WAIT      10
 #define ACC200_STATUS_TO        100
 
-struct acc200_registry_addr {
+struct acc_registry_addr {
 	unsigned int dma_ring_dl5g_hi;
 	unsigned int dma_ring_dl5g_lo;
 	unsigned int dma_ring_ul5g_hi;
@@ -116,13 +118,16 @@ struct acc200_registry_addr {
 	unsigned int depth_log1_offset;
 	unsigned int qman_group_func;
 	unsigned int hi_mode;
+	unsigned int pf_mode;
 	unsigned int pmon_ctrl_a;
 	unsigned int pmon_ctrl_b;
 	unsigned int pmon_ctrl_c;
+	unsigned int vf2pf_doorbell;
+	unsigned int pf2vf_doorbell;
 };
 
 /* Structure holding registry addresses for PF */
-static const struct acc200_registry_addr pf_reg_addr = {
+static const struct acc_registry_addr acc200_pf_reg_addr = {
 	.dma_ring_dl5g_hi = HWPfDmaFec5GdlDescBaseHiRegVf,
 	.dma_ring_dl5g_lo = HWPfDmaFec5GdlDescBaseLoRegVf,
 	.dma_ring_ul5g_hi = HWPfDmaFec5GulDescBaseHiRegVf,
@@ -131,9 +136,9 @@ static const struct acc200_registry_addr pf_reg_addr = {
 	.dma_ring_dl4g_lo = HWPfDmaFec4GdlDescBaseLoRegVf,
 	.dma_ring_ul4g_hi = HWPfDmaFec4GulDescBaseHiRegVf,
 	.dma_ring_ul4g_lo = HWPfDmaFec4GulDescBaseLoRegVf,
-	.dma_ring_fft_hi = HWPDmaFftDescBaseHiRegVf,
-	.dma_ring_fft_lo = HWPDmaFftDescBaseLoRegVf,
-	.ring_size = HWPfQmgrRingSizeVf,
+	.dma_ring_fft_hi = HWPfDmaFftDescBaseHiRegVf,
+	.dma_ring_fft_lo = HWPfDmaFftDescBaseLoRegVf,
+	.ring_size =      HWPfQmgrRingSizeVf,
 	.info_ring_hi = HWPfHiInfoRingBaseHiRegPf,
 	.info_ring_lo = HWPfHiInfoRingBaseLoRegPf,
 	.info_ring_en = HWPfHiInfoRingIntWrEnRegPf,
@@ -146,19 +151,22 @@ static const struct acc200_registry_addr pf_reg_addr = {
 	.tail_ptrs_dl4g_lo = HWPfDmaFec4GdlRespPtrLoRegVf,
 	.tail_ptrs_ul4g_hi = HWPfDmaFec4GulRespPtrHiRegVf,
 	.tail_ptrs_ul4g_lo = HWPfDmaFec4GulRespPtrLoRegVf,
-	.tail_ptrs_fft_hi = HWPDmaFftRespPtrHiRegVf,
-	.tail_ptrs_fft_lo = HWPDmaFftRespPtrLoRegVf,
+	.tail_ptrs_fft_hi = HWPfDmaFftRespPtrHiRegVf,
+	.tail_ptrs_fft_lo = HWPfDmaFftRespPtrLoRegVf,
 	.depth_log0_offset = HWPfQmgrGrpDepthLog20Vf,
 	.depth_log1_offset = HWPfQmgrGrpDepthLog21Vf,
 	.qman_group_func = HWPfQmgrGrpFunction0,
 	.hi_mode = HWPfHiMsixVectorMapperPf,
+	.pf_mode = HWPfHiPfMode,
 	.pmon_ctrl_a = HWPfPermonACntrlRegVf,
 	.pmon_ctrl_b = HWPfPermonBCntrlRegVf,
 	.pmon_ctrl_c = HWPfPermonCCntrlRegVf,
+	.vf2pf_doorbell = 0,
+	.pf2vf_doorbell = 0,
 };
 
 /* Structure holding registry addresses for VF */
-static const struct acc200_registry_addr vf_reg_addr = {
+static const struct acc_registry_addr acc200_vf_reg_addr = {
 	.dma_ring_dl5g_hi = HWVfDmaFec5GdlDescBaseHiRegVf,
 	.dma_ring_dl5g_lo = HWVfDmaFec5GdlDescBaseLoRegVf,
 	.dma_ring_ul5g_hi = HWVfDmaFec5GulDescBaseHiRegVf,
@@ -188,9 +196,12 @@ static const struct acc200_registry_addr vf_reg_addr = {
 	.depth_log1_offset = HWVfQmgrGrpDepthLog21Vf,
 	.qman_group_func = HWVfQmgrGrpFunction0Vf,
 	.hi_mode = HWVfHiMsixVectorMapperVf,
+	.pf_mode = 0,
 	.pmon_ctrl_a = HWVfPmACntrlRegVf,
 	.pmon_ctrl_b = HWVfPmBCntrlRegVf,
 	.pmon_ctrl_c = HWVfPmCCntrlRegVf,
+	.vf2pf_doorbell = HWVfHiVfToPfDbellVf,
+	.pf2vf_doorbell = HWVfHiPfToVfDbellVf,
 };
 
 #endif /* _VRB_PMD_H_ */

@@ -156,13 +156,13 @@ updateQtop(uint8_t acc, uint8_t qg, struct rte_acc_conf *acc_conf, struct acc_de
 	if (q_top->first_qgroup_index == -1) {
 		q_top->first_qgroup_index = qg;
 		/* Can be optimized to assume all are enabled by default. */
-		reg = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, ACC200_NUM_AQS - 1));
+		reg = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, d->num_aqs - 1));
 		if (reg & ACC_QUEUE_ENABLE) {
-			q_top->num_aqs_per_groups = ACC200_NUM_AQS;
+			q_top->num_aqs_per_groups = d->num_aqs;
 			return;
 		}
 		q_top->num_aqs_per_groups = 0;
-		for (aq = 0; aq < ACC200_NUM_AQS; aq++) {
+		for (aq = 0; aq < d->num_aqs; aq++) {
 			reg = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, aq));
 			if (reg & ACC_QUEUE_ENABLE)
 				q_top->num_aqs_per_groups++;
@@ -177,7 +177,7 @@ acc200_check_device_enable(struct rte_bbdev *dev)
 	uint32_t reg_aq, qg;
 	struct acc_device *d = dev->data->dev_private;
 
-	for (qg = 0; qg < ACC200_NUM_QGRPS; qg++) {
+	for (qg = 0; qg < d->num_qgroups; qg++) {
 		reg_aq = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, 0));
 		if (reg_aq & ACC_QUEUE_ENABLE)
 			return true;
@@ -191,7 +191,6 @@ fetch_acc200_config(struct rte_bbdev *dev)
 {
 	struct acc_device *d = dev->data->dev_private;
 	struct rte_acc_conf *acc_conf = &d->acc_conf;
-	const struct acc200_registry_addr *reg_addr;
 	uint8_t acc, qg;
 	uint32_t reg_aq, reg_len0, reg_len1, reg0, reg1;
 	uint32_t reg_mode, idx;
@@ -209,21 +208,15 @@ fetch_acc200_config(struct rte_bbdev *dev)
 		return;
 	}
 
-	/* Choose correct registry addresses for the device type. */
-	if (d->pf_device)
-		reg_addr = &pf_reg_addr;
-	else
-		reg_addr = &vf_reg_addr;
-
 	d->ddr_size = 0;
 
 	/* Single VF Bundle by VF. */
 	acc_conf->num_vf_bundles = 1;
 	initQTop(acc_conf);
 
-	reg0 = acc_reg_read(d, reg_addr->qman_group_func);
-	reg1 = acc_reg_read(d, reg_addr->qman_group_func + 4);
-	for (qg = 0; qg < ACC200_NUM_QGRPS; qg++) {
+	reg0 = acc_reg_read(d, d->reg_addr->qman_group_func);
+	reg1 = acc_reg_read(d, d->reg_addr->qman_group_func + 4);
+	for (qg = 0; qg < d->num_qgroups; qg++) {
 		reg_aq = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, 0));
 		if (reg_aq & ACC_QUEUE_ENABLE) {
 			if (qg < ACC_NUM_QGRPS_PER_WORD)
@@ -239,8 +232,8 @@ fetch_acc200_config(struct rte_bbdev *dev)
 	}
 
 	/* Check the depth of the AQs. */
-	reg_len0 = acc_reg_read(d, reg_addr->depth_log0_offset);
-	reg_len1 = acc_reg_read(d, reg_addr->depth_log1_offset);
+	reg_len0 = acc_reg_read(d, d->reg_addr->depth_log0_offset);
+	reg_len1 = acc_reg_read(d, d->reg_addr->depth_log1_offset);
 	for (acc = 0; acc < NUM_ACC; acc++) {
 		qtopFromAcc(&q_top, acc, acc_conf);
 		if (q_top->first_qgroup_index < ACC_NUM_QGRPS_PER_WORD)
@@ -252,10 +245,10 @@ fetch_acc200_config(struct rte_bbdev *dev)
 
 	/* Read PF mode. */
 	if (d->pf_device) {
-		reg_mode = acc_reg_read(d, HWPfHiPfMode);
+		reg_mode = acc_reg_read(d, d->reg_addr->pf_mode);
 		acc_conf->pf_mode_en = (reg_mode == ACC_PF_VAL) ? 1 : 0;
 	} else {
-		reg_mode = acc_reg_read(d, reg_addr->hi_mode);
+		reg_mode = acc_reg_read(d, d->reg_addr->hi_mode);
 		acc_conf->pf_mode_en = reg_mode & 1;
 	}
 
@@ -284,7 +277,7 @@ fetch_acc200_config(struct rte_bbdev *dev)
 static inline void
 acc200_vf2pf(struct acc_device *d, unsigned int payload)
 {
-	acc_reg_write(d, HWVfHiVfToPfDbellVf, payload);
+	acc_reg_write(d, d->reg_addr->vf2pf_doorbell, payload);
 }
 
 /* Request device status information. */
@@ -298,10 +291,10 @@ acc200_device_status(struct rte_bbdev *dev)
 		return RTE_BBDEV_DEV_NOT_SUPPORTED;
 
 	acc200_vf2pf(d, ACC_VF2PF_STATUS_REQUEST);
-	reg = acc_reg_read(d, HWVfHiPfToVfDbellVf);
+	reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 	while ((time_out < ACC200_STATUS_TO) && (reg == RTE_BBDEV_DEV_NOSTATUS)) {
 		usleep(ACC200_STATUS_WAIT); /*< Wait or VF->PF->VF Comms */
-		reg = acc_reg_read(d, HWVfHiPfToVfDbellVf);
+		reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 		time_out++;
 	}
 
@@ -415,18 +408,12 @@ static int
 allocate_info_ring(struct rte_bbdev *dev)
 {
 	struct acc_device *d = dev->data->dev_private;
-	const struct acc200_registry_addr *reg_addr;
 	rte_iova_t info_ring_iova;
 	uint32_t phys_low, phys_high;
 
 	if (d->info_ring != NULL)
 		return 0; /* Already configured. */
 
-	/* Choose correct registry addresses for the device type. */
-	if (d->pf_device)
-		reg_addr = &pf_reg_addr;
-	else
-		reg_addr = &vf_reg_addr;
 	/* Allocate InfoRing */
 	d->info_ring = rte_zmalloc_socket("Info Ring", ACC_INFO_RING_NUM_ENTRIES *
 			sizeof(*d->info_ring), RTE_CACHE_LINE_SIZE, dev->data->socket_id);
@@ -442,10 +429,10 @@ allocate_info_ring(struct rte_bbdev *dev)
 	/* Setup Info Ring. */
 	phys_high = (uint32_t)(info_ring_iova >> 32);
 	phys_low  = (uint32_t)(info_ring_iova);
-	acc_reg_write(d, reg_addr->info_ring_hi, phys_high);
-	acc_reg_write(d, reg_addr->info_ring_lo, phys_low);
-	acc_reg_write(d, reg_addr->info_ring_en, ACC200_REG_IRQ_EN_ALL);
-	d->info_ring_head = (acc_reg_read(d, reg_addr->info_ring_ptr) &
+	acc_reg_write(d, d->reg_addr->info_ring_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->info_ring_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->info_ring_en, ACC200_REG_IRQ_EN_ALL);
+	d->info_ring_head = (acc_reg_read(d, d->reg_addr->info_ring_ptr) &
 			0xFFF) / sizeof(union acc_info_ring_data);
 	return 0;
 }
@@ -457,7 +444,6 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 {
 	uint32_t phys_low, phys_high, value;
 	struct acc_device *d = dev->data->dev_private;
-	const struct acc200_registry_addr *reg_addr;
 	int ret;
 
 	if (d->pf_device && !d->acc_conf.pf_mode_en) {
@@ -500,48 +486,42 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	phys_high = (uint32_t)(d->sw_rings_iova >> 32);
 	phys_low  = (uint32_t)(d->sw_rings_iova & ~(ACC_SIZE_64MBYTE-1));
 
-	/* Choose correct registry addresses for the device type. */
-	if (d->pf_device)
-		reg_addr = &pf_reg_addr;
-	else
-		reg_addr = &vf_reg_addr;
-
 	/* Read the populated cfg from ACC200 registers. */
 	fetch_acc200_config(dev);
 
 	/* Start Pmon */
 	for (value = 0; value <= 2; value++) {
-		acc_reg_write(d, reg_addr->pmon_ctrl_a, value);
-		acc_reg_write(d, reg_addr->pmon_ctrl_b, value);
-		acc_reg_write(d, reg_addr->pmon_ctrl_c, value);
+		acc_reg_write(d, d->reg_addr->pmon_ctrl_a, value);
+		acc_reg_write(d, d->reg_addr->pmon_ctrl_b, value);
+		acc_reg_write(d, d->reg_addr->pmon_ctrl_c, value);
 	}
 
 	/* Release AXI from PF. */
 	if (d->pf_device)
 		acc_reg_write(d, HWPfDmaAxiControl, 1);
 
-	acc_reg_write(d, reg_addr->dma_ring_ul5g_hi, phys_high);
-	acc_reg_write(d, reg_addr->dma_ring_ul5g_lo, phys_low);
-	acc_reg_write(d, reg_addr->dma_ring_dl5g_hi, phys_high);
-	acc_reg_write(d, reg_addr->dma_ring_dl5g_lo, phys_low);
-	acc_reg_write(d, reg_addr->dma_ring_ul4g_hi, phys_high);
-	acc_reg_write(d, reg_addr->dma_ring_ul4g_lo, phys_low);
-	acc_reg_write(d, reg_addr->dma_ring_dl4g_hi, phys_high);
-	acc_reg_write(d, reg_addr->dma_ring_dl4g_lo, phys_low);
-	acc_reg_write(d, reg_addr->dma_ring_fft_hi, phys_high);
-	acc_reg_write(d, reg_addr->dma_ring_fft_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->dma_ring_ul5g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->dma_ring_ul5g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->dma_ring_dl5g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->dma_ring_dl5g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->dma_ring_ul4g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->dma_ring_ul4g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->dma_ring_dl4g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->dma_ring_dl4g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->dma_ring_fft_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->dma_ring_fft_lo, phys_low);
 	/*
 	 * Configure Ring Size to the max queue ring size
 	 * (used for wrapping purpose).
 	 */
 	value = log2_basic(d->sw_ring_size / ACC_RING_SIZE_GRANULARITY);
-	acc_reg_write(d, reg_addr->ring_size, value);
+	acc_reg_write(d, d->reg_addr->ring_size, value);
 
 	/* Configure tail pointer for use when SDONE enabled. */
 	if (d->tail_ptrs == NULL)
 		d->tail_ptrs = rte_zmalloc_socket(
 				dev->device->driver->name,
-				ACC200_NUM_QGRPS * ACC200_NUM_AQS * sizeof(uint32_t),
+				d->num_qgroups * d->num_aqs * sizeof(uint32_t),
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (d->tail_ptrs == NULL) {
 		rte_bbdev_log(ERR, "Failed to allocate tail ptr for %s:%u",
@@ -554,16 +534,16 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 
 	phys_high = (uint32_t)(d->tail_ptr_iova >> 32);
 	phys_low  = (uint32_t)(d->tail_ptr_iova);
-	acc_reg_write(d, reg_addr->tail_ptrs_ul5g_hi, phys_high);
-	acc_reg_write(d, reg_addr->tail_ptrs_ul5g_lo, phys_low);
-	acc_reg_write(d, reg_addr->tail_ptrs_dl5g_hi, phys_high);
-	acc_reg_write(d, reg_addr->tail_ptrs_dl5g_lo, phys_low);
-	acc_reg_write(d, reg_addr->tail_ptrs_ul4g_hi, phys_high);
-	acc_reg_write(d, reg_addr->tail_ptrs_ul4g_lo, phys_low);
-	acc_reg_write(d, reg_addr->tail_ptrs_dl4g_hi, phys_high);
-	acc_reg_write(d, reg_addr->tail_ptrs_dl4g_lo, phys_low);
-	acc_reg_write(d, reg_addr->tail_ptrs_fft_hi, phys_high);
-	acc_reg_write(d, reg_addr->tail_ptrs_fft_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_ul5g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_ul5g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_dl5g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_dl5g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_ul4g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_ul4g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_dl4g_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_dl4g_lo, phys_low);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_fft_hi, phys_high);
+	acc_reg_write(d, d->reg_addr->tail_ptrs_fft_lo, phys_low);
 
 	ret = allocate_info_ring(dev);
 	if (ret < 0) {
@@ -746,7 +726,7 @@ acc200_find_free_queue_idx(struct rte_bbdev *dev,
 		return -1;
 	/* Identify matching QGroup Index which are sorted in priority order. */
 	group_idx = qtop->first_qgroup_index + conf->priority;
-	if (group_idx >= ACC200_NUM_QGRPS ||
+	if (group_idx >= d->num_qgroups ||
 			conf->priority >= qtop->num_qgroups) {
 		rte_bbdev_log(INFO, "Invalid Priority on %s, priority %u",
 				dev->data->name, conf->priority);
@@ -756,7 +736,7 @@ acc200_find_free_queue_idx(struct rte_bbdev *dev,
 	for (aq_idx = 0; aq_idx < qtop->num_aqs_per_groups; aq_idx++) {
 		if (((d->q_assigned_bit_map[group_idx] >> aq_idx) & 0x1) == 0) {
 			/* Mark the Queue as assigned. */
-			d->q_assigned_bit_map[group_idx] |= (1 << aq_idx);
+			d->q_assigned_bit_map[group_idx] |= (1ULL << aq_idx);
 			/* Report the AQ Index. */
 			return (group_idx << ACC200_GRP_ID_SHIFT) + aq_idx;
 		}
@@ -773,7 +753,7 @@ acc200_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 {
 	struct acc_device *d = dev->data->dev_private;
 	struct acc_queue *q;
-	int16_t q_idx;
+	int32_t q_idx;
 	int ret;
 
 	if (d == NULL) {
@@ -3315,6 +3295,7 @@ static void
 acc200_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct acc_device *d = dev->data->dev_private;
 
 	dev->dev_ops = &acc200_bbdev_ops;
 	dev->enqueue_enc_ops = acc200_enqueue_enc;
@@ -3328,11 +3309,22 @@ acc200_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 	dev->enqueue_fft_ops = acc200_enqueue_fft;
 	dev->dequeue_fft_ops = acc200_dequeue_fft;
 
-	((struct acc_device *) dev->data->dev_private)->pf_device =
-			!strcmp(drv->driver.name,
-					RTE_STR(ACC200PF_DRIVER_NAME));
-	((struct acc_device *) dev->data->dev_private)->mmio_base =
-			pci_dev->mem_resource[0].addr;
+	d->pf_device = !strcmp(drv->driver.name, RTE_STR(ACC200PF_DRIVER_NAME));
+	d->mmio_base = pci_dev->mem_resource[0].addr;
+
+	/* Device variant specific handling. */
+	if ((pci_dev->id.device_id == RTE_ACC200_PF_DEVICE_ID) ||
+			(pci_dev->id.device_id == RTE_ACC200_VF_DEVICE_ID)) {
+		d->device_variant = ACC200_VARIANT;
+		d->queue_offset = queue_offset;
+		d->fcw_ld_fill = acc200_fcw_ld_fill;
+		d->num_qgroups = ACC200_NUM_QGRPS;
+		d->num_aqs = ACC200_NUM_AQS;
+		if (d->pf_device)
+			d->reg_addr = &acc200_pf_reg_addr;
+		else
+			d->reg_addr = &acc200_vf_reg_addr;
+	}
 
 	rte_bbdev_log_debug("Init device %s [%s] @ vaddr %p paddr %#"PRIx64"",
 			drv->driver.name, dev->data->name,
