@@ -12,7 +12,7 @@
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, acc200_logtype, fmt "\n", \
+	rte_log(RTE_LOG_ ## level, vrb_logtype, fmt "\n", \
 		##__VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG

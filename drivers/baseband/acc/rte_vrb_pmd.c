@@ -22,21 +22,19 @@
 #include "vrb_pmd.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-RTE_LOG_REGISTER_DEFAULT(acc200_logtype, DEBUG);
+RTE_LOG_REGISTER_DEFAULT(vrb_logtype, DEBUG);
 #else
-RTE_LOG_REGISTER_DEFAULT(acc200_logtype, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(vrb_logtype, NOTICE);
 #endif
 
 /* Calculate the offset of the enqueue register. */
 static inline uint32_t
-queue_offset(bool pf_device, uint8_t vf_id, uint8_t qgrp_id, uint16_t aq_id)
+acc200_queue_offset(bool pf_device, uint8_t vf_id, uint8_t qgrp_id, uint16_t aq_id)
 {
 	if (pf_device)
-		return ((vf_id << 12) + (qgrp_id << 7) + (aq_id << 3) +
-				VRB1_PfQmgrIngressAq);
+		return ((vf_id << 12) + (qgrp_id << 7) + (aq_id << 3) + VRB1_PfQmgrIngressAq);
 	else
-		return ((qgrp_id << 7) + (aq_id << 3) +
-				VRB1_VfQmgrIngressAq);
+		return ((qgrp_id << 7) + (aq_id << 3) + VRB1_VfQmgrIngressAq);
 }
 
 enum {UL_4G = 0, UL_5G, DL_4G, DL_5G, FFT, NUM_ACC};
@@ -156,14 +154,14 @@ updateQtop(uint8_t acc, uint8_t qg, struct rte_acc_conf *acc_conf, struct acc_de
 	if (q_top->first_qgroup_index == -1) {
 		q_top->first_qgroup_index = qg;
 		/* Can be optimized to assume all are enabled by default. */
-		reg = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, d->num_aqs - 1));
+		reg = acc_reg_read(d, d->queue_offset(d->pf_device, 0, qg, d->num_aqs - 1));
 		if (reg & ACC_QUEUE_ENABLE) {
 			q_top->num_aqs_per_groups = d->num_aqs;
 			return;
 		}
 		q_top->num_aqs_per_groups = 0;
 		for (aq = 0; aq < d->num_aqs; aq++) {
-			reg = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, aq));
+			reg = acc_reg_read(d, d->queue_offset(d->pf_device, 0, qg, aq));
 			if (reg & ACC_QUEUE_ENABLE)
 				q_top->num_aqs_per_groups++;
 		}
@@ -172,13 +170,13 @@ updateQtop(uint8_t acc, uint8_t qg, struct rte_acc_conf *acc_conf, struct acc_de
 
 /* Check device Qmgr is enabled for protection */
 static inline bool
-acc200_check_device_enable(struct rte_bbdev *dev)
+vrb_check_device_enable(struct rte_bbdev *dev)
 {
 	uint32_t reg_aq, qg;
 	struct acc_device *d = dev->data->dev_private;
 
 	for (qg = 0; qg < d->num_qgroups; qg++) {
-		reg_aq = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, 0));
+		reg_aq = acc_reg_read(d, d->queue_offset(d->pf_device, 0, qg, 0));
 		if (reg_aq & ACC_QUEUE_ENABLE)
 			return true;
 	}
@@ -187,7 +185,7 @@ acc200_check_device_enable(struct rte_bbdev *dev)
 
 /* Fetch configuration enabled for the PF/VF using MMIO Read (slow). */
 static inline void
-fetch_acc200_config(struct rte_bbdev *dev)
+fetch_acc_config(struct rte_bbdev *dev)
 {
 	struct acc_device *d = dev->data->dev_private;
 	struct rte_acc_conf *acc_conf = &d->acc_conf;
@@ -202,7 +200,7 @@ fetch_acc200_config(struct rte_bbdev *dev)
 	if (d->configured)
 		return;
 
-	if (!acc200_check_device_enable(dev)) {
+	if (!vrb_check_device_enable(dev)) {
 		rte_bbdev_log(NOTICE, "%s has no queue enabled and can't be used.",
 				dev->data->name);
 		return;
@@ -217,7 +215,7 @@ fetch_acc200_config(struct rte_bbdev *dev)
 	reg0 = acc_reg_read(d, d->reg_addr->qman_group_func);
 	reg1 = acc_reg_read(d, d->reg_addr->qman_group_func + 4);
 	for (qg = 0; qg < d->num_qgroups; qg++) {
-		reg_aq = acc_reg_read(d, queue_offset(d->pf_device, 0, qg, 0));
+		reg_aq = acc_reg_read(d, d->queue_offset(d->pf_device, 0, qg, 0));
 		if (reg_aq & ACC_QUEUE_ENABLE) {
 			if (qg < ACC_NUM_QGRPS_PER_WORD)
 				idx = (reg0 >> (qg * 4)) & 0x7;
@@ -275,14 +273,14 @@ fetch_acc200_config(struct rte_bbdev *dev)
 }
 
 static inline void
-acc200_vf2pf(struct acc_device *d, unsigned int payload)
+vrb_vf2pf(struct acc_device *d, unsigned int payload)
 {
 	acc_reg_write(d, d->reg_addr->vf2pf_doorbell, payload);
 }
 
 /* Request device status information. */
 static inline uint32_t
-acc200_device_status(struct rte_bbdev *dev)
+vrb_device_status(struct rte_bbdev *dev)
 {
 	struct acc_device *d = dev->data->dev_private;
 	uint32_t reg, time_out = 0;
@@ -290,7 +288,7 @@ acc200_device_status(struct rte_bbdev *dev)
 	if (d->pf_device)
 		return RTE_BBDEV_DEV_NOT_SUPPORTED;
 
-	acc200_vf2pf(d, ACC_VF2PF_STATUS_REQUEST);
+	vrb_vf2pf(d, ACC_VF2PF_STATUS_REQUEST);
 	reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 	while ((time_out < ACC200_STATUS_TO) && (reg == RTE_BBDEV_DEV_NOSTATUS)) {
 		usleep(ACC200_STATUS_WAIT); /*< Wait or VF->PF->VF Comms */
@@ -303,7 +301,7 @@ acc200_device_status(struct rte_bbdev *dev)
 
 /* Checks PF Info Ring to find the interrupt cause and handles it accordingly. */
 static inline void
-acc200_check_ir(struct acc_device *acc200_dev)
+vrb_check_ir(struct acc_device *acc200_dev)
 {
 	volatile union acc_info_ring_data *ring_data;
 	uint16_t info_ring_head = acc200_dev->info_ring_head;
@@ -327,7 +325,7 @@ acc200_check_ir(struct acc_device *acc200_dev)
 
 /* Interrupt handler triggered by ACC200 dev for handling specific interrupt. */
 static void
-acc200_dev_interrupt_handler(void *cb_arg)
+vrb_dev_interrupt_handler(void *cb_arg)
 {
 	struct rte_bbdev *dev = cb_arg;
 	struct acc_device *acc200_dev = dev->data->dev_private;
@@ -440,7 +438,7 @@ allocate_info_ring(struct rte_bbdev *dev)
 
 /* Allocate 64MB memory used for all software rings. */
 static int
-acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
+vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 {
 	uint32_t phys_low, phys_high, value;
 	struct acc_device *d = dev->data->dev_private;
@@ -459,7 +457,7 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 		return -ENODEV;
 	}
 
-	if (!acc200_check_device_enable(dev)) {
+	if (!vrb_check_device_enable(dev)) {
 		rte_bbdev_log(NOTICE, "%s has no queue enabled and can't be used.",
 				dev->data->name);
 		return -ENODEV;
@@ -487,7 +485,7 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	phys_low  = (uint32_t)(d->sw_rings_iova & ~(ACC_SIZE_64MBYTE-1));
 
 	/* Read the populated cfg from ACC200 registers. */
-	fetch_acc200_config(dev);
+	fetch_acc_config(dev);
 
 	/* Start Pmon */
 	for (value = 0; value <= 2; value++) {
@@ -567,7 +565,7 @@ acc200_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 
 	/* Mark as configured properly */
 	d->configured = true;
-	acc200_vf2pf(d, ACC_VF2PF_USING_VF);
+	vrb_vf2pf(d, ACC_VF2PF_USING_VF);
 
 	rte_bbdev_log_debug(
 			"ACC200 (%s) configured  sw_rings = %p, sw_rings_iova = %#"
@@ -585,7 +583,7 @@ free_sw_rings:
 }
 
 static int
-acc200_intr_enable(struct rte_bbdev *dev)
+vrb_intr_enable(struct rte_bbdev *dev)
 {
 	int ret;
 	struct acc_device *d = dev->data->dev_private;
@@ -611,7 +609,7 @@ acc200_intr_enable(struct rte_bbdev *dev)
 			return ret;
 		}
 		ret = rte_intr_callback_register(dev->intr_handle,
-				acc200_dev_interrupt_handler, dev);
+				vrb_dev_interrupt_handler, dev);
 		if (ret < 0) {
 			rte_bbdev_log(ERR,
 					"Couldn't register interrupt callback for device: %s",
@@ -667,7 +665,7 @@ acc200_intr_enable(struct rte_bbdev *dev)
 			return ret;
 		}
 		ret = rte_intr_callback_register(dev->intr_handle,
-				acc200_dev_interrupt_handler, dev);
+				vrb_dev_interrupt_handler, dev);
 		if (ret < 0) {
 			rte_bbdev_log(ERR,
 					"Couldn't register interrupt callback for device: %s",
@@ -686,10 +684,10 @@ acc200_intr_enable(struct rte_bbdev *dev)
 
 /* Free memory used for software rings. */
 static int
-acc200_dev_close(struct rte_bbdev *dev)
+vrb_dev_close(struct rte_bbdev *dev)
 {
 	struct acc_device *d = dev->data->dev_private;
-	acc200_check_ir(d);
+	vrb_check_ir(d);
 	if (d->sw_rings_base != NULL) {
 		rte_free(d->tail_ptrs);
 		rte_free(d->info_ring);
@@ -711,7 +709,7 @@ acc200_dev_close(struct rte_bbdev *dev)
  * Note : Only supporting VF0 Bundle for PF mode.
  */
 static int
-acc200_find_free_queue_idx(struct rte_bbdev *dev,
+vrb_find_free_queue_idx(struct rte_bbdev *dev,
 		const struct rte_bbdev_queue_conf *conf)
 {
 	struct acc_device *d = dev->data->dev_private;
@@ -748,7 +746,7 @@ acc200_find_free_queue_idx(struct rte_bbdev *dev,
 
 /* Setup ACC200 queue. */
 static int
-acc200_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
+vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		const struct rte_bbdev_queue_conf *conf)
 {
 	struct acc_device *d = dev->data->dev_private;
@@ -852,7 +850,7 @@ acc200_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 
 	q->op_type = conf->op_type;
 
-	q_idx = acc200_find_free_queue_idx(dev, conf);
+	q_idx = vrb_find_free_queue_idx(dev, conf);
 	if (q_idx == -1) {
 		ret = -EINVAL;
 		goto free_companion_ring_addr;
@@ -874,7 +872,7 @@ acc200_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		q->aq_depth = (1 << d->acc_conf.q_fft.aq_depth_log2);
 
 	q->mmio_reg_enqueue = RTE_PTR_ADD(d->mmio_base,
-			queue_offset(d->pf_device,
+			d->queue_offset(d->pf_device,
 					q->vf_id, q->qgrp_id, q->aq_id));
 
 	rte_bbdev_log_debug(
@@ -903,7 +901,7 @@ free_q:
 }
 
 static inline void
-acc200_print_op(struct rte_bbdev_dec_op *op, enum rte_bbdev_op_type op_type,
+vrb_print_op(struct rte_bbdev_dec_op *op, enum rte_bbdev_op_type op_type,
 		uint16_t index)
 {
 	if (op == NULL)
@@ -934,7 +932,7 @@ acc200_print_op(struct rte_bbdev_dec_op *op, enum rte_bbdev_op_type op_type,
 
 /* Stop ACC200 queue and clear counters. */
 static int
-acc200_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
+vrb_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct acc_queue *q;
 	struct rte_bbdev_dec_op *op;
@@ -945,7 +943,7 @@ acc200_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
 			q->sw_ring_depth, q->op_type);
 	for (i = 0; i < q->sw_ring_depth; ++i) {
 		op = (q->ring_addr + i)->req.op_addr;
-		acc200_print_op(op, q->op_type, i);
+		vrb_print_op(op, q->op_type, i);
 	}
 	/* ignore all operations in flight and clear counters */
 	q->sw_ring_tail = q->sw_ring_head;
@@ -962,7 +960,7 @@ acc200_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
 
 /* Release ACC200 queue. */
 static int
-acc200_queue_release(struct rte_bbdev *dev, uint16_t q_id)
+vrb_queue_release(struct rte_bbdev *dev, uint16_t q_id)
 {
 	struct acc_device *d = dev->data->dev_private;
 	struct acc_queue *q = dev->data->queues[q_id].queue_private;
@@ -982,7 +980,7 @@ acc200_queue_release(struct rte_bbdev *dev, uint16_t q_id)
 
 /* Get ACC200 device info. */
 static void
-acc200_dev_info_get(struct rte_bbdev *dev,
+vrb_dev_info_get(struct rte_bbdev *dev,
 		struct rte_bbdev_driver_info *dev_info)
 {
 	struct acc_device *d = dev->data->dev_private;
@@ -1094,9 +1092,9 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 	dev_info->driver_name = dev->device->driver->name;
 
 	/* Read and save the populated config from ACC200 registers. */
-	fetch_acc200_config(dev);
+	fetch_acc_config(dev);
 	/* Check the status of device. */
-	dev_info->device_status = acc200_device_status(dev);
+	dev_info->device_status = vrb_device_status(dev);
 
 	/* Exposed number of queues. */
 	dev_info->num_queues[RTE_BBDEV_OP_NONE] = 0;
@@ -1130,11 +1128,11 @@ acc200_dev_info_get(struct rte_bbdev *dev,
 	dev_info->capabilities = bbdev_capabilities;
 	dev_info->harq_buffer_size = 0;
 
-	acc200_check_ir(d);
+	vrb_check_ir(d);
 }
 
 static int
-acc200_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
+vrb_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct acc_queue *q = dev->data->queues[queue_id].queue_private;
 
@@ -1147,7 +1145,7 @@ acc200_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
 }
 
 static int
-acc200_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
+vrb_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct acc_queue *q = dev->data->queues[queue_id].queue_private;
 
@@ -1159,16 +1157,16 @@ acc200_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
 	return 0;
 }
 
-static const struct rte_bbdev_ops acc200_bbdev_ops = {
-	.setup_queues = acc200_setup_queues,
-	.intr_enable = acc200_intr_enable,
-	.close = acc200_dev_close,
-	.info_get = acc200_dev_info_get,
-	.queue_setup = acc200_queue_setup,
-	.queue_release = acc200_queue_release,
-	.queue_stop = acc200_queue_stop,
-	.queue_intr_enable = acc200_queue_intr_enable,
-	.queue_intr_disable = acc200_queue_intr_disable
+static const struct rte_bbdev_ops vrb_bbdev_ops = {
+	.setup_queues = vrb_setup_queues,
+	.intr_enable = vrb_intr_enable,
+	.close = vrb_dev_close,
+	.info_get = vrb_dev_info_get,
+	.queue_setup = vrb_queue_setup,
+	.queue_release = vrb_queue_release,
+	.queue_stop = vrb_queue_stop,
+	.queue_intr_enable = vrb_queue_intr_enable,
+	.queue_intr_disable = vrb_queue_intr_disable
 };
 
 /* ACC200 PCI PF address map. */
@@ -1189,7 +1187,7 @@ static struct rte_pci_id pci_id_acc200_vf_map[] = {
 
 /* Fill in a frame control word for turbo decoding. */
 static inline void
-acc200_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
+vrb_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 {
 	fcw->fcw_ver = 1;
 	fcw->num_maps = ACC_FCW_TD_AUTOMAP;
@@ -1606,7 +1604,7 @@ acc200_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 }
 
 static inline void
-acc200_dma_desc_ld_update(struct rte_bbdev_dec_op *op,
+vrb_dma_desc_ld_update(struct rte_bbdev_dec_op *op,
 		struct acc_dma_req_desc *desc,
 		struct rte_mbuf *input, struct rte_mbuf *h_output,
 		uint32_t *in_offset, uint32_t *h_out_offset,
@@ -1750,7 +1748,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
  * all codes blocks have same configuration multiplexed on the same descriptor.
  */
 static inline void
-enqueue_ldpc_enc_part_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
+vrb_enqueue_ldpc_enc_part_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		uint16_t total_enqueued_descs, int16_t num_cbs, uint32_t e,
 		uint16_t in_len_B, uint32_t out_len_B, uint32_t *in_offset,
 		uint32_t *out_offset)
@@ -1870,7 +1868,7 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
  * returns the number of descs used.
  */
 static inline int
-enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
+vrb_enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		uint16_t enq_descs, uint8_t cbs_in_tb)
 {
 	uint8_t num_a, num_b;
@@ -1899,7 +1897,7 @@ enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		uint32_t out_len_B = (e + 7) >> 3;
 		uint8_t enq = RTE_MIN(num_a, ACC_MUX_5GDL_DESC);
 		num_a -= enq;
-		enqueue_ldpc_enc_part_tb(q, op, enq_descs, enq, e, input_len_B,
+		vrb_enqueue_ldpc_enc_part_tb(q, op, enq_descs, enq, e, input_len_B,
 				out_len_B, &in_offset, &out_offset);
 		enq_descs++;
 	}
@@ -1908,7 +1906,7 @@ enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		uint32_t out_len_B = (e + 7) >> 3;
 		uint8_t enq = RTE_MIN(num_b, ACC_MUX_5GDL_DESC);
 		num_b -= enq;
-		enqueue_ldpc_enc_part_tb(q, op, enq_descs, enq, e, input_len_B,
+		vrb_enqueue_ldpc_enc_part_tb(q, op, enq_descs, enq, e, input_len_B,
 				out_len_B, &in_offset, &out_offset);
 		enq_descs++;
 	}
@@ -1939,7 +1937,7 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		*s_output_head, *s_output;
 
 	desc = acc_desc(q, total_enqueued_cbs);
-	acc200_fcw_td_fill(op, &desc->req.fcw_td);
+	vrb_fcw_td_fill(op, &desc->req.fcw_td);
 
 	input = op->turbo_dec.input.data;
 	h_output_head = h_output = op->turbo_dec.hard_output.data;
@@ -1981,7 +1979,7 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 
 /** Enqueue one decode operations for ACC200 device in CB mode */
 static inline int
-enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
+vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		uint16_t total_enqueued_cbs, bool same_op)
 {
 	int ret, hq_len;
@@ -2017,7 +2015,7 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		rte_memcpy(new_ptr + ACC_DESC_FCW_OFFSET,
 				prev_ptr + ACC_DESC_FCW_OFFSET,
 				ACC_FCW_LD_BLEN);
-		acc200_dma_desc_ld_update(op, &desc->req, input, h_output,
+		vrb_dma_desc_ld_update(op, &desc->req, input, h_output,
 				&in_offset, &h_out_offset,
 				&h_out_length, harq_layout);
 	} else {
@@ -2070,7 +2068,7 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 
 /* Enqueue one decode operations for ACC200 device in TB mode. */
 static inline int
-enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
+vrb_enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		uint16_t total_enqueued_cbs, uint8_t cbs_in_tb)
 {
 	union acc_dma_desc *desc = NULL;
@@ -2179,7 +2177,7 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	desc_idx = acc_desc_idx(q, total_enqueued_cbs);
 	desc = q->ring_addr + desc_idx;
 	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
-	acc200_fcw_td_fill(op, &desc->req.fcw_td);
+	vrb_fcw_td_fill(op, &desc->req.fcw_td);
 
 	input = op->turbo_dec.input.data;
 	h_output_head = h_output = op->turbo_dec.hard_output.data;
@@ -2251,7 +2249,7 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 
 /* Enqueue encode operations for ACC200 device in CB mode. */
 static uint16_t
-acc200_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2287,7 +2285,7 @@ acc200_enqueue_enc_cb(struct rte_bbdev_queue_data *q_data,
 
 /** Enqueue encode operations for ACC200 device in CB mode. */
 static inline uint16_t
-acc200_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2328,7 +2326,7 @@ acc200_enqueue_ldpc_enc_cb(struct rte_bbdev_queue_data *q_data,
 
 /* Enqueue encode operations for ACC200 device in TB mode. */
 static uint16_t
-acc200_enqueue_enc_tb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_enc_tb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2367,7 +2365,7 @@ acc200_enqueue_enc_tb(struct rte_bbdev_queue_data *q_data,
 
 /* Enqueue LDPC encode operations for ACC200 device in TB mode. */
 static uint16_t
-acc200_enqueue_ldpc_enc_tb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_ldpc_enc_tb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2384,7 +2382,7 @@ acc200_enqueue_ldpc_enc_tb(struct rte_bbdev_queue_data *q_data,
 			break;
 		}
 
-		descs_used = enqueue_ldpc_enc_one_op_tb(q, ops[i], enqueued_descs, cbs_in_tb);
+		descs_used = vrb_enqueue_ldpc_enc_one_op_tb(q, ops[i], enqueued_descs, cbs_in_tb);
 		if (descs_used < 0) {
 			acc_enqueue_invalid(q_data);
 			break;
@@ -2406,36 +2404,36 @@ acc200_enqueue_ldpc_enc_tb(struct rte_bbdev_queue_data *q_data,
 
 /* Enqueue encode operations for ACC200 device. */
 static uint16_t
-acc200_enqueue_enc(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	int32_t aq_avail = acc_aq_avail(q_data, num);
 	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->turbo_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-		return acc200_enqueue_enc_tb(q_data, ops, num);
+		return vrb_enqueue_enc_tb(q_data, ops, num);
 	else
-		return acc200_enqueue_enc_cb(q_data, ops, num);
+		return vrb_enqueue_enc_cb(q_data, ops, num);
 }
 
 /* Enqueue encode operations for ACC200 device. */
 static uint16_t
-acc200_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	int32_t aq_avail = acc_aq_avail(q_data, num);
 	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->ldpc_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-		return acc200_enqueue_ldpc_enc_tb(q_data, ops, num);
+		return vrb_enqueue_ldpc_enc_tb(q_data, ops, num);
 	else
-		return acc200_enqueue_ldpc_enc_cb(q_data, ops, num);
+		return vrb_enqueue_ldpc_enc_cb(q_data, ops, num);
 }
 
 
 /* Enqueue decode operations for ACC200 device in CB mode. */
 static uint16_t
-acc200_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2468,7 +2466,7 @@ acc200_enqueue_dec_cb(struct rte_bbdev_queue_data *q_data,
 
 /* Enqueue decode operations for ACC200 device in TB mode. */
 static uint16_t
-acc200_enqueue_ldpc_dec_tb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_ldpc_dec_tb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2485,7 +2483,7 @@ acc200_enqueue_ldpc_dec_tb(struct rte_bbdev_queue_data *q_data,
 			break;
 		avail -= cbs_in_tb;
 
-		ret = enqueue_ldpc_dec_one_op_tb(q, ops[i],
+		ret = vrb_enqueue_ldpc_dec_one_op_tb(q, ops[i],
 				enqueued_cbs, cbs_in_tb);
 		if (ret <= 0)
 			break;
@@ -2502,7 +2500,7 @@ acc200_enqueue_ldpc_dec_tb(struct rte_bbdev_queue_data *q_data,
 
 /* Enqueue decode operations for ACC200 device in CB mode. */
 static uint16_t
-acc200_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2526,7 +2524,7 @@ acc200_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 			ops[i]->ldpc_dec.n_cb, ops[i]->ldpc_dec.q_m,
 			ops[i]->ldpc_dec.n_filler, ops[i]->ldpc_dec.cb_params.e,
 			same_op);
-		ret = enqueue_ldpc_dec_one_op_cb(q, ops[i], i, same_op);
+		ret = vrb_enqueue_ldpc_dec_one_op_cb(q, ops[i], i, same_op);
 		if (ret < 0) {
 			acc_enqueue_invalid(q_data);
 			break;
@@ -2547,7 +2545,7 @@ acc200_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 
 /* Enqueue decode operations for ACC200 device in TB mode */
 static uint16_t
-acc200_enqueue_dec_tb(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_dec_tb(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2584,36 +2582,36 @@ acc200_enqueue_dec_tb(struct rte_bbdev_queue_data *q_data,
 
 /* Enqueue decode operations for ACC200 device. */
 static uint16_t
-acc200_enqueue_dec(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	int32_t aq_avail = acc_aq_avail(q_data, num);
 	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-		return acc200_enqueue_dec_tb(q_data, ops, num);
+		return vrb_enqueue_dec_tb(q_data, ops, num);
 	else
-		return acc200_enqueue_dec_cb(q_data, ops, num);
+		return vrb_enqueue_dec_cb(q_data, ops, num);
 }
 
 /* Enqueue decode operations for ACC200 device. */
 static uint16_t
-acc200_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	int32_t aq_avail = acc_aq_avail(q_data, num);
 	if (unlikely((aq_avail <= 0) || (num == 0)))
 		return 0;
 	if (ops[0]->ldpc_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-		return acc200_enqueue_ldpc_dec_tb(q_data, ops, num);
+		return vrb_enqueue_ldpc_dec_tb(q_data, ops, num);
 	else
-		return acc200_enqueue_ldpc_dec_cb(q_data, ops, num);
+		return vrb_enqueue_ldpc_dec_cb(q_data, ops, num);
 }
 
 
 /* Dequeue one encode operations from ACC200 device in CB mode. */
 static inline int
-dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
+vrb_dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		uint16_t *dequeued_ops, uint32_t *aq_dequeued, uint16_t *dequeued_descs)
 {
 	union acc_dma_desc *desc, atom_desc;
@@ -2666,7 +2664,7 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
  * That operation may cover multiple descriptors.
  */
 static inline int
-dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
+vrb_dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		uint16_t *dequeued_ops, uint32_t *aq_dequeued,
 		uint16_t *dequeued_descs)
 {
@@ -2729,7 +2727,7 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 
 /* Dequeue one decode operation from ACC200 device in CB mode. */
 static inline int
-dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
+vrb_dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 		struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		uint16_t dequeued_cbs, uint32_t *aq_dequeued)
 {
@@ -2758,7 +2756,7 @@ dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	if (op->status != 0) {
 		/* These errors are not expected. */
 		q_data->queue_stats.dequeue_err_count++;
-		acc200_check_ir(q->d);
+		vrb_check_ir(q->d);
 	}
 
 	/* CRC invalid if error exists. */
@@ -2781,7 +2779,7 @@ dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 
 /* Dequeue one decode operations from ACC200 device in CB mode. */
 static inline int
-dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
+vrb_dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 		struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		uint16_t dequeued_cbs, uint32_t *aq_dequeued)
 {
@@ -2824,7 +2822,7 @@ dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	op->ldpc_dec.iter_count = (uint8_t) rsp.iter_cnt;
 
 	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
-		acc200_check_ir(q->d);
+		vrb_check_ir(q->d);
 
 	/* Check if this is the last desc in batch (Atomic Queue). */
 	if (desc->req.last_desc_in_batch) {
@@ -2844,7 +2842,7 @@ dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 
 /* Dequeue one decode operations from ACC200 device in TB mode. */
 static inline int
-dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
+vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		uint16_t dequeued_cbs, uint32_t *aq_dequeued)
 {
 	union acc_dma_desc *desc, *last_desc, atom_desc;
@@ -2924,7 +2922,7 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 
 /* Dequeue encode operations from ACC200 device. */
 static uint16_t
-acc200_dequeue_enc(struct rte_bbdev_queue_data *q_data,
+vrb_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2941,11 +2939,11 @@ acc200_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 
 	for (i = 0; i < num; i++) {
 		if (cbm == RTE_BBDEV_TRANSPORT_BLOCK)
-			ret = dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
+			ret = vrb_dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
 					&dequeued_ops, &aq_dequeued,
 					&dequeued_descs);
 		else
-			ret = dequeue_enc_one_op_cb(q, &ops[dequeued_ops],
+			ret = vrb_dequeue_enc_one_op_cb(q, &ops[dequeued_ops],
 					&dequeued_ops, &aq_dequeued,
 					&dequeued_descs);
 		if (ret < 0)
@@ -2965,7 +2963,7 @@ acc200_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 
 /* Dequeue LDPC encode operations from ACC200 device. */
 static uint16_t
-acc200_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
+vrb_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -2981,11 +2979,11 @@ acc200_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 
 	for (i = 0; i < avail; i++) {
 		if (cbm == RTE_BBDEV_TRANSPORT_BLOCK)
-			ret = dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
+			ret = vrb_dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
 					&dequeued_ops, &aq_dequeued,
 					&dequeued_descs);
 		else
-			ret = dequeue_enc_one_op_cb(q, &ops[dequeued_ops],
+			ret = vrb_dequeue_enc_one_op_cb(q, &ops[dequeued_ops],
 					&dequeued_ops, &aq_dequeued,
 					&dequeued_descs);
 		if (ret < 0)
@@ -3005,7 +3003,7 @@ acc200_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 
 /* Dequeue decode operations from ACC200 device. */
 static uint16_t
-acc200_dequeue_dec(struct rte_bbdev_queue_data *q_data,
+vrb_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -3022,10 +3020,10 @@ acc200_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 	for (i = 0; i < dequeue_num; ++i) {
 		op = acc_op_tail(q, dequeued_cbs);
 		if (op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-			ret = dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
+			ret = vrb_dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
 					&aq_dequeued);
 		else
-			ret = dequeue_dec_one_op_cb(q_data, q, &ops[i],
+			ret = vrb_dequeue_dec_one_op_cb(q_data, q, &ops[i],
 					dequeued_cbs, &aq_dequeued);
 
 		if (ret <= 0)
@@ -3044,7 +3042,7 @@ acc200_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 
 /* Dequeue decode operations from ACC200 device. */
 static uint16_t
-acc200_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
+vrb_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -3061,10 +3059,10 @@ acc200_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 	for (i = 0; i < dequeue_num; ++i) {
 		op = acc_op_tail(q, dequeued_cbs);
 		if (op->ldpc_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-			ret = dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
+			ret = vrb_dequeue_dec_one_op_tb(q, &ops[i], dequeued_cbs,
 					&aq_dequeued);
 		else
-			ret = dequeue_ldpc_dec_one_op_cb(
+			ret = vrb_dequeue_ldpc_dec_one_op_cb(
 					q_data, q, &ops[i], dequeued_cbs,
 					&aq_dequeued);
 
@@ -3151,7 +3149,7 @@ acc200_dma_desc_fft_fill(struct rte_bbdev_fft_op *op,
 
 /** Enqueue one FFT operation for ACC200 device. */
 static inline int
-enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
+vrb_enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
 		uint16_t total_enqueued_cbs)
 {
 	union acc_dma_desc *desc;
@@ -3178,7 +3176,7 @@ enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
 
 /* Enqueue decode operations for ACC200 device. */
 static uint16_t
-acc200_enqueue_fft(struct rte_bbdev_queue_data *q_data,
+vrb_enqueue_fft(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_fft_op **ops, uint16_t num)
 {
 	struct acc_queue *q;
@@ -3197,7 +3195,7 @@ acc200_enqueue_fft(struct rte_bbdev_queue_data *q_data,
 		if (unlikely(avail < 1))
 			break;
 		avail -= 1;
-		ret = enqueue_fft_one_op(q, ops[i], i);
+		ret = vrb_enqueue_fft_one_op(q, ops[i], i);
 		if (ret < 0)
 			break;
 	}
@@ -3248,7 +3246,7 @@ dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
 		q_data->queue_stats.dequeue_err_count++;
 
 	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
-		acc200_check_ir(q->d);
+		vrb_check_ir(q->d);
 
 	/* Check if this is the last desc in batch (Atomic Queue). */
 	if (desc->req.last_desc_in_batch) {
@@ -3265,7 +3263,7 @@ dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
 
 /* Dequeue FFT operations from ACC200 device. */
 static uint16_t
-acc200_dequeue_fft(struct rte_bbdev_queue_data *q_data,
+vrb_dequeue_fft(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_fft_op **ops, uint16_t num)
 {
 	struct acc_queue *q = q_data->queue_private;
@@ -3297,17 +3295,17 @@ acc200_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 	struct acc_device *d = dev->data->dev_private;
 
-	dev->dev_ops = &acc200_bbdev_ops;
-	dev->enqueue_enc_ops = acc200_enqueue_enc;
-	dev->enqueue_dec_ops = acc200_enqueue_dec;
-	dev->dequeue_enc_ops = acc200_dequeue_enc;
-	dev->dequeue_dec_ops = acc200_dequeue_dec;
-	dev->enqueue_ldpc_enc_ops = acc200_enqueue_ldpc_enc;
-	dev->enqueue_ldpc_dec_ops = acc200_enqueue_ldpc_dec;
-	dev->dequeue_ldpc_enc_ops = acc200_dequeue_ldpc_enc;
-	dev->dequeue_ldpc_dec_ops = acc200_dequeue_ldpc_dec;
-	dev->enqueue_fft_ops = acc200_enqueue_fft;
-	dev->dequeue_fft_ops = acc200_dequeue_fft;
+	dev->dev_ops = &vrb_bbdev_ops;
+	dev->enqueue_enc_ops = vrb_enqueue_enc;
+	dev->enqueue_dec_ops = vrb_enqueue_dec;
+	dev->dequeue_enc_ops = vrb_dequeue_enc;
+	dev->dequeue_dec_ops = vrb_dequeue_dec;
+	dev->enqueue_ldpc_enc_ops = vrb_enqueue_ldpc_enc;
+	dev->enqueue_ldpc_dec_ops = vrb_enqueue_ldpc_dec;
+	dev->dequeue_ldpc_enc_ops = vrb_dequeue_ldpc_enc;
+	dev->dequeue_ldpc_dec_ops = vrb_dequeue_ldpc_dec;
+	dev->enqueue_fft_ops = vrb_enqueue_fft;
+	dev->dequeue_fft_ops = vrb_dequeue_fft;
 
 	d->pf_device = !strcmp(drv->driver.name, RTE_STR(ACC200PF_DRIVER_NAME));
 	d->mmio_base = pci_dev->mem_resource[0].addr;
@@ -3316,7 +3314,7 @@ acc200_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 	if ((pci_dev->id.device_id == RTE_ACC200_PF_DEVICE_ID) ||
 			(pci_dev->id.device_id == RTE_ACC200_VF_DEVICE_ID)) {
 		d->device_variant = ACC200_VARIANT;
-		d->queue_offset = queue_offset;
+		d->queue_offset = acc200_queue_offset;
 		d->fcw_ld_fill = acc200_fcw_ld_fill;
 		d->num_qgroups = ACC200_NUM_QGRPS;
 		d->num_aqs = ACC200_NUM_AQS;
@@ -3332,7 +3330,7 @@ acc200_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 			pci_dev->mem_resource[0].phys_addr);
 }
 
-static int acc200_pci_probe(struct rte_pci_driver *pci_drv,
+static int vrb_pci_probe(struct rte_pci_driver *pci_drv,
 	struct rte_pci_device *pci_dev)
 {
 	struct rte_bbdev *bbdev = NULL;
@@ -3377,14 +3375,14 @@ static int acc200_pci_probe(struct rte_pci_driver *pci_drv,
 }
 
 static struct rte_pci_driver acc200_pci_pf_driver = {
-		.probe = acc200_pci_probe,
+		.probe = vrb_pci_probe,
 		.remove = acc_pci_remove,
 		.id_table = pci_id_acc200_pf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING
 };
 
 static struct rte_pci_driver acc200_pci_vf_driver = {
-		.probe = acc200_pci_probe,
+		.probe = vrb_pci_probe,
 		.remove = acc_pci_remove,
 		.id_table = pci_id_acc200_vf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING
