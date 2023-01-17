@@ -795,6 +795,17 @@
 
 #define TSYNC_INTERRUPTS	TSINTR_TXTS
 
+/* Split Replication Receive Control */
+#define IGC_SRRCTL_TIMESTAMP           0x40000000
+#define IGC_SRRCTL_TIMER1SEL(timer)    (((timer) & 0x3) << 14)
+#define IGC_SRRCTL_TIMER0SEL(timer)    (((timer) & 0x3) << 17)
+
+/* Sample RX tstamp in PHY sop */
+#define IGC_TSYNCRXCTL_RXSYNSIG         0x00000400
+
+/* Sample TX tstamp in PHY sop */
+#define IGC_TSYNCTXCTL_TXSYNSIG         0x00000020
+
 /* TSAUXC Configuration Bits */
 #define TSAUXC_EN_TT0	(1 << 0)  /* Enable target time 0. */
 #define TSAUXC_EN_TT1	(1 << 1)  /* Enable target time 1. */
