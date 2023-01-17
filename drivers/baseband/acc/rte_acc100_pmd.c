@@ -20,7 +20,7 @@
 #include <rte_bbdev_pmd.h>
 #include "acc100_pmd.h"
 #include "acc101_pmd.h"
-#include "acc200_cfg.h"
+#include "vrb_cfg.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 RTE_LOG_REGISTER_DEFAULT(acc100_logtype, DEBUG);

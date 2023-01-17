@@ -2,13 +2,13 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
-#ifndef _RTE_ACC200_PMD_H_
-#define _RTE_ACC200_PMD_H_
+#ifndef _VRB_PMD_H_
+#define _VRB_PMD_H_
 
 #include "acc_common.h"
 #include "acc200_pf_enum.h"
 #include "acc200_vf_enum.h"
-#include "acc200_cfg.h"
+#include "vrb_cfg.h"
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \
@@ -193,4 +193,4 @@ static const struct acc200_registry_addr vf_reg_addr = {
 	.pmon_ctrl_c = HWVfPmCCntrlRegVf,
 };
 
-#endif /* _RTE_ACC200_PMD_H_ */
+#endif /* _VRB_PMD_H_ */

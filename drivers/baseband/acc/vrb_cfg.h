@@ -2,8 +2,8 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
-#ifndef _ACC200_CFG_H_
-#define _ACC200_CFG_H_
+#ifndef _VRB_CFG_H_
+#define _VRB_CFG_H_
 
 /**
  * @file acc200_cfg.h
@@ -29,4 +29,4 @@
 int
 acc200_configure(const char *dev_name, struct rte_acc_conf *conf);
 
-#endif /* _ACC200_CFG_H_ */
+#endif /* _VRB_CFG_H_ */
