@@ -10,6 +10,7 @@
 #include <openssl/evp.h>	/* Needed for bpi runt block processing */
 
 #ifdef RTE_QAT_LIBIPSECMB
+#define NO_COMPAT_IMB_API_053
 #if defined(RTE_ARCH_ARM)
 #include <ipsec-mb.h>
 #else
