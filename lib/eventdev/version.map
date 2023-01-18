@@ -110,6 +110,7 @@ EXPERIMENTAL {
 	rte_event_eth_rx_adapter_event_port_get;
 
 	# added in 22.07
+	rte_event_crypto_adapter_vector_limits_get;
 	rte_event_port_quiesce;
 	rte_event_queue_attr_set;
 

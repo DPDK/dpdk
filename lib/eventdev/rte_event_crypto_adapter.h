@@ -609,6 +609,9 @@ int
 rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Retrieve vector limits for a given event dev and crypto dev pair.
  * @see rte_event_crypto_adapter_vector_limits
  *
@@ -624,6 +627,7 @@ rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  *  - 0: Success.
  *  - <0: Error code on failure.
  */
+__rte_experimental
 int rte_event_crypto_adapter_vector_limits_get(
 	uint8_t dev_id, uint16_t cdev_id,
 	struct rte_event_crypto_adapter_vector_limits *limits);
