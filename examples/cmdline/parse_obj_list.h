@@ -12,8 +12,9 @@
 
 #include <sys/queue.h>
 #include <cmdline_parse.h>
+#include <cmdline_parse_string.h>
 
-#define OBJ_NAME_LEN_MAX 64
+#define OBJ_NAME_LEN_MAX sizeof(cmdline_fixed_string_t)
 
 struct object {
 	SLIST_ENTRY(object) next;
