@@ -1019,6 +1019,24 @@ virtio_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	return 0;
 }
 
+static int
+virtio_dev_priv_dump(struct rte_eth_dev *dev, FILE *f)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	fprintf(f, "guest_features: 0x%" PRIx64 "\n", hw->guest_features);
+	fprintf(f, "vtnet_hdr_size: %u\n", hw->vtnet_hdr_size);
+	fprintf(f, "use_vec: rx-%u tx-%u\n", hw->use_vec_rx, hw->use_vec_tx);
+	fprintf(f, "use_inorder: rx-%u tx-%u\n", hw->use_inorder_rx, hw->use_inorder_tx);
+	fprintf(f, "intr_lsc: %u\n", hw->intr_lsc);
+	fprintf(f, "max_mtu: %u\n", hw->max_mtu);
+	fprintf(f, "max_rx_pkt_len: %zu\n", hw->max_rx_pkt_len);
+	fprintf(f, "max_queue_pairs: %u\n", hw->max_queue_pairs);
+	fprintf(f, "req_guest_features: 0x%" PRIx64 "\n", hw->req_guest_features);
+
+	return 0;
+}
+
 /*
  * dev_ops for virtio, bare necessities for basic operation
  */
@@ -1055,6 +1073,7 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.mac_addr_remove         = virtio_mac_addr_remove,
 	.mac_addr_set            = virtio_mac_addr_set,
 	.get_monitor_addr        = virtio_get_monitor_addr,
+	.eth_dev_priv_dump       = virtio_dev_priv_dump,
 };
 
 /*
