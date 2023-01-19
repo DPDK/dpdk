@@ -1484,6 +1484,26 @@ vhost_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 	return 0;
 }
 
+static int
+vhost_dev_priv_dump(struct rte_eth_dev *dev, FILE *f)
+{
+	struct pmd_internal *internal = dev->data->dev_private;
+
+	fprintf(f, "iface_name: %s\n", internal->iface_name);
+	fprintf(f, "flags: 0x%" PRIx64 "\n", internal->flags);
+	fprintf(f, "disable_flags: 0x%" PRIx64 "\n", internal->disable_flags);
+	fprintf(f, "features: 0x%" PRIx64 "\n", internal->features);
+	fprintf(f, "max_queues: %u\n", internal->max_queues);
+	fprintf(f, "vid: %d\n", internal->vid);
+	fprintf(f, "started: %d\n", rte_atomic32_read(&internal->started));
+	fprintf(f, "dev_attached: %d\n", rte_atomic32_read(&internal->dev_attached));
+	fprintf(f, "vlan_strip: %d\n", internal->vlan_strip);
+	fprintf(f, "rx_sw_csum: %d\n", internal->rx_sw_csum);
+	fprintf(f, "tx_sw_csum: %d\n", internal->tx_sw_csum);
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
@@ -1504,6 +1524,7 @@ static const struct eth_dev_ops ops = {
 	.rx_queue_intr_enable = eth_rxq_intr_enable,
 	.rx_queue_intr_disable = eth_rxq_intr_disable,
 	.get_monitor_addr = vhost_get_monitor_addr,
+	.eth_dev_priv_dump = vhost_dev_priv_dump,
 };
 
 static int
