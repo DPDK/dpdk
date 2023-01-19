@@ -585,6 +585,7 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 
 	rte_io_wmb();
 	cn9k_sso_txq_fc_wait(txq);
+	cn9k_nix_sec_fc_wait_one(txq);
 
 	/* Write CPT instruction to lmt line */
 	vst1q_u64(lmt_addr, cmd01);
