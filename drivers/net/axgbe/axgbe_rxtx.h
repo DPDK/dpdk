@@ -100,7 +100,7 @@ struct axgbe_rx_queue {
 	uint64_t rx_mbuf_alloc_failed;
 	/* Number of mbufs allocated from pool*/
 	uint64_t mbuf_alloc;
-
+	uint64_t offloads; /**< Rx offloads with RTE_ETH_RX_OFFLOAD_**/
 } __rte_cache_aligned;
 
 /*Tx descriptor format */
@@ -149,7 +149,7 @@ struct axgbe_tx_queue {
 	uint64_t pkts;
 	uint64_t bytes;
 	uint64_t errors;
-
+	uint64_t offloads; /**< Tx offload flags of RTE_ETH_TX_OFFLOAD_* */
 } __rte_cache_aligned;
 
 /*Queue related APIs */

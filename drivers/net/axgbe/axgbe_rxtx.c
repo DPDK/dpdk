@@ -86,6 +86,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (rxq->free_thresh >  rxq->nb_desc)
 		rxq->free_thresh = rxq->nb_desc >> 3;
 
+	rxq->offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 	/* Allocate RX ring hardware descriptors */
 	size = rxq->nb_desc * sizeof(union axgbe_rx_desc);
 	dma = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx, size, 128,
@@ -211,7 +212,6 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	unsigned int err, etlt;
 	uint32_t error_status;
 	uint16_t idx, pidx, pkt_len;
-	uint64_t offloads;
 
 	idx = AXGBE_GET_DESC_IDX(rxq, rxq->cur);
 	while (nb_rx < nb_pkts) {
@@ -278,14 +278,13 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			mbuf->hash.rss = rte_le_to_cpu_32(desc->write.desc1);
 		etlt = AXGMAC_GET_BITS_LE(desc->write.desc3,
 				RX_NORMAL_DESC3, ETLT);
-		offloads = rxq->pdata->eth_dev->data->dev_conf.rxmode.offloads;
 		if (!err || !etlt) {
 			if (etlt == RX_CVLAN_TAG_PRESENT) {
 				mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
 				mbuf->vlan_tci =
 					AXGMAC_GET_BITS_LE(desc->write.desc0,
 							RX_NORMAL_DESC0, OVT);
-				if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+				if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 					mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
 				else
 					mbuf->ol_flags &= ~RTE_MBUF_F_RX_VLAN_STRIPPED;
@@ -345,7 +344,6 @@ uint16_t eth_axgbe_recv_scattered_pkts(void *rx_queue,
 	unsigned int err = 0, etlt;
 	uint32_t error_status = 0;
 	uint16_t idx, pidx, data_len = 0, pkt_len = 0;
-	uint64_t offloads;
 	bool eop = 0;
 
 	idx = AXGBE_GET_DESC_IDX(rxq, rxq->cur);
@@ -441,14 +439,13 @@ next_desc:
 				rte_le_to_cpu_32(desc->write.desc1);
 		etlt = AXGMAC_GET_BITS_LE(desc->write.desc3,
 				RX_NORMAL_DESC3, ETLT);
-		offloads = rxq->pdata->eth_dev->data->dev_conf.rxmode.offloads;
 		if (!err || !etlt) {
 			if (etlt == RX_CVLAN_TAG_PRESENT) {
 				first_seg->ol_flags |= RTE_MBUF_F_RX_VLAN;
 				first_seg->vlan_tci =
 					AXGMAC_GET_BITS_LE(desc->write.desc0,
 							RX_NORMAL_DESC0, OVT);
-				if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+				if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 					first_seg->ol_flags |=
 						RTE_MBUF_F_RX_VLAN_STRIPPED;
 				else
@@ -578,7 +575,7 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -ENOMEM;
 	txq->pdata = pdata;
 	offloads = tx_conf->offloads |
-		txq->pdata->eth_dev->data->dev_conf.txmode.offloads;
+		dev->data->dev_conf.txmode.offloads;
 	txq->nb_desc = tx_desc;
 	txq->free_thresh = tx_conf->tx_free_thresh ?
 		tx_conf->tx_free_thresh : AXGBE_TX_FREE_THRESH;
@@ -606,6 +603,7 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->desc = tz->addr;
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;
+	txq->offloads = offloads;
 	txq->dma_regs = (void *)((uint8_t *)pdata->xgmac_regs + DMA_CH_BASE +
 		(DMA_CH_INC * txq->queue_id));
 	txq->dma_tail_reg = (volatile uint32_t *)((uint8_t *)txq->dma_regs +
