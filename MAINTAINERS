@@ -850,7 +850,7 @@ F: buildtools/options-ibverbs-static.sh
 F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
 
-Microsoft mana - EXPERIMENTAL
+Microsoft mana
 M: Long Li <longli@microsoft.com>
 F: drivers/net/mana/
 F: doc/guides/nics/mana.rst
