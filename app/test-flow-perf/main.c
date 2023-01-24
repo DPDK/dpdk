@@ -709,13 +709,11 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name,
 					"rules-batch") == 0) {
 				n = atoi(optarg);
-				if (n >= DEFAULT_RULES_BATCH)
+				if (n > 0)
 					rules_batch = n;
-				else {
+				else
 					rte_exit(EXIT_FAILURE,
-						"rules_batch should be >= %d\n",
-						DEFAULT_RULES_BATCH);
-				}
+							"flow rules-batch should be > 0\n");
 			}
 			if (strcmp(lgopts[opt_idx].name,
 					"rules-count") == 0) {
