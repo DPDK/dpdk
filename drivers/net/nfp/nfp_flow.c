@@ -285,7 +285,7 @@ nfp_check_mask_remove(struct nfp_flow_priv *priv,
 
 		rte_free(mask_entry);
 		if (meta_flags)
-			*meta_flags &= ~NFP_FL_META_FLAG_MANAGE_MASK;
+			*meta_flags |= NFP_FL_META_FLAG_MANAGE_MASK;
 	}
 
 	return true;
@@ -3653,6 +3653,7 @@ nfp_flow_teardown(struct nfp_flow_priv *priv,
 	nfp_flow_meta = nfp_flow->payload.meta;
 	mask_data = nfp_flow->payload.mask_data;
 	mask_len = nfp_flow_meta->mask_len << NFP_FL_LW_SIZ;
+	nfp_flow_meta->flags &= ~NFP_FL_META_FLAG_MANAGE_MASK;
 	if (!nfp_check_mask_remove(priv, mask_data, mask_len,
 			&nfp_flow_meta->flags)) {
 		PMD_DRV_LOG(ERR, "nfp mask del check failed.");
