@@ -288,12 +288,8 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		return -ret;
 	}
 
-	if (name != NULL) {
-		ret = rte_thread_setname(*thread, name);
-		if (ret < 0)
-			RTE_LOG(DEBUG, EAL,
-				"Cannot set name for ctrl thread\n");
-	}
+	if (name != NULL)
+		rte_thread_set_name((rte_thread_t){(uintptr_t)*thread}, name);
 
 	/* Wait for the control thread to initialize successfully */
 	while ((ctrl_thread_status =

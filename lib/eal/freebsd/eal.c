@@ -817,8 +817,7 @@ rte_eal_init(int argc, char **argv)
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, sizeof(thread_name),
 				"rte-worker-%d", i);
-		rte_thread_setname((pthread_t)lcore_config[i].thread_id.opaque_id,
-			thread_name);
+		rte_thread_set_name(lcore_config[i].thread_id, thread_name);
 
 		ret = rte_thread_set_affinity_by_id(lcore_config[i].thread_id,
 			&lcore_config[i].cpuset);

@@ -4,7 +4,9 @@
  */
 
 #include <errno.h>
+#include <wchar.h>
 
+#include <rte_eal.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_thread.h>
@@ -303,6 +305,47 @@ rte_thread_self(void)
 	thread_id.opaque_id = GetCurrentThreadId();
 
 	return thread_id;
+}
+
+void
+rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
+{
+	int ret = 0;
+	wchar_t wname[RTE_MAX_THREAD_NAME_LEN];
+	mbstate_t state = {0};
+	size_t rv;
+	HANDLE thread_handle;
+
+	thread_handle = OpenThread(THREAD_ALL_ACCESS, FALSE,
+		thread_id.opaque_id);
+	if (thread_handle == NULL) {
+		ret = thread_log_last_error("OpenThread()");
+		goto cleanup;
+	}
+
+	memset(wname, 0, sizeof(wname));
+	rv = mbsrtowcs(wname, &thread_name, RTE_DIM(wname) - 1, &state);
+	if (rv == (size_t)-1) {
+		ret = EILSEQ;
+		goto cleanup;
+	}
+
+#ifndef RTE_TOOLCHAIN_GCC
+	if (FAILED(SetThreadDescription(thread_handle, wname))) {
+		ret = EINVAL;
+		goto cleanup;
+	}
+#else
+	ret = ENOTSUP;
+	goto cleanup;
+#endif
+
+cleanup:
+	if (thread_handle != NULL)
+		CloseHandle(thread_handle);
+
+	if (ret != 0)
+		RTE_LOG(DEBUG, EAL, "Failed to set thread name\n");
 }
 
 int

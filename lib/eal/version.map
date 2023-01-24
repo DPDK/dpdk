@@ -439,6 +439,9 @@ EXPERIMENTAL {
 	rte_thread_detach;
 	rte_thread_equal;
 	rte_thread_join;
+
+	# added in 23.03
+	rte_thread_set_name;
 };
 
 INTERNAL {

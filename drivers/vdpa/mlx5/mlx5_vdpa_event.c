@@ -547,8 +547,7 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 		goto out;
 	}
 	snprintf(name, sizeof(name), "vDPA-mlx5-%d", priv->vid);
-	if (rte_thread_setname(priv->timer_tid, name) != 0)
-		DRV_LOG(DEBUG, "Cannot set timer thread name.");
+	rte_thread_set_name((rte_thread_t){(uintptr_t)priv->timer_tid}, name);
 out:
 	if (attrp != NULL)
 		pthread_attr_destroy(attrp);

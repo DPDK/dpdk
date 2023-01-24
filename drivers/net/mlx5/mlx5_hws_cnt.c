@@ -465,7 +465,8 @@ mlx5_hws_cnt_service_thread_create(struct mlx5_dev_ctx_shared *sh)
 	}
 	snprintf(name, CNT_THREAD_NAME_MAX - 1, "%s/svc@%d",
 		 sh->ibdev_name, service_core);
-	rte_thread_setname(sh->cnt_svc->service_thread, name);
+	rte_thread_set_name((rte_thread_t){(uintptr_t)sh->cnt_svc->service_thread},
+		name);
 	CPU_SET(service_core, &cpuset);
 	pthread_setaffinity_np(sh->cnt_svc->service_thread, sizeof(cpuset),
 				&cpuset);

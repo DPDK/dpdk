@@ -32,6 +32,17 @@ int rte_sys_gettid(void)
 	return (int)lwpid;
 }
 
+void rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
+{
+	char truncated[RTE_MAX_THREAD_NAME_LEN];
+	const size_t truncatedsz = sizeof(truncated);
+
+	if (strlcpy(truncated, thread_name, truncatedsz) >= truncatedsz)
+		RTE_LOG(DEBUG, EAL, "Truncated thread name\n");
+
+	pthread_set_name_np((pthread_t)thread_id.opaque_id, truncated);
+}
+
 int rte_thread_setname(pthread_t id, const char *name)
 {
 	/* this BSD function returns no error */
