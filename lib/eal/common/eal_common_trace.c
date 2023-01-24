@@ -298,6 +298,19 @@ rte_trace_dump(FILE *f)
 		trace_point_dump(f, tp);
 }
 
+static void
+thread_get_name(rte_thread_t id, char *name, size_t len)
+{
+#if defined(RTE_EXEC_ENV_LINUX) && defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 12)
+	pthread_getname_np((pthread_t)id.opaque_id, name, len);
+#endif
+#endif
+	RTE_SET_USED(id);
+	RTE_SET_USED(name);
+	RTE_SET_USED(len);
+}
+
 void
 __rte_trace_mem_per_thread_alloc(void)
 {
@@ -356,7 +369,7 @@ found:
 	/* Store the thread name */
 	char *name = header->stream_header.thread_name;
 	memset(name, 0, __RTE_TRACE_EMIT_STRING_LEN_MAX);
-	rte_thread_getname(pthread_self(), name,
+	thread_get_name(rte_thread_self(), name,
 		__RTE_TRACE_EMIT_STRING_LEN_MAX);
 
 	trace->lcore_meta[count].mem = header;

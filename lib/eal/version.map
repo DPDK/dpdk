@@ -369,7 +369,6 @@ EXPERIMENTAL {
 	__rte_trace_point_register;
 	per_lcore_trace_mem;
 	per_lcore_trace_point_sz;
-	rte_thread_getname; # WINDOWS_NO_EXPORT
 	rte_trace_dump; # WINDOWS_NO_EXPORT
 	rte_trace_is_enabled; # WINDOWS_NO_EXPORT
 	rte_trace_metadata_dump; # WINDOWS_NO_EXPORT

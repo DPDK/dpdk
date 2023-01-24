@@ -352,23 +352,6 @@ rte_lcore_dump(FILE *f);
 int rte_thread_setname(pthread_t id, const char *name);
 
 /**
- * Get thread name.
- *
- * @note It fails with glibc < 2.12.
- *
- * @param id
- *   Thread id.
- * @param name
- *   Thread name to set.
- * @param len
- *   Thread name buffer length.
- * @return
- *   On success, return 0; otherwise return a negative value.
- */
-__rte_experimental
-int rte_thread_getname(pthread_t id, char *name, size_t len);
-
-/**
  * Register current non-EAL thread as a lcore.
  *
  * @note This API is not compatible with the multi-process feature:
