@@ -3,8 +3,10 @@
  */
 
 #include "cn10k_worker.h"
-#include "cnxk_eventdev.h"
-#include "cnxk_worker.h"
+
+#ifdef _ROC_API_H_
+#error "roc_api.h is included"
+#endif
 
 #define R(name, flags)                                                         \
 	SSO_DUAL_DEQ(cn10k_sso_hws_dual_deq_##name, flags)                     \

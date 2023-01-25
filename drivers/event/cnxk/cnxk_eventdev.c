@@ -5,6 +5,7 @@
 #include "roc_npa.h"
 
 #include "cnxk_eventdev.h"
+#include "cnxk_eventdev_dp.h"
 
 void
 cnxk_sso_info_get(struct cnxk_sso_evdev *dev,

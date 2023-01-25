@@ -3,6 +3,7 @@
  */
 
 #include "cnxk_eventdev.h"
+#include "cnxk_eventdev_dp.h"
 
 struct cnxk_sso_xstats_name {
 	const char name[RTE_EVENT_DEV_XSTATS_NAME_SIZE];

@@ -11,7 +11,8 @@
 #include "roc_io_generic.h"
 #endif
 
-#include "cnxk_eventdev.h"
+#include "cnxk_eventdev_dp.h"
+#include "hw/ssow.h"
 
 /* SSO Operations */
 

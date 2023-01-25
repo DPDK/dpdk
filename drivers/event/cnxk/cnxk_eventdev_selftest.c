@@ -19,6 +19,7 @@
 #include <rte_test.h>
 
 #include "cnxk_eventdev.h"
+#include "cnxk_eventdev_dp.h"
 
 #define NUM_PACKETS (1024)
 #define MAX_EVENTS  (1024)

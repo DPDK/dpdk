@@ -22,9 +22,5 @@ uint16_t __rte_hot cn10k_cpt_sg_ver1_crypto_adapter_enqueue(void *ws, struct rte
 __rte_internal
 uint16_t __rte_hot cn10k_cpt_sg_ver2_crypto_adapter_enqueue(void *ws, struct rte_event ev[],
 		uint16_t nb_events);
-__rte_internal
-uintptr_t cn10k_cpt_crypto_adapter_dequeue(uintptr_t get_work1);
-__rte_internal
-uintptr_t cn10k_cpt_crypto_adapter_vector_dequeue(uintptr_t get_work1);
 
 #endif /* _CN10K_CRYPTODEV_OPS_H_ */

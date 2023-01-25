@@ -18,6 +18,8 @@
 
 #include "cn10k_cryptodev.h"
 #include "cn10k_cryptodev_ops.h"
+#include "cn10k_cryptodev_event_dp.h"
+#include "cn10k_eventdev.h"
 #include "cn10k_ipsec.h"
 #include "cn10k_ipsec_la_ops.h"
 #include "cnxk_ae.h"
