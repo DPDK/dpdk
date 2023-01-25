@@ -18,9 +18,6 @@
 /* ROC Constants */
 #include "roc_constants.h"
 
-/* Constants */
-#define PLT_ETHER_ADDR_LEN 6
-
 /* Platform definition */
 #include "roc_platform.h"
 
@@ -54,6 +51,7 @@
 #include "roc_mbox.h"
 
 /* NPA */
+#include "roc_npa_dp.h"
 #include "roc_npa.h"
 
 /* NPC */
@@ -63,6 +61,7 @@
 #include "roc_nix.h"
 
 /* SSO */
+#include "roc_sso_dp.h"
 #include "roc_sso.h"
 
 /* TIM */
@@ -105,6 +104,7 @@
 #include "roc_hash.h"
 
 /* NIX Inline dev */
+#include "roc_nix_inl_dp.h"
 #include "roc_nix_inl.h"
 
 #endif /* _ROC_API_H_ */

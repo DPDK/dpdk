@@ -5,7 +5,6 @@
 #ifndef _ROC_NPA_H_
 #define _ROC_NPA_H_
 
-#define ROC_AURA_ID_MASK       (BIT_ULL(16) - 1)
 #define ROC_AURA_OP_LIMIT_MASK (BIT_ULL(36) - 1)
 
 #define ROC_NPA_MAX_BLOCK_SZ		   (128 * 1024)
@@ -40,18 +39,6 @@ roc_npa_aura_handle_gen(uint32_t aura_id, uintptr_t addr)
 }
 
 static inline uint64_t
-roc_npa_aura_handle_to_aura(uint64_t aura_handle)
-{
-	return aura_handle & ROC_AURA_ID_MASK;
-}
-
-static inline uintptr_t
-roc_npa_aura_handle_to_base(uint64_t aura_handle)
-{
-	return (uintptr_t)(aura_handle & ~ROC_AURA_ID_MASK);
-}
-
-static inline uint64_t
 roc_npa_aura_op_alloc(uint64_t aura_handle, const int drop)
 {
 	uint64_t wdata = roc_npa_aura_handle_to_aura(aura_handle);
@@ -63,18 +50,6 @@ roc_npa_aura_op_alloc(uint64_t aura_handle, const int drop)
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_AURA_OP_ALLOCX(0));
 	return roc_atomic64_add_nosync(wdata, addr);
-}
-
-static inline void
-roc_npa_aura_op_free(uint64_t aura_handle, const int fabs, uint64_t iova)
-{
-	uint64_t reg = roc_npa_aura_handle_to_aura(aura_handle);
-	const uint64_t addr =
-		roc_npa_aura_handle_to_base(aura_handle) + NPA_LF_AURA_OP_FREE0;
-	if (fabs)
-		reg |= BIT_ULL(63); /* FABS */
-
-	roc_store_pair(iova, reg, addr);
 }
 
 static inline uint64_t
