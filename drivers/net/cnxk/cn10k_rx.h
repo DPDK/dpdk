@@ -4,10 +4,11 @@
 #ifndef __CN10K_RX_H__
 #define __CN10K_RX_H__
 
-#include <rte_ether.h>
+#include <rte_ethdev.h>
 #include <rte_vect.h>
+#include "cn10k_rxtx.h"
 
-#include <cnxk_ethdev.h>
+#define NSEC_PER_SEC             1000000000L
 
 #define NIX_RX_OFFLOAD_NONE	     (0)
 #define NIX_RX_OFFLOAD_RSS_F	     BIT(0)

@@ -5,8 +5,8 @@
 #define __CN10K_TX_H__
 
 #include <rte_vect.h>
-
 #include <rte_eventdev.h>
+#include "cn10k_rxtx.h"
 
 #define NIX_TX_OFFLOAD_NONE	      (0)
 #define NIX_TX_OFFLOAD_L3_L4_CSUM_F   BIT(0)
