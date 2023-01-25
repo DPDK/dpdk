@@ -8,7 +8,8 @@
 #include <rte_security.h>
 #include <rte_security_driver.h>
 
-#include "roc_api.h"
+#include "roc_constants.h"
+#include "roc_ie_ot.h"
 
 #include "cnxk_ipsec.h"
 

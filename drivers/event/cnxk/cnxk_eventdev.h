@@ -19,7 +19,10 @@
 
 #include <eventdev_pmd_pci.h>
 
-#include "roc_api.h"
+#include "hw/sso.h"
+
+#include "roc_platform.h"
+#include "roc_sso.h"
 
 #include "cnxk_tim_evdev.h"
 

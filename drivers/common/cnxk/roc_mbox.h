@@ -9,10 +9,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Device memory does not support unaligned access, instruct compiler to
- * not optimize the memory access when working with mailbox memory.
- */
-#define __io volatile
+#include "hw/cpt.h"
+
+#include "roc_platform.h"
 
 /* Header which precedes all mbox messages */
 struct mbox_hdr {
@@ -1508,34 +1507,6 @@ struct cpt_rx_inline_lf_cfg_msg {
 	uint32_t __io credit_th;
 	uint16_t __io bpid;
 	uint32_t __io reserved;
-};
-
-enum cpt_eng_type {
-	CPT_ENG_TYPE_AE = 1,
-	CPT_ENG_TYPE_SE = 2,
-	CPT_ENG_TYPE_IE = 3,
-	CPT_MAX_ENG_TYPES,
-};
-
-/* CPT HW capabilities */
-union cpt_eng_caps {
-	uint64_t __io u;
-	struct {
-		uint64_t __io reserved_0_4 : 5;
-		uint64_t __io mul : 1;
-		uint64_t __io sha1_sha2 : 1;
-		uint64_t __io chacha20 : 1;
-		uint64_t __io zuc_snow3g : 1;
-		uint64_t __io sha3 : 1;
-		uint64_t __io aes : 1;
-		uint64_t __io kasumi : 1;
-		uint64_t __io des : 1;
-		uint64_t __io crc : 1;
-		uint64_t __io mmul : 1;
-		uint64_t __io reserved_15_33 : 19;
-		uint64_t __io pdcp_chain : 1;
-		uint64_t __io reserved_35_63 : 29;
-	};
 };
 
 struct cpt_caps_rsp_msg {

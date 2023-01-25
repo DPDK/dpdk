@@ -293,6 +293,13 @@ extern int cnxk_logtype_ree;
 }
 #endif
 
+/* Device memory does not support unaligned access, instruct compiler to
+ * not optimize the memory access when working with mailbox memory.
+ */
+#ifndef __io
+#define __io volatile
+#endif
+
 __rte_internal
 int roc_plt_init(void);
 

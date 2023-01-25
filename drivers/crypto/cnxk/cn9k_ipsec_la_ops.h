@@ -9,6 +9,8 @@
 #include <rte_esp.h>
 #include <rte_security.h>
 
+#include "roc_ie.h"
+
 #include "cn9k_ipsec.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_security_ar.h"

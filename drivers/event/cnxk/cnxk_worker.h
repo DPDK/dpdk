@@ -5,6 +5,12 @@
 #ifndef __CNXK_WORKER_H__
 #define __CNXK_WORKER_H__
 
+#if defined(__aarch64__)
+#include "roc_io.h"
+#else
+#include "roc_io_generic.h"
+#endif
+
 #include "cnxk_eventdev.h"
 
 /* SSO Operations */

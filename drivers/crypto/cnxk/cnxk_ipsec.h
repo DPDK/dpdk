@@ -7,7 +7,9 @@
 #include <rte_security.h>
 #include <rte_security_driver.h>
 
-#include "roc_api.h"
+#include "roc_cpt.h"
+#include "roc_ie_on.h"
+#include "roc_ie_ot.h"
 
 extern struct rte_security_ops cnxk_sec_ops;
 

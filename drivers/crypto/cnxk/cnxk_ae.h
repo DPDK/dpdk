@@ -9,7 +9,8 @@
 #include <rte_crypto_asym.h>
 #include <rte_malloc.h>
 
-#include "roc_api.h"
+#include "roc_ae.h"
+
 #include "cnxk_cryptodev_ops.h"
 
 struct cnxk_ae_sess {

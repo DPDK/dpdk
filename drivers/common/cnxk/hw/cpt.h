@@ -5,6 +5,8 @@
 #ifndef __CPT_HW_H__
 #define __CPT_HW_H__
 
+#include "roc_platform.h"
+
 /* Register offsets */
 
 #define CPT_COMP_NOT_DONE (0x0ull)
@@ -47,7 +49,35 @@
 #define CPT_AF_LFX_CTL(a)  (0x27000ull | (uint64_t)(a) << 3)
 #define CPT_AF_LFX_CTL2(a) (0x29000ull | (uint64_t)(a) << 3)
 
+enum cpt_eng_type {
+	CPT_ENG_TYPE_AE = 1,
+	CPT_ENG_TYPE_SE = 2,
+	CPT_ENG_TYPE_IE = 3,
+	CPT_MAX_ENG_TYPES,
+};
+
 /* Structures definitions */
+
+/* CPT HW capabilities */
+union cpt_eng_caps {
+	uint64_t __io u;
+	struct {
+		uint64_t __io reserved_0_4 : 5;
+		uint64_t __io mul : 1;
+		uint64_t __io sha1_sha2 : 1;
+		uint64_t __io chacha20 : 1;
+		uint64_t __io zuc_snow3g : 1;
+		uint64_t __io sha3 : 1;
+		uint64_t __io aes : 1;
+		uint64_t __io kasumi : 1;
+		uint64_t __io des : 1;
+		uint64_t __io crc : 1;
+		uint64_t __io mmul : 1;
+		uint64_t __io reserved_15_33 : 19;
+		uint64_t __io pdcp_chain : 1;
+		uint64_t __io reserved_35_63 : 29;
+	};
+};
 
 union cpt_lf_ctl {
 	uint64_t u;

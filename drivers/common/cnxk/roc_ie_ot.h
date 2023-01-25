@@ -5,6 +5,8 @@
 #ifndef __ROC_IE_OT_H__
 #define __ROC_IE_OT_H__
 
+#include "roc_platform.h"
+
 /* CN10K IPSEC opcodes */
 #define ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC 0x28UL
 #define ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC  0x29UL

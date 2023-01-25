@@ -5,6 +5,8 @@
 #ifndef _ROC_TIM_H_
 #define _ROC_TIM_H_
 
+#include "roc_platform.h"
+
 enum roc_tim_clk_src {
 	ROC_TIM_CLK_SRC_10NS = 0,
 	ROC_TIM_CLK_SRC_GPIO,

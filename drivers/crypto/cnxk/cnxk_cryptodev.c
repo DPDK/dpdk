@@ -6,6 +6,7 @@
 #include <rte_cryptodev.h>
 
 #include "roc_cpt.h"
+#include "roc_model.h"
 
 #include "cnxk_cryptodev.h"
 

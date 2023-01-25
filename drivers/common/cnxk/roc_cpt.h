@@ -5,7 +5,11 @@
 #ifndef _ROC_CPT_H_
 #define _ROC_CPT_H_
 
-#include "roc_api.h"
+#include "hw/cpt.h"
+
+#include "roc_platform.h"
+
+struct nix_inline_ipsec_cfg;
 
 #define ROC_AE_CPT_BLOCK_TYPE1 0
 #define ROC_AE_CPT_BLOCK_TYPE2 1

@@ -16,7 +16,10 @@
 #include <rte_memzone.h>
 #include <rte_reciprocal.h>
 
-#include "roc_api.h"
+#include "hw/tim.h"
+
+#include "roc_model.h"
+#include "roc_tim.h"
 
 #define NSECPERSEC		 1E9
 #define USECPERSEC		 1E6

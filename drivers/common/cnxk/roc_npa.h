@@ -5,6 +5,19 @@
 #ifndef _ROC_NPA_H_
 #define _ROC_NPA_H_
 
+#include <stdint.h>
+
+#include "hw/npa.h"
+
+#include "roc_bits.h"
+#include "roc_constants.h"
+#if defined(__aarch64__)
+#include "roc_io.h"
+#else
+#include "roc_io_generic.h"
+#endif
+#include "roc_npa_dp.h"
+
 #define ROC_AURA_OP_LIMIT_MASK (BIT_ULL(36) - 1)
 
 #define ROC_NPA_MAX_BLOCK_SZ		   (128 * 1024)

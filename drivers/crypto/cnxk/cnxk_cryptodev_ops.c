@@ -6,7 +6,9 @@
 #include <cryptodev_pmd.h>
 #include <rte_errno.h>
 
+#include "roc_ae_fpm_tables.h"
 #include "roc_cpt.h"
+#include "roc_ie_on.h"
 
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"

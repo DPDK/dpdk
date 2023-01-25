@@ -4,6 +4,8 @@
 
 #include <math.h>
 
+#include "roc_npa.h"
+
 #include "cnxk_eventdev.h"
 #include "cnxk_tim_evdev.h"
 

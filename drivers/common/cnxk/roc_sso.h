@@ -5,6 +5,8 @@
 #ifndef _ROC_SSO_H_
 #define _ROC_SSO_H_
 
+#include "hw/ssow.h"
+
 struct roc_sso_hwgrp_qos {
 	uint16_t hwgrp;
 	uint8_t xaq_prcnt;

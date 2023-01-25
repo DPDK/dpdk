@@ -7,6 +7,8 @@
 
 #include <stdbool.h>
 
+#include "roc_bits.h"
+
 extern struct roc_model *roc_model;
 
 struct roc_model {

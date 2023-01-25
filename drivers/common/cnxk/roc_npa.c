@@ -875,8 +875,8 @@ npa_dev_fini(struct npa_lf *lf)
 int
 npa_lf_init(struct dev *dev, struct plt_pci_device *pci_dev)
 {
+	uint16_t npa_msixoff = 0;
 	struct idev_cfg *idev;
-	uint16_t npa_msixoff;
 	struct npa_lf *lf;
 	int rc;
 

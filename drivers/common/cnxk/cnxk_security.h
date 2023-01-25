@@ -7,7 +7,8 @@
 #include <rte_crypto.h>
 #include <rte_security.h>
 
-#include "roc_api.h"
+#include "roc_ie_on.h"
+#include "roc_ie_ot.h"
 
 /* Response length calculation data */
 struct cnxk_ipsec_outb_rlens {

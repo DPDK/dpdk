@@ -7,6 +7,15 @@
 #include <rte_event_crypto_adapter.h>
 #include <rte_ip.h>
 
+#include "roc_cpt.h"
+#if defined(__aarch64__)
+#include "roc_io.h"
+#else
+#include "roc_io_generic.h"
+#endif
+#include "roc_sso.h"
+#include "roc_sso_dp.h"
+
 #include "cn10k_cryptodev.h"
 #include "cn10k_cryptodev_ops.h"
 #include "cn10k_ipsec.h"
@@ -16,8 +25,6 @@
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_se.h"
-
-#include "roc_api.h"
 
 #define PKTS_PER_LOOP	32
 #define PKTS_PER_STEORL 16

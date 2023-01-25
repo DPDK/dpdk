@@ -8,7 +8,12 @@
 #include <cryptodev_pmd.h>
 #include <rte_event_crypto_adapter.h>
 
-#include "roc_api.h"
+#include "hw/cpt.h"
+
+#include "roc_constants.h"
+#include "roc_cpt.h"
+#include "roc_cpt_sg.h"
+#include "roc_se.h"
 
 #define CNXK_CPT_MIN_HEADROOM_REQ	 32
 #define CNXK_CPT_MIN_TAILROOM_REQ	 102

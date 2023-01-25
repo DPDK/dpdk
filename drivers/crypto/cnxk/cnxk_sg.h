@@ -5,6 +5,8 @@
 #ifndef _CNXK_SG_H_
 #define _CNXK_SG_H_
 
+#include "roc_cpt_sg.h"
+
 static __rte_always_inline uint32_t
 fill_sg_comp(struct roc_sglist_comp *list, uint32_t i, phys_addr_t dma_addr, uint32_t size)
 {
