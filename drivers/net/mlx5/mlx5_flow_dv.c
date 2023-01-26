@@ -1898,6 +1898,8 @@ mlx5_flow_field_id_to_modify_info
 			MLX5_ASSERT(data->offset + width <= 32);
 			int reg;
 
+			off_be = (data->level == MLX5_LINEAR_HASH_TAG_INDEX) ?
+				 16 - (data->offset + width) + 16 : data->offset;
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG,
 							 data->level);
@@ -1912,9 +1914,9 @@ mlx5_flow_field_id_to_modify_info
 						reg_to_field[reg]};
 			if (mask)
 				mask[idx] = flow_modify_info_mask_32
-					(width, data->offset);
+					(width, off_be);
 			else
-				info[idx].offset = data->offset;
+				info[idx].offset = off_be;
 		}
 		break;
 	case RTE_FLOW_FIELD_MARK:

@@ -1023,7 +1023,11 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 		    conf->dst.field == RTE_FLOW_FIELD_METER_COLOR ||
 		    conf->dst.field == (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG) {
 			value = *(const unaligned_uint32_t *)item.spec;
-			value = rte_cpu_to_be_32(value);
+			if (conf->dst.field == RTE_FLOW_FIELD_TAG &&
+			    conf->dst.level == MLX5_LINEAR_HASH_TAG_INDEX)
+				value = rte_cpu_to_be_32(value << 16);
+			else
+				value = rte_cpu_to_be_32(value);
 			item.spec = &value;
 		} else if (conf->dst.field == RTE_FLOW_FIELD_GTP_PSC_QFI) {
 			/*
@@ -2052,7 +2056,11 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
 	    mhdr_action->dst.field == RTE_FLOW_FIELD_METER_COLOR ||
 	    mhdr_action->dst.field == (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG) {
 		value_p = (unaligned_uint32_t *)values;
-		*value_p = rte_cpu_to_be_32(*value_p);
+		if (mhdr_action->dst.field == RTE_FLOW_FIELD_TAG &&
+		    mhdr_action->dst.level == MLX5_LINEAR_HASH_TAG_INDEX)
+			*value_p = rte_cpu_to_be_32(*value_p << 16);
+		else
+			*value_p = rte_cpu_to_be_32(*value_p);
 	} else if (mhdr_action->dst.field == RTE_FLOW_FIELD_GTP_PSC_QFI) {
 		uint32_t tmp;
 

@@ -17,6 +17,7 @@
 #include <mlx5_prm.h>
 
 #include "mlx5.h"
+#include "rte_pmd_mlx5.h"
 #include "hws/mlx5dr.h"
 
 /* E-Switch Manager port, used for rte_flow_item_port_id. */
@@ -1599,6 +1600,8 @@ flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
 	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 		return mlx5_flow_hw_aso_tag;
 	case RTE_FLOW_ITEM_TYPE_TAG:
+		if (id == MLX5_LINEAR_HASH_TAG_INDEX)
+			return REG_C_3;
 		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
 		return mlx5_flow_hw_avl_tags[id];
 	default:

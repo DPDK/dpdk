@@ -69,6 +69,11 @@ int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains);
 #define MLX5_EXTERNAL_RX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
 
 /**
+ * Tag level to set the linear hash index.
+ */
+#define MLX5_LINEAR_HASH_TAG_INDEX 255
+
+/**
  * Update mapping between rte_flow queue index (16 bits) and HW queue index (32
  * bits) for RxQs which is created outside the PMD.
  *
