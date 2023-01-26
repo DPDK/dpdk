@@ -4,35 +4,14 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <netinet/in.h>
-#ifdef RTE_EXEC_ENV_LINUX
-#include <linux/if.h>
-#include <linux/if_tun.h>
-#endif
-#include <sys/ioctl.h>
-#include <fcntl.h>
-#include <unistd.h>
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
-#include <rte_swx_ctl.h>
 
 #include "obj.h"
 
 /*
- * link
- */
-TAILQ_HEAD(link_list, link);
-
-/*
- * obj
- */
-struct obj {
-	struct link_list link_list;
-};
-
-/*
- * link
+ * ethdev
  */
 static struct rte_eth_conf port_conf_default = {
 	.link_speeds = 0,
@@ -58,7 +37,7 @@ static struct rte_eth_conf port_conf_default = {
 static int
 rss_setup(uint16_t port_id,
 	uint16_t reta_size,
-	struct link_params_rss *rss)
+	struct ethdev_params_rss *rss)
 {
 	struct rte_eth_rss_reta_entry64 reta_conf[RETA_CONF_SIZE];
 	uint32_t i;
@@ -87,69 +66,64 @@ rss_setup(uint16_t port_id,
 	return status;
 }
 
-struct link *
-link_create(struct obj *obj, const char *name, struct link_params *params)
+int
+ethdev_config(const char *name, struct ethdev_params *params)
 {
 	struct rte_eth_dev_info port_info;
 	struct rte_eth_conf port_conf;
-	struct link *link;
-	struct link_params_rss *rss;
+	struct ethdev_params_rss *rss;
 	struct rte_mempool *mempool;
-	uint32_t cpu_id, i;
-	int status;
+	uint32_t i;
+	int numa_node, status;
 	uint16_t port_id = 0;
 
 	/* Check input params */
-	if ((name == NULL) ||
-		link_find(obj, name) ||
-		(params == NULL) ||
-		(params->rx.n_queues == 0) ||
-		(params->rx.queue_size == 0) ||
-		(params->tx.n_queues == 0) ||
-		(params->tx.queue_size == 0))
-		return NULL;
+	if (!name ||
+	    !name[0] ||
+	    !params ||
+	    !params->rx.n_queues ||
+	    !params->rx.queue_size ||
+	    !params->tx.n_queues ||
+	    !params->tx.queue_size)
+		return -EINVAL;
 
 	status = rte_eth_dev_get_port_by_name(name, &port_id);
 	if (status)
-		return NULL;
+		return -EINVAL;
 
-	if (rte_eth_dev_info_get(port_id, &port_info) != 0)
-		return NULL;
+	status = rte_eth_dev_info_get(port_id, &port_info);
+	if (status)
+		return -EINVAL;
 
 	mempool = rte_mempool_lookup(params->rx.mempool_name);
 	if (!mempool)
-		return NULL;
+		return -EINVAL;
 
 	rss = params->rx.rss;
 	if (rss) {
-		if ((port_info.reta_size == 0) ||
-			(port_info.reta_size > RTE_ETH_RSS_RETA_SIZE_512))
-			return NULL;
+		if (!port_info.reta_size || port_info.reta_size > RTE_ETH_RSS_RETA_SIZE_512)
+			return -EINVAL;
 
-		if ((rss->n_queues == 0) ||
-			(rss->n_queues >= LINK_RXQ_RSS_MAX))
-			return NULL;
+		if (!rss->n_queues || rss->n_queues >= ETHDEV_RXQ_RSS_MAX)
+			return -EINVAL;
 
 		for (i = 0; i < rss->n_queues; i++)
 			if (rss->queue_id[i] >= port_info.max_rx_queues)
-				return NULL;
+				return -EINVAL;
 	}
 
-	/**
-	 * Resource create
-	 */
 	/* Port */
 	memcpy(&port_conf, &port_conf_default, sizeof(port_conf));
 	if (rss) {
+		uint64_t rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP;
+
 		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
-		port_conf.rx_adv_conf.rss_conf.rss_hf =
-			(RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP) &
-			port_info.flow_type_rss_offloads;
+		port_conf.rx_adv_conf.rss_conf.rss_hf = rss_hf & port_info.flow_type_rss_offloads;
 	}
 
-	cpu_id = (uint32_t) rte_eth_dev_socket_id(port_id);
-	if (cpu_id == (uint32_t) SOCKET_ID_ANY)
-		cpu_id = 0;
+	numa_node = rte_eth_dev_socket_id(port_id);
+	if (numa_node == SOCKET_ID_ANY)
+		numa_node = 0;
 
 	status = rte_eth_dev_configure(
 		port_id,
@@ -158,12 +132,12 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 		&port_conf);
 
 	if (status < 0)
-		return NULL;
+		return -EINVAL;
 
 	if (params->promiscuous) {
 		status = rte_eth_promiscuous_enable(port_id);
-		if (status != 0)
-			return NULL;
+		if (status)
+			return -EINVAL;
 	}
 
 	/* Port RX */
@@ -172,12 +146,12 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 			port_id,
 			i,
 			params->rx.queue_size,
-			cpu_id,
+			numa_node,
 			NULL,
 			mempool);
 
 		if (status < 0)
-			return NULL;
+			return -EINVAL;
 	}
 
 	/* Port TX */
@@ -186,24 +160,24 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 			port_id,
 			i,
 			params->tx.queue_size,
-			cpu_id,
+			numa_node,
 			NULL);
 
 		if (status < 0)
-			return NULL;
+			return -EINVAL;
 	}
 
 	/* Port start */
 	status = rte_eth_dev_start(port_id);
 	if (status < 0)
-		return NULL;
+		return -EINVAL;
 
 	if (rss) {
 		status = rss_setup(port_id, port_info.reta_size, rss);
 
 		if (status) {
 			rte_eth_dev_stop(port_id);
-			return NULL;
+			return -EINVAL;
 		}
 	}
 
@@ -211,84 +185,8 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	status = rte_eth_dev_set_link_up(port_id);
 	if ((status < 0) && (status != -ENOTSUP)) {
 		rte_eth_dev_stop(port_id);
-		return NULL;
+		return -EINVAL;
 	}
 
-	/* Node allocation */
-	link = calloc(1, sizeof(struct link));
-	if (link == NULL) {
-		rte_eth_dev_stop(port_id);
-		return NULL;
-	}
-
-	/* Node fill in */
-	strlcpy(link->name, name, sizeof(link->name));
-	link->port_id = port_id;
-	link->n_rxq = params->rx.n_queues;
-	link->n_txq = params->tx.n_queues;
-
-	/* Node add to list */
-	TAILQ_INSERT_TAIL(&obj->link_list, link, node);
-
-	return link;
-}
-
-int
-link_is_up(struct obj *obj, const char *name)
-{
-	struct rte_eth_link link_params;
-	struct link *link;
-
-	/* Check input params */
-	if (!obj || !name)
-		return 0;
-
-	link = link_find(obj, name);
-	if (link == NULL)
-		return 0;
-
-	/* Resource */
-	if (rte_eth_link_get(link->port_id, &link_params) < 0)
-		return 0;
-
-	return (link_params.link_status == RTE_ETH_LINK_DOWN) ? 0 : 1;
-}
-
-struct link *
-link_find(struct obj *obj, const char *name)
-{
-	struct link *link;
-
-	if (!obj || !name)
-		return NULL;
-
-	TAILQ_FOREACH(link, &obj->link_list, node)
-		if (strcmp(link->name, name) == 0)
-			return link;
-
-	return NULL;
-}
-
-struct link *
-link_next(struct obj *obj, struct link *link)
-{
-	return (link == NULL) ?
-		TAILQ_FIRST(&obj->link_list) : TAILQ_NEXT(link, node);
-}
-
-/*
- * obj
- */
-struct obj *
-obj_init(void)
-{
-	struct obj *obj;
-
-	obj = calloc(1, sizeof(struct obj));
-	if (!obj)
-		return NULL;
-
-	TAILQ_INIT(&obj->link_list);
-
-	return obj;
+	return 0;
 }

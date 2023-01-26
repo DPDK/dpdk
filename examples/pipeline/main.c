@@ -135,7 +135,6 @@ int
 main(int argc, char **argv)
 {
 	struct conn *conn;
-	struct obj *obj;
 	int status;
 
 	/* Parse application arguments */
@@ -149,13 +148,6 @@ main(int argc, char **argv)
 		printf("Error: EAL initialization failed (%d)\n", status);
 		return status;
 	};
-
-	/* Obj */
-	obj = obj_init();
-	if (!obj) {
-		printf("Error: Obj initialization failed (%d)\n", status);
-		return status;
-	}
 
 	/* Thread */
 	status = thread_init();
@@ -174,10 +166,10 @@ main(int argc, char **argv)
 		cli_script_process(app.script_name,
 			app.conn.msg_in_len_max,
 			app.conn.msg_out_len_max,
-			obj);
+			NULL);
 
 	/* Connectivity */
-	app.conn.msg_handle_arg = obj;
+	app.conn.msg_handle_arg = NULL;
 	conn = conn_init(&app.conn);
 	if (!conn) {
 		printf("Error: Connectivity initialization failed (%d)\n",
