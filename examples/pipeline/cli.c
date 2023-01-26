@@ -18,6 +18,7 @@
 #include <rte_swx_port_fd.h>
 #include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
+#include <rte_swx_ipsec.h>
 
 #include "cli.h"
 
@@ -2913,6 +2914,263 @@ cmd_pipeline_mirror_session(char **tokens,
 	}
 }
 
+static const char cmd_ipsec_create_help[] =
+"ipsec <ipsec_instance_name> create "
+"in <ring_in_name> out <ring_out_name> "
+"cryptodev <crypto_dev_name> cryptoq <crypto_dev_queue_pair_id> "
+"bsz <ring_rd_bsz> <ring_wr_bsz> <crypto_wr_bsz> <crypto_rd_bsz> "
+"samax <n_sa_max> "
+"numa <numa_node>\n";
+
+static void
+cmd_ipsec_create(char **tokens,
+		 uint32_t n_tokens,
+		 char *out,
+		 size_t out_size,
+		 void *obj __rte_unused)
+{
+	struct rte_swx_ipsec_params p;
+	struct rte_swx_ipsec *ipsec;
+	char *ipsec_instance_name;
+	uint32_t numa_node;
+	int status;
+
+	if (n_tokens != 20) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	ipsec_instance_name = tokens[1];
+
+	if (strcmp(tokens[2], "create")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "create");
+		return;
+	}
+
+	if (strcmp(tokens[3], "in")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "in");
+		return;
+	}
+
+	p.ring_in_name = tokens[4];
+
+	if (strcmp(tokens[5], "out")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "out");
+		return;
+	}
+
+	p.ring_out_name = tokens[6];
+
+	if (strcmp(tokens[7], "cryptodev")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cryptodev");
+		return;
+	}
+
+	p.crypto_dev_name = tokens[8];
+
+	if (strcmp(tokens[9], "cryptoq")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cryptoq");
+		return;
+	}
+
+	if (parser_read_uint32(&p.crypto_dev_queue_pair_id, tokens[10])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "crypto_dev_queue_pair_id");
+		return;
+	}
+
+	if (strcmp(tokens[11], "bsz")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "bsz");
+		return;
+	}
+
+	if (parser_read_uint32(&p.bsz.ring_rd, tokens[12])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "ring_rd_bsz");
+		return;
+	}
+
+	if (parser_read_uint32(&p.bsz.ring_wr, tokens[13])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "ring_wr_bsz");
+		return;
+	}
+
+	if (parser_read_uint32(&p.bsz.crypto_wr, tokens[14])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "crypto_wr_bsz");
+		return;
+	}
+
+	if (parser_read_uint32(&p.bsz.crypto_rd, tokens[15])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "crypto_rd_bsz");
+		return;
+	}
+
+	if (strcmp(tokens[16], "samax")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "samax");
+		return;
+	}
+
+	if (parser_read_uint32(&p.n_sa_max, tokens[17])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_sa_max");
+		return;
+	}
+
+	if (strcmp(tokens[18], "numa")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "numa");
+		return;
+	}
+
+	if (parser_read_uint32(&numa_node, tokens[19])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "numa_node");
+		return;
+	}
+
+	status = rte_swx_ipsec_create(&ipsec,
+				      ipsec_instance_name,
+				      &p,
+				      (int)numa_node);
+	if (status)
+		snprintf(out, out_size, "IPsec instance creation failed (%d).\n", status);
+}
+
+static const char cmd_ipsec_sa_add_help[] =
+"ipsec <ipsec_instance_name> sa add <file_name>\n";
+
+static void
+cmd_ipsec_sa_add(char **tokens,
+		 uint32_t n_tokens,
+		 char *out,
+		 size_t out_size,
+		 void *obj __rte_unused)
+{
+	struct rte_swx_ipsec *ipsec;
+	char *ipsec_instance_name, *file_name, *line = NULL;
+	FILE *file = NULL;
+	uint32_t line_id = 0;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	ipsec_instance_name = tokens[1];
+	ipsec = rte_swx_ipsec_find(ipsec_instance_name);
+	if (!ipsec) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "ipsec_instance_name");
+		goto free;
+	}
+
+	if (strcmp(tokens[2], "sa")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "sa");
+		goto free;
+	}
+
+	if (strcmp(tokens[3], "add")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "add");
+		goto free;
+	}
+
+	file_name = tokens[4];
+	file = fopen(file_name, "r");
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", file_name);
+		goto free;
+	}
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line) {
+		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
+		goto free;
+	}
+
+	/* File read. */
+	for (line_id = 1; ; line_id++) {
+		struct rte_swx_ipsec_sa_params *sa;
+		const char *err_msg;
+		uint32_t sa_id = 0;
+		int is_blank_or_comment, status = 0;
+
+		if (fgets(line, MAX_LINE_SIZE, file) == NULL)
+			break;
+
+		/* Read SA from file. */
+		sa = rte_swx_ipsec_sa_read(ipsec, line, &is_blank_or_comment, &err_msg);
+		if (!sa) {
+			if (is_blank_or_comment)
+				continue;
+
+			snprintf(out, out_size, "Invalid SA in file \"%s\" at line %u: \"%s\"\n",
+				file_name, line_id, err_msg);
+			goto free;
+		}
+
+		snprintf(out, out_size, "%s", line);
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		/* Add the SA to the IPsec instance. Free the SA. */
+		status = rte_swx_ipsec_sa_add(ipsec, sa, &sa_id);
+		if (status)
+			snprintf(out, out_size, "\t: Error (%d)\n", status);
+		else
+			snprintf(out, out_size, "\t: OK (SA ID = %u)\n", sa_id);
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		free(sa);
+		if (status)
+			goto free;
+	}
+
+free:
+	if (file)
+		fclose(file);
+	free(line);
+}
+
+static const char cmd_ipsec_sa_delete_help[] =
+"ipsec <ipsec_instance_name> sa delete <sa_id>\n";
+
+static void
+cmd_ipsec_sa_delete(char **tokens,
+		    uint32_t n_tokens,
+		    char *out,
+		    size_t out_size,
+		    void *obj __rte_unused)
+{
+	struct rte_swx_ipsec *ipsec;
+	char *ipsec_instance_name;
+	uint32_t sa_id;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	ipsec_instance_name = tokens[1];
+	ipsec = rte_swx_ipsec_find(ipsec_instance_name);
+	if (!ipsec) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "ipsec_instance_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "sa")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "sa");
+		return;
+	}
+
+	if (strcmp(tokens[3], "delete")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "delete");
+		return;
+	}
+
+	if (parser_read_uint32(&sa_id, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "sa_id");
+		return;
+	}
+
+	rte_swx_ipsec_sa_delete(ipsec, sa_id);
+}
+
 static const char cmd_thread_pipeline_enable_help[] =
 "thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]\n";
 
@@ -3071,6 +3329,9 @@ cmd_help(char **tokens,
 			"\tpipeline meter stats\n"
 			"\tpipeline stats\n"
 			"\tpipeline mirror session\n"
+			"\tipsec create\n"
+			"\tipsec sa add\n"
+			"\tipsec sa delete\n"
 			"\tthread pipeline enable\n"
 			"\tthread pipeline disable\n\n");
 		return;
@@ -3292,6 +3553,26 @@ cmd_help(char **tokens,
 		(n_tokens == 3) && !strcmp(tokens[1], "mirror")
 		&& !strcmp(tokens[2], "session")) {
 		snprintf(out, out_size, "\n%s\n", cmd_pipeline_mirror_session_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "ipsec") &&
+		(n_tokens == 2) && !strcmp(tokens[1], "create")) {
+		snprintf(out, out_size, "\n%s\n", cmd_ipsec_create_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "ipsec") &&
+		(n_tokens == 3) && !strcmp(tokens[1], "sa")
+		&& !strcmp(tokens[2], "add")) {
+		snprintf(out, out_size, "\n%s\n", cmd_ipsec_sa_add_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "ipsec") &&
+		(n_tokens == 3) && !strcmp(tokens[1], "sa")
+		&& !strcmp(tokens[2], "delete")) {
+		snprintf(out, out_size, "\n%s\n", cmd_ipsec_sa_delete_help);
 		return;
 	}
 
@@ -3539,6 +3820,23 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			(strcmp(tokens[2], "mirror") == 0) &&
 			(strcmp(tokens[3], "session") == 0)) {
 			cmd_pipeline_mirror_session(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+	}
+
+	if (!strcmp(tokens[0], "ipsec")) {
+		if (n_tokens >= 3 && !strcmp(tokens[2], "create")) {
+			cmd_ipsec_create(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if (n_tokens >= 4 && !strcmp(tokens[2], "sa") && !strcmp(tokens[3], "add")) {
+			cmd_ipsec_sa_add(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if (n_tokens >= 4 && !strcmp(tokens[2], "sa") && !strcmp(tokens[3], "delete")) {
+			cmd_ipsec_sa_delete(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 	}
