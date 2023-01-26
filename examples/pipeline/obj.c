@@ -25,16 +25,10 @@
 TAILQ_HEAD(link_list, link);
 
 /*
- * ring
- */
-TAILQ_HEAD(ring_list, ring);
-
-/*
  * obj
  */
 struct obj {
 	struct link_list link_list;
-	struct ring_list ring_list;
 };
 
 /*
@@ -283,62 +277,6 @@ link_next(struct obj *obj, struct link *link)
 }
 
 /*
- * ring
- */
-struct ring *
-ring_create(struct obj *obj, const char *name, struct ring_params *params)
-{
-	struct ring *ring;
-	struct rte_ring *r;
-	unsigned int flags = RING_F_SP_ENQ | RING_F_SC_DEQ;
-
-	/* Check input params */
-	if (!name || ring_find(obj, name) || !params || !params->size)
-		return NULL;
-
-	/**
-	 * Resource create
-	 */
-	r = rte_ring_create(
-		name,
-		params->size,
-		params->numa_node,
-		flags);
-	if (!r)
-		return NULL;
-
-	/* Node allocation */
-	ring = calloc(1, sizeof(struct ring));
-	if (!ring) {
-		rte_ring_free(r);
-		return NULL;
-	}
-
-	/* Node fill in */
-	strlcpy(ring->name, name, sizeof(ring->name));
-
-	/* Node add to list */
-	TAILQ_INSERT_TAIL(&obj->ring_list, ring, node);
-
-	return ring;
-}
-
-struct ring *
-ring_find(struct obj *obj, const char *name)
-{
-	struct ring *ring;
-
-	if (!obj || !name)
-		return NULL;
-
-	TAILQ_FOREACH(ring, &obj->ring_list, node)
-		if (strcmp(ring->name, name) == 0)
-			return ring;
-
-	return NULL;
-}
-
-/*
  * obj
  */
 struct obj *
@@ -351,7 +289,6 @@ obj_init(void)
 		return NULL;
 
 	TAILQ_INIT(&obj->link_list);
-	TAILQ_INIT(&obj->ring_list);
 
 	return obj;
 }

@@ -73,25 +73,4 @@ link_find(struct obj *obj, const char *name);
 struct link *
 link_next(struct obj *obj, struct link *link);
 
-/*
- * ring
- */
-struct ring_params {
-	uint32_t size;
-	uint32_t numa_node;
-};
-
-struct ring {
-	TAILQ_ENTRY(ring) node;
-	char name[NAME_SIZE];
-};
-
-struct ring *
-ring_create(struct obj *obj,
-	   const char *name,
-	   struct ring_params *params);
-
-struct ring *
-ring_find(struct obj *obj, const char *name);
-
 #endif /* _INCLUDE_OBJ_H_ */

@@ -11,6 +11,7 @@
 
 #include <rte_common.h>
 #include <rte_ethdev.h>
+#include <rte_ring.h>
 #include <rte_swx_port_ethdev.h>
 #include <rte_swx_port_ring.h>
 #include <rte_swx_port_source_sink.h>
@@ -491,11 +492,11 @@ cmd_ring(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct ring_params p;
+	struct rte_ring *r;
 	char *name;
-	struct ring *ring;
+	uint32_t size, numa_node;
 
 	if (n_tokens != 6) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
@@ -504,28 +505,32 @@ cmd_ring(char **tokens,
 
 	name = tokens[1];
 
-	if (strcmp(tokens[2], "size") != 0) {
+	if (strcmp(tokens[2], "size")) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
 		return;
 	}
 
-	if (parser_read_uint32(&p.size, tokens[3]) != 0) {
+	if (parser_read_uint32(&size, tokens[3])) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "size");
 		return;
 	}
 
-	if (strcmp(tokens[4], "numa") != 0) {
+	if (strcmp(tokens[4], "numa")) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "numa");
 		return;
 	}
 
-	if (parser_read_uint32(&p.numa_node, tokens[5]) != 0) {
+	if (parser_read_uint32(&numa_node, tokens[5])) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "numa_node");
 		return;
 	}
 
-	ring = ring_create(obj, name, &p);
-	if (!ring) {
+	r = rte_ring_create(
+		name,
+		size,
+		(int)numa_node,
+		RING_F_SP_ENQ | RING_F_SC_DEQ);
+	if (!r) {
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;
 	}
@@ -2999,6 +3004,7 @@ cmd_help(char **tokens,
 			"List of commands:\n"
 			"\tmempool\n"
 			"\tethdev\n"
+			"\tring\n"
 			"\tpipeline codegen\n"
 			"\tpipeline libbuild\n"
 			"\tpipeline build\n"
