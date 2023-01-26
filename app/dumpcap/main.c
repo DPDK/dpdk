@@ -58,6 +58,7 @@ static bool quiet;
 static bool promiscuous_mode = true;
 static bool use_pcapng = true;
 static char *output_name;
+static const char *tmp_dir = "/tmp";
 static const char *filter_str;
 static unsigned int ring_size = 2048;
 static const char *capture_comment;
@@ -126,6 +127,8 @@ static void usage(void)
 	       "  -P                       use libpcap format instead of pcapng\n"
 	       "  --capture-comment <comment>\n"
 	       "                           add a capture comment to the output file\n"
+	       "  --temp-dir <directory>   write temporary files to this directory\n"
+	       "                           (default: /tmp)\n"
 	       "\n"
 	       "Miscellaneous:\n"
 	       "  --file-prefix=<prefix>   prefix to use for multi-process\n"
@@ -327,6 +330,7 @@ static void parse_opts(int argc, char **argv)
 		{ "output-file",     required_argument, NULL, 'w' },
 		{ "ring-buffer",     required_argument, NULL, 'b' },
 		{ "snapshot-length", required_argument, NULL, 's' },
+		{ "temp-dir",        required_argument, NULL, 0 },
 		{ "version",         no_argument,       NULL, 'v' },
 		{ NULL },
 	};
@@ -346,6 +350,9 @@ static void parse_opts(int argc, char **argv)
 			} else if (!strcmp(long_options[option_index].name,
 					   "file-prefix")) {
 				file_prefix = optarg;
+			} else if (!strcmp(long_options[option_index].name,
+					   "temp-dir")) {
+				tmp_dir = optarg;
 			} else {
 				usage();
 				exit(1);
@@ -642,7 +649,7 @@ static dumpcap_out_t create_output(void)
 		strftime(ts, sizeof(ts), "%Y%m%d%H%M%S", tm);
 
 		snprintf(tmp_path, sizeof(tmp_path),
-			 "/tmp/%s_%u_%s_%s.%s",
+			 "%s/%s_%u_%s_%s.%s", tmp_dir,
 			 progname, intf->port, intf->name, ts,
 			 use_pcapng ? "pcapng" : "pcap");
 		output_name = tmp_path;
