@@ -3253,6 +3253,134 @@ cmd_pipeline_disable(char **tokens,
 	pipeline_disable(p);
 }
 
+static const char cmd_block_enable_help[] =
+"block type <block_type> instance <block_name> enable thread <thread_id>\n";
+
+static void
+cmd_block_enable(char **tokens,
+		 uint32_t n_tokens,
+		 char *out,
+		 size_t out_size,
+		 void *obj __rte_unused)
+{
+	char *block_type, *block_name;
+	block_run_f block_func = NULL;
+	void *block = NULL;
+	uint32_t thread_id;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "type") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "type");
+		return;
+	}
+
+	block_type = tokens[2];
+
+	if (strcmp(tokens[3], "instance") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "instance");
+		return;
+	}
+
+	block_name = tokens[4];
+
+	if (strcmp(tokens[5], "enable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "enable");
+		return;
+	}
+
+	if (strcmp(tokens[6], "thread") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "thread");
+		return;
+	}
+
+	if (parser_read_uint32(&thread_id, tokens[7]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
+		return;
+	}
+
+	if (!strcmp(block_type, "ipsec")) {
+		struct rte_swx_ipsec *ipsec;
+
+		ipsec = rte_swx_ipsec_find(block_name);
+		if (!ipsec) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "block_name");
+			return;
+		}
+
+		block_func = (block_run_f)rte_swx_ipsec_run;
+		block = (void *)ipsec;
+	} else {
+		snprintf(out, out_size, MSG_ARG_INVALID, "block_type");
+		return;
+	}
+
+	status = block_enable(block_func, block, thread_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, "block enable");
+		return;
+	}
+}
+
+static const char cmd_block_disable_help[] =
+"block type <block_type> instance <block_name> disable\n";
+
+static void
+cmd_block_disable(char **tokens,
+		  uint32_t n_tokens,
+		  char *out,
+		  size_t out_size,
+		  void *obj __rte_unused)
+{
+	char *block_type, *block_name;
+	void *block = NULL;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "type") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "type");
+		return;
+	}
+
+	block_type = tokens[2];
+
+	if (strcmp(tokens[3], "instance") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "instance");
+		return;
+	}
+
+	block_name = tokens[4];
+
+	if (strcmp(tokens[5], "disable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "disable");
+		return;
+	}
+
+	if (!strcmp(block_type, "ipsec")) {
+		struct rte_swx_ipsec *ipsec;
+
+		ipsec = rte_swx_ipsec_find(block_name);
+		if (!ipsec) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "block_name");
+			return;
+		}
+
+		block = (void *)ipsec;
+	} else {
+		snprintf(out, out_size, MSG_ARG_INVALID, "block_type");
+		return;
+	}
+
+	block_disable(block);
+}
+
 static void
 cmd_help(char **tokens,
 	 uint32_t n_tokens,
@@ -3301,6 +3429,8 @@ cmd_help(char **tokens,
 			"\tipsec create\n"
 			"\tipsec sa add\n"
 			"\tipsec sa delete\n"
+			"\tblock enable\n"
+			"\tblock disable\n"
 			);
 		return;
 	}
@@ -3553,6 +3683,18 @@ cmd_help(char **tokens,
 		(n_tokens == 3) && !strcmp(tokens[1], "sa")
 		&& !strcmp(tokens[2], "delete")) {
 		snprintf(out, out_size, "\n%s\n", cmd_ipsec_sa_delete_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "block") &&
+		(n_tokens == 2) && !strcmp(tokens[1], "enable")) {
+		snprintf(out, out_size, "\n%s\n", cmd_block_enable_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "block") &&
+		(n_tokens == 2) && !strcmp(tokens[1], "disable")) {
+		snprintf(out, out_size, "\n%s\n", cmd_block_disable_help);
 		return;
 	}
 
@@ -3811,6 +3953,18 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 
 		if (n_tokens >= 4 && !strcmp(tokens[2], "sa") && !strcmp(tokens[3], "delete")) {
 			cmd_ipsec_sa_delete(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+	}
+
+	if (!strcmp(tokens[0], "block")) {
+		if (n_tokens >= 6 && !strcmp(tokens[5], "enable")) {
+			cmd_block_enable(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if (n_tokens >= 6 && !strcmp(tokens[5], "disable")) {
+			cmd_block_disable(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 	}
