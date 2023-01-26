@@ -3548,10 +3548,11 @@ flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"destination field mask and template are not equal");
 	if (action_conf->dst.field == RTE_FLOW_FIELD_POINTER ||
-	    action_conf->dst.field == RTE_FLOW_FIELD_VALUE)
+	    action_conf->dst.field == RTE_FLOW_FIELD_VALUE ||
+	    action_conf->dst.field == RTE_FLOW_FIELD_HASH_RESULT)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
-				"immediate value and pointer cannot be used as destination");
+				"immediate value, pointer and hash result cannot be used as destination");
 	if (mask_conf->dst.level != UINT32_MAX)
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION, action,
