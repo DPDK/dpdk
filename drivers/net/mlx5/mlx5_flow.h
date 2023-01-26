@@ -1158,6 +1158,7 @@ struct rte_flow_hw {
 	uint32_t age_idx;
 	cnt_id_t cnt_id;
 	uint32_t mtr_id;
+	uint32_t rule_idx;
 	uint8_t rule[0]; /* HWS layer data struct. */
 } __rte_packed;
 
@@ -1821,6 +1822,16 @@ typedef struct rte_flow *(*mlx5_flow_async_flow_create_t)
 			 uint8_t action_template_index,
 			 void *user_data,
 			 struct rte_flow_error *error);
+typedef struct rte_flow *(*mlx5_flow_async_flow_create_by_index_t)
+			(struct rte_eth_dev *dev,
+			 uint32_t queue,
+			 const struct rte_flow_op_attr *attr,
+			 struct rte_flow_template_table *table,
+			 uint32_t rule_index,
+			 const struct rte_flow_action actions[],
+			 uint8_t action_template_index,
+			 void *user_data,
+			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_async_flow_destroy_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t queue,
@@ -1923,6 +1934,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_table_create_t template_table_create;
 	mlx5_flow_table_destroy_t template_table_destroy;
 	mlx5_flow_async_flow_create_t async_flow_create;
+	mlx5_flow_async_flow_create_by_index_t async_flow_create_by_index;
 	mlx5_flow_async_flow_destroy_t async_flow_destroy;
 	mlx5_flow_pull_t pull;
 	mlx5_flow_push_t push;

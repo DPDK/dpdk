@@ -2595,6 +2595,118 @@ error:
 }
 
 /**
+ * Enqueue HW steering flow creation by index.
+ *
+ * The flow will be applied to the HW only if the postpone bit is not set or
+ * the extra push function is called.
+ * The flow creation status should be checked from dequeue result.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to create the flow.
+ * @param[in] attr
+ *   Pointer to the flow operation attributes.
+ * @param[in] rule_index
+ *   The item pattern flow follows from the table.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    Flow pointer on success, NULL otherwise and rte_errno is set.
+ */
+static struct rte_flow *
+flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
+			  uint32_t queue,
+			  const struct rte_flow_op_attr *attr,
+			  struct rte_flow_template_table *table,
+			  uint32_t rule_index,
+			  const struct rte_flow_action actions[],
+			  uint8_t action_template_index,
+			  void *user_data,
+			  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5dr_rule_attr rule_attr = {
+		.queue_id = queue,
+		.user_data = user_data,
+		.burst = attr->postpone,
+	};
+	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
+	struct rte_flow_hw *flow;
+	struct mlx5_hw_q_job *job;
+	uint32_t flow_idx;
+	int ret;
+
+	if (unlikely(rule_index >= table->cfg.attr.nb_flows)) {
+		rte_errno = EINVAL;
+		goto error;
+	}
+	if (unlikely(!priv->hw_q[queue].job_idx)) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
+	if (!flow)
+		goto error;
+	/*
+	 * Set the table here in order to know the destination table
+	 * when free the flow afterwards.
+	 */
+	flow->table = table;
+	flow->idx = flow_idx;
+	job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
+	/*
+	 * Set the job type here in order to know if the flow memory
+	 * should be freed or not when get the result from dequeue.
+	 */
+	job->type = MLX5_HW_Q_JOB_TYPE_CREATE;
+	job->flow = flow;
+	job->user_data = user_data;
+	rule_attr.user_data = job;
+	/*
+	 * Set the rule index.
+	 */
+	MLX5_ASSERT(flow_idx > 0);
+	rule_attr.rule_idx = rule_index;
+	flow->rule_idx = rule_index;
+	/*
+	 * Construct the flow actions based on the input actions.
+	 * The implicitly appended action is always fixed, like metadata
+	 * copy action from FDB to NIC Rx.
+	 * No need to copy and contrust a new "actions" list based on the
+	 * user's input, in order to save the cost.
+	 */
+	if (flow_hw_actions_construct(dev, job,
+				      &table->ats[action_template_index],
+				      action_template_index, actions,
+				      rule_acts, queue, error)) {
+		rte_errno = EINVAL;
+		goto free;
+	}
+	ret = mlx5dr_rule_create(table->matcher,
+				 0, NULL, action_template_index, rule_acts,
+				 &rule_attr, (struct mlx5dr_rule *)flow->rule);
+	if (likely(!ret))
+		return (struct rte_flow *)flow;
+free:
+	/* Flow created fail, return the descriptor and flow memory. */
+	mlx5_ipool_free(table->flow, flow_idx);
+	priv->hw_q[queue].job_idx++;
+error:
+	rte_flow_error_set(error, rte_errno,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   "fail to create rte flow");
+	return NULL;
+}
+
+/**
  * Enqueue HW steering flow destruction.
  *
  * The flow will be applied to the HW only if the postpone bit is not set or
@@ -2644,6 +2756,7 @@ flow_hw_async_flow_destroy(struct rte_eth_dev *dev,
 	job->user_data = user_data;
 	job->flow = fh;
 	rule_attr.user_data = job;
+	rule_attr.rule_idx = fh->rule_idx;
 	ret = mlx5dr_rule_destroy((struct mlx5dr_rule *)fh->rule, &rule_attr);
 	if (likely(!ret))
 		return 0;
@@ -8536,6 +8649,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.template_table_create = flow_hw_template_table_create,
 	.template_table_destroy = flow_hw_table_destroy,
 	.async_flow_create = flow_hw_async_flow_create,
+	.async_flow_create_by_index = flow_hw_async_flow_create_by_index,
 	.async_flow_destroy = flow_hw_async_flow_destroy,
 	.pull = flow_hw_pull,
 	.push = flow_hw_push,
