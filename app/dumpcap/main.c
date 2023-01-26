@@ -102,7 +102,8 @@ static void usage(void)
 {
 	printf("Usage: %s [options] ...\n\n", progname);
 	printf("Capture Interface:\n"
-	       "  -i <interface>           name or port index of interface\n"
+	       "  -i <interface>, --interface <interface>\n"
+	       "                           name or port index of interface\n"
 	       "  -f <capture filter>      packet filter in libpcap filter syntax\n");
 	printf("  -s <snaplen>, --snapshot-length <snaplen>\n"
 	       "                           packet snapshot length (def: %u)\n",
