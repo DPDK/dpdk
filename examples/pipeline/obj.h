@@ -38,4 +38,15 @@ struct ethdev_params {
 int
 ethdev_config(const char *name, struct ethdev_params *params);
 
+/*
+ * cryptodev
+ */
+struct cryptodev_params {
+	uint32_t n_queue_pairs;
+	uint32_t queue_size;
+};
+
+int
+cryptodev_config(const char *name, struct cryptodev_params *params);
+
 #endif /* _INCLUDE_OBJ_H_ */

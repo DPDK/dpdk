@@ -7,6 +7,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_cryptodev.h>
 
 #include "obj.h"
 
@@ -187,6 +188,67 @@ ethdev_config(const char *name, struct ethdev_params *params)
 		rte_eth_dev_stop(port_id);
 		return -EINVAL;
 	}
+
+	return 0;
+}
+
+/*
+ * cryptodev
+ */
+int
+cryptodev_config(const char *name, struct cryptodev_params *params)
+{
+	struct rte_cryptodev_info dev_info;
+	struct rte_cryptodev_config dev_conf;
+	struct rte_cryptodev_qp_conf queue_conf;
+	uint8_t dev_id;
+	uint32_t socket_id, i;
+	int status;
+
+	/* Check input parameters. */
+	if (!name ||
+	    !params->n_queue_pairs ||
+	    !params->queue_size)
+		return -EINVAL;
+
+	/* Find the crypto device. */
+	status = rte_cryptodev_get_dev_id(name);
+	if (status < 0)
+		return -EINVAL;
+
+	dev_id = (uint8_t)status;
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if (params->n_queue_pairs > dev_info.max_nb_queue_pairs)
+		return -EINVAL;
+
+	socket_id = rte_cryptodev_socket_id(dev_id);
+
+	/* Configure the crypto device. */
+	memset(&dev_conf, 0, sizeof(dev_conf));
+	dev_conf.socket_id = socket_id;
+	dev_conf.nb_queue_pairs = params->n_queue_pairs;
+	dev_conf.ff_disable = 0;
+
+	status = rte_cryptodev_configure(dev_id, &dev_conf);
+	if (status)
+		return status;
+
+	/* Configure the crypto device queue pairs. */
+	memset(&queue_conf, 0, sizeof(queue_conf));
+	queue_conf.nb_descriptors = params->queue_size;
+	queue_conf.mp_session = NULL;
+
+	for (i = 0; i < params->n_queue_pairs; i++) {
+		status = rte_cryptodev_queue_pair_setup(dev_id, i, &queue_conf, socket_id);
+		if (status)
+			return status;
+	}
+
+	/* Start the crypto device. */
+	status = rte_cryptodev_start(dev_id);
+	if (status)
+		return status;
 
 	return 0;
 }
