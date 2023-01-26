@@ -32,4 +32,4 @@ pipeline PIPELINE0 build lib /tmp/recirculation.so io ./examples/pipeline/exampl
 ;
 ; Pipelines-to-threads mapping.
 ;
-thread 1 pipeline PIPELINE0 enable
+pipeline PIPELINE0 enable thread 1

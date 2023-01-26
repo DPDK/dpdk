@@ -3171,83 +3171,18 @@ cmd_ipsec_sa_delete(char **tokens,
 	rte_swx_ipsec_sa_delete(ipsec, sa_id);
 }
 
-static const char cmd_thread_pipeline_enable_help[] =
-"thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]\n";
-
-#ifndef TIMER_PERIOD_MS_DEFAULT
-#define TIMER_PERIOD_MS_DEFAULT 10
-#endif
+static const char cmd_pipeline_enable_help[] =
+"pipeline <pipeline_name> enable thread <thread_id>\n";
 
 static void
-cmd_thread_pipeline_enable(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size,
-	void *obj __rte_unused)
+cmd_pipeline_enable(char **tokens,
+		    uint32_t n_tokens,
+		    char *out,
+		    size_t out_size,
+		    void *obj __rte_unused)
 {
 	char *pipeline_name;
 	struct rte_swx_pipeline *p;
-	uint32_t thread_id, timer_period_ms = TIMER_PERIOD_MS_DEFAULT;
-	int status;
-
-	if ((n_tokens != 5) && (n_tokens != 7)) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-
-	if (parser_read_uint32(&thread_id, tokens[1]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
-		return;
-	}
-
-	if (strcmp(tokens[2], "pipeline") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
-		return;
-	}
-
-	pipeline_name = tokens[3];
-	p = rte_swx_pipeline_find(pipeline_name);
-	if (!p) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
-		return;
-	}
-
-	if (strcmp(tokens[4], "enable") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "enable");
-		return;
-	}
-
-	if (n_tokens == 7) {
-		if (strcmp(tokens[5], "period") != 0) {
-			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "period");
-			return;
-		}
-
-		if (parser_read_uint32(&timer_period_ms, tokens[6]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "timer_period_ms");
-			return;
-		}
-	}
-
-	status = thread_pipeline_enable(thread_id, p, timer_period_ms);
-	if (status) {
-		snprintf(out, out_size, MSG_CMD_FAIL, "thread pipeline enable");
-		return;
-	}
-}
-
-static const char cmd_thread_pipeline_disable_help[] =
-"thread <thread_id> pipeline <pipeline_name> disable\n";
-
-static void
-cmd_thread_pipeline_disable(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size,
-	void *obj __rte_unused)
-{
-	struct rte_swx_pipeline *p;
-	char *pipeline_name;
 	uint32_t thread_id;
 	int status;
 
@@ -3256,34 +3191,66 @@ cmd_thread_pipeline_disable(char **tokens,
 		return;
 	}
 
-	if (parser_read_uint32(&thread_id, tokens[1]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
-		return;
-	}
-
-	if (strcmp(tokens[2], "pipeline") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
-		return;
-	}
-
-	pipeline_name = tokens[3];
+	pipeline_name = tokens[1];
 	p = rte_swx_pipeline_find(pipeline_name);
 	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
 
-	if (strcmp(tokens[4], "disable") != 0) {
+	if (strcmp(tokens[2], "enable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "enable");
+		return;
+	}
+
+	if (strcmp(tokens[3], "thread") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "thread");
+		return;
+	}
+
+	if (parser_read_uint32(&thread_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
+		return;
+	}
+
+	status = pipeline_enable(p, thread_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, "pipeline enable");
+		return;
+	}
+}
+
+static const char cmd_pipeline_disable_help[] =
+"pipeline <pipeline_name> disable\n";
+
+static void
+cmd_pipeline_disable(char **tokens,
+		     uint32_t n_tokens,
+		     char *out,
+		     size_t out_size,
+		     void *obj __rte_unused)
+{
+	struct rte_swx_pipeline *p;
+	char *pipeline_name;
+
+	if (n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+	p = rte_swx_pipeline_find(pipeline_name);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "disable") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "disable");
 		return;
 	}
 
-	status = thread_pipeline_disable(thread_id, p);
-	if (status) {
-		snprintf(out, out_size, MSG_CMD_FAIL,
-			"thread pipeline disable");
-		return;
-	}
+	pipeline_disable(p);
 }
 
 static void
@@ -3329,11 +3296,12 @@ cmd_help(char **tokens,
 			"\tpipeline meter stats\n"
 			"\tpipeline stats\n"
 			"\tpipeline mirror session\n"
+			"\tpipeline enable\n"
+			"\tpipeline disable\n\n"
 			"\tipsec create\n"
 			"\tipsec sa add\n"
 			"\tipsec sa delete\n"
-			"\tthread pipeline enable\n"
-			"\tthread pipeline disable\n\n");
+			);
 		return;
 	}
 
@@ -3556,6 +3524,18 @@ cmd_help(char **tokens,
 		return;
 	}
 
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 2) && !strcmp(tokens[1], "enable")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_enable_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 2) && !strcmp(tokens[1], "disable")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_disable_help);
+		return;
+	}
+
 	if (!strcmp(tokens[0], "ipsec") &&
 		(n_tokens == 2) && !strcmp(tokens[1], "create")) {
 		snprintf(out, out_size, "\n%s\n", cmd_ipsec_create_help);
@@ -3574,22 +3554,6 @@ cmd_help(char **tokens,
 		&& !strcmp(tokens[2], "delete")) {
 		snprintf(out, out_size, "\n%s\n", cmd_ipsec_sa_delete_help);
 		return;
-	}
-
-	if ((n_tokens == 3) &&
-		(strcmp(tokens[0], "thread") == 0) &&
-		(strcmp(tokens[1], "pipeline") == 0)) {
-		if (strcmp(tokens[2], "enable") == 0) {
-			snprintf(out, out_size, "\n%s\n",
-				cmd_thread_pipeline_enable_help);
-			return;
-		}
-
-		if (strcmp(tokens[2], "disable") == 0) {
-			snprintf(out, out_size, "\n%s\n",
-				cmd_thread_pipeline_disable_help);
-			return;
-		}
 	}
 
 	snprintf(out, out_size, "Invalid command\n");
@@ -3822,6 +3786,16 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			cmd_pipeline_mirror_session(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "enable")) {
+			cmd_pipeline_enable(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "disable")) {
+			cmd_pipeline_disable(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
 	}
 
 	if (!strcmp(tokens[0], "ipsec")) {
@@ -3837,22 +3811,6 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 
 		if (n_tokens >= 4 && !strcmp(tokens[2], "sa") && !strcmp(tokens[3], "delete")) {
 			cmd_ipsec_sa_delete(tokens, n_tokens, out, out_size, obj);
-			return;
-		}
-	}
-
-	if (strcmp(tokens[0], "thread") == 0) {
-		if ((n_tokens >= 5) &&
-			(strcmp(tokens[4], "enable") == 0)) {
-			cmd_thread_pipeline_enable(tokens, n_tokens,
-				out, out_size, obj);
-			return;
-		}
-
-		if ((n_tokens >= 5) &&
-			(strcmp(tokens[4], "disable") == 0)) {
-			cmd_thread_pipeline_disable(tokens, n_tokens,
-				out, out_size, obj);
 			return;
 		}
 	}

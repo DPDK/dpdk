@@ -32,4 +32,4 @@ pipeline PIPELINE0 build lib /tmp/l2fwd_macswp.so io ./examples/pipeline/example
 ;
 ; Pipelines-to-threads mapping.
 ;
-thread 1 pipeline PIPELINE0 enable
+pipeline PIPELINE0 enable thread 1

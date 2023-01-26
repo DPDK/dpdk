@@ -42,4 +42,4 @@ pipeline PIPELINE0 selector s show
 ;
 ; Pipelines-to-threads mapping.
 ;
-thread 1 pipeline PIPELINE0 enable
+pipeline PIPELINE0 enable thread 1

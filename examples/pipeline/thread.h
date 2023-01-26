@@ -9,18 +9,21 @@
 
 #include <rte_swx_pipeline.h>
 
-int
-thread_pipeline_enable(uint32_t thread_id,
-		       struct rte_swx_pipeline *p,
-		       uint32_t timer_period_ms);
-
-int
-thread_pipeline_disable(uint32_t thread_id,
-			struct rte_swx_pipeline *p);
-
+/**
+ * Control plane (CP) thread.
+ */
 int
 thread_init(void);
 
+int
+pipeline_enable(struct rte_swx_pipeline *p, uint32_t thread_id);
+
+void
+pipeline_disable(struct rte_swx_pipeline *p);
+
+/**
+ * Data plane (DP) threads.
+ */
 int
 thread_main(void *arg);
 

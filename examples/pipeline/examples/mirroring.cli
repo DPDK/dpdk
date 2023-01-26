@@ -42,4 +42,4 @@ pipeline PIPELINE0 mirror session 3 port 0 clone slow truncate 128
 ;
 ; Pipelines-to-threads mapping.
 ;
-thread 1 pipeline PIPELINE0 enable
+pipeline PIPELINE0 enable thread 1
