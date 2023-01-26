@@ -524,6 +524,58 @@ cmd_ring(char **tokens,
 	}
 }
 
+static const char cmd_cryptodev_help[] =
+"cryptodev <cryptodev_name> queues <n_queue_pairs> qsize <queue_size>\n";
+
+static void
+cmd_cryptodev(char **tokens,
+	      uint32_t n_tokens,
+	      char *out,
+	      size_t out_size,
+	      void *obj __rte_unused)
+{
+	struct cryptodev_params params;
+	char *cryptodev_name;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[0], "cryptodev")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cryptodev");
+		return;
+	}
+
+	cryptodev_name = tokens[1];
+
+	if (strcmp(tokens[2], "queues")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "queues");
+		return;
+	}
+
+	if (parser_read_uint32(&params.n_queue_pairs, tokens[3])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_queue_pairs");
+		return;
+	}
+
+	if (strcmp(tokens[4], "qsize")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "qsize");
+		return;
+	}
+
+
+	if (parser_read_uint32(&params.queue_size, tokens[5])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "queue_size");
+		return;
+	}
+
+	status = cryptodev_config(cryptodev_name, &params);
+	if (status)
+		snprintf(out, out_size, "Crypto device configuration failed (%d).\n", status);
+}
+
 static const char cmd_pipeline_codegen_help[] =
 "pipeline codegen <spec_file> <code_file>\n";
 
@@ -2994,6 +3046,7 @@ cmd_help(char **tokens,
 			"\tethdev\n"
 			"\tethdev show\n"
 			"\tring\n"
+			"\tcryptodev\n"
 			"\tpipeline codegen\n"
 			"\tpipeline libbuild\n"
 			"\tpipeline build\n"
@@ -3042,6 +3095,11 @@ cmd_help(char **tokens,
 
 	if (strcmp(tokens[0], "ring") == 0) {
 		snprintf(out, out_size, "\n%s\n", cmd_ring_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "cryptodev")) {
+		snprintf(out, out_size, "\n%s\n", cmd_cryptodev_help);
 		return;
 	}
 
@@ -3297,6 +3355,11 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 
 	if (strcmp(tokens[0], "ring") == 0) {
 		cmd_ring(tokens, n_tokens, out, out_size, obj);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "cryptodev")) {
+		cmd_cryptodev(tokens, n_tokens, out, out_size, obj);
 		return;
 	}
 
