@@ -1,0 +1,57 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2022 Intel Corporation
+
+# Example command line:
+#	./build/examples/dpdk-pipeline -l0-1 --vdev crypto_aesni_mb0 -- -s ./examples/pipeline/examples/ipsec.cli
+#
+# Once the application has started, the command to get the CLI prompt is:
+#	telnet 0.0.0.0 8086
+
+;
+; Pipeline code generation & shared object library build.
+;
+pipeline codegen ./examples/pipeline/examples/ipsec.spec /tmp/ipsec.c
+pipeline libbuild /tmp/ipsec.c /tmp/ipsec.so
+
+;
+; List of DPDK devices.
+;
+; Note: Customize the parameters below to match your setup.
+;
+mempool MEMPOOL0 meta 128 pkt 2176 pool 32K cache 256 numa 0
+ethdev 0000:18:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+ethdev 0000:18:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+ethdev 0000:3b:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+ethdev 0000:3b:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+
+cryptodev crypto_aesni_mb0 queues 1 qsize 128
+ring RING0 size 1024 numa 0
+ring RING1 size 1024 numa 0
+
+;
+; List of pipelines.
+;
+pipeline PIPELINE0 build lib /tmp/ipsec.so io ./examples/pipeline/examples/ipsec.io numa 0
+
+;
+; List of IPsec devices.
+;
+ipsec IPSEC0 create in RING0 out RING1 cryptodev crypto_aesni_mb0 cryptoq 0 bsz 32 32 32 32 samax 512 numa 0
+
+;
+; Initial set of table entries.
+;
+; The table entries can later be updated at run-time through the CLI commands.
+;
+//pipeline PIPELINE0 table policy_table add ./examples/pipeline/examples/ipsec_policy_table.txt
+//pipeline PIPELINE0 table routing_table add ./examples/pipeline/examples/ipsec_routing_table.txt
+//pipeline PIPELINE0 table nexthop_table add ./examples/pipeline/examples/ipsec_nexthop_table.txt
+//pipeline PIPELINE0 commit
+
+ipsec IPSEC0 sa add ./examples/pipeline/examples/ipsec_sa.txt
+
+;
+; Pipelines and blocks mapping to CPU threads.
+;
+pipeline PIPELINE0 enable thread 1
+block type ipsec instance IPSEC0 enable thread 1

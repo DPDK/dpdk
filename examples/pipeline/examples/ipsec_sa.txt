@@ -1,0 +1,216 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2022 Intel Corporation
+
+// IPsec SA syntax:
+//
+// <sa>
+//    : encrypt <crypto_params> <encap_params>
+//    | decrypt <crypto_params> <encap_params>
+//    ;
+//
+// <crypto_params>
+//    : <cipher> <auth>
+//    | <aead>
+//    ;
+//
+// <cipher>
+//    : cipher <ciher_alg> key <cipher_key>
+//    | cipher <cipher_alg>
+//    ;
+//
+// <auth>
+//    : auth <authentication_alg> key <authentication_key>
+//    | auth <authentication_alg>
+//    ;
+//
+// <aead>
+//    : aead <aead_alg> key <aead_key>
+//    ;
+//
+// <encap_params>
+//    : esp spi <spi> tunnel ipv4 srcaddr <ipv4_src_addr> dstaddr <ipv4_dst_addr>
+//    | esp spi <spi> tunnel ipv6 srcaddr <ipv6_src_addr> dstaddr <ipv6_dst_addr>
+//    | esp spi <spi> transport
+//    ;
+
+//
+// cipher = null, auth = null
+//
+encrypt cipher null auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher null auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher null auth null esp spi 100 transport
+decrypt cipher null auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher null auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher null auth null esp spi 100 transport
+
+//
+// aes-gcm-128
+//
+encrypt aead aes-gcm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt aead aes-gcm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt aead aes-gcm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 transport
+decrypt aead aes-gcm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt aead aes-gcm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt aead aes-gcm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 transport
+
+//
+// aes-gcm-192
+//
+encrypt aead aes-gcm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt aead aes-gcm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt aead aes-gcm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 transport
+decrypt aead aes-gcm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt aead aes-gcm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt aead aes-gcm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 transport
+
+//
+// aes-gcm-256
+//
+encrypt aead aes-gcm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt aead aes-gcm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt aead aes-gcm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 transport
+decrypt aead aes-gcm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt aead aes-gcm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt aead aes-gcm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 transport
+
+//
+// aes-ccm-128
+//
+encrypt aead aes-ccm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt aead aes-ccm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt aead aes-ccm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 transport
+decrypt aead aes-ccm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt aead aes-ccm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt aead aes-ccm-128 key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 transport
+
+//
+// aes-ccm-192
+//
+// Note: Currently not supported by the "aesni_mb" library.
+//
+;encrypt aead aes-ccm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+;encrypt aead aes-ccm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+;encrypt aead aes-ccm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 transport
+;decrypt aead aes-ccm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+;decrypt aead aes-ccm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+;decrypt aead aes-ccm-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b esp spi 100 transport
+
+//
+// aes-ccm-256
+//
+encrypt aead aes-ccm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt aead aes-ccm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt aead aes-ccm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 transport
+decrypt aead aes-ccm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt aead aes-ccm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt aead aes-ccm-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 transport
+
+//
+// chacha20-poly1305
+//
+encrypt aead chacha20-poly1305 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt aead chacha20-poly1305 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt aead chacha20-poly1305 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 transport
+decrypt aead chacha20-poly1305 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt aead chacha20-poly1305 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt aead chacha20-poly1305 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 esp spi 100 transport
+
+//
+// cipher = aes-cbc-128, auth = null
+//
+encrypt cipher aes-cbc-128 key 0x000102030405060708090a0b0c0d0e0f auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher aes-cbc-128 key 0x000102030405060708090a0b0c0d0e0f auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher aes-cbc-128 key 0x000102030405060708090a0b0c0d0e0f auth null esp spi 100 transport
+decrypt cipher aes-cbc-128 key 0x000102030405060708090a0b0c0d0e0f auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher aes-cbc-128 key 0x000102030405060708090a0b0c0d0e0f auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher aes-cbc-128 key 0x000102030405060708090a0b0c0d0e0f auth null esp spi 100 transport
+
+//
+// cipher = aes-cbc-192, auth = null
+//
+encrypt cipher aes-cbc-192 key 0x000102030405060708090a0b0c0d0e0f1011121314151617 auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher aes-cbc-192 key 0x000102030405060708090a0b0c0d0e0f1011121314151617 auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher aes-cbc-192 key 0x000102030405060708090a0b0c0d0e0f1011121314151617 auth null esp spi 100 transport
+decrypt cipher aes-cbc-192 key 0x000102030405060708090a0b0c0d0e0f1011121314151617 auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher aes-cbc-192 key 0x000102030405060708090a0b0c0d0e0f1011121314151617 auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher aes-cbc-192 key 0x000102030405060708090a0b0c0d0e0f1011121314151617 auth null esp spi 100 transport
+
+//
+// cipher = aes-cbc-256, auth = null
+//
+encrypt cipher aes-cbc-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher aes-cbc-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher aes-cbc-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f auth null esp spi 100 transport
+decrypt cipher aes-cbc-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher aes-cbc-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher aes-cbc-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f auth null esp spi 100 transport
+
+//
+// cipher = aes-ctr-128, auth = null
+//
+encrypt cipher aes-ctr-128 key 0x000102030405060708090a0b0c0d0e0f10111213 auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher aes-ctr-128 key 0x000102030405060708090a0b0c0d0e0f10111213 auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher aes-ctr-128 key 0x000102030405060708090a0b0c0d0e0f10111213 auth null esp spi 100 transport
+decrypt cipher aes-ctr-128 key 0x000102030405060708090a0b0c0d0e0f10111213 auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher aes-ctr-128 key 0x000102030405060708090a0b0c0d0e0f10111213 auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher aes-ctr-128 key 0x000102030405060708090a0b0c0d0e0f10111213 auth null esp spi 100 transport
+
+//
+// cipher = aes-ctr-192, auth = null
+//
+encrypt cipher aes-ctr-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher aes-ctr-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher aes-ctr-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b auth null esp spi 100 transport
+decrypt cipher aes-ctr-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher aes-ctr-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher aes-ctr-192 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b auth null esp spi 100 transport
+
+//
+// cipher = aes-ctr-256, auth = null
+//
+encrypt cipher aes-ctr-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher aes-ctr-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher aes-ctr-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 auth null esp spi 100 transport
+decrypt cipher aes-ctr-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 auth null esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher aes-ctr-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 auth null esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher aes-ctr-256 key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223 auth null esp spi 100 transport
+
+//
+// cipher = null, auth = sha1-hmac
+//
+encrypt cipher null auth sha1-hmac key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher null auth sha1-hmac key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher null auth sha1-hmac key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 transport
+decrypt cipher null auth sha1-hmac key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher null auth sha1-hmac key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher null auth sha1-hmac key 0x000102030405060708090a0b0c0d0e0f10111213 esp spi 100 transport
+
+//
+// cipher = null, auth = sha256-hmac
+//
+encrypt cipher null auth sha256-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher null auth sha256-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher null auth sha256-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f esp spi 100 transport
+decrypt cipher null auth sha256-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher null auth sha256-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher null auth sha256-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f esp spi 100 transport
+
+//
+// cipher = null, auth = sha384-hmac
+//
+encrypt cipher null auth sha384-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher null auth sha384-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher null auth sha384-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f esp spi 100 transport
+decrypt cipher null auth sha384-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher null auth sha384-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher null auth sha384-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f esp spi 100 transport
+
+//
+// cipher = null, auth = sha512-hmac
+//
+encrypt cipher null auth sha512-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+encrypt cipher null auth sha512-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+encrypt cipher null auth sha512-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f esp spi 100 transport
+decrypt cipher null auth sha512-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f esp spi 100 tunnel ipv4 srcaddr 0xa0a1a2a3 dstaddr 0xb0b1b2b3
+decrypt cipher null auth sha512-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f esp spi 100 tunnel ipv6 srcaddr 0xa0a1a2a3a4a5a6a7a8a9aaabacadaeaf dstaddr b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+decrypt cipher null auth sha512-hmac key 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f esp spi 100 transport
