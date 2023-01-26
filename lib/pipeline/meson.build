@@ -11,6 +11,7 @@ sources = files(
         'rte_pipeline.c',
         'rte_port_in_action.c',
         'rte_table_action.c',
+        'rte_swx_ipsec.c',
         'rte_swx_pipeline.c',
         'rte_swx_pipeline_spec.c',
         'rte_swx_ctl.c',
@@ -19,8 +20,9 @@ headers = files(
         'rte_pipeline.h',
         'rte_port_in_action.h',
         'rte_table_action.h',
+        'rte_swx_ipsec.h',
         'rte_swx_pipeline.h',
         'rte_swx_extern.h',
         'rte_swx_ctl.h',
 )
-deps += ['port', 'table', 'meter', 'sched', 'cryptodev']
+deps += ['port', 'table', 'meter', 'sched', 'cryptodev', 'ipsec']
