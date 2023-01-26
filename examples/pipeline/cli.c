@@ -192,72 +192,88 @@ parse_table_entry(struct rte_swx_ctl_pipeline *p,
 }
 
 static const char cmd_mempool_help[] =
-"mempool <mempool_name>\n"
-"   buffer <buffer_size>\n"
-"   pool <pool_size>\n"
-"   cache <cache_size>\n"
-"   cpu <cpu_id>\n";
+"mempool <mempool_name> "
+"meta <mbuf_private_size> "
+"pkt <pkt_buffer_size> "
+"pool <pool_size> "
+"cache <cache_size> "
+"numa <numa_node>\n";
 
 static void
 cmd_mempool(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size,
-	void *obj)
+	    uint32_t n_tokens,
+	    char *out,
+	    size_t out_size,
+	    void *obj __rte_unused)
 {
-	struct mempool_params p;
-	char *name;
-	struct mempool *mempool;
+	struct rte_mempool *mp;
+	char *mempool_name;
+	uint32_t mbuf_private_size, pkt_buffer_size, pool_size, cache_size, numa_node;
 
-	if (n_tokens != 10) {
+	if (n_tokens != 12) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
 
-	name = tokens[1];
+	mempool_name = tokens[1];
 
-	if (strcmp(tokens[2], "buffer") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "buffer");
+	if (strcmp(tokens[2], "meta")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meta");
 		return;
 	}
 
-	if (parser_read_uint32(&p.buffer_size, tokens[3]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "buffer_size");
+	if (parser_read_uint32(&mbuf_private_size, tokens[3])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "mbuf_private_size");
 		return;
 	}
 
-	if (strcmp(tokens[4], "pool") != 0) {
+	if (strcmp(tokens[4], "pkt")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pkt");
+		return;
+	}
+
+	if (parser_read_uint32(&pkt_buffer_size, tokens[5])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pkt_buffer_size");
+		return;
+	}
+
+	if (strcmp(tokens[6], "pool")) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pool");
 		return;
 	}
 
-	if (parser_read_uint32(&p.pool_size, tokens[5]) != 0) {
+	if (parser_read_uint32(&pool_size, tokens[7])) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pool_size");
 		return;
 	}
 
-	if (strcmp(tokens[6], "cache") != 0) {
+	if (strcmp(tokens[8], "cache")) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cache");
 		return;
 	}
 
-	if (parser_read_uint32(&p.cache_size, tokens[7]) != 0) {
+	if (parser_read_uint32(&cache_size, tokens[9])) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "cache_size");
 		return;
 	}
 
-	if (strcmp(tokens[8], "cpu") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cpu");
+	if (strcmp(tokens[10], "numa")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "numa");
 		return;
 	}
 
-	if (parser_read_uint32(&p.cpu_id, tokens[9]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "cpu_id");
+	if (parser_read_uint32(&numa_node, tokens[11])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "numa_node");
 		return;
 	}
 
-	mempool = mempool_create(obj, name, &p);
-	if (mempool == NULL) {
+	mp = rte_pktmbuf_pool_create(mempool_name,
+				     pool_size,
+				     cache_size,
+				     mbuf_private_size,
+				     pkt_buffer_size,
+				     numa_node);
+	if (!mp) {
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;
 	}

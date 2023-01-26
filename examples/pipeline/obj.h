@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-#include <rte_mempool.h>
 #include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
 
@@ -23,32 +22,6 @@ struct obj;
 
 struct obj *
 obj_init(void);
-
-/*
- * mempool
- */
-struct mempool_params {
-	uint32_t buffer_size;
-	uint32_t pool_size;
-	uint32_t cache_size;
-	uint32_t cpu_id;
-};
-
-struct mempool {
-	TAILQ_ENTRY(mempool) node;
-	char name[NAME_SIZE];
-	struct rte_mempool *m;
-	uint32_t buffer_size;
-};
-
-struct mempool *
-mempool_create(struct obj *obj,
-	       const char *name,
-	       struct mempool_params *params);
-
-struct mempool *
-mempool_find(struct obj *obj,
-	     const char *name);
 
 /*
  * link

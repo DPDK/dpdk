@@ -13,17 +13,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_swx_ctl.h>
 
 #include "obj.h"
-
-/*
- * mempool
- */
-TAILQ_HEAD(mempool_list, mempool);
 
 /*
  * link
@@ -39,74 +33,9 @@ TAILQ_HEAD(ring_list, ring);
  * obj
  */
 struct obj {
-	struct mempool_list mempool_list;
 	struct link_list link_list;
 	struct ring_list ring_list;
 };
-
-/*
- * mempool
- */
-#define BUFFER_SIZE_MIN (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
-
-struct mempool *
-mempool_create(struct obj *obj, const char *name, struct mempool_params *params)
-{
-	struct mempool *mempool;
-	struct rte_mempool *m;
-
-	/* Check input params */
-	if ((name == NULL) ||
-		mempool_find(obj, name) ||
-		(params == NULL) ||
-		(params->buffer_size < BUFFER_SIZE_MIN) ||
-		(params->pool_size == 0))
-		return NULL;
-
-	/* Resource create */
-	m = rte_pktmbuf_pool_create(
-		name,
-		params->pool_size,
-		params->cache_size,
-		0,
-		params->buffer_size - sizeof(struct rte_mbuf),
-		params->cpu_id);
-
-	if (m == NULL)
-		return NULL;
-
-	/* Node allocation */
-	mempool = calloc(1, sizeof(struct mempool));
-	if (mempool == NULL) {
-		rte_mempool_free(m);
-		return NULL;
-	}
-
-	/* Node fill in */
-	strlcpy(mempool->name, name, sizeof(mempool->name));
-	mempool->m = m;
-	mempool->buffer_size = params->buffer_size;
-
-	/* Node add to list */
-	TAILQ_INSERT_TAIL(&obj->mempool_list, mempool, node);
-
-	return mempool;
-}
-
-struct mempool *
-mempool_find(struct obj *obj, const char *name)
-{
-	struct mempool *mempool;
-
-	if (!obj || !name)
-		return NULL;
-
-	TAILQ_FOREACH(mempool, &obj->mempool_list, node)
-		if (strcmp(mempool->name, name) == 0)
-			return mempool;
-
-	return NULL;
-}
 
 /*
  * link
@@ -171,7 +100,7 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	struct rte_eth_conf port_conf;
 	struct link *link;
 	struct link_params_rss *rss;
-	struct mempool *mempool;
+	struct rte_mempool *mempool;
 	uint32_t cpu_id, i;
 	int status;
 	uint16_t port_id = 0;
@@ -193,8 +122,8 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	if (rte_eth_dev_info_get(port_id, &port_info) != 0)
 		return NULL;
 
-	mempool = mempool_find(obj, params->rx.mempool_name);
-	if (mempool == NULL)
+	mempool = rte_mempool_lookup(params->rx.mempool_name);
+	if (!mempool)
 		return NULL;
 
 	rss = params->rx.rss;
@@ -251,7 +180,7 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 			params->rx.queue_size,
 			cpu_id,
 			NULL,
-			mempool->m);
+			mempool);
 
 		if (status < 0)
 			return NULL;
@@ -421,7 +350,6 @@ obj_init(void)
 	if (!obj)
 		return NULL;
 
-	TAILQ_INIT(&obj->mempool_list);
 	TAILQ_INIT(&obj->link_list);
 	TAILQ_INIT(&obj->ring_list);
 

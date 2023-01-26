@@ -18,7 +18,7 @@ pipeline libbuild /tmp/l2fwd.c /tmp/l2fwd.so
 ;
 ; Note: Customize the parameters below to match your setup.
 ;
-mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 0
+mempool MEMPOOL0 meta 0 pkt 2176 pool 32K cache 256 numa 0
 
 ;
 ; List of pipelines.

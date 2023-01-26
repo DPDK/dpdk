@@ -18,7 +18,7 @@ pipeline libbuild /tmp/l2fwd_macswp.c /tmp/l2fwd_macswp.so
 ;
 ; Note: Customize the parameters below to match your setup.
 ;
-mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 0
+mempool MEMPOOL0 meta 0 pkt 2176 pool 32K cache 256 numa 0
 ethdev 0000:18:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
 ethdev 0000:18:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
 ethdev 0000:3b:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
