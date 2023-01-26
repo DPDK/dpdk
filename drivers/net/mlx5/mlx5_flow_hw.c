@@ -156,6 +156,23 @@ static const struct rte_flow_item_eth ctrl_rx_eth_bcast_spec = {
 	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
 	.hdr.ether_type = 0,
 };
+static inline enum mlx5dr_matcher_insert_mode
+flow_hw_matcher_insert_mode_get(enum rte_flow_table_insertion_type insert_type)
+{
+	if (insert_type == RTE_FLOW_TABLE_INSERTION_TYPE_PATTERN)
+		return MLX5DR_MATCHER_INSERT_BY_HASH;
+	else
+		return MLX5DR_MATCHER_INSERT_BY_INDEX;
+}
+
+static inline enum mlx5dr_matcher_distribute_mode
+flow_hw_matcher_distribute_mode_get(enum rte_flow_table_hash_func hash_func)
+{
+	if (hash_func == RTE_FLOW_TABLE_HASH_FUNC_LINEAR)
+		return MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR;
+	else
+		return MLX5DR_MATCHER_DISTRIBUTE_BY_HASH;
+}
 
 /**
  * Set the hash fields according to the @p rss_desc information.
@@ -3060,7 +3077,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		.type = "mlx5_hw_table_flow",
 	};
 	struct mlx5_list_entry *ge;
-	uint32_t i, max_tpl = MLX5_HW_TBL_MAX_ITEM_TEMPLATE;
+	uint32_t i = 0, max_tpl = MLX5_HW_TBL_MAX_ITEM_TEMPLATE;
 	uint32_t nb_flows = rte_align32pow2(attr->nb_flows);
 	bool port_started = !!dev->data->dev_started;
 	int err;
@@ -3102,6 +3119,13 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	matcher_attr.priority = attr->flow_attr.priority;
 	matcher_attr.optimize_using_rule_idx = true;
 	matcher_attr.mode = MLX5DR_MATCHER_RESOURCE_MODE_RULE;
+	matcher_attr.insert_mode = flow_hw_matcher_insert_mode_get(attr->insertion_type);
+	if (attr->hash_func == RTE_FLOW_TABLE_HASH_FUNC_CRC16) {
+		DRV_LOG(ERR, "16-bit checksum hash type is not supported");
+		rte_errno = ENOTSUP;
+		goto it_error;
+	}
+	matcher_attr.distribute_mode = flow_hw_matcher_distribute_mode_get(attr->hash_func);
 	matcher_attr.rule.num_log = rte_log2_u32(nb_flows);
 	/* Parse hints information. */
 	if (attr->specialize) {
