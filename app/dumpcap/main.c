@@ -66,6 +66,7 @@ static const char *file_prefix;
 static uint32_t snaplen = RTE_MBUF_DEFAULT_BUF_SIZE;
 static bool dump_bpf;
 static bool show_interfaces;
+static bool print_stats;
 static bool select_interfaces;
 const char *interface_arg;
 
@@ -113,6 +114,7 @@ static void usage(void)
 	       "                           don't capture in promiscuous mode\n"
 	       "  -D, --list-interfaces    print list of interfaces and exit\n"
 	       "  -d                       print generated BPF code for capture filter\n"
+	       "  -S                       print statistics for each interface once per second\n"
 	       "\n"
 	       "Stop conditions:\n"
 	       "  -c <packet count>        stop after n packets (def: infinite)\n"
@@ -337,7 +339,7 @@ static void parse_opts(int argc, char **argv)
 	int option_index, c;
 
 	for (;;) {
-		c = getopt_long(argc, argv, "a:b:c:dDf:ghi:nN:pPqs:vw:",
+		c = getopt_long(argc, argv, "a:b:c:dDf:ghi:nN:pPqSs:vw:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -406,6 +408,9 @@ static void parse_opts(int argc, char **argv)
 		case 's':
 			snaplen = get_uint(optarg, "snap_len", 0);
 			break;
+		case 'S':
+			print_stats = true;
+			break;
 		case 'w':
 			output_name = optarg;
 			break;
@@ -425,6 +430,39 @@ static void
 signal_handler(int sig_num __rte_unused)
 {
 	__atomic_store_n(&quit_signal, true, __ATOMIC_RELAXED);
+}
+
+
+/* Instead of capturing, it tracks interface statistics */
+static void statistics_loop(void)
+{
+	struct rte_eth_stats stats;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	uint16_t p;
+	int r;
+
+	printf("%-15s  %10s  %10s\n",
+	       "Interface", "Received", "Dropped");
+
+	while (!__atomic_load_n(&quit_signal, __ATOMIC_RELAXED)) {
+		RTE_ETH_FOREACH_DEV(p) {
+			if (rte_eth_dev_get_name_by_port(p, name) < 0)
+				continue;
+
+			r = rte_eth_stats_get(p, &stats);
+			if (r < 0) {
+				fprintf(stderr,
+					"stats_get for port %u failed: %d (%s)\n",
+					p, r, strerror(r));
+				return;
+			}
+
+			printf("%-15s  %10"PRIu64"  %10"PRIu64"\n",
+			       name, stats.ipackets,
+			       stats.imissed + stats.ierrors + stats.rx_nombuf);
+		}
+		sleep(1);
+	}
 }
 
 /* Return the time since 1/1/1970 in nanoseconds */
@@ -834,17 +872,22 @@ int main(int argc, char **argv)
 	if (TAILQ_EMPTY(&interfaces))
 		set_default_interface();
 
+	signal(SIGINT, signal_handler);
+	signal(SIGPIPE, SIG_IGN);
+
+	enable_primary_monitor();
+
+	if (print_stats) {
+		statistics_loop();
+		exit(0);
+	}
+
 	r = create_ring();
 	mp = create_mempool();
 	out = create_output();
 
 	start_time = create_timestamp();
 	enable_pdump(r, mp);
-
-	signal(SIGINT, signal_handler);
-	signal(SIGPIPE, SIG_IGN);
-
-	enable_primary_monitor();
 
 	if (!quiet) {
 		fprintf(stderr, "Packets captured: ");
