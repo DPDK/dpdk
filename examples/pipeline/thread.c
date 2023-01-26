@@ -16,6 +16,10 @@
 #define THREAD_PIPELINES_MAX                               256
 #endif
 
+#ifndef THREAD_BLOCKS_MAX
+#define THREAD_BLOCKS_MAX                                  256
+#endif
+
 /* Pipeline instruction quanta: Needs to be big enough to do some meaningful
  * work, but not too big to avoid starving any other pipelines mapped to the
  * same thread. For a pipeline that executes 10 instructions per packet, a
@@ -38,9 +42,16 @@
  *  - Read-write by the CP thread;
  *  - Read-only by the DP thread.
  */
+struct block {
+	block_run_f block_func;
+	void *block;
+};
+
 struct thread {
 	struct rte_swx_pipeline *pipelines[THREAD_PIPELINES_MAX];
+	struct block *blocks[THREAD_BLOCKS_MAX];
 	volatile uint64_t n_pipelines;
+	volatile uint64_t n_blocks;
 	int enabled;
 } __rte_cache_aligned;
 
@@ -53,14 +64,43 @@ int
 thread_init(void)
 {
 	uint32_t thread_id;
+	int status = 0;
 
 	RTE_LCORE_FOREACH_WORKER(thread_id) {
 		struct thread *t = &threads[thread_id];
+		uint32_t i;
 
 		t->enabled = 1;
+
+		for (i = 0; i < THREAD_BLOCKS_MAX; i++) {
+			struct block *b;
+
+			b = calloc(1, sizeof(struct block));
+			if (!b) {
+				status = -ENOMEM;
+				goto error;
+			}
+
+			t->blocks[i] = b;
+		}
 	}
 
 	return 0;
+
+error:
+	RTE_LCORE_FOREACH_WORKER(thread_id) {
+		struct thread *t = &threads[thread_id];
+		uint32_t i;
+
+		t->enabled = 0;
+
+		for (i = 0; i < THREAD_BLOCKS_MAX; i++) {
+			free(t->blocks[i]);
+			t->blocks[i] = NULL;
+		}
+	}
+
+	return status;
 }
 
 static uint32_t
@@ -77,6 +117,26 @@ pipeline_find(struct rte_swx_pipeline *p)
 
 		for (i = 0; i < t->n_pipelines; i++)
 			if (t->pipelines[i] == p)
+				break;
+	}
+
+	return thread_id;
+}
+
+static uint32_t
+block_find(void *b)
+{
+	uint32_t thread_id;
+
+	for (thread_id = 0; thread_id < RTE_MAX_LCORE; thread_id++) {
+		struct thread *t = &threads[thread_id];
+		uint32_t i;
+
+		if (!t->enabled)
+			continue;
+
+		for (i = 0; i < t->n_blocks; i++)
+			if (t->blocks[i]->block == b)
 				break;
 	}
 
@@ -201,9 +261,85 @@ pipeline_disable(struct rte_swx_pipeline *p)
 	return;
 }
 
+int
+block_enable(block_run_f block_func, void *block, uint32_t thread_id)
+{
+	struct thread *t;
+	uint64_t n_blocks;
+
+	/* Check input params */
+	if (!block_func || !block || thread_id >= RTE_MAX_LCORE)
+		return -EINVAL;
+
+	if (block_find(block) < RTE_MAX_LCORE)
+		return -EEXIST;
+
+	t = &threads[thread_id];
+	if (!t->enabled)
+		return -EINVAL;
+
+	n_blocks = t->n_blocks;
+
+	/* Check there is room for at least one more block. */
+	if (n_blocks >= THREAD_BLOCKS_MAX)
+		return -ENOSPC;
+
+	/* Install the new block. */
+	t->blocks[n_blocks]->block_func = block_func;
+	t->blocks[n_blocks]->block = block;
+
+	rte_wmb();
+	t->n_blocks = n_blocks + 1;
+
+	return 0;
+}
+
+void
+block_disable(void *block)
+{
+	struct thread *t;
+	uint64_t n_blocks;
+	uint32_t thread_id, i;
+
+	/* Check input params */
+	if (!block)
+		return;
+
+	/* Find the thread that runs this block. */
+	thread_id = block_find(block);
+	if (thread_id == RTE_MAX_LCORE)
+		return;
+
+	t = &threads[thread_id];
+	n_blocks = t->n_blocks;
+
+	for (i = 0; i < n_blocks; i++) {
+		struct block *b = t->blocks[i];
+
+		if (block != b->block)
+			continue;
+
+		if (i < n_blocks - 1) {
+			struct block *block_last = t->blocks[n_blocks - 1];
+
+			t->blocks[i] = block_last;
+		}
+
+		rte_wmb();
+		t->n_blocks = n_blocks - 1;
+
+		rte_wmb();
+		t->blocks[n_blocks - 1] = b;
+
+		return;
+	}
+}
+
 /**
  * Data plane (DP) threads.
  *
+
+
  * The t->n_pipelines variable is modified by the CP thread every time changes to the t->pipeline[]
  * array are operated, so it is therefore very important that the latest value of t->n_pipelines is
  * read by the DP thread at the beginning of every new dispatch loop iteration, otherwise a stale
@@ -229,6 +365,13 @@ thread_main(void *arg __rte_unused)
 		/* Pipelines. */
 		for (i = 0; i < t->n_pipelines; i++)
 			rte_swx_pipeline_run(t->pipelines[i], PIPELINE_INSTR_QUANTA);
+
+		/* Blocks. */
+		for (i = 0; i < t->n_blocks; i++) {
+			struct block *b = t->blocks[i];
+
+			b->block_func(b->block);
+		}
 	}
 
 	return 0;
