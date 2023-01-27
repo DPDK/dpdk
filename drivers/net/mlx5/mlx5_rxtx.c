@@ -1000,12 +1000,14 @@ mlx5_queue_state_modify(struct rte_eth_dev *dev,
  * @param[in] vec
  *   1 when called from vectorized Rx burst, need to prepare mbufs for the RQ.
  *   0 when called from non-vectorized Rx burst.
+ * @param[in] err_n
+ *   Number of CQEs to check for an error.
  *
  * @return
  *   MLX5_RECOVERY_ERROR_RET in case of recovery error, otherwise the CQE status.
  */
 int
-mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
+mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec, uint16_t err_n)
 {
 	const uint16_t cqe_n = 1 << rxq->cqe_n;
 	const uint16_t cqe_mask = cqe_n - 1;
@@ -1017,13 +1019,18 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 		volatile struct mlx5_cqe *cqe;
 		volatile struct mlx5_err_cqe *err_cqe;
 	} u = {
-		.cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask],
+		.cqe = &(*rxq->cqes)[(rxq->cq_ci - vec) & cqe_mask],
 	};
 	struct mlx5_mp_arg_queue_state_modify sm;
-	int ret;
+	int ret, i;
 
 	switch (rxq->err_state) {
 	case MLX5_RXQ_ERR_STATE_NO_ERROR:
+		for (i = 0; i < (int)err_n; i++) {
+			u.cqe = &(*rxq->cqes)[(rxq->cq_ci - vec - i) & cqe_mask];
+			if (MLX5_CQE_OPCODE(u.cqe->op_own) == MLX5_CQE_RESP_ERR)
+				break;
+		}
 		rxq->err_state = MLX5_RXQ_ERR_STATE_NEED_RESET;
 		/* Fall-through */
 	case MLX5_RXQ_ERR_STATE_NEED_RESET:
@@ -1083,7 +1090,6 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 					rxq->elts_ci : rxq->rq_ci;
 				uint32_t elt_idx;
 				struct rte_mbuf **elt;
-				int i;
 				unsigned int n = elts_n - (elts_ci -
 							  rxq->rq_pi);
 
@@ -1204,7 +1210,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
 				if (unlikely(ret == MLX5_CQE_STATUS_ERR ||
 					     rxq->err_state)) {
-					ret = mlx5_rx_err_handle(rxq, 0);
+					ret = mlx5_rx_err_handle(rxq, 0, 1);
 					if (ret == MLX5_CQE_STATUS_HW_OWN ||
 					    ret == MLX5_RECOVERY_ERROR_RET)
 						return MLX5_ERROR_CQE_RET;

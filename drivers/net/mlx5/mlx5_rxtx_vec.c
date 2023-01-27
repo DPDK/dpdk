@@ -73,7 +73,7 @@ rxq_handle_pending_error(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	rxq->stats.ipackets -= (pkts_n - n);
 	rxq->stats.ibytes -= err_bytes;
 #endif
-	mlx5_rx_err_handle(rxq, 1);
+	mlx5_rx_err_handle(rxq, 1, pkts_n);
 	return n;
 }
 
@@ -247,8 +247,6 @@ rxq_copy_mprq_mbuf_v(struct mlx5_rxq_data *rxq,
 	}
 	rxq->rq_pi += i;
 	rxq->cq_ci += i;
-	rte_io_wmb();
-	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	if (rq_ci != rxq->rq_ci) {
 		rxq->rq_ci = rq_ci;
 		rte_io_wmb();
@@ -355,8 +353,6 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 			rxq->decompressed -= n;
 		}
 	}
-	rte_io_wmb();
-	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	*no_cq = !rcvd_pkt;
 	return rcvd_pkt;
 }
@@ -384,6 +380,7 @@ mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	bool no_cq = false;
 
 	do {
+		err = 0;
 		nb_rx = rxq_burst_v(rxq, pkts + tn, pkts_n - tn,
 				    &err, &no_cq);
 		if (unlikely(err | rxq->err_state))
@@ -391,6 +388,8 @@ mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		tn += nb_rx;
 		if (unlikely(no_cq))
 			break;
+		rte_io_wmb();
+		*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	} while (tn != pkts_n);
 	return tn;
 }
@@ -518,6 +517,7 @@ mlx5_rx_burst_mprq_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	bool no_cq = false;
 
 	do {
+		err = 0;
 		nb_rx = rxq_burst_mprq_v(rxq, pkts + tn, pkts_n - tn,
 					 &err, &no_cq);
 		if (unlikely(err | rxq->err_state))
@@ -525,6 +525,8 @@ mlx5_rx_burst_mprq_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		tn += nb_rx;
 		if (unlikely(no_cq))
 			break;
+		rte_io_wmb();
+		*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	} while (tn != pkts_n);
 	return tn;
 }
