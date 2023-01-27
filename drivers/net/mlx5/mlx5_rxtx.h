@@ -91,6 +91,7 @@ enum mlx5_rxq_err_state {
 	MLX5_RXQ_ERR_STATE_NO_ERROR = 0,
 	MLX5_RXQ_ERR_STATE_NEED_RESET,
 	MLX5_RXQ_ERR_STATE_NEED_READY,
+	MLX5_RXQ_ERR_STATE_IGNORE,
 };
 
 enum mlx5_rqx_code {
@@ -427,8 +428,8 @@ void mlx5_set_cksum_table(void);
 void mlx5_set_swp_types_table(void);
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 void mlx5_rxq_initialize(struct mlx5_rxq_data *rxq);
-__rte_noinline int mlx5_rx_err_handle(struct mlx5_rxq_data *rxq,
-				      uint8_t vec, uint16_t err_n);
+__rte_noinline int mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
+				      uint16_t err_n, uint16_t *skip_cnt);
 void mlx5_mprq_buf_free_cb(void *addr, void *opaque);
 void mlx5_mprq_buf_free(struct mlx5_mprq_buf *buf);
 uint16_t mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts,
