@@ -523,7 +523,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 {
 	const uint16_t q_n = 1 << rxq->cqe_n;
 	const uint16_t q_mask = q_n - 1;
-	unsigned int pos;
+	unsigned int pos, adj;
 	uint64_t n = 0;
 	uint64_t comp_idx = MLX5_VPMD_DESCS_PER_LOOP;
 	uint16_t nocmp_n = 0;
@@ -591,7 +591,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		__m128i pkt_mb0, pkt_mb1, pkt_mb2, pkt_mb3;
 		__m128i op_own, op_own_tmp1, op_own_tmp2;
 		__m128i opcode, owner_mask, invalid_mask;
-		__m128i comp_mask;
+		__m128i comp_mask, mini_mask;
 		__m128i mask;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		__m128i byte_cnt;
@@ -729,9 +729,12 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		mask = _mm_sll_epi64(ones, mask);
 		invalid_mask = _mm_or_si128(invalid_mask, mask);
 		/* D.3 check error in opcode. */
+		adj = (comp_idx != MLX5_VPMD_DESCS_PER_LOOP && comp_idx == n);
+		mask = _mm_set_epi64x(0, adj * sizeof(uint16_t) * 8);
+		mini_mask = _mm_sll_epi64(invalid_mask, mask);
 		opcode = _mm_cmpeq_epi32(resp_err_check, opcode);
 		opcode = _mm_packs_epi32(opcode, zero);
-		opcode = _mm_andnot_si128(invalid_mask, opcode);
+		opcode = _mm_andnot_si128(mini_mask, opcode);
 		/* D.4 mark if any error is set */
 		*err |= _mm_cvtsi128_si64(opcode);
 		/* D.5 fill in mbuf - rearm_data and packet_type. */
