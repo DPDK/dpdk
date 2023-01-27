@@ -2883,7 +2883,7 @@ update_bonding_port_dev_conf(portid_t bond_pid)
 int
 start_port(portid_t pid)
 {
-	int diag, need_check_link_status = -1;
+	int diag;
 	portid_t pi;
 	portid_t p_pi = RTE_MAX_ETHPORTS;
 	portid_t pl[RTE_MAX_ETHPORTS];
@@ -2894,6 +2894,9 @@ start_port(portid_t pid)
 	queueid_t qi;
 	struct rte_port *port;
 	struct rte_eth_hairpin_cap cap;
+	bool at_least_one_port_exist = false;
+	bool all_ports_already_started = true;
+	bool at_least_one_port_successfully_started = false;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;
@@ -2909,11 +2912,13 @@ start_port(portid_t pid)
 			continue;
 		}
 
-		need_check_link_status = 0;
+		at_least_one_port_exist = true;
+
 		port = &ports[pi];
-		if (port->port_status == RTE_PORT_STOPPED)
+		if (port->port_status == RTE_PORT_STOPPED) {
 			port->port_status = RTE_PORT_HANDLING;
-		else {
+			all_ports_already_started = false;
+		} else {
 			fprintf(stderr, "Port %d is now not stopped\n", pi);
 			continue;
 		}
@@ -3133,15 +3138,14 @@ start_port(portid_t pid)
 			printf("Port %d: " RTE_ETHER_ADDR_PRT_FMT "\n", pi,
 					RTE_ETHER_ADDR_BYTES(&port->eth_addr));
 
-		/* at least one port started, need checking link status */
-		need_check_link_status = 1;
+		at_least_one_port_successfully_started = true;
 
 		pl[cfg_pi++] = pi;
 	}
 
-	if (need_check_link_status == 1 && !no_link_check)
+	if (at_least_one_port_successfully_started && !no_link_check)
 		check_all_ports_link_status(RTE_PORT_ALL);
-	else if (need_check_link_status == 0)
+	else if (at_least_one_port_exist & all_ports_already_started)
 		fprintf(stderr, "Please stop the ports first\n");
 
 	if (hairpin_mode & 0xf) {
