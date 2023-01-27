@@ -51,6 +51,7 @@ rxq_handle_pending_error(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 			 uint16_t pkts_n)
 {
 	uint16_t n = 0;
+	uint16_t skip_cnt;
 	unsigned int i;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	uint32_t err_bytes = 0;
@@ -74,7 +75,7 @@ rxq_handle_pending_error(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	rxq->stats.ipackets -= (pkts_n - n);
 	rxq->stats.ibytes -= err_bytes;
 #endif
-	mlx5_rx_err_handle(rxq, 1, pkts_n);
+	mlx5_rx_err_handle(rxq, 1, pkts_n, &skip_cnt);
 	return n;
 }
 
