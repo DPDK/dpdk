@@ -111,6 +111,10 @@ New Features
   * Added support for meter options.
   * Added support for rte_flow meter action.
 
+* **Updated Intel igc driver.**
+
+  * Added support for timesync API.
+
 * **Updated NVIDIA mlx5 driver.**
 
   * Added support for matching on ICMPv6 ID and sequence fields.

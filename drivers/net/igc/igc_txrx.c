@@ -81,7 +81,8 @@
 		RTE_MBUF_F_TX_IP_CKSUM |	\
 		RTE_MBUF_F_TX_L4_MASK |	\
 		RTE_MBUF_F_TX_TCP_SEG |	\
-		RTE_MBUF_F_TX_UDP_SEG)
+		RTE_MBUF_F_TX_UDP_SEG | \
+		RTE_MBUF_F_TX_IEEE1588_TMST)
 
 #define IGC_TX_OFFLOAD_SEG	(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)
 
@@ -92,6 +93,8 @@
 #define IGC_ADVTXD_TUCMD_L4T_RSV	0x00001800
 
 #define IGC_TX_OFFLOAD_NOTSUP_MASK (RTE_MBUF_F_TX_OFFLOAD_MASK ^ IGC_TX_OFFLOAD_MASK)
+
+#define IGC_TS_HDR_LEN 16
 
 static inline uint64_t
 rx_desc_statuserr_to_pkt_flags(uint32_t statuserr)
@@ -222,6 +225,9 @@ rx_desc_get_pkt_info(struct igc_rx_queue *rxq, struct rte_mbuf *rxm,
 
 	pkt_flags |= rx_desc_statuserr_to_pkt_flags(staterr);
 
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+		pkt_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
+
 	rxm->ol_flags = pkt_flags;
 	pkt_info = rte_le_to_cpu_16(rxd->wb.lower.lo_dword.hs_rss.pkt_info);
 	rxm->packet_type = rx_desc_pkt_info_to_pkt_type(pkt_info);
@@ -328,8 +334,15 @@ igc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
 		rxdp->read.hdr_addr = 0;
-		rxdp->read.pkt_addr =
+
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+			rxdp->read.pkt_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb)) -
+			IGC_TS_HDR_LEN;
+		else
+			rxdp->read.pkt_addr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+
 		rxm->next = NULL;
 
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
@@ -339,6 +352,14 @@ igc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->nb_segs = 1;
 
 		rx_desc_get_pkt_info(rxq, rxm, &rxd, staterr);
+
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+			uint32_t *ts = rte_pktmbuf_mtod_offset(rxm,
+					uint32_t *, -IGC_TS_HDR_LEN);
+			rxq->rx_timestamp = (uint64_t)ts[3] * NSEC_PER_SEC +
+					ts[2];
+			rxm->timesync = rxq->queue_id;
+		}
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -472,8 +493,15 @@ next_desc:
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
 		rxdp->read.hdr_addr = 0;
-		rxdp->read.pkt_addr =
+
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+			rxdp->read.pkt_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb)) -
+				IGC_TS_HDR_LEN;
+		else
+			rxdp->read.pkt_addr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+
 		rxm->next = NULL;
 
 		/*
@@ -536,6 +564,14 @@ next_desc:
 		}
 
 		rx_desc_get_pkt_info(rxq, first_seg, &rxd, staterr);
+
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+			uint32_t *ts = rte_pktmbuf_mtod_offset(first_seg,
+					uint32_t *, -IGC_TS_HDR_LEN);
+			rxq->rx_timestamp = (uint64_t)ts[3] * NSEC_PER_SEC +
+					ts[2];
+			rxm->timesync = rxq->queue_id;
+		}
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -682,7 +718,10 @@ igc_alloc_rx_queue_mbufs(struct igc_rx_queue *rxq)
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 		rxd = &rxq->rx_ring[i];
 		rxd->read.hdr_addr = 0;
-		rxd->read.pkt_addr = dma_addr;
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+			rxd->read.pkt_addr = dma_addr - IGC_TS_HDR_LEN;
+		else
+			rxd->read.pkt_addr = dma_addr;
 		rxe[i].mbuf = mbuf;
 	}
 
@@ -984,6 +1023,9 @@ igc_rx_init(struct rte_eth_dev *dev)
 
 		rxq = dev->data->rx_queues[i];
 		rxq->flags = 0;
+
+		if (offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+			rxq->offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 		/* Allocate buffers for descriptor rings and set up queue */
 		ret = igc_alloc_rx_queue_mbufs(rxq);

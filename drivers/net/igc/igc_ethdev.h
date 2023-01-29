@@ -7,6 +7,7 @@
 
 #include <rte_ethdev.h>
 #include <rte_flow.h>
+#include <rte_time.h>
 
 #include "base/igc_osdep.h"
 #include "base/igc_hw.h"
@@ -75,7 +76,8 @@ extern "C" {
 	RTE_ETH_RX_OFFLOAD_SCTP_CKSUM  | \
 	RTE_ETH_RX_OFFLOAD_KEEP_CRC    | \
 	RTE_ETH_RX_OFFLOAD_SCATTER     | \
-	RTE_ETH_RX_OFFLOAD_RSS_HASH)
+	RTE_ETH_RX_OFFLOAD_RSS_HASH    | \
+	RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 
 #define IGC_TX_OFFLOAD_ALL	(    \
 	RTE_ETH_TX_OFFLOAD_VLAN_INSERT | \

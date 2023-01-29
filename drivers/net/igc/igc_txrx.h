@@ -42,6 +42,7 @@ struct igc_rx_queue {
 	uint8_t             drop_en;    /**< If not 0, set SRRCTL.Drop_En. */
 	uint32_t            flags;      /**< RX flags. */
 	uint64_t            offloads;   /**< offloads of RTE_ETH_RX_OFFLOAD_* */
+	uint64_t            rx_timestamp;
 };
 
 /** Offload features */
