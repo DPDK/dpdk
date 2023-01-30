@@ -4689,7 +4689,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Encryption (512-byte plaintext"
-			      " Dataunit 512) Scater gather OOP",
+			      " Dataunit 512) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_512_du_512,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
@@ -4697,7 +4697,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (512-byte plaintext"
-			      " Dataunit 512) Scater gather OOP",
+			      " Dataunit 512) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_512_du_512,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
@@ -4705,7 +4705,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Encryption (512-byte plaintext"
-			      " Dataunit 0) Scater gather OOP",
+			      " Dataunit 0) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_512_du_0,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
@@ -4713,7 +4713,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (512-byte plaintext"
-			      " Dataunit 0) Scater gather OOP",
+			      " Dataunit 0) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_512_du_0,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
@@ -4721,7 +4721,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Encryption (4096-byte plaintext"
-			      " Dataunit 4096) Scater gather OOP",
+			      " Dataunit 4096) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_4096_du_4096,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
@@ -4729,7 +4729,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (4096-byte plaintext"
-			      " Dataunit 4096) Scater gather OOP",
+			      " Dataunit 4096) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_4096_du_4096,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
@@ -4737,7 +4737,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Encryption (4096-byte plaintext"
-			      " Dataunit 0) Scater gather OOP",
+			      " Dataunit 0) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_4096_du_0,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
@@ -4745,7 +4745,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 	},
 	{
 		.test_descr = "AES-256-XTS Decryption (4096-byte plaintext"
-			      " Dataunit 0) Scater gather OOP",
+			      " Dataunit 0) Scatter gather OOP",
 		.test_data = &aes_test_data_xts_wrapped_key_48_pt_4096_du_0,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
