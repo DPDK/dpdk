@@ -2061,6 +2061,8 @@ fwd_stats_display(void)
 			fwd_cycles += fs->busy_cycles;
 	}
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
+		uint64_t tx_dropped = 0;
+
 		pt_id = fwd_ports_ids[i];
 		port = &ports[pt_id];
 
@@ -2082,8 +2084,9 @@ fwd_stats_display(void)
 		total_recv += stats.ipackets;
 		total_xmit += stats.opackets;
 		total_rx_dropped += stats.imissed;
-		total_tx_dropped += ports_stats[pt_id].tx_dropped;
-		total_tx_dropped += stats.oerrors;
+		tx_dropped += ports_stats[pt_id].tx_dropped;
+		tx_dropped += stats.oerrors;
+		total_tx_dropped += tx_dropped;
 		total_rx_nombuf  += stats.rx_nombuf;
 
 		printf("\n  %s Forward statistics for port %-2d %s\n",
@@ -2110,8 +2113,8 @@ fwd_stats_display(void)
 
 		printf("  TX-packets: %-14"PRIu64" TX-dropped: %-14"PRIu64
 		       "TX-total: %-"PRIu64"\n",
-		       stats.opackets, ports_stats[pt_id].tx_dropped,
-		       stats.opackets + ports_stats[pt_id].tx_dropped);
+		       stats.opackets, tx_dropped,
+		       stats.opackets + tx_dropped);
 
 		if (record_burst_stats) {
 			if (ports_stats[pt_id].rx_stream)
