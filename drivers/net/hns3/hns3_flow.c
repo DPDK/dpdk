@@ -1421,12 +1421,10 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 
 	/* Check if the next not void action is END */
 	NEXT_ITEM_OF_ACTION(act, actions, act_index);
-	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
-		memset(rss_conf, 0, sizeof(struct hns3_rss_conf));
+	if (act->type != RTE_FLOW_ACTION_TYPE_END)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  act, "Not supported action.");
-	}
 
 	return 0;
 }
