@@ -1279,19 +1279,8 @@ hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 	bool rss_key_is_same;
 	bool func_is_same;
 
-	/*
-	 * When user flush all RSS rule, RSS func is set invalid with
-	 * RTE_ETH_HASH_FUNCTION_MAX. Then the user create a flow after
-	 * flushed, any validate RSS func is different with it before
-	 * flushed. Others, when user create an action RSS with RSS func
-	 * specified RTE_ETH_HASH_FUNCTION_DEFAULT, the func is the same
-	 * between continuous RSS flow.
-	 */
-	if (comp->func == RTE_ETH_HASH_FUNCTION_MAX)
-		func_is_same = false;
-	else
-		func_is_same = (with->func != RTE_ETH_HASH_FUNCTION_DEFAULT) ?
-				(comp->func == with->func) : true;
+	func_is_same = (with->func != RTE_ETH_HASH_FUNCTION_DEFAULT) ?
+			(comp->func == with->func) : true;
 
 	if (with->key_len == 0 || with->key == NULL)
 		rss_key_is_same = 1;
@@ -1533,7 +1522,6 @@ static int
 hns3_config_rss_filter(struct hns3_hw *hw,
 		       const struct hns3_rss_conf *conf, bool add)
 {
-	struct hns3_rss_conf *rss_info;
 	uint64_t flow_types;
 	uint16_t num;
 	int ret;
@@ -1560,7 +1548,6 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 	/* Update the useful flow types */
 	rss_flow_conf.types = flow_types;
 
-	rss_info = &hw->rss_info;
 	if (!add) {
 		if (!conf->valid)
 			return 0;
@@ -1569,15 +1556,6 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 		if (ret) {
 			hns3_err(hw, "RSS disable failed(%d)", ret);
 			return ret;
-		}
-
-		if (rss_flow_conf.queue_num) {
-			/*
-			 * Due the content of queue pointer have been reset to
-			 * 0, the rss_info->conf.queue should be set to NULL
-			 */
-			rss_info->conf.queue = NULL;
-			rss_info->conf.queue_num = 0;
 		}
 
 		return 0;
