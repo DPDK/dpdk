@@ -1273,27 +1273,58 @@ hns3_filterlist_flush(struct rte_eth_dev *dev)
 }
 
 static bool
+hns3_flow_rule_key_same(const struct rte_flow_action_rss *comp,
+			const struct rte_flow_action_rss *with)
+{
+	if (comp->key_len != with->key_len)
+		return false;
+
+	if (with->key_len == 0)
+		return true;
+
+	if (comp->key == NULL && with->key == NULL)
+		return true;
+
+	if (!(comp->key != NULL && with->key != NULL))
+		return false;
+
+	return !memcmp(comp->key, with->key, with->key_len);
+}
+
+static bool
+hns3_flow_rule_queues_same(const struct rte_flow_action_rss *comp,
+			   const struct rte_flow_action_rss *with)
+{
+	if (comp->queue_num != with->queue_num)
+		return false;
+
+	if (with->queue_num == 0)
+		return true;
+
+	if (comp->queue == NULL && with->queue == NULL)
+		return true;
+
+	if (!(comp->queue != NULL && with->queue != NULL))
+		return false;
+
+	return !memcmp(comp->queue, with->queue, with->queue_num);
+}
+
+static bool
 hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 		     const struct rte_flow_action_rss *with)
 {
-	bool rss_key_is_same;
-	bool func_is_same;
+	bool same_level;
+	bool same_types;
+	bool same_func;
 
-	func_is_same = (with->func != RTE_ETH_HASH_FUNCTION_DEFAULT) ?
-			(comp->func == with->func) : true;
+	same_level = (comp->level == with->level);
+	same_types = (comp->types == with->types);
+	same_func = (comp->func == with->func);
 
-	if (with->key_len == 0 || with->key == NULL)
-		rss_key_is_same = 1;
-	else
-		rss_key_is_same = comp->key_len == with->key_len &&
-		!memcmp(comp->key, with->key, with->key_len);
-
-	return (func_is_same && rss_key_is_same &&
-		comp->types == with->types &&
-		comp->level == with->level &&
-		comp->queue_num == with->queue_num &&
-		!memcmp(comp->queue, with->queue,
-			sizeof(*with->queue) * with->queue_num));
+	return same_level && same_types && same_func &&
+		hns3_flow_rule_key_same(comp, with) &&
+		hns3_flow_rule_queues_same(comp, with);
 }
 
 static bool
