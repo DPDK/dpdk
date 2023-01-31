@@ -1406,10 +1406,10 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
 					  "a nonzero RSS encapsulation level is not supported");
-	if (rss->key_len && rss->key_len != RTE_DIM(rss_conf->key))
+	if (rss->key_len && rss->key_len != hw->rss_key_size)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
-					  "RSS hash key must be exactly 40 bytes");
+					  "invalid RSS key length");
 
 	if (!hns3_rss_input_tuple_supported(hw, rss))
 		return rte_flow_error_set(error, EINVAL,
@@ -1441,16 +1441,6 @@ hns3_disable_rss(struct hns3_hw *hw)
 		return ret;
 
 	return 0;
-}
-
-static void
-hns3_adjust_rss_key(struct hns3_hw *hw, struct rte_flow_action_rss *rss_conf)
-{
-	if (rss_conf->key == NULL || rss_conf->key_len < HNS3_RSS_KEY_SIZE) {
-		hns3_warn(hw, "Default RSS hash key to be set");
-		rss_conf->key = hns3_hash_key;
-		rss_conf->key_len = HNS3_RSS_KEY_SIZE;
-	}
 }
 
 static int
@@ -1485,9 +1475,16 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function *func,
 static int
 hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 {
+	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
+	bool use_default_key = false;
 	int ret;
 
-	hns3_adjust_rss_key(hw, rss_config);
+	if (rss_config->key == NULL || rss_config->key_len != hw->rss_key_size) {
+		hns3_warn(hw, "Default RSS hash key to be set");
+		memcpy(rss_key, hns3_hash_key,
+			RTE_MIN(sizeof(hns3_hash_key), hw->rss_key_size));
+		use_default_key = true;
+	}
 
 	ret = hns3_parse_rss_algorithm(hw, &rss_config->func,
 				       &hw->rss_info.hash_algo);
@@ -1495,7 +1492,8 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 		return ret;
 
 	ret = hns3_rss_set_algo_key(hw, hw->rss_info.hash_algo,
-				    rss_config->key, HNS3_RSS_KEY_SIZE);
+				    use_default_key ? rss_key : rss_config->key,
+				    hw->rss_key_size);
 	if (ret)
 		return ret;
 

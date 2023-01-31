@@ -29,6 +29,7 @@
 #define HNS3_RSS_IND_TBL_SIZE	512 /* The size of hash lookup table */
 #define HNS3_RSS_IND_TBL_SIZE_MAX 2048
 #define HNS3_RSS_KEY_SIZE	40
+#define HNS3_RSS_KEY_SIZE_MAX	128
 #define HNS3_RSS_SET_BITMAP_MSK	0xffff
 
 #define HNS3_RSS_HASH_ALGO_TOEPLITZ	0
@@ -41,7 +42,7 @@ struct hns3_rss_conf {
 	/* RSS parameters :algorithm, flow_types,  key, queue */
 	struct rte_flow_action_rss conf;
 	uint8_t hash_algo; /* hash function type defined by hardware */
-	uint8_t key[HNS3_RSS_KEY_SIZE];  /* Hash key */
+	uint8_t key[HNS3_RSS_KEY_SIZE_MAX];  /* Hash key */
 	uint16_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE_MAX];
 	uint16_t queue[HNS3_RSS_QUEUES_BUFFER_NUM]; /* Queues indices to use */
 	bool valid; /* check if RSS rule is valid */
