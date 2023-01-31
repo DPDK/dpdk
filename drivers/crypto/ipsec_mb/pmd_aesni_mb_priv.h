@@ -566,7 +566,7 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 				},
 				.digest_size = {
 					.min = 4,
-#if IMB_VERSION(1, 2, 0) > IMB_VERSION_NUM
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
 					.max = 16,
 					.increment = 4
 #else

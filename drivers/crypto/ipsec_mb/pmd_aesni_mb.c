@@ -199,7 +199,7 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 			}
 		} else if (xform->auth.key.length == 32) {
 			sess->auth.algo = IMB_AUTH_ZUC256_EIA3_BITLEN;
-#if IMB_VERSION(1, 2, 0) > IMB_VERSION_NUM
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
 			if (sess->auth.req_digest_len != 4 &&
 					sess->auth.req_digest_len != 8 &&
 					sess->auth.req_digest_len != 16) {
