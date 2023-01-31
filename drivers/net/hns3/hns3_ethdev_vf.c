@@ -718,8 +718,8 @@ hns3vf_check_dev_specifications(struct hns3_hw *hw)
 {
 	if (hw->rss_ind_tbl_size == 0 ||
 	    hw->rss_ind_tbl_size > HNS3_RSS_IND_TBL_SIZE_MAX) {
-		hns3_warn(hw, "the size of hash lookup table configured (%u) exceeds the maximum(%u)",
-			  hw->rss_ind_tbl_size, HNS3_RSS_IND_TBL_SIZE_MAX);
+		hns3_err(hw, "the indirection table size obtained (%u) is invalid, and should not be zero or exceed the maximum(%u)",
+			 hw->rss_ind_tbl_size, HNS3_RSS_IND_TBL_SIZE_MAX);
 		return -EINVAL;
 	}
 
