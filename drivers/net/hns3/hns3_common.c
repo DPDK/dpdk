@@ -130,7 +130,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	};
 
 	info->reta_size = hw->rss_ind_tbl_size;
-	info->hash_key_size = HNS3_RSS_KEY_SIZE;
+	info->hash_key_size = hw->rss_key_size;
 	info->flow_type_rss_offloads = HNS3_ETH_RSS_SUPPORT;
 
 	info->default_rxportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
@@ -895,6 +895,16 @@ hns3_check_dev_specifications(struct hns3_hw *hw)
 			 hw->rss_ind_tbl_size, HNS3_RSS_IND_TBL_SIZE_MAX);
 		return -EINVAL;
 	}
+
+	if (hw->rss_key_size == 0 || hw->rss_key_size > HNS3_RSS_KEY_SIZE_MAX) {
+		hns3_err(hw, "the RSS key size obtained (%u) is invalid, and should not be zero or exceed the maximum(%u)",
+			 hw->rss_key_size, HNS3_RSS_KEY_SIZE_MAX);
+		return -EINVAL;
+	}
+
+	if (hw->rss_key_size > HNS3_RSS_KEY_SIZE)
+		hns3_warn(hw, "the RSS key size obtained (%u) is greater than the default key size (%u)",
+			  hw->rss_key_size, HNS3_RSS_KEY_SIZE);
 
 	return 0;
 }
