@@ -2764,6 +2764,7 @@ test_nb_segs_and_next_reset(void)
 			m2->nb_segs != 1 || m2->next != NULL)
 		GOTO_FAIL("nb_segs or next was not reset properly");
 
+	rte_mempool_free(pool);
 	return 0;
 
 fail:
