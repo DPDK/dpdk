@@ -95,8 +95,8 @@ static const struct rte_flow_action *
 hns3_find_rss_general_action(const struct rte_flow_item pattern[],
 			     const struct rte_flow_action actions[])
 {
+	const struct rte_flow_action_rss *rss_act;
 	const struct rte_flow_action *act = NULL;
-	const struct hns3_rss_conf *rss;
 	bool have_eth = false;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
@@ -115,8 +115,8 @@ hns3_find_rss_general_action(const struct rte_flow_item pattern[],
 		}
 	}
 
-	rss = act->conf;
-	if (have_eth && rss->conf.queue_num) {
+	rss_act = act->conf;
+	if (have_eth && rss_act->queue_num) {
 		/*
 		 * Pattern have ETH and action's queue_num > 0, indicate this is
 		 * queue region configuration.
@@ -1296,30 +1296,6 @@ hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 			sizeof(*with->queue) * with->queue_num));
 }
 
-static int
-hns3_rss_conf_copy(struct hns3_rss_conf *out,
-		   const struct rte_flow_action_rss *in)
-{
-	if (in->key_len > RTE_DIM(out->key) ||
-	    in->queue_num > RTE_DIM(out->queue))
-		return -EINVAL;
-	if (in->key == NULL && in->key_len)
-		return -EINVAL;
-	out->conf = (struct rte_flow_action_rss) {
-		.func = in->func,
-		.level = in->level,
-		.types = in->types,
-		.key_len = in->key_len,
-		.queue_num = in->queue_num,
-	};
-	out->conf.queue = memcpy(out->queue, in->queue,
-				sizeof(*in->queue) * in->queue_num);
-	if (in->key)
-		out->conf.key = memcpy(out->key, in->key, in->key_len);
-
-	return 0;
-}
-
 static bool
 hns3_rss_input_tuple_supported(struct hns3_hw *hw,
 			       const struct rte_flow_action_rss *rss)
@@ -1733,9 +1709,10 @@ hns3_flow_create_rss_rule(struct rte_eth_dev *dev,
 			  struct rte_flow *flow)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	const struct rte_flow_action_rss *rss_act;
 	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_rss_conf_ele *filter_ptr;
-	const struct hns3_rss_conf *rss_conf;
+	struct hns3_rss_conf *new_conf;
 	int ret;
 
 	rss_filter_ptr = rte_zmalloc("hns3 rss filter",
@@ -1745,19 +1722,27 @@ hns3_flow_create_rss_rule(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	/*
-	 * After all the preceding tasks are successfully configured, configure
-	 * rules to the hardware to simplify the rollback of rules in the
-	 * hardware.
-	 */
-	rss_conf = (const struct hns3_rss_conf *)act->conf;
-	ret = hns3_flow_parse_rss(dev, rss_conf, true);
+	rss_act = (const struct rte_flow_action_rss *)act->conf;
+	new_conf = &rss_filter_ptr->filter_info;
+	memcpy(&new_conf->conf, rss_act, sizeof(*rss_act));
+	if (rss_act->queue_num > 0) {
+		memcpy(new_conf->queue, rss_act->queue,
+		       rss_act->queue_num * sizeof(new_conf->queue[0]));
+		new_conf->conf.queue = new_conf->queue;
+	}
+	if (rss_act->key_len > 0) {
+		if (rss_act->key != NULL) {
+			memcpy(new_conf->key, rss_act->key,
+			       rss_act->key_len * sizeof(new_conf->key[0]));
+			new_conf->conf.key = new_conf->key;
+		}
+	}
+
+	ret = hns3_flow_parse_rss(dev, new_conf, true);
 	if (ret != 0) {
 		rte_free(rss_filter_ptr);
 		return ret;
 	}
-
-	hns3_rss_conf_copy(&rss_filter_ptr->filter_info, &rss_conf->conf);
 	rss_filter_ptr->filter_info.valid = true;
 
 	/*
