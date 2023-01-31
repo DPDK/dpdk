@@ -1300,7 +1300,7 @@ hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 		!memcmp(comp->key, with->key, with->key_len);
 
 	return (func_is_same && rss_key_is_same &&
-		comp->types == (with->types & HNS3_ETH_RSS_SUPPORT) &&
+		comp->types == with->types &&
 		comp->level == with->level &&
 		comp->queue_num == with->queue_num &&
 		!memcmp(comp->queue, with->queue,
@@ -1596,15 +1596,7 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 	}
 
 	/* Set hash algorithm and flow types by the user's config */
-	ret = hns3_hw_rss_hash_set(hw, &rss_flow_conf);
-	if (ret)
-		return ret;
-
-	ret = hns3_rss_conf_copy(rss_info, &rss_flow_conf);
-	if (ret)
-		hns3_err(hw, "RSS config init fail(%d)", ret);
-
-	return ret;
+	return hns3_hw_rss_hash_set(hw, &rss_flow_conf);
 }
 
 static int
@@ -1676,17 +1668,32 @@ hns3_restore_filter(struct hns3_adapter *hns)
 	return hns3_restore_rss_filter(hw);
 }
 
+static bool
+hns3_rss_action_is_dup(struct hns3_hw *hw,
+		       const struct rte_flow_action_rss *act)
+{
+	struct hns3_rss_conf_ele *filter;
+
+	TAILQ_FOREACH(filter, &hw->flow_rss_list, entries) {
+		if (!filter->filter_info.valid)
+			continue;
+
+		if (hns3_action_rss_same(&filter->filter_info.conf, act))
+			return true;
+	}
+
+	return false;
+}
+
 static int
 hns3_flow_parse_rss(struct rte_eth_dev *dev,
 		    const struct hns3_rss_conf *conf, bool add)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	bool ret;
 
-	ret = hns3_action_rss_same(&hw->rss_info.conf, &conf->conf);
-	if (ret) {
-		hns3_err(hw, "Enter duplicate RSS configuration : %d", ret);
+	if (hns3_rss_action_is_dup(hw, &conf->conf)) {
+		hns3_err(hw, "duplicate RSS configuration");
 		return -EINVAL;
 	}
 
