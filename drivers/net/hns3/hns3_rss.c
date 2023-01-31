@@ -277,45 +277,37 @@ static const struct {
 
 /*
  * rss_generic_config command function, opcode:0x0D01.
- * Used to set algorithm, key_offset and hash key of rss.
+ * Used to set algorithm and hash key of RSS.
  */
 int
-hns3_rss_set_algo_key(struct hns3_hw *hw, const uint8_t *key)
+hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
+		      const uint8_t *key, uint8_t key_len)
 {
-#define HNS3_KEY_OFFSET_MAX	3
-#define HNS3_SET_HASH_KEY_BYTE_FOUR	2
-
 	struct hns3_rss_generic_config_cmd *req;
 	struct hns3_cmd_desc desc;
-	uint32_t key_offset, key_size;
-	const uint8_t *key_cur;
-	uint8_t cur_offset;
+	const uint8_t *cur_key;
+	uint16_t cur_key_size;
+	uint16_t max_bd_num;
+	uint16_t idx;
 	int ret;
 
 	req = (struct hns3_rss_generic_config_cmd *)desc.data;
 
-	/*
-	 * key_offset=0, hash key byte0~15 is set to hardware.
-	 * key_offset=1, hash key byte16~31 is set to hardware.
-	 * key_offset=2, hash key byte32~39 is set to hardware.
-	 */
-	for (key_offset = 0; key_offset < HNS3_KEY_OFFSET_MAX; key_offset++) {
+	max_bd_num = DIV_ROUND_UP(key_len, HNS3_RSS_HASH_KEY_NUM);
+	for (idx = 0; idx < max_bd_num; idx++) {
 		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_GENERIC_CONFIG,
 					  false);
 
-		req->hash_config |=
-			(hw->rss_info.hash_algo & HNS3_RSS_HASH_ALGO_MASK);
-		req->hash_config |= (key_offset << HNS3_RSS_HASH_KEY_OFFSET_B);
+		req->hash_config |= (hash_algo & HNS3_RSS_HASH_ALGO_MASK);
+		req->hash_config |= (idx << HNS3_RSS_HASH_KEY_OFFSET_B);
 
-		if (key_offset == HNS3_SET_HASH_KEY_BYTE_FOUR)
-			key_size = HNS3_RSS_KEY_SIZE - HNS3_RSS_HASH_KEY_NUM *
-			HNS3_SET_HASH_KEY_BYTE_FOUR;
+		if (idx == max_bd_num - 1)
+			cur_key_size = key_len % HNS3_RSS_HASH_KEY_NUM;
 		else
-			key_size = HNS3_RSS_HASH_KEY_NUM;
+			cur_key_size = HNS3_RSS_HASH_KEY_NUM;
 
-		cur_offset = key_offset * HNS3_RSS_HASH_KEY_NUM;
-		key_cur = key + cur_offset;
-		memcpy(req->hash_key, key_cur, key_size);
+		cur_key = key + idx * HNS3_RSS_HASH_KEY_NUM;
+		memcpy(req->hash_key, cur_key, cur_key_size);
 
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
@@ -518,7 +510,8 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 		goto set_tuple_fail;
 
 	if (key) {
-		ret = hns3_rss_set_algo_key(hw, key);
+		ret = hns3_rss_set_algo_key(hw, hw->rss_info.hash_algo,
+					    key, HNS3_RSS_KEY_SIZE);
 		if (ret)
 			goto set_algo_key_fail;
 	}
@@ -795,8 +788,9 @@ hns3_config_rss(struct hns3_adapter *hns)
 		break;
 	}
 
-	/* Configure RSS hash algorithm and hash key offset */
-	ret = hns3_rss_set_algo_key(hw, hash_key);
+	/* Configure RSS hash algorithm and hash key */
+	ret = hns3_rss_set_algo_key(hw, hw->rss_info.hash_algo, hash_key,
+				    HNS3_RSS_KEY_SIZE);
 	if (ret)
 		return ret;
 
