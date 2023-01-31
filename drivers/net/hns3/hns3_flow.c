@@ -1537,17 +1537,6 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 		.queue = conf->conf.queue,
 	};
 
-	/* Filter the unsupported flow types */
-	flow_types = conf->conf.types ?
-		     rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT :
-		     hw->rss_info.conf.types;
-	if (flow_types != rss_flow_conf.types)
-		hns3_warn(hw, "modified RSS types based on hardware support, "
-			      "requested:0x%" PRIx64 " configured:0x%" PRIx64,
-			  rss_flow_conf.types, flow_types);
-	/* Update the useful flow types */
-	rss_flow_conf.types = flow_types;
-
 	if (!add) {
 		if (!conf->valid)
 			return 0;
@@ -1572,6 +1561,17 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 		if (ret)
 			return ret;
 	}
+
+	/* Filter the unsupported flow types */
+	flow_types = conf->conf.types ?
+		     rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT :
+		     hw->rss_info.conf.types;
+	if (flow_types != rss_flow_conf.types)
+		hns3_warn(hw, "modified RSS types based on hardware support,"
+			  " requested:0x%" PRIx64 " configured:0x%" PRIx64,
+			  rss_flow_conf.types, flow_types);
+	/* Update the useful flow types */
+	rss_flow_conf.types = flow_types;
 
 	/* Set hash algorithm and flow types by the user's config */
 	return hns3_hw_rss_hash_set(hw, &rss_flow_conf);
