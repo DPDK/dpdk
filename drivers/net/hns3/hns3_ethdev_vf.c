@@ -688,67 +688,6 @@ hns3vf_interrupt_handler(void *param)
 	hns3vf_enable_irq0(hw);
 }
 
-static void
-hns3vf_set_default_dev_specifications(struct hns3_hw *hw)
-{
-	hw->max_non_tso_bd_num = HNS3_MAX_NON_TSO_BD_PER_PKT;
-	hw->rss_ind_tbl_size = HNS3_RSS_IND_TBL_SIZE;
-	hw->rss_key_size = HNS3_RSS_KEY_SIZE;
-	hw->intr.int_ql_max = HNS3_INTR_QL_NONE;
-}
-
-static void
-hns3vf_parse_dev_specifications(struct hns3_hw *hw, struct hns3_cmd_desc *desc)
-{
-	struct hns3_dev_specs_0_cmd *req0;
-	struct hns3_dev_specs_1_cmd *req1;
-
-	req0 = (struct hns3_dev_specs_0_cmd *)desc[0].data;
-	req1 = (struct hns3_dev_specs_1_cmd *)desc[1].data;
-
-	hw->max_non_tso_bd_num = req0->max_non_tso_bd_num;
-	hw->rss_ind_tbl_size = rte_le_to_cpu_16(req0->rss_ind_tbl_size);
-	hw->rss_key_size = rte_le_to_cpu_16(req0->rss_key_size);
-	hw->intr.int_ql_max = rte_le_to_cpu_16(req0->intr_ql_max);
-	hw->min_tx_pkt_len = req1->min_tx_pkt_len;
-}
-
-static int
-hns3vf_check_dev_specifications(struct hns3_hw *hw)
-{
-	if (hw->rss_ind_tbl_size == 0 ||
-	    hw->rss_ind_tbl_size > HNS3_RSS_IND_TBL_SIZE_MAX) {
-		hns3_err(hw, "the indirection table size obtained (%u) is invalid, and should not be zero or exceed the maximum(%u)",
-			 hw->rss_ind_tbl_size, HNS3_RSS_IND_TBL_SIZE_MAX);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int
-hns3vf_query_dev_specifications(struct hns3_hw *hw)
-{
-	struct hns3_cmd_desc desc[HNS3_QUERY_DEV_SPECS_BD_NUM];
-	int ret;
-	int i;
-
-	for (i = 0; i < HNS3_QUERY_DEV_SPECS_BD_NUM - 1; i++) {
-		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_QUERY_DEV_SPECS,
-					  true);
-		desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-	}
-	hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_QUERY_DEV_SPECS, true);
-
-	ret = hns3_cmd_send(hw, desc, HNS3_QUERY_DEV_SPECS_BD_NUM);
-	if (ret)
-		return ret;
-
-	hns3vf_parse_dev_specifications(hw, desc);
-
-	return hns3vf_check_dev_specifications(hw);
-}
-
 void
 hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported)
 {
@@ -826,7 +765,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 		return ret;
 
 	if (hw->revision < PCI_REVISION_ID_HIP09_A) {
-		hns3vf_set_default_dev_specifications(hw);
+		hns3_set_default_dev_specifications(hw);
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
 		hw->tso_mode = HNS3_TSO_SW_CAL_PSEUDO_H_CSUM;
@@ -837,7 +776,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 		return 0;
 	}
 
-	ret = hns3vf_query_dev_specifications(hw);
+	ret = hns3_query_dev_specifications(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR,
 			     "failed to query dev specifications, ret = %d",

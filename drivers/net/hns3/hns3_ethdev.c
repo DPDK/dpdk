@@ -2647,69 +2647,6 @@ hns3_parse_speed(int speed_cmd, uint32_t *speed)
 	return 0;
 }
 
-static void
-hns3_set_default_dev_specifications(struct hns3_hw *hw)
-{
-	hw->max_non_tso_bd_num = HNS3_MAX_NON_TSO_BD_PER_PKT;
-	hw->rss_ind_tbl_size = HNS3_RSS_IND_TBL_SIZE;
-	hw->rss_key_size = HNS3_RSS_KEY_SIZE;
-	hw->max_tm_rate = HNS3_ETHER_MAX_RATE;
-	hw->intr.int_ql_max = HNS3_INTR_QL_NONE;
-}
-
-static void
-hns3_parse_dev_specifications(struct hns3_hw *hw, struct hns3_cmd_desc *desc)
-{
-	struct hns3_dev_specs_0_cmd *req0;
-	struct hns3_dev_specs_1_cmd *req1;
-
-	req0 = (struct hns3_dev_specs_0_cmd *)desc[0].data;
-	req1 = (struct hns3_dev_specs_1_cmd *)desc[1].data;
-
-	hw->max_non_tso_bd_num = req0->max_non_tso_bd_num;
-	hw->rss_ind_tbl_size = rte_le_to_cpu_16(req0->rss_ind_tbl_size);
-	hw->rss_key_size = rte_le_to_cpu_16(req0->rss_key_size);
-	hw->max_tm_rate = rte_le_to_cpu_32(req0->max_tm_rate);
-	hw->intr.int_ql_max = rte_le_to_cpu_16(req0->intr_ql_max);
-	hw->min_tx_pkt_len = req1->min_tx_pkt_len;
-}
-
-static int
-hns3_check_dev_specifications(struct hns3_hw *hw)
-{
-	if (hw->rss_ind_tbl_size == 0 ||
-	    hw->rss_ind_tbl_size > HNS3_RSS_IND_TBL_SIZE_MAX) {
-		hns3_err(hw, "the indirection table size obtained (%u) is invalid, and should not be zero or exceed the maximum(%u)",
-			 hw->rss_ind_tbl_size, HNS3_RSS_IND_TBL_SIZE_MAX);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int
-hns3_query_dev_specifications(struct hns3_hw *hw)
-{
-	struct hns3_cmd_desc desc[HNS3_QUERY_DEV_SPECS_BD_NUM];
-	int ret;
-	int i;
-
-	for (i = 0; i < HNS3_QUERY_DEV_SPECS_BD_NUM - 1; i++) {
-		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_QUERY_DEV_SPECS,
-					  true);
-		desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-	}
-	hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_QUERY_DEV_SPECS, true);
-
-	ret = hns3_cmd_send(hw, desc, HNS3_QUERY_DEV_SPECS_BD_NUM);
-	if (ret)
-		return ret;
-
-	hns3_parse_dev_specifications(hw, desc);
-
-	return hns3_check_dev_specifications(hw);
-}
-
 static int
 hns3_get_capability(struct hns3_hw *hw)
 {
