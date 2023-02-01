@@ -109,7 +109,6 @@ enum rte_comp_algorithm {
 	/**< LZS compression algorithm
 	 * https://tools.ietf.org/html/rfc2395
 	 */
-	RTE_COMP_ALGO_LIST_END
 };
 
 /** Compression Hash Algorithms */
@@ -120,7 +119,6 @@ enum rte_comp_hash_algorithm {
 	/**< SHA1 hash algorithm */
 	RTE_COMP_HASH_ALGO_SHA2_256,
 	/**< SHA256 hash algorithm of SHA2 family */
-	RTE_COMP_HASH_ALGO_LIST_END
 };
 
 /**< Compression Level.
