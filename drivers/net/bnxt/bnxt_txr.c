@@ -535,6 +535,12 @@ int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (rc)
 		return rc;
 
+	/* reset the previous stats for the tx_queue since the counters
+	 * will be cleared when the queue is started.
+	 */
+	memset(&bp->prev_tx_ring_stats[tx_queue_id], 0,
+	       sizeof(struct bnxt_ring_stats));
+
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	txq->tx_started = true;
 	PMD_DRV_LOG(DEBUG, "Tx queue started\n");
