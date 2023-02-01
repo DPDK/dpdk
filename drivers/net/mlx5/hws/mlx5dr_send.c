@@ -830,18 +830,30 @@ int mlx5dr_send_queue_action(struct mlx5dr_context *ctx,
 {
 	struct mlx5dr_send_ring_sq *send_sq;
 	struct mlx5dr_send_engine *queue;
+	bool wait_comp = false;
+	int64_t polled = 0;
 
 	queue = &ctx->send_queue[queue_id];
 	send_sq = &queue->send_ring->send_sq;
 
-	if (actions == MLX5DR_SEND_QUEUE_ACTION_DRAIN) {
+	switch (actions) {
+	case MLX5DR_SEND_QUEUE_ACTION_DRAIN_SYNC:
+		wait_comp = true;
+		/* FALLTHROUGH */
+	case MLX5DR_SEND_QUEUE_ACTION_DRAIN_ASYNC:
 		if (send_sq->head_dep_idx != send_sq->tail_dep_idx)
 			/* Send dependent WQEs to drain the queue */
 			mlx5dr_send_all_dep_wqe(queue);
 		else
 			/* Signal on the last posted WQE */
 			mlx5dr_send_engine_flush_queue(queue);
-	} else {
+
+		/* Poll queue until empty */
+		while (wait_comp && !mlx5dr_send_engine_empty(queue))
+			mlx5dr_send_engine_poll_cqs(queue, NULL, &polled, 0);
+
+		break;
+	default:
 		rte_errno = -EINVAL;
 		return rte_errno;
 	}

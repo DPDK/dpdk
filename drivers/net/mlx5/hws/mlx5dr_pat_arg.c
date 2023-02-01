@@ -306,27 +306,6 @@ void mlx5dr_arg_decapl3_write(struct mlx5dr_send_engine *queue,
 	mlx5dr_send_engine_post_end(&ctrl, &send_attr);
 }
 
-static int
-mlx5dr_arg_poll_for_comp(struct mlx5dr_context *ctx, uint16_t queue_id)
-{
-	struct rte_flow_op_result comp[1];
-	int ret;
-
-	while (true) {
-		ret = mlx5dr_send_queue_poll(ctx, queue_id, comp, 1);
-		if (ret) {
-			if (ret < 0) {
-				DR_LOG(ERR, "Failed mlx5dr_send_queue_poll");
-			} else if (comp[0].status == RTE_FLOW_OP_ERROR) {
-				DR_LOG(ERR, "Got comp with error");
-				rte_errno = ENOENT;
-			}
-			break;
-		}
-	}
-	return (ret == 1 ? 0 : ret);
-}
-
 void mlx5dr_arg_write(struct mlx5dr_send_engine *queue,
 		      void *comp_data,
 		      uint32_t arg_idx,
@@ -388,9 +367,11 @@ int mlx5dr_arg_write_inline_arg_data(struct mlx5dr_context *ctx,
 	mlx5dr_send_engine_flush_queue(queue);
 
 	/* Poll for completion */
-	ret = mlx5dr_arg_poll_for_comp(ctx, ctx->queues - 1);
+	ret = mlx5dr_send_queue_action(ctx, ctx->queues - 1,
+				       MLX5DR_SEND_QUEUE_ACTION_DRAIN_SYNC);
+
 	if (ret)
-		DR_LOG(ERR, "Failed to get completions for shared action");
+		DR_LOG(ERR, "Failed to drain arg queue");
 
 	pthread_spin_unlock(&ctx->ctrl_lock);
 

@@ -86,8 +86,10 @@ enum mlx5dr_match_template_flags {
 };
 
 enum mlx5dr_send_queue_actions {
-	/* Start executing all pending queued rules and write to HW */
-	MLX5DR_SEND_QUEUE_ACTION_DRAIN = 1 << 0,
+	/* Start executing all pending queued rules */
+	MLX5DR_SEND_QUEUE_ACTION_DRAIN_ASYNC = 1 << 0,
+	/* Start executing all pending queued rules wait till completion */
+	MLX5DR_SEND_QUEUE_ACTION_DRAIN_SYNC = 1 << 1,
 };
 
 struct mlx5dr_context_attr {

@@ -240,6 +240,11 @@ void mlx5dr_send_ste(struct mlx5dr_send_engine *queue,
 
 void mlx5dr_send_engine_flush_queue(struct mlx5dr_send_engine *queue);
 
+static inline bool mlx5dr_send_engine_empty(struct mlx5dr_send_engine *queue)
+{
+	return (queue->send_ring->send_sq.cur_post == queue->send_ring->send_cq.poll_wqe);
+}
+
 static inline bool mlx5dr_send_engine_full(struct mlx5dr_send_engine *queue)
 {
 	return queue->used_entries >= queue->th_entries;

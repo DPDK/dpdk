@@ -2851,7 +2851,7 @@ flow_hw_push(struct rte_eth_dev *dev,
 
 	__flow_hw_push_action(dev, queue);
 	ret = mlx5dr_send_queue_action(priv->dr_ctx, queue,
-				       MLX5DR_SEND_QUEUE_ACTION_DRAIN);
+				       MLX5DR_SEND_QUEUE_ACTION_DRAIN_ASYNC);
 	if (ret) {
 		rte_flow_error_set(error, rte_errno,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
