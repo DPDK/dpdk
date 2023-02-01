@@ -161,6 +161,7 @@ struct mlx5dr_send_engine_post_attr {
 	uint8_t notify_hw;
 	uint8_t fence;
 	uint8_t match_definer_id;
+	uint8_t range_definer_id;
 	size_t len;
 	struct mlx5dr_rule *rule;
 	uint32_t id;
@@ -182,8 +183,10 @@ struct mlx5dr_send_ste_attr {
 	uint32_t direct_index;
 	struct mlx5dr_send_engine_post_attr send_attr;
 	struct mlx5dr_rule_match_tag *wqe_tag;
+	struct mlx5dr_rule_match_tag *range_wqe_tag;
 	struct mlx5dr_wqe_gta_ctrl_seg *wqe_ctrl;
 	struct mlx5dr_wqe_gta_data_seg_ste *wqe_data;
+	struct mlx5dr_wqe_gta_data_seg_ste *range_wqe_data;
 };
 
 /**

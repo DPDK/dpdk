@@ -242,11 +242,15 @@ int mlx5dr_send_wqe_fw(struct ibv_context *ibv_ctx,
 		       struct mlx5dr_wqe_gta_ctrl_seg *send_wqe_ctrl,
 		       void *send_wqe_match_data,
 		       void *send_wqe_match_tag,
+		       void *send_wqe_range_data,
+		       void *send_wqe_range_tag,
 		       bool is_jumbo,
 		       uint8_t gta_opcode)
 {
+	bool has_range = send_wqe_range_data || send_wqe_range_tag;
 	bool has_match = send_wqe_match_data || send_wqe_match_tag;
 	struct mlx5dr_wqe_gta_data_seg_ste gta_wqe_data0 = {0};
+	struct mlx5dr_wqe_gta_data_seg_ste gta_wqe_data1 = {0};
 	struct mlx5dr_wqe_gta_ctrl_seg gta_wqe_ctrl = {0};
 	struct mlx5dr_cmd_generate_wqe_attr attr = {0};
 	struct mlx5dr_wqe_ctrl_seg wqe_ctrl = {0};
@@ -276,6 +280,17 @@ int mlx5dr_send_wqe_fw(struct ibv_context *ibv_ctx,
 
 		gta_wqe_data0.rsvd1_definer = htobe32(send_attr->match_definer_id << 8);
 		attr.gta_data_0 = (uint8_t *)&gta_wqe_data0;
+	}
+
+	/* Set GTA range WQE DATA */
+	if (has_range) {
+		if (send_wqe_range_data)
+			memcpy(&gta_wqe_data1, send_wqe_range_data, sizeof(gta_wqe_data1));
+		else
+			mlx5dr_send_wqe_set_tag(&gta_wqe_data1, send_wqe_range_tag, false);
+
+		gta_wqe_data1.rsvd1_definer = htobe32(send_attr->range_definer_id << 8);
+		attr.gta_data_1 = (uint8_t *)&gta_wqe_data1;
 	}
 
 	attr.pdn = pd_num;
@@ -336,6 +351,8 @@ void mlx5dr_send_stes_fw(struct mlx5dr_send_engine *queue,
 					 ste_attr->wqe_ctrl,
 					 ste_attr->wqe_data,
 					 ste_attr->wqe_tag,
+					 ste_attr->range_wqe_data,
+					 ste_attr->range_wqe_tag,
 					 ste_attr->wqe_tag_is_jumbo,
 					 ste_attr->gta_opcode);
 		if (ret)
@@ -350,6 +367,8 @@ void mlx5dr_send_stes_fw(struct mlx5dr_send_engine *queue,
 					 ste_attr->wqe_ctrl,
 					 ste_attr->wqe_data,
 					 ste_attr->wqe_tag,
+					 ste_attr->range_wqe_data,
+					 ste_attr->range_wqe_tag,
 					 ste_attr->wqe_tag_is_jumbo,
 					 ste_attr->gta_opcode);
 		if (ret)
