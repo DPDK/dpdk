@@ -25,7 +25,7 @@ qat_gen4_comp_capabilities[] = {
 				RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
 				RTE_COMP_FF_OOP_LB_IN_SGL_OUT,
 	 .window_size = {.min = 15, .max = 15, .increment = 0} },
-	{RTE_COMP_ALGO_LIST_END, 0, {0, 0, 0} } };
+	 RTE_COMP_END_OF_CAPABILITIES_LIST() };
 
 static int
 qat_comp_dev_config_gen4(struct rte_compressdev *dev,
