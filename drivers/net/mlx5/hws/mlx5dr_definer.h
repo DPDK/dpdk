@@ -569,6 +569,16 @@ struct mlx5dr_definer {
 	struct mlx5dr_devx_obj *obj;
 };
 
+struct mlx5dr_definer_cache {
+	LIST_HEAD(definer_head, mlx5dr_definer_cache_item) head;
+};
+
+struct mlx5dr_definer_cache_item {
+	struct mlx5dr_definer definer;
+	uint32_t refcount;
+	LIST_ENTRY(mlx5dr_definer_cache_item) next;
+};
+
 static inline bool
 mlx5dr_definer_is_jumbo(struct mlx5dr_definer *definer)
 {
@@ -591,5 +601,9 @@ int mlx5dr_definer_matcher_init(struct mlx5dr_context *ctx,
 				struct mlx5dr_matcher *matcher);
 
 void mlx5dr_definer_matcher_uninit(struct mlx5dr_matcher *matcher);
+
+int mlx5dr_definer_init_cache(struct mlx5dr_definer_cache **cache);
+
+void mlx5dr_definer_uninit_cache(struct mlx5dr_definer_cache *cache);
 
 #endif

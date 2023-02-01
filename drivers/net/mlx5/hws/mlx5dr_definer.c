@@ -2149,6 +2149,7 @@ mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
 {
 	int i;
 
+	/* Future: Optimize by comparing selectors with valid mask only */
 	for (i = 0; i < BYTE_SELECTORS; i++)
 		if (definer_a->byte_selector[i] != definer_b->byte_selector[i])
 			return 1;
@@ -2221,15 +2222,106 @@ free_fc:
 	return rte_errno;
 }
 
+int mlx5dr_definer_init_cache(struct mlx5dr_definer_cache **cache)
+{
+	struct mlx5dr_definer_cache *new_cache;
+
+	new_cache = simple_calloc(1, sizeof(*new_cache));
+	if (!new_cache) {
+		rte_errno = ENOMEM;
+		return rte_errno;
+	}
+	LIST_INIT(&new_cache->head);
+	*cache = new_cache;
+
+	return 0;
+}
+
+void mlx5dr_definer_uninit_cache(struct mlx5dr_definer_cache *cache)
+{
+	simple_free(cache);
+}
+
+static struct mlx5dr_devx_obj *
+mlx5dr_definer_get_obj(struct mlx5dr_context *ctx,
+		       struct mlx5dr_definer *definer)
+{
+	struct mlx5dr_definer_cache *cache = ctx->definer_cache;
+	struct mlx5dr_cmd_definer_create_attr def_attr = {0};
+	struct mlx5dr_definer_cache_item *cached_definer;
+	struct mlx5dr_devx_obj *obj;
+
+	/* Search definer cache for requested definer */
+	LIST_FOREACH(cached_definer, &cache->head, next) {
+		if (mlx5dr_definer_compare(&cached_definer->definer, definer))
+			continue;
+
+		/* Reuse definer and set LRU (move to be first in the list) */
+		LIST_REMOVE(cached_definer, next);
+		LIST_INSERT_HEAD(&cache->head, cached_definer, next);
+		cached_definer->refcount++;
+		return cached_definer->definer.obj;
+	}
+
+	/* Allocate and create definer based on the bitmask tag */
+	def_attr.match_mask = definer->mask.jumbo;
+	def_attr.dw_selector = definer->dw_selector;
+	def_attr.byte_selector = definer->byte_selector;
+
+	obj = mlx5dr_cmd_definer_create(ctx->ibv_ctx, &def_attr);
+	if (!obj)
+		return NULL;
+
+	cached_definer = simple_calloc(1, sizeof(*cached_definer));
+	if (!cached_definer) {
+		rte_errno = ENOMEM;
+		goto free_definer_obj;
+	}
+
+	memcpy(&cached_definer->definer, definer, sizeof(*definer));
+	cached_definer->definer.obj = obj;
+	cached_definer->refcount = 1;
+	LIST_INSERT_HEAD(&cache->head, cached_definer, next);
+
+	return obj;
+
+free_definer_obj:
+	mlx5dr_cmd_destroy_obj(obj);
+	return NULL;
+}
+
+static void
+mlx5dr_definer_put_obj(struct mlx5dr_context *ctx,
+		       struct mlx5dr_devx_obj *obj)
+{
+	struct mlx5dr_definer_cache_item *cached_definer;
+
+	LIST_FOREACH(cached_definer, &ctx->definer_cache->head, next) {
+		if (cached_definer->definer.obj != obj)
+			continue;
+
+		/* Object found */
+		if (--cached_definer->refcount)
+			return;
+
+		LIST_REMOVE(cached_definer, next);
+		mlx5dr_cmd_destroy_obj(cached_definer->definer.obj);
+		simple_free(cached_definer);
+		return;
+	}
+
+	/* Programming error, object must be part of cache */
+	assert(false);
+}
+
 static struct mlx5dr_definer *
-mlx5dr_definer_alloc(struct ibv_context *ibv_ctx,
+mlx5dr_definer_alloc(struct mlx5dr_context *ctx,
 		     struct mlx5dr_definer_fc *fc,
 		     int fc_sz,
 		     struct rte_flow_item *items,
 		     struct mlx5dr_definer *layout,
 		     bool bind_fc)
 {
-	struct mlx5dr_cmd_definer_create_attr def_attr = {0};
 	struct mlx5dr_definer *definer;
 	int ret;
 
@@ -2254,12 +2346,7 @@ mlx5dr_definer_alloc(struct ibv_context *ibv_ctx,
 	/* Create the tag mask used for definer creation */
 	mlx5dr_definer_create_tag_mask(items, fc, fc_sz, definer->mask.jumbo);
 
-	/* Create definer based on the bitmask tag */
-	def_attr.match_mask = definer->mask.jumbo;
-	def_attr.dw_selector = layout->dw_selector;
-	def_attr.byte_selector = layout->byte_selector;
-
-	definer->obj = mlx5dr_cmd_definer_create(ibv_ctx, &def_attr);
+	definer->obj = mlx5dr_definer_get_obj(ctx, definer);
 	if (!definer->obj)
 		goto free_definer;
 
@@ -2271,9 +2358,10 @@ free_definer:
 }
 
 static void
-mlx5dr_definer_free(struct mlx5dr_definer *definer)
+mlx5dr_definer_free(struct mlx5dr_context *ctx,
+		    struct mlx5dr_definer *definer)
 {
-	mlx5dr_cmd_destroy_obj(definer->obj);
+	mlx5dr_definer_put_obj(ctx, definer->obj);
 	simple_free(definer);
 }
 
@@ -2287,7 +2375,7 @@ mlx5dr_definer_matcher_match_init(struct mlx5dr_context *ctx,
 
 	/* Create mendatory match definer */
 	for (i = 0; i < matcher->num_of_mt; i++) {
-		mt[i].definer = mlx5dr_definer_alloc(ctx->ibv_ctx,
+		mt[i].definer = mlx5dr_definer_alloc(ctx,
 						     mt[i].fc,
 						     mt[i].fc_sz,
 						     mt[i].items,
@@ -2302,7 +2390,7 @@ mlx5dr_definer_matcher_match_init(struct mlx5dr_context *ctx,
 
 free_definers:
 	while (i--)
-		mlx5dr_definer_free(mt[i].definer);
+		mlx5dr_definer_free(ctx, mt[i].definer);
 
 	return rte_errno;
 }
@@ -2310,10 +2398,11 @@ free_definers:
 static void
 mlx5dr_definer_matcher_match_uninit(struct mlx5dr_matcher *matcher)
 {
+	struct mlx5dr_context *ctx = matcher->tbl->ctx;
 	int i;
 
 	for (i = 0; i < matcher->num_of_mt; i++)
-		mlx5dr_definer_free(matcher->mt[i].definer);
+		mlx5dr_definer_free(ctx, matcher->mt[i].definer);
 }
 
 static int
@@ -2337,7 +2426,7 @@ mlx5dr_definer_matcher_range_init(struct mlx5dr_context *ctx,
 
 		matcher->flags |= MLX5DR_MATCHER_FLAGS_RANGE_DEFINER;
 		/* Create definer without fcr binding, already binded */
-		mt[i].range_definer = mlx5dr_definer_alloc(ctx->ibv_ctx,
+		mt[i].range_definer = mlx5dr_definer_alloc(ctx,
 							   mt[i].fcr,
 							   mt[i].fcr_sz,
 							   mt[i].items,
@@ -2353,7 +2442,7 @@ mlx5dr_definer_matcher_range_init(struct mlx5dr_context *ctx,
 free_definers:
 	while (i--)
 		if (mt[i].range_definer)
-			mlx5dr_definer_free(mt[i].range_definer);
+			mlx5dr_definer_free(ctx, mt[i].range_definer);
 
 	return rte_errno;
 }
@@ -2361,11 +2450,12 @@ free_definers:
 static void
 mlx5dr_definer_matcher_range_uninit(struct mlx5dr_matcher *matcher)
 {
+	struct mlx5dr_context *ctx = matcher->tbl->ctx;
 	int i;
 
 	for (i = 0; i < matcher->num_of_mt; i++)
 		if (matcher->mt[i].range_definer)
-			mlx5dr_definer_free(matcher->mt[i].range_definer);
+			mlx5dr_definer_free(ctx, matcher->mt[i].range_definer);
 }
 
 static int

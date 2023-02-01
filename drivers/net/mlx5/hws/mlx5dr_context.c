@@ -13,6 +13,9 @@ static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx)
 	if (mlx5dr_pat_init_pattern_cache(&ctx->pattern_cache))
 		return rte_errno;
 
+	if (mlx5dr_definer_init_cache(&ctx->definer_cache))
+		goto uninit_pat_cache;
+
 	/* Create an STC pool per FT type */
 	pool_attr.pool_type = MLX5DR_POOL_TYPE_STC;
 	pool_attr.flags = MLX5DR_POOL_FLAGS_FOR_STC_POOL;
@@ -35,8 +38,10 @@ free_stc_pools:
 		if (ctx->stc_pool[i])
 			mlx5dr_pool_destroy(ctx->stc_pool[i]);
 
-	mlx5dr_pat_uninit_pattern_cache(ctx->pattern_cache);
+	mlx5dr_definer_uninit_cache(ctx->definer_cache);
 
+uninit_pat_cache:
+	mlx5dr_pat_uninit_pattern_cache(ctx->pattern_cache);
 	return rte_errno;
 }
 
@@ -44,12 +49,13 @@ static void mlx5dr_context_pools_uninit(struct mlx5dr_context *ctx)
 {
 	int i;
 
-	mlx5dr_pat_uninit_pattern_cache(ctx->pattern_cache);
-
 	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
 		if (ctx->stc_pool[i])
 			mlx5dr_pool_destroy(ctx->stc_pool[i]);
 	}
+
+	mlx5dr_definer_uninit_cache(ctx->definer_cache);
+	mlx5dr_pat_uninit_pattern_cache(ctx->pattern_cache);
 }
 
 static int mlx5dr_context_init_pd(struct mlx5dr_context *ctx,

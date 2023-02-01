@@ -39,6 +39,7 @@ struct mlx5dr_context {
 	struct mlx5dr_context_common_res common_res[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_context_shared_gvmi_res gvmi_res[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_pattern_cache *pattern_cache;
+	struct mlx5dr_definer_cache *definer_cache;
 	pthread_spinlock_t ctrl_lock;
 	enum mlx5dr_context_flags flags;
 	struct mlx5dr_send_engine *send_queue;
