@@ -1465,7 +1465,7 @@ instr_operand_nbo(struct thread *t, const struct instr_operand *x)
 #endif
 
 #ifndef RTE_SWX_PIPELINE_INSTRUCTION_TABLE_SIZE_MAX
-#define RTE_SWX_PIPELINE_INSTRUCTION_TABLE_SIZE_MAX 256
+#define RTE_SWX_PIPELINE_INSTRUCTION_TABLE_SIZE_MAX 1024
 #endif
 
 struct rte_swx_pipeline {
