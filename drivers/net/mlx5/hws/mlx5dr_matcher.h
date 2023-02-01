@@ -23,7 +23,8 @@
 #define MLX5DR_MATCHER_ASSURED_MAIN_TBL_DEPTH 2
 
 enum mlx5dr_matcher_flags {
-	MLX5DR_MATCHER_FLAGS_COLLISION		= 1 << 0,
+	MLX5DR_MATCHER_FLAGS_HASH_DEFINER	= 1 << 0,
+	MLX5DR_MATCHER_FLAGS_COLLISION		= 1 << 1,
 };
 
 struct mlx5dr_match_template {
@@ -69,6 +70,7 @@ struct mlx5dr_matcher {
 	struct mlx5dr_matcher *col_matcher;
 	struct mlx5dr_matcher_match_ste match_ste;
 	struct mlx5dr_matcher_action_ste action_ste;
+	struct mlx5dr_definer *hash_definer;
 	LIST_ENTRY(mlx5dr_matcher) next;
 };
 
@@ -76,6 +78,12 @@ static inline bool
 mlx5dr_matcher_mt_is_jumbo(struct mlx5dr_match_template *mt)
 {
 	return mlx5dr_definer_is_jumbo(mt->definer);
+}
+
+static inline bool mlx5dr_matcher_req_fw_wqe(struct mlx5dr_matcher *matcher)
+{
+	/* Currently HWS doesn't support hash different from match or range */
+	return unlikely(matcher->flags & MLX5DR_MATCHER_FLAGS_HASH_DEFINER);
 }
 
 int mlx5dr_matcher_conv_items_to_prm(uint64_t *match_buf,

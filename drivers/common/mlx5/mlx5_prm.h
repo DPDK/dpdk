@@ -2112,6 +2112,10 @@ enum mlx5_ifc_cross_vhca_allowed_objects_types {
 	MLX5_CROSS_VHCA_ALLOWED_OBJS_RTC = 1 << 0xa,
 };
 
+enum {
+	MLX5_GENERATE_WQE_TYPE_FLOW_UPDATE = 1 << 1,
+};
+
 /*
  *  HCA Capabilities 2
  */

@@ -2017,6 +2017,27 @@ int mlx5dr_definer_get_id(struct mlx5dr_definer *definer)
 }
 
 static int
+mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
+		       struct mlx5dr_definer *definer_b)
+{
+	int i;
+
+	for (i = 0; i < BYTE_SELECTORS; i++)
+		if (definer_a->byte_selector[i] != definer_b->byte_selector[i])
+			return 1;
+
+	for (i = 0; i < DW_SELECTORS; i++)
+		if (definer_a->dw_selector[i] != definer_b->dw_selector[i])
+			return 1;
+
+	for (i = 0; i < MLX5DR_JUMBO_TAG_SZ; i++)
+		if (definer_a->mask.jumbo[i] != definer_b->mask.jumbo[i])
+			return 1;
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
 			   struct mlx5dr_definer *match_definer)
 {
@@ -2158,6 +2179,80 @@ mlx5dr_definer_matcher_match_uninit(struct mlx5dr_matcher *matcher)
 		mlx5dr_definer_free(matcher->mt[i].definer);
 }
 
+static int
+mlx5dr_definer_matcher_hash_init(struct mlx5dr_context *ctx,
+				 struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_cmd_definer_create_attr def_attr = {0};
+	struct mlx5dr_match_template *mt = matcher->mt;
+	struct ibv_context *ibv_ctx = ctx->ibv_ctx;
+	uint8_t *bit_mask;
+	int i, j;
+
+	for (i = 1; i < matcher->num_of_mt; i++)
+		if (mlx5dr_definer_compare(mt[i].definer, mt[i - 1].definer))
+			matcher->flags |= MLX5DR_MATCHER_FLAGS_HASH_DEFINER;
+
+	if (!(matcher->flags & MLX5DR_MATCHER_FLAGS_HASH_DEFINER))
+		return 0;
+
+	/* Insert by index requires all MT using the same definer */
+	if (matcher->attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX) {
+		DR_LOG(ERR, "Insert by index not supported with MT combination");
+		rte_errno = EOPNOTSUPP;
+		return rte_errno;
+	}
+
+	matcher->hash_definer = simple_calloc(1, sizeof(*matcher->hash_definer));
+	if (!matcher->hash_definer) {
+		DR_LOG(ERR, "Failed to allocate memory for hash definer");
+		rte_errno = ENOMEM;
+		return rte_errno;
+	}
+
+	/* Calculate intersection between all match templates bitmasks.
+	 * We will use mt[0] as reference and intersect it with mt[1..n].
+	 * From this we will get:
+	 * hash_definer.selectors = mt[0].selecotrs
+	 * hash_definer.mask =  mt[0].mask & mt[0].mask & ... & mt[n].mask
+	 */
+
+	/* Use first definer which should also contain intersection fields */
+	memcpy(matcher->hash_definer, mt->definer, sizeof(struct mlx5dr_definer));
+
+	/* Calculate intersection between first to all match templates bitmasks */
+	for (i = 1; i < matcher->num_of_mt; i++) {
+		bit_mask = (uint8_t *)&mt[i].definer->mask;
+		for (j = 0; j < MLX5DR_JUMBO_TAG_SZ; j++)
+			((uint8_t *)&matcher->hash_definer->mask)[j] &= bit_mask[j];
+	}
+
+	def_attr.match_mask = matcher->hash_definer->mask.jumbo;
+	def_attr.dw_selector = matcher->hash_definer->dw_selector;
+	def_attr.byte_selector = matcher->hash_definer->byte_selector;
+	matcher->hash_definer->obj = mlx5dr_cmd_definer_create(ibv_ctx, &def_attr);
+	if (!matcher->hash_definer->obj) {
+		DR_LOG(ERR, "Failed to create hash definer");
+		goto free_hash_definer;
+	}
+
+	return 0;
+
+free_hash_definer:
+	simple_free(matcher->hash_definer);
+	return rte_errno;
+}
+
+static void
+mlx5dr_definer_matcher_hash_uninit(struct mlx5dr_matcher *matcher)
+{
+	if (!matcher->hash_definer)
+		return;
+
+	mlx5dr_cmd_destroy_obj(matcher->hash_definer->obj);
+	simple_free(matcher->hash_definer);
+}
+
 int mlx5dr_definer_matcher_init(struct mlx5dr_context *ctx,
 				struct mlx5dr_matcher *matcher)
 {
@@ -2181,8 +2276,17 @@ int mlx5dr_definer_matcher_init(struct mlx5dr_context *ctx,
 		goto free_fc;
 	}
 
+	/* Calculate partial hash definer */
+	ret = mlx5dr_definer_matcher_hash_init(ctx, matcher);
+	if (ret) {
+		DR_LOG(ERR, "Failed to init hash definer");
+		goto uninit_match_definer;
+	}
+
 	return 0;
 
+uninit_match_definer:
+	mlx5dr_definer_matcher_match_uninit(matcher);
 free_fc:
 	for (i = 0; i < matcher->num_of_mt; i++)
 		simple_free(matcher->mt[i].fc);
@@ -2197,6 +2301,7 @@ void mlx5dr_definer_matcher_uninit(struct mlx5dr_matcher *matcher)
 	if (matcher->flags & MLX5DR_MATCHER_FLAGS_COLLISION)
 		return;
 
+	mlx5dr_definer_matcher_hash_uninit(matcher);
 	mlx5dr_definer_matcher_match_uninit(matcher);
 
 	for (i = 0; i < matcher->num_of_mt; i++)

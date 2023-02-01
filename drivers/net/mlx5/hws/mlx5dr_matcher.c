@@ -337,6 +337,42 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 	return 0;
 }
 
+static bool mlx5dr_matcher_supp_fw_wqe(struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_cmd_query_caps *caps = matcher->tbl->ctx->caps;
+
+	if (matcher->flags & MLX5DR_MATCHER_FLAGS_HASH_DEFINER) {
+		if (matcher->hash_definer->type == MLX5DR_DEFINER_TYPE_MATCH &&
+		    !IS_BIT_SET(caps->supp_ste_format_gen_wqe, MLX5_IFC_RTC_STE_FORMAT_8DW)) {
+			DR_LOG(ERR, "Gen WQE MATCH format not supported");
+			return false;
+		}
+
+		if (matcher->hash_definer->type == MLX5DR_DEFINER_TYPE_JUMBO) {
+			DR_LOG(ERR, "Gen WQE JUMBO format not supported");
+			return false;
+		}
+	}
+
+	if (matcher->attr.insert_mode != MLX5DR_MATCHER_INSERT_BY_HASH ||
+	    matcher->attr.distribute_mode != MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
+		DR_LOG(ERR, "Gen WQE must be inserted and distribute by hash");
+		return false;
+	}
+
+	if (!(caps->supp_type_gen_wqe & MLX5_GENERATE_WQE_TYPE_FLOW_UPDATE)) {
+		DR_LOG(ERR, "Gen WQE command not supporting GTA");
+		return false;
+	}
+
+	if (!caps->rtc_max_hash_def_gen_wqe) {
+		DR_LOG(ERR, "Hash definer not supported");
+		return false;
+	}
+
+	return true;
+}
+
 static void mlx5dr_matcher_set_rtc_attr_sz(struct mlx5dr_matcher *matcher,
 					   struct mlx5dr_cmd_rtc_create_attr *rtc_attr,
 					   enum mlx5dr_matcher_rtc_type rtc_type,
@@ -432,8 +468,16 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH) {
 			/* The usual Hash Table */
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_HASH;
-			/* The first match template is used since all share the same definer */
-			rtc_attr.match_definer_0 = mlx5dr_definer_get_id(mt->definer);
+			if (matcher->hash_definer) {
+				/* Specify definer_id_0 is used for hashing */
+				rtc_attr.fw_gen_wqe = true;
+				rtc_attr.num_hash_definer = 1;
+				rtc_attr.match_definer_0 =
+					mlx5dr_definer_get_id(matcher->hash_definer);
+			} else {
+				/* The first mt is used since all share the same definer */
+				rtc_attr.match_definer_0 = mlx5dr_definer_get_id(mt->definer);
+			}
 		} else if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX) {
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
 			rtc_attr.num_hash_definer = 1;
@@ -640,6 +684,12 @@ static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 	if (!matcher->action_ste.max_stes)
 		return 0;
 
+	if (mlx5dr_matcher_req_fw_wqe(matcher)) {
+		DR_LOG(ERR, "FW extended matcher cannot be binded to complex at");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
 	/* Allocate action STE mempool */
 	pool_attr.table_type = tbl->type;
 	pool_attr.pool_type = MLX5DR_POOL_TYPE_STE;
@@ -701,11 +751,19 @@ static int mlx5dr_matcher_bind_mt(struct mlx5dr_matcher *matcher)
 	struct mlx5dr_pool_attr pool_attr = {0};
 	int ret;
 
-	/* Calculate match definers */
+	/* Calculate match and hash definers */
 	ret = mlx5dr_definer_matcher_init(ctx, matcher);
 	if (ret) {
 		DR_LOG(ERR, "Failed to set matcher templates with match definers");
 		return ret;
+	}
+
+	if (mlx5dr_matcher_req_fw_wqe(matcher) &&
+	    !mlx5dr_matcher_supp_fw_wqe(matcher)) {
+		DR_LOG(ERR, "Matcher requires FW WQE which is not supported");
+		rte_errno = ENOTSUP;
+		ret = rte_errno;
+		goto uninit_match_definer;
 	}
 
 	/* Create an STE pool per matcher*/
@@ -719,6 +777,7 @@ static int mlx5dr_matcher_bind_mt(struct mlx5dr_matcher *matcher)
 	matcher->match_ste.pool = mlx5dr_pool_create(ctx, &pool_attr);
 	if (!matcher->match_ste.pool) {
 		DR_LOG(ERR, "Failed to allocate matcher STE pool");
+		ret = ENOTSUP;
 		goto uninit_match_definer;
 	}
 
@@ -932,6 +991,7 @@ mlx5dr_matcher_create_col_matcher(struct mlx5dr_matcher *matcher)
 	col_matcher->at = matcher->at;
 	col_matcher->num_of_at = matcher->num_of_at;
 	col_matcher->num_of_mt = matcher->num_of_mt;
+	col_matcher->hash_definer = matcher->hash_definer;
 	col_matcher->attr.priority = matcher->attr.priority;
 	col_matcher->flags = matcher->flags;
 	col_matcher->flags |= MLX5DR_MATCHER_FLAGS_COLLISION;
