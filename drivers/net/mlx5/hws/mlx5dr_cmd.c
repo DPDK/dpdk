@@ -928,6 +928,10 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 						     capability.cmd_hca_cap_2.
 						     format_select_dw_gtpu_first_ext_dw_0);
 
+	caps->supp_type_gen_wqe = MLX5_GET(query_hca_cap_out, out,
+					   capability.cmd_hca_cap_2.
+					   generate_wqe_type);
+
 	/* check cross-VHCA support in cap2 */
 	res =
 	MLX5_GET(query_hca_cap_out, out,
@@ -1033,6 +1037,14 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 		caps->linear_match_definer = MLX5_GET(query_hca_cap_out, out,
 						      capability.wqe_based_flow_table_cap.
 						      linear_match_definer_reg_c3);
+
+		caps->rtc_max_hash_def_gen_wqe = MLX5_GET(query_hca_cap_out, out,
+							  capability.wqe_based_flow_table_cap.
+							  rtc_max_num_hash_definer_gen_wqe);
+
+		caps->supp_ste_format_gen_wqe = MLX5_GET(query_hca_cap_out, out,
+							 capability.wqe_based_flow_table_cap.
+							 ste_format_gen_wqe);
 	}
 
 	if (caps->eswitch_manager) {

@@ -183,6 +183,9 @@ struct mlx5dr_cmd_query_caps {
 	bool full_dw_jumbo_support;
 	bool rtc_hash_split_table;
 	bool rtc_linear_lookup_table;
+	uint32_t supp_type_gen_wqe;
+	uint8_t rtc_max_hash_def_gen_wqe;
+	uint16_t supp_ste_format_gen_wqe;
 	struct mlx5dr_cmd_query_ft_caps nic_ft;
 	struct mlx5dr_cmd_query_ft_caps fdb_ft;
 	bool eswitch_manager;
