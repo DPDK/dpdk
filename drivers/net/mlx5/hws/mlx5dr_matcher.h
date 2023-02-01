@@ -22,15 +22,19 @@
 /* Required depth of the main large table */
 #define MLX5DR_MATCHER_ASSURED_MAIN_TBL_DEPTH 2
 
+enum mlx5dr_matcher_flags {
+	MLX5DR_MATCHER_FLAGS_COLLISION		= 1 << 0,
+};
+
 struct mlx5dr_match_template {
 	struct rte_flow_item *items;
 	struct mlx5dr_definer *definer;
+	struct mlx5dr_definer *range_definer;
 	struct mlx5dr_definer_fc *fc;
-	uint32_t fc_sz;
+	uint16_t fc_sz;
 	uint64_t item_flags;
 	uint8_t vport_item_id;
 	enum mlx5dr_match_template_flags flags;
-	uint32_t refcount;
 };
 
 struct mlx5dr_matcher_match_ste {
@@ -59,12 +63,20 @@ struct mlx5dr_matcher {
 	uint8_t num_of_mt;
 	struct mlx5dr_action_template *at;
 	uint8_t num_of_at;
+	/* enum mlx5dr_matcher_flags */
+	uint8_t flags;
 	struct mlx5dr_devx_obj *end_ft;
 	struct mlx5dr_matcher *col_matcher;
 	struct mlx5dr_matcher_match_ste match_ste;
 	struct mlx5dr_matcher_action_ste action_ste;
 	LIST_ENTRY(mlx5dr_matcher) next;
 };
+
+static inline bool
+mlx5dr_matcher_mt_is_jumbo(struct mlx5dr_match_template *mt)
+{
+	return mlx5dr_definer_is_jumbo(mt->definer);
+}
 
 int mlx5dr_matcher_conv_items_to_prm(uint64_t *match_buf,
 				     struct rte_flow_item *items,

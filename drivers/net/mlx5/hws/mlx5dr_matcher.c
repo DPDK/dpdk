@@ -406,6 +406,7 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 {
 	struct mlx5dr_matcher_attr *attr = &matcher->attr;
 	struct mlx5dr_cmd_rtc_create_attr rtc_attr = {0};
+	struct mlx5dr_match_template *mt = matcher->mt;
 	struct mlx5dr_context *ctx = matcher->tbl->ctx;
 	struct mlx5dr_action_default_stc *default_stc;
 	struct mlx5dr_table *tbl = matcher->tbl;
@@ -413,8 +414,6 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 	struct mlx5dr_pool *ste_pool, *stc_pool;
 	struct mlx5dr_devx_obj *devx_obj;
 	struct mlx5dr_pool_chunk *ste;
-	uint8_t first_definer_id;
-	bool is_jumbo;
 	int ret;
 
 	switch (rtc_type) {
@@ -424,19 +423,17 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		ste_pool = matcher->match_ste.pool;
 		ste = &matcher->match_ste.ste;
 		ste->order = attr->table.sz_col_log + attr->table.sz_row_log;
+
 		rtc_attr.log_size = attr->table.sz_row_log;
 		rtc_attr.log_depth = attr->table.sz_col_log;
+		rtc_attr.is_frst_jumbo = mlx5dr_matcher_mt_is_jumbo(mt);
 		rtc_attr.miss_ft_id = matcher->end_ft->id;
-
-		is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt->definer);
-		first_definer_id = mlx5dr_definer_get_id(matcher->mt->definer);
 
 		if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH) {
 			/* The usual Hash Table */
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_HASH;
 			/* The first match template is used since all share the same definer */
-			rtc_attr.match_definer_0 = first_definer_id;
-			rtc_attr.is_frst_jumbo = is_jumbo;
+			rtc_attr.match_definer_0 = mlx5dr_definer_get_id(mt->definer);
 		} else if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX) {
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
 			rtc_attr.num_hash_definer = 1;
@@ -444,8 +441,7 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 			if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
 				/* Hash Split Table */
 				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_BY_HASH;
-				rtc_attr.match_definer_0 = first_definer_id;
-				rtc_attr.is_frst_jumbo = is_jumbo;
+				rtc_attr.match_definer_0 = mlx5dr_definer_get_id(mt->definer);
 			} else if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR) {
 				/* Linear Lookup Table */
 				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_LINEAR;
@@ -608,7 +604,7 @@ static void mlx5dr_matcher_set_pool_attr(struct mlx5dr_pool_attr *attr,
 
 static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 {
-	bool is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt->definer);
+	bool is_jumbo = mlx5dr_matcher_mt_is_jumbo(matcher->mt);
 	struct mlx5dr_cmd_stc_modify_attr stc_attr = {0};
 	struct mlx5dr_table *tbl = matcher->tbl;
 	struct mlx5dr_pool_attr pool_attr = {0};
@@ -703,34 +699,19 @@ static int mlx5dr_matcher_bind_mt(struct mlx5dr_matcher *matcher)
 {
 	struct mlx5dr_context *ctx = matcher->tbl->ctx;
 	struct mlx5dr_pool_attr pool_attr = {0};
-	int i, created = 0;
-	int ret = -1;
+	int ret;
 
-	for (i = 0; i < matcher->num_of_mt; i++) {
-		/* Get a definer for each match template */
-		ret = mlx5dr_definer_get(ctx, &matcher->mt[i]);
-		if (ret)
-			goto definer_put;
-
-		created++;
-
-		/* Verify all templates produce the same definer */
-		if (i == 0)
-			continue;
-
-		ret = mlx5dr_definer_compare(matcher->mt[i].definer,
-					     matcher->mt[i - 1].definer);
-		if (ret) {
-			DR_LOG(ERR, "Match templates cannot be used on the same matcher");
-			rte_errno = ENOTSUP;
-			goto definer_put;
-		}
+	/* Calculate match definers */
+	ret = mlx5dr_definer_matcher_init(ctx, matcher);
+	if (ret) {
+		DR_LOG(ERR, "Failed to set matcher templates with match definers");
+		return ret;
 	}
 
 	/* Create an STE pool per matcher*/
+	pool_attr.table_type = matcher->tbl->type;
 	pool_attr.pool_type = MLX5DR_POOL_TYPE_STE;
 	pool_attr.flags = MLX5DR_POOL_FLAGS_FOR_MATCHER_STE_POOL;
-	pool_attr.table_type = matcher->tbl->type;
 	pool_attr.alloc_log_sz = matcher->attr.table.sz_col_log +
 				 matcher->attr.table.sz_row_log;
 	mlx5dr_matcher_set_pool_attr(&pool_attr, matcher);
@@ -738,26 +719,20 @@ static int mlx5dr_matcher_bind_mt(struct mlx5dr_matcher *matcher)
 	matcher->match_ste.pool = mlx5dr_pool_create(ctx, &pool_attr);
 	if (!matcher->match_ste.pool) {
 		DR_LOG(ERR, "Failed to allocate matcher STE pool");
-		goto definer_put;
+		goto uninit_match_definer;
 	}
 
 	return 0;
 
-definer_put:
-	while (created--)
-		mlx5dr_definer_put(&matcher->mt[created]);
-
+uninit_match_definer:
+	mlx5dr_definer_matcher_uninit(matcher);
 	return ret;
 }
 
 static void mlx5dr_matcher_unbind_mt(struct mlx5dr_matcher *matcher)
 {
-	int i;
-
-	for (i = 0; i < matcher->num_of_mt; i++)
-		mlx5dr_definer_put(&matcher->mt[i]);
-
 	mlx5dr_pool_destroy(matcher->match_ste.pool);
+	mlx5dr_definer_matcher_uninit(matcher);
 }
 
 static int
@@ -958,6 +933,8 @@ mlx5dr_matcher_create_col_matcher(struct mlx5dr_matcher *matcher)
 	col_matcher->num_of_at = matcher->num_of_at;
 	col_matcher->num_of_mt = matcher->num_of_mt;
 	col_matcher->attr.priority = matcher->attr.priority;
+	col_matcher->flags = matcher->flags;
+	col_matcher->flags |= MLX5DR_MATCHER_FLAGS_COLLISION;
 	col_matcher->attr.mode = MLX5DR_MATCHER_RESOURCE_MODE_HTABLE;
 	col_matcher->attr.optimize_flow_src = matcher->attr.optimize_flow_src;
 	col_matcher->attr.table.sz_row_log = matcher->attr.rule.num_log;

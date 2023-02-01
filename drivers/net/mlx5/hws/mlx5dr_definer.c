@@ -104,7 +104,6 @@ struct mlx5dr_definer_conv_data {
 	struct mlx5dr_definer_fc *fc;
 	uint8_t relaxed;
 	uint8_t tunnel;
-	uint8_t *hl;
 };
 
 /* Xmacro used to create generic item setter from items */
@@ -1588,6 +1587,36 @@ mlx5dr_definer_conv_item_meter_color(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_mt_set_fc(struct mlx5dr_match_template *mt,
+			 struct mlx5dr_definer_fc *fc,
+			 uint8_t *hl)
+{
+	uint32_t fc_sz = 0;
+	int i;
+
+	for (i = 0; i < MLX5DR_DEFINER_FNAME_MAX; i++)
+		if (fc[i].tag_set)
+			fc_sz++;
+
+	mt->fc = simple_calloc(fc_sz, sizeof(*mt->fc));
+	if (!mt->fc) {
+		rte_errno = ENOMEM;
+		return rte_errno;
+	}
+
+	for (i = 0; i < MLX5DR_DEFINER_FNAME_MAX; i++) {
+		if (!fc[i].tag_set)
+			continue;
+
+		fc[i].fname = i;
+		memcpy(&mt->fc[mt->fc_sz++], &fc[i], sizeof(*mt->fc));
+		DR_SET(hl, -1, fc[i].byte_off, fc[i].bit_off, fc[i].bit_mask);
+	}
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_check_item_range_supp(struct rte_flow_item *item)
 {
 	if (!item->last)
@@ -1618,12 +1647,9 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 	struct mlx5dr_definer_conv_data cd = {0};
 	struct rte_flow_item *items = mt->items;
 	uint64_t item_flags = 0;
-	uint32_t total = 0;
-	int i, j;
-	int ret;
+	int i, ret;
 
 	cd.fc = fc;
-	cd.hl = hl;
 	cd.caps = ctx->caps;
 	cd.relaxed = mt->flags & MLX5DR_MATCH_TEMPLATE_FLAG_RELAXED_MATCH;
 
@@ -1748,29 +1774,11 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 
 	mt->item_flags = item_flags;
 
-	/* Fill in headers layout and calculate total number of fields  */
-	for (i = 0; i < MLX5DR_DEFINER_FNAME_MAX; i++) {
-		if (fc[i].tag_set) {
-			total++;
-			DR_SET(hl, -1, fc[i].byte_off, fc[i].bit_off, fc[i].bit_mask);
-		}
-	}
-
-	mt->fc_sz = total;
-	mt->fc = simple_calloc(total, sizeof(*mt->fc));
-	if (!mt->fc) {
-		DR_LOG(ERR, "Failed to allocate field copy array");
-		rte_errno = ENOMEM;
-		return rte_errno;
-	}
-
-	j = 0;
-	for (i = 0; i < MLX5DR_DEFINER_FNAME_MAX; i++) {
-		if (fc[i].tag_set) {
-			memcpy(&mt->fc[j], &fc[i], sizeof(*mt->fc));
-			mt->fc[j].fname = i;
-			j++;
-		}
+	/* Fill in headers layout and allocate fc array on mt */
+	ret = mlx5dr_definer_mt_set_fc(mt, fc, hl);
+	if (ret) {
+		DR_LOG(ERR, "Failed to set field copy to match template");
+		return ret;
 	}
 
 	return 0;
@@ -1925,8 +1933,8 @@ mlx5dr_definer_best_hl_fit_recu(struct mlx5dr_definer_sel_ctrl *ctrl,
 }
 
 static void
-mlx5dr_definer_apply_sel_ctrl(struct mlx5dr_definer_sel_ctrl *ctrl,
-			      struct mlx5dr_definer *definer)
+mlx5dr_definer_copy_sel_ctrl(struct mlx5dr_definer_sel_ctrl *ctrl,
+			     struct mlx5dr_definer *definer)
 {
 	memcpy(definer->byte_selector, ctrl->byte_selector, ctrl->allowed_bytes);
 	memcpy(definer->dw_selector, ctrl->full_dw_selector, ctrl->allowed_full_dw);
@@ -1936,7 +1944,7 @@ mlx5dr_definer_apply_sel_ctrl(struct mlx5dr_definer_sel_ctrl *ctrl,
 
 static int
 mlx5dr_definer_find_best_hl_fit(struct mlx5dr_context *ctx,
-				struct mlx5dr_match_template *mt,
+				struct mlx5dr_definer *definer,
 				uint8_t *hl)
 {
 	struct mlx5dr_definer_sel_ctrl ctrl = {0};
@@ -1949,8 +1957,8 @@ mlx5dr_definer_find_best_hl_fit(struct mlx5dr_context *ctx,
 
 	found = mlx5dr_definer_best_hl_fit_recu(&ctrl, 0, (uint32_t *)hl);
 	if (found) {
-		mlx5dr_definer_apply_sel_ctrl(&ctrl, mt->definer);
-		mt->definer->type = MLX5DR_DEFINER_TYPE_MATCH;
+		mlx5dr_definer_copy_sel_ctrl(&ctrl, definer);
+		definer->type = MLX5DR_DEFINER_TYPE_MATCH;
 		return 0;
 	}
 
@@ -1963,8 +1971,8 @@ mlx5dr_definer_find_best_hl_fit(struct mlx5dr_context *ctx,
 
 	found = mlx5dr_definer_best_hl_fit_recu(&ctrl, 0, (uint32_t *)hl);
 	if (found) {
-		mlx5dr_definer_apply_sel_ctrl(&ctrl, mt->definer);
-		mt->definer->type = MLX5DR_DEFINER_TYPE_JUMBO;
+		mlx5dr_definer_copy_sel_ctrl(&ctrl, definer);
+		definer->type = MLX5DR_DEFINER_TYPE_JUMBO;
 		return 0;
 	}
 
@@ -2008,114 +2016,189 @@ int mlx5dr_definer_get_id(struct mlx5dr_definer *definer)
 	return definer->obj->id;
 }
 
-int mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
-			   struct mlx5dr_definer *definer_b)
+static int
+mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
+			   struct mlx5dr_definer *match_definer)
 {
-	int i;
+	struct mlx5dr_context *ctx = matcher->tbl->ctx;
+	struct mlx5dr_match_template *mt = matcher->mt;
+	uint8_t *match_hl, *hl_buff;
+	int i, ret;
 
-	if (definer_a->type != definer_b->type)
-		return 1;
-
-	for (i = 0; i < BYTE_SELECTORS; i++)
-		if (definer_a->byte_selector[i] != definer_b->byte_selector[i])
-			return 1;
-
-	for (i = 0; i < DW_SELECTORS; i++)
-		if (definer_a->dw_selector[i] != definer_b->dw_selector[i])
-			return 1;
-
-	for (i = 0; i < MLX5DR_JUMBO_TAG_SZ; i++)
-		if (definer_a->mask.jumbo[i] != definer_b->mask.jumbo[i])
-			return 1;
-
-	return 0;
-}
-
-int mlx5dr_definer_get(struct mlx5dr_context *ctx,
-		       struct mlx5dr_match_template *mt)
-{
-	struct mlx5dr_cmd_definer_create_attr def_attr = {0};
-	struct ibv_context *ibv_ctx = ctx->ibv_ctx;
-	uint8_t *hl;
-	int ret;
-
-	if (mt->refcount++)
-		return 0;
-
-	mt->definer = simple_calloc(1, sizeof(*mt->definer));
-	if (!mt->definer) {
-		DR_LOG(ERR, "Failed to allocate memory for definer");
-		rte_errno = ENOMEM;
-		goto dec_refcount;
-	}
-
-	/* Header layout (hl) holds full bit mask per field */
-	hl = simple_calloc(1, MLX5_ST_SZ_BYTES(definer_hl));
-	if (!hl) {
+	/* Union header-layout (hl) is used for creating a single definer
+	 * field layout used with different bitmasks for hash and match.
+	 */
+	hl_buff = simple_calloc(1, MLX5_ST_SZ_BYTES(definer_hl));
+	if (!hl_buff) {
 		DR_LOG(ERR, "Failed to allocate memory for header layout");
 		rte_errno = ENOMEM;
+		return rte_errno;
+	}
+
+	match_hl = hl_buff;
+
+	/* Convert all mt items to header layout (hl)
+	 * and allocate the match field copy array (fc).
+	 */
+	for (i = 0; i < matcher->num_of_mt; i++) {
+		ret = mlx5dr_definer_conv_items_to_hl(ctx, &mt[i], match_hl);
+		if (ret) {
+			DR_LOG(ERR, "Failed to convert items to header layout");
+			goto free_fc;
+		}
+	}
+
+	/* Find the match definer layout for header layout match union */
+	ret = mlx5dr_definer_find_best_hl_fit(ctx, match_definer, match_hl);
+	if (ret) {
+		DR_LOG(ERR, "Failed to create match definer from header layout");
+		goto free_fc;
+	}
+
+	simple_free(hl_buff);
+	return 0;
+
+free_fc:
+	for (i = 0; i < matcher->num_of_mt; i++)
+		if (mt[i].fc)
+			simple_free(mt[i].fc);
+
+	simple_free(hl_buff);
+	return rte_errno;
+}
+
+static struct mlx5dr_definer *
+mlx5dr_definer_alloc(struct ibv_context *ibv_ctx,
+		     struct mlx5dr_definer_fc *fc,
+		     int fc_sz,
+		     struct rte_flow_item *items,
+		     struct mlx5dr_definer *layout)
+{
+	struct mlx5dr_cmd_definer_create_attr def_attr = {0};
+	struct mlx5dr_definer *definer;
+	int ret;
+
+	definer = simple_calloc(1, sizeof(*definer));
+	if (!definer) {
+		DR_LOG(ERR, "Failed to allocate memory for definer");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	memcpy(definer, layout, sizeof(*definer));
+
+	/* Align field copy array based on given layout */
+	ret = mlx5dr_definer_fc_bind(definer, fc, fc_sz);
+	if (ret) {
+		DR_LOG(ERR, "Failed to bind field copy to definer");
 		goto free_definer;
 	}
 
-	/* Convert items to hl and allocate the field copy array (fc) */
-	ret = mlx5dr_definer_conv_items_to_hl(ctx, mt, hl);
-	if (ret) {
-		DR_LOG(ERR, "Failed to convert items to hl");
-		goto free_hl;
-	}
-
-	/* Find the definer for given header layout */
-	ret = mlx5dr_definer_find_best_hl_fit(ctx, mt, hl);
-	if (ret) {
-		DR_LOG(ERR, "Failed to create definer from header layout");
-		goto free_field_copy;
-	}
-
-	/* Align field copy array based on the new definer */
-	ret = mlx5dr_definer_fc_bind(mt->definer,
-				     mt->fc,
-				     mt->fc_sz);
-	if (ret) {
-		DR_LOG(ERR, "Failed to bind field copy to definer");
-		goto free_field_copy;
-	}
-
 	/* Create the tag mask used for definer creation */
-	mlx5dr_definer_create_tag_mask(mt->items,
-				       mt->fc,
-				       mt->fc_sz,
-				       mt->definer->mask.jumbo);
+	mlx5dr_definer_create_tag_mask(items, fc, fc_sz, definer->mask.jumbo);
 
 	/* Create definer based on the bitmask tag */
-	def_attr.match_mask = mt->definer->mask.jumbo;
-	def_attr.dw_selector = mt->definer->dw_selector;
-	def_attr.byte_selector = mt->definer->byte_selector;
-	mt->definer->obj = mlx5dr_cmd_definer_create(ibv_ctx, &def_attr);
-	if (!mt->definer->obj)
-		goto free_field_copy;
+	def_attr.match_mask = definer->mask.jumbo;
+	def_attr.dw_selector = layout->dw_selector;
+	def_attr.byte_selector = layout->byte_selector;
 
-	simple_free(hl);
+	definer->obj = mlx5dr_cmd_definer_create(ibv_ctx, &def_attr);
+	if (!definer->obj)
+		goto free_definer;
 
+	return definer;
+
+free_definer:
+	simple_free(definer);
+	return NULL;
+}
+
+static void
+mlx5dr_definer_free(struct mlx5dr_definer *definer)
+{
+	mlx5dr_cmd_destroy_obj(definer->obj);
+	simple_free(definer);
+}
+
+static int
+mlx5dr_definer_matcher_match_init(struct mlx5dr_context *ctx,
+				  struct mlx5dr_matcher *matcher,
+				  struct mlx5dr_definer *match_layout)
+{
+	struct mlx5dr_match_template *mt = matcher->mt;
+	int i;
+
+	/* Create mendatory match definer */
+	for (i = 0; i < matcher->num_of_mt; i++) {
+		mt[i].definer = mlx5dr_definer_alloc(ctx->ibv_ctx,
+						     mt[i].fc,
+						     mt[i].fc_sz,
+						     mt[i].items,
+						     match_layout);
+		if (!mt[i].definer) {
+			DR_LOG(ERR, "Failed to create match definer");
+			goto free_definers;
+		}
+	}
 	return 0;
 
-free_field_copy:
-	simple_free(mt->fc);
-free_hl:
-	simple_free(hl);
-free_definer:
-	simple_free(mt->definer);
-dec_refcount:
-	mt->refcount--;
+free_definers:
+	while (i--)
+		mlx5dr_definer_free(mt[i].definer);
 
 	return rte_errno;
 }
 
-void mlx5dr_definer_put(struct mlx5dr_match_template *mt)
+static void
+mlx5dr_definer_matcher_match_uninit(struct mlx5dr_matcher *matcher)
 {
-	if (--mt->refcount)
+	int i;
+
+	for (i = 0; i < matcher->num_of_mt; i++)
+		mlx5dr_definer_free(matcher->mt[i].definer);
+}
+
+int mlx5dr_definer_matcher_init(struct mlx5dr_context *ctx,
+				struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_definer match_layout = {0};
+	int ret, i;
+
+	if (matcher->flags & MLX5DR_MATCHER_FLAGS_COLLISION)
+		return 0;
+
+	/* Calculate header layout based on matcher items */
+	ret = mlx5dr_definer_calc_layout(matcher, &match_layout);
+	if (ret) {
+		DR_LOG(ERR, "Failed to calculate matcher definer layout");
+		return ret;
+	}
+
+	/* Calculate definers needed for exact match */
+	ret = mlx5dr_definer_matcher_match_init(ctx, matcher, &match_layout);
+	if (ret) {
+		DR_LOG(ERR, "Failed to init match definers");
+		goto free_fc;
+	}
+
+	return 0;
+
+free_fc:
+	for (i = 0; i < matcher->num_of_mt; i++)
+		simple_free(matcher->mt[i].fc);
+
+	return ret;
+}
+
+void mlx5dr_definer_matcher_uninit(struct mlx5dr_matcher *matcher)
+{
+	int i;
+
+	if (matcher->flags & MLX5DR_MATCHER_FLAGS_COLLISION)
 		return;
 
-	simple_free(mt->fc);
-	mlx5dr_cmd_destroy_obj(mt->definer->obj);
-	simple_free(mt->definer);
+	mlx5dr_definer_matcher_match_uninit(matcher);
+
+	for (i = 0; i < matcher->num_of_mt; i++)
+		simple_free(matcher->mt[i].fc);
 }
