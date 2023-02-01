@@ -52,7 +52,8 @@ struct mlx5dr_wqe_gta_ctrl_seg {
 
 struct mlx5dr_wqe_gta_data_seg_ste {
 	__be32 rsvd0_ctr_id;
-	__be32 rsvd1[4];
+	__be32 rsvd1_definer;
+	__be32 rsvd2[3];
 	__be32 action[3];
 	__be32 tag[8];
 };
@@ -159,6 +160,7 @@ struct mlx5dr_send_engine_post_attr {
 	uint8_t opmod;
 	uint8_t notify_hw;
 	uint8_t fence;
+	uint8_t match_definer_id;
 	size_t len;
 	struct mlx5dr_rule *rule;
 	uint32_t id;
@@ -237,6 +239,9 @@ void mlx5dr_send_engine_post_end(struct mlx5dr_send_engine_post_ctrl *ctrl,
 
 void mlx5dr_send_ste(struct mlx5dr_send_engine *queue,
 		     struct mlx5dr_send_ste_attr *ste_attr);
+
+void mlx5dr_send_stes_fw(struct mlx5dr_send_engine *queue,
+			 struct mlx5dr_send_ste_attr *ste_attr);
 
 void mlx5dr_send_engine_flush_queue(struct mlx5dr_send_engine *queue);
 

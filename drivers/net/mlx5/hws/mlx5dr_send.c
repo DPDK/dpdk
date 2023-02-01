@@ -235,6 +235,140 @@ void mlx5dr_send_ste(struct mlx5dr_send_engine *queue,
 	send_attr->fence = fence;
 }
 
+static
+int mlx5dr_send_wqe_fw(struct ibv_context *ibv_ctx,
+		       uint32_t pd_num,
+		       struct mlx5dr_send_engine_post_attr *send_attr,
+		       struct mlx5dr_wqe_gta_ctrl_seg *send_wqe_ctrl,
+		       void *send_wqe_match_data,
+		       void *send_wqe_match_tag,
+		       bool is_jumbo,
+		       uint8_t gta_opcode)
+{
+	bool has_match = send_wqe_match_data || send_wqe_match_tag;
+	struct mlx5dr_wqe_gta_data_seg_ste gta_wqe_data0 = {0};
+	struct mlx5dr_wqe_gta_ctrl_seg gta_wqe_ctrl = {0};
+	struct mlx5dr_cmd_generate_wqe_attr attr = {0};
+	struct mlx5dr_wqe_ctrl_seg wqe_ctrl = {0};
+	struct mlx5_cqe64 cqe;
+	uint32_t flags = 0;
+	int ret;
+
+	/* Set WQE control */
+	wqe_ctrl.opmod_idx_opcode =
+		rte_cpu_to_be_32((send_attr->opmod << 24) | send_attr->opcode);
+	wqe_ctrl.qpn_ds =
+		rte_cpu_to_be_32((send_attr->len + sizeof(struct mlx5dr_wqe_ctrl_seg)) / 16);
+	flags |= send_attr->notify_hw ? MLX5_WQE_CTRL_CQ_UPDATE : 0;
+	wqe_ctrl.flags = rte_cpu_to_be_32(flags);
+	wqe_ctrl.imm = rte_cpu_to_be_32(send_attr->id);
+
+	/* Set GTA WQE CTRL */
+	memcpy(gta_wqe_ctrl.stc_ix, send_wqe_ctrl->stc_ix, sizeof(send_wqe_ctrl->stc_ix));
+	gta_wqe_ctrl.op_dirix = htobe32(gta_opcode << 28);
+
+	/* Set GTA match WQE DATA */
+	if (has_match) {
+		if (send_wqe_match_data)
+			memcpy(&gta_wqe_data0, send_wqe_match_data, sizeof(gta_wqe_data0));
+		else
+			mlx5dr_send_wqe_set_tag(&gta_wqe_data0, send_wqe_match_tag, is_jumbo);
+
+		gta_wqe_data0.rsvd1_definer = htobe32(send_attr->match_definer_id << 8);
+		attr.gta_data_0 = (uint8_t *)&gta_wqe_data0;
+	}
+
+	attr.pdn = pd_num;
+	attr.wqe_ctrl = (uint8_t *)&wqe_ctrl;
+	attr.gta_ctrl = (uint8_t *)&gta_wqe_ctrl;
+
+send_wqe:
+	ret = mlx5dr_cmd_generate_wqe(ibv_ctx, &attr, &cqe);
+	if (ret) {
+		DR_LOG(ERR, "Failed to write WQE using command");
+		return ret;
+	}
+
+	if ((mlx5dv_get_cqe_opcode(&cqe) == MLX5_CQE_REQ) &&
+	    (rte_be_to_cpu_32(cqe.byte_cnt) >> 31 == 0)) {
+		*send_attr->used_id = send_attr->id;
+		return 0;
+	}
+
+	/* Retry if rule failed */
+	if (send_attr->retry_id) {
+		wqe_ctrl.imm = rte_cpu_to_be_32(send_attr->retry_id);
+		send_attr->id = send_attr->retry_id;
+		send_attr->retry_id = 0;
+		goto send_wqe;
+	}
+
+	return -1;
+}
+
+void mlx5dr_send_stes_fw(struct mlx5dr_send_engine *queue,
+			 struct mlx5dr_send_ste_attr *ste_attr)
+{
+	struct mlx5dr_send_engine_post_attr *send_attr = &ste_attr->send_attr;
+	struct mlx5dr_rule *rule = send_attr->rule;
+	struct ibv_context *ibv_ctx;
+	struct mlx5dr_context *ctx;
+	uint16_t queue_id;
+	uint32_t pdn;
+	int ret;
+
+	ctx = rule->matcher->tbl->ctx;
+	queue_id = queue - ctx->send_queue;
+	ibv_ctx = ctx->ibv_ctx;
+	pdn = ctx->pd_num;
+
+	/* Writing through FW can't HW fence, therefore we drain the queue */
+	if (send_attr->fence)
+		mlx5dr_send_queue_action(ctx,
+					 queue_id,
+					 MLX5DR_SEND_QUEUE_ACTION_DRAIN_SYNC);
+
+	if (ste_attr->rtc_1) {
+		send_attr->id = ste_attr->rtc_1;
+		send_attr->used_id = ste_attr->used_id_rtc_1;
+		send_attr->retry_id = ste_attr->retry_rtc_1;
+		ret = mlx5dr_send_wqe_fw(ibv_ctx, pdn, send_attr,
+					 ste_attr->wqe_ctrl,
+					 ste_attr->wqe_data,
+					 ste_attr->wqe_tag,
+					 ste_attr->wqe_tag_is_jumbo,
+					 ste_attr->gta_opcode);
+		if (ret)
+			goto fail_rule;
+	}
+
+	if (ste_attr->rtc_0) {
+		send_attr->id = ste_attr->rtc_0;
+		send_attr->used_id = ste_attr->used_id_rtc_0;
+		send_attr->retry_id = ste_attr->retry_rtc_0;
+		ret = mlx5dr_send_wqe_fw(ibv_ctx, pdn, send_attr,
+					 ste_attr->wqe_ctrl,
+					 ste_attr->wqe_data,
+					 ste_attr->wqe_tag,
+					 ste_attr->wqe_tag_is_jumbo,
+					 ste_attr->gta_opcode);
+		if (ret)
+			goto fail_rule;
+	}
+
+	/* Increase the status, this only works on good flow as the enum
+	 * is arrange it away creating -> created -> deleting -> deleted
+	 */
+	rule->status++;
+	mlx5dr_send_engine_gen_comp(queue, send_attr->user_data, RTE_FLOW_OP_SUCCESS);
+	return;
+
+fail_rule:
+	rule->status = !rule->rtc_0 && !rule->rtc_1 ?
+		MLX5DR_RULE_STATUS_FAILED : MLX5DR_RULE_STATUS_FAILING;
+	mlx5dr_send_engine_gen_comp(queue, send_attr->user_data, RTE_FLOW_OP_ERROR);
+}
+
 static void mlx5dr_send_engine_retry_post_send(struct mlx5dr_send_engine *queue,
 					       struct mlx5dr_send_ring_priv *priv,
 					       uint16_t wqe_cnt)
