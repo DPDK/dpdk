@@ -749,7 +749,6 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 
 skip_mark:
 	mbuf->hash.fdir.hi = 0;
-	mbuf->hash.fdir.id = 0;
 
 	return 0;
 }
