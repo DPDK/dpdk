@@ -123,6 +123,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		ipv4_next_proto,	v->next_proto_id,	rte_ipv4_hdr) \
 	X(SET,		ipv4_version,		STE_IPV4,		rte_ipv4_hdr) \
 	X(SET_BE16,	ipv4_frag,		v->fragment_offset,	rte_ipv4_hdr) \
+	X(SET_BE16,	ipv4_len,		v->total_length,	rte_ipv4_hdr) \
 	X(SET_BE16,	ipv6_payload_len,	v->hdr.payload_len,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_proto,		v->hdr.proto,		rte_flow_item_ipv6) \
 	X(SET,		ipv6_hop_limits,	v->hdr.hop_limits,	rte_flow_item_ipv6) \
@@ -557,6 +558,7 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 			      int item_idx)
 {
 	const struct rte_ipv4_hdr *m = item->mask;
+	const struct rte_ipv4_hdr *l = item->last;
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
@@ -574,8 +576,8 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
-	if (m->total_length || m->packet_id ||
-	    m->hdr_checksum) {
+	if (m->packet_id || m->hdr_checksum ||
+	    (l && (l->next_proto_id || l->type_of_service))) {
 		rte_errno = ENOTSUP;
 		return rte_errno;
 	}
@@ -594,9 +596,18 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 		DR_CALC_SET(fc, eth_l3, protocol_next_header, inner);
 	}
 
+	if (m->total_length) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_LEN, inner)];
+		fc->item_idx = item_idx;
+		fc->is_range = l && l->total_length;
+		fc->tag_set = &mlx5dr_definer_ipv4_len_set;
+		DR_CALC_SET(fc, eth_l3, ipv4_total_length, inner);
+	}
+
 	if (m->dst_addr) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV4_DST, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->dst_addr;
 		fc->tag_set = &mlx5dr_definer_ipv4_dst_addr_set;
 		DR_CALC_SET(fc, ipv4_src_dest, destination_address, inner);
 	}
@@ -604,6 +615,7 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 	if (m->src_addr) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV4_SRC, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->src_addr;
 		fc->tag_set = &mlx5dr_definer_ipv4_src_addr_set;
 		DR_CALC_SET(fc, ipv4_src_dest, source_address, inner);
 	}
@@ -611,6 +623,7 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 	if (m->ihl) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV4_IHL, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->ihl;
 		fc->tag_set = &mlx5dr_definer_ipv4_ihl_set;
 		DR_CALC_SET(fc, eth_l3, ihl, inner);
 	}
@@ -618,6 +631,7 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 	if (m->time_to_live) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_TTL, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->time_to_live;
 		fc->tag_set = &mlx5dr_definer_ipv4_time_to_live_set;
 		DR_CALC_SET(fc, eth_l3, time_to_live_hop_limit, inner);
 	}
@@ -638,6 +652,7 @@ mlx5dr_definer_conv_item_ipv6(struct mlx5dr_definer_conv_data *cd,
 			      int item_idx)
 {
 	const struct rte_flow_item_ipv6 *m = item->mask;
+	const struct rte_flow_item_ipv6 *l = item->last;
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
@@ -657,7 +672,10 @@ mlx5dr_definer_conv_item_ipv6(struct mlx5dr_definer_conv_data *cd,
 
 	if (m->has_hop_ext || m->has_route_ext || m->has_auth_ext ||
 	    m->has_esp_ext || m->has_dest_ext || m->has_mobil_ext ||
-	    m->has_hip_ext || m->has_shim6_ext) {
+	    m->has_hip_ext || m->has_shim6_ext ||
+	    (l && (l->has_frag_ext || l->hdr.vtc_flow || l->hdr.proto ||
+		   !is_mem_zero(l->hdr.src_addr, 16) ||
+		   !is_mem_zero(l->hdr.dst_addr, 16)))) {
 		rte_errno = ENOTSUP;
 		return rte_errno;
 	}
@@ -684,8 +702,9 @@ mlx5dr_definer_conv_item_ipv6(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	if (m->hdr.payload_len) {
-		fc = &cd->fc[DR_CALC_FNAME(IPV6_PAYLOAD_LEN, inner)];
+		fc = &cd->fc[DR_CALC_FNAME(IP_LEN, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->hdr.payload_len;
 		fc->tag_set = &mlx5dr_definer_ipv6_payload_len_set;
 		DR_CALC_SET(fc, eth_l3, ipv6_payload_length, inner);
 	}
@@ -700,6 +719,7 @@ mlx5dr_definer_conv_item_ipv6(struct mlx5dr_definer_conv_data *cd,
 	if (m->hdr.hop_limits) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_TTL, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->hdr.hop_limits;
 		fc->tag_set = &mlx5dr_definer_ipv6_hop_limits_set;
 		DR_CALC_SET(fc, eth_l3, time_to_live_hop_limit, inner);
 	}
@@ -769,6 +789,7 @@ mlx5dr_definer_conv_item_udp(struct mlx5dr_definer_conv_data *cd,
 			     int item_idx)
 {
 	const struct rte_flow_item_udp *m = item->mask;
+	const struct rte_flow_item_udp *l = item->last;
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
@@ -792,6 +813,7 @@ mlx5dr_definer_conv_item_udp(struct mlx5dr_definer_conv_data *cd,
 	if (m->hdr.src_port) {
 		fc = &cd->fc[DR_CALC_FNAME(L4_SPORT, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->hdr.src_port;
 		fc->tag_set = &mlx5dr_definer_udp_src_port_set;
 		DR_CALC_SET(fc, eth_l4, source_port, inner);
 	}
@@ -799,6 +821,7 @@ mlx5dr_definer_conv_item_udp(struct mlx5dr_definer_conv_data *cd,
 	if (m->hdr.dst_port) {
 		fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->hdr.dst_port;
 		fc->tag_set = &mlx5dr_definer_udp_dst_port_set;
 		DR_CALC_SET(fc, eth_l4, destination_port, inner);
 	}
@@ -812,6 +835,7 @@ mlx5dr_definer_conv_item_tcp(struct mlx5dr_definer_conv_data *cd,
 			     int item_idx)
 {
 	const struct rte_flow_item_tcp *m = item->mask;
+	const struct rte_flow_item_tcp *l = item->last;
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
@@ -827,9 +851,16 @@ mlx5dr_definer_conv_item_tcp(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
+	if (m->hdr.sent_seq || m->hdr.recv_ack || m->hdr.data_off ||
+	    m->hdr.rx_win || m->hdr.cksum || m->hdr.tcp_urp) {
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
 	if (m->hdr.tcp_flags) {
 		fc = &cd->fc[DR_CALC_FNAME(TCP_FLAGS, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->hdr.tcp_flags;
 		fc->tag_set = &mlx5dr_definer_tcp_flags_set;
 		DR_CALC_SET(fc, eth_l4, tcp_flags, inner);
 	}
@@ -837,6 +868,7 @@ mlx5dr_definer_conv_item_tcp(struct mlx5dr_definer_conv_data *cd,
 	if (m->hdr.src_port) {
 		fc = &cd->fc[DR_CALC_FNAME(L4_SPORT, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->hdr.src_port;
 		fc->tag_set = &mlx5dr_definer_tcp_src_port_set;
 		DR_CALC_SET(fc, eth_l4, source_port, inner);
 	}
@@ -844,6 +876,7 @@ mlx5dr_definer_conv_item_tcp(struct mlx5dr_definer_conv_data *cd,
 	if (m->hdr.dst_port) {
 		fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, inner)];
 		fc->item_idx = item_idx;
+		fc->is_range = l && l->hdr.dst_port;
 		fc->tag_set = &mlx5dr_definer_tcp_dst_port_set;
 		DR_CALC_SET(fc, eth_l4, destination_port, inner);
 	}
@@ -1149,6 +1182,7 @@ mlx5dr_definer_conv_item_tag(struct mlx5dr_definer_conv_data *cd,
 {
 	const struct rte_flow_item_tag *m = item->mask;
 	const struct rte_flow_item_tag *v = item->spec;
+	const struct rte_flow_item_tag *l = item->last;
 	struct mlx5dr_definer_fc *fc;
 	int reg;
 
@@ -1171,7 +1205,9 @@ mlx5dr_definer_conv_item_tag(struct mlx5dr_definer_conv_data *cd,
 		return rte_errno;
 
 	fc->item_idx = item_idx;
+	fc->is_range = l && l->index;
 	fc->tag_set = &mlx5dr_definer_tag_set;
+
 	return 0;
 }
 
@@ -1181,6 +1217,7 @@ mlx5dr_definer_conv_item_metadata(struct mlx5dr_definer_conv_data *cd,
 				  int item_idx)
 {
 	const struct rte_flow_item_meta *m = item->mask;
+	const struct rte_flow_item_meta *l = item->last;
 	struct mlx5dr_definer_fc *fc;
 	int reg;
 
@@ -1199,7 +1236,9 @@ mlx5dr_definer_conv_item_metadata(struct mlx5dr_definer_conv_data *cd,
 		return rte_errno;
 
 	fc->item_idx = item_idx;
+	fc->is_range = l && l->data;
 	fc->tag_set = &mlx5dr_definer_metadata_set;
+
 	return 0;
 }
 
@@ -1549,6 +1588,28 @@ mlx5dr_definer_conv_item_meter_color(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_check_item_range_supp(struct rte_flow_item *item)
+{
+	if (!item->last)
+		return 0;
+
+	switch ((int)item->type) {
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+	case RTE_FLOW_ITEM_TYPE_UDP:
+	case RTE_FLOW_ITEM_TYPE_TCP:
+	case RTE_FLOW_ITEM_TYPE_TAG:
+	case RTE_FLOW_ITEM_TYPE_META:
+	case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
+		return 0;
+	default:
+		DR_LOG(ERR, "Range not supported over item type %d", item->type);
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+}
+
+static int
 mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				struct mlx5dr_match_template *mt,
 				uint8_t *hl)
@@ -1569,6 +1630,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 	/* Collect all RTE fields to the field array and set header layout */
 	for (i = 0; items->type != RTE_FLOW_ITEM_TYPE_END; i++, items++) {
 		cd.tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+
+		ret = mlx5dr_definer_check_item_range_supp(items);
+		if (ret)
+			return ret;
 
 		switch ((int)items->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
