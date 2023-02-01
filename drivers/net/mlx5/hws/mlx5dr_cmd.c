@@ -795,6 +795,53 @@ mlx5dr_cmd_alias_obj_create(struct ibv_context *ctx,
 	return devx_obj;
 }
 
+int mlx5dr_cmd_generate_wqe(struct ibv_context *ctx,
+			    struct mlx5dr_cmd_generate_wqe_attr *attr,
+			    struct mlx5_cqe64 *ret_cqe)
+{
+	uint32_t out[MLX5_ST_SZ_DW(generate_wqe_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(generate_wqe_in)] = {0};
+	uint8_t status;
+	void *ptr;
+	int ret;
+
+	MLX5_SET(generate_wqe_in, in, opcode, MLX5_CMD_OP_GENERATE_WQE);
+	MLX5_SET(generate_wqe_in, in, pdn, attr->pdn);
+
+	ptr = MLX5_ADDR_OF(generate_wqe_in, in, wqe_ctrl);
+	memcpy(ptr, attr->wqe_ctrl, MLX5_FLD_SZ_BYTES(generate_wqe_in, wqe_ctrl));
+
+	ptr = MLX5_ADDR_OF(generate_wqe_in, in, wqe_gta_ctrl);
+	memcpy(ptr, attr->gta_ctrl, MLX5_FLD_SZ_BYTES(generate_wqe_in, wqe_gta_ctrl));
+
+	ptr = MLX5_ADDR_OF(generate_wqe_in, in, wqe_gta_data_0);
+	memcpy(ptr, attr->gta_data_0, MLX5_FLD_SZ_BYTES(generate_wqe_in, wqe_gta_data_0));
+
+	if (attr->gta_data_1) {
+		ptr = MLX5_ADDR_OF(generate_wqe_in, in, wqe_gta_data_1);
+		memcpy(ptr, attr->gta_data_1, MLX5_FLD_SZ_BYTES(generate_wqe_in, wqe_gta_data_1));
+	}
+
+	ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	if (ret) {
+		DR_LOG(ERR, "Failed to write GTA WQE using FW");
+		rte_errno = errno;
+		return rte_errno;
+	}
+
+	status = MLX5_GET(generate_wqe_out, out, status);
+	if (status) {
+		DR_LOG(ERR, "Invalid FW CQE status %d", status);
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	ptr = MLX5_ADDR_OF(generate_wqe_out, out, cqe_data);
+	memcpy(ret_cqe, ptr, sizeof(*ret_cqe));
+
+	return 0;
+}
+
 int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 			  struct mlx5dr_cmd_query_caps *caps)
 {

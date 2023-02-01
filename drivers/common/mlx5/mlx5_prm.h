@@ -1141,6 +1141,7 @@ enum {
 	MLX5_CMD_QUERY_REGEX_REGISTERS = 0xb07,
 	MLX5_CMD_OP_ACCESS_REGISTER_USER = 0xb0c,
 	MLX5_CMD_OP_ALLOW_OTHER_VHCA_ACCESS = 0xb16,
+	MLX5_CMD_OP_GENERATE_WQE = 0xb17,
 };
 
 enum {
@@ -2159,7 +2160,8 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 format_select_dw_gtpu_dw_1[0x8];
 	u8 format_select_dw_gtpu_dw_2[0x8];
 	u8 format_select_dw_gtpu_first_ext_dw_0[0x8];
-	u8 reserved_at_2a0[0x560];
+	u8 generate_wqe_type[0x20];
+	u8 reserved_at_2c0[0x540];
 };
 
 struct mlx5_ifc_esw_cap_bits {
@@ -3527,6 +3529,29 @@ struct mlx5_ifc_create_header_modify_pattern_in_bits {
 struct mlx5_ifc_create_alias_obj_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_alias_context_bits alias_ctx;
+};
+
+struct mlx5_ifc_generate_wqe_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mode[0x10];
+	u8 reserved_at_40[0x40];
+	u8 reserved_at_80[0x8];
+	u8 pdn[0x18];
+	u8 reserved_at_a0[0x160];
+	u8 wqe_ctrl[0x80];
+	u8 wqe_gta_ctrl[0x180];
+	u8 wqe_gta_data_0[0x200];
+	u8 wqe_gta_data_1[0x200];
+};
+
+struct mlx5_ifc_generate_wqe_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x1c0];
+	u8 cqe_data[0x200];
 };
 
 enum {

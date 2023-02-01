@@ -153,6 +153,14 @@ struct mlx5dr_cmd_query_vport_caps {
 	uint32_t metadata_c_mask;
 };
 
+struct mlx5dr_cmd_generate_wqe_attr {
+	uint8_t *wqe_ctrl;
+	uint8_t *gta_ctrl;
+	uint8_t *gta_data_0;
+	uint8_t *gta_data_1;
+	uint32_t pdn;
+};
+
 struct mlx5dr_cmd_query_caps {
 	uint32_t wire_regc;
 	uint32_t wire_regc_mask;
@@ -211,6 +219,11 @@ mlx5dr_cmd_stc_create(struct ibv_context *ctx,
 int
 mlx5dr_cmd_stc_modify(struct mlx5dr_devx_obj *devx_obj,
 		      struct mlx5dr_cmd_stc_modify_attr *stc_attr);
+
+int
+mlx5dr_cmd_generate_wqe(struct ibv_context *ctx,
+			struct mlx5dr_cmd_generate_wqe_attr *attr,
+			struct mlx5_cqe64 *ret_cqe);
 
 struct mlx5dr_devx_obj *
 mlx5dr_cmd_ste_create(struct ibv_context *ctx,
