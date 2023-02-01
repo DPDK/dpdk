@@ -96,9 +96,7 @@ static const struct rte_compressdev_capabilities mlx5_caps[] = {
 				      RTE_COMP_FF_HUFFMAN_DYNAMIC,
 		.window_size = {.min = 10, .max = 15, .increment = 1},
 	},
-	{
-		.algo = RTE_COMP_ALGO_LIST_END,
-	}
+	RTE_COMP_END_OF_CAPABILITIES_LIST()
 };
 
 static void
