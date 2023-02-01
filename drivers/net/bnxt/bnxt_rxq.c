@@ -471,6 +471,12 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EINVAL;
 	}
 
+	/* reset the previous stats for the rx_queue since the counters
+	 * will be cleared when the queue is started.
+	 */
+	memset(&bp->prev_rx_ring_stats[rx_queue_id], 0,
+	       sizeof(struct bnxt_ring_stats));
+
 	/* Set the queue state to started here.
 	 * We check the status of the queue while posting buffer.
 	 * If queue is it started, we do not post buffers for Rx.
