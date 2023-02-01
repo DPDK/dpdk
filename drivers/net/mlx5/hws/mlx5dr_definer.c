@@ -1591,26 +1591,33 @@ mlx5dr_definer_mt_set_fc(struct mlx5dr_match_template *mt,
 			 struct mlx5dr_definer_fc *fc,
 			 uint8_t *hl)
 {
-	uint32_t fc_sz = 0;
+	uint32_t fc_sz = 0, fcr_sz = 0;
 	int i;
 
 	for (i = 0; i < MLX5DR_DEFINER_FNAME_MAX; i++)
 		if (fc[i].tag_set)
-			fc_sz++;
+			fc[i].is_range ? fcr_sz++ : fc_sz++;
 
-	mt->fc = simple_calloc(fc_sz, sizeof(*mt->fc));
+	mt->fc = simple_calloc(fc_sz + fcr_sz, sizeof(*mt->fc));
 	if (!mt->fc) {
 		rte_errno = ENOMEM;
 		return rte_errno;
 	}
+
+	mt->fcr = mt->fc + fc_sz;
 
 	for (i = 0; i < MLX5DR_DEFINER_FNAME_MAX; i++) {
 		if (!fc[i].tag_set)
 			continue;
 
 		fc[i].fname = i;
-		memcpy(&mt->fc[mt->fc_sz++], &fc[i], sizeof(*mt->fc));
-		DR_SET(hl, -1, fc[i].byte_off, fc[i].bit_off, fc[i].bit_mask);
+
+		if (fc[i].is_range) {
+			memcpy(&mt->fcr[mt->fcr_sz++], &fc[i], sizeof(*mt->fcr));
+		} else {
+			memcpy(&mt->fc[mt->fc_sz++], &fc[i], sizeof(*mt->fc));
+			DR_SET(hl, -1, fc[i].byte_off, fc[i].bit_off, fc[i].bit_mask);
+		}
 	}
 
 	return 0;
@@ -1774,7 +1781,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 
 	mt->item_flags = item_flags;
 
-	/* Fill in headers layout and allocate fc array on mt */
+	/* Fill in headers layout and allocate fc & fcr array on mt */
 	ret = mlx5dr_definer_mt_set_fc(mt, fc, hl);
 	if (ret) {
 		DR_LOG(ERR, "Failed to set field copy to match template");
@@ -1943,9 +1950,92 @@ mlx5dr_definer_copy_sel_ctrl(struct mlx5dr_definer_sel_ctrl *ctrl,
 }
 
 static int
-mlx5dr_definer_find_best_hl_fit(struct mlx5dr_context *ctx,
-				struct mlx5dr_definer *definer,
-				uint8_t *hl)
+mlx5dr_definer_find_best_range_fit(struct mlx5dr_definer *definer,
+				   struct mlx5dr_matcher *matcher)
+{
+	uint8_t tag_byte_offset[MLX5DR_DEFINER_FNAME_MAX] = {0};
+	uint8_t field_select[MLX5DR_DEFINER_FNAME_MAX] = {0};
+	struct mlx5dr_definer_sel_ctrl ctrl = {0};
+	uint32_t byte_offset, algn_byte_off;
+	struct mlx5dr_definer_fc *fcr;
+	bool require_dw;
+	int idx, i, j;
+
+	/* Try to create a range definer */
+	ctrl.allowed_full_dw = DW_SELECTORS_RANGE;
+	ctrl.allowed_bytes = BYTE_SELECTORS_RANGE;
+
+	/* Multiple fields cannot share the same DW for range match.
+	 * The HW doesn't recognize each field but compares the full dw.
+	 * For example definer DW consists of FieldA_FieldB
+	 * FieldA: Mask 0xFFFF range 0x1 to 0x2
+	 * FieldB: Mask 0xFFFF range 0x3 to 0x4
+	 * STE DW range will be 0x00010003 - 0x00020004
+	 * This will cause invalid match for FieldB if FieldA=1 and FieldB=8
+	 * Since 0x10003 < 0x10008 < 0x20004
+	 */
+	for (i = 0; i < matcher->num_of_mt; i++) {
+		for (j = 0; j < matcher->mt[i].fcr_sz; j++) {
+			fcr = &matcher->mt[i].fcr[j];
+
+			/* Found - Reuse previous mt binding */
+			if (field_select[fcr->fname]) {
+				fcr->byte_off = tag_byte_offset[fcr->fname];
+				continue;
+			}
+
+			/* Not found */
+			require_dw = fcr->byte_off >= (64 * DW_SIZE);
+			if (require_dw || ctrl.used_bytes == ctrl.allowed_bytes) {
+				/* Try to cover using DW selector */
+				if (ctrl.used_full_dw == ctrl.allowed_full_dw)
+					goto not_supported;
+
+				ctrl.full_dw_selector[ctrl.used_full_dw++] =
+					fcr->byte_off / DW_SIZE;
+
+				/* Bind DW */
+				idx = ctrl.used_full_dw - 1;
+				byte_offset = fcr->byte_off % DW_SIZE;
+				byte_offset += DW_SIZE * (DW_SELECTORS - idx - 1);
+			} else {
+				/* Try to cover using Bytes selectors */
+				if (ctrl.used_bytes == ctrl.allowed_bytes)
+					goto not_supported;
+
+				algn_byte_off = DW_SIZE * (fcr->byte_off / DW_SIZE);
+				ctrl.byte_selector[ctrl.used_bytes++] = algn_byte_off + 3;
+				ctrl.byte_selector[ctrl.used_bytes++] = algn_byte_off + 2;
+				ctrl.byte_selector[ctrl.used_bytes++] = algn_byte_off + 1;
+				ctrl.byte_selector[ctrl.used_bytes++] = algn_byte_off;
+
+				/* Bind BYTE */
+				byte_offset = DW_SIZE * DW_SELECTORS;
+				byte_offset += BYTE_SELECTORS - ctrl.used_bytes;
+				byte_offset += fcr->byte_off % DW_SIZE;
+			}
+
+			fcr->byte_off = byte_offset;
+			tag_byte_offset[fcr->fname] = byte_offset;
+			field_select[fcr->fname] = 1;
+		}
+	}
+
+	mlx5dr_definer_copy_sel_ctrl(&ctrl, definer);
+	definer->type = MLX5DR_DEFINER_TYPE_RANGE;
+
+	return 0;
+
+not_supported:
+	DR_LOG(ERR, "Unable to find supporting range definer combination");
+	rte_errno = ENOTSUP;
+	return rte_errno;
+}
+
+static int
+mlx5dr_definer_find_best_match_fit(struct mlx5dr_context *ctx,
+				   struct mlx5dr_definer *definer,
+				   uint8_t *hl)
 {
 	struct mlx5dr_definer_sel_ctrl ctrl = {0};
 	bool found;
@@ -2011,6 +2101,43 @@ void mlx5dr_definer_create_tag(const struct rte_flow_item *items,
 	}
 }
 
+static uint32_t mlx5dr_definer_get_range_byte_off(uint32_t match_byte_off)
+{
+	uint8_t curr_dw_idx = match_byte_off / DW_SIZE;
+	uint8_t new_dw_idx;
+
+	/* Range DW can have the following values 7,8,9,10
+	 * -DW7 is mapped to DW9
+	 * -DW8 is mapped to DW7
+	 * -DW9 is mapped to DW5
+	 * -DW10 is mapped to DW3
+	 * To reduce calculation the following formula is used:
+	 */
+	new_dw_idx = curr_dw_idx * (-2) + 23;
+
+	return new_dw_idx * DW_SIZE + match_byte_off % DW_SIZE;
+}
+
+void mlx5dr_definer_create_tag_range(const struct rte_flow_item *items,
+				     struct mlx5dr_definer_fc *fc,
+				     uint32_t fc_sz,
+				     uint8_t *tag)
+{
+	struct mlx5dr_definer_fc tmp_fc;
+	uint32_t i;
+
+	for (i = 0; i < fc_sz; i++) {
+		tmp_fc = *fc;
+		/* Set MAX value */
+		tmp_fc.byte_off = mlx5dr_definer_get_range_byte_off(fc->byte_off);
+		tmp_fc.tag_set(&tmp_fc, items[fc->item_idx].last, tag);
+		/* Set MIN value */
+		tmp_fc.byte_off += DW_SIZE;
+		tmp_fc.tag_set(&tmp_fc, items[fc->item_idx].spec, tag);
+		fc++;
+	}
+}
+
 int mlx5dr_definer_get_id(struct mlx5dr_definer *definer)
 {
 	return definer->obj->id;
@@ -2039,27 +2166,26 @@ mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
 
 static int
 mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
-			   struct mlx5dr_definer *match_definer)
+			   struct mlx5dr_definer *match_definer,
+			   struct mlx5dr_definer *range_definer)
 {
 	struct mlx5dr_context *ctx = matcher->tbl->ctx;
 	struct mlx5dr_match_template *mt = matcher->mt;
-	uint8_t *match_hl, *hl_buff;
+	uint8_t *match_hl;
 	int i, ret;
 
 	/* Union header-layout (hl) is used for creating a single definer
 	 * field layout used with different bitmasks for hash and match.
 	 */
-	hl_buff = simple_calloc(1, MLX5_ST_SZ_BYTES(definer_hl));
-	if (!hl_buff) {
+	match_hl = simple_calloc(1, MLX5_ST_SZ_BYTES(definer_hl));
+	if (!match_hl) {
 		DR_LOG(ERR, "Failed to allocate memory for header layout");
 		rte_errno = ENOMEM;
 		return rte_errno;
 	}
 
-	match_hl = hl_buff;
-
 	/* Convert all mt items to header layout (hl)
-	 * and allocate the match field copy array (fc).
+	 * and allocate the match and range field copy array (fc & fcr).
 	 */
 	for (i = 0; i < matcher->num_of_mt; i++) {
 		ret = mlx5dr_definer_conv_items_to_hl(ctx, &mt[i], match_hl);
@@ -2070,13 +2196,20 @@ mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
 	}
 
 	/* Find the match definer layout for header layout match union */
-	ret = mlx5dr_definer_find_best_hl_fit(ctx, match_definer, match_hl);
+	ret = mlx5dr_definer_find_best_match_fit(ctx, match_definer, match_hl);
 	if (ret) {
 		DR_LOG(ERR, "Failed to create match definer from header layout");
 		goto free_fc;
 	}
 
-	simple_free(hl_buff);
+	/* Find the range definer layout for match templates fcrs */
+	ret = mlx5dr_definer_find_best_range_fit(range_definer, matcher);
+	if (ret) {
+		DR_LOG(ERR, "Failed to create range definer from header layout");
+		goto free_fc;
+	}
+
+	simple_free(match_hl);
 	return 0;
 
 free_fc:
@@ -2084,7 +2217,7 @@ free_fc:
 		if (mt[i].fc)
 			simple_free(mt[i].fc);
 
-	simple_free(hl_buff);
+	simple_free(match_hl);
 	return rte_errno;
 }
 
@@ -2093,7 +2226,8 @@ mlx5dr_definer_alloc(struct ibv_context *ibv_ctx,
 		     struct mlx5dr_definer_fc *fc,
 		     int fc_sz,
 		     struct rte_flow_item *items,
-		     struct mlx5dr_definer *layout)
+		     struct mlx5dr_definer *layout,
+		     bool bind_fc)
 {
 	struct mlx5dr_cmd_definer_create_attr def_attr = {0};
 	struct mlx5dr_definer *definer;
@@ -2109,10 +2243,12 @@ mlx5dr_definer_alloc(struct ibv_context *ibv_ctx,
 	memcpy(definer, layout, sizeof(*definer));
 
 	/* Align field copy array based on given layout */
-	ret = mlx5dr_definer_fc_bind(definer, fc, fc_sz);
-	if (ret) {
-		DR_LOG(ERR, "Failed to bind field copy to definer");
-		goto free_definer;
+	if (bind_fc) {
+		ret = mlx5dr_definer_fc_bind(definer, fc, fc_sz);
+		if (ret) {
+			DR_LOG(ERR, "Failed to bind field copy to definer");
+			goto free_definer;
+		}
 	}
 
 	/* Create the tag mask used for definer creation */
@@ -2155,7 +2291,8 @@ mlx5dr_definer_matcher_match_init(struct mlx5dr_context *ctx,
 						     mt[i].fc,
 						     mt[i].fc_sz,
 						     mt[i].items,
-						     match_layout);
+						     match_layout,
+						     true);
 		if (!mt[i].definer) {
 			DR_LOG(ERR, "Failed to create match definer");
 			goto free_definers;
@@ -2177,6 +2314,58 @@ mlx5dr_definer_matcher_match_uninit(struct mlx5dr_matcher *matcher)
 
 	for (i = 0; i < matcher->num_of_mt; i++)
 		mlx5dr_definer_free(matcher->mt[i].definer);
+}
+
+static int
+mlx5dr_definer_matcher_range_init(struct mlx5dr_context *ctx,
+				  struct mlx5dr_matcher *matcher,
+				  struct mlx5dr_definer *range_layout)
+{
+	struct mlx5dr_match_template *mt = matcher->mt;
+	int i;
+
+	/* Create optional range definers */
+	for (i = 0; i < matcher->num_of_mt; i++) {
+		if (!mt[i].fcr_sz)
+			continue;
+
+		/* All must use range if requested */
+		if (i && !mt[i - 1].range_definer) {
+			DR_LOG(ERR, "Using range and non range templates is not allowed");
+			goto free_definers;
+		}
+
+		matcher->flags |= MLX5DR_MATCHER_FLAGS_RANGE_DEFINER;
+		/* Create definer without fcr binding, already binded */
+		mt[i].range_definer = mlx5dr_definer_alloc(ctx->ibv_ctx,
+							   mt[i].fcr,
+							   mt[i].fcr_sz,
+							   mt[i].items,
+							   range_layout,
+							   false);
+		if (!mt[i].range_definer) {
+			DR_LOG(ERR, "Failed to create match definer");
+			goto free_definers;
+		}
+	}
+	return 0;
+
+free_definers:
+	while (i--)
+		if (mt[i].range_definer)
+			mlx5dr_definer_free(mt[i].range_definer);
+
+	return rte_errno;
+}
+
+static void
+mlx5dr_definer_matcher_range_uninit(struct mlx5dr_matcher *matcher)
+{
+	int i;
+
+	for (i = 0; i < matcher->num_of_mt; i++)
+		if (matcher->mt[i].range_definer)
+			mlx5dr_definer_free(matcher->mt[i].range_definer);
 }
 
 static int
@@ -2257,13 +2446,13 @@ int mlx5dr_definer_matcher_init(struct mlx5dr_context *ctx,
 				struct mlx5dr_matcher *matcher)
 {
 	struct mlx5dr_definer match_layout = {0};
+	struct mlx5dr_definer range_layout = {0};
 	int ret, i;
 
 	if (matcher->flags & MLX5DR_MATCHER_FLAGS_COLLISION)
 		return 0;
 
-	/* Calculate header layout based on matcher items */
-	ret = mlx5dr_definer_calc_layout(matcher, &match_layout);
+	ret = mlx5dr_definer_calc_layout(matcher, &match_layout, &range_layout);
 	if (ret) {
 		DR_LOG(ERR, "Failed to calculate matcher definer layout");
 		return ret;
@@ -2276,15 +2465,24 @@ int mlx5dr_definer_matcher_init(struct mlx5dr_context *ctx,
 		goto free_fc;
 	}
 
+	/* Calculate definers needed for range */
+	ret = mlx5dr_definer_matcher_range_init(ctx, matcher, &range_layout);
+	if (ret) {
+		DR_LOG(ERR, "Failed to init range definers");
+		goto uninit_match_definer;
+	}
+
 	/* Calculate partial hash definer */
 	ret = mlx5dr_definer_matcher_hash_init(ctx, matcher);
 	if (ret) {
 		DR_LOG(ERR, "Failed to init hash definer");
-		goto uninit_match_definer;
+		goto uninit_range_definer;
 	}
 
 	return 0;
 
+uninit_range_definer:
+	mlx5dr_definer_matcher_range_uninit(matcher);
 uninit_match_definer:
 	mlx5dr_definer_matcher_match_uninit(matcher);
 free_fc:
@@ -2302,6 +2500,7 @@ void mlx5dr_definer_matcher_uninit(struct mlx5dr_matcher *matcher)
 		return;
 
 	mlx5dr_definer_matcher_hash_uninit(matcher);
+	mlx5dr_definer_matcher_range_uninit(matcher);
 	mlx5dr_definer_matcher_match_uninit(matcher);
 
 	for (i = 0; i < matcher->num_of_mt; i++)

@@ -5,11 +5,17 @@
 #ifndef MLX5DR_DEFINER_H_
 #define MLX5DR_DEFINER_H_
 
+/* Max available selecotrs */
+#define DW_SELECTORS 9
+#define BYTE_SELECTORS 8
+
 /* Selectors based on match TAG */
 #define DW_SELECTORS_MATCH 6
 #define DW_SELECTORS_LIMITED 3
-#define DW_SELECTORS 9
-#define BYTE_SELECTORS 8
+
+/* Selectors based on range TAG */
+#define DW_SELECTORS_RANGE 2
+#define BYTE_SELECTORS_RANGE 8
 
 enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_ETH_SMAC_48_16_O,
@@ -112,6 +118,7 @@ enum mlx5dr_definer_fname {
 enum mlx5dr_definer_type {
 	MLX5DR_DEFINER_TYPE_MATCH,
 	MLX5DR_DEFINER_TYPE_JUMBO,
+	MLX5DR_DEFINER_TYPE_RANGE,
 };
 
 struct mlx5dr_definer_fc {
@@ -572,6 +579,11 @@ void mlx5dr_definer_create_tag(const struct rte_flow_item *items,
 			       struct mlx5dr_definer_fc *fc,
 			       uint32_t fc_sz,
 			       uint8_t *tag);
+
+void mlx5dr_definer_create_tag_range(const struct rte_flow_item *items,
+				     struct mlx5dr_definer_fc *fc,
+				     uint32_t fc_sz,
+				     uint8_t *tag);
 
 int mlx5dr_definer_get_id(struct mlx5dr_definer *definer);
 

@@ -360,6 +360,12 @@ static bool mlx5dr_matcher_supp_fw_wqe(struct mlx5dr_matcher *matcher)
 		return false;
 	}
 
+	if ((matcher->flags & MLX5DR_MATCHER_FLAGS_RANGE_DEFINER) &&
+	    !IS_BIT_SET(caps->supp_ste_format_gen_wqe, MLX5_IFC_RTC_STE_FORMAT_RANGE)) {
+		DR_LOG(INFO, "Extended match gen wqe RANGE format not supported");
+		return false;
+	}
+
 	if (!(caps->supp_type_gen_wqe & MLX5_GENERATE_WQE_TYPE_FLOW_UPDATE)) {
 		DR_LOG(ERR, "Gen WQE command not supporting GTA");
 		return false;
@@ -460,14 +466,20 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		ste = &matcher->match_ste.ste;
 		ste->order = attr->table.sz_col_log + attr->table.sz_row_log;
 
+		/* Add additional rows due to additional range STE */
+		if (mlx5dr_matcher_mt_is_range(mt))
+			ste->order++;
+
 		rtc_attr.log_size = attr->table.sz_row_log;
 		rtc_attr.log_depth = attr->table.sz_col_log;
 		rtc_attr.is_frst_jumbo = mlx5dr_matcher_mt_is_jumbo(mt);
+		rtc_attr.is_scnd_range = mlx5dr_matcher_mt_is_range(mt);
 		rtc_attr.miss_ft_id = matcher->end_ft->id;
 
 		if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH) {
 			/* The usual Hash Table */
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_HASH;
+
 			if (matcher->hash_definer) {
 				/* Specify definer_id_0 is used for hashing */
 				rtc_attr.fw_gen_wqe = true;
@@ -477,6 +489,16 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 			} else {
 				/* The first mt is used since all share the same definer */
 				rtc_attr.match_definer_0 = mlx5dr_definer_get_id(mt->definer);
+
+				/* This is tricky, instead of passing two definers for
+				 * match and range, we specify that this RTC uses a hash
+				 * definer, this will allow us to use any range definer
+				 * since only first STE is used for hashing anyways.
+				 */
+				if (matcher->flags & MLX5DR_MATCHER_FLAGS_RANGE_DEFINER) {
+					rtc_attr.fw_gen_wqe = true;
+					rtc_attr.num_hash_definer = 1;
+				}
 			}
 		} else if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX) {
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
@@ -751,7 +773,7 @@ static int mlx5dr_matcher_bind_mt(struct mlx5dr_matcher *matcher)
 	struct mlx5dr_pool_attr pool_attr = {0};
 	int ret;
 
-	/* Calculate match and hash definers */
+	/* Calculate match, range and hash definers */
 	ret = mlx5dr_definer_matcher_init(ctx, matcher);
 	if (ret) {
 		DR_LOG(ERR, "Failed to set matcher templates with match definers");
@@ -772,6 +794,9 @@ static int mlx5dr_matcher_bind_mt(struct mlx5dr_matcher *matcher)
 	pool_attr.flags = MLX5DR_POOL_FLAGS_FOR_MATCHER_STE_POOL;
 	pool_attr.alloc_log_sz = matcher->attr.table.sz_col_log +
 				 matcher->attr.table.sz_row_log;
+	/* Add additional rows due to additional range STE */
+	if (matcher->flags & MLX5DR_MATCHER_FLAGS_RANGE_DEFINER)
+		pool_attr.alloc_log_sz++;
 	mlx5dr_matcher_set_pool_attr(&pool_attr, matcher);
 
 	matcher->match_ste.pool = mlx5dr_pool_create(ctx, &pool_attr);
