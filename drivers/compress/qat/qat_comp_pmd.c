@@ -30,7 +30,7 @@ static const struct rte_compressdev_capabilities qat_comp_gen_capabilities[] = {
 				RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
 				RTE_COMP_FF_STATEFUL_DECOMPRESSION,
 	 .window_size = {.min = 15, .max = 15, .increment = 0} },
-	{RTE_COMP_ALGO_LIST_END, 0, {0, 0, 0} } };
+	 RTE_COMP_END_OF_CAPABILITIES_LIST() };
 
 static void
 qat_comp_stats_get(struct rte_compressdev *dev,
