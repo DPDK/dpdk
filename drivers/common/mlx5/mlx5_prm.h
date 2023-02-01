@@ -3237,6 +3237,7 @@ enum mlx5_ifc_rtc_access_mode {
 enum mlx5_ifc_rtc_ste_format {
 	MLX5_IFC_RTC_STE_FORMAT_8DW = 0x4,
 	MLX5_IFC_RTC_STE_FORMAT_11DW = 0x5,
+	MLX5_IFC_RTC_STE_FORMAT_RANGE = 0x7,
 };
 
 enum mlx5_ifc_rtc_reparse_mode {
@@ -3251,24 +3252,27 @@ struct mlx5_ifc_rtc_bits {
 	u8 reserved_at_40[0x40];
 	u8 update_index_mode[0x2];
 	u8 reparse_mode[0x2];
-	u8 reserved_at_84[0x4];
+	u8 num_match_ste[0x4];
 	u8 pd[0x18];
 	u8 reserved_at_a0[0x9];
 	u8 access_index_mode[0x3];
 	u8 num_hash_definer[0x4];
-	u8 reserved_at_b0[0x3];
+	u8 update_method[0x1];
+	u8 reserved_at_b1[0x2];
 	u8 log_depth[0x5];
 	u8 log_hash_size[0x8];
-	u8 ste_format[0x8];
+	u8 ste_format_0[0x8];
 	u8 table_type[0x8];
-	u8 reserved_at_d0[0x10];
-	u8 match_definer_id[0x20];
+	u8 ste_format_1[0x8];
+	u8 reserved_at_d8[0x8];
+	u8 match_definer_0[0x20];
 	u8 stc_id[0x20];
 	u8 ste_table_base_id[0x20];
 	u8 ste_table_offset[0x20];
 	u8 reserved_at_160[0x8];
 	u8 miss_flow_table_id[0x18];
-	u8 reserved_at_180[0x280];
+	u8 match_definer_1[0x20];
+	u8 reserved_at_1a0[0x260];
 };
 
 struct mlx5_ifc_alias_context_bits {

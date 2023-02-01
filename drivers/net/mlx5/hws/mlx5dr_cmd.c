@@ -259,17 +259,26 @@ mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
 		 attr, obj_type, MLX5_GENERAL_OBJ_TYPE_RTC);
 
 	attr = MLX5_ADDR_OF(create_rtc_in, in, rtc);
-	MLX5_SET(rtc, attr, ste_format, rtc_attr->is_jumbo ?
+	MLX5_SET(rtc, attr, ste_format_0, rtc_attr->is_frst_jumbo ?
 		MLX5_IFC_RTC_STE_FORMAT_11DW :
 		MLX5_IFC_RTC_STE_FORMAT_8DW);
+
+	if (rtc_attr->is_scnd_range) {
+		MLX5_SET(rtc, attr, ste_format_1, MLX5_IFC_RTC_STE_FORMAT_RANGE);
+		MLX5_SET(rtc, attr, num_match_ste, 2);
+	}
+
 	MLX5_SET(rtc, attr, pd, rtc_attr->pd);
+	MLX5_SET(rtc, attr, update_method, rtc_attr->fw_gen_wqe);
 	MLX5_SET(rtc, attr, update_index_mode, rtc_attr->update_index_mode);
 	MLX5_SET(rtc, attr, access_index_mode, rtc_attr->access_index_mode);
 	MLX5_SET(rtc, attr, num_hash_definer, rtc_attr->num_hash_definer);
 	MLX5_SET(rtc, attr, log_depth, rtc_attr->log_depth);
 	MLX5_SET(rtc, attr, log_hash_size, rtc_attr->log_size);
 	MLX5_SET(rtc, attr, table_type, rtc_attr->table_type);
-	MLX5_SET(rtc, attr, match_definer_id, rtc_attr->definer_id);
+	MLX5_SET(rtc, attr, num_hash_definer, rtc_attr->num_hash_definer);
+	MLX5_SET(rtc, attr, match_definer_0, rtc_attr->match_definer_0);
+	MLX5_SET(rtc, attr, match_definer_1, rtc_attr->match_definer_1);
 	MLX5_SET(rtc, attr, stc_id, rtc_attr->stc_base);
 	MLX5_SET(rtc, attr, ste_table_base_id, rtc_attr->ste_base);
 	MLX5_SET(rtc, attr, ste_table_offset, rtc_attr->ste_offset);

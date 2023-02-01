@@ -23,8 +23,8 @@ struct mlx5dr_cmd_ft_modify_attr {
 };
 
 struct mlx5dr_cmd_fg_attr {
-	uint32_t	table_id;
-	uint32_t	table_type;
+	uint32_t table_id;
+	uint32_t table_type;
 };
 
 struct mlx5dr_cmd_forward_tbl {
@@ -40,14 +40,17 @@ struct mlx5dr_cmd_rtc_create_attr {
 	uint32_t ste_base;
 	uint32_t ste_offset;
 	uint32_t miss_ft_id;
+	bool fw_gen_wqe;
 	uint8_t update_index_mode;
 	uint8_t access_index_mode;
 	uint8_t num_hash_definer;
 	uint8_t log_depth;
 	uint8_t log_size;
 	uint8_t table_type;
-	uint8_t definer_id;
-	bool is_jumbo;
+	uint8_t match_definer_0;
+	uint8_t match_definer_1;
+	bool is_frst_jumbo;
+	bool is_scnd_range;
 };
 
 struct mlx5dr_cmd_alias_obj_create_attr {

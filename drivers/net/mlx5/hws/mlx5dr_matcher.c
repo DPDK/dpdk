@@ -413,6 +413,8 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 	struct mlx5dr_pool *ste_pool, *stc_pool;
 	struct mlx5dr_devx_obj *devx_obj;
 	struct mlx5dr_pool_chunk *ste;
+	uint8_t first_definer_id;
+	bool is_jumbo;
 	int ret;
 
 	switch (rtc_type) {
@@ -426,12 +428,15 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		rtc_attr.log_depth = attr->table.sz_col_log;
 		rtc_attr.miss_ft_id = matcher->end_ft->id;
 
+		is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt->definer);
+		first_definer_id = mlx5dr_definer_get_id(matcher->mt->definer);
+
 		if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH) {
 			/* The usual Hash Table */
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_HASH;
 			/* The first match template is used since all share the same definer */
-			rtc_attr.definer_id = mlx5dr_definer_get_id(matcher->mt->definer);
-			rtc_attr.is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt->definer);
+			rtc_attr.match_definer_0 = first_definer_id;
+			rtc_attr.is_frst_jumbo = is_jumbo;
 		} else if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX) {
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
 			rtc_attr.num_hash_definer = 1;
@@ -439,12 +444,12 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 			if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
 				/* Hash Split Table */
 				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_BY_HASH;
-				rtc_attr.definer_id = mlx5dr_definer_get_id(matcher->mt->definer);
-				rtc_attr.is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt->definer);
+				rtc_attr.match_definer_0 = first_definer_id;
+				rtc_attr.is_frst_jumbo = is_jumbo;
 			} else if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR) {
 				/* Linear Lookup Table */
 				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_LINEAR;
-				rtc_attr.definer_id = ctx->caps->linear_match_definer;
+				rtc_attr.match_definer_0 = ctx->caps->linear_match_definer;
 			}
 		}
 
@@ -468,8 +473,8 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		rtc_attr.log_depth = 0;
 		rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
 		/* The action STEs use the default always hit definer */
-		rtc_attr.definer_id = ctx->caps->trivial_match_definer;
-		rtc_attr.is_jumbo = false;
+		rtc_attr.match_definer_0 = ctx->caps->trivial_match_definer;
+		rtc_attr.is_frst_jumbo = false;
 		rtc_attr.miss_ft_id = 0;
 		break;
 
