@@ -92,7 +92,7 @@ mlx5dr_debug_dump_matcher_match_template(FILE *f, struct mlx5dr_matcher *matcher
 	int i, ret;
 
 	for (i = 0; i < matcher->num_of_mt; i++) {
-		struct mlx5dr_match_template *mt = matcher->mt[i];
+		struct mlx5dr_match_template *mt = &matcher->mt[i];
 
 		ret = fprintf(f, "%d,0x%" PRIx64 ",0x%" PRIx64 ",%d,%d\n",
 			      MLX5DR_DEBUG_RES_TYPE_MATCHER_MATCH_TEMPLATE,
@@ -123,7 +123,7 @@ mlx5dr_debug_dump_matcher_action_template(FILE *f, struct mlx5dr_matcher *matche
 	int i, j, ret;
 
 	for (i = 0; i < matcher->num_of_at; i++) {
-		struct mlx5dr_action_template *at = matcher->at[i];
+		struct mlx5dr_action_template *at = &matcher->at[i];
 
 		ret = fprintf(f, "%d,0x%" PRIx64 ",0x%" PRIx64 ",%d,%d,%d",
 			      MLX5DR_DEBUG_RES_TYPE_MATCHER_ACTION_TEMPLATE,

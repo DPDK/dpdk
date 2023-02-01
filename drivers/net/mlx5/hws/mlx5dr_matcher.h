@@ -6,11 +6,7 @@
 #define MLX5DR_MATCHER_H_
 
 /* Max supported match template */
-#define MLX5DR_MATCHER_MAX_MT 2
 #define MLX5DR_MATCHER_MAX_MT_ROOT 1
-
-/* Max supported action template */
-#define MLX5DR_MATCHER_MAX_AT 4
 
 /* We calculated that concatenating a collision table to the main table with
  * 3% of the main table rows will be enough resources for high insertion
@@ -59,9 +55,9 @@ struct mlx5dr_matcher {
 	struct mlx5dr_table *tbl;
 	struct mlx5dr_matcher_attr attr;
 	struct mlx5dv_flow_matcher *dv_matcher;
-	struct mlx5dr_match_template *mt[MLX5DR_MATCHER_MAX_MT];
+	struct mlx5dr_match_template *mt;
 	uint8_t num_of_mt;
-	struct mlx5dr_action_template *at[MLX5DR_MATCHER_MAX_AT];
+	struct mlx5dr_action_template *at;
 	uint8_t num_of_at;
 	struct mlx5dr_devx_obj *end_ft;
 	struct mlx5dr_matcher *col_matcher;

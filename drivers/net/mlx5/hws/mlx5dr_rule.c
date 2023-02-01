@@ -5,10 +5,10 @@
 #include "mlx5dr_internal.h"
 
 static void mlx5dr_rule_skip(struct mlx5dr_matcher *matcher,
+			     struct mlx5dr_match_template *mt,
 			     const struct rte_flow_item *items,
 			     bool *skip_rx, bool *skip_tx)
 {
-	struct mlx5dr_match_template *mt = matcher->mt[0];
 	const struct flow_hw_port_info *vport;
 	const struct rte_flow_item_ethdev *v;
 
@@ -43,6 +43,7 @@ static void mlx5dr_rule_skip(struct mlx5dr_matcher *matcher,
 static void mlx5dr_rule_init_dep_wqe(struct mlx5dr_send_ring_dep_wqe *dep_wqe,
 				     struct mlx5dr_rule *rule,
 				     const struct rte_flow_item *items,
+				     struct mlx5dr_match_template *mt,
 				     void *user_data)
 {
 	struct mlx5dr_matcher *matcher = rule->matcher;
@@ -63,7 +64,7 @@ static void mlx5dr_rule_init_dep_wqe(struct mlx5dr_send_ring_dep_wqe *dep_wqe,
 		break;
 
 	case MLX5DR_TABLE_TYPE_FDB:
-		mlx5dr_rule_skip(matcher, items, &skip_rx, &skip_tx);
+		mlx5dr_rule_skip(matcher, mt, items, &skip_rx, &skip_tx);
 
 		if (!skip_rx) {
 			dep_wqe->rtc_0 = matcher->match_ste.rtc_0->id;
@@ -186,8 +187,8 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 				  uint8_t at_idx,
 				  struct mlx5dr_rule_action rule_actions[])
 {
-	struct mlx5dr_action_template *at = rule->matcher->at[at_idx];
-	struct mlx5dr_match_template *mt = rule->matcher->mt[mt_idx];
+	struct mlx5dr_action_template *at = &rule->matcher->at[at_idx];
+	struct mlx5dr_match_template *mt = &rule->matcher->mt[mt_idx];
 	bool is_jumbo = mlx5dr_definer_is_jumbo(mt->definer);
 	struct mlx5dr_matcher *matcher = rule->matcher;
 	struct mlx5dr_context *ctx = matcher->tbl->ctx;
@@ -212,7 +213,7 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 	 * dep_wqe buffers (ctrl, data) are also reused for all STE writes.
 	 */
 	dep_wqe = mlx5dr_send_add_new_dep_wqe(queue);
-	mlx5dr_rule_init_dep_wqe(dep_wqe, rule, items, attr->user_data);
+	mlx5dr_rule_init_dep_wqe(dep_wqe, rule, items, mt, attr->user_data);
 
 	ste_attr.wqe_ctrl = &dep_wqe->wqe_ctrl;
 	ste_attr.wqe_data = &dep_wqe->wqe_data;
@@ -371,7 +372,7 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 	ste_attr.used_id_rtc_1 = &rule->rtc_1;
 	ste_attr.wqe_ctrl = &wqe_ctrl;
 	ste_attr.wqe_tag = &rule->tag;
-	ste_attr.wqe_tag_is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt[0]->definer);
+	ste_attr.wqe_tag_is_jumbo = mlx5dr_definer_is_jumbo(matcher->mt->definer);
 	ste_attr.gta_opcode = MLX5DR_WQE_GTA_OP_DEACTIVATE;
 	if (unlikely(mlx5dr_matcher_is_insert_by_idx(matcher)))
 		ste_attr.direct_index = attr->rule_idx;
@@ -388,7 +389,7 @@ static int mlx5dr_rule_create_root(struct mlx5dr_rule *rule,
 				   struct mlx5dr_rule_action rule_actions[])
 {
 	struct mlx5dv_flow_matcher *dv_matcher = rule->matcher->dv_matcher;
-	uint8_t num_actions = rule->matcher->at[at_idx]->num_actions;
+	uint8_t num_actions = rule->matcher->at[at_idx].num_actions;
 	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
 	struct mlx5dv_flow_match_parameters *value;
 	struct mlx5_flow_attr flow_attr = {0};
