@@ -24,10 +24,10 @@ enum {
 struct mlx5dr_pattern_cache {
 	/* Protect pattern list */
 	pthread_spinlock_t lock;
-	LIST_HEAD(pattern_head, mlx5dr_pat_cached_pattern) head;
+	LIST_HEAD(pattern_head, mlx5dr_pattern_cache_item) head;
 };
 
-struct mlx5dr_pat_cached_pattern {
+struct mlx5dr_pattern_cache_item {
 	enum mlx5dr_action_type type;
 	struct {
 		struct mlx5dr_devx_obj *pattern_obj;
@@ -36,7 +36,7 @@ struct mlx5dr_pat_cached_pattern {
 		uint16_t num_of_actions;
 	} mh_data;
 	uint32_t refcount;
-	LIST_ENTRY(mlx5dr_pat_cached_pattern) next;
+	LIST_ENTRY(mlx5dr_pattern_cache_item) next;
 };
 
 enum mlx5dr_arg_chunk_size
