@@ -565,6 +565,32 @@ static void mlx5dr_matcher_destroy_rtc(struct mlx5dr_matcher *matcher,
 		mlx5dr_pool_chunk_free(ste_pool, ste);
 }
 
+static int
+mlx5dr_matcher_check_attr_sz(struct mlx5dr_cmd_query_caps *caps,
+			     struct mlx5dr_matcher_attr *attr)
+{
+	if (attr->table.sz_col_log > caps->rtc_log_depth_max) {
+		DR_LOG(ERR, "Matcher depth exceeds limit %d", caps->rtc_log_depth_max);
+		goto not_supported;
+	}
+
+	if (attr->table.sz_col_log + attr->table.sz_row_log > caps->ste_alloc_log_max) {
+		DR_LOG(ERR, "Total matcher size exceeds limit %d", caps->ste_alloc_log_max);
+		goto not_supported;
+	}
+
+	if (attr->table.sz_col_log + attr->table.sz_row_log < caps->ste_alloc_log_gran) {
+		DR_LOG(ERR, "Total matcher size below limit %d", caps->ste_alloc_log_gran);
+		goto not_supported;
+	}
+
+	return 0;
+
+not_supported:
+	rte_errno = EOPNOTSUPP;
+	return rte_errno;
+}
+
 static void mlx5dr_matcher_set_pool_attr(struct mlx5dr_pool_attr *attr,
 					 struct mlx5dr_matcher *matcher)
 {
@@ -840,22 +866,7 @@ mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
 	    attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH)
 		attr->table.sz_col_log = mlx5dr_matcher_rules_to_tbl_depth(attr->rule.num_log);
 
-	if (attr->table.sz_col_log > caps->rtc_log_depth_max) {
-		DR_LOG(ERR, "Matcher depth exceeds limit %d", caps->rtc_log_depth_max);
-		goto not_supported;
-	}
-
-	if (attr->table.sz_col_log + attr->table.sz_row_log > caps->ste_alloc_log_max) {
-		DR_LOG(ERR, "Total matcher size exceeds limit %d", caps->ste_alloc_log_max);
-		goto not_supported;
-	}
-
-	if (attr->table.sz_col_log + attr->table.sz_row_log < caps->ste_alloc_log_gran) {
-		DR_LOG(ERR, "Total matcher size below limit %d", caps->ste_alloc_log_gran);
-		goto not_supported;
-	}
-
-	return 0;
+	return mlx5dr_matcher_check_attr_sz(caps, attr);
 
 not_supported:
 	rte_errno = EOPNOTSUPP;
