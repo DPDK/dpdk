@@ -54,8 +54,13 @@ struct mlx5dr_wqe_gta_data_seg_ste {
 	__be32 rsvd0_ctr_id;
 	__be32 rsvd1_definer;
 	__be32 rsvd2[3];
-	__be32 action[3];
-	__be32 tag[8];
+	union {
+		struct {
+			__be32 action[3];
+			__be32 tag[8];
+		};
+		__be32 jumbo[11];
+	};
 };
 
 struct mlx5dr_wqe_gta_data_seg_arg {

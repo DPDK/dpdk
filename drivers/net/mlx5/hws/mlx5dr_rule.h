@@ -36,6 +36,8 @@ struct mlx5dr_rule {
 	struct mlx5dr_matcher *matcher;
 	union {
 		struct mlx5dr_rule_match_tag tag;
+		/* Pointer to tag to store more than one tag */
+		struct mlx5dr_rule_match_tag *tag_ptr;
 		struct ibv_flow *flow;
 	};
 	uint32_t rtc_0; /* The RTC into which the STE was inserted */
