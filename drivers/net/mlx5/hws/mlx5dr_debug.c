@@ -34,15 +34,19 @@ const char *mlx5dr_debug_action_type_to_str(enum mlx5dr_action_type action_type)
 
 static int
 mlx5dr_debug_dump_matcher_template_definer(FILE *f,
-					   struct mlx5dr_match_template *mt)
+					   void *parent_obj,
+					   struct mlx5dr_definer *definer,
+					   enum mlx5dr_debug_res_type type)
 {
-	struct mlx5dr_definer *definer = mt->definer;
 	int i, ret;
 
+	if (!definer)
+		return 0;
+
 	ret = fprintf(f, "%d,0x%" PRIx64 ",0x%" PRIx64 ",%d,%d,",
-		      MLX5DR_DEBUG_RES_TYPE_MATCHER_TEMPLATE_DEFINER,
+		      type,
 		      (uint64_t)(uintptr_t)definer,
-		      (uint64_t)(uintptr_t)mt,
+		      (uint64_t)(uintptr_t)parent_obj,
 		      definer->obj->id,
 		      definer->type);
 	if (ret < 0) {
@@ -89,28 +93,39 @@ static int
 mlx5dr_debug_dump_matcher_match_template(FILE *f, struct mlx5dr_matcher *matcher)
 {
 	bool is_root = matcher->tbl->level == MLX5DR_ROOT_LEVEL;
+	enum mlx5dr_debug_res_type type;
 	int i, ret;
 
 	for (i = 0; i < matcher->num_of_mt; i++) {
 		struct mlx5dr_match_template *mt = &matcher->mt[i];
 
-		ret = fprintf(f, "%d,0x%" PRIx64 ",0x%" PRIx64 ",%d,%d\n",
+		ret = fprintf(f, "%d,0x%" PRIx64 ",0x%" PRIx64 ",%d,%d,%d\n",
 			      MLX5DR_DEBUG_RES_TYPE_MATCHER_MATCH_TEMPLATE,
 			      (uint64_t)(uintptr_t)mt,
 			      (uint64_t)(uintptr_t)matcher,
 			      is_root ? 0 : mt->fc_sz,
-			      mt->flags);
+			      mt->flags,
+			      is_root ? 0 : mt->fcr_sz);
 		if (ret < 0) {
 			rte_errno = EINVAL;
 			return rte_errno;
 		}
 
-		if (!is_root) {
-			ret = mlx5dr_debug_dump_matcher_template_definer(f, mt);
-			if (ret)
-				return ret;
-		}
+		type = MLX5DR_DEBUG_RES_TYPE_MATCHER_TEMPLATE_MATCH_DEFINER;
+		ret = mlx5dr_debug_dump_matcher_template_definer(f, mt, mt->definer, type);
+		if (ret)
+			return ret;
+
+		type = MLX5DR_DEBUG_RES_TYPE_MATCHER_TEMPLATE_RANGE_DEFINER;
+		ret = mlx5dr_debug_dump_matcher_template_definer(f, mt, mt->range_definer, type);
+		if (ret)
+			return ret;
 	}
+
+	type = MLX5DR_DEBUG_RES_TYPE_MATCHER_TEMPLATE_HASH_DEFINER;
+	ret = mlx5dr_debug_dump_matcher_template_definer(f, matcher, matcher->hash_definer, type);
+	if (ret)
+		return ret;
 
 	return 0;
 }
