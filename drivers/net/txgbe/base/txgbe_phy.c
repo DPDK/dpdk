@@ -1491,9 +1491,10 @@ txgbe_set_link_to_kx4(struct txgbe_hw *hw, bool autoneg)
 	wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
 
 	value = (0x1804 & ~0x3F3F);
+	value |= 40 << 8;
 	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
 
-	value = (0x50 & ~0x7F) | 40 | (1 << 6);
+	value = (0x50 & ~0x7F) | (1 << 6);
 	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
 
 	for (i = 0; i < 4; i++) {
@@ -1701,10 +1702,10 @@ txgbe_set_link_to_kx(struct txgbe_hw *hw,
 
 	wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
 
-	value = (0x1804 & ~0x3F3F) | (24 << 8) | 4;
+	value = (0x1804 & ~0x3F3F) | (24 << 8);
 	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
 
-	value = (0x50 & ~0x7F) | 16 | (1 << 6);
+	value = (0x50 & ~0x7F) | (1 << 6);
 	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
 
 	for (i = 0; i < 4; i++) {
