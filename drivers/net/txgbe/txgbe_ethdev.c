@@ -2972,9 +2972,6 @@ txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev,
 		rte_intr_type_get(intr_handle) != RTE_INTR_HANDLE_VFIO_MSIX)
 		wr32(hw, TXGBE_PX_INTA, 1);
 
-	/* clear all cause mask */
-	txgbe_disable_intr(hw);
-
 	/* read-on-clear nic registers here */
 	eicr = ((u32 *)hw->isb_mem)[TXGBE_ISB_MISC];
 	PMD_DRV_LOG(DEBUG, "eicr %x", eicr);
@@ -2999,6 +2996,8 @@ txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev,
 
 	if (eicr & TXGBE_ICRMISC_HEAT)
 		intr->flags |= TXGBE_FLAG_OVERHEAT;
+
+	((u32 *)hw->isb_mem)[TXGBE_ISB_MISC] = 0;
 
 	return 0;
 }
