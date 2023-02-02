@@ -516,13 +516,11 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 	return cmdtype;
 }
 
-static inline uint8_t
-tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
+static inline uint32_t
+tx_desc_ol_flags_to_ptype(uint64_t oflags)
 {
+	uint32_t ptype;
 	bool tun;
-
-	if (ptype)
-		return txgbe_encode_ptype(ptype);
 
 	/* Only support flags in TXGBE_TX_OFFLOAD_MASK */
 	tun = !!(oflags & RTE_MBUF_F_TX_TUNNEL_MASK);
@@ -530,6 +528,9 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 	/* L2 level */
 	ptype = RTE_PTYPE_L2_ETHER;
 	if (oflags & RTE_MBUF_F_TX_VLAN)
+		ptype |= (tun ? RTE_PTYPE_INNER_L2_ETHER_VLAN : RTE_PTYPE_L2_ETHER_VLAN);
+
+	if (oflags & RTE_MBUF_F_TX_QINQ) /* tunnel + QINQ is not supported */
 		ptype |= RTE_PTYPE_L2_ETHER_VLAN;
 
 	/* L3 level */
@@ -586,6 +587,16 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 			 RTE_PTYPE_TUNNEL_IP;
 		break;
 	}
+
+	return ptype;
+}
+
+static inline uint8_t
+tx_desc_ol_flags_to_ptid(uint64_t oflags)
+{
+	uint32_t ptype;
+
+	ptype = tx_desc_ol_flags_to_ptype(oflags);
 
 	return txgbe_encode_ptype(ptype);
 }
@@ -776,8 +787,7 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* If hardware offload required */
 		tx_ol_req = ol_flags & TXGBE_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
-			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req,
-					tx_pkt->packet_type);
+			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req);
 			if (tx_offload.ptid & TXGBE_PTID_PKT_TUN)
 				tx_offload.ptid |= txgbe_parse_tun_ptid(tx_pkt);
 			tx_offload.l2_len = tx_pkt->l2_len;
