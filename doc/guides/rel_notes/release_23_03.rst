@@ -89,6 +89,7 @@ New Features
 * **Updated Wangxun txgbe driver.**
 
   * Added chip overheat detection support.
+  * Added SFP hot-plug identification support.
 
 * **Added new algorithms to cryptodev.**
 

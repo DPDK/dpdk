@@ -1579,6 +1579,7 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_GPIOINTMASK               0x014834
 #define TXGBE_GPIOINTTYPE               0x014838
 #define TXGBE_GPIOINTSTAT               0x014840
+#define TXGBE_GPIORAWINTSTAT            0x014844
 #define TXGBE_GPIOEOI                   0x01484C
 
 
