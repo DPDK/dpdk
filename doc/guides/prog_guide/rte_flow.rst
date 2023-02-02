@@ -1536,6 +1536,13 @@ Matches Color Marker set by a Meter.
 
 - ``color``: Metering color marker.
 
+Item: ``QUOTA``
+^^^^^^^^^^^^^^^
+
+Matches flow quota state set by quota action.
+
+- ``state``: Flow quota state
+
 Actions
 ~~~~~~~
 
@@ -3225,6 +3232,43 @@ and rte_mtr_policy_get() API respectively.
    +------------------+----------------------+
    | ``policy``       | Meter policy object  |
    +------------------+----------------------+
+
+Action: ``QUOTA``
+^^^^^^^^^^^^^^^^^
+
+Update ``quota`` value and set packet quota state.
+
+If the ``quota`` value after update is non-negative,
+the packet quota state is set to ``RTE_FLOW_QUOTA_STATE_PASS``.
+Otherwise, the packet quota state is set to ``RTE_FLOW_QUOTA_STATE_BLOCK``.
+
+The ``quota`` value is reduced according to ``mode`` setting.
+
+.. _table_rte_flow_action_quota:
+
+.. table:: QUOTA
+
+   +------------------+------------------------+
+   | Field            | Value                  |
+   +==================+========================+
+   | ``mode``         | Quota operational mode |
+   +------------------+------------------------+
+   | ``quota``        | Quota value            |
+   +------------------+------------------------+
+
+.. _rte_flow_quota_mode:
+
+.. table:: Quota update modes
+
+   +---------------------------------+-------------------------------------+
+   | Value                           | Description                         |
+   +=================================+=====================================+
+   | ``RTE_FLOW_QUOTA_MODE_PACKET``  | Count packets                       |
+   +---------------------------------+-------------------------------------+
+   | ``RTE_FLOW_QUOTA_MODE_L2``      | Count packet bytes starting from L2 |
+   +------------------+----------------------------------------------------+
+   | ``RTE_FLOW_QUOTA_MODE_L3``      | Count packet bytes starting from L3 |
+   +------------------+----------------------------------------------------+
 
 Negative types
 ~~~~~~~~~~~~~~

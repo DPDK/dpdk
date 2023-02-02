@@ -148,6 +148,7 @@ enum index {
 	QUEUE_INDIRECT_ACTION_UPDATE,
 	QUEUE_INDIRECT_ACTION_DESTROY,
 	QUEUE_INDIRECT_ACTION_QUERY,
+	QUEUE_INDIRECT_ACTION_QUERY_UPDATE,
 
 	/* Queue indirect action create arguments */
 	QUEUE_INDIRECT_ACTION_CREATE_ID,
@@ -166,6 +167,9 @@ enum index {
 
 	/* Queue indirect action query arguments */
 	QUEUE_INDIRECT_ACTION_QUERY_POSTPONE,
+
+	/* Queue indirect action query_update arguments */
+	QUEUE_INDIRECT_ACTION_QU_MODE,
 
 	/* Push arguments. */
 	PUSH_QUEUE,
@@ -232,6 +236,7 @@ enum index {
 	CONFIG_AGING_OBJECTS_NUMBER,
 	CONFIG_METERS_NUMBER,
 	CONFIG_CONN_TRACK_NUMBER,
+	CONFIG_QUOTAS_NUMBER,
 	CONFIG_FLAGS,
 	CONFIG_HOST_PORT,
 
@@ -240,6 +245,7 @@ enum index {
 	INDIRECT_ACTION_UPDATE,
 	INDIRECT_ACTION_DESTROY,
 	INDIRECT_ACTION_QUERY,
+	INDIRECT_ACTION_QUERY_UPDATE,
 
 	/* Indirect action create arguments */
 	INDIRECT_ACTION_CREATE_ID,
@@ -250,6 +256,10 @@ enum index {
 
 	/* Indirect action destroy arguments */
 	INDIRECT_ACTION_DESTROY_ID,
+
+	/* Indirect action query-and-update arguments */
+	INDIRECT_ACTION_QU_MODE,
+	INDIRECT_ACTION_QU_MODE_NAME,
 
 	/* Validate/create pattern. */
 	ITEM_PATTERN,
@@ -481,6 +491,9 @@ enum index {
 	ITEM_METER,
 	ITEM_METER_COLOR,
 	ITEM_METER_COLOR_NAME,
+	ITEM_QUOTA,
+	ITEM_QUOTA_STATE,
+	ITEM_QUOTA_STATE_NAME,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -641,6 +654,14 @@ enum index {
 	ACTION_REPRESENTED_PORT,
 	ACTION_REPRESENTED_PORT_ETHDEV_PORT_ID,
 	ACTION_SEND_TO_KERNEL,
+	ACTION_QUOTA_CREATE,
+	ACTION_QUOTA_CREATE_LIMIT,
+	ACTION_QUOTA_CREATE_MODE,
+	ACTION_QUOTA_CREATE_MODE_NAME,
+	ACTION_QUOTA_QU,
+	ACTION_QUOTA_QU_LIMIT,
+	ACTION_QUOTA_QU_UPDATE_OP,
+	ACTION_QUOTA_QU_UPDATE_OP_NAME,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -1044,6 +1065,7 @@ struct buffer {
 		} ia_destroy; /**< Indirect action destroy arguments. */
 		struct {
 			uint32_t action_id;
+			enum rte_flow_query_update_mode qu_mode;
 		} ia; /* Indirect action query arguments */
 		struct {
 			uint32_t table_id;
@@ -1131,6 +1153,7 @@ static const enum index next_config_attr[] = {
 	CONFIG_AGING_OBJECTS_NUMBER,
 	CONFIG_METERS_NUMBER,
 	CONFIG_CONN_TRACK_NUMBER,
+	CONFIG_QUOTAS_NUMBER,
 	CONFIG_FLAGS,
 	CONFIG_HOST_PORT,
 	END,
@@ -1229,6 +1252,7 @@ static const enum index next_qia_subcmd[] = {
 	QUEUE_INDIRECT_ACTION_UPDATE,
 	QUEUE_INDIRECT_ACTION_DESTROY,
 	QUEUE_INDIRECT_ACTION_QUERY,
+	QUEUE_INDIRECT_ACTION_QUERY_UPDATE,
 	ZERO,
 };
 
@@ -1270,6 +1294,25 @@ static const enum index next_ia_create_attr[] = {
 	ZERO,
 };
 
+static const enum index next_ia[] = {
+	INDIRECT_ACTION_ID2PTR,
+	ACTION_NEXT,
+	ZERO
+};
+
+static const enum index next_qia_qu_attr[] = {
+	QUEUE_INDIRECT_ACTION_QU_MODE,
+	QUEUE_INDIRECT_ACTION_UPDATE_POSTPONE,
+	INDIRECT_ACTION_SPEC,
+	ZERO
+};
+
+static const enum index next_ia_qu_attr[] = {
+	INDIRECT_ACTION_QU_MODE,
+	INDIRECT_ACTION_SPEC,
+	ZERO
+};
+
 static const enum index next_dump_subcmd[] = {
 	DUMP_ALL,
 	DUMP_ONE,
@@ -1281,6 +1324,7 @@ static const enum index next_ia_subcmd[] = {
 	INDIRECT_ACTION_UPDATE,
 	INDIRECT_ACTION_DESTROY,
 	INDIRECT_ACTION_QUERY,
+	INDIRECT_ACTION_QUERY_UPDATE,
 	ZERO,
 };
 
@@ -1403,6 +1447,7 @@ static const enum index next_item[] = {
 	ITEM_L2TPV2,
 	ITEM_PPP,
 	ITEM_METER,
+	ITEM_QUOTA,
 	END_SET,
 	ZERO,
 };
@@ -1892,6 +1937,12 @@ static const enum index item_meter[] = {
 	ZERO,
 };
 
+static const enum index item_quota[] = {
+	ITEM_QUOTA_STATE,
+	ITEM_NEXT,
+	ZERO,
+};
+
 static const enum index next_action[] = {
 	ACTION_END,
 	ACTION_VOID,
@@ -1958,7 +2009,23 @@ static const enum index next_action[] = {
 	ACTION_PORT_REPRESENTOR,
 	ACTION_REPRESENTED_PORT,
 	ACTION_SEND_TO_KERNEL,
+	ACTION_QUOTA_CREATE,
+	ACTION_QUOTA_QU,
 	ZERO,
+};
+
+static const enum index action_quota_create[] = {
+	ACTION_QUOTA_CREATE_LIMIT,
+	ACTION_QUOTA_CREATE_MODE,
+	ACTION_NEXT,
+	ZERO
+};
+
+static const enum index action_quota_update[] = {
+	ACTION_QUOTA_QU_LIMIT,
+	ACTION_QUOTA_QU_UPDATE_OP,
+	ACTION_NEXT,
+	ZERO
 };
 
 static const enum index action_mark[] = {
@@ -2484,6 +2551,22 @@ static int parse_insertion_table_type(struct context *ctx, const struct token *t
 static int parse_hash_table_type(struct context *ctx, const struct token *token,
 				 const char *str, unsigned int len, void *buf,
 				 unsigned int size);
+static int
+parse_quota_state_name(struct context *ctx, const struct token *token,
+		       const char *str, unsigned int len, void *buf,
+		       unsigned int size);
+static int
+parse_quota_mode_name(struct context *ctx, const struct token *token,
+		      const char *str, unsigned int len, void *buf,
+		      unsigned int size);
+static int
+parse_quota_update_name(struct context *ctx, const struct token *token,
+			const char *str, unsigned int len, void *buf,
+			unsigned int size);
+static int
+parse_qu_mode_name(struct context *ctx, const struct token *token,
+		   const char *str, unsigned int len, void *buf,
+		   unsigned int size);
 static int comp_none(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
 static int comp_boolean(struct context *, const struct token *,
@@ -2520,6 +2603,18 @@ static int comp_insertion_table_type(struct context *, const struct token *,
 				     unsigned int, char *, unsigned int);
 static int comp_hash_table_type(struct context *, const struct token *,
 				unsigned int, char *, unsigned int);
+static int
+comp_quota_state_name(struct context *ctx, const struct token *token,
+		      unsigned int ent, char *buf, unsigned int size);
+static int
+comp_quota_mode_name(struct context *ctx, const struct token *token,
+		     unsigned int ent, char *buf, unsigned int size);
+static int
+comp_quota_update_name(struct context *ctx, const struct token *token,
+		       unsigned int ent, char *buf, unsigned int size);
+static int
+comp_qu_mode_name(struct context *ctx, const struct token *token,
+		  unsigned int ent, char *buf, unsigned int size);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -2783,6 +2878,14 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.configure.port_attr.nb_aging_objects)),
+	},
+	[CONFIG_QUOTAS_NUMBER] = {
+		.name = "quotas_number",
+		.help = "number of quotas",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+				     args.configure.port_attr.nb_quotas)),
 	},
 	[CONFIG_METERS_NUMBER] = {
 		.name = "meters_number",
@@ -3223,7 +3326,7 @@ static const struct token token_list[] = {
 		.help = "query indirect action",
 		.next = NEXT(next_qia_query_attr,
 			     NEXT_ENTRY(COMMON_INDIRECT_ACTION_ID)),
-		.args = ARGS(ARGS_ENTRY(struct buffer, args.vc.attr.group)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.ia.action_id)),
 		.call = parse_qia,
 	},
 	/* Indirect action destroy arguments. */
@@ -3242,6 +3345,21 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
 					    args.ia_destroy.action_id)),
 		.call = parse_qia_destroy,
+	},
+	[QUEUE_INDIRECT_ACTION_QUERY_UPDATE] = {
+		.name = "query_update",
+		.help = "indirect query [and|or] update action",
+		.next = NEXT(next_qia_qu_attr, NEXT_ENTRY(COMMON_INDIRECT_ACTION_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.ia.action_id)),
+		.call = parse_qia
+	},
+	[QUEUE_INDIRECT_ACTION_QU_MODE] = {
+		.name = "mode",
+		.help = "indirect query [and|or] update action",
+		.next = NEXT(next_qia_qu_attr,
+			     NEXT_ENTRY(INDIRECT_ACTION_QU_MODE_NAME)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.ia.qu_mode)),
+		.call = parse_qia
 	},
 	/* Indirect action update arguments. */
 	[QUEUE_INDIRECT_ACTION_UPDATE_POSTPONE] = {
@@ -3365,6 +3483,27 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_INDIRECT_ACTION_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, args.ia.action_id)),
 		.call = parse_ia,
+	},
+	[INDIRECT_ACTION_QUERY_UPDATE] = {
+		.name = "query_update",
+		.help = "query [and|or] update",
+		.next = NEXT(next_ia_qu_attr, NEXT_ENTRY(COMMON_INDIRECT_ACTION_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.ia.action_id)),
+		.call = parse_ia
+	},
+	[INDIRECT_ACTION_QU_MODE] = {
+		.name = "mode",
+		.help = "query_update mode",
+		.next = NEXT(next_ia_qu_attr,
+			     NEXT_ENTRY(INDIRECT_ACTION_QU_MODE_NAME)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.ia.qu_mode)),
+		.call = parse_ia,
+	},
+	[INDIRECT_ACTION_QU_MODE_NAME] = {
+		.name = "mode_name",
+		.help = "query-update mode name",
+		.call = parse_qu_mode_name,
+		.comp = comp_qu_mode_name,
 	},
 	[VALIDATE] = {
 		.name = "validate",
@@ -5353,6 +5492,26 @@ static const struct token token_list[] = {
 		.call = parse_meter_color,
 		.comp = comp_meter_color,
 	},
+	[ITEM_QUOTA] = {
+		.name = "quota",
+		.help = "match quota",
+		.priv = PRIV_ITEM(QUOTA, sizeof(struct rte_flow_item_quota)),
+		.next = NEXT(item_quota),
+		.call = parse_vc
+	},
+	[ITEM_QUOTA_STATE] = {
+		.name = "quota_state",
+		.help = "quota state",
+		.next = NEXT(item_quota, NEXT_ENTRY(ITEM_QUOTA_STATE_NAME),
+			     NEXT_ENTRY(ITEM_PARAM_SPEC, ITEM_PARAM_MASK)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_quota, state))
+	},
+	[ITEM_QUOTA_STATE_NAME] = {
+		.name = "state_name",
+		.help = "quota state name",
+		.call = parse_quota_state_name,
+		.comp = comp_quota_state_name
+	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -6594,7 +6753,7 @@ static const struct token token_list[] = {
 		.name = "indirect",
 		.help = "apply indirect action by id",
 		.priv = PRIV_ACTION(INDIRECT, 0),
-		.next = NEXT(NEXT_ENTRY(INDIRECT_ACTION_ID2PTR)),
+		.next = NEXT(next_ia),
 		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uint32_t))),
 		.call = parse_vc,
 	},
@@ -6661,6 +6820,64 @@ static const struct token token_list[] = {
 		.name = "r_actions",
 		.help = "submit a list of associated actions for red",
 		.next = NEXT(next_action),
+	},
+	[ACTION_QUOTA_CREATE] = {
+		.name = "quota_create",
+		.help = "create quota action",
+		.priv = PRIV_ACTION(QUOTA,
+				    sizeof(struct rte_flow_action_quota)),
+		.next = NEXT(action_quota_create),
+		.call = parse_vc
+	},
+	[ACTION_QUOTA_CREATE_LIMIT] = {
+		.name = "limit",
+		.help = "quota limit",
+		.next = NEXT(action_quota_create, NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_quota, quota)),
+		.call = parse_vc_conf
+	},
+	[ACTION_QUOTA_CREATE_MODE] = {
+		.name = "mode",
+		.help = "quota mode",
+		.next = NEXT(action_quota_create,
+			     NEXT_ENTRY(ACTION_QUOTA_CREATE_MODE_NAME)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_quota, mode)),
+		.call = parse_vc_conf
+	},
+	[ACTION_QUOTA_CREATE_MODE_NAME] = {
+		.name = "mode_name",
+		.help = "quota mode name",
+		.call = parse_quota_mode_name,
+		.comp = comp_quota_mode_name
+	},
+	[ACTION_QUOTA_QU] = {
+		.name = "quota_update",
+		.help = "update quota action",
+		.priv = PRIV_ACTION(QUOTA,
+				    sizeof(struct rte_flow_update_quota)),
+		.next = NEXT(action_quota_update),
+		.call = parse_vc
+	},
+	[ACTION_QUOTA_QU_LIMIT] = {
+		.name = "limit",
+		.help = "quota limit",
+		.next = NEXT(action_quota_update, NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_update_quota, quota)),
+		.call = parse_vc_conf
+	},
+	[ACTION_QUOTA_QU_UPDATE_OP] = {
+		.name = "update_op",
+		.help = "query update op SET|ADD",
+		.next = NEXT(action_quota_update,
+			     NEXT_ENTRY(ACTION_QUOTA_QU_UPDATE_OP_NAME)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_update_quota, op)),
+		.call = parse_vc_conf
+	},
+	[ACTION_QUOTA_QU_UPDATE_OP_NAME] = {
+		.name = "update_op_name",
+		.help = "quota update op name",
+		.call = parse_quota_update_name,
+		.comp = comp_quota_update_name
 	},
 
 	/* Top-level command. */
@@ -6907,6 +7124,7 @@ parse_ia(struct context *ctx, const struct token *token,
 	switch (ctx->curr) {
 	case INDIRECT_ACTION_CREATE:
 	case INDIRECT_ACTION_UPDATE:
+	case INDIRECT_ACTION_QUERY_UPDATE:
 		out->args.vc.actions =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
@@ -6926,6 +7144,8 @@ parse_ia(struct context *ctx, const struct token *token,
 		return len;
 	case INDIRECT_ACTION_TRANSFER:
 		out->args.vc.attr.transfer = 1;
+		return len;
+	case INDIRECT_ACTION_QU_MODE:
 		return len;
 	default:
 		return -1;
@@ -6999,6 +7219,7 @@ parse_qia(struct context *ctx, const struct token *token,
 		return len;
 	case QUEUE_INDIRECT_ACTION_CREATE:
 	case QUEUE_INDIRECT_ACTION_UPDATE:
+	case QUEUE_INDIRECT_ACTION_QUERY_UPDATE:
 		out->args.vc.actions =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
@@ -7020,6 +7241,8 @@ parse_qia(struct context *ctx, const struct token *token,
 		out->args.vc.attr.transfer = 1;
 		return len;
 	case QUEUE_INDIRECT_ACTION_CREATE_POSTPONE:
+		return len;
+	case QUEUE_INDIRECT_ACTION_QU_MODE:
 		return len;
 	default:
 		return -1;
@@ -10457,6 +10680,107 @@ parse_hash_table_type(struct context *ctx, const struct token *token,
 	return ret > 0 ? (int)len : ret;
 }
 
+static int
+parse_name_to_index(struct context *ctx, const struct token *token,
+		    const char *str, unsigned int len, void *buf,
+		    unsigned int size,
+		    const char *const names[], size_t names_size, uint32_t *dst)
+{
+	int ret;
+	uint32_t i;
+
+	RTE_SET_USED(token);
+	RTE_SET_USED(buf);
+	RTE_SET_USED(size);
+	if (!ctx->object)
+		return len;
+	for (i = 0; i < names_size; i++) {
+		if (!names[i])
+			continue;
+		ret = strcmp_partial(names[i], str,
+				     RTE_MIN(len, strlen(names[i])));
+		if (!ret) {
+			*dst = i;
+			return len;
+		}
+	}
+	return -1;
+}
+
+static const char *const quota_mode_names[] = {
+	NULL,
+	[RTE_FLOW_QUOTA_MODE_PACKET] = "packet",
+	[RTE_FLOW_QUOTA_MODE_L2] = "l2",
+	[RTE_FLOW_QUOTA_MODE_L3] = "l3"
+};
+
+static const char *const quota_state_names[] = {
+	[RTE_FLOW_QUOTA_STATE_PASS] = "pass",
+	[RTE_FLOW_QUOTA_STATE_BLOCK] = "block"
+};
+
+static const char *const quota_update_names[] = {
+	[RTE_FLOW_UPDATE_QUOTA_SET] = "set",
+	[RTE_FLOW_UPDATE_QUOTA_ADD] = "add"
+};
+
+static const char *const query_update_mode_names[] = {
+	[RTE_FLOW_QU_QUERY_FIRST] = "query_first",
+	[RTE_FLOW_QU_UPDATE_FIRST] = "update_first"
+};
+
+static int
+parse_quota_state_name(struct context *ctx, const struct token *token,
+		       const char *str, unsigned int len, void *buf,
+		       unsigned int size)
+{
+	struct rte_flow_item_quota *quota = ctx->object;
+
+	return parse_name_to_index(ctx, token, str, len, buf, size,
+				   quota_state_names,
+				   RTE_DIM(quota_state_names),
+				   (uint32_t *)&quota->state);
+}
+
+static int
+parse_quota_mode_name(struct context *ctx, const struct token *token,
+		      const char *str, unsigned int len, void *buf,
+		      unsigned int size)
+{
+	struct rte_flow_action_quota *quota = ctx->object;
+
+	return parse_name_to_index(ctx, token, str, len, buf, size,
+				   quota_mode_names,
+				   RTE_DIM(quota_mode_names),
+				   (uint32_t *)&quota->mode);
+}
+
+static int
+parse_quota_update_name(struct context *ctx, const struct token *token,
+			const char *str, unsigned int len, void *buf,
+			unsigned int size)
+{
+	struct rte_flow_update_quota *update = ctx->object;
+
+	return parse_name_to_index(ctx, token, str, len, buf, size,
+				   quota_update_names,
+				   RTE_DIM(quota_update_names),
+				   (uint32_t *)&update->op);
+}
+
+static int
+parse_qu_mode_name(struct context *ctx, const struct token *token,
+		   const char *str, unsigned int len, void *buf,
+		   unsigned int size)
+{
+	struct buffer *out = ctx->object;
+
+	return parse_name_to_index(ctx, token, str, len, buf, size,
+				   query_update_mode_names,
+				   RTE_DIM(query_update_mode_names),
+				   (uint32_t *)&out->args.ia.qu_mode);
+}
+
 /** No completion. */
 static int
 comp_none(struct context *ctx, const struct token *token,
@@ -10748,6 +11072,21 @@ comp_queue_id(struct context *ctx, const struct token *token,
 	return i;
 }
 
+static int
+comp_names_to_index(struct context *ctx, const struct token *token,
+		    unsigned int ent, char *buf, unsigned int size,
+		    const char *const names[], size_t names_size)
+{
+	RTE_SET_USED(ctx);
+	RTE_SET_USED(token);
+	if (!buf)
+		return names_size;
+	if (names[ent] && ent < names_size)
+		return rte_strscpy(buf, names[ent], size);
+	return -1;
+
+}
+
 /** Complete available Meter colors. */
 static int
 comp_meter_color(struct context *ctx, const struct token *token,
@@ -10788,6 +11127,42 @@ comp_hash_table_type(struct context *ctx, const struct token *token,
 	if (ent < RTE_DIM(table_hash_funcs) - 1)
 		return rte_strscpy(buf, table_hash_funcs[ent], size);
 	return -1;
+}
+
+static int
+comp_quota_state_name(struct context *ctx, const struct token *token,
+		      unsigned int ent, char *buf, unsigned int size)
+{
+	return comp_names_to_index(ctx, token, ent, buf, size,
+				   quota_state_names,
+				   RTE_DIM(quota_state_names));
+}
+
+static int
+comp_quota_mode_name(struct context *ctx, const struct token *token,
+		     unsigned int ent, char *buf, unsigned int size)
+{
+	return comp_names_to_index(ctx, token, ent, buf, size,
+				   quota_mode_names,
+				   RTE_DIM(quota_mode_names));
+}
+
+static int
+comp_quota_update_name(struct context *ctx, const struct token *token,
+		       unsigned int ent, char *buf, unsigned int size)
+{
+	return comp_names_to_index(ctx, token, ent, buf, size,
+				   quota_update_names,
+				   RTE_DIM(quota_update_names));
+}
+
+static int
+comp_qu_mode_name(struct context *ctx, const struct token *token,
+		  unsigned int ent, char *buf, unsigned int size)
+{
+	return comp_names_to_index(ctx, token, ent, buf, size,
+				   query_update_mode_names,
+				   RTE_DIM(query_update_mode_names));
 }
 
 /** Internal context. */
@@ -11148,7 +11523,14 @@ cmd_flow_parsed(const struct buffer *in)
 	case QUEUE_INDIRECT_ACTION_QUERY:
 		port_queue_action_handle_query(in->port,
 					       in->queue, in->postpone,
-					       in->args.vc.attr.group);
+					       in->args.ia.action_id);
+		break;
+	case QUEUE_INDIRECT_ACTION_QUERY_UPDATE:
+		port_queue_action_handle_query_update(in->port, in->queue,
+						      in->postpone,
+						      in->args.ia.action_id,
+						      in->args.ia.qu_mode,
+						      in->args.vc.actions);
 		break;
 	case INDIRECT_ACTION_CREATE:
 		port_action_handle_create(
@@ -11171,6 +11553,12 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case INDIRECT_ACTION_QUERY:
 		port_action_handle_query(in->port, in->args.ia.action_id);
+		break;
+	case INDIRECT_ACTION_QUERY_UPDATE:
+		port_action_handle_query_update(in->port,
+						in->args.ia.action_id,
+						in->args.ia.qu_mode,
+						in->args.vc.actions);
 		break;
 	case VALIDATE:
 		port_flow_validate(in->port, &in->args.vc.attr,

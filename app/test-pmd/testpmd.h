@@ -236,6 +236,7 @@ union port_action_query {
 	struct rte_flow_query_count count;
 	struct rte_flow_query_age age;
 	struct rte_flow_action_conntrack ct;
+	struct rte_flow_query_quota quota;
 };
 
 /* Descriptor for queue job. */
@@ -912,6 +913,10 @@ struct rte_flow_action_handle *port_action_handle_get_by_id(portid_t port_id,
 							    uint32_t id);
 int port_action_handle_update(portid_t port_id, uint32_t id,
 			      const struct rte_flow_action *action);
+void
+port_action_handle_query_update(portid_t port_id, uint32_t id,
+				enum rte_flow_query_update_mode qu_mode,
+				const struct rte_flow_action *action);
 int port_flow_get_info(portid_t port_id);
 int port_flow_configure(portid_t port_id,
 			const struct rte_flow_port_attr *port_attr,
@@ -956,6 +961,12 @@ int port_queue_action_handle_update(portid_t port_id, uint32_t queue_id,
 				    const struct rte_flow_action *action);
 int port_queue_action_handle_query(portid_t port_id, uint32_t queue_id,
 				   bool postpone, uint32_t id);
+void
+port_queue_action_handle_query_update(portid_t port_id,
+				      uint32_t queue_id, bool postpone,
+				      uint32_t id,
+				      enum rte_flow_query_update_mode qu_mode,
+				      const struct rte_flow_action *action);
 int port_queue_flow_push(portid_t port_id, queueid_t queue_id);
 int port_queue_flow_pull(portid_t port_id, queueid_t queue_id);
 void port_queue_flow_aged(portid_t port_id, uint32_t queue_id, uint8_t destroy);

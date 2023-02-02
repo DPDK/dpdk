@@ -106,6 +106,11 @@ New Features
   * ``rte_flow_action_handle_query_update()``
   * ``rte_flow_async_action_handle_query_update()``
 
+* **Added flow quota action and item.**
+
+  * ``RTE_FLOW_ACTION_TYPE_QUOTA``
+  * ``RTE_FLOW_ITEM_TYPE_QUOTA``
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

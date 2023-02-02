@@ -1901,9 +1901,13 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 }
 
 static void
-port_action_handle_query_dump(uint32_t type, union port_action_query *query)
+port_action_handle_query_dump(portid_t port_id,
+			      const struct port_indirect_action *pia,
+			      union port_action_query *query)
 {
-	switch (type) {
+	if (!pia || !query)
+		return;
+	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
 		printf("Indirect AGE action:\n"
 		       " aged: %u\n"
@@ -1967,12 +1971,38 @@ port_action_handle_query_dump(uint32_t type, union port_action_query *query)
 		       query->ct.reply_dir.max_win,
 		       query->ct.reply_dir.max_ack);
 		break;
+	case RTE_FLOW_ACTION_TYPE_QUOTA:
+		printf("Indirect QUOTA action %u\n"
+		       " unused quota: %" PRId64 "\n",
+		       pia->id, query->quota.quota);
+		break;
 	default:
-		fprintf(stderr,
-			"Indirect action (type: %d) doesn't support query\n",
-			type);
+		printf("port-%u: indirect action %u (type: %d) doesn't support query\n",
+		       pia->type, pia->id, port_id);
 		break;
 	}
+
+}
+
+void
+port_action_handle_query_update(portid_t port_id, uint32_t id,
+				enum rte_flow_query_update_mode qu_mode,
+				const struct rte_flow_action *action)
+{
+	int ret;
+	struct rte_flow_error error;
+	struct port_indirect_action *pia;
+	union port_action_query query;
+
+	pia = action_get_by_id(port_id, id);
+	if (!pia || !pia->handle)
+		return;
+	ret = rte_flow_action_handle_query_update(port_id, pia->handle, action,
+						  &query, qu_mode, &error);
+	if (ret)
+		port_flow_complain(&error);
+	else
+		port_action_handle_query_dump(port_id, pia, &query);
 
 }
 
@@ -1989,6 +2019,7 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
 	case RTE_FLOW_ACTION_TYPE_COUNT:
+	case RTE_FLOW_ACTION_TYPE_QUOTA:
 		break;
 	default:
 		fprintf(stderr,
@@ -2001,7 +2032,7 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 	memset(&query, 0, sizeof(query));
 	if (rte_flow_action_handle_query(port_id, pia->handle, &query, &error))
 		return port_flow_complain(&error);
-	port_action_handle_query_dump(pia->type, &query);
+	port_action_handle_query_dump(port_id, pia, &query);
 	return 0;
 }
 
@@ -2949,6 +2980,42 @@ port_queue_action_handle_update(portid_t port_id,
 	return 0;
 }
 
+void
+port_queue_action_handle_query_update(portid_t port_id,
+				      uint32_t queue_id, bool postpone,
+				      uint32_t id,
+				      enum rte_flow_query_update_mode qu_mode,
+				      const struct rte_flow_action *action)
+{
+	int ret;
+	struct rte_flow_error error;
+	struct port_indirect_action *pia = action_get_by_id(port_id, id);
+	const struct rte_flow_op_attr attr = { .postpone = postpone};
+	struct queue_job *job;
+
+	if (!pia || !pia->handle)
+		return;
+	job = calloc(1, sizeof(*job));
+	if (!job)
+		return;
+	job->type = QUEUE_JOB_TYPE_ACTION_QUERY;
+	job->pia = pia;
+
+	ret = rte_flow_async_action_handle_query_update(port_id, queue_id,
+							&attr, pia->handle,
+							action,
+							&job->query,
+							qu_mode, job,
+							&error);
+	if (ret) {
+		port_flow_complain(&error);
+		free(job);
+	} else {
+		printf("port-%u: indirect action #%u update-and-query queued\n",
+		       port_id, id);
+	}
+}
+
 /** Enqueue indirect action query operation. */
 int
 port_queue_action_handle_query(portid_t port_id,
@@ -3219,7 +3286,8 @@ port_queue_flow_pull(portid_t port_id, queueid_t queue_id)
 		else if (job->type == QUEUE_JOB_TYPE_ACTION_DESTROY)
 			free(job->pia);
 		else if (job->type == QUEUE_JOB_TYPE_ACTION_QUERY)
-			port_action_handle_query_dump(job->pia->type, &job->query);
+			port_action_handle_query_dump(port_id, job->pia,
+						      &job->query);
 		free(job);
 	}
 	printf("Queue #%u pulled %u operations (%u failed, %u succeeded)\n",
