@@ -26,8 +26,6 @@
 #define IAVF_TX_NO_VECTOR_FLAGS (				 \
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		 \
 		RTE_ETH_TX_OFFLOAD_TCP_TSO |		 \
-		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |    \
-		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |	\
 		RTE_ETH_TX_OFFLOAD_SECURITY)
 
 #define IAVF_TX_VECTOR_OFFLOAD (				 \
@@ -38,14 +36,29 @@
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |		 \
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 
+#define IAVF_TX_VECTOR_OFFLOAD_CTX (			\
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)
+
 #define IAVF_RX_VECTOR_OFFLOAD (				 \
 		RTE_ETH_RX_OFFLOAD_CHECKSUM |		 \
 		RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |		 \
 		RTE_ETH_RX_OFFLOAD_VLAN |		 \
 		RTE_ETH_RX_OFFLOAD_RSS_HASH)
 
+/**
+ * According to the vlan capabilities returned by the driver and FW, the vlan tci
+ * needs to be inserted to the L2TAG1 or L2TAG2 fields.
+ * If L2TAG1, it should be inserted to the L2TAG1 field in data desc.
+ * If L2TAG2, it should be inserted to the L2TAG2 field in ctx desc.
+ * Besides, tunneling parameters and other fields need be configured in ctx desc
+ * if the outer checksum offload is enabled.
+ */
+
 #define IAVF_VECTOR_PATH 0
 #define IAVF_VECTOR_OFFLOAD_PATH 1
+#define IAVF_VECTOR_CTX_PATH 2
+#define IAVF_VECTOR_CTX_OFFLOAD_PATH 3
 
 #define DEFAULT_TX_RS_THRESH     32
 #define DEFAULT_TX_FREE_THRESH   32
@@ -281,6 +294,7 @@ struct iavf_tx_queue {
 #define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2	BIT(1)
 	uint8_t vlan_flag;
 	uint8_t tc;
+	uint8_t use_ctx:1;            /* if use the ctx desc, a packet needs two descriptors */
 };
 
 /* Offload features */
@@ -713,6 +727,10 @@ uint16_t iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 uint16_t iavf_xmit_pkts_vec_avx512_offload(void *tx_queue,
 					   struct rte_mbuf **tx_pkts,
 					   uint16_t nb_pkts);
+uint16_t iavf_xmit_pkts_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts);
+uint16_t iavf_xmit_pkts_vec_avx512_ctx_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts);
 int iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq);
 
 uint8_t iavf_proto_xtr_type_to_rxdid(uint8_t xtr_type);
