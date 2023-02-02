@@ -3547,6 +3547,7 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_IPV6_ECN,	/**< IPv6 ECN. */
 	RTE_FLOW_FIELD_GTP_PSC_QFI,	/**< GTP QFI. */
 	RTE_FLOW_FIELD_METER_COLOR,	/**< Meter color marker. */
+	RTE_FLOW_FIELD_IPV6_PROTO,	/**< IPv6 next header. */
 };
 
 /**
