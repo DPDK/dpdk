@@ -450,6 +450,57 @@ static int mlx5dr_debug_dump_context_info(FILE *f, struct mlx5dr_context *ctx)
 	return 0;
 }
 
+static int
+mlx5dr_debug_dump_context_stc_resource(FILE *f,
+				       struct mlx5dr_context *ctx,
+				       uint32_t tbl_type,
+				       struct mlx5dr_pool_resource *resource)
+{
+	int ret;
+
+	ret = fprintf(f, "%d,0x%" PRIx64 ",%u,%u\n",
+		      MLX5DR_DEBUG_RES_TYPE_CONTEXT_STC,
+		      (uint64_t)(uintptr_t)ctx,
+		      tbl_type,
+		      resource->base_id);
+	if (ret < 0) {
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	return 0;
+}
+
+static int mlx5dr_debug_dump_context_stc(FILE *f, struct mlx5dr_context *ctx)
+{
+	struct mlx5dr_pool *stc_pool;
+	int ret;
+	int i;
+
+	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		stc_pool = ctx->stc_pool[i];
+
+		if (!stc_pool)
+			continue;
+
+		if (stc_pool->resource[0] != NULL) {
+			ret = mlx5dr_debug_dump_context_stc_resource(f, ctx, i,
+								     stc_pool->resource[0]);
+			if (ret)
+				return ret;
+		}
+
+		if (i == MLX5DR_TABLE_TYPE_FDB && stc_pool->mirror_resource[0] != NULL) {
+			ret = mlx5dr_debug_dump_context_stc_resource(f, ctx, i,
+								     stc_pool->mirror_resource[0]);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int mlx5dr_debug_dump_context(FILE *f, struct mlx5dr_context *ctx)
 {
 	struct mlx5dr_table *tbl;
@@ -460,6 +511,10 @@ static int mlx5dr_debug_dump_context(FILE *f, struct mlx5dr_context *ctx)
 		return ret;
 
 	ret = mlx5dr_debug_dump_context_send_engine(f, ctx);
+	if (ret)
+		return ret;
+
+	ret = mlx5dr_debug_dump_context_stc(f, ctx);
 	if (ret)
 		return ret;
 
