@@ -581,6 +581,14 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 		return rte_errno;
 	}
 
+	if (m->version) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_VERSION, inner)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipv4_version_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l3_type, inner);
+	}
+
 	if (m->fragment_offset) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_FRAG, inner)];
 		fc->item_idx = item_idx;
@@ -684,6 +692,14 @@ mlx5dr_definer_conv_item_ipv6(struct mlx5dr_definer_conv_data *cd,
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_frag_set;
 		DR_CALC_SET(fc, eth_l4, ip_fragmented, inner);
+	}
+
+	if (DR_GET(header_ipv6_vtc, &m->hdr.vtc_flow, version)) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_VERSION, inner)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipv6_version_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l3_type, inner);
 	}
 
 	if (DR_GET(header_ipv6_vtc, &m->hdr.vtc_flow, tos)) {
