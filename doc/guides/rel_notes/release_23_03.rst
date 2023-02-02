@@ -68,6 +68,11 @@ New Features
   * Applications can register a callback at startup via
     ``rte_lcore_register_usage_cb()`` to provide lcore usage information.
 
+* **Added flow matching of IPv6 routing extension.**
+
+  Added ``RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT``
+  to match IPv6 routing extension header fields.
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

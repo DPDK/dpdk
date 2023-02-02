@@ -1155,6 +1155,15 @@ Normally preceded by any of:
 - `Item: IPV6`_
 - `Item: IPV6_EXT`_
 
+Item: ``IPV6_ROUTING_EXT``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches IPv6 routing extension header.
+
+- ``next_hdr``: Next layer header type.
+- ``type``: IPv6 routing extension header type.
+- ``segments_left``: How many IPv6 destination addresses carries on.
+
 Item: ``ICMP6``
 ^^^^^^^^^^^^^^^
 

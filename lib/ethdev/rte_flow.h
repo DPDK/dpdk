@@ -624,6 +624,13 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_meter_color.
 	 */
 	RTE_FLOW_ITEM_TYPE_METER_COLOR,
+
+	/**
+	 * Matches the presence of IPv6 routing extension header.
+	 *
+	 * @see struct rte_flow_item_ipv6_routing_ext.
+	 */
+	RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT,
 };
 
 /**
@@ -886,6 +893,18 @@ static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
 	},
 };
 #endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT.
+ *
+ * Matches an IPv6 routing extension header.
+ */
+struct rte_flow_item_ipv6_routing_ext {
+	struct rte_ipv6_routing_ext hdr;
+};
 
 /**
  * RTE_FLOW_ITEM_TYPE_ICMP.
