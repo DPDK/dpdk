@@ -86,6 +86,10 @@ New Features
 
   * Added chip overheat detection support.
 
+* **Updated Wangxun txgbe driver.**
+
+  * Added chip overheat detection support.
+
 * **Added new algorithms to cryptodev.**
 
   Added SHAKE-128 and SHAKE-256 symmetric secure hash algorithm.

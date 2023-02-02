@@ -30,6 +30,7 @@
 #define TXGBE_FLAG_MACSEC           (uint32_t)(1 << 3)
 #define TXGBE_FLAG_NEED_LINK_CONFIG (uint32_t)(1 << 4)
 #define TXGBE_FLAG_NEED_AN_CONFIG   (uint32_t)(1 << 5)
+#define TXGBE_FLAG_OVERHEAT         (uint32_t)(1 << 6)
 
 /*
  * Defines that were not part of txgbe_type.h as they are not used by the

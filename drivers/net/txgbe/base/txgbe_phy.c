@@ -1363,6 +1363,28 @@ static void txgbe_i2c_stop(struct txgbe_hw *hw)
 	wr32(hw, TXGBE_I2CENA, 0);
 }
 
+/**
+ *  txgbe_check_overtemp - Checks if an overtemp occurred.
+ *  @hw: pointer to hardware structure
+ *
+ *  Checks if the temp alarm status was triggered due to overtemp
+ **/
+s32 txgbe_check_overtemp(struct txgbe_hw *hw)
+{
+	s32 status = 0;
+	u32 ts_state;
+
+	/* Check that the temp alarm status was triggered */
+	ts_state = rd32(hw, TXGBE_TS_ALARM_ST);
+
+	if (ts_state & TXGBE_TS_ALARM_ST_DALARM)
+		status = TXGBE_ERR_UNDERTEMP;
+	else if (ts_state & TXGBE_TS_ALARM_ST_ALARM)
+		status = TXGBE_ERR_OVERTEMP;
+
+	return status;
+}
+
 static void
 txgbe_set_sgmii_an37_ability(struct txgbe_hw *hw)
 {

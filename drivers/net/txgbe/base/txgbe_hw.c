@@ -2684,6 +2684,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	phy->identify_sfp = txgbe_identify_module;
 	phy->read_i2c_byte_unlocked = txgbe_read_i2c_byte_unlocked;
 	phy->write_i2c_byte_unlocked = txgbe_write_i2c_byte_unlocked;
+	phy->check_overtemp = txgbe_check_overtemp;
 	phy->reset = txgbe_reset_phy;
 
 	/* MAC */

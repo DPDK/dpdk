@@ -1542,6 +1542,7 @@ txgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
 	wr32(hw, TXGBE_GPIOINTEN, gpie);
 	intr->mask_misc |= TXGBE_ICRMISC_GPIO;
 	intr->mask_misc |= TXGBE_ICRMISC_ANDONE;
+	intr->mask_misc |= TXGBE_ICRMISC_HEAT;
 }
 
 int
@@ -2672,6 +2673,28 @@ txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+static void
+txgbe_dev_overheat(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	s32 temp_state;
+
+	temp_state = hw->phy.check_overtemp(hw);
+	if (!temp_state)
+		return;
+
+	if (temp_state == TXGBE_ERR_UNDERTEMP) {
+		PMD_DRV_LOG(CRIT, "Network adapter has been started again, "
+			"since the temperature has been back to normal state.");
+		wr32m(hw, TXGBE_PBRXCTL, TXGBE_PBRXCTL_ENA, TXGBE_PBRXCTL_ENA);
+		txgbe_dev_set_link_up(dev);
+	} else if (temp_state == TXGBE_ERR_OVERTEMP) {
+		PMD_DRV_LOG(CRIT, "Network adapter has been stopped because it has over heated.");
+		wr32m(hw, TXGBE_PBRXCTL, TXGBE_PBRXCTL_ENA, 0);
+		txgbe_dev_set_link_down(dev);
+	}
+}
+
 void
 txgbe_dev_setup_link_alarm_handler(void *param)
 {
@@ -2974,6 +2997,9 @@ txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev,
 	if (eicr & TXGBE_ICRMISC_GPIO)
 		intr->flags |= TXGBE_FLAG_PHY_INTERRUPT;
 
+	if (eicr & TXGBE_ICRMISC_HEAT)
+		intr->flags |= TXGBE_FLAG_OVERHEAT;
+
 	return 0;
 }
 
@@ -3084,6 +3110,11 @@ txgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 			/* only disable all misc interrupts */
 			intr->mask &= ~(1ULL << TXGBE_MISC_VEC_ID);
 		}
+	}
+
+	if (intr->flags & TXGBE_FLAG_OVERHEAT) {
+		txgbe_dev_overheat(dev);
+		intr->flags &= ~TXGBE_FLAG_OVERHEAT;
 	}
 
 	PMD_DRV_LOG(DEBUG, "enable intr immediately");
