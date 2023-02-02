@@ -433,6 +433,7 @@ struct ngbe_hw {
 	bool gpio_ctl;
 	u32 led_conf;
 	bool init_phy;
+	rte_spinlock_t phy_lock;
 	struct {
 		u64 rx_qp_packets;
 		u64 tx_qp_packets;
