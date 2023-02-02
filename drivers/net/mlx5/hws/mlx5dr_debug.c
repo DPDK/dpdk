@@ -223,13 +223,11 @@ static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 		ste_1 = NULL;
 	}
 
-	ret = fprintf(f, ",%d,%d,%d,%d,%d",
+	ret = fprintf(f, ",%d,%d,%d,%d",
 		      matcher->match_ste.rtc_0 ? matcher->match_ste.rtc_0->id : 0,
 		      ste_0 ? (int)ste_0->id : -1,
 		      matcher->match_ste.rtc_1 ? matcher->match_ste.rtc_1->id : 0,
-		      ste_1 ? (int)ste_1->id : -1,
-		      is_shared && !is_root ?
-		      matcher->match_ste.aliased_rtc_0->id : 0);
+		      ste_1 ? (int)ste_1->id : -1);
 	if (ret < 0)
 		goto out_err;
 
@@ -244,11 +242,13 @@ static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 		ste_1 = NULL;
 	}
 
-	ret = fprintf(f, ",%d,%d,%d,%d\n",
+	ret = fprintf(f, ",%d,%d,%d,%d,%d\n",
 		      matcher->action_ste.rtc_0 ? matcher->action_ste.rtc_0->id : 0,
 		      ste_0 ? (int)ste_0->id : -1,
 		      matcher->action_ste.rtc_1 ? matcher->action_ste.rtc_1->id : 0,
-		      ste_1 ? (int)ste_1->id : -1);
+		      ste_1 ? (int)ste_1->id : -1,
+		      is_shared && !is_root ?
+		      matcher->match_ste.aliased_rtc_0->id : 0);
 	if (ret < 0)
 		goto out_err;
 
