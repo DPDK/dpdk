@@ -10,7 +10,7 @@ enum mlx5dr_pool_type {
 	MLX5DR_POOL_TYPE_STC,
 };
 
-#define MLX5DR_POOL_STC_LOG_SZ 14
+#define MLX5DR_POOL_STC_LOG_SZ 15
 
 #define MLX5DR_POOL_RESOURCE_ARR_SZ 100
 
