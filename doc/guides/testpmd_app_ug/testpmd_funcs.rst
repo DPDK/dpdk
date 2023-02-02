@@ -3182,7 +3182,8 @@ It is bound to ``rte_flow_template_table_create()``::
 
    flow template_table {port_id} create
        [table_id {id}] [group {group_id}]
-       [priority {level}] [ingress] [egress] [transfer]
+       [priority {level}] [ingress] [egress]
+       [transfer [vport_orig] [wire_orig]]
        rules_number {number}
        pattern_template {pattern_template_id}
        actions_template {actions_template_id}
