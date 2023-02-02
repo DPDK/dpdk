@@ -270,7 +270,8 @@ __retry:
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
-			if (!(hbt_state & BIT_ULL(34))) {
+			if (!(hbt_state & BIT_ULL(34)) ||
+			    !(hbt_state & GENMASK(31, 0))) {
 				cnxk_tim_bkt_dec_lock(bkt);
 				goto __retry;
 			}
@@ -352,7 +353,8 @@ __retry:
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
-			if (!(hbt_state & BIT_ULL(34))) {
+			if (!(hbt_state & BIT_ULL(34)) ||
+			    !(hbt_state & GENMASK(31, 0))) {
 				cnxk_tim_bkt_dec_lock(bkt);
 				goto __retry;
 			}
@@ -449,10 +451,10 @@ cnxk_tim_add_entry_brst(struct cnxk_tim_ring *const tim_ring,
 	struct cnxk_tim_ent *chunk = NULL;
 	struct cnxk_tim_bkt *mirr_bkt;
 	struct cnxk_tim_bkt *bkt;
-	uint16_t chunk_remainder;
+	int16_t chunk_remainder;
 	uint16_t index = 0;
 	uint64_t lock_sema;
-	int16_t rem, crem;
+	int16_t rem;
 	uint8_t lock_cnt;
 
 __retry:
@@ -460,31 +462,6 @@ __retry:
 
 	/* Only one thread beyond this. */
 	lock_sema = cnxk_tim_bkt_inc_lock(bkt);
-	lock_cnt = (uint8_t)((lock_sema >> TIM_BUCKET_W1_S_LOCK) &
-			     TIM_BUCKET_W1_M_LOCK);
-
-	if (lock_cnt) {
-		cnxk_tim_bkt_dec_lock(bkt);
-#ifdef RTE_ARCH_ARM64
-		asm volatile(PLT_CPU_FEATURE_PREAMBLE
-			     "		ldxrb %w[lock_cnt], [%[lock]]	\n"
-			     "		tst %w[lock_cnt], 255		\n"
-			     "		beq dne%=			\n"
-			     "		sevl				\n"
-			     "rty%=:	wfe				\n"
-			     "		ldxrb %w[lock_cnt], [%[lock]]	\n"
-			     "		tst %w[lock_cnt], 255		\n"
-			     "		bne rty%=			\n"
-			     "dne%=:					\n"
-			     : [lock_cnt] "=&r"(lock_cnt)
-			     : [lock] "r"(&bkt->lock)
-			     : "memory");
-#else
-		while (__atomic_load_n(&bkt->lock, __ATOMIC_RELAXED))
-			;
-#endif
-		goto __retry;
-	}
 
 	/* Bucket related checks. */
 	if (unlikely(cnxk_tim_bkt_get_hbt(lock_sema))) {
@@ -509,21 +486,46 @@ __retry:
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
-			if (!(hbt_state & BIT_ULL(34))) {
+			if (!(hbt_state & BIT_ULL(34)) ||
+			    !(hbt_state & GENMASK(31, 0))) {
 				cnxk_tim_bkt_dec_lock(bkt);
 				goto __retry;
 			}
 		}
 	}
 
+	lock_cnt = (uint8_t)((lock_sema >> TIM_BUCKET_W1_S_LOCK) &
+			     TIM_BUCKET_W1_M_LOCK);
+	if (lock_cnt) {
+		cnxk_tim_bkt_dec_lock(bkt);
+#ifdef RTE_ARCH_ARM64
+		asm volatile(PLT_CPU_FEATURE_PREAMBLE
+			     "		ldxrb %w[lock_cnt], [%[lock]]	\n"
+			     "		tst %w[lock_cnt], 255		\n"
+			     "		beq dne%=			\n"
+			     "		sevl				\n"
+			     "rty%=:	wfe				\n"
+			     "		ldxrb %w[lock_cnt], [%[lock]]	\n"
+			     "		tst %w[lock_cnt], 255		\n"
+			     "		bne rty%=			\n"
+			     "dne%=:					\n"
+			     : [lock_cnt] "=&r"(lock_cnt)
+			     : [lock] "r"(&bkt->lock)
+			     : "memory");
+#else
+		while (__atomic_load_n(&bkt->lock, __ATOMIC_RELAXED))
+			;
+#endif
+		goto __retry;
+	}
+
 	chunk_remainder = cnxk_tim_bkt_fetch_rem(lock_sema);
 	rem = chunk_remainder - nb_timers;
 	if (rem < 0) {
-		crem = tim_ring->nb_chunk_slots - chunk_remainder;
-		if (chunk_remainder && crem) {
+		if (chunk_remainder > 0) {
 			chunk = ((struct cnxk_tim_ent *)
 					 mirr_bkt->current_chunk) +
-				crem;
+				tim_ring->nb_chunk_slots - chunk_remainder;
 
 			index = cnxk_tim_cpy_wrk(index, chunk_remainder, chunk,
 						 tim, ents, bkt);
@@ -537,18 +539,19 @@ __retry:
 			chunk = cnxk_tim_insert_chunk(bkt, mirr_bkt, tim_ring);
 
 		if (unlikely(chunk == NULL)) {
-			cnxk_tim_bkt_dec_lock(bkt);
+			cnxk_tim_bkt_dec_lock_relaxed(bkt);
 			rte_errno = ENOMEM;
 			tim[index]->state = RTE_EVENT_TIMER_ERROR;
-			return crem;
+			return index;
 		}
 		*(uint64_t *)(chunk + tim_ring->nb_chunk_slots) = 0;
 		mirr_bkt->current_chunk = (uintptr_t)chunk;
-		cnxk_tim_cpy_wrk(index, nb_timers, chunk, tim, ents, bkt);
+		index = cnxk_tim_cpy_wrk(index, nb_timers, chunk, tim, ents,
+					 bkt) -
+			index;
 
-		rem = nb_timers - chunk_remainder;
-		cnxk_tim_bkt_set_rem(bkt, tim_ring->nb_chunk_slots - rem);
-		cnxk_tim_bkt_add_nent(bkt, rem);
+		cnxk_tim_bkt_set_rem(bkt, tim_ring->nb_chunk_slots - index);
+		cnxk_tim_bkt_add_nent(bkt, index);
 	} else {
 		chunk = (struct cnxk_tim_ent *)mirr_bkt->current_chunk;
 		chunk += (tim_ring->nb_chunk_slots - chunk_remainder);
