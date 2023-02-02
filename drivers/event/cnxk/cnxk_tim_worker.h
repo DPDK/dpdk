@@ -106,9 +106,15 @@ cnxk_tim_bkt_inc_nent(struct cnxk_tim_bkt *bktp)
 }
 
 static inline void
-cnxk_tim_bkt_add_nent(struct cnxk_tim_bkt *bktp, uint32_t v)
+cnxk_tim_bkt_add_nent_relaxed(struct cnxk_tim_bkt *bktp, uint32_t v)
 {
 	__atomic_add_fetch(&bktp->nb_entry, v, __ATOMIC_RELAXED);
+}
+
+static inline void
+cnxk_tim_bkt_add_nent(struct cnxk_tim_bkt *bktp, uint32_t v)
+{
+	__atomic_add_fetch(&bktp->nb_entry, v, __ATOMIC_RELEASE);
 }
 
 static inline uint64_t
@@ -532,7 +538,7 @@ __retry:
 			index = cnxk_tim_cpy_wrk(index, chunk_remainder, chunk,
 						 tim, ents, bkt);
 			cnxk_tim_bkt_sub_rem(bkt, chunk_remainder);
-			cnxk_tim_bkt_add_nent(bkt, chunk_remainder);
+			cnxk_tim_bkt_add_nent_relaxed(bkt, chunk_remainder);
 		}
 
 		if (flags & CNXK_TIM_ENA_FB)
@@ -563,7 +569,7 @@ __retry:
 		cnxk_tim_bkt_add_nent(bkt, nb_timers);
 	}
 
-	cnxk_tim_bkt_dec_lock(bkt);
+	cnxk_tim_bkt_dec_lock_relaxed(bkt);
 
 	return nb_timers;
 }
