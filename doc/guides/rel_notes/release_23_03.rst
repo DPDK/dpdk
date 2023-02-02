@@ -82,6 +82,10 @@ New Features
   * Added support for meter options.
   * Added support for rte_flow meter action.
 
+* **Updated Wangxun ngbe driver.**
+
+  * Added chip overheat detection support.
+
 * **Added new algorithms to cryptodev.**
 
   Added SHAKE-128 and SHAKE-256 symmetric secure hash algorithm.

@@ -947,7 +947,7 @@ ngbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
 	else
 		wr32(hw, NGBE_GPIOINTPOL, NGBE_GPIOINTPOL_ACT(3));
 
-	intr->mask_misc |= NGBE_ICRMISC_GPIO;
+	intr->mask_misc |= NGBE_ICRMISC_GPIO | NGBE_ICRMISC_HEAT;
 }
 
 /*
@@ -1869,6 +1869,28 @@ ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+static void
+ngbe_dev_overheat(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	s32 temp_state;
+
+	temp_state = hw->mac.check_overtemp(hw);
+	if (!temp_state)
+		return;
+
+	if (temp_state == NGBE_ERR_UNDERTEMP) {
+		PMD_DRV_LOG(CRIT, "Network adapter has been started again, "
+			"since the temperature has been back to normal state.");
+		wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, NGBE_PBRXCTL_ENA);
+		ngbe_dev_set_link_up(dev);
+	} else if (temp_state == NGBE_ERR_OVERTEMP) {
+		PMD_DRV_LOG(CRIT, "Network adapter has been stopped because it has over heated.");
+		wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, 0);
+		ngbe_dev_set_link_down(dev);
+	}
+}
+
 void
 ngbe_dev_setup_link_alarm_handler(void *param)
 {
@@ -2167,6 +2189,9 @@ ngbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	if (eicr & NGBE_ICRMISC_GPIO)
 		intr->flags |= NGBE_FLAG_NEED_LINK_UPDATE;
 
+	if (eicr & NGBE_ICRMISC_HEAT)
+		intr->flags |= NGBE_FLAG_OVERHEAT;
+
 	((u32 *)hw->isb_mem)[NGBE_ISB_MISC] = 0;
 
 	return 0;
@@ -2241,6 +2266,11 @@ ngbe_dev_interrupt_action(struct rte_eth_dev *dev)
 		if (dev->data->dev_link.link_speed != link.link_speed)
 			rte_eth_dev_callback_process(dev,
 				RTE_ETH_EVENT_INTR_LSC, NULL);
+	}
+
+	if (intr->flags & NGBE_FLAG_OVERHEAT) {
+		ngbe_dev_overheat(dev);
+		intr->flags &= ~NGBE_FLAG_OVERHEAT;
 	}
 
 	PMD_DRV_LOG(DEBUG, "enable intr immediately");

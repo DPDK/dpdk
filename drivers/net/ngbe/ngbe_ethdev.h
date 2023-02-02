@@ -17,6 +17,7 @@
 #define NGBE_FLAG_PHY_INTERRUPT     ((uint32_t)(1 << 2))
 #define NGBE_FLAG_MACSEC            ((uint32_t)(1 << 3))
 #define NGBE_FLAG_NEED_LINK_CONFIG  ((uint32_t)(1 << 4))
+#define NGBE_FLAG_OVERHEAT          ((uint32_t)(1 << 5))
 
 #define NGBE_VFTA_SIZE 128
 #define NGBE_HKEY_MAX_INDEX 10
