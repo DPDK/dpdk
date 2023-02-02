@@ -10926,6 +10926,13 @@ flow_item_default_mask(const struct rte_flow_item *item)
 {
 	const void *mask = NULL;
 	static rte_be32_t gre_key_default_mask = RTE_BE32(UINT32_MAX);
+	static struct rte_flow_item_ipv6_routing_ext ipv6_routing_ext_default_mask = {
+		.hdr = {
+			.next_hdr = 0xff,
+			.type = 0xff,
+			.segments_left = 0xff,
+		},
+	};
 
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_ANY:
@@ -11027,6 +11034,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		break;
 	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 		mask = &rte_flow_item_meter_color_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
+		mask = &ipv6_routing_ext_default_mask;
 		break;
 	default:
 		break;
@@ -11182,6 +11192,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 	for (i = n - 1 ; i >= 0; --i) {
 		const struct rte_flow_item_gtp *gtp;
 		const struct rte_flow_item_geneve_opt *opt;
+		struct rte_flow_item_ipv6_routing_ext *ext;
 
 		item = in->args.vc.pattern + i;
 		if (item->spec == NULL)
@@ -11201,6 +11212,18 @@ cmd_set_raw_parsed(const struct buffer *in)
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			size = sizeof(struct rte_ipv6_hdr);
 			proto = RTE_ETHER_TYPE_IPV6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
+			ext = (struct rte_flow_item_ipv6_routing_ext *)(uintptr_t)item->spec;
+			if (!ext->hdr.hdr_len) {
+				size = sizeof(struct rte_ipv6_routing_ext) +
+					(ext->hdr.segments_left << 4);
+				ext->hdr.hdr_len = ext->hdr.segments_left << 1;
+			} else {
+				size = sizeof(struct rte_ipv6_routing_ext) +
+					(ext->hdr.hdr_len << 3);
+			}
+			proto = IPPROTO_ROUTING;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			size = sizeof(struct rte_udp_hdr);
