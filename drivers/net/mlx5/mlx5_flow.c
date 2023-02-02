@@ -9918,10 +9918,13 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		if (mlx5_flow_dev_dump_sh_all(dev, file, error))
 			return -EINVAL;
+
+		if (sh->config.dv_flow_en == 2)
+			return mlx5dr_debug_dump(priv->dr_ctx, file);
 #endif
 		return mlx5_devx_cmd_flow_dump(sh->fdb_domain,
-					sh->rx_domain,
-					sh->tx_domain, file);
+					       sh->rx_domain,
+					       sh->tx_domain, file);
 	}
 	/* dump one */
 	flow = mlx5_ipool_get(priv->flows[MLX5_FLOW_TYPE_GEN],
@@ -9939,8 +9942,11 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 		if (!dh)
 			return -ENOENT;
 		if (dh->drv_flow) {
+			if (sh->config.dv_flow_en == 2)
+				return -ENOTSUP;
+
 			ret = mlx5_devx_cmd_flow_single_dump(dh->drv_flow,
-					file);
+							     file);
 			if (ret)
 				return -ENOENT;
 		}
