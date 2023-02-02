@@ -995,6 +995,8 @@ txa_service_id_get(uint8_t id, uint32_t *service_id)
 		return -EINVAL;
 
 	*service_id = txa->service_id;
+
+	rte_eventdev_trace_eth_tx_adapter_service_id_get(id, *service_id);
 	return 0;
 }
 
@@ -1123,6 +1125,8 @@ rte_event_eth_tx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 int
 rte_event_eth_tx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 {
+	rte_eventdev_trace_eth_tx_adapter_event_port_get(id);
+
 	TXA_CHECK_OR_ERR_RET(id);
 
 	return txa_service_event_port_get(id, event_port_id);
@@ -1264,6 +1268,9 @@ rte_event_eth_tx_adapter_stats_get(uint8_t id,
 			ret = txa_service_stats_get(id, stats);
 	}
 
+	rte_eventdev_trace_eth_tx_adapter_stats_get(id, stats->tx_retry, stats->tx_packets,
+						    stats->tx_dropped, ret);
+
 	return ret;
 }
 
@@ -1278,6 +1285,9 @@ rte_event_eth_tx_adapter_stats_reset(uint8_t id)
 		txa_dev_stats_reset(id)(id, txa_evdev(id)) : 0;
 	if (ret == 0)
 		ret = txa_service_stats_reset(id);
+
+	rte_eventdev_trace_eth_tx_adapter_stats_reset(id, ret);
+
 	return ret;
 }
 
@@ -1341,8 +1351,11 @@ rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
 								 tx_queue_id,
 								 txa_inst_id)
 							: -EINVAL;
-			if (ret == 0)
+			if (ret == 0) {
+				rte_eventdev_trace_eth_tx_adapter_instance_get(eth_dev_id,
+								tx_queue_id, *txa_inst_id);
 				return ret;
+			}
 		} else {
 			struct rte_eth_dev *eth_dev;
 
@@ -1351,6 +1364,8 @@ rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
 			if (txa_service_is_queue_added(txa, eth_dev,
 						       tx_queue_id)) {
 				*txa_inst_id = txa->id;
+				rte_eventdev_trace_eth_tx_adapter_instance_get(eth_dev_id,
+								tx_queue_id, *txa_inst_id);
 				return 0;
 			}
 		}
@@ -1426,11 +1441,15 @@ txa_queue_start_state_set(uint16_t eth_dev_id, uint16_t tx_queue_id,
 int
 rte_event_eth_tx_adapter_queue_start(uint16_t eth_dev_id, uint16_t tx_queue_id)
 {
+	rte_eventdev_trace_eth_tx_adapter_queue_start(eth_dev_id, tx_queue_id);
+
 	return txa_queue_start_state_set(eth_dev_id, tx_queue_id, true);
 }
 
 int
 rte_event_eth_tx_adapter_queue_stop(uint16_t eth_dev_id, uint16_t tx_queue_id)
 {
+	rte_eventdev_trace_eth_tx_adapter_queue_stop(eth_dev_id, tx_queue_id);
+
 	return txa_queue_start_state_set(eth_dev_id, tx_queue_id, false);
 }

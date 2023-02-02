@@ -2541,6 +2541,9 @@ rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 	if (ret)
 		rte_free(pc);
 
+	rte_eventdev_trace_eth_rx_adapter_create_with_params(id, dev_id,
+		port_config, rxa_params, ret);
+
 	return ret;
 }
 
@@ -2929,6 +2932,9 @@ rte_event_eth_rx_adapter_vector_limits_get(
 		ret = rxa_sw_vector_limits(limits);
 	}
 
+	rte_eventdev_trace_eth_rx_adapter_vector_limits_get(dev_id, eth_port_id,
+		limits->min_sz, limits->max_sz, limits->log2_sz,
+		limits->min_timeout_ns, limits->max_timeout_ns, ret);
 	return ret;
 }
 
@@ -2969,6 +2975,8 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 	struct rte_event_eth_rx_adapter_stats *q_stats;
 	uint32_t i, j;
 	int ret;
+
+	rte_eventdev_trace_eth_rx_adapter_stats_get(id, stats);
 
 	if (rxa_memzone_lookup())
 		return -ENOMEM;
@@ -3041,6 +3049,9 @@ rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 	struct rte_event_eth_rx_adapter_stats *q_stats;
 	struct rte_eventdev *dev;
 
+	rte_eventdev_trace_eth_rx_adapter_queue_stats_get(id, eth_dev_id,
+							  rx_queue_id, stats);
+
 	if (rxa_memzone_lookup())
 		return -ENOMEM;
 
@@ -3098,6 +3109,8 @@ rte_event_eth_rx_adapter_stats_reset(uint8_t id)
 	struct eth_rx_queue_info *queue_info;
 	uint32_t i, j;
 
+	rte_eventdev_trace_eth_rx_adapter_stats_reset(id);
+
 	if (rxa_memzone_lookup())
 		return -ENOMEM;
 
@@ -3144,6 +3157,9 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 	struct eth_device_info *dev_info;
 	struct eth_rx_queue_info *queue_info;
 	struct rte_eventdev *dev;
+
+	rte_eventdev_trace_eth_rx_adapter_queue_stats_reset(id, eth_dev_id,
+							    rx_queue_id);
 
 	if (rxa_memzone_lookup())
 		return -ENOMEM;
@@ -3203,6 +3219,8 @@ rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 	if (rx_adapter->service_inited)
 		*service_id = rx_adapter->service_id;
 
+	rte_eventdev_trace_eth_rx_adapter_service_id_get(id, *service_id);
+
 	return rx_adapter->service_inited ? 0 : -ESRCH;
 }
 
@@ -3223,6 +3241,8 @@ rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 	if (rx_adapter->service_inited)
 		*event_port_id = rx_adapter->event_port_id;
 
+	rte_eventdev_trace_eth_rx_adapter_event_port_get(id, *event_port_id);
+
 	return rx_adapter->service_inited ? 0 : -ESRCH;
 }
 
@@ -3236,6 +3256,9 @@ rte_event_eth_rx_adapter_cb_register(uint8_t id,
 	struct eth_device_info *dev_info;
 	uint32_t cap;
 	int ret;
+
+	rte_eventdev_trace_eth_rx_adapter_cb_register(id, eth_dev_id, cb_fn,
+						      cb_arg);
 
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
@@ -3283,6 +3306,9 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 	struct eth_device_info *dev_info;
 	struct eth_rx_queue_info *queue_info;
 	int ret;
+
+	rte_eventdev_trace_eth_rx_adapter_queue_conf_get(id, eth_dev_id,
+							 rx_queue_id, queue_conf);
 
 	if (rxa_memzone_lookup())
 		return -ENOMEM;
@@ -3425,8 +3451,11 @@ rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 		}
 
 		/* return if entry found */
-		if (ret == 0)
+		if (ret == 0) {
+			rte_eventdev_trace_eth_rx_adapter_instance_get(eth_dev_id, rx_queue_id,
+								       *rxa_inst_id);
 			return ret;
+		}
 	}
 
 	return -EINVAL;
