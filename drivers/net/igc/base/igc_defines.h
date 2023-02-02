@@ -188,6 +188,15 @@
 #define IGC_RCTL_BSEX		0x02000000 /* Buffer size extension */
 #define IGC_RCTL_SECRC	0x04000000 /* Strip Ethernet CRC */
 
+#define IGC_DTXMXPKTSZ_TSN     0x19 /* 1600 bytes of max TX DMA packet size */
+#define IGC_TXPBSIZE_TSN       0x04145145 /* 5k bytes buffer for each queue */
+
+/* Transmit Scheduling */
+#define IGC_TQAVCTRL_TRANSMIT_MODE_TSN 0x00000001
+#define IGC_TQAVCTRL_ENHANCED_QAV      0x00000008
+
+#define IGC_TXQCTL_QUEUE_MODE_LAUNCHT  0x00000001
+
 /* Use byte values for the following shift parameters
  * Usage:
  *     psrctl |= (((ROUNDUP(value0, 128) >> IGC_PSRCTL_BSIZE0_SHIFT) &

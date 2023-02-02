@@ -602,6 +602,14 @@
 #define IGC_RXMTRL	0x0B634 /* Time sync Rx EtherType and Msg Type - RW */
 #define IGC_RXUDP	0x0B638 /* Time Sync Rx UDP Port - RW */
 
+#define IGC_QBVCYCLET	0x331C
+#define IGC_QBVCYCLET_S 0x3320
+#define IGC_STQT(_n)	(0x3324 + 0x4 * (_n))
+#define IGC_ENDQT(_n)	(0x3334 + 0x4 * (_n))
+#define IGC_TXQCTL(_n)	(0x3344 + 0x4 * (_n))
+#define IGC_BASET_L	0x3314
+#define IGC_BASET_H	0x3318
+
 /* Filtering Registers */
 #define IGC_SAQF(_n)	(0x05980 + (4 * (_n))) /* Source Address Queue Fltr */
 #define IGC_DAQF(_n)	(0x059A0 + (4 * (_n))) /* Dest Address Queue Fltr */
