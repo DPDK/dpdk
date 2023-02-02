@@ -87,7 +87,8 @@ extern "C" {
 	RTE_ETH_TX_OFFLOAD_SCTP_CKSUM  | \
 	RTE_ETH_TX_OFFLOAD_TCP_TSO     | \
 	RTE_ETH_TX_OFFLOAD_UDP_TSO	   | \
-	RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
+	RTE_ETH_TX_OFFLOAD_MULTI_SEGS  | \
+	RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
 
 #define IGC_RSS_OFFLOAD_ALL	(    \
 	RTE_ETH_RSS_IPV4               | \
@@ -240,6 +241,9 @@ struct igc_adapter {
 	struct igc_syn_filter syn_filter;
 	struct igc_rss_filter rss_filter;
 	struct igc_flow_list flow_list;
+
+	int64_t base_time;
+	uint32_t cycle_time;
 };
 
 #define IGC_DEV_PRIVATE(_dev)	((_dev)->data->dev_private)

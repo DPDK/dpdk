@@ -1411,6 +1411,19 @@ what_advctx_update(struct igc_tx_queue *txq, uint64_t flags,
 	return IGC_CTX_NUM;
 }
 
+static uint32_t igc_tx_launchtime(uint64_t txtime, uint16_t port_id)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
+	uint64_t base_time = adapter->base_time;
+	uint64_t cycle_time = adapter->cycle_time;
+	uint32_t launchtime;
+
+	launchtime = (txtime - base_time) % cycle_time;
+
+	return rte_cpu_to_le_32(launchtime);
+}
+
 /*
  * This is a separate function, looking for optimization opportunity here
  * Rework required to go with the pre-defined values.
@@ -1418,7 +1431,8 @@ what_advctx_update(struct igc_tx_queue *txq, uint64_t flags,
 static inline void
 igc_set_xmit_ctx(struct igc_tx_queue *txq,
 		volatile struct igc_adv_tx_context_desc *ctx_txd,
-		uint64_t ol_flags, union igc_tx_offload tx_offload)
+		uint64_t ol_flags, union igc_tx_offload tx_offload,
+		uint64_t txtime)
 {
 	uint32_t type_tucmd_mlhl;
 	uint32_t mss_l4len_idx;
@@ -1492,16 +1506,23 @@ igc_set_xmit_ctx(struct igc_tx_queue *txq,
 		}
 	}
 
-	txq->ctx_cache[ctx_curr].flags = ol_flags;
-	txq->ctx_cache[ctx_curr].tx_offload.data =
-		tx_offload_mask.data & tx_offload.data;
-	txq->ctx_cache[ctx_curr].tx_offload_mask = tx_offload_mask;
+	if (!txtime) {
+		txq->ctx_cache[ctx_curr].flags = ol_flags;
+		txq->ctx_cache[ctx_curr].tx_offload.data =
+			tx_offload_mask.data & tx_offload.data;
+		txq->ctx_cache[ctx_curr].tx_offload_mask = tx_offload_mask;
+	}
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	vlan_macip_lens = (uint32_t)tx_offload.data;
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx = rte_cpu_to_le_32(mss_l4len_idx);
-	ctx_txd->u.launch_time = 0;
+
+	if (txtime)
+		ctx_txd->u.launch_time = igc_tx_launchtime(txtime,
+							   txq->port_id);
+	else
+		ctx_txd->u.launch_time = 0;
 }
 
 static inline uint32_t
@@ -1551,6 +1572,7 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint64_t tx_ol_req;
 	uint32_t new_ctx = 0;
 	union igc_tx_offload tx_offload = {0};
+	uint64_t ts;
 
 	tx_id = txq->tx_tail;
 	txe = &sw_ring[tx_id];
@@ -1698,8 +1720,16 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					txe->mbuf = NULL;
 				}
 
-				igc_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
-						tx_offload);
+				if (igc_tx_timestamp_dynflag > 0) {
+					ts = *RTE_MBUF_DYNFIELD(tx_pkt,
+						igc_tx_timestamp_dynfield_offset,
+						uint64_t *);
+					igc_set_xmit_ctx(txq, ctx_txd,
+						tx_ol_req, tx_offload, ts);
+				} else {
+					igc_set_xmit_ctx(txq, ctx_txd,
+						tx_ol_req, tx_offload, 0);
+				}
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -2081,9 +2111,11 @@ void
 igc_tx_init(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 	uint32_t tctl;
 	uint32_t txdctl;
 	uint16_t i;
+	int err;
 
 	/* Setup the Base and Length of the Tx Descriptor Rings. */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -2111,6 +2143,16 @@ igc_tx_init(struct rte_eth_dev *dev)
 				IGC_TXDCTL_WTHRESH_MSK;
 		txdctl |= IGC_TXDCTL_QUEUE_ENABLE;
 		IGC_WRITE_REG(hw, IGC_TXDCTL(txq->reg_idx), txdctl);
+	}
+
+	if (offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP) {
+		err = rte_mbuf_dyn_tx_timestamp_register
+			(&igc_tx_timestamp_dynfield_offset,
+			 &igc_tx_timestamp_dynflag);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				"Cannot register mbuf field/flag for timestamp");
+		}
 	}
 
 	igc_config_collision_dist(hw);

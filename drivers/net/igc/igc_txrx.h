@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+extern uint64_t igc_tx_timestamp_dynflag;
+extern int igc_tx_timestamp_dynfield_offset;
+
 struct igc_rx_entry {
 	struct rte_mbuf *mbuf; /**< mbuf associated with RX descriptor. */
 };

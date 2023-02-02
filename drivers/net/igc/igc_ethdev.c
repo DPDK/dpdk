@@ -88,6 +88,9 @@
 #define IGC_I225_RX_LATENCY_1000	300
 #define IGC_I225_RX_LATENCY_2500	1485
 
+uint64_t igc_tx_timestamp_dynflag;
+int igc_tx_timestamp_dynfield_offset = -1;
+
 static const struct rte_eth_desc_lim rx_desc_lim = {
 	.nb_max = IGC_MAX_RXD,
 	.nb_min = IGC_MIN_RXD,
@@ -267,6 +270,7 @@ static int eth_igc_timesync_read_time(struct rte_eth_dev *dev,
 				  struct timespec *timestamp);
 static int eth_igc_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
+static int eth_igc_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 
 static const struct eth_dev_ops eth_igc_ops = {
 	.dev_configure		= eth_igc_configure,
@@ -327,6 +331,7 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.timesync_adjust_time	= eth_igc_timesync_adjust_time,
 	.timesync_read_time	= eth_igc_timesync_read_time,
 	.timesync_write_time	= eth_igc_timesync_write_time,
+	.read_clock             = eth_igc_read_clock,
 };
 
 /*
@@ -949,7 +954,12 @@ eth_igc_start(struct rte_eth_dev *dev)
 	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	uint32_t nsec, sec, baset_l, baset_h, tqavctrl;
+	struct timespec system_time;
+	int64_t n, systime;
+	uint32_t txqctl = 0;
 	uint32_t *speeds;
+	uint16_t i;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1007,6 +1017,55 @@ eth_igc_start(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Unable to initialize RX hardware");
 		igc_dev_clear_queues(dev);
 		return ret;
+	}
+
+	if (igc_tx_timestamp_dynflag > 0) {
+		adapter->base_time = 0;
+		adapter->cycle_time = NSEC_PER_SEC;
+
+		IGC_WRITE_REG(hw, IGC_TSSDP, 0);
+		IGC_WRITE_REG(hw, IGC_TSIM, TSINTR_TXTS);
+		IGC_WRITE_REG(hw, IGC_IMS, IGC_ICR_TS);
+
+		IGC_WRITE_REG(hw, IGC_TSAUXC, 0);
+		IGC_WRITE_REG(hw, IGC_I350_DTXMXPKTSZ, IGC_DTXMXPKTSZ_TSN);
+		IGC_WRITE_REG(hw, IGC_TXPBS, IGC_TXPBSIZE_TSN);
+
+		tqavctrl = IGC_READ_REG(hw, IGC_I210_TQAVCTRL);
+		tqavctrl |= IGC_TQAVCTRL_TRANSMIT_MODE_TSN |
+			    IGC_TQAVCTRL_ENHANCED_QAV;
+		IGC_WRITE_REG(hw, IGC_I210_TQAVCTRL, tqavctrl);
+
+		IGC_WRITE_REG(hw, IGC_QBVCYCLET_S, adapter->cycle_time);
+		IGC_WRITE_REG(hw, IGC_QBVCYCLET, adapter->cycle_time);
+
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			IGC_WRITE_REG(hw, IGC_STQT(i), 0);
+			IGC_WRITE_REG(hw, IGC_ENDQT(i), NSEC_PER_SEC);
+
+			txqctl |= IGC_TXQCTL_QUEUE_MODE_LAUNCHT;
+			IGC_WRITE_REG(hw, IGC_TXQCTL(i), txqctl);
+		}
+
+		clock_gettime(CLOCK_REALTIME, &system_time);
+		IGC_WRITE_REG(hw, IGC_SYSTIML, system_time.tv_nsec);
+		IGC_WRITE_REG(hw, IGC_SYSTIMH, system_time.tv_sec);
+
+		nsec = IGC_READ_REG(hw, IGC_SYSTIML);
+		sec = IGC_READ_REG(hw, IGC_SYSTIMH);
+		systime = (int64_t)sec * NSEC_PER_SEC + (int64_t)nsec;
+
+		if (systime > adapter->base_time) {
+			n = (systime - adapter->base_time) /
+			     adapter->cycle_time;
+			adapter->base_time = adapter->base_time +
+				(n + 1) * adapter->cycle_time;
+		}
+
+		baset_h = adapter->base_time / NSEC_PER_SEC;
+		baset_l = adapter->base_time % NSEC_PER_SEC;
+		IGC_WRITE_REG(hw, IGC_BASET_H, baset_h);
+		IGC_WRITE_REG(hw, IGC_BASET_L, baset_l);
 	}
 
 	igc_clear_hw_cntrs_base_generic(hw);
@@ -2799,6 +2858,17 @@ eth_igc_timesync_disable(struct rte_eth_dev *dev)
 	val = IGC_READ_REG(hw, IGC_SRRCTL(0));
 	val &= ~IGC_SRRCTL_TIMESTAMP;
 	IGC_WRITE_REG(hw, IGC_SRRCTL(0), val);
+
+	return 0;
+}
+
+static int
+eth_igc_read_clock(__rte_unused struct rte_eth_dev *dev, uint64_t *clock)
+{
+	struct timespec system_time;
+
+	clock_gettime(CLOCK_REALTIME, &system_time);
+	*clock = system_time.tv_sec * NSEC_PER_SEC + system_time.tv_nsec;
 
 	return 0;
 }

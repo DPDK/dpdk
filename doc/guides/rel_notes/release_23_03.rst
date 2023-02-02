@@ -114,6 +114,7 @@ New Features
 * **Updated Intel igc driver.**
 
   * Added support for timesync API.
+  * Added support for packet pacing (launch time offloading).
 
 * **Updated NVIDIA mlx5 driver.**
 
