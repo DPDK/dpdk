@@ -912,6 +912,7 @@ Shown below are Ethernet Network Adapters and their supported firmware versions
 * ``BCM57500 NetXtreme-E\ |reg| Family`` ... Firmware 219.0.0 or later
 
 Shown below are DPDK LTS releases and their supported firmware versions:
+
 * ``DPDK Release 19.11`` ... Firmware 219.0.103 or later
 * ``DPDK Release 20.11`` ... Firmware 219.0.103 or later
 * ``DPDK Release 21.11`` ... Firmware 221.0.101 or later
