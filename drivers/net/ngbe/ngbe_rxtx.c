@@ -24,15 +24,11 @@
 
 /* Bit Mask to indicate what bits required for building Tx context */
 static const u64 NGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
-		RTE_MBUF_F_TX_OUTER_IPV6 |
-		RTE_MBUF_F_TX_OUTER_IPV4 |
 		RTE_MBUF_F_TX_IPV6 |
 		RTE_MBUF_F_TX_IPV4 |
 		RTE_MBUF_F_TX_VLAN |
 		RTE_MBUF_F_TX_L4_MASK |
 		RTE_MBUF_F_TX_TCP_SEG |
-		RTE_MBUF_F_TX_TUNNEL_MASK |
-		RTE_MBUF_F_TX_OUTER_IP_CKSUM |
 		NGBE_TX_IEEE1588_TMST);
 
 #define NGBE_TX_OFFLOAD_NOTSUP_MASK \
@@ -333,33 +329,14 @@ ngbe_set_xmit_ctx(struct ngbe_tx_queue *txq,
 	}
 
 	vlan_macip_lens = NGBE_TXD_IPLEN(tx_offload.l3_len >> 1);
-
-	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
-		tx_offload_mask.outer_tun_len |= ~0;
-		tx_offload_mask.outer_l2_len |= ~0;
-		tx_offload_mask.outer_l3_len |= ~0;
-		tx_offload_mask.l2_len |= ~0;
-		tunnel_seed = NGBE_TXD_ETUNLEN(tx_offload.outer_tun_len >> 1);
-		tunnel_seed |= NGBE_TXD_EIPLEN(tx_offload.outer_l3_len >> 2);
-
-		switch (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
-		case RTE_MBUF_F_TX_TUNNEL_IPIP:
-			/* for non UDP / GRE tunneling, set to 0b */
-			break;
-		default:
-			PMD_TX_LOG(ERR, "Tunnel type not supported");
-			return;
-		}
-		vlan_macip_lens |= NGBE_TXD_MACLEN(tx_offload.outer_l2_len);
-	} else {
-		tunnel_seed = 0;
-		vlan_macip_lens |= NGBE_TXD_MACLEN(tx_offload.l2_len);
-	}
+	vlan_macip_lens |= NGBE_TXD_MACLEN(tx_offload.l2_len);
 
 	if (ol_flags & RTE_MBUF_F_TX_VLAN) {
 		tx_offload_mask.vlan_tci |= ~0;
 		vlan_macip_lens |= NGBE_TXD_VLAN(tx_offload.vlan_tci);
 	}
+
+	tunnel_seed = 0;
 
 	txq->ctx_cache[ctx_idx].flags = ol_flags;
 	txq->ctx_cache[ctx_idx].tx_offload.data[0] =
@@ -449,16 +426,10 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 	return cmdtype;
 }
 
-static inline uint8_t
-tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
+static inline uint32_t
+tx_desc_ol_flags_to_ptype(uint64_t oflags)
 {
-	bool tun;
-
-	if (ptype)
-		return ngbe_encode_ptype(ptype);
-
-	/* Only support flags in NGBE_TX_OFFLOAD_MASK */
-	tun = !!(oflags & RTE_MBUF_F_TX_TUNNEL_MASK);
+	uint32_t ptype;
 
 	/* L2 level */
 	ptype = RTE_PTYPE_L2_ETHER;
@@ -466,41 +437,36 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 		ptype |= RTE_PTYPE_L2_ETHER_VLAN;
 
 	/* L3 level */
-	if (oflags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IP_CKSUM))
-		ptype |= RTE_PTYPE_L3_IPV4;
-	else if (oflags & (RTE_MBUF_F_TX_OUTER_IPV6))
-		ptype |= RTE_PTYPE_L3_IPV6;
-
 	if (oflags & (RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM))
-		ptype |= (tun ? RTE_PTYPE_INNER_L3_IPV4 : RTE_PTYPE_L3_IPV4);
+		ptype |= RTE_PTYPE_L3_IPV4;
 	else if (oflags & (RTE_MBUF_F_TX_IPV6))
-		ptype |= (tun ? RTE_PTYPE_INNER_L3_IPV6 : RTE_PTYPE_L3_IPV6);
+		ptype |= RTE_PTYPE_L3_IPV6;
 
 	/* L4 level */
 	switch (oflags & (RTE_MBUF_F_TX_L4_MASK)) {
 	case RTE_MBUF_F_TX_TCP_CKSUM:
-		ptype |= (tun ? RTE_PTYPE_INNER_L4_TCP : RTE_PTYPE_L4_TCP);
+		ptype |= RTE_PTYPE_L4_TCP;
 		break;
 	case RTE_MBUF_F_TX_UDP_CKSUM:
-		ptype |= (tun ? RTE_PTYPE_INNER_L4_UDP : RTE_PTYPE_L4_UDP);
+		ptype |= RTE_PTYPE_L4_UDP;
 		break;
 	case RTE_MBUF_F_TX_SCTP_CKSUM:
-		ptype |= (tun ? RTE_PTYPE_INNER_L4_SCTP : RTE_PTYPE_L4_SCTP);
+		ptype |= RTE_PTYPE_L4_SCTP;
 		break;
 	}
 
 	if (oflags & RTE_MBUF_F_TX_TCP_SEG)
-		ptype |= (tun ? RTE_PTYPE_INNER_L4_TCP : RTE_PTYPE_L4_TCP);
+		ptype |= RTE_PTYPE_L4_TCP;
 
-	/* Tunnel */
-	switch (oflags & RTE_MBUF_F_TX_TUNNEL_MASK) {
-	case RTE_MBUF_F_TX_TUNNEL_IPIP:
-	case RTE_MBUF_F_TX_TUNNEL_IP:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_IP;
-		break;
-	}
+	return ptype;
+}
+
+static inline uint8_t
+tx_desc_ol_flags_to_ptid(uint64_t oflags)
+{
+	uint32_t ptype;
+
+	ptype = tx_desc_ol_flags_to_ptype(oflags);
 
 	return ngbe_encode_ptype(ptype);
 }
@@ -622,16 +588,12 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* If hardware offload required */
 		tx_ol_req = ol_flags & NGBE_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
-			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req,
-					tx_pkt->packet_type);
+			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req);
 			tx_offload.l2_len = tx_pkt->l2_len;
 			tx_offload.l3_len = tx_pkt->l3_len;
 			tx_offload.l4_len = tx_pkt->l4_len;
 			tx_offload.vlan_tci = tx_pkt->vlan_tci;
 			tx_offload.tso_segsz = tx_pkt->tso_segsz;
-			tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
-			tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
-			tx_offload.outer_tun_len = 0;
 
 			/* If new context need be built or reuse the exist ctx*/
 			ctx = what_ctx_update(txq, tx_ol_req, tx_offload);
@@ -752,10 +714,6 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 */
 				pkt_len -= (tx_offload.l2_len +
 					tx_offload.l3_len + tx_offload.l4_len);
-				pkt_len -=
-					(tx_pkt->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
-					? tx_offload.outer_l2_len +
-					  tx_offload.outer_l3_len : 0;
 			}
 
 			/*
@@ -1939,12 +1897,8 @@ ngbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
 		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM  |
-		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 		RTE_ETH_TX_OFFLOAD_TCP_TSO     |
 		RTE_ETH_TX_OFFLOAD_UDP_TSO	   |
-		RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO	|
-		RTE_ETH_TX_OFFLOAD_IP_TNL_TSO	|
-		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO	|
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	if (hw->is_pf)
