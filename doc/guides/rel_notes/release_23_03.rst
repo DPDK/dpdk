@@ -98,6 +98,14 @@ New Features
   * Added ``host_port_id`` in ``rte_flow_port_attr`` structure
     to reference the port hosting the shared objects.
 
+* **Added atomic query and update indirect flow action.**
+
+  Added synchronous and asynchronous functions to atomically query and update
+  indirect flow action:
+
+  * ``rte_flow_action_handle_query_update()``
+  * ``rte_flow_async_action_handle_query_update()``
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

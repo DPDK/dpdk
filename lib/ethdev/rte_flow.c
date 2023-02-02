@@ -2114,3 +2114,57 @@ rte_flow_async_action_handle_query(uint16_t port_id,
 
 	return ret;
 }
+
+int
+rte_flow_action_handle_query_update(uint16_t port_id,
+				    struct rte_flow_action_handle *handle,
+				    const void *update, void *query,
+				    enum rte_flow_query_update_mode mode,
+				    struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	if (!handle)
+		return -EINVAL;
+	if (!update && !query)
+		return -EINVAL;
+	dev = &rte_eth_devices[port_id];
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->action_handle_query_update)
+		return -ENOTSUP;
+	ret = ops->action_handle_query_update(dev, handle, update,
+					      query, mode, error);
+	return flow_err(port_id, ret, error);
+}
+
+int
+rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
+					  const struct rte_flow_op_attr *attr,
+					  struct rte_flow_action_handle *handle,
+					  const void *update, void *query,
+					  enum rte_flow_query_update_mode mode,
+					  void *user_data,
+					  struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	if (!handle)
+		return -EINVAL;
+	if (!update && !query)
+		return -EINVAL;
+	dev = &rte_eth_devices[port_id];
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->async_action_handle_query_update)
+		return -ENOTSUP;
+	ret = ops->async_action_handle_query_update(dev, queue_id, attr,
+						    handle, update,
+						    query, mode,
+						    user_data, error);
+	return flow_err(port_id, ret, error);
+}

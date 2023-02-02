@@ -300,6 +300,8 @@ EXPERIMENTAL {
 	rte_mtr_meter_profile_get;
 
 	# added in 23.03
+	rte_flow_action_handle_query_update;
+	rte_flow_async_action_handle_query_update;
 	rte_flow_async_create_by_index;
 };
 

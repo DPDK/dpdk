@@ -114,6 +114,13 @@ struct rte_flow_ops {
 		 const struct rte_flow_action_handle *handle,
 		 void *data,
 		 struct rte_flow_error *error);
+	/** See rte_flow_action_handle_query_update() */
+	int (*action_handle_query_update)
+		(struct rte_eth_dev *dev,
+		 struct rte_flow_action_handle *handle,
+		 const void *update, void *query,
+		 enum rte_flow_query_update_mode qu_mode,
+		 struct rte_flow_error *error);
 	/** See rte_flow_tunnel_decap_set() */
 	int (*tunnel_decap_set)
 		(struct rte_eth_dev *dev,
@@ -287,6 +294,14 @@ struct rte_flow_ops {
 		 void *data,
 		 void *user_data,
 		 struct rte_flow_error *error);
+	/** See rte_flow_async_action_handle_query_update */
+	int (*async_action_handle_query_update)
+		(struct rte_eth_dev *dev, uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow_action_handle *action_handle,
+		 const void *update, void *query,
+		 enum rte_flow_query_update_mode qu_mode,
+		 void *user_data, struct rte_flow_error *error);
 };
 
 /**
