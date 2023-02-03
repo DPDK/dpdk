@@ -1293,6 +1293,14 @@ nfp_net_nfdk_free_tx_desc(struct nfp_net_txq *txq)
 		(free_desc - NFDK_TX_DESC_STOP_CNT) : 0;
 }
 
+/*
+ * nfp_net_nfdk_txq_full() - Check if the TX queue free descriptors
+ * is below tx_free_threshold for firmware of nfdk
+ *
+ * @txq: TX queue to check
+ *
+ * This function uses the host copy* of read/write pointers.
+ */
 static inline uint32_t
 nfp_net_nfdk_txq_full(struct nfp_net_txq *txq)
 {
@@ -1353,6 +1361,7 @@ close_block:
 	return nop_slots;
 }
 
+/* nfp_net_nfdk_tx_cksum() - Set TX CSUM offload flags in TX descriptor of nfdk */
 static inline uint64_t
 nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq, struct rte_mbuf *mb,
 		uint64_t flags)
@@ -1375,6 +1384,7 @@ nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq, struct rte_mbuf *mb,
 	return flags;
 }
 
+/* nfp_net_nfdk_tx_tso() - Set TX descriptor for TSO of nfdk */
 static inline uint64_t
 nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq, struct rte_mbuf *mb)
 {

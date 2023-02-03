@@ -407,12 +407,12 @@ nfp_net_nfd3_free_tx_desc(struct nfp_net_txq *txq)
 }
 
 /*
- * nfp_net_nfd3_txq_full - Check if the TX queue free descriptors
- * is below tx_free_threshold
+ * nfp_net_nfd3_txq_full() - Check if the TX queue free descriptors
+ * is below tx_free_threshold for firmware of nfd3
  *
  * @txq: TX queue to check
  *
- * This function uses the host copy* of read/write pointers
+ * This function uses the host copy* of read/write pointers.
  */
 static inline uint32_t
 nfp_net_nfd3_txq_full(struct nfp_net_txq *txq)
@@ -448,7 +448,7 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 }
 
-/* Set NFD3 TX descriptor for TSO */
+/* nfp_net_nfd3_tx_tso() - Set NFD3 TX descriptor for TSO */
 static inline void
 nfp_net_nfd3_tx_tso(struct nfp_net_txq *txq,
 		struct nfp_net_nfd3_tx_desc *txd,
@@ -480,7 +480,7 @@ clean_txd:
 	txd->mss = 0;
 }
 
-/* Set TX CSUM offload flags in NFD3 TX descriptor */
+/* nfp_net_nfd3_tx_cksum() - Set TX CSUM offload flags in NFD3 TX descriptor */
 static inline void
 nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_nfd3_tx_desc *txd,
 		 struct rte_mbuf *mb)

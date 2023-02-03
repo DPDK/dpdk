@@ -161,7 +161,7 @@ err_free:
 }
 
 /*
- * nfp_nffw_info_release() - Release the lock on the NFFW table
+ * nfp_nffw_info_close() - Release the lock on the NFFW table
  * @state:	NFP FW info state
  *
  * Return: 0, or -ERRNO
