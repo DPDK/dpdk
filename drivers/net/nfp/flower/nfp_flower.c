@@ -532,8 +532,7 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 
 		if (unlikely(pkt->nb_segs > 1 &&
 				!(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {
-			PMD_INIT_LOG(INFO, "NFP_NET_CFG_CTRL_GATHER not set");
-			PMD_INIT_LOG(INFO, "Multisegment packet unsupported");
+			PMD_INIT_LOG(ERR, "Multisegment packet not supported");
 			goto xmit_end;
 		}
 

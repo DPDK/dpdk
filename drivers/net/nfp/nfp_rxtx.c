@@ -986,8 +986,8 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 
 		if (unlikely(pkt->nb_segs > 1 &&
 			     !(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {
-			PMD_INIT_LOG(INFO, "NFP_NET_CFG_CTRL_GATHER not set");
-			rte_panic("Multisegment packet unsupported\n");
+			PMD_INIT_LOG(ERR, "Multisegment packet not supported");
+			goto xmit_end;
 		}
 
 		/* Checking if we have enough descriptors */
@@ -1466,8 +1466,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 
 		if (unlikely(pkt->nb_segs > 1 &&
 				!(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {
-			PMD_INIT_LOG(INFO, "NFP_NET_CFG_CTRL_GATHER not set");
-			PMD_INIT_LOG(INFO, "Multisegment packet unsupported");
+			PMD_INIT_LOG(ERR, "Multisegment packet not supported");
 			goto xmit_end;
 		}
 
