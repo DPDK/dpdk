@@ -23,12 +23,6 @@
 #define RDLINE_HISTORY_BUF_SIZE BUFSIZ
 #define RDLINE_HISTORY_MAX_LINE 64
 
-enum rdline_status {
-	RDLINE_INIT,
-	RDLINE_RUNNING,
-	RDLINE_EXITED
-};
-
 struct rdline {
 	enum rdline_status status;
 	/* rdline bufs */
