@@ -491,7 +491,7 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 		struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
-	int i = 0;
+	int i;
 	int pkt_size;
 	int dma_size;
 	uint64_t dma_addr;
@@ -522,7 +522,7 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 	issued_descs = 0;
 
 	/* Sending packets */
-	while ((i < nb_pkts) && free_descs) {
+	for (i = 0; i < nb_pkts && free_descs > 0; i++) {
 		/* Grabbing the mbuf linked to the current descriptor */
 		lmbuf = &txq->txbufs[txq->wr_p].mbuf;
 		/* Warming the cache for releasing the mbuf later on */
@@ -561,7 +561,7 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 		 */
 		pkt_size = pkt->pkt_len;
 
-		while (pkt != NULL) {
+		while (pkt != NULL && free_descs > 0) {
 			/* Copying TSO, VLAN and cksum info */
 			*txds = txd;
 
@@ -583,7 +583,6 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 			txds->data_len = txd.data_len;
 			txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
 			txds->dma_addr_lo = (dma_addr & 0xffffffff);
-			ASSERT(free_descs > 0);
 			free_descs--;
 
 			txq->wr_p++;
@@ -607,7 +606,6 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 			lmbuf = &txq->txbufs[txq->wr_p].mbuf;
 			issued_descs++;
 		}
-		i++;
 	}
 
 xmit_end:

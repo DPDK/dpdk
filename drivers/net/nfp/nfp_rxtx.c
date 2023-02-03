@@ -968,12 +968,11 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 
 	pkt = *tx_pkts;
 
-	i = 0;
 	issued_descs = 0;
 	PMD_TX_LOG(DEBUG, "queue: %u. Sending %u packets",
 		   txq->qidx, nb_pkts);
 	/* Sending packets */
-	while ((i < nb_pkts) && free_descs) {
+	for (i = 0; i < nb_pkts && free_descs > 0; i++) {
 		memset(&meta_data, 0, sizeof(meta_data));
 		/* Grabbing the mbuf linked to the current descriptor */
 		lmbuf = &txq->txbufs[txq->wr_p].mbuf;
@@ -1010,7 +1009,7 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		 */
 		pkt_size = pkt->pkt_len;
 
-		while (pkt) {
+		while (pkt != NULL && free_descs > 0) {
 			/* Copying TSO, VLAN and cksum info */
 			*txds = txd;
 
@@ -1034,7 +1033,6 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 			txds->data_len = txd.data_len;
 			txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
 			txds->dma_addr_lo = (dma_addr & 0xffffffff);
-			ASSERT(free_descs > 0);
 			free_descs--;
 
 			txq->wr_p++;
@@ -1061,7 +1059,6 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 			lmbuf = &txq->txbufs[txq->wr_p].mbuf;
 			issued_descs++;
 		}
-		i++;
 	}
 
 xmit_end:

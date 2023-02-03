@@ -24,10 +24,8 @@ extern int nfp_logtype_init;
 #ifdef RTE_ETHDEV_DEBUG_TX
 #define PMD_TX_LOG(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s() tx: " fmt "\n", __func__, ## args)
-#define ASSERT(x) if (!(x)) rte_panic("NFP_NET: x")
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
-#define ASSERT(x) do { } while (0)
 #endif
 
 extern int nfp_logtype_cpp;
