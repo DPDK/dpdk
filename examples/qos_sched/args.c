@@ -24,7 +24,6 @@
 
 static uint32_t app_main_core = 1;
 static uint32_t app_numa_mask;
-static uint64_t app_used_core_mask = 0;
 static uint64_t app_used_port_mask = 0;
 static uint64_t app_used_rx_port_mask = 0;
 static uint64_t app_used_tx_port_mask = 0;
@@ -82,43 +81,6 @@ app_usage(const char *prgname)
 }
 
 
-/* returns core mask used by DPDK */
-static uint64_t
-app_eal_core_mask(void)
-{
-	uint64_t cm = 0;
-	uint32_t i;
-
-	for (i = 0; i < APP_MAX_LCORE; i++) {
-		if (rte_lcore_has_role(i, ROLE_RTE))
-			cm |= (1ULL << i);
-	}
-
-	cm |= (1ULL << rte_get_main_lcore());
-
-	return cm;
-}
-
-
-/* returns total number of cores presented in a system */
-static uint32_t
-app_cpu_core_count(void)
-{
-	int i, len;
-	char path[PATH_MAX];
-	uint32_t ncores = 0;
-
-	for (i = 0; i < APP_MAX_LCORE; i++) {
-		len = snprintf(path, sizeof(path), SYS_CPU_DIR, i);
-		if (len <= 0 || (unsigned)len >= sizeof(path))
-			continue;
-
-		if (access(path, F_OK) == 0)
-			ncores++;
-	}
-
-	return ncores;
-}
 
 /* returns:
 	 number of values parsed
@@ -261,15 +223,6 @@ app_parse_flow_conf(const char *conf_str)
 	app_used_tx_port_mask |= mask;
 	app_used_port_mask |= mask;
 
-	mask = 1lu << pconf->rx_core;
-	app_used_core_mask |= mask;
-
-	mask = 1lu << pconf->wt_core;
-	app_used_core_mask |= mask;
-
-	mask = 1lu << pconf->tx_core;
-	app_used_core_mask |= mask;
-
 	nb_pfc++;
 
 	return 0;
@@ -322,7 +275,7 @@ app_parse_args(int argc, char **argv)
 	int opt, ret;
 	int option_index;
 	char *prgname = argv[0];
-	uint32_t i, nb_lcores;
+	uint32_t i;
 
 	static struct option lgopts[] = {
 		{OPT_PFC, 1, NULL, OPT_PFC_NUM},
@@ -425,23 +378,6 @@ app_parse_args(int argc, char **argv)
 			}
 	}
 
-	/* check main core index validity */
-	for (i = 0; i <= app_main_core; i++) {
-		if (app_used_core_mask & RTE_BIT64(app_main_core)) {
-			RTE_LOG(ERR, APP, "Main core index is not configured properly\n");
-			app_usage(prgname);
-			return -1;
-		}
-	}
-	app_used_core_mask |= RTE_BIT64(app_main_core);
-
-	if ((app_used_core_mask != app_eal_core_mask()) ||
-			(app_main_core != rte_get_main_lcore())) {
-		RTE_LOG(ERR, APP, "EAL core mask not configured properly, must be %" PRIx64
-				" instead of %" PRIx64 "\n" , app_used_core_mask, app_eal_core_mask());
-		return -1;
-	}
-
 	if (nb_pfc == 0) {
 		RTE_LOG(ERR, APP, "Packet flow not configured!\n");
 		app_usage(prgname);
@@ -449,15 +385,13 @@ app_parse_args(int argc, char **argv)
 	}
 
 	/* sanity check for cores assignment */
-	nb_lcores = app_cpu_core_count();
-
 	for(i = 0; i < nb_pfc; i++) {
-		if (qos_conf[i].rx_core >= nb_lcores) {
+		if (qos_conf[i].rx_core >= RTE_MAX_LCORE) {
 			RTE_LOG(ERR, APP, "pfc %u: invalid RX lcore index %u\n", i + 1,
 					qos_conf[i].rx_core);
 			return -1;
 		}
-		if (qos_conf[i].wt_core >= nb_lcores) {
+		if (qos_conf[i].wt_core >= RTE_MAX_LCORE) {
 			RTE_LOG(ERR, APP, "pfc %u: invalid WT lcore index %u\n", i + 1,
 					qos_conf[i].wt_core);
 			return -1;

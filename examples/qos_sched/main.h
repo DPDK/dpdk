@@ -37,15 +37,7 @@ extern "C" {
 #define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
-#ifndef APP_MAX_LCORE
-#if (RTE_MAX_LCORE > 64)
-#define APP_MAX_LCORE 64
-#else
-#define APP_MAX_LCORE RTE_MAX_LCORE
-#endif
-#endif
-
-#define MAX_DATA_STREAMS (APP_MAX_LCORE/2)
+#define MAX_DATA_STREAMS RTE_MAX_LCORE/2
 #define MAX_SCHED_SUBPORTS		8
 #define MAX_SCHED_PIPES		4096
 #define MAX_SCHED_PIPE_PROFILES		256
