@@ -37,8 +37,6 @@ extern "C" {
 #define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
 #define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
 
-#define BURST_TX_DRAIN_US 100
-
 #ifndef APP_MAX_LCORE
 #if (RTE_MAX_LCORE > 64)
 #define APP_MAX_LCORE 64
@@ -75,10 +73,6 @@ struct thread_stat
 
 struct thread_conf
 {
-	uint32_t counter;
-	uint32_t n_mbufs;
-	struct rte_mbuf **m_table;
-
 	uint16_t rx_port;
 	uint16_t tx_port;
 	uint16_t rx_queue;

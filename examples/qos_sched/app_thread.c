@@ -104,82 +104,21 @@ app_rx_thread(struct thread_conf **confs)
 	}
 }
 
-
-
-/* Send the packet to an output interface
- * For performance reason function returns number of packets dropped, not sent,
- * so 0 means that all packets were sent successfully
- */
-
-static inline void
-app_send_burst(struct thread_conf *qconf)
-{
-	struct rte_mbuf **mbufs;
-	uint32_t n, ret;
-
-	mbufs = (struct rte_mbuf **)qconf->m_table;
-	n = qconf->n_mbufs;
-
-	do {
-		ret = rte_eth_tx_burst(qconf->tx_port, qconf->tx_queue, mbufs, (uint16_t)n);
-		/* we cannot drop the packets, so re-send */
-		/* update number of packets to be sent */
-		n -= ret;
-		mbufs = (struct rte_mbuf **)&mbufs[ret];
-	} while (n);
-}
-
-
-/* Send the packet to an output interface */
-static void
-app_send_packets(struct thread_conf *qconf, struct rte_mbuf **mbufs, uint32_t nb_pkt)
-{
-	uint32_t i, len;
-
-	len = qconf->n_mbufs;
-	for(i = 0; i < nb_pkt; i++) {
-		qconf->m_table[len] = mbufs[i];
-		len++;
-		/* enough pkts to be sent */
-		if (unlikely(len == burst_conf.tx_burst)) {
-			qconf->n_mbufs = len;
-			app_send_burst(qconf);
-			len = 0;
-		}
-	}
-
-	qconf->n_mbufs = len;
-}
-
 void
 app_tx_thread(struct thread_conf **confs)
 {
 	struct rte_mbuf *mbufs[burst_conf.qos_dequeue];
 	struct thread_conf *conf;
 	int conf_idx = 0;
-	int retval;
-	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
+	int nb_pkts;
 
 	while ((conf = confs[conf_idx])) {
-		retval = rte_ring_sc_dequeue_bulk(conf->tx_ring, (void **)mbufs,
+		nb_pkts = rte_ring_sc_dequeue_burst(conf->tx_ring, (void **)mbufs,
 					burst_conf.qos_dequeue, NULL);
-		if (likely(retval != 0)) {
-			app_send_packets(conf, mbufs, burst_conf.qos_dequeue);
-
-			conf->counter = 0; /* reset empty read loop counter */
-		}
-
-		conf->counter++;
-
-		/* drain ring and TX queues */
-		if (unlikely(conf->counter > drain_tsc)) {
-			/* now check is there any packets left to be transmitted */
-			if (conf->n_mbufs != 0) {
-				app_send_burst(conf);
-
-				conf->n_mbufs = 0;
-			}
-			conf->counter = 0;
+		if (likely(nb_pkts != 0)) {
+			uint16_t nb_tx = rte_eth_tx_burst(conf->tx_port, 0, mbufs, nb_pkts);
+			if (nb_pkts != nb_tx)
+				rte_pktmbuf_free_bulk(&mbufs[nb_pkts], nb_pkts - nb_tx);
 		}
 
 		conf_idx++;
@@ -230,7 +169,6 @@ app_mixed_thread(struct thread_conf **confs)
 	struct rte_mbuf *mbufs[burst_conf.ring_burst];
 	struct thread_conf *conf;
 	int conf_idx = 0;
-	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
 	while ((conf = confs[conf_idx])) {
 		uint32_t nb_pkt;
@@ -250,23 +188,9 @@ app_mixed_thread(struct thread_conf **confs)
 		nb_pkt = rte_sched_port_dequeue(conf->sched_port, mbufs,
 					burst_conf.qos_dequeue);
 		if (likely(nb_pkt > 0)) {
-			app_send_packets(conf, mbufs, nb_pkt);
-
-			conf->counter = 0; /* reset empty read loop counter */
-		}
-
-		conf->counter++;
-
-		/* drain ring and TX queues */
-		if (unlikely(conf->counter > drain_tsc)) {
-
-			/* now check is there any packets left to be transmitted */
-			if (conf->n_mbufs != 0) {
-				app_send_burst(conf);
-
-				conf->n_mbufs = 0;
-			}
-			conf->counter = 0;
+			uint16_t nb_tx = rte_eth_tx_burst(conf->tx_port, 0, mbufs, nb_pkt);
+			if (nb_tx != nb_pkt)
+				rte_pktmbuf_free_bulk(&mbufs[nb_tx], nb_pkt - nb_tx);
 		}
 
 		conf_idx++;
