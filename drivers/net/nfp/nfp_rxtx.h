@@ -108,8 +108,8 @@ struct nfp_meta_parsed {
 #define PCIE_DESC_TX_VLAN               (1 << 3)
 #define PCIE_DESC_TX_LSO                (1 << 2)
 #define PCIE_DESC_TX_ENCAP_NONE         (0)
-#define PCIE_DESC_TX_ENCAP_VXLAN        (1 << 1)
-#define PCIE_DESC_TX_ENCAP_GRE          (1 << 0)
+#define PCIE_DESC_TX_ENCAP              (1 << 1)
+#define PCIE_DESC_TX_O_IP4_CSUM         (1 << 0)
 
 #define NFDK_TX_MAX_DATA_PER_HEAD       0x00001000
 #define NFDK_DESC_TX_DMA_LEN_HEAD       0x0fff
