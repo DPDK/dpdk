@@ -34,6 +34,7 @@
 #define RTE_PORT_HANDLING       (uint16_t)3
 
 extern uint8_t cl_quit;
+extern volatile uint8_t f_quit;
 
 /*
  * It is used to allocate the memory for hash key.

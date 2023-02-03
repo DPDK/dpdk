@@ -65,7 +65,6 @@
 #include "cmdline_tm.h"
 #include "bpf_cmd.h"
 
-static struct cmdline *testpmd_cl;
 static cmdline_parse_ctx_t *main_ctx;
 static TAILQ_HEAD(, testpmd_driver_commands) driver_commands_head =
 	TAILQ_HEAD_INITIALIZER(driver_commands_head);
@@ -12921,28 +12920,22 @@ cmdline_read_from_file(const char *filename)
 void
 prompt(void)
 {
-	int ret;
+	struct cmdline *cl;
 
-	testpmd_cl = cmdline_stdin_new(main_ctx, "testpmd> ");
-	if (testpmd_cl == NULL)
+	cl = cmdline_stdin_new(main_ctx, "testpmd> ");
+	if (cl == NULL)
 		return;
 
-	ret = atexit(prompt_exit);
-	if (ret != 0)
-		fprintf(stderr, "Cannot set exit function for cmdline\n");
+	/* loop until signal or quit command */
+	while (f_quit == 0 && cl_quit == 0) {
+		int status = cmdline_poll(cl);
 
-	cmdline_interact(testpmd_cl);
-	if (ret != 0)
-		cmdline_stdin_exit(testpmd_cl);
-}
-
-void
-prompt_exit(void)
-{
-	if (testpmd_cl != NULL) {
-		cmdline_quit(testpmd_cl);
-		cmdline_stdin_exit(testpmd_cl);
+		if (status < 0 || status == RDLINE_EXITED)
+			break;
 	}
+
+	cmdline_quit(cl);
+	cmdline_stdin_exit(cl);
 }
 
 void
