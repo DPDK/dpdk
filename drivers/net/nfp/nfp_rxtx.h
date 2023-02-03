@@ -122,6 +122,7 @@ struct nfp_meta_parsed {
 #define NFDK_DESC_TX_TYPE_GATHER        1
 #define NFDK_DESC_TX_EOP                BIT(14)
 #define NFDK_DESC_TX_CHAIN_META         BIT(3)
+#define NFDK_DESC_TX_ENCAP              BIT(2)
 #define NFDK_DESC_TX_L4_CSUM            BIT(1)
 #define NFDK_DESC_TX_L3_CSUM            BIT(0)
 
@@ -468,6 +469,13 @@ nfp_net_nfd3_tx_tso(struct nfp_net_txq *txq,
 	txd->l3_offset = mb->l2_len;
 	txd->l4_offset = mb->l2_len + mb->l3_len;
 	txd->lso_hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
+
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+		txd->l3_offset += mb->outer_l2_len + mb->outer_l3_len;
+		txd->l4_offset += mb->outer_l2_len + mb->outer_l3_len;
+		txd->lso_hdrlen += mb->outer_l2_len + mb->outer_l3_len;
+	}
+
 	txd->mss = rte_cpu_to_le_16(mb->tso_segsz);
 	txd->flags = PCIE_DESC_TX_LSO;
 	return;
@@ -493,9 +501,16 @@ nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_nfd3_tx_desc *txd,
 
 	ol_flags = mb->ol_flags;
 
+	/* Set TCP csum offload if TSO enabled. */
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+		txd->flags |= PCIE_DESC_TX_TCP_CSUM;
+
 	/* IPv6 does not need checksum */
 	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 		txd->flags |= PCIE_DESC_TX_IP4_CSUM;
+
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+		txd->flags |= PCIE_DESC_TX_ENCAP;
 
 	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 	case RTE_MBUF_F_TX_UDP_CKSUM:

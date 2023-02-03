@@ -146,8 +146,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
 	/* Enable vxlan */
-	new_ctrl |= NFP_NET_CFG_CTRL_VXLAN;
-	update |= NFP_NET_CFG_UPDATE_VXLAN;
+	if (hw->cap & NFP_NET_CFG_CTRL_VXLAN) {
+		new_ctrl |= NFP_NET_CFG_CTRL_VXLAN;
+		update |= NFP_NET_CFG_UPDATE_VXLAN;
+	}
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;

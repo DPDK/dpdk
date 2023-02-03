@@ -1374,6 +1374,13 @@ nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq, struct rte_mbuf *mb,
 
 	ol_flags = mb->ol_flags;
 
+	/* Set TCP csum offload if TSO enabled. */
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+		flags |= NFDK_DESC_TX_L4_CSUM;
+
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+		flags |= NFDK_DESC_TX_ENCAP;
+
 	/* IPv6 does not need checksum */
 	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
 		flags |= NFDK_DESC_TX_L3_CSUM;
@@ -1406,6 +1413,12 @@ nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq, struct rte_mbuf *mb)
 	txd.mss = rte_cpu_to_le_16(mb->tso_segsz);
 	txd.lso_hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
 	txd.lso_totsegs = (mb->pkt_len + mb->tso_segsz) / mb->tso_segsz;
+
+	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+		txd.l3_offset += mb->outer_l2_len + mb->outer_l3_len;
+		txd.l4_offset += mb->outer_l2_len + mb->outer_l3_len;
+		txd.lso_hdrlen += mb->outer_l2_len + mb->outer_l3_len;
+	}
 
 	return txd.raw;
 

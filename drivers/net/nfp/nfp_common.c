@@ -439,7 +439,8 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 		ctrl |= NFP_NET_CFG_CTRL_TXCSUM;
 
 	/* LSO offload */
-	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO) {
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO ||
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) {
 		if (hw->cap & NFP_NET_CFG_CTRL_LSO)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
 		else
@@ -880,8 +881,11 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 					     RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 					     RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_LSO_ANY)
+	if (hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) {
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
+		if (hw->cap & NFP_NET_CFG_CTRL_VXLAN)
+			dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
+	}
 
 	if (hw->cap & NFP_NET_CFG_CTRL_GATHER)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
