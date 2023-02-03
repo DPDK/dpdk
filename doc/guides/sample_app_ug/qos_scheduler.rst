@@ -91,7 +91,7 @@ Optional application parameters include:
 *   B = I/O RX lcore write burst size to the output software rings,
     worker lcore read burst size from input software rings,QoS enqueue size (the default value is 64)
 
-*   C = QoS dequeue size (the default value is 32)
+*   C = QoS dequeue size (the default value is 63)
 
 *   D = Worker lcore write burst size to the NIC TX (the default value is 64)
 

@@ -26,7 +26,7 @@ extern "C" {
 
 #define MAX_PKT_RX_BURST 64
 #define PKT_ENQUEUE 64
-#define PKT_DEQUEUE 32
+#define PKT_DEQUEUE 63
 #define MAX_PKT_TX_BURST 64
 
 #define RX_PTHRESH 8 /**< Default values of RX prefetch threshold reg. */
