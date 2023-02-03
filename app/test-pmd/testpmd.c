@@ -10,6 +10,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/select.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -216,7 +217,7 @@ uint16_t stats_period; /**< Period to show statistics (disabled by default) */
  * In container, it cannot terminate the process which running with 'stats-period'
  * option. Set flag to exit stats period loop after received SIGINT/SIGTERM.
  */
-static volatile uint8_t f_quit;
+volatile uint8_t f_quit;
 uint8_t cl_quit; /* Quit testpmd from cmdline. */
 
 /*
@@ -3827,13 +3828,6 @@ init_port(void)
 }
 
 static void
-force_quit(void)
-{
-	pmd_test_exit();
-	prompt_exit();
-}
-
-static void
 print_stats(void)
 {
 	uint8_t i;
@@ -3851,26 +3845,9 @@ print_stats(void)
 }
 
 static void
-signal_handler(int signum)
+signal_handler(int signum __rte_unused)
 {
-	if (signum == SIGINT || signum == SIGTERM) {
-		printf("\nSignal %d received, preparing to exit...\n",
-				signum);
-#ifdef RTE_LIB_PDUMP
-		/* uninitialize packet capture framework */
-		rte_pdump_uninit();
-#endif
-#ifdef RTE_LIB_LATENCYSTATS
-		if (latencystats_enabled != 0)
-			rte_latencystats_uninit();
-#endif
-		force_quit();
-		/* Set flag to indicate the force termination. */
-		f_quit = 1;
-		/* exit with the expected status */
-		signal(signum, SIG_DFL);
-		kill(getpid(), signum);
-	}
+	f_quit = 1;
 }
 
 int
@@ -4044,15 +4021,9 @@ main(int argc, char** argv)
 			start_packet_forwarding(0);
 		}
 		prompt();
-		pmd_test_exit();
 	} else
 #endif
 	{
-		char c;
-		int rc;
-
-		f_quit = 0;
-
 		printf("No commandline core given, start packet forwarding\n");
 		start_packet_forwarding(tx_first);
 		if (stats_period != 0) {
@@ -4075,14 +4046,40 @@ main(int argc, char** argv)
 				prev_time = cur_time;
 				sleep(1);
 			}
-		}
+		} else {
+			char c;
+			fd_set fds;
 
-		printf("Press enter to exit\n");
-		rc = read(0, &c, 1);
-		pmd_test_exit();
-		if (rc < 0)
-			return 1;
+			printf("Press enter to exit\n");
+
+			FD_ZERO(&fds);
+			FD_SET(0, &fds);
+
+			/* wait for signal or enter */
+			ret = select(1, &fds, NULL, NULL, NULL);
+			if (ret < 0 && errno != EINTR)
+				rte_exit(EXIT_FAILURE,
+					 "Select failed: %s\n",
+					 strerror(errno));
+
+			/* if got enter then consume it */
+			if (ret == 1 && read(0, &c, 1) < 0)
+				rte_exit(EXIT_FAILURE,
+					 "Read failed: %s\n",
+					 strerror(errno));
+		}
 	}
+
+	pmd_test_exit();
+
+#ifdef RTE_LIB_PDUMP
+	/* uninitialize packet capture framework */
+	rte_pdump_uninit();
+#endif
+#ifdef RTE_LIB_LATENCYSTATS
+	if (latencystats_enabled != 0)
+		rte_latencystats_uninit();
+#endif
 
 	ret = rte_eal_cleanup();
 	if (ret != 0)

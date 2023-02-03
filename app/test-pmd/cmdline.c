@@ -71,8 +71,6 @@
 #include "cmdline_tm.h"
 #include "bpf_cmd.h"
 
-static struct cmdline *testpmd_cl;
-
 static void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 
 /* *** Help command with introduction. *** */
@@ -17199,31 +17197,25 @@ cmdline_read_from_file(const char *filename)
 void
 prompt(void)
 {
-	int ret;
+	struct cmdline *cl;
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
 	cmd_set_fwd_retry_mode_init();
 
-	testpmd_cl = cmdline_stdin_new(main_ctx, "testpmd> ");
-	if (testpmd_cl == NULL)
+	cl = cmdline_stdin_new(main_ctx, "testpmd> ");
+	if (cl == NULL)
 		return;
 
-	ret = atexit(prompt_exit);
-	if (ret != 0)
-		printf("Cannot set exit function for cmdline\n");
+	/* loop until signal or quit command */
+	while (f_quit == 0 && cl_quit == 0) {
+		int status = cmdline_poll(cl);
 
-	cmdline_interact(testpmd_cl);
-	if (ret != 0)
-		cmdline_stdin_exit(testpmd_cl);
-}
-
-void
-prompt_exit(void)
-{
-	if (testpmd_cl != NULL) {
-		cmdline_quit(testpmd_cl);
-		cmdline_stdin_exit(testpmd_cl);
+		if (status < 0 || status == RDLINE_EXITED)
+			break;
 	}
+
+	cmdline_quit(cl);
+	cmdline_stdin_exit(cl);
 }
 
 static void
