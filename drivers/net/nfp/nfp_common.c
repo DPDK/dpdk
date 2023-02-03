@@ -63,8 +63,10 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 	PMD_DRV_LOG(DEBUG, "Writing to the configuration queue (%p)...",
 		    hw->qcp_cfg);
 
-	if (hw->qcp_cfg == NULL)
-		rte_panic("Bad configuration queue pointer\n");
+	if (hw->qcp_cfg == NULL) {
+		PMD_INIT_LOG(ERR, "Bad configuration queue pointer");
+		return -ENXIO;
+	}
 
 	nfp_qcp_ptr_add(hw->qcp_cfg, NFP_QCP_WRITE_PTR, 1);
 
@@ -85,7 +87,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 		if (cnt >= NFP_NET_POLL_TIMEOUT) {
 			PMD_INIT_LOG(ERR, "Reconfig timeout for 0x%08x after"
 					  " %dms", update, cnt);
-			rte_panic("Exiting\n");
+			return -EIO;
 		}
 		nanosleep(&wait, 0); /* waiting for a 1ms */
 	}
@@ -121,16 +123,14 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
-	if (!err)
-		return 0;
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Error nfp_net reconfig for ctrl: %x update: %x",
+			     ctrl, update);
+		return -EIO;
+	}
 
-	/*
-	 * Reconfig errors imply situations where they can be handled.
-	 * Otherwise, rte_panic is called inside __nfp_net_reconfig
-	 */
-	PMD_INIT_LOG(ERR, "Error nfp_net reconfig for ctrl: %x update: %x",
-		     ctrl, update);
-	return -EIO;
+	return 0;
+
 }
 
 /*
