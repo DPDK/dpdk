@@ -205,9 +205,14 @@ cmdline_poll(struct cmdline *cl)
 		if (read_status < 0)
 			return read_status;
 
-		status = cmdline_in(cl, &c, 1);
-		if (status < 0 && cl->rdl.status != RDLINE_EXITED)
-			return status;
+		if (read_status == 0) {
+			/* end of file is implicit quit */
+			cmdline_quit(cl);
+		} else {
+			status = cmdline_in(cl, &c, 1);
+			if (status < 0 && cl->rdl.status != RDLINE_EXITED)
+				return status;
+		}
 	}
 
 	return cl->rdl.status;
