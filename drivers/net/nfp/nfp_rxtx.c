@@ -1476,7 +1476,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) &&
 				(pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 			type = NFDK_DESC_TX_TYPE_TSO;
-		} else if (pkt->next == NULL && dma_len < NFDK_TX_MAX_DATA_PER_HEAD) {
+		} else if (pkt->next == NULL && dma_len <= NFDK_TX_MAX_DATA_PER_HEAD) {
 			type = NFDK_DESC_TX_TYPE_SIMPLE;
 		} else {
 			type = NFDK_DESC_TX_TYPE_GATHER;
