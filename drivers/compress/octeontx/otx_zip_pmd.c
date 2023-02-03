@@ -16,7 +16,10 @@ static const struct rte_compressdev_capabilities
 	{	.algo = RTE_COMP_ALGO_DEFLATE,
 		/* Deflate */
 		.comp_feature_flags =	RTE_COMP_FF_HUFFMAN_FIXED |
-					RTE_COMP_FF_HUFFMAN_DYNAMIC,
+					RTE_COMP_FF_HUFFMAN_DYNAMIC |
+					RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
+					RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
+					RTE_COMP_FF_OOP_LB_IN_SGL_OUT,
 		/* Non sharable Priv XFORM and Stateless */
 		.window_size = {
 				.min = 1,
@@ -46,15 +49,27 @@ zip_process_op(struct rte_comp_op *op,
 	union zip_inst_s *inst = zstrm->inst[num];
 	volatile union zip_zres_s *zresult = NULL;
 
-	if ((op->m_src->nb_segs > 1) || (op->m_dst->nb_segs > 1) ||
-			(op->src.offset > rte_pktmbuf_pkt_len(op->m_src)) ||
-			(op->dst.offset > rte_pktmbuf_pkt_len(op->m_dst))) {
-		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-		ZIP_PMD_ERR("Segmented packet is not supported\n");
-		return 0;
-	}
+	if (op->m_src->nb_segs > 1)
+		if (rte_mempool_get(qp->vf->sg_mp, (void *)&qp->g_info) < 0) {
+			ZIP_PMD_ERR("Can't1 allocate object from SG pool");
+			return (-ENOMEM);
+		}
 
-	zipvf_prepare_cmd_stateless(op, inst);
+	if (op->m_dst->nb_segs > 1)
+		if (rte_mempool_get(qp->vf->sg_mp, (void *)&qp->s_info) < 0) {
+			rte_mempool_put(qp->vf->sg_mp, qp->g_info);
+			ZIP_PMD_ERR("Can't allocate object from SG pool");
+			return (-ENOMEM);
+		}
+
+	if (zipvf_prepare_cmd_stateless(op, qp, inst)) {
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		rte_mempool_put(qp->vf->sg_mp, qp->g_info);
+		rte_mempool_put(qp->vf->sg_mp, qp->s_info);
+
+		ZIP_PMD_ERR("Can't fill SGL buffers");
+		return -EINVAL;
+	}
 
 	zresult = (union zip_zres_s *)zstrm->bufs[RES_BUF + num];
 	zresult->s.compcode = 0;
@@ -174,10 +189,12 @@ static int
 zip_pmd_config(struct rte_compressdev *dev,
 		struct rte_compressdev_config *config)
 {
-	int nb_streams;
 	char res_pool[RTE_MEMZONE_NAMESIZE];
-	struct zip_vf *vf;
+	char sg_pool[RTE_MEMZONE_NAMESIZE];
 	struct rte_mempool *zip_buf_mp;
+	struct rte_mempool *zip_sg_mp;
+	struct zip_vf *vf;
+	int nb_streams;
 
 	if (!config || !dev)
 		return -EIO;
@@ -192,6 +209,9 @@ zip_pmd_config(struct rte_compressdev *dev,
 	nb_streams = config->max_nb_priv_xforms + config->max_nb_streams;
 
 	snprintf(res_pool, RTE_MEMZONE_NAMESIZE, "octtx_zip_res_pool%u",
+		 dev->data->dev_id);
+
+	snprintf(sg_pool, RTE_MEMZONE_NAMESIZE, "octtx_zip_sg_pool%u",
 		 dev->data->dev_id);
 
 	/** TBD Should we use the per core object cache for stream resources */
@@ -215,7 +235,30 @@ zip_pmd_config(struct rte_compressdev *dev,
 		return -1;
 	}
 
+	/* Scatter gather buffer pool */
+	zip_sg_mp = rte_mempool_create(
+			sg_pool,
+			(2 * nb_streams * ZIP_BURST_SIZE * ZIP_MAX_SEGS),
+			ZIP_SGBUF_SIZE,
+			0,
+			0,
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			SOCKET_ID_ANY,
+			MEMPOOL_F_NO_SPREAD);
+
+	if (zip_sg_mp == NULL) {
+		ZIP_PMD_ERR("Failed to create SG buf mempool octtx_zip_sg_pool%u",
+			    dev->data->dev_id);
+
+		rte_mempool_free(vf->zip_mp);
+		return -1;
+	}
+
 	vf->zip_mp = zip_buf_mp;
+	vf->sg_mp = zip_sg_mp;
 
 	return 0;
 }
@@ -243,6 +286,7 @@ zip_pmd_close(struct rte_compressdev *dev)
 
 	struct zip_vf *vf = (struct zip_vf *)dev->data->dev_private;
 	rte_mempool_free(vf->zip_mp);
+	rte_mempool_free(vf->sg_mp);
 
 	return 0;
 }
@@ -482,9 +526,9 @@ zip_pmd_enqueue_burst(void *queue_pair,
 		}
 	}
 
-#ifdef ZIP_DBG
-	ZIP_PMD_INFO("ops_enqd[nb_ops:%d]:%d\n", nb_ops, enqd);
-#endif
+	qp->enqed = enqd;
+	ZIP_PMD_LOG(DEBUG, "ops_enqd[nb_ops:%d]:%d\n", nb_ops, enqd);
+
 	return enqd;
 }
 
@@ -527,9 +571,7 @@ zip_pmd_dequeue_burst(void *queue_pair,
 				op->status = RTE_COMP_OP_STATUS_ERROR;
 		}
 
-	#ifdef ZIP_DBG
-		ZIP_PMD_INFO("written %d\n", zresult->s.totalbyteswritten);
-	#endif
+		ZIP_PMD_LOG(DEBUG, "written %d\n", zresult->s.totalbyteswritten);
 
 		/* Update op stats */
 		switch (op->status) {
@@ -548,11 +590,15 @@ zip_pmd_dequeue_burst(void *queue_pair,
 		/* zstream is reset irrespective of result */
 		reset_stream(zstrm->inst[i]);
 		zresult->s.compcode = ZIP_COMP_E_NOTDONE;
+
+		if (op->m_src->nb_segs > 1)
+			rte_mempool_put(qp->vf->sg_mp, qp->g_info);
+
+		if (op->m_dst->nb_segs > 1)
+			rte_mempool_put(qp->vf->sg_mp, qp->s_info);
 	}
 
-#ifdef ZIP_DBG
-	ZIP_PMD_INFO("ops_deqd[nb_ops:%d]: %d\n", nb_ops, nb_dequeued);
-#endif
+	ZIP_PMD_LOG(DEBUG, "ops_deqd[nb_ops:%d]: %d\n", nb_ops, nb_dequeued);
 	return nb_dequeued;
 }
 
