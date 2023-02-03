@@ -107,6 +107,16 @@ Runtime Config Options
 
     -a 80:00.0,pipeline-mode-support=1
 
+- ``Default MAC Disable`` (default ``0``)
+
+  Disable the default MAC make the device drop all packets by default,
+  only packets hit on filter rules will pass.
+
+  Default MAC can be disabled by setting the devargs parameter ``default-mac-disable``,
+  for example::
+
+    -a 80:00.0,default-mac-disable=1
+
 - ``Protocol extraction for per queue``
 
   Configure the RX queues to do protocol extraction into mbuf for protocol

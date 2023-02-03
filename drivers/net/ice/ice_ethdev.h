@@ -563,6 +563,7 @@ struct ice_devargs {
 	int safe_mode_support;
 	uint8_t proto_xtr_dflt;
 	int pipe_mode_support;
+	uint8_t default_mac_disable;
 	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
 	uint8_t pin_idx;
 	uint8_t pps_out_ena;
