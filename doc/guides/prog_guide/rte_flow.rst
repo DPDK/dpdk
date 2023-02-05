@@ -1151,6 +1151,20 @@ Matches any ICMPv6 header.
 - ``checksum``: ICMPv6 checksum.
 - Default ``mask`` matches ``type`` and ``code``.
 
+Item: ``ICMP6_ECHO_REQUEST``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches an ICMPv6 echo request.
+
+- ``hdr``: ICMP6 echo header definition (``rte_icmp.h``).
+
+Item: ``ICMP6_ECHO_REPLY``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches an ICMPv6 echo reply.
+
+- ``hdr``: ICMP6 echo header definition (``rte_icmp.h``).
+
 Item: ``ICMP6_ND_NS``
 ^^^^^^^^^^^^^^^^^^^^^
 

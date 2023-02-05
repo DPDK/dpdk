@@ -73,6 +73,11 @@ New Features
   Added ``RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT``
   to match IPv6 routing extension header fields.
 
+* **Added flow matching of ICMPv6.**
+
+  Added flow items to match ICMPv6 echo request and reply packets.
+  Matching patterns can include ICMP identifier and sequence numbers.
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

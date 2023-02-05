@@ -125,6 +125,8 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(IPV6_EXT, sizeof(struct rte_flow_item_ipv6_ext)),
 	MK_FLOW_ITEM(IPV6_FRAG_EXT, sizeof(struct rte_flow_item_ipv6_frag_ext)),
 	MK_FLOW_ITEM(ICMP6, sizeof(struct rte_flow_item_icmp6)),
+	MK_FLOW_ITEM(ICMP6_ECHO_REQUEST, sizeof(struct rte_flow_item_icmp6_echo)),
+	MK_FLOW_ITEM(ICMP6_ECHO_REPLY, sizeof(struct rte_flow_item_icmp6_echo)),
 	MK_FLOW_ITEM(ICMP6_ND_NS, sizeof(struct rte_flow_item_icmp6_nd_ns)),
 	MK_FLOW_ITEM(ICMP6_ND_NA, sizeof(struct rte_flow_item_icmp6_nd_na)),
 	MK_FLOW_ITEM(ICMP6_ND_OPT, sizeof(struct rte_flow_item_icmp6_nd_opt)),

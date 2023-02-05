@@ -642,6 +642,20 @@ enum rte_flow_item_type {
 	 * @see struct rte_flow_item_ipv6_routing_ext.
 	 */
 	RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT,
+
+	/**
+	 * Matches an ICMPv6 echo request.
+	 *
+	 * @see struct rte_flow_item_icmp6_echo.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST,
+
+	/**
+	 * Matches an ICMPv6 echo reply.
+	 *
+	 * @see struct rte_flow_item_icmp6_echo.
+	 */
+	RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY,
 };
 
 /**
@@ -1362,6 +1376,16 @@ static const struct rte_flow_item_icmp6 rte_flow_item_icmp6_mask = {
 	.code = 0xff,
 };
 #endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST
+ * RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY
+ *
+ * Matches an ICMPv6 echo request or reply.
+ */
+struct rte_flow_item_icmp6_echo {
+	struct rte_icmp_echo_hdr hdr;
+};
 
 /**
  * RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS

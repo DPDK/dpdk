@@ -3659,6 +3659,16 @@ This section lists supported pattern items and their attributes, if any.
   - ``type {unsigned}``: ICMPv6 type.
   - ``code {unsigned}``: ICMPv6 code.
 
+- ``icmp6_echo_request``: match ICMPv6 echo request.
+
+  - ``ident {unsigned}``: ICMPv6 echo request identifier.
+  - ``seq {unsigned}``: ICMPv6 echo request sequence number.
+
+- ``icmp6_echo_reply``: match ICMPv6 echo reply.
+
+  - ``ident {unsigned}``: ICMPv6 echo reply identifier.
+  - ``seq {unsigned}``: ICMPv6 echo reply sequence number.
+
 - ``icmp6_nd_ns``: match ICMPv6 neighbor discovery solicitation.
 
   - ``target_addr {ipv6 address}``: target address.

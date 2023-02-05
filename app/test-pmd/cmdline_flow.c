@@ -366,6 +366,12 @@ enum index {
 	ITEM_ICMP6,
 	ITEM_ICMP6_TYPE,
 	ITEM_ICMP6_CODE,
+	ITEM_ICMP6_ECHO_REQUEST,
+	ITEM_ICMP6_ECHO_REQUEST_ID,
+	ITEM_ICMP6_ECHO_REQUEST_SEQ,
+	ITEM_ICMP6_ECHO_REPLY,
+	ITEM_ICMP6_ECHO_REPLY_ID,
+	ITEM_ICMP6_ECHO_REPLY_SEQ,
 	ITEM_ICMP6_ND_NS,
 	ITEM_ICMP6_ND_NS_TARGET_ADDR,
 	ITEM_ICMP6_ND_NA,
@@ -1337,6 +1343,8 @@ static const enum index next_item[] = {
 	ITEM_IPV6_FRAG_EXT,
 	ITEM_IPV6_ROUTING_EXT,
 	ITEM_ICMP6,
+	ITEM_ICMP6_ECHO_REQUEST,
+	ITEM_ICMP6_ECHO_REPLY,
 	ITEM_ICMP6_ND_NS,
 	ITEM_ICMP6_ND_NA,
 	ITEM_ICMP6_ND_OPT,
@@ -1590,6 +1598,20 @@ static const enum index item_ipv6_frag_ext[] = {
 static const enum index item_icmp6[] = {
 	ITEM_ICMP6_TYPE,
 	ITEM_ICMP6_CODE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6_echo_request[] = {
+	ITEM_ICMP6_ECHO_REQUEST_ID,
+	ITEM_ICMP6_ECHO_REQUEST_SEQ,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp6_echo_reply[] = {
+	ITEM_ICMP6_ECHO_REPLY_ID,
+	ITEM_ICMP6_ECHO_REPLY_SEQ,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -4385,6 +4407,54 @@ static const struct token token_list[] = {
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6,
 					     code)),
+	},
+	[ITEM_ICMP6_ECHO_REQUEST] = {
+		.name = "icmp6_echo_request",
+		.help = "match ICMPv6 echo request",
+		.priv = PRIV_ITEM(ICMP6_ECHO_REQUEST,
+				  sizeof(struct rte_flow_item_icmp6_echo)),
+		.next = NEXT(item_icmp6_echo_request),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_ECHO_REQUEST_ID] = {
+		.name = "ident",
+		.help = "ICMPv6 echo request identifier",
+		.next = NEXT(item_icmp6_echo_request, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6_echo,
+					     hdr.identifier)),
+	},
+	[ITEM_ICMP6_ECHO_REQUEST_SEQ] = {
+		.name = "seq",
+		.help = "ICMPv6 echo request sequence",
+		.next = NEXT(item_icmp6_echo_request, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6_echo,
+					     hdr.sequence)),
+	},
+	[ITEM_ICMP6_ECHO_REPLY] = {
+		.name = "icmp6_echo_reply",
+		.help = "match ICMPv6 echo reply",
+		.priv = PRIV_ITEM(ICMP6_ECHO_REPLY,
+				  sizeof(struct rte_flow_item_icmp6_echo)),
+		.next = NEXT(item_icmp6_echo_reply),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP6_ECHO_REPLY_ID] = {
+		.name = "ident",
+		.help = "ICMPv6 echo reply identifier",
+		.next = NEXT(item_icmp6_echo_reply, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6_echo,
+					     hdr.identifier)),
+	},
+	[ITEM_ICMP6_ECHO_REPLY_SEQ] = {
+		.name = "seq",
+		.help = "ICMPv6 echo reply sequence",
+		.next = NEXT(item_icmp6_echo_reply, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp6_echo,
+					     hdr.sequence)),
 	},
 	[ITEM_ICMP6_ND_NS] = {
 		.name = "icmp6_nd_ns",
