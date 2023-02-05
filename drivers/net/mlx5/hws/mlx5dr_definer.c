@@ -369,6 +369,47 @@ mlx5dr_definer_icmp6_dw1_set(struct mlx5dr_definer_fc *fc,
 }
 
 static void
+mlx5dr_definer_icmp6_echo_dw1_mask_set(struct mlx5dr_definer_fc *fc,
+				       __rte_unused const void *item_spec,
+				       uint8_t *tag)
+{
+	const struct rte_flow_item_icmp6 spec = {0xFF, 0xFF, 0x0};
+	mlx5dr_definer_icmp6_dw1_set(fc, &spec, tag);
+}
+
+static void
+mlx5dr_definer_icmp6_echo_request_dw1_set(struct mlx5dr_definer_fc *fc,
+					  __rte_unused const void *item_spec,
+					  uint8_t *tag)
+{
+	const struct rte_flow_item_icmp6 spec = {RTE_ICMP6_ECHO_REQUEST, 0, 0};
+	mlx5dr_definer_icmp6_dw1_set(fc, &spec, tag);
+}
+
+static void
+mlx5dr_definer_icmp6_echo_reply_dw1_set(struct mlx5dr_definer_fc *fc,
+					__rte_unused const void *item_spec,
+					uint8_t *tag)
+{
+	const struct rte_flow_item_icmp6 spec = {RTE_ICMP6_ECHO_REPLY, 0, 0};
+	mlx5dr_definer_icmp6_dw1_set(fc, &spec, tag);
+}
+
+static void
+mlx5dr_definer_icmp6_echo_dw2_set(struct mlx5dr_definer_fc *fc,
+				  const void *item_spec,
+				  uint8_t *tag)
+{
+	const struct rte_flow_item_icmp6_echo *v = item_spec;
+	rte_be32_t dw2;
+
+	dw2 = (rte_be_to_cpu_16(v->hdr.identifier) << __mlx5_dw_bit_off(header_icmp, ident)) |
+	      (rte_be_to_cpu_16(v->hdr.sequence) << __mlx5_dw_bit_off(header_icmp, seq_nb));
+
+	DR_SET(tag, dw2, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
 mlx5dr_definer_ipv6_flow_label_set(struct mlx5dr_definer_fc *fc,
 				   const void *item_spec,
 				   uint8_t *tag)
@@ -1442,6 +1483,48 @@ mlx5dr_definer_conv_item_icmp6(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_icmp6_echo(struct mlx5dr_definer_conv_data *cd,
+				    struct rte_flow_item *item,
+				    int item_idx)
+{
+	const struct rte_flow_item_icmp6_echo *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+
+	if (!cd->relaxed) {
+		/* Overwrite match on L4 type ICMP6 */
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_icmp_protocol_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l4_type, inner);
+
+		/* Set fixed type and code for icmp6 echo request/reply */
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_ICMP_DW1];
+		fc->item_idx = item_idx;
+		fc->tag_mask_set = &mlx5dr_definer_icmp6_echo_dw1_mask_set;
+		if (item->type == RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST)
+			fc->tag_set = &mlx5dr_definer_icmp6_echo_request_dw1_set;
+		else /* RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY */
+			fc->tag_set = &mlx5dr_definer_icmp6_echo_reply_dw1_set;
+		DR_CALC_SET_HDR(fc, tcp_icmp, icmp_dw1);
+	}
+
+	if (!m)
+		return 0;
+
+	/* Set identifier & sequence into icmp_dw2 */
+	if (m->hdr.identifier || m->hdr.sequence) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_ICMP_DW2];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_icmp6_echo_dw2_set;
+		DR_CALC_SET_HDR(fc, tcp_icmp, icmp_dw2);
+	}
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_item_meter_color(struct mlx5dr_definer_conv_data *cd,
 			     struct rte_flow_item *item,
 			     int item_idx)
@@ -1575,6 +1658,11 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP6:
 			ret = mlx5dr_definer_conv_item_icmp6(&cd, items, i);
+			item_flags |= MLX5_FLOW_LAYER_ICMP6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST:
+		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY:
+			ret = mlx5dr_definer_conv_item_icmp6_echo(&cd, items, i);
 			item_flags |= MLX5_FLOW_LAYER_ICMP6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_METER_COLOR:

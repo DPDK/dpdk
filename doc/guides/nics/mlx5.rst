@@ -405,8 +405,8 @@ Limitations
   - The input buffer, providing the removal size, is not validated.
   - The buffer size must match the length of the headers to be removed.
 
-- ICMP(code/type/identifier/sequence number) / ICMP6(code/type) matching, IP-in-IP and MPLS flow matching are all
-  mutually exclusive features which cannot be supported together
+- ICMP(code/type/identifier/sequence number) / ICMP6(code/type/identifier/sequence number) matching,
+  IP-in-IP and MPLS flow matching are all mutually exclusive features which cannot be supported together
   (see :ref:`mlx5_firmware_config`).
 
 - LRO:

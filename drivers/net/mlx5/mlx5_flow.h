@@ -2322,6 +2322,10 @@ int mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
 				   uint64_t item_flags,
 				   uint8_t target_protocol,
 				   struct rte_flow_error *error);
+int mlx5_flow_validate_item_icmp6_echo(const struct rte_flow_item *item,
+				       uint64_t item_flags,
+				       uint8_t target_protocol,
+				       struct rte_flow_error *error);
 int mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
 				  uint64_t item_flags,
 				  uint8_t target_protocol,

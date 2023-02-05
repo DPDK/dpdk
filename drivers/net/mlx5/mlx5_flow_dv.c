@@ -7370,6 +7370,17 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			item_ipv6_proto = IPPROTO_ICMPV6;
 			last_item = MLX5_FLOW_LAYER_ICMP6;
 			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST:
+		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY:
+			ret = mlx5_flow_validate_item_icmp6_echo(items,
+								 item_flags,
+								 next_protocol,
+								 error);
+			if (ret < 0)
+				return ret;
+			item_ipv6_proto = IPPROTO_ICMPV6;
+			last_item = MLX5_FLOW_LAYER_ICMP6;
+			break;
 		case RTE_FLOW_ITEM_TYPE_TAG:
 			ret = flow_dv_validate_item_tag(dev, items,
 							attr, error);
@@ -10267,6 +10278,65 @@ flow_dv_translate_item_icmp6(void *key, const struct rte_flow_item *item,
 		 icmp6_v->type & icmp6_m->type);
 	MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_code,
 		 icmp6_v->code & icmp6_m->code);
+}
+
+/**
+ * Add ICMP6 echo request/reply item to the value.
+ *
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
+ */
+static void
+flow_dv_translate_item_icmp6_echo(void *key, const struct rte_flow_item *item,
+				  int inner, uint32_t key_type)
+{
+	const struct rte_flow_item_icmp6_echo *icmp6_m;
+	const struct rte_flow_item_icmp6_echo *icmp6_v;
+	uint32_t icmp6_header_data_m = 0;
+	uint32_t icmp6_header_data_v = 0;
+	void *headers_v;
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	uint8_t icmp6_type = 0;
+	struct rte_flow_item_icmp6_echo zero_mask;
+
+	memset(&zero_mask, 0, sizeof(zero_mask));
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (key_type & MLX5_SET_MATCHER_M)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, 0xFF);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
+			 IPPROTO_ICMPV6);
+	MLX5_ITEM_UPDATE(item, key_type, icmp6_v, icmp6_m, &zero_mask);
+	/* Set fixed type and code for icmpv6 echo request or reply */
+	icmp6_type = (item->type == RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST ?
+		      RTE_ICMP6_ECHO_REQUEST : RTE_ICMP6_ECHO_REPLY);
+	if (key_type & MLX5_SET_MATCHER_M) {
+		MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_type, 0xFF);
+		MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_code, 0xFF);
+	} else {
+		MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_type, icmp6_type);
+		MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_code, 0);
+	}
+	if (icmp6_v == NULL)
+		return;
+	/* Set icmp6 header data (identifier & sequence) accordingly */
+	icmp6_header_data_m =
+		(rte_be_to_cpu_16(icmp6_m->hdr.identifier) << 16) |
+		rte_be_to_cpu_16(icmp6_m->hdr.sequence);
+	if (icmp6_header_data_m) {
+		icmp6_header_data_v =
+			(rte_be_to_cpu_16(icmp6_v->hdr.identifier) << 16) |
+			rte_be_to_cpu_16(icmp6_v->hdr.sequence);
+		MLX5_SET(fte_match_set_misc3, misc3_v, icmpv6_header_data,
+			 icmp6_header_data_v & icmp6_header_data_m);
+	}
 }
 
 /**
@@ -13378,6 +13448,12 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 		break;
 	case RTE_FLOW_ITEM_TYPE_ICMP6:
 		flow_dv_translate_item_icmp6(key, items, tunnel, key_type);
+		wks->priority = MLX5_PRIORITY_MAP_L4;
+		last_item = MLX5_FLOW_LAYER_ICMP6;
+		break;
+	case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST:
+	case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY:
+		flow_dv_translate_item_icmp6_echo(key, items, tunnel, key_type);
 		wks->priority = MLX5_PRIORITY_MAP_L4;
 		last_item = MLX5_FLOW_LAYER_ICMP6;
 		break;
