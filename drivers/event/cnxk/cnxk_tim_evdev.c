@@ -356,6 +356,7 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 		  uint32_t *caps, const struct event_timer_adapter_ops **ops)
 {
 	struct cnxk_tim_evdev *dev = cnxk_tim_priv_get();
+	struct cnxk_tim_ring *tim_ring;
 
 	RTE_SET_USED(flags);
 
@@ -376,6 +377,12 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	/* Store evdev pointer for later use. */
 	dev->event_dev = (struct rte_eventdev *)(uintptr_t)evdev;
 	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
+
+	tim_ring = ((struct rte_event_timer_adapter_data
+			     *)((char *)caps - offsetof(struct rte_event_timer_adapter_data, caps)))
+			   ->adapter_priv;
+	if (tim_ring != NULL && rte_eal_process_type() == RTE_PROC_SECONDARY)
+		cnxk_tim_set_fp_ops(tim_ring);
 	*ops = &cnxk_tim_ops;
 
 	return 0;
