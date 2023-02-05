@@ -279,7 +279,7 @@ Limitations
 - Match on GTP extension header is not supported in group 0.
 
 - When using DV/Verbs flow engine (``dv_flow_en`` = 1/0 respectively),
-  match on SPI field in ESP header for group 0 needs MLNX_OFED 5.6+.
+  match on SPI field in ESP header for group 0 is supported from ConnectX-7.
 
 - Flex item:
 
