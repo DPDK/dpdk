@@ -275,11 +275,13 @@ static int
 idpf_init_rss(struct idpf_vport *vport)
 {
 	struct rte_eth_rss_conf *rss_conf;
+	struct rte_eth_dev_data *dev_data;
 	uint16_t i, nb_q, lut_size;
 	int ret = 0;
 
-	rss_conf = &vport->dev_data->dev_conf.rx_adv_conf.rss_conf;
-	nb_q = vport->dev_data->nb_rx_queues;
+	dev_data = vport->dev_data;
+	rss_conf = &dev_data->dev_conf.rx_adv_conf.rss_conf;
+	nb_q = dev_data->nb_rx_queues;
 
 	vport->rss_key = rte_zmalloc("rss_key",
 				     vport->rss_key_size, 0);
@@ -466,7 +468,7 @@ idpf_config_rx_queues_irqs(struct rte_eth_dev *dev)
 	}
 	vport->qv_map = qv_map;
 
-	if (idpf_vc_config_irq_map_unmap(vport, true) != 0) {
+	if (idpf_vc_config_irq_map_unmap(vport, dev->data->nb_rx_queues, true) != 0) {
 		PMD_DRV_LOG(ERR, "config interrupt mapping failed");
 		goto config_irq_map_err;
 	}
@@ -582,7 +584,7 @@ idpf_dev_stop(struct rte_eth_dev *dev)
 
 	idpf_stop_queues(dev);
 
-	idpf_vc_config_irq_map_unmap(vport, false);
+	idpf_vc_config_irq_map_unmap(vport, dev->data->nb_rx_queues, false);
 
 	if (vport->recv_vectors != NULL)
 		idpf_vc_dealloc_vectors(vport);

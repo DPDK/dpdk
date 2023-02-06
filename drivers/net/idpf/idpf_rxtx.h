@@ -243,6 +243,9 @@ void idpf_stop_queues(struct rte_eth_dev *dev);
 void idpf_set_rx_function(struct rte_eth_dev *dev);
 void idpf_set_tx_function(struct rte_eth_dev *dev);
 
+int idpf_vc_config_rxq(struct idpf_vport *vport, struct idpf_rx_queue *rxq);
+int idpf_vc_config_txq(struct idpf_vport *vport, struct idpf_tx_queue *txq);
+
 #define IDPF_TIMESYNC_REG_WRAP_GUARD_BAND  10000
 /* Helper function to convert a 32b nanoseconds timestamp to 64b. */
 static inline uint64_t

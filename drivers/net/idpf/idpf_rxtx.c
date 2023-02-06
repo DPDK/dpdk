@@ -1066,7 +1066,7 @@ idpf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		dev->data->rx_queues[rx_queue_id];
 	int err = 0;
 
-	err = idpf_vc_config_rxq(vport, rx_queue_id);
+	err = idpf_vc_config_rxq(vport, rxq);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Fail to configure Rx queue %u", rx_queue_id);
 		return err;
@@ -1117,7 +1117,7 @@ idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		dev->data->tx_queues[tx_queue_id];
 	int err = 0;
 
-	err = idpf_vc_config_txq(vport, tx_queue_id);
+	err = idpf_vc_config_txq(vport, txq);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Fail to configure Tx queue %u", tx_queue_id);
 		return err;

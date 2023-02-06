@@ -74,69 +74,10 @@ enum idpf_vc_result {
 	IDPF_MSG_CMD,      /* Read async command result */
 };
 
-struct idpf_chunks_info {
-	uint32_t tx_start_qid;
-	uint32_t rx_start_qid;
-	/* Valid only if split queue model */
-	uint32_t tx_compl_start_qid;
-	uint32_t rx_buf_start_qid;
-
-	uint64_t tx_qtail_start;
-	uint32_t tx_qtail_spacing;
-	uint64_t rx_qtail_start;
-	uint32_t rx_qtail_spacing;
-	uint64_t tx_compl_qtail_start;
-	uint32_t tx_compl_qtail_spacing;
-	uint64_t rx_buf_qtail_start;
-	uint32_t rx_buf_qtail_spacing;
-};
-
 struct idpf_vport_param {
 	struct idpf_adapter_ext *adapter;
 	uint16_t devarg_id; /* arg id from user */
 	uint16_t idx;       /* index in adapter->vports[]*/
-};
-
-struct idpf_vport {
-	struct idpf_adapter *adapter; /* Backreference to associated adapter */
-	struct virtchnl2_create_vport *vport_info; /* virtchnl response info handling */
-	uint16_t sw_idx; /* SW index in adapter->vports[]*/
-	uint16_t vport_id;
-	uint32_t txq_model;
-	uint32_t rxq_model;
-	uint16_t num_tx_q;
-	/* valid only if txq_model is split Q */
-	uint16_t num_tx_complq;
-	uint16_t num_rx_q;
-	/* valid only if rxq_model is split Q */
-	uint16_t num_rx_bufq;
-
-	uint16_t max_mtu;
-	uint8_t default_mac_addr[VIRTCHNL_ETH_LENGTH_OF_ADDRESS];
-
-	enum virtchnl_rss_algorithm rss_algorithm;
-	uint16_t rss_key_size;
-	uint16_t rss_lut_size;
-
-	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
-	uint16_t max_pkt_len; /* Maximum packet length */
-
-	/* RSS info */
-	uint32_t *rss_lut;
-	uint8_t *rss_key;
-	uint64_t rss_hf;
-
-	/* MSIX info*/
-	struct virtchnl2_queue_vector *qv_map; /* queue vector mapping */
-	uint16_t max_vectors;
-	struct virtchnl2_alloc_vectors *recv_vectors;
-
-	/* Chunk info */
-	struct idpf_chunks_info chunks_info;
-
-	uint16_t devarg_id;
-
-	bool stopped;
 };
 
 /* Struct used when parse driver specific devargs */
@@ -242,15 +183,12 @@ int idpf_vc_destroy_vport(struct idpf_vport *vport);
 int idpf_vc_set_rss_key(struct idpf_vport *vport);
 int idpf_vc_set_rss_lut(struct idpf_vport *vport);
 int idpf_vc_set_rss_hash(struct idpf_vport *vport);
-int idpf_vc_config_rxqs(struct idpf_vport *vport);
-int idpf_vc_config_rxq(struct idpf_vport *vport, uint16_t rxq_id);
-int idpf_vc_config_txqs(struct idpf_vport *vport);
-int idpf_vc_config_txq(struct idpf_vport *vport, uint16_t txq_id);
 int idpf_switch_queue(struct idpf_vport *vport, uint16_t qid,
 		      bool rx, bool on);
 int idpf_vc_ena_dis_queues(struct idpf_vport *vport, bool enable);
 int idpf_vc_ena_dis_vport(struct idpf_vport *vport, bool enable);
-int idpf_vc_config_irq_map_unmap(struct idpf_vport *vport, bool map);
+int idpf_vc_config_irq_map_unmap(struct idpf_vport *vport,
+				 uint16_t nb_rxq, bool map);
 int idpf_vc_alloc_vectors(struct idpf_vport *vport, uint16_t num_vectors);
 int idpf_vc_dealloc_vectors(struct idpf_vport *vport);
 int idpf_vc_query_ptype_info(struct idpf_adapter *adapter);
