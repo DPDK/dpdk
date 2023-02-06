@@ -1017,7 +1017,6 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		.tx_free_thresh = 32,
 		.tx_rs_thresh = 32,
 	};
-	eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
 	dev_info->rx_desc_lim.nb_min = BNXT_MIN_RING_DESC;
 	dev_info->rx_desc_lim.nb_max = BNXT_MAX_RX_RING_DESC;
@@ -5847,6 +5846,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
 	bp = eth_dev->data->dev_private;
 
