@@ -31,7 +31,6 @@
 #include <sys/stat.h>
 
 #include <ethdev_pci.h>
-#include <rte_string_fns.h>
 
 #include "nfp_cpp.h"
 #include "nfp_logs.h"

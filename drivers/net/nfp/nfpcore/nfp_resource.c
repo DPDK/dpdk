@@ -7,8 +7,6 @@
 #include <time.h>
 #include <endian.h>
 
-#include <rte_string_fns.h>
-
 #include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp6000/nfp6000.h"

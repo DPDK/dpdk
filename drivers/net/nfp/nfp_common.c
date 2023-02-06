@@ -25,7 +25,6 @@
 #include <rte_memzone.h>
 #include <rte_mempool.h>
 #include <rte_version.h>
-#include <rte_string_fns.h>
 #include <rte_alarm.h>
 #include <rte_spinlock.h>
 #include <rte_service_component.h>
