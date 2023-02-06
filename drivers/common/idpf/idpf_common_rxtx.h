@@ -5,10 +5,27 @@
 #ifndef _IDPF_COMMON_RXTX_H_
 #define _IDPF_COMMON_RXTX_H_
 
+#include <rte_mbuf.h>
 #include <rte_mbuf_ptype.h>
 #include <rte_mbuf_core.h>
 
 #include "idpf_common_device.h"
+
+#define IDPF_RX_MAX_BURST		32
+
+#define IDPF_RX_OFFLOAD_IPV4_CKSUM		RTE_BIT64(1)
+#define IDPF_RX_OFFLOAD_UDP_CKSUM		RTE_BIT64(2)
+#define IDPF_RX_OFFLOAD_TCP_CKSUM		RTE_BIT64(3)
+#define IDPF_RX_OFFLOAD_OUTER_IPV4_CKSUM	RTE_BIT64(6)
+#define IDPF_RX_OFFLOAD_TIMESTAMP		RTE_BIT64(14)
+
+#define IDPF_TX_OFFLOAD_IPV4_CKSUM       RTE_BIT64(1)
+#define IDPF_TX_OFFLOAD_UDP_CKSUM        RTE_BIT64(2)
+#define IDPF_TX_OFFLOAD_TCP_CKSUM        RTE_BIT64(3)
+#define IDPF_TX_OFFLOAD_SCTP_CKSUM       RTE_BIT64(4)
+#define IDPF_TX_OFFLOAD_TCP_TSO          RTE_BIT64(5)
+#define IDPF_TX_OFFLOAD_MULTI_SEGS       RTE_BIT64(15)
+#define IDPF_TX_OFFLOAD_MBUF_FAST_FREE   RTE_BIT64(16)
 
 struct idpf_rx_stats {
 	uint64_t mbuf_alloc_failed;
@@ -108,5 +125,45 @@ struct idpf_tx_queue {
 	uint8_t expected_gen_id;
 	struct idpf_tx_queue *complq;
 };
+
+struct idpf_rxq_ops {
+	void (*release_mbufs)(struct idpf_rx_queue *rxq);
+};
+
+struct idpf_txq_ops {
+	void (*release_mbufs)(struct idpf_tx_queue *txq);
+};
+
+__rte_internal
+int idpf_check_rx_thresh(uint16_t nb_desc, uint16_t thresh);
+__rte_internal
+int idpf_check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
+			 uint16_t tx_free_thresh);
+__rte_internal
+void idpf_release_rxq_mbufs(struct idpf_rx_queue *rxq);
+__rte_internal
+void idpf_release_txq_mbufs(struct idpf_tx_queue *txq);
+__rte_internal
+void idpf_reset_split_rx_descq(struct idpf_rx_queue *rxq);
+__rte_internal
+void idpf_reset_split_rx_bufq(struct idpf_rx_queue *rxq);
+__rte_internal
+void idpf_reset_split_rx_queue(struct idpf_rx_queue *rxq);
+__rte_internal
+void idpf_reset_single_rx_queue(struct idpf_rx_queue *rxq);
+__rte_internal
+void idpf_reset_split_tx_descq(struct idpf_tx_queue *txq);
+__rte_internal
+void idpf_reset_split_tx_complq(struct idpf_tx_queue *cq);
+__rte_internal
+void idpf_reset_single_tx_queue(struct idpf_tx_queue *txq);
+__rte_internal
+void idpf_rx_queue_release(void *rxq);
+__rte_internal
+void idpf_tx_queue_release(void *txq);
+__rte_internal
+int idpf_alloc_single_rxq_mbufs(struct idpf_rx_queue *rxq);
+__rte_internal
+int idpf_alloc_split_rxq_mbufs(struct idpf_rx_queue *rxq);
 
 #endif /* _IDPF_COMMON_RXTX_H_ */

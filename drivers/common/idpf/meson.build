@@ -5,6 +5,7 @@ deps += ['mbuf']
 
 sources = files(
         'idpf_common_device.c',
+        'idpf_common_rxtx.c',
         'idpf_common_virtchnl.c',
 )
 

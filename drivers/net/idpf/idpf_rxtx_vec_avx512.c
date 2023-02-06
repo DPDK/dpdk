@@ -562,7 +562,7 @@ idpf_tx_free_bufs_avx512(struct idpf_tx_queue *txq)
 	txep = (void *)txq->sw_ring;
 	txep += txq->next_dd - (n - 1);
 
-	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
+	if (txq->offloads & IDPF_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
 		struct rte_mempool *mp = txep[0].mbuf->pool;
 		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp,
 								rte_lcore_id());

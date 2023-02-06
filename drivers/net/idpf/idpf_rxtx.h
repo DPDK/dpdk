@@ -51,7 +51,6 @@
 /* Base address of the HW descriptor ring should be 128B aligned. */
 #define IDPF_RING_BASE_ALIGN	128
 
-#define IDPF_RX_MAX_BURST		32
 #define IDPF_DEFAULT_RX_FREE_THRESH	32
 
 /* used for Vector PMD */
@@ -99,14 +98,6 @@ union idpf_tx_offload {
 		uint64_t tso_segsz:16; /* TCP TSO segment size */
 		/* uint64_t unused : 24; */
 	};
-};
-
-struct idpf_rxq_ops {
-	void (*release_mbufs)(struct idpf_rx_queue *rxq);
-};
-
-struct idpf_txq_ops {
-	void (*release_mbufs)(struct idpf_tx_queue *txq);
 };
 
 int idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,

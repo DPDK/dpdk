@@ -3,11 +3,26 @@ INTERNAL {
 
 	idpf_adapter_deinit;
 	idpf_adapter_init;
+	idpf_alloc_single_rxq_mbufs;
+	idpf_alloc_split_rxq_mbufs;
+	idpf_check_rx_thresh;
+	idpf_check_tx_thresh;
 	idpf_config_irq_map;
 	idpf_config_irq_unmap;
 	idpf_config_rss;
 	idpf_create_vport_info_init;
 	idpf_execute_vc_cmd;
+	idpf_release_rxq_mbufs;
+	idpf_release_txq_mbufs;
+	idpf_reset_single_rx_queue;
+	idpf_reset_single_tx_queue;
+	idpf_reset_split_rx_bufq;
+	idpf_reset_split_rx_descq;
+	idpf_reset_split_rx_queue;
+	idpf_reset_split_tx_complq;
+	idpf_reset_split_tx_descq;
+	idpf_rx_queue_release;
+	idpf_tx_queue_release;
 	idpf_vc_alloc_vectors;
 	idpf_vc_check_api_version;
 	idpf_vc_config_irq_map_unmap;
