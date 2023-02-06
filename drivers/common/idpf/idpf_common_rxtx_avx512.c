@@ -533,8 +533,8 @@ _idpf_singleq_recv_raw_pkts_avx512(struct idpf_rx_queue *rxq,
  * - nb_pkts < IDPF_DESCS_PER_LOOP, just return no packet
  */
 uint16_t
-idpf_singleq_recv_pkts_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
-			  uint16_t nb_pkts)
+idpf_dp_singleq_recv_pkts_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts)
 {
 	return _idpf_singleq_recv_raw_pkts_avx512(rx_queue, rx_pkts, nb_pkts);
 }
@@ -819,8 +819,8 @@ idpf_xmit_pkts_vec_avx512_cmn(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 uint16_t
-idpf_singleq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
-			     uint16_t nb_pkts)
+idpf_dp_singleq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+				 uint16_t nb_pkts)
 {
 	return idpf_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts);
 }

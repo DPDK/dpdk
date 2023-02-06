@@ -618,8 +618,8 @@ idpf_split_rx_bufq_refill(struct idpf_rx_queue *rx_bufq)
 }
 
 uint16_t
-idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-		      uint16_t nb_pkts)
+idpf_dp_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
 {
 	volatile struct virtchnl2_rx_flex_desc_adv_nic_3 *rx_desc_ring;
 	volatile struct virtchnl2_rx_flex_desc_adv_nic_3 *rx_desc;
@@ -850,8 +850,8 @@ idpf_set_splitq_tso_ctx(struct rte_mbuf *mbuf,
 }
 
 uint16_t
-idpf_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-		      uint16_t nb_pkts)
+idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t nb_pkts)
 {
 	struct idpf_tx_queue *txq = (struct idpf_tx_queue *)tx_queue;
 	volatile struct idpf_flex_tx_sched_desc *txr;
@@ -1024,8 +1024,8 @@ idpf_update_rx_tail(struct idpf_rx_queue *rxq, uint16_t nb_hold,
 }
 
 uint16_t
-idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-		       uint16_t nb_pkts)
+idpf_dp_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			  uint16_t nb_pkts)
 {
 	volatile union virtchnl2_rx_desc *rx_ring;
 	volatile union virtchnl2_rx_desc *rxdp;
@@ -1186,8 +1186,8 @@ idpf_xmit_cleanup(struct idpf_tx_queue *txq)
 
 /* TX function */
 uint16_t
-idpf_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-		       uint16_t nb_pkts)
+idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			  uint16_t nb_pkts)
 {
 	volatile struct idpf_flex_tx_desc *txd;
 	volatile struct idpf_flex_tx_desc *txr;
@@ -1350,8 +1350,8 @@ end_of_tx:
 
 /* TX prep functions */
 uint16_t
-idpf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
-	       uint16_t nb_pkts)
+idpf_dp_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		  uint16_t nb_pkts)
 {
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	int ret;

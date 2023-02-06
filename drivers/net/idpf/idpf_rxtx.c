@@ -771,7 +771,7 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 
 #ifdef RTE_ARCH_X86
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
-		dev->rx_pkt_burst = idpf_splitq_recv_pkts;
+		dev->rx_pkt_burst = idpf_dp_splitq_recv_pkts;
 	} else {
 		if (vport->rx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -780,19 +780,19 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 			}
 #ifdef CC_AVX512_SUPPORT
 			if (vport->rx_use_avx512) {
-				dev->rx_pkt_burst = idpf_singleq_recv_pkts_avx512;
+				dev->rx_pkt_burst = idpf_dp_singleq_recv_pkts_avx512;
 				return;
 			}
 #endif /* CC_AVX512_SUPPORT */
 		}
 
-		dev->rx_pkt_burst = idpf_singleq_recv_pkts;
+		dev->rx_pkt_burst = idpf_dp_singleq_recv_pkts;
 	}
 #else
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT)
-		dev->rx_pkt_burst = idpf_splitq_recv_pkts;
+		dev->rx_pkt_burst = idpf_dp_splitq_recv_pkts;
 	else
-		dev->rx_pkt_burst = idpf_singleq_recv_pkts;
+		dev->rx_pkt_burst = idpf_dp_singleq_recv_pkts;
 #endif /* RTE_ARCH_X86 */
 }
 
@@ -824,8 +824,8 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 #endif /* RTE_ARCH_X86 */
 
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
-		dev->tx_pkt_burst = idpf_splitq_xmit_pkts;
-		dev->tx_pkt_prepare = idpf_prep_pkts;
+		dev->tx_pkt_burst = idpf_dp_splitq_xmit_pkts;
+		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
 	} else {
 #ifdef RTE_ARCH_X86
 		if (vport->tx_vec_allowed) {
@@ -837,14 +837,14 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 						continue;
 					idpf_qc_singleq_tx_vec_avx512_setup(txq);
 				}
-				dev->tx_pkt_burst = idpf_singleq_xmit_pkts_avx512;
-				dev->tx_pkt_prepare = idpf_prep_pkts;
+				dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts_avx512;
+				dev->tx_pkt_prepare = idpf_dp_prep_pkts;
 				return;
 			}
 #endif /* CC_AVX512_SUPPORT */
 		}
 #endif /* RTE_ARCH_X86 */
-		dev->tx_pkt_burst = idpf_singleq_xmit_pkts;
-		dev->tx_pkt_prepare = idpf_prep_pkts;
+		dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts;
+		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
 	}
 }
