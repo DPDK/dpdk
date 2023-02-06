@@ -1384,7 +1384,7 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct idpf_rx_queue *rxq;
 	const uint32_t *ptype_tbl;
 	uint8_t status_err0_qw1;
-	struct idpf_adapter *ad;
+	struct idpf_adapter_ext *ad;
 	struct rte_mbuf *rxm;
 	uint16_t rx_id_bufq1;
 	uint16_t rx_id_bufq2;
@@ -1398,7 +1398,7 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	nb_rx = 0;
 	rxq = rx_queue;
-	ad = rxq->adapter;
+	ad = IDPF_ADAPTER_TO_EXT(rxq->adapter);
 
 	if (unlikely(rxq == NULL) || unlikely(!rxq->q_started))
 		return nb_rx;
@@ -1407,7 +1407,7 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_id_bufq1 = rxq->bufq1->rx_next_avail;
 	rx_id_bufq2 = rxq->bufq2->rx_next_avail;
 	rx_desc_ring = rxq->rx_ring;
-	ptype_tbl = rxq->adapter->ptype_tbl;
+	ptype_tbl = ad->ptype_tbl;
 
 	if ((rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0)
 		rxq->hw_register_set = 1;
@@ -1791,7 +1791,7 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	const uint32_t *ptype_tbl;
 	uint16_t rx_id, nb_hold;
 	struct rte_eth_dev *dev;
-	struct idpf_adapter *ad;
+	struct idpf_adapter_ext *ad;
 	uint16_t rx_packet_len;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *nmb;
@@ -1805,14 +1805,14 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = 0;
 	rxq = rx_queue;
 
-	ad = rxq->adapter;
+	ad = IDPF_ADAPTER_TO_EXT(rxq->adapter);
 
 	if (unlikely(rxq == NULL) || unlikely(!rxq->q_started))
 		return nb_rx;
 
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
-	ptype_tbl = rxq->adapter->ptype_tbl;
+	ptype_tbl = ad->ptype_tbl;
 
 	if ((rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0)
 		rxq->hw_register_set = 1;
@@ -2221,7 +2221,7 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 #ifdef RTE_ARCH_X86
-	struct idpf_adapter *ad = vport->adapter;
+	struct idpf_adapter_ext *ad = IDPF_ADAPTER_TO_EXT(vport->adapter);
 	struct idpf_rx_queue *rxq;
 	int i;
 
@@ -2275,7 +2275,7 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 #ifdef RTE_ARCH_X86
-	struct idpf_adapter *ad = vport->adapter;
+	struct idpf_adapter_ext *ad = IDPF_ADAPTER_TO_EXT(vport->adapter);
 #ifdef CC_AVX512_SUPPORT
 	struct idpf_tx_queue *txq;
 	int i;

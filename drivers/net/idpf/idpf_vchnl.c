@@ -311,13 +311,17 @@ idpf_vc_check_api_version(struct idpf_adapter *adapter)
 }
 
 int __rte_cold
-idpf_get_pkt_type(struct idpf_adapter *adapter)
+idpf_get_pkt_type(struct idpf_adapter_ext *adapter)
 {
 	struct virtchnl2_get_ptype_info *ptype_info;
-	uint16_t ptype_recvd = 0, ptype_offset, i, j;
+	struct idpf_adapter *base;
+	uint16_t ptype_offset, i, j;
+	uint16_t ptype_recvd = 0;
 	int ret;
 
-	ret = idpf_vc_query_ptype_info(adapter);
+	base = &adapter->base;
+
+	ret = idpf_vc_query_ptype_info(base);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Fail to query packet type information");
 		return ret;
@@ -328,7 +332,7 @@ idpf_get_pkt_type(struct idpf_adapter *adapter)
 			return -ENOMEM;
 
 	while (ptype_recvd < IDPF_MAX_PKT_TYPE) {
-		ret = idpf_read_one_msg(adapter, VIRTCHNL2_OP_GET_PTYPE_INFO,
+		ret = idpf_read_one_msg(base, VIRTCHNL2_OP_GET_PTYPE_INFO,
 					IDPF_DFLT_MBX_BUF_SIZE, (u8 *)ptype_info);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Fail to get packet type information");
@@ -515,7 +519,7 @@ idpf_get_pkt_type(struct idpf_adapter *adapter)
 
 free_ptype_info:
 	rte_free(ptype_info);
-	clear_cmd(adapter);
+	clear_cmd(base);
 	return ret;
 }
 
@@ -577,7 +581,7 @@ idpf_vc_get_caps(struct idpf_adapter *adapter)
 		return err;
 	}
 
-	rte_memcpy(adapter->caps, args.out_buffer, sizeof(caps_msg));
+	rte_memcpy(&adapter->caps, args.out_buffer, sizeof(caps_msg));
 
 	return 0;
 }
@@ -740,7 +744,8 @@ idpf_vc_set_rss_hash(struct idpf_vport *vport)
 int
 idpf_vc_config_rxqs(struct idpf_vport *vport)
 {
-	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_adapter *base = vport->adapter;
+	struct idpf_adapter_ext *adapter = IDPF_ADAPTER_TO_EXT(base);
 	struct idpf_rx_queue **rxq =
 		(struct idpf_rx_queue **)vport->dev_data->rx_queues;
 	struct virtchnl2_config_rx_queues *vc_rxqs = NULL;
@@ -832,10 +837,10 @@ idpf_vc_config_rxqs(struct idpf_vport *vport)
 		args.ops = VIRTCHNL2_OP_CONFIG_RX_QUEUES;
 		args.in_args = (uint8_t *)vc_rxqs;
 		args.in_args_size = size;
-		args.out_buffer = adapter->mbx_resp;
+		args.out_buffer = base->mbx_resp;
 		args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-		err = idpf_execute_vc_cmd(adapter, &args);
+		err = idpf_execute_vc_cmd(base, &args);
 		rte_free(vc_rxqs);
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_CONFIG_RX_QUEUES");
@@ -940,7 +945,8 @@ idpf_vc_config_rxq(struct idpf_vport *vport, uint16_t rxq_id)
 int
 idpf_vc_config_txqs(struct idpf_vport *vport)
 {
-	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_adapter *base = vport->adapter;
+	struct idpf_adapter_ext *adapter = IDPF_ADAPTER_TO_EXT(base);
 	struct idpf_tx_queue **txq =
 		(struct idpf_tx_queue **)vport->dev_data->tx_queues;
 	struct virtchnl2_config_tx_queues *vc_txqs = NULL;
@@ -1010,10 +1016,10 @@ idpf_vc_config_txqs(struct idpf_vport *vport)
 		args.ops = VIRTCHNL2_OP_CONFIG_TX_QUEUES;
 		args.in_args = (uint8_t *)vc_txqs;
 		args.in_args_size = size;
-		args.out_buffer = adapter->mbx_resp;
+		args.out_buffer = base->mbx_resp;
 		args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-		err = idpf_execute_vc_cmd(adapter, &args);
+		err = idpf_execute_vc_cmd(base, &args);
 		rte_free(vc_txqs);
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_CONFIG_TX_QUEUES");

@@ -15,6 +15,7 @@
 
 #include "idpf_logs.h"
 
+#include <idpf_common_device.h>
 #include <base/idpf_prototype.h>
 #include <base/virtchnl2.h>
 
@@ -91,7 +92,7 @@ struct idpf_chunks_info {
 };
 
 struct idpf_vport_param {
-	struct idpf_adapter *adapter;
+	struct idpf_adapter_ext *adapter;
 	uint16_t devarg_id; /* arg id from user */
 	uint16_t idx;       /* index in adapter->vports[]*/
 };
@@ -144,17 +145,11 @@ struct idpf_devargs {
 	uint16_t req_vport_nb;
 };
 
-struct idpf_adapter {
-	TAILQ_ENTRY(idpf_adapter) next;
-	struct idpf_hw hw;
+struct idpf_adapter_ext {
+	TAILQ_ENTRY(idpf_adapter_ext) next;
+	struct idpf_adapter base;
+
 	char name[IDPF_ADAPTER_NAME_LEN];
-
-	struct virtchnl2_version_info virtchnl_version;
-	struct virtchnl2_get_capabilities *caps;
-
-	volatile uint32_t pend_cmd; /* pending command not finished */
-	uint32_t cmd_retval; /* return value of the cmd response from ipf */
-	uint8_t *mbx_resp; /* buffer to store the mailbox response from ipf */
 
 	uint32_t txq_model; /* 0 - split queue model, non-0 - single queue model */
 	uint32_t rxq_model; /* 0 - split queue model, non-0 - single queue model */
@@ -182,10 +177,12 @@ struct idpf_adapter {
 	uint64_t time_hw;
 };
 
-TAILQ_HEAD(idpf_adapter_list, idpf_adapter);
+TAILQ_HEAD(idpf_adapter_list, idpf_adapter_ext);
 
 #define IDPF_DEV_TO_PCI(eth_dev)		\
 	RTE_DEV_TO_PCI((eth_dev)->device)
+#define IDPF_ADAPTER_TO_EXT(p)					\
+	container_of((p), struct idpf_adapter_ext, base)
 
 /* structure used for sending and checking response of virtchnl ops */
 struct idpf_cmd_info {
@@ -234,10 +231,10 @@ atomic_set_cmd(struct idpf_adapter *adapter, uint32_t ops)
 	return !ret;
 }
 
-struct idpf_adapter *idpf_find_adapter(struct rte_pci_device *pci_dev);
+struct idpf_adapter_ext *idpf_find_adapter_ext(struct rte_pci_device *pci_dev);
 void idpf_handle_virtchnl_msg(struct rte_eth_dev *dev);
 int idpf_vc_check_api_version(struct idpf_adapter *adapter);
-int idpf_get_pkt_type(struct idpf_adapter *adapter);
+int idpf_get_pkt_type(struct idpf_adapter_ext *adapter);
 int idpf_vc_get_caps(struct idpf_adapter *adapter);
 int idpf_vc_create_vport(struct idpf_vport *vport,
 			 struct virtchnl2_create_vport *vport_info);

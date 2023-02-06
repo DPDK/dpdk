@@ -53,8 +53,8 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct idpf_vport *vport = dev->data->dev_private;
 	struct idpf_adapter *adapter = vport->adapter;
 
-	dev_info->max_rx_queues = adapter->caps->max_rx_q;
-	dev_info->max_tx_queues = adapter->caps->max_tx_q;
+	dev_info->max_rx_queues = adapter->caps.max_rx_q;
+	dev_info->max_tx_queues = adapter->caps.max_tx_q;
 	dev_info->min_rx_bufsize = IDPF_MIN_BUF_SIZE;
 	dev_info->max_rx_pktlen = vport->max_mtu + IDPF_ETH_OVERHEAD;
 
@@ -147,7 +147,7 @@ idpf_init_vport_req_info(struct rte_eth_dev *dev,
 			 struct virtchnl2_create_vport *vport_info)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_adapter_ext *adapter = IDPF_ADAPTER_TO_EXT(vport->adapter);
 
 	vport_info->vport_type = rte_cpu_to_le_16(VIRTCHNL2_VPORT_TYPE_DEFAULT);
 	if (adapter->txq_model == 0) {
@@ -379,7 +379,7 @@ idpf_dev_configure(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if (adapter->caps->rss_caps != 0 && dev->data->nb_rx_queues != 0) {
+	if (adapter->caps.rss_caps != 0 && dev->data->nb_rx_queues != 0) {
 		ret = idpf_init_rss(vport);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Failed to init rss");
@@ -420,7 +420,7 @@ idpf_config_rx_queues_irqs(struct rte_eth_dev *dev)
 
 	/* Rx interrupt disabled, Map interrupt only for writeback */
 
-	/* The capability flags adapter->caps->other_caps should be
+	/* The capability flags adapter->caps.other_caps should be
 	 * compared with bit VIRTCHNL2_CAP_WB_ON_ITR here. The if
 	 * condition should be updated when the FW can return the
 	 * correct flag bits.
@@ -518,9 +518,9 @@ static int
 idpf_dev_start(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_adapter *adapter = vport->adapter;
-	uint16_t num_allocated_vectors =
-		adapter->caps->num_allocated_vectors;
+	struct idpf_adapter *base = vport->adapter;
+	struct idpf_adapter_ext *adapter = IDPF_ADAPTER_TO_EXT(base);
+	uint16_t num_allocated_vectors = base->caps.num_allocated_vectors;
 	uint16_t req_vecs_num;
 	int ret;
 
@@ -596,7 +596,7 @@ static int
 idpf_dev_close(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_adapter_ext *adapter = IDPF_ADAPTER_TO_EXT(vport->adapter);
 
 	idpf_dev_stop(dev);
 
@@ -728,7 +728,7 @@ parse_bool(const char *key, const char *value, void *args)
 }
 
 static int
-idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter,
+idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapter,
 		   struct idpf_devargs *idpf_args)
 {
 	struct rte_devargs *devargs = pci_dev->device.devargs;
@@ -875,14 +875,14 @@ idpf_init_mbx(struct idpf_hw *hw)
 }
 
 static int
-idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
+idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapter)
 {
-	struct idpf_hw *hw = &adapter->hw;
+	struct idpf_hw *hw = &adapter->base.hw;
 	int ret = 0;
 
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->hw_addr_len = pci_dev->mem_resource[0].len;
-	hw->back = adapter;
+	hw->back = &adapter->base;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->device_id = pci_dev->id.device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
@@ -902,15 +902,15 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 		goto err;
 	}
 
-	adapter->mbx_resp = rte_zmalloc("idpf_adapter_mbx_resp",
-					IDPF_DFLT_MBX_BUF_SIZE, 0);
-	if (adapter->mbx_resp == NULL) {
+	adapter->base.mbx_resp = rte_zmalloc("idpf_adapter_mbx_resp",
+					     IDPF_DFLT_MBX_BUF_SIZE, 0);
+	if (adapter->base.mbx_resp == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate idpf_adapter_mbx_resp memory");
 		ret = -ENOMEM;
 		goto err_mbx;
 	}
 
-	ret = idpf_vc_check_api_version(adapter);
+	ret = idpf_vc_check_api_version(&adapter->base);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to check api version");
 		goto err_api;
@@ -922,21 +922,13 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 		goto err_api;
 	}
 
-	adapter->caps = rte_zmalloc("idpf_caps",
-				sizeof(struct virtchnl2_get_capabilities), 0);
-	if (adapter->caps == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate idpf_caps memory");
-		ret = -ENOMEM;
+	ret = idpf_vc_get_caps(&adapter->base);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to get capabilities");
 		goto err_api;
 	}
 
-	ret = idpf_vc_get_caps(adapter);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to get capabilities");
-		goto err_caps;
-	}
-
-	adapter->max_vport_nb = adapter->caps->max_vports;
+	adapter->max_vport_nb = adapter->base.caps.max_vports;
 
 	adapter->vports = rte_zmalloc("vports",
 				      adapter->max_vport_nb *
@@ -945,7 +937,7 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 	if (adapter->vports == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate vports memory");
 		ret = -ENOMEM;
-		goto err_vports;
+		goto err_api;
 	}
 
 	adapter->max_rxq_per_msg = (IDPF_DFLT_MBX_BUF_SIZE -
@@ -962,13 +954,9 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter *adapter)
 
 	return ret;
 
-err_vports:
-err_caps:
-	rte_free(adapter->caps);
-	adapter->caps = NULL;
 err_api:
-	rte_free(adapter->mbx_resp);
-	adapter->mbx_resp = NULL;
+	rte_free(adapter->base.mbx_resp);
+	adapter->base.mbx_resp = NULL;
 err_mbx:
 	idpf_ctlq_deinit(hw);
 err:
@@ -995,7 +983,7 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 };
 
 static uint16_t
-idpf_vport_idx_alloc(struct idpf_adapter *ad)
+idpf_vport_idx_alloc(struct idpf_adapter_ext *ad)
 {
 	uint16_t vport_idx;
 	uint16_t i;
@@ -1018,13 +1006,13 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 	struct idpf_vport_param *param = init_params;
-	struct idpf_adapter *adapter = param->adapter;
+	struct idpf_adapter_ext *adapter = param->adapter;
 	/* for sending create vport virtchnl msg prepare */
 	struct virtchnl2_create_vport vport_req_info;
 	int ret = 0;
 
 	dev->dev_ops = &idpf_eth_dev_ops;
-	vport->adapter = adapter;
+	vport->adapter = &adapter->base;
 	vport->sw_idx = param->idx;
 	vport->devarg_id = param->devarg_id;
 
@@ -1085,10 +1073,10 @@ static const struct rte_pci_id pci_id_idpf_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
-struct idpf_adapter *
-idpf_find_adapter(struct rte_pci_device *pci_dev)
+struct idpf_adapter_ext *
+idpf_find_adapter_ext(struct rte_pci_device *pci_dev)
 {
-	struct idpf_adapter *adapter;
+	struct idpf_adapter_ext *adapter;
 	int found = 0;
 
 	if (pci_dev == NULL)
@@ -1110,17 +1098,14 @@ idpf_find_adapter(struct rte_pci_device *pci_dev)
 }
 
 static void
-idpf_adapter_rel(struct idpf_adapter *adapter)
+idpf_adapter_rel(struct idpf_adapter_ext *adapter)
 {
-	struct idpf_hw *hw = &adapter->hw;
+	struct idpf_hw *hw = &adapter->base.hw;
 
 	idpf_ctlq_deinit(hw);
 
-	rte_free(adapter->caps);
-	adapter->caps = NULL;
-
-	rte_free(adapter->mbx_resp);
-	adapter->mbx_resp = NULL;
+	rte_free(adapter->base.mbx_resp);
+	adapter->base.mbx_resp = NULL;
 
 	rte_free(adapter->vports);
 	adapter->vports = NULL;
@@ -1131,7 +1116,7 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	       struct rte_pci_device *pci_dev)
 {
 	struct idpf_vport_param vport_param;
-	struct idpf_adapter *adapter;
+	struct idpf_adapter_ext *adapter;
 	struct idpf_devargs devargs;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int i, retval;
@@ -1143,11 +1128,11 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		idpf_adapter_list_init = true;
 	}
 
-	adapter = idpf_find_adapter(pci_dev);
+	adapter = idpf_find_adapter_ext(pci_dev);
 	if (adapter == NULL) {
 		first_probe = true;
-		adapter = rte_zmalloc("idpf_adapter",
-						sizeof(struct idpf_adapter), 0);
+		adapter = rte_zmalloc("idpf_adapter_ext",
+				      sizeof(struct idpf_adapter_ext), 0);
 		if (adapter == NULL) {
 			PMD_INIT_LOG(ERR, "Failed to allocate adapter.");
 			return -ENOMEM;
@@ -1225,7 +1210,7 @@ err:
 static int
 idpf_pci_remove(struct rte_pci_device *pci_dev)
 {
-	struct idpf_adapter *adapter = idpf_find_adapter(pci_dev);
+	struct idpf_adapter_ext *adapter = idpf_find_adapter_ext(pci_dev);
 	uint16_t port_id;
 
 	/* Ethdev created can be found RTE_ETH_FOREACH_DEV_OF through rte_device */

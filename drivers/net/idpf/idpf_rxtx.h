@@ -247,11 +247,11 @@ void idpf_set_tx_function(struct rte_eth_dev *dev);
 /* Helper function to convert a 32b nanoseconds timestamp to 64b. */
 static inline uint64_t
 
-idpf_tstamp_convert_32b_64b(struct idpf_adapter *ad, uint32_t flag,
+idpf_tstamp_convert_32b_64b(struct idpf_adapter_ext *ad, uint32_t flag,
 			    uint32_t in_timestamp)
 {
 #ifdef RTE_ARCH_X86_64
-	struct idpf_hw *hw = &ad->hw;
+	struct idpf_hw *hw = &ad->base.hw;
 	const uint64_t mask = 0xFFFFFFFF;
 	uint32_t hi, lo, lo2, delta;
 	uint64_t ns;
