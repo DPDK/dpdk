@@ -27,6 +27,61 @@
 #define IDPF_TX_OFFLOAD_MULTI_SEGS       RTE_BIT64(15)
 #define IDPF_TX_OFFLOAD_MBUF_FAST_FREE   RTE_BIT64(16)
 
+#define IDPF_TX_MAX_MTU_SEG	10
+
+#define IDPF_MIN_TSO_MSS	88
+#define IDPF_MAX_TSO_MSS	9728
+#define IDPF_MAX_TSO_FRAME_SIZE	262143
+#define IDPF_TX_MAX_MTU_SEG     10
+
+#define IDPF_TX_CKSUM_OFFLOAD_MASK (		\
+		RTE_MBUF_F_TX_IP_CKSUM |	\
+		RTE_MBUF_F_TX_L4_MASK |		\
+		RTE_MBUF_F_TX_TCP_SEG)
+
+#define IDPF_TX_OFFLOAD_MASK (			\
+		IDPF_TX_CKSUM_OFFLOAD_MASK |	\
+		RTE_MBUF_F_TX_IPV4 |		\
+		RTE_MBUF_F_TX_IPV6)
+
+#define IDPF_TX_OFFLOAD_NOTSUP_MASK \
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IDPF_TX_OFFLOAD_MASK)
+
+/* MTS */
+#define GLTSYN_CMD_SYNC_0_0	(PF_TIMESYNC_BASE + 0x0)
+#define PF_GLTSYN_SHTIME_0_0	(PF_TIMESYNC_BASE + 0x4)
+#define PF_GLTSYN_SHTIME_L_0	(PF_TIMESYNC_BASE + 0x8)
+#define PF_GLTSYN_SHTIME_H_0	(PF_TIMESYNC_BASE + 0xC)
+#define GLTSYN_ART_L_0		(PF_TIMESYNC_BASE + 0x10)
+#define GLTSYN_ART_H_0		(PF_TIMESYNC_BASE + 0x14)
+#define PF_GLTSYN_SHTIME_0_1	(PF_TIMESYNC_BASE + 0x24)
+#define PF_GLTSYN_SHTIME_L_1	(PF_TIMESYNC_BASE + 0x28)
+#define PF_GLTSYN_SHTIME_H_1	(PF_TIMESYNC_BASE + 0x2C)
+#define PF_GLTSYN_SHTIME_0_2	(PF_TIMESYNC_BASE + 0x44)
+#define PF_GLTSYN_SHTIME_L_2	(PF_TIMESYNC_BASE + 0x48)
+#define PF_GLTSYN_SHTIME_H_2	(PF_TIMESYNC_BASE + 0x4C)
+#define PF_GLTSYN_SHTIME_0_3	(PF_TIMESYNC_BASE + 0x64)
+#define PF_GLTSYN_SHTIME_L_3	(PF_TIMESYNC_BASE + 0x68)
+#define PF_GLTSYN_SHTIME_H_3	(PF_TIMESYNC_BASE + 0x6C)
+
+#define PF_TIMESYNC_BAR4_BASE	0x0E400000
+#define GLTSYN_ENA		(PF_TIMESYNC_BAR4_BASE + 0x90)
+#define GLTSYN_CMD		(PF_TIMESYNC_BAR4_BASE + 0x94)
+#define GLTSYC_TIME_L		(PF_TIMESYNC_BAR4_BASE + 0x104)
+#define GLTSYC_TIME_H		(PF_TIMESYNC_BAR4_BASE + 0x108)
+
+#define GLTSYN_CMD_SYNC_0_4	(PF_TIMESYNC_BAR4_BASE + 0x110)
+#define PF_GLTSYN_SHTIME_L_4	(PF_TIMESYNC_BAR4_BASE + 0x118)
+#define PF_GLTSYN_SHTIME_H_4	(PF_TIMESYNC_BAR4_BASE + 0x11C)
+#define GLTSYN_INCVAL_L		(PF_TIMESYNC_BAR4_BASE + 0x150)
+#define GLTSYN_INCVAL_H		(PF_TIMESYNC_BAR4_BASE + 0x154)
+#define GLTSYN_SHADJ_L		(PF_TIMESYNC_BAR4_BASE + 0x158)
+#define GLTSYN_SHADJ_H		(PF_TIMESYNC_BAR4_BASE + 0x15C)
+
+#define GLTSYN_CMD_SYNC_0_5	(PF_TIMESYNC_BAR4_BASE + 0x130)
+#define PF_GLTSYN_SHTIME_L_5	(PF_TIMESYNC_BAR4_BASE + 0x138)
+#define PF_GLTSYN_SHTIME_H_5	(PF_TIMESYNC_BAR4_BASE + 0x13C)
+
 struct idpf_rx_stats {
 	uint64_t mbuf_alloc_failed;
 };
@@ -126,6 +181,18 @@ struct idpf_tx_queue {
 	struct idpf_tx_queue *complq;
 };
 
+/* Offload features */
+union idpf_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /* L3 (IP) Header Length. */
+		uint64_t l4_len:8; /* L4 Header Length. */
+		uint64_t tso_segsz:16; /* TCP TSO segment size */
+		/* uint64_t unused : 24; */
+	};
+};
+
 struct idpf_rxq_ops {
 	void (*release_mbufs)(struct idpf_rx_queue *rxq);
 };
@@ -133,6 +200,9 @@ struct idpf_rxq_ops {
 struct idpf_txq_ops {
 	void (*release_mbufs)(struct idpf_tx_queue *txq);
 };
+
+extern int idpf_timestamp_dynfield_offset;
+extern uint64_t idpf_timestamp_dynflag;
 
 __rte_internal
 int idpf_check_rx_thresh(uint16_t nb_desc, uint16_t thresh);
@@ -162,8 +232,25 @@ void idpf_rx_queue_release(void *rxq);
 __rte_internal
 void idpf_tx_queue_release(void *txq);
 __rte_internal
+int idpf_register_ts_mbuf(struct idpf_rx_queue *rxq);
+__rte_internal
 int idpf_alloc_single_rxq_mbufs(struct idpf_rx_queue *rxq);
 __rte_internal
 int idpf_alloc_split_rxq_mbufs(struct idpf_rx_queue *rxq);
+__rte_internal
+uint16_t idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			       uint16_t nb_pkts);
+__rte_internal
+uint16_t idpf_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts);
+__rte_internal
+uint16_t idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts);
+__rte_internal
+uint16_t idpf_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+				uint16_t nb_pkts);
+__rte_internal
+uint16_t idpf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts);
 
 #endif /* _IDPF_COMMON_RXTX_H_ */

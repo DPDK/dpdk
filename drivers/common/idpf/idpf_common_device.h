@@ -23,6 +23,8 @@
 #define IDPF_TX_COMPLQ_PER_GRP	1
 #define IDPF_TXQ_PER_GRP	1
 
+#define IDPF_MIN_FRAME_SIZE	14
+
 #define IDPF_MAX_PKT_TYPE	1024
 
 #define IDPF_DFLT_INTERVAL	16
@@ -43,6 +45,9 @@ struct idpf_adapter {
 
 	uint32_t txq_model; /* 0 - split queue model, non-0 - single queue model */
 	uint32_t rxq_model; /* 0 - split queue model, non-0 - single queue model */
+
+	/* For timestamp */
+	uint64_t time_hw;
 };
 
 struct idpf_chunks_info {

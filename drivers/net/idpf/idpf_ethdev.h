@@ -28,7 +28,6 @@
 
 #define IDPF_MIN_BUF_SIZE	1024
 #define IDPF_MAX_FRAME_SIZE	9728
-#define IDPF_MIN_FRAME_SIZE	14
 #define IDPF_DEFAULT_MTU	RTE_ETHER_MTU
 
 #define IDPF_NUM_MACADDR_MAX	64
@@ -78,9 +77,6 @@ struct idpf_adapter_ext {
 	uint16_t cur_vport_nb;
 
 	uint16_t used_vecs_num;
-
-	/* For PTP */
-	uint64_t time_hw;
 };
 
 TAILQ_HEAD(idpf_adapter_list, idpf_adapter_ext);

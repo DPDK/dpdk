@@ -22,8 +22,6 @@ rte_spinlock_t idpf_adapter_lock;
 struct idpf_adapter_list idpf_adapter_list;
 bool idpf_adapter_list_init;
 
-uint64_t idpf_timestamp_dynflag;
-
 static const char * const idpf_valid_args[] = {
 	IDPF_TX_SINGLE_Q,
 	IDPF_RX_SINGLE_Q,

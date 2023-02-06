@@ -38,8 +38,8 @@ idpf_singleq_rearm_common(struct idpf_rx_queue *rxq)
 						dma_addr0);
 			}
 		}
-		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			IDPF_RXQ_REARM_THRESH;
+		__atomic_fetch_add(&rxq->rx_stats.mbuf_alloc_failed,
+				   IDPF_RXQ_REARM_THRESH, __ATOMIC_RELAXED);
 		return;
 	}
 	struct rte_mbuf *mb0, *mb1, *mb2, *mb3;
@@ -168,8 +168,8 @@ idpf_singleq_rearm(struct idpf_rx_queue *rxq)
 							 dma_addr0);
 				}
 			}
-			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-					IDPF_RXQ_REARM_THRESH;
+			__atomic_fetch_add(&rxq->rx_stats.mbuf_alloc_failed,
+					   IDPF_RXQ_REARM_THRESH, __ATOMIC_RELAXED);
 			return;
 		}
 	}
