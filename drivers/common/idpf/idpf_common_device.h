@@ -103,6 +103,11 @@ struct idpf_vport {
 	uint16_t devarg_id;
 
 	bool stopped;
+
+	bool rx_vec_allowed;
+	bool tx_vec_allowed;
+	bool rx_use_avx512;
+	bool tx_use_avx512;
 };
 
 /* Message type read in virtual channel from PF */

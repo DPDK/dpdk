@@ -2221,25 +2221,24 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 #ifdef RTE_ARCH_X86
-	struct idpf_adapter_ext *ad = IDPF_ADAPTER_TO_EXT(vport->adapter);
 	struct idpf_rx_queue *rxq;
 	int i;
 
 	if (idpf_rx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		ad->rx_vec_allowed = true;
+		vport->rx_vec_allowed = true;
 
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
 #ifdef CC_AVX512_SUPPORT
 			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
-				ad->rx_use_avx512 = true;
+				vport->rx_use_avx512 = true;
 #else
 		PMD_DRV_LOG(NOTICE,
 			    "AVX512 is not supported in build env");
 #endif /* CC_AVX512_SUPPORT */
 	} else {
-		ad->rx_vec_allowed = false;
+		vport->rx_vec_allowed = false;
 	}
 #endif /* RTE_ARCH_X86 */
 
@@ -2247,13 +2246,13 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
 		dev->rx_pkt_burst = idpf_splitq_recv_pkts;
 	} else {
-		if (ad->rx_vec_allowed) {
+		if (vport->rx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_tx_queues; i++) {
 				rxq = dev->data->rx_queues[i];
 				(void)idpf_singleq_rx_vec_setup(rxq);
 			}
 #ifdef CC_AVX512_SUPPORT
-			if (ad->rx_use_avx512) {
+			if (vport->rx_use_avx512) {
 				dev->rx_pkt_burst = idpf_singleq_recv_pkts_avx512;
 				return;
 			}
@@ -2275,7 +2274,6 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 #ifdef RTE_ARCH_X86
-	struct idpf_adapter_ext *ad = IDPF_ADAPTER_TO_EXT(vport->adapter);
 #ifdef CC_AVX512_SUPPORT
 	struct idpf_tx_queue *txq;
 	int i;
@@ -2283,18 +2281,18 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 
 	if (idpf_rx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		ad->tx_vec_allowed = true;
+		vport->tx_vec_allowed = true;
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
 #ifdef CC_AVX512_SUPPORT
 			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
-				ad->tx_use_avx512 = true;
+				vport->tx_use_avx512 = true;
 #else
 		PMD_DRV_LOG(NOTICE,
 			    "AVX512 is not supported in build env");
 #endif /* CC_AVX512_SUPPORT */
 	} else {
-		ad->tx_vec_allowed = false;
+		vport->tx_vec_allowed = false;
 	}
 #endif /* RTE_ARCH_X86 */
 
@@ -2303,9 +2301,9 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 		dev->tx_pkt_prepare = idpf_prep_pkts;
 	} else {
 #ifdef RTE_ARCH_X86
-		if (ad->tx_vec_allowed) {
+		if (vport->tx_vec_allowed) {
 #ifdef CC_AVX512_SUPPORT
-			if (ad->tx_use_avx512) {
+			if (vport->tx_use_avx512) {
 				for (i = 0; i < dev->data->nb_tx_queues; i++) {
 					txq = dev->data->tx_queues[i];
 					if (txq == NULL)
