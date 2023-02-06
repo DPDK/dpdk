@@ -19,6 +19,8 @@ INTERNAL {
 	idpf_vc_set_rss_key;
 	idpf_vc_set_rss_lut;
 	idpf_vc_switch_queue;
+	idpf_vport_deinit;
+	idpf_vport_init;
 
 	local: *;
 };

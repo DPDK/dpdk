@@ -158,4 +158,119 @@ idpf_adapter_deinit(struct idpf_adapter *adapter)
 	return 0;
 }
 
+int
+idpf_vport_init(struct idpf_vport *vport,
+		struct virtchnl2_create_vport *create_vport_info,
+		void *dev_data)
+{
+	struct virtchnl2_create_vport *vport_info;
+	int i, type, ret;
+
+	ret = idpf_vc_create_vport(vport, create_vport_info);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to create vport.");
+		goto err_create_vport;
+	}
+
+	vport_info = &(vport->vport_info.info);
+	vport->vport_id = vport_info->vport_id;
+	vport->txq_model = vport_info->txq_model;
+	vport->rxq_model = vport_info->rxq_model;
+	vport->num_tx_q = vport_info->num_tx_q;
+	vport->num_tx_complq = vport_info->num_tx_complq;
+	vport->num_rx_q = vport_info->num_rx_q;
+	vport->num_rx_bufq = vport_info->num_rx_bufq;
+	vport->max_mtu = vport_info->max_mtu;
+	rte_memcpy(vport->default_mac_addr,
+		   vport_info->default_mac_addr, ETH_ALEN);
+	vport->rss_algorithm = vport_info->rss_algorithm;
+	vport->rss_key_size = RTE_MIN(IDPF_RSS_KEY_LEN,
+				      vport_info->rss_key_size);
+	vport->rss_lut_size = vport_info->rss_lut_size;
+
+	for (i = 0; i < vport_info->chunks.num_chunks; i++) {
+		type = vport_info->chunks.chunks[i].type;
+		switch (type) {
+		case VIRTCHNL2_QUEUE_TYPE_TX:
+			vport->chunks_info.tx_start_qid =
+				vport_info->chunks.chunks[i].start_queue_id;
+			vport->chunks_info.tx_qtail_start =
+				vport_info->chunks.chunks[i].qtail_reg_start;
+			vport->chunks_info.tx_qtail_spacing =
+				vport_info->chunks.chunks[i].qtail_reg_spacing;
+			break;
+		case VIRTCHNL2_QUEUE_TYPE_RX:
+			vport->chunks_info.rx_start_qid =
+				vport_info->chunks.chunks[i].start_queue_id;
+			vport->chunks_info.rx_qtail_start =
+				vport_info->chunks.chunks[i].qtail_reg_start;
+			vport->chunks_info.rx_qtail_spacing =
+				vport_info->chunks.chunks[i].qtail_reg_spacing;
+			break;
+		case VIRTCHNL2_QUEUE_TYPE_TX_COMPLETION:
+			vport->chunks_info.tx_compl_start_qid =
+				vport_info->chunks.chunks[i].start_queue_id;
+			vport->chunks_info.tx_compl_qtail_start =
+				vport_info->chunks.chunks[i].qtail_reg_start;
+			vport->chunks_info.tx_compl_qtail_spacing =
+				vport_info->chunks.chunks[i].qtail_reg_spacing;
+			break;
+		case VIRTCHNL2_QUEUE_TYPE_RX_BUFFER:
+			vport->chunks_info.rx_buf_start_qid =
+				vport_info->chunks.chunks[i].start_queue_id;
+			vport->chunks_info.rx_buf_qtail_start =
+				vport_info->chunks.chunks[i].qtail_reg_start;
+			vport->chunks_info.rx_buf_qtail_spacing =
+				vport_info->chunks.chunks[i].qtail_reg_spacing;
+			break;
+		default:
+			DRV_LOG(ERR, "Unsupported queue type");
+			break;
+		}
+	}
+
+	vport->dev_data = dev_data;
+
+	vport->rss_key = rte_zmalloc("rss_key",
+				     vport->rss_key_size, 0);
+	if (vport->rss_key == NULL) {
+		DRV_LOG(ERR, "Failed to allocate RSS key");
+		ret = -ENOMEM;
+		goto err_rss_key;
+	}
+
+	vport->rss_lut = rte_zmalloc("rss_lut",
+				     sizeof(uint32_t) * vport->rss_lut_size, 0);
+	if (vport->rss_lut == NULL) {
+		DRV_LOG(ERR, "Failed to allocate RSS lut");
+		ret = -ENOMEM;
+		goto err_rss_lut;
+	}
+
+	return 0;
+
+err_rss_lut:
+	vport->dev_data = NULL;
+	rte_free(vport->rss_key);
+	vport->rss_key = NULL;
+err_rss_key:
+	idpf_vc_destroy_vport(vport);
+err_create_vport:
+	return ret;
+}
+int
+idpf_vport_deinit(struct idpf_vport *vport)
+{
+	rte_free(vport->rss_lut);
+	vport->rss_lut = NULL;
+
+	rte_free(vport->rss_key);
+	vport->rss_key = NULL;
+
+	vport->dev_data = NULL;
+
+	idpf_vc_destroy_vport(vport);
+
+	return 0;
+}
 RTE_LOG_REGISTER_SUFFIX(idpf_common_logtype, common, NOTICE);

@@ -178,73 +178,6 @@ idpf_init_vport_req_info(struct rte_eth_dev *dev,
 	return 0;
 }
 
-#define IDPF_RSS_KEY_LEN 52
-
-static int
-idpf_init_vport(struct idpf_vport *vport)
-{
-	struct virtchnl2_create_vport *vport_info = vport->vport_info;
-	int i, type;
-
-	vport->vport_id = vport_info->vport_id;
-	vport->txq_model = vport_info->txq_model;
-	vport->rxq_model = vport_info->rxq_model;
-	vport->num_tx_q = vport_info->num_tx_q;
-	vport->num_tx_complq = vport_info->num_tx_complq;
-	vport->num_rx_q = vport_info->num_rx_q;
-	vport->num_rx_bufq = vport_info->num_rx_bufq;
-	vport->max_mtu = vport_info->max_mtu;
-	rte_memcpy(vport->default_mac_addr,
-		   vport_info->default_mac_addr, ETH_ALEN);
-	vport->rss_algorithm = vport_info->rss_algorithm;
-	vport->rss_key_size = RTE_MIN(IDPF_RSS_KEY_LEN,
-				     vport_info->rss_key_size);
-	vport->rss_lut_size = vport_info->rss_lut_size;
-
-	for (i = 0; i < vport_info->chunks.num_chunks; i++) {
-		type = vport_info->chunks.chunks[i].type;
-		switch (type) {
-		case VIRTCHNL2_QUEUE_TYPE_TX:
-			vport->chunks_info.tx_start_qid =
-				vport_info->chunks.chunks[i].start_queue_id;
-			vport->chunks_info.tx_qtail_start =
-				vport_info->chunks.chunks[i].qtail_reg_start;
-			vport->chunks_info.tx_qtail_spacing =
-				vport_info->chunks.chunks[i].qtail_reg_spacing;
-			break;
-		case VIRTCHNL2_QUEUE_TYPE_RX:
-			vport->chunks_info.rx_start_qid =
-				vport_info->chunks.chunks[i].start_queue_id;
-			vport->chunks_info.rx_qtail_start =
-				vport_info->chunks.chunks[i].qtail_reg_start;
-			vport->chunks_info.rx_qtail_spacing =
-				vport_info->chunks.chunks[i].qtail_reg_spacing;
-			break;
-		case VIRTCHNL2_QUEUE_TYPE_TX_COMPLETION:
-			vport->chunks_info.tx_compl_start_qid =
-				vport_info->chunks.chunks[i].start_queue_id;
-			vport->chunks_info.tx_compl_qtail_start =
-				vport_info->chunks.chunks[i].qtail_reg_start;
-			vport->chunks_info.tx_compl_qtail_spacing =
-				vport_info->chunks.chunks[i].qtail_reg_spacing;
-			break;
-		case VIRTCHNL2_QUEUE_TYPE_RX_BUFFER:
-			vport->chunks_info.rx_buf_start_qid =
-				vport_info->chunks.chunks[i].start_queue_id;
-			vport->chunks_info.rx_buf_qtail_start =
-				vport_info->chunks.chunks[i].qtail_reg_start;
-			vport->chunks_info.rx_buf_qtail_spacing =
-				vport_info->chunks.chunks[i].qtail_reg_spacing;
-			break;
-		default:
-			PMD_INIT_LOG(ERR, "Unsupported queue type");
-			break;
-		}
-	}
-
-	return 0;
-}
-
 static int
 idpf_config_rss(struct idpf_vport *vport)
 {
@@ -276,29 +209,12 @@ idpf_init_rss(struct idpf_vport *vport)
 {
 	struct rte_eth_rss_conf *rss_conf;
 	struct rte_eth_dev_data *dev_data;
-	uint16_t i, nb_q, lut_size;
+	uint16_t i, nb_q;
 	int ret = 0;
 
 	dev_data = vport->dev_data;
 	rss_conf = &dev_data->dev_conf.rx_adv_conf.rss_conf;
 	nb_q = dev_data->nb_rx_queues;
-
-	vport->rss_key = rte_zmalloc("rss_key",
-				     vport->rss_key_size, 0);
-	if (vport->rss_key == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate RSS key");
-		ret = -ENOMEM;
-		goto err_alloc_key;
-	}
-
-	lut_size = vport->rss_lut_size;
-	vport->rss_lut = rte_zmalloc("rss_lut",
-				     sizeof(uint32_t) * lut_size, 0);
-	if (vport->rss_lut == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate RSS lut");
-		ret = -ENOMEM;
-		goto err_alloc_lut;
-	}
 
 	if (rss_conf->rss_key == NULL) {
 		for (i = 0; i < vport->rss_key_size; i++)
@@ -306,33 +222,21 @@ idpf_init_rss(struct idpf_vport *vport)
 	} else if (rss_conf->rss_key_len != vport->rss_key_size) {
 		PMD_INIT_LOG(ERR, "Invalid RSS key length in RSS configuration, should be %d",
 			     vport->rss_key_size);
-		ret = -EINVAL;
-		goto err_cfg_key;
+		return -EINVAL;
 	} else {
 		rte_memcpy(vport->rss_key, rss_conf->rss_key,
 			   vport->rss_key_size);
 	}
 
-	for (i = 0; i < lut_size; i++)
+	for (i = 0; i < vport->rss_lut_size; i++)
 		vport->rss_lut[i] = i % nb_q;
 
 	vport->rss_hf = IDPF_DEFAULT_RSS_HASH_EXPANDED;
 
 	ret = idpf_config_rss(vport);
-	if (ret != 0) {
+	if (ret != 0)
 		PMD_INIT_LOG(ERR, "Failed to configure RSS");
-		goto err_cfg_key;
-	}
 
-	return ret;
-
-err_cfg_key:
-	rte_free(vport->rss_lut);
-	vport->rss_lut = NULL;
-err_alloc_lut:
-	rte_free(vport->rss_key);
-	vport->rss_key = NULL;
-err_alloc_key:
 	return ret;
 }
 
@@ -602,13 +506,7 @@ idpf_dev_close(struct rte_eth_dev *dev)
 
 	idpf_dev_stop(dev);
 
-	idpf_vc_destroy_vport(vport);
-
-	rte_free(vport->rss_lut);
-	vport->rss_lut = NULL;
-
-	rte_free(vport->rss_key);
-	vport->rss_key = NULL;
+	idpf_vport_deinit(vport);
 
 	rte_free(vport->recv_vectors);
 	vport->recv_vectors = NULL;
@@ -892,13 +790,6 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	vport->sw_idx = param->idx;
 	vport->devarg_id = param->devarg_id;
 
-	vport->vport_info = rte_zmalloc(NULL, IDPF_DFLT_MBX_BUF_SIZE, 0);
-	if (vport->vport_info == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate vport_info");
-		ret = -ENOMEM;
-		goto err;
-	}
-
 	memset(&vport_req_info, 0, sizeof(vport_req_info));
 	ret = idpf_init_vport_req_info(dev, &vport_req_info);
 	if (ret != 0) {
@@ -906,19 +797,12 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 		goto err;
 	}
 
-	ret = idpf_vc_create_vport(vport, &vport_req_info);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to create vport.");
-		goto err_create_vport;
-	}
-
-	ret = idpf_init_vport(vport);
+	ret = idpf_vport_init(vport, &vport_req_info, dev->data);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init vports.");
-		goto err_init_vport;
+		goto err;
 	}
 
-	vport->dev_data = dev->data;
 	adapter->vports[param->idx] = vport;
 	adapter->cur_vports |= RTE_BIT32(param->devarg_id);
 	adapter->cur_vport_nb++;
@@ -927,7 +811,7 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	if (dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate mac_addr memory.");
 		ret = -ENOMEM;
-		goto err_init_vport;
+		goto err_mac_addrs;
 	}
 
 	rte_ether_addr_copy((struct rte_ether_addr *)vport->default_mac_addr,
@@ -935,11 +819,9 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 
 	return 0;
 
-err_init_vport:
+err_mac_addrs:
 	adapter->vports[param->idx] = NULL;  /* reset */
-	idpf_vc_destroy_vport(vport);
-err_create_vport:
-	rte_free(vport->vport_info);
+	idpf_vport_deinit(vport);
 err:
 	return ret;
 }

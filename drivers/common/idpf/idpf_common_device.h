@@ -9,6 +9,8 @@
 #include <base/virtchnl2.h>
 #include <idpf_common_logs.h>
 
+#define IDPF_RSS_KEY_LEN	52
+
 #define IDPF_CTLQ_ID		-1
 #define IDPF_CTLQ_LEN		64
 #define IDPF_DFLT_MBX_BUF_SIZE	4096
@@ -43,7 +45,10 @@ struct idpf_chunks_info {
 
 struct idpf_vport {
 	struct idpf_adapter *adapter; /* Backreference to associated adapter */
-	struct virtchnl2_create_vport *vport_info; /* virtchnl response info handling */
+	union {
+		struct virtchnl2_create_vport info; /* virtchnl response info handling */
+		uint8_t data[IDPF_DFLT_MBX_BUF_SIZE];
+	} vport_info;
 	uint16_t sw_idx; /* SW index in adapter->vports[]*/
 	uint16_t vport_id;
 	uint32_t txq_model;
@@ -142,5 +147,11 @@ __rte_internal
 int idpf_adapter_init(struct idpf_adapter *adapter);
 __rte_internal
 int idpf_adapter_deinit(struct idpf_adapter *adapter);
+__rte_internal
+int idpf_vport_init(struct idpf_vport *vport,
+		    struct virtchnl2_create_vport *vport_req_info,
+		    void *dev_data);
+__rte_internal
+int idpf_vport_deinit(struct idpf_vport *vport);
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */

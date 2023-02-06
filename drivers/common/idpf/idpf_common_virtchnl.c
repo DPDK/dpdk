@@ -355,7 +355,7 @@ idpf_vc_get_caps(struct idpf_adapter *adapter)
 
 int
 idpf_vc_create_vport(struct idpf_vport *vport,
-		     struct virtchnl2_create_vport *vport_req_info)
+		     struct virtchnl2_create_vport *create_vport_info)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_create_vport vport_msg;
@@ -363,13 +363,13 @@ idpf_vc_create_vport(struct idpf_vport *vport,
 	int err = -1;
 
 	memset(&vport_msg, 0, sizeof(struct virtchnl2_create_vport));
-	vport_msg.vport_type = vport_req_info->vport_type;
-	vport_msg.txq_model = vport_req_info->txq_model;
-	vport_msg.rxq_model = vport_req_info->rxq_model;
-	vport_msg.num_tx_q = vport_req_info->num_tx_q;
-	vport_msg.num_tx_complq = vport_req_info->num_tx_complq;
-	vport_msg.num_rx_q = vport_req_info->num_rx_q;
-	vport_msg.num_rx_bufq = vport_req_info->num_rx_bufq;
+	vport_msg.vport_type = create_vport_info->vport_type;
+	vport_msg.txq_model = create_vport_info->txq_model;
+	vport_msg.rxq_model = create_vport_info->rxq_model;
+	vport_msg.num_tx_q = create_vport_info->num_tx_q;
+	vport_msg.num_tx_complq = create_vport_info->num_tx_complq;
+	vport_msg.num_rx_q = create_vport_info->num_rx_q;
+	vport_msg.num_rx_bufq = create_vport_info->num_rx_bufq;
 
 	memset(&args, 0, sizeof(args));
 	args.ops = VIRTCHNL2_OP_CREATE_VPORT;
@@ -385,7 +385,7 @@ idpf_vc_create_vport(struct idpf_vport *vport,
 		return err;
 	}
 
-	rte_memcpy(vport->vport_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+	rte_memcpy(&(vport->vport_info.info), args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 	return 0;
 }
 
