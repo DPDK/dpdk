@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <rte_byteorder.h>
 #include "nfp_cpp.h"
+#include "nfp_logs.h"
 #include "nfp_nsp.h"
 #include "nfp_nffw.h"
 
@@ -39,8 +40,7 @@ __nfp_nsp_identify(struct nfp_nsp *nsp)
 	memset(ni, 0, sizeof(*ni));
 	ret = nfp_nsp_read_identify(nsp, ni, sizeof(*ni));
 	if (ret < 0) {
-		printf("reading bsp version failed %d\n",
-			ret);
+		PMD_DRV_LOG(ERR, "reading bsp version failed %d", ret);
 		goto exit_free;
 	}
 

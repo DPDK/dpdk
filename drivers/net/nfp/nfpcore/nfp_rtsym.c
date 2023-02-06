@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <rte_byteorder.h>
 #include "nfp_cpp.h"
+#include "nfp_logs.h"
 #include "nfp_mip.h"
 #include "nfp_rtsym.h"
 #include "nfp6000/nfp6000.h"
@@ -56,11 +57,8 @@ nfp_rtsym_sw_entry_init(struct nfp_rtsym_table *cache, uint32_t strtab_size,
 	sw->size = ((uint64_t)fw->size_hi << 32) |
 		   rte_le_to_cpu_32(fw->size_lo);
 
-#ifdef DEBUG
-	printf("rtsym_entry_init\n");
-	printf("\tname=%s, addr=%" PRIx64 ", size=%" PRIu64 ",target=%d\n",
-		sw->name, sw->addr, sw->size, sw->target);
-#endif
+	PMD_INIT_LOG(DEBUG, "rtsym_entry_init name=%s, addr=%" PRIx64 ", size=%" PRIu64 ", target=%d",
+		     sw->name, sw->addr, sw->size, sw->target);
 	switch (fw->target) {
 	case SYM_TGT_LMEM:
 		sw->target = NFP_RTSYM_TARGET_LMEM;
@@ -241,10 +239,8 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
 
 	id = NFP_CPP_ISLAND_ID(sym->target, NFP_CPP_ACTION_RW, 0, sym->domain);
 
-#ifdef DEBUG
-	printf("Reading symbol %s with size %" PRIu64 " at %" PRIx64 "\n",
+	PMD_DRV_LOG(DEBUG, "Reading symbol %s with size %" PRIu64 " at %" PRIx64 "",
 		name, sym->size, sym->addr);
-#endif
 	switch (sym->size) {
 	case 4:
 		err = nfp_cpp_readl(rtbl->cpp, id, sym->addr, &val32);
@@ -254,7 +250,7 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
 		err = nfp_cpp_readq(rtbl->cpp, id, sym->addr, &val);
 		break;
 	default:
-		printf("rtsym '%s' unsupported size: %" PRId64 "\n",
+		PMD_DRV_LOG(ERR, "rtsym '%s' unsupported size: %" PRId64,
 			name, sym->size);
 		err = -EINVAL;
 		break;
@@ -279,17 +275,15 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 	const struct nfp_rtsym *sym;
 	uint8_t *mem;
 
-#ifdef DEBUG
-	printf("mapping symbol %s\n", name);
-#endif
+	PMD_DRV_LOG(DEBUG, "mapping symbol %s", name);
 	sym = nfp_rtsym_lookup(rtbl, name);
 	if (!sym) {
-		printf("symbol lookup fails for %s\n", name);
+		PMD_DRV_LOG(ERR, "symbol lookup fails for %s", name);
 		return NULL;
 	}
 
 	if (sym->size < min_size) {
-		printf("Symbol %s too small (%" PRIu64 " < %u)\n", name,
+		PMD_DRV_LOG(ERR, "Symbol %s too small (%" PRIu64 " < %u)", name,
 			sym->size, min_size);
 		return NULL;
 	}
@@ -297,12 +291,10 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 	mem = nfp_cpp_map_area(rtbl->cpp, sym->domain, sym->target, sym->addr,
 			       sym->size, area);
 	if (!mem) {
-		printf("Failed to map symbol %s\n", name);
+		PMD_DRV_LOG(ERR, "Failed to map symbol %s", name);
 		return NULL;
 	}
-#ifdef DEBUG
-	printf("symbol %s with address %p\n", name, mem);
-#endif
+	PMD_DRV_LOG(DEBUG, "symbol %s with address %p", name, mem);
 
 	return mem;
 }

@@ -7,6 +7,7 @@
 #include <rte_common.h>
 #include <rte_byteorder.h>
 #include "nfp_cpp.h"
+#include "nfp_logs.h"
 #include "nfp_nsp.h"
 #include "nfp6000/nfp6000.h"
 
@@ -236,7 +237,7 @@ nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 				continue;
 			if (table->ports[i].label_subport ==
 			    table->ports[j].label_subport)
-				printf("Port %d subport %d is a duplicate\n",
+				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate",
 					 table->ports[i].label_port,
 					 table->ports[i].label_subport);
 
@@ -275,7 +276,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		printf("reading port table failed %d\n", ret);
+		PMD_DRV_LOG(ERR, "reading port table failed %d", ret);
 		goto err;
 	}
 
@@ -294,7 +295,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	 * above.
 	 */
 	if (ret && ret != cnt) {
-		printf("table entry count (%d) unmatch entries present (%d)\n",
+		PMD_DRV_LOG(ERR, "table entry count (%d) unmatch entries present (%d)",
 		       ret, cnt);
 		goto err;
 	}
@@ -372,12 +373,12 @@ nfp_eth_config_start(struct nfp_cpp *cpp, unsigned int idx)
 
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		printf("reading port table failed %d\n", ret);
+		PMD_DRV_LOG(ERR, "reading port table failed %d", ret);
 		goto err;
 	}
 
 	if (!(entries[idx].port & NSP_ETH_PORT_LANES_MASK)) {
-		printf("trying to set port state on disabled port %d\n", idx);
+		PMD_DRV_LOG(ERR, "trying to set port state on disabled port %d", idx);
 		goto err;
 	}
 
@@ -535,7 +536,7 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp, unsigned int raw_idx,
 	 *	 codes were initially not populated correctly.
 	 */
 	if (nfp_nsp_get_abi_ver_minor(nsp) < 17) {
-		printf("set operations not supported, please update flash\n");
+		PMD_DRV_LOG(ERR, "set operations not supported, please update flash");
 		return -EOPNOTSUPP;
 	}
 
@@ -647,8 +648,7 @@ __nfp_eth_set_speed(struct nfp_nsp *nsp, unsigned int speed)
 
 	rate = nfp_eth_speed2rate(speed);
 	if (rate == RATE_INVALID) {
-		printf("could not find matching lane rate for speed %u\n",
-			 speed);
+		PMD_DRV_LOG(ERR, "could not find matching lane rate for speed %u", speed);
 		return -EINVAL;
 	}
 

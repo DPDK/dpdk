@@ -20,6 +20,7 @@
 #include <time.h>
 
 #include "nfp_cpp.h"
+#include "nfp_logs.h"
 #include "nfp6000/nfp6000.h"
 #include "nfp_resource.h"
 #include "nfp_hwinfo.h"
@@ -40,12 +41,12 @@ nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo, uint32_t size)
 	     key = val + strlen(val) + 1) {
 		val = key + strlen(key) + 1;
 		if (val >= end) {
-			printf("Bad HWINFO - overflowing key\n");
+			PMD_DRV_LOG(ERR, "Bad HWINFO - overflowing value");
 			return -EINVAL;
 		}
 
 		if (val + strlen(val) + 1 > end) {
-			printf("Bad HWINFO - overflowing value\n");
+			PMD_DRV_LOG(ERR, "Bad HWINFO - overflowing value");
 			return -EINVAL;
 		}
 	}
@@ -59,7 +60,7 @@ nfp_hwinfo_db_validate(struct nfp_hwinfo *db, uint32_t len)
 
 	size = db->size;
 	if (size > len) {
-		printf("Unsupported hwinfo size %u > %u\n", size, len);
+		PMD_DRV_LOG(ERR, "Unsupported hwinfo size %u > %u", size, len);
 		return -EINVAL;
 	}
 
@@ -67,8 +68,8 @@ nfp_hwinfo_db_validate(struct nfp_hwinfo *db, uint32_t len)
 	new_crc = nfp_crc32_posix((char *)db, size);
 	crc = (uint32_t *)(db->start + size);
 	if (new_crc != *crc) {
-		printf("Corrupt hwinfo table (CRC mismatch)\n");
-		printf("\tcalculated 0x%x, expected 0x%x\n", new_crc, *crc);
+		PMD_DRV_LOG(ERR, "Corrupt hwinfo table (CRC mismatch) calculated 0x%x, expected 0x%x",
+			    new_crc, *crc);
 		return -EINVAL;
 	}
 
@@ -108,12 +109,12 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp, size_t *cpp_size)
 		goto exit_free;
 
 	header = (void *)db;
-	printf("NFP HWINFO header: %#08x\n", *(uint32_t *)header);
+	PMD_DRV_LOG(DEBUG, "NFP HWINFO header: %#08x", *(uint32_t *)header);
 	if (nfp_hwinfo_is_updating(header))
 		goto exit_free;
 
 	if (header->version != NFP_HWINFO_VERSION_2) {
-		printf("Unknown HWInfo version: 0x%08x\n",
+		PMD_DRV_LOG(DEBUG, "Unknown HWInfo version: 0x%08x",
 			header->version);
 		goto exit_free;
 	}
@@ -145,7 +146,7 @@ nfp_hwinfo_fetch(struct nfp_cpp *cpp, size_t *hwdb_size)
 
 		nanosleep(&wait, NULL);
 		if (count++ > 200) {
-			printf("NFP access error\n");
+			PMD_DRV_LOG(ERR, "NFP access error");
 			return NULL;
 		}
 	}

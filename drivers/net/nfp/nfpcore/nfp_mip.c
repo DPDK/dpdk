@@ -7,6 +7,7 @@
 #include <rte_byteorder.h>
 
 #include "nfp_cpp.h"
+#include "nfp_logs.h"
 #include "nfp_mip.h"
 #include "nfp_nffw.h"
 
@@ -43,18 +44,17 @@ nfp_mip_try_read(struct nfp_cpp *cpp, uint32_t cpp_id, uint64_t addr,
 
 	ret = nfp_cpp_read(cpp, cpp_id, addr, mip, sizeof(*mip));
 	if (ret != sizeof(*mip)) {
-		printf("Failed to read MIP data (%d, %zu)\n",
-			ret, sizeof(*mip));
+		PMD_DRV_LOG(ERR, "Failed to read MIP data (%d, %zu)", ret, sizeof(*mip));
 		return -EIO;
 	}
 	if (mip->signature != NFP_MIP_SIGNATURE) {
-		printf("Incorrect MIP signature (0x%08x)\n",
-			 rte_le_to_cpu_32(mip->signature));
+		PMD_DRV_LOG(ERR, "Incorrect MIP signature (0x%08x)",
+			    rte_le_to_cpu_32(mip->signature));
 		return -EINVAL;
 	}
 	if (mip->mip_version != NFP_MIP_VERSION) {
-		printf("Unsupported MIP version (%d)\n",
-			 rte_le_to_cpu_32(mip->mip_version));
+		PMD_DRV_LOG(ERR, "Unsupported MIP version (%d)",
+			    rte_le_to_cpu_32(mip->mip_version));
 		return -EINVAL;
 	}
 

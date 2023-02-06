@@ -15,6 +15,7 @@
 #include <ethdev_pci.h>
 
 #include "nfp_cpp.h"
+#include "nfp_logs.h"
 #include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
 #include "nfp6000/nfp_xpb.h"
@@ -701,7 +702,7 @@ nfp_cpp_read(struct nfp_cpp *cpp, uint32_t destination,
 
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, address, length);
 	if (!area) {
-		printf("Area allocation/acquire failed\n");
+		PMD_DRV_LOG(ERR, "Area allocation/acquire failed");
 		return -1;
 	}
 

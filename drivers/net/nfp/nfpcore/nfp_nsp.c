@@ -11,6 +11,7 @@
 #include <rte_common.h>
 
 #include "nfp_cpp.h"
+#include "nfp_logs.h"
 #include "nfp_nsp.h"
 #include "nfp_resource.h"
 
@@ -62,7 +63,7 @@ nfp_nsp_print_extended_error(uint32_t ret_val)
 
 	for (i = 0; i < (int)ARRAY_SIZE(nsp_errors); i++)
 		if (ret_val == (uint32_t)nsp_errors[i].code)
-			printf("err msg: %s\n", nsp_errors[i].msg);
+			PMD_DRV_LOG(ERR, "err msg: %s", nsp_errors[i].msg);
 }
 
 static int
@@ -81,7 +82,7 @@ nfp_nsp_check(struct nfp_nsp *state)
 		return err;
 
 	if (FIELD_GET(NSP_STATUS_MAGIC, reg) != NSP_MAGIC) {
-		printf("Cannot detect NFP Service Processor\n");
+		PMD_DRV_LOG(ERR, "Cannot detect NFP Service Processor");
 		return -ENODEV;
 	}
 
@@ -89,13 +90,13 @@ nfp_nsp_check(struct nfp_nsp *state)
 	state->ver.minor = FIELD_GET(NSP_STATUS_MINOR, reg);
 
 	if (state->ver.major != NSP_MAJOR || state->ver.minor < NSP_MINOR) {
-		printf("Unsupported ABI %hu.%hu\n", state->ver.major,
+		PMD_DRV_LOG(ERR, "Unsupported ABI %hu.%hu", state->ver.major,
 						    state->ver.minor);
 		return -EINVAL;
 	}
 
 	if (reg & NSP_STATUS_BUSY) {
-		printf("Service processor busy!\n");
+		PMD_DRV_LOG(ERR, "Service processor busy!");
 		return -EBUSY;
 	}
 
@@ -223,7 +224,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 
 	if (!FIELD_FIT(NSP_BUFFER_CPP, buff_cpp >> 8) ||
 	    !FIELD_FIT(NSP_BUFFER_ADDRESS, buff_addr)) {
-		printf("Host buffer out of reach %08x %" PRIx64 "\n",
+		PMD_DRV_LOG(ERR, "Host buffer out of reach %08x %" PRIx64,
 			buff_cpp, buff_addr);
 		return -EINVAL;
 	}
@@ -245,7 +246,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_command,
 			       NSP_COMMAND_START, 0);
 	if (err) {
-		printf("Error %d waiting for code 0x%04x to start\n",
+		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
 			err, code);
 		return err;
 	}
@@ -254,7 +255,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_status, NSP_STATUS_BUSY,
 			       0);
 	if (err) {
-		printf("Error %d waiting for code 0x%04x to complete\n",
+		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
 			err, code);
 		return err;
 	}
@@ -266,7 +267,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 
 	err = FIELD_GET(NSP_STATUS_RESULT, reg);
 	if (err) {
-		printf("Result (error) code set: %d (%d) command: %d\n",
+		PMD_DRV_LOG(ERR, "Result (error) code set: %d (%d) command: %d",
 			 -err, (int)ret_val, code);
 		nfp_nsp_print_extended_error(ret_val);
 		return -err;
@@ -289,8 +290,8 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp, uint16_t code, uint32_t option,
 	uint32_t cpp_id;
 
 	if (nsp->ver.minor < 13) {
-		printf("NSP: Code 0x%04x with buffer not supported\n", code);
-		printf("\t(ABI %hu.%hu)\n", nsp->ver.major, nsp->ver.minor);
+		PMD_DRV_LOG(ERR, "NSP: Code 0x%04x with buffer not supported ABI %hu.%hu)",
+			    code, nsp->ver.major, nsp->ver.minor);
 		return -EOPNOTSUPP;
 	}
 
@@ -303,11 +304,8 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp, uint16_t code, uint32_t option,
 
 	max_size = RTE_MAX(in_size, out_size);
 	if (FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M < max_size) {
-		printf("NSP: default buffer too small for command 0x%04x\n",
-		       code);
-		printf("\t(%llu < %u)\n",
-		       FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M,
-		       max_size);
+		PMD_DRV_LOG(ERR, "NSP: default buffer too small for command 0x%04x (%llu < %u)",
+			    code, FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M, max_size);
 		return -EINVAL;
 	}
 
@@ -372,7 +370,7 @@ nfp_nsp_wait(struct nfp_nsp *state)
 		}
 	}
 	if (err)
-		printf("NSP failed to respond %d\n", err);
+		PMD_DRV_LOG(ERR, "NSP failed to respond %d", err);
 
 	return err;
 }
