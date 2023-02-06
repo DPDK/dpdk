@@ -31,31 +31,31 @@ INTERNAL {
 	idpf_qc_tx_thresh_check;
 	idpf_qc_txq_mbufs_release;
 
+	idpf_vc_api_version_check;
+	idpf_vc_caps_get;
+	idpf_vc_cmd_execute;
+	idpf_vc_irq_map_unmap_config;
+	idpf_vc_one_msg_read;
+	idpf_vc_ptype_info_query;
+	idpf_vc_queue_switch;
+	idpf_vc_queues_ena_dis;
+	idpf_vc_rss_hash_set;
+	idpf_vc_rss_key_set;
+	idpf_vc_rss_lut_set;
+	idpf_vc_rxq_config;
+	idpf_vc_txq_config;
+	idpf_vc_vectors_alloc;
+	idpf_vc_vectors_dealloc;
+	idpf_vc_vport_create;
+	idpf_vc_vport_destroy;
+	idpf_vc_vport_ena_dis;
+
 	idpf_vport_deinit;
 	idpf_vport_info_init;
 	idpf_vport_init;
 	idpf_vport_irq_map_config;
 	idpf_vport_irq_unmap_config;
 	idpf_vport_rss_config;
-
-	idpf_execute_vc_cmd;
-	idpf_vc_alloc_vectors;
-	idpf_vc_check_api_version;
-	idpf_vc_config_irq_map_unmap;
-	idpf_vc_config_rxq;
-	idpf_vc_config_txq;
-	idpf_vc_create_vport;
-	idpf_vc_dealloc_vectors;
-	idpf_vc_destroy_vport;
-	idpf_vc_ena_dis_queues;
-	idpf_vc_ena_dis_vport;
-	idpf_vc_get_caps;
-	idpf_vc_query_ptype_info;
-	idpf_vc_read_one_msg;
-	idpf_vc_set_rss_hash;
-	idpf_vc_set_rss_key;
-	idpf_vc_set_rss_lut;
-	idpf_vc_switch_queue;
 
 	local: *;
 };

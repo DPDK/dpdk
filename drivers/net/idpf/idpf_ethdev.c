@@ -299,7 +299,7 @@ idpf_dev_start(struct rte_eth_dev *dev)
 		goto err_vec;
 	}
 
-	ret = idpf_vc_alloc_vectors(vport, req_vecs_num);
+	ret = idpf_vc_vectors_alloc(vport, req_vecs_num);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to allocate interrupt vectors");
 		goto err_vec;
@@ -321,7 +321,7 @@ idpf_dev_start(struct rte_eth_dev *dev)
 	idpf_set_rx_function(dev);
 	idpf_set_tx_function(dev);
 
-	ret = idpf_vc_ena_dis_vport(vport, true);
+	ret = idpf_vc_vport_ena_dis(vport, true);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to enable vport");
 		goto err_vport;
@@ -336,7 +336,7 @@ err_vport:
 err_startq:
 	idpf_vport_irq_unmap_config(vport, dev->data->nb_rx_queues);
 err_irq:
-	idpf_vc_dealloc_vectors(vport);
+	idpf_vc_vectors_dealloc(vport);
 err_vec:
 	return ret;
 }
@@ -349,13 +349,13 @@ idpf_dev_stop(struct rte_eth_dev *dev)
 	if (vport->stopped == 1)
 		return 0;
 
-	idpf_vc_ena_dis_vport(vport, false);
+	idpf_vc_vport_ena_dis(vport, false);
 
 	idpf_stop_queues(dev);
 
 	idpf_vport_irq_unmap_config(vport, dev->data->nb_rx_queues);
 
-	idpf_vc_dealloc_vectors(vport);
+	idpf_vc_vectors_dealloc(vport);
 
 	vport->stopped = 1;
 

@@ -566,7 +566,7 @@ idpf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		dev->data->rx_queues[rx_queue_id];
 	int err = 0;
 
-	err = idpf_vc_config_rxq(vport, rxq);
+	err = idpf_vc_rxq_config(vport, rxq);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Fail to configure Rx queue %u", rx_queue_id);
 		return err;
@@ -580,7 +580,7 @@ idpf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	/* Ready to switch the queue on */
-	err = idpf_vc_switch_queue(vport, rx_queue_id, true, true);
+	err = idpf_vc_queue_switch(vport, rx_queue_id, true, true);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
 			    rx_queue_id);
@@ -617,7 +617,7 @@ idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		dev->data->tx_queues[tx_queue_id];
 	int err = 0;
 
-	err = idpf_vc_config_txq(vport, txq);
+	err = idpf_vc_txq_config(vport, txq);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Fail to configure Tx queue %u", tx_queue_id);
 		return err;
@@ -631,7 +631,7 @@ idpf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	/* Ready to switch the queue on */
-	err = idpf_vc_switch_queue(vport, tx_queue_id, false, true);
+	err = idpf_vc_queue_switch(vport, tx_queue_id, false, true);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
 			    tx_queue_id);
@@ -654,7 +654,7 @@ idpf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rx_queue_id >= dev->data->nb_rx_queues)
 		return -EINVAL;
 
-	err = idpf_vc_switch_queue(vport, rx_queue_id, true, false);
+	err = idpf_vc_queue_switch(vport, rx_queue_id, true, false);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
 			    rx_queue_id);
@@ -685,7 +685,7 @@ idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -EINVAL;
 
-	err = idpf_vc_switch_queue(vport, tx_queue_id, false, false);
+	err = idpf_vc_queue_switch(vport, tx_queue_id, false, false);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u off",
 			    tx_queue_id);

@@ -104,7 +104,7 @@ idpf_get_pkt_type(struct idpf_adapter *adapter)
 	uint16_t ptype_recvd = 0;
 	int ret;
 
-	ret = idpf_vc_query_ptype_info(adapter);
+	ret = idpf_vc_ptype_info_query(adapter);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Fail to query packet type information");
 		return ret;
@@ -115,7 +115,7 @@ idpf_get_pkt_type(struct idpf_adapter *adapter)
 			return -ENOMEM;
 
 	while (ptype_recvd < IDPF_MAX_PKT_TYPE) {
-		ret = idpf_vc_read_one_msg(adapter, VIRTCHNL2_OP_GET_PTYPE_INFO,
+		ret = idpf_vc_one_msg_read(adapter, VIRTCHNL2_OP_GET_PTYPE_INFO,
 					   IDPF_DFLT_MBX_BUF_SIZE, (uint8_t *)ptype_info);
 		if (ret != 0) {
 			DRV_LOG(ERR, "Fail to get packet type information");
@@ -333,13 +333,13 @@ idpf_adapter_init(struct idpf_adapter *adapter)
 		goto err_mbx_resp;
 	}
 
-	ret = idpf_vc_check_api_version(adapter);
+	ret = idpf_vc_api_version_check(adapter);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to check api version");
 		goto err_check_api;
 	}
 
-	ret = idpf_vc_get_caps(adapter);
+	ret = idpf_vc_caps_get(adapter);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to get capabilities");
 		goto err_check_api;
@@ -382,7 +382,7 @@ idpf_vport_init(struct idpf_vport *vport,
 	struct virtchnl2_create_vport *vport_info;
 	int i, type, ret;
 
-	ret = idpf_vc_create_vport(vport, create_vport_info);
+	ret = idpf_vc_vport_create(vport, create_vport_info);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to create vport.");
 		goto err_create_vport;
@@ -483,7 +483,7 @@ err_rss_lut:
 	rte_free(vport->rss_key);
 	vport->rss_key = NULL;
 err_rss_key:
-	idpf_vc_destroy_vport(vport);
+	idpf_vc_vport_destroy(vport);
 err_create_vport:
 	return ret;
 }
@@ -500,7 +500,7 @@ idpf_vport_deinit(struct idpf_vport *vport)
 
 	vport->dev_data = NULL;
 
-	idpf_vc_destroy_vport(vport);
+	idpf_vc_vport_destroy(vport);
 
 	return 0;
 }
@@ -509,19 +509,19 @@ idpf_vport_rss_config(struct idpf_vport *vport)
 {
 	int ret;
 
-	ret = idpf_vc_set_rss_key(vport);
+	ret = idpf_vc_rss_key_set(vport);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to configure RSS key");
 		return ret;
 	}
 
-	ret = idpf_vc_set_rss_lut(vport);
+	ret = idpf_vc_rss_lut_set(vport);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to configure RSS lut");
 		return ret;
 	}
 
-	ret = idpf_vc_set_rss_hash(vport);
+	ret = idpf_vc_rss_hash_set(vport);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to configure RSS hash");
 		return ret;
@@ -589,7 +589,7 @@ idpf_vport_irq_map_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 	}
 	vport->qv_map = qv_map;
 
-	ret = idpf_vc_config_irq_map_unmap(vport, nb_rx_queues, true);
+	ret = idpf_vc_irq_map_unmap_config(vport, nb_rx_queues, true);
 	if (ret != 0) {
 		DRV_LOG(ERR, "config interrupt mapping failed");
 		goto config_irq_map_err;
@@ -608,7 +608,7 @@ qv_map_alloc_err:
 int
 idpf_vport_irq_unmap_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 {
-	idpf_vc_config_irq_map_unmap(vport, nb_rx_queues, false);
+	idpf_vc_irq_map_unmap_config(vport, nb_rx_queues, false);
 
 	rte_free(vport->qv_map);
 	vport->qv_map = NULL;

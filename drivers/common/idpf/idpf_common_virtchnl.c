@@ -159,7 +159,7 @@ idpf_read_msg_from_cp(struct idpf_adapter *adapter, uint16_t buf_len,
 #define ASQ_DELAY_MS  10
 
 int
-idpf_vc_read_one_msg(struct idpf_adapter *adapter, uint32_t ops, uint16_t buf_len,
+idpf_vc_one_msg_read(struct idpf_adapter *adapter, uint32_t ops, uint16_t buf_len,
 		     uint8_t *buf)
 {
 	int err = 0;
@@ -183,7 +183,7 @@ idpf_vc_read_one_msg(struct idpf_adapter *adapter, uint32_t ops, uint16_t buf_le
 }
 
 int
-idpf_execute_vc_cmd(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
+idpf_vc_cmd_execute(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
 {
 	int err = 0;
 	int i = 0;
@@ -218,7 +218,7 @@ idpf_execute_vc_cmd(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
 	case VIRTCHNL2_OP_ALLOC_VECTORS:
 	case VIRTCHNL2_OP_DEALLOC_VECTORS:
 		/* for init virtchnl ops, need to poll the response */
-		err = idpf_vc_read_one_msg(adapter, args->ops, args->out_size, args->out_buffer);
+		err = idpf_vc_one_msg_read(adapter, args->ops, args->out_size, args->out_buffer);
 		clear_cmd(adapter);
 		break;
 	case VIRTCHNL2_OP_GET_PTYPE_INFO:
@@ -251,7 +251,7 @@ idpf_execute_vc_cmd(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
 }
 
 int
-idpf_vc_check_api_version(struct idpf_adapter *adapter)
+idpf_vc_api_version_check(struct idpf_adapter *adapter)
 {
 	struct virtchnl2_version_info version, *pver;
 	struct idpf_cmd_info args;
@@ -267,7 +267,7 @@ idpf_vc_check_api_version(struct idpf_adapter *adapter)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0) {
 		DRV_LOG(ERR,
 			"Failed to execute command of VIRTCHNL_OP_VERSION");
@@ -291,7 +291,7 @@ idpf_vc_check_api_version(struct idpf_adapter *adapter)
 }
 
 int
-idpf_vc_get_caps(struct idpf_adapter *adapter)
+idpf_vc_caps_get(struct idpf_adapter *adapter)
 {
 	struct virtchnl2_get_capabilities caps_msg;
 	struct idpf_cmd_info args;
@@ -341,7 +341,7 @@ idpf_vc_get_caps(struct idpf_adapter *adapter)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0) {
 		DRV_LOG(ERR,
 			"Failed to execute command of VIRTCHNL2_OP_GET_CAPS");
@@ -354,7 +354,7 @@ idpf_vc_get_caps(struct idpf_adapter *adapter)
 }
 
 int
-idpf_vc_create_vport(struct idpf_vport *vport,
+idpf_vc_vport_create(struct idpf_vport *vport,
 		     struct virtchnl2_create_vport *create_vport_info)
 {
 	struct idpf_adapter *adapter = vport->adapter;
@@ -378,7 +378,7 @@ idpf_vc_create_vport(struct idpf_vport *vport,
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0) {
 		DRV_LOG(ERR,
 			"Failed to execute command of VIRTCHNL2_OP_CREATE_VPORT");
@@ -390,7 +390,7 @@ idpf_vc_create_vport(struct idpf_vport *vport,
 }
 
 int
-idpf_vc_destroy_vport(struct idpf_vport *vport)
+idpf_vc_vport_destroy(struct idpf_vport *vport)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_vport vc_vport;
@@ -406,7 +406,7 @@ idpf_vc_destroy_vport(struct idpf_vport *vport)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_DESTROY_VPORT");
 
@@ -414,7 +414,7 @@ idpf_vc_destroy_vport(struct idpf_vport *vport)
 }
 
 int
-idpf_vc_set_rss_key(struct idpf_vport *vport)
+idpf_vc_rss_key_set(struct idpf_vport *vport)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_rss_key *rss_key;
@@ -439,7 +439,7 @@ idpf_vc_set_rss_key(struct idpf_vport *vport)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_SET_RSS_KEY");
 
@@ -448,7 +448,7 @@ idpf_vc_set_rss_key(struct idpf_vport *vport)
 }
 
 int
-idpf_vc_set_rss_lut(struct idpf_vport *vport)
+idpf_vc_rss_lut_set(struct idpf_vport *vport)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_rss_lut *rss_lut;
@@ -473,7 +473,7 @@ idpf_vc_set_rss_lut(struct idpf_vport *vport)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_SET_RSS_LUT");
 
@@ -482,7 +482,7 @@ idpf_vc_set_rss_lut(struct idpf_vport *vport)
 }
 
 int
-idpf_vc_set_rss_hash(struct idpf_vport *vport)
+idpf_vc_rss_hash_set(struct idpf_vport *vport)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_rss_hash rss_hash;
@@ -500,7 +500,7 @@ idpf_vc_set_rss_hash(struct idpf_vport *vport)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of OP_SET_RSS_HASH");
 
@@ -508,7 +508,7 @@ idpf_vc_set_rss_hash(struct idpf_vport *vport)
 }
 
 int
-idpf_vc_config_irq_map_unmap(struct idpf_vport *vport, uint16_t nb_rxq, bool map)
+idpf_vc_irq_map_unmap_config(struct idpf_vport *vport, uint16_t nb_rxq, bool map)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_queue_vector_maps *map_info;
@@ -539,7 +539,7 @@ idpf_vc_config_irq_map_unmap(struct idpf_vport *vport, uint16_t nb_rxq, bool map
 	args.in_args_size = len;
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_%s_QUEUE_VECTOR",
 			map ? "MAP" : "UNMAP");
@@ -549,7 +549,7 @@ idpf_vc_config_irq_map_unmap(struct idpf_vport *vport, uint16_t nb_rxq, bool map
 }
 
 int
-idpf_vc_alloc_vectors(struct idpf_vport *vport, uint16_t num_vectors)
+idpf_vc_vectors_alloc(struct idpf_vport *vport, uint16_t num_vectors)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_alloc_vectors *alloc_vec;
@@ -569,7 +569,7 @@ idpf_vc_alloc_vectors(struct idpf_vport *vport, uint16_t num_vectors)
 	args.in_args_size = len;
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command VIRTCHNL2_OP_ALLOC_VECTORS");
 
@@ -579,7 +579,7 @@ idpf_vc_alloc_vectors(struct idpf_vport *vport, uint16_t num_vectors)
 }
 
 int
-idpf_vc_dealloc_vectors(struct idpf_vport *vport)
+idpf_vc_vectors_dealloc(struct idpf_vport *vport)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_alloc_vectors *alloc_vec;
@@ -598,7 +598,7 @@ idpf_vc_dealloc_vectors(struct idpf_vport *vport)
 	args.in_args_size = len;
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command VIRTCHNL2_OP_DEALLOC_VECTORS");
 
@@ -634,7 +634,7 @@ idpf_vc_ena_dis_one_queue(struct idpf_vport *vport, uint16_t qid,
 	args.in_args_size = len;
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_%s_QUEUES",
 			on ? "ENABLE" : "DISABLE");
@@ -644,7 +644,7 @@ idpf_vc_ena_dis_one_queue(struct idpf_vport *vport, uint16_t qid,
 }
 
 int
-idpf_vc_switch_queue(struct idpf_vport *vport, uint16_t qid,
+idpf_vc_queue_switch(struct idpf_vport *vport, uint16_t qid,
 		     bool rx, bool on)
 {
 	uint32_t type;
@@ -688,7 +688,7 @@ idpf_vc_switch_queue(struct idpf_vport *vport, uint16_t qid,
 
 #define IDPF_RXTX_QUEUE_CHUNKS_NUM	2
 int
-idpf_vc_ena_dis_queues(struct idpf_vport *vport, bool enable)
+idpf_vc_queues_ena_dis(struct idpf_vport *vport, bool enable)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_del_ena_dis_queues *queue_select;
@@ -746,7 +746,7 @@ idpf_vc_ena_dis_queues(struct idpf_vport *vport, bool enable)
 	args.in_args_size = len;
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_%s_QUEUES",
 			enable ? "ENABLE" : "DISABLE");
@@ -756,7 +756,7 @@ idpf_vc_ena_dis_queues(struct idpf_vport *vport, bool enable)
 }
 
 int
-idpf_vc_ena_dis_vport(struct idpf_vport *vport, bool enable)
+idpf_vc_vport_ena_dis(struct idpf_vport *vport, bool enable)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_vport vc_vport;
@@ -771,7 +771,7 @@ idpf_vc_ena_dis_vport(struct idpf_vport *vport, bool enable)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0) {
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_%s_VPORT",
 			enable ? "ENABLE" : "DISABLE");
@@ -781,7 +781,7 @@ idpf_vc_ena_dis_vport(struct idpf_vport *vport, bool enable)
 }
 
 int
-idpf_vc_query_ptype_info(struct idpf_adapter *adapter)
+idpf_vc_ptype_info_query(struct idpf_adapter *adapter)
 {
 	struct virtchnl2_get_ptype_info *ptype_info;
 	struct idpf_cmd_info args;
@@ -798,7 +798,7 @@ idpf_vc_query_ptype_info(struct idpf_adapter *adapter)
 	args.in_args = (uint8_t *)ptype_info;
 	args.in_args_size = len;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_PTYPE_INFO");
 
@@ -808,7 +808,7 @@ idpf_vc_query_ptype_info(struct idpf_adapter *adapter)
 
 #define IDPF_RX_BUF_STRIDE		64
 int
-idpf_vc_config_rxq(struct idpf_vport *vport, struct idpf_rx_queue *rxq)
+idpf_vc_rxq_config(struct idpf_vport *vport, struct idpf_rx_queue *rxq)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_config_rx_queues *vc_rxqs = NULL;
@@ -887,7 +887,7 @@ idpf_vc_config_rxq(struct idpf_vport *vport, struct idpf_rx_queue *rxq)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	rte_free(vc_rxqs);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_CONFIG_RX_QUEUES");
@@ -896,7 +896,7 @@ idpf_vc_config_rxq(struct idpf_vport *vport, struct idpf_rx_queue *rxq)
 }
 
 int
-idpf_vc_config_txq(struct idpf_vport *vport, struct idpf_tx_queue *txq)
+idpf_vc_txq_config(struct idpf_vport *vport, struct idpf_tx_queue *txq)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_config_tx_queues *vc_txqs = NULL;
@@ -958,7 +958,7 @@ idpf_vc_config_txq(struct idpf_vport *vport, struct idpf_tx_queue *txq)
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
-	err = idpf_execute_vc_cmd(adapter, &args);
+	err = idpf_vc_cmd_execute(adapter, &args);
 	rte_free(vc_txqs);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_CONFIG_TX_QUEUES");
