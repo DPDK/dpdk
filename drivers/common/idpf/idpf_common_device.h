@@ -5,6 +5,7 @@
 #ifndef _IDPF_COMMON_DEVICE_H_
 #define _IDPF_COMMON_DEVICE_H_
 
+#include <rte_mbuf_ptype.h>
 #include <base/idpf_prototype.h>
 #include <base/virtchnl2.h>
 #include <idpf_common_logs.h>
@@ -19,6 +20,10 @@
 
 #define IDPF_DFLT_INTERVAL	16
 
+#define IDPF_GET_PTYPE_SIZE(p)						\
+	(sizeof(struct virtchnl2_ptype) +				\
+	 (((p)->proto_id_count ? ((p)->proto_id_count - 1) : 0) * sizeof((p)->proto_id[0])))
+
 struct idpf_adapter {
 	struct idpf_hw hw;
 	struct virtchnl2_version_info virtchnl_version;
@@ -26,6 +31,8 @@ struct idpf_adapter {
 	volatile uint32_t pend_cmd; /* pending command not finished */
 	uint32_t cmd_retval; /* return value of the cmd response from cp */
 	uint8_t *mbx_resp; /* buffer to store the mailbox response from cp */
+
+	uint32_t ptype_tbl[IDPF_MAX_PKT_TYPE] __rte_cache_min_aligned;
 };
 
 struct idpf_chunks_info {

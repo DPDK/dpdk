@@ -89,8 +89,6 @@ struct idpf_adapter_ext {
 
 	uint16_t used_vecs_num;
 
-	uint32_t ptype_tbl[IDPF_MAX_PKT_TYPE] __rte_cache_min_aligned;
-
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;
 	bool rx_use_avx512;
@@ -106,7 +104,5 @@ TAILQ_HEAD(idpf_adapter_list, idpf_adapter_ext);
 	RTE_DEV_TO_PCI((eth_dev)->device)
 #define IDPF_ADAPTER_TO_EXT(p)					\
 	container_of((p), struct idpf_adapter_ext, base)
-
-int idpf_get_pkt_type(struct idpf_adapter_ext *adapter);
 
 #endif /* _IDPF_ETHDEV_H_ */

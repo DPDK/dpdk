@@ -602,12 +602,6 @@ idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *a
 		goto err_adapter_init;
 	}
 
-	ret = idpf_get_pkt_type(adapter);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to set ptype table");
-		goto err_get_ptype;
-	}
-
 	adapter->max_vport_nb = adapter->base.caps.max_vports;
 
 	adapter->vports = rte_zmalloc("vports",

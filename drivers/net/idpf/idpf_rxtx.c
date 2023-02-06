@@ -1407,7 +1407,7 @@ idpf_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_id_bufq1 = rxq->bufq1->rx_next_avail;
 	rx_id_bufq2 = rxq->bufq2->rx_next_avail;
 	rx_desc_ring = rxq->rx_ring;
-	ptype_tbl = ad->ptype_tbl;
+	ptype_tbl = rxq->adapter->ptype_tbl;
 
 	if ((rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0)
 		rxq->hw_register_set = 1;
@@ -1812,7 +1812,7 @@ idpf_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
-	ptype_tbl = ad->ptype_tbl;
+	ptype_tbl = rxq->adapter->ptype_tbl;
 
 	if ((rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0)
 		rxq->hw_register_set = 1;

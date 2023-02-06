@@ -82,10 +82,6 @@
 #define IDPF_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IDPF_TX_OFFLOAD_MASK)
 
-#define IDPF_GET_PTYPE_SIZE(p) \
-	(sizeof(struct virtchnl2_ptype) + \
-	(((p)->proto_id_count ? ((p)->proto_id_count - 1) : 0) * sizeof((p)->proto_id[0])))
-
 extern uint64_t idpf_timestamp_dynflag;
 
 struct idpf_rx_queue {

@@ -245,8 +245,7 @@ _idpf_singleq_recv_raw_pkts_avx512(struct idpf_rx_queue *rxq,
 				   struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts)
 {
-	struct idpf_adapter_ext *adapter = IDPF_ADAPTER_TO_EXT(rxq->adapter);
-	const uint32_t *type_table = adapter->ptype_tbl;
+	const uint32_t *type_table = rxq->adapter->ptype_tbl;
 
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0,
 						    rxq->mbuf_initializer);
