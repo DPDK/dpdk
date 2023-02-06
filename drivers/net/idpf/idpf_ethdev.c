@@ -169,7 +169,7 @@ idpf_init_rss(struct idpf_vport *vport)
 
 	vport->rss_hf = IDPF_DEFAULT_RSS_HASH_EXPANDED;
 
-	ret = idpf_config_rss(vport);
+	ret = idpf_vport_rss_config(vport);
 	if (ret != 0)
 		PMD_INIT_LOG(ERR, "Failed to configure RSS");
 
@@ -245,7 +245,7 @@ idpf_config_rx_queues_irqs(struct rte_eth_dev *dev)
 	struct idpf_vport *vport = dev->data->dev_private;
 	uint16_t nb_rx_queues = dev->data->nb_rx_queues;
 
-	return idpf_config_irq_map(vport, nb_rx_queues);
+	return idpf_vport_irq_map_config(vport, nb_rx_queues);
 }
 
 static int
@@ -334,7 +334,7 @@ idpf_dev_start(struct rte_eth_dev *dev)
 err_vport:
 	idpf_stop_queues(dev);
 err_startq:
-	idpf_config_irq_unmap(vport, dev->data->nb_rx_queues);
+	idpf_vport_irq_unmap_config(vport, dev->data->nb_rx_queues);
 err_irq:
 	idpf_vc_dealloc_vectors(vport);
 err_vec:
@@ -353,7 +353,7 @@ idpf_dev_stop(struct rte_eth_dev *dev)
 
 	idpf_stop_queues(dev);
 
-	idpf_config_irq_unmap(vport, dev->data->nb_rx_queues);
+	idpf_vport_irq_unmap_config(vport, dev->data->nb_rx_queues);
 
 	idpf_vc_dealloc_vectors(vport);
 
@@ -643,7 +643,7 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	vport->devarg_id = param->devarg_id;
 
 	memset(&create_vport_info, 0, sizeof(create_vport_info));
-	ret = idpf_create_vport_info_init(vport, &create_vport_info);
+	ret = idpf_vport_info_init(vport, &create_vport_info);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init vport req_info.");
 		goto err;

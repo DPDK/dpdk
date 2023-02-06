@@ -183,13 +183,13 @@ int idpf_vport_init(struct idpf_vport *vport,
 __rte_internal
 int idpf_vport_deinit(struct idpf_vport *vport);
 __rte_internal
-int idpf_config_rss(struct idpf_vport *vport);
+int idpf_vport_rss_config(struct idpf_vport *vport);
 __rte_internal
-int idpf_config_irq_map(struct idpf_vport *vport, uint16_t nb_rx_queues);
+int idpf_vport_irq_map_config(struct idpf_vport *vport, uint16_t nb_rx_queues);
 __rte_internal
-int idpf_config_irq_unmap(struct idpf_vport *vport, uint16_t nb_rx_queues);
+int idpf_vport_irq_unmap_config(struct idpf_vport *vport, uint16_t nb_rx_queues);
 __rte_internal
-int idpf_create_vport_info_init(struct idpf_vport *vport,
-				struct virtchnl2_create_vport *vport_info);
+int idpf_vport_info_init(struct idpf_vport *vport,
+			 struct virtchnl2_create_vport *vport_info);
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */

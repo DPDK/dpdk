@@ -505,7 +505,7 @@ idpf_vport_deinit(struct idpf_vport *vport)
 	return 0;
 }
 int
-idpf_config_rss(struct idpf_vport *vport)
+idpf_vport_rss_config(struct idpf_vport *vport)
 {
 	int ret;
 
@@ -531,7 +531,7 @@ idpf_config_rss(struct idpf_vport *vport)
 }
 
 int
-idpf_config_irq_map(struct idpf_vport *vport, uint16_t nb_rx_queues)
+idpf_vport_irq_map_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_queue_vector *qv_map;
@@ -606,7 +606,7 @@ qv_map_alloc_err:
 }
 
 int
-idpf_config_irq_unmap(struct idpf_vport *vport, uint16_t nb_rx_queues)
+idpf_vport_irq_unmap_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 {
 	idpf_vc_config_irq_map_unmap(vport, nb_rx_queues, false);
 
@@ -617,7 +617,7 @@ idpf_config_irq_unmap(struct idpf_vport *vport, uint16_t nb_rx_queues)
 }
 
 int
-idpf_create_vport_info_init(struct idpf_vport *vport,
+idpf_vport_info_init(struct idpf_vport *vport,
 			    struct virtchnl2_create_vport *vport_info)
 {
 	struct idpf_adapter *adapter = vport->adapter;
