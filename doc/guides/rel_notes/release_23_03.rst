@@ -78,6 +78,10 @@ New Features
   Added flow items to match ICMPv6 echo request and reply packets.
   Matching patterns can include ICMP identifier and sequence numbers.
 
+* **Added flow flex handle to modify action.**
+
+  Added flex modify item ``RTE_FLOW_FIELD_FLEX_ITEM``.
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

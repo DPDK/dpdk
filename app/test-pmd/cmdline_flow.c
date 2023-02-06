@@ -613,10 +613,12 @@ enum index {
 	ACTION_MODIFY_FIELD_DST_TYPE,
 	ACTION_MODIFY_FIELD_DST_TYPE_VALUE,
 	ACTION_MODIFY_FIELD_DST_LEVEL,
+	ACTION_MODIFY_FIELD_DST_LEVEL_VALUE,
 	ACTION_MODIFY_FIELD_DST_OFFSET,
 	ACTION_MODIFY_FIELD_SRC_TYPE,
 	ACTION_MODIFY_FIELD_SRC_TYPE_VALUE,
 	ACTION_MODIFY_FIELD_SRC_LEVEL,
+	ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE,
 	ACTION_MODIFY_FIELD_SRC_OFFSET,
 	ACTION_MODIFY_FIELD_SRC_VALUE,
 	ACTION_MODIFY_FIELD_SRC_POINTER,
@@ -820,7 +822,8 @@ static const char *const modify_field_ids[] = {
 	"vxlan_vni", "geneve_vni", "gtp_teid",
 	"tag", "mark", "meta", "pointer", "value",
 	"ipv4_ecn", "ipv6_ecn", "gtp_psc_qfi", "meter_color",
-	"ipv6_proto", NULL
+	"ipv6_proto",
+	"flex_item", NULL
 };
 
 static const char *const meter_colors[] = {
@@ -2320,6 +2323,10 @@ parse_vc_modify_field_op(struct context *ctx, const struct token *token,
 				unsigned int size);
 static int
 parse_vc_modify_field_id(struct context *ctx, const struct token *token,
+				const char *str, unsigned int len, void *buf,
+				unsigned int size);
+static int
+parse_vc_modify_field_level(struct context *ctx, const struct token *token,
 				const char *str, unsigned int len, void *buf,
 				unsigned int size);
 static int
@@ -6109,10 +6116,14 @@ static const struct token token_list[] = {
 		.name = "dst_level",
 		.help = "destination field level",
 		.next = NEXT(action_modify_field_dst,
-			     NEXT_ENTRY(COMMON_UNSIGNED)),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_modify_field,
-					dst.level)),
+			     NEXT_ENTRY(ACTION_MODIFY_FIELD_DST_LEVEL_VALUE)),
 		.call = parse_vc_conf,
+	},
+	[ACTION_MODIFY_FIELD_DST_LEVEL_VALUE] = {
+		.name = "{dst_level}",
+		.help = "destination field level value",
+		.call = parse_vc_modify_field_level,
+		.comp = comp_none,
 	},
 	[ACTION_MODIFY_FIELD_DST_OFFSET] = {
 		.name = "dst_offset",
@@ -6140,10 +6151,14 @@ static const struct token token_list[] = {
 		.name = "src_level",
 		.help = "source field level",
 		.next = NEXT(action_modify_field_src,
-			     NEXT_ENTRY(COMMON_UNSIGNED)),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_modify_field,
-					src.level)),
+			     NEXT_ENTRY(ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE)),
 		.call = parse_vc_conf,
+	},
+	[ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE] = {
+		.name = "{src_level}",
+		.help = "source field level value",
+		.call = parse_vc_modify_field_level,
+		.comp = comp_none,
 	},
 	[ACTION_MODIFY_FIELD_SRC_OFFSET] = {
 		.name = "src_offset",
@@ -8607,6 +8622,66 @@ parse_vc_modify_field_id(struct context *ctx, const struct token *token,
 		action_modify_field->dst.field = (enum rte_flow_field_id)i;
 	else
 		action_modify_field->src.field = (enum rte_flow_field_id)i;
+	return len;
+}
+
+/** Parse level for modify_field command. */
+static int
+parse_vc_modify_field_level(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len, void *buf,
+			 unsigned int size)
+{
+	struct rte_flow_action_modify_field *action;
+	struct flex_item *fp;
+	uint32_t val;
+	struct buffer *out = buf;
+	char *end;
+
+	(void)token;
+	(void)size;
+	if (ctx->curr != ACTION_MODIFY_FIELD_DST_LEVEL_VALUE &&
+		ctx->curr != ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE)
+		return -1;
+	if (!ctx->object)
+		return len;
+	action = ctx->object;
+	errno = 0;
+	val = strtoumax(str, &end, 0);
+	if (errno || (size_t)(end - str) != len)
+		return -1;
+	/* No need to validate action template mask value */
+	if (out->args.vc.masks) {
+		if (ctx->curr == ACTION_MODIFY_FIELD_DST_LEVEL_VALUE)
+			action->dst.level = val;
+		else
+			action->src.level = val;
+		return len;
+	}
+	if ((ctx->curr == ACTION_MODIFY_FIELD_DST_LEVEL_VALUE &&
+		action->dst.field == RTE_FLOW_FIELD_FLEX_ITEM) ||
+		(ctx->curr == ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE &&
+		action->src.field == RTE_FLOW_FIELD_FLEX_ITEM)) {
+		if (val >= FLEX_MAX_PARSERS_NUM) {
+			printf("Bad flex item handle\n");
+			return -1;
+		}
+		fp = flex_items[ctx->port][val];
+		if (!fp) {
+			printf("Bad flex item handle\n");
+			return -1;
+		}
+	}
+	if (ctx->curr == ACTION_MODIFY_FIELD_DST_LEVEL_VALUE) {
+		if (action->dst.field != RTE_FLOW_FIELD_FLEX_ITEM)
+			action->dst.level = val;
+		else
+			action->dst.flex_handle = fp->flex_handle;
+	} else if (ctx->curr == ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE) {
+		if (action->src.field != RTE_FLOW_FIELD_FLEX_ITEM)
+			action->src.level = val;
+		else
+			action->src.flex_handle = fp->flex_handle;
+	}
 	return len;
 }
 
