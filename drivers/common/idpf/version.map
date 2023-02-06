@@ -3,6 +3,7 @@ INTERNAL {
 
 	idpf_adapter_deinit;
 	idpf_adapter_init;
+	idpf_config_rss;
 	idpf_execute_vc_cmd;
 	idpf_vc_alloc_vectors;
 	idpf_vc_check_api_version;

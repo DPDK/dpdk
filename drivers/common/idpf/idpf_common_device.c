@@ -273,4 +273,29 @@ idpf_vport_deinit(struct idpf_vport *vport)
 
 	return 0;
 }
+int
+idpf_config_rss(struct idpf_vport *vport)
+{
+	int ret;
+
+	ret = idpf_vc_set_rss_key(vport);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to configure RSS key");
+		return ret;
+	}
+
+	ret = idpf_vc_set_rss_lut(vport);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to configure RSS lut");
+		return ret;
+	}
+
+	ret = idpf_vc_set_rss_hash(vport);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to configure RSS hash");
+		return ret;
+	}
+
+	return ret;
+}
 RTE_LOG_REGISTER_SUFFIX(idpf_common_logtype, common, NOTICE);

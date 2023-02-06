@@ -179,32 +179,6 @@ idpf_init_vport_req_info(struct rte_eth_dev *dev,
 }
 
 static int
-idpf_config_rss(struct idpf_vport *vport)
-{
-	int ret;
-
-	ret = idpf_vc_set_rss_key(vport);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to configure RSS key");
-		return ret;
-	}
-
-	ret = idpf_vc_set_rss_lut(vport);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to configure RSS lut");
-		return ret;
-	}
-
-	ret = idpf_vc_set_rss_hash(vport);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to configure RSS hash");
-		return ret;
-	}
-
-	return ret;
-}
-
-static int
 idpf_init_rss(struct idpf_vport *vport)
 {
 	struct rte_eth_rss_conf *rss_conf;

@@ -153,5 +153,7 @@ int idpf_vport_init(struct idpf_vport *vport,
 		    void *dev_data);
 __rte_internal
 int idpf_vport_deinit(struct idpf_vport *vport);
+__rte_internal
+int idpf_config_rss(struct idpf_vport *vport);
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */
