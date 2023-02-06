@@ -101,7 +101,7 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp, size_t *cpp_size)
 	}
 
 	db = malloc(*cpp_size + 1);
-	if (!db)
+	if (db == NULL)
 		return NULL;
 
 	err = nfp_cpp_read(cpp, cpp_id, cpp_addr, db, *cpp_size);
@@ -160,7 +160,7 @@ nfp_hwinfo_read(struct nfp_cpp *cpp)
 	int err;
 
 	db = nfp_hwinfo_fetch(cpp, &hwdb_size);
-	if (!db)
+	if (db == NULL)
 		return NULL;
 
 	err = nfp_hwinfo_db_validate(db, hwdb_size);
@@ -183,7 +183,7 @@ nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo, const char *lookup)
 {
 	const char *key, *val, *end;
 
-	if (!hwinfo || !lookup)
+	if (hwinfo == NULL || lookup == NULL)
 		return NULL;
 
 	end = hwinfo->data + hwinfo->size - sizeof(uint32_t);

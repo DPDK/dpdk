@@ -470,7 +470,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	}
 
-	if (!(hw->cap & NFP_NET_CFG_CTRL_PROMISC)) {
+	if ((hw->cap & NFP_NET_CFG_CTRL_PROMISC) == 0) {
 		PMD_INIT_LOG(INFO, "Promiscuous mode not supported");
 		return -ENOTSUP;
 	}
@@ -1088,7 +1088,7 @@ nfp_net_dev_interrupt_handler(void *param)
 	nfp_net_link_update(dev, 0);
 
 	/* likely to up */
-	if (!link.link_status) {
+	if (link.link_status == 0) {
 		/* handle it 1 sec later, wait it being stable */
 		timeout = NFP_NET_LINK_UP_CHECK_TIMEOUT;
 		/* likely to down */
@@ -1173,7 +1173,7 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	update = NFP_NET_CFG_UPDATE_GEN;
 
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
-	if (!ret)
+	if (ret == 0)
 		hw->ctrl = new_ctrl;
 
 	return ret;
@@ -1207,7 +1207,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		mask = (uint8_t)((reta_conf[idx].mask >> shift) & 0xF);
 
-		if (!mask)
+		if (mask == 0)
 			continue;
 
 		reta = 0;
@@ -1216,7 +1216,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 			reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + i);
 
 		for (j = 0; j < 4; j++) {
-			if (!(mask & (0x1 << j)))
+			if ((mask & (0x1 << j)) == 0)
 				continue;
 			if (mask != 0xF)
 				/* Clearing the entry bits */
@@ -1240,7 +1240,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 	uint32_t update;
 	int ret;
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	ret = nfp_net_rss_reta_write(dev, reta_conf, reta_size);
@@ -1268,7 +1268,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
@@ -1288,13 +1288,13 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		mask = (uint8_t)((reta_conf[idx].mask >> shift) & 0xF);
 
-		if (!mask)
+		if (mask == 0)
 			continue;
 
 		reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + (idx * 64) +
 				    shift);
 		for (j = 0; j < 4; j++) {
-			if (!(mask & (0x1 << j)))
+			if ((mask & (0x1 << j)) == 0)
 				continue;
 			reta_conf[idx].reta[shift + j] =
 				(uint8_t)((reta >> (8 * j)) & 0xF);
@@ -1366,7 +1366,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 	rss_hf = rss_conf->rss_hf;
 
 	/* Checking if RSS is enabled */
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY)) {
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
 		if (rss_hf != 0) { /* Enable RSS? */
 			PMD_DRV_LOG(ERR, "RSS unsupported");
 			return -EINVAL;
@@ -1401,7 +1401,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	rss_hf = rss_conf->rss_hf;
@@ -1469,7 +1469,7 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 		return ret;
 
 	dev_conf = &dev->data->dev_conf;
-	if (!dev_conf) {
+	if (dev_conf == NULL) {
 		PMD_DRV_LOG(INFO, "wrong rss conf");
 		return -EINVAL;
 	}

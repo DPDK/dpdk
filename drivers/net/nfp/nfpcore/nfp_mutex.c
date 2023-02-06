@@ -153,7 +153,7 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
 		return NFP_ERRPTR(EEXIST);
 
 	mutex = calloc(sizeof(*mutex), 1);
-	if (!mutex)
+	if (mutex == NULL)
 		return NFP_ERRPTR(ENOMEM);
 
 	mutex->cpp = cpp;
@@ -205,7 +205,7 @@ nfp_cpp_mutex_owner(struct nfp_cpp_mutex *mutex)
 	if (key != mutex->key)
 		return NFP_ERRNO(EPERM);
 
-	if (!MUTEX_IS_LOCKED(value))
+	if (MUTEX_IS_LOCKED(value) == 0)
 		return 0;
 
 	return MUTEX_INTERFACE(value);

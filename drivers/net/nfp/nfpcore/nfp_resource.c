@@ -77,7 +77,7 @@ nfp_cpp_resource_find(struct nfp_cpp *cpp, struct nfp_resource *res)
 	strlcpy(name_pad, res->name, sizeof(name_pad));
 
 	/* Search for a matching entry */
-	if (!memcmp(name_pad, NFP_RESOURCE_TBL_NAME "\0\0\0\0\0\0\0\0", 8)) {
+	if (memcmp(name_pad, NFP_RESOURCE_TBL_NAME "\0\0\0\0\0\0\0\0", 8) == 0) {
 		PMD_DRV_LOG(ERR, "Grabbing device lock not supported");
 		return -EOPNOTSUPP;
 	}
@@ -157,7 +157,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp, const char *name)
 	int count;
 
 	res = malloc(sizeof(*res));
-	if (!res)
+	if (res == NULL)
 		return NULL;
 
 	memset(res, 0, sizeof(*res));
@@ -167,7 +167,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp, const char *name)
 	dev_mutex = nfp_cpp_mutex_alloc(cpp, NFP_RESOURCE_TBL_TARGET,
 					NFP_RESOURCE_TBL_BASE,
 					NFP_RESOURCE_TBL_KEY);
-	if (!dev_mutex) {
+	if (dev_mutex == NULL) {
 		free(res);
 		return NULL;
 	}
@@ -178,7 +178,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp, const char *name)
 
 	for (;;) {
 		err = nfp_resource_try_acquire(cpp, res, dev_mutex);
-		if (!err)
+		if (err == 0)
 			break;
 		if (err != -EBUSY)
 			goto err_free;

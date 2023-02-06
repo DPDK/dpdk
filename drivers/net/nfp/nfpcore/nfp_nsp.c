@@ -58,7 +58,7 @@ nfp_nsp_print_extended_error(uint32_t ret_val)
 {
 	int i;
 
-	if (!ret_val)
+	if (ret_val == 0)
 		return;
 
 	for (i = 0; i < (int)ARRAY_SIZE(nsp_errors); i++)
@@ -115,11 +115,11 @@ nfp_nsp_open(struct nfp_cpp *cpp)
 	int err;
 
 	res = nfp_resource_acquire(cpp, NFP_RESOURCE_NSP);
-	if (!res)
+	if (res == NULL)
 		return NULL;
 
 	state = malloc(sizeof(*state));
-	if (!state) {
+	if (state == NULL) {
 		nfp_resource_release(res);
 		return NULL;
 	}

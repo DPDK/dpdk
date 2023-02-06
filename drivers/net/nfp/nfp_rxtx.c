@@ -186,7 +186,7 @@ nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 		hash = meta->hash;
 		hash_type = meta->hash_type;
 	} else {
-		if (!(rxd->rxd.flags & PCIE_DESC_RX_RSS))
+		if ((rxd->rxd.flags & PCIE_DESC_RX_RSS) == 0)
 			return;
 
 		hash = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_OFFSET);
@@ -1045,7 +1045,7 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 			 * Making the EOP, packets with just one segment
 			 * the priority
 			 */
-			if (likely(!pkt_size))
+			if (likely(pkt_size == 0))
 				txds->offset_eop = PCIE_DESC_TX_EOP;
 			else
 				txds->offset_eop = 0;
@@ -1360,7 +1360,7 @@ nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq, struct rte_mbuf *mb,
 	uint64_t ol_flags;
 	struct nfp_net_hw *hw = txq->hw;
 
-	if (!(hw->cap & NFP_NET_CFG_CTRL_TXCSUM))
+	if ((hw->cap & NFP_NET_CFG_CTRL_TXCSUM) == 0)
 		return flags;
 
 	ol_flags = mb->ol_flags;
@@ -1382,12 +1382,12 @@ nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq, struct rte_mbuf *mb)
 	struct nfp_net_nfdk_tx_desc txd;
 	struct nfp_net_hw *hw = txq->hw;
 
-	if (!(hw->cap & NFP_NET_CFG_CTRL_LSO_ANY))
+	if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
 		goto clean_txd;
 
 	ol_flags = mb->ol_flags;
 
-	if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG))
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0)
 		goto clean_txd;
 
 	txd.l3_offset = mb->l2_len;
@@ -1476,7 +1476,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) &&
 				(pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 			type = NFDK_DESC_TX_TYPE_TSO;
-		} else if (!pkt->next && dma_len < NFDK_TX_MAX_DATA_PER_HEAD) {
+		} else if (pkt->next == NULL && dma_len < NFDK_TX_MAX_DATA_PER_HEAD) {
 			type = NFDK_DESC_TX_TYPE_SIMPLE;
 		} else {
 			type = NFDK_DESC_TX_TYPE_GATHER;
@@ -1532,7 +1532,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 				dma_addr += dlen_type + 1;
 			}
 
-			if (!pkt->next)
+			if (pkt->next == NULL)
 				break;
 
 			pkt = pkt->next;

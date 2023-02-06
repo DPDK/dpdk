@@ -103,13 +103,13 @@ __nfp_rtsym_table_read(struct nfp_cpp *cpp, const struct nfp_mip *mip)
 		NFP_ISL_EMEM0;
 	int err, n, size;
 
-	if (!mip)
+	if (mip == NULL)
 		return NULL;
 
 	nfp_mip_strtab(mip, &strtab_addr, &strtab_size);
 	nfp_mip_symtab(mip, &symtab_addr, &symtab_size);
 
-	if (!symtab_size || !strtab_size || symtab_size % sizeof(*rtsymtab))
+	if (symtab_size == 0 || strtab_size == 0 || symtab_size % sizeof(*rtsymtab) != 0)
 		return NULL;
 
 	/* Align to 64 bits */
@@ -117,14 +117,14 @@ __nfp_rtsym_table_read(struct nfp_cpp *cpp, const struct nfp_mip *mip)
 	strtab_size = round_up(strtab_size, 8);
 
 	rtsymtab = malloc(symtab_size);
-	if (!rtsymtab)
+	if (rtsymtab == NULL)
 		return NULL;
 
 	size = sizeof(*cache);
 	size += symtab_size / sizeof(*rtsymtab) * sizeof(struct nfp_rtsym);
 	size +=	strtab_size + 1;
 	cache = malloc(size);
-	if (!cache)
+	if (cache == NULL)
 		goto exit_free_rtsym_raw;
 
 	cache->cpp = cpp;
@@ -164,7 +164,7 @@ exit_free_rtsym_raw:
 int
 nfp_rtsym_count(struct nfp_rtsym_table *rtbl)
 {
-	if (!rtbl)
+	if (rtbl == NULL)
 		return -EINVAL;
 
 	return rtbl->num;
@@ -180,7 +180,7 @@ nfp_rtsym_count(struct nfp_rtsym_table *rtbl)
 const struct nfp_rtsym *
 nfp_rtsym_get(struct nfp_rtsym_table *rtbl, int idx)
 {
-	if (!rtbl)
+	if (rtbl == NULL)
 		return NULL;
 
 	if (idx >= rtbl->num)
@@ -201,7 +201,7 @@ nfp_rtsym_lookup(struct nfp_rtsym_table *rtbl, const char *name)
 {
 	int n;
 
-	if (!rtbl)
+	if (rtbl == NULL)
 		return NULL;
 
 	for (n = 0; n < rtbl->num; n++)
@@ -232,7 +232,7 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
 	int err;
 
 	sym = nfp_rtsym_lookup(rtbl, name);
-	if (!sym) {
+	if (sym == NULL) {
 		err = -ENOENT;
 		goto exit;
 	}
@@ -277,8 +277,8 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 
 	PMD_DRV_LOG(DEBUG, "mapping symbol %s", name);
 	sym = nfp_rtsym_lookup(rtbl, name);
-	if (!sym) {
-		PMD_DRV_LOG(ERR, "symbol lookup fails for %s", name);
+	if (sym == NULL) {
+		PMD_INIT_LOG(ERR, "symbol lookup fails for %s", name);
 		return NULL;
 	}
 
@@ -290,8 +290,8 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 
 	mem = nfp_cpp_map_area(rtbl->cpp, sym->domain, sym->target, sym->addr,
 			       sym->size, area);
-	if (!mem) {
-		PMD_DRV_LOG(ERR, "Failed to map symbol %s", name);
+	if (mem == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to map symbol %s", name);
 		return NULL;
 	}
 	PMD_DRV_LOG(DEBUG, "symbol %s with address %p", name, mem);

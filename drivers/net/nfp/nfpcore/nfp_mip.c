@@ -71,7 +71,7 @@ nfp_mip_read_resource(struct nfp_cpp *cpp, struct nfp_mip *mip)
 	int err;
 
 	nffw_info = nfp_nffw_info_open(cpp);
-	if (!nffw_info)
+	if (nffw_info == NULL)
 		return -ENODEV;
 
 	err = nfp_nffw_info_mip_first(nffw_info, &cpp_id, &addr);
@@ -101,7 +101,7 @@ nfp_mip_open(struct nfp_cpp *cpp)
 	int err;
 
 	mip = malloc(sizeof(*mip));
-	if (!mip)
+	if (mip == NULL)
 		return NULL;
 
 	err = nfp_mip_read_resource(cpp, mip);

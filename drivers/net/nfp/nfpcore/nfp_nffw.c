@@ -123,13 +123,13 @@ nfp_nffw_info_open(struct nfp_cpp *cpp)
 	int err;
 
 	state = malloc(sizeof(*state));
-	if (!state)
+	if (state == NULL)
 		return NULL;
 
 	memset(state, 0, sizeof(*state));
 
 	state->res = nfp_resource_acquire(cpp, NFP_RESOURCE_NFP_NFFW);
-	if (!state->res)
+	if (state->res == NULL)
 		goto err_free;
 
 	fwinf = &state->fwinf;
@@ -143,7 +143,7 @@ nfp_nffw_info_open(struct nfp_cpp *cpp)
 	if (err < (int)sizeof(*fwinf))
 		goto err_release;
 
-	if (!nffw_res_flg_init_get(fwinf))
+	if (nffw_res_flg_init_get(fwinf) == 0)
 		goto err_release;
 
 	info_ver = nffw_res_info_version_get(fwinf);
@@ -186,7 +186,7 @@ nfp_nffw_info_fwid_first(struct nfp_nffw_info *state)
 	unsigned int cnt, i;
 
 	cnt = nffw_res_fwinfos(&state->fwinf, &fwinfo);
-	if (!cnt)
+	if (cnt == 0)
 		return NULL;
 
 	for (i = 0; i < cnt; i++)
@@ -211,7 +211,7 @@ nfp_nffw_info_mip_first(struct nfp_nffw_info *state, uint32_t *cpp_id,
 	struct nffw_fwinfo *fwinfo;
 
 	fwinfo = nfp_nffw_info_fwid_first(state);
-	if (!fwinfo)
+	if (fwinfo == NULL)
 		return -EINVAL;
 
 	*cpp_id = nffw_fwinfo_mip_cppid_get(fwinfo);

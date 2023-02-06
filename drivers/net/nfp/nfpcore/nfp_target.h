@@ -554,7 +554,7 @@ nfp_target_cpp(uint32_t cpp_island_id, uint64_t cpp_island_address,
 		return 0;
 	}
 
-	if (!imb_table) {
+	if (imb_table == NULL) {
 		/* CPP + Island only allowed on systems with IMB tables */
 		return NFP_ERRNO(EINVAL);
 	}

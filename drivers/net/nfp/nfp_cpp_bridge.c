@@ -161,7 +161,7 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 		/* configure a CPP PCIe2CPP BAR for mapping the CPP target */
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
 						    nfp_offset, curlen);
-		if (!area) {
+		if (area == NULL) {
 			RTE_LOG(ERR, PMD, "%s: area alloc fail\n", __func__);
 			return -EIO;
 		}
@@ -261,7 +261,7 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 	while (count > 0) {
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
 						    nfp_offset, curlen);
-		if (!area) {
+		if (area == NULL) {
 			RTE_LOG(ERR, PMD, "%s: area alloc failed\n", __func__);
 			return -EIO;
 		}

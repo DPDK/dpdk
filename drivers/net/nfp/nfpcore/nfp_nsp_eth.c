@@ -270,7 +270,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	const struct rte_ether_addr *mac;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
-	if (!entries)
+	if (entries == NULL)
 		return NULL;
 
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
@@ -286,7 +286,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
 		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
 		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
-				(!rte_is_zero_ether_addr(mac)))
+				!rte_is_zero_ether_addr(mac))
 			cnt++;
 	}
 
@@ -302,7 +302,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 
 	table_sz = sizeof(*table) + sizeof(struct nfp_eth_table_port) * cnt;
 	table = malloc(table_sz);
-	if (!table)
+	if (table == NULL)
 		goto err;
 
 	memset(table, 0, table_sz);
@@ -310,7 +310,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	for (i = 0, j = 0; i < NSP_ETH_MAX_COUNT; i++) {
 		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
 		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
-				(!rte_is_zero_ether_addr(mac)))
+				!rte_is_zero_ether_addr(mac))
 			nfp_eth_port_translate(nsp, &entries[i], i,
 					&table->ports[j++]);
 	}
@@ -344,7 +344,7 @@ nfp_eth_read_ports(struct nfp_cpp *cpp)
 	struct nfp_nsp *nsp;
 
 	nsp = nfp_nsp_open(cpp);
-	if (!nsp)
+	if (nsp == NULL)
 		return NULL;
 
 	ret = __nfp_eth_read_ports(nsp);
@@ -361,12 +361,12 @@ nfp_eth_config_start(struct nfp_cpp *cpp, unsigned int idx)
 	int ret;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
-	if (!entries)
+	if (entries == NULL)
 		return NULL;
 
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	nsp = nfp_nsp_open(cpp);
-	if (!nsp) {
+	if (nsp == NULL) {
 		free(entries);
 		return nsp;
 	}
@@ -377,7 +377,7 @@ nfp_eth_config_start(struct nfp_cpp *cpp, unsigned int idx)
 		goto err;
 	}
 
-	if (!(entries[idx].port & NSP_ETH_PORT_LANES_MASK)) {
+	if ((entries[idx].port & NSP_ETH_PORT_LANES_MASK) == 0) {
 		PMD_DRV_LOG(ERR, "trying to set port state on disabled port %d", idx);
 		goto err;
 	}
@@ -454,7 +454,7 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp, unsigned int idx, int enable)
 	uint64_t reg;
 
 	nsp = nfp_eth_config_start(cpp, idx);
-	if (!nsp)
+	if (nsp == NULL)
 		return -1;
 
 	entries = nfp_nsp_config_entries(nsp);
@@ -494,7 +494,7 @@ nfp_eth_set_configured(struct nfp_cpp *cpp, unsigned int idx, int configed)
 	uint64_t reg;
 
 	nsp = nfp_eth_config_start(cpp, idx);
-	if (!nsp)
+	if (nsp == NULL)
 		return -EIO;
 
 	/*
@@ -617,7 +617,7 @@ nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode)
 	int err;
 
 	nsp = nfp_eth_config_start(cpp, idx);
-	if (!nsp)
+	if (nsp == NULL)
 		return -EIO;
 
 	err = __nfp_eth_set_fec(nsp, mode);

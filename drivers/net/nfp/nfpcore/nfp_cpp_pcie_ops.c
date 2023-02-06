@@ -242,7 +242,7 @@ nfp_bar_write(struct nfp_pcie_user *nfp, struct nfp_bar *bar,
 	base = bar->index >> 3;
 	slot = bar->index & 7;
 
-	if (!nfp->cfg)
+	if (nfp->cfg == NULL)
 		return (-ENOMEM);
 
 	bar->csr = nfp->cfg +
@@ -342,7 +342,7 @@ nfp_alloc_bar(struct nfp_pcie_user *nfp)
 	}
 	for (x = start; x > end; x--) {
 		bar = &nfp->bar[x - 1];
-		if (!bar->lock) {
+		if (bar->lock == 0) {
 			bar->lock = 1;
 			return bar;
 		}
@@ -459,7 +459,7 @@ nfp6000_area_acquire(struct nfp_cpp_area *area)
 	}
 
 	/* Must have been too big. Sub-allocate. */
-	if (!priv->bar->iomem)
+	if (priv->bar->iomem == NULL)
 		return (-ENOMEM);
 
 	priv->iomem = priv->bar->iomem + priv->bar_offset;
@@ -472,7 +472,7 @@ nfp6000_area_mapped(struct nfp_cpp_area *area)
 {
 	struct nfp6000_area_priv *area_priv = nfp_cpp_area_priv(area);
 
-	if (!area_priv->iomem)
+	if (area_priv->iomem == NULL)
 		return NULL;
 
 	return area_priv->iomem;
@@ -543,7 +543,7 @@ nfp6000_area_read(struct nfp_cpp_area *area, void *kernel_vaddr,
 			return -EINVAL;
 	}
 
-	if (!priv->bar)
+	if (priv->bar == NULL)
 		return -EFAULT;
 
 	if (is_64)
@@ -608,7 +608,7 @@ nfp6000_area_write(struct nfp_cpp_area *area, const void *kernel_vaddr,
 			return -EINVAL;
 	}
 
-	if (!priv->bar)
+	if (priv->bar == NULL)
 		return -EFAULT;
 
 	if (is_64)
@@ -680,7 +680,7 @@ nfp_acquire_secondary_process_lock(struct nfp_pcie_user *desc)
 	lockfile = calloc(strlen(home_path) + strlen(lockname) + 1,
 			  sizeof(char));
 
-	if (!lockfile)
+	if (lockfile == NULL)
 		return -ENOMEM;
 
 	strcat(lockfile, home_path);
@@ -805,7 +805,7 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 	struct nfp_pcie_user *desc;
 
 	desc = malloc(sizeof(*desc));
-	if (!desc)
+	if (desc == NULL)
 		return -1;
 
 
