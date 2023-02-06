@@ -10211,8 +10211,8 @@ parse_flex_handle(struct context *ctx, const struct token *token,
 	}
 	if (offset == offsetof(struct rte_flow_item_flex, handle)) {
 		const struct flex_item *fp;
-		struct rte_flow_item_flex *item_flex = ctx->object;
-		handle = (uint16_t)(uintptr_t)item_flex->handle;
+		spec = ctx->object;
+		handle = (uint16_t)(uintptr_t)spec->handle;
 		if (handle >= FLEX_MAX_PARSERS_NUM) {
 			printf("Bad flex item handle\n");
 			return -1;
@@ -10222,7 +10222,9 @@ parse_flex_handle(struct context *ctx, const struct token *token,
 			printf("Bad flex item handle\n");
 			return -1;
 		}
-		item_flex->handle = fp->flex_handle;
+		spec->handle = fp->flex_handle;
+		mask = spec + 2; /* spec, last, mask */
+		mask->handle = fp->flex_handle;
 	} else if (offset == offsetof(struct rte_flow_item_flex, pattern)) {
 		handle = (uint16_t)(uintptr_t)
 			((struct rte_flow_item_flex *)ctx->object)->pattern;
