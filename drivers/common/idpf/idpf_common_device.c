@@ -616,4 +616,40 @@ idpf_config_irq_unmap(struct idpf_vport *vport, uint16_t nb_rx_queues)
 	return 0;
 }
 
+int
+idpf_create_vport_info_init(struct idpf_vport *vport,
+			    struct virtchnl2_create_vport *vport_info)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+
+	vport_info->vport_type = rte_cpu_to_le_16(VIRTCHNL2_VPORT_TYPE_DEFAULT);
+	if (adapter->txq_model == 0) {
+		vport_info->txq_model =
+			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SPLIT);
+		vport_info->num_tx_q =
+			rte_cpu_to_le_16(IDPF_DEFAULT_TXQ_NUM);
+		vport_info->num_tx_complq =
+			rte_cpu_to_le_16(IDPF_DEFAULT_TXQ_NUM * IDPF_TX_COMPLQ_PER_GRP);
+	} else {
+		vport_info->txq_model =
+			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SINGLE);
+		vport_info->num_tx_q = rte_cpu_to_le_16(IDPF_DEFAULT_TXQ_NUM);
+		vport_info->num_tx_complq = 0;
+	}
+	if (adapter->rxq_model == 0) {
+		vport_info->rxq_model =
+			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SPLIT);
+		vport_info->num_rx_q = rte_cpu_to_le_16(IDPF_DEFAULT_RXQ_NUM);
+		vport_info->num_rx_bufq =
+			rte_cpu_to_le_16(IDPF_DEFAULT_RXQ_NUM * IDPF_RX_BUFQ_PER_GRP);
+	} else {
+		vport_info->rxq_model =
+			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SINGLE);
+		vport_info->num_rx_q = rte_cpu_to_le_16(IDPF_DEFAULT_RXQ_NUM);
+		vport_info->num_rx_bufq = 0;
+	}
+
+	return 0;
+}
+
 RTE_LOG_REGISTER_SUFFIX(idpf_common_logtype, common, NOTICE);

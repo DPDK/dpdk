@@ -22,14 +22,9 @@
 
 #define IDPF_MAX_VPORT_NUM	8
 
-#define IDPF_DEFAULT_RXQ_NUM	16
-#define IDPF_DEFAULT_TXQ_NUM	16
-
 #define IDPF_INVALID_VPORT_IDX	0xffff
 #define IDPF_TXQ_PER_GRP	1
-#define IDPF_TX_COMPLQ_PER_GRP	1
 #define IDPF_RXQ_PER_GRP	1
-#define IDPF_RX_BUFQ_PER_GRP	2
 
 #define IDPF_DFLT_Q_VEC_NUM	1
 
@@ -77,9 +72,6 @@ struct idpf_adapter_ext {
 	struct idpf_adapter base;
 
 	char name[IDPF_ADAPTER_NAME_LEN];
-
-	uint32_t txq_model; /* 0 - split queue model, non-0 - single queue model */
-	uint32_t rxq_model; /* 0 - split queue model, non-0 - single queue model */
 
 	struct idpf_vport **vports;
 	uint16_t max_vport_nb;

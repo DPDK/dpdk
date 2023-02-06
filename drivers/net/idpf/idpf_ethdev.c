@@ -143,42 +143,6 @@ idpf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 }
 
 static int
-idpf_init_vport_req_info(struct rte_eth_dev *dev,
-			 struct virtchnl2_create_vport *vport_info)
-{
-	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_adapter_ext *adapter = IDPF_ADAPTER_TO_EXT(vport->adapter);
-
-	vport_info->vport_type = rte_cpu_to_le_16(VIRTCHNL2_VPORT_TYPE_DEFAULT);
-	if (adapter->txq_model == 0) {
-		vport_info->txq_model =
-			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SPLIT);
-		vport_info->num_tx_q = IDPF_DEFAULT_TXQ_NUM;
-		vport_info->num_tx_complq =
-			IDPF_DEFAULT_TXQ_NUM * IDPF_TX_COMPLQ_PER_GRP;
-	} else {
-		vport_info->txq_model =
-			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SINGLE);
-		vport_info->num_tx_q = IDPF_DEFAULT_TXQ_NUM;
-		vport_info->num_tx_complq = 0;
-	}
-	if (adapter->rxq_model == 0) {
-		vport_info->rxq_model =
-			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SPLIT);
-		vport_info->num_rx_q = IDPF_DEFAULT_RXQ_NUM;
-		vport_info->num_rx_bufq =
-			IDPF_DEFAULT_RXQ_NUM * IDPF_RX_BUFQ_PER_GRP;
-	} else {
-		vport_info->rxq_model =
-			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SINGLE);
-		vport_info->num_rx_q = IDPF_DEFAULT_RXQ_NUM;
-		vport_info->num_rx_bufq = 0;
-	}
-
-	return 0;
-}
-
-static int
 idpf_init_rss(struct idpf_vport *vport)
 {
 	struct rte_eth_rss_conf *rss_conf;
@@ -566,12 +530,12 @@ idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adap
 		goto bail;
 
 	ret = rte_kvargs_process(kvlist, IDPF_TX_SINGLE_Q, &parse_bool,
-				 &adapter->txq_model);
+				 &adapter->base.txq_model);
 	if (ret != 0)
 		goto bail;
 
 	ret = rte_kvargs_process(kvlist, IDPF_RX_SINGLE_Q, &parse_bool,
-				 &adapter->rxq_model);
+				 &adapter->base.rxq_model);
 	if (ret != 0)
 		goto bail;
 
@@ -672,7 +636,7 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	struct idpf_vport_param *param = init_params;
 	struct idpf_adapter_ext *adapter = param->adapter;
 	/* for sending create vport virtchnl msg prepare */
-	struct virtchnl2_create_vport vport_req_info;
+	struct virtchnl2_create_vport create_vport_info;
 	int ret = 0;
 
 	dev->dev_ops = &idpf_eth_dev_ops;
@@ -680,14 +644,14 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	vport->sw_idx = param->idx;
 	vport->devarg_id = param->devarg_id;
 
-	memset(&vport_req_info, 0, sizeof(vport_req_info));
-	ret = idpf_init_vport_req_info(dev, &vport_req_info);
+	memset(&create_vport_info, 0, sizeof(create_vport_info));
+	ret = idpf_create_vport_info_init(vport, &create_vport_info);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init vport req_info.");
 		goto err;
 	}
 
-	ret = idpf_vport_init(vport, &vport_req_info, dev->data);
+	ret = idpf_vport_init(vport, &create_vport_info, dev->data);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init vports.");
 		goto err;

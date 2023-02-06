@@ -16,6 +16,11 @@
 #define IDPF_CTLQ_LEN		64
 #define IDPF_DFLT_MBX_BUF_SIZE	4096
 
+#define IDPF_DEFAULT_RXQ_NUM	16
+#define IDPF_RX_BUFQ_PER_GRP	2
+#define IDPF_DEFAULT_TXQ_NUM	16
+#define IDPF_TX_COMPLQ_PER_GRP	1
+
 #define IDPF_MAX_PKT_TYPE	1024
 
 #define IDPF_DFLT_INTERVAL	16
@@ -33,6 +38,9 @@ struct idpf_adapter {
 	uint8_t *mbx_resp; /* buffer to store the mailbox response from cp */
 
 	uint32_t ptype_tbl[IDPF_MAX_PKT_TYPE] __rte_cache_min_aligned;
+
+	uint32_t txq_model; /* 0 - split queue model, non-0 - single queue model */
+	uint32_t rxq_model; /* 0 - split queue model, non-0 - single queue model */
 };
 
 struct idpf_chunks_info {
@@ -168,5 +176,8 @@ __rte_internal
 int idpf_config_irq_map(struct idpf_vport *vport, uint16_t nb_rx_queues);
 __rte_internal
 int idpf_config_irq_unmap(struct idpf_vport *vport, uint16_t nb_rx_queues);
+__rte_internal
+int idpf_create_vport_info_init(struct idpf_vport *vport,
+				struct virtchnl2_create_vport *vport_info);
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */
