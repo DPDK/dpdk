@@ -11,7 +11,7 @@ int idpf_timestamp_dynfield_offset = -1;
 uint64_t idpf_timestamp_dynflag;
 
 int
-idpf_check_rx_thresh(uint16_t nb_desc, uint16_t thresh)
+idpf_qc_rx_thresh_check(uint16_t nb_desc, uint16_t thresh)
 {
 	/* The following constraints must be satisfied:
 	 * thresh < rxq->nb_rx_desc
@@ -26,8 +26,8 @@ idpf_check_rx_thresh(uint16_t nb_desc, uint16_t thresh)
 }
 
 int
-idpf_check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
-		     uint16_t tx_free_thresh)
+idpf_qc_tx_thresh_check(uint16_t nb_desc, uint16_t tx_rs_thresh,
+			uint16_t tx_free_thresh)
 {
 	/* TX descriptors will have their RS bit set after tx_rs_thresh
 	 * descriptors have been used. The TX descriptor ring will be cleaned
@@ -74,7 +74,7 @@ idpf_check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
 }
 
 void
-idpf_release_rxq_mbufs(struct idpf_rx_queue *rxq)
+idpf_qc_rxq_mbufs_release(struct idpf_rx_queue *rxq)
 {
 	uint16_t i;
 
@@ -90,7 +90,7 @@ idpf_release_rxq_mbufs(struct idpf_rx_queue *rxq)
 }
 
 void
-idpf_release_txq_mbufs(struct idpf_tx_queue *txq)
+idpf_qc_txq_mbufs_release(struct idpf_tx_queue *txq)
 {
 	uint16_t nb_desc, i;
 
@@ -115,7 +115,7 @@ idpf_release_txq_mbufs(struct idpf_tx_queue *txq)
 }
 
 void
-idpf_reset_split_rx_descq(struct idpf_rx_queue *rxq)
+idpf_qc_split_rx_descq_reset(struct idpf_rx_queue *rxq)
 {
 	uint16_t len;
 	uint32_t i;
@@ -134,7 +134,7 @@ idpf_reset_split_rx_descq(struct idpf_rx_queue *rxq)
 }
 
 void
-idpf_reset_split_rx_bufq(struct idpf_rx_queue *rxq)
+idpf_qc_split_rx_bufq_reset(struct idpf_rx_queue *rxq)
 {
 	uint16_t len;
 	uint32_t i;
@@ -166,15 +166,15 @@ idpf_reset_split_rx_bufq(struct idpf_rx_queue *rxq)
 }
 
 void
-idpf_reset_split_rx_queue(struct idpf_rx_queue *rxq)
+idpf_qc_split_rx_queue_reset(struct idpf_rx_queue *rxq)
 {
-	idpf_reset_split_rx_descq(rxq);
-	idpf_reset_split_rx_bufq(rxq->bufq1);
-	idpf_reset_split_rx_bufq(rxq->bufq2);
+	idpf_qc_split_rx_descq_reset(rxq);
+	idpf_qc_split_rx_bufq_reset(rxq->bufq1);
+	idpf_qc_split_rx_bufq_reset(rxq->bufq2);
 }
 
 void
-idpf_reset_single_rx_queue(struct idpf_rx_queue *rxq)
+idpf_qc_single_rx_queue_reset(struct idpf_rx_queue *rxq)
 {
 	uint16_t len;
 	uint32_t i;
@@ -205,7 +205,7 @@ idpf_reset_single_rx_queue(struct idpf_rx_queue *rxq)
 }
 
 void
-idpf_reset_split_tx_descq(struct idpf_tx_queue *txq)
+idpf_qc_split_tx_descq_reset(struct idpf_tx_queue *txq)
 {
 	struct idpf_tx_entry *txe;
 	uint32_t i, size;
@@ -239,7 +239,7 @@ idpf_reset_split_tx_descq(struct idpf_tx_queue *txq)
 }
 
 void
-idpf_reset_split_tx_complq(struct idpf_tx_queue *cq)
+idpf_qc_split_tx_complq_reset(struct idpf_tx_queue *cq)
 {
 	uint32_t i, size;
 
@@ -257,7 +257,7 @@ idpf_reset_split_tx_complq(struct idpf_tx_queue *cq)
 }
 
 void
-idpf_reset_single_tx_queue(struct idpf_tx_queue *txq)
+idpf_qc_single_tx_queue_reset(struct idpf_tx_queue *txq)
 {
 	struct idpf_tx_entry *txe;
 	uint32_t i, size;
@@ -294,7 +294,7 @@ idpf_reset_single_tx_queue(struct idpf_tx_queue *txq)
 }
 
 void
-idpf_rx_queue_release(void *rxq)
+idpf_qc_rx_queue_release(void *rxq)
 {
 	struct idpf_rx_queue *q = rxq;
 
@@ -324,7 +324,7 @@ idpf_rx_queue_release(void *rxq)
 }
 
 void
-idpf_tx_queue_release(void *txq)
+idpf_qc_tx_queue_release(void *txq)
 {
 	struct idpf_tx_queue *q = txq;
 
@@ -343,7 +343,7 @@ idpf_tx_queue_release(void *txq)
 }
 
 int
-idpf_register_ts_mbuf(struct idpf_rx_queue *rxq)
+idpf_qc_ts_mbuf_register(struct idpf_rx_queue *rxq)
 {
 	int err;
 	if ((rxq->offloads & IDPF_RX_OFFLOAD_TIMESTAMP) != 0) {
@@ -360,7 +360,7 @@ idpf_register_ts_mbuf(struct idpf_rx_queue *rxq)
 }
 
 int
-idpf_alloc_single_rxq_mbufs(struct idpf_rx_queue *rxq)
+idpf_qc_single_rxq_mbufs_alloc(struct idpf_rx_queue *rxq)
 {
 	volatile struct virtchnl2_singleq_rx_buf_desc *rxd;
 	struct rte_mbuf *mbuf = NULL;
@@ -395,7 +395,7 @@ idpf_alloc_single_rxq_mbufs(struct idpf_rx_queue *rxq)
 }
 
 int
-idpf_alloc_split_rxq_mbufs(struct idpf_rx_queue *rxq)
+idpf_qc_split_rxq_mbufs_alloc(struct idpf_rx_queue *rxq)
 {
 	volatile struct virtchnl2_splitq_rx_buf_desc *rxd;
 	struct rte_mbuf *mbuf = NULL;
@@ -1451,7 +1451,7 @@ idpf_singleq_rx_vec_setup_default(struct idpf_rx_queue *rxq)
 }
 
 int __rte_cold
-idpf_singleq_rx_vec_setup(struct idpf_rx_queue *rxq)
+idpf_qc_singleq_rx_vec_setup(struct idpf_rx_queue *rxq)
 {
 	rxq->ops = &def_singleq_rx_ops_vec;
 	return idpf_singleq_rx_vec_setup_default(rxq);

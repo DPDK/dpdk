@@ -51,11 +51,11 @@ idpf_tx_offload_convert(uint64_t offload)
 }
 
 static const struct idpf_rxq_ops def_rxq_ops = {
-	.release_mbufs = idpf_release_rxq_mbufs,
+	.release_mbufs = idpf_qc_rxq_mbufs_release,
 };
 
 static const struct idpf_txq_ops def_txq_ops = {
-	.release_mbufs = idpf_release_txq_mbufs,
+	.release_mbufs = idpf_qc_txq_mbufs_release,
 };
 
 static const struct rte_memzone *
@@ -183,7 +183,7 @@ idpf_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *rxq,
 		goto err_sw_ring_alloc;
 	}
 
-	idpf_reset_split_rx_bufq(bufq);
+	idpf_qc_split_rx_bufq_reset(bufq);
 	bufq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_buf_qtail_start +
 			 queue_idx * vport->chunks_info.rx_buf_qtail_spacing);
 	bufq->ops = &def_rxq_ops;
@@ -242,12 +242,12 @@ idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rx_free_thresh = (rx_conf->rx_free_thresh == 0) ?
 		IDPF_DEFAULT_RX_FREE_THRESH :
 		rx_conf->rx_free_thresh;
-	if (idpf_check_rx_thresh(nb_desc, rx_free_thresh) != 0)
+	if (idpf_qc_rx_thresh_check(nb_desc, rx_free_thresh) != 0)
 		return -EINVAL;
 
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
-		idpf_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		idpf_qc_rx_queue_release(dev->data->rx_queues[queue_idx]);
 		dev->data->rx_queues[queue_idx] = NULL;
 	}
 
@@ -300,12 +300,12 @@ idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			goto err_sw_ring_alloc;
 		}
 
-		idpf_reset_single_rx_queue(rxq);
+		idpf_qc_single_rx_queue_reset(rxq);
 		rxq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_qtail_start +
 				queue_idx * vport->chunks_info.rx_qtail_spacing);
 		rxq->ops = &def_rxq_ops;
 	} else {
-		idpf_reset_split_rx_descq(rxq);
+		idpf_qc_split_rx_descq_reset(rxq);
 
 		/* Setup Rx buffer queues */
 		ret = idpf_rx_split_bufq_setup(dev, rxq, 2 * queue_idx,
@@ -379,7 +379,7 @@ idpf_tx_complq_setup(struct rte_eth_dev *dev, struct idpf_tx_queue *txq,
 	cq->tx_ring_phys_addr = mz->iova;
 	cq->compl_ring = mz->addr;
 	cq->mz = mz;
-	idpf_reset_split_tx_complq(cq);
+	idpf_qc_split_tx_complq_reset(cq);
 
 	txq->complq = cq;
 
@@ -413,12 +413,12 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		tx_conf->tx_rs_thresh : IDPF_DEFAULT_TX_RS_THRESH);
 	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh > 0) ?
 		tx_conf->tx_free_thresh : IDPF_DEFAULT_TX_FREE_THRESH);
-	if (idpf_check_tx_thresh(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
+	if (idpf_qc_tx_thresh_check(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
 		return -EINVAL;
 
 	/* Free memory if needed. */
 	if (dev->data->tx_queues[queue_idx] != NULL) {
-		idpf_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		idpf_qc_tx_queue_release(dev->data->tx_queues[queue_idx]);
 		dev->data->tx_queues[queue_idx] = NULL;
 	}
 
@@ -470,10 +470,10 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	if (!is_splitq) {
 		txq->tx_ring = mz->addr;
-		idpf_reset_single_tx_queue(txq);
+		idpf_qc_single_tx_queue_reset(txq);
 	} else {
 		txq->desc_ring = mz->addr;
-		idpf_reset_split_tx_descq(txq);
+		idpf_qc_split_tx_descq_reset(txq);
 
 		/* Setup tx completion queue if split model */
 		ret = idpf_tx_complq_setup(dev, txq, queue_idx,
@@ -516,7 +516,7 @@ idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EINVAL;
 	}
 
-	err = idpf_register_ts_mbuf(rxq);
+	err = idpf_qc_ts_mbuf_register(rxq);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "fail to residter timestamp mbuf %u",
 					rx_queue_id);
@@ -525,7 +525,7 @@ idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	if (rxq->bufq1 == NULL) {
 		/* Single queue */
-		err = idpf_alloc_single_rxq_mbufs(rxq);
+		err = idpf_qc_single_rxq_mbufs_alloc(rxq);
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf");
 			return err;
@@ -537,12 +537,12 @@ idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		IDPF_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 	} else {
 		/* Split queue */
-		err = idpf_alloc_split_rxq_mbufs(rxq->bufq1);
+		err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq1);
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
 			return err;
 		}
-		err = idpf_alloc_split_rxq_mbufs(rxq->bufq2);
+		err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq2);
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
 			return err;
@@ -664,11 +664,11 @@ idpf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	rxq = dev->data->rx_queues[rx_queue_id];
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 		rxq->ops->release_mbufs(rxq);
-		idpf_reset_single_rx_queue(rxq);
+		idpf_qc_single_rx_queue_reset(rxq);
 	} else {
 		rxq->bufq1->ops->release_mbufs(rxq->bufq1);
 		rxq->bufq2->ops->release_mbufs(rxq->bufq2);
-		idpf_reset_split_rx_queue(rxq);
+		idpf_qc_split_rx_queue_reset(rxq);
 	}
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -695,10 +695,10 @@ idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	txq = dev->data->tx_queues[tx_queue_id];
 	txq->ops->release_mbufs(txq);
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
-		idpf_reset_single_tx_queue(txq);
+		idpf_qc_single_tx_queue_reset(txq);
 	} else {
-		idpf_reset_split_tx_descq(txq);
-		idpf_reset_split_tx_complq(txq->complq);
+		idpf_qc_split_tx_descq_reset(txq);
+		idpf_qc_split_tx_complq_reset(txq->complq);
 	}
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -708,13 +708,13 @@ idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 void
 idpf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	idpf_rx_queue_release(dev->data->rx_queues[qid]);
+	idpf_qc_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 void
 idpf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	idpf_tx_queue_release(dev->data->tx_queues[qid]);
+	idpf_qc_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 void
@@ -776,7 +776,7 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 		if (vport->rx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_tx_queues; i++) {
 				rxq = dev->data->rx_queues[i];
-				(void)idpf_singleq_rx_vec_setup(rxq);
+				(void)idpf_qc_singleq_rx_vec_setup(rxq);
 			}
 #ifdef CC_AVX512_SUPPORT
 			if (vport->rx_use_avx512) {
@@ -835,7 +835,7 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 					txq = dev->data->tx_queues[i];
 					if (txq == NULL)
 						continue;
-					idpf_singleq_tx_vec_setup_avx512(txq);
+					idpf_qc_singleq_tx_vec_avx512_setup(txq);
 				}
 				dev->tx_pkt_burst = idpf_singleq_xmit_pkts_avx512;
 				dev->tx_pkt_prepare = idpf_prep_pkts;

@@ -850,7 +850,7 @@ static const struct idpf_txq_ops avx512_singleq_tx_vec_ops = {
 };
 
 int __rte_cold
-idpf_singleq_tx_vec_setup_avx512(struct idpf_tx_queue *txq)
+idpf_qc_singleq_tx_vec_avx512_setup(struct idpf_tx_queue *txq)
 {
 	txq->ops = &avx512_singleq_tx_vec_ops;
 	return 0;
