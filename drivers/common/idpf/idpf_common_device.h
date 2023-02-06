@@ -7,6 +7,12 @@
 
 #include <base/idpf_prototype.h>
 #include <base/virtchnl2.h>
+#include <idpf_common_logs.h>
+
+#define IDPF_CTLQ_LEN		64
+#define IDPF_DFLT_MBX_BUF_SIZE	4096
+
+#define IDPF_MAX_PKT_TYPE	1024
 
 struct idpf_adapter {
 	struct idpf_hw hw;
@@ -75,5 +81,60 @@ struct idpf_vport {
 
 	bool stopped;
 };
+
+/* Message type read in virtual channel from PF */
+enum idpf_vc_result {
+	IDPF_MSG_ERR = -1, /* Meet error when accessing admin queue */
+	IDPF_MSG_NON,      /* Read nothing from admin queue */
+	IDPF_MSG_SYS,      /* Read system msg from admin queue */
+	IDPF_MSG_CMD,      /* Read async command result */
+};
+
+/* structure used for sending and checking response of virtchnl ops */
+struct idpf_cmd_info {
+	uint32_t ops;
+	uint8_t *in_args;       /* buffer for sending */
+	uint32_t in_args_size;  /* buffer size for sending */
+	uint8_t *out_buffer;    /* buffer for response */
+	uint32_t out_size;      /* buffer size for response */
+};
+
+/* notify current command done. Only call in case execute
+ * _atomic_set_cmd successfully.
+ */
+static inline void
+notify_cmd(struct idpf_adapter *adapter, int msg_ret)
+{
+	adapter->cmd_retval = msg_ret;
+	/* Return value may be checked in anither thread, need to ensure the coherence. */
+	rte_wmb();
+	adapter->pend_cmd = VIRTCHNL2_OP_UNKNOWN;
+}
+
+/* clear current command. Only call in case execute
+ * _atomic_set_cmd successfully.
+ */
+static inline void
+clear_cmd(struct idpf_adapter *adapter)
+{
+	/* Return value may be checked in anither thread, need to ensure the coherence. */
+	rte_wmb();
+	adapter->pend_cmd = VIRTCHNL2_OP_UNKNOWN;
+	adapter->cmd_retval = VIRTCHNL_STATUS_SUCCESS;
+}
+
+/* Check there is pending cmd in execution. If none, set new command. */
+static inline bool
+atomic_set_cmd(struct idpf_adapter *adapter, uint32_t ops)
+{
+	uint32_t op_unk = VIRTCHNL2_OP_UNKNOWN;
+	bool ret = __atomic_compare_exchange(&adapter->pend_cmd, &op_unk, &ops,
+					    0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+
+	if (!ret)
+		DRV_LOG(ERR, "There is incomplete cmd %d", adapter->pend_cmd);
+
+	return !ret;
+}
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */

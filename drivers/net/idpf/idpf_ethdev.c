@@ -942,13 +942,6 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapt
 		goto err_api;
 	}
 
-	adapter->max_rxq_per_msg = (IDPF_DFLT_MBX_BUF_SIZE -
-				sizeof(struct virtchnl2_config_rx_queues)) /
-				sizeof(struct virtchnl2_rxq_info);
-	adapter->max_txq_per_msg = (IDPF_DFLT_MBX_BUF_SIZE -
-				sizeof(struct virtchnl2_config_tx_queues)) /
-				sizeof(struct virtchnl2_txq_info);
-
 	adapter->cur_vports = 0;
 	adapter->cur_vport_nb = 0;
 
@@ -1075,7 +1068,7 @@ static const struct rte_pci_id pci_id_idpf_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
-struct idpf_adapter_ext *
+static struct idpf_adapter_ext *
 idpf_find_adapter_ext(struct rte_pci_device *pci_dev)
 {
 	struct idpf_adapter_ext *adapter;

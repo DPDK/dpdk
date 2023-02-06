@@ -3,10 +3,22 @@ INTERNAL {
 
 	idpf_ctlq_deinit;
 	idpf_ctlq_init;
-	idpf_ctlq_clean_sq;
-	idpf_ctlq_recv;
-	idpf_ctlq_send;
-	idpf_ctlq_post_rx_buffs;
+	idpf_execute_vc_cmd;
+	idpf_vc_alloc_vectors;
+	idpf_vc_check_api_version;
+	idpf_vc_config_irq_map_unmap;
+	idpf_vc_create_vport;
+	idpf_vc_dealloc_vectors;
+	idpf_vc_destroy_vport;
+	idpf_vc_ena_dis_queues;
+	idpf_vc_ena_dis_vport;
+	idpf_vc_get_caps;
+	idpf_vc_query_ptype_info;
+	idpf_vc_read_one_msg;
+	idpf_vc_set_rss_hash;
+	idpf_vc_set_rss_key;
+	idpf_vc_set_rss_lut;
+	idpf_vc_switch_queue;
 
 	local: *;
 };

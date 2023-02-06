@@ -177,7 +177,6 @@ void idpf_ctlq_remove(struct idpf_hw *hw,
 		      struct idpf_ctlq_info *cq);
 
 /* Sends messages to HW and will also free the buffer*/
-__rte_internal
 int idpf_ctlq_send(struct idpf_hw *hw,
 		   struct idpf_ctlq_info *cq,
 		   u16 num_q_msg,
@@ -186,17 +185,14 @@ int idpf_ctlq_send(struct idpf_hw *hw,
 /* Receives messages and called by interrupt handler/polling
  * initiated by app/process. Also caller is supposed to free the buffers
  */
-__rte_internal
 int idpf_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 		   struct idpf_ctlq_msg *q_msg);
 
 /* Reclaims send descriptors on HW write back */
-__rte_internal
 int idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 		       struct idpf_ctlq_msg *msg_status[]);
 
 /* Indicate RX buffers are done being processed */
-__rte_internal
 int idpf_ctlq_post_rx_buffs(struct idpf_hw *hw,
 			    struct idpf_ctlq_info *cq,
 			    u16 *buff_count,
