@@ -247,8 +247,21 @@ idpf_vport_init(struct idpf_vport *vport,
 		goto err_rss_lut;
 	}
 
+	/* recv_vectors is used for VIRTCHNL2_OP_ALLOC_VECTORS response,
+	 * reserve maximum size for it now, may need optimization in future.
+	 */
+	vport->recv_vectors = rte_zmalloc("recv_vectors", IDPF_DFLT_MBX_BUF_SIZE, 0);
+	if (vport->recv_vectors == NULL) {
+		DRV_LOG(ERR, "Failed to allocate recv_vectors");
+		ret = -ENOMEM;
+		goto err_recv_vec;
+	}
+
 	return 0;
 
+err_recv_vec:
+	rte_free(vport->rss_lut);
+	vport->rss_lut = NULL;
 err_rss_lut:
 	vport->dev_data = NULL;
 	rte_free(vport->rss_key);
@@ -261,6 +274,8 @@ err_create_vport:
 int
 idpf_vport_deinit(struct idpf_vport *vport)
 {
+	rte_free(vport->recv_vectors);
+	vport->recv_vectors = NULL;
 	rte_free(vport->rss_lut);
 	vport->rss_lut = NULL;
 
@@ -298,4 +313,91 @@ idpf_config_rss(struct idpf_vport *vport)
 
 	return ret;
 }
+
+int
+idpf_config_irq_map(struct idpf_vport *vport, uint16_t nb_rx_queues)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_queue_vector *qv_map;
+	struct idpf_hw *hw = &adapter->hw;
+	uint32_t dynctl_val, itrn_val;
+	uint32_t dynctl_reg_start;
+	uint32_t itrn_reg_start;
+	uint16_t i;
+	int ret;
+
+	qv_map = rte_zmalloc("qv_map",
+			     nb_rx_queues *
+			     sizeof(struct virtchnl2_queue_vector), 0);
+	if (qv_map == NULL) {
+		DRV_LOG(ERR, "Failed to allocate %d queue-vector map",
+			nb_rx_queues);
+		ret = -ENOMEM;
+		goto qv_map_alloc_err;
+	}
+
+	/* Rx interrupt disabled, Map interrupt only for writeback */
+
+	/* The capability flags adapter->caps.other_caps should be
+	 * compared with bit VIRTCHNL2_CAP_WB_ON_ITR here. The if
+	 * condition should be updated when the FW can return the
+	 * correct flag bits.
+	 */
+	dynctl_reg_start =
+		vport->recv_vectors->vchunks.vchunks->dynctl_reg_start;
+	itrn_reg_start =
+		vport->recv_vectors->vchunks.vchunks->itrn_reg_start;
+	dynctl_val = IDPF_READ_REG(hw, dynctl_reg_start);
+	DRV_LOG(DEBUG, "Value of dynctl_reg_start is 0x%x", dynctl_val);
+	itrn_val = IDPF_READ_REG(hw, itrn_reg_start);
+	DRV_LOG(DEBUG, "Value of itrn_reg_start is 0x%x", itrn_val);
+	/* Force write-backs by setting WB_ON_ITR bit in DYN_CTL
+	 * register. WB_ON_ITR and INTENA are mutually exclusive
+	 * bits. Setting WB_ON_ITR bits means TX and RX Descs
+	 * are written back based on ITR expiration irrespective
+	 * of INTENA setting.
+	 */
+	/* TBD: need to tune INTERVAL value for better performance. */
+	itrn_val = (itrn_val == 0) ? IDPF_DFLT_INTERVAL : itrn_val;
+	dynctl_val = VIRTCHNL2_ITR_IDX_0  <<
+		     PF_GLINT_DYN_CTL_ITR_INDX_S |
+		     PF_GLINT_DYN_CTL_WB_ON_ITR_M |
+		     itrn_val << PF_GLINT_DYN_CTL_INTERVAL_S;
+	IDPF_WRITE_REG(hw, dynctl_reg_start, dynctl_val);
+
+	for (i = 0; i < nb_rx_queues; i++) {
+		/* map all queues to the same vector */
+		qv_map[i].queue_id = vport->chunks_info.rx_start_qid + i;
+		qv_map[i].vector_id =
+			vport->recv_vectors->vchunks.vchunks->start_vector_id;
+	}
+	vport->qv_map = qv_map;
+
+	ret = idpf_vc_config_irq_map_unmap(vport, nb_rx_queues, true);
+	if (ret != 0) {
+		DRV_LOG(ERR, "config interrupt mapping failed");
+		goto config_irq_map_err;
+	}
+
+	return 0;
+
+config_irq_map_err:
+	rte_free(vport->qv_map);
+	vport->qv_map = NULL;
+
+qv_map_alloc_err:
+	return ret;
+}
+
+int
+idpf_config_irq_unmap(struct idpf_vport *vport, uint16_t nb_rx_queues)
+{
+	idpf_vc_config_irq_map_unmap(vport, nb_rx_queues, false);
+
+	rte_free(vport->qv_map);
+	vport->qv_map = NULL;
+
+	return 0;
+}
+
 RTE_LOG_REGISTER_SUFFIX(idpf_common_logtype, common, NOTICE);

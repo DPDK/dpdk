@@ -3,6 +3,8 @@ INTERNAL {
 
 	idpf_adapter_deinit;
 	idpf_adapter_init;
+	idpf_config_irq_map;
+	idpf_config_irq_unmap;
 	idpf_config_rss;
 	idpf_execute_vc_cmd;
 	idpf_vc_alloc_vectors;

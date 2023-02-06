@@ -23,15 +23,15 @@ int idpf_vc_set_rss_lut(struct idpf_vport *vport);
 __rte_internal
 int idpf_vc_set_rss_hash(struct idpf_vport *vport);
 __rte_internal
+int idpf_vc_config_irq_map_unmap(struct idpf_vport *vport,
+				 uint16_t nb_rxq, bool map);
+__rte_internal
 int idpf_vc_switch_queue(struct idpf_vport *vport, uint16_t qid,
 			 bool rx, bool on);
 __rte_internal
 int idpf_vc_ena_dis_queues(struct idpf_vport *vport, bool enable);
 __rte_internal
 int idpf_vc_ena_dis_vport(struct idpf_vport *vport, bool enable);
-__rte_internal
-int idpf_vc_config_irq_map_unmap(struct idpf_vport *vport,
-				 uint16_t nb_rxq, bool map);
 __rte_internal
 int idpf_vc_alloc_vectors(struct idpf_vport *vport, uint16_t num_vectors);
 __rte_internal

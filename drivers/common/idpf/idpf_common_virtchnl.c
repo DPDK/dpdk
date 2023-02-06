@@ -573,14 +573,6 @@ idpf_vc_alloc_vectors(struct idpf_vport *vport, uint16_t num_vectors)
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command VIRTCHNL2_OP_ALLOC_VECTORS");
 
-	if (vport->recv_vectors == NULL) {
-		vport->recv_vectors = rte_zmalloc("recv_vectors", len, 0);
-		if (vport->recv_vectors == NULL) {
-			rte_free(alloc_vec);
-			return -ENOMEM;
-		}
-	}
-
 	rte_memcpy(vport->recv_vectors, args.out_buffer, len);
 	rte_free(alloc_vec);
 	return err;
