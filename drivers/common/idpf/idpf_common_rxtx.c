@@ -1399,3 +1399,60 @@ idpf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	return i;
 }
+
+static void __rte_cold
+release_rxq_mbufs_vec(struct idpf_rx_queue *rxq)
+{
+	const uint16_t mask = rxq->nb_rx_desc - 1;
+	uint16_t i;
+
+	if (rxq->sw_ring == NULL || rxq->rxrearm_nb >= rxq->nb_rx_desc)
+		return;
+
+	/* free all mbufs that are valid in the ring */
+	if (rxq->rxrearm_nb == 0) {
+		for (i = 0; i < rxq->nb_rx_desc; i++) {
+			if (rxq->sw_ring[i] != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+		}
+	} else {
+		for (i = rxq->rx_tail; i != rxq->rxrearm_start; i = (i + 1) & mask) {
+			if (rxq->sw_ring[i] != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+		}
+	}
+
+	rxq->rxrearm_nb = rxq->nb_rx_desc;
+
+	/* set all entries to NULL */
+	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
+}
+
+static const struct idpf_rxq_ops def_singleq_rx_ops_vec = {
+	.release_mbufs = release_rxq_mbufs_vec,
+};
+
+static inline int
+idpf_singleq_rx_vec_setup_default(struct idpf_rx_queue *rxq)
+{
+	uintptr_t p;
+	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
+
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.port = rxq->port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	p = (uintptr_t)&mb_def.rearm_data;
+	rxq->mbuf_initializer = *(uint64_t *)p;
+	return 0;
+}
+
+int __rte_cold
+idpf_singleq_rx_vec_setup(struct idpf_rx_queue *rxq)
+{
+	rxq->ops = &def_singleq_rx_ops_vec;
+	return idpf_singleq_rx_vec_setup_default(rxq);
+}

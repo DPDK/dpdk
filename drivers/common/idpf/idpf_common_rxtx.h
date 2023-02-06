@@ -252,5 +252,7 @@ uint16_t idpf_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 __rte_internal
 uint16_t idpf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+__rte_internal
+int idpf_singleq_rx_vec_setup(struct idpf_rx_queue *rxq);
 
 #endif /* _IDPF_COMMON_RXTX_H_ */
