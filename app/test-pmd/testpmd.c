@@ -4285,6 +4285,9 @@ main(int argc, char** argv)
 		rte_exit(EXIT_FAILURE, "Cannot init EAL: %s\n",
 			 rte_strerror(rte_errno));
 
+	/* allocate port structures, and init them */
+	init_port();
+
 	ret = register_eth_event_callback();
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "Cannot register for ethdev events");
@@ -4302,9 +4305,6 @@ main(int argc, char** argv)
 	nb_ports = (portid_t) count;
 	if (nb_ports == 0)
 		TESTPMD_LOG(WARNING, "No probed ethernet devices\n");
-
-	/* allocate port structures, and init them */
-	init_port();
 
 	set_def_fwd_config();
 	if (nb_lcores == 0)
