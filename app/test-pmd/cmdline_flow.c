@@ -11346,6 +11346,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 	uint16_t proto = 0;
 	uint16_t idx = in->port; /* We borrow port field as index */
 	int gtp_psc = -1; /* GTP PSC option index. */
+	const void *src_spec;
 
 	if (in->command == SET_SAMPLE_ACTIONS)
 		return cmd_set_raw_parsed_sample(in);
@@ -11370,6 +11371,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 		item = in->args.vc.pattern + i;
 		if (item->spec == NULL)
 			item->spec = flow_item_default_mask(item);
+		src_spec = item->spec;
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			size = sizeof(struct rte_ether_hdr);
@@ -11509,9 +11511,13 @@ cmd_set_raw_parsed(const struct buffer *in)
 			size = sizeof(struct rte_flow_item_pfcp);
 			break;
 		case RTE_FLOW_ITEM_TYPE_FLEX:
-			size = item->spec ?
-				((const struct rte_flow_item_flex *)
-				item->spec)->length : 0;
+			if (item->spec != NULL) {
+				size = ((const struct rte_flow_item_flex *)item->spec)->length;
+				src_spec = ((const struct rte_flow_item_flex *)item->spec)->pattern;
+			} else {
+				size = 0;
+				src_spec = NULL;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE_OPTION:
 			size = 0;
@@ -11544,12 +11550,14 @@ cmd_set_raw_parsed(const struct buffer *in)
 			fprintf(stderr, "Error - Not supported item\n");
 			goto error;
 		}
-		*total_size += size;
-		rte_memcpy(data_tail - (*total_size), item->spec, size);
-		/* update some fields which cannot be set by cmdline */
-		update_fields((data_tail - (*total_size)), item,
-			      upper_layer);
-		upper_layer = proto;
+		if (size) {
+			*total_size += size;
+			rte_memcpy(data_tail - (*total_size), src_spec, size);
+			/* update some fields which cannot be set by cmdline */
+			update_fields((data_tail - (*total_size)), item,
+				      upper_layer);
+			upper_layer = proto;
+		}
 	}
 	if (verbose_level & 0x1)
 		printf("total data size is %zu\n", (*total_size));
