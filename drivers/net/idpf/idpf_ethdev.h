@@ -23,8 +23,6 @@
 #define IDPF_MAX_VPORT_NUM	8
 
 #define IDPF_INVALID_VPORT_IDX	0xffff
-#define IDPF_TXQ_PER_GRP	1
-#define IDPF_RXQ_PER_GRP	1
 
 #define IDPF_DFLT_Q_VEC_NUM	1
 

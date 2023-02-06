@@ -6,6 +6,7 @@
 #define _IDPF_COMMON_VIRTCHNL_H_
 
 #include <idpf_common_device.h>
+#include <idpf_common_rxtx.h>
 
 __rte_internal
 int idpf_vc_check_api_version(struct idpf_adapter *adapter);
@@ -26,6 +27,9 @@ __rte_internal
 int idpf_vc_config_irq_map_unmap(struct idpf_vport *vport,
 				 uint16_t nb_rxq, bool map);
 __rte_internal
+int idpf_execute_vc_cmd(struct idpf_adapter *adapter,
+			struct idpf_cmd_info *args);
+__rte_internal
 int idpf_vc_switch_queue(struct idpf_vport *vport, uint16_t qid,
 			 bool rx, bool on);
 __rte_internal
@@ -42,7 +46,7 @@ __rte_internal
 int idpf_vc_read_one_msg(struct idpf_adapter *adapter, uint32_t ops,
 			 uint16_t buf_len, uint8_t *buf);
 __rte_internal
-int idpf_execute_vc_cmd(struct idpf_adapter *adapter,
-			struct idpf_cmd_info *args);
-
+int idpf_vc_config_rxq(struct idpf_vport *vport, struct idpf_rx_queue *rxq);
+__rte_internal
+int idpf_vc_config_txq(struct idpf_vport *vport, struct idpf_tx_queue *txq);
 #endif /* _IDPF_COMMON_VIRTCHNL_H_ */

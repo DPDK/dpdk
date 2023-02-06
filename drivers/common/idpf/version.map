@@ -11,6 +11,8 @@ INTERNAL {
 	idpf_vc_alloc_vectors;
 	idpf_vc_check_api_version;
 	idpf_vc_config_irq_map_unmap;
+	idpf_vc_config_rxq;
+	idpf_vc_config_txq;
 	idpf_vc_create_vport;
 	idpf_vc_dealloc_vectors;
 	idpf_vc_destroy_vport;
