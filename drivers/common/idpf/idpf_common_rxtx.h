@@ -47,6 +47,12 @@
 #define IDPF_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IDPF_TX_OFFLOAD_MASK)
 
+/* used for Vector PMD */
+#define IDPF_VPMD_RX_MAX_BURST		32
+#define IDPF_VPMD_TX_MAX_BURST		32
+#define IDPF_VPMD_DESCS_PER_LOOP	4
+#define IDPF_RXQ_REARM_THRESH		64
+
 /* MTS */
 #define GLTSYN_CMD_SYNC_0_0	(PF_TIMESYNC_BASE + 0x0)
 #define PF_GLTSYN_SHTIME_0_0	(PF_TIMESYNC_BASE + 0x4)
@@ -193,6 +199,10 @@ union idpf_tx_offload {
 	};
 };
 
+struct idpf_tx_vec_entry {
+	struct rte_mbuf *mbuf;
+};
+
 struct idpf_rxq_ops {
 	void (*release_mbufs)(struct idpf_rx_queue *rxq);
 };
@@ -254,5 +264,15 @@ uint16_t idpf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 __rte_internal
 int idpf_singleq_rx_vec_setup(struct idpf_rx_queue *rxq);
+__rte_internal
+int idpf_singleq_tx_vec_setup_avx512(struct idpf_tx_queue *txq);
+__rte_internal
+uint16_t idpf_singleq_recv_pkts_avx512(void *rx_queue,
+				       struct rte_mbuf **rx_pkts,
+				       uint16_t nb_pkts);
+__rte_internal
+uint16_t idpf_singleq_xmit_pkts_avx512(void *tx_queue,
+				       struct rte_mbuf **tx_pkts,
+				       uint16_t nb_pkts);
 
 #endif /* _IDPF_COMMON_RXTX_H_ */

@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2022 Intel Corporation
+ * Copyright(c) 2023 Intel Corporation
  */
 
-#include "idpf_rxtx_vec_common.h"
-
 #include <rte_vect.h>
+#include <idpf_common_device.h>
+#include <idpf_common_rxtx.h>
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wcast-qual"

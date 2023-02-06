@@ -25,8 +25,11 @@ INTERNAL {
 	idpf_reset_split_tx_descq;
 	idpf_rx_queue_release;
 	idpf_singleq_recv_pkts;
+	idpf_singleq_recv_pkts_avx512;
 	idpf_singleq_rx_vec_setup;
+	idpf_singleq_tx_vec_setup_avx512;
 	idpf_singleq_xmit_pkts;
+	idpf_singleq_xmit_pkts_avx512;
 	idpf_splitq_recv_pkts;
 	idpf_splitq_xmit_pkts;
 	idpf_tx_queue_release;
