@@ -380,7 +380,7 @@ static pthread_mutex_t *opae_adapter_mutex_open(struct opae_adapter *adapter)
 				PROT_READ | PROT_WRITE, MAP_SHARED,
 				shm_id, 0);
 		adapter->lock = (pthread_mutex_t *)ptr;
-		if (ptr) {
+		if (ptr != MAP_FAILED) {
 			dev_info(NULL,
 					"shared memory %s address is %p\n",
 					shm_name, ptr);
@@ -499,7 +499,7 @@ static void *opae_adapter_shm_alloc(struct opae_adapter *adapter)
 		adapter->shm.size = size;
 		adapter->shm.ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
 							MAP_SHARED, shm_id, 0);
-		if (adapter->shm.ptr) {
+		if (adapter->shm.ptr != MAP_FAILED) {
 			dev_info(NULL,
 					"shared memory %s address is %p\n",
 					shm_name, adapter->shm.ptr);
