@@ -786,148 +786,32 @@ bail:
 	return ret;
 }
 
-static void
-idpf_reset_pf(struct idpf_hw *hw)
-{
-	uint32_t reg;
-
-	reg = IDPF_READ_REG(hw, PFGEN_CTRL);
-	IDPF_WRITE_REG(hw, PFGEN_CTRL, (reg | PFGEN_CTRL_PFSWR));
-}
-
-#define IDPF_RESET_WAIT_CNT 100
 static int
-idpf_check_pf_reset_done(struct idpf_hw *hw)
+idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapter)
 {
-	uint32_t reg;
-	int i;
-
-	for (i = 0; i < IDPF_RESET_WAIT_CNT; i++) {
-		reg = IDPF_READ_REG(hw, PFGEN_RSTAT);
-		if (reg != 0xFFFFFFFF && (reg & PFGEN_RSTAT_PFR_STATE_M))
-			return 0;
-		rte_delay_ms(1000);
-	}
-
-	PMD_INIT_LOG(ERR, "IDPF reset timeout");
-	return -EBUSY;
-}
-
-#define CTLQ_NUM 2
-static int
-idpf_init_mbx(struct idpf_hw *hw)
-{
-	struct idpf_ctlq_create_info ctlq_info[CTLQ_NUM] = {
-		{
-			.type = IDPF_CTLQ_TYPE_MAILBOX_TX,
-			.id = IDPF_CTLQ_ID,
-			.len = IDPF_CTLQ_LEN,
-			.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
-			.reg = {
-				.head = PF_FW_ATQH,
-				.tail = PF_FW_ATQT,
-				.len = PF_FW_ATQLEN,
-				.bah = PF_FW_ATQBAH,
-				.bal = PF_FW_ATQBAL,
-				.len_mask = PF_FW_ATQLEN_ATQLEN_M,
-				.len_ena_mask = PF_FW_ATQLEN_ATQENABLE_M,
-				.head_mask = PF_FW_ATQH_ATQH_M,
-			}
-		},
-		{
-			.type = IDPF_CTLQ_TYPE_MAILBOX_RX,
-			.id = IDPF_CTLQ_ID,
-			.len = IDPF_CTLQ_LEN,
-			.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
-			.reg = {
-				.head = PF_FW_ARQH,
-				.tail = PF_FW_ARQT,
-				.len = PF_FW_ARQLEN,
-				.bah = PF_FW_ARQBAH,
-				.bal = PF_FW_ARQBAL,
-				.len_mask = PF_FW_ARQLEN_ARQLEN_M,
-				.len_ena_mask = PF_FW_ARQLEN_ARQENABLE_M,
-				.head_mask = PF_FW_ARQH_ARQH_M,
-			}
-		}
-	};
-	struct idpf_ctlq_info *ctlq;
-	int ret;
-
-	ret = idpf_ctlq_init(hw, CTLQ_NUM, ctlq_info);
-	if (ret != 0)
-		return ret;
-
-	LIST_FOR_EACH_ENTRY_SAFE(ctlq, NULL, &hw->cq_list_head,
-				 struct idpf_ctlq_info, cq_list) {
-		if (ctlq->q_id == IDPF_CTLQ_ID &&
-		    ctlq->cq_type == IDPF_CTLQ_TYPE_MAILBOX_TX)
-			hw->asq = ctlq;
-		if (ctlq->q_id == IDPF_CTLQ_ID &&
-		    ctlq->cq_type == IDPF_CTLQ_TYPE_MAILBOX_RX)
-			hw->arq = ctlq;
-	}
-
-	if (hw->asq == NULL || hw->arq == NULL) {
-		idpf_ctlq_deinit(hw);
-		ret = -ENOENT;
-	}
-
-	return ret;
-}
-
-static int
-idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapter)
-{
-	struct idpf_hw *hw = &adapter->base.hw;
+	struct idpf_adapter *base = &adapter->base;
+	struct idpf_hw *hw = &base->hw;
 	int ret = 0;
 
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->hw_addr_len = pci_dev->mem_resource[0].len;
-	hw->back = &adapter->base;
+	hw->back = base;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->device_id = pci_dev->id.device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
 	strncpy(adapter->name, pci_dev->device.name, PCI_PRI_STR_SIZE);
 
-	idpf_reset_pf(hw);
-	ret = idpf_check_pf_reset_done(hw);
+	ret = idpf_adapter_init(base);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "IDPF is still resetting");
-		goto err;
-	}
-
-	ret = idpf_init_mbx(hw);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to init mailbox");
-		goto err;
-	}
-
-	adapter->base.mbx_resp = rte_zmalloc("idpf_adapter_mbx_resp",
-					     IDPF_DFLT_MBX_BUF_SIZE, 0);
-	if (adapter->base.mbx_resp == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate idpf_adapter_mbx_resp memory");
-		ret = -ENOMEM;
-		goto err_mbx;
-	}
-
-	ret = idpf_vc_check_api_version(&adapter->base);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to check api version");
-		goto err_api;
+		PMD_INIT_LOG(ERR, "Failed to init adapter");
+		goto err_adapter_init;
 	}
 
 	ret = idpf_get_pkt_type(adapter);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to set ptype table");
-		goto err_api;
-	}
-
-	ret = idpf_vc_get_caps(&adapter->base);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to get capabilities");
-		goto err_api;
+		goto err_get_ptype;
 	}
 
 	adapter->max_vport_nb = adapter->base.caps.max_vports;
@@ -939,7 +823,7 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapt
 	if (adapter->vports == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate vports memory");
 		ret = -ENOMEM;
-		goto err_api;
+		goto err_get_ptype;
 	}
 
 	adapter->cur_vports = 0;
@@ -949,12 +833,9 @@ idpf_adapter_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapt
 
 	return ret;
 
-err_api:
-	rte_free(adapter->base.mbx_resp);
-	adapter->base.mbx_resp = NULL;
-err_mbx:
-	idpf_ctlq_deinit(hw);
-err:
+err_get_ptype:
+	idpf_adapter_deinit(base);
+err_adapter_init:
 	return ret;
 }
 
@@ -1093,14 +974,9 @@ idpf_find_adapter_ext(struct rte_pci_device *pci_dev)
 }
 
 static void
-idpf_adapter_rel(struct idpf_adapter_ext *adapter)
+idpf_adapter_ext_deinit(struct idpf_adapter_ext *adapter)
 {
-	struct idpf_hw *hw = &adapter->base.hw;
-
-	idpf_ctlq_deinit(hw);
-
-	rte_free(adapter->base.mbx_resp);
-	adapter->base.mbx_resp = NULL;
+	idpf_adapter_deinit(&adapter->base);
 
 	rte_free(adapter->vports);
 	adapter->vports = NULL;
@@ -1133,7 +1009,7 @@ idpf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			return -ENOMEM;
 		}
 
-		retval = idpf_adapter_init(pci_dev, adapter);
+		retval = idpf_adapter_ext_init(pci_dev, adapter);
 		if (retval != 0) {
 			PMD_INIT_LOG(ERR, "Failed to init adapter.");
 			return retval;
@@ -1196,7 +1072,7 @@ err:
 		rte_spinlock_lock(&idpf_adapter_lock);
 		TAILQ_REMOVE(&idpf_adapter_list, adapter, next);
 		rte_spinlock_unlock(&idpf_adapter_lock);
-		idpf_adapter_rel(adapter);
+		idpf_adapter_ext_deinit(adapter);
 		rte_free(adapter);
 	}
 	return retval;
@@ -1216,7 +1092,7 @@ idpf_pci_remove(struct rte_pci_device *pci_dev)
 	rte_spinlock_lock(&idpf_adapter_lock);
 	TAILQ_REMOVE(&idpf_adapter_list, adapter, next);
 	rte_spinlock_unlock(&idpf_adapter_lock);
-	idpf_adapter_rel(adapter);
+	idpf_adapter_ext_deinit(adapter);
 	rte_free(adapter);
 
 	return 0;

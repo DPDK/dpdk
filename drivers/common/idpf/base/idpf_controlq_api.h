@@ -161,7 +161,6 @@ enum idpf_mbx_opc {
 /* Will init all required q including default mb.  "q_info" is an array of
  * create_info structs equal to the number of control queues to be created.
  */
-__rte_internal
 int idpf_ctlq_init(struct idpf_hw *hw, u8 num_q,
 		   struct idpf_ctlq_create_info *q_info);
 
@@ -199,7 +198,6 @@ int idpf_ctlq_post_rx_buffs(struct idpf_hw *hw,
 			    struct idpf_dma_mem **buffs);
 
 /* Will destroy all q including the default mb */
-__rte_internal
 int idpf_ctlq_deinit(struct idpf_hw *hw);
 
 #endif /* _IDPF_CONTROLQ_API_H_ */

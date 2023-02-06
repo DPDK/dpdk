@@ -31,8 +31,6 @@
 #define IDPF_RXQ_PER_GRP	1
 #define IDPF_RX_BUFQ_PER_GRP	2
 
-#define IDPF_CTLQ_ID		-1
-
 #define IDPF_DFLT_Q_VEC_NUM	1
 #define IDPF_DFLT_INTERVAL	16
 

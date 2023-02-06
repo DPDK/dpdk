@@ -9,6 +9,7 @@
 #include <base/virtchnl2.h>
 #include <idpf_common_logs.h>
 
+#define IDPF_CTLQ_ID		-1
 #define IDPF_CTLQ_LEN		64
 #define IDPF_DFLT_MBX_BUF_SIZE	4096
 
@@ -136,5 +137,10 @@ atomic_set_cmd(struct idpf_adapter *adapter, uint32_t ops)
 
 	return !ret;
 }
+
+__rte_internal
+int idpf_adapter_init(struct idpf_adapter *adapter);
+__rte_internal
+int idpf_adapter_deinit(struct idpf_adapter *adapter);
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */
