@@ -107,7 +107,7 @@ endif
 
 toolchain = cc.get_id()
 dpdk_conf.set_quoted('RTE_TOOLCHAIN', toolchain)
-dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper(), 1)
+dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper().underscorify(), 1)
 
 dpdk_conf.set('RTE_ARCH_64', cc.sizeof('void *') == 8)
 dpdk_conf.set('RTE_ARCH_32', cc.sizeof('void *') == 4)
