@@ -32,6 +32,10 @@ Slow-path device and ML model handling:
 * Model start and stop
 * Data quantization and dequantization
 
+Fast-path Inference:
+
+* Inference execution
+
 
 Installation
 ------------

@@ -285,6 +285,28 @@ cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *mldev, struct cn10k_ml_mode
 	}
 }
 
+static __rte_always_inline void
+cn10k_ml_prep_fp_job_descriptor(struct rte_ml_dev *dev, struct cn10k_ml_req *req,
+				struct rte_ml_op *op)
+{
+	struct cn10k_ml_dev *mldev;
+
+	mldev = dev->data->dev_private;
+
+	req->jd.hdr.jce.w0.u64 = 0;
+	req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&req->status);
+	req->jd.hdr.model_id = op->model_id;
+	req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_MODEL_RUN;
+	req->jd.hdr.fp_flags = ML_FLAGS_POLL_COMPL;
+	req->jd.hdr.sp_flags = 0x0;
+	req->jd.hdr.result = roc_ml_addr_ap2mlip(&mldev->roc, &req->result);
+	req->jd.model_run.input_ddr_addr =
+		PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, op->input.addr));
+	req->jd.model_run.output_ddr_addr =
+		PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, op->output.addr));
+	req->jd.model_run.num_batches = op->nb_batches;
+}
+
 static int
 cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 {
@@ -449,6 +471,8 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 		ocm->tile_ocm_info[tile_id].last_wb_page = -1;
 
 	rte_spinlock_init(&ocm->lock);
+
+	dev->enqueue_burst = cn10k_ml_enqueue_burst;
 
 	mldev->nb_models_loaded = 0;
 	mldev->state = ML_CN10K_DEV_STATE_CONFIGURED;
@@ -1374,6 +1398,78 @@ next_batch:
 		goto next_batch;
 
 	return 0;
+}
+
+static __rte_always_inline void
+queue_index_advance(uint64_t *index, uint64_t nb_desc)
+{
+	*index = (*index + 1) % nb_desc;
+}
+
+static __rte_always_inline uint64_t
+queue_pending_count(uint64_t head, uint64_t tail, uint64_t nb_desc)
+{
+	return (nb_desc + head - tail) % nb_desc;
+}
+
+static __rte_always_inline uint64_t
+queue_free_count(uint64_t head, uint64_t tail, uint64_t nb_desc)
+{
+	return nb_desc - queue_pending_count(head, tail, nb_desc) - 1;
+}
+
+__rte_hot uint16_t
+cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op **ops,
+		       uint16_t nb_ops)
+{
+	struct cn10k_ml_queue *queue;
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_req *req;
+	struct cn10k_ml_qp *qp;
+	struct rte_ml_op *op;
+
+	uint16_t count;
+	uint64_t head;
+	bool enqueued;
+
+	mldev = dev->data->dev_private;
+	qp = dev->data->queue_pairs[qp_id];
+	queue = &qp->queue;
+
+	head = queue->head;
+	nb_ops = PLT_MIN(nb_ops, queue_free_count(head, queue->tail, qp->nb_desc));
+	count = 0;
+
+	if (unlikely(nb_ops == 0))
+		return 0;
+
+enqueue_req:
+	op = ops[count];
+	req = &queue->reqs[head];
+
+	cn10k_ml_prep_fp_job_descriptor(dev, req, op);
+
+	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
+	req->result.user_ptr = op->user_ptr;
+
+	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
+	enqueued = roc_ml_jcmdq_enqueue_lf(&mldev->roc, &req->jcmd);
+	if (unlikely(!enqueued))
+		goto jcmdq_full;
+
+	req->timeout = plt_tsc_cycles() + queue->wait_cycles;
+	req->op = op;
+
+	queue_index_advance(&head, qp->nb_desc);
+	count++;
+
+	if (count < nb_ops)
+		goto enqueue_req;
+
+jcmdq_full:
+	queue->head = head;
+
+	return count;
 }
 
 struct rte_ml_dev_ops cn10k_ml_ops = {

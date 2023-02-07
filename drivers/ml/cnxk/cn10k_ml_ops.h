@@ -28,6 +28,9 @@ struct cn10k_ml_req {
 
 	/* Timeout cycle */
 	uint64_t timeout;
+
+	/* Op */
+	struct rte_ml_op *op;
 } __rte_aligned(ROC_ALIGN);
 
 /* Request queue */
@@ -66,5 +69,9 @@ int cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *para
 int cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id);
 int cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id);
 int cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id);
+
+/* Fast-path ops */
+__rte_hot uint16_t cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
+					  struct rte_ml_op **ops, uint16_t nb_ops);
 
 #endif /* _CN10K_ML_OPS_H_ */
