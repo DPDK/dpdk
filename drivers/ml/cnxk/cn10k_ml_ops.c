@@ -473,6 +473,7 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	rte_spinlock_init(&ocm->lock);
 
 	dev->enqueue_burst = cn10k_ml_enqueue_burst;
+	dev->dequeue_burst = cn10k_ml_dequeue_burst;
 
 	mldev->nb_models_loaded = 0;
 	mldev->state = ML_CN10K_DEV_STATE_CONFIGURED;
@@ -1418,6 +1419,23 @@ queue_free_count(uint64_t head, uint64_t tail, uint64_t nb_desc)
 	return nb_desc - queue_pending_count(head, tail, nb_desc) - 1;
 }
 
+static __rte_always_inline void
+cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result *result,
+		       struct rte_ml_op *op)
+{
+	PLT_SET_USED(dev);
+	PLT_SET_USED(qp_id);
+
+	op->impl_opaque = result->error_code;
+
+	if (likely(result->error_code == 0))
+		op->status = RTE_ML_OP_STATUS_SUCCESS;
+	else
+		op->status = RTE_ML_OP_STATUS_ERROR;
+
+	op->user_ptr = result->user_ptr;
+}
+
 __rte_hot uint16_t
 cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op **ops,
 		       uint16_t nb_ops)
@@ -1468,6 +1486,49 @@ enqueue_req:
 
 jcmdq_full:
 	queue->head = head;
+
+	return count;
+}
+
+__rte_hot uint16_t
+cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op **ops,
+		       uint16_t nb_ops)
+{
+	struct cn10k_ml_queue *queue;
+	struct cn10k_ml_req *req;
+	struct cn10k_ml_qp *qp;
+
+	uint64_t status;
+	uint16_t count;
+	uint64_t tail;
+
+	qp = dev->data->queue_pairs[qp_id];
+	queue = &qp->queue;
+
+	tail = queue->tail;
+	nb_ops = PLT_MIN(nb_ops, queue_pending_count(queue->head, tail, qp->nb_desc));
+	count = 0;
+
+	if (unlikely(nb_ops == 0))
+		goto empty_or_active;
+
+dequeue_req:
+	req = &queue->reqs[tail];
+	status = plt_read64(&req->status);
+	if (unlikely(status != ML_CN10K_POLL_JOB_FINISH))
+		goto empty_or_active;
+
+	cn10k_ml_result_update(dev, qp_id, &req->result, req->op);
+	ops[count] = req->op;
+
+	queue_index_advance(&tail, qp->nb_desc);
+	count++;
+
+	if (count < nb_ops)
+		goto dequeue_req;
+
+empty_or_active:
+	queue->tail = tail;
 
 	return count;
 }
