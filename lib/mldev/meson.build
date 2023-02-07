@@ -2,11 +2,20 @@
 # Copyright (c) 2022 Marvell.
 
 sources = files(
+        'rte_mldev_pmd.c',
         'rte_mldev.c',
 )
 
 headers = files(
         'rte_mldev.h',
+)
+
+indirect_headers += files(
+        'rte_mldev_core.h',
+)
+
+driver_sdk_headers += files(
+        'rte_mldev_pmd.h',
 )
 
 deps += ['mempool']

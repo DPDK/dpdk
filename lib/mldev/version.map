@@ -1,7 +1,19 @@
 EXPERIMENTAL {
 	global:
 
+	rte_ml_dev_init;
 	rte_ml_dev_logtype;
 
 	local: *;
+};
+
+INTERNAL {
+	global:
+
+	rte_ml_dev_pmd_allocate;
+	rte_ml_dev_pmd_create;
+	rte_ml_dev_pmd_destroy;
+	rte_ml_dev_pmd_get_dev;
+	rte_ml_dev_pmd_get_named_dev;
+	rte_ml_dev_pmd_release;
 };
