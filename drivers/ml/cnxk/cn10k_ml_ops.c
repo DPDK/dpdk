@@ -408,11 +408,14 @@ cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 int
 cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, uint16_t *model_id)
 {
+	struct cn10k_ml_model_metadata *metadata;
 	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
 
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
+	size_t model_data_size;
+	uint8_t *base_dma_addr;
 	uint64_t mz_size;
 	uint16_t idx;
 	bool found;
@@ -439,7 +442,12 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	}
 
 	/* Compute memzone size */
-	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE);
+	metadata = (struct cn10k_ml_model_metadata *)params->addr;
+	model_data_size = metadata->init_model.file_size + metadata->main_model.file_size +
+			  metadata->finish_model.file_size + metadata->weights_bias.file_size;
+	model_data_size = PLT_ALIGN_CEIL(model_data_size, ML_CN10K_ALIGN_SIZE);
+	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
+		  2 * model_data_size;
 
 	/* Allocate memzone for model object and model data */
 	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, idx);
@@ -461,6 +469,14 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 		model->batch_size = 256;
 	else
 		model->batch_size = model->metadata.model.batch_size;
+
+	/* Set DMA base address */
+	base_dma_addr = PLT_PTR_ADD(
+		mz->addr, PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE));
+	cn10k_ml_model_addr_update(model, params->addr, base_dma_addr);
+
+	/* Copy data from load to run. run address to be used by MLIP */
+	rte_memcpy(model->addr.base_dma_addr_run, model->addr.base_dma_addr_load, model_data_size);
 
 	plt_spinlock_init(&model->lock);
 	model->state = ML_CN10K_MODEL_STATE_LOADED;

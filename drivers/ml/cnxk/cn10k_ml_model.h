@@ -322,6 +322,81 @@ struct cn10k_ml_model_metadata {
 	uint8_t reserved3[16];
 };
 
+/* Model address structure */
+struct cn10k_ml_model_addr {
+	/* Base DMA address for load */
+	void *base_dma_addr_load;
+
+	/* Base DMA address for run */
+	void *base_dma_addr_run;
+
+	/* Init section load address */
+	void *init_load_addr;
+
+	/* Init section run address */
+	void *init_run_addr;
+
+	/* Main section load address */
+	void *main_load_addr;
+
+	/* Main section run address */
+	void *main_run_addr;
+
+	/* Finish section load address */
+	void *finish_load_addr;
+
+	/* Finish section run address */
+	void *finish_run_addr;
+
+	/* Weights and Bias base address */
+	void *wb_base_addr;
+
+	/* Weights and bias load address */
+	void *wb_load_addr;
+
+	/* Start tile */
+	uint8_t tile_start;
+
+	/* End tile */
+	uint8_t tile_end;
+
+	/* Input address and size */
+	struct {
+		/* Number of elements */
+		uint32_t nb_elements;
+
+		/* Dequantized input size */
+		uint32_t sz_d;
+
+		/* Quantized input size */
+		uint32_t sz_q;
+	} input[MRVL_ML_INPUT_OUTPUT_SIZE];
+
+	/* Output address and size */
+	struct {
+		/* Number of elements */
+		uint32_t nb_elements;
+
+		/* Dequantize output size */
+		uint32_t sz_d;
+
+		/* Quantized output size */
+		uint32_t sz_q;
+	} output[MRVL_ML_INPUT_OUTPUT_SIZE];
+
+	/* Total size of quantized input */
+	uint32_t total_input_sz_q;
+
+	/* Total size of dequantized input */
+	uint32_t total_input_sz_d;
+
+	/* Total size of quantized output */
+	uint32_t total_output_sz_q;
+
+	/* Total size of dequantized output */
+	uint32_t total_output_sz_d;
+};
+
 /* Model Object */
 struct cn10k_ml_model {
 	/* Device reference */
@@ -339,6 +414,9 @@ struct cn10k_ml_model {
 	/* Metadata */
 	struct cn10k_ml_model_metadata metadata;
 
+	/* Address structure */
+	struct cn10k_ml_model_addr addr;
+
 	/* Spinlock, used to update model state */
 	plt_spinlock_t lock;
 
@@ -348,5 +426,7 @@ struct cn10k_ml_model {
 
 int cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size);
 void cn10k_ml_model_metadata_update(struct cn10k_ml_model_metadata *metadata);
+void cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer,
+				uint8_t *base_dma_addr);
 
 #endif /* _CN10K_ML_MODEL_H_ */

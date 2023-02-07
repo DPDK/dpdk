@@ -214,3 +214,92 @@ cn10k_ml_model_metadata_update(struct cn10k_ml_model_metadata *metadata)
 			cn10k_ml_io_type_map(metadata->output[i].model_output_type);
 	}
 }
+
+void
+cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_t *base_dma_addr)
+{
+	struct cn10k_ml_model_metadata *metadata;
+	struct cn10k_ml_model_addr *addr;
+	size_t model_data_size;
+	uint8_t *dma_addr_load;
+	uint8_t *dma_addr_run;
+	uint8_t i;
+	int fpos;
+
+	metadata = &model->metadata;
+	addr = &model->addr;
+	model_data_size = metadata->init_model.file_size + metadata->main_model.file_size +
+			  metadata->finish_model.file_size + metadata->weights_bias.file_size;
+
+	/* Base address */
+	addr->base_dma_addr_load = base_dma_addr;
+	addr->base_dma_addr_run = PLT_PTR_ADD(addr->base_dma_addr_load, model_data_size);
+
+	/* Init section */
+	dma_addr_load = addr->base_dma_addr_load;
+	dma_addr_run = addr->base_dma_addr_run;
+	fpos = sizeof(struct cn10k_ml_model_metadata);
+	addr->init_load_addr = dma_addr_load;
+	addr->init_run_addr = dma_addr_run;
+	rte_memcpy(dma_addr_load, PLT_PTR_ADD(buffer, fpos), metadata->init_model.file_size);
+
+	/* Main section */
+	dma_addr_load += metadata->init_model.file_size;
+	dma_addr_run += metadata->init_model.file_size;
+	fpos += metadata->init_model.file_size;
+	addr->main_load_addr = dma_addr_load;
+	addr->main_run_addr = dma_addr_run;
+	rte_memcpy(dma_addr_load, PLT_PTR_ADD(buffer, fpos), metadata->main_model.file_size);
+
+	/* Finish section */
+	dma_addr_load += metadata->main_model.file_size;
+	dma_addr_run += metadata->main_model.file_size;
+	fpos += metadata->main_model.file_size;
+	addr->finish_load_addr = dma_addr_load;
+	addr->finish_run_addr = dma_addr_run;
+	rte_memcpy(dma_addr_load, PLT_PTR_ADD(buffer, fpos), metadata->finish_model.file_size);
+
+	/* Weights and Bias section */
+	dma_addr_load += metadata->finish_model.file_size;
+	fpos += metadata->finish_model.file_size;
+	addr->wb_base_addr = PLT_PTR_SUB(dma_addr_load, metadata->weights_bias.mem_offset);
+	addr->wb_load_addr = PLT_PTR_ADD(addr->wb_base_addr, metadata->weights_bias.mem_offset);
+	rte_memcpy(addr->wb_load_addr, PLT_PTR_ADD(buffer, fpos), metadata->weights_bias.file_size);
+
+	/* Inputs */
+	addr->total_input_sz_d = 0;
+	addr->total_input_sz_q = 0;
+	for (i = 0; i < metadata->model.num_input; i++) {
+		addr->input[i].nb_elements =
+			model->metadata.input[i].shape.w * model->metadata.input[i].shape.x *
+			model->metadata.input[i].shape.y * model->metadata.input[i].shape.z;
+		addr->input[i].sz_d = addr->input[i].nb_elements *
+				      rte_ml_io_type_size_get(metadata->input[i].input_type);
+		addr->input[i].sz_q = addr->input[i].nb_elements *
+				      rte_ml_io_type_size_get(metadata->input[i].model_input_type);
+		addr->total_input_sz_d += addr->input[i].sz_d;
+		addr->total_input_sz_q += addr->input[i].sz_q;
+
+		plt_ml_dbg("model_id = %u, input[%u] - w:%u x:%u y:%u z:%u, sz_d = %u sz_q = %u",
+			   model->model_id, i, metadata->input[i].shape.w,
+			   metadata->input[i].shape.x, metadata->input[i].shape.y,
+			   metadata->input[i].shape.z, addr->input[i].sz_d, addr->input[i].sz_q);
+	}
+
+	/* Outputs */
+	addr->total_output_sz_q = 0;
+	addr->total_output_sz_d = 0;
+	for (i = 0; i < metadata->model.num_output; i++) {
+		addr->output[i].nb_elements = metadata->output[i].size;
+		addr->output[i].sz_d = addr->output[i].nb_elements *
+				       rte_ml_io_type_size_get(metadata->output[i].output_type);
+		addr->output[i].sz_q =
+			addr->output[i].nb_elements *
+			rte_ml_io_type_size_get(metadata->output[i].model_output_type);
+		addr->total_output_sz_q += addr->output[i].sz_q;
+		addr->total_output_sz_d += addr->output[i].sz_d;
+
+		plt_ml_dbg("model_id = %u, output[%u] - sz_d = %u, sz_q = %u", model->model_id, i,
+			   addr->output[i].sz_d, addr->output[i].sz_q);
+	}
+}
