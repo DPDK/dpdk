@@ -197,6 +197,11 @@ New Features
 
   Added LZ4 algorithm support for decompress operation.
 
+* **Added machine learning inference device library.**
+
+  * Added a machine learning inference device framework for management
+    and provision of hardware and software machine learning inference devices.
+
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
   * eventdev reconfig logic is enhanced to increment the

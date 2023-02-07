@@ -1,0 +1,7 @@
+EXPERIMENTAL {
+	global:
+
+	rte_ml_dev_logtype;
+
+	local: *;
+};

@@ -57,6 +57,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/mempool \
                           @TOPDIR@/lib/meter \
                           @TOPDIR@/lib/metrics \
+                          @TOPDIR@/lib/mldev \
                           @TOPDIR@/lib/node \
                           @TOPDIR@/lib/net \
                           @TOPDIR@/lib/pcapng \

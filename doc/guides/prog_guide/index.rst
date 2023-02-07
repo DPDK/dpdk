@@ -28,6 +28,7 @@ Programmer's Guide
     cryptodev_lib
     compressdev
     regexdev
+    mldev
     dmadev
     gpudev
     rte_security

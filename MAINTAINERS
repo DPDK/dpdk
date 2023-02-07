@@ -476,6 +476,11 @@ F: app/test-regex/
 F: doc/guides/prog_guide/regexdev.rst
 F: doc/guides/regexdevs/features/default.ini
 
+Machine Learning device API - EXPERIMENTAL
+M: Srikanth Yalavarthi <syalavarthi@marvell.com>
+F: lib/mldev/
+F: doc/guides/prog_guide/mldev.rst
+
 DMA device API - EXPERIMENTAL
 M: Chengwen Feng <fengchengwen@huawei.com>
 F: lib/dmadev/

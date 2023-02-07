@@ -47,6 +47,7 @@ libraries = [
         'power',
         'rawdev',
         'regexdev',
+        'mldev',
         'dmadev',
         'rib',
         'reorder',
