@@ -905,6 +905,36 @@ cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
 	return 0;
 }
 
+static int
+cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buffer)
+{
+	struct cn10k_ml_model *model;
+	size_t size;
+
+	model = dev->data->models[model_id];
+
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	if (model->state == ML_CN10K_MODEL_STATE_UNKNOWN)
+		return -1;
+	else if (model->state != ML_CN10K_MODEL_STATE_LOADED)
+		return -EBUSY;
+
+	size = model->metadata.init_model.file_size + model->metadata.main_model.file_size +
+	       model->metadata.finish_model.file_size + model->metadata.weights_bias.file_size;
+
+	/* Update model weights & bias */
+	rte_memcpy(model->addr.wb_load_addr, buffer, model->metadata.weights_bias.file_size);
+
+	/* Copy data from load to run. run address to be used by MLIP */
+	rte_memcpy(model->addr.base_dma_addr_run, model->addr.base_dma_addr_load, size);
+
+	return 0;
+}
+
 struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cn10k_ml_dev_info_get,
@@ -923,4 +953,5 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	.model_start = cn10k_ml_model_start,
 	.model_stop = cn10k_ml_model_stop,
 	.model_info_get = cn10k_ml_model_info_get,
+	.model_params_update = cn10k_ml_model_params_update,
 };
