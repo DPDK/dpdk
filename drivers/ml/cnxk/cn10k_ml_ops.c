@@ -354,6 +354,134 @@ cn10k_ml_prep_fp_job_descriptor(struct rte_ml_dev *dev, struct cn10k_ml_req *req
 	req->jd.model_run.num_batches = op->nb_batches;
 }
 
+#define ML_AVG_FOREACH_QP(dev, model, qp_id, str, value, count)                                    \
+	do {                                                                                       \
+		value = 0;                                                                         \
+		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
+			value += model->burst_stats[qp_id].str##_latency_tot;                      \
+			count += model->burst_stats[qp_id].dequeued_count -                        \
+				 model->burst_stats[qp_id].str##_reset_count;                      \
+		}                                                                                  \
+		value = value / count;                                                             \
+	} while (0)
+
+#define ML_MIN_FOREACH_QP(dev, model, qp_id, str, value, count)                                    \
+	do {                                                                                       \
+		value = UINT64_MAX;                                                                \
+		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
+			value = PLT_MIN(value, model->burst_stats[qp_id].str##_latency_min);       \
+			count += model->burst_stats[qp_id].dequeued_count -                        \
+				 model->burst_stats[qp_id].str##_reset_count;                      \
+		}                                                                                  \
+		if (count == 0)                                                                    \
+			value = 0;                                                                 \
+	} while (0)
+
+#define ML_MAX_FOREACH_QP(dev, model, qp_id, str, value, count)                                    \
+	do {                                                                                       \
+		value = 0;                                                                         \
+		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
+			value = PLT_MAX(value, model->burst_stats[qp_id].str##_latency_max);       \
+			count += model->burst_stats[qp_id].dequeued_count -                        \
+				 model->burst_stats[qp_id].str##_reset_count;                      \
+		}                                                                                  \
+		if (count == 0)                                                                    \
+			value = 0;                                                                 \
+	} while (0)
+
+static uint64_t
+cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t model_id,
+			 enum cn10k_ml_model_xstats_type type)
+{
+	struct cn10k_ml_model *model;
+	uint64_t count = 0;
+	uint64_t value;
+	uint32_t qp_id;
+
+	model = dev->data->models[model_id];
+	if (model == NULL)
+		return 0;
+
+	switch (type) {
+	case avg_hw_latency:
+		ML_AVG_FOREACH_QP(dev, model, qp_id, hw, value, count);
+		break;
+	case min_hw_latency:
+		ML_MIN_FOREACH_QP(dev, model, qp_id, hw, value, count);
+		break;
+	case max_hw_latency:
+		ML_MAX_FOREACH_QP(dev, model, qp_id, hw, value, count);
+		break;
+	case avg_fw_latency:
+		ML_AVG_FOREACH_QP(dev, model, qp_id, fw, value, count);
+		break;
+	case min_fw_latency:
+		ML_MIN_FOREACH_QP(dev, model, qp_id, fw, value, count);
+		break;
+	case max_fw_latency:
+		ML_MAX_FOREACH_QP(dev, model, qp_id, fw, value, count);
+		break;
+	default:
+		value = 0;
+	}
+
+	return value;
+}
+
+#define ML_AVG_RESET_FOREACH_QP(dev, model, qp_id, str)                                            \
+	do {                                                                                       \
+		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
+			model->burst_stats[qp_id].str##_latency_tot = 0;                           \
+			model->burst_stats[qp_id].str##_reset_count =                              \
+				model->burst_stats[qp_id].dequeued_count;                          \
+		}                                                                                  \
+	} while (0)
+
+#define ML_MIN_RESET_FOREACH_QP(dev, model, qp_id, str)                                            \
+	do {                                                                                       \
+		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++)                        \
+			model->burst_stats[qp_id].str##_latency_min = UINT64_MAX;                  \
+	} while (0)
+
+#define ML_MAX_RESET_FOREACH_QP(dev, model, qp_id, str)                                            \
+	do {                                                                                       \
+		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++)                        \
+			model->burst_stats[qp_id].str##_latency_max = 0;                           \
+	} while (0)
+
+static void
+cn10k_ml_model_xstat_reset(struct rte_ml_dev *dev, uint16_t model_id,
+			   enum cn10k_ml_model_xstats_type type)
+{
+	struct cn10k_ml_model *model;
+	uint32_t qp_id;
+
+	model = dev->data->models[model_id];
+
+	switch (type) {
+	case avg_hw_latency:
+		ML_AVG_RESET_FOREACH_QP(dev, model, qp_id, hw);
+		break;
+	case min_hw_latency:
+		ML_MIN_RESET_FOREACH_QP(dev, model, qp_id, hw);
+		break;
+	case max_hw_latency:
+		ML_MAX_RESET_FOREACH_QP(dev, model, qp_id, hw);
+		break;
+	case avg_fw_latency:
+		ML_AVG_RESET_FOREACH_QP(dev, model, qp_id, fw);
+		break;
+	case min_fw_latency:
+		ML_MIN_RESET_FOREACH_QP(dev, model, qp_id, fw);
+		break;
+	case max_fw_latency:
+		ML_MAX_RESET_FOREACH_QP(dev, model, qp_id, fw);
+		break;
+	default:
+		return;
+	}
+}
+
 static int
 cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 {
@@ -518,6 +646,13 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 		ocm->tile_ocm_info[tile_id].last_wb_page = -1;
 
 	rte_spinlock_init(&ocm->lock);
+
+	/* Check firmware stats */
+	if ((mldev->fw.req->jd.fw_load.cap.s.hw_stats) &&
+	    (mldev->fw.req->jd.fw_load.cap.s.fw_stats))
+		mldev->xstats_enabled = true;
+	else
+		mldev->xstats_enabled = false;
 
 	dev->enqueue_burst = cn10k_ml_enqueue_burst;
 	dev->dequeue_burst = cn10k_ml_dequeue_burst;
@@ -714,6 +849,170 @@ cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev)
 	}
 }
 
+/* Model xstats names */
+struct rte_ml_dev_xstats_map cn10k_ml_model_xstats_table[] = {
+	{avg_hw_latency, "Avg-HW-Latency"}, {min_hw_latency, "Min-HW-Latency"},
+	{max_hw_latency, "Max-HW-Latency"}, {avg_fw_latency, "Avg-FW-Latency"},
+	{min_fw_latency, "Min-FW-Latency"}, {max_fw_latency, "Max-FW-Latency"},
+};
+
+static int
+cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, struct rte_ml_dev_xstats_map *xstats_map,
+			      uint32_t size)
+{
+	struct rte_ml_dev_info dev_info;
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	uint32_t model_id;
+	uint32_t count;
+	uint32_t type;
+	uint32_t id;
+
+	mldev = dev->data->dev_private;
+	if (!mldev->xstats_enabled)
+		return 0;
+
+	if (xstats_map == NULL)
+		return PLT_DIM(cn10k_ml_model_xstats_table) * mldev->nb_models_loaded;
+
+	/* Model xstats names */
+	count = 0;
+	cn10k_ml_dev_info_get(dev, &dev_info);
+
+	for (id = 0; id < PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models; id++) {
+		model_id = id / PLT_DIM(cn10k_ml_model_xstats_table);
+		model = dev->data->models[model_id];
+
+		if (model == NULL)
+			continue;
+
+		xstats_map[count].id = id;
+		type = id % PLT_DIM(cn10k_ml_model_xstats_table);
+
+		snprintf(xstats_map[count].name, RTE_ML_STR_MAX, "%s-%s-cycles",
+			 model->metadata.model.name, cn10k_ml_model_xstats_table[type].name);
+
+		count++;
+		if (count == size)
+			break;
+	}
+
+	return count;
+}
+
+static int
+cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16_t *stat_id,
+				uint64_t *value)
+{
+	struct rte_ml_dev_xstats_map *xstats_map;
+	struct rte_ml_dev_info dev_info;
+	struct cn10k_ml_dev *mldev;
+	uint32_t num_xstats;
+	uint32_t model_id;
+	uint32_t type;
+	uint32_t id;
+
+	mldev = dev->data->dev_private;
+	if (!mldev->xstats_enabled)
+		return 0;
+
+	num_xstats = PLT_DIM(cn10k_ml_model_xstats_table) * mldev->nb_models_loaded;
+	xstats_map = rte_zmalloc("cn10k_ml_xstats_map",
+				 sizeof(struct rte_ml_dev_xstats_map) * num_xstats, 0);
+	cn10k_ml_dev_xstats_names_get(dev, xstats_map, num_xstats);
+
+	cn10k_ml_dev_info_get(dev, &dev_info);
+	for (id = 0; id < PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models; id++) {
+		if (strncmp(name, xstats_map[id].name, strlen(name)) == 0) {
+			*stat_id = id;
+			rte_free(xstats_map);
+			break;
+		}
+	}
+
+	if (id == PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models)
+		return -EINVAL;
+
+	model_id = id / PLT_DIM(cn10k_ml_model_xstats_table);
+	type = id % PLT_DIM(cn10k_ml_model_xstats_table);
+	*value = cn10k_ml_model_xstat_get(dev, model_id, type);
+
+	return 0;
+}
+
+static int
+cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, const uint16_t *stat_ids, uint64_t *values,
+			uint16_t nb_ids)
+{
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	uint32_t model_id;
+	uint32_t count;
+	uint32_t type;
+	uint32_t i;
+
+	mldev = dev->data->dev_private;
+	if (!mldev->xstats_enabled)
+		return 0;
+
+	count = 0;
+	for (i = 0; i < nb_ids; i++) {
+		model_id = stat_ids[i] / PLT_DIM(cn10k_ml_model_xstats_table);
+		model = dev->data->models[model_id];
+
+		if (model == NULL)
+			continue;
+
+		type = stat_ids[i] % PLT_DIM(cn10k_ml_model_xstats_table);
+		values[i] = cn10k_ml_model_xstat_get(dev, model_id, type);
+		count++;
+	}
+
+	return count;
+}
+
+static int
+cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, const uint16_t *stat_ids, uint16_t nb_ids)
+{
+	struct rte_ml_dev_info dev_info;
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	uint32_t model_id;
+	uint32_t type;
+	uint32_t i;
+
+	mldev = dev->data->dev_private;
+	if (!mldev->xstats_enabled)
+		return 0;
+
+	cn10k_ml_dev_info_get(dev, &dev_info);
+	if (stat_ids == NULL) {
+		for (i = 0; i < PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models; i++) {
+			model_id = i / PLT_DIM(cn10k_ml_model_xstats_table);
+			model = dev->data->models[model_id];
+
+			if (model == NULL)
+				continue;
+
+			type = i % PLT_DIM(cn10k_ml_model_xstats_table);
+			cn10k_ml_model_xstat_reset(dev, model_id, type);
+		}
+	} else {
+		for (i = 0; i < nb_ids; i++) {
+			model_id = stat_ids[i] / PLT_DIM(cn10k_ml_model_xstats_table);
+			model = dev->data->models[model_id];
+
+			if (model == NULL)
+				continue;
+
+			type = stat_ids[i] % PLT_DIM(cn10k_ml_model_xstats_table);
+			cn10k_ml_model_xstat_reset(dev, model_id, type);
+		}
+	}
+
+	return 0;
+}
+
 static int
 cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
 {
@@ -856,6 +1155,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
+	size_t model_stats_size;
 	size_t model_data_size;
 	size_t model_info_size;
 	uint8_t *base_dma_addr;
@@ -864,6 +1164,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	uint64_t mz_size;
 	uint16_t idx;
 	bool found;
+	int qp_id;
 	int ret;
 
 	ret = cn10k_ml_model_metadata_check(params->addr, params->size);
@@ -900,10 +1201,12 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 			  metadata->model.num_input * sizeof(struct rte_ml_io_info) +
 			  metadata->model.num_output * sizeof(struct rte_ml_io_info);
 	model_info_size = PLT_ALIGN_CEIL(model_info_size, ML_CN10K_ALIGN_SIZE);
+	model_stats_size = (dev->data->nb_queue_pairs + 1) * sizeof(struct cn10k_ml_model_stats);
 
 	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
 		  2 * model_data_size + model_info_size +
-		  PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE);
+		  PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE) +
+		  model_stats_size;
 
 	/* Allocate memzone for model object and model data */
 	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, idx);
@@ -948,6 +1251,24 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 
 	/* Set slow-path request address and state */
 	model->req = PLT_PTR_ADD(model->info, model_info_size);
+
+	/* Reset burst and sync stats */
+	model->burst_stats = PLT_PTR_ADD(
+		model->req, PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE));
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs + 1; qp_id++) {
+		model->burst_stats[qp_id].hw_latency_tot = 0;
+		model->burst_stats[qp_id].hw_latency_min = UINT64_MAX;
+		model->burst_stats[qp_id].hw_latency_max = 0;
+		model->burst_stats[qp_id].fw_latency_tot = 0;
+		model->burst_stats[qp_id].fw_latency_min = UINT64_MAX;
+		model->burst_stats[qp_id].fw_latency_max = 0;
+		model->burst_stats[qp_id].hw_reset_count = 0;
+		model->burst_stats[qp_id].fw_reset_count = 0;
+		model->burst_stats[qp_id].dequeued_count = 0;
+	}
+	model->sync_stats =
+		PLT_PTR_ADD(model->burst_stats,
+			    dev->data->nb_queue_pairs * sizeof(struct cn10k_ml_model_stats));
 
 	plt_spinlock_init(&model->lock);
 	model->state = ML_CN10K_MODEL_STATE_LOADED;
@@ -1503,14 +1824,43 @@ static __rte_always_inline void
 cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result *result,
 		       struct rte_ml_op *op)
 {
+	struct cn10k_ml_model_stats *stats;
+	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_qp *qp;
+	uint64_t hw_latency;
+	uint64_t fw_latency;
 
 	if (likely(result->error_code.u64 == 0)) {
+		model = dev->data->models[op->model_id];
 		if (likely(qp_id >= 0)) {
 			qp = dev->data->queue_pairs[qp_id];
 			qp->stats.dequeued_count++;
+			stats = &model->burst_stats[qp_id];
+		} else {
+			stats = model->sync_stats;
 		}
+
+		if (unlikely(stats->dequeued_count == stats->hw_reset_count)) {
+			stats->hw_latency_min = UINT64_MAX;
+			stats->hw_latency_max = 0;
+		}
+
+		if (unlikely(stats->dequeued_count == stats->fw_reset_count)) {
+			stats->fw_latency_min = UINT64_MAX;
+			stats->fw_latency_max = 0;
+		}
+
+		hw_latency = result->stats.hw_end - result->stats.hw_start;
+		fw_latency = result->stats.fw_end - result->stats.fw_start - hw_latency;
+
+		stats->hw_latency_tot += hw_latency;
+		stats->hw_latency_min = PLT_MIN(stats->hw_latency_min, hw_latency);
+		stats->hw_latency_max = PLT_MAX(stats->hw_latency_max, hw_latency);
+		stats->fw_latency_tot += fw_latency;
+		stats->fw_latency_min = PLT_MIN(stats->fw_latency_min, fw_latency);
+		stats->fw_latency_max = PLT_MAX(stats->fw_latency_max, fw_latency);
+		stats->dequeued_count++;
 
 		op->impl_opaque = result->error_code.u64;
 		op->status = RTE_ML_OP_STATUS_SUCCESS;
@@ -1745,6 +2095,10 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Stats ops */
 	.dev_stats_get = cn10k_ml_dev_stats_get,
 	.dev_stats_reset = cn10k_ml_dev_stats_reset,
+	.dev_xstats_names_get = cn10k_ml_dev_xstats_names_get,
+	.dev_xstats_by_name_get = cn10k_ml_dev_xstats_by_name_get,
+	.dev_xstats_get = cn10k_ml_dev_xstats_get,
+	.dev_xstats_reset = cn10k_ml_dev_xstats_reset,
 
 	/* Model ops */
 	.model_load = cn10k_ml_model_load,

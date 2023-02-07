@@ -399,6 +399,57 @@ struct cn10k_ml_model_addr {
 	uint32_t total_output_sz_d;
 };
 
+/* Extended stats types enum */
+enum cn10k_ml_model_xstats_type {
+	/* Average hardware latency */
+	avg_hw_latency = 0,
+
+	/* Minimum hardware latency */
+	min_hw_latency,
+
+	/* Maximum hardware latency */
+	max_hw_latency,
+
+	/* Average firmware latency */
+	avg_fw_latency,
+
+	/* Minimum firmware latency */
+	min_fw_latency,
+
+	/* Maximum firmware latency */
+	max_fw_latency,
+};
+
+/* Model fast-path stats */
+struct cn10k_ml_model_stats {
+	/* Total hardware latency, sum of all inferences */
+	uint64_t hw_latency_tot;
+
+	/* Minimum hardware latency */
+	uint64_t hw_latency_min;
+
+	/* Maximum hardware latency */
+	uint64_t hw_latency_max;
+
+	/* Total firmware latency, sum of all inferences */
+	uint64_t fw_latency_tot;
+
+	/* Minimum firmware latency */
+	uint64_t fw_latency_min;
+
+	/* Maximum firmware latency */
+	uint64_t fw_latency_max;
+
+	/* Total jobs dequeued */
+	uint64_t dequeued_count;
+
+	/* Hardware stats reset index */
+	uint64_t hw_reset_count;
+
+	/* Firmware stats reset index */
+	uint64_t fw_reset_count;
+};
+
 /* Model Object */
 struct cn10k_ml_model {
 	/* Device reference */
@@ -438,6 +489,12 @@ struct cn10k_ml_model {
 
 	/* Slow-path operations request pointer */
 	struct cn10k_ml_req *req;
+
+	/* Stats for burst ops */
+	struct cn10k_ml_model_stats *burst_stats;
+
+	/* Stats for sync ops */
+	struct cn10k_ml_model_stats *sync_stats;
 };
 
 int cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size);
