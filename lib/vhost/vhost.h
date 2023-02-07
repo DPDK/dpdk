@@ -513,6 +513,16 @@ struct virtio_net {
 	struct rte_vhost_user_extern_ops extern_ops;
 } __rte_cache_aligned;
 
+static inline void
+vq_assert_lock__(struct virtio_net *dev, struct vhost_virtqueue *vq, const char *func)
+	__rte_assert_exclusive_lock(&vq->access_lock)
+{
+	if (unlikely(!rte_spinlock_is_locked(&vq->access_lock)))
+		rte_panic("VHOST_CONFIG: (%s) %s() called without access lock taken.\n",
+			dev->ifname, func);
+}
+#define vq_assert_lock(dev, vq) vq_assert_lock__(dev, vq, __func__)
+
 static __rte_always_inline bool
 vq_is_packed(struct virtio_net *dev)
 {

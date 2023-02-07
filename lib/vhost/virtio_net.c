@@ -2367,11 +2367,7 @@ rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(!rte_spinlock_is_locked(&vq->access_lock))) {
-		VHOST_LOG_DATA(dev->ifname, ERR, "%s() called without access lock taken.\n",
-			__func__);
-		return -1;
-	}
+	vq_assert_lock(dev, vq);
 
 	if (unlikely(!vq->async)) {
 		VHOST_LOG_DATA(dev->ifname, ERR,
