@@ -157,6 +157,10 @@ EXPERIMENTAL {
 	rte_swx_pipeline_find;
 
 	# added in 23.03
+	rte_swx_ctl_pipeline_rss_key_read;
+	rte_swx_ctl_pipeline_rss_key_size_read;
+	rte_swx_ctl_pipeline_rss_key_write;
+	rte_swx_ctl_rss_info_get;
 	rte_swx_ipsec_create;
 	rte_swx_ipsec_find;
 	rte_swx_ipsec_free;
@@ -164,4 +168,5 @@ EXPERIMENTAL {
 	rte_swx_ipsec_sa_add;
 	rte_swx_ipsec_sa_delete;
 	rte_swx_ipsec_sa_read;
+	rte_swx_pipeline_rss_config;
 };

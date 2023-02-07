@@ -200,6 +200,22 @@ struct hash_func_runtime {
 };
 
 /*
+ * RSS.
+ */
+struct rss {
+	TAILQ_ENTRY(rss) node;
+	char name[RTE_SWX_NAME_SIZE];
+	uint32_t id;
+};
+
+TAILQ_HEAD(rss_tailq, rss);
+
+struct rss_runtime {
+	uint32_t key_size; /* key size in bytes. */
+	uint8_t key[0]; /* key. */
+};
+
+/*
  * Header.
  */
 struct header {
@@ -524,6 +540,15 @@ enum instruction_type {
 	 */
 	INSTR_HASH_FUNC,
 
+	/* rss RSS_OBJ_NAME dst src_first src_last
+	 * Compute the RSS hash value over range of struct fields.
+	 * dst = M
+	 * src_first = HMEFT
+	 * src_last = HMEFT
+	 * src_first and src_last must be fields within the same struct
+	 */
+	INSTR_RSS,
+
 	/* jmp LABEL
 	 * Unconditional jump
 	 */
@@ -677,6 +702,21 @@ struct instr_hash_func {
 	} src;
 };
 
+struct instr_rss {
+	uint8_t rss_obj_id;
+
+	struct {
+		uint8_t offset;
+		uint8_t n_bits;
+	} dst;
+
+	struct {
+		uint8_t struct_id;
+		uint16_t offset;
+		uint16_t n_bytes;
+	} src;
+};
+
 struct instr_dst_src {
 	struct instr_operand dst;
 	union {
@@ -763,6 +803,7 @@ struct instruction {
 		struct instr_extern_obj ext_obj;
 		struct instr_extern_func ext_func;
 		struct instr_hash_func hash_func;
+		struct instr_rss rss;
 		struct instr_jmp jmp;
 	};
 };
@@ -1480,6 +1521,7 @@ struct rte_swx_pipeline {
 	struct extern_obj_tailq extern_objs;
 	struct extern_func_tailq extern_funcs;
 	struct hash_func_tailq hash_funcs;
+	struct rss_tailq rss;
 	struct header_tailq headers;
 	struct struct_type *metadata_st;
 	uint32_t metadata_struct_id;
@@ -1502,6 +1544,7 @@ struct rte_swx_pipeline {
 	struct selector_statistics *selector_stats;
 	struct learner_statistics *learner_stats;
 	struct hash_func_runtime *hash_func_runtime;
+	struct rss_runtime **rss_runtime;
 	struct regarray_runtime *regarray_runtime;
 	struct metarray_runtime *metarray_runtime;
 	struct instruction *instructions;
@@ -1518,6 +1561,7 @@ struct rte_swx_pipeline {
 	uint32_t n_extern_objs;
 	uint32_t n_extern_funcs;
 	uint32_t n_hash_funcs;
+	uint32_t n_rss;
 	uint32_t n_actions;
 	uint32_t n_tables;
 	uint32_t n_selectors;
@@ -2464,6 +2508,58 @@ __instr_hash_func_exec(struct rte_swx_pipeline *p,
 	      hash_func_id);
 
 	result = func->func(&src_ptr[src_offset], n_src_bytes, 0);
+	METADATA_WRITE(t, dst_offset, n_dst_bits, result);
+}
+
+/*
+ * rss.
+ */
+static inline uint32_t
+rss_func(void *rss_key, uint32_t rss_key_size, void *input_data, uint32_t input_data_size)
+{
+	uint32_t *key = (uint32_t *)rss_key;
+	uint32_t *data = (uint32_t *)input_data;
+	uint32_t key_size = rss_key_size >> 2;
+	uint32_t data_size = input_data_size >> 2;
+	uint32_t hash_val = 0, i;
+
+	for (i = 0; i < data_size; i++) {
+		uint32_t d;
+
+		for (d = data[i]; d; d &= (d - 1)) {
+			uint32_t key0, key1, pos;
+
+			pos = rte_bsf32(d);
+			key0 = key[i % key_size] << (31 - pos);
+			key1 = key[(i + 1) % key_size] >> (pos + 1);
+			hash_val ^= key0 | key1;
+		}
+	}
+
+	return hash_val;
+}
+
+static inline void
+__instr_rss_exec(struct rte_swx_pipeline *p,
+		 struct thread *t,
+		 const struct instruction *ip)
+{
+	uint32_t rss_obj_id = ip->rss.rss_obj_id;
+	uint32_t dst_offset = ip->rss.dst.offset;
+	uint32_t n_dst_bits = ip->rss.dst.n_bits;
+	uint32_t src_struct_id = ip->rss.src.struct_id;
+	uint32_t src_offset = ip->rss.src.offset;
+	uint32_t n_src_bytes = ip->rss.src.n_bytes;
+
+	struct rss_runtime *r = p->rss_runtime[rss_obj_id];
+	uint8_t *src_ptr = t->structs[src_struct_id];
+	uint32_t result;
+
+	TRACE("[Thread %2u] rss %u\n",
+	      p->thread_id,
+	      rss_obj_id);
+
+	result = rss_func(r->key, r->key_size, &src_ptr[src_offset], n_src_bytes);
 	METADATA_WRITE(t, dst_offset, n_dst_bits, result);
 }
 

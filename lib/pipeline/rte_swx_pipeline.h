@@ -353,6 +353,28 @@ rte_swx_pipeline_hash_func_register(struct rte_swx_pipeline *p,
 				    rte_swx_hash_func_t func);
 
 /*
+ * RSS.
+ */
+
+/**
+ * Pipeline Receive Side Scaling (RSS) object configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Name for the new RSS object.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: RSS object with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_rss_config(struct rte_swx_pipeline *p,
+			    const char *name);
+
+/*
  * Packet headers and meta-data
  */
 

@@ -67,6 +67,9 @@ struct rte_swx_ctl_pipeline_info {
 
 	/** Number of meter arrays. */
 	uint32_t n_metarrays;
+
+	/** Number of RSS objects. */
+	uint32_t n_rss;
 };
 
 /**
@@ -1520,6 +1523,95 @@ rte_swx_ctl_meter_stats_read_with_key(struct rte_swx_pipeline *p,
 				      const char *table_name,
 				      uint8_t *table_key,
 				      struct rte_swx_ctl_meter_stats *stats);
+
+/*
+ * RSS Query and Configuration API.
+ */
+
+/** RSS object info. */
+struct rte_swx_ctl_rss_info {
+	/** RSS object name. */
+	char name[RTE_SWX_CTL_NAME_SIZE];
+};
+
+/**
+ * RSS object info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] rss_obj_id
+ *   RSS object ID (0 .. *n_rss* - 1).
+ * @param[out] rss
+ *   RSS object info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_rss_info_get(struct rte_swx_pipeline *p,
+			 uint32_t rss_obj_id,
+			 struct rte_swx_ctl_rss_info *rss);
+
+/**
+ * RSS object key size read
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] rss_obj_name
+ *   RSS object name.
+ * @param[out] key_size
+ *   RSS key size in bytes.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_rss_key_size_read(struct rte_swx_pipeline *p,
+				       const char *rss_obj_name,
+				       uint32_t *key_size);
+
+/**
+ * RSS object key read
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] rss_obj_name
+ *   RSS object name.
+ * @param[out] key
+ *   RSS key. Must be pre-allocated by the caller to store *key_size* bytes.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_rss_key_read(struct rte_swx_pipeline *p,
+				  const char *rss_obj_name,
+				  uint8_t *key);
+
+/**
+ * RSS object key write
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] rss_obj_name
+ *   RSS object name.
+ * @param[in] key_size
+ *   RSS key size in bytes. Must be at least 4 and a power of 2.
+ * @param[in] key
+ *   RSS key.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_rss_key_write(struct rte_swx_pipeline *p,
+				   const char *rss_obj_name,
+				   uint32_t key_size,
+				   uint8_t *key);
 
 /**
  * Pipeline control free

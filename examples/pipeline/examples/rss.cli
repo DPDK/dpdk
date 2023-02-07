@@ -1,0 +1,42 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2023 Intel Corporation
+
+# Example command line:
+#	./build/examples/dpdk-pipeline -l0-1 -- -s ./examples/pipeline/examples/rss.cli
+#
+# Once the application has started, the command to get the CLI prompt is:
+#	telnet 0.0.0.0 8086
+
+;
+; Pipeline code generation & shared object library build.
+;
+pipeline codegen ./examples/pipeline/examples/rss.spec /tmp/rss.c
+pipeline libbuild /tmp/rss.c /tmp/rss.so
+
+;
+; List of DPDK devices.
+;
+; Note: Customize the parameters below to match your setup.
+;
+mempool MEMPOOL0 meta 0 pkt 2176 pool 32K cache 256 numa 0
+ethdev 0000:18:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+ethdev 0000:18:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+ethdev 0000:3b:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+ethdev 0000:3b:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+
+;
+; List of pipelines.
+;
+pipeline PIPELINE0 build lib /tmp/rss.so io ./examples/pipeline/examples/ethdev.io numa 0
+
+;
+; Initial set of table entries.
+;
+; The table entries can later be updated at run-time through the CLI commands.
+;
+pipeline PIPELINE0 rss rss0 key 0 0 0 0
+
+;
+; Pipelines-to-threads mapping.
+;
+pipeline PIPELINE0 enable thread 1

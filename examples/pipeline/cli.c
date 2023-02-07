@@ -2622,6 +2622,67 @@ cmd_pipeline_meter_stats(char **tokens,
 	return;
 }
 
+static const char cmd_pipeline_rss_help[] =
+"pipeline <pipeline_name> rss <rss_obj_name> key <key_byte0> ...\n";
+
+static void
+cmd_pipeline_rss(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj __rte_unused)
+{
+	uint8_t rss_key[CMD_MAX_TOKENS];
+	struct rte_swx_pipeline *p;
+	const char *rss_obj_name;
+	uint32_t rss_key_size, i;
+	int status;
+
+	if (n_tokens < 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "rss")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rss");
+		return;
+	}
+
+	rss_obj_name = tokens[3];
+
+	if (strcmp(tokens[4], "key")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "key");
+		return;
+	}
+
+	tokens += 5;
+	n_tokens -= 5;
+	rss_key_size = n_tokens;
+
+	for (i = 0; i < rss_key_size; i++) {
+		uint32_t key_byte;
+
+		if (parser_read_uint32(&key_byte, tokens[i]) || (key_byte >= UINT8_MAX)) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "key byte");
+			return;
+		}
+
+		rss_key[i] = (uint8_t)key_byte;
+	}
+
+	status = rte_swx_ctl_pipeline_rss_key_write(p, rss_obj_name, rss_key_size, rss_key);
+	if (status) {
+		snprintf(out, out_size, "Command failed.\n");
+		return;
+	}
+}
+
 static const char cmd_pipeline_stats_help[] =
 "pipeline <pipeline_name> stats\n";
 
@@ -3422,6 +3483,7 @@ cmd_help(char **tokens,
 			"\tpipeline meter reset\n"
 			"\tpipeline meter set\n"
 			"\tpipeline meter stats\n"
+			"\tpipeline rss\n"
 			"\tpipeline stats\n"
 			"\tpipeline mirror session\n"
 			"\tpipeline enable\n"
@@ -3638,6 +3700,12 @@ cmd_help(char **tokens,
 		(n_tokens == 3) && !strcmp(tokens[1], "meter")
 		&& !strcmp(tokens[2], "stats")) {
 		snprintf(out, out_size, "\n%s\n", cmd_pipeline_meter_stats_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 2) && !strcmp(tokens[1], "rss")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_rss_help);
 		return;
 	}
 
@@ -3912,6 +3980,11 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 
 		if (n_tokens >= 9 && !strcmp(tokens[2], "meter") && !strcmp(tokens[4], "stats")) {
 			cmd_pipeline_meter_stats(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if (n_tokens >= 3 && !strcmp(tokens[2], "rss")) {
+			cmd_pipeline_rss(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 

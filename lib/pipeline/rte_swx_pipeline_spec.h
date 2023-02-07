@@ -172,6 +172,15 @@ struct metarray_spec {
 };
 
 /*
+ * rss.
+ *
+ * rss NAME
+ */
+struct rss_spec {
+	char *name;
+};
+
+/*
  * apply.
  *
  * apply {
@@ -198,6 +207,7 @@ struct pipeline_spec {
 	struct learner_spec *learners;
 	struct regarray_spec *regarrays;
 	struct metarray_spec *metarrays;
+	struct rss_spec *rss;
 	struct apply_spec *apply;
 
 	uint32_t n_extobjs;
@@ -210,6 +220,7 @@ struct pipeline_spec {
 	uint32_t n_learners;
 	uint32_t n_regarrays;
 	uint32_t n_metarrays;
+	uint32_t n_rss;
 	uint32_t n_apply;
 };
 

@@ -1256,6 +1256,129 @@ hash_func_free(struct rte_swx_pipeline *p)
 }
 
 /*
+ * RSS.
+ */
+static struct rss *
+rss_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct rss *elem;
+
+	TAILQ_FOREACH(elem, &p->rss, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+static struct rss *
+rss_find_by_id(struct rte_swx_pipeline *p, uint32_t rss_obj_id)
+{
+	struct rss *elem;
+
+	TAILQ_FOREACH(elem, &p->rss, node)
+		if (elem->id == rss_obj_id)
+			return elem;
+
+	return NULL;
+}
+
+int
+rte_swx_pipeline_rss_config(struct rte_swx_pipeline *p, const char *name)
+{
+	struct rss *r;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!rss_find(p, name), EEXIST);
+
+	/* Memory allocation. */
+	r = calloc(1, sizeof(struct rss));
+	CHECK(r, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(r->name, name);
+	r->id = p->n_rss;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->rss, r, node);
+	p->n_rss++;
+
+	return 0;
+}
+
+static void
+rss_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	if (!p->rss_runtime)
+		return;
+
+	for (i = 0; i < p->n_rss; i++)
+		free(p->rss_runtime[i]);
+
+	free(p->rss_runtime);
+	p->rss_runtime = NULL;
+}
+
+static const struct {
+	uint32_t key_size;
+	uint8_t key[4];
+} rss_runtime_default = {
+	.key_size = 4,
+	.key = {0, 0, 0, 0},
+};
+
+static int
+rss_build(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+	int status = 0;
+
+	/* Memory allocation. */
+	p->rss_runtime = calloc(p->n_rss, sizeof(struct rss_runtime *));
+	if (!p->rss_runtime) {
+		status = -ENOMEM;
+		goto error;
+	}
+
+	/* RSS. */
+	for (i = 0; i < p->n_rss; i++) {
+		p->rss_runtime[i] = malloc(sizeof(rss_runtime_default));
+		if (!p->rss_runtime[i]) {
+			status = -ENOMEM;
+			goto error;
+		}
+
+		memcpy(p->rss_runtime[i], &rss_runtime_default, sizeof(rss_runtime_default));
+	}
+
+	return 0;
+
+error:
+	rss_build_free(p);
+	return status;
+}
+
+static void
+rss_free(struct rte_swx_pipeline *p)
+{
+	rss_build_free(p);
+
+	for ( ; ; ) {
+		struct rss *elem;
+
+		elem = TAILQ_FIRST(&p->rss);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->rss, elem, node);
+		free(elem);
+	}
+}
+
+/*
  * Header.
  */
 static struct header *
@@ -2997,6 +3120,63 @@ instr_hash_func_exec(struct rte_swx_pipeline *p)
 
 	/* Extern function execute. */
 	__instr_hash_func_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
+ * rss.
+ */
+static int
+instr_rss_translate(struct rte_swx_pipeline *p,
+		    struct action *action,
+		    char **tokens,
+		    int n_tokens,
+		    struct instruction *instr,
+		    struct instruction_data *data __rte_unused)
+{
+	struct rss *rss;
+	struct field *dst, *src_first, *src_last;
+	uint32_t src_struct_id_first = 0, src_struct_id_last = 0;
+
+	CHECK(n_tokens == 5, EINVAL);
+
+	rss = rss_find(p, tokens[1]);
+	CHECK(rss, EINVAL);
+
+	dst = metadata_field_parse(p, tokens[2]);
+	CHECK(dst, EINVAL);
+	CHECK(dst->n_bits <= 64, EINVAL);
+
+	src_first = struct_field_parse(p, action, tokens[3], &src_struct_id_first);
+	CHECK(src_first, EINVAL);
+
+	src_last = struct_field_parse(p, action, tokens[4], &src_struct_id_last);
+	CHECK(src_last, EINVAL);
+	CHECK(!src_last->var_size, EINVAL);
+	CHECK(src_struct_id_first == src_struct_id_last, EINVAL);
+
+	instr->type = INSTR_RSS;
+	instr->rss.rss_obj_id = (uint8_t)rss->id;
+	instr->rss.dst.offset = (uint8_t)dst->offset / 8;
+	instr->rss.dst.n_bits = (uint8_t)dst->n_bits;
+	instr->rss.src.struct_id = (uint8_t)src_struct_id_first;
+	instr->rss.src.offset = (uint16_t)src_first->offset / 8;
+	instr->rss.src.n_bytes = (uint16_t)((src_last->offset + src_last->n_bits -
+		src_first->offset) / 8);
+
+	return 0;
+}
+
+static inline void
+instr_rss_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	/* Extern function execute. */
+	__instr_rss_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -6397,6 +6577,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					    instr,
 					    data);
 
+	if (!strcmp(tokens[tpos], "rss"))
+		return instr_rss_translate(p,
+					   action,
+					   &tokens[tpos],
+					   n_tokens - tpos,
+					   instr,
+					   data);
+
 	if (!strcmp(tokens[tpos], "jmp"))
 		return instr_jmp_translate(p,
 					   action,
@@ -7371,6 +7559,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
 	[INSTR_EXTERN_FUNC] = instr_extern_func_exec,
 	[INSTR_HASH_FUNC] = instr_hash_func_exec,
+	[INSTR_RSS] = instr_rss_exec,
 
 	[INSTR_JMP] = instr_jmp_exec,
 	[INSTR_JMP_VALID] = instr_jmp_valid_exec,
@@ -10001,6 +10190,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	instruction_table_free(p);
 	metadata_free(p);
 	header_free(p);
+	rss_free(p);
 	hash_func_free(p);
 	extern_func_free(p);
 	extern_obj_free(p);
@@ -10149,6 +10339,7 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, const char *name, int numa_
 	TAILQ_INIT(&pipeline->extern_objs);
 	TAILQ_INIT(&pipeline->extern_funcs);
 	TAILQ_INIT(&pipeline->hash_funcs);
+	TAILQ_INIT(&pipeline->rss);
 	TAILQ_INIT(&pipeline->headers);
 	TAILQ_INIT(&pipeline->actions);
 	TAILQ_INIT(&pipeline->table_types);
@@ -10263,6 +10454,10 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = rss_build(p);
+	if (status)
+		goto error;
+
 	status = header_build(p);
 	if (status)
 		goto error;
@@ -10318,6 +10513,7 @@ error:
 	instruction_table_build_free(p);
 	metadata_build_free(p);
 	header_build_free(p);
+	rss_build_free(p);
 	hash_func_build_free(p);
 	extern_func_build_free(p);
 	extern_obj_build_free(p);
@@ -10382,6 +10578,7 @@ rte_swx_ctl_pipeline_info_get(struct rte_swx_pipeline *p,
 	pipeline->n_learners = p->n_learners;
 	pipeline->n_regarrays = p->n_regarrays;
 	pipeline->n_metarrays = p->n_metarrays;
+	pipeline->n_rss = p->n_rss;
 
 	return 0;
 }
@@ -11406,6 +11603,112 @@ rte_swx_ctl_meter_stats_read_with_key(struct rte_swx_pipeline *p,
 	return rte_swx_ctl_meter_stats_read(p, metarray_name, entry_id, stats);
 }
 
+int
+rte_swx_ctl_rss_info_get(struct rte_swx_pipeline *p,
+			 uint32_t rss_obj_id,
+			 struct rte_swx_ctl_rss_info *info)
+{
+	struct rss *rss;
+
+	/* Check the input arguments. */
+	if (!p || !info)
+		return -EINVAL;
+
+	rss = rss_find_by_id(p, rss_obj_id);
+	if (!rss)
+		return -EINVAL;
+
+	/* Read from the internal data structures. */
+	strcpy(info->name, rss->name);
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_rss_key_size_read(struct rte_swx_pipeline *p,
+				       const char *rss_name,
+				       uint32_t *key_size)
+{
+	struct rss *rss;
+	struct rss_runtime *r;
+
+	/* Check the input arguments. */
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(rss_name, EINVAL);
+	rss = rss_find(p, rss_name);
+	CHECK(rss, EINVAL);
+	r = p->rss_runtime[rss->id];
+
+	CHECK(key_size, EINVAL);
+
+	/* Read from the internal data structures. */
+	*key_size = r->key_size;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_rss_key_read(struct rte_swx_pipeline *p,
+				  const char *rss_name,
+				  uint8_t *key)
+{
+	struct rss *rss;
+	struct rss_runtime *r;
+
+	/* Check the input arguments. */
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(rss_name, EINVAL);
+	rss = rss_find(p, rss_name);
+	CHECK(rss, EINVAL);
+	r = p->rss_runtime[rss->id];
+
+	CHECK(key, EINVAL);
+
+	/* Read from the internal data structures. */
+	memcpy(key, r->key, r->key_size);
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_rss_key_write(struct rte_swx_pipeline *p,
+				   const char *rss_name,
+				   uint32_t key_size,
+				   uint8_t *key)
+{
+	struct rss *rss;
+	struct rss_runtime *r, *r_new;
+
+	/* Check the input arguments. */
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(rss_name, EINVAL);
+	rss = rss_find(p, rss_name);
+	CHECK(rss, EINVAL);
+	r = p->rss_runtime[rss->id];
+
+	CHECK(key_size >= 4, EINVAL);
+	CHECK(key, EINVAL);
+
+	/* Allocate new RSS run-time entry. */
+	r_new = malloc(sizeof(struct rss_runtime) + key_size * sizeof(uint32_t));
+	if (!r_new)
+		return -ENOMEM;
+
+	/* Fill in the new RSS run-time entry. */
+	r_new->key_size = key_size;
+	memcpy(r_new->key, key, key_size);
+
+	/* Commit the RSS run-time change atomically. */
+	p->rss_runtime[rss->id] = r_new;
+
+	/* Free the old RSS run-time entry. */
+	free(r);
+
+	return 0;
+}
+
 /*
  * Pipeline compilation.
  */
@@ -11579,6 +11882,7 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_EXTERN_OBJ: return "INSTR_EXTERN_OBJ";
 	case INSTR_EXTERN_FUNC: return "INSTR_EXTERN_FUNC";
 	case INSTR_HASH_FUNC: return "INSTR_HASH_FUNC";
+	case INSTR_RSS: return "INSTR_RSS";
 
 	case INSTR_JMP: return "INSTR_JMP";
 	case INSTR_JMP_VALID: return "INSTR_JMP_VALID";
@@ -12027,6 +12331,34 @@ instr_hash_export(struct instruction *instr, FILE *f)
 		instr->hash_func.src.struct_id,
 		instr->hash_func.src.offset,
 		instr->hash_func.src.n_bytes);
+}
+
+static void
+instr_rss_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.rss = {\n"
+		"\t\t\t.rss_obj_id = %u,\n"
+		"\t\t\t.dst = {\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t},\n"
+		"\t\t\t.src = {\n"
+		"\t\t\t\t.struct_id = %u,\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t\t.n_bytes = %u,\n"
+		"\t\t\t},\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->rss.rss_obj_id,
+		instr->rss.dst.offset,
+		instr->rss.dst.n_bits,
+		instr->rss.src.struct_id,
+		instr->rss.src.offset,
+		instr->rss.src.n_bytes);
 }
 
 static void
@@ -12590,6 +12922,7 @@ static instruction_export_t export_table[] = {
 	[INSTR_EXTERN_OBJ] = instr_extern_export,
 	[INSTR_EXTERN_FUNC] = instr_extern_export,
 	[INSTR_HASH_FUNC] = instr_hash_export,
+	[INSTR_RSS] = instr_rss_export,
 
 	[INSTR_JMP] = instr_jmp_export,
 	[INSTR_JMP_VALID] = instr_jmp_export,
@@ -12817,6 +13150,7 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_EXTERN_OBJ: return NULL;
 	case INSTR_EXTERN_FUNC: return NULL;
 	case INSTR_HASH_FUNC: return "__instr_hash_func_exec";
+	case INSTR_RSS: return "__instr_rss_exec";
 
 	case INSTR_JMP: return NULL;
 	case INSTR_JMP_VALID: return NULL;
