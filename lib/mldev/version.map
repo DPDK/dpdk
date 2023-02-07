@@ -1,8 +1,16 @@
 EXPERIMENTAL {
 	global:
 
+	rte_ml_dev_close;
+	rte_ml_dev_configure;
+	rte_ml_dev_count;
+	rte_ml_dev_info_get;
 	rte_ml_dev_init;
+	rte_ml_dev_is_valid_dev;
 	rte_ml_dev_logtype;
+	rte_ml_dev_socket_id;
+	rte_ml_dev_start;
+	rte_ml_dev_stop;
 
 	local: *;
 };

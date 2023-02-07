@@ -31,6 +31,110 @@ extern "C" {
 #define ML_DEV_DETACHED (0)
 #define ML_DEV_ATTACHED (1)
 
+struct rte_ml_dev;
+
+/**
+ * Definitions of all functions exported by a driver through the generic structure of type
+ * *ml_dev_ops* supplied in the *rte_ml_dev* structure associated with a device.
+ */
+
+/**
+ * @internal
+ *
+ * Function used to get device information.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param dev_info
+ *	Pointer to info structure.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_info_get_t)(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info);
+
+/**
+ * @internal
+ *
+ * Function used to configure device.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param config
+ *	ML device configurations.
+ *
+ * @return
+ *	- 0 on success
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_configure_t)(struct rte_ml_dev *dev, const struct rte_ml_dev_config *config);
+
+/**
+ * @internal
+ *
+ * Function used to close a configured device.
+ *
+ * @param dev
+ *	ML device pointer.
+ *
+ * @return
+ *	- 0 on success.
+ *	- -EAGAIN if can't close as device is busy.
+ *	- < 0, error code on failure, other than busy.
+ */
+typedef int (*mldev_close_t)(struct rte_ml_dev *dev);
+
+/**
+ * @internal
+ *
+ * Function used to start a configured device.
+ *
+ * @param dev
+ *	ML device pointer.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_start_t)(struct rte_ml_dev *dev);
+
+/**
+ * @internal
+ *
+ * Function used to stop a configured device.
+ *
+ * @param dev
+ *	ML device pointer.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_stop_t)(struct rte_ml_dev *dev);
+
+/**
+ * @internal
+ *
+ * ML device operations function pointer table.
+ */
+struct rte_ml_dev_ops {
+	/** Get device information. */
+	mldev_info_get_t dev_info_get;
+
+	/** Configure device. */
+	mldev_configure_t dev_configure;
+
+	/** Close device. */
+	mldev_close_t dev_close;
+
+	/** Start device. */
+	mldev_start_t dev_start;
+
+	/** Stop device. */
+	mldev_stop_t dev_stop;
+};
+
 /**
  * @internal
  *
@@ -74,6 +178,9 @@ struct rte_ml_dev_data {
 struct rte_ml_dev {
 	/** Pointer to device data. */
 	struct rte_ml_dev_data *data;
+
+	/** Functions exported by PMD. */
+	struct rte_ml_dev_ops *dev_ops;
 
 	/** Backing RTE device. */
 	struct rte_device *device;

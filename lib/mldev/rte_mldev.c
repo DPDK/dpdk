@@ -177,4 +177,179 @@ rte_ml_dev_init(size_t dev_max)
 	return 0;
 }
 
+uint16_t
+rte_ml_dev_count(void)
+{
+	return ml_dev_globals.nb_devs;
+}
+
+int
+rte_ml_dev_is_valid_dev(int16_t dev_id)
+{
+	struct rte_ml_dev *dev = NULL;
+
+	if (dev_id >= ml_dev_globals.max_devs || ml_dev_globals.devs[dev_id].data == NULL)
+		return 0;
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (dev->attached != ML_DEV_ATTACHED)
+		return 0;
+	else
+		return 1;
+}
+
+int
+rte_ml_dev_socket_id(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+
+	return dev->data->socket_id;
+}
+
+int
+rte_ml_dev_info_get(int16_t dev_id, struct rte_ml_dev_info *dev_info)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_info_get == NULL)
+		return -ENOTSUP;
+
+	if (dev_info == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, dev_info cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+	memset(dev_info, 0, sizeof(struct rte_ml_dev_info));
+
+	return (*dev->dev_ops->dev_info_get)(dev, dev_info);
+}
+
+int
+rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
+{
+	struct rte_ml_dev_info dev_info;
+	struct rte_ml_dev *dev;
+	int ret;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_configure == NULL)
+		return -ENOTSUP;
+
+	if (dev->data->dev_started) {
+		RTE_MLDEV_LOG(ERR, "Device %d must be stopped to allow configuration", dev_id);
+		return -EBUSY;
+	}
+
+	if (config == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, config cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+
+	ret = rte_ml_dev_info_get(dev_id, &dev_info);
+	if (ret < 0)
+		return ret;
+
+	if (config->nb_queue_pairs > dev_info.max_queue_pairs) {
+		RTE_MLDEV_LOG(ERR, "Device %d num of queues %u > %u\n", dev_id,
+			      config->nb_queue_pairs, dev_info.max_queue_pairs);
+		return -EINVAL;
+	}
+
+	return (*dev->dev_ops->dev_configure)(dev, config);
+}
+
+int
+rte_ml_dev_close(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_close == NULL)
+		return -ENOTSUP;
+
+	/* Device must be stopped before it can be closed */
+	if (dev->data->dev_started == 1) {
+		RTE_MLDEV_LOG(ERR, "Device %d must be stopped before closing", dev_id);
+		return -EBUSY;
+	}
+
+	return (*dev->dev_ops->dev_close)(dev);
+}
+
+int
+rte_ml_dev_start(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+	int ret;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_start == NULL)
+		return -ENOTSUP;
+
+	if (dev->data->dev_started != 0) {
+		RTE_MLDEV_LOG(ERR, "Device %d is already started", dev_id);
+		return -EBUSY;
+	}
+
+	ret = (*dev->dev_ops->dev_start)(dev);
+	if (ret == 0)
+		dev->data->dev_started = 1;
+
+	return ret;
+}
+
+int
+rte_ml_dev_stop(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+	int ret;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_stop == NULL)
+		return -ENOTSUP;
+
+	if (dev->data->dev_started == 0) {
+		RTE_MLDEV_LOG(ERR, "Device %d is not started", dev_id);
+		return -EBUSY;
+	}
+
+	ret = (*dev->dev_ops->dev_stop)(dev);
+	if (ret == 0)
+		dev->data->dev_started = 0;
+
+	return ret;
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_ml_dev_logtype, INFO);
