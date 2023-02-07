@@ -194,6 +194,32 @@ typedef int (*mldev_queue_pair_release_t)(struct rte_ml_dev *dev, uint16_t queue
 /**
  * @internal
  *
+ * Function used to get device statistics.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param stats
+ *	Pointer to ML device stats structure to update.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error on failure.
+ */
+typedef int (*mldev_stats_get_t)(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats);
+
+/**
+ * @internal
+ *
+ * Function used to reset device statistics.
+ *
+ * @param dev
+ *	ML device pointer.
+ */
+typedef void (*mldev_stats_reset_t)(struct rte_ml_dev *dev);
+
+/**
+ * @internal
+ *
  * Function used to load an ML model.
  *
  * @param dev
@@ -415,6 +441,12 @@ struct rte_ml_dev_ops {
 
 	/** Release a device queue pair. */
 	mldev_queue_pair_release_t dev_queue_pair_release;
+
+	/** Get device statistics. */
+	mldev_stats_get_t dev_stats_get;
+
+	/** Reset device statistics. */
+	mldev_stats_reset_t dev_stats_reset;
 
 	/** Load an ML model. */
 	mldev_model_load_t model_load;

@@ -12,6 +12,8 @@ EXPERIMENTAL {
 	rte_ml_dev_queue_pair_setup;
 	rte_ml_dev_socket_id;
 	rte_ml_dev_start;
+	rte_ml_dev_stats_get;
+	rte_ml_dev_stats_reset;
 	rte_ml_dev_stop;
 	rte_ml_enqueue_burst;
 	rte_ml_io_dequantize;

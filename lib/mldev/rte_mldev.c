@@ -400,6 +400,46 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 }
 
 int
+rte_ml_dev_stats_get(int16_t dev_id, struct rte_ml_dev_stats *stats)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_stats_get == NULL)
+		return -ENOTSUP;
+
+	if (stats == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, stats cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+	memset(stats, 0, sizeof(struct rte_ml_dev_stats));
+
+	return (*dev->dev_ops->dev_stats_get)(dev, stats);
+}
+
+void
+rte_ml_dev_stats_reset(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_stats_reset == NULL)
+		return;
+
+	(*dev->dev_ops->dev_stats_reset)(dev);
+}
+
+int
 rte_ml_model_load(int16_t dev_id, struct rte_ml_model_params *params, uint16_t *model_id)
 {
 	struct rte_ml_dev *dev;
