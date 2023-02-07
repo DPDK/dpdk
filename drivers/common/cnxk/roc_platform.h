@@ -234,6 +234,7 @@
 extern int cnxk_logtype_base;
 extern int cnxk_logtype_mbox;
 extern int cnxk_logtype_cpt;
+extern int cnxk_logtype_ml;
 extern int cnxk_logtype_npa;
 extern int cnxk_logtype_nix;
 extern int cnxk_logtype_npc;
@@ -261,6 +262,7 @@ extern int cnxk_logtype_ree;
 #define plt_base_dbg(fmt, ...)	plt_dbg(base, fmt, ##__VA_ARGS__)
 #define plt_cpt_dbg(fmt, ...)	plt_dbg(cpt, fmt, ##__VA_ARGS__)
 #define plt_mbox_dbg(fmt, ...)	plt_dbg(mbox, fmt, ##__VA_ARGS__)
+#define plt_ml_dbg(fmt, ...)	plt_dbg(ml, fmt, ##__VA_ARGS__)
 #define plt_npa_dbg(fmt, ...)	plt_dbg(npa, fmt, ##__VA_ARGS__)
 #define plt_nix_dbg(fmt, ...)	plt_dbg(nix, fmt, ##__VA_ARGS__)
 #define plt_npc_dbg(fmt, ...)	plt_dbg(npc, fmt, ##__VA_ARGS__)

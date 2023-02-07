@@ -1277,6 +1277,15 @@ F: doc/guides/regexdevs/mlx5.rst
 F: doc/guides/regexdevs/features/mlx5.ini
 
 
+MLdev Drivers
+-------------
+
+Marvell ML CNXK
+M: Srikanth Yalavarthi <syalavarthi@marvell.com>
+F: drivers/common/cnxk/hw/ml.h
+F: drivers/common/cnxk/roc_ml*
+
+
 vDPA Drivers
 ------------
 T: git://dpdk.org/next/dpdk-next-virtio
