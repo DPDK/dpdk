@@ -5,14 +5,17 @@
 #include <rte_mldev_pmd.h>
 
 #include "cn10k_ml_dev.h"
+#include "cn10k_ml_model.h"
 #include "cn10k_ml_ocm.h"
 
 #include "roc_api.h"
 
 /* OCM macros */
-#define BYTE_LEN	  8
-#define OCM_MAP_WORD_SIZE (sizeof(uint8_t) * BYTE_LEN)
-#define SET_BIT(num, n)	  ((num) | (1 << (n)))
+#define BYTE_LEN	   8
+#define OCM_MAP_WORD_SIZE  (sizeof(uint8_t) * BYTE_LEN)
+#define IS_BIT_SET(num, n) ((num) & (1 << (n)))
+#define SET_BIT(num, n)	   ((num) | (1 << (n)))
+#define CLEAR_BIT(num, n)  ((num) &= ~((1) << (n)))
 
 /* Left shift multi-word mask by 1 bit.
  *
@@ -332,4 +335,126 @@ found:
 		*tilemask = GENMASK_ULL(tile_idx + num_tiles - 1, tile_idx);
 
 	return wb_page_start;
+}
+
+void
+cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t tilemask,
+			   int wb_page_start, uint16_t wb_pages, uint16_t scratch_pages)
+{
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_ocm *ocm;
+
+	int scratch_page_start;
+	int scratch_page_end;
+	int wb_page_end;
+	int tile_start;
+	int tile_end;
+	int tile_id;
+	int page_id;
+
+	mldev = dev->data->dev_private;
+	ocm = &mldev->ocm;
+	model = dev->data->models[model_id];
+
+	/* Get first set bit, tile_start */
+	tile_start = 0;
+	tile_end = 0;
+	cn10k_ml_ocm_tilecount(tilemask, &tile_start, &tile_end);
+	wb_page_end = wb_page_start + wb_pages - 1;
+	scratch_page_start = ocm->num_pages - scratch_pages;
+	scratch_page_end = ocm->num_pages - 1;
+
+	/* Update tile_ocm_info */
+	for (tile_id = tile_start; tile_id <= tile_end; tile_id++) {
+		/* Scratch pages */
+		for (page_id = scratch_page_start; page_id <= scratch_page_end; page_id++)
+			ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE] = SET_BIT(
+				ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE],
+				page_id % OCM_MAP_WORD_SIZE);
+		ocm->tile_ocm_info[tile_id].scratch_pages =
+			PLT_MAX(ocm->tile_ocm_info[tile_id].scratch_pages, scratch_pages);
+
+		/* WB pages */
+		for (page_id = wb_page_start; page_id <= wb_page_end; page_id++)
+			ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE] = SET_BIT(
+				ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE],
+				page_id % OCM_MAP_WORD_SIZE);
+		if (wb_pages != 0)
+			ocm->tile_ocm_info[tile_id].last_wb_page =
+				PLT_MAX(ocm->tile_ocm_info[tile_id].last_wb_page, wb_page_end);
+	}
+
+	model->addr.tile_start = tile_start;
+	model->addr.tile_end = tile_end;
+
+	plt_ml_dbg("model_id = %u, tilemask = 0x%016lx", model_id, tilemask);
+	plt_ml_dbg("model_id = %u, wb_page_start = %d, wb_page_end = %d", model_id, wb_page_start,
+		   wb_page_end);
+	plt_ml_dbg("model_id = %u, scratch_page_start = %d, scratch_page_end = %d", model_id,
+		   scratch_page_start, scratch_page_end);
+}
+
+void
+cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
+{
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_ocm *ocm;
+
+	int scratch_resize_pages;
+	int wb_page_start;
+	int wb_page_end;
+	int prev_start;
+	int curr_start;
+	int tile_id;
+	int page_id;
+	uint16_t i;
+
+	mldev = dev->data->dev_private;
+	ocm = &mldev->ocm;
+	model = dev->data->models[model_id];
+
+	/* Update OCM info for WB memory */
+	wb_page_start = model->model_mem_map.wb_page_start;
+	wb_page_end = wb_page_start + model->model_mem_map.wb_pages - 1;
+	for (tile_id = model->addr.tile_start; tile_id <= model->addr.tile_end; tile_id++) {
+		for (page_id = wb_page_start; page_id <= wb_page_end; page_id++) {
+			ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE] =
+				CLEAR_BIT(ocm->tile_ocm_info[tile_id]
+						  .ocm_mask[page_id / OCM_MAP_WORD_SIZE],
+					  page_id % OCM_MAP_WORD_SIZE);
+		}
+
+		/* Update last_wb_page size */
+		if (wb_page_end == ocm->tile_ocm_info[tile_id].last_wb_page)
+			ocm->tile_ocm_info[tile_id].last_wb_page = wb_page_start - 1;
+
+		/* Update scratch page size and clear extra bits */
+		scratch_resize_pages = 0;
+		/* Get max scratch pages required, excluding the current model */
+		for (i = 0; i < dev->data->nb_models; i++) {
+			struct cn10k_ml_model *model = dev->data->models[i];
+
+			if ((i != model_id) && (model != NULL)) {
+				if (IS_BIT_SET(model->model_mem_map.tilemask, tile_id))
+					scratch_resize_pages =
+						PLT_MAX((int)model->model_mem_map.scratch_pages,
+							scratch_resize_pages);
+			}
+		}
+
+		/* Clear extra scratch pages */
+		if (scratch_resize_pages < ocm->tile_ocm_info[tile_id].scratch_pages) {
+			prev_start = ocm->num_pages - ocm->tile_ocm_info[tile_id].scratch_pages;
+			curr_start = ocm->num_pages - scratch_resize_pages;
+			for (page_id = prev_start; page_id < curr_start; page_id++) {
+				ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE] =
+					CLEAR_BIT(ocm->tile_ocm_info[tile_id]
+							  .ocm_mask[page_id / OCM_MAP_WORD_SIZE],
+						  page_id % OCM_MAP_WORD_SIZE);
+			}
+			ocm->tile_ocm_info[tile_id].scratch_pages = scratch_resize_pages;
+		}
+	}
 }

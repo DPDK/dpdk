@@ -80,5 +80,8 @@ struct cn10k_ml_ocm {
 int cn10k_ml_ocm_tilecount(uint64_t tilemask, int *start, int *end);
 int cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t wb_pages,
 			       uint16_t scratch_pages, uint64_t *tilemask);
+void cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t tilemask,
+				int wb_page_start, uint16_t wb_pages, uint16_t scratch_pages);
+void cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id);
 
 #endif /* _CN10K_ML_OCM_H_ */
