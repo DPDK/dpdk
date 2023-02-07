@@ -35,6 +35,7 @@ Slow-path device and ML model handling:
 Fast-path Inference:
 
 * Inference execution
+* Error handling
 
 
 Installation

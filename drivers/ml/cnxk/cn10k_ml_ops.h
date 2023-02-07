@@ -75,6 +75,8 @@ __rte_hot uint16_t cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id
 					  struct rte_ml_op **ops, uint16_t nb_ops);
 __rte_hot uint16_t cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
 					  struct rte_ml_op **ops, uint16_t nb_ops);
+__rte_hot int cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op,
+				    struct rte_ml_op_error *error);
 __rte_hot int cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op);
 
 #endif /* _CN10K_ML_OPS_H_ */

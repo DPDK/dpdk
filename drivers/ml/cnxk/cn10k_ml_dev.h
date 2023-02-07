@@ -64,6 +64,54 @@ enum cn10k_ml_dev_state {
 	ML_CN10K_DEV_STATE_CLOSED
 };
 
+/* Error types enumeration */
+enum cn10k_ml_error_etype {
+	/* 0x0 */ ML_ETYPE_NO_ERROR = 0, /* No error */
+	/* 0x1 */ ML_ETYPE_FW_NONFATAL,	 /* Firmware non-fatal error */
+	/* 0x2 */ ML_ETYPE_HW_NONFATAL,	 /* Hardware non-fatal error */
+	/* 0x3 */ ML_ETYPE_HW_FATAL,	 /* Hardware fatal error */
+	/* 0x4 */ ML_ETYPE_HW_WARNING,	 /* Hardware warning */
+	/* 0x5 */ ML_ETYPE_DRIVER,	 /* Driver specific error */
+	/* 0x6 */ ML_ETYPE_UNKNOWN,	 /* Unknown error */
+};
+
+/* Firmware non-fatal error sub-type */
+enum cn10k_ml_error_stype_fw_nf {
+	/* 0x0 */ ML_FW_ERR_NOERR = 0,		 /* No error */
+	/* 0x1 */ ML_FW_ERR_UNLOAD_ID_NOT_FOUND, /* Model ID not found during load */
+	/* 0x2 */ ML_FW_ERR_LOAD_LUT_OVERFLOW,	 /* Lookup table overflow at load */
+	/* 0x3 */ ML_FW_ERR_ID_IN_USE,		 /* Model ID already in use */
+	/* 0x4 */ ML_FW_ERR_INVALID_TILEMASK,	 /* Invalid OCM tilemask */
+	/* 0x5 */ ML_FW_ERR_RUN_LUT_OVERFLOW,	 /* Lookup table overflow at run */
+	/* 0x6 */ ML_FW_ERR_RUN_ID_NOT_FOUND,	 /* Model ID not found during run */
+	/* 0x7 */ ML_FW_ERR_COMMAND_NOTSUP,	 /* Unsupported command */
+	/* 0x8 */ ML_FW_ERR_DDR_ADDR_RANGE,	 /* DDR address out of range */
+	/* 0x9 */ ML_FW_ERR_NUM_BATCHES_INVALID, /* Invalid number of batches */
+	/* 0xA */ ML_FW_ERR_INSSYNC_TIMEOUT,	 /* INS sync timeout */
+};
+
+/* Driver error sub-type */
+enum cn10k_ml_error_stype_driver {
+	/* 0x0 */ ML_DRIVER_ERR_NOERR = 0, /* No error */
+	/* 0x1 */ ML_DRIVER_ERR_UNKNOWN,   /* Unable to determine error sub-type */
+	/* 0x2 */ ML_DRIVER_ERR_EXCEPTION, /* Firmware exception */
+	/* 0x3 */ ML_DRIVER_ERR_FW_ERROR,  /* Unknown firmware error */
+};
+
+/* Error structure */
+union cn10k_ml_error_code {
+	struct {
+		/* Error type */
+		uint64_t etype : 4;
+
+		/* Error sub-type */
+		uint64_t stype : 60;
+	} s;
+
+	/* WORD 0 */
+	uint64_t u64;
+};
+
 /* Firmware stats */
 struct cn10k_ml_fw_stats {
 	/* Firmware start cycle */
@@ -82,7 +130,7 @@ struct cn10k_ml_fw_stats {
 /* Result structure */
 struct cn10k_ml_result {
 	/* Job error code */
-	uint64_t error_code;
+	union cn10k_ml_error_code error_code;
 
 	/* Firmware stats */
 	struct cn10k_ml_fw_stats stats;

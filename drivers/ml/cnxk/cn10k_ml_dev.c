@@ -261,7 +261,7 @@ cn10k_ml_fw_load_asim(struct cn10k_ml_fw *fw)
 	} while (plt_tsc_cycles() < timeout_cycle);
 
 	/* Check firmware load status, clean-up and exit on failure. */
-	if ((!timeout) && (fw->req->result.error_code == 0)) {
+	if ((!timeout) && (fw->req->result.error_code.u64 == 0)) {
 		cn10k_ml_fw_print_info(fw);
 	} else {
 		/* Set ML to disable new jobs */
@@ -452,7 +452,7 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	} while (plt_tsc_cycles() < timeout_cycle);
 
 	/* Check firmware load status, clean-up and exit on failure. */
-	if ((!timeout) && (fw->req->result.error_code == 0)) {
+	if ((!timeout) && (fw->req->result.error_code.u64 == 0)) {
 		cn10k_ml_fw_print_info(fw);
 	} else {
 		/* Set ML to disable new jobs */

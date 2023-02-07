@@ -23,6 +23,49 @@
 #define ML_FLAGS_POLL_COMPL BIT(0)
 #define ML_FLAGS_SSO_COMPL  BIT(1)
 
+/* Error message length */
+#define ERRMSG_LEN 32
+
+/* Error type database */
+static const struct cn10k_ml_etype_db {
+	enum cn10k_ml_error_etype etype;
+	char name[ERRMSG_LEN];
+} ml_etype_db[] = {
+	{ML_ETYPE_NO_ERROR, "NO_ERROR"},	{ML_ETYPE_FW_NONFATAL, "FW_NON_FATAL"},
+	{ML_ETYPE_HW_NONFATAL, "HW_NON_FATAL"}, {ML_ETYPE_HW_FATAL, "HW_FATAL"},
+	{ML_ETYPE_HW_WARNING, "HW_WARNING"},	{ML_ETYPE_DRIVER, "DRIVER_ERROR"},
+	{ML_ETYPE_UNKNOWN, "UNKNOWN_ERROR"},
+};
+
+/* Hardware non-fatal error subtype database */
+static const struct cn10k_ml_stype_db_hw_nf {
+	enum cn10k_ml_error_stype_fw_nf stype;
+	char msg[ERRMSG_LEN];
+} ml_stype_db_hw_nf[] = {
+	{ML_FW_ERR_NOERR, "NO ERROR"},
+	{ML_FW_ERR_UNLOAD_ID_NOT_FOUND, "UNLOAD MODEL ID NOT FOUND"},
+	{ML_FW_ERR_LOAD_LUT_OVERFLOW, "LOAD LUT OVERFLOW"},
+	{ML_FW_ERR_ID_IN_USE, "MODEL ID IN USE"},
+	{ML_FW_ERR_INVALID_TILEMASK, "INVALID TILEMASK"},
+	{ML_FW_ERR_RUN_LUT_OVERFLOW, "RUN LUT OVERFLOW"},
+	{ML_FW_ERR_RUN_ID_NOT_FOUND, "RUN MODEL ID NOT FOUND"},
+	{ML_FW_ERR_COMMAND_NOTSUP, "COMMAND NOT SUPPORTED"},
+	{ML_FW_ERR_DDR_ADDR_RANGE, "DDR ADDRESS OUT OF RANGE"},
+	{ML_FW_ERR_NUM_BATCHES_INVALID, "INVALID BATCHES"},
+	{ML_FW_ERR_INSSYNC_TIMEOUT, "INSSYNC TIMEOUT"},
+};
+
+/* Driver error subtype database */
+static const struct cn10k_ml_stype_db_driver {
+	enum cn10k_ml_error_stype_driver stype;
+	char msg[ERRMSG_LEN];
+} ml_stype_db_driver[] = {
+	{ML_DRIVER_ERR_NOERR, "NO ERROR"},
+	{ML_DRIVER_ERR_UNKNOWN, "UNKNOWN ERROR"},
+	{ML_DRIVER_ERR_EXCEPTION, "FW EXCEPTION"},
+	{ML_DRIVER_ERR_FW_ERROR, "UNKNOWN FIRMWARE ERROR"},
+};
+
 static void
 print_line(FILE *fp, int len)
 {
@@ -474,6 +517,7 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 
 	dev->enqueue_burst = cn10k_ml_enqueue_burst;
 	dev->dequeue_burst = cn10k_ml_dequeue_burst;
+	dev->op_error_get = cn10k_ml_op_error_get;
 
 	mldev->nb_models_loaded = 0;
 	mldev->state = ML_CN10K_DEV_STATE_CONFIGURED;
@@ -758,7 +802,7 @@ cn10k_ml_dev_selftest(struct rte_ml_dev *dev)
 	if (timeout) {
 		ret = -ETIME;
 	} else {
-		if (req->result.error_code != 0)
+		if (req->result.error_code.u64 != 0)
 			ret = -1;
 	}
 
@@ -936,7 +980,7 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	/* Prepare JD */
 	req = model->req;
 	cn10k_ml_prep_sp_job_descriptor(mldev, model, req, ML_CN10K_JOB_TYPE_MODEL_START);
-	req->result.error_code = 0x0;
+	req->result.error_code.u64 = 0x0;
 	req->result.user_ptr = NULL;
 
 	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
@@ -1017,7 +1061,7 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 
 	if (job_dequeued) {
 		if (plt_read64(&req->status) == ML_CN10K_POLL_JOB_FINISH) {
-			if (req->result.error_code == 0)
+			if (req->result.error_code.u64 == 0)
 				ret = 0;
 			else
 				ret = -1;
@@ -1079,7 +1123,7 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	/* Prepare JD */
 	req = model->req;
 	cn10k_ml_prep_sp_job_descriptor(mldev, model, req, ML_CN10K_JOB_TYPE_MODEL_STOP);
-	req->result.error_code = 0x0;
+	req->result.error_code.u64 = 0x0;
 	req->result.user_ptr = NULL;
 
 	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
@@ -1134,7 +1178,7 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 
 	if (job_dequeued) {
 		if (plt_read64(&req->status) == ML_CN10K_POLL_JOB_FINISH) {
-			if (req->result.error_code == 0x0)
+			if (req->result.error_code.u64 == 0x0)
 				ret = 0;
 			else
 				ret = -1;
@@ -1426,12 +1470,30 @@ cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result
 	PLT_SET_USED(dev);
 	PLT_SET_USED(qp_id);
 
-	op->impl_opaque = result->error_code;
+	struct cn10k_ml_dev *mldev;
 
-	if (likely(result->error_code == 0))
+	if (likely(result->error_code.u64 == 0)) {
+		op->impl_opaque = result->error_code.u64;
 		op->status = RTE_ML_OP_STATUS_SUCCESS;
-	else
+	} else {
+		/* Handle driver error */
+		if (result->error_code.s.etype == ML_ETYPE_DRIVER) {
+			mldev = dev->data->dev_private;
+
+			/* Check for exception */
+			if ((roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_EXCEPTION_SP_C0) != 0) ||
+			    (roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_EXCEPTION_SP_C1) != 0))
+				result->error_code.s.stype = ML_DRIVER_ERR_EXCEPTION;
+			else if ((roc_ml_reg_read64(&mldev->roc, ML_CORE_INT_LO) != 0) ||
+				 (roc_ml_reg_read64(&mldev->roc, ML_CORE_INT_HI) != 0))
+				result->error_code.s.stype = ML_DRIVER_ERR_FW_ERROR;
+			else
+				result->error_code.s.stype = ML_DRIVER_ERR_UNKNOWN;
+		}
+
+		op->impl_opaque = result->error_code.u64;
 		op->status = RTE_ML_OP_STATUS_ERROR;
+	}
 
 	op->user_ptr = result->user_ptr;
 }
@@ -1468,6 +1530,7 @@ enqueue_req:
 	cn10k_ml_prep_fp_job_descriptor(dev, req, op);
 
 	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
+	req->result.error_code.s.etype = ML_ETYPE_UNKNOWN;
 	req->result.user_ptr = op->user_ptr;
 
 	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
@@ -1515,8 +1578,12 @@ cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op 
 dequeue_req:
 	req = &queue->reqs[tail];
 	status = plt_read64(&req->status);
-	if (unlikely(status != ML_CN10K_POLL_JOB_FINISH))
-		goto empty_or_active;
+	if (unlikely(status != ML_CN10K_POLL_JOB_FINISH)) {
+		if (plt_tsc_cycles() < req->timeout)
+			goto empty_or_active;
+		else /* Timeout, set indication of driver error */
+			req->result.error_code.s.etype = ML_ETYPE_DRIVER;
+	}
 
 	cn10k_ml_result_update(dev, qp_id, &req->result, req->op);
 	ops[count] = req->op;
@@ -1531,6 +1598,35 @@ empty_or_active:
 	queue->tail = tail;
 
 	return count;
+}
+
+__rte_hot int
+cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_ml_op_error *error)
+{
+	union cn10k_ml_error_code *error_code;
+	char msg[RTE_ML_STR_MAX];
+
+	PLT_SET_USED(dev);
+
+	error_code = (union cn10k_ml_error_code *)&op->impl_opaque;
+
+	/* Copy error message */
+	plt_strlcpy(msg, ml_etype_db[error_code->s.etype].name, sizeof(msg));
+
+	/* Copy sub error message */
+	if (error_code->s.etype == ML_ETYPE_HW_NONFATAL) {
+		strcat(msg, " : ");
+		strcat(msg, ml_stype_db_hw_nf[error_code->s.stype].msg);
+	}
+
+	if (error_code->s.etype == ML_ETYPE_DRIVER) {
+		strcat(msg, " : ");
+		strcat(msg, ml_stype_db_driver[error_code->s.stype].msg);
+	}
+
+	plt_strlcpy(error->message, msg, sizeof(error->message));
+
+	return 0;
 }
 
 __rte_hot int
@@ -1549,6 +1645,7 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 	cn10k_ml_prep_fp_job_descriptor(dev, req, op);
 
 	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
+	req->result.error_code.s.etype = ML_ETYPE_UNKNOWN;
 	req->result.user_ptr = op->user_ptr;
 
 	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
