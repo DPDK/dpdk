@@ -43,7 +43,7 @@ struct rte_tel_data;
  */
 enum rte_tel_value_type {
 	RTE_TEL_STRING_VAL, /** a string value */
-	RTE_TEL_INT_VAL,    /** a signed 32-bit int value */
+	RTE_TEL_INT_VAL,    /** a signed 64-bit int value */
 	RTE_TEL_UINT_VAL,  /** an unsigned 64-bit int value */
 	RTE_TEL_CONTAINER, /** a container struct */
 };
