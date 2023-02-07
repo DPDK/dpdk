@@ -311,8 +311,8 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 	if (model->state == ML_CN10K_MODEL_STATE_STARTED) {
 		fprintf(fp, "%*s : 0x%0*" PRIx64 "\n", FIELD_LEN, "tilemask",
 			ML_CN10K_OCM_NUMTILES / 4, model->model_mem_map.tilemask);
-		fprintf(fp, "%*s : 0x%x\n", FIELD_LEN, "ocm_wb_start",
-			model->model_mem_map.wb_page_start * ML_CN10K_OCM_PAGESIZE);
+		fprintf(fp, "%*s : 0x%" PRIx64 "\n", FIELD_LEN, "ocm_wb_start",
+			model->model_mem_map.wb_page_start * mldev->ocm.page_size);
 	}
 
 	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_inputs", model->metadata.model.num_input);
@@ -781,12 +781,18 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	ocm = &mldev->ocm;
 	ocm->num_tiles = ML_CN10K_OCM_NUMTILES;
 	ocm->size_per_tile = ML_CN10K_OCM_TILESIZE;
-	ocm->page_size = ML_CN10K_OCM_PAGESIZE;
+	ocm->page_size = mldev->ocm_page_size;
 	ocm->num_pages = ocm->size_per_tile / ocm->page_size;
 	ocm->mask_words = ocm->num_pages / (8 * sizeof(uint8_t));
 
-	for (tile_id = 0; tile_id < ocm->num_tiles; tile_id++)
+	/* Allocate memory for ocm_mask */
+	ocm->ocm_mask =
+		rte_zmalloc("ocm_mask", ocm->mask_words * ocm->num_tiles, RTE_CACHE_LINE_SIZE);
+
+	for (tile_id = 0; tile_id < ocm->num_tiles; tile_id++) {
+		ocm->tile_ocm_info[tile_id].ocm_mask = ocm->ocm_mask + tile_id * ocm->mask_words;
 		ocm->tile_ocm_info[tile_id].last_wb_page = -1;
+	}
 
 	rte_spinlock_init(&ocm->lock);
 
@@ -855,6 +861,9 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 		return -EINVAL;
 
 	mldev = dev->data->dev_private;
+
+	/* Release ocm_mask memory */
+	rte_free(mldev->ocm.ocm_mask);
 
 	/* Stop and unload all models */
 	for (model_id = 0; model_id < dev->data->nb_models; model_id++) {

@@ -220,13 +220,13 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_ocm *ocm;
 
-	uint8_t local_ocm_mask[ML_CN10K_OCM_MASKWORDS] = {0};
 	uint16_t used_scratch_pages_max;
 	uint16_t scratch_page_start;
 	int used_last_wb_page_max;
 	uint16_t scratch_page_end;
 	uint8_t search_start_tile;
 	uint8_t search_end_tile;
+	uint8_t *local_ocm_mask;
 	int wb_page_start_curr;
 	int max_slot_sz_curr;
 	uint8_t tile_start;
@@ -268,6 +268,9 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 		search_end_tile = start_tile;
 	}
 
+	/* nibbles + prefix '0x' */
+	local_ocm_mask = rte_zmalloc("local_ocm_mask", mldev->ocm.mask_words, RTE_CACHE_LINE_SIZE);
+
 	tile_start = search_start_tile;
 start_search:
 	used_scratch_pages_max = 0;
@@ -279,7 +282,7 @@ start_search:
 			PLT_MAX(ocm->tile_ocm_info[tile_id].last_wb_page, used_last_wb_page_max);
 	}
 
-	memset(local_ocm_mask, 0, sizeof(local_ocm_mask));
+	memset(local_ocm_mask, 0, mldev->ocm.mask_words);
 	for (tile_id = tile_start; tile_id < tile_start + num_tiles; tile_id++) {
 		for (word_id = 0; word_id < ocm->mask_words; word_id++)
 			local_ocm_mask[word_id] |= ocm->tile_ocm_info[tile_id].ocm_mask[word_id];
@@ -331,6 +334,8 @@ next_search:
 found:
 	if (wb_page_start != -1)
 		*tilemask = GENMASK_ULL(tile_idx + num_tiles - 1, tile_idx);
+
+	rte_free(local_ocm_mask);
 
 	return wb_page_start;
 }
@@ -480,7 +485,7 @@ cn10k_ml_ocm_pagemask_to_str(struct cn10k_ml_ocm_tile_info *tile_info, uint16_t 
 void
 cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
 {
-	char str[ML_CN10K_OCM_NUMPAGES / 4 + 2]; /* nibbles + prefix '0x' */
+	char *str;
 	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_ocm *ocm;
 	uint8_t tile_id;
@@ -490,12 +495,15 @@ cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
 	mldev = dev->data->dev_private;
 	ocm = &mldev->ocm;
 
+	/* nibbles + prefix '0x' */
+	str = rte_zmalloc("ocm_mask_str", mldev->ocm.num_pages / 4 + 2, RTE_CACHE_LINE_SIZE);
+
 	fprintf(fp, "OCM State:\n");
 	for (tile_id = 0; tile_id < ocm->num_tiles; tile_id++) {
 		cn10k_ml_ocm_pagemask_to_str(&ocm->tile_ocm_info[tile_id], ocm->mask_words, str);
 
 		wb_pages = 0 - ocm->tile_ocm_info[tile_id].scratch_pages;
-		for (word_id = 0; word_id < ML_CN10K_OCM_MASKWORDS; word_id++)
+		for (word_id = 0; word_id < mldev->ocm.mask_words; word_id++)
 			wb_pages +=
 				__builtin_popcount(ocm->tile_ocm_info[tile_id].ocm_mask[word_id]);
 
@@ -506,4 +514,6 @@ cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
 			tile_id, ocm->tile_ocm_info[tile_id].scratch_pages, wb_pages,
 			ocm->tile_ocm_info[tile_id].last_wb_page, str);
 	}
+
+	rte_free(str);
 }

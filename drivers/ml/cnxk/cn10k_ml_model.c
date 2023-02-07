@@ -339,11 +339,11 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, ui
 		   scratch_size, *scratch_pages);
 
 	/* Check if the model can be loaded on OCM */
-	if ((*wb_pages + *scratch_pages) > ML_CN10K_OCM_NUMPAGES) {
+	if ((*wb_pages + *scratch_pages) > mldev->ocm.num_pages) {
 		plt_err("Cannot create the model, OCM relocatable = %u",
 			metadata->model.ocm_relocatable);
 		plt_err("wb_pages (%u) + scratch_pages (%u) > %u", *wb_pages, *scratch_pages,
-			ML_CN10K_OCM_NUMPAGES);
+			mldev->ocm.num_pages);
 		return -ENOMEM;
 	}
 
@@ -352,7 +352,7 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, ui
 	 */
 	if (!metadata->model.ocm_relocatable)
 		*scratch_pages =
-			PLT_MAX(PLT_U64_CAST(*scratch_pages), PLT_U64_CAST(ML_CN10K_OCM_NUMPAGES));
+			PLT_MAX(PLT_U64_CAST(*scratch_pages), PLT_U64_CAST(mldev->ocm.num_pages));
 
 	return 0;
 }

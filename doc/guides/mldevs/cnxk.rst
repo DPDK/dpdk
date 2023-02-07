@@ -138,6 +138,22 @@ Runtime Config Options
   With the above configuration, OCM allocation for the model would be done
   from the first available free slot / from the lowest possible tile ID.
 
+**OCM page size** (default ``16384``)
+
+  Option to specify the page size in bytes to be used for OCM management.
+  Available OCM is split into multiple pages of specified sizes
+  and the pages are allocated to the models.
+  The parameter ``ocm_page_size`` is used to specify the page size to be used.
+
+  Supported page sizes by the driver are 1 KB, 2 KB, 4 KB, 8 KB and 16 KB.
+  Default page size is 16 KB.
+
+  For example::
+
+     -a 0000:00:10.0,ocm_page_size=8192
+
+  With the above configuration, page size of OCM is set to 8192 bytes / 8 KB.
+
 
 **Enable hardware queue lock** (default ``0``)
 

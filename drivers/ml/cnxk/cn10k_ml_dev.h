@@ -406,6 +406,9 @@ struct cn10k_ml_dev {
 	/* Use spinlock version of ROC enqueue */
 	int hw_queue_lock;
 
+	/* OCM page size */
+	int ocm_page_size;
+
 	/* JCMD enqueue function handler */
 	bool (*ml_jcmdq_enqueue)(struct roc_ml *roc_ml, struct ml_job_cmd_s *job_cmd);
 

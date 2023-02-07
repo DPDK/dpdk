@@ -24,6 +24,7 @@
 #define CN10K_ML_OCM_ALLOC_MODE		"ocm_alloc_mode"
 #define CN10K_ML_DEV_HW_QUEUE_LOCK	"hw_queue_lock"
 #define CN10K_ML_FW_POLL_MEM		"poll_mem"
+#define CN10K_ML_OCM_PAGE_SIZE		"ocm_page_size"
 
 #define CN10K_ML_FW_PATH_DEFAULT		"/lib/firmware/mlip-fw.bin"
 #define CN10K_ML_FW_ENABLE_DPE_WARNINGS_DEFAULT 1
@@ -32,6 +33,7 @@
 #define CN10K_ML_OCM_ALLOC_MODE_DEFAULT		"lowest"
 #define CN10K_ML_DEV_HW_QUEUE_LOCK_DEFAULT	1
 #define CN10K_ML_FW_POLL_MEM_DEFAULT		"ddr"
+#define CN10K_ML_OCM_PAGE_SIZE_DEFAULT		16384
 
 /* ML firmware macros */
 #define FW_MEMZONE_NAME		 "ml_cn10k_fw_mz"
@@ -53,7 +55,11 @@ static const char *const valid_args[] = {CN10K_ML_FW_PATH,
 					 CN10K_ML_OCM_ALLOC_MODE,
 					 CN10K_ML_DEV_HW_QUEUE_LOCK,
 					 CN10K_ML_FW_POLL_MEM,
+					 CN10K_ML_OCM_PAGE_SIZE,
 					 NULL};
+
+/* Supported OCM page sizes: 1KB, 2KB, 4KB, 8KB and 16KB */
+static const int valid_ocm_page_size[] = {1024, 2048, 4096, 8192, 16384};
 
 /* Dummy operations for ML device */
 struct rte_ml_dev_ops ml_dev_dummy_ops = {0};
@@ -95,12 +101,15 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 	struct rte_kvargs *kvlist = NULL;
 	bool ocm_alloc_mode_set = false;
 	bool hw_queue_lock_set = false;
+	bool ocm_page_size_set = false;
 	char *ocm_alloc_mode = NULL;
 	bool poll_mem_set = false;
 	bool fw_path_set = false;
 	char *poll_mem = NULL;
 	char *fw_path = NULL;
 	int ret = 0;
+	bool found;
+	uint8_t i;
 
 	if (devargs == NULL)
 		goto check_args;
@@ -191,6 +200,17 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 		poll_mem_set = true;
 	}
 
+	if (rte_kvargs_count(kvlist, CN10K_ML_OCM_PAGE_SIZE) == 1) {
+		ret = rte_kvargs_process(kvlist, CN10K_ML_OCM_PAGE_SIZE, &parse_integer_arg,
+					 &mldev->ocm_page_size);
+		if (ret < 0) {
+			plt_err("Error processing arguments, key = %s\n", CN10K_ML_OCM_PAGE_SIZE);
+			ret = -EINVAL;
+			goto exit;
+		}
+		ocm_page_size_set = true;
+	}
+
 check_args:
 	if (!fw_path_set)
 		mldev->fw.path = CN10K_ML_FW_PATH_DEFAULT;
@@ -271,6 +291,32 @@ check_args:
 		mldev->fw.poll_mem = poll_mem;
 	}
 	plt_info("ML: %s = %s", CN10K_ML_FW_POLL_MEM, mldev->fw.poll_mem);
+
+	if (!ocm_page_size_set) {
+		mldev->ocm_page_size = CN10K_ML_OCM_PAGE_SIZE_DEFAULT;
+	} else {
+		if (mldev->ocm_page_size < 0) {
+			plt_err("Invalid argument, %s = %d\n", CN10K_ML_OCM_PAGE_SIZE,
+				mldev->ocm_page_size);
+			ret = -EINVAL;
+			goto exit;
+		}
+
+		found = false;
+		for (i = 0; i < PLT_DIM(valid_ocm_page_size); i++) {
+			if (mldev->ocm_page_size == valid_ocm_page_size[i]) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
+			plt_err("Unsupported ocm_page_size = %d\n", mldev->ocm_page_size);
+			ret = -EINVAL;
+			goto exit;
+		}
+	}
+	plt_info("ML: %s = %d", CN10K_ML_OCM_PAGE_SIZE, mldev->ocm_page_size);
 
 exit:
 	if (kvlist)
@@ -814,10 +860,11 @@ RTE_PMD_REGISTER_PCI(MLDEV_NAME_CN10K_PMD, cn10k_mldev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(MLDEV_NAME_CN10K_PMD, pci_id_ml_table);
 RTE_PMD_REGISTER_KMOD_DEP(MLDEV_NAME_CN10K_PMD, "vfio-pci");
 
-RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD,
-			      CN10K_ML_FW_PATH "=<path>" CN10K_ML_FW_ENABLE_DPE_WARNINGS
-					       "=<0|1>" CN10K_ML_FW_REPORT_DPE_WARNINGS
-					       "=<0|1>" CN10K_ML_DEV_CACHE_MODEL_DATA
-					       "=<0|1>" CN10K_ML_OCM_ALLOC_MODE
-					       "=<lowest|largest>" CN10K_ML_DEV_HW_QUEUE_LOCK
-					       "=<0|1>" CN10K_ML_FW_POLL_MEM "=<ddr|register>");
+RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD, CN10K_ML_FW_PATH
+			      "=<path>" CN10K_ML_FW_ENABLE_DPE_WARNINGS
+			      "=<0|1>" CN10K_ML_FW_REPORT_DPE_WARNINGS
+			      "=<0|1>" CN10K_ML_DEV_CACHE_MODEL_DATA
+			      "=<0|1>" CN10K_ML_OCM_ALLOC_MODE
+			      "=<lowest|largest>" CN10K_ML_DEV_HW_QUEUE_LOCK
+			      "=<0|1>" CN10K_ML_FW_POLL_MEM "=<ddr|register>" CN10K_ML_OCM_PAGE_SIZE
+			      "=<1024|2048|4096|8192|16384>");
