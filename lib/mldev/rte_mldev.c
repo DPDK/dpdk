@@ -528,6 +528,45 @@ rte_ml_dev_xstats_reset(int16_t dev_id, const uint16_t *stat_ids, uint16_t nb_id
 }
 
 int
+rte_ml_dev_dump(int16_t dev_id, FILE *fd)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_dump == NULL)
+		return -ENOTSUP;
+
+	if (fd == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, file descriptor cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+
+	return (*dev->dev_ops->dev_dump)(dev, fd);
+}
+
+int
+rte_ml_dev_selftest(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->dev_selftest == NULL)
+		return -ENOTSUP;
+
+	return (*dev->dev_ops->dev_selftest)(dev);
+}
+
+int
 rte_ml_model_load(int16_t dev_id, struct rte_ml_model_params *params, uint16_t *model_id)
 {
 	struct rte_ml_dev *dev;

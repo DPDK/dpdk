@@ -320,6 +320,37 @@ typedef int (*mldev_xstats_reset_t)(struct rte_ml_dev *dev, const uint16_t *stat
 /**
  * @internal
  *
+ * Function used to dump ML device debug info.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param fd
+ *	File descriptor to dump the debug info.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error code on failure.
+ */
+
+typedef int (*mldev_dump_t)(struct rte_ml_dev *dev, FILE *fd);
+
+/**
+ * @internal
+ *
+ * Function used for selftest of ML device.
+ *
+ * @param dev
+ *	ML device pointer.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error on failure.
+ */
+typedef int (*mldev_selftest_t)(struct rte_ml_dev *dev);
+
+/**
+ * @internal
+ *
  * Function used to load an ML model.
  *
  * @param dev
@@ -559,6 +590,12 @@ struct rte_ml_dev_ops {
 
 	/** Reset extended stats of the device. */
 	mldev_xstats_reset_t dev_xstats_reset;
+
+	/** Dump ML device debug info. */
+	mldev_dump_t dev_dump;
+
+	/** Dump ML device debug info. */
+	mldev_selftest_t dev_selftest;
 
 	/** Load an ML model. */
 	mldev_model_load_t model_load;
