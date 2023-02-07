@@ -33,6 +33,9 @@
 /* ML command timeout in seconds */
 #define ML_CN10K_CMD_TIMEOUT 5
 
+/* ML slow-path job flags */
+#define ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE BIT(0)
+
 /* Poll mode job state */
 #define ML_CN10K_POLL_JOB_START	 0
 #define ML_CN10K_POLL_JOB_FINISH 1

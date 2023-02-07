@@ -29,6 +29,7 @@ Slow-path device and ML model handling:
 * Device probing, configuration and close
 * Device start and stop
 * Model loading and unloading
+* Model start
 
 
 Installation
