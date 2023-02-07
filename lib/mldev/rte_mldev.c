@@ -874,4 +874,35 @@ rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	return (*dev->dequeue_burst)(dev, qp_id, ops, nb_ops);
 }
 
+int
+rte_ml_op_error_get(int16_t dev_id, struct rte_ml_op *op, struct rte_ml_op_error *error)
+{
+	struct rte_ml_dev *dev;
+
+#ifdef RTE_LIBRTE_ML_DEV_DEBUG
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->op_error_get == NULL)
+		return -ENOTSUP;
+
+	if (op == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, op cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+
+	if (error == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, error cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+#else
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+#endif
+
+	return (*dev->op_error_get)(dev, op, error);
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_ml_dev_logtype, INFO);

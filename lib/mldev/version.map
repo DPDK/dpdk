@@ -30,6 +30,7 @@ EXPERIMENTAL {
 	rte_ml_model_start;
 	rte_ml_model_stop;
 	rte_ml_model_unload;
+	rte_ml_op_error_get;
 	rte_ml_op_pool_create;
 	rte_ml_op_pool_free;
 

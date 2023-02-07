@@ -74,6 +74,25 @@ typedef uint16_t (*mldev_dequeue_t)(struct rte_ml_dev *dev, uint16_t qp_id, stru
 				    uint16_t nb_ops);
 
 /**
+ * @internal
+ *
+ * Get error information for an Op.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param op
+ *	ML Op handle.
+ * @param error
+ *	Pointer to error structure.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_op_error_get_t)(struct rte_ml_dev *dev, struct rte_ml_op *op,
+				    struct rte_ml_op_error *error);
+
+/**
  * Definitions of all functions exported by a driver through the generic structure of type
  * *ml_dev_ops* supplied in the *rte_ml_dev* structure associated with a device.
  */
@@ -618,6 +637,9 @@ struct rte_ml_dev {
 
 	/** Pointer to PMD dequeue function. */
 	mldev_dequeue_t dequeue_burst;
+
+	/** Pointer to PMD Op error get function. */
+	mldev_op_error_get_t op_error_get;
 
 	/** Pointer to device data. */
 	struct rte_ml_dev_data *data;
