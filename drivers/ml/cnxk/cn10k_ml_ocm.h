@@ -6,6 +6,7 @@
 #define _CN10K_ML_OCM_H_
 
 #include <rte_mldev.h>
+#include <rte_mldev_pmd.h>
 
 /* Page size in bytes. */
 #define ML_CN10K_OCM_PAGESIZE 0x4000
@@ -75,5 +76,9 @@ struct cn10k_ml_ocm {
 	/* OCM memory info and status*/
 	struct cn10k_ml_ocm_tile_info tile_ocm_info[ML_CN10K_OCM_NUMTILES];
 };
+
+int cn10k_ml_ocm_tilecount(uint64_t tilemask, int *start, int *end);
+int cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t wb_pages,
+			       uint16_t scratch_pages, uint64_t *tilemask);
 
 #endif /* _CN10K_ML_OCM_H_ */
