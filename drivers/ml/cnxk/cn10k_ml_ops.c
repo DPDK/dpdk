@@ -394,6 +394,8 @@ cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t model_id,
 			 enum cn10k_ml_model_xstats_type type)
 {
 	struct cn10k_ml_model *model;
+	uint16_t rclk_freq; /* MHz */
+	uint16_t sclk_freq; /* MHz */
 	uint64_t count = 0;
 	uint64_t value;
 	uint32_t qp_id;
@@ -424,6 +426,10 @@ cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t model_id,
 	default:
 		value = 0;
 	}
+
+	roc_clk_freq_get(&rclk_freq, &sclk_freq);
+	if (sclk_freq != 0) /* return in ns */
+		value = (value * 1000ULL) / sclk_freq;
 
 	return value;
 }
@@ -863,6 +869,8 @@ cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, struct rte_ml_dev_xstats_m
 	struct rte_ml_dev_info dev_info;
 	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
+	uint16_t rclk_freq;
+	uint16_t sclk_freq;
 	uint32_t model_id;
 	uint32_t count;
 	uint32_t type;
@@ -878,6 +886,7 @@ cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, struct rte_ml_dev_xstats_m
 	/* Model xstats names */
 	count = 0;
 	cn10k_ml_dev_info_get(dev, &dev_info);
+	roc_clk_freq_get(&rclk_freq, &sclk_freq);
 
 	for (id = 0; id < PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models; id++) {
 		model_id = id / PLT_DIM(cn10k_ml_model_xstats_table);
@@ -889,8 +898,14 @@ cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, struct rte_ml_dev_xstats_m
 		xstats_map[count].id = id;
 		type = id % PLT_DIM(cn10k_ml_model_xstats_table);
 
-		snprintf(xstats_map[count].name, RTE_ML_STR_MAX, "%s-%s-cycles",
-			 model->metadata.model.name, cn10k_ml_model_xstats_table[type].name);
+		if (sclk_freq == 0)
+			snprintf(xstats_map[count].name, RTE_ML_STR_MAX, "%s-%s-cycles",
+				 model->metadata.model.name,
+				 cn10k_ml_model_xstats_table[type].name);
+		else
+			snprintf(xstats_map[count].name, RTE_ML_STR_MAX, "%s-%s-ns",
+				 model->metadata.model.name,
+				 cn10k_ml_model_xstats_table[type].name);
 
 		count++;
 		if (count == size)
