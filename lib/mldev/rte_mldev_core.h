@@ -154,6 +154,110 @@ typedef int (*mldev_queue_pair_release_t)(struct rte_ml_dev *dev, uint16_t queue
 /**
  * @internal
  *
+ * Function used to load an ML model.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param params
+ *	Model load params.
+ * @param model_id
+ *	Model ID returned by the library.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error on failure.
+ */
+typedef int (*mldev_model_load_t)(struct rte_ml_dev *dev, struct rte_ml_model_params *params,
+				  uint16_t *model_id);
+
+/**
+ * @internal
+ *
+ * Function used to unload an ML model.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error on failure.
+ */
+typedef int (*mldev_model_unload_t)(struct rte_ml_dev *dev, uint16_t model_id);
+
+/**
+ * @internal
+ *
+ * Function used to start an ML model.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_model_start_t)(struct rte_ml_dev *dev, uint16_t model_id);
+
+/**
+ * @internal
+ *
+ * Function used to stop an ML model.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_model_stop_t)(struct rte_ml_dev *dev, uint16_t model_id);
+
+/**
+ * @internal
+ *
+ * Get info about a model.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ * @param model_info
+ *	Pointer to model info structure.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_model_info_get_t)(struct rte_ml_dev *dev, uint16_t model_id,
+				      struct rte_ml_model_info *model_info);
+
+/**
+ * @internal
+ *
+ * Update model params.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ * @param buffer
+ *	Pointer to model params.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_model_params_update_t)(struct rte_ml_dev *dev, uint16_t model_id, void *buffer);
+
+/**
+ * @internal
+ *
  * ML device operations function pointer table.
  */
 struct rte_ml_dev_ops {
@@ -177,6 +281,24 @@ struct rte_ml_dev_ops {
 
 	/** Release a device queue pair. */
 	mldev_queue_pair_release_t dev_queue_pair_release;
+
+	/** Load an ML model. */
+	mldev_model_load_t model_load;
+
+	/** Unload an ML model. */
+	mldev_model_unload_t model_unload;
+
+	/** Start an ML model. */
+	mldev_model_start_t model_start;
+
+	/** Stop an ML model. */
+	mldev_model_stop_t model_stop;
+
+	/** Get model information. */
+	mldev_model_info_get_t model_info_get;
+
+	/** Update model params. */
+	mldev_model_params_update_t model_params_update;
 };
 
 /**
