@@ -18,6 +18,7 @@ subdirs = [
         'crypto',         # depends on common, bus and mempool (net in future).
         'compress',       # depends on common, bus, mempool.
         'regex',          # depends on common, bus, regexdev.
+        'ml',             # depends on common, bus and mempool
         'vdpa',           # depends on common, bus and mempool.
         'event',          # depends on common, bus, mempool and net.
         'baseband',       # depends on common and bus.

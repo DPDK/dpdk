@@ -202,6 +202,11 @@ New Features
   * Added a machine learning inference device framework for management
     and provision of hardware and software machine learning inference devices.
 
+* **Added Marvell CNXK machine learning driver.**
+
+  Added driver which supports machine learning inference operations
+  on Marvell's CN10K series of SoC's.
+
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
   * eventdev reconfig logic is enhanced to increment the
