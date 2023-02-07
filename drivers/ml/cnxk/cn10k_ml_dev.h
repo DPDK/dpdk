@@ -25,10 +25,31 @@
 /* Maximum number of segments for IO data */
 #define ML_CN10K_MAX_SEGMENTS 1
 
+/* ML command timeout in seconds */
+#define ML_CN10K_CMD_TIMEOUT 5
+
+/* Device configuration state enum */
+enum cn10k_ml_dev_state {
+	/* Probed and not configured */
+	ML_CN10K_DEV_STATE_PROBED = 0,
+
+	/* Configured */
+	ML_CN10K_DEV_STATE_CONFIGURED,
+
+	/* Started */
+	ML_CN10K_DEV_STATE_STARTED,
+
+	/* Closed */
+	ML_CN10K_DEV_STATE_CLOSED
+};
+
 /* Device private data */
 struct cn10k_ml_dev {
 	/* Device ROC */
 	struct roc_ml roc;
+
+	/* Configuration state */
+	enum cn10k_ml_dev_state state;
 };
 
 #endif /* _CN10K_ML_DEV_H_ */

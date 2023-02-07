@@ -65,6 +65,8 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 	dev->dequeue_burst = NULL;
 	dev->op_error_get = NULL;
 
+	mldev->state = ML_CN10K_DEV_STATE_PROBED;
+
 	return 0;
 
 pmd_destroy:

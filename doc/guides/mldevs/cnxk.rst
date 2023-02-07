@@ -26,7 +26,7 @@ The OCTEON cnxk ML PMD provides support for the following set of operations:
 
 Slow-path device and ML model handling:
 
-* Device probing
+* Device probing, configuration and close
 
 
 Installation
