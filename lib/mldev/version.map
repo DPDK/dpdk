@@ -48,4 +48,8 @@ INTERNAL {
 	rte_ml_dev_pmd_get_dev;
 	rte_ml_dev_pmd_get_named_dev;
 	rte_ml_dev_pmd_release;
+
+	rte_ml_io_type_size_get;
+	rte_ml_io_type_to_str;
+	rte_ml_io_format_to_str;
 };

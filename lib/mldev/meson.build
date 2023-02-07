@@ -4,6 +4,7 @@
 sources = files(
         'rte_mldev_pmd.c',
         'rte_mldev.c',
+        'mldev_utils.c',
 )
 
 headers = files(
@@ -16,6 +17,7 @@ indirect_headers += files(
 
 driver_sdk_headers += files(
         'rte_mldev_pmd.h',
+        'mldev_utils.h',
 )
 
 deps += ['mempool']
