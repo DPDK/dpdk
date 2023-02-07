@@ -202,6 +202,9 @@ struct rte_sched_subport {
 	uint32_t qsize_add[RTE_SCHED_QUEUES_PER_PIPE];
 	uint32_t qsize_sum;
 
+	/* TC oversubscription activation */
+	int tc_ov_enabled;
+
 	struct rte_sched_pipe *pipe;
 	struct rte_sched_queue *queue;
 	struct rte_sched_queue_extra *queue_extra;
@@ -209,9 +212,6 @@ struct rte_sched_subport {
 	uint8_t *bmp_array;
 	struct rte_mbuf **queue_array;
 	uint8_t memory[0] __rte_cache_aligned;
-
-	/* TC oversubscription activation */
-	int tc_ov_enabled;
 } __rte_cache_aligned;
 
 struct rte_sched_port {
