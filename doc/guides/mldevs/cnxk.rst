@@ -103,6 +103,21 @@ Runtime Config Options
   are considered as errors.
 
 
+**Model data caching** (default ``1``)
+
+  Enable caching model data on ML ACC cores.
+  Enabling this option executes a dummy inference request
+  in synchronous mode during model start stage.
+  Caching of model data improves the inferencing throughput / latency for the model.
+  The parameter ``cache_model_data`` is used to enable data caching.
+
+  For example::
+
+     -a 0000:00:10.0,cache_model_data=0
+
+  With the above configuration, model data caching is disabled.
+
+
 Debugging Options
 -----------------
 

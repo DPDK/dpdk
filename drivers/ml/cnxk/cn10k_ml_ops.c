@@ -489,6 +489,49 @@ cn10k_ml_model_xstat_reset(struct rte_ml_dev *dev, uint16_t model_id,
 }
 
 static int
+cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
+{
+	struct cn10k_ml_model *model;
+	struct rte_ml_op op;
+
+	char str[RTE_MEMZONE_NAMESIZE];
+	const struct plt_memzone *mz;
+	uint64_t isize = 0;
+	uint64_t osize = 0;
+	int ret = 0;
+
+	model = dev->data->models[model_id];
+
+	/* Create input and output buffers. */
+	rte_ml_io_input_size_get(dev->data->dev_id, model_id, model->batch_size, &isize, NULL);
+	rte_ml_io_output_size_get(dev->data->dev_id, model_id, model->batch_size, &osize, NULL);
+
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", "ml_dummy_io", model_id);
+	mz = plt_memzone_reserve_aligned(str, isize + osize, 0, ML_CN10K_ALIGN_SIZE);
+	if (mz == NULL)
+		return -ENOMEM;
+	memset(mz->addr, 0, isize + osize);
+
+	op.model_id = model_id;
+	op.nb_batches = model->batch_size;
+	op.mempool = NULL;
+
+	op.input.addr = mz->addr;
+	op.input.length = isize;
+	op.input.next = NULL;
+
+	op.output.addr = PLT_PTR_ADD(op.input.addr, isize);
+	op.output.length = osize;
+	op.output.next = NULL;
+
+	memset(model->req, 0, sizeof(struct cn10k_ml_req));
+	ret = cn10k_ml_inference_sync(dev, &op);
+	plt_memzone_free(mz);
+
+	return ret;
+}
+
+static int
 cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 {
 	if (dev_info == NULL)
@@ -1465,6 +1508,13 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 				plt_spinlock_unlock(&ocm->lock);
 			}
 		}
+	}
+
+	if (ret < 0) { /* Call unload to update model and FW state, ignore error */
+		rte_ml_model_stop(dev->data->dev_id, model_id);
+	} else {
+		if (mldev->cache_model_data && roc_model_is_cn10ka())
+			ret = cn10k_ml_cache_model_data(dev, model_id);
 	}
 
 	return ret;

@@ -381,6 +381,9 @@ struct cn10k_ml_dev {
 
 	/* xstats status */
 	bool xstats_enabled;
+
+	/* Enable / disable model data caching */
+	int cache_model_data;
 };
 
 uint64_t cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw);
