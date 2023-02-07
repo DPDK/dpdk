@@ -30,6 +30,7 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 {
 	struct rte_ml_dev_info dev_info;
 	struct cn10k_ml_dev *mldev;
+	int ret;
 
 	if (dev == NULL || conf == NULL)
 		return -EINVAL;
@@ -51,6 +52,11 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	if (mldev->state == ML_CN10K_DEV_STATE_PROBED) {
 		plt_ml_dbg("Configuring ML device, nb_queue_pairs = %u, nb_models = %u",
 			   conf->nb_queue_pairs, conf->nb_models);
+
+		/* Load firmware */
+		ret = cn10k_ml_fw_load(mldev);
+		if (ret != 0)
+			return ret;
 	} else if (mldev->state == ML_CN10K_DEV_STATE_CONFIGURED) {
 		plt_ml_dbg("Re-configuring ML device, nb_queue_pairs = %u, nb_models = %u",
 			   conf->nb_queue_pairs, conf->nb_models);
@@ -76,6 +82,21 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 		return -EINVAL;
 
 	mldev = dev->data->dev_private;
+
+	/* Unload firmware */
+	cn10k_ml_fw_unload(mldev);
+
+	/* Clear scratch registers */
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
+
+	/* Reset ML_MLR_BASE */
+	roc_ml_reg_write64(&mldev->roc, 0, ML_MLR_BASE);
+	plt_ml_dbg("ML_MLR_BASE = 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_MLR_BASE));
 
 	mldev->state = ML_CN10K_DEV_STATE_CLOSED;
 

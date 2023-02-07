@@ -12,12 +12,23 @@
 
 #include <roc_api.h>
 
+#include <eal_firmware.h>
+
 #include "cn10k_ml_dev.h"
 #include "cn10k_ml_ops.h"
 
 #define CN10K_ML_FW_PATH "fw_path"
 
 #define CN10K_ML_FW_PATH_DEFAULT "/lib/firmware/mlip-fw.bin"
+
+/* ML firmware macros */
+#define FW_MEMZONE_NAME		 "ml_cn10k_fw_mz"
+#define FW_STACK_BUFFER_SIZE	 0x40000
+#define FW_DEBUG_BUFFER_SIZE	 (2 * 0x20000)
+#define FW_EXCEPTION_BUFFER_SIZE 0x400
+#define FW_LINKER_OFFSET	 0x80000
+#define FW_WAIT_CYCLES		 100
+#define FW_LOAD_FLAGS		 0x1
 
 static const char *const valid_args[] = {CN10K_ML_FW_PATH, NULL};
 
@@ -173,6 +184,322 @@ cn10k_ml_pci_remove(struct rte_pci_device *pci_dev)
 	}
 
 	return rte_ml_dev_pmd_destroy(dev);
+}
+
+static void
+cn10k_ml_fw_print_info(struct cn10k_ml_fw *fw)
+{
+	plt_info("ML Firmware Version = %s", fw->req->jd.fw_load.version);
+
+	plt_ml_dbg("Firmware capabilities = 0x%016lx", fw->req->jd.fw_load.cap.u64);
+	plt_ml_dbg("Version = %s", fw->req->jd.fw_load.version);
+	plt_ml_dbg("core0_debug_ptr = 0x%016lx", fw->req->jd.fw_load.debug.core0_debug_ptr);
+	plt_ml_dbg("core1_debug_ptr = 0x%016lx", fw->req->jd.fw_load.debug.core1_debug_ptr);
+	plt_ml_dbg("debug_buffer_size = %u bytes", fw->req->jd.fw_load.debug.debug_buffer_size);
+	plt_ml_dbg("core0_exception_buffer = 0x%016lx",
+		   fw->req->jd.fw_load.debug.core0_exception_buffer);
+	plt_ml_dbg("core1_exception_buffer = 0x%016lx",
+		   fw->req->jd.fw_load.debug.core1_exception_buffer);
+	plt_ml_dbg("exception_state_size = %u bytes",
+		   fw->req->jd.fw_load.debug.exception_state_size);
+	plt_ml_dbg("flags = 0x%016lx", fw->req->jd.fw_load.flags);
+}
+
+uint64_t
+cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw)
+{
+	PLT_SET_USED(fw);
+
+	return FW_LOAD_FLAGS;
+}
+
+static int
+cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
+{
+	union ml_a35_0_rst_vector_base_s a35_0_rst_vector_base;
+	union ml_a35_0_rst_vector_base_s a35_1_rst_vector_base;
+	struct cn10k_ml_dev *mldev;
+	uint64_t timeout_cycle;
+	uint64_t reg_val64;
+	uint32_t reg_val32;
+	uint64_t offset;
+	bool timeout;
+	int ret = 0;
+	uint8_t i;
+
+	mldev = fw->mldev;
+
+	/* Reset HEAD and TAIL debug pointer registers */
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C1);
+
+	/* (1) Write firmware images for ACC's two A35 cores to the ML region in LLC / DRAM. */
+	rte_memcpy(PLT_PTR_ADD(fw->data, FW_LINKER_OFFSET), buffer, size);
+
+	/* (2) Set ML(0)_MLR_BASE = Base IOVA of the ML region in LLC/DRAM. */
+	reg_val64 = PLT_PTR_SUB_U64_CAST(fw->data, rte_eal_get_baseaddr());
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_MLR_BASE);
+	plt_ml_dbg("ML_MLR_BASE => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_MLR_BASE));
+	roc_ml_reg_save(&mldev->roc, ML_MLR_BASE);
+
+	/* (3) Set ML(0)_AXI_BRIDGE_CTRL(1) = 0x184003 to remove back-pressure check on DMA AXI
+	 * bridge.
+	 */
+	reg_val64 = (ROC_ML_AXI_BRIDGE_CTRL_AXI_RESP_CTRL |
+		     ROC_ML_AXI_BRIDGE_CTRL_BRIDGE_CTRL_MODE | ROC_ML_AXI_BRIDGE_CTRL_NCB_WR_BLK |
+		     ROC_ML_AXI_BRIDGE_CTRL_FORCE_WRESP_OK | ROC_ML_AXI_BRIDGE_CTRL_FORCE_RRESP_OK);
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_AXI_BRIDGE_CTRL(1));
+	plt_ml_dbg("ML_AXI_BRIDGE_CTRL(1) => 0x%016lx",
+		   roc_ml_reg_read64(&mldev->roc, ML_AXI_BRIDGE_CTRL(1)));
+
+	/* (4) Set ML(0)_ANB(0..2)_BACKP_DISABLE = 0x3 to remove back-pressure on the AXI to NCB
+	 * bridges.
+	 */
+	for (i = 0; i < ML_ANBX_NR; i++) {
+		reg_val64 = (ROC_ML_ANBX_BACKP_DISABLE_EXTMSTR_B_BACKP_DISABLE |
+			     ROC_ML_ANBX_BACKP_DISABLE_EXTMSTR_R_BACKP_DISABLE);
+		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_BACKP_DISABLE(i));
+		plt_ml_dbg("ML_ANBX_BACKP_DISABLE(%u) => 0x%016lx", i,
+			   roc_ml_reg_read64(&mldev->roc, ML_ANBX_BACKP_DISABLE(i)));
+	}
+
+	/* (5) Set ML(0)_ANB(0..2)_NCBI_P_OVR = 0x3000 and ML(0)_ANB(0..2)_NCBI_NP_OVR = 0x3000 to
+	 * signal all ML transactions as non-secure.
+	 */
+	for (i = 0; i < ML_ANBX_NR; i++) {
+		reg_val64 = (ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_NS_OVR |
+			     ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_NS_OVR_VLD);
+		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_NCBI_P_OVR(i));
+		plt_ml_dbg("ML_ANBX_NCBI_P_OVR(%u) => 0x%016lx", i,
+			   roc_ml_reg_read64(&mldev->roc, ML_ANBX_NCBI_P_OVR(i)));
+
+		reg_val64 |= (ML_ANBX_NCBI_NP_OVR_ANB_NCBI_NP_NS_OVR |
+			      ML_ANBX_NCBI_NP_OVR_ANB_NCBI_NP_NS_OVR_VLD);
+		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_NCBI_NP_OVR(i));
+		plt_ml_dbg("ML_ANBX_NCBI_NP_OVR(%u) => 0x%016lx", i,
+			   roc_ml_reg_read64(&mldev->roc, ML_ANBX_NCBI_NP_OVR(i)));
+	}
+
+	/* (6) Set ML(0)_CFG[MLIP_CLK_FORCE] = 1, to force turning on the MLIP clock. */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 |= ROC_ML_CFG_MLIP_CLK_FORCE;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	/* (7) Set ML(0)_JOB_MGR_CTRL[STALL_ON_IDLE] = 0, to make sure the boot request is accepted
+	 * when there is no job in the command queue.
+	 */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL);
+	reg_val64 &= ~ROC_ML_JOB_MGR_CTRL_STALL_ON_IDLE;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_JOB_MGR_CTRL);
+	plt_ml_dbg("ML_JOB_MGR_CTRL => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL));
+
+	/* (8) Set ML(0)_CFG[ENA] = 0 and ML(0)_CFG[MLIP_ENA] = 1 to bring MLIP out of reset while
+	 * keeping the job manager disabled.
+	 */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 |= ROC_ML_CFG_MLIP_ENA;
+	reg_val64 &= ~ROC_ML_CFG_ENA;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	/* (9) Wait at least 70 coprocessor clock cycles. */
+	plt_delay_us(FW_WAIT_CYCLES);
+
+	/* (10) Write ML outbound addresses pointing to the firmware images written in step 1 to the
+	 * following registers: ML(0)_A35_0_RST_VECTOR_BASE_W(0..1) for core 0,
+	 * ML(0)_A35_1_RST_VECTOR_BASE_W(0..1) for core 1. The value written to each register is the
+	 * AXI outbound address divided by 4. Read after write.
+	 */
+	offset = PLT_PTR_ADD_U64_CAST(
+		fw->data, FW_LINKER_OFFSET - roc_ml_reg_read64(&mldev->roc, ML_MLR_BASE));
+	a35_0_rst_vector_base.s.addr = (offset + ML_AXI_START_ADDR) / 4;
+	a35_1_rst_vector_base.s.addr = (offset + ML_AXI_START_ADDR) / 4;
+
+	roc_ml_reg_write32(&mldev->roc, a35_0_rst_vector_base.w.w0, ML_A35_0_RST_VECTOR_BASE_W(0));
+	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_0_RST_VECTOR_BASE_W(0));
+	plt_ml_dbg("ML_A35_0_RST_VECTOR_BASE_W(0) => 0x%08x", reg_val32);
+
+	roc_ml_reg_write32(&mldev->roc, a35_0_rst_vector_base.w.w1, ML_A35_0_RST_VECTOR_BASE_W(1));
+	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_0_RST_VECTOR_BASE_W(1));
+	plt_ml_dbg("ML_A35_0_RST_VECTOR_BASE_W(1) => 0x%08x", reg_val32);
+
+	roc_ml_reg_write32(&mldev->roc, a35_1_rst_vector_base.w.w0, ML_A35_1_RST_VECTOR_BASE_W(0));
+	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_1_RST_VECTOR_BASE_W(0));
+	plt_ml_dbg("ML_A35_1_RST_VECTOR_BASE_W(0) => 0x%08x", reg_val32);
+
+	roc_ml_reg_write32(&mldev->roc, a35_1_rst_vector_base.w.w1, ML_A35_1_RST_VECTOR_BASE_W(1));
+	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_1_RST_VECTOR_BASE_W(1));
+	plt_ml_dbg("ML_A35_1_RST_VECTOR_BASE_W(1) => 0x%08x", reg_val32);
+
+	/* (11) Clear MLIP's ML(0)_SW_RST_CTRL[ACC_RST]. This will bring the ACC cores and other
+	 * MLIP components out of reset. The cores will execute firmware from the ML region as
+	 * written in step 1.
+	 */
+	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_SW_RST_CTRL);
+	reg_val32 &= ~ROC_ML_SW_RST_CTRL_ACC_RST;
+	roc_ml_reg_write32(&mldev->roc, reg_val32, ML_SW_RST_CTRL);
+	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_SW_RST_CTRL);
+	plt_ml_dbg("ML_SW_RST_CTRL => 0x%08x", reg_val32);
+
+	/* (12) Wait for notification from firmware that ML is ready for job execution. */
+	fw->req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->status);
+	fw->req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
+	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&mldev->roc, &fw->req->result);
+	fw->req->jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
+	plt_write64(ML_CN10K_POLL_JOB_START, &fw->req->status);
+	plt_wmb();
+
+	/* Enqueue FW load through scratch registers */
+	timeout = true;
+	timeout_cycle = plt_tsc_cycles() + ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
+	roc_ml_scratch_enqueue(&mldev->roc, &fw->req->jd);
+
+	plt_rmb();
+	do {
+		if (roc_ml_scratch_is_done_bit_set(&mldev->roc) &&
+		    (plt_read64(&fw->req->status) == ML_CN10K_POLL_JOB_FINISH)) {
+			timeout = false;
+			break;
+		}
+	} while (plt_tsc_cycles() < timeout_cycle);
+
+	/* Check firmware load status, clean-up and exit on failure. */
+	if ((!timeout) && (fw->req->result.error_code == 0)) {
+		cn10k_ml_fw_print_info(fw);
+	} else {
+		/* Set ML to disable new jobs */
+		reg_val64 = (ROC_ML_CFG_JD_SIZE | ROC_ML_CFG_MLIP_ENA);
+		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+
+		/* Clear scratch registers */
+		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+
+		if (timeout) {
+			plt_err("Firmware load timeout");
+			ret = -ETIME;
+		} else {
+			plt_err("Firmware load failed");
+			ret = -1;
+		}
+
+		return ret;
+	}
+
+	/* (13) Set ML(0)_JOB_MGR_CTRL[STALL_ON_IDLE] = 0x1; this is needed to shut down the MLIP
+	 * clock when there are no more jobs to process.
+	 */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL);
+	reg_val64 |= ROC_ML_JOB_MGR_CTRL_STALL_ON_IDLE;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_JOB_MGR_CTRL);
+	plt_ml_dbg("ML_JOB_MGR_CTRL => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL));
+
+	/* (14) Set ML(0)_CFG[MLIP_CLK_FORCE] = 0; the MLIP clock will be turned on/off based on job
+	 * activities.
+	 */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 &= ~ROC_ML_CFG_MLIP_CLK_FORCE;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	/* (15) Set ML(0)_CFG[ENA] to enable ML job execution. */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 |= ROC_ML_CFG_ENA;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	/* Reset scratch registers */
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+
+	/* Disable job execution, to be enabled in start */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 &= ~ROC_ML_CFG_ENA;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	/* Additional fixes: Set RO bit to fix O2D DMA bandwidth issue on cn10ka */
+	for (i = 0; i < ML_ANBX_NR; i++) {
+		reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_ANBX_NCBI_P_OVR(i));
+		reg_val64 |= (ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_RO_OVR |
+			      ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_RO_OVR_VLD);
+		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_NCBI_P_OVR(i));
+	}
+
+	return ret;
+}
+
+int
+cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
+{
+	const struct plt_memzone *mz;
+	struct cn10k_ml_fw *fw;
+	void *fw_buffer = NULL;
+	uint64_t mz_size = 0;
+	uint64_t fw_size = 0;
+	int ret = 0;
+
+	fw = &mldev->fw;
+	fw->mldev = mldev;
+
+	/* Read firmware image to a buffer */
+	ret = rte_firmware_read(fw->path, &fw_buffer, &fw_size);
+	if (ret < 0) {
+		plt_err("Can't read firmware data: %s\n", fw->path);
+		return ret;
+	}
+
+	/* Reserve memzone for firmware load completion and data */
+	mz_size = sizeof(struct cn10k_ml_req) + fw_size + FW_STACK_BUFFER_SIZE +
+		  FW_DEBUG_BUFFER_SIZE + FW_EXCEPTION_BUFFER_SIZE;
+	mz = plt_memzone_reserve_aligned(FW_MEMZONE_NAME, mz_size, 0, ML_CN10K_ALIGN_SIZE);
+	if (mz == NULL) {
+		plt_err("plt_memzone_reserve failed : %s", FW_MEMZONE_NAME);
+		if (fw_buffer != NULL)
+			free(fw_buffer);
+		return -ENOMEM;
+	}
+	fw->req = mz->addr;
+
+	/* Reset firmware load completion structure */
+	memset(&fw->req->jd, 0, sizeof(struct cn10k_ml_jd));
+	memset(&fw->req->jd.fw_load.version[0], '\0', MLDEV_FIRMWARE_VERSION_LENGTH);
+
+	/* Reset device, if in active state */
+	if (roc_ml_mlip_is_enabled(&mldev->roc))
+		roc_ml_mlip_reset(&mldev->roc, true);
+
+	/* Load firmware */
+	fw->data = PLT_PTR_ADD(mz->addr, sizeof(struct cn10k_ml_req));
+	ret = cn10k_ml_fw_load_cn10ka(fw, fw_buffer, fw_size);
+	if (fw_buffer != NULL)
+		free(fw_buffer);
+	if (ret < 0)
+		cn10k_ml_fw_unload(mldev);
+
+	return ret;
+}
+
+void
+cn10k_ml_fw_unload(struct cn10k_ml_dev *mldev)
+{
+	const struct plt_memzone *mz;
+	uint64_t reg_val;
+
+	/* Disable and reset device */
+	reg_val = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val &= ~ROC_ML_CFG_MLIP_ENA;
+	roc_ml_reg_write64(&mldev->roc, reg_val, ML_CFG);
+	roc_ml_mlip_reset(&mldev->roc, true);
+
+	mz = plt_memzone_lookup(FW_MEMZONE_NAME);
+	if (mz != NULL)
+		plt_memzone_free(mz);
 }
 
 static struct rte_pci_id pci_id_ml_table[] = {
