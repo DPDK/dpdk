@@ -17,9 +17,13 @@
 #include "cn10k_ml_dev.h"
 #include "cn10k_ml_ops.h"
 
-#define CN10K_ML_FW_PATH "fw_path"
+#define CN10K_ML_FW_PATH		"fw_path"
+#define CN10K_ML_FW_ENABLE_DPE_WARNINGS "enable_dpe_warnings"
+#define CN10K_ML_FW_REPORT_DPE_WARNINGS "report_dpe_warnings"
 
-#define CN10K_ML_FW_PATH_DEFAULT "/lib/firmware/mlip-fw.bin"
+#define CN10K_ML_FW_PATH_DEFAULT		"/lib/firmware/mlip-fw.bin"
+#define CN10K_ML_FW_ENABLE_DPE_WARNINGS_DEFAULT 1
+#define CN10K_ML_FW_REPORT_DPE_WARNINGS_DEFAULT 0
 
 /* ML firmware macros */
 #define FW_MEMZONE_NAME		 "ml_cn10k_fw_mz"
@@ -28,9 +32,13 @@
 #define FW_EXCEPTION_BUFFER_SIZE 0x400
 #define FW_LINKER_OFFSET	 0x80000
 #define FW_WAIT_CYCLES		 100
-#define FW_LOAD_FLAGS		 0x1
 
-static const char *const valid_args[] = {CN10K_ML_FW_PATH, NULL};
+/* Firmware flags */
+#define FW_ENABLE_DPE_WARNING_BITMASK BIT(0)
+#define FW_REPORT_DPE_WARNING_BITMASK BIT(1)
+
+static const char *const valid_args[] = {CN10K_ML_FW_PATH, CN10K_ML_FW_ENABLE_DPE_WARNINGS,
+					 CN10K_ML_FW_REPORT_DPE_WARNINGS, NULL};
 
 /* Dummy operations for ML device */
 struct rte_ml_dev_ops ml_dev_dummy_ops = {0};
@@ -50,8 +58,24 @@ parse_string_arg(const char *key __rte_unused, const char *value, void *extra_ar
 }
 
 static int
+parse_integer_arg(const char *key __rte_unused, const char *value, void *extra_args)
+{
+	int *i = (int *)extra_args;
+
+	*i = atoi(value);
+	if (*i < 0) {
+		plt_err("Argument has to be positive.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mldev)
 {
+	bool enable_dpe_warnings_set = false;
+	bool report_dpe_warnings_set = false;
 	struct rte_kvargs *kvlist = NULL;
 	bool fw_path_set = false;
 	char *fw_path = NULL;
@@ -76,12 +100,60 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 		fw_path_set = true;
 	}
 
+	if (rte_kvargs_count(kvlist, CN10K_ML_FW_ENABLE_DPE_WARNINGS) == 1) {
+		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_ENABLE_DPE_WARNINGS,
+					 &parse_integer_arg, &mldev->fw.enable_dpe_warnings);
+		if (ret < 0) {
+			plt_err("Error processing arguments, key = %s\n",
+				CN10K_ML_FW_ENABLE_DPE_WARNINGS);
+			ret = -EINVAL;
+			goto exit;
+		}
+		enable_dpe_warnings_set = true;
+	}
+
+	if (rte_kvargs_count(kvlist, CN10K_ML_FW_REPORT_DPE_WARNINGS) == 1) {
+		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_REPORT_DPE_WARNINGS,
+					 &parse_integer_arg, &mldev->fw.report_dpe_warnings);
+		if (ret < 0) {
+			plt_err("Error processing arguments, key = %s\n",
+				CN10K_ML_FW_REPORT_DPE_WARNINGS);
+			ret = -EINVAL;
+			goto exit;
+		}
+		report_dpe_warnings_set = true;
+	}
+
 check_args:
 	if (!fw_path_set)
 		mldev->fw.path = CN10K_ML_FW_PATH_DEFAULT;
 	else
 		mldev->fw.path = fw_path;
 	plt_info("ML: %s = %s", CN10K_ML_FW_PATH, mldev->fw.path);
+
+	if (!enable_dpe_warnings_set) {
+		mldev->fw.enable_dpe_warnings = CN10K_ML_FW_ENABLE_DPE_WARNINGS_DEFAULT;
+	} else {
+		if ((mldev->fw.enable_dpe_warnings < 0) || (mldev->fw.enable_dpe_warnings > 1)) {
+			plt_err("Invalid argument, %s = %d\n", CN10K_ML_FW_ENABLE_DPE_WARNINGS,
+				mldev->fw.enable_dpe_warnings);
+			ret = -EINVAL;
+			goto exit;
+		}
+	}
+	plt_info("ML: %s = %d", CN10K_ML_FW_ENABLE_DPE_WARNINGS, mldev->fw.enable_dpe_warnings);
+
+	if (!report_dpe_warnings_set) {
+		mldev->fw.report_dpe_warnings = CN10K_ML_FW_REPORT_DPE_WARNINGS_DEFAULT;
+	} else {
+		if ((mldev->fw.report_dpe_warnings < 0) || (mldev->fw.report_dpe_warnings > 1)) {
+			plt_err("Invalid argument, %s = %d\n", CN10K_ML_FW_REPORT_DPE_WARNINGS,
+				mldev->fw.report_dpe_warnings);
+			ret = -EINVAL;
+			goto exit;
+		}
+	}
+	plt_info("ML: %s = %d", CN10K_ML_FW_REPORT_DPE_WARNINGS, mldev->fw.report_dpe_warnings);
 
 exit:
 	if (kvlist)
@@ -208,9 +280,15 @@ cn10k_ml_fw_print_info(struct cn10k_ml_fw *fw)
 uint64_t
 cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw)
 {
-	PLT_SET_USED(fw);
+	uint64_t flags = 0x0;
 
-	return FW_LOAD_FLAGS;
+	if (fw->enable_dpe_warnings)
+		flags = flags | FW_ENABLE_DPE_WARNING_BITMASK;
+
+	if (fw->report_dpe_warnings)
+		flags = flags | FW_REPORT_DPE_WARNING_BITMASK;
+
+	return flags;
 }
 
 static int
@@ -614,4 +692,6 @@ RTE_PMD_REGISTER_PCI(MLDEV_NAME_CN10K_PMD, cn10k_mldev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(MLDEV_NAME_CN10K_PMD, pci_id_ml_table);
 RTE_PMD_REGISTER_KMOD_DEP(MLDEV_NAME_CN10K_PMD, "vfio-pci");
 
-RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD, CN10K_ML_FW_PATH "=<path>");
+RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD,
+			      CN10K_ML_FW_PATH "=<path>" CN10K_ML_FW_ENABLE_DPE_WARNINGS
+					       "=<0|1>" CN10K_ML_FW_REPORT_DPE_WARNINGS "=<0|1>");

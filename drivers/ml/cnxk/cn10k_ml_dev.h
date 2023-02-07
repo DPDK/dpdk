@@ -349,6 +349,12 @@ struct cn10k_ml_fw {
 	/* Firmware file path */
 	const char *path;
 
+	/* Enable DPE warnings */
+	int enable_dpe_warnings;
+
+	/* Report DPE warnings */
+	int report_dpe_warnings;
+
 	/* Data buffer */
 	uint8_t *data;
 

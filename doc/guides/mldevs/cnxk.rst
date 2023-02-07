@@ -88,6 +88,21 @@ Runtime Config Options
   ``/home/user/ml_fw.bin``.
 
 
+**Enable DPE warnings** (default ``1``)
+
+  ML firmware can be configured during load to handle the DPE errors reported
+  by ML inference engine.
+  When enabled, firmware would mask the DPE non-fatal hardware errors as warnings.
+  The parameter ``enable_dpe_warnings`` is used fo this configuration.
+
+  For example::
+
+     -a 0000:00:10.0,enable_dpe_warnings=0
+
+  With the above configuration, DPE non-fatal errors reported by HW
+  are considered as errors.
+
+
 Debugging Options
 -----------------
 
