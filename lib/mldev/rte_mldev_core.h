@@ -116,6 +116,44 @@ typedef int (*mldev_stop_t)(struct rte_ml_dev *dev);
 /**
  * @internal
  *
+ * Setup a queue pair for a device.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param queue_pair_id
+ *	Queue pair index.
+ * @param queue_pair_conf
+ *	Queue pair configuration structure.
+ * @param socket_id
+ *	Socket index.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error on failure.
+ */
+typedef int (*mldev_queue_pair_setup_t)(struct rte_ml_dev *dev, uint16_t queue_pair_id,
+					const struct rte_ml_dev_qp_conf *queue_pair_conf,
+					int socket_id);
+
+/**
+ * @internal
+ *
+ * Release memory resources allocated by given queue pair.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param queue_pair_id
+ *	Queue pair index.
+ *
+ * @return
+ *	- 0 on success.
+ *	- -EAGAIN, if can't close as device is busy.
+ */
+typedef int (*mldev_queue_pair_release_t)(struct rte_ml_dev *dev, uint16_t queue_pair_id);
+
+/**
+ * @internal
+ *
  * ML device operations function pointer table.
  */
 struct rte_ml_dev_ops {
@@ -133,6 +171,12 @@ struct rte_ml_dev_ops {
 
 	/** Stop device. */
 	mldev_stop_t dev_stop;
+
+	/** Set up a device queue pair. */
+	mldev_queue_pair_setup_t dev_queue_pair_setup;
+
+	/** Release a device queue pair. */
+	mldev_queue_pair_release_t dev_queue_pair_release;
 };
 
 /**
