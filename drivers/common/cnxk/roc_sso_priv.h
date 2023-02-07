@@ -22,7 +22,6 @@ struct sso {
 	/* SSO link mapping. */
 	struct plt_bitmap **link_map;
 	void *link_map_mem;
-	plt_spinlock_t mbox_lock;
 } __plt_cache_aligned;
 
 enum sso_err_status {
