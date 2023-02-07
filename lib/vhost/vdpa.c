@@ -146,6 +146,7 @@ rte_vdpa_unregister_device(struct rte_vdpa_device *dev)
 
 int
 rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
+	__rte_no_thread_safety_analysis /* FIXME: requires iotlb_lock? */
 {
 	struct virtio_net *dev = get_device(vid);
 	uint16_t idx, idx_m, desc_id;

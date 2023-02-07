@@ -52,7 +52,6 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 
 #define VHOST_NB_VQ_STATS RTE_DIM(vhost_vq_stat_strings)
 
-/* Called with iotlb_lock read-locked */
 uint64_t
 __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		    uint64_t iova, uint64_t *size, uint8_t perm)
@@ -419,6 +418,7 @@ free_device(struct virtio_net *dev)
 
 static __rte_always_inline int
 log_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	if (likely(!(vq->ring_addrs.flags & (1 << VHOST_VRING_F_LOG))))
 		return 0;
@@ -435,8 +435,6 @@ log_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
  * Converts vring log address to GPA
  * If IOMMU is enabled, the log address is IOVA
  * If IOMMU not enabled, the log address is already GPA
- *
- * Caller should have iotlb_lock read-locked
  */
 uint64_t
 translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
@@ -467,9 +465,9 @@ translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		return log_addr;
 }
 
-/* Caller should have iotlb_lock read-locked */
 static int
 vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
+	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint64_t req_size, size;
 
@@ -506,9 +504,9 @@ vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	return 0;
 }
 
-/* Caller should have iotlb_lock read-locked */
 static int
 vring_translate_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
+	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint64_t req_size, size;
 

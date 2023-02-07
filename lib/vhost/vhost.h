@@ -563,12 +563,15 @@ void __vhost_log_cache_write(struct virtio_net *dev,
 		uint64_t addr, uint64_t len);
 void __vhost_log_cache_write_iova(struct virtio_net *dev,
 		struct vhost_virtqueue *vq,
-		uint64_t iova, uint64_t len);
+		uint64_t iova, uint64_t len)
+	__rte_shared_locks_required(&vq->iotlb_lock);
 void __vhost_log_cache_sync(struct virtio_net *dev,
 		struct vhost_virtqueue *vq);
+
 void __vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len);
 void __vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
-			    uint64_t iova, uint64_t len);
+			    uint64_t iova, uint64_t len)
+	__rte_shared_locks_required(&vq->iotlb_lock);
 
 static __rte_always_inline void
 vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
@@ -618,6 +621,7 @@ vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 static __rte_always_inline void
 vhost_log_cache_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			   uint64_t iova, uint64_t len)
+	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	if (likely(!(dev->features & (1ULL << VHOST_F_LOG_ALL))))
 		return;
@@ -631,6 +635,7 @@ vhost_log_cache_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
 static __rte_always_inline void
 vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			   uint64_t iova, uint64_t len)
+	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	if (likely(!(dev->features & (1ULL << VHOST_F_LOG_ALL))))
 		return;
@@ -834,18 +839,23 @@ struct rte_vhost_device_ops const *vhost_driver_callback_get(const char *path);
 void vhost_backend_cleanup(struct virtio_net *dev);
 
 uint64_t __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
-			uint64_t iova, uint64_t *len, uint8_t perm);
+			uint64_t iova, uint64_t *len, uint8_t perm)
+	__rte_shared_locks_required(&vq->iotlb_lock);
 void *vhost_alloc_copy_ind_table(struct virtio_net *dev,
 			struct vhost_virtqueue *vq,
-			uint64_t desc_addr, uint64_t desc_len);
-int vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq);
+			uint64_t desc_addr, uint64_t desc_len)
+	__rte_shared_locks_required(&vq->iotlb_lock);
+int vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+	__rte_shared_locks_required(&vq->iotlb_lock);
 uint64_t translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		uint64_t log_addr);
+		uint64_t log_addr)
+	__rte_shared_locks_required(&vq->iotlb_lock);
 void vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq);
 
 static __rte_always_inline uint64_t
 vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			uint64_t iova, uint64_t *len, uint8_t perm)
+	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	if (!(dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
 		return rte_vhost_va_from_guest_pa(dev->mem, iova, len);
