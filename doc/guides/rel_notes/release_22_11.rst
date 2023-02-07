@@ -220,8 +220,8 @@ New Features
 * **Added Intel ACC200 bbdev driver.**
 
   Added a new ``acc200`` bbdev driver for the Intel\ |reg| ACC200 accelerator
-  integrated on SPR-EE.  See the
-  :doc:`../bbdevs/acc200` guide for more details on this new driver.
+  integrated on SPR-EE.  See the ``bbdevs/acc200`` guide for more details
+  on this new driver.
 
 * **Added eventdev adapter instance get API.**
 
