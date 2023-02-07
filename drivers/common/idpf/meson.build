@@ -12,18 +12,20 @@ sources = files(
 if arch_subdir == 'x86'
     idpf_avx512_cpu_support = (
         cc.get_define('__AVX512F__', args: machine_args) != '' and
-        cc.get_define('__AVX512BW__', args: machine_args) != ''
+        cc.get_define('__AVX512BW__', args: machine_args) != '' and
+        cc.get_define('__AVX512DQ__', args: machine_args) != ''
     )
 
     idpf_avx512_cc_support = (
         not machine_args.contains('-mno-avx512f') and
         cc.has_argument('-mavx512f') and
-        cc.has_argument('-mavx512bw')
+        cc.has_argument('-mavx512bw') and
+        cc.has_argument('-mavx512dq')
     )
 
     if idpf_avx512_cpu_support == true or idpf_avx512_cc_support == true
         cflags += ['-DCC_AVX512_SUPPORT']
-        avx512_args = [cflags, '-mavx512f', '-mavx512bw']
+        avx512_args = [cflags, '-mavx512f', '-mavx512bw', '-mavx512dq']
         if cc.has_argument('-march=skylake-avx512')
             avx512_args += '-march=skylake-avx512'
         endif

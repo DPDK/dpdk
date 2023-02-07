@@ -10,7 +10,9 @@ INTERNAL {
 	idpf_dp_singleq_xmit_pkts;
 	idpf_dp_singleq_xmit_pkts_avx512;
 	idpf_dp_splitq_recv_pkts;
+	idpf_dp_splitq_recv_pkts_avx512;
 	idpf_dp_splitq_xmit_pkts;
+	idpf_dp_splitq_xmit_pkts_avx512;
 
 	idpf_qc_rx_thresh_check;
 	idpf_qc_rx_queue_release;
@@ -19,16 +21,17 @@ INTERNAL {
 	idpf_qc_single_rxq_mbufs_alloc;
 	idpf_qc_single_tx_queue_reset;
 	idpf_qc_singleq_rx_vec_setup;
-	idpf_qc_singleq_tx_vec_avx512_setup;
 	idpf_qc_split_rx_bufq_reset;
 	idpf_qc_split_rx_descq_reset;
 	idpf_qc_split_rx_queue_reset;
 	idpf_qc_split_rxq_mbufs_alloc;
 	idpf_qc_split_tx_complq_reset;
 	idpf_qc_split_tx_descq_reset;
+	idpf_qc_splitq_rx_vec_setup;
 	idpf_qc_ts_mbuf_register;
 	idpf_qc_tx_queue_release;
 	idpf_qc_tx_thresh_check;
+	idpf_qc_tx_vec_avx512_setup;
 	idpf_qc_txq_mbufs_release;
 
 	idpf_vc_api_version_check;

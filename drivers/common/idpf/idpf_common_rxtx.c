@@ -161,6 +161,9 @@ idpf_qc_split_rx_bufq_reset(struct idpf_rx_queue *rxq)
 	/* The number of descriptors which can be refilled. */
 	rxq->nb_rx_hold = rxq->nb_rx_desc - 1;
 
+	rxq->rxrearm_nb = 0;
+	rxq->rxrearm_start = 0;
+
 	rxq->bufq1 = NULL;
 	rxq->bufq2 = NULL;
 }
@@ -236,6 +239,10 @@ idpf_qc_split_tx_descq_reset(struct idpf_tx_queue *txq)
 	txq->last_desc_cleaned = 0;
 	txq->sw_tail = 0;
 	txq->nb_free = txq->nb_tx_desc - 1;
+
+	memset(txq->ctype, 0, sizeof(txq->ctype));
+	txq->next_dd = txq->rs_thresh - 1;
+	txq->next_rs = txq->rs_thresh - 1;
 }
 
 void
@@ -1428,12 +1435,12 @@ release_rxq_mbufs_vec(struct idpf_rx_queue *rxq)
 	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
 }
 
-static const struct idpf_rxq_ops def_singleq_rx_ops_vec = {
+static const struct idpf_rxq_ops def_rx_ops_vec = {
 	.release_mbufs = release_rxq_mbufs_vec,
 };
 
 static inline int
-idpf_singleq_rx_vec_setup_default(struct idpf_rx_queue *rxq)
+idpf_rxq_vec_setup_default(struct idpf_rx_queue *rxq)
 {
 	uintptr_t p;
 	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
@@ -1453,6 +1460,13 @@ idpf_singleq_rx_vec_setup_default(struct idpf_rx_queue *rxq)
 int __rte_cold
 idpf_qc_singleq_rx_vec_setup(struct idpf_rx_queue *rxq)
 {
-	rxq->ops = &def_singleq_rx_ops_vec;
-	return idpf_singleq_rx_vec_setup_default(rxq);
+	rxq->ops = &def_rx_ops_vec;
+	return idpf_rxq_vec_setup_default(rxq);
+}
+
+int __rte_cold
+idpf_qc_splitq_rx_vec_setup(struct idpf_rx_queue *rxq)
+{
+	rxq->bufq2->ops = &def_rx_ops_vec;
+	return idpf_rxq_vec_setup_default(rxq->bufq2);
 }

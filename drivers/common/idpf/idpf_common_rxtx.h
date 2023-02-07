@@ -52,6 +52,8 @@
 #define IDPF_VPMD_TX_MAX_BURST		32
 #define IDPF_VPMD_DESCS_PER_LOOP	4
 #define IDPF_RXQ_REARM_THRESH		64
+#define IDPD_TXQ_SCAN_CQ_THRESH	64
+#define IDPF_TX_CTYPE_NUM	8
 
 /* MTS */
 #define GLTSYN_CMD_SYNC_0_0	(PF_TIMESYNC_BASE + 0x0)
@@ -185,6 +187,7 @@ struct idpf_tx_queue {
 	uint32_t tx_start_qid;
 	uint8_t expected_gen_id;
 	struct idpf_tx_queue *complq;
+	uint16_t ctype[IDPF_TX_CTYPE_NUM];
 };
 
 /* Offload features */
@@ -201,6 +204,12 @@ union idpf_tx_offload {
 
 struct idpf_tx_vec_entry {
 	struct rte_mbuf *mbuf;
+};
+
+union idpf_tx_desc {
+	struct idpf_base_tx_desc *tx_ring;
+	struct idpf_flex_tx_sched_desc *desc_ring;
+	struct idpf_splitq_tx_compl_desc *compl_ring;
 };
 
 struct idpf_rxq_ops {
@@ -265,14 +274,24 @@ uint16_t idpf_dp_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 __rte_internal
 int idpf_qc_singleq_rx_vec_setup(struct idpf_rx_queue *rxq);
 __rte_internal
-int idpf_qc_singleq_tx_vec_avx512_setup(struct idpf_tx_queue *txq);
+int idpf_qc_splitq_rx_vec_setup(struct idpf_rx_queue *rxq);
+__rte_internal
+int idpf_qc_tx_vec_avx512_setup(struct idpf_tx_queue *txq);
+__rte_internal
+int idpf_qc_tx_vec_avx512_setup(struct idpf_tx_queue *txq);
 __rte_internal
 uint16_t idpf_dp_singleq_recv_pkts_avx512(void *rx_queue,
 					  struct rte_mbuf **rx_pkts,
 					  uint16_t nb_pkts);
 __rte_internal
+uint16_t idpf_dp_splitq_recv_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+					 uint16_t nb_pkts);
+__rte_internal
 uint16_t idpf_dp_singleq_xmit_pkts_avx512(void *tx_queue,
 					  struct rte_mbuf **tx_pkts,
 					  uint16_t nb_pkts);
+__rte_internal
+uint16_t idpf_dp_splitq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+					 uint16_t nb_pkts);
 
 #endif /* _IDPF_COMMON_RXTX_H_ */
