@@ -52,12 +52,10 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 	return (is_tx ^ (idx & 1)) == 0 && idx < nr_vring;
 }
 
-/*
- * This function must be called with virtqueue's access_lock taken.
- */
 static inline void
 vhost_queue_stats_update(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mbuf **pkts, uint16_t count)
+	__rte_exclusive_locks_required(&vq->access_lock)
 {
 	struct virtqueue_stats *stats = &vq->stats;
 	int i;
