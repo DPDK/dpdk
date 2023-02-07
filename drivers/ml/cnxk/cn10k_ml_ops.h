@@ -65,5 +65,6 @@ int cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *para
 			uint16_t *model_id);
 int cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id);
 int cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id);
+int cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id);
 
 #endif /* _CN10K_ML_OPS_H_ */
