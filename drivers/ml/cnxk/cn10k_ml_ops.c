@@ -104,9 +104,45 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 	return rte_dev_remove(dev->device);
 }
 
+static int
+cn10k_ml_dev_start(struct rte_ml_dev *dev)
+{
+	struct cn10k_ml_dev *mldev;
+	uint64_t reg_val64;
+
+	mldev = dev->data->dev_private;
+
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 |= ROC_ML_CFG_ENA;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	mldev->state = ML_CN10K_DEV_STATE_STARTED;
+
+	return 0;
+}
+
+static int
+cn10k_ml_dev_stop(struct rte_ml_dev *dev)
+{
+	struct cn10k_ml_dev *mldev;
+	uint64_t reg_val64;
+
+	mldev = dev->data->dev_private;
+
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 &= ~ROC_ML_CFG_ENA;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	mldev->state = ML_CN10K_DEV_STATE_CONFIGURED;
+
+	return 0;
+}
+
 struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Device control ops */
-	.dev_info_get = cn10k_ml_dev_info_get,
-	.dev_configure = cn10k_ml_dev_configure,
-	.dev_close = cn10k_ml_dev_close,
+	.dev_info_get = cn10k_ml_dev_info_get, .dev_configure = cn10k_ml_dev_configure,
+	.dev_close = cn10k_ml_dev_close,       .dev_start = cn10k_ml_dev_start,
+	.dev_stop = cn10k_ml_dev_stop,
 };
