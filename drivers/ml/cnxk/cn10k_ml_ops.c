@@ -6,7 +6,11 @@
 #include <rte_mldev_pmd.h>
 
 #include "cn10k_ml_dev.h"
+#include "cn10k_ml_model.h"
 #include "cn10k_ml_ops.h"
+
+/* ML model macros */
+#define CN10K_ML_MODEL_MEMZONE_NAME "ml_cn10k_model_mz"
 
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
@@ -120,9 +124,11 @@ static int
 cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *conf)
 {
 	struct rte_ml_dev_info dev_info;
+	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_qp *qp;
 	uint32_t mz_size;
+	uint16_t model_id;
 	uint16_t qp_id;
 	int ret;
 
@@ -203,6 +209,48 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	}
 	dev->data->nb_queue_pairs = conf->nb_queue_pairs;
 
+	/* Allocate ML models */
+	if (dev->data->models == NULL) {
+		mz_size = sizeof(dev->data->models[0]) * conf->nb_models;
+		dev->data->models = rte_zmalloc("cn10k_mldev_models", mz_size, RTE_CACHE_LINE_SIZE);
+		if (dev->data->models == NULL) {
+			dev->data->nb_models = 0;
+			plt_err("Failed to get memory for ml_models, nb_models %u",
+				conf->nb_models);
+			ret = -ENOMEM;
+			goto error;
+		}
+	} else {
+		/* Re-configure */
+		void **models;
+
+		/* Unload all models */
+		for (model_id = 0; model_id < dev->data->nb_models; model_id++) {
+			model = dev->data->models[model_id];
+			if (model != NULL) {
+				if (model->state == ML_CN10K_MODEL_STATE_LOADED) {
+					if (cn10k_ml_model_unload(dev, model_id) != 0)
+						plt_err("Could not unload model %u", model_id);
+				}
+				dev->data->models[model_id] = NULL;
+			}
+		}
+
+		models = dev->data->models;
+		models = rte_realloc(models, sizeof(models[0]) * conf->nb_models,
+				     RTE_CACHE_LINE_SIZE);
+		if (models == NULL) {
+			dev->data->nb_models = 0;
+			plt_err("Failed to realloc ml_models, nb_models = %u", conf->nb_models);
+			ret = -ENOMEM;
+			goto error;
+		}
+		memset(models, 0, sizeof(models[0]) * conf->nb_models);
+		dev->data->models = models;
+	}
+	dev->data->nb_models = conf->nb_models;
+
+	mldev->nb_models_loaded = 0;
 	mldev->state = ML_CN10K_DEV_STATE_CONFIGURED;
 
 	return 0;
@@ -211,20 +259,40 @@ error:
 	if (dev->data->queue_pairs != NULL)
 		rte_free(dev->data->queue_pairs);
 
+	if (dev->data->models != NULL)
+		rte_free(dev->data->models);
+
 	return ret;
 }
 
 static int
 cn10k_ml_dev_close(struct rte_ml_dev *dev)
 {
+	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_qp *qp;
+	uint16_t model_id;
 	uint16_t qp_id;
 
 	if (dev == NULL)
 		return -EINVAL;
 
 	mldev = dev->data->dev_private;
+
+	/* Unload all models */
+	for (model_id = 0; model_id < dev->data->nb_models; model_id++) {
+		model = dev->data->models[model_id];
+		if (model != NULL) {
+			if (model->state == ML_CN10K_MODEL_STATE_LOADED) {
+				if (cn10k_ml_model_unload(dev, model_id) != 0)
+					plt_err("Could not unload model %u", model_id);
+			}
+			dev->data->models[model_id] = NULL;
+		}
+	}
+
+	if (dev->data->models)
+		rte_free(dev->data->models);
 
 	/* Destroy all queue pairs */
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
@@ -337,6 +405,88 @@ cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 	return 0;
 }
 
+int
+cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, uint16_t *model_id)
+{
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+
+	char str[RTE_MEMZONE_NAMESIZE];
+	const struct plt_memzone *mz;
+	uint64_t mz_size;
+	uint16_t idx;
+	bool found;
+
+	PLT_SET_USED(params);
+
+	mldev = dev->data->dev_private;
+
+	/* Find model ID */
+	found = false;
+	for (idx = 0; idx < dev->data->nb_models; idx++) {
+		if (dev->data->models[idx] == NULL) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		plt_err("No slots available to load new model");
+		return -ENOMEM;
+	}
+
+	/* Compute memzone size */
+	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE);
+
+	/* Allocate memzone for model object and model data */
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, idx);
+	mz = plt_memzone_reserve_aligned(str, mz_size, 0, ML_CN10K_ALIGN_SIZE);
+	if (!mz) {
+		plt_err("plt_memzone_reserve failed : %s", str);
+		return -ENOMEM;
+	}
+
+	model = mz->addr;
+	model->mldev = mldev;
+	model->model_id = idx;
+
+	plt_spinlock_init(&model->lock);
+	model->state = ML_CN10K_MODEL_STATE_LOADED;
+	dev->data->models[idx] = model;
+	mldev->nb_models_loaded++;
+
+	*model_id = idx;
+
+	return 0;
+}
+
+int
+cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
+{
+	char str[RTE_MEMZONE_NAMESIZE];
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+
+	mldev = dev->data->dev_private;
+	model = dev->data->models[model_id];
+
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	if (model->state != ML_CN10K_MODEL_STATE_LOADED) {
+		plt_err("Cannot unload. Model in use.");
+		return -EBUSY;
+	}
+
+	dev->data->models[model_id] = NULL;
+	mldev->nb_models_loaded--;
+
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, model_id);
+	return plt_memzone_free(plt_memzone_lookup(str));
+}
+
 struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cn10k_ml_dev_info_get,
@@ -348,4 +498,8 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Queue-pair handling ops */
 	.dev_queue_pair_setup = cn10k_ml_dev_queue_pair_setup,
 	.dev_queue_pair_release = cn10k_ml_dev_queue_pair_release,
+
+	/* Model ops */
+	.model_load = cn10k_ml_model_load,
+	.model_unload = cn10k_ml_model_unload,
 };

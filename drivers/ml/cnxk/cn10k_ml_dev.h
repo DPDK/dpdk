@@ -214,6 +214,9 @@ struct cn10k_ml_dev {
 
 	/* Firmware */
 	struct cn10k_ml_fw fw;
+
+	/* Number of models loaded */
+	uint16_t nb_models_loaded;
 };
 
 uint64_t cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw);

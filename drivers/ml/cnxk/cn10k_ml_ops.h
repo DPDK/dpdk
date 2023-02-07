@@ -53,4 +53,9 @@ struct cn10k_ml_qp {
 /* Device ops */
 extern struct rte_ml_dev_ops cn10k_ml_ops;
 
+/* Slow-path ops */
+int cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params,
+			uint16_t *model_id);
+int cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id);
+
 #endif /* _CN10K_ML_OPS_H_ */
