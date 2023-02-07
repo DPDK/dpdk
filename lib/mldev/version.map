@@ -12,6 +12,10 @@ EXPERIMENTAL {
 	rte_ml_dev_socket_id;
 	rte_ml_dev_start;
 	rte_ml_dev_stop;
+	rte_ml_io_dequantize;
+	rte_ml_io_input_size_get;
+	rte_ml_io_output_size_get;
+	rte_ml_io_quantize;
 	rte_ml_model_info_get;
 	rte_ml_model_load;
 	rte_ml_model_params_update;

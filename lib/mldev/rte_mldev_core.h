@@ -258,6 +258,100 @@ typedef int (*mldev_model_params_update_t)(struct rte_ml_dev *dev, uint16_t mode
 /**
  * @internal
  *
+ * Get size of input buffers.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ * @param nb_batches
+ *	Number of batches.
+ * @param input_qsize
+ *	Size of quantized input.
+ * @param input_dsize
+ *	Size of dequantized input.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_io_input_size_get_t)(struct rte_ml_dev *dev, uint16_t model_id,
+					 uint32_t nb_batches, uint64_t *input_qsize,
+					 uint64_t *input_dsize);
+
+/**
+ * @internal
+ *
+ * Get size of output buffers.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ * @param nb_batches
+ *	Number of batches.
+ * @param output_qsize
+ *	Size of quantized output.
+ * @param output_dsize
+ *	Size of dequantized output.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_io_output_size_get_t)(struct rte_ml_dev *dev, uint16_t model_id,
+					  uint32_t nb_batches, uint64_t *output_qsize,
+					  uint64_t *output_dsize);
+
+/**
+ * @internal
+ *
+ * Quantize model data.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ * @param nb_batches
+ *	Number of batches.
+ * @param dbuffer
+ *	Pointer t de-quantized data buffer.
+ * @param qbuffer
+ *	Pointer t de-quantized data buffer.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches,
+				   void *dbuffer, void *qbuffer);
+
+/**
+ * @internal
+ *
+ * Quantize model data.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param model_id
+ *	Model ID to use.
+ * @param nb_batches
+ *	Number of batches.
+ * @param qbuffer
+ *	Pointer t de-quantized data buffer.
+ * @param dbuffer
+ *	Pointer t de-quantized data buffer.
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0, error on failure.
+ */
+typedef int (*mldev_io_dequantize_t)(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches,
+				     void *qbuffer, void *dbuffer);
+
+/**
+ * @internal
+ *
  * ML device operations function pointer table.
  */
 struct rte_ml_dev_ops {
@@ -299,6 +393,18 @@ struct rte_ml_dev_ops {
 
 	/** Update model params. */
 	mldev_model_params_update_t model_params_update;
+
+	/** Get input buffer size. */
+	mldev_io_input_size_get_t io_input_size_get;
+
+	/** Get output buffer size. */
+	mldev_io_output_size_get_t io_output_size_get;
+
+	/** Quantize data */
+	mldev_io_quantize_t io_quantize;
+
+	/** De-quantize data */
+	mldev_io_dequantize_t io_dequantize;
 };
 
 /**

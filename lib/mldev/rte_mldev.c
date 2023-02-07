@@ -508,4 +508,98 @@ rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer)
 	return (*dev->dev_ops->model_params_update)(dev, model_id, buffer);
 }
 
+int
+rte_ml_io_input_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
+			 uint64_t *input_qsize, uint64_t *input_dsize)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->io_input_size_get == NULL)
+		return -ENOTSUP;
+
+	return (*dev->dev_ops->io_input_size_get)(dev, model_id, nb_batches, input_qsize,
+						  input_dsize);
+}
+
+int
+rte_ml_io_output_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
+			  uint64_t *output_qsize, uint64_t *output_dsize)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->io_output_size_get == NULL)
+		return -ENOTSUP;
+
+	return (*dev->dev_ops->io_output_size_get)(dev, model_id, nb_batches, output_qsize,
+						   output_dsize);
+}
+
+int
+rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void *dbuffer,
+		   void *qbuffer)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->io_quantize == NULL)
+		return -ENOTSUP;
+
+	if (dbuffer == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+
+	if (qbuffer == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+
+	return (*dev->dev_ops->io_quantize)(dev, model_id, nb_batches, dbuffer, qbuffer);
+}
+
+int
+rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void *qbuffer,
+		     void *dbuffer)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dev_ops->io_dequantize == NULL)
+		return -ENOTSUP;
+
+	if (qbuffer == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+
+	if (dbuffer == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL\n", dev_id);
+		return -EINVAL;
+	}
+
+	return (*dev->dev_ops->io_dequantize)(dev, model_id, nb_batches, qbuffer, dbuffer);
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_ml_dev_logtype, INFO);
