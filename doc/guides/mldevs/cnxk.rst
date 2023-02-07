@@ -164,6 +164,22 @@ Runtime Config Options
   in the fast path enqueue burst operation.
 
 
+**Polling memory location** (default ``ddr``)
+
+  ML cnxk driver provides the option to select the memory location to be used
+  for polling to check the inference request completion.
+  Driver supports using either the DDR address space (``ddr``)
+  or ML registers (``register``) as polling locations.
+  The parameter ``poll_mem`` is used to specify the poll location.
+
+  For example::
+
+     -a 0000:00:10.0,poll_mem="register"
+
+  With the above configuration, ML cnxk driver is configured to use ML registers
+  for polling in fastpath requests.
+
+
 Debugging Options
 -----------------
 

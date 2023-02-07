@@ -43,6 +43,18 @@
 #define ML_CN10K_POLL_JOB_START	 0
 #define ML_CN10K_POLL_JOB_FINISH 1
 
+/* Memory barrier macros */
+#if defined(RTE_ARCH_ARM)
+#define dmb_st ({ asm volatile("dmb st" : : : "memory"); })
+#define dsb_st ({ asm volatile("dsb st" : : : "memory"); })
+#else
+#define dmb_st
+#define dsb_st
+#endif
+
+struct cn10k_ml_req;
+struct cn10k_ml_qp;
+
 /* Job types */
 enum cn10k_ml_job_type {
 	ML_CN10K_JOB_TYPE_MODEL_RUN = 0,
@@ -358,6 +370,9 @@ struct cn10k_ml_fw {
 	/* Report DPE warnings */
 	int report_dpe_warnings;
 
+	/* Memory to be used for polling in fast-path requests */
+	const char *poll_mem;
+
 	/* Data buffer */
 	uint8_t *data;
 
@@ -393,6 +408,15 @@ struct cn10k_ml_dev {
 
 	/* JCMD enqueue function handler */
 	bool (*ml_jcmdq_enqueue)(struct roc_ml *roc_ml, struct ml_job_cmd_s *job_cmd);
+
+	/* Poll handling function pointers */
+	void (*set_poll_addr)(struct cn10k_ml_qp *qp, struct cn10k_ml_req *req, uint64_t idx);
+	void (*set_poll_ptr)(struct roc_ml *roc_ml, struct cn10k_ml_req *req);
+	uint64_t (*get_poll_ptr)(struct roc_ml *roc_ml, struct cn10k_ml_req *req);
+
+	/* Memory barrier function pointers to handle synchronization */
+	void (*set_enq_barrier)(void);
+	void (*set_deq_barrier)(void);
 };
 
 uint64_t cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw);

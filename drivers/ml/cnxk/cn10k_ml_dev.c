@@ -23,6 +23,7 @@
 #define CN10K_ML_DEV_CACHE_MODEL_DATA	"cache_model_data"
 #define CN10K_ML_OCM_ALLOC_MODE		"ocm_alloc_mode"
 #define CN10K_ML_DEV_HW_QUEUE_LOCK	"hw_queue_lock"
+#define CN10K_ML_FW_POLL_MEM		"poll_mem"
 
 #define CN10K_ML_FW_PATH_DEFAULT		"/lib/firmware/mlip-fw.bin"
 #define CN10K_ML_FW_ENABLE_DPE_WARNINGS_DEFAULT 1
@@ -30,6 +31,7 @@
 #define CN10K_ML_DEV_CACHE_MODEL_DATA_DEFAULT	1
 #define CN10K_ML_OCM_ALLOC_MODE_DEFAULT		"lowest"
 #define CN10K_ML_DEV_HW_QUEUE_LOCK_DEFAULT	1
+#define CN10K_ML_FW_POLL_MEM_DEFAULT		"ddr"
 
 /* ML firmware macros */
 #define FW_MEMZONE_NAME		 "ml_cn10k_fw_mz"
@@ -42,6 +44,7 @@
 /* Firmware flags */
 #define FW_ENABLE_DPE_WARNING_BITMASK BIT(0)
 #define FW_REPORT_DPE_WARNING_BITMASK BIT(1)
+#define FW_USE_DDR_POLL_ADDR_FP	      BIT(2)
 
 static const char *const valid_args[] = {CN10K_ML_FW_PATH,
 					 CN10K_ML_FW_ENABLE_DPE_WARNINGS,
@@ -49,6 +52,7 @@ static const char *const valid_args[] = {CN10K_ML_FW_PATH,
 					 CN10K_ML_DEV_CACHE_MODEL_DATA,
 					 CN10K_ML_OCM_ALLOC_MODE,
 					 CN10K_ML_DEV_HW_QUEUE_LOCK,
+					 CN10K_ML_FW_POLL_MEM,
 					 NULL};
 
 /* Dummy operations for ML device */
@@ -92,7 +96,9 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 	bool ocm_alloc_mode_set = false;
 	bool hw_queue_lock_set = false;
 	char *ocm_alloc_mode = NULL;
+	bool poll_mem_set = false;
 	bool fw_path_set = false;
+	char *poll_mem = NULL;
 	char *fw_path = NULL;
 	int ret = 0;
 
@@ -174,6 +180,17 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 		hw_queue_lock_set = true;
 	}
 
+	if (rte_kvargs_count(kvlist, CN10K_ML_FW_POLL_MEM) == 1) {
+		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_POLL_MEM, &parse_string_arg,
+					 &poll_mem);
+		if (ret < 0) {
+			plt_err("Error processing arguments, key = %s\n", CN10K_ML_FW_POLL_MEM);
+			ret = -EINVAL;
+			goto exit;
+		}
+		poll_mem_set = true;
+	}
+
 check_args:
 	if (!fw_path_set)
 		mldev->fw.path = CN10K_ML_FW_PATH_DEFAULT;
@@ -242,6 +259,18 @@ check_args:
 		}
 	}
 	plt_info("ML: %s = %d", CN10K_ML_DEV_HW_QUEUE_LOCK, mldev->hw_queue_lock);
+
+	if (!poll_mem_set) {
+		mldev->fw.poll_mem = CN10K_ML_FW_POLL_MEM_DEFAULT;
+	} else {
+		if (!((strcmp(poll_mem, "ddr") == 0) || (strcmp(poll_mem, "register") == 0))) {
+			plt_err("Invalid argument, %s = %s\n", CN10K_ML_FW_POLL_MEM, poll_mem);
+			ret = -EINVAL;
+			goto exit;
+		}
+		mldev->fw.poll_mem = poll_mem;
+	}
+	plt_info("ML: %s = %s", CN10K_ML_FW_POLL_MEM, mldev->fw.poll_mem);
 
 exit:
 	if (kvlist)
@@ -375,6 +404,11 @@ cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw)
 
 	if (fw->report_dpe_warnings)
 		flags = flags | FW_REPORT_DPE_WARNING_BITMASK;
+
+	if (strcmp(fw->poll_mem, "ddr") == 0)
+		flags = flags | FW_USE_DDR_POLL_ADDR_FP;
+	else if (strcmp(fw->poll_mem, "register") == 0)
+		flags = flags & ~FW_USE_DDR_POLL_ADDR_FP;
 
 	return flags;
 }
@@ -780,9 +814,10 @@ RTE_PMD_REGISTER_PCI(MLDEV_NAME_CN10K_PMD, cn10k_mldev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(MLDEV_NAME_CN10K_PMD, pci_id_ml_table);
 RTE_PMD_REGISTER_KMOD_DEP(MLDEV_NAME_CN10K_PMD, "vfio-pci");
 
-RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD, CN10K_ML_FW_PATH
-			      "=<path>" CN10K_ML_FW_ENABLE_DPE_WARNINGS
-			      "=<0|1>" CN10K_ML_FW_REPORT_DPE_WARNINGS
-			      "=<0|1>" CN10K_ML_DEV_CACHE_MODEL_DATA
-			      "=<0|1>" CN10K_ML_OCM_ALLOC_MODE
-			      "=<lowest|largest>" CN10K_ML_DEV_HW_QUEUE_LOCK "=<0|1>");
+RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD,
+			      CN10K_ML_FW_PATH "=<path>" CN10K_ML_FW_ENABLE_DPE_WARNINGS
+					       "=<0|1>" CN10K_ML_FW_REPORT_DPE_WARNINGS
+					       "=<0|1>" CN10K_ML_DEV_CACHE_MODEL_DATA
+					       "=<0|1>" CN10K_ML_OCM_ALLOC_MODE
+					       "=<lowest|largest>" CN10K_ML_DEV_HW_QUEUE_LOCK
+					       "=<0|1>" CN10K_ML_FW_POLL_MEM "=<ddr|register>");

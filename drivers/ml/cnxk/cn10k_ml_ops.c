@@ -23,6 +23,11 @@
 #define ML_FLAGS_POLL_COMPL BIT(0)
 #define ML_FLAGS_SSO_COMPL  BIT(1)
 
+/* Scratch register range for poll mode requests */
+#define ML_POLL_REGISTER_SYNC  1023
+#define ML_POLL_REGISTER_START 1024
+#define ML_POLL_REGISTER_END   2047
+
 /* Error message length */
 #define ERRMSG_LEN 32
 
@@ -74,6 +79,80 @@ print_line(FILE *fp, int len)
 	for (i = 0; i < len; i++)
 		fprintf(fp, "-");
 	fprintf(fp, "\n");
+}
+
+static inline void
+cn10k_ml_set_poll_addr_ddr(struct cn10k_ml_qp *qp, struct cn10k_ml_req *req, uint64_t idx)
+{
+	PLT_SET_USED(qp);
+	PLT_SET_USED(idx);
+
+	req->compl_W1 = PLT_U64_CAST(&req->status);
+}
+
+static inline void
+cn10k_ml_set_poll_addr_reg(struct cn10k_ml_qp *qp, struct cn10k_ml_req *req, uint64_t idx)
+{
+	req->compl_W1 = ML_SCRATCH(qp->block_start + idx % qp->block_size);
+}
+
+static inline void
+cn10k_ml_set_poll_ptr_ddr(struct roc_ml *roc_ml, struct cn10k_ml_req *req)
+{
+	PLT_SET_USED(roc_ml);
+
+	plt_write64(ML_CN10K_POLL_JOB_START, req->compl_W1);
+}
+
+static inline void
+cn10k_ml_set_poll_ptr_reg(struct roc_ml *roc_ml, struct cn10k_ml_req *req)
+{
+	roc_ml_reg_write64(roc_ml, ML_CN10K_POLL_JOB_START, req->compl_W1);
+}
+
+static inline uint64_t
+cn10k_ml_get_poll_ptr_ddr(struct roc_ml *roc_ml, struct cn10k_ml_req *req)
+{
+	PLT_SET_USED(roc_ml);
+
+	return plt_read64(req->compl_W1);
+}
+
+static inline uint64_t
+cn10k_ml_get_poll_ptr_reg(struct roc_ml *roc_ml, struct cn10k_ml_req *req)
+{
+	return roc_ml_reg_read64(roc_ml, req->compl_W1);
+}
+
+static inline void
+cn10k_ml_set_sync_addr(struct cn10k_ml_dev *mldev, struct cn10k_ml_req *req)
+{
+	if (strcmp(mldev->fw.poll_mem, "ddr") == 0)
+		req->compl_W1 = PLT_U64_CAST(&req->status);
+	else if (strcmp(mldev->fw.poll_mem, "register") == 0)
+		req->compl_W1 = ML_SCRATCH(ML_POLL_REGISTER_SYNC);
+}
+
+static inline void
+cn10k_ml_enq_barrier_ddr(void)
+{
+}
+
+static inline void
+cn10k_ml_deq_barrier_ddr(void)
+{
+}
+
+static inline void
+cn10k_ml_enq_barrier_register(void)
+{
+	dmb_st;
+}
+
+static inline void
+cn10k_ml_deq_barrier_register(void)
+{
+	dsb_st;
 }
 
 static void
@@ -163,6 +242,9 @@ cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_des
 	qp->stats.dequeued_count = 0;
 	qp->stats.enqueue_err_count = 0;
 	qp->stats.dequeue_err_count = 0;
+	qp->block_size =
+		(ML_POLL_REGISTER_END - ML_POLL_REGISTER_START + 1) / dev->data->nb_queue_pairs;
+	qp->block_start = ML_POLL_REGISTER_START + qp_id * qp->block_size;
 
 	/* Initialize job command */
 	for (i = 0; i < qp->nb_desc; i++) {
@@ -341,7 +423,7 @@ cn10k_ml_prep_fp_job_descriptor(struct rte_ml_dev *dev, struct cn10k_ml_req *req
 	mldev = dev->data->dev_private;
 
 	req->jd.hdr.jce.w0.u64 = 0;
-	req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&req->status);
+	req->jd.hdr.jce.w1.u64 = req->compl_W1;
 	req->jd.hdr.model_id = op->model_id;
 	req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_MODEL_RUN;
 	req->jd.hdr.fp_flags = ML_FLAGS_POLL_COMPL;
@@ -549,7 +631,11 @@ cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 	else
 		dev_info->max_queue_pairs = ML_CN10K_MAX_QP_PER_DEVICE_LF;
 
-	dev_info->max_desc = ML_CN10K_MAX_DESC_PER_QP;
+	if (strcmp(mldev->fw.poll_mem, "register") == 0)
+		dev_info->max_desc = ML_CN10K_MAX_DESC_PER_QP / dev_info->max_queue_pairs;
+	else if (strcmp(mldev->fw.poll_mem, "ddr") == 0)
+		dev_info->max_desc = ML_CN10K_MAX_DESC_PER_QP;
+
 	dev_info->max_segments = ML_CN10K_MAX_SEGMENTS;
 	dev_info->min_align_size = ML_CN10K_ALIGN_SIZE;
 
@@ -716,6 +802,26 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 		mldev->ml_jcmdq_enqueue = roc_ml_jcmdq_enqueue_sl;
 	else
 		mldev->ml_jcmdq_enqueue = roc_ml_jcmdq_enqueue_lf;
+
+	/* Set polling function pointers */
+	if (strcmp(mldev->fw.poll_mem, "ddr") == 0) {
+		mldev->set_poll_addr = cn10k_ml_set_poll_addr_ddr;
+		mldev->set_poll_ptr = cn10k_ml_set_poll_ptr_ddr;
+		mldev->get_poll_ptr = cn10k_ml_get_poll_ptr_ddr;
+	} else if (strcmp(mldev->fw.poll_mem, "register") == 0) {
+		mldev->set_poll_addr = cn10k_ml_set_poll_addr_reg;
+		mldev->set_poll_ptr = cn10k_ml_set_poll_ptr_reg;
+		mldev->get_poll_ptr = cn10k_ml_get_poll_ptr_reg;
+	}
+
+	/* Set barrier function pointers */
+	if (strcmp(mldev->fw.poll_mem, "ddr") == 0) {
+		mldev->set_enq_barrier = cn10k_ml_enq_barrier_ddr;
+		mldev->set_deq_barrier = cn10k_ml_deq_barrier_ddr;
+	} else if (strcmp(mldev->fw.poll_mem, "register") == 0) {
+		mldev->set_enq_barrier = cn10k_ml_enq_barrier_register;
+		mldev->set_deq_barrier = cn10k_ml_deq_barrier_register;
+	}
 
 	dev->enqueue_burst = cn10k_ml_enqueue_burst;
 	dev->dequeue_burst = cn10k_ml_dequeue_burst;
@@ -2000,13 +2106,15 @@ enqueue_req:
 	op = ops[count];
 	req = &queue->reqs[head];
 
+	mldev->set_poll_addr(qp, req, head);
 	cn10k_ml_prep_fp_job_descriptor(dev, req, op);
 
 	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
 	req->result.error_code.s.etype = ML_ETYPE_UNKNOWN;
 	req->result.user_ptr = op->user_ptr;
+	mldev->set_enq_barrier();
 
-	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
+	mldev->set_poll_ptr(&mldev->roc, req);
 	enqueued = mldev->ml_jcmdq_enqueue(&mldev->roc, &req->jcmd);
 	if (unlikely(!enqueued))
 		goto jcmdq_full;
@@ -2032,6 +2140,7 @@ cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op 
 		       uint16_t nb_ops)
 {
 	struct cn10k_ml_queue *queue;
+	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_req *req;
 	struct cn10k_ml_qp *qp;
 
@@ -2039,6 +2148,7 @@ cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op 
 	uint16_t count;
 	uint64_t tail;
 
+	mldev = dev->data->dev_private;
 	qp = dev->data->queue_pairs[qp_id];
 	queue = &qp->queue;
 
@@ -2051,7 +2161,7 @@ cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op 
 
 dequeue_req:
 	req = &queue->reqs[tail];
-	status = plt_read64(&req->status);
+	status = mldev->get_poll_ptr(&mldev->roc, req);
 	if (unlikely(status != ML_CN10K_POLL_JOB_FINISH)) {
 		if (plt_tsc_cycles() < req->timeout)
 			goto empty_or_active;
@@ -2059,6 +2169,7 @@ dequeue_req:
 			req->result.error_code.s.etype = ML_ETYPE_DRIVER;
 	}
 
+	mldev->set_deq_barrier();
 	cn10k_ml_result_update(dev, qp_id, &req->result, req->op);
 	ops[count] = req->op;
 
@@ -2116,13 +2227,14 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 	model = dev->data->models[op->model_id];
 	req = model->req;
 
+	cn10k_ml_set_sync_addr(mldev, req);
 	cn10k_ml_prep_fp_job_descriptor(dev, req, op);
 
 	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
 	req->result.error_code.s.etype = ML_ETYPE_UNKNOWN;
 	req->result.user_ptr = op->user_ptr;
 
-	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
+	mldev->set_poll_ptr(&mldev->roc, req);
 	req->jcmd.w1.s.jobptr = PLT_U64_CAST(&req->jd);
 
 	timeout = true;
@@ -2142,7 +2254,7 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 
 	timeout = true;
 	do {
-		if (plt_read64(&req->status) == ML_CN10K_POLL_JOB_FINISH) {
+		if (mldev->get_poll_ptr(&mldev->roc, req) == ML_CN10K_POLL_JOB_FINISH) {
 			timeout = false;
 			break;
 		}

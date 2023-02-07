@@ -26,6 +26,9 @@ struct cn10k_ml_req {
 	/* Job command */
 	struct ml_job_cmd_s jcmd;
 
+	/* Job completion W1 */
+	uint64_t compl_W1;
+
 	/* Timeout cycle */
 	uint64_t timeout;
 
@@ -61,6 +64,12 @@ struct cn10k_ml_qp {
 
 	/* Statistics per queue-pair */
 	struct rte_ml_dev_stats stats;
+
+	/* Register block start for polling */
+	uint32_t block_start;
+
+	/* Register block end for polling */
+	uint32_t block_size;
 };
 
 /* Device ops */
