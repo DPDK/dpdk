@@ -8,6 +8,10 @@ sources = files(
         'mldev_utils_scalar.c',
 )
 
+if arch_subdir == 'arm'
+    sources += files('mldev_utils_neon.c')
+endif
+
 headers = files(
         'rte_mldev.h',
 )
