@@ -21,8 +21,11 @@
 /* Maximum number of models per device */
 #define ML_CN10K_MAX_MODELS 16
 
-/* Maximum number of queue-pairs per device */
-#define ML_CN10K_MAX_QP_PER_DEVICE 1
+/* Maximum number of queue-pairs per device, spinlock version */
+#define ML_CN10K_MAX_QP_PER_DEVICE_SL 16
+
+/* Maximum number of queue-pairs per device, lock-free version */
+#define ML_CN10K_MAX_QP_PER_DEVICE_LF 1
 
 /* Maximum number of descriptors per queue-pair */
 #define ML_CN10K_MAX_DESC_PER_QP 1024
@@ -384,6 +387,12 @@ struct cn10k_ml_dev {
 
 	/* Enable / disable model data caching */
 	int cache_model_data;
+
+	/* Use spinlock version of ROC enqueue */
+	int hw_queue_lock;
+
+	/* JCMD enqueue function handler */
+	bool (*ml_jcmdq_enqueue)(struct roc_ml *roc_ml, struct ml_job_cmd_s *job_cmd);
 };
 
 uint64_t cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw);

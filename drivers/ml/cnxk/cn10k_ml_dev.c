@@ -22,12 +22,14 @@
 #define CN10K_ML_FW_REPORT_DPE_WARNINGS "report_dpe_warnings"
 #define CN10K_ML_DEV_CACHE_MODEL_DATA	"cache_model_data"
 #define CN10K_ML_OCM_ALLOC_MODE		"ocm_alloc_mode"
+#define CN10K_ML_DEV_HW_QUEUE_LOCK	"hw_queue_lock"
 
 #define CN10K_ML_FW_PATH_DEFAULT		"/lib/firmware/mlip-fw.bin"
 #define CN10K_ML_FW_ENABLE_DPE_WARNINGS_DEFAULT 1
 #define CN10K_ML_FW_REPORT_DPE_WARNINGS_DEFAULT 0
 #define CN10K_ML_DEV_CACHE_MODEL_DATA_DEFAULT	1
 #define CN10K_ML_OCM_ALLOC_MODE_DEFAULT		"lowest"
+#define CN10K_ML_DEV_HW_QUEUE_LOCK_DEFAULT	1
 
 /* ML firmware macros */
 #define FW_MEMZONE_NAME		 "ml_cn10k_fw_mz"
@@ -46,6 +48,7 @@ static const char *const valid_args[] = {CN10K_ML_FW_PATH,
 					 CN10K_ML_FW_REPORT_DPE_WARNINGS,
 					 CN10K_ML_DEV_CACHE_MODEL_DATA,
 					 CN10K_ML_OCM_ALLOC_MODE,
+					 CN10K_ML_DEV_HW_QUEUE_LOCK,
 					 NULL};
 
 /* Dummy operations for ML device */
@@ -87,6 +90,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 	bool cache_model_data_set = false;
 	struct rte_kvargs *kvlist = NULL;
 	bool ocm_alloc_mode_set = false;
+	bool hw_queue_lock_set = false;
 	char *ocm_alloc_mode = NULL;
 	bool fw_path_set = false;
 	char *fw_path = NULL;
@@ -158,6 +162,18 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 		ocm_alloc_mode_set = true;
 	}
 
+	if (rte_kvargs_count(kvlist, CN10K_ML_DEV_HW_QUEUE_LOCK) == 1) {
+		ret = rte_kvargs_process(kvlist, CN10K_ML_DEV_HW_QUEUE_LOCK, &parse_integer_arg,
+					 &mldev->hw_queue_lock);
+		if (ret < 0) {
+			plt_err("Error processing arguments, key = %s\n",
+				CN10K_ML_DEV_HW_QUEUE_LOCK);
+			ret = -EINVAL;
+			goto exit;
+		}
+		hw_queue_lock_set = true;
+	}
+
 check_args:
 	if (!fw_path_set)
 		mldev->fw.path = CN10K_ML_FW_PATH_DEFAULT;
@@ -214,6 +230,18 @@ check_args:
 		mldev->ocm.alloc_mode = ocm_alloc_mode;
 	}
 	plt_info("ML: %s = %s", CN10K_ML_OCM_ALLOC_MODE, mldev->ocm.alloc_mode);
+
+	if (!hw_queue_lock_set) {
+		mldev->hw_queue_lock = CN10K_ML_DEV_HW_QUEUE_LOCK_DEFAULT;
+	} else {
+		if ((mldev->hw_queue_lock < 0) || (mldev->hw_queue_lock > 1)) {
+			plt_err("Invalid argument, %s = %d\n", CN10K_ML_DEV_HW_QUEUE_LOCK,
+				mldev->hw_queue_lock);
+			ret = -EINVAL;
+			goto exit;
+		}
+	}
+	plt_info("ML: %s = %d", CN10K_ML_DEV_HW_QUEUE_LOCK, mldev->hw_queue_lock);
 
 exit:
 	if (kvlist)
@@ -756,4 +784,5 @@ RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD, CN10K_ML_FW_PATH
 			      "=<path>" CN10K_ML_FW_ENABLE_DPE_WARNINGS
 			      "=<0|1>" CN10K_ML_FW_REPORT_DPE_WARNINGS
 			      "=<0|1>" CN10K_ML_DEV_CACHE_MODEL_DATA
-			      "=<0|1>" CN10K_ML_OCM_ALLOC_MODE "=<lowest|largest>");
+			      "=<0|1>" CN10K_ML_OCM_ALLOC_MODE
+			      "=<lowest|largest>" CN10K_ML_DEV_HW_QUEUE_LOCK "=<0|1>");

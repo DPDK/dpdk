@@ -139,6 +139,31 @@ Runtime Config Options
   from the first available free slot / from the lowest possible tile ID.
 
 
+**Enable hardware queue lock** (default ``0``)
+
+  Option to select the job request enqueue function to use
+  to queue the requests to hardware queue.
+  The parameter ``hw_queue_lock`` is used to select the enqueue function.
+
+  ``0``
+    Disable (default), use lock-free version of hardware enqueue function
+    for job queuing in enqueue burst operation.
+    To avoid race condition in request queuing to hardware,
+    disabling ``hw_queue_lock`` restricts the number of queue-pairs
+    supported by cnxk driver to 1.
+  ``1``
+    Enable, use spin-lock version of hardware enqueue function for job queuing.
+    Enabling spinlock version would disable restrictions on the number of queue-pairs
+    that can be supported by the driver.
+
+  For example::
+
+     -a 0000:00:10.0,hw_queue_lock=1
+
+  With the above configuration, spinlock version of hardware enqueue function is used
+  in the fast path enqueue burst operation.
+
+
 Debugging Options
 -----------------
 

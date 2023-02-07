@@ -534,13 +534,21 @@ cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
 static int
 cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 {
+	struct cn10k_ml_dev *mldev;
+
 	if (dev_info == NULL)
 		return -EINVAL;
+
+	mldev = dev->data->dev_private;
 
 	memset(dev_info, 0, sizeof(struct rte_ml_dev_info));
 	dev_info->driver_name = dev->device->driver->name;
 	dev_info->max_models = ML_CN10K_MAX_MODELS;
-	dev_info->max_queue_pairs = ML_CN10K_MAX_QP_PER_DEVICE;
+	if (mldev->hw_queue_lock)
+		dev_info->max_queue_pairs = ML_CN10K_MAX_QP_PER_DEVICE_SL;
+	else
+		dev_info->max_queue_pairs = ML_CN10K_MAX_QP_PER_DEVICE_LF;
+
 	dev_info->max_desc = ML_CN10K_MAX_DESC_PER_QP;
 	dev_info->max_segments = ML_CN10K_MAX_SEGMENTS;
 	dev_info->min_align_size = ML_CN10K_ALIGN_SIZE;
@@ -702,6 +710,12 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 		mldev->xstats_enabled = true;
 	else
 		mldev->xstats_enabled = false;
+
+	/* Set JCMDQ enqueue function */
+	if (mldev->hw_queue_lock == 1)
+		mldev->ml_jcmdq_enqueue = roc_ml_jcmdq_enqueue_sl;
+	else
+		mldev->ml_jcmdq_enqueue = roc_ml_jcmdq_enqueue_lf;
 
 	dev->enqueue_burst = cn10k_ml_enqueue_burst;
 	dev->dequeue_burst = cn10k_ml_dequeue_burst;
@@ -1993,7 +2007,7 @@ enqueue_req:
 	req->result.user_ptr = op->user_ptr;
 
 	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
-	enqueued = roc_ml_jcmdq_enqueue_lf(&mldev->roc, &req->jcmd);
+	enqueued = mldev->ml_jcmdq_enqueue(&mldev->roc, &req->jcmd);
 	if (unlikely(!enqueued))
 		goto jcmdq_full;
 
@@ -2114,7 +2128,7 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 	timeout = true;
 	req->timeout = plt_tsc_cycles() + ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
 	do {
-		if (roc_ml_jcmdq_enqueue_lf(&mldev->roc, &req->jcmd)) {
+		if (mldev->ml_jcmdq_enqueue(&mldev->roc, &req->jcmd)) {
 			req->op = op;
 			timeout = false;
 			break;
