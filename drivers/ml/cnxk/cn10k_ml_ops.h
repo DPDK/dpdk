@@ -58,6 +58,9 @@ struct cn10k_ml_qp {
 
 	/* Request queue */
 	struct cn10k_ml_queue queue;
+
+	/* Statistics per queue-pair */
+	struct rte_ml_dev_stats stats;
 };
 
 /* Device ops */

@@ -159,6 +159,10 @@ cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_des
 	qp->queue.tail = 0;
 	qp->queue.wait_cycles = ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
 	qp->nb_desc = nb_desc;
+	qp->stats.enqueued_count = 0;
+	qp->stats.dequeued_count = 0;
+	qp->stats.enqueue_err_count = 0;
+	qp->stats.dequeue_err_count = 0;
 
 	/* Initialize job command */
 	for (i = 0; i < qp->nb_desc; i++) {
@@ -676,6 +680,38 @@ cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 	dev->data->queue_pairs[queue_pair_id] = qp;
 
 	return 0;
+}
+
+static int
+cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats)
+{
+	struct cn10k_ml_qp *qp;
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		qp = dev->data->queue_pairs[qp_id];
+		stats->enqueued_count += qp->stats.enqueued_count;
+		stats->dequeued_count += qp->stats.dequeued_count;
+		stats->enqueue_err_count += qp->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->stats.dequeue_err_count;
+	}
+
+	return 0;
+}
+
+static void
+cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev)
+{
+	struct cn10k_ml_qp *qp;
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		qp = dev->data->queue_pairs[qp_id];
+		qp->stats.enqueued_count = 0;
+		qp->stats.dequeued_count = 0;
+		qp->stats.enqueue_err_count = 0;
+		qp->stats.dequeue_err_count = 0;
+	}
 }
 
 static int
@@ -1467,15 +1503,23 @@ static __rte_always_inline void
 cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result *result,
 		       struct rte_ml_op *op)
 {
-	PLT_SET_USED(dev);
-	PLT_SET_USED(qp_id);
-
 	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_qp *qp;
 
 	if (likely(result->error_code.u64 == 0)) {
+		if (likely(qp_id >= 0)) {
+			qp = dev->data->queue_pairs[qp_id];
+			qp->stats.dequeued_count++;
+		}
+
 		op->impl_opaque = result->error_code.u64;
 		op->status = RTE_ML_OP_STATUS_SUCCESS;
 	} else {
+		if (likely(qp_id >= 0)) {
+			qp = dev->data->queue_pairs[qp_id];
+			qp->stats.dequeue_err_count++;
+		}
+
 		/* Handle driver error */
 		if (result->error_code.s.etype == ML_ETYPE_DRIVER) {
 			mldev = dev->data->dev_private;
@@ -1549,6 +1593,7 @@ enqueue_req:
 
 jcmdq_full:
 	queue->head = head;
+	qp->stats.enqueued_count += count;
 
 	return count;
 }
@@ -1696,6 +1741,10 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Queue-pair handling ops */
 	.dev_queue_pair_setup = cn10k_ml_dev_queue_pair_setup,
 	.dev_queue_pair_release = cn10k_ml_dev_queue_pair_release,
+
+	/* Stats ops */
+	.dev_stats_get = cn10k_ml_dev_stats_get,
+	.dev_stats_reset = cn10k_ml_dev_stats_reset,
 
 	/* Model ops */
 	.model_load = cn10k_ml_model_load,
