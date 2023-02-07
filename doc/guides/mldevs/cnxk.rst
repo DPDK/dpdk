@@ -30,6 +30,7 @@ Slow-path device and ML model handling:
 * Device start and stop
 * Model loading and unloading
 * Model start and stop
+* Data quantization and dequantization
 
 
 Installation
