@@ -7,6 +7,8 @@
 
 #include <roc_api.h>
 
+#include "cn10k_ml_ocm.h"
+
 /* Marvell OCTEON CN10K ML PMD device name */
 #define MLDEV_NAME_CN10K_PMD ml_cn10k
 
@@ -214,6 +216,9 @@ struct cn10k_ml_dev {
 
 	/* Firmware */
 	struct cn10k_ml_fw fw;
+
+	/* OCM info */
+	struct cn10k_ml_ocm ocm;
 
 	/* Number of models loaded */
 	uint16_t nb_models_loaded;

@@ -8,6 +8,7 @@
 
 #include "cn10k_ml_dev.h"
 #include "cn10k_ml_model.h"
+#include "cn10k_ml_ocm.h"
 
 static enum rte_ml_io_type
 cn10k_ml_io_type_map(uint8_t type)
@@ -302,4 +303,56 @@ cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_
 		plt_ml_dbg("model_id = %u, output[%u] - sz_d = %u, sz_q = %u", model->model_id, i,
 			   addr->output[i].sz_d, addr->output[i].sz_q);
 	}
+}
+
+int
+cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, uint8_t *buffer,
+			       uint16_t *wb_pages, uint16_t *scratch_pages)
+{
+	struct cn10k_ml_model_metadata *metadata;
+	struct cn10k_ml_ocm *ocm;
+	uint64_t scratch_size;
+	uint64_t wb_size;
+
+	metadata = (struct cn10k_ml_model_metadata *)buffer;
+	ocm = &mldev->ocm;
+
+	/* Assume wb_size is zero for non-relocatable models */
+	if (metadata->model.ocm_relocatable)
+		wb_size = metadata->model.ocm_wb_range_end - metadata->model.ocm_wb_range_start + 1;
+	else
+		wb_size = 0;
+
+	if (wb_size % ocm->page_size)
+		*wb_pages = wb_size / ocm->page_size + 1;
+	else
+		*wb_pages = wb_size / ocm->page_size;
+	plt_ml_dbg("model_id = %u, wb_size = %" PRIu64 ", wb_pages = %u", model_id, wb_size,
+		   *wb_pages);
+
+	scratch_size = ocm->size_per_tile - metadata->model.ocm_tmp_range_floor;
+	if (metadata->model.ocm_tmp_range_floor % ocm->page_size)
+		*scratch_pages = scratch_size / ocm->page_size + 1;
+	else
+		*scratch_pages = scratch_size / ocm->page_size;
+	plt_ml_dbg("model_id = %u, scratch_size = %" PRIu64 ", scratch_pages = %u", model_id,
+		   scratch_size, *scratch_pages);
+
+	/* Check if the model can be loaded on OCM */
+	if ((*wb_pages + *scratch_pages) > ML_CN10K_OCM_NUMPAGES) {
+		plt_err("Cannot create the model, OCM relocatable = %u",
+			metadata->model.ocm_relocatable);
+		plt_err("wb_pages (%u) + scratch_pages (%u) > %u", *wb_pages, *scratch_pages,
+			ML_CN10K_OCM_NUMPAGES);
+		return -ENOMEM;
+	}
+
+	/* Update scratch_pages to block the full tile for OCM non-relocatable model. This would
+	 * prevent the library from allocating the remaining space on the tile to other models.
+	 */
+	if (!metadata->model.ocm_relocatable)
+		*scratch_pages =
+			PLT_MAX(PLT_U64_CAST(*scratch_pages), PLT_U64_CAST(ML_CN10K_OCM_NUMPAGES));
+
+	return 0;
 }

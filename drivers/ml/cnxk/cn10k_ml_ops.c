@@ -126,9 +126,11 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	struct rte_ml_dev_info dev_info;
 	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_ocm *ocm;
 	struct cn10k_ml_qp *qp;
-	uint32_t mz_size;
 	uint16_t model_id;
+	uint32_t mz_size;
+	uint16_t tile_id;
 	uint16_t qp_id;
 	int ret;
 
@@ -249,6 +251,18 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 		dev->data->models = models;
 	}
 	dev->data->nb_models = conf->nb_models;
+
+	ocm = &mldev->ocm;
+	ocm->num_tiles = ML_CN10K_OCM_NUMTILES;
+	ocm->size_per_tile = ML_CN10K_OCM_TILESIZE;
+	ocm->page_size = ML_CN10K_OCM_PAGESIZE;
+	ocm->num_pages = ocm->size_per_tile / ocm->page_size;
+	ocm->mask_words = ocm->num_pages / (8 * sizeof(uint8_t));
+
+	for (tile_id = 0; tile_id < ocm->num_tiles; tile_id++)
+		ocm->tile_ocm_info[tile_id].last_wb_page = -1;
+
+	rte_spinlock_init(&ocm->lock);
 
 	mldev->nb_models_loaded = 0;
 	mldev->state = ML_CN10K_DEV_STATE_CONFIGURED;
@@ -416,6 +430,8 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	const struct plt_memzone *mz;
 	size_t model_data_size;
 	uint8_t *base_dma_addr;
+	uint16_t scratch_pages;
+	uint16_t wb_pages;
 	uint64_t mz_size;
 	uint16_t idx;
 	bool found;
@@ -440,6 +456,11 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 		plt_err("No slots available to load new model");
 		return -ENOMEM;
 	}
+
+	/* Get WB and scratch pages, check if model can be loaded. */
+	ret = cn10k_ml_model_ocm_pages_count(mldev, idx, params->addr, &wb_pages, &scratch_pages);
+	if (ret < 0)
+		return ret;
 
 	/* Compute memzone size */
 	metadata = (struct cn10k_ml_model_metadata *)params->addr;
@@ -477,6 +498,14 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 
 	/* Copy data from load to run. run address to be used by MLIP */
 	rte_memcpy(model->addr.base_dma_addr_run, model->addr.base_dma_addr_load, model_data_size);
+
+	/* Initialize model_mem_map */
+	memset(&model->model_mem_map, 0, sizeof(struct cn10k_ml_ocm_model_map));
+	model->model_mem_map.ocm_reserved = false;
+	model->model_mem_map.tilemask = 0;
+	model->model_mem_map.wb_page_start = -1;
+	model->model_mem_map.wb_pages = wb_pages;
+	model->model_mem_map.scratch_pages = scratch_pages;
 
 	plt_spinlock_init(&model->lock);
 	model->state = ML_CN10K_MODEL_STATE_LOADED;
