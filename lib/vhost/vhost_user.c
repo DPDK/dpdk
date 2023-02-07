@@ -2817,28 +2817,35 @@ read_vhost_message(struct virtio_net *dev, int sockfd, struct  vhu_msg_context *
 
 	ret = read_fd_message(dev->ifname, sockfd, (char *)&ctx->msg, VHOST_USER_HDR_SIZE,
 		ctx->fds, VHOST_MEMORY_MAX_NREGIONS, &ctx->fd_num);
-	if (ret <= 0) {
-		return ret;
-	} else if (ret != VHOST_USER_HDR_SIZE) {
+	if (ret <= 0)
+		goto out;
+
+	if (ret != VHOST_USER_HDR_SIZE) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR, "Unexpected header size read\n");
-		close_msg_fds(ctx);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (ctx->msg.size) {
 		if (ctx->msg.size > sizeof(ctx->msg.payload)) {
 			VHOST_LOG_CONFIG(dev->ifname, ERR, "invalid msg size: %d\n",
 				ctx->msg.size);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 		ret = read(sockfd, &ctx->msg.payload, ctx->msg.size);
 		if (ret <= 0)
-			return ret;
+			goto out;
 		if (ret != (int)ctx->msg.size) {
 			VHOST_LOG_CONFIG(dev->ifname, ERR, "read control message failed\n");
-			return -1;
+			ret = -1;
+			goto out;
 		}
 	}
+
+out:
+	if (ret <= 0)
+		close_msg_fds(ctx);
 
 	return ret;
 }
@@ -2987,13 +2994,10 @@ vhost_user_msg_handler(int vid, int fd)
 		}
 	}
 
+	ctx.msg.request.master = VHOST_USER_NONE;
 	ret = read_vhost_message(dev, fd, &ctx);
-	if (ret <= 0) {
-		if (ret < 0)
-			VHOST_LOG_CONFIG(dev->ifname, ERR, "vhost read message failed\n");
-		else
-			VHOST_LOG_CONFIG(dev->ifname, INFO, "vhost peer closed\n");
-
+	if (ret == 0) {
+		VHOST_LOG_CONFIG(dev->ifname, INFO, "vhost peer closed\n");
 		return -1;
 	}
 
@@ -3002,6 +3006,14 @@ vhost_user_msg_handler(int vid, int fd)
 		msg_handler = &vhost_message_handlers[request];
 	else
 		msg_handler = NULL;
+
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "vhost read message %s%s%sfailed\n",
+				msg_handler != NULL ? "for " : "",
+				msg_handler != NULL ? msg_handler->description : "",
+				msg_handler != NULL ? " " : "");
+		return -1;
+	}
 
 	if (msg_handler != NULL && msg_handler->description != NULL) {
 		if (request != VHOST_USER_IOTLB_MSG)
