@@ -500,7 +500,7 @@ static void statistics_loop(void)
 			if (r < 0) {
 				fprintf(stderr,
 					"stats_get for port %u failed: %d (%s)\n",
-					p, r, strerror(r));
+					p, r, strerror(-r));
 				return;
 			}
 
