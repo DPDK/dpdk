@@ -416,8 +416,11 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	uint64_t mz_size;
 	uint16_t idx;
 	bool found;
+	int ret;
 
-	PLT_SET_USED(params);
+	ret = cn10k_ml_model_metadata_check(params->addr, params->size);
+	if (ret != 0)
+		return ret;
 
 	mldev = dev->data->dev_private;
 
@@ -449,6 +452,15 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	model = mz->addr;
 	model->mldev = mldev;
 	model->model_id = idx;
+
+	rte_memcpy(&model->metadata, params->addr, sizeof(struct cn10k_ml_model_metadata));
+	cn10k_ml_model_metadata_update(&model->metadata);
+
+	/* Enable support for batch_size of 256 */
+	if (model->metadata.model.batch_size == 0)
+		model->batch_size = 256;
+	else
+		model->batch_size = model->metadata.model.batch_size;
 
 	plt_spinlock_init(&model->lock);
 	model->state = ML_CN10K_MODEL_STATE_LOADED;

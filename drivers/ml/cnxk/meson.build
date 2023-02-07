@@ -19,7 +19,7 @@ sources = files(
         'cn10k_ml_model.c',
 )
 
-deps += ['mldev', 'common_cnxk', 'kvargs']
+deps += ['mldev', 'common_cnxk', 'kvargs', 'hash']
 
 if get_option('buildtype').contains('debug')
         cflags += [ '-DCNXK_ML_DEV_DEBUG' ]
