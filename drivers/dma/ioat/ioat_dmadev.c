@@ -156,7 +156,7 @@ ioat_dev_start(struct rte_dma_dev *dev)
 	ioat->offset = 0;
 	ioat->failure = 0;
 
-	printf("IOAT.status: %s [0x%"PRIx64"]\n",
+	IOAT_PMD_DEBUG("channel status - %s [0x%"PRIx64"]\n",
 			chansts_readable[ioat->status & IOAT_CHANSTS_STATUS],
 			ioat->status);
 
