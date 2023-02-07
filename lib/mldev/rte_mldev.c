@@ -12,6 +12,17 @@
 static struct rte_ml_dev_global ml_dev_globals = {
 	.devs = NULL, .data = NULL, .nb_devs = 0, .max_devs = RTE_MLDEV_DEFAULT_MAX};
 
+/*
+ * Private data structure of an operation pool.
+ *
+ * A structure that contains ml op_pool specific data that is
+ * appended after the mempool structure (in private data).
+ */
+struct rte_ml_op_pool_private {
+	uint16_t user_size;
+	/*< Size of private user data with each operation. */
+};
+
 struct rte_ml_dev *
 rte_ml_dev_pmd_get_dev(int16_t dev_id)
 {
@@ -600,6 +611,64 @@ rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, voi
 	}
 
 	return (*dev->dev_ops->io_dequantize)(dev, model_id, nb_batches, qbuffer, dbuffer);
+}
+
+/** Initialise rte_ml_op mempool element */
+static void
+ml_op_init(struct rte_mempool *mempool, __rte_unused void *opaque_arg, void *_op_data,
+	   __rte_unused unsigned int i)
+{
+	struct rte_ml_op *op = _op_data;
+
+	memset(_op_data, 0, mempool->elt_size);
+	op->status = RTE_ML_OP_STATUS_NOT_PROCESSED;
+	op->mempool = mempool;
+}
+
+struct rte_mempool *
+rte_ml_op_pool_create(const char *name, unsigned int nb_elts, unsigned int cache_size,
+		      uint16_t user_size, int socket_id)
+{
+	struct rte_ml_op_pool_private *priv;
+	struct rte_mempool *mp;
+	unsigned int elt_size;
+
+	/* lookup mempool in case already allocated */
+	mp = rte_mempool_lookup(name);
+	elt_size = sizeof(struct rte_ml_op) + user_size;
+
+	if (mp != NULL) {
+		priv = (struct rte_ml_op_pool_private *)rte_mempool_get_priv(mp);
+		if (mp->elt_size != elt_size || mp->cache_size < cache_size || mp->size < nb_elts ||
+		    priv->user_size < user_size) {
+			mp = NULL;
+			RTE_MLDEV_LOG(ERR,
+				      "Mempool %s already exists but with incompatible parameters",
+				      name);
+			return NULL;
+		}
+		return mp;
+	}
+
+	mp = rte_mempool_create(name, nb_elts, elt_size, cache_size,
+				sizeof(struct rte_ml_op_pool_private), NULL, NULL, ml_op_init, NULL,
+				socket_id, 0);
+	if (mp == NULL) {
+		RTE_MLDEV_LOG(ERR, "Failed to create mempool %s", name);
+		return NULL;
+	}
+
+	priv = (struct rte_ml_op_pool_private *)rte_mempool_get_priv(mp);
+	priv->user_size = user_size;
+
+	return mp;
+}
+
+void
+rte_ml_op_pool_free(struct rte_mempool *mempool)
+{
+	if (mempool != NULL)
+		rte_mempool_free(mempool);
 }
 
 RTE_LOG_REGISTER_DEFAULT(rte_ml_dev_logtype, INFO);
