@@ -1688,8 +1688,7 @@ virtio_dev_rx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	if (unlikely(!vq->enabled))
 		goto out_access_unlock;
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
+	vhost_user_iotlb_rd_lock(vq);
 
 	if (unlikely(!vq->access_ok))
 		if (unlikely(vring_translate(dev, vq) < 0))
@@ -1707,8 +1706,7 @@ virtio_dev_rx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	vhost_queue_stats_update(dev, vq, pkts, nb_tx);
 
 out:
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_unlock(vq);
+	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
@@ -2499,8 +2497,7 @@ virtio_dev_rx_async_submit(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	if (unlikely(!vq->enabled || !vq->async))
 		goto out_access_unlock;
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
+	vhost_user_iotlb_rd_lock(vq);
 
 	if (unlikely(!vq->access_ok))
 		if (unlikely(vring_translate(dev, vq) < 0))
@@ -2520,8 +2517,7 @@ virtio_dev_rx_async_submit(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	vq->stats.inflight_submitted += nb_tx;
 
 out:
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_unlock(vq);
+	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
@@ -3543,8 +3539,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		goto out_access_unlock;
 	}
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
+	vhost_user_iotlb_rd_lock(vq);
 
 	if (unlikely(!vq->access_ok))
 		if (unlikely(vring_translate(dev, vq) < 0)) {
@@ -3603,8 +3598,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	vhost_queue_stats_update(dev, vq, pkts, count);
 
 out:
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_unlock(vq);
+	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
@@ -4150,8 +4144,7 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 		goto out_access_unlock;
 	}
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
+	vhost_user_iotlb_rd_lock(vq);
 
 	if (unlikely(vq->access_ok == 0))
 		if (unlikely(vring_translate(dev, vq) < 0)) {
@@ -4215,8 +4208,7 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 	vhost_queue_stats_update(dev, vq, pkts, count);
 
 out:
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_unlock(vq);
+	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
 	rte_spinlock_unlock(&vq->access_lock);

@@ -563,10 +563,9 @@ vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 }
 
 void
-vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+vring_invalidate(struct virtio_net *dev __rte_unused, struct vhost_virtqueue *vq)
 {
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_wr_lock(vq);
+	vhost_user_iotlb_wr_lock(vq);
 
 	vq->access_ok = false;
 	vq->desc = NULL;
@@ -574,8 +573,7 @@ vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	vq->used = NULL;
 	vq->log_guest_addr = 0;
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_wr_unlock(vq);
+	vhost_user_iotlb_wr_unlock(vq);
 }
 
 static void
