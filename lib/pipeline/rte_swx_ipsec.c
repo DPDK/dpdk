@@ -1719,7 +1719,11 @@ ipsec_session_create(struct rte_swx_ipsec *ipsec,
 	s->pkt_func.prepare.async = NULL;
 	s->pkt_func.process = NULL;
 
-	return rte_ipsec_session_prepare(s);
+	status = rte_ipsec_session_prepare(s);
+	if (status)
+		goto error;
+
+	return 0;
 
 error:
 	/* sa. */
