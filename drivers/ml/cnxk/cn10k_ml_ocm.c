@@ -458,3 +458,54 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 		}
 	}
 }
+
+static void
+cn10k_ml_ocm_pagemask_to_str(struct cn10k_ml_ocm_tile_info *tile_info, uint16_t nwords, char *str)
+{
+	char *p = str;
+	int word;
+
+	/* add prefix 0x */
+	*p++ = '0';
+	*p++ = 'x';
+
+	/* build one word at a time */
+	for (word = nwords - 1; word >= 0; word--) {
+		sprintf(p, "%02X", tile_info->ocm_mask[word]);
+		p += 2;
+	}
+
+	/* terminate */
+	*p++ = 0;
+}
+
+void
+cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
+{
+	char str[ML_CN10K_OCM_NUMPAGES / 4 + 2]; /* nibbles + prefix '0x' */
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_ocm *ocm;
+	uint8_t tile_id;
+	uint8_t word_id;
+	int wb_pages;
+
+	mldev = dev->data->dev_private;
+	ocm = &mldev->ocm;
+
+	fprintf(fp, "OCM State:\n");
+	for (tile_id = 0; tile_id < ocm->num_tiles; tile_id++) {
+		cn10k_ml_ocm_pagemask_to_str(&ocm->tile_ocm_info[tile_id], ocm->mask_words, str);
+
+		wb_pages = 0 - ocm->tile_ocm_info[tile_id].scratch_pages;
+		for (word_id = 0; word_id < ML_CN10K_OCM_MASKWORDS; word_id++)
+			wb_pages +=
+				__builtin_popcount(ocm->tile_ocm_info[tile_id].ocm_mask[word_id]);
+
+		fprintf(fp,
+			"tile = %2u, scratch_pages = %4u,"
+			" wb_pages = %4d, last_wb_page = %4d,"
+			" pagemask = %s\n",
+			tile_id, ocm->tile_ocm_info[tile_id].scratch_pages, wb_pages,
+			ocm->tile_ocm_info[tile_id].last_wb_page, str);
+	}
+}

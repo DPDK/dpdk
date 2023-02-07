@@ -14,9 +14,24 @@
 /* ML model macros */
 #define CN10K_ML_MODEL_MEMZONE_NAME "ml_cn10k_model_mz"
 
+/* Debug print width */
+#define STR_LEN	  12
+#define FIELD_LEN 16
+#define LINE_LEN  90
+
 /* ML Job descriptor flags */
 #define ML_FLAGS_POLL_COMPL BIT(0)
 #define ML_FLAGS_SSO_COMPL  BIT(1)
+
+static void
+print_line(FILE *fp, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++)
+		fprintf(fp, "-");
+	fprintf(fp, "\n");
+}
 
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
@@ -114,6 +129,102 @@ qp_free:
 	rte_free(qp);
 
 	return NULL;
+}
+
+static void
+cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
+{
+
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_ocm *ocm;
+	char str[STR_LEN];
+	uint8_t i;
+
+	mldev = dev->data->dev_private;
+	ocm = &mldev->ocm;
+	model = dev->data->models[model_id];
+
+	/* Print debug info */
+	print_line(fp, LINE_LEN);
+	fprintf(fp, " Model Information (%s)\n", model->metadata.model.name);
+	print_line(fp, LINE_LEN);
+	fprintf(fp, "%*s : %s\n", FIELD_LEN, "name", model->metadata.model.name);
+	fprintf(fp, "%*s : %u.%u.%u.%u\n", FIELD_LEN, "version", model->metadata.model.version[0],
+		model->metadata.model.version[1], model->metadata.model.version[2],
+		model->metadata.model.version[3]);
+	if (strlen(model->name) != 0)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "debug_name", model->name);
+	fprintf(fp, "%*s : 0x%016lx\n", FIELD_LEN, "model", PLT_U64_CAST(model));
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "model_id", model->model_id);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "batch_size", model->metadata.model.batch_size);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_layers", model->metadata.model.num_layers);
+
+	/* Print model state */
+	if (model->state == ML_CN10K_MODEL_STATE_LOADED)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "loaded");
+	if (model->state == ML_CN10K_MODEL_STATE_JOB_ACTIVE)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "job_active");
+	if (model->state == ML_CN10K_MODEL_STATE_STARTED)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "started");
+
+	/* Print OCM status */
+	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "wb_size",
+		model->metadata.model.ocm_wb_range_end - model->metadata.model.ocm_wb_range_start +
+			1);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "wb_pages", model->model_mem_map.wb_pages);
+	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "scratch_size",
+		ocm->size_per_tile - model->metadata.model.ocm_tmp_range_floor);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "scratch_pages", model->model_mem_map.scratch_pages);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_tiles",
+		model->metadata.model.tile_end - model->metadata.model.tile_start + 1);
+
+	if (model->state == ML_CN10K_MODEL_STATE_STARTED) {
+		fprintf(fp, "%*s : 0x%0*" PRIx64 "\n", FIELD_LEN, "tilemask",
+			ML_CN10K_OCM_NUMTILES / 4, model->model_mem_map.tilemask);
+		fprintf(fp, "%*s : 0x%x\n", FIELD_LEN, "ocm_wb_start",
+			model->model_mem_map.wb_page_start * ML_CN10K_OCM_PAGESIZE);
+	}
+
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_inputs", model->metadata.model.num_input);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_outputs", model->metadata.model.num_output);
+	fprintf(fp, "\n");
+
+	print_line(fp, LINE_LEN);
+	fprintf(fp, "%8s  %16s  %12s  %18s  %12s  %14s\n", "input", "input_name", "input_type",
+		"model_input_type", "quantize", "format");
+	print_line(fp, LINE_LEN);
+	for (i = 0; i < model->metadata.model.num_input; i++) {
+		fprintf(fp, "%8u  ", i);
+		fprintf(fp, "%*s  ", 16, model->metadata.input[i].input_name);
+		rte_ml_io_type_to_str(model->metadata.input[i].input_type, str, STR_LEN);
+		fprintf(fp, "%*s  ", 12, str);
+		rte_ml_io_type_to_str(model->metadata.input[i].model_input_type, str, STR_LEN);
+		fprintf(fp, "%*s  ", 18, str);
+		fprintf(fp, "%*s", 12, (model->metadata.input[i].quantize == 1 ? "Yes" : "No"));
+		rte_ml_io_format_to_str(model->metadata.input[i].shape.format, str, STR_LEN);
+		fprintf(fp, "%*s", 16, str);
+		fprintf(fp, "\n");
+	}
+	fprintf(fp, "\n");
+
+	print_line(fp, LINE_LEN);
+	fprintf(fp, "%8s  %16s  %12s  %18s  %12s\n", "output", "output_name", "output_type",
+		"model_output_type", "dequantize");
+	print_line(fp, LINE_LEN);
+	for (i = 0; i < model->metadata.model.num_output; i++) {
+		fprintf(fp, "%8u  ", i);
+		fprintf(fp, "%*s  ", 16, model->metadata.output[i].output_name);
+		rte_ml_io_type_to_str(model->metadata.output[i].output_type, str, STR_LEN);
+		fprintf(fp, "%*s  ", 12, str);
+		rte_ml_io_type_to_str(model->metadata.output[i].model_output_type, str, STR_LEN);
+		fprintf(fp, "%*s  ", 18, str);
+		fprintf(fp, "%*s", 12, (model->metadata.output[i].dequantize == 1 ? "Yes" : "No"));
+		fprintf(fp, "\n");
+	}
+	fprintf(fp, "\n");
+	print_line(fp, LINE_LEN);
+	fprintf(fp, "\n");
 }
 
 static void
@@ -494,6 +605,83 @@ cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 		return -ENOMEM;
 	}
 	dev->data->queue_pairs[queue_pair_id] = qp;
+
+	return 0;
+}
+
+static int
+cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
+{
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_fw *fw;
+
+	uint32_t head_loc;
+	uint32_t tail_loc;
+	uint16_t model_id;
+	uint32_t bufsize;
+	char *head_ptr;
+	int core_id;
+
+	if (roc_env_is_asim())
+		return 0;
+
+	mldev = dev->data->dev_private;
+	fw = &mldev->fw;
+
+	/* Dump model info */
+	for (model_id = 0; model_id < dev->data->nb_models; model_id++) {
+		model = dev->data->models[model_id];
+		if (model != NULL) {
+			cn10k_ml_model_print(dev, model_id, fp);
+			fprintf(fp, "\n");
+		}
+	}
+
+	/* Dump OCM state */
+	cn10k_ml_ocm_print(dev, fp);
+
+	/* Dump debug buffer */
+	for (core_id = 0; core_id <= 1; core_id++) {
+		bufsize = fw->req->jd.fw_load.debug.debug_buffer_size;
+		if (core_id == 0) {
+			head_loc = roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
+			tail_loc = roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
+			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core0_debug_ptr);
+			head_ptr = roc_ml_addr_mlip2ap(&mldev->roc, head_ptr);
+		} else {
+			head_loc = roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
+			tail_loc = roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
+			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core1_debug_ptr);
+			head_ptr = roc_ml_addr_mlip2ap(&mldev->roc, head_ptr);
+		}
+		if (head_loc < tail_loc) {
+			fprintf(fp, "%.*s\n", tail_loc - head_loc, &head_ptr[head_loc]);
+		} else if (head_loc >= tail_loc + 1) {
+			fprintf(fp, "%.*s\n", bufsize - tail_loc, &head_ptr[head_loc]);
+			fprintf(fp, "%.*s\n", tail_loc, &head_ptr[0]);
+		}
+	}
+
+	/* Dump exception info */
+	for (core_id = 0; core_id <= 1; core_id++) {
+		bufsize = fw->req->jd.fw_load.debug.exception_state_size;
+		if ((core_id == 0) &&
+		    (roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_EXCEPTION_SP_C0) != 0)) {
+			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core0_exception_buffer);
+			fprintf(fp, "ML_SCRATCH_EXCEPTION_SP_C0 = 0x%016lx",
+				roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_EXCEPTION_SP_C0));
+			head_ptr = roc_ml_addr_mlip2ap(&mldev->roc, head_ptr);
+			fprintf(fp, "%.*s", bufsize, head_ptr);
+		} else if ((core_id == 1) &&
+			   (roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_EXCEPTION_SP_C1) != 0)) {
+			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core1_exception_buffer);
+			fprintf(fp, "ML_SCRATCH_EXCEPTION_SP_C1 = 0x%016lx",
+				roc_ml_reg_read64(&mldev->roc, ML_SCRATCH_EXCEPTION_SP_C1));
+			head_ptr = roc_ml_addr_mlip2ap(&mldev->roc, head_ptr);
+			fprintf(fp, "%.*s", bufsize, head_ptr);
+		}
+	}
 
 	return 0;
 }
@@ -1139,6 +1327,7 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	.dev_close = cn10k_ml_dev_close,
 	.dev_start = cn10k_ml_dev_start,
 	.dev_stop = cn10k_ml_dev_stop,
+	.dev_dump = cn10k_ml_dev_dump,
 
 	/* Queue-pair handling ops */
 	.dev_queue_pair_setup = cn10k_ml_dev_queue_pair_setup,
