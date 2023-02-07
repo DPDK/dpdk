@@ -686,6 +686,62 @@ cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
 	return 0;
 }
 
+static int
+cn10k_ml_dev_selftest(struct rte_ml_dev *dev)
+{
+	const struct plt_memzone *mz;
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_req *req;
+	uint64_t timeout_cycle;
+	bool timeout;
+	int ret;
+
+	mldev = dev->data->dev_private;
+	mz = plt_memzone_reserve_aligned("dev_selftest", sizeof(struct cn10k_ml_req), 0,
+					 ML_CN10K_ALIGN_SIZE);
+	if (mz == NULL) {
+		plt_err("Could not allocate reserved memzone");
+		return -ENOMEM;
+	}
+	req = mz->addr;
+
+	/* Prepare load completion structure */
+	memset(&req->jd, 0, sizeof(struct cn10k_ml_jd));
+	req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&req->status);
+	req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_SELFTEST;
+	req->jd.hdr.result = roc_ml_addr_ap2mlip(&mldev->roc, &req->result);
+	req->jd.fw_load.flags = cn10k_ml_fw_flags_get(&mldev->fw);
+	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
+	plt_wmb();
+
+	/* Enqueue firmware selftest request through scratch registers */
+	timeout = true;
+	timeout_cycle = plt_tsc_cycles() + ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
+	roc_ml_scratch_enqueue(&mldev->roc, &req->jd);
+
+	plt_rmb();
+	do {
+		if (roc_ml_scratch_is_done_bit_set(&mldev->roc) &&
+		    (plt_read64(&req->status) == ML_CN10K_POLL_JOB_FINISH)) {
+			timeout = false;
+			break;
+		}
+	} while (plt_tsc_cycles() < timeout_cycle);
+
+	/* Check firmware selftest status, clean-up and exit */
+	ret = 0;
+	if (timeout) {
+		ret = -ETIME;
+	} else {
+		if (req->result.error_code != 0)
+			ret = -1;
+	}
+
+	plt_memzone_free(mz);
+
+	return ret;
+}
+
 int
 cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, uint16_t *model_id)
 {
@@ -1328,6 +1384,7 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	.dev_start = cn10k_ml_dev_start,
 	.dev_stop = cn10k_ml_dev_stop,
 	.dev_dump = cn10k_ml_dev_dump,
+	.dev_selftest = cn10k_ml_dev_selftest,
 
 	/* Queue-pair handling ops */
 	.dev_queue_pair_setup = cn10k_ml_dev_queue_pair_setup,
