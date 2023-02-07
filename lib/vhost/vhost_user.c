@@ -2878,18 +2878,46 @@ send_vhost_reply(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx
 }
 
 static int
-send_vhost_slave_message(struct virtio_net *dev,
-		struct vhu_msg_context *ctx)
+send_vhost_slave_message(struct virtio_net *dev, struct vhu_msg_context *ctx)
 {
+	return send_vhost_message(dev, dev->slave_req_fd, ctx);
+}
+
+static int
+send_vhost_slave_message_process_reply(struct virtio_net *dev, struct vhu_msg_context *ctx)
+{
+	struct vhu_msg_context msg_reply;
 	int ret;
 
-	if (ctx->msg.flags & VHOST_USER_NEED_REPLY)
-		rte_spinlock_lock(&dev->slave_req_lock);
+	rte_spinlock_lock(&dev->slave_req_lock);
+	ret = send_vhost_slave_message(dev, ctx);
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "failed to send config change (%d)\n", ret);
+		goto out;
+	}
 
-	ret = send_vhost_message(dev, dev->slave_req_fd, ctx);
-	if (ret < 0 && (ctx->msg.flags & VHOST_USER_NEED_REPLY))
-		rte_spinlock_unlock(&dev->slave_req_lock);
+	ret = read_vhost_message(dev, dev->slave_req_fd, &msg_reply);
+	if (ret <= 0) {
+		if (ret < 0)
+			VHOST_LOG_CONFIG(dev->ifname, ERR,
+				"vhost read slave message reply failed\n");
+		else
+			VHOST_LOG_CONFIG(dev->ifname, INFO, "vhost peer closed\n");
+		ret = -1;
+		goto out;
+	}
 
+	if (msg_reply.msg.request.slave != ctx->msg.request.slave) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR,
+			"received unexpected msg type (%u), expected %u\n",
+			msg_reply.msg.request.slave, ctx->msg.request.slave);
+		ret = -1;
+		goto out;
+	}
+
+	ret = msg_reply.msg.payload.u64 ? -1 : 0;
+out:
+	rte_spinlock_unlock(&dev->slave_req_lock);
 	return ret;
 }
 
@@ -3213,42 +3241,6 @@ out:
 	return ret;
 }
 
-static int process_slave_message_reply(struct virtio_net *dev,
-				       const struct vhu_msg_context *ctx)
-{
-	struct vhu_msg_context msg_reply;
-	int ret;
-
-	if ((ctx->msg.flags & VHOST_USER_NEED_REPLY) == 0)
-		return 0;
-
-	ret = read_vhost_message(dev, dev->slave_req_fd, &msg_reply);
-	if (ret <= 0) {
-		if (ret < 0)
-			VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"vhost read slave message reply failed\n");
-		else
-			VHOST_LOG_CONFIG(dev->ifname, INFO, "vhost peer closed\n");
-		ret = -1;
-		goto out;
-	}
-
-	ret = 0;
-	if (msg_reply.msg.request.slave != ctx->msg.request.slave) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR,
-			"received unexpected msg type (%u), expected %u\n",
-			msg_reply.msg.request.slave, ctx->msg.request.slave);
-		ret = -1;
-		goto out;
-	}
-
-	ret = msg_reply.msg.payload.u64 ? -1 : 0;
-
-out:
-	rte_spinlock_unlock(&dev->slave_req_lock);
-	return ret;
-}
-
 int
 vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 {
@@ -3277,10 +3269,9 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 	return 0;
 }
 
-static int
-vhost_user_slave_config_change(struct virtio_net *dev, bool need_reply)
+int
+rte_vhost_slave_config_change(int vid, bool need_reply)
 {
-	int ret;
 	struct vhu_msg_context ctx = {
 		.msg = {
 			.request.slave = VHOST_USER_SLAVE_CONFIG_CHANGE_MSG,
@@ -3288,29 +3279,23 @@ vhost_user_slave_config_change(struct virtio_net *dev, bool need_reply)
 			.size = 0,
 		}
 	};
-
-	if (need_reply)
-		ctx.msg.flags |= VHOST_USER_NEED_REPLY;
-
-	ret = send_vhost_slave_message(dev, &ctx);
-	if (ret < 0) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "failed to send config change (%d)\n", ret);
-		return ret;
-	}
-
-	return process_slave_message_reply(dev, &ctx);
-}
-
-int
-rte_vhost_slave_config_change(int vid, bool need_reply)
-{
 	struct virtio_net *dev;
+	int ret;
 
 	dev = get_device(vid);
 	if (!dev)
 		return -ENODEV;
 
-	return vhost_user_slave_config_change(dev, need_reply);
+	if (!need_reply) {
+		ret = send_vhost_slave_message(dev, &ctx);
+	} else {
+		ctx.msg.flags |= VHOST_USER_NEED_REPLY;
+		ret = send_vhost_slave_message_process_reply(dev, &ctx);
+	}
+
+	if (ret < 0)
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "failed to send config change (%d)\n", ret);
+	return ret;
 }
 
 static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
@@ -3339,13 +3324,11 @@ static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
 		ctx.fd_num = 1;
 	}
 
-	ret = send_vhost_slave_message(dev, &ctx);
-	if (ret < 0) {
+	ret = send_vhost_slave_message_process_reply(dev, &ctx);
+	if (ret < 0)
 		VHOST_LOG_CONFIG(dev->ifname, ERR, "failed to set host notifier (%d)\n", ret);
-		return ret;
-	}
 
-	return process_slave_message_reply(dev, &ctx);
+	return ret;
 }
 
 int rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable)
