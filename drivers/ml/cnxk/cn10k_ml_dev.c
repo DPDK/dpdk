@@ -214,6 +214,89 @@ cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw)
 }
 
 static int
+cn10k_ml_fw_load_asim(struct cn10k_ml_fw *fw)
+{
+	struct cn10k_ml_dev *mldev;
+	uint64_t timeout_cycle;
+	uint64_t reg_val64;
+	bool timeout;
+	int ret = 0;
+
+	mldev = fw->mldev;
+
+	/* Reset HEAD and TAIL debug pointer registers */
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C0);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C1);
+
+	/* Set ML_MLR_BASE to base IOVA of the ML region in LLC/DRAM. */
+	reg_val64 = rte_eal_get_baseaddr();
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_MLR_BASE);
+	plt_ml_dbg("ML_MLR_BASE = 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_MLR_BASE));
+	roc_ml_reg_save(&mldev->roc, ML_MLR_BASE);
+
+	/* Update FW load completion structure */
+	fw->req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->status);
+	fw->req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
+	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&mldev->roc, &fw->req->result);
+	fw->req->jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
+	plt_write64(ML_CN10K_POLL_JOB_START, &fw->req->status);
+	plt_wmb();
+
+	/* Enqueue FW load through scratch registers */
+	timeout = true;
+	timeout_cycle = plt_tsc_cycles() + ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
+	roc_ml_scratch_enqueue(&mldev->roc, &fw->req->jd);
+
+	plt_rmb();
+	do {
+		if (roc_ml_scratch_is_done_bit_set(&mldev->roc) &&
+		    (plt_read64(&fw->req->status) == ML_CN10K_POLL_JOB_FINISH)) {
+			timeout = false;
+			break;
+		}
+	} while (plt_tsc_cycles() < timeout_cycle);
+
+	/* Check firmware load status, clean-up and exit on failure. */
+	if ((!timeout) && (fw->req->result.error_code == 0)) {
+		cn10k_ml_fw_print_info(fw);
+	} else {
+		/* Set ML to disable new jobs */
+		reg_val64 = (ROC_ML_CFG_JD_SIZE | ROC_ML_CFG_MLIP_ENA);
+		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+
+		/* Clear scratch registers */
+		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+
+		if (timeout) {
+			plt_err("Firmware load timeout");
+			ret = -ETIME;
+		} else {
+			plt_err("Firmware load failed");
+			ret = -1;
+		}
+
+		return ret;
+	}
+
+	/* Reset scratch registers */
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+
+	/* Disable job execution, to be enabled in start */
+	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 &= ~ROC_ML_CFG_ENA;
+	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+
+	return ret;
+}
+
+static int
 cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 {
 	union ml_a35_0_rst_vector_base_s a35_0_rst_vector_base;
@@ -447,16 +530,22 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 	fw = &mldev->fw;
 	fw->mldev = mldev;
 
-	/* Read firmware image to a buffer */
-	ret = rte_firmware_read(fw->path, &fw_buffer, &fw_size);
-	if (ret < 0) {
-		plt_err("Can't read firmware data: %s\n", fw->path);
-		return ret;
+	if (roc_env_is_emulator() || roc_env_is_hw()) {
+		/* Read firmware image to a buffer */
+		ret = rte_firmware_read(fw->path, &fw_buffer, &fw_size);
+		if (ret < 0) {
+			plt_err("Can't read firmware data: %s\n", fw->path);
+			return ret;
+		}
+
+		/* Reserve memzone for firmware load completion and data */
+		mz_size = sizeof(struct cn10k_ml_req) + fw_size + FW_STACK_BUFFER_SIZE +
+			  FW_DEBUG_BUFFER_SIZE + FW_EXCEPTION_BUFFER_SIZE;
+	} else if (roc_env_is_asim()) {
+		/* Reserve memzone for firmware load completion */
+		mz_size = sizeof(struct cn10k_ml_req);
 	}
 
-	/* Reserve memzone for firmware load completion and data */
-	mz_size = sizeof(struct cn10k_ml_req) + fw_size + FW_STACK_BUFFER_SIZE +
-		  FW_DEBUG_BUFFER_SIZE + FW_EXCEPTION_BUFFER_SIZE;
 	mz = plt_memzone_reserve_aligned(FW_MEMZONE_NAME, mz_size, 0, ML_CN10K_ALIGN_SIZE);
 	if (mz == NULL) {
 		plt_err("plt_memzone_reserve failed : %s", FW_MEMZONE_NAME);
@@ -475,10 +564,16 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 		roc_ml_mlip_reset(&mldev->roc, true);
 
 	/* Load firmware */
-	fw->data = PLT_PTR_ADD(mz->addr, sizeof(struct cn10k_ml_req));
-	ret = cn10k_ml_fw_load_cn10ka(fw, fw_buffer, fw_size);
-	if (fw_buffer != NULL)
-		free(fw_buffer);
+	if (roc_env_is_emulator() || roc_env_is_hw()) {
+		fw->data = PLT_PTR_ADD(mz->addr, sizeof(struct cn10k_ml_req));
+		ret = cn10k_ml_fw_load_cn10ka(fw, fw_buffer, fw_size);
+		if (fw_buffer != NULL)
+			free(fw_buffer);
+	} else if (roc_env_is_asim()) {
+		fw->data = NULL;
+		ret = cn10k_ml_fw_load_asim(fw);
+	}
+
 	if (ret < 0)
 		cn10k_ml_fw_unload(mldev);
 
