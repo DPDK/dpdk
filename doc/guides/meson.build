@@ -7,7 +7,7 @@ if not sphinx.found()
     subdir_done()
 endif
 
-extra_sphinx_args = []
+extra_sphinx_args = ['-a']
 if get_option('werror')
     extra_sphinx_args += '-W'
 endif
