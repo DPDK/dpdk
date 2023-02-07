@@ -30,6 +30,7 @@ extern "C" {
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
+#include <rte_lock_annotations.h>
 #include <rte_pause.h>
 
 /**
@@ -55,7 +56,7 @@ extern "C" {
 				/* Writer is waiting or has lock */
 #define RTE_RWLOCK_READ	 0x4	/* Reader increment */
 
-typedef struct {
+typedef struct __rte_lockable {
 	int32_t cnt;
 } rte_rwlock_t;
 
@@ -84,6 +85,8 @@ rte_rwlock_init(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_read_lock(rte_rwlock_t *rwl)
+	__rte_shared_lock_function(rwl)
+	__rte_no_thread_safety_analysis
 {
 	int32_t x;
 
@@ -119,6 +122,8 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
  */
 static inline int
 rte_rwlock_read_trylock(rte_rwlock_t *rwl)
+	__rte_shared_trylock_function(0, rwl)
+	__rte_no_thread_safety_analysis
 {
 	int32_t x;
 
@@ -150,6 +155,8 @@ rte_rwlock_read_trylock(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_read_unlock(rte_rwlock_t *rwl)
+	__rte_unlock_function(rwl)
+	__rte_no_thread_safety_analysis
 {
 	__atomic_fetch_sub(&rwl->cnt, RTE_RWLOCK_READ, __ATOMIC_RELEASE);
 }
@@ -166,6 +173,8 @@ rte_rwlock_read_unlock(rte_rwlock_t *rwl)
  */
 static inline int
 rte_rwlock_write_trylock(rte_rwlock_t *rwl)
+	__rte_exclusive_trylock_function(0, rwl)
+	__rte_no_thread_safety_analysis
 {
 	int32_t x;
 
@@ -186,6 +195,8 @@ rte_rwlock_write_trylock(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_write_lock(rte_rwlock_t *rwl)
+	__rte_exclusive_lock_function(rwl)
+	__rte_no_thread_safety_analysis
 {
 	int32_t x;
 
@@ -219,6 +230,8 @@ rte_rwlock_write_lock(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_write_unlock(rte_rwlock_t *rwl)
+	__rte_unlock_function(rwl)
+	__rte_no_thread_safety_analysis
 {
 	__atomic_fetch_sub(&rwl->cnt, RTE_RWLOCK_WRITE, __ATOMIC_RELEASE);
 }
@@ -237,7 +250,8 @@ rte_rwlock_write_unlock(rte_rwlock_t *rwl)
  *   A pointer to a rwlock structure.
  */
 static inline void
-rte_rwlock_read_lock_tm(rte_rwlock_t *rwl);
+rte_rwlock_read_lock_tm(rte_rwlock_t *rwl)
+	__rte_shared_lock_function(rwl);
 
 /**
  * Commit hardware memory transaction or release the read lock if the lock is used as a fall-back
@@ -246,7 +260,8 @@ rte_rwlock_read_lock_tm(rte_rwlock_t *rwl);
  *   A pointer to the rwlock structure.
  */
 static inline void
-rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl);
+rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl)
+	__rte_unlock_function(rwl);
 
 /**
  * Try to execute critical section in a hardware memory transaction, if it
@@ -262,7 +277,8 @@ rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl);
  *   A pointer to a rwlock structure.
  */
 static inline void
-rte_rwlock_write_lock_tm(rte_rwlock_t *rwl);
+rte_rwlock_write_lock_tm(rte_rwlock_t *rwl)
+	__rte_exclusive_lock_function(rwl);
 
 /**
  * Commit hardware memory transaction or release the write lock if the lock is used as a fall-back
@@ -271,7 +287,8 @@ rte_rwlock_write_lock_tm(rte_rwlock_t *rwl);
  *   A pointer to a rwlock structure.
  */
 static inline void
-rte_rwlock_write_unlock_tm(rte_rwlock_t *rwl);
+rte_rwlock_write_unlock_tm(rte_rwlock_t *rwl)
+	__rte_unlock_function(rwl);
 
 #ifdef __cplusplus
 }

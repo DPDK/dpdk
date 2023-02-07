@@ -120,6 +120,7 @@ foreach l:libraries
     reason = '<unknown reason>' # set if build == false to explain why
     name = l
     use_function_versioning = false
+    annotate_locks = false
     sources = []
     headers = []
     indirect_headers = [] # public headers not directly included by apps
@@ -202,6 +203,10 @@ foreach l:libraries
         cflags += '-DRTE_USE_FUNCTION_VERSIONING'
     endif
     cflags += '-DRTE_LOG_DEFAULT_LOGTYPE=lib.' + l
+    if annotate_locks and cc.has_argument('-Wthread-safety')
+        cflags += '-DRTE_ANNOTATE_LOCKS'
+        cflags += '-Wthread-safety'
+    endif
 
     # first build static lib
     static_lib = static_library(libname,

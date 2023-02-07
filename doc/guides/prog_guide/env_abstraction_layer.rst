@@ -529,6 +529,30 @@ Misc Functions
 
 Locks and atomic operations are per-architecture (i686 and x86_64).
 
+Lock annotations
+~~~~~~~~~~~~~~~~
+
+R/W locks, seq locks and spinlocks have been instrumented to help developers in
+catching issues in DPDK.
+
+This instrumentation relies on
+`clang Thread Safety checks <https://clang.llvm.org/docs/ThreadSafetyAnalysis.html>`_.
+All attributes are prefixed with __rte and are fully described in the clang
+documentation.
+
+Some general comments:
+
+- it is important that lock requirements are expressed at the function
+  declaration level in headers so that other code units can be inspected,
+- when some global lock is necessary to some user-exposed API, it is preferred
+  to expose it via an internal helper rather than expose the global variable,
+- there are a list of known limitations with clang instrumentation, but before
+  waiving checks with ``__rte_no_thread_safety_analysis`` in your code, please
+  discuss it on the mailing list,
+
+A DPDK library/driver can enable/disable the checks by setting
+``annotate_locks`` accordingly in its ``meson.build`` file.
+
 IOVA Mode Detection
 ~~~~~~~~~~~~~~~~~~~
 

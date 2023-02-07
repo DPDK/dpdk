@@ -23,6 +23,7 @@ extern "C" {
 #ifndef RTE_FORCE_INTRINSICS
 static inline void
 rte_spinlock_lock(rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	int lock_val = 1;
 	asm volatile (
@@ -43,6 +44,7 @@ rte_spinlock_lock(rte_spinlock_t *sl)
 
 static inline void
 rte_spinlock_unlock (rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	int unlock_val = 0;
 	asm volatile (
@@ -54,6 +56,7 @@ rte_spinlock_unlock (rte_spinlock_t *sl)
 
 static inline int
 rte_spinlock_trylock (rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	int lockval = 1;
 
@@ -121,6 +124,7 @@ rte_try_tm(volatile int *lock)
 
 static inline void
 rte_spinlock_lock_tm(rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	if (likely(rte_try_tm(&sl->locked)))
 		return;
@@ -130,6 +134,7 @@ rte_spinlock_lock_tm(rte_spinlock_t *sl)
 
 static inline int
 rte_spinlock_trylock_tm(rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	if (likely(rte_try_tm(&sl->locked)))
 		return 1;
@@ -139,6 +144,7 @@ rte_spinlock_trylock_tm(rte_spinlock_t *sl)
 
 static inline void
 rte_spinlock_unlock_tm(rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	if (unlikely(sl->locked))
 		rte_spinlock_unlock(sl);
@@ -148,6 +154,7 @@ rte_spinlock_unlock_tm(rte_spinlock_t *sl)
 
 static inline void
 rte_spinlock_recursive_lock_tm(rte_spinlock_recursive_t *slr)
+	__rte_no_thread_safety_analysis
 {
 	if (likely(rte_try_tm(&slr->sl.locked)))
 		return;
@@ -157,6 +164,7 @@ rte_spinlock_recursive_lock_tm(rte_spinlock_recursive_t *slr)
 
 static inline void
 rte_spinlock_recursive_unlock_tm(rte_spinlock_recursive_t *slr)
+	__rte_no_thread_safety_analysis
 {
 	if (unlikely(slr->sl.locked))
 		rte_spinlock_recursive_unlock(slr);
@@ -166,6 +174,7 @@ rte_spinlock_recursive_unlock_tm(rte_spinlock_recursive_t *slr)
 
 static inline int
 rte_spinlock_recursive_trylock_tm(rte_spinlock_recursive_t *slr)
+	__rte_no_thread_safety_analysis
 {
 	if (likely(rte_try_tm(&slr->sl.locked)))
 		return 1;

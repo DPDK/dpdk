@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Introduced lock annotations.**
+
+  Added lock annotations attributes so that clang can statically analyze lock
+  correctness.
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

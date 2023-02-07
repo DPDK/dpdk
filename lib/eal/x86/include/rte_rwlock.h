@@ -14,6 +14,7 @@ extern "C" {
 
 static inline void
 rte_rwlock_read_lock_tm(rte_rwlock_t *rwl)
+	__rte_no_thread_safety_analysis
 {
 	if (likely(rte_try_tm(&rwl->cnt)))
 		return;
@@ -22,6 +23,7 @@ rte_rwlock_read_lock_tm(rte_rwlock_t *rwl)
 
 static inline void
 rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl)
+	__rte_no_thread_safety_analysis
 {
 	if (unlikely(rwl->cnt))
 		rte_rwlock_read_unlock(rwl);
@@ -31,6 +33,7 @@ rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl)
 
 static inline void
 rte_rwlock_write_lock_tm(rte_rwlock_t *rwl)
+	__rte_no_thread_safety_analysis
 {
 	if (likely(rte_try_tm(&rwl->cnt)))
 		return;
@@ -39,6 +42,7 @@ rte_rwlock_write_lock_tm(rte_rwlock_t *rwl)
 
 static inline void
 rte_rwlock_write_unlock_tm(rte_rwlock_t *rwl)
+	__rte_no_thread_safety_analysis
 {
 	if (unlikely(rwl->cnt))
 		rte_rwlock_write_unlock(rwl);

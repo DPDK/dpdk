@@ -215,6 +215,7 @@ rte_seqlock_read_retry(const rte_seqlock_t *seqlock, uint32_t begin_sn)
 __rte_experimental
 static inline void
 rte_seqlock_write_lock(rte_seqlock_t *seqlock)
+	__rte_exclusive_lock_function(&seqlock->lock)
 {
 	/* To synchronize with other writers. */
 	rte_spinlock_lock(&seqlock->lock);
@@ -240,6 +241,7 @@ rte_seqlock_write_lock(rte_seqlock_t *seqlock)
 __rte_experimental
 static inline void
 rte_seqlock_write_unlock(rte_seqlock_t *seqlock)
+	__rte_unlock_function(&seqlock->lock)
 {
 	rte_seqcount_write_end(&seqlock->count);
 

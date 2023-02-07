@@ -91,6 +91,7 @@ foreach subpath:subdirs
         build = true # set to false to disable, e.g. missing deps
         reason = '<unknown reason>' # set if build == false to explain
         name = drv
+        annotate_locks = false
         sources = []
         headers = []
         driver_sdk_headers = [] # public headers included by drivers
@@ -167,6 +168,10 @@ foreach subpath:subdirs
         enabled_drivers += name
         lib_name = '_'.join(['rte', class, name])
         cflags += '-DRTE_LOG_DEFAULT_LOGTYPE=' + '.'.join([log_prefix, name])
+        if annotate_locks and cc.has_argument('-Wthread-safety')
+            cflags += '-DRTE_ANNOTATE_LOCKS'
+            cflags += '-Wthread-safety'
+        endif
         dpdk_conf.set(lib_name.to_upper(), 1)
 
         dpdk_extra_ldflags += pkgconfig_extra_libs

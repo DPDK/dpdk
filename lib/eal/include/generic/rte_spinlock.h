@@ -22,12 +22,13 @@
 #ifdef RTE_FORCE_INTRINSICS
 #include <rte_common.h>
 #endif
+#include <rte_lock_annotations.h>
 #include <rte_pause.h>
 
 /**
  * The rte_spinlock_t type.
  */
-typedef struct {
+typedef struct __rte_lockable {
 	volatile int locked; /**< lock status 0 = unlocked, 1 = locked */
 } rte_spinlock_t;
 
@@ -55,11 +56,13 @@ rte_spinlock_init(rte_spinlock_t *sl)
  *   A pointer to the spinlock.
  */
 static inline void
-rte_spinlock_lock(rte_spinlock_t *sl);
+rte_spinlock_lock(rte_spinlock_t *sl)
+	__rte_exclusive_lock_function(sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline void
 rte_spinlock_lock(rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	int exp = 0;
 
@@ -79,11 +82,13 @@ rte_spinlock_lock(rte_spinlock_t *sl)
  *   A pointer to the spinlock.
  */
 static inline void
-rte_spinlock_unlock (rte_spinlock_t *sl);
+rte_spinlock_unlock(rte_spinlock_t *sl)
+	__rte_unlock_function(sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline void
-rte_spinlock_unlock (rte_spinlock_t *sl)
+rte_spinlock_unlock(rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	__atomic_store_n(&sl->locked, 0, __ATOMIC_RELEASE);
 }
@@ -99,11 +104,13 @@ rte_spinlock_unlock (rte_spinlock_t *sl)
  */
 __rte_warn_unused_result
 static inline int
-rte_spinlock_trylock (rte_spinlock_t *sl);
+rte_spinlock_trylock(rte_spinlock_t *sl)
+	__rte_exclusive_trylock_function(1, sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline int
-rte_spinlock_trylock (rte_spinlock_t *sl)
+rte_spinlock_trylock(rte_spinlock_t *sl)
+	__rte_no_thread_safety_analysis
 {
 	int exp = 0;
 	return __atomic_compare_exchange_n(&sl->locked, &exp, 1,
@@ -147,7 +154,8 @@ static inline int rte_tm_supported(void);
  *   A pointer to the spinlock.
  */
 static inline void
-rte_spinlock_lock_tm(rte_spinlock_t *sl);
+rte_spinlock_lock_tm(rte_spinlock_t *sl)
+	__rte_exclusive_lock_function(sl);
 
 /**
  * Commit hardware memory transaction or release the spinlock if
@@ -157,7 +165,8 @@ rte_spinlock_lock_tm(rte_spinlock_t *sl);
  *   A pointer to the spinlock.
  */
 static inline void
-rte_spinlock_unlock_tm(rte_spinlock_t *sl);
+rte_spinlock_unlock_tm(rte_spinlock_t *sl)
+	__rte_unlock_function(sl);
 
 /**
  * Try to execute critical section in a hardware memory transaction,
@@ -177,7 +186,8 @@ rte_spinlock_unlock_tm(rte_spinlock_t *sl);
  */
 __rte_warn_unused_result
 static inline int
-rte_spinlock_trylock_tm(rte_spinlock_t *sl);
+rte_spinlock_trylock_tm(rte_spinlock_t *sl)
+	__rte_exclusive_trylock_function(1, sl);
 
 /**
  * The rte_spinlock_recursive_t type.
@@ -213,6 +223,7 @@ static inline void rte_spinlock_recursive_init(rte_spinlock_recursive_t *slr)
  *   A pointer to the recursive spinlock.
  */
 static inline void rte_spinlock_recursive_lock(rte_spinlock_recursive_t *slr)
+	__rte_no_thread_safety_analysis
 {
 	int id = rte_gettid();
 
@@ -229,6 +240,7 @@ static inline void rte_spinlock_recursive_lock(rte_spinlock_recursive_t *slr)
  *   A pointer to the recursive spinlock.
  */
 static inline void rte_spinlock_recursive_unlock(rte_spinlock_recursive_t *slr)
+	__rte_no_thread_safety_analysis
 {
 	if (--(slr->count) == 0) {
 		slr->user = -1;
@@ -247,6 +259,7 @@ static inline void rte_spinlock_recursive_unlock(rte_spinlock_recursive_t *slr)
  */
 __rte_warn_unused_result
 static inline int rte_spinlock_recursive_trylock(rte_spinlock_recursive_t *slr)
+	__rte_no_thread_safety_analysis
 {
 	int id = rte_gettid();
 
