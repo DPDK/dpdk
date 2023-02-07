@@ -114,6 +114,9 @@ rte_ml_dev_pmd_allocate(const char *name, uint8_t socket_id)
 		ml_dev_globals.nb_devs++;
 	}
 
+	dev->enqueue_burst = NULL;
+	dev->dequeue_burst = NULL;
+
 	return dev;
 }
 
@@ -669,6 +672,78 @@ rte_ml_op_pool_free(struct rte_mempool *mempool)
 {
 	if (mempool != NULL)
 		rte_mempool_free(mempool);
+}
+
+uint16_t
+rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uint16_t nb_ops)
+{
+	struct rte_ml_dev *dev;
+
+#ifdef RTE_LIBRTE_ML_DEV_DEBUG
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->enqueue_burst == NULL) {
+		rte_errno = -ENOTSUP;
+		return 0;
+	}
+
+	if (ops == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL\n", dev_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (qp_id >= dev->data->nb_queue_pairs) {
+		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u\n", qp_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#else
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+#endif
+
+	return (*dev->enqueue_burst)(dev, qp_id, ops, nb_ops);
+}
+
+uint16_t
+rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uint16_t nb_ops)
+{
+	struct rte_ml_dev *dev;
+
+#ifdef RTE_LIBRTE_ML_DEV_DEBUG
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+	if (*dev->dequeue_burst == NULL) {
+		rte_errno = -ENOTSUP;
+		return 0;
+	}
+
+	if (ops == NULL) {
+		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL\n", dev_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (qp_id >= dev->data->nb_queue_pairs) {
+		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u\n", qp_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#else
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+#endif
+
+	return (*dev->dequeue_burst)(dev, qp_id, ops, nb_ops);
 }
 
 RTE_LOG_REGISTER_DEFAULT(rte_ml_dev_logtype, INFO);

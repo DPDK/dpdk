@@ -38,6 +38,8 @@ struct rte_ml_dev_pmd_init_params {
 	uint64_t private_data_size;
 };
 
+struct rte_ml_dev;
+
 /**
  * @internal
  *

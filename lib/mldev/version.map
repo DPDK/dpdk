@@ -1,6 +1,7 @@
 EXPERIMENTAL {
 	global:
 
+	rte_ml_dequeue_burst;
 	rte_ml_dev_close;
 	rte_ml_dev_configure;
 	rte_ml_dev_count;
@@ -12,6 +13,7 @@ EXPERIMENTAL {
 	rte_ml_dev_socket_id;
 	rte_ml_dev_start;
 	rte_ml_dev_stop;
+	rte_ml_enqueue_burst;
 	rte_ml_io_dequantize;
 	rte_ml_io_input_size_get;
 	rte_ml_io_output_size_get;
