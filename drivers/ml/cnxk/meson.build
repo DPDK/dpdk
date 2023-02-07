@@ -17,7 +17,7 @@ sources = files(
         'cn10k_ml_ops.c',
 )
 
-deps += ['mldev', 'common_cnxk']
+deps += ['mldev', 'common_cnxk', 'kvargs']
 
 if get_option('buildtype').contains('debug')
         cflags += [ '-DCNXK_ML_DEV_DEBUG' ]

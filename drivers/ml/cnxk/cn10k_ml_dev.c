@@ -4,6 +4,8 @@
 
 #include <rte_common.h>
 #include <rte_dev.h>
+#include <rte_devargs.h>
+#include <rte_kvargs.h>
 #include <rte_mldev.h>
 #include <rte_mldev_pmd.h>
 #include <rte_pci.h>
@@ -13,8 +15,69 @@
 #include "cn10k_ml_dev.h"
 #include "cn10k_ml_ops.h"
 
+#define CN10K_ML_FW_PATH "fw_path"
+
+#define CN10K_ML_FW_PATH_DEFAULT "/lib/firmware/mlip-fw.bin"
+
+static const char *const valid_args[] = {CN10K_ML_FW_PATH, NULL};
+
 /* Dummy operations for ML device */
 struct rte_ml_dev_ops ml_dev_dummy_ops = {0};
+
+static int
+parse_string_arg(const char *key __rte_unused, const char *value, void *extra_args)
+{
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	*(char **)extra_args = strdup(value);
+
+	if (!*(char **)extra_args)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static int
+cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mldev)
+{
+	struct rte_kvargs *kvlist = NULL;
+	bool fw_path_set = false;
+	char *fw_path = NULL;
+	int ret = 0;
+
+	if (devargs == NULL)
+		goto check_args;
+
+	kvlist = rte_kvargs_parse(devargs->args, valid_args);
+	if (kvlist == NULL) {
+		plt_err("Error parsing devargs\n");
+		return -EINVAL;
+	}
+
+	if (rte_kvargs_count(kvlist, CN10K_ML_FW_PATH) == 1) {
+		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_PATH, &parse_string_arg, &fw_path);
+		if (ret < 0) {
+			plt_err("Error processing arguments, key = %s\n", CN10K_ML_FW_PATH);
+			ret = -EINVAL;
+			goto exit;
+		}
+		fw_path_set = true;
+	}
+
+check_args:
+	if (!fw_path_set)
+		mldev->fw.path = CN10K_ML_FW_PATH_DEFAULT;
+	else
+		mldev->fw.path = fw_path;
+	plt_info("ML: %s = %s", CN10K_ML_FW_PATH, mldev->fw.path);
+
+exit:
+	if (kvlist)
+		rte_kvargs_free(kvlist);
+
+	return ret;
+}
 
 static int
 cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
@@ -48,6 +111,12 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		mldev->roc.pci_dev = pci_dev;
+
+		ret = cn10k_mldev_parse_devargs(dev->device->devargs, mldev);
+		if (ret) {
+			plt_err("Failed to parse devargs ret = %d", ret);
+			goto pmd_destroy;
+		}
 
 		ret = roc_ml_dev_init(&mldev->roc);
 		if (ret) {
@@ -122,3 +191,5 @@ static struct rte_pci_driver cn10k_mldev_pmd = {
 RTE_PMD_REGISTER_PCI(MLDEV_NAME_CN10K_PMD, cn10k_mldev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(MLDEV_NAME_CN10K_PMD, pci_id_ml_table);
 RTE_PMD_REGISTER_KMOD_DEP(MLDEV_NAME_CN10K_PMD, "vfio-pci");
+
+RTE_PMD_REGISTER_PARAM_STRING(MLDEV_NAME_CN10K_PMD, CN10K_ML_FW_PATH "=<path>");

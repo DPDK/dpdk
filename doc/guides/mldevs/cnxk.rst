@@ -62,6 +62,23 @@ Bind the ML PF device to the vfio_pci driver:
    usertools/dpdk-devbind.py -b vfio-pci 0000:00:10.0
 
 
+Runtime Config Options
+----------------------
+
+**Firmware file path** (default ``/lib/firmware/mlip-fw.bin``)
+
+  Path to the firmware binary to be loaded during device configuration.
+  The parameter ``fw_path`` can be used by the user
+  to load ML firmware from a custom path.
+
+  For example::
+
+     -a 0000:00:10.0,fw_path="/home/user/ml_fw.bin"
+
+  With the above configuration, driver loads the firmware from the path
+  ``/home/user/ml_fw.bin``.
+
+
 Debugging Options
 -----------------
 

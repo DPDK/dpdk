@@ -43,6 +43,15 @@ enum cn10k_ml_dev_state {
 	ML_CN10K_DEV_STATE_CLOSED
 };
 
+/* ML firmware structure */
+struct cn10k_ml_fw {
+	/* Device reference */
+	struct cn10k_ml_dev *mldev;
+
+	/* Firmware file path */
+	const char *path;
+};
+
 /* Device private data */
 struct cn10k_ml_dev {
 	/* Device ROC */
@@ -50,6 +59,9 @@ struct cn10k_ml_dev {
 
 	/* Configuration state */
 	enum cn10k_ml_dev_state state;
+
+	/* Firmware */
+	struct cn10k_ml_fw fw;
 };
 
 #endif /* _CN10K_ML_DEV_H_ */
