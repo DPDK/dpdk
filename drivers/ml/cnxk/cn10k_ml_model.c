@@ -356,3 +356,58 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, ui
 
 	return 0;
 }
+
+void
+cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
+{
+	struct rte_ml_model_info *info;
+	struct rte_ml_io_info *output;
+	struct rte_ml_io_info *input;
+	uint8_t i;
+
+	info = PLT_PTR_CAST(model->info);
+	input = PLT_PTR_ADD(info, sizeof(struct rte_ml_model_info));
+	output =
+		PLT_PTR_ADD(input, model->metadata.model.num_input * sizeof(struct rte_ml_io_info));
+
+	/* Set model info */
+	memset(info, 0, sizeof(struct rte_ml_model_info));
+	rte_memcpy(info->name, model->metadata.model.name, MRVL_ML_MODEL_NAME_LEN);
+	snprintf(info->version, RTE_ML_STR_MAX, "%u.%u.%u.%u", model->metadata.model.version[0],
+		 model->metadata.model.version[1], model->metadata.model.version[2],
+		 model->metadata.model.version[3]);
+	info->model_id = model->model_id;
+	info->device_id = dev->data->dev_id;
+	info->batch_size = model->batch_size;
+	info->nb_inputs = model->metadata.model.num_input;
+	info->input_info = input;
+	info->nb_outputs = model->metadata.model.num_output;
+	info->output_info = output;
+	info->wb_size = model->metadata.weights_bias.file_size;
+
+	/* Set input info */
+	for (i = 0; i < info->nb_inputs; i++) {
+		rte_memcpy(input[i].name, model->metadata.input[i].input_name,
+			   MRVL_ML_INPUT_NAME_LEN);
+		input[i].dtype = model->metadata.input[i].input_type;
+		input[i].qtype = model->metadata.input[i].model_input_type;
+		input[i].shape.format = model->metadata.input[i].shape.format;
+		input[i].shape.w = model->metadata.input[i].shape.w;
+		input[i].shape.x = model->metadata.input[i].shape.x;
+		input[i].shape.y = model->metadata.input[i].shape.y;
+		input[i].shape.z = model->metadata.input[i].shape.z;
+	}
+
+	/* Set output info */
+	for (i = 0; i < info->nb_outputs; i++) {
+		rte_memcpy(output[i].name, model->metadata.output[i].output_name,
+			   MRVL_ML_OUTPUT_NAME_LEN);
+		output[i].dtype = model->metadata.output[i].output_type;
+		output[i].qtype = model->metadata.output[i].model_output_type;
+		output[i].shape.format = RTE_ML_IO_FORMAT_1D;
+		output[i].shape.w = model->metadata.output[i].size;
+		output[i].shape.x = 1;
+		output[i].shape.y = 1;
+		output[i].shape.z = 1;
+	}
+}

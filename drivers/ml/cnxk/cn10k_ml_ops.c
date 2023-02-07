@@ -506,6 +506,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
 	size_t model_data_size;
+	size_t model_info_size;
 	uint8_t *base_dma_addr;
 	uint16_t scratch_pages;
 	uint16_t wb_pages;
@@ -544,8 +545,13 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	model_data_size = metadata->init_model.file_size + metadata->main_model.file_size +
 			  metadata->finish_model.file_size + metadata->weights_bias.file_size;
 	model_data_size = PLT_ALIGN_CEIL(model_data_size, ML_CN10K_ALIGN_SIZE);
+	model_info_size = sizeof(struct rte_ml_model_info) +
+			  metadata->model.num_input * sizeof(struct rte_ml_io_info) +
+			  metadata->model.num_output * sizeof(struct rte_ml_io_info);
+	model_info_size = PLT_ALIGN_CEIL(model_info_size, ML_CN10K_ALIGN_SIZE);
+
 	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
-		  2 * model_data_size +
+		  2 * model_data_size + model_info_size +
 		  PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE);
 
 	/* Allocate memzone for model object and model data */
@@ -585,10 +591,12 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	model->model_mem_map.wb_pages = wb_pages;
 	model->model_mem_map.scratch_pages = scratch_pages;
 
+	/* Set model info */
+	model->info = PLT_PTR_ADD(base_dma_addr, 2 * model_data_size);
+	cn10k_ml_model_info_set(dev, model);
+
 	/* Set slow-path request address and state */
-	model->req = PLT_PTR_ADD(
-		mz->addr, PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
-				  2 * model_data_size);
+	model->req = PLT_PTR_ADD(model->info, model_info_size);
 
 	plt_spinlock_init(&model->lock);
 	model->state = ML_CN10K_MODEL_STATE_LOADED;
@@ -877,6 +885,26 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	return ret;
 }
 
+static int
+cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
+			struct rte_ml_model_info *model_info)
+{
+	struct cn10k_ml_model *model;
+
+	model = dev->data->models[model_id];
+
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	rte_memcpy(model_info, model->info, sizeof(struct rte_ml_model_info));
+	model_info->input_info = ((struct rte_ml_model_info *)model->info)->input_info;
+	model_info->output_info = ((struct rte_ml_model_info *)model->info)->output_info;
+
+	return 0;
+}
+
 struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cn10k_ml_dev_info_get,
@@ -894,4 +922,5 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	.model_unload = cn10k_ml_model_unload,
 	.model_start = cn10k_ml_model_start,
 	.model_stop = cn10k_ml_model_stop,
+	.model_info_get = cn10k_ml_model_info_get,
 };

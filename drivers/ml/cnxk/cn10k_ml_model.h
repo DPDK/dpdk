@@ -422,6 +422,14 @@ struct cn10k_ml_model {
 	/* Tile and memory information object */
 	struct cn10k_ml_ocm_model_map model_mem_map;
 
+	/* Internal model information structure
+	 * Size of the buffer = sizeof(struct rte_ml_model_info)
+	 *                    + num_inputs * sizeof(struct rte_ml_io_info)
+	 *                    + num_outputs * sizeof(struct rte_ml_io_info).
+	 * Structures would be arranged in the same order in the buffer.
+	 */
+	uint8_t *info;
+
 	/* Spinlock, used to update model state */
 	plt_spinlock_t lock;
 
@@ -438,5 +446,6 @@ void cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer,
 				uint8_t *base_dma_addr);
 int cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, uint8_t *buffer,
 				   uint16_t *wb_pages, uint16_t *scratch_pages);
+void cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model);
 
 #endif /* _CN10K_ML_MODEL_H_ */
