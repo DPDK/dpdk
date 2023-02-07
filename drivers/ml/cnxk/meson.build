@@ -9,10 +9,12 @@ endif
 
 driver_sdk_headers = files(
         'cn10k_ml_dev.h',
+        'cn10k_ml_ops.h',
 )
 
 sources = files(
         'cn10k_ml_dev.c',
+        'cn10k_ml_ops.c',
 )
 
 deps += ['mldev', 'common_cnxk']
