@@ -1533,6 +1533,59 @@ empty_or_active:
 	return count;
 }
 
+__rte_hot int
+cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
+{
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_req *req;
+	bool timeout;
+	int ret = 0;
+
+	mldev = dev->data->dev_private;
+	model = dev->data->models[op->model_id];
+	req = model->req;
+
+	cn10k_ml_prep_fp_job_descriptor(dev, req, op);
+
+	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
+	req->result.user_ptr = op->user_ptr;
+
+	plt_write64(ML_CN10K_POLL_JOB_START, &req->status);
+	req->jcmd.w1.s.jobptr = PLT_U64_CAST(&req->jd);
+
+	timeout = true;
+	req->timeout = plt_tsc_cycles() + ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
+	do {
+		if (roc_ml_jcmdq_enqueue_lf(&mldev->roc, &req->jcmd)) {
+			req->op = op;
+			timeout = false;
+			break;
+		}
+	} while (plt_tsc_cycles() < req->timeout);
+
+	if (timeout) {
+		ret = -EBUSY;
+		goto error_enqueue;
+	}
+
+	timeout = true;
+	do {
+		if (plt_read64(&req->status) == ML_CN10K_POLL_JOB_FINISH) {
+			timeout = false;
+			break;
+		}
+	} while (plt_tsc_cycles() < req->timeout);
+
+	if (timeout)
+		ret = -ETIME;
+	else
+		cn10k_ml_result_update(dev, -1, &req->result, req->op);
+
+error_enqueue:
+	return ret;
+}
+
 struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cn10k_ml_dev_info_get,
