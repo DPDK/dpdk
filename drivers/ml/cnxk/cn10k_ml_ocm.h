@@ -58,6 +58,9 @@ struct cn10k_ml_ocm {
 	/* OCM spinlock, used to update OCM state */
 	rte_spinlock_t lock;
 
+	/* OCM allocation mode */
+	const char *alloc_mode;
+
 	/* Number of OCM tiles */
 	uint8_t num_tiles;
 

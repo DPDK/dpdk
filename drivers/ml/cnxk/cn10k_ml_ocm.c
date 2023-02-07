@@ -230,7 +230,6 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	int wb_page_start_curr;
 	int max_slot_sz_curr;
 	uint8_t tile_start;
-	int ocm_alloc_mode;
 	int wb_page_start;
 	uint16_t tile_id;
 	uint16_t word_id;
@@ -255,7 +254,6 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	max_slot_sz_curr = 0;
 	max_slot_sz = 0;
 	tile_idx = 0;
-	ocm_alloc_mode = 2;
 
 	if ((start_tile != -1) && (start_tile % num_tiles != 0)) {
 		plt_err("Invalid start_tile, %d", start_tile);
@@ -303,13 +301,13 @@ start_search:
 		}
 	}
 
-	if (ocm_alloc_mode == 1) {
+	if (strcmp(ocm->alloc_mode, "lowest") == 0) {
 		wb_page_start = slot_index_lowest(local_ocm_mask, ocm->mask_words, wb_pages, 0);
 		if (wb_page_start != -1) { /* Have a valid slot for WB, else next set of tiles */
 			tile_idx = tile_start;
 			goto found;
 		}
-	} else if (ocm_alloc_mode == 2) {
+	} else if (strcmp(ocm->alloc_mode, "largest") == 0) {
 		wb_page_start_curr = slot_index_largest(local_ocm_mask, ocm->mask_words, wb_pages,
 							&max_slot_sz_curr);
 		if (max_slot_sz_curr > max_slot_sz) {

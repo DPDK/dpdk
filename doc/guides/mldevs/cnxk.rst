@@ -118,6 +118,27 @@ Runtime Config Options
   With the above configuration, model data caching is disabled.
 
 
+**OCM allocation mode** (default ``lowest``)
+
+  Option to specify the method to be used while allocating OCM memory
+  for a model during model start.
+  Two modes are supported by the driver.
+  The parameter ``ocm_alloc_mode`` is used to select the OCM allocation mode.
+
+  ``lowest``
+    Allocate OCM for the model from first available free slot.
+    Search for the free slot is done starting from the lowest tile ID and lowest page ID.
+  ``largest``
+    Allocate OCM for the model from the slot with largest amount of free space.
+
+  For example::
+
+     -a 0000:00:10.0,ocm_alloc_mode=lowest
+
+  With the above configuration, OCM allocation for the model would be done
+  from the first available free slot / from the lowest possible tile ID.
+
+
 Debugging Options
 -----------------
 
