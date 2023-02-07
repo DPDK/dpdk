@@ -12,6 +12,10 @@
 /* ML model macros */
 #define CN10K_ML_MODEL_MEMZONE_NAME "ml_cn10k_model_mz"
 
+/* ML Job descriptor flags */
+#define ML_FLAGS_POLL_COMPL BIT(0)
+#define ML_FLAGS_SSO_COMPL  BIT(1)
+
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
 {
@@ -65,6 +69,7 @@ cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_des
 	struct cn10k_ml_qp *qp;
 	uint32_t len;
 	uint8_t *va;
+	uint64_t i;
 
 	/* Allocate queue pair */
 	qp = rte_zmalloc_socket("cn10k_ml_pmd_queue_pair", sizeof(struct cn10k_ml_qp), ROC_ALIGN,
@@ -94,6 +99,12 @@ cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_des
 	qp->queue.tail = 0;
 	qp->queue.wait_cycles = ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
 	qp->nb_desc = nb_desc;
+
+	/* Initialize job command */
+	for (i = 0; i < qp->nb_desc; i++) {
+		memset(&qp->queue.reqs[i].jd, 0, sizeof(struct cn10k_ml_jd));
+		qp->queue.reqs[i].jcmd.w1.s.jobptr = PLT_U64_CAST(&qp->queue.reqs[i].jd);
+	}
 
 	return qp;
 
@@ -468,7 +479,8 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 			  metadata->finish_model.file_size + metadata->weights_bias.file_size;
 	model_data_size = PLT_ALIGN_CEIL(model_data_size, ML_CN10K_ALIGN_SIZE);
 	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
-		  2 * model_data_size;
+		  2 * model_data_size +
+		  PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE);
 
 	/* Allocate memzone for model object and model data */
 	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, idx);
@@ -506,6 +518,11 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	model->model_mem_map.wb_page_start = -1;
 	model->model_mem_map.wb_pages = wb_pages;
 	model->model_mem_map.scratch_pages = scratch_pages;
+
+	/* Set slow-path request address and state */
+	model->req = PLT_PTR_ADD(
+		mz->addr, PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
+				  2 * model_data_size);
 
 	plt_spinlock_init(&model->lock);
 	model->state = ML_CN10K_MODEL_STATE_LOADED;

@@ -6,6 +6,7 @@
 #define _CN10K_ML_OPS_H_
 
 #include <rte_mldev.h>
+#include <rte_mldev_pmd.h>
 
 #include <roc_api.h>
 
@@ -21,6 +22,9 @@ struct cn10k_ml_req {
 
 	/* Status field for poll mode requests */
 	volatile uint64_t status;
+
+	/* Job command */
+	struct ml_job_cmd_s jcmd;
 } __rte_aligned(ROC_ALIGN);
 
 /* Request queue */

@@ -188,6 +188,105 @@ struct cn10k_ml_jd {
 
 			uint8_t rsvd[8];
 		} fw_load;
+
+		struct cn10k_ml_jd_section_model_start {
+			/* Source model start address in DDR relative to ML_MLR_BASE */
+			uint64_t model_src_ddr_addr;
+
+			/* Destination model start address in DDR relative to ML_MLR_BASE */
+			uint64_t model_dst_ddr_addr;
+
+			/* Offset to model init section in the model */
+			uint64_t model_init_offset : 32;
+
+			/* Size of init section in the model */
+			uint64_t model_init_size : 32;
+
+			/* Offset to model main section in the model */
+			uint64_t model_main_offset : 32;
+
+			/* Size of main section in the model */
+			uint64_t model_main_size : 32;
+
+			/* Offset to model finish section in the model */
+			uint64_t model_finish_offset : 32;
+
+			/* Size of finish section in the model */
+			uint64_t model_finish_size : 32;
+
+			/* Offset to WB in model bin */
+			uint64_t model_wb_offset : 32;
+
+			/* Number of model layers */
+			uint64_t num_layers : 8;
+
+			/* Number of gather entries, 0 means linear input mode (= no gather) */
+			uint64_t num_gather_entries : 8;
+
+			/* Number of scatter entries 0 means linear input mode (= no scatter) */
+			uint64_t num_scatter_entries : 8;
+
+			/* Tile mask to load model */
+			uint64_t tilemask : 8;
+
+			/* Batch size of model  */
+			uint64_t batch_size : 32;
+
+			/* OCM WB base address */
+			uint64_t ocm_wb_base_address : 32;
+
+			/* OCM WB range start */
+			uint64_t ocm_wb_range_start : 32;
+
+			/* OCM WB range End */
+			uint64_t ocm_wb_range_end : 32;
+
+			/* DDR WB address */
+			uint64_t ddr_wb_base_address;
+
+			/* DDR WB range start */
+			uint64_t ddr_wb_range_start : 32;
+
+			/* DDR WB range end */
+			uint64_t ddr_wb_range_end : 32;
+
+			union {
+				/* Points to gather list if num_gather_entries > 0 */
+				void *gather_list;
+				struct {
+					/* Linear input mode */
+					uint64_t ddr_range_start : 32;
+					uint64_t ddr_range_end : 32;
+				} s;
+			} input;
+
+			union {
+				/* Points to scatter list if num_scatter_entries > 0 */
+				void *scatter_list;
+				struct {
+					/* Linear output mode */
+					uint64_t ddr_range_start : 32;
+					uint64_t ddr_range_end : 32;
+				} s;
+			} output;
+		} model_start;
+
+		struct cn10k_ml_jd_section_model_stop {
+			uint8_t rsvd[96];
+		} model_stop;
+
+		struct cn10k_ml_jd_section_model_run {
+			/* Address of the input for the run relative to ML_MLR_BASE */
+			uint64_t input_ddr_addr;
+
+			/* Address of the output for the run relative to ML_MLR_BASE */
+			uint64_t output_ddr_addr;
+
+			/* Number of batches to run in variable batch processing */
+			uint16_t num_batches;
+
+			uint8_t rsvd[78];
+		} model_run;
 	};
 };
 

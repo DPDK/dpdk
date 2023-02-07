@@ -11,6 +11,7 @@
 
 #include "cn10k_ml_dev.h"
 #include "cn10k_ml_ocm.h"
+#include "cn10k_ml_ops.h"
 
 /* Model state */
 enum cn10k_ml_model_state {
@@ -426,6 +427,9 @@ struct cn10k_ml_model {
 
 	/* State */
 	enum cn10k_ml_model_state state;
+
+	/* Slow-path operations request pointer */
+	struct cn10k_ml_req *req;
 };
 
 int cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size);
