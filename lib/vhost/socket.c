@@ -128,10 +128,12 @@ read_fd_message(int sockfd, char *buf, int buflen, int *fds, int max_fds,
 		return ret;
 	}
 
-	if (msgh.msg_flags & (MSG_TRUNC | MSG_CTRUNC)) {
+	if (msgh.msg_flags & MSG_TRUNC)
 		VHOST_LOG_CONFIG(ERR, "truncated msg\n");
-		return -1;
-	}
+
+	/* MSG_CTRUNC may be caused by LSM misconfiguration */
+	if (msgh.msg_flags & MSG_CTRUNC)
+		VHOST_LOG_CONFIG(ERR, "truncated control data (fd %d)\n", sockfd);
 
 	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
 		cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
