@@ -326,7 +326,7 @@ struct vhost_virtqueue {
 	struct rte_vhost_resubmit_info *resubmit_inflight;
 	uint64_t		global_counter;
 
-	struct vhost_async	*async;
+	struct vhost_async	*async __rte_guarded_var;
 
 	int			notif_enable;
 #define VIRTIO_UNINITIALIZED_NOTIF	(-1)

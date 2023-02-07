@@ -369,6 +369,7 @@ cleanup_device(struct virtio_net *dev, int destroy)
 
 static void
 vhost_free_async_mem(struct vhost_virtqueue *vq)
+	__rte_exclusive_locks_required(&vq->access_lock)
 {
 	if (!vq->async)
 		return;
@@ -393,7 +394,9 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	else
 		rte_free(vq->shadow_used_split);
 
+	rte_spinlock_lock(&vq->access_lock);
 	vhost_free_async_mem(vq);
+	rte_spinlock_unlock(&vq->access_lock);
 	rte_free(vq->batch_copy_elems);
 	vhost_user_iotlb_destroy(vq);
 	rte_free(vq->log_cache);
@@ -1669,6 +1672,7 @@ rte_vhost_extern_callback_register(int vid,
 
 static __rte_always_inline int
 async_channel_register(struct virtio_net *dev, struct vhost_virtqueue *vq)
+	__rte_exclusive_locks_required(&vq->access_lock)
 {
 	struct vhost_async *async;
 	int node = vq->numa_node;
