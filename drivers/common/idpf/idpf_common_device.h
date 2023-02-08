@@ -115,6 +115,8 @@ struct idpf_vport {
 	bool tx_vec_allowed;
 	bool rx_use_avx512;
 	bool tx_use_avx512;
+
+	struct virtchnl2_vport_stats eth_stats_offset;
 };
 
 /* Message type read in virtual channel from PF */
@@ -191,5 +193,7 @@ int idpf_vport_irq_unmap_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 __rte_internal
 int idpf_vport_info_init(struct idpf_vport *vport,
 			 struct virtchnl2_create_vport *vport_info);
+__rte_internal
+void idpf_vport_stats_update(struct virtchnl2_vport_stats *oes, struct virtchnl2_vport_stats *nes);
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */

@@ -217,6 +217,7 @@ idpf_vc_cmd_execute(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
 	case VIRTCHNL2_OP_UNMAP_QUEUE_VECTOR:
 	case VIRTCHNL2_OP_ALLOC_VECTORS:
 	case VIRTCHNL2_OP_DEALLOC_VECTORS:
+	case VIRTCHNL2_OP_GET_STATS:
 		/* for init virtchnl ops, need to poll the response */
 		err = idpf_vc_one_msg_read(adapter, args->ops, args->out_size, args->out_buffer);
 		clear_cmd(adapter);
@@ -804,6 +805,32 @@ idpf_vc_ptype_info_query(struct idpf_adapter *adapter)
 
 	rte_free(ptype_info);
 	return err;
+}
+
+int
+idpf_vc_stats_query(struct idpf_vport *vport,
+		struct virtchnl2_vport_stats **pstats)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_vport_stats vport_stats;
+	struct idpf_cmd_info args;
+	int err;
+
+	vport_stats.vport_id = vport->vport_id;
+	args.ops = VIRTCHNL2_OP_GET_STATS;
+	args.in_args = (u8 *)&vport_stats;
+	args.in_args_size = sizeof(vport_stats);
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+	if (err) {
+		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_STATS");
+		*pstats = NULL;
+		return err;
+	}
+	*pstats = (struct virtchnl2_vport_stats *)args.out_buffer;
+	return 0;
 }
 
 #define IDPF_RX_BUF_STRIDE		64

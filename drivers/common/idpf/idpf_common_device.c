@@ -652,4 +652,21 @@ idpf_vport_info_init(struct idpf_vport *vport,
 	return 0;
 }
 
+void
+idpf_vport_stats_update(struct virtchnl2_vport_stats *oes, struct virtchnl2_vport_stats *nes)
+{
+	nes->rx_bytes = nes->rx_bytes - oes->rx_bytes;
+	nes->rx_unicast = nes->rx_unicast - oes->rx_unicast;
+	nes->rx_multicast = nes->rx_multicast - oes->rx_multicast;
+	nes->rx_broadcast = nes->rx_broadcast - oes->rx_broadcast;
+	nes->rx_errors = nes->rx_errors - oes->rx_errors;
+	nes->rx_discards = nes->rx_discards - oes->rx_discards;
+	nes->tx_bytes = nes->tx_bytes - oes->tx_bytes;
+	nes->tx_unicast = nes->tx_unicast - oes->tx_unicast;
+	nes->tx_multicast = nes->tx_multicast - oes->tx_multicast;
+	nes->tx_broadcast = nes->tx_broadcast - oes->tx_broadcast;
+	nes->tx_errors = nes->tx_errors - oes->tx_errors;
+	nes->tx_discards = nes->tx_discards - oes->tx_discards;
+}
+
 RTE_LOG_REGISTER_SUFFIX(idpf_common_logtype, common, NOTICE);

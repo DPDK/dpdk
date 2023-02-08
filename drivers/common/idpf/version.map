@@ -46,6 +46,7 @@ INTERNAL {
 	idpf_vc_rss_key_set;
 	idpf_vc_rss_lut_set;
 	idpf_vc_rxq_config;
+	idpf_vc_stats_query;
 	idpf_vc_txq_config;
 	idpf_vc_vectors_alloc;
 	idpf_vc_vectors_dealloc;
@@ -59,6 +60,7 @@ INTERNAL {
 	idpf_vport_irq_map_config;
 	idpf_vport_irq_unmap_config;
 	idpf_vport_rss_config;
+	idpf_vport_stats_update;
 
 	local: *;
 };

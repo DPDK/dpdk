@@ -140,6 +140,87 @@ idpf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 	return ptypes;
 }
 
+static uint64_t
+idpf_get_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
+{
+	uint64_t mbuf_alloc_failed = 0;
+	struct idpf_rx_queue *rxq;
+	int i = 0;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		mbuf_alloc_failed += __atomic_load_n(&rxq->rx_stats.mbuf_alloc_failed,
+						     __ATOMIC_RELAXED);
+	}
+
+	return mbuf_alloc_failed;
+}
+
+static int
+idpf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct idpf_vport *vport =
+		(struct idpf_vport *)dev->data->dev_private;
+	struct virtchnl2_vport_stats *pstats = NULL;
+	int ret;
+
+	ret = idpf_vc_stats_query(vport, &pstats);
+	if (ret == 0) {
+		uint8_t crc_stats_len = (dev->data->dev_conf.rxmode.offloads &
+					 RTE_ETH_RX_OFFLOAD_KEEP_CRC) ? 0 :
+					 RTE_ETHER_CRC_LEN;
+
+		idpf_vport_stats_update(&vport->eth_stats_offset, pstats);
+		stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
+				pstats->rx_broadcast - pstats->rx_discards;
+		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
+						pstats->tx_unicast;
+		stats->imissed = pstats->rx_discards;
+		stats->oerrors = pstats->tx_errors + pstats->tx_discards;
+		stats->ibytes = pstats->rx_bytes;
+		stats->ibytes -= stats->ipackets * crc_stats_len;
+		stats->obytes = pstats->tx_bytes;
+
+		dev->data->rx_mbuf_alloc_failed = idpf_get_mbuf_alloc_failed_stats(dev);
+		stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
+	} else {
+		PMD_DRV_LOG(ERR, "Get statistics failed");
+	}
+	return ret;
+}
+
+static void
+idpf_reset_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
+{
+	struct idpf_rx_queue *rxq;
+	int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		__atomic_store_n(&rxq->rx_stats.mbuf_alloc_failed, 0, __ATOMIC_RELAXED);
+	}
+}
+
+static int
+idpf_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport =
+		(struct idpf_vport *)dev->data->dev_private;
+	struct virtchnl2_vport_stats *pstats = NULL;
+	int ret;
+
+	ret = idpf_vc_stats_query(vport, &pstats);
+	if (ret != 0)
+		return ret;
+
+	/* set stats offset base on current values */
+	vport->eth_stats_offset = *pstats;
+
+	idpf_reset_mbuf_alloc_failed_stats(dev);
+
+	return 0;
+}
+
 static int
 idpf_init_rss(struct idpf_vport *vport)
 {
@@ -326,6 +407,9 @@ idpf_dev_start(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Failed to enable vport");
 		goto err_vport;
 	}
+
+	if (idpf_dev_stats_reset(dev))
+		PMD_DRV_LOG(ERR, "Failed to reset stats");
 
 	vport->stopped = 0;
 
@@ -606,6 +690,8 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.tx_queue_release		= idpf_dev_tx_queue_release,
 	.mtu_set			= idpf_dev_mtu_set,
 	.dev_supported_ptypes_get	= idpf_dev_supported_ptypes_get,
+	.stats_get			= idpf_dev_stats_get,
+	.stats_reset			= idpf_dev_stats_reset,
 };
 
 static uint16_t
