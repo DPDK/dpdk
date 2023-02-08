@@ -221,6 +221,17 @@ struct rte_flow_ops {
 		 uint8_t actions_template_index,
 		 void *user_data,
 		 struct rte_flow_error *err);
+	/** See rte_flow_async_create_by_index() */
+	struct rte_flow *(*async_create_by_index)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow_template_table *template_table,
+		 uint32_t rule_index,
+		 const struct rte_flow_action actions[],
+		 uint8_t actions_template_index,
+		 void *user_data,
+		 struct rte_flow_error *err);
 	/** See rte_flow_async_destroy() */
 	int (*async_destroy)
 		(struct rte_eth_dev *dev,

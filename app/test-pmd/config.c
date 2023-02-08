@@ -2609,7 +2609,7 @@ port_flow_template_table_flush(portid_t port_id)
 /** Enqueue create flow rule operation. */
 int
 port_queue_flow_create(portid_t port_id, queueid_t queue_id,
-		       bool postpone, uint32_t table_id,
+		       bool postpone, uint32_t table_id, uint32_t rule_idx,
 		       uint32_t pattern_idx, uint32_t actions_idx,
 		       const struct rte_flow_item *pattern,
 		       const struct rte_flow_action *actions)
@@ -2685,8 +2685,12 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x11, sizeof(error));
-	flow = rte_flow_async_create(port_id, queue_id, &op_attr, pt->table,
-		pattern, pattern_idx, actions, actions_idx, job, &error);
+	if (rule_idx == UINT32_MAX)
+		flow = rte_flow_async_create(port_id, queue_id, &op_attr, pt->table,
+			pattern, pattern_idx, actions, actions_idx, job, &error);
+	else
+		flow = rte_flow_async_create_by_index(port_id, queue_id, &op_attr, pt->table,
+			rule_idx, actions, actions_idx, job, &error);
 	if (!flow) {
 		uint32_t flow_id = pf->id;
 		port_queue_flow_destroy(port_id, queue_id, true, 1, &flow_id);

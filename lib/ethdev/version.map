@@ -298,6 +298,9 @@ EXPERIMENTAL {
 	rte_flow_get_q_aged_flows;
 	rte_mtr_meter_policy_get;
 	rte_mtr_meter_profile_get;
+
+	# added in 23.03
+	rte_flow_async_create_by_index;
 };
 
 INTERNAL {

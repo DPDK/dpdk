@@ -133,12 +133,11 @@ enum index {
 	QUEUE_INDIRECT_ACTION,
 
 	/* Queue create arguments. */
-	QUEUE_CREATE_ID,
 	QUEUE_CREATE_POSTPONE,
 	QUEUE_TEMPLATE_TABLE,
 	QUEUE_PATTERN_TEMPLATE,
 	QUEUE_ACTIONS_TEMPLATE,
-	QUEUE_SPEC,
+	QUEUE_RULE_ID,
 
 	/* Queue destroy arguments. */
 	QUEUE_DESTROY_ID,
@@ -179,6 +178,8 @@ enum index {
 	TABLE_DESTROY,
 	TABLE_CREATE_ID,
 	TABLE_DESTROY_ID,
+	TABLE_INSERTION_TYPE,
+	TABLE_INSERTION_TYPE_NAME,
 	TABLE_GROUP,
 	TABLE_PRIORITY,
 	TABLE_INGRESS,
@@ -830,6 +831,12 @@ static const char *const meter_colors[] = {
 	"green", "yellow", "red", "all", NULL
 };
 
+static const char *const table_insertion_types[] = {
+	"pattern", "index", NULL
+};
+
+#define RAW_IPSEC_CONFS_MAX_NUM 8
+
 /** Maximum number of subsequent tokens and arguments on the stack. */
 #define CTX_STACK_SIZE 16
 
@@ -1031,6 +1038,7 @@ struct buffer {
 		struct {
 			uint32_t table_id;
 			uint32_t pat_templ_id;
+			uint32_t rule_id;
 			uint32_t act_templ_id;
 			struct rte_flow_attr attr;
 			struct tunnel_ops tunnel_ops;
@@ -1170,6 +1178,7 @@ static const enum index next_table_subcmd[] = {
 static const enum index next_table_attr[] = {
 	TABLE_CREATE_ID,
 	TABLE_GROUP,
+	TABLE_INSERTION_TYPE,
 	TABLE_PRIORITY,
 	TABLE_INGRESS,
 	TABLE_EGRESS,
@@ -1302,6 +1311,12 @@ static const enum index next_aged_attr[] = {
 static const enum index next_ia_destroy_attr[] = {
 	INDIRECT_ACTION_DESTROY_ID,
 	END,
+	ZERO,
+};
+
+static const enum index next_async_insert_subcmd[] = {
+	QUEUE_PATTERN_TEMPLATE,
+	QUEUE_RULE_ID,
 	ZERO,
 };
 
@@ -2447,6 +2462,9 @@ static int parse_meter_policy_id2ptr(struct context *ctx,
 static int parse_meter_color(struct context *ctx, const struct token *token,
 			     const char *str, unsigned int len, void *buf,
 			     unsigned int size);
+static int parse_insertion_table_type(struct context *ctx, const struct token *token,
+				      const char *str, unsigned int len, void *buf,
+				      unsigned int size);
 static int comp_none(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
 static int comp_boolean(struct context *, const struct token *,
@@ -2479,6 +2497,8 @@ static int comp_queue_id(struct context *, const struct token *,
 			 unsigned int, char *, unsigned int);
 static int comp_meter_color(struct context *, const struct token *,
 			    unsigned int, char *, unsigned int);
+static int comp_insertion_table_type(struct context *, const struct token *,
+				     unsigned int, char *, unsigned int);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -2949,6 +2969,20 @@ static const struct token token_list[] = {
 					    args.table_destroy.table_id)),
 		.call = parse_table_destroy,
 	},
+	[TABLE_INSERTION_TYPE] = {
+		.name = "insertion_type",
+		.help = "specify insertion type",
+		.next = NEXT(next_table_attr,
+			     NEXT_ENTRY(TABLE_INSERTION_TYPE_NAME)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.table.attr.insertion_type)),
+	},
+	[TABLE_INSERTION_TYPE_NAME] = {
+		.name = "insertion_type_name",
+		.help = "insertion type name",
+		.call = parse_insertion_table_type,
+		.comp = comp_insertion_table_type,
+	},
 	[TABLE_GROUP] = {
 		.name = "group",
 		.help = "specify a group",
@@ -3062,7 +3096,7 @@ static const struct token token_list[] = {
 	[QUEUE_TEMPLATE_TABLE] = {
 		.name = "template_table",
 		.help = "specify table id",
-		.next = NEXT(NEXT_ENTRY(QUEUE_PATTERN_TEMPLATE),
+		.next = NEXT(next_async_insert_subcmd,
 			     NEXT_ENTRY(COMMON_TABLE_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.vc.table_id)),
@@ -3084,6 +3118,15 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.vc.act_templ_id)),
+		.call = parse_qo,
+	},
+	[QUEUE_RULE_ID] = {
+		.name = "rule_index",
+		.help = "specify flow rule index",
+		.next = NEXT(NEXT_ENTRY(QUEUE_ACTIONS_TEMPLATE),
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.vc.rule_id)),
 		.call = parse_qo,
 	},
 	[QUEUE_CREATE_POSTPONE] = {
@@ -9287,11 +9330,13 @@ parse_qo(struct context *ctx, const struct token *token,
 		ctx->objdata = 0;
 		ctx->object = out;
 		ctx->objmask = NULL;
+		out->args.vc.rule_id = UINT32_MAX;
 		return len;
 	case QUEUE_TEMPLATE_TABLE:
 	case QUEUE_PATTERN_TEMPLATE:
 	case QUEUE_ACTIONS_TEMPLATE:
 	case QUEUE_CREATE_POSTPONE:
+	case QUEUE_RULE_ID:
 		return len;
 	case ITEM_PATTERN:
 		out->args.vc.pattern =
@@ -10272,6 +10317,32 @@ parse_meter_color(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse Insertion Table Type name */
+static int
+parse_insertion_table_type(struct context *ctx, const struct token *token,
+			   const char *str, unsigned int len, void *buf,
+			   unsigned int size)
+{
+	const struct arg *arg = pop_args(ctx);
+	unsigned int i;
+	char tmp[2];
+	int ret;
+
+	(void)size;
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	for (i = 0; table_insertion_types[i]; ++i)
+		if (!strcmp_partial(table_insertion_types[i], str, len))
+			break;
+	if (!table_insertion_types[i])
+		return -1;
+	push_args(ctx, arg);
+	snprintf(tmp, sizeof(tmp), "%u", i);
+	ret = parse_int(ctx, token, tmp, strlen(tmp), buf, sizeof(i));
+	return ret > 0 ? (int)len : ret;
+}
+
 /** No completion. */
 static int
 comp_none(struct context *ctx, const struct token *token,
@@ -10574,6 +10645,20 @@ comp_meter_color(struct context *ctx, const struct token *token,
 		return RTE_DIM(meter_colors);
 	if (ent < RTE_DIM(meter_colors) - 1)
 		return strlcpy(buf, meter_colors[ent], size);
+	return -1;
+}
+
+/** Complete available Insertion Table types. */
+static int
+comp_insertion_table_type(struct context *ctx, const struct token *token,
+			  unsigned int ent, char *buf, unsigned int size)
+{
+	RTE_SET_USED(ctx);
+	RTE_SET_USED(token);
+	if (!buf)
+		return RTE_DIM(table_insertion_types);
+	if (ent < RTE_DIM(table_insertion_types) - 1)
+		return rte_strscpy(buf, table_insertion_types[ent], size);
 	return -1;
 }
 
@@ -10890,9 +10975,9 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case QUEUE_CREATE:
 		port_queue_flow_create(in->port, in->queue, in->postpone,
-				       in->args.vc.table_id, in->args.vc.pat_templ_id,
-				       in->args.vc.act_templ_id, in->args.vc.pattern,
-				       in->args.vc.actions);
+			in->args.vc.table_id, in->args.vc.rule_id,
+			in->args.vc.pat_templ_id, in->args.vc.act_templ_id,
+			in->args.vc.pattern, in->args.vc.actions);
 		break;
 	case QUEUE_DESTROY:
 		port_queue_flow_destroy(in->port, in->queue, in->postpone,

@@ -1928,6 +1928,30 @@ rte_flow_async_create(uint16_t port_id,
 	return flow;
 }
 
+struct rte_flow *
+rte_flow_async_create_by_index(uint16_t port_id,
+			       uint32_t queue_id,
+			       const struct rte_flow_op_attr *op_attr,
+			       struct rte_flow_template_table *template_table,
+			       uint32_t rule_index,
+			       const struct rte_flow_action actions[],
+			       uint8_t actions_template_index,
+			       void *user_data,
+			       struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	struct rte_flow *flow;
+
+	flow = ops->async_create_by_index(dev, queue_id,
+					  op_attr, template_table, rule_index,
+					  actions, actions_template_index,
+					  user_data, error);
+	if (flow == NULL)
+		flow_err(port_id, -rte_errno, error);
+	return flow;
+}
+
 int
 rte_flow_async_destroy(uint16_t port_id,
 		       uint32_t queue_id,

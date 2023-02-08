@@ -82,6 +82,13 @@ New Features
 
   Added flex modify item ``RTE_FLOW_FIELD_FLEX_ITEM``.
 
+* **Added index-based rules insertion in flow API.**
+
+  * Added ``rte_flow_table_insertion_type`` to allow the creation
+    of index-based template tables in addition to pattern-based tables.
+  * Introduced new function ``rte_flow_async_create_by_index()``
+    to insert rules by index into index-based template tables.
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

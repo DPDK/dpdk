@@ -938,7 +938,7 @@ int port_flow_template_table_destroy(portid_t port_id,
 			    uint32_t n, const uint32_t *table);
 int port_flow_template_table_flush(portid_t port_id);
 int port_queue_flow_create(portid_t port_id, queueid_t queue_id,
-			   bool postpone, uint32_t table_id,
+			   bool postpone, uint32_t table_id, uint32_t rule_idx,
 			   uint32_t pattern_idx, uint32_t actions_idx,
 			   const struct rte_flow_item *pattern,
 			   const struct rte_flow_action *actions);
