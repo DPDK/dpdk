@@ -53,6 +53,8 @@
 
 #define IDPF_ADAPTER_NAME_LEN	(PCI_PRI_STR_SIZE + 1)
 
+#define IDPF_ALARM_INTERVAL	50000 /* us */
+
 struct idpf_vport_param {
 	struct idpf_adapter_ext *adapter;
 	uint16_t devarg_id; /* arg id from user */

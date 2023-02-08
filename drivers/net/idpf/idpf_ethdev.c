@@ -9,6 +9,7 @@
 #include <rte_memzone.h>
 #include <rte_dev.h>
 #include <errno.h>
+#include <rte_alarm.h>
 
 #include "idpf_ethdev.h"
 #include "idpf_rxtx.h"
@@ -83,14 +84,51 @@ static int
 idpf_dev_link_update(struct rte_eth_dev *dev,
 		     __rte_unused int wait_to_complete)
 {
+	struct idpf_vport *vport = dev->data->dev_private;
 	struct rte_eth_link new_link;
 
 	memset(&new_link, 0, sizeof(new_link));
 
-	new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	switch (vport->link_speed) {
+	case RTE_ETH_SPEED_NUM_10M:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_10M;
+		break;
+	case RTE_ETH_SPEED_NUM_100M:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_100M;
+		break;
+	case RTE_ETH_SPEED_NUM_1G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_1G;
+		break;
+	case RTE_ETH_SPEED_NUM_10G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_10G;
+		break;
+	case RTE_ETH_SPEED_NUM_20G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_20G;
+		break;
+	case RTE_ETH_SPEED_NUM_25G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_25G;
+		break;
+	case RTE_ETH_SPEED_NUM_40G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_40G;
+		break;
+	case RTE_ETH_SPEED_NUM_50G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_50G;
+		break;
+	case RTE_ETH_SPEED_NUM_100G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_100G;
+		break;
+	case RTE_ETH_SPEED_NUM_200G:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_200G;
+		break;
+	default:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	}
+
 	new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-	new_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				  RTE_ETH_LINK_SPEED_FIXED);
+	new_link.link_status = vport->link_up ? RTE_ETH_LINK_UP :
+		RTE_ETH_LINK_DOWN;
+	new_link.link_autoneg = (dev->data->dev_conf.link_speeds & RTE_ETH_LINK_SPEED_FIXED) ?
+				 RTE_ETH_LINK_FIXED : RTE_ETH_LINK_AUTONEG;
 
 	return rte_eth_linkstatus_set(dev, &new_link);
 }
@@ -891,6 +929,127 @@ bail:
 	return ret;
 }
 
+static struct idpf_vport *
+idpf_find_vport(struct idpf_adapter_ext *adapter, uint32_t vport_id)
+{
+	struct idpf_vport *vport = NULL;
+	int i;
+
+	for (i = 0; i < adapter->cur_vport_nb; i++) {
+		vport = adapter->vports[i];
+		if (vport->vport_id != vport_id)
+			continue;
+		else
+			return vport;
+	}
+
+	return vport;
+}
+
+static void
+idpf_handle_event_msg(struct idpf_vport *vport, uint8_t *msg, uint16_t msglen)
+{
+	struct virtchnl2_event *vc_event = (struct virtchnl2_event *)msg;
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)vport->dev;
+
+	if (msglen < sizeof(struct virtchnl2_event)) {
+		PMD_DRV_LOG(ERR, "Error event");
+		return;
+	}
+
+	switch (vc_event->event) {
+	case VIRTCHNL2_EVENT_LINK_CHANGE:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL2_EVENT_LINK_CHANGE");
+		vport->link_up = !!(vc_event->link_status);
+		vport->link_speed = vc_event->link_speed;
+		idpf_dev_link_update(dev, 0);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, " unknown event received %u", vc_event->event);
+		break;
+	}
+}
+
+static void
+idpf_handle_virtchnl_msg(struct idpf_adapter_ext *adapter_ex)
+{
+	struct idpf_adapter *adapter = &adapter_ex->base;
+	struct idpf_dma_mem *dma_mem = NULL;
+	struct idpf_hw *hw = &adapter->hw;
+	struct virtchnl2_event *vc_event;
+	struct idpf_ctlq_msg ctlq_msg;
+	enum idpf_mbx_opc mbx_op;
+	struct idpf_vport *vport;
+	enum virtchnl_ops vc_op;
+	uint16_t pending = 1;
+	int ret;
+
+	while (pending) {
+		ret = idpf_vc_ctlq_recv(hw->arq, &pending, &ctlq_msg);
+		if (ret) {
+			PMD_DRV_LOG(INFO, "Failed to read msg from virtual channel, ret: %d", ret);
+			return;
+		}
+
+		rte_memcpy(adapter->mbx_resp, ctlq_msg.ctx.indirect.payload->va,
+			   IDPF_DFLT_MBX_BUF_SIZE);
+
+		mbx_op = rte_le_to_cpu_16(ctlq_msg.opcode);
+		vc_op = rte_le_to_cpu_32(ctlq_msg.cookie.mbx.chnl_opcode);
+		adapter->cmd_retval = rte_le_to_cpu_32(ctlq_msg.cookie.mbx.chnl_retval);
+
+		switch (mbx_op) {
+		case idpf_mbq_opc_send_msg_to_peer_pf:
+			if (vc_op == VIRTCHNL2_OP_EVENT) {
+				if (ctlq_msg.data_len < sizeof(struct virtchnl2_event)) {
+					PMD_DRV_LOG(ERR, "Error event");
+					return;
+				}
+				vc_event = (struct virtchnl2_event *)adapter->mbx_resp;
+				vport = idpf_find_vport(adapter_ex, vc_event->vport_id);
+				if (!vport) {
+					PMD_DRV_LOG(ERR, "Can't find vport.");
+					return;
+				}
+				idpf_handle_event_msg(vport, adapter->mbx_resp,
+						      ctlq_msg.data_len);
+			} else {
+				if (vc_op == adapter->pend_cmd)
+					notify_cmd(adapter, adapter->cmd_retval);
+				else
+					PMD_DRV_LOG(ERR, "command mismatch, expect %u, get %u",
+						    adapter->pend_cmd, vc_op);
+
+				PMD_DRV_LOG(DEBUG, " Virtual channel response is received,"
+					    "opcode = %d", vc_op);
+			}
+			goto post_buf;
+		default:
+			PMD_DRV_LOG(DEBUG, "Request %u is not supported yet", mbx_op);
+		}
+	}
+
+post_buf:
+	if (ctlq_msg.data_len)
+		dma_mem = ctlq_msg.ctx.indirect.payload;
+	else
+		pending = 0;
+
+	ret = idpf_vc_ctlq_post_rx_buffs(hw, hw->arq, &pending, &dma_mem);
+	if (ret && dma_mem)
+		idpf_free_dma_mem(hw, dma_mem);
+}
+
+static void
+idpf_dev_alarm_handler(void *param)
+{
+	struct idpf_adapter_ext *adapter = param;
+
+	idpf_handle_virtchnl_msg(adapter);
+
+	rte_eal_alarm_set(IDPF_ALARM_INTERVAL, idpf_dev_alarm_handler, adapter);
+}
+
 static int
 idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapter)
 {
@@ -912,6 +1071,8 @@ idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *a
 		PMD_INIT_LOG(ERR, "Failed to init adapter");
 		goto err_adapter_init;
 	}
+
+	rte_eal_alarm_set(IDPF_ALARM_INTERVAL, idpf_dev_alarm_handler, adapter);
 
 	adapter->max_vport_nb = adapter->base.caps.max_vports;
 
@@ -996,6 +1157,7 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	vport->adapter = &adapter->base;
 	vport->sw_idx = param->idx;
 	vport->devarg_id = param->devarg_id;
+	vport->dev = dev;
 
 	memset(&create_vport_info, 0, sizeof(create_vport_info));
 	ret = idpf_vport_info_init(vport, &create_vport_info);
@@ -1065,6 +1227,7 @@ idpf_find_adapter_ext(struct rte_pci_device *pci_dev)
 static void
 idpf_adapter_ext_deinit(struct idpf_adapter_ext *adapter)
 {
+	rte_eal_alarm_cancel(idpf_dev_alarm_handler, adapter);
 	idpf_adapter_deinit(&adapter->base);
 
 	rte_free(adapter->vports);

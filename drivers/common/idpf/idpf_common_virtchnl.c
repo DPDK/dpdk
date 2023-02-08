@@ -202,25 +202,6 @@ idpf_vc_cmd_execute(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
 	switch (args->ops) {
 	case VIRTCHNL_OP_VERSION:
 	case VIRTCHNL2_OP_GET_CAPS:
-	case VIRTCHNL2_OP_CREATE_VPORT:
-	case VIRTCHNL2_OP_DESTROY_VPORT:
-	case VIRTCHNL2_OP_SET_RSS_KEY:
-	case VIRTCHNL2_OP_SET_RSS_LUT:
-	case VIRTCHNL2_OP_SET_RSS_HASH:
-	case VIRTCHNL2_OP_CONFIG_RX_QUEUES:
-	case VIRTCHNL2_OP_CONFIG_TX_QUEUES:
-	case VIRTCHNL2_OP_ENABLE_QUEUES:
-	case VIRTCHNL2_OP_DISABLE_QUEUES:
-	case VIRTCHNL2_OP_ENABLE_VPORT:
-	case VIRTCHNL2_OP_DISABLE_VPORT:
-	case VIRTCHNL2_OP_MAP_QUEUE_VECTOR:
-	case VIRTCHNL2_OP_UNMAP_QUEUE_VECTOR:
-	case VIRTCHNL2_OP_ALLOC_VECTORS:
-	case VIRTCHNL2_OP_DEALLOC_VECTORS:
-	case VIRTCHNL2_OP_GET_STATS:
-	case VIRTCHNL2_OP_GET_RSS_KEY:
-	case VIRTCHNL2_OP_GET_RSS_HASH:
-	case VIRTCHNL2_OP_GET_RSS_LUT:
 		/* for init virtchnl ops, need to poll the response */
 		err = idpf_vc_one_msg_read(adapter, args->ops, args->out_size, args->out_buffer);
 		clear_cmd(adapter);
@@ -1110,4 +1091,18 @@ idpf_vc_txq_config(struct idpf_vport *vport, struct idpf_tx_queue *txq)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_CONFIG_TX_QUEUES");
 
 	return err;
+}
+
+int
+idpf_vc_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
+		  struct idpf_ctlq_msg *q_msg)
+{
+	return idpf_ctlq_recv(cq, num_q_msg, q_msg);
+}
+
+int
+idpf_vc_ctlq_post_rx_buffs(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
+			   u16 *buff_count, struct idpf_dma_mem **buffs)
+{
+	return idpf_ctlq_post_rx_buffs(hw, cq, buff_count, buffs);
 }

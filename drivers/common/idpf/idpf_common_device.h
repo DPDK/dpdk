@@ -118,6 +118,11 @@ struct idpf_vport {
 	bool tx_use_avx512;
 
 	struct virtchnl2_vport_stats eth_stats_offset;
+
+	void *dev;
+	/* Event from ipf */
+	bool link_up;
+	uint32_t link_speed;
 };
 
 /* Message type read in virtual channel from PF */

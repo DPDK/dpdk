@@ -58,4 +58,10 @@ __rte_internal
 int idpf_vc_rss_lut_get(struct idpf_vport *vport);
 __rte_internal
 int idpf_vc_rss_hash_get(struct idpf_vport *vport);
+__rte_internal
+int idpf_vc_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
+		      struct idpf_ctlq_msg *q_msg);
+__rte_internal
+int idpf_vc_ctlq_post_rx_buffs(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
+			   u16 *buff_count, struct idpf_dma_mem **buffs);
 #endif /* _IDPF_COMMON_VIRTCHNL_H_ */
