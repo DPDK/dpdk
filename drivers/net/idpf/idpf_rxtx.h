@@ -23,6 +23,8 @@
 #define IDPF_DEFAULT_TX_RS_THRESH	32
 #define IDPF_DEFAULT_TX_FREE_THRESH	32
 
+#define IDPF_SUPPORT_CHAIN_NUM 5
+
 int idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_rxconf *rx_conf,

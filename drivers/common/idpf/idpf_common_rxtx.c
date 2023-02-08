@@ -1146,6 +1146,141 @@ idpf_dp_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rx;
 }
 
+uint16_t
+idpf_dp_singleq_recv_scatter_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			       uint16_t nb_pkts)
+{
+	struct idpf_rx_queue *rxq = rx_queue;
+	volatile union virtchnl2_rx_desc *rx_ring = rxq->rx_ring;
+	volatile union virtchnl2_rx_desc *rxdp;
+	union virtchnl2_rx_desc rxd;
+	struct idpf_adapter *ad;
+	struct rte_mbuf *first_seg = rxq->pkt_first_seg;
+	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
+	struct rte_mbuf *rxm;
+	struct rte_mbuf *nmb;
+	struct rte_eth_dev *dev;
+	const uint32_t *ptype_tbl = rxq->adapter->ptype_tbl;
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t rx_packet_len;
+	uint16_t nb_hold = 0;
+	uint16_t rx_status0;
+	uint16_t nb_rx = 0;
+	uint64_t pkt_flags;
+	uint64_t dma_addr;
+	uint64_t ts_ns;
+
+	ad = rxq->adapter;
+
+	if (unlikely(!rxq) || unlikely(!rxq->q_started))
+		return nb_rx;
+
+	while (nb_rx < nb_pkts) {
+		rxdp = &rx_ring[rx_id];
+		rx_status0 = rte_le_to_cpu_16(rxdp->flex_nic_wb.status_error0);
+
+		/* Check the DD bit first */
+		if (!(rx_status0 & (1 << VIRTCHNL2_RX_FLEX_DESC_STATUS0_DD_S)))
+			break;
+
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!nmb)) {
+			__atomic_fetch_add(&rxq->rx_stats.mbuf_alloc_failed, 1, __ATOMIC_RELAXED);
+			RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+			       "queue_id=%u", rxq->port_id, rxq->queue_id);
+			break;
+		}
+
+		rxd = *rxdp;
+
+		nb_hold++;
+		rxm = rxq->sw_ring[rx_id];
+		rxq->sw_ring[rx_id] = nmb;
+		rx_id++;
+		if (unlikely(rx_id == rxq->nb_rx_desc))
+			rx_id = 0;
+
+		/* Prefetch next mbuf */
+		rte_prefetch0(rxq->sw_ring[rx_id]);
+
+		/* When next RX descriptor is on a cache line boundary,
+		 * prefetch the next 4 RX descriptors and next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(rxq->sw_ring[rx_id]);
+		}
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		rxdp->read.hdr_addr = 0;
+		rxdp->read.pkt_addr = dma_addr;
+		rx_packet_len = (rte_cpu_to_le_16(rxd.flex_nic_wb.pkt_len) &
+				 VIRTCHNL2_RX_FLEX_DESC_PKT_LEN_M);
+		rxm->data_len = rx_packet_len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+
+		/**
+		 * If this is the first buffer of the received packet, set the
+		 * pointer to the first mbuf of the packet and initialize its
+		 * context. Otherwise, update the total length and the number
+		 * of segments of the current scattered packet, and update the
+		 * pointer to the last mbuf of the current packet.
+		 */
+		if (!first_seg) {
+			first_seg = rxm;
+			first_seg->nb_segs = 1;
+			first_seg->pkt_len = rx_packet_len;
+		} else {
+			first_seg->pkt_len =
+				(uint16_t)(first_seg->pkt_len +
+					   rx_packet_len);
+			first_seg->nb_segs++;
+			last_seg->next = rxm;
+		}
+
+		if (!(rx_status0 & (1 << VIRTCHNL2_RX_FLEX_DESC_STATUS0_EOF_S))) {
+			last_seg = rxm;
+			continue;
+		}
+
+		rxm->next = NULL;
+
+		first_seg->port = rxq->port_id;
+		first_seg->ol_flags = 0;
+		pkt_flags = idpf_rxd_to_pkt_flags(rx_status0);
+		first_seg->packet_type =
+			ptype_tbl[(uint8_t)(rte_cpu_to_le_16(rxd.flex_nic_wb.ptype_flex_flags0) &
+				VIRTCHNL2_RX_FLEX_DESC_PTYPE_M)];
+
+		if (idpf_timestamp_dynflag > 0 &&
+		    (rxq->offloads & IDPF_RX_OFFLOAD_TIMESTAMP) != 0) {
+			/* timestamp */
+			ts_ns = idpf_tstamp_convert_32b_64b(ad,
+				rxq->hw_register_set,
+				rte_le_to_cpu_32(rxd.flex_nic_wb.flex_ts.ts_high));
+			rxq->hw_register_set = 0;
+			*RTE_MBUF_DYNFIELD(rxm,
+					   idpf_timestamp_dynfield_offset,
+					   rte_mbuf_timestamp_t *) = ts_ns;
+			first_seg->ol_flags |= idpf_timestamp_dynflag;
+		}
+
+		first_seg->ol_flags |= pkt_flags;
+		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
+					  first_seg->data_off));
+		rx_pkts[nb_rx++] = first_seg;
+		first_seg = NULL;
+	}
+	rxq->rx_tail = rx_id;
+	rxq->pkt_first_seg = first_seg;
+	rxq->pkt_last_seg = last_seg;
+
+	idpf_update_rx_tail(rxq, nb_hold, rx_id);
+
+	return nb_rx;
+}
+
 static inline int
 idpf_xmit_cleanup(struct idpf_tx_queue *txq)
 {
