@@ -43,7 +43,6 @@
 #include <rte_timer.h>
 #include <rte_power.h>
 #include <rte_spinlock.h>
-#include <rte_power_empty_poll.h>
 #include <rte_metrics.h>
 #include <rte_telemetry.h>
 #include <rte_power_pmd_mgmt.h>
@@ -125,14 +124,6 @@
 #define RX_DESC_DEFAULT 1024
 #define TX_DESC_DEFAULT 1024
 
-/*
- * These two thresholds were decided on by running the training algorithm on
- * a 2.5GHz Xeon. These defaults can be overridden by supplying non-zero values
- * for the med_threshold and high_threshold parameters on the command line.
- */
-#define EMPTY_POLL_MED_THRESHOLD 350000UL
-#define EMPTY_POLL_HGH_THRESHOLD 580000UL
-
 #define NUM_TELSTATS RTE_DIM(telstats_strings)
 
 static uint16_t nb_rxd = RX_DESC_DEFAULT;
@@ -150,12 +141,7 @@ static uint32_t enabled_port_mask = 0;
 static int promiscuous_on = 0;
 /* NUMA is enabled by default. */
 static int numa_on = 1;
-static bool empty_poll_stop;
-static bool empty_poll_train;
 volatile bool quit_signal;
-static struct  ep_params *ep_params;
-static struct  ep_policy policy;
-static long  ep_med_edpi, ep_hgh_edpi;
 /* timer to update telemetry every 500ms */
 static struct rte_timer telemetry_timer;
 
@@ -207,7 +193,6 @@ static int parse_ptype; /**< Parse packet type using rx callback, and */
 enum appmode {
 	APP_MODE_DEFAULT = 0,
 	APP_MODE_LEGACY,
-	APP_MODE_EMPTY_POLL,
 	APP_MODE_TELEMETRY,
 	APP_MODE_INTERRUPT,
 	APP_MODE_PMD_MGMT
@@ -422,14 +407,6 @@ static struct rte_timer power_timers[RTE_MAX_LCORE];
 static inline uint32_t power_idle_heuristic(uint32_t zero_rx_packet_count);
 static inline enum freq_scale_hint_t power_freq_scaleup_heuristic( \
 		unsigned int lcore_id, uint16_t port_id, uint16_t queue_id);
-
-
-/*
- * These defaults are using the max frequency index (1), a medium index (9)
- * and a typical low frequency index (14). These can be adjusted to use
- * different indexes using the relevant command line parameters.
- */
-static uint8_t  freq_tlb[] = {14, 9, 1};
 
 static int is_done(void)
 {
@@ -1217,110 +1194,7 @@ main_telemetry_loop(__rte_unused void *dummy)
 
 	return 0;
 }
-/* main processing loop */
-static int
-main_empty_poll_loop(__rte_unused void *dummy)
-{
-	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	unsigned int lcore_id;
-	uint64_t prev_tsc, diff_tsc, cur_tsc;
-	int i, j, nb_rx;
-	uint8_t queueid;
-	uint16_t portid;
-	struct lcore_conf *qconf;
-	struct lcore_rx_queue *rx_queue;
 
-	const uint64_t drain_tsc =
-		(rte_get_tsc_hz() + US_PER_S - 1) /
-		US_PER_S * BURST_TX_DRAIN_US;
-
-	prev_tsc = 0;
-
-	lcore_id = rte_lcore_id();
-	qconf = &lcore_conf[lcore_id];
-
-	if (qconf->n_rx_queue == 0) {
-		RTE_LOG(INFO, L3FWD_POWER, "lcore %u has nothing to do\n",
-			lcore_id);
-		return 0;
-	}
-
-	for (i = 0; i < qconf->n_rx_queue; i++) {
-		portid = qconf->rx_queue_list[i].port_id;
-		queueid = qconf->rx_queue_list[i].queue_id;
-		RTE_LOG(INFO, L3FWD_POWER, " -- lcoreid=%u portid=%u "
-				"rxqueueid=%hhu\n", lcore_id, portid, queueid);
-	}
-
-	while (!is_done()) {
-		stats[lcore_id].nb_iteration_looped++;
-
-		cur_tsc = rte_rdtsc();
-		/*
-		 * TX burst queue drain
-		 */
-		diff_tsc = cur_tsc - prev_tsc;
-		if (unlikely(diff_tsc > drain_tsc)) {
-			for (i = 0; i < qconf->n_tx_port; ++i) {
-				portid = qconf->tx_port_id[i];
-				rte_eth_tx_buffer_flush(portid,
-						qconf->tx_queue_id[portid],
-						qconf->tx_buffer[portid]);
-			}
-			prev_tsc = cur_tsc;
-		}
-
-		/*
-		 * Read packet from RX queues
-		 */
-		for (i = 0; i < qconf->n_rx_queue; ++i) {
-			rx_queue = &(qconf->rx_queue_list[i]);
-			rx_queue->idle_hint = 0;
-			portid = rx_queue->port_id;
-			queueid = rx_queue->queue_id;
-
-			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst,
-					MAX_PKT_BURST);
-
-			stats[lcore_id].nb_rx_processed += nb_rx;
-
-			if (nb_rx == 0) {
-
-				rte_power_empty_poll_stat_update(lcore_id);
-
-				continue;
-			} else {
-				rte_power_poll_stat_update(lcore_id, nb_rx);
-			}
-
-
-			/* Prefetch first packets */
-			for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
-				rte_prefetch0(rte_pktmbuf_mtod(
-							pkts_burst[j], void *));
-			}
-
-			/* Prefetch and forward already prefetched packets */
-			for (j = 0; j < (nb_rx - PREFETCH_OFFSET); j++) {
-				rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[
-							j + PREFETCH_OFFSET],
-							void *));
-				l3fwd_simple_forward(pkts_burst[j], portid,
-						qconf);
-			}
-
-			/* Forward remaining prefetched packets */
-			for (; j < nb_rx; j++) {
-				l3fwd_simple_forward(pkts_burst[j], portid,
-						qconf);
-			}
-
-		}
-
-	}
-
-	return 0;
-}
 /* main processing loop */
 static int
 main_legacy_loop(__rte_unused void *dummy)
@@ -1636,8 +1510,6 @@ print_usage(const char *prgname)
 		"  --max-pkt-len PKTLEN: maximum packet length in decimal (64-9600)\n"
 		"  --parse-ptype: parse packet type by software\n"
 		"  --legacy: use legacy interrupt-based scaling\n"
-		"  --empty-poll: enable empty poll detection"
-		" follow (training_flag, high_threshold, med_threshold)\n"
 		" --telemetry: enable telemetry mode, to update"
 		" empty polls, full polls, and core busyness to telemetry\n"
 		" --interrupt-only: enable interrupt-only mode\n"
@@ -1853,58 +1725,8 @@ parse_pmd_mgmt_config(const char *name)
 	return -1;
 }
 
-static int
-parse_ep_config(const char *q_arg)
-{
-	char s[256];
-	const char *p = q_arg;
-	char *end;
-	int  num_arg;
-
-	char *str_fld[3];
-
-	int training_flag;
-	int med_edpi;
-	int hgh_edpi;
-
-	ep_med_edpi = EMPTY_POLL_MED_THRESHOLD;
-	ep_hgh_edpi = EMPTY_POLL_HGH_THRESHOLD;
-
-	strlcpy(s, p, sizeof(s));
-
-	num_arg = rte_strsplit(s, sizeof(s), str_fld, 3, ',');
-
-	empty_poll_train = false;
-
-	if (num_arg == 0)
-		return 0;
-
-	if (num_arg == 3) {
-
-		training_flag = strtoul(str_fld[0], &end, 0);
-		med_edpi = strtoul(str_fld[1], &end, 0);
-		hgh_edpi = strtoul(str_fld[2], &end, 0);
-
-		if (training_flag == 1)
-			empty_poll_train = true;
-
-		if (med_edpi > 0)
-			ep_med_edpi = med_edpi;
-
-		if (hgh_edpi > 0)
-			ep_hgh_edpi = hgh_edpi;
-
-	} else {
-
-		return -1;
-	}
-
-	return 0;
-
-}
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
 #define CMD_LINE_OPT_LEGACY "legacy"
-#define CMD_LINE_OPT_EMPTY_POLL "empty-poll"
 #define CMD_LINE_OPT_INTERRUPT_ONLY "interrupt-only"
 #define CMD_LINE_OPT_TELEMETRY "telemetry"
 #define CMD_LINE_OPT_PMD_MGMT "pmd-mgmt"
@@ -1921,7 +1743,6 @@ parse_args(int argc, char **argv)
 	int opt, ret;
 	char **argvopt;
 	int option_index;
-	uint32_t limit;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
 		{"config", 1, 0, 0},
@@ -1929,7 +1750,6 @@ parse_args(int argc, char **argv)
 		{"high-perf-cores", 1, 0, 0},
 		{"no-numa", 0, 0, 0},
 		{CMD_LINE_OPT_MAX_PKT_LEN, 1, 0, 0},
-		{CMD_LINE_OPT_EMPTY_POLL, 1, 0, 0},
 		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
 		{CMD_LINE_OPT_LEGACY, 0, 0, 0},
 		{CMD_LINE_OPT_TELEMETRY, 0, 0, 0},
@@ -1944,7 +1764,7 @@ parse_args(int argc, char **argv)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "p:l:m:h:PuUi:",
+	while ((opt = getopt_long(argc, argvopt, "p:PuUi:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1960,18 +1780,6 @@ parse_args(int argc, char **argv)
 		case 'P':
 			printf("Promiscuous mode selected\n");
 			promiscuous_on = 1;
-			break;
-		case 'l':
-			limit = parse_max_pkt_len(optarg);
-			freq_tlb[LOW] = limit;
-			break;
-		case 'm':
-			limit = parse_max_pkt_len(optarg);
-			freq_tlb[MED] = limit;
-			break;
-		case 'h':
-			limit = parse_max_pkt_len(optarg);
-			freq_tlb[HGH] = limit;
 			break;
 		case 'u':
 			enabled_uncore = parse_uncore_options(UNCORE_MIN, NULL);
@@ -2040,23 +1848,6 @@ parse_args(int argc, char **argv)
 				}
 				app_mode = APP_MODE_LEGACY;
 				printf("legacy mode is enabled\n");
-			}
-
-			if (!strncmp(lgopts[option_index].name,
-					CMD_LINE_OPT_EMPTY_POLL, 10)) {
-				if (app_mode != APP_MODE_DEFAULT) {
-					printf(" empty-poll mode is mutually exclusive with other modes\n");
-					return -1;
-				}
-				app_mode = APP_MODE_EMPTY_POLL;
-				ret = parse_ep_config(optarg);
-
-				if (ret) {
-					printf("invalid empty poll config\n");
-					print_usage(prgname);
-					return -1;
-				}
-				printf("empty-poll is enabled\n");
 			}
 
 			if (!strncmp(lgopts[option_index].name,
@@ -2575,24 +2366,7 @@ telemetry_setup_timer(void)
 			update_telemetry,
 			NULL);
 }
-static void
-empty_poll_setup_timer(void)
-{
-	int lcore_id = rte_lcore_id();
-	uint64_t hz = rte_get_timer_hz();
 
-	struct  ep_params *ep_ptr = ep_params;
-
-	ep_ptr->interval_ticks = hz / INTERVALS_PER_SECOND;
-
-	rte_timer_reset_sync(&ep_ptr->timer0,
-			ep_ptr->interval_ticks,
-			PERIODICAL,
-			lcore_id,
-			rte_empty_poll_detection,
-			(void *)ep_ptr);
-
-}
 static int
 launch_timer(unsigned int lcore_id)
 {
@@ -2609,10 +2383,7 @@ launch_timer(unsigned int lcore_id)
 
 	RTE_LOG(INFO, POWER, "Bring up the Timer\n");
 
-	if (app_mode == APP_MODE_EMPTY_POLL)
-		empty_poll_setup_timer();
-	else
-		telemetry_setup_timer();
+	telemetry_setup_timer();
 
 	cycles_10ms = rte_get_timer_hz() / 100;
 
@@ -2657,8 +2428,6 @@ mode_to_str(enum appmode mode)
 	switch (mode) {
 	case APP_MODE_LEGACY:
 		return "legacy";
-	case APP_MODE_EMPTY_POLL:
-		return "empty poll";
 	case APP_MODE_TELEMETRY:
 		return "telemetry";
 	case APP_MODE_INTERRUPT:
@@ -2750,9 +2519,8 @@ main(int argc, char **argv)
 	RTE_LOG(INFO, L3FWD_POWER, "Selected operation mode: %s\n",
 			mode_to_str(app_mode));
 
-	/* only legacy and empty poll mode rely on power library */
-	if ((app_mode == APP_MODE_LEGACY || app_mode == APP_MODE_EMPTY_POLL) &&
-			init_power_library())
+	/* only legacy mode relies on power library */
+	if ((app_mode == APP_MODE_LEGACY) && init_power_library())
 		rte_exit(EXIT_FAILURE, "init_power_library failed\n");
 
 	if (update_lcore_params() < 0)
@@ -3054,31 +2822,9 @@ main(int argc, char **argv)
 
 	check_all_ports_link_status(enabled_port_mask);
 
-	if (app_mode == APP_MODE_EMPTY_POLL) {
-
-		if (empty_poll_train) {
-			policy.state = TRAINING;
-		} else {
-			policy.state = MED_NORMAL;
-			policy.med_base_edpi = ep_med_edpi;
-			policy.hgh_base_edpi = ep_hgh_edpi;
-		}
-
-		ret = rte_power_empty_poll_stat_init(&ep_params,
-				freq_tlb,
-				&policy);
-		if (ret < 0)
-			rte_exit(EXIT_FAILURE, "empty poll init failed");
-	}
-
-
 	/* launch per-lcore init on every lcore */
 	if (app_mode == APP_MODE_LEGACY) {
 		rte_eal_mp_remote_launch(main_legacy_loop, NULL, CALL_MAIN);
-	} else if (app_mode == APP_MODE_EMPTY_POLL) {
-		empty_poll_stop = false;
-		rte_eal_mp_remote_launch(main_empty_poll_loop, NULL,
-				SKIP_MAIN);
 	} else if (app_mode == APP_MODE_TELEMETRY) {
 		unsigned int i;
 
@@ -3110,7 +2856,7 @@ main(int argc, char **argv)
 		rte_eal_mp_remote_launch(main_telemetry_loop, NULL, CALL_MAIN);
 	}
 
-	if (app_mode == APP_MODE_EMPTY_POLL || app_mode == APP_MODE_TELEMETRY)
+	if (app_mode == APP_MODE_TELEMETRY)
 		launch_timer(rte_lcore_id());
 
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
@@ -3146,11 +2892,7 @@ main(int argc, char **argv)
 		rte_eth_dev_close(portid);
 	}
 
-	if (app_mode == APP_MODE_EMPTY_POLL)
-		rte_power_empty_poll_stat_free();
-
-	if ((app_mode == APP_MODE_LEGACY || app_mode == APP_MODE_EMPTY_POLL) &&
-			deinit_power_library())
+	if ((app_mode == APP_MODE_LEGACY) && deinit_power_library())
 		rte_exit(EXIT_FAILURE, "deinit_power_library failed\n");
 
 	if (rte_eal_cleanup() < 0)

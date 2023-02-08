@@ -19,13 +19,11 @@ sources = files(
         'power_kvm_vm.c',
         'power_pstate_cpufreq.c',
         'rte_power.c',
-        'rte_power_empty_poll.c',
         'rte_power_intel_uncore.c',
         'rte_power_pmd_mgmt.c',
 )
 headers = files(
         'rte_power.h',
-        'rte_power_empty_poll.h',
         'rte_power_intel_uncore.h',
         'rte_power_pmd_mgmt.h',
         'rte_power_guest_channel.h',
