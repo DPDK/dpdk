@@ -119,44 +119,20 @@ rte_tel_data_add_array_container(struct rte_tel_data *d,
 	return 0;
 }
 
-/* To suppress compiler warning about format string. */
-#if defined(RTE_TOOLCHAIN_GCC)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-nonliteral"
-#elif defined(RTE_TOOLCHAIN_CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-nonliteral"
-#endif
-
 static int
 rte_tel_uint_to_hex_encoded_str(char *buf, size_t buf_len, uint64_t val,
 				uint8_t display_bitwidth)
 {
-#define RTE_TEL_HEX_FORMAT_LEN 16
+	int spec_hex_width = (display_bitwidth + 3) / 4;
+	int len;
 
-	uint8_t spec_hex_width = (display_bitwidth + 3) / 4;
-	char format[RTE_TEL_HEX_FORMAT_LEN];
+	if (display_bitwidth != 0)
+		len = snprintf(buf, buf_len, "0x%0*" PRIx64, spec_hex_width, val);
+	else
+		len = snprintf(buf, buf_len, "0x%" PRIx64, val);
 
-	if (display_bitwidth != 0) {
-		if (snprintf(format, RTE_TEL_HEX_FORMAT_LEN, "0x%%0%u" PRIx64,
-				spec_hex_width) >= RTE_TEL_HEX_FORMAT_LEN)
-			return -EINVAL;
-
-		if (snprintf(buf, buf_len, format, val) >= (int)buf_len)
-			return -EINVAL;
-	} else {
-		if (snprintf(buf, buf_len, "0x%" PRIx64, val) >= (int)buf_len)
-			return -EINVAL;
-	}
-
-	return 0;
+	return len < (int)buf_len ? 0 : -EINVAL;
 }
-
-#if defined(RTE_TOOLCHAIN_GCC)
-#pragma GCC diagnostic pop
-#elif defined(RTE_TOOLCHAIN_CLANG)
-#pragma clang diagnostic pop
-#endif
 
 int
 rte_tel_data_add_array_uint_hex(struct rte_tel_data *d, uint64_t val,
