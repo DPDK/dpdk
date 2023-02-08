@@ -1383,6 +1383,280 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_int(ret);
 )
 
+RTE_TRACE_POINT(
+	rte_flow_trace_dynf_metadata_register,
+	RTE_TRACE_POINT_ARGS(int offset, uint64_t flag),
+	rte_trace_point_emit_int(offset);
+	rte_trace_point_emit_u64(flag);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_validate,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item *pattern,
+		const struct rte_flow_action *actions, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(attr->group);
+	rte_trace_point_emit_u32(attr->priority);
+	rte_trace_point_emit_ptr(pattern);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_flush,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_conv,
+	RTE_TRACE_POINT_ARGS(enum rte_flow_conv_op op, const void *dst,
+		size_t size, const void *src, int ret),
+	rte_trace_point_emit_int(op);
+	rte_trace_point_emit_ptr(dst);
+	rte_trace_point_emit_size_t(size);
+	rte_trace_point_emit_ptr(src);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_copy,
+	RTE_TRACE_POINT_ARGS(struct rte_flow_desc *fd, size_t len,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item *items,
+		const struct rte_flow_action *actions, int ret),
+	rte_trace_point_emit_ptr(fd);
+	rte_trace_point_emit_size_t(len);
+	rte_trace_point_emit_u32(attr->group);
+	rte_trace_point_emit_u32(attr->priority);
+	rte_trace_point_emit_ptr(items);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_tunnel_decap_set,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_tunnel *tunnel,
+		struct rte_flow_action **actions,
+		const uint32_t *num_of_actions, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(tunnel);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_ptr(num_of_actions);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_tunnel_match,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_tunnel *tunnel,
+		struct rte_flow_item **items,
+		const uint32_t *num_of_items, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(tunnel);
+	rte_trace_point_emit_ptr(items);
+	rte_trace_point_emit_ptr(num_of_items);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_tunnel_action_decap_release,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_action *actions, uint32_t num_of_actions,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_u32(num_of_actions);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_tunnel_item_release,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_item *items, uint32_t num_of_items,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(items);
+	rte_trace_point_emit_u32(num_of_items);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_flex_item_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_item_flex_conf *conf,
+		const struct rte_flow_item_flex_handle *handle),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_int(conf->tunnel);
+	rte_trace_point_emit_int(conf->nb_samples);
+	rte_trace_point_emit_int(conf->nb_inputs);
+	rte_trace_point_emit_int(conf->nb_outputs);
+	rte_trace_point_emit_ptr(handle);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_flex_item_release,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_item_flex_handle *handle, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(handle);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_info_get,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_port_info *port_info,
+		const struct rte_flow_queue_info *queue_info, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(port_info->max_nb_queues);
+	rte_trace_point_emit_u32(port_info->max_nb_counters);
+	rte_trace_point_emit_u32(port_info->max_nb_aging_objects);
+	rte_trace_point_emit_u32(port_info->max_nb_meters);
+	rte_trace_point_emit_u32(port_info->max_nb_conn_tracks);
+	rte_trace_point_emit_u32(port_info->supported_flags);
+	rte_trace_point_emit_ptr(queue_info);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_configure,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_port_attr *port_attr,
+		uint16_t nb_queue,
+		const struct rte_flow_queue_attr **queue_attr, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(port_attr->nb_counters);
+	rte_trace_point_emit_u32(port_attr->nb_aging_objects);
+	rte_trace_point_emit_u32(port_attr->nb_meters);
+	rte_trace_point_emit_u32(port_attr->nb_conn_tracks);
+	rte_trace_point_emit_u32(port_attr->flags);
+	rte_trace_point_emit_u16(nb_queue);
+	rte_trace_point_emit_ptr(queue_attr);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_pattern_template_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_pattern_template_attr *template_attr,
+		const struct rte_flow_item *pattern, const void *tmplate),
+	uint8_t relaxed_matching = template_attr->relaxed_matching;
+	uint8_t ingress = template_attr->ingress;
+	uint8_t egress = template_attr->egress;
+	uint8_t transfer = template_attr->transfer;
+
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(template_attr);
+	rte_trace_point_emit_u8(relaxed_matching);
+	rte_trace_point_emit_u8(ingress);
+	rte_trace_point_emit_u8(egress);
+	rte_trace_point_emit_u8(transfer);
+	rte_trace_point_emit_ptr(pattern);
+	rte_trace_point_emit_ptr(tmplate);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_pattern_template_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_pattern_template *pattern_template,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(pattern_template);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_actions_template_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_actions_template_attr *template_attr,
+		const struct rte_flow_action *actions,
+		const struct rte_flow_action *masks, const void *tmplate),
+	uint8_t ingress = template_attr->ingress;
+	uint8_t egress = template_attr->egress;
+	uint8_t transfer = template_attr->transfer;
+
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(template_attr);
+	rte_trace_point_emit_u8(ingress);
+	rte_trace_point_emit_u8(egress);
+	rte_trace_point_emit_u8(transfer);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_ptr(masks);
+	rte_trace_point_emit_ptr(tmplate);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_actions_template_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_actions_template *actions_template,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(actions_template);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_template_table_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_template_table_attr *table_attr,
+		struct rte_flow_pattern_template **pattern_templates,
+		uint8_t nb_pattern_templates,
+		struct rte_flow_actions_template **actions_templates,
+		uint8_t nb_actions_templates,
+		const struct rte_flow_template_table *table),
+	uint8_t ingress = table_attr->flow_attr.ingress;
+	uint8_t egress = table_attr->flow_attr.egress;
+	uint8_t transfer = table_attr->flow_attr.transfer;
+
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(table_attr->nb_flows);
+	rte_trace_point_emit_u32(table_attr->flow_attr.group);
+	rte_trace_point_emit_u32(table_attr->flow_attr.priority);
+	rte_trace_point_emit_u8(ingress);
+	rte_trace_point_emit_u8(egress);
+	rte_trace_point_emit_u8(transfer);
+	rte_trace_point_emit_ptr(pattern_templates);
+	rte_trace_point_emit_u8(nb_pattern_templates);
+	rte_trace_point_emit_ptr(actions_templates);
+	rte_trace_point_emit_u8(nb_actions_templates);
+	rte_trace_point_emit_ptr(table);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_template_table_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_template_table *template_table, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(template_table);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_async_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow *flow, const void *user_data, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(flow);
+	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_flow_trace_push,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_int(ret);
+)
+
 /* Fast path trace points */
 
 /* Called in loop in examples/qos_sched and examples/distributor */
@@ -1502,6 +1776,235 @@ RTE_TRACE_POINT_FP(
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, int64_t delta, int ret),
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_i64(delta);
+	rte_trace_point_emit_int(ret);
+)
+
+/* Called in loop in app/test-flow-perf */
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_flow_attr *attr,
+		const struct rte_flow_item *pattern,
+		const struct rte_flow_action *actions,
+		const struct rte_flow *flow),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(attr->group);
+	rte_trace_point_emit_u32(attr->priority);
+	rte_trace_point_emit_ptr(pattern);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_ptr(flow);
+)
+
+/* Called in loop in app/test-flow-perf */
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_flow *flow,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(flow);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_query,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_flow *flow,
+		const struct rte_flow_action *action, const void *data,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(flow);
+	rte_trace_point_emit_int(action->type);
+	rte_trace_point_emit_ptr(action->conf);
+	rte_trace_point_emit_ptr(data);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_isolate,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, int set, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_int(set);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_get_aged_flows,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, void **contexts,
+		uint32_t nb_contexts, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(contexts);
+	rte_trace_point_emit_u32(nb_contexts);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_get_q_aged_flows,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		void **contexts, uint32_t nb_contexts, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(contexts);
+	rte_trace_point_emit_u32(nb_contexts);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_action_handle_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_indir_action_conf *conf,
+		const struct rte_flow_action *action,
+		const struct rte_flow_action_handle *handle),
+	uint8_t ingress = conf->ingress;
+	uint8_t egress = conf->egress;
+	uint8_t transfer = conf->transfer;
+
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u8(ingress);
+	rte_trace_point_emit_u8(egress);
+	rte_trace_point_emit_u8(transfer);
+	rte_trace_point_emit_ptr(action);
+	rte_trace_point_emit_ptr(handle);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_action_handle_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_action_handle *handle, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(handle);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_action_handle_update,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_action_handle *handle,
+		const void *update, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(handle);
+	rte_trace_point_emit_ptr(update);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_action_handle_query,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_flow_action_handle *handle,
+		const void *data, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(handle);
+	rte_trace_point_emit_ptr(data);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_get_restore_info,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_mbuf *m,
+		const struct rte_flow_restore_info *info, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(m);
+	rte_trace_point_emit_ptr(info);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_pick_transfer_proxy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, const uint16_t *proxy_port_id,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(proxy_port_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_async_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_template_table *template_table,
+		const struct rte_flow_item *pattern,
+		uint8_t pattern_template_index,
+		const struct rte_flow_action *actions,
+		uint8_t actions_template_index,
+		const void *user_data, const struct rte_flow *flow),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(template_table);
+	rte_trace_point_emit_ptr(pattern);
+	rte_trace_point_emit_u8(pattern_template_index);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_u8(actions_template_index);
+	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_ptr(flow);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_pull,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_result *res, uint16_t n_res, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(res);
+	rte_trace_point_emit_u16(n_res);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_async_action_handle_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_indir_action_conf *indir_action_conf,
+		const struct rte_flow_action *action,
+		const void *user_data,
+		const struct rte_flow_action_handle *handle),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(indir_action_conf);
+	rte_trace_point_emit_ptr(action);
+	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_ptr(handle);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_async_action_handle_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_action_handle *action_handle,
+		const void *user_data, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(action_handle);
+	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_async_action_handle_update,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_action_handle *action_handle,
+		const void *update, const void *user_data, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(action_handle);
+	rte_trace_point_emit_ptr(update);
+	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_async_action_handle_query,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_action_handle *action_handle,
+		const void *data, const void *user_data, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(action_handle);
+	rte_trace_point_emit_ptr(data);
+	rte_trace_point_emit_ptr(user_data);
 	rte_trace_point_emit_int(ret);
 )
 

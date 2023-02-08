@@ -474,3 +474,120 @@ RTE_TRACE_POINT_REGISTER(rte_eth_trace_cman_config_set,
 
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_cman_config_get,
 	lib.ethdev.cman_config_get)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_copy,
+	lib.ethdev.flow.copy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_create,
+	lib.ethdev.flow.create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_destroy,
+	lib.ethdev.flow.destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_flush,
+	lib.ethdev.flow.flush)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_isolate,
+	lib.ethdev.flow.isolate)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_query,
+	lib.ethdev.flow.query)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_validate,
+	lib.ethdev.flow.validate)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_conv,
+	lib.ethdev.flow.conv)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_dynf_metadata_register,
+	lib.ethdev.dynf_metadata_register)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_get_aged_flows,
+	lib.ethdev.flow.get_aged_flows)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_get_q_aged_flows,
+	lib.ethdev.flow.get_q_aged_flows)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_tunnel_decap_set,
+	lib.ethdev.flow.tunnel_decap_set)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_tunnel_match,
+	lib.ethdev.flow.tunnel_match)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_get_restore_info,
+	lib.ethdev.flow.get_restore_info)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_tunnel_action_decap_release,
+	lib.ethdev.flow.tunnel_action_decap_release)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_tunnel_item_release,
+	lib.ethdev.flow.tunnel_item_release)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_action_handle_create,
+	lib.ethdev.flow.action_handle_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_action_handle_destroy,
+	lib.ethdev.flow.action_handle_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_action_handle_update,
+	lib.ethdev.flow.action_handle_update)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_action_handle_query,
+	lib.ethdev.flow.action_handle_query)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_flex_item_create,
+	lib.ethdev.flow.flex_item_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_flex_item_release,
+	lib.ethdev.flow.flex_item_release)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_pick_transfer_proxy,
+	lib.ethdev.flow.pick_transfer_proxy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_info_get,
+	lib.ethdev.flow.info_get)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_configure,
+	lib.ethdev.flow.configure)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_pattern_template_create,
+	lib.ethdev.flow.pattern_template_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_pattern_template_destroy,
+	lib.ethdev.flow.pattern_template_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_actions_template_create,
+	lib.ethdev.flow.actions_template_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_actions_template_destroy,
+	lib.ethdev.flow.actions_template_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_template_table_create,
+	lib.ethdev.flow.template_table_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_template_table_destroy,
+	lib.ethdev.flow.template_table_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create,
+	lib.ethdev.flow.async_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_destroy,
+	lib.ethdev.flow.async_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_push,
+	lib.ethdev.flow.push)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_pull,
+	lib.ethdev.flow.pull)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_handle_create,
+	lib.ethdev.flow.async_action_handle_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_handle_destroy,
+	lib.ethdev.flow.async_action_handle_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_handle_update,
+	lib.ethdev.flow.async_action_handle_update)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_handle_query,
+	lib.ethdev.flow.async.action.handle.query)
