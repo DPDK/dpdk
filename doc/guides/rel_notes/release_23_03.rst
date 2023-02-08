@@ -88,6 +88,8 @@ New Features
     of index-based template tables in addition to pattern-based tables.
   * Introduced new function ``rte_flow_async_create_by_index()``
     to insert rules by index into index-based template tables.
+  * Added hash calculation function used in template tables
+    to allow control over the calculation of the rule index for a packet.
 
 * **Updated AMD axgbe driver.**
 

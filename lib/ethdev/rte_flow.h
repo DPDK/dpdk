@@ -3614,6 +3614,7 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_METER_COLOR,	/**< Meter color marker. */
 	RTE_FLOW_FIELD_IPV6_PROTO,	/**< IPv6 next header. */
 	RTE_FLOW_FIELD_FLEX_ITEM,	/**< Flex item. */
+	RTE_FLOW_FIELD_HASH_RESULT,	/**< Hash result. */
 };
 
 /**
@@ -5321,6 +5322,31 @@ enum rte_flow_table_insertion_type {
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Template table hash index calculation function.
+ */
+enum rte_flow_table_hash_func {
+	/**
+	 * Default hash calculation.
+	 */
+	RTE_FLOW_TABLE_HASH_FUNC_DEFAULT,
+	/**
+	 * Linear hash calculation.
+	 */
+	RTE_FLOW_TABLE_HASH_FUNC_LINEAR,
+	/**
+	 * 32-bit checksum hash calculation.
+	 */
+	RTE_FLOW_TABLE_HASH_FUNC_CRC32,
+	/**
+	 * 16-bit checksum hash calculation.
+	 */
+	RTE_FLOW_TABLE_HASH_FUNC_CRC16,
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Table attributes.
  */
 struct rte_flow_template_table_attr {
@@ -5345,6 +5371,10 @@ struct rte_flow_template_table_attr {
 	 * Insertion type for flow rules.
 	 */
 	enum rte_flow_table_insertion_type insertion_type;
+	/**
+	 * Hash calculation function for the packet matching.
+	 */
+	enum rte_flow_table_hash_func hash_func;
 };
 
 /**
