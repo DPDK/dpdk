@@ -28,6 +28,8 @@ int virtio_vdpa_lcore_id = 0;
 
 #define VIRTIO_VDPA_STATE_ALIGN 4096
 
+#define RTE_ROUNDUP(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
+
 extern struct virtio_vdpa_device_callback virtio_vdpa_blk_callback;
 extern struct virtio_vdpa_device_callback virtio_vdpa_net_callback;
 
@@ -762,7 +764,7 @@ virtio_vdpa_features_set(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	uint64_t log_base, log_size, max_phy;
+	uint64_t log_base, log_size, max_phy, log_size_align;
 	uint64_t features;
 	struct virtio_sge lb_sge;
 	rte_iova_t iova;
@@ -804,10 +806,12 @@ virtio_vdpa_features_set(int vid)
 						priv->vdev->device->name, ret);
 			return ret;
 		}
-		DRV_LOG(INFO, "log buffer %" PRIx64 "iova %" PRIx64 "log size %" PRIx64, log_base, iova, log_size);
+		log_size_align = RTE_ROUNDUP(log_size, getpagesize());
+		DRV_LOG(INFO, "log buffer %" PRIx64 " iova %" PRIx64 " log size %" PRIx64 " log size align %" PRIx64,
+				log_base, iova, log_size, log_size_align);
 
 		ret = rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD, log_base,
-						 iova, log_size);
+						 iova, log_size_align);
 		if (ret < 0) {
 			DRV_LOG(ERR, "%s log buffer DMA map failed ret:%d",
 						priv->vdev->device->name, ret);
@@ -879,7 +883,7 @@ virtio_vdpa_dev_close(int vid)
 	struct virtio_dev_run_state_info *tmp_hw_idx;
 	struct virtio_admin_migration_get_internal_state_pending_bytes_result res;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	uint64_t features = 0, max_phy, log_base, log_size;
+	uint64_t features = 0, max_phy, log_base, log_size, log_size_align;
 	uint16_t num_vr;
 	rte_iova_t iova;
 	int ret, i;
@@ -939,10 +943,13 @@ virtio_vdpa_dev_close(int vid)
 						priv->vdev->device->name, ret);
 			return ret;
 		}
-		DRV_LOG(INFO, "log buffer %" PRIx64 "iova %" PRIx64 "log size %" PRIx64, log_base, iova, log_size);
+
+		log_size_align = RTE_ROUNDUP(log_size, getpagesize());
+		DRV_LOG(INFO, "log buffer %" PRIx64 " iova %" PRIx64 " log size align %" PRIx64,
+				log_base, iova, log_size_align);
 
 		ret = rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD, log_base,
-						 iova, log_size);
+						 iova, log_size_align);
 		if (ret < 0) {
 			DRV_LOG(ERR, "%s log buffer DMA map failed ret:%d",
 						priv->vdev->device->name, ret);
