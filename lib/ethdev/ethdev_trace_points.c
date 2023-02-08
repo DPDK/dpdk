@@ -654,3 +654,93 @@ RTE_TRACE_POINT_REGISTER(rte_mtr_trace_color_in_protocol_priority_get,
 
 RTE_TRACE_POINT_REGISTER(rte_mtr_trace_color_in_protocol_set,
 	lib.ethdev.mtr.color_in_protocol_set)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_capabilities_get,
+	lib.ethdev.tm.capabilities_get)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_get_number_of_leaf_nodes,
+	lib.ethdev.tm.get_number_of_leaf_nodes)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_hierarchy_commit,
+	lib.ethdev.tm.hierarchy_commit)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_level_capabilities_get,
+	lib.ethdev.tm.level_capabilities_get)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_mark_ip_dscp,
+	lib.ethdev.tm.mark_ip_dscp)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_mark_ip_ecn,
+	lib.ethdev.tm.mark_ip_ecn)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_mark_vlan_dei,
+	lib.ethdev.tm.mark_vlan_dei)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_add,
+	lib.ethdev.tm.node_add)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_capabilities_get,
+	lib.ethdev.tm.node_capabilities_get)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_cman_update,
+	lib.ethdev.tm.node_cman_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_delete,
+	lib.ethdev.tm.node_delete)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_parent_update,
+	lib.ethdev.tm.node_parent_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_resume,
+	lib.ethdev.tm.node_resume)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_shaper_update,
+	lib.ethdev.tm.node_shaper_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_shared_shaper_update,
+	lib.ethdev.tm.node_shared_shaper_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_shared_wred_context_update,
+	lib.ethdev.tm.node_shared_wred_context_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_stats_read,
+	lib.ethdev.tm.node_stats_read)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_stats_update,
+	lib.ethdev.tm.node_stats_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_suspend,
+	lib.ethdev.tm.node_suspend)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_type_get,
+	lib.ethdev.tm.node_type_get)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_wfq_weight_mode_update,
+	lib.ethdev.tm.node_wfq_weight_mode_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_wred_context_update,
+	lib.ethdev.tm.node_wred_context_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_shaper_profile_add,
+	lib.ethdev.tm.shaper_profile_add)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_shaper_profile_delete,
+	lib.ethdev.tm.shaper_profile_delete)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_shared_shaper_add_update,
+	lib.ethdev.tm.shared_shaper_add_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_shared_shaper_delete,
+	lib.ethdev.tm.shared_shaper_delete)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_shared_wred_context_add_update,
+	lib.ethdev.tm.shared_wred_context_add_update)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_shared_wred_context_delete,
+	lib.ethdev.tm.shared_wred_context_delete)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_wred_profile_add,
+	lib.ethdev.tm.wred_profile_add)
+
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_wred_profile_delete,
+	lib.ethdev.tm.wred_profile_delete)
