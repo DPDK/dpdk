@@ -591,3 +591,66 @@ RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_handle_update,
 
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_handle_query,
 	lib.ethdev.flow.async.action.handle.query)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_capabilities_get,
+	lib.ethdev.mtr.capabilities_get)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_create,
+	lib.ethdev.mtr.create)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_destroy,
+	lib.ethdev.mtr.destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_disable,
+	lib.ethdev.mtr.meter_disable)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_dscp_table_update,
+	lib.ethdev.mtr.meter_dscp_table_update)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_enable,
+	lib.ethdev.mtr.meter_enable)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_profile_add,
+	lib.ethdev.mtr.meter_profile_add)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_profile_delete,
+	lib.ethdev.mtr.meter_profile_delete)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_profile_get,
+	lib.ethdev.mtr.meter_profile_get)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_profile_update,
+	lib.ethdev.mtr.meter_profile_update)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_stats_read,
+	lib.ethdev.mtr.stats_read)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_stats_update,
+	lib.ethdev.mtr.stats_update)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_policy_add,
+	lib.ethdev.mtr.meter_policy_add)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_policy_delete,
+	lib.ethdev.mtr.meter_policy_delete)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_policy_get,
+	lib.ethdev.mtr.meter_policy_get)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_policy_update,
+	lib.ethdev.mtr.meter_policy_update)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_policy_validate,
+	lib.ethdev.mtr.meter_policy_validate)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_meter_vlan_table_update,
+	lib.ethdev.mtr.meter_vlan_table_update)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_color_in_protocol_get,
+	lib.ethdev.mtr.color_in_protocol_get)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_color_in_protocol_priority_get,
+	lib.ethdev.mtr.color_in_protocol_priority_get)
+
+RTE_TRACE_POINT_REGISTER(rte_mtr_trace_color_in_protocol_set,
+	lib.ethdev.mtr.color_in_protocol_set)

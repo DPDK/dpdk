@@ -19,6 +19,7 @@ extern "C" {
 #include <rte_trace_point.h>
 
 #include "rte_ethdev.h"
+#include "rte_mtr.h"
 
 RTE_TRACE_POINT(
 	rte_ethdev_trace_configure,
@@ -1657,6 +1658,181 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_int(ret);
 )
 
+RTE_TRACE_POINT(
+	rte_mtr_trace_capabilities_get,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_mtr_capabilities *cap, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(cap);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_profile_add,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		uint32_t meter_profile_id,
+		const struct rte_mtr_meter_profile *profile, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(meter_profile_id);
+	rte_trace_point_emit_ptr(profile);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_profile_delete,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		uint32_t meter_profile_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(meter_profile_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_profile_get,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		uint32_t meter_profile_id, const void *ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(meter_profile_id);
+	rte_trace_point_emit_ptr(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_policy_validate,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+		const struct rte_mtr_meter_policy_params *policy, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_ptr(policy);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_policy_add,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t policy_id,
+		const struct rte_mtr_meter_policy_params *policy, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(policy_id);
+	rte_trace_point_emit_ptr(policy);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_policy_get,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t policy_id,
+		const void *ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(policy_id);
+	rte_trace_point_emit_ptr(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_enable,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_disable,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_profile_update,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		uint32_t meter_profile_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_u32(meter_profile_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_policy_update,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		uint32_t meter_policy_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_u32(meter_policy_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_dscp_table_update,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		enum rte_color *dscp_table, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_ptr(dscp_table);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_meter_vlan_table_update,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		const enum rte_color *vlan_table, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_ptr(vlan_table);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_color_in_protocol_set,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		enum rte_mtr_color_in_protocol proto, uint32_t priority,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_int(proto);
+	rte_trace_point_emit_u32(priority);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_color_in_protocol_get,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_color_in_protocol_priority_get,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		enum rte_mtr_color_in_protocol proto, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_int(proto);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_stats_update,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		uint64_t stats_mask, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_u64(stats_mask);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_mtr_trace_stats_read,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		const struct rte_mtr_stats *stats, uint64_t stats_mask,
+		int clear, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_ptr(stats);
+	rte_trace_point_emit_u64(stats_mask);
+	rte_trace_point_emit_int(clear);
+	rte_trace_point_emit_int(ret);
+)
+
 /* Fast path trace points */
 
 /* Called in loop in examples/qos_sched and examples/distributor */
@@ -2005,6 +2181,36 @@ RTE_TRACE_POINT_FP(
 	rte_trace_point_emit_ptr(action_handle);
 	rte_trace_point_emit_ptr(data);
 	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_int(ret);
+)
+
+/* Called in loop in app/test-flow-perf */
+RTE_TRACE_POINT_FP(
+	rte_mtr_trace_create,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id,
+		const struct rte_mtr_params *params, int shared, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_ptr(params);
+	rte_trace_point_emit_int(shared);
+	rte_trace_point_emit_int(ret);
+)
+
+/* Called in loop in app/test-flow-perf */
+RTE_TRACE_POINT_FP(
+	rte_mtr_trace_destroy,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t mtr_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(mtr_id);
+	rte_trace_point_emit_int(ret);
+)
+
+/* Called in loop in app/test-flow-perf */
+RTE_TRACE_POINT_FP(
+	rte_mtr_trace_meter_policy_delete,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t policy_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(policy_id);
 	rte_trace_point_emit_int(ret);
 )
 
