@@ -22,7 +22,6 @@ sources = files(
 headers = files(
         'rte_cman.h',
         'rte_ethdev.h',
-        'rte_ethdev_trace.h',
         'rte_ethdev_trace_fp.h',
         'rte_dev_info.h',
         'rte_flow.h',
@@ -41,6 +40,7 @@ indirect_headers += files(
 driver_sdk_headers += files(
         'ethdev_driver.h',
         'ethdev_pci.h',
+        'ethdev_trace.h',
         'ethdev_vdev.h',
 )
 

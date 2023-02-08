@@ -5,6 +5,7 @@
 #include <rte_debug.h>
 
 #include "rte_ethdev.h"
+#include "rte_ethdev_trace_fp.h"
 #include "ethdev_driver.h"
 #include "ethdev_private.h"
 
@@ -297,6 +298,9 @@ rte_eth_call_rx_callbacks(uint16_t port_id, uint16_t queue_id,
 		cb = cb->next;
 	}
 
+	rte_eth_trace_call_rx_callbacks(port_id, queue_id, (void **)rx_pkts,
+					nb_rx, nb_pkts);
+
 	return nb_rx;
 }
 
@@ -311,6 +315,9 @@ rte_eth_call_tx_callbacks(uint16_t port_id, uint16_t queue_id,
 				cb->param);
 		cb = cb->next;
 	}
+
+	rte_eth_trace_call_tx_callbacks(port_id, queue_id, (void **)tx_pkts,
+					nb_pkts);
 
 	return nb_pkts;
 }
