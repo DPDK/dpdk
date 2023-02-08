@@ -232,7 +232,10 @@ enum __rte_ctrl_thread_status {
 };
 
 struct rte_thread_ctrl_params {
-	void *(*start_routine)(void *);
+	union {
+		void *(*ctrl_start_routine)(void *arg);
+		rte_thread_func control_start_routine;
+	} u;
 	void *arg;
 	int ret;
 	/* Control thread status.
@@ -241,27 +244,47 @@ struct rte_thread_ctrl_params {
 	enum __rte_ctrl_thread_status ctrl_thread_status;
 };
 
-static void *ctrl_thread_init(void *arg)
+static int ctrl_thread_init(void *arg)
 {
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 	rte_cpuset_t *cpuset = &internal_conf->ctrl_cpuset;
 	struct rte_thread_ctrl_params *params = arg;
-	void *(*start_routine)(void *) = params->start_routine;
-	void *routine_arg = params->arg;
 
 	__rte_thread_init(rte_lcore_id(), cpuset);
 	params->ret = rte_thread_set_affinity_by_id(rte_thread_self(), cpuset);
 	if (params->ret != 0) {
 		__atomic_store_n(&params->ctrl_thread_status,
 			CTRL_THREAD_ERROR, __ATOMIC_RELEASE);
-		return NULL;
+		return params->ret;
 	}
 
 	__atomic_store_n(&params->ctrl_thread_status,
 		CTRL_THREAD_RUNNING, __ATOMIC_RELEASE);
 
-	return start_routine(routine_arg);
+	return 0;
+}
+
+static void *ctrl_thread_start(void *arg)
+{
+	struct rte_thread_ctrl_params *params = arg;
+	void *(*start_routine)(void *) = params->u.ctrl_start_routine;
+
+	if (ctrl_thread_init(arg) != 0)
+		return NULL;
+
+	return start_routine(params->arg);
+}
+
+static uint32_t control_thread_start(void *arg)
+{
+	struct rte_thread_ctrl_params *params = arg;
+	rte_thread_func start_routine = params->u.control_start_routine;
+
+	if (ctrl_thread_init(arg) != 0)
+		return params->ret;
+
+	return start_routine(params->arg);
 }
 
 int
@@ -277,12 +300,12 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	if (!params)
 		return -ENOMEM;
 
-	params->start_routine = start_routine;
+	params->u.ctrl_start_routine = start_routine;
 	params->arg = arg;
 	params->ret = 0;
 	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
 
-	ret = pthread_create(thread, attr, ctrl_thread_init, (void *)params);
+	ret = pthread_create(thread, attr, ctrl_thread_start, (void *)params);
 	if (ret != 0) {
 		free(params);
 		return -ret;
@@ -312,6 +335,52 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	free(params);
 
 	return -ret;
+}
+
+int
+rte_thread_create_control(rte_thread_t *thread, const char *name,
+	const rte_thread_attr_t *attr, rte_thread_func start_routine,
+	void *arg)
+{
+	struct rte_thread_ctrl_params *params;
+	enum __rte_ctrl_thread_status ctrl_thread_status;
+	int ret;
+
+	params = malloc(sizeof(*params));
+	if (params == NULL)
+		return -ENOMEM;
+
+	params->u.control_start_routine = start_routine;
+	params->arg = arg;
+	params->ret = 0;
+	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
+
+	ret = rte_thread_create(thread, attr, control_thread_start, params);
+	if (ret != 0) {
+		free(params);
+		return -ret;
+	}
+
+	if (name != NULL)
+		rte_thread_set_name(*thread, name);
+
+	/* Wait for the control thread to initialize successfully */
+	while ((ctrl_thread_status =
+			__atomic_load_n(&params->ctrl_thread_status,
+			__ATOMIC_ACQUIRE)) == CTRL_THREAD_LAUNCHING) {
+		rte_delay_us_sleep(1);
+	}
+
+	/* Check if the control thread encountered an error */
+	if (ctrl_thread_status == CTRL_THREAD_ERROR) {
+		/* ctrl thread is exiting */
+		rte_thread_join(*thread, NULL);
+	}
+
+	ret = params->ret;
+	free(params);
+
+	return ret;
 }
 
 int

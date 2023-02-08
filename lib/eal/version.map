@@ -441,6 +441,7 @@ EXPERIMENTAL {
 	rte_thread_join;
 
 	# added in 23.03
+	rte_thread_create_control;
 	rte_thread_set_name;
 };
 
