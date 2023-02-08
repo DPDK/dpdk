@@ -29,6 +29,56 @@ static const char * const idpf_valid_args[] = {
 	NULL
 };
 
+static const uint64_t idpf_map_hena_rss[] = {
+	[IDPF_HASH_NONF_UNICAST_IPV4_UDP] =
+			RTE_ETH_RSS_NONFRAG_IPV4_UDP,
+	[IDPF_HASH_NONF_MULTICAST_IPV4_UDP] =
+			RTE_ETH_RSS_NONFRAG_IPV4_UDP,
+	[IDPF_HASH_NONF_IPV4_UDP] =
+			RTE_ETH_RSS_NONFRAG_IPV4_UDP,
+	[IDPF_HASH_NONF_IPV4_TCP_SYN_NO_ACK] =
+			RTE_ETH_RSS_NONFRAG_IPV4_TCP,
+	[IDPF_HASH_NONF_IPV4_TCP] =
+			RTE_ETH_RSS_NONFRAG_IPV4_TCP,
+	[IDPF_HASH_NONF_IPV4_SCTP] =
+			RTE_ETH_RSS_NONFRAG_IPV4_SCTP,
+	[IDPF_HASH_NONF_IPV4_OTHER] =
+			RTE_ETH_RSS_NONFRAG_IPV4_OTHER,
+	[IDPF_HASH_FRAG_IPV4] = RTE_ETH_RSS_FRAG_IPV4,
+
+	/* IPv6 */
+	[IDPF_HASH_NONF_UNICAST_IPV6_UDP] =
+			RTE_ETH_RSS_NONFRAG_IPV6_UDP,
+	[IDPF_HASH_NONF_MULTICAST_IPV6_UDP] =
+			RTE_ETH_RSS_NONFRAG_IPV6_UDP,
+	[IDPF_HASH_NONF_IPV6_UDP] =
+			RTE_ETH_RSS_NONFRAG_IPV6_UDP,
+	[IDPF_HASH_NONF_IPV6_TCP_SYN_NO_ACK] =
+			RTE_ETH_RSS_NONFRAG_IPV6_TCP,
+	[IDPF_HASH_NONF_IPV6_TCP] =
+			RTE_ETH_RSS_NONFRAG_IPV6_TCP,
+	[IDPF_HASH_NONF_IPV6_SCTP] =
+			RTE_ETH_RSS_NONFRAG_IPV6_SCTP,
+	[IDPF_HASH_NONF_IPV6_OTHER] =
+			RTE_ETH_RSS_NONFRAG_IPV6_OTHER,
+	[IDPF_HASH_FRAG_IPV6] = RTE_ETH_RSS_FRAG_IPV6,
+
+	/* L2 Payload */
+	[IDPF_HASH_L2_PAYLOAD] = RTE_ETH_RSS_L2_PAYLOAD
+};
+
+static const uint64_t idpf_ipv4_rss = RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+			  RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+			  RTE_ETH_RSS_NONFRAG_IPV4_SCTP |
+			  RTE_ETH_RSS_NONFRAG_IPV4_OTHER |
+			  RTE_ETH_RSS_FRAG_IPV4;
+
+static const uint64_t idpf_ipv6_rss = RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+			  RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+			  RTE_ETH_RSS_NONFRAG_IPV6_SCTP |
+			  RTE_ETH_RSS_NONFRAG_IPV6_OTHER |
+			  RTE_ETH_RSS_FRAG_IPV6;
+
 static int
 idpf_dev_link_update(struct rte_eth_dev *dev,
 		     __rte_unused int wait_to_complete)
@@ -58,6 +108,9 @@ idpf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_mtu = vport->max_mtu;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+
+	dev_info->hash_key_size = vport->rss_key_size;
+	dev_info->reta_size = vport->rss_lut_size;
 
 	dev_info->flow_type_rss_offloads = IDPF_RSS_OFFLOAD_ALL;
 
@@ -221,6 +274,36 @@ idpf_dev_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int idpf_config_rss_hf(struct idpf_vport *vport, uint64_t rss_hf)
+{
+	uint64_t hena = 0;
+	uint16_t i;
+
+	/**
+	 * RTE_ETH_RSS_IPV4 and RTE_ETH_RSS_IPV6 can be considered as 2
+	 * generalizations of all other IPv4 and IPv6 RSS types.
+	 */
+	if (rss_hf & RTE_ETH_RSS_IPV4)
+		rss_hf |= idpf_ipv4_rss;
+
+	if (rss_hf & RTE_ETH_RSS_IPV6)
+		rss_hf |= idpf_ipv6_rss;
+
+	for (i = 0; i < RTE_DIM(idpf_map_hena_rss); i++) {
+		if (idpf_map_hena_rss[i] & rss_hf)
+			hena |= BIT_ULL(i);
+	}
+
+	/**
+	 * At present, cp doesn't process the virtual channel msg of rss_hf configuration,
+	 * tips are given below.
+	 */
+	if (hena != vport->rss_hf)
+		PMD_DRV_LOG(WARNING, "Updating RSS Hash Function is not supported at present.");
+
+	return 0;
+}
+
 static int
 idpf_init_rss(struct idpf_vport *vport)
 {
@@ -255,6 +338,187 @@ idpf_init_rss(struct idpf_vport *vport)
 		PMD_INIT_LOG(ERR, "Failed to configure RSS");
 
 	return ret;
+}
+
+static int
+idpf_rss_reta_update(struct rte_eth_dev *dev,
+		     struct rte_eth_rss_reta_entry64 *reta_conf,
+		     uint16_t reta_size)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	uint16_t idx, shift;
+	int ret = 0;
+	uint16_t i;
+
+	if (adapter->caps.rss_caps == 0 || dev->data->nb_rx_queues == 0) {
+		PMD_DRV_LOG(DEBUG, "RSS is not supported");
+		return -ENOTSUP;
+	}
+
+	if (reta_size != vport->rss_lut_size) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+				 "(%d) doesn't match the number of hardware can "
+				 "support (%d)",
+			    reta_size, vport->rss_lut_size);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			vport->rss_lut[i] = reta_conf[idx].reta[shift];
+	}
+
+	/* send virtchnl ops to configure RSS */
+	ret = idpf_vc_rss_lut_set(vport);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to configure RSS lut");
+
+	return ret;
+}
+
+static int
+idpf_rss_reta_query(struct rte_eth_dev *dev,
+		    struct rte_eth_rss_reta_entry64 *reta_conf,
+		    uint16_t reta_size)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	uint16_t idx, shift;
+	int ret = 0;
+	uint16_t i;
+
+	if (adapter->caps.rss_caps == 0 || dev->data->nb_rx_queues == 0) {
+		PMD_DRV_LOG(DEBUG, "RSS is not supported");
+		return -ENOTSUP;
+	}
+
+	if (reta_size != vport->rss_lut_size) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number of hardware can "
+			"support (%d)", reta_size, vport->rss_lut_size);
+		return -EINVAL;
+	}
+
+	ret = idpf_vc_rss_lut_get(vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get RSS LUT");
+		return ret;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = vport->rss_lut[i];
+	}
+
+	return 0;
+}
+
+static int
+idpf_rss_hash_update(struct rte_eth_dev *dev,
+		     struct rte_eth_rss_conf *rss_conf)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	int ret = 0;
+
+	if (adapter->caps.rss_caps == 0 || dev->data->nb_rx_queues == 0) {
+		PMD_DRV_LOG(DEBUG, "RSS is not supported");
+		return -ENOTSUP;
+	}
+
+	if (!rss_conf->rss_key || rss_conf->rss_key_len == 0) {
+		PMD_DRV_LOG(DEBUG, "No key to be configured");
+		goto skip_rss_key;
+	} else if (rss_conf->rss_key_len != vport->rss_key_size) {
+		PMD_DRV_LOG(ERR, "The size of hash key configured "
+				 "(%d) doesn't match the size of hardware can "
+				 "support (%d)",
+			    rss_conf->rss_key_len,
+			    vport->rss_key_size);
+		return -EINVAL;
+	}
+
+	rte_memcpy(vport->rss_key, rss_conf->rss_key,
+		   vport->rss_key_size);
+	ret = idpf_vc_rss_key_set(vport);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to configure RSS key");
+		return ret;
+	}
+
+skip_rss_key:
+	ret = idpf_config_rss_hf(vport, rss_conf->rss_hf);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to configure RSS hash");
+		return ret;
+	}
+
+	return 0;
+}
+
+static uint64_t
+idpf_map_general_rss_hf(uint64_t config_rss_hf, uint64_t last_general_rss_hf)
+{
+	uint64_t valid_rss_hf = 0;
+	uint16_t i;
+
+	for (i = 0; i < RTE_DIM(idpf_map_hena_rss); i++) {
+		uint64_t bit = BIT_ULL(i);
+
+		if (bit & config_rss_hf)
+			valid_rss_hf |= idpf_map_hena_rss[i];
+	}
+
+	if (valid_rss_hf & idpf_ipv4_rss)
+		valid_rss_hf |= last_general_rss_hf & RTE_ETH_RSS_IPV4;
+
+	if (valid_rss_hf & idpf_ipv6_rss)
+		valid_rss_hf |= last_general_rss_hf & RTE_ETH_RSS_IPV6;
+
+	return valid_rss_hf;
+}
+
+static int
+idpf_rss_hash_conf_get(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_conf *rss_conf)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	int ret = 0;
+
+	if (adapter->caps.rss_caps == 0 || dev->data->nb_rx_queues == 0) {
+		PMD_DRV_LOG(DEBUG, "RSS is not supported");
+		return -ENOTSUP;
+	}
+
+	ret = idpf_vc_rss_hash_get(vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get RSS hf");
+		return ret;
+	}
+
+	rss_conf->rss_hf = idpf_map_general_rss_hf(vport->rss_hf, vport->last_general_rss_hf);
+
+	if (!rss_conf->rss_key)
+		return 0;
+
+	ret = idpf_vc_rss_key_get(vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get RSS key");
+		return ret;
+	}
+
+	if (rss_conf->rss_key_len > vport->rss_key_size)
+		rss_conf->rss_key_len = vport->rss_key_size;
+
+	rte_memcpy(rss_conf->rss_key, vport->rss_key, rss_conf->rss_key_len);
+
+	return 0;
 }
 
 static int
@@ -692,6 +956,10 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.dev_supported_ptypes_get	= idpf_dev_supported_ptypes_get,
 	.stats_get			= idpf_dev_stats_get,
 	.stats_reset			= idpf_dev_stats_reset,
+	.reta_update			= idpf_rss_reta_update,
+	.reta_query			= idpf_rss_reta_query,
+	.rss_hash_update		= idpf_rss_hash_update,
+	.rss_hash_conf_get		= idpf_rss_hash_conf_get,
 };
 
 static uint16_t

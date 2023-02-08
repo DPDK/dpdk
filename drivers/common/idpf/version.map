@@ -42,8 +42,11 @@ INTERNAL {
 	idpf_vc_ptype_info_query;
 	idpf_vc_queue_switch;
 	idpf_vc_queues_ena_dis;
+	idpf_vc_rss_hash_get;
 	idpf_vc_rss_hash_set;
+	idpf_vc_rss_key_get;
 	idpf_vc_rss_key_set;
+	idpf_vc_rss_lut_get;
 	idpf_vc_rss_lut_set;
 	idpf_vc_rxq_config;
 	idpf_vc_stats_query;

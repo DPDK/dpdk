@@ -52,4 +52,10 @@ int idpf_vc_txq_config(struct idpf_vport *vport, struct idpf_tx_queue *txq);
 __rte_internal
 int idpf_vc_stats_query(struct idpf_vport *vport,
 			struct virtchnl2_vport_stats **pstats);
+__rte_internal
+int idpf_vc_rss_key_get(struct idpf_vport *vport);
+__rte_internal
+int idpf_vc_rss_lut_get(struct idpf_vport *vport);
+__rte_internal
+int idpf_vc_rss_hash_get(struct idpf_vport *vport);
 #endif /* _IDPF_COMMON_VIRTCHNL_H_ */

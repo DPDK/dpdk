@@ -218,6 +218,9 @@ idpf_vc_cmd_execute(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
 	case VIRTCHNL2_OP_ALLOC_VECTORS:
 	case VIRTCHNL2_OP_DEALLOC_VECTORS:
 	case VIRTCHNL2_OP_GET_STATS:
+	case VIRTCHNL2_OP_GET_RSS_KEY:
+	case VIRTCHNL2_OP_GET_RSS_HASH:
+	case VIRTCHNL2_OP_GET_RSS_LUT:
 		/* for init virtchnl ops, need to poll the response */
 		err = idpf_vc_one_msg_read(adapter, args->ops, args->out_size, args->out_buffer);
 		clear_cmd(adapter);
@@ -448,6 +451,48 @@ idpf_vc_rss_key_set(struct idpf_vport *vport)
 	return err;
 }
 
+int idpf_vc_rss_key_get(struct idpf_vport *vport)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_rss_key *rss_key_ret;
+	struct virtchnl2_rss_key rss_key;
+	struct idpf_cmd_info args;
+	int err;
+
+	memset(&rss_key, 0, sizeof(rss_key));
+	rss_key.vport_id = vport->vport_id;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_GET_RSS_KEY;
+	args.in_args = (uint8_t *)&rss_key;
+	args.in_args_size = sizeof(rss_key);
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+
+	if (!err) {
+		rss_key_ret = (struct virtchnl2_rss_key *)args.out_buffer;
+		if (rss_key_ret->key_len != vport->rss_key_size) {
+			rte_free(vport->rss_key);
+			vport->rss_key = NULL;
+			vport->rss_key_size = RTE_MIN(IDPF_RSS_KEY_LEN,
+						      rss_key_ret->key_len);
+			vport->rss_key = rte_zmalloc("rss_key", vport->rss_key_size, 0);
+			if (!vport->rss_key) {
+				vport->rss_key_size = 0;
+				DRV_LOG(ERR, "Failed to allocate RSS key");
+				return -ENOMEM;
+			}
+		}
+		rte_memcpy(vport->rss_key, rss_key_ret->key, vport->rss_key_size);
+	} else {
+		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_RSS_KEY");
+	}
+
+	return err;
+}
+
 int
 idpf_vc_rss_lut_set(struct idpf_vport *vport)
 {
@@ -479,6 +524,80 @@ idpf_vc_rss_lut_set(struct idpf_vport *vport)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_SET_RSS_LUT");
 
 	rte_free(rss_lut);
+	return err;
+}
+
+int
+idpf_vc_rss_lut_get(struct idpf_vport *vport)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_rss_lut *rss_lut_ret;
+	struct virtchnl2_rss_lut rss_lut;
+	struct idpf_cmd_info args;
+	int err;
+
+	memset(&rss_lut, 0, sizeof(rss_lut));
+	rss_lut.vport_id = vport->vport_id;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_GET_RSS_LUT;
+	args.in_args = (uint8_t *)&rss_lut;
+	args.in_args_size = sizeof(rss_lut);
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+
+	if (!err) {
+		rss_lut_ret = (struct virtchnl2_rss_lut *)args.out_buffer;
+		if (rss_lut_ret->lut_entries != vport->rss_lut_size) {
+			rte_free(vport->rss_lut);
+			vport->rss_lut = NULL;
+			vport->rss_lut = rte_zmalloc("rss_lut",
+				     sizeof(uint32_t) * rss_lut_ret->lut_entries, 0);
+			if (vport->rss_lut == NULL) {
+				DRV_LOG(ERR, "Failed to allocate RSS lut");
+				return -ENOMEM;
+			}
+		}
+		rte_memcpy(vport->rss_lut, rss_lut_ret->lut, rss_lut_ret->lut_entries);
+		vport->rss_lut_size = rss_lut_ret->lut_entries;
+	} else {
+		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_RSS_LUT");
+	}
+
+	return err;
+}
+
+int
+idpf_vc_rss_hash_get(struct idpf_vport *vport)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_rss_hash *rss_hash_ret;
+	struct virtchnl2_rss_hash rss_hash;
+	struct idpf_cmd_info args;
+	int err;
+
+	memset(&rss_hash, 0, sizeof(rss_hash));
+	rss_hash.ptype_groups = vport->rss_hf;
+	rss_hash.vport_id = vport->vport_id;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_GET_RSS_HASH;
+	args.in_args = (uint8_t *)&rss_hash;
+	args.in_args_size = sizeof(rss_hash);
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+
+	if (!err) {
+		rss_hash_ret = (struct virtchnl2_rss_hash *)args.out_buffer;
+		vport->rss_hf = rss_hash_ret->ptype_groups;
+	} else {
+		DRV_LOG(ERR, "Failed to execute command of OP_GET_RSS_HASH");
+	}
+
 	return err;
 }
 

@@ -98,6 +98,7 @@ struct idpf_vport {
 	uint32_t *rss_lut;
 	uint8_t *rss_key;
 	uint64_t rss_hf;
+	uint64_t last_general_rss_hf;
 
 	/* MSIX info*/
 	struct virtchnl2_queue_vector *qv_map; /* queue vector mapping */
