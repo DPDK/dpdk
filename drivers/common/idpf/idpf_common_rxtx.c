@@ -1030,6 +1030,20 @@ idpf_update_rx_tail(struct idpf_rx_queue *rxq, uint16_t nb_hold,
 	rxq->nb_rx_hold = nb_hold;
 }
 
+static inline void
+idpf_singleq_rx_rss_offload(struct rte_mbuf *mb,
+			    volatile struct virtchnl2_rx_flex_desc_nic *rx_desc,
+			    uint64_t *pkt_flags)
+{
+	uint16_t rx_status0 = rte_le_to_cpu_16(rx_desc->status_error0);
+
+	if (rx_status0 & RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_STATUS0_RSS_VALID_S)) {
+		*pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(rx_desc->rss_hash);
+	}
+
+}
+
 uint16_t
 idpf_dp_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			  uint16_t nb_pkts)
@@ -1118,6 +1132,7 @@ idpf_dp_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxq->port_id;
 		rxm->ol_flags = 0;
 		pkt_flags = idpf_rxd_to_pkt_flags(rx_status0);
+		idpf_singleq_rx_rss_offload(rxm, &rxd.flex_nic_wb, &pkt_flags);
 		rxm->packet_type =
 			ptype_tbl[(uint8_t)(rte_cpu_to_le_16(rxd.flex_nic_wb.ptype_flex_flags0) &
 					    VIRTCHNL2_RX_FLEX_DESC_PTYPE_M)];
@@ -1249,6 +1264,7 @@ idpf_dp_singleq_recv_scatter_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->port = rxq->port_id;
 		first_seg->ol_flags = 0;
 		pkt_flags = idpf_rxd_to_pkt_flags(rx_status0);
+		idpf_singleq_rx_rss_offload(first_seg, &rxd.flex_nic_wb, &pkt_flags);
 		first_seg->packet_type =
 			ptype_tbl[(uint8_t)(rte_cpu_to_le_16(rxd.flex_nic_wb.ptype_flex_flags0) &
 				VIRTCHNL2_RX_FLEX_DESC_PTYPE_M)];
