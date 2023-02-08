@@ -23,10 +23,10 @@ Deprecation Notices
   in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
   to update their code.
 
-* eal: The function ``rte_thread_setname`` is planned to be deprecated
-  starting with the 23.07 release, subject to the replacement API
-  rte_thread_set_name being marked as stable, and planned to be removed
-  by the 23.11 release.
+* eal: The functions ``rte_thread_setname`` and ``rte_ctrl_thread_create``
+  are planned to be deprecated starting with the 23.07 release, subject to
+  the replacement API rte_thread_set_name and rte_thread_create_control being
+  marked as stable, and planned to be removed by the 23.11 release.
 
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
