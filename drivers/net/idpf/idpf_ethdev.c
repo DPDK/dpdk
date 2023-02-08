@@ -80,6 +80,30 @@ static const uint64_t idpf_ipv6_rss = RTE_ETH_RSS_NONFRAG_IPV6_UDP |
 			  RTE_ETH_RSS_NONFRAG_IPV6_OTHER |
 			  RTE_ETH_RSS_FRAG_IPV6;
 
+struct rte_idpf_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct rte_idpf_xstats_name_off rte_idpf_stats_strings[] = {
+	{"rx_bytes", offsetof(struct virtchnl2_vport_stats, rx_bytes)},
+	{"rx_unicast_packets", offsetof(struct virtchnl2_vport_stats, rx_unicast)},
+	{"rx_multicast_packets", offsetof(struct virtchnl2_vport_stats, rx_multicast)},
+	{"rx_broadcast_packets", offsetof(struct virtchnl2_vport_stats, rx_broadcast)},
+	{"rx_dropped_packets", offsetof(struct virtchnl2_vport_stats, rx_discards)},
+	{"rx_errors", offsetof(struct virtchnl2_vport_stats, rx_errors)},
+	{"rx_unknown_protocol_packets", offsetof(struct virtchnl2_vport_stats,
+						 rx_unknown_protocol)},
+	{"tx_bytes", offsetof(struct virtchnl2_vport_stats, tx_bytes)},
+	{"tx_unicast_packets", offsetof(struct virtchnl2_vport_stats, tx_unicast)},
+	{"tx_multicast_packets", offsetof(struct virtchnl2_vport_stats, tx_multicast)},
+	{"tx_broadcast_packets", offsetof(struct virtchnl2_vport_stats, tx_broadcast)},
+	{"tx_dropped_packets", offsetof(struct virtchnl2_vport_stats, tx_discards)},
+	{"tx_error_packets", offsetof(struct virtchnl2_vport_stats, tx_errors)}};
+
+#define IDPF_NB_XSTATS (sizeof(rte_idpf_stats_strings) / \
+		sizeof(rte_idpf_stats_strings[0]))
+
 static int
 idpf_dev_link_update(struct rte_eth_dev *dev,
 		     __rte_unused int wait_to_complete)
@@ -311,6 +335,59 @@ idpf_dev_stats_reset(struct rte_eth_dev *dev)
 	idpf_reset_mbuf_alloc_failed_stats(dev);
 
 	return 0;
+}
+
+static int idpf_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	idpf_dev_stats_reset(dev);
+	return 0;
+}
+
+static int idpf_dev_xstats_get(struct rte_eth_dev *dev,
+			       struct rte_eth_xstat *xstats, unsigned int n)
+{
+	struct idpf_vport *vport =
+		(struct idpf_vport *)dev->data->dev_private;
+	struct virtchnl2_vport_stats *pstats = NULL;
+	unsigned int i;
+	int ret;
+
+	if (n < IDPF_NB_XSTATS)
+		return IDPF_NB_XSTATS;
+
+	if (!xstats)
+		return 0;
+
+	ret = idpf_vc_stats_query(vport, &pstats);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Get statistics failed");
+		return 0;
+	}
+
+	idpf_vport_stats_update(&vport->eth_stats_offset, pstats);
+
+	/* loop over xstats array and values from pstats */
+	for (i = 0; i < IDPF_NB_XSTATS; i++) {
+		xstats[i].id = i;
+		xstats[i].value = *(uint64_t *)(((char *)pstats) +
+			rte_idpf_stats_strings[i].offset);
+	}
+	return IDPF_NB_XSTATS;
+}
+
+static int idpf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+				     struct rte_eth_xstat_name *xstats_names,
+				     __rte_unused unsigned int limit)
+{
+	unsigned int i;
+
+	if (xstats_names)
+		for (i = 0; i < IDPF_NB_XSTATS; i++) {
+			snprintf(xstats_names[i].name,
+				 sizeof(xstats_names[i].name),
+				 "%s", rte_idpf_stats_strings[i].name);
+		}
+	return IDPF_NB_XSTATS;
 }
 
 static int idpf_config_rss_hf(struct idpf_vport *vport, uint64_t rss_hf)
@@ -1122,6 +1199,9 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.reta_query			= idpf_rss_reta_query,
 	.rss_hash_update		= idpf_rss_hash_update,
 	.rss_hash_conf_get		= idpf_rss_hash_conf_get,
+	.xstats_get			= idpf_dev_xstats_get,
+	.xstats_get_names		= idpf_dev_xstats_get_names,
+	.xstats_reset			= idpf_dev_xstats_reset,
 };
 
 static uint16_t
