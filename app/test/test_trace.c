@@ -4,6 +4,7 @@
 
 #include <rte_eal_trace.h>
 #include <rte_lcore.h>
+#include <rte_random.h>
 #include <rte_trace.h>
 
 #include "test.h"
@@ -177,7 +178,12 @@ test_fp_trace_points(void)
 static int
 test_generic_trace_points(void)
 {
+	uint8_t arr[RTE_TRACE_BLOB_LEN_MAX];
 	int tmp;
+	int i;
+
+	for (i = 0; i < RTE_TRACE_BLOB_LEN_MAX; i++)
+		arr[i] = i;
 
 	rte_eal_trace_generic_void();
 	rte_eal_trace_generic_u64(0x10000000000000);
@@ -195,6 +201,11 @@ test_generic_trace_points(void)
 	rte_eal_trace_generic_ptr(&tmp);
 	rte_eal_trace_generic_str("my string");
 	rte_eal_trace_generic_size_t(sizeof(void *));
+	rte_eal_trace_generic_blob(arr, 0);
+	rte_eal_trace_generic_blob(arr, 17);
+	rte_eal_trace_generic_blob(arr, RTE_TRACE_BLOB_LEN_MAX);
+	rte_eal_trace_generic_blob(arr, rte_rand() %
+					RTE_TRACE_BLOB_LEN_MAX);
 	RTE_EAL_TRACE_GENERIC_FUNC;
 
 	return TEST_SUCCESS;

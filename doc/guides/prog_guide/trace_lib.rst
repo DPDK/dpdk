@@ -352,3 +352,16 @@ event ID.
 The ``packet.header`` and ``packet.context`` will be written in the slow path
 at the time of trace memory creation. The ``trace.header`` and trace payload
 will be emitted when the tracepoint function is invoked.
+
+Limitations
+-----------
+
+- The ``rte_trace_point_emit_blob()`` function can capture a maximum blob
+  of length ``RTE_TRACE_BLOB_LEN_MAX`` bytes.
+  The application can call ``rte_trace_point_emit_blob()`` multiple times
+  with length less than or equal to ``RTE_TRACE_BLOB_LEN_MAX``,
+  if it needs to capture more than ``RTE_TRACE_BLOB_LEN_MAX`` bytes.
+- If the length passed to the ``rte_trace_point_emit_blob()``
+  is less than ``RTE_TRACE_BLOB_LEN_MAX``,
+  then the trailing ``(RTE_TRACE_BLOB_LEN_MAX - len)`` bytes in the trace
+  are set to zero.

@@ -444,6 +444,7 @@ EXPERIMENTAL {
 	rte_lcore_register_usage_cb;
 	rte_thread_create_control;
 	rte_thread_set_name;
+	__rte_eal_trace_generic_blob;
 };
 
 INTERNAL {

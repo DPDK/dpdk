@@ -47,6 +47,15 @@ do { \
 		RTE_STR(in)"[32]", "string_bounded_t"); \
 } while (0)
 
+#define rte_trace_point_emit_blob(in, len) \
+do { \
+	RTE_SET_USED(in); \
+	__rte_trace_point_emit(len, uint8_t); \
+	__rte_trace_point_emit_field(RTE_TRACE_BLOB_LEN_MAX, \
+		RTE_STR(in)"[" RTE_STR(RTE_TRACE_BLOB_LEN_MAX)"]", \
+		RTE_STR(uint8_t)); \
+} while (0)
+
 #ifdef __cplusplus
 }
 #endif
