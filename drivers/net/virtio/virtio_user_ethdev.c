@@ -186,7 +186,7 @@ virtio_user_setup_queue_packed(struct virtqueue *vq,
 	uint64_t used_addr;
 	uint16_t i;
 
-	vring  = &dev->packed_vrings[queue_idx];
+	vring  = &dev->vrings.packed[queue_idx];
 	desc_addr = (uintptr_t)vq->vq_ring_virt_mem;
 	avail_addr = desc_addr + vq->vq_nentries *
 		sizeof(struct vring_packed_desc);
@@ -216,10 +216,10 @@ virtio_user_setup_queue_split(struct virtqueue *vq, struct virtio_user_dev *dev)
 							 ring[vq->vq_nentries]),
 				   VIRTIO_VRING_ALIGN);
 
-	dev->vrings[queue_idx].num = vq->vq_nentries;
-	dev->vrings[queue_idx].desc = (void *)(uintptr_t)desc_addr;
-	dev->vrings[queue_idx].avail = (void *)(uintptr_t)avail_addr;
-	dev->vrings[queue_idx].used = (void *)(uintptr_t)used_addr;
+	dev->vrings.split[queue_idx].num = vq->vq_nentries;
+	dev->vrings.split[queue_idx].desc = (void *)(uintptr_t)desc_addr;
+	dev->vrings.split[queue_idx].avail = (void *)(uintptr_t)avail_addr;
+	dev->vrings.split[queue_idx].used = (void *)(uintptr_t)used_addr;
 }
 
 static int
@@ -617,13 +617,6 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 				     VIRTIO_USER_ARG_VECTORIZED);
 			goto end;
 		}
-	}
-
-	if (queues > VIRTIO_MAX_VIRTQUEUE_PAIRS) {
-		PMD_INIT_LOG(ERR, "arg %s %" PRIu64 " exceeds the limit %u",
-			VIRTIO_USER_ARG_QUEUES_NUM, queues,
-			VIRTIO_MAX_VIRTQUEUE_PAIRS);
-		goto end;
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_MRG_RXBUF) == 1) {

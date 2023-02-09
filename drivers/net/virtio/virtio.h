@@ -124,12 +124,6 @@
 	VIRTIO_NET_HASH_TYPE_UDP_EX)
 
 
-/*
- * Maximum number of virtqueues per device.
- */
-#define VIRTIO_MAX_VIRTQUEUE_PAIRS 8
-#define VIRTIO_MAX_VIRTQUEUES (VIRTIO_MAX_VIRTQUEUE_PAIRS * 2 + 1)
-
 /* VirtIO device IDs. */
 #define VIRTIO_ID_NETWORK  0x01
 #define VIRTIO_ID_BLOCK    0x02

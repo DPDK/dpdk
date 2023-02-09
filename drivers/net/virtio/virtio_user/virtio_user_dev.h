@@ -29,8 +29,8 @@ struct virtio_user_dev {
 	enum virtio_user_backend_type backend_type;
 	bool		is_server;  /* server or client mode */
 
-	int		callfds[VIRTIO_MAX_VIRTQUEUES];
-	int		kickfds[VIRTIO_MAX_VIRTQUEUES];
+	int		*callfds;
+	int		*kickfds;
 	int		mac_specified;
 	uint16_t	max_queue_pairs;
 	uint16_t	queue_pairs;
@@ -48,11 +48,13 @@ struct virtio_user_dev {
 	char		*ifname;
 
 	union {
-		struct vring		vrings[VIRTIO_MAX_VIRTQUEUES];
-		struct vring_packed	packed_vrings[VIRTIO_MAX_VIRTQUEUES];
-	};
-	struct virtio_user_queue packed_queues[VIRTIO_MAX_VIRTQUEUES];
-	bool		qp_enabled[VIRTIO_MAX_VIRTQUEUE_PAIRS];
+		void			*ptr;
+		struct vring		*split;
+		struct vring_packed	*packed;
+	} vrings;
+
+	struct virtio_user_queue *packed_queues;
+	bool		*qp_enabled;
 
 	struct virtio_user_backend_ops *ops;
 	pthread_mutex_t	mutex;
