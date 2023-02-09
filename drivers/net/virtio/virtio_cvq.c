@@ -76,7 +76,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 			vq->hw->weak_barriers);
 
 	virtio_wmb(vq->hw->weak_barriers);
-	virtqueue_notify(vq);
+	cvq->notify_queue(vq, cvq->notify_cookie);
 
 	/* wait for used desc in virtqueue
 	 * desc_is_used has a load-acquire or rte_io_rmb inside
@@ -155,7 +155,7 @@ virtio_send_command_split(struct virtnet_ctl *cvq,
 
 	PMD_INIT_LOG(DEBUG, "vq->vq_queue_index = %d", vq->vq_queue_index);
 
-	virtqueue_notify(vq);
+	cvq->notify_queue(vq, cvq->notify_cookie);
 
 	while (virtqueue_nused(vq) == 0)
 		usleep(100);

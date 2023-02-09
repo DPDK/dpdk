@@ -7,6 +7,8 @@
 
 #include <rte_ether.h>
 
+struct virtqueue;
+
 /**
  * Control the RX mode, ie. promiscuous, allmulti, etc...
  * All commands require an "out" sg entry containing a 1 byte
@@ -110,6 +112,8 @@ struct virtnet_ctl {
 	uint16_t port_id;               /**< Device port identifier. */
 	const struct rte_memzone *mz;   /**< mem zone to populate CTL ring. */
 	rte_spinlock_t lock;              /**< spinlock for control queue. */
+	void (*notify_queue)(struct virtqueue *vq, void *cookie); /**< notify ops. */
+	void *notify_cookie;              /**< cookie for notify ops */
 };
 
 #define VIRTIO_MAX_CTRL_DATA 2048

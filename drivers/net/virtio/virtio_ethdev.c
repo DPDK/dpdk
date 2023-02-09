@@ -253,6 +253,12 @@ virtio_init_vring(struct virtqueue *vq)
 	virtqueue_disable_intr(vq);
 }
 
+static void
+virtio_control_queue_notify(struct virtqueue *vq, __rte_unused void *cookie)
+{
+	virtqueue_notify(vq);
+}
+
 static int
 virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
@@ -421,6 +427,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		memset(cvq->virtio_net_hdr_mz->addr, 0, rte_mem_page_size());
 
 		hw->cvq = cvq;
+		vq->cq.notify_queue = &virtio_control_queue_notify;
 	}
 
 	if (hw->use_va)
