@@ -32,8 +32,9 @@ virtio_rxq_rearm_vec(struct virtnet_rx *rxvq)
 	ret = rte_mempool_get_bulk(rxvq->mpool, (void **)sw_ring,
 		RTE_VIRTIO_VPMD_RX_REARM_THRESH);
 	if (unlikely(ret)) {
-		rte_eth_devices[rxvq->port_id].data->rx_mbuf_alloc_failed +=
-			RTE_VIRTIO_VPMD_RX_REARM_THRESH;
+		struct rte_eth_dev *dev = &rte_eth_devices[vq->hw->port_id];
+
+		dev->data->rx_mbuf_alloc_failed += RTE_VIRTIO_VPMD_RX_REARM_THRESH;
 		return;
 	}
 

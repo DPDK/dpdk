@@ -1024,7 +1024,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			continue;
 		}
 
-		rxm->port = rxvq->port_id;
+		rxm->port = hw->port_id;
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->ol_flags = 0;
 		rxm->vlan_tci = 0;
@@ -1066,8 +1066,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			}
 			nb_enqueued += free_cnt;
 		} else {
-			struct rte_eth_dev *dev =
-				&rte_eth_devices[rxvq->port_id];
+			struct rte_eth_dev *dev = &rte_eth_devices[hw->port_id];
 			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
 	}
@@ -1127,7 +1126,7 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 			continue;
 		}
 
-		rxm->port = rxvq->port_id;
+		rxm->port = hw->port_id;
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->ol_flags = 0;
 		rxm->vlan_tci = 0;
@@ -1169,8 +1168,7 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 			}
 			nb_enqueued += free_cnt;
 		} else {
-			struct rte_eth_dev *dev =
-				&rte_eth_devices[rxvq->port_id];
+			struct rte_eth_dev *dev = &rte_eth_devices[hw->port_id];
 			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
 	}
@@ -1258,7 +1256,7 @@ virtio_recv_pkts_inorder(void *rx_queue,
 		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
 		rxm->data_len = (uint16_t)(len[i] - hdr_size);
 
-		rxm->port = rxvq->port_id;
+		rxm->port = hw->port_id;
 
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
@@ -1352,8 +1350,7 @@ virtio_recv_pkts_inorder(void *rx_queue,
 			}
 			nb_enqueued += free_cnt;
 		} else {
-			struct rte_eth_dev *dev =
-				&rte_eth_devices[rxvq->port_id];
+			struct rte_eth_dev *dev = &rte_eth_devices[hw->port_id];
 			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
 	}
@@ -1437,7 +1434,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
 		rxm->data_len = (uint16_t)(len[i] - hdr_size);
 
-		rxm->port = rxvq->port_id;
+		rxm->port = hw->port_id;
 
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
@@ -1530,8 +1527,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			}
 			nb_enqueued += free_cnt;
 		} else {
-			struct rte_eth_dev *dev =
-				&rte_eth_devices[rxvq->port_id];
+			struct rte_eth_dev *dev = &rte_eth_devices[hw->port_id];
 			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
 	}
@@ -1610,7 +1606,7 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
 		rxm->data_len = (uint16_t)(len[i] - hdr_size);
 
-		rxm->port = rxvq->port_id;
+		rxm->port = hw->port_id;
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
 
@@ -1699,8 +1695,7 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 			}
 			nb_enqueued += free_cnt;
 		} else {
-			struct rte_eth_dev *dev =
-				&rte_eth_devices[rxvq->port_id];
+			struct rte_eth_dev *dev = &rte_eth_devices[hw->port_id];
 			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
 	}

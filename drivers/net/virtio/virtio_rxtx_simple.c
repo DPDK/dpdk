@@ -30,12 +30,13 @@
 int __rte_cold
 virtio_rxq_vec_setup(struct virtnet_rx *rxq)
 {
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxq);
 	uintptr_t p;
 	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
 
 	mb_def.nb_segs = 1;
 	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
-	mb_def.port = rxq->port_id;
+	mb_def.port = vq->hw->port_id;
 	rte_mbuf_refcnt_set(&mb_def, 1);
 
 	/* prevent compiler reordering: rearm_data covers previous fields */

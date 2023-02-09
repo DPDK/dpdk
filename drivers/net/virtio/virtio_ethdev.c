@@ -462,7 +462,6 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 		vq->sw_ring = sw_ring;
 		rxvq = &vq->rxq;
-		rxvq->port_id = dev->data->port_id;
 		rxvq->mz = mz;
 		rxvq->fake_mbuf = fake_mbuf;
 	} else if (queue_type == VTNET_TQ) {

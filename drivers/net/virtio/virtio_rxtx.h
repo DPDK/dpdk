@@ -24,7 +24,6 @@ struct virtnet_rx {
 	struct rte_mempool *mpool; /**< mempool for mbuf allocation */
 
 	uint16_t queue_id;   /**< DPDK queue index. */
-	uint16_t port_id;     /**< Device port identifier. */
 
 	/* Statistics */
 	struct virtnet_stats stats;

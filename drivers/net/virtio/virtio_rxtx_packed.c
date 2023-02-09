@@ -124,8 +124,7 @@ virtio_recv_pkts_packed_vec(void *rx_queue,
 					free_cnt);
 			nb_enqueued += free_cnt;
 		} else {
-			struct rte_eth_dev *dev =
-				&rte_eth_devices[rxvq->port_id];
+			struct rte_eth_dev *dev = &rte_eth_devices[hw->port_id];
 			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
 	}
