@@ -144,6 +144,7 @@ pkt_burst_noisy_vnf(struct fwd_stream *fs)
 	struct noisy_config *ncf = noisy_cfg[fs->rx_port];
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_mbuf *tmp_pkts[MAX_PKT_BURST];
+	uint64_t start_tsc = 0;
 	uint16_t nb_deqd = 0;
 	uint16_t nb_rx = 0;
 	uint16_t nb_tx = 0;
@@ -152,6 +153,8 @@ pkt_burst_noisy_vnf(struct fwd_stream *fs)
 	uint64_t delta_ms;
 	bool needs_flush = false;
 	uint64_t now;
+
+	get_start_cycles(&start_tsc);
 
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue,
 			pkts_burst, nb_pkt_per_burst);
@@ -169,7 +172,7 @@ pkt_burst_noisy_vnf(struct fwd_stream *fs)
 		inc_tx_burst_stats(fs, nb_tx);
 		fs->tx_packets += nb_tx;
 		fs->fwd_dropped += drop_pkts(pkts_burst, nb_rx, nb_tx);
-		return;
+		goto end;
 	}
 
 	fifo_free = rte_ring_free_count(ncf->f);
@@ -219,6 +222,9 @@ flush:
 		fs->fwd_dropped += drop_pkts(tmp_pkts, nb_deqd, sent);
 		ncf->prev_time = rte_get_timer_cycles();
 	}
+end:
+	if (nb_rx > 0 || nb_tx > 0)
+		get_end_cycles(fs, start_tsc);
 }
 
 #define NOISY_STRSIZE 256

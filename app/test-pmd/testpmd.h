@@ -174,7 +174,7 @@ struct fwd_stream {
 #ifdef RTE_LIB_GRO
 	unsigned int gro_times;	/**< GRO operation times */
 #endif
-	uint64_t     core_cycles; /**< used for RX and TX processing */
+	uint64_t busy_cycles; /**< used with --record-core-cycles */
 	struct pkt_burst_stats rx_burst_stats;
 	struct pkt_burst_stats tx_burst_stats;
 	struct fwd_lcore *lcore; /**< Lcore being scheduled. */
@@ -360,6 +360,7 @@ struct fwd_lcore {
 	streamid_t stream_nb;    /**< number of streams in "fwd_streams" */
 	lcoreid_t  cpuid_idx;    /**< index of logical core in CPU id table */
 	volatile char stopped;   /**< stop forwarding when set */
+	uint64_t total_cycles;   /**< used with --record-core-cycles */
 };
 
 /*
@@ -785,26 +786,32 @@ is_proc_primary(void)
 	return rte_eal_process_type() == RTE_PROC_PRIMARY;
 }
 
-static inline unsigned int
-lcore_num(void)
+static inline struct fwd_lcore *
+lcore_to_fwd_lcore(uint16_t lcore_id)
 {
 	unsigned int i;
 
-	for (i = 0; i < RTE_MAX_LCORE; ++i)
-		if (fwd_lcores_cpuids[i] == rte_lcore_id())
-			return i;
+	for (i = 0; i < cur_fwd_config.nb_fwd_lcores; ++i) {
+		if (fwd_lcores_cpuids[i] == lcore_id)
+			return fwd_lcores[i];
+	}
 
-	rte_panic("lcore_id of current thread not found in fwd_lcores_cpuids\n");
+	return NULL;
 }
-
-void
-parse_fwd_portlist(const char *port);
 
 static inline struct fwd_lcore *
 current_fwd_lcore(void)
 {
-	return fwd_lcores[lcore_num()];
+	struct fwd_lcore *fc = lcore_to_fwd_lcore(rte_lcore_id());
+
+	if (fc == NULL)
+		rte_panic("lcore_id of current thread not found in fwd_lcores_cpuids\n");
+
+	return fc;
 }
+
+void
+parse_fwd_portlist(const char *port);
 
 /* Mbuf Pools */
 static inline void
@@ -839,7 +846,7 @@ static inline void
 get_end_cycles(struct fwd_stream *fs, uint64_t start_tsc)
 {
 	if (record_core_cycles)
-		fs->core_cycles += rte_rdtsc() - start_tsc;
+		fs->busy_cycles += rte_rdtsc() - start_tsc;
 }
 
 static inline void

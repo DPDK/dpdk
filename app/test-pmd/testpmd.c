@@ -2053,7 +2053,7 @@ fwd_stats_display(void)
 				fs->rx_bad_outer_ip_csum;
 
 		if (record_core_cycles)
-			fwd_cycles += fs->core_cycles;
+			fwd_cycles += fs->busy_cycles;
 	}
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
 		pt_id = fwd_ports_ids[i];
@@ -2145,7 +2145,7 @@ fwd_stats_display(void)
 			else
 				total_pkts = total_recv;
 
-			printf("\n  CPU cycles/packet=%.2F (total cycles="
+			printf("\n  CPU cycles/packet=%.2F (busy cycles="
 			       "%"PRIu64" / total %s packets=%"PRIu64") at %"PRIu64
 			       " MHz Clock\n",
 			       (double) fwd_cycles / total_pkts,
@@ -2184,7 +2184,7 @@ fwd_stats_reset(void)
 
 		memset(&fs->rx_burst_stats, 0, sizeof(fs->rx_burst_stats));
 		memset(&fs->tx_burst_stats, 0, sizeof(fs->tx_burst_stats));
-		fs->core_cycles = 0;
+		fs->busy_cycles = 0;
 	}
 }
 
@@ -2248,6 +2248,7 @@ static void
 run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 {
 	struct fwd_stream **fsm;
+	uint64_t prev_tsc;
 	streamid_t nb_fs;
 	streamid_t sm_id;
 #ifdef RTE_LIB_BITRATESTATS
@@ -2262,6 +2263,7 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 #endif
 	fsm = &fwd_streams[fc->stream_idx];
 	nb_fs = fc->stream_nb;
+	prev_tsc = rte_rdtsc();
 	do {
 		for (sm_id = 0; sm_id < nb_fs; sm_id++)
 			if (!fsm[sm_id]->disabled)
@@ -2284,8 +2286,38 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 				latencystats_lcore_id == rte_lcore_id())
 			rte_latencystats_update();
 #endif
+		if (record_core_cycles) {
+			uint64_t tsc = rte_rdtsc();
 
+			fc->total_cycles += tsc - prev_tsc;
+			prev_tsc = tsc;
+		}
 	} while (! fc->stopped);
+}
+
+static int
+lcore_usage_callback(unsigned int lcore_id, struct rte_lcore_usage *usage)
+{
+	struct fwd_stream **fsm;
+	struct fwd_lcore *fc;
+	streamid_t nb_fs;
+	streamid_t sm_id;
+
+	fc = lcore_to_fwd_lcore(lcore_id);
+	if (fc == NULL)
+		return -1;
+
+	fsm = &fwd_streams[fc->stream_idx];
+	nb_fs = fc->stream_nb;
+	usage->busy_cycles = 0;
+	usage->total_cycles = fc->total_cycles;
+
+	for (sm_id = 0; sm_id < nb_fs; sm_id++) {
+		if (!fsm[sm_id]->disabled)
+			usage->busy_cycles += fsm[sm_id]->busy_cycles;
+	}
+
+	return 0;
 }
 
 static int
@@ -4527,6 +4559,10 @@ main(int argc, char** argv)
 		rte_stats_bitrate_reg(bitrate_data);
 	}
 #endif
+
+	if (record_core_cycles)
+		rte_lcore_register_usage_cb(lcore_usage_callback);
+
 #ifdef RTE_LIB_CMDLINE
 	if (init_cmdline() != 0)
 		rte_exit(EXIT_FAILURE,
