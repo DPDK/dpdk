@@ -108,7 +108,6 @@ typedef uint8_t virtio_net_ctrl_ack;
 struct virtnet_ctl {
 	const struct rte_memzone *hdr_mz; /**< memzone to populate hdr. */
 	rte_iova_t hdr_mem;               /**< hdr for each xmit packet */
-	const struct rte_memzone *mz;     /**< mem zone to populate CTL ring. */
 	rte_spinlock_t lock;              /**< spinlock for control queue. */
 	void (*notify_queue)(struct virtqueue *vq, void *cookie); /**< notify ops. */
 	void *notify_cookie;              /**< cookie for notify ops */

@@ -148,7 +148,6 @@ virtqueue_rxvq_reset_packed(struct virtqueue *vq)
 {
 	int size = vq->vq_nentries;
 	struct vq_desc_extra *dxp;
-	struct virtnet_rx *rxvq;
 	uint16_t desc_idx;
 
 	vq->vq_used_cons_idx = 0;
@@ -162,8 +161,7 @@ virtqueue_rxvq_reset_packed(struct virtqueue *vq)
 	vq->vq_packed.event_flags_shadow = 0;
 	vq->vq_packed.cached_flags |= VRING_DESC_F_WRITE;
 
-	rxvq = &vq->rxq;
-	memset(rxvq->mz->addr, 0, rxvq->mz->len);
+	memset(vq->mz->addr, 0, vq->mz->len);
 
 	for (desc_idx = 0; desc_idx < vq->vq_nentries; desc_idx++) {
 		dxp = &vq->vq_descx[desc_idx];
@@ -201,7 +199,7 @@ virtqueue_txvq_reset_packed(struct virtqueue *vq)
 
 	txvq = &vq->txq;
 	txr = txvq->hdr_mz->addr;
-	memset(txvq->mz->addr, 0, txvq->mz->len);
+	memset(vq->mz->addr, 0, vq->mz->len);
 	memset(txvq->hdr_mz->addr, 0, txvq->hdr_mz->len);
 
 	for (desc_idx = 0; desc_idx < vq->vq_nentries; desc_idx++) {

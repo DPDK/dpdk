@@ -201,6 +201,7 @@ struct virtqueue {
 		struct virtnet_ctl cq;
 	};
 
+	const struct rte_memzone *mz; /**< mem zone to populate ring. */
 	rte_iova_t vq_ring_mem; /**< physical address of vring,
 	                         * or virtual address for virtio_user. */
 

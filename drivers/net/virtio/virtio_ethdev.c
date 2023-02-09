@@ -423,6 +423,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 	memset(mz->addr, 0, mz->len);
 
+	vq->mz = mz;
 	if (hw->use_va)
 		vq->vq_ring_mem = (uintptr_t)mz->addr;
 	else
@@ -462,14 +463,11 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 		vq->sw_ring = sw_ring;
 		rxvq = &vq->rxq;
-		rxvq->mz = mz;
 		rxvq->fake_mbuf = fake_mbuf;
 	} else if (queue_type == VTNET_TQ) {
 		txvq = &vq->txq;
-		txvq->mz = mz;
 	} else if (queue_type == VTNET_CQ) {
 		cvq = &vq->cq;
-		cvq->mz = mz;
 		hw->cvq = cvq;
 		vq->cq.notify_queue = &virtio_control_queue_notify;
 	}
@@ -550,15 +548,10 @@ virtio_free_queues(struct virtio_hw *hw)
 		if (queue_type == VTNET_RQ) {
 			rte_free(vq->rxq.fake_mbuf);
 			rte_free(vq->sw_ring);
-			rte_memzone_free(vq->rxq.mz);
-		} else if (queue_type == VTNET_TQ) {
-			rte_memzone_free(vq->txq.mz);
-		} else {
-			rte_memzone_free(vq->cq.mz);
 		}
 
 		virtio_free_queue_headers(vq);
-
+		rte_memzone_free(vq->mz);
 		rte_free(vq);
 		hw->vqs[i] = NULL;
 	}

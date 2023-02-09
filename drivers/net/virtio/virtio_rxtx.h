@@ -25,8 +25,6 @@ struct virtnet_rx {
 
 	/* Statistics */
 	struct virtnet_stats stats;
-
-	const struct rte_memzone *mz; /**< mem zone to populate RX ring. */
 };
 
 struct virtnet_tx {
@@ -34,8 +32,6 @@ struct virtnet_tx {
 	rte_iova_t hdr_mem;               /**< hdr for each xmit packet */
 
 	struct virtnet_stats stats;       /* Statistics */
-
-	const struct rte_memzone *mz;    /**< mem zone to populate TX ring. */
 };
 
 int virtio_rxq_vec_setup(struct virtnet_rx *rxvq);
