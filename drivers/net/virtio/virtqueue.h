@@ -385,6 +385,11 @@ int virtqueue_txvq_reset_packed(struct virtqueue *vq);
 
 void virtqueue_txq_indirect_headers_init(struct virtqueue *vq);
 
+struct virtqueue *virtqueue_alloc(struct virtio_hw *hw, uint16_t index,
+		uint16_t num, int type, int node, const char *name);
+
+void virtqueue_free(struct virtqueue *vq);
+
 static inline int
 virtqueue_full(const struct virtqueue *vq)
 {

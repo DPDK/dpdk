@@ -222,172 +222,17 @@ virtio_get_nr_vq(struct virtio_hw *hw)
 }
 
 static void
-virtio_init_vring(struct virtqueue *vq)
-{
-	int size = vq->vq_nentries;
-	uint8_t *ring_mem = vq->vq_ring_virt_mem;
-
-	PMD_INIT_FUNC_TRACE();
-
-	memset(ring_mem, 0, vq->vq_ring_size);
-
-	vq->vq_used_cons_idx = 0;
-	vq->vq_desc_head_idx = 0;
-	vq->vq_avail_idx = 0;
-	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
-	vq->vq_free_cnt = vq->vq_nentries;
-	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
-	if (virtio_with_packed_queue(vq->hw)) {
-		vring_init_packed(&vq->vq_packed.ring, ring_mem,
-				  VIRTIO_VRING_ALIGN, size);
-		vring_desc_init_packed(vq, size);
-	} else {
-		struct vring *vr = &vq->vq_split.ring;
-
-		vring_init_split(vr, ring_mem, VIRTIO_VRING_ALIGN, size);
-		vring_desc_init_split(vr->desc, size);
-	}
-	/*
-	 * Disable device(host) interrupting guest
-	 */
-	virtqueue_disable_intr(vq);
-}
-
-static void
 virtio_control_queue_notify(struct virtqueue *vq, __rte_unused void *cookie)
 {
 	virtqueue_notify(vq);
 }
 
 static int
-virtio_alloc_queue_headers(struct virtqueue *vq, int numa_node, const char *name)
-{
-	char hdr_name[VIRTQUEUE_MAX_NAME_SZ];
-	const struct rte_memzone **hdr_mz;
-	rte_iova_t *hdr_mem;
-	ssize_t size;
-	int queue_type;
-
-	queue_type = virtio_get_queue_type(vq->hw, vq->vq_queue_index);
-	switch (queue_type) {
-	case VTNET_TQ:
-		/*
-		 * For each xmit packet, allocate a virtio_net_hdr
-		 * and indirect ring elements
-		 */
-		size = vq->vq_nentries * sizeof(struct virtio_tx_region);
-		hdr_mz = &vq->txq.hdr_mz;
-		hdr_mem = &vq->txq.hdr_mem;
-		break;
-	case VTNET_CQ:
-		/* Allocate a page for control vq command, data and status */
-		size = rte_mem_page_size();
-		hdr_mz = &vq->cq.hdr_mz;
-		hdr_mem = &vq->cq.hdr_mem;
-		break;
-	case VTNET_RQ:
-		/* fallthrough */
-	default:
-		return 0;
-	}
-
-	snprintf(hdr_name, sizeof(hdr_name), "%s_hdr", name);
-	*hdr_mz = rte_memzone_reserve_aligned(hdr_name, size, numa_node,
-			RTE_MEMZONE_IOVA_CONTIG, RTE_CACHE_LINE_SIZE);
-	if (*hdr_mz == NULL) {
-		if (rte_errno == EEXIST)
-			*hdr_mz = rte_memzone_lookup(hdr_name);
-		if (*hdr_mz == NULL)
-			return -ENOMEM;
-	}
-
-	memset((*hdr_mz)->addr, 0, size);
-
-	if (vq->hw->use_va)
-		*hdr_mem = (uintptr_t)(*hdr_mz)->addr;
-	else
-		*hdr_mem = (uintptr_t)(*hdr_mz)->iova;
-
-	return 0;
-}
-
-static void
-virtio_free_queue_headers(struct virtqueue *vq)
-{
-	const struct rte_memzone **hdr_mz;
-	rte_iova_t *hdr_mem;
-	int queue_type;
-
-	queue_type = virtio_get_queue_type(vq->hw, vq->vq_queue_index);
-	switch (queue_type) {
-	case VTNET_TQ:
-		hdr_mz = &vq->txq.hdr_mz;
-		hdr_mem = &vq->txq.hdr_mem;
-		break;
-	case VTNET_CQ:
-		hdr_mz = &vq->cq.hdr_mz;
-		hdr_mem = &vq->cq.hdr_mem;
-		break;
-	case VTNET_RQ:
-		/* fallthrough */
-	default:
-		return;
-	}
-
-	rte_memzone_free(*hdr_mz);
-	*hdr_mz = NULL;
-	*hdr_mem = 0;
-}
-
-static int
-virtio_rxq_sw_ring_alloc(struct virtqueue *vq, int numa_node)
-{
-	void *sw_ring;
-	struct rte_mbuf *mbuf;
-	size_t size;
-
-	/* SW ring is only used with vectorized datapath */
-	if (!vq->hw->use_vec_rx)
-		return 0;
-
-	size = (RTE_PMD_VIRTIO_RX_MAX_BURST + vq->vq_nentries) * sizeof(vq->rxq.sw_ring[0]);
-
-	sw_ring = rte_zmalloc_socket("sw_ring", size, RTE_CACHE_LINE_SIZE, numa_node);
-	if (!sw_ring) {
-		PMD_INIT_LOG(ERR, "can not allocate RX soft ring");
-		return -ENOMEM;
-	}
-
-	mbuf = rte_zmalloc_socket("sw_ring", sizeof(*mbuf), RTE_CACHE_LINE_SIZE, numa_node);
-	if (!mbuf) {
-		PMD_INIT_LOG(ERR, "can not allocate fake mbuf");
-		rte_free(sw_ring);
-		return -ENOMEM;
-	}
-
-	vq->rxq.sw_ring = sw_ring;
-	vq->rxq.fake_mbuf = mbuf;
-
-	return 0;
-}
-
-static void
-virtio_rxq_sw_ring_free(struct virtqueue *vq)
-{
-	rte_free(vq->rxq.fake_mbuf);
-	vq->rxq.fake_mbuf = NULL;
-	rte_free(vq->rxq.sw_ring);
-	vq->rxq.sw_ring = NULL;
-}
-
-static int
 virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	char vq_name[VIRTQUEUE_MAX_NAME_SZ];
-	const struct rte_memzone *mz = NULL;
-	unsigned int vq_size, size;
+	unsigned int vq_size;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtnet_ctl *cvq = NULL;
 	struct virtqueue *vq;
 	int queue_type = virtio_get_queue_type(hw, queue_idx);
 	int ret;
@@ -414,86 +259,18 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 	snprintf(vq_name, sizeof(vq_name), "port%d_vq%d", dev->data->port_id, queue_idx);
 
-	size = RTE_ALIGN_CEIL(sizeof(*vq) +
-				vq_size * sizeof(struct vq_desc_extra),
-				RTE_CACHE_LINE_SIZE);
-
-
-	vq = rte_zmalloc_socket(vq_name, size, RTE_CACHE_LINE_SIZE,
-				numa_node);
-	if (vq == NULL) {
-		PMD_INIT_LOG(ERR, "can not allocate vq");
+	vq = virtqueue_alloc(hw, queue_idx, vq_size, queue_type, numa_node, vq_name);
+	if (!vq) {
+		PMD_INIT_LOG(ERR, "virtqueue init failed");
 		return -ENOMEM;
 	}
+
 	hw->vqs[queue_idx] = vq;
 
-	vq->hw = hw;
-	vq->vq_queue_index = queue_idx;
-	vq->vq_nentries = vq_size;
-	if (virtio_with_packed_queue(hw)) {
-		vq->vq_packed.used_wrap_counter = 1;
-		vq->vq_packed.cached_flags = VRING_PACKED_DESC_F_AVAIL;
-		vq->vq_packed.event_flags_shadow = 0;
-		if (queue_type == VTNET_RQ)
-			vq->vq_packed.cached_flags |= VRING_DESC_F_WRITE;
-	}
-
-	/*
-	 * Reserve a memzone for vring elements
-	 */
-	size = vring_size(hw, vq_size, VIRTIO_VRING_ALIGN);
-	vq->vq_ring_size = RTE_ALIGN_CEIL(size, VIRTIO_VRING_ALIGN);
-	PMD_INIT_LOG(DEBUG, "vring_size: %d, rounded_vring_size: %d",
-		     size, vq->vq_ring_size);
-
-	mz = rte_memzone_reserve_aligned(vq_name, vq->vq_ring_size,
-			numa_node, RTE_MEMZONE_IOVA_CONTIG,
-			VIRTIO_VRING_ALIGN);
-	if (mz == NULL) {
-		if (rte_errno == EEXIST)
-			mz = rte_memzone_lookup(vq_name);
-		if (mz == NULL) {
-			ret = -ENOMEM;
-			goto free_vq;
-		}
-	}
-
-	memset(mz->addr, 0, mz->len);
-
-	vq->mz = mz;
-	if (hw->use_va)
-		vq->vq_ring_mem = (uintptr_t)mz->addr;
-	else
-		vq->vq_ring_mem = mz->iova;
-
-	vq->vq_ring_virt_mem = mz->addr;
-	PMD_INIT_LOG(DEBUG, "vq->vq_ring_mem: 0x%" PRIx64, vq->vq_ring_mem);
-	PMD_INIT_LOG(DEBUG, "vq->vq_ring_virt_mem: %p", vq->vq_ring_virt_mem);
-
-	virtio_init_vring(vq);
-
-	ret = virtio_alloc_queue_headers(vq, numa_node, vq_name);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to alloc queue headers");
-		goto free_mz;
-	}
-
-	if (queue_type == VTNET_RQ) {
-		ret = virtio_rxq_sw_ring_alloc(vq, numa_node);
-		if (ret)
-			goto free_hdr_mz;
-	} else if (queue_type == VTNET_TQ) {
-		virtqueue_txq_indirect_headers_init(vq);
-	} else if (queue_type == VTNET_CQ) {
-		cvq = &vq->cq;
-		hw->cvq = cvq;
+	if (queue_type == VTNET_CQ) {
+		hw->cvq = &vq->cq;
 		vq->cq.notify_queue = &virtio_control_queue_notify;
 	}
-
-	if (hw->use_va)
-		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_addr);
-	else
-		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_iova);
 
 	if (VIRTIO_OPS(hw)->setup_queue(hw, vq) < 0) {
 		PMD_INIT_LOG(ERR, "setup_queue failed");
@@ -504,15 +281,9 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 	return 0;
 
 clean_vq:
-	hw->cvq = NULL;
-	if (queue_type == VTNET_RQ)
-		virtio_rxq_sw_ring_free(vq);
-free_hdr_mz:
-	virtio_free_queue_headers(vq);
-free_mz:
-	rte_memzone_free(mz);
-free_vq:
-	rte_free(vq);
+	if (queue_type == VTNET_CQ)
+		hw->cvq = NULL;
+	virtqueue_free(vq);
 	hw->vqs[queue_idx] = NULL;
 
 	return ret;
@@ -523,7 +294,6 @@ virtio_free_queues(struct virtio_hw *hw)
 {
 	uint16_t nr_vq = virtio_get_nr_vq(hw);
 	struct virtqueue *vq;
-	int queue_type;
 	uint16_t i;
 
 	if (hw->vqs == NULL)
@@ -533,16 +303,7 @@ virtio_free_queues(struct virtio_hw *hw)
 		vq = hw->vqs[i];
 		if (!vq)
 			continue;
-
-		queue_type = virtio_get_queue_type(hw, i);
-		if (queue_type == VTNET_RQ) {
-			rte_free(vq->rxq.fake_mbuf);
-			rte_free(vq->rxq.sw_ring);
-		}
-
-		virtio_free_queue_headers(vq);
-		rte_memzone_free(vq->mz);
-		rte_free(vq);
+		virtqueue_free(vq);
 		hw->vqs[i] = NULL;
 	}
 
