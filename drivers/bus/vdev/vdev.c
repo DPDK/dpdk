@@ -578,18 +578,19 @@ vdev_cleanup(void)
 		int ret = 0;
 
 		if (dev->device.driver == NULL)
-			continue;
+			goto free;
 
 		drv = container_of(dev->device.driver, const struct rte_vdev_driver, driver);
 
 		if (drv->remove == NULL)
-			continue;
+			goto free;
 
 		ret = drv->remove(dev);
 		if (ret < 0)
 			error = -1;
 
 		dev->device.driver = NULL;
+free:
 		free(dev);
 	}
 
