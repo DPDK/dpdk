@@ -87,7 +87,17 @@ extern "C" {
  * but may be valid in a few cases.
  */
 struct rte_flow_attr {
-	uint32_t group; /**< Priority group. */
+	/**
+	 * A group is a superset of multiple rules.
+	 * The default group is 0 and is processed for all packets.
+	 * Rules in other groups are processed only if the group is chained
+	 * by a jump action from a previously matched rule.
+	 * It means the group hierarchy is made by the flow rules,
+	 * and the group 0 is the hierarchy root.
+	 * Note there is no automatic dead loop protection.
+	 * @see rte_flow_action_jump
+	 */
+	uint32_t group;
 	uint32_t priority; /**< Rule priority level within group. */
 	/**
 	 * The rule in question applies to ingress traffic (non-"transfer").
