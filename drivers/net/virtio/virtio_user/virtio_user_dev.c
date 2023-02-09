@@ -118,19 +118,11 @@ static int
 virtio_user_queue_setup(struct virtio_user_dev *dev,
 			int (*fn)(struct virtio_user_dev *, uint32_t))
 {
-	uint32_t i, queue_sel;
+	uint32_t i;
 
-	for (i = 0; i < dev->max_queue_pairs; ++i) {
-		queue_sel = 2 * i + VTNET_SQ_RQ_QUEUE_IDX;
-		if (fn(dev, queue_sel) < 0) {
-			PMD_DRV_LOG(ERR, "(%s) setup rx vq %u failed", dev->path, i);
-			return -1;
-		}
-	}
-	for (i = 0; i < dev->max_queue_pairs; ++i) {
-		queue_sel = 2 * i + VTNET_SQ_TQ_QUEUE_IDX;
-		if (fn(dev, queue_sel) < 0) {
-			PMD_DRV_LOG(INFO, "(%s) setup tx vq %u failed", dev->path, i);
+	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
+		if (fn(dev, i) < 0) {
+			PMD_DRV_LOG(ERR, "(%s) setup VQ %u failed", dev->path, i);
 			return -1;
 		}
 	}
