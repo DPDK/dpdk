@@ -448,7 +448,7 @@ pci_cleanup(void)
 		int ret = 0;
 
 		if (drv == NULL || drv->remove == NULL)
-			continue;
+			goto free;
 
 		ret = drv->remove(dev);
 		if (ret < 0) {
@@ -458,6 +458,7 @@ pci_cleanup(void)
 		dev->driver = NULL;
 		dev->device.driver = NULL;
 
+free:
 		/* free interrupt handles */
 		rte_intr_instance_free(dev->intr_handle);
 		dev->intr_handle = NULL;
