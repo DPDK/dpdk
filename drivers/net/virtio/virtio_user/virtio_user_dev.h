@@ -74,9 +74,6 @@ int virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queue
 			 enum virtio_user_backend_type backend_type);
 void virtio_user_dev_uninit(struct virtio_user_dev *dev);
 void virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx);
-void virtio_user_handle_cq_packed(struct virtio_user_dev *dev,
-				  uint16_t queue_idx);
-uint8_t virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs);
 int virtio_user_dev_create_shadow_cvq(struct virtio_user_dev *dev, struct virtqueue *vq);
 void virtio_user_dev_destroy_shadow_cvq(struct virtio_user_dev *dev);
 int virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status);
