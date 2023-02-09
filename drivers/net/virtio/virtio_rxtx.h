@@ -33,15 +33,13 @@ struct virtnet_rx {
 };
 
 struct virtnet_tx {
-	/**< memzone to populate hdr. */
-	const struct rte_memzone *virtio_net_hdr_mz;
-	rte_iova_t virtio_net_hdr_mem;   /**< hdr for each xmit packet */
+	const struct rte_memzone *hdr_mz; /**< memzone to populate hdr. */
+	rte_iova_t hdr_mem;               /**< hdr for each xmit packet */
 
-	uint16_t    queue_id;            /**< DPDK queue index. */
-	uint16_t    port_id;             /**< Device port identifier. */
+	uint16_t    queue_id;             /**< DPDK queue index. */
+	uint16_t    port_id;              /**< Device port identifier. */
 
-	/* Statistics */
-	struct virtnet_stats stats;
+	struct virtnet_stats stats;       /* Statistics */
 
 	const struct rte_memzone *mz;    /**< mem zone to populate TX ring. */
 };

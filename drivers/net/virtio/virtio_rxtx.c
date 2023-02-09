@@ -542,7 +542,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 			uint16_t needed, int use_indirect, int can_push,
 			int in_order)
 {
-	struct virtio_tx_region *txr = txvq->virtio_net_hdr_mz->addr;
+	struct virtio_tx_region *txr = txvq->hdr_mz->addr;
 	struct vq_desc_extra *dxp;
 	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct vring_desc *start_dp;
@@ -579,9 +579,8 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		 * the first slot in indirect ring is already preset
 		 * to point to the header in reserved region
 		 */
-		start_dp[idx].addr  = txvq->virtio_net_hdr_mem +
-			RTE_PTR_DIFF(&txr[idx].tx_indir, txr);
-		start_dp[idx].len   = (seg_num + 1) * sizeof(struct vring_desc);
+		start_dp[idx].addr = txvq->hdr_mem + RTE_PTR_DIFF(&txr[idx].tx_indir, txr);
+		start_dp[idx].len = (seg_num + 1) * sizeof(struct vring_desc);
 		start_dp[idx].flags = VRING_DESC_F_INDIRECT;
 		hdr = (struct virtio_net_hdr *)&txr[idx].tx_hdr;
 
@@ -592,9 +591,8 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		/* setup first tx ring slot to point to header
 		 * stored in reserved region.
 		 */
-		start_dp[idx].addr  = txvq->virtio_net_hdr_mem +
-			RTE_PTR_DIFF(&txr[idx].tx_hdr, txr);
-		start_dp[idx].len   = vq->hw->vtnet_hdr_size;
+		start_dp[idx].addr = txvq->hdr_mem + RTE_PTR_DIFF(&txr[idx].tx_hdr, txr);
+		start_dp[idx].len = vq->hw->vtnet_hdr_size;
 		start_dp[idx].flags = VRING_DESC_F_NEXT;
 		hdr = (struct virtio_net_hdr *)&txr[idx].tx_hdr;
 

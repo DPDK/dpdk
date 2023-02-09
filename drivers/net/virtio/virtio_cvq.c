@@ -34,7 +34,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 	 */
 	head = vq->vq_avail_idx;
 	flags = vq->vq_packed.cached_flags;
-	desc[head].addr = cvq->virtio_net_hdr_mem;
+	desc[head].addr = cvq->hdr_mem;
 	desc[head].len = sizeof(struct virtio_net_ctrl_hdr);
 	vq->vq_free_cnt--;
 	nb_descs++;
@@ -44,7 +44,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 	}
 
 	for (k = 0; k < pkt_num; k++) {
-		desc[vq->vq_avail_idx].addr = cvq->virtio_net_hdr_mem
+		desc[vq->vq_avail_idx].addr = cvq->hdr_mem
 			+ sizeof(struct virtio_net_ctrl_hdr)
 			+ sizeof(ctrl->status) + sizeof(uint8_t) * sum;
 		desc[vq->vq_avail_idx].len = dlen[k];
@@ -60,7 +60,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 		}
 	}
 
-	desc[vq->vq_avail_idx].addr = cvq->virtio_net_hdr_mem
+	desc[vq->vq_avail_idx].addr = cvq->hdr_mem
 		+ sizeof(struct virtio_net_ctrl_hdr);
 	desc[vq->vq_avail_idx].len = sizeof(ctrl->status);
 	desc[vq->vq_avail_idx].flags = VRING_DESC_F_WRITE |
@@ -103,7 +103,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 			vq->vq_packed.cached_flags,
 			vq->vq_packed.used_wrap_counter);
 
-	result = cvq->virtio_net_hdr_mz->addr;
+	result = cvq->hdr_mz->addr;
 	return result;
 }
 
@@ -126,14 +126,14 @@ virtio_send_command_split(struct virtnet_ctl *cvq,
 	 * One RX packet for ACK.
 	 */
 	vq->vq_split.ring.desc[head].flags = VRING_DESC_F_NEXT;
-	vq->vq_split.ring.desc[head].addr = cvq->virtio_net_hdr_mem;
+	vq->vq_split.ring.desc[head].addr = cvq->hdr_mem;
 	vq->vq_split.ring.desc[head].len = sizeof(struct virtio_net_ctrl_hdr);
 	vq->vq_free_cnt--;
 	i = vq->vq_split.ring.desc[head].next;
 
 	for (k = 0; k < pkt_num; k++) {
 		vq->vq_split.ring.desc[i].flags = VRING_DESC_F_NEXT;
-		vq->vq_split.ring.desc[i].addr = cvq->virtio_net_hdr_mem
+		vq->vq_split.ring.desc[i].addr = cvq->hdr_mem
 			+ sizeof(struct virtio_net_ctrl_hdr)
 			+ sizeof(ctrl->status) + sizeof(uint8_t) * sum;
 		vq->vq_split.ring.desc[i].len = dlen[k];
@@ -143,7 +143,7 @@ virtio_send_command_split(struct virtnet_ctl *cvq,
 	}
 
 	vq->vq_split.ring.desc[i].flags = VRING_DESC_F_WRITE;
-	vq->vq_split.ring.desc[i].addr = cvq->virtio_net_hdr_mem
+	vq->vq_split.ring.desc[i].addr = cvq->hdr_mem
 			+ sizeof(struct virtio_net_ctrl_hdr);
 	vq->vq_split.ring.desc[i].len = sizeof(ctrl->status);
 	vq->vq_free_cnt--;
@@ -186,7 +186,7 @@ virtio_send_command_split(struct virtnet_ctl *cvq,
 	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d\nvq->vq_desc_head_idx=%d",
 			vq->vq_free_cnt, vq->vq_desc_head_idx);
 
-	result = cvq->virtio_net_hdr_mz->addr;
+	result = cvq->hdr_mz->addr;
 	return result;
 }
 
@@ -216,8 +216,7 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl, int *
 		return -1;
 	}
 
-	memcpy(cvq->virtio_net_hdr_mz->addr, ctrl,
-		sizeof(struct virtio_pmd_ctrl));
+	memcpy(cvq->hdr_mz->addr, ctrl, sizeof(struct virtio_pmd_ctrl));
 
 	if (virtio_with_packed_queue(vq->hw))
 		result = virtio_send_command_packed(cvq, ctrl, dlen, pkt_num);

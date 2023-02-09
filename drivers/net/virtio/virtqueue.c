@@ -200,10 +200,9 @@ virtqueue_txvq_reset_packed(struct virtqueue *vq)
 	vq->vq_packed.event_flags_shadow = 0;
 
 	txvq = &vq->txq;
-	txr = txvq->virtio_net_hdr_mz->addr;
+	txr = txvq->hdr_mz->addr;
 	memset(txvq->mz->addr, 0, txvq->mz->len);
-	memset(txvq->virtio_net_hdr_mz->addr, 0,
-		txvq->virtio_net_hdr_mz->len);
+	memset(txvq->hdr_mz->addr, 0, txvq->hdr_mz->len);
 
 	for (desc_idx = 0; desc_idx < vq->vq_nentries; desc_idx++) {
 		dxp = &vq->vq_descx[desc_idx];
@@ -217,8 +216,7 @@ virtqueue_txvq_reset_packed(struct virtqueue *vq)
 			start_dp = txr[desc_idx].tx_packed_indir;
 			vring_desc_init_indirect_packed(start_dp,
 							RTE_DIM(txr[desc_idx].tx_packed_indir));
-			start_dp->addr = txvq->virtio_net_hdr_mem
-					 + desc_idx * sizeof(*txr)
+			start_dp->addr = txvq->hdr_mem + desc_idx * sizeof(*txr)
 					 + offsetof(struct virtio_tx_region, tx_hdr);
 			start_dp->len = vq->hw->vtnet_hdr_size;
 		}
