@@ -103,8 +103,8 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	desc_idx = (uint16_t)(vq->vq_used_cons_idx & (vq->vq_nentries - 1));
 	rused = &vq->vq_split.ring.used->ring[desc_idx];
-	sw_ring  = &vq->sw_ring[desc_idx];
-	sw_ring_end = &vq->sw_ring[vq->vq_nentries];
+	sw_ring = &vq->rxq.sw_ring[desc_idx];
+	sw_ring_end = &vq->rxq.sw_ring[vq->vq_nentries];
 
 	rte_prefetch0(rused);
 

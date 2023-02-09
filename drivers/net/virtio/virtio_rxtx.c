@@ -737,9 +737,11 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 		virtio_rxq_vec_setup(rxvq);
 	}
 
-	memset(rxvq->fake_mbuf, 0, sizeof(*rxvq->fake_mbuf));
-	for (desc_idx = 0; desc_idx < RTE_PMD_VIRTIO_RX_MAX_BURST; desc_idx++)
-		vq->sw_ring[vq->vq_nentries + desc_idx] = rxvq->fake_mbuf;
+	if (hw->use_vec_rx) {
+		memset(rxvq->fake_mbuf, 0, sizeof(*rxvq->fake_mbuf));
+		for (desc_idx = 0; desc_idx < RTE_PMD_VIRTIO_RX_MAX_BURST; desc_idx++)
+			vq->rxq.sw_ring[vq->vq_nentries + desc_idx] = rxvq->fake_mbuf;
+	}
 
 	if (hw->use_vec_rx && !virtio_with_packed_queue(hw)) {
 		while (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {

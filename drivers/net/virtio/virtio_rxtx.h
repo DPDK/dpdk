@@ -18,8 +18,8 @@ struct virtnet_stats {
 };
 
 struct virtnet_rx {
-	/* dummy mbuf, for wraparound when processing RX ring. */
-	struct rte_mbuf *fake_mbuf;
+	struct rte_mbuf **sw_ring;  /**< RX software ring. */
+	struct rte_mbuf *fake_mbuf; /**< dummy mbuf, for wraparound when processing RX ring. */
 	uint64_t mbuf_initializer; /**< value to init mbufs. */
 	struct rte_mempool *mpool; /**< mempool for mbuf allocation */
 

@@ -38,9 +38,9 @@ virtqueue_detach_unused(struct virtqueue *vq)
 				continue;
 			if (start > end && (idx >= start || idx < end))
 				continue;
-			cookie = vq->sw_ring[idx];
+			cookie = vq->rxq.sw_ring[idx];
 			if (cookie != NULL) {
-				vq->sw_ring[idx] = NULL;
+				vq->rxq.sw_ring[idx] = NULL;
 				return cookie;
 			}
 		} else {
@@ -100,7 +100,7 @@ virtqueue_rxvq_flush_split(struct virtqueue *vq)
 		uep = &vq->vq_split.ring.used->ring[used_idx];
 		if (hw->use_vec_rx) {
 			desc_idx = used_idx;
-			rte_pktmbuf_free(vq->sw_ring[desc_idx]);
+			rte_pktmbuf_free(vq->rxq.sw_ring[desc_idx]);
 			vq->vq_free_cnt++;
 		} else if (hw->use_inorder_rx) {
 			desc_idx = (uint16_t)uep->id;

@@ -206,7 +206,6 @@ struct virtqueue {
 	                         * or virtual address for virtio_user. */
 
 	uint16_t  *notify_addr;
-	struct rte_mbuf **sw_ring;  /**< RX software ring. */
 	struct vq_desc_extra vq_descx[];
 };
 

@@ -340,20 +340,58 @@ virtio_free_queue_headers(struct virtqueue *vq)
 }
 
 static int
+virtio_rxq_sw_ring_alloc(struct virtqueue *vq, int numa_node)
+{
+	void *sw_ring;
+	struct rte_mbuf *mbuf;
+	size_t size;
+
+	/* SW ring is only used with vectorized datapath */
+	if (!vq->hw->use_vec_rx)
+		return 0;
+
+	size = (RTE_PMD_VIRTIO_RX_MAX_BURST + vq->vq_nentries) * sizeof(vq->rxq.sw_ring[0]);
+
+	sw_ring = rte_zmalloc_socket("sw_ring", size, RTE_CACHE_LINE_SIZE, numa_node);
+	if (!sw_ring) {
+		PMD_INIT_LOG(ERR, "can not allocate RX soft ring");
+		return -ENOMEM;
+	}
+
+	mbuf = rte_zmalloc_socket("sw_ring", sizeof(*mbuf), RTE_CACHE_LINE_SIZE, numa_node);
+	if (!mbuf) {
+		PMD_INIT_LOG(ERR, "can not allocate fake mbuf");
+		rte_free(sw_ring);
+		return -ENOMEM;
+	}
+
+	vq->rxq.sw_ring = sw_ring;
+	vq->rxq.fake_mbuf = mbuf;
+
+	return 0;
+}
+
+static void
+virtio_rxq_sw_ring_free(struct virtqueue *vq)
+{
+	rte_free(vq->rxq.fake_mbuf);
+	vq->rxq.fake_mbuf = NULL;
+	rte_free(vq->rxq.sw_ring);
+	vq->rxq.sw_ring = NULL;
+}
+
+static int
 virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	char vq_name[VIRTQUEUE_MAX_NAME_SZ];
 	const struct rte_memzone *mz = NULL;
 	unsigned int vq_size, size;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtnet_rx *rxvq = NULL;
 	struct virtnet_ctl *cvq = NULL;
 	struct virtqueue *vq;
-	void *sw_ring = NULL;
 	int queue_type = virtio_get_queue_type(hw, queue_idx);
 	int ret;
 	int numa_node = dev->device->numa_node;
-	struct rte_mbuf *fake_mbuf = NULL;
 
 	PMD_INIT_LOG(INFO, "setting up queue: %u on NUMA node %d",
 			queue_idx, numa_node);
@@ -441,28 +479,9 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 	}
 
 	if (queue_type == VTNET_RQ) {
-		size_t sz_sw = (RTE_PMD_VIRTIO_RX_MAX_BURST + vq_size) *
-			       sizeof(vq->sw_ring[0]);
-
-		sw_ring = rte_zmalloc_socket("sw_ring", sz_sw,
-				RTE_CACHE_LINE_SIZE, numa_node);
-		if (!sw_ring) {
-			PMD_INIT_LOG(ERR, "can not allocate RX soft ring");
-			ret = -ENOMEM;
+		ret = virtio_rxq_sw_ring_alloc(vq, numa_node);
+		if (ret)
 			goto free_hdr_mz;
-		}
-
-		fake_mbuf = rte_zmalloc_socket("sw_ring", sizeof(*fake_mbuf),
-				RTE_CACHE_LINE_SIZE, numa_node);
-		if (!fake_mbuf) {
-			PMD_INIT_LOG(ERR, "can not allocate fake mbuf");
-			ret = -ENOMEM;
-			goto free_sw_ring;
-		}
-
-		vq->sw_ring = sw_ring;
-		rxvq = &vq->rxq;
-		rxvq->fake_mbuf = fake_mbuf;
 	} else if (queue_type == VTNET_TQ) {
 		virtqueue_txq_indirect_headers_init(vq);
 	} else if (queue_type == VTNET_CQ) {
@@ -486,9 +505,8 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 clean_vq:
 	hw->cvq = NULL;
-	rte_free(fake_mbuf);
-free_sw_ring:
-	rte_free(sw_ring);
+	if (queue_type == VTNET_RQ)
+		virtio_rxq_sw_ring_free(vq);
 free_hdr_mz:
 	virtio_free_queue_headers(vq);
 free_mz:
@@ -519,7 +537,7 @@ virtio_free_queues(struct virtio_hw *hw)
 		queue_type = virtio_get_queue_type(hw, i);
 		if (queue_type == VTNET_RQ) {
 			rte_free(vq->rxq.fake_mbuf);
-			rte_free(vq->sw_ring);
+			rte_free(vq->rxq.sw_ring);
 		}
 
 		virtio_free_queue_headers(vq);
@@ -2214,6 +2232,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	rte_spinlock_init(&hw->state_lock);
 
+	if (vectorized) {
+		hw->use_vec_rx = 1;
+		hw->use_vec_tx = 1;
+	}
+
 	/* reset device and negotiate default features */
 	ret = virtio_init_device(eth_dev, VIRTIO_PMD_DEFAULT_GUEST_FEATURES);
 	if (ret < 0)
@@ -2221,12 +2244,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (vectorized) {
 		if (!virtio_with_packed_queue(hw)) {
-			hw->use_vec_rx = 1;
+			hw->use_vec_tx = 0;
 		} else {
-#if defined(CC_AVX512_SUPPORT) || defined(RTE_ARCH_ARM)
-			hw->use_vec_rx = 1;
-			hw->use_vec_tx = 1;
-#else
+#if !defined(CC_AVX512_SUPPORT) && !defined(RTE_ARCH_ARM)
+			hw->use_vec_rx = 0;
+			hw->use_vec_tx = 0;
 			PMD_DRV_LOG(INFO,
 				"building environment do not support packed ring vectorized");
 #endif
