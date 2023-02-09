@@ -281,7 +281,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 static void
 perform_command(telemetry_cb fn, const char *cmd, const char *param, int s)
 {
-	struct rte_tel_data data;
+	struct rte_tel_data data = {0};
 
 	int ret = fn(cmd, param, &data);
 	if (ret < 0) {
