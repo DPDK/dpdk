@@ -10,6 +10,9 @@
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
+#include <rte_telemetry.h>
+#endif
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -419,34 +422,34 @@ rte_lcore_iterate(rte_lcore_iterate_cb cb, void *arg)
 	return ret;
 }
 
+static const char *
+lcore_role_str(enum rte_lcore_role_t role)
+{
+	switch (role) {
+	case ROLE_RTE:
+		return "RTE";
+	case ROLE_SERVICE:
+		return "SERVICE";
+	case ROLE_NON_EAL:
+		return "NON_EAL";
+	default:
+		return "UNKNOWN";
+	}
+}
+
 static int
 lcore_dump_cb(unsigned int lcore_id, void *arg)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
-	const char *role;
 	FILE *f = arg;
 	int ret;
-
-	switch (cfg->lcore_role[lcore_id]) {
-	case ROLE_RTE:
-		role = "RTE";
-		break;
-	case ROLE_SERVICE:
-		role = "SERVICE";
-		break;
-	case ROLE_NON_EAL:
-		role = "NON_EAL";
-		break;
-	default:
-		role = "UNKNOWN";
-		break;
-	}
 
 	ret = eal_thread_dump_affinity(&lcore_config[lcore_id].cpuset, cpuset,
 		sizeof(cpuset));
 	fprintf(f, "lcore %u, socket %u, role %s, cpuset %s%s\n", lcore_id,
-		rte_lcore_to_socket_id(lcore_id), role, cpuset,
+		rte_lcore_to_socket_id(lcore_id),
+		lcore_role_str(cfg->lcore_role[lcore_id]), cpuset,
 		ret == 0 ? "" : "...");
 	return 0;
 }
@@ -456,3 +459,88 @@ rte_lcore_dump(FILE *f)
 {
 	rte_lcore_iterate(lcore_dump_cb, f);
 }
+
+#ifndef RTE_EXEC_ENV_WINDOWS
+static int
+lcore_telemetry_id_cb(unsigned int lcore_id, void *arg)
+{
+	struct rte_tel_data *d = arg;
+
+	return rte_tel_data_add_array_int(d, lcore_id);
+}
+
+static int
+handle_lcore_list(const char *cmd __rte_unused, const char *params __rte_unused,
+	struct rte_tel_data *d)
+{
+	int ret;
+
+	ret = rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+	if (ret == 0)
+		ret = rte_lcore_iterate(lcore_telemetry_id_cb, d);
+
+	return ret;
+}
+
+struct lcore_telemetry_info {
+	unsigned int lcore_id;
+	struct rte_tel_data *d;
+};
+
+static int
+lcore_telemetry_info_cb(unsigned int lcore_id, void *arg)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	struct lcore_telemetry_info *info = arg;
+	struct rte_tel_data *cpuset;
+	unsigned int cpu;
+
+	if (lcore_id != info->lcore_id)
+		return 0;
+
+	rte_tel_data_start_dict(info->d);
+	rte_tel_data_add_dict_int(info->d, "lcore_id", lcore_id);
+	rte_tel_data_add_dict_int(info->d, "socket", rte_lcore_to_socket_id(lcore_id));
+	rte_tel_data_add_dict_string(info->d, "role", lcore_role_str(cfg->lcore_role[lcore_id]));
+	cpuset = rte_tel_data_alloc();
+	if (cpuset == NULL)
+		return -ENOMEM;
+	rte_tel_data_start_array(cpuset, RTE_TEL_INT_VAL);
+	for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+		if (CPU_ISSET(cpu, &lcore_config[lcore_id].cpuset))
+			rte_tel_data_add_array_int(cpuset, cpu);
+	}
+	rte_tel_data_add_dict_container(info->d, "cpuset", cpuset, 0);
+
+	return 0;
+}
+
+static int
+handle_lcore_info(const char *cmd __rte_unused, const char *params, struct rte_tel_data *d)
+{
+	struct lcore_telemetry_info info = { .d = d };
+	unsigned long lcore_id;
+	char *endptr;
+
+	if (params == NULL)
+		return -EINVAL;
+	errno = 0;
+	lcore_id = strtoul(params, &endptr, 10);
+	if (errno)
+		return -errno;
+	if (*params == '\0' || *endptr != '\0' || lcore_id >= RTE_MAX_LCORE)
+		return -EINVAL;
+
+	info.lcore_id = lcore_id;
+
+	return rte_lcore_iterate(lcore_telemetry_info_cb, &info);
+}
+
+RTE_INIT(lcore_telemetry)
+{
+	rte_telemetry_register_cmd("/eal/lcore/list", handle_lcore_list,
+		"List of lcore ids. Takes no parameters");
+	rte_telemetry_register_cmd("/eal/lcore/info", handle_lcore_info,
+		"Returns lcore info. Parameters: int lcore_id");
+}
+#endif /* !RTE_EXEC_ENV_WINDOWS */
