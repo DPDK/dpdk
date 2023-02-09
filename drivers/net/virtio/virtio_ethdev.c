@@ -347,7 +347,6 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 	unsigned int vq_size, size;
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtnet_rx *rxvq = NULL;
-	struct virtnet_tx *txvq = NULL;
 	struct virtnet_ctl *cvq = NULL;
 	struct virtqueue *vq;
 	void *sw_ring = NULL;
@@ -465,7 +464,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		rxvq = &vq->rxq;
 		rxvq->fake_mbuf = fake_mbuf;
 	} else if (queue_type == VTNET_TQ) {
-		txvq = &vq->txq;
+		virtqueue_txq_indirect_headers_init(vq);
 	} else if (queue_type == VTNET_CQ) {
 		cvq = &vq->cq;
 		hw->cvq = cvq;
@@ -476,33 +475,6 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_addr);
 	else
 		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_iova);
-
-	if (queue_type == VTNET_TQ) {
-		struct virtio_tx_region *txr;
-		unsigned int i;
-
-		txr = txvq->hdr_mz->addr;
-		for (i = 0; i < vq_size; i++) {
-			/* first indirect descriptor is always the tx header */
-			if (!virtio_with_packed_queue(hw)) {
-				struct vring_desc *start_dp = txr[i].tx_indir;
-				vring_desc_init_split(start_dp,
-						      RTE_DIM(txr[i].tx_indir));
-				start_dp->addr = txvq->hdr_mem + i * sizeof(*txr)
-					+ offsetof(struct virtio_tx_region, tx_hdr);
-				start_dp->len = hw->vtnet_hdr_size;
-				start_dp->flags = VRING_DESC_F_NEXT;
-			} else {
-				struct vring_packed_desc *start_dp =
-					txr[i].tx_packed_indir;
-				vring_desc_init_indirect_packed(start_dp,
-				      RTE_DIM(txr[i].tx_packed_indir));
-				start_dp->addr = txvq->hdr_mem + i * sizeof(*txr)
-					+ offsetof(struct virtio_tx_region, tx_hdr);
-				start_dp->len = hw->vtnet_hdr_size;
-			}
-		}
-	}
 
 	if (VIRTIO_OPS(hw)->setup_queue(hw, vq) < 0) {
 		PMD_INIT_LOG(ERR, "setup_queue failed");

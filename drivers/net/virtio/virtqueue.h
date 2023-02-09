@@ -384,6 +384,8 @@ int virtqueue_rxvq_reset_packed(struct virtqueue *vq);
 
 int virtqueue_txvq_reset_packed(struct virtqueue *vq);
 
+void virtqueue_txq_indirect_headers_init(struct virtqueue *vq);
+
 static inline int
 virtqueue_full(const struct virtqueue *vq)
 {
