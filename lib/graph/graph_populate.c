@@ -9,6 +9,7 @@
 #include <rte_memzone.h>
 
 #include "graph_private.h"
+#include "graph_pcap_private.h"
 
 static size_t
 graph_fp_mem_calc_size(struct graph *graph)
@@ -75,7 +76,11 @@ graph_nodes_populate(struct graph *_graph)
 		memset(node, 0, sizeof(*node));
 		node->fence = RTE_GRAPH_FENCE;
 		node->off = off;
-		node->process = graph_node->node->process;
+		if (graph_pcap_is_enable()) {
+			node->process = graph_pcap_dispatch;
+			node->original_process = graph_node->node->process;
+		} else
+			node->process = graph_node->node->process;
 		memcpy(node->name, graph_node->node->name, RTE_GRAPH_NAMESIZE);
 		pid = graph_node->node->parent_id;
 		if (pid != RTE_NODE_ID_INVALID) { /* Cloned node */
@@ -183,6 +188,8 @@ graph_fp_mem_populate(struct graph *graph)
 	int rc;
 
 	graph_header_popluate(graph);
+	if (graph_pcap_is_enable())
+		graph_pcap_init(graph);
 	graph_nodes_populate(graph);
 	rc = graph_node_nexts_populate(graph);
 	rc |= graph_src_nodes_populate(graph);
@@ -227,6 +234,9 @@ graph_nodes_mem_destroy(struct rte_graph *graph)
 int
 graph_fp_mem_destroy(struct graph *graph)
 {
+	if (graph_pcap_is_enable())
+		graph_pcap_exit(graph->graph);
+
 	graph_nodes_mem_destroy(graph->graph);
 	return rte_memzone_free(graph->mz);
 }

@@ -92,6 +92,11 @@ New Features
     ``rte_event_dev_config::nb_single_link_event_port_queues`` parameter
     required for eth_rx, eth_tx, crypto and timer eventdev adapters.
 
+* **Added pcap trace support in graph library.**
+
+  * Added support to capture packets at each graph node with packet metadata and
+    node name.
+
 
 Removed Items
 -------------
@@ -123,6 +128,9 @@ API Changes
 
 * The experimental function ``rte_pcapng_copy`` was updated to support comment
   section in enhanced packet block in the pcapng library.
+
+* The experimental structures ``struct rte_graph_param``, ``struct rte_graph``
+  and ``struct graph`` were updated to support pcap trace in the graph library.
 
 
 ABI Changes

@@ -15,6 +15,7 @@
 #include <rte_string_fns.h>
 
 #include "graph_private.h"
+#include "graph_pcap_private.h"
 
 static struct graph_head graph_list = STAILQ_HEAD_INITIALIZER(graph_list);
 static rte_spinlock_t graph_lock = RTE_SPINLOCK_INITIALIZER;
@@ -228,7 +229,12 @@ graph_mem_fixup_node_ctx(struct rte_graph *graph)
 		node_db = node_from_name(name);
 		if (node_db == NULL)
 			SET_ERR_JMP(ENOLINK, fail, "Node %s not found", name);
-		node->process = node_db->process;
+
+		if (graph->pcap_enable) {
+			node->process = graph_pcap_dispatch;
+			node->original_process = node_db->process;
+		} else
+			node->process = node_db->process;
 	}
 
 	return graph;
@@ -241,6 +247,9 @@ graph_mem_fixup_secondary(struct rte_graph *graph)
 {
 	if (graph == NULL || rte_eal_process_type() == RTE_PROC_PRIMARY)
 		return graph;
+
+	if (graph_pcap_file_open(graph->pcap_filename) || graph_pcap_mp_init())
+		graph_pcap_exit(graph);
 
 	return graph_mem_fixup_node_ctx(graph);
 }
@@ -323,11 +332,17 @@ rte_graph_create(const char *name, struct rte_graph_param *prm)
 	if (graph_has_isolated_node(graph))
 		goto graph_cleanup;
 
+	/* Initialize pcap config. */
+	graph_pcap_enable(prm->pcap_enable);
+
 	/* Initialize graph object */
 	graph->socket = prm->socket_id;
 	graph->src_node_count = src_node_count;
 	graph->node_count = graph_nodes_count(graph);
 	graph->id = graph_id;
+	graph->num_pkt_to_capture = prm->num_pkt_to_capture;
+	if (prm->pcap_filename)
+		rte_strscpy(graph->pcap_filename, prm->pcap_filename, RTE_GRAPH_PCAP_FILE_SZ);
 
 	/* Allocate the Graph fast path memory and populate the data */
 	if (graph_fp_mem_create(graph))

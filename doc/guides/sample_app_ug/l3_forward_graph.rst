@@ -51,6 +51,9 @@ The application has a number of command line options similar to l3fwd::
                                    [--max-pkt-len PKTLEN]
                                    [--no-numa]
                                    [--per-port-pool]
+                                   [--pcap-enable]
+                                   [--pcap-num-cap]
+                                   [--pcap-file-name]
 
 Where,
 
@@ -68,6 +71,12 @@ Where,
 * ``--no-numa:`` Optional, disables numa awareness.
 
 * ``--per-port-pool:`` Optional, set to use independent buffer pools per port. Without this option, single buffer pool is used for all ports.
+
+* ``--pcap-enable:`` Optional, Enables packet capture in pcap format on each node with mbuf and node metadata.
+
+* ``--pcap-num-cap:`` Optional, Number of packets to be captured per core.
+
+* ``--pcap-file-name:`` Optional, Pcap filename to capture packets in.
 
 For example, consider a dual processor socket platform with 8 physical cores, where cores 0-7 and 16-23 appear on socket 0,
 while cores 8-15 and 24-31 appear on socket 1.
@@ -98,6 +107,20 @@ In this command:
 | 1        | 0         | 2         | Map queue 0 from port 1 to lcore 2. |
 |          |           |           |                                     |
 +----------+-----------+-----------+-------------------------------------+
+
+To enable pcap trace on each graph, use following command:
+
+.. code-block:: console
+
+    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --pcap-enable --pcap-num-cap=<number of packets> --pcap-file-name "</path/to/file>"
+
+In this command:
+
+*   The --pcap-enable option enables pcap trace on graph nodes.
+
+*   The --pcap-num-cap option enables user to configure number packets to be captured per graph. Default 1024 packets per graph are captured.
+
+*   The --pcap-file-name option enables user to give filename in which packets are to be captured.
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.

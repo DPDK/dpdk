@@ -324,7 +324,7 @@ graph_init(const char *gname, uint8_t nb_srcs, uint8_t nb_sinks,
 	char nname[RTE_NODE_NAMESIZE / 2];
 	struct test_node_data *node_data;
 	char *ename[nodes_per_stage];
-	struct rte_graph_param gconf;
+	struct rte_graph_param gconf = {0};
 	const struct rte_memzone *mz;
 	uint8_t total_percent = 0;
 	rte_node_t *src_nodes;

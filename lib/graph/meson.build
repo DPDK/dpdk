@@ -14,7 +14,8 @@ sources = files(
         'graph_debug.c',
         'graph_stats.c',
         'graph_populate.c',
+        'graph_pcap.c',
 )
 headers = files('rte_graph.h', 'rte_graph_worker.h')
 
-deps += ['eal']
+deps += ['eal', 'pcapng']

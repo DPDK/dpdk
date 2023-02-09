@@ -44,6 +44,12 @@ struct rte_graph {
 	rte_graph_t id;	/**< Graph identifier. */
 	int socket;	/**< Socket ID where memory is allocated. */
 	char name[RTE_GRAPH_NAMESIZE];	/**< Name of the graph. */
+	bool pcap_enable;	        /**< Pcap trace enabled. */
+	/** Number of packets captured per core. */
+	uint64_t nb_pkt_captured;
+	/** Number of packets to capture per core. */
+	uint64_t nb_pkt_to_capture;
+	char pcap_filename[RTE_GRAPH_PCAP_FILE_SZ];  /**< Pcap filename. */
 	uint64_t fence;			/**< Fence. */
 } __rte_cache_aligned;
 
@@ -63,6 +69,9 @@ struct rte_node {
 
 	char parent[RTE_NODE_NAMESIZE];	/**< Parent node name. */
 	char name[RTE_NODE_NAMESIZE];	/**< Name of the node. */
+
+	/** Original process function when pcap is enabled. */
+	rte_node_process_t original_process;
 
 	/* Fast path area  */
 #define RTE_NODE_CTX_SZ 16

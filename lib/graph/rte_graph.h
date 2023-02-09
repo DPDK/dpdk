@@ -35,6 +35,7 @@ extern "C" {
 
 #define RTE_GRAPH_NAMESIZE 64 /**< Max length of graph name. */
 #define RTE_NODE_NAMESIZE 64  /**< Max length of node name. */
+#define RTE_GRAPH_PCAP_FILE_SZ 64 /**< Max length of pcap file name. */
 #define RTE_GRAPH_OFF_INVALID UINT32_MAX /**< Invalid graph offset. */
 #define RTE_NODE_ID_INVALID UINT32_MAX   /**< Invalid node id. */
 #define RTE_EDGE_ID_INVALID UINT16_MAX   /**< Invalid edge id. */
@@ -164,6 +165,10 @@ struct rte_graph_param {
 	uint16_t nb_node_patterns;  /**< Number of node patterns. */
 	const char **node_patterns;
 	/**< Array of node patterns based on shell pattern. */
+
+	bool pcap_enable; /**< Pcap enable. */
+	uint64_t num_pkt_to_capture; /**< Number of packets to capture. */
+	char *pcap_filename; /**< Filename in which packets to be captured.*/
 };
 
 /**

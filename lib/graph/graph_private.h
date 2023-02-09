@@ -22,6 +22,7 @@ extern int rte_graph_logtype;
 			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__, )))
 
 #define graph_err(...) GRAPH_LOG(ERR, __VA_ARGS__)
+#define graph_warn(...) GRAPH_LOG(WARNING, __VA_ARGS__)
 #define graph_info(...) GRAPH_LOG(INFO, __VA_ARGS__)
 #define graph_dbg(...) GRAPH_LOG(DEBUG, __VA_ARGS__)
 
@@ -100,6 +101,10 @@ struct graph {
 	/**< Memory size of the graph. */
 	int socket;
 	/**< Socket identifier where memory is allocated. */
+	uint64_t num_pkt_to_capture;
+	/**< Number of packets to be captured per core. */
+	char pcap_filename[RTE_GRAPH_PCAP_FILE_SZ];
+	/**< pcap file name/path. */
 	STAILQ_HEAD(gnode_list, graph_node) node_list;
 	/**< Nodes in a graph. */
 };
