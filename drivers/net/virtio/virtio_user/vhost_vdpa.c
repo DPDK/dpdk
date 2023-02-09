@@ -565,6 +565,17 @@ vhost_vdpa_destroy(struct virtio_user_dev *dev)
 }
 
 static int
+vhost_vdpa_cvq_enable(struct virtio_user_dev *dev, int enable)
+{
+	struct vhost_vring_state state = {
+		.index = dev->max_queue_pairs * 2,
+		.num   = enable,
+	};
+
+	return vhost_vdpa_set_vring_enable(dev, &state);
+}
+
+static int
 vhost_vdpa_enable_queue_pair(struct virtio_user_dev *dev,
 			       uint16_t pair_idx,
 			       int enable)
@@ -629,6 +640,7 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.set_status = vhost_vdpa_set_status,
 	.get_config = vhost_vdpa_get_config,
 	.set_config = vhost_vdpa_set_config,
+	.cvq_enable = vhost_vdpa_cvq_enable,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
 	.dma_unmap = vhost_vdpa_dma_unmap_batch,

@@ -767,6 +767,9 @@ virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
 	for (i = q_pairs; i < dev->max_queue_pairs; ++i)
 		ret |= dev->ops->enable_qp(dev, i, 0);
 
+	if (dev->scvq)
+		ret |= dev->ops->cvq_enable(dev, 1);
+
 	dev->queue_pairs = q_pairs;
 
 	return ret;
