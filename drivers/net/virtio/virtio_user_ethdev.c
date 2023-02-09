@@ -655,7 +655,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 
 	dev = eth_dev->data->dev_private;
 	hw = &dev->hw;
-	if (virtio_user_dev_init(dev, path, queues, cq,
+	if (virtio_user_dev_init(dev, path, (uint16_t)queues, cq,
 			 queue_size, mac_addr, &ifname, server_mode,
 			 mrg_rxbuf, in_order, packed_vq, backend_type) < 0) {
 		PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");

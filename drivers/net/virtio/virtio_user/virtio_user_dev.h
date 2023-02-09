@@ -32,8 +32,8 @@ struct virtio_user_dev {
 	int		callfds[VIRTIO_MAX_VIRTQUEUES];
 	int		kickfds[VIRTIO_MAX_VIRTQUEUES];
 	int		mac_specified;
-	uint32_t	max_queue_pairs;
-	uint32_t	queue_pairs;
+	uint16_t	max_queue_pairs;
+	uint16_t	queue_pairs;
 	uint32_t	queue_size;
 	uint64_t	features; /* the negotiated features with driver,
 				   * and will be sync with device
@@ -64,7 +64,7 @@ struct virtio_user_dev {
 int virtio_user_dev_set_features(struct virtio_user_dev *dev);
 int virtio_user_start_device(struct virtio_user_dev *dev);
 int virtio_user_stop_device(struct virtio_user_dev *dev);
-int virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
+int virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 			 int cq, int queue_size, const char *mac, char **ifname,
 			 int server, int mrg_rxbuf, int in_order,
 			 int packed_vq,

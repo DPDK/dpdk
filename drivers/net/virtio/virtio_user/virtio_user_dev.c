@@ -553,7 +553,7 @@ destroy:
 	 1ULL << VIRTIO_F_RING_PACKED)
 
 int
-virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
+virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 		     int cq, int queue_size, const char *mac, char **ifname,
 		     int server, int mrg_rxbuf, int in_order, int packed_vq,
 		     enum virtio_user_backend_type backend_type)
