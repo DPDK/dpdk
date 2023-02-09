@@ -90,10 +90,15 @@ virtio_user_set_status(struct virtio_hw *hw, uint8_t status)
 	if (status & VIRTIO_CONFIG_STATUS_FEATURES_OK &&
 			~old_status & VIRTIO_CONFIG_STATUS_FEATURES_OK)
 		virtio_user_dev_set_features(dev);
-	if (status & VIRTIO_CONFIG_STATUS_DRIVER_OK)
-		virtio_user_start_device(dev);
-	else if (status == VIRTIO_CONFIG_STATUS_RESET)
+
+	if (status & VIRTIO_CONFIG_STATUS_DRIVER_OK) {
+		if (virtio_user_start_device(dev)) {
+			virtio_user_dev_update_status(dev);
+			return;
+		}
+	} else if (status == VIRTIO_CONFIG_STATUS_RESET) {
 		virtio_user_reset(hw);
+	}
 
 	virtio_user_dev_set_status(dev, status);
 }
