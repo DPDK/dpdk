@@ -66,6 +66,18 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 		.flags = 0, /* disable log */
 	};
 
+	if (queue_sel == dev->max_queue_pairs * 2) {
+		if (!dev->scvq) {
+			PMD_INIT_LOG(ERR, "(%s) Shadow control queue expected but missing",
+					dev->path);
+			goto err;
+		}
+
+		/* Use shadow control queue information */
+		vring = &dev->scvq->vq_split.ring;
+		pq_vring = &dev->scvq->vq_packed.ring;
+	}
+
 	if (dev->features & (1ULL << VIRTIO_F_RING_PACKED)) {
 		addr.desc_user_addr =
 			(uint64_t)(uintptr_t)pq_vring->desc;
@@ -118,9 +130,13 @@ static int
 virtio_user_queue_setup(struct virtio_user_dev *dev,
 			int (*fn)(struct virtio_user_dev *, uint32_t))
 {
-	uint32_t i;
+	uint32_t i, nr_vq;
 
-	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
+	nr_vq = dev->max_queue_pairs * 2;
+	if (dev->hw_cvq)
+		nr_vq++;
+
+	for (i = 0; i < nr_vq; i++) {
 		if (fn(dev, i) < 0) {
 			PMD_DRV_LOG(ERR, "(%s) setup VQ %u failed", dev->path, i);
 			return -1;
@@ -381,11 +397,15 @@ out:
 static int
 virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 {
-	uint32_t i, j;
+	uint32_t i, j, nr_vq;
 	int callfd;
 	int kickfd;
 
-	for (i = 0; i < dev->max_queue_pairs * 2; i++) {
+	nr_vq = dev->max_queue_pairs * 2;
+	if (dev->hw_cvq)
+		nr_vq++;
+
+	for (i = 0; i < nr_vq; i++) {
 		/* May use invalid flag, but some backend uses kickfd and
 		 * callfd as criteria to judge if dev is alive. so finally we
 		 * use real event_fd.
