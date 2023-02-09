@@ -253,6 +253,50 @@ err:
 	return -1;
 }
 
+static int
+virtio_user_dev_init_max_queue_pairs(struct virtio_user_dev *dev, uint32_t user_max_qp)
+{
+	int ret;
+
+	if (!(dev->device_features & (1ULL << VIRTIO_NET_F_MQ))) {
+		dev->max_queue_pairs = 1;
+		return 0;
+	}
+
+	if (!dev->ops->get_config) {
+		dev->max_queue_pairs = user_max_qp;
+		return 0;
+	}
+
+	ret = dev->ops->get_config(dev, (uint8_t *)&dev->max_queue_pairs,
+			offsetof(struct virtio_net_config, max_virtqueue_pairs),
+			sizeof(uint16_t));
+	if (ret) {
+		/*
+		 * We need to know the max queue pair from the device so that
+		 * the control queue gets the right index.
+		 */
+		dev->max_queue_pairs = 1;
+		PMD_DRV_LOG(ERR, "(%s) Failed to get max queue pairs from device", dev->path);
+
+		return ret;
+	}
+
+	if (dev->max_queue_pairs > VIRTIO_MAX_VIRTQUEUE_PAIRS) {
+		/*
+		 * If the device supports control queue, the control queue
+		 * index is max_virtqueue_pairs * 2. Disable MQ if it happens.
+		 */
+		PMD_DRV_LOG(ERR, "(%s) Device advertises too many queues (%u, max supported %u)",
+				dev->path, dev->max_queue_pairs, VIRTIO_MAX_VIRTQUEUE_PAIRS);
+		dev->max_queue_pairs = 1;
+
+		return -1;
+	}
+
+	return 0;
+}
+
 int
 virtio_user_dev_set_mac(struct virtio_user_dev *dev)
 {
@@ -511,24 +555,7 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 		return -1;
 	}
 
-	if (virtio_user_dev_init_notify(dev) < 0) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to init notifiers", dev->path);
-		goto destroy;
-	}
-
-	if (virtio_user_fill_intr_handle(dev) < 0) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to init interrupt handler", dev->path);
-		goto uninit;
-	}
-
 	return 0;
-
-uninit:
-	virtio_user_dev_uninit_notify(dev);
-destroy:
-	dev->ops->destroy(dev);
-
-	return -1;
 }
 
 /* Use below macro to filter features from vhost backend */
@@ -570,7 +597,6 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 	}
 
 	dev->started = 0;
-	dev->max_queue_pairs = queues;
 	dev->queue_pairs = 1; /* mq disabled by default */
 	dev->queue_size = queue_size;
 	dev->is_server = server;
@@ -591,22 +617,38 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 
 	if (dev->ops->set_owner(dev) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to set backend owner", dev->path);
-		return -1;
+		goto destroy;
 	}
 
 	if (dev->ops->get_backend_features(&backend_features) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to get backend features", dev->path);
-		return -1;
+		goto destroy;
 	}
 
 	dev->unsupported_features = ~(VIRTIO_USER_SUPPORTED_FEATURES | backend_features);
 
 	if (dev->ops->get_features(dev, &dev->device_features) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to get device features", dev->path);
-		return -1;
+		goto destroy;
 	}
 
 	virtio_user_dev_init_mac(dev, mac);
+
+	if (virtio_user_dev_init_max_queue_pairs(dev, queues))
+		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MQ);
+
+	if (dev->max_queue_pairs > 1)
+		cq = 1;
+
+	if (virtio_user_dev_init_notify(dev) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to init notifiers", dev->path);
+		goto destroy;
+	}
+
+	if (virtio_user_fill_intr_handle(dev) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to init interrupt handler", dev->path);
+		goto notify_uninit;
+	}
 
 	if (!mrg_rxbuf)
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MRG_RXBUF);
@@ -651,11 +693,18 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 		if (rte_errno != ENOTSUP) {
 			PMD_INIT_LOG(ERR, "(%s) Failed to register mem event callback",
 					dev->path);
-			return -1;
+			goto notify_uninit;
 		}
 	}
 
 	return 0;
+
+notify_uninit:
+	virtio_user_dev_uninit_notify(dev);
+destroy:
+	dev->ops->destroy(dev);
+
+	return -1;
 }
 
 void

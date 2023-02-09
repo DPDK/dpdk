@@ -595,8 +595,6 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 				     VIRTIO_USER_ARG_CQ_NUM);
 			goto end;
 		}
-	} else if (queues > 1) {
-		cq = 1;
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_PACKED_VQ) == 1) {
@@ -615,11 +613,6 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 				     VIRTIO_USER_ARG_VECTORIZED);
 			goto end;
 		}
-	}
-
-	if (queues > 1 && cq == 0) {
-		PMD_INIT_LOG(ERR, "multi-q requires ctrl-q");
-		goto end;
 	}
 
 	if (queues > VIRTIO_MAX_VIRTQUEUE_PAIRS) {
