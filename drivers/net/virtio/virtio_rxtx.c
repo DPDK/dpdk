@@ -831,7 +831,6 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
 
 	txvq = &vq->txq;
-	txvq->queue_id = queue_idx;
 
 	tx_free_thresh = tx_conf->tx_free_thresh;
 	if (tx_free_thresh == 0)
