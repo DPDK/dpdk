@@ -135,8 +135,8 @@ vhost_vdpa_get_features(struct virtio_user_dev *dev, uint64_t *features)
 		return -1;
 	}
 
-	/* Multiqueue not supported for now */
-	*features &= ~(1ULL << VIRTIO_NET_F_MQ);
+	if (*features & 1ULL << VIRTIO_NET_F_CTRL_VQ)
+		dev->hw_cvq = true;
 
 	/* Negotiated vDPA backend features */
 	ret = vhost_vdpa_get_protocol_features(dev, &data->protocol_features);
