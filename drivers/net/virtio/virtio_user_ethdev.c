@@ -232,6 +232,9 @@ virtio_user_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	else
 		virtio_user_setup_queue_split(vq, dev);
 
+	if (dev->hw_cvq && hw->cvq && (virtnet_cq_to_vq(hw->cvq) == vq))
+		return virtio_user_dev_create_shadow_cvq(dev, vq);
+
 	return 0;
 }
 
@@ -251,6 +254,9 @@ virtio_user_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 
 	close(dev->callfds[vq->vq_queue_index]);
 	close(dev->kickfds[vq->vq_queue_index]);
+
+	if (hw->cvq && (virtnet_cq_to_vq(hw->cvq) == vq))
+		virtio_user_dev_destroy_shadow_cvq(dev);
 }
 
 static void

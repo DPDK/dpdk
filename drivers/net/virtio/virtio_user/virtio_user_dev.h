@@ -58,6 +58,9 @@ struct virtio_user_dev {
 	pthread_mutex_t	mutex;
 	bool		started;
 
+	bool			hw_cvq;
+	struct virtqueue	*scvq;
+
 	void *backend_data;
 };
 
@@ -74,6 +77,8 @@ void virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx);
 void virtio_user_handle_cq_packed(struct virtio_user_dev *dev,
 				  uint16_t queue_idx);
 uint8_t virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs);
+int virtio_user_dev_create_shadow_cvq(struct virtio_user_dev *dev, struct virtqueue *vq);
+void virtio_user_dev_destroy_shadow_cvq(struct virtio_user_dev *dev);
 int virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status);
 int virtio_user_dev_update_status(struct virtio_user_dev *dev);
 int virtio_user_dev_update_link_state(struct virtio_user_dev *dev);

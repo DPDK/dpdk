@@ -146,8 +146,9 @@ virtio_user_dev_set_features(struct virtio_user_dev *dev)
 
 	/* Strip VIRTIO_NET_F_MAC, as MAC address is handled in vdev init */
 	features &= ~(1ull << VIRTIO_NET_F_MAC);
-	/* Strip VIRTIO_NET_F_CTRL_VQ, as devices do not really need to know */
-	features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
+	/* Strip VIRTIO_NET_F_CTRL_VQ if the devices does not really support control VQ */
+	if (!dev->hw_cvq)
+		features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
 	features &= ~(1ull << VIRTIO_NET_F_STATUS);
 	ret = dev->ops->set_features(dev, features);
 	if (ret < 0)
@@ -909,6 +910,48 @@ virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx)
 
 		__atomic_add_fetch(&vring->used->idx, 1, __ATOMIC_RELAXED);
 	}
+}
+
+static void
+virtio_user_control_queue_notify(struct virtqueue *vq, void *cookie)
+{
+	struct virtio_user_dev *dev = cookie;
+	uint64_t buf = 1;
+
+	if (write(dev->kickfds[vq->vq_queue_index], &buf, sizeof(buf)) < 0)
+		PMD_DRV_LOG(ERR, "failed to kick backend: %s",
+			    strerror(errno));
+}
+
+int
+virtio_user_dev_create_shadow_cvq(struct virtio_user_dev *dev, struct virtqueue *vq)
+{
+	char name[VIRTQUEUE_MAX_NAME_SZ];
+	struct virtqueue *scvq;
+
+	snprintf(name, sizeof(name), "port%d_shadow_cvq", vq->hw->port_id);
+	scvq = virtqueue_alloc(&dev->hw, vq->vq_queue_index, vq->vq_nentries,
+			VTNET_CQ, SOCKET_ID_ANY, name);
+	if (!scvq) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to alloc shadow control vq\n", dev->path);
+		return -ENOMEM;
+	}
+
+	scvq->cq.notify_queue = &virtio_user_control_queue_notify;
+	scvq->cq.notify_cookie = dev;
+	dev->scvq = scvq;
+
+	return 0;
+}
+
+void
+virtio_user_dev_destroy_shadow_cvq(struct virtio_user_dev *dev)
+{
+	if (!dev->scvq)
+		return;
+
+	virtqueue_free(dev->scvq);
+	dev->scvq = NULL;
 }
 
 int
