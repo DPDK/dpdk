@@ -17,6 +17,7 @@
 #include <rte_timer.h>
 #include <rte_service_component.h>
 #include <rte_telemetry.h>
+#include <rte_reciprocal.h>
 
 #include "event_timer_adapter_pmd.h"
 #include "eventdev_pmd.h"
@@ -699,13 +700,51 @@ swtim_callback(struct rte_timer *tim)
 	}
 }
 
-static __rte_always_inline uint64_t
+static __rte_always_inline int
 get_timeout_cycles(struct rte_event_timer *evtim,
-		   const struct rte_event_timer_adapter *adapter)
+		   const struct rte_event_timer_adapter *adapter,
+		   uint64_t *timeout_cycles)
 {
-	struct swtim *sw = swtim_pmd_priv(adapter);
-	uint64_t timeout_ns = evtim->timeout_ticks * sw->timer_tick_ns;
-	return timeout_ns * rte_get_timer_hz() / NSECPERSEC;
+	static struct rte_reciprocal_u64 nsecpersec_inverse;
+	static uint64_t timer_hz;
+	uint64_t rem_cycles, secs_cycles = 0;
+	uint64_t secs, timeout_nsecs;
+	uint64_t nsecpersec;
+	struct swtim *sw;
+
+	sw = swtim_pmd_priv(adapter);
+	nsecpersec = (uint64_t)NSECPERSEC;
+
+	timeout_nsecs = evtim->timeout_ticks * sw->timer_tick_ns;
+	if (timeout_nsecs > sw->max_tmo_ns)
+		return -1;
+	if (timeout_nsecs < sw->timer_tick_ns)
+		return -2;
+
+	/* Set these values in the first invocation */
+	if (!timer_hz) {
+		timer_hz = rte_get_timer_hz();
+		nsecpersec_inverse = rte_reciprocal_value_u64(nsecpersec);
+	}
+
+	/* If timeout_nsecs > nsecpersec, decrease timeout_nsecs by the number
+	 * of whole seconds it contains and convert that value to a number
+	 * of cycles. This keeps timeout_nsecs in the interval [0..nsecpersec)
+	 * in order to avoid overflow when we later multiply by timer_hz.
+	 */
+	if (timeout_nsecs > nsecpersec) {
+		secs = rte_reciprocal_divide_u64(timeout_nsecs,
+						 &nsecpersec_inverse);
+		secs_cycles = secs * timer_hz;
+		timeout_nsecs -= secs * nsecpersec;
+	}
+
+	rem_cycles = rte_reciprocal_divide_u64(timeout_nsecs * timer_hz,
+					       &nsecpersec_inverse);
+
+	*timeout_cycles = secs_cycles + rem_cycles;
+
+	return 0;
 }
 
 /* This function returns true if one or more (adapter) ticks have occurred since
@@ -737,23 +776,6 @@ swtim_did_tick(struct swtim *sw)
 	}
 
 	return false;
-}
-
-/* Check that event timer timeout value is in range */
-static __rte_always_inline int
-check_timeout(struct rte_event_timer *evtim,
-	      const struct rte_event_timer_adapter *adapter)
-{
-	uint64_t tmo_nsec;
-	struct swtim *sw = swtim_pmd_priv(adapter);
-
-	tmo_nsec = evtim->timeout_ticks * sw->timer_tick_ns;
-	if (tmo_nsec > sw->max_tmo_ns)
-		return -1;
-	if (tmo_nsec < sw->timer_tick_ns)
-		return -2;
-
-	return 0;
 }
 
 /* Check that event timer event queue sched type matches destination event queue
@@ -1140,21 +1162,6 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 			break;
 		}
 
-		ret = check_timeout(evtims[i], adapter);
-		if (unlikely(ret == -1)) {
-			__atomic_store_n(&evtims[i]->state,
-					RTE_EVENT_TIMER_ERROR_TOOLATE,
-					__ATOMIC_RELAXED);
-			rte_errno = EINVAL;
-			break;
-		} else if (unlikely(ret == -2)) {
-			__atomic_store_n(&evtims[i]->state,
-					RTE_EVENT_TIMER_ERROR_TOOEARLY,
-					__ATOMIC_RELAXED);
-			rte_errno = EINVAL;
-			break;
-		}
-
 		if (unlikely(check_destination_event_queue(evtims[i],
 							   adapter) < 0)) {
 			__atomic_store_n(&evtims[i]->state,
@@ -1170,7 +1177,21 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 		evtims[i]->impl_opaque[0] = (uintptr_t)tim;
 		evtims[i]->impl_opaque[1] = (uintptr_t)adapter;
 
-		cycles = get_timeout_cycles(evtims[i], adapter);
+		ret = get_timeout_cycles(evtims[i], adapter, &cycles);
+		if (unlikely(ret == -1)) {
+			__atomic_store_n(&evtims[i]->state,
+					RTE_EVENT_TIMER_ERROR_TOOLATE,
+					__ATOMIC_RELAXED);
+			rte_errno = EINVAL;
+			break;
+		} else if (unlikely(ret == -2)) {
+			__atomic_store_n(&evtims[i]->state,
+					RTE_EVENT_TIMER_ERROR_TOOEARLY,
+					__ATOMIC_RELAXED);
+			rte_errno = EINVAL;
+			break;
+		}
+
 		ret = rte_timer_alt_reset(sw->timer_data_id, tim, cycles,
 					  type, lcore_id, NULL, evtims[i]);
 		if (ret < 0) {
