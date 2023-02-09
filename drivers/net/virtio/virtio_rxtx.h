@@ -23,8 +23,6 @@ struct virtnet_rx {
 	uint64_t mbuf_initializer; /**< value to init mbufs. */
 	struct rte_mempool *mpool; /**< mempool for mbuf allocation */
 
-	uint16_t queue_id;   /**< DPDK queue index. */
-
 	/* Statistics */
 	struct virtnet_stats stats;
 

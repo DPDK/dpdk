@@ -703,7 +703,6 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
 
 	rxvq = &vq->rxq;
-	rxvq->queue_id = queue_idx;
 	rxvq->mpool = mp;
 	dev->data->rx_queues[queue_idx] = rxvq;
 
