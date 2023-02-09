@@ -570,11 +570,72 @@ handle_lcore_info(const char *cmd __rte_unused, const char *params, struct rte_t
 	return rte_lcore_iterate(lcore_telemetry_info_cb, &info);
 }
 
+struct lcore_telemetry_usage {
+	struct rte_tel_data *lcore_ids;
+	struct rte_tel_data *total_cycles;
+	struct rte_tel_data *busy_cycles;
+};
+
+static int
+lcore_telemetry_usage_cb(unsigned int lcore_id, void *arg)
+{
+	struct lcore_telemetry_usage *u = arg;
+	struct rte_lcore_usage usage;
+	rte_lcore_usage_cb usage_cb;
+
+	/* The callback may not set all the fields in the structure, so clear it here. */
+	memset(&usage, 0, sizeof(usage));
+	/* Guard against concurrent modification of lcore_usage_cb. */
+	usage_cb = lcore_usage_cb;
+	if (usage_cb != NULL && usage_cb(lcore_id, &usage) == 0) {
+		rte_tel_data_add_array_uint(u->lcore_ids, lcore_id);
+		rte_tel_data_add_array_uint(u->total_cycles, usage.total_cycles);
+		rte_tel_data_add_array_uint(u->busy_cycles, usage.busy_cycles);
+	}
+
+	return 0;
+}
+
+static int
+handle_lcore_usage(const char *cmd __rte_unused, const char *params __rte_unused,
+	struct rte_tel_data *d)
+{
+	struct lcore_telemetry_usage usage;
+	struct rte_tel_data *total_cycles;
+	struct rte_tel_data *busy_cycles;
+	struct rte_tel_data *lcore_ids;
+
+	lcore_ids = rte_tel_data_alloc();
+	total_cycles = rte_tel_data_alloc();
+	busy_cycles = rte_tel_data_alloc();
+	if (lcore_ids == NULL || total_cycles == NULL || busy_cycles == NULL) {
+		rte_tel_data_free(lcore_ids);
+		rte_tel_data_free(total_cycles);
+		rte_tel_data_free(busy_cycles);
+		return -ENOMEM;
+	}
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_start_array(lcore_ids, RTE_TEL_UINT_VAL);
+	rte_tel_data_start_array(total_cycles, RTE_TEL_UINT_VAL);
+	rte_tel_data_start_array(busy_cycles, RTE_TEL_UINT_VAL);
+	rte_tel_data_add_dict_container(d, "lcore_ids", lcore_ids, 0);
+	rte_tel_data_add_dict_container(d, "total_cycles", total_cycles, 0);
+	rte_tel_data_add_dict_container(d, "busy_cycles", busy_cycles, 0);
+	usage.lcore_ids = lcore_ids;
+	usage.total_cycles = total_cycles;
+	usage.busy_cycles = busy_cycles;
+
+	return rte_lcore_iterate(lcore_telemetry_usage_cb, &usage);
+}
+
 RTE_INIT(lcore_telemetry)
 {
 	rte_telemetry_register_cmd("/eal/lcore/list", handle_lcore_list,
 		"List of lcore ids. Takes no parameters");
 	rte_telemetry_register_cmd("/eal/lcore/info", handle_lcore_info,
 		"Returns lcore info. Parameters: int lcore_id");
+	rte_telemetry_register_cmd("/eal/lcore/usage", handle_lcore_usage,
+		"Returns lcore cycles usage. Takes no parameters");
 }
 #endif /* !RTE_EXEC_ENV_WINDOWS */

@@ -62,8 +62,9 @@ New Features
 
 * **Added support for reporting lcore usage in applications.**
 
-  * The ``/eal/lcore/list`` and ``/eal/lcore/info`` telemetry endpoints have
-    been added to provide information similar to ``rte_lcore_dump()``.
+  * The ``/eal/lcore/list``, ``/eal/lcore/usage`` and ``/eal/lcore/info``
+    telemetry endpoints have been added to provide information similar to
+    ``rte_lcore_dump()``.
   * Applications can register a callback at startup via
     ``rte_lcore_register_usage_cb()`` to provide lcore usage information.
 
