@@ -125,6 +125,8 @@ enum rte_pcapng_direction {
  *   The timestamp in TSC cycles.
  * @param direction
  *   The direction of the packer: receive, transmit or unknown.
+ * @param comment
+ *   Packet comment.
  *
  * @return
  *   - The pointer to the new mbuf formatted for pcapng_write
@@ -136,7 +138,7 @@ struct rte_mbuf *
 rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		const struct rte_mbuf *m, struct rte_mempool *mp,
 		uint32_t length, uint64_t timestamp,
-		enum rte_pcapng_direction direction);
+		enum rte_pcapng_direction direction, const char *comment);
 
 
 /**

@@ -122,7 +122,7 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 		if (cbs->ver == V2)
 			p = rte_pcapng_copy(port_id, queue,
 					    pkts[i], mp, cbs->snaplen,
-					    ts, direction);
+					    ts, direction, NULL);
 		else
 			p = rte_pktmbuf_copy(pkts[i], mp, 0, cbs->snaplen);
 

@@ -466,7 +466,8 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		const struct rte_mbuf *md,
 		struct rte_mempool *mp,
 		uint32_t length, uint64_t cycles,
-		enum rte_pcapng_direction direction)
+		enum rte_pcapng_direction direction,
+		const char *comment)
 {
 	struct pcapng_enhance_packet_block *epb;
 	uint32_t orig_len, data_len, padding, flags;
@@ -527,6 +528,9 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 	if (rss_hash)
 		optlen += pcapng_optlen(sizeof(uint8_t) + sizeof(uint32_t));
 
+	if (comment)
+		optlen += pcapng_optlen(strlen(comment));
+
 	/* reserve trailing options and block length */
 	opt = (struct pcapng_option *)
 		rte_pktmbuf_append(mc, optlen + sizeof(uint32_t));
@@ -563,6 +567,10 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		opt = pcapng_add_option(opt, PCAPNG_EPB_HASH,
 					&hash_opt, sizeof(hash_opt));
 	}
+
+	if (comment)
+		opt = pcapng_add_option(opt, PCAPNG_OPT_COMMENT, comment,
+					strlen(comment));
 
 	/* Note: END_OPT necessary here. Wireshark doesn't do it. */
 

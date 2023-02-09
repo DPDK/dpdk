@@ -146,7 +146,7 @@ test_write_packets(void)
 		struct rte_mbuf *mc;
 
 		mc = rte_pcapng_copy(port_id, 0, orig, mp, pkt_len,
-				rte_get_tsc_cycles(), 0);
+				rte_get_tsc_cycles(), 0, NULL);
 		if (mc == NULL) {
 			fprintf(stderr, "Cannot copy packet\n");
 			return -1;
@@ -262,7 +262,7 @@ test_write_over_limit_iov_max(void)
 		struct rte_mbuf *mc;
 
 		mc = rte_pcapng_copy(port_id, 0, orig, mp, pkt_len,
-				rte_get_tsc_cycles(), 0);
+				rte_get_tsc_cycles(), 0, NULL);
 		if (mc == NULL) {
 			fprintf(stderr, "Cannot copy packet\n");
 			return -1;
