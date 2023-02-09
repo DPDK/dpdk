@@ -8357,6 +8357,8 @@ static void cmd_dump_parsed(void *parsed_result,
 		rte_mempool_list_dump(stdout);
 	else if (!strcmp(res->dump, "dump_devargs"))
 		rte_devargs_dump(stdout);
+	else if (!strcmp(res->dump, "dump_lcores"))
+		rte_lcore_dump(stdout);
 	else if (!strcmp(res->dump, "dump_log_types"))
 		rte_log_dump(stdout);
 }
@@ -8370,6 +8372,7 @@ static cmdline_parse_token_string_t cmd_dump_dump =
 		"dump_ring#"
 		"dump_mempool#"
 		"dump_devargs#"
+		"dump_lcores#"
 		"dump_log_types");
 
 static cmdline_parse_inst_t cmd_dump = {

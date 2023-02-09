@@ -591,6 +591,13 @@ Dumps the user device list::
 
    testpmd> dump_devargs
 
+dump lcores
+~~~~~~~~~~~
+
+Dumps the logical cores list::
+
+   testpmd> dump_lcores
+
 dump log types
 ~~~~~~~~~~~~~~
 
