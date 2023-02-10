@@ -1380,8 +1380,13 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			/* By default set the channel and mask to cover
 			 * the whole SDP channel range.
 			 */
-			npc->sdp_channel = (uint16_t)NIX_CHAN_SDP_CH_START;
-			npc->sdp_channel_mask = (uint16_t)NIX_CHAN_SDP_CH_START;
+			if (roc_model_is_cn10k()) {
+				npc->sdp_channel = (uint16_t)CN10K_SDP_CH_START;
+				npc->sdp_channel_mask = (uint16_t)CN10K_SDP_CH_MASK;
+			} else {
+				npc->sdp_channel = (uint16_t)NIX_CHAN_SDP_CH_START;
+				npc->sdp_channel_mask = (uint16_t)NIX_CHAN_SDP_CH_START;
+			}
 		}
 	}
 
