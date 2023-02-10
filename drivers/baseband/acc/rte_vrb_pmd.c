@@ -586,6 +586,14 @@ vrb_intr_enable(struct rte_bbdev *dev)
 {
 	int ret;
 	struct acc_device *d = dev->data->dev_private;
+
+	if (d->device_variant == VRB1_VARIANT) {
+		/* On VRB1: cannot enable MSI/IR to avoid potential back-pressure corner case. */
+		rte_bbdev_log(ERR, "VRB1 (%s) doesn't support any MSI/MSI-X interrupt\n",
+				dev->data->name);
+		return -ENOTSUP;
+	}
+
 	/*
 	 * MSI/MSI-X are supported.
 	 * Option controlled by vfio-intr through EAL parameter.
