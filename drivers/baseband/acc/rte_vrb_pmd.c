@@ -1199,15 +1199,12 @@ vrb_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 	fcw->bypass_sb_deint = !check_bit(op->turbo_dec.op_flags,
 			RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE);
 	if (op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
-		/* FIXME for TB block */
+		fcw->c = op->turbo_dec.tb_params.c;
 		fcw->k_pos = op->turbo_dec.tb_params.k_pos;
-		fcw->k_neg = op->turbo_dec.tb_params.k_neg;
 	} else {
+		fcw->c = 1;
 		fcw->k_pos = op->turbo_dec.cb_params.k;
-		fcw->k_neg = op->turbo_dec.cb_params.k;
 	}
-	fcw->c = 1;
-	fcw->c_neg = 1;
 	if (check_bit(op->turbo_dec.op_flags, RTE_BBDEV_TURBO_SOFT_OUTPUT)) {
 		fcw->soft_output_en = 1;
 		fcw->sw_soft_out_dis = 0;
@@ -1218,8 +1215,14 @@ vrb_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 		if (check_bit(op->turbo_dec.op_flags,
 				RTE_BBDEV_TURBO_EQUALIZER)) {
 			fcw->bypass_teq = 0;
-			fcw->ea = op->turbo_dec.cb_params.e;
-			fcw->eb = op->turbo_dec.cb_params.e;
+			if (op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
+				fcw->cab = op->turbo_dec.tb_params.cab;
+				fcw->ea = op->turbo_dec.tb_params.ea;
+				fcw->eb = op->turbo_dec.tb_params.eb;
+			} else {
+				fcw->ea = op->turbo_dec.cb_params.e;
+				fcw->eb = op->turbo_dec.cb_params.e;
+			}
 			if (op->turbo_dec.rv_index == 0)
 				fcw->k0_start_col = ACC_FCW_TD_RVIDX_0;
 			else if (op->turbo_dec.rv_index == 1)
@@ -1396,9 +1399,7 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	desc->numCBs = 1;
 
 	if (op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
-		k = (r < op->turbo_dec.tb_params.c_neg)
-			? op->turbo_dec.tb_params.k_neg
-			: op->turbo_dec.tb_params.k_pos;
+		k = op->turbo_dec.tb_params.k_pos;
 		e = (r < op->turbo_dec.tb_params.cab)
 			? op->turbo_dec.tb_params.ea
 			: op->turbo_dec.tb_params.eb;
