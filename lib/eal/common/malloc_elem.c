@@ -367,11 +367,11 @@ prev_elem_is_adjacent(struct malloc_elem *elem)
  * containing larger elements.
  *
  * Example element size ranges for a heap with five free lists:
- *   heap->free_head[0] - (0   , 2^8]
- *   heap->free_head[1] - (2^8 , 2^10]
- *   heap->free_head[2] - (2^10 ,2^12]
- *   heap->free_head[3] - (2^12, 2^14]
- *   heap->free_head[4] - (2^14, MAX_SIZE]
+ *   heap->free_head[0] - (0   , 2^8)
+ *   heap->free_head[1] - [2^8 , 2^10)
+ *   heap->free_head[2] - [2^10 ,2^12)
+ *   heap->free_head[3] - [2^12, 2^14)
+ *   heap->free_head[4] - [2^14, MAX_SIZE]
  */
 size_t
 malloc_elem_free_list_index(size_t size)
@@ -385,8 +385,8 @@ malloc_elem_free_list_index(size_t size)
 	if (size <= (1UL << MALLOC_MINSIZE_LOG2))
 		return 0;
 
-	/* Find next power of 2 >= size. */
-	log2 = sizeof(size) * 8 - __builtin_clzl(size - 1);
+	/* Find next power of 2 > size. */
+	log2 = sizeof(size) * 8 - __builtin_clzl(size);
 
 	/* Compute freelist index, based on log2(size). */
 	index = (log2 - MALLOC_MINSIZE_LOG2 + MALLOC_LOG2_INCREMENT - 1) /
