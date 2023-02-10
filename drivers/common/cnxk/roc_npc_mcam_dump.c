@@ -73,43 +73,93 @@ static const char *const ltype_str[NPC_MAX_LID][NPC_MAX_LT] = {
 	[NPC_LID_LA][NPC_LT_LA_CPT_HDR] = "LA_CPT_HDR",
 	[NPC_LID_LA][NPC_LT_LA_CUSTOM_L2_24B_ETHER] = "LA_CUSTOM_L2_24B_ETHER",
 	[NPC_LID_LA][NPC_LT_LA_CUSTOM_PRE_L2_ETHER] = "NPC_LT_LA_CUSTOM_PRE_L2_ETHER",
+	[NPC_LID_LA][NPC_LT_LA_CUSTOM0] = "NPC_LT_LA_CUSTOM0",
+	[NPC_LID_LA][NPC_LT_LA_CUSTOM1] = "NPC_LT_LA_CUSTOM1",
 	[NPC_LID_LB][0] = "NONE",
+	[NPC_LID_LB][NPC_LT_LB_ETAG] = "LB_ETAG",
 	[NPC_LID_LB][NPC_LT_LB_CTAG] = "LB_CTAG",
 	[NPC_LID_LB][NPC_LT_LB_STAG_QINQ] = "LB_STAG_QINQ",
-	[NPC_LID_LB][NPC_LT_LB_ETAG] = "LB_ETAG",
+	[NPC_LID_LB][NPC_LT_LB_BTAG] = "LB_BTAG",
+	[NPC_LID_LB][NPC_LT_LB_PPPOE] = "LB_PPPOE",
+	[NPC_LID_LB][NPC_LT_LB_DSA] = "LB_DSA",
+	[NPC_LID_LB][NPC_LT_LB_DSA_VLAN] = "LB_DSA_VLAN",
+	[NPC_LID_LB][NPC_LT_LB_EDSA] = "LB_EDSA",
+	[NPC_LID_LB][NPC_LT_LB_EDSA_VLAN] = "LB_EDSA_VLAN",
 	[NPC_LID_LB][NPC_LT_LB_EXDSA] = "LB_EXDSA",
+	[NPC_LID_LB][NPC_LT_LB_EXDSA_VLAN] = "LB_EXDSA_VLAN",
+	[NPC_LID_LB][NPC_LT_LB_FDSA] = "LB_FDSA",
 	[NPC_LID_LB][NPC_LT_LB_VLAN_EXDSA] = "LB_VLAN_EXDSA",
+	[NPC_LID_LB][NPC_LT_LB_CUSTOM0] = "LB_CUSTOM0",
+	[NPC_LID_LB][NPC_LT_LB_CUSTOM1] = "LB_CUSTOM1",
 	[NPC_LID_LC][0] = "NONE",
+	[NPC_LID_LC][NPC_LT_LC_PTP] = "LC_PTP",
 	[NPC_LID_LC][NPC_LT_LC_IP] = "LC_IP",
+	[NPC_LID_LC][NPC_LT_LC_IP_OPT] = "LC_IP_OPT",
 	[NPC_LID_LC][NPC_LT_LC_IP6] = "LC_IP6",
-	[NPC_LID_LC][NPC_LT_LC_ARP] = "LC_ARP",
 	[NPC_LID_LC][NPC_LT_LC_IP6_EXT] = "LC_IP6_EXT",
+	[NPC_LID_LC][NPC_LT_LC_ARP] = "LC_ARP",
+	[NPC_LID_LC][NPC_LT_LC_RARP] = "LC_RARP",
+	[NPC_LID_LC][NPC_LT_LC_MPLS] = "LC_MPLS",
+	[NPC_LID_LC][NPC_LT_LC_NSH] = "LC_NSH",
+	[NPC_LID_LC][NPC_LT_LC_FCOE] = "LC_FCOE",
 	[NPC_LID_LC][NPC_LT_LC_NGIO] = "LC_NGIO",
+	[NPC_LID_LC][NPC_LT_LC_CUSTOM0] = "LC_CUSTOM0",
+	[NPC_LID_LC][NPC_LT_LC_CUSTOM1] = "LC_CUSTOM1",
 	[NPC_LID_LD][0] = "NONE",
-	[NPC_LID_LD][NPC_LT_LD_ICMP] = "LD_ICMP",
-	[NPC_LID_LD][NPC_LT_LD_ICMP6] = "LD_ICMP6",
-	[NPC_LID_LD][NPC_LT_LD_UDP] = "LD_UDP",
 	[NPC_LID_LD][NPC_LT_LD_TCP] = "LD_TCP",
+	[NPC_LID_LD][NPC_LT_LD_UDP] = "LD_UDP",
 	[NPC_LID_LD][NPC_LT_LD_SCTP] = "LD_SCTP",
+	[NPC_LID_LD][NPC_LT_LD_ICMP6] = "LD_ICMP6",
+	[NPC_LID_LD][NPC_LT_LD_CUSTOM0] = "LD_CUSTOM0",
+	[NPC_LID_LD][NPC_LT_LD_CUSTOM1] = "LD_CUSTOM1",
+	[NPC_LID_LD][NPC_LT_LD_IGMP] = "LD_IGMP",
+	[NPC_LID_LD][NPC_LT_LD_AH] = "LD_AH",
 	[NPC_LID_LD][NPC_LT_LD_GRE] = "LD_GRE",
 	[NPC_LID_LD][NPC_LT_LD_NVGRE] = "LD_NVGRE",
+	[NPC_LID_LD][NPC_LT_LD_NSH] = "LD_NSH",
+	[NPC_LID_LD][NPC_LT_LD_TU_MPLS_IN_NSH] = "LD_TU_MPLS_IN_NSH",
+	[NPC_LID_LD][NPC_LT_LD_TU_MPLS_IN_IP] = "LD_TU_MPLS_IN_IP",
+	[NPC_LID_LD][NPC_LT_LD_ICMP] = "LD_ICMP",
 	[NPC_LID_LE][0] = "NONE",
 	[NPC_LID_LE][NPC_LT_LE_VXLAN] = "LE_VXLAN",
-	[NPC_LID_LE][NPC_LT_LE_ESP] = "LE_ESP",
-	[NPC_LID_LE][NPC_LT_LE_GTPC] = "LE_GTPC",
-	[NPC_LID_LE][NPC_LT_LE_GTPU] = "LE_GTPU",
 	[NPC_LID_LE][NPC_LT_LE_GENEVE] = "LE_GENEVE",
+	[NPC_LID_LE][NPC_LT_LE_ESP] = "LE_ESP",
+	[NPC_LID_LE][NPC_LT_LE_GTPU] = "LE_GTPU",
 	[NPC_LID_LE][NPC_LT_LE_VXLANGPE] = "LE_VXLANGPE",
+	[NPC_LID_LE][NPC_LT_LE_GTPC] = "LE_GTPC",
+	[NPC_LID_LE][NPC_LT_LE_NSH] = "LE_NSH",
+	[NPC_LID_LE][NPC_LT_LE_TU_MPLS_IN_GRE] = "LE_TU_MPLS_IN_GRE",
+	[NPC_LID_LE][NPC_LT_LE_TU_NSH_IN_GRE] = "LE_TU_NSH_IN_GRE",
+	[NPC_LID_LE][NPC_LT_LE_TU_MPLS_IN_UDP] = "LE_TU_MPLS_IN_UDP",
+	[NPC_LID_LE][NPC_LT_LE_CUSTOM0] = "LE_CUSTOM0",
+	[NPC_LID_LE][NPC_LT_LE_CUSTOM1] = "LE_CUSTOM1",
 	[NPC_LID_LF][0] = "NONE",
 	[NPC_LID_LF][NPC_LT_LF_TU_ETHER] = "LF_TU_ETHER",
+	[NPC_LID_LF][NPC_LT_LF_TU_PPP] = "LF_TU_PPP",
+	[NPC_LID_LF][NPC_LT_LF_TU_MPLS_IN_VXLANGPE] = "LF_TU_MPLS_IN_VXLANGPE",
+	[NPC_LID_LF][NPC_LT_LF_TU_NSH_IN_VXLANGPE] = "LF_TU_NSH_IN_VXLANGPE",
+	[NPC_LID_LF][NPC_LT_LF_TU_MPLS_IN_NSH] = "LF_TU_MPLS_IN_NSH",
+	[NPC_LID_LF][NPC_LT_LF_TU_3RD_NSH] = "LF_TU_3RD_NSH",
+	[NPC_LID_LF][NPC_LT_LF_CUSTOM0] = "LF_CUSTOM0",
+	[NPC_LID_LF][NPC_LT_LF_CUSTOM1] = "LF_CUSTOM1",
 	[NPC_LID_LG][0] = "NONE",
 	[NPC_LID_LG][NPC_LT_LG_TU_IP] = "LG_TU_IP",
 	[NPC_LID_LG][NPC_LT_LG_TU_IP6] = "LG_TU_IP6",
+	[NPC_LID_LG][NPC_LT_LG_TU_ARP] = "LG_TU_ARP",
+	[NPC_LID_LG][NPC_LT_LG_TU_ETHER_IN_NSH] = "LG_TU_ETHER_IN_NSH",
+	[NPC_LID_LG][NPC_LT_LG_CUSTOM0] = "LG_CUSTOM0",
+	[NPC_LID_LG][NPC_LT_LG_CUSTOM1] = "LG_CUSTOM1",
 	[NPC_LID_LH][0] = "NONE",
-	[NPC_LID_LH][NPC_LT_LH_TU_UDP] = "LH_TU_UDP",
 	[NPC_LID_LH][NPC_LT_LH_TU_TCP] = "LH_TU_TCP",
+	[NPC_LID_LH][NPC_LT_LH_TU_UDP] = "LH_TU_UDP",
 	[NPC_LID_LH][NPC_LT_LH_TU_SCTP] = "LH_TU_SCTP",
+	[NPC_LID_LH][NPC_LT_LH_TU_ICMP6] = "LH_TU_ICMP6",
+	[NPC_LID_LH][NPC_LT_LH_CUSTOM0] = "LH_CUSTOM0",
+	[NPC_LID_LH][NPC_LT_LH_CUSTOM1] = "LH_CUSTOM1",
+	[NPC_LID_LH][NPC_LT_LH_TU_IGMP] = "LH_TU_IGMP",
 	[NPC_LID_LH][NPC_LT_LH_TU_ESP] = "LH_TU_ESP",
+	[NPC_LID_LH][NPC_LT_LH_TU_AH] = "LH_TU_AH",
+	[NPC_LID_LH][NPC_LT_LH_TU_ICMP] = "LH_TU_ICMP",
 };
 
 static uint16_t
@@ -585,20 +635,71 @@ npc_flow_dump_vtag_action(FILE *file, uint64_t vtag_action, bool is_rx)
 	}
 }
 
-void
-roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
-		       struct roc_npc_flow *flow)
+static void
+npc_flow_hw_mcam_entry_dump(FILE *file, struct npc *npc, struct roc_npc_flow *flow)
 {
-	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	uint64_t mcam_data[ROC_NPC_MAX_MCAM_WIDTH_DWORDS];
+	uint64_t mcam_mask[ROC_NPC_MAX_MCAM_WIDTH_DWORDS];
 	struct npc_mcam_read_entry_req *mcam_read_req;
 	struct npc_mcam_read_entry_rsp *mcam_read_rsp;
+	struct nix_inl_dev *inl_dev = NULL;
+	struct idev_cfg *idev;
+	struct mbox *mbox;
+	int rc = 0, i;
+
+	idev = idev_get_cfg();
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (inl_dev && flow->use_pre_alloc)
+		mbox = inl_dev->dev.mbox;
+	else
+		mbox = npc->mbox;
+
+	mcam_read_req = mbox_alloc_msg_npc_mcam_read_entry(mbox_get(mbox));
+	if (mcam_read_req == NULL) {
+		plt_err("Failed to alloc msg");
+		mbox_put(mbox);
+		return;
+	}
+
+	mcam_read_req->entry = flow->mcam_id;
+	rc = mbox_process_msg(mbox, (void *)&mcam_read_rsp);
+	if (rc) {
+		mbox_put(mbox);
+		plt_err("Failed to fetch MCAM entry:%d", flow->mcam_id);
+		return;
+	}
+
+	mbox_memcpy(mcam_data, mcam_read_rsp->entry_data.kw, sizeof(mcam_data));
+	mbox_memcpy(mcam_mask, mcam_read_rsp->entry_data.kw_mask, sizeof(mcam_data));
+
+	fprintf(file, "HW MCAM Data :\n");
+
+	for (i = 0; i < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; i++) {
+		fprintf(file, "\tDW%d     :%016lX\n", i, mcam_data[i]);
+		fprintf(file, "\tDW%d_Mask:%016lX\n", i, mcam_mask[i]);
+	}
+
+	fprintf(file, "\n");
+	mbox_put(mbox);
+}
+
+void
+roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc, struct roc_npc_flow *flow)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	uint64_t count = 0;
 	bool is_rx = 0;
 	int i, rc = 0;
 
 	fprintf(file, "MCAM Index:%d\n", flow->mcam_id);
 	if (flow->ctr_id != NPC_COUNTER_NONE && flow->use_ctr) {
-		rc = roc_npc_mcam_read_counter(roc_npc, flow->ctr_id, &count);
+		if (flow->use_pre_alloc)
+			rc = roc_npc_inl_mcam_read_counter(flow->ctr_id, &count);
+		else
+			rc = roc_npc_mcam_read_counter(roc_npc, flow->ctr_id, &count);
+
 		if (rc)
 			return;
 		fprintf(file, "Hit count: %" PRIu64 "\n", count);
@@ -622,30 +723,5 @@ roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 		fprintf(file, "\tDW%d_Mask:%016lX\n", i, flow->mcam_mask[i]);
 	}
 
-	mcam_read_req = mbox_alloc_msg_npc_mcam_read_entry(mbox_get(npc->mbox));
-	if (mcam_read_req == NULL) {
-		plt_err("Failed to alloc msg");
-		mbox_put(npc->mbox);
-		return;
-	}
-
-	mcam_read_req->entry = flow->mcam_id;
-	rc = mbox_process_msg(npc->mbox, (void *)&mcam_read_rsp);
-	if (rc) {
-		mbox_put(npc->mbox);
-		plt_err("Failed to fetch MCAM entry:%d", flow->mcam_id);
-		return;
-	}
-
-	fprintf(file, "HW MCAM Data :\n");
-
-	for (i = 0; i < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; i++) {
-		fprintf(file, "\tDW%d     :%016lX\n", i,
-			mcam_read_rsp->entry_data.kw[i]);
-		fprintf(file, "\tDW%d_Mask:%016lX\n", i,
-			mcam_read_rsp->entry_data.kw_mask[i]);
-	}
-
-	fprintf(file, "\n");
-	mbox_put(npc->mbox);
+	npc_flow_hw_mcam_entry_dump(file, npc, flow);
 }

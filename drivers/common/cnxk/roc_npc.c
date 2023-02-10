@@ -1550,11 +1550,14 @@ roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc)
 			roc_npc_flow_mcam_dump(file, roc_npc, flow_iter);
 		}
 	}
+
+	TAILQ_FOREACH(flow_iter, &npc->ipsec_list, next) {
+		roc_npc_flow_mcam_dump(file, roc_npc, flow_iter);
+	}
 }
 
 int
-roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
-				      struct roc_npc_flow *flow)
+roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 {
 	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
