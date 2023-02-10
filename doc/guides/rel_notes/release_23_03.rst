@@ -91,6 +91,13 @@ New Features
   * Added hash calculation function used in template tables
     to allow control over the calculation of the rule index for a packet.
 
+* **Added cross-port indirect action in asynchronous flow API.**
+
+  * Allowed to share indirect actions between ports by passing
+    the flag ``RTE_FLOW_PORT_FLAG_SHARE_INDIRECT`` to ``rte_flow_configure()``.
+  * Added ``host_port_id`` in ``rte_flow_port_attr`` structure
+    to reference the port hosting the shared objects.
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.

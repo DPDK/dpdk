@@ -1597,6 +1597,12 @@ rte_flow_configure(uint16_t port_id,
 		RTE_FLOW_LOG(ERR, "Port %"PRIu16" queue info is NULL.\n", port_id);
 		return -EINVAL;
 	}
+	if ((port_attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) &&
+	     !rte_eth_dev_is_valid_port(port_attr->host_port_id)) {
+		return rte_flow_error_set(error, ENODEV,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, rte_strerror(ENODEV));
+	}
 	if (likely(!!ops->configure)) {
 		ret = ops->configure(dev, port_attr, nb_queue, queue_attr, error);
 		if (ret == 0)

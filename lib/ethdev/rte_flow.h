@@ -4994,6 +4994,13 @@ rte_flow_info_get(uint16_t port_id,
 		  struct rte_flow_error *error);
 
 /**
+ * Indicate all steering objects should be created on contexts
+ * of the host port, providing indirect object sharing between
+ * ports.
+ */
+#define RTE_FLOW_PORT_FLAG_SHARE_INDIRECT RTE_BIT32(0)
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
@@ -5022,6 +5029,10 @@ struct rte_flow_port_attr {
 	 * @see RTE_FLOW_ACTION_TYPE_CONNTRACK
 	 */
 	uint32_t nb_conn_tracks;
+	/**
+	 * Port to base shared objects on.
+	 */
+	uint16_t host_port_id;
 	/**
 	 * Port flags (RTE_FLOW_PORT_FLAG_*).
 	 */

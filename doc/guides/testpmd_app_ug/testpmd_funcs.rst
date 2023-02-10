@@ -3083,7 +3083,9 @@ for asynchronous flow creation/destruction operations. It is bound to
        [queues_number {number}] [queues_size {size}]
        [counters_number {number}]
        [aging_counters_number {number}]
-       [meters_number {number}] [flags {number}]
+       [host_port {number}]
+       [meters_number {number}]
+       [flags {number}]
 
 If successful, it will show::
 

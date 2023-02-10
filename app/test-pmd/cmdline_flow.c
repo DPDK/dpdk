@@ -233,6 +233,7 @@ enum index {
 	CONFIG_METERS_NUMBER,
 	CONFIG_CONN_TRACK_NUMBER,
 	CONFIG_FLAGS,
+	CONFIG_HOST_PORT,
 
 	/* Indirect action arguments */
 	INDIRECT_ACTION_CREATE,
@@ -609,6 +610,8 @@ enum index {
 	ACTION_SAMPLE_INDEX,
 	ACTION_SAMPLE_INDEX_VALUE,
 	ACTION_INDIRECT,
+	ACTION_SHARED_INDIRECT,
+	INDIRECT_ACTION_PORT,
 	INDIRECT_ACTION_ID2PTR,
 	ACTION_MODIFY_FIELD,
 	ACTION_MODIFY_FIELD_OP,
@@ -1129,6 +1132,7 @@ static const enum index next_config_attr[] = {
 	CONFIG_METERS_NUMBER,
 	CONFIG_CONN_TRACK_NUMBER,
 	CONFIG_FLAGS,
+	CONFIG_HOST_PORT,
 	END,
 	ZERO,
 };
@@ -1947,6 +1951,7 @@ static const enum index next_action[] = {
 	ACTION_AGE_UPDATE,
 	ACTION_SAMPLE,
 	ACTION_INDIRECT,
+	ACTION_SHARED_INDIRECT,
 	ACTION_MODIFY_FIELD,
 	ACTION_CONNTRACK,
 	ACTION_CONNTRACK_UPDATE,
@@ -2456,6 +2461,9 @@ static int parse_ia_destroy(struct context *ctx, const struct token *token,
 static int parse_ia_id2ptr(struct context *ctx, const struct token *token,
 			   const char *str, unsigned int len, void *buf,
 			   unsigned int size);
+static int parse_ia_port(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len, void *buf,
+			 unsigned int size);
 static int parse_mp(struct context *, const struct token *,
 		    const char *, unsigned int,
 		    void *, unsigned int);
@@ -2799,6 +2807,14 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.configure.port_attr.flags)),
+	},
+	[CONFIG_HOST_PORT] = {
+		.name = "host_port",
+		.help = "host port for shared objects",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.configure.port_attr.host_port_id)),
 	},
 	/* Top-level command. */
 	[PATTERN_TEMPLATE] = {
@@ -6582,6 +6598,23 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uint32_t))),
 		.call = parse_vc,
 	},
+	[ACTION_SHARED_INDIRECT] = {
+		.name = "shared_indirect",
+		.help = "apply indirect action by id and port",
+		.priv = PRIV_ACTION(INDIRECT, 0),
+		.next = NEXT(NEXT_ENTRY(INDIRECT_ACTION_PORT)),
+		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uint32_t)),
+			     ARGS_ENTRY_ARB(0, sizeof(uint32_t))),
+		.call = parse_vc,
+	},
+	[INDIRECT_ACTION_PORT] = {
+		.name = "{indirect_action_port}",
+		.type = "INDIRECT_ACTION_PORT",
+		.help = "indirect action port",
+		.next = NEXT(NEXT_ENTRY(INDIRECT_ACTION_ID2PTR)),
+		.call = parse_ia_port,
+		.comp = comp_none,
+	},
 	[INDIRECT_ACTION_ID2PTR] = {
 		.name = "{action_id}",
 		.type = "INDIRECT_ACTION_ID",
@@ -10068,6 +10101,31 @@ parse_port(struct context *ctx, const struct token *token,
 	return ret;
 }
 
+/** Parse tokens for shared indirect actions. */
+static int
+parse_ia_port(struct context *ctx, const struct token *token,
+	      const char *str, unsigned int len,
+	      void *buf, unsigned int size)
+{
+	struct rte_flow_action *action = ctx->object;
+	uint32_t id;
+	int ret;
+
+	(void)buf;
+	(void)size;
+	ctx->objdata = 0;
+	ctx->object = &id;
+	ctx->objmask = NULL;
+	ret = parse_int(ctx, token, str, len, ctx->object, sizeof(id));
+	ctx->object = action;
+	if (ret != (int)len)
+		return ret;
+	/* set indirect action */
+	if (action)
+		action->conf = (void *)(uintptr_t)id;
+	return ret;
+}
+
 static int
 parse_ia_id2ptr(struct context *ctx, const struct token *token,
 		const char *str, unsigned int len,
@@ -10088,7 +10146,10 @@ parse_ia_id2ptr(struct context *ctx, const struct token *token,
 		return ret;
 	/* set indirect action */
 	if (action) {
-		action->conf = port_action_handle_get_by_id(ctx->port, id);
+		portid_t port_id = ctx->port;
+		if (ctx->prev == INDIRECT_ACTION_PORT)
+			port_id = (portid_t)(uintptr_t)action->conf;
+		action->conf = port_action_handle_get_by_id(port_id, id);
 		ret = (action->conf) ? ret : -1;
 	}
 	return ret;
