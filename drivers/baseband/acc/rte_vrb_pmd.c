@@ -518,7 +518,7 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	if (d->tail_ptrs == NULL)
 		d->tail_ptrs = rte_zmalloc_socket(
 				dev->device->driver->name,
-				d->num_qgroups * d->num_aqs * sizeof(uint32_t),
+				VRB_MAX_QGRPS * VRB_MAX_AQS * sizeof(uint32_t),
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (d->tail_ptrs == NULL) {
 		rte_bbdev_log(ERR, "Failed to allocate tail ptr for %s:%u",
