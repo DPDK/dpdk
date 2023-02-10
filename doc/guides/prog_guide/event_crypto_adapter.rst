@@ -350,3 +350,12 @@ in struct ``rte_event_crypto_adapter_stats``. The received packet and
 enqueued event counts are a sum of the counts from the eventdev PMD callbacks
 if the callback is supported, and the counts maintained by the service function,
 if one exists.
+
+Set/Get adapter runtime configuration parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The runtime configuration parameters of adapter can be set/get using
+``rte_event_crypto_adapter_runtime_params_set()`` and
+``rte_event_crypto_adapter_runtime_params_get()`` respectively.
+The parameters that can be set/get are defined in
+``struct rte_event_crypto_adapter_runtime_params``.
