@@ -996,6 +996,7 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 				.capability_flags =
 					RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE |
 					RTE_BBDEV_TURBO_CRC_TYPE_24B |
+					RTE_BBDEV_TURBO_DEC_CRC_24B_DROP |
 					RTE_BBDEV_TURBO_EQUALIZER |
 					RTE_BBDEV_TURBO_SOFT_OUT_SATURATE |
 					RTE_BBDEV_TURBO_HALF_ITERATION_EVEN |
@@ -1407,8 +1408,12 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	}
 
 	if ((op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
-		&& !check_bit(op->turbo_dec.op_flags,
-		RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP))
+			&& !check_bit(op->turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP))
+		crc24_overlap = 24;
+	if ((op->turbo_dec.code_block_mode == RTE_BBDEV_CODE_BLOCK)
+			&& check_bit(op->turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_DEC_CRC_24B_DROP))
 		crc24_overlap = 24;
 
 	/* Calculates circular buffer size.
