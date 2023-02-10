@@ -225,3 +225,12 @@ Stop function stops the adapter runtime function from enqueueing any
 packets to the associated Tx queue. This API also frees any packets that
 may have been buffered for this queue. All inflight packets destined to the
 queue are freed by the adapter runtime until the queue is started again.
+
+Set/Get adapter runtime configuration parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The runtime configuration parameters of adapter can be set/get using
+``rte_event_eth_tx_adapter_runtime_params_set()`` and
+``rte_event_eth_tx_adapter_runtime_params_get()`` respectively.
+The parameters that can be set/get are defined in
+``struct rte_event_eth_tx_adapter_runtime_params``.

@@ -124,6 +124,8 @@ struct txa_service_data {
 	uint16_t dev_count;
 	/* Loop count to flush Tx buffers */
 	int loop_cnt;
+	/* Loop count threshold to flush Tx buffers */
+	uint16_t flush_threshold;
 	/* Per ethernet device structure */
 	struct txa_service_ethdev *txa_ethdev;
 	/* Statistics */
@@ -665,13 +667,14 @@ txa_service_func(void *args)
 		ret = 0;
 	}
 
-	if ((txa->loop_cnt++ & (TXA_FLUSH_THRESHOLD - 1)) == 0) {
+	if (txa->loop_cnt++ == txa->flush_threshold) {
 
 		struct txa_service_ethdev *tdi;
 		struct txa_service_queue_info *tqi;
 		struct rte_eth_dev *dev;
 		uint16_t i;
 
+		txa->loop_cnt = 0;
 		tdi = txa->txa_ethdev;
 		nb_tx = 0;
 
@@ -769,6 +772,7 @@ txa_service_adapter_create_ext(uint8_t id, struct rte_eventdev *dev,
 	txa->service_id = TXA_INVALID_SERVICE_ID;
 	rte_spinlock_init(&txa->tx_lock);
 	txa_service_data_array[id] = txa;
+	txa->flush_threshold = TXA_FLUSH_THRESHOLD;
 
 	return 0;
 }
@@ -1289,6 +1293,115 @@ rte_event_eth_tx_adapter_stats_reset(uint8_t id)
 	rte_eventdev_trace_eth_tx_adapter_stats_reset(id, ret);
 
 	return ret;
+}
+
+int
+rte_event_eth_tx_adapter_runtime_params_init(
+		struct rte_event_eth_tx_adapter_runtime_params *txa_params)
+{
+	if (txa_params == NULL)
+		return -EINVAL;
+
+	memset(txa_params, 0, sizeof(*txa_params));
+	txa_params->max_nb_tx = TXA_MAX_NB_TX;
+	txa_params->flush_threshold = TXA_FLUSH_THRESHOLD;
+
+	return 0;
+}
+
+static int
+txa_caps_check(uint8_t id, struct txa_service_data *txa)
+{
+	uint32_t caps = 0;
+	struct rte_eth_dev *eth_dev = NULL;
+	struct txa_service_ethdev *tdi;
+	int i;
+
+	if (!txa->dev_count)
+		return -EINVAL;
+
+	/* The eth_dev used is always the same type.
+	 * Hence first valid eth_dev is taken.
+	 */
+	for (i = 0; i < txa->dev_count; i++) {
+		tdi = &txa->txa_ethdev[i];
+		if (tdi->nb_queues) {
+			eth_dev = tdi->dev;
+			break;
+		}
+	}
+	if (eth_dev == NULL)
+		return -EINVAL;
+
+	if (txa_dev_caps_get(id))
+		txa_dev_caps_get(id)(txa_evdev(id), eth_dev, &caps);
+
+	if (caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT)
+		return -ENOTSUP;
+
+	return 0;
+}
+
+int
+rte_event_eth_tx_adapter_runtime_params_set(uint8_t id,
+		struct rte_event_eth_tx_adapter_runtime_params *txa_params)
+{
+	struct txa_service_data *txa;
+	int ret;
+
+	if (txa_lookup())
+		return -ENOMEM;
+
+	TXA_CHECK_OR_ERR_RET(id);
+
+	if (txa_params == NULL)
+		return -EINVAL;
+
+	txa = txa_service_id_to_data(id);
+	if (txa == NULL)
+		return -EINVAL;
+
+	ret = txa_caps_check(id, txa);
+	if (ret)
+		return ret;
+
+	rte_spinlock_lock(&txa->tx_lock);
+	txa->flush_threshold = txa_params->flush_threshold;
+	txa->max_nb_tx = txa_params->max_nb_tx;
+	rte_spinlock_unlock(&txa->tx_lock);
+
+	return 0;
+}
+
+int
+rte_event_eth_tx_adapter_runtime_params_get(uint8_t id,
+		struct rte_event_eth_tx_adapter_runtime_params *txa_params)
+{
+	struct txa_service_data *txa;
+	int ret;
+
+	if (txa_lookup())
+		return -ENOMEM;
+
+	TXA_CHECK_OR_ERR_RET(id);
+
+	if (txa_params == NULL)
+		return -EINVAL;
+
+	txa = txa_service_id_to_data(id);
+	if (txa == NULL)
+		return -EINVAL;
+
+	ret = txa_caps_check(id, txa);
+	if (ret)
+		return ret;
+
+	rte_spinlock_lock(&txa->tx_lock);
+	txa_params->flush_threshold = txa->flush_threshold;
+	txa_params->max_nb_tx = txa->max_nb_tx;
+	rte_spinlock_unlock(&txa->tx_lock);
+
+	return 0;
 }
 
 int

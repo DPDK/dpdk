@@ -40,6 +40,8 @@ test_event_eth_tx_adapter_common(void)
 #define PORT(p)			default_params.port[(p)]
 #define TEST_ETHDEV_ID		PORT(0)
 #define TEST_ETHDEV_PAIR_ID	PORT(PAIR_PORT_INDEX(0))
+#define DEFAULT_FLUSH_THRESHOLD 1024
+#define TXA_NB_TX_WORK_DEFAULT  128
 
 #define EDEV_RETRY		0xffff
 
@@ -796,6 +798,134 @@ tx_adapter_queue_start_stop(void)
 }
 
 static int
+tx_adapter_set_get_params(void)
+{
+	int err;
+	struct rte_event_eth_tx_adapter_runtime_params in_params;
+	struct rte_event_eth_tx_adapter_runtime_params out_params;
+
+	err = rte_event_eth_tx_adapter_queue_add(TEST_INST_ID,
+						 TEST_ETHDEV_ID,
+						 0);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_runtime_params_init(&in_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	err = rte_event_eth_tx_adapter_runtime_params_init(&out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* Case 1: Get the default values of adapter */
+	err = rte_event_eth_tx_adapter_runtime_params_get(TEST_INST_ID,
+							  &out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	TEST_ASSERT(out_params.flush_threshold == DEFAULT_FLUSH_THRESHOLD,
+		    "Expected %u got %u",
+		    DEFAULT_FLUSH_THRESHOLD, out_params.flush_threshold);
+	TEST_ASSERT(out_params.max_nb_tx == TXA_NB_TX_WORK_DEFAULT,
+		    "Expected %u got %u",
+		    TXA_NB_TX_WORK_DEFAULT, out_params.max_nb_tx);
+
+	/* Case 2: Set max_nb_tx = 32 (=TXA_BATCH_SEIZE) */
+	in_params.max_nb_tx = 32;
+	in_params.flush_threshold = DEFAULT_FLUSH_THRESHOLD;
+
+	err = rte_event_eth_tx_adapter_runtime_params_set(TEST_INST_ID,
+							  &in_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_runtime_params_get(TEST_INST_ID,
+							  &out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	TEST_ASSERT(in_params.max_nb_tx == out_params.max_nb_tx,
+		    "Expected %u got %u",
+		    in_params.max_nb_tx, out_params.max_nb_tx);
+	TEST_ASSERT(in_params.flush_threshold == out_params.flush_threshold,
+		    "Expected %u got %u",
+		    in_params.flush_threshold, out_params.flush_threshold);
+
+	/* Case 3: Set max_nb_tx = 192 */
+	in_params.max_nb_tx = 192;
+
+	err = rte_event_eth_tx_adapter_runtime_params_set(TEST_INST_ID,
+							  &in_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_runtime_params_get(TEST_INST_ID,
+							  &out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	TEST_ASSERT(in_params.max_nb_tx == out_params.max_nb_tx,
+		    "Expected %u got %u",
+		    in_params.max_nb_tx, out_params.max_nb_tx);
+
+	/* Case 4: Set max_nb_tx = 256 */
+	in_params.max_nb_tx = 256;
+
+	err = rte_event_eth_tx_adapter_runtime_params_set(TEST_INST_ID,
+							  &in_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_runtime_params_get(TEST_INST_ID,
+							  &out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	TEST_ASSERT(in_params.max_nb_tx == out_params.max_nb_tx,
+		    "Expected %u got %u",
+		    in_params.max_nb_tx, out_params.max_nb_tx);
+
+	/* Case 5: Set max_nb_tx = 30(<TXA_BATCH_SIZE) */
+	in_params.max_nb_tx = 30;
+
+	err = rte_event_eth_tx_adapter_runtime_params_set(TEST_INST_ID,
+							  &in_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_runtime_params_get(TEST_INST_ID,
+							  &out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	TEST_ASSERT(in_params.max_nb_tx == out_params.max_nb_tx,
+		    "Expected %u got %u",
+		    in_params.max_nb_tx, out_params.max_nb_tx);
+
+	/* Case 6: Set max_nb_tx = 512 */
+	in_params.max_nb_tx = 512;
+
+	err = rte_event_eth_tx_adapter_runtime_params_set(TEST_INST_ID,
+							  &in_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_runtime_params_get(TEST_INST_ID,
+							  &out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	TEST_ASSERT(in_params.max_nb_tx == out_params.max_nb_tx,
+		    "Expected %u got %u",
+		    in_params.max_nb_tx, out_params.max_nb_tx);
+
+	/* Case 7: Set flush_threshold = 10 */
+	in_params.max_nb_tx = 128;
+	in_params.flush_threshold = 10;
+
+	err = rte_event_eth_tx_adapter_runtime_params_set(TEST_INST_ID,
+							  &in_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_tx_adapter_runtime_params_get(TEST_INST_ID,
+							  &out_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	TEST_ASSERT(in_params.max_nb_tx == out_params.max_nb_tx,
+		    "Expected %u got %u",
+		    in_params.max_nb_tx, out_params.max_nb_tx);
+	TEST_ASSERT(in_params.flush_threshold == out_params.flush_threshold,
+		    "Expected %u got %u",
+		    in_params.flush_threshold, out_params.flush_threshold);
+
+	err = rte_event_eth_tx_adapter_queue_del(TEST_INST_ID,
+						 TEST_ETHDEV_ID,
+						 0);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	return TEST_SUCCESS;
+}
+
+static int
 tx_adapter_dynamic_device(void)
 {
 	uint16_t port_id = rte_eth_dev_count_avail();
@@ -856,6 +986,8 @@ static struct unit_test_suite event_eth_tx_tests = {
 					tx_adapter_instance_get),
 		TEST_CASE_ST(tx_adapter_create, tx_adapter_free,
 					tx_adapter_queue_start_stop),
+		TEST_CASE_ST(tx_adapter_create, tx_adapter_free,
+					tx_adapter_set_get_params),
 		TEST_CASE_ST(NULL, NULL, tx_adapter_dynamic_device),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}

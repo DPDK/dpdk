@@ -124,6 +124,9 @@ EXPERIMENTAL {
 	rte_event_eth_rx_adapter_runtime_params_get;
 	rte_event_eth_rx_adapter_runtime_params_init;
 	rte_event_eth_rx_adapter_runtime_params_set;
+	rte_event_eth_tx_adapter_runtime_params_get;
+	rte_event_eth_tx_adapter_runtime_params_init;
+	rte_event_eth_tx_adapter_runtime_params_set;
 	rte_event_timer_remaining_ticks_get;
 };
 
