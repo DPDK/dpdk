@@ -562,8 +562,10 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 				}
 				rq = inl_rq->qid;
 				pf_func = nix_inl_dev_pffunc_get();
-				flow->is_inline_dev = 1;
 			}
+
+			if (roc_nix_inl_dev_is_probed())
+				flow->is_inline_dev = 1;
 			sec_action = actions;
 			break;
 		case ROC_NPC_ACTION_TYPE_VLAN_STRIP:
