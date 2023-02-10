@@ -2875,7 +2875,7 @@ vrb_dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	return 1;
 }
 
-/* Dequeue one decode operations from device in TB mode. */
+/* Dequeue one decode operations from device in TB mode for 4G or 5G. */
 static inline int
 vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		uint16_t dequeued_cbs, uint32_t *aq_dequeued)
@@ -2929,8 +2929,12 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		/* CRC invalid if error exists. */
 		if (!op->status)
 			op->status |= rsp.crc_status << RTE_BBDEV_CRC_ERROR;
-		op->turbo_dec.iter_count = RTE_MAX((uint8_t) rsp.iter_cnt,
-				op->turbo_dec.iter_count);
+		if (q->op_type == RTE_BBDEV_OP_LDPC_DEC)
+			op->ldpc_dec.iter_count = RTE_MAX((uint8_t) rsp.iter_cnt,
+					op->ldpc_dec.iter_count);
+		else
+			op->turbo_dec.iter_count = RTE_MAX((uint8_t) rsp.iter_cnt,
+					op->turbo_dec.iter_count);
 
 		/* Check if this is the last desc in batch (Atomic Queue). */
 		if (desc->req.last_desc_in_batch) {
