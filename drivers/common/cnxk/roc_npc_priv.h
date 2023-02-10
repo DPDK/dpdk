@@ -77,6 +77,9 @@
 #define NPC_LFLAG_LC_OFFSET (NPC_LTYPE_OFFSET_START + 6)
 #define NPC_LTYPE_LC_OFFSET (NPC_LTYPE_OFFSET_START + 8)
 
+#define CN10K_SDP_CH_START 0x80
+#define CN10K_SDP_CH_MASK  0xF80
+
 struct npc_action_vtag_info {
 	uint16_t vlan_id;
 	uint16_t vlan_ethtype;
