@@ -35,6 +35,8 @@
 #define MAX_VECTOR_NS		1E9
 #define MIN_VECTOR_NS		1E5
 
+#define RXA_NB_RX_WORK_DEFAULT 128
+
 #define ETH_RX_ADAPTER_SERVICE_NAME_LEN	32
 #define ETH_RX_ADAPTER_MEM_NAME_LEN	32
 
@@ -1554,7 +1556,7 @@ rxa_default_conf_cb(uint8_t id, uint8_t dev_id,
 	}
 
 	conf->event_port_id = port_id;
-	conf->max_nb_rx = 128;
+	conf->max_nb_rx = RXA_NB_RX_WORK_DEFAULT;
 	if (started)
 		ret = rte_event_dev_start(dev_id);
 	rx_adapter->default_cb_arg = 1;
@@ -3461,6 +3463,103 @@ rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 	return -EINVAL;
 }
 
+static int
+rxa_caps_check(struct event_eth_rx_adapter *rxa)
+{
+	uint16_t eth_dev_id;
+	uint32_t caps = 0;
+	int ret;
+
+	if (!rxa->nb_queues)
+		return -EINVAL;
+
+	/* The eth_dev used is always of same type.
+	 * Hence eth_dev_id is taken from first entry of poll array.
+	 */
+	eth_dev_id = rxa->eth_rx_poll[0].eth_dev_id;
+	ret = rte_event_eth_rx_adapter_caps_get(rxa->eventdev_id,
+						eth_dev_id,
+						&caps);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8
+			"eth port %" PRIu16, rxa->eventdev_id, eth_dev_id);
+		return ret;
+	}
+
+	if (caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT)
+		return -ENOTSUP;
+
+	return 0;
+}
+
+int
+rte_event_eth_rx_adapter_runtime_params_init(
+		struct rte_event_eth_rx_adapter_runtime_params *params)
+{
+	if (params == NULL)
+		return -EINVAL;
+
+	memset(params, 0, sizeof(struct rte_event_eth_rx_adapter_runtime_params));
+	params->max_nb_rx = RXA_NB_RX_WORK_DEFAULT;
+
+	return 0;
+}
+
+int
+rte_event_eth_rx_adapter_runtime_params_set(uint8_t id,
+		struct rte_event_eth_rx_adapter_runtime_params *params)
+{
+	struct event_eth_rx_adapter *rxa;
+	int ret;
+
+	if (params == NULL)
+		return -EINVAL;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
+	rxa = rxa_id_to_adapter(id);
+	if (rxa == NULL)
+		return -EINVAL;
+
+	ret = rxa_caps_check(rxa);
+	if (ret)
+		return ret;
+
+	rte_spinlock_lock(&rxa->rx_lock);
+	rxa->max_nb_rx = params->max_nb_rx;
+	rte_spinlock_unlock(&rxa->rx_lock);
+
+	return 0;
+}
+
+int
+rte_event_eth_rx_adapter_runtime_params_get(uint8_t id,
+		struct rte_event_eth_rx_adapter_runtime_params *params)
+{
+	struct event_eth_rx_adapter *rxa;
+	int ret;
+
+	if (params == NULL)
+		return -EINVAL;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
+	rxa = rxa_id_to_adapter(id);
+	if (rxa == NULL)
+		return -EINVAL;
+
+	ret = rxa_caps_check(rxa);
+	if (ret)
+		return ret;
+
+	params->max_nb_rx = rxa->max_nb_rx;
+
+	return 0;
+}
+
+/* RX-adapter telemetry callbacks */
 #define RXA_ADD_DICT(stats, s) rte_tel_data_add_dict_uint(d, #s, stats.s)
 
 static int

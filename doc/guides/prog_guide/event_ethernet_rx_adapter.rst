@@ -185,6 +185,15 @@ flags for handling received packets, event queue identifier, scheduler type,
 event priority, polling frequency of the receive queue and flow identifier
 in struct ``rte_event_eth_rx_adapter_queue_conf``.
 
+Set/Get adapter runtime configuration parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The runtime configuration parameters of adapter can be set/get using
+``rte_event_eth_rx_adapter_runtime_params_set()`` and
+``rte_event_eth_rx_adapter_runtime_params_get()`` respectively.
+The parameters that can be set/get are defined in
+``struct rte_event_eth_rx_adapter_runtime_params``.
+
 Getting and resetting Adapter queue stats
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
