@@ -2086,6 +2086,10 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		}
 	}
 
+	if (op->ldpc_dec.soft_output.length > 0)
+		mbuf_append(op->ldpc_dec.soft_output.data, op->ldpc_dec.soft_output.data,
+				op->ldpc_dec.soft_output.length);
+
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	rte_memdump(stderr, "FCW", &desc->req.fcw_ld,
 			sizeof(desc->req.fcw_ld) - 8);
