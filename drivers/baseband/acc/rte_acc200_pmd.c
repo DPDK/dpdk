@@ -1848,6 +1848,9 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 	r = op->turbo_enc.tb_params.r;
 
 	while (mbuf_total_left > 0 && r < c) {
+		if (unlikely((input == NULL) || (output == NULL)))
+			return -1;
+
 		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 		/* Set up DMA descriptor */
 		desc = acc_desc(q, total_enqueued_cbs);
@@ -1881,6 +1884,10 @@ enqueue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		current_enqueued_cbs++;
 		r++;
 	}
+
+	/* In case the number of CB doesn't match, the configuration was invalid. */
+	if (unlikely(current_enqueued_cbs != cbs_in_tb))
+		return -1;
 
 	/* Set SDone on last CB descriptor for TB mode. */
 	desc->req.sdone_enable = 1;
@@ -2128,6 +2135,9 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	}
 
 	while (mbuf_total_left > 0 && r < c) {
+		if (unlikely((input == NULL) || (h_output == NULL)))
+			return -1;
+
 		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DEC_SCATTER_GATHER))
 			seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 		else
@@ -2173,6 +2183,10 @@ enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		r++;
 	}
 
+	/* In case the number of CB doesn't match, the configuration was invalid. */
+	if (unlikely(current_enqueued_cbs != cbs_in_tb))
+		return -1;
+
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	if (check_mbuf_total_left(mbuf_total_left) != 0)
 		return -EINVAL;
@@ -2215,6 +2229,8 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	r = op->turbo_dec.tb_params.r;
 
 	while (mbuf_total_left > 0 && r < c) {
+		if (unlikely((input == NULL) || (h_output == NULL)))
+			return -1;
 
 		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 
@@ -2264,6 +2280,10 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		current_enqueued_cbs++;
 		r++;
 	}
+
+	/* In case the number of CB doesn't match, the configuration was invalid. */
+	if (unlikely(current_enqueued_cbs != cbs_in_tb))
+		return -1;
 
 	/* Set SDone on last CB descriptor for TB mode */
 	desc->req.sdone_enable = 1;
