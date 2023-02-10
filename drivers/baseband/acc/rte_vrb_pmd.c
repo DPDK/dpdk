@@ -3633,7 +3633,7 @@ vrb1_configure(const char *dev_name, struct rte_acc_conf *conf)
 		} else
 			acc_reg_write(d, address, 0);
 	}
-	printf("Number of 5GUL engines %d\n", numEngines);
+	rte_bbdev_log(INFO, "Number of 5GUL engines %d", numEngines);
 	/* 4GDL */
 	numQqsAcc += numQgs;
 	numQgs	= conf->q_dl_4g.num_qgroups;

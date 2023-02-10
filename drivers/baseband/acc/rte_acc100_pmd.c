@@ -4347,7 +4347,7 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc_device *d,
 {
 	int i, template_idx, qg_idx;
 	uint32_t address, status, value;
-	printf("Need to clear power-on 5GUL status in internal memory\n");
+	rte_bbdev_log(WARNING, "Need to clear power-on 5GUL status in internal memory");
 	/* Reset LDPC Cores */
 	for (i = 0; i < ACC100_ENGINES_MAX; i++)
 		acc_reg_write(d, HWPfFecUl5gCntrlReg +
@@ -4421,7 +4421,7 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc_device *d,
 	/* Force each engine which is in unspecified state */
 	for (i = 0; i < num_failed_engine; i++) {
 		int failed_engine = engines_to_restart[i];
-		printf("Force engine %d\n", failed_engine);
+		rte_bbdev_log(WARNING, "Force engine %d", failed_engine);
 		for (template_idx = ACC100_SIG_UL_5G;
 				template_idx <= ACC100_SIG_UL_5G_LAST;
 				template_idx++) {
@@ -4450,7 +4450,7 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc_device *d,
 		acc_reg_write(d, HWPfQmgrIngressAq + 0x100, enq_req.val);
 		usleep(ACC_LONG_WAIT * 100);
 		if (desc->req.word0 != 2)
-			printf("DMA Response %#"PRIx32"\n", desc->req.word0);
+			rte_bbdev_log(WARNING, "DMA Response %#"PRIx32"\n", desc->req.word0);
 	}
 
 	/* Reset LDPC Cores */
@@ -4482,7 +4482,7 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc_device *d,
 		} else
 			acc_reg_write(d, address, 0);
 	}
-	printf("Number of 5GUL engines %d\n", numEngines);
+	rte_bbdev_log(INFO, "Number of 5GUL engines %d", numEngines);
 
 	rte_free(d->sw_rings_base);
 	usleep(ACC_LONG_WAIT);
@@ -4671,7 +4671,7 @@ acc100_configure(const char *dev_name, struct rte_acc_conf *conf)
 		} else
 			acc_reg_write(d, address, 0);
 	}
-	printf("Number of 5GUL engines %d\n", numEngines);
+	rte_bbdev_log(INFO, "Number of 5GUL engines %d", numEngines);
 	/* 4GDL */
 	numQqsAcc += numQgs;
 	numQgs	= conf->q_dl_4g.num_qgroups;
@@ -4801,7 +4801,7 @@ acc100_configure(const char *dev_name, struct rte_acc_conf *conf)
 		version += acc_reg_read(d,
 				HWPfDdrPhyIdtmFwVersion + 4 * i) << (8 * i);
 	if (version != ACC100_PRQ_DDR_VER) {
-		printf("* Note: Not on DDR PRQ version %8x != %08x\n",
+		rte_bbdev_log(ERR, "* Note: Not on DDR PRQ version %8x != %08x",
 				version, ACC100_PRQ_DDR_VER);
 	} else if (firstCfg) {
 		/* ---- DDR configuration at boot up --- */
@@ -4871,7 +4871,7 @@ acc100_configure(const char *dev_name, struct rte_acc_conf *conf)
 			if (value & 1)
 				break;
 		}
-		printf("DDR Training completed in %d ms", i);
+		rte_bbdev_log(INFO, "DDR Training completed in %d ms", i);
 		/* Enable Memory Controller */
 		acc_reg_write(d, HWPfDdrUmmcCtrl, 0x401);
 		/* Release AXI interface reset */
@@ -5047,7 +5047,7 @@ acc101_configure(const char *dev_name, struct rte_acc_conf *conf)
 		} else
 			acc_reg_write(d, address, 0);
 	}
-	printf("Number of 5GUL engines %d\n", numEngines);
+	rte_bbdev_log(INFO, "Number of 5GUL engines %d", numEngines);
 	/* 4GDL */
 	numQqsAcc += numQgs;
 	numQgs	= conf->q_dl_4g.num_qgroups;
@@ -5185,7 +5185,7 @@ rte_acc_configure(const char *dev_name, struct rte_acc_conf *conf)
 		return -ENODEV;
 	}
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(bbdev->device);
-	printf("Configure dev id %x\n", pci_dev->id.device_id);
+	rte_bbdev_log(INFO, "Configure dev id %x", pci_dev->id.device_id);
 	if (pci_dev->id.device_id == ACC100_PF_DEVICE_ID)
 		return acc100_configure(dev_name, conf);
 	else if (pci_dev->id.device_id == ACC101_PF_DEVICE_ID)
