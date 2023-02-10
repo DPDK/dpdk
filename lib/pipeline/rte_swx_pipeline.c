@@ -3218,11 +3218,24 @@ instr_mov_translate(struct rte_swx_pipeline *p,
 			if (dst[0] == 'h' && src[0] == 'h')
 				instr->type = INSTR_MOV_HH;
 		} else {
-			CHECK(fdst->n_bits == fsrc->n_bits, EINVAL);
+			/* The big fields (field with size > 64 bits) are always expected in NBO,
+			 * regardless of their type (H or MEFT). In case a big field is involved as
+			 * either dst or src, the other field must also be NBO.
+			 *
+			 * In case the dst field is big, the src field must be either a big field
+			 * (of the same or different size as dst) or a small H field. Similarly,
+			 * in case the src field is big, the dst field must be either a big field
+			 * (of the same or different size as src) or a small H field. Any other case
+			 * involving a big field as either dst or src is rejected.
+			 */
+			CHECK(fdst->n_bits > 64 || dst[0] == 'h', EINVAL);
+			CHECK(fsrc->n_bits > 64 || src[0] == 'h', EINVAL);
 
 			instr->type = INSTR_MOV_DMA;
-			if (fdst->n_bits == 128)
+			if (fdst->n_bits == 128 && fsrc->n_bits == 128)
 				instr->type = INSTR_MOV_128;
+			if (fdst->n_bits == 128 && fsrc->n_bits == 32)
+				instr->type = INSTR_MOV_128_32;
 		}
 
 		instr->mov.dst.struct_id = (uint8_t)dst_struct_id;
@@ -3317,6 +3330,18 @@ instr_mov_128_exec(struct rte_swx_pipeline *p)
 	struct instruction *ip = t->ip;
 
 	__instr_mov_128_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_mov_128_32_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_mov_128_32_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -7435,6 +7460,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_MOV_HH] = instr_mov_hh_exec,
 	[INSTR_MOV_DMA] = instr_mov_dma_exec,
 	[INSTR_MOV_128] = instr_mov_128_exec,
+	[INSTR_MOV_128_32] = instr_mov_128_32_exec,
 	[INSTR_MOV_I] = instr_mov_i_exec,
 
 	[INSTR_DMA_HT] = instr_dma_ht_exec,
@@ -11757,6 +11783,7 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_MOV_HH: return "INSTR_MOV_HH";
 	case INSTR_MOV_DMA: return "INSTR_MOV_DMA";
 	case INSTR_MOV_128: return "INSTR_MOV_128";
+	case INSTR_MOV_128_32: return "INSTR_MOV_128_32";
 	case INSTR_MOV_I: return "INSTR_MOV_I";
 
 	case INSTR_DMA_HT: return "INSTR_DMA_HT";
@@ -12797,6 +12824,7 @@ static instruction_export_t export_table[] = {
 	[INSTR_MOV_HH] = instr_mov_export,
 	[INSTR_MOV_DMA] = instr_mov_export,
 	[INSTR_MOV_128] = instr_mov_export,
+	[INSTR_MOV_128_32] = instr_mov_export,
 	[INSTR_MOV_I] = instr_mov_export,
 
 	[INSTR_DMA_HT]  = instr_dma_ht_export,
@@ -13025,6 +13053,7 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_MOV_HH: return "__instr_mov_hh_exec";
 	case INSTR_MOV_DMA: return "__instr_mov_dma_exec";
 	case INSTR_MOV_128: return "__instr_mov_128_exec";
+	case INSTR_MOV_128_32: return "__instr_mov_128_32_exec";
 	case INSTR_MOV_I: return "__instr_mov_i_exec";
 
 	case INSTR_DMA_HT: return "__instr_dma_ht_exec";

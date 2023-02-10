@@ -327,8 +327,9 @@ enum instruction_type {
 	INSTR_MOV_MH,  /* dst = MEF, src = H; size(dst) <= 64 bits, size(src) <= 64 bits. */
 	INSTR_MOV_HM,  /* dst = H, src = MEFT; size(dst) <= 64 bits, size(src) <= 64 bits. */
 	INSTR_MOV_HH,  /* dst = H, src = H; size(dst) <= 64 bits, size(src) <= 64 bits. */
-	INSTR_MOV_DMA, /* dst = HMEF, src = HMEF; size(dst) = size(src) > 64 bits, NBO format. */
-	INSTR_MOV_128, /* dst = HMEF, src = HMEF; size(dst) = size(src) = 128 bits, NBO format. */
+	INSTR_MOV_DMA, /* dst and src in NBO format. */
+	INSTR_MOV_128, /* dst and src in NBO format, size(dst) = size(src) = 128 bits. */
+	INSTR_MOV_128_32, /* dst and src in NBO format, size(dst) = 128 bits, size(src) = 32 b. */
 	INSTR_MOV_I,   /* dst = HMEF, src = I; size(dst) <= 64 bits. */
 
 	/* dma h.header t.field
@@ -2611,48 +2612,31 @@ __instr_mov_dma_exec(struct rte_swx_pipeline *p __rte_unused,
 		     struct thread *t,
 		     const struct instruction *ip)
 {
-	uint8_t *dst_struct = t->structs[ip->mov.dst.struct_id];
-	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->mov.dst.offset];
-	uint32_t *dst32_ptr;
-	uint16_t *dst16_ptr;
-	uint8_t *dst8_ptr;
+	uint8_t *dst = t->structs[ip->mov.dst.struct_id] + ip->mov.dst.offset;
+	uint8_t *src = t->structs[ip->mov.src.struct_id] + ip->mov.src.offset;
 
-	uint8_t *src_struct = t->structs[ip->mov.src.struct_id];
-	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->mov.src.offset];
-	uint32_t *src32_ptr;
-	uint16_t *src16_ptr;
-	uint8_t *src8_ptr;
-
-	uint32_t n = ip->mov.dst.n_bits >> 3, i;
+	uint32_t n_dst = ip->mov.dst.n_bits >> 3;
+	uint32_t n_src = ip->mov.src.n_bits >> 3;
 
 	TRACE("[Thread %2u] mov (dma) %u bytes\n", p->thread_id, n);
 
-	/* 8-byte transfers. */
-	for (i = 0; i < n >> 3; i++)
-		*dst64_ptr++ = *src64_ptr++;
+	/* Both dst and src are in NBO format. */
+	if (n_dst > n_src) {
+		uint32_t n_dst_zero = n_dst - n_src;
 
-	/* 4-byte transfers. */
-	n &= 7;
-	dst32_ptr = (uint32_t *)dst64_ptr;
-	src32_ptr = (uint32_t *)src64_ptr;
+		/* Zero padding the most significant bytes in dst. */
+		memset(dst, 0, n_dst_zero);
+		dst += n_dst_zero;
 
-	for (i = 0; i < n >> 2; i++)
-		*dst32_ptr++ = *src32_ptr++;
+		/* Copy src to dst. */
+		memcpy(dst, src, n_src);
+	} else {
+		uint32_t n_src_skipped = n_src - n_dst;
 
-	/* 2-byte transfers. */
-	n &= 3;
-	dst16_ptr = (uint16_t *)dst32_ptr;
-	src16_ptr = (uint16_t *)src32_ptr;
-
-	for (i = 0; i < n >> 1; i++)
-		*dst16_ptr++ = *src16_ptr++;
-
-	/* 1-byte transfer. */
-	n &= 1;
-	dst8_ptr = (uint8_t *)dst16_ptr;
-	src8_ptr = (uint8_t *)src16_ptr;
-	if (n)
-		*dst8_ptr = *src8_ptr;
+		/* Copy src to dst. */
+		src += n_src_skipped;
+		memcpy(dst, src, n_dst);
+	}
 }
 
 static inline void
@@ -2670,6 +2654,25 @@ __instr_mov_128_exec(struct rte_swx_pipeline *p __rte_unused,
 
 	dst64_ptr[0] = src64_ptr[0];
 	dst64_ptr[1] = src64_ptr[1];
+}
+
+static inline void
+__instr_mov_128_32_exec(struct rte_swx_pipeline *p __rte_unused,
+			struct thread *t,
+			const struct instruction *ip)
+{
+	uint8_t *dst = t->structs[ip->mov.dst.struct_id] + ip->mov.dst.offset;
+	uint8_t *src = t->structs[ip->mov.src.struct_id] + ip->mov.src.offset;
+
+	uint32_t *dst32 = (uint32_t *)dst;
+	uint32_t *src32 = (uint32_t *)src;
+
+	TRACE("[Thread %2u] mov (128 <- 32)\n", p->thread_id);
+
+	dst32[0] = 0;
+	dst32[1] = 0;
+	dst32[2] = 0;
+	dst32[3] = src32[0];
 }
 
 static inline void
