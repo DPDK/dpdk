@@ -702,5 +702,7 @@ int hns3_start_all_txqs(struct rte_eth_dev *dev);
 int hns3_start_all_rxqs(struct rte_eth_dev *dev);
 void hns3_stop_all_txqs(struct rte_eth_dev *dev);
 void hns3_restore_tqp_enable_state(struct hns3_hw *hw);
+void hns3_stop_rxtx_datapath(struct rte_eth_dev *dev);
+void hns3_start_rxtx_datapath(struct rte_eth_dev *dev);
 
 #endif /* _HNS3_RXTX_H_ */
