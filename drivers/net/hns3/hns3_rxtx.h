@@ -773,5 +773,7 @@ int hns3_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
 void hns3_tx_push_init(struct rte_eth_dev *dev);
 void hns3_stop_tx_datapath(struct rte_eth_dev *dev);
 void hns3_start_tx_datapath(struct rte_eth_dev *dev);
+void hns3_stop_rxtx_datapath(struct rte_eth_dev *dev);
+void hns3_start_rxtx_datapath(struct rte_eth_dev *dev);
 
 #endif /* HNS3_RXTX_H */
