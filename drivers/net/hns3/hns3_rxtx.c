@@ -4311,11 +4311,6 @@ hns3_tx_check_simple_support(struct rte_eth_dev *dev)
 static bool
 hns3_get_tx_prep_needed(struct rte_eth_dev *dev)
 {
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	RTE_SET_USED(dev);
-	/* always perform tx_prepare when debug */
-	return true;
-#else
 #define HNS3_DEV_TX_CSKUM_TSO_OFFLOAD_MASK (\
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM | \
@@ -4333,7 +4328,6 @@ hns3_get_tx_prep_needed(struct rte_eth_dev *dev)
 		return true;
 
 	return false;
-#endif
 }
 
 eth_tx_burst_t
