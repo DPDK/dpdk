@@ -4337,7 +4337,7 @@ hns3_get_tx_prepare(struct rte_eth_dev *dev)
 	return hns3_get_tx_prep_needed(dev) ? hns3_prep_pkts : NULL;
 }
 
-eth_tx_burst_t
+static eth_tx_burst_t
 hns3_get_tx_function(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
