@@ -4420,13 +4420,13 @@ hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 					hns3_get_tx_function(eth_dev, &prep);
 		eth_dev->tx_pkt_prepare = prep;
 		eth_dev->tx_descriptor_status = hns3_dev_tx_descriptor_status;
-		hns3_trace_rxtx_function(eth_dev);
 	} else {
 		eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 		eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 		eth_dev->tx_pkt_prepare = NULL;
 	}
 
+	hns3_trace_rxtx_function(eth_dev);
 	hns3_eth_dev_fp_ops_config(eth_dev);
 }
 
