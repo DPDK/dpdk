@@ -740,8 +740,7 @@ int hns3_tx_burst_mode_get(struct rte_eth_dev *dev,
 const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 void hns3_init_rx_ptype_tble(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
-eth_tx_burst_t hns3_get_tx_function(struct rte_eth_dev *dev,
-				    eth_tx_prep_t *prep);
+eth_tx_burst_t hns3_get_tx_function(struct rte_eth_dev *dev);
 
 uint32_t hns3_get_tqp_intr_reg_offset(uint16_t tqp_intr_id);
 void hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
