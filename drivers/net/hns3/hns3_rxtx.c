@@ -4765,3 +4765,31 @@ hns3_start_tx_datapath(struct rte_eth_dev *dev)
 
 	hns3_mp_req_start_tx(dev);
 }
+
+void
+hns3_stop_rxtx_datapath(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hns3_set_rxtx_function(dev);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		return;
+
+	rte_wmb();
+	/* Disable datapath on secondary process. */
+	hns3_mp_req_stop_rxtx(dev);
+	/* Prevent crashes when queues are still in use. */
+	rte_delay_ms(hw->cfg_max_queues);
+}
+
+void
+hns3_start_rxtx_datapath(struct rte_eth_dev *dev)
+{
+	hns3_set_rxtx_function(dev);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		return;
+
+	hns3_mp_req_start_rxtx(dev);
+}

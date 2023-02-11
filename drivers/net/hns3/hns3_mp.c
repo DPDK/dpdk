@@ -89,12 +89,12 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case HNS3_MP_REQ_START_RXTX:
 		PMD_INIT_LOG(INFO, "port %u starting datapath",
 			     dev->data->port_id);
-		hns3_set_rxtx_function(dev);
+		hns3_start_rxtx_datapath(dev);
 		break;
 	case HNS3_MP_REQ_STOP_RXTX:
 		PMD_INIT_LOG(INFO, "port %u stopping datapath",
 			     dev->data->port_id);
-		hns3_set_rxtx_function(dev);
+		hns3_stop_rxtx_datapath(dev);
 		break;
 	case HNS3_MP_REQ_START_TX:
 		PMD_INIT_LOG(INFO, "port %u starting Tx datapath",
