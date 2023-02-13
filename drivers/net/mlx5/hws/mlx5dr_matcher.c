@@ -334,6 +334,24 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 		return ret;
 	}
 
+	if (!next) {
+		/* ft no longer points to any RTC, drop refcount */
+		ret = mlx5dr_matcher_free_rtc_pointing(tbl->ctx,
+						       tbl->fw_ft_type,
+						       tbl->type,
+						       prev_ft);
+		if (ret) {
+			DR_LOG(ERR, "Failed to reset last RTC refcount");
+			return ret;
+		}
+	}
+
+	ret = mlx5dr_matcher_shared_update_local_ft(tbl);
+	if (ret) {
+		DR_LOG(ERR, "Failed to update local_ft in shared table");
+		return ret;
+	}
+
 	return 0;
 }
 
