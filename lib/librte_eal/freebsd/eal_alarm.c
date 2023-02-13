@@ -148,11 +148,11 @@ eal_alarm_callback(void *arg __rte_unused)
 	struct timespec now;
 	struct alarm_entry *ap;
 
-	rte_spinlock_lock(&alarm_list_lk);
-	ap = LIST_FIRST(&alarm_list);
-
 	if (clock_gettime(CLOCK_TYPE_ID, &now) < 0)
 		return;
+
+	rte_spinlock_lock(&alarm_list_lk);
+	ap = LIST_FIRST(&alarm_list);
 
 	while (ap != NULL && timespec_cmp(&now, &ap->time) >= 0) {
 		ap->executing = 1;
