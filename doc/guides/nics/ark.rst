@@ -52,6 +52,10 @@ board. While specific capabilities such as number of physical
 hardware queue-pairs are negotiated; the driver is designed to
 remain constant over a broad and extendable feature set.
 
+* FPGA Vendors Supported: AMD/Xilinx and Intel
+* Number of RX/TX Queue-Pairs: up to 128
+* PCIe Endpoint Technology: Gen3, Gen4, Gen5
+
 Intentionally, Arkville by itself DOES NOT provide common NIC
 capabilities such as offload or receive-side scaling (RSS).
 These capabilities would be viewed as a gate-level "tax" on
@@ -73,7 +77,7 @@ between the user's FPGA application and the existing DPDK features via
 the PMD.
 
 Device Parameters
--------------------
+-----------------
 
 The ARK PMD supports device parameters that are used for packet
 routing and for internal packet generation and packet checking.  This
@@ -303,6 +307,18 @@ ARK PMD supports the following Arkville RTL PCIe instances including:
 * ``1d6c:101e`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Agilex R-Tile]
 * ``1d6c:101f`` - AR-TK242 [2x100GbE Packet Capture Device]
 
+Arkville RTL Core Configurations
+--------------------------------
+
+Arkville's RTL core may be configured by the user with different
+datapath widths to balance throughput against FPGA logic area.
+The ARK PMD has introspection on the RTL core configuration and acts accordingly.
+All Arkville configurations present identical RTL user-facing AXI
+stream interfaces for both AMD/Xilinx and Intel FPGAs.
+
+* ARK-FX0 - 256-bit 32B datapath (PCIe Gen3, Gen4)
+* ARK-FX1 - 512-bit 64B datapath (PCIe Gen3, Gen4, Gen5)
+
 DPDK and Arkville Firmware Versioning
 -------------------------------------
 
@@ -334,6 +350,8 @@ Supported Features
 ------------------
 
 * Dynamic ARK PMD extensions
+* Dynamic per-queue MBUF (re)sizing up to 32KB
+* SR-IOV, VF-based queue-segregation
 * Multiple receive and transmit queues
 * Jumbo frames up to 9K
 * Hardware Statistics
