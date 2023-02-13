@@ -2108,6 +2108,12 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 	if (!priv->sh)
 		return 0;
+	if (priv->shared_refcnt) {
+		DRV_LOG(ERR, "port %u is shared host in use (%u)",
+			dev->data->port_id, priv->shared_refcnt);
+		rte_errno = EBUSY;
+		return -EBUSY;
+	}
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
 		dev->data->port_id,
 		((priv->sh->cdev->ctx != NULL) ?

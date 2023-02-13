@@ -619,6 +619,12 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	int ret = 0;
 	size_t sz;
 
+	if (pattr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
+		DRV_LOG(ERR, "Counters are not supported "
+			     "in cross vHCA sharing mode");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
 	/* init cnt service if not. */
 	if (priv->sh->cnt_svc == NULL) {
 		ret = mlx5_hws_cnt_svc_init(priv->sh);
@@ -1190,6 +1196,12 @@ mlx5_hws_age_pool_init(struct rte_eth_dev *dev,
 
 	strict_queue = !!(attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE);
 	MLX5_ASSERT(priv->hws_cpool);
+	if (attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
+		DRV_LOG(ERR, "Aging sn not supported "
+			     "in cross vHCA sharing mode");
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
 	nb_alloc_cnts = mlx5_hws_cnt_pool_get_size(priv->hws_cpool);
 	if (strict_queue) {
 		rsize = mlx5_hws_aged_out_q_ring_size_get(nb_alloc_cnts,

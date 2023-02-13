@@ -1793,6 +1793,8 @@ struct mlx5_priv {
 	struct mlx5_flow_hw_ctrl_rx *hw_ctrl_rx;
 	/**< HW steering templates used to create control flow rules. */
 #endif
+	struct rte_eth_dev *shared_host; /* Host device for HW steering. */
+	uint16_t shared_refcnt; /* HW steering host reference counter. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

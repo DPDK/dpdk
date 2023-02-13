@@ -5,6 +5,8 @@
 #include <rte_flow.h>
 
 #include <mlx5_malloc.h>
+
+#include "mlx5.h"
 #include "mlx5_defs.h"
 #include "mlx5_flow.h"
 #include "mlx5_rx.h"
@@ -6322,6 +6324,12 @@ flow_hw_ct_pool_create(struct rte_eth_dev *dev,
 	int reg_id;
 	uint32_t flags;
 
+	if (port_attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
+		DRV_LOG(ERR, "Connection tracking is not supported "
+			     "in cross vHCA sharing mode");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
 	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool), 0, SOCKET_ID_ANY);
 	if (!pool) {
 		rte_errno = ENOMEM;
@@ -6806,6 +6814,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		  struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_priv *host_priv = NULL;
 	struct mlx5dr_context *dr_ctx = NULL;
 	struct mlx5dr_context_attr dr_ctx_attr = {0};
 	struct mlx5_hw_q *hw_q;
@@ -6820,7 +6829,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		.free = mlx5_free,
 		.type = "mlx5_hw_action_construct_data",
 	};
-	/* Adds one queue to be used by PMD.
+	/*
+	 * Adds one queue to be used by PMD.
 	 * The last queue will be used by the PMD.
 	 */
 	uint16_t nb_q_updated = 0;
@@ -6939,6 +6949,57 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	dr_ctx_attr.queues = nb_q_updated;
 	/* Queue size should all be the same. Take the first one. */
 	dr_ctx_attr.queue_size = _queue_attr[0]->size;
+	if (port_attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
+		struct rte_eth_dev *host_dev = NULL;
+		uint16_t port_id;
+
+		MLX5_ASSERT(rte_eth_dev_is_valid_port(port_attr->host_port_id));
+		if (is_proxy) {
+			DRV_LOG(ERR, "cross vHCA shared mode not supported "
+				     " for E-Switch confgiurations");
+			rte_errno = ENOTSUP;
+			goto err;
+		}
+		MLX5_ETH_FOREACH_DEV(port_id, dev->device) {
+			if (port_id == port_attr->host_port_id) {
+				host_dev = &rte_eth_devices[port_id];
+				break;
+			}
+		}
+		if (!host_dev || host_dev == dev ||
+		    !host_dev->data || !host_dev->data->dev_private) {
+			DRV_LOG(ERR, "Invalid cross vHCA host port %u",
+				port_attr->host_port_id);
+			rte_errno = EINVAL;
+			goto err;
+		}
+		host_priv = host_dev->data->dev_private;
+		if (host_priv->sh->cdev->ctx == priv->sh->cdev->ctx) {
+			DRV_LOG(ERR, "Sibling ports %u and %u do not "
+				     "require cross vHCA sharing mode",
+				dev->data->port_id, port_attr->host_port_id);
+			rte_errno = EINVAL;
+			goto err;
+		}
+		if (host_priv->shared_host) {
+			DRV_LOG(ERR, "Host port %u is not the sharing base",
+				port_attr->host_port_id);
+			rte_errno = EINVAL;
+			goto err;
+		}
+		if (port_attr->nb_counters ||
+		    port_attr->nb_aging_objects ||
+		    port_attr->nb_meters ||
+		    port_attr->nb_conn_tracks) {
+			DRV_LOG(ERR,
+				"Object numbers on guest port must be zeros");
+			rte_errno = EINVAL;
+			goto err;
+		}
+		dr_ctx_attr.shared_ibv_ctx = host_priv->sh->cdev->ctx;
+		priv->shared_host = host_dev;
+		__atomic_fetch_add(&host_priv->shared_refcnt, 1, __ATOMIC_RELAXED);
+	}
 	dr_ctx = mlx5dr_context_open(priv->sh->cdev->ctx, &dr_ctx_attr);
 	/* rte_errno has been updated by HWS layer. */
 	if (!dr_ctx)
@@ -6954,7 +7015,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	}
 	/* Initialize meter library*/
-	if (port_attr->nb_meters)
+	if (port_attr->nb_meters || (host_priv && host_priv->hws_mpool))
 		if (mlx5_flow_meter_init(dev, port_attr->nb_meters, 1, 1, nb_q_updated))
 			goto err;
 	/* Add global actions. */
@@ -6991,7 +7052,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 		}
 	}
-	if (port_attr->nb_conn_tracks) {
+	if (port_attr->nb_conn_tracks || (host_priv && host_priv->hws_ctpool)) {
 		mem_size = sizeof(struct mlx5_aso_sq) * nb_q_updated +
 			   sizeof(*priv->ct_mng);
 		priv->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
@@ -7005,7 +7066,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 		priv->sh->ct_aso_en = 1;
 	}
-	if (port_attr->nb_counters) {
+	if (port_attr->nb_counters || (host_priv && host_priv->hws_cpool)) {
 		priv->hws_cpool = mlx5_hws_cnt_pool_create(dev, port_attr,
 							   nb_queue);
 		if (priv->hws_cpool == NULL)
@@ -7074,6 +7135,10 @@ err:
 	}
 	if (_queue_attr)
 		mlx5_free(_queue_attr);
+	if (priv->shared_host) {
+		__atomic_fetch_sub(&host_priv->shared_refcnt, 1, __ATOMIC_RELAXED);
+		priv->shared_host = NULL;
+	}
 	/* Do not overwrite the internal errno information. */
 	if (ret)
 		return ret;
@@ -7152,6 +7217,11 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
 	claim_zero(mlx5dr_context_close(priv->dr_ctx));
+	if (priv->shared_host) {
+		struct mlx5_priv *host_priv = priv->shared_host->data->dev_private;
+		__atomic_fetch_sub(&host_priv->shared_refcnt, 1, __ATOMIC_RELAXED);
+		priv->shared_host = NULL;
+	}
 	priv->dr_ctx = NULL;
 	priv->nb_queue = 0;
 }
