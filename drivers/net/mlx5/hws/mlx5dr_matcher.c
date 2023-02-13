@@ -346,12 +346,6 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 		}
 	}
 
-	ret = mlx5dr_matcher_shared_update_local_ft(tbl);
-	if (ret) {
-		DR_LOG(ERR, "Failed to update local_ft in shared table");
-		return ret;
-	}
-
 	return 0;
 }
 
