@@ -906,6 +906,9 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	caps->sq_ts_format = MLX5_GET(query_hca_cap_out, out,
 				      capability.cmd_hca_cap.sq_ts_format);
 
+	caps->ipsec_offload = MLX5_GET(query_hca_cap_out, out,
+				      capability.cmd_hca_cap.ipsec_offload);
+
 	MLX5_SET(query_hca_cap_in, in, op_mod,
 		 MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
 		 MLX5_HCA_CAP_OPMOD_GET_CUR);

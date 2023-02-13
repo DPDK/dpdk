@@ -202,6 +202,7 @@ struct mlx5dr_cmd_query_caps {
 	bool cross_vhca_resources;
 	uint32_t shared_vhca_id;
 	char fw_ver[64];
+	bool ipsec_offload;
 };
 
 int mlx5dr_cmd_destroy_obj(struct mlx5dr_devx_obj *devx_obj);

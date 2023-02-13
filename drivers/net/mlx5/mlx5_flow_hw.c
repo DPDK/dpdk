@@ -4743,6 +4743,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY:
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
+		case RTE_FLOW_ITEM_TYPE_ESP:
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 			/*

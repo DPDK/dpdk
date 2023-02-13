@@ -163,7 +163,9 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE32,	gre_opt_key,		v->key.key,		rte_flow_item_gre_opt) \
 	X(SET_BE32,	gre_opt_seq,		v->sequence.sequence,	rte_flow_item_gre_opt) \
 	X(SET_BE16,	gre_opt_checksum,	v->checksum_rsvd.checksum,	rte_flow_item_gre_opt) \
-	X(SET,		meter_color,		rte_col_2_mlx5_col(v->color),	rte_flow_item_meter_color)
+	X(SET,		meter_color,		rte_col_2_mlx5_col(v->color),	rte_flow_item_meter_color) \
+	X(SET_BE32,     ipsec_spi,              v->hdr.spi,             rte_flow_item_esp) \
+	X(SET_BE32,     ipsec_sequence_number,  v->hdr.seq,             rte_flow_item_esp)
 
 /* Item set function format */
 #define X(set_type, func_name, value, item_type) \
@@ -1751,6 +1753,36 @@ mlx5dr_definer_check_item_range_supp(struct rte_flow_item *item)
 }
 
 static int
+mlx5dr_definer_conv_item_esp(struct mlx5dr_definer_conv_data *cd,
+			     struct rte_flow_item *item,
+			     int item_idx)
+{
+	const struct rte_flow_item_esp *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+
+	if (!cd->ctx->caps->ipsec_offload) {
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (!m)
+		return 0;
+	if (m->hdr.spi) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_ESP_SPI];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipsec_spi_set;
+		DR_CALC_SET_HDR(fc, ipsec, spi);
+	}
+	if (m->hdr.seq) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_ESP_SEQUENCE_NUMBER];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipsec_sequence_number_set;
+		DR_CALC_SET_HDR(fc, ipsec, sequence_number);
+	}
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				struct mlx5dr_match_template *mt,
 				uint8_t *hl)
@@ -1876,6 +1908,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			ret = mlx5dr_definer_conv_item_ipv6_routing_ext(&cd, items, i);
 			item_flags |= cd.tunnel ? MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT :
 						  MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ESP:
+			ret = mlx5dr_definer_conv_item_esp(&cd, items, i);
+			item_flags |= MLX5_FLOW_ITEM_ESP;
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);
