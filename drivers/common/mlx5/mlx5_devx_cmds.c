@@ -1056,6 +1056,19 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->flow_counter_bulk_log_granularity =
 			MLX5_GET(cmd_hca_cap_2, hcattr,
 				 flow_counter_bulk_log_granularity);
+		rc = MLX5_GET(cmd_hca_cap_2, hcattr,
+			      cross_vhca_object_to_object_supported);
+		attr->cross_vhca =
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_TIR) &&
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_FT) &&
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_FT_TO_FT) &&
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_FT_TO_RTC);
+		rc = MLX5_GET(cmd_hca_cap_2, hcattr,
+			      allowed_object_for_other_vhca_access);
+		attr->cross_vhca = attr->cross_vhca &&
+			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_TIR) &&
+			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_FT) &&
+			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_RTC);
 	}
 	if (attr->log_min_stride_wqe_sz == 0)
 		attr->log_min_stride_wqe_sz = MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
