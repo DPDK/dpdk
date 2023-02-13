@@ -2315,8 +2315,10 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				break;
 			/* Fall-through. */
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool, &queue,
-						    &cnt_id, age_idx);
+			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool,
+					(priv->shared_refcnt ||
+					 priv->hws_cpool->cfg.host_cpool) ?
+					NULL : &queue, &cnt_id, age_idx);
 			if (ret != 0)
 				return ret;
 			ret = mlx5_hws_cnt_pool_get_action_offset
@@ -8017,6 +8019,7 @@ static int
 flow_hw_query_counter(const struct rte_eth_dev *dev, uint32_t counter,
 		      void *data, struct rte_flow_error *error)
 {
+	struct mlx5_hws_cnt_pool *hpool;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hws_cnt *cnt;
 	struct rte_flow_query_count *qc = data;
@@ -8027,8 +8030,9 @@ flow_hw_query_counter(const struct rte_eth_dev *dev, uint32_t counter,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				"counter are not available");
-	iidx = mlx5_hws_cnt_iidx(priv->hws_cpool, counter);
-	cnt = &priv->hws_cpool->pool[iidx];
+	hpool = mlx5_hws_cnt_host_pool(priv->hws_cpool);
+	iidx = mlx5_hws_cnt_iidx(hpool, counter);
+	cnt = &hpool->pool[iidx];
 	__hws_cnt_query_raw(priv->hws_cpool, counter, &pkts, &bytes);
 	qc->hits_set = 1;
 	qc->bytes_set = 1;
