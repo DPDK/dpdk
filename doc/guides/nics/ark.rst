@@ -306,6 +306,7 @@ ARK PMD supports the following Arkville RTL PCIe instances including:
 * ``1d6c:101c`` - AR-ARK-SRIOV-VF [Arkville Virtual Function]
 * ``1d6c:101e`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Agilex R-Tile]
 * ``1d6c:101f`` - AR-TK242 [2x100GbE Packet Capture Device]
+* ``1d6c:1022`` - AR-ARKA-FX2 [Arkville 128B DPDK Data Mover for Agilex]
 
 Arkville RTL Core Configurations
 --------------------------------
@@ -318,6 +319,7 @@ stream interfaces for both AMD/Xilinx and Intel FPGAs.
 
 * ARK-FX0 - 256-bit 32B datapath (PCIe Gen3, Gen4)
 * ARK-FX1 - 512-bit 64B datapath (PCIe Gen3, Gen4, Gen5)
+* ARK-FX2 - 1024-bit 128B datapath (PCIe Gen5x16 Only)
 
 DPDK and Arkville Firmware Versioning
 -------------------------------------

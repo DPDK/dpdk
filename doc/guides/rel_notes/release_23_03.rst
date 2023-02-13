@@ -102,6 +102,10 @@ New Features
 
   * Added multi-process support.
 
+* **Updated Atomic Rules ark driver.**
+
+  * Added Arkville FX2 device supporting PCIe Gen5x16.
+
 * **Updated Corigine nfp driver.**
 
   * Added support for meter options.

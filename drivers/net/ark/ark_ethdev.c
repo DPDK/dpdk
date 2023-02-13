@@ -99,6 +99,7 @@ static const struct rte_pci_id pci_id_ark_map[] = {
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x101c)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x101e)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x101f)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1022)},
 	{.vendor_id = 0, /* sentinel */ },
 };
 
