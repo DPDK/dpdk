@@ -446,11 +446,11 @@ parse_op_type(struct comp_test_data *test_data, const char *arg)
 	struct name_id_map optype_namemap[] = {
 		{
 			"comp",
-			COMPRESS_ONLY
+			COMPRESS
 		},
 		{
 			"decomp",
-			DECOMPRESS_ONLY
+			DECOMPRESS
 		},
 		{
 			"comp_and_decomp",
