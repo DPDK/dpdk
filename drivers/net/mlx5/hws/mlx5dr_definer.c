@@ -100,7 +100,7 @@ struct mlx5dr_definer_sel_ctrl {
 };
 
 struct mlx5dr_definer_conv_data {
-	struct mlx5dr_cmd_query_caps *caps;
+	struct mlx5dr_context *ctx;
 	struct mlx5dr_definer_fc *fc;
 	uint8_t relaxed;
 	uint8_t tunnel;
@@ -904,6 +904,7 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 			     struct rte_flow_item *item,
 			     int item_idx)
 {
+	struct mlx5dr_cmd_query_caps *caps = cd->ctx->caps;
 	const struct rte_flow_item_gtp *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
 
@@ -925,7 +926,7 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	if (m->hdr.teid) {
-		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_TEID_ENABLED)) {
+		if (!(caps->flex_protocols & MLX5_HCA_FLEX_GTPU_TEID_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
@@ -933,11 +934,11 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_gtp_teid_set;
 		fc->bit_mask = __mlx5_mask(header_gtp, teid);
-		fc->byte_off = cd->caps->format_select_gtpu_dw_1 * DW_SIZE;
+		fc->byte_off = caps->format_select_gtpu_dw_1 * DW_SIZE;
 	}
 
 	if (m->hdr.gtp_hdr_info) {
-		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
+		if (!(caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
@@ -946,12 +947,12 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_set = &mlx5dr_definer_gtp_ext_flag_set;
 		fc->bit_mask = __mlx5_mask(header_gtp, ext_hdr_flag);
 		fc->bit_off = __mlx5_dw_bit_off(header_gtp, ext_hdr_flag);
-		fc->byte_off = cd->caps->format_select_gtpu_dw_0 * DW_SIZE;
+		fc->byte_off = caps->format_select_gtpu_dw_0 * DW_SIZE;
 	}
 
 
 	if (m->hdr.msg_type) {
-		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
+		if (!(caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
@@ -960,7 +961,7 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_set = &mlx5dr_definer_gtp_msg_type_set;
 		fc->bit_mask = __mlx5_mask(header_gtp, msg_type);
 		fc->bit_off = __mlx5_dw_bit_off(header_gtp, msg_type);
-		fc->byte_off = cd->caps->format_select_gtpu_dw_0 * DW_SIZE;
+		fc->byte_off = caps->format_select_gtpu_dw_0 * DW_SIZE;
 	}
 
 	return 0;
@@ -971,12 +972,13 @@ mlx5dr_definer_conv_item_gtp_psc(struct mlx5dr_definer_conv_data *cd,
 				 struct rte_flow_item *item,
 				 int item_idx)
 {
+	struct mlx5dr_cmd_query_caps *caps = cd->ctx->caps;
 	const struct rte_flow_item_gtp_psc *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
 
 	/* Overwrite GTP extension flag to be 1 */
 	if (!cd->relaxed) {
-		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
+		if (!(caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_0_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
@@ -985,12 +987,12 @@ mlx5dr_definer_conv_item_gtp_psc(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_set = &mlx5dr_definer_ones_set;
 		fc->bit_mask = __mlx5_mask(header_gtp, ext_hdr_flag);
 		fc->bit_off = __mlx5_dw_bit_off(header_gtp, ext_hdr_flag);
-		fc->byte_off = cd->caps->format_select_gtpu_dw_0 * DW_SIZE;
+		fc->byte_off = caps->format_select_gtpu_dw_0 * DW_SIZE;
 	}
 
 	/* Overwrite next extension header type */
 	if (!cd->relaxed) {
-		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_2_ENABLED)) {
+		if (!(caps->flex_protocols & MLX5_HCA_FLEX_GTPU_DW_2_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
@@ -1000,14 +1002,14 @@ mlx5dr_definer_conv_item_gtp_psc(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_mask_set = &mlx5dr_definer_ones_set;
 		fc->bit_mask = __mlx5_mask(header_opt_gtp, next_ext_hdr_type);
 		fc->bit_off = __mlx5_dw_bit_off(header_opt_gtp, next_ext_hdr_type);
-		fc->byte_off = cd->caps->format_select_gtpu_dw_2 * DW_SIZE;
+		fc->byte_off = caps->format_select_gtpu_dw_2 * DW_SIZE;
 	}
 
 	if (!m)
 		return 0;
 
 	if (m->hdr.type) {
-		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_FIRST_EXT_DW_0_ENABLED)) {
+		if (!(caps->flex_protocols & MLX5_HCA_FLEX_GTPU_FIRST_EXT_DW_0_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
@@ -1016,11 +1018,11 @@ mlx5dr_definer_conv_item_gtp_psc(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_set = &mlx5dr_definer_gtp_ext_hdr_pdu_set;
 		fc->bit_mask = __mlx5_mask(header_gtp_psc, pdu_type);
 		fc->bit_off = __mlx5_dw_bit_off(header_gtp_psc, pdu_type);
-		fc->byte_off = cd->caps->format_select_gtpu_ext_dw_0 * DW_SIZE;
+		fc->byte_off = caps->format_select_gtpu_ext_dw_0 * DW_SIZE;
 	}
 
 	if (m->hdr.qfi) {
-		if (!(cd->caps->flex_protocols & MLX5_HCA_FLEX_GTPU_FIRST_EXT_DW_0_ENABLED)) {
+		if (!(caps->flex_protocols & MLX5_HCA_FLEX_GTPU_FIRST_EXT_DW_0_ENABLED)) {
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
@@ -1029,7 +1031,7 @@ mlx5dr_definer_conv_item_gtp_psc(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_set = &mlx5dr_definer_gtp_ext_hdr_qfi_set;
 		fc->bit_mask = __mlx5_mask(header_gtp_psc, qfi);
 		fc->bit_off = __mlx5_dw_bit_off(header_gtp_psc, qfi);
-		fc->byte_off = cd->caps->format_select_gtpu_ext_dw_0 * DW_SIZE;
+		fc->byte_off = caps->format_select_gtpu_ext_dw_0 * DW_SIZE;
 	}
 
 	return 0;
@@ -1040,18 +1042,19 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 			      struct rte_flow_item *item,
 			      int item_idx)
 {
+	struct mlx5dr_cmd_query_caps *caps = cd->ctx->caps;
 	const struct rte_flow_item_ethdev *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
 	uint8_t bit_offset = 0;
 
 	if (m->port_id) {
-		if (!cd->caps->wire_regc_mask) {
+		if (!caps->wire_regc_mask) {
 			DR_LOG(ERR, "Port ID item not supported, missing wire REGC mask");
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
 
-		while (!(cd->caps->wire_regc_mask & (1 << bit_offset)))
+		while (!(caps->wire_regc_mask & (1 << bit_offset)))
 			bit_offset++;
 
 		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VPORT_REG_C_0];
@@ -1060,7 +1063,7 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_mask_set = &mlx5dr_definer_ones_set;
 		DR_CALC_SET_HDR(fc, registers, register_c_0);
 		fc->bit_off = bit_offset;
-		fc->bit_mask = cd->caps->wire_regc_mask >> bit_offset;
+		fc->bit_mask = caps->wire_regc_mask >> bit_offset;
 	} else {
 		DR_LOG(ERR, "Pord ID item mask must specify ID mask");
 		rte_errno = EINVAL;
@@ -1673,7 +1676,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 	int i, ret;
 
 	cd.fc = fc;
-	cd.caps = ctx->caps;
+	cd.ctx = ctx;
 	cd.relaxed = mt->flags & MLX5DR_MATCH_TEMPLATE_FLAG_RELAXED_MATCH;
 
 	/* Collect all RTE fields to the field array and set header layout */
