@@ -1357,6 +1357,7 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 	case RTE_FLOW_FIELD_IPV6_DSCP:
 		return 6;
 	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+	case RTE_FLOW_FIELD_IPV6_PROTO:
 		return 8;
 	case RTE_FLOW_FIELD_IPV6_SRC:
 	case RTE_FLOW_FIELD_IPV6_DST:
@@ -1882,6 +1883,15 @@ mlx5_flow_field_id_to_modify_info
 			else
 				info[idx].offset = data->offset;
 		}
+		break;
+	case RTE_FLOW_FIELD_IPV6_PROTO:
+		MLX5_ASSERT(data->offset + width <= 8);
+		off_be = 8 - (data->offset + width);
+		info[idx] = (struct field_modify_info){1, 0, MLX5_MODI_OUT_IPV6_NEXT_HDR};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_8(width, off_be);
+		else
+			info[idx].offset = off_be;
 		break;
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
