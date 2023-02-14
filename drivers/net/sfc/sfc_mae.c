@@ -3912,6 +3912,8 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 
 	spec_mae->action_set = sfc_mae_action_set_attach(sa, &ctx);
 	if (spec_mae->action_set != NULL) {
+		sfc_mae_mac_addr_del(sa, ctx.src_mac);
+		sfc_mae_mac_addr_del(sa, ctx.dst_mac);
 		sfc_mae_encap_header_del(sa, ctx.encap_header);
 		efx_mae_action_set_spec_fini(sa->nic, ctx.spec);
 		return 0;
