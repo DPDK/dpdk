@@ -607,7 +607,7 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 
 int
 mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				  struct mlx5_ext_sample_id ids[],
+				  struct mlx5_ext_sample_id *ids,
 				  uint32_t num, uint8_t *anchor)
 {
 	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
@@ -637,8 +637,9 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 			(void *)flex_obj);
 		return -rte_errno;
 	}
-	*anchor = MLX5_GET(parse_graph_flex, flex, head_anchor_id);
-	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+	if (anchor)
+		*anchor = MLX5_GET(parse_graph_flex, flex, head_anchor_id);
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM && idx <= num; i++) {
 		void *s_off = (void *)((char *)sample + i *
 			      MLX5_ST_SZ_BYTES(parse_graph_flow_match_sample));
 		uint32_t en;

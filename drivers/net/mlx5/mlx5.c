@@ -970,7 +970,6 @@ mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 		.modify_field_select = 0,
 	};
 	struct mlx5_ext_sample_id ids[8];
-	uint8_t anchor_id;
 	int ret;
 
 	if (!priv->sh->cdev->config.hca_attr.parse_graph_flex_node) {
@@ -1006,7 +1005,7 @@ mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 		return (rte_errno == 0) ? -ENODEV : -rte_errno;
 	}
 	prf->num = 2;
-	ret = mlx5_devx_cmd_query_parse_samples(prf->obj, ids, prf->num, &anchor_id);
+	ret = mlx5_devx_cmd_query_parse_samples(prf->obj, ids, prf->num, NULL);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to query sample IDs.");
 		return (rte_errno == 0) ? -ENODEV : -rte_errno;
@@ -1039,6 +1038,95 @@ mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
 	if (prf->obj)
 		mlx5_devx_cmd_destroy(prf->obj);
 	prf->obj = NULL;
+}
+
+/*
+ * Allocation of a flex parser for srh. Once refcnt is zero, the resources held
+ * by this parser will be freed.
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
+{
+	struct mlx5_devx_graph_node_attr node = {
+		.modify_field_select = 0,
+	};
+	struct mlx5_ext_sample_id ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_common_dev_config *config = &priv->sh->cdev->config;
+	void *ibv_ctx = priv->sh->cdev->ctx;
+	int ret;
+
+	memset(ids, 0xff, sizeof(ids));
+	if (!config->hca_attr.parse_graph_flex_node) {
+		DRV_LOG(ERR, "Dynamic flex parser is not supported");
+		return -ENOTSUP;
+	}
+	if (__atomic_add_fetch(&priv->sh->srh_flex_parser.refcnt, 1, __ATOMIC_RELAXED) > 1)
+		return 0;
+
+	node.header_length_mode = MLX5_GRAPH_NODE_LEN_FIELD;
+	/* Srv6 first two DW are not counted in. */
+	node.header_length_base_value = 0x8;
+	/* The unit is uint64_t. */
+	node.header_length_field_shift = 0x3;
+	/* Header length is the 2nd byte. */
+	node.header_length_field_offset = 0x8;
+	node.header_length_field_mask = 0xF;
+	/* One byte next header protocol. */
+	node.next_header_field_size = 0x8;
+	node.in[0].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_IP;
+	node.in[0].compare_condition_value = IPPROTO_ROUTING;
+	node.sample[0].flow_match_sample_en = 1;
+	/* First come first serve no matter inner or outer. */
+	node.sample[0].flow_match_sample_tunnel_mode = MLX5_GRAPH_SAMPLE_TUNNEL_FIRST;
+	node.out[0].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_TCP;
+	node.out[0].compare_condition_value = IPPROTO_TCP;
+	node.out[1].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_UDP;
+	node.out[1].compare_condition_value = IPPROTO_UDP;
+	node.out[2].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_IPV6;
+	node.out[2].compare_condition_value = IPPROTO_IPV6;
+	priv->sh->srh_flex_parser.fp = mlx5_devx_cmd_create_flex_parser(ibv_ctx, &node);
+	if (!priv->sh->srh_flex_parser.fp) {
+		DRV_LOG(ERR, "Failed to create flex parser node object.");
+		return (rte_errno == 0) ? -ENODEV : -rte_errno;
+	}
+	priv->sh->srh_flex_parser.num = 1;
+	ret = mlx5_devx_cmd_query_parse_samples(priv->sh->srh_flex_parser.fp, ids,
+						priv->sh->srh_flex_parser.num,
+						&priv->sh->srh_flex_parser.anchor_id);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to query sample IDs.");
+		return (rte_errno == 0) ? -ENODEV : -rte_errno;
+	}
+	priv->sh->srh_flex_parser.offset[0] = 0x0;
+	priv->sh->srh_flex_parser.ids[0].id = ids[0].id;
+	return 0;
+}
+
+/*
+ * Destroy the flex parser node, including the parser itself, input / output
+ * arcs and DW samples. Resources could be reused then.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure
+ */
+void
+mlx5_free_srh_flex_parser(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_internal_flex_parser_profile *fp = &priv->sh->srh_flex_parser;
+
+	if (__atomic_sub_fetch(&fp->refcnt, 1, __ATOMIC_RELAXED))
+		return;
+	if (fp->fp)
+		mlx5_devx_cmd_destroy(fp->fp);
+	fp->fp = NULL;
+	fp->num = 0;
 }
 
 uint32_t

@@ -213,17 +213,17 @@ flow_hw_hashfields_set(struct mlx5_flow_rss_desc *rss_desc,
 }
 
 /**
- * Generate the pattern item flags.
- * Will be used for shared RSS action.
+ * Generate the matching pattern item flags.
  *
  * @param[in] items
  *   Pointer to the list of items.
  *
  * @return
- *   Item flags.
+ *   Matching item flags. RSS hash field function
+ *   silently ignores the flags which are unsupported.
  */
 static uint64_t
-flow_hw_rss_item_flags_get(const struct rte_flow_item items[])
+flow_hw_matching_item_flags_get(const struct rte_flow_item items[])
 {
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
@@ -248,6 +248,10 @@ flow_hw_rss_item_flags_get(const struct rte_flow_item items[])
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
 					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
+			last_item = tunnel ? MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT :
+					     MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			last_item = MLX5_FLOW_LAYER_GRE;
@@ -4734,6 +4738,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST:
 		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY:
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
+		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 			/*
@@ -4862,13 +4867,24 @@ setup_pattern_template:
 				   "cannot create match template");
 		return NULL;
 	}
-	it->item_flags = flow_hw_rss_item_flags_get(tmpl_items);
+	it->item_flags = flow_hw_matching_item_flags_get(tmpl_items);
 	if (copied_items) {
 		if (attr->ingress)
 			it->implicit_port = true;
 		else if (attr->egress)
 			it->implicit_tag = true;
 		mlx5_free(copied_items);
+	}
+	/* Either inner or outer, can't both. */
+	if (it->item_flags & (MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT |
+			      MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT)) {
+		if (((it->item_flags & MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT) &&
+		     (it->item_flags & MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT)) ||
+		    (mlx5_alloc_srh_flex_parser(dev))) {
+			claim_zero(mlx5dr_match_template_destroy(it->mt));
+			mlx5_free(it);
+			return NULL;
+		}
 	}
 	__atomic_fetch_add(&it->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->flow_hw_itt, it, next);
@@ -4901,6 +4917,9 @@ flow_hw_pattern_template_destroy(struct rte_eth_dev *dev __rte_unused,
 				   NULL,
 				   "item template in using");
 	}
+	if (template->item_flags & (MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT |
+				    MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT))
+		mlx5_free_srh_flex_parser(dev);
 	LIST_REMOVE(template, next);
 	claim_zero(mlx5dr_match_template_destroy(template->mt));
 	mlx5_free(template);

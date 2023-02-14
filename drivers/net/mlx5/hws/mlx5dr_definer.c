@@ -125,6 +125,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE16,	ipv4_len,		v->total_length,	rte_ipv4_hdr) \
 	X(SET_BE16,	ipv6_payload_len,	v->hdr.payload_len,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_proto,		v->hdr.proto,		rte_flow_item_ipv6) \
+	X(SET,		ipv6_routing_hdr,	IPPROTO_ROUTING,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_hop_limits,	v->hdr.hop_limits,	rte_flow_item_ipv6) \
 	X(SET_BE32P,	ipv6_src_addr_127_96,	&v->hdr.src_addr[0],	rte_flow_item_ipv6) \
 	X(SET_BE32P,	ipv6_src_addr_95_64,	&v->hdr.src_addr[4],	rte_flow_item_ipv6) \
@@ -291,6 +292,21 @@ mlx5dr_definer_integrity_set(struct mlx5dr_definer_fc *fc,
 				    BIT(MLX5DR_DEFINER_OKS1_FIRST_L4_CSUM_OK);
 
 	DR_SET(tag, ok1_bits, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_ipv6_routing_ext_set(struct mlx5dr_definer_fc *fc,
+				    const void *item,
+				    uint8_t *tag)
+{
+	const struct rte_flow_item_ipv6_routing_ext *v = item;
+	uint32_t val;
+
+	val = v->hdr.next_hdr << __mlx5_dw_bit_off(header_ipv6_routing_ext, next_hdr);
+	val |= v->hdr.type << __mlx5_dw_bit_off(header_ipv6_routing_ext, type);
+	val |= v->hdr.segments_left <<
+		__mlx5_dw_bit_off(header_ipv6_routing_ext, segments_left);
+	DR_SET(tag, val, fc->byte_off, 0, fc->bit_mask);
 }
 
 static void
@@ -1605,6 +1621,76 @@ mlx5dr_definer_conv_item_meter_color(struct mlx5dr_definer_conv_data *cd,
 	return 0;
 }
 
+static struct mlx5dr_definer_fc *
+mlx5dr_definer_get_flex_parser_fc(struct mlx5dr_definer_conv_data *cd, uint32_t byte_off)
+{
+	uint32_t byte_off_fp7 = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_7);
+	uint32_t byte_off_fp0 = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_0);
+	enum mlx5dr_definer_fname fname = MLX5DR_DEFINER_FNAME_FLEX_PARSER_0;
+	struct mlx5dr_definer_fc *fc;
+	uint32_t idx;
+
+	if (byte_off < byte_off_fp7 || byte_off > byte_off_fp0) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	idx = (byte_off_fp0 - byte_off) / (sizeof(uint32_t));
+	fname += (enum mlx5dr_definer_fname)idx;
+	fc = &cd->fc[fname];
+	fc->byte_off = byte_off;
+	fc->bit_mask = UINT32_MAX;
+	return fc;
+}
+
+static int
+mlx5dr_definer_conv_item_ipv6_routing_ext(struct mlx5dr_definer_conv_data *cd,
+					  struct rte_flow_item *item,
+					  int item_idx)
+{
+	const struct rte_flow_item_ipv6_routing_ext *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+	uint32_t byte_off;
+
+	if (!cd->relaxed) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_VERSION, inner)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipv6_version_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l3_type, inner);
+
+		/* Overwrite - Unset ethertype if present */
+		memset(&cd->fc[DR_CALC_FNAME(ETH_TYPE, inner)], 0, sizeof(*fc));
+
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_ipv6_routing_hdr_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l3, protocol_next_header, inner);
+		}
+	}
+
+	if (!m)
+		return 0;
+
+	if (m->hdr.hdr_len || m->hdr.flags) {
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (m->hdr.next_hdr || m->hdr.type || m->hdr.segments_left) {
+		byte_off = flow_hw_get_srh_flex_parser_byte_off_from_ctx(cd->ctx);
+		fc = mlx5dr_definer_get_flex_parser_fc(cd, byte_off);
+		if (!fc)
+			return rte_errno;
+
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipv6_routing_ext_set;
+	}
+	return 0;
+}
+
 static int
 mlx5dr_definer_mt_set_fc(struct mlx5dr_match_template *mt,
 			 struct mlx5dr_definer_fc *fc,
@@ -1785,6 +1871,11 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 			ret = mlx5dr_definer_conv_item_meter_color(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_METER_COLOR;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
+			ret = mlx5dr_definer_conv_item_ipv6_routing_ext(&cd, items, i);
+			item_flags |= cd.tunnel ? MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT :
+						  MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT;
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);

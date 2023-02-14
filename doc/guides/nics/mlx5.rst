@@ -89,6 +89,7 @@ Features
 - Hairpin.
 - Multiple-thread flow insertion.
 - Matching on IPv4 Internet Header Length (IHL).
+- Matching on IPv6 routing extension header.
 - Matching on GTP extension header with raw encap/decap action.
 - Matching on Geneve TLV option header with raw encap/decap action.
 - Matching on ESP header SPI field.
@@ -174,6 +175,9 @@ Limitations
 
     - ``-EAGAIN`` for ``rte_eth_dev_start()``.
     - ``-EBUSY`` for ``rte_eth_dev_stop()``.
+
+  - Matching on ICMP6 following IPv6 routing extension header,
+    should match ``ipv6_routing_ext_next_hdr`` instead of ICMP6.
 
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
@@ -505,6 +509,14 @@ Limitations
   IPv6 header item 'proto' field.
   The last extension header item 'next header' field can specify the following
   header protocol type.
+
+- Match on IPv6 routing extension header supports the following fields only:
+
+  - ``type``
+  - ``next_hdr``
+  - ``segments_left``
+
+  Only supports HW steering (``dv_flow_en=2``).
 
 - Hairpin:
 

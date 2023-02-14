@@ -519,6 +519,21 @@ struct mlx5_ifc_header_ipv6_vtc_bits {
 	u8 flow_label[0x14];
 };
 
+struct mlx5_ifc_header_ipv6_routing_ext_bits {
+	u8 next_hdr[0x8];
+	u8 hdr_len[0x8];
+	u8 type[0x8];
+	u8 segments_left[0x8];
+	union {
+		u8 flags[0x20];
+		struct {
+			u8 last_entry[0x8];
+			u8 flag[0x8];
+			u8 tag[0x10];
+		};
+	};
+};
+
 struct mlx5_ifc_header_vxlan_bits {
 	u8 flags[0x8];
 	u8 reserved1[0x18];

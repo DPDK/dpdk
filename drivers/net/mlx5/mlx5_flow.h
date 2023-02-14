@@ -219,6 +219,10 @@ enum mlx5_feature_name {
 /* Meter color item */
 #define MLX5_FLOW_ITEM_METER_COLOR (UINT64_C(1) << 44)
 
+/* IPv6 routing extension item */
+#define MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT (UINT64_C(1) << 45)
+#define MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT (UINT64_C(1) << 46)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -2615,4 +2619,28 @@ int mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 			   enum rte_flow_field_id field, int inherit,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error);
+
+static __rte_always_inline int
+flow_hw_get_srh_flex_parser_byte_off_from_ctx(void *dr_ctx __rte_unused)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint16_t port;
+
+	MLX5_ETH_FOREACH_DEV(port, NULL) {
+		struct mlx5_priv *priv;
+		struct mlx5_hca_flex_attr *attr;
+
+		priv = rte_eth_devices[port].data->dev_private;
+		attr = &priv->sh->cdev->config.hca_attr.flex;
+		if (priv->dr_ctx == dr_ctx && attr->ext_sample_id) {
+			if (priv->sh->srh_flex_parser.num)
+				return priv->sh->srh_flex_parser.ids[0].format_select_dw *
+					sizeof(uint32_t);
+			else
+				return UINT32_MAX;
+		}
+	}
+#endif
+	return UINT32_MAX;
+}
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
