@@ -558,7 +558,7 @@ cperf_cyclecount_test_runner(void *test_ctx)
 		"    [D-e] - decompression enqueue\n"
 		"    [D-d] - decompression dequeue\n"
 		"  - Cycles section: number of cycles per 'op' for the following operations:\n"
-		"    setup/op - memory allocation, op configuration and memory dealocation\n"
+		"    setup/op - memory allocation, op configuration and memory deallocation\n"
 		"    [C-e] - compression enqueue\n"
 		"    [C-d] - compression dequeue\n"
 		"    [D-e] - decompression enqueue\n"

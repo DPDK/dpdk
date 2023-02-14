@@ -491,7 +491,7 @@ parse_huffman_enc(struct comp_test_data *test_data, const char *arg)
 	int id = get_str_key_id_mapping(huffman_namemap,
 			RTE_DIM(huffman_namemap), arg);
 	if (id < 0) {
-		RTE_LOG(ERR, USER1, "Invalid Huffmane encoding specified\n");
+		RTE_LOG(ERR, USER1, "Invalid Huffman encoding specified\n");
 		return -1;
 	}
 
@@ -507,7 +507,7 @@ parse_level(struct comp_test_data *test_data, const char *arg)
 
 	/*
 	 * Try parsing the argument as a range, if it fails,
-	 * arse it as a list
+	 * parse it as a list
 	 */
 	if (parse_range(arg, &test_data->level_lst.min,
 			&test_data->level_lst.max,
