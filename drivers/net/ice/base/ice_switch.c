@@ -2502,6 +2502,42 @@ ice_alloc_global_lut_exit:
 }
 
 /**
+ * ice_free_sw_marker_lg - free a switch marker large action
+ * @hw: pointer to the HW struct
+ * @marker_lg_id: ID of the marker large action to free
+ * @sw_marker: sw marker to tag the Rx descriptor with
+ */
+static enum ice_status
+ice_free_sw_marker_lg(struct ice_hw *hw, u16 marker_lg_id, u32 sw_marker)
+{
+	struct ice_aqc_alloc_free_res_elem *sw_buf;
+	u16 buf_len, num_elems = 1;
+	enum ice_status status;
+
+	buf_len = ice_struct_size(sw_buf, elem, num_elems);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
+	if (!sw_buf)
+		return ICE_ERR_NO_MEMORY;
+
+	sw_buf->num_elems = CPU_TO_LE16(num_elems);
+	if (sw_marker == (sw_marker & 0xFFFF))
+		sw_buf->res_type = CPU_TO_LE16(ICE_AQC_RES_TYPE_WIDE_TABLE_1);
+	else
+		sw_buf->res_type = CPU_TO_LE16(ICE_AQC_RES_TYPE_WIDE_TABLE_2);
+
+	sw_buf->elem[0].e.sw_resp = CPU_TO_LE16(marker_lg_id);
+
+	status = ice_aq_alloc_free_res(hw, num_elems, sw_buf, buf_len,
+				       ice_aqc_opc_free_res, NULL);
+	if (status)
+		ice_debug(hw, ICE_DBG_RES, "Failed to free sw marker lg %d, status %d\n",
+			  marker_lg_id, status);
+
+	ice_free(hw, sw_buf);
+	return status;
+}
+
+/**
  * ice_free_rss_global_lut - free a RSS global LUT
  * @hw: pointer to the HW struct
  * @global_lut_id: ID of the RSS global LUT to free
@@ -8808,6 +8844,139 @@ ice_adv_add_update_vsi_list(struct ice_hw *hw,
 }
 
 /**
+ * ice_set_lg_action_entry
+ * @act_type: large action type is defined in struct ice_sw_rule_lg_act
+ * @lg_act_entry: large action entry content
+ *
+ * Helper function to set large action entry. Each entry represents a single
+ * action and up to 4 actions can be chained.
+ */
+static u32
+ice_set_lg_action_entry(u8 act_type, union lg_act_entry *lg_entry)
+{
+	u32 act = act_type;
+
+	switch (act_type) {
+	case ICE_LG_ACT_VSI_FORWARDING:
+		act |= ICE_LG_ACT_VALID_BIT;
+		act |= (lg_entry->vsi_fwd.vsi_list <<
+				ICE_LG_ACT_VSI_LIST_ID_S) &
+			ICE_LG_ACT_VSI_LIST_ID_M;
+		break;
+	case ICE_LG_ACT_TO_Q:
+		act |= ICE_LG_ACT_Q_PRIORITY_SET;
+		act |= (lg_entry->to_q.q_idx << ICE_LG_ACT_Q_INDEX_S) &
+			ICE_LG_ACT_Q_INDEX_M;
+		act |= (lg_entry->to_q.q_region_sz << ICE_LG_ACT_Q_REGION_S) &
+			ICE_LG_ACT_Q_REGION_M;
+		act |= (lg_entry->to_q.q_pri << ICE_LG_ACT_Q_REGION_S) &
+			ICE_LG_ACT_Q_REGION_M;
+		break;
+	case ICE_LG_ACT_PRUNE:
+		act |= (lg_entry->prune.vsi_list << ICE_LG_ACT_VSI_LIST_ID_S) &
+			ICE_LG_ACT_VSI_LIST_ID_M;
+
+		if (lg_entry->prune.egr)
+			act |= ICE_LG_ACT_EGRESS;
+		if (lg_entry->prune.ing)
+			act |= ICE_LG_ACT_INGRESS;
+		if (lg_entry->prune.prune_t)
+			act |= ICE_LG_ACT_PRUNET;
+		break;
+	case ICE_LG_OTHER_ACT_MIRROR:
+		act |= (lg_entry->mirror.mirror_vsi <<
+				ICE_LG_ACT_MIRROR_VSI_ID_S) &
+			ICE_LG_ACT_MIRROR_VSI_ID_M;
+		break;
+	case ICE_LG_ACT_GENERIC:
+		act |= (lg_entry->generic_act.generic_value <<
+				ICE_LG_ACT_GENERIC_VALUE_S) &
+			ICE_LG_ACT_GENERIC_VALUE_M;
+		act |= (lg_entry->generic_act.offset <<
+				ICE_LG_ACT_GENERIC_OFFSET_S) &
+			ICE_LG_ACT_GENERIC_OFFSET_M;
+		act |= (lg_entry->generic_act.priority <<
+				ICE_LG_ACT_GENERIC_PRIORITY_S) &
+			ICE_LG_ACT_GENERIC_PRIORITY_M;
+		break;
+	case ICE_LG_ACT_STAT_COUNT:
+		act |= (lg_entry->statistics.counter_idx <<
+				ICE_LG_ACT_STAT_COUNT_S) &
+			ICE_LG_ACT_STAT_COUNT_M;
+		break;
+	}
+
+	return act;
+}
+
+/**
+ * ice_fill_sw_marker_lg_act
+ * @hw: pointer to the hardware structure
+ * @sw_marker: sw marker to tag the Rx descriptor with
+ * @l_id: large action resource ID
+ * @lkup_rule_sz: lookup rule size
+ * @lg_act_size: large action rule size
+ * @num_lg_acts: number of actions to hold with a large action entry
+ * @s_rule: switch lookup rule structure
+ *
+ * Fill a large action to hold software marker and link the lookup rule
+ * with an action pointing to this larger action
+ */
+static struct ice_aqc_sw_rules_elem *
+ice_fill_sw_marker_lg_act(struct ice_hw *hw, u32 sw_marker, u16 l_id,
+			  u16 lkup_rule_sz, u16 lg_act_size, u16 num_lg_acts,
+			  struct ice_aqc_sw_rules_elem *s_rule)
+{
+	struct ice_aqc_sw_rules_elem *rx_tx, *lg_act;
+	const u16 offset_generic_md_word_0 = 0;
+	const u16 offset_generic_md_word_1 = 1;
+	enum ice_status status = ICE_SUCCESS;
+	union lg_act_entry lg_e_lo;
+	union lg_act_entry lg_e_hi;
+	const u8 priority = 0x3;
+	u16 rules_size;
+	u32 act;
+
+	/* For software marker we need 2 large actions for 32 bit mark id */
+	rules_size = lg_act_size + lkup_rule_sz;
+	lg_act = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, rules_size);
+	if (!lg_act)
+		return NULL;
+
+	rx_tx = (struct ice_aqc_sw_rules_elem *)((u8 *)lg_act + lg_act_size);
+
+	ice_memcpy(rx_tx, s_rule, lkup_rule_sz, ICE_NONDMA_TO_NONDMA);
+	ice_free(hw, s_rule);
+	s_rule = NULL;
+
+	lg_act->type = CPU_TO_LE16(ICE_AQC_SW_RULES_T_LG_ACT);
+	lg_act->pdata.lg_act.index = CPU_TO_LE16(l_id);
+	lg_act->pdata.lg_act.size = CPU_TO_LE16(num_lg_acts);
+
+	/* GENERIC VALUE action to hold the software marker ID low 16 bits */
+	/* and set in meta data index 4 by default. */
+	lg_e_lo.generic_act.generic_value = (u16)(sw_marker & 0xFFFF);
+	lg_e_lo.generic_act.offset = offset_generic_md_word_0;
+	lg_e_lo.generic_act.priority = priority;
+	act = ice_set_lg_action_entry(ICE_LG_ACT_GENERIC, &lg_e_lo);
+	lg_act->pdata.lg_act.act[0] = CPU_TO_LE32(act);
+
+	if (num_lg_acts == 1)
+		return lg_act;
+
+	/* This is a 32 bits marker id, chain a new entry to set higher 16 bits
+	 * and set in meta data index 5 by default.
+	 */
+	lg_e_hi.generic_act.generic_value = (u16)((sw_marker >> 16) & 0xFFFF);
+	lg_e_hi.generic_act.offset = offset_generic_md_word_1;
+	lg_e_hi.generic_act.priority = priority;
+	act = ice_set_lg_action_entry(ICE_LG_ACT_GENERIC, &lg_e_hi);
+	lg_act->pdata.lg_act.act[1] = CPU_TO_LE32(act);
+
+	return lg_act;
+}
+
+/**
  * ice_add_adv_rule - helper function to create an advanced switch rule
  * @hw: pointer to the hardware structure
  * @lkups: information on the words that needs to be looked up. All words
@@ -8831,13 +9000,17 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		 struct ice_rule_query_data *added_entry)
 {
 	struct ice_adv_fltr_mgmt_list_entry *m_entry, *adv_fltr = NULL;
+	u16 lg_act_size, lg_act_id = ICE_INVAL_LG_ACT_INDEX;
 	u16 rid = 0, i, pkt_len, rule_buf_sz, vsi_handle;
 	const struct ice_dummy_pkt_offsets *pkt_offsets;
 	struct ice_aqc_sw_rules_elem *s_rule = NULL;
+	struct ice_aqc_sw_rules_elem *rx_tx;
 	struct LIST_HEAD_TYPE *rule_head;
 	struct ice_switch_info *sw;
+	u16 nb_lg_acts_mark = 1;
 	enum ice_status status;
 	const u8 *pkt = NULL;
+	u16 num_rules = 1;
 	bool prof_rule;
 	u16 word_cnt;
 	u32 act = 0;
@@ -8883,6 +9056,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	if (!(rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI ||
 	      rinfo->sw_act.fltr_act == ICE_FWD_TO_Q ||
 	      rinfo->sw_act.fltr_act == ICE_FWD_TO_QGRP ||
+	      rinfo->sw_act.fltr_act == ICE_SET_MARK ||
 	      rinfo->sw_act.fltr_act == ICE_DROP_PACKET))
 		return ICE_ERR_CFG;
 
@@ -8949,6 +9123,19 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		act |= (q_rgn << ICE_SINGLE_ACT_Q_REGION_S) &
 		       ICE_SINGLE_ACT_Q_REGION_M;
 		break;
+	case ICE_SET_MARK:
+		if (rinfo->sw_act.markid != (rinfo->sw_act.markid & 0xFFFF))
+			nb_lg_acts_mark += 1;
+		/* Allocate a hardware table entry to hold large act. */
+		status = ice_alloc_res_lg_act(hw, &lg_act_id, nb_lg_acts_mark);
+		if (status || lg_act_id == ICE_INVAL_LG_ACT_INDEX)
+			return ICE_ERR_NO_MEMORY;
+
+		act = ICE_SINGLE_ACT_PTR;
+		act |= (lg_act_id << ICE_SINGLE_ACT_PTR_VAL_S) &
+		       ICE_SINGLE_ACT_PTR_VAL_M;
+		act |= ICE_SINGLE_ACT_PTR_BIT;
+		break;
 	case ICE_DROP_PACKET:
 		act |= ICE_SINGLE_ACT_VSI_FORWARDING | ICE_SINGLE_ACT_DROP |
 		       ICE_SINGLE_ACT_VALID_BIT;
@@ -8991,9 +9178,25 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 			goto err_ice_add_adv_rule;
 	}
 
+	rx_tx = s_rule;
+	if (rinfo->sw_act.fltr_act == ICE_SET_MARK) {
+		lg_act_size = (u16)ICE_SW_RULE_LG_ACT_SIZE(nb_lg_acts_mark);
+		s_rule = ice_fill_sw_marker_lg_act(hw, rinfo->sw_act.markid,
+						   lg_act_id, rule_buf_sz,
+						   lg_act_size, nb_lg_acts_mark,
+						   s_rule);
+		if (!s_rule)
+			goto err_ice_add_adv_rule;
+
+		rule_buf_sz += lg_act_size;
+		num_rules += 1;
+		rx_tx = (struct ice_aqc_sw_rules_elem *)
+			((u8 *)s_rule + lg_act_size);
+	}
+
 	status = ice_aq_sw_rules(hw, (struct ice_aqc_sw_rules *)s_rule,
-				 rule_buf_sz, 1, ice_aqc_opc_add_sw_rules,
-				 NULL);
+				 rule_buf_sz, num_rules,
+				 ice_aqc_opc_add_sw_rules, NULL);
 	if (status)
 		goto err_ice_add_adv_rule;
 	adv_fltr = (struct ice_adv_fltr_mgmt_list_entry *)
@@ -9018,7 +9221,8 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	adv_fltr->lkups_cnt = lkups_cnt;
 	adv_fltr->rule_info = *rinfo;
 	adv_fltr->rule_info.fltr_rule_id =
-		LE16_TO_CPU(s_rule->pdata.lkup_tx_rx.index);
+		LE16_TO_CPU(rx_tx->pdata.lkup_tx_rx.index);
+	adv_fltr->rule_info.lg_id = LE16_TO_CPU(lg_act_id);
 	sw = hw->switch_info;
 	sw->recp_list[rid].adv_rule = true;
 	rule_head = &sw->recp_list[rid].filt_rules;
@@ -9034,6 +9238,9 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		added_entry->vsi_handle = rinfo->sw_act.vsi_handle;
 	}
 err_ice_add_adv_rule:
+	if (status && rinfo->sw_act.fltr_act == ICE_SET_MARK)
+		ice_free_sw_marker_lg(hw, lg_act_id, rinfo->sw_act.markid);
+
 	if (status && adv_fltr) {
 		ice_free(hw, adv_fltr->lkups);
 		ice_free(hw, adv_fltr);
@@ -9212,6 +9419,9 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		struct ice_aqc_sw_rules_elem *s_rule;
 		u16 rule_buf_sz;
 
+		if (rinfo->sw_act.fltr_act == ICE_SET_MARK)
+			ice_free_sw_marker_lg(hw, list_elem->rule_info.lg_id,
+					      rinfo->sw_act.markid);
 		rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE;
 		s_rule = (struct ice_aqc_sw_rules_elem *)
 			ice_malloc(hw, rule_buf_sz);

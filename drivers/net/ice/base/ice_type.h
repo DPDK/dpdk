@@ -1364,6 +1364,7 @@ enum ice_sw_fwd_act_type {
 	ICE_FWD_TO_VSI_LIST, /* Do not use this when adding filter */
 	ICE_FWD_TO_Q,
 	ICE_FWD_TO_QGRP,
+	ICE_SET_MARK,
 	ICE_DROP_PACKET,
 	ICE_INVAL_ACT
 };
