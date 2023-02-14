@@ -607,7 +607,8 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 
 int
 mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				  uint32_t ids[], uint32_t num)
+				  struct mlx5_ext_sample_id ids[],
+				  uint32_t num, uint8_t *anchor)
 {
 	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(create_flex_parser_out)] = {0};
@@ -636,6 +637,7 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 			(void *)flex_obj);
 		return -rte_errno;
 	}
+	*anchor = MLX5_GET(parse_graph_flex, flex, head_anchor_id);
 	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
 		void *s_off = (void *)((char *)sample + i *
 			      MLX5_ST_SZ_BYTES(parse_graph_flow_match_sample));
@@ -645,8 +647,8 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 			      flow_match_sample_en);
 		if (!en)
 			continue;
-		ids[idx++] = MLX5_GET(parse_graph_flow_match_sample, s_off,
-				  flow_match_sample_field_id);
+		ids[idx++].id = MLX5_GET(parse_graph_flow_match_sample, s_off,
+					 flow_match_sample_field_id);
 	}
 	if (num != idx) {
 		rte_errno = EINVAL;
@@ -794,6 +796,12 @@ mlx5_devx_cmd_query_hca_parse_graph_node_cap
 					 max_num_arc_out);
 	attr->max_num_sample = MLX5_GET(parse_graph_node_cap, hcattr,
 					max_num_sample);
+	attr->anchor_en = MLX5_GET(parse_graph_node_cap, hcattr, anchor_en);
+	attr->ext_sample_id = MLX5_GET(parse_graph_node_cap, hcattr, ext_sample_id);
+	attr->sample_tunnel_inner2 = MLX5_GET(parse_graph_node_cap, hcattr,
+					      sample_tunnel_inner2);
+	attr->zero_size_supported = MLX5_GET(parse_graph_node_cap, hcattr,
+					     zero_size_supported);
 	attr->sample_id_in_out = MLX5_GET(parse_graph_node_cap, hcattr,
 					  sample_id_in_out);
 	attr->max_base_header_length = MLX5_GET(parse_graph_node_cap, hcattr,

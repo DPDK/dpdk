@@ -1895,7 +1895,11 @@ struct mlx5_ifc_parse_graph_node_cap_bits {
 	u8 max_num_arc_in[0x08];
 	u8 max_num_arc_out[0x08];
 	u8 max_num_sample[0x08];
-	u8 reserved_at_78[0x07];
+	u8 reserved_at_78[0x03];
+	u8 anchor_en[0x1];
+	u8 ext_sample_id[0x1];
+	u8 sample_tunnel_inner2[0x1];
+	u8 zero_size_supported[0x1];
 	u8 sample_id_in_out[0x1];
 	u8 max_base_header_length[0x10];
 	u8 reserved_at_90[0x08];
@@ -1903,6 +1907,24 @@ struct mlx5_ifc_parse_graph_node_cap_bits {
 	u8 max_next_header_offset[0x10];
 	u8 reserved_at_b0[0x08];
 	u8 header_length_mask_width[0x08];
+};
+
+/* ext_sample_id structure, see PRM Table: Flow Match Sample ID Format. */
+struct mlx5_ext_sample_id {
+	union {
+		struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			uint32_t format_select_dw:8;
+			uint32_t modify_field_id:12;
+			uint32_t sample_id:12;
+#else
+			uint32_t sample_id:12;
+			uint32_t modify_field_id:12;
+			uint32_t format_select_dw:8;
+#endif
+		};
+		uint32_t id;
+	};
 };
 
 struct mlx5_ifc_flow_table_prop_layout_bits {
@@ -4577,7 +4599,9 @@ struct mlx5_ifc_parse_graph_flex_bits {
 	u8 header_length_mode[0x4];
 	u8 header_length_field_offset[0x10];
 	u8 next_header_field_offset[0x10];
-	u8 reserved_at_160[0x1b];
+	u8 reserved_at_160[0x12];
+	u8 head_anchor_id[0x6];
+	u8 reserved_at_178[0x3];
 	u8 next_header_field_size[0x5];
 	u8 header_length_field_mask[0x20];
 	u8 reserved_at_224[0x20];

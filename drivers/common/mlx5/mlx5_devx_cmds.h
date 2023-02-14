@@ -114,6 +114,10 @@ struct mlx5_hca_flex_attr {
 	uint8_t  max_num_arc_out;
 	uint8_t  max_num_sample;
 	uint8_t  max_num_prog_sample:5;	/* From HCA CAP 2 */
+	uint8_t  anchor_en:1;
+	uint8_t  ext_sample_id:1;
+	uint8_t  sample_tunnel_inner2:1;
+	uint8_t  zero_size_supported:1;
 	uint8_t  sample_id_in_out:1;
 	uint16_t max_base_header_length;
 	uint8_t  max_sample_base_offset;
@@ -706,7 +710,8 @@ int mlx5_devx_cmd_modify_tir(struct mlx5_devx_obj *tir,
 			     struct mlx5_devx_modify_tir_attr *tir_attr);
 __rte_internal
 int mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				      uint32_t ids[], uint32_t num);
+				      struct mlx5_ext_sample_id ids[],
+				      uint32_t num, uint8_t *anchor);
 
 __rte_internal
 struct mlx5_devx_obj *

@@ -964,11 +964,13 @@ int
 mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
 	struct mlx5_ecpri_parser_profile *prf =	&priv->sh->ecpri_parser;
 	struct mlx5_devx_graph_node_attr node = {
 		.modify_field_select = 0,
 	};
-	uint32_t ids[8];
+	struct mlx5_ext_sample_id ids[8];
+	uint8_t anchor_id;
 	int ret;
 
 	if (!priv->sh->cdev->config.hca_attr.parse_graph_flex_node) {
@@ -1004,15 +1006,20 @@ mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 		return (rte_errno == 0) ? -ENODEV : -rte_errno;
 	}
 	prf->num = 2;
-	ret = mlx5_devx_cmd_query_parse_samples(prf->obj, ids, prf->num);
+	ret = mlx5_devx_cmd_query_parse_samples(prf->obj, ids, prf->num, &anchor_id);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to query sample IDs.");
 		return (rte_errno == 0) ? -ENODEV : -rte_errno;
 	}
 	prf->offset[0] = 0x0;
 	prf->offset[1] = sizeof(uint32_t);
-	prf->ids[0] = ids[0];
-	prf->ids[1] = ids[1];
+	if (attr->ext_sample_id) {
+		prf->ids[0] = ids[0].sample_id;
+		prf->ids[1] = ids[1].sample_id;
+	} else {
+		prf->ids[0] = ids[0].id;
+		prf->ids[1] = ids[1].id;
+	}
 	return 0;
 }
 

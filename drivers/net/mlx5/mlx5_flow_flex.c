@@ -226,15 +226,18 @@ mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
 	void *misc4_m = MLX5_ADDR_OF(fte_match_param, matcher,
 				     misc_parameters_4);
 	void *misc4_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_4);
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
 	struct mlx5_flex_item *tp;
 	uint32_t i, pos = 0;
+	uint32_t sample_id;
 
 	RTE_SET_USED(dev);
 	MLX5_ASSERT(item->spec && item->mask);
 	spec = item->spec;
 	mask = item->mask;
 	tp = (struct mlx5_flex_item *)spec->handle;
-	MLX5_ASSERT(mlx5_flex_index(dev->data->dev_private, tp) >= 0);
+	MLX5_ASSERT(mlx5_flex_index(priv, tp) >= 0);
 	for (i = 0; i < tp->mapnum; i++) {
 		struct mlx5_flex_pattern_field *map = tp->map + i;
 		uint32_t id = map->reg_id;
@@ -257,9 +260,13 @@ mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
 			MLX5_ASSERT(id < num_samples);
 			id += num_samples;
 		}
+		if (attr->ext_sample_id)
+			sample_id = tp->devx_fp->sample_ids[id].sample_id;
+		else
+			sample_id = tp->devx_fp->sample_ids[id].id;
 		mlx5_flex_set_match_sample(misc4_m, misc4_v,
 					   def, msk & def, val & msk & def,
-					   tp->devx_fp->sample_ids[id], id);
+					   sample_id, id);
 		pos += map->width;
 	}
 }
@@ -1298,7 +1305,8 @@ mlx5_flex_parser_create_cb(void *list_ctx, void *ctx)
 	/* Query the firmware assigned sample ids. */
 	ret = mlx5_devx_cmd_query_parse_samples(fp->devx_obj,
 						fp->sample_ids,
-						fp->num_samples);
+						fp->num_samples,
+						&fp->anchor_id);
 	if (ret)
 		goto error;
 	DRV_LOG(DEBUG, "DEVx flex parser %p created, samples num: %u",

@@ -1307,9 +1307,10 @@ struct mlx5_lag {
 struct mlx5_flex_parser_devx {
 	struct mlx5_list_entry entry;  /* List element at the beginning. */
 	uint32_t num_samples;
+	uint8_t anchor_id;
 	void *devx_obj;
 	struct mlx5_devx_graph_node_attr devx_conf;
-	uint32_t sample_ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
+	struct mlx5_ext_sample_id sample_ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
 };
 
 /* Pattern field descriptor - how to translate flex pattern into samples. */
