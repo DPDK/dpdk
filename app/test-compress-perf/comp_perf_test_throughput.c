@@ -355,41 +355,53 @@ cperf_throughput_test_runner(void *test_ctx)
 	 * First the verification part is needed
 	 */
 	if (cperf_verify_test_runner(&ctx->ver)) {
-		ret =  EXIT_FAILURE;
+		ret = EXIT_FAILURE;
 		goto end;
 	}
 
-	/*
-	 * Run the tests twice, discarding the first performance
-	 * results, before the cache is warmed up
-	 */
-	for (i = 0; i < 2; i++) {
-		if (main_loop(ctx, RTE_COMP_COMPRESS) < 0) {
-			ret = EXIT_FAILURE;
-			goto end;
+	if (test_data->test_op & COMPRESS) {
+		/*
+		 * Run the test twice, discarding the first performance
+		 * results, before the cache is warmed up
+		 */
+		for (i = 0; i < 2; i++) {
+			if (main_loop(ctx, RTE_COMP_COMPRESS) < 0) {
+				ret = EXIT_FAILURE;
+				goto end;
+			}
 		}
-	}
 
-	for (i = 0; i < 2; i++) {
-		if (main_loop(ctx, RTE_COMP_DECOMPRESS) < 0) {
-			ret = EXIT_FAILURE;
-			goto end;
-		}
-	}
-
-	ctx->comp_tsc_byte =
+		ctx->comp_tsc_byte =
 			(double)(ctx->comp_tsc_duration[test_data->level]) /
-					test_data->input_data_sz;
+						       test_data->input_data_sz;
+		ctx->comp_gbps = rte_get_tsc_hz() / ctx->comp_tsc_byte * 8 /
+								     1000000000;
+	} else {
+		ctx->comp_tsc_byte = 0;
+		ctx->comp_gbps = 0;
+	}
 
-	ctx->decomp_tsc_byte =
+	if (test_data->test_op & DECOMPRESS) {
+		/*
+		 * Run the test twice, discarding the first performance
+		 * results, before the cache is warmed up
+		 */
+		for (i = 0; i < 2; i++) {
+			if (main_loop(ctx, RTE_COMP_DECOMPRESS) < 0) {
+				ret = EXIT_FAILURE;
+				goto end;
+			}
+		}
+
+		ctx->decomp_tsc_byte =
 			(double)(ctx->decomp_tsc_duration[test_data->level]) /
-					test_data->input_data_sz;
-
-	ctx->comp_gbps = rte_get_tsc_hz() / ctx->comp_tsc_byte * 8 /
-			1000000000;
-
-	ctx->decomp_gbps = rte_get_tsc_hz() / ctx->decomp_tsc_byte * 8 /
-			1000000000;
+						       test_data->input_data_sz;
+		ctx->decomp_gbps = rte_get_tsc_hz() / ctx->decomp_tsc_byte * 8 /
+								     1000000000;
+	} else {
+		ctx->decomp_tsc_byte = 0;
+		ctx->decomp_gbps = 0;
+	}
 
 	if (rte_atomic16_test_and_set(&display_once)) {
 		printf("\n%12s%6s%12s%17s%15s%16s\n",
