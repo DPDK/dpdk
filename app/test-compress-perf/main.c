@@ -253,6 +253,14 @@ comp_perf_dump_input_data(struct comp_test_data *test_data)
 		goto end;
 	}
 
+	if (!(test_data->test_op & COMPRESS) &&
+	    test_data->input_data_sz >
+	    (size_t) test_data->seg_sz * (size_t) test_data->max_sgl_segs) {
+		RTE_LOG(ERR, USER1,
+			"Size of input must be less than total segments\n");
+		goto end;
+	}
+
 	test_data->input_data = rte_zmalloc_socket(NULL,
 				test_data->input_data_sz, 0, rte_socket_id());
 

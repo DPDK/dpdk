@@ -112,7 +112,8 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 		output_data_sz = &ctx->decomp_data_sz;
 		input_bufs = mem->comp_bufs;
 		output_bufs = mem->decomp_bufs;
-		out_seg_sz = test_data->seg_sz;
+		out_seg_sz = (test_data->test_op & COMPRESS) ?
+			     test_data->seg_sz : test_data->out_seg_sz;
 	}
 
 	/* Create private xform */
@@ -390,44 +391,59 @@ cperf_verify_test_runner(void *test_ctx)
 	int ret = EXIT_SUCCESS;
 	static uint16_t display_once;
 	uint32_t lcore = rte_lcore_id();
+	uint16_t exp = 0;
 
 	ctx->mem.lcore_id = lcore;
 
 	test_data->ratio = 0;
 
-	if (main_loop(ctx, RTE_COMP_COMPRESS) < 0) {
-		ret = EXIT_FAILURE;
-		goto end;
-	}
-
-	if (main_loop(ctx, RTE_COMP_DECOMPRESS) < 0) {
-		ret = EXIT_FAILURE;
-		goto end;
-	}
-
-	if (ctx->decomp_data_sz != test_data->input_data_sz) {
-		RTE_LOG(ERR, USER1,
-	   "Decompressed data length not equal to input data length\n");
-		RTE_LOG(ERR, USER1,
-			"Decompressed size = %zu, expected = %zu\n",
-			ctx->decomp_data_sz, test_data->input_data_sz);
-		ret = EXIT_FAILURE;
-		goto end;
-	} else {
-		if (memcmp(ctx->mem.decompressed_data,
-				test_data->input_data,
-				test_data->input_data_sz) != 0) {
-			RTE_LOG(ERR, USER1,
-		    "Decompressed data is not the same as file data\n");
+	if (test_data->test_op & COMPRESS) {
+		if (main_loop(ctx, RTE_COMP_COMPRESS) < 0) {
 			ret = EXIT_FAILURE;
 			goto end;
+		}
+	}
+
+	if (test_data->test_op & DECOMPRESS) {
+		if (main_loop(ctx, RTE_COMP_DECOMPRESS) < 0) {
+			ret = EXIT_FAILURE;
+			goto end;
+		}
+
+		if (!(test_data->test_op & COMPRESS)) {
+			/*
+			 * For DECOMPRESS_ONLY mode there is no more
+			 * verifications, reset the 'ratio' and 'comp_data_sz'
+			 * fields for other tests report.
+			 */
+			ctx->comp_data_sz = 0;
+			ctx->ratio = 0;
+			goto end;
+		}
+
+		if (ctx->decomp_data_sz != test_data->input_data_sz) {
+			RTE_LOG(ERR, USER1,
+				"Decompressed data length not equal to input data length\n");
+			RTE_LOG(ERR, USER1,
+				"Decompressed size = %zu, expected = %zu\n",
+				ctx->decomp_data_sz, test_data->input_data_sz);
+			ret = EXIT_FAILURE;
+			goto end;
+		} else {
+			if (memcmp(ctx->mem.decompressed_data,
+					test_data->input_data,
+					test_data->input_data_sz) != 0) {
+				RTE_LOG(ERR, USER1,
+					"Decompressed data is not the same as file data\n");
+				ret = EXIT_FAILURE;
+				goto end;
+			}
 		}
 	}
 
 	ctx->ratio = (double) ctx->comp_data_sz /
 			test_data->input_data_sz * 100;
 
-	uint16_t exp = 0;
 	if (!ctx->silent) {
 		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
 				__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
