@@ -2136,6 +2136,21 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_rule_parse_action;
 
+	/*
+	 * A DPDK flow entry must specify a fate action, which the parser
+	 * converts into a DELIVER action in a libefx action set. An
+	 * attempt to replace the action in the action set should
+	 * fail. If it succeeds then report an error, as the
+	 * parsed flow entry did not contain a fate action.
+	 */
+	rc = efx_mae_action_set_populate_drop(spec);
+	if (rc == 0) {
+		rc = rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"no fate action found");
+		goto fail_check_fate_action;
+	}
+
 	*action_setp = sfc_mae_action_set_attach(sa, spec);
 	if (*action_setp != NULL) {
 		efx_mae_action_set_spec_fini(sa->nic, spec);
@@ -2149,6 +2164,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 	return 0;
 
 fail_action_set_add:
+fail_check_fate_action:
 fail_rule_parse_action:
 	efx_mae_action_set_spec_fini(sa->nic, spec);
 
