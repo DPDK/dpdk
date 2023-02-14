@@ -25,7 +25,9 @@
 #define CPERF_MAX_SGL_SEGS	("max-num-sgl-segs")
 #define CPERF_NUM_ITER		("num-iter")
 #define CPERF_OPTYPE		("operation")
+#define CPERF_ALGO		("algo")
 #define CPERF_HUFFMAN_ENC	("huffman-enc")
+#define CPERF_LZ4_FLAGS		("lz4-flags")
 #define CPERF_LEVEL		("compress-level")
 #define CPERF_WINDOW_SIZE	("window-sz")
 #define CPERF_EXTERNAL_MBUFS	("external-mbufs")
@@ -56,8 +58,11 @@ usage(char *progname)
 		"		compressed/decompressed (default: 10000)\n"
 		" --operation [comp/decomp/comp_and_decomp]: perform test on\n"
 		"		compression, decompression or both operations\n"
+		" --algo [null/deflate/lzs/lz4]: perform test on algorithm\n"
+		"		null(DMA), deflate, lzs or lz4 (default: deflate)\n"
 		" --huffman-enc [fixed/dynamic/default]: Huffman encoding\n"
 		"		(default: dynamic)\n"
+		" --lz4-flags N: flags to configure LZ4 algorithm (default: 0)\n"
 		" --compress-level N: compression level, which could be a single value, list or range\n"
 		"		(default: range between 1 and 9)\n"
 		" --window-sz N: base two log value of compression window size\n"
@@ -146,6 +151,23 @@ parse_uint16_t(uint16_t *value, const char *arg)
 		return -ERANGE;
 
 	*value = (uint16_t) val;
+
+	return 0;
+}
+
+static int
+parse_uint8_t(uint8_t *value, const char *arg)
+{
+	uint32_t val = 0;
+	int ret = parse_uint32_t(&val, arg);
+
+	if (ret < 0)
+		return ret;
+
+	if (val > UINT8_MAX)
+		return -ERANGE;
+
+	*value = (uint8_t) val;
 
 	return 0;
 }
@@ -471,6 +493,40 @@ parse_op_type(struct comp_test_data *test_data, const char *arg)
 }
 
 static int
+parse_algo(struct comp_test_data *test_data, const char *arg)
+{
+	struct name_id_map algo_namemap[] = {
+		{
+			"null",
+			RTE_COMP_ALGO_NULL
+		},
+		{
+			"deflate",
+			RTE_COMP_ALGO_DEFLATE
+		},
+		{
+			"lzs",
+			RTE_COMP_ALGO_LZS
+		},
+		{
+			"lz4",
+			RTE_COMP_ALGO_LZ4
+		}
+	};
+
+	int id = get_str_key_id_mapping(algo_namemap,
+			RTE_DIM(algo_namemap), arg);
+	if (id < 0) {
+		RTE_LOG(ERR, USER1, "Invalid algorithm specified\n");
+		return -1;
+	}
+
+	test_data->test_algo = (enum rte_comp_algorithm)id;
+
+	return 0;
+}
+
+static int
 parse_huffman_enc(struct comp_test_data *test_data, const char *arg)
 {
 	struct name_id_map huffman_namemap[] = {
@@ -496,6 +552,19 @@ parse_huffman_enc(struct comp_test_data *test_data, const char *arg)
 	}
 
 	test_data->huffman_enc = (enum rte_comp_huffman)id;
+
+	return 0;
+}
+
+static int
+parse_lz4_flags(struct comp_test_data *test_data, const char *arg)
+{
+	int ret = parse_uint8_t(&test_data->lz4_flags, arg);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "Failed to parse LZ4 flags\n");
+		return -1;
+	}
 
 	return 0;
 }
@@ -572,7 +641,9 @@ static struct option lgopts[] = {
 	{ CPERF_MAX_SGL_SEGS, required_argument, 0, 0},
 	{ CPERF_NUM_ITER, required_argument, 0, 0 },
 	{ CPERF_OPTYPE,	required_argument, 0, 0 },
+	{ CPERF_ALGO, required_argument, 0, 0 },
 	{ CPERF_HUFFMAN_ENC, required_argument, 0, 0 },
+	{ CPERF_LZ4_FLAGS, required_argument, 0, 0 },
 	{ CPERF_LEVEL, required_argument, 0, 0 },
 	{ CPERF_WINDOW_SIZE, required_argument, 0, 0 },
 	{ CPERF_EXTERNAL_MBUFS, 0, 0, 0 },
@@ -594,7 +665,9 @@ comp_perf_opts_parse_long(int opt_idx, struct comp_test_data *test_data)
 		{ CPERF_MAX_SGL_SEGS,	parse_max_num_sgl_segs },
 		{ CPERF_NUM_ITER,	parse_num_iter },
 		{ CPERF_OPTYPE,		parse_op_type },
+		{ CPERF_ALGO,		parse_algo },
 		{ CPERF_HUFFMAN_ENC,	parse_huffman_enc },
+		{ CPERF_LZ4_FLAGS,	parse_lz4_flags },
 		{ CPERF_LEVEL,		parse_level },
 		{ CPERF_WINDOW_SIZE,	parse_window_sz },
 		{ CPERF_EXTERNAL_MBUFS,	parse_external_mbufs },
@@ -647,8 +720,10 @@ comp_perf_options_default(struct comp_test_data *test_data)
 	test_data->pool_sz = 8192;
 	test_data->max_sgl_segs = 16;
 	test_data->num_iter = 10000;
+	test_data->lz4_flags = 0;
 	test_data->huffman_enc = RTE_COMP_HUFFMAN_DYNAMIC;
 	test_data->test_op = COMPRESS_DECOMPRESS;
+	test_data->test_algo = RTE_COMP_ALGO_DEFLATE;
 	test_data->window_sz = -1;
 	test_data->level_lst.min = RTE_COMP_LEVEL_MIN;
 	test_data->level_lst.max = RTE_COMP_LEVEL_MAX;

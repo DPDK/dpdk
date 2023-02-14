@@ -57,29 +57,56 @@ comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
 {
 	const struct rte_compressdev_capabilities *cap;
 
-	cap = rte_compressdev_capability_get(cdev_id,
-					     RTE_COMP_ALGO_DEFLATE);
+	cap = rte_compressdev_capability_get(cdev_id, test_data->test_algo);
 
 	if (cap == NULL) {
 		RTE_LOG(ERR, USER1,
-			"Compress device does not support DEFLATE\n");
+			"Compress device does not support %u algorithm\n",
+			test_data->test_algo);
 		return -1;
 	}
 
 	uint64_t comp_flags = cap->comp_feature_flags;
 
-	/* Huffman encoding */
-	if (test_data->huffman_enc == RTE_COMP_HUFFMAN_FIXED &&
-			(comp_flags & RTE_COMP_FF_HUFFMAN_FIXED) == 0) {
-		RTE_LOG(ERR, USER1,
-			"Compress device does not supported Fixed Huffman\n");
-		return -1;
-	}
+	/* Algorithm type */
+	switch (test_data->test_algo) {
+	case RTE_COMP_ALGO_DEFLATE:
+		/* Huffman encoding */
+		if (test_data->huffman_enc == RTE_COMP_HUFFMAN_FIXED &&
+		    (comp_flags & RTE_COMP_FF_HUFFMAN_FIXED) == 0) {
+			RTE_LOG(ERR, USER1,
+				"Compress device does not supported Fixed Huffman\n");
+			return -1;
+		}
 
-	if (test_data->huffman_enc == RTE_COMP_HUFFMAN_DYNAMIC &&
-			(comp_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0) {
-		RTE_LOG(ERR, USER1,
-			"Compress device does not supported Dynamic Huffman\n");
+		if (test_data->huffman_enc == RTE_COMP_HUFFMAN_DYNAMIC &&
+		    (comp_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0) {
+			RTE_LOG(ERR, USER1,
+				"Compress device does not supported Dynamic Huffman\n");
+			return -1;
+		}
+		break;
+	case RTE_COMP_ALGO_LZ4:
+		/* LZ4 flags */
+		if ((test_data->lz4_flags & RTE_COMP_LZ4_FLAG_BLOCK_CHECKSUM) &&
+		    (comp_flags & RTE_COMP_FF_LZ4_BLOCK_WITH_CHECKSUM) == 0) {
+			RTE_LOG(ERR, USER1,
+				"Compress device does not support LZ4 block with checksum\n");
+			return -1;
+		}
+
+		if ((test_data->lz4_flags &
+		     RTE_COMP_LZ4_FLAG_BLOCK_INDEPENDENCE) &&
+		    (comp_flags & RTE_COMP_FF_LZ4_BLOCK_INDEPENDENCE) == 0) {
+			RTE_LOG(ERR, USER1,
+				"Compress device does not support LZ4 independent blocks\n");
+			return -1;
+		}
+		break;
+	case RTE_COMP_ALGO_LZS:
+	case RTE_COMP_ALGO_NULL:
+		break;
+	default:
 		return -1;
 	}
 
