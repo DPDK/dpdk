@@ -143,6 +143,10 @@ New Features
   * Added support for SHA3 256 plain hash in QAT GEN 2.
   * Added support for asymmetric crypto in QAT GEN3.
 
+* **Added LZ4 algorithm in compressdev library.**
+
+  Added LZ4 compression algorithm with xxHash-32 for the checksum.
+
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
   * eventdev reconfig logic is enhanced to increment the
