@@ -224,7 +224,7 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 				  op->status ==
 				  RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE) {
 					RTE_LOG(ERR, USER1,
-"Out of space error occurred due to uncompressible input data expanding to larger than destination buffer. Increase the EXPANSE_RATIO constant to use this data.\n");
+"Out of space error occurred due to incompressible input data expanding to larger than destination buffer. Increase the EXPANSE_RATIO constant to use this data.\n");
 					res = -1;
 					goto end;
 				} else if (op->status !=
@@ -309,7 +309,7 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 				  op->status ==
 				  RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE) {
 					RTE_LOG(ERR, USER1,
-"Out of space error occurred due to uncompressible input data expanding to larger than destination buffer. Increase the EXPANSE_RATIO constant to use this data.\n");
+"Out of space error occurred due to incompressible input data expanding to larger than destination buffer. Increase the EXPANSE_RATIO constant to use this data.\n");
 					res = -1;
 					goto end;
 				} else if (op->status !=
