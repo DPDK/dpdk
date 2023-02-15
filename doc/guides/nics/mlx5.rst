@@ -615,6 +615,14 @@ Limitations
 
 - The NIC egress flow rules on representor port are not supported.
 
+- During live migration to a new process set its flow engine as standby mode,
+  the user should only program flow rules in group 0 (``fdb_def_rule_en=0``).
+  Live migration is only supported under SWS (``dv_flow_en=1``).
+  The flow group 0 is shared between DPDK processes
+  while the other flow groups are limited to the current process.
+  The flow engine of a process cannot move from active to standby mode
+  if preceding active application rules are still present and vice versa.
+
 
 Statistics
 ----------

@@ -33,6 +33,7 @@
 #include "mlx5_utils.h"
 #include "mlx5_os.h"
 #include "mlx5_autoconf.h"
+#include "rte_pmd_mlx5.h"
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 #ifndef RTE_EXEC_ENV_WINDOWS
 #define HAVE_MLX5_HWS_SUPPORT 1
@@ -1656,6 +1657,28 @@ struct mlx5_hw_ctrl_flow {
 	struct rte_flow *flow;
 };
 
+/*
+ * Flow rule structure for flow engine mode control, focus on group 0.
+ * Apply to all supported domains.
+ */
+struct mlx5_dv_flow_info {
+	LIST_ENTRY(mlx5_dv_flow_info) next;
+	uint32_t orig_prio; /* prio set by user */
+	uint32_t flow_idx_high_prio;
+	/* flow index owned by standby mode. priority is lower unless DUP flags. */
+	uint32_t flow_idx_low_prio;
+	struct rte_flow_item *items;
+	struct rte_flow_action *actions;
+	struct rte_flow_attr attr;
+};
+
+struct mlx5_flow_engine_mode_info {
+	enum mlx5_flow_engine_mode mode;
+	uint32_t mode_flag;
+	/* The list is maintained in insertion order. */
+	LIST_HEAD(hot_up_info, mlx5_dv_flow_info) hot_upgrade;
+};
+
 struct mlx5_flow_hw_ctrl_rx;
 
 struct mlx5_priv {
@@ -1763,6 +1786,7 @@ struct mlx5_priv {
 	uint32_t nb_queue; /* HW steering queue number. */
 	struct mlx5_hws_cnt_pool *hws_cpool; /* HW steering's counter pool. */
 	uint32_t hws_mark_refcnt; /* HWS mark action reference counter. */
+	struct mlx5_flow_engine_mode_info mode_info; /* Process set flow engine info. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	/* Item template list. */
 	LIST_HEAD(flow_hw_itt, rte_flow_pattern_template) flow_hw_itt;
