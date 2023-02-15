@@ -39,7 +39,6 @@ driver_sdk_headers += files(
         'eventdev_pmd.h',
         'eventdev_pmd_pci.h',
         'eventdev_pmd_vdev.h',
-        'eventdev_trace.h',
         'event_timer_adapter_pmd.h',
 )
 

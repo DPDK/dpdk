@@ -2,8 +2,8 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
-#ifndef _RTE_EVENTDEV_TRACE_H_
-#define _RTE_EVENTDEV_TRACE_H_
+#ifndef EVENTDEV_TRACE_H
+#define EVENTDEV_TRACE_H
 
 /**
  * @file
@@ -786,4 +786,4 @@ RTE_TRACE_POINT(
 }
 #endif
 
-#endif /* _RTE_EVENTDEV_TRACE_H_ */
+#endif /* EVENTDEV_TRACE_H */
