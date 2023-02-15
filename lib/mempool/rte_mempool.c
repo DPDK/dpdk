@@ -28,8 +28,8 @@
 #include <rte_eal_paging.h>
 #include <rte_telemetry.h>
 
+#include "mempool_trace.h"
 #include "rte_mempool.h"
-#include "rte_mempool_trace.h"
 
 TAILQ_HEAD(rte_mempool_list, rte_tailq_entry);
 

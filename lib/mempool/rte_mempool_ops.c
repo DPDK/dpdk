@@ -11,7 +11,7 @@
 #include <rte_errno.h>
 #include <dev_driver.h>
 
-#include "rte_mempool_trace.h"
+#include "mempool_trace.h"
 
 /* indirect jump table to support external memory pools. */
 struct rte_mempool_ops_table rte_mempool_ops_table = {

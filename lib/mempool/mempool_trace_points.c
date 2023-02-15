@@ -4,7 +4,7 @@
 
 #include <rte_trace_point_register.h>
 
-#include "rte_mempool_trace.h"
+#include "mempool_trace.h"
 
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_ops_dequeue_bulk,
 	lib.mempool.ops.deq.bulk)

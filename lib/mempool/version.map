@@ -47,22 +47,8 @@ EXPERIMENTAL {
 	__rte_mempool_trace_generic_get;
 	__rte_mempool_trace_get_bulk;
 	__rte_mempool_trace_get_contig_blocks;
-	__rte_mempool_trace_create;
-	__rte_mempool_trace_create_empty;
-	__rte_mempool_trace_free;
-	__rte_mempool_trace_populate_iova;
-	__rte_mempool_trace_populate_virt;
-	__rte_mempool_trace_populate_default;
-	__rte_mempool_trace_populate_anon;
-	__rte_mempool_trace_cache_create;
-	__rte_mempool_trace_cache_free;
 	__rte_mempool_trace_default_cache;
-	__rte_mempool_trace_get_page_size;
 	__rte_mempool_trace_cache_flush;
-	__rte_mempool_trace_ops_populate;
-	__rte_mempool_trace_ops_alloc;
-	__rte_mempool_trace_ops_free;
-	__rte_mempool_trace_set_ops_byname;
 };
 
 INTERNAL {
