@@ -29,7 +29,7 @@
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
 #include "cryptodev_pmd.h"
-#include "rte_cryptodev_trace.h"
+#include "cryptodev_trace.h"
 
 static uint8_t nb_drivers;
 

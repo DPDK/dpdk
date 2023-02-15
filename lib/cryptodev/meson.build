@@ -8,7 +8,6 @@ sources = files(
 )
 headers = files(
         'rte_cryptodev.h',
-        'rte_cryptodev_trace.h',
         'rte_cryptodev_trace_fp.h',
         'rte_crypto.h',
         'rte_crypto_sym.h',

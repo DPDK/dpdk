@@ -64,16 +64,6 @@ EXPERIMENTAL {
 	rte_crypto_asym_xform_strings;
 
 	# added in 20.05
-	__rte_cryptodev_trace_configure;
-	__rte_cryptodev_trace_start;
-	__rte_cryptodev_trace_stop;
-	__rte_cryptodev_trace_close;
-	__rte_cryptodev_trace_queue_pair_setup;
-	__rte_cryptodev_trace_sym_session_pool_create;
-	__rte_cryptodev_trace_sym_session_create;
-	__rte_cryptodev_trace_asym_session_create;
-	__rte_cryptodev_trace_sym_session_free;
-	__rte_cryptodev_trace_asym_session_free;
 	__rte_cryptodev_trace_dequeue_burst;
 	__rte_cryptodev_trace_enqueue_burst;
 
@@ -98,58 +88,10 @@ EXPERIMENTAL {
 	rte_cryptodev_asym_session_get_user_data;
 	rte_cryptodev_asym_session_pool_create;
 	rte_cryptodev_asym_session_set_user_data;
-	__rte_cryptodev_trace_asym_session_pool_create;
 
 	#added in 22.07
 	rte_cryptodev_session_event_mdata_set;
 	rte_crypto_asym_ke_strings;
-
-	#added in 22.11
-	__rte_cryptodev_trace_add_deq_callback;
-	__rte_cryptodev_trace_add_enq_callback;
-	__rte_cryptodev_trace_allocate_driver;
-	__rte_cryptodev_trace_asym_capability_get;
-	__rte_cryptodev_trace_asym_get_private_session_size;
-	__rte_cryptodev_trace_asym_get_xform_enum;
-	__rte_cryptodev_trace_asym_session_get_user_data;
-	__rte_cryptodev_trace_asym_session_set_user_data;
-	__rte_cryptodev_trace_asym_xform_capability_check_modlen;
-	__rte_cryptodev_trace_asym_xform_capability_check_optype;
-	__rte_cryptodev_trace_callback_register;
-	__rte_cryptodev_trace_callback_unregister;
-	__rte_cryptodev_trace_configure_raw_dp_ctx;
-	__rte_cryptodev_trace_device_count_by_driver;
-	__rte_cryptodev_trace_devices_get;
-	__rte_cryptodev_trace_driver_id_get;
-	__rte_cryptodev_trace_driver_name_get;
-	__rte_cryptodev_trace_get_aead_algo_enum;
-	__rte_cryptodev_trace_get_auth_algo_enum;
-	__rte_cryptodev_trace_get_cipher_algo_enum;
-	__rte_cryptodev_trace_get_dev_id;
-	__rte_cryptodev_trace_get_feature_name;
-	__rte_cryptodev_trace_get_qp_status;
-	__rte_cryptodev_trace_get_raw_dp_ctx_size;
-	__rte_cryptodev_trace_get_sec_ctx;
-	__rte_cryptodev_trace_info_get;
-	__rte_cryptodev_trace_is_valid_dev;
-	__rte_cryptodev_trace_name_get;
-	__rte_cryptodev_trace_op_pool_create;
-	__rte_cryptodev_trace_queue_pair_count;
-	__rte_cryptodev_trace_remove_deq_callback;
-	__rte_cryptodev_trace_remove_enq_callback;
-	__rte_cryptodev_trace_session_event_mdata_set;
-	__rte_cryptodev_trace_socket_id;
-	__rte_cryptodev_trace_stats_get;
-	__rte_cryptodev_trace_stats_reset;
-	__rte_cryptodev_trace_sym_capability_check_aead;
-	__rte_cryptodev_trace_sym_capability_check_auth;
-	__rte_cryptodev_trace_sym_capability_check_cipher;
-	__rte_cryptodev_trace_sym_capability_get;
-	__rte_cryptodev_trace_sym_cpu_crypto_process;
-	__rte_cryptodev_trace_sym_get_private_session_size;
-	__rte_cryptodev_trace_sym_session_get_user_data;
-	__rte_cryptodev_trace_sym_session_set_user_data;
-	__rte_cryptodev_trace_count;
 
 	# added 23.03
 	rte_cryptodev_asym_get_xform_string;
@@ -162,10 +104,6 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
-	__rte_cryptodev_trace_asym_get_xform_string;
-	__rte_cryptodev_trace_get_aead_algo_string;
-	__rte_cryptodev_trace_get_auth_algo_string;
-	__rte_cryptodev_trace_get_cipher_algo_string;
 	cryptodev_fp_ops_reset;
 	cryptodev_fp_ops_set;
 	rte_cryptodev_allocate_driver;

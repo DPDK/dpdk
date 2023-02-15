@@ -4,7 +4,7 @@
 
 #include <rte_trace_point_register.h>
 
-#include "rte_cryptodev_trace.h"
+#include "cryptodev_trace.h"
 
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_configure,
 	lib.cryptodev.configure)
