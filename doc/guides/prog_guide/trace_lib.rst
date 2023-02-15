@@ -121,9 +121,11 @@ convention.
 .. note::
 
    The ``RTE_TRACE_POINT_REGISTER`` defines the placeholder for the
-   ``rte_trace_point_t`` tracepoint object. The user must export a
-   ``__<trace_function_name>`` symbol in the library ``.map`` file for this
-   tracepoint to be used out of the library, in shared builds.
+   ``rte_trace_point_t`` tracepoint object.
+   For generic tracepoint or for tracepoint used in public header files,
+   the user must export a ``__<trace_function_name>`` symbol
+   in the library ``.map`` file for this tracepoint
+   to be used out of the library, in shared builds.
    For example, ``__app_trace_string`` will be the exported symbol in the
    above example.
 

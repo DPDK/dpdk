@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include <rte_eal_trace.h>
+#include <eal_trace_internal.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>

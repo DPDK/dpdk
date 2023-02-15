@@ -333,8 +333,6 @@ EXPERIMENTAL {
 	rte_dev_dma_unmap;
 
 	# added in 20.05
-	__rte_eal_trace_alarm_cancel;
-	__rte_eal_trace_alarm_set;
 	__rte_eal_trace_generic_double;
 	__rte_eal_trace_generic_float;
 	__rte_eal_trace_generic_func;
@@ -351,19 +349,6 @@ EXPERIMENTAL {
 	__rte_eal_trace_generic_u64;
 	__rte_eal_trace_generic_u8;
 	__rte_eal_trace_generic_void;
-	__rte_eal_trace_intr_callback_register;
-	__rte_eal_trace_intr_callback_unregister;
-	__rte_eal_trace_intr_enable;
-	__rte_eal_trace_intr_disable;
-	__rte_eal_trace_mem_free;
-	__rte_eal_trace_mem_malloc;
-	__rte_eal_trace_mem_realloc;
-	__rte_eal_trace_mem_zmalloc;
-	__rte_eal_trace_memzone_free;
-	__rte_eal_trace_memzone_lookup;
-	__rte_eal_trace_memzone_reserve;
-	__rte_eal_trace_thread_lcore_ready;
-	__rte_eal_trace_thread_remote_launch;
 	__rte_trace_mem_per_thread_alloc;
 	__rte_trace_point_emit_field;
 	__rte_trace_point_register;

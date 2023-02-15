@@ -9,8 +9,7 @@
 #include <rte_alarm.h>
 #include <rte_spinlock.h>
 
-#include <rte_eal_trace.h>
-
+#include <eal_trace_internal.h>
 #include "eal_windows.h"
 
 enum alarm_state {

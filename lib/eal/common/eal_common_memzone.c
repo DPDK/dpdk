@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <eal_trace_internal.h>
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
@@ -15,7 +16,6 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
-#include <rte_eal_trace.h>
 
 #include "malloc_heap.h"
 #include "malloc_elem.h"

@@ -16,6 +16,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include <eal_trace_internal.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
 #include <rte_per_lcore.h>
@@ -27,7 +28,6 @@
 #include <rte_spinlock.h>
 #include <rte_pause.h>
 #include <rte_vfio.h>
-#include <rte_eal_trace.h>
 
 #include "eal_private.h"
 

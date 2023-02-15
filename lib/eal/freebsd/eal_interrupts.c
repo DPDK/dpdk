@@ -8,12 +8,12 @@
 #include <sys/queue.h>
 #include <unistd.h>
 
+#include <eal_trace_internal.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_spinlock.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
-#include <rte_eal_trace.h>
 
 #include "eal_private.h"
 #include "eal_alarm_private.h"

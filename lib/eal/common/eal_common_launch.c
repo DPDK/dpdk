@@ -4,8 +4,8 @@
 
 #include <errno.h>
 
+#include <eal_trace_internal.h>
 #include <rte_launch.h>
-#include <rte_eal_trace.h>
 #include <rte_pause.h>
 #include <rte_lcore.h>
 
