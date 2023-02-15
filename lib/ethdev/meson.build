@@ -40,7 +40,6 @@ indirect_headers += files(
 driver_sdk_headers += files(
         'ethdev_driver.h',
         'ethdev_pci.h',
-        'ethdev_trace.h',
         'ethdev_vdev.h',
 )
 
