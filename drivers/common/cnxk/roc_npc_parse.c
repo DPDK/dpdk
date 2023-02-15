@@ -663,10 +663,50 @@ npc_handle_ipv6ext_attr(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 	return 0;
 }
 
+static int
+npc_process_ipv6_item(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
+		      const struct roc_npc_flow_item_ipv6 *ipv6_mask, struct npc_parse_state *pst)
+{
+	uint8_t hw_mask[NPC_MAX_EXTRACT_HW_LEN];
+	struct npc_parse_item_info info;
+	int rc, lid, lt;
+	uint8_t flags = 0;
+
+	info.def_mask = NULL;
+	info.hw_mask = &hw_mask;
+	info.spec = NULL;
+	info.mask = NULL;
+	info.hw_hdr_len = 0;
+	lid = NPC_LID_LC;
+
+	lt = NPC_LT_LC_IP6;
+	if (ipv6_spec) {
+		rc = npc_handle_ipv6ext_attr(ipv6_spec, pst, &flags);
+		if (rc)
+			return rc;
+	}
+	info.len = sizeof(ipv6_spec->hdr);
+
+	npc_get_hw_supp_mask(pst, &info, lid, lt);
+	rc = npc_parse_item_basic(pst->pattern, &info);
+
+	if (rc != 0)
+		return rc;
+
+	rc = npc_update_parse_state(pst, &info, lid, lt, flags);
+	if (rc)
+		return rc;
+
+	if (pst->npc->hash_extract_cap)
+		return npc_process_ipv6_field_hash(ipv6_spec, ipv6_mask, pst);
+
+	return 0;
+}
+
 int
 npc_parse_lc(struct npc_parse_state *pst)
 {
-	const struct roc_npc_flow_item_ipv6 *ipv6_spec;
+	const struct roc_npc_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
 	const struct roc_npc_flow_item_raw *raw_spec;
 	uint8_t raw_spec_buf[NPC_MAX_RAW_ITEM_LEN];
 	uint8_t raw_mask_buf[NPC_MAX_RAW_ITEM_LEN];
@@ -692,15 +732,8 @@ npc_parse_lc(struct npc_parse_state *pst)
 		break;
 	case ROC_NPC_ITEM_TYPE_IPV6:
 		ipv6_spec = pst->pattern->spec;
-		lid = NPC_LID_LC;
-		lt = NPC_LT_LC_IP6;
-		if (ipv6_spec) {
-			rc = npc_handle_ipv6ext_attr(ipv6_spec, pst, &flags);
-			if (rc)
-				return rc;
-		}
-		info.len = sizeof(ipv6_spec->hdr);
-		break;
+		ipv6_mask = pst->pattern->mask;
+		return npc_process_ipv6_item(ipv6_spec, ipv6_mask, pst);
 	case ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4:
 		lt = NPC_LT_LC_ARP;
 		info.len = pst->pattern->size;

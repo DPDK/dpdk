@@ -326,6 +326,7 @@ struct npc_xtract_info {
 	uint8_t key_off;      /* Byte offset in MCAM key where data is placed */
 	uint8_t enable;	      /* Extraction enabled or disabled */
 	uint8_t flags_enable; /* Flags extraction enabled */
+	uint8_t use_hash;     /* Use field hash */
 };
 
 /* Information for a given {LAYER, LTYPE} */
@@ -378,6 +379,7 @@ TAILQ_HEAD(npc_prio_flow_list_head, npc_prio_flow_entry);
 struct npc {
 	struct mbox *mbox;			/* Mbox */
 	uint32_t keyx_supp_nmask[NPC_MAX_INTF]; /* nibble mask */
+	uint8_t hash_extract_cap;		/* hash extract support */
 	uint8_t profile_name[MKEX_NAME_LEN];	/* KEX profile name */
 	uint32_t keyx_len[NPC_MAX_INTF];	/* per intf key len in bits */
 	uint32_t datax_len[NPC_MAX_INTF];	/* per intf data len in bits */
@@ -400,6 +402,16 @@ struct npc {
 	struct npc_prio_flow_list_head *prio_flow_list;
 	struct plt_bitmap *rss_grp_entries;
 	struct npc_flow_list ipsec_list;
+};
+
+#define NPC_HASH_FIELD_LEN 16
+
+struct npc_hash_cfg {
+	uint64_t secret_key[3];
+	/* NPC_AF_INTF(0..1)_HASH(0..1)_MASK(0..1) */
+	uint64_t hash_mask[NPC_MAX_INTF][NPC_MAX_HASH][NPC_MAX_HASH_MASK];
+	/* NPC_AF_INTF(0..1)_HASH(0..1)_RESULT_CTRL */
+	uint64_t hash_ctrl[NPC_MAX_INTF][NPC_MAX_HASH];
 };
 
 static inline struct npc *
@@ -444,22 +456,21 @@ int npc_parse_lf(struct npc_parse_state *pst);
 int npc_parse_lg(struct npc_parse_state *pst);
 int npc_parse_lh(struct npc_parse_state *pst);
 int npc_mcam_fetch_kex_cfg(struct npc *npc);
-int npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow,
-			    struct npc *npc);
+int npc_mcam_fetch_hw_cap(struct npc *npc, uint8_t *npc_hw_cap);
+int npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow, struct npc *npc);
 void npc_delete_prio_list_entry(struct npc *npc, struct roc_npc_flow *flow);
 int npc_flow_free_all_resources(struct npc *npc);
 const struct roc_npc_item_info *
 npc_parse_skip_void_and_any_items(const struct roc_npc_item_info *pattern);
-int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst,
-		     bool mcam_alloc);
+int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc);
 uint64_t npc_get_kex_capability(struct npc *npc);
+int npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
+				const struct roc_npc_flow_item_ipv6 *ipv6_mask,
+				struct npc_parse_state *pst);
 int npc_rss_free_grp_get(struct npc *npc, uint32_t *grp);
-int npc_rss_action_configure(struct roc_npc *roc_npc,
-			     const struct roc_npc_action_rss *rss,
-			     uint8_t *alg_idx, uint32_t *rss_grp,
-			     uint32_t mcam_id);
-int npc_rss_action_program(struct roc_npc *roc_npc,
-			   const struct roc_npc_action actions[],
+int npc_rss_action_configure(struct roc_npc *roc_npc, const struct roc_npc_action_rss *rss,
+			     uint8_t *alg_idx, uint32_t *rss_grp, uint32_t mcam_id);
+int npc_rss_action_program(struct roc_npc *roc_npc, const struct roc_npc_action actions[],
 			   struct roc_npc_flow *flow);
 int npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow);
 int npc_mcam_init(struct npc *npc, struct roc_npc_flow *flow, int mcam_id);

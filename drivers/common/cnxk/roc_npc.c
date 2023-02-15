@@ -247,6 +247,10 @@ roc_npc_init(struct roc_npc *roc_npc)
 	if (rc)
 		goto done;
 
+	rc = npc_mcam_fetch_hw_cap(npc, &npc->hash_extract_cap);
+	if (rc)
+		goto done;
+
 	roc_npc->kex_capability = npc_get_kex_capability(npc);
 	roc_npc->rx_parse_nibble = npc->keyx_supp_nmask[NPC_MCAM_RX];
 

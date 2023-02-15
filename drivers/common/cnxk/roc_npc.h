@@ -337,7 +337,7 @@ struct roc_npc {
 	uint16_t sdp_channel;
 	uint16_t sdp_channel_mask;
 
-#define ROC_NPC_MEM_SZ (5 * 1024)
+#define ROC_NPC_MEM_SZ (6 * 1024)
 	uint8_t reserved[ROC_NPC_MEM_SZ];
 } __plt_cache_aligned;
 

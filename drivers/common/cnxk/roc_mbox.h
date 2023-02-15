@@ -208,6 +208,8 @@ struct mbox_msghdr {
 	  npc_mcam_read_base_rule_rsp)                                         \
 	M(NPC_MCAM_GET_STATS, 0x6012, npc_mcam_entry_stats,                    \
 	  npc_mcam_get_stats_req, npc_mcam_get_stats_rsp)                      \
+	M(NPC_GET_FIELD_HASH_INFO, 0x6013, npc_get_field_hash_info,            \
+	  npc_get_field_hash_info_req, npc_get_field_hash_info_rsp)            \
 	/* NIX mbox IDs (range 0x8000 - 0xFFFF) */                             \
 	M(NIX_LF_ALLOC, 0x8000, nix_lf_alloc, nix_lf_alloc_req,                \
 	  nix_lf_alloc_rsp)                                                    \
@@ -1929,6 +1931,22 @@ enum tim_gpio_edge {
 	TIM_GPIO_INVALID,
 };
 
+struct npc_get_field_hash_info_req {
+	struct mbox_msghdr hdr;
+	uint8_t intf;
+};
+
+struct npc_get_field_hash_info_rsp {
+	struct mbox_msghdr hdr;
+	uint64_t __io secret_key[3];
+#define NPC_MAX_HASH	  2
+#define NPC_MAX_HASH_MASK 2
+	/* NPC_AF_INTF(0..1)_HASH(0..1)_MASK(0..1) */
+	uint64_t __io hash_mask[NPC_MAX_INTF][NPC_MAX_HASH][NPC_MAX_HASH_MASK];
+	/* NPC_AF_INTF(0..1)_HASH(0..1)_RESULT_CTRL */
+	uint64_t __io hash_ctrl[NPC_MAX_INTF][NPC_MAX_HASH];
+};
+
 enum ptp_op {
 	PTP_OP_ADJFINE = 0,   /* adjfine(req.scaled_ppm); */
 	PTP_OP_GET_CLOCK = 1, /* rsp.clk = get_clock() */
@@ -1951,7 +1969,8 @@ struct get_hw_cap_rsp {
 	struct mbox_msghdr hdr;
 	/* Schq mapping fixed or flexible */
 	uint8_t __io nix_fixed_txschq_mapping;
-	uint8_t __io nix_shaping; /* Is shaping and coloring supported */
+	uint8_t __io nix_shaping;      /* Is shaping and coloring supported */
+	uint8_t __io npc_hash_extract; /* Is hash extract supported */
 };
 
 struct ndc_sync_op {

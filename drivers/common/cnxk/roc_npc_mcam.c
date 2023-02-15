@@ -309,6 +309,7 @@ npc_get_kex_capability(struct npc *npc)
 static void
 npc_update_kex_info(struct npc_xtract_info *xtract_info, uint64_t val)
 {
+	xtract_info->use_hash = ((val >> 20) & 0x1);
 	xtract_info->len = ((val >> BYTESM1_SHIFT) & 0xf) + 1;
 	xtract_info->hdr_off = (val >> HDR_OFF_SHIFT) & 0xff;
 	xtract_info->key_off = val & 0x3f;
@@ -500,6 +501,28 @@ npc_mcam_process_mkex_cfg(struct npc *npc, struct npc_get_kex_cfg_rsp *kex_rsp)
 	/* Update LDATA Flags cfg */
 	npc->prx_lfcfg[0].i = kex_rsp->kex_ld_flags[0];
 	npc->prx_lfcfg[1].i = kex_rsp->kex_ld_flags[1];
+}
+
+int
+npc_mcam_fetch_hw_cap(struct npc *npc, uint8_t *npc_hw_cap)
+{
+	struct get_hw_cap_rsp *hw_cap_rsp;
+	struct mbox *mbox = mbox_get(npc->mbox);
+	int rc = 0;
+
+	*npc_hw_cap = 0;
+
+	mbox_alloc_msg_get_hw_cap(mbox);
+	rc = mbox_process_msg(mbox, (void *)&hw_cap_rsp);
+	if (rc) {
+		plt_err("Failed to fetch NPC HW capability");
+		goto done;
+	}
+
+	*npc_hw_cap = hw_cap_rsp->npc_hash_extract;
+done:
+	mbox_put(mbox);
+	return rc;
 }
 
 int

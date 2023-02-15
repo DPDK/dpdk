@@ -4,6 +4,8 @@
 #ifndef _ROC_CONSTANTS_H_
 #define _ROC_CONSTANTS_H_
 
+#define ROC_IPV6_ADDR_LEN 16
+
 /* ROC Cache */
 #define ROC_CACHE_LINE_SZ 128
 #define ROC_ALIGN	  ROC_CACHE_LINE_SZ
