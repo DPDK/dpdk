@@ -837,7 +837,10 @@ test_dmadev_instance(int16_t dev_id)
 		goto err;
 
 	rte_mempool_free(pool);
-	rte_dma_stop(dev_id);
+
+	if (rte_dma_stop(dev_id) < 0)
+		ERR_RETURN("Error stopping device %u\n", dev_id);
+
 	rte_dma_stats_reset(dev_id, vchan);
 	return 0;
 
