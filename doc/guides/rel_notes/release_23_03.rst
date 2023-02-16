@@ -135,6 +135,10 @@ New Features
   * Added support for timesync API.
   * Added support for packet pacing (launch time offloading).
 
+* **Updated Marvell cnxk ethdev driver.**
+
+  * Added support to skip RED using ``RTE_FLOW_ACTION_TYPE_SKIP_CMAN``.
+
 * **Updated NVIDIA mlx5 driver.**
 
   * Added support for matching on ICMPv6 ID and sequence fields.
