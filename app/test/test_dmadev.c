@@ -304,6 +304,48 @@ test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 			|| do_multi_copies(dev_id, vchan, 0, 0, 1);
 }
 
+static int
+test_stop_start(int16_t dev_id, uint16_t vchan)
+{
+	/* device is already started on input, should be (re)started on output */
+
+	uint16_t id = 0;
+	enum rte_dma_status_code status = RTE_DMA_STATUS_SUCCESSFUL;
+
+	/* - test stopping a device works ok,
+	 * - then do a start-stop without doing a copy
+	 * - finally restart the device
+	 * checking for errors at each stage, and validating we can still copy at the end.
+	 */
+	if (rte_dma_stop(dev_id) < 0)
+		ERR_RETURN("Error stopping device\n");
+
+	if (rte_dma_start(dev_id) < 0)
+		ERR_RETURN("Error restarting device\n");
+	if (rte_dma_stop(dev_id) < 0)
+		ERR_RETURN("Error stopping device after restart (no jobs executed)\n");
+
+	if (rte_dma_start(dev_id) < 0)
+		ERR_RETURN("Error restarting device after multiple stop-starts\n");
+
+	/* before doing a copy, we need to know what the next id will be it should
+	 * either be:
+	 * - the last completed job before start if driver does not reset id on stop
+	 * - or -1 i.e. next job is 0, if driver does reset the job ids on stop
+	 */
+	if (rte_dma_completed_status(dev_id, vchan, 1, &id, &status) != 0)
+		ERR_RETURN("Error with rte_dma_completed_status when no job done\n");
+	id += 1; /* id_count is next job id */
+	if (id != id_count && id != 0)
+		ERR_RETURN("Unexpected next id from device after stop-start. Got %u, expected %u or 0\n",
+				id, id_count);
+
+	id_count = id;
+	if (test_single_copy(dev_id, vchan) < 0)
+		ERR_RETURN("Error performing copy after device restart\n");
+	return 0;
+}
+
 /* Failure handling test cases - global macros and variables for those tests*/
 #define COMP_BURST_SZ	16
 #define OPT_FENCE(idx) ((fence && idx == 8) ? RTE_DMA_OP_FLAG_FENCE : 0)
@@ -817,6 +859,10 @@ test_dmadev_instance(int16_t dev_id)
 
 	/* run the test cases, use many iterations to ensure UINT16_MAX id wraparound */
 	if (runtest("copy", test_enqueue_copies, 640, dev_id, vchan, CHECK_ERRS) < 0)
+		goto err;
+
+	/* run tests stopping/starting devices and check jobs still work after restart */
+	if (runtest("stop-start", test_stop_start, 1, dev_id, vchan, CHECK_ERRS) < 0)
 		goto err;
 
 	/* run some burst capacity tests */
