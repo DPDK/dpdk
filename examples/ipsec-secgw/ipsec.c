@@ -208,7 +208,8 @@ verify_ipsec_capabilities(struct rte_security_ipsec_xform *ipsec_xform,
 
 static inline int
 verify_security_capabilities(struct rte_security_ctx *ctx,
-		struct rte_security_session_conf *sess_conf)
+		struct rte_security_session_conf *sess_conf,
+		uint32_t *ol_flags)
 {
 	struct rte_security_capability_idx sec_cap_idx;
 	const struct rte_security_capability *sec_cap;
@@ -229,6 +230,9 @@ verify_security_capabilities(struct rte_security_ctx *ctx,
 
 	if (verify_ipsec_capabilities(&sess_conf->ipsec, sec_cap))
 		return -ENOTSUP;
+
+	if (ol_flags != NULL)
+		*ol_flags = sec_cap->ol_flags;
 
 	return 0;
 }
@@ -332,7 +336,7 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
 			/* Set IPsec parameters in conf */
 			set_ipsec_conf(sa, &(sess_conf.ipsec));
 
-			if (verify_security_capabilities(ctx, &sess_conf)) {
+			if (verify_security_capabilities(ctx, &sess_conf, NULL)) {
 				RTE_LOG(ERR, IPSEC,
 					"Requested security session config not supported\n");
 				return -1;
@@ -486,7 +490,6 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 
 	if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
 		struct rte_flow_error err;
-		const struct rte_security_capability *sec_cap;
 		int ret = 0;
 
 		sec_ctx = (struct rte_security_ctx *)
@@ -498,7 +501,8 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			return -1;
 		}
 
-		if (verify_security_capabilities(sec_ctx, &sess_conf)) {
+		if (verify_security_capabilities(sec_ctx, &sess_conf,
+					&ips->security.ol_flags)) {
 			RTE_LOG(ERR, IPSEC,
 				"Requested security session config not supported\n");
 			return -1;
@@ -512,27 +516,6 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			return -1;
 		}
 
-		sec_cap = rte_security_capabilities_get(sec_ctx);
-
-		/* iterate until ESP tunnel*/
-		while (sec_cap->action != RTE_SECURITY_ACTION_TYPE_NONE) {
-			if (sec_cap->action == ips->type &&
-			    sec_cap->protocol ==
-				RTE_SECURITY_PROTOCOL_IPSEC &&
-			    sec_cap->ipsec.mode ==
-				RTE_SECURITY_IPSEC_SA_MODE_TUNNEL &&
-			    sec_cap->ipsec.direction == sa->direction)
-				break;
-			sec_cap++;
-		}
-
-		if (sec_cap->action == RTE_SECURITY_ACTION_TYPE_NONE) {
-			RTE_LOG(ERR, IPSEC,
-				"No suitable security capability found\n");
-			return -1;
-		}
-
-		ips->security.ol_flags = sec_cap->ol_flags;
 		ips->security.ctx = sec_ctx;
 		sa->pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
 
@@ -676,8 +659,6 @@ flow_create_failure:
 			return -1;
 		}
 	} else if (ips->type ==	RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
-		const struct rte_security_capability *sec_cap;
-
 		sec_ctx = (struct rte_security_ctx *)
 				rte_eth_dev_get_sec_ctx(sa->portid);
 
@@ -703,7 +684,8 @@ flow_create_failure:
 
 		sess_conf.userdata = (void *) sa;
 
-		if (verify_security_capabilities(sec_ctx, &sess_conf)) {
+		if (verify_security_capabilities(sec_ctx, &sess_conf,
+					&ips->security.ol_flags)) {
 			RTE_LOG(ERR, IPSEC,
 				"Requested security session config not supported\n");
 			return -1;
@@ -717,33 +699,6 @@ flow_create_failure:
 			return -1;
 		}
 
-		sec_cap = rte_security_capabilities_get(sec_ctx);
-		if (sec_cap == NULL) {
-			RTE_LOG(ERR, IPSEC,
-				"No capabilities registered\n");
-			return -1;
-		}
-
-		/* iterate until ESP tunnel*/
-		while (sec_cap->action !=
-				RTE_SECURITY_ACTION_TYPE_NONE) {
-			if (sec_cap->action == ips->type &&
-			    sec_cap->protocol ==
-				RTE_SECURITY_PROTOCOL_IPSEC &&
-			    sec_cap->ipsec.mode ==
-				sess_conf.ipsec.mode &&
-			    sec_cap->ipsec.direction == sa->direction)
-				break;
-			sec_cap++;
-		}
-
-		if (sec_cap->action == RTE_SECURITY_ACTION_TYPE_NONE) {
-			RTE_LOG(ERR, IPSEC,
-				"No suitable security capability found\n");
-			return -1;
-		}
-
-		ips->security.ol_flags = sec_cap->ol_flags;
 		ips->security.ctx = sec_ctx;
 	}
 
