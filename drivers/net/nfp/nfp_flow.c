@@ -3617,7 +3617,7 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
-		struct rte_flow_error *error,
+		__rte_unused struct rte_flow_error *error,
 		bool validate_flag)
 {
 	if (attr->group != 0)
@@ -3628,18 +3628,6 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 
 	if (attr->transfer != 0)
 		PMD_DRV_LOG(INFO, "Pretend we support transfer attribute.");
-
-	if (attr->egress != 0) {
-		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-				NULL, "Egress is not supported.");
-		return NULL;
-	}
-
-	if (attr->ingress == 0) {
-		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-				NULL, "Only ingress is supported.");
-		return NULL;
-	}
 
 	return nfp_flow_process(representor, items, actions, validate_flag);
 }
