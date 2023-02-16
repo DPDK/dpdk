@@ -146,6 +146,13 @@ ioat_dev_start(struct rte_dma_dev *dev)
 	/* Prime the status register to be set to the last element. */
 	ioat->status = ioat->ring_addr + ((ioat->qcfg.nb_desc - 1) * DESC_SZ);
 
+	/* reset all counters */
+	ioat->next_read = 0;
+	ioat->next_write = 0;
+	ioat->last_write = 0;
+	ioat->offset = 0;
+	ioat->failure = 0;
+
 	printf("IOAT.status: %s [0x%"PRIx64"]\n",
 			chansts_readable[ioat->status & IOAT_CHANSTS_STATUS],
 			ioat->status);
