@@ -339,7 +339,7 @@ nfp_flow_table_search(struct nfp_flow_priv *priv,
 }
 
 static struct rte_flow *
-nfp_flow_alloc(struct nfp_fl_key_ls *key_layer)
+nfp_flow_alloc(struct nfp_fl_key_ls *key_layer, uint32_t port_id)
 {
 	char *tmp;
 	size_t len;
@@ -357,6 +357,7 @@ nfp_flow_alloc(struct nfp_fl_key_ls *key_layer)
 
 	nfp_flow->length = len;
 
+	nfp_flow->port_id      = port_id;
 	payload                = &nfp_flow->payload;
 	payload->meta          = (struct nfp_fl_rule_metadata *)tmp;
 	payload->unmasked_data = tmp + sizeof(struct nfp_fl_rule_metadata);
@@ -3488,7 +3489,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 		return NULL;
 	}
 
-	nfp_flow = nfp_flow_alloc(&key_layer);
+	nfp_flow = nfp_flow_alloc(&key_layer, representor->port_id);
 	if (nfp_flow == NULL) {
 		PMD_DRV_LOG(ERR, "Alloc nfp flow failed.");
 		goto free_stats;
@@ -3796,14 +3797,21 @@ nfp_flow_flush(struct rte_eth_dev *dev,
 	void *next_data;
 	uint32_t iter = 0;
 	const void *next_key;
+	struct rte_flow *nfp_flow;
 	struct nfp_flow_priv *priv;
+	struct nfp_flower_representor *representor;
+
+	representor = dev->data->dev_private;
 
 	priv = nfp_flow_dev_to_priv(dev);
 
 	while (rte_hash_iterate(priv->flow_table, &next_key, &next_data, &iter) >= 0) {
-		ret = nfp_flow_destroy(dev, (struct rte_flow *)next_data, error);
-		if (ret != 0)
-			break;
+		nfp_flow = next_data;
+		if (nfp_flow->port_id == representor->port_id) {
+			ret = nfp_flow_destroy(dev, nfp_flow, error);
+			if (ret != 0)
+				break;
+		}
 	}
 
 	return ret;
