@@ -166,17 +166,28 @@ static int
 ioat_dev_stop(struct rte_dma_dev *dev)
 {
 	struct ioat_dmadev *ioat = dev->fp_obj->dev_private;
+	unsigned int chansts;
 	uint32_t retry = 0;
 
-	ioat->regs->chancmd = IOAT_CHANCMD_SUSPEND;
+	chansts = (unsigned int)(ioat->regs->chansts & IOAT_CHANSTS_STATUS);
+	if (chansts == IOAT_CHANSTS_ACTIVE || chansts == IOAT_CHANSTS_IDLE)
+		ioat->regs->chancmd = IOAT_CHANCMD_SUSPEND;
+	else
+		ioat->regs->chancmd = IOAT_CHANCMD_RESET;
 
 	do {
 		rte_pause();
 		retry++;
-	} while ((ioat->regs->chansts & IOAT_CHANSTS_STATUS) != IOAT_CHANSTS_SUSPENDED
-			&& retry < 200);
+		chansts = (unsigned int)(ioat->regs->chansts & IOAT_CHANSTS_STATUS);
+	} while (chansts != IOAT_CHANSTS_SUSPENDED &&
+			chansts != IOAT_CHANSTS_HALTED && retry < 200);
 
-	return ((ioat->regs->chansts & IOAT_CHANSTS_STATUS) == IOAT_CHANSTS_SUSPENDED) ? 0 : -1;
+	if (chansts == IOAT_CHANSTS_SUSPENDED || chansts == IOAT_CHANSTS_HALTED)
+		return 0;
+
+	IOAT_PMD_WARN("Channel could not be suspended on stop. (chansts = %u [%s])",
+			chansts, chansts_readable[chansts]);
+	return -1;
 }
 
 /* Get device information of a device. */
