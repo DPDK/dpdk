@@ -111,6 +111,12 @@ New Features
   * ``RTE_FLOW_ACTION_TYPE_QUOTA``
   * ``RTE_FLOW_ITEM_TYPE_QUOTA``
 
+* **Added flow API to skip congestion management configuration.**
+
+  * Added the action ``RTE_FLOW_ACTION_TYPE_SKIP_CMAN`` to skip
+    congestion management processing
+    based on per flow or packet color identified by a flow meter object.
+
 * **Updated AMD axgbe driver.**
 
   * Added multi-process support.
