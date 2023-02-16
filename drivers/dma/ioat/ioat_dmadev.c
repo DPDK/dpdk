@@ -142,6 +142,9 @@ ioat_dev_start(struct rte_dma_dev *dev)
 	ioat->regs->chainaddr = ioat->ring_addr;
 	/* Inform hardware of where to write the status/completions. */
 	ioat->regs->chancmp = ioat->status_addr;
+	/* Ensure channel control is set to abort on error, so we get status writeback. */
+	ioat->regs->chanctrl = IOAT_CHANCTRL_ANY_ERR_ABORT_EN |
+			IOAT_CHANCTRL_ERR_COMPLETION_EN;
 
 	/* Prime the status register to be set to the last element. */
 	ioat->status = ioat->ring_addr + ((ioat->qcfg.nb_desc - 1) * DESC_SZ);
@@ -682,8 +685,6 @@ ioat_dmadev_create(const char *name, struct rte_pci_device *dev)
 			return -EIO;
 		}
 	}
-	ioat->regs->chanctrl = IOAT_CHANCTRL_ANY_ERR_ABORT_EN |
-			IOAT_CHANCTRL_ERR_COMPLETION_EN;
 
 	dmadev->fp_obj->dev_private = ioat;
 
