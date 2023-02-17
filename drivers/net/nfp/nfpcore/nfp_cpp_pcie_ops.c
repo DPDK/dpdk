@@ -36,6 +36,7 @@
 #include "nfp_logs.h"
 #include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
+#include "../nfp_logs.h"
 
 #define NFP_PCIE_BAR(_pf)	(0x30000 + ((_pf) & 7) * 0xc0)
 

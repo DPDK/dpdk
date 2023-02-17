@@ -91,7 +91,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error
 			 */
-			RTE_LOG_DP(ERR, PMD,
+			PMD_RX_LOG(ERR,
 				"mbuf overflow likely due to the RX offset.\n"
 				"\t\tYour mbuf size should have extra space for"
 				" RX offset=%u bytes.\n"

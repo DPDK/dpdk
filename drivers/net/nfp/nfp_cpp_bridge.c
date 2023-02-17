@@ -162,14 +162,14 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
 						    nfp_offset, curlen);
 		if (area == NULL) {
-			RTE_LOG(ERR, PMD, "%s: area alloc fail\n", __func__);
+			PMD_CPP_LOG(ERR, "area alloc fail");
 			return -EIO;
 		}
 
 		/* mapping the target */
 		err = nfp_cpp_area_acquire(area);
 		if (err < 0) {
-			RTE_LOG(ERR, PMD, "area acquire failed\n");
+			PMD_CPP_LOG(ERR, "area acquire failed");
 			nfp_cpp_area_free(area);
 			return -EIO;
 		}
@@ -183,16 +183,16 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 					   len, count);
 			err = recv(sockfd, tmpbuf, len, MSG_WAITALL);
 			if (err != (int)len) {
-				RTE_LOG(ERR, PMD,
-					"%s: error when receiving, %d of %zu\n",
-					__func__, err, count);
+				PMD_CPP_LOG(ERR,
+					"error when receiving, %d of %zu",
+					err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
 			}
 			err = nfp_cpp_area_write(area, pos, tmpbuf, len);
 			if (err < 0) {
-				RTE_LOG(ERR, PMD, "nfp_cpp_area_write error\n");
+				PMD_CPP_LOG(ERR, "nfp_cpp_area_write error");
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
@@ -262,13 +262,13 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
 						    nfp_offset, curlen);
 		if (area == NULL) {
-			RTE_LOG(ERR, PMD, "%s: area alloc failed\n", __func__);
+			PMD_CPP_LOG(ERR, "area alloc failed");
 			return -EIO;
 		}
 
 		err = nfp_cpp_area_acquire(area);
 		if (err < 0) {
-			RTE_LOG(ERR, PMD, "area acquire failed\n");
+			PMD_CPP_LOG(ERR, "area acquire failed");
 			nfp_cpp_area_free(area);
 			return -EIO;
 		}
@@ -280,7 +280,7 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 
 			err = nfp_cpp_area_read(area, pos, tmpbuf, len);
 			if (err < 0) {
-				RTE_LOG(ERR, PMD, "nfp_cpp_area_read error\n");
+				PMD_CPP_LOG(ERR, "nfp_cpp_area_read error");
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
@@ -290,9 +290,9 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 
 			err = send(sockfd, tmpbuf, len, 0);
 			if (err != (int)len) {
-				RTE_LOG(ERR, PMD,
-					"%s: error when sending: %d of %zu\n",
-					__func__, err, count);
+				PMD_CPP_LOG(ERR,
+					"error when sending: %d of %zu",
+					err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
@@ -325,19 +325,19 @@ nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp)
 	/* Reading now the IOCTL command */
 	err = recv(sockfd, &cmd, 4, 0);
 	if (err != 4) {
-		RTE_LOG(ERR, PMD, "%s: read error from socket\n", __func__);
+		PMD_CPP_LOG(ERR, "read error from socket");
 		return -EIO;
 	}
 
 	/* Only supporting NFP_IOCTL_CPP_IDENTIFICATION */
 	if (cmd != NFP_IOCTL_CPP_IDENTIFICATION) {
-		RTE_LOG(ERR, PMD, "%s: unknown cmd %d\n", __func__, cmd);
+		PMD_CPP_LOG(ERR, "unknown cmd %d", cmd);
 		return -EINVAL;
 	}
 
 	err = recv(sockfd, &ident_size, 4, 0);
 	if (err != 4) {
-		RTE_LOG(ERR, PMD, "%s: read error from socket\n", __func__);
+		PMD_CPP_LOG(ERR, "read error from socket");
 		return -EIO;
 	}
 
@@ -347,7 +347,7 @@ nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp)
 
 	err = send(sockfd, &tmp, 4, 0);
 	if (err != 4) {
-		RTE_LOG(ERR, PMD, "%s: error writing to socket\n", __func__);
+		PMD_CPP_LOG(ERR, "error writing to socket");
 		return -EIO;
 	}
 
@@ -357,7 +357,7 @@ nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp)
 
 	err = send(sockfd, &tmp, 4, 0);
 	if (err != 4) {
-		RTE_LOG(ERR, PMD, "%s: error writing to socket\n", __func__);
+		PMD_CPP_LOG(ERR, "error writing to socket");
 		return -EIO;
 	}
 
@@ -384,8 +384,7 @@ nfp_cpp_bridge_service_func(void *args)
 	unlink("/tmp/nfp_cpp");
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd < 0) {
-		RTE_LOG(ERR, PMD, "%s: socket creation error. Service failed\n",
-			__func__);
+		PMD_CPP_LOG(ERR, "socket creation error. Service failed");
 		return -EIO;
 	}
 
@@ -399,16 +398,14 @@ nfp_cpp_bridge_service_func(void *args)
 	ret = bind(sockfd, (const struct sockaddr *)&address,
 		   sizeof(struct sockaddr));
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "%s: bind error (%d). Service failed\n",
-				  __func__, errno);
+		PMD_CPP_LOG(ERR, "bind error (%d). Service failed", errno);
 		close(sockfd);
 		return ret;
 	}
 
 	ret = listen(sockfd, 20);
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "%s: listen error(%d). Service failed\n",
-				  __func__, errno);
+		PMD_CPP_LOG(ERR, "listen error(%d). Service failed", errno);
 		close(sockfd);
 		return ret;
 	}
@@ -421,9 +418,8 @@ nfp_cpp_bridge_service_func(void *args)
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 				continue;
 
-			RTE_LOG(ERR, PMD, "%s: accept call error (%d)\n",
-					  __func__, errno);
-			RTE_LOG(ERR, PMD, "%s: service failed\n", __func__);
+			PMD_CPP_LOG(ERR, "accept call error (%d)", errno);
+			PMD_CPP_LOG(ERR, "service failed");
 			close(sockfd);
 			return -EIO;
 		}

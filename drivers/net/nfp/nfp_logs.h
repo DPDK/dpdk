@@ -15,15 +15,19 @@ extern int nfp_logtype_init;
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
 #ifdef RTE_ETHDEV_DEBUG_RX
+extern int nfp_logtype_rx;
 #define PMD_RX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s() rx: " fmt "\n", __func__, ## args)
+	rte_log(RTE_LOG_ ## level, nfp_logtype_rx, \
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_RX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 #ifdef RTE_ETHDEV_DEBUG_TX
+extern int nfp_logtype_tx;
 #define PMD_TX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s() tx: " fmt "\n", __func__, ## args)
+	rte_log(RTE_LOG_ ## level, nfp_logtype_tx, \
+		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
 #endif

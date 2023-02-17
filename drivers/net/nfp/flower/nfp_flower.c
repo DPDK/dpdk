@@ -330,7 +330,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured
 		 */
-		RTE_LOG_DP(ERR, PMD, "RX Bad queue\n");
+		PMD_RX_LOG(ERR, "RX Bad queue");
 		return 0;
 	}
 
@@ -343,7 +343,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 	while (avail + avail_multiplexed < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
-			RTE_LOG_DP(ERR, PMD, "rxb does not exist!\n");
+			PMD_RX_LOG(ERR, "rxb does not exist!");
 			break;
 		}
 
@@ -363,8 +363,8 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			RTE_LOG_DP(DEBUG, PMD,
-			"RX mbuf alloc failed port_id=%u queue_id=%d\n",
+			PMD_RX_LOG(DEBUG,
+			"RX mbuf alloc failed port_id=%u queue_id=%d",
 				rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
@@ -391,7 +391,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error
 			 */
-			RTE_LOG_DP(ERR, PMD,
+			PMD_RX_LOG(ERR,
 				"mbuf overflow likely due to the RX offset.\n"
 				"\t\tYour mbuf size should have extra space for"
 				" RX offset=%u bytes.\n"
