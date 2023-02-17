@@ -475,6 +475,12 @@ RTE_TRACE_POINT_REGISTER(rte_eth_trace_cman_config_set,
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_cman_config_get,
 	lib.ethdev.cman_config_get)
 
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_count_aggr_ports,
+	lib.ethdev.count_aggr_ports)
+
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_map_aggr_tx_affinity,
+	lib.ethdev.map_aggr_tx_affinity)
+
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_copy,
 	lib.ethdev.flow.copy)
 

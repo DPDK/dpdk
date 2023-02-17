@@ -1386,6 +1386,23 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_eth_trace_count_aggr_ports,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_eth_trace_map_aggr_tx_affinity,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t tx_queue_id,
+			     uint8_t affinity, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u16(tx_queue_id);
+	rte_trace_point_emit_u8(affinity);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
 	rte_flow_trace_dynf_metadata_register,
 	RTE_TRACE_POINT_ARGS(int offset, uint64_t flag),
 	rte_trace_point_emit_int(offset);

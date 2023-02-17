@@ -1612,6 +1612,20 @@ Enable or disable a per queue Tx offloading only on a specific Tx queue::
 
 This command should be run when the port is stopped, or else it will fail.
 
+config per queue Tx affinity mapping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Map a Tx queue with an aggregated port of the DPDK port (specified with port_id)::
+
+   testpmd> port (port_id) txq (queue_id) affinity (value)
+
+* ``affinity``: the number of the aggregated port.
+                When multiple ports are aggregated into a single one,
+                it allows to choose which port to use for Tx via a queue.
+
+This command should be run when the port is stopped, otherwise it fails.
+
+
 Config VXLAN Encap outer layers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

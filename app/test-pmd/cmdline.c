@@ -776,6 +776,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"port cleanup (port_id) txq (queue_id) (free_cnt)\n"
 			"    Cleanup txq mbufs for a specific Tx queue\n\n"
+
+			"port config (port_id) txq (queue_id) affinity (value)\n"
+			"    Map a Tx queue with an aggregated port "
+			"of the DPDK port\n\n"
 		);
 	}
 
@@ -12636,6 +12640,93 @@ static cmdline_parse_inst_t cmd_show_port_flow_transfer_proxy = {
 	}
 };
 
+/* *** configure port txq affinity value *** */
+struct cmd_config_tx_affinity_map {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	portid_t portid;
+	cmdline_fixed_string_t txq;
+	uint16_t qid;
+	cmdline_fixed_string_t affinity;
+	uint8_t value;
+};
+
+static void
+cmd_config_tx_affinity_map_parsed(void *parsed_result,
+				  __rte_unused struct cmdline *cl,
+				  __rte_unused void *data)
+{
+	struct cmd_config_tx_affinity_map *res = parsed_result;
+	int ret;
+
+	if (port_id_is_invalid(res->portid, ENABLED_WARN))
+		return;
+
+	if (res->portid == (portid_t)RTE_PORT_ALL) {
+		printf("Invalid port id\n");
+		return;
+	}
+
+	if (strcmp(res->txq, "txq")) {
+		printf("Unknown parameter\n");
+		return;
+	}
+	if (tx_queue_id_is_invalid(res->qid))
+		return;
+
+	ret = rte_eth_dev_count_aggr_ports(res->portid);
+	if (ret < 0) {
+		printf("Failed to count the aggregated ports: (%s)\n",
+			strerror(-ret));
+		return;
+	}
+
+	ret = rte_eth_dev_map_aggr_tx_affinity(res->portid, res->qid, res->value);
+	if (ret != 0) {
+		printf("Failed to map tx queue with an aggregated port: %s\n",
+			rte_strerror(-ret));
+		return;
+	}
+}
+
+cmdline_parse_token_string_t cmd_config_tx_affinity_map_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tx_affinity_map,
+				 port, "port");
+cmdline_parse_token_string_t cmd_config_tx_affinity_map_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tx_affinity_map,
+				 config, "config");
+cmdline_parse_token_num_t cmd_config_tx_affinity_map_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_tx_affinity_map,
+				 portid, RTE_UINT16);
+cmdline_parse_token_string_t cmd_config_tx_affinity_map_txq =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tx_affinity_map,
+				 txq, "txq");
+cmdline_parse_token_num_t cmd_config_tx_affinity_map_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_tx_affinity_map,
+			      qid, RTE_UINT16);
+cmdline_parse_token_string_t cmd_config_tx_affinity_map_affinity =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tx_affinity_map,
+				 affinity, "affinity");
+cmdline_parse_token_num_t cmd_config_tx_affinity_map_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_tx_affinity_map,
+			      value, RTE_UINT8);
+
+static cmdline_parse_inst_t cmd_config_tx_affinity_map = {
+	.f = cmd_config_tx_affinity_map_parsed,
+	.data = (void *)0,
+	.help_str = "port config <port_id> txq <queue_id> affinity <value>",
+	.tokens = {
+		(void *)&cmd_config_tx_affinity_map_port,
+		(void *)&cmd_config_tx_affinity_map_config,
+		(void *)&cmd_config_tx_affinity_map_portid,
+		(void *)&cmd_config_tx_affinity_map_txq,
+		(void *)&cmd_config_tx_affinity_map_qid,
+		(void *)&cmd_config_tx_affinity_map_affinity,
+		(void *)&cmd_config_tx_affinity_map_value,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -12869,6 +12960,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_show_port_cman_capa,
 	(cmdline_parse_inst_t *)&cmd_show_port_cman_config,
 	(cmdline_parse_inst_t *)&cmd_set_port_cman_config,
+	(cmdline_parse_inst_t *)&cmd_config_tx_affinity_map,
 	NULL,
 };
 

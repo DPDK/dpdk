@@ -1172,6 +1172,38 @@ typedef int (*eth_tx_descriptor_dump_t)(const struct rte_eth_dev *dev,
 					uint16_t num, FILE *file);
 
 /**
+ * @internal
+ * Get the number of aggregated ports.
+ *
+ * @param dev
+ *   Port (ethdev) handle.
+ *
+ * @return
+ *   Negative errno value on error, 0 or positive on success.
+ *
+ * @retval >=0
+ *   The number of aggregated port if success.
+ */
+typedef int (*eth_count_aggr_ports_t)(struct rte_eth_dev *dev);
+
+/**
+ * @internal
+ * Map a Tx queue with an aggregated port of the DPDK port.
+ *
+ * @param dev
+ *   Port (ethdev) handle.
+ * @param tx_queue_id
+ *   The index of the transmit queue used in rte_eth_tx_burst().
+ * @param affinity
+ *   The number of the aggregated port.
+ *
+ * @return
+ *   Negative on error, 0 on success.
+ */
+typedef int (*eth_map_aggr_tx_affinity_t)(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+					  uint8_t affinity);
+
+/**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
@@ -1403,6 +1435,11 @@ struct eth_dev_ops {
 	eth_cman_config_set_t cman_config_set;
 	/** Retrieve congestion management configuration */
 	eth_cman_config_get_t cman_config_get;
+
+	/** Get the number of aggregated ports */
+	eth_count_aggr_ports_t count_aggr_ports;
+	/** Map a Tx queue with an aggregated port of the DPDK port */
+	eth_map_aggr_tx_affinity_t map_aggr_tx_affinity;
 };
 
 /**

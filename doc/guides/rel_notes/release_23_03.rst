@@ -68,6 +68,13 @@ New Features
   * Applications can register a callback at startup via
     ``rte_lcore_register_usage_cb()`` to provide lcore usage information.
 
+* **Added support for mapping a queue with an aggregated port.**
+
+  * Introduced new function ``rte_eth_dev_count_aggr_ports()``
+    to get the number of aggregated ports.
+  * Introduced new function ``rte_eth_dev_map_aggr_tx_affinity()``
+    to map a Tx queue with an aggregated port of the DPDK port.
+
 * **Added flow matching of IPv6 routing extension.**
 
   Added ``RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT``

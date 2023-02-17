@@ -2590,6 +2590,55 @@ __rte_experimental
 int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ *  Get the number of aggregated ports of the DPDK port (specified with port_id).
+ *  It is used when multiple ports are aggregated into a single one.
+ *
+ *  For the regular physical port doesn't have aggregated ports,
+ *  the number of aggregated ports is reported as 0.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (>=0) the number of aggregated port if success.
+ */
+__rte_experimental
+int rte_eth_dev_count_aggr_ports(uint16_t port_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ *  Map a Tx queue with an aggregated port of the DPDK port (specified with port_id).
+ *  When multiple ports are aggregated into a single one,
+ *  it allows to choose which port to use for Tx via a queue.
+ *
+ *  The application should use rte_eth_dev_map_aggr_tx_affinity()
+ *  after rte_eth_dev_configure(), rte_eth_tx_queue_setup(), and
+ *  before rte_eth_dev_start().
+ *
+ * @param port_id
+ *   The identifier of the port used in rte_eth_tx_burst().
+ * @param tx_queue_id
+ *   The index of the transmit queue used in rte_eth_tx_burst().
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param affinity
+ *   The number of the aggregated port.
+ *   Value 0 means no affinity and traffic could be routed to any aggregated port.
+ *   The first aggregated port is number 1 and so on.
+ *   The maximum number is given by rte_eth_dev_count_aggr_ports().
+ *
+ * @return
+ *   Zero if successful. Non-zero otherwise.
+ */
+__rte_experimental
+int rte_eth_dev_map_aggr_tx_affinity(uint16_t port_id, uint16_t tx_queue_id,
+				     uint8_t affinity);
+
+/**
  * Return the NUMA socket to which an Ethernet device is connected
  *
  * @param port_id

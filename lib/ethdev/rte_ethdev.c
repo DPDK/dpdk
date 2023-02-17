@@ -6946,6 +6946,78 @@ rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *ptypes
 	return j;
 }
 
+int rte_eth_dev_count_aggr_ports(uint16_t port_id)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (*dev->dev_ops->count_aggr_ports == NULL)
+		return 0;
+	ret = eth_err(port_id, (*dev->dev_ops->count_aggr_ports)(dev));
+
+	rte_eth_trace_count_aggr_ports(port_id, ret);
+
+	return ret;
+}
+
+int rte_eth_dev_map_aggr_tx_affinity(uint16_t port_id, uint16_t tx_queue_id,
+				     uint8_t affinity)
+{
+	struct rte_eth_dev *dev;
+	int aggr_ports;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (tx_queue_id >= dev->data->nb_tx_queues) {
+		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u\n", tx_queue_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->map_aggr_tx_affinity == NULL)
+		return -ENOTSUP;
+
+	if (dev->data->dev_configured == 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Port %u must be configured before Tx affinity mapping\n",
+			port_id);
+		return -EINVAL;
+	}
+
+	if (dev->data->dev_started) {
+		RTE_ETHDEV_LOG(ERR,
+			"Port %u must be stopped to allow configuration\n",
+			port_id);
+		return -EBUSY;
+	}
+
+	aggr_ports = rte_eth_dev_count_aggr_ports(port_id);
+	if (aggr_ports == 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Port %u has no aggregated port\n",
+			port_id);
+		return -ENOTSUP;
+	}
+
+	if (affinity > aggr_ports) {
+		RTE_ETHDEV_LOG(ERR,
+			"Port %u map invalid affinity %u exceeds the maximum number %u\n",
+			port_id, affinity, aggr_ports);
+		return -EINVAL;
+	}
+
+	ret = eth_err(port_id, (*dev->dev_ops->map_aggr_tx_affinity)(dev,
+				tx_queue_id, affinity));
+
+	rte_eth_trace_map_aggr_tx_affinity(port_id, tx_queue_id, affinity, ret);
+
+	return ret;
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_eth_dev_logtype, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

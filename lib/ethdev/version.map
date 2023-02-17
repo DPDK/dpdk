@@ -300,6 +300,8 @@ EXPERIMENTAL {
 	rte_mtr_meter_profile_get;
 
 	# added in 23.03
+	rte_eth_dev_count_aggr_ports;
+	rte_eth_dev_map_aggr_tx_affinity;
 	rte_flow_action_handle_query_update;
 	rte_flow_async_action_handle_query_update;
 	rte_flow_async_create_by_index;
