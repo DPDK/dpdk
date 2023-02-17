@@ -1305,13 +1305,14 @@ update_aead_capabilities(struct rte_cryptodev_capabilities *scap,
 	capability->aead.key_size.max = acap->max_key_size;
 	capability->aead.key_size.increment = acap->inc_key_size;
 
-	capability->aead.aad_size.min = acap->min_aad_size;
-	capability->aead.aad_size.max = acap->max_aad_size;
-	capability->aead.aad_size.increment = acap->inc_aad_size;
+	/* remove constrains for aead and iv length */
+	capability->aead.aad_size.min = 0;
+	capability->aead.aad_size.max = 65535;
+	capability->aead.aad_size.increment = 1;
 
-	capability->aead.iv_size.min = acap->min_iv_size;
-	capability->aead.iv_size.max = acap->max_iv_size;
-	capability->aead.iv_size.increment = acap->inc_iv_size;
+	capability->aead.iv_size.min = 0;
+	capability->aead.iv_size.max = 65535;
+	capability->aead.iv_size.increment = 1;
 
 	capability->aead.digest_size.min = acap->min_digest_size;
 	capability->aead.digest_size.max = acap->max_digest_size;
