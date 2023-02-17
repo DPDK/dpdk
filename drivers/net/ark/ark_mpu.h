@@ -39,8 +39,7 @@ struct ark_mpu_id_t {
 
 #define ARK_MPU_HW 0x010
 struct ark_mpu_hw_t {
-	uint16_t num_queues;
-	uint16_t reserved;
+	uint32_t num_queues;
 	uint32_t hw_depth;
 	uint32_t obj_size;
 	uint32_t obj_per_mrr;
