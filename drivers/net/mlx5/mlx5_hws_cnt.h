@@ -159,7 +159,7 @@ struct mlx5_hws_age_param {
  * @return
  *   Internal index
  */
-static __always_inline struct mlx5_hws_cnt_pool *
+static __rte_always_inline struct mlx5_hws_cnt_pool *
 mlx5_hws_cnt_host_pool(struct mlx5_hws_cnt_pool *cpool)
 {
 	return cpool->cfg.host_cpool ? cpool->cfg.host_cpool : cpool;
