@@ -1793,7 +1793,7 @@ F: doc/guides/tools/proc_info.rst
 
 DTS
 M: Lijuan Tu <lijuan.tu@intel.com>
-M: Owen Hilyard <ohilyard@iol.unh.edu>
+M: Juraj Linkeš <juraj.linkes@pantheon.tech>
 F: dts/
 F: devtools/dts-check-format.sh
 F: doc/guides/tools/dts.rst
