@@ -74,6 +74,7 @@ New Features
     to get the number of aggregated ports.
   * Introduced new function ``rte_eth_dev_map_aggr_tx_affinity()``
     to map a Tx queue with an aggregated port of the DPDK port.
+  * Added Rx affinity flow matching of an aggregated port.
 
 * **Added flow matching of IPv6 routing extension.**
 

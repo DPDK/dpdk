@@ -1486,6 +1486,14 @@ This item is meant to use the same structure as `Item: PORT_REPRESENTOR`_.
 
 See also `Action: REPRESENTED_PORT`_.
 
+Item: ``AGGR_AFFINITY``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches on the aggregated port of the received packet.
+In case of multiple aggregated ports, the affinity numbering starts from 1.
+
+- ``affinity``: Aggregated affinity.
+
 Item: ``FLEX``
 ^^^^^^^^^^^^^^
 

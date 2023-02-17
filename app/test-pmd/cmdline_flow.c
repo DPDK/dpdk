@@ -494,6 +494,8 @@ enum index {
 	ITEM_QUOTA,
 	ITEM_QUOTA_STATE,
 	ITEM_QUOTA_STATE_NAME,
+	ITEM_AGGR_AFFINITY,
+	ITEM_AGGR_AFFINITY_VALUE,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -1449,6 +1451,7 @@ static const enum index next_item[] = {
 	ITEM_PPP,
 	ITEM_METER,
 	ITEM_QUOTA,
+	ITEM_AGGR_AFFINITY,
 	END_SET,
 	ZERO,
 };
@@ -1940,6 +1943,12 @@ static const enum index item_meter[] = {
 
 static const enum index item_quota[] = {
 	ITEM_QUOTA_STATE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_aggr_affinity[] = {
+	ITEM_AGGR_AFFINITY_VALUE,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -6920,6 +6929,22 @@ static const struct token token_list[] = {
 				ARGS_ENTRY(struct buffer, port)),
 		.call = parse_mp,
 	},
+	[ITEM_AGGR_AFFINITY] = {
+		.name = "aggr_affinity",
+		.help = "match on the aggregated port receiving the packets",
+		.priv = PRIV_ITEM(AGGR_AFFINITY,
+				  sizeof(struct rte_flow_item_aggr_affinity)),
+		.next = NEXT(item_aggr_affinity),
+		.call = parse_vc,
+	},
+	[ITEM_AGGR_AFFINITY_VALUE] = {
+		.name = "affinity",
+		.help = "aggregated affinity value",
+		.next = NEXT(item_aggr_affinity, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_aggr_affinity,
+					affinity)),
+	},
 };
 
 /** Remove and return last entry from argument stack. */
@@ -11820,6 +11845,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
 		mask = &ipv6_routing_ext_default_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY:
+		mask = &rte_flow_item_aggr_affinity_mask;
 		break;
 	default:
 		break;

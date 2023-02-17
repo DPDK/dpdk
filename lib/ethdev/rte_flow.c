@@ -163,6 +163,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(METER_COLOR, sizeof(struct rte_flow_item_meter_color)),
 	MK_FLOW_ITEM(IPV6_ROUTING_EXT, sizeof(struct rte_flow_item_ipv6_routing_ext)),
 	MK_FLOW_ITEM(QUOTA, sizeof(struct rte_flow_item_quota)),
+	MK_FLOW_ITEM(AGGR_AFFINITY, sizeof(struct rte_flow_item_aggr_affinity)),
 };
 
 /** Generate flow_action[] entry. */
