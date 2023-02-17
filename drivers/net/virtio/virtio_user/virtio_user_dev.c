@@ -689,6 +689,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 
 	dev->started = 0;
 	dev->queue_pairs = 1; /* mq disabled by default */
+	dev->max_queue_pairs = queues; /* initialize to user requested value for kernel backend */
 	dev->queue_size = queue_size;
 	dev->is_server = server;
 	dev->mac_specified = 0;
