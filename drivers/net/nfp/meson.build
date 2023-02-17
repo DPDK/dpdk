@@ -28,6 +28,7 @@ sources = files(
         'nfp_ethdev_vf.c',
         'nfp_ethdev.c',
         'nfp_flow.c',
+        'nfp_logs.c',
         'nfp_mtr.c',
 )
 

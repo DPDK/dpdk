@@ -1566,9 +1566,6 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
 	return ret;
 }
 
-RTE_LOG_REGISTER_SUFFIX(nfp_logtype_init, init, NOTICE);
-RTE_LOG_REGISTER_SUFFIX(nfp_logtype_driver, driver, NOTICE);
-RTE_LOG_REGISTER_SUFFIX(nfp_logtype_cpp, cpp, NOTICE);
 /*
  * Local variables:
  * c-file-style: "Linux"
