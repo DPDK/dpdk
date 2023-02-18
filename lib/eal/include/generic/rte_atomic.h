@@ -176,11 +176,7 @@ rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val);
 static inline uint16_t
 rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val)
 {
-#if defined(__clang__)
 	return __atomic_exchange_n(dst, val, __ATOMIC_SEQ_CST);
-#else
-	return __atomic_exchange_2(dst, val, __ATOMIC_SEQ_CST);
-#endif
 }
 #endif
 
@@ -459,11 +455,7 @@ rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val);
 static inline uint32_t
 rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val)
 {
-#if defined(__clang__)
 	return __atomic_exchange_n(dst, val, __ATOMIC_SEQ_CST);
-#else
-	return __atomic_exchange_4(dst, val, __ATOMIC_SEQ_CST);
-#endif
 }
 #endif
 
@@ -741,11 +733,7 @@ rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val);
 static inline uint64_t
 rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val)
 {
-#if defined(__clang__)
 	return __atomic_exchange_n(dst, val, __ATOMIC_SEQ_CST);
-#else
-	return __atomic_exchange_8(dst, val, __ATOMIC_SEQ_CST);
-#endif
 }
 #endif
 
