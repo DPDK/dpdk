@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/queue.h>
 
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
