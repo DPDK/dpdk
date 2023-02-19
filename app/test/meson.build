@@ -391,7 +391,7 @@ if dpdk_conf.has('RTE_NET_BOND')
         driver_test_names += 'link_bonding_mode4_autotest'
     endif
 endif
-if dpdk_conf.has('RTE_NET_RING')
+if dpdk_conf.has('RTE_LIB_EVENTDEV') and dpdk_conf.has('RTE_NET_RING')
     test_deps += 'net_ring'
     test_sources += 'test_pmd_ring_perf.c'
     test_sources += 'test_pmd_ring.c'
