@@ -9,28 +9,10 @@
 
 #include <rte_memory.h>
 #include <rte_log.h>
-
-#include "test.h"
-
-#ifdef RTE_EXEC_ENV_WINDOWS
-static int
-test_fib6(void)
-{
-	printf("fib not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-
-static int
-test_slow_fib6(void)
-{
-	printf("slow_fib not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-
-#else
-
 #include <rte_rib6.h>
 #include <rte_fib6.h>
+
+#include "test.h"
 
 typedef int32_t (*rte_fib6_test)(void);
 
@@ -441,8 +423,6 @@ test_slow_fib6(void)
 {
 	return unit_test_suite_runner(&fib6_slow_tests);
 }
-
-#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(fib6_autotest, test_fib6);
 REGISTER_TEST_COMMAND(fib6_slow_autotest, test_slow_fib6);
