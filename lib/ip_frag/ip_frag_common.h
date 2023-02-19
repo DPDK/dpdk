@@ -5,6 +5,8 @@
 #ifndef _IP_FRAG_COMMON_H_
 #define _IP_FRAG_COMMON_H_
 
+#include <sys/queue.h>
+
 #include "rte_ip_frag.h"
 #include "ip_reassembly.h"
 
