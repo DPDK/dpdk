@@ -15,7 +15,7 @@ Driver (PMD) supporting Netronome's Network Flow Processor 6xxx
 (NFP-6xxx), Netronome's Network Flow Processor 4xxx (NFP-4xxx) and
 Netronome's Network Flow Processor 38xx (NFP-38xx).
 
-NFP is a SRIOV capable device and the PMD supports the physical
+NFP is a SR-IOV capable device and the PMD supports the physical
 function (PF) and the virtual functions (VFs).
 
 Dependencies
@@ -57,8 +57,8 @@ the NFP PMD.
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document
+:ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` for details.
 
 Using the PF
 ------------
@@ -71,8 +71,8 @@ have a PMD able to work with the PF and VFs at the same time and with the PF
 implementing VF management along with other PF-only functionalities/offloads.
 
 The PMD PF has extra work to do which will delay the DPDK app initialization
-like uploading the firmware and configure the Link state properly when starting or
-stopping a PF port. Since DPDK 18.05 the firmware upload happens when
+like uploading the firmware and configure the Link state properly when starting
+or stopping a PF port. Since DPDK 18.05 the firmware upload happens when
 a PF is initialized, which was not always true with older DPDK versions.
 
 Depending on the Netronome product installed in the system, firmware files
@@ -92,18 +92,19 @@ PF looks for a firmware file in this order:
 
 		nic_AMDA0099-0001_2x25.nffw
 
-Netronome's software packages install firmware files under ``/lib/firmware/netronome``
-to support all the Netronome's SmartNICs and different firmware applications.
-This is usually done using file names based on SmartNIC type and media and with a
-directory per firmware application. Options 1 and 2 for firmware filenames allow
-more than one SmartNIC, same type of SmartNIC or different ones, and to upload a
-different firmware to each SmartNIC.
+Netronome's software packages install firmware files under
+``/lib/firmware/netronome`` to support all the Netronome's SmartNICs and
+different firmware applications. This is usually done using file names based on
+SmartNIC type and media and with a directory per firmware application. Options
+1 and 2 for firmware filenames allow more than one SmartNIC, same type of
+SmartNIC or different ones, and to upload a different firmware to each
+SmartNIC.
 
    .. Note::
-      Currently the NFP PMD supports using the PF with Agilio Firmware with NFD3
-      and Agilio Firmware with NFDk. See https://help.netronome.com/support/solutions
-      for more information on the various firmwares supported by the Netronome
-      Agilio CX smartNIC.
+      Currently the NFP PMD supports using the PF with Agilio Firmware with
+      NFD3 and Agilio Firmware with NFDk. See
+      https://help.netronome.com/support/solutions for more information on the
+      various firmwares supported by the Netronome Agilio CX smartNIC.
 
 PF multiport support
 --------------------
@@ -114,11 +115,11 @@ firmware symbol during initialization to know how many can be used.
 
 DPDK apps work with ports, and a port is usually a PF or a VF PCI device.
 However, with the NFP PF multiport there is just one PF PCI device. Supporting
-this particular configuration requires the PMD to create ports in a special way,
-although once they are created, DPDK apps should be able to use them as normal
-PCI ports.
+this particular configuration requires the PMD to create ports in a special
+way, although once they are created, DPDK apps should be able to use them as
+normal PCI ports.
 
-NFP ports belonging to same PF can be seen inside PMD initialization with a
+NFP ports belonging to the same PF can be seen inside PMD initialization with a
 suffix added to the PCI ID: wwww:xx:yy.z_portn. For example, a PF with PCI ID
 0000:03:00.0 and four ports is seen by the PMD code as:
 
@@ -137,24 +138,25 @@ suffix added to the PCI ID: wwww:xx:yy.z_portn. For example, a PF with PCI ID
 PF multiprocess support
 -----------------------
 
-Due to how the driver needs to access the NFP through a CPP interface, which implies
-to use specific registers inside the chip, the number of secondary processes with PF
-ports is limited to only one.
+Due to how the driver needs to access the NFP through a CPP interface, which
+implies to use specific registers inside the chip, the number of secondary
+processes with PF ports is limited to only one.
 
-This limitation will be solved in future versions but having basic multiprocess support
-is important for allowing development and debugging through the PF using a secondary
-process which will create a CPP bridge for user space tools accessing the NFP.
+This limitation will be solved in future versions, but having basic
+multiprocess support is important for allowing development and debugging
+through the PF using a secondary process, which will create a CPP bridge
+for user space tools accessing the NFP.
 
 
 System configuration
 --------------------
 
 #. **Enable SR-IOV on the NFP device:** The current NFP PMD supports the PF and
-   the VFs on a NFP device. However, it is not possible to work with both at the
-   same time because the VFs require the PF being bound to the NFP PF Linux
-   netdev driver.  Make sure you are working with a kernel with NFP PF support or
-   get the drivers from the above Github repository and follow the instructions
-   for building and installing it.
+   the VFs on a NFP device. However, it is not possible to work with both at
+   the same time because the VFs require the PF being bound to the NFP PF Linux
+   netdev driver.  Make sure you are working with a kernel with NFP PF support
+   or get the drivers from the above Github repository and follow the
+   instructions for building and installing it.
 
    VFs need to be enabled before they can be used with the PMD.
    Before enabling the VFs it is useful to obtain information about the
@@ -178,7 +180,7 @@ System configuration
       lspci -d19ee: -k
 
    Two new PCI devices should appear in the output of the above command. The
-   -k option shows the device driver, if any, that devices are bound to.
+   -k option shows the device driver, if any, that the devices are bound to.
    Depending on the modules loaded at this point the new PCI devices may be
    bound to nfp_netvf driver.
 
@@ -193,13 +195,13 @@ The flower firmware application requires the PMD running two services:
 
 	* PF vNIC service: handling the feedback traffic.
 	* ctrl vNIC service: communicate between PMD and firmware through
-	  control message.
+	  control messages.
 
 To achieve the offload of flow, the representor ports are exposed to OVS.
-The flower firmware application support representor port for VF and physical
+The flower firmware application supports representor port for VF and physical
 port. There will always exist a representor port for each physical port,
 and the number of the representor port for VF is specified by the user through
-parameter.
+a parameter.
 
 In the Rx direction, the flower firmware application will prepend the input
 port information into metadata for each packet which can't offloaded. The PF
@@ -207,12 +209,12 @@ vNIC service will keep polling packets from the firmware, and multiplex them
 to the corresponding representor port.
 
 In the Tx direction, the representor port will prepend the output port
-information into metadata for each packet, and then send it to firmware through
-PF vNIC.
+information into metadata for each packet, and then send it to the firmware
+through the PF vNIC.
 
-The ctrl vNIC service handling various control message, like the creation and
-configuration of representor port, the pattern and action of flow rules, the
-statistics of flow rules, and so on.
+The ctrl vNIC service handles various control messages, for example, the
+creation and configuration of representor port, the pattern and action of flow
+rules, the statistics of flow rules, etc.
 
 Metadata Format
 ---------------
