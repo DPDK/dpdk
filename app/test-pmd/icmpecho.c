@@ -503,9 +503,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		inc_tx_burst_stats(fs, nb_tx);
 		if (unlikely(nb_tx < nb_replies)) {
 			fs->fwd_dropped += (nb_replies - nb_tx);
-			do {
-				rte_pktmbuf_free(pkts_burst[nb_tx]);
-			} while (++nb_tx < nb_replies);
+			rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_replies - nb_tx);
 		}
 	}
 

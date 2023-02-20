@@ -421,9 +421,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			       (unsigned) nb_pkt, (unsigned) nb_tx,
 			       (unsigned) (nb_pkt - nb_tx));
 		fs->fwd_dropped += (nb_pkt - nb_tx);
-		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_pkt);
+		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_pkt - nb_tx);
 	}
 
 	get_end_cycles(fs, start_tsc);

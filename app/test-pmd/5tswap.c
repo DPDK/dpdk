@@ -178,9 +178,7 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 	inc_tx_burst_stats(fs, nb_tx);
 	if (unlikely(nb_tx < nb_rx)) {
 		fs->fwd_dropped += (nb_rx - nb_tx);
-		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_rx);
+		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_rx - nb_tx);
 	}
 	get_end_cycles(fs, start_tsc);
 }

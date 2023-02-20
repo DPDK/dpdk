@@ -111,11 +111,8 @@ do_retry(uint16_t nb_rx, uint16_t nb_tx, struct rte_mbuf **pkts,
 static uint32_t
 drop_pkts(struct rte_mbuf **pkts, uint16_t nb_rx, uint16_t nb_tx)
 {
-	if (nb_tx < nb_rx) {
-		do {
-			rte_pktmbuf_free(pkts[nb_tx]);
-		} while (++nb_tx < nb_rx);
-	}
+	if (nb_tx < nb_rx)
+		rte_pktmbuf_free_bulk(&pkts[nb_tx], nb_rx - nb_tx);
 
 	return nb_rx - nb_tx;
 }

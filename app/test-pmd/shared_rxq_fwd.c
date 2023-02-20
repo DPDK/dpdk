@@ -53,8 +53,7 @@ forward_sub_burst(struct fwd_stream *src_fs, uint16_t port, uint16_t nb_rx,
 	} else {
 		/* Source stream not found, drop all packets. */
 		src_fs->fwd_dropped += nb_rx;
-		while (nb_rx > 0)
-			rte_pktmbuf_free(pkts[--nb_rx]);
+		rte_pktmbuf_free_bulk(pkts, nb_rx);
 	}
 }
 

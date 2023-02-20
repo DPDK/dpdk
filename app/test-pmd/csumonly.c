@@ -1199,9 +1199,7 @@ tunnel_update:
 	inc_tx_burst_stats(fs, nb_tx);
 	if (unlikely(nb_tx < nb_prep)) {
 		fs->fwd_dropped += (nb_prep - nb_tx);
-		do {
-			rte_pktmbuf_free(tx_pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_prep);
+		rte_pktmbuf_free_bulk(&tx_pkts_burst[nb_tx], nb_prep - nb_tx);
 	}
 
 	get_end_cycles(fs, start_tsc);

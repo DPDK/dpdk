@@ -75,7 +75,6 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	uint16_t nb_dropped;
 	uint16_t nb_pkt;
 	uint16_t nb_clones = nb_pkt_flowgen_clones;
-	uint16_t i;
 	uint32_t retry;
 	uint64_t tx_offloads;
 	uint64_t start_tsc = 0;
@@ -89,8 +88,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	inc_rx_burst_stats(fs, nb_rx);
 	fs->rx_packets += nb_rx;
 
-	for (i = 0; i < nb_rx; i++)
-		rte_pktmbuf_free(pkts_burst[i]);
+	rte_pktmbuf_free_bulk(pkts_burst, nb_rx);
 
 	mbp = current_fwd_lcore()->mbp;
 	vlan_tci = ports[fs->tx_port].tx_vlan_id;
@@ -189,9 +187,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 			next_flow += nb_flows_flowgen;
 
 		fs->fwd_dropped += nb_dropped;
-		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_pkt);
+		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_pkt - nb_tx);
 	}
 
 	RTE_PER_LCORE(_next_flow) = next_flow;

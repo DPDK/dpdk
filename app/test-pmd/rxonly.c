@@ -46,7 +46,6 @@ pkt_burst_receive(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
 	uint16_t nb_rx;
-	uint16_t i;
 	uint64_t start_tsc = 0;
 
 	get_start_cycles(&start_tsc);
@@ -61,8 +60,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 		return;
 
 	fs->rx_packets += nb_rx;
-	for (i = 0; i < nb_rx; i++)
-		rte_pktmbuf_free(pkts_burst[i]);
+	rte_pktmbuf_free_bulk(pkts_burst, nb_rx);
 
 	get_end_cycles(fs, start_tsc);
 }
