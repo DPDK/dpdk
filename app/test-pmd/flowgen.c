@@ -80,10 +80,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	int next_flow = RTE_PER_LCORE(_next_flow);
 
 	/* Receive a burst of packets and discard them. */
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
-				 nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
-	fs->rx_packets += nb_rx;
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 
 	rte_pktmbuf_free_bulk(pkts_burst, nb_rx);
 

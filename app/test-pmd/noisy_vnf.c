@@ -150,12 +150,9 @@ pkt_burst_noisy_vnf(struct fwd_stream *fs)
 	bool needs_flush = false;
 	uint64_t now;
 
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue,
-			pkts_burst, nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
 		goto flush;
-	fs->rx_packets += nb_rx;
 
 	if (!ncf->do_buffering) {
 		sim_memory_lookups(ncf, nb_rx);

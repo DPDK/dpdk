@@ -102,10 +102,8 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	/*
 	 * Receive 1 packet at a time.
 	 */
-	if (rte_eth_rx_burst(fs->rx_port, fs->rx_queue, &mb, 1) == 0)
+	if (common_fwd_stream_receive(fs, &mb, 1) == 0)
 		return false;
-
-	fs->rx_packets += 1;
 
 	/*
 	 * Check that the received packet is a PTP packet that was detected

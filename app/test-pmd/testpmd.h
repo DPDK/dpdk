@@ -839,11 +839,17 @@ mbuf_pool_find(unsigned int sock_id, uint16_t idx)
 	return rte_mempool_lookup((const char *)pool_name);
 }
 
-static inline void
-inc_rx_burst_stats(struct fwd_stream *fs, uint16_t nb_rx)
+static inline uint16_t
+common_fwd_stream_receive(struct fwd_stream *fs, struct rte_mbuf **burst,
+	unsigned int nb_pkts)
 {
+	uint16_t nb_rx;
+
+	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, burst, nb_pkts);
 	if (record_burst_stats)
 		fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
+	fs->rx_packets += nb_rx;
+	return nb_rx;
 }
 
 static inline void
