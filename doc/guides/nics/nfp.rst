@@ -63,13 +63,6 @@ Refer to the document
 Using the PF
 ------------
 
-NFP PMD supports using the NFP PF as another DPDK port, but it does not
-have any functionality for controlling VFs. In fact, it is not possible to use
-the PMD with the VFs if the PF is being used by DPDK, that is, with the NFP PF
-bound to ``igb_uio`` or ``vfio-pci`` kernel drivers. Future DPDK versions will
-have a PMD able to work with the PF and VFs at the same time and with the PF
-implementing VF management along with other PF-only functionalities/offloads.
-
 The PMD PF has extra work to do which will delay the DPDK app initialization
 like uploading the firmware and configure the Link state properly when starting
 or stopping a PF port. Since DPDK 18.05 the firmware upload happens when
@@ -153,20 +146,25 @@ System configuration
 
 #. **Enable SR-IOV on the NFP device:** The current NFP PMD supports the PF and
    the VFs on a NFP device. However, it is not possible to work with both at
-   the same time because the VFs require the PF being bound to the NFP PF Linux
-   netdev driver.  Make sure you are working with a kernel with NFP PF support
-   or get the drivers from the above Github repository and follow the
-   instructions for building and installing it.
-
-   VFs need to be enabled before they can be used with the PMD.
-   Before enabling the VFs it is useful to obtain information about the
-   current NFP PCI device detected by the system:
+   the same time when using the ``nfp`` Linux netdev kernel driver. If the PF
+   is bound to the ``nfp`` kernel module, and VFs are created, the VFs may be
+   bound to the ``vfio-pci`` kernel module. It is also possible to bind the PF
+   to the ``vfio-pci`` kernel module, and create VFs afterwards. This requires
+   loading the ``vfio-pci`` module with the following parameters:
 
    .. code-block:: console
 
-      lspci -d19ee:
+      modprobe vfio-pci enable_sriov=1 disable_idle_d3=1
 
-   Now, for example, configure two virtual functions on a NFP-6xxx device
+   VFs need to be enabled before they can be used with the PMD. Before enabling
+   the VFs it is useful to obtain information about the current NFP PCI device
+   detected by the system. This can be done on Netronome SmartNICs using:
+
+   .. code-block:: console
+
+      lspci -d 19ee:
+
+   Now, for example, to configure two virtual functions on a NFP device
    whose PCI system identity is "0000:03:00.0":
 
    .. code-block:: console
@@ -177,12 +175,12 @@ System configuration
 
    .. code-block:: console
 
-      lspci -d19ee: -k
+      lspci -kd 19ee:
 
    Two new PCI devices should appear in the output of the above command. The
    -k option shows the device driver, if any, that the devices are bound to.
-   Depending on the modules loaded at this point the new PCI devices may be
-   bound to nfp_netvf driver.
+   Depending on the modules loaded, at this point the new PCI devices may be
+   bound to the ``nfp`` kernel driver or ``vfio-pci``.
 
 
 Flow offload
