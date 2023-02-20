@@ -13,10 +13,6 @@ if arch_subdir != 'x86' and arch_subdir != 'arm' or not dpdk_conf.get('RTE_ARCH_
     subdir_done()
 endif
 
-if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
-    subdir_done()
-endif
-
 sources = files(
         'hns3_cmd.c',
         'hns3_dcb.c',
@@ -36,6 +32,8 @@ sources = files(
         'hns3_common.c',
         'hns3_dump.c',
 )
+
+require_iova_in_mbuf = false
 
 deps += ['hash']
 

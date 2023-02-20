@@ -13,7 +13,7 @@ static inline void
 hns3_vec_tx(volatile struct hns3_desc *desc, struct rte_mbuf *pkt)
 {
 	uint64x2_t val1 = {
-		pkt->buf_iova + pkt->data_off,
+		rte_pktmbuf_iova(pkt),
 		((uint64_t)pkt->data_len) << HNS3_TXD_SEND_SIZE_SHIFT
 	};
 	uint64x2_t val2 = {
