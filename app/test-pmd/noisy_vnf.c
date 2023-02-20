@@ -134,14 +134,13 @@ drop_pkts(struct rte_mbuf **pkts, uint16_t nb_rx, uint16_t nb_tx)
  *    out of the FIFO
  * 4. Cases 2 and 3 combined
  */
-static void
+static bool
 pkt_burst_noisy_vnf(struct fwd_stream *fs)
 {
 	const uint64_t freq_khz = rte_get_timer_hz() / 1000;
 	struct noisy_config *ncf = noisy_cfg[fs->rx_port];
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_mbuf *tmp_pkts[MAX_PKT_BURST];
-	uint64_t start_tsc = 0;
 	uint16_t nb_deqd = 0;
 	uint16_t nb_rx = 0;
 	uint16_t nb_tx = 0;
@@ -150,8 +149,6 @@ pkt_burst_noisy_vnf(struct fwd_stream *fs)
 	uint64_t delta_ms;
 	bool needs_flush = false;
 	uint64_t now;
-
-	get_start_cycles(&start_tsc);
 
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue,
 			pkts_burst, nb_pkt_per_burst);
@@ -221,8 +218,7 @@ flush:
 		ncf->prev_time = rte_get_timer_cycles();
 	}
 end:
-	if (nb_rx > 0 || nb_tx > 0)
-		get_end_cycles(fs, start_tsc);
+	return nb_rx > 0 || nb_tx > 0;
 }
 
 #define NOISY_STRSIZE 256

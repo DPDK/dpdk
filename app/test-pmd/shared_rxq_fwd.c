@@ -89,21 +89,20 @@ forward_shared_rxq(struct fwd_stream *fs, uint16_t nb_rx,
 			  &pkts_burst[nb_rx - nb_sub_burst]);
 }
 
-static void
+static bool
 shared_rxq_fwd(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[nb_pkt_per_burst];
 	uint16_t nb_rx;
-	uint64_t start_tsc = 0;
 
-	get_start_cycles(&start_tsc);
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
 				 nb_pkt_per_burst);
 	inc_rx_burst_stats(fs, nb_rx);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 	forward_shared_rxq(fs, nb_rx, pkts_burst);
-	get_end_cycles(fs, start_tsc);
+
+	return true;
 }
 
 static void

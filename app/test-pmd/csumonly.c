@@ -828,7 +828,7 @@ pkts_ip_csum_recalc(struct rte_mbuf **pkts_burst, const uint16_t nb_pkts, uint64
  * IP, UDP, TCP and SCTP flags always concern the inner layer. The
  * OUTER_IP is only useful for tunnel packets.
  */
-static void
+static bool
 pkt_burst_checksum_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -859,16 +859,12 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint32_t rx_bad_outer_ip_csum;
 	struct testpmd_offload_info info;
 
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
-
 	/* receive a burst of packet */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
 				 nb_pkt_per_burst);
 	inc_rx_burst_stats(fs, nb_rx);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 
 	fs->rx_packets += nb_rx;
 	rx_bad_ip_csum = 0;
@@ -1202,7 +1198,7 @@ tunnel_update:
 		rte_pktmbuf_free_bulk(&tx_pkts_burst[nb_tx], nb_prep - nb_tx);
 	}
 
-	get_end_cycles(fs, start_tsc);
+	return true;
 }
 
 static void

@@ -58,7 +58,7 @@ RTE_DEFINE_PER_LCORE(int, _next_flow);
  * terminate receive traffic.  Received traffic is simply discarded, but we
  * still do so in order to maintain traffic statistics.
  */
-static void
+static bool
 pkt_burst_flow_gen(struct fwd_stream *fs)
 {
 	unsigned pkt_size = tx_pkt_length - 4;	/* Adjust FCS */
@@ -77,10 +77,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	uint16_t nb_clones = nb_pkt_flowgen_clones;
 	uint32_t retry;
 	uint64_t tx_offloads;
-	uint64_t start_tsc = 0;
 	int next_flow = RTE_PER_LCORE(_next_flow);
-
-	get_start_cycles(&start_tsc);
 
 	/* Receive a burst of packets and discard them. */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
@@ -192,7 +189,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 
 	RTE_PER_LCORE(_next_flow) = next_flow;
 
-	get_end_cycles(fs, start_tsc);
+	return true;
 }
 
 static int

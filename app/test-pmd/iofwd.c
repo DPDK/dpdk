@@ -41,16 +41,13 @@
  * This is the fastest possible forwarding operation, as it does not access
  * to packets data.
  */
-static void
+static bool
 pkt_burst_io_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint32_t retry;
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
 
 	/*
 	 * Receive a burst of packets and forward them.
@@ -59,7 +56,7 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 			pkts_burst, nb_pkt_per_burst);
 	inc_rx_burst_stats(fs, nb_rx);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 	fs->rx_packets += nb_rx;
 
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
@@ -82,7 +79,7 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_rx - nb_tx);
 	}
 
-	get_end_cycles(fs, start_tsc);
+	return true;
 }
 
 static void

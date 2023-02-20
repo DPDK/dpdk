@@ -323,7 +323,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 /*
  * Transmit a burst of multi-segments packets.
  */
-static void
+static bool
 pkt_burst_transmit(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -337,9 +337,6 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint32_t retry;
 	uint64_t ol_flags = 0;
 	uint64_t tx_offloads;
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
 
 	mbp = current_fwd_lcore()->mbp;
 	txp = &ports[fs->tx_port];
@@ -392,7 +389,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	}
 
 	if (nb_pkt == 0)
-		return;
+		return false;
 
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
 
@@ -424,7 +421,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_pkt - nb_tx);
 	}
 
-	get_end_cycles(fs, start_tsc);
+	return true;
 }
 
 static int

@@ -81,7 +81,7 @@ swap_udp(struct rte_udp_hdr *udp_hdr)
  * 2,3,4. Swaps source and destination for MAC, IPv4/IPv6, UDP/TCP.
  * Parses each layer and swaps it. When the next layer doesn't match it stops.
  */
-static void
+static bool
 pkt_burst_5tuple_swap(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
@@ -105,10 +105,6 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 		uint8_t *byte;
 	} h;
 
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
-
 	/*
 	 * Receive a burst of packets and forward them.
 	 */
@@ -116,7 +112,7 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 				 nb_pkt_per_burst);
 	inc_rx_burst_stats(fs, nb_rx);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 
 	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
@@ -180,7 +176,8 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 		fs->fwd_dropped += (nb_rx - nb_tx);
 		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_rx - nb_tx);
 	}
-	get_end_cycles(fs, start_tsc);
+
+	return true;
 }
 
 static void

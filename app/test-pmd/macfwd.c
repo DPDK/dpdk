@@ -41,7 +41,7 @@
  * Change the source and the destination Ethernet addressed of packets
  * before forwarding them.
  */
-static void
+static bool
 pkt_burst_mac_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
@@ -54,9 +54,6 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 	uint16_t i;
 	uint64_t ol_flags = 0;
 	uint64_t tx_offloads;
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
 
 	/*
 	 * Receive a burst of packets and forward them.
@@ -65,7 +62,7 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 				 nb_pkt_per_burst);
 	inc_rx_burst_stats(fs, nb_rx);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 
 	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
@@ -113,7 +110,7 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_rx - nb_tx);
 	}
 
-	get_end_cycles(fs, start_tsc);
+	return true;
 }
 
 static void

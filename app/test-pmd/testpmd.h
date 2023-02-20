@@ -382,7 +382,7 @@ struct fwd_lcore {
 typedef int (*port_fwd_begin_t)(portid_t pi);
 typedef void (*port_fwd_end_t)(portid_t pi);
 typedef void (*stream_init_t)(struct fwd_stream *fs);
-typedef void (*packet_fwd_t)(struct fwd_stream *fs);
+typedef bool (*packet_fwd_t)(struct fwd_stream *fs);
 
 struct fwd_engine {
 	const char       *fwd_mode_name; /**< Forwarding mode name. */
@@ -835,20 +835,6 @@ mbuf_pool_find(unsigned int sock_id, uint16_t idx)
 
 	mbuf_poolname_build(sock_id, pool_name, sizeof(pool_name), idx);
 	return rte_mempool_lookup((const char *)pool_name);
-}
-
-static inline void
-get_start_cycles(uint64_t *start_tsc)
-{
-	if (record_core_cycles)
-		*start_tsc = rte_rdtsc();
-}
-
-static inline void
-get_end_cycles(struct fwd_stream *fs, uint64_t start_tsc)
-{
-	if (record_core_cycles)
-		fs->busy_cycles += rte_rdtsc() - start_tsc;
 }
 
 static inline void
