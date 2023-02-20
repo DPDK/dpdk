@@ -17,8 +17,8 @@ NVIDIA MLX5 Ethernet Driver
 The mlx5 Ethernet poll mode driver library (**librte_net_mlx5**) provides support
 for **NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx** , **NVIDIA ConnectX-5**,
 **NVIDIA ConnectX-6**, **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**,
-**NVIDIA ConnectX-7**, **NVIDIA BlueField** and **NVIDIA BlueField-2**
-families of 10/25/40/50/100/200 Gb/s adapters
+**NVIDIA ConnectX-7**, **NVIDIA BlueField**, **NVIDIA BlueField-2** and
+**NVIDIA BlueField-3** families of 10/25/40/50/100/200/400 Gb/s adapters
 as well as their virtual functions (VF) in SR-IOV context.
 
 
@@ -283,7 +283,7 @@ Limitations
 
 - Flex item:
 
-  - Hardware support: BlueField-2.
+  - Hardware support: **NVIDIA BlueField-2** and **NVIDIA BlueField-3**.
   - Flex item is supported on PF only.
   - Hardware limits ``header_length_mask_width`` up to 6 bits.
   - Firmware supports 8 global sample fields.
@@ -437,7 +437,8 @@ Limitations
 - CRC:
 
   - ``RTE_ETH_RX_OFFLOAD_KEEP_CRC`` cannot be supported with decapsulation
-    for some NICs (such as ConnectX-6 Dx, ConnectX-6 Lx, and BlueField-2).
+    for some NICs (such as ConnectX-6 Dx, ConnectX-6 Lx, ConnectX-7, BlueField-2,
+    and BlueField-3).
     The capability bit ``scatter_fcs_w_decap_disable`` shows NIC support.
 
 - TX mbuf fast free:
@@ -672,9 +673,9 @@ for an additional list of options shared with other mlx5 drivers.
   Supported on:
 
   - x86_64 with ConnectX-4, ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, BlueField and BlueField-2.
+    ConnectX-6 Lx, ConnectX-7, BlueField, BlueField-2, and BlueField-3.
   - POWER9 and ARMv8 with ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, BlueField and BlueField-2.
+    ConnectX-6 Lx, ConnectX-7 BlueField, BlueField-2, and BlueField-3.
 
 - ``rxq_pkt_pad_en`` parameter [int]
 
@@ -687,9 +688,9 @@ for an additional list of options shared with other mlx5 drivers.
   Supported on:
 
   - x86_64 with ConnectX-4, ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, BlueField and BlueField-2.
+    ConnectX-6 Lx, ConnectX-7, BlueField, BlueField-2, and BlueField-3.
   - POWER8 and ARMv8 with ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, BlueField and BlueField-2.
+    ConnectX-6 Lx, ConnectX-7, BlueField, BlueField-2, and BlueField-3.
 
 - ``delay_drop`` parameter [int]
 
@@ -927,8 +928,8 @@ for an additional list of options shared with other mlx5 drivers.
 - ``txq_mpw_en`` parameter [int]
 
   A nonzero value enables Enhanced Multi-Packet Write (eMPW) for ConnectX-5,
-  ConnectX-6, ConnectX-6 Dx, ConnectX-6 Lx, BlueField, BlueField-2.
-  eMPW allows the Tx burst function to pack up multiple packets
+  ConnectX-6, ConnectX-6 Dx, ConnectX-6 Lx, ConnectX-7, BlueField, BlueField-2
+  BlueField-3. eMPW allows the Tx burst function to pack up multiple packets
   in a single descriptor session in order to save PCI bandwidth
   and improve performance at the cost of a slightly higher CPU usage.
   When ``txq_inline_mpw`` is set along with ``txq_mpw_en``,
@@ -973,7 +974,7 @@ for an additional list of options shared with other mlx5 drivers.
 - ``tx_vec_en`` parameter [int]
 
   A nonzero value enables Tx vector on ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-  ConnectX-6 Lx, BlueField and BlueField-2 NICs
+  ConnectX-6 Lx, ConnectX-7, BlueField, BlueField-2, and BlueField-3 NICs
   if the number of global Tx queues on the port is less than ``txqs_max_vec``.
   The parameter is deprecated and ignored.
 
@@ -1231,6 +1232,7 @@ The following NVIDIA device families are supported by the same mlx5 driver:
   - ConnectX-7
   - BlueField
   - BlueField-2
+  - BlueField-3
 
 Below are detailed device names:
 
@@ -1261,8 +1263,13 @@ Below are detailed device names:
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 200G MCX623105AN-VDAT (1x200G)
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Lx EN 25G MCX631102AN-ADAT (2x25G)
 * NVIDIA\ |reg| ConnectX\ |reg|-7 200G CX713106AE-HEA_QP1_Ax (2x200G)
-* NVIDIA\ |reg| BlueField\ |reg|-2 25G MBF2H332A-AEEOT_A1 (2x25G)
-
+* NVIDIA\ |reg| BlueField\ |reg|-2 25G MBF2H332A-AEEOT_A1 (2x25Gg
+* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00CV-AA0 (2x200)
+* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00SV-AA0 (2x200)
+* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B6-00CN-AB0 (2x400)
+* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00CC-EA0 (2x100)
+* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00SC-EA0 (2x100)
+* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B4-00EN-EA0 (1x100)
 
 Sub-Function
 ------------

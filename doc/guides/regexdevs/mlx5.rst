@@ -14,8 +14,8 @@ NVIDIA MLX5 RegEx Driver
    that are now NVIDIA trademarks.
 
 The mlx5 RegEx (Regular Expression) driver library
-(**librte_regex_mlx5**) provides support for **NVIDIA BlueField-2**
-families of 25/50/100/200 Gb/s adapters.
+(**librte_regex_mlx5**) provides support for **NVIDIA BlueField-2**,
+and **NVIDIA BlueField-3** families of 25/50/100/200 Gb/s adapters.
 
 Design
 ------
@@ -43,16 +43,18 @@ Supported NICs
 --------------
 
 * NVIDIA\ |reg| BlueField-2 SmartNIC
+* NVIDIA\ |reg| BlueField-3 SmartNIC
 
 Prerequisites
 -------------
 
-- BlueField-2 running NVIDIA supported kernel.
-- Enable the RegEx capabilities using system call from the BlueField-2.
+- BlueField-2 or BlueField-3 running NVIDIA supported kernel.
+- Enable the RegEx capabilities using system call from the BlueField-2 or BlueField-3.
 - Official support is not yet released.
 
 
 Limitations
 -----------
 
-- The firmware version must be greater than XX.31.0364
+- The firmware version must be greater than 24.31.0364 for BlueField-2
+  and 32.36.xxxx for BlueField-3.

@@ -14,8 +14,9 @@ NVIDIA MLX5 Crypto Driver
    that are now NVIDIA trademarks.
 
 The MLX5 crypto driver library
-(**librte_crypto_mlx5**) provides support for **NVIDIA ConnectX-6**
-family adapters.
+(**librte_crypto_mlx5**) provides support for **NVIDIA ConnectX-6**,
+**NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-7**, **NVIDIA BlueField-2**,
+and **NVIDIA BlueField-3** family adapters.
 
 Overview
 --------
@@ -88,7 +89,7 @@ The mlxreg dedicated tool should be used as follows:
   should not be specified.
 
   All the device ports should set it in order to move to operational mode.
-  For BlueField-2, the internal ports in the ARM system should also be set.
+  For BlueField-2, BlueField-3 the internal ports in the ARM system should also be set.
 
 - Query CRYPTO_OPERATIONAL register to make sure the device is in Operational
   mode.
@@ -148,7 +149,9 @@ Supported NICs
 
 * NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Dx
-* NVIDIA\ |reg| BlueField-2 SmartNIC
+* NVIDIA\ |reg| ConnectX\ |reg|-7
+* NVIDIA\ |reg| BlueField\ |reg|-2 SmartNIC
+* NVIDIA\ |reg| BlueField\ |reg|-3 SmartNIC
 
 
 Limitations
@@ -168,6 +171,7 @@ FW Prerequisites
 
 - xx.31.0328 for ConnectX-6.
 - xx.32.0108 for ConnectX-6 Dx and BlueField-2.
+- xx.36.xxxx for ConnectX-7 and BlueField-3.
 
 Linux Prerequisites
 ~~~~~~~~~~~~~~~~~~~

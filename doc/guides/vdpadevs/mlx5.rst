@@ -16,8 +16,8 @@ NVIDIA MLX5 vDPA Driver
 The mlx5 vDPA (vhost data path acceleration) driver library
 (**librte_vdpa_mlx5**) provides support for **NVIDIA ConnectX-6**,
 **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**, **NVIDIA ConnectX7**,
-**NVIDIA BlueField** and **NVIDIA BlueField-2** families of
-10/25/40/50/100/200 Gb/s adapters as well as their virtual functions (VF) in
+**NVIDIA BlueField**, **NVIDIA BlueField-2** and **NVIDIA BlueField-3** families
+of 10/25/40/50/100/200 Gb/s adapters as well as their virtual functions (VF) in
 SR-IOV context.
 
 .. note::
@@ -39,6 +39,7 @@ Supported NICs
 * NVIDIA\ |reg| ConnectX\ |reg|-7 200G CX713106AE-HEA_QP1_Ax (2x200G)
 * NVIDIA\ |reg| BlueField SmartNIC 25G MBF1M332A-ASCAT (2x25G)
 * NVIDIA\ |reg| BlueField |reg|-2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
+* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00CV-AAB_Ax
 
 Prerequisites
 -------------
