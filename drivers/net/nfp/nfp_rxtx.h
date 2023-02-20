@@ -227,8 +227,8 @@ struct nfp_net_rx_desc {
 	union {
 		/* Freelist descriptor */
 		struct {
-			uint8_t dma_addr_hi;
-			__le16 spare;
+			__le16 dma_addr_hi;
+			uint8_t spare;
 			uint8_t dd;
 
 			__le32 dma_addr_lo;

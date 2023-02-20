@@ -451,7 +451,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 		rxds->vals[1] = 0;
 		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DMA_ADDR_DEFAULT(new_mb));
 		rxds->fld.dd = 0;
-		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xff;
+		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
 		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;
 		nb_hold++;
 
@@ -631,13 +631,6 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 	pf_dev = hw->pf_dev;
 	pci_dev = hw->pf_dev->pci_dev;
 
-	/* NFP can not handle DMA addresses requiring more than 40 bits */
-	if (rte_mem_check_dma_mask(40)) {
-		PMD_INIT_LOG(ERR, "Device %s can not be used: restricted dma mask to 40 bits!\n",
-				pci_dev->device.name);
-		return -ENODEV;
-	};
-
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
@@ -665,6 +658,9 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 	/* Set the current MTU to the maximum supported */
 	hw->mtu = hw->max_mtu;
 	hw->flbufsz = DEFAULT_FLBUF_SIZE;
+
+	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
+		return -ENODEV;
 
 	/* read the Rx offset configured from firmware */
 	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2)
