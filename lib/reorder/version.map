@@ -16,4 +16,7 @@ EXPERIMENTAL {
 	global:
 
 	rte_reorder_seqn_dynfield_offset;
+
+	# added in 23.03
+	rte_reorder_drain_up_to_seqn;
 };

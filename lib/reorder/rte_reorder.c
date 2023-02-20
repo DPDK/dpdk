@@ -407,3 +407,81 @@ rte_reorder_drain(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
 
 	return drain_cnt;
 }
+
+/* Binary search seqn in ready buffer */
+static inline uint32_t
+ready_buffer_seqn_find(const struct cir_buffer *ready_buf, const uint32_t seqn)
+{
+	uint32_t mid, value, position, high;
+	uint32_t low = 0;
+
+	if (ready_buf->tail > ready_buf->head)
+		high = ready_buf->tail - ready_buf->head;
+	else
+		high = ready_buf->head - ready_buf->tail;
+
+	while (low <= high) {
+		mid = low + (high - low) / 2;
+		position = (ready_buf->tail + mid) & ready_buf->mask;
+		value = *rte_reorder_seqn(ready_buf->entries[position]);
+		if (seqn == value)
+			return mid;
+		else if (seqn > value)
+			low = mid + 1;
+		else
+			high = mid - 1;
+	}
+
+	return low;
+}
+
+unsigned int
+rte_reorder_drain_up_to_seqn(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
+		const unsigned int max_mbufs, const rte_reorder_seqn_t seqn)
+{
+	uint32_t i, position, offset;
+	unsigned int drain_cnt = 0;
+
+	struct cir_buffer *order_buf = &b->order_buf,
+			*ready_buf = &b->ready_buf;
+
+	/* Seqn in Ready buffer */
+	if (seqn < b->min_seqn) {
+		/* All sequence numbers are higher then given */
+		if ((ready_buf->tail == ready_buf->head) ||
+		    (*rte_reorder_seqn(ready_buf->entries[ready_buf->tail]) > seqn))
+			return 0;
+
+		offset = ready_buffer_seqn_find(ready_buf, seqn);
+
+		for (i = 0; (i < offset) && (drain_cnt < max_mbufs); i++) {
+			position = (ready_buf->tail + i) & ready_buf->mask;
+			mbufs[drain_cnt++] = ready_buf->entries[position];
+			ready_buf->entries[position] = NULL;
+		}
+		ready_buf->tail = (ready_buf->tail + i) & ready_buf->mask;
+
+		return drain_cnt;
+	}
+
+	/* Seqn in Order buffer, add all buffers from Ready buffer */
+	while ((drain_cnt < max_mbufs) && (ready_buf->tail != ready_buf->head)) {
+		mbufs[drain_cnt++] = ready_buf->entries[ready_buf->tail];
+		ready_buf->entries[ready_buf->tail] = NULL;
+		ready_buf->tail = (ready_buf->tail + 1) & ready_buf->mask;
+	}
+
+	/* Fetch buffers from Order buffer up to given sequence number (exclusive) */
+	offset = RTE_MIN(seqn - b->min_seqn, b->order_buf.size);
+	for (i = 0; (i < offset) && (drain_cnt < max_mbufs); i++) {
+		position = (order_buf->head + i) & order_buf->mask;
+		if (order_buf->entries[position] == NULL)
+			continue;
+		mbufs[drain_cnt++] = order_buf->entries[position];
+		order_buf->entries[position] = NULL;
+	}
+	b->min_seqn += i;
+	order_buf->head = (order_buf->head + i) & order_buf->mask;
+
+	return drain_cnt;
+}

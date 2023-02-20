@@ -167,6 +167,32 @@ unsigned int
 rte_reorder_drain(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
 		unsigned max_mbufs);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Fetch set of reordered packets up to specified sequence number (exclusive).
+ *
+ * Returns a set of in-order packets from the reorder buffer structure.
+ * Gaps may be present since reorder buffer will try to fetch
+ * all possible packets up to given sequence number.
+ *
+ * @param b
+ *   Reorder buffer instance from which packets are to be drained.
+ * @param mbufs
+ *   Array of mbufs where reordered packets will be inserted from reorder buffer.
+ * @param max_mbufs
+ *   The number of elements in the mbuf array.
+ * @param seqn
+ *   Sequence number up to which buffer will be drained.
+ * @return
+ *   Number of mbuf pointers written to mbufs. 0 <= N < max_mbufs.
+ */
+__rte_experimental
+unsigned int
+rte_reorder_drain_up_to_seqn(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
+		unsigned int max_mbufs, rte_reorder_seqn_t seqn);
+
 #ifdef __cplusplus
 }
 #endif

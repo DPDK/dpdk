@@ -337,6 +337,96 @@ exit:
 	return ret;
 }
 
+static void
+buffer_to_reorder_move(struct rte_mbuf **mbuf, struct rte_reorder_buffer *b)
+{
+	rte_reorder_insert(b, *mbuf);
+	*mbuf = NULL;
+}
+
+static int
+test_reorder_drain_up_to_seqn(void)
+{
+	struct rte_mempool *p = test_params->p;
+	struct rte_reorder_buffer *b = NULL;
+	const unsigned int num_bufs = 10;
+	const unsigned int size = 4;
+	unsigned int i, cnt;
+	int ret = 0;
+
+	struct rte_mbuf *bufs[num_bufs];
+	struct rte_mbuf *robufs[num_bufs];
+
+	/* initialize all robufs to NULL */
+	memset(robufs, 0, sizeof(robufs));
+
+	/* This would create a reorder buffer instance consisting of:
+	 * reorder_seq = 0
+	 * ready_buf: RB[size] = {NULL, NULL, NULL, NULL}
+	 * order_buf: OB[size] = {NULL, NULL, NULL, NULL}
+	 */
+	b = rte_reorder_create("test_drain_up_to_seqn", rte_socket_id(), size);
+	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
+
+	for (i = 0; i < num_bufs; i++) {
+		bufs[i] = rte_pktmbuf_alloc(p);
+		TEST_ASSERT_NOT_NULL(bufs[i], "Packet allocation failed\n");
+		*rte_reorder_seqn(bufs[i]) = i;
+	}
+
+	/* Insert packet with seqn 1 and 3:
+	 * RB[] = {NULL, NULL, NULL, NULL}
+	 * OB[] = {1, 2, 3, NULL}
+	 */
+	buffer_to_reorder_move(&bufs[1], b);
+	buffer_to_reorder_move(&bufs[2], b);
+	buffer_to_reorder_move(&bufs[3], b);
+	/* Draining 1, 2 */
+	cnt = rte_reorder_drain_up_to_seqn(b, robufs, num_bufs, 3);
+	if (cnt != 2) {
+		printf("%s:%d:%d: number of expected packets not drained\n",
+				__func__, __LINE__, cnt);
+		ret = -1;
+		goto exit;
+	}
+	for (i = 0; i < 2; i++)
+		rte_pktmbuf_free(robufs[i]);
+	memset(robufs, 0, sizeof(robufs));
+
+	/* Insert more packets
+	 * RB[] = {NULL, NULL, NULL, NULL}
+	 * OB[] = {3, 4, NULL, 6}
+	 */
+	buffer_to_reorder_move(&bufs[4], b);
+	buffer_to_reorder_move(&bufs[6], b);
+	/* Insert more packets to utilize Ready buffer
+	 * RB[] = {3, NULL, 5, 6}
+	 * OB[] = {NULL, NULL, 8, NULL}
+	 */
+	buffer_to_reorder_move(&bufs[8], b);
+
+	/* Drain 3 and 5 */
+	cnt = rte_reorder_drain_up_to_seqn(b, robufs, num_bufs, 6);
+	if (cnt != 2) {
+		printf("%s:%d:%d: number of expected packets not drained\n",
+				__func__, __LINE__, cnt);
+		ret = -1;
+		goto exit;
+	}
+	for (i = 0; i < 2; i++)
+		rte_pktmbuf_free(robufs[i]);
+	memset(robufs, 0, sizeof(robufs));
+
+	ret = 0;
+exit:
+	rte_reorder_free(b);
+	for (i = 0; i < num_bufs; i++) {
+		rte_pktmbuf_free(bufs[i]);
+		rte_pktmbuf_free(robufs[i]);
+	}
+	return ret;
+}
+
 static int
 test_setup(void)
 {
@@ -387,6 +477,7 @@ static struct unit_test_suite reorder_test_suite  = {
 		TEST_CASE(test_reorder_free),
 		TEST_CASE(test_reorder_insert),
 		TEST_CASE(test_reorder_drain),
+		TEST_CASE(test_reorder_drain_up_to_seqn),
 		TEST_CASES_END()
 	}
 };
