@@ -1133,9 +1133,12 @@ tunnel_update:
 
 	nb_prep = rte_eth_tx_prepare(fs->tx_port, fs->tx_queue,
 			tx_pkts_burst, nb_rx);
-	if (nb_prep != nb_rx)
+	if (nb_prep != nb_rx) {
 		printf("Preparing packet burst to transmit failed: %s\n",
 				rte_strerror(rte_errno));
+		fs->fwd_dropped += (nb_rx - nb_prep);
+		rte_pktmbuf_free_bulk(&tx_pkts_burst[nb_prep], nb_rx - nb_prep);
+	}
 
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, tx_pkts_burst,
 			nb_prep);
@@ -1143,12 +1146,12 @@ tunnel_update:
 	/*
 	 * Retry if necessary
 	 */
-	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
+	if (unlikely(nb_tx < nb_prep) && fs->retry_enabled) {
 		retry = 0;
-		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
+		while (nb_tx < nb_prep && retry++ < burst_tx_retry_num) {
 			rte_delay_us(burst_tx_delay_time);
 			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&tx_pkts_burst[nb_tx], nb_rx - nb_tx);
+					&tx_pkts_burst[nb_tx], nb_prep - nb_tx);
 		}
 	}
 	fs->tx_packets += nb_tx;
@@ -1157,11 +1160,11 @@ tunnel_update:
 	fs->rx_bad_outer_l4_csum += rx_bad_outer_l4_csum;
 
 	inc_tx_burst_stats(fs, nb_tx);
-	if (unlikely(nb_tx < nb_rx)) {
-		fs->fwd_dropped += (nb_rx - nb_tx);
+	if (unlikely(nb_tx < nb_prep)) {
+		fs->fwd_dropped += (nb_prep - nb_tx);
 		do {
 			rte_pktmbuf_free(tx_pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_rx);
+		} while (++nb_tx < nb_prep);
 	}
 
 	get_end_cycles(fs, start_tsc);
