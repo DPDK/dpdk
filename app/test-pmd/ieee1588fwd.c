@@ -215,16 +215,10 @@ port_ieee1588_fwd_end(portid_t pi)
 static void
 port_ieee1588_stream_init(struct fwd_stream *fs)
 {
-	bool rx_stopped, tx_stopped;
-
 	/* Force transmission on reception port */
 	fs->tx_port = fs->rx_port;
 
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
+	common_fwd_stream_init(fs);
 }
 
 struct fwd_engine ieee1588_fwd_engine = {

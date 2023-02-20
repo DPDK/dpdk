@@ -2387,6 +2387,16 @@ launch_packet_forwarding(lcore_function_t *pkt_fwd_on_lcore)
 	}
 }
 
+void
+common_fwd_stream_init(struct fwd_stream *fs)
+{
+	bool rx_stopped, tx_stopped;
+
+	rx_stopped = (ports[fs->rx_port].rxq[fs->rx_queue].state == RTE_ETH_QUEUE_STATE_STOPPED);
+	tx_stopped = (ports[fs->tx_port].txq[fs->tx_queue].state == RTE_ETH_QUEUE_STATE_STOPPED);
+	fs->disabled = rx_stopped || tx_stopped;
+}
+
 /*
  * Launch packet forwarding configuration.
  */

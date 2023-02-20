@@ -114,8 +114,6 @@ shared_rxq_stream_init(struct fwd_stream *fs)
 
 struct fwd_engine shared_rxq_engine = {
 	.fwd_mode_name  = "shared_rxq",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
 	.stream_init    = shared_rxq_stream_init,
 	.packet_fwd     = shared_rxq_fwd,
 };

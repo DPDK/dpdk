@@ -82,22 +82,8 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 	return true;
 }
 
-static void
-stream_init_forward(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
-}
-
 struct fwd_engine io_fwd_engine = {
 	.fwd_mode_name  = "io",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = stream_init_forward,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = pkt_burst_io_forward,
 };

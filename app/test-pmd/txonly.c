@@ -508,7 +508,6 @@ tx_only_stream_init(struct fwd_stream *fs)
 struct fwd_engine tx_only_engine = {
 	.fwd_mode_name  = "txonly",
 	.port_fwd_begin = tx_only_begin,
-	.port_fwd_end   = NULL,
 	.stream_init    = tx_only_stream_init,
 	.packet_fwd     = pkt_burst_transmit,
 };

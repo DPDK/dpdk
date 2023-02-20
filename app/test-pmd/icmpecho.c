@@ -507,22 +507,8 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	return true;
 }
 
-static void
-icmpecho_stream_init(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
-}
-
 struct fwd_engine icmp_echo_engine = {
 	.fwd_mode_name  = "icmpecho",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = icmpecho_stream_init,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = reply_to_icmp_echo_rqsts,
 };

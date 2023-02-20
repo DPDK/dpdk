@@ -392,6 +392,8 @@ struct fwd_engine {
 	packet_fwd_t     packet_fwd;     /**< Mandatory. */
 };
 
+void common_fwd_stream_init(struct fwd_stream *fs);
+
 #define FLEX_ITEM_MAX_SAMPLES_NUM 16
 #define FLEX_ITEM_MAX_LINKS_NUM 16
 #define FLEX_MAX_FLOW_PATTERN_LENGTH 64

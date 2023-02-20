@@ -71,8 +71,6 @@ stream_init_receive(struct fwd_stream *fs)
 
 struct fwd_engine rx_only_engine = {
 	.fwd_mode_name  = "rxonly",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
 	.stream_init    = stream_init_receive,
 	.packet_fwd     = pkt_burst_receive,
 };

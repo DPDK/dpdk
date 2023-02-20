@@ -199,22 +199,9 @@ flowgen_begin(portid_t pi)
 	return 0;
 }
 
-static void
-flowgen_stream_init(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
-}
-
 struct fwd_engine flow_gen_engine = {
 	.fwd_mode_name  = "flowgen",
 	.port_fwd_begin = flowgen_begin,
-	.port_fwd_end   = NULL,
-	.stream_init    = flowgen_stream_init,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = pkt_burst_flow_gen,
 };
