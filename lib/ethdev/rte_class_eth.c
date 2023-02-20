@@ -67,7 +67,7 @@ eth_representor_cmp(const char *key __rte_unused,
 	const struct rte_eth_dev *edev = opaque;
 	const struct rte_eth_dev_data *data = edev->data;
 	struct rte_eth_devargs eth_da;
-	uint16_t id, nc, np, nf, i, c, p, f;
+	uint16_t id = 0, nc, np, nf, i, c, p, f;
 
 	if ((data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0)
 		return -1; /* not a representor port */
