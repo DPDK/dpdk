@@ -519,14 +519,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	/* Use backpointer to the CoreNIC app struct */
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
-	/* NFP can not handle DMA addresses requiring more than 40 bits */
-	if (rte_mem_check_dma_mask(40)) {
-		PMD_INIT_LOG(ERR,
-			"device %s can not be used: restricted dma mask to 40 bits!",
-			pci_dev->device.name);
-		return -ENODEV;
-	}
-
 	port = ((struct nfp_net_hw *)eth_dev->data->dev_private)->idx;
 	if (port < 0 || port > 7) {
 		PMD_DRV_LOG(ERR, "Port value is wrong");
@@ -573,6 +565,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
 	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+
+	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
+		return -ENODEV;
 
 	if (nfp_net_ethdev_ops_mount(hw, eth_dev))
 		return -EINVAL;

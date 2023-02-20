@@ -454,6 +454,7 @@ int nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
 int nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc);
+int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)

@@ -1567,6 +1567,24 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
 }
 
 /*
+ * The firmware with NFD3 can not handle DMA address requiring more
+ * than 40 bits
+ */
+int
+nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name)
+{
+	if (NFD_CFG_CLASS_VER_of(hw->ver) == NFP_NET_CFG_VERSION_DP_NFD3 &&
+			rte_mem_check_dma_mask(40) != 0) {
+		PMD_DRV_LOG(ERR,
+			"The device %s can't be used: restricted dma mask to 40 bits!",
+			name);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+/*
  * Local variables:
  * c-file-style: "Linux"
  * indent-tabs-mode: t
