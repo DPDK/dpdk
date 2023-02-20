@@ -11221,8 +11221,8 @@ mlx5_flow_flex_item_create(struct rte_eth_dev *dev,
 		return NULL;
 	}
 	switch (priv->pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX7BF:
+	case PCI_DEVICE_ID_MELLANOX_BLUEFIELD2:
+	case PCI_DEVICE_ID_MELLANOX_BLUEFIELD3:
 		break;
 	default:
 		rte_flow_error_set(error, ENOTSUP,
@@ -11470,9 +11470,9 @@ int16_t mlx5_flow_get_esw_manager_vport_id(struct rte_eth_dev *dev)
 	if (priv->pci_dev == NULL)
 		return 0;
 	switch (priv->pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX7BF:
+	case PCI_DEVICE_ID_MELLANOX_BLUEFIELD:
+	case PCI_DEVICE_ID_MELLANOX_BLUEFIELD2:
+	case PCI_DEVICE_ID_MELLANOX_BLUEFIELD3:
 	/*
 	 * In old FW which doesn't expose the E-Switch Manager vport ID in the capability,
 	 * only the BF embedded CPUs control the E-Switch Manager port. Hence,

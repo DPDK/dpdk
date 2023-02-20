@@ -961,7 +961,7 @@ static const struct rte_pci_id mlx5_vdpa_pci_id_map[] = {
 	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
-				PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF)
+				PCI_DEVICE_ID_MELLANOX_BLUEFIELD2)
 	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
@@ -973,7 +973,7 @@ static const struct rte_pci_id mlx5_vdpa_pci_id_map[] = {
 	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
-				PCI_DEVICE_ID_MELLANOX_CONNECTX7BF)
+				PCI_DEVICE_ID_MELLANOX_BLUEFIELD3)
 	},
 	{
 		.vendor_id = 0
