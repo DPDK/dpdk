@@ -280,10 +280,8 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	struct rte_ipv4_hdr *ip_h;
 	struct rte_icmp_hdr *icmp_h;
 	struct rte_ether_addr eth_addr;
-	uint32_t retry;
 	uint32_t ip_addr;
 	uint16_t nb_rx;
-	uint16_t nb_tx;
 	uint16_t nb_replies;
 	uint16_t eth_type;
 	uint16_t vlan_id;
@@ -476,30 +474,8 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	}
 
 	/* Send back ICMP echo replies, if any. */
-	if (nb_replies > 0) {
-		nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst,
-					 nb_replies);
-		/*
-		 * Retry if necessary
-		 */
-		if (unlikely(nb_tx < nb_replies) && fs->retry_enabled) {
-			retry = 0;
-			while (nb_tx < nb_replies &&
-					retry++ < burst_tx_retry_num) {
-				rte_delay_us(burst_tx_delay_time);
-				nb_tx += rte_eth_tx_burst(fs->tx_port,
-						fs->tx_queue,
-						&pkts_burst[nb_tx],
-						nb_replies - nb_tx);
-			}
-		}
-		fs->tx_packets += nb_tx;
-		inc_tx_burst_stats(fs, nb_tx);
-		if (unlikely(nb_tx < nb_replies)) {
-			fs->fwd_dropped += (nb_replies - nb_tx);
-			rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_replies - nb_tx);
-		}
-	}
+	if (nb_replies > 0)
+		common_fwd_stream_transmit(fs, pkts_burst, nb_replies);
 
 	return true;
 }

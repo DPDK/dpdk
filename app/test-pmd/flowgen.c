@@ -75,7 +75,6 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	uint16_t nb_dropped;
 	uint16_t nb_pkt;
 	uint16_t nb_clones = nb_pkt_flowgen_clones;
-	uint32_t retry;
 	uint64_t tx_offloads;
 	int next_flow = RTE_PER_LCORE(_next_flow);
 
@@ -158,30 +157,13 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 			next_flow = 0;
 	}
 
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_pkt) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_pkt && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_pkt - nb_tx);
-		}
-	}
-	fs->tx_packets += nb_tx;
-
-	inc_tx_burst_stats(fs, nb_tx);
+	nb_tx = common_fwd_stream_transmit(fs, pkts_burst, nb_pkt);
 	nb_dropped = nb_pkt - nb_tx;
 	if (unlikely(nb_dropped > 0)) {
 		/* Back out the flow counter. */
 		next_flow -= nb_dropped;
 		while (next_flow < 0)
 			next_flow += nb_flows_flowgen;
-
-		fs->fwd_dropped += nb_dropped;
-		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_pkt - nb_tx);
 	}
 
 	RTE_PER_LCORE(_next_flow) = next_flow;

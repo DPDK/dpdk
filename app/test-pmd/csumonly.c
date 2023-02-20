@@ -847,12 +847,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint8_t gro_enable;
 #endif
 	uint16_t nb_rx;
-	uint16_t nb_tx;
 	uint16_t nb_prep;
 	uint16_t i;
 	uint64_t rx_ol_flags, tx_ol_flags;
 	uint64_t tx_offloads;
-	uint32_t retry;
 	uint32_t rx_bad_ip_csum;
 	uint32_t rx_bad_l4_csum;
 	uint32_t rx_bad_outer_l4_csum;
@@ -1169,31 +1167,12 @@ tunnel_update:
 		rte_pktmbuf_free_bulk(&tx_pkts_burst[nb_prep], nb_rx - nb_prep);
 	}
 
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, tx_pkts_burst,
-			nb_prep);
+	common_fwd_stream_transmit(fs, tx_pkts_burst, nb_prep);
 
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_prep) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_prep && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&tx_pkts_burst[nb_tx], nb_prep - nb_tx);
-		}
-	}
-	fs->tx_packets += nb_tx;
 	fs->rx_bad_ip_csum += rx_bad_ip_csum;
 	fs->rx_bad_l4_csum += rx_bad_l4_csum;
 	fs->rx_bad_outer_l4_csum += rx_bad_outer_l4_csum;
 	fs->rx_bad_outer_ip_csum += rx_bad_outer_ip_csum;
-
-	inc_tx_burst_stats(fs, nb_tx);
-	if (unlikely(nb_tx < nb_prep)) {
-		fs->fwd_dropped += (nb_prep - nb_tx);
-		rte_pktmbuf_free_bulk(&tx_pkts_burst[nb_tx], nb_prep - nb_tx);
-	}
 
 	return true;
 }

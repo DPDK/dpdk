@@ -182,13 +182,10 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 
 	/* Forward PTP packet with hardware TX timestamp */
 	mb->ol_flags |= RTE_MBUF_F_TX_IEEE1588_TMST;
-	if (rte_eth_tx_burst(fs->tx_port, fs->tx_queue, &mb, 1) == 0) {
+	if (common_fwd_stream_transmit(fs, &mb, 1) == 0) {
 		printf("Port %u sent PTP packet dropped\n", fs->tx_port);
-		fs->fwd_dropped += 1;
-		rte_pktmbuf_free(mb);
 		return false;
 	}
-	fs->tx_packets += 1;
 
 	/*
 	 * Check the TX timestamp.

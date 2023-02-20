@@ -852,11 +852,34 @@ common_fwd_stream_receive(struct fwd_stream *fs, struct rte_mbuf **burst,
 	return nb_rx;
 }
 
-static inline void
-inc_tx_burst_stats(struct fwd_stream *fs, uint16_t nb_tx)
+static inline uint16_t
+common_fwd_stream_transmit(struct fwd_stream *fs, struct rte_mbuf **burst,
+	unsigned int nb_pkts)
 {
+	uint16_t nb_tx;
+	uint32_t retry;
+
+	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, burst, nb_pkts);
+	/*
+	 * Retry if necessary
+	 */
+	if (unlikely(nb_tx < nb_pkts) && fs->retry_enabled) {
+		retry = 0;
+		while (nb_tx < nb_pkts && retry++ < burst_tx_retry_num) {
+			rte_delay_us(burst_tx_delay_time);
+			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
+				&burst[nb_tx], nb_pkts - nb_tx);
+		}
+	}
+	fs->tx_packets += nb_tx;
 	if (record_burst_stats)
 		fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;
+	if (unlikely(nb_tx < nb_pkts)) {
+		fs->fwd_dropped += (nb_pkts - nb_tx);
+		rte_pktmbuf_free_bulk(&burst[nb_tx], nb_pkts - nb_tx);
+	}
+
+	return nb_tx;
 }
 
 /* Prototypes */

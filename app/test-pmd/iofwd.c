@@ -46,8 +46,6 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	uint16_t nb_rx;
-	uint16_t nb_tx;
-	uint32_t retry;
 
 	/*
 	 * Receive a burst of packets and forward them.
@@ -56,25 +54,7 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 	if (unlikely(nb_rx == 0))
 		return false;
 
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-			pkts_burst, nb_rx);
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_rx - nb_tx);
-		}
-	}
-	fs->tx_packets += nb_tx;
-	inc_tx_burst_stats(fs, nb_tx);
-	if (unlikely(nb_tx < nb_rx)) {
-		fs->fwd_dropped += (nb_rx - nb_tx);
-		rte_pktmbuf_free_bulk(&pkts_burst[nb_tx], nb_rx - nb_tx);
-	}
+	common_fwd_stream_transmit(fs, pkts_burst, nb_rx);
 
 	return true;
 }
