@@ -1,19 +1,18 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2015-2017 Netronome Systems, Inc. All rights reserved.
-    All rights reserved.
+    Copyright(c) 2021 Corigine, Inc. All rights reserved.
 
 NFP poll mode driver library
 ============================
 
-Netronome's sixth generation of flow processors pack 216 programmable
-cores and over 100 hardware accelerators that uniquely combine packet,
-flow, security and content processing in a single device that scales
+Netronome and Corigine's sixth generation of flow processors pack 216
+programmable cores and over 100 hardware accelerators that uniquely combine
+packet, flow, security and content processing in a single device that scales
 up to 400-Gb/s.
 
-This document explains how to use DPDK with the Netronome Poll Mode
-Driver (PMD) supporting Netronome's Network Flow Processor 6xxx
-(NFP-6xxx), Netronome's Network Flow Processor 4xxx (NFP-4xxx) and
-Netronome's Network Flow Processor 38xx (NFP-38xx).
+This document explains how to use DPDK with the Network Flow Processor (NFP)
+Poll Mode Driver (PMD) supporting Netronome and Corigine's NFP-6xxx, NFP-4xxx
+and NFP-38xx product lines.
 
 NFP is a SR-IOV capable device and the PMD supports the physical
 function (PF) and the virtual functions (VFs).
@@ -21,15 +20,16 @@ function (PF) and the virtual functions (VFs).
 Dependencies
 ------------
 
-Before using the Netronome's DPDK PMD some NFP configuration,
+Before using the NFP DPDK PMD some NFP configuration,
 which is not related to DPDK, is required. The system requires
-installation of **Netronome's BSP (Board Support Package)** along
-with a specific NFP firmware application. Netronome's NSP ABI
+installation of the **nfp-bsp (Board Support Package)** along
+with a specific NFP firmware application. The NSP ABI
 version should be 0.20 or higher.
 
-If you have a NFP device you should already have the code and
-documentation for this configuration. Contact
-**support@netronome.com** to obtain the latest available firmware.
+If you have a NFP device you should already have the documentation to perform
+this configuration. Contact **support@netronome.com** (for Netronome products)
+or **smartnic-support@corigine.com** (for Corigine products) to obtain the
+latest available firmware.
 
 The NFP Linux netdev kernel driver for VFs has been a part of the
 vanilla kernel since kernel version 4.5, and support for the PF
@@ -44,9 +44,9 @@ Linux kernel driver.
 Building the software
 ---------------------
 
-Netronome's PMD code is provided in the **drivers/net/nfp** directory.
-Although NFP PMD has Netronome´s BSP dependencies, it is possible to
-compile it along with other DPDK PMDs even if no BSP was installed previously.
+The NFP PMD code is provided in the **drivers/net/nfp** directory. Although
+NFP PMD has BSP dependencies, it is possible to compile it along with other
+DPDK PMDs even if no BSP was installed previously.
 Of course, a DPDK app will require such a BSP installed for using the
 NFP PMD, along with a specific NFP firmware application.
 
@@ -68,9 +68,9 @@ like uploading the firmware and configure the Link state properly when starting
 or stopping a PF port. Since DPDK 18.05 the firmware upload happens when
 a PF is initialized, which was not always true with older DPDK versions.
 
-Depending on the Netronome product installed in the system, firmware files
-should be available under ``/lib/firmware/netronome``. DPDK PMD supporting the
-PF looks for a firmware file in this order:
+Depending on the product installed in the system, firmware files should be
+available under ``/lib/firmware/netronome``. DPDK PMD supporting the PF looks
+for a firmware file in this order:
 
 	1) First try to find a firmware image specific for this device using the
 	   NFP serial number:
@@ -85,19 +85,22 @@ PF looks for a firmware file in this order:
 
 		nic_AMDA0099-0001_2x25.nffw
 
-Netronome's software packages install firmware files under
-``/lib/firmware/netronome`` to support all the Netronome's SmartNICs and
-different firmware applications. This is usually done using file names based on
-SmartNIC type and media and with a directory per firmware application. Options
-1 and 2 for firmware filenames allow more than one SmartNIC, same type of
-SmartNIC or different ones, and to upload a different firmware to each
+Netronome and Corigine's software packages install firmware files under
+``/lib/firmware/netronome`` to support all the Netronome and Corigine SmartNICs
+and different firmware applications. This is usually done using file names
+based on SmartNIC type and media and with a directory per firmware application.
+Options 1 and 2 for firmware filenames allow more than one SmartNIC, same type
+of SmartNIC or different ones, and to upload a different firmware to each
 SmartNIC.
 
    .. Note::
       Currently the NFP PMD supports using the PF with Agilio Firmware with
       NFD3 and Agilio Firmware with NFDk. See
-      https://help.netronome.com/support/solutions for more information on the
-      various firmwares supported by the Netronome Agilio CX smartNIC.
+      `Netronome Support <https://help.netronome.com/support/solutions>`_.
+      for more information on the various firmwares supported by the Netronome
+      Agilio SmartNIC range, or
+      `Corigine Support <https://www.corigine.com/productsOverviewList-30.html>`_.
+      for more information about Corigine's range.
 
 PF multiport support
 --------------------
@@ -164,6 +167,12 @@ System configuration
 
       lspci -d 19ee:
 
+   and on Corigine SmartNICs using:
+
+   .. code-block:: console
+
+      lspci -d 1da8:
+
    Now, for example, to configure two virtual functions on a NFP device
    whose PCI system identity is "0000:03:00.0":
 
@@ -171,11 +180,18 @@ System configuration
 
       echo 2 > /sys/bus/pci/devices/0000:03:00.0/sriov_numvfs
 
-   The result of this command may be shown using lspci again:
+   The result of this command may be shown using lspci again on Netronome
+   SmartNICs:
 
    .. code-block:: console
 
       lspci -kd 19ee:
+
+   and on Corigine SmartNICs:
+
+   .. code-block:: console
+
+      lspci -kd 1da8:
 
    Two new PCI devices should appear in the output of the above command. The
    -k option shows the device driver, if any, that the devices are bound to.
@@ -186,8 +202,8 @@ System configuration
 Flow offload
 ------------
 
-Use the flower firmware application, some type of Netronome's SmartNICs can
-offload the flow into cards.
+Using the flower firmware application, some types of Netronome or Corigine
+SmartNICs can offload the flows onto the cards.
 
 The flower firmware application requires the PMD running two services:
 
