@@ -35,7 +35,7 @@ device upon timer expiration.
 
 The Event Timer Adapter API represents each event timer with a generic struct,
 which contains an event and user metadata.  The ``rte_event_timer`` struct is
-defined in ``lib/librte_event/librte_event_timer_adapter.h``.
+defined in ``rte_event_timer_adapter.h``.
 
 .. _timer_expiry_event:
 
