@@ -85,6 +85,9 @@ part_number_config_arm = {
             ['RTE_MAX_NUMA_NODES', 1]
         ]
     },
+    '0xd42': {
+        'march': 'armv8.4-a',
+    },
     '0xd49': {
         'march': 'armv8.5-a',
         'march_features': ['sve2'],
@@ -442,12 +445,24 @@ soc_thunderxt83 = {
     'part_number': '0xa3'
 }
 
+soc_bluefield3 = {
+  'description': 'NVIDIA BlueField-3',
+  'implementer': '0x41',
+   'flags': [
+          ['RTE_MAX_LCORE', 32],
+          ['RTE_MAX_NUMA_NODES', 1]
+      ],
+   'part_number': '0xd42',
+   'numa': false
+}
+
 '''
 Start of SoCs list
 generic:         Generic un-optimized build for armv8 aarch64 execution mode.
 generic_aarch32: Generic un-optimized build for armv8 aarch32 execution mode.
 armada:          Marvell ARMADA
 bluefield:       NVIDIA BlueField
+bluefield3:      NVIDIA BlueField-3
 centriq2400:     Qualcomm Centriq 2400
 cn9k:            Marvell OCTEON 9
 cn10k:           Marvell OCTEON 10
@@ -474,6 +489,7 @@ socs = {
     'generic_aarch32': soc_generic_aarch32,
     'armada': soc_armada,
     'bluefield': soc_bluefield,
+    'bluefield3': soc_bluefield3,
     'centriq2400': soc_centriq2400,
     'cn9k': soc_cn9k,
     'cn10k' : soc_cn10k,
