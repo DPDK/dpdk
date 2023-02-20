@@ -68,6 +68,11 @@ New Features
   * Applications can register a callback at startup via
     ``rte_lcore_register_usage_cb()`` to provide lcore usage information.
 
+* **Added ARM support for power monitor in the power management library.**
+
+  Added power monitor and wake up API support
+  with WFE/SVE instructions for Arm architecture.
+
 * **Added support for mapping a queue with an aggregated port.**
 
   * Introduced new function ``rte_eth_dev_count_aggr_ports()``

@@ -25,11 +25,33 @@ static inline void rte_pause(void)
 
 #ifdef RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED
 
-/* Send an event to quit WFE. */
+/* Send a local event to quit WFE. */
 #define __RTE_ARM_SEVL() { asm volatile("sevl" : : : "memory"); }
+
+/* Send a global event to quit WFE for all cores. */
+#define __RTE_ARM_SEV() { asm volatile("sev" : : : "memory"); }
 
 /* Put processor into low power WFE(Wait For Event) state. */
 #define __RTE_ARM_WFE() { asm volatile("wfe" : : : "memory"); }
+
+/*
+ * Atomic exclusive load from addr, it returns the 8-bit content of
+ * *addr while making it 'monitored', when it is written by someone
+ * else, the 'monitored' state is cleared and an event is generated
+ * implicitly to exit WFE.
+ */
+#define __RTE_ARM_LOAD_EXC_8(src, dst, memorder) {       \
+	if (memorder == __ATOMIC_RELAXED) {               \
+		asm volatile("ldxrb %w[tmp], [%x[addr]]"  \
+			: [tmp] "=&r" (dst)               \
+			: [addr] "r" (src)                \
+			: "memory");                      \
+	} else {                                          \
+		asm volatile("ldaxrb %w[tmp], [%x[addr]]" \
+			: [tmp] "=&r" (dst)               \
+			: [addr] "r" (src)                \
+			: "memory");                      \
+	} }
 
 /*
  * Atomic exclusive load from addr, it returns the 16-bit content of
@@ -111,9 +133,11 @@ static inline void rte_pause(void)
 	} }                                                             \
 
 #define __RTE_ARM_LOAD_EXC(src, dst, memorder, size) {     \
-	RTE_BUILD_BUG_ON(size != 16 && size != 32 &&       \
-		size != 64 && size != 128);                \
-	if (size == 16)                                    \
+	RTE_BUILD_BUG_ON(size != 8 && size != 16 &&        \
+		size != 32 && size != 64 && size != 128);  \
+	if (size == 8)                                    \
+		__RTE_ARM_LOAD_EXC_8(src, dst, memorder)   \
+	else if (size == 16)                               \
 		__RTE_ARM_LOAD_EXC_16(src, dst, memorder)  \
 	else if (size == 32)                               \
 		__RTE_ARM_LOAD_EXC_32(src, dst, memorder)  \
