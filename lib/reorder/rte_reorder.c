@@ -485,3 +485,34 @@ rte_reorder_drain_up_to_seqn(struct rte_reorder_buffer *b, struct rte_mbuf **mbu
 
 	return drain_cnt;
 }
+
+static bool
+rte_reorder_is_empty(const struct rte_reorder_buffer *b)
+{
+	const struct cir_buffer *order_buf = &b->order_buf, *ready_buf = &b->ready_buf;
+	unsigned int i;
+
+	/* Ready buffer does not have gaps */
+	if (ready_buf->tail != ready_buf->head)
+		return false;
+
+	/* Order buffer could have gaps, iterate */
+	for (i = 0; i < order_buf->size; i++) {
+		if (order_buf->entries[i] != NULL)
+			return false;
+	}
+
+	return true;
+}
+
+unsigned int
+rte_reorder_min_seqn_set(struct rte_reorder_buffer *b, rte_reorder_seqn_t min_seqn)
+{
+	if (!rte_reorder_is_empty(b))
+		return -ENOTEMPTY;
+
+	b->min_seqn = min_seqn;
+	b->is_initialized = true;
+
+	return 0;
+}

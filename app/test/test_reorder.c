@@ -428,6 +428,74 @@ exit:
 }
 
 static int
+test_reorder_set_seqn(void)
+{
+	struct rte_mempool *p = test_params->p;
+	struct rte_reorder_buffer *b = NULL;
+	const unsigned int num_bufs = 7;
+	const unsigned int size = 4;
+	unsigned int i;
+	int ret = 0;
+
+	struct rte_mbuf *bufs[num_bufs];
+
+	/* This would create a reorder buffer instance consisting of:
+	 * reorder_seq = 0
+	 * ready_buf: RB[size] = {NULL, NULL, NULL, NULL}
+	 * order_buf: OB[size] = {NULL, NULL, NULL, NULL}
+	 */
+	b = rte_reorder_create("test_min_seqn_set", rte_socket_id(), size);
+	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
+
+	for (i = 0; i < num_bufs; i++) {
+		bufs[i] = rte_pktmbuf_alloc(p);
+		if (bufs[i] == NULL) {
+			printf("Packet allocation failed\n");
+			goto exit;
+		}
+		*rte_reorder_seqn(bufs[i]) = i;
+	}
+
+	ret = rte_reorder_min_seqn_set(b, 5);
+	if (ret != 0) {
+		printf("%s:%d: Error in setting min sequence number\n", __func__, __LINE__);
+		ret = -1;
+		goto exit;
+	}
+
+	ret = rte_reorder_insert(b, bufs[0]);
+	if (ret >= 0) {
+		printf("%s:%d: Insertion with value less the min seq number\n", __func__, __LINE__);
+		ret = -1;
+		goto exit;
+	}
+
+	ret = rte_reorder_insert(b, bufs[5]);
+	if (ret != 0) {
+		printf("%s:%d: Error inserting packet with valid seqn\n", __func__, __LINE__);
+		ret = -1;
+		goto exit;
+	}
+	bufs[5] = NULL;
+
+	ret = rte_reorder_min_seqn_set(b, 0);
+	if (ret >= 0) {
+		printf("%s:%d: Error in setting min sequence number with non-empty buffer\n",
+				__func__, __LINE__);
+		ret = -1;
+		goto exit;
+	}
+
+	ret = 0;
+exit:
+	rte_reorder_free(b);
+	for (i = 0; i < num_bufs; i++)
+		rte_pktmbuf_free(bufs[i]);
+
+	return ret;
+}
+
+static int
 test_setup(void)
 {
 	/* reorder buffer instance creation */
@@ -478,6 +546,7 @@ static struct unit_test_suite reorder_test_suite  = {
 		TEST_CASE(test_reorder_insert),
 		TEST_CASE(test_reorder_drain),
 		TEST_CASE(test_reorder_drain_up_to_seqn),
+		TEST_CASE(test_reorder_set_seqn),
 		TEST_CASES_END()
 	}
 };
