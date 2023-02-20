@@ -61,7 +61,10 @@ gve_rx_refill(struct gve_rx_queue *rxq)
 					break;
 				rxq->sw_ring[idx + i] = nmb;
 			}
-			nb_alloc = i;
+			if (i != nb_alloc) {
+				rxq->no_mbufs += nb_alloc - i;
+				nb_alloc = i;
+			}
 		}
 		rxq->nb_avail -= nb_alloc;
 		next_avail += nb_alloc;
