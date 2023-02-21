@@ -495,7 +495,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	otx_epdev_init(otx_epvf);
 	if (pdev->id.device_id == PCI_DEVID_CN9K_EP_NET_VF)
-		otx_epvf->pkind = SDP_OTX2_PKIND;
+		otx_epvf->pkind = SDP_OTX2_PKIND_FS0;
 	else
 		otx_epvf->pkind = SDP_PKIND;
 	otx_ep_info("using pkind %d\n", otx_epvf->pkind);
