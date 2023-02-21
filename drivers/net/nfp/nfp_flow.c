@@ -2121,10 +2121,13 @@ nfp_flow_action_set_ip(char *act_data,
 	set_ip->reserved     = 0;
 
 	set_ipv4 = (const struct rte_flow_action_set_ipv4 *)action->conf;
-	if (ip_src_flag)
+	if (ip_src_flag) {
 		set_ip->ipv4_src = set_ipv4->ipv4_addr;
-	else
+		set_ip->ipv4_src_mask = RTE_BE32(0xffffffff);
+	} else {
 		set_ip->ipv4_dst = set_ipv4->ipv4_addr;
+		set_ip->ipv4_dst_mask = RTE_BE32(0xffffffff);
+	}
 }
 
 static void
