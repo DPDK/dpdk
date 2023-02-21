@@ -42,8 +42,6 @@ struct mlx5_compress_priv {
 	struct rte_compressdev *compressdev;
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	struct mlx5_uar uar;
-	uint8_t min_block_size;
-	/* Minimum huffman block size supported by the device. */
 	struct rte_compressdev_config dev_config;
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
@@ -766,7 +764,6 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
 	priv->crc32_opaq_offs = crc32_opaq_offset / 4;
 	priv->cdev = cdev;
 	priv->compressdev = compressdev;
-	priv->min_block_size = attr->compress_min_block_size;
 	if (mlx5_devx_uar_prepare(cdev, &priv->uar) != 0) {
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		return -1;
