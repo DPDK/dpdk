@@ -2300,6 +2300,7 @@ nfp_flow_action_set_tos(char *act_data,
 
 	tos_conf = (const struct rte_flow_action_set_dscp *)action->conf;
 	ttl_tos->ipv4_tos = tos_conf->dscp;
+	ttl_tos->ipv4_tos_mask = 0xff;
 	ttl_tos->reserved = 0;
 }
 
@@ -2323,6 +2324,7 @@ nfp_flow_action_set_tc(char *act_data,
 
 	tos_conf = (const struct rte_flow_action_set_dscp *)action->conf;
 	tc_hl->ipv6_tc = tos_conf->dscp;
+	tc_hl->ipv6_tc_mask = 0xff;
 	tc_hl->reserved = 0;
 }
 
