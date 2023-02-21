@@ -263,7 +263,8 @@ struct mlx5_hca_attr {
 	uint32_t mmo_decompress_sq_en:1;
 	uint32_t mmo_dma_qp_en:1;
 	uint32_t mmo_compress_qp_en:1;
-	uint32_t mmo_decompress_qp_en:1;
+	uint32_t decomp_deflate_v1_en:1;
+	uint32_t decomp_deflate_v2_en:1;
 	uint32_t mmo_regex_qp_en:1;
 	uint32_t mmo_regex_sq_en:1;
 	uint32_t compress_min_block_size:4;

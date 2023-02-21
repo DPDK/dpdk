@@ -613,17 +613,27 @@ struct mlx5_gga_wqe {
 	struct mlx5_wqe_dseg scatter;
 } __rte_packed;
 
-struct mlx5_gga_compress_opaque {
-	uint32_t syndrom;
-	uint32_t reserved0;
-	uint32_t scattered_length;
-	uint32_t gathered_length;
-	uint64_t scatter_crc;
-	uint64_t gather_crc;
-	uint32_t crc32;
-	uint32_t adler32;
-	uint8_t reserved1[216];
-} __rte_packed;
+union mlx5_gga_compress_opaque {
+	struct {
+		uint32_t syndrome;
+		uint32_t reserved0;
+		uint32_t scattered_length;
+		union {
+			struct {
+				uint32_t reserved1[5];
+				uint32_t crc32;
+				uint32_t adler32;
+			} v1 __rte_packed;
+			struct {
+				uint32_t crc32;
+				uint32_t adler32;
+				uint32_t crc32c;
+				uint32_t xxh32;
+			} v2 __rte_packed;
+		};
+	} __rte_packed;
+	uint32_t data[64];
+};
 
 struct mlx5_ifc_regexp_mmo_control_bits {
 	uint8_t reserved_at_31[0x2];
@@ -1467,7 +1477,7 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 log_max_bsf_list_size[0x6];
 	u8 umr_extended_translation_offset[0x1];
 	u8 null_mkey[0x1];
-	u8 log_max_klm_list_size[0x6];
+	u8 log_maxklm_list_size[0x6];
 	u8 non_wire_sq[0x1];
 	u8 reserved_at_121[0x9];
 	u8 log_max_ra_req_dc[0x6];
@@ -1756,8 +1766,10 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 dma_mmo_qp[0x1];
 	u8 regexp_mmo_qp[0x1];
 	u8 compress_mmo_qp[0x1];
-	u8 decompress_mmo_qp[0x1];
-	u8 reserved_at_74c[0x14];
+	u8 decompress_deflate_v1[0x1];
+	u8 reserved_at_74c[0x4];
+	u8 decompress_deflate_v2[0x1];
+	u8 reserved_at_751[0xf];
 	u8 reserved_at_760[0x3];
 	u8 log_max_num_header_modify_argument[0x5];
 	u8 log_header_modify_argument_granularity_offset[0x4];

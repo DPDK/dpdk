@@ -55,6 +55,7 @@ struct mlx5_compress_priv {
 	uint32_t mmo_dma_sq:1;
 	uint32_t mmo_dma_qp:1;
 	uint32_t log_block_sz;
+	uint32_t crc32_opaq_offs;
 };
 
 struct mlx5_compress_qp {
@@ -157,7 +158,7 @@ mlx5_compress_init_qp(struct mlx5_compress_qp *qp)
 {
 	volatile struct mlx5_gga_wqe *restrict wqe =
 				    (volatile struct mlx5_gga_wqe *)qp->qp.wqes;
-	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	volatile union mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 	const uint32_t sq_ds = rte_cpu_to_be_32((qp->qp.qp->id << 8) | 4u);
 	const uint32_t flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 					MLX5_COMP_MODE_OFFSET);
@@ -211,8 +212,8 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		goto err;
 	}
 	opaq_buf = rte_calloc(__func__, (size_t)1 << log_ops_n,
-			      sizeof(struct mlx5_gga_compress_opaque),
-			      sizeof(struct mlx5_gga_compress_opaque));
+			      sizeof(union mlx5_gga_compress_opaque),
+			      sizeof(union mlx5_gga_compress_opaque));
 	if (opaq_buf == NULL) {
 		DRV_LOG(ERR, "Failed to allocate opaque memory.");
 		rte_errno = ENOMEM;
@@ -225,7 +226,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp->ops = (struct rte_comp_op **)RTE_ALIGN((uintptr_t)(qp + 1),
 						   RTE_CACHE_LINE_SIZE);
 	if (mlx5_common_verbs_reg_mr(priv->cdev->pd, opaq_buf, qp->entries_n *
-					sizeof(struct mlx5_gga_compress_opaque),
+					sizeof(union mlx5_gga_compress_opaque),
 							 &qp->opaque_mr) != 0) {
 		rte_free(opaq_buf);
 		DRV_LOG(ERR, "Failed to register opaque MR.");
@@ -544,7 +545,7 @@ mlx5_compress_dump_err_objs(volatile uint32_t *cqe, volatile uint32_t *wqe,
 		DRV_LOG(ERR, "%08X %08X %08X %08X", wqe[i], wqe[i + 1],
 			wqe[i + 2], wqe[i + 3]);
 	DRV_LOG(ERR, "\nError opaq:");
-	for (i = 0; i < sizeof(struct mlx5_gga_compress_opaque) >> 2; i += 4)
+	for (i = 0; i < sizeof(union mlx5_gga_compress_opaque) >> 2; i += 4)
 		DRV_LOG(ERR, "%08X %08X %08X %08X", opaq[i], opaq[i + 1],
 			opaq[i + 2], opaq[i + 3]);
 }
@@ -558,7 +559,7 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 							      &qp->cq.cqes[idx];
 	volatile struct mlx5_gga_wqe *wqes = (volatile struct mlx5_gga_wqe *)
 								    qp->qp.wqes;
-	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	volatile union mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 
 	volatile uint32_t *synd_word = RTE_PTR_ADD(cqe, MLX5_ERROR_CQE_SYNDROME_OFFSET);
 	switch (*synd_word) {
@@ -575,7 +576,7 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 	op->consumed = 0;
 	op->produced = 0;
 	op->output_chksum = 0;
-	op->debug_status = rte_be_to_cpu_32(opaq[idx].syndrom) |
+	op->debug_status = rte_be_to_cpu_32(opaq[idx].syndrome) |
 			      ((uint64_t)rte_be_to_cpu_32(cqe->syndrome) << 32);
 	mlx5_compress_dump_err_objs((volatile uint32_t *)cqe,
 				 (volatile uint32_t *)&wqes[idx],
@@ -590,13 +591,14 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 	struct mlx5_compress_qp *qp = queue_pair;
 	volatile struct mlx5_compress_xform *restrict xform;
 	volatile struct mlx5_cqe *restrict cqe;
-	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	volatile union mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 	struct rte_comp_op *restrict op;
 	const unsigned int cq_size = qp->entries_n;
 	const unsigned int mask = cq_size - 1;
 	uint32_t idx;
 	uint32_t next_idx = qp->ci & mask;
 	const uint16_t max = RTE_MIN((uint16_t)(qp->pi - qp->ci), nb_ops);
+	uint32_t crc32_idx = qp->priv->crc32_opaq_offs;
 	uint16_t i = 0;
 	int ret;
 
@@ -629,17 +631,17 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 			switch (xform->csum_type) {
 			case RTE_COMP_CHECKSUM_CRC32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
-						    (opaq[idx].crc32);
+						    (opaq[idx].data[crc32_idx]);
 				break;
 			case RTE_COMP_CHECKSUM_ADLER32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
-						    (opaq[idx].adler32);
+						(opaq[idx].data[crc32_idx + 1]);
 				break;
 			case RTE_COMP_CHECKSUM_CRC32_ADLER32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
-							     (opaq[idx].crc32) |
+						   (opaq[idx].data[crc32_idx]) |
 						     ((uint64_t)rte_be_to_cpu_32
-						     (opaq[idx].adler32) << 32);
+					 (opaq[idx].data[crc32_idx + 1]) << 32);
 				break;
 			default:
 				break;
@@ -717,15 +719,17 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
 		.socket_id = cdev->dev->numa_node,
 	};
 	const char *ibdev_name = mlx5_os_get_ctx_device_name(cdev->ctx);
+	uint32_t crc32_opaq_offset;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DRV_LOG(ERR, "Non-primary process type is not supported.");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (!attr->mmo_decompress_qp_en && !attr->mmo_decompress_sq_en
-		&& !attr->mmo_compress_qp_en && !attr->mmo_compress_sq_en
-		&& !attr->mmo_dma_qp_en && !attr->mmo_dma_sq_en) {
+	if (!attr->decomp_deflate_v1_en && !attr->decomp_deflate_v2_en &&
+	    !attr->mmo_decompress_sq_en && !attr->mmo_compress_qp_en &&
+	    !attr->mmo_compress_sq_en && !attr->mmo_dma_qp_en &&
+	    !attr->mmo_dma_sq_en) {
 		DRV_LOG(ERR, "Not enough capabilities to support compress operations, maybe old FW/OFED version?");
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
@@ -746,11 +750,20 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
 	priv = compressdev->data->dev_private;
 	priv->log_block_sz = devarg_prms.log_block_sz;
 	priv->mmo_decomp_sq = attr->mmo_decompress_sq_en;
-	priv->mmo_decomp_qp = attr->mmo_decompress_qp_en;
+	priv->mmo_decomp_qp =
+			attr->decomp_deflate_v1_en | attr->decomp_deflate_v2_en;
 	priv->mmo_comp_sq = attr->mmo_compress_sq_en;
 	priv->mmo_comp_qp = attr->mmo_compress_qp_en;
 	priv->mmo_dma_sq = attr->mmo_dma_sq_en;
 	priv->mmo_dma_qp = attr->mmo_dma_qp_en;
+	if (attr->decomp_deflate_v2_en)
+		crc32_opaq_offset = offsetof(union mlx5_gga_compress_opaque,
+					     v2.crc32);
+	else
+		crc32_opaq_offset = offsetof(union mlx5_gga_compress_opaque,
+					     v1.crc32);
+	MLX5_ASSERT((crc32_opaq_offset % 4) == 0);
+	priv->crc32_opaq_offs = crc32_opaq_offset / 4;
 	priv->cdev = cdev;
 	priv->compressdev = compressdev;
 	priv->min_block_size = attr->compress_min_block_size;
