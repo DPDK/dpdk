@@ -211,8 +211,8 @@ send_doorbell(struct mlx5_regex_priv *priv, struct mlx5_regex_hw_qp *qp)
 			    (MLX5_SEND_WQE_BB << (priv->has_umr ? 2 : 0)) +
 			    (priv->has_umr ? MLX5_REGEX_UMR_WQE_SIZE : 0);
 	uint8_t *wqe = (uint8_t *)(uintptr_t)qp->qp_obj.wqes + wqe_offset;
-	uint32_t actual_pi = (priv->has_umr ? (qp->db_pi * 4 + 3) : qp->db_pi) &
-			     MLX5_REGEX_MAX_WQE_INDEX;
+	uint32_t actual_pi = (priv->has_umr ? ((1 + qp->db_pi) * 4) : qp->db_pi)
+			     & MLX5_REGEX_MAX_WQE_INDEX;
 
 	/* Or the fm_ce_se instead of set, avoid the fence be cleared. */
 	((struct mlx5_wqe_ctrl_seg *)wqe)->fm_ce_se |= MLX5_WQE_CTRL_CQ_UPDATE;
