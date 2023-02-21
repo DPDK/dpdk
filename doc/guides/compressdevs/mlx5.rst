@@ -39,11 +39,27 @@ Features
 
 Compress mlx5 PMD has support for:
 
-Compression/Decompression algorithm:
+- Compression
+- Decompression
+- DMA
 
-* DEFLATE.
+Algorithms
+----------
 
-NULL algorithm for DMA operations.
+NULL algorithm
+~~~~~~~~~~~~~~
+
+NULL algorithm is the way to perform DMA operations.
+It works through either compress or decompress operation.
+
+Shareable transformation.
+
+Checksum generation:
+
+* CRC32, Adler32 and combined checksum.
+
+DEFLATE algorithm
+~~~~~~~~~~~~~~~~~
 
 Huffman code type:
 
@@ -60,11 +76,31 @@ Checksum generation:
 
 * CRC32, Adler32 and combined checksum.
 
+LZ4 algorithm
+~~~~~~~~~~~~~
+
+Support for flags:
+
+* ``RTE_COMP_LZ4_FLAG_BLOCK_CHECKSUM``
+* ``RTE_COMP_LZ4_FLAG_BLOCK_INDEPENDENCE``
+
+Window size support:
+
+1KB, 2KB, 4KB, 8KB, 16KB and 32KB.
+
+Shareable transformation.
+
+Checksum generation:
+
+* xxHash-32 checksum.
+
 Limitations
 -----------
 
 * Scatter-Gather, SHA and Stateful are not supported.
 * Non-compressed block is not supported in compress (supported in decompress).
+* Compress operation is not supported by BlueField-3.
+* LZ4 algorithm is not supported by BlueField-2.
 
 Driver options
 --------------
@@ -75,7 +111,7 @@ for an additional list of options shared with other mlx5 drivers.
 - ``log-block-size`` parameter [int]
 
   Log of the Huffman block size in the Deflate algorithm.
-  Values from [4-15]; value x means block size is 2^x.
+  Values from [4-15]; value x means block size is 2\ :sup:`x`.
   The default value is 15.
 
 

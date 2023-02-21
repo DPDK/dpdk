@@ -183,6 +183,10 @@ New Features
 
   Added LZ4 compression algorithm with xxHash-32 for the checksum.
 
+* **Updated NVIDIA mlx5 compress driver.**
+
+  Added LZ4 algorithm support for decompress operation.
+
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
   * eventdev reconfig logic is enhanced to increment the
