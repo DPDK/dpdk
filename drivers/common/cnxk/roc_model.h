@@ -258,6 +258,12 @@ roc_model_is_cn10kb(void)
 	return roc_model->flag & ROC_MODEL_CN103xx;
 }
 
+static inline uint64_t
+roc_model_is_cn103xx(void)
+{
+	return roc_model->flag & ROC_MODEL_CN103xx;
+}
+
 static inline bool
 roc_env_is_hw(void)
 {

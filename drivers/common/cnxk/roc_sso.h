@@ -14,6 +14,12 @@ struct roc_sso_hwgrp_qos {
 	uint8_t taq_prcnt;
 };
 
+struct roc_sso_hwgrp_stash {
+	uint16_t hwgrp;
+	uint8_t stash_offset;
+	uint8_t stash_count;
+};
+
 struct roc_sso_hws_stats {
 	uint64_t arbitration;
 };
@@ -66,7 +72,7 @@ int __roc_api roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_
 void __roc_api roc_sso_rsrc_fini(struct roc_sso *roc_sso);
 int __roc_api roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso,
 				       struct roc_sso_hwgrp_qos *qos,
-				       uint8_t nb_qos);
+				       uint16_t nb_qos);
 int __roc_api roc_sso_hwgrp_alloc_xaq(struct roc_sso *roc_sso,
 				      uint32_t npa_aura_id, uint16_t hwgrps);
 int __roc_api roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso,
@@ -88,6 +94,9 @@ int __roc_api roc_sso_hwgrp_init_xaq_aura(struct roc_sso *roc_sso,
 					  uint32_t nb_xae);
 int __roc_api roc_sso_hwgrp_free_xaq_aura(struct roc_sso *roc_sso,
 					  uint16_t nb_hwgrp);
+int __roc_api roc_sso_hwgrp_stash_config(struct roc_sso *roc_sso,
+					 struct roc_sso_hwgrp_stash *stash,
+					 uint16_t nb_stash);
 
 /* Debug */
 void __roc_api roc_sso_dump(struct roc_sso *roc_sso, uint8_t nb_hws,

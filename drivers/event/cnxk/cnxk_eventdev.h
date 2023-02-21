@@ -31,6 +31,7 @@
 #define CNXK_SSO_FORCE_BP  "force_rx_bp"
 #define CN9K_SSO_SINGLE_WS "single_ws"
 #define CN10K_SSO_GW_MODE  "gw_mode"
+#define CN10K_SSO_STASH	   "stash"
 
 #define NSEC2USEC(__ns)		((__ns) / 1E3)
 #define USEC2NSEC(__us)		((__us)*1E3)
@@ -70,6 +71,12 @@ struct cnxk_sso_qos {
 	uint16_t iaq_prcnt;
 };
 
+struct cnxk_sso_stash {
+	uint16_t queue;
+	uint16_t stash_offset;
+	uint16_t stash_length;
+};
+
 struct cnxk_sso_evdev {
 	struct roc_sso sso;
 	uint8_t max_event_queues;
@@ -103,13 +110,15 @@ struct cnxk_sso_evdev {
 	struct cnxk_timesync_info *tstamp[RTE_MAX_ETHPORTS];
 	/* Dev args */
 	uint32_t xae_cnt;
-	uint8_t qos_queue_cnt;
+	uint16_t qos_queue_cnt;
 	struct cnxk_sso_qos *qos_parse_data;
 	uint8_t force_ena_bp;
 	/* CN9K */
 	uint8_t dual_ws;
 	/* CN10K */
 	uint8_t gw_mode;
+	uint16_t stash_cnt;
+	struct cnxk_sso_stash *stash_parse_data;
 	/* Crypto adapter */
 	uint8_t is_ca_internal_port;
 } __rte_cache_aligned;
