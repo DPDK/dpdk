@@ -183,17 +183,17 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			(struct mana_tx_comp_oob *)&comp.completion_data[0];
 
 		if (oob->cqe_hdr.cqe_type != CQE_TX_OKAY) {
-			DRV_LOG(ERR,
-				"mana_tx_comp_oob cqe_type %u vendor_err %u",
-				oob->cqe_hdr.cqe_type, oob->cqe_hdr.vendor_err);
+			DP_LOG(ERR,
+			       "mana_tx_comp_oob cqe_type %u vendor_err %u",
+			       oob->cqe_hdr.cqe_type, oob->cqe_hdr.vendor_err);
 			txq->stats.errors++;
 		} else {
-			DRV_LOG(DEBUG, "mana_tx_comp_oob CQE_TX_OKAY");
+			DP_LOG(DEBUG, "mana_tx_comp_oob CQE_TX_OKAY");
 			txq->stats.packets++;
 		}
 
 		if (!desc->pkt) {
-			DRV_LOG(ERR, "mana_txq_desc has a NULL pkt");
+			DP_LOG(ERR, "mana_txq_desc has a NULL pkt");
 		} else {
 			txq->stats.bytes += desc->pkt->data_len;
 			rte_pktmbuf_free(desc->pkt);
@@ -214,8 +214,8 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Drop the packet if it exceeds max segments */
 		if (m_pkt->nb_segs > priv->max_send_sge) {
-			DRV_LOG(ERR, "send packet segments %d exceeding max",
-				m_pkt->nb_segs);
+			DP_LOG(ERR, "send packet segments %d exceeding max",
+			       m_pkt->nb_segs);
 			continue;
 		}
 
@@ -257,7 +257,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				tcp_hdr->cksum = rte_ipv6_phdr_cksum(ip_hdr,
 							m_pkt->ol_flags);
 			} else {
-				DRV_LOG(ERR, "Invalid input for TCP CKSUM");
+				DP_LOG(ERR, "Invalid input for TCP CKSUM");
 			}
 
 			tx_oob.short_oob.tx_compute_TCP_checksum = 1;
@@ -297,7 +297,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 							    m_pkt->ol_flags);
 
 			} else {
-				DRV_LOG(ERR, "Invalid input for UDP CKSUM");
+				DP_LOG(ERR, "Invalid input for UDP CKSUM");
 			}
 
 			tx_oob.short_oob.tx_compute_UDP_checksum = 1;
@@ -310,20 +310,20 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			get_vsq_frame_num(txq->gdma_sq.id);
 		tx_oob.short_oob.short_vport_offset = txq->tx_vp_offset;
 
-		DRV_LOG(DEBUG, "tx_oob packet_format %u ipv4 %u ipv6 %u",
-			tx_oob.short_oob.packet_format,
-			tx_oob.short_oob.tx_is_outer_ipv4,
-			tx_oob.short_oob.tx_is_outer_ipv6);
+		DP_LOG(DEBUG, "tx_oob packet_format %u ipv4 %u ipv6 %u",
+		       tx_oob.short_oob.packet_format,
+		       tx_oob.short_oob.tx_is_outer_ipv4,
+		       tx_oob.short_oob.tx_is_outer_ipv6);
 
-		DRV_LOG(DEBUG, "tx_oob checksum ip %u tcp %u udp %u offset %u",
-			tx_oob.short_oob.tx_compute_IP_header_checksum,
-			tx_oob.short_oob.tx_compute_TCP_checksum,
-			tx_oob.short_oob.tx_compute_UDP_checksum,
-			tx_oob.short_oob.tx_transport_header_offset);
+		DP_LOG(DEBUG, "tx_oob checksum ip %u tcp %u udp %u offset %u",
+		       tx_oob.short_oob.tx_compute_IP_header_checksum,
+		       tx_oob.short_oob.tx_compute_TCP_checksum,
+		       tx_oob.short_oob.tx_compute_UDP_checksum,
+		       tx_oob.short_oob.tx_transport_header_offset);
 
-		DRV_LOG(DEBUG, "pkt[%d]: buf_addr 0x%p, nb_segs %d, pkt_len %d",
-			pkt_idx, m_pkt->buf_addr, m_pkt->nb_segs,
-			m_pkt->pkt_len);
+		DP_LOG(DEBUG, "pkt[%d]: buf_addr 0x%p, nb_segs %d, pkt_len %d",
+		       pkt_idx, m_pkt->buf_addr, m_pkt->nb_segs,
+		       m_pkt->pkt_len);
 
 		/* Create SGL for packet data buffers */
 		for (seg_idx = 0; seg_idx < m_pkt->nb_segs; seg_idx++) {
@@ -331,8 +331,8 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				mana_find_pmd_mr(&txq->mr_btree, priv, m_seg);
 
 			if (!mr) {
-				DRV_LOG(ERR, "failed to get MR, pkt_idx %u",
-					pkt_idx);
+				DP_LOG(ERR, "failed to get MR, pkt_idx %u",
+				       pkt_idx);
 				break;
 			}
 
@@ -342,11 +342,11 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			sgl.gdma_sgl[seg_idx].size = m_seg->data_len;
 			sgl.gdma_sgl[seg_idx].memory_key = mr->lkey;
 
-			DRV_LOG(DEBUG,
-				"seg idx %u addr 0x%" PRIx64 " size %x key %x",
-				seg_idx, sgl.gdma_sgl[seg_idx].address,
-				sgl.gdma_sgl[seg_idx].size,
-				sgl.gdma_sgl[seg_idx].memory_key);
+			DP_LOG(DEBUG,
+			       "seg idx %u addr 0x%" PRIx64 " size %x key %x",
+			       seg_idx, sgl.gdma_sgl[seg_idx].address,
+			       sgl.gdma_sgl[seg_idx].size,
+			       sgl.gdma_sgl[seg_idx].memory_key);
 
 			m_seg = m_seg->next;
 		}
@@ -383,11 +383,11 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			pkt_sent++;
 
-			DRV_LOG(DEBUG, "nb_pkts %u pkt[%d] sent",
-				nb_pkts, pkt_idx);
+			DP_LOG(DEBUG, "nb_pkts %u pkt[%d] sent",
+			       nb_pkts, pkt_idx);
 		} else {
-			DRV_LOG(INFO, "pkt[%d] failed to post send ret %d",
-				pkt_idx, ret);
+			DP_LOG(DEBUG, "pkt[%d] failed to post send ret %d",
+			       pkt_idx, ret);
 			break;
 		}
 	}
@@ -409,7 +409,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 						GDMA_WQE_ALIGNMENT_UNIT_SIZE,
 					 0);
 		if (ret)
-			DRV_LOG(ERR, "mana_ring_doorbell failed ret %d", ret);
+			DP_LOG(ERR, "mana_ring_doorbell failed ret %d", ret);
 	}
 
 	return pkt_sent;

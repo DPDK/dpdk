@@ -14,12 +14,12 @@ gdma_get_wqe_pointer(struct mana_gdma_queue *queue)
 		(queue->head * GDMA_WQE_ALIGNMENT_UNIT_SIZE) &
 		(queue->size - 1);
 
-	DRV_LOG(DEBUG, "txq sq_head %u sq_size %u offset_in_bytes %u",
-		queue->head, queue->size, offset_in_bytes);
+	DP_LOG(DEBUG, "txq sq_head %u sq_size %u offset_in_bytes %u",
+	       queue->head, queue->size, offset_in_bytes);
 
 	if (offset_in_bytes + GDMA_WQE_ALIGNMENT_UNIT_SIZE > queue->size)
-		DRV_LOG(ERR, "fatal error: offset_in_bytes %u too big",
-			offset_in_bytes);
+		DP_LOG(ERR, "fatal error: offset_in_bytes %u too big",
+		       offset_in_bytes);
 
 	return ((uint8_t *)queue->buffer) + offset_in_bytes;
 }
@@ -39,11 +39,11 @@ write_dma_client_oob(uint8_t *work_queue_buffer_pointer,
 		client_oob_size / sizeof(uint32_t);
 	header->client_data_unit = work_request->client_data_unit;
 
-	DRV_LOG(DEBUG, "queue buf %p sgl %u oob_h %u du %u oob_buf %p oob_b %u",
-		work_queue_buffer_pointer, header->num_sgl_entries,
-		header->inline_client_oob_size_in_dwords,
-		header->client_data_unit, work_request->inline_oob_data,
-		work_request->inline_oob_size_in_bytes);
+	DP_LOG(DEBUG, "queue buf %p sgl %u oob_h %u du %u oob_buf %p oob_b %u",
+	       work_queue_buffer_pointer, header->num_sgl_entries,
+	       header->inline_client_oob_size_in_dwords,
+	       header->client_data_unit, work_request->inline_oob_data,
+	       work_request->inline_oob_size_in_bytes);
 
 	p += sizeof(struct gdma_wqe_dma_oob);
 	if (work_request->inline_oob_data &&
@@ -73,8 +73,8 @@ write_scatter_gather_list(uint8_t *work_queue_head_pointer,
 	uint32_t size_to_queue_end;
 	uint32_t sge_list_size;
 
-	DRV_LOG(DEBUG, "work_queue_cur_pointer %p work_request->flags %x",
-		work_queue_cur_pointer, work_request->flags);
+	DP_LOG(DEBUG, "work_queue_cur_pointer %p work_request->flags %x",
+	       work_queue_cur_pointer, work_request->flags);
 
 	num_sge = work_request->num_sgl_elements;
 	sge_list = work_request->sgl;
@@ -110,9 +110,9 @@ write_scatter_gather_list(uint8_t *work_queue_head_pointer,
 		sge_list_size = size;
 	}
 
-	DRV_LOG(DEBUG, "sge %u address 0x%" PRIx64 " size %u key %u list_s %u",
-		num_sge, sge_list->address, sge_list->size,
-		sge_list->memory_key, sge_list_size);
+	DP_LOG(DEBUG, "sge %u address 0x%" PRIx64 " size %u key %u list_s %u",
+	       num_sge, sge_list->address, sge_list->size,
+	       sge_list->memory_key, sge_list_size);
 
 	return sge_list_size;
 }
@@ -141,13 +141,13 @@ gdma_post_work_request(struct mana_gdma_queue *queue,
 	uint32_t queue_free_units = queue->count - (queue->head - queue->tail);
 
 	if (wqe_size / GDMA_WQE_ALIGNMENT_UNIT_SIZE > queue_free_units) {
-		DRV_LOG(DEBUG, "WQE size %u queue count %u head %u tail %u",
-			wqe_size, queue->count, queue->head, queue->tail);
+		DP_LOG(DEBUG, "WQE size %u queue count %u head %u tail %u",
+		       wqe_size, queue->count, queue->head, queue->tail);
 		return -EBUSY;
 	}
 
-	DRV_LOG(DEBUG, "client_oob_size %u sgl_data_size %u wqe_size %u",
-		client_oob_size, sgl_data_size, wqe_size);
+	DP_LOG(DEBUG, "client_oob_size %u sgl_data_size %u wqe_size %u",
+	       client_oob_size, sgl_data_size, wqe_size);
 
 	if (wqe_info) {
 		wqe_info->wqe_index =
@@ -242,15 +242,15 @@ mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 		break;
 
 	default:
-		DRV_LOG(ERR, "Unsupported queue type %d", queue_type);
+		DP_LOG(ERR, "Unsupported queue type %d", queue_type);
 		return -1;
 	}
 
 	/* Ensure all writes are done before ringing doorbell */
 	rte_wmb();
 
-	DRV_LOG(DEBUG, "db_page %p addr %p queue_id %u type %u tail %u arm %u",
-		db_page, addr, queue_id, queue_type, tail, arm);
+	DP_LOG(DEBUG, "db_page %p addr %p queue_id %u type %u tail %u arm %u",
+	       db_page, addr, queue_id, queue_type, tail, arm);
 
 	rte_write64(e.as_uint64, addr);
 	return 0;
@@ -274,15 +274,15 @@ gdma_poll_completion_queue(struct mana_gdma_queue *cq, struct gdma_comp *comp)
 				COMPLETION_QUEUE_OWNER_MASK;
 	cqe_owner_bits = cqe->owner_bits;
 
-	DRV_LOG(DEBUG, "comp cqe bits 0x%x owner bits 0x%x",
-		cqe_owner_bits, old_owner_bits);
+	DP_LOG(DEBUG, "comp cqe bits 0x%x owner bits 0x%x",
+	       cqe_owner_bits, old_owner_bits);
 
 	if (cqe_owner_bits == old_owner_bits)
 		return 0; /* No new entry */
 
 	if (cqe_owner_bits != new_owner_bits) {
-		DRV_LOG(ERR, "CQ overflowed, ID %u cqe 0x%x new 0x%x",
-			cq->id, cqe_owner_bits, new_owner_bits);
+		DP_LOG(ERR, "CQ overflowed, ID %u cqe 0x%x new 0x%x",
+		       cq->id, cqe_owner_bits, new_owner_bits);
 		return -1;
 	}
 
@@ -296,8 +296,8 @@ gdma_poll_completion_queue(struct mana_gdma_queue *cq, struct gdma_comp *comp)
 
 	cq->head++;
 
-	DRV_LOG(DEBUG, "comp new 0x%x old 0x%x cqe 0x%x wq %u sq %u head %u",
-		new_owner_bits, old_owner_bits, cqe_owner_bits,
-		comp->work_queue_number, comp->send_work_queue, cq->head);
+	DP_LOG(DEBUG, "comp new 0x%x old 0x%x cqe 0x%x wq %u sq %u head %u",
+	       new_owner_bits, old_owner_bits, cqe_owner_bits,
+	       comp->work_queue_number, comp->send_work_queue, cq->head);
 	return 1;
 }

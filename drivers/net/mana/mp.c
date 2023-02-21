@@ -28,8 +28,8 @@ mana_mp_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len)
 	if (!ibv_mr)
 		return -errno;
 
-	DRV_LOG(DEBUG, "MR (2nd) lkey %u addr %p len %zu",
-		ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
+	DP_LOG(DEBUG, "MR (2nd) lkey %u addr %p len %zu",
+	       ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
 
 	mr = rte_calloc("MANA MR", 1, sizeof(*mr), 0);
 	if (!mr) {
