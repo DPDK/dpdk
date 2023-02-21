@@ -2163,8 +2163,10 @@ nfp_flow_action_set_ipv6(char *act_data,
 	set_ip->head.len_lw = act_size >> NFP_FL_LW_SIZ;
 	set_ip->reserved = 0;
 
-	for (i = 0; i < 4; i++)
-		set_ip->ipv6[i].exact = set_ipv6->ipv6_addr[i];
+	for (i = 0; i < 4; i++) {
+		set_ip->ipv6[i].exact = set_ipv6->ipv6_addr[i * 4];
+		set_ip->ipv6[i].mask = RTE_BE32(0xffffffff);
+	}
 }
 
 static void
