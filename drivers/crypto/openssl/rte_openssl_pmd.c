@@ -1196,7 +1196,7 @@ process_openssl_auth_encryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		uint8_t *dst, uint8_t *tag, EVP_CIPHER_CTX *ctx)
 {
 	int len = 0, unused = 0;
-	uint8_t empty[] = {};
+	uint8_t empty[0] = {};
 
 	if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
 		goto process_auth_encryption_gcm_err;
@@ -1275,7 +1275,7 @@ process_openssl_auth_decryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		uint8_t *dst, uint8_t *tag, EVP_CIPHER_CTX *ctx)
 {
 	int len = 0, unused = 0;
-	uint8_t empty[] = {};
+	uint8_t empty[0] = {};
 
 	if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag) <= 0)
 		goto process_auth_decryption_gcm_err;
