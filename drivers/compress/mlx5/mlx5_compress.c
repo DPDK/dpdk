@@ -633,7 +633,7 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 				break;
 			case RTE_COMP_CHECKSUM_ADLER32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
-					    (opaq[idx].adler32) << 32;
+						    (opaq[idx].adler32);
 				break;
 			case RTE_COMP_CHECKSUM_CRC32_ADLER32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
