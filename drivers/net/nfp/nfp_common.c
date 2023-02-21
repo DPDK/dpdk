@@ -171,7 +171,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Checking RX mode */
-	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS &&
+	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG &&
 	    !(hw->cap & NFP_NET_CFG_CTRL_RSS_ANY)) {
 		PMD_INIT_LOG(INFO, "RSS not supported");
 		return -EINVAL;
