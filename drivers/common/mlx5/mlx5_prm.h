@@ -584,9 +584,19 @@ struct mlx5_rdma_write_wqe {
 #define	MLX5_OPC_MOD_MMO_DECOMP 0x3u
 #define	MLX5_OPC_MOD_MMO_DMA 0x1u
 
+#define WQE_GGA_DECOMP_DEFLATE 0x0u
+#define WQE_GGA_DECOMP_LZ4 0x2u
+
+#define MLX5_GGA_DECOMP_LZ4_BLOCK_WITHOUT_CHECKSUM 0x1u
+#define MLX5_GGA_DECOMP_LZ4_BLOCK_WITH_CHECKSUM 0x2u
+
 #define WQE_GGA_COMP_WIN_SIZE_OFFSET 12u
 #define WQE_GGA_COMP_BLOCK_SIZE_OFFSET 16u
 #define WQE_GGA_COMP_DYNAMIC_SIZE_OFFSET 20u
+#define WQE_GGA_DECOMP_PARAMS_OFFSET 20u
+#define WQE_GGA_DECOMP_TYPE_OFFSET 8u
+#define WQE_GGA_DECOMP_BLOCK_INDEPENDENT_OFFSET 22u
+
 #define MLX5_GGA_COMP_WIN_SIZE_UNITS 1024u
 #define MLX5_GGA_COMP_WIN_SIZE_MAX (32u * MLX5_GGA_COMP_WIN_SIZE_UNITS)
 #define MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX 15u
@@ -605,7 +615,7 @@ struct mlx5_gga_wqe {
 	uint32_t opcode;
 	uint32_t sq_ds;
 	uint32_t flags;
-	uint32_t gga_ctrl1;  /* ws 12-15, bs 16-19, dyns 20-23. */
+	uint32_t gga_ctrl1;
 	uint32_t gga_ctrl2;
 	uint32_t opaque_lkey;
 	uint64_t opaque_vaddr;
@@ -1438,7 +1448,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 log_dma_mmo_size[0x5];
 	u8 reserved_at_70[0x3];
 	u8 log_compress_mmo_size[0x5];
-	u8 reserved_at_78[0x3];
+	u8 decompress_lz4_data_only_v2[0x1];
+	u8 decompress_lz4_no_checksum_v2[0x1];
+	u8 decompress_lz4_checksum_v2[0x1];
 	u8 log_decompress_mmo_size[0x5];
 	u8 log_max_srq_sz[0x8];
 	u8 log_max_qp_sz[0x8];

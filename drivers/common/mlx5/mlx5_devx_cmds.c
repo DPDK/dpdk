@@ -998,6 +998,12 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					      log_compress_mmo_size);
 	attr->log_max_mmo_decompress = MLX5_GET(cmd_hca_cap, hcattr,
 						log_decompress_mmo_size);
+	attr->decomp_lz4_data_only_en = MLX5_GET(cmd_hca_cap, hcattr,
+						 decompress_lz4_data_only_v2);
+	attr->decomp_lz4_no_checksum_en = MLX5_GET(cmd_hca_cap, hcattr,
+						 decompress_lz4_no_checksum_v2);
+	attr->decomp_lz4_checksum_en = MLX5_GET(cmd_hca_cap, hcattr,
+						decompress_lz4_checksum_v2);
 	attr->cqe_compression = MLX5_GET(cmd_hca_cap, hcattr, cqe_compression);
 	attr->mini_cqe_resp_flow_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						mini_cqe_resp_flow_tag);
