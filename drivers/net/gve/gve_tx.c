@@ -366,9 +366,9 @@ end_of_tx:
 		txq->tx_tail = tx_tail;
 		txq->sw_tail = sw_id;
 
-		txq->packets += nb_tx;
-		txq->bytes += bytes;
-		txq->errors += nb_pkts - nb_tx;
+		txq->stats.packets += nb_tx;
+		txq->stats.bytes += bytes;
+		txq->stats.errors += nb_pkts - nb_tx;
 	}
 
 	return nb_tx;
@@ -455,8 +455,9 @@ end_of_tx:
 		rte_write32(rte_cpu_to_be_32(tx_tail), txq->qtx_tail);
 		txq->tx_tail = tx_tail;
 
-		txq->packets += nb_tx;
-		txq->bytes += bytes;
+		txq->stats.packets += nb_tx;
+		txq->stats.bytes += bytes;
+		txq->stats.errors += nb_pkts - nb_tx;
 	}
 
 	return nb_tx;
