@@ -2241,6 +2241,7 @@ nfp_flow_action_set_ttl(char *act_data,
 
 	ttl_conf = (const struct rte_flow_action_set_ttl *)action->conf;
 	ttl_tos->ipv4_ttl = ttl_conf->ttl_value;
+	ttl_tos->ipv4_ttl_mask = 0xff;
 	ttl_tos->reserved = 0;
 }
 
@@ -2264,6 +2265,7 @@ nfp_flow_action_set_hl(char *act_data,
 
 	ttl_conf = (const struct rte_flow_action_set_ttl *)action->conf;
 	tc_hl->ipv6_hop_limit = ttl_conf->ttl_value;
+	tc_hl->ipv6_hop_limit_mask = 0xff;
 	tc_hl->reserved = 0;
 }
 
