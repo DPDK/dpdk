@@ -417,7 +417,7 @@ mlx5_regexdev_enqueue_gga(struct rte_regexdev *dev, uint16_t qp_id,
 		return 0;
 #endif
 
-	while ((hw_qpid = ffs(queue->free_qps))) {
+	while ((hw_qpid = ffsll(queue->free_qps))) {
 		hw_qpid--; /* ffs returns 1 for bit 0 */
 		qp_obj = &queue->qps[hw_qpid];
 		nb_desc = get_free(qp_obj, priv->has_umr);
@@ -426,7 +426,7 @@ mlx5_regexdev_enqueue_gga(struct rte_regexdev *dev, uint16_t qp_id,
 			if (nb_desc > nb_left)
 				nb_desc = nb_left;
 			else
-				queue->free_qps &= ~(1 << hw_qpid);
+				queue->free_qps &= ~(1ULL << hw_qpid);
 			prep_regex_umr_wqe_set(priv, queue, qp_obj, ops,
 				nb_desc);
 			send_doorbell(priv, qp_obj);
@@ -456,7 +456,7 @@ mlx5_regexdev_enqueue(struct rte_regexdev *dev, uint16_t qp_id,
 		return 0;
 #endif
 
-	while ((hw_qpid = ffs(queue->free_qps))) {
+	while ((hw_qpid = ffsll(queue->free_qps))) {
 		hw_qpid--; /* ffs returns 1 for bit 0 */
 		qp_obj = &queue->qps[hw_qpid];
 		while (get_free(qp_obj, priv->has_umr)) {
@@ -470,7 +470,7 @@ mlx5_regexdev_enqueue(struct rte_regexdev *dev, uint16_t qp_id,
 				goto out;
 			}
 		}
-		queue->free_qps &= ~(1 << hw_qpid);
+		queue->free_qps &= ~(1ULL << hw_qpid);
 		send_doorbell(priv, qp_obj);
 	}
 
@@ -603,7 +603,7 @@ mlx5_regexdev_dequeue(struct rte_regexdev *dev, uint16_t qp_id,
 		cq->ci = (cq->ci + 1) & 0xffffff;
 		rte_wmb();
 		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->ci);
-		queue->free_qps |= (1 << hw_qpid);
+		queue->free_qps |= (1ULL << hw_qpid);
 	}
 
 out:
@@ -642,7 +642,7 @@ setup_qps(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *queue)
 				     (uintptr_t)job->output);
 			wqe += 64;
 		}
-		queue->free_qps |= 1 << hw_qpid;
+		queue->free_qps |= 1ULL << hw_qpid;
 	}
 }
 
