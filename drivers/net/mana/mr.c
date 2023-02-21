@@ -47,23 +47,23 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 
 	for (i = 0; i < pool->nb_mem_chunks; i++) {
 		if (ranges[i].len > priv->max_mr_size) {
-			DRV_LOG(ERR, "memory chunk size %u exceeding max MR",
-				ranges[i].len);
+			DP_LOG(ERR, "memory chunk size %u exceeding max MR",
+			       ranges[i].len);
 			return -ENOMEM;
 		}
 
-		DRV_LOG(DEBUG,
-			"registering memory chunk start 0x%" PRIx64 " len %u",
-			ranges[i].start, ranges[i].len);
+		DP_LOG(DEBUG,
+		       "registering memory chunk start 0x%" PRIx64 " len %u",
+		       ranges[i].start, ranges[i].len);
 
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 			/* Send a message to the primary to do MR */
 			ret = mana_mp_req_mr_create(priv, ranges[i].start,
 						    ranges[i].len);
 			if (ret) {
-				DRV_LOG(ERR,
-					"MR failed start 0x%" PRIx64 " len %u",
-					ranges[i].start, ranges[i].len);
+				DP_LOG(ERR,
+				       "MR failed start 0x%" PRIx64 " len %u",
+				       ranges[i].start, ranges[i].len);
 				return ret;
 			}
 			continue;
@@ -72,8 +72,8 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 		ibv_mr = ibv_reg_mr(priv->ib_pd, (void *)ranges[i].start,
 				    ranges[i].len, IBV_ACCESS_LOCAL_WRITE);
 		if (ibv_mr) {
-			DRV_LOG(DEBUG, "MR lkey %u addr %p len %" PRIu64,
-				ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
+			DP_LOG(DEBUG, "MR lkey %u addr %p len %" PRIu64,
+			       ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
 
 			mr = rte_calloc("MANA MR", 1, sizeof(*mr), 0);
 			mr->lkey = ibv_mr->lkey;
@@ -86,7 +86,7 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 			rte_spinlock_unlock(&priv->mr_btree_lock);
 			if (ret) {
 				ibv_dereg_mr(ibv_mr);
-				DRV_LOG(ERR, "Failed to add to global MR btree");
+				DP_LOG(ERR, "Failed to add to global MR btree");
 				return ret;
 			}
 
@@ -95,12 +95,12 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 				/* Don't need to clean up MR as it's already
 				 * in the global tree
 				 */
-				DRV_LOG(ERR, "Failed to add to local MR btree");
+				DP_LOG(ERR, "Failed to add to local MR btree");
 				return ret;
 			}
 		} else {
-			DRV_LOG(ERR, "MR failed at 0x%" PRIx64 " len %u",
-				ranges[i].start, ranges[i].len);
+			DP_LOG(ERR, "MR failed at 0x%" PRIx64 " len %u",
+			       ranges[i].start, ranges[i].len);
 			return -errno;
 		}
 	}
@@ -118,7 +118,7 @@ mana_del_pmd_mr(struct mana_mr_cache *mr)
 
 	ret = ibv_dereg_mr(ibv_mr);
 	if (ret)
-		DRV_LOG(ERR, "dereg MR failed ret %d", ret);
+		DP_LOG(ERR, "dereg MR failed ret %d", ret);
 }
 
 /*
@@ -133,17 +133,16 @@ mana_find_pmd_mr(struct mana_mr_btree *local_mr_btree, struct mana_priv *priv,
 	struct mana_mr_cache *mr;
 	uint16_t idx;
 
-	DRV_LOG(DEBUG, "finding mr for mbuf addr %p len %d",
-		mbuf->buf_addr, mbuf->buf_len);
+	DP_LOG(DEBUG, "finding mr for mbuf addr %p len %d",
+	       mbuf->buf_addr, mbuf->buf_len);
 
 try_again:
 	/* First try to find the MR in local queue tree */
 	mr = mana_mr_btree_lookup(local_mr_btree, &idx,
 				  (uintptr_t)mbuf->buf_addr, mbuf->buf_len);
 	if (mr) {
-		DRV_LOG(DEBUG,
-			"Local mr lkey %u addr 0x%" PRIx64 " len %" PRIu64,
-			mr->lkey, mr->addr, mr->len);
+		DP_LOG(DEBUG, "Local mr lkey %u addr 0x%" PRIx64 " len %" PRIu64,
+		       mr->lkey, mr->addr, mr->len);
 		return mr;
 	}
 
@@ -158,25 +157,25 @@ try_again:
 	if (mr) {
 		ret = mana_mr_btree_insert(local_mr_btree, mr);
 		if (ret) {
-			DRV_LOG(DEBUG, "Failed to add MR to local tree.");
+			DP_LOG(ERR, "Failed to add MR to local tree.");
 			return NULL;
 		}
 
-		DRV_LOG(DEBUG,
-			"Added local MR key %u addr 0x%" PRIx64 " len %" PRIu64,
-			mr->lkey, mr->addr, mr->len);
+		DP_LOG(DEBUG,
+		       "Added local MR key %u addr 0x%" PRIx64 " len %" PRIu64,
+		       mr->lkey, mr->addr, mr->len);
 		return mr;
 	}
 
 	if (second_try) {
-		DRV_LOG(ERR, "Internal error second try failed");
+		DP_LOG(ERR, "Internal error second try failed");
 		return NULL;
 	}
 
 	ret = mana_new_pmd_mr(local_mr_btree, priv, pool);
 	if (ret) {
-		DRV_LOG(ERR, "Failed to allocate MR ret %d addr %p len %d",
-			ret, mbuf->buf_addr, mbuf->buf_len);
+		DP_LOG(ERR, "Failed to allocate MR ret %d addr %p len %d",
+		       ret, mbuf->buf_addr, mbuf->buf_len);
 		return NULL;
 	}
 
@@ -215,11 +214,11 @@ mana_mr_btree_expand(struct mana_mr_btree *bt, int n)
 	mem = rte_realloc_socket(bt->table, n * sizeof(struct mana_mr_cache),
 				 0, bt->socket);
 	if (!mem) {
-		DRV_LOG(ERR, "Failed to expand btree size %d", n);
+		DP_LOG(ERR, "Failed to expand btree size %d", n);
 		return -1;
 	}
 
-	DRV_LOG(ERR, "Expanded btree to size %d", n);
+	DP_LOG(ERR, "Expanded btree to size %d", n);
 	bt->table = mem;
 	bt->size = n;
 
@@ -266,9 +265,9 @@ mana_mr_btree_lookup(struct mana_mr_btree *bt, uint16_t *idx,
 	if (addr + len <= table[base].addr + table[base].len)
 		return &table[base];
 
-	DRV_LOG(DEBUG,
-		"addr 0x%" PRIx64 " len %zu idx %u sum 0x%" PRIx64 " not found",
-		addr, len, *idx, addr + len);
+	DP_LOG(DEBUG,
+	       "addr 0x%" PRIx64 " len %zu idx %u sum 0x%" PRIx64 " not found",
+	       addr, len, *idx, addr + len);
 
 	return NULL;
 }
@@ -317,8 +316,8 @@ mana_mr_btree_insert(struct mana_mr_btree *bt, struct mana_mr_cache *entry)
 	uint16_t shift;
 
 	if (mana_mr_btree_lookup(bt, &idx, entry->addr, entry->len)) {
-		DRV_LOG(DEBUG, "Addr 0x%" PRIx64 " len %zu exists in btree",
-			entry->addr, entry->len);
+		DP_LOG(DEBUG, "Addr 0x%" PRIx64 " len %zu exists in btree",
+		       entry->addr, entry->len);
 		return 0;
 	}
 
@@ -332,17 +331,17 @@ mana_mr_btree_insert(struct mana_mr_btree *bt, struct mana_mr_cache *entry)
 	idx++;
 	shift = (bt->len - idx) * sizeof(struct mana_mr_cache);
 	if (shift) {
-		DRV_LOG(DEBUG, "Moving %u bytes from idx %u to %u",
-			shift, idx, idx + 1);
+		DP_LOG(DEBUG, "Moving %u bytes from idx %u to %u",
+		       shift, idx, idx + 1);
 		memmove(&table[idx + 1], &table[idx], shift);
 	}
 
 	table[idx] = *entry;
 	bt->len++;
 
-	DRV_LOG(DEBUG,
-		"Inserted MR b-tree table %p idx %d addr 0x%" PRIx64 " len %zu",
-		table, idx, entry->addr, entry->len);
+	DP_LOG(DEBUG,
+	       "Inserted MR b-tree table %p idx %d addr 0x%" PRIx64 " len %zu",
+	       table, idx, entry->addr, entry->len);
 
 	return 0;
 }
