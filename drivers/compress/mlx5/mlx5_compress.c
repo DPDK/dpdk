@@ -313,7 +313,7 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 			DRV_LOG(ERR, "Not enough capabilities to support decompress operation, maybe old FW/OFED version?");
 			return -ENOTSUP;
 		}
-		if (xform->compress.hash_algo != RTE_COMP_HASH_ALGO_NONE) {
+		if (xform->decompress.hash_algo != RTE_COMP_HASH_ALGO_NONE) {
 			DRV_LOG(ERR, "SHA is not supported.");
 			return -ENOTSUP;
 		}
