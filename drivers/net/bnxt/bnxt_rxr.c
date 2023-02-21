@@ -680,16 +680,13 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	}
 
-#ifdef RTE_LIBRTE_IEEE1588
 	if (unlikely((flags_type & RX_PKT_CMPL_FLAGS_MASK) ==
 		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
 		ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP | RTE_MBUF_F_RX_IEEE1588_TMST;
-#endif
 
 	mbuf->ol_flags = ol_flags;
 }
 
-#ifdef RTE_LIBRTE_IEEE1588
 static void
 bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 {
@@ -716,7 +713,6 @@ bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 	}
 	ptp->rx_timestamp = pkt_time;
 }
-#endif
 
 static uint32_t
 bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
@@ -925,12 +921,10 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 
-#ifdef RTE_LIBRTE_IEEE1588
 	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
 		      RX_PKT_CMPL_FLAGS_MASK) ==
 		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
 		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
-#endif
 
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V2) {
 		bnxt_parse_csum_v2(mbuf, rxcmp1);
