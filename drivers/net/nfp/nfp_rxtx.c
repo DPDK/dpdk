@@ -116,26 +116,18 @@ nfp_net_rx_queue_count(void *rx_queue)
 	return count;
 }
 
-/* nfp_net_parse_meta() - Parse the metadata from packet */
-static void
-nfp_net_parse_meta(struct nfp_meta_parsed *meta,
-		struct nfp_net_rx_desc *rxd,
-		struct nfp_net_rxq *rxq,
-		struct rte_mbuf *mbuf)
+/* nfp_net_parse_chained_meta() - Parse the chained metadata from packet */
+static bool
+nfp_net_parse_chained_meta(uint8_t *meta_base,
+		rte_be32_t meta_header,
+		struct nfp_meta_parsed *meta)
 {
+	uint8_t *meta_offset;
 	uint32_t meta_info;
 	uint32_t vlan_info;
-	uint8_t *meta_offset;
-	struct nfp_net_hw *hw = rxq->hw;
 
-	if (unlikely((NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2) ||
-			NFP_DESC_META_LEN(rxd) == 0))
-		return;
-
-	meta_offset = rte_pktmbuf_mtod(mbuf, uint8_t *);
-	meta_offset -= NFP_DESC_META_LEN(rxd);
-	meta_info = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
-	meta_offset += 4;
+	meta_info = rte_be_to_cpu_32(meta_header);
+	meta_offset = meta_base + 4;
 
 	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, meta_offset += 4) {
 		switch (meta_info & NFP_NET_META_FIELD_MASK) {
@@ -157,9 +149,11 @@ nfp_net_parse_meta(struct nfp_meta_parsed *meta,
 			break;
 		default:
 			/* Unsupported metadata can be a performance issue */
-			return;
+			return false;
 		}
 	}
+
+	return true;
 }
 
 /*
@@ -170,33 +164,18 @@ nfp_net_parse_meta(struct nfp_meta_parsed *meta,
  */
 static void
 nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
-		struct nfp_net_rx_desc *rxd,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mbuf)
 {
-	uint32_t hash;
-	uint32_t hash_type;
 	struct nfp_net_hw *hw = rxq->hw;
 
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return;
 
-	if (likely((hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0 &&
-			NFP_DESC_META_LEN(rxd) != 0)) {
-		hash = meta->hash;
-		hash_type = meta->hash_type;
-	} else {
-		if ((rxd->rxd.flags & PCIE_DESC_RX_RSS) == 0)
-			return;
-
-		hash = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_OFFSET);
-		hash_type = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_TYPE_OFFSET);
-	}
-
-	mbuf->hash.rss = hash;
+	mbuf->hash.rss = meta->hash;
 	mbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 
-	switch (hash_type) {
+	switch (meta->hash_type) {
 	case NFP_NET_RSS_IPV4:
 		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV4;
 		break;
@@ -221,6 +200,21 @@ nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 	default:
 		mbuf->packet_type |= RTE_PTYPE_INNER_L4_MASK;
 	}
+}
+
+/*
+ * nfp_net_parse_single_meta() - Parse the single metadata
+ *
+ * The RSS hash and hash-type are prepended to the packet data.
+ * Get it from metadata area.
+ */
+static inline void
+nfp_net_parse_single_meta(uint8_t *meta_base,
+		rte_be32_t meta_header,
+		struct nfp_meta_parsed *meta)
+{
+	meta->hash_type = rte_be_to_cpu_32(meta_header);
+	meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)(meta_base + 4));
 }
 
 /*
@@ -304,6 +298,45 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
 	mb->ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 }
 
+/* nfp_net_parse_meta() - Parse the metadata from packet */
+static void
+nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
+		struct nfp_net_rxq *rxq,
+		struct nfp_net_hw *hw,
+		struct rte_mbuf *mb)
+{
+	uint8_t *meta_base;
+	rte_be32_t meta_header;
+	struct nfp_meta_parsed meta = {};
+
+	if (unlikely(NFP_DESC_META_LEN(rxds) == 0))
+		return;
+
+	meta_base = rte_pktmbuf_mtod(mb, uint8_t *);
+	meta_base -= NFP_DESC_META_LEN(rxds);
+	meta_header = *(rte_be32_t *)meta_base;
+
+	switch (hw->meta_format) {
+	case NFP_NET_METAFORMAT_CHAINED:
+		if (nfp_net_parse_chained_meta(meta_base, meta_header, &meta)) {
+			nfp_net_parse_meta_hash(&meta, rxq, mb);
+			nfp_net_parse_meta_vlan(&meta, rxds, rxq, mb);
+			nfp_net_parse_meta_qinq(&meta, rxq, mb);
+		} else {
+			PMD_RX_LOG(DEBUG, "RX chained metadata format is wrong!");
+		}
+		break;
+	case NFP_NET_METAFORMAT_SINGLE:
+		if ((rxds->rxd.flags & PCIE_DESC_RX_RSS) != 0) {
+			nfp_net_parse_single_meta(meta_base, meta_header, &meta);
+			nfp_net_parse_meta_hash(&meta, rxq, mb);
+		}
+		break;
+	default:
+		PMD_RX_LOG(DEBUG, "RX metadata do not exist.");
+	}
+}
+
 /*
  * RX path design:
  *
@@ -341,7 +374,6 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct nfp_net_hw *hw;
 	struct rte_mbuf *mb;
 	struct rte_mbuf *new_mb;
-	struct nfp_meta_parsed meta;
 	uint16_t nb_hold;
 	uint64_t dma_addr;
 	uint16_t avail;
@@ -437,11 +469,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		mb->next = NULL;
 		mb->port = rxq->port_id;
 
-		memset(&meta, 0, sizeof(meta));
-		nfp_net_parse_meta(&meta, rxds, rxq, mb);
-		nfp_net_parse_meta_hash(&meta, rxds, rxq, mb);
-		nfp_net_parse_meta_vlan(&meta, rxds, rxq, mb);
-		nfp_net_parse_meta_qinq(&meta, rxq, mb);
+		nfp_net_parse_meta(rxds, rxq, hw, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);

@@ -1584,6 +1584,29 @@ nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name)
 	return 0;
 }
 
+void
+nfp_net_init_metadata_format(struct nfp_net_hw *hw)
+{
+	/*
+	 * ABI 4.x and ctrl vNIC always use chained metadata, in other cases we allow use of
+	 * single metadata if only RSS(v1) is supported by hw capability, and RSS(v2)
+	 * also indicate that we are using chained metadata.
+	 */
+	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) == 4) {
+		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
+	} else if ((hw->cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
+		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
+		/*
+		 * RSS is incompatible with chained metadata. hw->cap just represents
+		 * firmware's ability rather than the firmware's configuration. We decide
+		 * to reduce the confusion to allow us can use hw->cap to identify RSS later.
+		 */
+		hw->cap &= ~NFP_NET_CFG_CTRL_RSS;
+	} else {
+		hw->meta_format = NFP_NET_METAFORMAT_SINGLE;
+	}
+}
+
 /*
  * Local variables:
  * c-file-style: "Linux"

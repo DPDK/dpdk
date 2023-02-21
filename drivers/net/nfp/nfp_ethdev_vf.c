@@ -95,10 +95,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
-		if (hw->cap & NFP_NET_CFG_CTRL_RSS2)
-			new_ctrl |= NFP_NET_CFG_CTRL_RSS2;
-		else
-			new_ctrl |= NFP_NET_CFG_CTRL_RSS;
+		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
 	}
 
 	/* Enable device */
@@ -372,6 +369,8 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	/* VLAN insertion is incompatible with LSOv2 */
 	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
+
+	nfp_net_init_metadata_format(hw);
 
 	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;

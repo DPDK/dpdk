@@ -127,6 +127,11 @@ enum nfp_qcp_ptr {
 	NFP_QCP_WRITE_PTR
 };
 
+enum nfp_net_meta_format {
+	NFP_NET_METAFORMAT_SINGLE,
+	NFP_NET_METAFORMAT_CHAINED,
+};
+
 struct nfp_pf_dev {
 	/* Backpointer to associated pci device */
 	struct rte_pci_device *pci_dev;
@@ -203,6 +208,7 @@ struct nfp_net_hw {
 	uint32_t max_mtu;
 	uint32_t mtu;
 	uint32_t rx_offset;
+	enum nfp_net_meta_format meta_format;
 
 	/* Current values for control */
 	uint32_t ctrl;
@@ -455,6 +461,7 @@ int nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc);
 int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
+void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)

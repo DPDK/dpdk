@@ -110,6 +110,7 @@
 #define   NFP_NET_CFG_CTRL_MSIX_TX_OFF    (0x1 << 26) /* Disable MSIX for TX */
 #define   NFP_NET_CFG_CTRL_LSO2           (0x1 << 28) /* LSO/TSO (version 2) */
 #define   NFP_NET_CFG_CTRL_RSS2           (0x1 << 29) /* RSS (version 2) */
+#define   NFP_NET_CFG_CTRL_CSUM_COMPLETE  (0x1 << 30) /* Checksum complete */
 #define   NFP_NET_CFG_CTRL_LIVE_ADDR      (0x1U << 31)/* live MAC addr change */
 #define NFP_NET_CFG_UPDATE              0x0004
 #define   NFP_NET_CFG_UPDATE_GEN          (0x1 <<  0) /* General update */
@@ -135,6 +136,8 @@
 #define NFP_NET_CFG_CTRL_LSO_ANY (NFP_NET_CFG_CTRL_LSO | NFP_NET_CFG_CTRL_LSO2)
 #define NFP_NET_CFG_CTRL_RSS_ANY (NFP_NET_CFG_CTRL_RSS | NFP_NET_CFG_CTRL_RSS2)
 
+#define NFP_NET_CFG_CTRL_CHAIN_META (NFP_NET_CFG_CTRL_RSS2 | \
+					NFP_NET_CFG_CTRL_CSUM_COMPLETE)
 /*
  * Read-only words (0x0030 - 0x0050):
  * @NFP_NET_CFG_VERSION:     Firmware version number
@@ -218,7 +221,7 @@
 
 /*
  * RSS configuration (0x0100 - 0x01ac):
- * Used only when NFP_NET_CFG_CTRL_RSS is enabled
+ * Used only when NFP_NET_CFG_CTRL_RSS_ANY is enabled
  * @NFP_NET_CFG_RSS_CFG:     RSS configuration word
  * @NFP_NET_CFG_RSS_KEY:     RSS "secret" key
  * @NFP_NET_CFG_RSS_ITBL:    RSS indirection table
@@ -333,6 +336,19 @@
 
 /* PF multiport offset */
 #define NFP_PF_CSR_SLICE_SIZE	(32 * 1024)
+
+/*
+ * nfp_net_cfg_ctrl_rss() - Get RSS flag based on firmware's capability
+ * @hw_cap: The firmware's capabilities
+ */
+static inline uint32_t
+nfp_net_cfg_ctrl_rss(uint32_t hw_cap)
+{
+	if ((hw_cap & NFP_NET_CFG_CTRL_RSS2) != 0)
+		return NFP_NET_CFG_CTRL_RSS2;
+
+	return NFP_NET_CFG_CTRL_RSS;
+}
 
 #endif /* _NFP_CTRL_H_ */
 /*
