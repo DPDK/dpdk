@@ -8992,7 +8992,7 @@ parse_vc_modify_field_level(struct context *ctx, const struct token *token,
 			 unsigned int size)
 {
 	struct rte_flow_action_modify_field *action;
-	struct flex_item *fp;
+	struct flex_item *fp = NULL;
 	uint32_t val;
 	struct buffer *out = buf;
 	char *end;
