@@ -2179,10 +2179,13 @@ nfp_flow_action_set_tp(char *act_data,
 	set_tp->reserved     = 0;
 
 	set_tp_conf = (const struct rte_flow_action_set_tp *)action->conf;
-	if (tp_src_flag)
+	if (tp_src_flag) {
 		set_tp->src_port = set_tp_conf->port;
-	else
+		set_tp->src_port_mask = RTE_BE16(0xffff);
+	} else {
 		set_tp->dst_port = set_tp_conf->port;
+		set_tp->dst_port_mask = RTE_BE16(0xffff);
+	}
 }
 
 static int
