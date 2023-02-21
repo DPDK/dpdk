@@ -45,13 +45,6 @@ struct mlx5_compress_priv {
 	struct rte_compressdev_config dev_config;
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
-	/* HCA caps */
-	uint32_t mmo_decomp_sq:1;
-	uint32_t mmo_decomp_qp:1;
-	uint32_t mmo_comp_sq:1;
-	uint32_t mmo_comp_qp:1;
-	uint32_t mmo_dma_sq:1;
-	uint32_t mmo_dma_qp:1;
 	uint32_t log_block_sz;
 	uint32_t crc32_opaq_offs;
 };
@@ -178,6 +171,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		       uint32_t max_inflight_ops, int socket_id)
 {
 	struct mlx5_compress_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_attr *attr = &priv->cdev->config.hca_attr;
 	struct mlx5_compress_qp *qp;
 	struct mlx5_devx_cq_attr cq_attr = {
 		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
@@ -238,12 +232,11 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		goto err;
 	}
 	qp_attr.cqn = qp->cq.cq->id;
-	qp_attr.ts_format =
-		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
+	qp_attr.ts_format = mlx5_ts_format_conv(attr->qp_ts_format);
 	qp_attr.num_of_receive_wqes = 0;
 	qp_attr.num_of_send_wqbbs = RTE_BIT32(log_ops_n);
-	qp_attr.mmo = priv->mmo_decomp_qp || priv->mmo_comp_qp ||
-		      priv->mmo_dma_qp;
+	qp_attr.mmo = attr->mmo_compress_qp_en || attr->mmo_dma_qp_en ||
+		      attr->decomp_deflate_v1_en || attr->decomp_deflate_v2_en;
 	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp->qp,
 					qp_attr.num_of_send_wqbbs *
 					MLX5_WQE_SIZE, &qp_attr, socket_id);
@@ -276,21 +269,17 @@ mlx5_compress_xform_free(struct rte_compressdev *dev, void *xform)
 }
 
 static int
-mlx5_compress_xform_create(struct rte_compressdev *dev,
-			   const struct rte_comp_xform *xform,
-			   void **private_xform)
+mlx5_compress_xform_validate(const struct rte_comp_xform *xform,
+			     const struct mlx5_hca_attr *attr)
 {
-	struct mlx5_compress_priv *priv = dev->data->dev_private;
-	struct mlx5_compress_xform *xfrm;
-	uint32_t size;
-
 	switch (xform->type) {
 	case RTE_COMP_COMPRESS:
 		if (xform->compress.algo == RTE_COMP_ALGO_NULL &&
-				!priv->mmo_dma_qp && !priv->mmo_dma_sq) {
+		    !attr->mmo_dma_qp_en && !attr->mmo_dma_sq_en) {
 			DRV_LOG(ERR, "Not enough capabilities to support DMA operation, maybe old FW/OFED version?");
 			return -ENOTSUP;
-		} else if (!priv->mmo_comp_qp && !priv->mmo_comp_sq) {
+		} else if (!attr->mmo_compress_qp_en &&
+			   !attr->mmo_compress_sq_en) {
 			DRV_LOG(ERR, "Not enough capabilities to support compress operation, maybe old FW/OFED version?");
 			return -ENOTSUP;
 		}
@@ -304,12 +293,24 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 		}
 		break;
 	case RTE_COMP_DECOMPRESS:
-		if (xform->decompress.algo == RTE_COMP_ALGO_NULL &&
-				!priv->mmo_dma_qp && !priv->mmo_dma_sq) {
-			DRV_LOG(ERR, "Not enough capabilities to support DMA operation, maybe old FW/OFED version?");
-			return -ENOTSUP;
-		} else if (!priv->mmo_decomp_qp && !priv->mmo_decomp_sq) {
-			DRV_LOG(ERR, "Not enough capabilities to support decompress operation, maybe old FW/OFED version?");
+		switch (xform->decompress.algo) {
+		case RTE_COMP_ALGO_NULL:
+			if (!attr->mmo_dma_qp_en && !attr->mmo_dma_sq_en) {
+				DRV_LOG(ERR, "Not enough capabilities to support DMA operation, maybe old FW/OFED version?");
+				return -ENOTSUP;
+			}
+			break;
+		case RTE_COMP_ALGO_DEFLATE:
+			if (!attr->decomp_deflate_v1_en &&
+			    !attr->decomp_deflate_v2_en &&
+			    !attr->mmo_decompress_sq_en) {
+				DRV_LOG(ERR, "Not enough capabilities to support decompress DEFLATE algorithm, maybe old FW/OFED version?");
+				return -ENOTSUP;
+			}
+			break;
+		default:
+			DRV_LOG(ERR, "Algorithm %u is not supported.",
+				xform->decompress.algo);
 			return -ENOTSUP;
 		}
 		if (xform->decompress.hash_algo != RTE_COMP_HASH_ALGO_NONE) {
@@ -321,7 +322,22 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 		DRV_LOG(ERR, "Xform type should be compress/decompress");
 		return -ENOTSUP;
 	}
+	return 0;
+}
 
+static int
+mlx5_compress_xform_create(struct rte_compressdev *dev,
+			   const struct rte_comp_xform *xform,
+			   void **private_xform)
+{
+	struct mlx5_compress_priv *priv = dev->data->dev_private;
+	struct mlx5_compress_xform *xfrm;
+	uint32_t size;
+	int ret;
+
+	ret = mlx5_compress_xform_validate(xform, &priv->cdev->config.hca_attr);
+	if (ret < 0)
+		return ret;
 	xfrm = rte_zmalloc_socket(__func__, sizeof(*xfrm), 0,
 						    priv->dev_config.socket_id);
 	if (xfrm == NULL)
@@ -747,13 +763,6 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	priv = compressdev->data->dev_private;
 	priv->log_block_sz = devarg_prms.log_block_sz;
-	priv->mmo_decomp_sq = attr->mmo_decompress_sq_en;
-	priv->mmo_decomp_qp =
-			attr->decomp_deflate_v1_en | attr->decomp_deflate_v2_en;
-	priv->mmo_comp_sq = attr->mmo_compress_sq_en;
-	priv->mmo_comp_qp = attr->mmo_compress_qp_en;
-	priv->mmo_dma_sq = attr->mmo_dma_sq_en;
-	priv->mmo_dma_qp = attr->mmo_dma_qp_en;
 	if (attr->decomp_deflate_v2_en)
 		crc32_opaq_offset = offsetof(union mlx5_gga_compress_opaque,
 					     v2.crc32);
