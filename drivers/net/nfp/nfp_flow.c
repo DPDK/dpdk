@@ -2055,6 +2055,7 @@ nfp_flow_action_set_mac(char *act_data,
 		bool mac_src_flag,
 		bool mac_set_flag)
 {
+	uint8_t i;
 	size_t act_size;
 	struct nfp_fl_act_set_eth *set_eth;
 	const struct rte_flow_action_set_mac *set_mac;
@@ -2073,9 +2074,13 @@ nfp_flow_action_set_mac(char *act_data,
 	if (mac_src_flag) {
 		rte_memcpy(&set_eth->eth_addr[RTE_ETHER_ADDR_LEN],
 				set_mac->mac_addr, RTE_ETHER_ADDR_LEN);
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+			set_eth->eth_addr_mask[RTE_ETHER_ADDR_LEN + i] = 0xff;
 	} else {
 		rte_memcpy(&set_eth->eth_addr[0],
 				set_mac->mac_addr, RTE_ETHER_ADDR_LEN);
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+			set_eth->eth_addr_mask[i] = 0xff;
 	}
 }
 
