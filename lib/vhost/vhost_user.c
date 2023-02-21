@@ -62,7 +62,7 @@ typedef struct vhost_message_handler {
 		int main_fd);
 	bool accepts_fd;
 } vhost_message_handler_t;
-static vhost_message_handler_t vhost_message_handlers[];
+static vhost_message_handler_t vhost_message_handlers[32];
 
 static int send_vhost_reply(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx);
 static int read_vhost_message(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx);
