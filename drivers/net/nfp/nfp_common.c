@@ -1420,7 +1420,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+		rss_hf |= RTE_ETH_RSS_IPV4;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
@@ -1435,7 +1435,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+		rss_hf |= RTE_ETH_RSS_IPV6;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_SCTP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
