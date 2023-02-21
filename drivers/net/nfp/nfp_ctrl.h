@@ -56,6 +56,8 @@
 #define NFP_NET_RSS_IPV4_UDP            7
 #define NFP_NET_RSS_IPV6_UDP            8
 #define NFP_NET_RSS_IPV6_EX_UDP         9
+#define NFP_NET_RSS_IPV4_SCTP           10
+#define NFP_NET_RSS_IPV6_SCTP           11
 
 /*
  * @NFP_NET_TXR_MAX:         Maximum number of TX rings
@@ -236,6 +238,8 @@
 #define   NFP_NET_CFG_RSS_IPV4_UDP        (1 << 11) /* RSS for IPv4/UDP */
 #define   NFP_NET_CFG_RSS_IPV6_TCP        (1 << 12) /* RSS for IPv6/TCP */
 #define   NFP_NET_CFG_RSS_IPV6_UDP        (1 << 13) /* RSS for IPv6/UDP */
+#define   NFP_NET_CFG_RSS_IPV4_SCTP       (1 << 14) /* RSS for IPv4/SCTP */
+#define   NFP_NET_CFG_RSS_IPV6_SCTP       (1 << 15) /* RSS for IPv6/SCTP */
 #define   NFP_NET_CFG_RSS_TOEPLITZ        (1 << 24) /* Use Toeplitz hash */
 #define NFP_NET_CFG_RSS_KEY             (NFP_NET_CFG_RSS_BASE + 0x4)
 #define NFP_NET_CFG_RSS_KEY_SZ          0x28

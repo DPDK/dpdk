@@ -930,9 +930,11 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
 						   RTE_ETH_RSS_NONFRAG_IPV4_TCP |
 						   RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+						   RTE_ETH_RSS_NONFRAG_IPV4_SCTP |
 						   RTE_ETH_RSS_IPV6 |
 						   RTE_ETH_RSS_NONFRAG_IPV6_TCP |
-						   RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+						   RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+						   RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 
 		dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
 		dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
@@ -1336,6 +1338,9 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_UDP;
 
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_SCTP;
+
 	if (rss_hf & RTE_ETH_RSS_IPV6)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6;
 
@@ -1344,6 +1349,9 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 
 	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_UDP;
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_SCTP;
 
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_MASK;
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_TOEPLITZ;
@@ -1428,6 +1436,12 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_SCTP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_SCTP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 
 	/* Propagate current RSS hash functions to caller */
 	rss_conf->rss_hf = rss_hf;
