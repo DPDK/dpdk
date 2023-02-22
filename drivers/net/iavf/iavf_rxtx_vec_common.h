@@ -258,22 +258,19 @@ iavf_tx_vec_queue_default(struct iavf_tx_queue *txq)
 	 * Tunneling parameters and other fields need be configured in ctx desc
 	 * if the outer checksum offload is enabled.
 	 */
-	if (txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
-		txq->use_ctx = 1;
-		if (txq->offloads & (IAVF_TX_VECTOR_OFFLOAD |
-				IAVF_TX_VECTOR_OFFLOAD_CTX))
-			return IAVF_VECTOR_CTX_OFFLOAD_PATH;
-		else
-			return IAVF_VECTOR_CTX_PATH;
-	} else {
+	if (txq->offloads & (IAVF_TX_VECTOR_OFFLOAD | IAVF_TX_VECTOR_OFFLOAD_CTX)) {
 		if (txq->offloads & IAVF_TX_VECTOR_OFFLOAD_CTX) {
-			txq->use_ctx = 1;
-			return IAVF_VECTOR_CTX_OFFLOAD_PATH;
-		} else if (txq->offloads & IAVF_TX_VECTOR_OFFLOAD) {
-			return IAVF_VECTOR_OFFLOAD_PATH;
+			if (txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+				txq->use_ctx = 1;
+				return IAVF_VECTOR_CTX_OFFLOAD_PATH;
+			} else {
+				return -1;
+			}
 		} else {
-			return IAVF_VECTOR_PATH;
+			return IAVF_VECTOR_OFFLOAD_PATH;
 		}
+	} else {
+		return IAVF_VECTOR_PATH;
 	}
 }
 

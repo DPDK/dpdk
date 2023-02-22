@@ -3877,7 +3877,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 	if (check_ret >= 0 &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 		/* SSE and AVX2 not support offload path yet. */
-		if (check_ret == IAVF_VECTOR_PATH || check_ret == IAVF_VECTOR_CTX_PATH) {
+		if (check_ret == IAVF_VECTOR_PATH) {
 			use_sse = true;
 			if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
 			     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
@@ -3913,11 +3913,6 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx512_offload;
 				dev->tx_pkt_prepare = iavf_prep_pkts;
 				PMD_DRV_LOG(DEBUG, "Using AVX512 OFFLOAD Vector Tx (port %d).",
-					    dev->data->port_id);
-			} else if (check_ret == IAVF_VECTOR_CTX_PATH) {
-				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx512_ctx;
-				dev->tx_pkt_prepare = iavf_prep_pkts;
-				PMD_DRV_LOG(DEBUG, "Using AVX512 CONTEXT Vector Tx (port %d).",
 					    dev->data->port_id);
 			} else {
 				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx512_ctx_offload;
