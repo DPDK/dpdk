@@ -3774,6 +3774,75 @@ flow_dv_validate_item_meter_color(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Validate aggregated affinity item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_aggr_affinity(struct rte_eth_dev *dev,
+				   const struct rte_flow_item *item,
+				   const struct rte_flow_attr *attr,
+				   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_aggr_affinity *spec = item->spec;
+	const struct rte_flow_item_aggr_affinity *mask = item->mask;
+	struct rte_flow_item_aggr_affinity nic_mask = {
+		.affinity = UINT8_MAX
+	};
+	int ret;
+
+	if (!priv->sh->lag_rx_port_affinity_en)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "Unsupported aggregated affinity with Older FW");
+	if ((attr->transfer && priv->fdb_def_rule) ||
+	    attr->egress || attr->group)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "aggregated affinity is not supported with egress or FDB on non root table");
+	if (!spec)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "data cannot be empty");
+	if (spec->affinity == 0)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "zero affinity number not supported");
+	if (spec->affinity > priv->num_lag_ports)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "exceed max affinity number in lag ports");
+	if (!mask)
+		mask = &rte_flow_item_aggr_affinity_mask;
+	if (!mask->affinity)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
+					  "mask cannot be zero");
+	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+				(const uint8_t *)&nic_mask,
+				sizeof(struct rte_flow_item_aggr_affinity),
+				MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
 int
 flow_dv_encap_decap_match_cb(void *tool_ctx __rte_unused,
 			     struct mlx5_list_entry *entry, void *cb_ctx)
@@ -7464,6 +7533,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_ITEM_METER_COLOR;
 			break;
+		case RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY:
+			ret = flow_dv_validate_item_aggr_affinity(dev, items,
+								  attr, error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_ITEM_AGGR_AFFINITY;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -10002,7 +10078,7 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 	const struct rte_flow_item_tag *tag_vv = item->spec;
 	const struct rte_flow_item_tag *tag_v;
 	const struct rte_flow_item_tag *tag_m;
-	enum modify_reg reg;
+	int reg;
 	uint32_t index;
 
 	if (MLX5_ITEM_VALID(item, key_type))
@@ -10017,7 +10093,7 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 	else
 		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, index);
 	MLX5_ASSERT(reg > 0);
-	flow_dv_match_meta_reg(key, reg, tag_v->data, tag_m->data);
+	flow_dv_match_meta_reg(key, (enum modify_reg)reg, tag_v->data, tag_m->data);
 }
 
 /**
@@ -10717,6 +10793,22 @@ flow_dv_translate_item_meter_color(struct rte_eth_dev *dev, void *key,
 	if (reg == REG_NON)
 		return;
 	flow_dv_match_meta_reg(key, (enum modify_reg)reg, value, mask);
+}
+
+static void
+flow_dv_translate_item_aggr_affinity(void *key,
+				    const struct rte_flow_item *item,
+				    uint32_t key_type)
+{
+	const struct rte_flow_item_aggr_affinity *affinity_v;
+	const struct rte_flow_item_aggr_affinity *affinity_m;
+	void *misc_v;
+
+	MLX5_ITEM_UPDATE(item, key_type, affinity_v, affinity_m,
+			 &rte_flow_item_aggr_affinity_mask);
+	misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	MLX5_SET(fte_match_set_misc, misc_v, lag_rx_port_affinity,
+		 affinity_v->affinity & affinity_m->affinity);
 }
 
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
@@ -13515,6 +13607,10 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 	case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 		last_item = flow_dv_translate_item_integrity(items,
 							     wks, key_type);
+		break;
+	case RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY:
+		flow_dv_translate_item_aggr_affinity(key, items, key_type);
+		last_item = MLX5_FLOW_ITEM_AGGR_AFFINITY;
 		break;
 	default:
 		break;

@@ -4723,6 +4723,20 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 							  "Unsupported meter color register");
 			break;
 		}
+		case RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY:
+		{
+			if (!priv->sh->lag_rx_port_affinity_en)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+							  "Unsupported aggregated affinity with Older FW");
+			if ((attr->transfer && priv->fdb_def_rule) || attr->egress)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+							  "Aggregated affinity item not supported"
+							  " with egress or transfer"
+							  " attribute");
+			break;
+		}
 		case RTE_FLOW_ITEM_TYPE_VOID:
 		case RTE_FLOW_ITEM_TYPE_ETH:
 		case RTE_FLOW_ITEM_TYPE_VLAN:

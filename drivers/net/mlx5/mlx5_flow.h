@@ -223,6 +223,9 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT (UINT64_C(1) << 45)
 #define MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT (UINT64_C(1) << 46)
 
+/* Aggregated affinity item */
+#define MLX5_FLOW_ITEM_AGGR_AFFINITY (UINT64_C(1) << 49)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)

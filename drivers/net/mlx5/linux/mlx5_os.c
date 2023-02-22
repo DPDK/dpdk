@@ -1394,6 +1394,8 @@ err_secondary:
 			sh->lag_rx_port_affinity_en = 1;
 			DRV_LOG(DEBUG, "LAG Rx Port Affinity enabled");
 		}
+		priv->num_lag_ports = hca_attr->num_lag_ports;
+		DRV_LOG(DEBUG, "The number of lag ports is %d", priv->num_lag_ports);
 	}
 	/* Process parameters and store port configuration on priv structure. */
 	err = mlx5_port_args_config(priv, mkvlist, &priv->config);

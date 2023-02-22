@@ -107,6 +107,7 @@ Features
 - Sub-Function representors.
 - Sub-Function.
 - Matching on represented port.
+- Matching on aggregated affinity.
 
 
 Limitations
@@ -588,6 +589,12 @@ Limitations
 - Bonding under socket direct mode
 
   - Needs MLNX_OFED 5.4+.
+
+- Match on aggregated affinity:
+
+  - Supports NIC ingress flow in group 0.
+  - Supports E-Switch flow in group 0 and depends on
+    device-managed flow steering (DMFS) mode.
 
 - Timestamps:
 
