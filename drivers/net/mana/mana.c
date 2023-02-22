@@ -616,9 +616,9 @@ mana_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (!txq)
 			continue;
 
-		stats->opackets = txq->stats.packets;
-		stats->obytes = txq->stats.bytes;
-		stats->oerrors = txq->stats.errors;
+		stats->opackets += txq->stats.packets;
+		stats->obytes += txq->stats.bytes;
+		stats->oerrors += txq->stats.errors;
 
 		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			stats->q_opackets[i] = txq->stats.packets;
@@ -633,9 +633,9 @@ mana_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (!rxq)
 			continue;
 
-		stats->ipackets = rxq->stats.packets;
-		stats->ibytes = rxq->stats.bytes;
-		stats->ierrors = rxq->stats.errors;
+		stats->ipackets += rxq->stats.packets;
+		stats->ibytes += rxq->stats.bytes;
+		stats->ierrors += rxq->stats.errors;
 
 		/* There is no good way to get stats->imissed, not setting it */
 
