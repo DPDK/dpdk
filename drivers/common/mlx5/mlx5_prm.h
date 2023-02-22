@@ -926,7 +926,8 @@ struct mlx5_ifc_fte_match_set_misc_bits {
 	u8 vxlan_vni[0x18];
 	u8 reserved_at_b8[0x8];
 	u8 geneve_vni[0x18];
-	u8 reserved_at_e4[0x6];
+	u8 lag_rx_port_affinity[0x4];
+	u8 reserved_at_e8[0x2];
 	u8 geneve_tlv_option_0_exist[0x1];
 	u8 geneve_oam[0x1];
 	u8 reserved_at_e0[0xc];
@@ -2093,7 +2094,9 @@ struct mlx5_ifc_ft_fields_support_bits {
  * Table 1872 - Flow Table Fields Supported 2 Format
  */
 struct mlx5_ifc_ft_fields_support_2_bits {
-	u8 reserved_at_0[0xd];
+	u8 reserved_at_0[0xa];
+	u8 lag_rx_port_affinity[0x1];
+	u8 reserved_at_c[0x2];
 	u8 hash_result[0x1];
 	u8 reserved_at_e[0x1];
 	u8 tunnel_header_2_3[0x1];

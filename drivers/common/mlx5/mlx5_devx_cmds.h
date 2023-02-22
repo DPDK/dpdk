@@ -297,6 +297,7 @@ struct mlx5_hca_attr {
 	uint32_t flow_counter_access_aso:1;
 	uint32_t flow_access_aso_opc_mod:8;
 	uint32_t cross_vhca:1;
+	uint32_t lag_rx_port_affinity:1;
 };
 
 /* LAG Context. */

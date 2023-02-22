@@ -1390,6 +1390,10 @@ err_secondary:
 				DRV_LOG(DEBUG, "DV flow is not supported!");
 		}
 #endif
+		if (hca_attr->lag_rx_port_affinity) {
+			sh->lag_rx_port_affinity_en = 1;
+			DRV_LOG(DEBUG, "LAG Rx Port Affinity enabled");
+		}
 	}
 	/* Process parameters and store port configuration on priv structure. */
 	err = mlx5_port_args_config(priv, mkvlist, &priv->config);

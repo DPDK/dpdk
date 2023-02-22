@@ -1171,6 +1171,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->outer_ipv4_ihl = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 ft_field_support_2_nic_receive.outer_ipv4_ihl);
+	attr->lag_rx_port_affinity = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_field_support_2_nic_receive.lag_rx_port_affinity);
 	/* Query HCA offloads for Ethernet protocol. */
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
