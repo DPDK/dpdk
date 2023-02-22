@@ -260,6 +260,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* The telemetry command ``/eal/heap_info`` is fixed to print ``Heap_id``.
+
 * The experimental function ``rte_pcapng_copy`` was updated to support comment
   section in enhanced packet block in the pcapng library.
 
