@@ -1190,17 +1190,19 @@ static uint32_t
 mlx5_get_txq_tis_num(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	int tis_idx;
+	struct mlx5_txq_data *txq_data = (*priv->txqs)[queue_idx];
+	int tis_idx = 0;
 
-	if (priv->sh->bond.n_port && priv->sh->lag.affinity_mode ==
-			MLX5_LAG_MODE_TIS) {
-		tis_idx = (priv->lag_affinity_idx + queue_idx) %
-			priv->sh->bond.n_port;
-		DRV_LOG(INFO, "port %d txq %d gets affinity %d and maps to PF %d.",
-			dev->data->port_id, queue_idx, tis_idx + 1,
-			priv->sh->lag.tx_remap_affinity[tis_idx]);
-	} else {
-		tis_idx = 0;
+	if (priv->sh->bond.n_port) {
+		if (txq_data->tx_aggr_affinity) {
+			tis_idx = txq_data->tx_aggr_affinity;
+		} else if (priv->sh->lag.affinity_mode == MLX5_LAG_MODE_TIS) {
+			tis_idx = (priv->lag_affinity_idx + queue_idx) %
+				priv->sh->bond.n_port + 1;
+			DRV_LOG(INFO, "port %d txq %d gets affinity %d and maps to PF %d.",
+				dev->data->port_id, queue_idx, tis_idx,
+				priv->sh->lag.tx_remap_affinity[tis_idx - 1]);
+		}
 	}
 	MLX5_ASSERT(priv->sh->tis[tis_idx]);
 	return priv->sh->tis[tis_idx]->id;

@@ -2387,14 +2387,6 @@ struct mlx5_ifc_query_nic_vport_context_in_bits {
 	u8 reserved_at_68[0x18];
 };
 
-/*
- * lag_tx_port_affinity: 0 auto-selection, 1 PF1, 2 PF2 vice versa.
- * Each TIS binds to one PF by setting lag_tx_port_affinity (>0).
- * Once LAG enabled, we create multiple TISs and bind each one to
- * different PFs, then TIS[i] gets affinity i+1 and goes to PF i+1.
- */
-#define MLX5_IFC_LAG_MAP_TIS_AFFINITY(index, num) ((num) ? \
-						    (index) % (num) + 1 : 0)
 struct mlx5_ifc_tisc_bits {
 	u8 strict_lag_tx_port_affinity[0x1];
 	u8 reserved_at_1[0x3];

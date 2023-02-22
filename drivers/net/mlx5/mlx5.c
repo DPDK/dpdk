@@ -1257,9 +1257,9 @@ mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev)
 static int
 mlx5_setup_tis(struct mlx5_dev_ctx_shared *sh)
 {
-	int i;
 	struct mlx5_devx_lag_context lag_ctx = { 0 };
 	struct mlx5_devx_tis_attr tis_attr = { 0 };
+	int i;
 
 	tis_attr.transport_domain = sh->td->id;
 	if (sh->bond.n_port) {
@@ -1273,35 +1273,30 @@ mlx5_setup_tis(struct mlx5_dev_ctx_shared *sh)
 			DRV_LOG(ERR, "Failed to query lag affinity.");
 			return -1;
 		}
-		if (sh->lag.affinity_mode == MLX5_LAG_MODE_TIS) {
-			for (i = 0; i < sh->bond.n_port; i++) {
-				tis_attr.lag_tx_port_affinity =
-					MLX5_IFC_LAG_MAP_TIS_AFFINITY(i,
-							sh->bond.n_port);
-				sh->tis[i] = mlx5_devx_cmd_create_tis(sh->cdev->ctx,
-						&tis_attr);
-				if (!sh->tis[i]) {
-					DRV_LOG(ERR, "Failed to TIS %d/%d for bonding device"
-						" %s.", i, sh->bond.n_port,
-						sh->ibdev_name);
-					return -1;
-				}
-			}
+		if (sh->lag.affinity_mode == MLX5_LAG_MODE_TIS)
 			DRV_LOG(DEBUG, "LAG number of ports : %d, affinity_1 & 2 : pf%d & %d.\n",
 				sh->bond.n_port, lag_ctx.tx_remap_affinity_1,
 				lag_ctx.tx_remap_affinity_2);
-			return 0;
-		}
-		if (sh->lag.affinity_mode == MLX5_LAG_MODE_HASH)
+		else if (sh->lag.affinity_mode == MLX5_LAG_MODE_HASH)
 			DRV_LOG(INFO, "Device %s enabled HW hash based LAG.",
 					sh->ibdev_name);
 	}
-	tis_attr.lag_tx_port_affinity = 0;
-	sh->tis[0] = mlx5_devx_cmd_create_tis(sh->cdev->ctx, &tis_attr);
-	if (!sh->tis[0]) {
-		DRV_LOG(ERR, "Failed to TIS 0 for bonding device"
-			" %s.", sh->ibdev_name);
-		return -1;
+	for (i = 0; i <= sh->bond.n_port; i++) {
+		/*
+		 * lag_tx_port_affinity: 0 auto-selection, 1 PF1, 2 PF2 vice versa.
+		 * Each TIS binds to one PF by setting lag_tx_port_affinity (> 0).
+		 * Once LAG enabled, we create multiple TISs and bind each one to
+		 * different PFs, then TIS[i+1] gets affinity i+1 and goes to PF i+1.
+		 * TIS[0] is reserved for HW Hash mode.
+		 */
+		tis_attr.lag_tx_port_affinity = i;
+		sh->tis[i] = mlx5_devx_cmd_create_tis(sh->cdev->ctx, &tis_attr);
+		if (!sh->tis[i]) {
+			DRV_LOG(ERR, "Failed to create TIS %d/%d for [bonding] device"
+				" %s.", i, sh->bond.n_port,
+				sh->ibdev_name);
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -2335,6 +2330,8 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.hairpin_queue_peer_bind = mlx5_hairpin_queue_peer_bind,
 	.hairpin_queue_peer_unbind = mlx5_hairpin_queue_peer_unbind,
 	.get_monitor_addr = mlx5_get_monitor_addr,
+	.count_aggr_ports = mlx5_count_aggr_ports,
+	.map_aggr_tx_affinity = mlx5_map_aggr_tx_affinity,
 };
 
 /* Available operations from secondary process. */
@@ -2358,6 +2355,8 @@ const struct eth_dev_ops mlx5_dev_sec_ops = {
 	.tx_burst_mode_get = mlx5_tx_burst_mode_get,
 	.get_module_info = mlx5_get_module_info,
 	.get_module_eeprom = mlx5_get_module_eeprom,
+	.count_aggr_ports = mlx5_count_aggr_ports,
+	.map_aggr_tx_affinity = mlx5_map_aggr_tx_affinity,
 };
 
 /* Available operations in flow isolated mode. */
@@ -2422,6 +2421,8 @@ const struct eth_dev_ops mlx5_dev_ops_isolate = {
 	.hairpin_queue_peer_bind = mlx5_hairpin_queue_peer_bind,
 	.hairpin_queue_peer_unbind = mlx5_hairpin_queue_peer_unbind,
 	.get_monitor_addr = mlx5_get_monitor_addr,
+	.count_aggr_ports = mlx5_count_aggr_ports,
+	.map_aggr_tx_affinity = mlx5_map_aggr_tx_affinity,
 };
 
 /**
