@@ -4106,8 +4106,6 @@ acc100_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 	int ret, cbm;
 	struct rte_bbdev_enc_op *op;
 
-	if (q == NULL)
-		return 0;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	if (unlikely(ops == 0))
 		return 0;
