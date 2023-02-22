@@ -1133,7 +1133,7 @@ handle_eal_heap_info_request(const char *cmd __rte_unused, const char *params,
 	malloc_heap_get_stats(heap, &sock_stats);
 
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_u64(d, "Head id", heap_id);
+	rte_tel_data_add_dict_u64(d, "Heap_id", heap_id);
 	rte_tel_data_add_dict_string(d, "Name", heap->name);
 	rte_tel_data_add_dict_u64(d, "Heap_size",
 				  sock_stats.heap_totalsz_bytes);
