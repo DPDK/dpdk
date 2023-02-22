@@ -61,6 +61,7 @@ static const struct model_db {
 } model_db[] = {
 	{VENDOR_ARM, PART_106xx, 0, 0, ROC_MODEL_CN106xx_A0, "cn10ka_a0"},
 	{VENDOR_ARM, PART_106xx, 0, 1, ROC_MODEL_CN106xx_A1, "cn10ka_a1"},
+	{VENDOR_ARM, PART_106xx, 1, 0, ROC_MODEL_CN106xx_B0, "cn10ka_b0"},
 	{VENDOR_ARM, PART_105xx, 0, 0, ROC_MODEL_CNF105xx_A0, "cnf10ka_a0"},
 	{VENDOR_ARM, PART_105xx, 0, 1, ROC_MODEL_CNF105xx_A1, "cnf10ka_a1"},
 	{VENDOR_ARM, PART_103xx, 0, 0, ROC_MODEL_CN103xx_A0, "cn10kb_a0"},
