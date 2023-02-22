@@ -5060,7 +5060,7 @@ flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
 }
 
 /**
- * Add the default copy action in in RX_CP_TBL.
+ * Add the default copy action in RX_CP_TBL.
  *
  * This functions is called in the mlx5_dev_start(). No thread safe
  * is guaranteed.

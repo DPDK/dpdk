@@ -3845,7 +3845,7 @@ hns3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 
 	/*
 	 * When promiscuous mode was enabled, disable the vlan filter to let
-	 * all packets coming in in the receiving direction.
+	 * all packets coming in the receiving direction.
 	 */
 	offloads = dev->data->dev_conf.rxmode.offloads;
 	if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {

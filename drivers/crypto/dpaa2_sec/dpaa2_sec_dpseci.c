@@ -191,7 +191,7 @@ build_proto_compound_sg_fd(dpaa2_sec_session *sess,
 	if (sess->ctxt_type == DPAA2_SEC_PDCP && sess->pdcp.hfn_ovd) {
 		uint32_t hfn_ovd = *(uint32_t *)((uint8_t *)op +
 					sess->pdcp.hfn_ovd_offset);
-		/*enable HFN override override */
+		/* enable HFN override */
 		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, hfn_ovd);
 		DPAA2_SET_FLE_INTERNAL_JD(op_fle, hfn_ovd);
 		DPAA2_SET_FD_INTERNAL_JD(fd, hfn_ovd);
@@ -267,7 +267,7 @@ build_proto_compound_fd(dpaa2_sec_session *sess,
 	if (sess->ctxt_type == DPAA2_SEC_PDCP && sess->pdcp.hfn_ovd) {
 		uint32_t hfn_ovd = *(uint32_t *)((uint8_t *)op +
 					sess->pdcp.hfn_ovd_offset);
-		/*enable HFN override override */
+		/* enable HFN override */
 		DPAA2_SET_FLE_INTERNAL_JD(ip_fle, hfn_ovd);
 		DPAA2_SET_FLE_INTERNAL_JD(op_fle, hfn_ovd);
 		DPAA2_SET_FD_INTERNAL_JD(fd, hfn_ovd);

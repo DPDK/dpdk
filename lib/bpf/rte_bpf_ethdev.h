@@ -99,7 +99,7 @@ rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
  * @param prm
  *  Parameters used to create and initialise the BPF execution context.
  * @param flags
- *  Flags that define expected expected behavior of the loaded filter
+ *  Flags that define expected behavior of the loaded filter
  *  (i.e. jited/non-jited version to use).
  * @return
  *   Zero on successful completion or negative error code otherwise.

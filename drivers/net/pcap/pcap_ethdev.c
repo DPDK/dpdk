@@ -1337,7 +1337,7 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 		internals->if_index =
 			osdep_iface_index_get(rx_queues->queue[0].name);
 
-		/* phy_mac arg is applied only only if "iface" devarg is provided */
+		/* phy_mac arg is applied only if "iface" devarg is provided */
 		if (rx_queues->phy_mac) {
 			if (eth_pcap_update_mac(rx_queues->queue[0].name,
 					eth_dev, vdev->device.numa_node) == 0)

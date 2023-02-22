@@ -41,7 +41,7 @@ extern "C" {
 int channel_monitor_init(void);
 
 /**
- * Run the channel monitor, loops forever on on epoll_wait.
+ * Run the channel monitor, loops forever on epoll_wait.
  *
  *
  * @return

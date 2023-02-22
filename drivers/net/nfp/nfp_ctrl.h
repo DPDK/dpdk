@@ -201,7 +201,7 @@
  * Reuse spare address to contain the offset from the start of
  * the host buffer where the first byte of the received frame
  * will land.  Any metadata will come prior to that offset.  If the
- * value in this field is 0, it means that that the metadata will
+ * value in this field is 0, it means that the metadata will
  * always land starting at the first byte of the host buffer and
  * packet data will immediately follow the metadata.  As always,
  * the RX descriptor indicates the presence or absence of metadata

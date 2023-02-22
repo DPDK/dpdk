@@ -41,7 +41,7 @@ extern "C" {
 
 /**
  * The RX packet is a 802.1q VLAN packet, and the tci has been
- * saved in in mbuf->vlan_tci.
+ * saved in mbuf->vlan_tci.
  * If the flag RTE_MBUF_F_RX_VLAN_STRIPPED is also present, the VLAN
  * header has been stripped from mbuf data, else it is still
  * present.

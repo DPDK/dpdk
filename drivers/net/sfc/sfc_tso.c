@@ -149,7 +149,7 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 
 	/*
 	 * Handle IP header. Tx prepare has debug-only checks that offload flags
-	 * are correctly filled in in TSO mbuf. Use zero IPID if there is no
+	 * are correctly filled in TSO mbuf. Use zero IPID if there is no
 	 * IPv4 flag. If the packet is still IPv4, HW will simply start from
 	 * zero IPID.
 	 */

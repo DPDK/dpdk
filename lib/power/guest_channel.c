@@ -74,7 +74,7 @@ guest_channel_host_connect(const char *path, unsigned int lcore_id)
 			fd_path, lcore_id);
 	fd = open(fd_path, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, GUEST_CHANNEL, "Unable to to connect to '%s' with error "
+		RTE_LOG(ERR, GUEST_CHANNEL, "Unable to connect to '%s' with error "
 				"%s\n", fd_path, strerror(errno));
 		return -1;
 	}
