@@ -384,7 +384,7 @@ npc_hash_field_get(struct npc_xtract_info *xinfo, const struct roc_npc_flow_item
 int
 npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 			    const struct roc_npc_flow_item_ipv6 *ipv6_mask,
-			    struct npc_parse_state *pst)
+			    struct npc_parse_state *pst, uint8_t ltype)
 {
 	struct npc_lid_lt_xtract_info *lid_lt_xinfo;
 	uint8_t hash_field[ROC_IPV6_ADDR_LEN];
@@ -397,7 +397,7 @@ npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 	memset(hash_field, 0, sizeof(hash_field));
 
 	intf = pst->nix_intf;
-	lid_lt_xinfo = &pst->npc->prx_dxcfg[intf][NPC_LID_LC][NPC_LT_LC_IP6];
+	lid_lt_xinfo = &pst->npc->prx_dxcfg[intf][NPC_LID_LC][ltype];
 
 	for (i = 0; i < NPC_MAX_LD; i++) {
 		xinfo = &lid_lt_xinfo->xtract[i];

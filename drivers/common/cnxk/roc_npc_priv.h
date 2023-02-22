@@ -466,7 +466,7 @@ int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_all
 uint64_t npc_get_kex_capability(struct npc *npc);
 int npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 				const struct roc_npc_flow_item_ipv6 *ipv6_mask,
-				struct npc_parse_state *pst);
+				struct npc_parse_state *pst, uint8_t type);
 int npc_rss_free_grp_get(struct npc *npc, uint32_t *grp);
 int npc_rss_action_configure(struct roc_npc *roc_npc, const struct roc_npc_action_rss *rss,
 			     uint8_t *alg_idx, uint32_t *rss_grp, uint32_t mcam_id);
