@@ -474,10 +474,20 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	err = mlx5_alloc_table_hash_list(priv);
 	if (err)
 		goto error;
-	if (priv->sh->config.dv_flow_en == 2)
-		return 0;
 	/* The resources below are only valid with DV support. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	/* Init shared flex parsers list, no need lcore_share */
+	snprintf(s, sizeof(s), "%s_flex_parsers_list", sh->ibdev_name);
+	sh->flex_parsers_dv = mlx5_list_create(s, sh, false,
+					       mlx5_flex_parser_create_cb,
+					       mlx5_flex_parser_match_cb,
+					       mlx5_flex_parser_remove_cb,
+					       mlx5_flex_parser_clone_cb,
+					       mlx5_flex_parser_clone_free_cb);
+	if (!sh->flex_parsers_dv)
+		goto error;
+	if (priv->sh->config.dv_flow_en == 2)
+		return 0;
 	/* Init port id action list. */
 	snprintf(s, sizeof(s), "%s_port_id_action_list", sh->ibdev_name);
 	sh->port_id_action_list = mlx5_list_create(s, sh, true,
@@ -518,16 +528,9 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 					      flow_dv_dest_array_clone_free_cb);
 	if (!sh->dest_array_list)
 		goto error;
-	/* Init shared flex parsers list, no need lcore_share */
-	snprintf(s, sizeof(s), "%s_flex_parsers_list", sh->ibdev_name);
-	sh->flex_parsers_dv = mlx5_list_create(s, sh, false,
-					       mlx5_flex_parser_create_cb,
-					       mlx5_flex_parser_match_cb,
-					       mlx5_flex_parser_remove_cb,
-					       mlx5_flex_parser_clone_cb,
-					       mlx5_flex_parser_clone_free_cb);
-	if (!sh->flex_parsers_dv)
-		goto error;
+#else
+	if (priv->sh->config.dv_flow_en == 2)
+		return 0;
 #endif
 #ifdef HAVE_MLX5DV_DR
 	void *domain;

@@ -8446,6 +8446,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.query = flow_hw_query,
 	.get_aged_flows = flow_hw_get_aged_flows,
 	.get_q_aged_flows = flow_hw_get_q_aged_flows,
+	.item_create = flow_dv_item_create,
+	.item_release = flow_dv_item_release,
 };
 
 /**
