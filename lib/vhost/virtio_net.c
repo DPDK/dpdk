@@ -3783,6 +3783,7 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				allocerr_warned = true;
 			}
 			dropped = true;
+			slot_idx--;
 			break;
 		}
 
