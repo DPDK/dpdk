@@ -4907,6 +4907,7 @@ flow_dv_validate_action_modify_hdr(const uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "action configuration not set");
+
 	if (action_flags & MLX5_FLOW_ACTION_ENCAP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -5232,17 +5233,21 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
 	const struct rte_flow_action_modify_field *action_modify_field =
 		action->conf;
-	uint32_t dst_width = mlx5_flow_item_field_width(dev,
-				action_modify_field->dst.field,
-				-1, attr, error);
-	uint32_t src_width = mlx5_flow_item_field_width(dev,
-				action_modify_field->src.field,
-				dst_width, attr, error);
+	uint32_t dst_width, src_width;
 
 	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
 	if (ret)
 		return ret;
-
+	if (action_modify_field->src.field == RTE_FLOW_FIELD_FLEX_ITEM ||
+	    action_modify_field->dst.field == RTE_FLOW_FIELD_FLEX_ITEM)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"flex item fields modification"
+				" is not supported");
+	dst_width = mlx5_flow_item_field_width(dev, action_modify_field->dst.field,
+					       -1, attr, error);
+	src_width = mlx5_flow_item_field_width(dev, action_modify_field->src.field,
+					       dst_width, attr, error);
 	if (action_modify_field->width == 0)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
