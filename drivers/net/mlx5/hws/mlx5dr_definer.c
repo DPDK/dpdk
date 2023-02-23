@@ -312,6 +312,43 @@ mlx5dr_definer_ipv6_routing_ext_set(struct mlx5dr_definer_fc *fc,
 }
 
 static void
+mlx5dr_definer_flex_parser_set(struct mlx5dr_definer_fc *fc,
+			       const void *item,
+			       uint8_t *tag, bool is_inner)
+{
+	const struct rte_flow_item_flex *flex = item;
+	uint32_t byte_off, val, idx;
+	int ret;
+
+	val = 0;
+	byte_off = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_0);
+	idx = fc->fname - MLX5DR_DEFINER_FNAME_FLEX_PARSER_0;
+	byte_off -= idx * sizeof(uint32_t);
+	ret = mlx5_flex_get_parser_value_per_byte_off(flex, flex->handle, byte_off,
+						      false, is_inner, &val);
+	if (ret == -1 || !val)
+		return;
+
+	DR_SET(tag, val, fc->byte_off, 0, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_flex_parser_inner_set(struct mlx5dr_definer_fc *fc,
+				     const void *item,
+				     uint8_t *tag)
+{
+	mlx5dr_definer_flex_parser_set(fc, item, tag, true);
+}
+
+static void
+mlx5dr_definer_flex_parser_outer_set(struct mlx5dr_definer_fc *fc,
+				     const void *item,
+				     uint8_t *tag)
+{
+	mlx5dr_definer_flex_parser_set(fc, item, tag, false);
+}
+
+static void
 mlx5dr_definer_gre_key_set(struct mlx5dr_definer_fc *fc,
 			   const void *item_spec,
 			   uint8_t *tag)
@@ -1783,6 +1820,47 @@ mlx5dr_definer_conv_item_esp(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_flex_parser(struct mlx5dr_definer_conv_data *cd,
+				     struct rte_flow_item *item,
+				     int item_idx)
+{
+	uint32_t base_off = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_0);
+	const struct rte_flow_item_flex *v, *m;
+	enum mlx5dr_definer_fname fname;
+	struct mlx5dr_definer_fc *fc;
+	uint32_t i, mask, byte_off;
+	bool is_inner = cd->tunnel;
+	int ret;
+
+	m = item->mask;
+	v = item->spec;
+	mask = 0;
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+		byte_off = base_off - i * sizeof(uint32_t);
+		ret = mlx5_flex_get_parser_value_per_byte_off(m, v->handle, byte_off,
+							      true, is_inner, &mask);
+		if (ret == -1) {
+			rte_errno = EINVAL;
+			return rte_errno;
+		}
+
+		if (!mask)
+			continue;
+
+		fname = MLX5DR_DEFINER_FNAME_FLEX_PARSER_0;
+		fname += (enum mlx5dr_definer_fname)i;
+		fc = &cd->fc[fname];
+		fc->byte_off = byte_off;
+		fc->item_idx = item_idx;
+		fc->tag_set = cd->tunnel ? &mlx5dr_definer_flex_parser_inner_set :
+					   &mlx5dr_definer_flex_parser_outer_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->bit_mask = mask;
+	}
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				struct mlx5dr_match_template *mt,
 				uint8_t *hl)
@@ -1912,6 +1990,11 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_ESP:
 			ret = mlx5dr_definer_conv_item_esp(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_ESP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_FLEX:
+			ret = mlx5dr_definer_conv_item_flex_parser(&cd, items, i);
+			item_flags |= cd.tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
+						  MLX5_FLOW_ITEM_OUTER_FLEX;
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);

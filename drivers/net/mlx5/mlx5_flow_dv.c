@@ -10744,7 +10744,7 @@ flow_dv_translate_item_flex(struct rte_eth_dev *dev, void *matcher, void *key,
 		(const struct rte_flow_item_flex *)item->spec;
 	int index = mlx5_flex_acquire_index(dev, spec->handle, false);
 
-	MLX5_ASSERT(index >= 0 && index <= (int)(sizeof(uint32_t) * CHAR_BIT));
+	MLX5_ASSERT(index >= 0 && index < (int)(sizeof(uint32_t) * CHAR_BIT));
 	if (index < 0)
 		return;
 	if (!(dev_flow->handle->flex_item & RTE_BIT32(index))) {

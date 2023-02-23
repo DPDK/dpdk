@@ -4339,6 +4339,36 @@ flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
 					      &modify_action);
 }
 
+static int
+flow_hw_flex_item_acquire(struct rte_eth_dev *dev,
+			  struct rte_flow_item_flex_handle *handle,
+			  uint8_t *flex_item)
+{
+	int index = mlx5_flex_acquire_index(dev, handle, false);
+
+	MLX5_ASSERT(index >= 0 && index < (int)(sizeof(uint32_t) * CHAR_BIT));
+	if (index < 0)
+		return -1;
+	if (!(*flex_item & RTE_BIT32(index))) {
+		/* Don't count same flex item again. */
+		if (mlx5_flex_acquire_index(dev, handle, true) != index)
+			MLX5_ASSERT(false);
+		*flex_item |= (uint8_t)RTE_BIT32(index);
+	}
+	return 0;
+}
+
+static void
+flow_hw_flex_item_release(struct rte_eth_dev *dev, uint8_t *flex_item)
+{
+	while (*flex_item) {
+		int index = rte_bsf32(*flex_item);
+
+		mlx5_flex_release_index(dev, index);
+		*flex_item &= ~(uint8_t)RTE_BIT32(index);
+	}
+}
+
 /**
  * Create flow action template.
  *
@@ -4758,6 +4788,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
 		case RTE_FLOW_ITEM_TYPE_ESP:
+		case RTE_FLOW_ITEM_TYPE_FLEX:
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 			/*
@@ -4835,6 +4866,7 @@ flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 		.mask = &tag_m,
 		.last = NULL
 	};
+	unsigned int i = 0;
 
 	if (flow_hw_pattern_validate(dev, attr, items, error))
 		return NULL;
@@ -4905,6 +4937,19 @@ setup_pattern_template:
 			return NULL;
 		}
 	}
+	for (i = 0; items[i].type != RTE_FLOW_ITEM_TYPE_END; ++i) {
+		if (items[i].type == RTE_FLOW_ITEM_TYPE_FLEX) {
+			const struct rte_flow_item_flex *spec =
+				(const struct rte_flow_item_flex *)items[i].spec;
+			struct rte_flow_item_flex_handle *handle = spec->handle;
+
+			if (flow_hw_flex_item_acquire(dev, handle, &it->flex_item)) {
+				claim_zero(mlx5dr_match_template_destroy(it->mt));
+				mlx5_free(it);
+				return NULL;
+			}
+		}
+	}
 	__atomic_fetch_add(&it->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->flow_hw_itt, it, next);
 	return it;
@@ -4924,7 +4969,7 @@ setup_pattern_template:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_hw_pattern_template_destroy(struct rte_eth_dev *dev __rte_unused,
+flow_hw_pattern_template_destroy(struct rte_eth_dev *dev,
 			      struct rte_flow_pattern_template *template,
 			      struct rte_flow_error *error __rte_unused)
 {
@@ -4940,6 +4985,7 @@ flow_hw_pattern_template_destroy(struct rte_eth_dev *dev __rte_unused,
 				    MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT))
 		mlx5_free_srh_flex_parser(dev);
 	LIST_REMOVE(template, next);
+	flow_hw_flex_item_release(dev, &template->flex_item);
 	claim_zero(mlx5dr_match_template_destroy(template->mt));
 	mlx5_free(template);
 	return 0;

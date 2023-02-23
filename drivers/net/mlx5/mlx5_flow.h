@@ -1232,6 +1232,7 @@ struct rte_flow_pattern_template {
 	 * tag pattern item for representor matching.
 	 */
 	bool implicit_tag;
+	uint8_t flex_item; /* flex item index. */
 };
 
 /* Flow action template struct. */

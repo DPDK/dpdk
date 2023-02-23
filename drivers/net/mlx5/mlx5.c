@@ -1033,7 +1033,7 @@ static void
 mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ecpri_parser_profile *prf =	&priv->sh->ecpri_parser;
+	struct mlx5_ecpri_parser_profile *prf = &priv->sh->ecpri_parser;
 
 	if (prf->obj)
 		mlx5_devx_cmd_destroy(prf->obj);
