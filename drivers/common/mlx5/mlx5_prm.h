@@ -781,6 +781,7 @@ enum mlx5_modification_field {
 	MLX5_MODI_GTPU_FIRST_EXT_DW_0 = 0x76,
 	MLX5_MODI_HASH_RESULT = 0x81,
 	MLX5_MODI_OUT_IPV6_NEXT_HDR = 0x4A,
+	MLX5_MODI_INVALID = INT_MAX,
 };
 
 /* Total number of metadata reg_c's. */

@@ -414,10 +414,15 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			++field;
 			continue;
 		}
-		/* Deduce actual data width in bits from mask value. */
-		off_b = rte_bsf32(mask) + carry_b;
-		size_b = sizeof(uint32_t) * CHAR_BIT -
-			 off_b - __builtin_clz(mask);
+		if (type == MLX5_MODIFICATION_TYPE_COPY && field->is_flex) {
+			off_b = 32 - field->shift + carry_b - field->size * CHAR_BIT;
+			size_b = field->size * CHAR_BIT - carry_b;
+		} else {
+			/* Deduce actual data width in bits from mask value. */
+			off_b = rte_bsf32(mask) + carry_b;
+			size_b = sizeof(uint32_t) * CHAR_BIT -
+				 off_b - __builtin_clz(mask);
+		}
 		MLX5_ASSERT(size_b);
 		actions[i] = (struct mlx5_modification_cmd) {
 			.action_type = type,
@@ -437,40 +442,46 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			 * Destination field overflow. Copy leftovers of
 			 * a source field to the next destination field.
 			 */
-			carry_b = 0;
 			if ((size_b > dcopy->size * CHAR_BIT - dcopy->offset) &&
 			    dcopy->size != 0) {
 				actions[i].length =
 					dcopy->size * CHAR_BIT - dcopy->offset;
-				carry_b = actions[i].length;
+				carry_b += actions[i].length;
 				next_field = false;
+			} else {
+				carry_b = 0;
 			}
 			/*
 			 * Not enough bits in a source filed to fill a
 			 * destination field. Switch to the next source.
 			 */
 			if ((size_b < dcopy->size * CHAR_BIT - dcopy->offset) &&
-			    (size_b == field->size * CHAR_BIT - off_b)) {
-				actions[i].length =
-					field->size * CHAR_BIT - off_b;
+			    ((size_b == field->size * CHAR_BIT - off_b) ||
+			     field->is_flex)) {
+				actions[i].length = size_b;
 				dcopy->offset += actions[i].length;
 				next_dcopy = false;
 			}
-			if (next_dcopy)
-				++dcopy;
 		} else {
 			MLX5_ASSERT(item->spec);
 			data = flow_dv_fetch_field((const uint8_t *)item->spec +
 						   field->offset, field->size);
 			/* Shift out the trailing masked bits from data. */
 			data = (data & mask) >> off_b;
+			if (field->is_flex)
+				actions[i].offset = 32 - field->shift - field->size * CHAR_BIT;
 			actions[i].data1 = rte_cpu_to_be_32(data);
 		}
 		/* Convert entire record to expected big-endian format. */
 		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
+		if ((type != MLX5_MODIFICATION_TYPE_COPY ||
+		     dcopy->id != (enum mlx5_modification_field)UINT32_MAX) &&
+		    field->id != (enum mlx5_modification_field)UINT32_MAX)
+			++i;
+		if (next_dcopy && type == MLX5_MODIFICATION_TYPE_COPY)
+			++dcopy;
 		if (next_field)
 			++field;
-		++i;
 	} while (field->size);
 	if (resource->actions_num == i)
 		return rte_flow_error_set(error, EINVAL,
@@ -1422,6 +1433,131 @@ flow_modify_info_mask_32_masked(uint32_t length, uint32_t off, uint32_t post_mas
 	return rte_cpu_to_be_32(mask & post_mask);
 }
 
+static void
+mlx5_modify_flex_item(const struct rte_eth_dev *dev,
+		      const struct mlx5_flex_item *flex,
+		      const struct rte_flow_action_modify_data *data,
+		      struct field_modify_info *info,
+		      uint32_t *mask, uint32_t width)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
+	uint32_t i, j;
+	int id = 0;
+	uint32_t pos = 0;
+	const struct mlx5_flex_pattern_field *map;
+	uint32_t offset = data->offset;
+	uint32_t width_left = width;
+	uint32_t def;
+	uint32_t cur_width = 0;
+	uint32_t tmp_ofs;
+	uint32_t idx = 0;
+	struct field_modify_info tmp;
+	int tmp_id;
+
+	if (!attr->ext_sample_id) {
+		DRV_LOG(ERR, "FW doesn't support modify field with flex item.");
+		return;
+	}
+	/*
+	 * search for the mapping instance until Accumulated width is no
+	 * less than data->offset.
+	 */
+	for (i = 0; i < flex->mapnum; i++) {
+		if (flex->map[i].width + pos > data->offset)
+			break;
+		pos += flex->map[i].width;
+	}
+	if (i >= flex->mapnum)
+		return;
+	tmp_ofs = pos < data->offset ? data->offset - pos : 0;
+	for (j = i; i < flex->mapnum && width_left > 0; ) {
+		map = flex->map + i;
+		id = mlx5_flex_get_sample_id(flex, i, &pos, false, &def);
+		if (id == -1) {
+			i++;
+			/* All left length is dummy */
+			if (pos >= data->offset + width)
+				return;
+			cur_width = map->width;
+		/* One mapping instance covers the whole width. */
+		} else if (pos + map->width >= (data->offset + width)) {
+			cur_width = width_left;
+		} else {
+			cur_width = cur_width + map->width - tmp_ofs;
+			pos += map->width;
+			/*
+			 * Continue to search next until:
+			 * 1. Another flex parser ID.
+			 * 2. Width has been covered.
+			 */
+			for (j = i + 1; j < flex->mapnum; j++) {
+				tmp_id = mlx5_flex_get_sample_id(flex, j, &pos, false, &def);
+				if (tmp_id == -1) {
+					i = j;
+					pos -= flex->map[j].width;
+					break;
+				}
+				if (id >= (int)flex->devx_fp->num_samples ||
+				    id >= MLX5_GRAPH_NODE_SAMPLE_NUM ||
+				    tmp_id >= (int)flex->devx_fp->num_samples ||
+				    tmp_id >= MLX5_GRAPH_NODE_SAMPLE_NUM)
+					return;
+				if (flex->devx_fp->sample_ids[id].id !=
+						flex->devx_fp->sample_ids[tmp_id].id ||
+				    flex->map[j].shift != flex->map[j - 1].width +
+							  flex->map[j - 1].shift) {
+					i = j;
+					break;
+				}
+				if ((pos + flex->map[j].width) >= (data->offset + width)) {
+					cur_width = width_left;
+					break;
+				}
+				pos += flex->map[j].width;
+				cur_width += flex->map[j].width;
+			}
+		}
+		if (cur_width > width_left)
+			cur_width = width_left;
+		else if (cur_width < width_left && (j == flex->mapnum || i == flex->mapnum))
+			return;
+
+		MLX5_ASSERT(id < (int)flex->devx_fp->num_samples);
+		if (id >= (int)flex->devx_fp->num_samples || id >= MLX5_GRAPH_NODE_SAMPLE_NUM)
+			return;
+		/* Use invalid entry as placeholder for DUMMY mapping. */
+		info[idx] = (struct field_modify_info){cur_width / CHAR_BIT, offset / CHAR_BIT,
+			     id == -1 ? MLX5_MODI_INVALID :
+			     (enum mlx5_modification_field)
+			     flex->devx_fp->sample_ids[id].modify_field_id,
+			     map->shift + tmp_ofs, 1};
+		offset += cur_width;
+		width_left -= cur_width;
+		if (!mask) {
+			info[idx].offset = (32 - cur_width - map->shift - tmp_ofs);
+			info[idx].size = cur_width / CHAR_BIT + info[idx].offset / CHAR_BIT;
+		}
+		cur_width = 0;
+		tmp_ofs = 0;
+		idx++;
+	}
+	if (unlikely(width_left > 0)) {
+		MLX5_ASSERT(false);
+		return;
+	}
+	if (mask)
+		memset(mask, 0xff, data->offset / CHAR_BIT + width / CHAR_BIT);
+	/* Re-order the info to follow IPv6 address. */
+	for (i = 0; i < idx / 2; i++) {
+		tmp = info[i];
+		MLX5_ASSERT(info[i].id);
+		MLX5_ASSERT(info[idx - 1 - i].id);
+		info[i] = info[idx - 1 - i];
+		info[idx - 1 - i] = tmp;
+	}
+}
+
 void
 mlx5_flow_field_id_to_modify_info
 		(const struct rte_flow_action_modify_data *data,
@@ -1892,6 +2028,11 @@ mlx5_flow_field_id_to_modify_info
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
 		else
 			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_FLEX_ITEM:
+		MLX5_ASSERT(data->flex_handle != NULL && !(data->offset & 0x7));
+		mlx5_modify_flex_item(dev, (const struct mlx5_flex_item *)data->flex_handle,
+				      data, info, mask, width);
 		break;
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:

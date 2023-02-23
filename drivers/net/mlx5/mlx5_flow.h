@@ -1087,6 +1087,8 @@ struct field_modify_info {
 	uint32_t size; /* Size of field in protocol header, in bytes. */
 	uint32_t offset; /* Offset of field in protocol header, in bytes. */
 	enum mlx5_modification_field id;
+	uint32_t shift;
+	uint8_t is_flex; /* Temporary indicator for flex item modify filed WA. */
 };
 
 /* HW steering flow attributes. */
@@ -1251,6 +1253,7 @@ struct rte_flow_actions_template {
 	uint16_t mhdr_off; /* Offset of DR modify header action. */
 	uint32_t refcnt; /* Reference counter. */
 	uint16_t rx_cpy_pos; /* Action position of Rx metadata to be copied. */
+	uint8_t flex_item; /* flex item index. */
 };
 
 /* Jump action struct. */

@@ -4558,6 +4558,17 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 			at->actions[i].conf = actions->conf;
 			at->masks[i].conf = masks->conf;
 		}
+		if (actions->type == RTE_FLOW_ACTION_TYPE_MODIFY_FIELD) {
+			const struct rte_flow_action_modify_field *info = actions->conf;
+
+			if ((info->dst.field == RTE_FLOW_FIELD_FLEX_ITEM &&
+			     flow_hw_flex_item_acquire(dev, info->dst.flex_handle,
+						       &at->flex_item)) ||
+			     (info->src.field == RTE_FLOW_FIELD_FLEX_ITEM &&
+			      flow_hw_flex_item_acquire(dev, info->src.flex_handle,
+							&at->flex_item)))
+				goto error;
+		}
 	}
 	at->tmpl = flow_hw_dr_actions_template_create(at);
 	if (!at->tmpl)
@@ -4589,7 +4600,7 @@ error:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_hw_actions_template_destroy(struct rte_eth_dev *dev __rte_unused,
+flow_hw_actions_template_destroy(struct rte_eth_dev *dev,
 				 struct rte_flow_actions_template *template,
 				 struct rte_flow_error *error __rte_unused)
 {
@@ -4602,6 +4613,7 @@ flow_hw_actions_template_destroy(struct rte_eth_dev *dev __rte_unused,
 				   "action template in using");
 	}
 	LIST_REMOVE(template, next);
+	flow_hw_flex_item_release(dev, &template->flex_item);
 	if (template->tmpl)
 		mlx5dr_action_template_destroy(template->tmpl);
 	mlx5_free(template);

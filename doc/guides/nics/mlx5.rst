@@ -290,11 +290,12 @@ Limitations
   - Firmware supports 8 global sample fields.
     Each flex item allocates non-shared sample fields from that pool.
   - Supported flex item can have 1 input link - ``eth`` or ``udp``
-    and up to 2 output links - ``ipv4`` or ``ipv6``.
+    and up to 3 output links - ``ipv4`` or ``ipv6``.
   - Flex item fields (``next_header``, ``next_protocol``, ``samples``)
     do not participate in RSS hash functions.
   - In flex item configuration, ``next_header.field_base`` value
     must be byte aligned (multiple of 8).
+  - Modify field with flex item, the offset must be byte aligned (multiple of 8).
 
 - No Tx metadata go to the E-Switch steering domain for the Flow group 0.
   The flows within group 0 and set metadata action are rejected by hardware.
