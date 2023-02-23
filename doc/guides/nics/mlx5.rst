@@ -246,6 +246,10 @@ Limitations
 
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 
+- MPLSoGRE is not supported in HW steering (``dv_flow_en`` = 2).
+
+- MPLSoUDP with multiple MPLS headers is only supported in HW steering (``dv_flow_en`` = 2).
+
 - Match on Geneve header supports the following fields only:
 
      - VNI
