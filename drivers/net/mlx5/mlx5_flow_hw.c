@@ -4566,8 +4566,12 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 						       &at->flex_item)) ||
 			     (info->src.field == RTE_FLOW_FIELD_FLEX_ITEM &&
 			      flow_hw_flex_item_acquire(dev, info->src.flex_handle,
-							&at->flex_item)))
+							&at->flex_item))) {
+				rte_flow_error_set(error, rte_errno,
+						   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+						   "Failed to acquire flex item");
 				goto error;
+			}
 		}
 	}
 	at->tmpl = flow_hw_dr_actions_template_create(at);
@@ -4583,6 +4587,9 @@ error:
 			mlx5dr_action_template_destroy(at->tmpl);
 		mlx5_free(at);
 	}
+	rte_flow_error_set(error, rte_errno,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   "Failed to create action template");
 	return NULL;
 }
 
@@ -4946,6 +4953,9 @@ setup_pattern_template:
 		    (mlx5_alloc_srh_flex_parser(dev))) {
 			claim_zero(mlx5dr_match_template_destroy(it->mt));
 			mlx5_free(it);
+			rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					   "cannot create IPv6 routing extension support");
 			return NULL;
 		}
 	}
@@ -4958,6 +4968,9 @@ setup_pattern_template:
 			if (flow_hw_flex_item_acquire(dev, handle, &it->flex_item)) {
 				claim_zero(mlx5dr_match_template_destroy(it->mt));
 				mlx5_free(it);
+				rte_flow_error_set(error, rte_errno,
+						   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+						   "Failed to acquire flex item");
 				return NULL;
 			}
 		}
