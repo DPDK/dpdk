@@ -1051,6 +1051,22 @@ mlx5_flex_arc_in_udp(const struct rte_flow_item *item,
 }
 
 static int
+mlx5_flex_arc_in_ipv6(const struct rte_flow_item *item,
+		      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv6 *spec = item->spec;
+	const struct rte_flow_item_ipv6 *mask = item->mask;
+	struct rte_flow_item_ipv6 ip = { .hdr.proto = 0xff };
+
+	if (memcmp(mask, &ip, sizeof(struct rte_flow_item_ipv6))) {
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "invalid ipv6 item mask, full mask is desired");
+	}
+	return spec->hdr.proto;
+}
+
+static int
 mlx5_flex_translate_arc_in(struct mlx5_hca_flex_attr *attr,
 			   const struct rte_flow_item_flex_conf *conf,
 			   struct mlx5_flex_parser_devx *devx,
@@ -1095,6 +1111,9 @@ mlx5_flex_translate_arc_in(struct mlx5_hca_flex_attr *attr,
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flex_arc_in_udp(rte_item, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			ret = mlx5_flex_arc_in_ipv6(rte_item, error);
 			break;
 		default:
 			MLX5_ASSERT(false);
