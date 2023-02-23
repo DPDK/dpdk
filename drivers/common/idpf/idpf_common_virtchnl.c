@@ -987,6 +987,7 @@ idpf_vc_rxq_config(struct idpf_vport *vport, struct idpf_rx_queue *rxq)
 
 		rxq_info->ring_len = rxq->nb_rx_desc;
 		rxq_info->rx_bufq1_id = rxq->bufq1->queue_id;
+		rxq_info->bufq2_ena = 1;
 		rxq_info->rx_bufq2_id = rxq->bufq2->queue_id;
 		rxq_info->rx_buffer_low_watermark = 64;
 
