@@ -96,7 +96,10 @@ const struct supported_cipher_algo cipher_algos[] = {
 	{
 		.keyword = "aes-128-ctr",
 		.algo = RTE_CRYPTO_CIPHER_AES_CTR,
-		.iv_len = 8,
+		/* iv_len includes 8B per packet IV, 4B nonce
+		 * and 4B counter
+		 */
+		.iv_len = 16,
 		.block_size = 4,
 		.key_len = 20
 	},
