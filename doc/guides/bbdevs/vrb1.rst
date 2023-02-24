@@ -104,7 +104,7 @@ Initialization
 --------------
 
 When the device first powers up, its PCI Physical Functions (PF)
-can be listed through these commands for VRB1:
+can be listed through these commands for Intel vRAN Boost v1:
 
 .. code-block:: console
 
@@ -123,7 +123,7 @@ Install the DPDK igb_uio driver, bind it with the PF PCI device ID and use
 ``lspci`` to confirm the PF device is under use by ``igb_uio`` DPDK UIO driver.
 
 The igb_uio driver may be bound to the PF PCI device using one of two methods
-for VRB1:
+for Intel vRAN Boost v1:
 
 #. PCI functions (physical or virtual, depending on the use case) can be bound
 to the UIO driver by repeating this command for every function.
@@ -252,7 +252,7 @@ from the VF and not only limited to the PF as captured above.
 
 See for more details: https://github.com/intel/pf-bb-config
 
-Specifically for the bbdev VRB1 PMD, the command below can be used
+Specifically for the bbdev Intel vRAN Boost v1 PMD, the command below can be used
 (note that ACC200 was used previously to refer to VRB1):
 
 .. code-block:: console
