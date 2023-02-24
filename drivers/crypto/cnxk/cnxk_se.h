@@ -2258,9 +2258,9 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 		aad_data = sym_op->aead.aad.data;
 		aad_len = sess->aad_length;
-		if (likely((aad_data + aad_len) ==
-			   rte_pktmbuf_mtod_offset(m_src, uint8_t *,
-						   sym_op->aead.data.offset))) {
+		if (likely((aad_len == 0) ||
+			   ((aad_data + aad_len) ==
+			    rte_pktmbuf_mtod_offset(m_src, uint8_t *, sym_op->aead.data.offset)))) {
 			d_offs = (d_offs - aad_len) | (d_offs << 16);
 			d_lens = (d_lens + aad_len) | (d_lens << 32);
 		} else {
