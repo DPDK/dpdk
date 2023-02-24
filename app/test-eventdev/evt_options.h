@@ -39,6 +39,9 @@
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
 #define EVT_CRYPTO_ADPTR_MODE	 ("crypto_adptr_mode")
 #define EVT_CRYPTO_OP_TYPE	 ("crypto_op_type")
+#define EVT_CRYPTO_CIPHER_ALG	 ("crypto_cipher_alg")
+#define EVT_CRYPTO_CIPHER_KEY	 ("crypto_cipher_key")
+#define EVT_CRYPTO_CIPHER_IV_SZ  ("crypto_cipher_iv_sz")
 #define EVT_NB_TIMERS            ("nb_timers")
 #define EVT_NB_TIMER_ADPTRS      ("nb_timer_adptrs")
 #define EVT_TIMER_TICK_NSEC      ("timer_tick_nsec")
@@ -305,6 +308,13 @@ evt_dump_producer_type(struct evt_options *opt)
 			 (opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) ?
 			 "SYMMETRIC" : "ASYMMETRIC");
 		evt_dump("nb_cryptodev", "%u", rte_cryptodev_count());
+		if (opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			evt_dump("cipher algo", "%s",
+				 rte_cryptodev_get_cipher_algo_string(opt->crypto_cipher_alg));
+			evt_dump("cipher key sz", "%u",
+				 opt->crypto_cipher_key_sz);
+			evt_dump("cipher iv sz", "%u", opt->crypto_cipher_iv_sz);
+		}
 		break;
 	}
 	evt_dump("prod_type", "%s", name);

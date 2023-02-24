@@ -162,6 +162,18 @@ The following are the application command-line options:
         Set crypto operation type. Use 0 for symmetric crypto ops (default)
         and 1 for asymmetric crypto ops.
 
+* ``--crypto_cipher_alg``
+
+        Cipher algorithm to be used. Default algorithm is NULL.
+
+* ``--crypto_cipher_key``
+
+        Key for the cipher algorithm selected.
+
+* ``--crypto_cipher_iv_sz``
+
+        IV size for the cipher algorithm
+
 * ``--mbuf_sz``
 
        Set packet mbuf size. Can be used to configure Jumbo Frames. Only

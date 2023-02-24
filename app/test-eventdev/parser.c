@@ -274,10 +274,10 @@ parse_tokenize_string(char *string, char *tokens[], uint32_t *n_tokens)
 }
 
 int
-parse_hex_string(char *src, uint8_t *dst, uint32_t *size)
+parse_hex_string(const char *src, uint8_t *dst, uint32_t *size)
 {
-	char *c;
 	uint32_t len, i;
+	const char *c;
 
 	/* Check input parameters */
 	if ((src == NULL) ||
