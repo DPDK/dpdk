@@ -28,13 +28,13 @@ ipsec_po_out_rlen_get(struct cn9k_sec_session *sess, uint32_t plen, struct rte_m
 		uintptr_t data = (uintptr_t)m_src->buf_addr + m_src->data_off;
 		struct rte_ipv4_hdr *ip = (struct rte_ipv4_hdr *)data;
 
-		if (unlikely(((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) != IPVERSION)) {
+		if (unlikely(ip->version != IPVERSION)) {
 			struct rte_ipv6_hdr *ip6 = (struct rte_ipv6_hdr *)ip;
 			uint8_t *nxt_hdr = (uint8_t *)ip6;
 			uint8_t dest_op_cnt = 0;
 			int nh = ip6->proto;
 
-			PLT_ASSERT(((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) == 6);
+			PLT_ASSERT(ip->version == 6);
 
 			adj_len = ROC_CPT_TUNNEL_IPV6_HDR_LEN;
 			nxt_hdr += ROC_CPT_TUNNEL_IPV6_HDR_LEN;

@@ -546,10 +546,10 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 			}
 		}
 
-		if (((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) == IPVERSION) {
+		if (ip->version == IPVERSION) {
 			m_len = rte_be_to_cpu_16(ip->total_length);
 		} else {
-			PLT_ASSERT(((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) == 6);
+			PLT_ASSERT((ip->version == 6));
 			ip6 = (struct rte_ipv6_hdr *)ip;
 			m_len = rte_be_to_cpu_16(ip6->payload_len) + sizeof(struct rte_ipv6_hdr);
 		}
