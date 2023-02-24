@@ -10508,10 +10508,6 @@ test_ipsec_proto_sgl(const void *data __rte_unused)
 		.nb_segs_in_mbuf = 5
 	};
 
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CN10K_PMD)))
-		return TEST_SKIPPED;
-
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
 		printf("Device doesn't support in-place scatter-gather. "
