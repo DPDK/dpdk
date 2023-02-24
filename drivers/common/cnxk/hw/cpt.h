@@ -75,7 +75,8 @@ union cpt_eng_caps {
 		uint64_t __io mmul : 1;
 		uint64_t __io reserved_15_33 : 19;
 		uint64_t __io pdcp_chain : 1;
-		uint64_t __io reserved_35_63 : 29;
+		uint64_t __io sg_ver2 : 1;
+		uint64_t __io reserved_36_63 : 28;
 	};
 };
 

@@ -1045,7 +1045,7 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 void
 cn10k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev, struct cnxk_cpt_vf *vf)
 {
-	if (vf->cpt.cpt_revision > ROC_CPT_REVISION_ID_106XX)
+	if (vf->cpt.hw_caps[CPT_ENG_TYPE_SE].sg_ver2 && vf->cpt.hw_caps[CPT_ENG_TYPE_IE].sg_ver2)
 		dev->enqueue_burst = cn10k_cpt_sg_ver2_enqueue_burst;
 	else
 		dev->enqueue_burst = cn10k_cpt_sg_ver1_enqueue_burst;

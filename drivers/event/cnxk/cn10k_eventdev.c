@@ -602,7 +602,8 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		}
 	}
 
-	if ((cpt != NULL) && (cpt->cpt_revision > ROC_CPT_REVISION_ID_106XX))
+	if ((cpt != NULL) && cpt->hw_caps[CPT_ENG_TYPE_SE].sg_ver2 &&
+	    cpt->hw_caps[CPT_ENG_TYPE_IE].sg_ver2)
 		event_dev->ca_enqueue = cn10k_cpt_sg_ver2_crypto_adapter_enqueue;
 	else
 		event_dev->ca_enqueue = cn10k_cpt_sg_ver1_crypto_adapter_enqueue;
