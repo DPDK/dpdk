@@ -77,8 +77,8 @@ sess_put:
 }
 
 static __rte_always_inline int __rte_hot
-cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
-		  struct cn10k_sec_session *sess, struct cpt_inst_s *inst)
+cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cn10k_sec_session *sess,
+		  struct cpt_inst_s *inst, struct cpt_inflight_req *infl_req, const bool is_sg_ver2)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	int ret;
@@ -88,15 +88,11 @@ cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		return -ENOTSUP;
 	}
 
-	if (unlikely(!rte_pktmbuf_is_contiguous(sym_op->m_src))) {
-		plt_dp_err("Scatter Gather mode is not supported");
-		return -ENOTSUP;
-	}
-
 	if (sess->is_outbound)
-		ret = process_outb_sa(&qp->lf, op, sess, inst);
+		ret = process_outb_sa(&qp->lf, op, sess, &qp->meta_info, infl_req, inst,
+				      is_sg_ver2);
 	else
-		ret = process_inb_sa(op, sess, inst);
+		ret = process_inb_sa(op, sess, inst, &qp->meta_info, infl_req, is_sg_ver2);
 
 	return ret;
 }
@@ -129,7 +125,7 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 			sec_sess = (struct cn10k_sec_session *)sym_op->session;
-			ret = cpt_sec_inst_fill(qp, op, sec_sess, &inst[0]);
+			ret = cpt_sec_inst_fill(qp, op, sec_sess, &inst[0], infl_req, is_sg_ver2);
 			if (unlikely(ret))
 				return 0;
 			w7 = sec_sess->inst.w7;
@@ -827,7 +823,10 @@ cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *re
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		return;
 	}
-	mbuf->data_len = m_len;
+
+	if (mbuf->next == NULL)
+		mbuf->data_len = m_len;
+
 	mbuf->pkt_len = m_len;
 }
 
