@@ -291,6 +291,7 @@ idpf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 				pstats->rx_broadcast - pstats->rx_discards;
 		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
 						pstats->tx_unicast;
+		stats->ierrors = pstats->rx_errors;
 		stats->imissed = pstats->rx_discards;
 		stats->oerrors = pstats->tx_errors + pstats->tx_discards;
 		stats->ibytes = pstats->rx_bytes;
