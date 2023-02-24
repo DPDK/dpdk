@@ -316,16 +316,15 @@ struct roc_se_ctx {
 	uint64_t enc_cipher : 8;
 	uint64_t hash_type : 8;
 	uint64_t mac_len : 8;
-	uint64_t auth_key_len : 8;
+	uint64_t auth_key_len : 16;
 	uint64_t fc_type : 4;
 	uint64_t hmac : 1;
 	uint64_t zsk_flags : 3;
 	uint64_t k_ecb : 1;
 	uint64_t pdcp_ci_alg : 2;
 	uint64_t pdcp_auth_alg : 2;
-	uint16_t ciph_then_auth : 1;
-	uint16_t auth_then_ciph : 1;
-	uint64_t rsvd : 17;
+	uint64_t ciph_then_auth : 1;
+	uint64_t auth_then_ciph : 1;
 	union cpt_inst_w4 template_w4;
 	/* Below fields are accessed by hardware */
 	union {
