@@ -13,7 +13,10 @@
 
 #include "cnxk_cryptodev_ops.h"
 
+#define ASYM_SESS_SIZE sizeof(struct rte_cryptodev_asym_session)
+
 struct cnxk_ae_sess {
+	uint8_t rte_sess[ASYM_SESS_SIZE];
 	enum rte_crypto_asym_xform_type xfrm_type;
 	union {
 		struct rte_crypto_rsa_xform rsa_ctx;
@@ -25,6 +28,24 @@ struct cnxk_ae_sess {
 	uint64_t cpt_inst_w7;
 	uint64_t cpt_inst_w2;
 	struct cnxk_cpt_qp *qp;
+	struct roc_cpt_lf *lf;
+	struct hw_ctx_s {
+		union {
+			struct {
+				uint64_t rsvd : 48;
+
+				uint64_t ctx_push_size : 7;
+				uint64_t rsvd1 : 1;
+
+				uint64_t ctx_hdr_size : 2;
+				uint64_t aop_valid : 1;
+				uint64_t rsvd2 : 1;
+				uint64_t ctx_size : 4;
+			} s;
+			uint64_t u64;
+		} w0;
+		uint8_t rsvd[256];
+	} hw_ctx __plt_aligned(ROC_ALIGN);
 };
 
 static __rte_always_inline void

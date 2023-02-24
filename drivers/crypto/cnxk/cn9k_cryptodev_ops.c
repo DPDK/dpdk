@@ -105,13 +105,10 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 			inst->w7.u64 = sess->cpt_inst_w7;
 		}
 	} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
-		struct rte_crypto_asym_op *asym_op;
 		struct cnxk_ae_sess *sess;
 
 		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			asym_op = op->asym;
-			sess = (struct cnxk_ae_sess *)
-					asym_op->session->sess_private_data;
+			sess = (struct cnxk_ae_sess *)op->asym->session;
 			ret = cnxk_ae_enqueue(qp, op, infl_req, inst, sess);
 			inst->w7.u64 = sess->cpt_inst_w7;
 		} else {
@@ -345,7 +342,7 @@ cn9k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused,
 			struct rte_cryptodev_asym_session *asym_sess = sess;
 			struct cnxk_ae_sess *priv;
 
-			priv = (struct cnxk_ae_sess *)asym_sess->sess_private_data;
+			priv = (struct cnxk_ae_sess *)asym_sess;
 			priv->qp = qp;
 			priv->cpt_inst_w2 = w2;
 		} else
@@ -393,11 +390,9 @@ cn9k_ca_meta_info_extract(struct rte_crypto_op *op,
 		}
 	} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			struct rte_cryptodev_asym_session *asym_sess;
 			struct cnxk_ae_sess *priv;
 
-			asym_sess = op->asym->session;
-			priv = (struct cnxk_ae_sess *)asym_sess->sess_private_data;
+			priv = (struct cnxk_ae_sess *)op->asym->session;
 			*qp = priv->qp;
 			inst->w2.u64 = priv->cpt_inst_w2;
 		} else
@@ -609,10 +604,7 @@ cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 		} else if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 			struct rte_crypto_asym_op *op = cop->asym;
 			uintptr_t *mdata = infl_req->mdata;
-			struct cnxk_ae_sess *sess;
-
-			sess = (struct cnxk_ae_sess *)
-					op->session->sess_private_data;
+			struct cnxk_ae_sess *sess = (struct cnxk_ae_sess *)op->session;
 
 			cnxk_ae_post_process(cop, sess, (uint8_t *)mdata[0]);
 		}
