@@ -783,6 +783,7 @@ int
 roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 {
 	union cpt_lf_ctx_flush reg;
+	union cpt_lf_ctx_err err;
 
 	if (lf == NULL) {
 		plt_err("Could not trigger CTX flush");
@@ -794,6 +795,21 @@ roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 	reg.s.cptr = (uintptr_t)cptr >> 7;
 
 	plt_write64(reg.u, lf->rbase + CPT_LF_CTX_FLUSH);
+
+	plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
+
+	/* Read a CSR to ensure that the FLUSH operation is complete */
+	err.u = plt_read64(lf->rbase + CPT_LF_CTX_ERR);
+
+	if (err.s.busy_sw_flush && inval) {
+		plt_err("CTX entry could not be invalidated due to active usage.");
+		return -EAGAIN;
+	}
+
+	if (err.s.flush_st_flt) {
+		plt_err("CTX flush could not complete due to store fault");
+		abort();
+	}
 
 	return 0;
 }

@@ -100,6 +100,17 @@ union cpt_lf_ctx_flush {
 	} s;
 };
 
+union cpt_lf_ctx_err {
+	uint64_t u;
+	struct {
+		uint64_t flush_st_flt : 1;
+		uint64_t busy_flr : 1;
+		uint64_t busy_sw_flush : 1;
+		uint64_t reload_faulted : 1;
+		uint64_t reserved_4_63 : 1;
+	} s;
+};
+
 union cpt_lf_ctx_reload {
 	uint64_t u;
 	struct {
