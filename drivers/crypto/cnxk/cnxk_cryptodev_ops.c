@@ -479,7 +479,7 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 	bool pdcp_chain_supported = false;
 	bool ciph_then_auth = false;
 
-	if (roc_cpt->hw_caps[CPT_ENG_TYPE_SE].pdcp_chain)
+	if (roc_model_is_cn9k() && (roc_cpt->hw_caps[CPT_ENG_TYPE_SE].pdcp_chain))
 		pdcp_chain_supported = true;
 
 	if (xform == NULL)
