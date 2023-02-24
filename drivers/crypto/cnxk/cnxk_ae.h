@@ -700,7 +700,7 @@ static __rte_always_inline int
 cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 		   struct roc_ae_buf_ptr *meta_buf, uint64_t *fpm_iova,
 		   struct roc_ae_ec_group *ec_grp, uint8_t curveid,
-		   struct cpt_inst_s *inst)
+		   struct cpt_inst_s *inst, int cpt_ver)
 {
 	uint16_t scalar_align, p_align;
 	uint16_t dlen, prime_len;
@@ -719,26 +719,33 @@ cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	scalar_align = RTE_ALIGN_CEIL(ecpm->scalar.length, 8);
 
 	/*
-	 * Set dlen = sum(ROUNDUP8(input point(x and y coordinates), prime,
-	 * scalar length),
+	 * Set dlen = sum(prime, scalar length, table address and
+	 * optionally ROUNDUP8(input point(x and y coordinates)).
 	 * Please note point length is equivalent to prime of the curve
 	 */
-	dlen = sizeof(fpm_table_iova) + 3 * p_align + scalar_align;
-
-	memset(dptr, 0, dlen);
-
-	*(uint64_t *)dptr = fpm_table_iova;
-	dptr += sizeof(fpm_table_iova);
-
-	/* Copy scalar, prime */
-	memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
-	dptr += scalar_align;
-	memcpy(dptr, ec_grp->prime.data, ec_grp->prime.length);
-	dptr += p_align;
-	memcpy(dptr, ec_grp->consta.data, ec_grp->consta.length);
-	dptr += p_align;
-	memcpy(dptr, ec_grp->constb.data, ec_grp->constb.length);
-	dptr += p_align;
+	if (cpt_ver == ROC_CPT_REVISION_ID_96XX_C0) {
+		dlen = sizeof(fpm_table_iova) + 3 * p_align + scalar_align;
+		memset(dptr, 0, dlen);
+		*(uint64_t *)dptr = fpm_table_iova;
+		dptr += sizeof(fpm_table_iova);
+		memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
+		dptr += scalar_align;
+		memcpy(dptr, ec_grp->prime.data, ec_grp->prime.length);
+		dptr += p_align;
+		memcpy(dptr, ec_grp->consta.data, ec_grp->consta.length);
+		dptr += p_align;
+		memcpy(dptr, ec_grp->constb.data, ec_grp->constb.length);
+		dptr += p_align;
+	} else {
+		dlen = sizeof(fpm_table_iova) + p_align + scalar_align;
+		memset(dptr, 0, dlen);
+		memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
+		dptr += scalar_align;
+		memcpy(dptr, ec_grp->prime.data, ec_grp->prime.length);
+		dptr += p_align;
+		*(uint64_t *)dptr = fpm_table_iova;
+		dptr += sizeof(fpm_table_iova);
+	}
 
 	/* Setup opcodes */
 	w4.s.opcode_major = ROC_AE_MAJOR_OP_ECC;
@@ -969,7 +976,8 @@ cnxk_ae_enqueue(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		ret = cnxk_ae_ecfpm_prep(&asym_op->ecpm, &meta_buf,
 					 sess->cnxk_fpm_iova,
 					 sess->ec_grp[sess->ec_ctx.curveid],
-					 sess->ec_ctx.curveid, inst);
+					 sess->ec_ctx.curveid, inst,
+					 sess->lf->roc_cpt->cpt_revision);
 		if (unlikely(ret))
 			goto req_fail;
 		break;
