@@ -1166,6 +1166,9 @@ for an additional list of options shared with other mlx5 drivers.
   - 0. If representor matching is disabled, then there will be no implicit
     item added. As a result, ingress flow rules will match traffic
     coming to any port, not only the port on which flow rule is created.
+    Because of that, default flow rules for ingress traffic cannot be created
+    and port starts in isolated mode by default. Port cannot be switched back
+    to non-isolated mode.
 
   - 1. If representor matching is enabled (default setting),
     then each ingress pattern template has an implicit REPRESENTED_PORT
