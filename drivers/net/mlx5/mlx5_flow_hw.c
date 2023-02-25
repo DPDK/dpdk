@@ -3252,14 +3252,18 @@ flow_hw_translate_group(struct rte_eth_dev *dev,
 						  "group index not supported");
 		*table_group = group + 1;
 	} else if (config->dv_esw_en &&
-		   !(config->repr_matching && config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) &&
+		   (config->repr_matching || config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) &&
 		   cfg->external &&
 		   flow_attr->egress) {
 		/*
-		 * On E-Switch setups, egress group translation is not done if and only if
-		 * representor matching is disabled and legacy metadata mode is selected.
-		 * In all other cases, egree group 0 is reserved for representor tagging flows
-		 * and metadata copy flows.
+		 * On E-Switch setups, default egress flow rules are inserted to allow
+		 * representor matching and/or preserving metadata across steering domains.
+		 * These flow rules are inserted in group 0 and this group is reserved by PMD
+		 * for these purposes.
+		 *
+		 * As a result, if representor matching or extended metadata mode is enabled,
+		 * group provided by the user must be incremented to avoid inserting flow rules
+		 * in group 0.
 		 */
 		if (group > MLX5_HW_MAX_EGRESS_GROUP)
 			return rte_flow_error_set(error, EINVAL,
