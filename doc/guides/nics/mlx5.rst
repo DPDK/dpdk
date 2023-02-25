@@ -161,6 +161,9 @@ Limitations
   - Set ``dv_flow_en`` to 2 in order to enable HW steering.
   - Async queue-based ``rte_flow_async`` APIs supported only.
   - NIC ConnectX-5 and before are not supported.
+  - Reconfiguring flow API engine is not supported.
+    Any subsequent call to ``rte_flow_configure()`` with different configuration
+    than initially provided will be rejected with ``-ENOTSUP`` error code.
   - Partial match with item template is not supported.
   - IPv6 5-tuple matching is not supported.
   - With E-Switch enabled, ports which share the E-Switch domain

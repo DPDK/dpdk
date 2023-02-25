@@ -7035,6 +7035,86 @@ mlx5_flow_hw_cleanup_ctrl_rx_templates(struct rte_eth_dev *dev)
 }
 
 /**
+ * Copy the provided HWS configuration to a newly allocated buffer.
+ *
+ * @param[in] port_attr
+ *   Port configuration attributes.
+ * @param[in] nb_queue
+ *   Number of queue.
+ * @param[in] queue_attr
+ *   Array that holds attributes for each flow queue.
+ *
+ * @return
+ *   Pointer to copied HWS configuration is returned on success.
+ *   Otherwise, NULL is returned and rte_errno is set.
+ */
+static struct mlx5_flow_hw_attr *
+flow_hw_alloc_copy_config(const struct rte_flow_port_attr *port_attr,
+			  const uint16_t nb_queue,
+			  const struct rte_flow_queue_attr *queue_attr[],
+			  struct rte_flow_error *error)
+{
+	struct mlx5_flow_hw_attr *hw_attr;
+	size_t hw_attr_size;
+	unsigned int i;
+
+	hw_attr_size = sizeof(*hw_attr) + nb_queue * sizeof(*hw_attr->queue_attr);
+	hw_attr = mlx5_malloc(MLX5_MEM_ZERO, hw_attr_size, 0, SOCKET_ID_ANY);
+	if (!hw_attr) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Not enough memory to store configuration");
+		return NULL;
+	}
+	memcpy(&hw_attr->port_attr, port_attr, sizeof(*port_attr));
+	hw_attr->nb_queue = nb_queue;
+	/* Queue attributes are placed after the mlx5_flow_hw_attr. */
+	hw_attr->queue_attr = (struct rte_flow_queue_attr *)(hw_attr + 1);
+	for (i = 0; i < nb_queue; ++i)
+		memcpy(&hw_attr->queue_attr[i], queue_attr[i], sizeof(hw_attr->queue_attr[i]));
+	return hw_attr;
+}
+
+/**
+ * Compares the preserved HWS configuration with the provided one.
+ *
+ * @param[in] hw_attr
+ *   Pointer to preserved HWS configuration.
+ * @param[in] new_pa
+ *   Port configuration attributes to compare.
+ * @param[in] new_nbq
+ *   Number of queues to compare.
+ * @param[in] new_qa
+ *   Array that holds attributes for each flow queue.
+ *
+ * @return
+ *   True if configurations are the same, false otherwise.
+ */
+static bool
+flow_hw_compare_config(const struct mlx5_flow_hw_attr *hw_attr,
+		       const struct rte_flow_port_attr *new_pa,
+		       const uint16_t new_nbq,
+		       const struct rte_flow_queue_attr *new_qa[])
+{
+	const struct rte_flow_port_attr *old_pa = &hw_attr->port_attr;
+	const uint16_t old_nbq = hw_attr->nb_queue;
+	const struct rte_flow_queue_attr *old_qa = hw_attr->queue_attr;
+	unsigned int i;
+
+	if (old_pa->nb_counters != new_pa->nb_counters ||
+	    old_pa->nb_aging_objects != new_pa->nb_aging_objects ||
+	    old_pa->nb_meters != new_pa->nb_meters ||
+	    old_pa->nb_conn_tracks != new_pa->nb_conn_tracks ||
+	    old_pa->flags != new_pa->flags)
+		return false;
+	if (old_nbq != new_nbq)
+		return false;
+	for (i = 0; i < old_nbq; ++i)
+		if (old_qa[i].size != new_qa[i]->size)
+			return false;
+	return true;
+}
+
+/**
  * Configure port HWS resources.
  *
  * @param[in] dev
@@ -7088,9 +7168,12 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		rte_errno = EINVAL;
 		goto err;
 	}
-	/* In case re-configuring, release existing context at first. */
+	/*
+	 * Calling rte_flow_configure() again is allowed if and only if
+	 * provided configuration matches the initially provided one.
+	 */
 	if (priv->dr_ctx) {
-		/* */
+		MLX5_ASSERT(priv->hw_attr != NULL);
 		for (i = 0; i < priv->nb_queue; i++) {
 			hw_q = &priv->hw_q[i];
 			/* Make sure all queues are empty. */
@@ -7099,7 +7182,18 @@ flow_hw_configure(struct rte_eth_dev *dev,
 				goto err;
 			}
 		}
-		flow_hw_resource_release(dev);
+		if (flow_hw_compare_config(priv->hw_attr, port_attr, nb_queue, queue_attr))
+			return 0;
+		else
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+						  "Changing HWS configuration attributes "
+						  "is not supported");
+	}
+	priv->hw_attr = flow_hw_alloc_copy_config(port_attr, nb_queue, queue_attr, error);
+	if (!priv->hw_attr) {
+		ret = -rte_errno;
+		goto err;
 	}
 	ctrl_queue_attr.size = queue_attr[0]->size;
 	nb_q_updated = nb_queue + 1;
@@ -7384,6 +7478,8 @@ err:
 		__atomic_fetch_sub(&host_priv->shared_refcnt, 1, __ATOMIC_RELAXED);
 		priv->shared_host = NULL;
 	}
+	mlx5_free(priv->hw_attr);
+	priv->hw_attr = NULL;
 	/* Do not overwrite the internal errno information. */
 	if (ret)
 		return ret;
@@ -7468,6 +7564,8 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 		priv->shared_host = NULL;
 	}
 	priv->dr_ctx = NULL;
+	mlx5_free(priv->hw_attr);
+	priv->hw_attr = NULL;
 	priv->nb_queue = 0;
 }
 
