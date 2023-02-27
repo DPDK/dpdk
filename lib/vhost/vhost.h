@@ -798,7 +798,10 @@ hva_to_gpa(struct virtio_net *dev, uint64_t vva, uint64_t len)
 static __rte_always_inline struct virtio_net *
 get_device(int vid)
 {
-	struct virtio_net *dev = vhost_devices[vid];
+	struct virtio_net *dev = NULL;
+
+	if (likely(vid >= 0 && vid < RTE_MAX_VHOST_DEVICE))
+		dev = vhost_devices[vid];
 
 	if (unlikely(!dev)) {
 		VHOST_LOG_CONFIG("device", ERR, "(%d) device not found.\n", vid);
