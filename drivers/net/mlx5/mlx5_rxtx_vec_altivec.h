@@ -783,7 +783,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 {
 	const uint16_t q_n = 1 << rxq->cqe_n;
 	const uint16_t q_mask = q_n - 1;
-	unsigned int pos;
+	unsigned int pos, adj;
 	uint64_t n = 0;
 	uint64_t comp_idx = MLX5_VPMD_DESCS_PER_LOOP;
 	uint16_t nocmp_n = 0;
@@ -866,7 +866,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		vector unsigned char pkt_mb0, pkt_mb1, pkt_mb2, pkt_mb3;
 		vector unsigned char op_own, op_own_tmp1, op_own_tmp2;
 		vector unsigned char opcode, owner_mask, invalid_mask;
-		vector unsigned char comp_mask;
+		vector unsigned char comp_mask, mini_mask;
 		vector unsigned char mask;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		const vector unsigned char lower_half = {
@@ -1174,6 +1174,16 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			(vector unsigned long)mask);
 
 		/* D.3 check error in opcode. */
+		adj = (comp_idx != MLX5_VPMD_DESCS_PER_LOOP && comp_idx == n);
+		mask = (vector unsigned char)(vector unsigned long){
+			(adj * sizeof(uint16_t) * 8), 0};
+		lshift = vec_splat((vector unsigned long)mask, 0);
+		shmask = vec_cmpgt(shmax, lshift);
+		mini_mask = (vector unsigned char)
+			vec_sl((vector unsigned long)invalid_mask, lshift);
+		mini_mask = (vector unsigned char)
+			vec_sel((vector unsigned long)shmask,
+			(vector unsigned long)mini_mask, shmask);
 		opcode = (vector unsigned char)
 			vec_cmpeq((vector unsigned int)resp_err_check,
 			(vector unsigned int)opcode);
@@ -1182,7 +1192,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			(vector unsigned int)zero);
 		opcode = (vector unsigned char)
 			vec_andc((vector unsigned long)opcode,
-			(vector unsigned long)invalid_mask);
+			(vector unsigned long)mini_mask);
 
 		/* D.4 mark if any error is set */
 		*err |= ((vector unsigned long)opcode)[0];
