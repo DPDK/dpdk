@@ -6370,8 +6370,6 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 	rte_tel_data_add_dict_int(d, "mtu", eth_dev->data->mtu);
 	rte_tel_data_add_dict_u64(d, "rx_mbuf_size_min",
 			eth_dev->data->min_rx_buf_size);
-	rte_tel_data_add_dict_u64(d, "rx_mbuf_alloc_fail",
-			eth_dev->data->rx_mbuf_alloc_failed);
 	rte_ether_format_addr(mac_addr, sizeof(mac_addr),
 			eth_dev->data->mac_addrs);
 	rte_tel_data_add_dict_string(d, "mac_addr", mac_addr);
