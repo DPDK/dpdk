@@ -237,22 +237,10 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, const struct rte_eth_hairpin_conf *conf,
 		int ret),
-	uint16_t peer_count = conf->peer_count;
-	uint8_t tx_explicit = conf->tx_explicit;
-	uint8_t manual_bind = conf->manual_bind;
-	uint8_t use_locked_device_memory = conf->use_locked_device_memory;
-	uint8_t use_rte_memory = conf->use_rte_memory;
-	uint8_t force_memory = conf->force_memory;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u16(rx_queue_id);
 	rte_trace_point_emit_u16(nb_rx_desc);
-	rte_trace_point_emit_u16(peer_count);
-	rte_trace_point_emit_u8(tx_explicit);
-	rte_trace_point_emit_u8(manual_bind);
-	rte_trace_point_emit_u8(use_locked_device_memory);
-	rte_trace_point_emit_u8(use_rte_memory);
-	rte_trace_point_emit_u8(force_memory);
+	rte_trace_point_emit_ptr(conf);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -261,22 +249,10 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, const struct rte_eth_hairpin_conf *conf,
 		int ret),
-	uint16_t peer_count = conf->peer_count;
-	uint8_t tx_explicit = conf->tx_explicit;
-	uint8_t manual_bind = conf->manual_bind;
-	uint8_t use_locked_device_memory = conf->use_locked_device_memory;
-	uint8_t use_rte_memory = conf->use_rte_memory;
-	uint8_t force_memory = conf->force_memory;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u16(tx_queue_id);
 	rte_trace_point_emit_u16(nb_tx_desc);
-	rte_trace_point_emit_u16(peer_count);
-	rte_trace_point_emit_u8(tx_explicit);
-	rte_trace_point_emit_u8(manual_bind);
-	rte_trace_point_emit_u8(use_locked_device_memory);
-	rte_trace_point_emit_u8(use_rte_memory);
-	rte_trace_point_emit_u8(force_memory);
+	rte_trace_point_emit_ptr(conf);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -499,30 +475,16 @@ RTE_TRACE_POINT(
 RTE_TRACE_POINT(
 	rte_eth_trace_link_get_nowait,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_eth_link *link),
-	uint8_t link_duplex = link->link_duplex;
-	uint8_t link_autoneg = link->link_autoneg;
-	uint8_t link_status = link->link_status;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u32(link->link_speed);
-	rte_trace_point_emit_u8(link_duplex);
-	rte_trace_point_emit_u8(link_autoneg);
-	rte_trace_point_emit_u8(link_status);
 )
 
 RTE_TRACE_POINT(
 	rte_eth_trace_link_to_str,
 	RTE_TRACE_POINT_ARGS(size_t len, const struct rte_eth_link *link,
 		char *str, int ret),
-	uint8_t link_duplex = link->link_duplex;
-	uint8_t link_autoneg = link->link_autoneg;
-	uint8_t link_status = link->link_status;
-
 	rte_trace_point_emit_size_t(len);
 	rte_trace_point_emit_u32(link->link_speed);
-	rte_trace_point_emit_u8(link_duplex);
-	rte_trace_point_emit_u8(link_autoneg);
-	rte_trace_point_emit_u8(link_status);
 	rte_trace_point_emit_string(str);
 	rte_trace_point_emit_int(ret);
 )
@@ -1564,17 +1526,8 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_flow_pattern_template_attr *template_attr,
 		const struct rte_flow_item *pattern, const void *tmplate),
-	uint8_t relaxed_matching = template_attr->relaxed_matching;
-	uint8_t ingress = template_attr->ingress;
-	uint8_t egress = template_attr->egress;
-	uint8_t transfer = template_attr->transfer;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_ptr(template_attr);
-	rte_trace_point_emit_u8(relaxed_matching);
-	rte_trace_point_emit_u8(ingress);
-	rte_trace_point_emit_u8(egress);
-	rte_trace_point_emit_u8(transfer);
 	rte_trace_point_emit_ptr(pattern);
 	rte_trace_point_emit_ptr(tmplate);
 )
@@ -1595,15 +1548,8 @@ RTE_TRACE_POINT(
 		const struct rte_flow_actions_template_attr *template_attr,
 		const struct rte_flow_action *actions,
 		const struct rte_flow_action *masks, const void *tmplate),
-	uint8_t ingress = template_attr->ingress;
-	uint8_t egress = template_attr->egress;
-	uint8_t transfer = template_attr->transfer;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_ptr(template_attr);
-	rte_trace_point_emit_u8(ingress);
-	rte_trace_point_emit_u8(egress);
-	rte_trace_point_emit_u8(transfer);
 	rte_trace_point_emit_ptr(actions);
 	rte_trace_point_emit_ptr(masks);
 	rte_trace_point_emit_ptr(tmplate);
@@ -1628,17 +1574,10 @@ RTE_TRACE_POINT(
 		struct rte_flow_actions_template **actions_templates,
 		uint8_t nb_actions_templates,
 		const struct rte_flow_template_table *table),
-	uint8_t ingress = table_attr->flow_attr.ingress;
-	uint8_t egress = table_attr->flow_attr.egress;
-	uint8_t transfer = table_attr->flow_attr.transfer;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u32(table_attr->nb_flows);
 	rte_trace_point_emit_u32(table_attr->flow_attr.group);
 	rte_trace_point_emit_u32(table_attr->flow_attr.priority);
-	rte_trace_point_emit_u8(ingress);
-	rte_trace_point_emit_u8(egress);
-	rte_trace_point_emit_u8(transfer);
 	rte_trace_point_emit_ptr(pattern_templates);
 	rte_trace_point_emit_u8(nb_pattern_templates);
 	rte_trace_point_emit_ptr(actions_templates);
@@ -2177,15 +2116,8 @@ RTE_TRACE_POINT_FP(
 RTE_TRACE_POINT_FP(
 	rte_eth_trace_link_get,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_eth_link *link),
-	uint8_t link_duplex = link->link_duplex;
-	uint8_t link_autoneg = link->link_autoneg;
-	uint8_t link_status = link->link_status;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u32(link->link_speed);
-	rte_trace_point_emit_u8(link_duplex);
-	rte_trace_point_emit_u8(link_autoneg);
-	rte_trace_point_emit_u8(link_status);
 )
 
 /* Called in loop in examples/ip_pipeline */
@@ -2349,14 +2281,8 @@ RTE_TRACE_POINT_FP(
 		const struct rte_flow_indir_action_conf *conf,
 		const struct rte_flow_action *action,
 		const struct rte_flow_action_handle *handle),
-	uint8_t ingress = conf->ingress;
-	uint8_t egress = conf->egress;
-	uint8_t transfer = conf->transfer;
-
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u8(ingress);
-	rte_trace_point_emit_u8(egress);
-	rte_trace_point_emit_u8(transfer);
+	rte_trace_point_emit_ptr(conf);
 	rte_trace_point_emit_ptr(action);
 	rte_trace_point_emit_ptr(handle);
 )
