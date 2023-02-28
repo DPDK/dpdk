@@ -2268,8 +2268,7 @@ fips_mct_sha_test(void)
 #define SHA_EXTERN_ITER	100
 #define SHA_INTERN_ITER	1000
 #define SHA_MD_BLOCK	3
-	/* val[0] is op result and other value is for parse_writeback callback */
-	struct fips_val val[2] = {{NULL, 0},};
+	struct fips_val val = {NULL, 0};
 	struct fips_val  md[SHA_MD_BLOCK], msg;
 	int ret;
 	uint32_t i, j;
@@ -2328,7 +2327,7 @@ fips_mct_sha_test(void)
 				return ret;
 			}
 
-			ret = get_writeback_data(&val[0]);
+			ret = get_writeback_data(&val);
 			if (ret < 0)
 				return ret;
 
@@ -2337,7 +2336,7 @@ fips_mct_sha_test(void)
 			memcpy(md[1].val, md[2].val, md[2].len);
 			md[1].len = md[2].len;
 
-			memcpy(md[2].val, (val[0].val + vec.pt.len),
+			memcpy(md[2].val, (val.val + vec.pt.len),
 				vec.cipher_auth.digest.len);
 			md[2].len = vec.cipher_auth.digest.len;
 		}
@@ -2348,9 +2347,7 @@ fips_mct_sha_test(void)
 		if (info.file_type != FIPS_TYPE_JSON)
 			fprintf(info.fp_wr, "COUNT = %u\n", j);
 
-		val[1].val = msg.val;
-		val[1].len = msg.len;
-		info.parse_writeback(val);
+		info.parse_writeback(&val);
 
 		if (info.file_type != FIPS_TYPE_JSON)
 			fprintf(info.fp_wr, "\n");
@@ -2361,7 +2358,7 @@ fips_mct_sha_test(void)
 
 	rte_free(vec.pt.val);
 
-	free(val[0].val);
+	free(val.val);
 	free(msg.val);
 
 	return 0;
