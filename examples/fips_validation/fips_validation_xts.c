@@ -34,6 +34,7 @@
 #define DATAUNITLEN_JSON_STR	"dataUnitLen"
 #define PAYLOADLEN_JSON_STR	"payloadLen"
 #define TWEAKVALUE_JSON_STR	"tweakValue"
+#define SEQNUMBER_JSON_STR	"sequenceNumber"
 #define PT_JSON_STR	"pt"
 #define CT_JSON_STR	"ct"
 
@@ -95,14 +96,17 @@ parser_xts_read_keylen(const char *key, char *src, struct fips_val *val)
 static int
 parser_xts_read_tweakval(const char *key, char *src, struct fips_val *val)
 {
+	char num_str[4] = {0};
 	int ret;
 
-	if (info.interim_info.xts_data.tweak_mode == XTS_TWEAK_MODE_HEX)
+	if (info.interim_info.xts_data.tweak_mode == XTS_TWEAK_MODE_HEX) {
 		ret = parse_uint8_hex_str(key, src, val);
-	else if (info.interim_info.xts_data.tweak_mode == XTS_TWEAK_MODE_NUMBER)
-		ret = parser_read_uint32_bit_val(key, src, val);
-	else
+	} else if (info.interim_info.xts_data.tweak_mode == XTS_TWEAK_MODE_NUMBER) {
+		snprintf(num_str, RTE_DIM(num_str), "%x", atoi(src));
+		ret = parse_uint8_hex_str(key, num_str, val);
+	} else {
 		ret = -1;
+	}
 
 	return ret;
 }
@@ -122,6 +126,7 @@ struct fips_test_callback xts_interim_json_vectors[] = {
 struct fips_test_callback xts_enc_json_vectors[] = {
 		{KEY_JSON_STR, parse_uint8_known_len_hex_str, &vec.cipher_auth.key},
 		{TWEAKVALUE_JSON_STR, parser_xts_read_tweakval, &vec.iv},
+		{SEQNUMBER_JSON_STR, parser_xts_read_tweakval, &vec.iv},
 		{PT_JSON_STR, parse_uint8_hex_str, &vec.pt},
 		{NULL, NULL, NULL} /**< end pointer */
 };
