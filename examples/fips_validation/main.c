@@ -1758,6 +1758,19 @@ fips_run_test(void)
 
 	env.op = env.sym.op;
 	if (env.is_asym_test) {
+		if (info.op == FIPS_TEST_ASYM_KEYGEN &&
+			info.algo == FIPS_TEST_ALGO_ECDSA) {
+			env.op = env.asym.op;
+			test_ops.prepare_asym_xform = prepare_ecfpm_xform;
+			test_ops.prepare_asym_op = prepare_ecfpm_op;
+			ret = fips_run_asym_test();
+			if (ret < 0)
+				return ret;
+
+			info.interim_info.ecdsa_data.pubkey_gen = 0;
+			return ret;
+		}
+
 		vec.cipher_auth.digest.len = parse_test_sha_hash_size(
 						info.interim_info.rsa_data.auth);
 		test_ops.prepare_sym_xform = prepare_sha_xform;
