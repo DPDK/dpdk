@@ -339,6 +339,9 @@ int
 parse_test_gcm_json_init(void);
 
 int
+parse_test_ccm_json_init(void);
+
+int
 parse_test_hmac_json_init(void);
 
 int

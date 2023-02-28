@@ -60,6 +60,7 @@ ACVP
 * Supported test vectors
     * AES-CBC (128,192,256) - AFT, MCT
     * AES-GCM (128,192,256) - AFT
+    * AES-CCM (128,192,256) - AFT
     * AES-CMAC (128,192,256) - AFT
     * AES-CTR (128,192,256) - AFT, CTR
     * AES-GMAC (128,192,256) - AFT
