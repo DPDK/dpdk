@@ -79,7 +79,7 @@ parser_read_gcm_pt_len(const char *key, char *src,
 	if (ret < 0)
 		return ret;
 
-	if (vec.pt.len == 0) {
+	if (info.algo == FIPS_TEST_ALGO_AES_GMAC && vec.pt.len == 0) {
 		info.interim_info.gcm_data.is_gmac = 1;
 		test_ops.prepare_sym_op = prepare_auth_op;
 		test_ops.prepare_sym_xform = prepare_gmac_xform;
@@ -296,6 +296,7 @@ parse_test_gcm_json_writeback(struct fips_val *val)
 			tmp_val.val = val->val;
 			tmp_val.len = vec.pt.len;
 
+			info.one_line_text[0] = '\0';
 			writeback_hex_str("", info.one_line_text, &tmp_val);
 			ct = json_string(info.one_line_text);
 			json_object_set_new(json_info.json_write_case, CT_JSON_STR, ct);
@@ -326,6 +327,7 @@ parse_test_gcm_json_writeback(struct fips_val *val)
 				tmp_val.val = val->val;
 				tmp_val.len = vec.pt.len;
 
+				info.one_line_text[0] = '\0';
 				writeback_hex_str("", info.one_line_text, &tmp_val);
 				json_object_set_new(json_info.json_write_case, PT_JSON_STR,
 					json_string(info.one_line_text));
@@ -334,12 +336,8 @@ parse_test_gcm_json_writeback(struct fips_val *val)
 					json_true());
 			}
 		} else {
-			if (!info.interim_info.gcm_data.is_gmac)
-				json_object_set_new(json_info.json_write_case, PT_JSON_STR,
-					json_string(""));
-			else
-				json_object_set_new(json_info.json_write_case, "testPassed",
-					json_false());
+			json_object_set_new(json_info.json_write_case, "testPassed",
+				json_false());
 		}
 	}
 
