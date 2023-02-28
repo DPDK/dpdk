@@ -13,18 +13,24 @@ import os.path
 
 
 class SysfsDir:
+    verbose = False
+
     "Used to read/write paths in a sysfs directory"
     def __init__(self, path):
         self.path = path
 
     def read_int(self, filename):
         "Return a value from sysfs file"
+        if SysfsDir.verbose:
+            print(f"Reading '{filename}' in {self.path}")
         with open(os.path.join(self.path, filename)) as f:
             return int(f.readline())
 
     def write_values(self, values):
         "write dictionary, where key is filename and value is value to write"
         for filename, contents in values.items():
+            if SysfsDir.verbose:
+                print(f"Writing '{contents}' to '{filename}' in {self.path}")
             with open(os.path.join(self.path, filename), "w") as f:
                 f.write(str(contents))
 
@@ -124,12 +130,16 @@ def main(args):
                        help="Prefix for workqueue name to mark for DPDK use [default: 'dpdk']")
     arg_p.add_argument('--wq-option', action='append', default=[],
                        help="Provide additional config option for queues (format 'x=y')")
+    arg_p.add_argument('--verbose', '-v', action='store_true',
+                       help="Provide addition info on tasks being performed")
     arg_p.add_argument('--reset', action='store_true',
                        help="Reset DSA device and its queues")
     parsed_args = arg_p.parse_args(args[1:])
 
     dsa_id = parsed_args.dsa_id
     dsa_id = get_dsa_id(dsa_id) if ':' in dsa_id else dsa_id
+
+    SysfsDir.verbose = parsed_args.verbose
     if parsed_args.reset:
         reset_device(dsa_id)
     else:
