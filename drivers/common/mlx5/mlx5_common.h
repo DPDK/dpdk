@@ -180,7 +180,26 @@ enum mlx5_cqe_status {
 };
 
 /**
- * Check whether CQE is valid.
+ * Check whether CQE has an error opcode.
+ *
+ * @param op_code
+ *   Opcode to check.
+ *
+ * @return
+ *   The CQE status.
+ */
+static __rte_always_inline enum mlx5_cqe_status
+check_cqe_error(const uint8_t op_code)
+{
+	rte_io_rmb();
+	if (unlikely(op_code == MLX5_CQE_RESP_ERR ||
+		     op_code == MLX5_CQE_REQ_ERR))
+		return MLX5_CQE_STATUS_ERR;
+	return MLX5_CQE_STATUS_SW_OWN;
+}
+
+/**
+ * Check whether CQE is valid using owner bit.
  *
  * @param cqe
  *   Pointer to CQE.
@@ -201,13 +220,37 @@ check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
 	const uint8_t op_owner = MLX5_CQE_OWNER(op_own);
 	const uint8_t op_code = MLX5_CQE_OPCODE(op_own);
 
-	if (unlikely((op_owner != (!!(idx))) || (op_code == MLX5_CQE_INVALID)))
+	if (unlikely((op_owner != (!!(idx))) ||
+		     (op_code == MLX5_CQE_INVALID)))
 		return MLX5_CQE_STATUS_HW_OWN;
-	rte_io_rmb();
-	if (unlikely(op_code == MLX5_CQE_RESP_ERR ||
-		     op_code == MLX5_CQE_REQ_ERR))
-		return MLX5_CQE_STATUS_ERR;
-	return MLX5_CQE_STATUS_SW_OWN;
+	return check_cqe_error(op_code);
+}
+
+/**
+ * Check whether CQE is valid using validity iteration count.
+ *
+ * @param cqe
+ *   Pointer to CQE.
+ * @param cqes_n
+ *   Log 2 of completion queue size.
+ * @param ci
+ *   Consumer index.
+ *
+ * @return
+ *   The CQE status.
+ */
+static __rte_always_inline enum mlx5_cqe_status
+check_cqe_iteration(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
+		    const uint32_t ci)
+{
+	const uint8_t op_own = cqe->op_own;
+	const uint8_t op_code = MLX5_CQE_OPCODE(op_own);
+	const uint8_t vic = ci >> cqes_n;
+
+	if (unlikely((cqe->validity_iteration_count != vic) ||
+		     (op_code == MLX5_CQE_INVALID)))
+		return MLX5_CQE_STATUS_HW_OWN;
+	return check_cqe_error(op_code);
 }
 
 /*

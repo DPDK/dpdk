@@ -41,8 +41,10 @@ mlx5_cq_init(struct mlx5_devx_cq *cq_obj, uint16_t cq_size)
 	volatile struct mlx5_cqe *cqe = cq_obj->cqes;
 	uint16_t i;
 
-	for (i = 0; i < cq_size; i++, cqe++)
+	for (i = 0; i < cq_size; i++, cqe++) {
 		cqe->op_own = (MLX5_CQE_INVALID << 4) | MLX5_CQE_OWNER_MASK;
+		cqe->validity_iteration_count = MLX5_CQE_VIC_INIT;
+	}
 }
 
 /**

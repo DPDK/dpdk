@@ -26,11 +26,17 @@
 /* Get CQE opcode. */
 #define MLX5_CQE_OPCODE(op_own) (((op_own) & 0xf0) >> 4)
 
+/* Get CQE number of mini CQEs. */
+#define MLX5_CQE_NUM_MINIS(op_own) (((op_own) & 0xf0) >> 4)
+
 /* Get CQE solicited event. */
 #define MLX5_CQE_SE(op_own) (((op_own) >> 1) & 1)
 
 /* Invalidate a CQE. */
 #define MLX5_CQE_INVALIDATE (MLX5_CQE_INVALID << 4)
+
+/* Initialize CQE validity iteration count. */
+#define MLX5_CQE_VIC_INIT 0xffu
 
 /* Hardware index widths. */
 #define MLX5_CQ_INDEX_WIDTH 24
@@ -442,7 +448,7 @@ struct mlx5_cqe {
 	uint64_t timestamp;
 	uint32_t sop_drop_qpn;
 	uint16_t wqe_counter;
-	uint8_t rsvd5;
+	uint8_t validity_iteration_count;
 	uint8_t op_own;
 };
 
@@ -450,7 +456,7 @@ struct mlx5_cqe_ts {
 	uint64_t timestamp;
 	uint32_t sop_drop_qpn;
 	uint16_t wqe_counter;
-	uint8_t rsvd5;
+	uint8_t validity_iteration_count;
 	uint8_t op_own;
 };
 
@@ -5065,8 +5071,8 @@ struct mlx5_mini_cqe8 {
 		};
 		struct {
 			uint16_t wqe_counter;
+			uint8_t  validity_iteration_count;
 			uint8_t  s_wqe_opcode;
-			uint8_t  reserved;
 		} s_wqe_info;
 	};
 	union {
