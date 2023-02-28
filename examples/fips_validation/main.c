@@ -2267,22 +2267,27 @@ fips_mct_sha_test(void)
 {
 #define SHA_EXTERN_ITER	100
 #define SHA_INTERN_ITER	1000
-#define SHA_MD_BLOCK	3
+	uint8_t md_blocks = info.interim_info.sha_data.md_blocks;
 	struct fips_val val = {NULL, 0};
-	struct fips_val  md[SHA_MD_BLOCK], msg;
+	struct fips_val  md[md_blocks];
 	int ret;
-	uint32_t i, j;
+	uint32_t i, j, k, offset, max_outlen;
 
-	msg.len = SHA_MD_BLOCK * vec.cipher_auth.digest.len;
-	msg.val = calloc(1, msg.len);
+	max_outlen = md_blocks * vec.cipher_auth.digest.len;
+
+	if (vec.cipher_auth.digest.val)
+		free(vec.cipher_auth.digest.val);
+
+	vec.cipher_auth.digest.val = calloc(1, max_outlen);
+
 	if (vec.pt.val)
 		memcpy(vec.cipher_auth.digest.val, vec.pt.val, vec.cipher_auth.digest.len);
 
-	for (i = 0; i < SHA_MD_BLOCK; i++)
-		md[i].val = rte_malloc(NULL, (MAX_DIGEST_SIZE*2), 0);
-
 	rte_free(vec.pt.val);
-	vec.pt.val = rte_malloc(NULL, (MAX_DIGEST_SIZE*SHA_MD_BLOCK), 0);
+	vec.pt.val = rte_malloc(NULL, (MAX_DIGEST_SIZE*md_blocks), 0);
+
+	for (i = 0; i < md_blocks; i++)
+		md[i].val = rte_malloc(NULL, (MAX_DIGEST_SIZE*2), 0);
 
 	if (info.file_type != FIPS_TYPE_JSON) {
 		fips_test_write_one_case();
@@ -2290,30 +2295,19 @@ fips_mct_sha_test(void)
 	}
 
 	for (j = 0; j < SHA_EXTERN_ITER; j++) {
-
-		memcpy(md[0].val, vec.cipher_auth.digest.val,
-			vec.cipher_auth.digest.len);
-		md[0].len = vec.cipher_auth.digest.len;
-		memcpy(md[1].val, vec.cipher_auth.digest.val,
-			vec.cipher_auth.digest.len);
-		md[1].len = vec.cipher_auth.digest.len;
-		memcpy(md[2].val, vec.cipher_auth.digest.val,
-			vec.cipher_auth.digest.len);
-		md[2].len = vec.cipher_auth.digest.len;
-
-		for (i = 0; i < SHA_MD_BLOCK; i++)
-			memcpy(&msg.val[i * md[i].len], md[i].val, md[i].len);
+		for (i = 0; i < md_blocks; i++) {
+			memcpy(md[i].val, vec.cipher_auth.digest.val,
+				vec.cipher_auth.digest.len);
+			md[i].len = vec.cipher_auth.digest.len;
+		}
 
 		for (i = 0; i < (SHA_INTERN_ITER); i++) {
-
-			memcpy(vec.pt.val, md[0].val,
-				(size_t)md[0].len);
-			memcpy((vec.pt.val + md[0].len), md[1].val,
-				(size_t)md[1].len);
-			memcpy((vec.pt.val + md[0].len + md[1].len),
-				md[2].val,
-				(size_t)md[2].len);
-			vec.pt.len = md[0].len + md[1].len + md[2].len;
+			offset = 0;
+			for (k = 0; k < md_blocks; k++) {
+				memcpy(vec.pt.val + offset, md[k].val, (size_t)md[k].len);
+				offset += md[k].len;
+			}
+			vec.pt.len = offset;
 
 			ret = fips_run_test();
 			if (ret < 0) {
@@ -2331,18 +2325,18 @@ fips_mct_sha_test(void)
 			if (ret < 0)
 				return ret;
 
-			memcpy(md[0].val, md[1].val, md[1].len);
-			md[0].len = md[1].len;
-			memcpy(md[1].val, md[2].val, md[2].len);
-			md[1].len = md[2].len;
+			for (k = 1; k < md_blocks; k++) {
+				memcpy(md[k-1].val, md[k].val, md[k].len);
+				md[k-1].len = md[k].len;
+			}
 
-			memcpy(md[2].val, (val.val + vec.pt.len),
+			memcpy(md[md_blocks-1].val, (val.val + vec.pt.len),
 				vec.cipher_auth.digest.len);
-			md[2].len = vec.cipher_auth.digest.len;
+			md[md_blocks-1].len = vec.cipher_auth.digest.len;
 		}
 
-		memcpy(vec.cipher_auth.digest.val, md[2].val, md[2].len);
-		vec.cipher_auth.digest.len = md[2].len;
+		memcpy(vec.cipher_auth.digest.val, md[md_blocks-1].val, md[md_blocks-1].len);
+		vec.cipher_auth.digest.len = md[md_blocks-1].len;
 
 		if (info.file_type != FIPS_TYPE_JSON)
 			fprintf(info.fp_wr, "COUNT = %u\n", j);
@@ -2353,14 +2347,12 @@ fips_mct_sha_test(void)
 			fprintf(info.fp_wr, "\n");
 	}
 
-	for (i = 0; i < (SHA_MD_BLOCK); i++)
+	for (i = 0; i < (md_blocks); i++)
 		rte_free(md[i].val);
 
 	rte_free(vec.pt.val);
 
 	free(val.val);
-	free(msg.val);
-
 	return 0;
 }
 

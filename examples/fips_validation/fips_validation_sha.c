@@ -32,6 +32,10 @@ struct plain_hash_size_conversion {
 		{"32", RTE_CRYPTO_AUTH_SHA256},
 		{"48", RTE_CRYPTO_AUTH_SHA384},
 		{"64", RTE_CRYPTO_AUTH_SHA512},
+		{"28", RTE_CRYPTO_AUTH_SHA3_224},
+		{"32", RTE_CRYPTO_AUTH_SHA3_256},
+		{"48", RTE_CRYPTO_AUTH_SHA3_384},
+		{"64", RTE_CRYPTO_AUTH_SHA3_512},
 };
 
 int
@@ -96,12 +100,17 @@ static struct {
 static struct plain_hash_algorithms {
 	const char *str;
 	enum rte_crypto_auth_algorithm algo;
+	uint8_t md_blocks;
 } json_algorithms[] = {
-		{"SHA-1", RTE_CRYPTO_AUTH_SHA1},
-		{"SHA2-224", RTE_CRYPTO_AUTH_SHA224},
-		{"SHA2-256", RTE_CRYPTO_AUTH_SHA256},
-		{"SHA2-384", RTE_CRYPTO_AUTH_SHA384},
-		{"SHA2-512", RTE_CRYPTO_AUTH_SHA512},
+		{"SHA-1", RTE_CRYPTO_AUTH_SHA1, 3},
+		{"SHA2-224", RTE_CRYPTO_AUTH_SHA224, 3},
+		{"SHA2-256", RTE_CRYPTO_AUTH_SHA256, 3},
+		{"SHA2-384", RTE_CRYPTO_AUTH_SHA384, 3},
+		{"SHA2-512", RTE_CRYPTO_AUTH_SHA512, 3},
+		{"SHA3-224", RTE_CRYPTO_AUTH_SHA3_224, 1},
+		{"SHA3-256", RTE_CRYPTO_AUTH_SHA3_256, 1},
+		{"SHA3-384", RTE_CRYPTO_AUTH_SHA3_384, 1},
+		{"SHA3-512", RTE_CRYPTO_AUTH_SHA3_512, 1},
 };
 
 struct fips_test_callback sha_tests_json_vectors[] = {
@@ -233,6 +242,7 @@ parse_test_sha_json_algorithm(void)
 	for (i = 0; i < RTE_DIM(json_algorithms); i++) {
 		if (strstr(algorithm_str, json_algorithms[i].str)) {
 			info.interim_info.sha_data.algo = json_algorithms[i].algo;
+			info.interim_info.sha_data.md_blocks = json_algorithms[i].md_blocks;
 			break;
 		}
 	}

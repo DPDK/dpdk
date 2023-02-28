@@ -205,6 +205,7 @@ struct sha_interim_data {
 	/* keep algo always on top as it is also used in asym digest */
 	enum rte_crypto_auth_algorithm algo;
 	enum fips_sha_test_types test_type;
+	uint8_t md_blocks;
 };
 
 struct gcm_interim_data {
