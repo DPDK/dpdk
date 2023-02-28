@@ -1009,6 +1009,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 						mini_cqe_resp_flow_tag);
 	attr->mini_cqe_resp_l3_l4_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						 mini_cqe_resp_l3_l4_tag);
+	attr->enhanced_cqe_compression = MLX5_GET(cmd_hca_cap, hcattr,
+						 enhanced_cqe_compression);
 	attr->umr_indirect_mkey_disabled =
 		MLX5_GET(cmd_hca_cap, hcattr, umr_indirect_mkey_disabled);
 	attr->umr_modify_entity_size_disabled =
@@ -2067,6 +2069,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	MLX5_SET(cqc, cqctx, c_eqn, attr->eqn);
 	MLX5_SET(cqc, cqctx, uar_page, attr->uar_page_id);
 	MLX5_SET(cqc, cqctx, cqe_comp_en, !!attr->cqe_comp_en);
+	MLX5_SET(cqc, cqctx, cqe_comp_layout, !!attr->cqe_comp_layout);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format, attr->mini_cqe_res_format);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format_ext,
 		 attr->mini_cqe_res_format_ext);
