@@ -122,6 +122,7 @@ struct mlx5_rxq_data {
 	volatile struct mlx5_cqe(*cqes)[];
 	struct mlx5_cqe title_cqe; /* Title CQE for CQE compression. */
 	struct rte_mbuf *(*elts)[];
+	struct rte_mbuf title_pkt; /* Title packet for CQE compression. */
 	struct mlx5_mprq_buf *(*mprq_bufs)[];
 	struct rte_mempool *mp;
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
