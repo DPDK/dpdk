@@ -182,7 +182,7 @@ parse_test_sha_json_writeback(struct fips_val *val)
 static int
 parse_test_sha_mct_json_writeback(struct fips_val *val)
 {
-	json_t *tcId, *msg, *md, *resArr, *res;
+	json_t *tcId, *md, *resArr, *res;
 	struct fips_val val_local;
 
 	tcId = json_object_get(json_info.json_test_case, "tcId");
@@ -208,11 +208,7 @@ parse_test_sha_mct_json_writeback(struct fips_val *val)
 
 	res = json_object();
 
-	writeback_hex_str("", info.one_line_text, &val[1]);
-	msg = json_string(info.one_line_text);
-	json_object_set_new(res, "msg", msg);
-
-	val_local.val = val[0].val + vec.pt.len;
+	val_local.val = val->val + vec.pt.len;
 	val_local.len = vec.cipher_auth.digest.len;
 
 	writeback_hex_str("", info.one_line_text, &val_local);
