@@ -2033,7 +2033,8 @@ nfp_flow_compile_items(struct nfp_flower_representor *representor,
 static int
 nfp_flow_action_output(char *act_data,
 		const struct rte_flow_action *action,
-		struct nfp_fl_rule_metadata *nfp_flow_meta)
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		uint32_t output_cnt)
 {
 	size_t act_size;
 	struct rte_eth_dev *ethdev;
@@ -2052,8 +2053,9 @@ nfp_flow_action_output(char *act_data,
 	output = (struct nfp_fl_act_output *)act_data;
 	output->head.jump_id = NFP_FL_ACTION_OPCODE_OUTPUT;
 	output->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
-	output->flags        = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
 	output->port         = rte_cpu_to_be_32(representor->port_id);
+	if (output_cnt == 0)
+		output->flags = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
 
 	nfp_flow_meta->shortcut = rte_cpu_to_be_32(representor->port_id);
 
@@ -3307,12 +3309,27 @@ nfp_flow_action_meter(struct nfp_flower_representor *representor,
 	return 0;
 }
 
+static uint32_t
+nfp_flow_count_output(const struct rte_flow_action actions[])
+{
+	uint32_t count = 0;
+	const struct rte_flow_action *action;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		if (action->type == RTE_FLOW_ACTION_TYPE_PORT_ID)
+			count++;
+	}
+
+	return count;
+}
+
 static int
 nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
 {
 	int ret = 0;
+	uint32_t count;
 	char *position;
 	char *action_data;
 	bool ttl_tos_flag = false;
@@ -3331,6 +3348,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 	position      = action_data;
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
 
+	count = nfp_flow_count_output(actions);
+
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		switch (action->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -3347,7 +3366,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_PORT_ID");
-			ret = nfp_flow_action_output(position, action, nfp_flow_meta);
+			count--;
+			ret = nfp_flow_action_output(position, action, nfp_flow_meta, count);
 			if (ret != 0) {
 				PMD_DRV_LOG(ERR, "Failed when process"
 						" RTE_FLOW_ACTION_TYPE_PORT_ID");
