@@ -22,6 +22,9 @@
 #define TESTTYPE_JSON_STR	"testType"
 
 #define PT_JSON_STR		"msg"
+#define OUTLEN_JSON_STR	"outLen"
+#define MINOUTLEN_JSON_STR	"minOutLen"
+#define MAXOUTLEN_JSON_STR	"maxOutLen"
 
 struct plain_hash_size_conversion {
 	const char *str;
@@ -36,6 +39,8 @@ struct plain_hash_size_conversion {
 		{"32", RTE_CRYPTO_AUTH_SHA3_256},
 		{"48", RTE_CRYPTO_AUTH_SHA3_384},
 		{"64", RTE_CRYPTO_AUTH_SHA3_512},
+		{"16", RTE_CRYPTO_AUTH_SHAKE_128},
+		{"32", RTE_CRYPTO_AUTH_SHAKE_256},
 };
 
 int
@@ -89,12 +94,26 @@ struct fips_test_callback sha_tests_interim_vectors[] = {
 };
 
 #ifdef USE_JANSSON
+static int
+parse_interim_str(const char *key, char *src, struct fips_val *val)
+{
+	RTE_SET_USED(val);
+
+	if (strcmp(key, MINOUTLEN_JSON_STR) == 0)
+		info.interim_info.sha_data.min_outlen = atoi(src) / 8;
+	else if (strcmp(key, MAXOUTLEN_JSON_STR) == 0)
+		vec.cipher_auth.digest.len = atoi(src) / 8;
+
+	return 0;
+}
+
 static struct {
 	uint32_t type;
 	const char *desc;
 } sha_test_types[] = {
 		{SHA_MCT, "MCT"},
 		{SHA_AFT, "AFT"},
+		{SHAKE_VOT, "VOT"},
 };
 
 static struct plain_hash_algorithms {
@@ -111,10 +130,19 @@ static struct plain_hash_algorithms {
 		{"SHA3-256", RTE_CRYPTO_AUTH_SHA3_256, 1},
 		{"SHA3-384", RTE_CRYPTO_AUTH_SHA3_384, 1},
 		{"SHA3-512", RTE_CRYPTO_AUTH_SHA3_512, 1},
+		{"SHAKE-128", RTE_CRYPTO_AUTH_SHAKE_128, 1},
+		{"SHAKE-256", RTE_CRYPTO_AUTH_SHAKE_256, 1},
 };
 
 struct fips_test_callback sha_tests_json_vectors[] = {
 		{PT_JSON_STR, parse_uint8_hex_str, &vec.pt},
+		{OUTLEN_JSON_STR, parser_read_uint32_bit_val, &vec.cipher_auth.digest},
+		{NULL, NULL, NULL} /**< end pointer */
+};
+
+struct fips_test_callback sha_tests_interim_json_vectors[] = {
+		{MINOUTLEN_JSON_STR, parse_interim_str, NULL},
+		{MAXOUTLEN_JSON_STR, parse_interim_str, NULL},
 		{NULL, NULL, NULL} /**< end pointer */
 };
 #endif /* USE_JANSSON */
@@ -185,6 +213,11 @@ parse_test_sha_json_writeback(struct fips_val *val)
 	md = json_string(info.one_line_text);
 	json_object_set_new(json_info.json_write_case, "md", md);
 
+	if (info.interim_info.sha_data.algo == RTE_CRYPTO_AUTH_SHAKE_128 ||
+		info.interim_info.sha_data.algo == RTE_CRYPTO_AUTH_SHAKE_256)
+		json_object_set_new(json_info.json_write_case, "outLen",
+			json_integer(vec.cipher_auth.digest.len * 8));
+
 	return 0;
 }
 
@@ -193,6 +226,11 @@ parse_test_sha_mct_json_writeback(struct fips_val *val)
 {
 	json_t *tcId, *md, *resArr, *res;
 	struct fips_val val_local;
+	bool is_shake = false;
+
+	if (info.interim_info.sha_data.algo == RTE_CRYPTO_AUTH_SHAKE_128 ||
+		info.interim_info.sha_data.algo == RTE_CRYPTO_AUTH_SHAKE_256)
+		is_shake = true;
 
 	tcId = json_object_get(json_info.json_test_case, "tcId");
 	if (json_info.json_write_case) {
@@ -204,11 +242,17 @@ parse_test_sha_mct_json_writeback(struct fips_val *val)
 			json_object_set_new(json_info.json_write_case, "tcId", tcId);
 			json_object_set_new(json_info.json_write_case, "resultsArray",
 								json_array());
+			if (is_shake)
+				json_object_set_new(json_info.json_write_case, "outLen",
+									json_integer(0));
 		}
 	} else {
 		json_info.json_write_case = json_object();
 		json_object_set_new(json_info.json_write_case, "tcId", tcId);
 		json_object_set_new(json_info.json_write_case, "resultsArray", json_array());
+		if (is_shake)
+			json_object_set_new(json_info.json_write_case, "outLen",
+								json_integer(0));
 	}
 
 	resArr = json_object_get(json_info.json_write_case, "resultsArray");
@@ -223,6 +267,9 @@ parse_test_sha_mct_json_writeback(struct fips_val *val)
 	writeback_hex_str("", info.one_line_text, &val_local);
 	md = json_string(info.one_line_text);
 	json_object_set_new(res, "md", md);
+
+	if (is_shake)
+		json_object_set_new(res, "outLen", json_integer(vec.cipher_auth.digest.len * 8));
 
 	json_array_append_new(resArr, res);
 	return 0;
@@ -250,12 +297,17 @@ parse_test_sha_json_algorithm(void)
 	if (i == RTE_DIM(json_algorithms))
 		return -1;
 
-	sz = parse_test_sha_hash_size(info.interim_info.sha_data.algo);
+	if (info.interim_info.sha_data.test_type == SHAKE_VOT) {
+		sz = vec.cipher_auth.digest.len;
+	} else {
+		sz = parse_test_sha_hash_size(info.interim_info.sha_data.algo);
+		vec.cipher_auth.digest.len = sz;
+	}
+
 	if (sz < 0)
 		return -1;
 
 	free(vec.cipher_auth.digest.val);
-	vec.cipher_auth.digest.len = sz;
 	vec.cipher_auth.digest.val = calloc(1, sz);
 	if (vec.cipher_auth.digest.val == NULL)
 		return -1;
@@ -288,6 +340,7 @@ parse_test_sha_json_test_type(void)
 		info.parse_writeback = parse_test_sha_mct_json_writeback;
 		break;
 	case SHA_AFT:
+	case SHAKE_VOT:
 		info.parse_writeback = parse_test_sha_json_writeback;
 		break;
 	default:
@@ -308,12 +361,12 @@ parse_test_sha_json_init(void)
 	info.callbacks = sha_tests_json_vectors;
 	info.writeback_callbacks = NULL;
 	info.kat_check = rsp_test_sha_check;
-	info.interim_callbacks = NULL;
-
-	if (parse_test_sha_json_algorithm() < 0)
-		return -1;
+	info.interim_callbacks = sha_tests_interim_json_vectors;
 
 	if (parse_test_sha_json_test_type() < 0)
+		return -1;
+
+	if (parse_test_sha_json_algorithm() < 0)
 		return -1;
 
 	return 0;

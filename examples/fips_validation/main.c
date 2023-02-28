@@ -2356,6 +2356,95 @@ fips_mct_sha_test(void)
 	return 0;
 }
 
+static int
+fips_mct_shake_test(void)
+{
+#define SHAKE_EXTERN_ITER	100
+#define SHAKE_INTERN_ITER	1000
+	uint32_t i, j, range, outlen, max_outlen;
+	struct fips_val val = {NULL, 0}, md;
+	uint8_t rightmost[2];
+	uint16_t *rightptr;
+	int ret;
+
+	max_outlen = vec.cipher_auth.digest.len;
+
+	if (vec.cipher_auth.digest.val)
+		free(vec.cipher_auth.digest.val);
+
+	vec.cipher_auth.digest.val = calloc(1, max_outlen);
+
+	if (vec.pt.val)
+		memcpy(vec.cipher_auth.digest.val, vec.pt.val, vec.pt.len);
+
+	rte_free(vec.pt.val);
+	vec.pt.val = rte_malloc(NULL, 16, 0);
+	vec.pt.len = 16;
+
+	md.val = rte_malloc(NULL, max_outlen, 0);
+	md.len = max_outlen;
+
+	if (info.file_type != FIPS_TYPE_JSON) {
+		fips_test_write_one_case();
+		fprintf(info.fp_wr, "\n");
+	}
+
+	range = max_outlen - info.interim_info.sha_data.min_outlen + 1;
+	outlen = max_outlen;
+	for (j = 0; j < SHAKE_EXTERN_ITER; j++) {
+		memset(md.val, 0, max_outlen);
+		memcpy(md.val, vec.cipher_auth.digest.val,
+			vec.cipher_auth.digest.len);
+
+		for (i = 0; i < (SHAKE_INTERN_ITER); i++) {
+			memset(vec.pt.val, 0, vec.pt.len);
+			memcpy(vec.pt.val, md.val, vec.pt.len);
+			vec.cipher_auth.digest.len = outlen;
+			ret = fips_run_test();
+			if (ret < 0) {
+				if (ret == -EPERM || ret == -ENOTSUP) {
+					if (info.file_type == FIPS_TYPE_JSON)
+						return ret;
+
+					fprintf(info.fp_wr, "Bypass\n\n");
+					return 0;
+				}
+				return ret;
+			}
+
+			ret = get_writeback_data(&val);
+			if (ret < 0)
+				return ret;
+
+			memset(md.val, 0, max_outlen);
+			memcpy(md.val, (val.val + vec.pt.len),
+				vec.cipher_auth.digest.len);
+			md.len = outlen;
+			rightmost[0] = md.val[md.len-1];
+			rightmost[1] = md.val[md.len-2];
+			rightptr = (uint16_t *)rightmost;
+			outlen = info.interim_info.sha_data.min_outlen +
+				(*rightptr % range);
+		}
+
+		memcpy(vec.cipher_auth.digest.val, md.val, md.len);
+		vec.cipher_auth.digest.len = md.len;
+
+		if (info.file_type != FIPS_TYPE_JSON)
+			fprintf(info.fp_wr, "COUNT = %u\n", j);
+
+		info.parse_writeback(&val);
+
+		if (info.file_type != FIPS_TYPE_JSON)
+			fprintf(info.fp_wr, "\n");
+	}
+
+	rte_free(md.val);
+	rte_free(vec.pt.val);
+
+	free(val.val);
+	return 0;
+}
 
 static int
 init_test_ops(void)
@@ -2408,7 +2497,11 @@ init_test_ops(void)
 		test_ops.prepare_sym_op = prepare_auth_op;
 		test_ops.prepare_sym_xform = prepare_sha_xform;
 		if (info.interim_info.sha_data.test_type == SHA_MCT)
-			test_ops.test = fips_mct_sha_test;
+			if (info.interim_info.sha_data.algo == RTE_CRYPTO_AUTH_SHAKE_128 ||
+				info.interim_info.sha_data.algo == RTE_CRYPTO_AUTH_SHAKE_256)
+				test_ops.test = fips_mct_shake_test;
+			else
+				test_ops.test = fips_mct_sha_test;
 		else
 			test_ops.test = fips_generic_test;
 		break;
