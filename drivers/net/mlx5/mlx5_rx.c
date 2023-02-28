@@ -39,7 +39,8 @@ rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 
 static __rte_always_inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
-		 uint16_t cqe_cnt, volatile struct mlx5_mini_cqe8 **mcqe,
+		 uint16_t cqe_n, uint16_t cqe_mask,
+		 volatile struct mlx5_mini_cqe8 **mcqe,
 		 uint16_t *skip_cnt, bool mprq);
 
 static __rte_always_inline uint32_t
@@ -297,15 +298,22 @@ int mlx5_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 	const unsigned int cqe_num = 1 << rxq->cqe_n;
 	const unsigned int cqe_mask = cqe_num - 1;
 	const uint16_t idx = rxq->cq_ci & cqe_num;
+	const uint8_t vic = rxq->cq_ci >> rxq->cqe_n;
 	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
 
 	if (unlikely(rxq->cqes == NULL)) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	pmc->addr = &cqe->op_own;
-	pmc->opaque[CLB_VAL_IDX] = !!idx;
-	pmc->opaque[CLB_MSK_IDX] = MLX5_CQE_OWNER_MASK;
+	if (rxq->cqe_comp_layout) {
+		pmc->addr = &cqe->validity_iteration_count;
+		pmc->opaque[CLB_VAL_IDX] = vic;
+		pmc->opaque[CLB_MSK_IDX] = MLX5_CQE_VIC_INIT;
+	} else {
+		pmc->addr = &cqe->op_own;
+		pmc->opaque[CLB_VAL_IDX] = !!idx;
+		pmc->opaque[CLB_MSK_IDX] = MLX5_CQE_OWNER_MASK;
+	}
 	pmc->fn = mlx5_monitor_callback;
 	pmc->size = sizeof(uint8_t);
 	return 0;
@@ -593,6 +601,10 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
  *   Pointer to RX queue.
  * @param cqe
  *   CQE to process.
+ * @param cqe_n
+ *   Completion queue count.
+ * @param cqe_mask
+ *   Completion queue mask.
  * @param[out] mcqe
  *   Store pointer to mini-CQE if compressed. Otherwise, the pointer is not
  *   written.
@@ -608,13 +620,13 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
  */
 static inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
-		 uint16_t cqe_cnt, volatile struct mlx5_mini_cqe8 **mcqe,
+		 uint16_t cqe_n, uint16_t cqe_mask,
+		 volatile struct mlx5_mini_cqe8 **mcqe,
 		 uint16_t *skip_cnt, bool mprq)
 {
 	struct rxq_zip *zip = &rxq->zip;
-	uint16_t cqe_n = cqe_cnt + 1;
 	int len = 0, ret = 0;
-	uint16_t idx, end;
+	uint32_t idx, end;
 
 	do {
 		len = 0;
@@ -623,39 +635,47 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			volatile struct mlx5_mini_cqe8 (*mc)[8] =
 				(volatile struct mlx5_mini_cqe8 (*)[8])
 				(uintptr_t)(&(*rxq->cqes)[zip->ca &
-							  cqe_cnt].pkt_info);
+							cqe_mask].pkt_info);
 			len = rte_be_to_cpu_32((*mc)[zip->ai & 7].byte_cnt &
-					       rxq->byte_mask);
+						rxq->byte_mask);
 			*mcqe = &(*mc)[zip->ai & 7];
-			if ((++zip->ai & 7) == 0) {
-				/* Invalidate consumed CQEs */
-				idx = zip->ca;
-				end = zip->na;
-				while (idx != end) {
-					(*rxq->cqes)[idx & cqe_cnt].op_own =
-						MLX5_CQE_INVALIDATE;
-					++idx;
+			if (rxq->cqe_comp_layout) {
+				zip->ai++;
+				if (unlikely(rxq->zip.ai == rxq->zip.cqe_cnt)) {
+					rxq->cq_ci = zip->cq_ci;
+					zip->ai = 0;
 				}
-				/*
-				 * Increment consumer index to skip the number
-				 * of CQEs consumed. Hardware leaves holes in
-				 * the CQ ring for software use.
-				 */
-				zip->ca = zip->na;
-				zip->na += 8;
-			}
-			if (unlikely(rxq->zip.ai == rxq->zip.cqe_cnt)) {
-				/* Invalidate the rest */
-				idx = zip->ca;
-				end = zip->cq_ci;
+			} else {
+				if ((++zip->ai & 7) == 0) {
+					/* Invalidate consumed CQEs */
+					idx = zip->ca;
+					end = zip->na;
+					while (idx != end) {
+						(*rxq->cqes)[idx & cqe_mask].op_own =
+							MLX5_CQE_INVALIDATE;
+						++idx;
+					}
+					/*
+					 * Increment consumer index to skip the number
+					 * of CQEs consumed. Hardware leaves holes in
+					 * the CQ ring for software use.
+					 */
+					zip->ca = zip->na;
+					zip->na += 8;
+				}
+				if (unlikely(rxq->zip.ai == rxq->zip.cqe_cnt)) {
+					/* Invalidate the rest */
+					idx = zip->ca;
+					end = zip->cq_ci;
 
-				while (idx != end) {
-					(*rxq->cqes)[idx & cqe_cnt].op_own =
-						MLX5_CQE_INVALIDATE;
-					++idx;
+					while (idx != end) {
+						(*rxq->cqes)[idx & cqe_mask].op_own =
+							MLX5_CQE_INVALIDATE;
+						++idx;
+					}
+					rxq->cq_ci = zip->cq_ci;
+					zip->ai = 0;
 				}
-				rxq->cq_ci = zip->cq_ci;
-				zip->ai = 0;
 			}
 		/*
 		 * No compressed data, get next CQE and verify if it is
@@ -665,7 +685,9 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			int8_t op_own;
 			uint32_t cq_ci;
 
-			ret = check_cqe(cqe, cqe_n, rxq->cq_ci);
+			ret = (rxq->cqe_comp_layout) ?
+				check_cqe_iteration(cqe, rxq->cqe_n, rxq->cq_ci) :
+				check_cqe(cqe, cqe_n, rxq->cq_ci);
 			if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
 				if (unlikely(ret == MLX5_CQE_STATUS_ERR ||
 					     rxq->err_state)) {
@@ -685,16 +707,18 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 			 * actual CQE boundary (not pointing to the middle
 			 * of compressed CQE session).
 			 */
-			cq_ci = rxq->cq_ci + 1;
+			cq_ci = rxq->cq_ci + !rxq->cqe_comp_layout;
 			op_own = cqe->op_own;
 			if (MLX5_CQE_FORMAT(op_own) == MLX5_COMPRESSED) {
 				volatile struct mlx5_mini_cqe8 (*mc)[8] =
 					(volatile struct mlx5_mini_cqe8 (*)[8])
 					(uintptr_t)(&(*rxq->cqes)
-						[cq_ci & cqe_cnt].pkt_info);
+						[cq_ci & cqe_mask].pkt_info);
 
 				/* Fix endianness. */
-				zip->cqe_cnt = rte_be_to_cpu_32(cqe->byte_cnt);
+				zip->cqe_cnt = rxq->cqe_comp_layout ?
+					(MLX5_CQE_NUM_MINIS(op_own) + 1U) :
+					rte_be_to_cpu_32(cqe->byte_cnt);
 				/*
 				 * Current mini array position is the one
 				 * returned by check_cqe64().
@@ -703,27 +727,44 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 				 * as a special case the second one is located
 				 * 7 CQEs after the initial CQE instead of 8
 				 * for subsequent ones.
-				 */
+				*/
 				zip->ca = cq_ci;
 				zip->na = zip->ca + 7;
 				/* Compute the next non compressed CQE. */
 				zip->cq_ci = rxq->cq_ci + zip->cqe_cnt;
 				/* Get packet size to return. */
 				len = rte_be_to_cpu_32((*mc)[0].byte_cnt &
-						       rxq->byte_mask);
+							rxq->byte_mask);
 				*mcqe = &(*mc)[0];
-				zip->ai = 1;
-				/* Prefetch all to be invalidated */
-				idx = zip->ca;
-				end = zip->cq_ci;
-				while (idx != end) {
-					rte_prefetch0(&(*rxq->cqes)[(idx) &
-								    cqe_cnt]);
-					++idx;
+				if (rxq->cqe_comp_layout) {
+					if (MLX5_CQE_NUM_MINIS(op_own))
+						zip->ai = 1;
+					else
+						rxq->cq_ci = zip->cq_ci;
+				} else {
+					zip->ai = 1;
+					/* Prefetch all to be invalidated */
+					idx = zip->ca;
+					end = zip->cq_ci;
+					while (idx != end) {
+						rte_prefetch0(&(*rxq->cqes)[(idx) & cqe_mask]);
+						++idx;
+					}
 				}
 			} else {
-				rxq->cq_ci = cq_ci;
+				++rxq->cq_ci;
 				len = rte_be_to_cpu_32(cqe->byte_cnt);
+				if (rxq->cqe_comp_layout) {
+					volatile struct mlx5_cqe *next;
+
+					next = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
+					ret = check_cqe_iteration(next, rxq->cqe_n, rxq->cq_ci);
+					if (ret != MLX5_CQE_STATUS_SW_OWN ||
+					    MLX5_CQE_FORMAT(next->op_own) == MLX5_COMPRESSED)
+						rte_memcpy(&rxq->title_cqe,
+							   (const void *)(uintptr_t)cqe,
+							   sizeof(struct mlx5_cqe));
+				}
 			}
 		}
 		if (unlikely(rxq->err_state)) {
@@ -732,7 +773,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 				rxq->err_state = MLX5_RXQ_ERR_STATE_NO_ERROR;
 				return len & MLX5_ERROR_CQE_MASK;
 			}
-			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
+			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
 			++rxq->stats.idropped;
 			(*skip_cnt) += mprq ? (len & MLX5_MPRQ_STRIDE_NUM_MASK) >>
 				MLX5_MPRQ_STRIDE_NUM_SHIFT : 1;
@@ -875,20 +916,22 @@ uint16_t
 mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct mlx5_rxq_data *rxq = dpdk_rxq;
-	const unsigned int wqe_cnt = (1 << rxq->elts_n) - 1;
-	const unsigned int cqe_cnt = (1 << rxq->cqe_n) - 1;
+	const uint32_t wqe_n = 1 << rxq->elts_n;
+	const uint32_t wqe_mask = wqe_n - 1;
+	const uint32_t cqe_n = 1 << rxq->cqe_n;
+	const uint32_t cqe_mask = cqe_n - 1;
 	const unsigned int sges_n = rxq->sges_n;
 	struct rte_mbuf *pkt = NULL;
 	struct rte_mbuf *seg = NULL;
 	volatile struct mlx5_cqe *cqe =
-		&(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
+		&(*rxq->cqes)[rxq->cq_ci & cqe_mask];
 	unsigned int i = 0;
 	unsigned int rq_ci = rxq->rq_ci << sges_n;
 	int len = 0; /* keep its value across iterations. */
 
 	while (pkts_n) {
 		uint16_t skip_cnt;
-		unsigned int idx = rq_ci & wqe_cnt;
+		unsigned int idx = rq_ci & wqe_mask;
 		volatile struct mlx5_wqe_data_seg *wqe =
 			&((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[idx];
 		struct rte_mbuf *rep = (*rxq->elts)[idx];
@@ -925,8 +968,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			break;
 		}
 		if (!pkt) {
-			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
-			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt, &mcqe, &skip_cnt, false);
+			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
+			len = mlx5_rx_poll_len(rxq, cqe, cqe_n, cqe_mask, &mcqe, &skip_cnt, false);
 			if (unlikely(len & MLX5_ERROR_CQE_MASK)) {
 				if (len == MLX5_CRITICAL_ERROR_CQE_RET) {
 					rte_mbuf_raw_free(rep);
@@ -936,10 +979,10 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				rq_ci >>= sges_n;
 				rq_ci += skip_cnt;
 				rq_ci <<= sges_n;
-				idx = rq_ci & wqe_cnt;
+				idx = rq_ci & wqe_mask;
 				wqe = &((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[idx];
 				seg = (*rxq->elts)[idx];
-				cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
+				cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
 				len = len & ~MLX5_ERROR_CQE_MASK;
 			}
 			if (len == 0) {
@@ -949,6 +992,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			pkt = seg;
 			MLX5_ASSERT(len >= (rxq->crc_present << 2));
 			pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
+			if (rxq->cqe_comp_layout && mcqe)
+				cqe = &rxq->title_cqe;
 			rxq_cq_to_mbuf(rxq, pkt, cqe, mcqe);
 			if (rxq->crc_present)
 				len -= RTE_ETHER_CRC_LEN;
@@ -1138,8 +1183,10 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct mlx5_rxq_data *rxq = dpdk_rxq;
 	const uint32_t strd_n = RTE_BIT32(rxq->log_strd_num);
 	const uint32_t strd_sz = RTE_BIT32(rxq->log_strd_sz);
-	const uint32_t cq_mask = (1 << rxq->cqe_n) - 1;
-	const uint32_t wq_mask = (1 << rxq->elts_n) - 1;
+	const uint32_t cqe_n = 1 << rxq->cqe_n;
+	const uint32_t cq_mask = cqe_n - 1;
+	const uint32_t wqe_n = 1 << rxq->elts_n;
+	const uint32_t wq_mask = wqe_n - 1;
 	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
 	unsigned int i = 0;
 	uint32_t rq_ci = rxq->rq_ci;
@@ -1166,7 +1213,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			buf = (*rxq->mprq_bufs)[rq_ci & wq_mask];
 		}
 		cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
-		ret = mlx5_rx_poll_len(rxq, cqe, cq_mask, &mcqe, &skip_cnt, true);
+		ret = mlx5_rx_poll_len(rxq, cqe, cqe_n, cq_mask, &mcqe, &skip_cnt, true);
 		if (unlikely(ret & MLX5_ERROR_CQE_MASK)) {
 			if (ret == MLX5_CRITICAL_ERROR_CQE_RET) {
 				rq_ci = rxq->rq_ci;
@@ -1201,6 +1248,8 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		consumed_strd += strd_cnt;
 		if (byte_cnt & MLX5_MPRQ_FILLER_MASK)
 			continue;
+		if (rxq->cqe_comp_layout && mcqe)
+			cqe = &rxq->title_cqe;
 		strd_idx = rte_be_to_cpu_16(mcqe == NULL ?
 					cqe->wqe_counter :
 					mcqe->stride_idx);

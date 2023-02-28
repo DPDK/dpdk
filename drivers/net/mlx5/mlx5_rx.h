@@ -41,11 +41,11 @@ struct mlx5_rxq_stats {
 
 /* Compressed CQE context. */
 struct rxq_zip {
+	uint16_t cqe_cnt; /* Number of CQEs. */
 	uint16_t ai; /* Array index. */
-	uint16_t ca; /* Current array index. */
-	uint16_t na; /* Next array index. */
-	uint16_t cq_ci; /* The next CQE. */
-	uint32_t cqe_cnt; /* Number of CQEs. */
+	uint32_t ca; /* Current array index. */
+	uint32_t na; /* Next array index. */
+	uint32_t cq_ci; /* The next CQE. */
 };
 
 /* Get pointer to the first stride. */
@@ -100,6 +100,8 @@ struct mlx5_rxq_data {
 	unsigned int mcqe_format:3; /* CQE compression format. */
 	unsigned int shared:1; /* Shared RXQ. */
 	unsigned int delay_drop:1; /* Enable delay drop. */
+	unsigned int cqe_comp_layout:1; /* CQE Compression Layout*/
+	unsigned int cq_ci:24;
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
@@ -107,7 +109,6 @@ struct mlx5_rxq_data {
 	uint32_t rq_ci;
 	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
 	uint32_t rq_pi;
-	uint32_t cq_ci;
 	uint16_t rq_repl_thresh; /* Threshold for buffer replenishment. */
 	uint32_t byte_mask;
 	union {
@@ -119,6 +120,7 @@ struct mlx5_rxq_data {
 	uint16_t mprq_max_memcpy_len; /* Maximum size of packet to memcpy. */
 	volatile void *wqes;
 	volatile struct mlx5_cqe(*cqes)[];
+	struct mlx5_cqe title_cqe; /* Title CQE for CQE compression. */
 	struct rte_mbuf *(*elts)[];
 	struct mlx5_mprq_buf *(*mprq_bufs)[];
 	struct rte_mempool *mp;
