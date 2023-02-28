@@ -1678,7 +1678,7 @@ eventdev_build_telemetry_data(int dev_id,
 	if (xstat_names == NULL)
 		return -1;
 
-	ids = malloc((sizeof(unsigned int)) * num_xstats);
+	ids = malloc((sizeof(uint64_t)) * num_xstats);
 	if (ids == NULL) {
 		free(xstat_names);
 		return -1;
