@@ -384,6 +384,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 
 #define MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE 1024
 
+#define MLX5_RXQ_ENH_CQE_COMP_MASK 0x80
+
 /**
  * Decide whether representor ID is a HPF(host PF) port on BF2.
  *
@@ -2461,14 +2463,16 @@ mlx5_port_args_check_handler(const char *key, const char *val, void *opaque)
 		return -rte_errno;
 	}
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
-		if (tmp > MLX5_CQE_RESP_FORMAT_L34H_STRIDX) {
+		if ((tmp & ~MLX5_RXQ_ENH_CQE_COMP_MASK) >
+		    MLX5_CQE_RESP_FORMAT_L34H_STRIDX) {
 			DRV_LOG(ERR, "invalid CQE compression "
 				     "format parameter");
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}
 		config->cqe_comp = !!tmp;
-		config->cqe_comp_fmt = tmp;
+		config->cqe_comp_fmt = tmp & ~MLX5_RXQ_ENH_CQE_COMP_MASK;
+		config->enh_cqe_comp = !!(tmp & MLX5_RXQ_ENH_CQE_COMP_MASK);
 	} else if (strcmp(MLX5_RXQ_PKT_PAD_EN, key) == 0) {
 		config->hw_padding = !!tmp;
 	} else if (strcmp(MLX5_RX_MPRQ_EN, key) == 0) {
@@ -2640,7 +2644,13 @@ mlx5_port_args_config(struct mlx5_priv *priv, struct mlx5_kvargs_ctrl *mkvlist,
 			"L3/L4 Header CQE compression format isn't supported.");
 		config->cqe_comp = 0;
 	}
-	DRV_LOG(DEBUG, "Rx CQE compression is %ssupported.",
+	if (config->enh_cqe_comp && !hca_attr->enhanced_cqe_compression) {
+		DRV_LOG(WARNING,
+			"Enhanced CQE compression isn't supported.");
+		config->enh_cqe_comp = 0;
+	}
+	DRV_LOG(DEBUG, "%sRx CQE compression is %ssupported.",
+		config->enh_cqe_comp ? "Enhanced " : "",
 		config->cqe_comp ? "" : "not ");
 	if ((config->std_delay_drop || config->hp_delay_drop) &&
 	    !dev_cap->rq_delay_drop_en) {
@@ -2662,6 +2672,7 @@ mlx5_port_args_config(struct mlx5_priv *priv, struct mlx5_kvargs_ctrl *mkvlist,
 	DRV_LOG(DEBUG, "\"rxq_pkt_pad_en\" is %u.", config->hw_padding);
 	DRV_LOG(DEBUG, "\"rxq_cqe_comp_en\" is %u.", config->cqe_comp);
 	DRV_LOG(DEBUG, "\"cqe_comp_fmt\" is %u.", config->cqe_comp_fmt);
+	DRV_LOG(DEBUG, "\"enh_cqe_comp\" is %u.", config->enh_cqe_comp);
 	DRV_LOG(DEBUG, "\"rx_vec_en\" is %u.", config->rx_vec_en);
 	DRV_LOG(DEBUG, "Standard \"delay_drop\" is %u.",
 		config->std_delay_drop);

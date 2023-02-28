@@ -678,13 +678,19 @@ for an additional list of options shared with other mlx5 drivers.
   Multi-Packet Rx queue configuration: Hash RSS format is used in case
   MPRQ is disabled, Checksum format is used in case MPRQ is enabled.
 
-  Specifying 2 as a ``rxq_cqe_comp_en`` value selects Flow Tag format for
-  better compression rate in case of RTE Flow Mark traffic.
-  Specifying 3 as a ``rxq_cqe_comp_en`` value selects Checksum format.
-  Specifying 4 as a ``rxq_cqe_comp_en`` value selects L3/L4 Header format for
+  The lower 3 bits define the CQE compression format:
+  Specifying 2 in these bits of the ``rxq_cqe_comp_en`` parameter selects
+  the flow tag format for better compression rate in case of flow mark traffic.
+  Specifying 3 in these bits selects checksum format.
+  Specifying 4 in these bits selects L3/L4 header format for
   better compression rate in case of mixed TCP/UDP and IPv4/IPv6 traffic.
   CQE compression format selection requires DevX to be enabled. If there is
   no DevX enabled/supported the value is reset to 1 by default.
+
+  8th bit defines the CQE compression layout.
+  Setting this bit to 1 turns enhanced CQE compression layout on.
+  Enhanced CQE compression is designed for better latency and SW utilization.
+  This bit is ignored if only the basic CQE compression layout is supported.
 
   Supported on:
 

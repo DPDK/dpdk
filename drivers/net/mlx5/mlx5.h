@@ -271,6 +271,7 @@ struct mlx5_port_config {
 	unsigned int hw_vlan_insert:1; /* VLAN insertion in WQE is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
+	unsigned int enh_cqe_comp:1; /* Enhanced CQE compression is enabled. */
 	unsigned int cqe_comp_fmt:3; /* CQE compression format. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
 	unsigned int std_delay_drop:1; /* Enable standard Rxq delay drop. */

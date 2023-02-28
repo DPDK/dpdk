@@ -372,6 +372,8 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 	if (priv->config.cqe_comp && !rxq_data->hw_timestamp &&
 	    !rxq_data->lro) {
 		cq_attr.cqe_comp_en = 1u;
+		cq_attr.cqe_comp_layout = priv->config.enh_cqe_comp;
+		rxq_data->cqe_comp_layout = cq_attr.cqe_comp_layout;
 		rxq_data->mcqe_format = priv->config.cqe_comp_fmt;
 		rxq_data->byte_mask = UINT32_MAX;
 		switch (priv->config.cqe_comp_fmt) {
