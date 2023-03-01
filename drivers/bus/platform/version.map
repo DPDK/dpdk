@@ -1,0 +1,10 @@
+DPDK_23 {
+	local: *;
+};
+
+INTERNAL {
+	global:
+
+	rte_platform_register;
+	rte_platform_unregister;
+};

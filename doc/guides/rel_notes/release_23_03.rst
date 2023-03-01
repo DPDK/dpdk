@@ -68,6 +68,11 @@ New Features
   * Applications can register a callback at startup via
     ``rte_lcore_register_usage_cb()`` to provide lcore usage information.
 
+* **Added platform bus support.**
+
+  A platform bus provides a way to use Linux platform devices which
+  are compatible with vfio-platform kernel driver.
+
 * **Added ARM support for power monitor in the power management library.**
 
   Added power monitor and wake up API support
