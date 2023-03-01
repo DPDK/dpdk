@@ -1012,14 +1012,6 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	return true;
 }
 
-static __rte_always_inline void
-mem_set_dump(__rte_unused void *ptr, __rte_unused size_t size, __rte_unused bool enable)
-{
-#ifdef MADV_DONTDUMP
-	if (madvise(ptr, size, enable ? MADV_DODUMP : MADV_DONTDUMP) == -1) {
-		rte_log(RTE_LOG_INFO, vhost_config_log_level,
-			"VHOST_CONFIG: could not set coredump preference (%s).\n", strerror(errno));
-	}
-#endif
-}
+uint64_t hua_to_alignment(struct rte_vhost_memory *mem, void *ptr);
+void mem_set_dump(void *ptr, size_t size, bool enable, uint64_t alignment);
 #endif /* _VHOST_NET_CDEV_H_ */
