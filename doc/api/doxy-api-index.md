@@ -22,6 +22,7 @@ The public API headers are grouped by topics:
   [compress](@ref rte_comp.h),
   [regexdev](@ref rte_regexdev.h),
   [dmadev](@ref rte_dmadev.h),
+  [gpudev](@ref rte_gpudev.h),
   [eventdev](@ref rte_eventdev.h),
   [event_eth_rx_adapter](@ref rte_event_eth_rx_adapter.h),
   [event_eth_tx_adapter](@ref rte_event_eth_tx_adapter.h),
