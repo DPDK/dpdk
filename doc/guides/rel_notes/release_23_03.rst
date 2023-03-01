@@ -73,6 +73,8 @@ New Features
   Added power monitor and wake up API support
   with WFE/SVE instructions for Arm architecture.
 
+* **Added Ethernet link speed for 400 Gb/s.**
+
 * **Added support for mapping a queue with an aggregated port.**
 
   * Introduced new function ``rte_eth_dev_count_aggr_ports()``

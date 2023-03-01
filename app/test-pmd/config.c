@@ -612,6 +612,8 @@ device_infos_display_speeds(uint32_t speed_capa)
 		printf(" 100 Gbps  ");
 	if (speed_capa & RTE_ETH_LINK_SPEED_200G)
 		printf(" 200 Gbps  ");
+	if (speed_capa & RTE_ETH_LINK_SPEED_400G)
+		printf(" 400 Gbps  ");
 }
 
 void
