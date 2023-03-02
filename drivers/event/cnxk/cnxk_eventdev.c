@@ -613,9 +613,8 @@ cnxk_sso_fini(struct rte_eventdev *event_dev)
 
 	cnxk_tim_fini();
 	roc_sso_rsrc_fini(&dev->sso);
-	roc_sso_dev_fini(&dev->sso);
 
-	return 0;
+	return roc_sso_dev_fini(&dev->sso);
 }
 
 int
