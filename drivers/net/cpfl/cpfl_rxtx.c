@@ -516,6 +516,13 @@ cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EINVAL;
 	}
 
+	err = idpf_qc_ts_mbuf_register(rxq);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "fail to register timestamp mbuf %u",
+			    rx_queue_id);
+		return -EIO;
+	}
+
 	if (rxq->adapter->is_rx_singleq) {
 		/* Single queue */
 		err = idpf_qc_single_rxq_mbufs_alloc(rxq);
