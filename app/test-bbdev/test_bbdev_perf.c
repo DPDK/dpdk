@@ -1768,6 +1768,30 @@ gen_qm2_llr(int8_t *llrs, uint32_t j, double N0, double llr_max)
 	llrs[j] = (int8_t) b;
 }
 
+/* Simple LLR generation assuming AWGN and QPSK */
+static void
+gen_turbo_llr(int8_t *llrs, uint32_t j, double N0, double llr_max)
+{
+	double b, b1, n;
+	double coeff = 2.0 * sqrt(N0);
+
+	/* Ignore in vectors null LLRs not to be saturated */
+	if (llrs[j] == 0)
+		return;
+
+	/* Note don't change sign here */
+	n = randn(j % 2);
+	b1 = ((llrs[j] > 0 ? 2.0 : -2.0)
+			+ coeff * n) / N0;
+	b = b1 * (1 << 4);
+	b = round(b);
+	if (b > llr_max)
+		b = llr_max;
+	if (b < -llr_max)
+		b = -llr_max;
+	llrs[j] = (int8_t) b;
+}
+
 /* Generate LLR for a given SNR */
 static void
 generate_llr_input(uint16_t n, struct rte_bbdev_op_data *inputs,
@@ -1800,6 +1824,27 @@ generate_llr_input(uint16_t n, struct rte_bbdev_op_data *inputs,
 			for (j = 0; j < e; ++j)
 				gen_qm2_llr(llrs, j, N0, llr_max);
 		}
+	}
+}
+
+/* Generate LLR for turbo decoder for a given SNR */
+static void
+generate_turbo_llr_input(uint16_t n, struct rte_bbdev_op_data *inputs,
+		struct rte_bbdev_dec_op *ref_op)
+{
+	struct rte_mbuf *m;
+	uint32_t i, j, range;
+	double N0, llr_max;
+
+	llr_max = 127;
+	range = ref_op->turbo_dec.input.length;
+	N0 = 1.0 / pow(10.0, get_snr() / 10.0);
+
+	for (i = 0; i < n; ++i) {
+		m = inputs[i].data;
+		int8_t *llrs = rte_pktmbuf_mtod_offset(m, int8_t *, 0);
+		for (j = 0; j < range; ++j)
+			gen_turbo_llr(llrs, j, N0, llr_max);
 	}
 }
 
@@ -2315,6 +2360,30 @@ validate_ldpc_bler(struct rte_bbdev_dec_op **ops, const uint16_t n)
 	}
 	return errors;
 }
+
+/* Check Number of code blocks errors */
+static int
+validate_turbo_bler(struct rte_bbdev_dec_op **ops, const uint16_t n)
+{
+	unsigned int i;
+	struct op_data_entries *hard_data_orig = &test_vector.entries[DATA_HARD_OUTPUT];
+	struct rte_bbdev_op_turbo_dec *ops_td;
+	struct rte_bbdev_op_data *hard_output;
+	int errors = 0;
+	struct rte_mbuf *m;
+
+	for (i = 0; i < n; ++i) {
+		ops_td = &ops[i]->turbo_dec;
+		hard_output = &ops_td->hard_output;
+		m = hard_output->data;
+		if (memcmp(rte_pktmbuf_mtod_offset(m, uint32_t *, 0),
+				hard_data_orig->segments[0].addr,
+				hard_data_orig->segments[0].length))
+			errors++;
+	}
+	return errors;
+}
+
 
 static int
 validate_ldpc_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
@@ -3771,6 +3840,126 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 	return TEST_SUCCESS;
 }
 
+
+static int
+bler_pmd_lcore_turbo_dec(void *arg)
+{
+	struct thread_params *tp = arg;
+	uint16_t enq, deq;
+	uint64_t total_time = 0, start_time;
+	const uint16_t queue_id = tp->queue_id;
+	const uint16_t burst_sz = tp->op_params->burst_sz;
+	const uint16_t num_ops = tp->op_params->num_to_process;
+	struct rte_bbdev_dec_op *ops_enq[num_ops];
+	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
+	struct test_buffers *bufs = NULL;
+	int i, j, ret;
+	struct rte_bbdev_info info;
+	uint16_t num_to_enq;
+
+	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
+			"BURST_SIZE should be <= %u", MAX_BURST);
+
+	rte_bbdev_info_get(tp->dev_id, &info);
+
+	TEST_ASSERT_SUCCESS((num_ops > info.drv.queue_size_lim),
+			"NUM_OPS cannot exceed %u for this device",
+			info.drv.queue_size_lim);
+
+	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
+
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+
+	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
+	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
+
+	/* For BLER tests we need to enable early termination */
+	if (!check_bit(ref_op->turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_EARLY_TERMINATION))
+		ref_op->turbo_dec.op_flags +=
+				RTE_BBDEV_TURBO_EARLY_TERMINATION;
+	ref_op->turbo_dec.iter_max = get_iter_max();
+	ref_op->turbo_dec.iter_count = ref_op->turbo_dec.iter_max;
+
+	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+		copy_reference_dec_op(ops_enq, num_ops, 0, bufs->inputs,
+				bufs->hard_outputs, bufs->soft_outputs,
+				ref_op);
+	generate_turbo_llr_input(num_ops, bufs->inputs, ref_op);
+
+	/* Set counter to validate the ordering */
+	for (j = 0; j < num_ops; ++j)
+		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
+
+	for (i = 0; i < 1; ++i) { /* Could add more iterations */
+		uint32_t time_out = 0;
+		for (j = 0; j < num_ops; ++j) {
+			mbuf_reset(
+			ops_enq[j]->turbo_dec.hard_output.data);
+		}
+
+		start_time = rte_rdtsc_precise();
+
+		for (enq = 0, deq = 0; enq < num_ops;) {
+			num_to_enq = burst_sz;
+
+			if (unlikely(num_ops - enq < num_to_enq))
+				num_to_enq = num_ops - enq;
+
+			enq += rte_bbdev_enqueue_dec_ops(tp->dev_id,
+					queue_id, &ops_enq[enq], num_to_enq);
+
+			deq += rte_bbdev_dequeue_dec_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Enqueue timeout!");
+			}
+		}
+
+		/* dequeue the remaining */
+		time_out = 0;
+		while (deq < enq) {
+			deq += rte_bbdev_dequeue_dec_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
+		}
+
+		total_time += rte_rdtsc_precise() - start_time;
+	}
+
+	tp->iter_count = 0;
+	tp->iter_average = 0;
+	/* get the max of iter_count for all dequeued ops */
+	for (i = 0; i < num_ops; ++i) {
+		tp->iter_count = RTE_MAX(ops_enq[i]->turbo_dec.iter_count,
+				tp->iter_count);
+		tp->iter_average += (double) ops_enq[i]->turbo_dec.iter_count;
+	}
+
+	tp->iter_average /= num_ops;
+	tp->bler = (double) validate_turbo_bler(ops_deq, num_ops) / num_ops;
+
+	rte_bbdev_dec_op_free_bulk(ops_enq, num_ops);
+
+	double tb_len_bits = calc_dec_TB_size(ref_op);
+	tp->ops_per_sec = ((double)num_ops * 1) /
+			((double)total_time / (double)rte_get_tsc_hz());
+	tp->mbps = (((double)(num_ops * 1 * tb_len_bits)) /
+			1000000.0) / ((double)total_time /
+			(double)rte_get_tsc_hz());
+	printf("TBS %.0f Time %.0f\n", tb_len_bits, 1000000.0 *
+			((double)total_time / (double)rte_get_tsc_hz()));
+
+	return TEST_SUCCESS;
+}
+
 static int
 throughput_pmd_lcore_ldpc_dec(void *arg)
 {
@@ -4275,7 +4464,7 @@ print_dec_bler(struct thread_params *t_params, unsigned int used_cores)
 	total_bler /= used_cores;
 	total_iter /= used_cores;
 
-	printf("SNR %.2f BLER %.1f %% - Iterations %.1f %d - Tp %.1f Mbps %s\n",
+	printf("SNR %.2f BLER %.1f %% - Iterations %.1f %d - Tp %.3f Mbps %s\n",
 			snr, total_bler * 100, total_iter, get_iter_max(),
 			total_mbps, get_vector_filename());
 }
@@ -4327,6 +4516,10 @@ bler_test(struct active_device *ad,
 			&& !check_bit(test_vector.ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_LLR_COMPRESSION))
 		bler_function = bler_pmd_lcore_ldpc_dec;
+	else if ((test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC) &&
+			!check_bit(test_vector.turbo_dec.op_flags,
+			RTE_BBDEV_TURBO_SOFT_OUTPUT))
+		bler_function = bler_pmd_lcore_turbo_dec;
 	else
 		return TEST_SKIPPED;
 
