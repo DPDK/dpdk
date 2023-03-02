@@ -94,6 +94,8 @@ cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mtu = vport->max_mtu;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = CPFL_DEFAULT_TX_FREE_THRESH,
 		.tx_rs_thresh = CPFL_DEFAULT_TX_RS_THRESH,
@@ -253,6 +255,7 @@ cpfl_dev_start(struct rte_eth_dev *dev)
 	}
 
 	cpfl_set_rx_function(dev);
+	cpfl_set_tx_function(dev);
 
 	ret = idpf_vc_vport_ena_dis(vport, true);
 	if (ret != 0) {

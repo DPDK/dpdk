@@ -38,4 +38,5 @@ int cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 void cpfl_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void cpfl_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void cpfl_set_rx_function(struct rte_eth_dev *dev);
+void cpfl_set_tx_function(struct rte_eth_dev *dev);
 #endif /* _CPFL_RXTX_H_ */
