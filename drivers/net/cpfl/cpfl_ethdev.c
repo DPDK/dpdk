@@ -289,6 +289,8 @@ static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.tx_queue_start			= cpfl_tx_queue_start,
 	.rx_queue_stop			= cpfl_rx_queue_stop,
 	.tx_queue_stop			= cpfl_tx_queue_stop,
+	.rx_queue_release		= cpfl_dev_rx_queue_release,
+	.tx_queue_release		= cpfl_dev_tx_queue_release,
 	.dev_supported_ptypes_get	= cpfl_dev_supported_ptypes_get,
 };
 

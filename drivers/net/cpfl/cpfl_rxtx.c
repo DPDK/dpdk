@@ -244,6 +244,12 @@ cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (idpf_qc_rx_thresh_check(nb_desc, rx_free_thresh) != 0)
 		return -EINVAL;
 
+	/* Free memory if needed */
+	if (dev->data->rx_queues[queue_idx] != NULL) {
+		idpf_qc_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		dev->data->rx_queues[queue_idx] = NULL;
+	}
+
 	/* Setup Rx queue */
 	rxq = rte_zmalloc_socket("cpfl rxq",
 				 sizeof(struct idpf_rx_queue),
@@ -408,6 +414,12 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		tx_conf->tx_free_thresh : CPFL_DEFAULT_TX_FREE_THRESH);
 	if (idpf_qc_tx_thresh_check(nb_desc, tx_rs_thresh, tx_free_thresh) != 0)
 		return -EINVAL;
+
+	/* Free memory if needed. */
+	if (dev->data->tx_queues[queue_idx] != NULL) {
+		idpf_qc_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		dev->data->tx_queues[queue_idx] = NULL;
+	}
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("cpfl txq",
@@ -683,6 +695,18 @@ cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
+}
+
+void
+cpfl_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	idpf_qc_rx_queue_release(dev->data->rx_queues[qid]);
+}
+
+void
+cpfl_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	idpf_qc_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 void
