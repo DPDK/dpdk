@@ -49,6 +49,14 @@ cpfl_tx_offload_convert(uint64_t offload)
 	return ol;
 }
 
+static const struct idpf_rxq_ops def_rxq_ops = {
+	.release_mbufs = idpf_qc_rxq_mbufs_release,
+};
+
+static const struct idpf_txq_ops def_txq_ops = {
+	.release_mbufs = idpf_qc_txq_mbufs_release,
+};
+
 static const struct rte_memzone *
 cpfl_dma_zone_reserve(struct rte_eth_dev *dev, uint16_t queue_idx,
 		      uint16_t len, uint16_t queue_type,
@@ -177,6 +185,7 @@ cpfl_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *rxq,
 	idpf_qc_split_rx_bufq_reset(bufq);
 	bufq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_buf_qtail_start +
 			 queue_idx * vport->chunks_info.rx_buf_qtail_spacing);
+	bufq->ops = &def_rxq_ops;
 	bufq->q_set = true;
 
 	if (bufq_id == IDPF_RX_SPLIT_BUFQ1_ID) {
@@ -287,6 +296,7 @@ cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		idpf_qc_single_rx_queue_reset(rxq);
 		rxq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_qtail_start +
 				queue_idx * vport->chunks_info.rx_qtail_spacing);
+		rxq->ops = &def_rxq_ops;
 	} else {
 		idpf_qc_split_rx_descq_reset(rxq);
 
@@ -461,6 +471,7 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	txq->qtx_tail = hw->hw_addr + (vport->chunks_info.tx_qtail_start +
 			queue_idx * vport->chunks_info.tx_qtail_spacing);
+	txq->ops = &def_txq_ops;
 	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
 
@@ -611,4 +622,91 @@ cpfl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	return err;
+}
+
+int
+cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_rx_queue *rxq;
+	int err;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	err = idpf_vc_queue_switch(vport, rx_queue_id, true, false);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
+			    rx_queue_id);
+		return err;
+	}
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		rxq->ops->release_mbufs(rxq);
+		idpf_qc_single_rx_queue_reset(rxq);
+	} else {
+		rxq->bufq1->ops->release_mbufs(rxq->bufq1);
+		rxq->bufq2->ops->release_mbufs(rxq->bufq2);
+		idpf_qc_split_rx_queue_reset(rxq);
+	}
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+int
+cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_tx_queue *txq;
+	int err;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	err = idpf_vc_queue_switch(vport, tx_queue_id, false, false);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u off",
+			    tx_queue_id);
+		return err;
+	}
+
+	txq = dev->data->tx_queues[tx_queue_id];
+	txq->ops->release_mbufs(txq);
+	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		idpf_qc_single_tx_queue_reset(txq);
+	} else {
+		idpf_qc_split_tx_descq_reset(txq);
+		idpf_qc_split_tx_complq_reset(txq->complq);
+	}
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+void
+cpfl_stop_queues(struct rte_eth_dev *dev)
+{
+	struct idpf_rx_queue *rxq;
+	struct idpf_tx_queue *txq;
+	int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq == NULL)
+			continue;
+
+		if (cpfl_rx_queue_stop(dev, i) != 0)
+			PMD_DRV_LOG(WARNING, "Fail to stop Rx queue %d", i);
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (txq == NULL)
+			continue;
+
+		if (cpfl_tx_queue_stop(dev, i) != 0)
+			PMD_DRV_LOG(WARNING, "Fail to stop Tx queue %d", i);
+	}
 }
