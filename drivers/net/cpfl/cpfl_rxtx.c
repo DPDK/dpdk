@@ -503,6 +503,8 @@ int
 cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct idpf_rx_queue *rxq;
+	uint16_t max_pkt_len;
+	uint32_t frame_size;
 	int err;
 
 	if (rx_queue_id >= dev->data->nb_rx_queues)
@@ -515,6 +517,17 @@ cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 					rx_queue_id);
 		return -EINVAL;
 	}
+
+	frame_size = dev->data->mtu + CPFL_ETH_OVERHEAD;
+
+	max_pkt_len =
+	    RTE_MIN((uint32_t)CPFL_SUPPORT_CHAIN_NUM * rxq->rx_buf_len,
+		    frame_size);
+
+	rxq->max_pkt_len = max_pkt_len;
+	if ((dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ||
+	    frame_size > rxq->rx_buf_len)
+		dev->data->scattered_rx = 1;
 
 	err = idpf_qc_ts_mbuf_register(rxq);
 	if (err != 0) {
@@ -807,6 +820,13 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 			}
 #endif /* CC_AVX512_SUPPORT */
 		}
+		if (dev->data->scattered_rx) {
+			PMD_DRV_LOG(NOTICE,
+				    "Using Single Scalar Scatterd Rx (port %d).",
+				    dev->data->port_id);
+			dev->rx_pkt_burst = idpf_dp_singleq_recv_scatter_pkts;
+			return;
+		}
 		PMD_DRV_LOG(NOTICE,
 			    "Using Single Scalar Rx (port %d).",
 			    dev->data->port_id);
@@ -819,6 +839,13 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 			    dev->data->port_id);
 		dev->rx_pkt_burst = idpf_dp_splitq_recv_pkts;
 	} else {
+		if (dev->data->scattered_rx) {
+			PMD_DRV_LOG(NOTICE,
+				    "Using Single Scalar Scatterd Rx (port %d).",
+				    dev->data->port_id);
+			dev->rx_pkt_burst = idpf_dp_singleq_recv_scatter_pkts;
+			return;
+		}
 		PMD_DRV_LOG(NOTICE,
 			    "Using Single Scalar Rx (port %d).",
 			    dev->data->port_id);
