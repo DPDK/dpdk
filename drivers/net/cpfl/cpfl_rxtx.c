@@ -474,3 +474,141 @@ err_mz_reserve:
 err_txq_alloc:
 	return ret;
 }
+
+int
+cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct idpf_rx_queue *rxq;
+	int err;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	if (rxq == NULL || !rxq->q_set) {
+		PMD_DRV_LOG(ERR, "RX queue %u not available or setup",
+					rx_queue_id);
+		return -EINVAL;
+	}
+
+	if (rxq->adapter->is_rx_singleq) {
+		/* Single queue */
+		err = idpf_qc_single_rxq_mbufs_alloc(rxq);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf");
+			return err;
+		}
+
+		rte_wmb();
+
+		/* Init the RX tail register. */
+		IDPF_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+	} else {
+		/* Split queue */
+		err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq1);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
+			return err;
+		}
+		err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq2);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
+			return err;
+		}
+
+		rte_wmb();
+
+		/* Init the RX tail register. */
+		IDPF_PCI_REG_WRITE(rxq->bufq1->qrx_tail, rxq->bufq1->rx_tail);
+		IDPF_PCI_REG_WRITE(rxq->bufq2->qrx_tail, rxq->bufq2->rx_tail);
+	}
+
+	return err;
+}
+
+int
+cpfl_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_rx_queue *rxq =
+		dev->data->rx_queues[rx_queue_id];
+	int err = 0;
+
+	err = idpf_vc_rxq_config(vport, rxq);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Fail to configure Rx queue %u", rx_queue_id);
+		return err;
+	}
+
+	err = cpfl_rx_queue_init(dev, rx_queue_id);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to init RX queue %u",
+			    rx_queue_id);
+		return err;
+	}
+
+	/* Ready to switch the queue on */
+	err = idpf_vc_queue_switch(vport, rx_queue_id, true, true);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
+			    rx_queue_id);
+	} else {
+		rxq->q_started = true;
+		dev->data->rx_queue_state[rx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return err;
+}
+
+int
+cpfl_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct idpf_tx_queue *txq;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	txq = dev->data->tx_queues[tx_queue_id];
+
+	/* Init the RX tail register. */
+	IDPF_PCI_REG_WRITE(txq->qtx_tail, 0);
+
+	return 0;
+}
+
+int
+cpfl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_tx_queue *txq =
+		dev->data->tx_queues[tx_queue_id];
+	int err = 0;
+
+	err = idpf_vc_txq_config(vport, txq);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Fail to configure Tx queue %u", tx_queue_id);
+		return err;
+	}
+
+	err = cpfl_tx_queue_init(dev, tx_queue_id);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to init TX queue %u",
+			    tx_queue_id);
+		return err;
+	}
+
+	/* Ready to switch the queue on */
+	err = idpf_vc_queue_switch(vport, tx_queue_id, false, true);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
+			    tx_queue_id);
+	} else {
+		txq->q_started = true;
+		dev->data->tx_queue_state[tx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return err;
+}

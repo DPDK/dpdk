@@ -28,4 +28,8 @@ int cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp);
+int cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int cpfl_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int cpfl_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int cpfl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 #endif /* _CPFL_RXTX_H_ */
