@@ -99,7 +99,17 @@ cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.tx_rs_thresh = CPFL_DEFAULT_TX_RS_THRESH,
 	};
 
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = CPFL_DEFAULT_RX_FREE_THRESH,
+	};
+
 	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = CPFL_MAX_RING_DESC,
+		.nb_min = CPFL_MIN_RING_DESC,
+		.nb_align = CPFL_ALIGN_RING_DESC,
+	};
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = CPFL_MAX_RING_DESC,
 		.nb_min = CPFL_MIN_RING_DESC,
 		.nb_align = CPFL_ALIGN_RING_DESC,
@@ -191,6 +201,7 @@ cpfl_dev_close(struct rte_eth_dev *dev)
 static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.dev_configure			= cpfl_dev_configure,
 	.dev_close			= cpfl_dev_close,
+	.rx_queue_setup			= cpfl_rx_queue_setup,
 	.tx_queue_setup			= cpfl_tx_queue_setup,
 	.dev_infos_get			= cpfl_dev_info_get,
 	.link_update			= cpfl_dev_link_update,

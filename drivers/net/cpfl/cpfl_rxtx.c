@@ -10,6 +10,25 @@
 #include "cpfl_rxtx.h"
 
 static uint64_t
+cpfl_rx_offload_convert(uint64_t offload)
+{
+	uint64_t ol = 0;
+
+	if ((offload & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) != 0)
+		ol |= IDPF_RX_OFFLOAD_IPV4_CKSUM;
+	if ((offload & RTE_ETH_RX_OFFLOAD_UDP_CKSUM) != 0)
+		ol |= IDPF_RX_OFFLOAD_UDP_CKSUM;
+	if ((offload & RTE_ETH_RX_OFFLOAD_TCP_CKSUM) != 0)
+		ol |= IDPF_RX_OFFLOAD_TCP_CKSUM;
+	if ((offload & RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM) != 0)
+		ol |= IDPF_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+	if ((offload & RTE_ETH_RX_OFFLOAD_TIMESTAMP) != 0)
+		ol |= IDPF_RX_OFFLOAD_TIMESTAMP;
+
+	return ol;
+}
+
+static uint64_t
 cpfl_tx_offload_convert(uint64_t offload)
 {
 	uint64_t ol = 0;
@@ -92,6 +111,219 @@ static void
 cpfl_dma_zone_release(const struct rte_memzone *mz)
 {
 	rte_memzone_free(mz);
+}
+
+static int
+cpfl_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *rxq,
+			 uint16_t queue_idx, uint16_t rx_free_thresh,
+			 uint16_t nb_desc, unsigned int socket_id,
+			 struct rte_mempool *mp, uint8_t bufq_id)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *base = vport->adapter;
+	struct idpf_hw *hw = &base->hw;
+	const struct rte_memzone *mz;
+	struct idpf_rx_queue *bufq;
+	uint16_t len;
+	int ret;
+
+	bufq = rte_zmalloc_socket("cpfl bufq",
+				   sizeof(struct idpf_rx_queue),
+				   RTE_CACHE_LINE_SIZE,
+				   socket_id);
+	if (bufq == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for rx buffer queue.");
+		ret = -ENOMEM;
+		goto err_bufq1_alloc;
+	}
+
+	bufq->mp = mp;
+	bufq->nb_rx_desc = nb_desc;
+	bufq->rx_free_thresh = rx_free_thresh;
+	bufq->queue_id = vport->chunks_info.rx_buf_start_qid + queue_idx;
+	bufq->port_id = dev->data->port_id;
+	bufq->rx_hdr_len = 0;
+	bufq->adapter = base;
+
+	len = rte_pktmbuf_data_room_size(bufq->mp) - RTE_PKTMBUF_HEADROOM;
+	bufq->rx_buf_len = len;
+
+	/* Allocate a little more to support bulk allocate. */
+	len = nb_desc + IDPF_RX_MAX_BURST;
+
+	mz = cpfl_dma_zone_reserve(dev, queue_idx, len,
+				   VIRTCHNL2_QUEUE_TYPE_RX_BUFFER,
+				   socket_id, true);
+	if (mz == NULL) {
+		ret = -ENOMEM;
+		goto err_mz_reserve;
+	}
+
+	bufq->rx_ring_phys_addr = mz->iova;
+	bufq->rx_ring = mz->addr;
+	bufq->mz = mz;
+
+	bufq->sw_ring =
+		rte_zmalloc_socket("cpfl rx bufq sw ring",
+				   sizeof(struct rte_mbuf *) * len,
+				   RTE_CACHE_LINE_SIZE,
+				   socket_id);
+	if (bufq->sw_ring == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for SW ring");
+		ret = -ENOMEM;
+		goto err_sw_ring_alloc;
+	}
+
+	idpf_qc_split_rx_bufq_reset(bufq);
+	bufq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_buf_qtail_start +
+			 queue_idx * vport->chunks_info.rx_buf_qtail_spacing);
+	bufq->q_set = true;
+
+	if (bufq_id == IDPF_RX_SPLIT_BUFQ1_ID) {
+		rxq->bufq1 = bufq;
+	} else if (bufq_id == IDPF_RX_SPLIT_BUFQ2_ID) {
+		rxq->bufq2 = bufq;
+	} else {
+		PMD_INIT_LOG(ERR, "Invalid buffer queue index.");
+		ret = -EINVAL;
+		goto err_bufq_id;
+	}
+
+	return 0;
+
+err_bufq_id:
+	rte_free(bufq->sw_ring);
+err_sw_ring_alloc:
+	cpfl_dma_zone_release(mz);
+err_mz_reserve:
+	rte_free(bufq);
+err_bufq1_alloc:
+	return ret;
+}
+
+static void
+cpfl_rx_split_bufq_release(struct idpf_rx_queue *bufq)
+{
+	rte_free(bufq->sw_ring);
+	cpfl_dma_zone_release(bufq->mz);
+	rte_free(bufq);
+}
+
+int
+cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+		    uint16_t nb_desc, unsigned int socket_id,
+		    const struct rte_eth_rxconf *rx_conf,
+		    struct rte_mempool *mp)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *base = vport->adapter;
+	struct idpf_hw *hw = &base->hw;
+	const struct rte_memzone *mz;
+	struct idpf_rx_queue *rxq;
+	uint16_t rx_free_thresh;
+	uint64_t offloads;
+	bool is_splitq;
+	uint16_t len;
+	int ret;
+
+	offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
+
+	/* Check free threshold */
+	rx_free_thresh = (rx_conf->rx_free_thresh == 0) ?
+		CPFL_DEFAULT_RX_FREE_THRESH :
+		rx_conf->rx_free_thresh;
+	if (idpf_qc_rx_thresh_check(nb_desc, rx_free_thresh) != 0)
+		return -EINVAL;
+
+	/* Setup Rx queue */
+	rxq = rte_zmalloc_socket("cpfl rxq",
+				 sizeof(struct idpf_rx_queue),
+				 RTE_CACHE_LINE_SIZE,
+				 socket_id);
+	if (rxq == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for rx queue data structure");
+		ret = -ENOMEM;
+		goto err_rxq_alloc;
+	}
+
+	is_splitq = !!(vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT);
+
+	rxq->mp = mp;
+	rxq->nb_rx_desc = nb_desc;
+	rxq->rx_free_thresh = rx_free_thresh;
+	rxq->queue_id = vport->chunks_info.rx_start_qid + queue_idx;
+	rxq->port_id = dev->data->port_id;
+	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
+	rxq->rx_hdr_len = 0;
+	rxq->adapter = base;
+	rxq->offloads = cpfl_rx_offload_convert(offloads);
+
+	len = rte_pktmbuf_data_room_size(rxq->mp) - RTE_PKTMBUF_HEADROOM;
+	rxq->rx_buf_len = len;
+
+	/* Allocate a little more to support bulk allocate. */
+	len = nb_desc + IDPF_RX_MAX_BURST;
+	mz = cpfl_dma_zone_reserve(dev, queue_idx, len, VIRTCHNL2_QUEUE_TYPE_RX,
+				   socket_id, is_splitq);
+	if (mz == NULL) {
+		ret = -ENOMEM;
+		goto err_mz_reserve;
+	}
+	rxq->rx_ring_phys_addr = mz->iova;
+	rxq->rx_ring = mz->addr;
+	rxq->mz = mz;
+
+	if (!is_splitq) {
+		rxq->sw_ring = rte_zmalloc_socket("cpfl rxq sw ring",
+						  sizeof(struct rte_mbuf *) * len,
+						  RTE_CACHE_LINE_SIZE,
+						  socket_id);
+		if (rxq->sw_ring == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate memory for SW ring");
+			ret = -ENOMEM;
+			goto err_sw_ring_alloc;
+		}
+
+		idpf_qc_single_rx_queue_reset(rxq);
+		rxq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_qtail_start +
+				queue_idx * vport->chunks_info.rx_qtail_spacing);
+	} else {
+		idpf_qc_split_rx_descq_reset(rxq);
+
+		/* Setup Rx buffer queues */
+		ret = cpfl_rx_split_bufq_setup(dev, rxq, 2 * queue_idx,
+					       rx_free_thresh, nb_desc,
+					       socket_id, mp, 1);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to setup buffer queue 1");
+			ret = -EINVAL;
+			goto err_bufq1_setup;
+		}
+
+		ret = cpfl_rx_split_bufq_setup(dev, rxq, 2 * queue_idx + 1,
+					       rx_free_thresh, nb_desc,
+					       socket_id, mp, 2);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to setup buffer queue 2");
+			ret = -EINVAL;
+			goto err_bufq2_setup;
+		}
+	}
+
+	rxq->q_set = true;
+	dev->data->rx_queues[queue_idx] = rxq;
+
+	return 0;
+
+err_bufq2_setup:
+	cpfl_rx_split_bufq_release(rxq->bufq1);
+err_bufq1_setup:
+err_sw_ring_alloc:
+	cpfl_dma_zone_release(mz);
+err_mz_reserve:
+	rte_free(rxq);
+err_rxq_alloc:
+	return ret;
 }
 
 static int

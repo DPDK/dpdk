@@ -16,10 +16,16 @@
 /* Base address of the HW descriptor ring should be 128B aligned. */
 #define CPFL_RING_BASE_ALIGN	128
 
+#define CPFL_DEFAULT_RX_FREE_THRESH	32
+
 #define CPFL_DEFAULT_TX_RS_THRESH	32
 #define CPFL_DEFAULT_TX_FREE_THRESH	32
 
 int cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf);
+int cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			uint16_t nb_desc, unsigned int socket_id,
+			const struct rte_eth_rxconf *rx_conf,
+			struct rte_mempool *mp);
 #endif /* _CPFL_RXTX_H_ */
