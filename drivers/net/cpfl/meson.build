@@ -11,4 +11,5 @@ deps += ['common_idpf']
 
 sources = files(
         'cpfl_ethdev.c',
+        'cpfl_rxtx.c',
 )
