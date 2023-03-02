@@ -2578,19 +2578,16 @@ calc_dec_TB_size(struct rte_bbdev_dec_op *op)
 static uint32_t
 calc_ldpc_dec_TB_size(struct rte_bbdev_dec_op *op)
 {
-	uint8_t i;
-	uint32_t c, r, tb_size = 0;
+	uint8_t num_cbs = 0;
+	uint32_t tb_size = 0;
 	uint16_t sys_cols = (op->ldpc_dec.basegraph == 1) ? 22 : 10;
 
-	if (op->ldpc_dec.code_block_mode == RTE_BBDEV_CODE_BLOCK) {
-		tb_size = sys_cols * op->ldpc_dec.z_c - op->ldpc_dec.n_filler;
-	} else {
-		c = op->ldpc_dec.tb_params.c;
-		r = op->ldpc_dec.tb_params.r;
-		for (i = 0; i < c-r; i++)
-			tb_size += sys_cols * op->ldpc_dec.z_c
-					- op->ldpc_dec.n_filler;
-	}
+	if (op->ldpc_dec.code_block_mode == RTE_BBDEV_CODE_BLOCK)
+		num_cbs = 1;
+	else
+		num_cbs = op->ldpc_dec.tb_params.c - op->ldpc_dec.tb_params.r;
+
+	tb_size = (sys_cols * op->ldpc_dec.z_c - op->ldpc_dec.n_filler) * num_cbs;
 	return tb_size;
 }
 
@@ -2616,19 +2613,16 @@ calc_enc_TB_size(struct rte_bbdev_enc_op *op)
 static uint32_t
 calc_ldpc_enc_TB_size(struct rte_bbdev_enc_op *op)
 {
-	uint8_t i;
-	uint32_t c, r, tb_size = 0;
+	uint8_t num_cbs = 0;
+	uint32_t tb_size = 0;
 	uint16_t sys_cols = (op->ldpc_enc.basegraph == 1) ? 22 : 10;
 
-	if (op->ldpc_enc.code_block_mode == RTE_BBDEV_CODE_BLOCK) {
-		tb_size = sys_cols * op->ldpc_enc.z_c - op->ldpc_enc.n_filler;
-	} else {
-		c = op->turbo_enc.tb_params.c;
-		r = op->turbo_enc.tb_params.r;
-		for (i = 0; i < c-r; i++)
-			tb_size += sys_cols * op->ldpc_enc.z_c
-					- op->ldpc_enc.n_filler;
-	}
+	if (op->ldpc_enc.code_block_mode == RTE_BBDEV_CODE_BLOCK)
+		num_cbs = 1;
+	else
+		num_cbs = op->ldpc_enc.tb_params.c - op->ldpc_enc.tb_params.r;
+
+	tb_size = (sys_cols * op->ldpc_enc.z_c - op->ldpc_enc.n_filler) * num_cbs;
 	return tb_size;
 }
 
