@@ -84,7 +84,7 @@
 /* Increment for next code block in external HARQ memory */
 #define HARQ_INCR 32768
 /* Headroom for filler LLRs insertion in HARQ buffer */
-#define FILLER_HEADROOM 1024
+#define FILLER_HEADROOM 2048
 /* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
 #define N_ZC_1 66 /* N = 66 Zc for BG 1 */
 #define N_ZC_2 50 /* N = 50 Zc for BG 2 */
@@ -2111,9 +2111,9 @@ validate_op_harq_chain(struct rte_bbdev_op_data *op,
 					ops_ld->n_filler;
 			if (data_len > deRmOutSize)
 				data_len = deRmOutSize;
-			if (data_len > orig_op->segments[i].length)
-				data_len = orig_op->segments[i].length;
 		}
+		if (data_len > orig_op->segments[i].length)
+			data_len = orig_op->segments[i].length;
 		/*
 		 * HARQ output can have minor differences
 		 * due to integer representation and related scaling
