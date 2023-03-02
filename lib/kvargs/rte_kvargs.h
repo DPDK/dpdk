@@ -36,7 +36,19 @@ extern "C" {
 /** separator character used between key and value */
 #define RTE_KVARGS_KV_DELIM	"="
 
-/** Type of callback function used by rte_kvargs_process() */
+/**
+ * Callback prototype used by rte_kvargs_process().
+ *
+ * @param key
+ *   The key to consider, it will not be NULL.
+ * @param value
+ *   The value corresponding to the key, it may be NULL (e.g. only with key)
+ * @param opaque
+ *   An opaque pointer coming from the caller.
+ * @return
+ *   - >=0 handle key success.
+ *   - <0 on error.
+ */
 typedef int (*arg_handler_t)(const char *key, const char *value, void *opaque);
 
 /** A key/value association */
