@@ -758,7 +758,8 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
 #ifdef CC_AVX512_SUPPORT
 			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
-			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
+			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1 &&
+			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512DQ))
 				vport->rx_use_avx512 = true;
 #else
 		PMD_DRV_LOG(NOTICE,
@@ -771,6 +772,21 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 
 #ifdef RTE_ARCH_X86
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
+		if (vport->rx_vec_allowed) {
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
+				(void)idpf_qc_splitq_rx_vec_setup(rxq);
+			}
+#ifdef CC_AVX512_SUPPORT
+			if (vport->rx_use_avx512) {
+				PMD_DRV_LOG(NOTICE,
+					    "Using Split AVX512 Vector Rx (port %d).",
+					    dev->data->port_id);
+				dev->rx_pkt_burst = idpf_dp_splitq_recv_pkts_avx512;
+				return;
+			}
+#endif /* CC_AVX512_SUPPORT */
+		}
 		PMD_DRV_LOG(NOTICE,
 			    "Using Split Scalar Rx (port %d).",
 			    dev->data->port_id);
@@ -826,9 +842,17 @@ cpfl_set_tx_function(struct rte_eth_dev *dev)
 		vport->tx_vec_allowed = true;
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
 #ifdef CC_AVX512_SUPPORT
+		{
 			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 			    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
 				vport->tx_use_avx512 = true;
+			if (vport->tx_use_avx512) {
+				for (i = 0; i < dev->data->nb_tx_queues; i++) {
+					txq = dev->data->tx_queues[i];
+					idpf_qc_tx_vec_avx512_setup(txq);
+				}
+			}
+		}
 #else
 		PMD_DRV_LOG(NOTICE,
 			    "AVX512 is not supported in build env");
@@ -838,14 +862,26 @@ cpfl_set_tx_function(struct rte_eth_dev *dev)
 	}
 #endif /* RTE_ARCH_X86 */
 
+#ifdef RTE_ARCH_X86
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
+		if (vport->tx_vec_allowed) {
+#ifdef CC_AVX512_SUPPORT
+			if (vport->tx_use_avx512) {
+				PMD_DRV_LOG(NOTICE,
+					    "Using Split AVX512 Vector Tx (port %d).",
+					    dev->data->port_id);
+				dev->tx_pkt_burst = idpf_dp_splitq_xmit_pkts_avx512;
+				dev->tx_pkt_prepare = idpf_dp_prep_pkts;
+				return;
+			}
+#endif /* CC_AVX512_SUPPORT */
+		}
 		PMD_DRV_LOG(NOTICE,
 			    "Using Split Scalar Tx (port %d).",
 			    dev->data->port_id);
 		dev->tx_pkt_burst = idpf_dp_splitq_xmit_pkts;
 		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
 	} else {
-#ifdef RTE_ARCH_X86
 		if (vport->tx_vec_allowed) {
 #ifdef CC_AVX512_SUPPORT
 			if (vport->tx_use_avx512) {
@@ -864,11 +900,25 @@ cpfl_set_tx_function(struct rte_eth_dev *dev)
 			}
 #endif /* CC_AVX512_SUPPORT */
 		}
-#endif /* RTE_ARCH_X86 */
 		PMD_DRV_LOG(NOTICE,
 			    "Using Single Scalar Tx (port %d).",
 			    dev->data->port_id);
 		dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts;
 		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
 	}
+#else
+	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
+		PMD_DRV_LOG(NOTICE,
+			    "Using Split Scalar Tx (port %d).",
+			    dev->data->port_id);
+		dev->tx_pkt_burst = idpf_dp_splitq_xmit_pkts;
+		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
+	} else {
+		PMD_DRV_LOG(NOTICE,
+			    "Using Single Scalar Tx (port %d).",
+			    dev->data->port_id);
+		dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts;
+		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
+	}
+#endif /* RTE_ARCH_X86 */
 }
