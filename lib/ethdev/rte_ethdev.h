@@ -2020,6 +2020,9 @@ struct rte_eth_dev_sriov {
 
 #define RTE_ETH_MAX_OWNER_NAME_LEN 64
 
+#define RTE_ETH_NETNS_MAX_LEN (64)
+
+
 struct rte_eth_dev_owner {
 	uint64_t id; /**< The owner unique identifier. */
 	char name[RTE_ETH_MAX_OWNER_NAME_LEN]; /**< The owner name. */

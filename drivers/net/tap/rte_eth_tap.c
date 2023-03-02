@@ -56,6 +56,7 @@
 #define ETH_TAP_MAC_ARG         "mac"
 #define ETH_TAP_MAC_FIXED       "fixed"
 #define ETH_TAP_PERSIST_ARG     "persist"
+#define ETH_TAP_NETNS_ARG       "netns"
 
 #define ETH_TAP_USR_MAC_FMT     "xx:xx:xx:xx:xx:xx"
 #define ETH_TAP_CMP_MAC_FMT     "0123456789ABCDEFabcdef"
@@ -316,6 +317,23 @@ error:
 	if (fd >= 0)
 		close(fd);
 	return -1;
+}
+
+static int eth_dev_enter_netns(int ns)
+{
+	int origNs = open("/proc/thread-self/ns/net", O_RDONLY | O_CLOEXEC);
+	if (origNs >= 0)
+		setns(ns, 0);
+
+	return origNs;
+}
+
+static void eth_dev_exit_netns(int current_netns, int intended_netns)
+{
+	if (intended_netns < 0)
+		return;
+	setns(intended_netns, 0);
+	close(current_netns);
 }
 
 static void
@@ -1182,6 +1200,9 @@ tap_dev_close(struct rte_eth_dev *dev)
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
 	struct rx_queue *rxq;
+	int deviceNS = -1;
+	int originalNS = -1;
+	char ns[128];
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		rte_free(dev->process_private);
@@ -1189,6 +1210,13 @@ tap_dev_close(struct rte_eth_dev *dev)
 			rte_mp_action_unregister(TAP_MP_REQ_START_RXTX);
 		tap_devices_count--;
 		return 0;
+	}
+
+	if (dev->data->netns[0] != '\0')
+	{
+		snprintf(ns, 128, "/var/run/net/%s", dev->data->netns);
+		deviceNS = open(ns, O_RDONLY | O_CLOEXEC);
+		originalNS = eth_dev_enter_netns(deviceNS);
 	}
 
 	if (!internals->persist)
@@ -1254,6 +1282,10 @@ tap_dev_close(struct rte_eth_dev *dev)
 	 * Since TUN device has no more opened file descriptors
 	 * it will be removed from kernel
 	 */
+	if (dev->data->netns[0] != '\0')
+	{
+		eth_dev_exit_netns(deviceNS, originalNS);
+	}
 
 	return 0;
 }
@@ -1984,8 +2016,8 @@ static const struct eth_dev_ops ops = {
 
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
-		   char *remote_iface, struct rte_ether_addr *mac_addr,
-		   enum rte_tuntap_type type, int persist)
+		   char *remote_iface, struct rte_ether_addr *mac_addr, char * netns,
+		   enum rte_tuntap_type type, int persist, int netns_use)
 {
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev;
@@ -1995,7 +2027,9 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	struct rte_eth_dev_data *data;
 	struct ifreq ifr;
 	int i;
-
+	int deviceNS = -1;
+	int originalNS = -1;
+	char ns[128];
 	TAP_LOG(DEBUG, "%s device on numa %u", tuntap_name, rte_socket_id());
 
 	dev = rte_eth_vdev_allocate(vdev, sizeof(*pmd));
@@ -2021,6 +2055,15 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	pmd->ka_fd = -1;
 	pmd->nlsk_fd = -1;
 	pmd->gso_ctx_mp = NULL;
+	dev->data->netns[0] = '\0';
+
+	if (netns_use)
+	{
+		strlcpy(dev->data->netns, netns, RTE_ETH_NETNS_MAX_LEN);
+		snprintf(ns, 128, "/var/run/net/%s", netns);
+		deviceNS = open(ns, O_RDONLY | O_CLOEXEC);
+		originalNS = eth_dev_enter_netns(deviceNS);
+	}
 
 	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (pmd->ioctl_sock == -1) {
@@ -2183,6 +2226,11 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	}
 
 	rte_eth_dev_probing_finish(dev);
+
+	if (netns_use)
+	{
+		eth_dev_exit_netns(deviceNS, originalNS);
+	}
 	return 0;
 
 disable_rte_flow:
@@ -2333,6 +2381,18 @@ error:
 	return -1;
 }
 
+static int set_netns(const char *key __rte_unused,
+	     const char *value,
+	     void *extra_args)
+{
+	char *netns = extra_args;
+
+	if (!value)
+		return 0;
+	strlcpy(netns, value, RTE_ETH_NETNS_MAX_LEN);
+
+	return 0;
+}
 /*
  * Open a TUN interface device. TUN PMD
  * 1) sets tap_type as false
@@ -2348,6 +2408,8 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	char tun_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 	struct rte_eth_dev *eth_dev;
+	char netns[RTE_ETH_NETNS_MAX_LEN];
+	int netns_use = 0;
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -2383,14 +2445,23 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 				if (ret == -1)
 					goto leave;
 			}
+			if ((rte_kvargs_count(kvlist, ETH_TAP_NETNS_ARG) == 1)) {
+				ret = rte_kvargs_process(kvlist,
+							 ETH_TAP_NETNS_ARG,
+							 &set_netns,
+							 &netns);
+				if (ret == -1)
+					goto leave;
+				netns_use = 1;
+			}
 		}
 	}
 	pmd_link.link_speed = RTE_ETH_SPEED_NUM_10G;
 
 	TAP_LOG(DEBUG, "Initializing pmd_tun for %s", name);
 
-	ret = eth_dev_tap_create(dev, tun_name, remote_iface, 0,
-				 ETH_TUNTAP_TYPE_TUN, 0);
+	ret = eth_dev_tap_create(dev, tun_name, remote_iface, 0, netns,
+				 ETH_TUNTAP_TYPE_TUN, 0, netns_use);
 
 leave:
 	if (ret == -1) {
@@ -2519,8 +2590,10 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 	struct rte_ether_addr user_mac = { .addr_bytes = {0} };
 	struct rte_eth_dev *eth_dev;
+	char netns[RTE_ETH_NETNS_MAX_LEN];
 	int tap_devices_count_increased = 0;
 	int persist = 0;
+	int netns_use = 0;
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -2607,6 +2680,15 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 
 			if (rte_kvargs_count(kvlist, ETH_TAP_PERSIST_ARG) == 1)
 				persist = 1;
+			if ((rte_kvargs_count(kvlist, ETH_TAP_NETNS_ARG) == 1)) {
+				ret = rte_kvargs_process(kvlist,
+							 ETH_TAP_NETNS_ARG,
+							 &set_netns,
+							 &netns);
+				if (ret == -1)
+					goto leave;
+				netns_use = 1;
+			}
 		}
 	}
 	pmd_link.link_speed = speed;
@@ -2624,8 +2706,8 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	}
 	tap_devices_count++;
 	tap_devices_count_increased = 1;
-	ret = eth_dev_tap_create(dev, tap_name, remote_iface, &user_mac,
-				 ETH_TUNTAP_TYPE_TAP, persist);
+	ret = eth_dev_tap_create(dev, tap_name, remote_iface, &user_mac, netns,
+				 ETH_TUNTAP_TYPE_TAP, persist, netns_use);
 
 leave:
 	if (ret == -1) {

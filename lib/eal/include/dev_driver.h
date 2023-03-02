@@ -32,6 +32,7 @@ struct rte_device {
 	const struct rte_bus *bus;    /**< Bus handle assigned on scan */
 	int numa_node;                /**< NUMA node connection */
 	struct rte_devargs *devargs;  /**< Arguments for latest probing */
+	const char *netns;
 };
 
 #ifdef __cplusplus

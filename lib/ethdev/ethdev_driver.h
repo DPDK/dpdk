@@ -97,6 +97,7 @@ struct rte_eth_dev_owner;
  */
 struct rte_eth_dev_data {
 	char name[RTE_ETH_NAME_MAX_LEN]; /**< Unique identifier name */
+	char netns[RTE_ETH_NETNS_MAX_LEN]; /** The netns the interface is residing **/
 
 	void **rx_queues; /**< Array of pointers to Rx queues */
 	void **tx_queues; /**< Array of pointers to Tx queues */
