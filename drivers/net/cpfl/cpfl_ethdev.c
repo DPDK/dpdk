@@ -108,7 +108,8 @@ cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM		|
 		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM		|
 		RTE_ETH_TX_OFFLOAD_TCP_TSO		|
-		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS		|
+		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = CPFL_DEFAULT_TX_FREE_THRESH,
