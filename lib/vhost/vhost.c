@@ -1754,7 +1754,7 @@ rte_vhost_async_channel_register(int vid, uint16_t queue_id)
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(vq == NULL || !dev->async_copy))
+	if (unlikely(vq == NULL || !dev->async_copy || dev->vdpa_dev != NULL))
 		return -1;
 
 	rte_spinlock_lock(&vq->access_lock);
@@ -1778,7 +1778,7 @@ rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id)
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(vq == NULL || !dev->async_copy))
+	if (unlikely(vq == NULL || !dev->async_copy || dev->vdpa_dev != NULL))
 		return -1;
 
 	vq_assert_lock(dev, vq);
