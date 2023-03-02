@@ -2,8 +2,10 @@
  * Copyright (C) Mellanox Technologies, Ltd. 2001-2020.
  */
 
-#ifndef __MLX5_WIN_DEFS_H__
-#define __MLX5_WIN_DEFS_H__
+#ifndef MLX5_WIN_DEFS_H
+#define MLX5_WIN_DEFS_H
+
+#include <rte_bitops.h>
 
 enum {
 	MLX5_CQE_OWNER_MASK	= 1,
@@ -40,29 +42,29 @@ enum {
 };
 
 enum mlx5dv_cq_init_attr_mask {
-	MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE	= 1 << 0,
-	MLX5DV_CQ_INIT_ATTR_MASK_FLAGS		= 1 << 1,
-	MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE = 1 << 2,
+	MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE = RTE_BIT32(0),
+	MLX5DV_CQ_INIT_ATTR_MASK_FLAG           = RTE_BIT32(1),
+	MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE       = RTE_BIT32(2),
 };
 
 enum mlx5dv_cqe_comp_res_format {
-	MLX5DV_CQE_RES_FORMAT_HASH		= 1 << 0,
-	MLX5DV_CQE_RES_FORMAT_CSUM		= 1 << 1,
-	MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX	= 1 << 2,
+	MLX5DV_CQE_RES_FORMAT_HASH        = RTE_BIT32(0),
+	MLX5DV_CQE_RES_FORMAT_CSUM        = RTE_BIT32(1),
+	MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX = RTE_BIT32(2),
 };
 
 enum ibv_access_flags {
-	IBV_ACCESS_LOCAL_WRITE		= 1,
-	IBV_ACCESS_REMOTE_WRITE		= 1 << 1,
-	IBV_ACCESS_REMOTE_READ		= 1 << 2,
-	IBV_ACCESS_REMOTE_ATOMIC	= 1 << 3,
-	IBV_ACCESS_MW_BIND		= 1 << 4,
-	IBV_ACCESS_ZERO_BASED		= 1 << 5,
-	IBV_ACCESS_ON_DEMAND		= 1 << 6,
+	IBV_ACCESS_LOCAL_WRITE   = RTE_BIT32(0),
+	IBV_ACCESS_REMOTE_WRITE  = RTE_BIT32(1),
+	IBV_ACCESS_REMOTE_READ   = RTE_BIT32(2),
+	IBV_ACCESS_REMOTE_ATOMIC = RTE_BIT32(3),
+	IBV_ACCESS_MW_BIND       = RTE_BIT32(4),
+	IBV_ACCESS_ZERO_BASED    = RTE_BIT32(5),
+	IBV_ACCESS_ON_DEMAND     = RTE_BIT32(6),
 };
 
 enum mlx5_ib_uapi_devx_create_event_channel_flags {
-	MLX5_IB_UAPI_DEVX_CR_EV_CH_FLAGS_OMIT_DATA = 1 << 0,
+	MLX5_IB_UAPI_DEVX_CR_EV_CH_FLAGS_OMIT_DATA = RTE_BIT32(0),
 };
 
 #define MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA \
@@ -85,21 +87,26 @@ enum {
 };
 
 enum {
-	MLX5_ETH_WQE_L3_CSUM = (1 << 6),
-	MLX5_ETH_WQE_L4_CSUM = (1 << 7),
+	MLX5_ETH_WQE_L3_CSUM = RTE_BIT32(6),
+	MLX5_ETH_WQE_L4_CSUM = RTE_BIT32(7),
 };
 
 enum {
-	MLX5_WQE_CTRL_CQ_UPDATE	= 2 << 2,
-	MLX5_WQE_CTRL_SOLICITED	= 1 << 1,
-	MLX5_WQE_CTRL_FENCE	= 4 << 5,
-	MLX5_WQE_CTRL_INITIATOR_SMALL_FENCE = 1 << 5,
+	MLX5_WQE_CTRL_SOLICITED             = RTE_BIT32(1),
+	MLX5_WQE_CTRL_CQ_UPDATE             = RTE_BIT32(3),
+	MLX5_WQE_CTRL_INITIATOR_SMALL_FENCE = RTE_BIT32(5),
+	MLX5_WQE_CTRL_FENCE                 = RTE_BIT32(7),
 };
 
 enum {
 	MLX5_SEND_WQE_BB	= 64,
 	MLX5_SEND_WQE_SHIFT	= 6,
 };
+
+/* Verbs headers do not support -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 
 /*
  * RX Hash fields enable to set which incoming packet's field should
@@ -110,17 +117,21 @@ enum {
  * TCP and UDP flags can't be enabled together on the same QP.
  */
 enum ibv_rx_hash_fields {
-	IBV_RX_HASH_SRC_IPV4	= 1 << 0,
-	IBV_RX_HASH_DST_IPV4	= 1 << 1,
-	IBV_RX_HASH_SRC_IPV6	= 1 << 2,
-	IBV_RX_HASH_DST_IPV6	= 1 << 3,
-	IBV_RX_HASH_SRC_PORT_TCP	= 1 << 4,
-	IBV_RX_HASH_DST_PORT_TCP	= 1 << 5,
-	IBV_RX_HASH_SRC_PORT_UDP	= 1 << 6,
-	IBV_RX_HASH_DST_PORT_UDP	= 1 << 7,
-	IBV_RX_HASH_IPSEC_SPI		= 1 << 8,
-	IBV_RX_HASH_INNER		= (1 << 31),
+	IBV_RX_HASH_SRC_IPV4     = RTE_BIT32(0),
+	IBV_RX_HASH_DST_IPV4     = RTE_BIT32(1),
+	IBV_RX_HASH_SRC_IPV6     = RTE_BIT32(2),
+	IBV_RX_HASH_DST_IPV6     = RTE_BIT32(3),
+	IBV_RX_HASH_SRC_PORT_TCP = RTE_BIT32(4),
+	IBV_RX_HASH_DST_PORT_TCP = RTE_BIT32(5),
+	IBV_RX_HASH_SRC_PORT_UDP = RTE_BIT32(6),
+	IBV_RX_HASH_DST_PORT_UDP = RTE_BIT32(7),
+	IBV_RX_HASH_IPSEC_SPI    = RTE_BIT32(8),
+	IBV_RX_HASH_INNER        = RTE_BIT32(31),
 };
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
 
 enum {
 	MLX5_RCV_DBR	= 0,
@@ -141,9 +152,9 @@ enum {
 #endif
 
 enum ibv_flow_flags {
-	IBV_FLOW_ATTR_FLAGS_ALLOW_LOOP_BACK = 1 << 0,
-	IBV_FLOW_ATTR_FLAGS_DONT_TRAP = 1 << 1,
-	IBV_FLOW_ATTR_FLAGS_EGRESS = 1 << 2,
+	IBV_FLOW_ATTR_FLAGS_ALLOW_LOOP_BACK = RTE_BIT32(0),
+	IBV_FLOW_ATTR_FLAGS_DONT_TRAP = RTE_BIT32(1),
+	IBV_FLOW_ATTR_FLAGS_EGRESS = RTE_BIT32(2),
 };
 
 enum ibv_flow_attr_type {
@@ -240,11 +251,11 @@ struct mlx5_wqe_data_seg {
 	rte_be64_t		addr;
 };
 
-#define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP	(1 << 4)
-#define IBV_DEVICE_RAW_IP_CSUM			(1 << 26)
-#define IBV_RAW_PACKET_CAP_CVLAN_STRIPPING	(1 << 0)
-#define IBV_RAW_PACKET_CAP_SCATTER_FCS		(1 << 1)
-#define IBV_QPT_RAW_PACKET			8
+#define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP   RTE_BIT32(4)
+#define IBV_DEVICE_RAW_IP_CSUM               RTE_BIT32(26)
+#define IBV_RAW_PACKET_CAP_CVLAN_STRIPPING   RTE_BIT32(0)
+#define IBV_RAW_PACKET_CAP_SCATTER_FCS       RTE_BIT32(1)
+#define IBV_QPT_RAW_PACKET                   8
 
 enum {
 	MLX5_FLOW_CONTEXT_DEST_TYPE_VPORT                    = 0x0,
@@ -254,8 +265,9 @@ enum {
 };
 
 enum {
-	MLX5_MATCH_OUTER_HEADERS        = 1 << 0,
-	MLX5_MATCH_MISC_PARAMETERS      = 1 << 1,
-	MLX5_MATCH_INNER_HEADERS        = 1 << 2,
+	MLX5_MATCH_OUTER_HEADERS        = RTE_BIT32(0),
+	MLX5_MATCH_MISC_PARAMETERS      = RTE_BIT32(1),
+	MLX5_MATCH_INNER_HEADERS        = RTE_BIT32(2),
 };
-#endif /* __MLX5_WIN_DEFS_H__ */
+
+#endif /* MLX5_WIN_DEFS_H */
