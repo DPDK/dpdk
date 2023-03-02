@@ -189,9 +189,9 @@ idpf_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *rxq,
 	bufq->ops = &def_rxq_ops;
 	bufq->q_set = true;
 
-	if (bufq_id == 1) {
+	if (bufq_id == IDPF_RX_SPLIT_BUFQ1_ID) {
 		rxq->bufq1 = bufq;
-	} else if (bufq_id == 2) {
+	} else if (bufq_id == IDPF_RX_SPLIT_BUFQ2_ID) {
 		rxq->bufq2 = bufq;
 	} else {
 		PMD_INIT_LOG(ERR, "Invalid buffer queue index.");
@@ -536,7 +536,7 @@ idpf_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EIO;
 	}
 
-	if (rxq->bufq1 == NULL) {
+	if (rxq->adapter->is_rx_singleq) {
 		/* Single queue */
 		err = idpf_qc_single_rxq_mbufs_alloc(rxq);
 		if (err != 0) {

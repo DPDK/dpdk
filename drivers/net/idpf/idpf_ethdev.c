@@ -992,12 +992,12 @@ idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adap
 		goto bail;
 
 	ret = rte_kvargs_process(kvlist, IDPF_TX_SINGLE_Q, &parse_bool,
-				 &adapter->base.txq_model);
+				 &adapter->base.is_tx_singleq);
 	if (ret != 0)
 		goto bail;
 
 	ret = rte_kvargs_process(kvlist, IDPF_RX_SINGLE_Q, &parse_bool,
-				 &adapter->base.rxq_model);
+				 &adapter->base.is_rx_singleq);
 	if (ret != 0)
 		goto bail;
 

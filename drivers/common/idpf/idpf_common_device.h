@@ -43,8 +43,8 @@ struct idpf_adapter {
 
 	uint32_t ptype_tbl[IDPF_MAX_PKT_TYPE] __rte_cache_min_aligned;
 
-	uint32_t txq_model; /* 0 - split queue model, non-0 - single queue model */
-	uint32_t rxq_model; /* 0 - split queue model, non-0 - single queue model */
+	bool is_tx_singleq; /* true - single queue model, false - split queue model */
+	bool is_rx_singleq; /* true - single queue model, false - split queue model */
 
 	/* For timestamp */
 	uint64_t time_hw;

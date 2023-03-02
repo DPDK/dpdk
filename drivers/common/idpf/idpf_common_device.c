@@ -623,7 +623,7 @@ idpf_vport_info_init(struct idpf_vport *vport,
 	struct idpf_adapter *adapter = vport->adapter;
 
 	vport_info->vport_type = rte_cpu_to_le_16(VIRTCHNL2_VPORT_TYPE_DEFAULT);
-	if (adapter->txq_model == 0) {
+	if (!adapter->is_tx_singleq) {
 		vport_info->txq_model =
 			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SPLIT);
 		vport_info->num_tx_q =
@@ -636,7 +636,7 @@ idpf_vport_info_init(struct idpf_vport *vport,
 		vport_info->num_tx_q = rte_cpu_to_le_16(IDPF_DEFAULT_TXQ_NUM);
 		vport_info->num_tx_complq = 0;
 	}
-	if (adapter->rxq_model == 0) {
+	if (!adapter->is_rx_singleq) {
 		vport_info->rxq_model =
 			rte_cpu_to_le_16(VIRTCHNL2_QUEUE_MODEL_SPLIT);
 		vport_info->num_rx_q = rte_cpu_to_le_16(IDPF_DEFAULT_RXQ_NUM);
