@@ -26,7 +26,6 @@
 
 #include "ccp_dev.h"
 #include "ccp_crypto.h"
-#include "ccp_pci.h"
 #include "ccp_pmd_private.h"
 
 #include <openssl/conf.h>

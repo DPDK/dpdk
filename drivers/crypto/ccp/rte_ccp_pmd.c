@@ -167,15 +167,9 @@ ccp_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
  * The set of PCI devices this driver supports
  */
 static struct rte_pci_id ccp_pci_id[] = {
-	{
-		RTE_PCI_DEVICE(0x1022, 0x1456), /* AMD CCP-5a */
-	},
-	{
-		RTE_PCI_DEVICE(0x1022, 0x1468), /* AMD CCP-5b */
-	},
-	{
-		RTE_PCI_DEVICE(0x1022, 0x15df), /* AMD CCP RV */
-	},
+	{ RTE_PCI_DEVICE(AMD_PCI_VENDOR_ID, AMD_PCI_CCP_5A), },
+	{ RTE_PCI_DEVICE(AMD_PCI_VENDOR_ID, AMD_PCI_CCP_5B), },
+	{ RTE_PCI_DEVICE(AMD_PCI_VENDOR_ID, AMD_PCI_CCP_RV), },
 	{.device_id = 0},
 };
 
@@ -228,12 +222,11 @@ cryptodev_ccp_create(const char *name,
 		goto init_error;
 	}
 
-	cryptodev_cnt = ccp_probe_devices(pci_dev, ccp_pci_id);
-
-	if (cryptodev_cnt == 0) {
+	if (ccp_probe_device(pci_dev) != 0) {
 		CCP_LOG_ERR("failed to detect CCP crypto device");
 		goto init_error;
 	}
+	cryptodev_cnt++;
 
 	CCP_LOG_DBG("CCP : Crypto device count = %d\n", cryptodev_cnt);
 	dev->device = &pci_dev->device;
