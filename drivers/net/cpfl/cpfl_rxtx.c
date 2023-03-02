@@ -734,3 +734,21 @@ cpfl_stop_queues(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(WARNING, "Fail to stop Tx queue %d", i);
 	}
 }
+
+void
+cpfl_set_rx_function(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+
+	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
+		PMD_DRV_LOG(NOTICE,
+			    "Using Split Scalar Rx (port %d).",
+			    dev->data->port_id);
+		dev->rx_pkt_burst = idpf_dp_splitq_recv_pkts;
+	} else {
+		PMD_DRV_LOG(NOTICE,
+			    "Using Single Scalar Rx (port %d).",
+			    dev->data->port_id);
+		dev->rx_pkt_burst = idpf_dp_singleq_recv_pkts;
+	}
+}
