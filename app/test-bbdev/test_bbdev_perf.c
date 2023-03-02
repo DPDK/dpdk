@@ -849,6 +849,8 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 #endif
 	/* Let's refresh this now this is configured */
 	rte_bbdev_info_get(dev_id, info);
+	if (info->drv.device_status == RTE_BBDEV_DEV_FATAL_ERR)
+		printf("Device Status %s\n", rte_bbdev_device_status_str(info->drv.device_status));
 	nb_queues = RTE_MIN(rte_lcore_count(), info->drv.max_num_queues);
 	nb_queues = RTE_MIN(nb_queues, (unsigned int) MAX_QUEUES);
 
