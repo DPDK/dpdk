@@ -96,6 +96,12 @@ cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->flow_type_rss_offloads = CPFL_RSS_OFFLOAD_ALL;
 
+	dev_info->rx_offload_capa =
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM           |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM            |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM            |
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
