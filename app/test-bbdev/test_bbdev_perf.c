@@ -5781,6 +5781,9 @@ offload_cost_test(struct active_device *ad,
 
 	struct rte_bbdev_stats stats = {0};
 	get_bbdev_queue_stats(ad->dev_id, queue_id, &stats);
+	if (stats.enqueue_warn_count > 0)
+		printf("Warning reported on the queue : %10"PRIu64"\n",
+			stats.enqueue_warn_count);
 	if (op_type != RTE_BBDEV_OP_LDPC_DEC) {
 		TEST_ASSERT_SUCCESS(stats.enqueued_count != num_to_process,
 				"Mismatch in enqueue count %10"PRIu64" %d",
