@@ -145,6 +145,12 @@ New Features
   * Added support for meter options.
   * Added support for rte_flow meter action.
 
+* **Added Intel cpfl driver.**
+
+  Added the new cpfl net driver
+  for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
+  See the :doc:`../nics/cpfl` NIC guide for more details on this new driver.
+
 * **Updated Intel igc driver.**
 
   * Added support for timesync API.

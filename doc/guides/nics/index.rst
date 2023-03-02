@@ -20,6 +20,7 @@ Network Interface Controller Drivers
     bnx2x
     bnxt
     cnxk
+    cpfl
     cxgbe
     dpaa
     dpaa2
