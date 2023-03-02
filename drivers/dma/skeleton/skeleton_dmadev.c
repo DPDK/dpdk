@@ -515,9 +515,15 @@ skeldma_parse_lcore(const char *key __rte_unused,
 		    const char *value,
 		    void *opaque)
 {
-	int lcore_id = atoi(value);
+	int lcore_id;
+
+	if (value == NULL || opaque == NULL)
+		return -EINVAL;
+
+	lcore_id = atoi(value);
 	if (lcore_id >= 0 && lcore_id < RTE_MAX_LCORE)
 		*(int *)opaque = lcore_id;
+
 	return 0;
 }
 
