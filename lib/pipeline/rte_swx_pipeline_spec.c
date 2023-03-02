@@ -3557,6 +3557,18 @@ pipeline_spec_configure(struct rte_swx_pipeline *p,
 		}
 	}
 
+	/* rss. */
+	for (i = 0; i < s->n_rss; i++) {
+		struct rss_spec *rss_spec = &s->rss[i];
+
+		status = rte_swx_pipeline_rss_config(p, rss_spec->name);
+		if (status) {
+			if (err_msg)
+				*err_msg = "rss object configuration error.";
+			return status;
+		}
+	}
+
 	/* metarray. */
 	for (i = 0; i < s->n_metarrays; i++) {
 		struct metarray_spec *metarray_spec = &s->metarrays[i];
@@ -3674,18 +3686,6 @@ pipeline_spec_configure(struct rte_swx_pipeline *p,
 		if (status) {
 			if (err_msg)
 				*err_msg = "Learner table configuration error.";
-			return status;
-		}
-	}
-
-	/* rss. */
-	for (i = 0; i < s->n_rss; i++) {
-		struct rss_spec *rss_spec = &s->rss[i];
-
-		status = rte_swx_pipeline_rss_config(p, rss_spec->name);
-		if (status) {
-			if (err_msg)
-				*err_msg = "rss object configuration error.";
 			return status;
 		}
 	}
