@@ -3773,11 +3773,11 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
 
 	/* For throughput tests we need to disable early termination */
-	if (check_bit(ref_op->ldpc_dec.op_flags,
-			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
-		ref_op->ldpc_dec.op_flags -=
-				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+	if (check_bit(ref_op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
+		ref_op->ldpc_dec.op_flags -= RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+
 	ref_op->ldpc_dec.iter_max = get_iter_max();
+	/* Since ET is disabled, the expected iter_count is iter_max */
 	ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
@@ -4463,7 +4463,7 @@ latency_test_dec(struct rte_mempool *mempool,
 		struct test_buffers *bufs, struct rte_bbdev_dec_op *ref_op,
 		int vector_mask, uint16_t dev_id, uint16_t queue_id,
 		const uint16_t num_to_process, uint16_t burst_sz,
-		uint64_t *total_time, uint64_t *min_time, uint64_t *max_time)
+		uint64_t *total_time, uint64_t *min_time, uint64_t *max_time, bool disable_et)
 {
 	int ret = TEST_SUCCESS;
 	uint16_t i, j, dequeued;
@@ -4479,8 +4479,14 @@ latency_test_dec(struct rte_mempool *mempool,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret,
-				"rte_bbdev_dec_op_alloc_bulk() failed");
+		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_dec_op_alloc_bulk() failed");
+
+		ref_op->turbo_dec.iter_max = get_iter_max();
+		/* For validation tests we want to enable early termination */
+		if (!disable_et && !check_bit(ref_op->turbo_dec.op_flags,
+				RTE_BBDEV_TURBO_EARLY_TERMINATION))
+			ref_op->turbo_dec.op_flags |= RTE_BBDEV_TURBO_EARLY_TERMINATION;
+
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_dec_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -4559,10 +4565,12 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 		/* For latency tests we need to disable early termination */
 		if (disable_et && check_bit(ref_op->ldpc_dec.op_flags,
 				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
-			ref_op->ldpc_dec.op_flags -=
-					RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+			ref_op->ldpc_dec.op_flags -= RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+
 		ref_op->ldpc_dec.iter_max = get_iter_max();
-		ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
+		/* When ET is disabled, the expected iter_count is iter_max */
+		if (disable_et)
+			ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
 
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_ldpc_dec_op(ops_enq, burst_sz, dequeued,
@@ -4871,7 +4879,7 @@ validation_latency_test(struct active_device *ad,
 		iter = latency_test_dec(op_params->mp, bufs,
 				op_params->ref_dec_op, op_params->vector_mask,
 				ad->dev_id, queue_id, num_to_process,
-				burst_sz, &total_time, &min_time, &max_time);
+				burst_sz, &total_time, &min_time, &max_time, latency_flag);
 	else if (op_type == RTE_BBDEV_OP_LDPC_ENC)
 		iter = latency_test_ldpc_enc(op_params->mp, bufs,
 				op_params->ref_enc_op, ad->dev_id, queue_id,
