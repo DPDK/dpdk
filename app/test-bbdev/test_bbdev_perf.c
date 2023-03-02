@@ -26,6 +26,7 @@
 
 #define MAX_QUEUES RTE_MAX_LCORE
 #define TEST_REPETITIONS 100
+#define TIME_OUT_POLL 1e8
 #define WAIT_OFFLOAD_US 1000
 
 #ifdef RTE_BASEBAND_FPGA_LTE_FEC
@@ -4544,6 +4545,7 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 
 	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
 		uint16_t enq = 0, deq = 0;
+		uint32_t time_out = 0;
 		bool first_time = true;
 		last_time = 0;
 
@@ -4595,7 +4597,8 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 				last_time = rte_rdtsc_precise() - start_time;
 				first_time = false;
 			}
-		} while (unlikely(burst_sz != deq));
+			time_out++;
+		} while ((burst_sz != deq) && (time_out < TIME_OUT_POLL));
 
 		*max_time = RTE_MAX(*max_time, last_time);
 		*min_time = RTE_MIN(*min_time, last_time);
@@ -4604,7 +4607,12 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 		if (extDdr)
 			retrieve_harq_ddr(dev_id, queue_id, ops_enq, burst_sz);
 
-		if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
+		if (burst_sz != deq) {
+			struct rte_bbdev_info info;
+			ret = TEST_FAILED;
+			rte_bbdev_info_get(dev_id, &info);
+			TEST_ASSERT_SUCCESS(ret, "Dequeue timeout!");
+		} else if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
 			ret = validate_ldpc_dec_op(ops_deq, burst_sz, ref_op,
 					vector_mask);
 			TEST_ASSERT_SUCCESS(ret, "Validation failed!");
@@ -4630,6 +4638,7 @@ latency_test_enc(struct rte_mempool *mempool,
 
 	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
 		uint16_t enq = 0, deq = 0;
+		uint32_t time_out = 0;
 		bool first_time = true;
 		last_time = 0;
 
@@ -4665,13 +4674,18 @@ latency_test_enc(struct rte_mempool *mempool,
 				last_time += rte_rdtsc_precise() - start_time;
 				first_time = false;
 			}
-		} while (unlikely(burst_sz != deq));
+			time_out++;
+		} while ((burst_sz != deq) && (time_out < TIME_OUT_POLL));
 
 		*max_time = RTE_MAX(*max_time, last_time);
 		*min_time = RTE_MIN(*min_time, last_time);
 		*total_time += last_time;
-
-		if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
+		if (burst_sz != deq) {
+			struct rte_bbdev_info info;
+			ret = TEST_FAILED;
+			rte_bbdev_info_get(dev_id, &info);
+			TEST_ASSERT_SUCCESS(ret, "Dequeue timeout!");
+		} else if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
 			ret = validate_enc_op(ops_deq, burst_sz, ref_op);
 			TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 		}
