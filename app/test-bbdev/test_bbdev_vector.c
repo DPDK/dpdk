@@ -532,10 +532,6 @@ parse_decoder_params(const char *key_token, char *token,
 		vector->mask |= TEST_BBDEV_VF_RV_INDEX;
 		turbo_dec->rv_index = (uint8_t) strtoul(token, &err, 0);
 		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
-	} else if (!strcmp(key_token, "iter_max")) {
-		vector->mask |= TEST_BBDEV_VF_ITER_MAX;
-		turbo_dec->iter_max = (uint8_t) strtoul(token, &err, 0);
-		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
 	} else if (!strcmp(key_token, "iter_min")) {
 		vector->mask |= TEST_BBDEV_VF_ITER_MIN;
 		turbo_dec->iter_min = (uint8_t) strtoul(token, &err, 0);
@@ -861,10 +857,6 @@ parse_ldpc_decoder_params(const char *key_token, char *token,
 	} else if (!strcmp(key_token, "expected_iter_count")) {
 		vector->mask |= TEST_BBDEV_VF_EXPECTED_ITER_COUNT;
 		ldpc_dec->iter_count = (uint8_t) strtoul(token, &err, 0);
-		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
-	} else if (!strcmp(key_token, "iter_max")) {
-		vector->mask |= TEST_BBDEV_VF_ITER_MAX;
-		ldpc_dec->iter_max = (uint8_t) strtoul(token, &err, 0);
 		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
 	} else if (!strcmp(key_token, "code_block_mode")) {
 		vector->mask |= TEST_BBDEV_VF_CODE_BLOCK_MODE;
@@ -1260,9 +1252,6 @@ check_decoder(struct test_bbdev_vector *vector)
 	if (!(mask & TEST_BBDEV_VF_ITER_MIN))
 		printf(
 			"WARNING: iter_min was not specified in vector file and will be set to 0\n");
-	if (!(mask & TEST_BBDEV_VF_ITER_MAX))
-		printf(
-			"WARNING: iter_max was not specified in vector file and will be set to 0\n");
 	if (!(mask & TEST_BBDEV_VF_EXPECTED_ITER_COUNT))
 		printf(
 			"WARNING: expected_iter_count was not specified in vector file and iter_count will not be validated\n");
@@ -1335,9 +1324,6 @@ check_ldpc_decoder(struct test_bbdev_vector *vector)
 	if (!(mask & TEST_BBDEV_VF_RV_INDEX))
 		printf(
 			"INFO: rv_index was not specified in vector file and will be set to 0\n");
-	if (!(mask & TEST_BBDEV_VF_ITER_MAX))
-		printf(
-			"WARNING: iter_max was not specified in vector file and will be set to 0\n");
 	if (!(mask & TEST_BBDEV_VF_EXPECTED_ITER_COUNT))
 		printf(
 			"WARNING: expected_iter_count was not specified in vector file and iter_count will not be validated\n");

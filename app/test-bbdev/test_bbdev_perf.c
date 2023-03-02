@@ -3173,6 +3173,8 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 				num_to_process);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops",
 			num_to_process);
+	ref_op->ldpc_dec.iter_max = get_iter_max();
+
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 		copy_reference_ldpc_dec_op(ops, num_to_process, 0, bufs->inputs,
 				bufs->hard_outputs, bufs->soft_outputs,
@@ -5348,6 +5350,7 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 
 		ret = rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
 		TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", burst_sz);
+		ref_op->turbo_dec.iter_max = get_iter_max();
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_dec_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -5434,6 +5437,7 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 
 		ret = rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
 		TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", burst_sz);
+		ref_op->ldpc_dec.iter_max = get_iter_max();
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_ldpc_dec_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
