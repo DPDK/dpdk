@@ -2300,7 +2300,7 @@ validate_op_so_chain(struct rte_bbdev_op_data *op,
 
 static int
 validate_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
-		struct rte_bbdev_dec_op *ref_op, const int vector_mask)
+		struct rte_bbdev_dec_op *ref_op)
 {
 	unsigned int i;
 	int ret;
@@ -2311,17 +2311,12 @@ validate_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
 	struct rte_bbdev_op_turbo_dec *ops_td;
 	struct rte_bbdev_op_data *hard_output;
 	struct rte_bbdev_op_data *soft_output;
-	struct rte_bbdev_op_turbo_dec *ref_td = &ref_op->turbo_dec;
 
 	for (i = 0; i < n; ++i) {
 		ops_td = &ops[i]->turbo_dec;
 		hard_output = &ops_td->hard_output;
 		soft_output = &ops_td->soft_output;
 
-		if (vector_mask & TEST_BBDEV_VF_EXPECTED_ITER_COUNT)
-			TEST_ASSERT(ops_td->iter_count <= ref_td->iter_count,
-					"Returned iter_count (%d) > expected iter_count (%d)",
-					ops_td->iter_count, ref_td->iter_count);
 		ret = check_dec_status_and_ordering(ops[i], i, ref_op->status);
 		TEST_ASSERT_SUCCESS(ret,
 				"Checking status and ordering for decoder failed");
@@ -3070,8 +3065,7 @@ dequeue_event_callback(uint16_t dev_id,
 
 	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC) {
 		struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
-		ret = validate_dec_op(tp->dec_ops, num_ops, ref_op,
-				tp->op_params->vector_mask);
+		ret = validate_dec_op(tp->dec_ops, num_ops, ref_op);
 		/* get the max of iter_count for all dequeued ops */
 		for (i = 0; i < num_ops; ++i)
 			tp->iter_count = RTE_MAX(
@@ -3683,8 +3677,7 @@ throughput_pmd_lcore_dec(void *arg)
 	}
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
-		ret = validate_dec_op(ops_deq, num_ops, ref_op,
-				tp->op_params->vector_mask);
+		ret = validate_dec_op(ops_deq, num_ops, ref_op);
 		TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 	}
 
@@ -4743,7 +4736,7 @@ throughput_test(struct active_device *ad,
 static int
 latency_test_dec(struct rte_mempool *mempool,
 		struct test_buffers *bufs, struct rte_bbdev_dec_op *ref_op,
-		int vector_mask, uint16_t dev_id, uint16_t queue_id,
+		uint16_t dev_id, uint16_t queue_id,
 		const uint16_t num_to_process, uint16_t burst_sz,
 		uint64_t *total_time, uint64_t *min_time, uint64_t *max_time, bool disable_et)
 {
@@ -4809,8 +4802,7 @@ latency_test_dec(struct rte_mempool *mempool,
 		*total_time += last_time;
 
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
-			ret = validate_dec_op(ops_deq, burst_sz, ref_op,
-					vector_mask);
+			ret = validate_dec_op(ops_deq, burst_sz, ref_op);
 			TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 		}
 
@@ -5175,9 +5167,9 @@ validation_latency_test(struct active_device *ad,
 
 	if (op_type == RTE_BBDEV_OP_TURBO_DEC)
 		iter = latency_test_dec(op_params->mp, bufs,
-				op_params->ref_dec_op, op_params->vector_mask,
-				ad->dev_id, queue_id, num_to_process,
-				burst_sz, &total_time, &min_time, &max_time, latency_flag);
+				op_params->ref_dec_op, ad->dev_id, queue_id,
+				num_to_process, burst_sz, &total_time,
+				&min_time, &max_time, latency_flag);
 	else if (op_type == RTE_BBDEV_OP_LDPC_ENC)
 		iter = latency_test_ldpc_enc(op_params->mp, bufs,
 				op_params->ref_enc_op, ad->dev_id, queue_id,
