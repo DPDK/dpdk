@@ -1084,8 +1084,6 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 			 * Special case when DPDK mbuf cannot handle
 			 * the required input size
 			 */
-			printf("Warning: Larger input size than DPDK mbuf %d\n",
-					seg->length);
 			large_input = true;
 		}
 		bufs[i].data = m_head;
@@ -2041,6 +2039,7 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 	struct rte_mbuf *m = op->data;
 	uint8_t nb_dst_segments = orig_op->nb_segments;
 	uint32_t total_data_size = 0;
+	bool ignore_mbuf = false; /* ignore mbuf limitations */
 
 	TEST_ASSERT(nb_dst_segments == m->nb_segs,
 			"Number of segments differ in original (%u) and filled (%u) op",
@@ -2053,21 +2052,25 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 		uint16_t data_len = rte_pktmbuf_data_len(m) - offset;
 		total_data_size += orig_op->segments[i].length;
 
-		TEST_ASSERT(orig_op->segments[i].length == data_len,
-				"Length of segment differ in original (%u) and filled (%u) op",
-				orig_op->segments[i].length, data_len);
+		if (orig_op->segments[i].length > RTE_BBDEV_LDPC_E_MAX_MBUF)
+			ignore_mbuf = true;
+		if (!ignore_mbuf)
+			TEST_ASSERT(orig_op->segments[i].length == data_len,
+					"Length of segment differ in original (%u) and filled (%u) op",
+					orig_op->segments[i].length, data_len);
 		TEST_ASSERT_BUFFERS_ARE_EQUAL(orig_op->segments[i].addr,
 				rte_pktmbuf_mtod_offset(m, uint32_t *, offset),
-				data_len,
+				orig_op->segments[i].length,
 				"Output buffers (CB=%u) are not equal", i);
 		m = m->next;
 	}
 
 	/* Validate total mbuf pkt length */
 	uint32_t pkt_len = rte_pktmbuf_pkt_len(op->data) - op->offset;
-	TEST_ASSERT(total_data_size == pkt_len,
-			"Length of data differ in original (%u) and filled (%u) op",
-			total_data_size, pkt_len);
+	if (!ignore_mbuf)
+		TEST_ASSERT(total_data_size == pkt_len,
+				"Length of data differ in original (%u) and filled (%u) op",
+				total_data_size, pkt_len);
 
 	return TEST_SUCCESS;
 }
