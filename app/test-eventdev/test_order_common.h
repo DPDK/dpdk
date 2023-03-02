@@ -113,7 +113,7 @@ order_process_stage_1(struct test_order *const t,
 	 */
 	expected_flow_seq[flow]++;
 	rte_pktmbuf_free(ev->mbuf);
-	__atomic_sub_fetch(outstand_pkts, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_sub(outstand_pkts, 1, __ATOMIC_RELAXED);
 }
 
 static __rte_always_inline void

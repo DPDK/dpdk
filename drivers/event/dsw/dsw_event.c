@@ -50,7 +50,7 @@ dsw_port_acquire_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 
 	if (unlikely(new_total_on_loan > dsw->max_inflight)) {
 		/* Some other port took the last credits */
-		__atomic_sub_fetch(&dsw->credits_on_loan, acquired_credits,
+		__atomic_fetch_sub(&dsw->credits_on_loan, acquired_credits,
 				   __ATOMIC_RELAXED);
 		return false;
 	}
@@ -77,7 +77,7 @@ dsw_port_return_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 
 		port->inflight_credits = leave_credits;
 
-		__atomic_sub_fetch(&dsw->credits_on_loan, return_credits,
+		__atomic_fetch_sub(&dsw->credits_on_loan, return_credits,
 				   __ATOMIC_RELAXED);
 
 		DSW_LOG_DP_PORT(DEBUG, port->id,
@@ -527,7 +527,7 @@ dsw_select_emigration_target(struct dsw_evdev *dsw,
 	target_qfs[*targets_len] = *candidate_qf;
 	(*targets_len)++;
 
-	__atomic_add_fetch(&dsw->ports[candidate_port_id].immigration_load,
+	__atomic_fetch_add(&dsw->ports[candidate_port_id].immigration_load,
 			   candidate_flow_load, __ATOMIC_RELAXED);
 
 	return true;

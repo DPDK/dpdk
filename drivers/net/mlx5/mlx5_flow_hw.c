@@ -1427,7 +1427,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 				goto err;
 			acts->rule_acts[action_pos].action =
 				priv->hw_tag[!!attr->group];
-			__atomic_add_fetch(&priv->hws_mark_refcnt, 1, __ATOMIC_RELAXED);
+			__atomic_fetch_add(&priv->hws_mark_refcnt, 1, __ATOMIC_RELAXED);
 			flow_hw_rxq_flag_set(dev, true);
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
@@ -3317,13 +3317,13 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 at_error:
 	while (i--) {
 		__flow_hw_action_template_destroy(dev, &tbl->ats[i].acts);
-		__atomic_sub_fetch(&action_templates[i]->refcnt,
+		__atomic_fetch_sub(&action_templates[i]->refcnt,
 				   1, __ATOMIC_RELAXED);
 	}
 	i = nb_item_templates;
 it_error:
 	while (i--)
-		__atomic_sub_fetch(&item_templates[i]->refcnt,
+		__atomic_fetch_sub(&item_templates[i]->refcnt,
 				   1, __ATOMIC_RELAXED);
 error:
 	err = rte_errno;
@@ -3520,11 +3520,11 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 	}
 	LIST_REMOVE(table, next);
 	for (i = 0; i < table->nb_item_templates; i++)
-		__atomic_sub_fetch(&table->its[i]->refcnt,
+		__atomic_fetch_sub(&table->its[i]->refcnt,
 				   1, __ATOMIC_RELAXED);
 	for (i = 0; i < table->nb_action_templates; i++) {
 		__flow_hw_action_template_destroy(dev, &table->ats[i].acts);
-		__atomic_sub_fetch(&table->ats[i].action_template->refcnt,
+		__atomic_fetch_sub(&table->ats[i].action_template->refcnt,
 				   1, __ATOMIC_RELAXED);
 	}
 	mlx5dr_matcher_destroy(table->matcher);

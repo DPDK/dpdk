@@ -4472,7 +4472,7 @@ flow_get_shared_rss_action(struct rte_eth_dev *dev,
 			shared_rss = mlx5_ipool_get
 				(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 									   idx);
-			__atomic_add_fetch(&shared_rss->refcnt, 1,
+			__atomic_fetch_add(&shared_rss->refcnt, 1,
 					   __ATOMIC_RELAXED);
 			return idx;
 		default:
@@ -7316,7 +7316,7 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	if (tunnel) {
 		flow->tunnel = 1;
 		flow->tunnel_id = tunnel->tunnel_id;
-		__atomic_add_fetch(&tunnel->refctn, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&tunnel->refctn, 1, __ATOMIC_RELAXED);
 		mlx5_free(default_miss_ctx.queue);
 	}
 	mlx5_flow_pop_thread_workspace();
@@ -7327,7 +7327,7 @@ error:
 	flow_mreg_del_copy_action(dev, flow);
 	flow_drv_destroy(dev, flow);
 	if (rss_desc->shared_rss)
-		__atomic_sub_fetch(&((struct mlx5_shared_action_rss *)
+		__atomic_fetch_sub(&((struct mlx5_shared_action_rss *)
 			mlx5_ipool_get
 			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 			rss_desc->shared_rss))->refcnt, 1, __ATOMIC_RELAXED);

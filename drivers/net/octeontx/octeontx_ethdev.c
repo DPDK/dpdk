@@ -1581,7 +1581,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	nic->pko_vfid = pko_vfid;
 	nic->port_id = port;
 	nic->evdev = evdev;
-	__atomic_add_fetch(&evdev_refcnt, 1, __ATOMIC_ACQUIRE);
+	__atomic_fetch_add(&evdev_refcnt, 1, __ATOMIC_ACQUIRE);
 
 	res = octeontx_port_open(nic);
 	if (res < 0)

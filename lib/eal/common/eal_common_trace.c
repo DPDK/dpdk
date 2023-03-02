@@ -103,10 +103,10 @@ static void
 trace_mode_set(rte_trace_point_t *t, enum rte_trace_mode mode)
 {
 	if (mode == RTE_TRACE_MODE_OVERWRITE)
-		__atomic_and_fetch(t, ~__RTE_TRACE_FIELD_ENABLE_DISCARD,
+		__atomic_fetch_and(t, ~__RTE_TRACE_FIELD_ENABLE_DISCARD,
 			__ATOMIC_RELEASE);
 	else
-		__atomic_or_fetch(t, __RTE_TRACE_FIELD_ENABLE_DISCARD,
+		__atomic_fetch_or(t, __RTE_TRACE_FIELD_ENABLE_DISCARD,
 			__ATOMIC_RELEASE);
 }
 
@@ -155,7 +155,7 @@ rte_trace_point_enable(rte_trace_point_t *t)
 
 	prev = __atomic_fetch_or(t, __RTE_TRACE_FIELD_ENABLE_MASK, __ATOMIC_RELEASE);
 	if ((prev & __RTE_TRACE_FIELD_ENABLE_MASK) == 0)
-		__atomic_add_fetch(&trace.status, 1, __ATOMIC_RELEASE);
+		__atomic_fetch_add(&trace.status, 1, __ATOMIC_RELEASE);
 	return 0;
 }
 
@@ -169,7 +169,7 @@ rte_trace_point_disable(rte_trace_point_t *t)
 
 	prev = __atomic_fetch_and(t, ~__RTE_TRACE_FIELD_ENABLE_MASK, __ATOMIC_RELEASE);
 	if ((prev & __RTE_TRACE_FIELD_ENABLE_MASK) != 0)
-		__atomic_sub_fetch(&trace.status, 1, __ATOMIC_RELEASE);
+		__atomic_fetch_sub(&trace.status, 1, __ATOMIC_RELEASE);
 	return 0;
 }
 

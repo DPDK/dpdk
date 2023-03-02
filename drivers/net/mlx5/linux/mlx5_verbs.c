@@ -1159,7 +1159,7 @@ error:
 		claim_zero(mlx5_glue->destroy_cq(sh->self_lb.ibv_cq));
 		sh->self_lb.ibv_cq = NULL;
 	}
-	(void)__atomic_sub_fetch(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_sub(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED);
 	return -rte_errno;
 #else
 	RTE_SET_USED(dev);

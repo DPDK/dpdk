@@ -298,7 +298,7 @@ flush_shadow_used_ring_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	vhost_log_cache_sync(dev, vq);
 
-	__atomic_add_fetch(&vq->used->idx, vq->shadow_used_idx,
+	__atomic_fetch_add(&vq->used->idx, vq->shadow_used_idx,
 			   __ATOMIC_RELEASE);
 	vq->shadow_used_idx = 0;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
@@ -2311,7 +2311,7 @@ vhost_poll_enqueue_completed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			vhost_vring_call_packed(dev, vq);
 		} else {
 			write_back_completed_descs_split(vq, n_descs);
-			__atomic_add_fetch(&vq->used->idx, n_descs, __ATOMIC_RELEASE);
+			__atomic_fetch_add(&vq->used->idx, n_descs, __ATOMIC_RELEASE);
 			vhost_vring_call_split(dev, vq);
 		}
 	} else {
@@ -3683,7 +3683,7 @@ async_poll_dequeue_completed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		vhost_vring_call_packed(dev, vq);
 	} else {
 		write_back_completed_descs_split(vq, nr_cpl_pkts);
-		__atomic_add_fetch(&vq->used->idx, nr_cpl_pkts, __ATOMIC_RELEASE);
+		__atomic_fetch_add(&vq->used->idx, nr_cpl_pkts, __ATOMIC_RELEASE);
 		vhost_vring_call_split(dev, vq);
 	}
 	vq->async->pkts_inflight_n -= nr_cpl_pkts;

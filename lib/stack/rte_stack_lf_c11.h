@@ -66,7 +66,7 @@ __rte_stack_lf_push_elems(struct rte_stack_lf_list *list,
 	/* Ensure the stack modifications are not reordered with respect
 	 * to the LIFO len update.
 	 */
-	__atomic_add_fetch(&list->len, num, __ATOMIC_RELEASE);
+	__atomic_fetch_add(&list->len, num, __ATOMIC_RELEASE);
 }
 
 static __rte_always_inline struct rte_stack_lf_elem *

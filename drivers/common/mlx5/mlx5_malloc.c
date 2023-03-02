@@ -99,7 +99,7 @@ mlx5_mem_update_msl(void *addr)
 			rte_mem_virt2memseg_list(addr),
 			__ATOMIC_RELAXED);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		__atomic_add_fetch(&mlx5_sys_mem.msl_update, 1,
+		__atomic_fetch_add(&mlx5_sys_mem.msl_update, 1,
 				   __ATOMIC_RELAXED);
 #endif
 	}
@@ -126,7 +126,7 @@ mlx5_mem_is_rte(void *addr)
 		if (!rte_mem_virt2memseg_list(addr))
 			return false;
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		__atomic_add_fetch(&mlx5_sys_mem.msl_miss, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&mlx5_sys_mem.msl_miss, 1, __ATOMIC_RELAXED);
 #endif
 	}
 	return true;
@@ -185,7 +185,7 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 		mlx5_mem_update_msl(addr);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 		if (addr)
-			__atomic_add_fetch(&mlx5_sys_mem.malloc_rte, 1,
+			__atomic_fetch_add(&mlx5_sys_mem.malloc_rte, 1,
 					   __ATOMIC_RELAXED);
 #endif
 		return addr;
@@ -199,7 +199,7 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 		addr = malloc(size);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	if (addr)
-		__atomic_add_fetch(&mlx5_sys_mem.malloc_sys, 1,
+		__atomic_fetch_add(&mlx5_sys_mem.malloc_sys, 1,
 				   __ATOMIC_RELAXED);
 #endif
 	return addr;
@@ -233,7 +233,7 @@ mlx5_realloc(void *addr, uint32_t flags, size_t size, unsigned int align,
 		mlx5_mem_update_msl(new_addr);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 		if (new_addr)
-			__atomic_add_fetch(&mlx5_sys_mem.realloc_rte, 1,
+			__atomic_fetch_add(&mlx5_sys_mem.realloc_rte, 1,
 					   __ATOMIC_RELAXED);
 #endif
 		return new_addr;
@@ -246,7 +246,7 @@ mlx5_realloc(void *addr, uint32_t flags, size_t size, unsigned int align,
 	new_addr = realloc(addr, size);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	if (new_addr)
-		__atomic_add_fetch(&mlx5_sys_mem.realloc_sys, 1,
+		__atomic_fetch_add(&mlx5_sys_mem.realloc_sys, 1,
 				   __ATOMIC_RELAXED);
 #endif
 	return new_addr;
@@ -259,13 +259,13 @@ mlx5_free(void *addr)
 		return;
 	if (!mlx5_mem_is_rte(addr)) {
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		__atomic_add_fetch(&mlx5_sys_mem.free_sys, 1,
+		__atomic_fetch_add(&mlx5_sys_mem.free_sys, 1,
 				   __ATOMIC_RELAXED);
 #endif
 		mlx5_os_free(addr);
 	} else {
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		__atomic_add_fetch(&mlx5_sys_mem.free_rte, 1,
+		__atomic_fetch_add(&mlx5_sys_mem.free_rte, 1,
 				   __ATOMIC_RELAXED);
 #endif
 		rte_free(addr);

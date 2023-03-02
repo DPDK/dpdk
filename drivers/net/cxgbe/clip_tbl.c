@@ -129,7 +129,7 @@ static struct clip_entry *t4_clip_alloc(struct rte_eth_dev *dev,
 				ce->type = FILTER_TYPE_IPV4;
 			}
 		} else {
-			__atomic_add_fetch(&ce->refcnt, 1, __ATOMIC_RELAXED);
+			__atomic_fetch_add(&ce->refcnt, 1, __ATOMIC_RELAXED);
 		}
 		t4_os_unlock(&ce->lock);
 	}

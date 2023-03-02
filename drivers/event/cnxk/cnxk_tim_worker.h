@@ -102,19 +102,19 @@ cnxk_tim_bkt_get_nent(uint64_t w1)
 static inline void
 cnxk_tim_bkt_inc_nent(struct cnxk_tim_bkt *bktp)
 {
-	__atomic_add_fetch(&bktp->nb_entry, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&bktp->nb_entry, 1, __ATOMIC_RELAXED);
 }
 
 static inline void
 cnxk_tim_bkt_add_nent_relaxed(struct cnxk_tim_bkt *bktp, uint32_t v)
 {
-	__atomic_add_fetch(&bktp->nb_entry, v, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&bktp->nb_entry, v, __ATOMIC_RELAXED);
 }
 
 static inline void
 cnxk_tim_bkt_add_nent(struct cnxk_tim_bkt *bktp, uint32_t v)
 {
-	__atomic_add_fetch(&bktp->nb_entry, v, __ATOMIC_RELEASE);
+	__atomic_fetch_add(&bktp->nb_entry, v, __ATOMIC_RELEASE);
 }
 
 static inline uint64_t

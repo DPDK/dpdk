@@ -542,7 +542,7 @@ mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
 		void *buf_addr;
 
 		/* Increment the refcnt of the whole chunk. */
-		__atomic_add_fetch(&buf->refcnt, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&buf->refcnt, 1, __ATOMIC_RELAXED);
 		MLX5_ASSERT(__atomic_load_n(&buf->refcnt,
 			    __ATOMIC_RELAXED) <= strd_n + 1);
 		buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);

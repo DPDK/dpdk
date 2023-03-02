@@ -76,7 +76,7 @@ int cxgbe_mpstcam_alloc(struct port_info *pi, const u8 *eth_addr,
 	t4_os_write_lock(&mpstcam->lock);
 	entry = cxgbe_mpstcam_lookup(adap->mpstcam, eth_addr, mask);
 	if (entry) {
-		__atomic_add_fetch(&entry->refcnt, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&entry->refcnt, 1, __ATOMIC_RELAXED);
 		t4_os_write_unlock(&mpstcam->lock);
 		return entry->idx;
 	}

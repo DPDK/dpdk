@@ -751,12 +751,12 @@ delay_as_a_mt_safe_service(void *args)
 	uint32_t *lock = &params[1];
 
 	while (!*done) {
-		__atomic_add_fetch(lock, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(lock, 1, __ATOMIC_RELAXED);
 		rte_delay_us(500);
 		if (__atomic_load_n(lock, __ATOMIC_RELAXED) > 1)
 			/* pass: second core has simultaneously incremented */
 			*done = 1;
-		__atomic_sub_fetch(lock, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_sub(lock, 1, __ATOMIC_RELAXED);
 	}
 
 	return 0;

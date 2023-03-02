@@ -1025,7 +1025,7 @@ virtio_user_handle_cq_split(struct virtio_user_dev *dev, uint16_t queue_idx)
 		uep->id = desc_idx;
 		uep->len = n_descs;
 
-		__atomic_add_fetch(&vring->used->idx, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&vring->used->idx, 1, __ATOMIC_RELAXED);
 	}
 }
 

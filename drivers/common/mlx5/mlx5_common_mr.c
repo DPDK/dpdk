@@ -1650,7 +1650,7 @@ mlx5_mempool_reg_attach(struct mlx5_mempool_reg *mpr)
 	unsigned int i;
 
 	for (i = 0; i < mpr->mrs_n; i++)
-		__atomic_add_fetch(&mpr->mrs[i].refcnt, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&mpr->mrs[i].refcnt, 1, __ATOMIC_RELAXED);
 }
 
 /**

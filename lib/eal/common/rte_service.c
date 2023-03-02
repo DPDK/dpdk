@@ -464,11 +464,11 @@ rte_service_run_iter_on_app_lcore(uint32_t id, uint32_t serialize_mt_unsafe)
 	/* Increment num_mapped_cores to reflect that this core is
 	 * now mapped capable of running the service.
 	 */
-	__atomic_add_fetch(&s->num_mapped_cores, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&s->num_mapped_cores, 1, __ATOMIC_RELAXED);
 
 	int ret = service_run(id, cs, UINT64_MAX, s, serialize_mt_unsafe);
 
-	__atomic_sub_fetch(&s->num_mapped_cores, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_sub(&s->num_mapped_cores, 1, __ATOMIC_RELAXED);
 
 	return ret;
 }
@@ -638,12 +638,12 @@ service_update(uint32_t sid, uint32_t lcore, uint32_t *set, uint32_t *enabled)
 
 		if (*set && !lcore_mapped) {
 			lcore_states[lcore].service_mask |= sid_mask;
-			__atomic_add_fetch(&rte_services[sid].num_mapped_cores,
+			__atomic_fetch_add(&rte_services[sid].num_mapped_cores,
 				1, __ATOMIC_RELAXED);
 		}
 		if (!*set && lcore_mapped) {
 			lcore_states[lcore].service_mask &= ~(sid_mask);
-			__atomic_sub_fetch(&rte_services[sid].num_mapped_cores,
+			__atomic_fetch_sub(&rte_services[sid].num_mapped_cores,
 				1, __ATOMIC_RELAXED);
 		}
 	}

@@ -128,7 +128,7 @@ iavf_dev_event_handler_init(void)
 	int err = pipe(handler->fd);
 #endif
 	if (err != 0) {
-		__atomic_sub_fetch(&handler->ndev, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_sub(&handler->ndev, 1, __ATOMIC_RELAXED);
 		return -1;
 	}
 
@@ -137,7 +137,7 @@ iavf_dev_event_handler_init(void)
 
 	if (rte_ctrl_thread_create(&handler->tid, "iavf-event-thread",
 				NULL, iavf_dev_event_handle, NULL)) {
-		__atomic_sub_fetch(&handler->ndev, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_sub(&handler->ndev, 1, __ATOMIC_RELAXED);
 		return -1;
 	}
 

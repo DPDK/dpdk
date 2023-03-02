@@ -391,7 +391,7 @@ client_handler(void *sock_id)
 		bytes = read(s, buffer, sizeof(buffer) - 1);
 	}
 	close(s);
-	__atomic_sub_fetch(&v2_clients, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_sub(&v2_clients, 1, __ATOMIC_RELAXED);
 	return NULL;
 }
 
@@ -414,7 +414,7 @@ socket_listener(void *socket)
 				close(s_accepted);
 				continue;
 			}
-			__atomic_add_fetch(s->num_clients, 1,
+			__atomic_fetch_add(s->num_clients, 1,
 					__ATOMIC_RELAXED);
 		}
 		rc = pthread_create(&th, NULL, s->fn,
@@ -424,7 +424,7 @@ socket_listener(void *socket)
 				 strerror(rc));
 			close(s_accepted);
 			if (s->num_clients != NULL)
-				__atomic_sub_fetch(s->num_clients, 1,
+				__atomic_fetch_sub(s->num_clients, 1,
 						   __ATOMIC_RELAXED);
 			continue;
 		}

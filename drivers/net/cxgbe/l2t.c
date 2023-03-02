@@ -15,7 +15,7 @@
 void cxgbe_l2t_release(struct l2t_entry *e)
 {
 	if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) != 0)
-		__atomic_sub_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_sub(&e->refcnt, 1, __ATOMIC_RELAXED);
 }
 
 /**
@@ -162,7 +162,7 @@ static struct l2t_entry *t4_l2t_alloc_switching(struct rte_eth_dev *dev,
 				dev_debug(adap, "Failed to write L2T entry: %d",
 					  ret);
 		} else {
-			__atomic_add_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
+			__atomic_fetch_add(&e->refcnt, 1, __ATOMIC_RELAXED);
 		}
 		t4_os_unlock(&e->lock);
 	}

@@ -200,7 +200,7 @@ rte_distributor_return_pkt(struct rte_distributor *d,
 	 * we won't read any mbufs from there even if GET_BUF is set.
 	 * This allows distributor to retrieve in-flight already sent packets.
 	 */
-	__atomic_or_fetch(&(buf->bufptr64[0]), RTE_DISTRIB_RETURN_BUF,
+	__atomic_fetch_or(&(buf->bufptr64[0]), RTE_DISTRIB_RETURN_BUF,
 		__ATOMIC_ACQ_REL);
 
 	/* set the RETURN_BUF on retptr64 even if we got no returns.

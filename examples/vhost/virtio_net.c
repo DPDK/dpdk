@@ -231,7 +231,7 @@ vs_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 			rte_prefetch0(&vr->desc[desc_indexes[i+1]]);
 	}
 
-	__atomic_add_fetch(&vr->used->idx, count, __ATOMIC_RELEASE);
+	__atomic_fetch_add(&vr->used->idx, count, __ATOMIC_RELEASE);
 	queue->last_used_idx += count;
 
 	rte_vhost_vring_call(dev->vid, queue_id);
@@ -442,7 +442,7 @@ vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	queue->last_avail_idx += i;
 	queue->last_used_idx += i;
 
-	__atomic_add_fetch(&vr->used->idx, i, __ATOMIC_ACQ_REL);
+	__atomic_fetch_add(&vr->used->idx, i, __ATOMIC_ACQ_REL);
 
 	rte_vhost_vring_call(dev->vid, queue_id);
 

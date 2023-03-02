@@ -170,7 +170,7 @@ static struct smt_entry *t4_smt_alloc_switching(struct rte_eth_dev *dev,
 			e->state = SMT_STATE_SWITCHING;
 			__atomic_store_n(&e->refcnt, 1, __ATOMIC_RELAXED);
 		} else {
-			__atomic_add_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
+			__atomic_fetch_add(&e->refcnt, 1, __ATOMIC_RELAXED);
 		}
 		t4_os_unlock(&e->lock);
 	}
@@ -196,7 +196,7 @@ struct smt_entry *cxgbe_smt_alloc_switching(struct rte_eth_dev *dev, u8 *smac)
 void cxgbe_smt_release(struct smt_entry *e)
 {
 	if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) != 0)
-		__atomic_sub_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_sub(&e->refcnt, 1, __ATOMIC_RELAXED);
 }
 
 /**

@@ -418,14 +418,14 @@ void cxgbe_remove_tid(struct tid_info *t, unsigned int chan, unsigned int tid,
 
 	if (t->tid_tab[tid]) {
 		t->tid_tab[tid] = NULL;
-		__atomic_sub_fetch(&t->conns_in_use, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_sub(&t->conns_in_use, 1, __ATOMIC_RELAXED);
 		if (t->hash_base && tid >= t->hash_base) {
 			if (family == FILTER_TYPE_IPV4)
-				__atomic_sub_fetch(&t->hash_tids_in_use, 1,
+				__atomic_fetch_sub(&t->hash_tids_in_use, 1,
 						   __ATOMIC_RELAXED);
 		} else {
 			if (family == FILTER_TYPE_IPV4)
-				__atomic_sub_fetch(&t->tids_in_use, 1,
+				__atomic_fetch_sub(&t->tids_in_use, 1,
 						   __ATOMIC_RELAXED);
 		}
 	}
@@ -448,15 +448,15 @@ void cxgbe_insert_tid(struct tid_info *t, void *data, unsigned int tid,
 	t->tid_tab[tid] = data;
 	if (t->hash_base && tid >= t->hash_base) {
 		if (family == FILTER_TYPE_IPV4)
-			__atomic_add_fetch(&t->hash_tids_in_use, 1,
+			__atomic_fetch_add(&t->hash_tids_in_use, 1,
 					   __ATOMIC_RELAXED);
 	} else {
 		if (family == FILTER_TYPE_IPV4)
-			__atomic_add_fetch(&t->tids_in_use, 1,
+			__atomic_fetch_add(&t->tids_in_use, 1,
 					   __ATOMIC_RELAXED);
 	}
 
-	__atomic_add_fetch(&t->conns_in_use, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&t->conns_in_use, 1, __ATOMIC_RELAXED);
 }
 
 /**

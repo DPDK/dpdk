@@ -208,7 +208,7 @@ rte_bbdev_allocate(const char *name)
 		return NULL;
 	}
 
-	__atomic_add_fetch(&bbdev->data->process_cnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&bbdev->data->process_cnt, 1, __ATOMIC_RELAXED);
 	bbdev->data->dev_id = dev_id;
 	bbdev->state = RTE_BBDEV_INITIALIZED;
 

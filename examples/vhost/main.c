@@ -1048,9 +1048,9 @@ sync_virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 	}
 
 	if (enable_stats) {
-		__atomic_add_fetch(&dst_vdev->stats.rx_total_atomic, 1,
+		__atomic_fetch_add(&dst_vdev->stats.rx_total_atomic, 1,
 				__ATOMIC_SEQ_CST);
-		__atomic_add_fetch(&dst_vdev->stats.rx_atomic, ret,
+		__atomic_fetch_add(&dst_vdev->stats.rx_atomic, ret,
 				__ATOMIC_SEQ_CST);
 		src_vdev->stats.tx_total++;
 		src_vdev->stats.tx += ret;
@@ -1068,9 +1068,9 @@ drain_vhost(struct vhost_dev *vdev)
 	ret = vdev_queue_ops[vdev->vid].enqueue_pkt_burst(vdev, VIRTIO_RXQ, m, nr_xmit);
 
 	if (enable_stats) {
-		__atomic_add_fetch(&vdev->stats.rx_total_atomic, nr_xmit,
+		__atomic_fetch_add(&vdev->stats.rx_total_atomic, nr_xmit,
 				__ATOMIC_SEQ_CST);
-		__atomic_add_fetch(&vdev->stats.rx_atomic, ret,
+		__atomic_fetch_add(&vdev->stats.rx_atomic, ret,
 				__ATOMIC_SEQ_CST);
 	}
 
@@ -1400,9 +1400,9 @@ drain_eth_rx(struct vhost_dev *vdev)
 	}
 
 	if (enable_stats) {
-		__atomic_add_fetch(&vdev->stats.rx_total_atomic, rx_count,
+		__atomic_fetch_add(&vdev->stats.rx_total_atomic, rx_count,
 				__ATOMIC_SEQ_CST);
-		__atomic_add_fetch(&vdev->stats.rx_atomic, enqueue_count,
+		__atomic_fetch_add(&vdev->stats.rx_atomic, enqueue_count,
 				__ATOMIC_SEQ_CST);
 	}
 

@@ -40,7 +40,7 @@ static uint32_t thread_loop(void *arg)
 		t->state = Thread_ERROR;
 	}
 	/* Report register happened to the control thread. */
-	__atomic_add_fetch(t->registered_count, 1, __ATOMIC_RELEASE);
+	__atomic_fetch_add(t->registered_count, 1, __ATOMIC_RELEASE);
 
 	/* Wait for release from the control thread. */
 	while (__atomic_load_n(t->registered_count, __ATOMIC_ACQUIRE) != 0)

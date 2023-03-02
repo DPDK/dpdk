@@ -379,7 +379,7 @@ mlx5_flex_acquire_index(struct rte_eth_dev *dev,
 		return ret;
 	}
 	if (acquire)
-		__atomic_add_fetch(&flex->refcnt, 1, __ATOMIC_RELEASE);
+		__atomic_fetch_add(&flex->refcnt, 1, __ATOMIC_RELEASE);
 	return ret;
 }
 
@@ -414,7 +414,7 @@ mlx5_flex_release_index(struct rte_eth_dev *dev,
 		rte_errno = -EINVAL;
 		return -EINVAL;
 	}
-	__atomic_sub_fetch(&flex->refcnt, 1, __ATOMIC_RELEASE);
+	__atomic_fetch_sub(&flex->refcnt, 1, __ATOMIC_RELEASE);
 	return 0;
 }
 
@@ -1317,7 +1317,7 @@ flow_dv_item_create(struct rte_eth_dev *dev,
 	}
 	flex->devx_fp = container_of(ent, struct mlx5_flex_parser_devx, entry);
 	/* Mark initialized flex item valid. */
-	__atomic_add_fetch(&flex->refcnt, 1, __ATOMIC_RELEASE);
+	__atomic_fetch_add(&flex->refcnt, 1, __ATOMIC_RELEASE);
 	return (struct rte_flow_item_flex_handle *)flex;
 
 error:

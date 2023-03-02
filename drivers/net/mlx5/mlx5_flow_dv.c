@@ -15399,7 +15399,7 @@ flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss)
 
 	shared_rss = mlx5_ipool_get
 			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], srss);
-	__atomic_sub_fetch(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_sub(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
 }
 
 void
@@ -15990,7 +15990,7 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	/* Update queue with indirect table queue memoyr. */
 	origin->queue = shared_rss->ind_tbl->queues;
 	rte_spinlock_init(&shared_rss->action_rss_sl);
-	__atomic_add_fetch(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
 	rte_spinlock_lock(&priv->shared_act_sl);
 	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 		     &priv->rss_shared_actions, idx, shared_rss, next);

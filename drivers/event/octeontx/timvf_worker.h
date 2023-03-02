@@ -108,7 +108,7 @@ timr_bkt_inc_lock(struct tim_mem_bucket *bktp)
 static inline void
 timr_bkt_dec_lock(struct tim_mem_bucket *bktp)
 {
-	__atomic_add_fetch(&bktp->lock, 0xff, __ATOMIC_ACQ_REL);
+	__atomic_fetch_add(&bktp->lock, 0xff, __ATOMIC_ACQ_REL);
 }
 
 static inline uint32_t
@@ -121,13 +121,13 @@ timr_bkt_get_nent(uint64_t w1)
 static inline void
 timr_bkt_inc_nent(struct tim_mem_bucket *bktp)
 {
-	__atomic_add_fetch(&bktp->nb_entry, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&bktp->nb_entry, 1, __ATOMIC_RELAXED);
 }
 
 static inline void
 timr_bkt_add_nent(struct tim_mem_bucket *bktp, uint32_t v)
 {
-	__atomic_add_fetch(&bktp->nb_entry, v, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&bktp->nb_entry, v, __ATOMIC_RELAXED);
 }
 
 static inline uint64_t
