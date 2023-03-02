@@ -2056,6 +2056,9 @@ virtio_dev_speed_capa_get(uint32_t speed)
 static int vectorized_check_handler(__rte_unused const char *key,
 		const char *value, void *ret_val)
 {
+	if (value == NULL || ret_val == NULL)
+		return -EINVAL;
+
 	if (strcmp(value, "1") == 0)
 		*(int *)ret_val = 1;
 	else
