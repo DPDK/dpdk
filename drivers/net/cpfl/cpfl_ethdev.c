@@ -94,6 +94,8 @@ cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mtu = vport->max_mtu;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
+	dev_info->flow_type_rss_offloads = CPFL_RSS_OFFLOAD_ALL;
+
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -160,10 +162,48 @@ cpfl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 }
 
 static int
+cpfl_init_rss(struct idpf_vport *vport)
+{
+	struct rte_eth_rss_conf *rss_conf;
+	struct rte_eth_dev_data *dev_data;
+	uint16_t i, nb_q;
+	int ret = 0;
+
+	dev_data = vport->dev_data;
+	rss_conf = &dev_data->dev_conf.rx_adv_conf.rss_conf;
+	nb_q = dev_data->nb_rx_queues;
+
+	if (rss_conf->rss_key == NULL) {
+		for (i = 0; i < vport->rss_key_size; i++)
+			vport->rss_key[i] = (uint8_t)rte_rand();
+	} else if (rss_conf->rss_key_len != vport->rss_key_size) {
+		PMD_INIT_LOG(ERR, "Invalid RSS key length in RSS configuration, should be %d",
+			     vport->rss_key_size);
+		return -EINVAL;
+	} else {
+		rte_memcpy(vport->rss_key, rss_conf->rss_key,
+			   vport->rss_key_size);
+	}
+
+	for (i = 0; i < vport->rss_lut_size; i++)
+		vport->rss_lut[i] = i % nb_q;
+
+	vport->rss_hf = IDPF_DEFAULT_RSS_HASH_EXPANDED;
+
+	ret = idpf_vport_rss_config(vport);
+	if (ret != 0)
+		PMD_INIT_LOG(ERR, "Failed to configure RSS");
+
+	return ret;
+}
+
+static int
 cpfl_dev_configure(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	struct idpf_adapter *base = vport->adapter;
+	int ret;
 
 	if (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
 		PMD_INIT_LOG(ERR, "Setting link speed is not supported");
@@ -200,6 +240,26 @@ cpfl_dev_configure(struct rte_eth_dev *dev)
 	if (conf->intr_conf.rmv != 0) {
 		PMD_INIT_LOG(ERR, "RMV interrupt is not supported");
 		return -ENOTSUP;
+	}
+
+	if (conf->rxmode.mq_mode != RTE_ETH_MQ_RX_RSS &&
+	    conf->rxmode.mq_mode != RTE_ETH_MQ_RX_NONE) {
+		PMD_INIT_LOG(ERR, "RX mode %d is not supported.",
+			     conf->rxmode.mq_mode);
+		return -EINVAL;
+	}
+
+	if (base->caps.rss_caps != 0 && dev->data->nb_rx_queues != 0 &&
+		conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
+		ret = cpfl_init_rss(vport);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to init rss");
+			return ret;
+		}
+	} else {
+		PMD_INIT_LOG(ERR, "RSS is not supported.");
+		if (conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
+			return -ENOTSUP;
 	}
 
 	vport->max_pkt_len =
