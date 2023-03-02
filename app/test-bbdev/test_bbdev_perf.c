@@ -70,7 +70,6 @@
 
 #define SYNC_WAIT 0
 #define SYNC_START 1
-#define INVALID_OPAQUE -1
 
 #define INVALID_QUEUE_ID -1
 /* Increment for next code block in external HARQ memory */
@@ -1780,10 +1779,9 @@ check_enc_status_and_ordering(struct rte_bbdev_enc_op *op,
 			"op_status (%d) != expected_status (%d)",
 			op->status, expected_status);
 
-	if (op->opaque_data != (void *)(uintptr_t)INVALID_OPAQUE)
-		TEST_ASSERT((void *)(uintptr_t)order_idx == op->opaque_data,
-				"Ordering error, expected %p, got %p",
-				(void *)(uintptr_t)order_idx, op->opaque_data);
+	TEST_ASSERT((void *)(uintptr_t)order_idx == op->opaque_data,
+			"Ordering error, expected %p, got %p",
+			(void *)(uintptr_t)order_idx, op->opaque_data);
 
 	return TEST_SUCCESS;
 }
