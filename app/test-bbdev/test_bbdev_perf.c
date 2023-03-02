@@ -3737,12 +3737,10 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
 
 	/* For BLER tests we need to enable early termination */
-	if (!check_bit(ref_op->ldpc_dec.op_flags,
-			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
-		ref_op->ldpc_dec.op_flags +=
-				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+	if (!check_bit(ref_op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
+		ref_op->ldpc_dec.op_flags += RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+
 	ref_op->ldpc_dec.iter_max = get_iter_max();
-	ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 		copy_reference_ldpc_dec_op(ops_enq, num_ops, 0, bufs->inputs,
@@ -3873,12 +3871,10 @@ bler_pmd_lcore_turbo_dec(void *arg)
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
 
 	/* For BLER tests we need to enable early termination */
-	if (!check_bit(ref_op->turbo_dec.op_flags,
-			RTE_BBDEV_TURBO_EARLY_TERMINATION))
-		ref_op->turbo_dec.op_flags +=
-				RTE_BBDEV_TURBO_EARLY_TERMINATION;
+	if (!check_bit(ref_op->turbo_dec.op_flags, RTE_BBDEV_TURBO_EARLY_TERMINATION))
+		ref_op->turbo_dec.op_flags += RTE_BBDEV_TURBO_EARLY_TERMINATION;
+
 	ref_op->turbo_dec.iter_max = get_iter_max();
-	ref_op->turbo_dec.iter_count = ref_op->turbo_dec.iter_max;
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 		copy_reference_dec_op(ops_enq, num_ops, 0, bufs->inputs,
