@@ -20,10 +20,9 @@
 #include <rte_string_fns.h>
 
 #include "ccp_dev.h"
-#include "ccp_pci.h"
 #include "ccp_pmd_private.h"
 
-struct ccp_list ccp_list = TAILQ_HEAD_INITIALIZER(ccp_list);
+static TAILQ_HEAD(, ccp_device) ccp_list = TAILQ_HEAD_INITIALIZER(ccp_list);
 static int ccp_dev_id;
 
 int
@@ -68,7 +67,7 @@ ccp_read_hwrng(uint32_t *value)
 	struct ccp_device *dev;
 
 	TAILQ_FOREACH(dev, &ccp_list, next) {
-		void *vaddr = (void *)(dev->pci.mem_resource[2].addr);
+		void *vaddr = (void *)(dev->pci->mem_resource[2].addr);
 
 		while (dev->hwrng_retries++ < CCP_MAX_TRNG_RETRIES) {
 			*value = CCP_READ_REG(vaddr, TRNG_OUT_REG);
@@ -480,7 +479,7 @@ ccp_assign_lsbs(struct ccp_device *ccp)
 }
 
 static int
-ccp_add_device(struct ccp_device *dev, int type)
+ccp_add_device(struct ccp_device *dev)
 {
 	int i;
 	uint32_t qmr, status_lo, status_hi, dma_addr_lo, dma_addr_hi;
@@ -494,9 +493,9 @@ ccp_add_device(struct ccp_device *dev, int type)
 
 	dev->id = ccp_dev_id++;
 	dev->qidx = 0;
-	vaddr = (void *)(dev->pci.mem_resource[2].addr);
+	vaddr = (void *)(dev->pci->mem_resource[2].addr);
 
-	if (type == CCP_VERSION_5B) {
+	if (dev->pci->id.device_id == AMD_PCI_CCP_5B) {
 		CCP_WRITE_REG(vaddr, CMD_TRNG_CTL_OFFSET, 0x00012D57);
 		CCP_WRITE_REG(vaddr, CMD_CONFIG_0_OFFSET, 0x00000003);
 		for (i = 0; i < 12; i++) {
@@ -615,41 +614,8 @@ ccp_remove_device(struct ccp_device *dev)
 	TAILQ_REMOVE(&ccp_list, dev, next);
 }
 
-static int
-is_ccp_device(const char *dirname,
-	      const struct rte_pci_id *ccp_id,
-	      int *type)
-{
-	char filename[PATH_MAX];
-	const struct rte_pci_id *id;
-	uint16_t vendor, device_id;
-	int i;
-	unsigned long tmp;
-
-	/* get vendor id */
-	snprintf(filename, sizeof(filename), "%s/vendor", dirname);
-	if (ccp_pci_parse_sysfs_value(filename, &tmp) < 0)
-		return 0;
-	vendor = (uint16_t)tmp;
-
-	/* get device id */
-	snprintf(filename, sizeof(filename), "%s/device", dirname);
-	if (ccp_pci_parse_sysfs_value(filename, &tmp) < 0)
-		return 0;
-	device_id = (uint16_t)tmp;
-
-	for (id = ccp_id, i = 0; id->vendor_id != 0; id++, i++) {
-		if (vendor == id->vendor_id &&
-		    device_id == id->device_id) {
-			*type = i;
-			return 1; /* Matched device */
-		}
-	}
-	return 0;
-}
-
-static int
-ccp_probe_device(int ccp_type, struct rte_pci_device *pci_dev)
+int
+ccp_probe_device(struct rte_pci_device *pci_dev)
 {
 	struct ccp_device *ccp_dev;
 
@@ -658,10 +624,10 @@ ccp_probe_device(int ccp_type, struct rte_pci_device *pci_dev)
 	if (ccp_dev == NULL)
 		goto fail;
 
-	ccp_dev->pci = *pci_dev;
+	ccp_dev->pci = pci_dev;
 
 	/* device is valid, add in list */
-	if (ccp_add_device(ccp_dev, ccp_type)) {
+	if (ccp_add_device(ccp_dev)) {
 		ccp_remove_device(ccp_dev);
 		goto fail;
 	}
@@ -671,41 +637,4 @@ fail:
 	CCP_LOG_ERR("CCP Device probe failed");
 	rte_free(ccp_dev);
 	return -1;
-}
-
-int
-ccp_probe_devices(struct rte_pci_device *pci_dev,
-		const struct rte_pci_id *ccp_id)
-{
-	int dev_cnt = 0;
-	int ccp_type = 0;
-	struct dirent *d;
-	DIR *dir;
-	int ret = 0;
-	uint16_t domain;
-	uint8_t bus, devid, function;
-	char dirname[PATH_MAX];
-
-	TAILQ_INIT(&ccp_list);
-	dir = opendir(SYSFS_PCI_DEVICES);
-	if (dir == NULL)
-		return -1;
-	while ((d = readdir(dir)) != NULL) {
-		if (d->d_name[0] == '.')
-			continue;
-		if (ccp_parse_pci_addr_format(d->d_name, sizeof(d->d_name),
-					&domain, &bus, &devid, &function) != 0)
-			continue;
-		snprintf(dirname, sizeof(dirname), "%s/%s",
-			     SYSFS_PCI_DEVICES, d->d_name);
-		if (is_ccp_device(dirname, ccp_id, &ccp_type)) {
-			CCP_LOG_DBG("CCP : Detected CCP device with ID = 0x%x\n",
-			       ccp_id[ccp_type].device_id);
-			ret = ccp_probe_device(ccp_type, pci_dev);
-			if (ret == 0)
-				dev_cnt++;
-		}
-	}
-	closedir(dir);
-	return dev_cnt;
 }
