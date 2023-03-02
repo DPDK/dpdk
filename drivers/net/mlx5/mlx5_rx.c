@@ -1311,41 +1311,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	return i;
 }
 
-/*
- * Vectorized Rx routines are not compiled in when required vector instructions
- * are not supported on a target architecture.
- * The following null stubs are needed for linkage when those are not included
- * outside of this file (e.g. mlx5_rxtx_vec_sse.c for x86).
- */
-
-__rte_weak uint16_t
-mlx5_rx_burst_vec(void *dpdk_rxq __rte_unused,
-		  struct rte_mbuf **pkts __rte_unused,
-		  uint16_t pkts_n __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak uint16_t
-mlx5_rx_burst_mprq_vec(void *dpdk_rxq __rte_unused,
-		       struct rte_mbuf **pkts __rte_unused,
-		       uint16_t pkts_n __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak int
-mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq __rte_unused)
-{
-	return -ENOTSUP;
-}
-
-__rte_weak int
-mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
-{
-	return -ENOTSUP;
-}
-
 int
 mlx5_rx_queue_lwm_query(struct rte_eth_dev *dev,
 			uint16_t *queue_id, uint8_t *lwm)
