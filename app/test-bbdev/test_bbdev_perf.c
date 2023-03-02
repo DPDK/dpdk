@@ -192,6 +192,15 @@ struct test_time_stats {
 typedef int (test_case_function)(struct active_device *ad,
 		struct test_op_params *op_params);
 
+/* Get device status before timeout exit */
+static inline void
+timeout_exit(uint8_t dev_id)
+{
+	struct rte_bbdev_info info;
+	rte_bbdev_info_get(dev_id, &info);
+	printf("Device Status %s\n", rte_bbdev_device_status_str(info.drv.device_status));
+}
+
 static inline void
 mbuf_reset(struct rte_mbuf *m)
 {
@@ -3553,7 +3562,7 @@ throughput_pmd_lcore_dec(void *arg)
 		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
 	for (i = 0; i < TEST_REPETITIONS; ++i) {
-
+		uint32_t time_out = 0;
 		for (j = 0; j < num_ops; ++j)
 			mbuf_reset(ops_enq[j]->turbo_dec.hard_output.data);
 		if (so_enable)
@@ -3573,12 +3582,23 @@ throughput_pmd_lcore_dec(void *arg)
 
 			deq += rte_bbdev_dequeue_dec_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Enqueue timeout!");
+			}
 		}
 
 		/* dequeue the remaining */
+		time_out = 0;
 		while (deq < enq) {
 			deq += rte_bbdev_dequeue_dec_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
 		}
 
 		total_time += rte_rdtsc_precise() - start_time;
@@ -3669,6 +3689,7 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
 	for (i = 0; i < 1; ++i) { /* Could add more iterations */
+		uint32_t time_out = 0;
 		for (j = 0; j < num_ops; ++j) {
 			if (!loopback)
 				mbuf_reset(
@@ -3692,12 +3713,23 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 
 			deq += rte_bbdev_dequeue_ldpc_dec_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Enqueue timeout!");
+			}
 		}
 
 		/* dequeue the remaining */
+		time_out = 0;
 		while (deq < enq) {
 			deq += rte_bbdev_dequeue_ldpc_dec_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
 		}
 
 		total_time += rte_rdtsc_precise() - start_time;
@@ -3796,6 +3828,7 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
 	for (i = 0; i < TEST_REPETITIONS; ++i) {
+		uint32_t time_out = 0;
 		for (j = 0; j < num_ops; ++j) {
 			if (!loopback)
 				mbuf_reset(
@@ -3820,12 +3853,23 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 
 			deq += rte_bbdev_dequeue_ldpc_dec_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Enqueue timeout!");
+			}
 		}
 
 		/* dequeue the remaining */
+		time_out = 0;
 		while (deq < enq) {
 			deq += rte_bbdev_dequeue_ldpc_dec_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
 		}
 
 		total_time += rte_rdtsc_precise() - start_time;
@@ -3907,7 +3951,7 @@ throughput_pmd_lcore_enc(void *arg)
 		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
 	for (i = 0; i < TEST_REPETITIONS; ++i) {
-
+		uint32_t time_out = 0;
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			for (j = 0; j < num_ops; ++j)
 				mbuf_reset(ops_enq[j]->turbo_enc.output.data);
@@ -3925,12 +3969,23 @@ throughput_pmd_lcore_enc(void *arg)
 
 			deq += rte_bbdev_dequeue_enc_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Enqueue timeout!");
+			}
 		}
 
 		/* dequeue the remaining */
+		time_out = 0;
 		while (deq < enq) {
 			deq += rte_bbdev_dequeue_enc_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
 		}
 
 		total_time += rte_rdtsc_precise() - start_time;
@@ -3997,7 +4052,7 @@ throughput_pmd_lcore_ldpc_enc(void *arg)
 		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
 	for (i = 0; i < TEST_REPETITIONS; ++i) {
-
+		uint32_t time_out = 0;
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			for (j = 0; j < num_ops; ++j)
 				mbuf_reset(ops_enq[j]->turbo_enc.output.data);
@@ -4015,12 +4070,23 @@ throughput_pmd_lcore_ldpc_enc(void *arg)
 
 			deq += rte_bbdev_dequeue_ldpc_enc_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Enqueue timeout!");
+			}
 		}
 
 		/* dequeue the remaining */
+		time_out = 0;
 		while (deq < enq) {
 			deq += rte_bbdev_dequeue_ldpc_enc_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
 		}
 
 		total_time += rte_rdtsc_precise() - start_time;
@@ -4086,7 +4152,7 @@ throughput_pmd_lcore_fft(void *arg)
 		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
 	for (i = 0; i < TEST_REPETITIONS; ++i) {
-
+		uint32_t time_out = 0;
 		for (j = 0; j < num_ops; ++j)
 			mbuf_reset(ops_enq[j]->fft.base_output.data);
 
@@ -4103,12 +4169,23 @@ throughput_pmd_lcore_fft(void *arg)
 
 			deq += rte_bbdev_dequeue_fft_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Enqueue timeout!");
+			}
 		}
 
 		/* dequeue the remaining */
+		time_out = 0;
 		while (deq < enq) {
 			deq += rte_bbdev_dequeue_fft_ops(tp->dev_id,
 					queue_id, &ops_deq[deq], enq - deq);
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(tp->dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
 		}
 
 		total_time += rte_rdtsc_precise() - start_time;
@@ -4481,6 +4558,7 @@ latency_test_dec(struct rte_mempool *mempool,
 
 	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
 		uint16_t enq = 0, deq = 0;
+		uint32_t time_out = 0;
 		bool first_time = true;
 		last_time = 0;
 
@@ -4522,6 +4600,11 @@ latency_test_dec(struct rte_mempool *mempool,
 			if (likely(first_time && (deq > 0))) {
 				last_time = rte_rdtsc_precise() - start_time;
 				first_time = false;
+			}
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
 			}
 		} while (unlikely(burst_sz != deq));
 
@@ -4615,7 +4698,11 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 				first_time = false;
 			}
 			time_out++;
-		} while ((burst_sz != deq) && (time_out < TIME_OUT_POLL));
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
+		} while (unlikely(burst_sz != deq));
 
 		*max_time = RTE_MAX(*max_time, last_time);
 		*min_time = RTE_MIN(*min_time, last_time);
@@ -4624,14 +4711,8 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 		if (extDdr)
 			retrieve_harq_ddr(dev_id, queue_id, ops_enq, burst_sz);
 
-		if (burst_sz != deq) {
-			struct rte_bbdev_info info;
-			ret = TEST_FAILED;
-			rte_bbdev_info_get(dev_id, &info);
-			TEST_ASSERT_SUCCESS(ret, "Dequeue timeout!");
-		} else if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
-			ret = validate_ldpc_dec_op(ops_deq, burst_sz, ref_op,
-					vector_mask);
+		if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
+			ret = validate_ldpc_dec_op(ops_deq, burst_sz, ref_op, vector_mask);
 			TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 		}
 
@@ -4692,17 +4773,17 @@ latency_test_enc(struct rte_mempool *mempool,
 				first_time = false;
 			}
 			time_out++;
-		} while ((burst_sz != deq) && (time_out < TIME_OUT_POLL));
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
+		} while (unlikely(burst_sz != deq));
 
 		*max_time = RTE_MAX(*max_time, last_time);
 		*min_time = RTE_MIN(*min_time, last_time);
 		*total_time += last_time;
-		if (burst_sz != deq) {
-			struct rte_bbdev_info info;
-			ret = TEST_FAILED;
-			rte_bbdev_info_get(dev_id, &info);
-			TEST_ASSERT_SUCCESS(ret, "Dequeue timeout!");
-		} else if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
+
+		if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
 			ret = validate_enc_op(ops_deq, burst_sz, ref_op);
 			TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 		}
@@ -4728,6 +4809,7 @@ latency_test_ldpc_enc(struct rte_mempool *mempool,
 
 	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
 		uint16_t enq = 0, deq = 0;
+		uint32_t time_out = 0;
 		bool first_time = true;
 		last_time = 0;
 
@@ -4763,6 +4845,11 @@ latency_test_ldpc_enc(struct rte_mempool *mempool,
 				last_time += rte_rdtsc_precise() - start_time;
 				first_time = false;
 			}
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
+			}
 		} while (unlikely(burst_sz != deq));
 
 		*max_time = RTE_MAX(*max_time, last_time);
@@ -4796,6 +4883,7 @@ latency_test_fft(struct rte_mempool *mempool,
 
 	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
 		uint16_t enq = 0, deq = 0;
+		uint32_t time_out = 0;
 		bool first_time = true;
 		last_time = 0;
 
@@ -4830,6 +4918,11 @@ latency_test_fft(struct rte_mempool *mempool,
 			if (likely(first_time && (deq > 0))) {
 				last_time += rte_rdtsc_precise() - start_time;
 				first_time = false;
+			}
+			time_out++;
+			if (time_out >= TIME_OUT_POLL) {
+				timeout_exit(dev_id);
+				TEST_ASSERT_SUCCESS(TEST_FAILED, "Dequeue timeout!");
 			}
 		} while (unlikely(burst_sz != deq));
 
