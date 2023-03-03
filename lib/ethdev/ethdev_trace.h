@@ -513,11 +513,11 @@ RTE_TRACE_POINT(
 RTE_TRACE_POINT(
 	rte_eth_trace_xstats_get_names,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, int i,
-		struct rte_eth_xstat_name xstats_names,
+		const struct rte_eth_xstat_name *xstats_names,
 		unsigned int size, int cnt_used_entries),
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_int(i);
-	rte_trace_point_emit_string(xstats_names.name);
+	rte_trace_point_emit_string(xstats_names->name);
 	rte_trace_point_emit_u32(size);
 	rte_trace_point_emit_int(cnt_used_entries);
 )

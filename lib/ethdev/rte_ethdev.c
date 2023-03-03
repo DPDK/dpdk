@@ -3266,7 +3266,7 @@ rte_eth_xstats_get_names(uint16_t port_id,
 	}
 
 	for (i = 0; i < cnt_used_entries; i++)
-		rte_eth_trace_xstats_get_names(port_id, i, xstats_names[i],
+		rte_eth_trace_xstats_get_names(port_id, i, &xstats_names[i],
 					       size, cnt_used_entries);
 
 	return cnt_used_entries;
