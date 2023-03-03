@@ -461,6 +461,7 @@ cn9k_nix_prepare_mseg(struct cn9k_eth_txq *txq,
 	/* Start from second segment, first segment is already there */
 	i = 1;
 	sg_u = sg->u;
+	sg_u &= 0xFC0000000000FFFF;
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
 	slist = &cmd[3 + off + 1];
