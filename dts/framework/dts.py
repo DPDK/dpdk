@@ -1,67 +1,157 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2019 Intel Corporation
-# Copyright(c) 2022 PANTHEON.tech s.r.o.
-# Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2022-2023 University of New Hampshire
 
 import sys
-import traceback
-from collections.abc import Iterable
 
-from framework.testbed_model.node import Node
-
-from .config import CONFIGURATION
+from .config import CONFIGURATION, BuildTargetConfiguration, ExecutionConfiguration
+from .exception import DTSError, ErrorSeverity
 from .logger import DTSLOG, getLogger
+from .testbed_model import SutNode
 from .utils import check_dts_python_version
 
-dts_logger: DTSLOG | None = None
+dts_logger: DTSLOG = getLogger("DTSRunner")
+errors = []
 
 
 def run_all() -> None:
     """
-    Main process of DTS, it will run all test suites in the config file.
+    The main process of DTS. Runs all build targets in all executions from the main
+    config file.
     """
-
     global dts_logger
+    global errors
 
     # check the python version of the server that run dts
     check_dts_python_version()
 
-    dts_logger = getLogger("dts")
-
-    nodes = {}
-    # This try/finally block means "Run the try block, if there is an exception,
-    # run the finally block before passing it upward. If there is not an exception,
-    # run the finally block after the try block is finished." This helps avoid the
-    # problem of python's interpreter exit context, which essentially prevents you
-    # from making certain system calls. This makes cleaning up resources difficult,
-    # since most of the resources in DTS are network-based, which is restricted.
+    nodes: dict[str, SutNode] = {}
     try:
         # for all Execution sections
         for execution in CONFIGURATION.executions:
-            sut_config = execution.system_under_test
-            if sut_config.name not in nodes:
-                node = Node(sut_config)
-                nodes[sut_config.name] = node
-                node.send_command("echo Hello World")
+            sut_node = None
+            if execution.system_under_test.name in nodes:
+                # a Node with the same name already exists
+                sut_node = nodes[execution.system_under_test.name]
+            else:
+                # the SUT has not been initialized yet
+                try:
+                    sut_node = SutNode(execution.system_under_test)
+                except Exception as e:
+                    dts_logger.exception(
+                        f"Connection to node {execution.system_under_test} failed."
+                    )
+                    errors.append(e)
+                else:
+                    nodes[sut_node.name] = sut_node
+
+            if sut_node:
+                _run_execution(sut_node, execution)
 
     except Exception as e:
-        # sys.exit() doesn't produce a stack trace, need to print it explicitly
-        traceback.print_exc()
-        raise e
+        dts_logger.exception("An unexpected error has occurred.")
+        errors.append(e)
+        raise
 
     finally:
-        quit_execution(nodes.values())
+        try:
+            for node in nodes.values():
+                node.close()
+        except Exception as e:
+            dts_logger.exception("Final cleanup of nodes failed.")
+            errors.append(e)
+
+    # we need to put the sys.exit call outside the finally clause to make sure
+    # that unexpected exceptions will propagate
+    # in that case, the error that should be reported is the uncaught exception as
+    # that is a severe error originating from the framework
+    # at that point, we'll only have partial results which could be impacted by the
+    # error causing the uncaught exception, making them uninterpretable
+    _exit_dts()
 
 
-def quit_execution(sut_nodes: Iterable[Node]) -> None:
+def _run_execution(sut_node: SutNode, execution: ExecutionConfiguration) -> None:
     """
-    Close session to SUT and TG before quit.
-    Return exit status when failure occurred.
+    Run the given execution. This involves running the execution setup as well as
+    running all build targets in the given execution.
     """
-    for sut_node in sut_nodes:
-        # close all session
-        sut_node.node_exit()
+    dts_logger.info(f"Running execution with SUT '{execution.system_under_test.name}'.")
 
-    if dts_logger is not None:
+    try:
+        sut_node.set_up_execution(execution)
+    except Exception as e:
+        dts_logger.exception("Execution setup failed.")
+        errors.append(e)
+
+    else:
+        for build_target in execution.build_targets:
+            _run_build_target(sut_node, build_target, execution)
+
+    finally:
+        try:
+            sut_node.tear_down_execution()
+        except Exception as e:
+            dts_logger.exception("Execution teardown failed.")
+            errors.append(e)
+
+
+def _run_build_target(
+    sut_node: SutNode,
+    build_target: BuildTargetConfiguration,
+    execution: ExecutionConfiguration,
+) -> None:
+    """
+    Run the given build target.
+    """
+    dts_logger.info(f"Running build target '{build_target.name}'.")
+
+    try:
+        sut_node.set_up_build_target(build_target)
+    except Exception as e:
+        dts_logger.exception("Build target setup failed.")
+        errors.append(e)
+
+    else:
+        _run_suites(sut_node, execution)
+
+    finally:
+        try:
+            sut_node.tear_down_build_target()
+        except Exception as e:
+            dts_logger.exception("Build target teardown failed.")
+            errors.append(e)
+
+
+def _run_suites(
+    sut_node: SutNode,
+    execution: ExecutionConfiguration,
+) -> None:
+    """
+    Use the given build_target to run execution's test suites
+    with possibly only a subset of test cases.
+    If no subset is specified, run all test cases.
+    """
+
+
+def _exit_dts() -> None:
+    """
+    Process all errors and exit with the proper exit code.
+    """
+    if errors and dts_logger:
+        dts_logger.debug("Summary of errors:")
+        for error in errors:
+            dts_logger.debug(repr(error))
+
+    return_code = ErrorSeverity.NO_ERR
+    for error in errors:
+        error_return_code = ErrorSeverity.GENERIC_ERR
+        if isinstance(error, DTSError):
+            error_return_code = error.severity
+
+        if error_return_code > return_code:
+            return_code = error_return_code
+
+    if dts_logger:
         dts_logger.info("DTS execution has ended.")
-    sys.exit(0)
+    sys.exit(return_code)

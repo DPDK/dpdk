@@ -5,6 +5,68 @@
     "node_name": {
       "type": "string",
       "description": "A unique identifier for a node"
+    },
+    "OS": {
+      "type": "string",
+      "enum": [
+        "linux"
+      ]
+    },
+    "cpu": {
+      "type": "string",
+      "description": "Native should be the default on x86",
+      "enum": [
+        "native",
+        "armv8a",
+        "dpaa2",
+        "thunderx",
+        "xgene1"
+      ]
+    },
+    "compiler": {
+      "type": "string",
+      "enum": [
+        "gcc",
+        "clang",
+        "icc",
+        "mscv"
+      ]
+    },
+    "build_target": {
+      "type": "object",
+      "description": "Targets supported by DTS",
+      "properties": {
+        "arch": {
+          "type": "string",
+          "enum": [
+            "ALL",
+            "x86_64",
+            "arm64",
+            "ppc64le",
+            "other"
+          ]
+        },
+        "os": {
+          "$ref": "#/definitions/OS"
+        },
+        "cpu": {
+          "$ref": "#/definitions/cpu"
+        },
+        "compiler": {
+          "$ref": "#/definitions/compiler"
+        },
+          "compiler_wrapper": {
+          "type": "string",
+          "description": "This will be added before compiler to the CC variable when building DPDK. Optional."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "arch",
+        "os",
+        "cpu",
+        "compiler"
+      ]
     }
   },
   "type": "object",
@@ -29,13 +91,17 @@
           "password": {
             "type": "string",
             "description": "The password to use on this node. Use only as a last resort. SSH keys are STRONGLY preferred."
+          },
+          "os": {
+            "$ref": "#/definitions/OS"
           }
         },
         "additionalProperties": false,
         "required": [
           "name",
           "hostname",
-          "user"
+          "user",
+          "os"
         ]
       },
       "minimum": 1
@@ -45,12 +111,20 @@
       "items": {
         "type": "object",
         "properties": {
+          "build_targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/build_target"
+            },
+            "minimum": 1
+          },
           "system_under_test": {
             "$ref": "#/definitions/node_name"
           }
         },
         "additionalProperties": false,
         "required": [
+          "build_targets",
           "system_under_test"
         ]
       },

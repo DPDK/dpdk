@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
-# Copyright(c) 2022 PANTHEON.tech s.r.o.
-# Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2022-2023 University of New Hampshire
 
 import dataclasses
 from abc import ABC, abstractmethod
@@ -19,14 +19,23 @@ class HistoryRecord:
 
 
 class RemoteSession(ABC):
+    """
+    The base class for defining which methods must be implemented in order to connect
+    to a remote host (node) and maintain a remote session. The derived classes are
+    supposed to implement/use some underlying transport protocol (e.g. SSH) to
+    implement the methods. On top of that, it provides some basic services common to
+    all derived classes, such as keeping history and logging what's being executed
+    on the remote node.
+    """
+
     name: str
     hostname: str
     ip: str
     port: int | None
     username: str
     password: str
-    logger: DTSLOG
     history: list[HistoryRecord]
+    _logger: DTSLOG
     _node_config: NodeConfiguration
 
     def __init__(
@@ -46,31 +55,34 @@ class RemoteSession(ABC):
             self.port = int(port)
         self.username = node_config.user
         self.password = node_config.password or ""
-        self.logger = logger
         self.history = []
 
-        self.logger.info(f"Connecting to {self.username}@{self.hostname}.")
+        self._logger = logger
+        self._logger.info(f"Connecting to {self.username}@{self.hostname}.")
         self._connect()
-        self.logger.info(f"Connection to {self.username}@{self.hostname} successful.")
+        self._logger.info(f"Connection to {self.username}@{self.hostname} successful.")
 
     @abstractmethod
     def _connect(self) -> None:
         """
         Create connection to assigned node.
         """
-        pass
 
     def send_command(self, command: str, timeout: float = SETTINGS.timeout) -> str:
-        self.logger.info(f"Sending: {command}")
+        """
+        Send a command and return the output.
+        """
+        self._logger.info(f"Sending: {command}")
         out = self._send_command(command, timeout)
-        self.logger.debug(f"Received from {command}: {out}")
+        self._logger.debug(f"Received from {command}: {out}")
         self._history_add(command=command, output=out)
         return out
 
     @abstractmethod
     def _send_command(self, command: str, timeout: float) -> str:
         """
-        Send a command and return the output.
+        Use the underlying protocol to execute the command and return the output
+        of the command.
         """
 
     def _history_add(self, command: str, output: str) -> None:
@@ -79,17 +91,20 @@ class RemoteSession(ABC):
         )
 
     def close(self, force: bool = False) -> None:
-        self.logger.logger_exit()
+        """
+        Close the remote session and free all used resources.
+        """
+        self._logger.logger_exit()
         self._close(force)
 
     @abstractmethod
     def _close(self, force: bool = False) -> None:
         """
-        Close the remote session, freeing all used resources.
+        Execute protocol specific steps needed to close the session properly.
         """
 
     @abstractmethod
     def is_alive(self) -> bool:
         """
-        Check whether the session is still responding.
+        Check whether the remote session is still responding.
         """

@@ -1,21 +1,64 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2021 Intel Corporation
-# Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2023 PANTHEON.tech s.r.o.
 
 """
-Generic port and topology nodes configuration file load function
+Yaml config parsing methods
 """
 
 import json
 import os.path
 import pathlib
 from dataclasses import dataclass
+from enum import Enum, auto, unique
 from typing import Any
 
 import warlock  # type: ignore
 import yaml
 
 from framework.settings import SETTINGS
+
+
+class StrEnum(Enum):
+    @staticmethod
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: object
+    ) -> str:
+        return name
+
+
+@unique
+class Architecture(StrEnum):
+    i686 = auto()
+    x86_64 = auto()
+    x86_32 = auto()
+    arm64 = auto()
+    ppc64le = auto()
+
+
+@unique
+class OS(StrEnum):
+    linux = auto()
+    freebsd = auto()
+    windows = auto()
+
+
+@unique
+class CPUType(StrEnum):
+    native = auto()
+    armv8a = auto()
+    dpaa2 = auto()
+    thunderx = auto()
+    xgene1 = auto()
+
+
+@unique
+class Compiler(StrEnum):
+    gcc = auto()
+    clang = auto()
+    icc = auto()
+    msvc = auto()
 
 
 # Slots enables some optimizations, by pre-allocating space for the defined
@@ -29,6 +72,7 @@ class NodeConfiguration:
     hostname: str
     user: str
     password: str | None
+    os: OS
 
     @staticmethod
     def from_dict(d: dict) -> "NodeConfiguration":
@@ -37,19 +81,44 @@ class NodeConfiguration:
             hostname=d["hostname"],
             user=d["user"],
             password=d.get("password"),
+            os=OS(d["os"]),
+        )
+
+
+@dataclass(slots=True, frozen=True)
+class BuildTargetConfiguration:
+    arch: Architecture
+    os: OS
+    cpu: CPUType
+    compiler: Compiler
+    name: str
+
+    @staticmethod
+    def from_dict(d: dict) -> "BuildTargetConfiguration":
+        return BuildTargetConfiguration(
+            arch=Architecture(d["arch"]),
+            os=OS(d["os"]),
+            cpu=CPUType(d["cpu"]),
+            compiler=Compiler(d["compiler"]),
+            name=f"{d['arch']}-{d['os']}-{d['cpu']}-{d['compiler']}",
         )
 
 
 @dataclass(slots=True, frozen=True)
 class ExecutionConfiguration:
+    build_targets: list[BuildTargetConfiguration]
     system_under_test: NodeConfiguration
 
     @staticmethod
     def from_dict(d: dict, node_map: dict) -> "ExecutionConfiguration":
+        build_targets: list[BuildTargetConfiguration] = list(
+            map(BuildTargetConfiguration.from_dict, d["build_targets"])
+        )
         sut_name = d["system_under_test"]
         assert sut_name in node_map, f"Unknown SUT {sut_name} in execution {d}"
 
         return ExecutionConfiguration(
+            build_targets=build_targets,
             system_under_test=node_map[sut_name],
         )
 

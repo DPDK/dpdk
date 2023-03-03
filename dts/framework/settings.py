@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2021 Intel Corporation
-# Copyright(c) 2022 PANTHEON.tech s.r.o.
+# Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022 University of New Hampshire
 
 import argparse
@@ -23,7 +23,7 @@ def _env_arg(env_var: str) -> Any:
             default: str = None,
             type: Callable[[str], _T | argparse.FileType | None] = None,
             choices: Iterable[_T] | None = None,
-            required: bool = True,
+            required: bool = False,
             help: str | None = None,
             metavar: str | tuple[str, ...] | None = None,
         ) -> None:
@@ -63,13 +63,17 @@ class _Settings:
 
 
 def _get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="DPDK test framework.")
+    parser = argparse.ArgumentParser(
+        description="Run DPDK test suites. All options may be specified with "
+        "the environment variables provided in brackets. "
+        "Command line arguments have higher priority.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
     parser.add_argument(
         "--config-file",
         action=_env_arg("DTS_CFG_FILE"),
         default="conf.yaml",
-        required=False,
         help="[DTS_CFG_FILE] configuration file that describes the test cases, SUTs "
         "and targets.",
     )
@@ -79,7 +83,6 @@ def _get_parser() -> argparse.ArgumentParser:
         "--output",
         action=_env_arg("DTS_OUTPUT_DIR"),
         default="output",
-        required=False,
         help="[DTS_OUTPUT_DIR] Output directory where dts logs and results are saved.",
     )
 
@@ -88,7 +91,6 @@ def _get_parser() -> argparse.ArgumentParser:
         "--timeout",
         action=_env_arg("DTS_TIMEOUT"),
         default=15,
-        required=False,
         help="[DTS_TIMEOUT] The default timeout for all DTS operations except for "
         "compiling DPDK.",
     )
@@ -98,7 +100,6 @@ def _get_parser() -> argparse.ArgumentParser:
         "--verbose",
         action=_env_arg("DTS_VERBOSE"),
         default="N",
-        required=False,
         help="[DTS_VERBOSE] Set to 'Y' to enable verbose output, logging all messages "
         "to the console.",
     )

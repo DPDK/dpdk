@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
-# Copyright(c) 2022 PANTHEON.tech s.r.o.
-# Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2022-2023 University of New Hampshire
 
 import time
 
@@ -17,7 +17,7 @@ from .remote_session import RemoteSession
 
 class SSHSession(RemoteSession):
     """
-    Module for creating Pexpect SSH sessions to a node.
+    Module for creating Pexpect SSH remote sessions.
     """
 
     session: pxssh.pxssh
@@ -56,9 +56,9 @@ class SSHSession(RemoteSession):
                     )
                     break
                 except Exception as e:
-                    self.logger.warning(e)
+                    self._logger.warning(e)
                     time.sleep(2)
-                    self.logger.info(
+                    self._logger.info(
                         f"Retrying connection: retry number {retry_attempt + 1}."
                     )
             else:
@@ -67,13 +67,13 @@ class SSHSession(RemoteSession):
             self.send_expect("stty -echo", "#")
             self.send_expect("stty columns 1000", "#")
         except Exception as e:
-            self.logger.error(RED(str(e)))
+            self._logger.error(RED(str(e)))
             if getattr(self, "port", None):
                 suggestion = (
                     f"\nSuggestion: Check if the firewall on {self.hostname} is "
                     f"stopped.\n"
                 )
-                self.logger.info(GREEN(suggestion))
+                self._logger.info(GREEN(suggestion))
 
             raise SSHConnectionError(self.hostname)
 
@@ -87,8 +87,8 @@ class SSHSession(RemoteSession):
                 try:
                     retval = int(ret_status)
                     if retval:
-                        self.logger.error(f"Command: {command} failure!")
-                        self.logger.error(ret)
+                        self._logger.error(f"Command: {command} failure!")
+                        self._logger.error(ret)
                         return retval
                     else:
                         return ret
@@ -97,7 +97,7 @@ class SSHSession(RemoteSession):
             else:
                 return ret
         except Exception as e:
-            self.logger.error(
+            self._logger.error(
                 f"Exception happened in [{command}] and output is "
                 f"[{self._get_output()}]"
             )
