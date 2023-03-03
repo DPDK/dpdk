@@ -1121,8 +1121,8 @@ nix_priority_flow_ctrl_rq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	struct roc_nix_cq *cq;
 	int rc, i;
 
-	if (roc_model_is_cn96_ax() && data->dev_started) {
-		/* On Ax, CQ should be in disabled state
+	if (data->dev_started) {
+		/* RQ should be in disabled state
 		 * while setting flow control configuration.
 		 */
 		plt_info("Stop the port=%d for setting flow control",
