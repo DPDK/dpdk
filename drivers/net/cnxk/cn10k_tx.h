@@ -650,6 +650,10 @@ cn10k_nix_prefree_seg(struct rte_mbuf *m, struct cn10k_eth_txq *txq,
 	uint32_t sqe_id;
 
 	if (RTE_MBUF_HAS_EXTBUF(m)) {
+		if (unlikely(txq->tx_compl.ena == 0)) {
+			rte_pktmbuf_free_seg(m);
+			return 1;
+		}
 		if (send_hdr->w0.pnc) {
 			txq->tx_compl.ptr[send_hdr->w1.sqe_id]->next = m;
 		} else {
