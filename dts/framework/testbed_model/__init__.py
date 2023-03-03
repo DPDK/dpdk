@@ -9,5 +9,13 @@ system under test and any other components that need to be interacted with.
 
 # pylama:ignore=W0611
 
+from .hw import (
+    LogicalCore,
+    LogicalCoreCount,
+    LogicalCoreList,
+    LogicalCoreListFilter,
+    VirtualDevice,
+    lcore_filter,
+)
 from .node import Node
 from .sut_node import SutNode

@@ -110,6 +110,13 @@ There are two areas that need to be set up on a System Under Test:
    DPDK will be built and run on the SUT.
    Consult the Getting Started guides for the list of dependencies for each distribution.
 
+#. **Hardware dependencies**
+
+   Any hardware DPDK uses needs a proper driver
+   and most OS distributions provide those, but the version may not be satisfactory.
+   It's up to each user to install the driver they're interested in testing.
+   The hardware also may also need firmware upgrades, which is also left at user discretion.
+
 
 DTS Developer Tools
 -------------------

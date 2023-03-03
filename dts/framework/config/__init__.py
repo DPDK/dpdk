@@ -72,7 +72,11 @@ class NodeConfiguration:
     hostname: str
     user: str
     password: str | None
+    arch: Architecture
     os: OS
+    lcores: str
+    use_first_core: bool
+    memory_channels: int
 
     @staticmethod
     def from_dict(d: dict) -> "NodeConfiguration":
@@ -81,7 +85,11 @@ class NodeConfiguration:
             hostname=d["hostname"],
             user=d["user"],
             password=d.get("password"),
+            arch=Architecture(d["arch"]),
             os=OS(d["os"]),
+            lcores=d.get("lcores", "1"),
+            use_first_core=d.get("use_first_core", False),
+            memory_channels=d.get("memory_channels", 1),
         )
 
 

@@ -3,11 +3,13 @@
 # Copyright(c) 2023 University of New Hampshire
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from pathlib import PurePath
 
 from framework.config import Architecture, NodeConfiguration
 from framework.logger import DTSLOG
 from framework.settings import SETTINGS
+from framework.testbed_model import LogicalCore
 from framework.utils import EnvVarsDict, MesonArgs
 
 from .remote import RemoteSession, create_remote_session
@@ -128,4 +130,24 @@ class OSSession(ABC):
     def get_dpdk_version(self, version_path: str | PurePath) -> str:
         """
         Inspect DPDK version on the remote node from version_path.
+        """
+
+    @abstractmethod
+    def get_remote_cpus(self, use_first_core: bool) -> list[LogicalCore]:
+        """
+        Compose a list of LogicalCores present on the remote node.
+        If use_first_core is False, the first physical core won't be used.
+        """
+
+    @abstractmethod
+    def kill_cleanup_dpdk_apps(self, dpdk_prefix_list: Iterable[str]) -> None:
+        """
+        Kill and cleanup all DPDK apps identified by dpdk_prefix_list. If
+        dpdk_prefix_list is empty, attempt to find running DPDK apps to kill and clean.
+        """
+
+    @abstractmethod
+    def get_dpdk_file_prefix(self, dpdk_prefix) -> str:
+        """
+        Get the DPDK file prefix that will be used when running DPDK apps.
         """

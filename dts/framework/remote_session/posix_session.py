@@ -2,6 +2,8 @@
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
 
+import re
+from collections.abc import Iterable
 from pathlib import PurePath, PurePosixPath
 
 from framework.config import Architecture
@@ -136,3 +138,84 @@ class PosixSession(OSSession):
             f"cat {self.join_remote_path(build_dir, 'VERSION')}", verify=True
         )
         return out.stdout
+
+    def kill_cleanup_dpdk_apps(self, dpdk_prefix_list: Iterable[str]) -> None:
+        self._logger.info("Cleaning up DPDK apps.")
+        dpdk_runtime_dirs = self._get_dpdk_runtime_dirs(dpdk_prefix_list)
+        if dpdk_runtime_dirs:
+            # kill and cleanup only if DPDK is running
+            dpdk_pids = self._get_dpdk_pids(dpdk_runtime_dirs)
+            for dpdk_pid in dpdk_pids:
+                self.remote_session.send_command(f"kill -9 {dpdk_pid}", 20)
+            self._check_dpdk_hugepages(dpdk_runtime_dirs)
+            self._remove_dpdk_runtime_dirs(dpdk_runtime_dirs)
+
+    def _get_dpdk_runtime_dirs(
+        self, dpdk_prefix_list: Iterable[str]
+    ) -> list[PurePosixPath]:
+        prefix = PurePosixPath("/var", "run", "dpdk")
+        if not dpdk_prefix_list:
+            remote_prefixes = self._list_remote_dirs(prefix)
+            if not remote_prefixes:
+                dpdk_prefix_list = []
+            else:
+                dpdk_prefix_list = remote_prefixes
+
+        return [PurePosixPath(prefix, dpdk_prefix) for dpdk_prefix in dpdk_prefix_list]
+
+    def _list_remote_dirs(self, remote_path: str | PurePath) -> list[str] | None:
+        """
+        Return a list of directories of the remote_dir.
+        If remote_path doesn't exist, return None.
+        """
+        out = self.remote_session.send_command(
+            f"ls -l {remote_path} | awk '/^d/ {{print $NF}}'"
+        ).stdout
+        if "No such file or directory" in out:
+            return None
+        else:
+            return out.splitlines()
+
+    def _get_dpdk_pids(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> list[int]:
+        pids = []
+        pid_regex = r"p(\d+)"
+        for dpdk_runtime_dir in dpdk_runtime_dirs:
+            dpdk_config_file = PurePosixPath(dpdk_runtime_dir, "config")
+            if self._remote_files_exists(dpdk_config_file):
+                out = self.remote_session.send_command(
+                    f"lsof -Fp {dpdk_config_file}"
+                ).stdout
+                if out and "No such file or directory" not in out:
+                    for out_line in out.splitlines():
+                        match = re.match(pid_regex, out_line)
+                        if match:
+                            pids.append(int(match.group(1)))
+        return pids
+
+    def _remote_files_exists(self, remote_path: PurePath) -> bool:
+        result = self.remote_session.send_command(f"test -e {remote_path}")
+        return not result.return_code
+
+    def _check_dpdk_hugepages(
+        self, dpdk_runtime_dirs: Iterable[str | PurePath]
+    ) -> None:
+        for dpdk_runtime_dir in dpdk_runtime_dirs:
+            hugepage_info = PurePosixPath(dpdk_runtime_dir, "hugepage_info")
+            if self._remote_files_exists(hugepage_info):
+                out = self.remote_session.send_command(
+                    f"lsof -Fp {hugepage_info}"
+                ).stdout
+                if out and "No such file or directory" not in out:
+                    self._logger.warning("Some DPDK processes did not free hugepages.")
+                    self._logger.warning("*******************************************")
+                    self._logger.warning(out)
+                    self._logger.warning("*******************************************")
+
+    def _remove_dpdk_runtime_dirs(
+        self, dpdk_runtime_dirs: Iterable[str | PurePath]
+    ) -> None:
+        for dpdk_runtime_dir in dpdk_runtime_dirs:
+            self.remove_remote_dir(dpdk_runtime_dir)
+
+    def get_dpdk_file_prefix(self, dpdk_prefix) -> str:
+        return ""

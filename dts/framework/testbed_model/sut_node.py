@@ -4,12 +4,15 @@
 
 import os
 import tarfile
+import time
 from pathlib import PurePath
 
 from framework.config import BuildTargetConfiguration, NodeConfiguration
+from framework.remote_session import OSSession
 from framework.settings import SETTINGS
 from framework.utils import EnvVarsDict, MesonArgs
 
+from .hw import LogicalCoreCount, LogicalCoreList, VirtualDevice
 from .node import Node
 
 
@@ -21,21 +24,29 @@ class SutNode(Node):
     Another key capability is building DPDK according to given build target.
     """
 
+    _dpdk_prefix_list: list[str]
+    _dpdk_timestamp: str
     _build_target_config: BuildTargetConfiguration | None
     _env_vars: EnvVarsDict
     _remote_tmp_dir: PurePath
     __remote_dpdk_dir: PurePath | None
     _dpdk_version: str | None
     _app_compile_timeout: float
+    _dpdk_kill_session: OSSession | None
 
     def __init__(self, node_config: NodeConfiguration):
         super(SutNode, self).__init__(node_config)
+        self._dpdk_prefix_list = []
         self._build_target_config = None
         self._env_vars = EnvVarsDict()
         self._remote_tmp_dir = self.main_session.get_remote_tmp_dir()
         self.__remote_dpdk_dir = None
         self._dpdk_version = None
         self._app_compile_timeout = 90
+        self._dpdk_kill_session = None
+        self._dpdk_timestamp = (
+            f"{str(os.getpid())}_{time.strftime('%Y%m%d%H%M%S', time.localtime())}"
+        )
 
     @property
     def _remote_dpdk_dir(self) -> PurePath:
@@ -168,4 +179,121 @@ class SutNode(Node):
             )
         return self.main_session.join_remote_path(
             self.remote_dpdk_build_dir, "examples", f"dpdk-{app_name}"
+        )
+
+    def kill_cleanup_dpdk_apps(self) -> None:
+        """
+        Kill all dpdk applications on the SUT. Cleanup hugepages.
+        """
+        if self._dpdk_kill_session and self._dpdk_kill_session.is_alive():
+            # we can use the session if it exists and responds
+            self._dpdk_kill_session.kill_cleanup_dpdk_apps(self._dpdk_prefix_list)
+        else:
+            # otherwise, we need to (re)create it
+            self._dpdk_kill_session = self.create_session("dpdk_kill")
+        self._dpdk_prefix_list = []
+
+    def create_eal_parameters(
+        self,
+        lcore_filter_specifier: LogicalCoreCount | LogicalCoreList = LogicalCoreCount(),
+        ascending_cores: bool = True,
+        prefix: str = "dpdk",
+        append_prefix_timestamp: bool = True,
+        no_pci: bool = False,
+        vdevs: list[VirtualDevice] = None,
+        other_eal_param: str = "",
+    ) -> "EalParameters":
+        """
+        Generate eal parameters character string;
+        :param lcore_filter_specifier: a number of lcores/cores/sockets to use
+                        or a list of lcore ids to use.
+                        The default will select one lcore for each of two cores
+                        on one socket, in ascending order of core ids.
+        :param ascending_cores: True, use cores with the lowest numerical id first
+                        and continue in ascending order. If False, start with the
+                        highest id and continue in descending order. This ordering
+                        affects which sockets to consider first as well.
+        :param prefix: set file prefix string, eg:
+                        prefix='vf'
+        :param append_prefix_timestamp: if True, will append a timestamp to
+                        DPDK file prefix.
+        :param no_pci: switch of disable PCI bus eg:
+                        no_pci=True
+        :param vdevs: virtual device list, eg:
+                        vdevs=[
+                            VirtualDevice('net_ring0'),
+                            VirtualDevice('net_ring1')
+                        ]
+        :param other_eal_param: user defined DPDK eal parameters, eg:
+                        other_eal_param='--single-file-segments'
+        :return: eal param string, eg:
+                '-c 0xf -a 0000:88:00.0 --file-prefix=dpdk_1112_20190809143420';
+        """
+
+        lcore_list = LogicalCoreList(
+            self.filter_lcores(lcore_filter_specifier, ascending_cores)
+        )
+
+        if append_prefix_timestamp:
+            prefix = f"{prefix}_{self._dpdk_timestamp}"
+        prefix = self.main_session.get_dpdk_file_prefix(prefix)
+        if prefix:
+            self._dpdk_prefix_list.append(prefix)
+
+        if vdevs is None:
+            vdevs = []
+
+        return EalParameters(
+            lcore_list=lcore_list,
+            memory_channels=self.config.memory_channels,
+            prefix=prefix,
+            no_pci=no_pci,
+            vdevs=vdevs,
+            other_eal_param=other_eal_param,
+        )
+
+
+class EalParameters(object):
+    def __init__(
+        self,
+        lcore_list: LogicalCoreList,
+        memory_channels: int,
+        prefix: str,
+        no_pci: bool,
+        vdevs: list[VirtualDevice],
+        other_eal_param: str,
+    ):
+        """
+        Generate eal parameters character string;
+        :param lcore_list: the list of logical cores to use.
+        :param memory_channels: the number of memory channels to use.
+        :param prefix: set file prefix string, eg:
+                        prefix='vf'
+        :param no_pci: switch of disable PCI bus eg:
+                        no_pci=True
+        :param vdevs: virtual device list, eg:
+                        vdevs=[
+                            VirtualDevice('net_ring0'),
+                            VirtualDevice('net_ring1')
+                        ]
+        :param other_eal_param: user defined DPDK eal parameters, eg:
+                        other_eal_param='--single-file-segments'
+        """
+        self._lcore_list = f"-l {lcore_list}"
+        self._memory_channels = f"-n {memory_channels}"
+        self._prefix = prefix
+        if prefix:
+            self._prefix = f"--file-prefix={prefix}"
+        self._no_pci = "--no-pci" if no_pci else ""
+        self._vdevs = " ".join(f"--vdev {vdev}" for vdev in vdevs)
+        self._other_eal_param = other_eal_param
+
+    def __str__(self) -> str:
+        return (
+            f"{self._lcore_list} "
+            f"{self._memory_channels} "
+            f"{self._prefix} "
+            f"{self._no_pci} "
+            f"{self._vdevs} "
+            f"{self._other_eal_param}"
         )

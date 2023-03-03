@@ -6,6 +6,14 @@
       "type": "string",
       "description": "A unique identifier for a node"
     },
+    "ARCH": {
+      "type": "string",
+      "enum": [
+        "x86_64",
+        "arm64",
+        "ppc64le"
+      ]
+    },
     "OS": {
       "type": "string",
       "enum": [
@@ -92,8 +100,24 @@
             "type": "string",
             "description": "The password to use on this node. Use only as a last resort. SSH keys are STRONGLY preferred."
           },
+          "arch": {
+            "$ref": "#/definitions/ARCH"
+          },
           "os": {
             "$ref": "#/definitions/OS"
+          },
+          "lcores": {
+            "type": "string",
+            "pattern": "^(([0-9]+|([0-9]+-[0-9]+))(,([0-9]+|([0-9]+-[0-9]+)))*)?$",
+            "description": "Optional comma-separated list of logical cores to use, e.g.: 1,2,3,4,5,18-22. Defaults to 1. An empty string means use all lcores."
+          },
+          "use_first_core": {
+            "type": "boolean",
+            "description": "Indicate whether DPDK should use the first physical core. It won't be used by default."
+          },
+          "memory_channels": {
+            "type": "integer",
+            "description": "How many memory channels to use. Optional, defaults to 1."
           }
         },
         "additionalProperties": false,
@@ -101,6 +125,7 @@
           "name",
           "hostname",
           "user",
+          "arch",
           "os"
         ]
       },
