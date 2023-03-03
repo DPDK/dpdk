@@ -8,7 +8,7 @@ import time
 from pathlib import PurePath
 
 from framework.config import BuildTargetConfiguration, NodeConfiguration
-from framework.remote_session import OSSession
+from framework.remote_session import CommandResult, OSSession
 from framework.settings import SETTINGS
 from framework.utils import EnvVarsDict, MesonArgs
 
@@ -250,6 +250,16 @@ class SutNode(Node):
             no_pci=no_pci,
             vdevs=vdevs,
             other_eal_param=other_eal_param,
+        )
+
+    def run_dpdk_app(
+        self, app_path: PurePath, eal_args: "EalParameters", timeout: float = 30
+    ) -> CommandResult:
+        """
+        Run DPDK application on the remote node.
+        """
+        return self.main_session.send_command(
+            f"{app_path} {eal_args}", timeout, verify=True
         )
 
 

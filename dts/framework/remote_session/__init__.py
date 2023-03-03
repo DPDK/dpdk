@@ -17,7 +17,7 @@ from framework.logger import DTSLOG
 
 from .linux_session import LinuxSession
 from .os_session import OSSession
-from .remote import RemoteSession, SSHSession
+from .remote import CommandResult, RemoteSession, SSHSession
 
 
 def create_session(

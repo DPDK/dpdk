@@ -12,7 +12,7 @@ from framework.settings import SETTINGS
 from framework.testbed_model import LogicalCore
 from framework.utils import EnvVarsDict, MesonArgs
 
-from .remote import RemoteSession, create_remote_session
+from .remote import CommandResult, RemoteSession, create_remote_session
 
 
 class OSSession(ABC):
@@ -49,6 +49,20 @@ class OSSession(ABC):
         Check whether the remote session is still responding.
         """
         return self.remote_session.is_alive()
+
+    def send_command(
+        self,
+        command: str,
+        timeout: float,
+        verify: bool = False,
+        env: EnvVarsDict | None = None,
+    ) -> CommandResult:
+        """
+        An all-purpose API in case the command to be executed is already
+        OS-agnostic, such as when the path to the executed command has been
+        constructed beforehand.
+        """
+        return self.remote_session.send_command(command, timeout, verify, env)
 
     @abstractmethod
     def guess_dpdk_remote_dir(self, remote_dir) -> PurePath:

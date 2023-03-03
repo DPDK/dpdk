@@ -12,6 +12,7 @@ system under test and any other components that need to be interacted with.
 from .hw import (
     LogicalCore,
     LogicalCoreCount,
+    LogicalCoreCountFilter,
     LogicalCoreList,
     LogicalCoreListFilter,
     VirtualDevice,

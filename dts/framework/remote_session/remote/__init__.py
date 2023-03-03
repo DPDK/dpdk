@@ -6,7 +6,7 @@
 from framework.config import NodeConfiguration
 from framework.logger import DTSLOG
 
-from .remote_session import RemoteSession
+from .remote_session import CommandResult, RemoteSession
 from .ssh_session import SSHSession
 
 
