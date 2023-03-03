@@ -884,6 +884,27 @@ cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 	return flowkey_cfg;
 }
 
+static int
+nix_rxchan_cfg_disable(struct cnxk_eth_dev *dev)
+{
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_fc_cfg fc_cfg;
+	int rc;
+
+	if (!roc_nix_is_lbk(nix))
+		return 0;
+
+	memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
+	fc_cfg.type = ROC_NIX_FC_RXCHAN_CFG;
+	fc_cfg.rxchan_cfg.enable = false;
+	rc = roc_nix_fc_config_set(nix, &fc_cfg);
+	if (rc) {
+		plt_err("Failed to setup flow control, rc=%d(%s)", rc, roc_error_msg_get(rc));
+		return rc;
+	}
+	return 0;
+}
+
 static void
 nix_free_queue_mem(struct cnxk_eth_dev *dev)
 {
@@ -1202,6 +1223,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 			goto fail_configure;
 
 		roc_nix_tm_fini(nix);
+		nix_rxchan_cfg_disable(dev);
 		roc_nix_lf_free(nix);
 	}
 
@@ -1431,6 +1453,7 @@ tm_fini:
 	roc_nix_tm_fini(nix);
 free_nix_lf:
 	nix_free_queue_mem(dev);
+	rc |= nix_rxchan_cfg_disable(dev);
 	rc |= roc_nix_lf_free(nix);
 fail_configure:
 	dev->configured = 0;
@@ -1979,6 +2002,11 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	/* Free ROC RQ's, SQ's and CQ's memory */
 	nix_free_queue_mem(dev);
+
+	/* free nix bpid */
+	rc = nix_rxchan_cfg_disable(dev);
+	if (rc)
+		plt_err("Failed to free nix bpid, rc=%d", rc);
 
 	/* Free nix lf resources */
 	rc = roc_nix_lf_free(nix);
