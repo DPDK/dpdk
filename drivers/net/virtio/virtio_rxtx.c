@@ -421,29 +421,36 @@ virtio_tso_fix_cksum(struct rte_mbuf *m)
 	if (likely(rte_pktmbuf_data_len(m) >= m->l2_len + m->l3_len +
 			m->l4_len)) {
 		struct rte_ipv4_hdr *iph;
-		struct rte_ipv6_hdr *ip6h;
 		struct rte_tcp_hdr *th;
-		uint16_t prev_cksum, new_cksum, ip_len, ip_paylen;
+		uint16_t prev_cksum, new_cksum;
+		uint32_t ip_paylen;
 		uint32_t tmp;
 
 		iph = rte_pktmbuf_mtod_offset(m,
 					struct rte_ipv4_hdr *, m->l2_len);
 		th = RTE_PTR_ADD(iph, m->l3_len);
+
+		/*
+		 * Calculate IPv4 header checksum with current total length value
+		 * (whatever it is) to have correct checksum after update on edits
+		 * done by TSO.
+		 */
 		if ((iph->version_ihl >> 4) == 4) {
 			iph->hdr_checksum = 0;
 			iph->hdr_checksum = rte_ipv4_cksum(iph);
-			ip_len = iph->total_length;
-			ip_paylen = rte_cpu_to_be_16(rte_be_to_cpu_16(ip_len) -
-				m->l3_len);
-		} else {
-			ip6h = (struct rte_ipv6_hdr *)iph;
-			ip_paylen = ip6h->payload_len;
 		}
+
+		/*
+		 * Do not use IPv4 total length and IPv6 payload length fields to get
+		 * TSO payload length since it could not fit into 16 bits.
+		 */
+		ip_paylen = rte_cpu_to_be_32(rte_pktmbuf_pkt_len(m) - m->l2_len -
+					m->l3_len);
 
 		/* calculate the new phdr checksum not including ip_paylen */
 		prev_cksum = th->cksum;
 		tmp = prev_cksum;
-		tmp += ip_paylen;
+		tmp += (ip_paylen & 0xffff) + (ip_paylen >> 16);
 		tmp = (tmp & 0xffff) + (tmp >> 16);
 		new_cksum = tmp;
 
