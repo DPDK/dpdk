@@ -1832,6 +1832,7 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 
 	*rx_offloads = 0;
 	*tx_offloads = 0;
+	*hw_reassembly = 0;
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
