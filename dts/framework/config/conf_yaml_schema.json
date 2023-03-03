@@ -75,6 +75,24 @@
         "cpu",
         "compiler"
       ]
+    },
+    "hugepages": {
+      "type": "object",
+      "description": "Optional hugepage configuration. If not specified, hugepages won't be configured and DTS will use system configuration.",
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "description": "The amount of hugepages to configure. Hugepage size will be the system default."
+        },
+        "force_first_numa": {
+          "type": "boolean",
+          "description": "Set to True to force configuring hugepages on the first NUMA node. Defaults to False."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "amount"
+      ]
     }
   },
   "type": "object",
@@ -118,6 +136,9 @@
           "memory_channels": {
             "type": "integer",
             "description": "How many memory channels to use. Optional, defaults to 1."
+          },
+          "hugepages": {
+            "$ref": "#/definitions/hugepages"
           }
         },
         "additionalProperties": false,

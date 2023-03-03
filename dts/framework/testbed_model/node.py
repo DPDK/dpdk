@@ -62,6 +62,7 @@ class Node(object):
         Perform the execution setup that will be done for each execution
         this node is part of.
         """
+        self._setup_hugepages()
         self._set_up_execution(execution_config)
 
     def _set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
@@ -153,6 +154,17 @@ class Node(object):
         """
         self._logger.info("Getting CPU information.")
         self.lcores = self.main_session.get_remote_cpus(self.config.use_first_core)
+
+    def _setup_hugepages(self):
+        """
+        Setup hugepages on the Node. Different architectures can supply different
+        amounts of memory for hugepages and numa-based hugepage allocation may need
+        to be considered.
+        """
+        if self.config.hugepages:
+            self.main_session.setup_hugepages(
+                self.config.hugepages.amount, self.config.hugepages.force_first_numa
+            )
 
     def close(self) -> None:
         """

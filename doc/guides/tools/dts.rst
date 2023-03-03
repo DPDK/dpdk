@@ -117,6 +117,21 @@ There are two areas that need to be set up on a System Under Test:
    It's up to each user to install the driver they're interested in testing.
    The hardware also may also need firmware upgrades, which is also left at user discretion.
 
+#. **Hugepages**
+
+   There are two ways to configure hugepages:
+
+   * DTS configuration
+
+     You may specify the optional hugepage configuration in the DTS config file.
+     If you do, DTS will take care of configuring hugepages,
+     overwriting your current SUT hugepage configuration.
+
+   * System under test configuration
+
+     It's possible to use the hugepage configuration already present on the SUT.
+     If you wish to do so, don't specify the hugepage configuration in the DTS config file.
+
 
 DTS Developer Tools
 -------------------

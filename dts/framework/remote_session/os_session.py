@@ -151,3 +151,11 @@ class OSSession(ABC):
         """
         Get the DPDK file prefix that will be used when running DPDK apps.
         """
+
+    @abstractmethod
+    def setup_hugepages(self, hugepage_amount: int, force_first_numa: bool) -> None:
+        """
+        Get the node's Hugepage Size, configure the specified amount of hugepages
+        if needed and mount the hugepages if needed.
+        If force_first_numa is True, configure hugepages just on the first socket.
+        """

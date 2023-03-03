@@ -67,6 +67,12 @@ class Compiler(StrEnum):
 # Frozen makes the object immutable. This enables further optimizations,
 # and makes it thread safe should we every want to move in that direction.
 @dataclass(slots=True, frozen=True)
+class HugepageConfiguration:
+    amount: int
+    force_first_numa: bool
+
+
+@dataclass(slots=True, frozen=True)
 class NodeConfiguration:
     name: str
     hostname: str
@@ -77,9 +83,16 @@ class NodeConfiguration:
     lcores: str
     use_first_core: bool
     memory_channels: int
+    hugepages: HugepageConfiguration | None
 
     @staticmethod
     def from_dict(d: dict) -> "NodeConfiguration":
+        hugepage_config = d.get("hugepages")
+        if hugepage_config:
+            if "force_first_numa" not in hugepage_config:
+                hugepage_config["force_first_numa"] = False
+            hugepage_config = HugepageConfiguration(**hugepage_config)
+
         return NodeConfiguration(
             name=d["name"],
             hostname=d["hostname"],
@@ -90,6 +103,7 @@ class NodeConfiguration:
             lcores=d.get("lcores", "1"),
             use_first_core=d.get("use_first_core", False),
             memory_channels=d.get("memory_channels", 1),
+            hugepages=hugepage_config,
         )
 
 
