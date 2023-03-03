@@ -591,7 +591,7 @@ cn10k_nix_reassembly_capability_get(struct rte_eth_dev *eth_dev,
 	int rc = -ENOTSUP;
 	RTE_SET_USED(eth_dev);
 
-	if (!roc_nix_has_reass_support(&dev->nix))
+	if (!roc_feature_nix_has_reass())
 		return -ENOTSUP;
 
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
@@ -621,7 +621,7 @@ cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	int rc = 0;
 
-	if (!roc_nix_has_reass_support(&dev->nix))
+	if (!roc_feature_nix_has_reass())
 		return -ENOTSUP;
 
 	if (!conf->flags) {

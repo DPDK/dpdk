@@ -138,7 +138,6 @@ INTERNAL {
 	roc_nix_get_pf_func;
 	roc_nix_get_vf;
 	roc_nix_get_vwqe_interval;
-	roc_nix_has_reass_support;
 	roc_nix_inl_cb_register;
 	roc_nix_inl_cb_unregister;
 	roc_nix_inl_ctx_write;

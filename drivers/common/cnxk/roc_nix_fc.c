@@ -77,7 +77,10 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		if (req == NULL)
 			goto exit;
 		req->chan_base = 0;
-		req->chan_cnt = 1;
+		if (roc_nix_is_lbk(roc_nix) || roc_nix_is_sdp(roc_nix))
+			req->chan_cnt = NIX_LBK_MAX_CHAN;
+		else
+			req->chan_cnt = NIX_CGX_MAX_CHAN;
 		req->bpid_per_chan = 0;
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
@@ -89,7 +92,10 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		if (req == NULL)
 			goto exit;
 		req->chan_base = 0;
-		req->chan_cnt = 1;
+		if (roc_nix_is_lbk(roc_nix) || roc_nix_is_sdp(roc_nix))
+			req->chan_cnt = NIX_LBK_MAX_CHAN;
+		else
+			req->chan_cnt = NIX_CGX_MAX_CHAN;
 		req->bpid_per_chan = 0;
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);

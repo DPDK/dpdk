@@ -863,7 +863,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	cq_ctx->avg_level = 0xff;
 	cq_ctx->cq_err_int_ena = BIT(NIX_CQERRINT_CQE_FAULT);
 	cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_DOOR_ERR);
-	if (roc_model_is_cn10kb() && roc_nix_inl_inb_is_enabled(roc_nix)) {
+	if (roc_feature_nix_has_late_bp() && roc_nix_inl_inb_is_enabled(roc_nix)) {
 		cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_CPT_DROP);
 		cq_ctx->cpt_drop_err_en = 1;
 		/* Enable Late BP only when non zero CPT BPID */
@@ -900,6 +900,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 			cq_ctx->drop_ena = 1;
 		}
 	}
+	cq_ctx->bp = cq->drop_thresh;
 
 	rc = mbox_process(mbox);
 	mbox_put(mbox);
@@ -960,7 +961,7 @@ roc_nix_cq_fini(struct roc_nix_cq *cq)
 		aq->cq.bp_ena = 0;
 		aq->cq_mask.ena = ~aq->cq_mask.ena;
 		aq->cq_mask.bp_ena = ~aq->cq_mask.bp_ena;
-		if (roc_model_is_cn10kb() && roc_nix_inl_inb_is_enabled(cq->roc_nix)) {
+		if (roc_feature_nix_has_late_bp() && roc_nix_inl_inb_is_enabled(cq->roc_nix)) {
 			aq->cq.lbp_ena = 0;
 			aq->cq_mask.lbp_ena = ~aq->cq_mask.lbp_ena;
 		}

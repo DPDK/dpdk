@@ -182,7 +182,6 @@ int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena,
 				       bool inb_inl_dev);
 int __roc_api roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool ena);
 int __roc_api roc_nix_inl_meta_aura_check(struct roc_nix_rq *rq);
-bool __roc_api roc_nix_has_reass_support(struct roc_nix *nix);
 
 /* NIX Inline Outbound API */
 int __roc_api roc_nix_inl_outb_init(struct roc_nix *roc_nix);

@@ -485,13 +485,6 @@ exit:
 	return rc;
 }
 
-bool
-roc_nix_has_reass_support(struct roc_nix *nix)
-{
-	PLT_SET_USED(nix);
-	return !!roc_model_is_cn10ka();
-}
-
 int
 roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 {
@@ -574,7 +567,7 @@ roc_nix_inl_inb_fini(struct roc_nix *roc_nix)
 			nix_inl_meta_aura_destroy();
 	}
 
-	if (roc_model_is_cn10kb_a0()) {
+	if (roc_feature_nix_has_inl_rq_mask()) {
 		rc = nix_inl_rq_mask_cfg(roc_nix, false);
 		if (rc) {
 			plt_err("Failed to get rq mask rc=%d", rc);
@@ -1046,7 +1039,7 @@ roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool enable)
 	if (!idev)
 		return -EFAULT;
 
-	if (roc_model_is_cn10kb_a0()) {
+	if (roc_feature_nix_has_inl_rq_mask()) {
 		rc = nix_inl_rq_mask_cfg(roc_nix, true);
 		if (rc) {
 			plt_err("Failed to get rq mask rc=%d", rc);
