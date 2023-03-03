@@ -287,6 +287,7 @@ perf_test_names = [
         'pie_perf',
         'distributor_perf_autotest',
         'pmd_perf_autotest',
+        'service_perf_autotest',
         'stack_perf_autotest',
         'stack_lf_perf_autotest',
         'rand_perf_autotest',
