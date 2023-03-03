@@ -21,7 +21,8 @@ class ErrorSeverity(IntEnum):
     NO_ERR = 0
     GENERIC_ERR = 1
     CONFIG_ERR = 2
-    SSH_ERR = 3
+    REMOTE_CMD_EXEC_ERR = 3
+    SSH_ERR = 4
 
 
 class DTSError(Exception):
@@ -90,3 +91,23 @@ class ConfigurationError(DTSError):
     """
 
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.CONFIG_ERR
+
+
+class RemoteCommandExecutionError(DTSError):
+    """
+    Raised when a command executed on a Node returns a non-zero exit status.
+    """
+
+    command: str
+    command_return_code: int
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.REMOTE_CMD_EXEC_ERR
+
+    def __init__(self, command: str, command_return_code: int):
+        self.command = command
+        self.command_return_code = command_return_code
+
+    def __str__(self) -> str:
+        return (
+            f"Command {self.command} returned a non-zero exit code: "
+            f"{self.command_return_code}"
+        )

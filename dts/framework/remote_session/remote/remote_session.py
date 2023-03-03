@@ -7,15 +7,29 @@ import dataclasses
 from abc import ABC, abstractmethod
 
 from framework.config import NodeConfiguration
+from framework.exception import RemoteCommandExecutionError
 from framework.logger import DTSLOG
 from framework.settings import SETTINGS
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
-class HistoryRecord:
+class CommandResult:
+    """
+    The result of remote execution of a command.
+    """
+
     name: str
     command: str
-    output: str | int
+    stdout: str
+    stderr: str
+    return_code: int
+
+    def __str__(self) -> str:
+        return (
+            f"stdout: '{self.stdout}'\n"
+            f"stderr: '{self.stderr}'\n"
+            f"return_code: '{self.return_code}'"
+        )
 
 
 class RemoteSession(ABC):
@@ -34,7 +48,7 @@ class RemoteSession(ABC):
     port: int | None
     username: str
     password: str
-    history: list[HistoryRecord]
+    history: list[CommandResult]
     _logger: DTSLOG
     _node_config: NodeConfiguration
 
@@ -68,27 +82,32 @@ class RemoteSession(ABC):
         Create connection to assigned node.
         """
 
-    def send_command(self, command: str, timeout: float = SETTINGS.timeout) -> str:
+    def send_command(
+        self, command: str, timeout: float = SETTINGS.timeout, verify: bool = False
+    ) -> CommandResult:
         """
-        Send a command and return the output.
+        Send a command to the connected node and return CommandResult.
+        If verify is True, check the return code of the executed command
+        and raise a RemoteCommandExecutionError if the command failed.
         """
-        self._logger.info(f"Sending: {command}")
-        out = self._send_command(command, timeout)
-        self._logger.debug(f"Received from {command}: {out}")
-        self._history_add(command=command, output=out)
-        return out
+        self._logger.info(f"Sending: '{command}'")
+        result = self._send_command(command, timeout)
+        if verify and result.return_code:
+            self._logger.debug(
+                f"Command '{command}' failed with return code '{result.return_code}'"
+            )
+            self._logger.debug(f"stdout: '{result.stdout}'")
+            self._logger.debug(f"stderr: '{result.stderr}'")
+            raise RemoteCommandExecutionError(command, result.return_code)
+        self._logger.debug(f"Received from '{command}':\n{result}")
+        self.history.append(result)
+        return result
 
     @abstractmethod
-    def _send_command(self, command: str, timeout: float) -> str:
+    def _send_command(self, command: str, timeout: float) -> CommandResult:
         """
-        Use the underlying protocol to execute the command and return the output
-        of the command.
+        Use the underlying protocol to execute the command and return CommandResult.
         """
-
-    def _history_add(self, command: str, output: str) -> None:
-        self.history.append(
-            HistoryRecord(name=self.name, command=command, output=output)
-        )
 
     def close(self, force: bool = False) -> None:
         """

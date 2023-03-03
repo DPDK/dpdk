@@ -12,7 +12,7 @@ from framework.exception import SSHConnectionError, SSHSessionDeadError, SSHTime
 from framework.logger import DTSLOG
 from framework.utils import GREEN, RED
 
-from .remote_session import RemoteSession
+from .remote_session import CommandResult, RemoteSession
 
 
 class SSHSession(RemoteSession):
@@ -66,6 +66,7 @@ class SSHSession(RemoteSession):
 
             self.send_expect("stty -echo", "#")
             self.send_expect("stty columns 1000", "#")
+            self.send_expect("bind 'set enable-bracketed-paste off'", "#")
         except Exception as e:
             self._logger.error(RED(str(e)))
             if getattr(self, "port", None):
@@ -163,7 +164,14 @@ class SSHSession(RemoteSession):
     def is_alive(self) -> bool:
         return self.session.isalive()
 
-    def _send_command(self, command: str, timeout: float) -> str:
+    def _send_command(self, command: str, timeout: float) -> CommandResult:
+        output = self._send_command_get_output(command, timeout)
+        return_code = int(self._send_command_get_output("echo $?", timeout))
+
+        # we're capturing only stdout
+        return CommandResult(self.name, command, output, "", return_code)
+
+    def _send_command_get_output(self, command: str, timeout: float) -> str:
         try:
             self._clean_session()
             self._send_line(command)
