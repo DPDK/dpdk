@@ -123,8 +123,7 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_eth_dev_owner *owner, int ret),
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u64(owner->id);
-	rte_trace_point_emit_string(owner->name);
+	rte_trace_point_emit_ptr(owner);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -351,9 +350,7 @@ RTE_TRACE_POINT(
 	rte_eth_trace_find_next_of,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_device *parent),
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_string(parent->name);
-	rte_trace_point_emit_string(parent->bus_info);
-	rte_trace_point_emit_int(parent->numa_node);
+	rte_trace_point_emit_ptr(parent);
 )
 
 RTE_TRACE_POINT(
@@ -831,8 +828,7 @@ RTE_TRACE_POINT(
 		const struct rte_eth_fec_capa *speed_fec_capa,
 		unsigned int num, int ret),
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u32(speed_fec_capa->speed);
-	rte_trace_point_emit_u32(speed_fec_capa->capa);
+	rte_trace_point_emit_ptr(speed_fec_capa);
 	rte_trace_point_emit_u32(num);
 	rte_trace_point_emit_int(ret);
 )
@@ -1135,10 +1131,8 @@ RTE_TRACE_POINT(
 RTE_TRACE_POINT(
 	rte_eth_trace_read_clock,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const uint64_t *clk, int ret),
-	uint64_t clk_v = *clk;
-
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u64(clk_v);
+	rte_trace_point_emit_ptr(clk);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -1378,8 +1372,7 @@ RTE_TRACE_POINT(
 		const struct rte_flow_item *pattern,
 		const struct rte_flow_action *actions, int ret),
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u32(attr->group);
-	rte_trace_point_emit_u32(attr->priority);
+	rte_trace_point_emit_ptr(attr);
 	rte_trace_point_emit_ptr(pattern);
 	rte_trace_point_emit_ptr(actions);
 	rte_trace_point_emit_int(ret);
@@ -1472,10 +1465,7 @@ RTE_TRACE_POINT(
 		const struct rte_flow_item_flex_conf *conf,
 		const struct rte_flow_item_flex_handle *handle),
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_int(conf->tunnel);
-	rte_trace_point_emit_int(conf->nb_samples);
-	rte_trace_point_emit_int(conf->nb_inputs);
-	rte_trace_point_emit_int(conf->nb_outputs);
+	rte_trace_point_emit_ptr(conf);
 	rte_trace_point_emit_ptr(handle);
 )
 
@@ -2216,8 +2206,7 @@ RTE_TRACE_POINT_FP(
 		const struct rte_flow_action *actions,
 		const struct rte_flow *flow),
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u32(attr->group);
-	rte_trace_point_emit_u32(attr->priority);
+	rte_trace_point_emit_ptr(attr);
 	rte_trace_point_emit_ptr(pattern);
 	rte_trace_point_emit_ptr(actions);
 	rte_trace_point_emit_ptr(flow);
@@ -2240,8 +2229,7 @@ RTE_TRACE_POINT_FP(
 		int ret),
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_ptr(flow);
-	rte_trace_point_emit_int(action->type);
-	rte_trace_point_emit_ptr(action->conf);
+	rte_trace_point_emit_ptr(action);
 	rte_trace_point_emit_ptr(data);
 	rte_trace_point_emit_int(ret);
 )
