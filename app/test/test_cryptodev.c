@@ -7641,6 +7641,86 @@ test_zuc256_hash_verify_16b_tag_test_case_1(void)
 }
 
 static int
+test_zuc256_cipher_auth_4b_tag_test_case_1(void)
+{
+	return test_zuc_cipher_auth(&zuc256_test_case_cipher_auth_1);
+}
+
+static int
+test_zuc256_cipher_auth_4b_tag_test_case_2(void)
+{
+	return test_zuc_cipher_auth(&zuc256_test_case_cipher_auth_2);
+}
+
+static int
+test_zuc256_cipher_auth_8b_tag_test_case_1(void)
+{
+	return test_zuc_cipher_auth(&zuc256_test_case_cipher_auth_3);
+}
+
+static int
+test_zuc256_cipher_auth_16b_tag_test_case_1(void)
+{
+	return test_zuc_cipher_auth(&zuc256_test_case_cipher_auth_4);
+}
+
+static int
+test_zuc256_auth_cipher_4b_tag_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_zuc256_auth_cipher_4b_tag_test_case_2(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_2, IN_PLACE, 0);
+}
+
+static int
+test_zuc256_auth_cipher_8b_tag_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_3, IN_PLACE, 0);
+}
+
+static int
+test_zuc256_auth_cipher_16b_tag_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_4, IN_PLACE, 0);
+}
+
+static int
+test_zuc256_auth_cipher_verify_4b_tag_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_1, IN_PLACE, 1);
+}
+
+static int
+test_zuc256_auth_cipher_verify_4b_tag_test_case_2(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_2, IN_PLACE, 1);
+}
+
+static int
+test_zuc256_auth_cipher_verify_8b_tag_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_3, IN_PLACE, 1);
+}
+
+static int
+test_zuc256_auth_cipher_verify_16b_tag_test_case_1(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc256_auth_cipher_test_case_4, IN_PLACE, 1);
+}
+
+static int
 test_mixed_check_if_unsupported(const struct mixed_cipher_auth_test_data *tdata)
 {
 	uint8_t dev_id = testsuite_params.valid_devs[0];
@@ -16502,6 +16582,36 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc256_hash_verify_8b_tag_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc256_hash_verify_16b_tag_test_case_1),
+
+		/** ZUC-256 encrypt and authenticate **/
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_cipher_auth_4b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_cipher_auth_4b_tag_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_cipher_auth_8b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_cipher_auth_16b_tag_test_case_1),
+
+		/** ZUC-256 generate auth, then encrypt */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_4b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_4b_tag_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_8b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_16b_tag_test_case_1),
+
+		/** ZUC-256 decrypt, then verify auth */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_verify_4b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_verify_4b_tag_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_verify_8b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_auth_cipher_verify_16b_tag_test_case_1),
 
 		TEST_CASES_END()
 	}
