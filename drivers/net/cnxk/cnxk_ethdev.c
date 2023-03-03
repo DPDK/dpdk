@@ -363,7 +363,7 @@ nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	int rc;
 
-	if (roc_nix_is_vf_or_sdp(&dev->nix))
+	if (roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix))
 		return 0;
 
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
@@ -388,7 +388,11 @@ nix_update_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	struct rte_eth_fc_conf fc_cfg = {0};
 
-	if (roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix))
+	if (roc_nix_is_sdp(&dev->nix))
+		return 0;
+
+	/* Don't do anything if PFC is enabled */
+	if (dev->pfc_cfg.rx_pause_en || dev->pfc_cfg.tx_pause_en)
 		return 0;
 
 	fc_cfg.mode = fc->mode;
@@ -481,7 +485,6 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	sq->qid = qid;
 	sq->nb_desc = nb_desc;
 	sq->max_sqe_sz = nix_sq_max_sqe_sz(dev);
-	sq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	if (nix->tx_compl_ena) {
 		sq->cqid = sq->qid + dev->nb_rxq;
