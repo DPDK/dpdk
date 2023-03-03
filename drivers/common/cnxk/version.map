@@ -146,6 +146,7 @@ INTERNAL {
 	roc_nix_inl_dev_fini;
 	roc_nix_inl_dev_init;
 	roc_nix_inl_dev_is_probed;
+	roc_nix_inl_dev_stats_get;
 	roc_nix_inl_dev_lock;
 	roc_nix_inl_dev_pffunc_get;
 	roc_nix_inl_dev_rq;
