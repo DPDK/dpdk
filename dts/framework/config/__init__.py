@@ -91,6 +91,7 @@ class BuildTargetConfiguration:
     os: OS
     cpu: CPUType
     compiler: Compiler
+    compiler_wrapper: str
     name: str
 
     @staticmethod
@@ -100,6 +101,7 @@ class BuildTargetConfiguration:
             os=OS(d["os"]),
             cpu=CPUType(d["cpu"]),
             compiler=Compiler(d["compiler"]),
+            compiler_wrapper=d.get("compiler_wrapper", ""),
             name=f"{d['arch']}-{d['os']}-{d['cpu']}-{d['compiler']}",
         )
 

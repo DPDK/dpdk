@@ -7,7 +7,10 @@ import argparse
 import os
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TypeVar
+
+from .exception import ConfigurationError
 
 _T = TypeVar("_T")
 
@@ -60,6 +63,9 @@ class _Settings:
     output_dir: str
     timeout: float
     verbose: bool
+    skip_setup: bool
+    dpdk_tarball_path: Path
+    compile_timeout: float
 
 
 def _get_parser() -> argparse.ArgumentParser:
@@ -91,6 +97,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--timeout",
         action=_env_arg("DTS_TIMEOUT"),
         default=15,
+        type=float,
         help="[DTS_TIMEOUT] The default timeout for all DTS operations except for "
         "compiling DPDK.",
     )
@@ -104,16 +111,51 @@ def _get_parser() -> argparse.ArgumentParser:
         "to the console.",
     )
 
+    parser.add_argument(
+        "-s",
+        "--skip-setup",
+        action=_env_arg("DTS_SKIP_SETUP"),
+        default="N",
+        help="[DTS_SKIP_SETUP] Set to 'Y' to skip all setup steps on SUT and TG nodes.",
+    )
+
+    parser.add_argument(
+        "--tarball",
+        "--snapshot",
+        action=_env_arg("DTS_DPDK_TARBALL"),
+        default="dpdk.tar.xz",
+        type=Path,
+        help="[DTS_DPDK_TARBALL] Path to DPDK source code tarball "
+        "which will be used in testing.",
+    )
+
+    parser.add_argument(
+        "--compile-timeout",
+        action=_env_arg("DTS_COMPILE_TIMEOUT"),
+        default=1200,
+        type=float,
+        help="[DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK.",
+    )
+
     return parser
+
+
+def _check_tarball_path(parsed_args: argparse.Namespace) -> None:
+    if not os.path.exists(parsed_args.tarball):
+        raise ConfigurationError(f"DPDK tarball '{parsed_args.tarball}' doesn't exist.")
 
 
 def _get_settings() -> _Settings:
     parsed_args = _get_parser().parse_args()
+    _check_tarball_path(parsed_args)
     return _Settings(
         config_file_path=parsed_args.config_file,
         output_dir=parsed_args.output_dir,
-        timeout=float(parsed_args.timeout),
+        timeout=parsed_args.timeout,
         verbose=(parsed_args.verbose == "Y"),
+        skip_setup=(parsed_args.skip_setup == "Y"),
+        dpdk_tarball_path=parsed_args.tarball,
+        compile_timeout=parsed_args.compile_timeout,
     )
 
 

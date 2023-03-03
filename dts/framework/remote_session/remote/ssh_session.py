@@ -4,13 +4,15 @@
 # Copyright(c) 2022-2023 University of New Hampshire
 
 import time
+from pathlib import PurePath
 
+import pexpect  # type: ignore
 from pexpect import pxssh  # type: ignore
 
 from framework.config import NodeConfiguration
 from framework.exception import SSHConnectionError, SSHSessionDeadError, SSHTimeoutError
 from framework.logger import DTSLOG
-from framework.utils import GREEN, RED
+from framework.utils import GREEN, RED, EnvVarsDict
 
 from .remote_session import CommandResult, RemoteSession
 
@@ -164,16 +166,22 @@ class SSHSession(RemoteSession):
     def is_alive(self) -> bool:
         return self.session.isalive()
 
-    def _send_command(self, command: str, timeout: float) -> CommandResult:
-        output = self._send_command_get_output(command, timeout)
-        return_code = int(self._send_command_get_output("echo $?", timeout))
+    def _send_command(
+        self, command: str, timeout: float, env: EnvVarsDict | None
+    ) -> CommandResult:
+        output = self._send_command_get_output(command, timeout, env)
+        return_code = int(self._send_command_get_output("echo $?", timeout, None))
 
         # we're capturing only stdout
         return CommandResult(self.name, command, output, "", return_code)
 
-    def _send_command_get_output(self, command: str, timeout: float) -> str:
+    def _send_command_get_output(
+        self, command: str, timeout: float, env: EnvVarsDict | None
+    ) -> str:
         try:
             self._clean_session()
+            if env:
+                command = f"{env} {command}"
             self._send_line(command)
         except Exception as e:
             raise e
@@ -190,3 +198,51 @@ class SSHSession(RemoteSession):
         else:
             if self.is_alive():
                 self.session.logout()
+
+    def copy_file(
+        self,
+        source_file: str | PurePath,
+        destination_file: str | PurePath,
+        source_remote: bool = False,
+    ) -> None:
+        """
+        Send a local file to a remote host.
+        """
+        if source_remote:
+            source_file = f"{self.username}@{self.ip}:{source_file}"
+        else:
+            destination_file = f"{self.username}@{self.ip}:{destination_file}"
+
+        port = ""
+        if self.port:
+            port = f" -P {self.port}"
+
+        command = (
+            f"scp -v{port} -o NoHostAuthenticationForLocalhost=yes"
+            f" {source_file} {destination_file}"
+        )
+
+        self._spawn_scp(command)
+
+    def _spawn_scp(self, scp_cmd: str) -> None:
+        """
+        Transfer a file with SCP
+        """
+        self._logger.info(scp_cmd)
+        p: pexpect.spawn = pexpect.spawn(scp_cmd)
+        time.sleep(0.5)
+        ssh_newkey: str = "Are you sure you want to continue connecting"
+        i: int = p.expect(
+            [ssh_newkey, "[pP]assword", "# ", pexpect.EOF, pexpect.TIMEOUT], 120
+        )
+        if i == 0:  # add once in trust list
+            p.sendline("yes")
+            i = p.expect([ssh_newkey, "[pP]assword", pexpect.EOF], 2)
+
+        if i == 1:
+            time.sleep(0.5)
+            p.sendline(self.password)
+            p.expect("Exit status 0", 60)
+        if i == 4:
+            self._logger.error("SCP TIMEOUT error %d" % i)
+        p.close()

@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2022 PANTHEON.tech s.r.o.
+    Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 
 DPDK Test Suite
 ===============
@@ -56,7 +56,7 @@ DTS runtime environment or just plain DTS environment are used interchangeably.
 
 
 Setting up DTS environment
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. **Python Version**
 
@@ -92,6 +92,23 @@ Setting up DTS environment
 
       poetry install
       poetry shell
+
+#. **SSH Connection**
+
+   DTS uses Python pexpect for SSH connections between DTS environment and the other hosts.
+   The pexpect implementation is a wrapper around the ssh command in the DTS environment.
+   This means it'll use the SSH agent providing the ssh command and its keys.
+
+
+Setting up System Under Test
+----------------------------
+
+There are two areas that need to be set up on a System Under Test:
+
+#. **DPDK dependencies**
+
+   DPDK will be built and run on the SUT.
+   Consult the Getting Started guides for the list of dependencies for each distribution.
 
 
 DTS Developer Tools

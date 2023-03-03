@@ -5,11 +5,13 @@
 
 import dataclasses
 from abc import ABC, abstractmethod
+from pathlib import PurePath
 
 from framework.config import NodeConfiguration
 from framework.exception import RemoteCommandExecutionError
 from framework.logger import DTSLOG
 from framework.settings import SETTINGS
+from framework.utils import EnvVarsDict
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
@@ -83,15 +85,22 @@ class RemoteSession(ABC):
         """
 
     def send_command(
-        self, command: str, timeout: float = SETTINGS.timeout, verify: bool = False
+        self,
+        command: str,
+        timeout: float = SETTINGS.timeout,
+        verify: bool = False,
+        env: EnvVarsDict | None = None,
     ) -> CommandResult:
         """
-        Send a command to the connected node and return CommandResult.
+        Send a command to the connected node using optional env vars
+        and return CommandResult.
         If verify is True, check the return code of the executed command
         and raise a RemoteCommandExecutionError if the command failed.
         """
-        self._logger.info(f"Sending: '{command}'")
-        result = self._send_command(command, timeout)
+        self._logger.info(
+            f"Sending: '{command}'" + (f" with env vars: '{env}'" if env else "")
+        )
+        result = self._send_command(command, timeout, env)
         if verify and result.return_code:
             self._logger.debug(
                 f"Command '{command}' failed with return code '{result.return_code}'"
@@ -104,9 +113,12 @@ class RemoteSession(ABC):
         return result
 
     @abstractmethod
-    def _send_command(self, command: str, timeout: float) -> CommandResult:
+    def _send_command(
+        self, command: str, timeout: float, env: EnvVarsDict | None
+    ) -> CommandResult:
         """
-        Use the underlying protocol to execute the command and return CommandResult.
+        Use the underlying protocol to execute the command using optional env vars
+        and return CommandResult.
         """
 
     def close(self, force: bool = False) -> None:
@@ -126,4 +138,18 @@ class RemoteSession(ABC):
     def is_alive(self) -> bool:
         """
         Check whether the remote session is still responding.
+        """
+
+    @abstractmethod
+    def copy_file(
+        self,
+        source_file: str | PurePath,
+        destination_file: str | PurePath,
+        source_remote: bool = False,
+    ) -> None:
+        """
+        Copy source_file from local filesystem to destination_file on the remote Node
+        associated with the remote session.
+        If source_remote is True, reverse the direction - copy source_file from the
+        associated Node to destination_file on local filesystem.
         """

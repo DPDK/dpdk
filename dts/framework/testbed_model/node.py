@@ -7,6 +7,8 @@
 A node is a generic host that DTS connects to and manages.
 """
 
+from typing import Any, Callable
+
 from framework.config import (
     BuildTargetConfiguration,
     ExecutionConfiguration,
@@ -14,6 +16,7 @@ from framework.config import (
 )
 from framework.logger import DTSLOG, getLogger
 from framework.remote_session import OSSession, create_session
+from framework.settings import SETTINGS
 
 
 class Node(object):
@@ -117,3 +120,10 @@ class Node(object):
         for session in self._other_sessions:
             session.close()
         self._logger.logger_exit()
+
+    @staticmethod
+    def skip_setup(func: Callable[..., Any]) -> Callable[..., Any]:
+        if SETTINGS.skip_setup:
+            return lambda *args: None
+        else:
+            return func

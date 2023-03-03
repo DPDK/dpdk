@@ -23,6 +23,7 @@ class ErrorSeverity(IntEnum):
     CONFIG_ERR = 2
     REMOTE_CMD_EXEC_ERR = 3
     SSH_ERR = 4
+    DPDK_BUILD_ERR = 10
 
 
 class DTSError(Exception):
@@ -111,3 +112,19 @@ class RemoteCommandExecutionError(DTSError):
             f"Command {self.command} returned a non-zero exit code: "
             f"{self.command_return_code}"
         )
+
+
+class RemoteDirectoryExistsError(DTSError):
+    """
+    Raised when a remote directory to be created already exists.
+    """
+
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.REMOTE_CMD_EXEC_ERR
+
+
+class DPDKBuildError(DTSError):
+    """
+    Raised when DPDK build fails for any reason.
+    """
+
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.DPDK_BUILD_ERR
