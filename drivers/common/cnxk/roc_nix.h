@@ -328,6 +328,7 @@ struct roc_nix_rq {
 	struct roc_nix *roc_nix;
 	uint64_t meta_aura_handle;
 	uint16_t inl_dev_refs;
+	uint8_t tc;
 };
 
 struct roc_nix_cq {

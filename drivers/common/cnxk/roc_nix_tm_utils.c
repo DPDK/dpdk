@@ -72,8 +72,8 @@ nix_tm_lvl2nix(struct nix *nix, uint32_t lvl)
 		return nix_tm_lvl2nix_tl2_root(lvl);
 }
 
-static uint8_t
-nix_tm_relchan_get(struct nix *nix)
+uint8_t
+nix_tm_lbk_relchan_get(struct nix *nix)
 {
 	return nix->tx_chan_base & 0xff;
 }
@@ -531,7 +531,7 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		parent = node->parent->hw_id;
 
 	link = nix->tx_link;
-	relchan = nix_tm_relchan_get(nix);
+	relchan = roc_nix_is_lbk(roc_nix) ? nix_tm_lbk_relchan_get(nix) : 0;
 
 	if (hw_lvl != NIX_TXSCH_LVL_SMQ)
 		child = nix_tm_find_prio_anchor(nix, node->id, tree);
@@ -602,10 +602,6 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		    nix->tm_link_cfg_lvl == NIX_TXSCH_LVL_TL3) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
 			regval[k] = BIT_ULL(12) | relchan;
-			/* Enable BP if node is BP capable and rx_pause is set
-			 */
-			if (nix->rx_pause && node->bp_capa)
-				regval[k] |= BIT_ULL(13);
 			k++;
 		}
 
@@ -625,10 +621,6 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		    nix->tm_link_cfg_lvl == NIX_TXSCH_LVL_TL2) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
 			regval[k] = BIT_ULL(12) | relchan;
-			/* Enable BP if node is BP capable and rx_pause is set
-			 */
-			if (nix->rx_pause && node->bp_capa)
-				regval[k] |= BIT_ULL(13);
 			k++;
 		}
 

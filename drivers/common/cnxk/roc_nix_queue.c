@@ -667,6 +667,7 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	}
 
 	rq->roc_nix = roc_nix;
+	rq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	if (is_cn9k)
 		rc = nix_rq_cn9k_cfg(dev, rq, nix->qints, false, ena);
@@ -695,6 +696,7 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 			return rc;
 	}
 
+	nix->rqs[rq->qid] = rq;
 	return nix_tel_node_add_rq(rq);
 }
 
@@ -718,6 +720,7 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	nix_rq_aura_buf_type_update(rq, false);
 
 	rq->roc_nix = roc_nix;
+	rq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	mbox = mbox_get(m_box);
 	if (is_cn9k)
@@ -779,6 +782,7 @@ roc_nix_rq_cman_config(struct roc_nix *roc_nix, struct roc_nix_rq *rq)
 int
 roc_nix_rq_fini(struct roc_nix_rq *rq)
 {
+	struct nix *nix = roc_nix_to_nix_priv(rq->roc_nix);
 	int rc;
 
 	/* Disabling RQ is sufficient */
@@ -788,6 +792,8 @@ roc_nix_rq_fini(struct roc_nix_rq *rq)
 
 	/* Update aura attribute to indicate its use for */
 	nix_rq_aura_buf_type_update(rq, false);
+
+	nix->rqs[rq->qid] = NULL;
 	return 0;
 }
 
@@ -893,14 +899,6 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 			cq_ctx->drop = cq->drop_thresh;
 			cq_ctx->drop_ena = 1;
 		}
-	}
-
-	/* TX pause frames enable flow ctrl on RX side */
-	if (nix->tx_pause) {
-		/* Single BPID is allocated for all rx channels for now */
-		cq_ctx->bpid = nix->bpid[0];
-		cq_ctx->bp = cq->drop_thresh;
-		cq_ctx->bp_ena = 1;
 	}
 
 	rc = mbox_process(mbox);

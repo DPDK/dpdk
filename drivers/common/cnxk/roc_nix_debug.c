@@ -879,6 +879,7 @@ roc_nix_rq_dump(struct roc_nix_rq *rq, FILE *file)
 	nix_dump(file, "  vwqe_aura_handle = %ld", rq->vwqe_aura_handle);
 	nix_dump(file, "  roc_nix = %p", rq->roc_nix);
 	nix_dump(file, "  inl_dev_refs = %d", rq->inl_dev_refs);
+	nix_dump(file, "  tc = %d", rq->tc);
 }
 
 void
@@ -911,6 +912,7 @@ roc_nix_sq_dump(struct roc_nix_sq *sq, FILE *file)
 	nix_dump(file, "  lmt_addr = %p", sq->lmt_addr);
 	nix_dump(file, "  sqe_mem = %p", sq->sqe_mem);
 	nix_dump(file, "  fc = %p", sq->fc);
+	nix_dump(file, "  tc = %d", sq->tc);
 };
 
 static uint8_t
