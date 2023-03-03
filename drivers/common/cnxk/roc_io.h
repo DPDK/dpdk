@@ -111,7 +111,8 @@ roc_lmt_submit_ldeor(plt_iova_t io_address)
 
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE "ldeor xzr, %x[rf], [%[rs]]"
 		     : [rf] "=r"(result)
-		     : [rs] "r"(io_address));
+		     : [rs] "r"(io_address)
+		     : "memory");
 	return result;
 }
 
@@ -122,7 +123,8 @@ roc_lmt_submit_ldeorl(plt_iova_t io_address)
 
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE "ldeorl xzr,%x[rf],[%[rs]]"
 		     : [rf] "=r"(result)
-		     : [rs] "r"(io_address));
+		     : [rs] "r"(io_address)
+		     : "memory");
 	return result;
 }
 
@@ -131,7 +133,8 @@ roc_lmt_submit_steor(uint64_t data, plt_iova_t io_address)
 {
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "steor %x[d], [%[rs]]" ::[d] "r"(data),
-		     [rs] "r"(io_address));
+		     [rs] "r"(io_address)
+		     : "memory");
 }
 
 static __plt_always_inline void
@@ -139,7 +142,8 @@ roc_lmt_submit_steorl(uint64_t data, plt_iova_t io_address)
 {
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "steorl %x[d], [%[rs]]" ::[d] "r"(data),
-		     [rs] "r"(io_address));
+		     [rs] "r"(io_address)
+		     : "memory");
 }
 
 static __plt_always_inline void
