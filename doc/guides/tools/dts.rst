@@ -203,6 +203,14 @@ The minimum DTS needs is a config file and a DPDK tarball.
 You may pass those to DTS using the command line arguments or use the default paths.
 
 
+DTS Results
+~~~~~~~~~~~
+
+Results are stored in the output dir by default
+which be changed with the ``--output-dir`` command line argument.
+The results contain basic statistics of passed/failed test cases and DPDK version.
+
+
 How To Write a Test Suite
 -------------------------
 

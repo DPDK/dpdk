@@ -9,12 +9,12 @@ Base class for creating DTS test cases.
 import importlib
 import inspect
 import re
-from collections.abc import MutableSequence
 from types import MethodType
 
 from .exception import ConfigurationError, SSHTimeoutError, TestCaseVerifyError
 from .logger import DTSLOG, getLogger
 from .settings import SETTINGS
+from .test_result import BuildTargetResult, Result, TestCaseResult, TestSuiteResult
 from .testbed_model import SutNode
 
 
@@ -40,21 +40,21 @@ class TestSuite(object):
     _logger: DTSLOG
     _test_cases_to_run: list[str]
     _func: bool
-    _errors: MutableSequence[Exception]
+    _result: TestSuiteResult
 
     def __init__(
         self,
         sut_node: SutNode,
         test_cases: list[str],
         func: bool,
-        errors: MutableSequence[Exception],
+        build_target_result: BuildTargetResult,
     ):
         self.sut_node = sut_node
         self._logger = getLogger(self.__class__.__name__)
         self._test_cases_to_run = test_cases
         self._test_cases_to_run.extend(SETTINGS.test_cases)
         self._func = func
-        self._errors = errors
+        self._result = build_target_result.add_test_suite(self.__class__.__name__)
 
     def set_up_suite(self) -> None:
         """
@@ -97,10 +97,11 @@ class TestSuite(object):
         try:
             self._logger.info(f"Starting test suite setup: {test_suite_name}")
             self.set_up_suite()
+            self._result.update_setup(Result.PASS)
             self._logger.info(f"Test suite setup successful: {test_suite_name}")
         except Exception as e:
             self._logger.exception(f"Test suite setup ERROR: {test_suite_name}")
-            self._errors.append(e)
+            self._result.update_setup(Result.ERROR, e)
 
         else:
             self._execute_test_suite()
@@ -109,13 +110,14 @@ class TestSuite(object):
             try:
                 self.tear_down_suite()
                 self.sut_node.kill_cleanup_dpdk_apps()
+                self._result.update_teardown(Result.PASS)
             except Exception as e:
                 self._logger.exception(f"Test suite teardown ERROR: {test_suite_name}")
                 self._logger.warning(
                     f"Test suite '{test_suite_name}' teardown failed, "
                     f"the next test suite may be affected."
                 )
-                self._errors.append(e)
+                self._result.update_setup(Result.ERROR, e)
 
     def _execute_test_suite(self) -> None:
         """
@@ -123,17 +125,18 @@ class TestSuite(object):
         """
         if self._func:
             for test_case_method in self._get_functional_test_cases():
+                test_case_name = test_case_method.__name__
+                test_case_result = self._result.add_test_case(test_case_name)
                 all_attempts = SETTINGS.re_run + 1
                 attempt_nr = 1
-                while (
-                    not self._run_test_case(test_case_method)
-                    and attempt_nr < all_attempts
-                ):
+                self._run_test_case(test_case_method, test_case_result)
+                while not test_case_result and attempt_nr < all_attempts:
                     attempt_nr += 1
                     self._logger.info(
-                        f"Re-running FAILED test case '{test_case_method.__name__}'. "
+                        f"Re-running FAILED test case '{test_case_name}'. "
                         f"Attempt number {attempt_nr} out of {all_attempts}."
                     )
+                    self._run_test_case(test_case_method, test_case_result)
 
     def _get_functional_test_cases(self) -> list[MethodType]:
         """
@@ -166,67 +169,68 @@ class TestSuite(object):
 
         return match
 
-    def _run_test_case(self, test_case_method: MethodType) -> bool:
+    def _run_test_case(
+        self, test_case_method: MethodType, test_case_result: TestCaseResult
+    ) -> None:
         """
         Setup, execute and teardown a test case in this suite.
-        Exceptions are caught and recorded in logs.
+        Exceptions are caught and recorded in logs and results.
         """
         test_case_name = test_case_method.__name__
-        result = False
 
         try:
             # run set_up function for each case
             self.set_up_test_case()
+            test_case_result.update_setup(Result.PASS)
         except SSHTimeoutError as e:
             self._logger.exception(f"Test case setup FAILED: {test_case_name}")
-            self._errors.append(e)
+            test_case_result.update_setup(Result.FAIL, e)
         except Exception as e:
             self._logger.exception(f"Test case setup ERROR: {test_case_name}")
-            self._errors.append(e)
+            test_case_result.update_setup(Result.ERROR, e)
 
         else:
             # run test case if setup was successful
-            result = self._execute_test_case(test_case_method)
+            self._execute_test_case(test_case_method, test_case_result)
 
         finally:
             try:
                 self.tear_down_test_case()
+                test_case_result.update_teardown(Result.PASS)
             except Exception as e:
                 self._logger.exception(f"Test case teardown ERROR: {test_case_name}")
                 self._logger.warning(
                     f"Test case '{test_case_name}' teardown failed, "
                     f"the next test case may be affected."
                 )
-                self._errors.append(e)
-                result = False
+                test_case_result.update_teardown(Result.ERROR, e)
+                test_case_result.update(Result.ERROR)
 
-        return result
-
-    def _execute_test_case(self, test_case_method: MethodType) -> bool:
+    def _execute_test_case(
+        self, test_case_method: MethodType, test_case_result: TestCaseResult
+    ) -> None:
         """
         Execute one test case and handle failures.
         """
         test_case_name = test_case_method.__name__
-        result = False
         try:
             self._logger.info(f"Starting test case execution: {test_case_name}")
             test_case_method()
-            result = True
+            test_case_result.update(Result.PASS)
             self._logger.info(f"Test case execution PASSED: {test_case_name}")
 
         except TestCaseVerifyError as e:
             self._logger.exception(f"Test case execution FAILED: {test_case_name}")
-            self._errors.append(e)
+            test_case_result.update(Result.FAIL, e)
         except Exception as e:
             self._logger.exception(f"Test case execution ERROR: {test_case_name}")
-            self._errors.append(e)
+            test_case_result.update(Result.ERROR, e)
         except KeyboardInterrupt:
             self._logger.error(
                 f"Test case execution INTERRUPTED by user: {test_case_name}"
             )
+            test_case_result.update(Result.SKIP)
             raise KeyboardInterrupt("Stop DTS")
-
-        return result
 
 
 def get_test_suites(testsuite_module_path: str) -> list[type[TestSuite]]:

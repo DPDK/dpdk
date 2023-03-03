@@ -143,7 +143,6 @@ def _get_parser() -> argparse.ArgumentParser:
         "--test-cases",
         action=_env_arg("DTS_TESTCASES"),
         default="",
-        required=False,
         help="[DTS_TESTCASES] Comma-separated list of test cases to execute. "
         "Unknown test cases will be silently ignored.",
     )
@@ -154,7 +153,6 @@ def _get_parser() -> argparse.ArgumentParser:
         action=_env_arg("DTS_RERUN"),
         default=0,
         type=int,
-        required=False,
         help="[DTS_RERUN] Re-run each test case the specified amount of times "
         "if a test failure occurs",
     )
