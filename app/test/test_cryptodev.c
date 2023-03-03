@@ -4886,7 +4886,7 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			ut_params->digest,
 			tdata->digest.data,
-			4,
+			tdata->digest.len,
 			"ZUC Generated auth tag not as expected");
 	return 0;
 }
@@ -6448,7 +6448,7 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 		TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			ut_params->digest,
 			tdata->digest.data,
-			DIGEST_BYTE_LENGTH_KASUMI_F9,
+			tdata->digest.len,
 			"ZUC Generated auth tag not as expected");
 	}
 	return 0;
@@ -6655,7 +6655,7 @@ test_zuc_auth_cipher_sgl(const struct wireless_test_data *tdata,
 		TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			digest,
 			tdata->digest.data,
-			DIGEST_BYTE_LENGTH_KASUMI_F9,
+			tdata->digest.len,
 			"ZUC Generated auth tag not as expected");
 	}
 	return 0;
