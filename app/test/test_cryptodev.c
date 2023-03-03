@@ -7386,27 +7386,6 @@ test_zuc_hash_generate_test_case_8(void)
 }
 
 static int
-test_zuc_hash_generate_test_case_9(void)
-{
-	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_32b,
-			RTE_CRYPTO_AUTH_OP_GENERATE);
-}
-
-static int
-test_zuc_hash_generate_test_case_10(void)
-{
-	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_64b,
-			RTE_CRYPTO_AUTH_OP_GENERATE);
-}
-
-static int
-test_zuc_hash_generate_test_case_11(void)
-{
-	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_128b,
-			RTE_CRYPTO_AUTH_OP_GENERATE);
-}
-
-static int
 test_zuc_hash_verify_test_case_1(void)
 {
 	return test_zuc_authentication(&zuc_test_case_auth_1b,
@@ -7459,27 +7438,6 @@ static int
 test_zuc_hash_verify_test_case_8(void)
 {
 	return test_zuc_authentication(&zuc_test_case_auth_584b,
-			RTE_CRYPTO_AUTH_OP_VERIFY);
-}
-
-static int
-test_zuc_hash_verify_test_case_9(void)
-{
-	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_32b,
-			RTE_CRYPTO_AUTH_OP_VERIFY);
-}
-
-static int
-test_zuc_hash_verify_test_case_10(void)
-{
-	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_64b,
-			RTE_CRYPTO_AUTH_OP_VERIFY);
-}
-
-static int
-test_zuc_hash_verify_test_case_11(void)
-{
-	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_128b,
 			RTE_CRYPTO_AUTH_OP_VERIFY);
 }
 
@@ -7608,27 +7566,69 @@ test_zuc256_decryption_test_case_2(void)
 }
 
 static int
-test_zuc256_authentication_test_case_1(void)
+test_zuc256_hash_generate_4b_tag_test_case_1(void)
 {
 	return test_zuc_authentication(&zuc256_test_case_auth_1, 0);
 }
 
 static int
-test_zuc256_authentication_test_case_2(void)
+test_zuc256_hash_generate_4b_tag_test_case_2(void)
 {
 	return test_zuc_authentication(&zuc256_test_case_auth_2, 0);
 }
 
 static int
-test_zuc256_authentication_verify_test_case_1(void)
+test_zuc256_hash_generate_4b_tag_test_case_3(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_32b,
+			RTE_CRYPTO_AUTH_OP_GENERATE);
+}
+
+static int
+test_zuc256_hash_generate_8b_tag_test_case_1(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_64b,
+			RTE_CRYPTO_AUTH_OP_GENERATE);
+}
+
+static int
+test_zuc256_hash_generate_16b_tag_test_case_1(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_128b,
+			RTE_CRYPTO_AUTH_OP_GENERATE);
+}
+
+static int
+test_zuc256_hash_verify_4b_tag_test_case_1(void)
 {
 	return test_zuc_authentication(&zuc256_test_case_auth_1, 1);
 }
 
 static int
-test_zuc256_authentication_verify_test_case_2(void)
+test_zuc256_hash_verify_4b_tag_test_case_2(void)
 {
 	return test_zuc_authentication(&zuc256_test_case_auth_2, 1);
+}
+
+static int
+test_zuc256_hash_verify_4b_tag_test_case_3(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_32b,
+			RTE_CRYPTO_AUTH_OP_VERIFY);
+}
+
+static int
+test_zuc256_hash_verify_8b_tag_test_case_1(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_64b,
+			RTE_CRYPTO_AUTH_OP_VERIFY);
+}
+
+static int
+test_zuc256_hash_verify_16b_tag_test_case_1(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_128b,
+			RTE_CRYPTO_AUTH_OP_VERIFY);
 }
 
 static int
@@ -16405,12 +16405,6 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc_hash_generate_test_case_7),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_hash_generate_test_case_8),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc_hash_generate_test_case_9),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc_hash_generate_test_case_10),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc_hash_generate_test_case_11),
 
 		/** ZUC verify (EIA3) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -16429,13 +16423,6 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc_hash_verify_test_case_7),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_hash_verify_test_case_8),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc_hash_verify_test_case_9),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc_hash_verify_test_case_10),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc_hash_verify_test_case_11),
-
 
 		/** ZUC alg-chain (EEA3/EIA3) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -16485,15 +16472,27 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 
 		/** ZUC-256 authentication only **/
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc256_authentication_test_case_1),
+			test_zuc256_hash_generate_4b_tag_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc256_authentication_test_case_2),
+			test_zuc256_hash_generate_4b_tag_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_hash_generate_4b_tag_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_hash_generate_8b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_hash_generate_16b_tag_test_case_1),
 
 		/** ZUC-256 authentication verify only **/
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc256_authentication_verify_test_case_1),
+			test_zuc256_hash_verify_4b_tag_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc256_authentication_verify_test_case_2),
+			test_zuc256_hash_verify_4b_tag_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_hash_verify_4b_tag_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_hash_verify_8b_tag_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc256_hash_verify_16b_tag_test_case_1),
 
 		TEST_CASES_END()
 	}
