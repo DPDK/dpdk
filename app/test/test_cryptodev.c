@@ -135,6 +135,17 @@ security_proto_supported(enum rte_security_session_action_type action,
 static int
 dev_configure_and_start(uint64_t ff_disable);
 
+static int
+check_cipher_capability(const struct crypto_testsuite_params *ts_params,
+			const enum rte_crypto_cipher_algorithm cipher_algo,
+			const uint16_t key_size, const uint16_t iv_size);
+
+static int
+check_auth_capability(const struct crypto_testsuite_params *ts_params,
+			const enum rte_crypto_auth_algorithm auth_algo,
+			const uint16_t key_size, const uint16_t iv_size,
+			const uint16_t tag_size);
+
 static struct rte_mbuf *
 setup_test_string(struct rte_mempool *mpool,
 		const char *string, size_t len, uint8_t blocksize)
@@ -4794,7 +4805,6 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 	unsigned int plaintext_len;
 
 	struct rte_cryptodev_info dev_info;
-	struct rte_cryptodev_sym_capability_idx cap_idx;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 	uint64_t feat_flags = dev_info.feature_flags;
@@ -4816,19 +4826,14 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 		return TEST_SKIPPED;
 
 	/* Check if device supports ZUC EEA3 */
-	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_ZUC_EEA3;
-
-	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
-			&cap_idx) == NULL)
+	if (check_cipher_capability(ts_params, RTE_CRYPTO_CIPHER_ZUC_EEA3,
+			tdata->key.len, tdata->cipher_iv.len) < 0)
 		return TEST_SKIPPED;
 
 	/* Check if device supports ZUC EIA3 */
-	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	cap_idx.algo.auth = RTE_CRYPTO_AUTH_ZUC_EIA3;
-
-	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
-			&cap_idx) == NULL)
+	if (check_auth_capability(ts_params, RTE_CRYPTO_AUTH_ZUC_EIA3,
+			tdata->key.len, tdata->auth_iv.len,
+			tdata->digest.len) < 0)
 		return TEST_SKIPPED;
 
 	/* Create ZUC session */
