@@ -10,6 +10,8 @@ executions:
         compiler_wrapper: ccache
     perf: false
     func: true
+    test_suites:
+      - hello_world
     system_under_test: "SUT 1"
 nodes:
   - name: "SUT 1"

@@ -6,12 +6,13 @@
 Base class for creating DTS test cases.
 """
 
+import importlib
 import inspect
 import re
 from collections.abc import MutableSequence
 from types import MethodType
 
-from .exception import SSHTimeoutError, TestCaseVerifyError
+from .exception import ConfigurationError, SSHTimeoutError, TestCaseVerifyError
 from .logger import DTSLOG, getLogger
 from .settings import SETTINGS
 from .testbed_model import SutNode
@@ -226,3 +227,24 @@ class TestSuite(object):
             raise KeyboardInterrupt("Stop DTS")
 
         return result
+
+
+def get_test_suites(testsuite_module_path: str) -> list[type[TestSuite]]:
+    def is_test_suite(object) -> bool:
+        try:
+            if issubclass(object, TestSuite) and object is not TestSuite:
+                return True
+        except TypeError:
+            return False
+        return False
+
+    try:
+        testcase_module = importlib.import_module(testsuite_module_path)
+    except ModuleNotFoundError as e:
+        raise ConfigurationError(
+            f"Test suite '{testsuite_module_path}' not found."
+        ) from e
+    return [
+        test_suite_class
+        for _, test_suite_class in inspect.getmembers(testcase_module, is_test_suite)
+    ]

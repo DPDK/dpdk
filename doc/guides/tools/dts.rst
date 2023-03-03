@@ -133,6 +133,76 @@ There are two areas that need to be set up on a System Under Test:
      If you wish to do so, don't specify the hugepage configuration in the DTS config file.
 
 
+Running DTS
+-----------
+
+DTS needs to know which nodes to connect to and what hardware to use on those nodes.
+Once that's configured, DTS needs a DPDK tarball and it's ready to run.
+
+Configuring DTS
+~~~~~~~~~~~~~~~
+
+DTS configuration is split into nodes and executions and build targets within executions.
+By default, DTS will try to use the ``dts/conf.yaml`` config file,
+which is a template that illustrates what can be configured in DTS:
+
+  .. literalinclude:: ../../../dts/conf.yaml
+     :language: yaml
+     :start-at: executions:
+
+
+The user must be root or any other user with prompt starting with ``#``.
+The other fields are mostly self-explanatory
+and documented in more detail in ``dts/framework/config/conf_yaml_schema.json``.
+
+DTS Execution
+~~~~~~~~~~~~~
+
+DTS is run with ``main.py`` located in the ``dts`` directory after entering Poetry shell::
+
+   usage: main.py [-h] [--config-file CONFIG_FILE] [--output-dir OUTPUT_DIR] [-t TIMEOUT]
+                  [-v VERBOSE] [-s SKIP_SETUP] [--tarball TARBALL]
+                  [--compile-timeout COMPILE_TIMEOUT] [--test-cases TEST_CASES]
+                  [--re-run RE_RUN]
+
+   Run DPDK test suites. All options may be specified with the environment variables provided in
+   brackets. Command line arguments have higher priority.
+
+   options:
+     -h, --help            show this help message and exit
+     --config-file CONFIG_FILE
+                           [DTS_CFG_FILE] configuration file that describes the test cases, SUTs
+                           and targets. (default: conf.yaml)
+     --output-dir OUTPUT_DIR, --output OUTPUT_DIR
+                           [DTS_OUTPUT_DIR] Output directory where dts logs and results are
+                           saved. (default: output)
+     -t TIMEOUT, --timeout TIMEOUT
+                           [DTS_TIMEOUT] The default timeout for all DTS operations except for
+                           compiling DPDK. (default: 15)
+     -v VERBOSE, --verbose VERBOSE
+                           [DTS_VERBOSE] Set to 'Y' to enable verbose output, logging all
+                           messages to the console. (default: N)
+     -s SKIP_SETUP, --skip-setup SKIP_SETUP
+                           [DTS_SKIP_SETUP] Set to 'Y' to skip all setup steps on SUT and TG
+                           nodes. (default: N)
+     --tarball TARBALL, --snapshot TARBALL
+                           [DTS_DPDK_TARBALL] Path to DPDK source code tarball which will be
+                           used in testing. (default: dpdk.tar.xz)
+     --compile-timeout COMPILE_TIMEOUT
+                           [DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK. (default: 1200)
+     --test-cases TEST_CASES
+                           [DTS_TESTCASES] Comma-separated list of test cases to execute.
+                           Unknown test cases will be silently ignored. (default: )
+     --re-run RE_RUN, --re_run RE_RUN
+                           [DTS_RERUN] Re-run each test case the specified amount of times if a
+                           test failure occurs (default: 0)
+
+
+The brackets contain the names of environment variables that set the same thing.
+The minimum DTS needs is a config file and a DPDK tarball.
+You may pass those to DTS using the command line arguments or use the default paths.
+
+
 How To Write a Test Suite
 -------------------------
 

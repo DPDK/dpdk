@@ -12,7 +12,7 @@ import os.path
 import pathlib
 from dataclasses import dataclass
 from enum import Enum, auto, unique
-from typing import Any
+from typing import Any, TypedDict
 
 import warlock  # type: ignore
 import yaml
@@ -128,17 +128,43 @@ class BuildTargetConfiguration:
         )
 
 
+class TestSuiteConfigDict(TypedDict):
+    suite: str
+    cases: list[str]
+
+
+@dataclass(slots=True, frozen=True)
+class TestSuiteConfig:
+    test_suite: str
+    test_cases: list[str]
+
+    @staticmethod
+    def from_dict(
+        entry: str | TestSuiteConfigDict,
+    ) -> "TestSuiteConfig":
+        if isinstance(entry, str):
+            return TestSuiteConfig(test_suite=entry, test_cases=[])
+        elif isinstance(entry, dict):
+            return TestSuiteConfig(test_suite=entry["suite"], test_cases=entry["cases"])
+        else:
+            raise TypeError(f"{type(entry)} is not valid for a test suite config.")
+
+
 @dataclass(slots=True, frozen=True)
 class ExecutionConfiguration:
     build_targets: list[BuildTargetConfiguration]
     perf: bool
     func: bool
+    test_suites: list[TestSuiteConfig]
     system_under_test: NodeConfiguration
 
     @staticmethod
     def from_dict(d: dict, node_map: dict) -> "ExecutionConfiguration":
         build_targets: list[BuildTargetConfiguration] = list(
             map(BuildTargetConfiguration.from_dict, d["build_targets"])
+        )
+        test_suites: list[TestSuiteConfig] = list(
+            map(TestSuiteConfig.from_dict, d["test_suites"])
         )
         sut_name = d["system_under_test"]
         assert sut_name in node_map, f"Unknown SUT {sut_name} in execution {d}"
@@ -147,6 +173,7 @@ class ExecutionConfiguration:
             build_targets=build_targets,
             perf=d["perf"],
             func=d["func"],
+            test_suites=test_suites,
             system_under_test=node_map[sut_name],
         )
 

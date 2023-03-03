@@ -8,6 +8,7 @@ import sys
 from .config import CONFIGURATION, BuildTargetConfiguration, ExecutionConfiguration
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLOG, getLogger
+from .test_suite import get_test_suites
 from .testbed_model import SutNode
 from .utils import check_dts_python_version
 
@@ -132,6 +133,24 @@ def _run_suites(
     with possibly only a subset of test cases.
     If no subset is specified, run all test cases.
     """
+    for test_suite_config in execution.test_suites:
+        try:
+            full_suite_path = f"tests.TestSuite_{test_suite_config.test_suite}"
+            test_suite_classes = get_test_suites(full_suite_path)
+            suites_str = ", ".join((x.__name__ for x in test_suite_classes))
+            dts_logger.debug(
+                f"Found test suites '{suites_str}' in '{full_suite_path}'."
+            )
+        except Exception as e:
+            dts_logger.exception("An error occurred when searching for test suites.")
+            errors.append(e)
+
+        else:
+            for test_suite_class in test_suite_classes:
+                test_suite = test_suite_class(
+                    sut_node, test_suite_config.test_cases, execution.func, errors
+                )
+                test_suite.run()
 
 
 def _exit_dts() -> None:

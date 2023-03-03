@@ -93,6 +93,32 @@
       "required": [
         "amount"
       ]
+    },
+    "test_suite": {
+      "type": "string",
+      "enum": [
+        "hello_world"
+      ]
+    },
+    "test_target": {
+      "type": "object",
+      "properties": {
+        "suite": {
+          "$ref": "#/definitions/test_suite"
+        },
+        "cases": {
+          "type": "array",
+          "description": "If specified, only this subset of test suite's test cases will be run. Unknown test cases will be silently ignored.",
+          "items": {
+            "type": "string"
+          },
+          "minimum": 1
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "additionalProperties": false
     }
   },
   "type": "object",
@@ -172,6 +198,19 @@
             "type": "boolean",
             "description": "Enable functional testing."
           },
+          "test_suites": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/test_suite"
+                },
+                {
+                  "$ref": "#/definitions/test_target"
+                }
+              ]
+            }
+          },
           "system_under_test": {
             "$ref": "#/definitions/node_name"
           }
@@ -181,6 +220,7 @@
           "build_targets",
           "perf",
           "func",
+          "test_suites",
           "system_under_test"
         ]
       },
