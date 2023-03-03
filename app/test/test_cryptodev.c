@@ -7568,13 +7568,15 @@ test_zuc256_decryption_test_case_2(void)
 static int
 test_zuc256_hash_generate_4b_tag_test_case_1(void)
 {
-	return test_zuc_authentication(&zuc256_test_case_auth_1, 0);
+	return test_zuc_authentication(&zuc256_test_case_auth_1,
+			RTE_CRYPTO_AUTH_OP_GENERATE);
 }
 
 static int
 test_zuc256_hash_generate_4b_tag_test_case_2(void)
 {
-	return test_zuc_authentication(&zuc256_test_case_auth_2, 0);
+	return test_zuc_authentication(&zuc256_test_case_auth_2,
+			RTE_CRYPTO_AUTH_OP_GENERATE);
 }
 
 static int
@@ -7601,13 +7603,15 @@ test_zuc256_hash_generate_16b_tag_test_case_1(void)
 static int
 test_zuc256_hash_verify_4b_tag_test_case_1(void)
 {
-	return test_zuc_authentication(&zuc256_test_case_auth_1, 1);
+	return test_zuc_authentication(&zuc256_test_case_auth_1,
+			RTE_CRYPTO_AUTH_OP_VERIFY);
 }
 
 static int
 test_zuc256_hash_verify_4b_tag_test_case_2(void)
 {
-	return test_zuc_authentication(&zuc256_test_case_auth_2, 1);
+	return test_zuc_authentication(&zuc256_test_case_auth_2,
+			RTE_CRYPTO_AUTH_OP_VERIFY);
 }
 
 static int
