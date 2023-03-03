@@ -295,10 +295,15 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	if (sso_ena < 0)
 		return -EINVAL;
 
-	if (sso_ena)
+	if (sso_ena) {
 		roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.pool,
 				      fc_cfg->rq_cfg.enable, true,
 				      fc_cfg->rq_cfg.tc);
+
+		if (roc_nix->local_meta_aura_ena)
+			roc_nix_fc_npa_bp_cfg(roc_nix, roc_nix->meta_aura_handle,
+					      fc_cfg->rq_cfg.enable, true, fc_cfg->rq_cfg.tc);
+	}
 
 	/* Copy RQ config to CQ config as they are occupying same area */
 	memset(&tmp, 0, sizeof(tmp));

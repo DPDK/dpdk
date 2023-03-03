@@ -102,7 +102,7 @@ roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
 
 	/* Check for meta aura if RQ is enabled */
 	if (enable && nix->need_meta_aura)
-		rc = roc_nix_inl_meta_aura_check(rq);
+		rc = roc_nix_inl_meta_aura_check(rq->roc_nix, rq);
 	return rc;
 }
 
@@ -691,7 +691,7 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 
 	/* Check for meta aura if RQ is enabled */
 	if (ena && nix->need_meta_aura) {
-		rc = roc_nix_inl_meta_aura_check(rq);
+		rc = roc_nix_inl_meta_aura_check(roc_nix, rq);
 		if (rc)
 			return rc;
 	}
@@ -745,7 +745,7 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 
 	/* Check for meta aura if RQ is enabled */
 	if (ena && nix->need_meta_aura) {
-		rc = roc_nix_inl_meta_aura_check(rq);
+		rc = roc_nix_inl_meta_aura_check(roc_nix, rq);
 		if (rc)
 			return rc;
 	}

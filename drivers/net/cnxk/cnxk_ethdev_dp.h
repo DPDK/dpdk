@@ -34,6 +34,9 @@
 #define ERRCODE_ERRLEN_WIDTH 12
 #define ERR_ARRAY_SZ	     ((BIT(ERRCODE_ERRLEN_WIDTH)) * sizeof(uint32_t))
 
+#define SA_BASE_TBL_SZ	(RTE_MAX_ETHPORTS * sizeof(uintptr_t))
+#define MEMPOOL_TBL_SZ	(RTE_MAX_ETHPORTS * sizeof(uintptr_t))
+
 #define CNXK_NIX_UDP_TUN_BITMASK                                               \
 	((1ull << (RTE_MBUF_F_TX_TUNNEL_VXLAN >> 45)) |                               \
 	 (1ull << (RTE_MBUF_F_TX_TUNNEL_GENEVE >> 45)))
@@ -162,6 +165,16 @@ cnxk_nix_sa_base_get(uint16_t port, const void *lookup_mem)
 	sa_base_tbl = (uintptr_t)lookup_mem;
 	sa_base_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
 	return *((const uintptr_t *)sa_base_tbl + port);
+}
+
+static __rte_always_inline uintptr_t
+cnxk_nix_inl_metapool_get(uint16_t port, const void *lookup_mem)
+{
+	uintptr_t metapool_tbl;
+
+	metapool_tbl = (uintptr_t)lookup_mem;
+	metapool_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_BASE_TBL_SZ;
+	return *((const uintptr_t *)metapool_tbl + port);
 }
 
 #endif /* __CNXK_ETHDEV_DP_H__ */

@@ -183,6 +183,22 @@ parse_sqb_count(const char *key, const char *value, void *extra_args)
 }
 
 static int
+parse_meta_bufsize(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint32_t val;
+
+	errno = 0;
+	val = strtoul(value, NULL, 0);
+	if (errno)
+		val = 0;
+
+	*(uint32_t *)extra_args = val;
+
+	return 0;
+}
+
+static int
 parse_switch_header_type(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
@@ -248,6 +264,7 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 #define CNXK_FLOW_PRE_L2_INFO	"flow_pre_l2_info"
 #define CNXK_CUSTOM_SA_ACT	"custom_sa_act"
 #define CNXK_SQB_SLACK		"sqb_slack"
+#define CNXK_NIX_META_BUF_SZ	"meta_buf_sz"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -270,6 +287,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t tx_compl_ena = 0;
 	uint16_t custom_sa_act = 0;
 	struct rte_kvargs *kvlist;
+	uint32_t meta_buf_sz = 0;
 	uint16_t no_inl_dev = 0;
 	uint8_t lock_rx_ctx = 0;
 
@@ -319,6 +337,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &custom_sa_act);
 	rte_kvargs_process(kvlist, CNXK_SQB_SLACK, &parse_sqb_count,
 			   &sqb_slack);
+	rte_kvargs_process(kvlist, CNXK_NIX_META_BUF_SZ, &parse_meta_bufsize, &meta_buf_sz);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -337,6 +356,10 @@ null_devargs:
 	dev->nix.lock_rx_ctx = lock_rx_ctx;
 	dev->nix.custom_sa_action = custom_sa_act;
 	dev->nix.sqb_slack = sqb_slack;
+
+	if (roc_feature_nix_has_own_meta_aura())
+		dev->nix.meta_buf_sz = meta_buf_sz;
+
 	dev->npc.flow_prealloc_size = flow_prealloc_size;
 	dev->npc.flow_max_priority = flow_max_priority;
 	dev->npc.switch_header_type = switch_header_type;

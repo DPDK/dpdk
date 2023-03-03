@@ -23,6 +23,12 @@ roc_feature_nix_has_inl_rq_mask(void)
 }
 
 static inline bool
+roc_feature_nix_has_own_meta_aura(void)
+{
+	return (roc_model_is_cn10kb() || roc_model_is_cn10ka_b0());
+}
+
+static inline bool
 roc_feature_nix_has_late_bp(void)
 {
 	return (roc_model_is_cn10kb() || roc_model_is_cn10ka_b0());

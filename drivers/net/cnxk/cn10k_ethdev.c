@@ -362,6 +362,8 @@ cn10k_nix_rx_queue_meta_aura_update(struct rte_eth_dev *eth_dev)
 			rxq->meta_aura = rxq_sp->qconf.mp->pool_id;
 		}
 	}
+	/* Store mempool in lookup mem */
+	cnxk_nix_lookup_mem_metapool_set(dev);
 }
 
 static int

@@ -275,6 +275,8 @@ nix_security_release(struct cnxk_eth_dev *dev)
 			plt_err("Failed to cleanup nix inline inb, rc=%d", rc);
 		ret |= rc;
 
+		cnxk_nix_lookup_mem_metapool_clear(dev);
+
 		if (dev->inb.sa_dptr) {
 			plt_free(dev->inb.sa_dptr);
 			dev->inb.sa_dptr = NULL;
@@ -1852,6 +1854,8 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nix->pci_dev = pci_dev;
 	nix->hw_vlan_ins = true;
 	nix->port_id = eth_dev->data->port_id;
+	if (roc_feature_nix_has_own_meta_aura())
+		nix->local_meta_aura_ena = true;
 	rc = roc_nix_dev_init(nix);
 	if (rc) {
 		plt_err("Failed to initialize roc nix rc=%d", rc);

@@ -55,9 +55,10 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 	struct cnxk_timesync_info *tstamp = ws->tstamp[port_id];
 	void *lookup_mem = ws->lookup_mem;
 	uintptr_t lbase = ws->lmt_base;
+	uint64_t meta_aura = 0, laddr;
 	struct rte_event_vector *vec;
-	uint64_t meta_aura, laddr;
 	uint16_t nb_mbufs, non_vec;
+	struct rte_mempool *mp;
 	uint16_t lmt_id, d_off;
 	struct rte_mbuf **wqe;
 	struct rte_mbuf *mbuf;
@@ -77,7 +78,12 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 	if (flags & NIX_RX_OFFLOAD_TSTAMP_F && tstamp)
 		mbuf_init |= 8;
 
-	meta_aura = ws->meta_aura;
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+		mp = (struct rte_mempool *)cnxk_nix_inl_metapool_get(port_id, lookup_mem);
+		if (mp)
+			meta_aura = mp->pool_id;
+	}
+
 	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
 	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, wqe, nb_mbufs,
 					      flags | NIX_RX_VWQE_F,
@@ -94,7 +100,6 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 		/* Pick first mbuf's aura handle assuming all
 		 * mbufs are from a vec and are from same RQ.
 		 */
-		meta_aura = ws->meta_aura;
 		if (!meta_aura)
 			meta_aura = mbuf->pool->pool_id;
 		ROC_LMT_BASE_ID_GET(lbase, lmt_id);
