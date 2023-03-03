@@ -24,6 +24,7 @@ class ErrorSeverity(IntEnum):
     REMOTE_CMD_EXEC_ERR = 3
     SSH_ERR = 4
     DPDK_BUILD_ERR = 10
+    TESTCASE_VERIFY_ERR = 20
 
 
 class DTSError(Exception):
@@ -128,3 +129,18 @@ class DPDKBuildError(DTSError):
     """
 
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.DPDK_BUILD_ERR
+
+
+class TestCaseVerifyError(DTSError):
+    """
+    Used in test cases to verify the expected behavior.
+    """
+
+    value: str
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.TESTCASE_VERIFY_ERR
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __str__(self) -> str:
+        return repr(self.value)

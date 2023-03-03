@@ -8,6 +8,8 @@ executions:
         cpu: native
         compiler: gcc
         compiler_wrapper: ccache
+    perf: false
+    func: true
     system_under_test: "SUT 1"
 nodes:
   - name: "SUT 1"

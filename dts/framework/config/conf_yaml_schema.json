@@ -164,6 +164,14 @@
             },
             "minimum": 1
           },
+          "perf": {
+            "type": "boolean",
+            "description": "Enable performance testing."
+          },
+          "func": {
+            "type": "boolean",
+            "description": "Enable functional testing."
+          },
           "system_under_test": {
             "$ref": "#/definitions/node_name"
           }
@@ -171,6 +179,8 @@
         "additionalProperties": false,
         "required": [
           "build_targets",
+          "perf",
+          "func",
           "system_under_test"
         ]
       },

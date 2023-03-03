@@ -133,6 +133,50 @@ There are two areas that need to be set up on a System Under Test:
      If you wish to do so, don't specify the hugepage configuration in the DTS config file.
 
 
+How To Write a Test Suite
+-------------------------
+
+All test suites inherit from ``TestSuite`` defined in ``dts/framework/test_suite.py``.
+There are four types of methods that comprise a test suite:
+
+#. **Test cases**
+
+   | Test cases are methods that start with a particular prefix.
+   | Functional test cases start with ``test_``, e.g. ``test_hello_world_single_core``.
+   | Performance test cases start with ``test_perf_``, e.g. ``test_perf_nic_single_core``.
+   | A test suite may have any number of functional and/or performance test cases.
+     However, these test cases must test the same feature,
+     following the rule of one feature = one test suite.
+     Test cases for one feature don't need to be grouped in just one test suite, though.
+     If the feature requires many testing scenarios to cover,
+     the test cases would be better off spread over multiple test suites
+     so that each test suite doesn't take too long to execute.
+
+#. **Setup and Teardown methods**
+
+   | There are setup and teardown methods for the whole test suite and each individual test case.
+   | Methods ``set_up_suite`` and ``tear_down_suite`` will be executed
+     before any and after all test cases have been executed, respectively.
+   | Methods ``set_up_test_case`` and ``tear_down_test_case`` will be executed
+     before and after each test case, respectively.
+   | These methods don't need to be implemented if there's no need for them in a test suite.
+     In that case, nothing will happen when they're is executed.
+
+#. **Test case verification**
+
+   Test case verification should be done with the ``verify`` method, which records the result.
+   The method should be called at the end of each test case.
+
+#. **Other methods**
+
+   Of course, all test suite code should adhere to coding standards.
+   Only the above methods will be treated specially and any other methods may be defined
+   (which should be mostly private methods needed by each particular test suite).
+   Any specific features (such as NIC configuration) required by a test suite
+   should be implemented in the ``SutNode`` class (and the underlying classes that ``SutNode`` uses)
+   and used by the test suite via the ``sut_node`` field.
+
+
 DTS Developer Tools
 -------------------
 
