@@ -229,6 +229,12 @@ roc_error_msg_get(int errorcode)
 	case UTIL_ERR_INVALID_MODEL:
 		err_msg = "Invalid RoC model";
 		break;
+	case NIX_AF_ERR_RSS_NOSPC_FIELD:
+		err_msg = "No space or unsupported fields";
+		break;
+	case NIX_AF_ERR_RSS_NOSPC_ALGO:
+		err_msg = "No space to add new flow hash algo";
+		break;
 	default:
 		/**
 		 * Handle general error (as defined in linux errno.h)
