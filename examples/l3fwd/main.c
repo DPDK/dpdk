@@ -964,12 +964,11 @@ parse_args(int argc, char **argv)
 	}
 
 	/*
-	 * ipv6 and hash flags are valid only for
-	 * exact match, reset them to default for
+	 * hash flag is valid only for
+	 * exact match, reset it to default for
 	 * longest-prefix match.
 	 */
 	if (lookup_mode == L3FWD_LOOKUP_LPM) {
-		ipv6 = 0;
 		hash_entry_number = HASH_ENTRY_NUMBER_DEFAULT;
 	}
 
