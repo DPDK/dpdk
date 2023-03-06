@@ -1710,11 +1710,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	 */
 	i40e_add_tx_flow_control_drop_filter(pf);
 
-	/* Set the max frame size to 0x2600 by default,
-	 * in case other drivers changed the default value.
-	 */
-	i40e_aq_set_mac_config(hw, I40E_FRAME_SIZE_MAX, TRUE, false, 0, NULL);
-
 	/* initialize RSS rule list */
 	TAILQ_INIT(&pf->rss_config_list);
 
@@ -2332,6 +2327,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	uint32_t intr_vector = 0;
 	struct i40e_vsi *vsi;
 	uint16_t nb_rxq, nb_txq;
+	uint16_t max_frame_size;
 
 	hw->adapter_stopped = 0;
 
@@ -2452,7 +2448,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(WARNING, "Fail to set phy mask");
 
 		/* Call get_link_info aq command to enable/disable LSE */
-		i40e_dev_link_update(dev, 0);
+		i40e_dev_link_update(dev, 1);
 	}
 
 	if (dev->data->dev_conf.intr_conf.rxq == 0) {
@@ -2469,6 +2465,13 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(WARNING,
 			    "please call hierarchy_commit() "
 			    "before starting the port");
+
+	max_frame_size = dev->data->mtu ?
+		dev->data->mtu + I40E_ETH_OVERHEAD :
+		I40E_FRAME_SIZE_MAX;
+
+	/* Set the max frame size to HW*/
+	i40e_aq_set_mac_config(hw, max_frame_size, TRUE, false, 0, NULL);
 
 	return I40E_SUCCESS;
 
