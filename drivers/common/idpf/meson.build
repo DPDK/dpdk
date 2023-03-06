@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 Intel Corporation
 
+if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
+    subdir_done()
+endif
+
 deps += ['mbuf']
 
 sources = files(

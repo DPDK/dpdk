@@ -7,6 +7,10 @@ if is_windows
     subdir_done()
 endif
 
+if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
+    subdir_done()
+endif
+
 sources = files(
         'base/vnic_cq.c',
         'base/vnic_dev.c',
