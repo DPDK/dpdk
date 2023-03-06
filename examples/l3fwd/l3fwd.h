@@ -55,7 +55,6 @@
 /* 32-bit has less address-space for hugepage memory, limit to 1M entries */
 #define L3FWD_HASH_ENTRIES		(1024*1024*1)
 #endif
-#define HASH_ENTRY_NUMBER_DEFAULT	16
 
 struct parm_cfg {
 	const char *rule_ipv4_name;
