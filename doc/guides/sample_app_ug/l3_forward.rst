@@ -44,9 +44,8 @@ returned by the LPM or FIB lookup.
 The set of LPM and FIB rules used by the application is statically configured
 and loaded into the LPM or FIB object at initialization time.
 
-In the sample application, hash-based and FIB-based forwarding supports
+In the sample application, hash-based, LPM-based, FIB-based and ACL-based forwarding supports
 both IPv4 and IPv6.
-LPM-based forwarding supports IPv4 only.
 
 Compiling the Application
 -------------------------
