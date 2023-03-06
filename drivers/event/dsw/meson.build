@@ -6,4 +6,4 @@ if cc.has_argument('-Wno-format-nonliteral')
     cflags += '-Wno-format-nonliteral'
 endif
 sources = files('dsw_evdev.c', 'dsw_event.c', 'dsw_xstats.c')
-pmd_supports_disable_iova_as_pa = true
+require_iova_in_mbuf = false

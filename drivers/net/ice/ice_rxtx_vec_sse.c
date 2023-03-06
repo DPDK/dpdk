@@ -68,7 +68,7 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 		/* load buf_addr(lo 64bit) and buf_iova(hi 64bit) */
 		RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_iova) !=
 				 offsetof(struct rte_mbuf, buf_addr) + 8);
@@ -76,7 +76,7 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 		vaddr0 = _mm_loadu_si128((__m128i *)&mb0->buf_addr);
 		vaddr1 = _mm_loadu_si128((__m128i *)&mb1->buf_addr);
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 		/* convert pa to dma_addr hdr/data */
 		dma_addr0 = _mm_unpackhi_epi64(vaddr0, vaddr0);
 		dma_addr1 = _mm_unpackhi_epi64(vaddr1, vaddr1);

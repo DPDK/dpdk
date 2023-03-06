@@ -9,4 +9,4 @@ sources = files(
         'cnxk_gpio_selftest.c',
 )
 headers = files('rte_pmd_cnxk_gpio.h')
-pmd_supports_disable_iova_as_pa = true
+require_iova_in_mbuf = false

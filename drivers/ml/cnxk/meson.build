@@ -23,10 +23,10 @@ sources = files(
 
 deps += ['mldev', 'common_cnxk', 'kvargs', 'hash']
 
+require_iova_in_mbuf = false
+
 if get_option('buildtype').contains('debug')
         cflags += [ '-DCNXK_ML_DEV_DEBUG' ]
 else
         cflags += [ '-UCNXK_ML_DEV_DEBUG' ]
 endif
-
-pmd_supports_disable_iova_as_pa = true

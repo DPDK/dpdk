@@ -4,4 +4,4 @@
 sources = files('rte_mempool_stack.c')
 
 deps += ['stack']
-pmd_supports_disable_iova_as_pa = true
+require_iova_in_mbuf = false

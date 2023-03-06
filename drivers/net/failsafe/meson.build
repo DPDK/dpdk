@@ -27,4 +27,5 @@ sources = files(
         'failsafe_ops.c',
         'failsafe_rxtx.c',
 )
-pmd_supports_disable_iova_as_pa = true
+
+require_iova_in_mbuf = false

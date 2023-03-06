@@ -6,4 +6,4 @@ if not is_linux
     reason = 'only supported on Linux'
 endif
 sources = files('rte_eth_af_packet.c')
-pmd_supports_disable_iova_as_pa = true
+require_iova_in_mbuf = false
