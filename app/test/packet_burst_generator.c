@@ -263,11 +263,11 @@ generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
 		void *ip_hdr, uint8_t ipv4, struct rte_udp_hdr *udp_hdr,
 		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs)
 {
-	int i, nb_pkt = 0;
-	size_t eth_hdr_size;
-
+	const uint8_t pkt_seg_data_len = pkt_len / nb_pkt_segs;
 	struct rte_mbuf *pkt_seg;
 	struct rte_mbuf *pkt;
+	size_t eth_hdr_size;
+	int i, nb_pkt = 0;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = rte_pktmbuf_alloc(mp);
@@ -278,7 +278,7 @@ nomore_mbuf:
 			break;
 		}
 
-		pkt->data_len = pkt_len;
+		pkt->data_len = pkt_seg_data_len;
 		pkt_seg = pkt;
 		for (i = 1; i < nb_pkt_segs; i++) {
 			pkt_seg->next = rte_pktmbuf_alloc(mp);
@@ -288,7 +288,10 @@ nomore_mbuf:
 				goto nomore_mbuf;
 			}
 			pkt_seg = pkt_seg->next;
-			pkt_seg->data_len = pkt_len;
+			if (i != nb_pkt_segs - 1)
+				pkt_seg->data_len = pkt_seg_data_len;
+			else
+				pkt_seg->data_len = pkt_seg_data_len + pkt_len % nb_pkt_segs;
 		}
 		pkt_seg->next = NULL; /* Last segment of packet. */
 
@@ -344,11 +347,11 @@ generate_packet_burst_proto(struct rte_mempool *mp,
 		uint8_t ipv4, uint8_t proto, void *proto_hdr,
 		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs)
 {
-	int i, nb_pkt = 0;
-	size_t eth_hdr_size;
-
+	const uint8_t pkt_seg_data_len = pkt_len / nb_pkt_segs;
 	struct rte_mbuf *pkt_seg;
 	struct rte_mbuf *pkt;
+	size_t eth_hdr_size;
+	int i, nb_pkt = 0;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = rte_pktmbuf_alloc(mp);
@@ -359,7 +362,7 @@ nomore_mbuf:
 			break;
 		}
 
-		pkt->data_len = pkt_len;
+		pkt->data_len = pkt_seg_data_len;
 		pkt_seg = pkt;
 		for (i = 1; i < nb_pkt_segs; i++) {
 			pkt_seg->next = rte_pktmbuf_alloc(mp);
@@ -369,7 +372,10 @@ nomore_mbuf:
 				goto nomore_mbuf;
 			}
 			pkt_seg = pkt_seg->next;
-			pkt_seg->data_len = pkt_len;
+			if (i != nb_pkt_segs - 1)
+				pkt_seg->data_len = pkt_seg_data_len;
+			else
+				pkt_seg->data_len = pkt_seg_data_len + pkt_len % nb_pkt_segs;
 		}
 		pkt_seg->next = NULL; /* Last segment of packet. */
 
