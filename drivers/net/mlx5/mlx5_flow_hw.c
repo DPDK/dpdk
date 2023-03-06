@@ -3098,10 +3098,20 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	grp = container_of(ge, struct mlx5_flow_group, entry);
 	tbl->grp = grp;
 	/* Prepare matcher information. */
+	matcher_attr.optimize_flow_src = MLX5DR_MATCHER_FLOW_SRC_ANY;
 	matcher_attr.priority = attr->flow_attr.priority;
 	matcher_attr.optimize_using_rule_idx = true;
 	matcher_attr.mode = MLX5DR_MATCHER_RESOURCE_MODE_RULE;
 	matcher_attr.rule.num_log = rte_log2_u32(nb_flows);
+	/* Parse hints information. */
+	if (attr->specialize) {
+		if (attr->specialize == RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG)
+			matcher_attr.optimize_flow_src = MLX5DR_MATCHER_FLOW_SRC_WIRE;
+		else if (attr->specialize == RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG)
+			matcher_attr.optimize_flow_src = MLX5DR_MATCHER_FLOW_SRC_VPORT;
+		else
+			DRV_LOG(INFO, "Unsupported hint value %x", attr->specialize);
+	}
 	/* Build the item template. */
 	for (i = 0; i < nb_item_templates; i++) {
 		uint32_t ret;
