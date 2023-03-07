@@ -896,11 +896,11 @@ mlx5_hairpin_unbind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 		}
 		/* Indeed, only the first used queue needs to be checked. */
 		if (txq_ctrl->hairpin_conf.manual_bind == 0) {
+			mlx5_txq_release(dev, i);
 			if (cur_port != rx_port) {
 				rte_errno = EINVAL;
 				DRV_LOG(ERR, "port %u and port %u are in"
 					" auto-bind mode", cur_port, rx_port);
-				mlx5_txq_release(dev, i);
 				return -rte_errno;
 			} else {
 				return 0;
