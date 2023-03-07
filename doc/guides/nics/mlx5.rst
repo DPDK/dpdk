@@ -151,7 +151,7 @@ Limitations
 
 - Host shaper:
 
-  - Support BlueField series NIC from BlueField 2.
+  - Support BlueField series NIC from BlueField-2.
   - When configuring host shaper with MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED flag set,
     only rates 0 and 100Mbps are supported.
 
@@ -404,9 +404,9 @@ Limitations
 
 - E-Switch Manager matching:
 
-  - For Bluefield with old FW
+  - For BlueField with old FW
     which doesn't expose the E-Switch Manager vport ID in the capability,
-    matching E-Switch Manager should be used only in Bluefield embedded CPU mode.
+    matching E-Switch Manager should be used only in BlueField embedded CPU mode.
 
 - Raw encapsulation:
 
@@ -1942,7 +1942,7 @@ Then the PMD call the callback registered previously,
 which will delay a while to let Rx queue empty,
 then disable host shaper.
 
-Let's assume we have a simple BlueField 2 setup:
+Let's assume we have a simple BlueField-2 setup:
 port 0 is uplink, port 1 is VF representor.
 Each port has 2 Rx queues.
 To control traffic from the host to the Arm device,
