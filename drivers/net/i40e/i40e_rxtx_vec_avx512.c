@@ -906,15 +906,12 @@ i40e_tx_free_bufs_avx512(struct i40e_tx_queue *txq)
 		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp,
 				rte_lcore_id());
 
-		if (!cache || cache->len == 0)
-			goto normal;
-
-		cache_objs = &cache->objs[cache->len];
-
-		if (n > RTE_MEMPOOL_CACHE_MAX_SIZE) {
-			rte_mempool_ops_enqueue_bulk(mp, (void *)txep, n);
+		if (!cache || n > RTE_MEMPOOL_CACHE_MAX_SIZE) {
+			rte_mempool_generic_put(mp, (void *)txep, n, cache);
 			goto done;
 		}
+
+		cache_objs = &cache->objs[cache->len];
 
 		/* The cache follows the following algorithm
 		 *   1. Add the objects to the cache
@@ -947,7 +944,6 @@ i40e_tx_free_bufs_avx512(struct i40e_tx_queue *txq)
 		goto done;
 	}
 
-normal:
 	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m)) {
 		free[0] = m;
