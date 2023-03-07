@@ -6458,6 +6458,9 @@ test_zuc_auth_cipher_sgl(const struct wireless_test_data *tdata,
 			tdata->digest.len) < 0)
 		return TEST_SKIPPED;
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
+
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
 	uint64_t feat_flags = dev_info.feature_flags;
@@ -7652,6 +7655,9 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 			return TEST_SKIPPED;
 		}
 	}
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
 
 	/* Create the session */
 	if (verify)
@@ -14455,8 +14461,13 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 			&cap_idx) == NULL)
 		return TEST_SKIPPED;
 
-	/* OOP not supported with CPU crypto */
-	if (oop && gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+	/*
+	 * SGL not supported on AESNI_MB PMD CPU crypto,
+	 * OOP not supported on AESNI_GCM CPU crypto
+	 */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO &&
+			(gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)) || oop))
 		return TEST_SKIPPED;
 
 	/* Detailed check for the particular SGL support flag */
