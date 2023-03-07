@@ -16,10 +16,18 @@ cn9k_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 	struct roc_npc *npc = &dev->npc;
 	struct roc_npc_flow *flow;
 	int vtag_actions = 0;
+	int mark_actions;
 
 	flow = cnxk_flow_create(eth_dev, attr, pattern, actions, error);
 	if (!flow)
 		return NULL;
+
+	mark_actions = roc_npc_mark_actions_get(npc);
+
+	if (mark_actions) {
+		dev->rx_offload_flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
+		cn9k_eth_set_rx_function(eth_dev);
+	}
 
 	vtag_actions = roc_npc_vtag_actions_get(npc);
 
@@ -39,6 +47,18 @@ cn9k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_npc *npc = &dev->npc;
 	int vtag_actions = 0;
+	uint16_t match_id;
+	int mark_actions;
+
+	match_id = (flow->npc_action >> NPC_RX_ACT_MATCH_OFFSET) &
+		   NPC_RX_ACT_MATCH_MASK;
+	if (match_id) {
+		mark_actions = roc_npc_mark_actions_sub_return(npc, 1);
+		if (mark_actions == 0) {
+			dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
+			cn9k_eth_set_rx_function(eth_dev);
+		}
+	}
 
 	vtag_actions = roc_npc_vtag_actions_get(npc);
 	if (vtag_actions) {

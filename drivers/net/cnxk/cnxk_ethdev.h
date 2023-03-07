@@ -316,7 +316,6 @@ struct cnxk_eth_dev {
 	bool tx_compl_ena;
 	bool tx_mark;
 	bool ptp_en;
-	bool rx_mark_update; /* Enable/Disable mark update to mbuf */
 
 	/* Pointer back to rte */
 	struct rte_eth_dev *eth_dev;

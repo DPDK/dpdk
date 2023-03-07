@@ -397,6 +397,9 @@ int __roc_api roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc);
 void __roc_api roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc);
 void __roc_api roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 				      struct roc_npc_flow *mcam);
+int __roc_api roc_npc_mark_actions_get(struct roc_npc *roc_npc);
+int __roc_api roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc,
+					      uint32_t count);
 int __roc_api roc_npc_vtag_actions_get(struct roc_npc *roc_npc);
 int __roc_api roc_npc_vtag_actions_sub_return(struct roc_npc *roc_npc,
 					      uint32_t count);

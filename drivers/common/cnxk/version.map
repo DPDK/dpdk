@@ -344,6 +344,8 @@ INTERNAL {
 	roc_npc_flow_parse;
 	roc_npc_get_low_priority_mcam;
 	roc_npc_init;
+	roc_npc_mark_actions_get;
+	roc_npc_mark_actions_sub_return;
 	roc_npc_vtag_actions_get;
 	roc_npc_vtag_actions_sub_return;
 	roc_npc_mcam_alloc_entries;

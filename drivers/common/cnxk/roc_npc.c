@@ -6,6 +6,23 @@
 #include "roc_priv.h"
 
 int
+roc_npc_mark_actions_get(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc->mark_actions;
+}
+
+int
+roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc, uint32_t count)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	npc->mark_actions -= count;
+	return npc->mark_actions;
+}
+
+int
 roc_npc_vtag_actions_get(struct roc_npc *roc_npc)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
@@ -488,12 +505,14 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			}
 			mark = act_mark->id + 1;
 			req_act |= ROC_NPC_ACTION_TYPE_MARK;
+			npc->mark_actions += 1;
 			flow->match_id = mark;
 			break;
 
 		case ROC_NPC_ACTION_TYPE_FLAG:
 			mark = NPC_FLOW_FLAG_VAL;
 			req_act |= ROC_NPC_ACTION_TYPE_FLAG;
+			npc->mark_actions += 1;
 			break;
 
 		case ROC_NPC_ACTION_TYPE_COUNT:
