@@ -118,7 +118,7 @@ app_tx_thread(struct thread_conf **confs)
 		if (likely(nb_pkts != 0)) {
 			uint16_t nb_tx = rte_eth_tx_burst(conf->tx_port, 0, mbufs, nb_pkts);
 			if (nb_pkts != nb_tx)
-				rte_pktmbuf_free_bulk(&mbufs[nb_pkts], nb_pkts - nb_tx);
+				rte_pktmbuf_free_bulk(&mbufs[nb_tx], nb_pkts - nb_tx);
 		}
 
 		conf_idx++;
