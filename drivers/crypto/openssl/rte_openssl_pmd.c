@@ -2633,7 +2633,7 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		if (EVP_PKEY_verify_recover(rsa_ctx, tmp, &outlen,
 				op->rsa.sign.data,
 				op->rsa.sign.length) <= 0) {
-			rte_free(tmp);
+			OPENSSL_free(tmp);
 			goto err_rsa;
 		}
 
@@ -2645,7 +2645,7 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 				op->rsa.message.length)) {
 			OPENSSL_LOG(ERR, "RSA sign Verification failed");
 		}
-		rte_free(tmp);
+		OPENSSL_free(tmp);
 		break;
 
 	default:
