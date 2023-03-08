@@ -95,6 +95,8 @@ static int nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 static int nfp_set_mac_addr(struct rte_eth_dev *dev,
 			     struct rte_ether_addr *mac_addr);
 
+#define DEFAULT_FLBUF_SIZE        9216
+
 /* The offset of the queue controller queues in the PCIe Target */
 #define NFP_PCIE_QUEUE(_q) (0x80000 + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & 0xff)))
 
@@ -2942,6 +2944,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->mtu = RTE_ETHER_MTU;
+	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 
 	/* VLAN insertion is incompatible with LSOv2 */
 	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
