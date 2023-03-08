@@ -2397,6 +2397,70 @@ common_fwd_stream_init(struct fwd_stream *fs)
 	fs->disabled = rx_stopped || tx_stopped;
 }
 
+static void
+update_rx_queue_state(uint16_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_rxq_info rx_qinfo;
+	int32_t rc;
+
+	rc = rte_eth_rx_queue_info_get(port_id,
+			queue_id, &rx_qinfo);
+	if (rc == 0) {
+		ports[port_id].rxq[queue_id].state =
+			rx_qinfo.queue_state;
+	} else if (rc == -ENOTSUP) {
+		/*
+		 * Set the rxq state to RTE_ETH_QUEUE_STATE_STARTED
+		 * to ensure that the PMDs do not implement
+		 * rte_eth_rx_queue_info_get can forward.
+		 */
+		ports[port_id].rxq[queue_id].state =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		TESTPMD_LOG(WARNING,
+			"Failed to get rx queue info\n");
+	}
+}
+
+static void
+update_tx_queue_state(uint16_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_txq_info tx_qinfo;
+	int32_t rc;
+
+	rc = rte_eth_tx_queue_info_get(port_id,
+			queue_id, &tx_qinfo);
+	if (rc == 0) {
+		ports[port_id].txq[queue_id].state =
+			tx_qinfo.queue_state;
+	} else if (rc == -ENOTSUP) {
+		/*
+		 * Set the txq state to RTE_ETH_QUEUE_STATE_STARTED
+		 * to ensure that the PMDs do not implement
+		 * rte_eth_tx_queue_info_get can forward.
+		 */
+		ports[port_id].txq[queue_id].state =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		TESTPMD_LOG(WARNING,
+			"Failed to get tx queue info\n");
+	}
+}
+
+static void
+update_queue_state(void)
+{
+	portid_t pi;
+	queueid_t qi;
+
+	RTE_ETH_FOREACH_DEV(pi) {
+		for (qi = 0; qi < nb_rxq; qi++)
+			update_rx_queue_state(pi, qi);
+		for (qi = 0; qi < nb_txq; qi++)
+			update_tx_queue_state(pi, qi);
+	}
+}
+
 /*
  * Launch packet forwarding configuration.
  */
@@ -2436,9 +2500,12 @@ start_packet_forwarding(int with_tx_first)
 	if (!pkt_fwd_shared_rxq_check())
 		return;
 
-	if (stream_init != NULL)
+	if (stream_init != NULL) {
+		if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+			update_queue_state();
 		for (i = 0; i < cur_fwd_config.nb_fwd_streams; i++)
 			stream_init(fwd_streams[i]);
+	}
 
 	port_fwd_begin = cur_fwd_config.fwd_eng->port_fwd_begin;
 	if (port_fwd_begin != NULL) {
@@ -3197,6 +3264,9 @@ start_port(portid_t pid)
 
 		pl[cfg_pi++] = pi;
 	}
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		update_queue_state();
 
 	if (at_least_one_port_successfully_started && !no_link_check)
 		check_all_ports_link_status(RTE_PORT_ALL);
