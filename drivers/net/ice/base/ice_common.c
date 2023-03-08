@@ -2554,9 +2554,7 @@ ice_parse_1588_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 			 struct ice_aqc_list_caps_elem *cap)
 {
 	struct ice_ts_func_info *info = &func_p->ts_func_info;
-	u32 number = ICE_TS_FUNC_ENA_M | ICE_TS_SRC_TMR_OWND_M |
-		     ICE_TS_TMR_ENA_M | ICE_TS_TMR_IDX_OWND_M |
-		     ICE_TS_TMR_IDX_ASSOC_M;
+	u32 number = LE32_TO_CPU(cap->number);
 	u8 clk_freq;
 
 	ice_debug(hw, ICE_DBG_INIT, "1588 func caps: raw value %x\n", number);

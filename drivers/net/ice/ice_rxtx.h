@@ -349,26 +349,27 @@ static inline
 uint64_t ice_tstamp_convert_32b_64b(struct ice_hw *hw, struct ice_adapter *ad,
 				    uint32_t flag, uint32_t in_timestamp)
 {
+	uint8_t tmr_idx = hw->func_caps.ts_func_info.tmr_index_assoc;
 	const uint64_t mask = 0xFFFFFFFF;
 	uint32_t hi, lo, lo2, delta;
 	uint64_t ns;
 
 	if (flag) {
-		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
-		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
+		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(tmr_idx));
 
 		/*
 		 * On typical system, the delta between lo and lo2 is ~1000ns,
 		 * so 10000 seems a large-enough but not overly-big guard band.
 		 */
 		if (lo > (UINT32_MAX - ICE_TIMESYNC_REG_WRAP_GUARD_BAND))
-			lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+			lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
 		else
 			lo2 = lo;
 
 		if (lo2 < lo) {
-			lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
-			hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+			lo = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
+			hi = ICE_READ_REG(hw, GLTSYN_TIME_H(tmr_idx));
 		}
 
 		ad->time_hw = ((uint64_t)hi << 32) | lo;
