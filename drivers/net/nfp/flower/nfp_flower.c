@@ -24,7 +24,6 @@
 #include "nfp_flower_cmsg.h"
 
 #define CTRL_VNIC_NB_DESC 512
-#define DEFAULT_FLBUF_SIZE 9216
 
 static void
 nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
