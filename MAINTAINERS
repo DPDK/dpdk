@@ -947,8 +947,8 @@ F: doc/guides/nics/bnx2x.rst
 F: doc/guides/nics/features/bnx2x*.ini
 
 Marvell QLogic qede PMD
-M: Rasesh Mody <rmody@marvell.com>
 M: Devendra Singh Rawat <dsinghrawat@marvell.com>
+M: Alok Prasad <palok@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
