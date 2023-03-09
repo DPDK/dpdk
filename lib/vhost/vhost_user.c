@@ -1355,15 +1355,15 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 			async_notify = true;
 		}
 
+		/* Flush IOTLB cache as previous HVAs are now invalid */
+		if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+			for (i = 0; i < dev->nr_vring; i++)
+				vhost_user_iotlb_flush_all(dev, dev->virtqueue[i]);
+
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
 	}
-
-	/* Flush IOTLB cache as previous HVAs are now invalid */
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		for (i = 0; i < dev->nr_vring; i++)
-			vhost_user_iotlb_flush_all(dev, dev->virtqueue[i]);
 
 	/*
 	 * If VQ 0 has already been allocated, try to allocate on the same
