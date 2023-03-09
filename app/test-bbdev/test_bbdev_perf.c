@@ -5679,7 +5679,7 @@ static int
 offload_cost_test(struct active_device *ad,
 		struct test_op_params *op_params)
 {
-	int iter;
+	int iter, ret;
 	uint16_t burst_sz = op_params->burst_sz;
 	const uint16_t num_to_process = op_params->num_to_process;
 	const enum rte_bbdev_op_type op_type = test_vector.op_type;
@@ -5774,7 +5774,10 @@ offload_cost_test(struct active_device *ad,
 			rte_get_tsc_hz());
 
 	struct rte_bbdev_stats stats = {0};
-	get_bbdev_queue_stats(ad->dev_id, queue_id, &stats);
+	ret = get_bbdev_queue_stats(ad->dev_id, queue_id, &stats);
+	TEST_ASSERT_SUCCESS(ret,
+			"Failed to get stats for queue (%u) of device (%u)",
+			queue_id, ad->dev_id);
 	if (stats.enqueue_warn_count > 0)
 		printf("Warning reported on the queue : %10"PRIu64"\n",
 			stats.enqueue_warn_count);
