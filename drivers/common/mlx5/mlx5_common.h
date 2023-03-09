@@ -199,7 +199,12 @@ check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
 
 	if (unlikely((op_owner != (!!(idx))) || (op_code == MLX5_CQE_INVALID)))
 		return MLX5_CQE_STATUS_HW_OWN;
-	rte_io_rmb();
+
+	/* Prevent speculative reading of other fields in CQE until
+	 * CQE is valid.
+	 */
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
 	if (unlikely(op_code == MLX5_CQE_RESP_ERR ||
 		     op_code == MLX5_CQE_REQ_ERR))
 		return MLX5_CQE_STATUS_ERR;
