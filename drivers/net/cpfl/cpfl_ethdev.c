@@ -1095,8 +1095,8 @@ cpfl_handle_virtchnl_msg(struct cpfl_adapter_ext *adapter)
 	struct idpf_ctlq_msg ctlq_msg;
 	enum idpf_mbx_opc mbx_op;
 	struct idpf_vport *vport;
-	enum virtchnl_ops vc_op;
 	uint16_t pending = 1;
+	uint32_t vc_op;
 	int ret;
 
 	while (pending) {
