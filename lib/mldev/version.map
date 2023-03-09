@@ -52,4 +52,16 @@ INTERNAL {
 	rte_ml_io_type_size_get;
 	rte_ml_io_type_to_str;
 	rte_ml_io_format_to_str;
+	rte_ml_io_float32_to_int8;
+	rte_ml_io_int8_to_float32;
+	rte_ml_io_float32_to_uint8;
+	rte_ml_io_uint8_to_float32;
+	rte_ml_io_float32_to_int16;
+	rte_ml_io_int16_to_float32;
+	rte_ml_io_float32_to_uint16;
+	rte_ml_io_uint16_to_float32;
+	rte_ml_io_float32_to_float16;
+	rte_ml_io_float16_to_float32;
+	rte_ml_io_float32_to_bfloat16;
+	rte_ml_io_bfloat16_to_float32;
 };

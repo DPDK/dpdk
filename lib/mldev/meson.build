@@ -5,6 +5,7 @@ sources = files(
         'rte_mldev_pmd.c',
         'rte_mldev.c',
         'mldev_utils.c',
+        'mldev_utils_scalar.c',
 )
 
 headers = files(
