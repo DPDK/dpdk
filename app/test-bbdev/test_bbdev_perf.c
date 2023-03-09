@@ -3722,6 +3722,7 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
 			"BURST_SIZE should be <= %u", MAX_BURST);
+	TEST_ASSERT_SUCCESS((num_ops == 0), "NUM_OPS must be greater than 0");
 
 	rte_bbdev_info_get(tp->dev_id, &info);
 
@@ -3856,6 +3857,7 @@ bler_pmd_lcore_turbo_dec(void *arg)
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
 			"BURST_SIZE should be <= %u", MAX_BURST);
+	TEST_ASSERT_SUCCESS((num_ops == 0), "NUM_OPS must be greater than 0");
 
 	rte_bbdev_info_get(tp->dev_id, &info);
 
