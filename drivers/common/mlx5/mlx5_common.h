@@ -191,7 +191,11 @@ enum mlx5_cqe_status {
 static __rte_always_inline enum mlx5_cqe_status
 check_cqe_error(const uint8_t op_code)
 {
-	rte_io_rmb();
+	/* Prevent speculative reading of other fields in CQE until
+	 * CQE is valid.
+	 */
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
 	if (unlikely(op_code == MLX5_CQE_RESP_ERR ||
 		     op_code == MLX5_CQE_REQ_ERR))
 		return MLX5_CQE_STATUS_ERR;
