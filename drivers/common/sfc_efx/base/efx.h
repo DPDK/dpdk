@@ -4582,6 +4582,24 @@ efx_mae_action_set_populate_mark(
 	__in				efx_mae_actions_t *spec,
 	__in				uint32_t mark_value);
 
+/*
+ * Whilst efx_mae_action_set_populate_mark() can be used to request setting
+ * a user mark in matching packets and demands that the request come before
+ * setting the final destination (deliver action), this API can be invoked
+ * after deliver action has been added in order to request mark reset if
+ * the user's own mark request has not been added as a result of parsing.
+ *
+ * It is useful when the driver chains an outer rule (OR) with an action
+ * rule (AR) by virtue of a recirculation ID. The OR may set mark from
+ * this ID to help the driver identify packets that hit the OR and do
+ * not hit the AR. But, for packets that do hit the AR, the driver
+ * wants to reset the mark value to avoid confusing recipients.
+ */
+LIBEFX_API
+extern					void
+efx_mae_action_set_populate_mark_reset(
+	__in				efx_mae_actions_t *spec);
+
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_deliver(
