@@ -1916,6 +1916,18 @@ efx_mae_action_set_populate_mark(
 	    EFX_MAE_ACTION_MARK, sizeof (mark_value), arg));
 }
 
+					void
+efx_mae_action_set_populate_mark_reset(
+	__in				efx_mae_actions_t *spec)
+{
+	uint32_t action_mask = (1U << EFX_MAE_ACTION_MARK);
+
+	if ((spec->ema_actions & action_mask) == 0) {
+		spec->ema_actions |= action_mask;
+		spec->ema_mark_value = 0;
+	}
+}
+
 	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_deliver(
 	__in				efx_mae_actions_t *spec,

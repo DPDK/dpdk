@@ -103,6 +103,7 @@ INTERNAL {
 	efx_mae_action_set_populate_encap;
 	efx_mae_action_set_populate_flag;
 	efx_mae_action_set_populate_mark;
+	efx_mae_action_set_populate_mark_reset;
 	efx_mae_action_set_populate_set_dst_mac;
 	efx_mae_action_set_populate_set_src_mac;
 	efx_mae_action_set_populate_vlan_pop;
