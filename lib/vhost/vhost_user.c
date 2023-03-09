@@ -2846,7 +2846,7 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, vhost_user_get_queue_num, false)
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, vhost_user_send_rarp, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, vhost_user_net_set_mtu, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_SLAVE_REQ_FD, vhost_user_set_req_fd, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_BACKEND_REQ_FD, vhost_user_set_req_fd, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, vhost_user_iotlb_msg, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, vhost_user_get_config, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, vhost_user_set_config, false) \
@@ -3143,7 +3143,7 @@ vhost_user_msg_handler(int vid, int fd)
 	case VHOST_USER_SET_VRING_ENABLE:
 	case VHOST_USER_SEND_RARP:
 	case VHOST_USER_NET_SET_MTU:
-	case VHOST_USER_SET_SLAVE_REQ_FD:
+	case VHOST_USER_SET_BACKEND_REQ_FD:
 		if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
 			vhost_user_lock_all_queue_pairs(dev);
 			unlock_required = 1;
@@ -3307,7 +3307,7 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 	int ret;
 	struct vhu_msg_context ctx = {
 		.msg = {
-			.request.slave = VHOST_USER_SLAVE_IOTLB_MSG,
+			.request.slave = VHOST_USER_BACKEND_IOTLB_MSG,
 			.flags = VHOST_USER_VERSION,
 			.size = sizeof(ctx.msg.payload.iotlb),
 			.payload.iotlb = {
@@ -3334,7 +3334,7 @@ rte_vhost_slave_config_change(int vid, bool need_reply)
 {
 	struct vhu_msg_context ctx = {
 		.msg = {
-			.request.slave = VHOST_USER_SLAVE_CONFIG_CHANGE_MSG,
+			.request.slave = VHOST_USER_BACKEND_CONFIG_CHANGE_MSG,
 			.flags = VHOST_USER_VERSION,
 			.size = 0,
 		}
@@ -3366,7 +3366,7 @@ static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
 	int ret;
 	struct vhu_msg_context ctx = {
 		.msg = {
-			.request.slave = VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG,
+			.request.slave = VHOST_USER_BACKEND_VRING_HOST_NOTIFIER_MSG,
 			.flags = VHOST_USER_VERSION | VHOST_USER_NEED_REPLY,
 			.size = sizeof(ctx.msg.payload.area),
 			.payload.area = {
@@ -3410,9 +3410,9 @@ int rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable)
 	if (!(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ||
 	    !(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
 	    !(dev->protocol_features &
-			(1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ)) ||
+			(1ULL << VHOST_USER_PROTOCOL_F_BACKEND_REQ)) ||
 	    !(dev->protocol_features &
-			(1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD)) ||
+			(1ULL << VHOST_USER_PROTOCOL_F_BACKEND_SEND_FD)) ||
 	    !(dev->protocol_features &
 			(1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER)))
 		return -ENOTSUP;
