@@ -686,25 +686,32 @@ eth_vhost_install_intr(struct rte_eth_dev *dev)
 	dev->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
 	if (dev->intr_handle == NULL) {
 		VHOST_LOG(ERR, "Fail to allocate intr_handle\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto error;
 	}
-	if (rte_intr_efd_counter_size_set(dev->intr_handle, sizeof(uint64_t)))
-		return -rte_errno;
+	if (rte_intr_efd_counter_size_set(dev->intr_handle, sizeof(uint64_t))) {
+		ret = -rte_errno;
+		goto error;
+	}
 
 	if (rte_intr_vec_list_alloc(dev->intr_handle, NULL, nb_rxq)) {
-		VHOST_LOG(ERR,
-			"Failed to allocate memory for interrupt vector\n");
-		rte_intr_instance_free(dev->intr_handle);
-		return -ENOMEM;
+		VHOST_LOG(ERR, "Failed to allocate memory for interrupt vector\n");
+		ret = -ENOMEM;
+		goto error;
 	}
 
 
 	VHOST_LOG(INFO, "Prepare intr vec\n");
 	for (i = 0; i < nb_rxq; i++) {
-		if (rte_intr_vec_list_index_set(dev->intr_handle, i, RTE_INTR_VEC_RXTX_OFFSET + i))
-			return -rte_errno;
-		if (rte_intr_efds_index_set(dev->intr_handle, i, -1))
-			return -rte_errno;
+		if (rte_intr_vec_list_index_set(dev->intr_handle, i,
+				RTE_INTR_VEC_RXTX_OFFSET + i)) {
+			ret = -rte_errno;
+			goto error;
+		}
+		if (rte_intr_efds_index_set(dev->intr_handle, i, -1)) {
+			ret = -rte_errno;
+			goto error;
+		}
 		vq = dev->data->rx_queues[i];
 		if (!vq) {
 			VHOST_LOG(INFO, "rxq-%d not setup yet, skip!\n", i);
@@ -729,16 +736,24 @@ eth_vhost_install_intr(struct rte_eth_dev *dev)
 		VHOST_LOG(INFO, "Installed intr vec for rxq-%d\n", i);
 	}
 
-	if (rte_intr_nb_efd_set(dev->intr_handle, nb_rxq))
-		return -rte_errno;
-
-	if (rte_intr_max_intr_set(dev->intr_handle, nb_rxq + 1))
-		return -rte_errno;
-
-	if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_VDEV))
-		return -rte_errno;
+	if (rte_intr_nb_efd_set(dev->intr_handle, nb_rxq)) {
+		ret = -rte_errno;
+		goto error;
+	}
+	if (rte_intr_max_intr_set(dev->intr_handle, nb_rxq + 1)) {
+		ret = -rte_errno;
+		goto error;
+	}
+	if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_VDEV)) {
+		ret = -rte_errno;
+		goto error;
+	}
 
 	return 0;
+
+error:
+	eth_vhost_uninstall_intr(dev);
+	return ret;
 }
 
 static void
