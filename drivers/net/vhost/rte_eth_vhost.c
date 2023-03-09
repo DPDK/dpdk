@@ -297,7 +297,7 @@ vhost_dev_csum_configure(struct rte_eth_dev *eth_dev)
 	if (internal->features & (1ULL << VIRTIO_NET_F_CSUM)) {
 		if (!(rxmode->offloads &
 				(RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))) {
-			VHOST_LOG(NOTICE, "Rx csum will be done in SW, may impact performance.");
+			VHOST_LOG(NOTICE, "Rx csum will be done in SW, may impact performance.\n");
 			internal->rx_sw_csum = true;
 		}
 	}
@@ -305,7 +305,7 @@ vhost_dev_csum_configure(struct rte_eth_dev *eth_dev)
 	if (!(internal->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM))) {
 		if (txmode->offloads &
 				(RTE_ETH_TX_OFFLOAD_UDP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_CKSUM)) {
-			VHOST_LOG(NOTICE, "Tx csum will be done in SW, may impact performance.");
+			VHOST_LOG(NOTICE, "Tx csum will be done in SW, may impact performance.\n");
 			internal->tx_sw_csum = true;
 		}
 	}
@@ -646,7 +646,7 @@ eth_rxq_intr_disable(struct rte_eth_dev *dev, uint16_t qid)
 
 	ret = rte_vhost_get_vhost_vring(vq->vid, (qid << 1) + 1, &vring);
 	if (ret < 0) {
-		VHOST_LOG(ERR, "Failed to get rxq%d's vring", qid);
+		VHOST_LOG(ERR, "Failed to get rxq%d's vring\n", qid);
 		return ret;
 	}
 	VHOST_LOG(INFO, "Disable interrupt for rxq%d\n", qid);
@@ -851,7 +851,7 @@ new_device(int vid)
 		if (dev_conf->intr_conf.rxq) {
 			if (eth_vhost_install_intr(eth_dev) < 0) {
 				VHOST_LOG(INFO,
-					"Failed to install interrupt handler.");
+					"Failed to install interrupt handler.\n");
 					return -1;
 			}
 		}
@@ -1191,7 +1191,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 		if (dev_conf->intr_conf.rxq) {
 			if (eth_vhost_install_intr(eth_dev) < 0) {
 				VHOST_LOG(INFO,
-					"Failed to install interrupt handler.");
+					"Failed to install interrupt handler.\n");
 					return -1;
 			}
 		}
