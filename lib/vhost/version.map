@@ -68,7 +68,7 @@ EXPERIMENTAL {
 	global:
 
 	rte_vhost_crypto_driver_start;
-	rte_vhost_slave_config_change;
+	rte_vhost_backend_config_change;
 	rte_vhost_async_channel_register;
 	rte_vhost_async_channel_unregister;
 	rte_vhost_submit_enqueue_burst;

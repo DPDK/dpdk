@@ -62,12 +62,12 @@ typedef enum VhostUserRequest {
 	VHOST_USER_GET_STATUS = 40,
 } VhostUserRequest;
 
-typedef enum VhostUserSlaveRequest {
+typedef enum VhostUserBackendRequest {
 	VHOST_USER_BACKEND_NONE = 0,
 	VHOST_USER_BACKEND_IOTLB_MSG = 1,
 	VHOST_USER_BACKEND_CONFIG_CHANGE_MSG = 2,
 	VHOST_USER_BACKEND_VRING_HOST_NOTIFIER_MSG = 3,
-} VhostUserSlaveRequest;
+} VhostUserBackendRequest;
 
 typedef struct VhostUserMemoryRegion {
 	uint64_t guest_phys_addr;
@@ -136,8 +136,8 @@ struct vhost_user_config {
 
 typedef struct VhostUserMsg {
 	union {
-		uint32_t master; /* a VhostUserRequest value */
-		uint32_t slave;  /* a VhostUserSlaveRequest value*/
+		uint32_t frontend; /* a VhostUserRequest value */
+		uint32_t backend;  /* a VhostUserBackendRequest value*/
 	} request;
 
 #define VHOST_USER_VERSION_MASK     0x3

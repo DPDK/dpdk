@@ -605,7 +605,7 @@ virtio_interrupt_handler(struct ifcvf_internal *internal)
 	int vid = internal->vid;
 	int ret;
 
-	ret = rte_vhost_slave_config_change(vid, 1);
+	ret = rte_vhost_backend_config_change(vid, 1);
 	if (ret)
 		DRV_LOG(ERR, "failed to notify the guest about configuration space change.");
 }
