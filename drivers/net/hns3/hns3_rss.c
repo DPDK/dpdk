@@ -372,10 +372,6 @@ hns3_set_rss_indir_table(struct hns3_hw *hw, uint16_t *indir, uint16_t size)
 		}
 	}
 
-	/* Update redirection table of hw */
-	memcpy(hw->rss_info.rss_indirection_tbl, indir,
-	       sizeof(uint16_t) * size);
-
 	return 0;
 }
 
@@ -441,8 +437,11 @@ hns3_rss_reset_indir_table(struct hns3_hw *hw)
 	}
 
 	ret = hns3_set_rss_indir_table(hw, lut, hw->rss_ind_tbl_size);
-	if (ret)
-		hns3_err(hw, "RSS uninit indir table failed: %d", ret);
+	if (ret != 0)
+		hns3_err(hw, "RSS uninit indir table failed, ret = %d.", ret);
+	else
+		memcpy(hw->rss_info.rss_indirection_tbl, lut,
+		       sizeof(uint16_t) * hw->rss_ind_tbl_size);
 	rte_free(lut);
 
 	return ret;
@@ -649,12 +648,12 @@ hns3_dev_rss_reta_update(struct rte_eth_dev *dev,
 		idx = i / RTE_ETH_RETA_GROUP_SIZE;
 		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].reta[shift] >= hw->alloc_rss_size) {
-			rte_spinlock_unlock(&hw->lock);
 			hns3_err(hw, "queue id(%u) set to redirection table "
 				 "exceeds queue number(%u) allocated to a TC",
 				 reta_conf[idx].reta[shift],
 				 hw->alloc_rss_size);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 
 		if (reta_conf[idx].mask & (1ULL << shift))
@@ -663,7 +662,13 @@ hns3_dev_rss_reta_update(struct rte_eth_dev *dev,
 
 	ret = hns3_set_rss_indir_table(hw, indirection_tbl,
 				       hw->rss_ind_tbl_size);
+	if (ret != 0)
+		goto out;
 
+	memcpy(rss_cfg->rss_indirection_tbl, indirection_tbl,
+	       sizeof(uint16_t) * hw->rss_ind_tbl_size);
+
+out:
 	rte_spinlock_unlock(&hw->lock);
 	return ret;
 }
