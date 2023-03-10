@@ -1,0 +1,15 @@
+Package: mnx-dpdk-modules-@KVERS@
+Section: kernel
+Architecture: amd64 arm64 i386
+Depends: ${misc:Depends}, @KVERS_DEPEND@
+Provides: mlnx-dpdk-modules,
+Conflicts: mlnx-dpdk-igb-uio-dkms,
+           mlnx-dpdk-rte-kni-dkms,
+Built-Using: ${built:using:kernel},
+Description: Data Plane Development Kit (rte kni, igb uio modules)
+ DPDK is a set of libraries for fast packet processing. Applications run
+ in user-space and communicate directly with dedicated network interfaces.
+ This package contains the source code for the igb_uio kernel module.
+ .
+ This package provides the kernel drivers for userspace networking.
+ Includes Intel DPDK kernel modules.

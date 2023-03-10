@@ -1,0 +1,99 @@
+Source: dpdk-vhost-vfe
+Priority: optional
+Maintainer: deb_dpdk Packagers <deb-dpdk@lists.fd.io>
+Build-Depends: debhelper (>= 10.3~),
+               dh-python,
+               doxygen <!nodoc>,
+               graphviz <!nodoc>,
+               inkscape <!nodoc>,
+               libbsd-dev,
+               libcap-dev,
+               libelf-dev,
+               libibverbs-dev (>= 16~),
+               libipsec-mb-dev [amd64],
+               libjansson-dev,
+               libmnl-dev,
+               libnuma-dev,
+               libpcap-dev,
+               libssl-dev,
+               linux-headers-686 [i386] | linux-headers-generic [i386],
+               linux-headers-amd64 [amd64] | linux-headers-generic [amd64],
+               linux-headers-arm64 [arm64] | linux-headers-generic [arm64],
+               linux-headers-armmp [armhf] | linux-headers-generic [armhf],
+               linux-headers-powerpc64le [ppc64el] | linux-headers-generic [ppc64el],
+               meson (>= 0.41~),
+               pkg-config,
+               python3,
+               python3-sphinx <!nodoc>,
+               python3-sphinx-rtd-theme <!nodoc>,
+               texlive-fonts-recommended <!nodoc>,
+               texlive-latex-extra <!nodoc>,
+               zlib1g-dev,
+               libev-dev,
+Standards-Version: 4.2.1
+Rules-Requires-Root: no
+Section: libs
+Homepage: https://github.com/Mellanox/dpdk-vhost-vfe
+
+Package: dpdk-vhost-vfe
+Section: admin
+Architecture: amd64 arm64 armhf i386 ppc64el
+Depends: hwdata,
+         lsb-base (>= 3.2-14),
+         pciutils,
+         libev-dev,
+         ${misc:Depends},
+         ${python3:Depends},
+         ${shlibs:Depends},
+Recommends: python3-pyelftools,
+Suggests: dpdk-vhost-vfe-doc,
+          linux-image-generic,
+Description: dpdk-vhost-vfe (runtime)
+ DPDK is a set of libraries for fast packet processing. Applications run
+ in user-space and communicate directly with dedicated network interfaces.
+ .
+ This package contains the runtime dpdk-vhost-vfe applications based on
+ DPDK.
+
+Package: dpdk-vhost-vfe-doc
+Section: doc
+Architecture: all
+Multi-Arch: foreign
+Build-Profiles: <!nodoc>
+Homepage: https://dpdk.org/doc/guides/index.html
+Depends: libjs-jquery,
+         libjs-underscore,
+         python3:any,
+         ${misc:Depends},
+         ${python3:Depends},
+Recommends: ${python3:Recommends},
+Description: Data Plane Development Kit (documentation)
+ DPDK is a set of libraries for fast packet processing. Applications run
+ in user-space and communicate directly with dedicated network interfaces.
+ .
+ This package contains the complete set of documentation and guides.
+
+Package: dpdk-vhost-vfe-dev
+Section: libdevel
+Architecture: amd64 arm64 armhf i386 ppc64el
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends},
+Depends: dpdk-vhost-vfe,
+         libbsd-dev,
+         libibverbs-dev,
+         libmnl-dev,
+         libnuma-dev,
+         libpcap-dev,
+         libssl-dev,
+         zlib1g-dev,
+	 libelf-dev,
+	 libjansson-dev,
+         ${misc:Depends},
+Description: Data Plane Development Kit (basic development files)
+ DPDK is a set of libraries for fast packet processing. Applications run
+ in user-space and communicate directly with dedicated network interfaces.
+ .
+ This package contains the basic headers and library files required to
+ build external applications which will also require at least SSE3 support
+ when running.
+

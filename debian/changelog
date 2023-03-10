@@ -1,0 +1,5 @@
+dpdk-vhost-vfe (0.4) UNRELEASED; urgency=medium
+
+  * Initial packaging
+
+ -- Luca Boccassi <bluca@debian.org>  Mon, 29 Oct 2018 16:07:49 +0000

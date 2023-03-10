@@ -1,0 +1,226 @@
+#!/usr/bin/make -f
+
+export PREFIX := opt/mellanox/dpdk-vhost-vfe
+
+# see EXAMPLES in dpkg-buildflags(1) and read /usr/share/dpkg/*
+DPKG_EXPORT_BUILDFLAGS = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+include /usr/share/dpkg/default.mk
+
+DPDK_ABI := $(shell echo $(DEB_VERSION_UPSTREAM) | cut -d '-' -f1 | cut -d '.'  -f1-2 | cut -d '~' -f1)
+
+ifeq (,$(findstring terse,$(DEB_BUILD_OPTIONS)))
+	export DH_VERBOSE=1
+	export DH_OPTIONS=-v
+endif
+
+export DEB_CFLAGS_MAINT_APPEND = -Werror
+# Disable debugging symbols, as they cause each build to cost 1GB of storage space for OBS
+export DEB_CFLAGS_STRIP = -g
+
+#DEB_BUILD_OPTIONS+= kernel_modules
+
+ifneq (,$(filter $(DEB_HOST_ARCH), arm64))
+RTE_MACHINE ?= "armv8a"
+RTE_TARGET ?= "arm64-armv8a-linux-gcc"
+INCLUDE_ARCH := arm
+else
+ifneq (,$(filter $(DEB_HOST_ARCH), ppc64el))
+RTE_MACHINE ?= "power8"
+RTE_TARGET ?= "ppc_64-power8-linux-gcc"
+INCLUDE_ARCH := ppc_64
+else
+RTE_MACHINE ?= "default"
+RTE_TARGET ?= "$(DEB_HOST_GNU_CPU)-native-linux-gcc"
+INCLUDE_ARCH := x86
+endif
+endif
+
+# People rebuilding this package can overwrite RTE_MACHINE
+# via DEB_BUILD_OPTIONS if they like
+ifneq (,$(filter rte_machine=%,$(DEB_BUILD_OPTIONS)))
+    RTE_MACHINE ?= $(patsubst rte_machine=%,%,$(filter rte_machine=%,$(DEB_BUILD_OPTIONS)))
+endif
+# default to minimal base, without setting this it would build
+# -march=native which is a non portable invariant
+RTE_MACHINE ?= "default"
+
+ifneq (,$(findstring static,$(DEB_BUILD_OPTIONS)))
+TARGET := $(DPDK_STATIC_DIR)
+EXCLUDE := --exclude .so.* --exclude .so
+SHARED := n
+else
+TARGET := $(DPDK_SHARED_DIR)
+EXCLUDE := --exclude .a
+SHARED := y
+endif
+
+# now stable with parallel comilation, so support -j
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+    PAR := $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+    MAKEFLAGS += -j$(PAR)
+endif
+
+ifneq (,$(findstring nodoc,$(DEB_BUILD_PROFILES)))
+BUILD_DOCS=n
+else
+ifneq (,$(findstring nodoc,$(DEB_BUILD_OPTIONS)))
+BUILD_DOCS=n
+# to stop dh_installdoc from running
+export DEB_BUILD_PROFILES += nodoc
+else
+BUILD_DOCS=y
+endif
+endif
+
+# Allow to pass specific configure flags to meson as a comma separated list
+ifneq (,$(filter dpdk_config_options=%,$(DEB_BUILD_OPTIONS)))
+# GNU Makefile hack: can't directly escape comma and spaces, so use variables
+    comma := ,
+    space :=
+    space +=
+    DPDK_CONFIG_OPTIONS ?= $(subst $(comma),$(space),$(patsubst dpdk_config_options=%,%,$(filter dpdk_config_options=%,$(DEB_BUILD_OPTIONS))))
+endif
+
+DPDK_ENABLED_DRVS := "bus/pci,bus/auxiliary,bus/vdev,"
+DPDK_ENABLED_DRVS := "mempool/bucket,mempool/ring,mempool/stack,$(DPDK_ENABLED_DRVS)"
+#DPDK_ENABLED_DRVS := "common/mlx5,$(DPDK_ENABLED_DRVS)"
+#DPDK_ENABLED_DRVS := "net/mlx5,net/vhost,net/virtio,net/af_packet,$(DPDK_ENABLED_DRVS)"
+#DPDK_ENABLED_DRVS := "vdpa/mlx5,regex/mlx5,compress/mlx5,$(DPDK_ENABLED_DRVS)"
+#DPDK_ENABLED_DRVS := "gpu/cuda,$(DPDK_ENABLED_DRVS)"
+DPDK_ENABLED_DRVS := "net/vhost,net/virtio,vdpa/virtio,common/virtio,common/virtio_mi,$DPDK_ENABLED_DRVS"
+DPDK_DISABLED_DRVS := $(shell . ./debian/get-disabled-drivers.sh; disable_drivers $(DPDK_ENABLED_DRVS))
+
+# Change default max ethports to 1024
+DPDK_CONFIG_OPTIONS += -Dmax_ethports=1024
+
+DPDK_CONFIG_OPTIONS += -Ddisable_drivers=$(DPDK_DISABLED_DRVS)
+
+DPDK_CONFIG_OPTIONS += -Dmachine=default
+
+DPDK_CONFIG_OPTIONS += -Dexamples=vdpa
+DPDK_CONFIG_OPTIONS += -Dc_args='-DRTE_LIBRTE_VDPA_DEBUG'
+DPDK_CONFIG_OPTIONS += --debug 
+
+# Ensure build is optimized for release
+DPDK_CONFIG_OPTIONS += --buildtype=release
+
+ifneq (,$(findstring bluefield,$(DEB_BUILD_OPTIONS)))
+    DPDK_CONFIG_OPTIONS += --cross-file=../config/arm/arm64_bluefield_linux_native_gcc
+endif
+
+# kernel_modules can be passed via DEB_BUILD_OPTIONS to enable building the
+# optional binary kernel modules package. By default it will be built against
+# the current kernel, or ksrc can be passed with a path to the target kernel
+# sources instead.
+ifeq (,$(findstring kernel_modules,$(DEB_BUILD_OPTIONS)))
+DPDK_CONFIG_BUILD_KMOD=false
+KSRC=""
+else
+ifneq (,$(filter ksrc=%,$(DEB_BUILD_OPTIONS)))
+    KSRC := $(patsubst ksrc=%,%,$(filter ksrc=%,$(DEB_BUILD_OPTIONS)))
+else
+    KSRC := /lib/modules/$(shell uname -r)
+endif
+
+export KVERS=$(shell LIST=$$(ls /lib/modules/); for dir in $$LIST; do test -d /lib/modules/$$dir/build && echo $$dir; done | sort -n | head -1)
+export KSRC=/lib/modules/$(KVERS)
+KVERS_BINARY := $(shell dpkg-query -W -f='$${Version}\n' linux-headers-$(KVERS))
+KVERS_DEPEND := linux-image-$(KVERS) (= $(KVERS_BINARY)) | linux-image-$(KVERS)-signed (= $(KVERS_BINARY)) | linux-image-$(KVERS)-unsigned (= $(KVERS_BINARY))
+export MODULE_CFLAGS=-fno-PIE
+
+DPDK_CONFIG_BUILD_KMOD=true
+
+# Since the binary module package is generated at build time depending on the
+# local kernel version, we have to append the new package in d/control.
+# We cannot use a separate control file since that wouldn't work with
+# dpkg-genchanges, and also would require a lot of overrides for debhelpers.
+get_built_using	?= $(filter-out (=),$(shell dpkg-query -f='$${source:Package} (=$${source:Version})' -W $1))
+
+debian/control.modules: debian/control.modules.in
+	@if [ x"$(KVERS)" = x ] ; then \
+		echo 'No kernel headers version found' >&2; \
+		exit 1; \
+	fi
+	sed -e "s/@KVERS@/$(KVERS)/" -e "s/@KVERS_DEPEND@/$(KVERS_DEPEND)/"< $< > $@
+	cat $@ >> debian/control
+
+build: debian/control.modules
+	dh $@ --with python3 --buildsystem=meson
+endif
+
+%:
+	dh $@ --with python3 --buildsystem=meson --parallel
+
+override_dh_gencontrol:
+	dh_gencontrol
+	# debian/files will not exist until dh_gencontrol has ran at least once,
+	# so we need to run gencontrol for dpdk-modules after.
+ifneq (,$(findstring kernel_modules,$(DEB_BUILD_OPTIONS)))
+	dh_gencontrol -p dpdk-vhost-vfe-modules-$(KVERS) -- \
+		-V'built:using:kernel=$(call get_built_using,linux-headers-$(KVERS))'
+endif
+
+override_dh_auto_clean:
+	rm -rf debian/build debian/tmp debian/dpdk-vhost-vfe-modules-* \
+		debian/control.modules
+	sed -i '/Package: dpdk-vhost-vfe-modules-/,/`tail -n1 debian/control.modules.in`/d' debian/control
+	dh_auto_clean
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(DPDK_CONFIG_OPTIONS) \
+		--prefix=/$(PREFIX) \
+		--includedir=include/dpdk \
+		--default-library=shared \
+		-Dinclude_subdir_arch=../$(DEB_HOST_MULTIARCH)/dpdk \
+		-Dmachine=$(RTE_MACHINE) \
+		-Dkernel_dir=$(KSRC) \
+		-Denable_kmods=$(DPDK_CONFIG_BUILD_KMOD)
+
+override_dh_auto_build-indep:
+ifeq (y,$(BUILD_DOCS))
+	dh_auto_build -- doc
+	# NINJA DOC INSTALL DOES NOT WORK - .buildinfo present, css missing
+	rm -f obj-$(DEB_HOST_MULTIARCH)/doc/guides/guides/.buildinfo
+endif
+
+# ninja install doc does not work, will rebuild everything,
+# only dpdk-doc as arch: all so just skip it
+override_dh_auto_install-indep:
+
+override_dh_auto_install-arch:
+	# ldconfig conf
+	mkdir -p debian/tmp/etc/ld.so.conf.d
+	echo /$(PREFIX)/lib/$(DEB_HOST_MULTIARCH) > debian/tmp/etc/ld.so.conf.d/dpdk-vhost-vfe-$(DEB_HOST_MULTIARCH).conf
+	# export PKG_CONFIG_PATH
+	mkdir -p debian/tmp/etc/profile.d
+	sed 's,@FAKE_PKG_CONFIG_PATH@,/$(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/pkgconfig,g' \
+		debian/dpdk-vhost-vfe.sh.in > debian/tmp/etc/profile.d/dpdk-vhost-vfe-$(DEB_HOST_MULTIARCH).sh
+	dh_auto_install
+	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vfe-vhost*
+	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vhostmgmt
+	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-vfe-vdpa
+	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so.*
+	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*/*/*.so.*
+	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so
+	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*/*/*.so
+	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.a
+	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/pkgconfig
+	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/include
+
+override_dh_shlibdeps:
+	dh_shlibdeps -l$(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/
+
+ifneq (,$(KVERS))
+	# Package: dpdk-modules-<kernel version>
+	dh_install -p dpdk-vhost-vfe-modules-$(KVERS) lib/modules
+endif
+
+override_dh_auto_test:
+
+override_dh_python3:
+	# dh_python only looks in /usr/share/package_name but dpdk-doc installs in
+	# /usr/share/dpdk, so pass /usr to catch all
+	#dh_python3 --shebang=/usr/bin/python3 /usr
+
+override_dh_strip:
