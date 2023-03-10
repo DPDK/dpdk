@@ -504,6 +504,7 @@ parse_test_file(struct cperf_options *opts,
 	if (access(opts->test_file, F_OK) != -1)
 		return 0;
 	RTE_LOG(ERR, USER1, "Test vector file doesn't exist\n");
+	free(opts->test_file);
 
 	return -1;
 }
