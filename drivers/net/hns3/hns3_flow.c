@@ -1479,8 +1479,22 @@ hns3_update_indir_table(struct hns3_hw *hw,
 }
 
 static int
-hns3_config_rss_filter(struct hns3_hw *hw,
-		       const struct hns3_rss_conf *conf, bool add)
+hns3_reset_rss_filter(struct hns3_hw *hw, const struct hns3_rss_conf *conf)
+{
+	int ret;
+
+	if (!conf->valid)
+		return 0;
+
+	ret = hns3_disable_rss(hw);
+	if (ret)
+		hns3_err(hw, "RSS disable failed(%d)", ret);
+
+	return ret;
+}
+
+static int
+hns3_config_rss_filter(struct hns3_hw *hw, const struct hns3_rss_conf *conf)
 {
 	uint64_t flow_types;
 	uint16_t num;
@@ -1496,19 +1510,6 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 		    (void *)(uintptr_t)conf->conf.key : NULL,
 		.queue = conf->conf.queue,
 	};
-
-	if (!add) {
-		if (!conf->valid)
-			return 0;
-
-		ret = hns3_disable_rss(hw);
-		if (ret) {
-			hns3_err(hw, "RSS disable failed(%d)", ret);
-			return ret;
-		}
-
-		return 0;
-	}
 
 	/* Set rx queues to use */
 	num = RTE_MIN(hw->data->nb_rx_queues, rss_flow_conf.queue_num);
@@ -1550,8 +1551,7 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 	rss_filter_ptr = TAILQ_FIRST(&hw->flow_rss_list);
 	while (rss_filter_ptr) {
 		TAILQ_REMOVE(&hw->flow_rss_list, rss_filter_ptr, entries);
-		ret = hns3_config_rss_filter(hw, &rss_filter_ptr->filter_info,
-					     false);
+		ret = hns3_reset_rss_filter(hw, &rss_filter_ptr->filter_info);
 		if (ret)
 			rss_rule_fail_cnt++;
 		else
@@ -1581,7 +1581,7 @@ hns3_restore_rss_filter(struct hns3_hw *hw)
 		if (!filter->filter_info.valid)
 			continue;
 
-		ret = hns3_config_rss_filter(hw, &filter->filter_info, true);
+		ret = hns3_config_rss_filter(hw, &filter->filter_info);
 		if (ret != 0) {
 			hns3_err(hw, "restore RSS filter failed, ret=%d", ret);
 			goto out;
@@ -1625,8 +1625,7 @@ hns3_rss_action_is_dup(struct hns3_hw *hw,
 }
 
 static int
-hns3_flow_parse_rss(struct rte_eth_dev *dev,
-		    const struct hns3_rss_conf *conf, bool add)
+hns3_flow_parse_rss(struct rte_eth_dev *dev, const struct hns3_rss_conf *conf)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
@@ -1636,7 +1635,7 @@ hns3_flow_parse_rss(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	return hns3_config_rss_filter(hw, conf, add);
+	return hns3_config_rss_filter(hw, conf);
 }
 
 static int
@@ -1723,7 +1722,7 @@ hns3_flow_create_rss_rule(struct rte_eth_dev *dev,
 		}
 	}
 
-	ret = hns3_flow_parse_rss(dev, new_conf, true);
+	ret = hns3_flow_parse_rss(dev, new_conf);
 	if (ret != 0) {
 		rte_free(rss_filter_ptr);
 		return ret;
@@ -1904,8 +1903,7 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		break;
 	case RTE_ETH_FILTER_HASH:
 		rss_filter_ptr = (struct hns3_rss_conf_ele *)flow->rule;
-		ret = hns3_config_rss_filter(hw, &rss_filter_ptr->filter_info,
-					     false);
+		ret = hns3_reset_rss_filter(hw, &rss_filter_ptr->filter_info);
 		if (ret)
 			return rte_flow_error_set(error, EIO,
 						  RTE_FLOW_ERROR_TYPE_HANDLE,
