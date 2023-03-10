@@ -628,9 +628,6 @@ hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf)
 		return ret;
 	}
 
-	/* Update supported flow types when set tuple success */
-	hw->rss_info.conf.types = rss_hf;
-
 	return 0;
 }
 
@@ -648,7 +645,7 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_conf *rss_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint64_t rss_hf_bk = hw->rss_info.conf.types;
+	uint64_t rss_hf_bk = hw->rss_info.rss_hf;
 	uint8_t key_len = rss_conf->rss_key_len;
 	uint64_t rss_hf = rss_conf->rss_hf;
 	uint8_t *key = rss_conf->rss_key;
@@ -673,6 +670,7 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 		/* Update the shadow RSS key with user specified */
 		memcpy(hw->rss_info.key, key, hw->rss_key_size);
 	}
+	hw->rss_info.rss_hf = rss_hf;
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
@@ -1030,6 +1028,7 @@ hns3_rss_set_default_args(struct hns3_hw *hw)
 	/* Default hash algorithm */
 	rss_cfg->hash_algo = HNS3_RSS_HASH_ALGO_TOEPLITZ;
 
+	hw->rss_info.rss_hf = 0;
 	memcpy(rss_cfg->key, hns3_hash_key,
 		RTE_MIN(sizeof(hns3_hash_key), hw->rss_key_size));
 
@@ -1067,15 +1066,22 @@ hns3_config_rss(struct hns3_adapter *hns)
 		return ret;
 
 	/*
-	 * When muli-queue RSS mode flag is not set or unsupported tuples are
+	 * When multi-queue RSS mode flag is not set or unsupported tuples are
 	 * set, disable all tuples.
 	 */
-	rss_hf = hw->rss_info.conf.types;
+	rss_hf = hw->rss_info.rss_hf;
 	if (!((uint32_t)mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) ||
 	    !(rss_hf & HNS3_ETH_RSS_SUPPORT))
 		rss_hf = 0;
 
-	return hns3_set_rss_tuple_by_rss_hf(hw, rss_hf);
+	ret = hns3_set_rss_tuple_by_rss_hf(hw, rss_hf);
+	if (ret != 0) {
+		hns3_err(hw, "set RSS tuples failed, ret = %d.", ret);
+		return ret;
+	}
+	hw->rss_info.rss_hf = rss_hf;
+
+	return 0;
 }
 
 /*
@@ -1093,5 +1099,5 @@ hns3_rss_uninit(struct hns3_adapter *hns)
 		return;
 
 	/* Disable RSS */
-	hw->rss_info.conf.types = 0;
+	hw->rss_info.rss_hf = 0;
 }
