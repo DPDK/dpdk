@@ -370,40 +370,34 @@ static int
 test_rawdev_enqdeq(void)
 {
 	int ret;
-	unsigned int count = 1;
 	uint16_t queue_id = 0;
-	struct rte_rawdev_buf buffers[1];
-	struct rte_rawdev_buf *deq_buffers = NULL;
+	struct rte_rawdev_buf buffer;
+	struct rte_rawdev_buf *buffers[1];
+	struct rte_rawdev_buf deq_buffer;
+	struct rte_rawdev_buf *deq_buffers[1];
 
-	buffers[0].buf_addr = malloc(strlen(TEST_DEV_NAME) + 3);
-	if (!buffers[0].buf_addr)
-		goto cleanup;
-	snprintf(buffers[0].buf_addr, strlen(TEST_DEV_NAME) + 2, "%s%d",
+	buffers[0] = &buffer;
+	buffer.buf_addr = malloc(strlen(TEST_DEV_NAME) + 3);
+	if (!buffer.buf_addr)
+		return TEST_FAILED;
+	snprintf(buffer.buf_addr, strlen(TEST_DEV_NAME) + 2, "%s%d",
 		 TEST_DEV_NAME, 0);
 
-	ret = rte_rawdev_enqueue_buffers(test_dev_id,
-					 (struct rte_rawdev_buf **)&buffers,
-					 count, &queue_id);
-	RTE_TEST_ASSERT_EQUAL((unsigned int)ret, count,
+	ret = rte_rawdev_enqueue_buffers(test_dev_id, buffers,
+					 RTE_DIM(buffers), &queue_id);
+	RTE_TEST_ASSERT_EQUAL((unsigned int)ret, RTE_DIM(buffers),
 			      "Unable to enqueue buffers");
 
-	deq_buffers = malloc(sizeof(struct rte_rawdev_buf) * count);
-	if (!deq_buffers)
-		goto cleanup;
-
-	ret = rte_rawdev_dequeue_buffers(test_dev_id,
-					(struct rte_rawdev_buf **)&deq_buffers,
-					count, &queue_id);
-	RTE_TEST_ASSERT_EQUAL((unsigned int)ret, count,
+	deq_buffers[0] = &deq_buffer;
+	ret = rte_rawdev_dequeue_buffers(test_dev_id, deq_buffers,
+					RTE_DIM(deq_buffers), &queue_id);
+	RTE_TEST_ASSERT_EQUAL((unsigned int)ret, RTE_DIM(buffers),
 			      "Unable to dequeue buffers");
+	RTE_TEST_ASSERT_EQUAL(deq_buffers[0]->buf_addr, buffers[0]->buf_addr,
+			      "Did not retrieve expected object");
 
-	free(deq_buffers);
-
+	free(buffer.buf_addr);
 	return TEST_SUCCESS;
-cleanup:
-	free(buffers[0].buf_addr);
-
-	return TEST_FAILED;
 }
 
 static void skeldev_test_run(int (*setup)(void),
