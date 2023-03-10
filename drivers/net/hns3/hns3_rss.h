@@ -41,7 +41,8 @@ struct hns3_rss_tuple_cfg {
 	uint64_t rss_tuple_fields;
 };
 
-#define HNS3_RSS_QUEUES_BUFFER_NUM	64 /* Same as the Max rx/tx queue num */
+/* Same as the Max queue num under TC */
+#define HNS3_RSS_QUEUES_BUFFER_NUM	512
 struct hns3_rss_conf {
 	/* RSS parameters :algorithm, flow_types,  key, queue */
 	struct rte_flow_action_rss conf;
