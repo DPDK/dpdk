@@ -52,6 +52,58 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
+static const uint32_t nfp_net_link_speed_nfp2rte[] = {
+	[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,
+	[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = RTE_ETH_SPEED_NUM_NONE,
+	[NFP_NET_CFG_STS_LINK_RATE_1G]          = RTE_ETH_SPEED_NUM_1G,
+	[NFP_NET_CFG_STS_LINK_RATE_10G]         = RTE_ETH_SPEED_NUM_10G,
+	[NFP_NET_CFG_STS_LINK_RATE_25G]         = RTE_ETH_SPEED_NUM_25G,
+	[NFP_NET_CFG_STS_LINK_RATE_40G]         = RTE_ETH_SPEED_NUM_40G,
+	[NFP_NET_CFG_STS_LINK_RATE_50G]         = RTE_ETH_SPEED_NUM_50G,
+	[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
+};
+
+static uint16_t
+nfp_net_link_speed_rte2nfp(uint16_t speed)
+{
+	uint16_t i;
+
+	for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
+		if (speed == nfp_net_link_speed_nfp2rte[i])
+			return i;
+	}
+
+	return NFP_NET_CFG_STS_LINK_RATE_UNKNOWN;
+}
+
+static void
+nfp_net_notify_port_speed(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+	struct nfp_eth_table *eth_table;
+	uint32_t nn_link_status;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	eth_table = hw->pf_dev->nfp_eth_table;
+
+	/**
+	 * Read the link status from NFP_NET_CFG_STS. If the link is down
+	 * then write the link speed NFP_NET_CFG_STS_LINK_RATE_UNKNOWN to
+	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
+	 */
+	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
+	if ((nn_link_status & NFP_NET_CFG_STS_LINK) == 0) {
+		nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE, NFP_NET_CFG_STS_LINK_RATE_UNKNOWN);
+		return;
+	}
+	/**
+	 * Link is up so read the link speed from the eth_table and write to
+	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
+	 */
+	nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE,
+		      nfp_net_link_speed_rte2nfp(eth_table->ports[hw->idx].speed));
+}
+
 static int
 __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 {
@@ -110,6 +162,9 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 
 	PMD_DRV_LOG(DEBUG, "nfp_net_reconfig: ctrl=%08x update=%08x",
 		    ctrl, update);
+
+	if (hw->pf_dev != NULL && hw->pf_dev->app_fw_id == NFP_APP_FW_CORE_NIC)
+		nfp_net_notify_port_speed(hw->eth_dev);
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
@@ -538,27 +593,15 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 {
 	struct nfp_net_hw *hw;
 	struct rte_eth_link link;
-	struct nfp_eth_table *nfp_eth_table;
-	uint32_t nn_link_status;
-	uint32_t i;
+	uint16_t nn_link_status;
 	int ret;
-
-	static const uint32_t ls_to_ethtool[] = {
-		[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = RTE_ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_1G]          = RTE_ETH_SPEED_NUM_1G,
-		[NFP_NET_CFG_STS_LINK_RATE_10G]         = RTE_ETH_SPEED_NUM_10G,
-		[NFP_NET_CFG_STS_LINK_RATE_25G]         = RTE_ETH_SPEED_NUM_25G,
-		[NFP_NET_CFG_STS_LINK_RATE_40G]         = RTE_ETH_SPEED_NUM_40G,
-		[NFP_NET_CFG_STS_LINK_RATE_50G]         = RTE_ETH_SPEED_NUM_50G,
-		[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
-	};
 
 	PMD_DRV_LOG(DEBUG, "Link update");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	nn_link_status = nn_cfg_readl(hw, NFP_NET_CFG_STS);
+	/* Read link status */
+	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
 
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
@@ -567,28 +610,17 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
-	if (hw->pf_dev != NULL) {
-		nfp_eth_table = hw->pf_dev->nfp_eth_table;
-		if (nfp_eth_table != NULL) {
-			link.link_speed = nfp_eth_table->ports[hw->idx].speed;
-			for (i = 0; i < RTE_DIM(ls_to_ethtool); i++) {
-				if (ls_to_ethtool[i] == link.link_speed)
-					break;
-			}
-			if (i == RTE_DIM(ls_to_ethtool))
-				link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-		} else {
-			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-		}
-	} else {
-		nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
-				NFP_NET_CFG_STS_LINK_RATE_MASK;
+	/**
+	 * Shift and mask nn_link_status so that it is effectively the value
+	 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
+	 */
+	nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
+			 NFP_NET_CFG_STS_LINK_RATE_MASK;
 
-		if (nn_link_status >= RTE_DIM(ls_to_ethtool))
-			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-		else
-			link.link_speed = ls_to_ethtool[nn_link_status];
-	}
+	if (nn_link_status >= RTE_DIM(nfp_net_link_speed_nfp2rte))
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	else
+		link.link_speed = nfp_net_link_speed_nfp2rte[nn_link_status];
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == 0) {
