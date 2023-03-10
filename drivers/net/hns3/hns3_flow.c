@@ -1438,30 +1438,40 @@ hns3_disable_rss(struct hns3_hw *hw)
 }
 
 static int
-hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function *func,
+hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function func,
 			 uint8_t *hash_algo)
 {
-	enum rte_eth_hash_function algo_func = *func;
-	switch (algo_func) {
-	case RTE_ETH_HASH_FUNCTION_DEFAULT:
-		/* Keep *hash_algo as what it used to be */
-		algo_func = hw->rss_info.conf.func;
-		break;
-	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
-		*hash_algo = HNS3_RSS_HASH_ALGO_TOEPLITZ;
-		break;
-	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
-		*hash_algo = HNS3_RSS_HASH_ALGO_SIMPLE;
-		break;
-	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
-		*hash_algo = HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP;
-		break;
-	default:
-		hns3_err(hw, "Invalid RSS algorithm configuration(%d)",
-			 algo_func);
-		return -EINVAL;
+	const uint8_t hash_func_map[] = {
+		[RTE_ETH_HASH_FUNCTION_DEFAULT] = HNS3_RSS_HASH_ALGO_TOEPLITZ,
+		[RTE_ETH_HASH_FUNCTION_TOEPLITZ] = HNS3_RSS_HASH_ALGO_TOEPLITZ,
+		[RTE_ETH_HASH_FUNCTION_SIMPLE_XOR] = HNS3_RSS_HASH_ALGO_SIMPLE,
+		[RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ] = HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP,
+	};
+	uint8_t key[HNS3_RSS_KEY_SIZE_MAX] = {0};
+	int ret;
+
+	if (func == RTE_ETH_HASH_FUNCTION_DEFAULT) {
+		ret = hns3_rss_get_algo_key(hw, hash_algo, key,
+					    hw->rss_key_size);
+		if (ret != 0) {
+			hns3_err(hw, "fail to get current RSS hash algorithm, ret = %d",
+				 ret);
+			return ret;
+		}
+
+		/*
+		 * During the phase of reset recovery, the hash algorithm
+		 * obtained from hardware may not be the one used(saved in
+		 * rte_flow_hash_algo) when this rule is delivered.
+		 */
+		if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) &&
+		    *hash_algo != hw->rss_info.rte_flow_hash_algo)
+			*hash_algo = hw->rss_info.rte_flow_hash_algo;
+
+		return 0;
 	}
-	*func = algo_func;
+
+	*hash_algo = hash_func_map[func];
 
 	return 0;
 }
@@ -1471,6 +1481,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 {
 	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
 	bool use_default_key = false;
+	uint8_t hash_algo;
 	int ret;
 
 	if (rss_config->key == NULL || rss_config->key_len != hw->rss_key_size) {
@@ -1480,18 +1491,17 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 		use_default_key = true;
 	}
 
-	ret = hns3_parse_rss_algorithm(hw, &rss_config->func,
-				       &hw->rss_info.hash_algo);
+	ret = hns3_parse_rss_algorithm(hw, rss_config->func, &hash_algo);
 	if (ret)
 		return ret;
 
-	ret = hns3_rss_set_algo_key(hw, hw->rss_info.hash_algo,
+	ret = hns3_rss_set_algo_key(hw, hash_algo,
 				    use_default_key ? rss_key : rss_config->key,
 				    hw->rss_key_size);
 	if (ret)
 		return ret;
 
-	hw->rss_info.conf.func = rss_config->func;
+	hw->rss_info.rte_flow_hash_algo = hash_algo;
 
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, rss_config->types);
 	if (ret)
