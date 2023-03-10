@@ -479,7 +479,7 @@ dpdk_test = executable('dpdk-test',
              driver_install_path),
         install: true)
 
-has_hugepage = run_command(py3, 'has_hugepage.py', check: true).stdout().strip() != '0'
+has_hugepage = run_command(py3, files('has_hugepage.py'), check: true).stdout().strip() != '0'
 message('hugepage availability: @0@'.format(has_hugepage))
 
 # some perf tests (eg: memcpy perf autotest)take very long

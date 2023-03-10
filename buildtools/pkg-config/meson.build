@@ -56,4 +56,4 @@ This is required for a number of static inline functions in the public headers.'
 
 # For static linking with dependencies as shared libraries,
 # the internal static libraries must be flagged explicitly.
-run_command(py3, 'set-static-linker-flags.py', check: true)
+run_command(py3, files('set-static-linker-flags.py'), check: true)
