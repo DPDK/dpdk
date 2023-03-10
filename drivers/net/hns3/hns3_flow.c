@@ -1652,9 +1652,10 @@ hns3_flow_parse_rss_types(struct hns3_hw *hw,
 
 	/* no pattern specified to set global RSS types. */
 	if (pattern_type == 0) {
-		if (rss_act->types & ~HNS3_ETH_RSS_SUPPORT)
-			hns3_warn(hw, "some types in the requested RSS types (0x%" PRIx64 ") aren't supported, they are ignored.",
-				  rss_act->types);
+		if (!hns3_check_rss_types_valid(hw, rss_act->types))
+			return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					NULL, "RSS types is invalid.");
 		rss_conf->hw_pctypes =
 				hns3_flow_get_all_hw_pctypes(rss_act->types);
 		return 0;
@@ -1929,15 +1930,14 @@ hns3_flow_set_rss_ptype_tuple(struct hns3_hw *hw,
 			uint64_t pctype = BIT_ULL(idx);
 
 			tuple_mask = hns3_flow_get_pctype_tuple_mask(pctype);
-			tuples = hns3_rss_calc_tuple_filed(hw,
-							rss_conf->conf.types);
+			tuples = hns3_rss_calc_tuple_filed(rss_conf->conf.types);
 			new_tuple_fields &= ~tuple_mask;
 			new_tuple_fields |= tuples;
 			hw_pctypes &= ~pctype;
 		}
 	} else {
 		new_tuple_fields =
-			hns3_rss_calc_tuple_filed(hw, rss_conf->conf.types);
+			hns3_rss_calc_tuple_filed(rss_conf->conf.types);
 	}
 
 	ret = hns3_set_rss_tuple_field(hw, new_tuple_fields);
