@@ -489,6 +489,7 @@ sfc_mae_clear_switch_port(uint16_t switch_domain_id,
 			  uint16_t switch_port_id)
 {
 	struct sfc_mae_switch_domain *domain;
+	struct sfc_mae_switch_port *port;
 
 	rte_spinlock_lock(&sfc_mae_switch.lock);
 
@@ -502,6 +503,17 @@ sfc_mae_clear_switch_port(uint16_t switch_domain_id,
 	    domain->mae_admin_port->id == switch_port_id) {
 		domain->mae_admin_port->data.indep.mae_admin = B_FALSE;
 		domain->mae_admin_port = NULL;
+	}
+
+	TAILQ_FOREACH(port, &domain->ports, switch_domain_ports) {
+		if (port->id == switch_port_id) {
+			/*
+			 * Invalidate the field to prevent wrong
+			 * look-ups from flow rule handling path.
+			 */
+			port->ethdev_port_id = RTE_MAX_ETHPORTS;
+			break;
+		}
 	}
 
 	rte_spinlock_unlock(&sfc_mae_switch.lock);

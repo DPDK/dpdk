@@ -836,6 +836,8 @@ sfc_repr_dev_close(struct rte_eth_dev *dev)
 
 	(void)sfc_repr_proxy_del_port(srs->pf_port_id, srs->repr_id);
 
+	sfc_mae_clear_switch_port(srs->switch_domain_id, srs->switch_port_id);
+
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
 	dev->dev_ops = NULL;
