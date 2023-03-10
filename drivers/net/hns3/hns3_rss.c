@@ -301,7 +301,8 @@ hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 		req->hash_config |= (hash_algo & HNS3_RSS_HASH_ALGO_MASK);
 		req->hash_config |= (idx << HNS3_RSS_HASH_KEY_OFFSET_B);
 
-		if (idx == max_bd_num - 1)
+		if (idx == max_bd_num - 1 &&
+		    (key_len % HNS3_RSS_HASH_KEY_NUM) != 0)
 			cur_key_size = key_len % HNS3_RSS_HASH_KEY_NUM;
 		else
 			cur_key_size = HNS3_RSS_HASH_KEY_NUM;
