@@ -1519,8 +1519,6 @@ hns3_update_indir_table(struct hns3_hw *hw,
 	uint32_t i;
 
 	/* Fill in redirection table */
-	memcpy(indir_tbl, hw->rss_info.rss_indirection_tbl,
-	       sizeof(hw->rss_info.rss_indirection_tbl));
 	for (i = 0, j = 0; i < hw->rss_ind_tbl_size; i++, j++) {
 		j %= num;
 		if (conf->queue[j] >= hw->alloc_rss_size) {
