@@ -1316,7 +1316,6 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_rss_conf *rss_conf = &hw->rss_info;
 	const struct rte_flow_action_rss *rss;
 	const struct rte_flow_action *act;
 	uint32_t act_index = 0;
@@ -1331,7 +1330,7 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 					  act, "no valid queues");
 	}
 
-	if (rss->queue_num > RTE_DIM(rss_conf->queue))
+	if (rss->queue_num > HNS3_RSS_QUEUES_BUFFER_NUM)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
 					  "queue number configured exceeds "
@@ -1407,7 +1406,7 @@ hns3_disable_rss(struct hns3_hw *hw)
 }
 
 static int
-hns3_parse_rss_algorithm(struct hns3_hw *hw, struct hns3_rss_conf *rss_conf,
+hns3_parse_rss_algorithm(struct hns3_hw *hw, struct hns3_flow_rss_conf *rss_conf,
 			 uint8_t *hash_algo)
 {
 	const uint8_t hash_func_map[] = {
@@ -1434,8 +1433,8 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, struct hns3_rss_conf *rss_conf,
 		 * rte_flow_hash_algo) when this rule is delivered.
 		 */
 		if (__atomic_load_n((uint16_t *)&hw->reset.resetting, __ATOMIC_RELAXED) &&
-		    *hash_algo != rss_conf->rte_flow_hash_algo)
-			*hash_algo = rss_conf->rte_flow_hash_algo;
+		    *hash_algo != rss_conf->hash_algo)
+			*hash_algo = rss_conf->hash_algo;
 
 		return 0;
 	}
@@ -1446,7 +1445,7 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, struct hns3_rss_conf *rss_conf,
 }
 
 static int
-hns3_hw_rss_hash_set(struct hns3_hw *hw, struct hns3_rss_conf *conf)
+hns3_hw_rss_hash_set(struct hns3_hw *hw, struct hns3_flow_rss_conf *conf)
 {
 	struct rte_flow_action_rss *rss_config = &conf->conf;
 	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
@@ -1471,7 +1470,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct hns3_rss_conf *conf)
 				    hw->rss_key_size);
 	if (ret)
 		return ret;
-	conf->rte_flow_hash_algo = hash_algo;
+	conf->hash_algo = hash_algo;
 
 	/* Filter the unsupported flow types */
 	flow_types = rss_config->types ?
@@ -1513,7 +1512,8 @@ hns3_update_indir_table(struct hns3_hw *hw,
 }
 
 static int
-hns3_reset_rss_filter(struct hns3_hw *hw, const struct hns3_rss_conf *conf)
+hns3_reset_rss_filter(struct hns3_hw *hw,
+		      const struct hns3_flow_rss_conf *conf)
 {
 	int ret;
 
@@ -1528,7 +1528,7 @@ hns3_reset_rss_filter(struct hns3_hw *hw, const struct hns3_rss_conf *conf)
 }
 
 static int
-hns3_config_rss_filter(struct hns3_hw *hw, struct hns3_rss_conf *conf)
+hns3_config_rss_filter(struct hns3_hw *hw, struct hns3_flow_rss_conf *conf)
 {
 	struct rte_flow_action_rss *rss_act;
 	uint16_t num;
@@ -1638,7 +1638,8 @@ hns3_rss_action_is_dup(struct hns3_hw *hw,
 }
 
 static int
-hns3_flow_parse_rss(struct rte_eth_dev *dev, struct hns3_rss_conf *conf)
+hns3_flow_parse_rss(struct rte_eth_dev *dev,
+		    struct hns3_flow_rss_conf *conf)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
@@ -1708,8 +1709,8 @@ hns3_flow_create_rss_rule(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	const struct rte_flow_action_rss *rss_act;
 	struct hns3_rss_conf_ele *rss_filter_ptr;
+	struct hns3_flow_rss_conf *new_conf;
 	struct hns3_rss_conf_ele *filter_ptr;
-	struct hns3_rss_conf *new_conf;
 	int ret;
 
 	rss_filter_ptr = rte_zmalloc("hns3 rss filter",
