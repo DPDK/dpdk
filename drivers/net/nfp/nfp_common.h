@@ -283,6 +283,11 @@ static inline void nn_writel(uint32_t val, volatile void *addr)
 	rte_write32(val, addr);
 }
 
+static inline uint16_t nn_readw(volatile const void *addr)
+{
+	return rte_read16(addr);
+}
+
 static inline void nn_writew(uint16_t val, volatile void *addr)
 {
 	rte_write16(val, addr);
@@ -319,6 +324,18 @@ static inline void
 nn_cfg_writeb(struct nfp_net_hw *hw, int off, uint8_t val)
 {
 	nn_writeb(val, hw->ctrl_bar + off);
+}
+
+static inline uint16_t
+nn_cfg_readw(struct nfp_net_hw *hw, int off)
+{
+	return rte_le_to_cpu_16(nn_readw(hw->ctrl_bar + off));
+}
+
+static inline void
+nn_cfg_writew(struct nfp_net_hw *hw, int off, uint16_t val)
+{
+	nn_writew(rte_cpu_to_le_16(val), hw->ctrl_bar + off);
 }
 
 static inline uint32_t
