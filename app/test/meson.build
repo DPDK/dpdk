@@ -315,7 +315,6 @@ driver_test_names = [
         'cryptodev_sw_zuc_autotest',
         'cryptodev_uadk_autotest',
         'dmadev_autotest',
-        'rawdev_autotest',
 ]
 
 dump_test_names = []
@@ -417,6 +416,10 @@ if dpdk_conf.has('RTE_NET_NULL')
     test_deps += 'net_null'
     test_sources += 'test_vdev.c'
     fast_tests += [['vdev_autotest', true, true]]
+endif
+if dpdk_conf.has('RTE_RAW_SKELETON')
+    test_deps += 'raw_skeleton'
+    fast_tests += [['rawdev_autotest', true, true]]
 endif
 
 if dpdk_conf.has('RTE_HAS_LIBPCAP')
