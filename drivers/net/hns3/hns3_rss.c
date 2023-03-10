@@ -1027,7 +1027,7 @@ hns3_set_default_rss_args(struct hns3_hw *hw)
 	int i;
 
 	/* Default hash algorithm */
-	rss_cfg->conf.func = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+	rss_cfg->hash_algo = HNS3_RSS_HASH_ALGO_TOEPLITZ;
 
 	memcpy(rss_cfg->key, hns3_hash_key,
 		RTE_MIN(sizeof(hns3_hash_key), hw->rss_key_size));
@@ -1050,18 +1050,6 @@ hns3_config_rss(struct hns3_adapter *hns)
 	int ret;
 
 	enum rte_eth_rx_mq_mode mq_mode = hw->data->dev_conf.rxmode.mq_mode;
-
-	switch (hw->rss_info.conf.func) {
-	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
-		hw->rss_info.hash_algo = HNS3_RSS_HASH_ALGO_SIMPLE;
-		break;
-	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
-		hw->rss_info.hash_algo = HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP;
-		break;
-	default:
-		hw->rss_info.hash_algo = HNS3_RSS_HASH_ALGO_TOEPLITZ;
-		break;
-	}
 
 	ret = hns3_set_rss_algo_key(hw, rss_cfg->hash_algo,
 				    hash_key, hw->rss_key_size);
