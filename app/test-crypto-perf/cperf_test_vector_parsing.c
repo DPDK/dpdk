@@ -30,6 +30,7 @@ free_test_vector(struct cperf_test_vector *vector, struct cperf_options *opts)
 		rte_free(vector->cipher_key.data);
 		rte_free(vector->auth_key.data);
 		rte_free(vector->ciphertext.data);
+		free(opts->test_file);
 	}
 
 	rte_free(vector);
