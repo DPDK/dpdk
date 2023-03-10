@@ -321,6 +321,48 @@ hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 	return 0;
 }
 
+int
+hns3_rss_get_algo_key(struct hns3_hw *hw,  uint8_t *hash_algo,
+		      uint8_t *key, uint8_t key_len)
+{
+	struct hns3_rss_generic_config_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint16_t cur_key_size;
+	uint16_t max_bd_num;
+	uint8_t *cur_key;
+	uint16_t idx;
+	int ret;
+
+	req = (struct hns3_rss_generic_config_cmd *)desc.data;
+	max_bd_num = DIV_ROUND_UP(key_len, HNS3_RSS_HASH_KEY_NUM);
+	for (idx = 0; idx < max_bd_num; idx++) {
+		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_GENERIC_CONFIG,
+					  true);
+
+		req->hash_config |= (idx << HNS3_RSS_HASH_KEY_OFFSET_B);
+		ret = hns3_cmd_send(hw, &desc, 1);
+		if (ret) {
+			hns3_err(hw, "fail to obtain RSS algo and key from firmware, ret = %d",
+				 ret);
+			return ret;
+		}
+
+		if (idx == 0)
+			*hash_algo = req->hash_config & HNS3_RSS_HASH_ALGO_MASK;
+
+		if (idx == max_bd_num - 1 &&
+		    (key_len % HNS3_RSS_HASH_KEY_NUM) != 0)
+			cur_key_size = key_len % HNS3_RSS_HASH_KEY_NUM;
+		else
+			cur_key_size = HNS3_RSS_HASH_KEY_NUM;
+
+		cur_key = key + idx * HNS3_RSS_HASH_KEY_NUM;
+		memcpy(cur_key, req->hash_key, cur_key_size);
+	}
+
+	return 0;
+}
+
 /*
  * rss_indirection_table command function, opcode:0x0D07.
  * Used to configure the indirection table of rss.
@@ -550,13 +592,22 @@ hns3_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
+	uint8_t hash_algo;
+	int ret;
 
 	rte_spinlock_lock(&hw->lock);
 	rss_conf->rss_hf = rss_cfg->conf.types;
 
 	/* Get the RSS Key required by the user */
 	if (rss_conf->rss_key && rss_conf->rss_key_len >= hw->rss_key_size) {
-		memcpy(rss_conf->rss_key, rss_cfg->key, hw->rss_key_size);
+		ret = hns3_rss_get_algo_key(hw, &hash_algo, rss_conf->rss_key,
+					    hw->rss_key_size);
+		if (ret != 0) {
+			rte_spinlock_unlock(&hw->lock);
+			hns3_err(hw, "obtain hash algo and key failed, ret = %d",
+				 ret);
+			return ret;
+		}
 		rss_conf->rss_key_len = hw->rss_key_size;
 	}
 	rte_spinlock_unlock(&hw->lock);
