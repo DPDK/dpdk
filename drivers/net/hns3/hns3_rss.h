@@ -45,6 +45,7 @@ struct hns3_rss_tuple_cfg {
 struct hns3_rss_conf {
 	/* RSS parameters :algorithm, flow_types,  key, queue */
 	struct rte_flow_action_rss conf;
+	uint64_t rss_hf;
 	uint8_t hash_algo; /* hash function type defined by hardware */
 	uint8_t rte_flow_hash_algo;
 	uint8_t key[HNS3_RSS_KEY_SIZE_MAX];  /* Hash key */

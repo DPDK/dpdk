@@ -1401,6 +1401,7 @@ hns3_disable_rss(struct hns3_hw *hw)
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, 0);
 	if (ret)
 		return ret;
+	hw->rss_info.rss_hf = 0;
 
 	return 0;
 }
@@ -1548,7 +1549,7 @@ hns3_config_rss_filter(struct hns3_hw *hw,
 	/* Filter the unsupported flow types */
 	flow_types = conf->conf.types ?
 		     rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT :
-		     hw->rss_info.conf.types;
+		     hw->rss_info.rss_hf;
 	if (flow_types != rss_flow_conf.types)
 		hns3_warn(hw, "modified RSS types based on hardware support,"
 			  " requested:0x%" PRIx64 " configured:0x%" PRIx64,
