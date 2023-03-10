@@ -481,6 +481,54 @@ hns3_set_rss_indir_table(struct hns3_hw *hw, uint16_t *indir, uint16_t size)
 	return 0;
 }
 
+static int
+hns3_get_rss_indir_table(struct hns3_hw *hw, uint16_t *indir, uint16_t size)
+{
+	struct hns3_rss_indirection_table_cmd *req;
+	uint16_t max_bd_num, cfg_tbl_size;
+	uint8_t qid_msb_off, qid_msb_idx;
+	struct hns3_cmd_desc desc;
+	uint16_t q_id, q_hi, q_lo;
+	uint8_t rss_result_h;
+	uint16_t i, j;
+	int ret;
+
+	req = (struct hns3_rss_indirection_table_cmd *)desc.data;
+	max_bd_num = DIV_ROUND_UP(size, HNS3_RSS_CFG_TBL_SIZE);
+	for (i = 0; i < max_bd_num; i++) {
+		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_INDIR_TABLE,
+					  true);
+		req->start_table_index =
+				rte_cpu_to_le_16(i * HNS3_RSS_CFG_TBL_SIZE);
+		ret = hns3_cmd_send(hw, &desc, 1);
+		if (ret) {
+			hns3_err(hw, "fail to get RSS indirection table from firmware, ret = %d",
+				 ret);
+			return ret;
+		}
+
+		if (i == max_bd_num - 1 && (size % HNS3_RSS_CFG_TBL_SIZE) != 0)
+			cfg_tbl_size = size % HNS3_RSS_CFG_TBL_SIZE;
+		else
+			cfg_tbl_size = HNS3_RSS_CFG_TBL_SIZE;
+
+		for (j = 0; j < cfg_tbl_size; j++) {
+			qid_msb_idx =
+				j * HNS3_RSS_CFG_TBL_BW_H / HNS3_BITS_PER_BYTE;
+			rss_result_h = req->rss_result_h[qid_msb_idx];
+			qid_msb_off =
+				j * HNS3_RSS_CFG_TBL_BW_H % HNS3_BITS_PER_BYTE;
+			q_hi = (rss_result_h >> qid_msb_off) &
+						HNS3_RSS_CFG_TBL_BW_H_M;
+			q_lo = req->rss_result_l[j];
+			q_id = (q_hi << HNS3_RSS_CFG_TBL_BW_L) | q_lo;
+			indir[i * HNS3_RSS_CFG_TBL_SIZE + j] = q_id;
+		}
+	}
+
+	return 0;
+}
+
 int
 hns3_rss_reset_indir_table(struct hns3_hw *hw)
 {
@@ -842,10 +890,11 @@ hns3_dev_rss_reta_query(struct rte_eth_dev *dev,
 			uint16_t reta_size)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
+	uint16_t reta_table[HNS3_RSS_IND_TBL_SIZE_MAX];
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint16_t idx, shift;
 	uint16_t i;
+	int ret;
 
 	if (reta_size != hw->rss_ind_tbl_size) {
 		hns3_err(hw, "The size of hash lookup table configured (%u)"
@@ -854,14 +903,22 @@ hns3_dev_rss_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 	rte_spinlock_lock(&hw->lock);
+	ret = hns3_get_rss_indir_table(hw, reta_table, reta_size);
+	if (ret != 0) {
+		rte_spinlock_unlock(&hw->lock);
+		hns3_err(hw, "query RSS redirection table failed, ret = %d.",
+			 ret);
+		return ret;
+	}
+	rte_spinlock_unlock(&hw->lock);
+
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
-			reta_conf[idx].reta[shift] =
-						rss_cfg->rss_indirection_tbl[i];
+			reta_conf[idx].reta[shift] = reta_table[i];
 	}
-	rte_spinlock_unlock(&hw->lock);
+
 	return 0;
 }
 
