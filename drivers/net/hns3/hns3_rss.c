@@ -329,6 +329,7 @@ int
 hns3_set_rss_indir_table(struct hns3_hw *hw, uint16_t *indir, uint16_t size)
 {
 	struct hns3_rss_indirection_table_cmd *req;
+	uint16_t max_bd_num, cfg_tbl_size;
 	struct hns3_cmd_desc desc;
 	uint8_t qid_msb_off;
 	uint8_t qid_msb_val;
@@ -337,14 +338,20 @@ hns3_set_rss_indir_table(struct hns3_hw *hw, uint16_t *indir, uint16_t size)
 	int ret;
 
 	req = (struct hns3_rss_indirection_table_cmd *)desc.data;
-
-	for (i = 0; i < size / HNS3_RSS_CFG_TBL_SIZE; i++) {
+	max_bd_num = DIV_ROUND_UP(size, HNS3_RSS_CFG_TBL_SIZE);
+	for (i = 0; i < max_bd_num; i++) {
 		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_INDIR_TABLE,
 					  false);
 		req->start_table_index =
 				rte_cpu_to_le_16(i * HNS3_RSS_CFG_TBL_SIZE);
 		req->rss_set_bitmap = rte_cpu_to_le_16(HNS3_RSS_SET_BITMAP_MSK);
-		for (j = 0; j < HNS3_RSS_CFG_TBL_SIZE; j++) {
+
+		if (i == max_bd_num - 1 && (size % HNS3_RSS_CFG_TBL_SIZE) != 0)
+			cfg_tbl_size = size % HNS3_RSS_CFG_TBL_SIZE;
+		else
+			cfg_tbl_size = HNS3_RSS_CFG_TBL_SIZE;
+
+		for (j = 0; j < cfg_tbl_size; j++) {
 			q_id = indir[i * HNS3_RSS_CFG_TBL_SIZE + j];
 			req->rss_result_l[j] = q_id & 0xff;
 
