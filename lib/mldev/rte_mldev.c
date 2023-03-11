@@ -186,7 +186,6 @@ rte_ml_dev_init(size_t dev_max)
 	}
 
 	ml_dev_globals.max_devs = dev_max;
-	ml_dev_globals.devs = ml_dev_globals.devs;
 
 	return 0;
 }
