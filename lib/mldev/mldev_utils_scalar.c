@@ -336,10 +336,7 @@ __float32_to_float16_scalar_rtn(float x)
 	switch (f32_e) {
 	case (0): /* float32: zero or subnormal number */
 		f16_e = 0;
-		if (f32_m == 0) /* zero */
-			f16_m = 0;
-		else /* subnormal number, convert to zero */
-			f16_m = 0;
+		f16_m = 0; /* convert to zero */
 		break;
 	case (FP32_MASK_E >> FP32_LSB_E): /* float32: infinity or nan */
 		f16_e = FP16_MASK_E >> FP16_LSB_E;
