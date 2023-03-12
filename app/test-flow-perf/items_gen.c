@@ -56,7 +56,7 @@ add_ipv4(struct rte_flow_item *items,
 	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_ipv4 ipv4_masks[RTE_MAX_LCORE];
 	uint8_t ti = para.core_idx;
 
-	ipv4_specs[ti].hdr.src_addr = RTE_BE32(para.src_ip);
+	ipv4_specs[ti].hdr.src_addr = rte_cpu_to_be_32(para.src_ip);
 	ipv4_masks[ti].hdr.src_addr = RTE_BE32(0xffffffff);
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_IPV4;

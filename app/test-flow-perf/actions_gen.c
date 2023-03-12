@@ -265,7 +265,7 @@ add_set_src_ipv4(struct rte_flow_action *actions,
 		ip = 1;
 
 	/* IPv4 value to be set is random each time */
-	set_ipv4[para.core_idx].ipv4_addr = RTE_BE32(ip + 1);
+	set_ipv4[para.core_idx].ipv4_addr = rte_cpu_to_be_32(ip + 1);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC;
 	actions[actions_counter].conf = &set_ipv4[para.core_idx];
@@ -284,7 +284,7 @@ add_set_dst_ipv4(struct rte_flow_action *actions,
 		ip = 1;
 
 	/* IPv4 value to be set is random each time */
-	set_ipv4[para.core_idx].ipv4_addr = RTE_BE32(ip + 1);
+	set_ipv4[para.core_idx].ipv4_addr = rte_cpu_to_be_32(ip + 1);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_IPV4_DST;
 	actions[actions_counter].conf = &set_ipv4[para.core_idx];
@@ -351,7 +351,7 @@ add_set_src_tp(struct rte_flow_action *actions,
 	/* TP src port is random each time */
 	tp = tp % 0xffff;
 
-	set_tp[para.core_idx].port = RTE_BE16(tp & 0xffff);
+	set_tp[para.core_idx].port = rte_cpu_to_be_16(tp & 0xffff);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_TP_SRC;
 	actions[actions_counter].conf = &set_tp[para.core_idx];
@@ -373,7 +373,7 @@ add_set_dst_tp(struct rte_flow_action *actions,
 	if (tp > 0xffff)
 		tp = tp >> 16;
 
-	set_tp[para.core_idx].port = RTE_BE16(tp & 0xffff);
+	set_tp[para.core_idx].port = rte_cpu_to_be_16(tp & 0xffff);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_TP_DST;
 	actions[actions_counter].conf = &set_tp[para.core_idx];
@@ -391,7 +391,7 @@ add_inc_tcp_ack(struct rte_flow_action *actions,
 	if (!para.unique_data)
 		ack_value = 1;
 
-	value[para.core_idx] = RTE_BE32(ack_value);
+	value[para.core_idx] = rte_cpu_to_be_32(ack_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_INC_TCP_ACK;
 	actions[actions_counter].conf = &value[para.core_idx];
@@ -409,7 +409,7 @@ add_dec_tcp_ack(struct rte_flow_action *actions,
 	if (!para.unique_data)
 		ack_value = 1;
 
-	value[para.core_idx] = RTE_BE32(ack_value);
+	value[para.core_idx] = rte_cpu_to_be_32(ack_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK;
 	actions[actions_counter].conf = &value[para.core_idx];
@@ -427,7 +427,7 @@ add_inc_tcp_seq(struct rte_flow_action *actions,
 	if (!para.unique_data)
 		seq_value = 1;
 
-	value[para.core_idx] = RTE_BE32(seq_value);
+	value[para.core_idx] = rte_cpu_to_be_32(seq_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ;
 	actions[actions_counter].conf = &value[para.core_idx];
@@ -445,7 +445,7 @@ add_dec_tcp_seq(struct rte_flow_action *actions,
 	if (!para.unique_data)
 		seq_value = 1;
 
-	value[para.core_idx] = RTE_BE32(seq_value);
+	value[para.core_idx] = rte_cpu_to_be_32(seq_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ;
 	actions[actions_counter].conf = &value[para.core_idx];
@@ -563,7 +563,7 @@ add_vlan_header(uint8_t **header, uint64_t data,
 	vlan_value = VLAN_VALUE;
 
 	memset(&vlan_hdr, 0, sizeof(struct rte_vlan_hdr));
-	vlan_hdr.vlan_tci = RTE_BE16(vlan_value);
+	vlan_hdr.vlan_tci = rte_cpu_to_be_16(vlan_value);
 
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4))
 		vlan_hdr.eth_proto = RTE_BE16(RTE_ETHER_TYPE_IPV4);
@@ -589,7 +589,7 @@ add_ipv4_header(uint8_t **header, uint64_t data,
 
 	memset(&ipv4_hdr, 0, sizeof(struct rte_ipv4_hdr));
 	ipv4_hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
-	ipv4_hdr.dst_addr = RTE_BE32(ip_dst);
+	ipv4_hdr.dst_addr = rte_cpu_to_be_32(ip_dst);
 	ipv4_hdr.version_ihl = RTE_IPV4_VHL_DEF;
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP))
 		ipv4_hdr.next_proto_id = RTE_IP_TYPE_UDP;
@@ -655,7 +655,7 @@ add_vxlan_header(uint8_t **header, uint64_t data,
 
 	memset(&vxlan_hdr, 0, sizeof(struct rte_vxlan_hdr));
 
-	vxlan_hdr.vx_vni = (RTE_BE32(vni_value)) >> 16;
+	vxlan_hdr.vx_vni = (rte_cpu_to_be_32(vni_value)) >> 16;
 	vxlan_hdr.vx_flags = 0x8;
 
 	memcpy(*header, &vxlan_hdr, sizeof(vxlan_hdr));
@@ -678,7 +678,7 @@ add_vxlan_gpe_header(uint8_t **header, uint64_t data,
 
 	memset(&vxlan_gpe_hdr, 0, sizeof(struct rte_vxlan_gpe_hdr));
 
-	vxlan_gpe_hdr.vx_vni = (RTE_BE32(vni_value)) >> 16;
+	vxlan_gpe_hdr.vx_vni = (rte_cpu_to_be_32(vni_value)) >> 16;
 	vxlan_gpe_hdr.vx_flags = 0x0c;
 
 	memcpy(*header, &vxlan_gpe_hdr, sizeof(vxlan_gpe_hdr));
@@ -742,7 +742,7 @@ add_gtp_header(uint8_t **header, uint64_t data,
 
 	memset(&gtp_hdr, 0, sizeof(struct rte_flow_item_gtp));
 
-	gtp_hdr.teid = RTE_BE32(teid_value);
+	gtp_hdr.teid = rte_cpu_to_be_32(teid_value);
 	gtp_hdr.msg_type = 255;
 
 	memcpy(*header, &gtp_hdr, sizeof(gtp_hdr));
@@ -867,7 +867,7 @@ add_vxlan_encap(struct rte_flow_action *actions,
 	items[0].type = RTE_FLOW_ITEM_TYPE_ETH;
 
 	item_ipv4.hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
-	item_ipv4.hdr.dst_addr = RTE_BE32(ip_dst);
+	item_ipv4.hdr.dst_addr = rte_cpu_to_be_32(ip_dst);
 	item_ipv4.hdr.version_ihl = RTE_IPV4_VHL_DEF;
 	items[1].spec = &item_ipv4;
 	items[1].mask = &item_ipv4;
