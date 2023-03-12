@@ -1031,6 +1031,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 *    - RX port identifier,
 		 *    - hardware offload data, if any:
 		 *      - IP checksum flag,
+		 *      - VLAN TCI, if any,
 		 *      - error flags.
 		 */
 		first_seg->port = rxq->port_id;
@@ -1040,7 +1041,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					rx_desc_error_to_pkt_flags(rxd.errors);
 
 		/* Only valid if PKT_RX_VLAN set in pkt_flags */
-		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
+		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.special);
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +
