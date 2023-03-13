@@ -811,6 +811,7 @@ struct bnxt {
 	uint16_t		max_l2_ctx;
 	uint16_t		max_rx_em_flows;
 	uint16_t		max_vnics;
+#define BNXT_MAX_VNICS_COS_CLASSIFY	8
 	uint16_t		max_stat_ctx;
 	uint16_t		max_tpa_v2;
 	uint16_t		first_vf_id;

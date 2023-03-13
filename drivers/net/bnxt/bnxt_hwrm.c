@@ -902,7 +902,10 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 	if (!BNXT_CHIP_P5(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
-	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
+		bp->max_vnics = rte_le_to_cpu_16(BNXT_MAX_VNICS_COS_CLASSIFY);
+	else
+		bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	PMD_DRV_LOG(DEBUG, "Max l2_cntxts is %d vnics is %d\n",
 		    bp->max_l2_ctx, bp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
@@ -1211,7 +1214,10 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 	if (!BNXT_CHIP_P5(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
-	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
+		bp->max_vnics = rte_le_to_cpu_16(BNXT_MAX_VNICS_COS_CLASSIFY);
+	else
+		bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 	bp->max_nq_rings = rte_le_to_cpu_16(resp->max_msix);
 	bp->vf_resv_strategy = rte_le_to_cpu_16(resp->vf_reservation_strategy);
