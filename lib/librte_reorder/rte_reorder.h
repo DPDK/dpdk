@@ -81,6 +81,7 @@ rte_reorder_create(const char *name, unsigned socket_id, unsigned int size);
  *   The initialized reorder buffer instance, or NULL on error
  *   On error case, rte_errno will be set appropriately:
  *    - EINVAL - invalid parameters
+ *    - ENOMEM - not enough memory to register dynamic field
  */
 struct rte_reorder_buffer *
 rte_reorder_init(struct rte_reorder_buffer *b, unsigned int bufsize,
