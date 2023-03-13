@@ -101,13 +101,11 @@ static inline int
 verify_crypto_capabilities(const struct rte_cryptodev_capabilities *capabilities,
 		struct rte_crypto_sym_xform *crypto_xform)
 {
-	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
-		return verify_crypto_xform(capabilities, crypto_xform);
-	else if (crypto_xform->next != NULL)
+	if (crypto_xform->next != NULL)
 		return (verify_crypto_xform(capabilities, crypto_xform) ||
 		    verify_crypto_xform(capabilities, crypto_xform->next));
 	else
-		return -ENOTSUP;
+		return verify_crypto_xform(capabilities, crypto_xform);
 }
 
 static inline int
