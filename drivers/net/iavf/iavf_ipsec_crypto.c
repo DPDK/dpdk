@@ -98,13 +98,13 @@ iavf_ipsec_crypto_session_size_get(void *device __rte_unused)
 }
 
 static const struct rte_cryptodev_symmetric_capability *
-get_capability(struct iavf_security_ctx *iavf_sctx,
+get_capability(struct iavf_security_ctx *iavf_sctx __rte_unused,
 	uint32_t algo, uint32_t type)
 {
 	const struct rte_cryptodev_capabilities *capability;
 	int i = 0;
 
-	capability = &iavf_sctx->crypto_capabilities[i];
+	capability = &iavf_crypto_capabilities[i];
 
 	while (capability->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
 		if (capability->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
@@ -1229,7 +1229,8 @@ enum rte_crypto_auth_algorithm auth_maptbl[] = {
 
 static void
 update_auth_capabilities(struct rte_cryptodev_capabilities *scap,
-		struct virtchnl_algo_cap *acap)
+		struct virtchnl_algo_cap *acap,
+		const struct rte_cryptodev_symmetric_capability *symcap)
 {
 	struct rte_cryptodev_symmetric_capability *capability = &scap->sym;
 
@@ -1247,6 +1248,17 @@ update_auth_capabilities(struct rte_cryptodev_capabilities *scap,
 	capability->auth.digest_size.min = acap->min_digest_size;
 	capability->auth.digest_size.max = acap->max_digest_size;
 	capability->auth.digest_size.increment = acap->inc_digest_size;
+
+	if (symcap) {
+		capability->auth.iv_size.min = symcap->auth.iv_size.min;
+		capability->auth.iv_size.max = symcap->auth.iv_size.max;
+		capability->auth.iv_size.increment =
+				symcap->auth.iv_size.increment;
+	} else {
+		capability->auth.iv_size.min = 0;
+		capability->auth.iv_size.max = 65535;
+		capability->auth.iv_size.increment = 1;
+	}
 }
 
 enum rte_crypto_cipher_algorithm cipher_maptbl[] = {
@@ -1259,7 +1271,8 @@ enum rte_crypto_cipher_algorithm cipher_maptbl[] = {
 
 static void
 update_cipher_capabilities(struct rte_cryptodev_capabilities *scap,
-	struct virtchnl_algo_cap *acap)
+	struct virtchnl_algo_cap *acap,
+	const struct rte_cryptodev_symmetric_capability *symcap)
 {
 	struct rte_cryptodev_symmetric_capability *capability = &scap->sym;
 
@@ -1275,9 +1288,17 @@ update_cipher_capabilities(struct rte_cryptodev_capabilities *scap,
 	capability->cipher.key_size.max = acap->max_key_size;
 	capability->cipher.key_size.increment = acap->inc_key_size;
 
-	capability->cipher.iv_size.min = acap->min_iv_size;
-	capability->cipher.iv_size.max = acap->max_iv_size;
-	capability->cipher.iv_size.increment = acap->inc_iv_size;
+	if (symcap) {
+		capability->cipher.iv_size.min = symcap->cipher.iv_size.min;
+		capability->cipher.iv_size.max = symcap->cipher.iv_size.max;
+		capability->cipher.iv_size.increment =
+				symcap->cipher.iv_size.increment;
+
+	} else {
+		capability->cipher.iv_size.min = 0;
+		capability->cipher.iv_size.max = 65535;
+		capability->cipher.iv_size.increment = 1;
+	}
 }
 
 enum rte_crypto_aead_algorithm aead_maptbl[] = {
@@ -1289,7 +1310,8 @@ enum rte_crypto_aead_algorithm aead_maptbl[] = {
 
 static void
 update_aead_capabilities(struct rte_cryptodev_capabilities *scap,
-	struct virtchnl_algo_cap *acap)
+	struct virtchnl_algo_cap *acap,
+	const struct rte_cryptodev_symmetric_capability *symcap __rte_unused)
 {
 	struct rte_cryptodev_symmetric_capability *capability = &scap->sym;
 
@@ -1328,6 +1350,7 @@ iavf_ipsec_crypto_set_security_capabililites(struct iavf_security_ctx
 		*iavf_sctx, struct virtchnl_ipsec_cap *vch_cap)
 {
 	struct rte_cryptodev_capabilities *capabilities;
+	const struct rte_cryptodev_symmetric_capability *symcap;
 	int i, j, number_of_capabilities = 0, ci = 0;
 
 	/* Count the total number of crypto algorithms supported */
@@ -1354,16 +1377,25 @@ iavf_ipsec_crypto_set_security_capabililites(struct iavf_security_ctx
 		for (j = 0; j < vch_cap->cap[i].algo_cap_num; j++, ci++) {
 			switch (vch_cap->cap[i].crypto_type) {
 			case VIRTCHNL_AUTH:
+				symcap = get_auth_capability(iavf_sctx,
+					capabilities[ci].sym.auth.algo);
 				update_auth_capabilities(&capabilities[ci],
-					&vch_cap->cap[i].algo_cap_list[j]);
+					&vch_cap->cap[i].algo_cap_list[j],
+					symcap);
 				break;
 			case VIRTCHNL_CIPHER:
+				symcap = get_cipher_capability(iavf_sctx,
+					capabilities[ci].sym.cipher.algo);
 				update_cipher_capabilities(&capabilities[ci],
-					&vch_cap->cap[i].algo_cap_list[j]);
+					&vch_cap->cap[i].algo_cap_list[j],
+					symcap);
 				break;
 			case VIRTCHNL_AEAD:
+				symcap = get_aead_capability(iavf_sctx,
+					capabilities[ci].sym.aead.algo);
 				update_aead_capabilities(&capabilities[ci],
-					&vch_cap->cap[i].algo_cap_list[j]);
+					&vch_cap->cap[i].algo_cap_list[j],
+					symcap);
 				break;
 			default:
 				capabilities[ci].op =
