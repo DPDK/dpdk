@@ -235,6 +235,7 @@ enum roc_npc_sec_action_alg {
 	ROC_NPC_SEC_ACTION_ALG1,
 	ROC_NPC_SEC_ACTION_ALG2,
 	ROC_NPC_SEC_ACTION_ALG3,
+	ROC_NPC_SEC_ACTION_ALG4,
 };
 
 struct roc_npc_sec_action {

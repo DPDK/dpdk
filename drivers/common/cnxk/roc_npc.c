@@ -439,6 +439,10 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 		break;
 	case ROC_NPC_SEC_ACTION_ALG3:
 		vtag_act.act.vtag1_valid = false;
+		vtag_act.act.vtag1_lid = ROC_NPC_SEC_ACTION_ALG3;
+		break;
+	case ROC_NPC_SEC_ACTION_ALG4:
+		vtag_act.act.vtag1_valid = false;
 		vtag_act.act.vtag1_lid = 0;
 		mbox = inl_dev->dev.mbox;
 		req = mbox_alloc_msg_nix_spi_to_sa_add(mbox);
