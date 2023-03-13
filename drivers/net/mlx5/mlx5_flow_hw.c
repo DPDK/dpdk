@@ -7359,7 +7359,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	}
 	/* Initialize meter library*/
 	if (port_attr->nb_meters || (host_priv && host_priv->hws_mpool))
-		if (mlx5_flow_meter_init(dev, port_attr->nb_meters, 1, 1, nb_q_updated))
+		if (mlx5_flow_meter_init(dev, port_attr->nb_meters, 0, 0, nb_q_updated))
 			goto err;
 	/* Add global actions. */
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
@@ -9752,7 +9752,7 @@ mlx5_flow_meter_init(struct rte_eth_dev *dev,
 		.type = "mlx5_hw_mtr_mark_action",
 	};
 
-	if (!nb_meters || !nb_meter_profiles || !nb_meter_policies) {
+	if (!nb_meters) {
 		ret = ENOTSUP;
 		rte_flow_error_set(&error, ENOMEM,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -9853,33 +9853,37 @@ mlx5_flow_meter_init(struct rte_eth_dev *dev,
 		cfg.per_core_cache = MLX5_HW_IPOOL_CACHE_MIN;
 	}
 	priv->hws_mpool->idx_pool = mlx5_ipool_create(&cfg);
-	priv->mtr_config.nb_meter_profiles = nb_meter_profiles;
-	priv->mtr_profile_arr =
-		mlx5_malloc(MLX5_MEM_ZERO,
-			    sizeof(struct mlx5_flow_meter_profile) *
-			    nb_meter_profiles,
-			    RTE_CACHE_LINE_SIZE,
-			    SOCKET_ID_ANY);
-	if (!priv->mtr_profile_arr) {
-		ret = ENOMEM;
-		rte_flow_error_set(&error, ENOMEM,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL, "Meter profile allocation failed.");
-		goto err;
+	if (nb_meter_profiles) {
+		priv->mtr_config.nb_meter_profiles = nb_meter_profiles;
+		priv->mtr_profile_arr =
+			mlx5_malloc(MLX5_MEM_ZERO,
+				    sizeof(struct mlx5_flow_meter_profile) *
+				    nb_meter_profiles,
+				    RTE_CACHE_LINE_SIZE,
+				    SOCKET_ID_ANY);
+		if (!priv->mtr_profile_arr) {
+			ret = ENOMEM;
+			rte_flow_error_set(&error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "Meter profile allocation failed.");
+			goto err;
+		}
 	}
-	priv->mtr_config.nb_meter_policies = nb_meter_policies;
-	priv->mtr_policy_arr =
-		mlx5_malloc(MLX5_MEM_ZERO,
-			    sizeof(struct mlx5_flow_meter_policy) *
-			    nb_meter_policies,
-			    RTE_CACHE_LINE_SIZE,
-			    SOCKET_ID_ANY);
-	if (!priv->mtr_policy_arr) {
-		ret = ENOMEM;
-		rte_flow_error_set(&error, ENOMEM,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL, "Meter policy allocation failed.");
-		goto err;
+	if (nb_meter_policies) {
+		priv->mtr_config.nb_meter_policies = nb_meter_policies;
+		priv->mtr_policy_arr =
+			mlx5_malloc(MLX5_MEM_ZERO,
+				    sizeof(struct mlx5_flow_meter_policy) *
+				    nb_meter_policies,
+				    RTE_CACHE_LINE_SIZE,
+				    SOCKET_ID_ANY);
+		if (!priv->mtr_policy_arr) {
+			ret = ENOMEM;
+			rte_flow_error_set(&error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "Meter policy allocation failed.");
+			goto err;
+		}
 	}
 	return 0;
 err:

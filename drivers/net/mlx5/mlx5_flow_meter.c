@@ -644,9 +644,7 @@ mlx5_flow_meter_profile_hws_add(struct rte_eth_dev *dev,
 	int ret;
 
 	if (!priv->mtr_profile_arr)
-		return -rte_mtr_error_set(error, ENOTSUP,
-					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "Meter profile array is not allocated");
+		return mlx5_flow_meter_profile_add(dev, meter_profile_id, profile, error);
 	/* Check input params. */
 	ret = mlx5_flow_meter_profile_validate(dev, meter_profile_id,
 					       profile, error);
@@ -683,15 +681,7 @@ mlx5_flow_meter_profile_hws_delete(struct rte_eth_dev *dev,
 	struct mlx5_flow_meter_profile *fmp;
 
 	if (!priv->mtr_profile_arr)
-		return -rte_mtr_error_set(error, ENOTSUP,
-					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "Meter profile array is not allocated");
-	/* Meter id must be valid. */
-	if (meter_profile_id >= priv->mtr_config.nb_meter_profiles)
-		return -rte_mtr_error_set(error, EINVAL,
-					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-					  &meter_profile_id,
-					  "Meter profile id not valid.");
+		return mlx5_flow_meter_profile_delete(dev, meter_profile_id, error);
 	/* Meter profile must exist. */
 	fmp = mlx5_flow_meter_profile_find(priv, meter_profile_id);
 	if (!fmp->initialized)
@@ -1238,15 +1228,7 @@ mlx5_flow_meter_policy_hws_delete(struct rte_eth_dev *dev,
 	struct rte_flow_op_result result[RTE_COLORS * MLX5_MTR_DOMAIN_MAX];
 
 	if (!priv->mtr_policy_arr)
-		return -rte_mtr_error_set(error, ENOTSUP,
-					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "Meter policy array is not allocated");
-	/* Meter id must be valid. */
-	if (policy_id >= priv->mtr_config.nb_meter_policies)
-		return -rte_mtr_error_set(error, EINVAL,
-					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
-					  &policy_id,
-					  "Meter policy id not valid.");
+		return mlx5_flow_meter_policy_delete(dev, policy_id, error);
 	/* Meter policy must exist. */
 	mtr_policy = mlx5_flow_meter_policy_find(dev, policy_id, NULL);
 	if (!mtr_policy->initialized)
@@ -1358,13 +1340,7 @@ mlx5_flow_meter_policy_hws_add(struct rte_eth_dev *dev,
 	};
 
 	if (!priv->mtr_policy_arr)
-		return -rte_mtr_error_set(error, ENOTSUP,
-					  RTE_MTR_ERROR_TYPE_METER_POLICY,
-					  NULL, "Meter policy array is not allocated.");
-	if (policy_id >= priv->mtr_config.nb_meter_policies)
-		return -rte_mtr_error_set(error, ENOTSUP,
-					  RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
-					  NULL, "Meter policy id not valid.");
+		return mlx5_flow_meter_policy_add(dev, policy_id, policy, error);
 	mtr_policy = mlx5_flow_meter_policy_find(dev, policy_id, NULL);
 	if (mtr_policy->initialized)
 		return -rte_mtr_error_set(error, EEXIST,
