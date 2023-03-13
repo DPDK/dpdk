@@ -7,10 +7,19 @@ sources = files(
         'mldev_utils.c',
 )
 
-if dpdk_conf.has('RTE_ARCH_ARM64')
+if (dpdk_conf.has('RTE_ARCH_ARM64') and
+    cc.get_define('__ARM_NEON', args: machine_args) != '')
     sources += files('mldev_utils_neon.c')
 else
     sources += files('mldev_utils_scalar.c')
+endif
+
+if (dpdk_conf.has('RTE_ARCH_ARM64') and
+    cc.get_define('__ARM_NEON', args: machine_args) != '' and
+    cc.get_define('__ARM_FEATURE_BF16', args: machine_args) != '')
+    sources += files('mldev_utils_neon_bfloat16.c')
+else
+    sources += files('mldev_utils_scalar_bfloat16.c')
 endif
 
 headers = files(
