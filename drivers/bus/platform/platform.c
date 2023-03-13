@@ -269,8 +269,10 @@ device_map_resources(struct rte_platform_device *pdev, unsigned int num)
 	unsigned int i;
 	int ret;
 
-	if (num == 0)
+	if (num == 0) {
 		PLATFORM_LOG(WARNING, "device %s has no resources\n", pdev->name);
+		return 0;
+	}
 
 	pdev->resource = calloc(num, sizeof(*pdev->resource));
 	if (pdev->resource == NULL)
