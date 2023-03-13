@@ -1499,16 +1499,22 @@ npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow)
 static int
 roc_npc_delete_spi_to_sa_action(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 {
-	struct roc_nix *roc_nix = roc_npc->roc_nix;
 	struct nix_spi_to_sa_delete_req *req;
+	struct nix_inl_dev *inl_dev;
+	struct idev_cfg *idev;
 	struct mbox *mbox;
-	struct nix *nix;
+
+	PLT_SET_USED(roc_npc);
 
 	if (!flow->spi_to_sa_info.has_action || flow->spi_to_sa_info.duplicate)
 		return 0;
 
-	nix = roc_nix_to_nix_priv(roc_nix);
-	mbox = (&nix->dev)->mbox;
+	idev = idev_get_cfg();
+	if (!idev)
+		return -1;
+
+	inl_dev = idev->nix_inl_dev;
+	mbox = inl_dev->dev.mbox;
 	req = mbox_alloc_msg_nix_spi_to_sa_delete(mbox);
 	if (req == NULL)
 		return -ENOSPC;
