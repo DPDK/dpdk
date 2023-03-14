@@ -394,11 +394,11 @@ roc_tim_init(struct roc_tim *roc_tim)
 	} else {
 		goto done;
 	}
-	roc_tim->nb_lfs = nb_lfs;
 
 fail:
 	mbox_put(dev->mbox);
 done:
+	roc_tim->nb_lfs = nb_lfs;
 	return nb_lfs;
 }
 
