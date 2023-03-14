@@ -33,22 +33,6 @@
 
 struct virtio_pci_internal virtio_pci_internal[RTE_MAX_ETHPORTS];
 
-static inline int
-check_vq_phys_addr_ok(struct virtqueue *vq)
-{
-	/* Virtio PCI device VIRTIO_PCI_QUEUE_PF register is 32bit,
-	 * and only accepts 32 bit page frame number.
-	 * Check if the allocated physical memory exceeds 16TB.
-	 */
-	if ((vq->vq_ring_mem + vq->vq_ring_size - 1) >>
-			(VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
-		PMD_INIT_LOG(ERR, "vring address shouldn't be above 16TB!");
-		return 0;
-	}
-
-	return 1;
-}
-
 #define PCI_MSIX_ENABLE 0x8000
 
 static enum virtio_msix_status
@@ -273,8 +257,15 @@ legacy_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
 	uint32_t src;
 
-	if (!check_vq_phys_addr_ok(vq))
+	/* Virtio PCI device VIRTIO_PCI_QUEUE_PFN register is 32bit,
+	 * and only accepts 32 bit page frame number.
+	 * Check if the allocated physical memory exceeds 16TB.
+	 */
+	if ((vq->vq_ring_mem + vq->vq_ring_size - 1) >>
+			(VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
+		PMD_INIT_LOG(ERR, "vring address shouldn't be above 16TB!");
 		return -1;
+	}
 
 	rte_pci_ioport_write(VTPCI_IO(hw), &vq->vq_queue_index, 2,
 		VIRTIO_PCI_QUEUE_SEL);
@@ -475,9 +466,6 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
 	uint64_t desc_addr, avail_addr, used_addr;
 	uint16_t notify_off;
-
-	if (!check_vq_phys_addr_ok(vq))
-		return -1;
 
 	desc_addr = vq->vq_ring_mem;
 	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct vring_desc);
