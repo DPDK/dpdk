@@ -1490,7 +1490,7 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
  * produce a native ISA version of the given BPF code.
  */
 int
-bpf_jit_x86(struct rte_bpf *bpf)
+__rte_bpf_jit_x86(struct rte_bpf *bpf)
 {
 	int32_t rc;
 	uint32_t i;

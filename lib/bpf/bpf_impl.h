@@ -17,12 +17,14 @@ struct rte_bpf {
 	uint32_t stack_sz;
 };
 
-extern int bpf_validate(struct rte_bpf *bpf);
-
-extern int bpf_jit(struct rte_bpf *bpf);
-
-extern int bpf_jit_x86(struct rte_bpf *);
-extern int bpf_jit_arm64(struct rte_bpf *);
+/*
+ * Use '__rte' prefix for non-static internal functions
+ * to avoid potential name conflict with other libraries.
+ */
+extern int __rte_bpf_validate(struct rte_bpf *bpf);
+extern int __rte_bpf_jit(struct rte_bpf *bpf);
+extern int __rte_bpf_jit_x86(struct rte_bpf *bpf);
+extern int __rte_bpf_jit_arm64(struct rte_bpf *bpf);
 
 extern int rte_bpf_logtype;
 

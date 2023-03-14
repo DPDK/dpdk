@@ -1393,7 +1393,7 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
  * Produce a native ISA version of the given BPF code.
  */
 int
-bpf_jit_arm64(struct rte_bpf *bpf)
+__rte_bpf_jit_arm64(struct rte_bpf *bpf)
 {
 	struct a64_jit_ctx ctx;
 	size_t size;
