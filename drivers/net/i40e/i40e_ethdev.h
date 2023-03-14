@@ -48,6 +48,9 @@
 #define I40E_MAX_VF               128
 /*flag of no loopback*/
 #define I40E_AQ_LB_MODE_NONE	  0x0
+#define I40E_AQ_LB_MODE_EN	  0x01
+#define I40E_AQ_LB_MAC		  0x01
+#define I40E_AQ_LB_MAC_LOCAL_X722 0x04
 /*
  * vlan_id is a 12 bit number.
  * The VFTA array is actually a 4096 bit array, 128 of 32bit elements.

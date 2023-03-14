@@ -2411,10 +2411,21 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	/* Disable mac loopback mode */
+	if (dev->data->dev_conf.lpbk_mode == I40E_AQ_LB_MODE_NONE) {
+		ret = i40e_aq_set_lb_modes(hw, I40E_AQ_LB_MODE_NONE, NULL);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "fail to set loopback link");
+			goto tx_err;
+		}
+	}
+
 	/* Enable mac loopback mode */
-	if (dev->data->dev_conf.lpbk_mode == I40E_AQ_LB_MODE_NONE ||
-	    dev->data->dev_conf.lpbk_mode == I40E_AQ_LB_PHY_LOCAL) {
-		ret = i40e_aq_set_lb_modes(hw, dev->data->dev_conf.lpbk_mode, NULL);
+	if (dev->data->dev_conf.lpbk_mode == I40E_AQ_LB_MODE_EN) {
+		if (hw->mac.type == I40E_MAC_X722)
+			ret = i40e_aq_set_lb_modes(hw, I40E_AQ_LB_MAC_LOCAL_X722, NULL);
+		else
+			ret = i40e_aq_set_lb_modes(hw, I40E_AQ_LB_MAC, NULL);
 		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "fail to set loopback link");
 			goto tx_err;
