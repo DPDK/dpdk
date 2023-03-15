@@ -4131,12 +4131,10 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		break;
 	case SFC_FT_RULE_GROUP:
 		/*
-		 * Packets that go to the rule's AR have FT mark set (from the
-		 * JUMP rule OR's RECIRC_ID). Remove this mark in matching
-		 * packets. The user may have provided their own action
-		 * MARK above, so don't check the return value here.
+		 * Packets that go to the rule's AR have FT mark set (from
+		 * the JUMP rule OR's RECIRC_ID). Reset the mark to zero.
 		 */
-		(void)efx_mae_action_set_populate_mark(ctx.spec, 0);
+		efx_mae_action_set_populate_mark_reset(ctx.spec);
 
 		ctx.ft_group_hit_counter = &spec_mae->ft->group_hit_counter;
 		break;
