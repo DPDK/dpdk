@@ -19,7 +19,7 @@ void
 ml_options_default(struct ml_options *opt)
 {
 	memset(opt, 0, sizeof(*opt));
-	strlcpy(opt->test_name, "ml_test", ML_TEST_NAME_MAX_LEN);
+	strlcpy(opt->test_name, "device_ops", ML_TEST_NAME_MAX_LEN);
 	opt->dev_id = 0;
 	opt->socket_id = SOCKET_ID_ANY;
 	opt->debug = false;
@@ -61,7 +61,8 @@ ml_parse_socket_id(struct ml_options *opt, const char *arg)
 static void
 ml_dump_test_options(const char *testname)
 {
-	RTE_SET_USED(testname);
+	if (strcmp(testname, "device_ops") == 0)
+		printf("\n");
 }
 
 static void

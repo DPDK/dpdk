@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #define ML_TEST_NAME_MAX_LEN 32
+#define ML_TEST_MAX_MODELS   8
 
 /* Options names */
 #define ML_TEST	       ("test")
@@ -21,6 +22,7 @@ struct ml_options {
 	char test_name[ML_TEST_NAME_MAX_LEN];
 	int16_t dev_id;
 	int socket_id;
+	uint8_t nb_filelist;
 	bool debug;
 };
 

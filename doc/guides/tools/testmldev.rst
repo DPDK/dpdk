@@ -48,6 +48,12 @@ The following are the command-line options supported by the test application.
 
 ``--test <name>``
   Name of the test to execute.
+  Supported ML tests include device tests.
+  Test name should be one of the following supported tests.
+
+  **ML Device Tests** ::
+
+    device_ops
 
 ``--dev_id <n>``
   Set the device ID of the ML device to be used for the test.
@@ -62,6 +68,41 @@ The following are the command-line options supported by the test application.
 
 ``--help``
   Print help message.
+
+
+ML Device Tests
+---------------
+
+ML device tests are functional tests to validate ML device API.
+Device tests validate the ML device handling configure, close, start and stop APIs.
+
+
+Application Options
+~~~~~~~~~~~~~~~~~~~
+
+Supported command line options for the ``device_ops`` test are following::
+
+   --debug
+   --test
+   --dev_id
+   --socket_id
+
+
+DEVICE_OPS Test
+~~~~~~~~~~~~~~~
+
+Device ops test validates the device configuration and reconfiguration.
+
+
+Example
+^^^^^^^
+
+Command to run ``device_ops`` test:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=device_ops
 
 
 Debug mode
