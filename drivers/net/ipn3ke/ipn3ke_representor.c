@@ -2579,7 +2579,7 @@ ipn3ke_rpst_scan_handle_request(__rte_unused void *param)
 		}
 		rte_delay_us(50 * MS);
 
-		if (num == 0xffffff)
+		if (num == 0 || num == 0xffffff)
 			return NULL;
 	}
 
