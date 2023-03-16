@@ -3016,13 +3016,14 @@ following sections.
 - Create a flow rule::
 
    flow create {port_id}
-       [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
-       pattern {item} [/ {item} [...]] / end
+       [group {group_id}] [priority {level}] [ingress] [egress]
+       [transfer] [tunnel_set {tunnel_id}] [tunnel_match {tunnel_id}]
+       [user_id {user_id}] pattern {item} [/ {item} [...]] / end
        actions {action} [/ {action} [...]] / end
 
 - Destroy specific flow rules::
 
-   flow destroy {port_id} rule {rule_id} [...]
+   flow destroy {port_id} rule {rule_id} [...] [user_id]
 
 - Destroy all flow rules::
 
@@ -3030,7 +3031,7 @@ following sections.
 
 - Query an existing flow rule::
 
-   flow query {port_id} {rule_id} {action}
+   flow query {port_id} {rule_id} {action} [user_id]
 
 - List existing flow rules sorted by priority, filtered by group
   identifiers::
@@ -3043,11 +3044,11 @@ following sections.
 
 - Dump internal representation information of all flows in hardware::
 
-   flow dump {port_id} all {output_file}
+   flow dump {port_id} all {output_file} [user_id]
 
   for one flow::
 
-   flow dump {port_id} rule {rule_id} {output_file}
+   flow dump {port_id} rule {rule_id} {output_file} [user_id]
 
 - List and destroy aged flow rules::
 
@@ -3346,12 +3347,16 @@ to ``rte_flow_create()``::
    flow create {port_id}
       [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
       [tunnel_set {tunnel_id}] [tunnel_match {tunnel_id}]
-      pattern {item} [/ {item} [...]] / end
+      [user_id {user_id}] pattern {item} [/ {item} [...]] / end
       actions {action} [/ {action} [...]] / end
 
 If successful, it will return a flow rule ID usable with other commands::
 
    Flow rule #[...] created
+
+Or if ``user_id`` is provided::
+
+   Flow rule #[...] created, user-id [...]
 
 Otherwise it will show an error message of the form::
 
@@ -3361,6 +3366,7 @@ Parameters describe in the following order:
 
 - Attributes (*group*, *priority*, *ingress*, *egress*, *transfer* tokens).
 - Tunnel offload specification (tunnel_set, tunnel_match)
+- User identifier for the flow.
 - A matching pattern, starting with the *pattern* token and terminated by an
   *end* pattern item.
 - Actions, starting with the *actions* token and terminated by an *end*
@@ -4095,12 +4101,18 @@ Destroying flow rules
 by ``flow create``), this command calls ``rte_flow_destroy()`` as many
 times as necessary::
 
-   flow destroy {port_id} rule {rule_id} [...]
+   flow destroy {port_id} rule {rule_id} [...] [user_id]
 
 If successful, it will show::
 
    Flow rule #[...] destroyed
 
+Or if ``user_id`` flag is provided::
+
+   Flow rule #[...] destroyed, user-id [...]
+
+Optional ``user_id`` is a flag that signifies the rule ID
+is the one provided by the user at creation.
 It does not report anything for rule IDs that do not exist. The usual error
 message is shown when a rule cannot be destroyed::
 
@@ -4179,8 +4191,10 @@ Querying flow rules
 ability. Such actions collect information that can be reported using this
 command. It is bound to ``rte_flow_query()``::
 
-   flow query {port_id} {rule_id} {action}
+   flow query {port_id} {rule_id} {action} [user_id]
 
+Optional ``user_id`` is a flag that signifies the rule ID
+is the one provided by the user at creation.
 If successful, it will display either the retrieved data for known actions
 or the following message::
 
@@ -4331,7 +4345,7 @@ Dumping HW internal information
 ``flow dump`` dumps the hardware's internal representation information of
 all flows. It is bound to ``rte_flow_dev_dump()``::
 
-   flow dump {port_id} {output_file}
+   flow dump {port_id} {output_file} [user_id]
 
 If successful, it will show::
 
@@ -4340,6 +4354,9 @@ If successful, it will show::
 Otherwise, it will complain error occurred::
 
    Caught error type [...] ([...]): [...]
+
+Optional ``user_id`` is a flag that signifies the rule ID
+is the one provided by the user at creation.
 
 Listing and destroying aged flow rules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
