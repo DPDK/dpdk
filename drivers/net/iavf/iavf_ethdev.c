@@ -1065,6 +1065,9 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (vf->vf_reset)
+		return 0;
+
 	if (adapter->closed)
 		return -1;
 
