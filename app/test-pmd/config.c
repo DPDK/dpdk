@@ -1518,6 +1518,21 @@ rss_config_display(struct rte_flow_action_rss *rss_conf)
 		return;
 	}
 
+	printf(" RSS key:\n");
+	if (rss_conf->key_len == 0) {
+		printf("  none");
+	} else {
+		printf("  key_len: %u\n", rss_conf->key_len);
+		printf("  key: ");
+		if (rss_conf->key == NULL) {
+			printf("none");
+		} else {
+			for (i = 0; i < rss_conf->key_len; i++)
+				printf("%02X", rss_conf->key[i]);
+		}
+	}
+	printf("\n");
+
 	printf(" types:\n");
 	if (rss_conf->types == 0) {
 		printf("  none\n");
