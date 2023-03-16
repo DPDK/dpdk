@@ -100,16 +100,14 @@ RTE_TRACE_POINT(
 RTE_TRACE_POINT(
 	rte_eth_trace_iterator_next,
 	RTE_TRACE_POINT_ARGS(const struct rte_dev_iterator *iter, uint16_t id),
-	rte_trace_point_emit_string(iter->bus_str);
-	rte_trace_point_emit_string(iter->cls_str);
+	rte_trace_point_emit_ptr(iter);
 	rte_trace_point_emit_u16(id);
 )
 
 RTE_TRACE_POINT(
 	rte_eth_trace_iterator_cleanup,
 	RTE_TRACE_POINT_ARGS(const struct rte_dev_iterator *iter),
-	rte_trace_point_emit_string(iter->bus_str);
-	rte_trace_point_emit_string(iter->cls_str);
+	rte_trace_point_emit_ptr(iter);
 )
 
 RTE_TRACE_POINT(
