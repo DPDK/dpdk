@@ -2744,6 +2744,7 @@ test_nb_segs_and_next_reset(void)
 
 	/* split m0 chain in two, between m1 and m2 */
 	m0->nb_segs = 2;
+	m0->pkt_len -= m2->data_len;
 	m1->next = NULL;
 	m2->nb_segs = 1;
 
