@@ -23,6 +23,7 @@ ml_options_default(struct ml_options *opt)
 	opt->dev_id = 0;
 	opt->socket_id = SOCKET_ID_ANY;
 	opt->nb_filelist = 0;
+	opt->repetitions = 1;
 	opt->debug = false;
 }
 
@@ -90,6 +91,60 @@ ml_parse_models(struct ml_options *opt, const char *arg)
 	return ret;
 }
 
+static int
+ml_parse_filelist(struct ml_options *opt, const char *arg)
+{
+	const char *delim = ",";
+	char filelist[PATH_MAX];
+	char *token;
+
+	if (opt->nb_filelist >= ML_TEST_MAX_MODELS) {
+		ml_err("Exceeded filelist count, max = %d\n", ML_TEST_MAX_MODELS);
+		return -1;
+	}
+
+	strlcpy(filelist, arg, PATH_MAX);
+
+	/* model */
+	token = strtok(filelist, delim);
+	if (token == NULL) {
+		ml_err("Invalid filelist, model not specified = %s\n", arg);
+		return -EINVAL;
+	}
+	strlcpy(opt->filelist[opt->nb_filelist].model, token, PATH_MAX);
+
+	/* input */
+	token = strtok(NULL, delim);
+	if (token == NULL) {
+		ml_err("Invalid filelist, input not specified = %s\n", arg);
+		return -EINVAL;
+	}
+	strlcpy(opt->filelist[opt->nb_filelist].input, token, PATH_MAX);
+
+	/* output */
+	token = strtok(NULL, delim);
+	if (token == NULL) {
+		ml_err("Invalid filelist, output not specified = %s\n", arg);
+		return -EINVAL;
+	}
+	strlcpy(opt->filelist[opt->nb_filelist].output, token, PATH_MAX);
+
+	opt->nb_filelist++;
+
+	if (opt->nb_filelist == 0) {
+		ml_err("Empty filelist. Need at least one filelist entry for the test.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+ml_parse_repetitions(struct ml_options *opt, const char *arg)
+{
+	return parser_read_uint64(&opt->repetitions, arg);
+}
+
 static void
 ml_dump_test_options(const char *testname)
 {
@@ -98,6 +153,12 @@ ml_dump_test_options(const char *testname)
 
 	if (strcmp(testname, "model_ops") == 0) {
 		printf("\t\t--models           : comma separated list of models\n");
+		printf("\n");
+	}
+
+	if (strcmp(testname, "inference_ordered") == 0) {
+		printf("\t\t--filelist         : comma separated list of model, input and output\n"
+		       "\t\t--repetitions      : number of inference repetitions\n");
 		printf("\n");
 	}
 }
@@ -122,6 +183,8 @@ static struct option lgopts[] = {
 	{ML_DEVICE_ID, 1, 0, 0},
 	{ML_SOCKET_ID, 1, 0, 0},
 	{ML_MODELS, 1, 0, 0},
+	{ML_FILELIST, 1, 0, 0},
+	{ML_REPETITIONS, 1, 0, 0},
 	{ML_DEBUG, 0, 0, 0},
 	{ML_HELP, 0, 0, 0},
 	{NULL, 0, 0, 0}};
@@ -136,6 +199,8 @@ ml_opts_parse_long(int opt_idx, struct ml_options *opt)
 		{ML_DEVICE_ID, ml_parse_dev_id},
 		{ML_SOCKET_ID, ml_parse_socket_id},
 		{ML_MODELS, ml_parse_models},
+		{ML_FILELIST, ml_parse_filelist},
+		{ML_REPETITIONS, ml_parse_repetitions},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

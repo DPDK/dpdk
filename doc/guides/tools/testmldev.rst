@@ -48,7 +48,7 @@ The following are the command-line options supported by the test application.
 
 ``--test <name>``
   Name of the test to execute.
-  ML tests are divided into two groups: Device and Model tests.
+  ML tests are divided into three groups: Device, Model and Inference tests.
   Test name should be one of the following supported tests.
 
   **ML Device Tests** ::
@@ -59,6 +59,9 @@ The following are the command-line options supported by the test application.
 
     model_ops
 
+  **ML Inference Tests** ::
+
+    inference_ordered
 
 ``--dev_id <n>``
   Set the device ID of the ML device to be used for the test.
@@ -73,6 +76,21 @@ The following are the command-line options supported by the test application.
   Application expects the ``model_list`` in comma separated form
   (i.e. ``--models model_A.bin,model_B.bin``).
   Maximum number of models supported by the test is ``8``.
+
+``--filelist <file_list>``
+  Set the list of model, input, output and reference files to be used for the tests.
+  Application expects the ``file_list`` to be in comma separated form
+  (i.e. ``--filelist <model,input,output>[,reference]``).
+
+  Multiple filelist entries can be specified when running the tests with multiple models.
+  Both quantized and dequantized outputs are written to the disk.
+  Dequantized output file would have the name specified by the user through ``--filelist`` option.
+  A suffix ``.q`` is appended to quantized output filename.
+  Maximum number of filelist entries supported by the test is ``8``.
+
+``--repetitions <n>``
+  Set the number of inference repetitions to be executed in the test per each model.
+  Default value is ``1``.
 
 ``--debug``
   Enable the tests to run in debug mode.
@@ -201,6 +219,73 @@ Command to run ``model_ops`` test:
 
    sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
         --test=model_ops --models model_1.bin,model_2.bin,model_3.bin, model_4.bin
+
+
+ML Inference Tests
+------------------
+
+Inference tests are a set of tests to validate end-to-end inference execution on ML device.
+These tests executes the full sequence of operations required to run inferences
+with one or multiple models.
+
+
+Application Options
+~~~~~~~~~~~~~~~~~~~
+
+Supported command line options for inference tests are following::
+
+   --debug
+   --test
+   --dev_id
+   --socket_id
+   --filelist
+   --repetitions
+
+List of files to be used for the inference tests can be specified
+through the option ``--filelist <file_list>`` as a comma separated list.
+A filelist entry would be of the format
+``--filelist <model_file,input_file,output_file>[,reference_file]``
+and is used to specify the list of files required to test with a single model.
+Multiple filelist entries are supported by the test, one entry per model.
+Maximum number of file entries supported by the test is ``8``.
+
+.. note::
+
+   * The ``--filelist <file_list>`` is a mandatory option for running inference tests.
+   * Options not supported by the tests are ignored if specified.
+
+
+INFERENCE_ORDERED Test
+~~~~~~~~~~~~~~~~~~~~~~
+
+This is a functional test for validating the end-to-end inference execution on ML device.
+This test configures ML device and queue pairs
+as per the queue-pair related options (queue_pairs and queue_size) specified by the user.
+Upon successful configuration of the device and queue pairs,
+the first model specified through the filelist is loaded to the device
+and inferences are enqueued by a pool of worker threads to the ML device.
+Total number of inferences enqueued for the model are equal to the repetitions specified.
+A dedicated pool of worker threads would dequeue the inferences from the device.
+The model is unloaded upon completion of all inferences for the model.
+The test would continue loading and executing inference requests for all models
+specified through ``filelist`` option in an ordered manner.
+
+.. _figure_mldev_inference_ordered:
+
+.. figure:: img/mldev_inference_ordered.*
+
+   Execution of inference_ordered on single model.
+
+
+Example
+^^^^^^^
+
+Example command to run ``inference_ordered`` test:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_ordered --filelist model.bin,input.bin,output.bin
 
 
 Debug mode

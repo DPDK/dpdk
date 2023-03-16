@@ -16,11 +16,15 @@
 #define ML_DEVICE_ID   ("dev_id")
 #define ML_SOCKET_ID   ("socket_id")
 #define ML_MODELS      ("models")
+#define ML_FILELIST    ("filelist")
+#define ML_REPETITIONS ("repetitions")
 #define ML_DEBUG       ("debug")
 #define ML_HELP	       ("help")
 
 struct ml_filelist {
 	char model[PATH_MAX];
+	char input[PATH_MAX];
+	char output[PATH_MAX];
 };
 
 struct ml_options {
@@ -29,6 +33,7 @@ struct ml_options {
 	int socket_id;
 	struct ml_filelist filelist[ML_TEST_MAX_MODELS];
 	uint8_t nb_filelist;
+	uint64_t repetitions;
 	bool debug;
 };
 

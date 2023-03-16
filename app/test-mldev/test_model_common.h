@@ -20,6 +20,16 @@ struct ml_model {
 	uint16_t id;
 	struct rte_ml_model_info info;
 	enum model_state state;
+
+	uint64_t inp_dsize;
+	uint64_t inp_qsize;
+	uint64_t out_dsize;
+	uint64_t out_qsize;
+
+	uint8_t *input;
+	uint8_t *output;
+
+	struct rte_mempool *io_pool;
 };
 
 int ml_model_load(struct ml_test *test, struct ml_options *opt, struct ml_model *model,
