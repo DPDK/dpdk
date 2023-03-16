@@ -5,6 +5,10 @@ headers = files(
         'rte_gpudev.h',
 )
 
+driver_sdk_headers = files(
+        'gpudev_driver.h',
+)
+
 sources = files(
         'gpudev.c',
 )

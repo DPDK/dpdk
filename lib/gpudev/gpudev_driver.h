@@ -19,6 +19,10 @@
 #include <rte_compat.h>
 #include "rte_gpudev.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Flags indicate current state of device. */
 enum rte_gpu_state {
 	RTE_GPU_STATE_UNUSED,        /* not initialized */
@@ -105,5 +109,9 @@ int rte_gpu_release(struct rte_gpu *dev);
 /* Call registered callbacks. No multi-process event. */
 __rte_internal
 void rte_gpu_notify(struct rte_gpu *dev, enum rte_gpu_event);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* RTE_GPUDEV_DRIVER_H */
