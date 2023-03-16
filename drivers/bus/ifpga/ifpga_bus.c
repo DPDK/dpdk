@@ -136,6 +136,8 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 			goto end;
 		}
 		afu_pr_conf.pr_enable = 1;
+		strlcpy(afu_pr_conf.bs_path, path,
+			sizeof(afu_pr_conf.bs_path));
 	} else {
 		afu_pr_conf.pr_enable = 0;
 	}
@@ -167,7 +169,6 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 		rawdev->dev_ops->dev_start(rawdev))
 		goto end;
 
-	strlcpy(afu_pr_conf.bs_path, path, sizeof(afu_pr_conf.bs_path));
 	if (rawdev->dev_ops &&
 		rawdev->dev_ops->firmware_load &&
 		rawdev->dev_ops->firmware_load(rawdev,
