@@ -30,6 +30,7 @@ struct ml_model {
 	uint8_t *output;
 
 	struct rte_mempool *io_pool;
+	uint32_t nb_batches;
 };
 
 int ml_model_load(struct ml_test *test, struct ml_options *opt, struct ml_model *model,
