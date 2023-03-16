@@ -675,6 +675,7 @@ cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq->q_started = false;
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 		rxq->ops->release_mbufs(rxq);
 		idpf_qc_single_rx_queue_reset(rxq);
@@ -706,6 +707,7 @@ cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	txq = dev->data->tx_queues[tx_queue_id];
+	txq->q_started = false;
 	txq->ops->release_mbufs(txq);
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 		idpf_qc_single_tx_queue_reset(txq);
