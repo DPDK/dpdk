@@ -444,7 +444,8 @@ cn10k_ml_prep_fp_job_descriptor(struct rte_ml_dev *dev, struct cn10k_ml_req *req
 			count += model->burst_stats[qp_id].dequeued_count -                        \
 				 model->burst_stats[qp_id].str##_reset_count;                      \
 		}                                                                                  \
-		value = value / count;                                                             \
+		if (count != 0)                                                                    \
+			value = value / count;                                                     \
 	} while (0)
 
 #define ML_MIN_FOREACH_QP(dev, model, qp_id, str, value, count)                                    \
