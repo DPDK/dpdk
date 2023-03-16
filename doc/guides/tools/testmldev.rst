@@ -62,6 +62,7 @@ The following are the command-line options supported by the test application.
   **ML Inference Tests** ::
 
     inference_ordered
+    inference_interleave
 
 ``--dev_id <n>``
   Set the device ID of the ML device to be used for the test.
@@ -286,6 +287,46 @@ Example command to run ``inference_ordered`` test:
 
    sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
         --test=inference_ordered --filelist model.bin,input.bin,output.bin
+
+
+INFERENCE_INTERLEAVE Test
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is a stress test for validating the end-to-end inference execution on ML device.
+The test configures the ML device and queue pairs
+as per the queue-pair related options (queue_pairs and queue_size) specified by the user.
+Upon successful configuration of the device and queue pairs,
+all models specified through the filelist are loaded to the device.
+Inferences for multiple models are enqueued by a pool of worker threads in parallel.
+Inference execution by the device is interleaved between multiple models.
+Total number of inferences enqueued for a model are equal to the repetitions specified.
+An additional pool of threads would dequeue the inferences from the device.
+Models would be unloaded upon completion of inferences for all models loaded.
+
+.. _figure_mldev_inference_interleave:
+
+.. figure:: img/mldev_inference_interleave.*
+
+   Execution of inference_interleave on single model.
+
+
+Example
+^^^^^^^
+
+Example command to run ``inference_interleave`` test:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_interleave --filelist model.bin,input.bin,output.bin
+
+Example command to run ``inference_interleave`` test with multiple models:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_interleave --filelist model_A.bin,input_A.bin,output_A.bin \
+        --filelist model_B.bin,input_B.bin,output_B.bin
 
 
 Debug mode

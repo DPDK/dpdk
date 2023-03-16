@@ -156,7 +156,8 @@ ml_dump_test_options(const char *testname)
 		printf("\n");
 	}
 
-	if (strcmp(testname, "inference_ordered") == 0) {
+	if ((strcmp(testname, "inference_ordered") == 0) ||
+	    (strcmp(testname, "inference_interleave") == 0)) {
 		printf("\t\t--filelist         : comma separated list of model, input and output\n"
 		       "\t\t--repetitions      : number of inference repetitions\n");
 		printf("\n");
