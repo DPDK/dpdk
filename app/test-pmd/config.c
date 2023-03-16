@@ -2791,7 +2791,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 		flow = rte_flow_async_create_by_index(port_id, queue_id, &op_attr, pt->table,
 			rule_idx, actions, actions_idx, job, &error);
 	if (!flow) {
-		uint32_t flow_id = pf->id;
+		uint64_t flow_id = pf->id;
 		port_queue_flow_destroy(port_id, queue_id, true, 1, &flow_id);
 		free(job);
 		return port_flow_complain(&error);
@@ -2803,14 +2803,14 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	pf->flow = flow;
 	job->pf = pf;
 	port->flow_list = pf;
-	printf("Flow rule #%u creation enqueued\n", pf->id);
+	printf("Flow rule #%"PRIu64" creation enqueued\n", pf->id);
 	return 0;
 }
 
 /** Enqueue number of destroy flow rules operations. */
 int
 port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
-			bool postpone, uint32_t n, const uint32_t *rule)
+			bool postpone, uint32_t n, const uint64_t *rule)
 {
 	struct rte_flow_op_attr op_attr = { .postpone = postpone };
 	struct rte_port *port;
@@ -2857,7 +2857,8 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 				ret = port_flow_complain(&error);
 				continue;
 			}
-			printf("Flow rule #%u destruction enqueued\n", pf->id);
+			printf("Flow rule #%"PRIu64" destruction enqueued\n",
+			       pf->id);
 			*tmp = pf->next;
 			break;
 		}
@@ -2990,7 +2991,7 @@ port_queue_flow_update(portid_t port_id, queueid_t queue_id,
 	*tmp = uf;
 	job->pf = pf;
 
-	printf("Flow rule #%u update enqueued\n", pf->id);
+	printf("Flow rule #%"PRIu64" update enqueued\n", pf->id);
 	return 0;
 }
 
@@ -3289,7 +3290,7 @@ port_queue_flow_push(portid_t port_id, queueid_t queue_id)
 /** Pull queue operation results from the queue. */
 static int
 port_queue_aged_flow_destroy(portid_t port_id, queueid_t queue_id,
-			     const uint32_t *rule, int nb_flows)
+			     const uint64_t *rule, int nb_flows)
 {
 	struct rte_port *port = &ports[port_id];
 	struct rte_flow_op_result *res;
@@ -3352,7 +3353,7 @@ port_queue_flow_aged(portid_t port_id, uint32_t queue_id, uint8_t destroy)
 {
 	void **contexts;
 	int nb_context, total = 0, idx;
-	uint32_t *rules = NULL;
+	uint64_t *rules = NULL;
 	struct rte_port *port;
 	struct rte_flow_error error;
 	enum age_action_context_type *type;
@@ -3408,7 +3409,7 @@ port_queue_flow_aged(portid_t port_id, uint32_t queue_id, uint8_t destroy)
 		switch (*type) {
 		case ACTION_AGE_CONTEXT_TYPE_FLOW:
 			ctx.pf = container_of(type, struct port_flow, age_type);
-			printf("%-20s\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32
+			printf("%-20s\t%" PRIu64 "\t%" PRIu32 "\t%" PRIu32
 								 "\t%c%c%c\t\n",
 			       "Flow",
 			       ctx.pf->id,
@@ -3557,13 +3558,13 @@ port_flow_create(portid_t port_id,
 	port->flow_list = pf;
 	if (tunnel_ops->enabled)
 		port_flow_tunnel_offload_cmd_release(port_id, tunnel_ops, pft);
-	printf("Flow rule #%u created\n", pf->id);
+	printf("Flow rule #%"PRIu64" created\n", pf->id);
 	return 0;
 }
 
 /** Destroy a number of flow rules. */
 int
-port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
+port_flow_destroy(portid_t port_id, uint32_t n, const uint64_t *rule)
 {
 	struct rte_port *port;
 	struct port_flow **tmp;
@@ -3592,7 +3593,7 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
 				ret = port_flow_complain(&error);
 				continue;
 			}
-			printf("Flow rule #%u destroyed\n", pf->id);
+			printf("Flow rule #%"PRIu64" destroyed\n", pf->id);
 			*tmp = pf->next;
 			free(pf);
 			break;
@@ -3637,7 +3638,7 @@ port_flow_flush(portid_t port_id)
 
 /** Dump flow rules. */
 int
-port_flow_dump(portid_t port_id, bool dump_all, uint32_t rule_id,
+port_flow_dump(portid_t port_id, bool dump_all, uint64_t rule_id,
 		const char *file_name)
 {
 	int ret = 0;
@@ -3666,7 +3667,8 @@ port_flow_dump(portid_t port_id, bool dump_all, uint32_t rule_id,
 			}
 		}
 		if (found == false) {
-			fprintf(stderr, "Failed to dump to flow %d\n", rule_id);
+			fprintf(stderr, "Failed to dump to flow %"PRIu64"\n",
+				rule_id);
 			return -EINVAL;
 		}
 	}
@@ -3696,7 +3698,7 @@ port_flow_dump(portid_t port_id, bool dump_all, uint32_t rule_id,
 
 /** Query a flow rule. */
 int
-port_flow_query(portid_t port_id, uint32_t rule,
+port_flow_query(portid_t port_id, uint64_t rule,
 		const struct rte_flow_action *action)
 {
 	struct rte_flow_error error;
@@ -3718,7 +3720,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		if (pf->id == rule)
 			break;
 	if (!pf) {
-		fprintf(stderr, "Flow rule #%u not found\n", rule);
+		fprintf(stderr, "Flow rule #%"PRIu64" not found\n", rule);
 		return -ENOENT;
 	}
 	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ACTION_NAME_PTR,
@@ -3825,7 +3827,7 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 		switch (*type) {
 		case ACTION_AGE_CONTEXT_TYPE_FLOW:
 			ctx.pf = container_of(type, struct port_flow, age_type);
-			printf("%-20s\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32
+			printf("%-20s\t%" PRIu64 "\t%" PRIu32 "\t%" PRIu32
 								 "\t%c%c%c\t\n",
 			       "Flow",
 			       ctx.pf->id,
@@ -3903,7 +3905,7 @@ port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group)
 		const struct rte_flow_action *action = pf->rule.actions;
 		const char *name;
 
-		printf("%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t%c%c%c\t",
+		printf("%" PRIu64 "\t%" PRIu32 "\t%" PRIu32 "\t%c%c%c\t",
 		       pf->id,
 		       pf->rule.attr->group,
 		       pf->rule.attr->priority,
