@@ -2210,7 +2210,10 @@ cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_m
 	/* Copy sub error message */
 	if (error_code->s.etype == ML_ETYPE_HW_NONFATAL) {
 		strcat(msg, " : ");
-		strcat(msg, ml_stype_db_hw_nf[error_code->s.stype].msg);
+		if (error_code->s.stype < PLT_DIM(ml_stype_db_hw_nf))
+			strcat(msg, ml_stype_db_hw_nf[error_code->s.stype].msg);
+		else
+			strcat(msg, "UNKNOWN ERROR");
 	}
 
 	if (error_code->s.etype == ML_ETYPE_DRIVER) {
@@ -2219,6 +2222,7 @@ cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_m
 	}
 
 	plt_strlcpy(error->message, msg, sizeof(error->message));
+	error->errcode = error_code->u64;
 
 	return 0;
 }
