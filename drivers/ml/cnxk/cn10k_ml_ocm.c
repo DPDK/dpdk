@@ -268,8 +268,12 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 		search_end_tile = start_tile;
 	}
 
-	/* nibbles + prefix '0x' */
+	/* allocate for local ocm mask */
 	local_ocm_mask = rte_zmalloc("local_ocm_mask", mldev->ocm.mask_words, RTE_CACHE_LINE_SIZE);
+	if (local_ocm_mask == NULL) {
+		plt_err("Unable to allocate memory for local_ocm_mask");
+		return -1;
+	}
 
 	tile_start = search_start_tile;
 start_search:
@@ -494,6 +498,10 @@ cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
 
 	/* nibbles + prefix '0x' */
 	str = rte_zmalloc("ocm_mask_str", mldev->ocm.num_pages / 4 + 2, RTE_CACHE_LINE_SIZE);
+	if (str == NULL) {
+		plt_err("Unable to allocate memory for ocm_mask_str");
+		return;
+	}
 
 	fprintf(fp, "OCM State:\n");
 	for (tile_id = 0; tile_id < ocm->num_tiles; tile_id++) {

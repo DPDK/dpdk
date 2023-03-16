@@ -789,6 +789,11 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	/* Allocate memory for ocm_mask */
 	ocm->ocm_mask =
 		rte_zmalloc("ocm_mask", ocm->mask_words * ocm->num_tiles, RTE_CACHE_LINE_SIZE);
+	if (ocm->ocm_mask == NULL) {
+		plt_err("Unable to allocate memory for OCM mask");
+		ret = -ENOMEM;
+		goto error;
+	}
 
 	for (tile_id = 0; tile_id < ocm->num_tiles; tile_id++) {
 		ocm->tile_ocm_info[tile_id].ocm_mask = ocm->ocm_mask + tile_id * ocm->mask_words;
@@ -1107,6 +1112,11 @@ cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16
 	num_xstats = PLT_DIM(cn10k_ml_model_xstats_table) * mldev->nb_models_loaded;
 	xstats_map = rte_zmalloc("cn10k_ml_xstats_map",
 				 sizeof(struct rte_ml_dev_xstats_map) * num_xstats, 0);
+	if (xstats_map == NULL) {
+		plt_err("Unable to allocate memory for cn10k_ml_xstats_map");
+		return -ENOMEM;
+	}
+
 	cn10k_ml_dev_xstats_names_get(dev, xstats_map, num_xstats);
 
 	cn10k_ml_dev_info_get(dev, &dev_info);
