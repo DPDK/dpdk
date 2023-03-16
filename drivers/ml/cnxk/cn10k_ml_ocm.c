@@ -423,10 +423,8 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 	wb_page_end = wb_page_start + model->model_mem_map.wb_pages - 1;
 	for (tile_id = model->addr.tile_start; tile_id <= model->addr.tile_end; tile_id++) {
 		for (page_id = wb_page_start; page_id <= wb_page_end; page_id++) {
-			ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE] =
-				CLEAR_BIT(ocm->tile_ocm_info[tile_id]
-						  .ocm_mask[page_id / OCM_MAP_WORD_SIZE],
-					  page_id % OCM_MAP_WORD_SIZE);
+			CLEAR_BIT(ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE],
+				  page_id % OCM_MAP_WORD_SIZE);
 		}
 
 		/* Update last_wb_page size */
@@ -452,10 +450,9 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 			prev_start = ocm->num_pages - ocm->tile_ocm_info[tile_id].scratch_pages;
 			curr_start = ocm->num_pages - scratch_resize_pages;
 			for (page_id = prev_start; page_id < curr_start; page_id++) {
-				ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE] =
-					CLEAR_BIT(ocm->tile_ocm_info[tile_id]
-							  .ocm_mask[page_id / OCM_MAP_WORD_SIZE],
-						  page_id % OCM_MAP_WORD_SIZE);
+				CLEAR_BIT(ocm->tile_ocm_info[tile_id]
+						  .ocm_mask[page_id / OCM_MAP_WORD_SIZE],
+					  page_id % OCM_MAP_WORD_SIZE);
 			}
 			ocm->tile_ocm_info[tile_id].scratch_pages = scratch_resize_pages;
 		}
