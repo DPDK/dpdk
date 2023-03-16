@@ -390,6 +390,7 @@ cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t t
 void
 cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 {
+	struct cn10k_ml_model *local_model;
 	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_ocm *ocm;
@@ -420,17 +421,15 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 		if (wb_page_end == ocm->tile_ocm_info[tile_id].last_wb_page)
 			ocm->tile_ocm_info[tile_id].last_wb_page = wb_page_start - 1;
 
-		/* Update scratch page size and clear extra bits */
-		scratch_resize_pages = 0;
 		/* Get max scratch pages required, excluding the current model */
+		scratch_resize_pages = 0;
 		for (i = 0; i < dev->data->nb_models; i++) {
-			struct cn10k_ml_model *model = dev->data->models[i];
-
-			if ((i != model_id) && (model != NULL)) {
-				if (IS_BIT_SET(model->model_mem_map.tilemask, tile_id))
-					scratch_resize_pages =
-						PLT_MAX((int)model->model_mem_map.scratch_pages,
-							scratch_resize_pages);
+			local_model = dev->data->models[i];
+			if ((i != model_id) && (local_model != NULL)) {
+				if (IS_BIT_SET(local_model->model_mem_map.tilemask, tile_id))
+					scratch_resize_pages = PLT_MAX(
+						(int)local_model->model_mem_map.scratch_pages,
+						scratch_resize_pages);
 			}
 		}
 
