@@ -27,6 +27,9 @@ struct ml_core_args {
 	struct rte_ml_op **enq_ops;
 	struct rte_ml_op **deq_ops;
 	struct ml_request **reqs;
+
+	uint64_t start_cycles;
+	uint64_t end_cycles;
 };
 
 struct test_inference {
@@ -46,6 +49,10 @@ struct test_inference {
 
 	struct ml_core_args args[RTE_MAX_LCORE];
 	uint64_t error_count[RTE_MAX_LCORE];
+
+	struct rte_ml_dev_xstats_map *xstats_map;
+	uint64_t *xstats_values;
+	int xstats_size;
 } __rte_cache_aligned;
 
 bool test_inference_cap_check(struct ml_options *opt);
@@ -63,5 +70,6 @@ void ml_inference_mem_destroy(struct ml_test *test, struct ml_options *opt);
 int ml_inference_result(struct ml_test *test, struct ml_options *opt, uint16_t fid);
 int ml_inference_launch_cores(struct ml_test *test, struct ml_options *opt, uint16_t start_fid,
 			      uint16_t end_fid);
+int ml_inference_stats_get(struct ml_test *test, struct ml_options *opt);
 
 #endif /* TEST_INFERENCE_COMMON_H */

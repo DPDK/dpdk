@@ -23,6 +23,7 @@
 #define ML_QUEUE_SIZE  ("queue_size")
 #define ML_BATCHES     ("batches")
 #define ML_TOLERANCE   ("tolerance")
+#define ML_STATS       ("stats")
 #define ML_DEBUG       ("debug")
 #define ML_HELP	       ("help")
 
@@ -45,6 +46,7 @@ struct ml_options {
 	uint16_t queue_size;
 	uint16_t batches;
 	float tolerance;
+	bool stats;
 	bool debug;
 };
 

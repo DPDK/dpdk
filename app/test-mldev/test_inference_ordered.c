@@ -54,6 +54,7 @@ next_model:
 		goto error;
 
 	ml_inference_iomem_destroy(test, opt, fid);
+	ml_inference_stats_get(test, opt);
 
 	/* stop model */
 	ret = ml_model_stop(test, opt, &t->model[fid], fid);

@@ -30,6 +30,7 @@ ml_options_default(struct ml_options *opt)
 	opt->queue_size = 1;
 	opt->batches = 0;
 	opt->tolerance = 0.0;
+	opt->stats = false;
 	opt->debug = false;
 }
 
@@ -216,7 +217,8 @@ ml_dump_test_options(const char *testname)
 		       "\t\t--queue_pairs      : number of queue pairs to create\n"
 		       "\t\t--queue_size       : size fo queue-pair\n"
 		       "\t\t--batches          : number of batches of input\n"
-		       "\t\t--tolerance        : maximum tolerance (%%) for output validation\n");
+		       "\t\t--tolerance        : maximum tolerance (%%) for output validation\n"
+		       "\t\t--stats            : enable reporting performance statistics\n");
 		printf("\n");
 	}
 }
@@ -248,6 +250,7 @@ static struct option lgopts[] = {
 	{ML_QUEUE_SIZE, 1, 0, 0},
 	{ML_BATCHES, 1, 0, 0},
 	{ML_TOLERANCE, 1, 0, 0},
+	{ML_STATS, 0, 0, 0},
 	{ML_DEBUG, 0, 0, 0},
 	{ML_HELP, 0, 0, 0},
 	{NULL, 0, 0, 0}};
@@ -290,6 +293,11 @@ ml_options_parse(struct ml_options *opt, int argc, char **argv)
 	while ((opts = getopt_long(argc, argv, "", lgopts, &opt_idx)) != EOF) {
 		switch (opts) {
 		case 0: /* parse long options */
+			if (!strcmp(lgopts[opt_idx].name, "stats")) {
+				opt->stats = true;
+				break;
+			}
+
 			if (!strcmp(lgopts[opt_idx].name, "debug")) {
 				opt->debug = true;
 				break;

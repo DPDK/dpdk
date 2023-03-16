@@ -56,7 +56,11 @@ test_inference_interleave_driver(struct ml_test *test, struct ml_options *opt)
 			goto error;
 
 		ml_inference_iomem_destroy(test, opt, fid);
+	}
 
+	ml_inference_stats_get(test, opt);
+
+	for (fid = 0; fid < opt->nb_filelist; fid++) {
 		ret = ml_model_stop(test, opt, &t->model[fid], fid);
 		if (ret != 0)
 			goto error;

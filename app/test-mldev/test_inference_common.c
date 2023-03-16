@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <rte_common.h>
+#include <rte_cycles.h>
 #include <rte_hash_crc.h>
 #include <rte_launch.h>
 #include <rte_lcore.h>
@@ -37,6 +38,17 @@
 		}                                                                                  \
 	} while (0)
 
+static void
+print_line(uint16_t len)
+{
+	uint16_t i;
+
+	for (i = 0; i < len; i++)
+		printf("-");
+
+	printf("\n");
+}
+
 /* Enqueue inference requests with burst size equal to 1 */
 static int
 ml_enqueue_single(void *arg)
@@ -46,6 +58,7 @@ ml_enqueue_single(void *arg)
 	struct rte_ml_op *op = NULL;
 	struct ml_core_args *args;
 	uint64_t model_enq = 0;
+	uint64_t start_cycle;
 	uint32_t burst_enq;
 	uint32_t lcore_id;
 	uint16_t fid;
@@ -53,6 +66,7 @@ ml_enqueue_single(void *arg)
 
 	lcore_id = rte_lcore_id();
 	args = &t->args[lcore_id];
+	args->start_cycles = 0;
 	model_enq = 0;
 
 	if (args->nb_reqs == 0)
@@ -88,10 +102,12 @@ retry:
 	req->fid = fid;
 
 enqueue_req:
+	start_cycle = rte_get_tsc_cycles();
 	burst_enq = rte_ml_enqueue_burst(t->cmn.opt->dev_id, args->qp_id, &op, 1);
 	if (burst_enq == 0)
 		goto enqueue_req;
 
+	args->start_cycles += start_cycle;
 	fid++;
 	if (likely(fid <= args->end_fid))
 		goto next_model;
@@ -115,10 +131,12 @@ ml_dequeue_single(void *arg)
 	uint64_t total_deq = 0;
 	uint8_t nb_filelist;
 	uint32_t burst_deq;
+	uint64_t end_cycle;
 	uint32_t lcore_id;
 
 	lcore_id = rte_lcore_id();
 	args = &t->args[lcore_id];
+	args->end_cycles = 0;
 	nb_filelist = args->end_fid - args->start_fid + 1;
 
 	if (args->nb_reqs == 0)
@@ -126,9 +144,11 @@ ml_dequeue_single(void *arg)
 
 dequeue_req:
 	burst_deq = rte_ml_dequeue_burst(t->cmn.opt->dev_id, args->qp_id, &op, 1);
+	end_cycle = rte_get_tsc_cycles();
 
 	if (likely(burst_deq == 1)) {
 		total_deq += burst_deq;
+		args->end_cycles += end_cycle;
 		if (unlikely(op->status == RTE_ML_OP_STATUS_ERROR)) {
 			rte_ml_op_error_get(t->cmn.opt->dev_id, op, &error);
 			ml_err("error_code = 0x%" PRIx64 ", error_message = %s\n", error.errcode,
@@ -152,6 +172,7 @@ ml_enqueue_burst(void *arg)
 {
 	struct test_inference *t = ml_test_priv((struct ml_test *)arg);
 	struct ml_core_args *args;
+	uint64_t start_cycle;
 	uint16_t ops_count;
 	uint64_t model_enq;
 	uint16_t burst_enq;
@@ -164,6 +185,7 @@ ml_enqueue_burst(void *arg)
 
 	lcore_id = rte_lcore_id();
 	args = &t->args[lcore_id];
+	args->start_cycles = 0;
 	model_enq = 0;
 
 	if (args->nb_reqs == 0)
@@ -205,8 +227,10 @@ retry:
 	pending = ops_count;
 
 enqueue_reqs:
+	start_cycle = rte_get_tsc_cycles();
 	burst_enq =
 		rte_ml_enqueue_burst(t->cmn.opt->dev_id, args->qp_id, &args->enq_ops[idx], pending);
+	args->start_cycles += burst_enq * start_cycle;
 	pending = pending - burst_enq;
 
 	if (pending > 0) {
@@ -236,11 +260,13 @@ ml_dequeue_burst(void *arg)
 	uint64_t total_deq = 0;
 	uint16_t burst_deq = 0;
 	uint8_t nb_filelist;
+	uint64_t end_cycle;
 	uint32_t lcore_id;
 	uint32_t i;
 
 	lcore_id = rte_lcore_id();
 	args = &t->args[lcore_id];
+	args->end_cycles = 0;
 	nb_filelist = args->end_fid - args->start_fid + 1;
 
 	if (args->nb_reqs == 0)
@@ -249,9 +275,11 @@ ml_dequeue_burst(void *arg)
 dequeue_burst:
 	burst_deq = rte_ml_dequeue_burst(t->cmn.opt->dev_id, args->qp_id, args->deq_ops,
 					 t->cmn.opt->burst_size);
+	end_cycle = rte_get_tsc_cycles();
 
 	if (likely(burst_deq > 0)) {
 		total_deq += burst_deq;
+		args->end_cycles += burst_deq * end_cycle;
 
 		for (i = 0; i < burst_deq; i++) {
 			if (unlikely(args->deq_ops[i]->status == RTE_ML_OP_STATUS_ERROR)) {
@@ -381,6 +409,7 @@ test_inference_opt_dump(struct ml_options *opt)
 	ml_dump("queue_pairs", "%u", opt->queue_pairs);
 	ml_dump("queue_size", "%u", opt->queue_size);
 	ml_dump("tolerance", "%-7.3f", opt->tolerance);
+	ml_dump("stats", "%s", (opt->stats ? "true" : "false"));
 
 	if (opt->batches == 0)
 		ml_dump("batches", "%u (default)", opt->batches);
@@ -452,6 +481,11 @@ test_inference_setup(struct ml_test *test, struct ml_options *opt)
 		t->args[lcore_id].reqs = rte_zmalloc_socket(
 			"ml_test_requests", opt->burst_size * sizeof(struct ml_request *),
 			RTE_CACHE_LINE_SIZE, opt->socket_id);
+	}
+
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		t->args[i].start_cycles = 0;
+		t->args[i].end_cycles = 0;
 	}
 
 	return 0;
@@ -985,4 +1019,110 @@ ml_inference_launch_cores(struct ml_test *test, struct ml_options *opt, uint16_t
 	}
 
 	return 0;
+}
+
+int
+ml_inference_stats_get(struct ml_test *test, struct ml_options *opt)
+{
+	struct test_inference *t = ml_test_priv(test);
+	uint64_t total_cycles = 0;
+	uint32_t nb_filelist;
+	uint64_t throughput;
+	uint64_t avg_e2e;
+	uint32_t qp_id;
+	uint64_t freq;
+	int ret;
+	int i;
+
+	if (!opt->stats)
+		return 0;
+
+	/* get xstats size */
+	t->xstats_size = rte_ml_dev_xstats_names_get(opt->dev_id, NULL, 0);
+	if (t->xstats_size >= 0) {
+		/* allocate for xstats_map and values */
+		t->xstats_map = rte_malloc(
+			"ml_xstats_map", t->xstats_size * sizeof(struct rte_ml_dev_xstats_map), 0);
+		if (t->xstats_map == NULL) {
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		t->xstats_values =
+			rte_malloc("ml_xstats_values", t->xstats_size * sizeof(uint64_t), 0);
+		if (t->xstats_values == NULL) {
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		ret = rte_ml_dev_xstats_names_get(opt->dev_id, t->xstats_map, t->xstats_size);
+		if (ret != t->xstats_size) {
+			printf("Unable to get xstats names, ret = %d\n", ret);
+			ret = -1;
+			goto error;
+		}
+
+		for (i = 0; i < t->xstats_size; i++)
+			rte_ml_dev_xstats_get(opt->dev_id, &t->xstats_map[i].id,
+					      &t->xstats_values[i], 1);
+	}
+
+	/* print xstats*/
+	printf("\n");
+	print_line(80);
+	printf(" ML Device Extended Statistics\n");
+	print_line(80);
+	for (i = 0; i < t->xstats_size; i++)
+		printf(" %-64s = %" PRIu64 "\n", t->xstats_map[i].name, t->xstats_values[i]);
+	print_line(80);
+
+	/* release buffers */
+	if (t->xstats_map)
+		rte_free(t->xstats_map);
+
+	if (t->xstats_values)
+		rte_free(t->xstats_values);
+
+	/* print end-to-end stats */
+	freq = rte_get_tsc_hz();
+	for (qp_id = 0; qp_id < RTE_MAX_LCORE; qp_id++)
+		total_cycles += t->args[qp_id].end_cycles - t->args[qp_id].start_cycles;
+	avg_e2e = total_cycles / opt->repetitions;
+
+	if (freq == 0) {
+		avg_e2e = total_cycles / opt->repetitions;
+		printf(" %-64s = %" PRIu64 "\n", "Average End-to-End Latency (cycles)", avg_e2e);
+	} else {
+		avg_e2e = (total_cycles * NS_PER_S) / (opt->repetitions * freq);
+		printf(" %-64s = %" PRIu64 "\n", "Average End-to-End Latency (ns)", avg_e2e);
+	}
+
+	/* print inference throughput */
+	if (strcmp(opt->test_name, "inference_ordered") == 0)
+		nb_filelist = 1;
+	else
+		nb_filelist = opt->nb_filelist;
+
+	if (freq == 0) {
+		throughput = (nb_filelist * t->cmn.opt->repetitions * 1000000) / total_cycles;
+		printf(" %-64s = %" PRIu64 "\n", "Average Throughput (inferences / million cycles)",
+		       throughput);
+	} else {
+		throughput = (nb_filelist * t->cmn.opt->repetitions * freq) / total_cycles;
+		printf(" %-64s = %" PRIu64 "\n", "Average Throughput (inferences / second)",
+		       throughput);
+	}
+
+	print_line(80);
+
+	return 0;
+
+error:
+	if (t->xstats_map)
+		rte_free(t->xstats_map);
+
+	if (t->xstats_values)
+		rte_free(t->xstats_values);
+
+	return ret;
 }
