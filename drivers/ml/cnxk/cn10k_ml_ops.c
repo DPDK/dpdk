@@ -1128,8 +1128,10 @@ cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16
 		}
 	}
 
-	if (id == PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models)
+	if (id == PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models) {
+		rte_free(xstats_map);
 		return -EINVAL;
+	}
 
 	model_id = id / PLT_DIM(cn10k_ml_model_xstats_table);
 	type = id % PLT_DIM(cn10k_ml_model_xstats_table);
