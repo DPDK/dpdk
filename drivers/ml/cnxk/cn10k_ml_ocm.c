@@ -224,7 +224,6 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	uint16_t scratch_page_start;
 	int used_last_wb_page_max;
 	uint16_t scratch_page_end;
-	uint8_t search_start_tile;
 	uint8_t search_end_tile;
 	uint8_t *local_ocm_mask;
 	int wb_page_start_curr;
@@ -235,14 +234,13 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	uint16_t word_id;
 	uint8_t tile_idx;
 	int max_slot_sz;
-	int start_tile;
 	int page_id;
 
 	mldev = dev->data->dev_private;
 	ocm = &mldev->ocm;
 
 	if (num_tiles > ML_CN10K_OCM_NUMTILES) {
-		plt_err("Invalid num_tiles = %u (> ML_CN10K_OCM_NUMTILES)", num_tiles);
+		plt_err("Invalid num_tiles = %u (> %u)", num_tiles, ML_CN10K_OCM_NUMTILES);
 		return -1;
 	}
 
@@ -250,23 +248,11 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	wb_page_start = -1;
 	used_scratch_pages_max = 0;
 	used_last_wb_page_max = -1;
-	start_tile = -1;
 	max_slot_sz_curr = 0;
 	max_slot_sz = 0;
 	tile_idx = 0;
-
-	if ((start_tile != -1) && (start_tile % num_tiles != 0)) {
-		plt_err("Invalid start_tile, %d", start_tile);
-		return -1;
-	}
-
-	if (start_tile < 0) {
-		search_start_tile = 0;
-		search_end_tile = ocm->num_tiles - num_tiles;
-	} else {
-		search_start_tile = start_tile;
-		search_end_tile = start_tile;
-	}
+	tile_start = 0;
+	search_end_tile = ocm->num_tiles - num_tiles;
 
 	/* allocate for local ocm mask */
 	local_ocm_mask = rte_zmalloc("local_ocm_mask", mldev->ocm.mask_words, RTE_CACHE_LINE_SIZE);
@@ -275,7 +261,6 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 		return -1;
 	}
 
-	tile_start = search_start_tile;
 start_search:
 	used_scratch_pages_max = 0;
 	used_last_wb_page_max = -1;
