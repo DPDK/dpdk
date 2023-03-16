@@ -779,8 +779,8 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 	if (roc_env_is_emulator() || roc_env_is_hw()) {
 		/* Read firmware image to a buffer */
 		ret = rte_firmware_read(fw->path, &fw_buffer, &fw_size);
-		if (ret < 0) {
-			plt_err("Can't read firmware data: %s\n", fw->path);
+		if ((ret < 0) || (fw_buffer == NULL)) {
+			plt_err("Unable to read firmware data: %s\n", fw->path);
 			return ret;
 		}
 
