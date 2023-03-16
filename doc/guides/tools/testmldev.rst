@@ -93,6 +93,10 @@ The following are the command-line options supported by the test application.
   Set the number of inference repetitions to be executed in the test per each model.
   Default value is ``1``.
 
+``--burst_size <n>``
+  Set the burst size to be used when enqueuing / dequeuing inferences.
+  Default value is ``1``.
+
 ``--debug``
   Enable the tests to run in debug mode.
 
@@ -241,6 +245,7 @@ Supported command line options for inference tests are following::
    --socket_id
    --filelist
    --repetitions
+   --burst_size
 
 List of files to be used for the inference tests can be specified
 through the option ``--filelist <file_list>`` as a comma separated list.
@@ -249,6 +254,10 @@ A filelist entry would be of the format
 and is used to specify the list of files required to test with a single model.
 Multiple filelist entries are supported by the test, one entry per model.
 Maximum number of file entries supported by the test is ``8``.
+
+When ``--burst_size <num>`` option is specified for the test,
+enqueue and dequeue burst would try to enqueue or dequeue
+``num`` number of inferences per each call respectively.
 
 .. note::
 
@@ -287,6 +296,14 @@ Example command to run ``inference_ordered`` test:
 
    sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
         --test=inference_ordered --filelist model.bin,input.bin,output.bin
+
+Example command to run ``inference_ordered`` test with a specific burst size:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_ordered --filelist model.bin,input.bin,output.bin \
+        --burst_size 12
 
 
 INFERENCE_INTERLEAVE Test
@@ -327,6 +344,14 @@ Example command to run ``inference_interleave`` test with multiple models:
    sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
         --test=inference_interleave --filelist model_A.bin,input_A.bin,output_A.bin \
         --filelist model_B.bin,input_B.bin,output_B.bin
+
+Example command to run ``inference_interleave`` test with a specific burst size:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_interleave --filelist model.bin,input.bin,output.bin \
+        --burst_size 16
 
 
 Debug mode

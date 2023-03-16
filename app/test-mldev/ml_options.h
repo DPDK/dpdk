@@ -18,6 +18,7 @@
 #define ML_MODELS      ("models")
 #define ML_FILELIST    ("filelist")
 #define ML_REPETITIONS ("repetitions")
+#define ML_BURST_SIZE  ("burst_size")
 #define ML_DEBUG       ("debug")
 #define ML_HELP	       ("help")
 
@@ -34,6 +35,7 @@ struct ml_options {
 	struct ml_filelist filelist[ML_TEST_MAX_MODELS];
 	uint8_t nb_filelist;
 	uint64_t repetitions;
+	uint16_t burst_size;
 	bool debug;
 };
 

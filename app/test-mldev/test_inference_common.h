@@ -22,6 +22,10 @@ struct ml_core_args {
 	uint64_t nb_reqs;
 	uint16_t start_fid;
 	uint16_t end_fid;
+
+	struct rte_ml_op **enq_ops;
+	struct rte_ml_op **deq_ops;
+	struct ml_request **reqs;
 };
 
 struct test_inference {

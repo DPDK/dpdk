@@ -124,6 +124,132 @@ dequeue_req:
 	return 0;
 }
 
+/* Enqueue inference requests with burst size greater than 1 */
+static int
+ml_enqueue_burst(void *arg)
+{
+	struct test_inference *t = ml_test_priv((struct ml_test *)arg);
+	struct ml_core_args *args;
+	uint16_t ops_count;
+	uint64_t model_enq;
+	uint16_t burst_enq;
+	uint32_t lcore_id;
+	uint16_t pending;
+	uint16_t idx;
+	uint16_t fid;
+	uint16_t i;
+	int ret;
+
+	lcore_id = rte_lcore_id();
+	args = &t->args[lcore_id];
+	model_enq = 0;
+
+	if (args->nb_reqs == 0)
+		return 0;
+
+next_rep:
+	fid = args->start_fid;
+
+next_model:
+	ops_count = RTE_MIN(t->cmn.opt->burst_size, args->nb_reqs - model_enq);
+	ret = rte_mempool_get_bulk(t->op_pool, (void **)args->enq_ops, ops_count);
+	if (ret != 0)
+		goto next_model;
+
+retry:
+	ret = rte_mempool_get_bulk(t->model[fid].io_pool, (void **)args->reqs, ops_count);
+	if (ret != 0)
+		goto retry;
+
+	for (i = 0; i < ops_count; i++) {
+		args->enq_ops[i]->model_id = t->model[fid].id;
+		args->enq_ops[i]->nb_batches = t->model[fid].info.batch_size;
+		args->enq_ops[i]->mempool = t->op_pool;
+
+		args->enq_ops[i]->input.addr = args->reqs[i]->input;
+		args->enq_ops[i]->input.length = t->model[fid].inp_qsize;
+		args->enq_ops[i]->input.next = NULL;
+
+		args->enq_ops[i]->output.addr = args->reqs[i]->output;
+		args->enq_ops[i]->output.length = t->model[fid].out_qsize;
+		args->enq_ops[i]->output.next = NULL;
+
+		args->enq_ops[i]->user_ptr = args->reqs[i];
+		args->reqs[i]->niters++;
+		args->reqs[i]->fid = fid;
+	}
+
+	idx = 0;
+	pending = ops_count;
+
+enqueue_reqs:
+	burst_enq = rte_ml_enqueue_burst(t->cmn.opt->dev_id, 0, &args->enq_ops[idx], pending);
+	pending = pending - burst_enq;
+
+	if (pending > 0) {
+		idx = idx + burst_enq;
+		goto enqueue_reqs;
+	}
+
+	fid++;
+	if (fid <= args->end_fid)
+		goto next_model;
+
+	model_enq = model_enq + ops_count;
+	if (model_enq < args->nb_reqs)
+		goto next_rep;
+
+	return 0;
+}
+
+/* Dequeue inference requests with burst size greater than 1 */
+static int
+ml_dequeue_burst(void *arg)
+{
+	struct test_inference *t = ml_test_priv((struct ml_test *)arg);
+	struct rte_ml_op_error error;
+	struct ml_core_args *args;
+	struct ml_request *req;
+	uint64_t total_deq = 0;
+	uint16_t burst_deq = 0;
+	uint8_t nb_filelist;
+	uint32_t lcore_id;
+	uint32_t i;
+
+	lcore_id = rte_lcore_id();
+	args = &t->args[lcore_id];
+	nb_filelist = args->end_fid - args->start_fid + 1;
+
+	if (args->nb_reqs == 0)
+		return 0;
+
+dequeue_burst:
+	burst_deq =
+		rte_ml_dequeue_burst(t->cmn.opt->dev_id, 0, args->deq_ops, t->cmn.opt->burst_size);
+
+	if (likely(burst_deq > 0)) {
+		total_deq += burst_deq;
+
+		for (i = 0; i < burst_deq; i++) {
+			if (unlikely(args->deq_ops[i]->status == RTE_ML_OP_STATUS_ERROR)) {
+				rte_ml_op_error_get(t->cmn.opt->dev_id, args->deq_ops[i], &error);
+				ml_err("error_code = 0x%" PRIx64 ", error_message = %s\n",
+				       error.errcode, error.message);
+				t->error_count[lcore_id]++;
+			}
+			req = (struct ml_request *)args->deq_ops[i]->user_ptr;
+			if (req != NULL)
+				rte_mempool_put(t->model[req->fid].io_pool, req);
+		}
+		rte_mempool_put_bulk(t->op_pool, (void *)args->deq_ops, burst_deq);
+	}
+
+	if (total_deq < args->nb_reqs * nb_filelist)
+		goto dequeue_burst;
+
+	return 0;
+}
+
 bool
 test_inference_cap_check(struct ml_options *opt)
 {
@@ -173,6 +299,17 @@ test_inference_opt_check(struct ml_options *opt)
 		return -EINVAL;
 	}
 
+	if (opt->burst_size == 0) {
+		ml_err("Invalid option, burst_size = %u\n", opt->burst_size);
+		return -EINVAL;
+	}
+
+	if (opt->burst_size > ML_TEST_MAX_POOL_SIZE) {
+		ml_err("Invalid option, burst_size = %u (> max supported = %d)\n", opt->burst_size,
+		       ML_TEST_MAX_POOL_SIZE);
+		return -EINVAL;
+	}
+
 	/* check number of available lcores. */
 	if (rte_lcore_count() < 3) {
 		ml_err("Insufficient lcores = %u\n", rte_lcore_count());
@@ -193,6 +330,7 @@ test_inference_opt_dump(struct ml_options *opt)
 
 	/* dump test opts */
 	ml_dump("repetitions", "%" PRIu64, opt->repetitions);
+	ml_dump("burst_size", "%u", opt->burst_size);
 
 	ml_dump_begin("filelist");
 	for (i = 0; i < opt->nb_filelist; i++) {
@@ -208,6 +346,7 @@ test_inference_setup(struct ml_test *test, struct ml_options *opt)
 {
 	struct test_inference *t;
 	void *test_inference;
+	uint32_t lcore_id;
 	int ret = 0;
 	uint32_t i;
 
@@ -233,12 +372,29 @@ test_inference_setup(struct ml_test *test, struct ml_options *opt)
 		goto error;
 	}
 
-	t->enqueue = ml_enqueue_single;
-	t->dequeue = ml_dequeue_single;
+	if (opt->burst_size == 1) {
+		t->enqueue = ml_enqueue_single;
+		t->dequeue = ml_dequeue_single;
+	} else {
+		t->enqueue = ml_enqueue_burst;
+		t->dequeue = ml_dequeue_burst;
+	}
 
 	/* set model initial state */
 	for (i = 0; i < opt->nb_filelist; i++)
 		t->model[i].state = MODEL_INITIAL;
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		t->args[lcore_id].enq_ops = rte_zmalloc_socket(
+			"ml_test_enq_ops", opt->burst_size * sizeof(struct rte_ml_op *),
+			RTE_CACHE_LINE_SIZE, opt->socket_id);
+		t->args[lcore_id].deq_ops = rte_zmalloc_socket(
+			"ml_test_deq_ops", opt->burst_size * sizeof(struct rte_ml_op *),
+			RTE_CACHE_LINE_SIZE, opt->socket_id);
+		t->args[lcore_id].reqs = rte_zmalloc_socket(
+			"ml_test_requests", opt->burst_size * sizeof(struct ml_request *),
+			RTE_CACHE_LINE_SIZE, opt->socket_id);
+	}
 
 	return 0;
 

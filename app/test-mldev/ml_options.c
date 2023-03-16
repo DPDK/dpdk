@@ -24,6 +24,7 @@ ml_options_default(struct ml_options *opt)
 	opt->socket_id = SOCKET_ID_ANY;
 	opt->nb_filelist = 0;
 	opt->repetitions = 1;
+	opt->burst_size = 1;
 	opt->debug = false;
 }
 
@@ -145,6 +146,12 @@ ml_parse_repetitions(struct ml_options *opt, const char *arg)
 	return parser_read_uint64(&opt->repetitions, arg);
 }
 
+static int
+ml_parse_burst_size(struct ml_options *opt, const char *arg)
+{
+	return parser_read_uint16(&opt->burst_size, arg);
+}
+
 static void
 ml_dump_test_options(const char *testname)
 {
@@ -159,7 +166,8 @@ ml_dump_test_options(const char *testname)
 	if ((strcmp(testname, "inference_ordered") == 0) ||
 	    (strcmp(testname, "inference_interleave") == 0)) {
 		printf("\t\t--filelist         : comma separated list of model, input and output\n"
-		       "\t\t--repetitions      : number of inference repetitions\n");
+		       "\t\t--repetitions      : number of inference repetitions\n"
+		       "\t\t--burst_size       : inference burst size\n");
 		printf("\n");
 	}
 }
@@ -186,6 +194,7 @@ static struct option lgopts[] = {
 	{ML_MODELS, 1, 0, 0},
 	{ML_FILELIST, 1, 0, 0},
 	{ML_REPETITIONS, 1, 0, 0},
+	{ML_BURST_SIZE, 1, 0, 0},
 	{ML_DEBUG, 0, 0, 0},
 	{ML_HELP, 0, 0, 0},
 	{NULL, 0, 0, 0}};
@@ -202,6 +211,7 @@ ml_opts_parse_long(int opt_idx, struct ml_options *opt)
 		{ML_MODELS, ml_parse_models},
 		{ML_FILELIST, ml_parse_filelist},
 		{ML_REPETITIONS, ml_parse_repetitions},
+		{ML_BURST_SIZE, ml_parse_burst_size},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {
