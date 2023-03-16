@@ -97,6 +97,15 @@ The following are the command-line options supported by the test application.
   Set the burst size to be used when enqueuing / dequeuing inferences.
   Default value is ``1``.
 
+``--queue_pairs <n>``
+  Set the number of queue-pairs to be used for inference enqueue and dequeue operations.
+  Default value is ``1``.
+
+``--queue_size <n>``
+  Set the size of queue-pair to be created for inference enqueue / dequeue operations.
+  Queue size would translate into ``rte_ml_dev_qp_conf::nb_desc`` field during queue-pair creation.
+  Default value is ``1``.
+
 ``--debug``
   Enable the tests to run in debug mode.
 
@@ -120,12 +129,18 @@ Supported command line options for the ``device_ops`` test are following::
    --test
    --dev_id
    --socket_id
+   --queue_pairs
+   --queue_size
 
 
 DEVICE_OPS Test
 ~~~~~~~~~~~~~~~
 
-Device ops test validates the device configuration and reconfiguration.
+Device ops test validates the device configuration and reconfiguration support.
+The test configures ML device based on the options
+``--queue_pairs`` and ``--queue_size`` specified by the user,
+and later reconfigures the ML device with the number of queue pairs and queue size
+based on the maximum specified through the device info.
 
 
 Example
@@ -137,6 +152,13 @@ Command to run ``device_ops`` test:
 
    sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
         --test=device_ops
+
+Command to run ``device_ops`` test with user options:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=device_ops --queue_pairs <M> --queue_size <N>
 
 
 ML Model Tests
@@ -246,6 +268,8 @@ Supported command line options for inference tests are following::
    --filelist
    --repetitions
    --burst_size
+   --queue_pairs
+   --queue_size
 
 List of files to be used for the inference tests can be specified
 through the option ``--filelist <file_list>`` as a comma separated list.
@@ -258,6 +282,9 @@ Maximum number of file entries supported by the test is ``8``.
 When ``--burst_size <num>`` option is specified for the test,
 enqueue and dequeue burst would try to enqueue or dequeue
 ``num`` number of inferences per each call respectively.
+
+In the inference test, a pair of lcores are mapped to each queue pair.
+Minimum number of lcores required for the tests is equal to ``(queue_pairs * 2 + 1)``.
 
 .. note::
 
@@ -305,6 +332,14 @@ Example command to run ``inference_ordered`` test with a specific burst size:
         --test=inference_ordered --filelist model.bin,input.bin,output.bin \
         --burst_size 12
 
+Example command to run ``inference_ordered`` test with multiple queue-pairs and queue size:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_ordered --filelist model.bin,input.bin,output.bin \
+        --queue_pairs 4 --queue_size 16
+
 
 INFERENCE_INTERLEAVE Test
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -345,13 +380,14 @@ Example command to run ``inference_interleave`` test with multiple models:
         --test=inference_interleave --filelist model_A.bin,input_A.bin,output_A.bin \
         --filelist model_B.bin,input_B.bin,output_B.bin
 
-Example command to run ``inference_interleave`` test with a specific burst size:
+Example command to run ``inference_interleave`` test
+with a specific burst size, multiple queue-pairs and queue size:
 
 .. code-block:: console
 
    sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
         --test=inference_interleave --filelist model.bin,input.bin,output.bin \
-        --burst_size 16
+        --queue_pairs 8 --queue_size 12 --burst_size 16
 
 
 Debug mode

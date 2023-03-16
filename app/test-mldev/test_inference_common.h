@@ -22,6 +22,7 @@ struct ml_core_args {
 	uint64_t nb_reqs;
 	uint16_t start_fid;
 	uint16_t end_fid;
+	uint32_t qp_id;
 
 	struct rte_ml_op **enq_ops;
 	struct rte_ml_op **deq_ops;

@@ -75,7 +75,7 @@ ml_test_device_configure(struct ml_test *test, struct ml_options *opt)
 	/* configure device */
 	dev_config.socket_id = opt->socket_id;
 	dev_config.nb_models = t->dev_info.max_models;
-	dev_config.nb_queue_pairs = t->dev_info.max_queue_pairs;
+	dev_config.nb_queue_pairs = opt->queue_pairs;
 	ret = rte_ml_dev_configure(opt->dev_id, &dev_config);
 	if (ret != 0) {
 		ml_err("Failed to configure ml device, dev_id = %d\n", opt->dev_id);

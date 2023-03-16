@@ -66,7 +66,7 @@ retry:
 	req->fid = fid;
 
 enqueue_req:
-	burst_enq = rte_ml_enqueue_burst(t->cmn.opt->dev_id, 0, &op, 1);
+	burst_enq = rte_ml_enqueue_burst(t->cmn.opt->dev_id, args->qp_id, &op, 1);
 	if (burst_enq == 0)
 		goto enqueue_req;
 
@@ -103,7 +103,7 @@ ml_dequeue_single(void *arg)
 		return 0;
 
 dequeue_req:
-	burst_deq = rte_ml_dequeue_burst(t->cmn.opt->dev_id, 0, &op, 1);
+	burst_deq = rte_ml_dequeue_burst(t->cmn.opt->dev_id, args->qp_id, &op, 1);
 
 	if (likely(burst_deq == 1)) {
 		total_deq += burst_deq;
@@ -183,7 +183,8 @@ retry:
 	pending = ops_count;
 
 enqueue_reqs:
-	burst_enq = rte_ml_enqueue_burst(t->cmn.opt->dev_id, 0, &args->enq_ops[idx], pending);
+	burst_enq =
+		rte_ml_enqueue_burst(t->cmn.opt->dev_id, args->qp_id, &args->enq_ops[idx], pending);
 	pending = pending - burst_enq;
 
 	if (pending > 0) {
@@ -224,8 +225,8 @@ ml_dequeue_burst(void *arg)
 		return 0;
 
 dequeue_burst:
-	burst_deq =
-		rte_ml_dequeue_burst(t->cmn.opt->dev_id, 0, args->deq_ops, t->cmn.opt->burst_size);
+	burst_deq = rte_ml_dequeue_burst(t->cmn.opt->dev_id, args->qp_id, args->deq_ops,
+					 t->cmn.opt->burst_size);
 
 	if (likely(burst_deq > 0)) {
 		total_deq += burst_deq;
@@ -259,6 +260,19 @@ test_inference_cap_check(struct ml_options *opt)
 		return false;
 
 	rte_ml_dev_info_get(opt->dev_id, &dev_info);
+
+	if (opt->queue_pairs > dev_info.max_queue_pairs) {
+		ml_err("Insufficient capabilities: queue_pairs = %u, max_queue_pairs = %u",
+		       opt->queue_pairs, dev_info.max_queue_pairs);
+		return false;
+	}
+
+	if (opt->queue_size > dev_info.max_desc) {
+		ml_err("Insufficient capabilities: queue_size = %u, max_desc = %u", opt->queue_size,
+		       dev_info.max_desc);
+		return false;
+	}
+
 	if (opt->nb_filelist > dev_info.max_models) {
 		ml_err("Insufficient capabilities:  Filelist count exceeded device limit, count = %u (max limit = %u)",
 		       opt->nb_filelist, dev_info.max_models);
@@ -310,10 +324,21 @@ test_inference_opt_check(struct ml_options *opt)
 		return -EINVAL;
 	}
 
+	if (opt->queue_pairs == 0) {
+		ml_err("Invalid option, queue_pairs = %u\n", opt->queue_pairs);
+		return -EINVAL;
+	}
+
+	if (opt->queue_size == 0) {
+		ml_err("Invalid option, queue_size = %u\n", opt->queue_size);
+		return -EINVAL;
+	}
+
 	/* check number of available lcores. */
-	if (rte_lcore_count() < 3) {
+	if (rte_lcore_count() < (uint32_t)(opt->queue_pairs * 2 + 1)) {
 		ml_err("Insufficient lcores = %u\n", rte_lcore_count());
-		ml_err("Minimum lcores required to create %u queue-pairs = %u\n", 1, 3);
+		ml_err("Minimum lcores required to create %u queue-pairs = %u\n", opt->queue_pairs,
+		       (opt->queue_pairs * 2 + 1));
 		return -EINVAL;
 	}
 
@@ -331,6 +356,8 @@ test_inference_opt_dump(struct ml_options *opt)
 	/* dump test opts */
 	ml_dump("repetitions", "%" PRIu64, opt->repetitions);
 	ml_dump("burst_size", "%u", opt->burst_size);
+	ml_dump("queue_pairs", "%u", opt->queue_pairs);
+	ml_dump("queue_size", "%u", opt->queue_size);
 
 	ml_dump_begin("filelist");
 	for (i = 0; i < opt->nb_filelist; i++) {
@@ -422,23 +449,31 @@ ml_inference_mldev_setup(struct ml_test *test, struct ml_options *opt)
 {
 	struct rte_ml_dev_qp_conf qp_conf;
 	struct test_inference *t;
+	uint16_t qp_id;
 	int ret;
 
 	t = ml_test_priv(test);
+
+	RTE_SET_USED(t);
 
 	ret = ml_test_device_configure(test, opt);
 	if (ret != 0)
 		return ret;
 
 	/* setup queue pairs */
-	qp_conf.nb_desc = t->cmn.dev_info.max_desc;
+	qp_conf.nb_desc = opt->queue_size;
 	qp_conf.cb = NULL;
 
-	ret = rte_ml_dev_queue_pair_setup(opt->dev_id, 0, &qp_conf, opt->socket_id);
-	if (ret != 0) {
-		ml_err("Failed to setup ml device queue-pair, dev_id = %d, qp_id = %u\n",
-		       opt->dev_id, 0);
-		goto error;
+	for (qp_id = 0; qp_id < opt->queue_pairs; qp_id++) {
+		qp_conf.nb_desc = opt->queue_size;
+		qp_conf.cb = NULL;
+
+		ret = rte_ml_dev_queue_pair_setup(opt->dev_id, qp_id, &qp_conf, opt->socket_id);
+		if (ret != 0) {
+			ml_err("Failed to setup ml device queue-pair, dev_id = %d, qp_id = %u\n",
+			       opt->dev_id, qp_id);
+			return ret;
+		}
 	}
 
 	ret = ml_test_device_start(test, opt);
@@ -700,14 +735,28 @@ ml_inference_launch_cores(struct ml_test *test, struct ml_options *opt, uint16_t
 {
 	struct test_inference *t = ml_test_priv(test);
 	uint32_t lcore_id;
+	uint32_t nb_reqs;
 	uint32_t id = 0;
+	uint32_t qp_id;
+
+	nb_reqs = opt->repetitions / opt->queue_pairs;
 
 	RTE_LCORE_FOREACH_WORKER(lcore_id)
 	{
-		if (id == 2)
+		if (id >= opt->queue_pairs * 2)
 			break;
 
-		t->args[lcore_id].nb_reqs = opt->repetitions;
+		qp_id = id / 2;
+		t->args[lcore_id].qp_id = qp_id;
+		t->args[lcore_id].nb_reqs = nb_reqs;
+		if (qp_id == 0)
+			t->args[lcore_id].nb_reqs += opt->repetitions - nb_reqs * opt->queue_pairs;
+
+		if (t->args[lcore_id].nb_reqs == 0) {
+			id++;
+			break;
+		}
+
 		t->args[lcore_id].start_fid = start_fid;
 		t->args[lcore_id].end_fid = end_fid;
 

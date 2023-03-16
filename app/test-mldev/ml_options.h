@@ -19,6 +19,8 @@
 #define ML_FILELIST    ("filelist")
 #define ML_REPETITIONS ("repetitions")
 #define ML_BURST_SIZE  ("burst_size")
+#define ML_QUEUE_PAIRS ("queue_pairs")
+#define ML_QUEUE_SIZE  ("queue_size")
 #define ML_DEBUG       ("debug")
 #define ML_HELP	       ("help")
 
@@ -36,6 +38,8 @@ struct ml_options {
 	uint8_t nb_filelist;
 	uint64_t repetitions;
 	uint16_t burst_size;
+	uint16_t queue_pairs;
+	uint16_t queue_size;
 	bool debug;
 };
 
