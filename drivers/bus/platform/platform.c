@@ -249,11 +249,11 @@ of_resource_name(const char *dev_name, int index)
 	char *name;
 
 	snprintf(path, sizeof(path), PLATFORM_BUS_DEVICES_PATH "/%s/of_node/reg-names", dev_name);
-	ret = read_sysfs_string(path, buf, sizeof(buf));
+	ret = read_sysfs_string(path, buf, sizeof(buf) - 1);
 	if (ret)
 		return NULL;
 
-	for (name = buf; name; name += strlen(name) + 1) {
+	for (name = buf; *name != 0; name += strlen(name) + 1) {
 		if (num++ != index)
 			continue;
 		return strdup(name);
