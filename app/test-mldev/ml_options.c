@@ -22,6 +22,7 @@ ml_options_default(struct ml_options *opt)
 	strlcpy(opt->test_name, "device_ops", ML_TEST_NAME_MAX_LEN);
 	opt->dev_id = 0;
 	opt->socket_id = SOCKET_ID_ANY;
+	opt->nb_filelist = 0;
 	opt->debug = false;
 }
 
@@ -58,11 +59,47 @@ ml_parse_socket_id(struct ml_options *opt, const char *arg)
 	return 0;
 }
 
+static int
+ml_parse_models(struct ml_options *opt, const char *arg)
+{
+	const char *delim = ",";
+	char models[PATH_MAX];
+	char *token;
+	int ret = 0;
+
+	strlcpy(models, arg, PATH_MAX);
+
+	token = strtok(models, delim);
+	while (token != NULL) {
+		strlcpy(opt->filelist[opt->nb_filelist].model, token, PATH_MAX);
+		opt->nb_filelist++;
+
+		if (opt->nb_filelist >= ML_TEST_MAX_MODELS) {
+			ml_err("Exceeded model count, max = %d\n", ML_TEST_MAX_MODELS);
+			ret = -EINVAL;
+			break;
+		}
+		token = strtok(NULL, delim);
+	}
+
+	if (opt->nb_filelist == 0) {
+		ml_err("Models list is empty. Need at least one model for the test");
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 static void
 ml_dump_test_options(const char *testname)
 {
 	if (strcmp(testname, "device_ops") == 0)
 		printf("\n");
+
+	if (strcmp(testname, "model_ops") == 0) {
+		printf("\t\t--models           : comma separated list of models\n");
+		printf("\n");
+	}
 }
 
 static void
@@ -84,6 +121,7 @@ static struct option lgopts[] = {
 	{ML_TEST, 1, 0, 0},
 	{ML_DEVICE_ID, 1, 0, 0},
 	{ML_SOCKET_ID, 1, 0, 0},
+	{ML_MODELS, 1, 0, 0},
 	{ML_DEBUG, 0, 0, 0},
 	{ML_HELP, 0, 0, 0},
 	{NULL, 0, 0, 0}};
@@ -97,6 +135,7 @@ ml_opts_parse_long(int opt_idx, struct ml_options *opt)
 		{ML_TEST, ml_parse_test_name},
 		{ML_DEVICE_ID, ml_parse_dev_id},
 		{ML_SOCKET_ID, ml_parse_socket_id},
+		{ML_MODELS, ml_parse_models},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

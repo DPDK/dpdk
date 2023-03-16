@@ -15,13 +15,19 @@
 #define ML_TEST	       ("test")
 #define ML_DEVICE_ID   ("dev_id")
 #define ML_SOCKET_ID   ("socket_id")
+#define ML_MODELS      ("models")
 #define ML_DEBUG       ("debug")
 #define ML_HELP	       ("help")
+
+struct ml_filelist {
+	char model[PATH_MAX];
+};
 
 struct ml_options {
 	char test_name[ML_TEST_NAME_MAX_LEN];
 	int16_t dev_id;
 	int socket_id;
+	struct ml_filelist filelist[ML_TEST_MAX_MODELS];
 	uint8_t nb_filelist;
 	bool debug;
 };

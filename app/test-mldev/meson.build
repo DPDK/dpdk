@@ -14,6 +14,8 @@ sources = files(
         'parser.c',
         'test_common.c',
         'test_device_ops.c',
+        'test_model_common.c',
+        'test_model_ops.c',
 )
 
 deps += ['mldev']
