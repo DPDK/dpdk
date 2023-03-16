@@ -88,7 +88,7 @@ npc_get_hw_supp_mask(struct npc_parse_state *pst,
 	}
 }
 
-static inline int
+inline int
 npc_mask_is_supported(const char *mask, const char *hw_mask, int len)
 {
 	/*

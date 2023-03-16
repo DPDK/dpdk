@@ -67,6 +67,11 @@
 #define NPC_ACTION_MAX_VLAN_PARAMS    3
 #define NPC_ACTION_MAX_VLANS_STRIPPED 2
 
+#define NPC_LTYPE_OFFSET_START 7
+/* LB OFFSET : START + LA (2b flags + 1b ltype) + LB (2b flags) */
+#define NPC_LTYPE_LB_OFFSET (NPC_LTYPE_OFFSET_START + 5)
+#define NPC_LFLAG_LB_OFFSET (NPC_LTYPE_OFFSET_START + 3)
+
 struct npc_action_vtag_info {
 	uint16_t vlan_id;
 	uint16_t vlan_ethtype;
@@ -402,6 +407,7 @@ int npc_update_parse_state(struct npc_parse_state *pst,
 			   uint8_t flags);
 void npc_get_hw_supp_mask(struct npc_parse_state *pst,
 			  struct npc_parse_item_info *info, int lid, int lt);
+int npc_mask_is_supported(const char *mask, const char *hw_mask, int len);
 int npc_parse_item_basic(const struct roc_npc_item_info *item,
 			 struct npc_parse_item_info *info);
 int npc_parse_meta_items(struct npc_parse_state *pst);

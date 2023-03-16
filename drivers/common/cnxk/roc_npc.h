@@ -58,6 +58,25 @@ struct roc_npc_flow_item_raw {
 	const uint8_t *pattern; /**< Byte string to look for. */
 };
 
+struct roc_vlan_hdr {
+	uint16_t vlan_tci; /**< Priority (3) + CFI (1) + Identifier Code (12) */
+	uint16_t eth_proto; /**< Ethernet type of encapsulated frame. */
+} __plt_packed;
+
+PLT_STD_C11
+struct roc_npc_flow_item_vlan {
+	union {
+		struct {
+			uint16_t tci;	     /**< Tag control information. */
+			uint16_t inner_type; /**< Inner EtherType or TPID. */
+		};
+		struct roc_vlan_hdr hdr;
+	};
+	uint32_t has_more_vlan : 1;
+	/**< Packet header contains at least one more VLAN, after this VLAN. */
+	uint32_t reserved : 31; /**< Reserved, must be zero. */
+};
+
 #define ROC_NPC_MAX_ACTION_COUNT 19
 
 enum roc_npc_action_type {
