@@ -938,6 +938,13 @@ port_infos_display(portid_t port_id)
 		printf("unknown\n");
 		break;
 	}
+	printf("Device private info:\n");
+	ret = rte_eth_dev_priv_dump(port_id, stdout);
+	if (ret == -ENOTSUP)
+		printf("  none\n");
+	else if (ret < 0)
+		fprintf(stderr, "  Failed to dump private info with error (%d): %s\n",
+			ret, strerror(-ret));
 }
 
 void
