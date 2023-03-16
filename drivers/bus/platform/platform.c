@@ -103,6 +103,7 @@ dev_add(const char *dev_name)
 				rte_devargs_remove(pdev->device.devargs);
 
 			free(pdev);
+			return -EEXIST;
 		}
 	}
 
