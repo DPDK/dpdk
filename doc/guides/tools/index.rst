@@ -21,4 +21,5 @@ DPDK Tools User Guides
     comp_perf
     testeventdev
     testregex
+    testmldev
     dts

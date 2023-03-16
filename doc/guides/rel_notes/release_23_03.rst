@@ -206,6 +206,7 @@ New Features
 
   * Added a machine learning inference device framework for management
     and provision of hardware and software machine learning inference devices.
+  * Added a test application for machine learning inference device library.
 
 * **Added Marvell CNXK machine learning driver.**
 
