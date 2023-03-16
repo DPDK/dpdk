@@ -111,6 +111,10 @@ The following are the command-line options supported by the test application.
   When not specified, the test would assume the number of batches
   is the batch size of the model.
 
+``--tolerance <n>``
+  Set the tolerance value in percentage to be used for output validation.
+  Default value is ``0``.
+
 ``--debug``
   Enable the tests to run in debug mode.
 
@@ -276,6 +280,7 @@ Supported command line options for inference tests are following::
    --queue_pairs
    --queue_size
    --batches
+   --tolerance
 
 List of files to be used for the inference tests can be specified
 through the option ``--filelist <file_list>`` as a comma separated list.
@@ -292,10 +297,24 @@ enqueue and dequeue burst would try to enqueue or dequeue
 In the inference test, a pair of lcores are mapped to each queue pair.
 Minimum number of lcores required for the tests is equal to ``(queue_pairs * 2 + 1)``.
 
+Output validation of inference would be enabled only
+when a reference file is specified through the ``--filelist`` option.
+Application would additionally consider the tolerance value
+provided through ``--tolerance`` option during validation.
+When the tolerance values is 0, CRC32 hash of inference output
+and reference output are compared.
+When the tolerance is non-zero, element wise comparison of output is performed.
+Validation is considered as successful only
+when all the elements of the output tensor are with in the tolerance range specified.
+
 .. note::
 
    * The ``--filelist <file_list>`` is a mandatory option for running inference tests.
    * Options not supported by the tests are ignored if specified.
+   * Element wise comparison is not supported when
+     the output dtype is either fp8, fp16 or bfloat16.
+     This is applicable only when the tolerance is greater than zero
+     and for pre-quantized models only.
 
 
 INFERENCE_ORDERED Test
@@ -346,6 +365,14 @@ Example command to run ``inference_ordered`` test with multiple queue-pairs and 
         --test=inference_ordered --filelist model.bin,input.bin,output.bin \
         --queue_pairs 4 --queue_size 16
 
+Example command to run ``inference_ordered`` with output validation using tolerance of ``1%``:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_ordered --filelist model.bin,input.bin,output.bin,reference.bin \
+        --tolerance 1.0
+
 
 INFERENCE_INTERLEAVE Test
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -395,9 +422,24 @@ with a specific burst size, multiple queue-pairs and queue size:
         --test=inference_interleave --filelist model.bin,input.bin,output.bin \
         --queue_pairs 8 --queue_size 12 --burst_size 16
 
+Example command to run ``inference_interleave`` test
+with multiple models and output validation using tolerance of ``2.0%``:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+        --test=inference_interleave \
+        --filelist model_A.bin,input_A.bin,output_A.bin,reference_A.bin \
+        --filelist model_B.bin,input_B.bin,output_B.bin,reference_B.bin \
+        --tolerance 2.0
+
 
 Debug mode
 ----------
 
 ML tests can be executed in debug mode by enabling the option ``--debug``.
 Execution of tests in debug mode would enable additional prints.
+
+When a validation failure is observed, output from that buffer is written to the disk,
+with the filenames having similar convention when the test has passed.
+Additionally index of the buffer would be appended to the filenames.

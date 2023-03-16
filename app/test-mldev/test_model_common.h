@@ -28,6 +28,7 @@ struct ml_model {
 
 	uint8_t *input;
 	uint8_t *output;
+	uint8_t *reference;
 
 	struct rte_mempool *io_pool;
 	uint32_t nb_batches;

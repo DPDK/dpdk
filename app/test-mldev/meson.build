@@ -21,4 +21,4 @@ sources = files(
         'test_inference_interleave.c',
 )
 
-deps += ['mldev']
+deps += ['mldev', 'hash']

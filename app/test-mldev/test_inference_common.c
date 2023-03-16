@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <rte_common.h>
+#include <rte_hash_crc.h>
 #include <rte_launch.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
@@ -14,6 +15,27 @@
 
 #include "ml_common.h"
 #include "test_inference_common.h"
+
+#define ML_TEST_READ_TYPE(buffer, type) (*((type *)buffer))
+
+#define ML_TEST_CHECK_OUTPUT(output, reference, tolerance)                                         \
+	(((float)output - (float)reference) <= (((float)reference * tolerance) / 100.0))
+
+#define ML_OPEN_WRITE_GET_ERR(name, buffer, size, err)                                             \
+	do {                                                                                       \
+		FILE *fp = fopen(name, "w+");                                                      \
+		if (fp == NULL) {                                                                  \
+			ml_err("Unable to create file: %s, error: %s", name, strerror(errno));     \
+			err = true;                                                                \
+		} else {                                                                           \
+			if (fwrite(buffer, 1, size, fp) != size) {                                 \
+				ml_err("Error writing output, file: %s, error: %s", name,          \
+				       strerror(errno));                                           \
+				err = true;                                                        \
+			}                                                                          \
+			fclose(fp);                                                                \
+		}                                                                                  \
+	} while (0)
 
 /* Enqueue inference requests with burst size equal to 1 */
 static int
@@ -358,6 +380,7 @@ test_inference_opt_dump(struct ml_options *opt)
 	ml_dump("burst_size", "%u", opt->burst_size);
 	ml_dump("queue_pairs", "%u", opt->queue_pairs);
 	ml_dump("queue_size", "%u", opt->queue_size);
+	ml_dump("tolerance", "%-7.3f", opt->tolerance);
 
 	if (opt->batches == 0)
 		ml_dump("batches", "%u (default)", opt->batches);
@@ -369,6 +392,8 @@ test_inference_opt_dump(struct ml_options *opt)
 		ml_dump_list("model", i, opt->filelist[i].model);
 		ml_dump_list("input", i, opt->filelist[i].input);
 		ml_dump_list("output", i, opt->filelist[i].output);
+		if (strcmp(opt->filelist[i].reference, "\0") != 0)
+			ml_dump_list("reference", i, opt->filelist[i].reference);
 	}
 	ml_dump_end;
 }
@@ -393,6 +418,7 @@ test_inference_setup(struct ml_test *test, struct ml_options *opt)
 	t = ml_test_priv(test);
 
 	t->nb_used = 0;
+	t->nb_valid = 0;
 	t->cmn.result = ML_TEST_FAILED;
 	t->cmn.opt = opt;
 	memset(t->error_count, 0, RTE_MAX_LCORE * sizeof(uint64_t));
@@ -569,6 +595,9 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 
 	/* allocate buffer for user data */
 	mz_size = t->model[fid].inp_dsize + t->model[fid].out_dsize;
+	if (strcmp(opt->filelist[fid].reference, "\0") != 0)
+		mz_size += t->model[fid].out_dsize;
+
 	sprintf(mz_name, "ml_user_data_%d", fid);
 	mz = rte_memzone_reserve(mz_name, mz_size, opt->socket_id, 0);
 	if (mz == NULL) {
@@ -579,6 +608,10 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 
 	t->model[fid].input = mz->addr;
 	t->model[fid].output = t->model[fid].input + t->model[fid].inp_dsize;
+	if (strcmp(opt->filelist[fid].reference, "\0") != 0)
+		t->model[fid].reference = t->model[fid].output + t->model[fid].out_dsize;
+	else
+		t->model[fid].reference = NULL;
 
 	/* load input file */
 	fp = fopen(opt->filelist[fid].input, "r");
@@ -606,6 +639,27 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 		goto error;
 	}
 	fclose(fp);
+
+	/* load reference file */
+	if (t->model[fid].reference != NULL) {
+		fp = fopen(opt->filelist[fid].reference, "r");
+		if (fp == NULL) {
+			ml_err("Failed to open reference file : %s\n",
+			       opt->filelist[fid].reference);
+			ret = -errno;
+			goto error;
+		}
+
+		if (fread(t->model[fid].reference, 1, t->model[fid].out_dsize, fp) !=
+		    t->model[fid].out_dsize) {
+			ml_err("Failed to read reference file : %s\n",
+			       opt->filelist[fid].reference);
+			ret = -errno;
+			fclose(fp);
+			goto error;
+		}
+		fclose(fp);
+	}
 
 	/* create mempool for quantized input and output buffers. ml_request_initialize is
 	 * used as a callback for object creation.
@@ -691,6 +745,121 @@ ml_inference_mem_destroy(struct ml_test *test, struct ml_options *opt)
 		rte_mempool_free(t->op_pool);
 }
 
+static bool
+ml_inference_validation(struct ml_test *test, struct ml_request *req)
+{
+	struct test_inference *t = ml_test_priv((struct ml_test *)test);
+	struct ml_model *model;
+	uint32_t nb_elements;
+	uint8_t *reference;
+	uint8_t *output;
+	bool match;
+	uint32_t i;
+	uint32_t j;
+
+	model = &t->model[req->fid];
+
+	/* compare crc when tolerance is 0 */
+	if (t->cmn.opt->tolerance == 0.0) {
+		match = (rte_hash_crc(model->output, model->out_dsize, 0) ==
+			 rte_hash_crc(model->reference, model->out_dsize, 0));
+	} else {
+		output = model->output;
+		reference = model->reference;
+
+		i = 0;
+next_output:
+		nb_elements =
+			model->info.output_info[i].shape.w * model->info.output_info[i].shape.x *
+			model->info.output_info[i].shape.y * model->info.output_info[i].shape.z;
+		j = 0;
+next_element:
+		match = false;
+		switch (model->info.output_info[i].dtype) {
+		case RTE_ML_IO_TYPE_INT8:
+			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, int8_t),
+						 ML_TEST_READ_TYPE(reference, int8_t),
+						 t->cmn.opt->tolerance))
+				match = true;
+
+			output += sizeof(int8_t);
+			reference += sizeof(int8_t);
+			break;
+		case RTE_ML_IO_TYPE_UINT8:
+			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, uint8_t),
+						 ML_TEST_READ_TYPE(reference, uint8_t),
+						 t->cmn.opt->tolerance))
+				match = true;
+
+			output += sizeof(float);
+			reference += sizeof(float);
+			break;
+		case RTE_ML_IO_TYPE_INT16:
+			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, int16_t),
+						 ML_TEST_READ_TYPE(reference, int16_t),
+						 t->cmn.opt->tolerance))
+				match = true;
+
+			output += sizeof(int16_t);
+			reference += sizeof(int16_t);
+			break;
+		case RTE_ML_IO_TYPE_UINT16:
+			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, uint16_t),
+						 ML_TEST_READ_TYPE(reference, uint16_t),
+						 t->cmn.opt->tolerance))
+				match = true;
+
+			output += sizeof(uint16_t);
+			reference += sizeof(uint16_t);
+			break;
+		case RTE_ML_IO_TYPE_INT32:
+			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, int32_t),
+						 ML_TEST_READ_TYPE(reference, int32_t),
+						 t->cmn.opt->tolerance))
+				match = true;
+
+			output += sizeof(int32_t);
+			reference += sizeof(int32_t);
+			break;
+		case RTE_ML_IO_TYPE_UINT32:
+			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, uint32_t),
+						 ML_TEST_READ_TYPE(reference, uint32_t),
+						 t->cmn.opt->tolerance))
+				match = true;
+
+			output += sizeof(uint32_t);
+			reference += sizeof(uint32_t);
+			break;
+		case RTE_ML_IO_TYPE_FP32:
+			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, float),
+						 ML_TEST_READ_TYPE(reference, float),
+						 t->cmn.opt->tolerance))
+				match = true;
+
+			output += sizeof(float);
+			reference += sizeof(float);
+			break;
+		default: /* other types, fp8, fp16, bfloat16 */
+			match = true;
+		}
+
+		if (!match)
+			goto done;
+		j++;
+		if (j < nb_elements)
+			goto next_element;
+
+		i++;
+		if (i < model->info.nb_outputs)
+			goto next_output;
+	}
+done:
+	if (match)
+		t->nb_valid++;
+
+	return match;
+}
+
 /* Callback for mempool object iteration. This call would dequantize output data. */
 static void
 ml_request_finish(struct rte_mempool *mp, void *opaque, void *obj, unsigned int obj_idx)
@@ -698,9 +867,10 @@ ml_request_finish(struct rte_mempool *mp, void *opaque, void *obj, unsigned int 
 	struct test_inference *t = ml_test_priv((struct ml_test *)opaque);
 	struct ml_request *req = (struct ml_request *)obj;
 	struct ml_model *model = &t->model[req->fid];
+	char str[PATH_MAX];
+	bool error = false;
 
 	RTE_SET_USED(mp);
-	RTE_SET_USED(obj_idx);
 
 	if (req->niters == 0)
 		return;
@@ -708,6 +878,48 @@ ml_request_finish(struct rte_mempool *mp, void *opaque, void *obj, unsigned int 
 	t->nb_used++;
 	rte_ml_io_dequantize(t->cmn.opt->dev_id, model->id, t->model[req->fid].nb_batches,
 			     req->output, model->output);
+
+	if (model->reference == NULL) {
+		t->nb_valid++;
+		goto dump_output_pass;
+	}
+
+	if (!ml_inference_validation(opaque, req))
+		goto dump_output_fail;
+	else
+		goto dump_output_pass;
+
+dump_output_pass:
+	if (obj_idx == 0) {
+		/* write quantized output */
+		snprintf(str, PATH_MAX, "%s.q", t->cmn.opt->filelist[req->fid].output);
+		ML_OPEN_WRITE_GET_ERR(str, req->output, model->out_qsize, error);
+		if (error)
+			return;
+
+		/* write dequantized output */
+		snprintf(str, PATH_MAX, "%s", t->cmn.opt->filelist[req->fid].output);
+		ML_OPEN_WRITE_GET_ERR(str, model->output, model->out_dsize, error);
+		if (error)
+			return;
+	}
+
+	return;
+
+dump_output_fail:
+	if (t->cmn.opt->debug) {
+		/* dump quantized output buffer */
+		snprintf(str, PATH_MAX, "%s.q.%d", t->cmn.opt->filelist[req->fid].output, obj_idx);
+		ML_OPEN_WRITE_GET_ERR(str, req->output, model->out_qsize, error);
+		if (error)
+			return;
+
+		/* dump dequantized output buffer */
+		snprintf(str, PATH_MAX, "%s.%d", t->cmn.opt->filelist[req->fid].output, obj_idx);
+		ML_OPEN_WRITE_GET_ERR(str, model->output, model->out_dsize, error);
+		if (error)
+			return;
+	}
 }
 
 int
@@ -725,7 +937,7 @@ ml_inference_result(struct ml_test *test, struct ml_options *opt, uint16_t fid)
 
 	rte_mempool_obj_iter(t->model[fid].io_pool, ml_request_finish, test);
 
-	if ((t->nb_used > 0) && (error_count == 0))
+	if ((t->nb_used == t->nb_valid) && (error_count == 0))
 		t->cmn.result = ML_TEST_SUCCESS;
 	else
 		t->cmn.result = ML_TEST_FAILED;

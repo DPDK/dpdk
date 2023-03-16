@@ -38,6 +38,7 @@ struct test_inference {
 	struct rte_mempool *op_pool;
 
 	uint64_t nb_used;
+	uint64_t nb_valid;
 	uint16_t fid;
 
 	int (*enqueue)(void *arg);
