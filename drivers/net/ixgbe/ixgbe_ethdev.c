@@ -236,7 +236,7 @@ static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev);
 static void ixgbe_dev_interrupt_handler(void *param);
 static void ixgbe_dev_interrupt_delayed_handler(void *param);
-static void *ixgbe_dev_setup_link_thread_handler(void *param);
+static uint32_t ixgbe_dev_setup_link_thread_handler(void *param);
 static int ixgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev,
 					      uint32_t timeout_ms);
 
@@ -4203,7 +4203,7 @@ ixgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev, uint32_t timeout_ms)
 	return 1;
 }
 
-static void *
+static uint32_t
 ixgbe_dev_setup_link_thread_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
@@ -4214,7 +4214,7 @@ ixgbe_dev_setup_link_thread_handler(void *param)
 	u32 speed;
 	bool autoneg = false;
 
-	pthread_detach(pthread_self());
+	rte_thread_detach(rte_thread_self());
 	speed = hw->phy.autoneg_advertised;
 	if (!speed)
 		ixgbe_get_link_capabilities(hw, &speed, &autoneg);
@@ -4223,7 +4223,7 @@ ixgbe_dev_setup_link_thread_handler(void *param)
 
 	intr->flags &= ~IXGBE_FLAG_NEED_LINK_CONFIG;
 	rte_atomic32_clear(&ad->link_thread_running);
-	return NULL;
+	return 0;
 }
 
 /*
@@ -4323,7 +4323,7 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 				 * when there is no link thread running.
 				 */
 				intr->flags |= IXGBE_FLAG_NEED_LINK_CONFIG;
-				if (rte_ctrl_thread_create(&ad->link_thread_tid,
+				if (rte_thread_create_control(&ad->link_thread_tid,
 					"ixgbe-link-handler",
 					NULL,
 					ixgbe_dev_setup_link_thread_handler,
