@@ -5,6 +5,8 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+#include <pthread.h>
+
 #include <bus_vdev_driver.h>
 #include <rte_cycles.h>
 #include <rte_eal.h>
@@ -53,7 +55,7 @@ skeldma_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *conf,
 	return 0;
 }
 
-static void *
+static uint32_t
 cpucopy_thread(void *param)
 {
 #define SLEEP_THRESHOLD		10000
@@ -81,7 +83,7 @@ cpucopy_thread(void *param)
 		(void)rte_ring_enqueue(hw->desc_completed, (void *)desc);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static void
@@ -126,7 +128,7 @@ skeldma_start(struct rte_dma_dev *dev)
 	rte_mb();
 
 	snprintf(name, sizeof(name), "dma_skel_%d", dev->data->dev_id);
-	ret = rte_ctrl_thread_create(&hw->thread, name, NULL,
+	ret = rte_thread_create_control(&hw->thread, name, NULL,
 				     cpucopy_thread, dev);
 	if (ret) {
 		SKELDMA_LOG(ERR, "Start cpucopy thread fail!");
@@ -135,8 +137,7 @@ skeldma_start(struct rte_dma_dev *dev)
 
 	if (hw->lcore_id != -1) {
 		cpuset = rte_lcore_cpuset(hw->lcore_id);
-		ret = pthread_setaffinity_np(hw->thread, sizeof(cpuset),
-					     &cpuset);
+		ret = rte_thread_get_affinity_by_id(hw->thread, &cpuset);
 		if (ret)
 			SKELDMA_LOG(WARNING,
 				"Set thread affinity lcore = %d fail!",
@@ -154,8 +155,8 @@ skeldma_stop(struct rte_dma_dev *dev)
 	hw->exit_flag = true;
 	rte_delay_ms(1);
 
-	(void)pthread_cancel(hw->thread);
-	pthread_join(hw->thread, NULL);
+	(void)pthread_cancel((pthread_t)hw->thread.opaque_id);
+	rte_thread_join(hw->thread, NULL);
 
 	return 0;
 }

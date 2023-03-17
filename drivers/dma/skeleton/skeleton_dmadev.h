@@ -5,9 +5,8 @@
 #ifndef SKELETON_DMADEV_H
 #define SKELETON_DMADEV_H
 
-#include <pthread.h>
-
 #include <rte_ring.h>
+#include <rte_thread.h>
 
 #define SKELDMA_ARG_LCORE	"lcore"
 
@@ -21,7 +20,7 @@ struct skeldma_desc {
 struct skeldma_hw {
 	int lcore_id; /* cpucopy task affinity core */
 	int socket_id;
-	pthread_t thread; /* cpucopy task thread */
+	rte_thread_t thread; /* cpucopy task thread */
 	volatile int exit_flag; /* cpucopy task exit flag */
 
 	struct skeldma_desc *desc_mem;
