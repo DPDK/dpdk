@@ -176,7 +176,7 @@ eal_thread_loop(void *arg)
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
 	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
-		lcore_id, (uintptr_t)pthread_self(), cpuset,
+		lcore_id, rte_thread_self().opaque_id, cpuset,
 		ret == 0 ? "" : "...");
 
 	rte_eal_trace_thread_lcore_ready(lcore_id, cpuset);
@@ -334,7 +334,7 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	/* Check if the control thread encountered an error */
 	if (ctrl_thread_status == CTRL_THREAD_ERROR) {
 		/* ctrl thread is exiting */
-		pthread_join(*thread, NULL);
+		rte_thread_join((rte_thread_t){(uintptr_t)*thread}, NULL);
 	}
 
 	ret = params->ret;

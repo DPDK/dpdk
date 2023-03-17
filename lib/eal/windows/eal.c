@@ -429,7 +429,7 @@ rte_eal_init(int argc, char **argv)
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
 	RTE_LOG(DEBUG, EAL, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
-		config->main_lcore, (uintptr_t)pthread_self(), cpuset,
+		config->main_lcore, rte_thread_self().opaque_id, cpuset,
 		ret == 0 ? "" : "...");
 
 	RTE_LCORE_FOREACH_WORKER(i) {
