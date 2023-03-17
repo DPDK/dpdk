@@ -4469,6 +4469,7 @@ static void
 signal_handler(int signum __rte_unused)
 {
 	f_quit = 1;
+	prompt_exit();
 }
 
 int
@@ -4479,8 +4480,18 @@ main(int argc, char** argv)
 	uint16_t count;
 	int ret;
 
+#ifdef RTE_EXEC_ENV_WINDOWS
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
+#else
+	/* Want read() not to be restarted on signal */
+	struct sigaction action = {
+		.sa_handler = signal_handler,
+	};
+
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+#endif
 
 	testpmd_logtype = rte_log_register("testpmd");
 	if (testpmd_logtype < 0)

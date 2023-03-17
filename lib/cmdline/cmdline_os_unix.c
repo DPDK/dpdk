@@ -51,3 +51,9 @@ cmdline_vdprintf(int fd, const char *format, va_list op)
 {
 	return vdprintf(fd, format, op);
 }
+
+/* This function is not needed on Linux, instead use sigaction() */
+void
+cmdline_cancel(__rte_unused struct cmdline *cl)
+{
+}

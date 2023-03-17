@@ -173,6 +173,7 @@ cmdline_quit(struct cmdline *cl)
 {
 	if (!cl)
 		return;
+	cmdline_cancel(cl);
 	rdline_quit(&cl->rdl);
 }
 
