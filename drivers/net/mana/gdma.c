@@ -252,45 +252,51 @@ mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 /*
  * Poll completion queue for completions.
  */
-int
-gdma_poll_completion_queue(struct mana_gdma_queue *cq, struct gdma_comp *comp)
+uint32_t
+gdma_poll_completion_queue(struct mana_gdma_queue *cq,
+			   struct gdma_comp *gdma_comp, uint32_t max_comp)
 {
 	struct gdma_hardware_completion_entry *cqe;
-	uint32_t head = cq->head % cq->count;
 	uint32_t new_owner_bits, old_owner_bits;
 	uint32_t cqe_owner_bits;
+	uint32_t num_comp = 0;
 	struct gdma_hardware_completion_entry *buffer = cq->buffer;
 
-	cqe = &buffer[head];
-	new_owner_bits = (cq->head / cq->count) & COMPLETION_QUEUE_OWNER_MASK;
-	old_owner_bits = (cq->head / cq->count - 1) &
-				COMPLETION_QUEUE_OWNER_MASK;
-	cqe_owner_bits = cqe->owner_bits;
+	while (num_comp < max_comp) {
+		cqe = &buffer[cq->head % cq->count];
+		new_owner_bits = (cq->head / cq->count) &
+					COMPLETION_QUEUE_OWNER_MASK;
+		old_owner_bits = (cq->head / cq->count - 1) &
+					COMPLETION_QUEUE_OWNER_MASK;
+		cqe_owner_bits = cqe->owner_bits;
 
-	DP_LOG(DEBUG, "comp cqe bits 0x%x owner bits 0x%x",
-	       cqe_owner_bits, old_owner_bits);
+		DP_LOG(DEBUG, "comp cqe bits 0x%x owner bits 0x%x",
+			cqe_owner_bits, old_owner_bits);
 
-	if (cqe_owner_bits == old_owner_bits)
-		return 0; /* No new entry */
+		/* No new entry */
+		if (cqe_owner_bits == old_owner_bits)
+			break;
 
-	if (cqe_owner_bits != new_owner_bits) {
-		DP_LOG(ERR, "CQ overflowed, ID %u cqe 0x%x new 0x%x",
-		       cq->id, cqe_owner_bits, new_owner_bits);
-		return -1;
+		if (cqe_owner_bits != new_owner_bits) {
+			DRV_LOG(ERR, "CQ overflowed, ID %u cqe 0x%x new 0x%x",
+				cq->id, cqe_owner_bits, new_owner_bits);
+			break;
+		}
+
+		gdma_comp[num_comp].cqe_data = cqe->dma_client_data;
+		num_comp++;
+
+		cq->head++;
+
+		DP_LOG(DEBUG, "comp new 0x%x old 0x%x cqe 0x%x wq %u sq %u head %u",
+		       new_owner_bits, old_owner_bits, cqe_owner_bits,
+		       cqe->wq_num, cqe->is_sq, cq->head);
 	}
 
-	/* Ensure checking owner bits happens before reading from CQE */
+	/* Make sure the CQE owner bits are checked before we access the data
+	 * in CQE
+	 */
 	rte_rmb();
 
-	comp->work_queue_number = cqe->wq_num;
-	comp->send_work_queue = cqe->is_sq;
-
-	memcpy(comp->completion_data, cqe->dma_client_data, GDMA_COMP_DATA_SIZE);
-
-	cq->head++;
-
-	DP_LOG(DEBUG, "comp new 0x%x old 0x%x cqe 0x%x wq %u sq %u head %u",
-	       new_owner_bits, old_owner_bits, cqe_owner_bits,
-	       comp->work_queue_number, comp->send_work_queue, cq->head);
-	return 1;
+	return num_comp;
 }
