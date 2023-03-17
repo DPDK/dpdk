@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <pthread.h>
 #include <unistd.h>
 
 #include <rte_spinlock.h>
@@ -115,7 +114,7 @@ ice_dcf_update_pf_vsi_map(struct ice_hw *hw, uint16_t pf_vsi_idx,
 			pf_vsi_idx, vsi_ctx->vsi_num);
 }
 
-static void*
+static uint32_t
 ice_dcf_vsi_update_service_handler(void *param)
 {
 	struct ice_dcf_reset_event_param *reset_param = param;
@@ -124,7 +123,7 @@ ice_dcf_vsi_update_service_handler(void *param)
 		container_of(hw, struct ice_dcf_adapter, real_hw);
 	struct ice_adapter *parent_adapter = &adapter->parent;
 
-	pthread_detach(pthread_self());
+	rte_thread_detach(rte_thread_self());
 
 	rte_delay_us(ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL);
 
@@ -154,7 +153,7 @@ ice_dcf_vsi_update_service_handler(void *param)
 
 	free(param);
 
-	return NULL;
+	return 0;
 }
 
 static void
@@ -163,7 +162,7 @@ start_vsi_reset_thread(struct ice_dcf_hw *dcf_hw, bool vfr, uint16_t vf_id)
 #define THREAD_NAME_LEN	16
 	struct ice_dcf_reset_event_param *param;
 	char name[THREAD_NAME_LEN];
-	pthread_t thread;
+	rte_thread_t thread;
 	int ret;
 
 	param = malloc(sizeof(*param));
@@ -177,7 +176,7 @@ start_vsi_reset_thread(struct ice_dcf_hw *dcf_hw, bool vfr, uint16_t vf_id)
 	param->vf_id = vf_id;
 
 	snprintf(name, sizeof(name), "ice-reset-%u", vf_id);
-	ret = rte_ctrl_thread_create(&thread, name, NULL,
+	ret = rte_thread_create_control(&thread, name, NULL,
 				     ice_dcf_vsi_update_service_handler, param);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to start the thread for reset handling");
