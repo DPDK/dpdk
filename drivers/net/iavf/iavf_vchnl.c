@@ -42,7 +42,7 @@ struct iavf_event_element {
 
 struct iavf_event_handler {
 	uint32_t ndev;
-	pthread_t tid;
+	rte_thread_t tid;
 	int fd[2];
 	pthread_mutex_t lock;
 	TAILQ_HEAD(event_list, iavf_event_element) pending;
@@ -59,7 +59,7 @@ static struct iavf_event_handler event_handler = {
 	(var) = (tvar))
 #endif
 
-static void *
+static uint32_t
 iavf_dev_event_handle(void *param __rte_unused)
 {
 	struct iavf_event_handler *handler = &event_handler;
@@ -84,7 +84,7 @@ iavf_dev_event_handle(void *param __rte_unused)
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
 static void
@@ -135,7 +135,7 @@ iavf_dev_event_handler_init(void)
 	TAILQ_INIT(&handler->pending);
 	pthread_mutex_init(&handler->lock, NULL);
 
-	if (rte_ctrl_thread_create(&handler->tid, "iavf-event-thread",
+	if (rte_thread_create_control(&handler->tid, "iavf-event-thread",
 				NULL, iavf_dev_event_handle, NULL)) {
 		__atomic_fetch_sub(&handler->ndev, 1, __ATOMIC_RELAXED);
 		return -1;
@@ -152,14 +152,14 @@ iavf_dev_event_handler_fini(void)
 	if (__atomic_fetch_sub(&handler->ndev, 1, __ATOMIC_RELAXED) - 1 != 0)
 		return;
 
-	int unused = pthread_cancel(handler->tid);
+	int unused = pthread_cancel((pthread_t)handler->tid.opaque_id);
 	RTE_SET_USED(unused);
 	close(handler->fd[0]);
 	close(handler->fd[1]);
 	handler->fd[0] = -1;
 	handler->fd[1] = -1;
 
-	pthread_join(handler->tid, NULL);
+	rte_thread_join(handler->tid, NULL);
 	pthread_mutex_destroy(&handler->lock);
 
 	struct iavf_event_element *pos, *save_next;
