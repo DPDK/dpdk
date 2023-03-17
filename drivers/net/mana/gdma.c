@@ -123,7 +123,7 @@ write_scatter_gather_list(uint8_t *work_queue_head_pointer,
 int
 gdma_post_work_request(struct mana_gdma_queue *queue,
 		       struct gdma_work_request *work_req,
-		       struct gdma_posted_wqe_info *wqe_info)
+		       uint32_t *wqe_size_in_bu)
 {
 	uint32_t client_oob_size =
 		work_req->inline_oob_size_in_bytes >
@@ -149,14 +149,7 @@ gdma_post_work_request(struct mana_gdma_queue *queue,
 	DP_LOG(DEBUG, "client_oob_size %u sgl_data_size %u wqe_size %u",
 	       client_oob_size, sgl_data_size, wqe_size);
 
-	if (wqe_info) {
-		wqe_info->wqe_index =
-			((queue->head * GDMA_WQE_ALIGNMENT_UNIT_SIZE) &
-			 (queue->size - 1)) / GDMA_WQE_ALIGNMENT_UNIT_SIZE;
-		wqe_info->unmasked_queue_offset = queue->head;
-		wqe_info->wqe_size_in_bu =
-			wqe_size / GDMA_WQE_ALIGNMENT_UNIT_SIZE;
-	}
+	*wqe_size_in_bu = wqe_size / GDMA_WQE_ALIGNMENT_UNIT_SIZE;
 
 	wq_buffer_pointer = gdma_get_wqe_pointer(queue);
 	wq_buffer_pointer += write_dma_client_oob(wq_buffer_pointer, work_req,

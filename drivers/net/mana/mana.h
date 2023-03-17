@@ -462,7 +462,7 @@ int mana_rq_ring_doorbell(struct mana_rxq *rxq, uint8_t arm);
 
 int gdma_post_work_request(struct mana_gdma_queue *queue,
 			   struct gdma_work_request *work_req,
-			   struct gdma_posted_wqe_info *wqe_info);
+			   uint32_t *wqe_size_in_bu);
 uint8_t *gdma_get_wqe_pointer(struct mana_gdma_queue *queue);
 
 uint16_t mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **rx_pkts,

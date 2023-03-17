@@ -208,8 +208,8 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	for (uint16_t pkt_idx = 0; pkt_idx < nb_pkts; pkt_idx++) {
 		struct rte_mbuf *m_pkt = tx_pkts[pkt_idx];
 		struct rte_mbuf *m_seg = m_pkt;
-		struct transmit_oob_v2 tx_oob = {0};
-		struct one_sgl sgl = {0};
+		struct transmit_oob_v2 tx_oob;
+		struct one_sgl sgl;
 		uint16_t seg_idx;
 
 		/* Drop the packet if it exceeds max segments */
@@ -263,6 +263,8 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			tx_oob.short_oob.tx_compute_TCP_checksum = 1;
 			tx_oob.short_oob.tx_transport_header_offset =
 				m_pkt->l2_len + m_pkt->l3_len;
+		} else {
+			tx_oob.short_oob.tx_compute_TCP_checksum = 0;
 		}
 
 		if ((m_pkt->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
@@ -301,6 +303,8 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 
 			tx_oob.short_oob.tx_compute_UDP_checksum = 1;
+		} else {
+			tx_oob.short_oob.tx_compute_UDP_checksum = 0;
 		}
 
 		tx_oob.short_oob.suppress_tx_CQE_generation = 0;
@@ -355,11 +359,10 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (seg_idx != m_pkt->nb_segs)
 			continue;
 
-		struct gdma_work_request work_req = {0};
-		struct gdma_posted_wqe_info wqe_info = {0};
+		struct gdma_work_request work_req;
+		uint32_t wqe_size_in_bu;
 
 		work_req.gdma_header.struct_size = sizeof(work_req);
-		wqe_info.gdma_header.struct_size = sizeof(wqe_info);
 
 		work_req.sgl = sgl.gdma_sgl;
 		work_req.num_sgl_elements = m_pkt->nb_segs;
@@ -370,14 +373,14 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		work_req.client_data_unit = NOT_USING_CLIENT_DATA_UNIT;
 
 		ret = gdma_post_work_request(&txq->gdma_sq, &work_req,
-					     &wqe_info);
+					     &wqe_size_in_bu);
 		if (!ret) {
 			struct mana_txq_desc *desc =
 				&txq->desc_ring[txq->desc_ring_head];
 
 			/* Update queue for tracking pending requests */
 			desc->pkt = m_pkt;
-			desc->wqe_size_in_bu = wqe_info.wqe_size_in_bu;
+			desc->wqe_size_in_bu = wqe_size_in_bu;
 			txq->desc_ring_head =
 				(txq->desc_ring_head + 1) % txq->num_desc;
 
