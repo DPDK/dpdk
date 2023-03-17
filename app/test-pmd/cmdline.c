@@ -72,6 +72,7 @@
 #include "bpf_cmd.h"
 
 static void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
+static struct cmdline *testpmd_cl;
 
 /* *** Help command with introduction. *** */
 struct cmd_help_brief_result {
@@ -17193,29 +17194,28 @@ cmdline_read_from_file(const char *filename)
 	printf("Read CLI commands from %s\n", filename);
 }
 
+void
+prompt_exit(void)
+{
+	cmdline_quit(testpmd_cl);
+}
+
 /* prompt function, called from main on MAIN lcore */
 void
 prompt(void)
 {
-	struct cmdline *cl;
-	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
 	cmd_set_fwd_retry_mode_init();
 
-	cl = cmdline_stdin_new(main_ctx, "testpmd> ");
-	if (cl == NULL)
+	testpmd_cl = cmdline_stdin_new(main_ctx, "testpmd> ");
+	if (testpmd_cl == NULL) {
+		fprintf(stderr,
+			"Failed to create stdin based cmdline context\n");
 		return;
-
-	/* loop until signal or quit command */
-	while (f_quit == 0 && cl_quit == 0) {
-		int status = cmdline_poll(cl);
-
-		if (status < 0 || status == RDLINE_EXITED)
-			break;
 	}
 
-	cmdline_quit(cl);
-	cmdline_stdin_exit(cl);
+	cmdline_interact(testpmd_cl);
+	cmdline_stdin_exit(testpmd_cl);
 }
 
 static void

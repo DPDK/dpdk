@@ -46,6 +46,9 @@ int cmdline_poll_char(struct cmdline *cl);
 /* Read one character from input. */
 ssize_t cmdline_read_char(struct cmdline *cl, char *c);
 
+/* Force current cmdline read to unblock. */
+void cmdline_cancel(struct cmdline *cl);
+
 /* vdprintf(3) */
 __rte_format_printf(2, 0)
 int cmdline_vdprintf(int fd, const char *format, va_list op);
