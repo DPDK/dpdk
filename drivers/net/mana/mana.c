@@ -487,6 +487,15 @@ mana_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		goto fail;
 	}
 
+	txq->gdma_comp_buf = rte_malloc_socket("mana_txq_comp",
+			sizeof(*txq->gdma_comp_buf) * nb_desc,
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (!txq->gdma_comp_buf) {
+		DRV_LOG(ERR, "failed to allocate txq comp");
+		ret = -ENOMEM;
+		goto fail;
+	}
+
 	ret = mana_mr_btree_init(&txq->mr_btree,
 				 MANA_MR_BTREE_PER_QUEUE_N, socket_id);
 	if (ret) {
@@ -506,6 +515,7 @@ mana_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 
 fail:
+	rte_free(txq->gdma_comp_buf);
 	rte_free(txq->desc_ring);
 	rte_free(txq);
 	return ret;
@@ -518,6 +528,7 @@ mana_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	mana_mr_btree_free(&txq->mr_btree);
 
+	rte_free(txq->gdma_comp_buf);
 	rte_free(txq->desc_ring);
 	rte_free(txq);
 }
@@ -557,6 +568,15 @@ mana_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->desc_ring_head = 0;
 	rxq->desc_ring_tail = 0;
 
+	rxq->gdma_comp_buf = rte_malloc_socket("mana_rxq_comp",
+			sizeof(*rxq->gdma_comp_buf) * nb_desc,
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (!rxq->gdma_comp_buf) {
+		DRV_LOG(ERR, "failed to allocate rxq comp");
+		ret = -ENOMEM;
+		goto fail;
+	}
+
 	ret = mana_mr_btree_init(&rxq->mr_btree,
 				 MANA_MR_BTREE_PER_QUEUE_N, socket_id);
 	if (ret) {
@@ -572,6 +592,7 @@ mana_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 
 fail:
+	rte_free(rxq->gdma_comp_buf);
 	rte_free(rxq->desc_ring);
 	rte_free(rxq);
 	return ret;
@@ -584,6 +605,7 @@ mana_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	mana_mr_btree_free(&rxq->mr_btree);
 
+	rte_free(rxq->gdma_comp_buf);
 	rte_free(rxq->desc_ring);
 	rte_free(rxq);
 }

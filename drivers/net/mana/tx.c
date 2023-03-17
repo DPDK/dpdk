@@ -170,17 +170,20 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct mana_txq *txq = dpdk_txq;
 	struct mana_priv *priv = txq->priv;
-	struct gdma_comp comp;
 	int ret;
 	void *db_page;
 	uint16_t pkt_sent = 0;
+	uint32_t num_comp;
 
 	/* Process send completions from GDMA */
-	while (gdma_poll_completion_queue(&txq->gdma_cq, &comp) == 1) {
+	num_comp = gdma_poll_completion_queue(&txq->gdma_cq,
+			txq->gdma_comp_buf, txq->num_desc);
+
+	for (uint32_t i = 0; i < num_comp; i++) {
 		struct mana_txq_desc *desc =
 			&txq->desc_ring[txq->desc_ring_tail];
-		struct mana_tx_comp_oob *oob =
-			(struct mana_tx_comp_oob *)&comp.completion_data[0];
+		struct mana_tx_comp_oob *oob = (struct mana_tx_comp_oob *)
+			txq->gdma_comp_buf[i].cqe_data;
 
 		if (oob->cqe_hdr.cqe_type != CQE_TX_OKAY) {
 			DP_LOG(ERR,

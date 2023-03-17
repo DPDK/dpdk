@@ -383,24 +383,17 @@ mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	uint8_t wqe_posted = 0;
 	struct mana_rxq *rxq = dpdk_rxq;
 	struct mana_priv *priv = rxq->priv;
-	struct gdma_comp comp;
 	struct rte_mbuf *mbuf;
 	int ret;
+	uint32_t num_pkts;
 
-	while (pkt_received < pkts_n &&
-	       gdma_poll_completion_queue(&rxq->gdma_cq, &comp) == 1) {
-		struct mana_rxq_desc *desc;
-		struct mana_rx_comp_oob *oob =
-			(struct mana_rx_comp_oob *)&comp.completion_data[0];
+	num_pkts = gdma_poll_completion_queue(&rxq->gdma_cq, rxq->gdma_comp_buf, pkts_n);
+	for (uint32_t i = 0; i < num_pkts; i++) {
+		struct mana_rx_comp_oob *oob = (struct mana_rx_comp_oob *)
+			rxq->gdma_comp_buf[i].cqe_data;
+		struct mana_rxq_desc *desc =
+			&rxq->desc_ring[rxq->desc_ring_tail];
 
-		if (comp.work_queue_number != rxq->gdma_rq.id) {
-			DP_LOG(ERR, "rxq comp id mismatch wqid=0x%x rcid=0x%x",
-			       comp.work_queue_number, rxq->gdma_rq.id);
-			rxq->stats.errors++;
-			break;
-		}
-
-		desc = &rxq->desc_ring[rxq->desc_ring_tail];
 		rxq->gdma_rq.tail += desc->wqe_size_in_bu;
 		mbuf = desc->pkt;
 
