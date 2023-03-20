@@ -4961,10 +4961,17 @@ struct mlx5_ifc_query_flow_table_out_bits {
 
 enum mlx5_flow_destination_type {
 	MLX5_FLOW_DESTINATION_TYPE_VPORT = 0x0,
+	MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE = 0x1,
 };
 
-enum {
-	MLX5_FLOW_CONTEXT_ACTION_FWD_DEST  = 0x4,
+enum mlx5_flow_context_action {
+	MLX5_FLOW_CONTEXT_ACTION_FWD_DEST = 1 << 2,
+};
+
+enum mlx5_flow_context_flow_source {
+	MLX5_FLOW_CONTEXT_FLOW_SOURCE_ANY_VPORT = 0x0,
+	MLX5_FLOW_CONTEXT_FLOW_SOURCE_UPLINK = 0x1,
+	MLX5_FLOW_CONTEXT_FLOW_SOURCE_LOCAL_VPORT = 0x2,
 };
 
 struct mlx5_ifc_set_fte_out_bits {
@@ -5002,11 +5009,16 @@ struct mlx5_ifc_flow_context_bits {
 	u8 reserved_at_60[0x10];
 	u8 action[0x10];
 	u8 extended_destination[0x1];
-	u8 reserved_at_81[0x7];
+	u8 reserved_at_81[0x1];
+	u8 flow_source[0x2];
+	u8 encrypt_decrypt_type[0x4];
 	u8 destination_list_size[0x18];
 	u8 reserved_at_a0[0x8];
 	u8 flow_counter_list_size[0x18];
-	u8 reserved_at_c0[0x1740];
+	u8 packet_reformat_id[0x20];
+	u8 reserved_at_e0[0x40];
+	u8 encrypt_decrypt_obj_id[0x20];
+	u8 reserved_at_140[0x16c0];
 	/* Currently only one destnation */
 	union mlx5_ifc_dest_format_flow_counter_list_auto_bits destination[1];
 };

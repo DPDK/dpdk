@@ -20,6 +20,7 @@ static int
 mlx5dr_table_up_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 {
 	struct mlx5dr_cmd_ft_create_attr ft_attr = {0};
+	struct mlx5dr_cmd_set_fte_attr fte_attr = {0};
 	struct mlx5dr_cmd_forward_tbl *default_miss;
 	struct mlx5dr_context *ctx = tbl->ctx;
 	uint8_t tbl_type = tbl->type;
@@ -40,8 +41,12 @@ mlx5dr_table_up_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 	assert(ctx->caps->eswitch_manager);
 	vport = ctx->caps->eswitch_manager_vport_number;
 
-	default_miss = mlx5dr_cmd_miss_ft_create(mlx5dr_context_get_local_ibv(ctx),
-						 &ft_attr, vport);
+	fte_attr.action_flags = MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+	fte_attr.destination_type = MLX5_FLOW_DESTINATION_TYPE_VPORT;
+	fte_attr.destination_id = vport;
+
+	default_miss = mlx5dr_cmd_forward_tbl_create(mlx5dr_context_get_local_ibv(ctx),
+						     &ft_attr, &fte_attr);
 	if (!default_miss) {
 		DR_LOG(ERR, "Failed to default miss table type: 0x%x", tbl_type);
 		return rte_errno;
@@ -66,9 +71,8 @@ static void mlx5dr_table_down_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 	if (--default_miss->refcount)
 		return;
 
-	mlx5dr_cmd_miss_ft_destroy(default_miss);
+	mlx5dr_cmd_forward_tbl_destroy(default_miss);
 
-	simple_free(default_miss);
 	ctx->common_res[tbl_type].default_miss = NULL;
 }
 
