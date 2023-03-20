@@ -80,6 +80,34 @@ mlx5dr_cmd_flow_table_modify(struct mlx5dr_devx_obj *devx_obj,
 	return ret;
 }
 
+int
+mlx5dr_cmd_flow_table_query(struct mlx5dr_devx_obj *devx_obj,
+			    struct mlx5dr_cmd_ft_query_attr *ft_attr,
+			    uint64_t *icm_addr_0, uint64_t *icm_addr_1)
+{
+	uint32_t out[MLX5_ST_SZ_DW(query_flow_table_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(query_flow_table_in)] = {0};
+	void *ft_ctx;
+	int ret;
+
+	MLX5_SET(query_flow_table_in, in, opcode, MLX5_CMD_OP_QUERY_FLOW_TABLE);
+	MLX5_SET(query_flow_table_in, in, table_type, ft_attr->type);
+	MLX5_SET(query_flow_table_in, in, table_id, devx_obj->id);
+
+	ret = mlx5_glue->devx_obj_query(devx_obj->obj, in, sizeof(in), out, sizeof(out));
+	if (ret) {
+		DR_LOG(ERR, "Failed to query FT");
+		rte_errno = errno;
+		return ret;
+	}
+
+	ft_ctx = MLX5_ADDR_OF(query_flow_table_out, out, flow_table_context);
+	*icm_addr_0 = MLX5_GET64(flow_table_context, ft_ctx, sw_owner_icm_root_0);
+	*icm_addr_1 = MLX5_GET64(flow_table_context, ft_ctx, sw_owner_icm_root_1);
+
+	return ret;
+}
+
 static struct mlx5dr_devx_obj *
 mlx5dr_cmd_flow_group_create(struct ibv_context *ctx,
 			     struct mlx5dr_cmd_fg_attr *fg_attr)

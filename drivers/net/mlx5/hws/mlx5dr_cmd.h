@@ -22,6 +22,10 @@ struct mlx5dr_cmd_ft_modify_attr {
 	uint64_t modify_fs;
 };
 
+struct mlx5dr_cmd_ft_query_attr {
+	uint8_t type;
+};
+
 struct mlx5dr_cmd_fg_attr {
 	uint32_t table_id;
 	uint32_t table_type;
@@ -214,6 +218,11 @@ mlx5dr_cmd_flow_table_create(struct ibv_context *ctx,
 int
 mlx5dr_cmd_flow_table_modify(struct mlx5dr_devx_obj *devx_obj,
 			     struct mlx5dr_cmd_ft_modify_attr *ft_attr);
+
+int
+mlx5dr_cmd_flow_table_query(struct mlx5dr_devx_obj *devx_obj,
+			    struct mlx5dr_cmd_ft_query_attr *ft_attr,
+			    uint64_t *icm_addr_0, uint64_t *icm_addr_1);
 
 struct mlx5dr_devx_obj *
 mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
