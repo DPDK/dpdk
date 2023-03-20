@@ -192,8 +192,8 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 			}
 			param->accumulator_hits = 0;
 		}
-		if (__atomic_add_fetch(&param->sec_since_last_hit, time_delta,
-				       __ATOMIC_RELAXED) <=
+		if (__atomic_fetch_add(&param->sec_since_last_hit, time_delta,
+				       __ATOMIC_RELAXED) + time_delta <=
 		   __atomic_load_n(&param->timeout, __ATOMIC_RELAXED))
 			continue;
 		/* Prepare the relevant ring for this AGE parameter */

@@ -58,8 +58,8 @@ mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
 
 	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) == 1) {
 		rte_mempool_put(buf->mp, buf);
-	} else if (unlikely(__atomic_sub_fetch(&buf->refcnt, 1,
-					       __ATOMIC_RELAXED) == 0)) {
+	} else if (unlikely(__atomic_fetch_sub(&buf->refcnt, 1,
+					       __ATOMIC_RELAXED) - 1 == 0)) {
 		__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
 		rte_mempool_put(buf->mp, buf);
 	}
@@ -1665,8 +1665,8 @@ mlx5_mempool_reg_detach(struct mlx5_mempool_reg *mpr)
 	bool ret = false;
 
 	for (i = 0; i < mpr->mrs_n; i++)
-		ret |= __atomic_sub_fetch(&mpr->mrs[i].refcnt, 1,
-					  __ATOMIC_RELAXED) == 0;
+		ret |= __atomic_fetch_sub(&mpr->mrs[i].refcnt, 1,
+					  __ATOMIC_RELAXED) - 1 == 0;
 	return ret;
 }
 

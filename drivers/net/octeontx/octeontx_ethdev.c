@@ -559,7 +559,7 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	/* Stopping/closing event device once all eth ports are closed. */
-	if (__atomic_sub_fetch(&evdev_refcnt, 1, __ATOMIC_ACQUIRE) == 0) {
+	if (__atomic_fetch_sub(&evdev_refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0) {
 		rte_event_dev_stop(nic->evdev);
 		rte_event_dev_close(nic->evdev);
 	}

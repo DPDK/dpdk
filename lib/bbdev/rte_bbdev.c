@@ -250,8 +250,8 @@ rte_bbdev_release(struct rte_bbdev *bbdev)
 	}
 
 	/* clear shared BBDev Data if no process is using the device anymore */
-	if (__atomic_sub_fetch(&bbdev->data->process_cnt, 1,
-			      __ATOMIC_RELAXED) == 0)
+	if (__atomic_fetch_sub(&bbdev->data->process_cnt, 1,
+			      __ATOMIC_RELAXED) - 1 == 0)
 		memset(bbdev->data, 0, sizeof(*bbdev->data));
 
 	memset(bbdev, 0, sizeof(*bbdev));

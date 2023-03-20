@@ -108,7 +108,7 @@ cn10k_nix_vwqe_wait_fc(struct cn10k_eth_txq *txq, int64_t req)
 retry:
 	while (__atomic_load_n(&txq->fc_cache_pkts, __ATOMIC_RELAXED) < 0)
 		;
-	cached = __atomic_sub_fetch(&txq->fc_cache_pkts, req, __ATOMIC_ACQUIRE);
+	cached = __atomic_fetch_sub(&txq->fc_cache_pkts, req, __ATOMIC_ACQUIRE) - req;
 	/* Check if there is enough space, else update and retry. */
 	if (cached < 0) {
 		/* Check if we have space else retry. */
@@ -302,7 +302,7 @@ cn10k_nix_sec_fc_wait(struct cn10k_eth_txq *txq, uint16_t nb_pkts)
 
 again:
 	fc_sw = txq->cpt_fc_sw;
-	val = __atomic_sub_fetch(fc_sw, nb_pkts, __ATOMIC_RELAXED);
+	val = __atomic_fetch_sub(fc_sw, nb_pkts, __ATOMIC_RELAXED) - nb_pkts;
 	if (likely(val >= 0))
 		return;
 

@@ -203,6 +203,6 @@ roc_ae_ec_grp_put(void)
 
 	ec_grp = mz->addr;
 	/* Decrement number of devices using EC grp table */
-	if (__atomic_sub_fetch(&ec_grp->refcount, 1, __ATOMIC_SEQ_CST) == 0)
+	if (__atomic_fetch_sub(&ec_grp->refcount, 1, __ATOMIC_SEQ_CST) - 1 == 0)
 		plt_memzone_free(mz);
 }

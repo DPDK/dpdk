@@ -178,7 +178,7 @@ struct mlx5_nl_port_info {
 uint32_t atomic_sn;
 
 /* Generate Netlink sequence number. */
-#define MLX5_NL_SN_GENERATE __atomic_add_fetch(&atomic_sn, 1, __ATOMIC_RELAXED)
+#define MLX5_NL_SN_GENERATE (__atomic_fetch_add(&atomic_sn, 1, __ATOMIC_RELAXED) + 1)
 
 /**
  * Opens a Netlink socket.

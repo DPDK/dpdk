@@ -120,7 +120,7 @@ iavf_dev_event_handler_init(void)
 {
 	struct iavf_event_handler *handler = &event_handler;
 
-	if (__atomic_add_fetch(&handler->ndev, 1, __ATOMIC_RELAXED) != 1)
+	if (__atomic_fetch_add(&handler->ndev, 1, __ATOMIC_RELAXED) + 1 != 1)
 		return 0;
 #if defined(RTE_EXEC_ENV_IS_WINDOWS) && RTE_EXEC_ENV_IS_WINDOWS != 0
 	int err = _pipe(handler->fd, MAX_EVENT_PENDING, O_BINARY);
@@ -149,7 +149,7 @@ iavf_dev_event_handler_fini(void)
 {
 	struct iavf_event_handler *handler = &event_handler;
 
-	if (__atomic_sub_fetch(&handler->ndev, 1, __ATOMIC_RELAXED) != 0)
+	if (__atomic_fetch_sub(&handler->ndev, 1, __ATOMIC_RELAXED) - 1 != 0)
 		return;
 
 	int unused = pthread_cancel(handler->tid);
@@ -533,8 +533,8 @@ iavf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 				/* read message and it's expected one */
 				if (msg_opc == vf->pend_cmd) {
 					uint32_t cmd_count =
-					__atomic_sub_fetch(&vf->pend_cmd_count,
-							1, __ATOMIC_RELAXED);
+					__atomic_fetch_sub(&vf->pend_cmd_count,
+							1, __ATOMIC_RELAXED) - 1;
 					if (cmd_count == 0)
 						_notify_cmd(vf, msg_ret);
 				} else {

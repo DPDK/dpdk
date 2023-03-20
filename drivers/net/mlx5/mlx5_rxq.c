@@ -2042,7 +2042,7 @@ mlx5_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
 
 	if (rxq == NULL)
 		return 0;
-	return __atomic_sub_fetch(&rxq->refcnt, 1, __ATOMIC_RELAXED);
+	return __atomic_fetch_sub(&rxq->refcnt, 1, __ATOMIC_RELAXED) - 1;
 }
 
 /**
@@ -2141,7 +2141,7 @@ mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_external_rxq *rxq = mlx5_ext_rxq_get(dev, idx);
 
-	return __atomic_sub_fetch(&rxq->refcnt, 1, __ATOMIC_RELAXED);
+	return __atomic_fetch_sub(&rxq->refcnt, 1, __ATOMIC_RELAXED) - 1;
 }
 
 /**
@@ -2462,7 +2462,7 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 	unsigned int ret;
 
 	rte_rwlock_write_lock(&priv->ind_tbls_lock);
-	ret = __atomic_sub_fetch(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
+	ret = __atomic_fetch_sub(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED) - 1;
 	if (!ret)
 		LIST_REMOVE(ind_tbl, next);
 	rte_rwlock_write_unlock(&priv->ind_tbls_lock);

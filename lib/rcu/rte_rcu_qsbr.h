@@ -462,7 +462,7 @@ rte_rcu_qsbr_start(struct rte_rcu_qsbr *v)
 	 * structure are visible to the workers before the token
 	 * update is visible.
 	 */
-	t = __atomic_add_fetch(&v->token, 1, __ATOMIC_RELEASE);
+	t = __atomic_fetch_add(&v->token, 1, __ATOMIC_RELEASE) + 1;
 
 	return t;
 }

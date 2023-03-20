@@ -573,7 +573,7 @@ ifpga_monitor_stop_func(struct ifpga_rawdev *dev)
 
 	dev->poll_enabled = 0;
 
-	if (!__atomic_sub_fetch(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED) &&
+	if (!(__atomic_fetch_sub(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED) - 1) &&
 		ifpga_monitor_start_thread) {
 		ret = pthread_cancel(ifpga_monitor_start_thread);
 		if (ret)

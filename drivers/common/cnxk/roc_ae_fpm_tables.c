@@ -1135,6 +1135,6 @@ roc_ae_fpm_put(void)
 
 	fpm = (struct ae_fpm_tbl *)mz->addr;
 	/* Decrement number of devices using FPM table */
-	if (__atomic_sub_fetch(&fpm->refcount, 1, __ATOMIC_SEQ_CST) == 0)
+	if (__atomic_fetch_sub(&fpm->refcount, 1, __ATOMIC_SEQ_CST) - 1 == 0)
 		plt_memzone_free(mz);
 }

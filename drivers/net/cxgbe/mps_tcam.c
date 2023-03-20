@@ -195,7 +195,7 @@ int cxgbe_mpstcam_remove(struct port_info *pi, u16 idx)
 					   entry->mask, idx, 1, pi->port_id,
 					   false);
 	else
-		ret = __atomic_sub_fetch(&entry->refcnt, 1, __ATOMIC_RELAXED);
+		ret = __atomic_fetch_sub(&entry->refcnt, 1, __ATOMIC_RELAXED) - 1;
 
 	if (ret == 0) {
 		reset_mpstcam_entry(entry);

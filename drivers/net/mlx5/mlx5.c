@@ -1066,7 +1066,7 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "Dynamic flex parser is not supported on HWS");
 		return -ENOTSUP;
 	}
-	if (__atomic_add_fetch(&priv->sh->srh_flex_parser.refcnt, 1, __ATOMIC_RELAXED) > 1)
+	if (__atomic_fetch_add(&priv->sh->srh_flex_parser.refcnt, 1, __ATOMIC_RELAXED) + 1 > 1)
 		return 0;
 	priv->sh->srh_flex_parser.flex.devx_fp = mlx5_malloc(MLX5_MEM_ZERO,
 			sizeof(struct mlx5_flex_parser_devx), 0, SOCKET_ID_ANY);
@@ -1137,7 +1137,7 @@ mlx5_free_srh_flex_parser(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_internal_flex_parser_profile *fp = &priv->sh->srh_flex_parser;
 
-	if (__atomic_sub_fetch(&fp->refcnt, 1, __ATOMIC_RELAXED))
+	if (__atomic_fetch_sub(&fp->refcnt, 1, __ATOMIC_RELAXED) - 1)
 		return;
 	mlx5_devx_cmd_destroy(fp->flex.devx_fp->devx_obj);
 	mlx5_free(fp->flex.devx_fp);

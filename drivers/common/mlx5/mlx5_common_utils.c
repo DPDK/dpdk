@@ -81,8 +81,8 @@ __list_lookup(struct mlx5_list_inconst *l_inconst,
 	while (entry != NULL) {
 		if (l_const->cb_match(l_const->ctx, entry, ctx) == 0) {
 			if (reuse) {
-				ret = __atomic_add_fetch(&entry->ref_cnt, 1,
-							 __ATOMIC_RELAXED) - 1;
+				ret = __atomic_fetch_add(&entry->ref_cnt, 1,
+							 __ATOMIC_RELAXED);
 				DRV_LOG(DEBUG, "mlx5 list %s entry %p ref: %u.",
 					l_const->name, (void *)entry,
 					entry->ref_cnt);
@@ -285,7 +285,7 @@ _mlx5_list_unregister(struct mlx5_list_inconst *l_inconst,
 {
 	struct mlx5_list_entry *gentry = entry->gentry;
 
-	if (__atomic_sub_fetch(&entry->ref_cnt, 1, __ATOMIC_RELAXED) != 0)
+	if (__atomic_fetch_sub(&entry->ref_cnt, 1, __ATOMIC_RELAXED) - 1 != 0)
 		return 1;
 	if (entry->lcore_idx == (uint32_t)lcore_idx) {
 		LIST_REMOVE(entry, next);
@@ -303,7 +303,7 @@ _mlx5_list_unregister(struct mlx5_list_inconst *l_inconst,
 			l_const->name, (void *)entry);
 		return 0;
 	}
-	if (__atomic_sub_fetch(&gentry->ref_cnt, 1, __ATOMIC_RELAXED) != 0)
+	if (__atomic_fetch_sub(&gentry->ref_cnt, 1, __ATOMIC_RELAXED) - 1 != 0)
 		return 1;
 	rte_rwlock_write_lock(&l_inconst->lock);
 	if (likely(gentry->ref_cnt == 0)) {

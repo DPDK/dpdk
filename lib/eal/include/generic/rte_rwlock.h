@@ -97,8 +97,8 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
 			rte_pause();
 
 		/* Try to get read lock */
-		x = __atomic_add_fetch(&rwl->cnt, RTE_RWLOCK_READ,
-				       __ATOMIC_ACQUIRE);
+		x = __atomic_fetch_add(&rwl->cnt, RTE_RWLOCK_READ,
+				       __ATOMIC_ACQUIRE) + RTE_RWLOCK_READ;
 
 		/* If no writer, then acquire was successful */
 		if (likely(!(x & RTE_RWLOCK_MASK)))
@@ -134,8 +134,8 @@ rte_rwlock_read_trylock(rte_rwlock_t *rwl)
 		return -EBUSY;
 
 	/* Try to get read lock */
-	x = __atomic_add_fetch(&rwl->cnt, RTE_RWLOCK_READ,
-			       __ATOMIC_ACQUIRE);
+	x = __atomic_fetch_add(&rwl->cnt, RTE_RWLOCK_READ,
+			       __ATOMIC_ACQUIRE) + RTE_RWLOCK_READ;
 
 	/* Back out if writer raced in */
 	if (unlikely(x & RTE_RWLOCK_MASK)) {

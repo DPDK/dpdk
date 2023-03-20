@@ -7833,7 +7833,7 @@ flow_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 
 		tunnel = mlx5_find_tunnel_id(dev, flow->tunnel_id);
 		RTE_VERIFY(tunnel);
-		if (!__atomic_sub_fetch(&tunnel->refctn, 1, __ATOMIC_RELAXED))
+		if (!(__atomic_fetch_sub(&tunnel->refctn, 1, __ATOMIC_RELAXED) - 1))
 			mlx5_flow_tunnel_free(dev, tunnel);
 	}
 	flow_mreg_del_copy_action(dev, flow);
@@ -9746,9 +9746,9 @@ mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 					 __ATOMIC_RELAXED);
 			continue;
 		}
-		if (__atomic_add_fetch(&age_param->sec_since_last_hit,
+		if (__atomic_fetch_add(&age_param->sec_since_last_hit,
 				       time_delta,
-				       __ATOMIC_RELAXED) <= age_param->timeout)
+				       __ATOMIC_RELAXED) + time_delta <= age_param->timeout)
 			continue;
 		/**
 		 * Hold the lock first, or if between the
@@ -11391,7 +11391,7 @@ tunnel_element_release_hit(struct rte_eth_dev *dev,
 {
 	struct tunnel_db_element_release_ctx *ctx = x;
 	ctx->ret = 0;
-	if (!__atomic_sub_fetch(&tunnel->refctn, 1, __ATOMIC_RELAXED))
+	if (!(__atomic_fetch_sub(&tunnel->refctn, 1, __ATOMIC_RELAXED) - 1))
 		mlx5_flow_tunnel_free(dev, tunnel);
 }
 

@@ -45,8 +45,8 @@ dsw_port_acquire_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 	 * allocation.
 	 */
 	new_total_on_loan =
-	    __atomic_add_fetch(&dsw->credits_on_loan, acquired_credits,
-			       __ATOMIC_RELAXED);
+	    __atomic_fetch_add(&dsw->credits_on_loan, acquired_credits,
+			       __ATOMIC_RELAXED) + acquired_credits;
 
 	if (unlikely(new_total_on_loan > dsw->max_inflight)) {
 		/* Some other port took the last credits */

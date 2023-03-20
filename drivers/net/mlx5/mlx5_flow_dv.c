@@ -6723,8 +6723,8 @@ flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t counter)
 		 * indirect action API, shared info is 1 before the reduction,
 		 * so this condition is failed and function doesn't return here.
 		 */
-		if (__atomic_sub_fetch(&cnt->shared_info.refcnt, 1,
-				       __ATOMIC_RELAXED))
+		if (__atomic_fetch_sub(&cnt->shared_info.refcnt, 1,
+				       __ATOMIC_RELAXED) - 1)
 			return;
 	}
 	cnt->pool = pool;
@@ -12797,7 +12797,7 @@ flow_dv_aso_age_release(struct rte_eth_dev *dev, uint32_t age_idx)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
 	struct mlx5_aso_age_action *age = flow_aso_age_get_by_idx(dev, age_idx);
-	uint32_t ret = __atomic_sub_fetch(&age->refcnt, 1, __ATOMIC_RELAXED);
+	uint32_t ret = __atomic_fetch_sub(&age->refcnt, 1, __ATOMIC_RELAXED) - 1;
 
 	if (!ret) {
 		flow_dv_aso_age_remove_from_age(dev, age);
@@ -13193,7 +13193,7 @@ flow_dv_aso_ct_dev_release(struct rte_eth_dev *dev, uint32_t idx)
 	/* Cannot release when CT is in the ASO SQ. */
 	if (state == ASO_CONNTRACK_WAIT || state == ASO_CONNTRACK_QUERY)
 		return -1;
-	ret = __atomic_sub_fetch(&ct->refcnt, 1, __ATOMIC_RELAXED);
+	ret = __atomic_fetch_sub(&ct->refcnt, 1, __ATOMIC_RELAXED) - 1;
 	if (!ret) {
 		if (ct->dr_action_orig) {
 #ifdef HAVE_MLX5_DR_ACTION_ASO_CT
@@ -15582,8 +15582,8 @@ flow_dev_geneve_tlv_option_resource_release(struct mlx5_dev_ctx_shared *sh)
 				sh->geneve_tlv_option_resource;
 	rte_spinlock_lock(&sh->geneve_tlv_opt_sl);
 	if (geneve_opt_resource) {
-		if (!(__atomic_sub_fetch(&geneve_opt_resource->refcnt, 1,
-					 __ATOMIC_RELAXED))) {
+		if (!(__atomic_fetch_sub(&geneve_opt_resource->refcnt, 1,
+					 __ATOMIC_RELAXED) - 1)) {
 			claim_zero(mlx5_devx_cmd_destroy
 					(geneve_opt_resource->obj));
 			mlx5_free(sh->geneve_tlv_option_resource);

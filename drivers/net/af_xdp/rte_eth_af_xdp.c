@@ -979,7 +979,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 			break;
 		xsk_socket__delete(rxq->xsk);
 
-		if (__atomic_sub_fetch(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE)
+		if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1
 				== 0) {
 			(void)xsk_umem__delete(rxq->umem->umem);
 			xdp_umem_destroy(rxq->umem);
@@ -1710,7 +1710,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 out_xsk:
 	xsk_socket__delete(rxq->xsk);
 out_umem:
-	if (__atomic_sub_fetch(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) == 0)
+	if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0)
 		xdp_umem_destroy(rxq->umem);
 
 	return ret;

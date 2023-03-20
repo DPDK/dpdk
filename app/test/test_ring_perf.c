@@ -186,7 +186,7 @@ enqueue_dequeue_bulk_helper(const unsigned int flag, const int esize,
 	void *burst = NULL;
 
 #ifdef RTE_USE_C11_MEM_MODEL
-	if (__atomic_add_fetch(&lcore_count, 1, __ATOMIC_RELAXED) != 2)
+	if (__atomic_fetch_add(&lcore_count, 1, __ATOMIC_RELAXED) + 1 != 2)
 #else
 	if (__sync_add_and_fetch(&lcore_count, 1) != 2)
 #endif

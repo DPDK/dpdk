@@ -1183,7 +1183,7 @@ mlx5_rxq_ibv_obj_dummy_lb_release(struct rte_eth_dev *dev)
 	if (!priv->lb_used)
 		return;
 	MLX5_ASSERT(__atomic_load_n(&sh->self_lb.refcnt, __ATOMIC_RELAXED));
-	if (!(__atomic_sub_fetch(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED))) {
+	if (!(__atomic_fetch_sub(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED) - 1)) {
 		if (sh->self_lb.qp) {
 			claim_zero(mlx5_glue->destroy_qp(sh->self_lb.qp));
 			sh->self_lb.qp = NULL;

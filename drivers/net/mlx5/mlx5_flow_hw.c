@@ -458,7 +458,7 @@ __flow_hw_action_template_destroy(struct rte_eth_dev *dev,
 	}
 
 	if (acts->mark)
-		if (!__atomic_sub_fetch(&priv->hws_mark_refcnt, 1, __ATOMIC_RELAXED))
+		if (!(__atomic_fetch_sub(&priv->hws_mark_refcnt, 1, __ATOMIC_RELAXED) - 1))
 			flow_hw_rxq_flag_set(dev, false);
 
 	if (acts->jump) {
@@ -3268,8 +3268,8 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 			rte_errno = EINVAL;
 			goto it_error;
 		}
-		ret = __atomic_add_fetch(&item_templates[i]->refcnt, 1,
-					 __ATOMIC_RELAXED);
+		ret = __atomic_fetch_add(&item_templates[i]->refcnt, 1,
+					 __ATOMIC_RELAXED) + 1;
 		if (ret <= 1) {
 			rte_errno = EINVAL;
 			goto it_error;
@@ -3282,8 +3282,8 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	for (i = 0; i < nb_action_templates; i++) {
 		uint32_t ret;
 
-		ret = __atomic_add_fetch(&action_templates[i]->refcnt, 1,
-					 __ATOMIC_RELAXED);
+		ret = __atomic_fetch_add(&action_templates[i]->refcnt, 1,
+					 __ATOMIC_RELAXED) + 1;
 		if (ret <= 1) {
 			rte_errno = EINVAL;
 			goto at_error;
@@ -7726,8 +7726,8 @@ flow_hw_clear_flow_metadata_config(void)
 {
 	uint32_t refcnt;
 
-	refcnt = __atomic_sub_fetch(&mlx5_flow_hw_flow_metadata_config_refcnt, 1,
-				    __ATOMIC_RELAXED);
+	refcnt = __atomic_fetch_sub(&mlx5_flow_hw_flow_metadata_config_refcnt, 1,
+				    __ATOMIC_RELAXED) - 1;
 	if (refcnt > 0)
 		return;
 	mlx5_flow_hw_flow_metadata_esw_en = 0;

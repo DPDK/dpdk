@@ -135,7 +135,7 @@ timr_bkt_clr_nent(struct tim_mem_bucket *bktp)
 {
 	const uint64_t v = ~(TIM_BUCKET_W1_M_NUM_ENTRIES <<
 			TIM_BUCKET_W1_S_NUM_ENTRIES);
-	return __atomic_and_fetch(&bktp->w1, v, __ATOMIC_ACQ_REL);
+	return __atomic_fetch_and(&bktp->w1, v, __ATOMIC_ACQ_REL) & v;
 }
 
 static inline struct tim_mem_entry *
