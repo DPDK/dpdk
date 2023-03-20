@@ -11099,11 +11099,11 @@ test_stats(void)
 	TEST_ASSERT((stats.enqueued_count == 1),
 		"rte_cryptodev_stats_get returned unexpected enqueued stat");
 	TEST_ASSERT((stats.dequeued_count == 1),
-		"rte_cryptodev_stats_get returned unexpected enqueued stat");
+		"rte_cryptodev_stats_get returned unexpected dequeued stat");
 	TEST_ASSERT((stats.enqueue_err_count == 0),
-		"rte_cryptodev_stats_get returned unexpected enqueued stat");
+		"rte_cryptodev_stats_get returned unexpected enqueued error count stat");
 	TEST_ASSERT((stats.dequeue_err_count == 0),
-		"rte_cryptodev_stats_get returned unexpected enqueued stat");
+		"rte_cryptodev_stats_get returned unexpected dequeued error count stat");
 
 	/* invalid device but should ignore and not reset device stats*/
 	rte_cryptodev_stats_reset(ts_params->valid_devs[0] + 300);
@@ -11111,7 +11111,7 @@ test_stats(void)
 			&stats),
 		"rte_cryptodev_stats_get failed");
 	TEST_ASSERT((stats.enqueued_count == 1),
-		"rte_cryptodev_stats_get returned unexpected enqueued stat");
+		"rte_cryptodev_stats_get returned unexpected enqueued stat after invalid reset");
 
 	/* check that a valid reset clears stats */
 	rte_cryptodev_stats_reset(ts_params->valid_devs[0]);
@@ -11119,9 +11119,9 @@ test_stats(void)
 			&stats),
 					  "rte_cryptodev_stats_get failed");
 	TEST_ASSERT((stats.enqueued_count == 0),
-		"rte_cryptodev_stats_get returned unexpected enqueued stat");
+		"rte_cryptodev_stats_get returned unexpected enqueued stat after valid reset");
 	TEST_ASSERT((stats.dequeued_count == 0),
-		"rte_cryptodev_stats_get returned unexpected enqueued stat");
+		"rte_cryptodev_stats_get returned unexpected dequeued stat after valid reset");
 
 	return TEST_SUCCESS;
 }
