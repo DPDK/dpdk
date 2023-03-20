@@ -3,6 +3,7 @@
  */
 
 #include <errno.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include <rte_common.h>
@@ -901,8 +902,8 @@ ml_request_finish(struct rte_mempool *mp, void *opaque, void *obj, unsigned int 
 	struct test_inference *t = ml_test_priv((struct ml_test *)opaque);
 	struct ml_request *req = (struct ml_request *)obj;
 	struct ml_model *model = &t->model[req->fid];
-	char str[PATH_MAX];
 	bool error = false;
+	char *dump_path;
 
 	RTE_SET_USED(mp);
 
@@ -926,14 +927,18 @@ ml_request_finish(struct rte_mempool *mp, void *opaque, void *obj, unsigned int 
 dump_output_pass:
 	if (obj_idx == 0) {
 		/* write quantized output */
-		snprintf(str, PATH_MAX, "%s.q", t->cmn.opt->filelist[req->fid].output);
-		ML_OPEN_WRITE_GET_ERR(str, req->output, model->out_qsize, error);
+		if (asprintf(&dump_path, "%s.q", t->cmn.opt->filelist[req->fid].output) == -1)
+			return;
+		ML_OPEN_WRITE_GET_ERR(dump_path, req->output, model->out_qsize, error);
+		free(dump_path);
 		if (error)
 			return;
 
 		/* write dequantized output */
-		snprintf(str, PATH_MAX, "%s", t->cmn.opt->filelist[req->fid].output);
-		ML_OPEN_WRITE_GET_ERR(str, model->output, model->out_dsize, error);
+		if (asprintf(&dump_path, "%s", t->cmn.opt->filelist[req->fid].output) == -1)
+			return;
+		ML_OPEN_WRITE_GET_ERR(dump_path, model->output, model->out_dsize, error);
+		free(dump_path);
 		if (error)
 			return;
 	}
@@ -943,14 +948,20 @@ dump_output_pass:
 dump_output_fail:
 	if (t->cmn.opt->debug) {
 		/* dump quantized output buffer */
-		snprintf(str, PATH_MAX, "%s.q.%d", t->cmn.opt->filelist[req->fid].output, obj_idx);
-		ML_OPEN_WRITE_GET_ERR(str, req->output, model->out_qsize, error);
+		if (asprintf(&dump_path, "%s.q.%u", t->cmn.opt->filelist[req->fid].output,
+				obj_idx) == -1)
+			return;
+		ML_OPEN_WRITE_GET_ERR(dump_path, req->output, model->out_qsize, error);
+		free(dump_path);
 		if (error)
 			return;
 
 		/* dump dequantized output buffer */
-		snprintf(str, PATH_MAX, "%s.%d", t->cmn.opt->filelist[req->fid].output, obj_idx);
-		ML_OPEN_WRITE_GET_ERR(str, model->output, model->out_dsize, error);
+		if (asprintf(&dump_path, "%s.%u", t->cmn.opt->filelist[req->fid].output,
+				obj_idx) == -1)
+			return;
+		ML_OPEN_WRITE_GET_ERR(dump_path, model->output, model->out_dsize, error);
+		free(dump_path);
 		if (error)
 			return;
 	}
