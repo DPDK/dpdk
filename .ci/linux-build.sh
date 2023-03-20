@@ -65,6 +65,12 @@ if [ "$RISCV64" = "true" ]; then
     cross_file=config/riscv/riscv64_linux_gcc
 fi
 
+buildtype=debugoptimized
+
+if [ "$BUILD_DEBUG" = "true" ]; then
+    buildtype=debug
+fi
+
 if [ "$BUILD_DOCS" = "true" ]; then
     OPTS="$OPTS -Denable_docs=true"
 fi
@@ -85,7 +91,7 @@ fi
 
 OPTS="$OPTS -Dplatform=generic"
 OPTS="$OPTS -Ddefault_library=$DEF_LIB"
-OPTS="$OPTS -Dbuildtype=debugoptimized"
+OPTS="$OPTS -Dbuildtype=$buildtype"
 OPTS="$OPTS -Dcheck_includes=true"
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
