@@ -280,7 +280,7 @@ struct roc_se_ctx {
 	uint64_t enc_cipher : 8;
 	uint64_t hash_type : 8;
 	uint64_t mac_len : 8;
-	uint64_t auth_key_len : 8;
+	uint64_t auth_key_len : 16;
 	uint64_t fc_type : 4;
 	uint64_t hmac : 1;
 	uint64_t zsk_flags : 3;
