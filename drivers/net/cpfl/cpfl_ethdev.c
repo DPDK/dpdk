@@ -1199,7 +1199,7 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 	if (adapter->vports == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate vports memory");
 		ret = -ENOMEM;
-		goto err_get_ptype;
+		goto err_vports_alloc;
 	}
 
 	adapter->cur_vports = 0;
@@ -1209,7 +1209,8 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 
 	return ret;
 
-err_get_ptype:
+err_vports_alloc:
+	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
 	idpf_adapter_deinit(base);
 err_adapter_init:
 	return ret;
