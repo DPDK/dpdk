@@ -148,6 +148,18 @@ struct mlx5dv_var { uint32_t page_id; uint32_t length; off_t mmap_off;
 #define IBV_ACCESS_RELAXED_ORDERING 0
 #endif
 
+#ifndef HAVE_MLX5DV_CREATE_STEERING_ANCHOR
+struct mlx5dv_steering_anchor_attr {
+	uint32_t ft_type;
+	uint16_t priority;
+	uint64_t comp_mask;
+};
+
+struct mlx5dv_steering_anchor {
+	uint32_t id;
+};
+#endif
+
 struct mlx5_glue {
 	const char *version;
 	int (*fork_init)(void);
@@ -392,6 +404,10 @@ struct mlx5_glue {
 			 uint32_t offset, uint32_t flags, uint8_t return_reg_c);
 	void *(*dr_create_flow_action_send_to_kernel)(void *tbl,
 						      uint16_t priority);
+	struct mlx5dv_steering_anchor *(*create_steering_anchor)
+					(struct ibv_context *context,
+					 struct mlx5dv_steering_anchor_attr *attr);
+	int (*destroy_steering_anchor)(struct mlx5dv_steering_anchor *sa);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

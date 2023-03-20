@@ -33,7 +33,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_FT) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_TIR) |
-		BIT(MLX5DR_ACTION_TYP_DROP),
+		BIT(MLX5DR_ACTION_TYP_DROP) |
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT_TABLE),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_NIC_TX] = {
@@ -49,7 +50,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_FT) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
-		BIT(MLX5DR_ACTION_TYP_DROP),
+		BIT(MLX5DR_ACTION_TYP_DROP) |
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT_TABLE),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_FDB] = {
@@ -68,7 +70,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_FT) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_VPORT) |
-		BIT(MLX5DR_ACTION_TYP_DROP),
+		BIT(MLX5DR_ACTION_TYP_DROP) |
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT_TABLE),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 };
@@ -520,6 +523,11 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
 		attr->dest_table_id = obj->id;
+		break;
+	case MLX5DR_ACTION_TYP_DEST_ROOT_TABLE:
+		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
+		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
+		attr->dest_table_id = action->root_tbl.sa->id;
 		break;
 	case MLX5DR_ACTION_TYP_TNL_L2_TO_L2:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_REMOVE;
@@ -1172,12 +1180,12 @@ mlx5dr_action_conv_reformat_to_verbs(uint32_t action_type,
 static int
 mlx5dr_action_conv_flags_to_ft_type(uint32_t flags, enum mlx5dv_flow_table_type *ft_type)
 {
-	if (flags & MLX5DR_ACTION_FLAG_ROOT_RX) {
+	if (flags & (MLX5DR_ACTION_FLAG_ROOT_RX | MLX5DR_ACTION_FLAG_HWS_RX)) {
 		*ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
-	} else if (flags & MLX5DR_ACTION_FLAG_ROOT_TX) {
+	} else if (flags & (MLX5DR_ACTION_FLAG_ROOT_TX | MLX5DR_ACTION_FLAG_HWS_TX)) {
 		*ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_TX;
 #ifdef HAVE_MLX5DV_FLOW_MATCHER_FT_TYPE
-	} else if (flags & MLX5DR_ACTION_FLAG_ROOT_FDB) {
+	} else if (flags & (MLX5DR_ACTION_FLAG_ROOT_FDB | MLX5DR_ACTION_FLAG_HWS_FDB)) {
 		*ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 #endif
 	} else {
@@ -1639,6 +1647,65 @@ free_action:
 	return NULL;
 }
 
+struct mlx5dr_action *
+mlx5dr_action_create_dest_root_table(struct mlx5dr_context *ctx,
+				     struct mlx5dr_table *tbl,
+				     uint16_t priority,
+				     uint32_t flags)
+{
+	struct mlx5dv_steering_anchor_attr attr = {0};
+	struct mlx5dv_steering_anchor *sa;
+	struct mlx5dr_action *action;
+	int ret;
+
+	if (mlx5dr_action_is_root_flags(flags)) {
+		DR_LOG(ERR, "Action flags must be only non root (HWS)");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (!mlx5dr_table_is_root(tbl)) {
+		DR_LOG(ERR, "Non root table cannot be set as destination");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (mlx5dr_context_shared_gvmi_used(ctx)) {
+		DR_LOG(ERR, "Cannot use this action in shared GVMI context");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (mlx5dr_action_conv_flags_to_ft_type(flags, &attr.ft_type))
+		return NULL;
+
+	attr.priority = priority;
+
+	sa = mlx5_glue->create_steering_anchor(ctx->ibv_ctx, &attr);
+	if (!sa) {
+		DR_LOG(ERR, "Creation of steering anchor failed");
+		return NULL;
+	}
+
+	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_DEST_ROOT_TABLE);
+	if (!action)
+		goto free_steering_anchor;
+
+	action->root_tbl.sa = sa;
+
+	ret = mlx5dr_action_create_stcs(action, NULL);
+	if (ret)
+		goto free_action;
+
+	return action;
+
+free_action:
+	simple_free(action);
+free_steering_anchor:
+	mlx5_glue->destroy_steering_anchor(sa);
+	return NULL;
+}
+
 static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 {
 	switch (action->type) {
@@ -1657,6 +1724,10 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_ASO_CT:
 	case MLX5DR_ACTION_TYP_PUSH_VLAN:
 		mlx5dr_action_destroy_stcs(action);
+		break;
+	case MLX5DR_ACTION_TYP_DEST_ROOT_TABLE:
+		mlx5dr_action_destroy_stcs(action);
+		mlx5_glue->destroy_steering_anchor(action->root_tbl.sa);
 		break;
 	case MLX5DR_ACTION_TYP_POP_VLAN:
 		mlx5dr_action_destroy_stcs(action);
@@ -2145,6 +2216,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_DROP:
 		case MLX5DR_ACTION_TYP_TIR:
 		case MLX5DR_ACTION_TYP_FT:
+		case MLX5DR_ACTION_TYP_DEST_ROOT_TABLE:
 		case MLX5DR_ACTION_TYP_VPORT:
 		case MLX5DR_ACTION_TYP_MISS:
 			/* Hit action */
