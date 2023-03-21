@@ -10,7 +10,7 @@
 #include "hns3_logs.h"
 
 /* Default hash keys */
-const uint8_t hns3_hash_key[] = {
+const uint8_t hns3_hash_key[HNS3_RSS_KEY_SIZE] = {
 	0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
 	0x41, 0x67, 0x25, 0x3D, 0x43, 0xA3, 0x8F, 0xB0,
 	0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
@@ -317,7 +317,7 @@ hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 		}
 	}
 	/* Update the shadow RSS key with user specified */
-	memcpy(hw->rss_info.key, key, HNS3_RSS_KEY_SIZE);
+	memcpy(hw->rss_info.key, key, hw->rss_key_size);
 	return 0;
 }
 
@@ -553,9 +553,9 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	uint8_t *key = rss_conf->rss_key;
 	int ret;
 
-	if (key && key_len != HNS3_RSS_KEY_SIZE) {
+	if (key && key_len != hw->rss_key_size) {
 		hns3_err(hw, "the hash key len(%u) is invalid, must be %u",
-			 key_len, HNS3_RSS_KEY_SIZE);
+			 key_len, hw->rss_key_size);
 		return -EINVAL;
 	}
 
@@ -566,7 +566,7 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	if (key) {
 		ret = hns3_rss_set_algo_key(hw, hw->rss_info.hash_algo,
-					    key, HNS3_RSS_KEY_SIZE);
+					    key, hw->rss_key_size);
 		if (ret)
 			goto set_algo_key_fail;
 	}
@@ -602,9 +602,9 @@ hns3_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_hf = rss_cfg->conf.types;
 
 	/* Get the RSS Key required by the user */
-	if (rss_conf->rss_key && rss_conf->rss_key_len >= HNS3_RSS_KEY_SIZE) {
-		memcpy(rss_conf->rss_key, rss_cfg->key, HNS3_RSS_KEY_SIZE);
-		rss_conf->rss_key_len = HNS3_RSS_KEY_SIZE;
+	if (rss_conf->rss_key && rss_conf->rss_key_len >= hw->rss_key_size) {
+		memcpy(rss_conf->rss_key, rss_cfg->key, hw->rss_key_size);
+		rss_conf->rss_key_len = hw->rss_key_size;
 	}
 	rte_spinlock_unlock(&hw->lock);
 
@@ -824,8 +824,8 @@ hns3_rss_set_default_args(struct hns3_hw *hw)
 	/* Default hash algorithm */
 	rss_cfg->conf.func = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
 
-	/* Default RSS key */
-	memcpy(rss_cfg->key, hns3_hash_key, HNS3_RSS_KEY_SIZE);
+	memcpy(rss_cfg->key, hns3_hash_key,
+		RTE_MIN(sizeof(hns3_hash_key), hw->rss_key_size));
 
 	/* Initialize RSS indirection table */
 	for (i = 0; i < hw->rss_ind_tbl_size; i++)
@@ -858,9 +858,8 @@ hns3_config_rss(struct hns3_adapter *hns)
 		break;
 	}
 
-	/* Configure RSS hash algorithm and hash key */
-	ret = hns3_rss_set_algo_key(hw, hw->rss_info.hash_algo, hash_key,
-				    HNS3_RSS_KEY_SIZE);
+	ret = hns3_rss_set_algo_key(hw, rss_cfg->hash_algo,
+				    hash_key, hw->rss_key_size);
 	if (ret)
 		return ret;
 
