@@ -1392,7 +1392,7 @@ hns3_disable_rss(struct hns3_hw *hw)
 }
 
 static int
-hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function func,
+hns3_parse_rss_algorithm(struct hns3_hw *hw, struct hns3_rss_conf *rss_conf,
 			 uint8_t *hash_algo)
 {
 	const uint8_t hash_func_map[] = {
@@ -1404,7 +1404,7 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function func,
 	uint8_t key[HNS3_RSS_KEY_SIZE_MAX] = {0};
 	int ret;
 
-	if (func == RTE_ETH_HASH_FUNCTION_DEFAULT) {
+	if (rss_conf->conf.func == RTE_ETH_HASH_FUNCTION_DEFAULT) {
 		ret = hns3_rss_get_algo_key(hw, hash_algo, key,
 					    hw->rss_key_size);
 		if (ret != 0) {
@@ -1419,20 +1419,21 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function func,
 		 * rte_flow_hash_algo) when this rule is delivered.
 		 */
 		if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) &&
-		    *hash_algo != hw->rss_info.rte_flow_hash_algo)
-			*hash_algo = hw->rss_info.rte_flow_hash_algo;
+		    *hash_algo != rss_conf->rte_flow_hash_algo)
+			*hash_algo = rss_conf->rte_flow_hash_algo;
 
 		return 0;
 	}
 
-	*hash_algo = hash_func_map[func];
+	*hash_algo = hash_func_map[rss_conf->conf.func];
 
 	return 0;
 }
 
 static int
-hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
+hns3_hw_rss_hash_set(struct hns3_hw *hw, struct hns3_rss_conf *conf)
 {
+	struct rte_flow_action_rss *rss_config = &conf->conf;
 	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
 	bool use_default_key = false;
 	uint64_t flow_types;
@@ -1446,7 +1447,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 		use_default_key = true;
 	}
 
-	ret = hns3_parse_rss_algorithm(hw, rss_config->func, &hash_algo);
+	ret = hns3_parse_rss_algorithm(hw, conf, &hash_algo);
 	if (ret)
 		return ret;
 
@@ -1455,7 +1456,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 				    hw->rss_key_size);
 	if (ret)
 		return ret;
-	hw->rss_info.rte_flow_hash_algo = hash_algo;
+	conf->rte_flow_hash_algo = hash_algo;
 
 	/* Filter the unsupported flow types */
 	flow_types = rss_config->types ?
@@ -1532,7 +1533,7 @@ hns3_config_rss_filter(struct hns3_hw *hw, struct hns3_rss_conf *conf)
 	}
 
 	/* Set hash algorithm and flow types by the user's config */
-	return hns3_hw_rss_hash_set(hw, rss_act);
+	return hns3_hw_rss_hash_set(hw, conf);
 }
 
 static int
