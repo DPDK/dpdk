@@ -1619,12 +1619,7 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 	dev->data->dev_started = 0;
 
 	hw->adapter_state = HNS3_NIC_STOPPING;
-	hns3_set_rxtx_function(dev);
-	rte_wmb();
-	/* Disable datapath on secondary process. */
-	hns3_mp_req_stop_rxtx(dev);
-	/* Prevent crashes when queues are still in use. */
-	rte_delay_ms(hw->cfg_max_queues);
+	hns3_stop_rxtx_datapath(dev);
 
 	rte_spinlock_lock(&hw->lock);
 	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
@@ -1778,8 +1773,7 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	rte_spinlock_unlock(&hw->lock);
 
 	hns3_rx_scattered_calc(dev);
-	hns3_set_rxtx_function(dev);
-	hns3_mp_req_start_rxtx(dev);
+	hns3_start_rxtx_datapath(dev);
 
 	/* Enable interrupt of all rx queues before enabling queues */
 	hns3_dev_all_rx_queue_intr_enable(hw, true);
@@ -1949,11 +1943,7 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	}
 	hw->mac.link_status = RTE_ETH_LINK_DOWN;
 
-	hns3_set_rxtx_function(eth_dev);
-	rte_wmb();
-	/* Disable datapath on secondary process. */
-	hns3_mp_req_stop_rxtx(eth_dev);
-	rte_delay_ms(hw->cfg_max_queues);
+	hns3_stop_rxtx_datapath(eth_dev);
 
 	rte_spinlock_lock(&hw->lock);
 	if (hw->adapter_state == HNS3_NIC_STARTED ||
@@ -1983,8 +1973,7 @@ hns3vf_start_service(struct hns3_adapter *hns)
 	struct rte_eth_dev *eth_dev;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
-	hns3_set_rxtx_function(eth_dev);
-	hns3_mp_req_start_rxtx(eth_dev);
+	hns3_start_rxtx_datapath(eth_dev);
 	if (hw->adapter_state == HNS3_NIC_STARTED) {
 		hns3vf_start_poll_job(eth_dev);
 
