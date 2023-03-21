@@ -376,8 +376,7 @@ hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 			return ret;
 		}
 	}
-	/* Update the shadow RSS key with user specified */
-	memcpy(hw->rss_info.key, key, hw->rss_key_size);
+
 	return 0;
 }
 
@@ -671,6 +670,8 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 					    key, hw->rss_key_size);
 		if (ret)
 			goto set_algo_key_fail;
+		/* Update the shadow RSS key with user specified */
+		memcpy(hw->rss_info.key, key, hw->rss_key_size);
 	}
 	rte_spinlock_unlock(&hw->lock);
 
