@@ -1435,6 +1435,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 {
 	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
 	bool use_default_key = false;
+	uint64_t flow_types;
 	uint8_t hash_algo;
 	int ret;
 
@@ -1454,10 +1455,18 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 				    hw->rss_key_size);
 	if (ret)
 		return ret;
-
 	hw->rss_info.rte_flow_hash_algo = hash_algo;
 
-	ret = hns3_set_rss_tuple_by_rss_hf(hw, rss_config->types);
+	/* Filter the unsupported flow types */
+	flow_types = rss_config->types ?
+		     rss_config->types & HNS3_ETH_RSS_SUPPORT :
+		     hw->rss_info.rss_hf;
+	if (flow_types != rss_config->types)
+		hns3_warn(hw, "modified RSS types based on hardware support,"
+			  " requested:0x%" PRIx64 " configured:0x%" PRIx64,
+			  rss_config->types, flow_types);
+
+	ret = hns3_set_rss_tuple_by_rss_hf(hw, flow_types);
 	if (ret)
 		hns3_err(hw, "Update RSS tuples by rss hf failed %d", ret);
 
@@ -1503,48 +1512,27 @@ hns3_reset_rss_filter(struct hns3_hw *hw, const struct hns3_rss_conf *conf)
 }
 
 static int
-hns3_config_rss_filter(struct hns3_hw *hw, const struct hns3_rss_conf *conf)
+hns3_config_rss_filter(struct hns3_hw *hw, struct hns3_rss_conf *conf)
 {
-	uint64_t flow_types;
+	struct rte_flow_action_rss *rss_act;
 	uint16_t num;
 	int ret;
 
-	struct rte_flow_action_rss rss_flow_conf = {
-		.func = conf->conf.func,
-		.level = conf->conf.level,
-		.types = conf->conf.types,
-		.key_len = conf->conf.key_len,
-		.queue_num = conf->conf.queue_num,
-		.key = conf->conf.key_len ?
-		    (void *)(uintptr_t)conf->conf.key : NULL,
-		.queue = conf->conf.queue,
-	};
-
+	rss_act = &conf->conf;
 	/* Set rx queues to use */
-	num = RTE_MIN(hw->data->nb_rx_queues, rss_flow_conf.queue_num);
-	if (rss_flow_conf.queue_num > num)
+	num = RTE_MIN(hw->data->nb_rx_queues, rss_act->queue_num);
+	if (rss_act->queue_num > num)
 		hns3_warn(hw, "Config queue numbers %u are beyond the scope of truncated",
-			  rss_flow_conf.queue_num);
+			  rss_act->queue_num);
 	hns3_info(hw, "Max of contiguous %u PF queues are configured", num);
 	if (num) {
-		ret = hns3_update_indir_table(hw, &rss_flow_conf, num);
+		ret = hns3_update_indir_table(hw, rss_act, num);
 		if (ret)
 			return ret;
 	}
 
-	/* Filter the unsupported flow types */
-	flow_types = conf->conf.types ?
-		     rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT :
-		     hw->rss_info.rss_hf;
-	if (flow_types != rss_flow_conf.types)
-		hns3_warn(hw, "modified RSS types based on hardware support,"
-			  " requested:0x%" PRIx64 " configured:0x%" PRIx64,
-			  rss_flow_conf.types, flow_types);
-	/* Update the useful flow types */
-	rss_flow_conf.types = flow_types;
-
 	/* Set hash algorithm and flow types by the user's config */
-	return hns3_hw_rss_hash_set(hw, &rss_flow_conf);
+	return hns3_hw_rss_hash_set(hw, rss_act);
 }
 
 static int
@@ -1634,7 +1622,7 @@ hns3_rss_action_is_dup(struct hns3_hw *hw,
 }
 
 static int
-hns3_flow_parse_rss(struct rte_eth_dev *dev, const struct hns3_rss_conf *conf)
+hns3_flow_parse_rss(struct rte_eth_dev *dev, struct hns3_rss_conf *conf)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
