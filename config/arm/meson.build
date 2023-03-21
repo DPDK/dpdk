@@ -65,7 +65,7 @@ part_number_config_arm = {
     '0xd0b': {'compiler_options':  ['-mcpu=cortex-a76']},
     '0xd0c': {
         'march': 'armv8.2-a',
-        'march_features': ['crypto'],
+        'march_features': ['crypto', 'rcpc'],
         'compiler_options':  ['-mcpu=neoverse-n1'],
         'flags': [
             ['RTE_MACHINE', '"neoverse-n1"'],
