@@ -39,15 +39,10 @@
 /* Same as the Max queue num under TC */
 #define HNS3_RSS_QUEUES_BUFFER_NUM	512
 struct hns3_rss_conf {
-	/* RSS parameters :algorithm, flow_types,  key, queue */
-	struct rte_flow_action_rss conf;
 	uint64_t rss_hf;
 	uint8_t hash_algo; /* hash function type defined by hardware */
-	uint8_t rte_flow_hash_algo;
 	uint8_t key[HNS3_RSS_KEY_SIZE_MAX];  /* Hash key */
 	uint16_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE_MAX];
-	uint16_t queue[HNS3_RSS_QUEUES_BUFFER_NUM]; /* Queues indices to use */
-	bool valid; /* check if RSS rule is valid */
 	/*
 	 * For IPv6 SCTP packets type, check whether the NIC hardware support
 	 * RSS hash using the src/dst port as the input tuple. For Kunpeng920
