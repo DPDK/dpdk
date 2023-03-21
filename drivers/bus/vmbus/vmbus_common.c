@@ -189,6 +189,33 @@ rte_vmbus_probe(void)
 }
 
 static int
+rte_vmbus_cleanup(void)
+{
+	struct rte_vmbus_device *dev, *tmp_dev;
+	int error = 0;
+
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_vmbus_bus.device_list, next, tmp_dev) {
+		const struct rte_vmbus_driver *drv = dev->driver;
+		int ret;
+
+		if (drv == NULL || drv->remove == NULL)
+			continue;
+
+		ret = drv->remove(dev);
+		if (ret < 0)
+			error = -1;
+
+		rte_vmbus_unmap_device(dev);
+
+		dev->driver = NULL;
+		dev->device.driver = NULL;
+		free(dev);
+	}
+
+	return error;
+}
+
+static int
 vmbus_parse(const char *name, void *addr)
 {
 	rte_uuid_t guid;
@@ -285,6 +312,7 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 	.bus = {
 		.scan = rte_vmbus_scan,
 		.probe = rte_vmbus_probe,
+		.cleanup = rte_vmbus_cleanup,
 		.find_device = vmbus_find_device,
 		.parse = vmbus_parse,
 	},
