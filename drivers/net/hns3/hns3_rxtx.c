@@ -24,6 +24,11 @@
 #define HNS3_CFG_DESC_NUM(num)	((num) / 8 - 1)
 #define HNS3_RX_RING_PREFETCTH_MASK	3
 
+static uint16_t
+hns3_dummy_rxtx_burst(void *dpdk_txq __rte_unused,
+		      struct rte_mbuf **pkts __rte_unused,
+		      uint16_t pkts_n __rte_unused);
+
 static void
 hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
 {
@@ -2528,10 +2533,11 @@ hns3_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		eth_rx_burst_t pkt_burst;
 		const char *info;
 	} burst_infos[] = {
-		{ hns3_recv_pkts,		"Scalar" },
+		{ hns3_recv_pkts,		"Scalar"           },
 		{ hns3_recv_scattered_pkts,	"Scalar Scattered" },
-		{ hns3_recv_pkts_vec,		"Vector Neon" },
-		{ hns3_recv_pkts_vec_sve,	"Vector Sve" },
+		{ hns3_recv_pkts_vec,		"Vector Neon"      },
+		{ hns3_recv_pkts_vec_sve,	"Vector Sve"       },
+		{ hns3_dummy_rxtx_burst,        "Dummy"            },
 	};
 
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
@@ -3868,24 +3874,31 @@ int
 hns3_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		       struct rte_eth_burst_mode *mode)
 {
+	static const struct {
+		eth_tx_burst_t pkt_burst;
+		const char *info;
+	} burst_infos[] = {
+		{ hns3_xmit_pkts_simple,	"Scalar Simple" },
+		{ hns3_xmit_pkts,		"Scalar"        },
+		{ hns3_xmit_pkts_vec,		"Vector Neon"   },
+		{ hns3_xmit_pkts_vec_sve,	"Vector Sve"    },
+		{ hns3_dummy_rxtx_burst,	"Dummy"         },
+	};
+
 	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
-	const char *info = NULL;
+	int ret = -EINVAL;
+	unsigned int i;
 
-	if (pkt_burst == hns3_xmit_pkts_simple)
-		info = "Scalar Simple";
-	else if (pkt_burst == hns3_xmit_pkts)
-		info = "Scalar";
-	else if (pkt_burst == hns3_xmit_pkts_vec)
-		info = "Vector Neon";
-	else if (pkt_burst == hns3_xmit_pkts_vec_sve)
-		info = "Vector Sve";
+	for (i = 0; i < RTE_DIM(burst_infos); i++) {
+		if (pkt_burst == burst_infos[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
 
-	if (info == NULL)
-		return -EINVAL;
-
-	snprintf(mode->info, sizeof(mode->info), "%s", info);
-
-	return 0;
+	return ret;
 }
 
 static eth_tx_burst_t
