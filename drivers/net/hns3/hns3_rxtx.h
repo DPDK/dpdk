@@ -729,7 +729,6 @@ int hns3_tx_burst_mode_get(struct rte_eth_dev *dev,
 const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 void hns3_init_rx_ptype_tble(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
-eth_tx_burst_t hns3_get_tx_function(struct rte_eth_dev *dev);
 uint16_t hns3_dummy_rxtx_burst(void *dpdk_txq __rte_unused,
 			       struct rte_mbuf **pkts __rte_unused,
 			       uint16_t pkts_n __rte_unused);
