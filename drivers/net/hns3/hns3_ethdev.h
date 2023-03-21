@@ -896,15 +896,6 @@ static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-#define NEXT_ITEM_OF_ACTION(act, actions, index)                        \
-	do {								\
-		(act) = (actions) + (index);				\
-		while ((act)->type == RTE_FLOW_ACTION_TYPE_VOID) {	\
-			(index)++;					\
-			(act) = (actions) + (index);				\
-		}							\
-	} while (0)
-
 #define MSEC_PER_SEC              1000L
 #define USEC_PER_MSEC             1000L
 

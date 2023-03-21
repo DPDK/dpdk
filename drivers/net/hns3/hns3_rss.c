@@ -18,68 +18,12 @@ const uint8_t hns3_hash_key[HNS3_RSS_KEY_SIZE] = {
 	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA
 };
 
-enum hns3_tuple_field {
-	/* IPV4_TCP ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV4_TCP_EN_TCP_D = 0,
-	HNS3_RSS_FIELD_IPV4_TCP_EN_TCP_S,
-	HNS3_RSS_FIELD_IPV4_TCP_EN_IP_D,
-	HNS3_RSS_FIELD_IPV4_TCP_EN_IP_S,
-
-	/* IPV4_UDP ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV4_UDP_EN_UDP_D = 8,
-	HNS3_RSS_FIELD_IPV4_UDP_EN_UDP_S,
-	HNS3_RSS_FIELD_IPV4_UDP_EN_IP_D,
-	HNS3_RSS_FIELD_IPV4_UDP_EN_IP_S,
-
-	/* IPV4_SCTP ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_D = 16,
-	HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_S,
-	HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_D,
-	HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_S,
-	HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_VER,
-
-	/* IPV4 ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV4_EN_NONFRAG_IP_D = 24,
-	HNS3_RSS_FIELD_IPV4_EN_NONFRAG_IP_S,
-	HNS3_RSS_FIELD_IPV4_EN_FRAG_IP_D,
-	HNS3_RSS_FIELD_IPV4_EN_FRAG_IP_S,
-
-	/* IPV6_TCP ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV6_TCP_EN_TCP_D = 32,
-	HNS3_RSS_FIELD_IPV6_TCP_EN_TCP_S,
-	HNS3_RSS_FIELD_IPV6_TCP_EN_IP_D,
-	HNS3_RSS_FIELD_IPV6_TCP_EN_IP_S,
-
-	/* IPV6_UDP ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV6_UDP_EN_UDP_D = 40,
-	HNS3_RSS_FIELD_IPV6_UDP_EN_UDP_S,
-	HNS3_RSS_FIELD_IPV6_UDP_EN_IP_D,
-	HNS3_RSS_FIELD_IPV6_UDP_EN_IP_S,
-
-	/* IPV6_SCTP ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_D = 48,
-	HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_S,
-	HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_D,
-	HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_S,
-	HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_VER,
-
-	/* IPV6 ENABLE FIELD */
-	HNS3_RSS_FIELD_IPV6_NONFRAG_IP_D = 56,
-	HNS3_RSS_FIELD_IPV6_NONFRAG_IP_S,
-	HNS3_RSS_FIELD_IPV6_FRAG_IP_D,
-	HNS3_RSS_FIELD_IPV6_FRAG_IP_S
+const uint8_t hns3_hash_func_map[] = {
+	[RTE_ETH_HASH_FUNCTION_DEFAULT] = HNS3_RSS_HASH_ALGO_TOEPLITZ,
+	[RTE_ETH_HASH_FUNCTION_TOEPLITZ] = HNS3_RSS_HASH_ALGO_TOEPLITZ,
+	[RTE_ETH_HASH_FUNCTION_SIMPLE_XOR] = HNS3_RSS_HASH_ALGO_SIMPLE,
+	[RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ] = HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP,
 };
-
-#define HNS3_RSS_TUPLE_IPV4_TCP_M	GENMASK(3, 0)
-#define HNS3_RSS_TUPLE_IPV4_UDP_M	GENMASK(11, 8)
-#define HNS3_RSS_TUPLE_IPV4_SCTP_M	GENMASK(20, 16)
-#define HNS3_RSS_TUPLE_IPV4_NONF_M	GENMASK(25, 24)
-#define HNS3_RSS_TUPLE_IPV4_FLAG_M	GENMASK(27, 26)
-#define HNS3_RSS_TUPLE_IPV6_TCP_M	GENMASK(35, 32)
-#define HNS3_RSS_TUPLE_IPV6_UDP_M	GENMASK(43, 40)
-#define HNS3_RSS_TUPLE_IPV6_SCTP_M	GENMASK(52, 48)
-#define HNS3_RSS_TUPLE_IPV6_NONF_M	GENMASK(57, 56)
-#define HNS3_RSS_TUPLE_IPV6_FLAG_M	GENMASK(59, 58)
 
 enum hns3_rss_tuple_type {
 	HNS3_RSS_IP_TUPLE,
@@ -574,7 +518,7 @@ hns3_rss_check_l3l4_types(struct hns3_hw *hw, uint64_t rss_hf)
 		hns3_warn(hw, "packet type isn't specified, L4_SRC/DST_ONLY is ignored.");
 }
 
-static uint64_t
+uint64_t
 hns3_rss_calc_tuple_filed(struct hns3_hw *hw, uint64_t rss_hf)
 {
 	uint64_t l3_only_mask = ETH_RSS_L3_SRC_ONLY |
@@ -610,25 +554,35 @@ hns3_rss_calc_tuple_filed(struct hns3_hw *hw, uint64_t rss_hf)
 }
 
 int
-hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf)
+hns3_set_rss_tuple_field(struct hns3_hw *hw, uint64_t tuple_fields)
 {
 	struct hns3_rss_input_tuple_cmd *req;
 	struct hns3_cmd_desc desc;
-	uint64_t tuple_field;
 	int ret;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_INPUT_TUPLE, false);
 	req = (struct hns3_rss_input_tuple_cmd *)desc.data;
-
-	tuple_field = hns3_rss_calc_tuple_filed(hw, rss_hf);
-	req->tuple_field = rte_cpu_to_le_64(tuple_field);
+	req->tuple_field = rte_cpu_to_le_64(tuple_fields);
 	ret = hns3_cmd_send(hw, &desc, 1);
-	if (ret) {
-		hns3_err(hw, "Update RSS flow types tuples failed %d", ret);
-		return ret;
-	}
+	if (ret != 0)
+		hns3_err(hw, "set RSS hash tuple fields failed ret = %d", ret);
 
-	return 0;
+	return ret;
+}
+
+int
+hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf)
+{
+	uint64_t tuple_fields;
+	int ret;
+
+	tuple_fields = hns3_rss_calc_tuple_filed(hw, rss_hf);
+	ret = hns3_set_rss_tuple_field(hw, tuple_fields);
+	if (ret != 0)
+		hns3_err(hw, "Update RSS flow types tuples failed, ret = %d",
+			 ret);
+
+	return ret;
 }
 
 /*
@@ -996,6 +950,52 @@ hns3_set_rss_tc_mode(struct hns3_hw *hw)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
 		hns3_err(hw, "Sets rss tc mode failed %d", ret);
+
+	return ret;
+}
+
+/*
+ * Note: the 'hash_algo' is defined by enum rte_eth_hash_function.
+ */
+int
+hns3_update_rss_algo_key(struct hns3_hw *hw, uint8_t hash_func,
+			 uint8_t *key, uint8_t key_len)
+{
+	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
+	bool modify_key, modify_algo;
+	uint8_t hash_algo;
+	int ret;
+
+	modify_key = (key != NULL && key_len > 0);
+	modify_algo = hash_func != RTE_ETH_HASH_FUNCTION_DEFAULT;
+	if (!modify_key && !modify_algo)
+		return 0;
+
+	if (modify_algo && hash_func >= RTE_DIM(hns3_hash_func_map)) {
+		hns3_err(hw, "hash func (%u) is unsupported.", hash_func);
+		return -ENOTSUP;
+	}
+	if (modify_key && key_len != hw->rss_key_size) {
+		hns3_err(hw, "hash key length (%u) is invalid.", key_len);
+		return -EINVAL;
+	}
+
+	ret = hns3_rss_get_algo_key(hw, &hash_algo, rss_key, hw->rss_key_size);
+	if (ret != 0) {
+		hns3_err(hw, "fail to get RSS hash algorithm and key, ret = %d",
+			 ret);
+		return ret;
+	}
+
+	if (modify_algo)
+		hash_algo = hns3_hash_func_map[hash_func];
+	if (modify_key)
+		memcpy(rss_key, key, key_len);
+
+	ret = hns3_set_rss_algo_key(hw, hash_algo, rss_key, hw->rss_key_size);
+	if (ret != 0)
+		hns3_err(hw, "fail to set RSS hash algorithm and key, ret = %d",
+			 ret);
 
 	return ret;
 }
