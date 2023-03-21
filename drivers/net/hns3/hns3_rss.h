@@ -199,7 +199,7 @@ int hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 int hns3_restore_filter(struct hns3_adapter *hns);
 int hns3_rss_get_algo_key(struct hns3_hw *hw,  uint8_t *hash_algo,
 			  uint8_t *key, uint8_t key_len);
-uint64_t hns3_rss_calc_tuple_filed(struct hns3_hw *hw, uint64_t rss_hf);
+uint64_t hns3_rss_calc_tuple_filed(uint64_t rss_hf);
 int hns3_update_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 			     uint8_t *key, uint8_t key_len);
 

@@ -492,34 +492,62 @@ hns3_rss_reset_indir_table(struct hns3_hw *hw)
 	return ret;
 }
 
-static void
-hns3_rss_check_l3l4_types(struct hns3_hw *hw, uint64_t rss_hf)
+bool
+hns3_check_rss_types_valid(struct hns3_hw *hw, uint64_t types)
 {
 	uint64_t ip_mask = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
 			   ETH_RSS_NONFRAG_IPV4_OTHER |
 			   ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
 			   ETH_RSS_NONFRAG_IPV6_OTHER;
-	uint64_t l4_mask = ETH_RSS_NONFRAG_IPV4_TCP |
+	uint64_t ip_l4_mask = ETH_RSS_NONFRAG_IPV4_TCP |
 			   ETH_RSS_NONFRAG_IPV4_UDP |
 			   ETH_RSS_NONFRAG_IPV4_SCTP |
 			   ETH_RSS_NONFRAG_IPV6_TCP |
 			   ETH_RSS_NONFRAG_IPV6_UDP |
 			   ETH_RSS_NONFRAG_IPV6_SCTP;
-	uint64_t l3_src_dst_mask = ETH_RSS_L3_SRC_ONLY |
-				   ETH_RSS_L3_DST_ONLY;
-	uint64_t l4_src_dst_mask = ETH_RSS_L4_SRC_ONLY |
-				   ETH_RSS_L4_DST_ONLY;
+	bool has_l4_src_dst = !!(types & HNS3_RSS_SUPPORT_L4_SRC_DST);
+	bool has_ip_pkt = !!(types & ip_mask);
+	uint64_t final_types;
 
-	if (rss_hf & l3_src_dst_mask &&
-	    !(rss_hf & ip_mask || rss_hf & l4_mask))
-		hns3_warn(hw, "packet type isn't specified, L3_SRC/DST_ONLY is ignored.");
+	if (types == 0)
+		return true;
 
-	if (rss_hf & l4_src_dst_mask && !(rss_hf & l4_mask))
-		hns3_warn(hw, "packet type isn't specified, L4_SRC/DST_ONLY is ignored.");
+	if ((types & HNS3_ETH_RSS_SUPPORT) == 0) {
+		hns3_err(hw, "specified types(0x%" PRIx64 ") are unsupported.",
+			 types);
+		return false;
+	}
+
+	if ((types & HNS3_RSS_SUPPORT_L3_SRC_DST) != 0 &&
+	    (types & HNS3_RSS_SUPPORT_FLOW_TYPE) == 0) {
+		hns3_err(hw, "IP or IP-TCP/UDP/SCTP packet type isn't specified, L3_SRC/DST_ONLY cannot be set.");
+		return false;
+	}
+
+	if (has_l4_src_dst && (types & ip_l4_mask) == 0) {
+		if (!has_ip_pkt) {
+			hns3_err(hw, "IP-TCP/UDP/SCTP packet type isn't specified, L4_SRC/DST_ONLY cannot be set.");
+			return false;
+		}
+		/*
+		 * For the case that the types has L4_SRC/DST_ONLY but hasn't
+		 * IP-TCP/UDP/SCTP packet type, this types is considered valid
+		 * if it also has IP packet type.
+		 */
+		hns3_warn(hw, "L4_SRC/DST_ONLY is ignored because of no including L4 packet.");
+	}
+
+	if ((types & ~HNS3_ETH_RSS_SUPPORT) != 0) {
+		final_types = types & HNS3_ETH_RSS_SUPPORT;
+		hns3_warn(hw, "set RSS types based on hardware support, requested:0x%" PRIx64 " configured:0x%" PRIx64 "",
+			  types, final_types);
+	}
+
+	return true;
 }
 
 uint64_t
-hns3_rss_calc_tuple_filed(struct hns3_hw *hw, uint64_t rss_hf)
+hns3_rss_calc_tuple_filed(uint64_t rss_hf)
 {
 	uint64_t l3_only_mask = ETH_RSS_L3_SRC_ONLY |
 				ETH_RSS_L3_DST_ONLY;
@@ -548,7 +576,6 @@ hns3_rss_calc_tuple_filed(struct hns3_hw *hw, uint64_t rss_hf)
 		    !has_l3_l4_only)
 			tuple |= hns3_set_tuple_table[i].rss_field;
 	}
-	hns3_rss_check_l3l4_types(hw, rss_hf);
 
 	return tuple;
 }
@@ -576,7 +603,7 @@ hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf)
 	uint64_t tuple_fields;
 	int ret;
 
-	tuple_fields = hns3_rss_calc_tuple_filed(hw, rss_hf);
+	tuple_fields = hns3_rss_calc_tuple_filed(rss_hf);
 	ret = hns3_set_rss_tuple_field(hw, tuple_fields);
 	if (ret != 0)
 		hns3_err(hw, "Update RSS flow types tuples failed, ret = %d",
@@ -610,6 +637,9 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			 key_len, hw->rss_key_size);
 		return -EINVAL;
 	}
+
+	if (!hns3_check_rss_types_valid(hw, rss_hf))
+		return -EINVAL;
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, rss_hf);
