@@ -233,6 +233,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 	struct rte_eth_link link;
 	struct rte_sched_port *port = NULL;
 	uint32_t pipe, subport;
+	uint32_t pipe_count;
 	int err;
 
 	err = rte_eth_link_get(portid, &link);
@@ -263,6 +264,7 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 		uint32_t n_pipes_per_subport =
 			subport_params[subport].n_pipes_per_subport_enabled;
 
+		pipe_count = 0;
 		for (pipe = 0; pipe < n_pipes_per_subport; pipe++) {
 			if (app_pipe_to_profile[subport][pipe] != -1) {
 				err = rte_sched_pipe_config(port, subport, pipe,
@@ -272,8 +274,13 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 							"for profile %d, err=%d\n", pipe,
 							app_pipe_to_profile[subport][pipe], err);
 				}
+				pipe_count++;
 			}
 		}
+
+		if (pipe_count == 0)
+			rte_exit(EXIT_FAILURE, "Error: invalid config, no pipes enabled for sched subport %u\n",
+					subport);
 	}
 
 	return port;
