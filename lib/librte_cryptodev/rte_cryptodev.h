@@ -474,6 +474,7 @@ extern const char *
 rte_cryptodev_get_feature_name(uint64_t flag);
 
 /**  Crypto device information */
+/* Structure rte_cryptodev_info 8< */
 struct rte_cryptodev_info {
 	const char *driver_name;	/**< Driver name. */
 	uint8_t driver_id;		/**< Driver identifier */
@@ -502,6 +503,7 @@ struct rte_cryptodev_info {
 		 */
 	} sym;
 };
+/* >8 End of structure rte_cryptodev_info. */
 
 #define RTE_CRYPTODEV_DETACHED  (0)
 #define RTE_CRYPTODEV_ATTACHED  (1)
@@ -514,6 +516,7 @@ enum rte_cryptodev_event_type {
 };
 
 /** Crypto device queue pair configuration structure. */
+/* Structure rte_cryptodev_qp_conf 8<*/
 struct rte_cryptodev_qp_conf {
 	uint32_t nb_descriptors; /**< Number of descriptors per queue pair */
 	struct rte_mempool *mp_session;
@@ -521,6 +524,7 @@ struct rte_cryptodev_qp_conf {
 	struct rte_mempool *mp_session_private;
 	/**< The mempool for creating sess private data in sessionless mode */
 };
+/* >8 End of structure rte_cryptodev_qp_conf. */
 
 /**
  * Typedef for application callback function to be registered by application
@@ -625,6 +629,7 @@ extern int
 rte_cryptodev_socket_id(uint8_t dev_id);
 
 /** Crypto device configuration structure */
+/* Structure rte_cryptodev_config 8< */
 struct rte_cryptodev_config {
 	int socket_id;			/**< Socket to allocate resources on */
 	uint16_t nb_queue_pairs;
@@ -637,6 +642,7 @@ struct rte_cryptodev_config {
 	 *  - RTE_CRYTPODEV_FF_SECURITY
 	 */
 };
+/* >8 End of structure rte_cryptodev_config. */
 
 /**
  * Configure a device.

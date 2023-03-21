@@ -98,14 +98,10 @@ The rte_cryptodev_configure API is used to configure a Crypto device.
 The ``rte_cryptodev_config`` structure is used to pass the configuration
 parameters for socket selection and number of queue pairs.
 
-.. code-block:: c
-
-    struct rte_cryptodev_config {
-        int socket_id;
-        /**< Socket to allocate resources on */
-        uint16_t nb_queue_pairs;
-        /**< Number of queue pairs to configure on device */
-    };
+.. literalinclude:: ../../../lib/librte_cryptodev/rte_cryptodev.h
+   :language: c
+   :start-after: Structure rte_cryptodev_config 8<
+   :end-before: >8 End of structure rte_cryptodev_config.
 
 
 Configuration of Queue Pairs
@@ -121,13 +117,11 @@ Each queue pairs resources may be allocated on a specified socket.
                 const struct rte_cryptodev_qp_conf *qp_conf,
                 int socket_id)
 
-   struct rte_cryptodev_qp_conf {
-        uint32_t nb_descriptors; /**< Number of descriptors per queue pair */
-        struct rte_mempool *mp_session;
-        /**< The mempool for creating session in sessionless mode */
-        struct rte_mempool *mp_session_private;
-        /**< The mempool for creating sess private data in sessionless mode */
-    };
+
+.. literalinclude:: ../../../lib/librte_cryptodev/rte_cryptodev.h
+   :language: c
+   :start-after: Structure rte_cryptodev_qp_conf 8<
+   :end-before: >8 End of structure rte_cryptodev_qp_conf.
 
 
 The fields ``mp_session`` and ``mp_session_private`` are used for creating
@@ -273,23 +267,10 @@ This allows the user to query a specific Crypto PMD and get all the device
 features and capabilities. The ``rte_cryptodev_info`` structure contains all the
 relevant information for the device.
 
-.. code-block:: c
-
-    struct rte_cryptodev_info {
-        const char *driver_name;
-        uint8_t driver_id;
-        struct rte_device *device;
-
-        uint64_t feature_flags;
-
-        const struct rte_cryptodev_capabilities *capabilities;
-
-        unsigned max_nb_queue_pairs;
-
-        struct {
-            unsigned max_nb_sessions;
-        } sym;
-    };
+.. literalinclude:: ../../../lib/librte_cryptodev/rte_cryptodev.h
+   :language: c
+   :start-after: Structure rte_cryptodev_info 8<
+   :end-before: >8 End of structure rte_cryptodev_info.
 
 
 Operation Processing
@@ -506,22 +487,10 @@ Currently there are three transforms types cipher, authentication and AEAD.
 Also it is important to note that the order in which the
 transforms are passed indicates the order of the chaining.
 
-.. code-block:: c
-
-    struct rte_crypto_sym_xform {
-        struct rte_crypto_sym_xform *next;
-        /**< next xform in chain */
-        enum rte_crypto_sym_xform_type type;
-        /**< xform type */
-        union {
-            struct rte_crypto_auth_xform auth;
-            /**< Authentication / hash xform */
-            struct rte_crypto_cipher_xform cipher;
-            /**< Cipher xform */
-            struct rte_crypto_aead_xform aead;
-            /**< AEAD xform */
-        };
-    };
+.. literalinclude:: ../../../lib/librte_cryptodev/rte_crypto_sym.h
+   :language: c
+   :start-after: Structure rte_crypto_sym_xform 8<
+   :end-before: >8 End of structure rte_crypto_sym_xform.
 
 The API does not place a limit on the number of transforms that can be chained
 together but this will be limited by the underlying Crypto device poll mode
@@ -544,61 +513,11 @@ authentication/ cipher/ AEAD parameters required depending on the type of operat
 specified in the session or the transform
 chain.
 
-.. code-block:: c
+.. literalinclude:: ../../../lib/librte_cryptodev/rte_crypto_sym.h
+   :language: c
+   :start-after: Structure rte_crypto_sym_op 8<
+   :end-before: >8 End of structure rte_crypto_sym_op.
 
-    struct rte_crypto_sym_op {
-        struct rte_mbuf *m_src;
-        struct rte_mbuf *m_dst;
-
-        union {
-            struct rte_cryptodev_sym_session *session;
-            /**< Handle for the initialised session context */
-            struct rte_crypto_sym_xform *xform;
-            /**< Session-less API Crypto operation parameters */
-        };
-
-        union {
-            struct {
-                struct {
-                    uint32_t offset;
-                    uint32_t length;
-                } data; /**< Data offsets and length for AEAD */
-
-                struct {
-                    uint8_t *data;
-                    rte_iova_t phys_addr;
-                } digest; /**< Digest parameters */
-
-                struct {
-                    uint8_t *data;
-                    rte_iova_t phys_addr;
-                } aad;
-                /**< Additional authentication parameters */
-            } aead;
-
-            struct {
-                struct {
-                    struct {
-                        uint32_t offset;
-                        uint32_t length;
-                    } data; /**< Data offsets and length for ciphering */
-                } cipher;
-
-                struct {
-                    struct {
-                        uint32_t offset;
-                        uint32_t length;
-                    } data;
-                    /**< Data offsets and length for authentication */
-
-                    struct {
-                        uint8_t *data;
-                        rte_iova_t phys_addr;
-                    } digest; /**< Digest parameters */
-                } auth;
-            };
-        };
-    };
 
 Synchronous mode
 ----------------
