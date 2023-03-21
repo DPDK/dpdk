@@ -114,6 +114,7 @@ void hns3_rss_uninit(struct hns3_adapter *hns);
 int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf);
 int hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 			  const uint8_t *key, uint8_t key_len);
-
+int hns3_rss_get_algo_key(struct hns3_hw *hw,  uint8_t *hash_algo,
+			  uint8_t *key, uint8_t key_len);
 
 #endif /* _HNS3_RSS_H_ */
