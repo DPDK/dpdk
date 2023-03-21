@@ -10,6 +10,41 @@ NICs. These adapters are also referred to as vNICs below. If you are running
 or would like to run DPDK software applications on Cisco UCS servers using
 Cisco VIC adapters the following documentation is relevant.
 
+Supported Cisco VIC adapters
+----------------------------
+
+ENIC PMD supports all recent generations of Cisco VIC adapters including:
+
+- VIC 1200 series
+- VIC 1300 series
+- VIC 1400 series
+
+Supported features
+------------------
+
+- Unicast, multicast and broadcast transmission and reception
+- Receive queue polling
+- Port Hardware Statistics
+- Hardware VLAN acceleration
+- IP checksum offload
+- Receive side VLAN stripping
+- Multiple receive and transmit queues
+- Promiscuous mode
+- Setting RX VLAN (supported via UCSM/CIMC only)
+- VLAN filtering (supported via UCSM/CIMC only)
+- Execution of application by unprivileged system users
+- IPV4, IPV6 and TCP RSS hashing
+- UDP RSS hashing (1400 series and later adapters)
+- Scattered Rx
+- MTU update
+- SR-IOV on UCS managed servers connected to Fabric Interconnects
+- Flow API
+- Overlay offload
+
+  - Rx/Tx checksum offloads for VXLAN, NVGRE, GENEVE
+  - TSO for VXLAN and GENEVE packets
+  - Inner RSS
+
 How to obtain ENIC PMD integrated DPDK
 --------------------------------------
 
@@ -510,46 +545,11 @@ Refer to the document :ref:`compiling and testing a PMD for a NIC
 For configuring and using UIO and VFIO frameworks, please refer to the
 documentation that comes with DPDK suite.
 
-Supported Cisco VIC adapters
-----------------------------
-
-ENIC PMD supports all recent generations of Cisco VIC adapters including:
-
-- VIC 1200 series
-- VIC 1300 series
-- VIC 1400 series
-
 Supported Operating Systems
 ---------------------------
 
 Any Linux distribution fulfilling the conditions described in Dependencies
 section of DPDK documentation.
-
-Supported features
-------------------
-
-- Unicast, multicast and broadcast transmission and reception
-- Receive queue polling
-- Port Hardware Statistics
-- Hardware VLAN acceleration
-- IP checksum offload
-- Receive side VLAN stripping
-- Multiple receive and transmit queues
-- Promiscuous mode
-- Setting RX VLAN (supported via UCSM/CIMC only)
-- VLAN filtering (supported via UCSM/CIMC only)
-- Execution of application by unprivileged system users
-- IPV4, IPV6 and TCP RSS hashing
-- UDP RSS hashing (1400 series and later adapters)
-- Scattered Rx
-- MTU update
-- SR-IOV on UCS managed servers connected to Fabric Interconnects
-- Flow API
-- Overlay offload
-
-  - Rx/Tx checksum offloads for VXLAN, NVGRE, GENEVE
-  - TSO for VXLAN and GENEVE packets
-  - Inner RSS
 
 Known bugs and unsupported features in this release
 ---------------------------------------------------
@@ -604,12 +604,3 @@ Additional Reference
 
 - https://www.cisco.com/c/en/us/products/servers-unified-computing/index.html
 - https://www.cisco.com/c/en/us/products/interfaces-modules/unified-computing-system-adapters/index.html
-
-Contact Information
--------------------
-
-Any questions or bugs should be reported to DPDK community and to the ENIC PMD
-maintainers:
-
-- John Daley <johndale@cisco.com>
-- Hyong Youb Kim <hyonkim@cisco.com>

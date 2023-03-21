@@ -8,6 +8,31 @@ ENA Poll Mode Driver
 The ENA PMD is a DPDK poll-mode driver for the Amazon Elastic
 Network Adapter (ENA) family.
 
+Supported ENA adapters
+----------------------
+
+Current ENA PMD supports the following ENA adapters including:
+
+* ``1d0f:ec20`` - ENA VF
+* ``1d0f:ec21`` - ENA VF RSERV0
+
+Supported features
+------------------
+
+* MTU configuration
+* Jumbo frames up to 9K
+* IPv4/TCP/UDP checksum offload
+* TSO offload
+* Multiple receive and transmit queues
+* RSS hash
+* RSS indirection table configuration
+* Low Latency Queue for Tx
+* Basic and extended statistics
+* LSC event notification
+* Watchdog (requires handling of timers in the application)
+* Device reset upon failure
+* Rx interrupts
+
 Overview
 --------
 
@@ -76,10 +101,11 @@ Refer to ``ena_eth_io_defs.h`` for the detailed structure of the descriptor
 
 The driver supports multi-queue for both Tx and Rx.
 
-Configuration information
--------------------------
+Configuration
+-------------
 
-**Runtime Configuration Parameters**
+Runtime Configuration
+^^^^^^^^^^^^^^^^^^^^^
 
    * **large_llq_hdr** (default 0)
 
@@ -105,7 +131,8 @@ Configuration information
      huge performance degradation. In general disabling LLQ is highly not
      recommended!**
 
-**ENA Configuration Parameters**
+ENA Configuration Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
    * **Number of Queues**
 
@@ -130,36 +157,11 @@ By default the ENA PMD library will be built into the DPDK library.
 For configuring and using UIO and VFIO frameworks, please also refer :ref:`the
 documentation that comes with DPDK suite <linux_gsg>`.
 
-Supported ENA adapters
-----------------------
-
-Current ENA PMD supports the following ENA adapters including:
-
-* ``1d0f:ec20`` - ENA VF
-* ``1d0f:ec21`` - ENA VF RSERV0
-
 Supported Operating Systems
 ---------------------------
 
 Any Linux distribution fulfilling the conditions described in ``System Requirements``
 section of :ref:`the DPDK documentation <linux_gsg>` or refer to *DPDK Release Notes*.
-
-Supported features
-------------------
-
-* MTU configuration
-* Jumbo frames up to 9K
-* IPv4/TCP/UDP checksum offload
-* TSO offload
-* Multiple receive and transmit queues
-* RSS hash
-* RSS indirection table configuration
-* Low Latency Queue for Tx
-* Basic and extended statistics
-* LSC event notification
-* Watchdog (requires handling of timers in the application)
-* Device reset upon failure
-* Rx interrupts
 
 Prerequisites
 -------------

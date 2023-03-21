@@ -19,8 +19,8 @@ which is not upstreamed yet.
 Contents summary
 
 - ENETFEC overview
-- ENETFEC features
 - Supported ENETFEC SoCs
+- ENETFEC features
 - Prerequisites
 - Driver compilation and testing
 - Limitations
@@ -81,6 +81,11 @@ net_enetfec is logical Ethernet interface, created by ENETFEC driver.
   packet processing.
 - Then Tx is done first followed by Rx via logical interfaces.
 
+Supported ENETFEC SoCs
+----------------------
+
+- i.MX 8M Mini
+
 ENETFEC Features
 ----------------
 
@@ -90,11 +95,6 @@ ENETFEC Features
 - L3/L4 checksum offload
 - Linux
 - ARMv8
-
-Supported ENETFEC SoCs
-----------------------
-
-- i.MX 8M Mini
 
 Prerequisites
 -------------

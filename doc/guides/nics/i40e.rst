@@ -194,10 +194,10 @@ For X722,
    +--------------+-----------------------+------------------+
 
 
-Pre-Installation Configuration
-------------------------------
+Configuration
+-------------
 
-Config File Options
+Compilation Options
 ~~~~~~~~~~~~~~~~~~~
 
 The following options can be modified in the ``config/rte_config.h`` file.
@@ -210,8 +210,8 @@ The following options can be modified in the ``config/rte_config.h`` file.
 
   Number of queues reserved for each VMDQ Pool.
 
-Runtime Config Options
-~~~~~~~~~~~~~~~~~~~~~~
+Runtime Configuration
+~~~~~~~~~~~~~~~~~~~~~
 
 - ``Reserved number of Queues per VF`` (default ``4``)
 

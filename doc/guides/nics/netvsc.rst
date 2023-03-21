@@ -102,8 +102,8 @@ The following prerequisites apply:
     to use the netvsc PMD with 4.16 kernel but it is limited to a single queue.
 
 
-Netvsc PMD arguments
---------------------
+Runtime Configuration
+---------------------
 
 The user can specify below argument in devargs.
 

@@ -11,6 +11,12 @@ as well as their virtual functions (VF) in SR-IOV context.
 More information can be found at `Cavium, Inc Official Website
 <http://www.cavium.com/ThunderX_ARM_Processors.html>`_.
 
+Supported ThunderX SoCs
+-----------------------
+- CN88xx
+- CN81xx
+- CN83xx
+
 Features
 --------
 
@@ -32,12 +38,6 @@ Features of the ThunderX PMD are:
 - NUMA support
 - Multi queue set support (up to 96 queues (12 queue sets)) per port
 - Skip data bytes
-
-Supported ThunderX SoCs
------------------------
-- CN88xx
-- CN81xx
-- CN83xx
 
 Prerequisites
 -------------
@@ -365,8 +365,8 @@ EAL command option to change  log level
       or
       --log-level=pmd.net.thunderx.driver,7
 
-Module params
---------------
+Runtime Configuration
+---------------------
 
 skip_data_bytes
 ~~~~~~~~~~~~~~~

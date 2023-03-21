@@ -6,6 +6,37 @@
 IXGBE Driver
 ============
 
+Supported Chipsets and NICs
+---------------------------
+
+- Intel 82599EB 10 Gigabit Ethernet Controller
+- Intel 82598EB 10 Gigabit Ethernet Controller
+- Intel 82599ES 10 Gigabit Ethernet Controller
+- Intel 82599EN 10 Gigabit Ethernet Controller
+- Intel Ethernet Controller X540-AT2
+- Intel Ethernet Controller X550-BT2
+- Intel Ethernet Controller X550-AT2
+- Intel Ethernet Controller X550-AT
+- Intel Ethernet Converged Network Adapter X520-SR1
+- Intel Ethernet Converged Network Adapter X520-SR2
+- Intel Ethernet Converged Network Adapter X520-LR1
+- Intel Ethernet Converged Network Adapter X520-DA1
+- Intel Ethernet Converged Network Adapter X520-DA2
+- Intel Ethernet Converged Network Adapter X520-DA4
+- Intel Ethernet Converged Network Adapter X520-QDA1
+- Intel Ethernet Converged Network Adapter X520-T2
+- Intel 10 Gigabit AF DA Dual Port Server Adapter
+- Intel 10 Gigabit AT Server Adapter
+- Intel 10 Gigabit AT2 Server Adapter
+- Intel 10 Gigabit CX4 Dual Port Server Adapter
+- Intel 10 Gigabit XF LR Server Adapter
+- Intel 10 Gigabit XF SR Dual Port Server Adapter
+- Intel 10 Gigabit XF SR Server Adapter
+- Intel Ethernet Converged Network Adapter X540-T1
+- Intel Ethernet Converged Network Adapter X540-T2
+- Intel Ethernet Converged Network Adapter X550-T1
+- Intel Ethernet Converged Network Adapter X550-T2
+
 Vector PMD for IXGBE
 --------------------
 
@@ -328,37 +359,6 @@ the VFs which are required.::
 
 Currently hot-plugging of representor ports is not supported so all required
 representors must be specified on the creation of the PF.
-
-Supported Chipsets and NICs
----------------------------
-
-- Intel 82599EB 10 Gigabit Ethernet Controller
-- Intel 82598EB 10 Gigabit Ethernet Controller
-- Intel 82599ES 10 Gigabit Ethernet Controller
-- Intel 82599EN 10 Gigabit Ethernet Controller
-- Intel Ethernet Controller X540-AT2
-- Intel Ethernet Controller X550-BT2
-- Intel Ethernet Controller X550-AT2
-- Intel Ethernet Controller X550-AT
-- Intel Ethernet Converged Network Adapter X520-SR1
-- Intel Ethernet Converged Network Adapter X520-SR2
-- Intel Ethernet Converged Network Adapter X520-LR1
-- Intel Ethernet Converged Network Adapter X520-DA1
-- Intel Ethernet Converged Network Adapter X520-DA2
-- Intel Ethernet Converged Network Adapter X520-DA4
-- Intel Ethernet Converged Network Adapter X520-QDA1
-- Intel Ethernet Converged Network Adapter X520-T2
-- Intel 10 Gigabit AF DA Dual Port Server Adapter
-- Intel 10 Gigabit AT Server Adapter
-- Intel 10 Gigabit AT2 Server Adapter
-- Intel 10 Gigabit CX4 Dual Port Server Adapter
-- Intel 10 Gigabit XF LR Server Adapter
-- Intel 10 Gigabit XF SR Dual Port Server Adapter
-- Intel 10 Gigabit XF SR Server Adapter
-- Intel Ethernet Converged Network Adapter X540-T1
-- Intel Ethernet Converged Network Adapter X540-T2
-- Intel Ethernet Converged Network Adapter X550-T1
-- Intel Ethernet Converged Network Adapter X550-T2
 
 .. _net_ixgbe_testpmd_commands:
 

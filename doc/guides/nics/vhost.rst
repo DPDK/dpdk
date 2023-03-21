@@ -25,8 +25,8 @@ Currently, the vhost PMD provides the basic functionality of packet reception, t
 
 *   Don't need to stop RX/TX, when the user wants to stop a guest or a virtio-net driver on guest.
 
-Vhost PMD arguments
--------------------
+Runtime Configuration
+---------------------
 
 The user can specify below arguments in `--vdev` option.
 

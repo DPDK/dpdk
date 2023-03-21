@@ -197,9 +197,8 @@ See :doc:`../platform/dpaa` for setup information
    Some part of dpaa bus code (qbman and fman - library) routines are
    dual licensed (BSD & GPLv2), however they are used as BSD in DPDK in userspace.
 
-Pre-Installation Configuration
-------------------------------
-
+Configuration
+-------------
 
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~

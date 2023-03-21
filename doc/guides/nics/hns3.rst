@@ -47,11 +47,21 @@ Prerequisites
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to
   setup the basic DPDK environment.
 
+Link status event Pre-conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Pre-Installation Configuration
-------------------------------
+Firmware 1.8.0.0 and later versions support reporting link changes to the PF.
+Therefore, to use the LSC for the PF driver, ensure that the firmware version
+also supports reporting link changes.
+If the VF driver needs to support LSC, special patch must be added:
+`<https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/net/ethernet/hisilicon/hns3?h=next-20210428&id=18b6e31f8bf4ac7af7b057228f38a5a530378e4e>`_.
+Note: The patch has been uploaded to 5.13 of the Linux kernel mainline.
 
-Config File Options
+
+Configuration
+-------------
+
+Compilation Options
 ~~~~~~~~~~~~~~~~~~~
 
 The following options can be modified in the ``config/rte_config.h`` file.
@@ -60,8 +70,8 @@ The following options can be modified in the ``config/rte_config.h`` file.
 
   Number of MAX queues reserved for PF.
 
-Runtime Config Options
-~~~~~~~~~~~~~~~~~~~~~~
+Runtime Configuration
+~~~~~~~~~~~~~~~~~~~~~
 
 - ``rx_func_hint`` (default ``none``)
 
@@ -129,16 +139,6 @@ Runtime Config Options
 
    For example::
    -a 0000:7d:00.0,mbx_time_limit_ms=600
-
-Link status event Pre-conditions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Firmware 1.8.0.0 and later versions support reporting link changes to the PF.
-Therefore, to use the LSC for the PF driver, ensure that the firmware version
-also supports reporting link changes.
-If the VF driver needs to support LSC, special patch must be added:
-`<https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/net/ethernet/hisilicon/hns3?h=next-20210428&id=18b6e31f8bf4ac7af7b057228f38a5a530378e4e>`_.
-Note: The patch has been uploaded to 5.13 of the Linux kernel mainline.
 
 
 Driver compilation and testing

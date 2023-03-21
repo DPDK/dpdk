@@ -12,20 +12,20 @@ I225 and I226 Series Network Adapters.
 - For information about I226, please refer to: `Intel® Ethernet Controller I226 Series
   <https://ark.intel.com/content/www/us/en/ark/products/series/210588/intel-ethernet-controller-i226-series.html>`_.
 
+Supported Chipsets and NICs
+---------------------------
+
+- Foxville LM (I225 LM, I226 LM): Client 2.5G LAN vPro Corporate
+- Foxville V (I225 V, I226 V): Client 2.5G LAN Consumer
+- Foxville I (I225 I, I226 IM): Client 2.5G Industrial Temp
+- Foxville V (I225 K, I226 K): Client 2.5G LAN Consumer
+
 Driver compilation and testing
 ------------------------------
 
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
 
-
-Supported Chipsets and NICs
----------------------------
-
-Foxville LM (I225 LM, I226 LM): Client 2.5G LAN vPro Corporate
-Foxville V (I225 V, I226 V): Client 2.5G LAN Consumer
-Foxville I (I225 I, I226 IM): Client 2.5G Industrial Temp
-Foxville V (I225 K, I226 K): Client 2.5G LAN Consumer
 
 Sample Application Notes
 ------------------------

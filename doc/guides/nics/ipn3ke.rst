@@ -28,12 +28,11 @@ Prerequisites
   section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
 
 
-Pre-Installation Configuration
-------------------------------
+Configuration
+-------------
 
-
-Runtime Config Options
-~~~~~~~~~~~~~~~~~~~~~~
+Runtime Configuration
+~~~~~~~~~~~~~~~~~~~~~
 
 - ``AFU name``
 

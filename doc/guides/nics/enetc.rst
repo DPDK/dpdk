@@ -10,24 +10,21 @@ support for the inbuilt NIC found in the **NXP LS1028** SoC.
 More information can be found at `NXP Official Website
 <https://www.nxp.com/products/processors-and-microcontrollers/arm-based-processors-and-mcus/qoriq-layerscape-arm-processors/qoriq-layerscape-1028a-industrial-applications-processor:LS1028A>`_.
 
-ENETC
------
-
 This section provides an overview of the NXP ENETC
 and how it is integrated into the DPDK.
 
 Contents summary
 
 - ENETC overview
+- Supported ENETC SoCs
 - ENETC features
 - PCI bus driver
 - NIC driver
-- Supported ENETC SoCs
 - Prerequisites
 - Driver compilation and testing
 
 ENETC Overview
-~~~~~~~~~~~~~~
+--------------
 
 ENETC is a PCI Integrated End Point(IEP). IEP implements
 peripheral devices in an SoC such that software sees them as PCIe device.
@@ -41,8 +38,13 @@ This infrastructure simplifies adding support for IEP and facilitates in followi
   device register address)
 - Event reporting
 
+Supported ENETC SoCs
+--------------------
+
+- LS1028
+
 ENETC Features
-~~~~~~~~~~~~~~
+--------------
 
 - Link Status
 - Packet type information
@@ -55,7 +57,7 @@ ENETC Features
 - CRC offload
 
 NIC Driver (PMD)
-~~~~~~~~~~~~~~~~
+----------------
 
 ENETC PMD is traditional DPDK PMD which provides necessary interface between
 RTE framework and ENETC internal drivers.
@@ -68,13 +70,8 @@ RTE framework and ENETC internal drivers.
   packet processing.
 - Then Tx is done first followed by Rx.
 
-Supported ENETC SoCs
-~~~~~~~~~~~~~~~~~~~~
-
-- LS1028
-
 Prerequisites
-~~~~~~~~~~~~~
+-------------
 
 There are three main pre-requisites for executing ENETC PMD on a ENETC
 compatible board:
@@ -108,7 +105,7 @@ separately:
   LSDK and related information can be obtained from:  `LSDK <https://www.nxp.com/support/developer-resources/run-time-software/linux-software-and-development-tools/layerscape-software-development-kit:LAYERSCAPE-SDK>`_
 
 Driver compilation and testing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 Follow instructions available in the document
 :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`

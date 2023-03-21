@@ -13,6 +13,11 @@ It is compile-tested under FreeBSD OS.
 More information can be found at `QLogic Corporation's Website
 <http://www.qlogic.com>`_.
 
+Supported QLogic Adapters
+-------------------------
+
+- QLogic FastLinQ QL4xxxx 10G/25G/40G/50G/100G Intelligent Ethernet Adapters (IEA) and Converged Network Adapters (CNA)
+
 Supported Features
 ------------------
 
@@ -71,11 +76,6 @@ Co-existence considerations
   Binding of PFs simultaneously to DPDK and Linux drivers on a given
   adapter is not supported.
 
-Supported QLogic Adapters
--------------------------
-
-- QLogic FastLinQ QL4xxxx 10G/25G/40G/50G/100G Intelligent Ethernet Adapters (IEA) and Converged Network Adapters (CNA)
-
 Prerequisites
 -------------
 
@@ -103,8 +103,8 @@ Performance note
 
 - For better performance, it is recommended to use 4K or higher RX/TX rings.
 
-Config Options
-~~~~~~~~~~~~~~
+Compilation Options
+~~~~~~~~~~~~~~~~~~~
 
 The following option can be modified in the ``config/rte_config.h`` file.
 

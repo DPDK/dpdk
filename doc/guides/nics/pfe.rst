@@ -10,23 +10,20 @@ support for the inbuilt NIC found in the **NXP LS1012** SoC.
 More information can be found at `NXP Official Website
 <https://nxp.com/ls1012a>`_.
 
-PFE
----
-
 This section provides an overview of the NXP PFE
 and how it is integrated into the DPDK.
 
 Contents summary
 
 - PFE overview
-- PFE features
 - Supported PFE SoCs
+- PFE features
 - Prerequisites
 - Driver compilation and testing
 - Limitations
 
 PFE Overview
-~~~~~~~~~~~~
+------------
 
 PFE is a hardware programmable packet forwarding engine to provide
 high performance Ethernet interfaces. The diagram below shows a
@@ -90,8 +87,13 @@ pfe.ko is required for PHY initialisation and also responsible for creating
 the character device "pfe_us_cdev" which will be used for interacting with
 the kernel layer for link status.
 
+Supported PFE SoCs
+------------------
+
+- LS1012
+
 PFE Features
-~~~~~~~~~~~~
+------------
 
 - L3/L4 checksum offload
 - Packet type parsing
@@ -102,13 +104,8 @@ PFE Features
 - Link status
 - ARMv8
 
-Supported PFE SoCs
-~~~~~~~~~~~~~~~~~~
-
-- LS1012
-
 Prerequisites
-~~~~~~~~~~~~~
+-------------
 
 Below are some pre-requisites for executing PFE PMD on a PFE
 compatible board:
@@ -157,7 +154,7 @@ separately:
 
 
 Driver compilation and testing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 Follow instructions available in the document
 :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
@@ -175,6 +172,6 @@ see the command below:
 
 
 Limitations
-~~~~~~~~~~~
+-----------
 
 - Multi buffer pool cannot be supported.

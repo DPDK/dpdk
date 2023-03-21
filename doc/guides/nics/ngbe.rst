@@ -38,8 +38,8 @@ Prerequisites
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
 
-Pre-Installation Configuration
-------------------------------
+Configuration
+-------------
 
 Dynamic Logging Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

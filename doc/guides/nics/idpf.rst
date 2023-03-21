@@ -19,11 +19,11 @@ To get better performance on Intel platforms,
 please follow the :doc:`../linux_gsg/nic_perf_intel_platform`.
 
 
-Pre-Installation Configuration
-------------------------------
+Configuration
+-------------
 
-Runtime Config Options
-~~~~~~~~~~~~~~~~~~~~~~
+Runtime Configuration
+~~~~~~~~~~~~~~~~~~~~~
 
 - ``vport`` (default ``0``)
 

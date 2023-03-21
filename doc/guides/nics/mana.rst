@@ -57,8 +57,8 @@ Driver compilation and testing
 Refer to the document
 :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` for details.
 
-MANA PMD arguments
-------------------
+Runtime Configuration
+---------------------
 
 The user can specify below argument in devargs.
 
