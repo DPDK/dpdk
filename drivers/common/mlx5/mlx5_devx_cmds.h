@@ -296,6 +296,7 @@ struct mlx5_hca_attr {
 	uint32_t flow_counter_bulk_log_granularity:5;
 	uint32_t alloc_flow_counter_pd:1;
 	uint32_t flow_counter_access_aso:1;
+	uint32_t query_match_sample_info:1;
 	uint32_t flow_access_aso_opc_mod:8;
 	uint32_t cross_vhca:1;
 	uint32_t lag_rx_port_affinity:1;
@@ -523,7 +524,6 @@ struct mlx5_devx_virtq_attr {
 	uint8_t q_type;
 };
 
-
 struct mlx5_devx_qp_attr {
 	uint32_t pd:24;
 	uint32_t uar_index:24;
@@ -549,6 +549,18 @@ struct mlx5_devx_virtio_q_couners_attr {
 	uint32_t bad_desc_errors;
 	uint32_t exceed_max_chain;
 	uint32_t invalid_buffer;
+};
+
+/*
+ * Match sample info attributes structure, used by:
+ *  - GENEVE TLV option query.
+ *  - Graph flow match sample query.
+ */
+struct mlx5_devx_match_sample_info_query_attr {
+	uint32_t modify_field_id:12;
+	uint32_t sample_dw_data:8;
+	uint32_t sample_dw_ok_bit:8;
+	uint32_t sample_dw_ok_bit_offset:5;
 };
 
 /*
@@ -717,6 +729,9 @@ __rte_internal
 int mlx5_devx_cmd_modify_tir(struct mlx5_devx_obj *tir,
 			     struct mlx5_devx_modify_tir_attr *tir_attr);
 __rte_internal
+int mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
+					  struct mlx5_devx_match_sample_info_query_attr *attr);
+__rte_internal
 int mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 				      struct mlx5_ext_sample_id ids[],
 				      uint32_t num, uint8_t *anchor);
@@ -823,4 +838,5 @@ __rte_internal
 int
 mlx5_devx_cmd_query_lag(void *ctx,
 			struct mlx5_devx_lag_context *lag_ctx);
+
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */

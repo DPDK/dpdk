@@ -45,6 +45,7 @@ INTERNAL {
 	mlx5_devx_cmd_flow_counter_query;
 	mlx5_devx_cmd_flow_dump;
 	mlx5_devx_cmd_flow_single_dump;
+	mlx5_devx_cmd_match_sample_info_query;
 	mlx5_devx_cmd_mkey_create;
 	mlx5_devx_cmd_modify_qp_state;
 	mlx5_devx_cmd_modify_rq;

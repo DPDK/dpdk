@@ -1169,6 +1169,7 @@ enum {
 	MLX5_CMD_SET_REGEX_REGISTERS = 0xb06,
 	MLX5_CMD_QUERY_REGEX_REGISTERS = 0xb07,
 	MLX5_CMD_OP_ACCESS_REGISTER_USER = 0xb0c,
+	MLX5_CMD_OP_QUERY_MATCH_SAMPLE_INFO = 0xb13,
 	MLX5_CMD_OP_ALLOW_OTHER_VHCA_ACCESS = 0xb16,
 	MLX5_CMD_OP_GENERATE_WQE = 0xb17,
 };
@@ -1256,6 +1257,31 @@ struct mlx5_ifc_query_flow_counter_in_bits {
 	u8 dump_to_memory[0x1];
 	u8 num_of_counters[0x1e];
 	u8 flow_counter_id[0x20];
+};
+
+struct mlx5_ifc_query_match_sample_info_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+	u8 reserved_at_80[0x4];
+	u8 modify_field_id[0xc];
+	u8 ok_bit_format_select_dw[0x8];
+	u8 field_format_select_dw[0x8];
+	u8 reserved_at_a0[0x3];
+	u8 ok_bit_offset[0x5];
+	u8 reserved_at_a8[0x18];
+	u8 reserved_at_c0[0x40];
+};
+
+struct mlx5_ifc_query_match_sample_info_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x60];
+	u8 sample_field_id[0x20];
+	u8 reserved_at_c0[0x140];
 };
 
 #define MLX5_MAX_KLM_BYTE_COUNT 0x80000000u
@@ -1442,7 +1468,8 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 access_other_hca_roce[0x1];
 	u8 alloc_flow_counter_pd[0x1];
 	u8 flow_counter_access_aso[0x1];
-	u8 reserved_at_3[0x5];
+	u8 query_match_sample_info[0x1];
+	u8 reserved_at_4[0x4];
 	u8 flow_access_aso_opc_mod[0x8];
 	u8 reserved_at_10[0xf];
 	u8 vhca_resource_manager[0x1];

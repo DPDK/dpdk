@@ -605,6 +605,62 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 	}
 }
 
+/**
+ * Query match sample handle parameters.
+ *
+ * This command allows translating a field sample handle returned by either
+ * PARSE_GRAPH_FLOW_MATCH_SAMPLE or by GENEVE TLV OPTION object into values
+ * used for header modification or header matching/hashing.
+ *
+ * @param[in] ctx
+ *   Context used to create either GENEVE TLV option or FLEX PARSE GRAPH object.
+ * @param[in] sample_field_id
+ *   Field sample handle returned by either PARSE_GRAPH_FLOW_MATCH_SAMPLE
+ *   or by GENEVE TLV OPTION object.
+ * @param[out] attr
+ *   Pointer to match sample info attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
+				      struct mlx5_devx_match_sample_info_query_attr *attr)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint32_t out[MLX5_ST_SZ_DW(query_match_sample_info_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(query_match_sample_info_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_match_sample_info_in, in, opcode,
+		 MLX5_CMD_OP_QUERY_MATCH_SAMPLE_INFO);
+	MLX5_SET(query_match_sample_info_in, in, op_mod, 0);
+	MLX5_SET(query_match_sample_info_in, in, sample_field_id,
+		 sample_field_id);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	if (rc) {
+		DRV_LOG(ERR, "Failed to query match sample info using DevX: %s",
+			strerror(rc));
+		rte_errno = rc;
+		return -rc;
+	}
+	attr->modify_field_id = MLX5_GET(query_match_sample_info_out, out,
+					 modify_field_id);
+	attr->sample_dw_data = MLX5_GET(query_match_sample_info_out, out,
+					field_format_select_dw);
+	attr->sample_dw_ok_bit = MLX5_GET(query_match_sample_info_out, out,
+					  ok_bit_format_select_dw);
+	attr->sample_dw_ok_bit_offset = MLX5_GET(query_match_sample_info_out,
+						 out, ok_bit_offset);
+	return 0;
+#else
+	(void)ctx;
+	(void)sample_field_id;
+	(void)attr;
+	return -ENOTSUP;
+#endif
+}
+
 int
 mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 				  struct mlx5_ext_sample_id *ids,
@@ -1029,6 +1085,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			alloc_flow_counter_pd);
 	attr->flow_counter_access_aso = MLX5_GET(cmd_hca_cap, hcattr,
 			flow_counter_access_aso);
+	attr->query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
+			query_match_sample_info);
 	attr->flow_access_aso_opc_mod = MLX5_GET(cmd_hca_cap, hcattr,
 			flow_access_aso_opc_mod);
 	if (attr->crypto) {
