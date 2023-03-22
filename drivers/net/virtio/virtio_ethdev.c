@@ -1797,6 +1797,7 @@ static int
 virtio_configure_intr(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
+	int ret;
 
 	if (!rte_intr_cap_multiple(dev->intr_handle)) {
 		PMD_INIT_LOG(ERR, "Multiple intr vector not supported");
@@ -1808,11 +1809,12 @@ virtio_configure_intr(struct rte_eth_dev *dev)
 		return -1;
 	}
 
-	if (rte_intr_vec_list_alloc(dev->intr_handle, "intr_vec",
-				    hw->max_queue_pairs)) {
+	ret = rte_intr_vec_list_alloc(dev->intr_handle, "intr_vec",
+				      hw->max_queue_pairs);
+	if (ret < 0) {
 		PMD_INIT_LOG(ERR, "Failed to allocate %u rxq vectors",
 			     hw->max_queue_pairs);
-		return -ENOMEM;
+		return ret;
 	}
 
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
