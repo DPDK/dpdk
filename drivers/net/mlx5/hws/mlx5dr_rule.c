@@ -116,6 +116,9 @@ static void
 mlx5dr_rule_save_delete_info(struct mlx5dr_rule *rule,
 			     struct mlx5dr_send_ste_attr *ste_attr)
 {
+	struct mlx5dr_match_template *mt = rule->matcher->mt;
+	bool is_jumbo = mlx5dr_matcher_mt_is_jumbo(mt);
+
 	if (unlikely(mlx5dr_matcher_req_fw_wqe(rule->matcher))) {
 		uint8_t *src_tag;
 
@@ -136,7 +139,7 @@ mlx5dr_rule_save_delete_info(struct mlx5dr_rule *rule,
 		return;
 	}
 
-	if (ste_attr->wqe_tag_is_jumbo)
+	if (is_jumbo)
 		memcpy(rule->tag.jumbo, ste_attr->wqe_data->jumbo, MLX5DR_JUMBO_TAG_SZ);
 	else
 		memcpy(rule->tag.match, ste_attr->wqe_data->tag, MLX5DR_MATCH_TAG_SZ);
