@@ -969,9 +969,9 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	/* MTU larger then current mbufsize not supported */
+	/* MTU larger than current mbufsize not supported */
 	if (mtu > hw->flbufsz) {
-		PMD_DRV_LOG(ERR, "MTU (%u) larger then current mbufsize (%u) not supported",
+		PMD_DRV_LOG(ERR, "MTU (%u) larger than current mbufsize (%u) not supported",
 			    mtu, hw->flbufsz);
 		return -ERANGE;
 	}

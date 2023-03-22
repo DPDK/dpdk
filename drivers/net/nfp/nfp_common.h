@@ -100,6 +100,7 @@ struct nfp_net_adapter;
 
 /* Maximum supported NFP frame size (MTU + layer 2 headers) */
 #define NFP_FRAME_SIZE_MAX	10048
+#define DEFAULT_FLBUF_SIZE	9216
 
 #include <linux/types.h>
 #include <rte_io.h>
