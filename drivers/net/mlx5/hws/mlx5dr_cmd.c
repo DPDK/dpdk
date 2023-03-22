@@ -507,9 +507,11 @@ mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 	uint32_t in[MLX5_ST_SZ_DW(create_header_modify_pattern_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
 	struct mlx5dr_devx_obj *devx_obj;
-	void *pattern_data;
+	uint64_t *pattern_data;
+	int num_of_actions;
 	void *pattern;
 	void *attr;
+	int i;
 
 	if (pattern_length > MAX_ACTIONS_DATA_IN_HEADER_MODIFY) {
 		DR_LOG(ERR, "Pattern length %d exceeds limit %d",
@@ -535,8 +537,18 @@ mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 	/* Pattern_length is in ddwords */
 	MLX5_SET(header_modify_pattern_in, pattern, pattern_length, pattern_length / (2 * DW_SIZE));
 
-	pattern_data = MLX5_ADDR_OF(header_modify_pattern_in, pattern, pattern_data);
+	pattern_data = (uint64_t *)MLX5_ADDR_OF(header_modify_pattern_in, pattern, pattern_data);
 	memcpy(pattern_data, actions, pattern_length);
+
+	num_of_actions = pattern_length / MLX5DR_MODIFY_ACTION_SIZE;
+	for (i = 0; i < num_of_actions; i++) {
+		int type;
+
+		type = MLX5_GET(set_action_in, &pattern_data[i], action_type);
+		if (type != MLX5_MODIFICATION_TYPE_COPY)
+			/* Action typ-copy use all bytes for control */
+			MLX5_SET(set_action_in, &pattern_data[i], data, 0);
+	}
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
