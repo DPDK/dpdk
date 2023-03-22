@@ -289,6 +289,8 @@ Limitations
 - When using DV/Verbs flow engine (``dv_flow_en`` = 1/0 respectively),
   match on SPI field in ESP header for group 0 is supported from ConnectX-7.
 
+- Matching on SPI field in ESP header is supported over the PF only.
+
 - Flex item:
 
   - Hardware support: **NVIDIA BlueField-2** and **NVIDIA BlueField-3**.
