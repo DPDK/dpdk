@@ -272,6 +272,9 @@ static void mlx5dr_table_uninit_shared_ctx_res(struct mlx5dr_table *tbl)
 /* called under spin_lock ctx->ctrl_lock */
 static int mlx5dr_table_init_shared_ctx_res(struct mlx5dr_context *ctx, struct mlx5dr_table *tbl)
 {
+	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
+	int ret;
+
 	if (!mlx5dr_context_shared_gvmi_used(ctx))
 		return 0;
 
@@ -288,8 +291,22 @@ static int mlx5dr_table_init_shared_ctx_res(struct mlx5dr_context *ctx, struct m
 		goto clean_local_ft;
 	}
 
+	/* On shared gvmi the default behavior is jump to alias end ft */
+	mlx5dr_cmd_set_attr_connect_miss_tbl(tbl->ctx,
+					     tbl->fw_ft_type,
+					     tbl->type,
+					     &ft_attr);
+
+	ret = mlx5dr_cmd_flow_table_modify(tbl->ft, &ft_attr);
+	if (ret) {
+		DR_LOG(ERR, "Failed to point table to its default miss");
+		goto clean_shared_res;
+	}
+
 	return 0;
 
+clean_shared_res:
+	mlx5dr_table_put_shared_gvmi_res(tbl);
 clean_local_ft:
 	mlx5dr_table_destroy_default_ft(tbl, tbl->local_ft);
 	return rte_errno;
@@ -337,20 +354,20 @@ static int mlx5dr_table_init(struct mlx5dr_table *tbl)
 		return rte_errno;
 	}
 
-	ret = mlx5dr_action_get_default_stc(ctx, tbl->type);
+	ret = mlx5dr_table_init_shared_ctx_res(ctx, tbl);
 	if (ret)
 		goto tbl_destroy;
 
-	ret = mlx5dr_table_init_shared_ctx_res(ctx, tbl);
+	ret = mlx5dr_action_get_default_stc(ctx, tbl->type);
 	if (ret)
-		goto put_stc;
+		goto free_shared_ctx;
 
 	pthread_spin_unlock(&ctx->ctrl_lock);
 
 	return 0;
 
-put_stc:
-	mlx5dr_action_put_default_stc(ctx, tbl->type);
+free_shared_ctx:
+	mlx5dr_table_uninit_shared_ctx_res(tbl);
 tbl_destroy:
 	mlx5dr_table_destroy_default_ft(tbl, tbl->ft);
 	pthread_spin_unlock(&ctx->ctrl_lock);
@@ -363,8 +380,8 @@ static void mlx5dr_table_uninit(struct mlx5dr_table *tbl)
 		return;
 	pthread_spin_lock(&tbl->ctx->ctrl_lock);
 	mlx5dr_action_put_default_stc(tbl->ctx, tbl->type);
-	mlx5dr_table_destroy_default_ft(tbl, tbl->ft);
 	mlx5dr_table_uninit_shared_ctx_res(tbl);
+	mlx5dr_table_destroy_default_ft(tbl, tbl->ft);
 	pthread_spin_unlock(&tbl->ctx->ctrl_lock);
 }
 
