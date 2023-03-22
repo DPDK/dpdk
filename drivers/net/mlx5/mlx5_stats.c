@@ -288,10 +288,9 @@ mlx5_xstats_get_names(struct rte_eth_dev *dev,
 
 	if (n >= mlx5_xstats_n && xstats_names) {
 		for (i = 0; i != mlx5_xstats_n; ++i) {
-			strncpy(xstats_names[i].name,
+			strlcpy(xstats_names[i].name,
 				xstats_ctrl->info[i].dpdk_name,
 				RTE_ETH_XSTATS_NAME_SIZE);
-			xstats_names[i].name[RTE_ETH_XSTATS_NAME_SIZE - 1] = 0;
 		}
 	}
 	mlx5_xstats_n = mlx5_txpp_xstats_get_names(dev, xstats_names,
