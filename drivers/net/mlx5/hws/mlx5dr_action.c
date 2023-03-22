@@ -1603,6 +1603,12 @@ mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
 		goto free_action;
 	}
 
+	if (!mlx5dr_pat_arg_verify_actions(pattern, pattern_sz / MLX5DR_MODIFY_ACTION_SIZE)) {
+		DR_LOG(ERR, "One of the actions is not supported\n");
+		rte_errno = EINVAL;
+		goto free_action;
+	}
+
 	if (pattern_sz / MLX5DR_MODIFY_ACTION_SIZE == 1) {
 		/* Optimize single modiy action to be used inline */
 		action->modify_header.single_action = pattern[0];

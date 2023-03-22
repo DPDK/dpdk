@@ -441,6 +441,22 @@ mlx5dr_arg_create_modify_header_arg(struct mlx5dr_context *ctx,
 	return 0;
 }
 
+bool mlx5dr_pat_arg_verify_actions(__be64 pattern[], uint16_t num_of_actions)
+{
+	int i;
+
+	for (i = 0; i < num_of_actions; i++) {
+		u8 action_id =
+			MLX5_GET(set_action_in, &pattern[i], action_type);
+		if (action_id >= MLX5_MODIFICATION_TYPE_MAX) {
+			DR_LOG(ERR, "Invalid action %u\n", action_id);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 int mlx5dr_pat_arg_create_modify_header(struct mlx5dr_context *ctx,
 					struct mlx5dr_action *action,
 					size_t pattern_sz,
