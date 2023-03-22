@@ -545,17 +545,6 @@ struct mlx5_counter_stats_raw {
 	volatile struct flow_counter_stats *data;
 };
 
-/* Mlx5 internal flex parser profile structure. */
-struct mlx5_internal_flex_parser_profile {
-	uint32_t num;/* Actual number of samples. */
-	/* Sample IDs for this profile. */
-	struct mlx5_ext_sample_id ids[MLX5_FLEX_ITEM_MAPPING_NUM];
-	uint32_t offset[MLX5_FLEX_ITEM_MAPPING_NUM]; /* Each ID sample offset. */
-	uint8_t anchor_id;
-	uint32_t refcnt;
-	void *fp; /* DevX flex parser object. */
-};
-
 TAILQ_HEAD(mlx5_counter_pools, mlx5_flow_counter_pool);
 
 /* Counter global management structure. */
@@ -1323,7 +1312,8 @@ struct mlx5_flex_parser_devx {
 	uint8_t anchor_id;
 	void *devx_obj;
 	struct mlx5_devx_graph_node_attr devx_conf;
-	struct mlx5_ext_sample_id sample_ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
+	uint32_t sample_ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
+	struct mlx5_devx_match_sample_info_query_attr sample_info[MLX5_GRAPH_NODE_SAMPLE_NUM];
 };
 
 /* Pattern field descriptor - how to translate flex pattern into samples. */
@@ -1342,6 +1332,12 @@ struct mlx5_flex_item {
 	enum rte_flow_item_flex_tunnel_mode tunnel_mode; /* Tunnel mode. */
 	uint32_t mapnum; /* Number of pattern translation entries. */
 	struct mlx5_flex_pattern_field map[MLX5_FLEX_ITEM_MAPPING_NUM];
+};
+
+/* Mlx5 internal flex parser profile structure. */
+struct mlx5_internal_flex_parser_profile {
+	uint32_t refcnt;
+	struct mlx5_flex_item flex; /* Hold map info for modify field. */
 };
 
 struct mlx5_send_to_kernel_action {

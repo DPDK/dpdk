@@ -663,7 +663,7 @@ mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
 
 int
 mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				  struct mlx5_ext_sample_id *ids,
+				  uint32_t *ids,
 				  uint32_t num, uint8_t *anchor)
 {
 	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
@@ -695,7 +695,7 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 	}
 	if (anchor)
 		*anchor = MLX5_GET(parse_graph_flex, flex, head_anchor_id);
-	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM && idx <= num; i++) {
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM && idx < num; i++) {
 		void *s_off = (void *)((char *)sample + i *
 			      MLX5_ST_SZ_BYTES(parse_graph_flow_match_sample));
 		uint32_t en;
@@ -704,8 +704,8 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 			      flow_match_sample_en);
 		if (!en)
 			continue;
-		ids[idx++].id = MLX5_GET(parse_graph_flow_match_sample, s_off,
-					 flow_match_sample_field_id);
+		ids[idx++] = MLX5_GET(parse_graph_flow_match_sample, s_off,
+				      flow_match_sample_field_id);
 	}
 	if (num != idx) {
 		rte_errno = EINVAL;
@@ -853,8 +853,7 @@ mlx5_devx_cmd_query_hca_parse_graph_node_cap
 					 max_num_arc_out);
 	attr->max_num_sample = MLX5_GET(parse_graph_node_cap, hcattr,
 					max_num_sample);
-	attr->anchor_en = MLX5_GET(parse_graph_node_cap, hcattr, anchor_en);
-	attr->ext_sample_id = MLX5_GET(parse_graph_node_cap, hcattr, ext_sample_id);
+	attr->parse_graph_anchor = MLX5_GET(parse_graph_node_cap, hcattr, parse_graph_anchor);
 	attr->sample_tunnel_inner2 = MLX5_GET(parse_graph_node_cap, hcattr,
 					      sample_tunnel_inner2);
 	attr->zero_size_supported = MLX5_GET(parse_graph_node_cap, hcattr,
@@ -1085,10 +1084,20 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			alloc_flow_counter_pd);
 	attr->flow_counter_access_aso = MLX5_GET(cmd_hca_cap, hcattr,
 			flow_counter_access_aso);
-	attr->query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
-			query_match_sample_info);
 	attr->flow_access_aso_opc_mod = MLX5_GET(cmd_hca_cap, hcattr,
 			flow_access_aso_opc_mod);
+	/*
+	 * Flex item support needs max_num_prog_sample_field
+	 * from the Capabilities 2 table for PARSE_GRAPH_NODE
+	 */
+	if (attr->parse_graph_flex_node) {
+		rc = mlx5_devx_cmd_query_hca_parse_graph_node_cap
+			(ctx, &attr->flex);
+		if (rc)
+			return -1;
+		attr->flex.query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
+							      query_match_sample_info);
+	}
 	if (attr->crypto) {
 		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts) ||
 		MLX5_GET(cmd_hca_cap, hcattr, aes_xts_multi_block_be_tweak) ||
@@ -1171,16 +1180,6 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				MLX5_GET(qos_cap, hcattr,
 					log_max_num_meter_aso);
 		}
-	}
-	/*
-	 * Flex item support needs max_num_prog_sample_field
-	 * from the Capabilities 2 table for PARSE_GRAPH_NODE
-	 */
-	if (attr->parse_graph_flex_node) {
-		rc = mlx5_devx_cmd_query_hca_parse_graph_node_cap
-			(ctx, &attr->flex);
-		if (rc)
-			return -1;
 	}
 	if (attr->vdpa.valid)
 		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);

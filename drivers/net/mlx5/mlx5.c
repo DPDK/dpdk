@@ -966,12 +966,11 @@ int
 mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
 	struct mlx5_ecpri_parser_profile *prf =	&priv->sh->ecpri_parser;
 	struct mlx5_devx_graph_node_attr node = {
 		.modify_field_select = 0,
 	};
-	struct mlx5_ext_sample_id ids[8];
+	uint32_t ids[8];
 	int ret;
 
 	if (!priv->sh->cdev->config.hca_attr.parse_graph_flex_node) {
@@ -1010,18 +1009,16 @@ mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 	ret = mlx5_devx_cmd_query_parse_samples(prf->obj, ids, prf->num, NULL);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to query sample IDs.");
-		return (rte_errno == 0) ? -ENODEV : -rte_errno;
+		goto error;
 	}
 	prf->offset[0] = 0x0;
 	prf->offset[1] = sizeof(uint32_t);
-	if (attr->ext_sample_id) {
-		prf->ids[0] = ids[0].sample_id;
-		prf->ids[1] = ids[1].sample_id;
-	} else {
-		prf->ids[0] = ids[0].id;
-		prf->ids[1] = ids[1].id;
-	}
+	prf->ids[0] = ids[0];
+	prf->ids[1] = ids[1];
 	return 0;
+error:
+	mlx5_devx_cmd_destroy(prf->obj);
+	return (rte_errno == 0) ? -ENODEV : -rte_errno;
 }
 
 /*
@@ -1057,20 +1054,24 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 	struct mlx5_devx_graph_node_attr node = {
 		.modify_field_select = 0,
 	};
-	struct mlx5_ext_sample_id ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
+	uint32_t ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_common_dev_config *config = &priv->sh->cdev->config;
-	void *ibv_ctx = priv->sh->cdev->ctx;
+	void *fp = NULL, *ibv_ctx = priv->sh->cdev->ctx;
 	int ret;
 
 	memset(ids, 0xff, sizeof(ids));
-	if (!config->hca_attr.parse_graph_flex_node) {
-		DRV_LOG(ERR, "Dynamic flex parser is not supported");
+	if (!config->hca_attr.parse_graph_flex_node ||
+	    !config->hca_attr.flex.query_match_sample_info) {
+		DRV_LOG(ERR, "Dynamic flex parser is not supported on HWS");
 		return -ENOTSUP;
 	}
 	if (__atomic_add_fetch(&priv->sh->srh_flex_parser.refcnt, 1, __ATOMIC_RELAXED) > 1)
 		return 0;
-
+	priv->sh->srh_flex_parser.flex.devx_fp = mlx5_malloc(MLX5_MEM_ZERO,
+			sizeof(struct mlx5_flex_parser_devx), 0, SOCKET_ID_ANY);
+	if (!priv->sh->srh_flex_parser.flex.devx_fp)
+		return -ENOMEM;
 	node.header_length_mode = MLX5_GRAPH_NODE_LEN_FIELD;
 	/* Srv6 first two DW are not counted in. */
 	node.header_length_base_value = 0x8;
@@ -1086,28 +1087,41 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 	node.sample[0].flow_match_sample_en = 1;
 	/* First come first serve no matter inner or outer. */
 	node.sample[0].flow_match_sample_tunnel_mode = MLX5_GRAPH_SAMPLE_TUNNEL_FIRST;
+	node.sample[0].flow_match_sample_offset_mode = MLX5_GRAPH_SAMPLE_OFFSET_FIXED;
 	node.out[0].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_TCP;
 	node.out[0].compare_condition_value = IPPROTO_TCP;
 	node.out[1].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_UDP;
 	node.out[1].compare_condition_value = IPPROTO_UDP;
 	node.out[2].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_IPV6;
 	node.out[2].compare_condition_value = IPPROTO_IPV6;
-	priv->sh->srh_flex_parser.fp = mlx5_devx_cmd_create_flex_parser(ibv_ctx, &node);
-	if (!priv->sh->srh_flex_parser.fp) {
+	fp = mlx5_devx_cmd_create_flex_parser(ibv_ctx, &node);
+	if (!fp) {
 		DRV_LOG(ERR, "Failed to create flex parser node object.");
-		return (rte_errno == 0) ? -ENODEV : -rte_errno;
+		goto error;
 	}
-	priv->sh->srh_flex_parser.num = 1;
-	ret = mlx5_devx_cmd_query_parse_samples(priv->sh->srh_flex_parser.fp, ids,
-						priv->sh->srh_flex_parser.num,
-						&priv->sh->srh_flex_parser.anchor_id);
+	priv->sh->srh_flex_parser.flex.devx_fp->devx_obj = fp;
+	priv->sh->srh_flex_parser.flex.mapnum = 1;
+	priv->sh->srh_flex_parser.flex.devx_fp->num_samples = 1;
+
+	ret = mlx5_devx_cmd_query_parse_samples(fp, ids, priv->sh->srh_flex_parser.flex.mapnum,
+						&priv->sh->srh_flex_parser.flex.devx_fp->anchor_id);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to query sample IDs.");
-		return (rte_errno == 0) ? -ENODEV : -rte_errno;
+		goto error;
 	}
-	priv->sh->srh_flex_parser.offset[0] = 0x0;
-	priv->sh->srh_flex_parser.ids[0].id = ids[0].id;
+	ret = mlx5_devx_cmd_match_sample_info_query(ibv_ctx, ids[0],
+				&priv->sh->srh_flex_parser.flex.devx_fp->sample_info[0]);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to query sample id information.");
+		goto error;
+	}
 	return 0;
+error:
+	if (fp)
+		mlx5_devx_cmd_destroy(fp);
+	if (priv->sh->srh_flex_parser.flex.devx_fp)
+		mlx5_free(priv->sh->srh_flex_parser.flex.devx_fp);
+	return (rte_errno == 0) ? -ENODEV : -rte_errno;
 }
 
 /*
@@ -1125,10 +1139,9 @@ mlx5_free_srh_flex_parser(struct rte_eth_dev *dev)
 
 	if (__atomic_sub_fetch(&fp->refcnt, 1, __ATOMIC_RELAXED))
 		return;
-	if (fp->fp)
-		mlx5_devx_cmd_destroy(fp->fp);
-	fp->fp = NULL;
-	fp->num = 0;
+	mlx5_devx_cmd_destroy(fp->flex.devx_fp->devx_obj);
+	mlx5_free(fp->flex.devx_fp);
+	fp->flex.devx_fp = NULL;
 }
 
 uint32_t

@@ -2651,13 +2651,14 @@ flow_hw_get_srh_flex_parser_byte_off_from_ctx(void *dr_ctx __rte_unused)
 	MLX5_ETH_FOREACH_DEV(port, NULL) {
 		struct mlx5_priv *priv;
 		struct mlx5_hca_flex_attr *attr;
+		struct mlx5_devx_match_sample_info_query_attr *info;
 
 		priv = rte_eth_devices[port].data->dev_private;
 		attr = &priv->sh->cdev->config.hca_attr.flex;
-		if (priv->dr_ctx == dr_ctx && attr->ext_sample_id) {
-			if (priv->sh->srh_flex_parser.num)
-				return priv->sh->srh_flex_parser.ids[0].format_select_dw *
-					sizeof(uint32_t);
+		if (priv->dr_ctx == dr_ctx && attr->query_match_sample_info) {
+			info = &priv->sh->srh_flex_parser.flex.devx_fp->sample_info[0];
+			if (priv->sh->srh_flex_parser.flex.mapnum)
+				return info->sample_dw_data * sizeof(uint32_t);
 			else
 				return UINT32_MAX;
 		}

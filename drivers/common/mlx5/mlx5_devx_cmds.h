@@ -114,8 +114,8 @@ struct mlx5_hca_flex_attr {
 	uint8_t  max_num_arc_out;
 	uint8_t  max_num_sample;
 	uint8_t  max_num_prog_sample:5;	/* From HCA CAP 2 */
-	uint8_t  anchor_en:1;
-	uint8_t  ext_sample_id:1;
+	uint8_t  parse_graph_anchor:1;
+	uint8_t  query_match_sample_info:1; /* Support DevX query sample info. */
 	uint8_t  sample_tunnel_inner2:1;
 	uint8_t  zero_size_supported:1;
 	uint8_t  sample_id_in_out:1;
@@ -296,7 +296,6 @@ struct mlx5_hca_attr {
 	uint32_t flow_counter_bulk_log_granularity:5;
 	uint32_t alloc_flow_counter_pd:1;
 	uint32_t flow_counter_access_aso:1;
-	uint32_t query_match_sample_info:1;
 	uint32_t flow_access_aso_opc_mod:8;
 	uint32_t cross_vhca:1;
 	uint32_t lag_rx_port_affinity:1;
@@ -733,7 +732,7 @@ int mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
 					  struct mlx5_devx_match_sample_info_query_attr *attr);
 __rte_internal
 int mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				      struct mlx5_ext_sample_id ids[],
+				      uint32_t *ids,
 				      uint32_t num, uint8_t *anchor);
 
 __rte_internal

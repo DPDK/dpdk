@@ -280,7 +280,7 @@ mlx5_flex_get_parser_value_per_byte_off(const struct rte_flow_item_flex *item,
 			continue;
 		if (id >= (int)tp->devx_fp->num_samples || id >= MLX5_GRAPH_NODE_SAMPLE_NUM)
 			return -1;
-		if (byte_off == tp->devx_fp->sample_ids[id].format_select_dw * sizeof(uint32_t)) {
+		if (byte_off == tp->devx_fp->sample_info[id].sample_dw_data * sizeof(uint32_t)) {
 			val = mlx5_flex_get_bitfield(item, pos, map->width, map->shift);
 			if (is_mask)
 				val &= RTE_BE32(def);
@@ -319,8 +319,6 @@ mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
 	void *misc4_m = MLX5_ADDR_OF(fte_match_param, matcher,
 				     misc_parameters_4);
 	void *misc4_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_4);
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
 	struct mlx5_flex_item *tp;
 	uint32_t i, pos = 0;
 	uint32_t sample_id;
@@ -330,7 +328,6 @@ mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
 	spec = item->spec;
 	mask = item->mask;
 	tp = (struct mlx5_flex_item *)spec->handle;
-	MLX5_ASSERT(mlx5_flex_index(priv, tp) >= 0);
 	for (i = 0; i < tp->mapnum; i++) {
 		struct mlx5_flex_pattern_field *map = tp->map + i;
 		uint32_t val, msk, def;
@@ -344,10 +341,7 @@ mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
 			return;
 		val = mlx5_flex_get_bitfield(spec, pos, map->width, map->shift);
 		msk = mlx5_flex_get_bitfield(mask, pos, map->width, map->shift);
-		if (attr->ext_sample_id)
-			sample_id = tp->devx_fp->sample_ids[id].sample_id;
-		else
-			sample_id = tp->devx_fp->sample_ids[id].id;
+		sample_id = tp->devx_fp->sample_ids[id];
 		mlx5_flex_set_match_sample(misc4_m, misc4_v,
 					   def, msk & def, val & msk & def,
 					   sample_id, id);
@@ -1391,6 +1385,8 @@ mlx5_flex_parser_create_cb(void *list_ctx, void *ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = list_ctx;
 	struct mlx5_flex_parser_devx *fp, *conf = ctx;
+	uint32_t i;
+	uint8_t sample_info = sh->cdev->config.hca_attr.flex.query_match_sample_info;
 	int ret;
 
 	fp = mlx5_malloc(MLX5_MEM_ZERO,	sizeof(struct mlx5_flex_parser_devx),
@@ -1412,6 +1408,13 @@ mlx5_flex_parser_create_cb(void *list_ctx, void *ctx)
 						&fp->anchor_id);
 	if (ret)
 		goto error;
+	/* Query sample information per ID. */
+	for (i = 0; i < fp->num_samples && sample_info; i++) {
+		ret = mlx5_devx_cmd_match_sample_info_query(sh->cdev->ctx, fp->sample_ids[i],
+							    &fp->sample_info[i]);
+		if (ret)
+			goto error;
+	}
 	DRV_LOG(DEBUG, "DEVx flex parser %p created, samples num: %u",
 		(const void *)fp, fp->num_samples);
 	return &fp->entry;

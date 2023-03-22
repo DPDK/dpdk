@@ -1457,7 +1457,7 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 	struct field_modify_info tmp;
 	int tmp_id;
 
-	if (!attr->ext_sample_id) {
+	if (!attr->query_match_sample_info) {
 		DRV_LOG(ERR, "FW doesn't support modify field with flex item.");
 		return;
 	}
@@ -1505,8 +1505,8 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 				    tmp_id >= (int)flex->devx_fp->num_samples ||
 				    tmp_id >= MLX5_GRAPH_NODE_SAMPLE_NUM)
 					return;
-				if (flex->devx_fp->sample_ids[id].id !=
-						flex->devx_fp->sample_ids[tmp_id].id ||
+				if (flex->devx_fp->sample_info[id].modify_field_id !=
+				    flex->devx_fp->sample_info[tmp_id].modify_field_id ||
 				    flex->map[j].shift != flex->map[j - 1].width +
 							  flex->map[j - 1].shift) {
 					i = j;
@@ -1532,7 +1532,7 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 		info[idx] = (struct field_modify_info){cur_width / CHAR_BIT, offset / CHAR_BIT,
 			     id == -1 ? MLX5_MODI_INVALID :
 			     (enum mlx5_modification_field)
-			     flex->devx_fp->sample_ids[id].modify_field_id,
+			     flex->devx_fp->sample_info[id].modify_field_id,
 			     map->shift + tmp_ofs, 1};
 		offset += cur_width;
 		width_left -= cur_width;
