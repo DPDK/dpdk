@@ -1063,11 +1063,9 @@ int mlx5_txpp_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 
 	if (n >= n_used + n_txpp && xstats_names) {
 		for (i = 0; i < n_txpp; ++i) {
-			strncpy(xstats_names[i + n_used].name,
+			strlcpy(xstats_names[i + n_used].name,
 				mlx5_txpp_stat_names[i],
 				RTE_ETH_XSTATS_NAME_SIZE);
-			xstats_names[i + n_used].name
-					[RTE_ETH_XSTATS_NAME_SIZE - 1] = 0;
 		}
 	}
 	return n_used + n_txpp;
