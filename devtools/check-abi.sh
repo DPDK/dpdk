@@ -10,7 +10,8 @@ fi
 refdir=$1
 newdir=$2
 warnonly=${3:-}
-ABIDIFF_OPTIONS="--suppr $(dirname $0)/libabigail.abignore --no-added-syms"
+ABIDIFF_SUPPRESSIONS=$(dirname $(readlink -f $0))/libabigail.abignore
+ABIDIFF_OPTIONS="--suppr $ABIDIFF_SUPPRESSIONS --no-added-syms"
 
 if [ ! -d $refdir ]; then
 	echo "Error: reference directory '$refdir' does not exist." >&2
@@ -34,10 +35,14 @@ else
 	ABIDIFF_OPTIONS="$ABIDIFF_OPTIONS --headers-dir2 $incdir2"
 fi
 
-export newdir ABIDIFF_OPTIONS
+export newdir ABIDIFF_OPTIONS ABIDIFF_SUPPRESSIONS
 export diff_func='run_diff() {
 	dump=$1
 	name=$(basename $dump)
+	if grep -q "; SKIP_LIBRARY=${name%.dump}\>" $ABIDIFF_SUPPRESSIONS; then
+		echo "Skipped $name" >&2
+		return 0
+	fi
 	dump2=$(find $newdir -name $name)
 	if [ -z "$dump2" ] || [ ! -e "$dump2" ]; then
 		echo "Error: cannot find $name in $newdir" >&2
