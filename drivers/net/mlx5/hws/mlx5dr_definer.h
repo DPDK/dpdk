@@ -226,8 +226,13 @@ struct mlx5_ifc_definer_hl_eth_l3_bits {
 	u8 time_to_live_hop_limit[0x8];
 	u8 protocol_next_header[0x8];
 	u8 identification[0x10];
-	u8 flags[0x3];
-	u8 fragment_offset[0xd];
+	union {
+		u8 ipv4_frag[0x10];
+		struct {
+			u8 flags[0x3];
+			u8 fragment_offset[0xd];
+		};
+	};
 	u8 ipv4_total_length[0x10];
 	u8 checksum[0x10];
 	u8 reserved_at_60[0xc];
