@@ -397,6 +397,9 @@ vhost_user_set_features(struct virtio_net **pdev,
 			dev->virtqueue[dev->nr_vring] = NULL;
 			cleanup_vq(vq, 1);
 			cleanup_vq_inflight(dev, vq);
+			/* vhost_user_lock_all_queue_pairs locked all qps */
+			vq_assert_lock(dev, vq);
+			rte_spinlock_unlock(&vq->access_lock);
 			free_vq(dev, vq);
 		}
 	}
