@@ -842,8 +842,8 @@ int mlx5dr_send_queue_action(struct mlx5dr_context *ctx,
 			/* Signal on the last posted WQE */
 			mlx5dr_send_engine_flush_queue(queue);
 	} else {
-		rte_errno = -EINVAL;
-		return rte_errno;
+		rte_errno = EINVAL;
+		return -rte_errno;
 	}
 
 	return 0;
