@@ -70,7 +70,7 @@ jobs:
       run: |
         echo 'ccache=ccache-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-'$(date -u +%Y-w%W) >> $GITHUB_OUTPUT
         echo 'libabigail=libabigail-${{ matrix.config.os }}' >> $GITHUB_OUTPUT
-        echo 'abi=abi-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-${{ env.LIBABIGAIL_VERSION }}-${{ env.REF_GIT_TAG }}' >> $GITHUB_OUTPUT
+        echo 'abi=abi-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-${{ env.REF_GIT_TAG }}' >> $GITHUB_OUTPUT
     - name: Retrieve ccache cache
       uses: actions/cache@v3
       with:

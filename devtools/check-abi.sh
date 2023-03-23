@@ -37,20 +37,21 @@ fi
 
 export newdir ABIDIFF_OPTIONS ABIDIFF_SUPPRESSIONS
 export diff_func='run_diff() {
-	dump=$1
-	name=$(basename $dump)
-	if grep -q "; SKIP_LIBRARY=${name%.dump}\>" $ABIDIFF_SUPPRESSIONS; then
+	lib=$1
+	name=$(basename $lib)
+	if grep -q "; SKIP_LIBRARY=${name%.so.*}\>" $ABIDIFF_SUPPRESSIONS; then
 		echo "Skipped $name" >&2
 		return 0
 	fi
-	dump2=$(find $newdir -name $name)
-	if [ -z "$dump2" ] || [ ! -e "$dump2" ]; then
+	# Look for a library with the same major ABI version
+	lib2=$(find $newdir -name "${name%.*}.*" -a ! -type l)
+	if [ -z "$lib2" ] || [ ! -e "$lib2" ]; then
 		echo "Error: cannot find $name in $newdir" >&2
 		return 1
 	fi
-	abidiff $ABIDIFF_OPTIONS $dump $dump2 || {
+	abidiff $ABIDIFF_OPTIONS $lib $lib2 || {
 		abiret=$?
-		echo "Error: ABI issue reported for abidiff $ABIDIFF_OPTIONS $dump $dump2" >&2
+		echo "Error: ABI issue reported for abidiff $ABIDIFF_OPTIONS $lib $lib2" >&2
 		if [ $(($abiret & 3)) -ne 0 ]; then
 			echo "ABIDIFF_ERROR|ABIDIFF_USAGE_ERROR, this could be a script or environment issue." >&2
 		fi
@@ -65,7 +66,7 @@ export diff_func='run_diff() {
 }'
 
 error=
-find $refdir -name "*.dump" |
+find $refdir -name "*.so.*" -a ! -type l |
 xargs -n1 -P0 sh -c 'eval "$diff_func"; run_diff $0' ||
 error=1
 

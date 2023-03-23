@@ -130,8 +130,6 @@ fi
 if [ "$ABI_CHECKS" = "true" ]; then
     if [ "$(cat libabigail/VERSION 2>/dev/null)" != "$LIBABIGAIL_VERSION" ]; then
         rm -rf libabigail
-        # if we change libabigail, invalidate existing abi cache
-        rm -rf reference
     fi
 
     if [ ! -d libabigail ]; then
@@ -153,7 +151,6 @@ if [ "$ABI_CHECKS" = "true" ]; then
         meson setup $OPTS -Dexamples= $refsrcdir $refsrcdir/build
         ninja -C $refsrcdir/build
         DESTDIR=$(pwd)/reference ninja -C $refsrcdir/build install
-        devtools/gen-abi.sh reference
         find reference/usr/local -name '*.a' -delete
         rm -rf reference/usr/local/bin
         rm -rf reference/usr/local/share
@@ -161,7 +158,6 @@ if [ "$ABI_CHECKS" = "true" ]; then
     fi
 
     DESTDIR=$(pwd)/install ninja -C build install
-    devtools/gen-abi.sh install
     devtools/check-abi.sh reference install ${ABI_CHECKS_WARN_ONLY:-}
 fi
 
