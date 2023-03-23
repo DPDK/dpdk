@@ -93,7 +93,3 @@ To start ``testpmd``, and add I40e PF to FPGA network port, enable FPGA HQoS and
 Limitations or Known issues
 ---------------------------
 
-19.05 limitation
-~~~~~~~~~~~~~~~~
-
-Ipn3ke code released in 19.05 is for evaluation only.
