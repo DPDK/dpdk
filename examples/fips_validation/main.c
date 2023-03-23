@@ -2288,8 +2288,7 @@ fips_mct_sha_test(void)
 
 	max_outlen = md_blocks * vec.cipher_auth.digest.len;
 
-	if (vec.cipher_auth.digest.val)
-		free(vec.cipher_auth.digest.val);
+	free(vec.cipher_auth.digest.val);
 
 	vec.cipher_auth.digest.val = calloc(1, max_outlen);
 
@@ -2382,8 +2381,7 @@ fips_mct_shake_test(void)
 
 	max_outlen = vec.cipher_auth.digest.len;
 
-	if (vec.cipher_auth.digest.val)
-		free(vec.cipher_auth.digest.val);
+	free(vec.cipher_auth.digest.val);
 
 	vec.cipher_auth.digest.val = calloc(1, max_outlen);
 
