@@ -35,6 +35,14 @@ pylama = "^8.4.1"
 pyflakes = "^2.5.0"
 toml = "^0.10.2"
 
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "<=7"
+sphinx-rtd-theme = ">=1.2.2"
+pyelftools = "^0.31"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
