@@ -31,6 +31,12 @@ test_model_ops_opt_check(struct ml_options *opt)
 	if (ret != 0)
 		return ret;
 
+	/* check for at least one model */
+	if (opt->nb_filelist == 0) {
+		ml_err("Models list empty, need at least one model to run the test\n");
+		return -EINVAL;
+	}
+
 	/* check model file availability */
 	for (i = 0; i < opt->nb_filelist; i++) {
 		if (access(opt->filelist[i].model, F_OK) == -1) {

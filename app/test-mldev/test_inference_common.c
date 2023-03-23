@@ -333,6 +333,12 @@ test_inference_opt_check(struct ml_options *opt)
 	if (ret != 0)
 		return ret;
 
+	/* check for at least one filelist */
+	if (opt->nb_filelist == 0) {
+		ml_err("Filelist empty, need at least one filelist to run the test\n");
+		return -EINVAL;
+	}
+
 	/* check file availability */
 	for (i = 0; i < opt->nb_filelist; i++) {
 		if (access(opt->filelist[i].model, F_OK) == -1) {
