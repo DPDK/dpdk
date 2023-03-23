@@ -319,8 +319,7 @@ check_args:
 	plt_info("ML: %s = %d", CN10K_ML_OCM_PAGE_SIZE, mldev->ocm_page_size);
 
 exit:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
+	rte_kvargs_free(kvlist);
 
 	return ret;
 }
@@ -795,8 +794,7 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 	mz = plt_memzone_reserve_aligned(FW_MEMZONE_NAME, mz_size, 0, ML_CN10K_ALIGN_SIZE);
 	if (mz == NULL) {
 		plt_err("plt_memzone_reserve failed : %s", FW_MEMZONE_NAME);
-		if (fw_buffer != NULL)
-			free(fw_buffer);
+		free(fw_buffer);
 		return -ENOMEM;
 	}
 	fw->req = mz->addr;
@@ -813,8 +811,7 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 	if (roc_env_is_emulator() || roc_env_is_hw()) {
 		fw->data = PLT_PTR_ADD(mz->addr, sizeof(struct cn10k_ml_req));
 		ret = cn10k_ml_fw_load_cn10ka(fw, fw_buffer, fw_size);
-		if (fw_buffer != NULL)
-			free(fw_buffer);
+		free(fw_buffer);
 	} else if (roc_env_is_asim()) {
 		fw->data = NULL;
 		ret = cn10k_ml_fw_load_asim(fw);

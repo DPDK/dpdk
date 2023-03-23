@@ -845,11 +845,9 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	return 0;
 
 error:
-	if (dev->data->queue_pairs != NULL)
-		rte_free(dev->data->queue_pairs);
+	rte_free(dev->data->queue_pairs);
 
-	if (dev->data->models != NULL)
-		rte_free(dev->data->models);
+	rte_free(dev->data->models);
 
 	return ret;
 }
@@ -887,8 +885,7 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 		}
 	}
 
-	if (dev->data->models)
-		rte_free(dev->data->models);
+	rte_free(dev->data->models);
 
 	/* Destroy all queue pairs */
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
@@ -900,8 +897,7 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 		}
 	}
 
-	if (dev->data->queue_pairs)
-		rte_free(dev->data->queue_pairs);
+	rte_free(dev->data->queue_pairs);
 
 	/* Unload firmware */
 	cn10k_ml_fw_unload(mldev);
