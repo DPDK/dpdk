@@ -3597,6 +3597,8 @@ handle_rxa_stats(const char *cmd __rte_unused,
 	RXA_ADD_DICT(rx_adptr_stats, rx_enq_block_cycles);
 	RXA_ADD_DICT(rx_adptr_stats, rx_enq_end_ts);
 	RXA_ADD_DICT(rx_adptr_stats, rx_intr_packets);
+	RXA_ADD_DICT(rx_adptr_stats, rx_event_buf_count);
+	RXA_ADD_DICT(rx_adptr_stats, rx_event_buf_size);
 
 	return 0;
 }
