@@ -70,8 +70,7 @@ test_device_setup(struct ml_test *test, struct ml_options *opt)
 	return 0;
 
 error:
-	if (test_device != NULL)
-		rte_free(test_device);
+	rte_free(test_device);
 
 	return ret;
 }
@@ -84,8 +83,7 @@ test_device_destroy(struct ml_test *test, struct ml_options *opt)
 	RTE_SET_USED(opt);
 
 	t = ml_test_priv(test);
-	if (t != NULL)
-		rte_free(t);
+	rte_free(t);
 }
 
 static int

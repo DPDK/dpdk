@@ -836,8 +836,7 @@ rte_ml_op_pool_create(const char *name, unsigned int nb_elts, unsigned int cache
 void
 rte_ml_op_pool_free(struct rte_mempool *mempool)
 {
-	if (mempool != NULL)
-		rte_mempool_free(mempool);
+	rte_mempool_free(mempool);
 }
 
 uint16_t

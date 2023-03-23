@@ -492,8 +492,7 @@ test_inference_setup(struct ml_test *test, struct ml_options *opt)
 	return 0;
 
 error:
-	if (test_inference != NULL)
-		rte_free(test_inference);
+	rte_free(test_inference);
 
 	return ret;
 }
@@ -506,8 +505,7 @@ test_inference_destroy(struct ml_test *test, struct ml_options *opt)
 	RTE_SET_USED(opt);
 
 	t = ml_test_priv(test);
-	if (t != NULL)
-		rte_free(t);
+	rte_free(t);
 }
 
 int
@@ -748,8 +746,7 @@ ml_inference_iomem_destroy(struct ml_test *test, struct ml_options *opt, uint16_
 	/* destroy io pool */
 	sprintf(mp_name, "ml_io_pool_%d", fid);
 	mp = rte_mempool_lookup(mp_name);
-	if (mp != NULL)
-		rte_mempool_free(mp);
+	rte_mempool_free(mp);
 }
 
 int
@@ -776,8 +773,7 @@ ml_inference_mem_destroy(struct ml_test *test, struct ml_options *opt)
 	RTE_SET_USED(opt);
 
 	/* release op pool */
-	if (t->op_pool != NULL)
-		rte_mempool_free(t->op_pool);
+	rte_mempool_free(t->op_pool);
 }
 
 static bool
@@ -1088,11 +1084,9 @@ ml_inference_stats_get(struct ml_test *test, struct ml_options *opt)
 	print_line(80);
 
 	/* release buffers */
-	if (t->xstats_map)
-		rte_free(t->xstats_map);
+	rte_free(t->xstats_map);
 
-	if (t->xstats_values)
-		rte_free(t->xstats_values);
+	rte_free(t->xstats_values);
 
 	/* print end-to-end stats */
 	freq = rte_get_tsc_hz();
@@ -1129,11 +1123,9 @@ ml_inference_stats_get(struct ml_test *test, struct ml_options *opt)
 	return 0;
 
 error:
-	if (t->xstats_map)
-		rte_free(t->xstats_map);
+	rte_free(t->xstats_map);
 
-	if (t->xstats_values)
-		rte_free(t->xstats_values);
+	rte_free(t->xstats_values);
 
 	return ret;
 }

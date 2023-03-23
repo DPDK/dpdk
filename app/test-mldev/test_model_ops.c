@@ -93,8 +93,7 @@ test_model_ops_setup(struct ml_test *test, struct ml_options *opt)
 	return 0;
 
 error:
-	if (test_model_ops != NULL)
-		rte_free(test_model_ops);
+	rte_free(test_model_ops);
 
 	return ret;
 }
@@ -107,8 +106,7 @@ test_model_ops_destroy(struct ml_test *test, struct ml_options *opt)
 	RTE_SET_USED(opt);
 
 	t = ml_test_priv(test);
-	if (t != NULL)
-		rte_free(t);
+	rte_free(t);
 }
 
 static int
