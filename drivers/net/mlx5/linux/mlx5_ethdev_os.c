@@ -1074,7 +1074,8 @@ int
 mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 {
 	char ifname[IF_NAMESIZE];
-	char port_name[IF_NAMESIZE];
+	char *port_name = NULL;
+	size_t port_name_size = 0;
 	FILE *file;
 	struct mlx5_switch_info data = {
 		.master = 0,
@@ -1087,6 +1088,7 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 	bool port_switch_id_set = false;
 	bool device_dir = false;
 	char c;
+	ssize_t line_size;
 
 	if (!if_indextoname(ifindex, ifname)) {
 		rte_errno = errno;
@@ -1102,8 +1104,21 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 
 	file = fopen(phys_port_name, "rb");
 	if (file != NULL) {
-		if (fgets(port_name, IF_NAMESIZE, file) != NULL)
+		char *tail_nl;
+
+		line_size = getline(&port_name, &port_name_size, file);
+		if (line_size < 0) {
+			fclose(file);
+			rte_errno = errno;
+			return -rte_errno;
+		} else if (line_size > 0) {
+			/* Remove tailing newline character. */
+			tail_nl = strchr(port_name, '\n');
+			if (tail_nl)
+				*tail_nl = '\0';
 			mlx5_translate_port_name(port_name, &data);
+		}
+		free(port_name);
 		fclose(file);
 	}
 	file = fopen(phys_switch_id, "rb");
