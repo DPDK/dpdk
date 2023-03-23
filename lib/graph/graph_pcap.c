@@ -40,8 +40,7 @@ void
 graph_pcap_exit(struct rte_graph *graph)
 {
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		if (pkt_mp)
-			rte_mempool_free(pkt_mp);
+		rte_mempool_free(pkt_mp);
 
 	if (pcapng_fd) {
 		rte_pcapng_close(pcapng_fd);
