@@ -107,7 +107,7 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
 			mlx5_dump_debug_information(name, "MLX5 Error CQ:",
 						    (const void *)((uintptr_t)
 						    txq->cqes),
-						    sizeof(*err_cqe) *
+						    sizeof(struct mlx5_cqe) *
 						    (1 << txq->cqe_n));
 			mlx5_dump_debug_information(name, "MLX5 Error SQ:",
 						    (const void *)((uintptr_t)
