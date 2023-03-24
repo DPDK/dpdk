@@ -1618,11 +1618,11 @@ get_writeback_data(struct fips_val *val)
 
 	/* in case val is reused for MCT test, try to free the buffer first */
 	if (val->val) {
-		free(val->val);
+		rte_free(val->val);
 		val->val = NULL;
 	}
 
-	wb_data = dst = calloc(1, total_len);
+	wb_data = dst = rte_malloc(NULL, total_len, 0);
 	if (!dst) {
 		RTE_LOG(ERR, USER1, "Error %i: Not enough memory\n", -ENOMEM);
 		return -ENOMEM;
@@ -1640,7 +1640,7 @@ get_writeback_data(struct fips_val *val)
 
 	if (data_len) {
 		RTE_LOG(ERR, USER1, "Error -1: write back data\n");
-		free(wb_data);
+		rte_free(wb_data);
 		return -1;
 	}
 
@@ -1863,7 +1863,7 @@ fips_generic_test(void)
 
 	if (info.file_type != FIPS_TYPE_JSON)
 		fprintf(info.fp_wr, "\n");
-	free(val.val);
+	rte_free(val.val);
 
 	return 0;
 }
@@ -1883,11 +1883,11 @@ fips_mct_tdes_test(void)
 	int test_mode = info.interim_info.tdes_data.test_mode;
 
 	pt.len = vec.pt.len;
-	pt.val = calloc(1, pt.len);
+	pt.val = rte_malloc(NULL, pt.len, 0);
 	ct.len = vec.ct.len;
-	ct.val = calloc(1, ct.len);
+	ct.val = rte_malloc(NULL, ct.len, 0);
 	iv.len = vec.iv.len;
-	iv.val = calloc(1, iv.len);
+	iv.val = rte_malloc(NULL, iv.len, 0);
 
 	for (i = 0; i < TDES_EXTERN_ITER; i++) {
 		if (info.file_type != FIPS_TYPE_JSON) {
@@ -2055,10 +2055,10 @@ fips_mct_tdes_test(void)
 		}
 	}
 
-	free(val[0].val);
-	free(pt.val);
-	free(ct.val);
-	free(iv.val);
+	rte_free(val[0].val);
+	rte_free(pt.val);
+	rte_free(ct.val);
+	rte_free(iv.val);
 
 	return 0;
 }
@@ -2140,7 +2140,7 @@ fips_mct_aes_ecb_test(void)
 		}
 	}
 
-	free(val.val);
+	rte_free(val.val);
 
 	return 0;
 }
@@ -2160,11 +2160,11 @@ fips_mct_aes_test(void)
 		return fips_mct_aes_ecb_test();
 
 	pt.len = vec.pt.len;
-	pt.val = calloc(1, pt.len);
+	pt.val = rte_malloc(NULL, pt.len, 0);
 	ct.len = vec.ct.len;
-	ct.val = calloc(1, ct.len);
+	ct.val = rte_malloc(NULL, ct.len, 0);
 	iv.len = vec.iv.len;
-	iv.val = calloc(1, iv.len);
+	iv.val = rte_malloc(NULL, iv.len, 0);
 	for (i = 0; i < AES_EXTERN_ITER; i++) {
 		if (info.file_type != FIPS_TYPE_JSON) {
 			if (i != 0)
@@ -2267,10 +2267,10 @@ fips_mct_aes_test(void)
 			memcpy(vec.iv.val, val[0].val, AES_BLOCK_SIZE);
 	}
 
-	free(val[0].val);
-	free(pt.val);
-	free(ct.val);
-	free(iv.val);
+	rte_free(val[0].val);
+	rte_free(pt.val);
+	rte_free(ct.val);
+	rte_free(iv.val);
 
 	return 0;
 }
@@ -2288,9 +2288,8 @@ fips_mct_sha_test(void)
 
 	max_outlen = md_blocks * vec.cipher_auth.digest.len;
 
-	free(vec.cipher_auth.digest.val);
-
-	vec.cipher_auth.digest.val = calloc(1, max_outlen);
+	rte_free(vec.cipher_auth.digest.val);
+	vec.cipher_auth.digest.val = rte_malloc(NULL, max_outlen, 0);
 
 	if (vec.pt.val)
 		memcpy(vec.cipher_auth.digest.val, vec.pt.val, vec.cipher_auth.digest.len);
@@ -2364,7 +2363,7 @@ fips_mct_sha_test(void)
 
 	rte_free(vec.pt.val);
 
-	free(val.val);
+	rte_free(val.val);
 	return 0;
 }
 
@@ -2381,9 +2380,8 @@ fips_mct_shake_test(void)
 
 	max_outlen = vec.cipher_auth.digest.len;
 
-	free(vec.cipher_auth.digest.val);
-
-	vec.cipher_auth.digest.val = calloc(1, max_outlen);
+	rte_free(vec.cipher_auth.digest.val);
+	vec.cipher_auth.digest.val = rte_malloc(NULL, max_outlen, 0);
 
 	if (vec.pt.val)
 		memcpy(vec.cipher_auth.digest.val, vec.pt.val, vec.pt.len);
@@ -2452,8 +2450,7 @@ fips_mct_shake_test(void)
 
 	rte_free(md.val);
 	rte_free(vec.pt.val);
-
-	free(val.val);
+	rte_free(val.val);
 	return 0;
 }
 

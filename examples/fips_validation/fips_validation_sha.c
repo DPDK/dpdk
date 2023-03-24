@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <rte_malloc.h>
 #include <rte_cryptodev.h>
 
 #include "fips_validation.h"
@@ -28,19 +29,20 @@
 
 struct plain_hash_size_conversion {
 	const char *str;
+	uint8_t md_blocks;
 	enum rte_crypto_auth_algorithm algo;
 } phsc[] = {
-		{"20", RTE_CRYPTO_AUTH_SHA1},
-		{"28", RTE_CRYPTO_AUTH_SHA224},
-		{"32", RTE_CRYPTO_AUTH_SHA256},
-		{"48", RTE_CRYPTO_AUTH_SHA384},
-		{"64", RTE_CRYPTO_AUTH_SHA512},
-		{"28", RTE_CRYPTO_AUTH_SHA3_224},
-		{"32", RTE_CRYPTO_AUTH_SHA3_256},
-		{"48", RTE_CRYPTO_AUTH_SHA3_384},
-		{"64", RTE_CRYPTO_AUTH_SHA3_512},
-		{"16", RTE_CRYPTO_AUTH_SHAKE_128},
-		{"32", RTE_CRYPTO_AUTH_SHAKE_256},
+		{"20", 3, RTE_CRYPTO_AUTH_SHA1},
+		{"28", 3, RTE_CRYPTO_AUTH_SHA224},
+		{"32", 3, RTE_CRYPTO_AUTH_SHA256},
+		{"48", 3, RTE_CRYPTO_AUTH_SHA384},
+		{"64", 3, RTE_CRYPTO_AUTH_SHA512},
+		{"28", 1, RTE_CRYPTO_AUTH_SHA3_224},
+		{"32", 1, RTE_CRYPTO_AUTH_SHA3_256},
+		{"48", 1, RTE_CRYPTO_AUTH_SHA3_384},
+		{"64", 1, RTE_CRYPTO_AUTH_SHA3_512},
+		{"16", 1, RTE_CRYPTO_AUTH_SHAKE_128},
+		{"32", 1, RTE_CRYPTO_AUTH_SHAKE_256},
 };
 
 int
@@ -69,6 +71,7 @@ parse_interim_algo(__rte_unused const char *key,
 	for (i = 0; i < RTE_DIM(phsc); i++) {
 		if (strstr(text, phsc[i].str)) {
 			info.interim_info.sha_data.algo = phsc[i].algo;
+			info.interim_info.sha_data.md_blocks = phsc[i].md_blocks;
 			parser_read_uint32_val(ALGO_PREFIX,
 				text, &vec.cipher_auth.digest);
 			break;
@@ -84,7 +87,7 @@ parse_interim_algo(__rte_unused const char *key,
 struct fips_test_callback sha_tests_vectors[] = {
 		{MSGLEN_STR, parser_read_uint32_bit_val, &vec.pt},
 		{MSG_STR, parse_uint8_known_len_hex_str, &vec.pt},
-		{SEED_STR, parse_uint8_hex_str, &vec.cipher_auth.digest},
+		{SEED_STR, parse_uint8_hex_str, &vec.pt},
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
@@ -307,8 +310,8 @@ parse_test_sha_json_algorithm(void)
 	if (sz < 0)
 		return -1;
 
-	free(vec.cipher_auth.digest.val);
-	vec.cipher_auth.digest.val = calloc(1, sz);
+	rte_free(vec.cipher_auth.digest.val);
+	vec.cipher_auth.digest.val = rte_malloc(NULL, sz, 0);
 	if (vec.cipher_auth.digest.val == NULL)
 		return -1;
 
