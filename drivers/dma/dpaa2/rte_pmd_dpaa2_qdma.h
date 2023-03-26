@@ -44,7 +44,9 @@ struct rte_dpaa2_qdma_rbp {
 	uint32_t svfid:6;
 	/* using route by port for source */
 	uint32_t srbp:1;
-	uint32_t rsv:4;
+	/* Virtual Function Active */
+	uint32_t vfa:1;
+	uint32_t rsv:3;
 };
 
 /** Determines a QDMA job */
