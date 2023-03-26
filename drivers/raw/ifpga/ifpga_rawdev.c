@@ -29,6 +29,7 @@
 #include <bus_vdev_driver.h>
 #include <rte_string_fns.h>
 #include <rte_pmd_i40e.h>
+#include <bus_driver.h>
 
 #include "base/opae_hw_api.h"
 #include "base/opae_ifpga_hw_api.h"
@@ -1832,12 +1833,19 @@ ifpga_cfg_probe(struct rte_vdev_device *vdev)
 	return ret;
 }
 
+static int cmp_dev_name(const struct rte_device *dev, const void *_name)
+{
+	const char *name = _name;
+	return strcmp(dev->name, name);
+}
+
 static int
 ifpga_cfg_remove(struct rte_vdev_device *vdev)
 {
 	struct rte_rawdev *rawdev = NULL;
 	struct ifpga_rawdev *ifpga_dev;
 	struct ifpga_vdev_args args;
+	struct rte_bus *bus;
 	char dev_name[RTE_RAWDEV_NAME_MAX_LEN];
 	const char *vdev_name = NULL;
 	char *tmp_vdev = NULL;
@@ -1864,7 +1872,13 @@ ifpga_cfg_remove(struct rte_vdev_device *vdev)
 
 	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "%d|%s",
 		args.port, args.bdf);
-	ret = rte_eal_hotplug_remove(RTE_STR(IFPGA_BUS_NAME), dev_name);
+	bus = rte_bus_find_by_name(RTE_STR(IFPGA_BUS_NAME));
+	if (bus) {
+		if (bus->find_device(NULL, cmp_dev_name, dev_name)) {
+			ret = rte_eal_hotplug_remove(RTE_STR(IFPGA_BUS_NAME),
+				dev_name);
+		}
+	}
 
 	for (i = 0; i < IFPGA_MAX_VDEV; i++) {
 		tmp_vdev = ifpga_dev->vdev_name[i];
