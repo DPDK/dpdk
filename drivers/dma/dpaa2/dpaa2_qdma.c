@@ -117,6 +117,7 @@ dpaa2_qdma_populate_fle(struct qbman_fle *fle,
 		/* source */
 		sdd->read_cmd.portid = rbp->sportid;
 		sdd->rbpcmd_simple.pfid = rbp->spfid;
+		sdd->rbpcmd_simple.vfa = rbp->vfa;
 		sdd->rbpcmd_simple.vfid = rbp->svfid;
 
 		if (rbp->srbp) {
@@ -129,6 +130,7 @@ dpaa2_qdma_populate_fle(struct qbman_fle *fle,
 		/* destination */
 		sdd->write_cmd.portid = rbp->dportid;
 		sdd->rbpcmd_simple.pfid = rbp->dpfid;
+		sdd->rbpcmd_simple.vfa = rbp->vfa;
 		sdd->rbpcmd_simple.vfid = rbp->dvfid;
 
 		if (rbp->drbp) {
