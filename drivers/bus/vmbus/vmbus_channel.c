@@ -22,7 +22,7 @@ static inline void
 vmbus_sync_set_bit(volatile uint32_t *addr, uint32_t mask)
 {
 	/* Use GCC builtin which atomic does atomic OR operation */
-	__sync_or_and_fetch(addr, mask);
+	__atomic_fetch_or(addr, mask, __ATOMIC_SEQ_CST);
 }
 
 static inline void
