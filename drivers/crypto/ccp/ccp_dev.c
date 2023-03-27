@@ -116,13 +116,15 @@ ccp_queue_dma_zone_reserve(const char *queue_name,
 static inline void
 ccp_set_bit(unsigned long *bitmap, int n)
 {
-	__sync_fetch_and_or(&bitmap[WORD_OFFSET(n)], (1UL << BIT_OFFSET(n)));
+	__atomic_fetch_or(&bitmap[WORD_OFFSET(n)], (1UL << BIT_OFFSET(n)),
+		__ATOMIC_SEQ_CST);
 }
 
 static inline void
 ccp_clear_bit(unsigned long *bitmap, int n)
 {
-	__sync_fetch_and_and(&bitmap[WORD_OFFSET(n)], ~(1UL << BIT_OFFSET(n)));
+	__atomic_fetch_and(&bitmap[WORD_OFFSET(n)], ~(1UL << BIT_OFFSET(n)),
+		__ATOMIC_SEQ_CST);
 }
 
 static inline uint32_t
