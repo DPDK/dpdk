@@ -134,7 +134,7 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 
 	__atomic_fetch_add(&stats->accepted, d_pkts, __ATOMIC_RELAXED);
 
-	ring_enq = rte_ring_enqueue_burst(ring, (void *)dup_bufs, d_pkts, NULL);
+	ring_enq = rte_ring_enqueue_burst(ring, (void *)&dup_bufs[0], d_pkts, NULL);
 	if (unlikely(ring_enq < d_pkts)) {
 		unsigned int drops = d_pkts - ring_enq;
 
