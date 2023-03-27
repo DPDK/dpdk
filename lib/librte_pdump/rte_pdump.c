@@ -91,7 +91,7 @@ pdump_copy(struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
 			dup_bufs[d_pkts++] = p;
 	}
 
-	ring_enq = rte_ring_enqueue_burst(ring, (void *)dup_bufs, d_pkts, NULL);
+	ring_enq = rte_ring_enqueue_burst(ring, (void *)&dup_bufs[0], d_pkts, NULL);
 	if (unlikely(ring_enq < d_pkts)) {
 		PDUMP_LOG(DEBUG,
 			"only %d of packets enqueued to ring\n", ring_enq);
