@@ -331,18 +331,18 @@ Additional Options
 
       ip link set dev enp24s0f0 vf 0 trust on
 
-#. Bind the VF0,  and run testpmd with 'cap=dcf' devarg::
+#. Bind the VF0, and run testpmd with 'cap=dcf' with port representor for VF 1 and 2::
 
-      dpdk-testpmd -l 22-25 -n 4 -a 18:01.0,cap=dcf -- -i
+      dpdk-testpmd -l 22-25 -n 4 -a 18:01.0,cap=dcf,representor=vf[1-2] -- -i
 
 #. Monitor the VF2 interface network traffic::
 
       tcpdump -e -nn -i enp24s1f2
 
-#. Create one flow to redirect the traffic to VF2 by DCF::
+#. Create one flow to redirect the traffic to VF2 by DCF (assume the representor port ID is 5)::
 
       flow create 0 priority 0 ingress pattern eth / ipv4 src is 192.168.0.2 \
-      dst is 192.168.0.3 / end actions vf id 2 / end
+      dst is 192.168.0.3 / end actions represented_port ethdev_port_id 5 / end
 
 #. Send the packet, and it should be displayed on tcpdump::
 
