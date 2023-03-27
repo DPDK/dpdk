@@ -259,6 +259,21 @@ done)
 [ -z "$bad" ] || { printf "Missing 'Signed-off-by:' tag: \n$bad\n"\
 	&& failure=true;}
 
+# check names
+names=$(git log --format='From: %an <%ae>%n%b' --reverse $range |
+	sed -rn 's,.*: (.*<.*@.*>),\1,p' |
+	sort -u)
+bad=$(for contributor in $names ; do
+	! grep -qE "^$contributor($| <)" $selfdir/../.mailmap || continue
+	if grep -q "^${contributor%% <*} <" .mailmap ; then
+		printf "\t$contributor is not the primary email address\n"
+	else
+		printf "\t$contributor is unknown in .mailmap\n"
+	fi
+done)
+[ -z "$bad" ] || { printf "Contributor name/email mismatch with .mailmap: \n$bad\n"\
+	&& failure=true;}
+
 total=$(echo "$commits" | wc -l)
 if $failure ; then
 	printf "\nInvalid patch(es) found - checked $total patch"
