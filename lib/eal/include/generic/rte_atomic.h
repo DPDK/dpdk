@@ -243,7 +243,7 @@ rte_atomic16_set(rte_atomic16_t *v, int16_t new_value)
 static inline void
 rte_atomic16_add(rte_atomic16_t *v, int16_t inc)
 {
-	__sync_fetch_and_add(&v->cnt, inc);
+	__atomic_fetch_add(&v->cnt, inc, __ATOMIC_SEQ_CST);
 }
 
 /**
@@ -257,7 +257,7 @@ rte_atomic16_add(rte_atomic16_t *v, int16_t inc)
 static inline void
 rte_atomic16_sub(rte_atomic16_t *v, int16_t dec)
 {
-	__sync_fetch_and_sub(&v->cnt, dec);
+	__atomic_fetch_sub(&v->cnt, dec, __ATOMIC_SEQ_CST);
 }
 
 /**
@@ -310,7 +310,7 @@ rte_atomic16_dec(rte_atomic16_t *v)
 static inline int16_t
 rte_atomic16_add_return(rte_atomic16_t *v, int16_t inc)
 {
-	return __sync_add_and_fetch(&v->cnt, inc);
+	return __atomic_fetch_add(&v->cnt, inc, __ATOMIC_SEQ_CST) + inc;
 }
 
 /**
@@ -330,7 +330,7 @@ rte_atomic16_add_return(rte_atomic16_t *v, int16_t inc)
 static inline int16_t
 rte_atomic16_sub_return(rte_atomic16_t *v, int16_t dec)
 {
-	return __sync_sub_and_fetch(&v->cnt, dec);
+	return __atomic_fetch_sub(&v->cnt, dec, __ATOMIC_SEQ_CST) - dec;
 }
 
 /**
@@ -349,7 +349,7 @@ static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v)
 {
-	return __sync_add_and_fetch(&v->cnt, 1) == 0;
+	return __atomic_fetch_add(&v->cnt, 1, __ATOMIC_SEQ_CST) + 1 == 0;
 }
 #endif
 
@@ -369,7 +369,7 @@ static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v)
 {
-	return __sync_sub_and_fetch(&v->cnt, 1) == 0;
+	return __atomic_fetch_sub(&v->cnt, 1, __ATOMIC_SEQ_CST) - 1 == 0;
 }
 #endif
 
@@ -522,7 +522,7 @@ rte_atomic32_set(rte_atomic32_t *v, int32_t new_value)
 static inline void
 rte_atomic32_add(rte_atomic32_t *v, int32_t inc)
 {
-	__sync_fetch_and_add(&v->cnt, inc);
+	__atomic_fetch_add(&v->cnt, inc, __ATOMIC_SEQ_CST);
 }
 
 /**
@@ -536,7 +536,7 @@ rte_atomic32_add(rte_atomic32_t *v, int32_t inc)
 static inline void
 rte_atomic32_sub(rte_atomic32_t *v, int32_t dec)
 {
-	__sync_fetch_and_sub(&v->cnt, dec);
+	__atomic_fetch_sub(&v->cnt, dec, __ATOMIC_SEQ_CST);
 }
 
 /**
@@ -589,7 +589,7 @@ rte_atomic32_dec(rte_atomic32_t *v)
 static inline int32_t
 rte_atomic32_add_return(rte_atomic32_t *v, int32_t inc)
 {
-	return __sync_add_and_fetch(&v->cnt, inc);
+	return __atomic_fetch_add(&v->cnt, inc, __ATOMIC_SEQ_CST) + inc;
 }
 
 /**
@@ -609,7 +609,7 @@ rte_atomic32_add_return(rte_atomic32_t *v, int32_t inc)
 static inline int32_t
 rte_atomic32_sub_return(rte_atomic32_t *v, int32_t dec)
 {
-	return __sync_sub_and_fetch(&v->cnt, dec);
+	return __atomic_fetch_sub(&v->cnt, dec, __ATOMIC_SEQ_CST) - dec;
 }
 
 /**
@@ -628,7 +628,7 @@ static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v)
 {
-	return __sync_add_and_fetch(&v->cnt, 1) == 0;
+	return __atomic_fetch_add(&v->cnt, 1, __ATOMIC_SEQ_CST) + 1 == 0;
 }
 #endif
 
@@ -648,7 +648,7 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 {
-	return __sync_sub_and_fetch(&v->cnt, 1) == 0;
+	return __atomic_fetch_sub(&v->cnt, 1, __ATOMIC_SEQ_CST) - 1 == 0;
 }
 #endif
 
@@ -854,7 +854,7 @@ rte_atomic64_add(rte_atomic64_t *v, int64_t inc);
 static inline void
 rte_atomic64_add(rte_atomic64_t *v, int64_t inc)
 {
-	__sync_fetch_and_add(&v->cnt, inc);
+	__atomic_fetch_add(&v->cnt, inc, __ATOMIC_SEQ_CST);
 }
 #endif
 
@@ -873,7 +873,7 @@ rte_atomic64_sub(rte_atomic64_t *v, int64_t dec);
 static inline void
 rte_atomic64_sub(rte_atomic64_t *v, int64_t dec)
 {
-	__sync_fetch_and_sub(&v->cnt, dec);
+	__atomic_fetch_sub(&v->cnt, dec, __ATOMIC_SEQ_CST);
 }
 #endif
 
@@ -931,7 +931,7 @@ rte_atomic64_add_return(rte_atomic64_t *v, int64_t inc);
 static inline int64_t
 rte_atomic64_add_return(rte_atomic64_t *v, int64_t inc)
 {
-	return __sync_add_and_fetch(&v->cnt, inc);
+	return __atomic_fetch_add(&v->cnt, inc, __ATOMIC_SEQ_CST) + inc;
 }
 #endif
 
@@ -955,7 +955,7 @@ rte_atomic64_sub_return(rte_atomic64_t *v, int64_t dec);
 static inline int64_t
 rte_atomic64_sub_return(rte_atomic64_t *v, int64_t dec)
 {
-	return __sync_sub_and_fetch(&v->cnt, dec);
+	return __atomic_fetch_sub(&v->cnt, dec, __ATOMIC_SEQ_CST) - dec;
 }
 #endif
 
