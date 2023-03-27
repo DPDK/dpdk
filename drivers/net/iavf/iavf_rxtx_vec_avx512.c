@@ -1338,7 +1338,10 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 							(0, 0, 0, 0,
 							 0, 0, 0, 0,
 							 0, 0, 0, 0,
-							 0, 0, 0, 0,
+							 0, 0,
+							 RTE_MBUF_F_RX_VLAN |
+							 RTE_MBUF_F_RX_VLAN_STRIPPED,
+							 0,
 							 /* end up 128-bits */
 							 0, 0, 0, 0,
 							 0, 0, 0, 0,
