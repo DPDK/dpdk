@@ -539,6 +539,9 @@ struct rte_ipv6_hdr {
 	uint8_t  dst_addr[16];	/**< IP address of destination host(s). */
 } __rte_packed;
 
+/* IPv6 routing extension type definition. */
+#define RTE_IPV6_SRCRT_TYPE_4 4
+
 /**
  * IPv6 Routing Extension Header
  */

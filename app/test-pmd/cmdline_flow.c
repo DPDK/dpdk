@@ -12832,6 +12832,9 @@ cmd_set_raw_parsed(const struct buffer *in)
 				size = sizeof(struct rte_ipv6_routing_ext) +
 					(ext->hdr.segments_left << 4);
 				ext->hdr.hdr_len = ext->hdr.segments_left << 1;
+				/* SRv6 without TLV. */
+				if (ext->hdr.type == RTE_IPV6_SRCRT_TYPE_4)
+					ext->hdr.last_entry = ext->hdr.segments_left - 1;
 			} else {
 				size = sizeof(struct rte_ipv6_routing_ext) +
 					(ext->hdr.hdr_len << 3);
