@@ -1620,10 +1620,16 @@ efx_mcdi_drv_attach(
 	 * such example is the ESXi native driver that attempts attaching with
 	 * FULL_FEATURED datapath firmware type first and fall backs to
 	 * DONT_CARE datapath firmware type if MC_CMD_DRV_ATTACH fails.
+	 *
+	 * Always set WANT_V2_LINKCHANGES to 1. Old firmware that only supports
+	 * v1 will ignore it, and for newer firmware it ensures that it always
+	 * sends v2 if possible. While EF100 always uses v2, there are some
+	 * older EF10 firmwares that only send v2 if it is requested.
 	 */
-	MCDI_IN_POPULATE_DWORD_2(req, DRV_ATTACH_IN_NEW_STATE,
+	MCDI_IN_POPULATE_DWORD_3(req, DRV_ATTACH_IN_NEW_STATE,
 	    DRV_ATTACH_IN_ATTACH, attach ? 1 : 0,
-	    DRV_ATTACH_IN_SUBVARIANT_AWARE, EFSYS_OPT_FW_SUBVARIANT_AWARE);
+	    DRV_ATTACH_IN_SUBVARIANT_AWARE, EFSYS_OPT_FW_SUBVARIANT_AWARE,
+	    DRV_ATTACH_IN_WANT_V2_LINKCHANGES, 1);
 	MCDI_IN_SET_DWORD(req, DRV_ATTACH_IN_UPDATE, 1);
 	MCDI_IN_SET_DWORD(req, DRV_ATTACH_IN_FIRMWARE_ID, enp->efv);
 

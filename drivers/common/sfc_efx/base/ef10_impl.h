@@ -753,6 +753,7 @@ extern			void
 ef10_phy_link_ev(
 	__in		efx_nic_t *enp,
 	__in		efx_qword_t *eqp,
+	__in		boolean_t ev_is_v2,
 	__out		efx_link_mode_t *link_modep);
 
 LIBEFX_INTERNAL

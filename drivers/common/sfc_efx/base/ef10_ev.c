@@ -868,6 +868,7 @@ ef10_ev_mcdi(
 	efx_nic_t *enp = eep->ee_enp;
 	unsigned int code;
 	boolean_t should_abort = B_FALSE;
+	boolean_t ev_is_v2 = B_FALSE;
 
 	EFX_EV_QSTAT_INCR(eep, EV_MCDI_RESPONSE);
 
@@ -905,10 +906,13 @@ ef10_ev_mcdi(
 		break;
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
+	case MCDI_EVENT_CODE_LINKCHANGE_V2:
+		ev_is_v2 = B_TRUE;
+		/* Fallthrough */
 	case MCDI_EVENT_CODE_LINKCHANGE: {
 		efx_link_mode_t link_mode;
 
-		ef10_phy_link_ev(enp, eqp, &link_mode);
+		ef10_phy_link_ev(enp, eqp, ev_is_v2, &link_mode);
 		should_abort = eecp->eec_link_change(arg, link_mode);
 		break;
 	}

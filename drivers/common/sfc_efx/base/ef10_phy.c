@@ -166,6 +166,7 @@ mcdi_phy_decode_link_mode(
 ef10_phy_link_ev(
 	__in		efx_nic_t *enp,
 	__in		efx_qword_t *eqp,
+	__in		boolean_t ev_is_v2,
 	__out		efx_link_mode_t *link_modep)
 {
 	efx_port_t *epp = &(enp->en_port);
@@ -174,13 +175,31 @@ ef10_phy_link_ev(
 	unsigned int fcntl;
 	efx_phy_fec_type_t fec = MC_CMD_FEC_NONE;
 	efx_link_mode_t link_mode;
+	unsigned int ev_lp_cap;
+	unsigned int ev_fcntl;
+	unsigned int ev_speed;
 	uint32_t lp_cap_mask;
+
+	if (ev_is_v2) {
+		link_flags = (1 << MC_CMD_GET_LINK_OUT_FULL_DUPLEX_LBN);
+		if (MCDI_EV_FIELD(eqp, LINKCHANGE_V2_FLAGS_LINK_UP))
+			link_flags |= (1 << MC_CMD_GET_LINK_OUT_LINK_UP_LBN);
+
+		ev_lp_cap = MCDI_EV_FIELD(eqp, LINKCHANGE_V2_LP_CAP);
+		ev_fcntl = MCDI_EV_FIELD(eqp, LINKCHANGE_V2_FCNTL);
+		ev_speed = MCDI_EV_FIELD(eqp, LINKCHANGE_V2_SPEED);
+	} else {
+		link_flags = MCDI_EV_FIELD(eqp, LINKCHANGE_LINK_FLAGS);
+		ev_lp_cap = MCDI_EV_FIELD(eqp, LINKCHANGE_LP_CAP);
+		ev_fcntl = MCDI_EV_FIELD(eqp, LINKCHANGE_FCNTL);
+		ev_speed = MCDI_EV_FIELD(eqp, LINKCHANGE_SPEED);
+	}
 
 	/*
 	 * Convert the LINKCHANGE speed enumeration into mbit/s, in the
 	 * same way as GET_LINK encodes the speed
 	 */
-	switch (MCDI_EV_FIELD(eqp, LINKCHANGE_SPEED)) {
+	switch (ev_speed) {
 	case MCDI_EVENT_LINKCHANGE_SPEED_100M:
 		speed = 100;
 		break;
@@ -207,13 +226,10 @@ ef10_phy_link_ev(
 		break;
 	}
 
-	link_flags = MCDI_EV_FIELD(eqp, LINKCHANGE_LINK_FLAGS);
-	mcdi_phy_decode_link_mode(enp, link_flags, speed,
-				    MCDI_EV_FIELD(eqp, LINKCHANGE_FCNTL),
+	mcdi_phy_decode_link_mode(enp, link_flags, speed, ev_fcntl,
 				    MC_CMD_FEC_NONE, &link_mode,
 				    &fcntl, &fec);
-	mcdi_phy_decode_cap(MCDI_EV_FIELD(eqp, LINKCHANGE_LP_CAP),
-			    &lp_cap_mask);
+	mcdi_phy_decode_cap(ev_lp_cap, &lp_cap_mask);
 
 	/*
 	 * It's safe to update ep_lp_cap_mask without the driver's port lock
