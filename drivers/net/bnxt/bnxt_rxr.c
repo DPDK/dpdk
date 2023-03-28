@@ -50,6 +50,8 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
 	if (!mbuf) {
 		__atomic_fetch_add(&rxq->rx_mbuf_alloc_fail, 1, __ATOMIC_RELAXED);
+		/* If buff has failed already, setting this again won't hurt */
+		rxq->need_realloc = 1;
 		return -ENOMEM;
 	}
 
@@ -85,6 +87,8 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
 	if (!mbuf) {
 		__atomic_fetch_add(&rxq->rx_mbuf_alloc_fail, 1, __ATOMIC_RELAXED);
+		/* If buff has failed already, setting this again won't hurt */
+		rxq->need_realloc = 1;
 		return -ENOMEM;
 	}
 
@@ -138,7 +142,6 @@ static void bnxt_rx_ring_reset(void *arg)
 	struct bnxt *bp = arg;
 	int i, rc = 0;
 	struct bnxt_rx_queue *rxq;
-
 
 	for (i = 0; i < (int)bp->rx_nr_rings; i++) {
 		struct bnxt_rx_ring_info *rxr;
@@ -357,7 +360,8 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 		RTE_ASSERT(ag_cons <= rxr->ag_ring_struct->ring_mask);
 		ag_buf = &rxr->ag_buf_ring[ag_cons];
 		ag_mbuf = *ag_buf;
-		RTE_ASSERT(ag_mbuf != NULL);
+		if (ag_mbuf == NULL)
+			return -EBUSY;
 
 		ag_mbuf->data_len = rte_le_to_cpu_16(rxcmp->len);
 
@@ -452,7 +456,7 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	RTE_ASSERT(mbuf != NULL);
 
 	if (agg_bufs) {
-		bnxt_rx_pages(rxq, mbuf, raw_cp_cons, agg_bufs, tpa_info);
+		(void)bnxt_rx_pages(rxq, mbuf, raw_cp_cons, agg_bufs, tpa_info);
 	}
 	mbuf->l4_len = payload_offset;
 
@@ -1230,8 +1234,11 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		bnxt_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf);
 
 reuse_rx_mbuf:
-	if (agg_buf)
-		bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf, NULL);
+	if (agg_buf) {
+		rc = bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf, NULL);
+		if (rc != 0)
+			return -EBUSY;
+	}
 
 #ifdef BNXT_DEBUG
 	if (rxcmp1->errors_v2 & RX_CMP_L2_ERRORS) {
@@ -1293,6 +1300,48 @@ next_rx:
 	return rc;
 }
 
+static void bnxt_reattempt_buffer_alloc(struct bnxt_rx_queue *rxq)
+{
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	struct bnxt_ring *ring;
+	uint16_t raw_prod;
+	uint32_t cnt;
+
+	/* Assume alloc passes. On failure,
+	 * need_realloc will be set inside bnxt_alloc_XY_data.
+	 */
+	rxq->need_realloc = 0;
+	if (!bnxt_need_agg_ring(rxq->bp->eth_dev))
+		goto alloc_rx;
+
+	raw_prod = rxr->ag_raw_prod;
+	bnxt_prod_ag_mbuf(rxq);
+	if (raw_prod != rxr->ag_raw_prod)
+		bnxt_db_write(&rxr->ag_db, rxr->ag_raw_prod);
+
+alloc_rx:
+	raw_prod = rxr->rx_raw_prod;
+	ring = rxr->rx_ring_struct;
+	for (cnt = 0; cnt < ring->ring_size; cnt++) {
+		struct rte_mbuf **rx_buf;
+		uint16_t ndx;
+
+		ndx = RING_IDX(ring, raw_prod + cnt);
+		rx_buf = &rxr->rx_buf_ring[ndx];
+
+		/* Buffer already allocated for this index. */
+		if (*rx_buf != NULL && *rx_buf != &rxq->fake_mbuf)
+			continue;
+
+		/* This slot is empty. Alloc buffer for Rx */
+		if (bnxt_alloc_rx_data(rxq, rxr, raw_prod + cnt))
+			break;
+
+		rxr->rx_raw_prod = raw_prod + cnt;
+		bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
+	}
+}
+
 uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			       uint16_t nb_pkts)
 {
@@ -1302,7 +1351,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t rx_raw_prod = rxr->rx_raw_prod;
 	uint16_t ag_raw_prod = rxr->ag_raw_prod;
 	uint32_t raw_cons = cpr->cp_raw_cons;
-	bool alloc_failed = false;
 	uint32_t cons;
 	int nb_rx_pkts = 0;
 	int nb_rep_rx_pkts = 0;
@@ -1358,10 +1406,8 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				break;
 			else if (rc == -ENODEV)	/* completion for representor */
 				nb_rep_rx_pkts++;
-			else if (rc == -ENOMEM) {
+			else if (rc == -ENOMEM)
 				nb_rx_pkts++;
-				alloc_failed = true;
-			}
 		} else if (!BNXT_NUM_ASYNC_CPR(rxq->bp)) {
 			evt =
 			bnxt_event_hwrm_resp_handler(rxq->bp,
@@ -1372,7 +1418,12 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		raw_cons = NEXT_RAW_CMP(raw_cons);
-		if (nb_rx_pkts == nb_pkts || nb_rep_rx_pkts == nb_pkts || evt)
+		/*
+		 * The HW reposting may fall behind if mbuf allocation has
+		 * failed. Break and reattempt allocation to prevent that.
+		 */
+		if (nb_rx_pkts == nb_pkts || nb_rep_rx_pkts == nb_pkts || evt ||
+		    rxq->need_realloc != 0)
 			break;
 	}
 
@@ -1395,35 +1446,9 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	/* Ring the AGG ring DB */
 	if (ag_raw_prod != rxr->ag_raw_prod)
 		bnxt_db_write(&rxr->ag_db, rxr->ag_raw_prod);
-
-	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
-	if (alloc_failed) {
-		int cnt;
-
-		rx_raw_prod = RING_NEXT(rx_raw_prod);
-		for (cnt = 0; cnt < nb_rx_pkts + nb_rep_rx_pkts; cnt++) {
-			struct rte_mbuf **rx_buf;
-			uint16_t ndx;
-
-			ndx = RING_IDX(rxr->rx_ring_struct, rx_raw_prod + cnt);
-			rx_buf = &rxr->rx_buf_ring[ndx];
-
-			/* Buffer already allocated for this index. */
-			if (*rx_buf != NULL && *rx_buf != &rxq->fake_mbuf)
-				continue;
-
-			/* This slot is empty. Alloc buffer for Rx */
-			if (!bnxt_alloc_rx_data(rxq, rxr, rx_raw_prod + cnt)) {
-				rxr->rx_raw_prod = rx_raw_prod + cnt;
-				bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
-			} else {
-				PMD_DRV_LOG(ERR, "Alloc  mbuf failed\n");
-				break;
-			}
-		}
-	}
-
 done:
+	if (unlikely(rxq->need_realloc))
+		bnxt_reattempt_buffer_alloc(rxq);
 	return nb_rx_pkts;
 }
 

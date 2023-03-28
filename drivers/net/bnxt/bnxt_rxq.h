@@ -41,6 +41,7 @@ struct bnxt_rx_queue {
 	struct bnxt_cp_ring_info	*cp_ring;
 	struct rte_mbuf			fake_mbuf;
 	uint64_t			rx_mbuf_alloc_fail;
+	uint8_t				need_realloc;
 	const struct rte_memzone *mz;
 };
 
