@@ -846,7 +846,7 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
 	}
 
 	/* Copy 64 bytes blocks */
-	for (; n >= 64; n -= 64) {
+	for (; n > 64; n -= 64) {
 		rte_mov64((uint8_t *)dst, (const uint8_t *)src);
 		dst = (uint8_t *)dst + 64;
 		src = (const uint8_t *)src + 64;
