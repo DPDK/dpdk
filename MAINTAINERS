@@ -1809,6 +1809,7 @@ F: doc/guides/sample_app_ug/ethtool.rst
 
 FIPS validation example
 M: Brian Dooley <brian.dooley@intel.com>
+M: Gowrishankar Muthukrishnan <gmuthukrishn@marvell.com>
 F: examples/fips_validation/
 F: doc/guides/sample_app_ug/fips_validation.rst
 
