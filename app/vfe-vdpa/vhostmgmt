@@ -34,7 +34,7 @@ class JsonRpcSnapException(Exception):
 class JsonRpcVirtnetClient(object):
     decoder = json.JSONDecoder()
 
-    def __init__(self, address, port, timeout=60.0):
+    def __init__(self, address, port, timeout=125.0):
         self.sock = None
         self._request_id = 0
         self.timeout = timeout

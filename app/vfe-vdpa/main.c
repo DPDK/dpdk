@@ -731,6 +731,7 @@ main(int argc, char *argv[])
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGTERM);
+	signal(SIGPIPE, SIG_IGN);
 	ret = pthread_sigmask(SIG_BLOCK, &set, NULL);
 	if (ret != 0)
 		printf("Set sig mask fail");
