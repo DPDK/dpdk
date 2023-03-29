@@ -899,14 +899,13 @@ virtio_vdpa_dev_close(int vid)
 	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-		return ret;
+		// Don't return in device close, try to release all resource.
 	}
 	priv->lm_status = VIRTIO_S_QUIESCED;
 
 	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-		return ret;
 	}
 	priv->lm_status = VIRTIO_S_FREEZED;
 
@@ -917,21 +916,18 @@ virtio_vdpa_dev_close(int vid)
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to get max phy addr",
 						priv->vdev->device->name);
-			return ret;
 		}
 
 		ret = virtio_vdpa_cmd_dirty_page_stop_track(priv->pf_priv, priv->vf_id, max_phy);
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to stop track max_phy %" PRIx64 " ret:%d",
 						priv->vdev->device->name, max_phy, ret);
-			return ret;
 		}
 
 		ret = rte_vhost_get_log_base(priv->vid, &log_base, &log_size);
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to get log base",
 						priv->vdev->device->name);
-			return ret;
 		}
 
 		DRV_LOG(INFO, "%s vfid %d stop track max phy:%" PRIx64 "log_base %" PRIx64 "log_size %" PRIx64,
@@ -941,7 +937,6 @@ virtio_vdpa_dev_close(int vid)
 		if (iova == RTE_BAD_IOVA) {
 			DRV_LOG(ERR, "%s log get iova failed ret:%d",
 						priv->vdev->device->name, ret);
-			return ret;
 		}
 
 		log_size_align = RTE_ROUNDUP(log_size, getpagesize());
@@ -953,24 +948,21 @@ virtio_vdpa_dev_close(int vid)
 		if (ret < 0) {
 			DRV_LOG(ERR, "%s log buffer DMA map failed ret:%d",
 						priv->vdev->device->name, ret);
-			return ret;
 		}
 
 	}
 	ret = virtio_vdpa_cmd_get_internal_pending_bytes(priv->pf_priv, priv->vf_id, &res);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed get pending bytes ret:%d", vdev->device->name, priv->vf_id, ret);
-		return ret;
 	}
 
 	/* If pre allocated memzone is small, we will realloc */
-	if (res.pending_bytes > VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE) {
+	if (!ret && (res.pending_bytes > VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE)) {
 		rte_memzone_free(priv->state_mz_remote);
 
 		ret = snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "%s_remote_mz", vdev->device->name);
 		if (ret < 0 || ret >= RTE_MEMZONE_NAMESIZE) {
 			DRV_LOG(ERR, "%s remote mem zone print fail ret:%d", vdev->device->name, ret);
-			return -EINVAL;
 		}
 
 		priv->state_mz_remote = rte_memzone_reserve_aligned(mz_name,
@@ -979,13 +971,11 @@ virtio_vdpa_dev_close(int vid)
 										VIRTIO_VDPA_STATE_ALIGN);
 		if (priv->state_mz_remote == NULL) {
 			DRV_LOG(ERR, "Failed to reserve remote memzone dev:%s", vdev->device->name);
-			return -ENOMEM;
 		}
 	}
 
 	if (res.pending_bytes ==0) {
 		DRV_LOG(ERR, "Dev:%s pending bytes is 0", vdev->device->name);
-		return -EINVAL;
 	}
 
 	DRV_LOG(INFO, "Dev:%s pending bytes is 0x%" PRIx64, vdev->device->name, res.pending_bytes);
@@ -996,7 +986,6 @@ virtio_vdpa_dev_close(int vid)
 								priv->state_mz_remote->iova);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed get state ret:%d", vdev->device->name, priv->vf_id, ret);
-		return ret;
 	}
 
 	num_vr = rte_vhost_get_vring_num(vid);
@@ -1006,7 +995,6 @@ virtio_vdpa_dev_close(int vid)
 	if (ret) {
 		rte_free(tmp_hw_idx);
 		DRV_LOG(ERR, "%s vfid %d failed get hwidx ret:%d", vdev->device->name, priv->vf_id, ret);
-		return ret;
 	}
 
 	/* Set_vring_base */
@@ -1019,7 +1007,6 @@ virtio_vdpa_dev_close(int vid)
 			if (ret) {
 				rte_free(tmp_hw_idx);
 				DRV_LOG(ERR, "%s vfid %d failed set hwidx ret:%d", vdev->device->name, priv->vf_id, ret);
-				return ret;
 			}
 		}
 	}
@@ -1045,8 +1032,6 @@ virtio_vdpa_dev_close(int vid)
 	ret = rte_eal_remote_launch(virtio_vdpa_dev_close_work, priv, virtio_vdpa_lcore_id);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed launch work ret:%d lcore:%d", vdev->device->name, priv->vf_id, ret, virtio_vdpa_lcore_id);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
-		return -rte_errno;
 	}
 	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_START;
 
