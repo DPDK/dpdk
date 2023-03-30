@@ -71,7 +71,7 @@ New Features
 * **Added platform bus support.**
 
   A platform bus provides a way to use Linux platform devices which
-  are compatible with vfio-platform kernel driver.
+  are compatible with the vfio-platform kernel driver.
 
 * **Added ARM support for power monitor in the power management library.**
 
@@ -80,6 +80,9 @@ New Features
 
 * **Added Ethernet link speed for 400 Gb/s.**
 
+  Added Ethernet link speed for 400 Gb/s since there are some devices already
+  supporting that speed and it is well standardized in IEEE.
+
 * **Added support for mapping a queue with an aggregated port.**
 
   * Introduced new function ``rte_eth_dev_count_aggr_ports()``
@@ -87,6 +90,7 @@ New Features
   * Introduced new function ``rte_eth_dev_map_aggr_tx_affinity()``
     to map a Tx queue with an aggregated port of the DPDK port.
   * Added Rx affinity flow matching of an aggregated port.
+
 
 * **Added flow matching of IPv6 routing extension.**
 
@@ -113,7 +117,7 @@ New Features
 
 * **Added cross-port indirect action in asynchronous flow API.**
 
-  * Allowed to share indirect actions between ports by passing
+  * Enabled the ability to share indirect actions between ports by passing
     the flag ``RTE_FLOW_PORT_FLAG_SHARE_INDIRECT`` to ``rte_flow_configure()``.
   * Added ``host_port_id`` in ``rte_flow_port_attr`` structure
     to reference the port hosting the shared objects.
@@ -215,14 +219,14 @@ New Features
 
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
-  * eventdev reconfig logic is enhanced to increment the
+  * The eventdev reconfigure logic was enhanced to increment the
     ``rte_event_dev_config::nb_single_link_event_port_queues`` parameter
     if event port config is of type ``RTE_EVENT_PORT_CFG_SINGLE_LINK``.
   * With this change, the application no longer needs to account for the
     ``rte_event_dev_config::nb_single_link_event_port_queues`` parameter
     required for eth_rx, eth_tx, crypto and timer eventdev adapters.
 
-* **Added pcap trace support in graph library.**
+* **Added PCAP trace support in graph library.**
 
   * Added support to capture packets at each graph node with packet metadata and
     node name.
@@ -263,8 +267,8 @@ API Changes
 
 * The telemetry command ``/eal/heap_info`` is fixed to print ``Heap_id``.
 
-* The experimental function ``rte_pcapng_copy`` was updated to support comment
-  section in enhanced packet block in the pcapng library.
+* The experimental function ``rte_pcapng_copy`` was updated to support a comment
+  section in enhanced packet block in the PcapNG library.
 
 * The experimental structures ``struct rte_graph_param``, ``struct rte_graph``
   and ``struct graph`` were updated to support pcap trace in the graph library.
