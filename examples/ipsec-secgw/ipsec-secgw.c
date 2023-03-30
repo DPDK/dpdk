@@ -99,10 +99,10 @@ uint32_t qp_desc_nb = 2048;
 #define MTU_TO_FRAMELEN(x)	((x) + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
 struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x7e, 0x94, 0x9a) },
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x22, 0xa1, 0xd9) },
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x08, 0x69, 0x26) },
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd) }
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x7e, 0x94, 0x9a}} },
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x22, 0xa1, 0xd9}} },
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x08, 0x69, 0x26}} },
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd}} }
 };
 
 struct offloads tx_offloads;
@@ -1427,9 +1427,8 @@ add_dst_ethaddr(uint16_t port, const struct rte_ether_addr *addr)
 	if (port >= RTE_DIM(ethaddr_tbl))
 		return -EINVAL;
 
-	ethaddr_tbl[port].dst = ETHADDR_TO_UINT64(addr);
-	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[port].dst,
-			    (struct rte_ether_addr *)(val_eth + port));
+	rte_ether_addr_copy(addr, &ethaddr_tbl[port].dst);
+	rte_ether_addr_copy(addr, (struct rte_ether_addr *)(val_eth + port));
 	return 0;
 }
 
@@ -1907,11 +1906,12 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 			"Error getting MAC address (port %u): %s\n",
 			portid, rte_strerror(-ret));
 
-	ethaddr_tbl[portid].src = ETHADDR_TO_UINT64(&ethaddr);
+	rte_ether_addr_copy(&ethaddr, &ethaddr_tbl[portid].src);
 
-	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[portid].dst,
+	rte_ether_addr_copy(&ethaddr_tbl[portid].dst,
 			    (struct rte_ether_addr *)(val_eth + portid));
-	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[portid].src,
+
+	rte_ether_addr_copy(&ethaddr_tbl[portid].src,
 			    (struct rte_ether_addr *)(val_eth + portid) + 1);
 
 	print_ethaddr("Address: ", &ethaddr);

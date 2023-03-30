@@ -84,7 +84,7 @@ struct ipsec_traffic_nb {
 
 /* port/source ethernet addr and destination ethernet addr */
 struct ethaddr_info {
-	uint64_t src, dst;
+	struct rte_ether_addr src, dst;
 };
 
 struct ipsec_spd_stats {
