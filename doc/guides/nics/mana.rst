@@ -7,11 +7,6 @@ MANA poll mode driver library
 The MANA poll mode driver library (**librte_net_mana**) implements support
 for Microsoft Azure Network Adapter VF in SR-IOV context.
 
-Features
---------
-
-Features of the MANA Ethdev PMD are:
-
 Prerequisites
 -------------
 
@@ -29,6 +24,7 @@ and must be installed separately:
   It allows slow and privileged operations
   (context initialization, hardware resources allocations)
   to be managed by the kernel and fast operations to never leave user space.
+  The minimum required rdma-core version is v44.
 
   In most cases, rdma-core is shipped as a package with an OS distribution.
   User can also install the upstream version of the rdma-core from
@@ -39,15 +35,14 @@ and must be installed separately:
   Low-level user space driver library
   for Microsoft Azure Network Adapter devices,
   it is automatically loaded by libibverbs.
-
-  The support of MANA is not merged in rdma-core 42.
+  The minimum required version of rdma-core with libmana is v44.
 
 - **Kernel modules**
 
   They provide the kernel-side verbs API and low level device drivers
   that manage actual hardware initialization
   and resources sharing with user space processes.
-  The minimum required Linux kernel version is 6.1.
+  The minimum required Linux kernel version is 6.2.
 
   Unlike most other PMDs, these modules must remain loaded
   and bound to their devices:
@@ -56,16 +51,14 @@ and must be installed separately:
   - mana_ib: InifiniBand device driver.
   - ib_uverbs: user space driver for verbs (entry point for libibverbs).
 
-  The support of MANA is planned in Linux 6.2.
-
 Driver compilation and testing
 ------------------------------
 
 Refer to the document
 :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` for details.
 
-MANA PMD arguments
-------------------
+Runtime Configuration
+---------------------
 
 The user can specify below argument in devargs.
 

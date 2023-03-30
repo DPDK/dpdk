@@ -58,7 +58,7 @@ RTE_DEFINE_PER_LCORE(int, _next_flow);
  * terminate receive traffic.  Received traffic is simply discarded, but we
  * still do so in order to maintain traffic statistics.
  */
-static void
+static bool
 pkt_burst_flow_gen(struct fwd_stream *fs)
 {
 	unsigned pkt_size = tx_pkt_length - 4;	/* Adjust FCS */
@@ -75,22 +75,13 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	uint16_t nb_dropped;
 	uint16_t nb_pkt;
 	uint16_t nb_clones = nb_pkt_flowgen_clones;
-	uint16_t i;
-	uint32_t retry;
 	uint64_t tx_offloads;
-	uint64_t start_tsc = 0;
 	int next_flow = RTE_PER_LCORE(_next_flow);
 
-	get_start_cycles(&start_tsc);
-
 	/* Receive a burst of packets and discard them. */
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
-				 nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
-	fs->rx_packets += nb_rx;
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 
-	for (i = 0; i < nb_rx; i++)
-		rte_pktmbuf_free(pkts_burst[i]);
+	rte_pktmbuf_free_bulk(pkts_burst, nb_rx);
 
 	mbp = current_fwd_lcore()->mbp;
 	vlan_tci = ports[fs->tx_port].tx_vlan_id;
@@ -166,37 +157,18 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 			next_flow = 0;
 	}
 
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_pkt) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_pkt && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_pkt - nb_tx);
-		}
-	}
-	fs->tx_packets += nb_tx;
-
-	inc_tx_burst_stats(fs, nb_tx);
+	nb_tx = common_fwd_stream_transmit(fs, pkts_burst, nb_pkt);
 	nb_dropped = nb_pkt - nb_tx;
 	if (unlikely(nb_dropped > 0)) {
 		/* Back out the flow counter. */
 		next_flow -= nb_dropped;
 		while (next_flow < 0)
 			next_flow += nb_flows_flowgen;
-
-		fs->fwd_dropped += nb_dropped;
-		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_pkt);
 	}
 
 	RTE_PER_LCORE(_next_flow) = next_flow;
 
-	get_end_cycles(fs, start_tsc);
+	return true;
 }
 
 static int
@@ -206,22 +178,9 @@ flowgen_begin(portid_t pi)
 	return 0;
 }
 
-static void
-flowgen_stream_init(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
-}
-
 struct fwd_engine flow_gen_engine = {
 	.fwd_mode_name  = "flowgen",
 	.port_fwd_begin = flowgen_begin,
-	.port_fwd_end   = NULL,
-	.stream_init    = flowgen_stream_init,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = pkt_burst_flow_gen,
 };

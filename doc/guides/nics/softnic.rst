@@ -52,8 +52,8 @@ section of :ref:`the DPDK documentation <linux_gsg>` or refer to *DPDK
 Release Notes*.
 
 
-Soft NIC PMD arguments
-----------------------
+Runtime Configuration
+---------------------
 
 The user can specify below arguments in EAL ``--vdev`` options to create the
 Soft NIC device instance:

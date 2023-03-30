@@ -62,8 +62,8 @@ KNI control path is not supported with the PMD, since there is no physical
 backend device by default.
 
 
-PMD arguments
--------------
+Runtime Configuration
+---------------------
 
 ``no_request_thread``, by default PMD creates a pthread for each KNI interface
 to handle Linux network interface control commands, like ``ifconfig kni0 up``

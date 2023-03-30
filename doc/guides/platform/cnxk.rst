@@ -76,6 +76,8 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 12| GPIO| rte_rawdev                                                   |
    +---+-----+--------------------------------------------------------------+
+   | 13| ML  | rte_mldev                                                    |
+   +---+-----+--------------------------------------------------------------+
 
 PF0 is called the administrative / admin function (AF) and has exclusive
 privileges to provision RVU functional block's LFs to each of the PF/VF.
@@ -164,6 +166,9 @@ This section lists dataplane H/W block(s) available in cnxk SoC.
 
 #. **Regex Device Driver**
    See :doc:`../regexdevs/cn9k` for REE Regex device driver information.
+
+#. **ML Device Driver**
+   See :doc:`../mldevs/cnxk` for Machine Learning device driver information.
 
 Procedure to Setup Platform
 ---------------------------

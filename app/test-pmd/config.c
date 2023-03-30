@@ -612,6 +612,8 @@ device_infos_display_speeds(uint32_t speed_capa)
 		printf(" 100 Gbps  ");
 	if (speed_capa & RTE_ETH_LINK_SPEED_200G)
 		printf(" 200 Gbps  ");
+	if (speed_capa & RTE_ETH_LINK_SPEED_400G)
+		printf(" 400 Gbps  ");
 }
 
 void
@@ -936,6 +938,13 @@ port_infos_display(portid_t port_id)
 		printf("unknown\n");
 		break;
 	}
+	printf("Device private info:\n");
+	ret = rte_eth_dev_priv_dump(port_id, stdout);
+	if (ret == -ENOTSUP)
+		printf("  none\n");
+	else if (ret < 0)
+		fprintf(stderr, "  Failed to dump private info with error (%d): %s\n",
+			ret, strerror(-ret));
 }
 
 void
@@ -1508,6 +1517,21 @@ rss_config_display(struct rte_flow_action_rss *rss_conf)
 		printf("Unknown function\n");
 		return;
 	}
+
+	printf(" RSS key:\n");
+	if (rss_conf->key_len == 0) {
+		printf("  none");
+	} else {
+		printf("  key_len: %u\n", rss_conf->key_len);
+		printf("  key: ");
+		if (rss_conf->key == NULL) {
+			printf("none");
+		} else {
+			for (i = 0; i < rss_conf->key_len; i++)
+				printf("%02X", rss_conf->key[i]);
+		}
+	}
+	printf("\n");
 
 	printf(" types:\n");
 	if (rss_conf->types == 0) {

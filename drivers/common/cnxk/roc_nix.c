@@ -214,6 +214,13 @@ roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq, uint32_t nb_txq,
 	nix->tx_link = rsp->tx_link;
 	nix->nb_rx_queues = nb_rxq;
 	nix->nb_tx_queues = nb_txq;
+
+	nix->rqs = plt_zmalloc(sizeof(struct roc_nix_rq *) * nb_rxq, 0);
+	if (!nix->rqs) {
+		rc = -ENOMEM;
+		goto fail;
+	}
+
 	nix->sqs = plt_zmalloc(sizeof(struct roc_nix_sq *) * nb_txq, 0);
 	if (!nix->sqs) {
 		rc = -ENOMEM;
@@ -235,7 +242,9 @@ roc_nix_lf_free(struct roc_nix *roc_nix)
 	struct ndc_sync_op *ndc_req;
 	int rc = -ENOSPC;
 
+	plt_free(nix->rqs);
 	plt_free(nix->sqs);
+	nix->rqs = NULL;
 	nix->sqs = NULL;
 
 	/* Sync NDC-NIX for LF */
@@ -455,15 +464,6 @@ skip_dev_init:
 	nix->pci_dev = pci_dev;
 	nix->reta_sz = reta_sz;
 	nix->mtu = ROC_NIX_DEFAULT_HW_FRS;
-
-	/* Always start with full FC for LBK */
-	if (nix->lbk_link) {
-		nix->rx_pause = 1;
-		nix->tx_pause = 1;
-	} else if (!roc_nix_is_vf_or_sdp(roc_nix)) {
-		/* Get the current state of flow control */
-		roc_nix_fc_mode_get(roc_nix);
-	}
 
 	/* Register error and ras interrupts */
 	rc = nix_register_irqs(nix);

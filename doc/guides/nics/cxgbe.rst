@@ -15,34 +15,6 @@ and has support for the latest Linux operating systems.
 More information can be found at `Chelsio Communications Official Website
 <http://www.chelsio.com>`_.
 
-Features
---------
-
-CXGBE and CXGBEVF PMD has support for:
-
-- Multiple queues for TX and RX
-- Receiver Side Steering (RSS)
-  Receiver Side Steering (RSS) on IPv4, IPv6, IPv4-TCP/UDP, IPv6-TCP/UDP.
-  For 4-tuple, enabling 'RSS on TCP' and 'RSS on TCP + UDP' is supported.
-- VLAN filtering
-- Checksum offload
-- Promiscuous mode
-- All multicast mode
-- Port hardware statistics
-- Jumbo frames
-- Flow API - Support for both Wildcard (LE-TCAM) and Exact (HASH) match filters.
-
-Limitations
------------
-
-The Chelsio Terminator series of devices provide two/four ports but
-expose a single PCI bus address, thus, librte_net_cxgbe registers
-itself as a PCI driver that allocates one Ethernet device per detected
-port.
-
-For this reason, one cannot allow/block a single port without
-allowing/blocking the other ports on the same device.
-
 .. _t5-nics:
 
 Supported Chelsio T5 NICs
@@ -67,6 +39,23 @@ Supported SR-IOV Chelsio NICs
 SR-IOV virtual functions are supported on all the Chelsio NICs listed
 in :ref:`t5-nics` and :ref:`t6-nics`.
 
+Features
+--------
+
+CXGBE and CXGBEVF PMD has support for:
+
+- Multiple queues for TX and RX
+- Receiver Side Steering (RSS)
+  Receiver Side Steering (RSS) on IPv4, IPv6, IPv4-TCP/UDP, IPv6-TCP/UDP.
+  For 4-tuple, enabling 'RSS on TCP' and 'RSS on TCP + UDP' is supported.
+- VLAN filtering
+- Checksum offload
+- Promiscuous mode
+- All multicast mode
+- Port hardware statistics
+- Jumbo frames
+- Flow API - Support for both Wildcard (LE-TCAM) and Exact (HASH) match filters.
+
 Prerequisites
 -------------
 
@@ -88,8 +77,8 @@ Prerequisites
   for FreeBSD.
 
 
-Runtime Options
----------------
+Runtime Configuration
+---------------------
 
 The following ``devargs`` options can be enabled at runtime. They must
 be passed as part of EAL arguments. For example,
@@ -886,3 +875,15 @@ during the Chelsio NIC probe, in following order.
    level details that is specific to the Chelsio NIC. Hence, the
    firmware configuration file must not be modified without expert
    guidance from Chelsio support team.
+
+Limitations
+-----------
+
+The Chelsio Terminator series of devices provide two/four ports but
+expose a single PCI bus address, thus, librte_net_cxgbe registers
+itself as a PCI driver that allocates one Ethernet device per detected
+port.
+
+For this reason, one cannot allow/block a single port without
+allowing/blocking the other ports on the same device.
+

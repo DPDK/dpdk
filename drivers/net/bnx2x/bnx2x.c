@@ -5929,7 +5929,7 @@ static uint8_t bnx2x_trylock_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
 
 /*
  * Get the recovery leader resource id according to the engine this function
- * belongs to. Currently only only 2 engines is supported.
+ * belongs to. Currently only 2 engines are supported.
  */
 static int bnx2x_get_leader_lock_resource(struct bnx2x_softc *sc)
 {

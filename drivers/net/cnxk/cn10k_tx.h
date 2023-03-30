@@ -650,6 +650,10 @@ cn10k_nix_prefree_seg(struct rte_mbuf *m, struct cn10k_eth_txq *txq,
 	uint32_t sqe_id;
 
 	if (RTE_MBUF_HAS_EXTBUF(m)) {
+		if (unlikely(txq->tx_compl.ena == 0)) {
+			rte_pktmbuf_free_seg(m);
+			return 1;
+		}
 		if (send_hdr->w0.pnc) {
 			txq->tx_compl.ptr[send_hdr->w1.sqe_id]->next = m;
 		} else {
@@ -1008,9 +1012,13 @@ cn10k_nix_prepare_mseg(struct cn10k_eth_txq *txq,
 		ol_flags = m->ol_flags;
 
 	/* Start from second segment, first segment is already there */
+	dlen = m->data_len;
 	is_sg2 = 0;
 	l_sg.u = sg->u;
-	len -= l_sg.u & 0xFFFF;
+	/* Clear l_sg.u first seg length that might be stale from vector path */
+	l_sg.u &= ~0xFFFFUL;
+	l_sg.u |= dlen;
+	len -= dlen;
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
 	slist = &cmd[3 + off + 1];
@@ -1936,7 +1944,7 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 	uint64x2_t xtmp128, ytmp128;
 	uint64x2_t xmask01, xmask23;
 	uintptr_t c_laddr = laddr;
-	uint8_t lnum, shift, loff;
+	uint8_t lnum, shift, loff = 0;
 	rte_iova_t c_io_addr;
 	uint64_t sa_base;
 	union wdata {
@@ -2055,10 +2063,20 @@ again:
 					    !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
 			}
 
-			/* Check if there are enough LMTLINES for this loop */
-			if (lnum + 4 > 32) {
+			/* Check if there are enough LMTLINES for this loop.
+			 * Consider previous line to be partial.
+			 */
+			if (lnum + 4 >= 32) {
 				uint8_t ldwords_con = 0, lneeded = 0;
-				for (j = 0; j < NIX_DESCS_PER_LOOP; j++) {
+
+				if ((loff >> 4) + segdw[0] > 8) {
+					lneeded += 1;
+					ldwords_con = segdw[0];
+				} else {
+					ldwords_con = (loff >> 4) + segdw[0];
+				}
+
+				for (j = 1; j < NIX_DESCS_PER_LOOP; j++) {
 					ldwords_con += segdw[j];
 					if (ldwords_con > 8) {
 						lneeded += 1;

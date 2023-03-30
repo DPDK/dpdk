@@ -20,6 +20,7 @@ gve_rx_refill(struct gve_rx_queue *rxq)
 	if (nb_alloc <= rxq->nb_avail) {
 		diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[idx], nb_alloc);
 		if (diag < 0) {
+			rxq->stats.no_mbufs_bulk++;
 			for (i = 0; i < nb_alloc; i++) {
 				nmb = rte_pktmbuf_alloc(rxq->mpool);
 				if (!nmb)
@@ -27,7 +28,7 @@ gve_rx_refill(struct gve_rx_queue *rxq)
 				rxq->sw_ring[idx + i] = nmb;
 			}
 			if (i != nb_alloc) {
-				rxq->no_mbufs += nb_alloc - i;
+				rxq->stats.no_mbufs += nb_alloc - i;
 				nb_alloc = i;
 			}
 		}
@@ -55,13 +56,17 @@ gve_rx_refill(struct gve_rx_queue *rxq)
 			nb_alloc = rxq->nb_rx_desc - idx;
 		diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[idx], nb_alloc);
 		if (diag < 0) {
+			rxq->stats.no_mbufs_bulk++;
 			for (i = 0; i < nb_alloc; i++) {
 				nmb = rte_pktmbuf_alloc(rxq->mpool);
 				if (!nmb)
 					break;
 				rxq->sw_ring[idx + i] = nmb;
 			}
-			nb_alloc = i;
+			if (i != nb_alloc) {
+				rxq->stats.no_mbufs += nb_alloc - i;
+				nb_alloc = i;
+			}
 		}
 		rxq->nb_avail -= nb_alloc;
 		next_avail += nb_alloc;
@@ -103,7 +108,7 @@ gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			break;
 
 		if (rxd->flags_seq & GVE_RXF_ERR) {
-			rxq->errors++;
+			rxq->stats.errors++;
 			continue;
 		}
 
@@ -151,8 +156,8 @@ gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		gve_rx_refill(rxq);
 
 	if (nb_rx) {
-		rxq->packets += nb_rx;
-		rxq->bytes += bytes;
+		rxq->stats.packets += nb_rx;
+		rxq->stats.bytes += bytes;
 	}
 
 	return nb_rx;

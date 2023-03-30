@@ -809,7 +809,7 @@ cn10k_eth_sec_session_create(void *device,
 		sess_priv.chksum = (!ipsec->options.ip_csum_enable << 1 |
 				    !ipsec->options.l4_csum_enable);
 		sess_priv.dec_ttl = ipsec->options.dec_ttl;
-		if (roc_model_is_cn10kb_a0())
+		if (roc_feature_nix_has_inl_ipsec_mseg())
 			sess_priv.nixtx_off = 1;
 
 		/* Pointer from eth_sec -> outb_sa */

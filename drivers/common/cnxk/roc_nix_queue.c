@@ -102,7 +102,7 @@ roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
 
 	/* Check for meta aura if RQ is enabled */
 	if (enable && nix->need_meta_aura)
-		rc = roc_nix_inl_meta_aura_check(rq);
+		rc = roc_nix_inl_meta_aura_check(rq->roc_nix, rq);
 	return rc;
 }
 
@@ -667,6 +667,7 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	}
 
 	rq->roc_nix = roc_nix;
+	rq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	if (is_cn9k)
 		rc = nix_rq_cn9k_cfg(dev, rq, nix->qints, false, ena);
@@ -690,11 +691,12 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 
 	/* Check for meta aura if RQ is enabled */
 	if (ena && nix->need_meta_aura) {
-		rc = roc_nix_inl_meta_aura_check(rq);
+		rc = roc_nix_inl_meta_aura_check(roc_nix, rq);
 		if (rc)
 			return rc;
 	}
 
+	nix->rqs[rq->qid] = rq;
 	return nix_tel_node_add_rq(rq);
 }
 
@@ -718,6 +720,7 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	nix_rq_aura_buf_type_update(rq, false);
 
 	rq->roc_nix = roc_nix;
+	rq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	mbox = mbox_get(m_box);
 	if (is_cn9k)
@@ -742,7 +745,7 @@ roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 
 	/* Check for meta aura if RQ is enabled */
 	if (ena && nix->need_meta_aura) {
-		rc = roc_nix_inl_meta_aura_check(rq);
+		rc = roc_nix_inl_meta_aura_check(roc_nix, rq);
 		if (rc)
 			return rc;
 	}
@@ -779,6 +782,7 @@ roc_nix_rq_cman_config(struct roc_nix *roc_nix, struct roc_nix_rq *rq)
 int
 roc_nix_rq_fini(struct roc_nix_rq *rq)
 {
+	struct nix *nix = roc_nix_to_nix_priv(rq->roc_nix);
 	int rc;
 
 	/* Disabling RQ is sufficient */
@@ -788,6 +792,8 @@ roc_nix_rq_fini(struct roc_nix_rq *rq)
 
 	/* Update aura attribute to indicate its use for */
 	nix_rq_aura_buf_type_update(rq, false);
+
+	nix->rqs[rq->qid] = NULL;
 	return 0;
 }
 
@@ -857,7 +863,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	cq_ctx->avg_level = 0xff;
 	cq_ctx->cq_err_int_ena = BIT(NIX_CQERRINT_CQE_FAULT);
 	cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_DOOR_ERR);
-	if (roc_model_is_cn10kb() && roc_nix_inl_inb_is_enabled(roc_nix)) {
+	if (roc_feature_nix_has_late_bp() && roc_nix_inl_inb_is_enabled(roc_nix)) {
 		cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_CPT_DROP);
 		cq_ctx->cpt_drop_err_en = 1;
 		/* Enable Late BP only when non zero CPT BPID */
@@ -894,14 +900,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 			cq_ctx->drop_ena = 1;
 		}
 	}
-
-	/* TX pause frames enable flow ctrl on RX side */
-	if (nix->tx_pause) {
-		/* Single BPID is allocated for all rx channels for now */
-		cq_ctx->bpid = nix->bpid[0];
-		cq_ctx->bp = cq->drop_thresh;
-		cq_ctx->bp_ena = 1;
-	}
+	cq_ctx->bp = cq->drop_thresh;
 
 	rc = mbox_process(mbox);
 	mbox_put(mbox);
@@ -962,7 +961,7 @@ roc_nix_cq_fini(struct roc_nix_cq *cq)
 		aq->cq.bp_ena = 0;
 		aq->cq_mask.ena = ~aq->cq_mask.ena;
 		aq->cq_mask.bp_ena = ~aq->cq_mask.bp_ena;
-		if (roc_model_is_cn10kb() && roc_nix_inl_inb_is_enabled(cq->roc_nix)) {
+		if (roc_feature_nix_has_late_bp() && roc_nix_inl_inb_is_enabled(cq->roc_nix)) {
 			aq->cq.lbp_ena = 0;
 			aq->cq_mask.lbp_ena = ~aq->cq_mask.lbp_ena;
 		}
@@ -1104,11 +1103,8 @@ sq_cn9k_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
 
 	/* Many to one reduction */
-	/* Assigning QINT 0 to all the SQs, an errata exists where NIXTX can
-	 * send incorrect QINT_IDX when reporting queue interrupt (QINT). This
-	 * might result in software missing the interrupt.
-	 */
-	aq->sq.qint_idx = 0;
+	aq->sq.qint_idx = sq->qid % nix->qints;
+
 	return 0;
 }
 
@@ -1202,9 +1198,9 @@ sq_cn9k_fini(struct nix *nix, struct roc_nix_sq *sq)
 }
 
 static int
-sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
-	uint16_t smq)
+sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum, uint16_t smq)
 {
+	struct roc_nix *roc_nix = nix_priv_to_roc_nix(nix);
 	struct mbox *mbox = (&nix->dev)->mbox;
 	struct nix_cn10k_aq_enq_req *aq;
 
@@ -1220,7 +1216,10 @@ sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	aq->sq.max_sqe_size = sq->max_sqe_sz;
 	aq->sq.smq = smq;
 	aq->sq.smq_rr_weight = rr_quantum;
-	aq->sq.default_chan = nix->tx_chan_base;
+	if (roc_nix_is_sdp(roc_nix))
+		aq->sq.default_chan = nix->tx_chan_base + (sq->qid % nix->tx_chan_cnt);
+	else
+		aq->sq.default_chan = nix->tx_chan_base;
 	aq->sq.sqe_stype = NIX_STYPE_STF;
 	aq->sq.ena = 1;
 	aq->sq.sso_ena = !!sq->sso_ena;
@@ -1235,11 +1234,15 @@ sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_SEND_ERR);
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
 
-	/* Assigning QINT 0 to all the SQs, an errata exists where NIXTX can
-	 * send incorrect QINT_IDX when reporting queue interrupt (QINT). This
-	 * might result in software missing the interrupt.
-	 */
-	aq->sq.qint_idx = 0;
+	/* Many to one reduction */
+	aq->sq.qint_idx = sq->qid % nix->qints;
+	if (roc_errata_nix_assign_incorrect_qint()) {
+		/* Assigning QINT 0 to all the SQs, an errata exists where NIXTX can
+		 * send incorrect QINT_IDX when reporting queue interrupt (QINT). This
+		 * might result in software missing the interrupt.
+		 */
+		aq->sq.qint_idx = 0;
+	}
 	return 0;
 }
 

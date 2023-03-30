@@ -81,7 +81,7 @@
 	(TIM_BUCKET_CHUNK_REMAIN | (1ull << TIM_BUCKET_W1_S_LOCK))
 
 typedef void (*cnxk_sso_set_priv_mem_t)(const struct rte_eventdev *event_dev,
-					void *lookup_mem, uint64_t aura);
+					void *lookup_mem);
 
 struct cnxk_tim_ctl {
 	uint16_t ring;

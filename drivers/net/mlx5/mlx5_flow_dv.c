@@ -414,10 +414,15 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			++field;
 			continue;
 		}
-		/* Deduce actual data width in bits from mask value. */
-		off_b = rte_bsf32(mask) + carry_b;
-		size_b = sizeof(uint32_t) * CHAR_BIT -
-			 off_b - __builtin_clz(mask);
+		if (type == MLX5_MODIFICATION_TYPE_COPY && field->is_flex) {
+			off_b = 32 - field->shift + carry_b - field->size * CHAR_BIT;
+			size_b = field->size * CHAR_BIT - carry_b;
+		} else {
+			/* Deduce actual data width in bits from mask value. */
+			off_b = rte_bsf32(mask) + carry_b;
+			size_b = sizeof(uint32_t) * CHAR_BIT -
+				 off_b - __builtin_clz(mask);
+		}
 		MLX5_ASSERT(size_b);
 		actions[i] = (struct mlx5_modification_cmd) {
 			.action_type = type,
@@ -437,40 +442,46 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			 * Destination field overflow. Copy leftovers of
 			 * a source field to the next destination field.
 			 */
-			carry_b = 0;
 			if ((size_b > dcopy->size * CHAR_BIT - dcopy->offset) &&
 			    dcopy->size != 0) {
 				actions[i].length =
 					dcopy->size * CHAR_BIT - dcopy->offset;
-				carry_b = actions[i].length;
+				carry_b += actions[i].length;
 				next_field = false;
+			} else {
+				carry_b = 0;
 			}
 			/*
 			 * Not enough bits in a source filed to fill a
 			 * destination field. Switch to the next source.
 			 */
 			if ((size_b < dcopy->size * CHAR_BIT - dcopy->offset) &&
-			    (size_b == field->size * CHAR_BIT - off_b)) {
-				actions[i].length =
-					field->size * CHAR_BIT - off_b;
+			    ((size_b == field->size * CHAR_BIT - off_b) ||
+			     field->is_flex)) {
+				actions[i].length = size_b;
 				dcopy->offset += actions[i].length;
 				next_dcopy = false;
 			}
-			if (next_dcopy)
-				++dcopy;
 		} else {
 			MLX5_ASSERT(item->spec);
 			data = flow_dv_fetch_field((const uint8_t *)item->spec +
 						   field->offset, field->size);
 			/* Shift out the trailing masked bits from data. */
 			data = (data & mask) >> off_b;
+			if (field->is_flex)
+				actions[i].offset = 32 - field->shift - field->size * CHAR_BIT;
 			actions[i].data1 = rte_cpu_to_be_32(data);
 		}
 		/* Convert entire record to expected big-endian format. */
 		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
+		if ((type != MLX5_MODIFICATION_TYPE_COPY ||
+		     dcopy->id != (enum mlx5_modification_field)UINT32_MAX) &&
+		    field->id != (enum mlx5_modification_field)UINT32_MAX)
+			++i;
+		if (next_dcopy && type == MLX5_MODIFICATION_TYPE_COPY)
+			++dcopy;
 		if (next_field)
 			++field;
-		++i;
 	} while (field->size);
 	if (resource->actions_num == i)
 		return rte_flow_error_set(error, EINVAL,
@@ -1391,6 +1402,8 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 	case RTE_FLOW_FIELD_IPV6_ECN:
 	case RTE_FLOW_FIELD_METER_COLOR:
 		return 2;
+	case RTE_FLOW_FIELD_HASH_RESULT:
+		return 32;
 	default:
 		MLX5_ASSERT(false);
 	}
@@ -1420,6 +1433,131 @@ flow_modify_info_mask_32_masked(uint32_t length, uint32_t off, uint32_t post_mas
 {
 	uint32_t mask = (0xffffffffu >> (32 - length)) << off;
 	return rte_cpu_to_be_32(mask & post_mask);
+}
+
+static void
+mlx5_modify_flex_item(const struct rte_eth_dev *dev,
+		      const struct mlx5_flex_item *flex,
+		      const struct rte_flow_action_modify_data *data,
+		      struct field_modify_info *info,
+		      uint32_t *mask, uint32_t width)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
+	uint32_t i, j;
+	int id = 0;
+	uint32_t pos = 0;
+	const struct mlx5_flex_pattern_field *map;
+	uint32_t offset = data->offset;
+	uint32_t width_left = width;
+	uint32_t def;
+	uint32_t cur_width = 0;
+	uint32_t tmp_ofs;
+	uint32_t idx = 0;
+	struct field_modify_info tmp;
+	int tmp_id;
+
+	if (!attr->query_match_sample_info) {
+		DRV_LOG(ERR, "FW doesn't support modify field with flex item.");
+		return;
+	}
+	/*
+	 * search for the mapping instance until Accumulated width is no
+	 * less than data->offset.
+	 */
+	for (i = 0; i < flex->mapnum; i++) {
+		if (flex->map[i].width + pos > data->offset)
+			break;
+		pos += flex->map[i].width;
+	}
+	if (i >= flex->mapnum)
+		return;
+	tmp_ofs = pos < data->offset ? data->offset - pos : 0;
+	for (j = i; i < flex->mapnum && width_left > 0; ) {
+		map = flex->map + i;
+		id = mlx5_flex_get_sample_id(flex, i, &pos, false, &def);
+		if (id == -1) {
+			i++;
+			/* All left length is dummy */
+			if (pos >= data->offset + width)
+				return;
+			cur_width = map->width;
+		/* One mapping instance covers the whole width. */
+		} else if (pos + map->width >= (data->offset + width)) {
+			cur_width = width_left;
+		} else {
+			cur_width = cur_width + map->width - tmp_ofs;
+			pos += map->width;
+			/*
+			 * Continue to search next until:
+			 * 1. Another flex parser ID.
+			 * 2. Width has been covered.
+			 */
+			for (j = i + 1; j < flex->mapnum; j++) {
+				tmp_id = mlx5_flex_get_sample_id(flex, j, &pos, false, &def);
+				if (tmp_id == -1) {
+					i = j;
+					pos -= flex->map[j].width;
+					break;
+				}
+				if (id >= (int)flex->devx_fp->num_samples ||
+				    id >= MLX5_GRAPH_NODE_SAMPLE_NUM ||
+				    tmp_id >= (int)flex->devx_fp->num_samples ||
+				    tmp_id >= MLX5_GRAPH_NODE_SAMPLE_NUM)
+					return;
+				if (flex->devx_fp->sample_info[id].modify_field_id !=
+				    flex->devx_fp->sample_info[tmp_id].modify_field_id ||
+				    flex->map[j].shift != flex->map[j - 1].width +
+							  flex->map[j - 1].shift) {
+					i = j;
+					break;
+				}
+				if ((pos + flex->map[j].width) >= (data->offset + width)) {
+					cur_width = width_left;
+					break;
+				}
+				pos += flex->map[j].width;
+				cur_width += flex->map[j].width;
+			}
+		}
+		if (cur_width > width_left)
+			cur_width = width_left;
+		else if (cur_width < width_left && (j == flex->mapnum || i == flex->mapnum))
+			return;
+
+		MLX5_ASSERT(id < (int)flex->devx_fp->num_samples);
+		if (id >= (int)flex->devx_fp->num_samples || id >= MLX5_GRAPH_NODE_SAMPLE_NUM)
+			return;
+		/* Use invalid entry as placeholder for DUMMY mapping. */
+		info[idx] = (struct field_modify_info){cur_width / CHAR_BIT, offset / CHAR_BIT,
+			     id == -1 ? MLX5_MODI_INVALID :
+			     (enum mlx5_modification_field)
+			     flex->devx_fp->sample_info[id].modify_field_id,
+			     map->shift + tmp_ofs, 1};
+		offset += cur_width;
+		width_left -= cur_width;
+		if (!mask) {
+			info[idx].offset = (32 - cur_width - map->shift - tmp_ofs);
+			info[idx].size = cur_width / CHAR_BIT + info[idx].offset / CHAR_BIT;
+		}
+		cur_width = 0;
+		tmp_ofs = 0;
+		idx++;
+	}
+	if (unlikely(width_left > 0)) {
+		MLX5_ASSERT(false);
+		return;
+	}
+	if (mask)
+		memset(mask, 0xff, data->offset / CHAR_BIT + width / CHAR_BIT);
+	/* Re-order the info to follow IPv6 address. */
+	for (i = 0; i < idx / 2; i++) {
+		tmp = info[i];
+		MLX5_ASSERT(info[i].id);
+		MLX5_ASSERT(info[idx - 1 - i].id);
+		info[i] = info[idx - 1 - i];
+		info[idx - 1 - i] = tmp;
+	}
 }
 
 void
@@ -1760,6 +1898,8 @@ mlx5_flow_field_id_to_modify_info
 			MLX5_ASSERT(data->offset + width <= 32);
 			int reg;
 
+			off_be = (data->level == MLX5_LINEAR_HASH_TAG_INDEX) ?
+				 16 - (data->offset + width) + 16 : data->offset;
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG,
 							 data->level);
@@ -1774,9 +1914,9 @@ mlx5_flow_field_id_to_modify_info
 						reg_to_field[reg]};
 			if (mask)
 				mask[idx] = flow_modify_info_mask_32
-					(width, data->offset);
+					(width, off_be);
 			else
-				info[idx].offset = data->offset;
+				info[idx].offset = off_be;
 		}
 		break;
 	case RTE_FLOW_FIELD_MARK:
@@ -1890,6 +2030,21 @@ mlx5_flow_field_id_to_modify_info
 		info[idx] = (struct field_modify_info){1, 0, MLX5_MODI_OUT_IPV6_NEXT_HDR};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_FLEX_ITEM:
+		MLX5_ASSERT(data->flex_handle != NULL && !(data->offset & 0x7));
+		mlx5_modify_flex_item(dev, (const struct mlx5_flex_item *)data->flex_handle,
+				      data, info, mask, width);
+		break;
+	case RTE_FLOW_FIELD_HASH_RESULT:
+		MLX5_ASSERT(data->offset + width <= 32);
+		off_be = 32 - (data->offset + width);
+		info[idx] = (struct field_modify_info){4, 0,
+						       MLX5_MODI_HASH_RESULT};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_32(width, off_be);
 		else
 			info[idx].offset = off_be;
 		break;
@@ -3774,6 +3929,75 @@ flow_dv_validate_item_meter_color(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Validate aggregated affinity item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_aggr_affinity(struct rte_eth_dev *dev,
+				   const struct rte_flow_item *item,
+				   const struct rte_flow_attr *attr,
+				   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_aggr_affinity *spec = item->spec;
+	const struct rte_flow_item_aggr_affinity *mask = item->mask;
+	struct rte_flow_item_aggr_affinity nic_mask = {
+		.affinity = UINT8_MAX
+	};
+	int ret;
+
+	if (!priv->sh->lag_rx_port_affinity_en)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "Unsupported aggregated affinity with Older FW");
+	if ((attr->transfer && priv->fdb_def_rule) ||
+	    attr->egress || attr->group)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "aggregated affinity is not supported with egress or FDB on non root table");
+	if (!spec)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "data cannot be empty");
+	if (spec->affinity == 0)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "zero affinity number not supported");
+	if (spec->affinity > priv->num_lag_ports)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "exceed max affinity number in lag ports");
+	if (!mask)
+		mask = &rte_flow_item_aggr_affinity_mask;
+	if (!mask->affinity)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
+					  "mask cannot be zero");
+	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+				(const uint8_t *)&nic_mask,
+				sizeof(struct rte_flow_item_aggr_affinity),
+				MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
 int
 flow_dv_encap_decap_match_cb(void *tool_ctx __rte_unused,
 			     struct mlx5_list_entry *entry, void *cb_ctx)
@@ -4697,6 +4921,7 @@ flow_dv_validate_action_modify_hdr(const uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "action configuration not set");
+
 	if (action_flags & MLX5_FLOW_ACTION_ENCAP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -5022,17 +5247,21 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
 	const struct rte_flow_action_modify_field *action_modify_field =
 		action->conf;
-	uint32_t dst_width = mlx5_flow_item_field_width(dev,
-				action_modify_field->dst.field,
-				-1, attr, error);
-	uint32_t src_width = mlx5_flow_item_field_width(dev,
-				action_modify_field->src.field,
-				dst_width, attr, error);
+	uint32_t dst_width, src_width;
 
 	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
 	if (ret)
 		return ret;
-
+	if (action_modify_field->src.field == RTE_FLOW_FIELD_FLEX_ITEM ||
+	    action_modify_field->dst.field == RTE_FLOW_FIELD_FLEX_ITEM)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"flex item fields modification"
+				" is not supported");
+	dst_width = mlx5_flow_item_field_width(dev, action_modify_field->dst.field,
+					       -1, attr, error);
+	src_width = mlx5_flow_item_field_width(dev, action_modify_field->src.field,
+					       dst_width, attr, error);
 	if (action_modify_field->width == 0)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -7463,6 +7692,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_METER_COLOR;
+			break;
+		case RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY:
+			ret = flow_dv_validate_item_aggr_affinity(dev, items,
+								  attr, error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_ITEM_AGGR_AFFINITY;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -10002,7 +10238,7 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 	const struct rte_flow_item_tag *tag_vv = item->spec;
 	const struct rte_flow_item_tag *tag_v;
 	const struct rte_flow_item_tag *tag_m;
-	enum modify_reg reg;
+	int reg;
 	uint32_t index;
 
 	if (MLX5_ITEM_VALID(item, key_type))
@@ -10017,7 +10253,7 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 	else
 		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, index);
 	MLX5_ASSERT(reg > 0);
-	flow_dv_match_meta_reg(key, reg, tag_v->data, tag_m->data);
+	flow_dv_match_meta_reg(key, (enum modify_reg)reg, tag_v->data, tag_m->data);
 }
 
 /**
@@ -10668,7 +10904,7 @@ flow_dv_translate_item_flex(struct rte_eth_dev *dev, void *matcher, void *key,
 		(const struct rte_flow_item_flex *)item->spec;
 	int index = mlx5_flex_acquire_index(dev, spec->handle, false);
 
-	MLX5_ASSERT(index >= 0 && index <= (int)(sizeof(uint32_t) * CHAR_BIT));
+	MLX5_ASSERT(index >= 0 && index < (int)(sizeof(uint32_t) * CHAR_BIT));
 	if (index < 0)
 		return;
 	if (!(dev_flow->handle->flex_item & RTE_BIT32(index))) {
@@ -10717,6 +10953,22 @@ flow_dv_translate_item_meter_color(struct rte_eth_dev *dev, void *key,
 	if (reg == REG_NON)
 		return;
 	flow_dv_match_meta_reg(key, (enum modify_reg)reg, value, mask);
+}
+
+static void
+flow_dv_translate_item_aggr_affinity(void *key,
+				    const struct rte_flow_item *item,
+				    uint32_t key_type)
+{
+	const struct rte_flow_item_aggr_affinity *affinity_v;
+	const struct rte_flow_item_aggr_affinity *affinity_m;
+	void *misc_v;
+
+	MLX5_ITEM_UPDATE(item, key_type, affinity_v, affinity_m,
+			 &rte_flow_item_aggr_affinity_mask);
+	misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	MLX5_SET(fte_match_set_misc, misc_v, lag_rx_port_affinity,
+		 affinity_v->affinity & affinity_m->affinity);
 }
 
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
@@ -13515,6 +13767,10 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 	case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 		last_item = flow_dv_translate_item_integrity(items,
 							     wks, key_type);
+		break;
+	case RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY:
+		flow_dv_translate_item_aggr_affinity(key, items, key_type);
+		last_item = MLX5_FLOW_ITEM_AGGR_AFFINITY;
 		break;
 	default:
 		break;

@@ -53,8 +53,7 @@ forward_sub_burst(struct fwd_stream *src_fs, uint16_t port, uint16_t nb_rx,
 	} else {
 		/* Source stream not found, drop all packets. */
 		src_fs->fwd_dropped += nb_rx;
-		while (nb_rx > 0)
-			rte_pktmbuf_free(pkts[--nb_rx]);
+		rte_pktmbuf_free_bulk(pkts, nb_rx);
 	}
 }
 
@@ -90,21 +89,18 @@ forward_shared_rxq(struct fwd_stream *fs, uint16_t nb_rx,
 			  &pkts_burst[nb_rx - nb_sub_burst]);
 }
 
-static void
+static bool
 shared_rxq_fwd(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[nb_pkt_per_burst];
 	uint16_t nb_rx;
-	uint64_t start_tsc = 0;
 
-	get_start_cycles(&start_tsc);
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
-				 nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 	forward_shared_rxq(fs, nb_rx, pkts_burst);
-	get_end_cycles(fs, start_tsc);
+
+	return true;
 }
 
 static void
@@ -116,8 +112,6 @@ shared_rxq_stream_init(struct fwd_stream *fs)
 
 struct fwd_engine shared_rxq_engine = {
 	.fwd_mode_name  = "shared_rxq",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
 	.stream_init    = shared_rxq_stream_init,
 	.packet_fwd     = shared_rxq_fwd,
 };

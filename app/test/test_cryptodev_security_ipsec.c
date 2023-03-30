@@ -1042,11 +1042,24 @@ test_ipsec_post_process(const struct rte_mbuf *m, const struct ipsec_test_data *
 			struct ipsec_test_data *res_d, bool silent,
 			const struct ipsec_test_flags *flags)
 {
-	uint32_t len = rte_pktmbuf_pkt_len(m);
+	uint32_t len = rte_pktmbuf_pkt_len(m), data_len;
 	uint8_t output_text[IPSEC_TEXT_MAX_LEN];
+	const struct rte_mbuf *seg;
 	const uint8_t *output;
 	int ret;
 
+	memset(output_text, 0, IPSEC_TEXT_MAX_LEN);
+	/* Actual data in packet might be less in error cases,
+	 * hence take minimum of pkt_len and sum of data_len.
+	 * This is done to run through negative test cases.
+	 */
+	data_len = 0;
+	seg = m;
+	while (seg) {
+		data_len += seg->data_len;
+		seg = seg->next;
+	}
+	len = RTE_MIN(len, data_len);
 	/* Copy mbuf payload to continuous buffer */
 	output = rte_pktmbuf_read(m, 0, len, output_text);
 	if (output != output_text)

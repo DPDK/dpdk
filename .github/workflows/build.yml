@@ -18,6 +18,7 @@ jobs:
       ABI_CHECKS: ${{ contains(matrix.config.checks, 'abi') }}
       ASAN: ${{ contains(matrix.config.checks, 'asan') }}
       BUILD_32BIT: ${{ matrix.config.cross == 'i386' }}
+      BUILD_DEBUG: ${{ contains(matrix.config.checks, 'debug') }}
       BUILD_DOCS: ${{ contains(matrix.config.checks, 'doc') }}
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
@@ -39,7 +40,7 @@ jobs:
             mini: mini
           - os: ubuntu-20.04
             compiler: gcc
-            checks: abi+doc+tests
+            checks: abi+debug+doc+tests
           - os: ubuntu-20.04
             compiler: clang
             checks: asan+doc+tests
@@ -69,7 +70,7 @@ jobs:
       run: |
         echo 'ccache=ccache-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-'$(date -u +%Y-w%W) >> $GITHUB_OUTPUT
         echo 'libabigail=libabigail-${{ matrix.config.os }}' >> $GITHUB_OUTPUT
-        echo 'abi=abi-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-${{ env.LIBABIGAIL_VERSION }}-${{ env.REF_GIT_TAG }}' >> $GITHUB_OUTPUT
+        echo 'abi=abi-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-${{ env.REF_GIT_TAG }}' >> $GITHUB_OUTPUT
     - name: Retrieve ccache cache
       uses: actions/cache@v3
       with:

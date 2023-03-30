@@ -54,7 +54,7 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 		/* load buf_addr(lo 64bit) and buf_iova(hi 64bit) */
 		RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_iova) !=
 				offsetof(struct rte_mbuf, buf_addr) + 8);
@@ -62,7 +62,7 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 		vaddr0 = _mm_loadu_si128((__m128i *)&mb0->buf_addr);
 		vaddr1 = _mm_loadu_si128((__m128i *)&mb1->buf_addr);
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 		/* convert pa to dma_addr hdr/data */
 		dma_addr0 = _mm_unpackhi_epi64(vaddr0, vaddr0);
 		dma_addr1 = _mm_unpackhi_epi64(vaddr1, vaddr1);
@@ -105,7 +105,7 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 			mb6 = rxep[6].mbuf;
 			mb7 = rxep[7].mbuf;
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 			/* load buf_addr(lo 64bit) and buf_iova(hi 64bit) */
 			RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_iova) !=
 					offsetof(struct rte_mbuf, buf_addr) + 8);
@@ -142,7 +142,7 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 				_mm512_inserti64x4(_mm512_castsi256_si512(vaddr4_5),
 						   vaddr6_7, 1);
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 			/* convert pa to dma_addr hdr/data */
 			dma_addr0_3 = _mm512_unpackhi_epi64(vaddr0_3, vaddr0_3);
 			dma_addr4_7 = _mm512_unpackhi_epi64(vaddr4_7, vaddr4_7);
@@ -177,7 +177,7 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 			mb2 = rxep[2].mbuf;
 			mb3 = rxep[3].mbuf;
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 			/* load buf_addr(lo 64bit) and buf_iova(hi 64bit) */
 			RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_iova) !=
 					offsetof(struct rte_mbuf, buf_addr) + 8);
@@ -198,7 +198,7 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 				_mm256_inserti128_si256(_mm256_castsi128_si256(vaddr2),
 							vaddr3, 1);
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 			/* convert pa to dma_addr hdr/data */
 			dma_addr0_1 = _mm256_unpackhi_epi64(vaddr0_1, vaddr0_1);
 			dma_addr2_3 = _mm256_unpackhi_epi64(vaddr2_3, vaddr2_3);

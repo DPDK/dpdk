@@ -1,35 +1,35 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2015-2017 Netronome Systems, Inc. All rights reserved.
-    All rights reserved.
+    Copyright(c) 2021 Corigine, Inc. All rights reserved.
 
 NFP poll mode driver library
 ============================
 
-Netronome's sixth generation of flow processors pack 216 programmable
-cores and over 100 hardware accelerators that uniquely combine packet,
-flow, security and content processing in a single device that scales
+Netronome and Corigine's sixth generation of flow processors pack 216
+programmable cores and over 100 hardware accelerators that uniquely combine
+packet, flow, security and content processing in a single device that scales
 up to 400-Gb/s.
 
-This document explains how to use DPDK with the Netronome Poll Mode
-Driver (PMD) supporting Netronome's Network Flow Processor 6xxx
-(NFP-6xxx), Netronome's Network Flow Processor 4xxx (NFP-4xxx) and
-Netronome's Network Flow Processor 38xx (NFP-38xx).
+This document explains how to use DPDK with the Network Flow Processor (NFP)
+Poll Mode Driver (PMD) supporting Netronome and Corigine's NFP-6xxx, NFP-4xxx
+and NFP-38xx product lines.
 
-NFP is a SRIOV capable device and the PMD supports the physical
+NFP is a SR-IOV capable device and the PMD supports the physical
 function (PF) and the virtual functions (VFs).
 
 Dependencies
 ------------
 
-Before using the Netronome's DPDK PMD some NFP configuration,
+Before using the NFP DPDK PMD some NFP configuration,
 which is not related to DPDK, is required. The system requires
-installation of **Netronome's BSP (Board Support Package)** along
-with a specific NFP firmware application. Netronome's NSP ABI
+installation of the **nfp-bsp (Board Support Package)** along
+with a specific NFP firmware application. The NSP ABI
 version should be 0.20 or higher.
 
-If you have a NFP device you should already have the code and
-documentation for this configuration. Contact
-**support@netronome.com** to obtain the latest available firmware.
+If you have a NFP device you should already have the documentation to perform
+this configuration. Contact **support@netronome.com** (for Netronome products)
+or **smartnic-support@corigine.com** (for Corigine products) to obtain the
+latest available firmware.
 
 The NFP Linux netdev kernel driver for VFs has been a part of the
 vanilla kernel since kernel version 4.5, and support for the PF
@@ -44,9 +44,9 @@ Linux kernel driver.
 Building the software
 ---------------------
 
-Netronome's PMD code is provided in the **drivers/net/nfp** directory.
-Although NFP PMD has Netronome´s BSP dependencies, it is possible to
-compile it along with other DPDK PMDs even if no BSP was installed previously.
+The NFP PMD code is provided in the **drivers/net/nfp** directory. Although
+NFP PMD has BSP dependencies, it is possible to compile it along with other
+DPDK PMDs even if no BSP was installed previously.
 Of course, a DPDK app will require such a BSP installed for using the
 NFP PMD, along with a specific NFP firmware application.
 
@@ -57,27 +57,20 @@ the NFP PMD.
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document
+:ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` for details.
 
 Using the PF
 ------------
 
-NFP PMD supports using the NFP PF as another DPDK port, but it does not
-have any functionality for controlling VFs. In fact, it is not possible to use
-the PMD with the VFs if the PF is being used by DPDK, that is, with the NFP PF
-bound to ``igb_uio`` or ``vfio-pci`` kernel drivers. Future DPDK versions will
-have a PMD able to work with the PF and VFs at the same time and with the PF
-implementing VF management along with other PF-only functionalities/offloads.
-
 The PMD PF has extra work to do which will delay the DPDK app initialization
-like uploading the firmware and configure the Link state properly when starting or
-stopping a PF port. Since DPDK 18.05 the firmware upload happens when
+like uploading the firmware and configure the Link state properly when starting
+or stopping a PF port. Since DPDK 18.05 the firmware upload happens when
 a PF is initialized, which was not always true with older DPDK versions.
 
-Depending on the Netronome product installed in the system, firmware files
-should be available under ``/lib/firmware/netronome``. DPDK PMD supporting the
-PF looks for a firmware file in this order:
+Depending on the product installed in the system, firmware files should be
+available under ``/lib/firmware/netronome``. DPDK PMD supporting the PF looks
+for a firmware file in this order:
 
 	1) First try to find a firmware image specific for this device using the
 	   NFP serial number:
@@ -92,18 +85,22 @@ PF looks for a firmware file in this order:
 
 		nic_AMDA0099-0001_2x25.nffw
 
-Netronome's software packages install firmware files under ``/lib/firmware/netronome``
-to support all the Netronome's SmartNICs and different firmware applications.
-This is usually done using file names based on SmartNIC type and media and with a
-directory per firmware application. Options 1 and 2 for firmware filenames allow
-more than one SmartNIC, same type of SmartNIC or different ones, and to upload a
-different firmware to each SmartNIC.
+Netronome and Corigine's software packages install firmware files under
+``/lib/firmware/netronome`` to support all the Netronome and Corigine SmartNICs
+and different firmware applications. This is usually done using file names
+based on SmartNIC type and media and with a directory per firmware application.
+Options 1 and 2 for firmware filenames allow more than one SmartNIC, same type
+of SmartNIC or different ones, and to upload a different firmware to each
+SmartNIC.
 
    .. Note::
-      Currently the NFP PMD supports using the PF with Agilio Firmware with NFD3
-      and Agilio Firmware with NFDk. See https://help.netronome.com/support/solutions
+      Currently the NFP PMD supports using the PF with Agilio Firmware with
+      NFD3 and Agilio Firmware with NFDk. See
+      `Netronome Support <https://help.netronome.com/support/solutions>`_.
       for more information on the various firmwares supported by the Netronome
-      Agilio CX smartNIC.
+      Agilio SmartNIC range, or
+      `Corigine Support <https://www.corigine.com/productsOverviewList-30.html>`_.
+      for more information about Corigine's range.
 
 PF multiport support
 --------------------
@@ -114,11 +111,11 @@ firmware symbol during initialization to know how many can be used.
 
 DPDK apps work with ports, and a port is usually a PF or a VF PCI device.
 However, with the NFP PF multiport there is just one PF PCI device. Supporting
-this particular configuration requires the PMD to create ports in a special way,
-although once they are created, DPDK apps should be able to use them as normal
-PCI ports.
+this particular configuration requires the PMD to create ports in a special
+way, although once they are created, DPDK apps should be able to use them as
+normal PCI ports.
 
-NFP ports belonging to same PF can be seen inside PMD initialization with a
+NFP ports belonging to the same PF can be seen inside PMD initialization with a
 suffix added to the PCI ID: wwww:xx:yy.z_portn. For example, a PF with PCI ID
 0000:03:00.0 and four ports is seen by the PMD code as:
 
@@ -137,69 +134,88 @@ suffix added to the PCI ID: wwww:xx:yy.z_portn. For example, a PF with PCI ID
 PF multiprocess support
 -----------------------
 
-Due to how the driver needs to access the NFP through a CPP interface, which implies
-to use specific registers inside the chip, the number of secondary processes with PF
-ports is limited to only one.
+Due to how the driver needs to access the NFP through a CPP interface, which
+implies to use specific registers inside the chip, the number of secondary
+processes with PF ports is limited to only one.
 
-This limitation will be solved in future versions but having basic multiprocess support
-is important for allowing development and debugging through the PF using a secondary
-process which will create a CPP bridge for user space tools accessing the NFP.
+This limitation will be solved in future versions, but having basic
+multiprocess support is important for allowing development and debugging
+through the PF using a secondary process, which will create a CPP bridge
+for user space tools accessing the NFP.
 
 
 System configuration
 --------------------
 
 #. **Enable SR-IOV on the NFP device:** The current NFP PMD supports the PF and
-   the VFs on a NFP device. However, it is not possible to work with both at the
-   same time because the VFs require the PF being bound to the NFP PF Linux
-   netdev driver.  Make sure you are working with a kernel with NFP PF support or
-   get the drivers from the above Github repository and follow the instructions
-   for building and installing it.
-
-   VFs need to be enabled before they can be used with the PMD.
-   Before enabling the VFs it is useful to obtain information about the
-   current NFP PCI device detected by the system:
+   the VFs on a NFP device. However, it is not possible to work with both at
+   the same time when using the ``nfp`` Linux netdev kernel driver. If the PF
+   is bound to the ``nfp`` kernel module, and VFs are created, the VFs may be
+   bound to the ``vfio-pci`` kernel module. It is also possible to bind the PF
+   to the ``vfio-pci`` kernel module, and create VFs afterwards. This requires
+   loading the ``vfio-pci`` module with the following parameters:
 
    .. code-block:: console
 
-      lspci -d19ee:
+      modprobe vfio-pci enable_sriov=1 disable_idle_d3=1
 
-   Now, for example, configure two virtual functions on a NFP-6xxx device
+   VFs need to be enabled before they can be used with the PMD. Before enabling
+   the VFs it is useful to obtain information about the current NFP PCI device
+   detected by the system. This can be done on Netronome SmartNICs using:
+
+   .. code-block:: console
+
+      lspci -d 19ee:
+
+   and on Corigine SmartNICs using:
+
+   .. code-block:: console
+
+      lspci -d 1da8:
+
+   Now, for example, to configure two virtual functions on a NFP device
    whose PCI system identity is "0000:03:00.0":
 
    .. code-block:: console
 
       echo 2 > /sys/bus/pci/devices/0000:03:00.0/sriov_numvfs
 
-   The result of this command may be shown using lspci again:
+   The result of this command may be shown using lspci again on Netronome
+   SmartNICs:
 
    .. code-block:: console
 
-      lspci -d19ee: -k
+      lspci -kd 19ee:
+
+   and on Corigine SmartNICs:
+
+   .. code-block:: console
+
+      lspci -kd 1da8:
 
    Two new PCI devices should appear in the output of the above command. The
-   -k option shows the device driver, if any, that devices are bound to.
-   Depending on the modules loaded at this point the new PCI devices may be
-   bound to nfp_netvf driver.
+   -k option shows the device driver, if any, that the devices are bound to.
+   Depending on the modules loaded, at this point the new PCI devices may be
+   bound to the ``nfp`` kernel driver or ``vfio-pci``.
 
 
 Flow offload
 ------------
 
-Use the flower firmware application, some type of Netronome's SmartNICs can
-offload the flow into cards.
+Using the flower firmware application, some types of Netronome or Corigine
+SmartNICs can offload the flows onto the cards.
 
 The flower firmware application requires the PMD running two services:
 
 	* PF vNIC service: handling the feedback traffic.
 	* ctrl vNIC service: communicate between PMD and firmware through
-	  control message.
+	  control messages.
 
 To achieve the offload of flow, the representor ports are exposed to OVS.
-The flower firmware application support representor port for VF and physical
+The flower firmware application supports representor port for VF and physical
 port. There will always exist a representor port for each physical port,
 and the number of the representor port for VF is specified by the user through
-parameter.
+a parameter.
 
 In the Rx direction, the flower firmware application will prepend the input
 port information into metadata for each packet which can't offloaded. The PF
@@ -207,12 +223,12 @@ vNIC service will keep polling packets from the firmware, and multiplex them
 to the corresponding representor port.
 
 In the Tx direction, the representor port will prepend the output port
-information into metadata for each packet, and then send it to firmware through
-PF vNIC.
+information into metadata for each packet, and then send it to the firmware
+through the PF vNIC.
 
-The ctrl vNIC service handling various control message, like the creation and
-configuration of representor port, the pattern and action of flow rules, the
-statistics of flow rules, and so on.
+The ctrl vNIC service handles various control messages, for example, the
+creation and configuration of representor port, the pattern and action of flow
+rules, the statistics of flow rules, etc.
 
 Metadata Format
 ---------------

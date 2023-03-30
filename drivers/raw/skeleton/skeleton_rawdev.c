@@ -428,7 +428,7 @@ static int skeleton_rawdev_enqueue_bufs(struct rte_rawdev *dev,
 	 * help in complex implementation which require more information than
 	 * just an integer - for example, a queue-pair.
 	 */
-	q_id = *((int *)context);
+	q_id = *((uint16_t *)context);
 
 	for (i = 0; i < count; i++)
 		queue_buf[q_id].bufs[i] = buffers[i]->buf_addr;
@@ -450,7 +450,7 @@ static int skeleton_rawdev_dequeue_bufs(struct rte_rawdev *dev,
 	 * help in complex implementation which require more information than
 	 * just an integer - for example, a queue-pair.
 	 */
-	q_id = *((int *)context);
+	q_id = *((uint16_t *)context);
 
 	for (i = 0; i < count; i++)
 		buffers[i]->buf_addr = queue_buf[q_id].bufs[i];
@@ -664,6 +664,8 @@ skeldev_get_selftest(const char *key __rte_unused,
 		     void *opaque)
 {
 	int *flag = opaque;
+	if (value == NULL || opaque == NULL)
+		return -EINVAL;
 	*flag = atoi(value);
 	return 0;
 }

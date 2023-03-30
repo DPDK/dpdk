@@ -32,6 +32,7 @@
 #define OTX_EP_PCI_RING_ALIGN   65536
 #define SDP_PKIND 40
 #define SDP_OTX2_PKIND 57
+#define SDP_OTX2_PKIND_FS0 0
 
 #define      ORDERED_TAG 0
 #define      ATOMIC_TAG  1

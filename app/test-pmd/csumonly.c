@@ -828,7 +828,7 @@ pkts_ip_csum_recalc(struct rte_mbuf **pkts_burst, const uint16_t nb_pkts, uint64
  * IP, UDP, TCP and SCTP flags always concern the inner layer. The
  * OUTER_IP is only useful for tunnel packets.
  */
-static void
+static bool
 pkt_burst_checksum_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -847,30 +847,21 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint8_t gro_enable;
 #endif
 	uint16_t nb_rx;
-	uint16_t nb_tx;
 	uint16_t nb_prep;
 	uint16_t i;
 	uint64_t rx_ol_flags, tx_ol_flags;
 	uint64_t tx_offloads;
-	uint32_t retry;
 	uint32_t rx_bad_ip_csum;
 	uint32_t rx_bad_l4_csum;
 	uint32_t rx_bad_outer_l4_csum;
 	uint32_t rx_bad_outer_ip_csum;
 	struct testpmd_offload_info info;
 
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
-
 	/* receive a burst of packet */
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
-				 nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 
-	fs->rx_packets += nb_rx;
 	rx_bad_ip_csum = 0;
 	rx_bad_l4_csum = 0;
 	rx_bad_outer_l4_csum = 0;
@@ -1168,58 +1159,26 @@ tunnel_update:
 
 	nb_prep = rte_eth_tx_prepare(fs->tx_port, fs->tx_queue,
 			tx_pkts_burst, nb_rx);
-	if (nb_prep != nb_rx)
+	if (nb_prep != nb_rx) {
 		fprintf(stderr,
 			"Preparing packet burst to transmit failed: %s\n",
 			rte_strerror(rte_errno));
-
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, tx_pkts_burst,
-			nb_prep);
-
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&tx_pkts_burst[nb_tx], nb_rx - nb_tx);
-		}
+		fs->fwd_dropped += (nb_rx - nb_prep);
+		rte_pktmbuf_free_bulk(&tx_pkts_burst[nb_prep], nb_rx - nb_prep);
 	}
-	fs->tx_packets += nb_tx;
+
+	common_fwd_stream_transmit(fs, tx_pkts_burst, nb_prep);
+
 	fs->rx_bad_ip_csum += rx_bad_ip_csum;
 	fs->rx_bad_l4_csum += rx_bad_l4_csum;
 	fs->rx_bad_outer_l4_csum += rx_bad_outer_l4_csum;
 	fs->rx_bad_outer_ip_csum += rx_bad_outer_ip_csum;
 
-	inc_tx_burst_stats(fs, nb_tx);
-	if (unlikely(nb_tx < nb_rx)) {
-		fs->fwd_dropped += (nb_rx - nb_tx);
-		do {
-			rte_pktmbuf_free(tx_pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_rx);
-	}
-
-	get_end_cycles(fs, start_tsc);
-}
-
-static void
-stream_init_checksum_forward(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
+	return true;
 }
 
 struct fwd_engine csum_fwd_engine = {
 	.fwd_mode_name  = "csum",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = stream_init_checksum_forward,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = pkt_burst_checksum_forward,
 };

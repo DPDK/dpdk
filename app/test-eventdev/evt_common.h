@@ -47,9 +47,12 @@ enum evt_prod_type {
 
 struct evt_options {
 #define EVT_TEST_NAME_MAX_LEN     32
+#define EVT_CRYPTO_MAX_KEY_SIZE   256
+#define EVT_CRYPTO_MAX_IV_SIZE    16
 	char test_name[EVT_TEST_NAME_MAX_LEN];
 	bool plcores[RTE_MAX_LCORE];
 	bool wlcores[RTE_MAX_LCORE];
+	bool crypto_cipher_bit_mode;
 	int pool_sz;
 	int socket_id;
 	int nb_stages;
@@ -64,12 +67,14 @@ struct evt_options {
 	uint16_t wkr_deq_dep;
 	uint16_t vector_size;
 	uint16_t eth_queues;
+	uint16_t crypto_cipher_iv_sz;
 	uint32_t nb_flows;
 	uint32_t tx_first;
 	uint16_t tx_pkt_sz;
 	uint32_t max_pkt_sz;
 	uint32_t prod_enq_burst_sz;
 	uint32_t deq_tmo_nsec;
+	uint32_t crypto_cipher_key_sz;
 	uint32_t q_priority:1;
 	uint32_t fwd_latency:1;
 	uint32_t ena_vector : 1;
@@ -83,6 +88,8 @@ struct evt_options {
 	enum evt_prod_type prod_type;
 	enum rte_event_crypto_adapter_mode crypto_adptr_mode;
 	enum rte_crypto_op_type crypto_op_type;
+	enum rte_crypto_cipher_algorithm crypto_cipher_alg;
+	uint8_t crypto_cipher_key[EVT_CRYPTO_MAX_KEY_SIZE];
 };
 
 static inline bool

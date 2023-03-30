@@ -328,6 +328,7 @@ struct roc_nix_rq {
 	struct roc_nix *roc_nix;
 	uint64_t meta_aura_handle;
 	uint16_t inl_dev_refs;
+	uint8_t tc;
 };
 
 struct roc_nix_cq {
@@ -433,12 +434,17 @@ struct roc_nix {
 	uint32_t dwrr_mtu;
 	bool ipsec_out_sso_pffunc;
 	bool custom_sa_action;
+	bool local_meta_aura_ena;
+	uint32_t meta_buf_sz;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
 	bool io_enabled;
 	bool rx_ptp_ena;
 	uint16_t cints;
+	uint32_t buf_sz;
+	uint64_t meta_aura_handle;
+	uintptr_t meta_mempool;
 
 #define ROC_NIX_MEM_SZ (6 * 1056)
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;

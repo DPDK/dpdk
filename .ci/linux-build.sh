@@ -65,6 +65,12 @@ if [ "$RISCV64" = "true" ]; then
     cross_file=config/riscv/riscv64_linux_gcc
 fi
 
+buildtype=debugoptimized
+
+if [ "$BUILD_DEBUG" = "true" ]; then
+    buildtype=debug
+fi
+
 if [ "$BUILD_DOCS" = "true" ]; then
     OPTS="$OPTS -Denable_docs=true"
 fi
@@ -85,7 +91,7 @@ fi
 
 OPTS="$OPTS -Dplatform=generic"
 OPTS="$OPTS -Ddefault_library=$DEF_LIB"
-OPTS="$OPTS -Dbuildtype=debugoptimized"
+OPTS="$OPTS -Dbuildtype=$buildtype"
 OPTS="$OPTS -Dcheck_includes=true"
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
@@ -124,8 +130,6 @@ fi
 if [ "$ABI_CHECKS" = "true" ]; then
     if [ "$(cat libabigail/VERSION 2>/dev/null)" != "$LIBABIGAIL_VERSION" ]; then
         rm -rf libabigail
-        # if we change libabigail, invalidate existing abi cache
-        rm -rf reference
     fi
 
     if [ ! -d libabigail ]; then
@@ -147,7 +151,6 @@ if [ "$ABI_CHECKS" = "true" ]; then
         meson setup $OPTS -Dexamples= $refsrcdir $refsrcdir/build
         ninja -C $refsrcdir/build
         DESTDIR=$(pwd)/reference ninja -C $refsrcdir/build install
-        devtools/gen-abi.sh reference
         find reference/usr/local -name '*.a' -delete
         rm -rf reference/usr/local/bin
         rm -rf reference/usr/local/share
@@ -155,7 +158,6 @@ if [ "$ABI_CHECKS" = "true" ]; then
     fi
 
     DESTDIR=$(pwd)/install ninja -C build install
-    devtools/gen-abi.sh install
     devtools/check-abi.sh reference install ${ABI_CHECKS_WARN_ONLY:-}
 fi
 

@@ -323,7 +323,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 /*
  * Transmit a burst of multi-segments packets.
  */
-static void
+static bool
 pkt_burst_transmit(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -334,12 +334,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
 	uint16_t vlan_tci, vlan_tci_outer;
-	uint32_t retry;
 	uint64_t ol_flags = 0;
 	uint64_t tx_offloads;
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
 
 	mbp = current_fwd_lcore()->mbp;
 	txp = &ports[fs->tx_port];
@@ -392,27 +388,13 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	}
 
 	if (nb_pkt == 0)
-		return;
+		return false;
 
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
-
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_pkt) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_pkt && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_pkt - nb_tx);
-		}
-	}
-	fs->tx_packets += nb_tx;
+	nb_tx = common_fwd_stream_transmit(fs, pkts_burst, nb_pkt);
 
 	if (txonly_multi_flow)
 		RTE_PER_LCORE(_ip_var) -= nb_pkt - nb_tx;
 
-	inc_tx_burst_stats(fs, nb_tx);
 	if (unlikely(nb_tx < nb_pkt)) {
 		if (verbose_level > 0 && fs->fwd_dropped == 0)
 			printf("port %d tx_queue %d - drop "
@@ -420,13 +402,9 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			       fs->tx_port, fs->tx_queue,
 			       (unsigned) nb_pkt, (unsigned) nb_tx,
 			       (unsigned) (nb_pkt - nb_tx));
-		fs->fwd_dropped += (nb_pkt - nb_tx);
-		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_pkt);
 	}
 
-	get_end_cycles(fs, start_tsc);
+	return true;
 }
 
 static int
@@ -513,7 +491,6 @@ tx_only_stream_init(struct fwd_stream *fs)
 struct fwd_engine tx_only_engine = {
 	.fwd_mode_name  = "txonly",
 	.port_fwd_begin = tx_only_begin,
-	.port_fwd_end   = NULL,
 	.stream_init    = tx_only_stream_init,
 	.packet_fwd     = pkt_burst_transmit,
 };

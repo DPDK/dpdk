@@ -45,7 +45,7 @@ static int test_resource_c(void)
 			r->name);
 
 	TEST_ASSERT_SUCCESS(resource_fwrite_file(r, "test_resource.c"),
-			"Failed to to write file %s", r->name);
+			"Failed to write file %s", r->name);
 
 	f = fopen("test_resource.c", "r");
 	TEST_ASSERT_NOT_NULL(f,

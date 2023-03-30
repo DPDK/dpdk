@@ -444,12 +444,15 @@ rxq_sync_cq(struct mlx5_rxq_data *rxq)
 			continue;
 		}
 		/* Compute the next non compressed CQE. */
-		rxq->cq_ci += rte_be_to_cpu_32(cqe->byte_cnt);
+		rxq->cq_ci += rxq->cqe_comp_layout ?
+			(MLX5_CQE_NUM_MINIS(cqe->op_own) + 1U) :
+			rte_be_to_cpu_32(cqe->byte_cnt);
 
 	} while (--i);
 	/* Move all CQEs to HW ownership, including possible MiniCQEs. */
 	for (i = 0; i < cqe_n; i++) {
 		cqe = &(*rxq->cqes)[i];
+		cqe->validity_iteration_count = MLX5_CQE_VIC_INIT;
 		cqe->op_own = MLX5_CQE_INVALIDATE;
 	}
 	/* Resync CQE and WQE (WQ in RESET state). */

@@ -255,7 +255,10 @@ void mlx5dr_send_engine_flush_queue(struct mlx5dr_send_engine *queue);
 
 static inline bool mlx5dr_send_engine_empty(struct mlx5dr_send_engine *queue)
 {
-	return (queue->send_ring->send_sq.cur_post == queue->send_ring->send_cq.poll_wqe);
+	struct mlx5dr_send_ring_sq *send_sq = &queue->send_ring->send_sq;
+	struct mlx5dr_send_ring_cq *send_cq = &queue->send_ring->send_cq;
+
+	return ((send_sq->cur_post & send_sq->buf_mask) == send_cq->poll_wqe);
 }
 
 static inline bool mlx5dr_send_engine_full(struct mlx5dr_send_engine *queue)

@@ -89,7 +89,6 @@ uint32_t enabled_port_mask;
 
 /* Used only in exact match mode. */
 int ipv6; /**< ipv6 is false by default. */
-uint32_t hash_entry_number = HASH_ENTRY_NUMBER_DEFAULT;
 
 struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
@@ -395,7 +394,6 @@ print_usage(const char *prgname)
 		" [--eth-dest=X,MM:MM:MM:MM:MM:MM]"
 		" [--max-pkt-len PKTLEN]"
 		" [--no-numa]"
-		" [--hash-entry-num]"
 		" [--ipv6]"
 		" [--parse-ptype]"
 		" [--per-port-pool]"
@@ -419,7 +417,6 @@ print_usage(const char *prgname)
 		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: Ethernet destination for port X\n"
 		"  --max-pkt-len PKTLEN: maximum packet length in decimal (64-9600)\n"
 		"  --no-numa: Disable numa awareness\n"
-		"  --hash-entry-num: Specify the hash entry number in hexadecimal to be setup\n"
 		"  --ipv6: Set if running ipv6 packets\n"
 		"  --parse-ptype: Set to use software to analyze packet type\n"
 		"  --per-port-pool: Use separate buffer pool per port\n"
@@ -477,22 +474,6 @@ parse_portmask(const char *portmask)
 		return 0;
 
 	return pm;
-}
-
-static int
-parse_hash_entry_number(const char *hash_entry_num)
-{
-	char *end = NULL;
-	unsigned long hash_en;
-	/* parse hexadecimal string */
-	hash_en = strtoul(hash_entry_num, &end, 16);
-	if ((hash_entry_num[0] == '\0') || (end == NULL) || (*end != '\0'))
-		return -1;
-
-	if (hash_en == 0)
-		return -1;
-
-	return hash_en;
 }
 
 static int
@@ -852,14 +833,7 @@ parse_args(int argc, char **argv)
 			break;
 
 		case CMD_LINE_OPT_HASH_ENTRY_NUM_NUM:
-			ret = parse_hash_entry_number(optarg);
-			if ((ret > 0) && (ret <= L3FWD_HASH_ENTRIES)) {
-				hash_entry_number = ret;
-			} else {
-				fprintf(stderr, "invalid hash entry number\n");
-				print_usage(prgname);
-				return -1;
-			}
+			fprintf(stderr, "Hash entry number will be ignored\n");
 			break;
 
 		case CMD_LINE_OPT_PARSE_PTYPE_NUM:
@@ -961,16 +935,6 @@ parse_args(int argc, char **argv)
 	if (lookup_mode == L3FWD_LOOKUP_DEFAULT) {
 		fprintf(stderr, "Neither ACL, LPM, EM, or FIB selected, defaulting to LPM\n");
 		lookup_mode = L3FWD_LOOKUP_LPM;
-	}
-
-	/*
-	 * ipv6 and hash flags are valid only for
-	 * exact match, reset them to default for
-	 * longest-prefix match.
-	 */
-	if (lookup_mode == L3FWD_LOOKUP_LPM) {
-		ipv6 = 0;
-		hash_entry_number = HASH_ENTRY_NUMBER_DEFAULT;
 	}
 
 	/* For ACL, update port config rss hash filter */

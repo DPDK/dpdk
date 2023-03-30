@@ -17,7 +17,8 @@
 #include "otx_ep_rxtx.h"
 
 /* SDP_LENGTH_S specifies packet length and is of 8-byte size */
-#define INFO_SIZE 8
+#define OTX_EP_INFO_SIZE 8
+#define OTX_EP_FSZ_FS0 0
 #define DROQ_REFILL_THRESHOLD 16
 
 static void
@@ -678,7 +679,7 @@ otx2_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 	iqcmd2.irh.u64 = 0;
 
 	/* ih invars */
-	iqcmd2.ih.s.fsz = OTX2_EP_FSZ;
+	iqcmd2.ih.s.fsz = OTX_EP_FSZ_FS0;
 	iqcmd2.ih.s.pkind = otx_ep->pkind; /* The SDK decided PKIND value */
 	/* irh invars */
 	iqcmd2.irh.s.opcode = OTX_EP_NW_PKT_OP;
@@ -875,12 +876,11 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
 
 	info->length = rte_bswap64(info->length);
 	/* Deduce the actual data size */
-	total_pkt_len = info->length + INFO_SIZE;
+	total_pkt_len = info->length + OTX_EP_INFO_SIZE;
 	if (total_pkt_len <= droq->buffer_size) {
-		info->length -=  OTX_EP_RH_SIZE;
 		droq_pkt  = droq->recv_buf_list[droq->read_idx];
 		if (likely(droq_pkt != NULL)) {
-			droq_pkt->data_off += OTX_EP_DROQ_INFO_SIZE;
+			droq_pkt->data_off += OTX_EP_INFO_SIZE;
 			/* otx_ep_dbg("OQ: pkt_len[%ld], buffer_size %d\n",
 			 * (long)info->length, droq->buffer_size);
 			 */
@@ -917,11 +917,11 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
 				droq_pkt->port = otx_ep->port_id;
 				if (!pkt_len) {
 					droq_pkt->data_off +=
-						OTX_EP_DROQ_INFO_SIZE;
+						OTX_EP_INFO_SIZE;
 					droq_pkt->pkt_len =
-						cpy_len - OTX_EP_DROQ_INFO_SIZE;
+						cpy_len - OTX_EP_INFO_SIZE;
 					droq_pkt->data_len =
-						cpy_len - OTX_EP_DROQ_INFO_SIZE;
+						cpy_len - OTX_EP_INFO_SIZE;
 				} else {
 					droq_pkt->pkt_len = cpy_len;
 					droq_pkt->data_len = cpy_len;

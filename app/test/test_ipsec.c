@@ -943,7 +943,7 @@ crypto_ipsec_4grp(uint32_t pkt_num)
 {
 	uint32_t sa_ind;
 
-	/* group packets in 4 different size groups groups, 2 per SA */
+	/* group packets in 4 different size groups, 2 per SA */
 	if (pkt_num < PKT_4)
 		sa_ind = 0;
 	else if (pkt_num < PKT_12)

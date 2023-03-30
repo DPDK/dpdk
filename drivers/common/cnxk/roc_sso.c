@@ -414,14 +414,16 @@ roc_sso_hwgrp_hws_link_status(struct roc_sso *roc_sso, uint8_t hws,
 }
 
 int
-roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos,
-			 uint8_t nb_qos)
+roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos, uint16_t nb_qos)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct dev *dev = &sso->dev;
 	struct sso_grp_qos_cfg *req;
 	struct mbox *mbox;
 	int i, rc;
+
+	if (!nb_qos)
+		return 0;
 
 	mbox = mbox_get(dev->mbox);
 	for (i = 0; i < nb_qos; i++) {
@@ -745,6 +747,49 @@ sso_update_msix_vec_count(struct roc_sso *roc_sso, uint16_t sso_vec_cnt)
 	if (npa_vec_cnt)
 		rc = npa_register_irqs(&dev->npa);
 
+	return rc;
+}
+
+int
+roc_sso_hwgrp_stash_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_stash *stash,
+			   uint16_t nb_stash)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_grp_stash_cfg *req;
+	struct dev *dev = &sso->dev;
+	struct mbox *mbox;
+	int i, rc;
+
+	if (!nb_stash)
+		return 0;
+
+	mbox = mbox_get(dev->mbox);
+	for (i = 0; i < nb_stash; i++) {
+		req = mbox_alloc_msg_sso_grp_stash_config(mbox);
+		if (req == NULL) {
+			rc = mbox_process(mbox);
+			if (rc) {
+				rc = -EIO;
+				goto fail;
+			}
+
+			req = mbox_alloc_msg_sso_grp_stash_config(mbox);
+			if (req == NULL) {
+				rc = -ENOSPC;
+				goto fail;
+			}
+		}
+		req->ena = true;
+		req->grp = stash[i].hwgrp;
+		req->offset = stash[i].stash_offset;
+		req->num_linesm1 = stash[i].stash_count - 1;
+	}
+
+	rc = mbox_process(mbox);
+	if (rc)
+		rc = -EIO;
+fail:
+	mbox_put(mbox);
 	return rc;
 }
 

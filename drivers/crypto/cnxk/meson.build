@@ -32,4 +32,4 @@ else
     cflags += [ '-ULA_IPSEC_DEBUG','-UCNXK_CRYPTODEV_DEBUG' ]
 endif
 
-pmd_supports_disable_iova_as_pa = true
+require_iova_in_mbuf = false

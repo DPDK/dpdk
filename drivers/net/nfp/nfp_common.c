@@ -52,6 +52,58 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
+static const uint32_t nfp_net_link_speed_nfp2rte[] = {
+	[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,
+	[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = RTE_ETH_SPEED_NUM_NONE,
+	[NFP_NET_CFG_STS_LINK_RATE_1G]          = RTE_ETH_SPEED_NUM_1G,
+	[NFP_NET_CFG_STS_LINK_RATE_10G]         = RTE_ETH_SPEED_NUM_10G,
+	[NFP_NET_CFG_STS_LINK_RATE_25G]         = RTE_ETH_SPEED_NUM_25G,
+	[NFP_NET_CFG_STS_LINK_RATE_40G]         = RTE_ETH_SPEED_NUM_40G,
+	[NFP_NET_CFG_STS_LINK_RATE_50G]         = RTE_ETH_SPEED_NUM_50G,
+	[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
+};
+
+static uint16_t
+nfp_net_link_speed_rte2nfp(uint16_t speed)
+{
+	uint16_t i;
+
+	for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
+		if (speed == nfp_net_link_speed_nfp2rte[i])
+			return i;
+	}
+
+	return NFP_NET_CFG_STS_LINK_RATE_UNKNOWN;
+}
+
+static void
+nfp_net_notify_port_speed(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+	struct nfp_eth_table *eth_table;
+	uint32_t nn_link_status;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	eth_table = hw->pf_dev->nfp_eth_table;
+
+	/**
+	 * Read the link status from NFP_NET_CFG_STS. If the link is down
+	 * then write the link speed NFP_NET_CFG_STS_LINK_RATE_UNKNOWN to
+	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
+	 */
+	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
+	if ((nn_link_status & NFP_NET_CFG_STS_LINK) == 0) {
+		nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE, NFP_NET_CFG_STS_LINK_RATE_UNKNOWN);
+		return;
+	}
+	/**
+	 * Link is up so read the link speed from the eth_table and write to
+	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
+	 */
+	nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE,
+		      nfp_net_link_speed_rte2nfp(eth_table->ports[hw->idx].speed));
+}
+
 static int
 __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 {
@@ -110,6 +162,9 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 
 	PMD_DRV_LOG(DEBUG, "nfp_net_reconfig: ctrl=%08x update=%08x",
 		    ctrl, update);
+
+	if (hw->pf_dev != NULL && hw->pf_dev->app_fw_id == NFP_APP_FW_CORE_NIC)
+		nfp_net_notify_port_speed(hw->eth_dev);
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
@@ -171,7 +226,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Checking RX mode */
-	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS &&
+	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG &&
 	    !(hw->cap & NFP_NET_CFG_CTRL_RSS_ANY)) {
 		PMD_INIT_LOG(INFO, "RSS not supported");
 		return -EINVAL;
@@ -538,27 +593,15 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 {
 	struct nfp_net_hw *hw;
 	struct rte_eth_link link;
-	struct nfp_eth_table *nfp_eth_table;
-	uint32_t nn_link_status;
-	uint32_t i;
+	uint16_t nn_link_status;
 	int ret;
-
-	static const uint32_t ls_to_ethtool[] = {
-		[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = RTE_ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_1G]          = RTE_ETH_SPEED_NUM_1G,
-		[NFP_NET_CFG_STS_LINK_RATE_10G]         = RTE_ETH_SPEED_NUM_10G,
-		[NFP_NET_CFG_STS_LINK_RATE_25G]         = RTE_ETH_SPEED_NUM_25G,
-		[NFP_NET_CFG_STS_LINK_RATE_40G]         = RTE_ETH_SPEED_NUM_40G,
-		[NFP_NET_CFG_STS_LINK_RATE_50G]         = RTE_ETH_SPEED_NUM_50G,
-		[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
-	};
 
 	PMD_DRV_LOG(DEBUG, "Link update");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	nn_link_status = nn_cfg_readl(hw, NFP_NET_CFG_STS);
+	/* Read link status */
+	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
 
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
@@ -567,28 +610,17 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
-	if (hw->pf_dev != NULL) {
-		nfp_eth_table = hw->pf_dev->nfp_eth_table;
-		if (nfp_eth_table != NULL) {
-			link.link_speed = nfp_eth_table->ports[hw->idx].speed;
-			for (i = 0; i < RTE_DIM(ls_to_ethtool); i++) {
-				if (ls_to_ethtool[i] == link.link_speed)
-					break;
-			}
-			if (i == RTE_DIM(ls_to_ethtool))
-				link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-		} else {
-			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-		}
-	} else {
-		nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
-				NFP_NET_CFG_STS_LINK_RATE_MASK;
+	/**
+	 * Shift and mask nn_link_status so that it is effectively the value
+	 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
+	 */
+	nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
+			 NFP_NET_CFG_STS_LINK_RATE_MASK;
 
-		if (nn_link_status >= RTE_DIM(ls_to_ethtool))
-			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-		else
-			link.link_speed = ls_to_ethtool[nn_link_status];
-	}
+	if (nn_link_status >= RTE_DIM(nfp_net_link_speed_nfp2rte))
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	else
+		link.link_speed = nfp_net_link_speed_nfp2rte[nn_link_status];
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == 0) {
@@ -930,9 +962,11 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
 						   RTE_ETH_RSS_NONFRAG_IPV4_TCP |
 						   RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+						   RTE_ETH_RSS_NONFRAG_IPV4_SCTP |
 						   RTE_ETH_RSS_IPV6 |
 						   RTE_ETH_RSS_NONFRAG_IPV6_TCP |
-						   RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+						   RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+						   RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 
 		dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
 		dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
@@ -1124,9 +1158,9 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	/* MTU larger then current mbufsize not supported */
+	/* MTU larger than current mbufsize not supported */
 	if (mtu > hw->flbufsz) {
-		PMD_DRV_LOG(ERR, "MTU (%u) larger then current mbufsize (%u) not supported",
+		PMD_DRV_LOG(ERR, "MTU (%u) larger than current mbufsize (%u) not supported",
 			    mtu, hw->flbufsz);
 		return -ERANGE;
 	}
@@ -1336,6 +1370,9 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_UDP;
 
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_SCTP;
+
 	if (rss_hf & RTE_ETH_RSS_IPV6)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6;
 
@@ -1344,6 +1381,9 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 
 	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_UDP;
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_SCTP;
 
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_MASK;
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_TOEPLITZ;
@@ -1412,7 +1452,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+		rss_hf |= RTE_ETH_RSS_IPV4;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
@@ -1427,7 +1467,13 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+		rss_hf |= RTE_ETH_RSS_IPV6;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_SCTP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_SCTP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 
 	/* Propagate current RSS hash functions to caller */
 	rss_conf->rss_hf = rss_hf;
@@ -1566,9 +1612,47 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
 	return ret;
 }
 
-RTE_LOG_REGISTER_SUFFIX(nfp_logtype_init, init, NOTICE);
-RTE_LOG_REGISTER_SUFFIX(nfp_logtype_driver, driver, NOTICE);
-RTE_LOG_REGISTER_SUFFIX(nfp_logtype_cpp, cpp, NOTICE);
+/*
+ * The firmware with NFD3 can not handle DMA address requiring more
+ * than 40 bits
+ */
+int
+nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name)
+{
+	if (NFD_CFG_CLASS_VER_of(hw->ver) == NFP_NET_CFG_VERSION_DP_NFD3 &&
+			rte_mem_check_dma_mask(40) != 0) {
+		PMD_DRV_LOG(ERR,
+			"The device %s can't be used: restricted dma mask to 40 bits!",
+			name);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+void
+nfp_net_init_metadata_format(struct nfp_net_hw *hw)
+{
+	/*
+	 * ABI 4.x and ctrl vNIC always use chained metadata, in other cases we allow use of
+	 * single metadata if only RSS(v1) is supported by hw capability, and RSS(v2)
+	 * also indicate that we are using chained metadata.
+	 */
+	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) == 4) {
+		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
+	} else if ((hw->cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
+		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
+		/*
+		 * RSS is incompatible with chained metadata. hw->cap just represents
+		 * firmware's ability rather than the firmware's configuration. We decide
+		 * to reduce the confusion to allow us can use hw->cap to identify RSS later.
+		 */
+		hw->cap &= ~NFP_NET_CFG_CTRL_RSS;
+	} else {
+		hw->meta_format = NFP_NET_METAFORMAT_SINGLE;
+	}
+}
+
 /*
  * Local variables:
  * c-file-style: "Linux"

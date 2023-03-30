@@ -41,68 +41,26 @@
  * This is the fastest possible forwarding operation, as it does not access
  * to packets data.
  */
-static void
+static bool
 pkt_burst_io_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	uint16_t nb_rx;
-	uint16_t nb_tx;
-	uint32_t retry;
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
 
 	/*
 	 * Receive a burst of packets and forward them.
 	 */
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue,
-			pkts_burst, nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
-		return;
-	fs->rx_packets += nb_rx;
+		return false;
 
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-			pkts_burst, nb_rx);
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_rx - nb_tx);
-		}
-	}
-	fs->tx_packets += nb_tx;
-	inc_tx_burst_stats(fs, nb_tx);
-	if (unlikely(nb_tx < nb_rx)) {
-		fs->fwd_dropped += (nb_rx - nb_tx);
-		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_rx);
-	}
+	common_fwd_stream_transmit(fs, pkts_burst, nb_rx);
 
-	get_end_cycles(fs, start_tsc);
-}
-
-static void
-stream_init_forward(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
+	return true;
 }
 
 struct fwd_engine io_fwd_engine = {
 	.fwd_mode_name  = "io",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = stream_init_forward,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = pkt_burst_io_forward,
 };

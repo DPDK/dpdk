@@ -68,10 +68,17 @@ New Features
   * Applications can register a callback at startup via
     ``rte_lcore_register_usage_cb()`` to provide lcore usage information.
 
+* **Added platform bus support.**
+
+  A platform bus provides a way to use Linux platform devices which
+  are compatible with vfio-platform kernel driver.
+
 * **Added ARM support for power monitor in the power management library.**
 
   Added power monitor and wake up API support
   with WFE/SVE instructions for Arm architecture.
+
+* **Added Ethernet link speed for 400 Gb/s.**
 
 * **Added support for mapping a queue with an aggregated port.**
 
@@ -143,6 +150,12 @@ New Features
   * Added support for meter options.
   * Added support for rte_flow meter action.
 
+* **Added Intel cpfl driver.**
+
+  Added the new cpfl net driver
+  for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
+  See the :doc:`../nics/cpfl` NIC guide for more details on this new driver.
+
 * **Updated Intel igc driver.**
 
   * Added support for timesync API.
@@ -155,6 +168,8 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added support for matching on ICMPv6 ID and sequence fields.
+  * Added support for MPLSoUDP in hardware steering.
+  * Added support for enhanced CQE compression layout.
 
 * **Updated Wangxun ngbe driver.**
 
@@ -182,6 +197,21 @@ New Features
 * **Added LZ4 algorithm in compressdev library.**
 
   Added LZ4 compression algorithm with xxHash-32 for the checksum.
+
+* **Updated NVIDIA mlx5 compress driver.**
+
+  Added LZ4 algorithm support for decompress operation.
+
+* **Added machine learning inference device library.**
+
+  * Added a machine learning inference device framework for management
+    and provision of hardware and software machine learning inference devices.
+  * Added a test application for machine learning inference device library.
+
+* **Added Marvell CNXK machine learning driver.**
+
+  Added driver which supports machine learning inference operations
+  on Marvell's CN10K series of SoC's.
 
 * **Updated the eventdev reconfigure logic for service based adapters.**
 
@@ -230,6 +260,8 @@ API Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* The telemetry command ``/eal/heap_info`` is fixed to print ``Heap_id``.
 
 * The experimental function ``rte_pcapng_copy`` was updated to support comment
   section in enhanced packet block in the pcapng library.

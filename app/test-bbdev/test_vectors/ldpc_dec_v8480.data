@@ -61,9 +61,6 @@ rv_index =
 code_block_mode =
 1
 
-iter_max =
-8
-
 expected_iter_count =
 3
 

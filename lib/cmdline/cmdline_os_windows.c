@@ -203,3 +203,17 @@ cmdline_vdprintf(int fd, const char *format, va_list op)
 
 	return ret;
 }
+
+void
+cmdline_cancel(struct cmdline *cl)
+{
+	if (!cl)
+		return;
+
+	/* force the outstanding read on console to exit */
+	if (cl->oldterm.is_console_input) {
+		HANDLE handle = (HANDLE)_get_osfhandle(cl->s_in);
+
+		CancelIoEx(handle, NULL);
+	}
+}

@@ -499,8 +499,8 @@ struct virtio_net {
 	uint32_t		max_guest_pages;
 	struct guest_page       *guest_pages;
 
-	int			slave_req_fd;
-	rte_spinlock_t		slave_req_lock;
+	int			backend_req_fd;
+	rte_spinlock_t		backend_req_lock;
 
 	int			postcopy_ufd;
 	int			postcopy_listening;
@@ -798,7 +798,10 @@ hva_to_gpa(struct virtio_net *dev, uint64_t vva, uint64_t len)
 static __rte_always_inline struct virtio_net *
 get_device(int vid)
 {
-	struct virtio_net *dev = vhost_devices[vid];
+	struct virtio_net *dev = NULL;
+
+	if (likely(vid >= 0 && vid < RTE_MAX_VHOST_DEVICE))
+		dev = vhost_devices[vid];
 
 	if (unlikely(!dev)) {
 		VHOST_LOG_CONFIG("device", ERR, "(%d) device not found.\n", vid);
@@ -1009,14 +1012,6 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	return true;
 }
 
-static __rte_always_inline void
-mem_set_dump(__rte_unused void *ptr, __rte_unused size_t size, __rte_unused bool enable)
-{
-#ifdef MADV_DONTDUMP
-	if (madvise(ptr, size, enable ? MADV_DODUMP : MADV_DONTDUMP) == -1) {
-		rte_log(RTE_LOG_INFO, vhost_config_log_level,
-			"VHOST_CONFIG: could not set coredump preference (%s).\n", strerror(errno));
-	}
-#endif
-}
+uint64_t hua_to_alignment(struct rte_vhost_memory *mem, void *ptr);
+void mem_set_dump(void *ptr, size_t size, bool enable, uint64_t alignment);
 #endif /* _VHOST_NET_CDEV_H_ */

@@ -272,7 +272,7 @@ New Features
 * **Updated Mellanox mlx5 crypto driver.**
 
   * Added Windows support.
-  * Added support for BlueField 2 and ConnectX-6 Dx.
+  * Added support for BlueField-2 and ConnectX-6 Dx.
 
 * **Updated NXP dpaa_sec crypto PMD.**
 
@@ -828,7 +828,7 @@ Tested Platforms
 
 * Mellanox\ |reg| BlueField\ |reg| SmartNIC
 
-  * Mellanox\ |reg| BlueField\ |reg| 2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
+  * Mellanox\ |reg| BlueField\ |reg|-2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
 
     * Host interface: PCI Express 3.0 x16
     * Device ID: 15b3:a2d6

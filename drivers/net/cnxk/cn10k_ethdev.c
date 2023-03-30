@@ -39,9 +39,6 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		flags |= NIX_RX_OFFLOAD_SECURITY_F;
 
-	if (dev->rx_mark_update)
-		flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
-
 	return flags;
 }
 
@@ -283,7 +280,6 @@ cn10k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			 struct rte_mempool *mp)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	struct cnxk_eth_rxq_sp *rxq_sp;
 	struct cn10k_eth_rxq *rxq;
 	struct roc_nix_rq *rq;
 	struct roc_nix_cq *cq;
@@ -335,17 +331,36 @@ cn10k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		rxq->lmt_base = dev->nix.lmt_base;
 		rxq->sa_base = roc_nix_inl_inb_sa_base_get(&dev->nix,
 							   dev->inb.inl_dev);
-		rxq->meta_aura = rq->meta_aura_handle;
-		rxq_sp = cnxk_eth_rxq_to_sp(rxq);
-		/* Assume meta packet from normal aura if meta aura is not setup
-		 */
-		if (!rxq->meta_aura)
-			rxq->meta_aura = rxq_sp->qconf.mp->pool_id;
 	}
 
 	/* Lookup mem */
 	rxq->lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
 	return 0;
+}
+
+static void
+cn10k_nix_rx_queue_meta_aura_update(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	struct cn10k_eth_rxq *rxq;
+	struct roc_nix_rq *rq;
+	int i;
+
+	/* Update Aura handle for fastpath rx queues */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rq = &dev->rqs[i];
+		rxq = eth_dev->data->rx_queues[i];
+		rxq->meta_aura = rq->meta_aura_handle;
+		/* Assume meta packet from normal aura if meta aura is not setup
+		 */
+		if (!rxq->meta_aura) {
+			rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+			rxq->meta_aura = rxq_sp->qconf.mp->pool_id;
+		}
+	}
+	/* Store mempool in lookup mem */
+	cnxk_nix_lookup_mem_metapool_set(dev);
 }
 
 static int
@@ -557,29 +572,11 @@ cn10k_nix_dev_start(struct rte_eth_dev *eth_dev)
 	dev->rx_offload_flags |= nix_rx_offload_flags(eth_dev);
 	dev->tx_offload_flags |= nix_tx_offload_flags(eth_dev);
 
+	if (dev->rx_offload_flags & NIX_RX_OFFLOAD_SECURITY_F)
+		cn10k_nix_rx_queue_meta_aura_update(eth_dev);
+
 	cn10k_eth_set_tx_function(eth_dev);
 	cn10k_eth_set_rx_function(eth_dev);
-	return 0;
-}
-
-static int
-cn10k_nix_rx_metadata_negotiate(struct rte_eth_dev *eth_dev, uint64_t *features)
-{
-	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-
-	*features &=
-		(RTE_ETH_RX_METADATA_USER_FLAG | RTE_ETH_RX_METADATA_USER_MARK);
-
-	if (*features) {
-		dev->rx_offload_flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
-		dev->rx_mark_update = true;
-	} else {
-		dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
-		dev->rx_mark_update = false;
-	}
-
-	cn10k_eth_set_rx_function(eth_dev);
-
 	return 0;
 }
 
@@ -591,7 +588,7 @@ cn10k_nix_reassembly_capability_get(struct rte_eth_dev *eth_dev,
 	int rc = -ENOTSUP;
 	RTE_SET_USED(eth_dev);
 
-	if (!roc_nix_has_reass_support(&dev->nix))
+	if (!roc_feature_nix_has_reass())
 		return -ENOTSUP;
 
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
@@ -621,7 +618,7 @@ cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	int rc = 0;
 
-	if (!roc_nix_has_reass_support(&dev->nix))
+	if (!roc_feature_nix_has_reass())
 		return -ENOTSUP;
 
 	if (!conf->flags) {
@@ -770,8 +767,6 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.dev_ptypes_set = cn10k_nix_ptypes_set;
 	cnxk_eth_dev_ops.timesync_enable = cn10k_nix_timesync_enable;
 	cnxk_eth_dev_ops.timesync_disable = cn10k_nix_timesync_disable;
-	cnxk_eth_dev_ops.rx_metadata_negotiate =
-		cn10k_nix_rx_metadata_negotiate;
 	cnxk_eth_dev_ops.timesync_read_tx_timestamp =
 		cn10k_nix_timesync_read_tx_timestamp;
 	cnxk_eth_dev_ops.ip_reassembly_capability_get =

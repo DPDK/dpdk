@@ -204,7 +204,6 @@ build () # <directory> <target cc | cross file> <ABI check> [meson options]
 				-Dexamples= $*
 			compile $abirefdir/build
 			install_target $abirefdir/build $abirefdir/$targetdir
-			$srcdir/devtools/gen-abi.sh $abirefdir/$targetdir
 
 			# save disk space by removing static libs and apps
 			find $abirefdir/$targetdir/usr/local -name '*.a' -delete
@@ -215,10 +214,6 @@ build () # <directory> <target cc | cross file> <ABI check> [meson options]
 		install_target $builds_dir/$targetdir \
 			$(readlink -f $builds_dir/$targetdir/install)
 		echo "Checking ABI compatibility of $targetdir" >&$verbose
-		echo $srcdir/devtools/gen-abi.sh \
-			$(readlink -f $builds_dir/$targetdir/install) >&$veryverbose
-		$srcdir/devtools/gen-abi.sh \
-			$(readlink -f $builds_dir/$targetdir/install) >&$veryverbose
 		echo $srcdir/devtools/check-abi.sh $abirefdir/$targetdir \
 			$(readlink -f $builds_dir/$targetdir/install) >&$veryverbose
 		$srcdir/devtools/check-abi.sh $abirefdir/$targetdir \

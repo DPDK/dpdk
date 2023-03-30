@@ -1232,7 +1232,7 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 		return -1;
 	}
 
-	if (RTE_IOVA_AS_PA) {
+	if (RTE_IOVA_IN_MBUF) {
 		badbuf = *buf;
 		rte_mbuf_iova_set(&badbuf, 0);
 		if (verify_mbuf_check_panics(&badbuf)) {
@@ -2744,6 +2744,7 @@ test_nb_segs_and_next_reset(void)
 
 	/* split m0 chain in two, between m1 and m2 */
 	m0->nb_segs = 2;
+	m0->pkt_len -= m2->data_len;
 	m1->next = NULL;
 	m2->nb_segs = 1;
 

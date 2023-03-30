@@ -394,6 +394,7 @@ The command line options are:
        50000 - 50Gbps
        100000 - 100Gbps
        200000 - 200Gbps
+       400000 - 400Gbps
        ...
 
 *   ``--disable-link-check``

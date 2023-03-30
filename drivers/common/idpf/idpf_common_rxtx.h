@@ -90,6 +90,9 @@
 #define PF_GLTSYN_SHTIME_L_5	(PF_TIMESYNC_BAR4_BASE + 0x138)
 #define PF_GLTSYN_SHTIME_H_5	(PF_TIMESYNC_BAR4_BASE + 0x13C)
 
+#define IDPF_RX_SPLIT_BUFQ1_ID	1
+#define IDPF_RX_SPLIT_BUFQ2_ID	2
+
 struct idpf_rx_stats {
 	uint64_t mbuf_alloc_failed;
 };

@@ -481,7 +481,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		if (!sq)
 			continue;
 
-		rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false, false);
+		rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false);
 		if (rc && rc != -ENOENT) {
 			plt_err("Failed to disable backpressure, rc=%d", rc);
 			goto cleanup;

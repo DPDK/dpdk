@@ -451,7 +451,7 @@ Tested Platforms
       * Device ID: 15b3:101f
       * Firmware version: 26.33.1048 and above
 
-    * NVIDIA\ |reg| ConnectX\ |reg| 7 200G CX713106AE-HEA_QP1_Ax (2x200G)
+    * NVIDIA\ |reg| ConnectX\ |reg|-7 200G CX713106AE-HEA_QP1_Ax (2x200G)
 
       * Host interface: PCI Express 5.0 x16
       * Device ID: 15b3:1021
@@ -459,7 +459,7 @@ Tested Platforms
 
 * NVIDIA \ |reg| BlueField\ |reg| SmartNIC
 
-  * NVIDIA\ |reg| BlueField\ |reg| 2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
+  * NVIDIA\ |reg| BlueField\ |reg|-2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
 
     * Host interface: PCI Express 3.0 x16
     * Device ID: 15b3:a2d6

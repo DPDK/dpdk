@@ -62,8 +62,8 @@ either when hot-plug will be fully supported in EAL and bus drivers or when
 a new NetVSC driver will be integrated.
 
 
-Run-time parameters
--------------------
+Runtime Configuration
+---------------------
 
 This driver is invoked automatically in Hyper-V VM systems unless the user
 invoked it by command line using ``--vdev=net_vdev_netvsc`` EAL option.

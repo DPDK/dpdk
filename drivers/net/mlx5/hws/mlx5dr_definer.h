@@ -114,6 +114,26 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_ICMP_DW2,
 	MLX5DR_DEFINER_FNAME_ESP_SPI,
 	MLX5DR_DEFINER_FNAME_ESP_SEQUENCE_NUMBER,
+	MLX5DR_DEFINER_FNAME_MPLS0_O,
+	MLX5DR_DEFINER_FNAME_MPLS1_O,
+	MLX5DR_DEFINER_FNAME_MPLS2_O,
+	MLX5DR_DEFINER_FNAME_MPLS3_O,
+	MLX5DR_DEFINER_FNAME_MPLS4_O,
+	MLX5DR_DEFINER_FNAME_MPLS0_I,
+	MLX5DR_DEFINER_FNAME_MPLS1_I,
+	MLX5DR_DEFINER_FNAME_MPLS2_I,
+	MLX5DR_DEFINER_FNAME_MPLS3_I,
+	MLX5DR_DEFINER_FNAME_MPLS4_I,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS0_O,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS1_O,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS2_O,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS3_O,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS4_O,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS0_I,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS1_I,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS2_I,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS3_I,
+	MLX5DR_DEFINER_FNAME_OKS2_MPLS4_I,
 	MLX5DR_DEFINER_FNAME_MAX,
 };
 
@@ -206,8 +226,13 @@ struct mlx5_ifc_definer_hl_eth_l3_bits {
 	u8 time_to_live_hop_limit[0x8];
 	u8 protocol_next_header[0x8];
 	u8 identification[0x10];
-	u8 flags[0x3];
-	u8 fragment_offset[0xd];
+	union {
+		u8 ipv4_frag[0x10];
+		struct {
+			u8 flags[0x3];
+			u8 fragment_offset[0xd];
+		};
+	};
 	u8 ipv4_total_length[0x10];
 	u8 checksum[0x10];
 	u8 reserved_at_60[0xc];
@@ -434,6 +459,14 @@ struct mlx5_ifc_definer_hl_registers_bits {
 	u8 register_c_1[0x20];
 };
 
+struct mlx5_ifc_definer_hl_mpls_bits {
+	u8 mpls0_label[0x20];
+	u8 mpls1_label[0x20];
+	u8 mpls2_label[0x20];
+	u8 mpls3_label[0x20];
+	u8 mpls4_label[0x20];
+};
+
 struct mlx5_ifc_definer_hl_bits {
 	struct mlx5_ifc_definer_hl_eth_l2_bits eth_l2_outer;
 	struct mlx5_ifc_definer_hl_eth_l2_bits eth_l2_inner;
@@ -462,8 +495,8 @@ struct mlx5_ifc_definer_hl_bits {
 	u8 unsupported_udp_misc_inner[0x20];
 	struct mlx5_ifc_definer_tcp_icmp_header_bits tcp_icmp;
 	struct mlx5_ifc_definer_hl_tunnel_header_bits tunnel_header;
-	u8 unsupported_mpls_outer[0xa0];
-	u8 unsupported_mpls_inner[0xa0];
+	struct mlx5_ifc_definer_hl_mpls_bits mpls_outer;
+	struct mlx5_ifc_definer_hl_mpls_bits mpls_inner;
 	u8 unsupported_config_headers_outer[0x80];
 	u8 unsupported_config_headers_inner[0x80];
 	u8 unsupported_random_number[0x20];

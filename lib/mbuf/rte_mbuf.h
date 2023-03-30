@@ -146,7 +146,7 @@ static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
 static inline rte_iova_t
 rte_mbuf_iova_get(const struct rte_mbuf *m)
 {
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 	return m->buf_iova;
 #else
 	return (rte_iova_t)m->buf_addr;
@@ -164,7 +164,7 @@ rte_mbuf_iova_get(const struct rte_mbuf *m)
 static inline void
 rte_mbuf_iova_set(struct rte_mbuf *m, rte_iova_t iova)
 {
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 	m->buf_iova = iova;
 #else
 	RTE_SET_USED(m);

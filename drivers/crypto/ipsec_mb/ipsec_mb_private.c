@@ -170,7 +170,7 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		retval = ipsec_mb_mp_request_register();
-		if (retval && (rte_errno == EEXIST))
+		if (retval && ((rte_errno == EEXIST) || (rte_errno == ENOTSUP)))
 			/* Safe to proceed, return 0 */
 			return 0;
 

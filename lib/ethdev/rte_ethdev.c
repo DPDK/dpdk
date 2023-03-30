@@ -978,6 +978,9 @@ rte_eth_speed_bitflag(uint32_t speed, int duplex)
 	case RTE_ETH_SPEED_NUM_200G:
 		ret = RTE_ETH_LINK_SPEED_200G;
 		break;
+	case RTE_ETH_SPEED_NUM_400G:
+		ret = RTE_ETH_LINK_SPEED_400G;
+		break;
 	default:
 		ret = 0;
 	}
@@ -2882,6 +2885,9 @@ rte_eth_link_speed_to_str(uint32_t link_speed)
 	case RTE_ETH_SPEED_NUM_200G:
 		ret = "200 Gbps";
 		break;
+	case RTE_ETH_SPEED_NUM_400G:
+		ret = "400 Gbps";
+		break;
 	case RTE_ETH_SPEED_NUM_UNKNOWN:
 		ret = "Unknown";
 		break;
@@ -3260,7 +3266,7 @@ rte_eth_xstats_get_names(uint16_t port_id,
 	}
 
 	for (i = 0; i < cnt_used_entries; i++)
-		rte_eth_trace_xstats_get_names(port_id, i, xstats_names[i],
+		rte_eth_trace_xstats_get_names(port_id, i, &xstats_names[i],
 					       size, cnt_used_entries);
 
 	return cnt_used_entries;
@@ -6636,8 +6642,6 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 	rte_tel_data_add_dict_int(d, "mtu", eth_dev->data->mtu);
 	rte_tel_data_add_dict_uint(d, "rx_mbuf_size_min",
 			eth_dev->data->min_rx_buf_size);
-	rte_tel_data_add_dict_uint(d, "rx_mbuf_alloc_fail",
-			eth_dev->data->rx_mbuf_alloc_failed);
 	rte_ether_format_addr(mac_addr, sizeof(mac_addr),
 			eth_dev->data->mac_addrs);
 	rte_tel_data_add_dict_string(d, "mac_addr", mac_addr);

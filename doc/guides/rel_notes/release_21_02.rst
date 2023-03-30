@@ -135,7 +135,7 @@ New Features
 
 * **Added mlx5 compress PMD.**
 
-  Added a new compress PMD for Bluefield 2 adapters.
+  Added a new compress PMD for BlueField-2 adapters.
 
   See the :doc:`../compressdevs/mlx5` for more details.
 
@@ -443,7 +443,7 @@ Tested Platforms
 
 * Mellanox\ |reg| BlueField\ |reg| SmartNIC
 
-  * Mellanox\ |reg| BlueField\ |reg| 2 SmartNIC MT41686 - MBF2H332A-AEEOT (2x25G)
+  * Mellanox\ |reg| BlueField\ |reg|-2 SmartNIC MT41686 - MBF2H332A-AEEOT (2x25G)
 
     * Host interface: PCI Express 3.0 x16
     * Device ID: 15b3:a2d2

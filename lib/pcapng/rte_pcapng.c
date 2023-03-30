@@ -3,14 +3,17 @@
  */
 
 #include <errno.h>
-#include <net/if.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/uio.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifndef RTE_EXEC_ENV_WINDOWS
+#include <net/if.h>
+#include <sys/uio.h>
+#endif
 
 #include <bus_driver.h>
 #include <rte_common.h>
@@ -20,6 +23,7 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_mbuf.h>
+#include <rte_os_shim.h>
 #include <rte_pcapng.h>
 #include <rte_reciprocal.h>
 #include <rte_time.h>
@@ -46,6 +50,57 @@ static struct pcapng_time {
 	uint64_t tsc_hz;
 	struct rte_reciprocal_u64 tsc_hz_inverse;
 } pcapng_time;
+
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+/*
+ * Windows does not have writev() call.
+ * Emulate this by copying to a new buffer.
+ * The copy is necessary since pcapng needs to be thread-safe
+ * and do atomic write operations.
+ */
+
+#define IOV_MAX 128
+struct iovec {
+	void   *iov_base;
+	size_t  iov_len;
+};
+
+static ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
+{
+	size_t bytes = 0;
+	uint8_t *ptr;
+	void *tmp_buf;
+	ssize_t ret;
+	int i;
+
+	for (i = 0; i < iovcnt; i++)
+		bytes += iov[i].iov_len;
+
+	if (unlikely(bytes == 0))
+		return 0;
+
+	tmp_buf = malloc(bytes);
+	if (unlikely(tmp_buf == NULL)) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	ptr = tmp_buf;
+	for (i = 0; i < iovcnt; i++) {
+		rte_memcpy(ptr, iov[i].iov_base, iov[i].iov_len);
+		ptr += iov[i].iov_len;
+	}
+
+	ret = write(fd, tmp_buf, bytes);
+	free(tmp_buf);
+	return ret;
+}
+
+#define IF_NAMESIZE	16
+/* compatibility wrapper because name is optional */
+#define if_indextoname(ifindex, ifname) NULL
+#endif
 
 static inline void
 pcapng_init(void)

@@ -605,9 +605,65 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 	}
 }
 
+/**
+ * Query match sample handle parameters.
+ *
+ * This command allows translating a field sample handle returned by either
+ * PARSE_GRAPH_FLOW_MATCH_SAMPLE or by GENEVE TLV OPTION object into values
+ * used for header modification or header matching/hashing.
+ *
+ * @param[in] ctx
+ *   Context used to create either GENEVE TLV option or FLEX PARSE GRAPH object.
+ * @param[in] sample_field_id
+ *   Field sample handle returned by either PARSE_GRAPH_FLOW_MATCH_SAMPLE
+ *   or by GENEVE TLV OPTION object.
+ * @param[out] attr
+ *   Pointer to match sample info attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
+				      struct mlx5_devx_match_sample_info_query_attr *attr)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint32_t out[MLX5_ST_SZ_DW(query_match_sample_info_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(query_match_sample_info_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_match_sample_info_in, in, opcode,
+		 MLX5_CMD_OP_QUERY_MATCH_SAMPLE_INFO);
+	MLX5_SET(query_match_sample_info_in, in, op_mod, 0);
+	MLX5_SET(query_match_sample_info_in, in, sample_field_id,
+		 sample_field_id);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	if (rc) {
+		DRV_LOG(ERR, "Failed to query match sample info using DevX: %s",
+			strerror(rc));
+		rte_errno = rc;
+		return -rc;
+	}
+	attr->modify_field_id = MLX5_GET(query_match_sample_info_out, out,
+					 modify_field_id);
+	attr->sample_dw_data = MLX5_GET(query_match_sample_info_out, out,
+					field_format_select_dw);
+	attr->sample_dw_ok_bit = MLX5_GET(query_match_sample_info_out, out,
+					  ok_bit_format_select_dw);
+	attr->sample_dw_ok_bit_offset = MLX5_GET(query_match_sample_info_out,
+						 out, ok_bit_offset);
+	return 0;
+#else
+	(void)ctx;
+	(void)sample_field_id;
+	(void)attr;
+	return -ENOTSUP;
+#endif
+}
+
 int
 mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				  struct mlx5_ext_sample_id *ids,
+				  uint32_t *ids,
 				  uint32_t num, uint8_t *anchor)
 {
 	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
@@ -639,7 +695,7 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 	}
 	if (anchor)
 		*anchor = MLX5_GET(parse_graph_flex, flex, head_anchor_id);
-	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM && idx <= num; i++) {
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM && idx < num; i++) {
 		void *s_off = (void *)((char *)sample + i *
 			      MLX5_ST_SZ_BYTES(parse_graph_flow_match_sample));
 		uint32_t en;
@@ -648,8 +704,8 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 			      flow_match_sample_en);
 		if (!en)
 			continue;
-		ids[idx++].id = MLX5_GET(parse_graph_flow_match_sample, s_off,
-					 flow_match_sample_field_id);
+		ids[idx++] = MLX5_GET(parse_graph_flow_match_sample, s_off,
+				      flow_match_sample_field_id);
 	}
 	if (num != idx) {
 		rte_errno = EINVAL;
@@ -797,8 +853,7 @@ mlx5_devx_cmd_query_hca_parse_graph_node_cap
 					 max_num_arc_out);
 	attr->max_num_sample = MLX5_GET(parse_graph_node_cap, hcattr,
 					max_num_sample);
-	attr->anchor_en = MLX5_GET(parse_graph_node_cap, hcattr, anchor_en);
-	attr->ext_sample_id = MLX5_GET(parse_graph_node_cap, hcattr, ext_sample_id);
+	attr->parse_graph_anchor = MLX5_GET(parse_graph_node_cap, hcattr, parse_graph_anchor);
 	attr->sample_tunnel_inner2 = MLX5_GET(parse_graph_node_cap, hcattr,
 					      sample_tunnel_inner2);
 	attr->zero_size_supported = MLX5_GET(parse_graph_node_cap, hcattr,
@@ -987,8 +1042,10 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->mmo_dma_qp_en = MLX5_GET(cmd_hca_cap, hcattr, dma_mmo_qp);
 	attr->mmo_compress_qp_en = MLX5_GET(cmd_hca_cap, hcattr,
 			compress_mmo_qp);
-	attr->mmo_decompress_qp_en = MLX5_GET(cmd_hca_cap, hcattr,
-			decompress_mmo_qp);
+	attr->decomp_deflate_v1_en = MLX5_GET(cmd_hca_cap, hcattr,
+					      decompress_deflate_v1);
+	attr->decomp_deflate_v2_en = MLX5_GET(cmd_hca_cap, hcattr,
+					      decompress_deflate_v2);
 	attr->compress_min_block_size = MLX5_GET(cmd_hca_cap, hcattr,
 						 compress_min_block_size);
 	attr->log_max_mmo_dma = MLX5_GET(cmd_hca_cap, hcattr, log_dma_mmo_size);
@@ -996,11 +1053,19 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					      log_compress_mmo_size);
 	attr->log_max_mmo_decompress = MLX5_GET(cmd_hca_cap, hcattr,
 						log_decompress_mmo_size);
+	attr->decomp_lz4_data_only_en = MLX5_GET(cmd_hca_cap, hcattr,
+						 decompress_lz4_data_only_v2);
+	attr->decomp_lz4_no_checksum_en = MLX5_GET(cmd_hca_cap, hcattr,
+						 decompress_lz4_no_checksum_v2);
+	attr->decomp_lz4_checksum_en = MLX5_GET(cmd_hca_cap, hcattr,
+						decompress_lz4_checksum_v2);
 	attr->cqe_compression = MLX5_GET(cmd_hca_cap, hcattr, cqe_compression);
 	attr->mini_cqe_resp_flow_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						mini_cqe_resp_flow_tag);
 	attr->mini_cqe_resp_l3_l4_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						 mini_cqe_resp_l3_l4_tag);
+	attr->enhanced_cqe_compression = MLX5_GET(cmd_hca_cap, hcattr,
+						 enhanced_cqe_compression);
 	attr->umr_indirect_mkey_disabled =
 		MLX5_GET(cmd_hca_cap, hcattr, umr_indirect_mkey_disabled);
 	attr->umr_modify_entity_size_disabled =
@@ -1021,6 +1086,18 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			flow_counter_access_aso);
 	attr->flow_access_aso_opc_mod = MLX5_GET(cmd_hca_cap, hcattr,
 			flow_access_aso_opc_mod);
+	/*
+	 * Flex item support needs max_num_prog_sample_field
+	 * from the Capabilities 2 table for PARSE_GRAPH_NODE
+	 */
+	if (attr->parse_graph_flex_node) {
+		rc = mlx5_devx_cmd_query_hca_parse_graph_node_cap
+			(ctx, &attr->flex);
+		if (rc)
+			return -1;
+		attr->flex.query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
+							      query_match_sample_info);
+	}
 	if (attr->crypto) {
 		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts) ||
 		MLX5_GET(cmd_hca_cap, hcattr, aes_xts_multi_block_be_tweak) ||
@@ -1104,16 +1181,6 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					log_max_num_meter_aso);
 		}
 	}
-	/*
-	 * Flex item support needs max_num_prog_sample_field
-	 * from the Capabilities 2 table for PARSE_GRAPH_NODE
-	 */
-	if (attr->parse_graph_flex_node) {
-		rc = mlx5_devx_cmd_query_hca_parse_graph_node_cap
-			(ctx, &attr->flex);
-		if (rc)
-			return -1;
-	}
 	if (attr->vdpa.valid)
 		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);
 	if (!attr->eth_net_offloads)
@@ -1163,6 +1230,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->outer_ipv4_ihl = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 ft_field_support_2_nic_receive.outer_ipv4_ihl);
+	attr->lag_rx_port_affinity = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_field_support_2_nic_receive.lag_rx_port_affinity);
 	/* Query HCA offloads for Ethernet protocol. */
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
@@ -2056,6 +2126,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	MLX5_SET(cqc, cqctx, c_eqn, attr->eqn);
 	MLX5_SET(cqc, cqctx, uar_page, attr->uar_page_id);
 	MLX5_SET(cqc, cqctx, cqe_comp_en, !!attr->cqe_comp_en);
+	MLX5_SET(cqc, cqctx, cqe_comp_layout, !!attr->cqe_comp_layout);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format, attr->mini_cqe_res_format);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format_ext,
 		 attr->mini_cqe_res_format_ext);

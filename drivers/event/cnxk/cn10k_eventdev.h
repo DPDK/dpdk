@@ -5,6 +5,9 @@
 #ifndef __CN10K_EVENTDEV_H__
 #define __CN10K_EVENTDEV_H__
 
+#define CN10K_SSO_DEFAULT_STASH_OFFSET -1
+#define CN10K_SSO_DEFAULT_STASH_LENGTH 2
+
 struct cn10k_sso_hws {
 	uint64_t base;
 	uint64_t gw_rdata;

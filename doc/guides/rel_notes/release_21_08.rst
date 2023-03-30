@@ -392,7 +392,7 @@ Tested Platforms
 
 * Mellanox\ |reg| BlueField\ |reg| SmartNIC
 
-  * Mellanox\ |reg| BlueField\ |reg| 2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
+  * Mellanox\ |reg| BlueField\ |reg|-2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
 
     * Host interface: PCI Express 3.0 x16
     * Device ID: 15b3:a2d6

@@ -193,8 +193,8 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 		 * Once DPDK supports it, take max size from device attr.
 		 */
 		sh->dev_cap.ind_table_max_size =
-			RTE_MIN(1 << hca_attr->rss_ind_tbl_cap,
-				(unsigned int)RTE_ETH_RSS_RETA_SIZE_512);
+			RTE_MIN((uint32_t)1 << hca_attr->rss_ind_tbl_cap,
+				(uint32_t)RTE_ETH_RSS_RETA_SIZE_512);
 		DRV_LOG(DEBUG, "Maximum Rx indirection table size is %u",
 			sh->dev_cap.ind_table_max_size);
 	}

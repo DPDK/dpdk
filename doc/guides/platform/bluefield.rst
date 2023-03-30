@@ -18,7 +18,7 @@ and common offload HW drivers of **NVIDIA BlueField** family SoC.
 Supported BlueField Platforms
 -----------------------------
 
-- `BlueField 2 <https://docs.nvidia.com/networking/display/BlueField2DPUENUG/Introduction>`_
+- `BlueField-2 <https://docs.nvidia.com/networking/display/BlueField2DPUENUG/Introduction>`_
 
 
 Common Offload HW Drivers

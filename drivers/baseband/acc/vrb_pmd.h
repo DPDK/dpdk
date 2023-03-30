@@ -36,6 +36,7 @@
 
 #define VRB_NUM_ACCS                 6
 #define VRB_MAX_QGRPS                32
+#define VRB_MAX_AQS                  32
 
 #define ACC_STATUS_WAIT      10
 #define ACC_STATUS_TO        100

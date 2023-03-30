@@ -163,6 +163,9 @@ hns3_parse_io_hint_func(const char *key, const char *value, void *extra_args)
 
 	RTE_SET_USED(key);
 
+	if (value == NULL || extra_args == NULL)
+		return 0;
+
 	if (strcmp(value, "vec") == 0)
 		hint = HNS3_IO_FUNC_HINT_VEC;
 	else if (strcmp(value, "sve") == 0)
@@ -203,6 +206,9 @@ hns3_parse_dev_caps_mask(const char *key, const char *value, void *extra_args)
 
 	RTE_SET_USED(key);
 
+	if (value == NULL || extra_args == NULL)
+		return 0;
+
 	val = strtoull(value, NULL, HNS3_CONVERT_TO_HEXADECIMAL);
 	*(uint64_t *)extra_args = val;
 
@@ -215,6 +221,9 @@ hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
 	uint32_t val;
 
 	RTE_SET_USED(key);
+
+	if (value == NULL || extra_args == NULL)
+		return 0;
 
 	val = strtoul(value, NULL, HNS3_CONVERT_TO_DECIMAL);
 

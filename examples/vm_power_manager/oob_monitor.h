@@ -20,7 +20,7 @@ extern "C" {
 int branch_monitor_init(void);
 
 /**
- * Run the OOB branch monitor, loops forever on on epoll_wait.
+ * Run the OOB branch monitor, loops forever on epoll_wait.
  *
  *
  * @return

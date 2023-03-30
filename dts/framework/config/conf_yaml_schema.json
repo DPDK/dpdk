@@ -5,6 +5,120 @@
     "node_name": {
       "type": "string",
       "description": "A unique identifier for a node"
+    },
+    "ARCH": {
+      "type": "string",
+      "enum": [
+        "x86_64",
+        "arm64",
+        "ppc64le"
+      ]
+    },
+    "OS": {
+      "type": "string",
+      "enum": [
+        "linux"
+      ]
+    },
+    "cpu": {
+      "type": "string",
+      "description": "Native should be the default on x86",
+      "enum": [
+        "native",
+        "armv8a",
+        "dpaa2",
+        "thunderx",
+        "xgene1"
+      ]
+    },
+    "compiler": {
+      "type": "string",
+      "enum": [
+        "gcc",
+        "clang",
+        "icc",
+        "mscv"
+      ]
+    },
+    "build_target": {
+      "type": "object",
+      "description": "Targets supported by DTS",
+      "properties": {
+        "arch": {
+          "type": "string",
+          "enum": [
+            "ALL",
+            "x86_64",
+            "arm64",
+            "ppc64le",
+            "other"
+          ]
+        },
+        "os": {
+          "$ref": "#/definitions/OS"
+        },
+        "cpu": {
+          "$ref": "#/definitions/cpu"
+        },
+        "compiler": {
+          "$ref": "#/definitions/compiler"
+        },
+          "compiler_wrapper": {
+          "type": "string",
+          "description": "This will be added before compiler to the CC variable when building DPDK. Optional."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "arch",
+        "os",
+        "cpu",
+        "compiler"
+      ]
+    },
+    "hugepages": {
+      "type": "object",
+      "description": "Optional hugepage configuration. If not specified, hugepages won't be configured and DTS will use system configuration.",
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "description": "The amount of hugepages to configure. Hugepage size will be the system default."
+        },
+        "force_first_numa": {
+          "type": "boolean",
+          "description": "Set to True to force configuring hugepages on the first NUMA node. Defaults to False."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "amount"
+      ]
+    },
+    "test_suite": {
+      "type": "string",
+      "enum": [
+        "hello_world"
+      ]
+    },
+    "test_target": {
+      "type": "object",
+      "properties": {
+        "suite": {
+          "$ref": "#/definitions/test_suite"
+        },
+        "cases": {
+          "type": "array",
+          "description": "If specified, only this subset of test suite's test cases will be run. Unknown test cases will be silently ignored.",
+          "items": {
+            "type": "string"
+          },
+          "minimum": 1
+        }
+      },
+      "required": [
+        "suite"
+      ],
+      "additionalProperties": false
     }
   },
   "type": "object",
@@ -29,13 +143,37 @@
           "password": {
             "type": "string",
             "description": "The password to use on this node. Use only as a last resort. SSH keys are STRONGLY preferred."
+          },
+          "arch": {
+            "$ref": "#/definitions/ARCH"
+          },
+          "os": {
+            "$ref": "#/definitions/OS"
+          },
+          "lcores": {
+            "type": "string",
+            "pattern": "^(([0-9]+|([0-9]+-[0-9]+))(,([0-9]+|([0-9]+-[0-9]+)))*)?$",
+            "description": "Optional comma-separated list of logical cores to use, e.g.: 1,2,3,4,5,18-22. Defaults to 1. An empty string means use all lcores."
+          },
+          "use_first_core": {
+            "type": "boolean",
+            "description": "Indicate whether DPDK should use the first physical core. It won't be used by default."
+          },
+          "memory_channels": {
+            "type": "integer",
+            "description": "How many memory channels to use. Optional, defaults to 1."
+          },
+          "hugepages": {
+            "$ref": "#/definitions/hugepages"
           }
         },
         "additionalProperties": false,
         "required": [
           "name",
           "hostname",
-          "user"
+          "user",
+          "arch",
+          "os"
         ]
       },
       "minimum": 1
@@ -45,12 +183,44 @@
       "items": {
         "type": "object",
         "properties": {
+          "build_targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/build_target"
+            },
+            "minimum": 1
+          },
+          "perf": {
+            "type": "boolean",
+            "description": "Enable performance testing."
+          },
+          "func": {
+            "type": "boolean",
+            "description": "Enable functional testing."
+          },
+          "test_suites": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/test_suite"
+                },
+                {
+                  "$ref": "#/definitions/test_target"
+                }
+              ]
+            }
+          },
           "system_under_test": {
             "$ref": "#/definitions/node_name"
           }
         },
         "additionalProperties": false,
         "required": [
+          "build_targets",
+          "perf",
+          "func",
+          "test_suites",
           "system_under_test"
         ]
       },

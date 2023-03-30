@@ -634,8 +634,8 @@ rte_kni_rx_burst(struct rte_kni *kni, struct rte_mbuf **mbufs, unsigned int num)
 {
 	unsigned int ret = kni_fifo_get(kni->tx_q, (void **)mbufs, num);
 
-	/* If buffers removed, allocate mbufs and then put them into alloc_q */
-	if (ret)
+	/* If buffers removed or alloc_q is empty, allocate mbufs and then put them into alloc_q */
+	if (ret || (kni_fifo_count(kni->alloc_q) == 0))
 		kni_allocate_mbufs(kni);
 
 	return ret;

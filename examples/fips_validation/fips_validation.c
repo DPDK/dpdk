@@ -460,6 +460,8 @@ fips_test_parse_one_json_vector_set(void)
 	/* Vector sets contain the algorithm type, and nothing else we need. */
 	if (strstr(algo_str, "AES-GCM"))
 		info.algo = FIPS_TEST_ALGO_AES_GCM;
+	else if (strstr(algo_str, "AES-CCM"))
+		info.algo = FIPS_TEST_ALGO_AES_CCM;
 	else if (strstr(algo_str, "AES-GMAC"))
 		info.algo = FIPS_TEST_ALGO_AES_GMAC;
 	else if (strstr(algo_str, "HMAC"))
@@ -543,15 +545,28 @@ fips_test_parse_one_json_case(void)
 
 	for (i = 0; info.callbacks[i].key != NULL; i++) {
 		param = json_object_get(json_info.json_test_case, info.callbacks[i].key);
-		if (param) {
-			strcpy(info.one_line_text, json_string_value(param));
-			ret = info.callbacks[i].cb(
-				info.callbacks[i].key, info.one_line_text,
-				info.callbacks[i].val
-			);
-			if (ret < 0)
-				return ret;
+		if (!param)
+			continue;
+
+		switch (json_typeof(param)) {
+		case JSON_STRING:
+			snprintf(info.one_line_text, MAX_LINE_CHAR, "%s",
+					 json_string_value(param));
+			break;
+
+		case JSON_INTEGER:
+			snprintf(info.one_line_text, MAX_LINE_CHAR, "%"JSON_INTEGER_FORMAT,
+					 json_integer_value(param));
+			break;
+
+		default:
+			return -EINVAL;
 		}
+
+		ret = info.callbacks[i].cb(info.callbacks[i].key, info.one_line_text,
+				info.callbacks[i].val);
+		if (ret < 0)
+			return ret;
 	}
 
 	return 0;

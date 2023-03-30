@@ -568,6 +568,9 @@ parse_link_speed(int n)
 	case 200000:
 		speed |= RTE_ETH_LINK_SPEED_200G;
 		break;
+	case 400000:
+		speed |= RTE_ETH_LINK_SPEED_400G;
+		break;
 	case 100:
 	case 10:
 	default:

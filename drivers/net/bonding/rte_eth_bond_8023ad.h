@@ -271,7 +271,7 @@ rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t slave_id,
 		struct rte_mbuf *lacp_pkt);
 
 /**
- * Enable dedicated hw queues for 802.3ad control plane traffic on on slaves
+ * Enable dedicated hw queues for 802.3ad control plane traffic on slaves
  *
  * This function creates an additional tx and rx queue on each slave for
  * dedicated 802.3ad control plane traffic . A flow filtering rule is

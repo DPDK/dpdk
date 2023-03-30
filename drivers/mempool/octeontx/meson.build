@@ -13,3 +13,5 @@ sources = files(
 )
 
 deps += ['mbuf', 'bus_pci', 'common_octeontx']
+
+require_iova_in_mbuf = false

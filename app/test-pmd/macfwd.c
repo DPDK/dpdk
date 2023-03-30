@@ -41,33 +41,25 @@
  * Change the source and the destination Ethernet addressed of packets
  * before forwarding them.
  */
-static void
+static bool
 pkt_burst_mac_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
 	struct rte_port  *txp;
 	struct rte_mbuf  *mb;
 	struct rte_ether_hdr *eth_hdr;
-	uint32_t retry;
 	uint16_t nb_rx;
-	uint16_t nb_tx;
 	uint16_t i;
 	uint64_t ol_flags = 0;
 	uint64_t tx_offloads;
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
 
 	/*
 	 * Receive a burst of packets and forward them.
 	 */
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
-				 nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 
-	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
 	tx_offloads = txp->dev_conf.txmode.offloads;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
@@ -93,47 +85,14 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 		mb->vlan_tci = txp->tx_vlan_id;
 		mb->vlan_tci_outer = txp->tx_vlan_id_outer;
 	}
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
-	/*
-	 * Retry if necessary
-	 */
-	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
-		retry = 0;
-		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
-			rte_delay_us(burst_tx_delay_time);
-			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_rx - nb_tx);
-		}
-	}
 
-	fs->tx_packets += nb_tx;
-	inc_tx_burst_stats(fs, nb_tx);
-	if (unlikely(nb_tx < nb_rx)) {
-		fs->fwd_dropped += (nb_rx - nb_tx);
-		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
-		} while (++nb_tx < nb_rx);
-	}
+	common_fwd_stream_transmit(fs, pkts_burst, nb_rx);
 
-	get_end_cycles(fs, start_tsc);
-}
-
-static void
-stream_init_mac_forward(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
+	return true;
 }
 
 struct fwd_engine mac_fwd_engine = {
 	.fwd_mode_name  = "mac",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = stream_init_mac_forward,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = pkt_burst_mac_forward,
 };

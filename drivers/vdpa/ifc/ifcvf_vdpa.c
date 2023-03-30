@@ -605,7 +605,7 @@ virtio_interrupt_handler(struct ifcvf_internal *internal)
 	int vid = internal->vid;
 	int ret;
 
-	ret = rte_vhost_slave_config_change(vid, 1);
+	ret = rte_vhost_backend_config_change(vid, 1);
 	if (ret)
 		DRV_LOG(ERR, "failed to notify the guest about configuration space change.");
 }
@@ -1315,8 +1315,8 @@ ifcvf_get_vdpa_features(struct rte_vdpa_device *vdev, uint64_t *features)
 
 #define VDPA_SUPPORTED_PROTOCOL_FEATURES \
 		(1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK | \
-		 1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ | \
-		 1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD | \
+		 1ULL << VHOST_USER_PROTOCOL_F_BACKEND_REQ | \
+		 1ULL << VHOST_USER_PROTOCOL_F_BACKEND_SEND_FD | \
 		 1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER | \
 		 1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD | \
 		 1ULL << VHOST_USER_PROTOCOL_F_MQ | \

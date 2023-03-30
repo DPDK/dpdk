@@ -38,14 +38,21 @@ bitmap_ctzll(uint64_t slab)
 }
 
 int
-cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bufs, bool destroy)
+cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_sz,
+			  uint32_t nb_bufs, bool destroy, const char *mempool_name)
 {
-	const char *mp_name = CNXK_NIX_INL_META_POOL_NAME;
+	const char *mp_name = NULL;
 	struct rte_pktmbuf_pool_private mbp_priv;
 	struct npa_aura_s *aura;
 	struct rte_mempool *mp;
 	uint16_t first_skip;
 	int rc;
+
+	/* Null Mempool name indicates to allocate Zero aura. */
+	if (!mempool_name)
+		mp_name = CNXK_NIX_INL_META_POOL_NAME;
+	else
+		mp_name = mempool_name;
 
 	/* Destroy the mempool if requested */
 	if (destroy) {
@@ -62,6 +69,7 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bu
 		rte_mempool_free(mp);
 
 		*aura_handle = 0;
+		*mpool = 0;
 		return 0;
 	}
 
@@ -83,10 +91,12 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bu
 		goto free_mp;
 	}
 	aura->ena = 1;
-	aura->pool_addr = 0x0;
+	if (!mempool_name)
+		aura->pool_addr = 0;
+	else
+		aura->pool_addr = 1; /* Any non zero value, so that alloc from next free Index */
 
-	rc = rte_mempool_set_ops_byname(mp, rte_mbuf_platform_mempool_ops(),
-					aura);
+	rc = rte_mempool_set_ops_byname(mp, rte_mbuf_platform_mempool_ops(), aura);
 	if (rc) {
 		plt_err("Failed to setup mempool ops for meta, rc=%d", rc);
 		goto free_aura;
@@ -108,6 +118,7 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bu
 
 	rte_mempool_obj_iter(mp, rte_pktmbuf_init, NULL);
 	*aura_handle = mp->pool_id;
+	*mpool = (uintptr_t)mp;
 	return 0;
 free_aura:
 	plt_free(aura);

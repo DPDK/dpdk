@@ -101,7 +101,6 @@ nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree)
 {
 	struct nix_tm_node_list *list;
 	struct nix_tm_node *node;
-	bool skip_bp = false;
 	uint32_t hw_lvl;
 	int rc = 0;
 
@@ -116,11 +115,8 @@ nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree)
 			 * set per channel only for PF or lbk vf.
 			 */
 			node->bp_capa = 0;
-			if (!nix->sdp_link && !skip_bp &&
-			    node->hw_lvl == nix->tm_link_cfg_lvl) {
+			if (!nix->sdp_link && node->hw_lvl == nix->tm_link_cfg_lvl)
 				node->bp_capa = 1;
-				skip_bp = false;
-			}
 
 			rc = nix_tm_node_reg_conf(nix, node);
 			if (rc)
@@ -315,7 +311,7 @@ exit:
 
 int
 nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
-		     bool enable, bool force_flush)
+		     bool enable)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	enum roc_nix_tm_tree tree = nix->tm_tree;
@@ -327,9 +323,10 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	struct nix_tm_node *parent;
 	struct nix_tm_node *node;
 	struct roc_nix_sq *sq_s;
+	uint16_t rel_chan = 0;
 	uint8_t parent_lvl;
 	uint8_t k = 0;
-	int rc = 0;
+	int rc = 0, i;
 
 	sq_s = nix->sqs[sq];
 	if (!sq_s)
@@ -354,9 +351,17 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 
 	list = nix_tm_node_list(nix, tree);
 
+	/* Get relative channel if loopback */
+	if (roc_nix_is_lbk(roc_nix))
+		rel_chan = nix_tm_lbk_relchan_get(nix);
+	else
+		rel_chan = tc;
+
 	/* Enable request, parent rel chan already configured */
 	if (enable && parent->rel_chan != NIX_TM_CHAN_INVALID &&
-	    parent->rel_chan != tc) {
+	    parent->rel_chan != rel_chan) {
+		plt_err("SQ %d: parent node TL3 id %d already has rel_chan %d set",
+			sq, parent->hw_id, parent->rel_chan);
 		rc = -EINVAL;
 		goto err;
 	}
@@ -378,36 +383,21 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 			continue;
 
 		/* Restrict sharing of TL3 across the queues */
-		if (enable && node != parent && node->rel_chan == tc) {
-			plt_err("SQ %d node TL3 id %d already has %d tc value set",
-				sq, node->hw_id, tc);
-			return -EINVAL;
+		if (enable && node != parent && node->rel_chan == rel_chan) {
+			plt_warn("SQ %d: siblng node TL3 %d already has %d(%d) tc value set",
+				 sq, node->hw_id, tc, rel_chan);
+			return -EEXIST;
 		}
 	}
 
-	/* In case of user tree i.e. multiple SQs may share a TL3, disabling PFC
-	 * on one of such SQ should not hamper the traffic control on other SQs.
-	 * Maitaining a reference count scheme to account no of SQs sharing the
-	 * TL3 before disabling PFC on it.
-	 */
-	if (!force_flush && !enable &&
-	    parent->rel_chan != NIX_TM_CHAN_INVALID) {
-		if (sq_s->tc != ROC_NIX_PFC_CLASS_INVALID)
-			parent->tc_refcnt--;
-		if (parent->tc_refcnt > 0)
-			return 0;
-	}
+	/* Allocating TL3 request */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
+	req->lvl = nix->tm_link_cfg_lvl;
+	k = 0;
 
-	/* Allocating TL3 resources */
-	if (!req) {
-		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
-		req->lvl = nix->tm_link_cfg_lvl;
-		k = 0;
-	}
-
-	/* Enable PFC on the identified TL3 */
+	/* Enable PFC/pause on the identified TL3 */
 	req->reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(parent->hw_id, link);
-	req->regval[k] = enable ? tc : 0;
+	req->regval[k] = enable ? rel_chan : 0;
 	req->regval[k] |= enable ? BIT_ULL(13) : 0;
 	req->regval_mask[k] = ~(BIT_ULL(13) | GENMASK_ULL(7, 0));
 	k++;
@@ -417,12 +407,17 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	if (rc)
 		goto err;
 
-	parent->rel_chan = enable ? tc : NIX_TM_CHAN_INVALID;
-	/* Increase reference count for parent TL3 */
-	if (enable && sq_s->tc == ROC_NIX_PFC_CLASS_INVALID)
-		parent->tc_refcnt++;
+	parent->rel_chan = enable ? rel_chan : NIX_TM_CHAN_INVALID;
+	sq_s->tc = enable ? tc : ROC_NIX_PFC_CLASS_INVALID;
+	/* Clear other SQ's with same TC i.e same parent node */
+	for (i = 0; !enable && i < nix->nb_tx_queues; i++) {
+		if (nix->sqs[i] && nix->sqs[i]->tc == tc)
+			nix->sqs[i]->tc = ROC_NIX_PFC_CLASS_INVALID;
+	}
 
 	rc = 0;
+	plt_tm_dbg("SQ %u: TL3 %d TC %u %s",
+		   sq, parent->hw_id, tc, enable ? "enabled" : "disabled");
 	goto exit;
 err:
 	plt_err("Failed to %s bp on link %u, rc=%d(%s)",
@@ -802,7 +797,7 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 	}
 
 	/* Disable backpressure */
-	rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false, true);
+	rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false);
 	if (rc) {
 		plt_err("Failed to disable backpressure for flush, rc=%d", rc);
 		return rc;
@@ -940,16 +935,6 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 			plt_err("Failed to enable sqb aura fc, rc=%d", rc);
 			return rc;
 		}
-	}
-
-	if (!nix->rx_pause)
-		return 0;
-
-	/* Restore backpressure */
-	rc = nix_tm_bp_config_set(roc_nix, sq->qid, sq->tc, true, false);
-	if (rc) {
-		plt_err("Failed to restore backpressure, rc=%d", rc);
-		return rc;
 	}
 
 	return 0;

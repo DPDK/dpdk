@@ -17,3 +17,5 @@ deps += ['bus_pci', 'dmadev']
 sources = files(
         'hisi_dmadev.c',
 )
+
+require_iova_in_mbuf = false

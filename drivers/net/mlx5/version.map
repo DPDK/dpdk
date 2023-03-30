@@ -15,4 +15,6 @@ EXPERIMENTAL {
 	# added in 22.07
 	rte_pmd_mlx5_host_shaper_config;
 	rte_pmd_mlx5_external_sq_enable;
+	# added in 23.03
+	rte_pmd_mlx5_flow_engine_set_mode;
 };

@@ -39,11 +39,11 @@ Prerequisites
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
-Pre-Installation Configuration
-------------------------------
+Configuration
+-------------
 
-Build Options
-~~~~~~~~~~~~~
+Compilation Options
+~~~~~~~~~~~~~~~~~~~
 
 The following build-time options may be enabled on build time using.
 
@@ -89,8 +89,8 @@ TXGBE PMD provides the following log types available for control:
   Extra logging of auto-negotiation process for backplane NICs.
   Supply ``--log-level=pmd.net.txgbe.bp:debug`` to view messages.
 
-Runtime Options
-~~~~~~~~~~~~~~~
+Runtime Configuration
+~~~~~~~~~~~~~~~~~~~~~
 
 The following ``devargs`` options can be enabled at runtime. They must
 be passed as part of EAL arguments. For example,

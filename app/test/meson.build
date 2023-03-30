@@ -33,6 +33,7 @@ test_sources = files(
         'test_cryptodev.c',
         'test_cryptodev_asym.c',
         'test_cryptodev_blockcipher.c',
+        'test_cryptodev_crosscheck.c',
         'test_cryptodev_security_ipsec.c',
         'test_cryptodev_security_pdcp.c',
         'test_cycles.c',
@@ -287,6 +288,7 @@ perf_test_names = [
         'pie_perf',
         'distributor_perf_autotest',
         'pmd_perf_autotest',
+        'service_perf_autotest',
         'stack_perf_autotest',
         'stack_lf_perf_autotest',
         'rand_perf_autotest',
@@ -300,13 +302,18 @@ perf_test_names = [
 driver_test_names = [
         'cryptodev_aesni_gcm_autotest',
         'cryptodev_aesni_mb_autotest',
+        'cryptodev_chacha_poly_mb_autotest',
         'cryptodev_cn10k_autotest',
         'cryptodev_cn9k_autotest',
+        'cryptodev_cpu_aesni_mb_autotest',
+        'cryptodev_cpu_aesni_gcm_autotest',
         'cryptodev_dpaa2_sec_autotest',
         'cryptodev_dpaa_sec_autotest',
         'cryptodev_null_autotest',
         'cryptodev_openssl_autotest',
         'cryptodev_qat_autotest',
+        'cryptodev_qat_asym_autotest',
+        'cryptodev_qat_raw_api_autotest',
         'cryptodev_sw_armv8_autotest',
         'cryptodev_sw_kasumi_autotest',
         'cryptodev_sw_mvsam_autotest',
@@ -314,7 +321,6 @@ driver_test_names = [
         'cryptodev_sw_zuc_autotest',
         'cryptodev_uadk_autotest',
         'dmadev_autotest',
-        'rawdev_autotest',
 ]
 
 dump_test_names = []
@@ -390,7 +396,7 @@ if dpdk_conf.has('RTE_NET_BOND')
         driver_test_names += 'link_bonding_mode4_autotest'
     endif
 endif
-if dpdk_conf.has('RTE_NET_RING')
+if dpdk_conf.has('RTE_LIB_EVENTDEV') and dpdk_conf.has('RTE_NET_RING')
     test_deps += 'net_ring'
     test_sources += 'test_pmd_ring_perf.c'
     test_sources += 'test_pmd_ring.c'
@@ -416,6 +422,10 @@ if dpdk_conf.has('RTE_NET_NULL')
     test_deps += 'net_null'
     test_sources += 'test_vdev.c'
     fast_tests += [['vdev_autotest', true, true]]
+endif
+if dpdk_conf.has('RTE_RAW_SKELETON')
+    test_deps += 'raw_skeleton'
+    fast_tests += [['rawdev_autotest', true, true]]
 endif
 
 if dpdk_conf.has('RTE_HAS_LIBPCAP')

@@ -135,6 +135,8 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 			goto end;
 		}
 		afu_pr_conf.pr_enable = 1;
+		strlcpy(afu_pr_conf.bs_path, path,
+			sizeof(afu_pr_conf.bs_path));
 	} else {
 		afu_pr_conf.pr_enable = 0;
 	}
@@ -174,7 +176,6 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 		rawdev->dev_ops->dev_start(rawdev))
 		goto end;
 
-	strlcpy(afu_pr_conf.bs_path, path, sizeof(afu_pr_conf.bs_path));
 	if (rawdev->dev_ops &&
 		rawdev->dev_ops->firmware_load &&
 		rawdev->dev_ops->firmware_load(rawdev,
@@ -359,6 +360,41 @@ ifpga_probe(void)
 	return ret;
 }
 
+/*
+ * Cleanup the content of the Intel FPGA bus, and call the remove() function
+ * for all registered devices.
+ */
+static int
+ifpga_cleanup(void)
+{
+	struct rte_afu_device *afu_dev, *tmp_dev;
+	int error = 0;
+
+	RTE_TAILQ_FOREACH_SAFE(afu_dev, &ifpga_afu_dev_list, next, tmp_dev) {
+		struct rte_afu_driver *drv = afu_dev->driver;
+		int ret = 0;
+
+		if (drv == NULL || drv->remove == NULL)
+			goto free;
+
+		ret = drv->remove(afu_dev);
+		if (ret < 0) {
+			rte_errno = errno;
+			error = -1;
+		}
+		afu_dev->driver = NULL;
+		afu_dev->device.driver = NULL;
+
+free:
+		TAILQ_REMOVE(&ifpga_afu_dev_list, afu_dev, next);
+		rte_devargs_remove(afu_dev->device.devargs);
+		rte_intr_instance_free(afu_dev->intr_handle);
+		free(afu_dev);
+	}
+
+	return error;
+}
+
 static int
 ifpga_plug(struct rte_device *dev)
 {
@@ -469,6 +505,7 @@ ifpga_parse(const char *name, void *addr)
 static struct rte_bus rte_ifpga_bus = {
 	.scan        = ifpga_scan,
 	.probe       = ifpga_probe,
+	.cleanup     = ifpga_cleanup,
 	.find_device = ifpga_find_device,
 	.plug        = ifpga_plug,
 	.unplug      = ifpga_unplug,

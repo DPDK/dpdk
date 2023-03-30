@@ -30,4 +30,6 @@ if is_windows
     includes += include_directories('windows')
 endif
 
+require_iova_in_mbuf = false
+
 deps += ['kvargs']

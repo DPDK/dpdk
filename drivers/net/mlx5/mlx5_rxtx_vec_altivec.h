@@ -76,8 +76,10 @@ static inline uint16_t
 rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		    struct rte_mbuf **elts)
 {
-	volatile struct mlx5_mini_cqe8 *mcq = (void *)&(cq + 1)->pkt_info;
-	struct rte_mbuf *t_pkt = elts[0]; /* Title packet is pre-built. */
+	volatile struct mlx5_mini_cqe8 *mcq =
+		(void *)&(cq + !rxq->cqe_comp_layout)->pkt_info;
+	/* Title packet is pre-built. */
+	struct rte_mbuf *t_pkt = rxq->cqe_comp_layout ? &rxq->title_pkt : elts[0];
 	const __vector unsigned char zero = (__vector unsigned char){0};
 	/* Mask to shuffle from extracted mini CQE to mbuf. */
 	const __vector unsigned char shuf_mask1 = (__vector unsigned char){
@@ -93,8 +95,10 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			-1, -1,           /* skip vlan_tci */
 			11, 10,  9,  8};  /* bswap32, rss */
 	/* Restore the compressed count. Must be 16 bits. */
-	const uint16_t mcqe_n = t_pkt->data_len +
-		(rxq->crc_present * RTE_ETHER_CRC_LEN);
+	uint16_t mcqe_n = (rxq->cqe_comp_layout) ?
+		(MLX5_CQE_NUM_MINIS(cq->op_own) + 1) :
+		t_pkt->data_len + (rxq->crc_present * RTE_ETHER_CRC_LEN);
+	uint16_t pkts_n = mcqe_n;
 	const __vector unsigned char rearm =
 		(__vector unsigned char)vec_vsx_ld(0,
 		(signed int const *)&t_pkt->rearm_data);
@@ -132,6 +136,9 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	 * D. store rx_descriptor_fields1.
 	 * E. store flow tag (rte_flow mark).
 	 */
+cycle:
+	if (rxq->cqe_comp_layout)
+		rte_prefetch0((void *)(cq + mcqe_n));
 	for (pos = 0; pos < mcqe_n; ) {
 		__vector unsigned char mcqe1, mcqe2;
 		__vector unsigned char rxdf1, rxdf2;
@@ -154,9 +161,10 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		const __vector unsigned long shmax = {64, 64};
 #endif
 
-		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
-			if (likely(pos + i < mcqe_n))
-				rte_prefetch0((void *)(cq + pos + i));
+		if (!rxq->cqe_comp_layout)
+			for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+				if (likely(pos + i < mcqe_n))
+					rte_prefetch0((void *)(cq + pos + i));
 		/* A.1 load mCQEs into a 128bit register. */
 		mcqe1 = (__vector unsigned char)vec_vsx_ld(0,
 			(signed int const *)&mcq[pos % 8]);
@@ -488,25 +496,43 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 
 		pos += MLX5_VPMD_DESCS_PER_LOOP;
 		/* Move to next CQE and invalidate consumed CQEs. */
-		if (!(pos & 0x7) && pos < mcqe_n) {
-			if (pos + 8 < mcqe_n)
-				rte_prefetch0((void *)(cq + pos + 8));
-			mcq = (void *)&(cq + pos)->pkt_info;
-			for (i = 0; i < 8; ++i)
-				cq[inv++].op_own = MLX5_CQE_INVALIDATE;
+		if (!rxq->cqe_comp_layout) {
+			if (!(pos & 0x7) && pos < mcqe_n) {
+				if (pos + 8 < mcqe_n)
+					rte_prefetch0((void *)(cq + pos + 8));
+				mcq = (void *)&(cq + pos)->pkt_info;
+				for (i = 0; i < 8; ++i)
+					cq[inv++].op_own = MLX5_CQE_INVALIDATE;
+			}
 		}
 	}
 
-	/* Invalidate the rest of CQEs. */
-	for (; inv < mcqe_n; ++inv)
-		cq[inv].op_own = MLX5_CQE_INVALIDATE;
+	if (rxq->cqe_comp_layout) {
+		int ret;
+		/* Keep unzipping if the next CQE is the miniCQE array. */
+		cq = &cq[mcqe_n];
+		ret = check_cqe_iteration(cq, rxq->cqe_n, rxq->cq_ci + pkts_n);
+		if (ret == MLX5_CQE_STATUS_SW_OWN &&
+		    MLX5_CQE_FORMAT(cq->op_own) == MLX5_COMPRESSED) {
+			pos = 0;
+			elts = &elts[mcqe_n];
+			mcq = (void *)cq;
+			mcqe_n = MLX5_CQE_NUM_MINIS(cq->op_own) + 1;
+			pkts_n += mcqe_n;
+			goto cycle;
+		}
+	} else {
+		/* Invalidate the rest of CQEs. */
+		for (; inv < pkts_n; ++inv)
+			cq[inv].op_own = MLX5_CQE_INVALIDATE;
+	}
 
 #ifdef MLX5_PMD_SOFT_COUNTERS
-	rxq->stats.ipackets += mcqe_n;
+	rxq->stats.ipackets += pkts_n;
 	rxq->stats.ibytes += rcvd_byte;
 #endif
 
-	return mcqe_n;
+	return pkts_n;
 }
 
 /**
@@ -787,9 +813,13 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	uint64_t n = 0;
 	uint64_t comp_idx = MLX5_VPMD_DESCS_PER_LOOP;
 	uint16_t nocmp_n = 0;
-	unsigned int ownership = !!(rxq->cq_ci & (q_mask + 1));
+	const uint8_t vic = rxq->cq_ci >> rxq->cqe_n;
+	unsigned int own = !(rxq->cq_ci & (q_mask + 1));
 	const __vector unsigned char zero = (__vector unsigned char){0};
 	const __vector unsigned char ones = vec_splat_u8(-1);
+	const __vector unsigned char vic_check =
+		(__vector unsigned char)(__vector unsigned long){
+		0x00ff000000ff0000LL, 0x00ff000000ff0000LL};
 	const __vector unsigned char owner_check =
 		(__vector unsigned char)(__vector unsigned long){
 		0x0100000001000000LL, 0x0100000001000000LL};
@@ -837,7 +867,16 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		(__vector unsigned short){0, 0, 0, 0, 0xffff, 0xffff, 0, 0};
 	const __vector unsigned short cqe_sel_mask2 =
 		(__vector unsigned short){0, 0, 0xffff, 0, 0, 0, 0, 0};
-
+	const __vector unsigned char validity = (__vector unsigned char){
+		0,  0,  vic,  0,
+		0,  0,  vic,  0,
+		0,  0,  vic,  0,
+		0,  0,  vic,  0};
+	const __vector unsigned char ownership = (__vector unsigned char){
+		0,  0,  0,  own,
+		0,  0,  0,  own,
+		0,  0,  0,  own,
+		0,  0,  0,  own};
 	/*
 	 * A. load first Qword (8bytes) in one loop.
 	 * B. copy 4 mbuf pointers from elts ring to returning pkts.
@@ -848,7 +887,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	 *          uint8_t  pkt_info;
 	 *          uint8_t  flow_tag[3];
 	 *          uint16_t byte_cnt;
-	 *          uint8_t  rsvd4;
+	 *          uint8_t  validity_iteration_count;
 	 *          uint8_t  op_own;
 	 *          uint16_t hdr_type_etc;
 	 *          uint16_t vlan_info;
@@ -1082,17 +1121,25 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		*(__vector unsigned char *)
 			&pkts[pos]->pkt_len = pkt_mb0;
 
-		/* E.2 flip owner bit to mark CQEs from last round. */
-		owner_mask = (__vector unsigned char)
-			vec_and((__vector unsigned long)op_own,
-			(__vector unsigned long)owner_check);
-		if (ownership)
+		/* E.2 mask out CQEs belonging to HW. */
+		if (rxq->cqe_comp_layout) {
+			owner_mask = (__vector unsigned char)
+				vec_and((__vector unsigned long)op_own,
+				(__vector unsigned long)vic_check);
+			owner_mask = (__vector unsigned char)
+				vec_cmpeq((__vector unsigned int)owner_mask,
+				(__vector unsigned int)validity);
 			owner_mask = (__vector unsigned char)
 				vec_xor((__vector unsigned long)owner_mask,
+				(__vector unsigned long)ones);
+		} else {
+			owner_mask = (__vector unsigned char)
+				vec_and((__vector unsigned long)op_own,
 				(__vector unsigned long)owner_check);
-		owner_mask = (__vector unsigned char)
-			vec_cmpeq((__vector unsigned int)owner_mask,
-			(__vector unsigned int)owner_check);
+			owner_mask = (__vector unsigned char)
+				vec_cmpeq((__vector unsigned int)owner_mask,
+				(__vector unsigned int)ownership);
+		}
 		owner_mask = (__vector unsigned char)
 			vec_packs((__vector unsigned int)owner_mask,
 			(__vector unsigned int)zero);
@@ -1174,7 +1221,8 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			(__vector unsigned long)mask);
 
 		/* D.3 check error in opcode. */
-		adj = (comp_idx != MLX5_VPMD_DESCS_PER_LOOP && comp_idx == n);
+		adj = (!rxq->cqe_comp_layout &&
+		       comp_idx != MLX5_VPMD_DESCS_PER_LOOP && comp_idx == n);
 		mask = (__vector unsigned char)(__vector unsigned long){
 			(adj * sizeof(uint16_t) * 8), 0};
 		lshift = vec_splat((__vector unsigned long)mask, 0);

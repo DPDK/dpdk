@@ -31,6 +31,7 @@
 /* HW structure definition */
 #include "hw/cpt.h"
 #include "hw/dpi.h"
+#include "hw/ml.h"
 #include "hw/nix.h"
 #include "hw/npa.h"
 #include "hw/npc.h"
@@ -46,6 +47,9 @@
 
 /* HW Errata */
 #include "roc_errata.h"
+
+/* HW Features */
+#include "roc_features.h"
 
 /* Mbox */
 #include "roc_mbox.h"
@@ -106,5 +110,8 @@
 /* NIX Inline dev */
 #include "roc_nix_inl_dp.h"
 #include "roc_nix_inl.h"
+
+/* ML */
+#include "roc_ml.h"
 
 #endif /* _ROC_API_H_ */

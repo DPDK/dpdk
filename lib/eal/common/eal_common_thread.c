@@ -256,7 +256,7 @@ static int ctrl_thread_init(void *arg)
 	if (params->ret != 0) {
 		__atomic_store_n(&params->ctrl_thread_status,
 			CTRL_THREAD_ERROR, __ATOMIC_RELEASE);
-		return params->ret;
+		return 1;
 	}
 
 	__atomic_store_n(&params->ctrl_thread_status,
@@ -268,23 +268,25 @@ static int ctrl_thread_init(void *arg)
 static void *ctrl_thread_start(void *arg)
 {
 	struct rte_thread_ctrl_params *params = arg;
+	void *start_arg = params->arg;
 	void *(*start_routine)(void *) = params->u.ctrl_start_routine;
 
 	if (ctrl_thread_init(arg) != 0)
 		return NULL;
 
-	return start_routine(params->arg);
+	return start_routine(start_arg);
 }
 
 static uint32_t control_thread_start(void *arg)
 {
 	struct rte_thread_ctrl_params *params = arg;
+	void *start_arg = params->arg;
 	rte_thread_func start_routine = params->u.control_start_routine;
 
 	if (ctrl_thread_init(arg) != 0)
-		return params->ret;
+		return 0;
 
-	return start_routine(params->arg);
+	return start_routine(start_arg);
 }
 
 int

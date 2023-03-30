@@ -451,7 +451,7 @@ vhost_crypto_msg_post_handler(int vid, void *msg)
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
-	switch (ctx->msg.request.master) {
+	switch (ctx->msg.request.frontend) {
 	case VHOST_USER_CRYPTO_CREATE_SESS:
 		vhost_crypto_create_sess(vcrypto,
 				&ctx->msg.payload.crypto_session);

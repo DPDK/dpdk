@@ -558,7 +558,7 @@ static int ipn3ke_vswitch_remove(struct rte_afu_device *afu_dev)
 		snprintf(name, sizeof(name), "net_%s_representor_%d",
 			afu_dev->device.name, i);
 
-		ethdev = rte_eth_dev_allocated(afu_dev->device.name);
+		ethdev = rte_eth_dev_allocated(name);
 		if (ethdev != NULL)
 			rte_eth_dev_destroy(ethdev, ipn3ke_rpst_uninit);
 	}

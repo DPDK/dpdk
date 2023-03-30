@@ -205,12 +205,15 @@ cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_fc_conf *fc_conf)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	enum rte_eth_fc_mode mode_map[] = {
-					   RTE_ETH_FC_NONE, RTE_ETH_FC_RX_PAUSE,
-					   RTE_ETH_FC_TX_PAUSE, RTE_ETH_FC_FULL
-					  };
+	enum rte_eth_fc_mode mode_map[2][2] = {
+		[0][0] = RTE_ETH_FC_NONE,
+		[0][1] = RTE_ETH_FC_TX_PAUSE,
+		[1][0] = RTE_ETH_FC_RX_PAUSE,
+		[1][1] = RTE_ETH_FC_FULL,
+	};
 	struct roc_nix *nix = &dev->nix;
-	int mode;
+	uint8_t rx_pause, tx_pause;
+	int mode, i;
 
 	if (roc_nix_is_sdp(nix))
 		return 0;
@@ -219,30 +222,23 @@ cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 	if (mode < 0)
 		return mode;
 
+	rx_pause = (mode == ROC_NIX_FC_FULL) || (mode == ROC_NIX_FC_RX);
+	tx_pause = (mode == ROC_NIX_FC_FULL) || (mode == ROC_NIX_FC_TX);
+
+	/* Report flow control as disabled even if one RQ/SQ has it disabled */
+	for (i = 0; i < dev->nb_rxq; i++) {
+		if (dev->rqs[i].tc == ROC_NIX_PFC_CLASS_INVALID)
+			tx_pause = 0;
+	}
+
+	for (i = 0; i < dev->nb_txq; i++) {
+		if (dev->sqs[i].tc == ROC_NIX_PFC_CLASS_INVALID)
+			rx_pause = 0;
+	}
+
 	memset(fc_conf, 0, sizeof(struct rte_eth_fc_conf));
-	fc_conf->mode = mode_map[mode];
+	fc_conf->mode = mode_map[rx_pause][tx_pause];
 	return 0;
-}
-
-static int
-nix_fc_cq_config_set(struct cnxk_eth_dev *dev, uint16_t qid, bool enable)
-{
-	struct roc_nix *nix = &dev->nix;
-	struct roc_nix_fc_cfg fc_cfg;
-	struct roc_nix_cq *cq;
-	struct roc_nix_rq *rq;
-
-	memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
-	rq = &dev->rqs[qid];
-	cq = &dev->cqs[qid];
-	fc_cfg.type = ROC_NIX_FC_RQ_CFG;
-	fc_cfg.rq_cfg.enable = enable;
-	fc_cfg.rq_cfg.tc = 0;
-	fc_cfg.rq_cfg.rq = qid;
-	fc_cfg.rq_cfg.pool = rq->aura_handle;
-	fc_cfg.rq_cfg.cq_drop = cq->drop_thresh;
-
-	return roc_nix_fc_config_set(nix, &fc_cfg);
 }
 
 int
@@ -260,10 +256,19 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	struct cnxk_eth_rxq_sp *rxq;
 	struct cnxk_eth_txq_sp *txq;
 	uint8_t rx_pause, tx_pause;
+	struct roc_nix_sq *sq;
+	struct roc_nix_cq *cq;
+	struct roc_nix_rq *rq;
+	uint8_t tc;
 	int rc, i;
 
 	if (roc_nix_is_sdp(nix))
 		return 0;
+
+	if (dev->pfc_cfg.rx_pause_en || dev->pfc_cfg.tx_pause_en) {
+		plt_err("Disable PFC before configuring Flow Control");
+		return -ENOTSUP;
+	}
 
 	if (fc_conf->high_water || fc_conf->low_water || fc_conf->pause_time ||
 	    fc_conf->mac_ctrl_frame_fwd || fc_conf->autoneg) {
@@ -271,57 +276,70 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-
-	rx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) ||
-		    (fc_conf->mode == RTE_ETH_FC_RX_PAUSE);
-	tx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) ||
-		    (fc_conf->mode == RTE_ETH_FC_TX_PAUSE);
-
-	if (fc_conf->mode == fc->mode) {
-		fc->rx_pause = rx_pause;
-		fc->tx_pause = tx_pause;
-		return 0;
+	/* Disallow flow control changes when device is in started state */
+	if (data->dev_started) {
+		plt_info("Stop the port=%d for setting flow control", data->port_id);
+		return -EBUSY;
 	}
 
+	rx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) || (fc_conf->mode == RTE_ETH_FC_RX_PAUSE);
+	tx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) || (fc_conf->mode == RTE_ETH_FC_TX_PAUSE);
+
 	/* Check if TX pause frame is already enabled or not */
-	if (fc->tx_pause ^ tx_pause) {
-		if (roc_model_is_cn96_ax() && data->dev_started) {
-			/* On Ax, CQ should be in disabled state
-			 * while setting flow control configuration.
-			 */
-			plt_info("Stop the port=%d for setting flow control",
-				 data->port_id);
-			return 0;
-		}
+	tc = tx_pause ? 0 : ROC_NIX_PFC_CLASS_INVALID;
+	for (i = 0; i < data->nb_rx_queues; i++) {
+		struct roc_nix_fc_cfg fc_cfg;
 
-		for (i = 0; i < data->nb_rx_queues; i++) {
-			struct roc_nix_fc_cfg fc_cfg;
+		/* Skip if RQ does not exist */
+		if (!data->rx_queues[i])
+			continue;
 
-			memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
-			rxq = ((struct cnxk_eth_rxq_sp *)data->rx_queues[i]) -
-			      1;
-			rxq->tx_pause = !!tx_pause;
-			rc = nix_fc_cq_config_set(dev, rxq->qid, !!tx_pause);
-			if (rc)
-				return rc;
-		}
+		rxq = cnxk_eth_rxq_to_sp(data->rx_queues[i]);
+		rq = &dev->rqs[rxq->qid];
+		cq = &dev->cqs[rxq->qid];
+
+		/* Skip if RQ is in expected state */
+		if (fc->tx_pause == tx_pause && rq->tc == tc)
+			continue;
+
+		memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
+		fc_cfg.type = ROC_NIX_FC_RQ_CFG;
+		fc_cfg.rq_cfg.enable = !!tx_pause;
+		fc_cfg.rq_cfg.tc = 0;
+		fc_cfg.rq_cfg.rq = rq->qid;
+		fc_cfg.rq_cfg.pool = rq->aura_handle;
+		fc_cfg.rq_cfg.cq_drop = cq->drop_thresh;
+
+		rc = roc_nix_fc_config_set(nix, &fc_cfg);
+		if (rc)
+			return rc;
+		rxq->tx_pause = !!tx_pause;
 	}
 
 	/* Check if RX pause frame is enabled or not */
-	if (fc->rx_pause ^ rx_pause) {
-		for (i = 0; i < data->nb_tx_queues; i++) {
-			struct roc_nix_fc_cfg fc_cfg;
+	tc = rx_pause ? 0 : ROC_NIX_PFC_CLASS_INVALID;
+	for (i = 0; i < data->nb_tx_queues; i++) {
+		struct roc_nix_fc_cfg fc_cfg;
 
-			memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
-			txq = ((struct cnxk_eth_txq_sp *)data->tx_queues[i]) -
-			      1;
-			fc_cfg.type = ROC_NIX_FC_TM_CFG;
-			fc_cfg.tm_cfg.sq = txq->qid;
-			fc_cfg.tm_cfg.enable = !!rx_pause;
-			rc = roc_nix_fc_config_set(nix, &fc_cfg);
-			if (rc)
-				return rc;
-		}
+		/* Skip if SQ does not exist */
+		if (!data->tx_queues[i])
+			continue;
+
+		txq = cnxk_eth_txq_to_sp(data->tx_queues[i]);
+		sq = &dev->sqs[txq->qid];
+
+		/* Skip if SQ is in expected state */
+		if (fc->rx_pause == rx_pause && sq->tc == tc)
+			continue;
+
+		memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
+		fc_cfg.type = ROC_NIX_FC_TM_CFG;
+		fc_cfg.tm_cfg.sq = txq->qid;
+		fc_cfg.tm_cfg.tc = 0;
+		fc_cfg.tm_cfg.enable = !!rx_pause;
+		rc = roc_nix_fc_config_set(nix, &fc_cfg);
+		if (rc && rc != EEXIST)
+			return rc;
 	}
 
 	rc = roc_nix_fc_mode_set(nix, mode_map[fc_conf->mode]);
@@ -350,6 +368,7 @@ cnxk_nix_priority_flow_ctrl_queue_config(struct rte_eth_dev *eth_dev,
 				 struct rte_eth_pfc_queue_conf *pfc_conf)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
 	struct roc_nix *nix = &dev->nix;
 	enum rte_eth_fc_mode mode;
 	uint8_t en, tc;
@@ -364,6 +383,12 @@ cnxk_nix_priority_flow_ctrl_queue_config(struct rte_eth_dev *eth_dev,
 	if (roc_nix_is_sdp(nix) || roc_nix_is_lbk(nix)) {
 		plt_nix_dbg("Prio flow ctrl config is not allowed on SDP/LBK");
 		return -ENOTSUP;
+	}
+
+	/* Disallow flow control changes when device is in started state */
+	if (data->dev_started) {
+		plt_info("Stop the port=%d for setting PFC", data->port_id);
+		return -EBUSY;
 	}
 
 	mode = pfc_conf->mode;
@@ -1094,10 +1119,10 @@ nix_priority_flow_ctrl_rq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	enum roc_nix_fc_mode mode;
 	struct roc_nix_rq *rq;
 	struct roc_nix_cq *cq;
-	int rc;
+	int rc, i;
 
-	if (roc_model_is_cn96_ax() && data->dev_started) {
-		/* On Ax, CQ should be in disabled state
+	if (data->dev_started) {
+		/* RQ should be in disabled state
 		 * while setting flow control configuration.
 		 */
 		plt_info("Stop the port=%d for setting flow control",
@@ -1127,15 +1152,13 @@ nix_priority_flow_ctrl_rq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	if (rc)
 		return rc;
 
-	if (rxq->tx_pause != tx_pause) {
-		if (tx_pause)
-			pfc->tx_pause_en++;
-		else
-			pfc->tx_pause_en--;
-	}
-
 	rxq->tx_pause = !!tx_pause;
 	rxq->tc = tc;
+	/* Recheck number of RQ's that have PFC enabled */
+	pfc->tx_pause_en = 0;
+	for (i = 0; i < dev->nb_rxq; i++)
+		if (dev->rqs[i].tc != ROC_NIX_PFC_CLASS_INVALID)
+			pfc->tx_pause_en++;
 
 	/* Skip if PFC already enabled in mac */
 	if (pfc->tx_pause_en > 1)
@@ -1168,7 +1191,7 @@ nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	struct cnxk_eth_txq_sp *txq;
 	enum roc_nix_fc_mode mode;
 	struct roc_nix_sq *sq;
-	int rc;
+	int rc, i;
 
 	if (data->tx_queues == NULL)
 		return -EINVAL;
@@ -1212,18 +1235,11 @@ nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	if (rc)
 		return rc;
 
-	/* Maintaining a count for SQs which are configured for PFC. This is
-	 * required to handle disabling of a particular SQ without affecting
-	 * PFC on other SQs.
-	 */
-	if (!fc_cfg.tm_cfg.enable && sq->tc != ROC_NIX_PFC_CLASS_INVALID) {
-		sq->tc = ROC_NIX_PFC_CLASS_INVALID;
-		pfc->rx_pause_en--;
-	} else if (fc_cfg.tm_cfg.enable &&
-		   sq->tc == ROC_NIX_PFC_CLASS_INVALID) {
-		sq->tc = tc;
-		pfc->rx_pause_en++;
-	}
+	/* Recheck number of SQ's that have PFC enabled */
+	pfc->rx_pause_en = 0;
+	for (i = 0; i < dev->nb_txq; i++)
+		if (dev->sqs[i].tc != ROC_NIX_PFC_CLASS_INVALID)
+			pfc->rx_pause_en++;
 
 	if (pfc->rx_pause_en > 1)
 		goto exit;

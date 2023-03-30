@@ -4,6 +4,8 @@
 #ifndef _ROC_ERRATA_H_
 #define _ROC_ERRATA_H_
 
+#include "roc_model.h"
+
 /* Errata IPBUNIXRX-40129 */
 static inline bool
 roc_errata_nix_has_no_drop_re(void)
@@ -96,6 +98,21 @@ roc_errata_nix_sdp_send_has_mtu_size_16k(void)
 {
 	return (roc_model_is_cnf95xxn_a0() || roc_model_is_cnf95xxo_a0() ||
 		roc_model_is_cn96_a0() || roc_model_is_cn96_b0());
+}
+
+/* Errata IPBUCPT-38753 */
+static inline bool
+roc_errata_cpt_hang_on_mixed_ctx_val(void)
+{
+	return roc_model_is_cn10ka_a0() || roc_model_is_cn10ka_a1();
+}
+
+/* Errata IPBUNIXTX-39300 */
+static inline bool
+roc_errata_nix_assign_incorrect_qint(void)
+{
+	return (roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
+		roc_model_is_cnf10kb_a0() || roc_model_is_cn10ka_a1());
 }
 
 #endif /* _ROC_ERRATA_H_ */

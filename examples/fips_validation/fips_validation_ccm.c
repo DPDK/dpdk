@@ -34,6 +34,18 @@
 #define POS_KEYWORD	"Pass"
 #define NEG_KEYWORD	"Fail"
 
+#define DIR_JSON_STR	"direction"
+#define IVLEN_JSON_STR		"ivLen"
+#define PTLEN_JSON_STR	"payloadLen"
+#define AADLEN_JSON_STR		"aadLen"
+#define TAGLEN_JSON_STR		"tagLen"
+#define KEYLEN_JSON_STR		"keyLen"
+#define PT_JSON_STR		"pt"
+#define CT_JSON_STR		"ct"
+#define KEY_JSON_STR		"key"
+#define IV_JSON_STR		"iv"
+#define AAD_JSON_STR		"aad"
+
 static int
 parser_dvpt_interim(const char *key, char *src, struct fips_val *val)
 {
@@ -205,6 +217,126 @@ struct ccm_test_types {
 		{VTT_STR, CCM_VTT, ccm_vtt_vec, ccm_vtt_interim_vec,
 			FIPS_TEST_ENC_AUTH_GEN},
 };
+
+#ifdef USE_JANSSON
+static int
+parser_read_ccm_direction_str(__rte_unused const char *key, char *src,
+	__rte_unused struct fips_val *val)
+{
+	if (strcmp(src, "encrypt") == 0)
+		info.op = FIPS_TEST_ENC_AUTH_GEN;
+	else if (strcmp(src, "decrypt") == 0)
+		info.op = FIPS_TEST_DEC_AUTH_VERIF;
+
+	return 0;
+}
+
+static int
+parser_read_ccm_aad_str(const char *key, char *src, struct fips_val *val)
+{
+	struct fips_val tmp_val = {0};
+	uint32_t len = val->len;
+
+	/* CCM aad requires 18 bytes padding before the real content */
+	val->val = rte_zmalloc(NULL, len + 18, 0);
+	if (!val->val)
+		return -1;
+
+	if (parse_uint8_hex_str(key, src, &tmp_val) < 0)
+		return -1;
+
+	memcpy(val->val + 18, tmp_val.val, val->len);
+	rte_free(tmp_val.val);
+
+	return 0;
+}
+
+static int
+parse_read_ccm_ct_str(const char *key, char *src, struct fips_val *val)
+{
+	int ret;
+
+	val->len = vec.pt.len;
+
+	ret = parse_uint8_known_len_hex_str(key, src, val);
+	if (ret < 0)
+		return ret;
+
+	src += val->len * 2;
+
+	ret = parse_uint8_known_len_hex_str("", src, &vec.aead.digest);
+	if (ret < 0) {
+		rte_free(val->val);
+		memset(val, 0, sizeof(*val));
+		return ret;
+	}
+
+	return 0;
+}
+
+struct fips_test_callback ccm_tests_interim_json_vectors[] = {
+	{DIR_JSON_STR, parser_read_ccm_direction_str, NULL},
+	{IVLEN_JSON_STR, parser_read_uint32_bit_val, &vec.iv},
+	{PTLEN_JSON_STR, parser_read_uint32_bit_val, &vec.pt},
+	{AADLEN_JSON_STR, parser_read_uint32_bit_val, &vec.aead.aad},
+	{TAGLEN_JSON_STR, parser_read_uint32_bit_val, &vec.aead.digest},
+	{KEYLEN_JSON_STR, parser_read_uint32_bit_val, &vec.aead.key},
+	{NULL, NULL, NULL} /**< end pointer */
+};
+
+struct fips_test_callback ccm_tests_json_vectors[] = {
+	{PT_JSON_STR, parse_uint8_known_len_hex_str, &vec.pt},
+	{CT_JSON_STR, parse_read_ccm_ct_str, &vec.ct},
+	{KEY_JSON_STR, parse_uint8_known_len_hex_str, &vec.aead.key},
+	{IV_JSON_STR, parse_uint8_known_len_hex_str, &vec.iv},
+	{AAD_JSON_STR, parser_read_ccm_aad_str, &vec.aead.aad},
+	{NULL, NULL, NULL} /**< end pointer */
+};
+
+static int
+parse_test_ccm_json_writeback(struct fips_val *val)
+{
+	struct fips_val tmp_val;
+	json_t *tcId;
+
+	tcId = json_object_get(json_info.json_test_case, "tcId");
+	json_info.json_write_case = json_object();
+	json_object_set(json_info.json_write_case, "tcId", tcId);
+
+	if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+		json_t *ct;
+
+		info.one_line_text[0] = '\0';
+		writeback_hex_str("", info.one_line_text, val);
+		ct = json_string(info.one_line_text);
+		json_object_set_new(json_info.json_write_case, CT_JSON_STR, ct);
+	} else {
+		if (vec.status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
+			tmp_val.val = val->val;
+			tmp_val.len = vec.pt.len;
+
+			info.one_line_text[0] = '\0';
+			writeback_hex_str("", info.one_line_text, &tmp_val);
+			json_object_set_new(json_info.json_write_case, PT_JSON_STR,
+				json_string(info.one_line_text));
+		}  else {
+			json_object_set_new(json_info.json_write_case, "testPassed",
+				json_false());
+		}
+	}
+
+	return 0;
+}
+
+int
+parse_test_ccm_json_init(void)
+{
+	info.interim_callbacks = ccm_tests_interim_json_vectors;
+	info.parse_writeback = parse_test_ccm_json_writeback;
+	info.callbacks = ccm_tests_json_vectors;
+	return 0;
+}
+#endif /* USE_JANSSON */
 
 static int
 parse_test_ccm_writeback(struct fips_val *val)

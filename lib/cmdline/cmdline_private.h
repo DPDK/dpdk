@@ -23,14 +23,8 @@
 #define RDLINE_HISTORY_BUF_SIZE BUFSIZ
 #define RDLINE_HISTORY_MAX_LINE 64
 
-enum rdline_status {
-	RDLINE_INIT,
-	RDLINE_RUNNING,
-	RDLINE_EXITED
-};
-
 struct rdline {
-	enum rdline_status status;
+	volatile enum rdline_status status;
 	/* rdline bufs */
 	struct cirbuf left;
 	struct cirbuf right;
@@ -95,6 +89,9 @@ int cmdline_poll_char(struct cmdline *cl);
 
 /* Read one character from input. */
 ssize_t cmdline_read_char(struct cmdline *cl, char *c);
+
+/* Force current cmdline read to unblock. */
+void cmdline_cancel(struct cmdline *cl);
 
 /* vdprintf(3) */
 __rte_format_printf(2, 0)

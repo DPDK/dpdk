@@ -1415,8 +1415,7 @@ static void
 cpt_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
 	     const struct rte_cryptodev_capabilities *caps, int nb_caps)
 {
-	if (*cur_pos + nb_caps > CNXK_CPT_MAX_CAPS)
-		return;
+	PLT_VERIFY(*cur_pos + nb_caps <= CNXK_CPT_MAX_CAPS);
 
 	memcpy(&cnxk_caps[*cur_pos], caps, nb_caps * sizeof(caps[0]));
 	*cur_pos += nb_caps;
@@ -1491,23 +1490,17 @@ cnxk_crypto_capabilities_get(struct cnxk_cpt_vf *vf)
 	return vf->crypto_caps;
 }
 
-static bool
+static void
 sec_caps_limit_check(int *cur_pos, int nb_caps)
 {
-	if (*cur_pos + nb_caps > CNXK_SEC_CRYPTO_MAX_CAPS) {
-		rte_panic("Could not add sec crypto caps");
-		return true;
-	}
-
-	return false;
+	PLT_VERIFY(*cur_pos + nb_caps <= CNXK_SEC_CRYPTO_MAX_CAPS);
 }
 
 static void
 sec_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
 	     const struct rte_cryptodev_capabilities *caps, int nb_caps)
 {
-	if (sec_caps_limit_check(cur_pos, nb_caps))
-		return;
+	sec_caps_limit_check(cur_pos, nb_caps);
 
 	memcpy(&cnxk_caps[*cur_pos], caps, nb_caps * sizeof(caps[0]));
 	*cur_pos += nb_caps;
@@ -1520,8 +1513,7 @@ cn10k_sec_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[],
 	const struct rte_cryptodev_capabilities *cap;
 	unsigned int i;
 
-	if (sec_caps_limit_check(cur_pos, 1))
-		return;
+	sec_caps_limit_check(cur_pos, 1);
 
 	/* NULL auth */
 	for (i = 0; i < RTE_DIM(caps_null); i++) {

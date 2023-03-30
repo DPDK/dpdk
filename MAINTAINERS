@@ -94,7 +94,6 @@ F: devtools/check-spdx-tag.sh
 F: devtools/check-symbol-change.sh
 F: devtools/check-symbol-maps.sh
 F: devtools/checkpatches.sh
-F: devtools/gen-abi.sh
 F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
@@ -476,6 +475,13 @@ F: app/test-regex/
 F: doc/guides/prog_guide/regexdev.rst
 F: doc/guides/regexdevs/features/default.ini
 
+Machine Learning device API - EXPERIMENTAL
+M: Srikanth Yalavarthi <syalavarthi@marvell.com>
+F: lib/mldev/
+F: doc/guides/prog_guide/mldev.rst
+F: app/test-mldev/
+F: doc/guides/tools/testmldev.rst
+
 DMA device API - EXPERIMENTAL
 M: Chengwen Feng <fengchengwen@huawei.com>
 F: lib/dmadev/
@@ -576,6 +582,10 @@ F: drivers/bus/fslmc/
 
 PCI bus driver
 F: drivers/bus/pci/
+
+Platform bus driver
+M: Tomasz Duszynski <tduszynski@marvell.com>
+F: drivers/bus/platform/
 
 VDEV bus driver
 F: drivers/bus/vdev/
@@ -783,6 +793,14 @@ F: drivers/common/idpf/
 F: doc/guides/nics/idpf.rst
 F: doc/guides/nics/features/idpf.ini
 
+Intel cpfl - EXPERIMENTAL
+M: Yuying Zhang <yuying.zhang@intel.com>
+M: Beilei Xing <beilei.xing@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+F: drivers/net/cpfl/
+F: doc/guides/nics/cpfl.rst
+F: doc/guides/nics/features/cpfl.ini
+
 Intel igc
 M: Junfeng Guo <junfeng.guo@intel.com>
 M: Simei Su <simei.su@intel.com>
@@ -853,7 +871,7 @@ F: buildtools/options-ibverbs-static.sh
 F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
 
-Microsoft mana - EXPERIMENTAL
+Microsoft mana
 M: Long Li <longli@microsoft.com>
 F: drivers/net/mana/
 F: doc/guides/nics/mana.rst
@@ -928,8 +946,8 @@ F: doc/guides/nics/bnx2x.rst
 F: doc/guides/nics/features/bnx2x*.ini
 
 Marvell QLogic qede PMD
-M: Rasesh Mody <rmody@marvell.com>
 M: Devendra Singh Rawat <dsinghrawat@marvell.com>
+M: Alok Prasad <palok@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
@@ -1262,6 +1280,17 @@ M: Ori Kam <orika@nvidia.com>
 F: drivers/regex/mlx5/
 F: doc/guides/regexdevs/mlx5.rst
 F: doc/guides/regexdevs/features/mlx5.ini
+
+
+MLdev Drivers
+-------------
+
+Marvell ML CNXK
+M: Srikanth Yalavarthi <syalavarthi@marvell.com>
+F: drivers/common/cnxk/hw/ml.h
+F: drivers/common/cnxk/roc_ml*
+F: drivers/ml/cnxk/
+F: doc/guides/mldevs/cnxk.rst
 
 
 vDPA Drivers
@@ -1765,7 +1794,7 @@ F: doc/guides/tools/proc_info.rst
 
 DTS
 M: Lijuan Tu <lijuan.tu@intel.com>
-M: Owen Hilyard <ohilyard@iol.unh.edu>
+M: Juraj Linkeš <juraj.linkes@pantheon.tech>
 F: dts/
 F: devtools/dts-check-format.sh
 F: doc/guides/tools/dts.rst

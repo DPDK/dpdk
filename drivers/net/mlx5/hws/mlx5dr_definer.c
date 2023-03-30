@@ -9,6 +9,8 @@
 #define ETH_TYPE_IPV4_VXLAN	0x0800
 #define ETH_TYPE_IPV6_VXLAN	0x86DD
 #define ETH_VXLAN_DEFAULT_PORT	4789
+#define IP_UDP_PORT_MPLS	6635
+#define DR_FLOW_LAYER_TUNNEL_NO_MPLS (MLX5_FLOW_LAYER_TUNNEL & ~MLX5_FLOW_LAYER_MPLS)
 
 #define STE_NO_VLAN	0x0
 #define STE_SVLAN	0x1
@@ -104,6 +106,8 @@ struct mlx5dr_definer_conv_data {
 	struct mlx5dr_definer_fc *fc;
 	uint8_t relaxed;
 	uint8_t tunnel;
+	uint8_t mpls_idx;
+	enum rte_flow_item_type last_item;
 };
 
 /* Xmacro used to create generic item setter from items */
@@ -123,6 +127,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		ipv4_version,		STE_IPV4,		rte_ipv4_hdr) \
 	X(SET_BE16,	ipv4_frag,		v->fragment_offset,	rte_ipv4_hdr) \
 	X(SET_BE16,	ipv4_len,		v->total_length,	rte_ipv4_hdr) \
+	X(SET,          ip_fragmented,          !!v->fragment_offset,   rte_ipv4_hdr) \
 	X(SET_BE16,	ipv6_payload_len,	v->hdr.payload_len,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_proto,		v->hdr.proto,		rte_flow_item_ipv6) \
 	X(SET,		ipv6_routing_hdr,	IPPROTO_ROUTING,	rte_flow_item_ipv6) \
@@ -154,6 +159,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		gtp_ext_hdr_qfi,	v->hdr.qfi,		rte_flow_item_gtp_psc) \
 	X(SET,		vxlan_flags,		v->flags,		rte_flow_item_vxlan) \
 	X(SET,		vxlan_udp_port,		ETH_VXLAN_DEFAULT_PORT,	rte_flow_item_vxlan) \
+	X(SET,		mpls_udp_port,		IP_UDP_PORT_MPLS,	rte_flow_item_mpls) \
 	X(SET,		source_qp,		v->queue,		mlx5_rte_flow_item_sq) \
 	X(SET,		tag,			v->data,		rte_flow_item_tag) \
 	X(SET,		metadata,		v->data,		rte_flow_item_meta) \
@@ -312,6 +318,43 @@ mlx5dr_definer_ipv6_routing_ext_set(struct mlx5dr_definer_fc *fc,
 }
 
 static void
+mlx5dr_definer_flex_parser_set(struct mlx5dr_definer_fc *fc,
+			       const void *item,
+			       uint8_t *tag, bool is_inner)
+{
+	const struct rte_flow_item_flex *flex = item;
+	uint32_t byte_off, val, idx;
+	int ret;
+
+	val = 0;
+	byte_off = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_0);
+	idx = fc->fname - MLX5DR_DEFINER_FNAME_FLEX_PARSER_0;
+	byte_off -= idx * sizeof(uint32_t);
+	ret = mlx5_flex_get_parser_value_per_byte_off(flex, flex->handle, byte_off,
+						      false, is_inner, &val);
+	if (ret == -1 || !val)
+		return;
+
+	DR_SET(tag, val, fc->byte_off, 0, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_flex_parser_inner_set(struct mlx5dr_definer_fc *fc,
+				     const void *item,
+				     uint8_t *tag)
+{
+	mlx5dr_definer_flex_parser_set(fc, item, tag, true);
+}
+
+static void
+mlx5dr_definer_flex_parser_outer_set(struct mlx5dr_definer_fc *fc,
+				     const void *item,
+				     uint8_t *tag)
+{
+	mlx5dr_definer_flex_parser_set(fc, item, tag, false);
+}
+
+static void
 mlx5dr_definer_gre_key_set(struct mlx5dr_definer_fc *fc,
 			   const void *item_spec,
 			   uint8_t *tag)
@@ -455,6 +498,89 @@ mlx5dr_definer_vport_set(struct mlx5dr_definer_fc *fc,
 
 	/* Bit offset is set to 0 to since regc value is 32bit */
 	DR_SET(tag, regc_value, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static struct mlx5dr_definer_fc *
+mlx5dr_definer_get_mpls_fc(struct mlx5dr_definer_conv_data *cd, bool inner)
+{
+	uint8_t mpls_idx = cd->mpls_idx;
+	struct mlx5dr_definer_fc *fc;
+
+	switch (mpls_idx) {
+	case 0:
+		fc = &cd->fc[DR_CALC_FNAME(MPLS0, inner)];
+		DR_CALC_SET_HDR(fc, mpls_inner, mpls0_label);
+		break;
+	case 1:
+		fc = &cd->fc[DR_CALC_FNAME(MPLS1, inner)];
+		DR_CALC_SET_HDR(fc, mpls_inner, mpls1_label);
+		break;
+	case 2:
+		fc = &cd->fc[DR_CALC_FNAME(MPLS2, inner)];
+		DR_CALC_SET_HDR(fc, mpls_inner, mpls2_label);
+		break;
+	case 3:
+		fc = &cd->fc[DR_CALC_FNAME(MPLS3, inner)];
+		DR_CALC_SET_HDR(fc, mpls_inner, mpls3_label);
+		break;
+	case 4:
+		fc = &cd->fc[DR_CALC_FNAME(MPLS4, inner)];
+		DR_CALC_SET_HDR(fc, mpls_inner, mpls4_label);
+		break;
+	default:
+		rte_errno = ENOTSUP;
+		DR_LOG(ERR, "MPLS index %d is not supported\n", mpls_idx);
+		return NULL;
+	}
+
+	return fc;
+}
+
+static struct mlx5dr_definer_fc *
+mlx5dr_definer_get_mpls_oks_fc(struct mlx5dr_definer_conv_data *cd, bool inner)
+{
+	uint8_t mpls_idx = cd->mpls_idx;
+	struct mlx5dr_definer_fc *fc;
+
+	switch (mpls_idx) {
+	case 0:
+		fc = &cd->fc[DR_CALC_FNAME(OKS2_MPLS0, inner)];
+		DR_CALC_SET_HDR(fc, oks2, second_mpls0_qualifier);
+		break;
+	case 1:
+		fc = &cd->fc[DR_CALC_FNAME(OKS2_MPLS1, inner)];
+		DR_CALC_SET_HDR(fc, oks2, second_mpls1_qualifier);
+		break;
+	case 2:
+		fc = &cd->fc[DR_CALC_FNAME(OKS2_MPLS2, inner)];
+		DR_CALC_SET_HDR(fc, oks2, second_mpls2_qualifier);
+		break;
+	case 3:
+		fc = &cd->fc[DR_CALC_FNAME(OKS2_MPLS3, inner)];
+		DR_CALC_SET_HDR(fc, oks2, second_mpls3_qualifier);
+		break;
+	case 4:
+		fc = &cd->fc[DR_CALC_FNAME(OKS2_MPLS4, inner)];
+		DR_CALC_SET_HDR(fc, oks2, second_mpls4_qualifier);
+		break;
+	default:
+		rte_errno = ENOTSUP;
+		DR_LOG(ERR, "MPLS index %d is not supported\n", mpls_idx);
+		return NULL;
+	}
+
+	return fc;
+}
+
+static void
+mlx5dr_definer_mpls_label_set(struct mlx5dr_definer_fc *fc,
+			      const void *item_spec,
+			      uint8_t *tag)
+{
+	const struct rte_flow_item_mpls *v = item_spec;
+
+	memcpy(tag + fc->byte_off, v->label_tc_s, sizeof(v->label_tc_s));
+	memcpy(tag + fc->byte_off + sizeof(v->label_tc_s), &v->ttl, sizeof(v->ttl));
 }
 
 static int
@@ -610,8 +736,14 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 	if (m->fragment_offset) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_FRAG, inner)];
 		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_ipv4_frag_set;
-		DR_CALC_SET(fc, eth_l3, fragment_offset, inner);
+		if (rte_be_to_cpu_16(m->fragment_offset) == 0x3fff) {
+			fc->tag_set = &mlx5dr_definer_ip_fragmented_set;
+			DR_CALC_SET(fc, eth_l2, ip_fragmented, inner);
+		} else {
+			fc->is_range = l && l->fragment_offset;
+			fc->tag_set = &mlx5dr_definer_ipv4_frag_set;
+			DR_CALC_SET(fc, eth_l3, ipv4_frag, inner);
+		}
 	}
 
 	if (m->next_proto_id) {
@@ -1152,6 +1284,74 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_1);
 		fc->bit_mask = __mlx5_mask(header_vxlan, vni);
 		fc->bit_off = __mlx5_dw_bit_off(header_vxlan, vni);
+	}
+
+	return 0;
+}
+
+static int
+mlx5dr_definer_conv_item_mpls(struct mlx5dr_definer_conv_data *cd,
+			      struct rte_flow_item *item,
+			      int item_idx)
+{
+	const struct rte_flow_item_mpls *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+
+	if (inner) {
+		DR_LOG(ERR, "Inner MPLS item not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (cd->relaxed) {
+		DR_LOG(ERR, "Relaxed mode is not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	/* Currently support only MPLSoUDP */
+	if (cd->last_item != RTE_FLOW_ITEM_TYPE_UDP &&
+	    cd->last_item != RTE_FLOW_ITEM_TYPE_MPLS) {
+		DR_LOG(ERR, "MPLS supported only after UDP");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	/* In order to match on MPLS we must match on ip_protocol and l4_dport. */
+	fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
+	if (!fc->tag_set) {
+		fc->item_idx = item_idx;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->tag_set = &mlx5dr_definer_udp_protocol_set;
+		DR_CALC_SET(fc, eth_l2, l4_type_bwc, false);
+	}
+
+	fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
+	if (!fc->tag_set) {
+		fc->item_idx = item_idx;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->tag_set = &mlx5dr_definer_mpls_udp_port_set;
+		DR_CALC_SET(fc, eth_l4, destination_port, false);
+	}
+
+	if (m && (!is_mem_zero(m->label_tc_s, 3) || m->ttl)) {
+		/* According to HW MPLSoUDP is handled as inner */
+		fc = mlx5dr_definer_get_mpls_fc(cd, true);
+		if (!fc)
+			return rte_errno;
+
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_mpls_label_set;
+	} else { /* Mask relevant oks2 bit, indicates MPLS label exists.
+		  * According to HW MPLSoUDP is handled as inner
+		  */
+		fc = mlx5dr_definer_get_mpls_oks_fc(cd, true);
+		if (!fc)
+			return rte_errno;
+
+		fc->item_idx = item_idx;
+		fc->tag_set = mlx5dr_definer_ones_set;
 	}
 
 	return 0;
@@ -1782,6 +1982,65 @@ mlx5dr_definer_conv_item_esp(struct mlx5dr_definer_conv_data *cd,
 	return 0;
 }
 
+static void mlx5dr_definer_set_conv_tunnel(enum rte_flow_item_type cur_type,
+					   uint64_t item_flags,
+					   struct mlx5dr_definer_conv_data *cd)
+{
+	/* Already tunnel nothing to change */
+	if (cd->tunnel)
+		return;
+
+	/* We can have more than one MPLS label at each level (inner/outer), so
+	 * consider tunnel only when it is already under tunnel or if we moved to the
+	 * second MPLS level.
+	 */
+	if (cur_type != RTE_FLOW_ITEM_TYPE_MPLS)
+		cd->tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	else
+		cd->tunnel = !!(item_flags & DR_FLOW_LAYER_TUNNEL_NO_MPLS);
+}
+
+static int
+mlx5dr_definer_conv_item_flex_parser(struct mlx5dr_definer_conv_data *cd,
+				     struct rte_flow_item *item,
+				     int item_idx)
+{
+	uint32_t base_off = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_0);
+	const struct rte_flow_item_flex *v, *m;
+	enum mlx5dr_definer_fname fname;
+	struct mlx5dr_definer_fc *fc;
+	uint32_t i, mask, byte_off;
+	bool is_inner = cd->tunnel;
+	int ret;
+
+	m = item->mask;
+	v = item->spec;
+	mask = 0;
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+		byte_off = base_off - i * sizeof(uint32_t);
+		ret = mlx5_flex_get_parser_value_per_byte_off(m, v->handle, byte_off,
+							      true, is_inner, &mask);
+		if (ret == -1) {
+			rte_errno = EINVAL;
+			return rte_errno;
+		}
+
+		if (!mask)
+			continue;
+
+		fname = MLX5DR_DEFINER_FNAME_FLEX_PARSER_0;
+		fname += (enum mlx5dr_definer_fname)i;
+		fc = &cd->fc[fname];
+		fc->byte_off = byte_off;
+		fc->item_idx = item_idx;
+		fc->tag_set = cd->tunnel ? &mlx5dr_definer_flex_parser_inner_set :
+					   &mlx5dr_definer_flex_parser_outer_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->bit_mask = mask;
+	}
+	return 0;
+}
+
 static int
 mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				struct mlx5dr_match_template *mt,
@@ -1799,7 +2058,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 
 	/* Collect all RTE fields to the field array and set header layout */
 	for (i = 0; items->type != RTE_FLOW_ITEM_TYPE_END; i++, items++) {
-		cd.tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+		mlx5dr_definer_set_conv_tunnel(items->type, item_flags, &cd);
 
 		ret = mlx5dr_definer_check_item_range_supp(items);
 		if (ret)
@@ -1913,11 +2172,23 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			ret = mlx5dr_definer_conv_item_esp(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_ESP;
 			break;
+		case RTE_FLOW_ITEM_TYPE_FLEX:
+			ret = mlx5dr_definer_conv_item_flex_parser(&cd, items, i);
+			item_flags |= cd.tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
+						  MLX5_FLOW_ITEM_OUTER_FLEX;
+			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			ret = mlx5dr_definer_conv_item_mpls(&cd, items, i);
+			item_flags |= MLX5_FLOW_LAYER_MPLS;
+			cd.mpls_idx++;
+			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
+
+		cd.last_item = items->type;
 
 		if (ret) {
 			DR_LOG(ERR, "Failed processing item type: %d", items->type);

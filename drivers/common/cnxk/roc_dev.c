@@ -441,8 +441,8 @@ process_msgs(struct dev *dev, struct mbox *mbox)
 
 		default:
 			if (msg->rc)
-				plt_err("Message (%s) response has err=%d",
-					mbox_id2name(msg->id), msg->rc);
+				plt_err("Message (%s) response has err=%d (%s)",
+					mbox_id2name(msg->id), msg->rc, roc_error_msg_get(msg->rc));
 			break;
 		}
 		offset = mbox->rx_start + msg->next_msgoff;

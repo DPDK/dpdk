@@ -9,6 +9,7 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
+#include <rte_os_shim.h>
 #include <rte_string_fns.h>
 #include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
@@ -17,6 +18,7 @@
 #define ETH_RING_NUMA_NODE_ACTION_ARG	"nodeaction"
 #define ETH_RING_ACTION_CREATE		"CREATE"
 #define ETH_RING_ACTION_ATTACH		"ATTACH"
+#define ETH_RING_ACTION_MAX_LEN		8 /* CREATE | ACTION */
 #define ETH_RING_INTERNAL_ARG		"internal"
 #define ETH_RING_INTERNAL_ARG_MAX_LEN	19 /* "0x..16chars..\0" */
 
@@ -539,7 +541,7 @@ eth_dev_ring_create(const char *name,
 }
 
 struct node_action_pair {
-	char name[PATH_MAX];
+	char name[ETH_RING_ACTION_MAX_LEN];
 	unsigned int node;
 	enum dev_action action;
 };

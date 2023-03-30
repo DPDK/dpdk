@@ -162,8 +162,9 @@ https://github.com/linux-rdma/rdma-core
 It is possible to build rdma-core as static libraries starting with version 21::
 
     cd build
-    CFLAGS=-fPIC cmake -DIN_PLACE=1 -DENABLE_STATIC=1 -GNinja ..
+    CFLAGS=-fPIC cmake -DENABLE_STATIC=1 -DNO_PYVERBS=1 -DNO_MAN_PAGES=1 -GNinja ..
     ninja
+    ninja install
 
 
 NVIDIA MLNX_OFED/EN
@@ -259,13 +260,14 @@ configured by the ``ibverbs_link`` build option:
 Compilation on Windows
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The DevX SDK location must be set through two environment variables:
+The DevX SDK location must be set through CFLAGS/LDFLAGS,
+either::
 
-``DEVX_LIB_PATH``
-   path to the DevX lib file.
+   meson.exe setup "-Dc_args=-I\"%DEVX_INC_PATH%\"" "-Dc_link_args=-L\"%DEVX_LIB_PATH%\"" ...
 
-``DEVX_INC_PATH``
-   path to the DevX header files.
+or::
+
+   set CFLAGS=-I"%DEVX_INC_PATH%" && set LDFLAGS=-L"%DEVX_LIB_PATH%" && meson.exe setup ...
 
 
 .. _mlx5_common_env:

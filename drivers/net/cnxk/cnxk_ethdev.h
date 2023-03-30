@@ -316,7 +316,6 @@ struct cnxk_eth_dev {
 	bool tx_compl_ena;
 	bool tx_mark;
 	bool ptp_en;
-	bool rx_mark_update; /* Enable/Disable mark update to mbuf */
 
 	/* Pointer back to rte */
 	struct rte_eth_dev *eth_dev;
@@ -595,6 +594,8 @@ int cnxk_eth_outb_sa_idx_get(struct cnxk_eth_dev *dev, uint32_t *idx_p,
 int cnxk_eth_outb_sa_idx_put(struct cnxk_eth_dev *dev, uint32_t idx);
 int cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev);
 int cnxk_nix_lookup_mem_sa_base_clear(struct cnxk_eth_dev *dev);
+int cnxk_nix_lookup_mem_metapool_set(struct cnxk_eth_dev *dev);
+int cnxk_nix_lookup_mem_metapool_clear(struct cnxk_eth_dev *dev);
 __rte_internal
 int cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev);
 struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_spi(struct cnxk_eth_dev *dev,
@@ -602,8 +603,8 @@ struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_spi(struct cnxk_eth_dev *dev,
 struct cnxk_eth_sec_sess *
 cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 			      struct rte_security_session *sess);
-int cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bufs,
-			      bool destroy);
+int cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_sz,
+			      uint32_t nb_bufs, bool destroy, const char *mempool_name);
 
 /* Congestion Management */
 int cnxk_nix_cman_info_get(struct rte_eth_dev *dev, struct rte_eth_cman_info *info);

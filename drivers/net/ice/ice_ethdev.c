@@ -2413,6 +2413,17 @@ ice_dev_init(struct rte_eth_dev *dev)
 	/* Initialize TM configuration */
 	ice_tm_conf_init(dev);
 
+	if (ice_is_e810(hw))
+		hw->phy_cfg = ICE_PHY_E810;
+	else
+		hw->phy_cfg = ICE_PHY_E822;
+
+	if (hw->phy_cfg == ICE_PHY_E822) {
+		ret = ice_start_phy_timer_e822(hw, hw->pf_id, true);
+		if (ret)
+			PMD_INIT_LOG(ERR, "Failed to start phy timer\n");
+	}
+
 	if (!ad->is_safe_mode) {
 		ret = ice_flow_init(ad);
 		if (ret) {
@@ -5814,11 +5825,6 @@ ice_timesync_enable(struct rte_eth_dev *dev)
 		return -1;
 	}
 
-	if (ice_is_e810(hw))
-		hw->phy_cfg = ICE_PHY_E810;
-	else
-		hw->phy_cfg = ICE_PHY_E822;
-
 	if (hw->func_caps.ts_func_info.src_tmr_owned) {
 		ret = ice_ptp_init_phc(hw);
 		if (ret) {
@@ -5939,16 +5945,17 @@ ice_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_adapter *ad =
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint8_t tmr_idx = hw->func_caps.ts_func_info.tmr_index_assoc;
 	uint32_t hi, lo, lo2;
 	uint64_t time, ns;
 
-	lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
-	hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
-	lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+	lo = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
+	hi = ICE_READ_REG(hw, GLTSYN_TIME_H(tmr_idx));
+	lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
 
 	if (lo2 < lo) {
-		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
-		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
+		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(tmr_idx));
 	}
 
 	time = ((uint64_t)hi << 32) | lo;
@@ -5964,6 +5971,7 @@ ice_timesync_disable(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_adapter *ad =
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint8_t tmr_idx = hw->func_caps.ts_func_info.tmr_index_assoc;
 	uint64_t val;
 	uint8_t lport;
 
@@ -5971,12 +5979,12 @@ ice_timesync_disable(struct rte_eth_dev *dev)
 
 	ice_clear_phy_tstamp(hw, lport, 0);
 
-	val = ICE_READ_REG(hw, GLTSYN_ENA(0));
+	val = ICE_READ_REG(hw, GLTSYN_ENA(tmr_idx));
 	val &= ~GLTSYN_ENA_TSYN_ENA_M;
-	ICE_WRITE_REG(hw, GLTSYN_ENA(0), val);
+	ICE_WRITE_REG(hw, GLTSYN_ENA(tmr_idx), val);
 
-	ICE_WRITE_REG(hw, GLTSYN_INCVAL_L(0), 0);
-	ICE_WRITE_REG(hw, GLTSYN_INCVAL_H(0), 0);
+	ICE_WRITE_REG(hw, GLTSYN_INCVAL_L(tmr_idx), 0);
+	ICE_WRITE_REG(hw, GLTSYN_INCVAL_H(tmr_idx), 0);
 
 	ad->ptp_ena = 0;
 

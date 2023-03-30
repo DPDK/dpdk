@@ -8,6 +8,10 @@
 
 #define NB_CRYPTODEV_DESCRIPTORS 1024
 #define DATA_SIZE		512
+#define IV_OFFSET (sizeof(struct rte_crypto_op) + \
+		   sizeof(struct rte_crypto_sym_op) + \
+		   sizeof(union rte_event_crypto_metadata))
+
 struct modex_test_data {
 	enum rte_crypto_asym_xform_type xform_type;
 	struct {
@@ -364,6 +368,7 @@ crypto_adapter_enq_op_new(struct prod_data *p)
 	const uint32_t nb_flows = t->nb_flows;
 	const uint64_t nb_pkts = t->nb_pkts;
 	struct rte_mempool *pool = t->pool;
+	uint16_t data_length, data_offset;
 	struct evt_options *opt = t->opt;
 	uint16_t qp_id = p->ca.cdev_qp_id;
 	uint8_t cdev_id = p->ca.cdev_id;
@@ -381,6 +386,14 @@ crypto_adapter_enq_op_new(struct prod_data *p)
 
 	offset = sizeof(struct perf_elt);
 	len = RTE_MAX(RTE_ETHER_MIN_LEN + offset, opt->mbuf_sz);
+
+	if (opt->crypto_cipher_bit_mode) {
+		data_offset = offset << 3;
+		data_length = (len - offset) << 3;
+	} else {
+		data_offset = offset;
+		data_length = len - offset;
+	}
 
 	while (count < nb_pkts && t->done == false) {
 		if (opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
@@ -403,8 +416,10 @@ crypto_adapter_enq_op_new(struct prod_data *p)
 			rte_pktmbuf_append(m, len);
 			sym_op = op->sym;
 			sym_op->m_src = m;
-			sym_op->cipher.data.offset = offset;
-			sym_op->cipher.data.length = len - offset;
+
+			sym_op->cipher.data.offset = data_offset;
+			sym_op->cipher.data.length = data_length;
+
 			rte_crypto_op_attach_sym_session(
 				op, p->ca.crypto_sess[flow_counter++ % nb_flows]);
 		} else {
@@ -1136,11 +1151,45 @@ perf_event_crypto_adapter_setup(struct test_perf *t, struct prod_data *p)
 static void *
 cryptodev_sym_sess_create(struct prod_data *p, struct test_perf *t)
 {
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	enum rte_crypto_cipher_algorithm cipher_algo;
 	struct rte_crypto_sym_xform cipher_xform;
+	struct evt_options *opt = t->opt;
+	uint16_t key_size;
+	uint16_t iv_size;
 	void *sess;
 
+	cipher_algo = opt->crypto_cipher_alg;
+	key_size = opt->crypto_cipher_key_sz;
+	iv_size = opt->crypto_cipher_iv_sz;
+
+	/* Check if device supports the algorithm */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cap_idx.algo.cipher = cipher_algo;
+
+	cap = rte_cryptodev_sym_capability_get(p->ca.cdev_id, &cap_idx);
+	if (cap == NULL) {
+		evt_err("Device doesn't support cipher algorithm [%s]. Test Skipped\n",
+			rte_cryptodev_get_cipher_algo_string(cipher_algo));
+		return NULL;
+	}
+
+	/* Check if device supports key size and IV size */
+	if (rte_cryptodev_sym_capability_check_cipher(cap, key_size,
+			iv_size) < 0) {
+		evt_err("Device doesn't support cipher configuration:\n"
+			"cipher algo [%s], key sz [%d], iv sz [%d]. Test Skipped\n",
+			rte_cryptodev_get_cipher_algo_string(cipher_algo), key_size, iv_size);
+		return NULL;
+	}
+
 	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	cipher_xform.cipher.algo = cipher_algo;
+	cipher_xform.cipher.key.data = opt->crypto_cipher_key;
+	cipher_xform.cipher.key.length = key_size;
+	cipher_xform.cipher.iv.length = iv_size;
+	cipher_xform.cipher.iv.offset = IV_OFFSET;
 	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 	cipher_xform.next = NULL;
 
@@ -1643,7 +1692,7 @@ perf_cryptodev_setup(struct evt_test *test, struct evt_options *opt)
 
 	t->ca_op_pool = rte_crypto_op_pool_create(
 		"crypto_op_pool", opt->crypto_op_type, opt->pool_sz,
-		128, sizeof(union rte_event_crypto_metadata),
+		128, sizeof(union rte_event_crypto_metadata) + EVT_CRYPTO_MAX_IV_SIZE,
 		rte_socket_id());
 	if (t->ca_op_pool == NULL) {
 		evt_err("Failed to create crypto op pool");

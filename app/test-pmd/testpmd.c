@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <sys/mman.h>
+#include <sys/select.h>
 #endif
 #include <sys/types.h>
 #include <errno.h>
@@ -231,7 +232,7 @@ unsigned int xstats_display_num; /**< Size of extended statistics to show */
  * In container, it cannot terminate the process which running with 'stats-period'
  * option. Set flag to exit stats period loop after received SIGINT/SIGTERM.
  */
-static volatile uint8_t f_quit;
+volatile uint8_t f_quit;
 uint8_t cl_quit; /* Quit testpmd from cmdline. */
 
 /*
@@ -2204,7 +2205,6 @@ flush_fwd_rx_queues(void)
 	portid_t port_id;
 	queueid_t rxq;
 	uint16_t  nb_rx;
-	uint16_t  i;
 	uint8_t   j;
 	uint64_t prev_tsc = 0, diff_tsc, cur_tsc, timer_tsc = 0;
 	uint64_t timer_period;
@@ -2237,8 +2237,7 @@ flush_fwd_rx_queues(void)
 				do {
 					nb_rx = rte_eth_rx_burst(port_id, rxq,
 						pkts_burst, MAX_PKT_BURST);
-					for (i = 0; i < nb_rx; i++)
-						rte_pktmbuf_free(pkts_burst[i]);
+					rte_pktmbuf_free_bulk(pkts_burst, nb_rx);
 
 					cur_tsc = rte_rdtsc();
 					diff_tsc = cur_tsc - prev_tsc;
@@ -2273,9 +2272,19 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 	nb_fs = fc->stream_nb;
 	prev_tsc = rte_rdtsc();
 	do {
-		for (sm_id = 0; sm_id < nb_fs; sm_id++)
-			if (!fsm[sm_id]->disabled)
-				(*pkt_fwd)(fsm[sm_id]);
+		for (sm_id = 0; sm_id < nb_fs; sm_id++) {
+			struct fwd_stream *fs = fsm[sm_id];
+			uint64_t start_fs_tsc = 0;
+			bool busy;
+
+			if (fs->disabled)
+				continue;
+			if (record_core_cycles)
+				start_fs_tsc = rte_rdtsc();
+			busy = (*pkt_fwd)(fs);
+			if (record_core_cycles && busy)
+				fs->busy_cycles += rte_rdtsc() - start_fs_tsc;
+		}
 #ifdef RTE_LIB_BITRATESTATS
 		if (bitrate_enabled != 0 &&
 				bitrate_lcore_id == rte_lcore_id()) {
@@ -2379,6 +2388,80 @@ launch_packet_forwarding(lcore_function_t *pkt_fwd_on_lcore)
 	}
 }
 
+void
+common_fwd_stream_init(struct fwd_stream *fs)
+{
+	bool rx_stopped, tx_stopped;
+
+	rx_stopped = (ports[fs->rx_port].rxq[fs->rx_queue].state == RTE_ETH_QUEUE_STATE_STOPPED);
+	tx_stopped = (ports[fs->tx_port].txq[fs->tx_queue].state == RTE_ETH_QUEUE_STATE_STOPPED);
+	fs->disabled = rx_stopped || tx_stopped;
+}
+
+static void
+update_rx_queue_state(uint16_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_rxq_info rx_qinfo;
+	int32_t rc;
+
+	rc = rte_eth_rx_queue_info_get(port_id,
+			queue_id, &rx_qinfo);
+	if (rc == 0) {
+		ports[port_id].rxq[queue_id].state =
+			rx_qinfo.queue_state;
+	} else if (rc == -ENOTSUP) {
+		/*
+		 * Set the rxq state to RTE_ETH_QUEUE_STATE_STARTED
+		 * to ensure that the PMDs do not implement
+		 * rte_eth_rx_queue_info_get can forward.
+		 */
+		ports[port_id].rxq[queue_id].state =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		TESTPMD_LOG(WARNING,
+			"Failed to get rx queue info\n");
+	}
+}
+
+static void
+update_tx_queue_state(uint16_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_txq_info tx_qinfo;
+	int32_t rc;
+
+	rc = rte_eth_tx_queue_info_get(port_id,
+			queue_id, &tx_qinfo);
+	if (rc == 0) {
+		ports[port_id].txq[queue_id].state =
+			tx_qinfo.queue_state;
+	} else if (rc == -ENOTSUP) {
+		/*
+		 * Set the txq state to RTE_ETH_QUEUE_STATE_STARTED
+		 * to ensure that the PMDs do not implement
+		 * rte_eth_tx_queue_info_get can forward.
+		 */
+		ports[port_id].txq[queue_id].state =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		TESTPMD_LOG(WARNING,
+			"Failed to get tx queue info\n");
+	}
+}
+
+static void
+update_queue_state(void)
+{
+	portid_t pi;
+	queueid_t qi;
+
+	RTE_ETH_FOREACH_DEV(pi) {
+		for (qi = 0; qi < nb_rxq; qi++)
+			update_rx_queue_state(pi, qi);
+		for (qi = 0; qi < nb_txq; qi++)
+			update_tx_queue_state(pi, qi);
+	}
+}
+
 /*
  * Launch packet forwarding configuration.
  */
@@ -2418,9 +2501,12 @@ start_packet_forwarding(int with_tx_first)
 	if (!pkt_fwd_shared_rxq_check())
 		return;
 
-	if (stream_init != NULL)
+	if (stream_init != NULL) {
+		if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+			update_queue_state();
 		for (i = 0; i < cur_fwd_config.nb_fwd_streams; i++)
 			stream_init(fwd_streams[i]);
+	}
 
 	port_fwd_begin = cur_fwd_config.fwd_eng->port_fwd_begin;
 	if (port_fwd_begin != NULL) {
@@ -3179,6 +3265,9 @@ start_port(portid_t pid)
 
 		pl[cfg_pi++] = pi;
 	}
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		update_queue_state();
 
 	if (at_least_one_port_successfully_started && !no_link_check)
 		check_all_ports_link_status(RTE_PORT_ALL);
@@ -4360,13 +4449,6 @@ init_port(void)
 }
 
 static void
-force_quit(void)
-{
-	pmd_test_exit();
-	prompt_exit();
-}
-
-static void
 print_stats(void)
 {
 	uint8_t i;
@@ -4384,28 +4466,10 @@ print_stats(void)
 }
 
 static void
-signal_handler(int signum)
+signal_handler(int signum __rte_unused)
 {
-	if (signum == SIGINT || signum == SIGTERM) {
-		fprintf(stderr, "\nSignal %d received, preparing to exit...\n",
-			signum);
-#ifdef RTE_LIB_PDUMP
-		/* uninitialize packet capture framework */
-		rte_pdump_uninit();
-#endif
-#ifdef RTE_LIB_LATENCYSTATS
-		if (latencystats_enabled != 0)
-			rte_latencystats_uninit();
-#endif
-		force_quit();
-		/* Set flag to indicate the force termination. */
-		f_quit = 1;
-		/* exit with the expected status */
-#ifndef RTE_EXEC_ENV_WINDOWS
-		signal(signum, SIG_DFL);
-		kill(getpid(), signum);
-#endif
-	}
+	f_quit = 1;
+	prompt_exit();
 }
 
 int
@@ -4416,8 +4480,18 @@ main(int argc, char** argv)
 	uint16_t count;
 	int ret;
 
+#ifdef RTE_EXEC_ENV_WINDOWS
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
+#else
+	/* Want read() not to be restarted on signal */
+	struct sigaction action = {
+		.sa_handler = signal_handler,
+	};
+
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+#endif
 
 	testpmd_logtype = rte_log_register("testpmd");
 	if (testpmd_logtype < 0)
@@ -4589,15 +4663,9 @@ main(int argc, char** argv)
 			start_packet_forwarding(0);
 		}
 		prompt();
-		pmd_test_exit();
 	} else
 #endif
 	{
-		char c;
-		int rc;
-
-		f_quit = 0;
-
 		printf("No commandline core given, start packet forwarding\n");
 		start_packet_forwarding(tx_first);
 		if (stats_period != 0) {
@@ -4620,14 +4688,40 @@ main(int argc, char** argv)
 				prev_time = cur_time;
 				rte_delay_us_sleep(US_PER_S);
 			}
-		}
+		} else {
+			char c;
+			fd_set fds;
 
-		printf("Press enter to exit\n");
-		rc = read(0, &c, 1);
-		pmd_test_exit();
-		if (rc < 0)
-			return 1;
+			printf("Press enter to exit\n");
+
+			FD_ZERO(&fds);
+			FD_SET(0, &fds);
+
+			/* wait for signal or enter */
+			ret = select(1, &fds, NULL, NULL, NULL);
+			if (ret < 0 && errno != EINTR)
+				rte_exit(EXIT_FAILURE,
+					 "Select failed: %s\n",
+					 strerror(errno));
+
+			/* if got enter then consume it */
+			if (ret == 1 && read(0, &c, 1) < 0)
+				rte_exit(EXIT_FAILURE,
+					 "Read failed: %s\n",
+					 strerror(errno));
+		}
 	}
+
+	pmd_test_exit();
+
+#ifdef RTE_LIB_PDUMP
+	/* uninitialize packet capture framework */
+	rte_pdump_uninit();
+#endif
+#ifdef RTE_LIB_LATENCYSTATS
+	if (latencystats_enabled != 0)
+		rte_latencystats_uninit();
+#endif
 
 	ret = rte_eal_cleanup();
 	if (ret != 0)

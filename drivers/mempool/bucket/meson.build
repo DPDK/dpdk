@@ -12,4 +12,4 @@ if is_windows
 endif
 
 sources = files('rte_mempool_bucket.c')
-pmd_supports_disable_iova_as_pa = true
+require_iova_in_mbuf = false

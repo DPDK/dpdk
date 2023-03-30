@@ -56,6 +56,8 @@
 #define NFP_NET_RSS_IPV4_UDP            7
 #define NFP_NET_RSS_IPV6_UDP            8
 #define NFP_NET_RSS_IPV6_EX_UDP         9
+#define NFP_NET_RSS_IPV4_SCTP           10
+#define NFP_NET_RSS_IPV6_SCTP           11
 
 /*
  * @NFP_NET_TXR_MAX:         Maximum number of TX rings
@@ -110,6 +112,7 @@
 #define   NFP_NET_CFG_CTRL_MSIX_TX_OFF    (0x1 << 26) /* Disable MSIX for TX */
 #define   NFP_NET_CFG_CTRL_LSO2           (0x1 << 28) /* LSO/TSO (version 2) */
 #define   NFP_NET_CFG_CTRL_RSS2           (0x1 << 29) /* RSS (version 2) */
+#define   NFP_NET_CFG_CTRL_CSUM_COMPLETE  (0x1 << 30) /* Checksum complete */
 #define   NFP_NET_CFG_CTRL_LIVE_ADDR      (0x1U << 31)/* live MAC addr change */
 #define NFP_NET_CFG_UPDATE              0x0004
 #define   NFP_NET_CFG_UPDATE_GEN          (0x1 <<  0) /* General update */
@@ -135,6 +138,8 @@
 #define NFP_NET_CFG_CTRL_LSO_ANY (NFP_NET_CFG_CTRL_LSO | NFP_NET_CFG_CTRL_LSO2)
 #define NFP_NET_CFG_CTRL_RSS_ANY (NFP_NET_CFG_CTRL_RSS | NFP_NET_CFG_CTRL_RSS2)
 
+#define NFP_NET_CFG_CTRL_CHAIN_META (NFP_NET_CFG_CTRL_RSS2 | \
+					NFP_NET_CFG_CTRL_CSUM_COMPLETE)
 /*
  * Read-only words (0x0030 - 0x0050):
  * @NFP_NET_CFG_VERSION:     Firmware version number
@@ -173,6 +178,15 @@
 #define   NFP_NET_CFG_STS_LINK_RATE_40G           5
 #define   NFP_NET_CFG_STS_LINK_RATE_50G           6
 #define   NFP_NET_CFG_STS_LINK_RATE_100G          7
+
+/*
+ * NSP Link rate is a 16-bit word. It is no longer determined by
+ * firmware, instead it is read from the nfp_eth_table of the
+ * associated pf_dev and written to the NFP_NET_CFG_STS_NSP_LINK_RATE
+ * address by the PMD each time the port is reconfigured.
+ */
+#define NFP_NET_CFG_STS_NSP_LINK_RATE   0x0036
+
 #define NFP_NET_CFG_CAP                 0x0038
 #define NFP_NET_CFG_MAX_TXRINGS         0x003c
 #define NFP_NET_CFG_MAX_RXRINGS         0x0040
@@ -196,7 +210,7 @@
  * Reuse spare address to contain the offset from the start of
  * the host buffer where the first byte of the received frame
  * will land.  Any metadata will come prior to that offset.  If the
- * value in this field is 0, it means that that the metadata will
+ * value in this field is 0, it means that the metadata will
  * always land starting at the first byte of the host buffer and
  * packet data will immediately follow the metadata.  As always,
  * the RX descriptor indicates the presence or absence of metadata
@@ -218,7 +232,7 @@
 
 /*
  * RSS configuration (0x0100 - 0x01ac):
- * Used only when NFP_NET_CFG_CTRL_RSS is enabled
+ * Used only when NFP_NET_CFG_CTRL_RSS_ANY is enabled
  * @NFP_NET_CFG_RSS_CFG:     RSS configuration word
  * @NFP_NET_CFG_RSS_KEY:     RSS "secret" key
  * @NFP_NET_CFG_RSS_ITBL:    RSS indirection table
@@ -233,6 +247,8 @@
 #define   NFP_NET_CFG_RSS_IPV4_UDP        (1 << 11) /* RSS for IPv4/UDP */
 #define   NFP_NET_CFG_RSS_IPV6_TCP        (1 << 12) /* RSS for IPv6/TCP */
 #define   NFP_NET_CFG_RSS_IPV6_UDP        (1 << 13) /* RSS for IPv6/UDP */
+#define   NFP_NET_CFG_RSS_IPV4_SCTP       (1 << 14) /* RSS for IPv4/SCTP */
+#define   NFP_NET_CFG_RSS_IPV6_SCTP       (1 << 15) /* RSS for IPv6/SCTP */
 #define   NFP_NET_CFG_RSS_TOEPLITZ        (1 << 24) /* Use Toeplitz hash */
 #define NFP_NET_CFG_RSS_KEY             (NFP_NET_CFG_RSS_BASE + 0x4)
 #define NFP_NET_CFG_RSS_KEY_SZ          0x28
@@ -333,6 +349,19 @@
 
 /* PF multiport offset */
 #define NFP_PF_CSR_SLICE_SIZE	(32 * 1024)
+
+/*
+ * nfp_net_cfg_ctrl_rss() - Get RSS flag based on firmware's capability
+ * @hw_cap: The firmware's capabilities
+ */
+static inline uint32_t
+nfp_net_cfg_ctrl_rss(uint32_t hw_cap)
+{
+	if ((hw_cap & NFP_NET_CFG_CTRL_RSS2) != 0)
+		return NFP_NET_CFG_CTRL_RSS2;
+
+	return NFP_NET_CFG_CTRL_RSS;
+}
 
 #endif /* _NFP_CTRL_H_ */
 /*

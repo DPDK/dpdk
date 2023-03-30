@@ -134,10 +134,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
-		if (hw->cap & NFP_NET_CFG_CTRL_RSS2)
-			new_ctrl |= NFP_NET_CFG_CTRL_RSS2;
-		else
-			new_ctrl |= NFP_NET_CFG_CTRL_RSS;
+		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
 	}
 
 	/* Enable device */
@@ -519,14 +516,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	/* Use backpointer to the CoreNIC app struct */
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
-	/* NFP can not handle DMA addresses requiring more than 40 bits */
-	if (rte_mem_check_dma_mask(40)) {
-		RTE_LOG(ERR, PMD,
-			"device %s can not be used: restricted dma mask to 40 bits!\n",
-			pci_dev->device.name);
-		return -ENODEV;
-	}
-
 	port = ((struct nfp_net_hw *)eth_dev->data->dev_private)->idx;
 	if (port < 0 || port > 7) {
 		PMD_DRV_LOG(ERR, "Port value is wrong");
@@ -574,6 +563,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
 
+	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
+		return -ENODEV;
+
 	if (nfp_net_ethdev_ops_mount(hw, eth_dev))
 		return -EINVAL;
 
@@ -611,10 +603,13 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->mtu = RTE_ETHER_MTU;
+	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 
 	/* VLAN insertion is incompatible with LSOv2 */
 	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
+
+	nfp_net_init_metadata_format(hw);
 
 	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;

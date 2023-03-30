@@ -134,7 +134,8 @@ pthread_create(void *threadid, const void *threadattr, void *threadfunc,
 {
 	RTE_SET_USED(threadattr);
 	HANDLE hThread;
-	hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadfunc,
+	hThread = CreateThread(NULL, 0,
+		(LPTHREAD_START_ROUTINE)(uintptr_t)threadfunc,
 		args, 0, (LPDWORD)threadid);
 	if (hThread) {
 		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);

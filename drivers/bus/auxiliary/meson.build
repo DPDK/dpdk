@@ -11,4 +11,7 @@ if is_linux
             'linux/auxiliary.c',
     )
 endif
+
+require_iova_in_mbuf = false
+
 deps += ['kvargs']

@@ -47,4 +47,7 @@
 /* REE */
 #include "roc_ree_priv.h"
 
+/* ML */
+#include "roc_ml_priv.h"
+
 #endif /* _ROC_PRIV_H_ */

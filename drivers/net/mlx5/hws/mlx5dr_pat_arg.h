@@ -53,6 +53,8 @@ int mlx5dr_pat_init_pattern_cache(struct mlx5dr_pattern_cache **cache);
 
 void mlx5dr_pat_uninit_pattern_cache(struct mlx5dr_pattern_cache *cache);
 
+bool mlx5dr_pat_arg_verify_actions(__be64 pattern[], uint16_t num_of_actions);
+
 int mlx5dr_pat_arg_create_modify_header(struct mlx5dr_context *ctx,
 					struct mlx5dr_action *action,
 					size_t pattern_sz,

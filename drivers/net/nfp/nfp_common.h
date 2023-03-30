@@ -111,6 +111,7 @@ struct nfp_net_adapter;
 
 /* Maximum supported NFP frame size (MTU + layer 2 headers) */
 #define NFP_FRAME_SIZE_MAX	10048
+#define DEFAULT_FLBUF_SIZE        9216
 
 #include <linux/types.h>
 #include <rte_io.h>
@@ -125,6 +126,11 @@ enum nfp_app_fw_id {
 enum nfp_qcp_ptr {
 	NFP_QCP_READ_PTR = 0,
 	NFP_QCP_WRITE_PTR
+};
+
+enum nfp_net_meta_format {
+	NFP_NET_METAFORMAT_SINGLE,
+	NFP_NET_METAFORMAT_CHAINED,
 };
 
 struct nfp_pf_dev {
@@ -203,6 +209,7 @@ struct nfp_net_hw {
 	uint32_t max_mtu;
 	uint32_t mtu;
 	uint32_t rx_offset;
+	enum nfp_net_meta_format meta_format;
 
 	/* Current values for control */
 	uint32_t ctrl;
@@ -276,6 +283,11 @@ static inline void nn_writel(uint32_t val, volatile void *addr)
 	rte_write32(val, addr);
 }
 
+static inline uint16_t nn_readw(volatile const void *addr)
+{
+	return rte_read16(addr);
+}
+
 static inline void nn_writew(uint16_t val, volatile void *addr)
 {
 	rte_write16(val, addr);
@@ -312,6 +324,18 @@ static inline void
 nn_cfg_writeb(struct nfp_net_hw *hw, int off, uint8_t val)
 {
 	nn_writeb(val, hw->ctrl_bar + off);
+}
+
+static inline uint16_t
+nn_cfg_readw(struct nfp_net_hw *hw, int off)
+{
+	return rte_le_to_cpu_16(nn_readw(hw->ctrl_bar + off));
+}
+
+static inline void
+nn_cfg_writew(struct nfp_net_hw *hw, int off, uint16_t val)
+{
+	nn_writew(rte_cpu_to_le_16(val), hw->ctrl_bar + off);
 }
 
 static inline uint32_t
@@ -454,6 +478,8 @@ int nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
 int nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc);
+int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
+void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)

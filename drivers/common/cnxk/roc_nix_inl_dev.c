@@ -15,6 +15,8 @@
 	 ROC_NIX_LF_RX_CFG_IP6_UDP_OPT | ROC_NIX_LF_RX_CFG_DIS_APAD |          \
 	 ROC_NIX_LF_RX_CFG_LEN_IL3 | ROC_NIX_LF_RX_CFG_LEN_OL3)
 
+#define INL_NIX_RX_STATS(val) plt_read64(inl_dev->nix_base + NIX_LF_RX_STATX(val))
+
 extern uint32_t soft_exp_consumer_cnt;
 static bool soft_exp_poll_thread_exit = true;
 
@@ -830,6 +832,37 @@ nix_inl_outb_poll_thread_setup(struct nix_inl_dev *inl_dev)
 
 exit:
 	return rc;
+}
+
+int
+roc_nix_inl_dev_stats_get(struct roc_nix_stats *stats)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+
+	if (stats == NULL)
+		return NIX_ERR_PARAM;
+
+	if (!idev && idev->nix_inl_dev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev)
+		return -EINVAL;
+
+	stats->rx_octs = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_OCTS);
+	stats->rx_ucast = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_UCAST);
+	stats->rx_bcast = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_BCAST);
+	stats->rx_mcast = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_MCAST);
+	stats->rx_drop = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_DROP);
+	stats->rx_drop_octs = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_DROP_OCTS);
+	stats->rx_fcs = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_FCS);
+	stats->rx_err = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_ERR);
+	stats->rx_drop_bcast = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_DRP_BCAST);
+	stats->rx_drop_mcast = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_DRP_MCAST);
+	stats->rx_drop_l3_bcast = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_DRP_L3BCAST);
+	stats->rx_drop_l3_mcast = INL_NIX_RX_STATS(NIX_STAT_LF_RX_RX_DRP_L3MCAST);
+
+	return 0;
 }
 
 int

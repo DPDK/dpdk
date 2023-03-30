@@ -76,8 +76,8 @@ Prerequisites
   DPDK environment.
 
 
-Runtime options
----------------
+Runtime Configuration
+---------------------
 
 The following ``devargs`` options can be enabled at runtime. They must
 be passed as part of EAL arguments.

@@ -535,7 +535,7 @@ qede_udp_dst_port_del(struct rte_eth_dev *eth_dev,
 
 		qdev->vxlan.udp_port = udp_port;
 		/* If the request is to delete UDP port and if the number of
-		 * VXLAN filters have reached 0 then VxLAN offload can be be
+		 * VXLAN filters have reached 0 then VxLAN offload can be
 		 * disabled.
 		 */
 		if (qdev->vxlan.enable && qdev->vxlan.num_filters == 0)
@@ -564,7 +564,7 @@ qede_udp_dst_port_del(struct rte_eth_dev *eth_dev,
 
 		qdev->vxlan.udp_port = udp_port;
 		/* If the request is to delete UDP port and if the number of
-		 * GENEVE filters have reached 0 then GENEVE offload can be be
+		 * GENEVE filters have reached 0 then GENEVE offload can be
 		 * disabled.
 		 */
 		if (qdev->geneve.enable && qdev->geneve.num_filters == 0)

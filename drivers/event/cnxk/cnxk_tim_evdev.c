@@ -265,7 +265,7 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	cnxk_sso_updt_xae_cnt(cnxk_sso_pmd_priv(dev->event_dev), tim_ring,
 			      RTE_EVENT_TYPE_TIMER);
 	cnxk_sso_xae_reconfigure(dev->event_dev);
-	sso_set_priv_mem_fn(dev->event_dev, NULL, 0);
+	sso_set_priv_mem_fn(dev->event_dev, NULL);
 
 	plt_tim_dbg(
 		"Total memory used %" PRIu64 "MB\n",

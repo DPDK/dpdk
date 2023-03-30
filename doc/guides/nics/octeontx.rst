@@ -11,6 +11,11 @@ SoC family as well as their virtual functions (VF) in SR-IOV context.
 More information can be found at `Cavium, Inc Official Website
 <http://www.cavium.com/OCTEON-TX_ARM_Processors.html>`_.
 
+Supported OCTEON TX SoCs
+------------------------
+
+- CN83xx
+
 Features
 --------
 
@@ -29,11 +34,6 @@ Features of the OCTEON TX Ethdev PMD are:
 - Lock-free Tx queue
 - HW offloaded `ethdev Rx queue` to `eventdev event queue` packet injection
 
-Supported OCTEON TX SoCs
-------------------------
-
-- CN83xx
-
 Unsupported features
 --------------------
 
@@ -49,9 +49,8 @@ Prerequisites
 
 See :doc:`../platform/octeontx` for setup information.
 
-Pre-Installation Configuration
-------------------------------
-
+Configuration
+-------------
 
 Driver compilation and testing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

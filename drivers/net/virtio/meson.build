@@ -7,6 +7,10 @@ if is_windows
     subdir_done()
 endif
 
+if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
+    subdir_done()
+endif
+
 sources += files(
         'virtio.c',
         'virtio_cvq.c',

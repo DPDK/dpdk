@@ -164,6 +164,16 @@ mlx5_flow_expand_rss_adjust_node(const struct rte_flow_item *pattern,
 		const struct mlx5_flow_expand_node graph[],
 		const struct mlx5_flow_expand_node *node);
 
+static __rte_always_inline int
+mlx5_need_cache_flow(const struct mlx5_priv *priv,
+		     const struct rte_flow_attr *attr)
+{
+	return priv->isolated && priv->sh->config.dv_flow_en == 1 &&
+		(attr ? !attr->group : true) &&
+		priv->mode_info.mode == MLX5_FLOW_ENGINE_MODE_STANDBY &&
+		(!priv->sh->config.dv_esw_en || !priv->sh->config.fdb_def_rule);
+}
+
 static bool
 mlx5_flow_is_rss_expandable_item(const struct rte_flow_item *item)
 {
@@ -1027,6 +1037,16 @@ mlx5_flow_async_flow_create(struct rte_eth_dev *dev,
 			    uint8_t action_template_index,
 			    void *user_data,
 			    struct rte_flow_error *error);
+static struct rte_flow *
+mlx5_flow_async_flow_create_by_index(struct rte_eth_dev *dev,
+			    uint32_t queue,
+			    const struct rte_flow_op_attr *attr,
+			    struct rte_flow_template_table *table,
+			    uint32_t rule_index,
+			    const struct rte_flow_action actions[],
+			    uint8_t action_template_index,
+			    void *user_data,
+			    struct rte_flow_error *error);
 static int
 mlx5_flow_async_flow_destroy(struct rte_eth_dev *dev,
 			     uint32_t queue,
@@ -1107,6 +1127,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.template_table_create = mlx5_flow_table_create,
 	.template_table_destroy = mlx5_flow_table_destroy,
 	.async_create = mlx5_flow_async_flow_create,
+	.async_create_by_index = mlx5_flow_async_flow_create_by_index,
 	.async_destroy = mlx5_flow_async_flow_destroy,
 	.pull = mlx5_flow_pull,
 	.push = mlx5_flow_push,
@@ -5039,7 +5060,7 @@ flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
 }
 
 /**
- * Add the default copy action in in RX_CP_TBL.
+ * Add the default copy action in RX_CP_TBL.
  *
  * This functions is called in the mlx5_dev_start(). No thread safe
  * is guaranteed.
@@ -7477,6 +7498,254 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int
+mlx5_flow_cache_flow_info(struct rte_eth_dev *dev,
+			  const struct rte_flow_attr *attr,
+			  const uint32_t orig_prio,
+			  const struct rte_flow_item *items,
+			  const struct rte_flow_action *actions,
+			  uint32_t flow_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct mlx5_dv_flow_info *flow_info, *tmp_info;
+	struct rte_flow_error error;
+	int len, ret;
+
+	flow_info = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*flow_info), 0, SOCKET_ID_ANY);
+	if (!flow_info) {
+		DRV_LOG(ERR, "No enough memory for flow_info caching.");
+		return -1;
+	}
+	flow_info->orig_prio = orig_prio;
+	flow_info->attr = *attr;
+	/* Standby mode rule awlays saves it in low priority entry. */
+	flow_info->flow_idx_low_prio = flow_idx;
+
+	/* Store matching items. */
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_PATTERN, NULL, 0, items, &error);
+	if (ret <= 0) {
+		DRV_LOG(ERR, "Can't get items length.");
+		goto end;
+	}
+	len = RTE_ALIGN(ret, 16);
+	flow_info->items = mlx5_malloc(MLX5_MEM_ZERO, len, 0, SOCKET_ID_ANY);
+	if (!flow_info->items) {
+		DRV_LOG(ERR, "No enough memory for items caching.");
+		goto end;
+	}
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_PATTERN, flow_info->items, ret, items, &error);
+	if (ret <= 0) {
+		DRV_LOG(ERR, "Can't duplicate items.");
+		goto end;
+	}
+
+	/* Store flow actions. */
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, NULL, 0, actions, &error);
+	if (ret <= 0) {
+		DRV_LOG(ERR, "Can't get actions length.");
+		goto end;
+	}
+	len = RTE_ALIGN(ret, 16);
+	flow_info->actions = mlx5_malloc(MLX5_MEM_ZERO, len, 0, SOCKET_ID_ANY);
+	if (!flow_info->actions) {
+		DRV_LOG(ERR, "No enough memory for actions caching.");
+		goto end;
+	}
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, flow_info->actions, ret, actions, &error);
+	if (ret <= 0) {
+		DRV_LOG(ERR, "Can't duplicate actions.");
+		goto end;
+	}
+
+	/* Insert to the list end. */
+	if (LIST_EMPTY(&mode_info->hot_upgrade)) {
+		LIST_INSERT_HEAD(&mode_info->hot_upgrade, flow_info,  next);
+	} else {
+		tmp_info = LIST_FIRST(&mode_info->hot_upgrade);
+		while (LIST_NEXT(tmp_info, next))
+			tmp_info = LIST_NEXT(tmp_info, next);
+		LIST_INSERT_AFTER(tmp_info, flow_info, next);
+	}
+	return 0;
+end:
+	if (flow_info->items)
+		mlx5_free(flow_info->items);
+	if (flow_info->actions)
+		mlx5_free(flow_info->actions);
+	mlx5_free(flow_info);
+	return -1;
+}
+
+static int
+mlx5_flow_cache_flow_toggle(struct rte_eth_dev *dev, bool orig_prio)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct mlx5_dv_flow_info *flow_info;
+	struct rte_flow_attr attr;
+	struct rte_flow_error error;
+	struct rte_flow *high, *low;
+
+	flow_info = LIST_FIRST(&mode_info->hot_upgrade);
+	while (flow_info) {
+		/* DUP flow may have the same priority. */
+		if (flow_info->orig_prio != flow_info->attr.priority) {
+			attr = flow_info->attr;
+			if (orig_prio)
+				attr.priority = flow_info->orig_prio;
+			flow_info->flow_idx_high_prio = flow_list_create(dev, MLX5_FLOW_TYPE_GEN,
+					&attr, flow_info->items, flow_info->actions,
+					true, &error);
+			if (!flow_info->flow_idx_high_prio) {
+				DRV_LOG(ERR, "Priority toggle failed internally.");
+				goto err;
+			}
+		}
+		flow_info = LIST_NEXT(flow_info, next);
+	}
+	/* Delete the low priority rules and swap the flow handle. */
+	flow_info = LIST_FIRST(&mode_info->hot_upgrade);
+	while (flow_info) {
+		MLX5_ASSERT(flow_info->flow_idx_low_prio);
+		if (flow_info->orig_prio != flow_info->attr.priority) {
+			high = mlx5_ipool_get(priv->flows[MLX5_FLOW_TYPE_GEN],
+					flow_info->flow_idx_high_prio);
+			low = mlx5_ipool_get(priv->flows[MLX5_FLOW_TYPE_GEN],
+					flow_info->flow_idx_low_prio);
+			if (high && low) {
+				RTE_SWAP(*low, *high);
+				flow_list_destroy(dev, MLX5_FLOW_TYPE_GEN,
+						  flow_info->flow_idx_low_prio);
+				flow_info->flow_idx_high_prio = 0;
+			}
+		}
+		flow_info = LIST_NEXT(flow_info, next);
+	}
+	return 0;
+err:
+	/* Destroy preceding successful high priority rules. */
+	flow_info = LIST_FIRST(&mode_info->hot_upgrade);
+	while (flow_info) {
+		if (flow_info->orig_prio != flow_info->attr.priority) {
+			if (flow_info->flow_idx_high_prio)
+				flow_list_destroy(dev, MLX5_FLOW_TYPE_GEN,
+						  flow_info->flow_idx_high_prio);
+			else
+				break;
+			flow_info->flow_idx_high_prio = 0;
+		}
+		flow_info = LIST_NEXT(flow_info, next);
+	}
+	return -1;
+}
+
+/**
+ * Set the mode of the flow engine of a process to active or standby during live migration.
+ *
+ * @param[in] mode
+ *   MLX5 flow engine mode, @see `enum mlx5_flow_engine_mode`.
+ * @param[in] flags
+ *   Flow engine mode specific flags.
+ *
+ * @return
+ *   Negative value on error, positive on success.
+ */
+int
+rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flags)
+{
+	struct mlx5_priv *priv;
+	struct mlx5_flow_engine_mode_info *mode_info;
+	struct mlx5_dv_flow_info *flow_info, *tmp_info;
+	uint16_t port, port_id;
+	uint16_t toggle_num = 0;
+	struct rte_eth_dev *dev;
+	enum mlx5_flow_engine_mode orig_mode;
+	uint32_t orig_flags;
+	bool need_toggle = false;
+
+	/* Check if flags combinations are supported. */
+	if (flags && flags != MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS) {
+		DRV_LOG(ERR, "Doesn't support such flags %u", flags);
+		return -1;
+	}
+	MLX5_ETH_FOREACH_DEV(port, NULL) {
+		dev = &rte_eth_devices[port];
+		priv = dev->data->dev_private;
+		mode_info = &priv->mode_info;
+		/* No mode change. Assume all devices hold the same mode. */
+		if (mode_info->mode == mode) {
+			DRV_LOG(INFO, "Process flow engine has been in mode %u", mode);
+			if (mode_info->mode_flag != flags && !LIST_EMPTY(&mode_info->hot_upgrade)) {
+				DRV_LOG(ERR, "Port %u has rule cache with different flag %u\n",
+						port, mode_info->mode_flag);
+				orig_mode = mode_info->mode;
+				orig_flags = mode_info->mode_flag;
+				goto err;
+			}
+			mode_info->mode_flag = flags;
+			toggle_num++;
+			continue;
+		}
+		/* Active -> standby. */
+		if (mode == MLX5_FLOW_ENGINE_MODE_STANDBY) {
+			if (!LIST_EMPTY(&mode_info->hot_upgrade)) {
+				DRV_LOG(ERR, "Cached rule existed");
+				orig_mode = mode_info->mode;
+				orig_flags = mode_info->mode_flag;
+				goto err;
+			}
+			mode_info->mode_flag = flags;
+			mode_info->mode = mode;
+			toggle_num++;
+		/* Standby -> active. */
+		} else if (mode == MLX5_FLOW_ENGINE_MODE_ACTIVE) {
+			if (LIST_EMPTY(&mode_info->hot_upgrade)) {
+				DRV_LOG(INFO, "No cached rule existed");
+			} else {
+				if (mlx5_flow_cache_flow_toggle(dev, true)) {
+					orig_mode = mode_info->mode;
+					orig_flags = mode_info->mode_flag;
+					need_toggle = true;
+					goto err;
+				}
+			}
+			toggle_num++;
+		}
+	}
+	if (mode == MLX5_FLOW_ENGINE_MODE_ACTIVE) {
+		/* Clear cache flow rules. */
+		MLX5_ETH_FOREACH_DEV(port, NULL) {
+			priv = rte_eth_devices[port].data->dev_private;
+			mode_info = &priv->mode_info;
+			flow_info = LIST_FIRST(&mode_info->hot_upgrade);
+			while (flow_info) {
+				tmp_info = LIST_NEXT(flow_info, next);
+				LIST_REMOVE(flow_info, next);
+				mlx5_free(flow_info->actions);
+				mlx5_free(flow_info->items);
+				mlx5_free(flow_info);
+				flow_info = tmp_info;
+			}
+			MLX5_ASSERT(LIST_EMPTY(&mode_info->hot_upgrade));
+		}
+	}
+	return toggle_num;
+err:
+	/* Rollback all preceding successful ports. */
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+		if (port_id == port)
+			break;
+		priv = rte_eth_devices[port_id].data->dev_private;
+		mode_info = &priv->mode_info;
+		if (need_toggle && !LIST_EMPTY(&mode_info->hot_upgrade) &&
+		    mlx5_flow_cache_flow_toggle(dev, false))
+			return -EPERM;
+		mode_info->mode = orig_mode;
+		mode_info->mode_flag = orig_flags;
+	}
+	return -EINVAL;
+}
 /**
  * Create a flow.
  *
@@ -7491,6 +7760,9 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 		 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_attr *new_attr = (void *)(uintptr_t)attr;
+	uint32_t prio = attr->priority;
+	uint32_t flow_idx;
 
 	if (priv->sh->config.dv_flow_en == 2) {
 		rte_flow_error_set(error, ENOTSUP,
@@ -7513,10 +7785,22 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 				   "port not started");
 		return NULL;
 	}
-
-	return (void *)(uintptr_t)flow_list_create(dev, MLX5_FLOW_TYPE_GEN,
-						   attr, items, actions,
-						   true, error);
+	if (unlikely(mlx5_need_cache_flow(priv, attr))) {
+		if (attr->transfer ||
+		    (attr->ingress &&
+		    !(priv->mode_info.mode_flag & MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS)))
+			new_attr->priority += 1;
+	}
+	flow_idx = flow_list_create(dev, MLX5_FLOW_TYPE_GEN, attr, items, actions, true, error);
+	if (!flow_idx)
+		return NULL;
+	if (unlikely(mlx5_need_cache_flow(priv, attr))) {
+		if (mlx5_flow_cache_flow_info(dev, attr, prio, items, actions, flow_idx)) {
+			flow_list_destroy(dev, MLX5_FLOW_TYPE_GEN, flow_idx);
+			flow_idx = 0;
+		}
+	}
+	return (void *)(uintptr_t)flow_idx;
 }
 
 /**
@@ -7573,6 +7857,8 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t num_flushed = 0, fidx = 1;
 	struct rte_flow *flow;
+	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct mlx5_dv_flow_info *flow_info;
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2 &&
@@ -7584,6 +7870,21 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 
 	MLX5_IPOOL_FOREACH(priv->flows[type], fidx, flow) {
 		flow_list_destroy(dev, type, fidx);
+		if (unlikely(mlx5_need_cache_flow(priv, NULL) && type == MLX5_FLOW_TYPE_GEN)) {
+			flow_info = LIST_FIRST(&mode_info->hot_upgrade);
+			while (flow_info) {
+				/* Romove the cache flow info. */
+				if (flow_info->flow_idx_low_prio == (uint32_t)(uintptr_t)fidx) {
+					MLX5_ASSERT(!flow_info->flow_idx_high_prio);
+					LIST_REMOVE(flow_info, next);
+					mlx5_free(flow_info->items);
+					mlx5_free(flow_info->actions);
+					mlx5_free(flow_info);
+					break;
+				}
+				flow_info = LIST_NEXT(flow_info, next);
+			}
+		}
 		num_flushed++;
 	}
 	if (active) {
@@ -8032,6 +8333,8 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow_error *error __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct mlx5_dv_flow_info *flow_info;
 
 	if (priv->sh->config.dv_flow_en == 2)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -8040,6 +8343,21 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 			  "Flow non-Q destruction not supported");
 	flow_list_destroy(dev, MLX5_FLOW_TYPE_GEN,
 				(uintptr_t)(void *)flow);
+	if (unlikely(mlx5_need_cache_flow(priv, NULL))) {
+		flow_info = LIST_FIRST(&mode_info->hot_upgrade);
+		while (flow_info) {
+			/* Romove the cache flow info. */
+			if (flow_info->flow_idx_low_prio == (uint32_t)(uintptr_t)flow) {
+				MLX5_ASSERT(!flow_info->flow_idx_high_prio);
+				LIST_REMOVE(flow_info, next);
+				mlx5_free(flow_info->items);
+				mlx5_free(flow_info->actions);
+				mlx5_free(flow_info);
+				break;
+			}
+			flow_info = LIST_NEXT(flow_info, next);
+		}
+	}
 	return 0;
 }
 
@@ -8077,6 +8395,10 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 				   "port must be stopped first");
 		return -rte_errno;
 	}
+	if (!enable && !priv->sh->config.repr_matching)
+		return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "isolated mode cannot be disabled when "
+					  "representor matching is disabled");
 	priv->isolated = !!enable;
 	if (enable)
 		dev->dev_ops = &mlx5_dev_ops_isolate;
@@ -8911,6 +9233,56 @@ mlx5_flow_async_flow_create(struct rte_eth_dev *dev,
 	return fops->async_flow_create(dev, queue_id, attr, table,
 				       items, pattern_template_index,
 				       actions, action_template_index,
+				       user_data, error);
+}
+
+/**
+ * Enqueue flow creation by index.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue_id
+ *   The queue to create the flow.
+ * @param[in] attr
+ *   Pointer to the flow operation attributes.
+ * @param[in] rule_index
+ *   The item pattern flow follows from the table.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    Flow pointer on success, NULL otherwise and rte_errno is set.
+ */
+static struct rte_flow *
+mlx5_flow_async_flow_create_by_index(struct rte_eth_dev *dev,
+			    uint32_t queue_id,
+			    const struct rte_flow_op_attr *attr,
+			    struct rte_flow_template_table *table,
+			    uint32_t rule_index,
+			    const struct rte_flow_action actions[],
+			    uint8_t action_template_index,
+			    void *user_data,
+			    struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr fattr = {0};
+
+	if (flow_get_drv_type(dev, &fattr) != MLX5_FLOW_TYPE_HW) {
+		rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"flow_q create with incorrect steering mode");
+		return NULL;
+	}
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->async_flow_create_by_index(dev, queue_id, attr, table,
+				       rule_index, actions, action_template_index,
 				       user_data, error);
 }
 

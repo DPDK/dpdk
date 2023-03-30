@@ -1683,7 +1683,7 @@ rte_swx_ctl_pipeline_table_entry_delete(struct rte_swx_ctl_pipeline *ctl,
 	CHECK(!table_entry_check(ctl, table_id, entry, 1, 0), EINVAL);
 
 	/* The entry is found in the table->entries list:
-	 * - Move the existing entry from the table->entries list to to the
+	 * - Move the existing entry from the table->entries list to the
 	 *   table->pending_delete list.
 	 */
 	existing_entry = table_entries_find(table, entry);

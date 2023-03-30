@@ -2,18 +2,6 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include "test.h"
-
-#ifdef RTE_EXEC_ENV_WINDOWS
-static int
-test_lpm(void)
-{
-	printf("lpm not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-
-#else
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -22,6 +10,7 @@ test_lpm(void)
 #include <rte_lpm.h>
 #include <rte_malloc.h>
 
+#include "test.h"
 #include "test_xmmt_ops.h"
 
 #define TEST_LPM_ASSERT(cond) do {                                            \
@@ -1594,7 +1583,5 @@ test_lpm(void)
 
 	return global_status;
 }
-
-#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(lpm_autotest, test_lpm);

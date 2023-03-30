@@ -241,6 +241,8 @@ nfp_mtr_profile_mod(struct nfp_app_fw_flower *app_fw_flower,
 	/* Get the old profile config */
 	rte_memcpy(&old_conf, &mtr_profile->conf, sizeof(old_conf));
 
+	memset(&mtr_profile->conf, 0, sizeof(struct nfp_profile_conf));
+
 	ret = nfp_mtr_profile_conf_mod(mtr_profile->profile_id,
 			profile, &mtr_profile->conf);
 	if (ret != 0) {

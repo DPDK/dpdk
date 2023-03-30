@@ -75,7 +75,8 @@ union cpt_eng_caps {
 		uint64_t __io mmul : 1;
 		uint64_t __io reserved_15_33 : 19;
 		uint64_t __io pdcp_chain : 1;
-		uint64_t __io reserved_35_63 : 29;
+		uint64_t __io sg_ver2 : 1;
+		uint64_t __io reserved_36_63 : 28;
 	};
 };
 
@@ -97,6 +98,17 @@ union cpt_lf_ctx_flush {
 		uint64_t cptr : 46;
 		uint64_t inval : 1;
 		uint64_t reserved_47_63 : 17;
+	} s;
+};
+
+union cpt_lf_ctx_err {
+	uint64_t u;
+	struct {
+		uint64_t flush_st_flt : 1;
+		uint64_t busy_flr : 1;
+		uint64_t busy_sw_flush : 1;
+		uint64_t reload_faulted : 1;
+		uint64_t reserved_4_63 : 1;
 	} s;
 };
 

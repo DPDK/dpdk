@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright (c) 2022 Marvell. -->
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="275mm"
+   height="135mm"
+   viewBox="0 0 275 135"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   sodipodi:docname="mldev_model_ops_subtest_d.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.72515432"
+     inkscape:cx="372.33454"
+     inkscape:cy="401.29389"
+     inkscape:window-width="1920"
+     inkscape:window-height="986"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2">
+    <marker
+       style="overflow:visible"
+       id="RoundedArrow"
+       refX="6"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="RoundedArrow"
+       markerWidth="6.1347523"
+       markerHeight="5.9304948"
+       viewBox="0 0 6.1347524 5.9304951"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.7)"
+         d="m -0.21114562,-4.1055728 6.42229122,3.21114561 a 1,1 90 0 1 0,1.78885438 L -0.21114562,4.1055728 A 1.236068,1.236068 31.717474 0 1 -2,3 v -6 a 1.236068,1.236068 148.28253 0 1 1.78885438,-1.1055728 z"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:none"
+         id="path1367" />
+    </marker>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="M 62.203489,25.425124 H 80.823463"
+       id="path1916"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect234"
+       inkscape:connection-end="#rect234-07" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="m 128.19001,25.425124 h 18.6197"
+       id="path1918"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect234-07"
+       inkscape:connection-end="#rect234-6" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="m 194.17681,25.425125 h 18.61942"
+       id="path1922"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect234-6"
+       inkscape:connection-end="#rect234-0-6-6" />
+    <rect
+       style="fill:#fff6d5;fill-rule:evenodd;stroke:#000000;stroke-width:0.633453;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234"
+       width="47.366547"
+       height="17.366549"
+       x="14.836943"
+       y="16.74185"
+       ry="1.4985789"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-25.888845"
+       y="38.514706"
+       id="text290"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-25.888845"
+         y="38.514706">Model 0 /  Load</tspan></text>
+    <rect
+       style="fill:#00ffff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.633453;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-07"
+       width="47.366547"
+       height="17.366549"
+       x="80.823463"
+       y="16.74185"
+       ry="1.4985789"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-25.888845"
+       y="104.31795"
+       id="text290-1"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-11"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-25.888845"
+         y="104.31795">Model 0 /  Start</tspan></text>
+    <rect
+       style="fill:#355eff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.6329;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-6"
+       width="47.3671"
+       height="17.33604"
+       x="146.80971"
+       y="16.757105"
+       ry="1.4959463" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-25.362436"
+       y="170.39679"
+       id="text290-4"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-15"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-25.362436"
+         y="170.39679">Model 0 / Stop</tspan></text>
+    <rect
+       style="fill:#fa7137;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-6-6"
+       width="47.3671"
+       height="17.33604"
+       x="212.79623"
+       y="16.757105"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-25.888849"
+       y="236.47427"
+       id="text290-3-2-2"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-7-1"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-25.888849"
+         y="236.47427">Model 0 / Unload</tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="M 236.47978,34.093145 V 44.957249 H 38.520216 v 10.84885"
+       id="path1924"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect234-0-6-6"
+       inkscape:connection-end="#rect234-0-6-6-3" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:1.5, 1.5;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="M 62.203766,64.474119 H 80.823189"
+       id="path1926"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect234-0-6-6-3"
+       inkscape:connection-end="#rect234-0-6-6-2" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="m 128.19029,64.474119 h 18.61942"
+       id="path1928"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect234-0-6-6-2"
+       inkscape:connection-end="#rect234-0-6-1" />
+    <rect
+       style="fill:#fff6d5;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-6-6-3"
+       width="47.3671"
+       height="17.33604"
+       x="14.836666"
+       y="55.806099"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-64.937843"
+       y="38.541786"
+       id="text290-3-2-2-2"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-7-1-7"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-64.937843"
+         y="38.541786">Model 1 /  Load</tspan></text>
+    <rect
+       style="fill:#00ffff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-6-6-2"
+       width="47.3671"
+       height="17.33604"
+       x="80.823189"
+       y="55.806099"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-64.937843"
+       y="104.31795"
+       id="text290-3-2-2-28"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-7-1-2"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-64.937843"
+         y="104.31795">Model 1 /  Start</tspan></text>
+    <rect
+       style="fill:#fa7137;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-6"
+       width="47.3671"
+       height="17.33604"
+       x="212.79623"
+       y="55.806099"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-64.937843"
+       y="236.47427"
+       id="text290-3-2"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-7"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-64.937843"
+         y="236.47427">Model 1 /  Unload</tspan></text>
+    <rect
+       style="fill:#355eff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-6-1"
+       width="47.3671"
+       height="17.33604"
+       x="146.80971"
+       y="55.806099"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-64.41143"
+       y="170.39679"
+       id="text290-3-2-3"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-7-8"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-64.41143"
+         y="170.39679">Model 1 /  Stop</tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="m 194.17681,64.474119 h 18.61942"
+       id="path1930"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-end="#rect234-0-6"
+       inkscape:connection-start="#rect234-0-6-1" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:1.5, 1.5;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="M 236.47978,73.142139 V 83.990988 H 38.520216 V 94.85511"
+       id="path1932"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-end="#rect234-0-6-7"
+       inkscape:connection-start="#rect234-0-6" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="m 62.203766,103.52313 h 9.309711 v 1.3e-4 h 9.309712"
+       id="path1934"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect234-0-6-7" />
+    <rect
+       style="fill:#fff6d5;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-6-7"
+       width="47.3671"
+       height="17.33604"
+       x="14.836666"
+       y="94.85511"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-103.98687"
+       y="38.541786"
+       id="text290-3-2-5"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-7-0"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-103.98687"
+         y="38.541786">Model N /  Load</tspan></text>
+    <rect
+       style="fill:#00ffff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0"
+       width="47.3671"
+       height="17.33604"
+       x="80.823189"
+       y="94.855164"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-103.9869"
+       y="104.31795"
+       id="text290-3"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-103.9869"
+         y="104.31795">Model N /  Start</tspan></text>
+    <rect
+       style="fill:#355eff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.632899;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-9"
+       width="47.3671"
+       height="17.33604"
+       x="146.80971"
+       y="94.855164"
+       ry="1.4959463"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-103.4605"
+       y="170.39679"
+       id="text290-3-1"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-0"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-103.4605"
+         y="170.39679">Model N /  Stop</tspan></text>
+    <rect
+       style="fill:#fa7137;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.633452;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       id="rect234-0-5"
+       width="47.366547"
+       height="17.366549"
+       x="212.79651"
+       y="94.839836"
+       ry="1.4985789"
+       inkscape:connector-avoid="true" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke:none;stroke-width:0.750001;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-103.98682"
+       y="236.47427"
+       id="text290-3-4"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan288-1-3"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.75"
+         x="-103.98682"
+         y="236.47427">Model N /  Unload</tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="m 128.19029,103.52326 h 18.61942"
+       id="path1936"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#RoundedArrow)"
+       d="m 194.17681,103.52326 h 9.30985 v -1.5e-4 h 9.30985"
+       id="path1938"
+       inkscape:connector-type="orthogonal"
+       inkscape:connector-curvature="0"
+       inkscape:connection-end="#rect234-0-5" />
+    <text
+       xml:space="preserve"
+       style="font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;writing-mode:tb-rl;text-anchor:middle;fill:#fff6d5;fill-rule:evenodd;stroke-width:0.499999;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+       x="-120.71075"
+       y="220.77164"
+       id="text392"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan390"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:5.64444px;font-family:Arial;-inkscape-font-specification:'Arial Bold';fill:#000000;stroke-width:0.5"
+         x="-120.71075"
+         y="220.77164">mldev: model_ops / subtest D</tspan></text>
+    <rect
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.448724;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       id="rect2164"
+       width="259.55127"
+       height="119.55128"
+       x="7.7243652"
+       y="7.7243614"
+       ry="1.17494" />
+  </g>
+</svg>

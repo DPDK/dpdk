@@ -18,9 +18,9 @@
 					 (1ULL << VHOST_USER_PROTOCOL_F_RARP) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU) | \
-					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_BACKEND_REQ) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_CRYPTO_SESSION) | \
-					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_BACKEND_SEND_FD) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_STATUS))
@@ -47,7 +47,7 @@ typedef enum VhostUserRequest {
 	VHOST_USER_SET_VRING_ENABLE = 18,
 	VHOST_USER_SEND_RARP = 19,
 	VHOST_USER_NET_SET_MTU = 20,
-	VHOST_USER_SET_SLAVE_REQ_FD = 21,
+	VHOST_USER_SET_BACKEND_REQ_FD = 21,
 	VHOST_USER_IOTLB_MSG = 22,
 	VHOST_USER_GET_CONFIG = 24,
 	VHOST_USER_SET_CONFIG = 25,
@@ -62,12 +62,12 @@ typedef enum VhostUserRequest {
 	VHOST_USER_GET_STATUS = 40,
 } VhostUserRequest;
 
-typedef enum VhostUserSlaveRequest {
-	VHOST_USER_SLAVE_NONE = 0,
-	VHOST_USER_SLAVE_IOTLB_MSG = 1,
-	VHOST_USER_SLAVE_CONFIG_CHANGE_MSG = 2,
-	VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG = 3,
-} VhostUserSlaveRequest;
+typedef enum VhostUserBackendRequest {
+	VHOST_USER_BACKEND_NONE = 0,
+	VHOST_USER_BACKEND_IOTLB_MSG = 1,
+	VHOST_USER_BACKEND_CONFIG_CHANGE_MSG = 2,
+	VHOST_USER_BACKEND_VRING_HOST_NOTIFIER_MSG = 3,
+} VhostUserBackendRequest;
 
 typedef struct VhostUserMemoryRegion {
 	uint64_t guest_phys_addr;
@@ -136,8 +136,8 @@ struct vhost_user_config {
 
 typedef struct VhostUserMsg {
 	union {
-		uint32_t master; /* a VhostUserRequest value */
-		uint32_t slave;  /* a VhostUserSlaveRequest value*/
+		uint32_t frontend; /* a VhostUserRequest value */
+		uint32_t backend;  /* a VhostUserBackendRequest value*/
 	} request;
 
 #define VHOST_USER_VERSION_MASK     0x3

@@ -23,6 +23,12 @@
 extern "C" {
 #endif
 
+enum rdline_status {
+	RDLINE_INIT,
+	RDLINE_RUNNING,
+	RDLINE_EXITED
+};
+
 struct cmdline;
 
 struct cmdline *cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out);

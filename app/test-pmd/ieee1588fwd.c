@@ -89,7 +89,7 @@ port_ieee1588_tx_timestamp_check(portid_t pi)
 	       (wait_us == 1) ? "" : "s");
 }
 
-static void
+static bool
 ieee1588_packet_fwd(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *mb;
@@ -102,10 +102,8 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	/*
 	 * Receive 1 packet at a time.
 	 */
-	if (rte_eth_rx_burst(fs->rx_port, fs->rx_queue, &mb, 1) == 0)
-		return;
-
-	fs->rx_packets += 1;
+	if (common_fwd_stream_receive(fs, &mb, 1) == 0)
+		return false;
 
 	/*
 	 * Check that the received packet is a PTP packet that was detected
@@ -126,14 +124,14 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 			       (unsigned) mb->pkt_len);
 		}
 		rte_pktmbuf_free(mb);
-		return;
+		return false;
 	}
 	if (eth_type != RTE_ETHER_TYPE_1588) {
 		printf("Port %u Received NON PTP packet incorrectly"
 		       " detected by hardware\n",
 		       fs->rx_port);
 		rte_pktmbuf_free(mb);
-		return;
+		return false;
 	}
 
 	/*
@@ -147,14 +145,14 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 		       " protocol version 0x%x (should be 0x02)\n",
 		       fs->rx_port, ptp_hdr->version);
 		rte_pktmbuf_free(mb);
-		return;
+		return false;
 	}
 	if (ptp_hdr->msg_id != PTP_SYNC_MESSAGE) {
 		printf("Port %u Received PTP V2 Ethernet frame with unexpected"
 		       " message ID 0x%x (expected 0x0 - PTP_SYNC_MESSAGE)\n",
 		       fs->rx_port, ptp_hdr->msg_id);
 		rte_pktmbuf_free(mb);
-		return;
+		return false;
 	}
 	printf("Port %u IEEE1588 PTP V2 SYNC Message filtered by hardware\n",
 	       fs->rx_port);
@@ -168,7 +166,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 		       " by hardware\n",
 		       fs->rx_port);
 		rte_pktmbuf_free(mb);
-		return;
+		return false;
 	}
 
 	/* For i40e we need the timesync register index. It is ignored for the
@@ -184,18 +182,16 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 
 	/* Forward PTP packet with hardware TX timestamp */
 	mb->ol_flags |= RTE_MBUF_F_TX_IEEE1588_TMST;
-	fs->tx_packets += 1;
-	if (rte_eth_tx_burst(fs->rx_port, fs->tx_queue, &mb, 1) == 0) {
-		printf("Port %u sent PTP packet dropped\n", fs->rx_port);
-		fs->fwd_dropped += 1;
-		rte_pktmbuf_free(mb);
-		return;
+	if (common_fwd_stream_transmit(fs, &mb, 1) == 0) {
+		printf("Port %u sent PTP packet dropped\n", fs->tx_port);
+		return false;
 	}
 
 	/*
 	 * Check the TX timestamp.
 	 */
-	port_ieee1588_tx_timestamp_check(fs->rx_port);
+	port_ieee1588_tx_timestamp_check(fs->tx_port);
+	return true;
 }
 
 static int
@@ -214,13 +210,10 @@ port_ieee1588_fwd_end(portid_t pi)
 static void
 port_ieee1588_stream_init(struct fwd_stream *fs)
 {
-	bool rx_stopped, tx_stopped;
+	/* Force transmission on reception port */
+	fs->tx_port = fs->rx_port;
 
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
+	common_fwd_stream_init(fs);
 }
 
 struct fwd_engine ieee1588_fwd_engine = {

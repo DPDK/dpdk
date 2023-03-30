@@ -21,6 +21,60 @@ for **NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx** , **NVIDIA ConnectX-5**,
 **NVIDIA BlueField-3** families of 10/25/40/50/100/200/400 Gb/s adapters
 as well as their virtual functions (VF) in SR-IOV context.
 
+Supported NICs
+--------------
+
+The following NVIDIA device families are supported by the same mlx5 driver:
+
+  - ConnectX-4
+  - ConnectX-4 Lx
+  - ConnectX-5
+  - ConnectX-5 Ex
+  - ConnectX-6
+  - ConnectX-6 Dx
+  - ConnectX-6 Lx
+  - ConnectX-7
+  - BlueField
+  - BlueField-2
+  - BlueField-3
+
+Below are detailed device names:
+
+* NVIDIA\ |reg| ConnectX\ |reg|-4 10G MCX4111A-XCAT (1x10G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 10G MCX412A-XCAT (2x10G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 25G MCX4111A-ACAT (1x25G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 25G MCX412A-ACAT (2x25G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX413A-BCAT (1x40G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX4131A-BCAT (1x40G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX415A-BCAT (1x40G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX413A-GCAT (1x50G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX4131A-GCAT (1x50G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX414A-BCAT (2x50G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX415A-GCAT (1x50G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX416A-BCAT (2x50G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX416A-GCAT (2x50G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX415A-CCAT (1x100G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 100G MCX416A-CCAT (2x100G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4111A-XCAT (1x10G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4121A-XCAT (2x10G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4111A-ACAT (1x25G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4121A-ACAT (2x25G)
+* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 40G MCX4131A-BCAT (1x40G)
+* NVIDIA\ |reg| ConnectX\ |reg|-5 100G MCX556A-ECAT (2x100G)
+* NVIDIA\ |reg| ConnectX\ |reg|-5 Ex EN 100G MCX516A-CDAT (2x100G)
+* NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
+* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 100G MCX623106AN-CDAT (2x100G)
+* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 200G MCX623105AN-VDAT (1x200G)
+* NVIDIA\ |reg| ConnectX\ |reg|-6 Lx EN 25G MCX631102AN-ADAT (2x25G)
+* NVIDIA\ |reg| ConnectX\ |reg|-7 200G CX713106AE-HEA_QP1_Ax (2x200G)
+* NVIDIA\ |reg| BlueField\ |reg|-2 25G MBF2H332A-AEEOT_A1 (2x25Gg
+* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00CV-AA0 (2x200)
+* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00SV-AA0 (2x200)
+* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B6-00CN-AB0 (2x400)
+* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00CC-EA0 (2x100)
+* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00SC-EA0 (2x100)
+* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B4-00EN-EA0 (1x100)
+
 
 Design
 ------
@@ -107,6 +161,7 @@ Features
 - Sub-Function representors.
 - Sub-Function.
 - Matching on represented port.
+- Matching on aggregated affinity.
 
 
 Limitations
@@ -150,7 +205,7 @@ Limitations
 
 - Host shaper:
 
-  - Support BlueField series NIC from BlueField 2.
+  - Support BlueField series NIC from BlueField-2.
   - When configuring host shaper with MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED flag set,
     only rates 0 and 100Mbps are supported.
 
@@ -160,6 +215,9 @@ Limitations
   - Set ``dv_flow_en`` to 2 in order to enable HW steering.
   - Async queue-based ``rte_flow_async`` APIs supported only.
   - NIC ConnectX-5 and before are not supported.
+  - Reconfiguring flow API engine is not supported.
+    Any subsequent call to ``rte_flow_configure()`` with different configuration
+    than initially provided will be rejected with ``-ENOTSUP`` error code.
   - Partial match with item template is not supported.
   - IPv6 5-tuple matching is not supported.
   - With E-Switch enabled, ports which share the E-Switch domain
@@ -245,6 +303,10 @@ Limitations
 
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 
+- MPLSoGRE is not supported in HW steering (``dv_flow_en`` = 2).
+
+- MPLSoUDP with multiple MPLS headers is only supported in HW steering (``dv_flow_en`` = 2).
+
 - Match on Geneve header supports the following fields only:
 
      - VNI
@@ -279,7 +341,9 @@ Limitations
 - Match on GTP extension header is not supported in group 0.
 
 - When using DV/Verbs flow engine (``dv_flow_en`` = 1/0 respectively),
-  match on SPI field in ESP header for group 0 needs MLNX_OFED 5.6+.
+  match on SPI field in ESP header for group 0 is supported from ConnectX-7.
+
+- Matching on SPI field in ESP header is supported over the PF only.
 
 - Flex item:
 
@@ -289,11 +353,12 @@ Limitations
   - Firmware supports 8 global sample fields.
     Each flex item allocates non-shared sample fields from that pool.
   - Supported flex item can have 1 input link - ``eth`` or ``udp``
-    and up to 2 output links - ``ipv4`` or ``ipv6``.
+    and up to 3 output links - ``ipv4`` or ``ipv6``.
   - Flex item fields (``next_header``, ``next_protocol``, ``samples``)
     do not participate in RSS hash functions.
   - In flex item configuration, ``next_header.field_base`` value
     must be byte aligned (multiple of 8).
+  - Modify field with flex item, the offset must be byte aligned (multiple of 8).
 
 - No Tx metadata go to the E-Switch steering domain for the Flow group 0.
   The flows within group 0 and set metadata action are rejected by hardware.
@@ -398,9 +463,9 @@ Limitations
 
 - E-Switch Manager matching:
 
-  - For Bluefield with old FW
+  - For BlueField with old FW
     which doesn't expose the E-Switch Manager vport ID in the capability,
-    matching E-Switch Manager should be used only in Bluefield embedded CPU mode.
+    matching E-Switch Manager should be used only in BlueField embedded CPU mode.
 
 - Raw encapsulation:
 
@@ -589,6 +654,12 @@ Limitations
 
   - Needs MLNX_OFED 5.4+.
 
+- Match on aggregated affinity:
+
+  - Supports NIC ingress flow in group 0.
+  - Supports E-Switch flow in group 0 and depends on
+    device-managed flow steering (DMFS) mode.
+
 - Timestamps:
 
   - CQE timestamp field width is limited by hardware to 63 bits, MSB is zero.
@@ -614,6 +685,14 @@ Limitations
   Matching on checksum and sequence needs MLNX_OFED 5.6+.
 
 - The NIC egress flow rules on representor port are not supported.
+
+- During live migration to a new process set its flow engine as standby mode,
+  the user should only program flow rules in group 0 (``fdb_def_rule_en=0``).
+  Live migration is only supported under SWS (``dv_flow_en=1``).
+  The flow group 0 is shared between DPDK processes
+  while the other flow groups are limited to the current process.
+  The flow engine of a process cannot move from active to standby mode
+  if preceding active application rules are still present and vice versa.
 
 
 Statistics
@@ -647,8 +726,8 @@ Firmware configuration
 
 See :ref:`mlx5_firmware_config` guide.
 
-Driver options
-~~~~~~~~~~~~~~
+Runtime Configuration
+~~~~~~~~~~~~~~~~~~~~~
 
 Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
 for an additional list of options shared with other mlx5 drivers.
@@ -662,13 +741,19 @@ for an additional list of options shared with other mlx5 drivers.
   Multi-Packet Rx queue configuration: Hash RSS format is used in case
   MPRQ is disabled, Checksum format is used in case MPRQ is enabled.
 
-  Specifying 2 as a ``rxq_cqe_comp_en`` value selects Flow Tag format for
-  better compression rate in case of RTE Flow Mark traffic.
-  Specifying 3 as a ``rxq_cqe_comp_en`` value selects Checksum format.
-  Specifying 4 as a ``rxq_cqe_comp_en`` value selects L3/L4 Header format for
+  The lower 3 bits define the CQE compression format:
+  Specifying 2 in these bits of the ``rxq_cqe_comp_en`` parameter selects
+  the flow tag format for better compression rate in case of flow mark traffic.
+  Specifying 3 in these bits selects checksum format.
+  Specifying 4 in these bits selects L3/L4 header format for
   better compression rate in case of mixed TCP/UDP and IPv4/IPv6 traffic.
   CQE compression format selection requires DevX to be enabled. If there is
   no DevX enabled/supported the value is reset to 1 by default.
+
+  8th bit defines the CQE compression layout.
+  Setting this bit to 1 turns enhanced CQE compression layout on.
+  Enhanced CQE compression is designed for better latency and SW utilization.
+  This bit is ignored if only the basic CQE compression layout is supported.
 
   Supported on:
 
@@ -1137,6 +1222,9 @@ for an additional list of options shared with other mlx5 drivers.
   - 0. If representor matching is disabled, then there will be no implicit
     item added. As a result, ingress flow rules will match traffic
     coming to any port, not only the port on which flow rule is created.
+    Because of that, default flow rules for ingress traffic cannot be created
+    and port starts in isolated mode by default. Port cannot be switched back
+    to non-isolated mode.
 
   - 1. If representor matching is enabled (default setting),
     then each ingress pattern template has an implicit REPRESENTED_PORT
@@ -1216,60 +1304,6 @@ for an additional list of options shared with other mlx5 drivers.
 
   By default, the PMD will set this value to 1.
 
-
-Supported NICs
---------------
-
-The following NVIDIA device families are supported by the same mlx5 driver:
-
-  - ConnectX-4
-  - ConnectX-4 Lx
-  - ConnectX-5
-  - ConnectX-5 Ex
-  - ConnectX-6
-  - ConnectX-6 Dx
-  - ConnectX-6 Lx
-  - ConnectX-7
-  - BlueField
-  - BlueField-2
-  - BlueField-3
-
-Below are detailed device names:
-
-* NVIDIA\ |reg| ConnectX\ |reg|-4 10G MCX4111A-XCAT (1x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 10G MCX412A-XCAT (2x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 25G MCX4111A-ACAT (1x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 25G MCX412A-ACAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX413A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX4131A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX415A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX413A-GCAT (1x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX4131A-GCAT (1x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX414A-BCAT (2x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX415A-GCAT (1x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX416A-BCAT (2x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX416A-GCAT (2x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX415A-CCAT (1x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 100G MCX416A-CCAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4111A-XCAT (1x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4121A-XCAT (2x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4111A-ACAT (1x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4121A-ACAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 40G MCX4131A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-5 100G MCX556A-ECAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-5 Ex EN 100G MCX516A-CDAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 100G MCX623106AN-CDAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 200G MCX623105AN-VDAT (1x200G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Lx EN 25G MCX631102AN-ADAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-7 200G CX713106AE-HEA_QP1_Ax (2x200G)
-* NVIDIA\ |reg| BlueField\ |reg|-2 25G MBF2H332A-AEEOT_A1 (2x25Gg
-* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00CV-AA0 (2x200)
-* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00SV-AA0 (2x200)
-* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B6-00CN-AB0 (2x400)
-* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00CC-EA0 (2x100)
-* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00SC-EA0 (2x100)
-* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B4-00EN-EA0 (1x100)
 
 Sub-Function
 ------------
@@ -1916,7 +1950,7 @@ Then the PMD call the callback registered previously,
 which will delay a while to let Rx queue empty,
 then disable host shaper.
 
-Let's assume we have a simple BlueField 2 setup:
+Let's assume we have a simple BlueField-2 setup:
 port 0 is uplink, port 1 is VF representor.
 Each port has 2 Rx queues.
 To control traffic from the host to the Arm device,
@@ -1959,8 +1993,8 @@ and disables ``avail_thresh_triggered``.
    testpmd> mlx5 set port 1 host_shaper avail_thresh_triggered 0 rate 50
 
 
-Testpmd
--------
+Testpmd driver specific commands
+--------------------------------
 
 port attach with socket path
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

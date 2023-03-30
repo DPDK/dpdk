@@ -118,8 +118,9 @@ roc_nix_inl_onf_ipsec_outb_sa_sw_rsvd(void *sa)
 typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args,
 					  uint32_t soft_exp_event);
 
-typedef int (*roc_nix_inl_meta_pool_cb_t)(uint64_t *aura_handle, uint32_t blk_sz, uint32_t nb_bufs,
-					  bool destroy);
+typedef int (*roc_nix_inl_meta_pool_cb_t)(uint64_t *aura_handle,  uintptr_t *mpool,
+					  uint32_t blk_sz, uint32_t nb_bufs, bool destroy,
+					  const char *mempool_name);
 
 struct roc_nix_inl_dev {
 	/* Input parameters */
@@ -152,6 +153,7 @@ bool __roc_api roc_nix_inl_dev_is_probed(void);
 void __roc_api roc_nix_inl_dev_lock(void);
 void __roc_api roc_nix_inl_dev_unlock(void);
 int __roc_api roc_nix_inl_dev_xaq_realloc(uint64_t aura_handle);
+int __roc_api roc_nix_inl_dev_stats_get(struct roc_nix_stats *stats);
 uint16_t __roc_api roc_nix_inl_dev_pffunc_get(void);
 
 /* NIX Inline Inbound API */
@@ -180,8 +182,7 @@ int __roc_api roc_nix_reassembly_configure(uint32_t max_wait_time,
 int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena,
 				       bool inb_inl_dev);
 int __roc_api roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool ena);
-int __roc_api roc_nix_inl_meta_aura_check(struct roc_nix_rq *rq);
-bool __roc_api roc_nix_has_reass_support(struct roc_nix *nix);
+int __roc_api roc_nix_inl_meta_aura_check(struct roc_nix *roc_nix, struct roc_nix_rq *rq);
 
 /* NIX Inline Outbound API */
 int __roc_api roc_nix_inl_outb_init(struct roc_nix *roc_nix);

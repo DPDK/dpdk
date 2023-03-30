@@ -393,6 +393,7 @@ struct npc {
 	uint16_t flow_prealloc_size;		/* Pre allocated mcam size */
 	uint16_t flow_max_priority;		/* Max priority for flow */
 	uint16_t switch_header_type; /* Supported switch header type */
+	uint32_t mark_actions;
 	uint32_t vtag_strip_actions; /* vtag insert/strip actions */
 	uint16_t pf_func;	     /* pf_func of device */
 	npc_dxcfg_t prx_dxcfg;	     /* intf, lid, lt, extract */
@@ -466,7 +467,7 @@ int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_all
 uint64_t npc_get_kex_capability(struct npc *npc);
 int npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 				const struct roc_npc_flow_item_ipv6 *ipv6_mask,
-				struct npc_parse_state *pst);
+				struct npc_parse_state *pst, uint8_t type);
 int npc_rss_free_grp_get(struct npc *npc, uint32_t *grp);
 int npc_rss_action_configure(struct roc_npc *roc_npc, const struct roc_npc_action_rss *rss,
 			     uint8_t *alg_idx, uint32_t *rss_grp, uint32_t mcam_id);

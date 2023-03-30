@@ -19,6 +19,12 @@
 #include <rte_crypto_sym.h>
 #include <cryptodev_pmd.h>
 
+/* CCP PCI device identifiers */
+#define AMD_PCI_VENDOR_ID 0x1022
+#define AMD_PCI_CCP_5A 0x1456
+#define AMD_PCI_CCP_5B 0x1468
+#define AMD_PCI_CCP_RV 0x15df
+
 /**< CCP specific */
 #define MAX_HW_QUEUES                   5
 #define CCP_MAX_TRNG_RETRIES		10
@@ -169,18 +175,6 @@ static inline uint32_t ccp_pci_reg_read(void *base, int offset)
 #define CCP_WRITE_REG(hw_addr, reg_offset, value) \
 	ccp_pci_reg_write(hw_addr, reg_offset, value)
 
-TAILQ_HEAD(ccp_list, ccp_device);
-
-extern struct ccp_list ccp_list;
-
-/**
- * CCP device version
- */
-enum ccp_device_version {
-	CCP_VERSION_5A = 0,
-	CCP_VERSION_5B,
-};
-
 /**
  * A structure describing a CCP command queue.
  */
@@ -233,8 +227,8 @@ struct ccp_device {
 	/**< ccp queue */
 	int cmd_q_count;
 	/**< no. of ccp Queues */
-	struct rte_pci_device pci;
-	/**< ccp pci identifier */
+	struct rte_pci_device *pci;
+	/**< ccp pci device */
 	unsigned long lsbmap[CCP_BITMAP_SIZE(SLSB_MAP_SIZE)];
 	/**< shared lsb mask of ccp */
 	rte_spinlock_t lsb_lock;
@@ -468,13 +462,12 @@ high32_value(unsigned long addr)
 int ccp_dev_start(struct rte_cryptodev *dev);
 
 /**
- * Detect ccp platform and initialize all ccp devices
+ * Initialize one ccp device
  *
- * @param ccp_id rte_pci_id list for supported CCP devices
- * @return no. of successfully initialized CCP devices
+ * @dev rte pci device
+ * @return 0 on success otherwise -1
  */
-int ccp_probe_devices(struct rte_pci_device *pci_dev,
-		const struct rte_pci_id *ccp_id);
+int ccp_probe_device(struct rte_pci_device *pci_dev);
 
 /**
  * allocate a ccp command queue

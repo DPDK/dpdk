@@ -97,6 +97,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 #define BNXT_DEVARG_REP_FC_R2F  "rep-fc-r2f"
 #define BNXT_DEVARG_REP_FC_F2R  "rep-fc-f2r"
 #define BNXT_DEVARG_APP_ID	"app-id"
+#define BNXT_DEVARG_IEEE_1588	"ieee-1588"
 
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REPRESENTOR,
@@ -109,6 +110,7 @@ static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REP_FC_R2F,
 	BNXT_DEVARG_REP_FC_F2R,
 	BNXT_DEVARG_APP_ID,
+	BNXT_DEVARG_IEEE_1588,
 	NULL
 };
 
@@ -116,6 +118,11 @@ static const char *const bnxt_dev_args[] = {
  * app-id = an non-negative 8-bit number
  */
 #define BNXT_DEVARG_APP_ID_INVALID(val)			((val) > 255)
+
+/*
+ * ieee-1588 = an non-negative 8-bit number
+ */
+#define BNXT_DEVARG_IEEE_1588_INVALID(val)			((val) > 255)
 
 /*
  * flow_xstat == false to disable the feature
@@ -1229,9 +1236,7 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 		return bnxt_recv_pkts;
 	}
 
-#if (defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)) && \
-	!defined(RTE_LIBRTE_IEEE1588)
-
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/* Vector mode receive cannot be enabled if scattered rx is in use. */
 	if (eth_dev->data->scattered_rx)
 		goto use_scalar_rx;
@@ -1258,6 +1263,9 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 		  RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
 		  RTE_ETH_RX_OFFLOAD_RSS_HASH |
 		  RTE_ETH_RX_OFFLOAD_VLAN_FILTER))
+		goto use_scalar_rx;
+
+	if (bp->ieee_1588)
 		goto use_scalar_rx;
 
 #if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
@@ -1300,8 +1308,7 @@ bnxt_transmit_function(struct rte_eth_dev *eth_dev)
 	if (BNXT_CHIP_SR2(bp))
 		return bnxt_xmit_pkts;
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64) && \
-	!defined(RTE_LIBRTE_IEEE1588)
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	uint64_t offloads = eth_dev->data->dev_conf.txmode.offloads;
 
 	/*
@@ -1310,7 +1317,7 @@ bnxt_transmit_function(struct rte_eth_dev *eth_dev)
 	 */
 	if (eth_dev->data->scattered_rx ||
 	    (offloads & ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) ||
-	    BNXT_TRUFLOW_EN(bp))
+	    BNXT_TRUFLOW_EN(bp) || bp->ieee_1588)
 		goto use_scalar_tx;
 
 #if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
@@ -5487,6 +5494,42 @@ bnxt_parse_devarg_app_id(__rte_unused const char *key,
 }
 
 static int
+bnxt_parse_devarg_ieee_1588(__rte_unused const char *key,
+			    const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long ieee_1588;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to ieee-1588 "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	ieee_1588 = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (ieee_1588 == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to ieee_1588 "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_IEEE_1588_INVALID(ieee_1588)) {
+		PMD_DRV_LOG(ERR, "Invalid ieee-1588(%d) devargs.\n",
+			    (uint16_t)ieee_1588);
+		return -EINVAL;
+	}
+
+	bp->ieee_1588 = ieee_1588;
+	PMD_DRV_LOG(INFO, "ieee-1588=%d feature enabled.\n", (uint16_t)ieee_1588);
+
+	return 0;
+}
+
+static int
 bnxt_parse_devarg_rep_is_pf(__rte_unused const char *key,
 			    const char *value, void *opaque_arg)
 {
@@ -5747,6 +5790,13 @@ err:
 	 */
 	rte_kvargs_process(kvlist, BNXT_DEVARG_APP_ID,
 			   bnxt_parse_devarg_app_id, bp);
+
+	/*
+	 * Handler for "ieee-1588" devarg.
+	 * Invoked as for ex: "-a 000:00:0d.0,ieee-1588=1"
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_IEEE_1588,
+			   bnxt_parse_devarg_ieee_1588, bp);
 
 	rte_kvargs_free(kvlist);
 	return ret;

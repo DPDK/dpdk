@@ -9,8 +9,6 @@
 
 #include "roc_platform.h"
 
-struct nix_inline_ipsec_cfg;
-
 #define ROC_AE_CPT_BLOCK_TYPE1 0
 #define ROC_AE_CPT_BLOCK_TYPE2 1
 

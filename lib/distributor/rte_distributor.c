@@ -576,7 +576,7 @@ rte_distributor_process(struct rte_distributor *d,
 					}
 				}
 
-				/* Add to current worker worker */
+				/* Add to current worker */
 				unsigned int idx = bl->count++;
 
 				bl->tags[idx] = new_tag;

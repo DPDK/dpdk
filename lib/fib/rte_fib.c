@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/queue.h>
 
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>

@@ -9,27 +9,9 @@
 
 #include <rte_ip.h>
 #include <rte_log.h>
+#include <rte_fib.h>
 
 #include "test.h"
-
-#ifdef RTE_EXEC_ENV_WINDOWS
-static int
-test_fib(void)
-{
-	printf("fib not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-
-static int
-test_slow_fib(void)
-{
-	printf("slow_fib not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-
-#else
-
-#include <rte_fib.h>
 
 typedef int32_t (*rte_fib_test)(void);
 
@@ -432,8 +414,6 @@ test_slow_fib(void)
 {
 	return unit_test_suite_runner(&fib_slow_tests);
 }
-
-#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(fib_autotest, test_fib);
 REGISTER_TEST_COMMAND(fib_slow_autotest, test_slow_fib);

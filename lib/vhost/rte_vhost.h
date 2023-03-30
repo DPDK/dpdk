@@ -80,8 +80,8 @@ extern "C" {
 #define VHOST_USER_PROTOCOL_F_NET_MTU	4
 #endif
 
-#ifndef VHOST_USER_PROTOCOL_F_SLAVE_REQ
-#define VHOST_USER_PROTOCOL_F_SLAVE_REQ	5
+#ifndef VHOST_USER_PROTOCOL_F_BACKEND_REQ
+#define VHOST_USER_PROTOCOL_F_BACKEND_REQ	5
 #endif
 
 #ifndef VHOST_USER_PROTOCOL_F_CRYPTO_SESSION
@@ -96,8 +96,8 @@ extern "C" {
 #define VHOST_USER_PROTOCOL_F_CONFIG 9
 #endif
 
-#ifndef VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD
-#define VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD 10
+#ifndef VHOST_USER_PROTOCOL_F_BACKEND_SEND_FD
+#define VHOST_USER_PROTOCOL_F_BACKEND_SEND_FD 10
 #endif
 
 #ifndef VHOST_USER_PROTOCOL_F_HOST_NOTIFIER
@@ -264,9 +264,9 @@ typedef enum rte_vhost_msg_result (*rte_vhost_msg_handle)(int vid, void *msg);
  * Optional vhost user message handlers.
  */
 struct rte_vhost_user_extern_ops {
-	/* Called prior to the master message handling. */
+	/* Called prior to the frontend message handling. */
 	rte_vhost_msg_handle pre_msg_handle;
-	/* Called after the master message handling. */
+	/* Called after the frontend message handling. */
 	rte_vhost_msg_handle post_msg_handle;
 };
 
@@ -1060,13 +1060,13 @@ rte_vhost_get_vdpa_device(int vid);
  * @param vid
  *  vhost device ID
  * @param need_reply
- *  wait for the master response the status of this operation
+ *  wait for the frontend response the status of this operation
  * @return
  *  0 on success, < 0 on failure
  */
 __rte_experimental
 int
-rte_vhost_slave_config_change(int vid, bool need_reply);
+rte_vhost_backend_config_change(int vid, bool need_reply);
 
 /**
  * Retrieve names of statistics of a Vhost virtqueue.

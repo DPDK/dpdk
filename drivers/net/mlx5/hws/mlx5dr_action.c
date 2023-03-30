@@ -1603,6 +1603,12 @@ mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
 		goto free_action;
 	}
 
+	if (!mlx5dr_pat_arg_verify_actions(pattern, pattern_sz / MLX5DR_MODIFY_ACTION_SIZE)) {
+		DR_LOG(ERR, "One of the actions is not supported\n");
+		rte_errno = EINVAL;
+		goto free_action;
+	}
+
 	if (pattern_sz / MLX5DR_MODIFY_ACTION_SIZE == 1) {
 		/* Optimize single modiy action to be used inline */
 		action->modify_header.single_action = pattern[0];
@@ -1751,8 +1757,15 @@ int mlx5dr_action_get_default_stc(struct mlx5dr_context *ctx,
 		goto free_nop_dw6;
 	}
 
-	stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_ALLOW;
 	stc_attr.action_offset = MLX5DR_ACTION_OFFSET_HIT;
+	if (!mlx5dr_context_shared_gvmi_used(ctx)) {
+		stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_ALLOW;
+	} else {
+		/* On shared gvmi the default hit behavior is jump to alias end ft */
+		stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
+		stc_attr.dest_table_id = ctx->gvmi_res[tbl_type].aliased_end_ft->id;
+	}
+
 	ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr, tbl_type,
 					     &default_stc->default_hit);
 	if (ret) {

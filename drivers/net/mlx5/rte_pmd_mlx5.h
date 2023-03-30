@@ -69,6 +69,11 @@ int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains);
 #define MLX5_EXTERNAL_RX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
 
 /**
+ * Tag level to set the linear hash index.
+ */
+#define MLX5_LINEAR_HASH_TAG_INDEX 255
+
+/**
  * Update mapping between rte_flow queue index (16 bits) and HW queue index (32
  * bits) for RxQs which is created outside the PMD.
  *
@@ -157,6 +162,72 @@ int rte_pmd_mlx5_host_shaper_config(int port_id, uint8_t rate, uint32_t flags);
  */
 __rte_experimental
 int rte_pmd_mlx5_external_sq_enable(uint16_t port_id, uint32_t sq_num);
+
+/* MLX5 flow engine mode definition for live migration. */
+enum mlx5_flow_engine_mode {
+	MLX5_FLOW_ENGINE_MODE_ACTIVE, /* active means high priority, effective in HW. */
+	MLX5_FLOW_ENGINE_MODE_STANDBY, /* standby mode with lower priority flow rules. */
+};
+
+/**
+ * When set on the flow engine of a standby process, ingress flow rules will be effective
+ * in active and standby processes, so the ingress traffic may be duplicated.
+ */
+#define MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS      RTE_BIT32(0)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Set the flow engine mode of the process to active or standby,
+ * affecting network traffic handling.
+ *
+ * If one device does not support this operation or fails,
+ * the whole operation is failed and rolled back.
+ *
+ * It is forbidden to have multiple flow engines with the same mode
+ * unless only one of them is configured to handle the traffic.
+ *
+ * The application's flow engine is active by default.
+ * The configuration from the active flow engine is effective immediately
+ * while the configuration from the standby flow engine is queued by hardware.
+ * When configuring the device from a standby flow engine,
+ * it has no effect except for below situations:
+ *   - traffic not handled by the active flow engine configuration
+ *   - no active flow engine
+ *
+ * When flow engine of a process is changed from a standby to an active mode,
+ * all preceding configurations that are queued by hardware
+ * should become effective immediately.
+ * Before mode transition, all the traffic handling configurations
+ * set by the active flow engine should be flushed first.
+ *
+ * In summary, the operations are expected to happen in this order
+ * in "old" and "new" applications:
+ *   device: already configured by the old application
+ *   new:    start as active
+ *   new:    probe the same device
+ *   new:    set as standby
+ *   new:    configure the device
+ *   device: has configurations from old and new applications
+ *   old:    clear its device configuration
+ *   device: has only 1 configuration from new application
+ *   new:    set as active
+ *   device: downtime for connecting all to the new application
+ *   old:    shutdown
+ *
+ * @param mode
+ *   The desired mode `mlx5_flow_engine_mode`.
+ * @param flags
+ *   Mode specific flags.
+ * @return
+ *   Positive value on success, -rte_errno value on error:
+ *   - (> 0) Number of switched devices.
+ *   - (-EINVAL) if error happen and rollback internally.
+ *   - (-EPERM) if operation failed and can't recover.
+ */
+__rte_experimental
+int rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flags);
 
 #ifdef __cplusplus
 }

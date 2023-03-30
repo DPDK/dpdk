@@ -351,8 +351,8 @@ Here we use l3fwd-power as an example to show how to get started.
                                                --no-numa --parse-ptype
 
 
-Virtio PMD arguments
---------------------
+Runtime Configuration
+---------------------
 
 Below devargs are supported by the PCI virtio driver:
 

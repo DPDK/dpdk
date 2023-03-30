@@ -23,11 +23,8 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 
-/* Workaround name conflicts with libpcap */
-#define bpf_validate(f, len) bpf_validate_libpcap(f, len)
 #include <pcap/pcap.h>
 #include <pcap/bpf.h>
-#undef bpf_validate
 
 #include "bpf_impl.h"
 #include "bpf_def.h"

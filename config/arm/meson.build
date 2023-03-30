@@ -65,7 +65,7 @@ part_number_config_arm = {
     '0xd0b': {'compiler_options':  ['-mcpu=cortex-a76']},
     '0xd0c': {
         'march': 'armv8.2-a',
-        'march_features': ['crypto'],
+        'march_features': ['crypto', 'rcpc'],
         'compiler_options':  ['-mcpu=neoverse-n1'],
         'flags': [
             ['RTE_MACHINE', '"neoverse-n1"'],
@@ -319,7 +319,7 @@ soc_cn10k = {
         ['RTE_MAX_LCORE', 24],
         ['RTE_MAX_NUMA_NODES', 1],
         ['RTE_MEMPOOL_ALIGN', 128],
-        ['RTE_IOVA_AS_PA', 0]
+        ['RTE_IOVA_IN_MBUF', 0]
     ],
     'part_number': '0xd49',
     'extra_march_features': ['crypto'],
@@ -412,7 +412,7 @@ soc_cn9k = {
     'part_number': '0xb2',
     'numa': false,
     'flags': [
-        ['RTE_IOVA_AS_PA', 0]
+        ['RTE_IOVA_IN_MBUF', 0]
     ]
 }
 

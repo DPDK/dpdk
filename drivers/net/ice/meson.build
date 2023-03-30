@@ -78,4 +78,5 @@ sources += files(
         'ice_dcf_parent.c',
         'ice_dcf_sched.c',
 )
-pmd_supports_disable_iova_as_pa = true
+
+require_iova_in_mbuf = false

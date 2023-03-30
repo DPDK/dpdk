@@ -128,7 +128,7 @@ init_shared_mem(void)
 		 */
 		memset(shm, 0, sizeof(*shm));
 		mark_free(dynfield1);
-#if !RTE_IOVA_AS_PA
+#if !RTE_IOVA_IN_MBUF
 		mark_free(dynfield2);
 #endif
 

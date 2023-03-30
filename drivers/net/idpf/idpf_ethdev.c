@@ -291,6 +291,7 @@ idpf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 				pstats->rx_broadcast - pstats->rx_discards;
 		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
 						pstats->tx_unicast;
+		stats->ierrors = pstats->rx_errors;
 		stats->imissed = pstats->rx_discards;
 		stats->oerrors = pstats->tx_errors + pstats->tx_discards;
 		stats->ibytes = pstats->rx_bytes;
@@ -992,12 +993,12 @@ idpf_parse_devargs(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adap
 		goto bail;
 
 	ret = rte_kvargs_process(kvlist, IDPF_TX_SINGLE_Q, &parse_bool,
-				 &adapter->base.txq_model);
+				 &adapter->base.is_tx_singleq);
 	if (ret != 0)
 		goto bail;
 
 	ret = rte_kvargs_process(kvlist, IDPF_RX_SINGLE_Q, &parse_bool,
-				 &adapter->base.rxq_model);
+				 &adapter->base.is_rx_singleq);
 	if (ret != 0)
 		goto bail;
 
@@ -1057,8 +1058,8 @@ idpf_handle_virtchnl_msg(struct idpf_adapter_ext *adapter_ex)
 	struct idpf_ctlq_msg ctlq_msg;
 	enum idpf_mbx_opc mbx_op;
 	struct idpf_vport *vport;
-	enum virtchnl_ops vc_op;
 	uint16_t pending = 1;
+	uint32_t vc_op;
 	int ret;
 
 	while (pending) {
@@ -1160,7 +1161,7 @@ idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *a
 	if (adapter->vports == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate vports memory");
 		ret = -ENOMEM;
-		goto err_get_ptype;
+		goto err_vports_alloc;
 	}
 
 	adapter->cur_vports = 0;
@@ -1170,7 +1171,8 @@ idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *a
 
 	return ret;
 
-err_get_ptype:
+err_vports_alloc:
+	rte_eal_alarm_cancel(idpf_dev_alarm_handler, adapter);
 	idpf_adapter_deinit(base);
 err_adapter_init:
 	return ret;

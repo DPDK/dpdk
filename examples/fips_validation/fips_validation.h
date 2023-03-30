@@ -163,7 +163,8 @@ enum fips_ccm_test_types {
 enum fips_sha_test_types {
 	SHA_KAT = 0,
 	SHA_AFT,
-	SHA_MCT
+	SHA_MCT,
+	SHAKE_VOT
 };
 
 enum fips_rsa_test_types {
@@ -205,6 +206,8 @@ struct sha_interim_data {
 	/* keep algo always on top as it is also used in asym digest */
 	enum rte_crypto_auth_algorithm algo;
 	enum fips_sha_test_types test_type;
+	uint8_t min_outlen;
+	uint8_t md_blocks;
 };
 
 struct gcm_interim_data {
@@ -244,7 +247,7 @@ struct ecdsa_interim_data {
  * Esp, in asym op, modulo bits decide char buffer size.
  * max = (modulo / 4)
  */
-#define FIPS_TEST_JSON_BUF_LEN (4096 / 4)
+#define FIPS_TEST_JSON_BUF_LEN ((4096 / 4) + 1)
 
 struct fips_test_json_info {
 	/* Information used for reading from json */
@@ -334,6 +337,9 @@ fips_test_parse_one_json_case(void);
 
 int
 parse_test_gcm_json_init(void);
+
+int
+parse_test_ccm_json_init(void);
 
 int
 parse_test_hmac_json_init(void);

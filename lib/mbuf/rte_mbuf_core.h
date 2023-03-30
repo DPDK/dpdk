@@ -41,7 +41,7 @@ extern "C" {
 
 /**
  * The RX packet is a 802.1q VLAN packet, and the tci has been
- * saved in in mbuf->vlan_tci.
+ * saved in mbuf->vlan_tci.
  * If the flag RTE_MBUF_F_RX_VLAN_STRIPPED is also present, the VLAN
  * header has been stripped from mbuf data, else it is still
  * present.
@@ -466,11 +466,11 @@ struct rte_mbuf {
 	RTE_MARKER cacheline0;
 
 	void *buf_addr;           /**< Virtual address of segment buffer. */
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 	/**
 	 * Physical address of segment buffer.
 	 * This field is undefined if the build is configured to use only
-	 * virtual address as IOVA (i.e. RTE_IOVA_AS_PA is 0).
+	 * virtual address as IOVA (i.e. RTE_IOVA_IN_MBUF is 0).
 	 * Force alignment to 8-bytes, so as to ensure we have the exact
 	 * same mbuf cacheline0 layout for 32-bit and 64-bit. This makes
 	 * working on vector drivers easier.
@@ -599,7 +599,7 @@ struct rte_mbuf {
 	/* second cache line - fields only used in slow path or on TX */
 	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 
-#if RTE_IOVA_AS_PA
+#if RTE_IOVA_IN_MBUF
 	/**
 	 * Next segment of scattered packet. Must be NULL in the last
 	 * segment or in case of non-segmented packet.
@@ -608,7 +608,7 @@ struct rte_mbuf {
 #else
 	/**
 	 * Reserved for dynamic fields
-	 * when the next pointer is in first cache line (i.e. RTE_IOVA_AS_PA is 0).
+	 * when the next pointer is in first cache line (i.e. RTE_IOVA_IN_MBUF is 0).
 	 */
 	uint64_t dynfield2;
 #endif

@@ -275,6 +275,8 @@ nix_security_release(struct cnxk_eth_dev *dev)
 			plt_err("Failed to cleanup nix inline inb, rc=%d", rc);
 		ret |= rc;
 
+		cnxk_nix_lookup_mem_metapool_clear(dev);
+
 		if (dev->inb.sa_dptr) {
 			plt_free(dev->inb.sa_dptr);
 			dev->inb.sa_dptr = NULL;
@@ -363,7 +365,7 @@ nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	int rc;
 
-	if (roc_nix_is_vf_or_sdp(&dev->nix))
+	if (roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix))
 		return 0;
 
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
@@ -388,7 +390,11 @@ nix_update_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	struct rte_eth_fc_conf fc_cfg = {0};
 
-	if (roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix))
+	if (roc_nix_is_sdp(&dev->nix))
+		return 0;
+
+	/* Don't do anything if PFC is enabled */
+	if (dev->pfc_cfg.rx_pause_en || dev->pfc_cfg.tx_pause_en)
 		return 0;
 
 	fc_cfg.mode = fc->mode;
@@ -481,7 +487,6 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	sq->qid = qid;
 	sq->nb_desc = nb_desc;
 	sq->max_sqe_sz = nix_sq_max_sqe_sz(dev);
-	sq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	if (nix->tx_compl_ena) {
 		sq->cqid = sq->qid + dev->nb_rxq;
@@ -900,6 +905,27 @@ cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 	return flowkey_cfg;
 }
 
+static int
+nix_rxchan_cfg_disable(struct cnxk_eth_dev *dev)
+{
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_fc_cfg fc_cfg;
+	int rc;
+
+	if (!roc_nix_is_lbk(nix))
+		return 0;
+
+	memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
+	fc_cfg.type = ROC_NIX_FC_RXCHAN_CFG;
+	fc_cfg.rxchan_cfg.enable = false;
+	rc = roc_nix_fc_config_set(nix, &fc_cfg);
+	if (rc) {
+		plt_err("Failed to setup flow control, rc=%d(%s)", rc, roc_error_msg_get(rc));
+		return rc;
+	}
+	return 0;
+}
+
 static void
 nix_free_queue_mem(struct cnxk_eth_dev *dev)
 {
@@ -1218,6 +1244,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 			goto fail_configure;
 
 		roc_nix_tm_fini(nix);
+		nix_rxchan_cfg_disable(dev);
 		roc_nix_lf_free(nix);
 	}
 
@@ -1456,6 +1483,7 @@ tm_fini:
 	roc_nix_tm_fini(nix);
 free_nix_lf:
 	nix_free_queue_mem(dev);
+	rc |= nix_rxchan_cfg_disable(dev);
 	rc |= roc_nix_lf_free(nix);
 fail_configure:
 	dev->configured = 0;
@@ -1826,6 +1854,8 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nix->pci_dev = pci_dev;
 	nix->hw_vlan_ins = true;
 	nix->port_id = eth_dev->data->port_id;
+	if (roc_feature_nix_has_own_meta_aura())
+		nix->local_meta_aura_ena = true;
 	rc = roc_nix_dev_init(nix);
 	if (rc) {
 		plt_err("Failed to initialize roc nix rc=%d", rc);
@@ -2025,6 +2055,11 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	/* Free ROC RQ's, SQ's and CQ's memory */
 	nix_free_queue_mem(dev);
+
+	/* free nix bpid */
+	rc = nix_rxchan_cfg_disable(dev);
+	if (rc)
+		plt_err("Failed to free nix bpid, rc=%d", rc);
 
 	/* Free nix lf resources */
 	rc = roc_nix_lf_free(nix);

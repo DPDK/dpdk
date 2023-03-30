@@ -114,8 +114,8 @@ struct mlx5_hca_flex_attr {
 	uint8_t  max_num_arc_out;
 	uint8_t  max_num_sample;
 	uint8_t  max_num_prog_sample:5;	/* From HCA CAP 2 */
-	uint8_t  anchor_en:1;
-	uint8_t  ext_sample_id:1;
+	uint8_t  parse_graph_anchor:1;
+	uint8_t  query_match_sample_info:1; /* Support DevX query sample info. */
 	uint8_t  sample_tunnel_inner2:1;
 	uint8_t  zero_size_supported:1;
 	uint8_t  sample_id_in_out:1;
@@ -244,6 +244,7 @@ struct mlx5_hca_attr {
 	uint32_t cqe_compression:1;
 	uint32_t mini_cqe_resp_flow_tag:1;
 	uint32_t mini_cqe_resp_l3_l4_tag:1;
+	uint32_t enhanced_cqe_compression:1;
 	uint32_t pkt_integrity_match:1; /* 1 if HW supports integrity item */
 	struct mlx5_hca_qos_attr qos;
 	struct mlx5_hca_vdpa_attr vdpa;
@@ -263,13 +264,17 @@ struct mlx5_hca_attr {
 	uint32_t mmo_decompress_sq_en:1;
 	uint32_t mmo_dma_qp_en:1;
 	uint32_t mmo_compress_qp_en:1;
-	uint32_t mmo_decompress_qp_en:1;
+	uint32_t decomp_deflate_v1_en:1;
+	uint32_t decomp_deflate_v2_en:1;
 	uint32_t mmo_regex_qp_en:1;
 	uint32_t mmo_regex_sq_en:1;
 	uint32_t compress_min_block_size:4;
 	uint32_t log_max_mmo_dma:5;
 	uint32_t log_max_mmo_compress:5;
 	uint32_t log_max_mmo_decompress:5;
+	uint32_t decomp_lz4_data_only_en:1;
+	uint32_t decomp_lz4_no_checksum_en:1;
+	uint32_t decomp_lz4_checksum_en:1;
 	uint32_t umr_modify_entity_size_disabled:1;
 	uint32_t umr_indirect_mkey_disabled:1;
 	uint32_t log_min_stride_wqe_sz:5;
@@ -293,6 +298,7 @@ struct mlx5_hca_attr {
 	uint32_t flow_counter_access_aso:1;
 	uint32_t flow_access_aso_opc_mod:8;
 	uint32_t cross_vhca:1;
+	uint32_t lag_rx_port_affinity:1;
 };
 
 /* LAG Context. */
@@ -467,6 +473,7 @@ struct mlx5_devx_cq_attr {
 	uint32_t cqe_comp_en:1;
 	uint32_t mini_cqe_res_format:2;
 	uint32_t mini_cqe_res_format_ext:2;
+	uint32_t cqe_comp_layout:2;
 	uint32_t log_cq_size:5;
 	uint32_t log_page_size:5;
 	uint32_t uar_page_id;
@@ -516,7 +523,6 @@ struct mlx5_devx_virtq_attr {
 	uint8_t q_type;
 };
 
-
 struct mlx5_devx_qp_attr {
 	uint32_t pd:24;
 	uint32_t uar_index:24;
@@ -542,6 +548,18 @@ struct mlx5_devx_virtio_q_couners_attr {
 	uint32_t bad_desc_errors;
 	uint32_t exceed_max_chain;
 	uint32_t invalid_buffer;
+};
+
+/*
+ * Match sample info attributes structure, used by:
+ *  - GENEVE TLV option query.
+ *  - Graph flow match sample query.
+ */
+struct mlx5_devx_match_sample_info_query_attr {
+	uint32_t modify_field_id:12;
+	uint32_t sample_dw_data:8;
+	uint32_t sample_dw_ok_bit:8;
+	uint32_t sample_dw_ok_bit_offset:5;
 };
 
 /*
@@ -710,8 +728,11 @@ __rte_internal
 int mlx5_devx_cmd_modify_tir(struct mlx5_devx_obj *tir,
 			     struct mlx5_devx_modify_tir_attr *tir_attr);
 __rte_internal
+int mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
+					  struct mlx5_devx_match_sample_info_query_attr *attr);
+__rte_internal
 int mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				      struct mlx5_ext_sample_id ids[],
+				      uint32_t *ids,
 				      uint32_t num, uint8_t *anchor);
 
 __rte_internal
@@ -816,4 +837,5 @@ __rte_internal
 int
 mlx5_devx_cmd_query_lag(void *ctx,
 			struct mlx5_devx_lag_context *lag_ctx);
+
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */

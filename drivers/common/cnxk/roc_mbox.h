@@ -127,6 +127,8 @@ struct mbox_msghdr {
 	M(SSO_CONFIG_LSW, 0x612, ssow_config_lsw, ssow_config_lsw, msg_rsp)    \
 	M(SSO_HWS_CHNG_MSHIP, 0x613, ssow_chng_mship, ssow_chng_mship,         \
 	  msg_rsp)                                                             \
+	M(SSO_GRP_STASH_CONFIG, 0x614, sso_grp_stash_config,                   \
+	  sso_grp_stash_cfg, msg_rsp)                                          \
 	/* TIM mbox IDs (range 0x800 - 0x9FF) */                               \
 	M(TIM_LF_ALLOC, 0x800, tim_lf_alloc, tim_lf_alloc_req,                 \
 	  tim_lf_alloc_rsp)                                                    \
@@ -1372,6 +1374,14 @@ struct sso_grp_qos_cfg {
 	uint32_t __io rsvd;
 	uint16_t __io taq_thr;
 	uint16_t __io iaq_thr;
+};
+
+struct sso_grp_stash_cfg {
+	struct mbox_msghdr hdr;
+	uint16_t __io grp;
+	uint8_t __io ena;
+	uint8_t __io offset : 4;
+	uint8_t __io num_linesm1 : 4;
 };
 
 struct sso_grp_stats {

@@ -2033,7 +2033,8 @@ nfp_flow_compile_items(struct nfp_flower_representor *representor,
 static int
 nfp_flow_action_output(char *act_data,
 		const struct rte_flow_action *action,
-		struct nfp_fl_rule_metadata *nfp_flow_meta)
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		uint32_t output_cnt)
 {
 	size_t act_size;
 	struct rte_eth_dev *ethdev;
@@ -2052,8 +2053,9 @@ nfp_flow_action_output(char *act_data,
 	output = (struct nfp_fl_act_output *)act_data;
 	output->head.jump_id = NFP_FL_ACTION_OPCODE_OUTPUT;
 	output->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
-	output->flags        = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
 	output->port         = rte_cpu_to_be_32(representor->port_id);
+	if (output_cnt == 0)
+		output->flags = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
 
 	nfp_flow_meta->shortcut = rte_cpu_to_be_32(representor->port_id);
 
@@ -2066,6 +2068,7 @@ nfp_flow_action_set_mac(char *act_data,
 		bool mac_src_flag,
 		bool mac_set_flag)
 {
+	uint8_t i;
 	size_t act_size;
 	struct nfp_fl_act_set_eth *set_eth;
 	const struct rte_flow_action_set_mac *set_mac;
@@ -2084,9 +2087,13 @@ nfp_flow_action_set_mac(char *act_data,
 	if (mac_src_flag) {
 		rte_memcpy(&set_eth->eth_addr[RTE_ETHER_ADDR_LEN],
 				set_mac->mac_addr, RTE_ETHER_ADDR_LEN);
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+			set_eth->eth_addr_mask[RTE_ETHER_ADDR_LEN + i] = 0xff;
 	} else {
 		rte_memcpy(&set_eth->eth_addr[0],
 				set_mac->mac_addr, RTE_ETHER_ADDR_LEN);
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+			set_eth->eth_addr_mask[i] = 0xff;
 	}
 }
 
@@ -2127,10 +2134,13 @@ nfp_flow_action_set_ip(char *act_data,
 	set_ip->reserved     = 0;
 
 	set_ipv4 = (const struct rte_flow_action_set_ipv4 *)action->conf;
-	if (ip_src_flag)
+	if (ip_src_flag) {
 		set_ip->ipv4_src = set_ipv4->ipv4_addr;
-	else
+		set_ip->ipv4_src_mask = RTE_BE32(0xffffffff);
+	} else {
 		set_ip->ipv4_dst = set_ipv4->ipv4_addr;
+		set_ip->ipv4_dst_mask = RTE_BE32(0xffffffff);
+	}
 }
 
 static void
@@ -2155,8 +2165,10 @@ nfp_flow_action_set_ipv6(char *act_data,
 	set_ip->head.len_lw = act_size >> NFP_FL_LW_SIZ;
 	set_ip->reserved = 0;
 
-	for (i = 0; i < 4; i++)
-		set_ip->ipv6[i].exact = set_ipv6->ipv6_addr[i];
+	for (i = 0; i < 4; i++) {
+		set_ip->ipv6[i].exact = set_ipv6->ipv6_addr[i * 4];
+		set_ip->ipv6[i].mask = RTE_BE32(0xffffffff);
+	}
 }
 
 static void
@@ -2180,10 +2192,13 @@ nfp_flow_action_set_tp(char *act_data,
 	set_tp->reserved     = 0;
 
 	set_tp_conf = (const struct rte_flow_action_set_tp *)action->conf;
-	if (tp_src_flag)
+	if (tp_src_flag) {
 		set_tp->src_port = set_tp_conf->port;
-	else
+		set_tp->src_port_mask = RTE_BE16(0xffff);
+	} else {
 		set_tp->dst_port = set_tp_conf->port;
+		set_tp->dst_port_mask = RTE_BE16(0xffff);
+	}
 }
 
 static int
@@ -2239,6 +2254,7 @@ nfp_flow_action_set_ttl(char *act_data,
 
 	ttl_conf = (const struct rte_flow_action_set_ttl *)action->conf;
 	ttl_tos->ipv4_ttl = ttl_conf->ttl_value;
+	ttl_tos->ipv4_ttl_mask = 0xff;
 	ttl_tos->reserved = 0;
 }
 
@@ -2262,6 +2278,7 @@ nfp_flow_action_set_hl(char *act_data,
 
 	ttl_conf = (const struct rte_flow_action_set_ttl *)action->conf;
 	tc_hl->ipv6_hop_limit = ttl_conf->ttl_value;
+	tc_hl->ipv6_hop_limit_mask = 0xff;
 	tc_hl->reserved = 0;
 }
 
@@ -2285,6 +2302,7 @@ nfp_flow_action_set_tos(char *act_data,
 
 	tos_conf = (const struct rte_flow_action_set_dscp *)action->conf;
 	ttl_tos->ipv4_tos = tos_conf->dscp;
+	ttl_tos->ipv4_tos_mask = 0xff;
 	ttl_tos->reserved = 0;
 }
 
@@ -2308,6 +2326,7 @@ nfp_flow_action_set_tc(char *act_data,
 
 	tos_conf = (const struct rte_flow_action_set_dscp *)action->conf;
 	tc_hl->ipv6_tc = tos_conf->dscp;
+	tc_hl->ipv6_tc_mask = 0xff;
 	tc_hl->reserved = 0;
 }
 
@@ -3290,12 +3309,27 @@ nfp_flow_action_meter(struct nfp_flower_representor *representor,
 	return 0;
 }
 
+static uint32_t
+nfp_flow_count_output(const struct rte_flow_action actions[])
+{
+	uint32_t count = 0;
+	const struct rte_flow_action *action;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		if (action->type == RTE_FLOW_ACTION_TYPE_PORT_ID)
+			count++;
+	}
+
+	return count;
+}
+
 static int
 nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
 {
 	int ret = 0;
+	uint32_t count;
 	char *position;
 	char *action_data;
 	bool ttl_tos_flag = false;
@@ -3314,6 +3348,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 	position      = action_data;
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
 
+	count = nfp_flow_count_output(actions);
+
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		switch (action->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -3330,7 +3366,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_PORT_ID");
-			ret = nfp_flow_action_output(position, action, nfp_flow_meta);
+			count--;
+			ret = nfp_flow_action_output(position, action, nfp_flow_meta, count);
 			if (ret != 0) {
 				PMD_DRV_LOG(ERR, "Failed when process"
 						" RTE_FLOW_ACTION_TYPE_PORT_ID");

@@ -507,12 +507,14 @@ em_check_ptype(int portid)
 		}
 	}
 
-	if (ptype_l3_ipv4_ext == 0)
+	if (!ipv6 && !ptype_l3_ipv4_ext) {
 		printf("port %d cannot parse RTE_PTYPE_L3_IPV4_EXT\n", portid);
-	if (ptype_l3_ipv6_ext == 0)
-		printf("port %d cannot parse RTE_PTYPE_L3_IPV6_EXT\n", portid);
-	if (!ptype_l3_ipv4_ext || !ptype_l3_ipv6_ext)
 		return 0;
+	}
+	if (ipv6 && !ptype_l3_ipv6_ext) {
+		printf("port %d cannot parse RTE_PTYPE_L3_IPV6_EXT\n", portid);
+		return 0;
+	}
 
 	if (ptype_l4_tcp == 0)
 		printf("port %d cannot parse RTE_PTYPE_L4_TCP\n", portid);

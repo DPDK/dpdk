@@ -17,6 +17,7 @@
 #include <mlx5_prm.h>
 
 #include "mlx5.h"
+#include "rte_pmd_mlx5.h"
 #include "hws/mlx5dr.h"
 
 /* E-Switch Manager port, used for rte_flow_item_port_id. */
@@ -222,6 +223,9 @@ enum mlx5_feature_name {
 /* IPv6 routing extension item */
 #define MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT (UINT64_C(1) << 45)
 #define MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT (UINT64_C(1) << 46)
+
+/* Aggregated affinity item */
+#define MLX5_FLOW_ITEM_AGGR_AFFINITY (UINT64_C(1) << 49)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
@@ -1084,6 +1088,8 @@ struct field_modify_info {
 	uint32_t size; /* Size of field in protocol header, in bytes. */
 	uint32_t offset; /* Offset of field in protocol header, in bytes. */
 	enum mlx5_modification_field id;
+	uint32_t shift;
+	uint8_t is_flex; /* Temporary indicator for flex item modify filed WA. */
 };
 
 /* HW steering flow attributes. */
@@ -1153,6 +1159,7 @@ struct rte_flow_hw {
 	uint32_t age_idx;
 	cnt_id_t cnt_id;
 	uint32_t mtr_id;
+	uint32_t rule_idx;
 	uint8_t rule[0]; /* HWS layer data struct. */
 } __rte_packed;
 
@@ -1229,6 +1236,7 @@ struct rte_flow_pattern_template {
 	 * tag pattern item for representor matching.
 	 */
 	bool implicit_tag;
+	uint8_t flex_item; /* flex item index. */
 };
 
 /* Flow action template struct. */
@@ -1247,6 +1255,7 @@ struct rte_flow_actions_template {
 	uint16_t mhdr_off; /* Offset of DR modify header action. */
 	uint32_t refcnt; /* Reference counter. */
 	uint16_t rx_cpy_pos; /* Action position of Rx metadata to be copied. */
+	uint8_t flex_item; /* flex item index. */
 };
 
 /* Jump action struct. */
@@ -1591,6 +1600,8 @@ flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
 	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 		return mlx5_flow_hw_aso_tag;
 	case RTE_FLOW_ITEM_TYPE_TAG:
+		if (id == MLX5_LINEAR_HASH_TAG_INDEX)
+			return REG_C_3;
 		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
 		return mlx5_flow_hw_avl_tags[id];
 	default:
@@ -1814,6 +1825,16 @@ typedef struct rte_flow *(*mlx5_flow_async_flow_create_t)
 			 uint8_t action_template_index,
 			 void *user_data,
 			 struct rte_flow_error *error);
+typedef struct rte_flow *(*mlx5_flow_async_flow_create_by_index_t)
+			(struct rte_eth_dev *dev,
+			 uint32_t queue,
+			 const struct rte_flow_op_attr *attr,
+			 struct rte_flow_template_table *table,
+			 uint32_t rule_index,
+			 const struct rte_flow_action actions[],
+			 uint8_t action_template_index,
+			 void *user_data,
+			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_async_flow_destroy_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t queue,
@@ -1916,6 +1937,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_table_create_t template_table_create;
 	mlx5_flow_table_destroy_t template_table_destroy;
 	mlx5_flow_async_flow_create_t async_flow_create;
+	mlx5_flow_async_flow_create_by_index_t async_flow_create_by_index;
 	mlx5_flow_async_flow_destroy_t async_flow_destroy;
 	mlx5_flow_pull_t pull;
 	mlx5_flow_push_t push;
@@ -2629,13 +2651,14 @@ flow_hw_get_srh_flex_parser_byte_off_from_ctx(void *dr_ctx __rte_unused)
 	MLX5_ETH_FOREACH_DEV(port, NULL) {
 		struct mlx5_priv *priv;
 		struct mlx5_hca_flex_attr *attr;
+		struct mlx5_devx_match_sample_info_query_attr *info;
 
 		priv = rte_eth_devices[port].data->dev_private;
 		attr = &priv->sh->cdev->config.hca_attr.flex;
-		if (priv->dr_ctx == dr_ctx && attr->ext_sample_id) {
-			if (priv->sh->srh_flex_parser.num)
-				return priv->sh->srh_flex_parser.ids[0].format_select_dw *
-					sizeof(uint32_t);
+		if (priv->dr_ctx == dr_ctx && attr->query_match_sample_info) {
+			info = &priv->sh->srh_flex_parser.flex.devx_fp->sample_info[0];
+			if (priv->sh->srh_flex_parser.flex.mapnum)
+				return info->sample_dw_data * sizeof(uint32_t);
 			else
 				return UINT32_MAX;
 		}

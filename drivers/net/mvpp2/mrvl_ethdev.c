@@ -853,7 +853,7 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/*
-	 * In case there are some some stale uc/mc mac addresses flush them
+	 * In case there are some stale uc/mc mac addresses flush them
 	 * here. It cannot be done during mrvl_dev_close() as port information
 	 * is already gone at that point (due to pp2_ppio_deinit() in
 	 * mrvl_dev_stop()).

@@ -77,7 +77,10 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		if (req == NULL)
 			goto exit;
 		req->chan_base = 0;
-		req->chan_cnt = 1;
+		if (roc_nix_is_lbk(roc_nix) || roc_nix_is_sdp(roc_nix))
+			req->chan_cnt = NIX_LBK_MAX_CHAN;
+		else
+			req->chan_cnt = NIX_CGX_MAX_CHAN;
 		req->bpid_per_chan = 0;
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
@@ -89,7 +92,10 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		if (req == NULL)
 			goto exit;
 		req->chan_base = 0;
-		req->chan_cnt = 1;
+		if (roc_nix_is_lbk(roc_nix) || roc_nix_is_sdp(roc_nix))
+			req->chan_cnt = NIX_LBK_MAX_CHAN;
+		else
+			req->chan_cnt = NIX_CGX_MAX_CHAN;
 		req->bpid_per_chan = 0;
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
@@ -278,18 +284,26 @@ exit:
 static int
 nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct roc_nix_fc_cfg tmp;
-	int sso_ena = 0;
+	struct roc_nix_rq *rq;
+	int sso_ena = 0, rc;
 
+	rq = nix->rqs[fc_cfg->rq_cfg.rq];
 	/* Check whether RQ is connected to SSO or not */
 	sso_ena = roc_nix_rq_is_sso_enable(roc_nix, fc_cfg->rq_cfg.rq);
 	if (sso_ena < 0)
 		return -EINVAL;
 
-	if (sso_ena)
+	if (sso_ena) {
 		roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.pool,
 				      fc_cfg->rq_cfg.enable, true,
 				      fc_cfg->rq_cfg.tc);
+
+		if (roc_nix->local_meta_aura_ena)
+			roc_nix_fc_npa_bp_cfg(roc_nix, roc_nix->meta_aura_handle,
+					      fc_cfg->rq_cfg.enable, true, fc_cfg->rq_cfg.tc);
+	}
 
 	/* Copy RQ config to CQ config as they are occupying same area */
 	memset(&tmp, 0, sizeof(tmp));
@@ -299,7 +313,14 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	tmp.cq_cfg.cq_drop = fc_cfg->rq_cfg.cq_drop;
 	tmp.cq_cfg.enable = fc_cfg->rq_cfg.enable;
 
-	return nix_fc_cq_config_set(roc_nix, &tmp);
+	rc = nix_fc_cq_config_set(roc_nix, &tmp);
+	if (rc)
+		return rc;
+
+	rq->tc = fc_cfg->rq_cfg.enable ? fc_cfg->rq_cfg.tc : ROC_NIX_PFC_CLASS_INVALID;
+	plt_nix_dbg("RQ %u: TC %u %s", fc_cfg->rq_cfg.rq, fc_cfg->rq_cfg.tc,
+		    fc_cfg->rq_cfg.enable ? "enabled" : "disabled");
+	return 0;
 }
 
 int
@@ -334,7 +355,7 @@ roc_nix_fc_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	else if (fc_cfg->type == ROC_NIX_FC_TM_CFG)
 		return nix_tm_bp_config_set(roc_nix, fc_cfg->tm_cfg.sq,
 					    fc_cfg->tm_cfg.tc,
-					    fc_cfg->tm_cfg.enable, false);
+					    fc_cfg->tm_cfg.enable);
 
 	return -EINVAL;
 }
@@ -343,50 +364,17 @@ enum roc_nix_fc_mode
 roc_nix_fc_mode_get(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct dev *dev = &nix->dev;
-	struct mbox *mbox = mbox_get(dev->mbox);
-	struct cgx_pause_frm_cfg *req, *rsp;
 	enum roc_nix_fc_mode mode;
-	int rc = -ENOSPC;
 
-	/* Flow control on LBK link is always available */
-	if (roc_nix_is_lbk(roc_nix)) {
-		if (nix->tx_pause && nix->rx_pause)
-			rc = ROC_NIX_FC_FULL;
-		else if (nix->rx_pause)
-			rc = ROC_NIX_FC_RX;
-		else if (nix->tx_pause)
-			rc = ROC_NIX_FC_TX;
-		else
-			rc = ROC_NIX_FC_NONE;
-		goto exit;
-	}
-
-	req = mbox_alloc_msg_cgx_cfg_pause_frm(mbox);
-	if (req == NULL)
-		goto exit;
-	req->set = 0;
-
-	rc = mbox_process_msg(mbox, (void *)&rsp);
-	if (rc)
-		goto exit;
-
-	if (rsp->rx_pause && rsp->tx_pause)
+	if (nix->tx_pause && nix->rx_pause)
 		mode = ROC_NIX_FC_FULL;
-	else if (rsp->rx_pause)
+	else if (nix->rx_pause)
 		mode = ROC_NIX_FC_RX;
-	else if (rsp->tx_pause)
+	else if (nix->tx_pause)
 		mode = ROC_NIX_FC_TX;
 	else
 		mode = ROC_NIX_FC_NONE;
-
-	nix->rx_pause = rsp->rx_pause;
-	nix->tx_pause = rsp->tx_pause;
-	rc = mode;
-
-exit:
-	mbox_put(mbox);
-	return rc;
+	return mode;
 }
 
 int
@@ -570,8 +558,8 @@ roc_nix_pfc_mode_set(struct roc_nix *roc_nix, struct roc_nix_pfc_cfg *pfc_cfg)
 	if (rc)
 		goto exit;
 
-	nix->rx_pause = rsp->rx_pause;
-	nix->tx_pause = rsp->tx_pause;
+	nix->pfc_rx_pause = rsp->rx_pause;
+	nix->pfc_tx_pause = rsp->tx_pause;
 	if (rsp->tx_pause)
 		nix->cev |= BIT(pfc_cfg->tc);
 	else
@@ -592,11 +580,11 @@ roc_nix_pfc_mode_get(struct roc_nix *roc_nix, struct roc_nix_pfc_cfg *pfc_cfg)
 
 	pfc_cfg->tc = nix->cev;
 
-	if (nix->rx_pause && nix->tx_pause)
+	if (nix->pfc_rx_pause && nix->pfc_tx_pause)
 		pfc_cfg->mode = ROC_NIX_FC_FULL;
-	else if (nix->rx_pause)
+	else if (nix->pfc_rx_pause)
 		pfc_cfg->mode = ROC_NIX_FC_RX;
-	else if (nix->tx_pause)
+	else if (nix->pfc_tx_pause)
 		pfc_cfg->mode = ROC_NIX_FC_TX;
 	else
 		pfc_cfg->mode = ROC_NIX_FC_NONE;

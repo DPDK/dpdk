@@ -1,9 +1,27 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2022 The DPDK contributors
+# Copyright 2022-2023 The DPDK contributors
 
 executions:
-  - system_under_test: "SUT 1"
+  - build_targets:
+      - arch: x86_64
+        os: linux
+        cpu: native
+        compiler: gcc
+        compiler_wrapper: ccache
+    perf: false
+    func: true
+    test_suites:
+      - hello_world
+    system_under_test: "SUT 1"
 nodes:
   - name: "SUT 1"
     hostname: sut1.change.me.localhost
     user: root
+    arch: x86_64
+    os: linux
+    lcores: ""
+    use_first_core: false
+    memory_channels: 4
+    hugepages:  # optional; if removed, will use system hugepage configuration
+        amount: 256
+        force_first_numa: false

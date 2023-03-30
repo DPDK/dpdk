@@ -606,6 +606,7 @@ struct hns3_rss_input_tuple_cmd {
 #define HNS3_RSS_CFG_TBL_SIZE_H		4
 #define HNS3_RSS_CFG_TBL_BW_H		2
 #define HNS3_RSS_CFG_TBL_BW_L		8
+#define HNS3_RSS_CFG_TBL_BW_H_M		0x3
 
 /* Configure the indirection table, opcode:0x0D07 */
 struct hns3_rss_indirection_table_cmd {

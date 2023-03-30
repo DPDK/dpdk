@@ -40,6 +40,8 @@ evt_options_default(struct evt_options *opt)
 	opt->vector_size = 64;
 	opt->vector_tmo_nsec = 100E3;
 	opt->crypto_op_type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	opt->crypto_cipher_alg = RTE_CRYPTO_CIPHER_NULL;
+	opt->crypto_cipher_key_sz = 0;
 }
 
 typedef int (*option_parser_t)(struct evt_options *opt,
@@ -173,6 +175,61 @@ evt_parse_crypto_op_type(struct evt_options *opt, const char *arg)
 	ret = parser_read_uint8(&op_type, arg);
 	opt->crypto_op_type = op_type ? RTE_CRYPTO_OP_TYPE_ASYMMETRIC :
 					RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	return ret;
+}
+
+static bool
+cipher_alg_is_bit_mode(enum rte_crypto_cipher_algorithm alg)
+{
+	return (alg == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
+		alg == RTE_CRYPTO_CIPHER_ZUC_EEA3 ||
+		alg == RTE_CRYPTO_CIPHER_KASUMI_F8);
+}
+
+static int
+evt_parse_crypto_cipher_alg(struct evt_options *opt, const char *arg)
+{
+	enum rte_crypto_cipher_algorithm cipher_alg;
+
+	if (rte_cryptodev_get_cipher_algo_enum(&cipher_alg, arg) < 0) {
+		RTE_LOG(ERR, USER1, "Invalid cipher algorithm specified\n");
+		return -1;
+	}
+
+	opt->crypto_cipher_alg = cipher_alg;
+	opt->crypto_cipher_bit_mode = cipher_alg_is_bit_mode(cipher_alg);
+
+	return 0;
+}
+
+static int
+evt_parse_crypto_cipher_key(struct evt_options *opt, const char *arg)
+{
+	opt->crypto_cipher_key_sz = EVT_CRYPTO_MAX_KEY_SIZE;
+	if (parse_hex_string(arg, opt->crypto_cipher_key,
+			     (uint32_t *)&opt->crypto_cipher_key_sz)) {
+		RTE_LOG(ERR, USER1, "Invalid cipher key specified\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+evt_parse_crypto_cipher_iv_sz(struct evt_options *opt, const char *arg)
+{
+	uint16_t iv_sz;
+	int ret;
+
+	ret = parser_read_uint16(&(iv_sz), arg);
+	if (iv_sz > EVT_CRYPTO_MAX_IV_SIZE) {
+		RTE_LOG(ERR, USER1,
+			"Unsupported cipher IV length [%d] specified\n",
+			iv_sz);
+		return -1;
+	}
+
+	opt->crypto_cipher_iv_sz = iv_sz;
 	return ret;
 }
 
@@ -404,6 +461,11 @@ usage(char *program)
 		"\t                      1 for OP_FORWARD mode.\n"
 		"\t--crypto_op_type   : 0 for SYM ops (default) and\n"
 		"\t                     1 for ASYM ops.\n"
+		"\t--crypto_cipher_alg : cipher algorithm to be used\n"
+		"\t                      default algorithm is NULL.\n"
+		"\t--crypto_cipher_key : key for the cipher algorithm selected\n"
+		"\t--crypto_cipher_iv_sz : IV size for the cipher algorithm\n"
+		"\t                        selected\n"
 		"\t--mbuf_sz          : packet mbuf size.\n"
 		"\t--max_pkt_sz       : max packet size.\n"
 		"\t--prod_enq_burst_sz : producer enqueue burst size.\n"
@@ -483,6 +545,9 @@ static struct option lgopts[] = {
 	{ EVT_PROD_TIMERDEV_BURST, 0, 0, 0 },
 	{ EVT_CRYPTO_ADPTR_MODE,   1, 0, 0 },
 	{ EVT_CRYPTO_OP_TYPE,	   1, 0, 0 },
+	{ EVT_CRYPTO_CIPHER_ALG,   1, 0, 0 },
+	{ EVT_CRYPTO_CIPHER_KEY,   1, 0, 0 },
+	{ EVT_CRYPTO_CIPHER_IV_SZ, 1, 0, 0 },
 	{ EVT_NB_TIMERS,           1, 0, 0 },
 	{ EVT_NB_TIMER_ADPTRS,     1, 0, 0 },
 	{ EVT_TIMER_TICK_NSEC,     1, 0, 0 },
@@ -528,6 +593,9 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_PROD_TIMERDEV_BURST, evt_parse_timer_prod_type_burst},
 		{ EVT_CRYPTO_ADPTR_MODE, evt_parse_crypto_adptr_mode},
 		{ EVT_CRYPTO_OP_TYPE, evt_parse_crypto_op_type},
+		{ EVT_CRYPTO_CIPHER_ALG, evt_parse_crypto_cipher_alg},
+		{ EVT_CRYPTO_CIPHER_KEY, evt_parse_crypto_cipher_key},
+		{ EVT_CRYPTO_CIPHER_IV_SZ, evt_parse_crypto_cipher_iv_sz},
 		{ EVT_NB_TIMERS, evt_parse_nb_timers},
 		{ EVT_NB_TIMER_ADPTRS, evt_parse_nb_timer_adptrs},
 		{ EVT_TIMER_TICK_NSEC, evt_parse_timer_tick_nsec},

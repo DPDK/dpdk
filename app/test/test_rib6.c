@@ -3,31 +3,13 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
-#include "test.h"
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-
 #include <rte_ip.h>
-
-#ifdef RTE_EXEC_ENV_WINDOWS
-static int
-test_rib6(void)
-{
-	printf("rib6 not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-
-static int
-test_slow_rib6(void)
-{
-	printf("slow_rib6 not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-#else
-
 #include <rte_rib6.h>
+
+#include "test.h"
 
 typedef int32_t (*rte_rib6_test)(void);
 
@@ -384,8 +366,6 @@ test_slow_rib6(void)
 {
 	return unit_test_suite_runner(&rib6_slow_tests);
 }
-
-#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(rib6_autotest, test_rib6);
 REGISTER_TEST_COMMAND(rib6_slow_autotest, test_slow_rib6);

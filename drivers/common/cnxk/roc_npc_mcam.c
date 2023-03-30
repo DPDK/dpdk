@@ -96,10 +96,10 @@ int
 npc_mcam_free_all_entries(struct npc *npc)
 {
 	struct npc_mcam_free_entry_req *req;
-	struct mbox *mbox = npc->mbox;
+	struct mbox *mbox = mbox_get(npc->mbox);
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_npc_mcam_free_entry(mbox_get(mbox));
+	req = mbox_alloc_msg_npc_mcam_free_entry(mbox);
 	if (req == NULL)
 		goto exit;
 	req->all = 1;
@@ -354,10 +354,10 @@ npc_mcam_alloc_entry(struct npc *npc, struct roc_npc_flow *mcam,
 {
 	struct npc_mcam_alloc_entry_req *req;
 	struct npc_mcam_alloc_entry_rsp *rsp;
-	struct mbox *mbox = npc->mbox;
+	struct mbox *mbox = mbox_get(npc->mbox);
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox_get(mbox));
+	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox);
 	if (req == NULL)
 		goto exit;
 	req->contig = 1;

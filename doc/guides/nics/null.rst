@@ -17,8 +17,8 @@ Usage
    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev net_null0 --vdev net_null1 -- -i
 
 
-Runtime Config Options
-----------------------
+Runtime Configuration
+---------------------
 
 - ``copy`` [optional, default disabled]
 

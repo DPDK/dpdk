@@ -366,6 +366,7 @@ int
 prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 {
 	uint32_t remaining_data = test_data->input_data_sz;
+	uint32_t remaining_data_decomp = test_data->input_data_sz;
 	uint8_t *input_data_ptr = test_data->input_data;
 	size_t data_sz = 0;
 	uint8_t *data_addr;
@@ -482,7 +483,7 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 		}
 
 		if (decompress_only)
-			data_sz = RTE_MIN(remaining_data, test_data->seg_sz);
+			data_sz = RTE_MIN(remaining_data_decomp, test_data->seg_sz);
 		else
 			data_sz = test_data->out_seg_sz;
 
@@ -496,11 +497,11 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 		if (decompress_only) {
 			rte_memcpy(data_addr, input_data_ptr, data_sz);
 			input_data_ptr += data_sz;
-			remaining_data -= data_sz;
+			remaining_data_decomp -= data_sz;
 		}
 
 		/* Chain mbufs if needed for output mbufs */
-		for (j = 1; j < segs_per_mbuf && remaining_data > 0; j++) {
+		for (j = 1; j < segs_per_mbuf && remaining_data_decomp > 0; j++) {
 			struct rte_mbuf *next_seg =
 				rte_pktmbuf_alloc(mem->comp_buf_pool);
 
@@ -521,7 +522,7 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 			}
 
 			if (decompress_only)
-				data_sz = RTE_MIN(remaining_data,
+				data_sz = RTE_MIN(remaining_data_decomp,
 						  test_data->seg_sz);
 			else
 				data_sz = test_data->out_seg_sz;
@@ -536,7 +537,7 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 			if (decompress_only) {
 				rte_memcpy(data_addr, input_data_ptr, data_sz);
 				input_data_ptr += data_sz;
-				remaining_data -= data_sz;
+				remaining_data_decomp -= data_sz;
 			}
 
 			if (rte_pktmbuf_chain(mem->comp_bufs[i],

@@ -701,9 +701,9 @@ vhost_new_device(void)
 
 	dev->vid = i;
 	dev->flags = VIRTIO_DEV_BUILTIN_VIRTIO_NET;
-	dev->slave_req_fd = -1;
+	dev->backend_req_fd = -1;
 	dev->postcopy_ufd = -1;
-	rte_spinlock_init(&dev->slave_req_lock);
+	rte_spinlock_init(&dev->backend_req_lock);
 
 	return i;
 }
@@ -1754,7 +1754,7 @@ rte_vhost_async_channel_register(int vid, uint16_t queue_id)
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(vq == NULL || !dev->async_copy))
+	if (unlikely(vq == NULL || !dev->async_copy || dev->vdpa_dev != NULL))
 		return -1;
 
 	rte_spinlock_lock(&vq->access_lock);
@@ -1778,7 +1778,7 @@ rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id)
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(vq == NULL || !dev->async_copy))
+	if (unlikely(vq == NULL || !dev->async_copy || dev->vdpa_dev != NULL))
 		return -1;
 
 	vq_assert_lock(dev, vq);

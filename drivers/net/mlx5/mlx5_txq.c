@@ -1365,3 +1365,41 @@ mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev)
 				     ts_mask : 0;
 	}
 }
+
+int mlx5_count_aggr_ports(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return priv->sh->bond.n_port;
+}
+
+int mlx5_map_aggr_tx_affinity(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+			      uint8_t affinity)
+{
+	struct mlx5_txq_ctrl *txq_ctrl;
+	struct mlx5_txq_data *txq;
+	struct mlx5_priv *priv;
+
+	priv = dev->data->dev_private;
+	txq = (*priv->txqs)[tx_queue_id];
+	if (!txq)
+		return -1;
+	txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
+	if (tx_queue_id >= priv->txqs_n) {
+		DRV_LOG(ERR, "port %u Tx queue index out of range (%u >= %u)",
+			dev->data->port_id, tx_queue_id, priv->txqs_n);
+		rte_errno = EOVERFLOW;
+		return -rte_errno;
+	}
+	if (affinity > priv->num_lag_ports) {
+		DRV_LOG(ERR, "port %u unable to setup Tx queue index %u"
+			" affinity is %u exceeds the maximum %u", dev->data->port_id,
+			tx_queue_id, affinity, priv->num_lag_ports);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	DRV_LOG(DEBUG, "port %u configuring queue %u for aggregated affinity %u",
+		dev->data->port_id, tx_queue_id, affinity);
+	txq_ctrl->txq.tx_aggr_affinity = affinity;
+	return 0;
+}

@@ -11,16 +11,6 @@
 #include <rte_cycles.h>
 #include <rte_errno.h>
 #include <rte_mbuf.h>
-
-#ifdef RTE_EXEC_ENV_WINDOWS
-static int
-test_reorder(void)
-{
-	printf("reorder not supported on Windows, skipping test\n");
-	return TEST_SKIPPED;
-}
-#else
-
 #include <rte_reorder.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
@@ -557,6 +547,5 @@ test_reorder(void)
 	return unit_test_suite_runner(&reorder_test_suite);
 }
 
-#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(reorder_autotest, test_reorder);

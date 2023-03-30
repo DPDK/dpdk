@@ -309,7 +309,7 @@ idpf_qc_rx_queue_release(void *rxq)
 		return;
 
 	/* Split queue */
-	if (q->bufq1 != NULL && q->bufq2 != NULL) {
+	if (!q->adapter->is_rx_singleq) {
 		q->bufq1->ops->release_mbufs(q->bufq1);
 		rte_free(q->bufq1->sw_ring);
 		rte_memzone_free(q->bufq1->mz);

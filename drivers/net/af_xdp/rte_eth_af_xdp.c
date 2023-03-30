@@ -1508,6 +1508,8 @@ get_cni_fd(char *if_name)
 
 	memset(&server, 0, sizeof(server));
 	sock = init_uds_sock(&server);
+	if (sock < 0)
+		return -1;
 
 	/* Initiates handshake to CNI send: /connect,hostname */
 	snprintf(request, sizeof(request), "%s,%s", UDS_CONNECT_MSG, hostname);

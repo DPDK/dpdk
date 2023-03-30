@@ -6,6 +6,7 @@
 #define _CNXK_SG_H_
 
 #include "roc_cpt_sg.h"
+#include "roc_se.h"
 
 static __rte_always_inline uint32_t
 fill_sg_comp(struct roc_sglist_comp *list, uint32_t i, phys_addr_t dma_addr, uint32_t size)
@@ -140,6 +141,28 @@ fill_ipsec_sg_comp_from_pkt(struct roc_sglist_comp *list, uint32_t i, struct rte
 
 		to->u.s.len[i % 4] = rte_cpu_to_be_16(buf_sz);
 		to->ptr[i % 4] = rte_cpu_to_be_64((uint64_t)vaddr);
+
+		pkt = pkt->next;
+		i++;
+	}
+
+	return i;
+}
+
+static __rte_always_inline uint32_t
+fill_ipsec_sg2_comp_from_pkt(struct roc_sg2list_comp *list, uint32_t i, struct rte_mbuf *pkt)
+{
+	uint32_t buf_sz;
+	void *vaddr;
+
+	while (unlikely(pkt != NULL)) {
+		struct roc_sg2list_comp *to = &list[i / 3];
+		buf_sz = pkt->data_len;
+		vaddr = rte_pktmbuf_mtod(pkt, void *);
+
+		to->u.s.len[i % 3] = buf_sz;
+		to->ptr[i % 3] = (uint64_t)vaddr;
+		to->u.s.valid_segs = (i % 3) + 1;
 
 		pkt = pkt->next;
 		i++;

@@ -25,7 +25,11 @@
 		RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 #define IDPF_TX_NO_VECTOR_FLAGS (		\
 		RTE_ETH_TX_OFFLOAD_TCP_TSO |	\
-		RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |	\
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 
 static inline int
 idpf_rx_vec_queue_default(struct idpf_rx_queue *rxq)
@@ -79,6 +83,9 @@ idpf_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 	struct idpf_vport *vport = dev->data->dev_private;
 	struct idpf_rx_queue *rxq;
 	int i, default_ret, splitq_ret, ret = IDPF_SCALAR_PATH;
+
+	if (dev->data->scattered_rx)
+		return IDPF_SCALAR_PATH;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];

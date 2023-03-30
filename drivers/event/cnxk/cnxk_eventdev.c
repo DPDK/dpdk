@@ -459,6 +459,8 @@ cnxk_sso_close(struct rte_eventdev *event_dev, cnxk_sso_unlink_t unlink_fn)
 	return 0;
 }
 
+typedef void (*param_parse_t)(char *value, void *opaque);
+
 static void
 parse_queue_param(char *value, void *opaque)
 {
@@ -496,7 +498,44 @@ parse_queue_param(char *value, void *opaque)
 }
 
 static void
-parse_qos_list(const char *value, void *opaque)
+parse_stash_param(char *value, void *opaque)
+{
+	struct cnxk_sso_stash queue_stash = {0};
+	struct cnxk_sso_evdev *dev = opaque;
+	struct cnxk_sso_stash *old_ptr;
+	char *tok = strtok(value, "|");
+	uint16_t *val;
+
+	if (!strlen(value))
+		return;
+
+	val = (uint16_t *)&queue_stash;
+	while (tok != NULL) {
+		*val = atoi(tok);
+		tok = strtok(NULL, "|");
+		val++;
+	}
+
+	if (val != (&queue_stash.stash_length + 1)) {
+		plt_err("Invalid QoS parameter expected [Qx|stash_offset|stash_length]");
+		return;
+	}
+
+	dev->stash_cnt++;
+	old_ptr = dev->stash_parse_data;
+	dev->stash_parse_data =
+		rte_realloc(dev->stash_parse_data,
+			    sizeof(struct cnxk_sso_stash) * dev->stash_cnt, 0);
+	if (dev->stash_parse_data == NULL) {
+		dev->stash_parse_data = old_ptr;
+		dev->stash_cnt--;
+		return;
+	}
+	dev->stash_parse_data[dev->stash_cnt - 1] = queue_stash;
+}
+
+static void
+parse_list(const char *value, void *opaque, param_parse_t fn)
 {
 	char *s = strdup(value);
 	char *start = NULL;
@@ -511,7 +550,7 @@ parse_qos_list(const char *value, void *opaque)
 
 		if (start && start < end) {
 			*end = 0;
-			parse_queue_param(start + 1, opaque);
+			fn(start + 1, opaque);
 			s = end;
 			start = end;
 		}
@@ -522,14 +561,27 @@ parse_qos_list(const char *value, void *opaque)
 }
 
 static int
-parse_sso_kvargs_dict(const char *key, const char *value, void *opaque)
+parse_sso_kvargs_qos_dict(const char *key, const char *value, void *opaque)
 {
 	RTE_SET_USED(key);
 
 	/* Dict format [Qx-TAQ-IAQ][Qz-TAQ-IAQ] use '-' cause ',' isn't allowed.
 	 * Everything is expressed in percentages, 0 represents default.
 	 */
-	parse_qos_list(value, opaque);
+	parse_list(value, opaque, parse_queue_param);
+
+	return 0;
+}
+
+static int
+parse_sso_kvargs_stash_dict(const char *key, const char *value, void *opaque)
+{
+	RTE_SET_USED(key);
+
+	/* Dict format [Qx|<stash_offset>|<stash_length>] use '|' cause ','
+	 * isn't allowed.
+	 */
+	parse_list(value, opaque, parse_stash_param);
 
 	return 0;
 }
@@ -548,14 +600,16 @@ cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 
 	rte_kvargs_process(kvlist, CNXK_SSO_XAE_CNT, &parse_kvargs_value,
 			   &dev->xae_cnt);
-	rte_kvargs_process(kvlist, CNXK_SSO_GGRP_QOS, &parse_sso_kvargs_dict,
-			   dev);
+	rte_kvargs_process(kvlist, CNXK_SSO_GGRP_QOS,
+			   &parse_sso_kvargs_qos_dict, dev);
 	rte_kvargs_process(kvlist, CNXK_SSO_FORCE_BP, &parse_kvargs_flag,
 			   &dev->force_ena_bp);
 	rte_kvargs_process(kvlist, CN9K_SSO_SINGLE_WS, &parse_kvargs_flag,
 			   &single_ws);
 	rte_kvargs_process(kvlist, CN10K_SSO_GW_MODE, &parse_kvargs_flag,
 			   &dev->gw_mode);
+	rte_kvargs_process(kvlist, CN10K_SSO_STASH,
+			   &parse_sso_kvargs_stash_dict, dev);
 	dev->dual_ws = !single_ws;
 	rte_kvargs_free(kvlist);
 }
@@ -616,9 +670,8 @@ cnxk_sso_fini(struct rte_eventdev *event_dev)
 
 	cnxk_tim_fini();
 	roc_sso_rsrc_fini(&dev->sso);
-	roc_sso_dev_fini(&dev->sso);
 
-	return 0;
+	return roc_sso_dev_fini(&dev->sso);
 }
 
 int

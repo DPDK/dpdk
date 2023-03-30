@@ -388,7 +388,7 @@ int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 		*reason = "bad mbuf pool";
 		return -1;
 	}
-	if (RTE_IOVA_AS_PA && rte_mbuf_iova_get(m) == 0) {
+	if (RTE_IOVA_IN_MBUF && rte_mbuf_iova_get(m) == 0) {
 		*reason = "bad IO addr";
 		return -1;
 	}

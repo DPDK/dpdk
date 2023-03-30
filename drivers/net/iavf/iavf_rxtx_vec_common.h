@@ -258,22 +258,19 @@ iavf_tx_vec_queue_default(struct iavf_tx_queue *txq)
 	 * Tunneling parameters and other fields need be configured in ctx desc
 	 * if the outer checksum offload is enabled.
 	 */
-	if (txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
-		txq->use_ctx = 1;
-		if (txq->offloads & (IAVF_TX_VECTOR_OFFLOAD |
-				IAVF_TX_VECTOR_OFFLOAD_CTX))
-			return IAVF_VECTOR_CTX_OFFLOAD_PATH;
-		else
-			return IAVF_VECTOR_CTX_PATH;
-	} else {
+	if (txq->offloads & (IAVF_TX_VECTOR_OFFLOAD | IAVF_TX_VECTOR_OFFLOAD_CTX)) {
 		if (txq->offloads & IAVF_TX_VECTOR_OFFLOAD_CTX) {
-			txq->use_ctx = 1;
-			return IAVF_VECTOR_CTX_OFFLOAD_PATH;
-		} else if (txq->offloads & IAVF_TX_VECTOR_OFFLOAD) {
-			return IAVF_VECTOR_OFFLOAD_PATH;
+			if (txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+				txq->use_ctx = 1;
+				return IAVF_VECTOR_CTX_OFFLOAD_PATH;
+			} else {
+				return -1;
+			}
 		} else {
-			return IAVF_VECTOR_PATH;
+			return IAVF_VECTOR_OFFLOAD_PATH;
 		}
+	} else {
+		return IAVF_VECTOR_PATH;
 	}
 }
 
@@ -331,7 +328,7 @@ iavf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 
 static __rte_always_inline void
 iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
-			uint64_t *txd_hi, uint8_t vlan_flag)
+			uint64_t *txd_hi)
 {
 #if defined(IAVF_TX_CSUM_OFFLOAD) || defined(IAVF_TX_VLAN_QINQ_OFFLOAD)
 	uint64_t ol_flags = tx_pkt->ol_flags;
@@ -392,8 +389,7 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 #endif
 
 #ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
-	if ((ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) &&
-		(vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1)) {
+	if (ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
 		td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
 		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci <<
 			    IAVF_TXD_QW1_L2TAG1_SHIFT);

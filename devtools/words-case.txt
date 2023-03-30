@@ -16,6 +16,7 @@ DevX
 DMA
 eCPRI
 EEPROM
+E-Switch
 FD
 FDIR
 FEC

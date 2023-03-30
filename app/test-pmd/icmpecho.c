@@ -269,7 +269,7 @@ ipv4_hdr_cksum(struct rte_ipv4_hdr *ip_h)
  * Receive a burst of packets, lookup for ICMP echo requests, and, if any,
  * send back ICMP echo replies.
  */
-static void
+static bool
 reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
@@ -280,10 +280,8 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	struct rte_ipv4_hdr *ip_h;
 	struct rte_icmp_hdr *icmp_h;
 	struct rte_ether_addr eth_addr;
-	uint32_t retry;
 	uint32_t ip_addr;
 	uint16_t nb_rx;
-	uint16_t nb_tx;
 	uint16_t nb_replies;
 	uint16_t eth_type;
 	uint16_t vlan_id;
@@ -292,20 +290,14 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	uint32_t cksum;
 	uint8_t  i;
 	int l2_len;
-	uint64_t start_tsc = 0;
-
-	get_start_cycles(&start_tsc);
 
 	/*
 	 * First, receive a burst of packets.
 	 */
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
-				 nb_pkt_per_burst);
-	inc_rx_burst_stats(fs, nb_rx);
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
-		return;
+		return false;
 
-	fs->rx_packets += nb_rx;
 	nb_replies = 0;
 	for (i = 0; i < nb_rx; i++) {
 		if (likely(i < nb_rx - 1))
@@ -482,52 +474,14 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	}
 
 	/* Send back ICMP echo replies, if any. */
-	if (nb_replies > 0) {
-		nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst,
-					 nb_replies);
-		/*
-		 * Retry if necessary
-		 */
-		if (unlikely(nb_tx < nb_replies) && fs->retry_enabled) {
-			retry = 0;
-			while (nb_tx < nb_replies &&
-					retry++ < burst_tx_retry_num) {
-				rte_delay_us(burst_tx_delay_time);
-				nb_tx += rte_eth_tx_burst(fs->tx_port,
-						fs->tx_queue,
-						&pkts_burst[nb_tx],
-						nb_replies - nb_tx);
-			}
-		}
-		fs->tx_packets += nb_tx;
-		inc_tx_burst_stats(fs, nb_tx);
-		if (unlikely(nb_tx < nb_replies)) {
-			fs->fwd_dropped += (nb_replies - nb_tx);
-			do {
-				rte_pktmbuf_free(pkts_burst[nb_tx]);
-			} while (++nb_tx < nb_replies);
-		}
-	}
+	if (nb_replies > 0)
+		common_fwd_stream_transmit(fs, pkts_burst, nb_replies);
 
-	get_end_cycles(fs, start_tsc);
-}
-
-static void
-icmpecho_stream_init(struct fwd_stream *fs)
-{
-	bool rx_stopped, tx_stopped;
-
-	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
-						RTE_ETH_QUEUE_STATE_STOPPED;
-	fs->disabled = rx_stopped || tx_stopped;
+	return true;
 }
 
 struct fwd_engine icmp_echo_engine = {
 	.fwd_mode_name  = "icmpecho",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = icmpecho_stream_init,
+	.stream_init    = common_fwd_stream_init,
 	.packet_fwd     = reply_to_icmp_echo_rqsts,
 };

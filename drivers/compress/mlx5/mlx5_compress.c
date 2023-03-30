@@ -24,6 +24,7 @@
 #define MLX5_COMPRESS_DRIVER_NAME mlx5_compress
 #define MLX5_COMPRESS_MAX_QPS 1024
 #define MLX5_COMP_MAX_WIN_SIZE_CONF 6u
+#define MLX5_COMP_NUM_SUP_ALGO 4
 
 struct mlx5_compress_devarg_params {
 	uint32_t log_block_sz;
@@ -42,19 +43,12 @@ struct mlx5_compress_priv {
 	struct rte_compressdev *compressdev;
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	struct mlx5_uar uar;
-	uint8_t min_block_size;
-	/* Minimum huffman block size supported by the device. */
 	struct rte_compressdev_config dev_config;
+	struct rte_compressdev_capabilities caps[MLX5_COMP_NUM_SUP_ALGO];
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
-	/* HCA caps */
-	uint32_t mmo_decomp_sq:1;
-	uint32_t mmo_decomp_qp:1;
-	uint32_t mmo_comp_sq:1;
-	uint32_t mmo_comp_qp:1;
-	uint32_t mmo_dma_sq:1;
-	uint32_t mmo_dma_qp:1;
 	uint32_t log_block_sz;
+	uint32_t crc32_opaq_offs;
 };
 
 struct mlx5_compress_qp {
@@ -78,36 +72,16 @@ static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int mlx5_compress_logtype;
 
-static const struct rte_compressdev_capabilities mlx5_caps[] = {
-	{
-		.algo = RTE_COMP_ALGO_NULL,
-		.comp_feature_flags = RTE_COMP_FF_ADLER32_CHECKSUM |
-				      RTE_COMP_FF_CRC32_CHECKSUM |
-				      RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
-				      RTE_COMP_FF_SHAREABLE_PRIV_XFORM,
-	},
-	{
-		.algo = RTE_COMP_ALGO_DEFLATE,
-		.comp_feature_flags = RTE_COMP_FF_ADLER32_CHECKSUM |
-				      RTE_COMP_FF_CRC32_CHECKSUM |
-				      RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
-				      RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
-				      RTE_COMP_FF_HUFFMAN_FIXED |
-				      RTE_COMP_FF_HUFFMAN_DYNAMIC,
-		.window_size = {.min = 10, .max = 15, .increment = 1},
-	},
-	RTE_COMP_END_OF_CAPABILITIES_LIST()
-};
-
 static void
 mlx5_compress_dev_info_get(struct rte_compressdev *dev,
 			   struct rte_compressdev_info *info)
 {
-	RTE_SET_USED(dev);
-	if (info != NULL) {
+	if (dev != NULL && info != NULL) {
+		struct mlx5_compress_priv *priv = dev->data->dev_private;
+
 		info->max_nb_queue_pairs = MLX5_COMPRESS_MAX_QPS;
 		info->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
-		info->capabilities = mlx5_caps;
+		info->capabilities = priv->caps;
 	}
 }
 
@@ -157,7 +131,7 @@ mlx5_compress_init_qp(struct mlx5_compress_qp *qp)
 {
 	volatile struct mlx5_gga_wqe *restrict wqe =
 				    (volatile struct mlx5_gga_wqe *)qp->qp.wqes;
-	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	volatile union mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 	const uint32_t sq_ds = rte_cpu_to_be_32((qp->qp.qp->id << 8) | 4u);
 	const uint32_t flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 					MLX5_COMP_MODE_OFFSET);
@@ -179,6 +153,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		       uint32_t max_inflight_ops, int socket_id)
 {
 	struct mlx5_compress_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_attr *attr = &priv->cdev->config.hca_attr;
 	struct mlx5_compress_qp *qp;
 	struct mlx5_devx_cq_attr cq_attr = {
 		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
@@ -211,8 +186,8 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		goto err;
 	}
 	opaq_buf = rte_calloc(__func__, (size_t)1 << log_ops_n,
-			      sizeof(struct mlx5_gga_compress_opaque),
-			      sizeof(struct mlx5_gga_compress_opaque));
+			      sizeof(union mlx5_gga_compress_opaque),
+			      sizeof(union mlx5_gga_compress_opaque));
 	if (opaq_buf == NULL) {
 		DRV_LOG(ERR, "Failed to allocate opaque memory.");
 		rte_errno = ENOMEM;
@@ -225,7 +200,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp->ops = (struct rte_comp_op **)RTE_ALIGN((uintptr_t)(qp + 1),
 						   RTE_CACHE_LINE_SIZE);
 	if (mlx5_common_verbs_reg_mr(priv->cdev->pd, opaq_buf, qp->entries_n *
-					sizeof(struct mlx5_gga_compress_opaque),
+					sizeof(union mlx5_gga_compress_opaque),
 							 &qp->opaque_mr) != 0) {
 		rte_free(opaq_buf);
 		DRV_LOG(ERR, "Failed to register opaque MR.");
@@ -239,12 +214,13 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		goto err;
 	}
 	qp_attr.cqn = qp->cq.cq->id;
-	qp_attr.ts_format =
-		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
+	qp_attr.ts_format = mlx5_ts_format_conv(attr->qp_ts_format);
 	qp_attr.num_of_receive_wqes = 0;
 	qp_attr.num_of_send_wqbbs = RTE_BIT32(log_ops_n);
-	qp_attr.mmo = priv->mmo_decomp_qp && priv->mmo_comp_qp
-			&& priv->mmo_dma_qp;
+	qp_attr.mmo = attr->mmo_compress_qp_en || attr->mmo_dma_qp_en ||
+		      attr->decomp_lz4_checksum_en ||
+		      attr->decomp_lz4_no_checksum_en ||
+		      attr->decomp_deflate_v1_en || attr->decomp_deflate_v2_en;
 	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp->qp,
 					qp_attr.num_of_send_wqbbs *
 					MLX5_WQE_SIZE, &qp_attr, socket_id);
@@ -277,22 +253,22 @@ mlx5_compress_xform_free(struct rte_compressdev *dev, void *xform)
 }
 
 static int
-mlx5_compress_xform_create(struct rte_compressdev *dev,
-			   const struct rte_comp_xform *xform,
-			   void **private_xform)
+mlx5_compress_xform_validate(const struct rte_comp_xform *xform,
+			     const struct mlx5_hca_attr *attr)
 {
-	struct mlx5_compress_priv *priv = dev->data->dev_private;
-	struct mlx5_compress_xform *xfrm;
-	uint32_t size;
-
 	switch (xform->type) {
 	case RTE_COMP_COMPRESS:
 		if (xform->compress.algo == RTE_COMP_ALGO_NULL &&
-				!priv->mmo_dma_qp && !priv->mmo_dma_sq) {
+		    !attr->mmo_dma_qp_en && !attr->mmo_dma_sq_en) {
 			DRV_LOG(ERR, "Not enough capabilities to support DMA operation, maybe old FW/OFED version?");
 			return -ENOTSUP;
-		} else if (!priv->mmo_comp_qp && !priv->mmo_comp_sq) {
-			DRV_LOG(ERR, "Not enough capabilities to support compress operation, maybe old FW/OFED version?");
+		} else if (!attr->mmo_compress_qp_en &&
+			   !attr->mmo_compress_sq_en) {
+			DRV_LOG(ERR, "Not enough capabilities to support compress operation.");
+			return -ENOTSUP;
+		}
+		if (xform->compress.algo == RTE_COMP_ALGO_LZ4) {
+			DRV_LOG(ERR, "LZ4 compression is not supported.");
 			return -ENOTSUP;
 		}
 		if (xform->compress.level == RTE_COMP_LEVEL_NONE) {
@@ -303,17 +279,71 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 			DRV_LOG(ERR, "SHA is not supported.");
 			return -ENOTSUP;
 		}
-		break;
-	case RTE_COMP_DECOMPRESS:
-		if (xform->decompress.algo == RTE_COMP_ALGO_NULL &&
-				!priv->mmo_dma_qp && !priv->mmo_dma_sq) {
-			DRV_LOG(ERR, "Not enough capabilities to support DMA operation, maybe old FW/OFED version?");
-			return -ENOTSUP;
-		} else if (!priv->mmo_decomp_qp && !priv->mmo_decomp_sq) {
-			DRV_LOG(ERR, "Not enough capabilities to support decompress operation, maybe old FW/OFED version?");
+		if (xform->compress.chksum == RTE_COMP_CHECKSUM_XXHASH32) {
+			DRV_LOG(ERR, "xxHash32 checksum isn't supported in compress operation.");
 			return -ENOTSUP;
 		}
-		if (xform->compress.hash_algo != RTE_COMP_HASH_ALGO_NONE) {
+		break;
+	case RTE_COMP_DECOMPRESS:
+		switch (xform->decompress.algo) {
+		case RTE_COMP_ALGO_NULL:
+			if (!attr->mmo_dma_qp_en && !attr->mmo_dma_sq_en) {
+				DRV_LOG(ERR, "Not enough capabilities to support DMA operation, maybe old FW/OFED version?");
+				return -ENOTSUP;
+			}
+			break;
+		case RTE_COMP_ALGO_DEFLATE:
+			if (!attr->decomp_deflate_v1_en &&
+			    !attr->decomp_deflate_v2_en &&
+			    !attr->mmo_decompress_sq_en) {
+				DRV_LOG(ERR, "Not enough capabilities to support decompress DEFLATE algorithm, maybe old FW/OFED version?");
+				return -ENOTSUP;
+			}
+			switch (xform->decompress.chksum) {
+			case RTE_COMP_CHECKSUM_NONE:
+			case RTE_COMP_CHECKSUM_CRC32:
+			case RTE_COMP_CHECKSUM_ADLER32:
+			case RTE_COMP_CHECKSUM_CRC32_ADLER32:
+				break;
+			case RTE_COMP_CHECKSUM_XXHASH32:
+			default:
+				DRV_LOG(ERR, "DEFLATE algorithm doesn't support %u checksum.",
+					xform->decompress.chksum);
+				return -ENOTSUP;
+			}
+			break;
+		case RTE_COMP_ALGO_LZ4:
+			if (!attr->decomp_lz4_no_checksum_en &&
+			    !attr->decomp_lz4_checksum_en) {
+				DRV_LOG(ERR, "Not enough capabilities to support decompress LZ4 algorithm, maybe old FW/OFED version?");
+				return -ENOTSUP;
+			}
+			if (xform->decompress.lz4.flags &
+			    RTE_COMP_LZ4_FLAG_BLOCK_CHECKSUM) {
+				if (!attr->decomp_lz4_checksum_en) {
+					DRV_LOG(ERR, "Not enough capabilities to support decompress LZ4 block with checksum param, maybe old FW/OFED version?");
+					return -ENOTSUP;
+				}
+			} else {
+				if (!attr->decomp_lz4_no_checksum_en) {
+					DRV_LOG(ERR, "Not enough capabilities to support decompress LZ4 block without checksum param, maybe old FW/OFED version?");
+					return -ENOTSUP;
+				}
+			}
+			if (xform->decompress.chksum !=
+			    RTE_COMP_CHECKSUM_XXHASH32 &&
+			    xform->decompress.chksum !=
+			    RTE_COMP_CHECKSUM_NONE) {
+				DRV_LOG(ERR, "LZ4 algorithm supports only xxHash32 checksum.");
+				return -ENOTSUP;
+			}
+			break;
+		default:
+			DRV_LOG(ERR, "Algorithm %u is not supported.",
+				xform->decompress.algo);
+			return -ENOTSUP;
+		}
+		if (xform->decompress.hash_algo != RTE_COMP_HASH_ALGO_NONE) {
 			DRV_LOG(ERR, "SHA is not supported.");
 			return -ENOTSUP;
 		}
@@ -322,7 +352,22 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 		DRV_LOG(ERR, "Xform type should be compress/decompress");
 		return -ENOTSUP;
 	}
+	return 0;
+}
 
+static int
+mlx5_compress_xform_create(struct rte_compressdev *dev,
+			   const struct rte_comp_xform *xform,
+			   void **private_xform)
+{
+	struct mlx5_compress_priv *priv = dev->data->dev_private;
+	struct mlx5_compress_xform *xfrm;
+	uint32_t size;
+	int ret;
+
+	ret = mlx5_compress_xform_validate(xform, &priv->cdev->config.hca_attr);
+	if (ret < 0)
+		return ret;
 	xfrm = rte_zmalloc_socket(__func__, sizeof(*xfrm), 0,
 						    priv->dev_config.socket_id);
 	if (xfrm == NULL)
@@ -368,6 +413,27 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 		case RTE_COMP_ALGO_DEFLATE:
 			xfrm->opcode += MLX5_OPC_MOD_MMO_DECOMP <<
 							WQE_CSEG_OPC_MOD_OFFSET;
+			xfrm->gga_ctrl1 += WQE_GGA_DECOMP_DEFLATE <<
+						     WQE_GGA_DECOMP_TYPE_OFFSET;
+			break;
+		case RTE_COMP_ALGO_LZ4:
+			xfrm->opcode += MLX5_OPC_MOD_MMO_DECOMP <<
+							WQE_CSEG_OPC_MOD_OFFSET;
+			xfrm->gga_ctrl1 += WQE_GGA_DECOMP_LZ4 <<
+						     WQE_GGA_DECOMP_TYPE_OFFSET;
+			if (xform->decompress.lz4.flags &
+			    RTE_COMP_LZ4_FLAG_BLOCK_CHECKSUM)
+				xfrm->gga_ctrl1 +=
+				      MLX5_GGA_DECOMP_LZ4_BLOCK_WITH_CHECKSUM <<
+						   WQE_GGA_DECOMP_PARAMS_OFFSET;
+			else
+				xfrm->gga_ctrl1 +=
+				      MLX5_GGA_DECOMP_LZ4_BLOCK_WITHOUT_CHECKSUM
+						<< WQE_GGA_DECOMP_PARAMS_OFFSET;
+			if (xform->decompress.lz4.flags &
+			    RTE_COMP_LZ4_FLAG_BLOCK_INDEPENDENCE)
+				xfrm->gga_ctrl1 += 1u <<
+					WQE_GGA_DECOMP_BLOCK_INDEPENDENT_OFFSET;
 			break;
 		default:
 			goto err;
@@ -375,7 +441,7 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 		xfrm->csum_type = xform->decompress.chksum;
 		break;
 	default:
-		DRV_LOG(ERR, "Algorithm %u is not supported.", xform->type);
+		DRV_LOG(ERR, "Operation %u is not supported.", xform->type);
 		goto err;
 	}
 	DRV_LOG(DEBUG, "New xform: gga ctrl1 = 0x%08X opcode = 0x%08X csum "
@@ -544,7 +610,7 @@ mlx5_compress_dump_err_objs(volatile uint32_t *cqe, volatile uint32_t *wqe,
 		DRV_LOG(ERR, "%08X %08X %08X %08X", wqe[i], wqe[i + 1],
 			wqe[i + 2], wqe[i + 3]);
 	DRV_LOG(ERR, "\nError opaq:");
-	for (i = 0; i < sizeof(struct mlx5_gga_compress_opaque) >> 2; i += 4)
+	for (i = 0; i < sizeof(union mlx5_gga_compress_opaque) >> 2; i += 4)
 		DRV_LOG(ERR, "%08X %08X %08X %08X", opaq[i], opaq[i + 1],
 			opaq[i + 2], opaq[i + 3]);
 }
@@ -558,7 +624,7 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 							      &qp->cq.cqes[idx];
 	volatile struct mlx5_gga_wqe *wqes = (volatile struct mlx5_gga_wqe *)
 								    qp->qp.wqes;
-	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	volatile union mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 
 	volatile uint32_t *synd_word = RTE_PTR_ADD(cqe, MLX5_ERROR_CQE_SYNDROME_OFFSET);
 	switch (*synd_word) {
@@ -575,7 +641,7 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 	op->consumed = 0;
 	op->produced = 0;
 	op->output_chksum = 0;
-	op->debug_status = rte_be_to_cpu_32(opaq[idx].syndrom) |
+	op->debug_status = rte_be_to_cpu_32(opaq[idx].syndrome) |
 			      ((uint64_t)rte_be_to_cpu_32(cqe->syndrome) << 32);
 	mlx5_compress_dump_err_objs((volatile uint32_t *)cqe,
 				 (volatile uint32_t *)&wqes[idx],
@@ -590,13 +656,14 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 	struct mlx5_compress_qp *qp = queue_pair;
 	volatile struct mlx5_compress_xform *restrict xform;
 	volatile struct mlx5_cqe *restrict cqe;
-	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	volatile union mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 	struct rte_comp_op *restrict op;
 	const unsigned int cq_size = qp->entries_n;
 	const unsigned int mask = cq_size - 1;
 	uint32_t idx;
 	uint32_t next_idx = qp->ci & mask;
 	const uint16_t max = RTE_MIN((uint16_t)(qp->pi - qp->ci), nb_ops);
+	uint32_t crc32_idx = qp->priv->crc32_opaq_offs;
 	uint16_t i = 0;
 	int ret;
 
@@ -629,17 +696,21 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 			switch (xform->csum_type) {
 			case RTE_COMP_CHECKSUM_CRC32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
-						    (opaq[idx].crc32);
+						    (opaq[idx].data[crc32_idx]);
 				break;
 			case RTE_COMP_CHECKSUM_ADLER32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
-					    (opaq[idx].adler32) << 32;
+						(opaq[idx].data[crc32_idx + 1]);
 				break;
 			case RTE_COMP_CHECKSUM_CRC32_ADLER32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
-							     (opaq[idx].crc32) |
+						   (opaq[idx].data[crc32_idx]) |
 						     ((uint64_t)rte_be_to_cpu_32
-						     (opaq[idx].adler32) << 32);
+					 (opaq[idx].data[crc32_idx + 1]) << 32);
+				break;
+			case RTE_COMP_CHECKSUM_XXHASH32:
+				op->output_chksum = (uint64_t)rte_be_to_cpu_32
+						    (opaq[idx].v2.xxh32);
 				break;
 			default:
 				break;
@@ -704,6 +775,49 @@ mlx5_compress_handle_devargs(struct mlx5_kvargs_ctrl *mkvlist,
 	return 0;
 }
 
+static void
+mlx5_compress_fill_caps(struct mlx5_compress_priv *priv,
+			const struct mlx5_hca_attr *attr)
+{
+	struct rte_compressdev_capabilities caps[] = {
+		{
+			.algo = RTE_COMP_ALGO_NULL,
+			.comp_feature_flags = RTE_COMP_FF_ADLER32_CHECKSUM |
+					RTE_COMP_FF_CRC32_CHECKSUM |
+					RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
+					RTE_COMP_FF_SHAREABLE_PRIV_XFORM,
+		},
+		{
+			.algo = RTE_COMP_ALGO_DEFLATE,
+			.comp_feature_flags = RTE_COMP_FF_ADLER32_CHECKSUM |
+					RTE_COMP_FF_CRC32_CHECKSUM |
+					RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
+					RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
+					RTE_COMP_FF_HUFFMAN_FIXED |
+					RTE_COMP_FF_HUFFMAN_DYNAMIC,
+			.window_size = {.min = 10, .max = 15, .increment = 1},
+		},
+		{
+			.algo = RTE_COMP_ALGO_LZ4,
+			.comp_feature_flags = RTE_COMP_FF_XXHASH32_CHECKSUM |
+					RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
+					RTE_COMP_FF_LZ4_BLOCK_INDEPENDENCE,
+			.window_size = {.min = 1, .max = 15, .increment = 1},
+		},
+		RTE_COMP_END_OF_CAPABILITIES_LIST()
+	};
+	priv->caps[0] = caps[0];
+	priv->caps[1] = caps[1];
+	if (attr->decomp_lz4_checksum_en || attr->decomp_lz4_no_checksum_en) {
+		priv->caps[2] = caps[2];
+		if (attr->decomp_lz4_checksum_en)
+			priv->caps[2].comp_feature_flags |=
+					RTE_COMP_FF_LZ4_BLOCK_WITH_CHECKSUM;
+		priv->caps[3] = caps[3];
+	} else
+		priv->caps[2] = caps[3];
+}
+
 static int
 mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
 			struct mlx5_kvargs_ctrl *mkvlist)
@@ -717,15 +831,18 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
 		.socket_id = cdev->dev->numa_node,
 	};
 	const char *ibdev_name = mlx5_os_get_ctx_device_name(cdev->ctx);
+	uint32_t crc32_opaq_offset;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DRV_LOG(ERR, "Non-primary process type is not supported.");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (!attr->mmo_decompress_qp_en && !attr->mmo_decompress_sq_en
-		&& !attr->mmo_compress_qp_en && !attr->mmo_compress_sq_en
-		&& !attr->mmo_dma_qp_en && !attr->mmo_dma_sq_en) {
+	if (!attr->decomp_lz4_checksum_en && !attr->decomp_lz4_no_checksum_en &&
+	    !attr->decomp_deflate_v1_en && !attr->decomp_deflate_v2_en &&
+	    !attr->mmo_decompress_sq_en && !attr->mmo_compress_qp_en &&
+	    !attr->mmo_compress_sq_en && !attr->mmo_dma_qp_en &&
+	    !attr->mmo_dma_sq_en) {
 		DRV_LOG(ERR, "Not enough capabilities to support compress operations, maybe old FW/OFED version?");
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
@@ -745,15 +862,18 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	priv = compressdev->data->dev_private;
 	priv->log_block_sz = devarg_prms.log_block_sz;
-	priv->mmo_decomp_sq = attr->mmo_decompress_sq_en;
-	priv->mmo_decomp_qp = attr->mmo_decompress_qp_en;
-	priv->mmo_comp_sq = attr->mmo_compress_sq_en;
-	priv->mmo_comp_qp = attr->mmo_compress_qp_en;
-	priv->mmo_dma_sq = attr->mmo_dma_sq_en;
-	priv->mmo_dma_qp = attr->mmo_dma_qp_en;
+	if (attr->decomp_deflate_v2_en || attr->decomp_lz4_checksum_en ||
+	    attr->decomp_lz4_no_checksum_en)
+		crc32_opaq_offset = offsetof(union mlx5_gga_compress_opaque,
+					     v2.crc32);
+	else
+		crc32_opaq_offset = offsetof(union mlx5_gga_compress_opaque,
+					     v1.crc32);
+	MLX5_ASSERT((crc32_opaq_offset % 4) == 0);
+	priv->crc32_opaq_offs = crc32_opaq_offset / 4;
 	priv->cdev = cdev;
 	priv->compressdev = compressdev;
-	priv->min_block_size = attr->compress_min_block_size;
+	mlx5_compress_fill_caps(priv, attr);
 	if (mlx5_devx_uar_prepare(cdev, &priv->uar) != 0) {
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		return -1;

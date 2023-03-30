@@ -1,0 +1,67 @@
+EXPERIMENTAL {
+	global:
+
+	rte_ml_dequeue_burst;
+	rte_ml_dev_close;
+	rte_ml_dev_configure;
+	rte_ml_dev_count;
+	rte_ml_dev_dump;
+	rte_ml_dev_info_get;
+	rte_ml_dev_init;
+	rte_ml_dev_is_valid_dev;
+	rte_ml_dev_logtype;
+	rte_ml_dev_queue_pair_setup;
+	rte_ml_dev_selftest;
+	rte_ml_dev_socket_id;
+	rte_ml_dev_start;
+	rte_ml_dev_stats_get;
+	rte_ml_dev_stats_reset;
+	rte_ml_dev_stop;
+	rte_ml_dev_xstats_by_name_get;
+	rte_ml_dev_xstats_get;
+	rte_ml_dev_xstats_names_get;
+	rte_ml_dev_xstats_reset;
+	rte_ml_enqueue_burst;
+	rte_ml_io_dequantize;
+	rte_ml_io_input_size_get;
+	rte_ml_io_output_size_get;
+	rte_ml_io_quantize;
+	rte_ml_model_info_get;
+	rte_ml_model_load;
+	rte_ml_model_params_update;
+	rte_ml_model_start;
+	rte_ml_model_stop;
+	rte_ml_model_unload;
+	rte_ml_op_error_get;
+	rte_ml_op_pool_create;
+	rte_ml_op_pool_free;
+
+	local: *;
+};
+
+INTERNAL {
+	global:
+
+	rte_ml_dev_pmd_allocate;
+	rte_ml_dev_pmd_create;
+	rte_ml_dev_pmd_destroy;
+	rte_ml_dev_pmd_get_dev;
+	rte_ml_dev_pmd_get_named_dev;
+	rte_ml_dev_pmd_release;
+
+	rte_ml_io_type_size_get;
+	rte_ml_io_type_to_str;
+	rte_ml_io_format_to_str;
+	rte_ml_io_float32_to_int8;
+	rte_ml_io_int8_to_float32;
+	rte_ml_io_float32_to_uint8;
+	rte_ml_io_uint8_to_float32;
+	rte_ml_io_float32_to_int16;
+	rte_ml_io_int16_to_float32;
+	rte_ml_io_float32_to_uint16;
+	rte_ml_io_uint16_to_float32;
+	rte_ml_io_float32_to_float16;
+	rte_ml_io_float16_to_float32;
+	rte_ml_io_float32_to_bfloat16;
+	rte_ml_io_bfloat16_to_float32;
+};

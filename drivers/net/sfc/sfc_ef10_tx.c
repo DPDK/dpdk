@@ -503,7 +503,7 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 
 	/*
 	 * Tx prepare has debug-only checks that offload flags are correctly
-	 * filled in in TSO mbuf. Use zero IPID if there is no IPv4 flag.
+	 * filled in TSO mbuf. Use zero IPID if there is no IPv4 flag.
 	 * If the packet is still IPv4, HW will simply start from zero IPID.
 	 */
 	if (first_m_seg->ol_flags & RTE_MBUF_F_TX_IPV4)

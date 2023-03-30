@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
-# Copyright(c) 2022 PANTHEON.tech s.r.o.
-# Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2022-2023 University of New Hampshire
 
 """
 DTS logger module with several log level. DTS framework and TestSuite logs
@@ -33,17 +33,17 @@ class DTSLOG(logging.LoggerAdapter):
     DTS log class for framework and testsuite.
     """
 
-    logger: logging.Logger
+    _logger: logging.Logger
     node: str
     sh: logging.StreamHandler
     fh: logging.FileHandler
     verbose_fh: logging.FileHandler
 
     def __init__(self, logger: logging.Logger, node: str = "suite"):
-        self.logger = logger
+        self._logger = logger
         # 1 means log everything, this will be used by file handlers if their level
         # is not set
-        self.logger.setLevel(1)
+        self._logger.setLevel(1)
 
         self.node = node
 
@@ -55,8 +55,12 @@ class DTSLOG(logging.LoggerAdapter):
         if SETTINGS.verbose is True:
             sh.setLevel(logging.DEBUG)
 
-        self.logger.addHandler(sh)
+        self._logger.addHandler(sh)
         self.sh = sh
+
+        # prepare the output folder
+        if not os.path.exists(SETTINGS.output_dir):
+            os.mkdir(SETTINGS.output_dir)
 
         logging_path_prefix = os.path.join(SETTINGS.output_dir, node)
 
@@ -68,7 +72,7 @@ class DTSLOG(logging.LoggerAdapter):
             )
         )
 
-        self.logger.addHandler(fh)
+        self._logger.addHandler(fh)
         self.fh = fh
 
         # This outputs EVERYTHING, intended for post-mortem debugging
@@ -82,10 +86,10 @@ class DTSLOG(logging.LoggerAdapter):
             )
         )
 
-        self.logger.addHandler(verbose_fh)
+        self._logger.addHandler(verbose_fh)
         self.verbose_fh = verbose_fh
 
-        super(DTSLOG, self).__init__(self.logger, dict(node=self.node))
+        super(DTSLOG, self).__init__(self._logger, dict(node=self.node))
 
     def logger_exit(self) -> None:
         """
@@ -93,7 +97,7 @@ class DTSLOG(logging.LoggerAdapter):
         """
         for handler in (self.sh, self.fh, self.verbose_fh):
             handler.flush()
-            self.logger.removeHandler(handler)
+            self._logger.removeHandler(handler)
 
 
 def getLogger(name: str, node: str = "suite") -> DTSLOG:

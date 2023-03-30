@@ -396,6 +396,34 @@ otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
 }
 
 static int
+otx_ep_dev_close(struct rte_eth_dev *eth_dev)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+	uint32_t num_queues, q_no;
+
+	otx_epvf->fn_list.disable_io_queues(otx_epvf);
+	num_queues = otx_epvf->nb_rx_queues;
+	for (q_no = 0; q_no < num_queues; q_no++) {
+		if (otx_ep_delete_oqs(otx_epvf, q_no)) {
+			otx_ep_err("Failed to delete OQ:%d\n", q_no);
+			return -EINVAL;
+		}
+	}
+	otx_ep_dbg("Num OQs:%d freed\n", otx_epvf->nb_rx_queues);
+
+	num_queues = otx_epvf->nb_tx_queues;
+	for (q_no = 0; q_no < num_queues; q_no++) {
+		if (otx_ep_delete_iqs(otx_epvf, q_no)) {
+			otx_ep_err("Failed to delete IQ:%d\n", q_no);
+			return -EINVAL;
+		}
+	}
+	otx_ep_dbg("Num IQs:%d freed\n", otx_epvf->nb_tx_queues);
+
+	return 0;
+}
+
+static int
 otx_ep_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 {
 	RTE_SET_USED(wait_to_complete);
@@ -424,47 +452,14 @@ static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.stats_get		= otx_ep_dev_stats_get,
 	.stats_reset		= otx_ep_dev_stats_reset,
 	.link_update		= otx_ep_dev_link_update,
+	.dev_close		= otx_ep_dev_close,
 };
-
-static int
-otx_epdev_exit(struct rte_eth_dev *eth_dev)
-{
-	struct otx_ep_device *otx_epvf;
-	uint32_t num_queues, q;
-
-	otx_ep_info("%s:\n", __func__);
-
-	otx_epvf = OTX_EP_DEV(eth_dev);
-
-	otx_epvf->fn_list.disable_io_queues(otx_epvf);
-
-	num_queues = otx_epvf->nb_rx_queues;
-	for (q = 0; q < num_queues; q++) {
-		if (otx_ep_delete_oqs(otx_epvf, q)) {
-			otx_ep_err("Failed to delete OQ:%d\n", q);
-			return -EINVAL;
-		}
-	}
-	otx_ep_info("Num OQs:%d freed\n", otx_epvf->nb_rx_queues);
-
-	num_queues = otx_epvf->nb_tx_queues;
-	for (q = 0; q < num_queues; q++) {
-		if (otx_ep_delete_iqs(otx_epvf, q)) {
-			otx_ep_err("Failed to delete IQ:%d\n", q);
-			return -EINVAL;
-		}
-	}
-	otx_ep_dbg("Num IQs:%d freed\n", otx_epvf->nb_tx_queues);
-
-	return 0;
-}
 
 static int
 otx_ep_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
-	otx_epdev_exit(eth_dev);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
@@ -500,7 +495,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	otx_epdev_init(otx_epvf);
 	if (pdev->id.device_id == PCI_DEVID_CN9K_EP_NET_VF)
-		otx_epvf->pkind = SDP_OTX2_PKIND;
+		otx_epvf->pkind = SDP_OTX2_PKIND_FS0;
 	else
 		otx_epvf->pkind = SDP_PKIND;
 	otx_ep_info("using pkind %d\n", otx_epvf->pkind);

@@ -34,6 +34,7 @@
 #define RTE_PORT_HANDLING       (uint16_t)3
 
 extern uint8_t cl_quit;
+extern volatile uint8_t f_quit;
 
 /*
  * It is used to allocate the memory for hash key.
@@ -382,7 +383,7 @@ struct fwd_lcore {
 typedef int (*port_fwd_begin_t)(portid_t pi);
 typedef void (*port_fwd_end_t)(portid_t pi);
 typedef void (*stream_init_t)(struct fwd_stream *fs);
-typedef void (*packet_fwd_t)(struct fwd_stream *fs);
+typedef bool (*packet_fwd_t)(struct fwd_stream *fs);
 
 struct fwd_engine {
 	const char       *fwd_mode_name; /**< Forwarding mode name. */
@@ -391,6 +392,8 @@ struct fwd_engine {
 	stream_init_t    stream_init;    /**< NULL if nothing special to do. */
 	packet_fwd_t     packet_fwd;     /**< Mandatory. */
 };
+
+void common_fwd_stream_init(struct fwd_stream *fs);
 
 #define FLEX_ITEM_MAX_SAMPLES_NUM 16
 #define FLEX_ITEM_MAX_LINKS_NUM 16
@@ -837,32 +840,47 @@ mbuf_pool_find(unsigned int sock_id, uint16_t idx)
 	return rte_mempool_lookup((const char *)pool_name);
 }
 
-static inline void
-get_start_cycles(uint64_t *start_tsc)
+static inline uint16_t
+common_fwd_stream_receive(struct fwd_stream *fs, struct rte_mbuf **burst,
+	unsigned int nb_pkts)
 {
-	if (record_core_cycles)
-		*start_tsc = rte_rdtsc();
-}
+	uint16_t nb_rx;
 
-static inline void
-get_end_cycles(struct fwd_stream *fs, uint64_t start_tsc)
-{
-	if (record_core_cycles)
-		fs->busy_cycles += rte_rdtsc() - start_tsc;
-}
-
-static inline void
-inc_rx_burst_stats(struct fwd_stream *fs, uint16_t nb_rx)
-{
+	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, burst, nb_pkts);
 	if (record_burst_stats)
 		fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
+	fs->rx_packets += nb_rx;
+	return nb_rx;
 }
 
-static inline void
-inc_tx_burst_stats(struct fwd_stream *fs, uint16_t nb_tx)
+static inline uint16_t
+common_fwd_stream_transmit(struct fwd_stream *fs, struct rte_mbuf **burst,
+	unsigned int nb_pkts)
 {
+	uint16_t nb_tx;
+	uint32_t retry;
+
+	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, burst, nb_pkts);
+	/*
+	 * Retry if necessary
+	 */
+	if (unlikely(nb_tx < nb_pkts) && fs->retry_enabled) {
+		retry = 0;
+		while (nb_tx < nb_pkts && retry++ < burst_tx_retry_num) {
+			rte_delay_us(burst_tx_delay_time);
+			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
+				&burst[nb_tx], nb_pkts - nb_tx);
+		}
+	}
+	fs->tx_packets += nb_tx;
 	if (record_burst_stats)
 		fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;
+	if (unlikely(nb_tx < nb_pkts)) {
+		fs->fwd_dropped += (nb_pkts - nb_tx);
+		rte_pktmbuf_free_bulk(&burst[nb_tx], nb_pkts - nb_tx);
+	}
+
+	return nb_tx;
 }
 
 /* Prototypes */

@@ -75,6 +75,9 @@ cn9k_ree = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f4',
 virtio_blk = {'Class': '01', 'Vendor': "1af4", 'Device': '1001,1042',
                     'SVendor': None, 'SDevice': None}
 
+cnxk_ml = {'Class': '08', 'Vendor': '177d', 'Device': 'a092',
+            'SVendor': None, 'SDevice': None}
+
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 baseband_devices = [acceleration_class]
 crypto_devices = [encryption_class, intel_processor_class]
@@ -84,6 +87,7 @@ eventdev_devices = [cavium_sso, cavium_tim, intel_dlb, cnxk_sso]
 mempool_devices = [cavium_fpa, cnxk_npa]
 compress_devices = [cavium_zip]
 regex_devices = [cn9k_ree]
+ml_devices = [cnxk_ml]
 misc_devices = [cnxk_bphy, cnxk_bphy_cgx, cnxk_inl_dev,
                 intel_ntb_skx, intel_ntb_icx,
                 virtio_blk]
@@ -618,6 +622,9 @@ def show_status():
     if status_dev in ["regex", "all"]:
         show_device_status(regex_devices, "Regex")
 
+    if status_dev in ["ml", "all"]:
+        show_device_status(ml_devices, "ML")
+
 
 def pci_glob(arg):
     '''Returns a list containing either:
@@ -672,7 +679,7 @@ To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
         '--status-dev',
         help="Print the status of given device group.",
         choices=['baseband', 'compress', 'crypto', 'dma', 'event',
-                 'mempool', 'misc', 'net', 'regex'])
+                 'mempool', 'misc', 'net', 'regex', 'ml'])
     bind_group = parser.add_mutually_exclusive_group()
     bind_group.add_argument(
         '-b',
@@ -758,6 +765,7 @@ def do_arg_actions():
             get_device_details(mempool_devices)
             get_device_details(compress_devices)
             get_device_details(regex_devices)
+            get_device_details(ml_devices)
             get_device_details(misc_devices)
         show_status()
 
@@ -781,6 +789,7 @@ def main():
     get_device_details(mempool_devices)
     get_device_details(compress_devices)
     get_device_details(regex_devices)
+    get_device_details(ml_devices)
     get_device_details(misc_devices)
     do_arg_actions()
 

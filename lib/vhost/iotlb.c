@@ -46,7 +46,7 @@ vhost_user_iotlb_pool_put(struct vhost_virtqueue *vq,
 }
 
 static void
-vhost_user_iotlb_cache_random_evict(struct vhost_virtqueue *vq);
+vhost_user_iotlb_cache_random_evict(struct virtio_net *dev, struct vhost_virtqueue *vq);
 
 static void
 vhost_user_iotlb_pending_remove_all(struct vhost_virtqueue *vq)
@@ -98,7 +98,7 @@ vhost_user_iotlb_pending_insert(struct virtio_net *dev, struct vhost_virtqueue *
 		if (!TAILQ_EMPTY(&vq->iotlb_pending_list))
 			vhost_user_iotlb_pending_remove_all(vq);
 		else
-			vhost_user_iotlb_cache_random_evict(vq);
+			vhost_user_iotlb_cache_random_evict(dev, vq);
 		node = vhost_user_iotlb_pool_get(vq);
 		if (node == NULL) {
 			VHOST_LOG_CONFIG(dev->ifname, ERR,
@@ -142,14 +142,15 @@ vhost_user_iotlb_pending_remove(struct vhost_virtqueue *vq,
 }
 
 static void
-vhost_user_iotlb_cache_remove_all(struct vhost_virtqueue *vq)
+vhost_user_iotlb_cache_remove_all(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	struct vhost_iotlb_entry *node, *temp_node;
 
 	rte_rwlock_write_lock(&vq->iotlb_lock);
 
 	RTE_TAILQ_FOREACH_SAFE(node, &vq->iotlb_list, next, temp_node) {
-		mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, true);
+		mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, false,
+			hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr));
 		TAILQ_REMOVE(&vq->iotlb_list, node, next);
 		vhost_user_iotlb_pool_put(vq, node);
 	}
@@ -160,9 +161,10 @@ vhost_user_iotlb_cache_remove_all(struct vhost_virtqueue *vq)
 }
 
 static void
-vhost_user_iotlb_cache_random_evict(struct vhost_virtqueue *vq)
+vhost_user_iotlb_cache_random_evict(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	struct vhost_iotlb_entry *node, *temp_node;
+	struct vhost_iotlb_entry *node, *temp_node, *prev_node = NULL;
+	uint64_t alignment, mask;
 	int entry_idx;
 
 	rte_rwlock_write_lock(&vq->iotlb_lock);
@@ -171,12 +173,26 @@ vhost_user_iotlb_cache_random_evict(struct vhost_virtqueue *vq)
 
 	RTE_TAILQ_FOREACH_SAFE(node, &vq->iotlb_list, next, temp_node) {
 		if (!entry_idx) {
-			mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, true);
+			struct vhost_iotlb_entry *next_node;
+			alignment = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
+			mask = ~(alignment - 1);
+
+			/* Don't disable coredump if the previous node is in the same page */
+			if (prev_node == NULL ||
+					(node->uaddr & mask) != (prev_node->uaddr & mask)) {
+				next_node = RTE_TAILQ_NEXT(node, next);
+				/* Don't disable coredump if the next node is in the same page */
+				if (next_node == NULL || ((node->uaddr + node->size - 1) & mask) !=
+						(next_node->uaddr & mask))
+					mem_set_dump((void *)(uintptr_t)node->uaddr, node->size,
+							false, alignment);
+			}
 			TAILQ_REMOVE(&vq->iotlb_list, node, next);
 			vhost_user_iotlb_pool_put(vq, node);
 			vq->iotlb_cache_nr--;
 			break;
 		}
+		prev_node = node;
 		entry_idx--;
 	}
 
@@ -196,7 +212,7 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq
 			"IOTLB pool vq %"PRIu32" empty, clear entries for cache insertion\n",
 			vq->index);
 		if (!TAILQ_EMPTY(&vq->iotlb_list))
-			vhost_user_iotlb_cache_random_evict(vq);
+			vhost_user_iotlb_cache_random_evict(dev, vq);
 		else
 			vhost_user_iotlb_pending_remove_all(vq);
 		new_node = vhost_user_iotlb_pool_get(vq);
@@ -224,14 +240,16 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq
 			vhost_user_iotlb_pool_put(vq, new_node);
 			goto unlock;
 		} else if (node->iova > new_node->iova) {
-			mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, true);
+			mem_set_dump((void *)(uintptr_t)new_node->uaddr, new_node->size, true,
+				hua_to_alignment(dev->mem, (void *)(uintptr_t)new_node->uaddr));
 			TAILQ_INSERT_BEFORE(node, new_node, next);
 			vq->iotlb_cache_nr++;
 			goto unlock;
 		}
 	}
 
-	mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, true);
+	mem_set_dump((void *)(uintptr_t)new_node->uaddr, new_node->size, true,
+		hua_to_alignment(dev->mem, (void *)(uintptr_t)new_node->uaddr));
 	TAILQ_INSERT_TAIL(&vq->iotlb_list, new_node, next);
 	vq->iotlb_cache_nr++;
 
@@ -243,10 +261,11 @@ unlock:
 }
 
 void
-vhost_user_iotlb_cache_remove(struct vhost_virtqueue *vq,
+vhost_user_iotlb_cache_remove(struct virtio_net *dev, struct vhost_virtqueue *vq,
 					uint64_t iova, uint64_t size)
 {
-	struct vhost_iotlb_entry *node, *temp_node;
+	struct vhost_iotlb_entry *node, *temp_node, *prev_node = NULL;
+	uint64_t alignment, mask;
 
 	if (unlikely(!size))
 		return;
@@ -259,11 +278,26 @@ vhost_user_iotlb_cache_remove(struct vhost_virtqueue *vq,
 			break;
 
 		if (iova < node->iova + node->size) {
-			mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, true);
+			struct vhost_iotlb_entry *next_node;
+			alignment = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
+			mask = ~(alignment-1);
+
+			/* Don't disable coredump if the previous node is in the same page */
+			if (prev_node == NULL ||
+					(node->uaddr & mask) != (prev_node->uaddr & mask)) {
+				next_node = RTE_TAILQ_NEXT(node, next);
+				/* Don't disable coredump if the next node is in the same page */
+				if (next_node == NULL || ((node->uaddr + node->size - 1) & mask) !=
+						(next_node->uaddr & mask))
+					mem_set_dump((void *)(uintptr_t)node->uaddr, node->size,
+							false, alignment);
+			}
+
 			TAILQ_REMOVE(&vq->iotlb_list, node, next);
 			vhost_user_iotlb_pool_put(vq, node);
 			vq->iotlb_cache_nr--;
-		}
+		} else
+			prev_node = node;
 	}
 
 	rte_rwlock_write_unlock(&vq->iotlb_lock);
@@ -312,9 +346,9 @@ out:
 }
 
 void
-vhost_user_iotlb_flush_all(struct vhost_virtqueue *vq)
+vhost_user_iotlb_flush_all(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	vhost_user_iotlb_cache_remove_all(vq);
+	vhost_user_iotlb_cache_remove_all(dev, vq);
 	vhost_user_iotlb_pending_remove_all(vq);
 }
 
@@ -329,7 +363,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		 * The cache has already been initialized,
 		 * just drop all cached and pending entries.
 		 */
-		vhost_user_iotlb_flush_all(vq);
+		vhost_user_iotlb_flush_all(dev, vq);
 		rte_free(vq->iotlb_pool);
 	}
 

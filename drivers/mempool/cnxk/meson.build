@@ -17,4 +17,4 @@ sources = files(
 )
 
 deps += ['eal', 'mbuf', 'kvargs', 'bus_pci', 'common_cnxk', 'mempool']
-pmd_supports_disable_iova_as_pa = true
+require_iova_in_mbuf = false

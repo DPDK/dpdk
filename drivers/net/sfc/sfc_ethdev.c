@@ -3231,5 +3231,5 @@ RTE_INIT(sfc_driver_register_logtype)
 
 	ret = rte_log_register_type_and_pick_level(SFC_LOGTYPE_PREFIX "driver",
 						   RTE_LOG_NOTICE);
-	sfc_logtype_driver = (ret < 0) ? RTE_LOGTYPE_PMD : ret;
+	sfc_logtype_driver = (ret < 0) ? RTE_LOGTYPE_EAL : ret;
 }

@@ -123,6 +123,17 @@ struct roc_ipv6_hdr {
 	uint8_t dst_addr[16]; /**< IP address of destination host(s). */
 } __plt_packed;
 
+struct roc_ipv6_fragment_ext {
+	uint8_t next_header; /**< Next header type */
+	uint8_t reserved;    /**< Reserved */
+	uint16_t frag_data;  /**< All fragmentation data */
+	uint32_t id;	     /**< Packet ID */
+} __plt_packed;
+
+struct roc_flow_item_ipv6_ext {
+	uint8_t next_hdr; /**< Next header. */
+};
+
 struct roc_npc_flow_item_ipv6 {
 	struct roc_ipv6_hdr hdr; /**< IPv6 header definition. */
 	uint32_t has_hop_ext : 1;
@@ -386,6 +397,9 @@ int __roc_api roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc);
 void __roc_api roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc);
 void __roc_api roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 				      struct roc_npc_flow *mcam);
+int __roc_api roc_npc_mark_actions_get(struct roc_npc *roc_npc);
+int __roc_api roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc,
+					      uint32_t count);
 int __roc_api roc_npc_vtag_actions_get(struct roc_npc *roc_npc);
 int __roc_api roc_npc_vtag_actions_sub_return(struct roc_npc *roc_npc,
 					      uint32_t count);

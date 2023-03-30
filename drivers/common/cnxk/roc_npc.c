@@ -6,6 +6,23 @@
 #include "roc_priv.h"
 
 int
+roc_npc_mark_actions_get(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc->mark_actions;
+}
+
+int
+roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc, uint32_t count)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	npc->mark_actions -= count;
+	return npc->mark_actions;
+}
+
+int
 roc_npc_vtag_actions_get(struct roc_npc *roc_npc)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
@@ -488,12 +505,14 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			}
 			mark = act_mark->id + 1;
 			req_act |= ROC_NPC_ACTION_TYPE_MARK;
+			npc->mark_actions += 1;
 			flow->match_id = mark;
 			break;
 
 		case ROC_NPC_ACTION_TYPE_FLAG:
 			mark = NPC_FLOW_FLAG_VAL;
 			req_act |= ROC_NPC_ACTION_TYPE_FLAG;
+			npc->mark_actions += 1;
 			break;
 
 		case ROC_NPC_ACTION_TYPE_COUNT:
@@ -1480,16 +1499,22 @@ npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow)
 static int
 roc_npc_delete_spi_to_sa_action(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 {
-	struct roc_nix *roc_nix = roc_npc->roc_nix;
 	struct nix_spi_to_sa_delete_req *req;
+	struct nix_inl_dev *inl_dev;
+	struct idev_cfg *idev;
 	struct mbox *mbox;
-	struct nix *nix;
+
+	PLT_SET_USED(roc_npc);
 
 	if (!flow->spi_to_sa_info.has_action || flow->spi_to_sa_info.duplicate)
 		return 0;
 
-	nix = roc_nix_to_nix_priv(roc_nix);
-	mbox = (&nix->dev)->mbox;
+	idev = idev_get_cfg();
+	if (!idev)
+		return -1;
+
+	inl_dev = idev->nix_inl_dev;
+	mbox = inl_dev->dev.mbox;
 	req = mbox_alloc_msg_nix_spi_to_sa_delete(mbox);
 	if (req == NULL)
 		return -ENOSPC;

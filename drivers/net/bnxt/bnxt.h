@@ -832,6 +832,7 @@ struct bnxt {
 	uint32_t		hwrm_spec_code;
 
 	struct bnxt_led_info	*leds;
+	uint8_t			ieee_1588;
 	struct bnxt_ptp_cfg     *ptp_cfg;
 	uint16_t		vf_resv_strategy;
 	struct bnxt_ctx_mem_info        *ctx;

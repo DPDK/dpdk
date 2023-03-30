@@ -50,6 +50,10 @@ struct {
 		{RTE_CRYPTO_AUTH_SHA256, "SHA2-256"},
 		{RTE_CRYPTO_AUTH_SHA384, "SHA2-384"},
 		{RTE_CRYPTO_AUTH_SHA512, "SHA2-512"},
+		{RTE_CRYPTO_AUTH_SHA3_224, "SHA3-224"},
+		{RTE_CRYPTO_AUTH_SHA3_256, "SHA3-256"},
+		{RTE_CRYPTO_AUTH_SHA3_384, "SHA3-384"},
+		{RTE_CRYPTO_AUTH_SHA3_512, "SHA3-512"},
 };
 
 struct {
@@ -295,6 +299,20 @@ parse_test_ecdsa_json_writeback(struct fips_val *val)
 			json_object_set_new(json_info.json_write_case, "testPassed", json_true());
 		else
 			json_object_set_new(json_info.json_write_case, "testPassed", json_false());
+	} else if (info.op == FIPS_TEST_ASYM_KEYGEN) {
+		json_t *obj;
+
+		writeback_hex_str("", info.one_line_text, &vec.ecdsa.pkey);
+		obj = json_string(info.one_line_text);
+		json_object_set_new(json_info.json_write_case, "d", obj);
+
+		writeback_hex_str("", info.one_line_text, &vec.ecdsa.qx);
+		obj = json_string(info.one_line_text);
+		json_object_set_new(json_info.json_write_case, "qx", obj);
+
+		writeback_hex_str("", info.one_line_text, &vec.ecdsa.qy);
+		obj = json_string(info.one_line_text);
+		json_object_set_new(json_info.json_write_case, "qy", obj);
 	}
 
 	return 0;
@@ -368,6 +386,36 @@ parse_siggen_message_str(const char *key, char *src, struct fips_val *val)
 }
 
 static int
+parse_keygen_tc_str(const char *key, char *src, struct fips_val *val)
+{
+	RTE_SET_USED(key);
+	RTE_SET_USED(src);
+	RTE_SET_USED(val);
+
+	if (info.op == FIPS_TEST_ASYM_KEYGEN) {
+		if (vec.ecdsa.pkey.val) {
+			rte_free(vec.ecdsa.pkey.val);
+			vec.ecdsa.pkey.val = NULL;
+		}
+
+		if (vec.ecdsa.k.val) {
+			rte_free(vec.ecdsa.k.val);
+			vec.ecdsa.k.val = NULL;
+		}
+
+		if (prepare_vec_ecdsa() < 0)
+			return -1;
+
+		if (prepare_vec_ecdsa_k() < 0)
+			return -1;
+
+		info.interim_info.ecdsa_data.pubkey_gen = 1;
+	}
+
+	return 0;
+}
+
+static int
 parse_sigver_randomvalue_str(const char *key, char *src, struct fips_val *val)
 {
 	int ret = 0;
@@ -402,6 +450,11 @@ struct fips_test_callback ecdsa_sigver_json_vectors[] = {
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
+struct fips_test_callback ecdsa_keygen_json_vectors[] = {
+		{"tcId", parse_keygen_tc_str, &vec.pt},
+		{NULL, NULL, NULL} /**< end pointer */
+};
+
 int
 parse_test_ecdsa_json_init(void)
 {
@@ -421,6 +474,9 @@ parse_test_ecdsa_json_init(void)
 	} else if (strcmp(mode_str, "sigVer") == 0) {
 		info.op = FIPS_TEST_ASYM_SIGVER;
 		info.callbacks = ecdsa_sigver_json_vectors;
+	} else if (strcmp(mode_str, "keyGen") == 0) {
+		info.op = FIPS_TEST_ASYM_KEYGEN;
+		info.callbacks = ecdsa_keygen_json_vectors;
 	} else {
 		return -EINVAL;
 	}

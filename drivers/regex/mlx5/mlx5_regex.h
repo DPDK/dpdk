@@ -37,7 +37,7 @@ struct mlx5_regex_qp {
 	struct mlx5_regex_hw_qp *qps; /* Pointer to qp array. */
 	uint16_t nb_obj; /* Number of qp objects. */
 	struct mlx5_regex_cq cq; /* CQ struct. */
-	uint32_t free_qps;
+	uint64_t free_qps;
 	struct mlx5_regex_job *jobs;
 	struct ibv_mr *metadata;
 	struct ibv_mr *outputs;

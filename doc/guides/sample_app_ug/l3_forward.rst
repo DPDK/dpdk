@@ -56,9 +56,8 @@ for the IPv4/IPv6 5-tuple syntax specifically.
 The 5-tuple syntax consists of a source IP address, a destination IP address,
 a source port, a destination port and a protocol identifier.
 
-In the sample application, hash-based, FIB-based and ACL-based forwarding supports
+In the sample application, hash-based, LPM-based, FIB-based and ACL-based forwarding supports
 both IPv4 and IPv6.
-LPM-based forwarding supports IPv4 only.
 During the initialization phase route rules for IPv4 and IPv6 are read from rule files.
 
 Compiling the Application
