@@ -353,7 +353,7 @@ Supported Features
 
 * Dynamic ARK PMD extensions
 * Dynamic per-queue MBUF (re)sizing up to 32KB
-* SR-IOV, VF-based queue-segregation
+* SR-IOV, VF-based queue-separation
 * Multiple receive and transmit queues
 * Jumbo frames up to 9K
 * Hardware Statistics
