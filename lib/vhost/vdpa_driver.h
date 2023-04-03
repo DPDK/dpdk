@@ -78,6 +78,9 @@ struct rte_vdpa_dev_ops {
 	/** Set mem table */
 	int (*set_mem_table)(int vid);
 
+	/** Early setup during LM */
+	int (*presetup_done)(int vid);
+
 	/** Reserved for future extension */
 	void *reserved[2];
 };

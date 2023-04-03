@@ -25,7 +25,8 @@
 					 (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_CONFIG) | \
-					 (1ULL << VHOST_USER_PROTOCOL_F_STATUS))
+					 (1ULL << VHOST_USER_PROTOCOL_F_STATUS) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_PRESETUP))
 
 typedef enum VhostUserRequest {
 	VHOST_USER_NONE = 0,
@@ -62,7 +63,8 @@ typedef enum VhostUserRequest {
 	VHOST_USER_SET_INFLIGHT_FD = 32,
 	VHOST_USER_SET_STATUS = 39,
 	VHOST_USER_GET_STATUS = 40,
-	VHOST_USER_MAX = 41
+	VHOST_USER_PRESETUP = 41,
+	VHOST_USER_MAX = 42
 } VhostUserRequest;
 
 typedef enum VhostUserSlaveRequest {

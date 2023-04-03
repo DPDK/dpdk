@@ -91,6 +91,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_SET_INFLIGHT_FD] = "VHOST_USER_SET_INFLIGHT_FD",
 	[VHOST_USER_SET_STATUS] = "VHOST_USER_SET_STATUS",
 	[VHOST_USER_GET_STATUS] = "VHOST_USER_GET_STATUS",
+	[VHOST_USER_PRESETUP] = "VHOST_USER_PRESETUP",
 };
 
 static int send_vhost_reply(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx);
@@ -2791,6 +2792,26 @@ vhost_user_set_status(struct virtio_net **pdev,
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
+static int
+vhost_user_presetup(struct virtio_net **pdev,
+			struct vhu_msg_context *ctx,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+	uint64_t status;
+
+	if (validate_msg_fds(dev, ctx, 0) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
+
+	status = ctx->msg.payload.u64;
+
+	if (status == VIRTIO_DEVICE_PRESETUP_END) {
+		if (dev->vdpa_dev && dev->vdpa_dev->ops->presetup_done)
+			dev->vdpa_dev->ops->presetup_done(dev->vid);
+	}
+	return 0;
+}
+
 typedef int (*vhost_message_handler_t)(struct virtio_net **pdev,
 					struct vhu_msg_context *ctx,
 					int main_fd);
@@ -2828,6 +2849,7 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_SET_INFLIGHT_FD] = vhost_user_set_inflight_fd,
 	[VHOST_USER_SET_STATUS] = vhost_user_set_status,
 	[VHOST_USER_GET_STATUS] = vhost_user_get_status,
+	[VHOST_USER_PRESETUP] = vhost_user_presetup,
 };
 
 /* return bytes# of read on success or negative val on failure. */

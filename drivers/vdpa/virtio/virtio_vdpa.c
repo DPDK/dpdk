@@ -1216,6 +1216,64 @@ virtio_vdpa_dev_config_get(int vid, uint8_t *payload, uint32_t len)
 	return 0;
 }
 
+static int
+virtio_vdpa_dev_presetup_done(int vid)
+{
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
+	struct virtio_vdpa_priv *priv =
+		virtio_vdpa_find_priv_resource_by_vdev(vdev);
+	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
+	int ret, i;
+
+	DRV_LOG(INFO, "virtio vDPA presetup");
+	nr_virtqs = rte_vhost_get_vring_num(vid);
+	if (priv->nvec < (nr_virtqs + 1)) {
+		DRV_LOG(ERR, "%s warning: dev interrupts %d less than queue: %d",
+				vdev->device->name, priv->nvec, nr_virtqs + 1);
+	}
+
+	priv->vid = vid;
+
+	for (i = 0; i < nr_virtqs; i++) {
+		ret = rte_vhost_get_vring_base(vid, i, &last_avail_idx, &last_used_idx);
+		if (ret) {
+			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);
+			rte_errno = rte_errno ? rte_errno : EINVAL;
+			return -rte_errno;
+		}
+
+		DRV_LOG(INFO, "%s vid %d qid %d last_avail_idx:%d,last_used_idx:%d",
+				vdev->device->name, vid,
+				i, last_avail_idx, last_used_idx);
+
+		ret = virtio_pci_dev_state_hw_idx_set(priv->vpdev, i,
+				last_avail_idx,
+				last_used_idx, priv->state_mz->addr);
+		if (ret) {
+			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);
+			rte_errno = rte_errno ? rte_errno : EINVAL;
+			return -rte_errno;
+		}
+	}
+
+	virtio_pci_dev_state_dev_status_set(priv->state_mz->addr, VIRTIO_CONFIG_STATUS_ACK |
+			VIRTIO_CONFIG_STATUS_DRIVER |
+			VIRTIO_CONFIG_STATUS_FEATURES_OK |
+			VIRTIO_CONFIG_STATUS_DRIVER_OK);
+
+	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0,
+			priv->state_size, priv->state_mz->iova);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name,
+			priv->vf_id, ret);
+		virtio_pci_dev_state_dump(priv->vpdev , priv->state_mz->addr, priv->state_size);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 	.get_queue_num = virtio_vdpa_vqs_max_get,
 	.get_features = virtio_vdpa_features_get,
@@ -1234,6 +1292,7 @@ static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 	.get_dev_config = virtio_vdpa_dev_config_get,
 	.set_mem_table = virtio_vdpa_dev_set_mem_table,
 	.dev_cleanup = virtio_vdpa_dev_cleanup,
+	.presetup_done = virtio_vdpa_dev_presetup_done,
 };
 
 static int vdpa_check_handler(__rte_unused const char *key,
