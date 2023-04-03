@@ -67,6 +67,80 @@ rte_event_ring_free_count(const struct rte_event_ring *r)
 	return rte_ring_free_count(&r->r);
 }
 
+
+/**
+ * Enqueue several objects on a ring.
+ *
+ * This function calls the multi-producer or the single-producer
+ * version depending on the default behavior that was specified at
+ * ring creation time (see flags).
+ *
+ * @param r
+ *   pointer to the event ring
+ * @param events
+ *   pointer to an array of struct rte_event objects
+ * @param n
+ *   The number of events in the array to enqueue
+ * @param free_space
+ *   if non-NULL, returns the amount of space in the ring after the
+ *   enqueue operation has completed
+ * @return
+ *   the number of objects enqueued, either 0 or n
+ */
+static __rte_always_inline unsigned int
+rte_event_ring_enqueue_bulk(struct rte_event_ring *r,
+			    const struct rte_event *events,
+			    unsigned int n, uint16_t *free_space)
+{
+	unsigned int num;
+	uint32_t space;
+
+	num = rte_ring_enqueue_bulk_elem(&r->r, events,
+					 sizeof(struct rte_event), n,
+					 &space);
+
+	if (free_space != NULL)
+		*free_space = space;
+
+	return num;
+}
+
+/**
+ * Dequeue a set of events from a ring
+ *
+ * Note: this API does not work with pointers to events, rather it copies
+ * the events themselves to the destination ``events`` buffer.
+ *
+ * @param r
+ *   pointer to the event ring
+ * @param events
+ *   pointer to an array to hold the struct rte_event objects
+ * @param n
+ *   number of events that can be held in the ``events`` array
+ * @param available
+ *   if non-null, is updated to indicate the number of events remaining in
+ *   the ring once the dequeue has completed
+ * @return
+ *   the number of objects dequeued, either 0 or n
+ */
+static __rte_always_inline unsigned int
+rte_event_ring_dequeue_bulk(struct rte_event_ring *r,
+			     struct rte_event *events,
+			     unsigned int n, uint16_t *available)
+{
+	unsigned int num;
+	uint32_t remaining;
+
+	num = rte_ring_dequeue_bulk_elem(&r->r, events,
+					 sizeof(struct rte_event), n,
+					 &remaining);
+
+	if (available != NULL)
+		*available = remaining;
+
+	return num;
+}
+
 /**
  * Enqueue a set of events onto a ring
  *
