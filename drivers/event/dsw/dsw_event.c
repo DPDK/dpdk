@@ -590,7 +590,6 @@ dsw_port_transmit_buffered(struct dsw_evdev *dsw, struct dsw_port *source_port,
 	struct dsw_port *dest_port = &(dsw->ports[dest_port_id]);
 	uint16_t *buffer_len = &source_port->out_buffer_len[dest_port_id];
 	struct rte_event *buffer = source_port->out_buffer[dest_port_id];
-	uint16_t enqueued = 0;
 
 	if (*buffer_len == 0)
 		return;
@@ -598,13 +597,8 @@ dsw_port_transmit_buffered(struct dsw_evdev *dsw, struct dsw_port *source_port,
 	/* The rings are dimensioned to fit all in-flight events (even
 	 * on a single ring), so looping will work.
 	 */
-	do {
-		enqueued +=
-			rte_event_ring_enqueue_burst(dest_port->in_ring,
-						     buffer+enqueued,
-						     *buffer_len-enqueued,
-						     NULL);
-	} while (unlikely(enqueued != *buffer_len));
+	rte_event_ring_enqueue_bulk(dest_port->in_ring, buffer, *buffer_len,
+				    NULL);
 
 	(*buffer_len) = 0;
 }
