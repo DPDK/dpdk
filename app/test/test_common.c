@@ -7,6 +7,7 @@
 #include <string.h>
 #include <math.h>
 #include <rte_common.h>
+#include <rte_bitops.h>
 #include <rte_hexdump.h>
 #include <rte_pause.h>
 

@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <rte_common.h>
+#include <rte_bitops.h>
 
 #include "rte_reciprocal.h"
 
