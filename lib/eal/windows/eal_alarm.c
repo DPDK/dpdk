@@ -224,6 +224,7 @@ struct intr_task {
 
 static void
 intr_thread_entry(void *arg)
+	__rte_no_thread_safety_analysis
 {
 	struct intr_task *task = arg;
 	task->func(task->arg);
@@ -232,6 +233,7 @@ intr_thread_entry(void *arg)
 
 static int
 intr_thread_exec_sync(void (*func)(void *arg), void *arg)
+	__rte_no_thread_safety_analysis
 {
 	struct intr_task task;
 	int ret;
