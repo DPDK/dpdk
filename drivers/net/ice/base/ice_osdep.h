@@ -211,28 +211,10 @@ struct ice_lock {
 	rte_spinlock_t spinlock;
 };
 
-static inline void
-ice_init_lock(struct ice_lock *sp)
-{
-	rte_spinlock_init(&sp->spinlock);
-}
-
-static inline void
-ice_acquire_lock(struct ice_lock *sp)
-{
-	rte_spinlock_lock(&sp->spinlock);
-}
-
-static inline void
-ice_release_lock(struct ice_lock *sp)
-{
-	rte_spinlock_unlock(&sp->spinlock);
-}
-
-static inline void
-ice_destroy_lock(__rte_unused struct ice_lock *sp)
-{
-}
+#define ice_init_lock(sp) rte_spinlock_init(&(sp)->spinlock)
+#define ice_acquire_lock(sp) rte_spinlock_lock(&(sp)->spinlock)
+#define ice_release_lock(sp) rte_spinlock_unlock(&(sp)->spinlock)
+#define ice_destroy_lock(sp) RTE_SET_USED(sp)
 
 struct ice_hw;
 

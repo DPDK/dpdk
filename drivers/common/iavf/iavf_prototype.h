@@ -76,12 +76,6 @@ STATIC INLINE struct iavf_rx_ptype_decoded decode_rx_desc_ptype(u8 ptype)
 	return iavf_ptype_lookup[ptype];
 }
 
-/* prototype for functions used for SW spinlocks */
-void iavf_init_spinlock(struct iavf_spinlock *sp);
-void iavf_acquire_spinlock(struct iavf_spinlock *sp);
-void iavf_release_spinlock(struct iavf_spinlock *sp);
-void iavf_destroy_spinlock(struct iavf_spinlock *sp);
-
 __rte_internal
 void iavf_vf_parse_hw_config(struct iavf_hw *hw,
 			     struct virtchnl_vf_resource *msg);

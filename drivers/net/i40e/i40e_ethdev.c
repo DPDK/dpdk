@@ -4635,30 +4635,6 @@ i40e_free_virt_mem_d(__rte_unused struct i40e_hw *hw,
 	return I40E_SUCCESS;
 }
 
-void
-i40e_init_spinlock_d(struct i40e_spinlock *sp)
-{
-	rte_spinlock_init(&sp->spinlock);
-}
-
-void
-i40e_acquire_spinlock_d(struct i40e_spinlock *sp)
-{
-	rte_spinlock_lock(&sp->spinlock);
-}
-
-void
-i40e_release_spinlock_d(struct i40e_spinlock *sp)
-{
-	rte_spinlock_unlock(&sp->spinlock);
-}
-
-void
-i40e_destroy_spinlock_d(__rte_unused struct i40e_spinlock *sp)
-{
-	return;
-}
-
 /**
  * Get the hardware capabilities, which will be parsed
  * and saved into struct i40e_hw.

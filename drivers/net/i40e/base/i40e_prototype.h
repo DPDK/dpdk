@@ -546,11 +546,6 @@ i40e_virtchnl_link_speed(enum i40e_aq_link_speed link_speed)
 	}
 }
 #endif /* PF_DRIVER */
-/* prototype for functions used for SW spinlocks */
-void i40e_init_spinlock(struct i40e_spinlock *sp);
-void i40e_acquire_spinlock(struct i40e_spinlock *sp);
-void i40e_release_spinlock(struct i40e_spinlock *sp);
-void i40e_destroy_spinlock(struct i40e_spinlock *sp);
 
 /* i40e_common for VF drivers*/
 void i40e_vf_parse_hw_config(struct i40e_hw *hw,

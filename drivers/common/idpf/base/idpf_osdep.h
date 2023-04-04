@@ -210,28 +210,10 @@ struct idpf_lock {
 	rte_spinlock_t spinlock;
 };
 
-static inline void
-idpf_init_lock(struct idpf_lock *sp)
-{
-	rte_spinlock_init(&sp->spinlock);
-}
-
-static inline void
-idpf_acquire_lock(struct idpf_lock *sp)
-{
-	rte_spinlock_lock(&sp->spinlock);
-}
-
-static inline void
-idpf_release_lock(struct idpf_lock *sp)
-{
-	rte_spinlock_unlock(&sp->spinlock);
-}
-
-static inline void
-idpf_destroy_lock(__rte_unused struct idpf_lock *sp)
-{
-}
+#define idpf_init_lock(sp) rte_spinlock_init(&(sp)->spinlock)
+#define idpf_acquire_lock(sp) rte_spinlock_lock(&(sp)->spinlock)
+#define idpf_release_lock(sp) rte_spinlock_unlock(&(sp)->spinlock)
+#define idpf_destroy_lock(sp) RTE_SET_USED(sp)
 
 struct idpf_hw;
 

@@ -215,10 +215,10 @@ struct i40e_spinlock {
 	rte_spinlock_t spinlock;
 };
 
-#define i40e_init_spinlock(_sp) i40e_init_spinlock_d(_sp)
-#define i40e_acquire_spinlock(_sp) i40e_acquire_spinlock_d(_sp)
-#define i40e_release_spinlock(_sp) i40e_release_spinlock_d(_sp)
-#define i40e_destroy_spinlock(_sp) i40e_destroy_spinlock_d(_sp)
+#define i40e_init_spinlock(sp) rte_spinlock_init(&(sp)->spinlock)
+#define i40e_acquire_spinlock(sp) rte_spinlock_lock(&(sp)->spinlock)
+#define i40e_release_spinlock(sp) rte_spinlock_unlock(&(sp)->spinlock)
+#define i40e_destroy_spinlock(sp) RTE_SET_USED(sp)
 
 #define I40E_NTOHS(a) rte_be_to_cpu_16(a)
 #define I40E_NTOHL(a) rte_be_to_cpu_32(a)
