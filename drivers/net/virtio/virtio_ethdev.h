@@ -112,12 +112,8 @@ int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
 
 void virtio_interrupt_handler(void *param);
 
-int virtio_dev_pause(struct rte_eth_dev *dev);
-void virtio_dev_resume(struct rte_eth_dev *dev);
 int virtio_dev_stop(struct rte_eth_dev *dev);
 int virtio_dev_close(struct rte_eth_dev *dev);
-int virtio_inject_pkts(struct rte_eth_dev *dev, struct rte_mbuf **tx_pkts,
-		int nb_pkts);
 
 bool virtio_rx_check_scatter(uint16_t max_rx_pkt_len, uint16_t rx_buf_size,
 			bool rx_scatter_enabled, const char **error);

@@ -1144,57 +1144,6 @@ virtio_ethdev_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	return 0;
 }
 
-int
-virtio_dev_pause(struct rte_eth_dev *dev)
-{
-	struct virtio_hw *hw = dev->data->dev_private;
-
-	rte_spinlock_lock(&hw->state_lock);
-
-	if (hw->started == 0) {
-		/* Device is just stopped. */
-		rte_spinlock_unlock(&hw->state_lock);
-		return -1;
-	}
-	hw->started = 0;
-	/*
-	 * Prevent the worker threads from touching queues to avoid contention,
-	 * 1 ms should be enough for the ongoing Tx function to finish.
-	 */
-	rte_delay_ms(1);
-	return 0;
-}
-
-/*
- * Recover hw state to let the worker threads continue.
- */
-void
-virtio_dev_resume(struct rte_eth_dev *dev)
-{
-	struct virtio_hw *hw = dev->data->dev_private;
-
-	hw->started = 1;
-	rte_spinlock_unlock(&hw->state_lock);
-}
-
-/*
- * Should be called only after device is paused.
- */
-int
-virtio_inject_pkts(struct rte_eth_dev *dev, struct rte_mbuf **tx_pkts,
-		int nb_pkts)
-{
-	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtnet_tx *txvq = dev->data->tx_queues[0];
-	int ret;
-
-	hw->inject_pkts = tx_pkts;
-	ret = dev->tx_pkt_burst(txvq, tx_pkts, nb_pkts);
-	hw->inject_pkts = NULL;
-
-	return ret;
-}
-
 static void
 virtio_notify_peers(struct rte_eth_dev *dev)
 {
@@ -1216,14 +1165,28 @@ virtio_notify_peers(struct rte_eth_dev *dev)
 		return;
 	}
 
-	/* If virtio port just stopped, no need to send RARP */
-	if (virtio_dev_pause(dev) < 0) {
+	rte_spinlock_lock(&hw->state_lock);
+	if (hw->started == 0) {
+		/* If virtio port just stopped, no need to send RARP */
 		rte_pktmbuf_free(rarp_mbuf);
-		return;
+		goto out;
 	}
+	hw->started = 0;
 
-	virtio_inject_pkts(dev, &rarp_mbuf, 1);
-	virtio_dev_resume(dev);
+	/*
+	 * Prevent the worker threads from touching queues to avoid contention,
+	 * 1 ms should be enough for the ongoing Tx function to finish.
+	 */
+	rte_delay_ms(1);
+
+	hw->inject_pkts = &rarp_mbuf;
+	dev->tx_pkt_burst(dev->data->tx_queues[0], &rarp_mbuf, 1);
+	hw->inject_pkts = NULL;
+
+	hw->started = 1;
+
+out:
+	rte_spinlock_unlock(&hw->state_lock);
 }
 
 static void
