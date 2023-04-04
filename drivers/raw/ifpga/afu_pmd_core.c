@@ -23,21 +23,8 @@ static struct rte_afu_uuid afu_pmd_uuid_map[AFU_RAWDEV_MAX_DRVS+1];
 TAILQ_HEAD(afu_drv_list, afu_rawdev_drv);
 static struct afu_drv_list afu_pmd_list = TAILQ_HEAD_INITIALIZER(afu_pmd_list);
 
-static inline int afu_rawdev_trylock(struct afu_rawdev *dev)
-{
-	if (!dev || !dev->sd)
-		return 0;
-
-	return rte_spinlock_trylock(&dev->sd->lock);
-}
-
-static inline void afu_rawdev_unlock(struct afu_rawdev *dev)
-{
-	if (!dev || !dev->sd)
-		return;
-
-	rte_spinlock_unlock(&dev->sd->lock);
-}
+#define afu_rawdev_trylock(dev) rte_spinlock_trylock(&dev->sd->lock)
+#define afu_rawdev_unlock(dev) rte_spinlock_unlock(&dev->sd->lock)
 
 static int afu_rawdev_configure(const struct rte_rawdev *rawdev,
 	rte_rawdev_obj_t config, size_t config_size)
