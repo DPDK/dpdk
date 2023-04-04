@@ -570,6 +570,8 @@ static const efx_ev_callbacks_t sfc_ev_callbacks_dp_tx = {
 void
 sfc_ev_qpoll(struct sfc_evq *evq)
 {
+	struct sfc_adapter *sa;
+
 	SFC_ASSERT(evq->init_state == SFC_EVQ_STARTED ||
 		   evq->init_state == SFC_EVQ_STARTING);
 
@@ -577,8 +579,8 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 
 	efx_ev_qpoll(evq->common, &evq->read_ptr, evq->callbacks, evq);
 
-	if (unlikely(evq->exception) && sfc_adapter_trylock(evq->sa)) {
-		struct sfc_adapter *sa = evq->sa;
+	sa = evq->sa;
+	if (unlikely(evq->exception) && sfc_adapter_trylock(sa)) {
 		int rc;
 
 		if (evq->dp_rxq != NULL) {

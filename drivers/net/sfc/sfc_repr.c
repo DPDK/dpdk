@@ -112,39 +112,11 @@ sfc_repr_by_eth_dev(struct rte_eth_dev *eth_dev)
  * change the lock in one place.
  */
 
-static inline void
-sfc_repr_lock_init(struct sfc_repr *sr)
-{
-	rte_spinlock_init(&sr->lock);
-}
-
-#if defined(RTE_LIBRTE_SFC_EFX_DEBUG) || defined(RTE_ENABLE_ASSERT)
-
-static inline int
-sfc_repr_lock_is_locked(struct sfc_repr *sr)
-{
-	return rte_spinlock_is_locked(&sr->lock);
-}
-
-#endif
-
-static inline void
-sfc_repr_lock(struct sfc_repr *sr)
-{
-	rte_spinlock_lock(&sr->lock);
-}
-
-static inline void
-sfc_repr_unlock(struct sfc_repr *sr)
-{
-	rte_spinlock_unlock(&sr->lock);
-}
-
-static inline void
-sfc_repr_lock_fini(__rte_unused struct sfc_repr *sr)
-{
-	/* Just for symmetry of the API */
-}
+#define sfc_repr_lock_init(sr) rte_spinlock_init(&(sr)->lock)
+#define sfc_repr_lock_is_locked(sr) rte_spinlock_is_locked(&(sr)->lock)
+#define sfc_repr_lock(sr) rte_spinlock_lock(&(sr)->lock)
+#define sfc_repr_unlock(sr) rte_spinlock_unlock(&(sr)->lock)
+#define sfc_repr_lock_fini(sr) RTE_SET_USED(sr)
 
 static void
 sfc_repr_rx_queue_stop(void *queue)

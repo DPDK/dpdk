@@ -333,41 +333,12 @@ sfc_sa2shared(struct sfc_adapter *sa)
  * change the lock in one place.
  */
 
-static inline void
-sfc_adapter_lock_init(struct sfc_adapter *sa)
-{
-	rte_spinlock_init(&sa->lock);
-}
-
-static inline int
-sfc_adapter_is_locked(struct sfc_adapter *sa)
-{
-	return rte_spinlock_is_locked(&sa->lock);
-}
-
-static inline void
-sfc_adapter_lock(struct sfc_adapter *sa)
-{
-	rte_spinlock_lock(&sa->lock);
-}
-
-static inline int
-sfc_adapter_trylock(struct sfc_adapter *sa)
-{
-	return rte_spinlock_trylock(&sa->lock);
-}
-
-static inline void
-sfc_adapter_unlock(struct sfc_adapter *sa)
-{
-	rte_spinlock_unlock(&sa->lock);
-}
-
-static inline void
-sfc_adapter_lock_fini(__rte_unused struct sfc_adapter *sa)
-{
-	/* Just for symmetry of the API */
-}
+#define sfc_adapter_lock_init(sa) rte_spinlock_init(&(sa)->lock)
+#define sfc_adapter_is_locked(sa) rte_spinlock_is_locked(&(sa)->lock)
+#define sfc_adapter_lock(sa) rte_spinlock_lock(&(sa)->lock)
+#define sfc_adapter_trylock(sa) rte_spinlock_trylock(&(sa)->lock)
+#define sfc_adapter_unlock(sa) rte_spinlock_unlock(&(sa)->lock)
+#define sfc_adapter_lock_fini(sa) RTE_SET_USED(sa)
 
 static inline unsigned int
 sfc_nb_counter_rxq(const struct sfc_adapter_shared *sas)
