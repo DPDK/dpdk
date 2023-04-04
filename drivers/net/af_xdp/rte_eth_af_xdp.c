@@ -845,6 +845,9 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 static void
 remove_xdp_program(struct pmd_internals *internals)
 {
@@ -858,6 +861,8 @@ remove_xdp_program(struct pmd_internals *internals)
 	bpf_set_link_xdp_fd(internals->if_index, -1,
 			XDP_FLAGS_UPDATE_IF_NOEXIST);
 }
+
+#pragma GCC diagnostic pop
 
 static void
 xdp_umem_destroy(struct xsk_umem_info *umem)
@@ -1145,6 +1150,9 @@ err:
 	return NULL;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 static int
 load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
 {
@@ -1181,6 +1189,8 @@ load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
 
 	return 0;
 }
+
+#pragma GCC diagnostic pop
 
 /* Detect support for busy polling through setsockopt(). */
 static int
