@@ -116,6 +116,7 @@ fm10k_mbx_initlock(struct fm10k_hw *hw)
 
 static void
 fm10k_mbx_lock(struct fm10k_hw *hw)
+	__rte_exclusive_lock_function(FM10K_DEV_PRIVATE_TO_MBXLOCK(hw->back))
 {
 	while (!rte_spinlock_trylock(FM10K_DEV_PRIVATE_TO_MBXLOCK(hw->back)))
 		rte_delay_us(FM10K_MBXLOCK_DELAY_US);
@@ -123,6 +124,7 @@ fm10k_mbx_lock(struct fm10k_hw *hw)
 
 static void
 fm10k_mbx_unlock(struct fm10k_hw *hw)
+	__rte_unlock_function(FM10K_DEV_PRIVATE_TO_MBXLOCK(hw->back))
 {
 	rte_spinlock_unlock(FM10K_DEV_PRIVATE_TO_MBXLOCK(hw->back));
 }
