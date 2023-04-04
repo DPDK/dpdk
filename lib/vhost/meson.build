@@ -18,7 +18,6 @@ endif
 dpdk_conf.set('RTE_LIBRTE_VHOST_POSTCOPY', cc.has_header('linux/userfaultfd.h'))
 cflags += '-fno-strict-aliasing'
 
-annotate_locks = true
 sources = files(
         'fd_man.c',
         'iotlb.c',

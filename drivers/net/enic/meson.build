@@ -43,3 +43,5 @@ elif cc.has_argument('-mavx2') and dpdk_conf.get('RTE_ARCH_64')
             c_args: [cflags, '-mavx2'])
     objs += enic_avx2_lib.extract_objects('enic_rxtx_vec_avx2.c')
 endif
+
+annotate_locks = false

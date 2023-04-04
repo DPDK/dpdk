@@ -550,8 +550,9 @@ Some general comments:
   waiving checks with ``__rte_no_thread_safety_analysis`` in your code, please
   discuss it on the mailing list,
 
-A DPDK library/driver can enable/disable the checks by setting
-``annotate_locks`` accordingly in its ``meson.build`` file.
+The checks are enabled by default for libraries and drivers.
+They can be disabled by setting ``annotate_locks`` to ``false`` in
+the concerned library/driver ``meson.build``.
 
 IOVA Mode Detection
 ~~~~~~~~~~~~~~~~~~~

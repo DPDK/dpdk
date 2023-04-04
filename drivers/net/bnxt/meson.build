@@ -72,3 +72,5 @@ if arch_subdir == 'x86'
 elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('bnxt_rxtx_vec_neon.c')
 endif
+
+annotate_locks = false

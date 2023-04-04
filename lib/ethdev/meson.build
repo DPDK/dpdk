@@ -44,3 +44,7 @@ driver_sdk_headers += files(
 )
 
 deps += ['net', 'kvargs', 'meter', 'telemetry']
+
+if is_freebsd
+    annotate_locks = false
+endif

@@ -197,3 +197,5 @@ endforeach
 headers = files('rte_pmd_cnxk.h')
 
 require_iova_in_mbuf = false
+
+annotate_locks = false

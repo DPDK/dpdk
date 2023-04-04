@@ -88,4 +88,7 @@ sources += files('cnxk_telemetry_bphy.c',
 )
 
 deps += ['bus_pci', 'net', 'telemetry']
+
 require_iova_in_mbuf = false
+
+annotate_locks = false

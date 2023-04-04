@@ -479,4 +479,7 @@ foreach flag: extra_flags
 endforeach
 
 deps += ['bus_pci', 'common_cnxk', 'net_cnxk', 'crypto_cnxk']
+
 require_iova_in_mbuf = false
+
+annotate_locks = false

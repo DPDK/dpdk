@@ -29,3 +29,5 @@ if cc.has_argument('-Wno-pointer-arith')
 endif
 
 includes += include_directories('include', 'base/qbman')
+
+annotate_locks = false

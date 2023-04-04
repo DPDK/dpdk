@@ -18,3 +18,7 @@ sources = files(
 )
 
 includes += include_directories('base')
+
+if is_freebsd
+    annotate_locks = false
+endif

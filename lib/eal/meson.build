@@ -32,3 +32,7 @@ endif
 if cc.has_function('getentropy', prefix : '#include <unistd.h>')
     cflags += '-DRTE_LIBEAL_USE_GETENTROPY'
 endif
+
+if is_freebsd
+    annotate_locks = false
+endif

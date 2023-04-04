@@ -92,7 +92,7 @@ foreach subpath:subdirs
         build = true # set to false to disable, e.g. missing deps
         reason = '<unknown reason>' # set if build == false to explain
         name = drv
-        annotate_locks = false
+        annotate_locks = true
         sources = []
         headers = []
         driver_sdk_headers = [] # public headers included by drivers

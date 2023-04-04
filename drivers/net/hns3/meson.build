@@ -35,6 +35,8 @@ sources = files(
 
 require_iova_in_mbuf = false
 
+annotate_locks = false
+
 deps += ['hash']
 
 if arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')

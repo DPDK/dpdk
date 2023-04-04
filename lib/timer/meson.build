@@ -3,3 +3,5 @@
 
 sources = files('rte_timer.c')
 headers = files('rte_timer.h')
+
+annotate_locks = false

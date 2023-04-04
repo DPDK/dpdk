@@ -121,7 +121,7 @@ foreach l:libraries
     reason = '<unknown reason>' # set if build == false to explain why
     name = l
     use_function_versioning = false
-    annotate_locks = false
+    annotate_locks = true
     sources = []
     headers = []
     indirect_headers = [] # public headers not directly included by apps
