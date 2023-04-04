@@ -1421,18 +1421,20 @@ rte_eal_malloc_heap_init(void)
 		}
 	}
 
-
 	if (register_mp_requests()) {
 		RTE_LOG(ERR, EAL, "Couldn't register malloc multiprocess actions\n");
-		rte_mcfg_mem_read_unlock();
 		return -1;
 	}
 
-	/* unlock mem hotplug here. it's safe for primary as no requests can
+	return 0;
+}
+
+int rte_eal_malloc_heap_populate(void)
+{
+	/* mem hotplug is unlocked here. it's safe for primary as no requests can
 	 * even come before primary itself is fully initialized, and secondaries
 	 * do not need to initialize the heap.
 	 */
-	rte_mcfg_mem_read_unlock();
 
 	/* secondary process does not need to initialize anything */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

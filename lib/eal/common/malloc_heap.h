@@ -85,6 +85,9 @@ malloc_socket_to_heap_id(unsigned int socket_id);
 int
 rte_eal_malloc_heap_init(void);
 
+int
+rte_eal_malloc_heap_populate(void);
+
 void
 rte_eal_malloc_heap_cleanup(void);
 

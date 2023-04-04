@@ -1078,18 +1078,11 @@ rte_eal_memory_detach(void)
 int
 rte_eal_memory_init(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
-
 	int retval;
+
 	RTE_LOG(DEBUG, EAL, "Setting up physically contiguous memory...\n");
-
-	if (!mcfg)
-		return -1;
-
-	/* lock mem hotplug here, to prevent races while we init */
-	rte_mcfg_mem_read_lock();
 
 	if (rte_eal_memseg_init() < 0)
 		goto fail;
@@ -1108,7 +1101,6 @@ rte_eal_memory_init(void)
 
 	return 0;
 fail:
-	rte_mcfg_mem_read_unlock();
 	return -1;
 }
 

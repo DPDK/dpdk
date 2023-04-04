@@ -30,6 +30,7 @@
 #include <rte_memory.h>
 #include <rte_launch.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_service_component.h>
@@ -1193,7 +1194,10 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	rte_mcfg_mem_read_lock();
+
 	if (rte_eal_memory_init() < 0) {
+		rte_mcfg_mem_read_unlock();
 		rte_eal_init_alert("Cannot init memory");
 		rte_errno = ENOMEM;
 		return -1;
@@ -1203,6 +1207,15 @@ rte_eal_init(int argc, char **argv)
 	eal_hugedirs_unlock();
 
 	if (rte_eal_malloc_heap_init() < 0) {
+		rte_mcfg_mem_read_unlock();
+		rte_eal_init_alert("Cannot init malloc heap");
+		rte_errno = ENODEV;
+		return -1;
+	}
+
+	rte_mcfg_mem_read_unlock();
+
+	if (rte_eal_malloc_heap_populate() < 0) {
 		rte_eal_init_alert("Cannot init malloc heap");
 		rte_errno = ENODEV;
 		return -1;
