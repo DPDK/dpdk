@@ -575,6 +575,8 @@ rte_hash_count(const struct rte_hash *h)
 /* Read write locks implemented using rte_rwlock */
 static inline void
 __hash_rw_writer_lock(const struct rte_hash *h)
+	__rte_exclusive_lock_function(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->writer_takes_lock && h->hw_trans_mem_support)
 		rte_rwlock_write_lock_tm(h->readwrite_lock);
@@ -584,6 +586,8 @@ __hash_rw_writer_lock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_reader_lock(const struct rte_hash *h)
+	__rte_shared_lock_function(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->readwrite_concur_support && h->hw_trans_mem_support)
 		rte_rwlock_read_lock_tm(h->readwrite_lock);
@@ -593,6 +597,8 @@ __hash_rw_reader_lock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_writer_unlock(const struct rte_hash *h)
+	__rte_unlock_function(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->writer_takes_lock && h->hw_trans_mem_support)
 		rte_rwlock_write_unlock_tm(h->readwrite_lock);
@@ -602,6 +608,8 @@ __hash_rw_writer_unlock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_reader_unlock(const struct rte_hash *h)
+	__rte_unlock_function(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->readwrite_concur_support && h->hw_trans_mem_support)
 		rte_rwlock_read_unlock_tm(h->readwrite_lock);
