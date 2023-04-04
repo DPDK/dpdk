@@ -1385,8 +1385,10 @@ malloc_heap_destroy(struct malloc_heap *heap)
 	if (heap->total_size != 0)
 		RTE_LOG(ERR, EAL, "Total size not zero, heap is likely corrupt\n");
 
-	/* after this, the lock will be dropped */
-	memset(heap, 0, sizeof(*heap));
+	/* Reset all of the heap but the (hold) lock so caller can release it. */
+	RTE_BUILD_BUG_ON(offsetof(struct malloc_heap, lock) != 0);
+	memset(RTE_PTR_ADD(heap, sizeof(heap->lock)), 0,
+		sizeof(*heap) - sizeof(heap->lock));
 
 	return 0;
 }
