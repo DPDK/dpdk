@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2020 Arm Limited
+ * Copyright(c) 2010-2019 Intel Corporation
+ * Copyright(c) 2023 Microsoft Corporation
  */
 
 #ifndef _RTE_BITOPS_H_
@@ -274,6 +276,244 @@ rte_bit_relaxed_test_and_clear64(unsigned int nr, volatile uint64_t *addr)
 	*addr = val & (~mask);
 	return val & mask;
 }
+
+#ifdef RTE_TOOLCHAIN_MSVC
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of leading 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of leading zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_clz32(uint32_t v)
+{
+	unsigned long rv;
+
+	(void)_BitScanReverse(&rv, v);
+
+	return (unsigned int)(sizeof(v) * CHAR_BIT - 1 - rv);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of leading 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of leading zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_clz64(uint64_t v)
+{
+	unsigned long rv;
+
+	(void)_BitScanReverse64(&rv, v);
+
+	return (unsigned int)(sizeof(v) * CHAR_BIT - 1 - rv);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of trailing 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of trailing zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ctz32(uint32_t v)
+{
+	unsigned long rv;
+
+	(void)_BitScanForward(&rv, v);
+
+	return (unsigned int)rv;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of trailing 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of trailing zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ctz64(uint64_t v)
+{
+	unsigned long rv;
+
+	(void)_BitScanForward64(&rv, v);
+
+	return (unsigned int)rv;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of 1-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of 1-bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_popcount32(uint32_t v)
+{
+	return (unsigned int)__popcnt(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of 1-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of 1-bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_popcount64(uint64_t v)
+{
+	return (unsigned int)__popcnt64(v);
+}
+
+#else
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of leading 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of leading zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_clz32(uint32_t v)
+{
+	return (unsigned int)__builtin_clz(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of leading 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of leading zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_clz64(uint64_t v)
+{
+	return (unsigned int)__builtin_clzll(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of trailing 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of trailing zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ctz32(uint32_t v)
+{
+	return (unsigned int)__builtin_ctz(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of trailing 0-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of trailing zero bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ctz64(uint64_t v)
+{
+	return (unsigned int)__builtin_ctzll(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of 1-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of 1-bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_popcount32(uint32_t v)
+{
+	return (unsigned int)__builtin_popcount(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the count of 1-bits in v.
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   The count of 1-bits.
+ */
+__rte_experimental
+static inline unsigned int
+rte_popcount64(uint64_t v)
+{
+	return (unsigned int)__builtin_popcountll(v);
+}
+
+#endif
 
 /**
  * Combines 32b inputs most significant set bits into the least

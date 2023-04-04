@@ -155,6 +155,7 @@ F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_alarm.c
 F: app/test/test_atomic.c
 F: app/test/test_barrier.c
+F: app/test/test_bitcount.c
 F: app/test/test_byteorder.c
 F: app/test/test_common.c
 F: app/test/test_cpuflags.c
