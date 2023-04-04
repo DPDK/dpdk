@@ -30,16 +30,22 @@ graph_list_head_get(void)
 	return &graph_list;
 }
 
+rte_spinlock_t *
+graph_spinlock_get(void)
+{
+	return &graph_lock;
+}
+
 void
 graph_spinlock_lock(void)
 {
-	rte_spinlock_lock(&graph_lock);
+	rte_spinlock_lock(graph_spinlock_get());
 }
 
 void
 graph_spinlock_unlock(void)
 {
-	rte_spinlock_unlock(&graph_lock);
+	rte_spinlock_unlock(graph_spinlock_get());
 }
 
 static int

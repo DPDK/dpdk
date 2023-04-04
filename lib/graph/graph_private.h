@@ -10,6 +10,7 @@
 
 #include <rte_common.h>
 #include <rte_eal.h>
+#include <rte_spinlock.h>
 
 #include "rte_graph.h"
 #include "rte_graph_worker.h"
@@ -148,20 +149,25 @@ STAILQ_HEAD(graph_head, graph);
  */
 struct graph_head *graph_list_head_get(void);
 
+rte_spinlock_t *
+graph_spinlock_get(void);
+
 /* Lock functions */
 /**
  * @internal
  *
  * Take a lock on the graph internal spin lock.
  */
-void graph_spinlock_lock(void);
+void graph_spinlock_lock(void)
+	__rte_exclusive_lock_function(graph_spinlock_get());
 
 /**
  * @internal
  *
  * Release a lock on the graph internal spin lock.
  */
-void graph_spinlock_unlock(void);
+void graph_spinlock_unlock(void)
+	__rte_unlock_function(graph_spinlock_get());
 
 /* Graph operations */
 /**
