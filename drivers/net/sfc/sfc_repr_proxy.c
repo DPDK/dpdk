@@ -51,15 +51,7 @@ sfc_get_adapter_by_pf_port_id(uint16_t pf_port_id)
 	dev = &rte_eth_devices[pf_port_id];
 	sa = sfc_adapter_by_eth_dev(dev);
 
-	sfc_adapter_lock(sa);
-
 	return sa;
-}
-
-static void
-sfc_put_adapter(struct sfc_adapter *sa)
-{
-	sfc_adapter_unlock(sa);
 }
 
 static struct sfc_repr_proxy_port *
@@ -1289,6 +1281,7 @@ sfc_repr_proxy_add_port(uint16_t pf_port_id, uint16_t repr_id,
 	int rc;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1341,7 +1334,7 @@ sfc_repr_proxy_add_port(uint16_t pf_port_id, uint16_t repr_id,
 	}
 
 	sfc_log_init(sa, "done");
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return 0;
 
@@ -1352,7 +1345,7 @@ fail_mport_id:
 fail_alloc_port:
 fail_port_exists:
 	sfc_log_init(sa, "failed: %s", rte_strerror(rc));
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return rc;
 }
@@ -1366,6 +1359,7 @@ sfc_repr_proxy_del_port(uint16_t pf_port_id, uint16_t repr_id)
 	int rc;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1393,14 +1387,14 @@ sfc_repr_proxy_del_port(uint16_t pf_port_id, uint16_t repr_id)
 
 	sfc_log_init(sa, "done");
 
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return 0;
 
 fail_port_remove:
 fail_no_port:
 	sfc_log_init(sa, "failed: %s", rte_strerror(rc));
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return rc;
 }
@@ -1416,6 +1410,7 @@ sfc_repr_proxy_add_rxq(uint16_t pf_port_id, uint16_t repr_id,
 	struct sfc_adapter *sa;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1423,14 +1418,14 @@ sfc_repr_proxy_add_rxq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return ENOENT;
 	}
 
 	rxq = &port->rxq[queue_id];
 	if (rp->dp_rxq[queue_id].mp != NULL && rp->dp_rxq[queue_id].mp != mp) {
 		sfc_err(sa, "multiple mempools per queue are not supported");
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return ENOTSUP;
 	}
 
@@ -1440,7 +1435,7 @@ sfc_repr_proxy_add_rxq(uint16_t pf_port_id, uint16_t repr_id,
 	rp->dp_rxq[queue_id].ref_count++;
 
 	sfc_log_init(sa, "done");
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return 0;
 }
@@ -1455,6 +1450,7 @@ sfc_repr_proxy_del_rxq(uint16_t pf_port_id, uint16_t repr_id,
 	struct sfc_adapter *sa;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1462,7 +1458,7 @@ sfc_repr_proxy_del_rxq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return;
 	}
 
@@ -1475,7 +1471,7 @@ sfc_repr_proxy_del_rxq(uint16_t pf_port_id, uint16_t repr_id,
 		rp->dp_rxq[queue_id].mp = NULL;
 
 	sfc_log_init(sa, "done");
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 }
 
 int
@@ -1489,6 +1485,7 @@ sfc_repr_proxy_add_txq(uint16_t pf_port_id, uint16_t repr_id,
 	struct sfc_adapter *sa;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1496,7 +1493,7 @@ sfc_repr_proxy_add_txq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return ENOENT;
 	}
 
@@ -1507,7 +1504,7 @@ sfc_repr_proxy_add_txq(uint16_t pf_port_id, uint16_t repr_id,
 	*egress_mport = port->egress_mport;
 
 	sfc_log_init(sa, "done");
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return 0;
 }
@@ -1522,6 +1519,7 @@ sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
 	struct sfc_adapter *sa;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1529,7 +1527,7 @@ sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return;
 	}
 
@@ -1538,7 +1536,7 @@ sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
 	txq->ring = NULL;
 
 	sfc_log_init(sa, "done");
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 }
 
 int
@@ -1551,6 +1549,7 @@ sfc_repr_proxy_start_repr(uint16_t pf_port_id, uint16_t repr_id)
 	int rc;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1594,7 +1593,7 @@ sfc_repr_proxy_start_repr(uint16_t pf_port_id, uint16_t repr_id)
 	}
 
 	sfc_log_init(sa, "done");
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return 0;
 
@@ -1606,7 +1605,7 @@ fail_already_started:
 fail_not_found:
 	sfc_err(sa, "failed to start repr %u proxy port: %s", repr_id,
 		rte_strerror(rc));
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return rc;
 }
@@ -1621,6 +1620,7 @@ sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id)
 	int rc;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	sfc_log_init(sa, "entry");
@@ -1628,14 +1628,14 @@ sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id)
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return ENOENT;
 	}
 
 	if (!port->enabled) {
 		sfc_log_init(sa, "repr %u proxy port is not started - skip",
 			     repr_id);
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return 0;
 	}
 
@@ -1662,7 +1662,7 @@ sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id)
 			sfc_err(sa,
 				"failed to stop representor proxy TxQ %u: %s",
 				repr_id, rte_strerror(rc));
-			sfc_put_adapter(sa);
+			sfc_adapter_unlock(sa);
 			return rc;
 		}
 	}
@@ -1670,7 +1670,7 @@ sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id)
 	port->enabled = false;
 
 	sfc_log_init(sa, "done");
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return 0;
 }
@@ -1685,13 +1685,14 @@ sfc_repr_proxy_repr_entity_mac_addr_set(uint16_t pf_port_id, uint16_t repr_id,
 	int rc;
 
 	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
 	rp = sfc_repr_proxy_by_adapter(sa);
 
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port (repr_id=%u)",
 			__func__, repr_id);
-		sfc_put_adapter(sa);
+		sfc_adapter_unlock(sa);
 		return ENOENT;
 	}
 
@@ -1703,7 +1704,7 @@ sfc_repr_proxy_repr_entity_mac_addr_set(uint16_t pf_port_id, uint16_t repr_id,
 			__func__, repr_id, rte_strerror(rc));
 	}
 
-	sfc_put_adapter(sa);
+	sfc_adapter_unlock(sa);
 
 	return rc;
 }
