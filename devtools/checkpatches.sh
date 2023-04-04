@@ -119,6 +119,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# refrain from using compiler __atomic_{add,and,nand,or,sub,xor}_fetch()
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="__atomic_(add|and|nand|or|sub|xor)_fetch\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __atomic_op_fetch, prefer __atomic_fetch_op' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# forbid use of __reserved which is a reserved keyword in Windows system headers
 	awk -v FOLDERS="lib drivers app examples" \
 		-v EXPRESSIONS='\\<__reserved\\>' \
