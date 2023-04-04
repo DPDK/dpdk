@@ -2257,6 +2257,7 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 	struct rte_eth_link new_link;
 	int ret;
 
+	memset(&new_link, 0, sizeof(new_link));
 	/* When port is stopped, report link down. */
 	if (eth_dev->data->dev_started == 0) {
 		new_link.link_autoneg = mac->link_autoneg;
@@ -2280,7 +2281,6 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 		rte_delay_ms(HNS3_LINK_CHECK_INTERVAL);
 	} while (retry_cnt--);
 
-	memset(&new_link, 0, sizeof(new_link));
 	hns3_setup_linkstatus(eth_dev, &new_link);
 
 out:
