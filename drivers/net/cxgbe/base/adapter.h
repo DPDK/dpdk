@@ -351,28 +351,19 @@ struct adapter {
  * t4_os_rwlock_init - initialize rwlock
  * @lock: the rwlock
  */
-static inline void t4_os_rwlock_init(rte_rwlock_t *lock)
-{
-	rte_rwlock_init(lock);
-}
+#define t4_os_rwlock_init(lock) rte_rwlock_init(lock)
 
 /**
  * t4_os_write_lock - get a write lock
  * @lock: the rwlock
  */
-static inline void t4_os_write_lock(rte_rwlock_t *lock)
-{
-	rte_rwlock_write_lock(lock);
-}
+#define t4_os_write_lock(lock) rte_rwlock_write_lock(lock)
 
 /**
  * t4_os_write_unlock - unlock a write lock
  * @lock: the rwlock
  */
-static inline void t4_os_write_unlock(rte_rwlock_t *lock)
-{
-	rte_rwlock_write_unlock(lock);
-}
+#define t4_os_write_unlock(lock) rte_rwlock_write_unlock(lock)
 
 /**
  * ethdev2pinfo - return the port_info structure associated with a rte_eth_dev
@@ -678,37 +669,25 @@ static inline void t4_os_set_hw_addr(struct adapter *adapter, int port_idx,
  * t4_os_lock_init - initialize spinlock
  * @lock: the spinlock
  */
-static inline void t4_os_lock_init(rte_spinlock_t *lock)
-{
-	rte_spinlock_init(lock);
-}
+#define t4_os_lock_init(lock) rte_spinlock_init(lock)
 
 /**
  * t4_os_lock - spin until lock is acquired
  * @lock: the spinlock
  */
-static inline void t4_os_lock(rte_spinlock_t *lock)
-{
-	rte_spinlock_lock(lock);
-}
+#define t4_os_lock(lock) rte_spinlock_lock(lock)
 
 /**
  * t4_os_unlock - unlock a spinlock
  * @lock: the spinlock
  */
-static inline void t4_os_unlock(rte_spinlock_t *lock)
-{
-	rte_spinlock_unlock(lock);
-}
+#define t4_os_unlock(lock) rte_spinlock_unlock(lock)
 
 /**
  * t4_os_trylock - try to get a lock
  * @lock: the spinlock
  */
-static inline int t4_os_trylock(rte_spinlock_t *lock)
-{
-	return rte_spinlock_trylock(lock);
-}
+#define t4_os_trylock(lock) rte_spinlock_trylock(lock)
 
 /**
  * t4_os_init_list_head - initialize
