@@ -469,6 +469,10 @@ INTERNAL {
 	rte_intr_vec_list_free;
 	rte_intr_vec_list_index_get;
 	rte_intr_vec_list_index_set;
+	rte_mcfg_mem_get_lock;
+	rte_mcfg_mempool_get_lock;
+	rte_mcfg_tailq_get_lock;
+	rte_mcfg_timer_get_lock;
 	rte_mem_lock;
 	rte_mem_map;
 	rte_mem_page_size;

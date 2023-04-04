@@ -69,102 +69,112 @@ eal_mcfg_update_from_internal(void)
 	mcfg->version = RTE_VERSION;
 }
 
+rte_rwlock_t *
+rte_mcfg_mem_get_lock(void)
+{
+	return &rte_eal_get_configuration()->mem_config->memory_hotplug_lock;
+}
+
 void
 rte_mcfg_mem_read_lock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	rte_rwlock_read_lock(rte_mcfg_mem_get_lock());
 }
 
 void
 rte_mcfg_mem_read_unlock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+	rte_rwlock_read_unlock(rte_mcfg_mem_get_lock());
 }
 
 void
 rte_mcfg_mem_write_lock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+	rte_rwlock_write_lock(rte_mcfg_mem_get_lock());
 }
 
 void
 rte_mcfg_mem_write_unlock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+	rte_rwlock_write_unlock(rte_mcfg_mem_get_lock());
+}
+
+rte_rwlock_t *
+rte_mcfg_tailq_get_lock(void)
+{
+	return &rte_eal_get_configuration()->mem_config->qlock;
 }
 
 void
 rte_mcfg_tailq_read_lock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_read_lock(&mcfg->qlock);
+	rte_rwlock_read_lock(rte_mcfg_tailq_get_lock());
 }
 
 void
 rte_mcfg_tailq_read_unlock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_read_unlock(&mcfg->qlock);
+	rte_rwlock_read_unlock(rte_mcfg_tailq_get_lock());
 }
 
 void
 rte_mcfg_tailq_write_lock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_write_lock(&mcfg->qlock);
+	rte_rwlock_write_lock(rte_mcfg_tailq_get_lock());
 }
 
 void
 rte_mcfg_tailq_write_unlock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_write_unlock(&mcfg->qlock);
+	rte_rwlock_write_unlock(rte_mcfg_tailq_get_lock());
+}
+
+rte_rwlock_t *
+rte_mcfg_mempool_get_lock(void)
+{
+	return &rte_eal_get_configuration()->mem_config->mplock;
 }
 
 void
 rte_mcfg_mempool_read_lock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_read_lock(&mcfg->mplock);
+	rte_rwlock_read_lock(rte_mcfg_mempool_get_lock());
 }
 
 void
 rte_mcfg_mempool_read_unlock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_read_unlock(&mcfg->mplock);
+	rte_rwlock_read_unlock(rte_mcfg_mempool_get_lock());
 }
 
 void
 rte_mcfg_mempool_write_lock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_write_lock(&mcfg->mplock);
+	rte_rwlock_write_lock(rte_mcfg_mempool_get_lock());
 }
 
 void
 rte_mcfg_mempool_write_unlock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_rwlock_write_unlock(&mcfg->mplock);
+	rte_rwlock_write_unlock(rte_mcfg_mempool_get_lock());
+}
+
+rte_spinlock_t *
+rte_mcfg_timer_get_lock(void)
+{
+	return &rte_eal_get_configuration()->mem_config->tlock;
 }
 
 void
 rte_mcfg_timer_lock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_spinlock_lock(&mcfg->tlock);
+	rte_spinlock_lock(rte_mcfg_timer_get_lock());
 }
 
 void
 rte_mcfg_timer_unlock(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	rte_spinlock_unlock(&mcfg->tlock);
+	rte_spinlock_unlock(rte_mcfg_timer_get_lock());
 }
 
 bool
