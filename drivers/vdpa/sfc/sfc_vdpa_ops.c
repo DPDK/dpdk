@@ -577,7 +577,7 @@ sfc_vdpa_notify_ctrl(void *arg)
 	if (ops_data == NULL)
 		return NULL;
 
-	sfc_vdpa_adapter_lock(ops_data->dev_handle);
+	sfc_vdpa_adapter_lock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
 	vid = ops_data->vid;
 
@@ -586,7 +586,7 @@ sfc_vdpa_notify_ctrl(void *arg)
 			      "vDPA (%s): Notifier could not get configured",
 			      ops_data->vdpa_dev->device->name);
 
-	sfc_vdpa_adapter_unlock(ops_data->dev_handle);
+	sfc_vdpa_adapter_unlock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
 	return NULL;
 }
@@ -637,7 +637,7 @@ sfc_vdpa_dev_config(int vid)
 
 	ops_data->vid = vid;
 
-	sfc_vdpa_adapter_lock(ops_data->dev_handle);
+	sfc_vdpa_adapter_lock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
 	sfc_vdpa_log_init(ops_data->dev_handle, "configuring");
 	rc = sfc_vdpa_configure(ops_data);
@@ -653,7 +653,7 @@ sfc_vdpa_dev_config(int vid)
 	if (rc != 0)
 		goto fail_vdpa_notify;
 
-	sfc_vdpa_adapter_unlock(ops_data->dev_handle);
+	sfc_vdpa_adapter_unlock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
 	sfc_vdpa_log_init(ops_data->dev_handle, "done");
 
@@ -666,7 +666,7 @@ fail_vdpa_start:
 	sfc_vdpa_close(ops_data);
 
 fail_vdpa_config:
-	sfc_vdpa_adapter_unlock(ops_data->dev_handle);
+	sfc_vdpa_adapter_unlock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
 	return -1;
 }
@@ -688,7 +688,7 @@ sfc_vdpa_dev_close(int vid)
 		return -1;
 	}
 
-	sfc_vdpa_adapter_lock(ops_data->dev_handle);
+	sfc_vdpa_adapter_lock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 	if (ops_data->is_notify_thread_started == true) {
 		void *status;
 		ret = pthread_cancel(ops_data->notify_tid);
@@ -710,7 +710,7 @@ sfc_vdpa_dev_close(int vid)
 	sfc_vdpa_stop(ops_data);
 	sfc_vdpa_close(ops_data);
 
-	sfc_vdpa_adapter_unlock(ops_data->dev_handle);
+	sfc_vdpa_adapter_unlock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
 	return 0;
 }
