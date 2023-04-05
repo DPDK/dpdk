@@ -129,7 +129,7 @@ test_string_char_escaping(void)
 {
 	static const char str[] = "A string across\ntwo lines and \"with quotes\"!";
 	const char *expected = "\"A string across\\ntwo lines and \\\"with quotes\\\"!\"";
-	char buf[sizeof(str) + 10];
+	char buf[sizeof(str) + 10] = "";
 	int used = 0;
 
 	used = rte_tel_json_str(buf, sizeof(buf), used, str);

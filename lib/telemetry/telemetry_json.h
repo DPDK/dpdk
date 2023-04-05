@@ -134,13 +134,28 @@ __json_format_str_to_buf(char *buf, const int len,
 static inline int
 __json_format_str(char *buf, const int len, const char *prefix, const char *str, const char *suffix)
 {
-	char tmp[len];
 	int ret;
+	char saved[4] = "";
+	char *tmp;
+
+	if (strnlen(buf, sizeof(saved)) < sizeof(saved)) {
+		/* we have only a few bytes in buffer, so save them off to restore on error*/
+		strcpy(saved, buf);
+		ret = __json_format_str_to_buf(buf, len, prefix, str, suffix);
+		if (ret == 0)
+			strcpy(buf, saved); /* restore */
+		return ret;
+	}
+
+	tmp = malloc(len);
+	if (tmp == NULL)
+		return 0;
 
 	ret = __json_format_str_to_buf(tmp, len, prefix, str, suffix);
 	if (ret > 0)
-		strcpy(buf, tmp);
+		strcpy(buf, saved);
 
+	free(tmp);
 	return ret;
 }
 
