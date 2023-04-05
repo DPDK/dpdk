@@ -84,44 +84,44 @@ static const char control_chars[0x20] = {
  * directly, but returns 0 on overflow. Otherwise returns number of chars written to buffer.
  */
 static inline int
-__json_format_str_to_buf(char *tmp, const int len,
+__json_format_str_to_buf(char *buf, const int len,
 		const char *prefix, const char *str, const char *suffix)
 {
-	int tmpidx = 0;
+	int bufidx = 0;
 
-	while (*prefix != '\0' && tmpidx < len)
-		tmp[tmpidx++] = *prefix++;
-	if (tmpidx >= len)
+	while (*prefix != '\0' && bufidx < len)
+		buf[bufidx++] = *prefix++;
+	if (bufidx >= len)
 		return 0;
 
 	while (*str != '\0') {
 		if (*str < (int)RTE_DIM(control_chars)) {
 			int idx = *str;  /* compilers don't like char type as index */
 			if (control_chars[idx] != 0) {
-				tmp[tmpidx++] = '\\';
-				tmp[tmpidx++] = control_chars[idx];
+				buf[bufidx++] = '\\';
+				buf[bufidx++] = control_chars[idx];
 			}
 		} else if (*str == '"' || *str == '\\') {
-			tmp[tmpidx++] = '\\';
-			tmp[tmpidx++] = *str;
+			buf[bufidx++] = '\\';
+			buf[bufidx++] = *str;
 		} else
-			tmp[tmpidx++] = *str;
+			buf[bufidx++] = *str;
 		/* we always need space for (at minimum) closing quote and null character.
 		 * Ensuring at least two free characters also means we can always take an
 		 * escaped character like "\n" without overflowing
 		 */
-		if (tmpidx > len - 2)
+		if (bufidx > len - 2)
 			return 0;
 		str++;
 	}
 
-	while (*suffix != '\0' && tmpidx < len)
-		tmp[tmpidx++] = *suffix++;
-	if (tmpidx >= len)
+	while (*suffix != '\0' && bufidx < len)
+		buf[bufidx++] = *suffix++;
+	if (bufidx >= len)
 		return 0;
 
-	tmp[tmpidx] = '\0';
-	return tmpidx;
+	buf[bufidx] = '\0';
+	return bufidx;
 }
 
 /**
