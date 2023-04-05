@@ -12368,6 +12368,85 @@ test_stats(void)
 	return TEST_SUCCESS;
 }
 
+static int
+test_device_reconfigure(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint16_t orig_nb_qps = ts_params->conf.nb_queue_pairs;
+	struct rte_cryptodev_qp_conf qp_conf = {
+		.nb_descriptors = MAX_NUM_OPS_INFLIGHT,
+		.mp_session = ts_params->session_mpool
+	};
+	uint16_t qp_id, dev_id, num_devs = 0;
+
+	TEST_ASSERT((num_devs = rte_cryptodev_count()) >= 1,
+			"Need at least %d devices for test", 1);
+
+	dev_id = ts_params->valid_devs[0];
+
+	/* Stop the device in case it's started so it can be configured */
+	rte_cryptodev_stop(dev_id);
+
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id, &ts_params->conf),
+			"Failed test for rte_cryptodev_configure: "
+			"dev_num %u", dev_id);
+
+	/* Reconfigure with same configure params */
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id, &ts_params->conf),
+			"Failed test for rte_cryptodev_configure: "
+			"dev_num %u", dev_id);
+
+	/* Reconfigure with just one queue pair */
+	ts_params->conf.nb_queue_pairs = 1;
+
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
+			&ts_params->conf),
+			"Failed to configure cryptodev: dev_id %u, qp_id %u",
+			ts_params->valid_devs[0], ts_params->conf.nb_queue_pairs);
+
+	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
+		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
+				ts_params->valid_devs[0], qp_id, &qp_conf,
+				rte_cryptodev_socket_id(
+						ts_params->valid_devs[0])),
+				"Failed test for "
+				"rte_cryptodev_queue_pair_setup: num_inflights "
+				"%u on qp %u on cryptodev %u",
+				qp_conf.nb_descriptors, qp_id,
+				ts_params->valid_devs[0]);
+	}
+
+	/* Reconfigure with max number of queue pairs */
+	ts_params->conf.nb_queue_pairs = orig_nb_qps;
+
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
+			&ts_params->conf),
+			"Failed to configure cryptodev: dev_id %u, qp_id %u",
+			ts_params->valid_devs[0], ts_params->conf.nb_queue_pairs);
+
+	qp_conf.mp_session = ts_params->session_mpool;
+
+	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
+		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
+				ts_params->valid_devs[0], qp_id, &qp_conf,
+				rte_cryptodev_socket_id(
+						ts_params->valid_devs[0])),
+				"Failed test for "
+				"rte_cryptodev_queue_pair_setup: num_inflights "
+				"%u on qp %u on cryptodev %u",
+				qp_conf.nb_descriptors, qp_id,
+				ts_params->valid_devs[0]);
+	}
+
+	/* Start the device */
+	TEST_ASSERT_SUCCESS(rte_cryptodev_start(ts_params->valid_devs[0]),
+			"Failed to start cryptodev %u",
+			ts_params->valid_devs[0]);
+
+	/* Test expected values */
+	return test_AES_CBC_HMAC_SHA1_encrypt_digest();
+}
+
 static int MD5_HMAC_create_session(struct crypto_testsuite_params *ts_params,
 				   struct crypto_unittest_params *ut_params,
 				   enum rte_crypto_auth_operation op,
@@ -16022,6 +16101,8 @@ static struct unit_test_suite cryptodev_gen_testsuite  = {
 	.suite_name = "Crypto General Unit Test Suite",
 	.setup = crypto_gen_testsuite_setup,
 	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_device_reconfigure),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_dev_id),
 		TEST_CASE_ST(ut_setup, ut_teardown,
