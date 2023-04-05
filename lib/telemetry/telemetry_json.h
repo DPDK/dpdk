@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <rte_common.h>
 #include <rte_telemetry.h>
 
@@ -30,17 +31,44 @@ __rte_format_printf(3, 4)
 static inline int
 __json_snprintf(char *buf, const int len, const char *format, ...)
 {
-	char tmp[len];
 	va_list ap;
+	char tmp[4];
+	char *newbuf;
 	int ret;
 
+	if (len == 0)
+		return 0;
+
+	/* to ensure unmodified if we overflow, we save off any values currently in buf
+	 * before we printf, if they are short enough. We restore them on error.
+	 */
+	if (strnlen(buf, sizeof(tmp)) < sizeof(tmp)) {
+		strcpy(tmp, buf);  /* strcpy is safe as we know the length */
+		va_start(ap, format);
+		ret = vsnprintf(buf, len, format, ap);
+		va_end(ap);
+		if (ret > 0 && ret < len)
+			return ret;
+		strcpy(buf, tmp);  /* restore on error */
+		return 0;
+	}
+
+	/* in normal operations should never hit this, but can do if buffer is
+	 * incorrectly initialized e.g. in unit test cases
+	 */
+	newbuf = malloc(len);
+	if (newbuf == NULL)
+		return 0;
+
 	va_start(ap, format);
-	ret = vsnprintf(tmp, sizeof(tmp), format, ap);
+	ret = vsnprintf(newbuf, len, format, ap);
 	va_end(ap);
-	if (ret > 0 && ret < (int)sizeof(tmp) && ret < len) {
-		strcpy(buf, tmp);
+	if (ret > 0 && ret < len) {
+		strcpy(buf, newbuf);
+		free(newbuf);
 		return ret;
 	}
+	free(newbuf);
 	return 0; /* nothing written or modified */
 }
 
