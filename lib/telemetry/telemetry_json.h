@@ -80,15 +80,13 @@ static const char control_chars[0x20] = {
 
 /**
  * @internal
- * This function acts the same as __json_snprintf(buf, len, "%s%s%s", prefix, str, suffix)
- * except that it does proper escaping of "str" as necessary. Prefix and suffix should be compile-
- * time constants, or values not needing escaping.
- * Drops any invalid characters we don't support
+ * Function that does the actual printing, used by __json_format_str. Modifies buffer
+ * directly, but returns 0 on overflow. Otherwise returns number of chars written to buffer.
  */
 static inline int
-__json_format_str(char *buf, const int len, const char *prefix, const char *str, const char *suffix)
+__json_format_str_to_buf(char *tmp, const int len,
+		const char *prefix, const char *str, const char *suffix)
 {
-	char tmp[len];
 	int tmpidx = 0;
 
 	while (*prefix != '\0' && tmpidx < len)
@@ -123,9 +121,27 @@ __json_format_str(char *buf, const int len, const char *prefix, const char *str,
 		return 0;
 
 	tmp[tmpidx] = '\0';
-
-	strcpy(buf, tmp);
 	return tmpidx;
+}
+
+/**
+ * @internal
+ * This function acts the same as __json_snprintf(buf, len, "%s%s%s", prefix, str, suffix)
+ * except that it does proper escaping of "str" as necessary. Prefix and suffix should be compile-
+ * time constants, or values not needing escaping.
+ * Drops any invalid characters we don't support
+ */
+static inline int
+__json_format_str(char *buf, const int len, const char *prefix, const char *str, const char *suffix)
+{
+	char tmp[len];
+	int ret;
+
+	ret = __json_format_str_to_buf(tmp, len, prefix, str, suffix);
+	if (ret > 0)
+		strcpy(buf, tmp);
+
+	return ret;
 }
 
 /* Copies an empty array into the provided buffer. */
