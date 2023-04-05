@@ -208,7 +208,11 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 				break;
 			case RTE_TEL_CONTAINER:
 			{
-				char temp[buf_len];
+				char *temp = malloc(buf_len);
+				if (temp == NULL)
+					break;
+				*temp = '\0';  /* ensure valid string */
+
 				const struct container *cont =
 						&v->value.container;
 				if (container_to_json(cont->data,
@@ -219,6 +223,7 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 							v->name, temp);
 				if (!cont->keep)
 					rte_tel_data_free(cont->data);
+				free(temp);
 				break;
 			}
 			}
@@ -275,7 +280,11 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 				break;
 			case RTE_TEL_CONTAINER:
 			{
-				char temp[buf_len];
+				char *temp = malloc(buf_len);
+				if (temp == NULL)
+					break;
+				*temp = '\0';  /* ensure valid string */
+
 				const struct container *cont =
 						&v->value.container;
 				if (container_to_json(cont->data,
@@ -286,6 +295,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 							v->name, temp);
 				if (!cont->keep)
 					rte_tel_data_free(cont->data);
+				free(temp);
 			}
 			}
 		}
@@ -311,7 +321,11 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 						buf_len, used,
 						d->data.array[i].uval);
 			else if (d->type == TEL_ARRAY_CONTAINER) {
-				char temp[buf_len];
+				char *temp = malloc(buf_len);
+				if (temp == NULL)
+					break;
+				*temp = '\0';  /* ensure valid string */
+
 				const struct container *rec_data =
 						&d->data.array[i].container;
 				if (container_to_json(rec_data->data,
@@ -321,6 +335,7 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 							buf_len, used, temp);
 				if (!rec_data->keep)
 					rte_tel_data_free(rec_data->data);
+				free(temp);
 			}
 		break;
 	}
