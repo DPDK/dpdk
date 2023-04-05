@@ -2,6 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -152,17 +153,14 @@ rte_tel_data_add_array_uint_hex(struct rte_tel_data *d, uint64_t val,
 static bool
 valid_name(const char *name)
 {
-	char allowed[128] = {
-			['0' ... '9'] = 1,
-			['A' ... 'Z'] = 1,
-			['a' ... 'z'] = 1,
-			['_'] = 1,
-			['/'] = 1,
-	};
-	while (*name != '\0') {
+	/* non-alphanumeric characters allowed in names */
+	static const char allowed[128] = { ['_'] = 1, ['/'] = 1 };
+
+	for (; *name != '\0'; name++) {
+		if (isalnum(*name))
+			continue;
 		if ((size_t)*name >= RTE_DIM(allowed) || allowed[(int)*name] == 0)
 			return false;
-		name++;
 	}
 	return true;
 }
