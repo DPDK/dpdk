@@ -1065,6 +1065,10 @@ check_cipher_buffer_length(struct cperf_options *options)
 		else
 			buffer_size = options->buffer_size_list[0];
 
+		if ((options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE) &&
+				(options->op_type == CPERF_AUTH_THEN_CIPHER))
+			buffer_size += options->digest_sz;
+
 		while (buffer_size <= options->max_buffer_size) {
 			if ((buffer_size % AES_BLOCK_SIZE) != 0) {
 				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
@@ -1090,6 +1094,10 @@ check_cipher_buffer_length(struct cperf_options *options)
 			buffer_size = options->min_buffer_size;
 		else
 			buffer_size = options->buffer_size_list[0];
+
+		if ((options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE) &&
+				(options->op_type == CPERF_AUTH_THEN_CIPHER))
+			buffer_size += options->digest_sz;
 
 		while (buffer_size <= options->max_buffer_size) {
 			if ((buffer_size % DES_BLOCK_SIZE) != 0) {
