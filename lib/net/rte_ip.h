@@ -514,7 +514,7 @@ rte_ipv4_udptcp_cksum_verify(const struct rte_ipv4_hdr *ipv4_hdr,
  *   Return 0 if the checksum is correct, else -1.
  */
 __rte_experimental
-static inline uint16_t
+static inline int
 rte_ipv4_udptcp_cksum_mbuf_verify(const struct rte_mbuf *m,
 				  const struct rte_ipv4_hdr *ipv4_hdr,
 				  uint16_t l4_off)
