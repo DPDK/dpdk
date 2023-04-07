@@ -3466,30 +3466,14 @@ rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 static int
 rxa_caps_check(struct event_eth_rx_adapter *rxa)
 {
-	uint16_t eth_dev_id;
-	uint32_t caps = 0;
-	int ret;
-
 	if (!rxa->nb_queues)
 		return -EINVAL;
 
-	/* The eth_dev used is always of same type.
-	 * Hence eth_dev_id is taken from first entry of poll array.
-	 */
-	eth_dev_id = rxa->eth_rx_poll[0].eth_dev_id;
-	ret = rte_event_eth_rx_adapter_caps_get(rxa->eventdev_id,
-						eth_dev_id,
-						&caps);
-	if (ret) {
-		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8
-			"eth port %" PRIu16, rxa->eventdev_id, eth_dev_id);
-		return ret;
-	}
+	/* Check if there is at least one non-internal ethernet port. */
+	if (rxa->service_inited)
+		return 0;
 
-	if (caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT)
-		return -ENOTSUP;
-
-	return 0;
+	return -ENOTSUP;
 }
 
 int

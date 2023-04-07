@@ -1201,7 +1201,7 @@ adapter_intrq_instance_get(void)
 static int
 adapter_get_set_params(void)
 {
-	int err;
+	int err, rc;
 	struct rte_event_eth_rx_adapter_runtime_params in_params;
 	struct rte_event_eth_rx_adapter_runtime_params out_params;
 	struct rte_event_eth_rx_adapter_queue_conf queue_config = {0};
@@ -1230,6 +1230,10 @@ adapter_get_set_params(void)
 	/* Case 1: Get the default value of mbufs processed by Rx adapter */
 	err = rte_event_eth_rx_adapter_runtime_params_get(TEST_INST_ID,
 							  &out_params);
+	if (err == -ENOTSUP) {
+		rc = TEST_SKIPPED;
+		goto skip;
+	}
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
 	/* Case 2: Set max_nb_rx = 32 (=BATCH_SEIZE) */
@@ -1302,11 +1306,13 @@ adapter_get_set_params(void)
 		    "Expected %u got %u",
 		    in_params.max_nb_rx, out_params.max_nb_rx);
 
+	rc = TEST_SUCCESS;
+skip:
 	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
 						TEST_ETHDEV_ID, 0);
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
-	return TEST_SUCCESS;
+	return rc;
 }
 
 static struct unit_test_suite event_eth_rx_tests = {
