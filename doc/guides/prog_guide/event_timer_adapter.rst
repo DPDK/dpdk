@@ -247,9 +247,7 @@ Note that it is necessary to initialize the event timer state to
 RTE_EVENT_TIMER_NOT_ARMED.  Also note that we have saved a pointer to the
 ``conn`` object in the timer's event payload. This will allow us to locate
 the connection object again once we dequeue the timer expiry event from the
-event device later.  As a convenience, the application may specify no value for
-ev.event_ptr, and the adapter will by default set it to point at the event
-timer itself.
+event device later.
 
 Now we can arm the event timer with ``rte_event_timer_arm_burst()``:
 
