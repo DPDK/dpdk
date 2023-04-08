@@ -668,6 +668,7 @@ enum hns3_promisc_type {
 #define HNS3_NCSI_ERROR_REPORT_EN_B	1
 #define HNS3_FIRMWARE_PHY_DRIVER_EN_B	2
 
+#define HNS3_LLRS_FEC_EN_B		5
 #define HNS3_MAC_FC_AUTONEG_EN_B	6
 
 struct hns3_firmware_compat_cmd {
@@ -825,6 +826,7 @@ struct hns3_sfp_info_cmd {
 #define HNS3_MAC_FEC_OFF		0
 #define HNS3_MAC_FEC_BASER		1
 #define HNS3_MAC_FEC_RS			2
+#define HNS3_MAC_FEC_LLRS		3
 
 /* Configure FEC mode, opcode:0x031A */
 struct hns3_config_fec_cmd {

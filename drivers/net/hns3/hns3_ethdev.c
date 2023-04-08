@@ -47,11 +47,6 @@
 #define HNS3_RESET_WAIT_MS	100
 #define HNS3_RESET_WAIT_CNT	200
 
-/* FEC mode order defined in HNS3 hardware */
-#define HNS3_HW_FEC_MODE_NOFEC  0
-#define HNS3_HW_FEC_MODE_BASER  1
-#define HNS3_HW_FEC_MODE_RS     2
-
 enum hns3_evt_cause {
 	HNS3_VECTOR0_EVENT_RST,
 	HNS3_VECTOR0_EVENT_MBX,
@@ -91,7 +86,8 @@ static const struct rte_eth_fec_capa speed_fec_capa_tbl[] = {
 			      RTE_ETH_FEC_MODE_CAPA_MASK(RS) },
 
 	{ RTE_ETH_SPEED_NUM_200G, RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
-			      RTE_ETH_FEC_MODE_CAPA_MASK(RS) }
+			      RTE_ETH_FEC_MODE_CAPA_MASK(RS) |
+			      RTE_ETH_FEC_MODE_CAPA_MASK(LLRS) }
 };
 
 static enum hns3_reset_level hns3_get_reset_level(struct hns3_adapter *hns,
@@ -6032,14 +6028,17 @@ hns3_fec_get_internal(struct hns3_hw *hw, uint32_t *fec_capa)
 	 * to be converted.
 	 */
 	switch (resp->active_fec) {
-	case HNS3_HW_FEC_MODE_NOFEC:
+	case HNS3_MAC_FEC_OFF:
 		tmp_fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
 		break;
-	case HNS3_HW_FEC_MODE_BASER:
+	case HNS3_MAC_FEC_BASER:
 		tmp_fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
 		break;
-	case HNS3_HW_FEC_MODE_RS:
+	case HNS3_MAC_FEC_RS:
 		tmp_fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		break;
+	case HNS3_MAC_FEC_LLRS:
+		tmp_fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(LLRS);
 		break;
 	default:
 		tmp_fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
@@ -6080,6 +6079,10 @@ hns3_set_fec_hw(struct hns3_hw *hw, uint32_t mode)
 	case RTE_ETH_FEC_MODE_CAPA_MASK(RS):
 		hns3_set_field(req->fec_mode, HNS3_MAC_CFG_FEC_MODE_M,
 				HNS3_MAC_CFG_FEC_MODE_S, HNS3_MAC_FEC_RS);
+		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(LLRS):
+		hns3_set_field(req->fec_mode, HNS3_MAC_CFG_FEC_MODE_M,
+				HNS3_MAC_CFG_FEC_MODE_S, HNS3_MAC_FEC_LLRS);
 		break;
 	case RTE_ETH_FEC_MODE_CAPA_MASK(AUTO):
 		hns3_set_bit(req->fec_mode, HNS3_MAC_CFG_FEC_AUTO_EN_B, 1);

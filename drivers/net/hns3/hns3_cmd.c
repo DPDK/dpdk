@@ -666,6 +666,7 @@ hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
 	if (is_init) {
 		hns3_set_bit(compat, HNS3_LINK_EVENT_REPORT_EN_B, 1);
 		hns3_set_bit(compat, HNS3_NCSI_ERROR_REPORT_EN_B, 0);
+		hns3_set_bit(compat, HNS3_LLRS_FEC_EN_B, 1);
 		if (hns3_dev_get_support(hw, COPPER))
 			hns3_set_bit(compat, HNS3_FIRMWARE_PHY_DRIVER_EN_B, 1);
 		if (hns3_dev_get_support(hw, FC_AUTO))
