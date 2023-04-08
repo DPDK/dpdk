@@ -60,6 +60,13 @@ enum hns3_evt_cause {
 	HNS3_VECTOR0_EVENT_OTHER,
 };
 
+#define HNS3_SPEEDS_SUPP_FEC (RTE_ETH_LINK_SPEED_10G | \
+			      RTE_ETH_LINK_SPEED_25G | \
+			      RTE_ETH_LINK_SPEED_40G | \
+			      RTE_ETH_LINK_SPEED_50G | \
+			      RTE_ETH_LINK_SPEED_100G | \
+			      RTE_ETH_LINK_SPEED_200G)
+
 static const struct rte_eth_fec_capa speed_fec_capa_tbl[] = {
 	{ RTE_ETH_SPEED_NUM_10G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
@@ -5900,56 +5907,27 @@ hns3_reset_service(void *param)
 		hns3_msix_process(hns, reset_level);
 }
 
-static unsigned int
-hns3_get_speed_capa_num(uint16_t device_id)
+static uint32_t
+hns3_get_speed_fec_capa(struct rte_eth_fec_capa *speed_fec_capa,
+			uint32_t speed_capa)
 {
-	unsigned int num;
+	uint32_t speed_bit;
+	uint32_t num = 0;
+	uint32_t i;
 
-	switch (device_id) {
-	case HNS3_DEV_ID_25GE:
-	case HNS3_DEV_ID_25GE_RDMA:
-		num = 2;
-		break;
-	case HNS3_DEV_ID_100G_RDMA_MACSEC:
-	case HNS3_DEV_ID_200G_RDMA:
-		num = 1;
-		break;
-	default:
-		num = 0;
-		break;
+	for (i = 0; i < RTE_DIM(speed_fec_capa_tbl); i++) {
+		speed_bit =
+			rte_eth_speed_bitflag(speed_fec_capa_tbl[i].speed,
+					      RTE_ETH_LINK_FULL_DUPLEX);
+		if ((speed_capa & speed_bit) == 0)
+			continue;
+
+		speed_fec_capa[num].speed = speed_fec_capa_tbl[i].speed;
+		speed_fec_capa[num].capa = speed_fec_capa_tbl[i].capa;
+		num++;
 	}
 
 	return num;
-}
-
-static int
-hns3_get_speed_fec_capa(struct rte_eth_fec_capa *speed_fec_capa,
-			uint16_t device_id)
-{
-	switch (device_id) {
-	case HNS3_DEV_ID_25GE:
-	/* fallthrough */
-	case HNS3_DEV_ID_25GE_RDMA:
-		speed_fec_capa[0].speed = speed_fec_capa_tbl[1].speed;
-		speed_fec_capa[0].capa = speed_fec_capa_tbl[1].capa;
-
-		/* In HNS3 device, the 25G NIC is compatible with 10G rate */
-		speed_fec_capa[1].speed = speed_fec_capa_tbl[0].speed;
-		speed_fec_capa[1].capa = speed_fec_capa_tbl[0].capa;
-		break;
-	case HNS3_DEV_ID_100G_RDMA_MACSEC:
-		speed_fec_capa[0].speed = speed_fec_capa_tbl[4].speed;
-		speed_fec_capa[0].capa = speed_fec_capa_tbl[4].capa;
-		break;
-	case HNS3_DEV_ID_200G_RDMA:
-		speed_fec_capa[0].speed = speed_fec_capa_tbl[5].speed;
-		speed_fec_capa[0].capa = speed_fec_capa_tbl[5].capa;
-		break;
-	default:
-		return -ENOTSUP;
-	}
-
-	return 0;
 }
 
 static int
@@ -5958,27 +5936,27 @@ hns3_fec_get_capability(struct rte_eth_dev *dev,
 			unsigned int num)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	uint16_t device_id = pci_dev->id.device_id;
-	unsigned int capa_num;
-	int ret;
+	unsigned int speed_num;
+	uint32_t speed_capa;
 
-	capa_num = hns3_get_speed_capa_num(device_id);
-	if (capa_num == 0) {
-		hns3_err(hw, "device(0x%x) is not supported by hns3 PMD",
-			 device_id);
+	speed_capa = hns3_get_speed_capa(hw);
+	/* speed_num counts number of speed capabilities */
+	speed_num = __builtin_popcount(speed_capa & HNS3_SPEEDS_SUPP_FEC);
+	if (speed_num == 0)
 		return -ENOTSUP;
+
+	if (speed_fec_capa == NULL)
+		return speed_num;
+
+	if (num < speed_num) {
+		hns3_err(hw, "not enough array size(%u) to store FEC capabilities, should not be less than %u",
+			 num, speed_num);
+		return -EINVAL;
 	}
 
-	if (speed_fec_capa == NULL || num < capa_num)
-		return capa_num;
-
-	ret = hns3_get_speed_fec_capa(speed_fec_capa, device_id);
-	if (ret)
-		return -ENOTSUP;
-
-	return capa_num;
+	return hns3_get_speed_fec_capa(speed_fec_capa, speed_capa);
 }
+
 
 static int
 get_current_fec_auto_state(struct hns3_hw *hw, uint8_t *state)
@@ -6117,52 +6095,35 @@ hns3_set_fec_hw(struct hns3_hw *hw, uint32_t mode)
 }
 
 static uint32_t
-get_current_speed_fec_cap(struct hns3_hw *hw, struct rte_eth_fec_capa *fec_capa)
+hns3_get_current_speed_fec_cap(struct hns3_mac *mac)
 {
-	struct hns3_mac *mac = &hw->mac;
-	uint32_t cur_capa;
+	uint32_t i;
 
-	switch (mac->link_speed) {
-	case RTE_ETH_SPEED_NUM_10G:
-		cur_capa = fec_capa[1].capa;
-		break;
-	case RTE_ETH_SPEED_NUM_25G:
-	case RTE_ETH_SPEED_NUM_100G:
-	case RTE_ETH_SPEED_NUM_200G:
-		cur_capa = fec_capa[0].capa;
-		break;
-	default:
-		cur_capa = 0;
-		break;
+	for (i = 0; i < RTE_DIM(speed_fec_capa_tbl); i++) {
+		if (mac->link_speed == speed_fec_capa_tbl[i].speed)
+			return speed_fec_capa_tbl[i].capa;
 	}
 
-	return cur_capa;
+	return 0;
 }
 
 static int
 hns3_fec_mode_valid(struct rte_eth_dev *dev, uint32_t mode)
 {
-#define FEC_CAPA_NUM 2
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
-	struct rte_eth_fec_capa fec_capa[FEC_CAPA_NUM];
-	uint32_t num = FEC_CAPA_NUM;
 	uint32_t cur_capa;
-	int ret;
 
 	if (__builtin_popcount(mode) != 1) {
 		hns3_err(hw, "FEC mode(0x%x) should be only one bit set", mode);
 		return -EINVAL;
 	}
 
-	ret = hns3_fec_get_capability(dev, fec_capa, num);
-	if (ret < 0)
-		return ret;
 	/*
 	 * Check whether the configured mode is within the FEC capability.
 	 * If not, the configured mode will not be supported.
 	 */
-	cur_capa = get_current_speed_fec_cap(hw, fec_capa);
+	cur_capa = hns3_get_current_speed_fec_cap(&hw->mac);
 	if ((cur_capa & mode) == 0) {
 		hns3_err(hw, "unsupported FEC mode(0x%x)", mode);
 		return -EINVAL;
