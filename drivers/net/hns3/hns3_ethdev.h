@@ -214,6 +214,8 @@ struct hns3_mac {
 	uint32_t advertising;     /* advertised capability in the local part */
 	uint32_t lp_advertising; /* advertised capability in the link partner */
 	uint8_t support_autoneg;
+	/* current supported fec modes. see HNS3_FIBER_FEC_XXX_BIT */
+	uint32_t fec_capa;
 };
 
 struct hns3_fake_queue_data {

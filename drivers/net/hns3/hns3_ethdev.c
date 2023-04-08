@@ -4028,6 +4028,7 @@ hns3_get_sfp_info(struct hns3_hw *hw, struct hns3_mac *mac_info)
 		mac_info->support_autoneg = resp->autoneg_ability;
 		mac_info->link_autoneg = (resp->autoneg == 0) ? RTE_ETH_LINK_FIXED
 					: RTE_ETH_LINK_AUTONEG;
+		mac_info->fec_capa = resp->fec_ability;
 		local_pause = resp->pause_status & HNS3_FIBER_LOCAL_PAUSE_MASK;
 		lp_pause = (resp->pause_status & HNS3_FIBER_LP_PAUSE_MASK) >>
 						HNS3_FIBER_LP_PAUSE_S;
@@ -4117,6 +4118,7 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 		mac->supported_speed = mac_info.supported_speed;
 		mac->support_autoneg = mac_info.support_autoneg;
 		mac->link_autoneg = mac_info.link_autoneg;
+		mac->fec_capa = mac_info.fec_capa;
 		mac->advertising = mac_info.advertising;
 		mac->lp_advertising = mac_info.lp_advertising;
 
@@ -6098,9 +6100,36 @@ hns3_set_fec_hw(struct hns3_hw *hw, uint32_t mode)
 }
 
 static uint32_t
+hns3_parse_hw_fec_capa(uint8_t hw_fec_capa)
+{
+	const struct {
+		uint32_t hw_fec_capa;
+		uint32_t fec_capa;
+	} fec_capa_map[] = {
+		{ HNS3_FIBER_FEC_AUTO_BIT, RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) },
+		{ HNS3_FIBER_FEC_BASER_BIT, RTE_ETH_FEC_MODE_CAPA_MASK(BASER) },
+		{ HNS3_FIBER_FEC_RS_BIT, RTE_ETH_FEC_MODE_CAPA_MASK(RS) },
+		{ HNS3_FIBER_FEC_LLRS_BIT, RTE_ETH_FEC_MODE_CAPA_MASK(LLRS) },
+		{ HNS3_FIBER_FEC_NOFEC_BIT, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) },
+	};
+	uint32_t capa = 0;
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(fec_capa_map); i++) {
+		if ((hw_fec_capa & fec_capa_map[i].hw_fec_capa) != 0)
+			capa |= fec_capa_map[i].fec_capa;
+	}
+
+	return capa;
+}
+
+static uint32_t
 hns3_get_current_speed_fec_cap(struct hns3_mac *mac)
 {
 	uint32_t i;
+
+	if (mac->fec_capa != 0)
+		return hns3_parse_hw_fec_capa(mac->fec_capa);
 
 	for (i = 0; i < RTE_DIM(speed_fec_capa_tbl); i++) {
 		if (mac->link_speed == speed_fec_capa_tbl[i].speed)
