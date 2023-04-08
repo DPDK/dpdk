@@ -67,6 +67,10 @@ New Features
   to PCI bus so that PCI drivers can access PCI memory resources
   when they are not mapped to process address space.
 
+* **Added LLRS FEC mode in ethdev.**
+
+  Added LLRS algorithm to Forward Error Correction (FEC) modes.
+
 * **Added flow matching of Tx queue.**
 
   Added ``RTE_FLOW_ITEM_TYPE_TX_QUEUE`` rte_flow pattern

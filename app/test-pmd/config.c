@@ -170,6 +170,10 @@ static const struct {
 		.mode = RTE_ETH_FEC_RS,
 		.name = "rs",
 	},
+	{
+		.mode = RTE_ETH_FEC_LLRS,
+		.name = "llrs",
+	},
 };
 
 static const struct {

@@ -11973,6 +11973,9 @@ cmd_show_fec_mode_parsed(void *parsed_result,
 	case RTE_ETH_FEC_MODE_CAPA_MASK(RS):
 		strlcpy(buf, "rs", sizeof(buf));
 		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(LLRS):
+		strlcpy(buf, "llrs", sizeof(buf));
+		break;
 	default:
 		return;
 	}
@@ -12068,7 +12071,7 @@ cmd_set_port_fec_mode_parsed(
 static cmdline_parse_inst_t cmd_set_fec_mode = {
 	.f = cmd_set_port_fec_mode_parsed,
 	.data = NULL,
-	.help_str = "set port <port_id> fec_mode auto|off|rs|baser",
+	.help_str = "set port <port_id> fec_mode auto|off|rs|baser|llrs",
 	.tokens = {
 		(void *)&cmd_set_port_fec_mode_set,
 		(void *)&cmd_set_port_fec_mode_port,

@@ -1800,7 +1800,7 @@ Set fec mode
 
 Set fec mode for a specific port::
 
-  testpmd> set port (port_id) fec_mode auto|off|rs|baser
+  testpmd> set port (port_id) fec_mode auto|off|rs|baser|llrs
 
 Config Sample actions list
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

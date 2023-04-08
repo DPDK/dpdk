@@ -1916,6 +1916,7 @@ enum rte_eth_fec_mode {
 	RTE_ETH_FEC_AUTO,	    /**< FEC autonegotiation modes */
 	RTE_ETH_FEC_BASER,          /**< FEC using common algorithm */
 	RTE_ETH_FEC_RS,             /**< FEC using RS algorithm */
+	RTE_ETH_FEC_LLRS,           /**< FEC using LLRS algorithm */
 };
 
 /* Translate from FEC mode to FEC capa */
