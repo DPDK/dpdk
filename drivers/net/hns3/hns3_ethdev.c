@@ -6139,51 +6139,49 @@ get_current_speed_fec_cap(struct hns3_hw *hw, struct rte_eth_fec_capa *fec_capa)
 	return cur_capa;
 }
 
-static bool
-is_fec_mode_one_bit_set(uint32_t mode)
-{
-	int cnt = 0;
-	uint8_t i;
-
-	for (i = 0; i < sizeof(mode); i++)
-		if (mode >> i & 0x1)
-			cnt++;
-
-	return cnt == 1 ? true : false;
-}
-
 static int
-hns3_fec_set(struct rte_eth_dev *dev, uint32_t mode)
+hns3_fec_mode_valid(struct rte_eth_dev *dev, uint32_t mode)
 {
 #define FEC_CAPA_NUM 2
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
-	struct hns3_pf *pf = &hns->pf;
 	struct rte_eth_fec_capa fec_capa[FEC_CAPA_NUM];
-	uint32_t cur_capa;
 	uint32_t num = FEC_CAPA_NUM;
+	uint32_t cur_capa;
 	int ret;
+
+	if (__builtin_popcount(mode) != 1) {
+		hns3_err(hw, "FEC mode(0x%x) should be only one bit set", mode);
+		return -EINVAL;
+	}
 
 	ret = hns3_fec_get_capability(dev, fec_capa, num);
 	if (ret < 0)
 		return ret;
-
-	/* HNS3 PMD only support one bit set mode, e.g. 0x1, 0x4 */
-	if (!is_fec_mode_one_bit_set(mode)) {
-		hns3_err(hw, "FEC mode(0x%x) not supported in HNS3 PMD, "
-			     "FEC mode should be only one bit set", mode);
-		return -EINVAL;
-	}
-
 	/*
 	 * Check whether the configured mode is within the FEC capability.
 	 * If not, the configured mode will not be supported.
 	 */
 	cur_capa = get_current_speed_fec_cap(hw, fec_capa);
-	if (!(cur_capa & mode)) {
-		hns3_err(hw, "unsupported FEC mode = 0x%x", mode);
+	if ((cur_capa & mode) == 0) {
+		hns3_err(hw, "unsupported FEC mode(0x%x)", mode);
 		return -EINVAL;
 	}
+
+	return 0;
+}
+
+static int
+hns3_fec_set(struct rte_eth_dev *dev, uint32_t mode)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
+	struct hns3_pf *pf = &hns->pf;
+	int ret;
+
+	ret = hns3_fec_mode_valid(dev, mode);
+	if (ret != 0)
+		return ret;
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_set_fec_hw(hw, mode);
