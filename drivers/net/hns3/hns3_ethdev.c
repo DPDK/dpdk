@@ -83,8 +83,7 @@ static const struct rte_eth_fec_capa speed_fec_capa_tbl[] = {
 			      RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			      RTE_ETH_FEC_MODE_CAPA_MASK(RS) },
 
-	{ RTE_ETH_SPEED_NUM_200G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
-			      RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
+	{ RTE_ETH_SPEED_NUM_200G, RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			      RTE_ETH_FEC_MODE_CAPA_MASK(RS) }
 };
 
