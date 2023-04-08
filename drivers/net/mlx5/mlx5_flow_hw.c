@@ -4534,6 +4534,9 @@ error:
 			mlx5dr_action_template_destroy(at->tmpl);
 		mlx5_free(at);
 	}
+	rte_flow_error_set(error, rte_errno,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   "Failed to create action template");
 	return NULL;
 }
 
