@@ -827,7 +827,8 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 
 	/* Map the symbol table */
 	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_bar0",
-			app_fw_nic->total_phyports * 32768, &pf_dev->ctrl_area);
+			app_fw_nic->total_phyports * NFP_NET_CFG_BAR_SZ,
+			&pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _pf0_net_ctrl_bar");
 		ret = -EIO;

@@ -1108,7 +1108,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 
 	/* Map the PF ctrl bar */
 	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_bar0",
-			32768, &pf_dev->ctrl_area);
+			NFP_NET_CFG_BAR_SZ, &pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "Cloud not map the PF vNIC ctrl bar");
 		ret = -ENODEV;
@@ -1145,7 +1145,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 
 	/* Map the ctrl vNIC ctrl bar */
 	ctrl_hw->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_ctrl_bar",
-			32768, &ctrl_hw->ctrl_area);
+			NFP_NET_CFG_BAR_SZ, &ctrl_hw->ctrl_area);
 	if (ctrl_hw->ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "Cloud not map the ctrl vNIC ctrl bar");
 		ret = -ENODEV;

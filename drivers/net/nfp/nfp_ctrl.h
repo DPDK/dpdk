@@ -14,14 +14,9 @@
 /*
  * Configuration BAR size.
  *
- * The configuration BAR is 8K in size, but on the NFP6000, due to
- * THB-350, 32k needs to be reserved.
+ * On the NFP6000, due to THB-350, the configuration BAR is 32K in size.
  */
-#ifdef __NFP_IS_6000
 #define NFP_NET_CFG_BAR_SZ              (32 * 1024)
-#else
-#define NFP_NET_CFG_BAR_SZ              (8 * 1024)
-#endif
 
 /* Offset in Freelist buffer where packet starts on RX */
 #define NFP_NET_RX_OFFSET               32
