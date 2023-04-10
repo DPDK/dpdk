@@ -96,59 +96,7 @@ struct nfp_meta_parsed {
 /* Descriptor alignment */
 #define NFP_ALIGN_RING_DESC 128
 
-#define NFDK_TX_MAX_DATA_PER_HEAD       0x00001000
-#define NFDK_DESC_TX_DMA_LEN_HEAD       0x0fff
-#define NFDK_DESC_TX_TYPE_HEAD          0xf000
-#define NFDK_DESC_TX_DMA_LEN            0x3fff
-#define NFDK_TX_DESC_PER_SIMPLE_PKT     2
-#define NFDK_DESC_TX_TYPE_TSO           2
-#define NFDK_DESC_TX_TYPE_SIMPLE        8
-#define NFDK_DESC_TX_TYPE_GATHER        1
-#define NFDK_DESC_TX_EOP                RTE_BIT32(14)
-#define NFDK_DESC_TX_CHAIN_META         RTE_BIT32(3)
-#define NFDK_DESC_TX_ENCAP              RTE_BIT32(2)
-#define NFDK_DESC_TX_L4_CSUM            RTE_BIT32(1)
-#define NFDK_DESC_TX_L3_CSUM            RTE_BIT32(0)
-
-#define NFDK_TX_MAX_DATA_PER_DESC      0x00004000
-#define NFDK_TX_DESC_GATHER_MAX        17
 #define DIV_ROUND_UP(n, d)             (((n) + (d) - 1) / (d))
-#define NFDK_TX_DESC_BLOCK_SZ          256
-#define NFDK_TX_DESC_BLOCK_CNT         (NFDK_TX_DESC_BLOCK_SZ /         \
-					sizeof(struct nfp_net_nfdk_tx_desc))
-#define NFDK_TX_DESC_STOP_CNT          (NFDK_TX_DESC_BLOCK_CNT *        \
-					NFDK_TX_DESC_PER_SIMPLE_PKT)
-#define NFDK_TX_MAX_DATA_PER_BLOCK     0x00010000
-#define D_BLOCK_CPL(idx)               (NFDK_TX_DESC_BLOCK_CNT -        \
-					(idx) % NFDK_TX_DESC_BLOCK_CNT)
-#define D_IDX(ring, idx)               ((idx) & ((ring)->tx_count - 1))
-
-struct nfp_net_nfdk_tx_desc {
-	union {
-		struct {
-			__le16 dma_addr_hi;  /* High bits of host buf address */
-			__le16 dma_len_type; /* Length to DMA for this desc */
-			__le32 dma_addr_lo;  /* Low 32bit of host buf addr */
-		};
-
-		struct {
-			__le16 mss;	/* MSS to be used for LSO */
-			uint8_t lso_hdrlen;  /* LSO, TCP payload offset */
-			uint8_t lso_totsegs; /* LSO, total segments */
-			uint8_t l3_offset;   /* L3 header offset */
-			uint8_t l4_offset;   /* L4 header offset */
-			__le16 lso_meta_res; /* Rsvd bits in TSO metadata */
-		};
-
-		struct {
-			uint8_t flags;	/* TX Flags, see @NFDK_DESC_TX_* */
-			uint8_t reserved[7];	/* meta byte placeholder */
-		};
-
-		__le32 vals[2];
-		__le64 raw;
-	};
-};
 
 struct nfp_net_txq {
 	struct nfp_net_hw *hw; /* Backpointer to nfp_net structure */
@@ -396,9 +344,6 @@ int nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t nb_desc,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
-uint16_t nfp_net_nfdk_xmit_pkts(void *tx_queue,
-		struct rte_mbuf **tx_pkts,
-		uint16_t nb_pkts);
 int nfp_net_tx_free_bufs(struct nfp_net_txq *txq);
 void nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 		struct rte_mbuf *pkt,

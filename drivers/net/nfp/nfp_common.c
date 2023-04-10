@@ -45,6 +45,7 @@
 #include "nfp_cpp_bridge.h"
 
 #include "nfd3/nfp_nfd3.h"
+#include "nfdk/nfp_nfdk.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
