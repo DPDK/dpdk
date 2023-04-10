@@ -11,10 +11,6 @@
 #define _NFP_RESID_NO_C_FUNC
 #endif
 
-#ifndef _NFP_RESID_NO_C_FUNC
-#include "nfp_platform.h"
-#endif
-
 /*
  * NFP Chip Architectures
  *

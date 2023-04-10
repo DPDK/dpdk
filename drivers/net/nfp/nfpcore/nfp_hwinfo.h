@@ -63,7 +63,7 @@
 
 #define NFP_HWINFO_VERSION_1 ('H' << 24 | 'I' << 16 | 1 << 8 | 0 << 1 | 0)
 #define NFP_HWINFO_VERSION_2 ('H' << 24 | 'I' << 16 | 2 << 8 | 0 << 1 | 0)
-#define NFP_HWINFO_VERSION_UPDATING	BIT(0)
+#define NFP_HWINFO_VERSION_UPDATING	RTE_BIT32(0)
 
 struct nfp_hwinfo {
 	uint8_t start[0];

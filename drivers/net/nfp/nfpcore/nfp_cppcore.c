@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/types.h>
 
 #include <rte_byteorder.h>
@@ -565,7 +566,7 @@ nfp_cpp_alloc(struct rte_pci_device *dev, int driver_lock_needed)
 		uint32_t xpbaddr;
 		size_t tgt;
 
-		for (tgt = 0; tgt < ARRAY_SIZE(cpp->imb_cat_table); tgt++) {
+		for (tgt = 0; tgt < RTE_DIM(cpp->imb_cat_table); tgt++) {
 			/* Hardcoded XPB IMB Base, island 0 */
 			xpbaddr = 0x000a0000 + (tgt * 4);
 			err = nfp_xpb_readl(cpp, xpbaddr,

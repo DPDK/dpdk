@@ -120,11 +120,11 @@ struct nfp_meta_parsed {
 #define NFDK_DESC_TX_TYPE_TSO           2
 #define NFDK_DESC_TX_TYPE_SIMPLE        8
 #define NFDK_DESC_TX_TYPE_GATHER        1
-#define NFDK_DESC_TX_EOP                BIT(14)
-#define NFDK_DESC_TX_CHAIN_META         BIT(3)
-#define NFDK_DESC_TX_ENCAP              BIT(2)
-#define NFDK_DESC_TX_L4_CSUM            BIT(1)
-#define NFDK_DESC_TX_L3_CSUM            BIT(0)
+#define NFDK_DESC_TX_EOP                RTE_BIT32(14)
+#define NFDK_DESC_TX_CHAIN_META         RTE_BIT32(3)
+#define NFDK_DESC_TX_ENCAP              RTE_BIT32(2)
+#define NFDK_DESC_TX_L4_CSUM            RTE_BIT32(1)
+#define NFDK_DESC_TX_L3_CSUM            RTE_BIT32(0)
 
 #define NFDK_TX_MAX_DATA_PER_DESC      0x00004000
 #define NFDK_TX_DESC_GATHER_MAX        17

@@ -8,7 +8,6 @@
 
 #include <ethdev_pci.h>
 
-#include "nfp-common/nfp_platform.h"
 #include "nfp-common/nfp_resid.h"
 
 struct nfp_cpp_mutex;

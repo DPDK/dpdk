@@ -13,6 +13,9 @@
  * Netronome vNIC DPDK Poll-Mode Driver: CPP Bridge
  */
 
+#include <unistd.h>
+#include <sys/ioctl.h>
+
 #include <rte_service_component.h>
 
 #include "nfpcore/nfp_cpp.h"
@@ -21,8 +24,6 @@
 
 #include "nfp_logs.h"
 #include "nfp_cpp_bridge.h"
-
-#include <sys/ioctl.h>
 
 /* Prototypes */
 static int nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp);

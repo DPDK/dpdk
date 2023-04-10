@@ -6,7 +6,6 @@
 #ifndef __NFP_NFFW_H__
 #define __NFP_NFFW_H__
 
-#include "nfp-common/nfp_platform.h"
 #include "nfp_cpp.h"
 
 /*

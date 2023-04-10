@@ -44,30 +44,30 @@
 #define NSP_ETH_PORT_INDEX		GENMASK_ULL(15, 8)
 #define NSP_ETH_PORT_LABEL		GENMASK_ULL(53, 48)
 #define NSP_ETH_PORT_PHYLABEL		GENMASK_ULL(59, 54)
-#define NSP_ETH_PORT_FEC_SUPP_BASER	BIT_ULL(60)
-#define NSP_ETH_PORT_FEC_SUPP_RS	BIT_ULL(61)
+#define NSP_ETH_PORT_FEC_SUPP_BASER	RTE_BIT64(60)
+#define NSP_ETH_PORT_FEC_SUPP_RS	RTE_BIT64(61)
 
 #define NSP_ETH_PORT_LANES_MASK		rte_cpu_to_le_64(NSP_ETH_PORT_LANES)
 
-#define NSP_ETH_STATE_CONFIGURED	BIT_ULL(0)
-#define NSP_ETH_STATE_ENABLED		BIT_ULL(1)
-#define NSP_ETH_STATE_TX_ENABLED	BIT_ULL(2)
-#define NSP_ETH_STATE_RX_ENABLED	BIT_ULL(3)
+#define NSP_ETH_STATE_CONFIGURED	RTE_BIT64(0)
+#define NSP_ETH_STATE_ENABLED		RTE_BIT64(1)
+#define NSP_ETH_STATE_TX_ENABLED	RTE_BIT64(2)
+#define NSP_ETH_STATE_RX_ENABLED	RTE_BIT64(3)
 #define NSP_ETH_STATE_RATE		GENMASK_ULL(11, 8)
 #define NSP_ETH_STATE_INTERFACE		GENMASK_ULL(19, 12)
 #define NSP_ETH_STATE_MEDIA		GENMASK_ULL(21, 20)
-#define NSP_ETH_STATE_OVRD_CHNG		BIT_ULL(22)
+#define NSP_ETH_STATE_OVRD_CHNG		RTE_BIT64(22)
 #define NSP_ETH_STATE_ANEG		GENMASK_ULL(25, 23)
 #define NSP_ETH_STATE_FEC		GENMASK_ULL(27, 26)
 
-#define NSP_ETH_CTRL_CONFIGURED		BIT_ULL(0)
-#define NSP_ETH_CTRL_ENABLED		BIT_ULL(1)
-#define NSP_ETH_CTRL_TX_ENABLED		BIT_ULL(2)
-#define NSP_ETH_CTRL_RX_ENABLED		BIT_ULL(3)
-#define NSP_ETH_CTRL_SET_RATE		BIT_ULL(4)
-#define NSP_ETH_CTRL_SET_LANES		BIT_ULL(5)
-#define NSP_ETH_CTRL_SET_ANEG		BIT_ULL(6)
-#define NSP_ETH_CTRL_SET_FEC		BIT_ULL(7)
+#define NSP_ETH_CTRL_CONFIGURED		RTE_BIT64(0)
+#define NSP_ETH_CTRL_ENABLED		RTE_BIT64(1)
+#define NSP_ETH_CTRL_TX_ENABLED		RTE_BIT64(2)
+#define NSP_ETH_CTRL_RX_ENABLED		RTE_BIT64(3)
+#define NSP_ETH_CTRL_SET_RATE		RTE_BIT64(4)
+#define NSP_ETH_CTRL_SET_LANES		RTE_BIT64(5)
+#define NSP_ETH_CTRL_SET_ANEG		RTE_BIT64(6)
+#define NSP_ETH_CTRL_SET_FEC		RTE_BIT64(7)
 
 /* Which connector port. */
 #define PORT_TP			0x00
@@ -139,7 +139,7 @@ nfp_eth_rate2speed(enum nfp_eth_rate rate)
 {
 	int i;
 
-	for (i = 0; i < (int)ARRAY_SIZE(nsp_eth_rate_tbl); i++)
+	for (i = 0; i < (int)RTE_DIM(nsp_eth_rate_tbl); i++)
 		if (nsp_eth_rate_tbl[i].rate == rate)
 			return nsp_eth_rate_tbl[i].speed;
 
@@ -151,7 +151,7 @@ nfp_eth_speed2rate(unsigned int speed)
 {
 	int i;
 
-	for (i = 0; i < (int)ARRAY_SIZE(nsp_eth_rate_tbl); i++)
+	for (i = 0; i < (int)RTE_DIM(nsp_eth_rate_tbl); i++)
 		if (nsp_eth_rate_tbl[i].speed == speed)
 			return nsp_eth_rate_tbl[i].rate;
 

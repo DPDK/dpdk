@@ -22,7 +22,6 @@
 #include "nfp_logs.h"
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
-#include "nfpcore/nfp-common/nfp_platform.h"
 
 static int
 nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)

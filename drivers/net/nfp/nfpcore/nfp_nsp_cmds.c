@@ -83,7 +83,7 @@ nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id, long *val)
 	if (nsp == NULL)
 		return -EIO;
 
-	ret = nfp_nsp_read_sensors(nsp, BIT(id), &s, sizeof(s));
+	ret = nfp_nsp_read_sensors(nsp, RTE_BIT32(id), &s, sizeof(s));
 	nfp_nsp_close(nsp);
 
 	if (ret < 0)

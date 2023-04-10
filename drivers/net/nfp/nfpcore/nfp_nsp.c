@@ -61,7 +61,7 @@ nfp_nsp_print_extended_error(uint32_t ret_val)
 	if (ret_val == 0)
 		return;
 
-	for (i = 0; i < (int)ARRAY_SIZE(nsp_errors); i++)
+	for (i = 0; i < (int)RTE_DIM(nsp_errors); i++)
 		if (ret_val == (uint32_t)nsp_errors[i].code)
 			PMD_DRV_LOG(ERR, "err msg: %s", nsp_errors[i].msg);
 }
