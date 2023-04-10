@@ -8,15 +8,6 @@
 
 #include "nfp_cpp.h"
 
-/*
- * Init-CSR owner IDs for firmware map to firmware IDs which start at 4.
- * Lower IDs are reserved for target and loader IDs.
- */
-#define NFFW_FWID_EXT   3	/* For active MEs that we didn't load. */
-#define NFFW_FWID_BASE  4
-
-#define NFFW_FWID_ALL   255
-
 /* Init-CSR owner IDs for firmware map to firmware IDs which start at 4.
  * Lower IDs are reserved for target and loader IDs.
  */
