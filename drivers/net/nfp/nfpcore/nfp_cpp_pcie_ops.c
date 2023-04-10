@@ -34,7 +34,6 @@
 
 #include "nfp_cpp.h"
 #include "nfp_logs.h"
-#include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
 #include "../nfp_logs.h"
 
@@ -406,7 +405,7 @@ nfp6000_area_init(struct nfp_cpp_area *area, uint32_t dest,
 	uint32_t token = NFP_CPP_ID_TOKEN_of(dest);
 	int pp, ret = 0;
 
-	pp = nfp6000_target_pushpull(NFP_CPP_ID(target, action, token),
+	pp = nfp_target_pushpull(NFP_CPP_ID(target, action, token),
 				     address);
 	if (pp < 0)
 		return pp;

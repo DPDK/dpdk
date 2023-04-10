@@ -26,6 +26,21 @@
 #define NFP_MU_ADDR_ACCESS_TYPE_MASK    3ULL
 #define NFP_MU_ADDR_ACCESS_TYPE_DIRECT  2ULL
 
+#define PUSHPULL(pull, push)       (((pull) << 4) | ((push) << 0))
+#define PUSH_WIDTH(push_pull)      pushpull_width((push_pull) >> 0)
+#define PULL_WIDTH(push_pull)      pushpull_width((push_pull) >> 4)
+
+static inline int
+pushpull_width(int pp)
+{
+	pp &= 0xf;
+	if (pp == 0)
+		return -EINVAL;
+
+	return 2 << pp;
+}
+
+
 static inline int
 nfp_cppat_mu_locality_lsb(int mode, int addr40)
 {
@@ -36,5 +51,10 @@ nfp_cppat_mu_locality_lsb(int mode, int addr40)
 		return -EINVAL;
 	}
 }
+
+int nfp_target_pushpull(uint32_t cpp_id, uint64_t address);
+int nfp_target_cpp(uint32_t cpp_island_id, uint64_t cpp_island_address,
+		uint32_t *cpp_target_id, uint64_t *cpp_target_address,
+		const uint32_t *imb_table);
 
 #endif /* NFP_NFP6000_H */

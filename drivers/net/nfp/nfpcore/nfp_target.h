@@ -7,7 +7,6 @@
 #define NFP_TARGET_H
 
 #include "nfp-common/nfp_resid.h"
-#include "nfp-common/nfp_cppat.h"
 #include "nfp-common/nfp_platform.h"
 #include "nfp_cpp.h"
 

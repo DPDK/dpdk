@@ -22,6 +22,7 @@ sources = files(
         'nfpcore/nfp_mutex.c',
         'nfpcore/nfp_nsp_eth.c',
         'nfpcore/nfp_hwinfo.c',
+        'nfpcore/nfp_target.c',
         'nfp_common.c',
         'nfp_rxtx.c',
         'nfp_cpp_bridge.c',
