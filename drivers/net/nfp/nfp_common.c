@@ -825,7 +825,7 @@ nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 
 	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
 	case NFP_NET_CFG_VERSION_DP_NFD3:
-		tx_dpp = NFD3_TX_DESC_PER_SIMPLE_PKT;
+		tx_dpp = NFD3_TX_DESC_PER_PKT;
 		break;
 	case NFP_NET_CFG_VERSION_DP_NFDK:
 		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {

@@ -17,12 +17,12 @@
  *
  * If enable NFP_NET_CFG_CTRL_TXVLAN_V2
  *	Vlan_info is stored in the meta and
- *	is handled in the nfp_net_nfd3_set_meta_vlan
+ *	is handled in the nfp_net_nfd3_set_meta_vlan()
  * else if enable NFP_NET_CFG_CTRL_TXVLAN
  *	Vlan_info is stored in the tx_desc and
- *	is handled in the nfp_net_nfd3_tx_vlan
+ *	is handled in the nfp_net_nfd3_tx_vlan()
  */
-static void
+static inline void
 nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
 		struct nfp_net_nfd3_tx_desc *txd,
 		struct rte_mbuf *mb)
@@ -30,7 +30,7 @@ nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
 	struct nfp_net_hw *hw = txq->hw;
 
 	if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0 ||
-		(hw->cap & NFP_NET_CFG_CTRL_TXVLAN) == 0)
+			(hw->cap & NFP_NET_CFG_CTRL_TXVLAN) == 0)
 		return;
 
 	if ((mb->ol_flags & RTE_MBUF_F_TX_VLAN) != 0) {
@@ -39,16 +39,16 @@ nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
 	}
 }
 
-static void
+static inline void
 nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 		struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt)
 {
-	uint8_t vlan_layer = 0;
-	struct nfp_net_hw *hw;
-	uint32_t meta_info;
-	uint8_t layer = 0;
 	char *meta;
+	uint8_t layer = 0;
+	uint32_t meta_info;
+	struct nfp_net_hw *hw;
+	uint8_t vlan_layer = 0;
 
 	hw = txq->hw;
 
@@ -90,39 +90,44 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 }
 
 uint16_t
-nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+nfp_net_nfd3_xmit_pkts(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
 {
-	struct nfp_net_txq *txq;
-	struct nfp_net_hw *hw;
-	struct nfp_net_nfd3_tx_desc *txds, txd;
-	struct nfp_net_meta_raw meta_data;
-	struct rte_mbuf *pkt;
-	uint64_t dma_addr;
-	int pkt_size, dma_size;
-	uint16_t free_descs, issued_descs;
-	struct rte_mbuf **lmbuf;
 	int i;
+	int pkt_size;
+	int dma_size;
+	uint64_t dma_addr;
+	uint16_t free_descs;
+	uint16_t issued_descs;
+	struct rte_mbuf *pkt;
+	struct nfp_net_hw *hw;
+	struct rte_mbuf **lmbuf;
+	struct nfp_net_txq *txq;
+	struct nfp_net_nfd3_tx_desc txd;
+	struct nfp_net_nfd3_tx_desc *txds;
+	struct nfp_net_meta_raw meta_data;
 
 	txq = tx_queue;
 	hw = txq->hw;
 	txds = &txq->txds[txq->wr_p];
 
 	PMD_TX_LOG(DEBUG, "working for queue %u at pos %d and %u packets",
-		   txq->qidx, txq->wr_p, nb_pkts);
+			txq->qidx, txq->wr_p, nb_pkts);
 
-	if (nfp_net_nfd3_free_tx_desc(txq) < NFD3_TX_DESC_PER_SIMPLE_PKT * nb_pkts ||
-	    nfp_net_nfd3_txq_full(txq))
+	if (nfp_net_nfd3_free_tx_desc(txq) < NFD3_TX_DESC_PER_PKT * nb_pkts ||
+			nfp_net_nfd3_txq_full(txq))
 		nfp_net_tx_free_bufs(txq);
 
-	free_descs = (uint16_t)nfp_net_nfd3_free_tx_desc(txq);
+	free_descs = nfp_net_nfd3_free_tx_desc(txq);
 	if (unlikely(free_descs == 0))
 		return 0;
 
 	pkt = *tx_pkts;
 
 	issued_descs = 0;
-	PMD_TX_LOG(DEBUG, "queue: %u. Sending %u packets",
-		   txq->qidx, nb_pkts);
+	PMD_TX_LOG(DEBUG, "queue: %u. Sending %u packets", txq->qidx, nb_pkts);
+
 	/* Sending packets */
 	for (i = 0; i < nb_pkts && free_descs > 0; i++) {
 		memset(&meta_data, 0, sizeof(meta_data));
@@ -136,8 +141,8 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 		nfp_net_nfd3_set_meta_data(&meta_data, txq, pkt);
 
 		if (unlikely(pkt->nb_segs > 1 &&
-			     !(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {
-			PMD_INIT_LOG(ERR, "Multisegment packet not supported");
+				(hw->cap & NFP_NET_CFG_CTRL_GATHER) == 0)) {
+			PMD_TX_LOG(ERR, "Multisegment packet not supported");
 			goto xmit_end;
 		}
 
@@ -165,8 +170,8 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 			/* Copying TSO, VLAN and cksum info */
 			*txds = txd;
 
-			/* Releasing mbuf used by this descriptor previously*/
-			if (*lmbuf)
+			/* Releasing mbuf used by this descriptor previously */
+			if (*lmbuf != NULL)
 				rte_pktmbuf_free_seg(*lmbuf);
 
 			/*
@@ -177,8 +182,6 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 
 			dma_size = pkt->data_len;
 			dma_addr = rte_mbuf_data_iova(pkt);
-			PMD_TX_LOG(DEBUG, "Working with mbuf at dma address:"
-				   "%" PRIx64 "", dma_addr);
 
 			/* Filling descriptors fields */
 			txds->dma_len = dma_size;
@@ -188,7 +191,7 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pk
 			free_descs--;
 
 			txq->wr_p++;
-			if (unlikely(txq->wr_p == txq->tx_count)) /* wrapping?*/
+			if (unlikely(txq->wr_p == txq->tx_count)) /* wrapping */
 				txq->wr_p = 0;
 
 			pkt_size -= dma_size;
@@ -222,18 +225,21 @@ xmit_end:
 }
 
 int
-nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
-		       uint16_t nb_desc, unsigned int socket_id,
-		       const struct rte_eth_txconf *tx_conf)
+nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
+		uint16_t queue_idx,
+		uint16_t nb_desc,
+		unsigned int socket_id,
+		const struct rte_eth_txconf *tx_conf)
 {
 	int ret;
+	size_t size;
+	uint32_t tx_desc_sz;
 	uint16_t min_tx_desc;
 	uint16_t max_tx_desc;
-	const struct rte_memzone *tz;
+	struct nfp_net_hw *hw;
 	struct nfp_net_txq *txq;
 	uint16_t tx_free_thresh;
-	struct nfp_net_hw *hw;
-	uint32_t tx_desc_sz;
+	const struct rte_memzone *tz;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -245,39 +251,35 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	/* Validating number of descriptors */
 	tx_desc_sz = nb_desc * sizeof(struct nfp_net_nfd3_tx_desc);
-	if ((NFD3_TX_DESC_PER_SIMPLE_PKT * tx_desc_sz) % NFP_ALIGN_RING_DESC != 0 ||
-	     nb_desc > max_tx_desc || nb_desc < min_tx_desc) {
+	if ((NFD3_TX_DESC_PER_PKT * tx_desc_sz) % NFP_ALIGN_RING_DESC != 0 ||
+			nb_desc > max_tx_desc || nb_desc < min_tx_desc) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
 
-	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
-				    tx_conf->tx_free_thresh :
-				    DEFAULT_TX_FREE_THRESH);
-
-	if (tx_free_thresh > (nb_desc)) {
-		PMD_DRV_LOG(ERR,
-			"tx_free_thresh must be less than the number of TX "
-			"descriptors. (tx_free_thresh=%u port=%d "
-			"queue=%d)", (unsigned int)tx_free_thresh,
-			dev->data->port_id, (int)queue_idx);
-		return -(EINVAL);
+	tx_free_thresh = (tx_conf->tx_free_thresh != 0) ?
+			tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH;
+	if (tx_free_thresh > nb_desc) {
+		PMD_DRV_LOG(ERR, "tx_free_thresh must be less than the number of TX "
+				"descriptors. (tx_free_thresh=%u port=%d queue=%d)",
+				tx_free_thresh, dev->data->port_id, queue_idx);
+		return -EINVAL;
 	}
 
 	/*
 	 * Free memory prior to re-allocation if needed. This is the case after
-	 * calling nfp_net_stop
+	 * calling nfp_net_stop().
 	 */
-	if (dev->data->tx_queues[queue_idx]) {
+	if (dev->data->tx_queues[queue_idx] != NULL) {
 		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
-			   queue_idx);
+				queue_idx);
 		nfp_net_tx_queue_release(dev, queue_idx);
 		dev->data->tx_queues[queue_idx] = NULL;
 	}
 
 	/* Allocating tx queue data structure */
 	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct nfp_net_txq),
-				 RTE_CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");
 		return -ENOMEM;
@@ -290,11 +292,9 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-				   sizeof(struct nfp_net_nfd3_tx_desc) *
-				   NFD3_TX_DESC_PER_SIMPLE_PKT *
-				   max_tx_desc, NFP_MEMZONE_ALIGN,
-				   socket_id);
+	size = sizeof(struct nfp_net_nfd3_tx_desc) * NFD3_TX_DESC_PER_PKT * max_tx_desc;
+	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx, size,
+			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");
 		nfp_net_tx_queue_release(dev, queue_idx);
@@ -302,7 +302,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -ENOMEM;
 	}
 
-	txq->tx_count = nb_desc * NFD3_TX_DESC_PER_SIMPLE_PKT;
+	txq->tx_count = nb_desc * NFD3_TX_DESC_PER_PKT;
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->tx_pthresh = tx_conf->tx_thresh.pthresh;
 	txq->tx_hthresh = tx_conf->tx_thresh.hthresh;
@@ -312,24 +312,21 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->qidx = queue_idx;
 	txq->tx_qcidx = queue_idx * hw->stride_tx;
 	txq->qcp_q = hw->tx_bar + NFP_QCP_QUEUE_OFF(txq->tx_qcidx);
-
 	txq->port_id = dev->data->port_id;
 
 	/* Saving physical and virtual addresses for the TX ring */
-	txq->dma = (uint64_t)tz->iova;
-	txq->txds = (struct nfp_net_nfd3_tx_desc *)tz->addr;
+	txq->dma = tz->iova;
+	txq->txds = tz->addr;
 
 	/* mbuf pointers array for referencing mbufs linked to TX descriptors */
 	txq->txbufs = rte_zmalloc_socket("txq->txbufs",
-					 sizeof(*txq->txbufs) * txq->tx_count,
-					 RTE_CACHE_LINE_SIZE, socket_id);
+			sizeof(*txq->txbufs) * txq->tx_count,
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq->txbufs == NULL) {
 		nfp_net_tx_queue_release(dev, queue_idx);
 		dev->data->tx_queues[queue_idx] = NULL;
 		return -ENOMEM;
 	}
-	PMD_TX_LOG(DEBUG, "txbufs=%p hw_ring=%p dma_addr=0x%" PRIx64,
-		   txq->txbufs, txq->txds, (unsigned long)txq->dma);
 
 	nfp_net_reset_tx_queue(txq);
 
