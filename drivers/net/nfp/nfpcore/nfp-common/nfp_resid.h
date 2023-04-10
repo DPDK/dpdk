@@ -48,17 +48,6 @@
 #define NFP_CHIP_REVISION_C0 0x20
 #define NFP_CHIP_REVISION_PF 0xff /* Maximum possible revision */
 
-/* CPP Targets for each chip architecture */
-#define NFP6000_CPPTGT_NBI 1
-#define NFP6000_CPPTGT_VQDR 2
-#define NFP6000_CPPTGT_ILA 6
-#define NFP6000_CPPTGT_MU 7
-#define NFP6000_CPPTGT_PCIE 9
-#define NFP6000_CPPTGT_ARM 10
-#define NFP6000_CPPTGT_CRYPTO 12
-#define NFP6000_CPPTGT_CTXPB 14
-#define NFP6000_CPPTGT_CLS 15
-
 /*
  * Wildcard indicating a CPP read or write action
  *

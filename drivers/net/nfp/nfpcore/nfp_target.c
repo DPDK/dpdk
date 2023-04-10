@@ -489,26 +489,26 @@ nfp_target_pushpull(uint32_t cpp_id,
 		uint64_t address)
 {
 	switch (NFP_CPP_ID_TARGET_of(cpp_id)) {
-	case NFP6000_CPPTGT_NBI:
+	case NFP_CPP_TARGET_NBI:
 		return nfp6000_nbi(cpp_id, address);
-	case NFP6000_CPPTGT_VQDR:
+	case NFP_CPP_TARGET_QDR:
 		return target_rw(cpp_id, P32, 24, 4);
-	case NFP6000_CPPTGT_ILA:
+	case NFP_CPP_TARGET_ILA:
 		return nfp6000_ila(cpp_id);
-	case NFP6000_CPPTGT_MU:
+	case NFP_CPP_TARGET_MU:
 		return nfp6000_mu(cpp_id, address);
-	case NFP6000_CPPTGT_PCIE:
+	case NFP_CPP_TARGET_PCIE:
 		return nfp6000_pci(cpp_id);
-	case NFP6000_CPPTGT_ARM:
+	case NFP_CPP_TARGET_ARM:
 		if (address < 0x10000)
 			return target_rw(cpp_id, P64, 1, 1);
 		else
 			return target_rw(cpp_id, P32, 1, 1);
-	case NFP6000_CPPTGT_CRYPTO:
+	case NFP_CPP_TARGET_CRYPTO:
 		return nfp6000_crypto(cpp_id);
-	case NFP6000_CPPTGT_CTXPB:
+	case NFP_CPP_TARGET_CT_XPB:
 		return nfp6000_cap_xpb(cpp_id);
-	case NFP6000_CPPTGT_CLS:
+	case NFP_CPP_TARGET_CLS:
 		return nfp6000_cls(cpp_id);
 	case 0:
 		return target_rw(cpp_id, P32, 4, 4);
@@ -719,7 +719,7 @@ nfp_encode_basic(uint64_t *addr,
 
 	switch (mode) {
 	case 0:
-		if (cpp_tgt == NFP6000_CPPTGT_VQDR && addr40 == 0) {
+		if (cpp_tgt == NFP_CPP_TARGET_QDR && addr40 == 0) {
 			/*
 			 * In this specific mode we'd rather not modify the
 			 * address but we can verify if the existing contents
@@ -737,7 +737,7 @@ nfp_encode_basic(uint64_t *addr,
 		*addr |= (((uint64_t)dest_island) << iid_lsb) & value;
 		return 0;
 	case 1:
-		if (cpp_tgt == NFP6000_CPPTGT_VQDR && addr40 == 0) {
+		if (cpp_tgt == NFP_CPP_TARGET_QDR && addr40 == 0) {
 			return nfp_encode_basic_qdr(*addr, cpp_tgt, dest_island,
 					mode, addr40, isld1, isld0);
 		}
@@ -757,7 +757,7 @@ nfp_encode_basic(uint64_t *addr,
 
 		return -ENODEV;
 	case 2:
-		if (cpp_tgt == NFP6000_CPPTGT_VQDR && addr40 == 0) {
+		if (cpp_tgt == NFP_CPP_TARGET_QDR && addr40 == 0) {
 			/* iid<0> = addr<30> = channel<0> */
 			/* channel<1> = addr<31> = Index */
 			return nfp_encode_basic_qdr(*addr, cpp_tgt, dest_island,
@@ -777,7 +777,7 @@ nfp_encode_basic(uint64_t *addr,
 		return nfp_encode_basic_search(addr, dest_island, isld,
 				iid_lsb, idx_lsb, 2);
 	case 3:
-		if (cpp_tgt == NFP6000_CPPTGT_VQDR && addr40 == 0) {
+		if (cpp_tgt == NFP_CPP_TARGET_QDR && addr40 == 0) {
 			/*
 			 * iid<0> = addr<29> = data
 			 * iid<1> = addr<30> = channel<0>
@@ -924,19 +924,19 @@ nfp_cppat_addr_encode(uint64_t *addr,
 	uint64_t value;
 
 	switch (cpp_tgt) {
-	case NFP6000_CPPTGT_NBI:
-	case NFP6000_CPPTGT_VQDR:
-	case NFP6000_CPPTGT_ILA:
-	case NFP6000_CPPTGT_PCIE:
-	case NFP6000_CPPTGT_ARM:
-	case NFP6000_CPPTGT_CRYPTO:
-	case NFP6000_CPPTGT_CLS:
+	case NFP_CPP_TARGET_NBI:
+	case NFP_CPP_TARGET_QDR:
+	case NFP_CPP_TARGET_ILA:
+	case NFP_CPP_TARGET_PCIE:
+	case NFP_CPP_TARGET_ARM:
+	case NFP_CPP_TARGET_CRYPTO:
+	case NFP_CPP_TARGET_CLS:
 		return nfp_encode_basic(addr, dest_island, cpp_tgt, mode,
 				addr40, isld1, isld0);
-	case NFP6000_CPPTGT_MU:
+	case NFP_CPP_TARGET_MU:
 		return nfp_encode_mu(addr, dest_island, mode, addr40,
 				isld1, isld0);
-	case NFP6000_CPPTGT_CTXPB:
+	case NFP_CPP_TARGET_CT_XPB:
 		if (mode != 1 || addr40 != 0)
 			return -EINVAL;
 
