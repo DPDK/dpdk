@@ -34,7 +34,7 @@ nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
 		return;
 
 	if ((mb->ol_flags & RTE_MBUF_F_TX_VLAN) != 0) {
-		txd->flags |= PCIE_DESC_TX_VLAN;
+		txd->flags |= NFD3_DESC_TX_VLAN;
 		txd->vlan = mb->vlan_tci;
 	}
 }
@@ -201,7 +201,7 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue,
 			 * the priority
 			 */
 			if (likely(pkt_size == 0))
-				txds->offset_eop = PCIE_DESC_TX_EOP;
+				txds->offset_eop = NFD3_DESC_TX_EOP;
 			else
 				txds->offset_eop = 0;
 

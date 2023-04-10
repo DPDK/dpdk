@@ -550,7 +550,7 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 
 		if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) &&
 				(hw->cap & NFP_NET_CFG_CTRL_TXVLAN)) {
-			txd.flags |= PCIE_DESC_TX_VLAN;
+			txd.flags |= NFD3_DESC_TX_VLAN;
 			txd.vlan = pkt->vlan_tci;
 		}
 
@@ -596,7 +596,7 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 			 * the priority
 			 */
 			if (likely(pkt_size == 0))
-				txds->offset_eop = PCIE_DESC_TX_EOP | FLOWER_PKT_DATA_OFFSET;
+				txds->offset_eop = NFD3_DESC_TX_EOP | FLOWER_PKT_DATA_OFFSET;
 			else
 				txds->offset_eop = 0;
 

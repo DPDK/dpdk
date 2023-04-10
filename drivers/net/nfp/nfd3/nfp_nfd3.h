@@ -7,18 +7,18 @@
 #define _NFP_NFD3_H_
 
 /* TX descriptor format */
-#define PCIE_DESC_TX_EOP                RTE_BIT32(7)
-#define PCIE_DESC_TX_OFFSET_MASK        (0x7F)        /* [0,6] */
+#define NFD3_DESC_TX_EOP                RTE_BIT32(7)
+#define NFD3_DESC_TX_OFFSET_MASK        (0x7F)        /* [0,6] */
 
 /* Flags in the host TX descriptor */
-#define PCIE_DESC_TX_CSUM               RTE_BIT32(7)
-#define PCIE_DESC_TX_IP4_CSUM           RTE_BIT32(6)
-#define PCIE_DESC_TX_TCP_CSUM           RTE_BIT32(5)
-#define PCIE_DESC_TX_UDP_CSUM           RTE_BIT32(4)
-#define PCIE_DESC_TX_VLAN               RTE_BIT32(3)
-#define PCIE_DESC_TX_LSO                RTE_BIT32(2)
-#define PCIE_DESC_TX_ENCAP              RTE_BIT32(1)
-#define PCIE_DESC_TX_O_IP4_CSUM         RTE_BIT32(0)
+#define NFD3_DESC_TX_CSUM               RTE_BIT32(7)
+#define NFD3_DESC_TX_IP4_CSUM           RTE_BIT32(6)
+#define NFD3_DESC_TX_TCP_CSUM           RTE_BIT32(5)
+#define NFD3_DESC_TX_UDP_CSUM           RTE_BIT32(4)
+#define NFD3_DESC_TX_VLAN               RTE_BIT32(3)
+#define NFD3_DESC_TX_LSO                RTE_BIT32(2)
+#define NFD3_DESC_TX_ENCAP              RTE_BIT32(1)
+#define NFD3_DESC_TX_O_IP4_CSUM         RTE_BIT32(0)
 
 #define NFD3_TX_DESC_PER_PKT     1
 
@@ -33,7 +33,7 @@ struct nfp_net_nfd3_tx_desc {
 
 			uint16_t mss;         /* MSS to be used for LSO */
 			uint8_t lso_hdrlen;   /* LSO, where the data starts */
-			uint8_t flags;        /* TX Flags, see @PCIE_DESC_TX_* */
+			uint8_t flags;        /* TX Flags, see @NFD3_DESC_TX_* */
 
 			union {
 				struct {
@@ -99,7 +99,7 @@ nfp_net_nfd3_tx_tso(struct nfp_net_txq *txq,
 	}
 
 	txd->mss = rte_cpu_to_le_16(mb->tso_segsz);
-	txd->flags = PCIE_DESC_TX_LSO;
+	txd->flags = NFD3_DESC_TX_LSO;
 
 	return;
 
@@ -127,26 +127,26 @@ nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq,
 
 	/* Set TCP csum offload if TSO enabled. */
 	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
-		txd->flags |= PCIE_DESC_TX_TCP_CSUM;
+		txd->flags |= NFD3_DESC_TX_TCP_CSUM;
 
 	/* IPv6 does not need checksum */
 	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)
-		txd->flags |= PCIE_DESC_TX_IP4_CSUM;
+		txd->flags |= NFD3_DESC_TX_IP4_CSUM;
 
 	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
-		txd->flags |= PCIE_DESC_TX_ENCAP;
+		txd->flags |= NFD3_DESC_TX_ENCAP;
 
 	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 	case RTE_MBUF_F_TX_UDP_CKSUM:
-		txd->flags |= PCIE_DESC_TX_UDP_CSUM;
+		txd->flags |= NFD3_DESC_TX_UDP_CSUM;
 		break;
 	case RTE_MBUF_F_TX_TCP_CKSUM:
-		txd->flags |= PCIE_DESC_TX_TCP_CSUM;
+		txd->flags |= NFD3_DESC_TX_TCP_CSUM;
 		break;
 	}
 
 	if ((ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK)) != 0)
-		txd->flags |= PCIE_DESC_TX_CSUM;
+		txd->flags |= NFD3_DESC_TX_CSUM;
 }
 
 uint16_t nfp_net_nfd3_xmit_pkts(void *tx_queue,

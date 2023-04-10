@@ -208,7 +208,7 @@ nfp_flower_ctrl_vnic_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	txds->dma_len = txds->data_len;
 	txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
 	txds->dma_addr_lo = (dma_addr & 0xffffffff);
-	txds->offset_eop = FLOWER_PKT_DATA_OFFSET | PCIE_DESC_TX_EOP;
+	txds->offset_eop = FLOWER_PKT_DATA_OFFSET | NFD3_DESC_TX_EOP;
 
 	txq->wr_p++;
 	if (unlikely(txq->wr_p == txq->tx_count)) /* wrapping?*/
