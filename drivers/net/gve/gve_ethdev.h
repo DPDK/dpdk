@@ -11,6 +11,9 @@
 
 #include "base/gve.h"
 
+/* TODO: this is a workaround to ensure that Tx complq is enough */
+#define DQO_TX_MULTIPLIER 4
+
 /*
  * Following macros are derived from linux/pci_regs.h, however,
  * we can't simply include that header here, as there is no such
@@ -124,6 +127,9 @@ struct gve_tx_queue {
 	const struct rte_memzone *qres_mz;
 	struct gve_queue_resources *qres;
 
+	/* newly added for DQO */
+	uint64_t compl_ring_phys_addr;
+
 	/* Only valid for DQO_RDA queue format */
 	struct gve_tx_queue *complq;
 
@@ -163,6 +169,9 @@ struct gve_rx_queue {
 	uint16_t queue_id;
 	uint16_t ntfy_id;
 	uint16_t rx_buf_len;
+
+	/* newly added for DQO */
+	uint64_t compl_ring_phys_addr;
 
 	/* Only valid for DQO_RDA queue format */
 	struct gve_rx_queue *bufq;
