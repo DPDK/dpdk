@@ -10,6 +10,7 @@ sources = files(
         'flower/nfp_flower_cmsg.c',
         'flower/nfp_flower_ctrl.c',
         'flower/nfp_flower_representor.c',
+        'nfd3/nfp_nfd3_dp.c',
         'nfpcore/nfp_cpp_pcie_ops.c',
         'nfpcore/nfp_nsp.c',
         'nfpcore/nfp_cppcore.c',

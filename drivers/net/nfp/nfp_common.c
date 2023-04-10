@@ -44,6 +44,8 @@
 #include "nfp_logs.h"
 #include "nfp_cpp_bridge.h"
 
+#include "nfd3/nfp_nfd3.h"
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>

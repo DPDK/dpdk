@@ -38,6 +38,7 @@
 #include "nfp_logs.h"
 #include "nfp_cpp_bridge.h"
 
+#include "nfd3/nfp_nfd3.h"
 #include "flower/nfp_flower.h"
 
 static int

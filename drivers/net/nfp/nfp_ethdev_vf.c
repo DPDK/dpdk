@@ -22,6 +22,7 @@
 #include "nfp_ctrl.h"
 #include "nfp_rxtx.h"
 #include "nfp_logs.h"
+#include "nfd3/nfp_nfd3.h"
 
 static void
 nfp_netvf_read_mac(struct nfp_net_hw *hw)

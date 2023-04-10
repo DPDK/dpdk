@@ -15,6 +15,7 @@
 #include "../nfp_ctrl.h"
 #include "../nfp_cpp_bridge.h"
 #include "../nfp_rxtx.h"
+#include "../nfd3/nfp_nfd3.h"
 #include "../nfpcore/nfp_mip.h"
 #include "../nfpcore/nfp_rtsym.h"
 #include "../nfpcore/nfp_nsp.h"

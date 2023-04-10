@@ -11,6 +11,7 @@
 #include "../nfp_logs.h"
 #include "../nfp_ctrl.h"
 #include "../nfp_rxtx.h"
+#include "../nfd3/nfp_nfd3.h"
 #include "nfp_flower.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_cmsg.h"
