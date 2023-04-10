@@ -123,6 +123,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		ipv4_next_proto,	v->next_proto_id,	rte_ipv4_hdr) \
 	X(SET,		ipv4_version,		STE_IPV4,		rte_ipv4_hdr) \
 	X(SET_BE16,	ipv4_frag,		v->fragment_offset,	rte_ipv4_hdr) \
+	X(SET,          ip_fragmented,          !!v->fragment_offset,   rte_ipv4_hdr) \
 	X(SET_BE16,	ipv6_payload_len,	v->hdr.payload_len,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_proto,		v->hdr.proto,		rte_flow_item_ipv6) \
 	X(SET,		ipv6_hop_limits,	v->hdr.hop_limits,	rte_flow_item_ipv6) \
@@ -542,8 +543,13 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 	if (m->fragment_offset) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_FRAG, inner)];
 		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_ipv4_frag_set;
-		DR_CALC_SET(fc, eth_l3, fragment_offset, inner);
+		if (rte_be_to_cpu_16(m->fragment_offset) == 0x3fff) {
+			fc->tag_set = &mlx5dr_definer_ip_fragmented_set;
+			DR_CALC_SET(fc, eth_l2, ip_fragmented, inner);
+		} else {
+			fc->tag_set = &mlx5dr_definer_ipv4_frag_set;
+			DR_CALC_SET(fc, eth_l3, ipv4_frag, inner);
+		}
 	}
 
 	if (m->next_proto_id) {
