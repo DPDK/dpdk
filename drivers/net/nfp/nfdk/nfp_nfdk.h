@@ -43,27 +43,27 @@
 struct nfp_net_nfdk_tx_desc {
 	union {
 		struct {
-			__le16 dma_addr_hi;  /* High bits of host buf address */
-			__le16 dma_len_type; /* Length to DMA for this desc */
-			__le32 dma_addr_lo;  /* Low 32bit of host buf addr */
+			uint16_t dma_addr_hi;  /* High bits of host buf address */
+			uint16_t dma_len_type; /* Length to DMA for this desc */
+			uint32_t dma_addr_lo;  /* Low 32bit of host buf addr */
 		};
 
 		struct {
-			__le16 mss;	/* MSS to be used for LSO */
-			uint8_t lso_hdrlen;  /* LSO, TCP payload offset */
-			uint8_t lso_totsegs; /* LSO, total segments */
-			uint8_t l3_offset;   /* L3 header offset */
-			uint8_t l4_offset;   /* L4 header offset */
-			__le16 lso_meta_res; /* Rsvd bits in TSO metadata */
+			uint16_t mss;          /* MSS to be used for LSO */
+			uint8_t lso_hdrlen;    /* LSO, TCP payload offset */
+			uint8_t lso_totsegs;   /* LSO, total segments */
+			uint8_t l3_offset;     /* L3 header offset */
+			uint8_t l4_offset;     /* L4 header offset */
+			uint16_t lso_meta_res; /* Rsvd bits in TSO metadata */
 		};
 
 		struct {
-			uint8_t flags;	/* TX Flags, see @NFDK_DESC_TX_* */
-			uint8_t reserved[7];	/* meta byte placeholder */
+			uint8_t flags;         /* TX Flags, see @NFDK_DESC_TX_* */
+			uint8_t reserved[7];   /* meta byte placeholder */
 		};
 
-		__le32 vals[2];
-		__le64 raw;
+		uint32_t vals[2];
+		uint64_t raw;
 	};
 };
 
@@ -89,7 +89,7 @@ nfp_net_nfdk_free_tx_desc(struct nfp_net_txq *txq)
  *
  * This function uses the host copy* of read/write pointers.
  */
-static inline uint32_t
+static inline bool
 nfp_net_nfdk_txq_full(struct nfp_net_txq *txq)
 {
 	return (nfp_net_nfdk_free_tx_desc(txq) < txq->tx_free_thresh);
@@ -97,7 +97,8 @@ nfp_net_nfdk_txq_full(struct nfp_net_txq *txq)
 
 /* nfp_net_nfdk_tx_cksum() - Set TX CSUM offload flags in TX descriptor of nfdk */
 static inline uint64_t
-nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq, struct rte_mbuf *mb,
+nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq,
+		struct rte_mbuf *mb,
 		uint64_t flags)
 {
 	uint64_t ol_flags;
@@ -109,17 +110,17 @@ nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq, struct rte_mbuf *mb,
 	ol_flags = mb->ol_flags;
 
 	/* Set TCP csum offload if TSO enabled. */
-	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
 		flags |= NFDK_DESC_TX_L4_CSUM;
 
-	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
 		flags |= NFDK_DESC_TX_ENCAP;
 
 	/* IPv6 does not need checksum */
-	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
+	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)
 		flags |= NFDK_DESC_TX_L3_CSUM;
 
-	if (ol_flags & RTE_MBUF_F_TX_L4_MASK)
+	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != 0)
 		flags |= NFDK_DESC_TX_L4_CSUM;
 
 	return flags;
@@ -127,19 +128,22 @@ nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq, struct rte_mbuf *mb,
 
 /* nfp_net_nfdk_tx_tso() - Set TX descriptor for TSO of nfdk */
 static inline uint64_t
-nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq, struct rte_mbuf *mb)
+nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq,
+		struct rte_mbuf *mb)
 {
+	uint8_t outer_len;
 	uint64_t ol_flags;
 	struct nfp_net_nfdk_tx_desc txd;
 	struct nfp_net_hw *hw = txq->hw;
 
+	txd.raw = 0;
+
 	if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
-		goto clean_txd;
+		return txd.raw;
 
 	ol_flags = mb->ol_flags;
-
 	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0)
-		goto clean_txd;
+		return txd.raw;
 
 	txd.l3_offset = mb->l2_len;
 	txd.l4_offset = mb->l2_len + mb->l3_len;
@@ -148,21 +152,12 @@ nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq, struct rte_mbuf *mb)
 	txd.lso_hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
 	txd.lso_totsegs = (mb->pkt_len + mb->tso_segsz) / mb->tso_segsz;
 
-	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
-		txd.l3_offset += mb->outer_l2_len + mb->outer_l3_len;
-		txd.l4_offset += mb->outer_l2_len + mb->outer_l3_len;
-		txd.lso_hdrlen += mb->outer_l2_len + mb->outer_l3_len;
+	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0) {
+		outer_len = mb->outer_l2_len + mb->outer_l3_len;
+		txd.l3_offset += outer_len;
+		txd.l4_offset += outer_len;
+		txd.lso_hdrlen += outer_len;
 	}
-
-	return txd.raw;
-
-clean_txd:
-	txd.l3_offset = 0;
-	txd.l4_offset = 0;
-	txd.lso_hdrlen = 0;
-	txd.mss = 0;
-	txd.lso_totsegs = 0;
-	txd.lso_meta_res = 0;
 
 	return txd.raw;
 }
