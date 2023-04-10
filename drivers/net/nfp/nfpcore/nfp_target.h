@@ -6,7 +6,6 @@
 #ifndef NFP_TARGET_H
 #define NFP_TARGET_H
 
-#include "nfp-common/nfp_resid.h"
 #include "nfp_cpp.h"
 
 #define P32 1
