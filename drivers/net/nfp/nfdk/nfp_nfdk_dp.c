@@ -14,25 +14,46 @@
 #include "../nfpcore/nfp_rtsym.h"
 #include "nfp_nfdk.h"
 
-static inline int
-nfp_net_nfdk_headlen_to_segs(unsigned int headlen)
+static inline uint16_t
+nfp_net_nfdk_headlen_to_segs(uint16_t headlen)
 {
+	/* First descriptor fits less data, so adjust for that */
 	return DIV_ROUND_UP(headlen +
 			NFDK_TX_MAX_DATA_PER_DESC -
 			NFDK_TX_MAX_DATA_PER_HEAD,
 			NFDK_TX_MAX_DATA_PER_DESC);
 }
 
+static inline void
+nfp_net_nfdk_tx_close_block(struct nfp_net_txq *txq,
+		uint32_t nop_slots)
+{
+	uint32_t i;
+	uint32_t wr_p;
+
+	wr_p = txq->wr_p;
+	memset(&txq->ktxds[wr_p], 0, nop_slots * sizeof(struct nfp_net_nfdk_tx_desc));
+
+	for (i = wr_p; i < nop_slots + wr_p; i++) {
+		if (txq->txbufs[i].mbuf != NULL) {
+			rte_pktmbuf_free_seg(txq->txbufs[i].mbuf);
+			txq->txbufs[i].mbuf = NULL;
+		}
+	}
+
+	txq->data_pending = 0;
+	txq->wr_p = D_IDX(txq, wr_p + nop_slots);
+}
+
 static int
 nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt)
 {
-	uint32_t i;
-	uint32_t wr_p;
 	uint16_t n_descs;
 	uint32_t nop_slots;
 	struct rte_mbuf *pkt_temp;
 
+	/* Count address descriptor */
 	pkt_temp = pkt;
 	n_descs = nfp_net_nfdk_headlen_to_segs(pkt_temp->data_len);
 	while (pkt_temp->next != NULL) {
@@ -43,9 +64,12 @@ nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 	if (unlikely(n_descs > NFDK_TX_DESC_GATHER_MAX))
 		return -EINVAL;
 
-	if ((pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
+	/* Count TSO descriptor */
+	if ((txq->hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0 &&
+			(pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
 		n_descs++;
 
+	/* Don't count metadata descriptor, for the round down to work out */
 	if (round_down(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
 			round_down(txq->wr_p + n_descs, NFDK_TX_DESC_BLOCK_CNT))
 		goto close_block;
@@ -56,18 +80,8 @@ nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 	return 0;
 
 close_block:
-	wr_p = txq->wr_p;
-	nop_slots = D_BLOCK_CPL(wr_p);
-
-	memset(&txq->ktxds[wr_p], 0, nop_slots * sizeof(struct nfp_net_nfdk_tx_desc));
-	for (i = wr_p; i < nop_slots + wr_p; i++) {
-		if (txq->txbufs[i].mbuf) {
-			rte_pktmbuf_free_seg(txq->txbufs[i].mbuf);
-			txq->txbufs[i].mbuf = NULL;
-		}
-	}
-	txq->data_pending = 0;
-	txq->wr_p = D_IDX(txq, txq->wr_p + nop_slots);
+	nop_slots = D_BLOCK_CPL(txq->wr_p);
+	nfp_net_nfdk_tx_close_block(txq, nop_slots);
 
 	return nop_slots;
 }

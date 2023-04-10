@@ -9,22 +9,27 @@
 #define NFDK_TX_DESC_PER_SIMPLE_PKT     2
 #define NFDK_TX_DESC_GATHER_MAX         17
 
-#define NFDK_TX_MAX_DATA_PER_HEAD       0x00001000
-#define NFDK_TX_MAX_DATA_PER_DESC       0x00004000
-#define NFDK_TX_MAX_DATA_PER_BLOCK      0x00010000
+#define NFDK_TX_MAX_DATA_PER_HEAD       0x00001000    /* 4K */
+#define NFDK_TX_MAX_DATA_PER_DESC       0x00004000    /* 16K */
+#define NFDK_TX_MAX_DATA_PER_BLOCK      0x00010000    /* 64K */
 
+/* The mask of 'dma_len_xx' of address descriptor */
 #define NFDK_DESC_TX_DMA_LEN_HEAD       0x0FFF        /* [0,11] */
 #define NFDK_DESC_TX_DMA_LEN            0x3FFF        /* [0,13] */
 #define NFDK_DESC_TX_TYPE_HEAD          0xF000        /* [12,15] */
 
+/* The mask of upper 4 bit of first address descriptor */
+#define NFDK_DESC_TX_TYPE_HEAD          0xF000        /* [12,15] */
+
+/* The value of upper 4 bit of first address descriptor */
 #define NFDK_DESC_TX_TYPE_GATHER        1
 #define NFDK_DESC_TX_TYPE_TSO           2
 #define NFDK_DESC_TX_TYPE_SIMPLE        8
 
-/* TX descriptor format */
+/* The 'end of chain' flag of address descriptor */
 #define NFDK_DESC_TX_EOP                RTE_BIT32(14)
 
-/* Flags in the host TX descriptor */
+/* Flags in the host metadata descriptor */
 #define NFDK_DESC_TX_CHAIN_META         RTE_BIT32(3)
 #define NFDK_DESC_TX_ENCAP              RTE_BIT32(2)
 #define NFDK_DESC_TX_L4_CSUM            RTE_BIT32(1)
@@ -40,14 +45,73 @@
 /* Convenience macro for wrapping descriptor index on ring size */
 #define D_IDX(ring, idx)               ((idx) & ((ring)->tx_count - 1))
 
+/*
+ * A full TX descriptor consists of one or more address descriptors,
+ * followed by a TX metadata descriptor, and finally a TSO descriptor for
+ * TSO packets.
+ *
+ * --> Header address descriptor:
+ * Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * Word  +-+-+---+-----------------------+-------------------------------+
+ *    0  |S|E| TP|     dma_len_12        |         dma_addr_hi           |
+ *       +-+-+---+-----------------------+-------------------------------+
+ *    1  |                          dma_addr_lo                          |
+ *       +---------------------------------------------------------------+
+ *
+ * --> Subsequent address descriptor(s):
+ * Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * Word  +-+-+---------------------------+-------------------------------+
+ *    0  |S|E|         dma_len_14        |          dma_addr_hi          |
+ *       +-+-+---------------------------+-------------------------------+
+ *    1  |                          dma_addr_lo                          |
+ *       +---------------------------------------------------------------+
+ *
+ * S - Simple Packet descriptor
+ * TP - Type of descriptor
+ * E - End of chain
+ * dma_len - length of the host memory in bytes -1
+ * dma_addr_hi - bits [47:32] of host memory address
+ * dma_addr_lo - bits [31:0] of host memory address
+ *
+ * --> metadata descriptor
+ * Bit     3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * Word   +-------+-----------------------+---------------------+---+-----+
+ *    0   |  ZERO |   Rsvd (64b support)  |       TBD meta      | MT| CSUM|
+ *        +-------+-----------------------+---------------------+---+-----+
+ *    1   |                           TBD meta                            |
+ *        +---------------------------------------------------------------+
+ *
+ * --> TSO descriptor
+ * The following is only present if TP above indicates LSO:
+ * Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * Word  +---------------+---------------+---+---------------------------+
+ *    0  | total_segments|   header_len  |sp0|          mss              |
+ *       +---------------+---------------+---+---------------------------+
+ *    1  |               sp1             |       L4      |      L3       |
+ *       +---------------------------------------------------------------+
+ *
+ * total_segments - LSO: Total number of segments
+ * header_len - LSO: length of the LSO header in bytes
+ * sp0 - Spare Bits (ZERO)
+ * mss - LSO: TCP MSS, maximum segment size of TCP payload
+ * sp1 - Spare Bits (ZERO)
+ * L4 - Layer 4 data
+ * L3 - Layer 3 data
+ */
 struct nfp_net_nfdk_tx_desc {
 	union {
+		/* Address descriptor */
 		struct {
 			uint16_t dma_addr_hi;  /* High bits of host buf address */
 			uint16_t dma_len_type; /* Length to DMA for this desc */
 			uint32_t dma_addr_lo;  /* Low 32bit of host buf addr */
 		};
 
+		/* TSO descriptor */
 		struct {
 			uint16_t mss;          /* MSS to be used for LSO */
 			uint8_t lso_hdrlen;    /* LSO, TCP payload offset */
@@ -57,6 +121,7 @@ struct nfp_net_nfdk_tx_desc {
 			uint16_t lso_meta_res; /* Rsvd bits in TSO metadata */
 		};
 
+		/* Metadata descriptor */
 		struct {
 			uint8_t flags;         /* TX Flags, see @NFDK_DESC_TX_* */
 			uint8_t reserved[7];   /* meta byte placeholder */
