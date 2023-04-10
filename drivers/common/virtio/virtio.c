@@ -48,7 +48,7 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev)
 	}
 
 	/* Reset the device, so when device is used later, reset time is saved. */
-	virtio_pci_dev_reset(vpdev);
+	virtio_pci_dev_reset(vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
 
 	/* Tell the device that driver has noticed it. */
 	virtio_pci_dev_set_status(vpdev, VIRTIO_CONFIG_STATUS_ACK);
@@ -740,7 +740,7 @@ virtio_pci_dev_get_status(struct virtio_pci_dev *vpdev)
 }
 
 void
-virtio_pci_dev_reset(struct virtio_pci_dev *vpdev)
+virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms)
 {
 	uint32_t retry = 0;
 	struct virtio_hw *hw = &vpdev->hw;
@@ -748,8 +748,8 @@ virtio_pci_dev_reset(struct virtio_pci_dev *vpdev)
 	VIRTIO_OPS(hw)->set_status(hw, VIRTIO_CONFIG_STATUS_RESET);
 	/* Flush status write and wait device ready max 120 seconds. */
 	while (VIRTIO_OPS(hw)->get_status(hw) != VIRTIO_CONFIG_STATUS_RESET) {
-		if (retry++ > 120000) {
-			PMD_INIT_LOG(WARNING, "vpdev %s  reset timeout", VP_DEV_NAME(vpdev));
+		if (retry++ > time_out_ms) {
+			PMD_INIT_LOG(WARNING, "vpdev %s  reset %d ms timeout", VP_DEV_NAME(vpdev), time_out_ms);
 			break;
 		}
 		if (!(retry % 1000))

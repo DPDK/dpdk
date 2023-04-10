@@ -1148,7 +1148,7 @@ virtio_vdpa_mi_dev_remove(struct rte_pci_device *pci_dev)
 
 	if (found) {
 		virtio_vdpa_admin_queue_free(priv);
-		virtio_pci_dev_reset(priv->vpdev);
+		virtio_pci_dev_reset(priv->vpdev,VIRTIO_VDPA_REMOVE_RESET_TIME_OUT);
 		virtio_pci_dev_free(priv->vpdev);
 		rte_free(priv);
 	}

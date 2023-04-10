@@ -22,6 +22,9 @@
 #define VIRTIO_ARG_VDPA_VALUE_VF "1"
 #define VIRTIO_ARG_VDPA_VALUE_PF "2"
 
+#define VIRTIO_VDPA_PROBE_RESET_TIME_OUT 120000
+#define VIRTIO_VDPA_REMOVE_RESET_TIME_OUT 3000
+
 struct virtio_pci_dev_vring_info {
 	uint64_t desc;
 	uint64_t avail;
@@ -98,7 +101,7 @@ void virtio_pci_dev_set_status(struct virtio_pci_dev *vpdev, uint8_t status);
 __rte_internal
 uint8_t virtio_pci_dev_get_status(struct virtio_pci_dev *vpdev);
 __rte_internal
-void virtio_pci_dev_reset(struct virtio_pci_dev *vpdev);
+void virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms);
 __rte_internal
 int virtio_pci_dev_notify_area_get(struct virtio_pci_dev *vpdev, uint16_t qid, uint64_t *offset, uint64_t *size);
 __rte_internal

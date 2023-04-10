@@ -1450,7 +1450,7 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 		virtio_vdpa_queues_free(priv);
 
 		if (priv->vpdev) {
-			virtio_pci_dev_reset(priv->vpdev);
+			virtio_pci_dev_reset(priv->vpdev, VIRTIO_VDPA_REMOVE_RESET_TIME_OUT);
 			virtio_pci_dev_free(priv->vpdev);
 		}
 
