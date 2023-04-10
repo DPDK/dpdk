@@ -3,8 +3,6 @@
  * All rights reserved.
  */
 
-#include <errno.h>
-
 #include <malloc.h>
 #include <time.h>
 #include <sched.h>
@@ -41,13 +39,13 @@ _nfp_cpp_mutex_validate(uint32_t model, int *target, unsigned long long address)
 {
 	/* Address must be 64-bit aligned */
 	if (address & 7)
-		return NFP_ERRNO(EINVAL);
+		return -EINVAL;
 
 	if (NFP_CPP_MODEL_IS_6000(model)) {
 		if (*target != NFP_CPP_TARGET_MU)
-			return NFP_ERRNO(EINVAL);
+			return -EINVAL;
 	} else {
-		return NFP_ERRNO(EINVAL);
+		return -EINVAL;
 	}
 
 	return 0;
@@ -71,7 +69,7 @@ _nfp_cpp_mutex_validate(uint32_t model, int *target, unsigned long long address)
  * @param address   Offset into the address space of the NFP CPP target ID
  * @param key       Unique 32-bit value for this mutex
  *
- * @return 0 on success, or -1 on failure (and set errno accordingly).
+ * @return 0 on success, or negative value on failure.
  */
 int
 nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target, unsigned long long address,
@@ -138,7 +136,7 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
 		}
 
 		/* If the key doesn't match... */
-		return NFP_ERRPTR(EEXIST);
+		return NULL;
 	}
 
 	err = _nfp_cpp_mutex_validate(model, &target, address);
@@ -150,11 +148,11 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
 		return NULL;
 
 	if (tmp != key)
-		return NFP_ERRPTR(EEXIST);
+		return NULL;
 
 	mutex = calloc(sizeof(*mutex), 1);
 	if (mutex == NULL)
-		return NFP_ERRPTR(ENOMEM);
+		return NULL;
 
 	mutex->cpp = cpp;
 	mutex->target = target;
@@ -203,7 +201,7 @@ nfp_cpp_mutex_owner(struct nfp_cpp_mutex *mutex)
 		return err;
 
 	if (key != mutex->key)
-		return NFP_ERRNO(EPERM);
+		return -EPERM;
 
 	if (MUTEX_IS_LOCKED(value) == 0)
 		return 0;
@@ -253,7 +251,7 @@ nfp_cpp_mutex_free(struct nfp_cpp_mutex *mutex)
  *
  * @param mutex     NFP CPP Mutex handle
  *
- * @return 0 on success, or -1 on failure (and set errno accordingly).
+ * @return 0 on success, or negative value on failure.
  */
 int
 nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
@@ -262,8 +260,8 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
 	time_t warn_at = time(NULL) + 15;
 
 	while ((err = nfp_cpp_mutex_trylock(mutex)) != 0) {
-		/* If errno != EBUSY, then the lock was damaged */
-		if (err < 0 && errno != EBUSY)
+		/* If err != -EBUSY, then the lock was damaged */
+		if (err < 0 && err != -EBUSY)
 			return err;
 		if (time(NULL) >= warn_at) {
 			PMD_DRV_LOG(ERR, "Warning: waiting for NFP mutex usage:%u depth:%hd] target:%d addr:%llx key:%08x]",
@@ -281,7 +279,7 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
  *
  * @param mutex     NFP CPP Mutex handle
  *
- * @return 0 on success, or -1 on failure (and set errno accordingly).
+ * @return 0 on success, or negative value on failure.
  */
 int
 nfp_cpp_mutex_unlock(struct nfp_cpp_mutex *mutex)
@@ -307,12 +305,12 @@ nfp_cpp_mutex_unlock(struct nfp_cpp_mutex *mutex)
 		goto exit;
 
 	if (key != mutex->key) {
-		err = NFP_ERRNO(EPERM);
+		err = -EPERM;
 		goto exit;
 	}
 
 	if (value != MUTEX_LOCKED(interface)) {
-		err = NFP_ERRNO(EACCES);
+		err = -EACCES;
 		goto exit;
 	}
 
@@ -335,8 +333,7 @@ exit:
  *      0x....000f      - Locked
  *
  * @param mutex     NFP CPP Mutex handle
- * @return      0 if the lock succeeded, -1 on failure (and errno set
- *		appropriately).
+ * @return      0 if the lock succeeded, negative value on failure.
  */
 int
 nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
@@ -350,7 +347,7 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 
 	if (mutex->depth > 0) {
 		if (mutex->depth == MUTEX_DEPTH_MAX)
-			return NFP_ERRNO(E2BIG);
+			return -E2BIG;
 
 		mutex->depth++;
 		return 0;
@@ -362,7 +359,7 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 		goto exit;
 
 	if (key != mutex->key) {
-		err = NFP_ERRNO(EPERM);
+		err = -EPERM;
 		goto exit;
 	}
 
@@ -415,7 +412,7 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 		goto exit;
 	}
 
-	err = NFP_ERRNO(MUTEX_IS_LOCKED(tmp) ? EBUSY : EINVAL);
+	err = MUTEX_IS_LOCKED(tmp) ? -EBUSY : -EINVAL;
 
 exit:
 	return err;

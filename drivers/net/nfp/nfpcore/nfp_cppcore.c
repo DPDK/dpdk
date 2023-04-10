@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <sys/types.h>
 
 #include <rte_byteorder.h>
@@ -137,14 +136,14 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp, uint32_t dest,
 {
 	struct nfp_cpp_area *area;
 	uint64_t tmp64 = (uint64_t)address;
-	int tmp, err;
+	int err;
 
 	if (cpp == NULL)
 		return NULL;
 
 	/* CPP bus uses only a 40-bit address */
 	if ((address + size) > (1ULL << 40))
-		return NFP_ERRPTR(EFAULT);
+		return NULL;
 
 	/* Remap from cpp_island to cpp_target */
 	err = nfp_target_cpp(dest, tmp64, &dest, &tmp64, cpp->imb_cat_table);
@@ -165,21 +164,11 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp, uint32_t dest,
 	area->name = ((char *)area) + sizeof(*area) + cpp->op->area_priv_size;
 	memcpy(area->name, name, strlen(name) + 1);
 
-	/*
-	 * Preserve errno around the call to area_init, since most
-	 * implementations will blindly call nfp_target_action_width()for both
-	 * read or write modes, and that will set errno to EINVAL.
-	 */
-	tmp = errno;
-
 	err = cpp->op->area_init(area, dest, address, size);
 	if (err < 0) {
 		free(area);
 		return NULL;
 	}
-
-	/* Restore errno */
-	errno = tmp;
 
 	area->offset = address;
 	area->size = size;
@@ -328,7 +317,7 @@ nfp_cpp_area_read(struct nfp_cpp_area *area, unsigned long offset,
 		  void *kernel_vaddr, size_t length)
 {
 	if ((offset + length) > area->size)
-		return NFP_ERRNO(EFAULT);
+		return -EFAULT;
 
 	return area->cpp->op->area_read(area, kernel_vaddr, offset, length);
 }
@@ -352,7 +341,7 @@ nfp_cpp_area_write(struct nfp_cpp_area *area, unsigned long offset,
 		   const void *kernel_vaddr, size_t length)
 {
 	if ((offset + length) > area->size)
-		return NFP_ERRNO(EFAULT);
+		return -EFAULT;
 
 	return area->cpp->op->area_write(area, kernel_vaddr, offset, length);
 }
@@ -373,14 +362,14 @@ nfp_cpp_area_mapped(struct nfp_cpp_area *area)
  * @length: size of address range in bytes
  *
  * Check if address range fits within CPP area.  Return 0 if area fits
- * or -1 on error.
+ * or negative value on error.
  */
 int
 nfp_cpp_area_check_range(struct nfp_cpp_area *area, unsigned long long offset,
 			 unsigned long length)
 {
 	if (((offset + length) > area->size))
-		return NFP_ERRNO(EFAULT);
+		return -EFAULT;
 
 	return 0;
 }
@@ -555,7 +544,7 @@ nfp_cpp_alloc(struct rte_pci_device *dev, int driver_lock_needed)
 	ops = nfp_cpp_transport_operations();
 
 	if (ops == NULL || ops->init == NULL)
-		return NFP_ERRPTR(EINVAL);
+		return NULL;
 
 	cpp = calloc(1, sizeof(*cpp));
 	if (cpp == NULL)
@@ -621,7 +610,7 @@ nfp_cpp_from_device_name(struct rte_pci_device *dev, int driver_lock_needed)
  * @param mask          mask of bits to alter
  * @param value         value to modify
  *
- * @return 0 on success, or -1 on failure (and set errno accordingly).
+ * @return 0 on success, or -1 on failure.
  */
 int
 nfp_xpb_writelm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
@@ -648,7 +637,7 @@ nfp_xpb_writelm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
  * @param value         value to monitor for
  * @param timeout_us    maximum number of us to wait (-1 for forever)
  *
- * @return >= 0 on success, or -1 on failure (and set errno accordingly).
+ * @return >= 0 on success, or negative value on failure.
  */
 int
 nfp_xpb_waitlm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
@@ -676,7 +665,7 @@ nfp_xpb_waitlm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
 	} while (timeout_us >= 0);
 
 	if (timeout_us < 0)
-		err = NFP_ERRNO(ETIMEDOUT);
+		err = -ETIMEDOUT;
 	else
 		err = timeout_us;
 
@@ -756,17 +745,17 @@ nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
 	value64 = ((uint64_t)value << 32) | value;
 
 	if ((offset + length) > area->size)
-		return NFP_ERRNO(EINVAL);
+		return -EINVAL;
 
 	if ((area->offset + offset) & 3)
-		return NFP_ERRNO(EINVAL);
+		return -EINVAL;
 
 	if (((area->offset + offset) & 7) == 4 && length >= 4) {
 		err = nfp_cpp_area_write(area, offset, &value, sizeof(value));
 		if (err < 0)
 			return err;
 		if (err != sizeof(value))
-			return NFP_ERRNO(ENOSPC);
+			return -ENOSPC;
 		offset += sizeof(value);
 		length -= sizeof(value);
 	}
@@ -778,7 +767,7 @@ nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
 		if (err < 0)
 			return err;
 		if (err != sizeof(value64))
-			return NFP_ERRNO(ENOSPC);
+			return -ENOSPC;
 	}
 
 	if ((i + sizeof(value)) <= length) {
@@ -787,7 +776,7 @@ nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
 		if (err < 0)
 			return err;
 		if (err != sizeof(value))
-			return NFP_ERRNO(ENOSPC);
+			return -ENOSPC;
 		i += sizeof(value);
 	}
 
@@ -828,7 +817,7 @@ __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model)
  * Map an area of IOMEM access.  To undo the effect of this function call
  * @nfp_cpp_area_release_free(*area).
  *
- * Return: Pointer to memory mapped area or ERR_PTR
+ * Return: Pointer to memory mapped area or NULL
  */
 uint8_t *
 nfp_cpp_map_area(struct nfp_cpp *cpp, int domain, int target, uint64_t addr,

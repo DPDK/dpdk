@@ -145,7 +145,7 @@ err_unlock_dev:
  *
  * NOTE: This function locks the acquired resource
  *
- * Return: NFP Resource handle, or ERR_PTR()
+ * Return: NFP Resource handle, or NULL
  */
 struct nfp_resource *
 nfp_resource_acquire(struct nfp_cpp *cpp, const char *name)

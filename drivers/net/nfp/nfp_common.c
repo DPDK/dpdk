@@ -50,7 +50,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
-#include <errno.h>
 
 static const uint32_t nfp_net_link_speed_nfp2rte[] = {
 	[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,

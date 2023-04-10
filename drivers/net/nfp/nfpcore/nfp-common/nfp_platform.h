@@ -26,10 +26,4 @@
 #define ARRAY_SIZE(x) RTE_DIM(x)
 #endif
 
-#define NFP_ERRNO(err) (errno = (err), -1)
-#define NFP_ERRNO_RET(err, ret) (errno = (err), (ret))
-#define NFP_NOERR(errv) (errno)
-#define NFP_ERRPTR(err) (errno = (err), NULL)
-#define NFP_PTRERR(errv) (errno)
-
 #endif /* __NFP_PLATFORM_H__ */
