@@ -232,7 +232,6 @@ The following are the application command-line options:
         Set authentication algorithm name, where ``name`` is one
         of the following::
 
-           3des-cbc
            aes-cbc-mac
            aes-cmac
            aes-gmac
