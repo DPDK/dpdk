@@ -111,6 +111,15 @@ static cJSON *vdpa_pf_dev_add(const char *pf_name)
 static cJSON *vdpa_pf_dev_remove(const char *pf_name)
 {
 	cJSON *result = cJSON_CreateObject();
+	struct vdpa_vf_params vf_para;
+	int max_vf_num;
+
+	max_vf_num = rte_vdpa_get_vf_list(pf_name, &vf_para, 1);
+	if (max_vf_num > 0) {
+		cJSON_AddStringToObject(result, "Error",
+			"Please remove all VF devices before remove PF");
+		return result;
+	}
 
 	if (rte_vdpa_pf_dev_remove(pf_name))
 		cJSON_AddStringToObject(result, "Error",
