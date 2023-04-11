@@ -487,6 +487,8 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	sq->qid = qid;
 	sq->nb_desc = nb_desc;
 	sq->max_sqe_sz = nix_sq_max_sqe_sz(dev);
+	if (sq->nb_desc >= CNXK_NIX_DEF_SQ_COUNT)
+		sq->fc_hyst_bits = 0x1;
 
 	if (nix->tx_compl_ena) {
 		sq->cqid = sq->qid + dev->nb_rxq;

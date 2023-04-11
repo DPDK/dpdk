@@ -49,6 +49,8 @@
 /* LPB & SPB */
 #define CNXK_NIX_NUM_POOLS_MAX 2
 
+#define CNXK_NIX_DEF_SQ_COUNT	512
+
 #define CNXK_NIX_RSS_L3_L4_SRC_DST                                             \
 	(RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY |                   \
 	 RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY)
