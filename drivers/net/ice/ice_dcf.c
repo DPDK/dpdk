@@ -31,6 +31,8 @@
 #define ICE_DCF_ARQ_MAX_RETRIES 200
 #define ICE_DCF_ARQ_CHECK_TIME  2   /* msecs */
 
+#define ICE_DCF_CHECK_INTERVAL  100   /* 100ms */
+
 #define ICE_DCF_VF_RES_BUF_SZ	\
 	(sizeof(struct virtchnl_vf_resource) +	\
 		IAVF_MAX_VF_VSI * sizeof(struct virtchnl_vsi_resource))
@@ -638,6 +640,8 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	rte_spinlock_init(&hw->vc_cmd_queue_lock);
 	TAILQ_INIT(&hw->vc_cmd_queue);
 
+	__atomic_store_n(&hw->vsi_update_thread_num, 0, __ATOMIC_RELAXED);
+
 	hw->arq_buf = rte_zmalloc("arq_buf", ICE_DCF_AQ_BUF_SZ, 0);
 	if (hw->arq_buf == NULL) {
 		PMD_INIT_LOG(ERR, "unable to allocate AdminQ buffer memory");
@@ -758,6 +762,11 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,
 				     ice_dcf_dev_interrupt_handler, hw);
+
+	/* Wait for all `ice-thread` threads to exit. */
+	while (__atomic_load_n(&hw->vsi_update_thread_num,
+		__ATOMIC_ACQUIRE) != 0)
+		rte_delay_ms(ICE_DCF_CHECK_INTERVAL);
 
 	ice_dcf_mode_disable(hw);
 	iavf_shutdown_adminq(&hw->avf);
