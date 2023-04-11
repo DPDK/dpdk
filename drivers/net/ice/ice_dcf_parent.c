@@ -123,6 +123,9 @@ ice_dcf_vsi_update_service_handler(void *param)
 		container_of(hw, struct ice_dcf_adapter, real_hw);
 	struct ice_adapter *parent_adapter = &adapter->parent;
 
+	__atomic_fetch_add(&hw->vsi_update_thread_num, 1,
+		__ATOMIC_RELAXED);
+
 	pthread_detach(pthread_self());
 
 	rte_delay_us(ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL);
@@ -152,6 +155,9 @@ ice_dcf_vsi_update_service_handler(void *param)
 	rte_spinlock_unlock(&vsi_update_lock);
 
 	free(param);
+
+	__atomic_fetch_sub(&hw->vsi_update_thread_num, 1,
+		__ATOMIC_RELEASE);
 
 	return NULL;
 }
