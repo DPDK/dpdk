@@ -241,19 +241,23 @@ roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
 }
 
 static inline void
-roc_npa_batch_alloc_wait(uint64_t *cache_line)
+roc_npa_batch_alloc_wait(uint64_t *cache_line, unsigned int wait_us)
 {
+	const uint64_t ticks = (uint64_t)wait_us * plt_tsc_hz() / (uint64_t)1E6;
+	const uint64_t start = plt_tsc_cycles();
+
 	/* Batch alloc status code is updated in bits [5:6] of the first word
 	 * of the 128 byte cache line.
 	 */
 	while (((__atomic_load_n(cache_line, __ATOMIC_RELAXED) >> 5) & 0x3) ==
 	       ALLOC_CCODE_INVAL)
-		;
+		if (wait_us && (plt_tsc_cycles() - start) >= ticks)
+			break;
 }
 
 static inline unsigned int
 roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num,
-			       unsigned int do_wait)
+			       unsigned int wait_us)
 {
 	unsigned int count, i;
 
@@ -267,8 +271,7 @@ roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num,
 
 		status = (struct npa_batch_alloc_status_s *)&aligned_buf[i];
 
-		if (do_wait)
-			roc_npa_batch_alloc_wait(&aligned_buf[i]);
+		roc_npa_batch_alloc_wait(&aligned_buf[i], wait_us);
 
 		count += status->count;
 	}
@@ -293,7 +296,7 @@ roc_npa_aura_batch_alloc_extract(uint64_t *buf, uint64_t *aligned_buf,
 
 		status = (struct npa_batch_alloc_status_s *)&aligned_buf[i];
 
-		roc_npa_batch_alloc_wait(&aligned_buf[i]);
+		roc_npa_batch_alloc_wait(&aligned_buf[i], 0);
 
 		line_count = status->count;
 

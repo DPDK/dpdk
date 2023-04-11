@@ -9,6 +9,7 @@
 
 #define BATCH_ALLOC_SZ              ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS
 #define BATCH_OP_DATA_TABLE_MZ_NAME "batch_op_data_table_mz"
+#define BATCH_ALLOC_WAIT_US         5
 
 enum batch_op_status {
 	BATCH_ALLOC_OP_NOT_ISSUED = 0,
@@ -178,7 +179,7 @@ cn10k_mempool_get_count(const struct rte_mempool *mp)
 
 		if (mem->status == BATCH_ALLOC_OP_ISSUED)
 			count += roc_npa_aura_batch_alloc_count(
-				mem->objs, BATCH_ALLOC_SZ, 1);
+				mem->objs, BATCH_ALLOC_SZ, BATCH_ALLOC_WAIT_US);
 
 		if (mem->status == BATCH_ALLOC_OP_DONE)
 			count += mem->sz;
