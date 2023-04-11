@@ -759,7 +759,7 @@ cn10k_sso_rx_adapter_queue_add(
 	lookup_mem = rxq->lookup_mem;
 	cn10k_sso_set_priv_mem(event_dev, lookup_mem);
 	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
-	if (roc_feature_sso_has_stash()) {
+	if (roc_feature_sso_has_stash() && dev->nb_event_ports > 1) {
 		stash.hwgrp = queue_conf->ev.queue_id;
 		stash.stash_offset = CN10K_SSO_DEFAULT_STASH_OFFSET;
 		stash.stash_count = CN10K_SSO_DEFAULT_STASH_LENGTH;
