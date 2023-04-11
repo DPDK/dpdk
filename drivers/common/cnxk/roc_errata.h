@@ -25,7 +25,8 @@ roc_errata_nix_has_cq_min_size_4k(void)
 static inline bool
 roc_errata_npa_has_no_fc_stype_ststp(void)
 {
-	return roc_model_is_cn10ka_a0() ? true : false;
+	return roc_model_is_cn10ka_a0() || roc_model_is_cn10ka_a1() || roc_model_is_cnf10ka_a0() ||
+	       roc_model_is_cnf10kb_a0();
 }
 
 /* Errata IPBUNIXTX-39337 */
