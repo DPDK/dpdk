@@ -7,6 +7,7 @@
 #define _GVE_H_
 
 #include "gve_desc.h"
+#include "gve_desc_dqo.h"
 
 #define GVE_VERSION		"1.3.0"
 #define GVE_VERSION_PREFIX	"GVE-"

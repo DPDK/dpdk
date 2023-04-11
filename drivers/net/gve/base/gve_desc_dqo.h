@@ -13,10 +13,6 @@
 #define GVE_TX_MAX_HDR_SIZE_DQO 255
 #define GVE_TX_MIN_TSO_MSS_DQO 88
 
-#ifndef __LITTLE_ENDIAN_BITFIELD
-#error "Only little endian supported"
-#endif
-
 /* Basic TX descriptor (DTYPE 0x0C) */
 struct gve_tx_pkt_desc_dqo {
 	__le64 buf_addr;

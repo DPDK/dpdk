@@ -497,11 +497,11 @@ static int gve_adminq_create_tx_queue(struct gve_priv *priv, u32 queue_index)
 		cmd.create_tx_queue.queue_page_list_id = cpu_to_be32(qpl_id);
 	} else {
 		cmd.create_tx_queue.tx_ring_size =
-			cpu_to_be16(txq->nb_tx_desc);
+			cpu_to_be16(priv->tx_desc_cnt);
 		cmd.create_tx_queue.tx_comp_ring_addr =
-			cpu_to_be64(txq->complq->tx_ring_phys_addr);
+			cpu_to_be64(txq->compl_ring_phys_addr);
 		cmd.create_tx_queue.tx_comp_ring_size =
-			cpu_to_be16(priv->tx_compq_size);
+			cpu_to_be16(priv->tx_compq_size * DQO_TX_MULTIPLIER);
 	}
 
 	return gve_adminq_issue_cmd(priv, &cmd);
@@ -549,9 +549,9 @@ static int gve_adminq_create_rx_queue(struct gve_priv *priv, u32 queue_index)
 		cmd.create_rx_queue.rx_ring_size =
 			cpu_to_be16(priv->rx_desc_cnt);
 		cmd.create_rx_queue.rx_desc_ring_addr =
-			cpu_to_be64(rxq->rx_ring_phys_addr);
+			cpu_to_be64(rxq->compl_ring_phys_addr);
 		cmd.create_rx_queue.rx_data_ring_addr =
-			cpu_to_be64(rxq->bufq->rx_ring_phys_addr);
+			cpu_to_be64(rxq->rx_ring_phys_addr);
 		cmd.create_rx_queue.packet_buffer_size =
 			cpu_to_be16(rxq->rx_buf_len);
 		cmd.create_rx_queue.rx_buff_ring_size =
