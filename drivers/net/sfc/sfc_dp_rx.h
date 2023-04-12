@@ -69,6 +69,7 @@ struct sfc_dp_rx_qcreate_info {
 	/** Receive queue flags initializer */
 	unsigned int		flags;
 #define SFC_RXQ_FLAG_RSS_HASH	0x1
+#define SFC_RXQ_FLAG_INGRESS_MPORT	0x2
 
 	/** Rx queue size */
 	unsigned int		rxq_entries;

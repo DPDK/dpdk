@@ -1225,6 +1225,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	else
 		rxq_info->rxq_flags = 0;
 
+	if (rxq_info->type_flags & EFX_RXQ_FLAG_INGRESS_MPORT)
+		rxq_info->rxq_flags |= SFC_RXQ_FLAG_INGRESS_MPORT;
+
 	rxq->buf_size = buf_size;
 
 	rc = sfc_dma_alloc(sa, "rxq", sw_index, EFX_NIC_DMA_ADDR_RX_RING,

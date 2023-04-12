@@ -810,6 +810,9 @@ sfc_ef100_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	if (rxq->nic_dma_info->nb_regions > 0)
 		rxq->flags |= SFC_EF100_RXQ_NIC_DMA_MAP;
 
+	if (info->flags & SFC_RXQ_FLAG_INGRESS_MPORT)
+		rxq->flags |= SFC_EF100_RXQ_INGRESS_MPORT;
+
 	sfc_ef100_rx_debug(rxq, "RxQ doorbell is %p", rxq->doorbell);
 
 	*dp_rxqp = &rxq->dp;
@@ -876,11 +879,18 @@ sfc_ef100_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr,
 	else
 		rxq->flags &= ~SFC_EF100_RXQ_USER_MARK;
 
+
+	/*
+	 * At the moment, this feature is used only
+	 * by the representor proxy Rx queue and is
+	 * essential for representor support, so if
+	 * it has been requested but is unsupported,
+	 * point this inconsistency out to the user.
+	 */
 	if ((unsup_rx_prefix_fields &
-	     (1U << EFX_RX_PREFIX_FIELD_INGRESS_MPORT)) == 0)
-		rxq->flags |= SFC_EF100_RXQ_INGRESS_MPORT;
-	else
-		rxq->flags &= ~SFC_EF100_RXQ_INGRESS_MPORT;
+	     (1U << EFX_RX_PREFIX_FIELD_INGRESS_MPORT)) &&
+	    (rxq->flags & SFC_EF100_RXQ_INGRESS_MPORT))
+		return ENOTSUP;
 
 	rxq->prefix_size = pinfo->erpl_length;
 	rxq->rearm_data = sfc_ef100_mk_mbuf_rearm_data(rxq->dp.dpq.port_id,
