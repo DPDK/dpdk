@@ -855,16 +855,17 @@ swtim_service_func(void *arg)
 				     sw->n_expired_timers);
 		sw->n_expired_timers = 0;
 
-		event_buffer_flush(&sw->buffer,
-				   adapter->data->event_dev_id,
-				   adapter->data->event_port_id,
-				   &nb_evs_flushed,
-				   &nb_evs_invalid);
-
-		sw->stats.ev_enq_count += nb_evs_flushed;
-		sw->stats.ev_inv_count += nb_evs_invalid;
 		sw->stats.adapter_tick_count++;
 	}
+
+	event_buffer_flush(&sw->buffer,
+			   adapter->data->event_dev_id,
+			   adapter->data->event_port_id,
+			   &nb_evs_flushed,
+			   &nb_evs_invalid);
+
+	sw->stats.ev_enq_count += nb_evs_flushed;
+	sw->stats.ev_inv_count += nb_evs_invalid;
 
 	rte_event_maintain(adapter->data->event_dev_id,
 			   adapter->data->event_port_id, 0);
