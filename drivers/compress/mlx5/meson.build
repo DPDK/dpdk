@@ -28,3 +28,5 @@ foreach option:cflags_options
         cflags += option
     endif
 endforeach
+
+require_iova_in_mbuf = false

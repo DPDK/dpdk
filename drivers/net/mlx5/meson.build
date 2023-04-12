@@ -77,6 +77,8 @@ else
     cflags += [ '-UPEDANTIC' ]
 endif
 
+require_iova_in_mbuf = false
+
 testpmd_sources += files('mlx5_testpmd.c')
 
 subdir(exec_env)
