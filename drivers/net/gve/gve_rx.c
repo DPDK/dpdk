@@ -5,6 +5,8 @@
 #include "gve_ethdev.h"
 #include "base/gve_adminq.h"
 
+#define GVE_PKT_CONT_BIT_IS_SET(x) (GVE_RXF_PKT_CONT & (x))
+
 static inline void
 gve_rx_refill(struct gve_rx_queue *rxq)
 {
@@ -87,43 +89,72 @@ gve_rx_refill(struct gve_rx_queue *rxq)
 	}
 }
 
-uint16_t
-gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+/*
+ * This method processes a single rte_mbuf and handles packet segmentation
+ * In QPL mode it copies data from the mbuf to the gve_rx_queue.
+ */
+static void
+gve_rx_mbuf(struct gve_rx_queue *rxq, struct rte_mbuf *rxe, uint16_t len,
+	    uint16_t rx_id)
 {
-	volatile struct gve_rx_desc *rxr, *rxd;
-	struct gve_rx_queue *rxq = rx_queue;
-	uint16_t rx_id = rxq->rx_tail;
-	struct rte_mbuf *rxe;
-	uint16_t nb_rx, len;
-	uint64_t bytes = 0;
+	uint16_t padding = 0;
 	uint64_t addr;
-	uint16_t i;
 
-	rxr = rxq->rx_desc_ring;
-	nb_rx = 0;
-
-	for (i = 0; i < nb_pkts; i++) {
-		rxd = &rxr[rx_id];
-		if (GVE_SEQNO(rxd->flags_seq) != rxq->expected_seqno)
-			break;
-
-		if (rxd->flags_seq & GVE_RXF_ERR) {
-			rxq->stats.errors++;
-			continue;
-		}
-
-		len = rte_be_to_cpu_16(rxd->len) - GVE_RX_PAD;
-		rxe = rxq->sw_ring[rx_id];
-		if (rxq->is_gqi_qpl) {
-			addr = (uint64_t)(rxq->qpl->mz->addr) + rx_id * PAGE_SIZE + GVE_RX_PAD;
-			rte_memcpy((void *)((size_t)rxe->buf_addr + rxe->data_off),
-				   (void *)(size_t)addr, len);
-		}
+	rxe->data_len = len;
+	if (!rxq->ctx.mbuf_head) {
+		rxq->ctx.mbuf_head = rxe;
+		rxq->ctx.mbuf_tail = rxe;
+		rxe->nb_segs = 1;
 		rxe->pkt_len = len;
 		rxe->data_len = len;
 		rxe->port = rxq->port_id;
 		rxe->ol_flags = 0;
+		padding = GVE_RX_PAD;
+	} else {
+		rxq->ctx.mbuf_head->pkt_len += len;
+		rxq->ctx.mbuf_head->nb_segs += 1;
+		rxq->ctx.mbuf_tail->next = rxe;
+		rxq->ctx.mbuf_tail = rxe;
+	}
+	if (rxq->is_gqi_qpl) {
+		addr = (uint64_t)(rxq->qpl->mz->addr) + rx_id * PAGE_SIZE + padding;
+		rte_memcpy((void *)((size_t)rxe->buf_addr + rxe->data_off),
+				    (void *)(size_t)addr, len);
+	}
+}
 
+/*
+ * This method processes a single packet fragment associated with the
+ * passed packet descriptor.
+ * This methods returns whether the fragment is the last fragment
+ * of a packet.
+ */
+static bool
+gve_rx(struct gve_rx_queue *rxq, volatile struct gve_rx_desc *rxd, uint16_t rx_id)
+{
+	bool is_last_frag = !GVE_PKT_CONT_BIT_IS_SET(rxd->flags_seq);
+	uint16_t frag_size = rte_be_to_cpu_16(rxd->len);
+	struct gve_rx_ctx *ctx = &rxq->ctx;
+	bool is_first_frag = ctx->total_frags == 0;
+	struct rte_mbuf *rxe;
+
+	if (ctx->drop_pkt)
+		goto finish_frag;
+
+	if (rxd->flags_seq & GVE_RXF_ERR) {
+		ctx->drop_pkt = true;
+		rxq->stats.errors++;
+		goto finish_frag;
+	}
+
+	if (is_first_frag)
+		frag_size -= GVE_RX_PAD;
+
+	rxe = rxq->sw_ring[rx_id];
+	gve_rx_mbuf(rxq, rxe, frag_size, rx_id);
+	rxq->stats.bytes += frag_size;
+
+	if (is_first_frag) {
 		if (rxd->flags_seq & GVE_RXF_TCP)
 			rxe->packet_type |= RTE_PTYPE_L4_TCP;
 		if (rxd->flags_seq & GVE_RXF_UDP)
@@ -137,28 +168,60 @@ gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxe->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 			rxe->hash.rss = rte_be_to_cpu_32(rxd->rss_hash);
 		}
+	}
 
-		rxq->expected_seqno = gve_next_seqno(rxq->expected_seqno);
+finish_frag:
+	ctx->total_frags++;
+	return is_last_frag;
+}
+
+static void
+gve_rx_ctx_clear(struct gve_rx_ctx *ctx)
+{
+	ctx->mbuf_head = NULL;
+	ctx->mbuf_tail = NULL;
+	ctx->drop_pkt = false;
+	ctx->total_frags = 0;
+}
+
+uint16_t
+gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	volatile struct gve_rx_desc *rxr, *rxd;
+	struct gve_rx_queue *rxq = rx_queue;
+	struct gve_rx_ctx *ctx = &rxq->ctx;
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t nb_rx;
+
+	rxr = rxq->rx_desc_ring;
+	nb_rx = 0;
+
+	while (nb_rx < nb_pkts) {
+		rxd = &rxr[rx_id];
+		if (GVE_SEQNO(rxd->flags_seq) != rxq->expected_seqno)
+			break;
+
+		if (gve_rx(rxq, rxd, rx_id)) {
+			if (!ctx->drop_pkt)
+				rx_pkts[nb_rx++] = ctx->mbuf_head;
+			rxq->nb_avail += ctx->total_frags;
+			gve_rx_ctx_clear(ctx);
+		}
 
 		rx_id++;
 		if (rx_id == rxq->nb_rx_desc)
 			rx_id = 0;
 
-		rx_pkts[nb_rx] = rxe;
-		bytes += len;
-		nb_rx++;
+		rxq->expected_seqno = gve_next_seqno(rxq->expected_seqno);
 	}
 
-	rxq->nb_avail += nb_rx;
 	rxq->rx_tail = rx_id;
 
 	if (rxq->nb_avail > rxq->free_thresh)
 		gve_rx_refill(rxq);
 
-	if (nb_rx) {
+	if (nb_rx)
 		rxq->stats.packets += nb_rx;
-		rxq->stats.bytes += bytes;
-	}
 
 	return nb_rx;
 }

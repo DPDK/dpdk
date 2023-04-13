@@ -159,6 +159,13 @@ struct gve_tx_queue {
 	uint8_t is_gqi_qpl;
 };
 
+struct gve_rx_ctx {
+	struct rte_mbuf *mbuf_head;
+	struct rte_mbuf *mbuf_tail;
+	uint16_t total_frags;
+	bool drop_pkt;
+};
+
 struct gve_rx_queue {
 	volatile struct gve_rx_desc *rx_desc_ring;
 	volatile union gve_rx_data_slot *rx_data_ring;
@@ -167,6 +174,7 @@ struct gve_rx_queue {
 	uint64_t rx_ring_phys_addr;
 	struct rte_mbuf **sw_ring;
 	struct rte_mempool *mpool;
+	struct gve_rx_ctx ctx;
 
 	uint16_t rx_tail;
 	uint16_t nb_rx_desc;
