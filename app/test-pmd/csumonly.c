@@ -505,7 +505,9 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		udp_hdr = (struct rte_udp_hdr *)((char *)l3_hdr + info->l3_len);
 		/* do not recalculate udp cksum if it was 0 */
 		if (udp_hdr->dgram_cksum != 0) {
-			if (tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) {
+			if (tso_segsz)
+				ol_flags |= RTE_MBUF_F_TX_UDP_SEG;
+			else if (tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) {
 				ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
 			} else {
 				if (info->is_tunnel)
@@ -590,8 +592,10 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	udp_hdr = (struct rte_udp_hdr *)
 		((char *)outer_l3_hdr + info->outer_l3_len);
 
-	if (tso_enabled)
+	if (tso_enabled && info->l4_proto == IPPROTO_TCP)
 		ol_flags |= RTE_MBUF_F_TX_TCP_SEG;
+	else if (tso_enabled && info->l4_proto == IPPROTO_UDP)
+		ol_flags |= RTE_MBUF_F_TX_UDP_SEG;
 
 	/* Skip SW outer UDP checksum generation if HW supports it */
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM) {
@@ -991,7 +995,8 @@ tunnel_update:
 		if (info.is_tunnel == 1) {
 			tx_ol_flags |= process_outer_cksums(outer_l3_hdr, &info,
 					tx_offloads,
-					!!(tx_ol_flags & RTE_MBUF_F_TX_TCP_SEG),
+					!!(tx_ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
+						RTE_MBUF_F_TX_UDP_SEG)),
 					m);
 		}
 
@@ -1083,11 +1088,13 @@ tunnel_update:
 						m->outer_l2_len,
 						m->outer_l3_len);
 				if (info.tunnel_tso_segsz != 0 &&
-						(m->ol_flags & RTE_MBUF_F_TX_TCP_SEG))
+						(m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
+							RTE_MBUF_F_TX_UDP_SEG)))
 					printf("tx: m->tso_segsz=%d\n",
 						m->tso_segsz);
 			} else if (info.tso_segsz != 0 &&
-					(m->ol_flags & RTE_MBUF_F_TX_TCP_SEG))
+					(m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
+						RTE_MBUF_F_TX_UDP_SEG)))
 				printf("tx: m->tso_segsz=%d\n", m->tso_segsz);
 			rte_get_tx_ol_flag_list(m->ol_flags, buf, sizeof(buf));
 			printf("tx: flags=%s", buf);
