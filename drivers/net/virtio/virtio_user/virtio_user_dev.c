@@ -586,11 +586,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->frontend_features = 0;
 	dev->unsupported_features = 0;
 	dev->backend_type = backend_type;
-
-	if (*ifname) {
-		dev->ifname = *ifname;
-		*ifname = NULL;
-	}
+	dev->ifname = *ifname;
 
 	if (virtio_user_dev_setup(dev) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) backend set up fails", dev->path);
@@ -663,6 +659,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		}
 	}
 
+	*ifname = NULL;
 	return 0;
 }
 
