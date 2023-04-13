@@ -378,4 +378,16 @@ gve_tx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
 		       uint16_t nb_desc, unsigned int socket_id,
 		       const struct rte_eth_txconf *conf);
 
+void
+gve_tx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid);
+
+void
+gve_rx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid);
+
+void
+gve_stop_tx_queues_dqo(struct rte_eth_dev *dev);
+
+void
+gve_stop_rx_queues_dqo(struct rte_eth_dev *dev);
+
 #endif /* _GVE_ETHDEV_H_ */

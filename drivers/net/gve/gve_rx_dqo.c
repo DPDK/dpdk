@@ -7,6 +7,38 @@
 #include "gve_ethdev.h"
 #include "base/gve_adminq.h"
 
+static inline void
+gve_release_rxq_mbufs_dqo(struct gve_rx_queue *rxq)
+{
+	uint16_t i;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		if (rxq->sw_ring[i]) {
+			rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+			rxq->sw_ring[i] = NULL;
+		}
+	}
+
+	rxq->nb_avail = rxq->nb_rx_desc;
+}
+
+void
+gve_rx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct gve_rx_queue *q = dev->data->rx_queues[qid];
+
+	if (q == NULL)
+		return;
+
+	gve_release_rxq_mbufs_dqo(q);
+	rte_free(q->sw_ring);
+	rte_memzone_free(q->compl_ring_mz);
+	rte_memzone_free(q->mz);
+	rte_memzone_free(q->qres_mz);
+	q->qres = NULL;
+	rte_free(q);
+}
+
 static void
 gve_reset_rxq_dqo(struct gve_rx_queue *rxq)
 {
@@ -55,6 +87,12 @@ gve_rx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
 			    hw->rx_desc_cnt);
 	}
 	nb_desc = hw->rx_desc_cnt;
+
+	/* Free memory if needed */
+	if (dev->data->rx_queues[queue_id]) {
+		gve_rx_queue_release_dqo(dev, queue_id);
+		dev->data->rx_queues[queue_id] = NULL;
+	}
 
 	/* Allocate the RX queue data structure. */
 	rxq = rte_zmalloc_socket("gve rxq",
@@ -153,4 +191,23 @@ free_rxq_sw_ring:
 free_rxq:
 	rte_free(rxq);
 	return err;
+}
+
+void
+gve_stop_rx_queues_dqo(struct rte_eth_dev *dev)
+{
+	struct gve_priv *hw = dev->data->dev_private;
+	struct gve_rx_queue *rxq;
+	uint16_t i;
+	int err;
+
+	err = gve_adminq_destroy_rx_queues(hw, dev->data->nb_rx_queues);
+	if (err != 0)
+		PMD_DRV_LOG(WARNING, "failed to destroy rxqs");
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		gve_release_rxq_mbufs_dqo(rxq);
+		gve_reset_rxq_dqo(rxq);
+	}
 }

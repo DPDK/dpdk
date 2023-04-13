@@ -292,11 +292,19 @@ gve_dev_close(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, "Failed to stop dev.");
 	}
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		gve_tx_queue_release(dev, i);
+	if (gve_is_gqi(priv)) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			gve_tx_queue_release(dev, i);
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		gve_rx_queue_release(dev, i);
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			gve_rx_queue_release(dev, i);
+	} else {
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			gve_tx_queue_release_dqo(dev, i);
+
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			gve_rx_queue_release_dqo(dev, i);
+	}
 
 	gve_free_qpls(priv);
 	rte_free(priv->adminq);
@@ -578,6 +586,8 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.dev_infos_get        = gve_dev_info_get,
 	.rx_queue_setup       = gve_rx_queue_setup_dqo,
 	.tx_queue_setup       = gve_tx_queue_setup_dqo,
+	.rx_queue_release     = gve_rx_queue_release_dqo,
+	.tx_queue_release     = gve_tx_queue_release_dqo,
 	.link_update          = gve_link_update,
 	.stats_get            = gve_dev_stats_get,
 	.stats_reset          = gve_dev_stats_reset,

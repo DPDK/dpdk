@@ -6,6 +6,36 @@
 #include "gve_ethdev.h"
 #include "base/gve_adminq.h"
 
+static inline void
+gve_release_txq_mbufs_dqo(struct gve_tx_queue *txq)
+{
+	uint16_t i;
+
+	for (i = 0; i < txq->sw_size; i++) {
+		if (txq->sw_ring[i]) {
+			rte_pktmbuf_free_seg(txq->sw_ring[i]);
+			txq->sw_ring[i] = NULL;
+		}
+	}
+}
+
+void
+gve_tx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct gve_tx_queue *q = dev->data->tx_queues[qid];
+
+	if (q == NULL)
+		return;
+
+	gve_release_txq_mbufs_dqo(q);
+	rte_free(q->sw_ring);
+	rte_memzone_free(q->mz);
+	rte_memzone_free(q->compl_ring_mz);
+	rte_memzone_free(q->qres_mz);
+	q->qres = NULL;
+	rte_free(q);
+}
+
 static int
 check_tx_thresh_dqo(uint16_t nb_desc, uint16_t tx_rs_thresh,
 		    uint16_t tx_free_thresh)
@@ -90,6 +120,12 @@ gve_tx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
 			    hw->tx_desc_cnt);
 	}
 	nb_desc = hw->tx_desc_cnt;
+
+	/* Free memory if needed. */
+	if (dev->data->tx_queues[queue_id]) {
+		gve_tx_queue_release_dqo(dev, queue_id);
+		dev->data->tx_queues[queue_id] = NULL;
+	}
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("gve txq",
@@ -182,4 +218,23 @@ free_txq_sw_ring:
 free_txq:
 	rte_free(txq);
 	return err;
+}
+
+void
+gve_stop_tx_queues_dqo(struct rte_eth_dev *dev)
+{
+	struct gve_priv *hw = dev->data->dev_private;
+	struct gve_tx_queue *txq;
+	uint16_t i;
+	int err;
+
+	err = gve_adminq_destroy_tx_queues(hw, dev->data->nb_tx_queues);
+	if (err != 0)
+		PMD_DRV_LOG(WARNING, "failed to destroy txqs");
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		gve_release_txq_mbufs_dqo(txq);
+		gve_reset_txq_dqo(txq);
+	}
 }
