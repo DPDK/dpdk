@@ -878,6 +878,7 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->tx_pkt_burst = gve_tx_burst;
 	} else {
 		eth_dev->dev_ops = &gve_eth_dev_ops_dqo;
+		eth_dev->rx_pkt_burst = gve_rx_burst_dqo;
 		eth_dev->tx_pkt_burst = gve_tx_burst_dqo;
 	}
 

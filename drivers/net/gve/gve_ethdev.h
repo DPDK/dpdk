@@ -392,6 +392,9 @@ void
 gve_stop_rx_queues_dqo(struct rte_eth_dev *dev);
 
 uint16_t
+gve_rx_burst_dqo(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+
+uint16_t
 gve_tx_burst_dqo(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
 #endif /* _GVE_ETHDEV_H_ */
