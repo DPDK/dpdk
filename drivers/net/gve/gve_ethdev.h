@@ -147,6 +147,7 @@ struct gve_tx_queue {
 	uint8_t cur_gen_bit;
 	uint32_t last_desc_cleaned;
 	void **txqs;
+	uint16_t re_cnt;
 
 	/* Only valid for DQO_RDA queue format */
 	struct gve_tx_queue *complq;
@@ -389,5 +390,8 @@ gve_stop_tx_queues_dqo(struct rte_eth_dev *dev);
 
 void
 gve_stop_rx_queues_dqo(struct rte_eth_dev *dev);
+
+uint16_t
+gve_tx_burst_dqo(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
 #endif /* _GVE_ETHDEV_H_ */

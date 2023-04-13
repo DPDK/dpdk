@@ -7,6 +7,147 @@
 #include "base/gve_adminq.h"
 
 static inline void
+gve_tx_clean_dqo(struct gve_tx_queue *txq)
+{
+	struct gve_tx_compl_desc *compl_ring;
+	struct gve_tx_compl_desc *compl_desc;
+	struct gve_tx_queue *aim_txq;
+	uint16_t nb_desc_clean;
+	struct rte_mbuf *txe;
+	uint16_t compl_tag;
+	uint16_t next;
+
+	next = txq->complq_tail;
+	compl_ring = txq->compl_ring;
+	compl_desc = &compl_ring[next];
+
+	if (compl_desc->generation != txq->cur_gen_bit)
+		return;
+
+	compl_tag = rte_le_to_cpu_16(compl_desc->completion_tag);
+
+	aim_txq = txq->txqs[compl_desc->id];
+
+	switch (compl_desc->type) {
+	case GVE_COMPL_TYPE_DQO_DESC:
+		/* need to clean Descs from last_cleaned to compl_tag */
+		if (aim_txq->last_desc_cleaned > compl_tag)
+			nb_desc_clean = aim_txq->nb_tx_desc - aim_txq->last_desc_cleaned +
+					compl_tag;
+		else
+			nb_desc_clean = compl_tag - aim_txq->last_desc_cleaned;
+		aim_txq->nb_free += nb_desc_clean;
+		aim_txq->last_desc_cleaned = compl_tag;
+		break;
+	case GVE_COMPL_TYPE_DQO_REINJECTION:
+		PMD_DRV_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_REINJECTION !!!");
+		/* FALLTHROUGH */
+	case GVE_COMPL_TYPE_DQO_PKT:
+		txe = aim_txq->sw_ring[compl_tag];
+		if (txe != NULL) {
+			rte_pktmbuf_free_seg(txe);
+			txe = NULL;
+		}
+		break;
+	case GVE_COMPL_TYPE_DQO_MISS:
+		rte_delay_us_sleep(1);
+		PMD_DRV_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_MISS ignored !!!");
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unknown completion type.");
+		return;
+	}
+
+	next++;
+	if (next == txq->nb_tx_desc * DQO_TX_MULTIPLIER) {
+		next = 0;
+		txq->cur_gen_bit ^= 1;
+	}
+
+	txq->complq_tail = next;
+}
+
+uint16_t
+gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct gve_tx_queue *txq = tx_queue;
+	volatile union gve_tx_desc_dqo *txr;
+	volatile union gve_tx_desc_dqo *txd;
+	struct rte_mbuf **sw_ring;
+	struct rte_mbuf *tx_pkt;
+	uint16_t mask, sw_mask;
+	uint16_t nb_to_clean;
+	uint16_t nb_tx = 0;
+	uint16_t nb_used;
+	uint16_t tx_id;
+	uint16_t sw_id;
+
+	sw_ring = txq->sw_ring;
+	txr = txq->tx_ring;
+
+	mask = txq->nb_tx_desc - 1;
+	sw_mask = txq->sw_size - 1;
+	tx_id = txq->tx_tail;
+	sw_id = txq->sw_tail;
+
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		tx_pkt = tx_pkts[nb_tx];
+
+		if (txq->nb_free <= txq->free_thresh) {
+			nb_to_clean = DQO_TX_MULTIPLIER * txq->rs_thresh;
+			while (nb_to_clean--)
+				gve_tx_clean_dqo(txq);
+		}
+
+		if (txq->nb_free < tx_pkt->nb_segs)
+			break;
+
+		nb_used = tx_pkt->nb_segs;
+
+		do {
+			txd = &txr[tx_id];
+
+			sw_ring[sw_id] = tx_pkt;
+
+			/* fill Tx descriptor */
+			txd->pkt.buf_addr = rte_cpu_to_le_64(rte_mbuf_data_iova(tx_pkt));
+			txd->pkt.dtype = GVE_TX_PKT_DESC_DTYPE_DQO;
+			txd->pkt.compl_tag = rte_cpu_to_le_16(sw_id);
+			txd->pkt.buf_size = RTE_MIN(tx_pkt->data_len, GVE_TX_MAX_BUF_SIZE_DQO);
+
+			/* size of desc_ring and sw_ring could be different */
+			tx_id = (tx_id + 1) & mask;
+			sw_id = (sw_id + 1) & sw_mask;
+
+			tx_pkt = tx_pkt->next;
+		} while (tx_pkt);
+
+		/* fill the last descriptor with End of Packet (EOP) bit */
+		txd->pkt.end_of_packet = 1;
+
+		txq->nb_free -= nb_used;
+		txq->nb_used += nb_used;
+	}
+
+	/* update the tail pointer if any packets were processed */
+	if (nb_tx > 0) {
+		/* Request a descriptor completion on the last descriptor */
+		txq->re_cnt += nb_tx;
+		if (txq->re_cnt >= GVE_TX_MIN_RE_INTERVAL) {
+			txd = &txr[(tx_id - 1) & mask];
+			txd->pkt.report_event = true;
+			txq->re_cnt = 0;
+		}
+
+		rte_write32(tx_id, txq->qtx_tail);
+		txq->tx_tail = tx_id;
+		txq->sw_tail = sw_id;
+	}
+
+	return nb_tx;
+}
+
+static inline void
 gve_release_txq_mbufs_dqo(struct gve_tx_queue *txq)
 {
 	uint16_t i;
