@@ -345,7 +345,7 @@ rte_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 	psd_hdr.dst_addr = ipv4_hdr->dst_addr;
 	psd_hdr.zero = 0;
 	psd_hdr.proto = ipv4_hdr->next_proto_id;
-	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+	if (ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
 		psd_hdr.len = 0;
 	} else {
 		l3_len = rte_be_to_cpu_16(ipv4_hdr->total_length);
@@ -599,7 +599,7 @@ rte_ipv6_phdr_cksum(const struct rte_ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 	} psd_hdr;
 
 	psd_hdr.proto = (uint32_t)(ipv6_hdr->proto << 24);
-	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+	if (ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
 		psd_hdr.len = 0;
 	} else {
 		psd_hdr.len = ipv6_hdr->payload_len;
