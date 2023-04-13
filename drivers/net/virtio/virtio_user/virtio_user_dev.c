@@ -475,10 +475,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 
 	parse_mac(dev, mac);
 
-	if (*ifname) {
-		dev->ifname = *ifname;
-		*ifname = NULL;
-	}
+	dev->ifname = *ifname;
 
 	if (virtio_user_dev_setup(dev) < 0) {
 		PMD_INIT_LOG(ERR, "backend set up fails");
@@ -592,6 +589,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		}
 	}
 
+	*ifname = NULL;
 	return 0;
 }
 
