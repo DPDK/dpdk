@@ -78,6 +78,9 @@ gve_free_qpls(struct gve_priv *priv)
 	uint16_t nb_rxqs = priv->max_nb_rxq;
 	uint32_t i;
 
+	if (priv->queue_format != GVE_GQI_QPL_FORMAT)
+		return;
+
 	for (i = 0; i < nb_txqs + nb_rxqs; i++) {
 		if (priv->qpl[i].mz != NULL)
 			rte_memzone_free(priv->qpl[i].mz);
@@ -134,6 +137,41 @@ gve_refill_pages(struct gve_rx_queue *rxq)
 	}
 
 	rte_write32(rte_cpu_to_be_32(rxq->next_avail), rxq->qrx_tail);
+
+	return 0;
+}
+
+static int
+gve_refill_dqo(struct gve_rx_queue *rxq)
+{
+	struct rte_mbuf *nmb;
+	uint16_t i;
+	int diag;
+
+	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0], rxq->nb_rx_desc);
+	if (diag < 0) {
+		for (i = 0; i < rxq->nb_rx_desc - 1; i++) {
+			nmb = rte_pktmbuf_alloc(rxq->mpool);
+			if (!nmb)
+				break;
+			rxq->sw_ring[i] = nmb;
+		}
+		if (i < rxq->nb_rx_desc - 1)
+			return -ENOMEM;
+	}
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		if (i == rxq->nb_rx_desc - 1)
+			break;
+		nmb = rxq->sw_ring[i];
+		rxq->rx_ring[i].buf_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		rxq->rx_ring[i].buf_id = rte_cpu_to_le_16(i);
+	}
+
+	rxq->nb_rx_hold = 0;
+	rxq->bufq_tail = rxq->nb_rx_desc - 1;
+
+	rte_write32(rxq->bufq_tail, rxq->qrx_tail);
 
 	return 0;
 }
@@ -206,7 +244,10 @@ gve_dev_start(struct rte_eth_dev *dev)
 
 		rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), rxq->ntfy_addr);
 
-		err = gve_refill_pages(rxq);
+		if (gve_is_gqi(priv))
+			err = gve_refill_pages(rxq);
+		else
+			err = gve_refill_dqo(rxq);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to refill for RX");
 			goto err_rx;
