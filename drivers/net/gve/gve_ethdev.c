@@ -535,6 +535,7 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.dev_stop             = gve_dev_stop,
 	.dev_close            = gve_dev_close,
 	.dev_infos_get        = gve_dev_info_get,
+	.rx_queue_setup       = gve_rx_queue_setup_dqo,
 	.tx_queue_setup       = gve_tx_queue_setup_dqo,
 	.link_update          = gve_link_update,
 	.stats_get            = gve_dev_stats_get,

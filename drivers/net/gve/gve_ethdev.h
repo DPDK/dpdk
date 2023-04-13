@@ -167,6 +167,7 @@ struct gve_rx_queue {
 	uint16_t nb_rx_desc;
 	uint16_t expected_seqno; /* the next expected seqno */
 	uint16_t free_thresh;
+	uint16_t nb_rx_hold;
 	uint32_t next_avail;
 	uint32_t nb_avail;
 
@@ -189,7 +190,12 @@ struct gve_rx_queue {
 	uint16_t rx_buf_len;
 
 	/* newly added for DQO */
+	volatile struct gve_rx_desc_dqo *rx_ring;
+	struct gve_rx_compl_desc_dqo *compl_ring;
+	const struct rte_memzone *compl_ring_mz;
 	uint64_t compl_ring_phys_addr;
+	uint8_t cur_gen_bit;
+	uint16_t bufq_tail;
 
 	/* Only valid for DQO_RDA queue format */
 	struct gve_rx_queue *bufq;
@@ -362,6 +368,11 @@ gve_tx_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
 /* Below functions are used for DQO */
 
+int
+gve_rx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
+		       uint16_t nb_desc, unsigned int socket_id,
+		       const struct rte_eth_rxconf *conf,
+		       struct rte_mempool *pool);
 int
 gve_tx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
 		       uint16_t nb_desc, unsigned int socket_id,
