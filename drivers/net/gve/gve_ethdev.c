@@ -150,14 +150,17 @@ gve_refill_dqo(struct gve_rx_queue *rxq)
 
 	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0], rxq->nb_rx_desc);
 	if (diag < 0) {
+		rxq->stats.no_mbufs_bulk++;
 		for (i = 0; i < rxq->nb_rx_desc - 1; i++) {
 			nmb = rte_pktmbuf_alloc(rxq->mpool);
 			if (!nmb)
 				break;
 			rxq->sw_ring[i] = nmb;
 		}
-		if (i < rxq->nb_rx_desc - 1)
+		if (i < rxq->nb_rx_desc - 1) {
+			rxq->stats.no_mbufs += rxq->nb_rx_desc - 1 - i;
 			return -ENOMEM;
+		}
 	}
 
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
