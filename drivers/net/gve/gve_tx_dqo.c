@@ -78,6 +78,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t mask, sw_mask;
 	uint16_t nb_to_clean;
 	uint16_t nb_tx = 0;
+	uint64_t ol_flags;
 	uint16_t nb_used;
 	uint16_t tx_id;
 	uint16_t sw_id;
@@ -104,6 +105,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (txq->nb_free < tx_pkt->nb_segs)
 			break;
 
+		ol_flags = tx_pkt->ol_flags;
 		nb_used = tx_pkt->nb_segs;
 
 		do {
@@ -127,6 +129,9 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* fill the last descriptor with End of Packet (EOP) bit */
 		txd->pkt.end_of_packet = 1;
+
+		if (ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK)
+			txd->pkt.checksum_offload_enable = 1;
 
 		txq->nb_free -= nb_used;
 		txq->nb_used += nb_used;

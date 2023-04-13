@@ -38,6 +38,10 @@
 #define GVE_MAX_MTU	RTE_ETHER_MTU
 #define GVE_MIN_MTU	RTE_ETHER_MIN_MTU
 
+#define GVE_TX_CKSUM_OFFLOAD_MASK (		\
+		RTE_MBUF_F_TX_L4_MASK  |	\
+		RTE_MBUF_F_TX_TCP_SEG)
+
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
  */
