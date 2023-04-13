@@ -12,6 +12,7 @@
 #define ICE_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
 		RTE_MBUF_F_TX_L4_MASK |		 \
 		RTE_MBUF_F_TX_TCP_SEG |		 \
+		RTE_MBUF_F_TX_UDP_SEG |		 \
 		RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 
 /**
@@ -2772,6 +2773,13 @@ ice_txd_enable_checksum(uint64_t ol_flags,
 		return;
 	}
 
+	if (ol_flags & RTE_MBUF_F_TX_UDP_SEG) {
+		*td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_UDP;
+		*td_offset |= (tx_offload.l4_len >> 2) <<
+			      ICE_TX_DESC_LEN_L4_LEN_S;
+		return;
+	}
+
 	/* Enable L4 checksum offloads */
 	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 	case RTE_MBUF_F_TX_TCP_CKSUM:
@@ -2863,6 +2871,7 @@ static inline uint16_t
 ice_calc_context_desc(uint64_t flags)
 {
 	static uint64_t mask = RTE_MBUF_F_TX_TCP_SEG |
+		RTE_MBUF_F_TX_UDP_SEG |
 		RTE_MBUF_F_TX_QINQ |
 		RTE_MBUF_F_TX_OUTER_IP_CKSUM |
 		RTE_MBUF_F_TX_TUNNEL_MASK |
@@ -2971,7 +2980,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * the mbuf data size exceeds max data size that hw allows
 		 * per tx desc.
 		 */
-		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+		if (ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))
 			nb_used = (uint16_t)(ice_calc_pkt_desc(tx_pkt) +
 					     nb_ctx);
 		else
@@ -3034,7 +3043,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txe->mbuf = NULL;
 			}
 
-			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+			if (ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))
 				cd_type_cmd_tso_mss |=
 					ice_set_tso_ctx(tx_pkt, tx_offload);
 			else if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
@@ -3074,7 +3083,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			slen = m_seg->data_len;
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 
-			while ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
+			while ((ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) &&
 				unlikely(slen > ICE_MAX_DATA_PER_TXD)) {
 				txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
 				txd->cmd_type_offset_bsz =
