@@ -298,6 +298,7 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = GVE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = GVE_DEFAULT_TX_RS_THRESH,
 		.offloads = 0,
 	};
 
@@ -520,6 +521,21 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.tx_queue_setup       = gve_tx_queue_setup,
 	.rx_queue_release     = gve_rx_queue_release,
 	.tx_queue_release     = gve_tx_queue_release,
+	.link_update          = gve_link_update,
+	.stats_get            = gve_dev_stats_get,
+	.stats_reset          = gve_dev_stats_reset,
+	.mtu_set              = gve_dev_mtu_set,
+	.xstats_get           = gve_xstats_get,
+	.xstats_get_names     = gve_xstats_get_names,
+};
+
+static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
+	.dev_configure        = gve_dev_configure,
+	.dev_start            = gve_dev_start,
+	.dev_stop             = gve_dev_stop,
+	.dev_close            = gve_dev_close,
+	.dev_infos_get        = gve_dev_info_get,
+	.tx_queue_setup       = gve_tx_queue_setup_dqo,
 	.link_update          = gve_link_update,
 	.stats_get            = gve_dev_stats_get,
 	.stats_reset          = gve_dev_stats_reset,
@@ -770,8 +786,6 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	rte_be32_t *db_bar;
 	int err;
 
-	eth_dev->dev_ops = &gve_eth_dev_ops;
-
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
@@ -807,10 +821,11 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 		return err;
 
 	if (gve_is_gqi(priv)) {
+		eth_dev->dev_ops = &gve_eth_dev_ops;
 		eth_dev->rx_pkt_burst = gve_rx_burst;
 		eth_dev->tx_pkt_burst = gve_tx_burst;
 	} else {
-		PMD_DRV_LOG(ERR, "DQO_RDA is not implemented and will be added in the future");
+		eth_dev->dev_ops = &gve_eth_dev_ops_dqo;
 	}
 
 	eth_dev->data->mac_addrs = &priv->dev_addr;
