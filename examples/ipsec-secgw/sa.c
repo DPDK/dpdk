@@ -96,10 +96,8 @@ const struct supported_cipher_algo cipher_algos[] = {
 	{
 		.keyword = "aes-128-ctr",
 		.algo = RTE_CRYPTO_CIPHER_AES_CTR,
-		/* iv_len includes 8B per packet IV, 4B nonce
-		 * and 4B counter
-		 */
-		.iv_len = 16,
+		/* Per packet IV length */
+		.iv_len = 8,
 		.block_size = 4,
 		.key_len = 20
 	},
@@ -1332,8 +1330,13 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			case RTE_CRYPTO_CIPHER_DES_CBC:
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
 			case RTE_CRYPTO_CIPHER_AES_CBC:
-			case RTE_CRYPTO_CIPHER_AES_CTR:
 				iv_length = sa->iv_len;
+				break;
+			case RTE_CRYPTO_CIPHER_AES_CTR:
+				/* Length includes 8B per packet IV, 4B nonce and
+				 * 4B counter as populated in datapath.
+				 */
+				iv_length = 16;
 				break;
 			default:
 				RTE_LOG(ERR, IPSEC_ESP,
