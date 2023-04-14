@@ -1648,7 +1648,8 @@ igb_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 			  RTE_ETH_RX_OFFLOAD_SCATTER     |
 			  RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
-	if (hw->mac.type == e1000_i350 ||
+	if (hw->mac.type == e1000_82576 ||
+	    hw->mac.type == e1000_i350 ||
 	    hw->mac.type == e1000_i210 ||
 	    hw->mac.type == e1000_i211)
 		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
