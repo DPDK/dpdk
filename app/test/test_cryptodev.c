@@ -6944,6 +6944,7 @@ snow3g_hash_test_vector_setup(const struct snow3g_test_data *pattern,
 static int
 test_snow3g_decryption_with_digest_test_case_1(void)
 {
+	int ret;
 	struct snow3g_hash_test_data snow3g_hash_data;
 	struct rte_cryptodev_info dev_info;
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -6962,8 +6963,9 @@ test_snow3g_decryption_with_digest_test_case_1(void)
 	 */
 	snow3g_hash_test_vector_setup(&snow3g_test_case_7, &snow3g_hash_data);
 
-	if (test_snow3g_decryption(&snow3g_test_case_7))
-		return TEST_FAILED;
+	ret = test_snow3g_decryption(&snow3g_test_case_7);
+	if (ret != 0)
+		return ret;
 
 	return test_snow3g_authentication_verify(&snow3g_hash_data);
 }
