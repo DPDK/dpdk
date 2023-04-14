@@ -45,6 +45,9 @@
 extern uint64_t ice_timestamp_dynflag;
 extern int ice_timestamp_dynfield_offset;
 
+/* Max data buffer size must be 16K - 128 bytes */
+#define ICE_RX_MAX_DATA_BUF_SIZE	(16 * 1024 - 128)
+
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
 typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
 typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,
