@@ -50,7 +50,8 @@ static const char * const scheduler_valid_params[] = {
 	RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
 	RTE_CRYPTODEV_VDEV_SOCKET_ID,
 	RTE_CRYPTODEV_VDEV_COREMASK,
-	RTE_CRYPTODEV_VDEV_CORELIST
+	RTE_CRYPTODEV_VDEV_CORELIST,
+	NULL
 };
 
 struct scheduler_parse_map {
