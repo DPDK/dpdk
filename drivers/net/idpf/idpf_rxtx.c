@@ -374,7 +374,8 @@ idpf_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *bufq,
 	bufq->adapter = adapter;
 
 	len = rte_pktmbuf_data_room_size(bufq->mp) - RTE_PKTMBUF_HEADROOM;
-	bufq->rx_buf_len = len;
+	bufq->rx_buf_len = RTE_ALIGN_FLOOR(len, (1 << IDPF_RLAN_CTX_DBUF_S));
+	bufq->rx_buf_len = RTE_MIN(bufq->rx_buf_len, IDPF_RX_MAX_DATA_BUF_SIZE);
 
 	/* Allocate the software ring. */
 	len = nb_desc + IDPF_RX_MAX_BURST;
@@ -473,7 +474,8 @@ idpf_rx_split_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->offloads = offloads;
 
 	len = rte_pktmbuf_data_room_size(rxq->mp) - RTE_PKTMBUF_HEADROOM;
-	rxq->rx_buf_len = len;
+	rxq->rx_buf_len = RTE_ALIGN_FLOOR(len, (1 << IDPF_RLAN_CTX_DBUF_S));
+	rxq->rx_buf_len = RTE_MIN(rxq->rx_buf_len, IDPF_RX_MAX_DATA_BUF_SIZE);
 
 	len = rxq->nb_rx_desc + IDPF_RX_MAX_BURST;
 	ring_size = RTE_ALIGN(len *

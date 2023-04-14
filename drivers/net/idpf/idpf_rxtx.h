@@ -6,6 +6,9 @@
 #define _IDPF_RXTX_H_
 
 #include "idpf_ethdev.h"
+#define IDPF_RLAN_CTX_DBUF_S	7
+#define IDPF_RX_MAX_DATA_BUF_SIZE	(16 * 1024 - 128)
+
 
 /* MTS */
 #define GLTSYN_CMD_SYNC_0_0	(PF_TIMESYNC_BASE + 0x0)
