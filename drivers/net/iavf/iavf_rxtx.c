@@ -651,6 +651,7 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	len = rte_pktmbuf_data_room_size(rxq->mp) - RTE_PKTMBUF_HEADROOM;
 	rxq->rx_buf_len = RTE_ALIGN_FLOOR(len, (1 << IAVF_RXQ_CTX_DBUFF_SHIFT));
+	rxq->rx_buf_len = RTE_MIN(rxq->rx_buf_len, IAVF_RX_MAX_DATA_BUF_SIZE);
 
 	/* Allocate the software ring. */
 	len = nb_desc + IAVF_RX_MAX_BURST;
