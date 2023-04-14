@@ -682,7 +682,8 @@ enqueue_one_chain_job_gen1(struct qat_sym_session *ctx,
 		while (remaining_off >= cvec->len && i >= 1) {
 			i--;
 			remaining_off -= cvec->len;
-			cvec++;
+			if (i)
+				cvec++;
 		}
 
 		auth_iova_end = cvec->iova + remaining_off;
