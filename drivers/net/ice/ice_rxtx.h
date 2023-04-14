@@ -51,6 +51,9 @@ extern int ice_timestamp_dynfield_offset;
 /* Max header size can be 2K - 64 bytes */
 #define ICE_RX_HDR_BUF_SIZE    (2048 - 64)
 
+/* Max data buffer size must be 16K - 128 bytes */
+#define ICE_RX_MAX_DATA_BUF_SIZE	(16 * 1024 - 128)
+
 #define ICE_HEADER_SPLIT_ENA   BIT(0)
 
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
