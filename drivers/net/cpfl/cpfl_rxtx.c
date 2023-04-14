@@ -155,7 +155,8 @@ cpfl_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *rxq,
 	bufq->adapter = base;
 
 	len = rte_pktmbuf_data_room_size(bufq->mp) - RTE_PKTMBUF_HEADROOM;
-	bufq->rx_buf_len = len;
+	bufq->rx_buf_len = RTE_ALIGN_FLOOR(len, (1 << IDPF_RLAN_CTX_DBUF_S));
+	bufq->rx_buf_len = RTE_MIN(bufq->rx_buf_len, IDPF_RX_MAX_DATA_BUF_SIZE);
 
 	/* Allocate a little more to support bulk allocate. */
 	len = nb_desc + IDPF_RX_MAX_BURST;
