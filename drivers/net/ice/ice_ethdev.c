@@ -89,6 +89,9 @@ static int ice_dev_close(struct rte_eth_dev *dev);
 static int ice_dev_reset(struct rte_eth_dev *dev);
 static int ice_dev_info_get(struct rte_eth_dev *dev,
 			    struct rte_eth_dev_info *dev_info);
+static int ice_phy_conf_link(struct ice_hw *hw,
+					u16 force_speed,
+					bool link_up);
 static int ice_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
 static int ice_dev_set_link_up(struct rte_eth_dev *dev);
@@ -4052,72 +4055,134 @@ out:
 	return 0;
 }
 
-/* Force the physical link state by getting the current PHY capabilities from
- * hardware and setting the PHY config based on the determined capabilities. If
- * link changes, link event will be triggered because both the Enable Automatic
- * Link Update and LESM Enable bits are set when setting the PHY capabilities.
- */
-static enum ice_status
-ice_force_phys_link_state(struct ice_hw *hw, bool link_up)
+static inline uint16_t
+ice_parse_link_speeds(uint16_t link_speeds)
+{
+	uint16_t link_speed = ICE_AQ_LINK_SPEED_UNKNOWN;
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_100G)
+		link_speed |= ICE_AQ_LINK_SPEED_100GB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_50G)
+		link_speed |= ICE_AQ_LINK_SPEED_50GB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_40G)
+		link_speed |= ICE_AQ_LINK_SPEED_40GB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_25G)
+		link_speed |= ICE_AQ_LINK_SPEED_25GB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_20G)
+		link_speed |= ICE_AQ_LINK_SPEED_20GB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_10G)
+		link_speed |= ICE_AQ_LINK_SPEED_10GB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_5G)
+		link_speed |= ICE_AQ_LINK_SPEED_5GB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_2_5G)
+		link_speed |= ICE_AQ_LINK_SPEED_2500MB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_1G)
+		link_speed |= ICE_AQ_LINK_SPEED_1000MB;
+	if (link_speeds & RTE_ETH_LINK_SPEED_100M)
+		link_speed |= ICE_AQ_LINK_SPEED_100MB;
+
+	return link_speed;
+}
+
+static int
+ice_apply_link_speed(struct rte_eth_dev *dev)
+{
+	uint16_t speed;
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+
+	if (conf->link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
+		conf->link_speeds = RTE_ETH_LINK_SPEED_100G |
+				    RTE_ETH_LINK_SPEED_50G  |
+				    RTE_ETH_LINK_SPEED_40G  |
+				    RTE_ETH_LINK_SPEED_25G  |
+				    RTE_ETH_LINK_SPEED_20G  |
+				    RTE_ETH_LINK_SPEED_10G  |
+					RTE_ETH_LINK_SPEED_5G   |
+					RTE_ETH_LINK_SPEED_2_5G |
+					RTE_ETH_LINK_SPEED_1G   |
+					RTE_ETH_LINK_SPEED_100M;
+	}
+	speed = ice_parse_link_speeds(conf->link_speeds);
+
+	return ice_phy_conf_link(hw, speed, true);
+}
+
+static int
+ice_phy_conf_link(struct ice_hw *hw,
+		   u16 link_speeds_bitmap,
+		   bool link_up)
 {
 	struct ice_aqc_set_phy_cfg_data cfg = { 0 };
-	struct ice_aqc_get_phy_caps_data *pcaps;
-	struct ice_port_info *pi;
-	enum ice_status status;
+	struct ice_port_info *pi = hw->port_info;
+	struct ice_aqc_get_phy_caps_data *phy_caps;
+	int err;
+	u64 phy_type_low = 0;
+	u64 phy_type_high = 0;
 
-	if (!hw || !hw->port_info)
-		return ICE_ERR_PARAM;
-
-	pi = hw->port_info;
-
-	pcaps = (struct ice_aqc_get_phy_caps_data *)
-		ice_malloc(hw, sizeof(*pcaps));
-	if (!pcaps)
+	phy_caps = (struct ice_aqc_get_phy_caps_data *)
+		ice_malloc(hw, sizeof(*phy_caps));
+	if (!phy_caps)
 		return ICE_ERR_NO_MEMORY;
 
-	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_ACTIVE_CFG,
-				     pcaps, NULL);
-	if (status)
-		goto out;
+	if (!pi)
+		return -EIO;
 
-	/* No change in link */
-	if (link_up == !!(pcaps->caps & ICE_AQC_PHY_EN_LINK) &&
-	    link_up == !!(pi->phy.link_info.link_info & ICE_AQ_LINK_UP))
-		goto out;
 
-	cfg.phy_type_low = pcaps->phy_type_low;
-	cfg.phy_type_high = pcaps->phy_type_high;
-	cfg.caps = pcaps->caps | ICE_AQ_PHY_ENA_AUTO_LINK_UPDT;
-	cfg.low_power_ctrl_an = pcaps->low_power_ctrl_an;
-	cfg.eee_cap = pcaps->eee_cap;
-	cfg.eeer_value = pcaps->eeer_value;
-	cfg.link_fec_opt = pcaps->link_fec_options;
+	if (ice_fw_supports_report_dflt_cfg(pi->hw))
+		err = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_DFLT_CFG,
+					  phy_caps, NULL);
+	else
+		err = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
+					  phy_caps, NULL);
+	if (err)
+		goto done;
+
+	ice_update_phy_type(&phy_type_low, &phy_type_high, link_speeds_bitmap);
+
+	if (link_speeds_bitmap == ICE_LINK_SPEED_UNKNOWN) {
+		cfg.phy_type_low = phy_caps->phy_type_low;
+		cfg.phy_type_high = phy_caps->phy_type_high;
+	} else if (phy_type_low & phy_caps->phy_type_low ||
+					phy_type_high & phy_caps->phy_type_high) {
+		cfg.phy_type_low = phy_type_low & phy_caps->phy_type_low;
+		cfg.phy_type_high = phy_type_high & phy_caps->phy_type_high;
+	} else {
+		PMD_DRV_LOG(WARNING, "Invalid speed setting, set to default!\n");
+		cfg.phy_type_low = phy_caps->phy_type_low;
+		cfg.phy_type_high = phy_caps->phy_type_high;
+	}
+
+	cfg.caps = phy_caps->caps | ICE_AQ_PHY_ENA_AUTO_LINK_UPDT;
+	cfg.low_power_ctrl_an = phy_caps->low_power_ctrl_an;
+	cfg.eee_cap = phy_caps->eee_cap;
+	cfg.eeer_value = phy_caps->eeer_value;
+	cfg.link_fec_opt = phy_caps->link_fec_options;
 	if (link_up)
 		cfg.caps |= ICE_AQ_PHY_ENA_LINK;
 	else
 		cfg.caps &= ~ICE_AQ_PHY_ENA_LINK;
 
-	status = ice_aq_set_phy_cfg(hw, pi, &cfg, NULL);
+	err = ice_aq_set_phy_cfg(hw, pi, &cfg, NULL);
 
-out:
-	ice_free(hw, pcaps);
-	return status;
+done:
+	ice_free(hw, phy_caps);
+	return err;
 }
 
 static int
 ice_dev_set_link_up(struct rte_eth_dev *dev)
 {
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	return ice_force_phys_link_state(hw, true);
+	return ice_apply_link_speed(dev);
 }
 
 static int
 ice_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t speed = ICE_LINK_SPEED_UNKNOWN;
 
-	return ice_force_phys_link_state(hw, false);
+	return ice_phy_conf_link(hw, speed, false);
 }
 
 static int
