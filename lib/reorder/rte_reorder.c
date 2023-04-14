@@ -55,12 +55,17 @@ struct rte_reorder_buffer {
 static void
 rte_reorder_free_mbufs(struct rte_reorder_buffer *b);
 
+unsigned int
+rte_reorder_memory_footprint_get(unsigned int size)
+{
+	return sizeof(struct rte_reorder_buffer) + (2 * size * sizeof(struct rte_mbuf *));
+}
+
 struct rte_reorder_buffer *
 rte_reorder_init(struct rte_reorder_buffer *b, unsigned int bufsize,
 		const char *name, unsigned int size)
 {
-	const unsigned int min_bufsize = sizeof(*b) +
-					(2 * size * sizeof(struct rte_mbuf *));
+	const unsigned int min_bufsize = rte_reorder_memory_footprint_get(size);
 	static const struct rte_mbuf_dynfield reorder_seqn_dynfield_desc = {
 		.name = RTE_REORDER_SEQN_DYNFIELD_NAME,
 		.size = sizeof(rte_reorder_seqn_t),
@@ -150,8 +155,8 @@ rte_reorder_create(const char *name, unsigned socket_id, unsigned int size)
 {
 	struct rte_reorder_buffer *b = NULL;
 	struct rte_tailq_entry *te, *te_inserted;
-	const unsigned int bufsize = sizeof(struct rte_reorder_buffer) +
-					(2 * size * sizeof(struct rte_mbuf *));
+
+	const unsigned int bufsize = rte_reorder_memory_footprint_get(size);
 
 	/* Check user arguments. */
 	if (!rte_is_power_of_2(size)) {

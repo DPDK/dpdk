@@ -20,4 +20,6 @@ EXPERIMENTAL {
 	# added in 23.03
 	rte_reorder_drain_up_to_seqn;
 	rte_reorder_min_seqn_set;
+	# added in 23.07
+	rte_reorder_memory_footprint_get;
 };

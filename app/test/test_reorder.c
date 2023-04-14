@@ -58,12 +58,12 @@ test_reorder_init(void)
 	struct rte_reorder_buffer *b = NULL;
 	unsigned int size;
 	/*
-	 * The minimum memory area size that should be passed to library is,
-	 * sizeof(struct rte_reorder_buffer) + (2 * size * sizeof(struct rte_mbuf *));
+	 * The minimum memory area size that should be passed to library determined
+	 * by rte_reorder_memory_footprint_get().
 	 * Otherwise error will be thrown
 	 */
 
-	size = 100;
+	size = rte_reorder_memory_footprint_get(REORDER_BUFFER_SIZE) - 1;
 	b = rte_reorder_init(b, size, "PKT1", REORDER_BUFFER_SIZE);
 	TEST_ASSERT((b == NULL) && (rte_errno == EINVAL),
 			"No error on init with NULL buffer.");
@@ -74,7 +74,7 @@ test_reorder_init(void)
 			"No error on init with invalid mem zone size.");
 	rte_free(b);
 
-	size = 262336;
+	size = rte_reorder_memory_footprint_get(REORDER_BUFFER_SIZE);
 	b = rte_malloc(NULL, size, 0);
 	b = rte_reorder_init(b, size, "PKT1", REORDER_BUFFER_SIZE_INVALID);
 	TEST_ASSERT((b == NULL) && (rte_errno == EINVAL),
