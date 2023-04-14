@@ -2904,6 +2904,8 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 		rxq->rx_hdr_len = 0;
 		rxq->rx_buf_len = RTE_ALIGN_FLOOR(buf_size,
 			(1 << I40E_RXQ_CTX_DBUFF_SHIFT));
+		rxq->rx_buf_len = RTE_MIN(rxq->rx_buf_len,
+					  I40E_RX_MAX_DATA_BUF_SIZE);
 		rxq->hs_mode = i40e_header_split_none;
 		break;
 	}
