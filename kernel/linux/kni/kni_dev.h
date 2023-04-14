@@ -105,11 +105,9 @@ static inline phys_addr_t iova_to_phys(struct task_struct *tsk,
 
 	/* Read one page struct info */
 #ifdef HAVE_TSK_IN_GUP
-	ret = get_user_pages_remote(tsk, tsk->mm, iova, 1,
-				    FOLL_TOUCH, &page, NULL, NULL);
+	ret = get_user_pages_remote(tsk, tsk->mm, iova, 1, 0, &page, NULL, NULL);
 #else
-	ret = get_user_pages_remote(tsk->mm, iova, 1,
-				    FOLL_TOUCH, &page, NULL, NULL);
+	ret = get_user_pages_remote(tsk->mm, iova, 1, 0, &page, NULL, NULL);
 #endif
 	if (ret < 0)
 		return 0;
