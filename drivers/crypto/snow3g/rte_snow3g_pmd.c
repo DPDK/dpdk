@@ -371,7 +371,8 @@ static int
 process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 		struct snow3g_qp *qp, uint16_t *accumulated_enqueued_ops)
 {
-	unsigned enqueued_op, processed_op;
+	unsigned int processed_op;
+	int ret;
 
 	switch (session->op) {
 	case SNOW3G_OP_ONLY_CIPHER:
@@ -412,9 +413,13 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 
 	if (unlikely(processed_op != 1))
 		return 0;
-	enqueued_op = rte_ring_enqueue(qp->processed_ops, op);
-	qp->qp_stats.enqueued_count += enqueued_op;
-	*accumulated_enqueued_ops += enqueued_op;
+
+	ret = rte_ring_enqueue(qp->processed_ops, op);
+	if (ret != 0)
+		return ret;
+
+	qp->qp_stats.enqueued_count += 1;
+	*accumulated_enqueued_ops += 1;
 
 	return 1;
 }
