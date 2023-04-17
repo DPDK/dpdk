@@ -275,7 +275,7 @@ test_crypto_adapter_stats(void)
 static int
 test_crypto_adapter_params(void)
 {
-	int err;
+	int err, rc;
 	struct rte_event_crypto_adapter_runtime_params in_params;
 	struct rte_event_crypto_adapter_runtime_params out_params;
 	uint32_t cap;
@@ -303,6 +303,10 @@ test_crypto_adapter_params(void)
 	/* Case 1: Get the default value of mbufs processed by adapter */
 	err = rte_event_crypto_adapter_runtime_params_get(TEST_ADAPTER_ID,
 							  &out_params);
+	if (err == -ENOTSUP) {
+		rc = TEST_SKIPPED;
+		goto queue_pair_del;
+	}
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
 	/* Case 2: Set max_nb = 32 (=BATCH_SEIZE) */
@@ -370,11 +374,13 @@ test_crypto_adapter_params(void)
 	TEST_ASSERT(in_params.max_nb == out_params.max_nb, "Expected %u got %u",
 		    in_params.max_nb, out_params.max_nb);
 
+	rc = TEST_SUCCESS;
+queue_pair_del:
 	err = rte_event_crypto_adapter_queue_pair_del(TEST_ADAPTER_ID,
 					TEST_CDEV_ID, TEST_CDEV_QP_ID);
 	TEST_ASSERT_SUCCESS(err, "Failed to delete add queue pair\n");
 
-	return TEST_SUCCESS;
+	return rc;
 }
 
 static int
