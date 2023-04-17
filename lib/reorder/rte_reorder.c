@@ -47,9 +47,10 @@ struct rte_reorder_buffer {
 	char name[RTE_REORDER_NAMESIZE];
 	uint32_t min_seqn;  /**< Lowest seq. number that can be in the buffer */
 	unsigned int memsize; /**< memory area size of reorder buffer */
+	bool is_initialized; /**< flag indicates that buffer was initialized */
+
 	struct cir_buffer ready_buf; /**< temp buffer for dequeued entries */
 	struct cir_buffer order_buf; /**< buffer used to reorder entries */
-	int is_initialized;
 } __rte_cache_aligned;
 
 static void
