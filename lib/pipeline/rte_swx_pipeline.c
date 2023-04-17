@@ -8665,6 +8665,7 @@ table_build_free(struct rte_swx_pipeline *p)
 			free(p->table_stats[i].n_pkts_action);
 
 		free(p->table_stats);
+		p->table_stats = NULL;
 	}
 }
 
@@ -9579,6 +9580,7 @@ learner_build_free(struct rte_swx_pipeline *p)
 			free(p->learner_stats[i].n_pkts_action);
 
 		free(p->learner_stats);
+		p->learner_stats = NULL;
 	}
 }
 
