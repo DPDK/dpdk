@@ -68,7 +68,7 @@ origin_version () # <origin_hash> ...
 {
 	for origin in $* ; do
 		# check hash is valid
-		git rev-parse -q --verify $1 >&- || continue
+		git rev-parse -q --verify $origin >&- || continue
 		# get version of this bug origin
 		local origver=$(commit_version $origin)
 		local roothashes="$(origin_filter $origin)"
