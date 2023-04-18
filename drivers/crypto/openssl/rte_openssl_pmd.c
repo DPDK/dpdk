@@ -1797,7 +1797,6 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 # if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	EVP_MAC_CTX *ctx_h;
 	EVP_MAC_CTX *ctx_c;
-	EVP_MAC *mac;
 # else
 	HMAC_CTX *ctx_h;
 	CMAC_CTX *ctx_c;
@@ -1818,10 +1817,7 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		break;
 	case OPENSSL_AUTH_AS_HMAC:
 # if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
-		ctx_h = EVP_MAC_CTX_new(mac);
 		ctx_h = EVP_MAC_CTX_dup(sess->auth.hmac.ctx);
-		EVP_MAC_free(mac);
 		status = process_openssl_auth_mac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_h);
@@ -1836,10 +1832,7 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		break;
 	case OPENSSL_AUTH_AS_CMAC:
 # if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		mac = EVP_MAC_fetch(NULL, OSSL_MAC_NAME_CMAC, NULL);
-		ctx_c = EVP_MAC_CTX_new(mac);
 		ctx_c = EVP_MAC_CTX_dup(sess->auth.cmac.ctx);
-		EVP_MAC_free(mac);
 		status = process_openssl_auth_mac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_c);
