@@ -25,7 +25,14 @@
 #define CRYPTO_ADAPTER_MEM_NAME_LEN 32
 #define CRYPTO_ADAPTER_MAX_EV_ENQ_RETRIES 100
 
-#define CRYPTO_ADAPTER_OPS_BUFFER_SZ (BATCH_SIZE + BATCH_SIZE)
+/* MAX_OPS_IN_BUFFER contains size for  batch of dequeued events */
+#define MAX_OPS_IN_BUFFER BATCH_SIZE
+
+/* CRYPTO_ADAPTER_OPS_BUFFER_SZ to accommodate MAX_OPS_IN_BUFFER +
+ * additional space for one batch
+ */
+#define CRYPTO_ADAPTER_OPS_BUFFER_SZ (MAX_OPS_IN_BUFFER + BATCH_SIZE)
+
 #define CRYPTO_ADAPTER_BUFFER_SZ 1024
 
 /* Flush an instance's enqueue buffers every CRYPTO_ENQ_FLUSH_THRESHOLD
@@ -188,7 +195,8 @@ eca_circular_buffer_batch_ready(struct crypto_ops_circular_buffer *bufp)
 static inline bool
 eca_circular_buffer_space_for_batch(struct crypto_ops_circular_buffer *bufp)
 {
-	return (bufp->size - bufp->count) >= BATCH_SIZE;
+	/* circular buffer can have atmost MAX_OPS_IN_BUFFER */
+	return (bufp->size - bufp->count) >= MAX_OPS_IN_BUFFER;
 }
 
 static inline void
