@@ -4,6 +4,8 @@
 #ifndef _ICP_QAT_HW_H_
 #define _ICP_QAT_HW_H_
 
+#include "icp_qat_fw.h"
+
 #define ADF_C4XXXIOV_VFLEGFUSES_OFFSET	0x4C
 #define ADF1_C4XXXIOV_VFLEGFUSES_LEN	4
 
@@ -260,14 +262,19 @@ enum icp_qat_hw_cipher_convert {
 };
 
 #define QAT_CIPHER_MODE_BITPOS 4
+#define QAT_CIPHER_MODE_LE_BITPOS 28
 #define QAT_CIPHER_MODE_MASK 0xF
 #define QAT_CIPHER_ALGO_BITPOS 0
+#define QAT_CIPHER_ALGO_LE_BITPOS 24
 #define QAT_CIPHER_ALGO_MASK 0xF
 #define QAT_CIPHER_CONVERT_BITPOS 9
+#define QAT_CIPHER_CONVERT_LE_BITPOS 17
 #define QAT_CIPHER_CONVERT_MASK 0x1
 #define QAT_CIPHER_DIR_BITPOS 8
+#define QAT_CIPHER_DIR_LE_BITPOS 16
 #define QAT_CIPHER_DIR_MASK 0x1
 #define QAT_CIPHER_AEAD_HASH_CMP_LEN_BITPOS 10
+#define QAT_CIPHER_AEAD_HASH_CMP_LEN_LE_BITPOS 18
 #define QAT_CIPHER_AEAD_HASH_CMP_LEN_MASK 0x1F
 #define QAT_CIPHER_MODE_F8_KEY_SZ_MULT 2
 #define QAT_CIPHER_MODE_XTS_KEY_SZ_MULT 2
@@ -281,7 +288,9 @@ enum icp_qat_hw_cipher_convert {
 #define QAT_CIPHER_AEAD_AAD_UPPER_SHIFT 8
 #define QAT_CIPHER_AEAD_AAD_SIZE_LOWER_MASK 0xFF
 #define QAT_CIPHER_AEAD_AAD_SIZE_UPPER_MASK 0x3F
+#define QAT_CIPHER_AEAD_AAD_SIZE_MASK 0x3FFF
 #define QAT_CIPHER_AEAD_AAD_SIZE_BITPOS 16
+#define QAT_CIPHER_AEAD_AAD_SIZE_LE_BITPOS 0
 #define ICP_QAT_HW_CIPHER_CONFIG_BUILD_UPPER(aad_size) \
 	({ \
 	typeof(aad_size) aad_size1 = aad_size; \
@@ -362,6 +371,28 @@ struct icp_qat_hw_cipher_algo_blk {
 	uint8_t key[ICP_QAT_HW_CIPHER_MAX_KEY_SZ];
 } __rte_cache_aligned;
 
+struct icp_qat_hw_gen2_crc_cd {
+	uint32_t flags;
+	uint32_t reserved1[5];
+	uint32_t initial_crc;
+	uint32_t reserved2[3];
+};
+
+#define QAT_GEN3_COMP_REFLECT_IN_BITPOS 17
+#define QAT_GEN3_COMP_REFLECT_IN_MASK 0x1
+#define QAT_GEN3_COMP_REFLECT_OUT_BITPOS 18
+#define QAT_GEN3_COMP_REFLECT_OUT_MASK 0x1
+
+struct icp_qat_hw_gen3_crc_cd {
+	uint32_t flags;
+	uint32_t reserved1[3];
+	uint32_t polynomial;
+	uint32_t xor_val;
+	uint32_t reserved2[2];
+	uint32_t initial_crc;
+	uint32_t reserved3;
+};
+
 struct icp_qat_hw_ucs_cipher_config {
 	uint32_t val;
 	uint32_t reserved[3];
@@ -371,6 +402,108 @@ struct icp_qat_hw_cipher_algo_blk20 {
 	struct icp_qat_hw_ucs_cipher_config cipher_config;
 	uint8_t key[ICP_QAT_HW_CIPHER_MAX_KEY_SZ];
 } __rte_cache_aligned;
+
+enum icp_qat_hw_ucs_cipher_reflect_out {
+	ICP_QAT_HW_CIPHER_UCS_REFLECT_OUT_DISABLED = 0,
+	ICP_QAT_HW_CIPHER_UCS_REFLECT_OUT_ENABLED = 1,
+};
+
+enum icp_qat_hw_ucs_cipher_reflect_in {
+	ICP_QAT_HW_CIPHER_UCS_REFLECT_IN_DISABLED = 0,
+	ICP_QAT_HW_CIPHER_UCS_REFLECT_IN_ENABLED = 1,
+};
+
+enum icp_qat_hw_ucs_cipher_crc_encoding {
+	ICP_QAT_HW_CIPHER_UCS_CRC_NOT_REQUIRED = 0,
+	ICP_QAT_HW_CIPHER_UCS_CRC32 = 1,
+	ICP_QAT_HW_CIPHER_UCS_CRC64 = 2,
+};
+
+#define QAT_CIPHER_UCS_REFLECT_OUT_LE_BITPOS 17
+#define QAT_CIPHER_UCS_REFLECT_OUT_MASK 0x1
+#define QAT_CIPHER_UCS_REFLECT_IN_LE_BITPOS 16
+#define QAT_CIPHER_UCS_REFLECT_IN_MASK 0x1
+#define QAT_CIPHER_UCS_CRC_ENCODING_LE_BITPOS 14
+#define QAT_CIPHER_UCS_CRC_ENCODING_MASK 0x3
+
+struct icp_qat_fw_ucs_slice_cipher_config {
+	enum icp_qat_hw_cipher_mode mode;
+	enum icp_qat_hw_cipher_algo algo;
+	uint16_t hash_cmp_val;
+	enum icp_qat_hw_cipher_dir dir;
+	uint16_t associated_data_len_in_bytes;
+	enum icp_qat_hw_ucs_cipher_reflect_out crc_reflect_out;
+	enum icp_qat_hw_ucs_cipher_reflect_in crc_reflect_in;
+	enum icp_qat_hw_ucs_cipher_crc_encoding crc_encoding;
+};
+
+struct icp_qat_hw_gen4_crc_cd {
+	uint32_t ucs_config[4];
+	uint32_t polynomial;
+	uint32_t reserved1;
+	uint32_t xor_val;
+	uint32_t reserved2;
+	uint32_t initial_crc;
+	uint32_t reserved3;
+};
+
+static inline uint32_t
+ICP_QAT_HW_UCS_CIPHER_GEN4_BUILD_CONFIG_LOWER(
+	struct icp_qat_fw_ucs_slice_cipher_config csr)
+{
+	uint32_t val32 = 0;
+
+	QAT_FIELD_SET(val32,
+			csr.mode,
+			QAT_CIPHER_MODE_LE_BITPOS,
+			QAT_CIPHER_MODE_MASK);
+
+	QAT_FIELD_SET(val32,
+			csr.algo,
+			QAT_CIPHER_ALGO_LE_BITPOS,
+			QAT_CIPHER_ALGO_MASK);
+
+	QAT_FIELD_SET(val32,
+			csr.hash_cmp_val,
+			QAT_CIPHER_AEAD_HASH_CMP_LEN_LE_BITPOS,
+			QAT_CIPHER_AEAD_HASH_CMP_LEN_MASK);
+
+	QAT_FIELD_SET(val32,
+			csr.dir,
+			QAT_CIPHER_DIR_LE_BITPOS,
+			QAT_CIPHER_DIR_MASK);
+
+	return rte_bswap32(val32);
+}
+
+static inline uint32_t
+ICP_QAT_HW_UCS_CIPHER_GEN4_BUILD_CONFIG_UPPER(
+	struct icp_qat_fw_ucs_slice_cipher_config csr)
+{
+	uint32_t val32 = 0;
+
+	QAT_FIELD_SET(val32,
+			csr.associated_data_len_in_bytes,
+			QAT_CIPHER_AEAD_AAD_SIZE_LE_BITPOS,
+			QAT_CIPHER_AEAD_AAD_SIZE_MASK);
+
+	QAT_FIELD_SET(val32,
+			csr.crc_reflect_out,
+			QAT_CIPHER_UCS_REFLECT_OUT_LE_BITPOS,
+			QAT_CIPHER_UCS_REFLECT_OUT_MASK);
+
+	QAT_FIELD_SET(val32,
+			csr.crc_reflect_in,
+			QAT_CIPHER_UCS_REFLECT_IN_LE_BITPOS,
+			QAT_CIPHER_UCS_REFLECT_IN_MASK);
+
+	QAT_FIELD_SET(val32,
+			csr.crc_encoding,
+			QAT_CIPHER_UCS_CRC_ENCODING_LE_BITPOS,
+			QAT_CIPHER_UCS_CRC_ENCODING_MASK);
+
+	return rte_bswap32(val32);
+}
 
 /* ========================================================================= */
 /*                COMPRESSION SLICE                                          */
