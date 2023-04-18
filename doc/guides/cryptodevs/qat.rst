@@ -294,6 +294,29 @@ by comma. When the same parameter is used more than once first occurrence of the
 is used.
 Maximum threshold that can be set is 32.
 
+
+Running QAT PMD with Cipher-CRC offload feature
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Support has been added to the QAT symmetric crypto PMD for combined Cipher-CRC offload,
+primarily for the Crypto-CRC DOCSIS security protocol, on GEN2/GEN3/GEN4 QAT devices.
+
+The following devarg enables a Cipher-CRC offload capability check to determine
+if the feature is supported on the QAT device.
+
+- qat_sym_cipher_crc_enable
+
+When enabled, a capability check for the combined Cipher-CRC offload feature is triggered
+to the QAT firmware during queue pair initialization. If supported by the firmware,
+any subsequent runtime Crypto-CRC DOCSIS security protocol requests handled by the QAT PMD
+are offloaded to the QAT device by setting up the content descriptor and request accordingly.
+If not supported, the CRC is calculated by the QAT PMD using the NET CRC API.
+
+To use this feature the user must set the devarg on process start as a device additional devarg::
+
+ -a 03:01.1,qat_sym_cipher_crc_enable=1
+
+
 Running QAT PMD with Intel IPSEC MB library for symmetric precomputes function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

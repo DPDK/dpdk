@@ -163,7 +163,7 @@ qat_sym_crypto_qp_setup_gen2(struct rte_cryptodev *dev, uint16_t qp_id,
 		QAT_LOG(DEBUG, "unknown QAT firmware version");
 
 	/* set capabilities based on the fw version */
-	qat_sym_private->internal_capabilities = QAT_SYM_CAP_VALID |
+	qat_sym_private->internal_capabilities |= QAT_SYM_CAP_VALID |
 			((ret >= MIXED_CRYPTO_MIN_FW_VER) ?
 					QAT_SYM_CAP_MIXED_CRYPTO : 0);
 	return 0;

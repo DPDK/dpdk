@@ -399,8 +399,13 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 		cipher_ofs = op->sym->cipher.data.offset >> 3;
 		break;
 	case 0:
-		cipher_len = op->sym->cipher.data.length;
-		cipher_ofs = op->sym->cipher.data.offset;
+		if (ctx->bpi_ctx) {
+			cipher_len = qat_bpicipher_preprocess(ctx, op);
+			cipher_ofs = op->sym->cipher.data.offset;
+		} else {
+			cipher_len = op->sym->cipher.data.length;
+			cipher_ofs = op->sym->cipher.data.offset;
+		}
 		break;
 	default:
 		QAT_DP_LOG(ERR,
@@ -428,8 +433,10 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 
 	max_len = RTE_MAX(cipher_ofs + cipher_len, auth_ofs + auth_len);
 
-	/* digest in buffer check. Needed only for wireless algos */
-	if (ret == 1) {
+	/* digest in buffer check. Needed only for wireless algos
+	 * or combined cipher-crc operations
+	 */
+	if (ret == 1 || ctx->bpi_ctx) {
 		/* Handle digest-encrypted cases, i.e.
 		 * auth-gen-then-cipher-encrypt and
 		 * cipher-decrypt-then-auth-verify
@@ -456,8 +463,9 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 					auth_len;
 
 		/* Then check if digest-encrypted conditions are met */
-		if ((auth_ofs + auth_len < cipher_ofs + cipher_len) &&
-				(digest->iova == auth_end_iova))
+		if (((auth_ofs + auth_len < cipher_ofs + cipher_len) &&
+				(digest->iova == auth_end_iova)) ||
+				ctx->bpi_ctx)
 			max_len = RTE_MAX(max_len, auth_ofs + auth_len +
 					ctx->digest_length);
 	}
@@ -692,9 +700,9 @@ enqueue_one_chain_job_gen1(struct qat_sym_session *ctx,
 			auth_param->auth_len;
 
 	/* Then check if digest-encrypted conditions are met */
-	if ((auth_param->auth_off + auth_param->auth_len <
+	if (((auth_param->auth_off + auth_param->auth_len <
 		cipher_param->cipher_offset + cipher_param->cipher_length) &&
-			(digest->iova == auth_iova_end)) {
+			(digest->iova == auth_iova_end)) || ctx->bpi_ctx) {
 		/* Handle partial digest encryption */
 		if (cipher_param->cipher_offset + cipher_param->cipher_length <
 			auth_param->auth_off + auth_param->auth_len +

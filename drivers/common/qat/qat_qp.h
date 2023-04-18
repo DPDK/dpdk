@@ -153,6 +153,11 @@ qat_qp_get_hw_data(struct qat_pci_device *qat_dev,
 int
 qat_cq_get_fw_version(struct qat_qp *qp);
 
+#ifdef BUILD_QAT_SYM
+int
+qat_cq_get_fw_cipher_crc_cap(struct qat_qp *qp);
+#endif
+
 /* Needed for weak function*/
 int
 qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,

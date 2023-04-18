@@ -149,7 +149,13 @@ qat_dev_parse_cmd(const char *str, struct qat_dev_cmd_param
 			} else {
 				memcpy(value_str, arg2, iter);
 				value = strtol(value_str, NULL, 10);
-				if (value > MAX_QP_THRESHOLD_SIZE) {
+				if (strcmp(param,
+					 SYM_CIPHER_CRC_ENABLE_NAME) == 0) {
+					if (value < 0 || value > 1) {
+						QAT_LOG(DEBUG, "The value for qat_sym_cipher_crc_enable should be set to 0 or 1, setting to 0");
+						value = 0;
+					}
+				} else if (value > MAX_QP_THRESHOLD_SIZE) {
 					QAT_LOG(DEBUG, "Exceeded max size of"
 						" threshold, setting to %d",
 						MAX_QP_THRESHOLD_SIZE);
@@ -369,6 +375,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			{ SYM_ENQ_THRESHOLD_NAME, 0 },
 			{ ASYM_ENQ_THRESHOLD_NAME, 0 },
 			{ COMP_ENQ_THRESHOLD_NAME, 0 },
+			{ SYM_CIPHER_CRC_ENABLE_NAME, 0 },
 			[QAT_CMD_SLICE_MAP_POS] = { QAT_CMD_SLICE_MAP, 0},
 			{ NULL, 0 },
 	};

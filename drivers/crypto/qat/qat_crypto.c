@@ -172,5 +172,25 @@ qat_cryptodev_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			qat_asym_init_op_cookie(qp->op_cookies[i]);
 	}
 
-	return ret;
+	if (qat_private->cipher_crc_offload_enable) {
+		ret = qat_cq_get_fw_cipher_crc_cap(qp);
+		if (ret < 0) {
+			qat_cryptodev_qp_release(dev, qp_id);
+			return ret;
+		}
+
+		if (ret != 0)
+			QAT_LOG(DEBUG, "Cipher CRC supported on QAT device");
+		else
+			QAT_LOG(DEBUG, "Cipher CRC not supported on QAT device");
+
+		/* Only send the cipher crc offload capability message once */
+		qat_private->cipher_crc_offload_enable = 0;
+		/* Set cipher crc offload indicator */
+		if (ret)
+			qat_private->internal_capabilities |=
+						QAT_SYM_CAP_CIPHER_CRC;
+	}
+
+	return 0;
 }

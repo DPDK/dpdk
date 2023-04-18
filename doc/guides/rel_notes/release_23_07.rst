@@ -108,6 +108,10 @@ New Features
   for new capability registers, large passthrough BAR and some
   performance enhancements for UPT.
 
+* **Updated Intel QuickAssist Technology (QAT) crypto driver.**
+
+  * Added support for combined Cipher-CRC offload for DOCSIS for QAT GENs 2,3 and 4.
+
 
 Removed Items
 -------------

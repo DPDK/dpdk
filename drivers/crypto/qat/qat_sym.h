@@ -32,6 +32,7 @@
 
 /* Internal capabilities */
 #define QAT_SYM_CAP_MIXED_CRYPTO	(1 << 0)
+#define QAT_SYM_CAP_CIPHER_CRC		(1 << 1)
 #define QAT_SYM_CAP_VALID		(1 << 31)
 
 /**
@@ -282,7 +283,8 @@ qat_sym_preprocess_requests(void **ops, uint16_t nb_ops)
 			if (ctx == NULL || ctx->bpi_ctx == NULL)
 				continue;
 
-			qat_crc_generate(ctx, op);
+			if (ctx->qat_cmd != ICP_QAT_FW_LA_CMD_CIPHER_CRC)
+				qat_crc_generate(ctx, op);
 		}
 	}
 }
@@ -330,7 +332,8 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 		if (sess->bpi_ctx) {
 			qat_bpicipher_postprocess(sess, rx_op);
 #ifdef RTE_LIB_SECURITY
-			if (is_docsis_sec)
+			if (is_docsis_sec && sess->qat_cmd !=
+						ICP_QAT_FW_LA_CMD_CIPHER_CRC)
 				qat_crc_verify(sess, rx_op);
 #endif
 		}

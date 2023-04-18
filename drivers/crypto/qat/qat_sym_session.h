@@ -46,6 +46,12 @@
 					ICP_QAT_HW_CIPHER_KEY_CONVERT, \
 					ICP_QAT_HW_CIPHER_DECRYPT)
 
+#define ICP_QAT_HW_GEN3_CRC_FLAGS_BUILD(ref_in, ref_out) \
+	(((ref_in & QAT_GEN3_COMP_REFLECT_IN_MASK) << \
+				QAT_GEN3_COMP_REFLECT_IN_BITPOS) | \
+	((ref_out & QAT_GEN3_COMP_REFLECT_OUT_MASK) << \
+				QAT_GEN3_COMP_REFLECT_OUT_BITPOS))
+
 #define QAT_AES_CMAC_CONST_RB 0x87
 
 #define QAT_CRYPTO_SLICE_SPC	1
@@ -76,7 +82,12 @@ typedef int (*qat_sym_build_request_t)(void *in_op, struct qat_sym_session *ctx,
 /* Common content descriptor */
 struct qat_sym_cd {
 	struct icp_qat_hw_cipher_algo_blk cipher;
-	struct icp_qat_hw_auth_algo_blk hash;
+	union {
+		struct icp_qat_hw_auth_algo_blk hash;
+		struct icp_qat_hw_gen2_crc_cd crc_gen2;
+		struct icp_qat_hw_gen3_crc_cd crc_gen3;
+		struct icp_qat_hw_gen4_crc_cd crc_gen4;
+	};
 } __rte_packed __rte_cache_aligned;
 
 struct qat_sym_session {
@@ -152,10 +163,18 @@ qat_sym_session_clear(struct rte_cryptodev *dev,
 unsigned int
 qat_sym_session_get_private_size(struct rte_cryptodev *dev);
 
+int
+qat_cipher_crc_cap_msg_sess_prepare(struct qat_sym_session *session,
+					rte_iova_t session_paddr,
+					const uint8_t *cipherkey,
+					uint32_t cipherkeylen,
+					enum qat_device_gen qat_dev_gen);
+
 void
 qat_sym_sesssion_init_common_hdr(struct qat_sym_session *session,
 					struct icp_qat_fw_comn_req_hdr *header,
 					enum qat_sym_proto_flag proto_flags);
+
 int
 qat_sym_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int

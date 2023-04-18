@@ -36,6 +36,7 @@ struct qat_cryptodev_private {
 	/* Shared memzone for storing capabilities */
 	uint16_t min_enq_burst_threshold;
 	uint32_t internal_capabilities; /* see flags QAT_SYM_CAP_xxx */
+	bool cipher_crc_offload_enable;
 	enum qat_service_type service_type;
 };
 

@@ -279,6 +279,10 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		if (!strcmp(qat_dev_cmd_param[i].name, SYM_ENQ_THRESHOLD_NAME))
 			internals->min_enq_burst_threshold =
 					qat_dev_cmd_param[i].val;
+		if (!strcmp(qat_dev_cmd_param[i].name,
+				SYM_CIPHER_CRC_ENABLE_NAME))
+			internals->cipher_crc_offload_enable =
+					qat_dev_cmd_param[i].val;
 		if (!strcmp(qat_dev_cmd_param[i].name, QAT_IPSEC_MB_LIB))
 			qat_ipsec_mb_lib = qat_dev_cmd_param[i].val;
 		if (!strcmp(qat_dev_cmd_param[i].name, QAT_CMD_SLICE_MAP))

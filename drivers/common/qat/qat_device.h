@@ -21,8 +21,9 @@
 #define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
 #define ASYM_ENQ_THRESHOLD_NAME "qat_asym_enq_threshold"
 #define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
+#define SYM_CIPHER_CRC_ENABLE_NAME "qat_sym_cipher_crc_enable"
 #define QAT_CMD_SLICE_MAP "qat_cmd_slice_disable"
-#define QAT_CMD_SLICE_MAP_POS	4
+#define QAT_CMD_SLICE_MAP_POS	5
 #define MAX_QP_THRESHOLD_SIZE	32
 
 /**

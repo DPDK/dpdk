@@ -27,6 +27,7 @@
 #include <rte_crypto_sym.h>
 #ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
+#include <rte_ether.h>
 #endif
 
 #include "qat_logs.h"
@@ -67,6 +68,13 @@ static void ossl_legacy_provider_unload(void)
 #endif
 
 extern int qat_ipsec_mb_lib;
+
+#define ETH_CRC32_POLYNOMIAL    0x04c11db7
+#define ETH_CRC32_INIT_VAL      0xffffffff
+#define ETH_CRC32_XOR_OUT       0xffffffff
+#define ETH_CRC32_POLYNOMIAL_BE RTE_BE32(ETH_CRC32_POLYNOMIAL)
+#define ETH_CRC32_INIT_VAL_BE   RTE_BE32(ETH_CRC32_INIT_VAL)
+#define ETH_CRC32_XOR_OUT_BE    RTE_BE32(ETH_CRC32_XOR_OUT)
 
 /* SHA1 - 20 bytes - Initialiser state can be found in FIPS stds 180-2 */
 static const uint8_t sha1InitialState[] = {
@@ -116,12 +124,17 @@ qat_sym_cd_cipher_set(struct qat_sym_session *cd,
 						uint32_t enckeylen);
 
 static int
+qat_sym_cd_crc_set(struct qat_sym_session *cdesc,
+					enum qat_device_gen qat_dev_gen);
+
+static int
 qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 						const uint8_t *authkey,
 						uint32_t authkeylen,
 						uint32_t aad_length,
 						uint32_t digestsize,
 						unsigned int operation);
+
 static void
 qat_sym_session_init_common_hdr(struct qat_sym_session *session);
 
@@ -630,6 +643,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 	case ICP_QAT_FW_LA_CMD_MGF1:
 	case ICP_QAT_FW_LA_CMD_AUTH_PRE_COMP:
 	case ICP_QAT_FW_LA_CMD_CIPHER_PRE_COMP:
+	case ICP_QAT_FW_LA_CMD_CIPHER_CRC:
 	case ICP_QAT_FW_LA_CMD_DELIMITER:
 	QAT_LOG(ERR, "Unsupported Service %u",
 		session->qat_cmd);
@@ -643,6 +657,45 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 
 	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)dev,
 			(void *)session);
+}
+
+int
+qat_cipher_crc_cap_msg_sess_prepare(struct qat_sym_session *session,
+					rte_iova_t session_paddr,
+					const uint8_t *cipherkey,
+					uint32_t cipherkeylen,
+					enum qat_device_gen qat_dev_gen)
+{
+	int ret;
+
+	/* Set content descriptor physical address */
+	session->cd_paddr = session_paddr +
+				offsetof(struct qat_sym_session, cd);
+
+	/* Set up some pre-requisite variables */
+	session->qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_NONE;
+	session->is_ucs = 0;
+	session->qat_cmd = ICP_QAT_FW_LA_CMD_CIPHER_CRC;
+	session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
+	session->qat_cipher_alg = ICP_QAT_HW_CIPHER_ALGO_AES128;
+	session->qat_dir = ICP_QAT_HW_CIPHER_ENCRYPT;
+	session->is_auth = 1;
+	session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_NULL;
+	session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+	session->auth_op = ICP_QAT_HW_AUTH_GENERATE;
+	session->digest_length = RTE_ETHER_CRC_LEN;
+
+	ret = qat_sym_cd_cipher_set(session, cipherkey, cipherkeylen);
+	if (ret < 0)
+		return -EINVAL;
+
+	ret = qat_sym_cd_crc_set(session, qat_dev_gen);
+	if (ret < 0)
+		return -EINVAL;
+
+	qat_sym_session_finalize(session);
+
+	return 0;
 }
 
 static int
@@ -1866,6 +1919,9 @@ int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,
 		ICP_QAT_FW_COMN_NEXT_ID_SET(hash_cd_ctrl,
 					ICP_QAT_FW_SLICE_DRAM_WR);
 		cdesc->cd_cur_ptr = (uint8_t *)&cdesc->cd;
+	} else if (cdesc->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_CRC) {
+		cd_pars->u.s.content_desc_addr = cdesc->cd_paddr;
+		cdesc->cd_cur_ptr = (uint8_t *)&cdesc->cd;
 	} else if (cdesc->qat_cmd != ICP_QAT_FW_LA_CMD_HASH_CIPHER) {
 		QAT_LOG(ERR, "Invalid param, must be a cipher command.");
 		return -EFAULT;
@@ -2642,6 +2698,135 @@ qat_sec_session_check_docsis(struct rte_security_session_conf *conf)
 }
 
 static int
+qat_sym_cd_crc_set(struct qat_sym_session *cdesc,
+		enum qat_device_gen qat_dev_gen)
+{
+	struct icp_qat_hw_gen2_crc_cd *crc_cd_gen2;
+	struct icp_qat_hw_gen3_crc_cd *crc_cd_gen3;
+	struct icp_qat_hw_gen4_crc_cd *crc_cd_gen4;
+	struct icp_qat_fw_la_bulk_req *req_tmpl = &cdesc->fw_req;
+	struct icp_qat_fw_comn_req_hdr_cd_pars *cd_pars = &req_tmpl->cd_pars;
+	void *ptr = &req_tmpl->cd_ctrl;
+	struct icp_qat_fw_auth_cd_ctrl_hdr *crc_cd_ctrl = ptr;
+	struct icp_qat_fw_la_auth_req_params *crc_param =
+				(struct icp_qat_fw_la_auth_req_params *)
+				((char *)&req_tmpl->serv_specif_rqpars +
+				ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
+	struct icp_qat_fw_ucs_slice_cipher_config crc_cfg;
+	uint16_t crc_cfg_offset, cd_size;
+
+	crc_cfg_offset = cdesc->cd_cur_ptr - ((uint8_t *)&cdesc->cd);
+
+	switch (qat_dev_gen) {
+	case QAT_GEN2:
+		crc_cd_gen2 =
+			(struct icp_qat_hw_gen2_crc_cd *)cdesc->cd_cur_ptr;
+		crc_cd_gen2->flags = 0;
+		crc_cd_gen2->initial_crc = 0;
+		memset(&crc_cd_gen2->reserved1,
+			0,
+			sizeof(crc_cd_gen2->reserved1));
+		memset(&crc_cd_gen2->reserved2,
+			0,
+			sizeof(crc_cd_gen2->reserved2));
+		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_gen2_crc_cd);
+		break;
+	case QAT_GEN3:
+		crc_cd_gen3 =
+			(struct icp_qat_hw_gen3_crc_cd *)cdesc->cd_cur_ptr;
+		crc_cd_gen3->flags = ICP_QAT_HW_GEN3_CRC_FLAGS_BUILD(1, 1);
+		crc_cd_gen3->polynomial = ETH_CRC32_POLYNOMIAL;
+		crc_cd_gen3->initial_crc = ETH_CRC32_INIT_VAL;
+		crc_cd_gen3->xor_val = ETH_CRC32_XOR_OUT;
+		memset(&crc_cd_gen3->reserved1,
+			0,
+			sizeof(crc_cd_gen3->reserved1));
+		memset(&crc_cd_gen3->reserved2,
+			0,
+			sizeof(crc_cd_gen3->reserved2));
+		crc_cd_gen3->reserved3 = 0;
+		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_gen3_crc_cd);
+		break;
+	case QAT_GEN4:
+		crc_cfg.mode = ICP_QAT_HW_CIPHER_ECB_MODE;
+		crc_cfg.algo = ICP_QAT_HW_CIPHER_ALGO_NULL;
+		crc_cfg.hash_cmp_val = 0;
+		crc_cfg.dir = ICP_QAT_HW_CIPHER_ENCRYPT;
+		crc_cfg.associated_data_len_in_bytes = 0;
+		crc_cfg.crc_reflect_out =
+				ICP_QAT_HW_CIPHER_UCS_REFLECT_OUT_ENABLED;
+		crc_cfg.crc_reflect_in =
+				ICP_QAT_HW_CIPHER_UCS_REFLECT_IN_ENABLED;
+		crc_cfg.crc_encoding = ICP_QAT_HW_CIPHER_UCS_CRC32;
+
+		crc_cd_gen4 =
+			(struct icp_qat_hw_gen4_crc_cd *)cdesc->cd_cur_ptr;
+		crc_cd_gen4->ucs_config[0] =
+			ICP_QAT_HW_UCS_CIPHER_GEN4_BUILD_CONFIG_LOWER(crc_cfg);
+		crc_cd_gen4->ucs_config[1] =
+			ICP_QAT_HW_UCS_CIPHER_GEN4_BUILD_CONFIG_UPPER(crc_cfg);
+		crc_cd_gen4->polynomial = ETH_CRC32_POLYNOMIAL_BE;
+		crc_cd_gen4->initial_crc = ETH_CRC32_INIT_VAL_BE;
+		crc_cd_gen4->xor_val = ETH_CRC32_XOR_OUT_BE;
+		crc_cd_gen4->reserved1 = 0;
+		crc_cd_gen4->reserved2 = 0;
+		crc_cd_gen4->reserved3 = 0;
+		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_gen4_crc_cd);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	crc_cd_ctrl->hash_cfg_offset = crc_cfg_offset >> 3;
+	crc_cd_ctrl->hash_flags = ICP_QAT_FW_AUTH_HDR_FLAG_NO_NESTED;
+	crc_cd_ctrl->inner_res_sz = cdesc->digest_length;
+	crc_cd_ctrl->final_sz = cdesc->digest_length;
+	crc_cd_ctrl->inner_state1_sz = 0;
+	crc_cd_ctrl->inner_state2_sz  = 0;
+	crc_cd_ctrl->inner_state2_offset = 0;
+	crc_cd_ctrl->outer_prefix_sz = 0;
+	crc_cd_ctrl->outer_config_offset = 0;
+	crc_cd_ctrl->outer_state1_sz = 0;
+	crc_cd_ctrl->outer_res_sz = 0;
+	crc_cd_ctrl->outer_prefix_offset = 0;
+
+	crc_param->auth_res_sz = cdesc->digest_length;
+	crc_param->u2.aad_sz = 0;
+	crc_param->hash_state_sz = 0;
+
+	cd_size = cdesc->cd_cur_ptr - (uint8_t *)&cdesc->cd;
+	cd_pars->u.s.content_desc_addr = cdesc->cd_paddr;
+	cd_pars->u.s.content_desc_params_sz = RTE_ALIGN_CEIL(cd_size, 8) >> 3;
+
+	return 0;
+}
+
+static int
+qat_sym_session_configure_crc(struct rte_cryptodev *dev,
+		const struct rte_crypto_sym_xform *cipher_xform,
+		struct qat_sym_session *session)
+{
+	struct qat_cryptodev_private *internals = dev->data->dev_private;
+	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
+	int ret;
+
+	session->is_auth = 1;
+	session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_NULL;
+	session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+	session->auth_op = cipher_xform->cipher.op ==
+				RTE_CRYPTO_CIPHER_OP_ENCRYPT ?
+					ICP_QAT_HW_AUTH_GENERATE :
+					ICP_QAT_HW_AUTH_VERIFY;
+	session->digest_length = RTE_ETHER_CRC_LEN;
+
+	ret = qat_sym_cd_crc_set(session, qat_dev_gen);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int
 qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 		struct rte_security_session_conf *conf, void *session_private,
 		rte_iova_t session_paddr)
@@ -2681,12 +2866,21 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 	if (qat_cmd_id != ICP_QAT_FW_LA_CMD_CIPHER) {
 		QAT_LOG(ERR, "Unsupported xform chain requested");
 		return -ENOTSUP;
+	} else if (internals->internal_capabilities
+					& QAT_SYM_CAP_CIPHER_CRC) {
+		qat_cmd_id = ICP_QAT_FW_LA_CMD_CIPHER_CRC;
 	}
 	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
 
 	ret = qat_sym_session_configure_cipher(dev, xform, session);
 	if (ret < 0)
 		return ret;
+
+	if (qat_cmd_id == ICP_QAT_FW_LA_CMD_CIPHER_CRC) {
+		ret = qat_sym_session_configure_crc(dev, xform, session);
+		if (ret < 0)
+			return ret;
+	}
 	qat_sym_session_finalize(session);
 
 	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)cdev,

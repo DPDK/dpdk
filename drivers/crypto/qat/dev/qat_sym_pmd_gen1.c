@@ -1205,6 +1205,10 @@ qat_sym_crypto_set_session_gen1(void *cryptodev __rte_unused, void *session)
 	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
 		/* do_auth = 0; do_cipher = 1; */
 		build_request = qat_sym_build_op_cipher_gen1;
+	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_CRC) {
+		/* do_auth = 1; do_cipher = 1; */
+		build_request = qat_sym_build_op_chain_gen1;
+		handle_mixed = 1;
 	}
 
 	if (build_request)

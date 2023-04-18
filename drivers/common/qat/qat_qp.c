@@ -11,6 +11,9 @@
 #include <bus_pci_driver.h>
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
+#ifdef RTE_LIB_SECURITY
+#include <rte_ether.h>
+#endif
 
 #include "qat_logs.h"
 #include "qat_device.h"
@@ -23,6 +26,44 @@
 
 #define ADF_MAX_DESC				4096
 #define ADF_MIN_DESC				128
+
+#ifdef BUILD_QAT_SYM
+/* Cipher-CRC capability check test parameters */
+static const uint8_t cipher_crc_cap_check_iv[] = {
+	0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+	0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11
+};
+
+static const uint8_t cipher_crc_cap_check_key[] = {
+	0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
+	0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55
+};
+
+static const uint8_t cipher_crc_cap_check_plaintext[] = {
+	/* Outer protocol header */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	/* Ethernet frame */
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x06, 0x05,
+	0x04, 0x03, 0x02, 0x01, 0x08, 0x00, 0xAA, 0xAA,
+	0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+	/* CRC */
+	0xFF, 0xFF, 0xFF, 0xFF
+};
+
+static const uint8_t cipher_crc_cap_check_ciphertext[] = {
+	/* Outer protocol header */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	/* Ethernet frame */
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x06, 0x05,
+	0x04, 0x03, 0x02, 0x01, 0xD6, 0xE2, 0x70, 0x5C,
+	0xE6, 0x4D, 0xCC, 0x8C, 0x47, 0xB7, 0x09, 0xD6,
+	/* CRC */
+	0x54, 0x85, 0xF8, 0x32
+};
+
+static const uint8_t cipher_crc_cap_check_cipher_offset = 18;
+static const uint8_t cipher_crc_cap_check_crc_offset = 6;
+#endif
 
 struct qat_qp_hw_spec_funcs*
 	qat_qp_hw_spec[QAT_N_GENS];
@@ -956,6 +997,142 @@ qat_cq_get_fw_version(struct qat_qp *qp)
 	QAT_LOG(ERR, "No response received");
 	return -EINVAL;
 }
+
+#ifdef BUILD_QAT_SYM
+/* Sends an LA bulk req message to determine if a QAT device supports Cipher-CRC
+ * offload. This assumes that there are no inflight messages, i.e. assumes
+ * there's space  on the qp, one message is sent and only one response
+ * collected. The status bit of the response and returned data are checked.
+ * Returns:
+ *     1 if status bit indicates success and returned data matches expected
+ *     data (i.e. Cipher-CRC supported)
+ *     0 if status bit indicates error or returned data does not match expected
+ *     data (i.e. Cipher-CRC not supported)
+ *     Negative error code in case of error
+ */
+int
+qat_cq_get_fw_cipher_crc_cap(struct qat_qp *qp)
+{
+	struct qat_queue *queue = &(qp->tx_q);
+	uint8_t *base_addr = (uint8_t *)queue->base_addr;
+	struct icp_qat_fw_la_bulk_req cipher_crc_cap_msg = {{0}};
+	struct icp_qat_fw_comn_resp response = {{0}};
+	struct icp_qat_fw_la_cipher_req_params *cipher_param;
+	struct icp_qat_fw_la_auth_req_params *auth_param;
+	struct qat_sym_session *session;
+	phys_addr_t phy_src_addr;
+	uint64_t *src_data_addr;
+	int ret;
+
+	session = rte_zmalloc(NULL, sizeof(struct qat_sym_session), 0);
+	if (session == NULL)
+		return -EINVAL;
+
+	/* Verify the session physical address is known */
+	rte_iova_t session_paddr = rte_mem_virt2iova(session);
+	if (session_paddr == 0 || session_paddr == RTE_BAD_IOVA) {
+		QAT_LOG(ERR, "Session physical address unknown.");
+		return -EINVAL;
+	}
+
+	/* Prepare the LA bulk request */
+	ret = qat_cipher_crc_cap_msg_sess_prepare(session,
+					session_paddr,
+					cipher_crc_cap_check_key,
+					sizeof(cipher_crc_cap_check_key),
+					qp->qat_dev_gen);
+	if (ret < 0) {
+		rte_free(session);
+		/* Returning 0 here to allow qp setup to continue, but
+		 * indicate that Cipher-CRC offload is not supported on the
+		 * device
+		 */
+		return 0;
+	}
+
+	cipher_crc_cap_msg = session->fw_req;
+
+	src_data_addr = rte_zmalloc(NULL,
+					sizeof(cipher_crc_cap_check_plaintext),
+					0);
+	if (src_data_addr == NULL) {
+		rte_free(session);
+		return -EINVAL;
+	}
+
+	rte_memcpy(src_data_addr,
+			cipher_crc_cap_check_plaintext,
+			sizeof(cipher_crc_cap_check_plaintext));
+
+	phy_src_addr = rte_mem_virt2iova(src_data_addr);
+	if (phy_src_addr == 0 || phy_src_addr == RTE_BAD_IOVA) {
+		QAT_LOG(ERR, "Source physical address unknown.");
+		return -EINVAL;
+	}
+
+	cipher_crc_cap_msg.comn_mid.src_data_addr = phy_src_addr;
+	cipher_crc_cap_msg.comn_mid.src_length =
+					sizeof(cipher_crc_cap_check_plaintext);
+	cipher_crc_cap_msg.comn_mid.dest_data_addr = phy_src_addr;
+	cipher_crc_cap_msg.comn_mid.dst_length =
+					sizeof(cipher_crc_cap_check_plaintext);
+
+	cipher_param = (void *)&cipher_crc_cap_msg.serv_specif_rqpars;
+	auth_param = (void *)((uint8_t *)cipher_param +
+			ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
+
+	rte_memcpy(cipher_param->u.cipher_IV_array,
+			cipher_crc_cap_check_iv,
+			sizeof(cipher_crc_cap_check_iv));
+
+	cipher_param->cipher_offset = cipher_crc_cap_check_cipher_offset;
+	cipher_param->cipher_length =
+			sizeof(cipher_crc_cap_check_plaintext) -
+			cipher_crc_cap_check_cipher_offset;
+	auth_param->auth_off = cipher_crc_cap_check_crc_offset;
+	auth_param->auth_len = sizeof(cipher_crc_cap_check_plaintext) -
+				cipher_crc_cap_check_crc_offset -
+				RTE_ETHER_CRC_LEN;
+
+	ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
+			cipher_crc_cap_msg.comn_hdr.serv_specif_flags,
+			ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
+
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	QAT_DP_HEXDUMP_LOG(DEBUG, "LA Bulk request", &cipher_crc_cap_msg,
+			sizeof(cipher_crc_cap_msg));
+#endif
+
+	/* Send the cipher_crc_cap_msg request */
+	memcpy(base_addr + queue->tail,
+	       &cipher_crc_cap_msg,
+	       sizeof(cipher_crc_cap_msg));
+	queue->tail = adf_modulo(queue->tail + queue->msg_size,
+			queue->modulo_mask);
+	txq_write_tail(qp->qat_dev_gen, qp, queue);
+
+	/* Check for response and verify data is same as ciphertext */
+	if (qat_cq_dequeue_response(qp, &response)) {
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		QAT_DP_HEXDUMP_LOG(DEBUG, "LA response:", &response,
+				sizeof(response));
+#endif
+
+		if (memcmp(src_data_addr,
+				cipher_crc_cap_check_ciphertext,
+				sizeof(cipher_crc_cap_check_ciphertext)) != 0)
+			ret = 0; /* Cipher-CRC offload not supported */
+		else
+			ret = 1;
+	} else {
+		ret = -EINVAL;
+	}
+
+	rte_free(src_data_addr);
+	rte_free(session);
+	return ret;
+}
+#endif
 
 __rte_weak int
 qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
