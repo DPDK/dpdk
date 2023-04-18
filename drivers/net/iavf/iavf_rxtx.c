@@ -3732,25 +3732,41 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 		}
 
 		if (dev->data->scattered_rx) {
-			if (!use_avx512) {
+			if (!use_avx2 && !use_avx512) {
 				PMD_DRV_LOG(DEBUG,
-					    "Using %sVector Scattered Rx (port %d).",
-					    use_avx2 ? "avx2 " : "",
+					    "Using Vector Scattered Rx (port %d).",
 					    dev->data->port_id);
 			} else {
-				if (check_ret == IAVF_VECTOR_PATH)
-					PMD_DRV_LOG(DEBUG,
-						    "Using AVX512 Vector Scattered Rx (port %d).",
-						    dev->data->port_id);
-				else
-					PMD_DRV_LOG(DEBUG,
-						    "Using AVX512 OFFLOAD Vector Scattered Rx (port %d).",
-						    dev->data->port_id);
+				if (use_avx2) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX2 Vector Scattered Rx (port %d).",
+							    dev->data->port_id);
+					else
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX2 OFFLOAD Vector Scattered Rx (port %d).",
+							    dev->data->port_id);
+				} else {
+					if (check_ret == IAVF_VECTOR_PATH)
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX512 Vector Scattered Rx (port %d).",
+							    dev->data->port_id);
+					else
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX512 OFFLOAD Vector Scattered Rx (port %d).",
+							    dev->data->port_id);
+				}
 			}
 			if (use_flex) {
-				dev->rx_pkt_burst = use_avx2 ?
-					iavf_recv_scattered_pkts_vec_avx2_flex_rxd :
-					iavf_recv_scattered_pkts_vec_flex_rxd;
+				dev->rx_pkt_burst = iavf_recv_scattered_pkts_vec_flex_rxd;
+				if (use_avx2) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx2_flex_rxd;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx2_flex_rxd_offload;
+				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
@@ -3762,9 +3778,15 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 				}
 #endif
 			} else {
-				dev->rx_pkt_burst = use_avx2 ?
-					iavf_recv_scattered_pkts_vec_avx2 :
-					iavf_recv_scattered_pkts_vec;
+				dev->rx_pkt_burst = iavf_recv_scattered_pkts_vec;
+				if (use_avx2) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx2;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx2_offload;
+				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
@@ -3777,24 +3799,40 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 #endif
 			}
 		} else {
-			if (!use_avx512) {
-				PMD_DRV_LOG(DEBUG, "Using %sVector Rx (port %d).",
-					    use_avx2 ? "avx2 " : "",
+			if (!use_avx2 && !use_avx512) {
+				PMD_DRV_LOG(DEBUG, "Using Vector Rx (port %d).",
 					    dev->data->port_id);
 			} else {
-				if (check_ret == IAVF_VECTOR_PATH)
-					PMD_DRV_LOG(DEBUG,
-						    "Using AVX512 Vector Rx (port %d).",
-						    dev->data->port_id);
-				else
-					PMD_DRV_LOG(DEBUG,
-						    "Using AVX512 OFFLOAD Vector Rx (port %d).",
-						    dev->data->port_id);
+				if (use_avx2) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX2 Vector Rx (port %d).",
+							    dev->data->port_id);
+					else
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX2 OFFLOAD Vector Rx (port %d).",
+							    dev->data->port_id);
+				} else {
+					if (check_ret == IAVF_VECTOR_PATH)
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX512 Vector Rx (port %d).",
+							    dev->data->port_id);
+					else
+						PMD_DRV_LOG(DEBUG,
+							    "Using AVX512 OFFLOAD Vector Rx (port %d).",
+							    dev->data->port_id);
+				}
 			}
 			if (use_flex) {
-				dev->rx_pkt_burst = use_avx2 ?
-					iavf_recv_pkts_vec_avx2_flex_rxd :
-					iavf_recv_pkts_vec_flex_rxd;
+				dev->rx_pkt_burst = iavf_recv_pkts_vec_flex_rxd;
+				if (use_avx2) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx2_flex_rxd;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx2_flex_rxd_offload;
+				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
@@ -3806,9 +3844,15 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 				}
 #endif
 			} else {
-				dev->rx_pkt_burst = use_avx2 ?
-					iavf_recv_pkts_vec_avx2 :
-					iavf_recv_pkts_vec;
+				dev->rx_pkt_burst = iavf_recv_pkts_vec;
+				if (use_avx2) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx2;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx2_offload;
+				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
