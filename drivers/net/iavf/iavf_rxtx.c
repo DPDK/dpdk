@@ -3877,14 +3877,14 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 
 	if (check_ret >= 0 &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		/* SSE and AVX2 not support offload path yet. */
+		/* SSE not support offload path yet. */
 		if (check_ret == IAVF_VECTOR_PATH) {
 			use_sse = true;
-			if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-			     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
-			    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-				use_avx2 = true;
 		}
+		if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+		     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
+			use_avx2 = true;
 #ifdef CC_AVX512_SUPPORT
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1 &&
@@ -3895,15 +3895,24 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 		if (!use_sse && !use_avx2 && !use_avx512)
 			goto normal;
 
-		if (!use_avx512) {
-			PMD_DRV_LOG(DEBUG, "Using %sVector Tx (port %d).",
-				    use_avx2 ? "avx2 " : "",
-				    dev->data->port_id);
-			dev->tx_pkt_burst = use_avx2 ?
-					    iavf_xmit_pkts_vec_avx2 :
-					    iavf_xmit_pkts_vec;
-		}
 		dev->tx_pkt_prepare = NULL;
+		if (use_sse) {
+			PMD_DRV_LOG(DEBUG, "Using Vector Tx (port %d).",
+				    dev->data->port_id);
+			dev->tx_pkt_burst = iavf_xmit_pkts_vec;
+		}
+		if (use_avx2) {
+			if (check_ret == IAVF_VECTOR_PATH) {
+				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx2;
+				PMD_DRV_LOG(DEBUG, "Using AVX2 Vector Tx (port %d).",
+					    dev->data->port_id);
+			} else {
+				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx2_offload;
+				dev->tx_pkt_prepare = iavf_prep_pkts;
+				PMD_DRV_LOG(DEBUG, "Using AVX2 OFFLOAD Vector Tx (port %d).",
+					    dev->data->port_id);
+			}
+		}
 #ifdef CC_AVX512_SUPPORT
 		if (use_avx512) {
 			if (check_ret == IAVF_VECTOR_PATH) {
