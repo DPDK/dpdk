@@ -1430,6 +1430,7 @@ int i40e_pf_calc_configured_queues_num(struct i40e_pf *pf);
 int i40e_pf_reset_rss_reta(struct i40e_pf *pf);
 int i40e_pf_reset_rss_key(struct i40e_pf *pf);
 int i40e_pf_config_rss(struct i40e_pf *pf);
+int i40e_pf_set_source_prune(struct i40e_pf *pf, int on);
 int i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len);
 int i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size);
 int i40e_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params);

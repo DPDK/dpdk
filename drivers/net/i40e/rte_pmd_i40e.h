@@ -1134,6 +1134,23 @@ __rte_experimental
 int
 rte_pmd_i40e_set_switch_dev(uint16_t port_id, struct rte_eth_dev *switch_dev);
 
+/**
+ * Enable/Disable source prune on all the PF.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param on
+ *    1 - Enable source prune.
+ *    0 - Disable source prune.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_pmd_i40e_set_pf_src_prune(uint16_t port,
+				 uint8_t on);
+
 #ifdef __cplusplus
 }
 #endif

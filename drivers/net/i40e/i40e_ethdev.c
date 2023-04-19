@@ -5623,6 +5623,46 @@ i40e_enable_pf_lb(struct i40e_pf *pf)
 			    hw->aq.asq_last_status);
 }
 
+/* i40e_pf_set_source_prune
+ * @pf: pointer to the pf structure
+ * @on: Enable/disable source prune
+ *
+ * set source prune on pf
+ */
+int
+i40e_pf_set_source_prune(struct i40e_pf *pf, int on)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_vsi_context ctxt;
+	int ret;
+
+	memset(&ctxt, 0, sizeof(ctxt));
+	ctxt.seid = pf->main_vsi_seid;
+	ctxt.pf_num = hw->pf_id;
+	ret = i40e_aq_get_vsi_params(hw, &ctxt, NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "cannot get pf vsi config, err %d, aq_err %d",
+			    ret, hw->aq.asq_last_status);
+		return ret;
+	}
+	ctxt.flags = I40E_AQ_VSI_TYPE_PF;
+	ctxt.info.valid_sections =
+		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID);
+	if (on)
+		ctxt.info.switch_id &=
+			~rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_LOCAL_LB);
+	else
+		ctxt.info.switch_id |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_LOCAL_LB);
+
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret)
+		PMD_DRV_LOG(ERR, "update vsi switch failed, aq_err=%d",
+			    hw->aq.asq_last_status);
+
+	return ret;
+}
+
 /* Setup a VSI */
 struct i40e_vsi *
 i40e_vsi_setup(struct i40e_pf *pf,
@@ -5679,6 +5719,9 @@ i40e_vsi_setup(struct i40e_pf *pf,
 			return NULL;
 		}
 	}
+
+	/* source prune is disabled to support VRRP in default*/
+	i40e_pf_set_source_prune(pf, 0);
 
 	vsi = rte_zmalloc("i40e_vsi", sizeof(struct i40e_vsi), 0);
 	if (!vsi) {

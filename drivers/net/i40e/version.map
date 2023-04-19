@@ -45,5 +45,6 @@ EXPERIMENTAL {
 	rte_pmd_i40e_get_fdir_info;
 	rte_pmd_i40e_get_fdir_stats;
 	rte_pmd_i40e_set_gre_key_len;
+	rte_pmd_i40e_set_pf_src_prune;
 	rte_pmd_i40e_set_switch_dev;
 };

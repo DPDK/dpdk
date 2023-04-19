@@ -2446,6 +2446,84 @@ static cmdline_parse_inst_t cmd_ptype_mapping_update = {
 	},
 };
 
+/* *** configure source prune for port *** */
+struct cmd_config_src_prune_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t port_all; /* valid if "allports" argument == 1 */
+	uint16_t port_id;                /* valid if "allports" argument == 0 */
+	cmdline_fixed_string_t item;
+	cmdline_fixed_string_t enable;
+};
+
+static void cmd_config_pf_src_prune_parsed(void *parsed_result,
+					__rte_unused struct cmdline *cl,
+					void *allports)
+{
+	struct cmd_config_src_prune_result *res = parsed_result;
+	uint8_t enable;
+	uint16_t i;
+
+	if (!strcmp(res->enable, "on"))
+		enable = 1;
+	else
+		enable = 0;
+
+	/* all ports */
+	if (allports) {
+		RTE_ETH_FOREACH_DEV(i)
+			rte_pmd_i40e_set_pf_src_prune(i, enable);
+	} else {
+		rte_pmd_i40e_set_pf_src_prune(res->port_id, enable);
+	}
+}
+
+static cmdline_parse_token_string_t cmd_config_src_prune_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_src_prune_result, port, "port");
+static cmdline_parse_token_string_t cmd_config_src_prune_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_src_prune_result, keyword,
+				 "config");
+static cmdline_parse_token_string_t cmd_config_src_prune_portall =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_src_prune_result, port_all,
+				 "all");
+static cmdline_parse_token_num_t cmd_config_src_prune_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_src_prune_result, port_id,
+			      RTE_UINT16);
+static cmdline_parse_token_string_t cmd_config_src_prune_item =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_src_prune_result,
+			item, "i40e_src_prune");
+static cmdline_parse_token_string_t cmd_config_src_prune_enable =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_src_prune_result, enable,
+				 "on#off");
+
+static cmdline_parse_inst_t cmd_config_src_prune_all = {
+	.f = cmd_config_pf_src_prune_parsed,
+	.data = (void *)1,
+	.help_str = "port config all i40e_src_prune on|off: Set source pruning on all pf ports.",
+	.tokens = {
+		(void *)&cmd_config_src_prune_port,
+		(void *)&cmd_config_src_prune_keyword,
+		(void *)&cmd_config_src_prune_portall,
+		(void *)&cmd_config_src_prune_item,
+		(void *)&cmd_config_src_prune_enable,
+		NULL,
+	},
+};
+
+static cmdline_parse_inst_t cmd_config_src_prune_specific = {
+	.f = cmd_config_pf_src_prune_parsed,
+	.data = (void *)0,
+	.help_str = "port config <port_id> i40e_src_prune on|off: Set source pruning on specific pf port.",
+	.tokens = {
+		(void *)&cmd_config_src_prune_port,
+		(void *)&cmd_config_src_prune_keyword,
+		(void *)&cmd_config_src_prune_port_id,
+		(void *)&cmd_config_src_prune_item,
+		(void *)&cmd_config_src_prune_enable,
+		NULL,
+	},
+};
+
 static struct testpmd_driver_commands i40e_cmds = {
 	.commands = {
 	{
@@ -2591,6 +2669,16 @@ static struct testpmd_driver_commands i40e_cmds = {
 		"port config (port_id) pctype mapping update"
 		" (pctype_id_0[,pctype_id_1]*) (flow_type_id)\n"
 		"    Update a flow type to pctype mapping item on a port\n",
+	},
+	{
+		&cmd_config_src_prune_all,
+		"port config all i40e_src_prune (on|off)\n"
+		"    Set source pruning on pf port all.\n"
+	},
+	{
+		&cmd_config_src_prune_specific,
+		"port config (port_id) i40e_src_prune (on|off)\n"
+		"    Set source pruning on pf port_id.\n"
 	},
 	{ NULL, NULL },
 	},
