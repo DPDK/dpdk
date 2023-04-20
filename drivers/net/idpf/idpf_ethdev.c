@@ -563,8 +563,6 @@ idpf_dev_start(struct rte_eth_dev *dev)
 	uint16_t req_vecs_num;
 	int ret;
 
-	vport->stopped = 0;
-
 	if (dev->data->mtu > vport->max_mtu) {
 		PMD_DRV_LOG(ERR, "MTU should be less than %d", vport->max_mtu);
 		ret = -EINVAL;
@@ -622,7 +620,7 @@ idpf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 
-	if (vport->stopped == 1)
+	if (dev->data->dev_started == 0)
 		return 0;
 
 	idpf_vc_ena_dis_vport(vport, false);
@@ -633,8 +631,6 @@ idpf_dev_stop(struct rte_eth_dev *dev)
 
 	if (vport->recv_vectors != NULL)
 		idpf_vc_dealloc_vectors(vport);
-
-	vport->stopped = 1;
 
 	return 0;
 }
