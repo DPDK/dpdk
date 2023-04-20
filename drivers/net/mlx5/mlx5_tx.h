@@ -162,6 +162,7 @@ struct mlx5_txq_data {
 	uint16_t idx; /* Queue index. */
 	uint64_t rt_timemask; /* Scheduling timestamp mask. */
 	uint64_t ts_mask; /* Timestamp flag dynamic mask. */
+	uint64_t ts_last; /* Last scheduled timestamp. */
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
@@ -1682,6 +1683,10 @@ mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
 			return MLX5_TXCMP_CODE_EXIT;
 		/* Convert the timestamp into completion to wait. */
 		ts = *RTE_MBUF_DYNFIELD(loc->mbuf, txq->ts_offset, uint64_t *);
+		if (txq->ts_last && ts < txq->ts_last)
+			__atomic_fetch_add(&txq->sh->txpp.err_ts_order,
+					   1, __ATOMIC_RELAXED);
+		txq->ts_last = ts;
 		wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 		sh = txq->sh;
 		if (txq->wait_on_time) {

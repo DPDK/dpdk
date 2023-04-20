@@ -29,6 +29,7 @@ static const char * const mlx5_txpp_stat_names[] = {
 	"tx_pp_clock_queue_errors", /* Clock Queue errors. */
 	"tx_pp_timestamp_past_errors", /* Timestamp in the past. */
 	"tx_pp_timestamp_future_errors", /* Timestamp in the distant future. */
+	"tx_pp_timestamp_order_errors", /* Timestamp not in ascending order. */
 	"tx_pp_jitter", /* Timestamp jitter (one Clock Queue completion). */
 	"tx_pp_wander", /* Timestamp wander (half of Clock Queue CQEs). */
 	"tx_pp_sync_lost", /* Scheduling synchronization lost. */
@@ -758,6 +759,7 @@ mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
 	sh->txpp.err_clock_queue = 0;
 	sh->txpp.err_ts_past = 0;
 	sh->txpp.err_ts_future = 0;
+	sh->txpp.err_ts_order = 0;
 	/* Attach interrupt handler to process Rearm Queue completions. */
 	fd = mlx5_os_get_devx_channel_fd(sh->txpp.echan);
 	ret = mlx5_os_set_nonblock_channel_fd(fd);
@@ -1034,6 +1036,7 @@ int mlx5_txpp_xstats_reset(struct rte_eth_dev *dev)
 	__atomic_store_n(&sh->txpp.err_clock_queue, 0, __ATOMIC_RELAXED);
 	__atomic_store_n(&sh->txpp.err_ts_past, 0, __ATOMIC_RELAXED);
 	__atomic_store_n(&sh->txpp.err_ts_future, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&sh->txpp.err_ts_order, 0, __ATOMIC_RELAXED);
 	return 0;
 }
 
@@ -1221,9 +1224,12 @@ mlx5_txpp_xstats_get(struct rte_eth_dev *dev,
 		stats[n_used + 4].value =
 				__atomic_load_n(&sh->txpp.err_ts_future,
 						__ATOMIC_RELAXED);
-		stats[n_used + 5].value = mlx5_txpp_xstats_jitter(&sh->txpp);
-		stats[n_used + 6].value = mlx5_txpp_xstats_wander(&sh->txpp);
-		stats[n_used + 7].value = sh->txpp.sync_lost;
+		stats[n_used + 5].value =
+				__atomic_load_n(&sh->txpp.err_ts_order,
+						__ATOMIC_RELAXED);
+		stats[n_used + 6].value = mlx5_txpp_xstats_jitter(&sh->txpp);
+		stats[n_used + 7].value = mlx5_txpp_xstats_wander(&sh->txpp);
+		stats[n_used + 8].value = sh->txpp.sync_lost;
 	}
 	return n_used + n_txpp;
 }

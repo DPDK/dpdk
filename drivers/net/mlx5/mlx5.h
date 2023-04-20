@@ -1196,6 +1196,7 @@ struct mlx5_dev_txpp {
 	uint64_t err_clock_queue; /* Clock Queue errors. */
 	uint64_t err_ts_past; /* Timestamp in the past. */
 	uint64_t err_ts_future; /* Timestamp in the distant future. */
+	uint64_t err_ts_order; /* Timestamp not in ascending order. */
 };
 
 /* Sample ID information of eCPRI flex parser structure. */
