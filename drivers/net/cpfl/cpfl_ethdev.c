@@ -1061,7 +1061,8 @@ static void
 cpfl_handle_event_msg(struct idpf_vport *vport, uint8_t *msg, uint16_t msglen)
 {
 	struct virtchnl2_event *vc_event = (struct virtchnl2_event *)msg;
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)vport->dev;
+	struct rte_eth_dev_data *data = vport->dev_data;
+	struct rte_eth_dev *dev = &rte_eth_devices[data->port_id];
 
 	if (msglen < sizeof(struct virtchnl2_event)) {
 		PMD_DRV_LOG(ERR, "Error event");
@@ -1245,7 +1246,6 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	vport->adapter = &adapter->base;
 	vport->sw_idx = param->idx;
 	vport->devarg_id = param->devarg_id;
-	vport->dev = dev;
 
 	memset(&create_vport_info, 0, sizeof(create_vport_info));
 	ret = idpf_vport_info_init(vport, &create_vport_info);
