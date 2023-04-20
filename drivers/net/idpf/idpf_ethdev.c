@@ -792,8 +792,6 @@ idpf_dev_start(struct rte_eth_dev *dev)
 	if (idpf_dev_stats_reset(dev))
 		PMD_DRV_LOG(ERR, "Failed to reset stats");
 
-	vport->stopped = 0;
-
 	return 0;
 
 err_vport:
@@ -811,7 +809,7 @@ idpf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 
-	if (vport->stopped == 1)
+	if (dev->data->dev_started == 0)
 		return 0;
 
 	idpf_vc_vport_ena_dis(vport, false);
@@ -821,8 +819,6 @@ idpf_dev_stop(struct rte_eth_dev *dev)
 	idpf_vport_irq_unmap_config(vport, dev->data->nb_rx_queues);
 
 	idpf_vc_vectors_dealloc(vport);
-
-	vport->stopped = 1;
 
 	return 0;
 }
