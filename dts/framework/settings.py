@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
-from .exception import ConfigurationError
+from .utils import DPDKGitTarball
 
 _T = TypeVar("_T")
 
@@ -124,11 +124,13 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--tarball",
         "--snapshot",
+        "--git-ref",
         action=_env_arg("DTS_DPDK_TARBALL"),
         default="dpdk.tar.xz",
         type=Path,
-        help="[DTS_DPDK_TARBALL] Path to DPDK source code tarball "
-        "which will be used in testing.",
+        help="[DTS_DPDK_TARBALL] Path to DPDK source code tarball or a git commit ID, "
+        "tag ID or tree ID to test. To test local changes, first commit them, "
+        "then use the commit ID with this option.",
     )
 
     parser.add_argument(
@@ -160,21 +162,19 @@ def _get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _check_tarball_path(parsed_args: argparse.Namespace) -> None:
-    if not os.path.exists(parsed_args.tarball):
-        raise ConfigurationError(f"DPDK tarball '{parsed_args.tarball}' doesn't exist.")
-
-
 def _get_settings() -> _Settings:
     parsed_args = _get_parser().parse_args()
-    _check_tarball_path(parsed_args)
     return _Settings(
         config_file_path=parsed_args.config_file,
         output_dir=parsed_args.output_dir,
         timeout=parsed_args.timeout,
         verbose=(parsed_args.verbose == "Y"),
         skip_setup=(parsed_args.skip_setup == "Y"),
-        dpdk_tarball_path=parsed_args.tarball,
+        dpdk_tarball_path=Path(
+            DPDKGitTarball(parsed_args.tarball, parsed_args.output_dir)
+        )
+        if not os.path.exists(parsed_args.tarball)
+        else Path(parsed_args.tarball),
         compile_timeout=parsed_args.compile_timeout,
         test_cases=parsed_args.test_cases.split(",") if parsed_args.test_cases else [],
         re_run=parsed_args.re_run,

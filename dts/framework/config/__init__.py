@@ -11,21 +11,14 @@ import json
 import os.path
 import pathlib
 from dataclasses import dataclass
-from enum import Enum, auto, unique
+from enum import auto, unique
 from typing import Any, TypedDict
 
 import warlock  # type: ignore
 import yaml
 
 from framework.settings import SETTINGS
-
-
-class StrEnum(Enum):
-    @staticmethod
-    def _generate_next_value_(
-        name: str, start: int, count: int, last_values: object
-    ) -> str:
-        return name
+from framework.utils import StrEnum
 
 
 @unique

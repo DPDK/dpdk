@@ -3,7 +3,26 @@
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
 
+import atexit
+import os
+import subprocess
 import sys
+from enum import Enum
+from pathlib import Path
+from subprocess import SubprocessError
+
+from .exception import ConfigurationError
+
+
+class StrEnum(Enum):
+    @staticmethod
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: object
+    ) -> str:
+        return name
+
+    def __str__(self) -> str:
+        return self.name
 
 
 def check_dts_python_version() -> None:
@@ -80,3 +99,124 @@ class MesonArgs(object):
 
     def __str__(self) -> str:
         return " ".join(f"{self._default_library} {self._dpdk_args}".split())
+
+
+class _TarCompressionFormat(StrEnum):
+    """Compression formats that tar can use.
+
+    Enum names are the shell compression commands
+    and Enum values are the associated file extensions.
+    """
+
+    gzip = "gz"
+    compress = "Z"
+    bzip2 = "bz2"
+    lzip = "lz"
+    lzma = "lzma"
+    lzop = "lzo"
+    xz = "xz"
+    zstd = "zst"
+
+
+class DPDKGitTarball(object):
+    """Create a compressed tarball of DPDK from the repository.
+
+    The DPDK version is specified with git object git_ref.
+    The tarball will be compressed with _TarCompressionFormat,
+    which must be supported by the DTS execution environment.
+    The resulting tarball will be put into output_dir.
+
+    The class supports the os.PathLike protocol,
+    which is used to get the Path of the tarball::
+
+        from pathlib import Path
+        tarball = DPDKGitTarball("HEAD", "output")
+        tarball_path = Path(tarball)
+
+    Arguments:
+        git_ref: A git commit ID, tag ID or tree ID.
+        output_dir: The directory where to put the resulting tarball.
+        tar_compression_format: The compression format to use.
+    """
+
+    _git_ref: str
+    _tar_compression_format: _TarCompressionFormat
+    _tarball_dir: Path
+    _tarball_name: str
+    _tarball_path: Path | None
+
+    def __init__(
+        self,
+        git_ref: str,
+        output_dir: str,
+        tar_compression_format: _TarCompressionFormat = _TarCompressionFormat.xz,
+    ):
+        self._git_ref = git_ref
+        self._tar_compression_format = tar_compression_format
+
+        self._tarball_dir = Path(output_dir, "tarball")
+
+        self._get_commit_id()
+        self._create_tarball_dir()
+
+        self._tarball_name = (
+            f"dpdk-tarball-{self._git_ref}.tar.{self._tar_compression_format.value}"
+        )
+        self._tarball_path = self._check_tarball_path()
+        if not self._tarball_path:
+            self._create_tarball()
+
+    def _get_commit_id(self) -> None:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", self._git_ref],
+            text=True,
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            raise ConfigurationError(
+                f"{self._git_ref} is neither a path to an existing DPDK "
+                "archive nor a valid git reference.\n"
+                f"Command: {result.args}\n"
+                f"Stdout: {result.stdout}\n"
+                f"Stderr: {result.stderr}"
+            )
+        self._git_ref = result.stdout.strip()
+
+    def _create_tarball_dir(self) -> None:
+        os.makedirs(self._tarball_dir, exist_ok=True)
+
+    def _check_tarball_path(self) -> Path | None:
+        if self._tarball_name in os.listdir(self._tarball_dir):
+            return Path(self._tarball_dir, self._tarball_name)
+        return None
+
+    def _create_tarball(self) -> None:
+        self._tarball_path = Path(self._tarball_dir, self._tarball_name)
+
+        atexit.register(self._delete_tarball)
+
+        result = subprocess.run(
+            'git -C "$(git rev-parse --show-toplevel)" archive '
+            f'{self._git_ref} --prefix="dpdk-tarball-{self._git_ref + os.sep}" | '
+            f"{self._tar_compression_format} > {Path(self._tarball_path.absolute())}",
+            shell=True,
+            text=True,
+            capture_output=True,
+        )
+
+        if result.returncode != 0:
+            raise SubprocessError(
+                f"Git archive creation failed with exit code {result.returncode}.\n"
+                f"Command: {result.args}\n"
+                f"Stdout: {result.stdout}\n"
+                f"Stderr: {result.stderr}"
+            )
+
+        atexit.unregister(self._delete_tarball)
+
+    def _delete_tarball(self) -> None:
+        if self._tarball_path and os.path.exists(self._tarball_path):
+            os.remove(self._tarball_path)
+
+    def __fspath__(self):
+        return str(self._tarball_path)
