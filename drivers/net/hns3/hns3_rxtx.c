@@ -3046,6 +3046,10 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 					HNS3_PORT_BASE_VLAN_ENABLE;
 	else
 		txq->pvid_sw_shift_en = false;
+
+	if (hns3_dev_get_support(hw, SIMPLE_BD))
+		txq->simple_bd_enable = true;
+
 	txq->max_non_tso_bd_num = hw->max_non_tso_bd_num;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base +
@@ -3162,7 +3166,7 @@ hns3_set_tso(struct hns3_desc *desc, uint32_t paylen, struct rte_mbuf *rxm)
 		return;
 
 	desc->tx.type_cs_vlan_tso_len |= rte_cpu_to_le_32(BIT(HNS3_TXD_TSO_B));
-	desc->tx.mss = rte_cpu_to_le_16(rxm->tso_segsz);
+	desc->tx.ckst_mss |= rte_cpu_to_le_16(rxm->tso_segsz);
 }
 
 static inline void
@@ -3901,6 +3905,50 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	return i;
 }
 
+static inline int
+hns3_handle_simple_bd(struct hns3_tx_queue *txq, struct hns3_desc *desc,
+		      struct rte_mbuf *m)
+{
+#define HNS3_TCP_CSUM_OFFSET	16
+#define HNS3_UDP_CSUM_OFFSET	6
+
+	/*
+	 * In HIP09, NIC HW support Tx simple BD mode that the HW will
+	 * calculate the checksum from the start position of checksum and fill
+	 * the checksum result to the offset position without packet type and
+	 * header length of L3/L4.
+	 * For non-tunneling packet:
+	 * - Tx simple BD support for TCP and UDP checksum.
+	 * For tunneling packet:
+	 * - Tx simple BD support for inner L4 checksum(except sctp checksum).
+	 * - Tx simple BD not support the outer checksum and the inner L3
+	 *   checksum.
+	 * - Besides, Tx simple BD is not support for TSO.
+	 */
+	if (txq->simple_bd_enable && !(m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) &&
+	    !(m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
+	    !(m->ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) &&
+	    ((m->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM ||
+	    (m->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM)) {
+		/* set checksum start and offset, defined in 2 Bytes */
+		hns3_set_field(desc->tx.type_cs_vlan_tso_len,
+			       HNS3_TXD_L4_START_M, HNS3_TXD_L4_START_S,
+			       (m->l2_len + m->l3_len) >> HNS3_SIMPLE_BD_UNIT);
+		hns3_set_field(desc->tx.ol_type_vlan_len_msec,
+			   HNS3_TXD_L4_CKS_OFFSET_M, HNS3_TXD_L4_CKS_OFFSET_S,
+			   (m->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
+			   RTE_MBUF_F_TX_TCP_CKSUM ?
+			   HNS3_TCP_CSUM_OFFSET >> HNS3_SIMPLE_BD_UNIT :
+			   HNS3_UDP_CSUM_OFFSET >> HNS3_SIMPLE_BD_UNIT);
+
+		hns3_set_bit(desc->tx.ckst_mss, HNS3_TXD_CKST_B, 1);
+
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
 static int
 hns3_parse_cksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
 		 struct rte_mbuf *m)
@@ -3910,6 +3958,8 @@ hns3_parse_cksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
 
 	/* Enable checksum offloading */
 	if (m->ol_flags & HNS3_TX_CKSUM_OFFLOAD_MASK) {
+		if (hns3_handle_simple_bd(txq, desc, m) == 0)
+			return 0;
 		/* Fill in tunneling parameters if necessary */
 		if (hns3_parse_tunneling_params(txq, m, tx_desc_id)) {
 			txq->dfx_stats.unsupported_tunnel_pkt_cnt++;

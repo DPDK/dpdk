@@ -134,12 +134,18 @@
 #define HNS3_TXD_L4LEN_S			24
 #define HNS3_TXD_L4LEN_M			(0xffUL << HNS3_TXD_L4LEN_S)
 
+#define HNS3_TXD_L4_START_S			8
+#define HNS3_TXD_L4_START_M			(0xffff << HNS3_TXD_L4_START_S)
+
 #define HNS3_TXD_OL3T_S				0
 #define HNS3_TXD_OL3T_M				(0x3 << HNS3_TXD_OL3T_S)
 #define HNS3_TXD_OVLAN_B			2
 #define HNS3_TXD_MACSEC_B			3
 #define HNS3_TXD_TUNTYPE_S			4
 #define HNS3_TXD_TUNTYPE_M			(0xf << HNS3_TXD_TUNTYPE_S)
+
+#define HNS3_TXD_L4_CKS_OFFSET_S		8
+#define HNS3_TXD_L4_CKS_OFFSET_M	(0xffff << HNS3_TXD_L4_CKS_OFFSET_S)
 
 #define HNS3_TXD_BDTYPE_S			0
 #define HNS3_TXD_BDTYPE_M			(0xf << HNS3_TXD_BDTYPE_S)
@@ -157,10 +163,13 @@
 #define HNS3_TXD_MSS_S				0
 #define HNS3_TXD_MSS_M				(0x3fff << HNS3_TXD_MSS_S)
 
+#define HNS3_TXD_CKST_B				14
+
 #define HNS3_TXD_OL4CS_B			22
 #define HNS3_L2_LEN_UNIT			1UL
 #define HNS3_L3_LEN_UNIT			2UL
 #define HNS3_L4_LEN_UNIT			2UL
+#define HNS3_SIMPLE_BD_UNIT			1UL
 
 #define HNS3_TXD_DEFAULT_BDTYPE		0
 #define HNS3_TXD_VLD_CMD		(0x1 << HNS3_TXD_VLD_B)
@@ -247,7 +256,7 @@ struct hns3_desc {
 
 			uint32_t paylen_fd_dop_ol4cs;
 			uint16_t tp_fe_sc_vld_ra_ri;
-			uint16_t mss;
+			uint16_t ckst_mss;
 		} tx;
 
 		struct {
@@ -488,6 +497,7 @@ struct hns3_tx_queue {
 	 */
 	uint16_t udp_cksum_mode:1;
 
+	/* check whether the simple BD mode is supported */
 	uint16_t simple_bd_enable:1;
 	uint16_t tx_push_enable:1;    /* check whether the tx push is enabled */
 	/*
