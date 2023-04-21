@@ -11,6 +11,7 @@ sources += files(
         'bnxt_tf_pmd_shim.c',
         'bnxt_ulp.c',
         'bnxt_ulp_flow.c',
+        'bnxt_ulp_meter.c',
         'ulp_def_rules.c',
         'ulp_fc_mgr.c',
         'ulp_flow_db.c',

@@ -4091,6 +4091,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.timesync_adjust_time = bnxt_timesync_adjust_time,
 	.timesync_read_rx_timestamp = bnxt_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp = bnxt_timesync_read_tx_timestamp,
+	.mtr_ops_get = bnxt_flow_meter_ops_get,
 };
 
 static uint32_t bnxt_map_reset_regs(struct bnxt *bp, uint32_t reg)

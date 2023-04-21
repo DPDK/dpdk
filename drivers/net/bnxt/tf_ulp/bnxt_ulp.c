@@ -1681,6 +1681,14 @@ bnxt_ulp_init(struct bnxt *bp,
 		return rc;
 	}
 
+	if (ulp_dev_id == BNXT_ULP_DEVICE_ID_THOR) {
+		rc = bnxt_flow_meter_init(bp);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Failed to config meter\n");
+			goto jump_to_error;
+		}
+	}
+
 	BNXT_TF_DBG(DEBUG, "ulp ctx has been initialized\n");
 	return rc;
 

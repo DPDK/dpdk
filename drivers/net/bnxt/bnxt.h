@@ -1014,6 +1014,7 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 			    struct rte_eth_udp_tunnel *udp_tunnel);
 
 extern const struct rte_flow_ops bnxt_flow_ops;
+extern const struct rte_flow_ops bnxt_flow_meter_ops;
 
 #define bnxt_acquire_flow_lock(bp) \
 	pthread_mutex_lock(&(bp)->flow_lock)
@@ -1065,6 +1066,7 @@ int bnxt_flow_ops_get_op(struct rte_eth_dev *dev,
 int bnxt_dev_start_op(struct rte_eth_dev *eth_dev);
 int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev);
 void bnxt_handle_vf_cfg_change(void *arg);
+int bnxt_flow_meter_ops_get(struct rte_eth_dev *eth_dev, void *arg);
 struct bnxt_vnic_info *bnxt_get_default_vnic(struct bnxt *bp);
 struct tf *bnxt_get_tfp_session(struct bnxt *bp, enum bnxt_session_type type);
 #endif

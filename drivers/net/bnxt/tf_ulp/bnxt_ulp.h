@@ -371,6 +371,9 @@ bnxt_ulp_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
 unsigned int
 bnxt_ulp_vxlan_ip_port_get(struct bnxt_ulp_context *ulp_ctx);
 
+int32_t
+bnxt_flow_meter_init(struct bnxt *bp);
+
 uint32_t
 bnxt_ulp_cntxt_convert_dev_id(uint32_t ulp_dev_id);
 

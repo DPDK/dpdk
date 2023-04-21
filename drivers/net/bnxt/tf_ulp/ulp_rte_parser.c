@@ -2697,6 +2697,35 @@ ulp_rte_queue_act_handler(const struct rte_flow_action *action_item,
 	return BNXT_TF_RC_SUCCESS;
 }
 
+/* Function to handle the parsing of RTE Flow action meter. */
+int32_t
+ulp_rte_meter_act_handler(const struct rte_flow_action *action_item,
+			  struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_meter *meter;
+	struct ulp_rte_act_prop *act_prop = &params->act_prop;
+	uint32_t tmp_meter_id;
+
+	if (action_item == NULL || action_item->conf == NULL) {
+		BNXT_TF_DBG(ERR, "Parse Err: invalid meter configuration\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	meter = action_item->conf;
+	if (meter) {
+		/* validate the mtr_id and update the reference counter */
+		tmp_meter_id = tfp_cpu_to_be_32(meter->mtr_id);
+		memcpy(&act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_METER],
+		       &tmp_meter_id,
+		       BNXT_ULP_ACT_PROP_SZ_METER);
+	}
+
+	/* set the meter action header bit */
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_METER);
+
+	return BNXT_TF_RC_SUCCESS;
+}
+
 /* Function to handle the parsing of RTE Flow action set mac src.*/
 int32_t
 ulp_rte_set_mac_src_act_handler(const struct rte_flow_action *action_item,
