@@ -48,8 +48,7 @@
  *
  * Shared memory containing private TruFlow session information.
  * Through this structure the session can keep track of resource
- * allocations and (if so configured) any shadow copy of flow
- * information. It also holds info about Session Clients.
+ * allocations.  It also holds info about Session Clients.
  *
  * Memory is assigned to the Truflow instance by way of
  * tf_open_session. Memory is allocated and owned by i.e. ULP.
@@ -85,19 +84,6 @@ struct tf_session {
 	 *
 	 */
 	bool shared_session_creator;
-
-	/**
-	 * Boolean controlling the use and availability of shadow
-	 * copy. Shadow copy will allow the TruFlow Core to keep track
-	 * of resource content on the firmware side without having to
-	 * query firmware. Additional private session core_data will
-	 * be allocated if this boolean is set to 'true', default
-	 * 'false'.
-	 *
-	 * Size of memory depends on the NVM Resource settings for the
-	 * control channel.
-	 */
-	bool shadow_copy;
 
 	/**
 	 * Session Reference Count. To keep track of functions per
@@ -159,12 +145,10 @@ struct tf_session {
 	 */
 	void *em_pool[TF_DIR_MAX];
 
-#ifdef TF_TCAM_SHARED
 	/**
 	 * tcam db reference for the session
 	 */
 	void *tcam_shared_db_handle;
-#endif /* TF_TCAM_SHARED */
 
 	/**
 	 * SRAM db reference for the session

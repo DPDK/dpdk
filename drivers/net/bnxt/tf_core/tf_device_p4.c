@@ -10,9 +10,7 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
-#ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
-#endif /* TF_TCAM_SHARED */
 #include "tf_em.h"
 #include "tf_if_tbl.h"
 #include "tfp.h"
@@ -540,20 +538,12 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_bulk_sram_tbl = NULL,
 	.tf_dev_get_shared_tbl_increment = tf_dev_p4_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = tf_tbl_get_resc_info,
-#ifdef TF_TCAM_SHARED
 	.tf_dev_alloc_tcam = tf_tcam_shared_alloc,
 	.tf_dev_free_tcam = tf_tcam_shared_free,
 	.tf_dev_set_tcam = tf_tcam_shared_set,
 	.tf_dev_get_tcam = tf_tcam_shared_get,
 	.tf_dev_move_tcam = tf_tcam_shared_move_p4,
 	.tf_dev_clear_tcam = tf_tcam_shared_clear,
-#else /* !TF_TCAM_SHARED */
-	.tf_dev_alloc_tcam = tf_tcam_alloc,
-	.tf_dev_free_tcam = tf_tcam_free,
-	.tf_dev_set_tcam = tf_tcam_set,
-	.tf_dev_get_tcam = tf_tcam_get,
-#endif
-	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
 	.tf_dev_get_tcam_resc_info = tf_tcam_get_resc_info,
 	.tf_dev_insert_int_em_entry = tf_em_insert_int_entry,
 	.tf_dev_delete_int_em_entry = tf_em_delete_int_entry,

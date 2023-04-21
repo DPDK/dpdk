@@ -337,41 +337,6 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_MAX
 };
 
-/** Enable Shared TCAM Management
- *
- *  This feature allows for management of high and low pools within
- *  the WC TCAM.  These pools are only valid when this feature is enabled.
- *
- *  For normal OVS-DPDK operation, this feature is not required and can
- *  be disabled by commenting out TF_TCAM_SHARED in this header file.
- *
- *  Operation:
- *
- *  When a shared session is created with WC TCAM entries allocated during
- *  tf_open_session(), the TF_TCAM_TBL_TYPE_WC_TCAM pool entries will be divided
- *  into 2 equal pools - TF_TCAM_TBL_TYPE_WC_TCAM_HIGH and
- *  TF_TCAM_TBL_TYPE_WC_TCAM_LOW.
- *
- *  The user will allocate and free entries from either of these pools to obtain
- *  WC_TCAM entry offsets.  For the WC_TCAM_HI/LO management, alloc/free is done
- *  using the tf_alloc_tcam_entry()/tf_free_tcam_entry() APIs for the shared
- *  session.
- *
- *  The use case for this feature is so that applications can have a shared
- *  session and use the TF core to allocate/set/free entries within a given
- *  region of the WC_TCAM within the shared session.  Application A only writes
- *  to the LOW region for example and Application B only writes to the HIGH
- *  region during normal operation.  After Application A goes down, Application
- *  B may decide to overwrite the LOW region with the HIGH region's entries
- *  and switch to the low region.
- *
- *  For other TCAM types in the  shared session, no alloc/free operations are
- *  permitted. Only set should be used for other TCAM table types after getting
- *  the range as provided by the tf_get_resource_info() API.
- *
- */
-#define TF_TCAM_SHARED 1
-
 /**
  * TCAM table type
  */
@@ -390,12 +355,10 @@ enum tf_tcam_tbl_type {
 	TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
 	/** Virtual Edge Bridge TCAM */
 	TF_TCAM_TBL_TYPE_VEB_TCAM,
-#ifdef TF_TCAM_SHARED
 	/** Wildcard TCAM HI Priority */
 	TF_TCAM_TBL_TYPE_WC_TCAM_HIGH,
 	/** Wildcard TCAM Low Priority */
 	TF_TCAM_TBL_TYPE_WC_TCAM_LOW,
-#endif /* TF_TCAM_SHARED */
 	TF_TCAM_TBL_TYPE_MAX
 };
 
@@ -626,20 +589,6 @@ struct tf_open_session_parms {
 	 * 0000:02:00.0. The name for shared session is 0000:02:00.0-tf_shared.
 	 */
 	char ctrl_chan_name[TF_SESSION_NAME_MAX];
-	/**
-	 * [in] shadow_copy
-	 *
-	 * Boolean controlling the use and availability of shadow
-	 * copy. Shadow copy will allow the TruFlow to keep track of
-	 * resource content on the firmware side without having to
-	 * query firmware. Additional private session core_data will
-	 * be allocated if this boolean is set to 'true', default
-	 * 'false'.
-	 *
-	 * Size of memory depends on the NVM Resource settings for the
-	 * control channel.
-	 */
-	bool shadow_copy;
 	/**
 	 * [in/out] session_id
 	 *
@@ -1045,9 +994,6 @@ struct tf_search_identifier_parms {
  * TruFlow core will allocate a free id from the per identifier resource type
  * pool reserved for the session during tf_open().  No firmware is involved.
  *
- * If shadow copy is enabled, the internal ref_cnt is set to 1 in the
- * shadow table for a newly allocated resource.
- *
  * Returns success or failure code.
  */
 int tf_alloc_identifier(struct tf *tfp,
@@ -1061,8 +1007,7 @@ int tf_alloc_identifier(struct tf *tfp,
  * complete pool is returned to the firmware.
  *
  * additional operation (experimental)
- * Decrement reference count.  Only release resource once refcnt goes to 0 if
- * shadow copy is enabled.
+ * Decrement reference count.
  *
  * Returns success or failure code.
  */
@@ -1071,19 +1016,6 @@ int tf_free_identifier(struct tf *tfp,
 
 /**
  * Search identifier resource (experimental)
- *
- * If the shadow copy is enabled search_id is used to search for a matching
- * entry in the shadow table.  The shadow table consists of an array of
- * reference counts indexed by identifier.  If a matching entry is found hit is
- * set to TRUE, refcnt is increased by 1 and returned.  Otherwise, hit is
- * set to false and refcnt is set to 0.
- *
- * TODO: we may need a per table internal shadow copy enable flag to stage
- * the shadow table implementation.  We do not need the shadow table for other
- * tables at this time so we may only want to enable the identifier shadow.
- *
- * TODO: remove this pseudocode below added to show that if search fails
- * we shouldn't allocate a new entry but return.
  *
  * identifier alloc (search_en=1)
  * if (ident is allocated and ref_cnt >=1)
@@ -1262,11 +1194,9 @@ int tf_free_tbl_scope(struct tf *tfp,
  *
  * @ref tf_free_tcam_entry
  *
-#ifdef TF_TCAM_SHARED
  * @ref tf_move_tcam_shared_entries
  *
  * @ref tf_clear_tcam_shared_entries
-#endif
  */
 
 /**
@@ -1332,14 +1262,9 @@ struct tf_search_tcam_entry_parms {
  *
  * Search for a TCAM entry
  *
- * This function searches the shadow copy of the TCAM table for a matching
- * entry.  Key and mask must match for hit to be set.  Only TruFlow core data
- * is accessed.  If shadow_copy is not enabled, an error is returned.
- *
  * Implementation:
  *
- * A hash is performed on the key/mask data and mapped to a shadow copy entry
- * where the full key/mask is populated.  If the full key/mask matches the
+ * If the full key/mask matches the
  * entry, hit is set, ref_cnt is incremented, and search_status indicates what
  * action the caller can take regarding setting the entry.
  *
@@ -1416,8 +1341,7 @@ struct tf_alloc_tcam_entry_parms {
  *
  * This function allocates a TCAM table record.	 This function
  * will attempt to allocate a TCAM table entry from the session
- * owned TCAM entries or search a shadow copy of the TCAM table for a
- * matching entry if search is enabled.	 Key, mask and result must match for
+ * owned TCAM entries.  Key, mask and result must match for
  * hit to be set.  Only TruFlow core data is accessed.
  * A hash table to entry mapping is maintained for search purposes.  If
  * search is not enabled, the first available free entry is returned based
@@ -1568,7 +1492,6 @@ struct tf_free_tcam_entry_parms {
 int tf_free_tcam_entry(struct tf *tfp,
 		       struct tf_free_tcam_entry_parms *parms);
 
-#ifdef TF_TCAM_SHARED
 /**
  * tf_move_tcam_shared_entries parameter definition
  */
@@ -1633,7 +1556,6 @@ struct tf_clear_tcam_shared_entries_parms {
 int tf_clear_tcam_shared_entries(struct tf *tfp,
 			      struct tf_clear_tcam_shared_entries_parms *parms);
 
-#endif /* TF_TCAM_SHARED */
 /**
  * @page table Table Access
  *
@@ -1853,9 +1775,6 @@ struct tf_get_tbl_entry_parms {
  * get index table entry
  *
  * Used to retrieve a previous set index table entry.
- *
- * Reads and compares with the shadow table copy (if enabled) (only
- * for internal objects).
  *
  * Returns success or failure code. Failure will be returned if the
  * provided data buffer is too small for the data type requested.
@@ -2165,9 +2084,7 @@ int tf_delete_em_entry(struct tf *tfp,
  * succeeds, a pointer to the matching entry and the result record associated
  * with the matching entry will be provided.
  *
- * If flow_handle is set, search shadow copy.
- *
- * Otherwise, query the fw with key to get result.
+ * Query the fw with key to get result.
  *
  * External:
  *

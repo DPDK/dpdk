@@ -28,14 +28,6 @@ struct tf_tcam_cfg_parms {
 	 */
 	struct tf_rm_element_cfg *cfg;
 	/**
-	 * Shadow table type configuration array
-	 */
-	struct tf_shadow_tcam_cfg *shadow_cfg;
-	/**
-	 * Boolean controlling the request shadow copy.
-	 */
-	bool shadow_copy;
-	/**
 	 * Session resource allocations
 	 */
 	struct tf_session_resources *resources;
@@ -91,11 +83,6 @@ struct tf_tcam_free_parms {
 	 * [in] Index to free
 	 */
 	uint16_t idx;
-	/**
-	 * [out] Reference count after free, only valid if session has been
-	 * created with shadow_copy.
-	 */
-	uint16_t ref_cnt;
 };
 
 /**
@@ -322,10 +309,8 @@ int tf_tcam_alloc(struct tf *tfp,
 		  struct tf_tcam_alloc_parms *parms);
 
 /**
- * Free's the requested table type and returns it to the DB. If shadow
- * DB is enabled its searched first and if found the element refcount
- * is decremented. If refcount goes to 0 then its returned to the
- * table type DB.
+ * Free's the requested table type and returns it to the DB.
+ * If refcount goes to 0 then its returned to the table type DB.
  *
  * [in] tfp
  *   Pointer to TF handle, used for HCAPI communication
@@ -339,25 +324,6 @@ int tf_tcam_alloc(struct tf *tfp,
  */
 int tf_tcam_free(struct tf *tfp,
 		 struct tf_tcam_free_parms *parms);
-
-/**
- * Supported if Shadow DB is configured. Searches the Shadow DB for
- * any matching element. If found the refcount in the shadow DB is
- * updated accordingly. If not found a new element is allocated and
- * installed into the shadow DB.
- *
- * [in] tfp
- *   Pointer to TF handle, used for HCAPI communication
- *
- * [in] parms
- *   Pointer to parameters
- *
- * Returns
- *   - (0) if successful.
- *   - (-EINVAL) on failure.
- */
-int tf_tcam_alloc_search(struct tf *tfp,
-			 struct tf_tcam_alloc_search_parms *parms);
 
 /**
  * Configures the requested element by sending a firmware request which

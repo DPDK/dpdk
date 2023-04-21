@@ -30,9 +30,7 @@ sources += files(
         'tf_identifier.c',
         'tf_if_tbl.c',
         'tf_session.c',
-        'tf_shadow_tcam.c',
         'tf_tcam.c',
         'tf_tcam_shared.c',
-        'tf_shadow_identifier.c',
         'tf_hash.c',
         'tf_device_p58.c')

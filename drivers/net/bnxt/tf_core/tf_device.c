@@ -9,10 +9,8 @@
 #include "tfp.h"
 #include "tf_em.h"
 #include "tf_rm.h"
-#ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
 #include "tf_tbl_sram.h"
-#endif /* TF_TCAM_SHARED */
 
 struct tf;
 
@@ -67,9 +65,6 @@ tf_dev_reservation_check(uint16_t count,
  * [in] tfp
  *   Pointer to TF handle
  *
- * [in] shadow_copy
- *   Flag controlling shadow copy DB creation
- *
  * [in] resources
  *   Pointer to resource allocation information
  *
@@ -82,7 +77,6 @@ tf_dev_reservation_check(uint16_t count,
  */
 static int
 tf_dev_bind_p4(struct tf *tfp,
-	       bool shadow_copy,
 	       struct tf_session_resources *resources,
 	       struct tf_dev_info *dev_handle,
 	       enum tf_wc_num_slice wc_num_slices)
@@ -115,7 +109,6 @@ tf_dev_bind_p4(struct tf *tfp,
 	if (rsv_cnt) {
 		ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
 		ident_cfg.cfg = tf_ident_p4;
-		ident_cfg.shadow_copy = shadow_copy;
 		ident_cfg.resources = resources;
 		rc = tf_ident_bind(tfp, &ident_cfg);
 		if (rc) {
@@ -150,14 +143,9 @@ tf_dev_bind_p4(struct tf *tfp,
 	if (rsv_cnt) {
 		tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
 		tcam_cfg.cfg = tf_tcam_p4;
-		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
 		tcam_cfg.wc_num_slices = wc_num_slices;
-#ifdef TF_TCAM_SHARED
 		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
-#else /* !TF_TCAM_SHARED */
-		rc = tf_tcam_bind(tfp, &tcam_cfg);
-#endif
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "TCAM initialization failure\n");
@@ -223,7 +211,6 @@ tf_dev_bind_p4(struct tf *tfp,
 	 */
 	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
 	if_tbl_cfg.cfg = tf_if_tbl_p4;
-	if_tbl_cfg.shadow_copy = shadow_copy;
 	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -287,11 +274,7 @@ tf_dev_unbind_p4(struct tf *tfp)
 	 * In case of residuals TCAMs are cleaned up first as to
 	 * invalidate the pipeline in a clean manner.
 	 */
-#ifdef TF_TCAM_SHARED
 	rc = tf_tcam_shared_unbind(tfp);
-#else /* !TF_TCAM_SHARED */
-	rc = tf_tcam_unbind(tfp);
-#endif /* TF_TCAM_SHARED */
 	if (rc) {
 		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");
@@ -354,9 +337,6 @@ tf_dev_unbind_p4(struct tf *tfp)
  * [in] tfp
  *   Pointer to TF handle
  *
- * [in] shadow_copy
- *   Flag controlling shadow copy DB creation
- *
  * [in] resources
  *   Pointer to resource allocation information
  *
@@ -369,7 +349,6 @@ tf_dev_unbind_p4(struct tf *tfp)
  */
 static int
 tf_dev_bind_p58(struct tf *tfp,
-		bool shadow_copy,
 		struct tf_session_resources *resources,
 		struct tf_dev_info *dev_handle,
 		enum tf_wc_num_slice wc_num_slices)
@@ -400,7 +379,6 @@ tf_dev_bind_p58(struct tf *tfp,
 	if (rsv_cnt) {
 		ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
 		ident_cfg.cfg = tf_ident_p58;
-		ident_cfg.shadow_copy = shadow_copy;
 		ident_cfg.resources = resources;
 		rc = tf_ident_bind(tfp, &ident_cfg);
 		if (rc) {
@@ -443,14 +421,9 @@ tf_dev_bind_p58(struct tf *tfp,
 	if (rsv_cnt) {
 		tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
 		tcam_cfg.cfg = tf_tcam_p58;
-		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
 		tcam_cfg.wc_num_slices = wc_num_slices;
-#ifdef TF_TCAM_SHARED
 		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
-#else /* !TF_TCAM_SHARED */
-		rc = tf_tcam_bind(tfp, &tcam_cfg);
-#endif
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "TCAM initialization failure\n");
@@ -495,7 +468,6 @@ tf_dev_bind_p58(struct tf *tfp,
 	 */
 	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
 	if_tbl_cfg.cfg = tf_if_tbl_p58;
-	if_tbl_cfg.shadow_copy = shadow_copy;
 	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -560,11 +532,7 @@ tf_dev_unbind_p58(struct tf *tfp)
 	 * In case of residuals TCAMs are cleaned up first as to
 	 * invalidate the pipeline in a clean manner.
 	 */
-#ifdef TF_TCAM_SHARED
 	rc = tf_tcam_shared_unbind(tfp);
-#else /* !TF_TCAM_SHARED */
-	rc = tf_tcam_unbind(tfp);
-#endif /* TF_TCAM_SHARED */
 	if (rc) {
 		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");
@@ -629,7 +597,6 @@ tf_dev_unbind_p58(struct tf *tfp)
 int
 tf_dev_bind(struct tf *tfp __rte_unused,
 	    enum tf_device_type type,
-	    bool shadow_copy,
 	    struct tf_session_resources *resources,
 	    uint16_t wc_num_slices,
 	    struct tf_dev_info *dev_handle)
@@ -639,14 +606,12 @@ tf_dev_bind(struct tf *tfp __rte_unused,
 	case TF_DEVICE_TYPE_SR:
 		dev_handle->type = type;
 		return tf_dev_bind_p4(tfp,
-				      shadow_copy,
 				      resources,
 				      dev_handle,
 				      wc_num_slices);
 	case TF_DEVICE_TYPE_THOR:
 		dev_handle->type = type;
 		return tf_dev_bind_p58(tfp,
-				       shadow_copy,
 				       resources,
 				       dev_handle,
 				       wc_num_slices);

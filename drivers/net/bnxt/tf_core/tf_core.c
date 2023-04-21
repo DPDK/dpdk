@@ -917,7 +917,6 @@ tf_free_tcam_entry(struct tf *tfp,
 	return 0;
 }
 
-#ifdef TF_TCAM_SHARED
 int
 tf_move_tcam_shared_entries(struct tf *tfp,
 			    struct tf_move_tcam_shared_entries_parms *parms)
@@ -1019,7 +1018,6 @@ tf_clear_tcam_shared_entries(struct tf *tfp,
 
 	return 0;
 }
-#endif /* TF_TCAM_SHARED */
 
 int
 tf_alloc_tbl_entry(struct tf *tfp,

@@ -461,7 +461,6 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 		return rc;
 	}
 
-	parms.shadow_copy = true;
 	parms.bp = bp;
 	if (app_id == 0)
 		parms.wc_num_slices = TF_WC_TCAM_2_SLICE_PER_ROW;
@@ -549,8 +548,6 @@ ulp_ctx_session_open(struct bnxt *bp,
 			    ethdev->data->port_id, rc);
 		return rc;
 	}
-
-	params.shadow_copy = true;
 
 	rc = bnxt_ulp_cntxt_app_id_get(bp->ulp_ctx, &app_id);
 	if (rc) {

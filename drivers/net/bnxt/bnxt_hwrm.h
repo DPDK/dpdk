@@ -79,16 +79,6 @@ struct hwrm_func_qstats_output;
 	bp->rx_cos_queue[x].profile =	\
 		resp->queue_id##x##_service_profile
 
-int bnxt_hwrm_tf_message_tunneled(struct bnxt *bp,
-				  bool use_kong_mb,
-				  uint16_t tf_type,
-				  uint16_t tf_subtype,
-				  uint32_t *tf_response_code,
-				  void *msg,
-				  uint32_t msg_len,
-				  void *response,
-				  uint32_t response_len);
-
 int bnxt_hwrm_tf_message_direct(struct bnxt *bp,
 				bool use_kong_mb,
 				uint16_t msg_type,

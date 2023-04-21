@@ -23,10 +23,6 @@ struct tf_ident_cfg_parms {
 	 */
 	struct tf_rm_element_cfg *cfg;
 	/**
-	 * [in] Boolean controlling the request shadow copy.
-	 */
-	bool shadow_copy;
-	/**
 	 * [in] Session resource allocations
 	 */
 	struct tf_session_resources *resources;

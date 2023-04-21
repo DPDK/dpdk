@@ -84,14 +84,6 @@ struct tf_if_tbl_cfg_parms {
 	 * Table Type element configuration array
 	 */
 	struct tf_if_tbl_cfg *cfg;
-	/**
-	 * Shadow table type configuration array
-	 */
-	struct tf_shadow_if_tbl_cfg *shadow_cfg;
-	/**
-	 * Boolean controlling the request shadow copy.
-	 */
-	bool shadow_copy;
 };
 
 /**

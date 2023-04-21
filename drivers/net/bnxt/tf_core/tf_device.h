@@ -11,9 +11,7 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
-#ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
-#endif
 #include "tf_if_tbl.h"
 #include "tf_global_cfg.h"
 
@@ -86,7 +84,6 @@ struct tf_hcapi_resource_map {
  */
 int tf_dev_bind(struct tf *tfp,
 		enum tf_device_type type,
-		bool shadow_copy,
 		struct tf_session_resources *resources,
 		uint16_t wc_num_slices,
 		struct tf_dev_info *dev_handle);
@@ -705,7 +702,6 @@ struct tf_dev_ops {
 	int (*tf_dev_get_tcam)(struct tf *tfp,
 			       struct tf_tcam_get_parms *parms);
 
-#ifdef TF_TCAM_SHARED
 	/**
 	 * Move TCAM shared entries
 	 *
@@ -737,8 +733,6 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_clear_tcam)(struct tf *tfp,
 			      struct tf_clear_tcam_shared_entries_parms *parms);
-
-#endif /* TF_TCAM_SHARED */
 
 	/**
 	 * Retrieves the tcam resource info.

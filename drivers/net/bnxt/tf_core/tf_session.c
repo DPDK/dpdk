@@ -141,8 +141,6 @@ tf_session_create(struct tf *tfp,
 	/* Return the allocated session id */
 	session_id->id = session->session_id.id;
 
-	session->shadow_copy = parms->open_cfg->shadow_copy;
-
 	/* Init session client list */
 	ll_init(&session->client_ll);
 
@@ -200,7 +198,6 @@ tf_session_create(struct tf *tfp,
 
 	rc = tf_dev_bind(tfp,
 			 parms->open_cfg->device_type,
-			 session->shadow_copy,
 			 &parms->open_cfg->resources,
 			 parms->open_cfg->wc_num_slices,
 			 &session->dev);
@@ -360,7 +357,7 @@ tf_session_client_create(struct tf *tfp,
  *   - (-EINVAL) on failure.
  *   - (-ENOTFOUND) error, client not owned by the session.
  *   - (-ENOTSUPP) error, unable to destroy client as its the last
- *                 client. Please use the tf_session_close().
+ *		 client. Please use the tf_session_close().
  */
 static int
 tf_session_client_destroy(struct tf *tfp,
@@ -992,8 +989,6 @@ tf_session_set_db(struct tf *tfp,
 	return rc;
 }
 
-#ifdef TF_TCAM_SHARED
-
 int
 tf_session_get_tcam_shared_db(struct tf *tfp,
 			      void **tcam_shared_db_handle)
@@ -1069,8 +1064,6 @@ tf_session_set_sram_db(struct tf *tfp,
 	tfs->sram_handle = sram_handle;
 	return rc;
 }
-
-#endif /* TF_TCAM_SHARED */
 
 int
 tf_session_get_global_db(struct tf *tfp,
