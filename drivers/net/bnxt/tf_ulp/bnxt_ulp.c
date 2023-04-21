@@ -78,7 +78,7 @@ bnxt_ulp_devid_get(struct bnxt *bp,
 	if (BNXT_STINGRAY(bp))
 		*ulp_dev_id = BNXT_ULP_DEVICE_ID_STINGRAY;
 	else
-		/* Assuming Whitney */
+		/* Assuming P4 */
 		*ulp_dev_id = BNXT_ULP_DEVICE_ID_WH_PLUS;
 
 	return 0;
@@ -340,12 +340,62 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 	return rc;
 }
 
+/* Function to set the hot upgrade support into the context */
+static int
+bnxt_ulp_multi_shared_session_support_set(struct bnxt *bp,
+					  enum bnxt_ulp_device_id devid,
+					  uint32_t fw_hu_update)
+{
+	struct bnxt_ulp_context *ulp_ctx = bp->ulp_ctx;
+	struct tf_get_version_parms v_params = { 0 };
+	struct tf *tfp;
+	int32_t rc = 0;
+	int32_t new_fw = 0;
+
+	v_params.device_type = bnxt_ulp_cntxt_convert_dev_id(devid);
+	v_params.bp = bp;
+
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	rc = tf_get_version(tfp, &v_params);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get tf version.\n");
+		return rc;
+	}
+
+	if (v_params.major == 1 && v_params.minor == 0 &&
+	    v_params.update == 1) {
+		new_fw = 1;
+	}
+	/* if the version update is greater than 0 then set support for
+	 * multiple version
+	 */
+	if (new_fw) {
+		ulp_ctx->cfg_data->ulp_flags |= BNXT_ULP_MULTI_SHARED_SUPPORT;
+		ulp_ctx->cfg_data->hu_session_type =
+			BNXT_ULP_SESSION_TYPE_SHARED;
+	}
+	if (!new_fw && fw_hu_update) {
+		ulp_ctx->cfg_data->ulp_flags &= ~BNXT_ULP_HIGH_AVAIL_ENABLED;
+		ulp_ctx->cfg_data->hu_session_type =
+			BNXT_ULP_SESSION_TYPE_SHARED |
+			BNXT_ULP_SESSION_TYPE_SHARED_OWC;
+	}
+
+	if (!new_fw && !fw_hu_update) {
+		ulp_ctx->cfg_data->hu_session_type =
+			BNXT_ULP_SESSION_TYPE_SHARED |
+			BNXT_ULP_SESSION_TYPE_SHARED_OWC;
+	}
+
+	return rc;
+}
+
 int32_t
 bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 			     uint8_t app_id, uint32_t dev_id)
 {
 	struct bnxt_ulp_app_capabilities_info *info;
-	uint32_t num = 0;
+	uint32_t num = 0, fw = 0;
 	uint16_t i;
 	bool found = false;
 	struct bnxt_ulp_context *ulp_ctx = bp->ulp_ctx;
@@ -375,15 +425,49 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 		if (info[i].flags & BNXT_ULP_APP_CAP_UNICAST_ONLY)
 			ulp_ctx->cfg_data->ulp_flags |=
 				BNXT_ULP_APP_UNICAST_ONLY;
+		if (info[i].flags & BNXT_ULP_APP_CAP_IP_TOS_PROTO_SUPPORT)
+			ulp_ctx->cfg_data->ulp_flags |=
+				BNXT_ULP_APP_TOS_PROTO_SUPPORT;
+		if (info[i].flags & BNXT_ULP_APP_CAP_BC_MC_SUPPORT)
+			ulp_ctx->cfg_data->ulp_flags |=
+				BNXT_ULP_APP_BC_MC_SUPPORT;
 		if (info[i].flags & BNXT_ULP_APP_CAP_SOCKET_DIRECT) {
 			/* Enable socket direction only if MR is enabled in fw*/
 			if (BNXT_MULTIROOT_EN(bp)) {
 				ulp_ctx->cfg_data->ulp_flags |=
 					BNXT_ULP_APP_SOCKET_DIRECT;
-				BNXT_TF_DBG(DEBUG,
-					    "Socket Direct feature is enabled");
+				BNXT_TF_DBG(INFO,
+					    "Socket Direct feature is enabled\n");
 			}
 		}
+		if (info[i].flags & BNXT_ULP_APP_CAP_HA_DYNAMIC) {
+			/* Read the environment variable to determine hot up */
+			if (!bnxt_pmd_get_hot_upgrade_env()) {
+				ulp_ctx->cfg_data->ulp_flags |=
+					BNXT_ULP_APP_HA_DYNAMIC;
+				/* reset Hot upgrade, dynamically disabled */
+				ulp_ctx->cfg_data->ulp_flags &=
+					~BNXT_ULP_HIGH_AVAIL_ENABLED;
+				ulp_ctx->cfg_data->def_session_type =
+					BNXT_ULP_SESSION_TYPE_DEFAULT_NON_HA;
+				BNXT_TF_DBG(INFO, "Hot upgrade disabled.\n");
+			}
+		}
+
+		bnxt_ulp_vxlan_ip_port_set(ulp_ctx, info[i].vxlan_ip_port);
+		bnxt_ulp_vxlan_port_set(ulp_ctx, info[i].vxlan_port);
+
+		/* set the shared session support from firmware */
+		fw = info[i].upgrade_fw_update;
+		if (ULP_HIGH_AVAIL_IS_ENABLED(ulp_ctx->cfg_data->ulp_flags) &&
+		    bnxt_ulp_multi_shared_session_support_set(bp, dev_id, fw)) {
+			BNXT_TF_DBG(ERR,
+				    "Unable to get shared session support\n");
+			return -EINVAL;
+		}
+		bnxt_ulp_ha_reg_set(ulp_ctx, info[i].ha_reg_state,
+				    info[i].ha_reg_cnt);
+		ulp_ctx->cfg_data->ha_pool_id = info[i].ha_pool_id;
 	}
 	if (!found) {
 		BNXT_TF_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
@@ -1027,6 +1111,11 @@ ulp_ctx_init(struct bnxt *bp,
 		goto error_deinit;
 	}
 
+	if (BNXT_TESTPMD_EN(bp)) {
+		ulp_data->ulp_flags &= ~BNXT_ULP_VF_REP_ENABLED;
+		BNXT_TF_DBG(ERR, "Enabled Testpmd forward mode\n");
+	}
+
 	/*
 	 * Shared session must be created before first regular session but after
 	 * the ulp_ctx is valid.
@@ -1054,7 +1143,6 @@ ulp_ctx_init(struct bnxt *bp,
 		}
 	}
 	bnxt_ulp_cntxt_num_shared_clients_set(bp->ulp_ctx, true);
-
 
 	/* Open the ulp session. */
 	rc = ulp_ctx_session_open(bp, session);
@@ -1181,7 +1269,7 @@ ulp_ctx_attach(struct bnxt *bp,
 		tfp->session = NULL;
 		return rc;
 	}
-
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
 	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT, tfp);
 	return rc;
 }
@@ -1427,7 +1515,8 @@ bnxt_ulp_deinit(struct bnxt *bp,
 		return;
 
 	ha_enabled = bnxt_ulp_cntxt_ha_enabled(bp->ulp_ctx);
-	if (ha_enabled && session->session_opened) {
+	if (ha_enabled &&
+	    bnxt_ulp_session_is_open(session, BNXT_ULP_SESSION_TYPE_DEFAULT)) {
 		int32_t rc = ulp_ha_mgr_close(bp->ulp_ctx);
 		if (rc)
 			BNXT_TF_DBG(ERR, "Failed to close HA (%d)\n", rc);
@@ -1490,6 +1579,7 @@ bnxt_ulp_init(struct bnxt *bp,
 	      struct bnxt_ulp_session_state *session)
 {
 	int rc;
+	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
 
 	/* Allocate and Initialize the ulp context. */
 	rc = ulp_ctx_init(bp, session);
@@ -1584,11 +1674,42 @@ bnxt_ulp_init(struct bnxt *bp,
 			goto jump_to_error;
 		}
 	}
+
+	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &ulp_dev_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get device id from ulp.\n");
+		return rc;
+	}
+
 	BNXT_TF_DBG(DEBUG, "ulp ctx has been initialized\n");
 	return rc;
 
 jump_to_error:
 	bnxt_ulp_deinit(bp, session);
+	return rc;
+}
+
+static int
+ulp_cust_vxlan_alloc(struct bnxt *bp)
+{
+	int rc = 0;
+
+	if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
+		rc = bnxt_tunnel_dst_port_alloc(bp,
+						bp->ulp_ctx->cfg_data->vxlan_port,
+					HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN);
+		if (rc)
+			BNXT_TF_DBG(ERR, "Failed to set global vxlan port\n");
+	}
+
+	if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
+		rc = bnxt_tunnel_dst_port_alloc(bp,
+						bp->ulp_ctx->cfg_data->vxlan_ip_port,
+					HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4);
+		if (rc)
+			BNXT_TF_DBG(ERR, "Failed to set global custom vxlan_ip port\n");
+	}
+
 	return rc;
 }
 
@@ -1686,6 +1807,7 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		BNXT_TF_DBG(ERR, "Failed to update port database\n");
 		goto jump_to_error;
 	}
+
 	/* create the default rules */
 	rc = bnxt_ulp_create_df_rules(bp);
 	if (rc) {
@@ -1711,11 +1833,37 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		}
 	}
 
+	rc = ulp_cust_vxlan_alloc(bp);
+	if (rc)
+		goto jump_to_error;
+
 	return rc;
 
 jump_to_error:
 	bnxt_ulp_port_deinit(bp);
 	return rc;
+}
+
+static void
+ulp_cust_vxlan_free(struct bnxt *bp)
+{
+	int rc;
+
+	if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
+		rc = bnxt_tunnel_dst_port_free(bp,
+					       bp->ulp_ctx->cfg_data->vxlan_port,
+				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN);
+		if (rc)
+			BNXT_TF_DBG(ERR, "Failed to clear global vxlan port\n");
+	}
+
+	if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
+		rc = bnxt_tunnel_dst_port_free(bp,
+					       bp->ulp_ctx->cfg_data->vxlan_ip_port,
+				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4);
+		if (rc)
+			BNXT_TF_DBG(ERR, "Failed to clear global custom vxlan port\n");
+	}
 }
 
 /*
@@ -1770,6 +1918,9 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	if (bp->ulp_ctx->cfg_data && bp->ulp_ctx->cfg_data->ref_cnt) {
 		bp->ulp_ctx->cfg_data->ref_cnt--;
 		if (bp->ulp_ctx->cfg_data->ref_cnt) {
+			/* Free tunnel configurations */
+			ulp_cust_vxlan_free(bp);
+
 			/* free the port details */
 			/* Free the default flow rule associated to this port */
 			bnxt_ulp_destroy_df_rules(bp, false);
@@ -2201,6 +2352,45 @@ bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx)
 	pthread_mutex_unlock(&ulp_ctx->cfg_data->flow_db_lock);
 }
 
+/* Function to extract the action type from the shared action handle. */
+int32_t
+bnxt_get_action_handle_type(const struct rte_flow_action_handle *handle,
+			    uint32_t *action_handle_type)
+{
+	if (!action_handle_type)
+		return -EINVAL;
+
+	*action_handle_type = (uint32_t)(((uint64_t)handle >> 32) & 0xffffffff);
+	if (*action_handle_type >= BNXT_ULP_GEN_TBL_MAX_SZ)
+		return -EINVAL;
+
+	return 0;
+}
+
+/* Function to extract the direction from the shared action handle. */
+int32_t
+bnxt_get_action_handle_direction(const struct rte_flow_action_handle *handle,
+				 uint32_t *dir)
+{
+	uint32_t shared_type;
+	int32_t ret = 0;
+
+	ret = bnxt_get_action_handle_type(handle, &shared_type);
+	if (ret)
+		return ret;
+
+	*dir = shared_type & 0x1 ? BNXT_ULP_DIR_EGRESS : BNXT_ULP_DIR_INGRESS;
+
+	return ret;
+}
+
+/* Function to extract the action index from the shared action handle. */
+uint32_t
+bnxt_get_action_handle_index(const struct rte_flow_action_handle *handle)
+{
+	return (uint32_t)((uint64_t)handle & 0xffffffff);
+}
+
 /* Function to set the ha info into the context */
 int32_t
 bnxt_ulp_cntxt_ptr2_ha_info_set(struct bnxt_ulp_context *ulp_ctx,
@@ -2306,6 +2496,13 @@ bnxt_ulp_cntxt_ptr2_app_tun_list_get(struct bnxt_ulp_context *ulp)
 	return ulp->cfg_data->app_tun;
 }
 
+/* Function to get the truflow app id. This defined in the build file */
+uint32_t
+bnxt_ulp_default_app_id_get(void)
+{
+	return BNXT_TF_APP_ID;
+}
+
 /* Function to convert ulp dev id to regular dev id. */
 uint32_t
 bnxt_ulp_cntxt_convert_dev_id(uint32_t ulp_dev_id)
@@ -2327,6 +2524,53 @@ bnxt_ulp_cntxt_convert_dev_id(uint32_t ulp_dev_id)
 		break;
 	}
 	return type;
+}
+
+/* This function sets the IF table index for the
+ * Application to poll to get the hot upgrade state and count details from
+ * the firmware.
+ */
+int32_t
+bnxt_ulp_ha_reg_set(struct bnxt_ulp_context *ulp_ctx,
+		    uint8_t state, uint8_t cnt)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	if (ULP_MULTI_SHARED_IS_SUPPORTED(ulp_ctx)) {
+		ulp_ctx->cfg_data->hu_reg_state = state;
+		ulp_ctx->cfg_data->hu_reg_cnt = cnt;
+	} else {
+		ulp_ctx->cfg_data->hu_reg_state = ULP_HA_IF_TBL_IDX;
+		ulp_ctx->cfg_data->hu_reg_cnt = ULP_HA_CLIENT_CNT_IF_TBL_IDX;
+	}
+	return 0;
+}
+
+/* This function gets the IF table index for the
+ * application to poll to get the application hot upgrade state from
+ * the firmware.
+ */
+uint32_t
+bnxt_ulp_ha_reg_state_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return (uint32_t)ulp_ctx->cfg_data->hu_reg_state;
+}
+
+/* This function gets the IF table index for the
+ * Application to poll to get the application count from
+ * the firmware.
+ */
+uint32_t
+bnxt_ulp_ha_reg_cnt_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return (uint32_t)ulp_ctx->cfg_data->hu_reg_cnt;
 }
 
 struct tf*

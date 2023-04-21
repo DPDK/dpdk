@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -134,12 +134,14 @@ ulp_mapper_gen_tbl_entry_data_get(struct ulp_mapper_gen_tbl_entry *entry,
  * Free the generic table list resource
  *
  * ulp_ctx [in] - Pointer to the ulp context
+ * fid [in] - The fid the generic table is associated with
  * res [in] - Pointer to flow db resource entry
  *
  * returns 0 on success
  */
 int32_t
 ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
+			    uint32_t fid,
 			    struct ulp_flow_db_res_params *res);
 
 /* Free the generic table list entry

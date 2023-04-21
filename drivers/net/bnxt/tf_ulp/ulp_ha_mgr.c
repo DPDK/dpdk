@@ -23,8 +23,6 @@
 
 #define ULP_HA_IF_TBL_DIR	TF_DIR_RX
 #define ULP_HA_IF_TBL_TYPE	TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR
-#define ULP_HA_IF_TBL_IDX 10
-#define ULP_HA_CLIENT_CNT_IF_TBL_IDX 9
 
 static void ulp_ha_mgr_timer_cancel(struct bnxt_ulp_context *ulp_ctx);
 static int32_t ulp_ha_mgr_timer_start(void *arg);
@@ -42,8 +40,8 @@ static int32_t
 ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx, uint32_t *cnt);
 
 static int32_t
-ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
-		     enum ulp_ha_mgr_state state)
+ulp_ha_mgr_state_set_v1(struct bnxt_ulp_context *ulp_ctx,
+			enum ulp_ha_mgr_state state)
 {
 	struct tf_set_if_tbl_entry_parms set_parms = { 0 };
 	struct tf *tfp;
@@ -66,7 +64,7 @@ ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
 	set_parms.type = ULP_HA_IF_TBL_TYPE;
 	set_parms.data = (uint8_t *)&val;
 	set_parms.data_sz_in_bytes = sizeof(val);
-	set_parms.idx = ULP_HA_IF_TBL_IDX;
+	set_parms.idx = bnxt_ulp_ha_reg_state_get(ulp_ctx);
 
 	rc = tf_set_if_tbl_entry(tfp, &set_parms);
 	if (rc)
@@ -76,8 +74,82 @@ ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
 }
 
 static int32_t
-ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx,
-			     uint32_t *cnt)
+ulp_ha_mgr_state_set_v2(struct bnxt_ulp_context *ulp_ctx,
+			enum ulp_ha_mgr_state state)
+{
+	struct tf_set_session_hotup_state_parms parms = { 0 };
+	struct tf *tfp;
+	int32_t rc = 0;
+
+	if (ulp_ctx == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid parms in state get.\n");
+		return -EINVAL;
+	}
+
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_SHARED_WC);
+	if (tfp == NULL) {
+		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
+		return -EINVAL;
+	}
+
+	parms.state = (uint16_t)state;
+	rc = tf_set_session_hotup_state(tfp, &parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to write the HA state\n");
+		return rc;
+	}
+
+	return rc;
+}
+
+static int32_t
+ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
+		     enum ulp_ha_mgr_state state)
+{
+	if (bnxt_ulp_cntxt_multi_shared_session_enabled(ulp_ctx))
+		return ulp_ha_mgr_state_set_v2(ulp_ctx, state);
+	else
+		return ulp_ha_mgr_state_set_v1(ulp_ctx, state);
+}
+
+static int32_t
+ulp_ha_mgr_tf_state_get(struct bnxt_ulp_context *ulp_ctx,
+			uint32_t *state,
+			uint32_t *cnt)
+{
+	struct tf_get_session_hotup_state_parms parms = { 0 };
+	struct tf *tfp;
+	int32_t rc = 0;
+
+	if (ulp_ctx == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid parms in client num get.\n");
+		return -EINVAL;
+	}
+
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_SHARED_WC);
+	if (tfp == NULL) {
+		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
+		return -EINVAL;
+	}
+
+	rc = tf_get_session_hotup_state(tfp, &parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to read the HA state\n");
+		return rc;
+	}
+
+	if (state)
+		*state = parms.state;
+
+	if (cnt)
+		*cnt = parms.ref_cnt;
+
+	return rc;
+}
+
+static int32_t
+ulp_ha_mgr_tf_client_num_get_v1(struct bnxt_ulp_context *ulp_ctx,
+				uint32_t *cnt)
 {
 	struct tf_get_if_tbl_entry_parms get_parms = { 0 };
 	struct tf *tfp;
@@ -96,7 +168,7 @@ ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx,
 
 	get_parms.dir = ULP_HA_IF_TBL_DIR;
 	get_parms.type = ULP_HA_IF_TBL_TYPE;
-	get_parms.idx = ULP_HA_CLIENT_CNT_IF_TBL_IDX;
+	get_parms.idx = bnxt_ulp_ha_reg_cnt_get(ulp_ctx);
 	get_parms.data = (uint8_t *)&val;
 	get_parms.data_sz_in_bytes = sizeof(val);
 
@@ -106,6 +178,16 @@ ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx,
 
 	*cnt = val;
 	return rc;
+}
+
+static int32_t
+ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx,
+			     uint32_t *cnt)
+{
+	if (bnxt_ulp_cntxt_multi_shared_session_enabled(ulp_ctx))
+		return ulp_ha_mgr_tf_state_get(ulp_ctx, NULL, cnt);
+	else
+		return ulp_ha_mgr_tf_client_num_get_v1(ulp_ctx, cnt);
 }
 
 static int32_t
@@ -386,9 +468,9 @@ ulp_ha_mgr_app_type_get(struct bnxt_ulp_context *ulp_ctx,
 	return 0;
 }
 
-int32_t
-ulp_ha_mgr_state_get(struct bnxt_ulp_context *ulp_ctx,
-		     enum ulp_ha_mgr_state *state)
+static int32_t
+ulp_ha_mgr_state_get_v1(struct bnxt_ulp_context *ulp_ctx,
+			enum ulp_ha_mgr_state *state)
 {
 	struct tf_get_if_tbl_entry_parms get_parms = { 0 };
 	struct tf *tfp;
@@ -407,7 +489,7 @@ ulp_ha_mgr_state_get(struct bnxt_ulp_context *ulp_ctx,
 
 	get_parms.dir = ULP_HA_IF_TBL_DIR;
 	get_parms.type = ULP_HA_IF_TBL_TYPE;
-	get_parms.idx = ULP_HA_IF_TBL_IDX;
+	get_parms.idx = bnxt_ulp_ha_reg_state_get(ulp_ctx);
 	get_parms.data = (uint8_t *)&val;
 	get_parms.data_sz_in_bytes = sizeof(val);
 
@@ -417,6 +499,16 @@ ulp_ha_mgr_state_get(struct bnxt_ulp_context *ulp_ctx,
 
 	*state = val;
 	return rc;
+}
+
+int32_t
+ulp_ha_mgr_state_get(struct bnxt_ulp_context *ulp_ctx,
+		     enum ulp_ha_mgr_state *state)
+{
+	if (bnxt_ulp_cntxt_multi_shared_session_enabled(ulp_ctx))
+		return ulp_ha_mgr_tf_state_get(ulp_ctx, state, NULL);
+	else
+		return ulp_ha_mgr_state_get_v1(ulp_ctx, state);
 }
 
 int32_t
@@ -607,10 +699,9 @@ ulp_ha_mgr_close(struct bnxt_ulp_context *ulp_ctx)
 		BNXT_TF_DBG(INFO,
 			    "On Close: SEC[COPY] => [INIT] after %d ms\n",
 			    ULP_HA_WAIT_TIMEOUT - timeout);
-	} else {
-		BNXT_TF_DBG(ERR, "On Close: Invalid type/state %d/%d\n",
-			    curr_state, app_type);
 	}
+	/* else do nothing just return*/
+
 cleanup:
 	return rc;
 }

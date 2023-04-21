@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -677,7 +677,6 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				break;
 			}
 			break;
-
 		default:
 			break;
 		}
@@ -728,7 +727,7 @@ bnxt_find_matching_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 	struct bnxt_vnic_info *vnic0;
 	int i;
 
-	vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic0 = bnxt_get_default_vnic(bp);
 	f0 = STAILQ_FIRST(&vnic0->filter);
 
 	/* This flow has same DST MAC as the port/l2 filter. */
@@ -904,6 +903,10 @@ static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  act,
 					  "Failed to alloc VNIC group");
+
+	/* populate the fw group table */
+	bnxt_vnic_ring_grp_populate(bp, vnic);
+	bnxt_vnic_rules_init(vnic);
 
 	rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 	if (rc) {
@@ -1345,7 +1348,7 @@ use_vnic:
 		 * The user specified redirect queue will be set while creating
 		 * the ntuple filter in hardware.
 		 */
-		vnic0 = BNXT_GET_DEFAULT_VNIC(bp);
+		vnic0 = bnxt_get_default_vnic(bp);
 		if (use_ntuple)
 			filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 		else
@@ -1964,7 +1967,37 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	 * in such a case.
 	 */
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
-	    filter->enables == filter->tunnel_type) {
+	    (filter->enables == filter->tunnel_type ||
+	     filter->tunnel_type == CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN ||
+	     filter->tunnel_type == CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_GENEVE)) {
+		if (filter->enables & NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT) {
+			struct rte_eth_udp_tunnel tunnel = {0};
+
+			/* hwrm_tunnel_dst_port_alloc converts to Big Endian */
+			tunnel.udp_port = BNXT_NTOHS(filter->dst_port);
+			if (filter->tunnel_type ==
+			    CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN) {
+				tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_VXLAN;
+			} else if (filter->tunnel_type ==
+				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_GENEVE) {
+				tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_GENEVE;
+			} else {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "Invalid tunnel type");
+				ret = -EINVAL;
+				goto free_filter;
+			}
+			ret = bnxt_udp_tunnel_port_add_op(bp->eth_dev, &tunnel);
+			if (ret != 0) {
+				rte_flow_error_set(error, -ret,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "Fail to add tunnel port");
+				goto free_filter;
+			}
+		}
 		ret = bnxt_hwrm_tunnel_redirect_query(bp, &tun_type);
 		if (ret) {
 			rte_flow_error_set(error, -ret,
@@ -2147,8 +2180,38 @@ _bnxt_flow_destroy(struct bnxt *bp,
 	filter = flow->filter;
 	vnic = flow->vnic;
 
+	/* If tunnel redirection to a VF/PF is specified then only tunnel_type
+	 * is set and enable is set to the tunnel type. Issue hwrm cmd directly
+	 * in such a case.
+	 */
 	if (filter->filter_type == HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
-	    filter->enables == filter->tunnel_type) {
+	    (filter->enables == filter->tunnel_type ||
+	     filter->tunnel_type == CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN ||
+	     filter->tunnel_type == CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_GENEVE)) {
+		if (filter->enables & NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT) {
+			struct rte_eth_udp_tunnel tunnel = {0};
+
+			/* hwrm_tunnel_dst_port_free converts to Big Endian */
+			tunnel.udp_port = BNXT_NTOHS(filter->dst_port);
+			if (filter->tunnel_type ==
+			    CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN) {
+				tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_VXLAN;
+			} else if (filter->tunnel_type ==
+				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_GENEVE) {
+				tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_GENEVE;
+			} else {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "Invalid tunnel type");
+				return ret;
+			}
+
+			ret = bnxt_udp_tunnel_port_del_op(bp->eth_dev,
+							  &tunnel);
+			if (ret)
+				return ret;
+		}
 		ret = bnxt_handle_tunnel_redirect_destroy(bp, filter, error);
 		if (!ret)
 			goto done;

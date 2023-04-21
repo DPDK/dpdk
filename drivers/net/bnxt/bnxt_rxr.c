@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -691,7 +691,7 @@ static void
 bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 {
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
-	uint64_t last_hwrm_time;
+	uint64_t last_hwrm_time = 0;
 	uint64_t pkt_time = 0;
 
 	if (!BNXT_CHIP_P5(bp) || !ptp)
@@ -705,7 +705,6 @@ bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 	 * from the HWRM response with the lower 32 bits in the
 	 * Rx completion to produce the 48 bit timestamp for the Rx packet
 	 */
-	last_hwrm_time = ptp->current_time;
 	pkt_time = (last_hwrm_time & BNXT_PTP_CURRENT_TIME_MASK) | rx_ts_cmpl;
 	if (rx_ts_cmpl < (uint32_t)last_hwrm_time) {
 		/* timer has rolled over */
@@ -923,7 +922,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 
 	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
 		      RX_PKT_CMPL_FLAGS_MASK) ==
-		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
+		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
 		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
 
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V2) {
@@ -1089,6 +1088,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 	}
 
+	cpr->cp_raw_cons = raw_cons;
 	if (!nb_rx_pkts && !nb_rep_rx_pkts && !evt) {
 		/*
 		 * For PMD, there is no need to keep on pushing to REARM
@@ -1097,7 +1097,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		goto done;
 	}
 
-	cpr->cp_raw_cons = raw_cons;
 	/* Ring the completion queue doorbell. */
 	bnxt_db_cq(cpr);
 

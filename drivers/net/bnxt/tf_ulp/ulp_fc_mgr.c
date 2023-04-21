@@ -438,8 +438,8 @@ void
 ulp_fc_mgr_alarm_cb(void *arg)
 {
 	int rc = 0;
-	unsigned int j = 0;
-	enum tf_dir i = 0;
+	unsigned int j;
+	enum tf_dir i;
 	struct bnxt_ulp_context *ctxt;
 	struct bnxt_ulp_fc_info *ulp_fc_info;
 	struct bnxt_ulp_device_params *dparms;
@@ -469,14 +469,6 @@ ulp_fc_mgr_alarm_cb(void *arg)
 	dparms = bnxt_ulp_device_params_get(dev_id);
 	if (!dparms) {
 		BNXT_TF_DBG(DEBUG, "Failed to device parms\n");
-		bnxt_ulp_cntxt_entry_release();
-		return;
-	}
-
-	tfp = bnxt_ulp_cntxt_tfp_get(ctxt,
-				     ulp_fc_info->sw_acc_tbl[i][j].session_type);
-	if (!tfp) {
-		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
 		bnxt_ulp_cntxt_entry_release();
 		return;
 	}
@@ -667,6 +659,7 @@ int32_t ulp_fc_mgr_cntr_reset(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
 	sw_cntr_idx = hw_cntr_id - ulp_fc_info->shadow_hw_tbl[dir].start_idx;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].valid = false;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].hw_cntr_id = 0;
+	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].session_type = 0;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].pkt_count = 0;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].byte_count = 0;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].pc_flow_idx = 0;

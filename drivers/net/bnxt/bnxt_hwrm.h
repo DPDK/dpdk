@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -109,7 +109,31 @@ struct bnxt_pf_resource_info {
 	uint32_t num_hw_ring_grps;
 };
 
-#define BNXT_CTX_VAL_INVAL	0xFFFF
+#define BNXT_CTX_VAL_INVAL		0xFFFF
+#define	BNXT_RSS_CTX_IDX_INVALID	0xFFFF
+
+#define BNXT_TUNNELED_OFFLOADS_CAP_VXLAN_EN(bp)		\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_VXLAN))
+#define BNXT_TUNNELED_OFFLOADS_CAP_NGE_EN(bp)		\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_NGE))
+#define BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp)		\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_GRE))
+#define BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp)	\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_IPINIP))
+
+/*
+ * If the device supports VXLAN, GRE, IPIP and GENEVE tunnel parsing, then report
+ * RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM, RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM and
+ * RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM in the Rx/Tx offload capabilities of the device.
+ */
+#define BNXT_TUNNELED_OFFLOADS_CAP_ALL_EN(bp)			\
+	(BNXT_TUNNELED_OFFLOADS_CAP_VXLAN_EN(bp) &&		\
+	 BNXT_TUNNELED_OFFLOADS_CAP_NGE_EN(bp)   &&		\
+	 BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp)   &&		\
+	 BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp))
+
+#define BNXT_SIG_MODE_NRZ	HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_NRZ
+#define BNXT_SIG_MODE_PAM4	HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_PAM4
 
 #define BNXT_TUNNELED_OFFLOADS_CAP_VXLAN_EN(bp)		\
 	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_VXLAN))
@@ -227,6 +251,8 @@ int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf,
 int bnxt_hwrm_func_qcfg_current_vf_vlan(struct bnxt *bp, int vf);
 int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type);
+int bnxt_hwrm_tunnel_upar_id_get(struct bnxt *bp, uint8_t *upar_id,
+				 uint8_t tunnel_type);
 int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type);
 int bnxt_hwrm_set_default_vlan(struct bnxt *bp, int vf, uint8_t is_vf);

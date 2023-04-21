@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -54,7 +54,7 @@ int bnxt_alloc_ring_grps(struct bnxt *bp)
 		return -EBUSY;
 	}
 
-	/* THOR does not support ring groups.
+	/* P5 does not support ring groups.
 	 * But we will use the array to save RSS context IDs.
 	 */
 	if (BNXT_CHIP_P5(bp)) {

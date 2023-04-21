@@ -328,4 +328,30 @@ ulp_port_db_parent_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_phy_port_get(struct bnxt_ulp_context *ulp_ctxt,
 			 uint32_t port_id, uint16_t *phy_port);
+
+/*
+ * Api to get the port type for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * type [out] type if pf or not
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_is_pf_get(struct bnxt_ulp_context *ulp_ctxt,
+			   uint32_t port_id, uint8_t **type);
+
+/*
+ * Api to get the meta data for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * meta data [out] the meta data of the given port
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_meta_data_get(struct bnxt_ulp_context *ulp_ctxt,
+			       uint16_t port_id, uint8_t **meta_data);
 #endif /* _ULP_PORT_DB_H_ */

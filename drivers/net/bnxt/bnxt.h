@@ -24,6 +24,7 @@
 #include "tf_core.h"
 #include "bnxt_ulp.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_vnic.h"
 
 /* Vendor ID */
 #define PCI_VENDOR_ID_BROADCOM		0x14E4
@@ -163,6 +164,8 @@
 #define BNXT_HWRM_CMD_TO_FORWARD(cmd)	\
 		(bp->pf->vf_req_fwd[(cmd) / 32] |= (1 << ((cmd) % 32)))
 
+#define BNXT_NTOHS              rte_be_to_cpu_16
+
 struct bnxt_led_info {
 	uint8_t	     num_leds;
 	uint8_t      led_id;
@@ -238,11 +241,11 @@ struct bnxt_parent_info {
 struct bnxt_pf_info {
 #define BNXT_FIRST_PF_FID	1
 #define BNXT_MAX_VFS(bp)	((bp)->pf->max_vfs)
-#define BNXT_MAX_VF_REPS_WH     64
-#define BNXT_MAX_VF_REPS_TH     256
+#define BNXT_MAX_VF_REPS_P4     64
+#define BNXT_MAX_VF_REPS_P5     256
 #define BNXT_MAX_VF_REPS(bp) \
-				(BNXT_CHIP_P5(bp) ? BNXT_MAX_VF_REPS_TH : \
-				BNXT_MAX_VF_REPS_WH)
+				(BNXT_CHIP_P5(bp) ? BNXT_MAX_VF_REPS_P5 : \
+				BNXT_MAX_VF_REPS_P4)
 #define BNXT_TOTAL_VFS(bp)	((bp)->pf->total_vfs)
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)
@@ -366,7 +369,7 @@ struct bnxt_ptp_cfg {
 	uint32_t			tx_regs[BNXT_PTP_TX_REGS];
 	uint32_t			tx_mapped_regs[BNXT_PTP_TX_REGS];
 
-	/* On Thor, the Rx timestamp is present in the Rx completion record */
+	/* On P5, the Rx timestamp is present in the Rx completion record */
 	uint64_t			rx_timestamp;
 	uint64_t			current_time;
 };
@@ -679,8 +682,8 @@ struct bnxt {
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->flags & BNXT_FLAG_NPAR_PF)
-#define BNXT_MH(bp)             ((bp)->flags & BNXT_FLAG_MULTI_HOST)
-#define BNXT_SINGLE_PF(bp)      (BNXT_PF(bp) && !BNXT_NPAR(bp) && !BNXT_MH(bp))
+#define BNXT_MH(bp)		((bp)->flags & BNXT_FLAG_MULTI_HOST)
+#define BNXT_SINGLE_PF(bp)	(BNXT_PF(bp) && !BNXT_NPAR(bp) && !BNXT_MH(bp))
 #define BNXT_USE_CHIMP_MB	0 //For non-CFA commands, everything uses Chimp.
 #define BNXT_USE_KONG(bp)	((bp)->flags & BNXT_FLAG_KONG_MB_EN)
 #define BNXT_VF_IS_TRUSTED(bp)	((bp)->flags & BNXT_FLAG_TRUSTED_VF_EN)
@@ -689,7 +692,7 @@ struct bnxt {
 #define BNXT_HAS_NQ(bp)		BNXT_CHIP_P5(bp)
 #define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_P5(bp))
 #define BNXT_FLOW_XSTATS_EN(bp)	((bp)->flags & BNXT_FLAG_FLOW_XSTATS_EN)
-#define BNXT_HAS_DFLT_MAC_SET(bp)      ((bp)->flags & BNXT_FLAG_DFLT_MAC_SET)
+#define BNXT_HAS_DFLT_MAC_SET(bp)	((bp)->flags & BNXT_FLAG_DFLT_MAC_SET)
 #define BNXT_GFID_ENABLED(bp)	((bp)->flags & BNXT_FLAG_GFID_ENABLE)
 
 	uint32_t			flags2;
@@ -697,8 +700,8 @@ struct bnxt {
 #define BNXT_FLAGS2_PTP_ALARM_SCHEDULED		BIT(1)
 #define BNXT_P5_PTP_TIMESYNC_ENABLED(bp)	\
 	((bp)->flags2 & BNXT_FLAGS2_PTP_TIMESYNC_ENABLED)
-#define BNXT_FLAGS2_TESTPMD_EN                  BIT(3)
-#define BNXT_TESTPMD_EN(bp)                     \
+#define BNXT_FLAGS2_TESTPMD_EN			BIT(3)
+#define BNXT_TESTPMD_EN(bp)			\
 	((bp)->flags2 & BNXT_FLAGS2_TESTPMD_EN)
 
 	uint16_t		chip_num;
@@ -719,7 +722,8 @@ struct bnxt {
 #define BNXT_FW_CAP_LINK_ADMIN		BIT(7)
 #define BNXT_FW_CAP_TRUFLOW_EN		BIT(8)
 #define BNXT_FW_CAP_VLAN_TX_INSERT	BIT(9)
-#define BNXT_TRUFLOW_EN(bp)	((bp)->fw_cap & BNXT_FW_CAP_TRUFLOW_EN)
+#define BNXT_TRUFLOW_EN(bp)	((bp)->fw_cap & BNXT_FW_CAP_TRUFLOW_EN &&\
+				 (bp)->app_id != 0xFF)
 
 	pthread_mutex_t         flow_lock;
 
@@ -729,6 +733,7 @@ struct bnxt {
 #define BNXT_VNIC_CAP_RX_CMPL_V2	BIT(2)
 #define BNXT_VNIC_CAP_VLAN_RX_STRIP	BIT(3)
 #define BNXT_RX_VLAN_STRIP_EN(bp)	((bp)->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
+#define BNXT_VNIC_CAP_OUTER_RSS_TRUSTED_VF	BIT(4)
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;
@@ -758,7 +763,6 @@ struct bnxt {
 
 	uint16_t			nr_vnics;
 
-#define BNXT_GET_DEFAULT_VNIC(bp)	(&(bp)->vnic_info[0])
 	struct bnxt_vnic_info	*vnic_info;
 	STAILQ_HEAD(, bnxt_vnic_info)	free_vnic_list;
 
@@ -873,6 +877,7 @@ struct bnxt {
 	uint16_t		tx_cfa_action;
 	struct bnxt_ring_stats	*prev_rx_ring_stats;
 	struct bnxt_ring_stats	*prev_tx_ring_stats;
+	struct bnxt_vnic_queue_db vnic_queue_db;
 
 #define BNXT_MAX_MC_ADDRS	((bp)->max_mcast_addr)
 	struct rte_ether_addr	*mcast_addr_list;
@@ -905,7 +910,7 @@ inline uint16_t bnxt_max_rings(struct bnxt *bp)
 	}
 
 	/*
-	 * RSS table size in Thor is 512.
+	 * RSS table size in P5 is 512.
 	 * Cap max Rx rings to the same value for RSS.
 	 */
 	if (BNXT_CHIP_P5(bp))
@@ -997,9 +1002,16 @@ void bnxt_schedule_fw_health_check(struct bnxt *bp);
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 bool bnxt_stratus_device(struct bnxt *bp);
 void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
+uint16_t bnxt_rss_ctxts(const struct bnxt *bp);
 uint16_t bnxt_rss_hash_tbl_size(const struct bnxt *bp);
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
 			int wait_to_complete);
+int
+bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
+			    struct rte_eth_udp_tunnel *udp_tunnel);
+int
+bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
+			    struct rte_eth_udp_tunnel *udp_tunnel);
 
 extern const struct rte_flow_ops bnxt_flow_ops;
 
@@ -1053,5 +1065,6 @@ int bnxt_flow_ops_get_op(struct rte_eth_dev *dev,
 int bnxt_dev_start_op(struct rte_eth_dev *eth_dev);
 int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev);
 void bnxt_handle_vf_cfg_change(void *arg);
+struct bnxt_vnic_info *bnxt_get_default_vnic(struct bnxt *bp);
 struct tf *bnxt_get_tfp_session(struct bnxt *bp, enum bnxt_session_type type);
 #endif

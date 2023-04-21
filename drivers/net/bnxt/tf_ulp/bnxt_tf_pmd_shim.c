@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021-2021 Broadcom
+ * Copyright(c) 2021-2023 Broadcom
  * All rights reserved.
  */
 
@@ -16,6 +16,36 @@
 #include "bnxt_hwrm.h"
 #include "bnxt_tf_common.h"
 #include "bnxt_tf_pmd_shim.h"
+
+int
+bnxt_tunnel_dst_port_free(struct bnxt *bp,
+			  uint16_t port,
+			  uint8_t type)
+{
+	return bnxt_hwrm_tunnel_dst_port_free(bp,
+					      port,
+					      type);
+}
+
+int
+bnxt_tunnel_dst_port_alloc(struct bnxt *bp,
+			   uint16_t port,
+			   uint8_t type)
+{
+	return bnxt_hwrm_tunnel_dst_port_alloc(bp,
+					       port,
+					       type);
+}
+
+int
+bnxt_tunnel_upar_id_get(struct bnxt *bp,
+			uint8_t type,
+			uint8_t *upar_id)
+{
+	return bnxt_hwrm_tunnel_upar_id_get(bp,
+					    upar_id,
+					    type);
+}
 
 struct bnxt *
 bnxt_pmd_get_bp(uint16_t port)
@@ -59,7 +89,7 @@ int32_t bnxt_rss_config_action_apply(struct bnxt_ulp_mapper_parms *parms)
 		BNXT_TF_DBG(ERR, "Invalid bp for port_id %u\n", parms->port_id);
 		return rc;
 	}
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 	if (vnic == NULL) {
 		BNXT_TF_DBG(ERR, "default vnic not available for %u\n",
 			    parms->port_id);
@@ -107,7 +137,6 @@ static int32_t glob_error_fn(const char *epath, int32_t eerrno)
 	BNXT_TF_DBG(ERR, "path %s error %d\n", epath, eerrno);
 	return 0;
 }
-
 
 static int32_t ulp_pmd_get_mac_by_pci(const char *pci_name, uint8_t *mac)
 {
@@ -244,7 +273,7 @@ bnxt_pmd_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type)
 
 	bp = eth_dev->data->dev_private;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 
 	return vnic->fw_vnic_id;
 }
@@ -343,7 +372,6 @@ bnxt_pmd_get_vport(uint16_t port_id)
 	return (1 << bnxt_pmd_get_phy_port_id(port_id));
 }
 
-
 int32_t
 bnxt_pmd_set_unicast_rxmask(struct rte_eth_dev *eth_dev)
 {
@@ -363,7 +391,7 @@ bnxt_pmd_set_unicast_rxmask(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags |= BNXT_VNIC_INFO_UCAST;
@@ -375,4 +403,212 @@ bnxt_pmd_set_unicast_rxmask(struct rte_eth_dev *eth_dev)
 		vnic->flags = old_flags;
 
 	return rc;
+}
+
+int32_t bnxt_pmd_queue_action_create(struct bnxt_ulp_mapper_parms *parms,
+				     uint16_t *vnic_idx, uint16_t *vnic_id)
+{
+	struct bnxt *bp = NULL;
+	uint16_t q_index;
+	struct ulp_rte_act_prop *ap = parms->act_prop;
+
+	bp = bnxt_pmd_get_bp(parms->port_id);
+	if (bp == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid bp for port_id %u\n", parms->port_id);
+		return -EINVAL;
+	}
+
+	memcpy(&q_index, &ap->act_details[BNXT_ULP_ACT_PROP_IDX_QUEUE_INDEX],
+	       BNXT_ULP_ACT_PROP_SZ_QUEUE_INDEX);
+
+	return bnxt_vnic_queue_action_alloc(bp, q_index, vnic_idx, vnic_id);
+}
+
+int32_t bnxt_pmd_queue_action_delete(struct tf *tfp, uint16_t vnic_idx)
+{
+	struct bnxt *bp = NULL;
+
+	bp = tfp->bp;
+	if (bp == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid bp\n");
+		return -EINVAL;
+	}
+	return bnxt_vnic_queue_action_free(bp, vnic_idx);
+}
+
+int32_t bnxt_pmd_rss_action_create(struct bnxt_ulp_mapper_parms *parms,
+				   uint16_t *vnic_idx, uint16_t *vnic_id)
+{
+	struct bnxt *bp = NULL;
+	struct bnxt_vnic_rss_info rss_info = {0};
+	struct ulp_rte_act_prop *ap = parms->act_prop;
+
+	bp = bnxt_pmd_get_bp(parms->port_id);
+	if (bp == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid bp for port_id %u\n", parms->port_id);
+		return -EINVAL;
+	}
+
+	/* get the details */
+	memset(&rss_info, 0, sizeof(rss_info));
+	memcpy(&rss_info.rss_types,
+	       &ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_TYPES],
+	       BNXT_ULP_ACT_PROP_SZ_RSS_TYPES);
+	memcpy(&rss_info.rss_level,
+	       &ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_LEVEL],
+	       BNXT_ULP_ACT_PROP_SZ_RSS_LEVEL);
+	memcpy(&rss_info.key_len,
+	       &ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_KEY_LEN],
+	       BNXT_ULP_ACT_PROP_SZ_RSS_KEY_LEN);
+	if (rss_info.key_len)
+		rss_info.key = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_KEY];
+	memcpy(&rss_info.queue_num,
+	       &ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_QUEUE_NUM],
+	       BNXT_ULP_ACT_PROP_SZ_RSS_QUEUE_NUM);
+
+	/* Validate the size of the queue list */
+	if (sizeof(rss_info.queue_list) < BNXT_ULP_ACT_PROP_SZ_RSS_QUEUE) {
+		BNXT_TF_DBG(ERR, "Mismatch of RSS queue size in template\n");
+		return -EINVAL;
+	}
+	memcpy(rss_info.queue_list,
+	       &ap->act_details[BNXT_ULP_ACT_PROP_IDX_RSS_QUEUE],
+	       BNXT_ULP_ACT_PROP_SZ_RSS_QUEUE);
+
+	return bnxt_vnic_rss_action_alloc(bp, &rss_info, vnic_idx, vnic_id);
+}
+
+int32_t bnxt_pmd_rss_action_delete(struct tf *tfp, uint16_t vnic_idx)
+{
+	struct bnxt *bp = tfp->bp;
+
+	if (bp == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid bp\n");
+		return -EINVAL;
+	}
+	return bnxt_vnic_rss_action_free(bp, vnic_idx);
+}
+
+#define ULP_GLOBAL_TUNNEL_PORT_ID_SHIFT  16
+#define ULP_GLOBAL_TUNNEL_PORT_ID_MASK   ((uint16_t)0xffff)
+#define ULP_GLOBAL_TUNNEL_UPARID_SHIFT   8
+#define ULP_GLOBAL_TUNNEL_UPARID_MASK    ((uint16_t)0xff)
+#define ULP_GLOBAL_TUNNEL_TYPE_SHIFT     0
+#define ULP_GLOBAL_TUNNEL_TYPE_MASK      ((uint16_t)0xffff)
+
+/* Extracts the dpdk port id and tunnel type from the handle */
+static void
+bnxt_pmd_global_reg_hndl_to_data(uint32_t handle, uint16_t *port,
+				 uint8_t *upar_id, uint8_t *type)
+{
+	*type    = (handle >> ULP_GLOBAL_TUNNEL_TYPE_SHIFT) &
+		   ULP_GLOBAL_TUNNEL_TYPE_MASK;
+	*upar_id = (handle >> ULP_GLOBAL_TUNNEL_UPARID_SHIFT) &
+		   ULP_GLOBAL_TUNNEL_UPARID_MASK;
+	*port    = (handle >> ULP_GLOBAL_TUNNEL_PORT_ID_SHIFT) &
+		   ULP_GLOBAL_TUNNEL_PORT_ID_MASK;
+}
+
+/* Packs the dpdk port id and tunnel type in the handle */
+static void
+bnxt_pmd_global_reg_data_to_hndl(uint16_t port_id, uint8_t upar_id,
+				 uint8_t type, uint32_t *handle)
+{
+	*handle	=  (port_id & ULP_GLOBAL_TUNNEL_PORT_ID_MASK) <<
+		   ULP_GLOBAL_TUNNEL_PORT_ID_SHIFT;
+	*handle	|= (upar_id & ULP_GLOBAL_TUNNEL_UPARID_MASK) <<
+		   ULP_GLOBAL_TUNNEL_UPARID_SHIFT;
+	*handle |= (type & ULP_GLOBAL_TUNNEL_TYPE_MASK) <<
+		   ULP_GLOBAL_TUNNEL_TYPE_SHIFT;
+}
+
+static struct bnxt_global_tunnel_info
+	      ulp_global_tunnel_db[BNXT_GLOBAL_REGISTER_TUNNEL_MAX] = {{0}};
+/* Sets or resets the tunnel ports.
+ * If dport == 0, then the port_id and type are retrieved from the handle.
+ * otherwise, the incoming port_id, type, and dport are used.
+ * The type is enum ulp_mapper_ulp_global_tunnel_type
+ */
+int32_t
+bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
+			   uint16_t udp_port, uint32_t *handle)
+{
+	uint16_t lport_id, ldport;
+	uint8_t hwtype, ltype, lupar_id;
+	struct bnxt *bp;
+	int32_t rc = 0;
+
+	/* convert to HWRM type */
+	switch (type) {
+	case BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN:
+		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN;
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "Tunnel Type (%d) invalid\n", type);
+		return -EINVAL;
+	}
+
+	if (!udp_port) {
+		/* Free based on the handle */
+		if (!handle) {
+			BNXT_TF_DBG(ERR, "Free with invalid handle\n");
+			return -EINVAL;
+		}
+		bnxt_pmd_global_reg_hndl_to_data(*handle, &lport_id,
+						  &lupar_id, &ltype);
+
+		bp = bnxt_pmd_get_bp(lport_id);
+		if (!bp) {
+			BNXT_TF_DBG(ERR, "Unable to get dev by port %d\n",
+				    lport_id);
+			return -EINVAL;
+		}
+
+		if (!ulp_global_tunnel_db[ltype].ref_cnt)
+			return 0;
+		ldport = ulp_global_tunnel_db[ltype].dport;
+		rc = bnxt_hwrm_tunnel_dst_port_free(bp, ldport, hwtype);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Unable to free tunnel dst port (%d)\n",
+				    ldport);
+			return rc;
+		}
+		ulp_global_tunnel_db[ltype].ref_cnt--;
+		if (ulp_global_tunnel_db[ltype].ref_cnt == 0)
+			ulp_global_tunnel_db[ltype].dport = 0;
+	} else {
+		bp = bnxt_pmd_get_bp(port_id);
+		if (!bp) {
+			BNXT_TF_DBG(ERR, "Unable to get dev by port %d\n",
+				    port_id);
+			return -EINVAL;
+		}
+
+		rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_port, hwtype);
+		if (!rc) {
+			ulp_global_tunnel_db[type].ref_cnt++;
+			ulp_global_tunnel_db[type].dport = udp_port;
+			bnxt_pmd_global_reg_data_to_hndl(port_id, 0,
+							 type, handle);
+		}
+	}
+	return rc;
+}
+
+#define BNXT_ULP_HOT_UP_DYNAMIC_ENV_VAR "BNXT_ULP_T_HA_SUPPORT"
+/* This function queries the linux shell variable to determine
+ * whether Hot upgrade should be disabled or not.
+ * If BNXT_ULP_T_HA_SUPPORT is set to zero explicitly then
+ * hotupgrade is disabled.
+ */
+int32_t bnxt_pmd_get_hot_upgrade_env(void)
+{
+	char *env;
+	int32_t hot_up = 1;
+
+	env = getenv(BNXT_ULP_HOT_UP_DYNAMIC_ENV_VAR);
+	if (env && strcmp(env, "0") == 0)
+		hot_up = 0;
+	return hot_up;
 }

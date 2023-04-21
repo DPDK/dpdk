@@ -202,7 +202,7 @@ int is_bnxt_in_error(struct bnxt *bp)
  * High level utility functions
  */
 
-static uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
+uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
 {
 	unsigned int num_rss_rings = RTE_MIN(bp->rx_nr_rings,
 					     BNXT_RSS_TBL_SIZE_P5);
@@ -421,6 +421,10 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	PMD_DRV_LOG(DEBUG, "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
 		    vnic_id, vnic, vnic->fw_grp_ids);
 
+	/* populate the fw group table */
+	bnxt_vnic_ring_grp_populate(bp, vnic);
+	bnxt_vnic_rules_init(vnic);
+
 	rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 	if (rc)
 		goto err_out;
@@ -429,7 +433,7 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) {
 		int j, nr_ctxs = bnxt_rss_ctxts(bp);
 
-		/* RSS table size in Thor is 512.
+		/* RSS table size in P5 is 512.
 		 * Cap max Rx rings to same value
 		 */
 		if (bp->rx_nr_rings > BNXT_RSS_TBL_SIZE_P5) {
@@ -479,9 +483,7 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 			    j, rxq->vnic, rxq->vnic->fw_grp_ids);
 
 		if (BNXT_HAS_RING_GRPS(bp) && rxq->rx_deferred_start)
-			rxq->vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
-		else
-			vnic->rx_queue_cnt++;
+			vnic->fw_grp_ids[j] = INVALID_HW_RING_ID;
 	}
 
 	PMD_DRV_LOG(DEBUG, "vnic->rx_queue_cnt = %d\n", vnic->rx_queue_cnt);
@@ -755,11 +757,17 @@ static int bnxt_start_nic(struct bnxt *bp)
 	else
 		bp->flags &= ~BNXT_FLAG_JUMBO;
 
-	/* THOR does not support ring groups.
+	/* P5 does not support ring groups.
 	 * But we will use the array to save RSS context IDs.
 	 */
 	if (BNXT_CHIP_P5(bp))
 		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_P5;
+
+	rc = bnxt_vnic_queue_db_init(bp);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "could not allocate vnic db\n");
+		goto err_out;
+	}
 
 	rc = bnxt_alloc_hwrm_rings(bp);
 	if (rc) {
@@ -807,6 +815,9 @@ skip_cosq_cfg:
 			rxq->rx_started = true;
 		}
 	}
+
+	/* setup the default vnic details*/
+	bnxt_vnic_queue_db_update_dlft_vnic(bp);
 
 	/* VNIC configuration */
 	for (i = 0; i < bp->nr_vnics; i++) {
@@ -901,6 +912,7 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
 	bnxt_free_all_hwrm_resources(bp);
 	bnxt_free_all_filters(bp);
 	bnxt_free_all_vnics(bp);
+	bnxt_vnic_queue_db_deinit(bp);
 	return 0;
 }
 
@@ -1431,7 +1443,6 @@ static void bnxt_ptp_get_current_time(void *arg)
 
 	bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
 				&ptp->current_time);
-
 	rc = rte_eal_alarm_set(US_PER_S, bnxt_ptp_get_current_time, (void *)bp);
 	if (rc != 0) {
 		PMD_DRV_LOG(ERR, "Failed to re-schedule PTP alarm\n");
@@ -1449,6 +1460,7 @@ static int bnxt_schedule_ptp_alarm(struct bnxt *bp)
 
 	bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
 				&ptp->current_time);
+
 
 	rc = rte_eal_alarm_set(US_PER_S, bnxt_ptp_get_current_time, (void *)bp);
 	return rc;
@@ -1891,7 +1903,7 @@ static int bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags |= BNXT_VNIC_INFO_PROMISC;
@@ -1920,7 +1932,7 @@ static int bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags &= ~BNXT_VNIC_INFO_PROMISC;
@@ -1949,7 +1961,7 @@ static int bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
@@ -1978,7 +1990,7 @@ static int bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	if (bp->vnic_info == NULL)
 		return 0;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 
 	old_flags = vnic->flags;
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
@@ -2026,7 +2038,7 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	struct bnxt_vnic_info *vnic = bnxt_get_default_vnic(bp);
 	uint16_t tbl_size = bnxt_rss_hash_tbl_size(bp);
 	uint16_t idx, sft;
 	int i, rc;
@@ -2048,6 +2060,10 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
+	if (bnxt_vnic_reta_config_update(bp, vnic, reta_conf, reta_size)) {
+		PMD_DRV_LOG(ERR, "Error in setting the reta config\n");
+		return -EINVAL;
+	}
 	for (i = 0; i < reta_size; i++) {
 		struct bnxt_rx_queue *rxq;
 
@@ -2058,11 +2074,6 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			continue;
 
 		rxq = bnxt_qid_to_rxq(bp, reta_conf[idx].reta[sft]);
-		if (!rxq) {
-			PMD_DRV_LOG(ERR, "Invalid ring in reta_conf.\n");
-			return -EINVAL;
-		}
-
 		if (BNXT_CHIP_P5(bp)) {
 			vnic->rss_table[i * 2] =
 				rxq->rx_ring->rx_ring_struct->fw_ring_id;
@@ -2073,7 +2084,6 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			    vnic->fw_grp_ids[reta_conf[idx].reta[sft]];
 		}
 	}
-
 	rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 	return rc;
 }
@@ -2083,7 +2093,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 			      uint16_t reta_size)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	struct bnxt_vnic_info *vnic = bnxt_get_default_vnic(bp);
 	uint16_t tbl_size = bnxt_rss_hash_tbl_size(bp);
 	uint16_t idx, sft, i;
 	int rc;
@@ -2153,7 +2163,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	}
 
 	/* Update the default RSS VNIC(s) */
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_conf->rss_hf);
 	vnic->hash_mode =
 		bnxt_rte_to_hwrm_hash_level(bp, rss_conf->rss_hf,
@@ -2189,7 +2199,7 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 				     struct rte_eth_rss_conf *rss_conf)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	struct bnxt_vnic_info *vnic = bnxt_get_default_vnic(bp);
 	int len, rc;
 	uint32_t hash_types;
 
@@ -2348,7 +2358,7 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 }
 
 /* Add UDP tunneling port */
-static int
+int
 bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 			 struct rte_eth_udp_tunnel *udp_tunnel)
 {
@@ -2410,7 +2420,7 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
-static int
+int
 bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 			 struct rte_eth_udp_tunnel *udp_tunnel)
 {
@@ -2474,7 +2484,7 @@ static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 	int rc = 0;
 	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 	filter = STAILQ_FIRST(&vnic->filter);
 	while (filter) {
 		/* Search for this matching MAC+VLAN filter */
@@ -2513,7 +2523,7 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 	 * then the HWRM shall only create an l2 context id.
 	 */
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 	filter = STAILQ_FIRST(&vnic->filter);
 	/* Check if the VLAN has already been added */
 	while (filter) {
@@ -2618,7 +2628,7 @@ bnxt_config_vlan_hw_filter(struct bnxt *bp, uint64_t rx_offloads)
 	unsigned int i;
 	int rc;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 	if (!(rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)) {
 		/* Remove any VLAN filters programmed */
 		for (i = 0; i < RTE_ETHER_MAX_VLAN_ID; i++)
@@ -2677,16 +2687,18 @@ static int bnxt_free_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 static int
 bnxt_config_vlan_hw_stripping(struct bnxt *bp, uint64_t rx_offloads)
 {
-	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	struct bnxt_vnic_info *vnic = bnxt_get_default_vnic(bp);
 	int rc;
 
 	/* Destroy, recreate and reconfigure the default vnic */
-	rc = bnxt_free_one_vnic(bp, 0);
+	rc = bnxt_free_one_vnic(bp, bp->vnic_queue_db.dflt_vnic_id);
 	if (rc)
 		return rc;
 
-	/* default vnic 0 */
-	rc = bnxt_setup_one_vnic(bp, 0);
+	/* setup the default vnic details*/
+	bnxt_vnic_queue_db_update_dlft_vnic(bp);
+
+	rc = bnxt_setup_one_vnic(bp, bp->vnic_queue_db.dflt_vnic_id);
 	if (rc)
 		return rc;
 
@@ -2817,7 +2829,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 {
 	struct bnxt *bp = dev->data->dev_private;
 	/* Default Filter is tied to VNIC 0 */
-	struct bnxt_vnic_info *vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	struct bnxt_vnic_info *vnic = bnxt_get_default_vnic(bp);
 	int rc;
 
 	rc = is_bnxt_in_error(bp);
@@ -2867,7 +2879,7 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+	vnic = bnxt_get_default_vnic(bp);
 
 	bp->nb_mc_addr = nb_mc_addr;
 
@@ -3029,8 +3041,7 @@ bnxt_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	uint32_t rc;
-	uint32_t i;
+	uint32_t rc = 0;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
@@ -3048,30 +3059,17 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	/* Is there a change in mtu setting? */
 	if (eth_dev->data->mtu == new_mtu)
-		return 0;
+		return rc;
 
 	if (new_mtu > RTE_ETHER_MTU)
 		bp->flags |= BNXT_FLAG_JUMBO;
 	else
 		bp->flags &= ~BNXT_FLAG_JUMBO;
 
-	for (i = 0; i < bp->nr_vnics; i++) {
-		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
-		uint16_t size = 0;
-
-		vnic->mru = BNXT_VNIC_MRU(new_mtu);
-		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
-		if (rc)
-			break;
-
-		size = rte_pktmbuf_data_room_size(bp->rx_queues[0]->mb_pool);
-		size -= RTE_PKTMBUF_HEADROOM;
-
-		if (size < new_mtu) {
-			rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
-			if (rc)
-				return rc;
-		}
+	rc = bnxt_vnic_mru_config(bp, new_mtu);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "failed to update mtu in vnic context\n");
+		return rc;
 	}
 
 	if (bnxt_hwrm_config_host_mtu(bp))
@@ -5312,9 +5310,11 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 {
 	int rc = 0;
 
-	rc = bnxt_get_config(bp);
-	if (rc)
-		return rc;
+	if (reconfig_dev) {
+		rc = bnxt_get_config(bp);
+		if (rc)
+			return rc;
+	}
 
 	rc = bnxt_alloc_switch_domain(bp);
 	if (rc)
@@ -5756,7 +5756,7 @@ static int
 bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
-	int ret;
+	int ret = 0;
 
 	if (devargs == NULL)
 		return 0;
@@ -5825,22 +5825,6 @@ static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_58802_VF)
 		bp->flags |= BNXT_FLAG_STINGRAY;
 
-	if (BNXT_TRUFLOW_EN(bp)) {
-		/* extra mbuf field is required to store CFA code from mark */
-		static const struct rte_mbuf_dynfield bnxt_cfa_code_dynfield_desc = {
-			.name = RTE_PMD_BNXT_CFA_CODE_DYNFIELD_NAME,
-			.size = sizeof(bnxt_cfa_code_dynfield_t),
-			.align = __alignof__(bnxt_cfa_code_dynfield_t),
-		};
-		bnxt_cfa_code_dynfield_offset =
-			rte_mbuf_dynfield_register(&bnxt_cfa_code_dynfield_desc);
-		if (bnxt_cfa_code_dynfield_offset < 0) {
-			PMD_DRV_LOG(ERR,
-			    "Failed to register mbuf field for TruFlow mark\n");
-			return -rte_errno;
-		}
-	}
-
 	rc = bnxt_map_pci_bars(eth_dev);
 	if (rc) {
 		PMD_DRV_LOG(ERR,
@@ -5878,6 +5862,26 @@ static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	rc = bnxt_get_config(bp);
+	if (rc)
+		return rc;
+
+	if (BNXT_TRUFLOW_EN(bp)) {
+		/* extra mbuf field is required to store CFA code from mark */
+		static const struct rte_mbuf_dynfield bnxt_cfa_code_dynfield_desc = {
+			.name = RTE_PMD_BNXT_CFA_CODE_DYNFIELD_NAME,
+			.size = sizeof(bnxt_cfa_code_dynfield_t),
+			.align = __alignof__(bnxt_cfa_code_dynfield_t),
+		};
+		bnxt_cfa_code_dynfield_offset =
+			rte_mbuf_dynfield_register(&bnxt_cfa_code_dynfield_desc);
+		if (bnxt_cfa_code_dynfield_offset < 0) {
+			PMD_DRV_LOG(ERR,
+			    "Failed to register mbuf field for TruFlow mark\n");
+			return -rte_errno;
+		}
+	}
+
 	return rc;
 }
 
@@ -5911,6 +5915,9 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
 	bp = eth_dev->data->dev_private;
+
+	/* set the default app id */
+	bp->app_id = bnxt_ulp_default_app_id_get();
 
 	/* Parse dev arguments passed on when starting the DPDK application. */
 	rc = bnxt_parse_dev_args(bp, pci_dev->device.devargs);
@@ -5948,7 +5955,8 @@ static void bnxt_free_ctx_mem_buf(struct bnxt_ctx_mem_buf_info *ctx)
 	if (!ctx)
 		return;
 
-	rte_free(ctx->va);
+	if (ctx->va)
+		rte_free(ctx->va);
 
 	ctx->va = NULL;
 	ctx->dma = RTE_BAD_IOVA;

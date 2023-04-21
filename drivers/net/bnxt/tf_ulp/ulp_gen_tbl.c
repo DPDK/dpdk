@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -259,23 +259,26 @@ ulp_mapper_gen_tbl_entry_free(struct bnxt_ulp_context *ulp_ctx,
 			      uint32_t tbl_idx, uint32_t ckey)
 {
 	struct ulp_flow_db_res_params res;
+	uint32_t fid = 0; /* not using for this case */
 
 	res.direction = tbl_idx & 0x1;
 	res.resource_sub_type = tbl_idx >> 1;
 	res.resource_hndl = ckey;
 
-	return ulp_mapper_gen_tbl_res_free(ulp_ctx, &res);
+	return ulp_mapper_gen_tbl_res_free(ulp_ctx, fid, &res);
 }
 
 /* Free the generic table list resource
  *
  * ulp_ctx [in] - Pointer to the ulp context
+ * fid [in] - The fid the generic table is associated with
  * res [in] - Pointer to flow db resource entry
  *
  * returns 0 on success
  */
 int32_t
 ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
+			    uint32_t fid,
 			    struct ulp_flow_db_res_params *res)
 {
 	struct bnxt_ulp_mapper_data *mapper_data;
@@ -283,7 +286,7 @@ ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 	struct ulp_mapper_gen_tbl_entry entry;
 	struct ulp_gen_hash_entry_params hash_entry;
 	int32_t tbl_idx;
-	uint32_t fid = 0;
+	uint32_t rid = 0;
 	uint32_t key_idx;
 
 	/* Extract the resource sub type and direction */
@@ -326,9 +329,10 @@ ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 
 	/* Decrement the reference count */
 	if (!ULP_GEN_TBL_REF_CNT(&entry)) {
-		BNXT_TF_DBG(ERR, "generic table corrupt %x:%" PRIX64 "\n",
+		BNXT_TF_DBG(DEBUG,
+			    "generic table entry already free %x:%" PRIX64 "\n",
 			    tbl_idx, res->resource_hndl);
-		return -EINVAL;
+		return 0;
 	}
 	ULP_GEN_TBL_REF_CNT_DEC(&entry);
 
@@ -336,24 +340,27 @@ ulp_mapper_gen_tbl_res_free(struct bnxt_ulp_context *ulp_ctx,
 	if (ULP_GEN_TBL_REF_CNT(&entry))
 		return 0;
 
-	/* Delete the generic table entry. First extract the fid */
+	/* Delete the generic table entry. First extract the rid */
 	if (ulp_mapper_gen_tbl_entry_data_get(&entry, ULP_GEN_TBL_FID_OFFSET,
 					      ULP_GEN_TBL_FID_SIZE_BITS,
-					      (uint8_t *)&fid,
-					      sizeof(fid))) {
-		BNXT_TF_DBG(ERR, "Unable to get fid %x:%" PRIX64 "\n",
+					      (uint8_t *)&rid,
+					      sizeof(rid))) {
+		BNXT_TF_DBG(ERR, "Unable to get rid %x:%" PRIX64 "\n",
 			    tbl_idx, res->resource_hndl);
 		return -EINVAL;
 	}
-	fid = tfp_be_to_cpu_32(fid);
-	/* no need to del if fid is 0 since there is no associated resource */
-	if (fid) {
+	rid = tfp_be_to_cpu_32(rid);
+	/* no need to del if rid is 0 since there is no associated resource
+	 * if rid from the entry is equal to the incoming fid, then we have a
+	 * recursive delete, so don't follow the rid.
+	 */
+	if (rid && rid != fid) {
 		/* Destroy the flow associated with the shared flow id */
 		if (ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_RID,
-					    fid))
+					    rid))
 			BNXT_TF_DBG(ERR,
-				    "Error in deleting shared flow id %x\n",
-				    fid);
+				    "Error in deleting shared resource id %x\n",
+				    rid);
 	}
 
 	/* Delete the entry from the hash table */

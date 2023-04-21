@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -14,6 +14,8 @@
 #include "ulp_ha_mgr.h"
 #include "ulp_tun.h"
 #include <rte_malloc.h>
+#include "ulp_template_db_tbl.h"
+#include "tfp.h"
 
 static int32_t
 bnxt_ulp_flow_validate_args(const struct rte_flow_attr *attr,
@@ -78,6 +80,17 @@ bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
 #endif
 }
 
+static inline void
+bnxt_ulp_init_parser_cf_defaults(struct ulp_rte_parser_params *params,
+				 uint16_t port_id)
+{
+	/* Set up defaults for Comp field */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_INCOMING_IF, port_id);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_DEV_PORT_ID, port_id);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SVIF_FLAG,
+			    BNXT_ULP_INVALID_SVIF_VAL);
+}
+
 void
 bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,
@@ -130,6 +143,10 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			ULP_COMP_FLD_IDX_WR(params,
 					    BNXT_ULP_CF_IDX_WC_IS_HA_HIGH_REG,
 					    1);
+	} else {
+		ULP_COMP_FLD_IDX_WR(params,
+				    BNXT_ULP_CF_IDX_HA_SUPPORT_DISABLED,
+				    1);
 	}
 
 	/* Update the socket direct flag */
@@ -197,13 +214,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	/* Set the flow attributes */
 	bnxt_ulp_set_dir_attributes(&params, attr);
 
-	/* copy the device port id and direction for further processing */
-	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_INCOMING_IF,
-			    dev->data->port_id);
-	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DEV_PORT_ID,
-			    dev->data->port_id);
-	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_SVIF_FLAG,
-			    BNXT_ULP_INVALID_SVIF_VAL);
+	bnxt_ulp_init_parser_cf_defaults(&params, dev->data->port_id);
 
 	/* Get the function id */
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
@@ -320,6 +331,7 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 
 	/* Set the flow attributes */
 	bnxt_ulp_set_dir_attributes(&params, attr);
+	bnxt_ulp_init_parser_cf_defaults(&params, dev->data->port_id);
 
 	/* Parse the rte flow pattern */
 	ret = bnxt_ulp_rte_parser_hdr_parse(pattern, &params);
@@ -492,6 +504,256 @@ bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
 	}
 
 	return rc;
+}
+
+static int32_t
+bnxt_ulp_action_handle_chk_args(const struct rte_flow_action *action,
+				const struct rte_flow_indir_action_conf *conf)
+{
+	if (!action || !conf)
+		return BNXT_TF_RC_ERROR;
+	/* shared action only allowed to have one direction */
+	if (conf->ingress == 1 && conf->egress ==  1)
+		return BNXT_TF_RC_ERROR;
+	/* shared action must have at least one direction */
+	if (conf->ingress == 0 && conf->egress ==  0)
+		return BNXT_TF_RC_ERROR;
+	return BNXT_TF_RC_SUCCESS;
+}
+
+static inline void
+bnxt_ulp_set_action_handle_dir_attr(struct ulp_rte_parser_params *params,
+				    const struct rte_flow_indir_action_conf *conf)
+{
+	if (conf->ingress == 1)
+		params->dir_attr |= BNXT_ULP_FLOW_ATTR_INGRESS;
+	else if (conf->egress == 1)
+		params->dir_attr |= BNXT_ULP_FLOW_ATTR_EGRESS;
+}
+
+static struct rte_flow_action_handle *
+bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
+			      const struct rte_flow_indir_action_conf *conf,
+			      const struct rte_flow_action *action,
+			      struct rte_flow_error *error)
+{
+	enum bnxt_ulp_intf_type port_type = BNXT_ULP_INTF_TYPE_INVALID;
+	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct ulp_rte_parser_params params;
+	struct bnxt_ulp_context *ulp_ctx;
+	uint32_t act_tid;
+	uint16_t func_id;
+	uint32_t ifindex;
+	int ret = BNXT_TF_RC_ERROR;
+	const struct rte_flow_action actions[2] = {
+		{
+			.type = action->type,
+			.conf = action->conf
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END
+		}
+	};
+
+	if (bnxt_ulp_action_handle_chk_args(action, conf) != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
+	if (!ulp_ctx) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		goto parse_error;
+	}
+
+	/* Initialize the parser params */
+	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
+	params.ulp_ctx = ulp_ctx;
+
+	ULP_BITMAP_SET(params.act_bitmap.bits, BNXT_ULP_ACT_BIT_SHARED);
+
+	/* Set the shared action direction attribute */
+	bnxt_ulp_set_action_handle_dir_attr(&params, conf);
+
+	/* perform the conversion from dpdk port to bnxt ifindex */
+	if (ulp_port_db_dev_port_to_ulp_index(ulp_ctx,
+					      dev->data->port_id,
+					      &ifindex)) {
+		BNXT_TF_DBG(ERR, "Port id is not valid\n");
+		goto parse_error;
+	}
+	port_type = ulp_port_db_port_type_get(ulp_ctx, ifindex);
+	if (port_type == BNXT_ULP_INTF_TYPE_INVALID) {
+		BNXT_TF_DBG(ERR, "Port type is not valid\n");
+		goto parse_error;
+	}
+
+	bnxt_ulp_init_parser_cf_defaults(&params, dev->data->port_id);
+
+	/* Emulating the match port for direction processing */
+	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_MATCH_PORT_TYPE,
+			    port_type);
+
+	if ((params.dir_attr & BNXT_ULP_FLOW_ATTR_INGRESS) &&
+	    port_type == BNXT_ULP_INTF_TYPE_VF_REP) {
+		ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION,
+				    BNXT_ULP_DIR_EGRESS);
+	} else {
+		/* Assign the input direction */
+		if (params.dir_attr & BNXT_ULP_FLOW_ATTR_INGRESS)
+			ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION,
+					    BNXT_ULP_DIR_INGRESS);
+		else
+			ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION,
+					    BNXT_ULP_DIR_EGRESS);
+	}
+
+	/* Parse the shared action */
+	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	/* Perform the rte flow post process */
+	bnxt_ulp_rte_parser_post_process(&params);
+
+	/* do the tunnel offload process if any */
+	ret = ulp_tunnel_offload_process(&params);
+	if (ret == BNXT_TF_RC_ERROR)
+		goto parse_error;
+
+	ret = ulp_matcher_action_match(&params, &act_tid);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	bnxt_ulp_init_mapper_params(&mparms, &params,
+				    BNXT_ULP_FDB_TYPE_REGULAR);
+	mparms.act_tid = act_tid;
+
+	/* Get the function id */
+	if (ulp_port_db_port_func_id_get(ulp_ctx,
+					 dev->data->port_id,
+					 &func_id)) {
+		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		goto parse_error;
+	}
+
+	/* Protect flow creation */
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
+		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		goto parse_error;
+	}
+
+	ret = ulp_mapper_flow_create(params.ulp_ctx, &mparms);
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
+
+	if (ret)
+		goto parse_error;
+
+	return (struct rte_flow_action_handle *)((uintptr_t)mparms.shared_hndl);
+
+parse_error:
+	rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to create shared action.");
+	return NULL;
+}
+
+static int
+bnxt_ulp_action_handle_destroy(struct rte_eth_dev *dev,
+			       struct rte_flow_action_handle *shared_hndl,
+			       struct rte_flow_error *error)
+{
+	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_shared_act_info *act_info;
+	struct ulp_rte_parser_params params;
+	struct ulp_rte_act_prop *act_prop;
+	struct bnxt_ulp_context *ulp_ctx;
+	enum bnxt_ulp_direction_type dir;
+	uint32_t act_tid, act_info_entries;
+	int ret = BNXT_TF_RC_ERROR;
+	uint32_t shared_action_type;
+	uint64_t tmp64;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
+	if (!ulp_ctx) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		goto parse_error;
+	}
+
+	if (!shared_hndl) {
+		BNXT_TF_DBG(ERR, "Invalid argument of shared handle\n");
+		goto parse_error;
+	}
+
+	act_prop = &params.act_prop;
+	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
+	params.ulp_ctx = ulp_ctx;
+
+	if (bnxt_ulp_cntxt_app_id_get(ulp_ctx, &params.app_id)) {
+		BNXT_TF_DBG(ERR, "failed to get the app id\n");
+		goto parse_error;
+	}
+	/* The template will delete the entry if there are no references */
+	if (bnxt_get_action_handle_type(shared_hndl, &shared_action_type)) {
+		BNXT_TF_DBG(ERR, "Invalid shared handle\n");
+		goto parse_error;
+	}
+
+	act_info_entries = 0;
+	act_info = bnxt_ulp_shared_act_info_get(&act_info_entries);
+	if (shared_action_type >= act_info_entries || !act_info) {
+		BNXT_TF_DBG(ERR, "Invalid shared handle\n");
+		goto parse_error;
+	}
+
+	ULP_BITMAP_SET(params.act_bitmap.bits,
+		       act_info[shared_action_type].act_bitmask);
+	ULP_BITMAP_SET(params.act_bitmap.bits, BNXT_ULP_ACT_BIT_DELETE);
+
+	ret = bnxt_get_action_handle_direction(shared_hndl, &dir);
+	if (ret) {
+		BNXT_TF_DBG(ERR, "Invalid shared handle dir\n");
+		goto parse_error;
+	}
+
+	if (dir == BNXT_ULP_DIR_EGRESS) {
+		params.dir_attr = BNXT_ULP_FLOW_ATTR_EGRESS;
+		ULP_BITMAP_SET(params.act_bitmap.bits,
+			       BNXT_ULP_FLOW_DIR_BITMASK_EGR);
+	} else {
+		params.dir_attr = BNXT_ULP_FLOW_ATTR_INGRESS;
+		ULP_BITMAP_SET(params.act_bitmap.bits,
+			       BNXT_ULP_FLOW_DIR_BITMASK_ING);
+	}
+
+	tmp64 = tfp_cpu_to_be_64((uint64_t)
+				 bnxt_get_action_handle_index(shared_hndl));
+
+	memcpy(&act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_SHARED_HANDLE],
+	       &tmp64, BNXT_ULP_ACT_PROP_SZ_SHARED_HANDLE);
+
+	ret = ulp_matcher_action_match(&params, &act_tid);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	bnxt_ulp_init_mapper_params(&mparms, &params,
+				    BNXT_ULP_FDB_TYPE_REGULAR);
+	mparms.act_tid = act_tid;
+
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
+		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		goto parse_error;
+	}
+
+	ret = ulp_mapper_flow_create(ulp_ctx, &mparms);
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
+	if (ret)
+		goto parse_error;
+
+	return 0;
+
+parse_error:
+	rte_flow_error_set(error, BNXT_TF_RC_ERROR,
+			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to destroy shared action.");
+	return -EINVAL;
 }
 
 /* Tunnel offload Apis */
@@ -685,6 +947,8 @@ const struct rte_flow_ops bnxt_ulp_rte_flow_ops = {
 	.flush = bnxt_ulp_flow_flush,
 	.query = bnxt_ulp_flow_query,
 	.isolate = NULL,
+	.action_handle_create = bnxt_ulp_action_handle_create,
+	.action_handle_destroy = bnxt_ulp_action_handle_destroy,
 	/* Tunnel offload callbacks */
 	.tunnel_decap_set = bnxt_ulp_tunnel_decap_set,
 	.tunnel_match = bnxt_ulp_tunnel_match,

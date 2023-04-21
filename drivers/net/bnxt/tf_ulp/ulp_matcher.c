@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -29,8 +29,8 @@ ulp_matcher_action_hash_calculate(uint64_t hi_sig, uint64_t app_id)
 
 	hi_sig |= ((hi_sig % BNXT_ULP_ACT_HID_HIGH_PRIME) <<
 		   BNXT_ULP_ACT_HID_SHFTL);
-	app_id |= ((app_id % BNXT_ULP_CLASS_HID_LOW_PRIME) <<
-		   (BNXT_ULP_CLASS_HID_SHFTL + 2));
+	app_id |= ((app_id % BNXT_ULP_ACT_HID_LOW_PRIME) <<
+		   (BNXT_ULP_ACT_HID_SHFTL + 2));
 	hash = hi_sig ^ app_id;
 	hash = (hash >> BNXT_ULP_ACT_HID_SHFTR) & BNXT_ULP_ACT_HID_MASK;
 	return (uint32_t)hash;
@@ -46,11 +46,7 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 {
 	struct bnxt_ulp_class_match_info *class_match;
 	uint32_t class_hid;
-	uint8_t vf_to_vf;
 	uint16_t tmpl_id;
-
-	/* Get vf to vf flow */
-	vf_to_vf = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_VF_TO_VF);
 
 	/* calculate the hash of the given flow */
 	class_hid = ulp_matcher_class_hash_calculate((params->hdr_bitmap.bits ^
@@ -81,10 +77,6 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 		goto error;
 	}
 
-	if (vf_to_vf != class_match->act_vnic) {
-		BNXT_TF_DBG(DEBUG, "Vnic Match failed\n");
-		goto error;
-	}
 	BNXT_TF_DBG(DEBUG, "Found matching pattern template %d\n",
 		    class_match->class_tid);
 	*class_id = class_match->class_tid;

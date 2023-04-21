@@ -150,6 +150,11 @@ int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
 	intf = &port_db->ulp_intf_list[ifindex];
 
 	intf->type = bnxt_pmd_get_interface_type(port_id);
+	if (intf->type == BNXT_ULP_INTF_TYPE_PF)
+		intf->type_is_pf = 1;
+	else
+		intf->type_is_pf = 0;
+
 	intf->drv_func_id = bnxt_pmd_get_fw_func_id(port_id,
 						BNXT_ULP_INTF_TYPE_INVALID);
 
@@ -182,6 +187,9 @@ int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
 			bnxt_pmd_get_vnic_id(port_id, BNXT_ULP_INTF_TYPE_VF_REP);
 		func->phy_port_id = bnxt_pmd_get_phy_port_id(port_id);
 		func->ifindex = ifindex;
+		func->func_valid = true;
+		func->vf_meta_data = tfp_cpu_to_be_16(BNXT_ULP_META_VF_FLAG |
+						      intf->vf_func_id);
 	}
 
 	/* When there is no match, the default action is to send the packet to
@@ -698,6 +706,56 @@ ulp_port_db_phy_port_get(struct bnxt_ulp_context *ulp_ctxt,
 	info = ulp_port_db_func_if_info_get(ulp_ctxt, port_id);
 	if (info) {
 		*phy_port = info->phy_port_id;
+		return 0;
+	}
+	return -EINVAL;
+}
+
+/*
+ * Api to get the port type for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * type [out] type if pf or not
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_is_pf_get(struct bnxt_ulp_context *ulp_ctxt,
+			   uint32_t port_id, uint8_t **type)
+{
+	struct ulp_func_if_info *info;
+	struct bnxt_ulp_port_db *port_db;
+	uint16_t pid;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	info = ulp_port_db_func_if_info_get(ulp_ctxt, port_id);
+	if (info) {
+		pid = info->ifindex;
+		*type = &port_db->ulp_intf_list[pid].type_is_pf;
+		return 0;
+	}
+	return -EINVAL;
+}
+
+/*
+ * Api to get the meta data for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * meta data [out] the meta data of the given port
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_meta_data_get(struct bnxt_ulp_context *ulp_ctxt,
+			       uint16_t port_id, uint8_t **meta_data)
+{
+	struct ulp_func_if_info *info;
+
+	info = ulp_port_db_func_if_info_get(ulp_ctxt, port_id);
+	if (info) {
+		*meta_data = (uint8_t *)&info->vf_meta_data;
 		return 0;
 	}
 	return -EINVAL;

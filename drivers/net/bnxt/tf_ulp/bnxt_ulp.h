@@ -386,4 +386,5 @@ bnxt_ulp_ha_reg_cnt_get(struct bnxt_ulp_context *ulp_ctx);
 
 struct tf*
 bnxt_ulp_bp_tfp_get(struct bnxt *bp, enum bnxt_ulp_session_type type);
+
 #endif /* _BNXT_ULP_H_ */
