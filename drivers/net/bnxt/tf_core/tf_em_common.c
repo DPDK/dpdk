@@ -1000,8 +1000,8 @@ tf_em_ext_common_unbind(struct tf *tfp)
 			    strerror(-rc));
 		return rc;
 	}
-	ext_db = (struct em_ext_db *)ext_ptr;
 
+	ext_db = (struct em_ext_db *)ext_ptr;
 	if (ext_db != NULL) {
 		entry = ext_db->tbl_scope_ll.head;
 		while (entry != NULL) {

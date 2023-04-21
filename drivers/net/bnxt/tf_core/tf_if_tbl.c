@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -20,12 +20,6 @@ struct tf;
 struct tf_if_tbl_db {
 	struct tf_if_tbl_cfg *if_tbl_cfg_db[TF_DIR_MAX];
 };
-
-/**
- * Init flag, set on bind and cleared on unbind
- * TODO: Store this data in session db
- */
-static uint8_t init;
 
 /**
  * Convert if_tbl_type to hwrm type.
@@ -80,8 +74,6 @@ tf_if_tbl_bind(struct tf *tfp,
 	if_tbl_db->if_tbl_cfg_db[TF_DIR_TX] = parms->cfg;
 	tf_session_set_if_tbl_db(tfp, (void *)if_tbl_db);
 
-	init = 1;
-
 	TFP_DRV_LOG(INFO,
 		    "Table Type - initialized\n");
 
@@ -92,14 +84,7 @@ int
 tf_if_tbl_unbind(struct tf *tfp)
 {
 	int rc;
-	struct tf_if_tbl_db *if_tbl_db_ptr;
-
-	/* Bail if nothing has been initialized */
-	if (!init) {
-		TFP_DRV_LOG(INFO,
-			    "No Table DBs created\n");
-		return 0;
-	}
+	struct tf_if_tbl_db *if_tbl_db_ptr = NULL;
 
 	TF_CHECK_PARMS1(tfp);
 
@@ -108,9 +93,15 @@ tf_if_tbl_unbind(struct tf *tfp)
 		TFP_DRV_LOG(INFO, "No IF Table DBs initialized\n");
 		return 0;
 	}
+	/* Bail if nothing has been initialized */
+	if (!if_tbl_db_ptr) {
+		TFP_DRV_LOG(INFO,
+			    "No Table DBs created\n");
+		return 0;
+	}
 
 	tfp_free((void *)if_tbl_db_ptr);
-	init = 0;
+	tf_session_set_if_tbl_db(tfp, NULL);
 
 	return 0;
 }
@@ -120,22 +111,22 @@ tf_if_tbl_set(struct tf *tfp,
 	      struct tf_if_tbl_set_parms *parms)
 {
 	int rc;
-	struct tf_if_tbl_db *if_tbl_db_ptr;
+	struct tf_if_tbl_db *if_tbl_db_ptr = NULL;
 	struct tf_if_tbl_get_hcapi_parms hparms;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No Table DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	rc = tf_session_get_if_tbl_db(tfp, (void **)&if_tbl_db_ptr);
 	if (rc) {
 		TFP_DRV_LOG(INFO, "No IF Table DBs initialized\n");
 		return 0;
+	}
+
+	if (!if_tbl_db_ptr) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DBs created\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
 	}
 
 	/* Convert TF type to HCAPI type */
@@ -163,22 +154,22 @@ tf_if_tbl_get(struct tf *tfp,
 	      struct tf_if_tbl_get_parms *parms)
 {
 	int rc = 0;
-	struct tf_if_tbl_db *if_tbl_db_ptr;
+	struct tf_if_tbl_db *if_tbl_db_ptr = NULL;
 	struct tf_if_tbl_get_hcapi_parms hparms;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No Table DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	rc = tf_session_get_if_tbl_db(tfp, (void **)&if_tbl_db_ptr);
 	if (rc) {
 		TFP_DRV_LOG(INFO, "No IF Table DBs initialized\n");
 		return 0;
+	}
+
+	if (!if_tbl_db_ptr) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DBs created\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
 	}
 
 	/* Convert TF type to HCAPI type */

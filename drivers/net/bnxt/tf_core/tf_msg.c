@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -47,7 +47,6 @@ static_assert(sizeof(struct hwrm_tf_global_cfg_set_input) ==
 static_assert(sizeof(struct hwrm_tf_em_insert_input) ==
 	      TF_MSG_SIZE_HWRM_TF_EM_INSERT,
 	      "HWRM message size changed: hwrm_tf_em_insert_input");
-
 #define TF_MSG_SIZE_HWRM_TF_TBL_TYPE_SET   128
 static_assert(sizeof(struct hwrm_tf_tbl_type_set_input) ==
 	      TF_MSG_SIZE_HWRM_TF_TBL_TYPE_SET,
@@ -61,12 +60,17 @@ static_assert(sizeof(struct hwrm_tf_tbl_type_set_input) ==
 /**
  * This is the length of shared session name "tf_share"
  */
-#define TF_SHARED_SESSION_NAME_LEN 8
+#define TF_SHARED_SESSION_NAME_LEN 9
 
 /**
  * This is the length of tcam shared session name "tf_shared-wc_tcam"
  */
 #define TF_TCAM_SHARED_SESSION_NAME_LEN 17
+
+/**
+ * This is the length of tcam shared session name "tf_shared-poolx"
+ */
+#define TF_POOL_SHARED_SESSION_NAME_LEN 16
 
 /**
  * If data bigger than TF_PCI_BUF_SIZE_MAX then use DMA method
@@ -135,18 +139,30 @@ tf_msg_session_open(struct bnxt *bp,
 	struct hwrm_tf_session_open_input req = { 0 };
 	struct hwrm_tf_session_open_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
-	int name_len;
 	char *session_name;
 	char *tcam_session_name;
+	char *pool_session_name;
 
-	/* Populate the request */
-	name_len = strnlen(ctrl_chan_name, TF_SESSION_NAME_MAX);
-	session_name = &ctrl_chan_name[name_len - strlen("tf_shared")];
-	tcam_session_name = &ctrl_chan_name[name_len - strlen("tf_shared-wc_tcam")];
-	if (!strncmp(tcam_session_name, "tf_shared-wc_tcam", strlen("tf_shared-wc_tcam")))
-		tfp_memcpy(&req.session_name, tcam_session_name, TF_TCAM_SHARED_SESSION_NAME_LEN);
-	else if (!strncmp(session_name, "tf_shared", strlen("tf_shared")))
-		tfp_memcpy(&req.session_name, session_name, TF_SHARED_SESSION_NAME_LEN);
+	/*
+	 * "tf_shared-wc_tcam" is defined for tf_fw version 1.0.0.
+	 * "tf_shared-pool" is defined for version 1.0.1.
+	 * "tf_shared" is used by both verions.
+	 */
+	tcam_session_name = strstr(ctrl_chan_name, "tf_shared-wc_tcam");
+	pool_session_name = strstr(ctrl_chan_name, "tf_shared-pool");
+	session_name = strstr(ctrl_chan_name, "tf_shared");
+	if (tcam_session_name)
+		tfp_memcpy(&req.session_name,
+			   tcam_session_name,
+			   TF_TCAM_SHARED_SESSION_NAME_LEN);
+	else if (pool_session_name)
+		tfp_memcpy(&req.session_name,
+			   pool_session_name,
+			   TF_POOL_SHARED_SESSION_NAME_LEN);
+	else if (session_name)
+		tfp_memcpy(&req.session_name,
+			   session_name,
+			   TF_SHARED_SESSION_NAME_LEN);
 	else
 		tfp_memcpy(&req.session_name, ctrl_chan_name, TF_SESSION_NAME_MAX);
 
@@ -191,9 +207,9 @@ tf_msg_session_client_register(struct tf *tfp,
 	struct tfp_send_msg_parms parms = { 0 };
 	uint8_t fw_session_id;
 	struct tf_dev_info *dev;
-	int name_len;
 	char *session_name;
 	char *tcam_session_name;
+	char *pool_session_name;
 
 	/* Retrieve the device information */
 	rc = tf_session_get_device(tfs, &dev);
@@ -214,24 +230,31 @@ tf_msg_session_client_register(struct tf *tfp,
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
-	name_len = strnlen(ctrl_channel_name, TF_SESSION_NAME_MAX);
-	session_name = &ctrl_channel_name[name_len - strlen("tf_shared")];
-	tcam_session_name = &ctrl_channel_name[name_len -
-		strlen("tf_shared-wc_tcam")];
-	if (!strncmp(tcam_session_name,
-				"tf_shared-wc_tcam",
-				strlen("tf_shared-wc_tcam")))
+
+	/*
+	 * "tf_shared-wc_tcam" is defined for tf_fw version 1.0.0.
+	 * "tf_shared-pool" is defined for version 1.0.1.
+	 * "tf_shared" is used by both verions.
+	 */
+	tcam_session_name = strstr(ctrl_channel_name, "tf_shared-wc_tcam");
+	pool_session_name = strstr(ctrl_channel_name, "tf_shared-pool");
+	session_name = strstr(ctrl_channel_name, "tf_shared");
+	if (tcam_session_name)
 		tfp_memcpy(&req.session_client_name,
-				tcam_session_name,
-				TF_TCAM_SHARED_SESSION_NAME_LEN);
-	else if (!strncmp(session_name, "tf_shared", strlen("tf_shared")))
+			   tcam_session_name,
+			   TF_TCAM_SHARED_SESSION_NAME_LEN);
+	else if (pool_session_name)
 		tfp_memcpy(&req.session_client_name,
-				session_name,
-				TF_SHARED_SESSION_NAME_LEN);
+			   pool_session_name,
+			   TF_POOL_SHARED_SESSION_NAME_LEN);
+	else if (session_name)
+		tfp_memcpy(&req.session_client_name,
+			   session_name,
+			   TF_SHARED_SESSION_NAME_LEN);
 	else
 		tfp_memcpy(&req.session_client_name,
-				ctrl_channel_name,
-				TF_SESSION_NAME_MAX);
+			   ctrl_channel_name,
+			   TF_SESSION_NAME_MAX);
 
 	parms.tf_type = HWRM_TF_SESSION_REGISTER;
 	parms.req_data = (uint32_t *)&req;
@@ -431,7 +454,6 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 
 	/* Post process the response */
 	data = (struct tf_rm_resc_req_entry *)qcaps_buf.va_addr;
-
 	for (i = 0; i < resp.size; i++) {
 		query[i].type = tfp_le_to_cpu_32(data[i].type);
 		query[i].min = tfp_le_to_cpu_16(data[i].min);
@@ -1757,6 +1779,7 @@ tf_msg_set_tbl_entry(struct tf *tfp,
 	struct hwrm_tf_tbl_type_set_input req = { 0 };
 	struct hwrm_tf_tbl_type_set_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_msg_dma_buf buf = { 0 };
 	uint8_t fw_session_id;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
@@ -1802,17 +1825,18 @@ tf_msg_set_tbl_entry(struct tf *tfp,
 
 	/* Check for data size conformity */
 	if (size > TF_MSG_TBL_TYPE_SET_DATA_SIZE) {
-		rc = -EINVAL;
-		TFP_DRV_LOG(ERR,
-			    "%s: Invalid parameters for msg type, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
+		/* use dma buffer */
+		req.flags |= HWRM_TF_TBL_TYPE_SET_INPUT_FLAGS_DMA;
+		rc = tf_msg_alloc_dma_buf(&buf, size);
+		if (rc)
+			goto cleanup;
+		tfp_memcpy(buf.va_addr, data, size);
+		tfp_memcpy(&req.data[0],
+			   &buf.pa_addr,
+			   sizeof(buf.pa_addr));
+	} else {
+		tfp_memcpy(&req.data, data, size);
 	}
-
-	tfp_memcpy(&req.data,
-		   data,
-		   size);
 
 	parms.tf_type = HWRM_TF_TBL_TYPE_SET;
 	parms.req_data = (uint32_t *)&req;
@@ -1823,10 +1847,10 @@ tf_msg_set_tbl_entry(struct tf *tfp,
 
 	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
 				 &parms);
-	if (rc)
-		return rc;
+cleanup:
+	tf_msg_free_dma_buf(&buf);
 
-	return 0;
+	return rc;
 }
 
 int
@@ -2322,6 +2346,117 @@ tf_msg_get_version(struct bnxt *bp,
 					&params->dev_tcam_caps,
 					&params->dev_tbl_caps,
 					&params->dev_em_caps);
+
+	return rc;
+}
+
+int
+tf_msg_session_set_hotup_state(struct tf *tfp, uint16_t state)
+{
+	int rc;
+	struct hwrm_tf_session_hotup_state_set_input req = { 0 };
+	struct hwrm_tf_session_hotup_state_set_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup device, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Unable to lookup FW id, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.state = tfp_cpu_to_le_16(state);
+
+	parms.tf_type = HWRM_TF_SESSION_HOTUP_STATE_SET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
+				 &parms);
+	return rc;
+}
+
+int
+tf_msg_session_get_hotup_state(struct tf *tfp,
+			       uint16_t *state,
+			       uint16_t *ref_cnt)
+{
+	int rc;
+	struct hwrm_tf_session_hotup_state_get_input req = { 0 };
+	struct hwrm_tf_session_hotup_state_get_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup device, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Unable to lookup FW id, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+
+	parms.tf_type = HWRM_TF_SESSION_HOTUP_STATE_GET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
+				 &parms);
+
+	*state = tfp_le_to_cpu_16(resp.state);
+	*ref_cnt = tfp_le_to_cpu_16(resp.ref_cnt);
 
 	return rc;
 }

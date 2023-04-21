@@ -66,5 +66,4 @@ enum bnxnvm_pkglog_field_index {
 	BNX_PKG_LOG_FIELD_IDX_INSTALLED_ITEMS		= 5,
 	BNX_PKG_LOG_FIELD_IDX_INSTALLED_MASK		= 6
 };
-
 #endif				/* Don't add anything after this line */

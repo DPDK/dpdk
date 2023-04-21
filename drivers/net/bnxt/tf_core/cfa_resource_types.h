@@ -63,7 +63,6 @@
 #define CFA_RESOURCE_TYPE_P59_VEB_TCAM           0x18UL
 #define CFA_RESOURCE_TYPE_P59_LAST              CFA_RESOURCE_TYPE_P59_VEB_TCAM
 
-
 /* Meter */
 #define CFA_RESOURCE_TYPE_P58_METER              0x0UL
 /* SRAM_Bank_0 */
@@ -183,7 +182,6 @@
 /* Table Scope */
 #define CFA_RESOURCE_TYPE_P45_TBL_SCOPE           0x23UL
 #define CFA_RESOURCE_TYPE_P45_LAST               CFA_RESOURCE_TYPE_P45_TBL_SCOPE
-
 
 /* Multicast Group */
 #define CFA_RESOURCE_TYPE_P4_MCG                 0x0UL

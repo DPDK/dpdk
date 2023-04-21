@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -332,7 +332,7 @@ tf_dev_unbind_p4(struct tf *tfp)
 }
 
 /**
- * Device specific bind function, THOR
+ * Device specific bind function, P5
  *
  * [in] tfp
  *   Pointer to TF handle
@@ -504,7 +504,7 @@ tf_dev_bind_p58(struct tf *tfp,
 }
 
 /**
- * Device specific unbind function, THOR
+ * Device specific unbind function, P5
  *
  * [in] tfp
  *   Pointer to TF handle
@@ -602,14 +602,14 @@ tf_dev_bind(struct tf *tfp __rte_unused,
 	    struct tf_dev_info *dev_handle)
 {
 	switch (type) {
-	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_P4:
 	case TF_DEVICE_TYPE_SR:
 		dev_handle->type = type;
 		return tf_dev_bind_p4(tfp,
 				      resources,
 				      dev_handle,
 				      wc_num_slices);
-	case TF_DEVICE_TYPE_THOR:
+	case TF_DEVICE_TYPE_P5:
 		dev_handle->type = type;
 		return tf_dev_bind_p58(tfp,
 				       resources,
@@ -627,11 +627,11 @@ tf_dev_bind_ops(enum tf_device_type type,
 		struct tf_dev_info *dev_handle)
 {
 	switch (type) {
-	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_P4:
 	case TF_DEVICE_TYPE_SR:
 		dev_handle->ops = &tf_dev_ops_p4_init;
 		break;
-	case TF_DEVICE_TYPE_THOR:
+	case TF_DEVICE_TYPE_P5:
 		dev_handle->ops = &tf_dev_ops_p58_init;
 		break;
 	default:
@@ -648,10 +648,10 @@ tf_dev_unbind(struct tf *tfp,
 	      struct tf_dev_info *dev_handle)
 {
 	switch (dev_handle->type) {
-	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_P4:
 	case TF_DEVICE_TYPE_SR:
 		return tf_dev_unbind_p4(tfp);
-	case TF_DEVICE_TYPE_THOR:
+	case TF_DEVICE_TYPE_P5:
 		return tf_dev_unbind_p58(tfp);
 	default:
 		TFP_DRV_LOG(ERR,

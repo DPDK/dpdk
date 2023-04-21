@@ -448,13 +448,13 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 
 	switch (ulp_dev_id) {
 	case BNXT_ULP_DEVICE_ID_WH_PLUS:
-		parms.device_type = TF_DEVICE_TYPE_WH;
+		parms.device_type = TF_DEVICE_TYPE_P5;
 		break;
 	case BNXT_ULP_DEVICE_ID_STINGRAY:
 		parms.device_type = TF_DEVICE_TYPE_SR;
 		break;
 	case BNXT_ULP_DEVICE_ID_THOR:
-		parms.device_type = TF_DEVICE_TYPE_THOR;
+		parms.device_type = TF_DEVICE_TYPE_P4;
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Unable to determine dev for opening session.\n");
@@ -563,13 +563,13 @@ ulp_ctx_session_open(struct bnxt *bp,
 
 	switch (ulp_dev_id) {
 	case BNXT_ULP_DEVICE_ID_WH_PLUS:
-		params.device_type = TF_DEVICE_TYPE_WH;
+		params.device_type = TF_DEVICE_TYPE_P5;
 		break;
 	case BNXT_ULP_DEVICE_ID_STINGRAY:
 		params.device_type = TF_DEVICE_TYPE_SR;
 		break;
 	case BNXT_ULP_DEVICE_ID_THOR:
-		params.device_type = TF_DEVICE_TYPE_THOR;
+		params.device_type = TF_DEVICE_TYPE_P4;
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Unable to determine device for opening session.\n");

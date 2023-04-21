@@ -142,5 +142,4 @@ static inline void bnxt_db_cq(struct bnxt_cp_ring_info *cpr)
 		B_CP_DIS_DB(cpr, cp_raw_cons);
 	}
 }
-
 #endif

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -128,7 +128,6 @@ int tf_tcam_shared_set(struct tf *tfp,
  */
 int tf_tcam_shared_get(struct tf *tfp,
 		       struct tf_tcam_get_parms *parms);
-
 
 /**
  * Moves entries from the WC_TCAM_HI to the WC_TCAM_LO shared pools

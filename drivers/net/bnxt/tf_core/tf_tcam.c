@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -14,6 +14,7 @@
 #include "tfp.h"
 #include "tf_session.h"
 #include "tf_msg.h"
+#include "tf_tcam_mgr_msg.h"
 
 struct tf;
 
@@ -23,17 +24,22 @@ tf_tcam_bind(struct tf *tfp,
 {
 	int rc;
 	int db_rc[TF_DIR_MAX] = { 0 };
-	int i, d;
+	int d, t;
 	struct tf_rm_alloc_info info;
 	struct tf_rm_free_db_parms fparms;
 	struct tf_rm_create_db_parms db_cfg;
+	struct tf_tcam_resources local_tcam_cnt[TF_DIR_MAX];
 	struct tf_tcam_resources *tcam_cnt;
 	struct tf_rm_get_alloc_info_parms ainfo;
-	uint16_t num_slices = parms->wc_num_slices;
+	uint16_t num_slices = 1;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	struct tcam_rm_db *tcam_db;
 	struct tfp_calloc_parms cparms;
+	struct tf_resource_info resv_res[TF_DIR_MAX][TF_TCAM_TBL_TYPE_MAX];
+	uint32_t rx_supported;
+	uint32_t tx_supported;
+	bool no_req = true;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -47,7 +53,7 @@ tf_tcam_bind(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	if (dev->ops->tf_dev_set_tcam_slice_info == NULL) {
+	if (dev->ops->tf_dev_get_tcam_slice_info == NULL) {
 		rc = -EOPNOTSUPP;
 		TFP_DRV_LOG(ERR,
 			    "Operation not supported, rc:%s\n",
@@ -55,18 +61,28 @@ tf_tcam_bind(struct tf *tfp,
 		return rc;
 	}
 
-	rc = dev->ops->tf_dev_set_tcam_slice_info(tfp,
-						  num_slices);
+	tcam_cnt = parms->resources->tcam_cnt;
+
+	for (d = 0; d < TF_DIR_MAX; d++) {
+		for (t = 0; t < TF_TCAM_TBL_TYPE_MAX; t++) {
+			rc = dev->ops->tf_dev_get_tcam_slice_info(tfp, t, 0,
+								  &num_slices);
 	if (rc)
 		return rc;
 
-	tcam_cnt = parms->resources->tcam_cnt;
-	if ((tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % num_slices) ||
-	    (tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % num_slices)) {
-		TFP_DRV_LOG(ERR,
-			    "Requested num of WC TCAM entries has to be multiple %d\n",
-			    num_slices);
-		return -EINVAL;
+			if (num_slices == 1)
+				continue;
+
+			if (tcam_cnt[d].cnt[t] % num_slices) {
+				TFP_DRV_LOG(ERR,
+					    "%s: Requested num of %s entries "
+					    "has to be multiple of %d\n",
+					    tf_dir_2_str(d),
+					    tf_tcam_tbl_2_str(t),
+					    num_slices);
+				return -EINVAL;
+			}
+		}
 	}
 
 	memset(&db_cfg, 0, sizeof(db_cfg));
@@ -80,8 +96,8 @@ tf_tcam_bind(struct tf *tfp,
 	}
 
 	tcam_db = cparms.mem_va;
-	for (i = 0; i < TF_DIR_MAX; i++)
-		tcam_db->tcam_db[i] = NULL;
+	for (d = 0; d < TF_DIR_MAX; d++)
+		tcam_db->tcam_db[d] = NULL;
 	tf_session_set_db(tfp, TF_MODULE_TYPE_TCAM, tcam_db);
 
 	db_cfg.module = TF_MODULE_TYPE_TCAM;
@@ -90,7 +106,7 @@ tf_tcam_bind(struct tf *tfp,
 
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		db_cfg.dir = d;
-		db_cfg.alloc_cnt = parms->resources->tcam_cnt[d].cnt;
+		db_cfg.alloc_cnt = tcam_cnt[d].cnt;
 		db_cfg.rm_db = (void *)&tcam_db->tcam_db[d];
 		if (tf_session_is_shared_session(tfs) &&
 			(!tf_session_is_shared_session_creator(tfs)))
@@ -98,53 +114,112 @@ tf_tcam_bind(struct tf *tfp,
 		else
 			db_rc[d] = tf_rm_create_db(tfp, &db_cfg);
 	}
-
 	/* No db created */
 	if (db_rc[TF_DIR_RX] && db_rc[TF_DIR_TX]) {
 		TFP_DRV_LOG(ERR, "No TCAM DB created\n");
 		return db_rc[TF_DIR_RX];
 	}
 
-	/* check if reserved resource for WC is multiple of num_slices */
+	/* Collect info on which entries were reserved. */
 	for (d = 0; d < TF_DIR_MAX; d++) {
-		if (!tcam_db->tcam_db[d])
-			continue;
+		for (t = 0; t < TF_TCAM_TBL_TYPE_MAX; t++) {
+			memset(&info, 0, sizeof(info));
+			if (tcam_cnt[d].cnt[t] == 0) {
+				resv_res[d][t].start  = 0;
+				resv_res[d][t].stride = 0;
+				continue;
+			}
+			ainfo.rm_db = tcam_db->tcam_db[d];
+			ainfo.subtype = t;
+			ainfo.info = &info;
+			rc = tf_rm_get_info(&ainfo);
+			if (rc)
+				goto error;
 
-		memset(&info, 0, sizeof(info));
-		ainfo.rm_db = tcam_db->tcam_db[d];
-		ainfo.subtype = TF_TCAM_TBL_TYPE_WC_TCAM;
-		ainfo.info = &info;
-		rc = tf_rm_get_info(&ainfo);
-		if (rc)
-			goto error;
+			rc = dev->ops->tf_dev_get_tcam_slice_info(tfp, t, 0,
+								  &num_slices);
+			if (rc)
+				return rc;
 
-		if (info.entry.start % num_slices != 0 ||
-		    info.entry.stride % num_slices != 0) {
-			TFP_DRV_LOG(ERR,
-				    "%s: TCAM reserved resource is not multiple of %d\n",
-				    tf_dir_2_str(d),
-				    num_slices);
-			rc = -EINVAL;
-			goto error;
+			if (num_slices > 1) {
+				/* check if reserved resource for is multiple of
+				 * num_slices
+				 */
+				if (info.entry.start % num_slices != 0 ||
+				    info.entry.stride % num_slices != 0) {
+					TFP_DRV_LOG(ERR,
+						    "%s: %s reserved resource"
+						    " is not multiple of %d\n",
+						    tf_dir_2_str(d),
+						    tf_tcam_tbl_2_str(t),
+						    num_slices);
+					rc = -EINVAL;
+					goto error;
+				}
+			}
+
+			resv_res[d][t].start  = info.entry.start;
+			resv_res[d][t].stride = info.entry.stride;
 		}
 	}
 
-	/* Initialize the TCAM manager. */
+	rc = tf_tcam_mgr_bind_msg(tfp, dev, parms, resv_res);
+	if (rc)
+		return rc;
+
+	rc = tf_tcam_mgr_qcaps_msg(tfp, dev,
+				   &rx_supported, &tx_supported);
+	if (rc)
+		return rc;
+
+	for (t = 0; t < TF_TCAM_TBL_TYPE_MAX; t++) {
+		if (rx_supported & 1 << t)
+			tfs->tcam_mgr_control[TF_DIR_RX][t] = 1;
+		if (tx_supported & 1 << t)
+			tfs->tcam_mgr_control[TF_DIR_TX][t] = 1;
+	}
+
+	/*
+	 * Make a local copy of tcam_cnt with only resources not managed by TCAM
+	 * Manager requested.
+	 */
+	memcpy(&local_tcam_cnt, tcam_cnt, sizeof(local_tcam_cnt));
+	tcam_cnt = local_tcam_cnt;
+	for (d = 0; d < TF_DIR_MAX; d++) {
+		for (t = 0; t < TF_TCAM_TBL_TYPE_MAX; t++) {
+			/* If controlled by TCAM Manager */
+			if (tfs->tcam_mgr_control[d][t])
+				tcam_cnt[d].cnt[t] = 0;
+			else if (tcam_cnt[d].cnt[t] > 0)
+				no_req = false;
+		}
+	}
+
+	/* If no resources left to request */
+	if (no_req)
+		goto finished;
+
+finished:
 	TFP_DRV_LOG(INFO,
 		    "TCAM - initialized\n");
 
 	return 0;
 error:
-	for (i = 0; i < TF_DIR_MAX; i++) {
-		memset(&fparms, 0, sizeof(fparms));
-		fparms.dir = i;
-		fparms.rm_db = tcam_db->tcam_db[i];
-		/* Ignoring return here since we are in the error case */
-		(void)tf_rm_free_db(tfp, &fparms);
-		tcam_db->tcam_db[i] = NULL;
+	for (d = 0; d < TF_DIR_MAX; d++) {
+		if (tcam_db->tcam_db[d] != NULL) {
+			memset(&fparms, 0, sizeof(fparms));
+			fparms.dir = d;
+			fparms.rm_db = tcam_db->tcam_db[d];
+			/*
+			 * Ignoring return here since we are in the error case
+			 */
+			(void)tf_rm_free_db(tfp, &fparms);
+
+			tcam_db->tcam_db[d] = NULL;
+		}
+		tcam_db->tcam_db[d] = NULL;
 		tf_session_set_db(tfp, TF_MODULE_TYPE_TCAM, NULL);
 	}
-
 	return rc;
 }
 
@@ -156,26 +231,42 @@ tf_tcam_unbind(struct tf *tfp)
 	struct tf_rm_free_db_parms fparms;
 	struct tcam_rm_db *tcam_db;
 	void *tcam_db_ptr = NULL;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
 	TF_CHECK_PARMS1(tfp);
 
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
-	if (rc) {
+	if (rc)
 		return 0;
-	}
+
 	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
-		if (tcam_db->tcam_db[i] == NULL)
-			continue;
-		memset(&fparms, 0, sizeof(fparms));
-		fparms.dir = i;
-		fparms.rm_db = tcam_db->tcam_db[i];
-		rc = tf_rm_free_db(tfp, &fparms);
-		if (rc)
-			return rc;
+		if (tcam_db->tcam_db[i] != NULL) {
+			memset(&fparms, 0, sizeof(fparms));
+			fparms.dir = i;
+			fparms.rm_db = tcam_db->tcam_db[i];
+			rc = tf_rm_free_db(tfp, &fparms);
+			if (rc)
+				return rc;
 
-		tcam_db->tcam_db[i] = NULL;
+			tcam_db->tcam_db[i] = NULL;
+		}
+
 	}
+
+	rc = tf_tcam_mgr_unbind_msg(tfp, dev);
+	if (rc)
+		return rc;
 
 	return 0;
 }
@@ -222,6 +313,9 @@ tf_tcam_alloc(struct tf *tfp,
 	if (rc)
 		return rc;
 
+	/* If TCAM controlled by TCAM Manager */
+	if (tfs->tcam_mgr_control[parms->dir][parms->type])
+		return tf_tcam_mgr_alloc_msg(tfp, dev, parms);
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -251,12 +345,8 @@ tf_tcam_alloc(struct tf *tfp,
 		}
 
 		/* return the start index of each row */
-		if (parms->priority == 0) {
 			if (i == 0)
 				parms->idx = index;
-		} else {
-			parms->idx = index;
-		}
 	}
 
 	return 0;
@@ -306,6 +396,14 @@ tf_tcam_free(struct tf *tfp,
 						  &num_slices);
 	if (rc)
 		return rc;
+
+	/* If TCAM controlled by TCAM Manager */
+	if (tfs->tcam_mgr_control[parms->dir][parms->type])
+		/*
+		 * If a session can have multiple references to an entry, check
+		 * the reference count here before actually freeing the entry.
+		 */
+		return tf_tcam_mgr_free_msg(tfp, dev, parms);
 
 	if (parms->idx % num_slices) {
 		TFP_DRV_LOG(ERR,
@@ -429,6 +527,10 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
+	/* If TCAM controlled by TCAM Manager */
+	if (tfs->tcam_mgr_control[parms->dir][parms->type])
+		return tf_tcam_mgr_set_msg(tfp, dev, parms);
+
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -507,6 +609,10 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	rc = tf_session_get_device(tfs, &dev);
 	if (rc)
 		return rc;
+
+	/* If TCAM controlled by TCAM Manager */
+	if (tfs->tcam_mgr_control[parms->dir][parms->type])
+		return tf_tcam_mgr_get_msg(tfp, dev, parms);
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
 	if (rc) {

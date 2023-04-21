@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -761,4 +761,40 @@ int
 tf_msg_get_version(struct bnxt *bp,
 		   struct tf_dev_info *dev,
 		   struct tf_get_version_parms *parms);
+
+/**
+ * Send set hot upgrade state request to the firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] state
+ *   Hot upgrade session state
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int
+tf_msg_session_set_hotup_state(struct tf *tfp,
+			       uint16_t state);
+
+/**
+ * Send get hot upgrade state request to the firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [out] state
+ *   Pointer to hot upgrade session state
+ *
+ * [out] ref_cnt
+ *   Pointer to hot upgrade session reference count
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int
+tf_msg_session_get_hotup_state(struct tf *tfp,
+			       uint16_t *state,
+			       uint16_t *ref_cnt);
 #endif  /* _TF_MSG_H_ */

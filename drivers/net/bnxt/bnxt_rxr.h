@@ -386,5 +386,4 @@ bnxt_parse_pkt_type_v2(struct rte_mbuf *mbuf,
 
 	mbuf->packet_type = pkt_type;
 }
-
 #endif /*  _BNXT_RXR_H_ */

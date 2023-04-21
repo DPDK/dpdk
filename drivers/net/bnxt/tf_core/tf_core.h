@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -112,6 +112,10 @@ enum tf_sram_bank_id {
  * @ref tf_attach_session
  *
  * @ref tf_close_session
+ *
+ * @ref tf_get_session_info
+ *
+ * @ref tf_get_session_info
  */
 
 /**
@@ -188,10 +192,10 @@ struct tf_session_version {
  * Session supported device types
  */
 enum tf_device_type {
-	TF_DEVICE_TYPE_WH = 0, /**< Whitney+  */
-	TF_DEVICE_TYPE_SR,     /**< Stingray  */
-	TF_DEVICE_TYPE_THOR,   /**< Thor      */
-	TF_DEVICE_TYPE_MAX     /**< Maximum   */
+	TF_DEVICE_TYPE_P4 = 0,
+	TF_DEVICE_TYPE_SR,
+	TF_DEVICE_TYPE_P5,
+	TF_DEVICE_TYPE_MAX
 };
 
 /**
@@ -286,6 +290,8 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_ACT_ENCAP_32B,
 	/** Wh+/SR/TH Action Encap 64 Bytes */
 	TF_TBL_TYPE_ACT_ENCAP_64B,
+	/* TH Action Encap 128 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_128B,
 	/** WH+/SR/TH Action Source Properties SMAC */
 	TF_TBL_TYPE_ACT_SP_SMAC,
 	/** Wh+/SR/TH Action Source Properties SMAC IPv4 */
@@ -331,7 +337,7 @@ enum tf_tbl_type {
 	 * External table type - initially 1 poolsize entries.
 	 * All External table types are associated with a table
 	 * scope. Internal types are not.  Currently this is
-	 * a pool of 64B entries.
+	 * a pool of 128B entries.
 	 */
 	TF_TBL_TYPE_EXT,
 	TF_TBL_TYPE_MAX
@@ -915,6 +921,71 @@ int tf_attach_session(struct tf *tfp,
 int tf_close_session(struct tf *tfp);
 
 /**
+ * tf_set_session_hotup_state parameter definition.
+ */
+struct tf_set_session_hotup_state_parms {
+	/**
+	 * [in] the structure is used to set the state of
+	 * the hotup shared session.
+	 *
+	 */
+	uint16_t state;
+};
+
+/**
+ * set hot upgrade shared session state
+ *
+ * This API is used to set the state of the shared session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to set hotup state parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_set_session_hotup_state(struct tf *tfp,
+			       struct tf_set_session_hotup_state_parms *parms);
+
+/**
+ * tf_get_session_hotup_state parameter definition.
+ */
+struct tf_get_session_hotup_state_parms {
+	/**
+	 * [out] the structure is used to get the state of
+	 * the hotup shared session.
+	 *
+	 */
+	uint16_t state;
+	/**
+	 * [out] get the ref_cnt of the hotup shared session.
+	 *
+	 */
+	uint16_t ref_cnt;
+};
+
+/**
+ * get hot upgrade shared session state
+ *
+ * This API is used to set the state of the shared session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to get hotup state parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_get_session_hotup_state(struct tf *tfp,
+			       struct tf_get_session_hotup_state_parms *parms);
+
+/**
  * @page  ident Identity Management
  *
  * @ref tf_alloc_identifier
@@ -1192,8 +1263,6 @@ int tf_free_tbl_scope(struct tf *tfp,
  *
  * @ref tf_get_tcam_entry
  *
- * @ref tf_free_tcam_entry
- *
  * @ref tf_move_tcam_shared_entries
  *
  * @ref tf_clear_tcam_shared_entries
@@ -1258,7 +1327,7 @@ struct tf_search_tcam_entry_parms {
 };
 
 /**
- * search TCAM entry (experimental)
+ * search TCAM entry
  *
  * Search for a TCAM entry
  *
@@ -1732,7 +1801,7 @@ struct tf_get_shared_tbl_increment_parms {
  * tf_get_shared_tbl_increment
  *
  * This API is currently only required for use in the shared
- * session for Thor (p58) actions.  An increment count is returned per
+ * session for P5 actions.  An increment count is returned per
  * type to indicate how much to increment the start by for each
  * entry (see tf_resource_info)
  *
@@ -1898,6 +1967,7 @@ struct tf_insert_em_entry_parms {
 	 */
 	uint64_t flow_id;
 };
+
 /**
  * tf_delete_em_entry parameter definition
  */
@@ -1927,6 +1997,7 @@ struct tf_delete_em_entry_parms {
 	 */
 	uint64_t flow_handle;
 };
+
 /**
  * tf_move_em_entry parameter definition
  */
@@ -1969,6 +2040,7 @@ struct tf_move_em_entry_parms {
 	 */
 	uint64_t flow_handle;
 };
+
 /**
  * tf_search_em_entry parameter definition (Future)
  */
@@ -2108,6 +2180,7 @@ int tf_search_em_entry(struct tf *tfp,
  *
  * @ref tf_get_global_cfg
  */
+
 /**
  * Tunnel Encapsulation Offsets
  */
@@ -2121,6 +2194,7 @@ enum tf_tunnel_encap_offsets {
 	TF_TUNNEL_ENCAP_GRE,
 	TF_TUNNEL_ENCAP_FULL_GENERIC
 };
+
 /**
  * Global Configuration Table Types
  */
@@ -2193,9 +2267,8 @@ int tf_set_global_cfg(struct tf *tfp,
  * @ref tf_set_if_tbl_entry
  *
  * @ref tf_get_if_tbl_entry
- *
- * @ref tf_restore_if_tbl_entry
  */
+
 /**
  * Enumeration of TruFlow interface table types.
  */

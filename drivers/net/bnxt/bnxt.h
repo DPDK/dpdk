@@ -1044,5 +1044,4 @@ int bnxt_flow_ops_get_op(struct rte_eth_dev *dev,
 int bnxt_dev_start_op(struct rte_eth_dev *eth_dev);
 int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev);
 void bnxt_handle_vf_cfg_change(void *arg);
-
 #endif

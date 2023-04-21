@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 #include <stdlib.h>
@@ -21,7 +21,7 @@
 /**
  * TF SRAM block info
  *
- * Contains all the information about a particular 64B SRAM
+ * Contains all the information about a particular 128B SRAM
  * block and the slices within it.
  */
 struct tf_sram_block {
@@ -36,9 +36,9 @@ struct tf_sram_block {
 	 *  If a bit is set, it indicates the slice
 	 *  in the row is in use.
 	 */
-	uint8_t in_use_mask;
+	uint16_t in_use_mask;
 
-	/** Block id - this is a 64B offset
+	/** Block id - this is a 128B offset
 	 */
 	uint16_t block_id;
 };
@@ -46,7 +46,7 @@ struct tf_sram_block {
 /**
  * TF SRAM block list
  *
- * List of 64B SRAM blocks used for fixed size slices (8, 16, 32, 64B)
+ * List of 128B SRAM blocks used for fixed size slices (8, 16, 32, 64B, 128B)
  */
 struct tf_sram_slice_list {
 	/** Pointer to head of linked list of blocks.
@@ -69,7 +69,6 @@ struct tf_sram_slice_list {
 	 */
 	enum tf_sram_slice_size size;
 };
-
 
 /**
  * TF SRAM bank info consists of lists of different slice sizes per bank
@@ -111,6 +110,8 @@ const char
 		return "32B slice";
 	case TF_SRAM_SLICE_SIZE_64B:
 		return "64B slice";
+	case TF_SRAM_SLICE_SIZE_128B:
+		return "128B slice";
 	default:
 		return "Invalid slice size";
 	}
@@ -179,8 +180,8 @@ static void
 tf_sram_offset_2_block_id(enum tf_sram_bank_id bank_id, uint16_t offset,
 			  uint16_t *block_id, uint16_t *slice_offset)
 {
-	*slice_offset = offset & 0x7;
-	*block_id = ((offset & ~0x7) >> 3) -
+	*slice_offset = offset & 0xf;
+	*block_id = ((offset & ~0xf) >> 3) -
 		    tf_sram_bank_2_base_offset[bank_id];
 }
 
@@ -232,31 +233,37 @@ tf_sram_free_slice(enum tf_sram_slice_size slice_size,
 		   bool *block_is_empty)
 {
 	int rc = 0;
-	uint8_t shift;
-	uint8_t slice_mask = 0;
+	uint16_t shift;
+	uint16_t slice_mask = 0;
 
 	TF_CHECK_PARMS2(block, block_is_empty);
 
 	switch (slice_size) {
 	case TF_SRAM_SLICE_SIZE_8B:
 		shift = slice_offset >> 0;
-		assert(shift < 8);
+		assert(shift < 16);
 		slice_mask = 1 << shift;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_16B:
 		shift = slice_offset >> 1;
-		assert(shift < 4);
+		assert(shift < 8);
 		slice_mask = 1 << shift;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_32B:
 		shift = slice_offset >> 2;
-		assert(shift < 2);
+		assert(shift < 4);
 		slice_mask = 1 << shift;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_64B:
+		shift = slice_offset >> 3;
+		assert(shift < 2);
+		slice_mask = 1 << shift;
+		break;
+
+	case TF_SRAM_SLICE_SIZE_128B:
 	default:
 		shift = slice_offset >> 0;
 		assert(shift < 1);
@@ -294,27 +301,32 @@ tf_sram_get_next_slice_in_block(struct tf_sram_block *block,
 				bool *block_is_full)
 {
 	int rc, free_id = -1;
-	uint8_t shift, max_slices, mask, i, full_mask;
+	uint16_t shift, max_slices, mask, i, full_mask;
 
 	TF_CHECK_PARMS3(block, slice_offset, block_is_full);
 
 	switch (slice_size) {
 	case TF_SRAM_SLICE_SIZE_8B:
 		shift      = 0;
-		max_slices = 8;
-		full_mask  = 0xff;
+		max_slices = 16;
+		full_mask  = 0xffff;
 		break;
 	case TF_SRAM_SLICE_SIZE_16B:
 		shift      = 1;
-		max_slices = 4;
-		full_mask  = 0xf;
+		max_slices = 8;
+		full_mask  = 0xff;
 		break;
 	case TF_SRAM_SLICE_SIZE_32B:
 		shift      = 2;
+		max_slices = 4;
+		full_mask  = 0xf;
+		break;
+	case TF_SRAM_SLICE_SIZE_64B:
+		shift      = 3;
 		max_slices = 2;
 		full_mask  = 0x3;
 		break;
-	case TF_SRAM_SLICE_SIZE_64B:
+	case TF_SRAM_SLICE_SIZE_128B:
 	default:
 		shift      = 0;
 		max_slices = 1;
@@ -337,7 +349,6 @@ tf_sram_get_next_slice_in_block(struct tf_sram_block *block,
 		*block_is_full = true;
 	else
 		*block_is_full = false;
-
 
 	if (free_id >= 0) {
 		*slice_offset = free_id << shift;
@@ -362,8 +373,8 @@ tf_sram_is_slice_allocated_in_block(struct tf_sram_block *block,
 				    bool *is_allocated)
 {
 	int rc = 0;
-	uint8_t shift;
-	uint8_t slice_mask = 0;
+	uint16_t shift;
+	uint16_t slice_mask = 0;
 
 	TF_CHECK_PARMS2(block, is_allocated);
 
@@ -372,23 +383,29 @@ tf_sram_is_slice_allocated_in_block(struct tf_sram_block *block,
 	switch (slice_size) {
 	case TF_SRAM_SLICE_SIZE_8B:
 		shift = slice_offset >> 0;
-		assert(shift < 8);
+		assert(shift < 16);
 		slice_mask = 1 << shift;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_16B:
 		shift = slice_offset >> 1;
-		assert(shift < 4);
+		assert(shift < 8);
 		slice_mask = 1 << shift;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_32B:
 		shift = slice_offset >> 2;
-		assert(shift < 2);
+		assert(shift < 4);
 		slice_mask = 1 << shift;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_64B:
+		shift = slice_offset >> 3;
+		assert(shift < 2);
+		slice_mask = 1 << shift;
+		break;
+
+	case TF_SRAM_SLICE_SIZE_128B:
 	default:
 		shift = slice_offset >> 0;
 		assert(shift < 1);
@@ -415,7 +432,6 @@ tf_sram_get_block_cnt(struct tf_sram_slice_list *slice_list)
 {
 	return slice_list->cnt;
 }
-
 
 /**
  * Free a block data structure - does not free to the RM
@@ -508,22 +524,26 @@ tf_sram_find_first_not_full_block(struct tf_sram_slice_list *slice_list,
 				  struct tf_sram_block **first_not_full_block)
 {
 	struct tf_sram_block *block = slice_list->head;
-	uint8_t slice_mask, mask;
+	uint16_t slice_mask, mask;
 
 	switch (slice_size) {
 	case TF_SRAM_SLICE_SIZE_8B:
-		slice_mask = 0xff;
+		slice_mask = 0xffff;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_16B:
-		slice_mask = 0xf;
+		slice_mask = 0xff;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_32B:
-		slice_mask = 0x3;
+		slice_mask = 0xf;
 		break;
 
 	case TF_SRAM_SLICE_SIZE_64B:
+		slice_mask = 0x3;
+		break;
+
+	case TF_SRAM_SLICE_SIZE_128B:
 	default:
 		slice_mask = 0x1;
 		break;
@@ -543,7 +563,7 @@ tf_sram_find_first_not_full_block(struct tf_sram_slice_list *slice_list,
 static void
 tf_sram_dump_block(struct tf_sram_block *block)
 {
-	TFP_DRV_LOG(INFO, "block_id(0x%x) in_use_mask(0x%02x)\n",
+	TFP_DRV_LOG(INFO, "block_id(0x%x) in_use_mask(0x%04x)\n",
 		    block->block_id,
 		    block->in_use_mask);
 }
@@ -631,9 +651,10 @@ int tf_sram_mgr_alloc(void *sram_handle,
 	struct tf_sram *sram;
 	struct tf_sram_slice_list *slice_list;
 	uint16_t block_id, slice_offset = 0;
-	uint32_t index;
+	uint32_t index, next_index;
 	struct tf_sram_block *block;
 	struct tf_rm_allocate_parms aparms = { 0 };
+	struct tf_rm_free_parms fparms = { 0 };
 	bool block_is_full;
 	uint16_t block_offset;
 
@@ -664,9 +685,32 @@ int tf_sram_mgr_alloc(void *sram_handle,
 		rc = tf_rm_allocate(&aparms);
 		if (rc)
 			return rc;
+		/* to support 128B block rows, we are allocating
+		 * 2 sequential 64B blocks from RM, if they are not next to
+		 * each other we are going to have issues
+		 */
+		aparms.index = &next_index;
+		rc = tf_rm_allocate(&aparms);
+		if (rc)
+			return rc;
 
+		/* make sure we do get the next 64B block, else free the
+		 * allocated indexes and return error
+		 */
+		if (unlikely(index + 1 != next_index)) {
+			fparms.index = index;
+			fparms.subtype = parms->tbl_type;
+			fparms.rm_db = parms->rm_db;
+			tf_rm_free(&fparms);
+			fparms.index = next_index;
+			tf_rm_free(&fparms);
+			TFP_DRV_LOG(ERR,
+				    "Could not allocate two sequential 64B blocks\n");
+			return -ENOMEM;
+		}
 		block_id = index;
 		block = tf_sram_alloc_block(slice_list, block_id);
+
 	} else {
 		/* Block exists
 		 */
@@ -742,7 +786,7 @@ tf_sram_mgr_free(void *sram_handle,
 	}
 #if (STATS_CLEAR_ON_READ_SUPPORT == 0)
 	/* If this is a counter, clear it.  In the future we need to switch to
-	 * using the special access registers on Thor to automatically clear on
+	 * using the special access registers on P5 to automatically clear on
 	 * read.
 	 */
 	/* If this is counter table, clear the entry on free */
@@ -793,6 +837,13 @@ tf_sram_mgr_free(void *sram_handle,
 		if (rc) {
 			TFP_DRV_LOG(ERR, "Free block_id(%d) failed error(%s)\n",
 				    block_id, strerror(-rc));
+		}
+		fparms.index = block_id + 1;
+		rc = tf_rm_free(&fparms);
+
+		if (rc) {
+			TFP_DRV_LOG(ERR, "Free next block_id(%d) failed error(%s)\n",
+				    block_id + 1, strerror(-rc));
 		}
 		/* Free local entry regardless */
 		tf_sram_free_block(slice_list, block);

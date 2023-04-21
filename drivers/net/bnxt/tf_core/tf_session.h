@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -8,7 +8,6 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-
 #include "bitalloc.h"
 #include "tf_core.h"
 #include "tf_device.h"
@@ -48,7 +47,7 @@
  *
  * Shared memory containing private TruFlow session information.
  * Through this structure the session can keep track of resource
- * allocations.  It also holds info about Session Clients.
+ * allocations. It also holds info about Session Clients.
  *
  * Memory is assigned to the Truflow instance by way of
  * tf_open_session. Memory is allocated and owned by i.e. ULP.
@@ -77,6 +76,11 @@ struct tf_session {
 	 *
 	 */
 	bool shared_session;
+
+	/**
+	 * Boolean controlling the split of hardware resources for hotupgrade.
+	 */
+	bool shared_session_hotup;
 
 	/**
 	 * This flag indicates the shared session on firmware side is created
@@ -169,6 +173,12 @@ struct tf_session {
 	 * Number of slices per row for WC TCAM
 	 */
 	uint16_t wc_num_slices_per_row;
+
+	/**
+	 * Indicates if TCAM is controlled by TCAM Manager
+	 */
+	int tcam_mgr_control[TF_DIR_MAX][TF_TCAM_TBL_TYPE_MAX];
+
 };
 
 /**
@@ -276,11 +286,9 @@ struct tf_session_close_session_parms {
  *
  * @ref tf_session_is_shared_session
  *
- * #define TF_SHARED
  * @ref tf_session_get_tcam_shared_db
  *
  * @ref tf_session_set_tcam_shared_db
- * #endif
  *
  * @ref tf_session_get_sram_db
  *
@@ -589,6 +597,21 @@ tf_session_is_shared_session(struct tf_session *tfs)
 }
 
 /**
+ * Check if the session is shared session for hot upgrade.
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - true if it is shared session for hot upgrade
+ *   - false if it is not shared session for hot upgrade
+ */
+static inline bool
+tf_session_is_shared_hotup_session(struct tf_session *tfs)
+{
+	return tfs->shared_session_hotup;
+}
+
+/**
  * Check if the session is the shared session creator
  *
  * [in] session, pointer to the session
@@ -716,4 +739,36 @@ tf_session_set_if_tbl_db(struct tf *tfp,
 int
 tf_session_get_if_tbl_db(struct tf *tfp,
 			 void **if_tbl_handle);
+
+/**
+ * Set hot upgrade session state.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] parms
+ *   Hot upgrade session state parms
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int
+tf_session_set_hotup_state(struct tf *tfp,
+			   struct tf_set_session_hotup_state_parms *parms);
+
+/**
+ * Get hot upgrade session state.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [out] parms
+ *   Pointer to hot upgrade session state parms
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int
+tf_session_get_hotup_state(struct tf *tfp,
+			   struct tf_get_session_hotup_state_parms *parms);
 #endif /* _TF_SESSION_H_ */

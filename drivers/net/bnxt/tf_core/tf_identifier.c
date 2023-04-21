@@ -89,6 +89,7 @@ tf_ident_unbind(struct tf *tfp)
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_IDENTIFIER, &ident_db_ptr);
 	if (rc)
 		return 0;
+
 	ident_db = (struct ident_rm_db *)ident_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {

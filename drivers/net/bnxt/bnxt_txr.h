@@ -90,5 +90,4 @@ int bnxt_flush_tx_cmp(struct bnxt_cp_ring_info *cpr);
 					TX_BD_LONG_LFLAGS_IP_CHKSUM)
 #define TX_BD_FLG_TIP_TCP_UDP_CHKSUM	(TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM | \
 					TX_BD_LONG_LFLAGS_T_IP_CHKSUM)
-
 #endif

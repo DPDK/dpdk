@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -34,8 +34,8 @@ tf_open_session(struct tf *tfp,
 	 * side. It is assumed that the Firmware will be supported if
 	 * firmware open session succeeds.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_WH &&
-	    parms->device_type != TF_DEVICE_TYPE_THOR &&
+	if (parms->device_type != TF_DEVICE_TYPE_P4 &&
+	    parms->device_type != TF_DEVICE_TYPE_P5 &&
 	    parms->device_type != TF_DEVICE_TYPE_SR) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
@@ -83,7 +83,7 @@ tf_open_session(struct tf *tfp,
 		return rc;
 
 	TFP_DRV_LOG(INFO,
-		    "domain:%d, bus:%d, device:%u\n",
+		    "domain:%x, bus:%x, device:%u\n",
 		    parms->session_id.internal.domain,
 		    parms->session_id.internal.bus,
 		    parms->session_id.internal.device);
@@ -176,7 +176,7 @@ tf_close_session(struct tf *tfp)
 		return rc;
 
 	TFP_DRV_LOG(INFO,
-		    "domain:%d, bus:%d, device:%d\n",
+		    "domain:%d, bus:%x, device:%d\n",
 		    cparms.session_id->internal.domain,
 		    cparms.session_id->internal.bus,
 		    cparms.session_id->internal.device);
@@ -742,7 +742,6 @@ tf_set_tcam_entry(struct tf *tfp,
 
 	memset(&sparms, 0, sizeof(struct tf_tcam_set_parms));
 
-
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
 	if (rc) {
@@ -790,6 +789,10 @@ tf_set_tcam_entry(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+	TFP_DRV_LOG(DEBUG,
+		    "%s: TCAM type %d set idx:%d key size %d result size %d\n",
+		    tf_dir_2_str(parms->dir), sparms.type,
+		    sparms.idx, sparms.key_size, sparms.result_size);
 
 	return 0;
 }
@@ -806,7 +809,6 @@ tf_get_tcam_entry(struct tf *tfp __rte_unused,
 	TF_CHECK_PARMS2(tfp, parms);
 
 	memset(&gparms, 0, sizeof(struct tf_tcam_get_parms));
-
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -1812,8 +1814,8 @@ int tf_get_version(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_WH &&
-	    parms->device_type != TF_DEVICE_TYPE_THOR &&
+	if (parms->device_type != TF_DEVICE_TYPE_P4 &&
+	    parms->device_type != TF_DEVICE_TYPE_P5 &&
 	    parms->device_type != TF_DEVICE_TYPE_SR) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
@@ -1845,7 +1847,7 @@ int tf_query_sram_resources(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+	if (parms->device_type != TF_DEVICE_TYPE_P5) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
 			    parms->device_type);
@@ -1927,7 +1929,7 @@ int tf_set_sram_policy(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+	if (parms->device_type != TF_DEVICE_TYPE_P5) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
 			    parms->device_type);
@@ -1968,7 +1970,7 @@ int tf_get_sram_policy(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+	if (parms->device_type != TF_DEVICE_TYPE_P5) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
 			    parms->device_type);
@@ -1994,6 +1996,34 @@ int tf_get_sram_policy(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+
+	return rc;
+}
+
+int tf_set_session_hotup_state(struct tf *tfp,
+			       struct tf_set_session_hotup_state_parms *parms)
+{
+	int rc = 0;
+
+	TF_CHECK_PARMS1(tfp);
+
+	rc = tf_session_set_hotup_state(tfp, parms);
+	if (rc)
+		return rc;
+
+	return rc;
+}
+
+int tf_get_session_hotup_state(struct tf *tfp,
+			       struct tf_get_session_hotup_state_parms *parms)
+{
+	int rc = 0;
+
+	TF_CHECK_PARMS1(tfp);
+
+	rc = tf_session_get_hotup_state(tfp, parms);
+	if (rc)
+		return rc;
 
 	return rc;
 }

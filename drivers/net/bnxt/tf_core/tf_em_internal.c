@@ -7,7 +7,6 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-
 #include "tf_core.h"
 #include "tf_util.h"
 #include "tf_common.h"
@@ -63,7 +62,6 @@ tf_em_insert_int_entry(struct tf *tfp,
 		return -1;
 	}
 
-
 	rptr_index = index;
 	rc = tf_msg_insert_em_internal_entry(tfp,
 					     parms,
@@ -75,6 +73,7 @@ tf_em_insert_int_entry(struct tf *tfp,
 		dpool_free(pool, index);
 		return -1;
 	}
+
 	TF_SET_GFID(gfid,
 		    ((rptr_index << TF_EM_INTERNAL_INDEX_SHIFT) |
 		     rptr_entry),
@@ -94,7 +93,6 @@ tf_em_insert_int_entry(struct tf *tfp,
 				     0);
 	return 0;
 }
-
 
 /** Delete EM internal entry API
  *
@@ -253,7 +251,6 @@ tf_em_int_bind(struct tf *tfp,
 		return db_rc[TF_DIR_RX];
 	}
 
-
 	if (!tf_session_is_shared_session(tfs)) {
 		for (i = 0; i < TF_DIR_MAX; i++) {
 			iparms.rm_db = em_db->em_db[i];
@@ -335,11 +332,10 @@ tf_em_int_unbind(struct tf *tfp)
 	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
-	if (rc) {
+	if (rc)
 		return 0;
-	}
-	em_db = (struct em_rm_db *)em_db_ptr;
 
+	em_db = (struct em_rm_db *)em_db_ptr;
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		if (em_db->em_db[i] == NULL)
 			continue;

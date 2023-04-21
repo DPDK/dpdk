@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -296,11 +296,15 @@ tf_dev_p4_get_tcam_slice_info(struct tf *tfp,
 		return rc;
 
 /* Single slice support */
-#define CFA_P4_WC_TCAM_SLICE_SIZE     12
-
+#define CFA_P4_WC_TCAM_SLICE_SIZE   (12)
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		*num_slices_per_row = tfs->wc_num_slices_per_row;
-		if (key_sz > *num_slices_per_row * CFA_P4_WC_TCAM_SLICE_SIZE)
+		if (key_sz <= 1 * CFA_P4_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_1_SLICE_PER_ROW;
+		else if (key_sz <= 2 * CFA_P4_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_2_SLICE_PER_ROW;
+		else if (key_sz <= 4 * CFA_P4_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_4_SLICE_PER_ROW;
+		else
 			return -ENOTSUP;
 	} else { /* for other type of tcam */
 		*num_slices_per_row = 1;

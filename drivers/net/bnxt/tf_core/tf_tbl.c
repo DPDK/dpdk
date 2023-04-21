@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
 /* Truflow Table APIs and supporting code */
 
 #include <rte_common.h>
-
 #include "tf_tbl.h"
 #include "tf_common.h"
 #include "tf_rm.h"
@@ -18,8 +17,8 @@
 
 struct tf;
 
-#define TF_TBL_RM_TO_PTR(new_idx, idx, base, shift) {          \
-		*(new_idx) = (((idx) + (base)) << (shift));    \
+#define TF_TBL_RM_TO_PTR(new_idx, idx, base, shift) {		\
+		*(new_idx) = (((idx) + (base)) << (shift));	\
 }
 
 int
@@ -98,6 +97,7 @@ tf_tbl_unbind(struct tf *tfp)
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TABLE, &tbl_db_ptr);
 	if (rc)
 		return 0;
+
 	tbl_db = (struct tbl_rm_db *)tbl_db_ptr;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
