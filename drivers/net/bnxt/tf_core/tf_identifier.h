@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -212,5 +212,4 @@ int tf_ident_search(struct tf *tfp,
  */
 int tf_ident_get_resc_info(struct tf *tfp,
 			   struct tf_identifier_resource_info *parms);
-
 #endif /* _TF_IDENTIFIER_H_ */

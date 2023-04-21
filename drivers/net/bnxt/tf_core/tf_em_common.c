@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -9,7 +9,6 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-
 #include "tf_core.h"
 #include "tf_util.h"
 #include "tf_common.h"
@@ -20,9 +19,7 @@
 #include "tf_device.h"
 #include "tf_ext_flow_handle.h"
 #include "hcapi_cfa.h"
-
 #include "bnxt.h"
-
 
 /** Invalid table scope id */
 #define TF_TBL_SCOPE_INVALID 0xffffffff
@@ -284,7 +281,6 @@ tf_em_create_key_entry(struct cfa_p4_eem_entry_hdr *result,
 	key_entry->hdr.pointer = result->pointer;
 	memcpy(key_entry->key, in_key, TF_P4_HW_EM_KEY_MAX_SIZE + 4);
 }
-
 
 /**
  * Return the number of page table pages needed to
@@ -908,7 +904,6 @@ tf_em_delete_ext_entry(struct tf *tfp,
 	return tf_delete_eem_entry(tbl_scope_cb, parms);
 }
 
-
 int
 tf_em_ext_common_bind(struct tf *tfp,
 		      struct tf_em_cfg_parms *parms)
@@ -1203,7 +1198,6 @@ int tf_em_ext_map_tbl_scope(struct tf *tfp,
 	gcfg_parms.config = (uint8_t *)data;
 	gcfg_parms.config_mask = (uint8_t *)mask;
 	gcfg_parms.config_sz_in_bytes = sizeof(uint64_t);
-
 
 	rc = tf_msg_set_global_cfg(tfp, &gcfg_parms);
 	if (rc) {

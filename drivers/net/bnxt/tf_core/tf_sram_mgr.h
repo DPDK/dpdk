@@ -303,5 +303,4 @@ const char
  */
 const char
 *tf_sram_bank_2_str(enum tf_sram_bank_id bank_id);
-
 #endif /* _TF_SRAM_MGR_H_ */

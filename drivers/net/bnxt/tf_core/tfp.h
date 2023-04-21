@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -185,7 +185,6 @@ void tfp_spinlock_unlock(struct tfp_spinlock_parms *slock);
  */
 int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
 
-
 /*
  * @ref tfp_cpu_to_le_16
  * @ref tfp_le_to_cpu_16
@@ -232,5 +231,4 @@ int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
  *
  */
 int tfp_get_pf(struct tf *tfp, uint16_t *pf);
-
 #endif /* _TFP_H_ */

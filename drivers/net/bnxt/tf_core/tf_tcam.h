@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -374,5 +374,4 @@ int tf_tcam_get(struct tf *tfp,
  */
 int tf_tcam_get_resc_info(struct tf *tfp,
 			  struct tf_tcam_resource_info *parms);
-
 #endif /* _TF_TCAM_H */

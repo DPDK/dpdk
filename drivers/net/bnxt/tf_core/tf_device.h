@@ -1142,5 +1142,4 @@ extern const struct tf_dev_ops tf_dev_ops_p58;
  */
 extern const struct tf_hcapi_resource_map tf_hcapi_res_map_p4[CFA_RESOURCE_TYPE_P4_LAST + 1];
 extern const struct tf_hcapi_resource_map tf_hcapi_res_map_p58[CFA_RESOURCE_TYPE_P58_LAST + 1];
-
 #endif /* _TF_DEVICE_H_ */

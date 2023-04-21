@@ -63,5 +63,4 @@ ulp_ha_mgr_close(struct bnxt_ulp_context *ulp_ctx);
 int32_t
 ulp_ha_mgr_region_get(struct bnxt_ulp_context *ulp_ctx,
 		      enum ulp_ha_mgr_region *region);
-
 #endif /* _ULP_HA_MGR_H_*/

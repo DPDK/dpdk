@@ -2481,5 +2481,4 @@ struct tf_get_sram_policy_parms {
  */
 int tf_get_sram_policy(struct tf *tfp,
 		       struct tf_get_sram_policy_parms *parms);
-
 #endif /* _TF_CORE_H_ */

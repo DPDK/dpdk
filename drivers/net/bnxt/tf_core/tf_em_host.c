@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -375,7 +375,6 @@ tf_em_ext_alloc(struct tf *tfp,
 	struct em_ext_db *ext_db = NULL;
 	void *ext_ptr = NULL;
 	uint16_t pf;
-
 
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc) {

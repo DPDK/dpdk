@@ -441,5 +441,4 @@ extern struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[];
  * that could be reused by other templates.
  */
 extern uint32_t ulp_glb_template_tbl[];
-
 #endif /* _ULP_TEMPLATE_STRUCT_H_ */

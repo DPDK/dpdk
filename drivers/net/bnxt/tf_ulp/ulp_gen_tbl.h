@@ -167,5 +167,4 @@ int32_t
 ulp_mapper_gen_tbl_hash_entry_add(struct ulp_mapper_gen_tbl_list *tbl_list,
 				  struct ulp_gen_hash_entry_params *hash_entry,
 				  struct ulp_mapper_gen_tbl_entry *gen_tbl_ent);
-
 #endif /* _ULP_EN_TBL_H_ */

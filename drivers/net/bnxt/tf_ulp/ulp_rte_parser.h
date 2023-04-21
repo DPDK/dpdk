@@ -259,5 +259,4 @@ ulp_vendor_vxlan_decap_act_handler(const struct rte_flow_action *action_item,
 int32_t
 ulp_rte_vendor_vxlan_decap_hdr_handler(const struct rte_flow_item *item,
 				       struct ulp_rte_parser_params *params);
-
 #endif /* _ULP_RTE_PARSER_H_ */

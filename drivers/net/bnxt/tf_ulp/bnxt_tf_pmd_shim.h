@@ -25,5 +25,4 @@ uint16_t bnxt_pmd_get_phy_port_id(uint16_t port);
 uint16_t bnxt_pmd_get_vport(uint16_t port);
 enum bnxt_ulp_intf_type bnxt_pmd_get_interface_type(uint16_t port);
 int32_t bnxt_pmd_set_unicast_rxmask(struct rte_eth_dev *eth_dev);
-
 #endif /* _BNXT_TF_PMD_ABSTRACT_H_ */

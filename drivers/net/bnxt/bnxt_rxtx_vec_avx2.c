@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-/* Copyright(c) 2019-2021 Broadcom All rights reserved. */
+/* Copyright(c) 2019-2023 Broadcom All rights reserved. */
 
 #include <inttypes.h>
 #include <stdbool.h>

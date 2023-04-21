@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -20,5 +20,4 @@
 #ifndef TF_SHARED
 #define TF_SHARED 0
 #endif
-
 #endif /* _TF_PROJECT_H_ */

@@ -716,5 +716,4 @@ tf_session_set_if_tbl_db(struct tf *tfp,
 int
 tf_session_get_if_tbl_db(struct tf *tfp,
 			 void **if_tbl_handle);
-
 #endif /* _TF_SESSION_H_ */

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -9,11 +9,9 @@
 #include "tf_core.h"
 #include "stack.h"
 
-
 /**
  * The SRAM Table module provides processing of managed SRAM types.
  */
-
 
 /**
  * @page  tblsram SRAM Table
@@ -99,7 +97,6 @@ int tf_tbl_sram_alloc(struct tf *tfp,
 int tf_tbl_sram_free(struct tf *tfp,
 		     struct tf_tbl_free_parms *parms);
 
-
 /**
  * Configures the requested element by sending a firmware request which
  * then installs it into the device internal structures.
@@ -150,5 +147,4 @@ int tf_tbl_sram_get(struct tf *tfp,
  */
 int tf_tbl_sram_bulk_get(struct tf *tfp,
 			 struct tf_tbl_get_bulk_parms *parms);
-
 #endif /* TF_TBL_SRAM_H */

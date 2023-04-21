@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -8,7 +8,6 @@
 
 #include "tf_core.h"
 #include "tf_session.h"
-
 #include "tf_em_common.h"
 
 #include "hcapi_cfa_defs.h"

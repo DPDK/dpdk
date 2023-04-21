@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -522,5 +522,4 @@ uint32_t ulp_bitmap_notzero(const uint8_t *bitmap, int32_t size);
 
 /* returns 0 if input is power of 2 */
 int32_t ulp_util_is_power_of_2(uint64_t x);
-
 #endif /* _ULP_UTILS_H_ */

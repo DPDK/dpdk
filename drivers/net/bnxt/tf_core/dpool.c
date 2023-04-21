@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 #include <stdio.h>
@@ -55,6 +55,7 @@ static int dpool_move(struct dpool *dpool,
 {
 	uint32_t size;
 	uint32_t i;
+
 	if (DP_IS_FREE(dpool->entry[dst_index].flags)) {
 		size = DP_FLAGS_SIZE(dpool->entry[src_index].flags);
 

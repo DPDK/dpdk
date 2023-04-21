@@ -133,5 +133,4 @@ ulp_mapper_get_shared_fid(struct bnxt_ulp_context *ulp,
 			  uint32_t id,
 			  uint16_t key,
 			  uint32_t *fid);
-
 #endif /* _ULP_MAPPER_H_ */

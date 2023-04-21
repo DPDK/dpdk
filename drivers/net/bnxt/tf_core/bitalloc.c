@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
 #include "bitalloc.h"
 
 #define BITALLOC_MAX_LEVELS 6
-
 
 /* Finds the last bit set plus 1, equivalent to gcc __builtin_fls */
 static int

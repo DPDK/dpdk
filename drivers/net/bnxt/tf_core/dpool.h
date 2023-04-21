@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -305,5 +305,4 @@ void dpool_dump(struct dpool *dpool);
 int dpool_defrag(struct dpool *dpool,
 		 uint32_t entry_size,
 		 uint8_t defrag);
-
 #endif /* _DPOOL_H_ */

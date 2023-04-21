@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -224,5 +224,4 @@ int tf_if_tbl_set(struct tf *tfp,
  */
 int tf_if_tbl_get(struct tf *tfp,
 		  struct tf_if_tbl_get_parms *parms);
-
 #endif /* TF_IF_TBL_TYPE_H */

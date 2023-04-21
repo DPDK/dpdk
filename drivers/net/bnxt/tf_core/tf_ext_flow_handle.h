@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -184,6 +184,4 @@ do {									\
 	type = (((gfid) & TF_HASH_TYPE_GFID_MASK) >>			\
 		TF_HASH_TYPE_GFID_SFT);					\
 } while (0)
-
-
 #endif /* _TF_EXT_FLOW_HANDLE_H_ */

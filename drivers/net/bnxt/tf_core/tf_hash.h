@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -23,5 +23,4 @@ tf_hash_calc_crc32i(uint32_t init, uint8_t *buf, uint32_t len);
  */
 uint32_t
 tf_hash_calc_crc32(uint8_t *buf, uint32_t len);
-
 #endif

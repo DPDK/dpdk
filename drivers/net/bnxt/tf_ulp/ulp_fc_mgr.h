@@ -184,5 +184,4 @@ int32_t ulp_fc_mgr_cntr_parent_flow_set(struct bnxt_ulp_context *ctxt,
 					enum tf_dir dir,
 					uint32_t hw_cntr_id,
 					uint32_t pc_idx);
-
 #endif /* _ULP_FC_MGR_H_ */

@@ -410,5 +410,4 @@ ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt);
  */
 void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
 				    enum bnxt_ulp_shared_session shared);
-
 #endif /* _ULP_FLOW_DB_H_ */

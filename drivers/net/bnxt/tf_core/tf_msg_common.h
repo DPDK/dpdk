@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -40,5 +40,4 @@
 		parms.resp_size = 0;				\
 		parms.resp_data = NULL;				\
 	} while (0)
-
 #endif /* _TF_MSG_COMMON_H_ */

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -162,5 +162,4 @@ ulp_gen_hash_tbl_list_add(struct ulp_gen_hash_tbl *hash_tbl,
 int32_t
 ulp_gen_hash_tbl_list_del(struct ulp_gen_hash_tbl *hash_tbl,
 			  struct ulp_gen_hash_entry_params *entry);
-
 #endif /* _ULP_GEN_HASH_H_ */

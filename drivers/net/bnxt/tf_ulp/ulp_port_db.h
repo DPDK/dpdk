@@ -326,5 +326,4 @@ ulp_port_db_parent_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_phy_port_get(struct bnxt_ulp_context *ulp_ctxt,
 			 uint32_t port_id, uint16_t *phy_port);
-
 #endif /* _ULP_PORT_DB_H_ */

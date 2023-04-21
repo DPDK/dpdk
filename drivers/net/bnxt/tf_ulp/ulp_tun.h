@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -57,5 +57,4 @@ ulp_tunnel_offload_entry_clear(struct bnxt_tun_cache_entry *tun_tbl,
 
 int32_t
 ulp_tunnel_offload_process(struct ulp_rte_parser_params *params);
-
 #endif

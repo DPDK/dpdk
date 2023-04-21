@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 #ifndef _STACK_H_
@@ -113,5 +113,4 @@ int stack_pop(struct stack *st, uint32_t *x);
  *    none
  */
 void stack_dump(struct stack *st);
-
 #endif /* _STACK_H_ */

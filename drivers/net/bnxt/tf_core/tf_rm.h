@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -43,7 +43,6 @@ struct tf;
  * support module, not called directly.
  */
 
-
 /**
  * RM Element configuration enumeration. Used by the Device to
  * indicate how the RM elements the DB consists off, are to be
@@ -75,8 +74,6 @@ enum tf_rm_elem_cfg_type {
 	 * HCAPI type.  Child accesses the parent db.
 	 */
 	TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-
-
 	TF_RM_TYPE_MAX
 };
 
@@ -581,5 +578,4 @@ tf_rm_check_indexes_in_range(struct tf_rm_check_indexes_in_range_parms *parms);
  */
 int
 tf_rm_get_slices(struct tf_rm_get_slices_parms *parms);
-
 #endif /* TF_RM_NEW_H_ */

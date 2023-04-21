@@ -317,5 +317,4 @@ bnxt_ulp_cntxt_num_shared_clients_get(struct bnxt_ulp_context *ulp_ctx);
 
 struct bnxt_flow_app_tun_ent *
 bnxt_ulp_cntxt_ptr2_app_tun_list_get(struct bnxt_ulp_context *ulp);
-
 #endif /* _BNXT_ULP_H_ */

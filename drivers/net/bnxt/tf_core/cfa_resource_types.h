@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -256,5 +256,4 @@
 /* Table Scope */
 #define CFA_RESOURCE_TYPE_P4_TBL_SCOPE           0x22UL
 #define CFA_RESOURCE_TYPE_P4_LAST               CFA_RESOURCE_TYPE_P4_TBL_SCOPE
-
 #endif /* _CFA_RESOURCE_TYPES_H_ */
