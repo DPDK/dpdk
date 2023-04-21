@@ -150,10 +150,14 @@ bnxt_check_pkt_needs_ts(struct rte_mbuf *m)
 	struct rte_ether_hdr _eth_hdr;
 	uint16_t eth_type, proto;
 	uint32_t off = 0;
-
+	/*
+	 * Check that the received packet is a eCPRI packet
+	 */
 	eth_hdr = rte_pktmbuf_read(m, off, sizeof(_eth_hdr), &_eth_hdr);
 	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 	off += sizeof(*eth_hdr);
+	if (eth_type == RTE_ETHER_TYPE_ECPRI)
+		return true;
 	/* Check for single tagged and double tagged VLANs */
 	if (eth_type == RTE_ETHER_TYPE_VLAN) {
 		const struct rte_vlan_hdr *vh;
@@ -164,6 +168,8 @@ bnxt_check_pkt_needs_ts(struct rte_mbuf *m)
 			return false;
 		off += sizeof(*vh);
 		proto = rte_be_to_cpu_16(vh->eth_proto);
+		if (proto == RTE_ETHER_TYPE_ECPRI)
+			return true;
 		if (proto == RTE_ETHER_TYPE_VLAN) {
 			const struct rte_vlan_hdr *vh;
 			struct rte_vlan_hdr vh_copy;
@@ -173,6 +179,8 @@ bnxt_check_pkt_needs_ts(struct rte_mbuf *m)
 				return false;
 			off += sizeof(*vh);
 			proto = rte_be_to_cpu_16(vh->eth_proto);
+			if (proto == RTE_ETHER_TYPE_ECPRI)
+				return true;
 		}
 	}
 	return false;

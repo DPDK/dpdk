@@ -258,7 +258,8 @@ uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 {
 	uint16_t hwrm_type = 0;
 
-	if (rte_type & RTE_ETH_RSS_IPV4)
+	if ((rte_type & RTE_ETH_RSS_IPV4) ||
+	    (rte_type & RTE_ETH_RSS_ECPRI))
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
 	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
@@ -277,7 +278,7 @@ uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl)
 {
 	uint32_t mode = HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_DEFAULT;
-	bool l3 = (hash_f & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6));
+	bool l3 = (hash_f & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_ECPRI));
 	bool l4 = (hash_f & (RTE_ETH_RSS_NONFRAG_IPV4_UDP |
 			     RTE_ETH_RSS_NONFRAG_IPV6_UDP |
 			     RTE_ETH_RSS_NONFRAG_IPV4_TCP |

@@ -456,6 +456,7 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 
 		bnxt_ulp_vxlan_ip_port_set(ulp_ctx, info[i].vxlan_ip_port);
 		bnxt_ulp_vxlan_port_set(ulp_ctx, info[i].vxlan_port);
+		bnxt_ulp_ecpri_udp_port_set(ulp_ctx, info[i].ecpri_udp_port);
 
 		/* set the shared session support from firmware */
 		fw = info[i].upgrade_fw_update;
@@ -477,6 +478,29 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 	}
 
 	return 0;
+}
+
+/* Function to retrieve the vxlan_ip (ecpri) port from the context. */
+int
+bnxt_ulp_ecpri_udp_port_set(struct bnxt_ulp_context *ulp_ctx,
+			   uint32_t ecpri_udp_port)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->ecpri_udp_port = ecpri_udp_port;
+
+	return 0;
+}
+
+/* Function to retrieve the vxlan_ip (ecpri) port from the context. */
+unsigned int
+bnxt_ulp_ecpri_udp_port_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return (unsigned int)ulp_ctx->cfg_data->ecpri_udp_port;
 }
 
 /* Function to set the number for vxlan_ip (custom vxlan) port into the context */

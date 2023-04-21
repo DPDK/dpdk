@@ -2405,6 +2405,20 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 		tunnel_type =
 			HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GENEVE;
 		break;
+	case RTE_ETH_TUNNEL_TYPE_ECPRI:
+		if (bp->ecpri_port_cnt) {
+			PMD_DRV_LOG(ERR, "Tunnel Port %d already programmed\n",
+				udp_tunnel->udp_port);
+			if (bp->ecpri_port != udp_tunnel->udp_port) {
+				PMD_DRV_LOG(ERR, "Only one port allowed\n");
+				return -ENOSPC;
+			}
+			bp->ecpri_port_cnt++;
+			return 0;
+		}
+		tunnel_type =
+			HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_ECPRI;
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "Tunnel type is not supported\n");
 		return -ENOTSUP;
@@ -2422,6 +2436,10 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 	if (tunnel_type ==
 	    HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GENEVE)
 		bp->geneve_port_cnt++;
+
+	if (tunnel_type ==
+	    HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_ECPRI)
+		bp->ecpri_port_cnt++;
 
 	return rc;
 }
@@ -2473,6 +2491,23 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 		tunnel_type =
 			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GENEVE;
 		port = bp->geneve_fw_dst_port_id;
+		break;
+	case RTE_ETH_TUNNEL_TYPE_ECPRI:
+		if (!bp->ecpri_port_cnt) {
+			PMD_DRV_LOG(ERR, "No Tunnel port configured yet\n");
+			return -EINVAL;
+		}
+		if (bp->ecpri_port != udp_tunnel->udp_port) {
+			PMD_DRV_LOG(ERR, "Req Port: %d. Configured port: %d\n",
+				udp_tunnel->udp_port, bp->ecpri_port);
+			return -EINVAL;
+		}
+		if (--bp->ecpri_port_cnt)
+			return 0;
+
+		tunnel_type =
+			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_ECPRI;
+		port = bp->ecpri_fw_dst_port_id;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Tunnel type is not supported\n");

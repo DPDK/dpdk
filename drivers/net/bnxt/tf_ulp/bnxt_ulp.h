@@ -113,6 +113,7 @@ struct bnxt_ulp_data {
 	struct bnxt_flow_app_tun_ent	app_tun[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
 	uint32_t			vxlan_port;
 	uint32_t			vxlan_ip_port;
+	uint32_t			ecpri_udp_port;
 	uint8_t				hu_reg_state;
 	uint8_t				hu_reg_cnt;
 	uint32_t			hu_session_type;
@@ -367,11 +368,18 @@ bnxt_ulp_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
 			uint32_t vxlan_port);
 unsigned int
 bnxt_ulp_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx);
+
 int
 bnxt_ulp_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
 			   uint32_t vxlan_ip_port);
 unsigned int
 bnxt_ulp_vxlan_ip_port_get(struct bnxt_ulp_context *ulp_ctx);
+
+int
+bnxt_ulp_ecpri_udp_port_set(struct bnxt_ulp_context *ulp_ctx,
+			    uint32_t ecpri_udp_port);
+unsigned int
+bnxt_ulp_ecpri_udp_port_get(struct bnxt_ulp_context *ulp_ctx);
 
 int32_t
 bnxt_flow_meter_init(struct bnxt *bp);
@@ -391,5 +399,4 @@ bnxt_ulp_ha_reg_cnt_get(struct bnxt_ulp_context *ulp_ctx);
 
 struct tf*
 bnxt_ulp_bp_tfp_get(struct bnxt *bp, enum bnxt_ulp_session_type type);
-
 #endif /* _BNXT_ULP_H_ */

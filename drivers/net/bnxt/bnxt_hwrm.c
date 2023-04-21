@@ -2969,6 +2969,10 @@ bnxt_free_tunnel_ports(struct bnxt *bp)
 	if (bp->geneve_port_cnt)
 		bnxt_hwrm_tunnel_dst_port_free(bp, bp->geneve_fw_dst_port_id,
 			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GENEVE);
+
+	if (bp->ecpri_port_cnt)
+		bnxt_hwrm_tunnel_dst_port_free(bp, bp->ecpri_fw_dst_port_id,
+			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_ECPRI);
 }
 
 void bnxt_free_all_hwrm_resources(struct bnxt *bp)
@@ -4075,6 +4079,12 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 			rte_le_to_cpu_16(resp->tunnel_dst_port_id);
 		bp->geneve_port = port;
 		break;
+	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_ECPRI:
+		bp->ecpri_fw_dst_port_id =
+			rte_le_to_cpu_16(resp->tunnel_dst_port_id);
+		bp->ecpri_port = port;
+		bp->ecpri_upar_in_use = resp->upar_in_use;
+		break;
 	default:
 		break;
 	}
@@ -4140,6 +4150,13 @@ int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 	    HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GENEVE) {
 		bp->geneve_port = 0;
 		bp->geneve_port_cnt = 0;
+	}
+
+	if (tunnel_type ==
+	    HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_ECPRI) {
+		bp->ecpri_port = 0;
+		bp->ecpri_upar_in_use = 0;
+		bp->ecpri_port_cnt = 0;
 	}
 
 	return rc;

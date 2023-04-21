@@ -3298,6 +3298,11 @@ ulp_mapper_global_res_free(struct bnxt_ulp_context *ulp __rte_unused,
 		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
 						&handle);
 		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_ECPRI:
+		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI;
+		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
+						&handle);
+		break;
 	default:
 		rc = -EINVAL;
 		BNXT_TF_DBG(ERR, "Invalid ulp global resource type %d\n",
@@ -3362,6 +3367,19 @@ ulp_mapper_global_register_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			return rc;
 		}
 		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_ECPRI:
+		tmp_data = ulp_blob_data_get(&data, &data_len);
+		udp_port = *((uint16_t *)tmp_data);
+		udp_port = tfp_be_to_cpu_16(udp_port);
+		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI;
+
+		rc = bnxt_pmd_global_tunnel_set(parms->port_id, ttype,
+						udp_port, &handle);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Unable to set eCPRI UDP port\n");
+			return rc;
+		}
+	break;
 	default:
 		rc = -EINVAL;
 		BNXT_TF_DBG(ERR, "Invalid ulp global resource type %d\n",

@@ -143,7 +143,7 @@ bnxt_ulp_rte_parser_hdr_parse(const struct rte_flow_item pattern[],
 			hdr_info = &ulp_vendor_hdr_info[item->type -
 				BNXT_RTE_FLOW_ITEM_TYPE_END];
 		} else {
-			if (item->type > RTE_FLOW_ITEM_TYPE_HIGIG2)
+			if (item->type > RTE_FLOW_ITEM_TYPE_ECPRI)
 				goto hdr_parser_error;
 			hdr_info = &ulp_hdr_info[item->type];
 		}
@@ -612,6 +612,10 @@ ulp_rte_l2_proto_type_update(struct ulp_rte_parser_params *param,
 	} else if (type == tfp_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
 		has_vlan_mask = 1;
 		has_vlan = 1;
+	} else if (type == tfp_cpu_to_be_16(RTE_ETHER_TYPE_ECPRI)) {
+		/* Update the hdr_bitmap with eCPRI */
+		ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				BNXT_ULP_HDR_BIT_O_ECPRI);
 	} else if (type == tfp_cpu_to_be_16(ULP_RTE_ETHER_TYPE_ROE)) {
 		/* Update the hdr_bitmap with RoE */
 		ULP_BITMAP_SET(param->hdr_fp_bit.bits,
@@ -1657,6 +1661,120 @@ ulp_rte_icmp6_hdr_handler(const struct rte_flow_item *item,
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_ICMP);
 	else
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_ICMP);
+	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the parsing of RTE Flow item ECPRI Header. */
+int32_t
+ulp_rte_ecpri_hdr_handler(const struct rte_flow_item *item,
+			  struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_item_ecpri *ecpri_spec = item->spec;
+	const struct rte_flow_item_ecpri *ecpri_mask = item->mask;
+	struct rte_flow_item_ecpri l_ecpri_spec, l_ecpri_mask;
+	struct rte_flow_item_ecpri *p_ecpri_spec = &l_ecpri_spec;
+	struct rte_flow_item_ecpri *p_ecpri_mask = &l_ecpri_mask;
+	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	uint32_t idx = 0, cnt;
+	uint32_t size;
+
+	if (ulp_rte_prsr_fld_size_validate(params, &idx,
+					   BNXT_ULP_PROTO_HDR_ECPRI_NUM)) {
+		BNXT_TF_DBG(ERR, "Error parsing protocol header\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	/* Figure out if eCPRI is within L4(UDP), unsupported, for now */
+	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
+	if (cnt >= 1) {
+		BNXT_TF_DBG(ERR, "Parse Err: L4 header stack >= 2 not supported\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	if (!ecpri_spec || !ecpri_mask)
+		goto parser_set_ecpri_hdr_bit;
+
+	memcpy(p_ecpri_spec, ecpri_spec, sizeof(*ecpri_spec));
+	memcpy(p_ecpri_mask, ecpri_mask, sizeof(*ecpri_mask));
+
+	p_ecpri_spec->hdr.common.u32 = rte_be_to_cpu_32(p_ecpri_spec->hdr.common.u32);
+	p_ecpri_mask->hdr.common.u32 = rte_be_to_cpu_32(p_ecpri_mask->hdr.common.u32);
+
+	/*
+	 * Init eCPRI spec+mask to correct defaults, also clear masks of fields
+	 * we ignore in the TCAM.
+	 */
+
+	l_ecpri_spec.hdr.common.size = 0;
+	l_ecpri_spec.hdr.common.c = 0;
+	l_ecpri_spec.hdr.common.res = 0;
+	l_ecpri_spec.hdr.common.revision = 1;
+	l_ecpri_mask.hdr.common.size = 0;
+	l_ecpri_mask.hdr.common.c = 1;
+	l_ecpri_mask.hdr.common.res = 0;
+	l_ecpri_mask.hdr.common.revision = 0xf;
+
+	switch (p_ecpri_spec->hdr.common.type) {
+	case RTE_ECPRI_MSG_TYPE_IQ_DATA:
+		l_ecpri_mask.hdr.type0.seq_id = 0;
+		break;
+
+	case RTE_ECPRI_MSG_TYPE_BIT_SEQ:
+		l_ecpri_mask.hdr.type1.seq_id = 0;
+		break;
+
+	case RTE_ECPRI_MSG_TYPE_RTC_CTRL:
+		l_ecpri_mask.hdr.type2.seq_id = 0;
+		break;
+
+	case RTE_ECPRI_MSG_TYPE_GEN_DATA:
+		l_ecpri_mask.hdr.type3.seq_id = 0;
+		break;
+
+	case RTE_ECPRI_MSG_TYPE_RM_ACC:
+		l_ecpri_mask.hdr.type4.rr = 0;
+		l_ecpri_mask.hdr.type4.rw = 0;
+		l_ecpri_mask.hdr.type4.rma_id = 0;
+		break;
+
+	case RTE_ECPRI_MSG_TYPE_DLY_MSR:
+		l_ecpri_spec.hdr.type5.act_type = 0;
+		break;
+
+	case RTE_ECPRI_MSG_TYPE_RMT_RST:
+		l_ecpri_spec.hdr.type6.rst_op = 0;
+		break;
+
+	case RTE_ECPRI_MSG_TYPE_EVT_IND:
+		l_ecpri_spec.hdr.type7.evt_type = 0;
+		l_ecpri_spec.hdr.type7.seq = 0;
+		l_ecpri_spec.hdr.type7.number = 0;
+		break;
+
+	default:
+		break;
+	}
+
+	p_ecpri_spec->hdr.common.u32 = rte_cpu_to_be_32(p_ecpri_spec->hdr.common.u32);
+	p_ecpri_mask->hdr.common.u32 = rte_cpu_to_be_32(p_ecpri_mask->hdr.common.u32);
+
+	/* Type */
+	size = sizeof(((struct rte_flow_item_ecpri *)NULL)->hdr.common.u32);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(p_ecpri_spec, hdr.common.u32),
+			      ulp_deference_struct(p_ecpri_mask, hdr.common.u32),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	/* PC/RTC/MSR_ID */
+	size = sizeof(((struct rte_flow_item_ecpri *)NULL)->hdr.dummy[0]);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(p_ecpri_spec, hdr.dummy),
+			      ulp_deference_struct(p_ecpri_mask, hdr.dummy),
+			      ULP_PRSR_ACT_DEFAULT);
+
+parser_set_ecpri_hdr_bit:
+	/* Update the hdr_bitmap with eCPRI */
+	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_ECPRI);
 	return BNXT_TF_RC_SUCCESS;
 }
 

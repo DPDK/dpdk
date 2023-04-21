@@ -19,6 +19,7 @@ struct bnxt_global_tunnel_info {
 enum bnxt_global_register_tunnel_type {
 	BNXT_GLOBAL_REGISTER_TUNNEL_UNUSED = 0,
 	BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN,
+	BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI,
 	BNXT_GLOBAL_REGISTER_TUNNEL_MAX
 };
 

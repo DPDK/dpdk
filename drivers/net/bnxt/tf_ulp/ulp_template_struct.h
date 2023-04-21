@@ -29,6 +29,7 @@
 #define BNXT_ULP_PROTO_HDR_VXLAN_NUM	4
 #define BNXT_ULP_PROTO_HDR_GRE_NUM	2
 #define BNXT_ULP_PROTO_HDR_ICMP_NUM	5
+#define BNXT_ULP_PROTO_HDR_ECPRI_NUM	2
 #define BNXT_ULP_PROTO_HDR_MAX		128
 #define BNXT_ULP_PROTO_HDR_ENCAP_MAX	64
 #define BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX	1
@@ -364,6 +365,7 @@ struct bnxt_ulp_app_capabilities_info {
 	uint8_t				app_id;
 	uint32_t			vxlan_port;
 	uint32_t			vxlan_ip_port;
+	uint32_t			ecpri_udp_port;
 	enum bnxt_ulp_device_id		device_id;
 	uint32_t			upgrade_fw_update;
 	uint8_t				ha_pool_id;

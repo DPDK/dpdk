@@ -408,6 +408,10 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
 	.proto_hdr_func          = NULL
 	},
+	[RTE_FLOW_ITEM_TYPE_ECPRI] = {
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_ecpri_hdr_handler
+	},
 	[RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
 	.proto_hdr_func          = ulp_rte_port_hdr_handler
