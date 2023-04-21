@@ -364,8 +364,7 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				 struct tf_rm_element_cfg *cfg,
 				 uint16_t *alloc_cnt,
 				 uint16_t num_elements,
-				 uint16_t *req_cnt,
-				 bool shared_session)
+				 uint16_t *req_cnt)
 {
 	int parent, child;
 	const char *type_str = NULL;
@@ -376,11 +375,7 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 
 		/* If I am a parent */
 		if (cfg[parent].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
-			uint8_t p_slices = 1;
-
-			/* Shared session doesn't support slices */
-			if (!shared_session)
-				p_slices = cfg[parent].slices;
+			uint8_t p_slices = cfg[parent].slices;
 
 			RTE_ASSERT(p_slices);
 
@@ -402,11 +397,8 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				    TF_RM_ELEM_CFG_HCAPI_BA_CHILD &&
 				    cfg[child].parent_subtype == parent &&
 				    alloc_cnt[child]) {
-					uint8_t c_slices = 1;
+					uint8_t c_slices = cfg[child].slices;
 					uint16_t cnt = 0;
-
-					if (!shared_session)
-						c_slices = cfg[child].slices;
 
 					RTE_ASSERT(c_slices);
 
@@ -429,7 +421,7 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				}
 			}
 			/* Save the parent count to be requested */
-			req_cnt[parent] = combined_cnt;
+			req_cnt[parent] = combined_cnt * 2;
 		}
 	}
 	return 0;
@@ -452,7 +444,6 @@ tf_rm_create_db(struct tf *tfp,
 	struct tf_rm_new_db *rm_db;
 	struct tf_rm_element *db;
 	uint32_t pool_size;
-	bool shared_session = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -505,15 +496,12 @@ tf_rm_create_db(struct tf *tfp,
 	tfp_memcpy(req_cnt, parms->alloc_cnt,
 		   parms->num_elements * sizeof(uint16_t));
 
-	shared_session = tf_session_is_shared_session(tfs);
-
 	/* Update the req_cnt based upon the element configuration
 	 */
 	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
 					 parms->alloc_cnt,
 					 parms->num_elements,
-					 req_cnt,
-					 shared_session);
+					 req_cnt);
 
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the
@@ -733,7 +721,6 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 	struct tf_rm_new_db *rm_db;
 	struct tf_rm_element *db;
 	uint32_t pool_size;
-	bool shared_session = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -763,15 +750,12 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 	tfp_memcpy(req_cnt, parms->alloc_cnt,
 		   parms->num_elements * sizeof(uint16_t));
 
-	shared_session = tf_session_is_shared_session(tfs);
-
 	/* Update the req_cnt based upon the element configuration
 	 */
 	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
 					 parms->alloc_cnt,
 					 parms->num_elements,
-					 req_cnt,
-					 shared_session);
+					 req_cnt);
 
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the

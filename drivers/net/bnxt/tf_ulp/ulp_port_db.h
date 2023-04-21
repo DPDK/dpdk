@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -11,6 +11,7 @@
 #define BNXT_PORT_DB_MAX_INTF_LIST		256
 #define BNXT_PORT_DB_MAX_FUNC			2048
 #define BNXT_ULP_FREE_PARIF_BASE		11
+#define BNXT_ULP_META_VF_FLAG			0x1000
 
 enum bnxt_ulp_svif_type {
 	BNXT_ULP_DRV_FUNC_SVIF = 0,
@@ -51,6 +52,7 @@ struct ulp_func_if_info {
 	uint8_t			func_parent_mac[RTE_ETHER_ADDR_LEN];
 	uint16_t		phy_port_id;
 	uint16_t		ifindex;
+	uint16_t		vf_meta_data;
 };
 
 /* Structure for the Port database resource information. */
@@ -58,6 +60,7 @@ struct ulp_interface_info {
 	enum bnxt_ulp_intf_type	type;
 	uint16_t		drv_func_id;
 	uint16_t		vf_func_id;
+	uint8_t			type_is_pf;
 };
 
 struct ulp_phy_port_info {
@@ -109,8 +112,8 @@ int32_t	ulp_port_db_deinit(struct bnxt_ulp_context *ulp_ctxt);
  *
  * Returns 0 on success or negative number on failure.
  */
-int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
-					 struct rte_eth_dev *eth_dev);
+int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
+				struct rte_eth_dev *eth_dev);
 
 /*
  * Api to get the ulp ifindex for a given device port.
@@ -166,7 +169,6 @@ ulp_port_db_svif_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_spif_get(struct bnxt_ulp_context *ulp_ctxt,
 		     uint32_t ifindex, uint32_t dir, uint16_t *spif);
-
 
 /*
  * Api to get the parif for a given ulp ifindex.

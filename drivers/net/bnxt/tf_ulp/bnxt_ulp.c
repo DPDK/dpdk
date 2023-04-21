@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -13,6 +13,7 @@
 #include "bnxt.h"
 #include "bnxt_ulp.h"
 #include "bnxt_tf_common.h"
+#include "hsi_struct_def_dpdk.h"
 #include "tf_core.h"
 #include "tf_ext_flow_handle.h"
 
@@ -26,6 +27,7 @@
 #include "ulp_tun.h"
 #include "ulp_ha_mgr.h"
 #include "bnxt_tf_pmd_shim.h"
+#include "ulp_template_db_tbl.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -91,6 +93,17 @@ bnxt_ulp_app_cap_list_get(uint32_t *num_entries)
 	return ulp_app_cap_info_list;
 }
 
+struct bnxt_ulp_shared_act_info *
+bnxt_ulp_shared_act_info_get(uint32_t *num_entries)
+{
+	if (!num_entries)
+		return NULL;
+
+	*num_entries = BNXT_ULP_GEN_TBL_MAX_SZ;
+
+	return ulp_shared_act_info;
+}
+
 static struct bnxt_ulp_resource_resv_info *
 bnxt_ulp_app_resource_resv_list_get(uint32_t *num_entries)
 {
@@ -122,6 +135,7 @@ static int32_t
 bnxt_ulp_named_resources_calc(struct bnxt_ulp_context *ulp_ctx,
 			      struct bnxt_ulp_glb_resource_info *info,
 			      uint32_t num,
+			      enum bnxt_ulp_session_type stype,
 			      struct tf_session_resources *res)
 {
 	uint32_t dev_id = BNXT_ULP_DEVICE_ID_LAST, res_type, i;
@@ -149,6 +163,11 @@ bnxt_ulp_named_resources_calc(struct bnxt_ulp_context *ulp_ctx,
 	for (i = 0; i < num; i++) {
 		if (dev_id != info[i].device_id || app_id != info[i].app_id)
 			continue;
+		/* check to see if the session type matches only then include */
+		if ((stype || info[i].session_type) &&
+		    !(info[i].session_type & stype))
+			continue;
+
 		dir = info[i].direction;
 		res_type = info[i].resource_type;
 
@@ -179,6 +198,7 @@ static int32_t
 bnxt_ulp_unnamed_resources_calc(struct bnxt_ulp_context *ulp_ctx,
 				struct bnxt_ulp_resource_resv_info *info,
 				uint32_t num,
+				enum bnxt_ulp_session_type stype,
 				struct tf_session_resources *res)
 {
 	uint32_t dev_id, res_type, i;
@@ -206,6 +226,12 @@ bnxt_ulp_unnamed_resources_calc(struct bnxt_ulp_context *ulp_ctx,
 	for (i = 0; i < num; i++) {
 		if (app_id != info[i].app_id || dev_id != info[i].device_id)
 			continue;
+
+		/* check to see if the session type matches only then include */
+		if ((stype || info[i].session_type) &&
+		    !(info[i].session_type & stype))
+			continue;
+
 		dir = info[i].direction;
 		res_type = info[i].resource_type;
 
@@ -231,6 +257,7 @@ bnxt_ulp_unnamed_resources_calc(struct bnxt_ulp_context *ulp_ctx,
 
 static int32_t
 bnxt_ulp_tf_resources_get(struct bnxt_ulp_context *ulp_ctx,
+			  enum bnxt_ulp_session_type stype,
 			  struct tf_session_resources *res)
 {
 	struct bnxt_ulp_resource_resv_info *unnamed = NULL;
@@ -242,13 +269,18 @@ bnxt_ulp_tf_resources_get(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
+	/* use DEFAULT_NON_HA instead of DEFAULT resources if HA is disabled */
+	if (ULP_APP_HA_IS_DYNAMIC(ulp_ctx))
+		stype = ulp_ctx->cfg_data->def_session_type;
+
 	unnamed = bnxt_ulp_resource_resv_list_get(&unum);
 	if (unnamed == NULL) {
 		BNXT_TF_DBG(ERR, "Unable to get resource resv list.\n");
 		return -EINVAL;
 	}
 
-	rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, res);
+	rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, stype,
+					     res);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Unable to calc resources for session.\n");
 
@@ -257,6 +289,7 @@ bnxt_ulp_tf_resources_get(struct bnxt_ulp_context *ulp_ctx,
 
 static int32_t
 bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
+					 enum bnxt_ulp_session_type stype,
 					 struct tf_session_resources *res)
 {
 	struct bnxt_ulp_resource_resv_info *unnamed;
@@ -272,6 +305,10 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 	/* Make sure the resources are zero before accumulating. */
 	memset(res, 0, sizeof(struct tf_session_resources));
 
+	if (bnxt_ulp_cntxt_ha_enabled(ulp_ctx) &&
+	    stype == BNXT_ULP_SESSION_TYPE_SHARED)
+		stype = ulp_ctx->cfg_data->hu_session_type;
+
 	/*
 	 * Shared resources are comprised of both named and unnamed resources.
 	 * First get the unnamed counts, and then add the named to the result.
@@ -282,9 +319,11 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 		BNXT_TF_DBG(ERR, "Unable to get shared resource resv list.\n");
 		return -EINVAL;
 	}
-	rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, res);
+	rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, stype,
+					     res);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to calc resources for shared session.\n");
+		BNXT_TF_DBG(ERR,
+			    "Unable to calc resources for shared session.\n");
 		return -EINVAL;
 	}
 
@@ -294,7 +333,7 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 		BNXT_TF_DBG(ERR, "Unable to get app global resource list\n");
 		return -EINVAL;
 	}
-	rc = bnxt_ulp_named_resources_calc(ulp_ctx, named, nnum, res);
+	rc = bnxt_ulp_named_resources_calc(ulp_ctx, named, nnum, stype, res);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Unable to calc named resources\n");
 
@@ -356,17 +395,127 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 	return 0;
 }
 
+/* Function to set the number for vxlan_ip (custom vxlan) port into the context */
+int
+bnxt_ulp_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
+			   uint32_t vxlan_ip_port)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->vxlan_ip_port = vxlan_ip_port;
+
+	return 0;
+}
+
+/* Function to retrieve the vxlan_ip (custom vxlan) port from the context. */
+unsigned int
+bnxt_ulp_vxlan_ip_port_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return (unsigned int)ulp_ctx->cfg_data->vxlan_ip_port;
+}
+
+/* Function to set the number for vxlan port into the context */
+int
+bnxt_ulp_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
+			uint32_t vxlan_port)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->vxlan_port = vxlan_port;
+
+	return 0;
+}
+
+/* Function to retrieve the vxlan port from the context. */
+unsigned int
+bnxt_ulp_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return (unsigned int)ulp_ctx->cfg_data->vxlan_port;
+}
+
+static inline uint32_t
+bnxt_ulp_session_idx_get(enum bnxt_ulp_session_type session_type) {
+	if (session_type & BNXT_ULP_SESSION_TYPE_SHARED)
+		return 1;
+	else if (session_type & BNXT_ULP_SESSION_TYPE_SHARED_WC)
+		return 2;
+	return 0;
+}
+
+/* Function to set the tfp session details in session */
+static int32_t
+bnxt_ulp_session_tfp_set(struct bnxt_ulp_session_state *session,
+			 enum bnxt_ulp_session_type session_type,
+			 struct tf *tfp)
+{
+	uint32_t idx = bnxt_ulp_session_idx_get(session_type);
+	int32_t rc = 0;
+
+	if (!session->session_opened[idx]) {
+		session->g_tfp[idx] = rte_zmalloc("bnxt_ulp_session_tfp",
+						  sizeof(struct tf), 0);
+		if (!session->g_tfp[idx]) {
+			BNXT_TF_DBG(DEBUG, "Failed to alloc session tfp\n");
+			return -ENOMEM;
+		}
+		session->g_tfp[idx]->session  = tfp->session;
+		session->session_opened[idx] = 1;
+	}
+	return rc;
+}
+
+/* Function to get the tfp session details in session */
+static struct tf_session_info *
+bnxt_ulp_session_tfp_get(struct bnxt_ulp_session_state *session,
+			 enum bnxt_ulp_session_type session_type)
+{
+	uint32_t idx = bnxt_ulp_session_idx_get(session_type);
+
+	if (session->session_opened[idx])
+		return session->g_tfp[idx]->session;
+	return NULL;
+}
+
+static uint32_t
+bnxt_ulp_session_is_open(struct bnxt_ulp_session_state *session,
+			 enum bnxt_ulp_session_type session_type)
+{
+	uint32_t idx = bnxt_ulp_session_idx_get(session_type);
+
+	return session->session_opened[idx];
+}
+
+/* Function to reset the tfp session details in session */
+static void
+bnxt_ulp_session_tfp_reset(struct bnxt_ulp_session_state *session,
+			   enum bnxt_ulp_session_type session_type)
+{
+	uint32_t idx = bnxt_ulp_session_idx_get(session_type);
+
+	if (session->session_opened[idx]) {
+		session->session_opened[idx] = 0;
+		rte_free(session->g_tfp[idx]);
+		session->g_tfp[idx] = NULL;
+	}
+}
+
 static void
 ulp_ctx_shared_session_close(struct bnxt *bp,
+			     enum bnxt_ulp_session_type session_type,
 			     struct bnxt_ulp_session_state *session)
 {
 	struct tf *tfp;
 	int32_t rc;
 
-	if (!bnxt_ulp_cntxt_shared_session_enabled(bp->ulp_ctx))
-		return;
-
-	tfp = bnxt_ulp_cntxt_shared_tfp_get(bp->ulp_ctx);
+	tfp = bnxt_ulp_cntxt_tfp_get(bp->ulp_ctx, session_type);
 	if (!tfp) {
 		/*
 		 * Log it under debug since this is likely a case of the
@@ -380,29 +529,26 @@ ulp_ctx_shared_session_close(struct bnxt *bp,
 	if (rc)
 		BNXT_TF_DBG(ERR, "Failed to close the shared session rc=%d.\n",
 			    rc);
-	(void)bnxt_ulp_cntxt_shared_tfp_set(bp->ulp_ctx, NULL);
-
-	session->g_shared_tfp.session = NULL;
+	(void)bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, session_type, NULL);
+	bnxt_ulp_session_tfp_reset(session, session_type);
 }
 
 static int32_t
 ulp_ctx_shared_session_open(struct bnxt *bp,
+			    enum bnxt_ulp_session_type session_type,
 			    struct bnxt_ulp_session_state *session)
 {
 	struct rte_eth_dev *ethdev = bp->eth_dev;
 	struct tf_session_resources *resources;
 	struct tf_open_session_parms parms;
-	size_t copy_nbytes;
+	size_t nb;
 	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
 	int32_t	rc = 0;
 	uint8_t app_id;
-
-	/* only perform this if shared session is enabled. */
-	if (!bnxt_ulp_cntxt_shared_session_enabled(bp->ulp_ctx))
-		return 0;
+	struct tf *tfp;
+	uint8_t pool_id;
 
 	memset(&parms, 0, sizeof(parms));
-
 	rc = rte_eth_dev_get_name_by_port(ethdev->data->port_id,
 					  parms.ctrl_chan_name);
 	if (rc) {
@@ -416,21 +562,39 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 	 * Need to account for size of ctrl_chan_name and 1 extra for Null
 	 * terminator
 	 */
-	copy_nbytes = sizeof(parms.ctrl_chan_name) -
-		strlen(parms.ctrl_chan_name) - 1;
+	nb = sizeof(parms.ctrl_chan_name) - strlen(parms.ctrl_chan_name) - 1;
 
 	/*
 	 * Build the ctrl_chan_name with shared token.
 	 * When HA is enabled, the WC TCAM needs extra management by the core,
 	 * so add the wc_tcam string to the control channel.
 	 */
-	if (bnxt_ulp_cntxt_ha_enabled(bp->ulp_ctx))
-		strncat(parms.ctrl_chan_name, "-tf_shared-wc_tcam",
-			copy_nbytes);
-	else
-		strncat(parms.ctrl_chan_name, "-tf_shared", copy_nbytes);
+	pool_id = bp->ulp_ctx->cfg_data->ha_pool_id;
+	if (!bnxt_ulp_cntxt_multi_shared_session_enabled(bp->ulp_ctx)) {
+		if (bnxt_ulp_cntxt_ha_enabled(bp->ulp_ctx))
+			strncat(parms.ctrl_chan_name, "-tf_shared-wc_tcam", nb);
+		else
+			strncat(parms.ctrl_chan_name, "-tf_shared", nb);
+	} else if (bnxt_ulp_cntxt_multi_shared_session_enabled(bp->ulp_ctx)) {
+		if (session_type == BNXT_ULP_SESSION_TYPE_SHARED) {
+			strncat(parms.ctrl_chan_name, "-tf_shared", nb);
+		} else if (session_type == BNXT_ULP_SESSION_TYPE_SHARED_WC) {
+			char session_pool_name[64];
 
-	rc = bnxt_ulp_tf_shared_session_resources_get(bp->ulp_ctx, resources);
+			sprintf(session_pool_name, "-tf_shared-pool%d",
+				pool_id);
+
+			if (nb >= strlen(session_pool_name)) {
+				strncat(parms.ctrl_chan_name, session_pool_name, nb);
+			} else {
+				BNXT_TF_DBG(ERR, "No space left for session_name\n");
+				return -EINVAL;
+			}
+		}
+	}
+
+	rc = bnxt_ulp_tf_shared_session_resources_get(bp->ulp_ctx, session_type,
+						      resources);
 	if (rc)
 		return rc;
 
@@ -446,32 +610,15 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 		return rc;
 	}
 
-	switch (ulp_dev_id) {
-	case BNXT_ULP_DEVICE_ID_WH_PLUS:
-		parms.device_type = TF_DEVICE_TYPE_P5;
-		break;
-	case BNXT_ULP_DEVICE_ID_STINGRAY:
-		parms.device_type = TF_DEVICE_TYPE_SR;
-		break;
-	case BNXT_ULP_DEVICE_ID_THOR:
-		parms.device_type = TF_DEVICE_TYPE_P4;
-		break;
-	default:
-		BNXT_TF_DBG(ERR, "Unable to determine dev for opening session.\n");
-		return rc;
-	}
-
+	tfp = bnxt_ulp_bp_tfp_get(bp, session_type);
+	parms.device_type = bnxt_ulp_cntxt_convert_dev_id(ulp_dev_id);
 	parms.bp = bp;
-	if (app_id == 0)
-		parms.wc_num_slices = TF_WC_TCAM_2_SLICE_PER_ROW;
-	else
-		parms.wc_num_slices = TF_WC_TCAM_1_SLICE_PER_ROW;
 
 	/*
 	 * Open the session here, but the collect the resources during the
 	 * mapper initialization.
 	 */
-	rc = tf_open_session(&bp->tfp_shared, &parms);
+	rc = tf_open_session(tfp, &parms);
 	if (rc)
 		return rc;
 
@@ -481,27 +628,46 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 		BNXT_TF_DBG(DEBUG, "Shared session attached.\n");
 
 	/* Save the shared session in global data */
-	if (!session->g_shared_tfp.session)
-		session->g_shared_tfp.session = bp->tfp_shared.session;
+	rc = bnxt_ulp_session_tfp_set(session, session_type, tfp);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add shared tfp to session\n");
+		return rc;
+	}
 
-	rc = bnxt_ulp_cntxt_shared_tfp_set(bp->ulp_ctx, &bp->tfp_shared);
-	if (rc)
+	rc = bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, session_type, tfp);
+	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to add shared tfp to ulp (%d)\n", rc);
+		return rc;
+	}
 
 	return rc;
 }
 
 static int32_t
 ulp_ctx_shared_session_attach(struct bnxt *bp,
-			      struct bnxt_ulp_session_state *session)
+			      struct bnxt_ulp_session_state *ses)
 {
+	enum bnxt_ulp_session_type type;
+	struct tf *tfp;
 	int32_t rc = 0;
 
 	/* Simply return success if shared session not enabled */
 	if (bnxt_ulp_cntxt_shared_session_enabled(bp->ulp_ctx)) {
-		bp->tfp_shared.session = session->g_shared_tfp.session;
-		rc = ulp_ctx_shared_session_open(bp, session);
+		type = BNXT_ULP_SESSION_TYPE_SHARED;
+		tfp = bnxt_ulp_bp_tfp_get(bp, type);
+		tfp->session = bnxt_ulp_session_tfp_get(ses, type);
+		rc = ulp_ctx_shared_session_open(bp, type, ses);
 	}
+
+	if (bnxt_ulp_cntxt_multi_shared_session_enabled(bp->ulp_ctx)) {
+		type = BNXT_ULP_SESSION_TYPE_SHARED_WC;
+		tfp = bnxt_ulp_bp_tfp_get(bp, type);
+		tfp->session = bnxt_ulp_session_tfp_get(ses, type);
+		rc = ulp_ctx_shared_session_open(bp, type, ses);
+	}
+
+	if (!rc)
+		bnxt_ulp_cntxt_num_shared_clients_set(bp->ulp_ctx, true);
 
 	return rc;
 }
@@ -509,12 +675,23 @@ ulp_ctx_shared_session_attach(struct bnxt *bp,
 static void
 ulp_ctx_shared_session_detach(struct bnxt *bp)
 {
+	struct tf *tfp;
+
 	if (bnxt_ulp_cntxt_shared_session_enabled(bp->ulp_ctx)) {
-		if (bp->tfp_shared.session) {
-			tf_close_session(&bp->tfp_shared);
-			bp->tfp_shared.session = NULL;
+		tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_SHARED);
+		if (tfp->session) {
+			tf_close_session(tfp);
+			tfp->session = NULL;
 		}
 	}
+	if (bnxt_ulp_cntxt_multi_shared_session_enabled(bp->ulp_ctx)) {
+		tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_SHARED_WC);
+		if (tfp->session) {
+			tf_close_session(tfp);
+			tfp->session = NULL;
+		}
+	}
+	bnxt_ulp_cntxt_num_shared_clients_set(bp->ulp_ctx, false);
 }
 
 /*
@@ -538,6 +715,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	struct tf_session_resources	*resources;
 	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
 	uint8_t app_id;
+	struct tf *tfp;
 
 	memset(&params, 0, sizeof(params));
 
@@ -561,43 +739,29 @@ ulp_ctx_session_open(struct bnxt *bp,
 		return rc;
 	}
 
-	switch (ulp_dev_id) {
-	case BNXT_ULP_DEVICE_ID_WH_PLUS:
-		params.device_type = TF_DEVICE_TYPE_P5;
-		break;
-	case BNXT_ULP_DEVICE_ID_STINGRAY:
-		params.device_type = TF_DEVICE_TYPE_SR;
-		break;
-	case BNXT_ULP_DEVICE_ID_THOR:
-		params.device_type = TF_DEVICE_TYPE_P4;
-		break;
-	default:
-		BNXT_TF_DBG(ERR, "Unable to determine device for opening session.\n");
-		return rc;
-	}
-
+	params.device_type = bnxt_ulp_cntxt_convert_dev_id(ulp_dev_id);
 	resources = &params.resources;
-	rc = bnxt_ulp_tf_resources_get(bp->ulp_ctx, resources);
+	rc = bnxt_ulp_tf_resources_get(bp->ulp_ctx,
+				       BNXT_ULP_SESSION_TYPE_DEFAULT,
+				       resources);
 	if (rc)
 		return rc;
 
 	params.bp = bp;
-	if (app_id == 0)
-		params.wc_num_slices = TF_WC_TCAM_2_SLICE_PER_ROW;
-	else
-		params.wc_num_slices = TF_WC_TCAM_1_SLICE_PER_ROW;
 
-	rc = tf_open_session(&bp->tfp, &params);
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	rc = tf_open_session(tfp, &params);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to open TF session - %s, rc = %d\n",
 			    params.ctrl_chan_name, rc);
 		return -EINVAL;
 	}
-	if (!session->session_opened) {
-		session->session_opened = 1;
-		session->g_tfp = rte_zmalloc("bnxt_ulp_session_tfp",
-					     sizeof(struct tf), 0);
-		session->g_tfp->session = bp->tfp.session;
+	rc = bnxt_ulp_session_tfp_set(session,
+				      BNXT_ULP_SESSION_TYPE_DEFAULT, tfp);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to set TF session - %s, rc = %d\n",
+			    params.ctrl_chan_name, rc);
+		return -EINVAL;
 	}
 	return rc;
 }
@@ -610,12 +774,14 @@ static void
 ulp_ctx_session_close(struct bnxt *bp,
 		      struct bnxt_ulp_session_state *session)
 {
+	struct tf *tfp;
+
 	/* close the session in the hardware */
-	if (session->session_opened)
-		tf_close_session(&bp->tfp);
-	session->session_opened = 0;
-	rte_free(session->g_tfp);
-	session->g_tfp = NULL;
+	if (bnxt_ulp_session_is_open(session, BNXT_ULP_SESSION_TYPE_DEFAULT)) {
+		tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+		tf_close_session(tfp);
+	}
+	bnxt_ulp_session_tfp_reset(session, BNXT_ULP_SESSION_TYPE_DEFAULT);
 }
 
 static void
@@ -678,6 +844,7 @@ ulp_eem_tbl_scope_init(struct bnxt *bp)
 	struct bnxt_ulp_device_params *dparms;
 	enum bnxt_ulp_flow_mem_type mtype;
 	uint32_t dev_id;
+	struct tf *tfp;
 	int rc;
 
 	/* Get the dev specific number of flows that needed to be supported. */
@@ -700,12 +867,14 @@ ulp_eem_tbl_scope_init(struct bnxt *bp)
 	}
 
 	bnxt_init_tbl_scope_parms(bp, &params);
-	rc = tf_alloc_tbl_scope(&bp->tfp, &params);
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	rc = tf_alloc_tbl_scope(tfp, &params);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to allocate eem table scope rc = %d\n",
 			    rc);
 		return rc;
 	}
+
 	rc = bnxt_ulp_cntxt_tbl_scope_id_set(bp->ulp_ctx, params.tbl_scope_id);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to set table scope id\n");
@@ -729,7 +898,7 @@ ulp_eem_tbl_scope_deinit(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 	if (!ulp_ctx || !ulp_ctx->cfg_data)
 		return -EINVAL;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
 		return -EINVAL;
@@ -777,7 +946,16 @@ ulp_ctx_deinit(struct bnxt *bp,
 	ulp_ctx_session_close(bp, session);
 
 	/* The shared session must be closed last. */
-	ulp_ctx_shared_session_close(bp, session);
+	if (bnxt_ulp_cntxt_shared_session_enabled(bp->ulp_ctx))
+		ulp_ctx_shared_session_close(bp, BNXT_ULP_SESSION_TYPE_SHARED,
+					     session);
+
+	if (bnxt_ulp_cntxt_multi_shared_session_enabled(bp->ulp_ctx))
+		ulp_ctx_shared_session_close(bp,
+					     BNXT_ULP_SESSION_TYPE_SHARED_WC,
+					     session);
+
+	bnxt_ulp_cntxt_num_shared_clients_set(bp->ulp_ctx, false);
 
 	/* Free the contents */
 	if (session->cfg_data) {
@@ -796,6 +974,8 @@ ulp_ctx_init(struct bnxt *bp,
 	struct bnxt_ulp_data	*ulp_data;
 	int32_t			rc = 0;
 	enum bnxt_ulp_device_id devid;
+	enum bnxt_ulp_session_type stype;
+	struct tf *tfp;
 
 	/* Initialize the context entries list */
 	bnxt_ulp_cntxt_list_init();
@@ -851,22 +1031,42 @@ ulp_ctx_init(struct bnxt *bp,
 	 * Shared session must be created before first regular session but after
 	 * the ulp_ctx is valid.
 	 */
-	rc = ulp_ctx_shared_session_open(bp, session);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to open shared session (%d)\n", rc);
-		goto error_deinit;
+	if (bnxt_ulp_cntxt_shared_session_enabled(bp->ulp_ctx)) {
+		rc = ulp_ctx_shared_session_open(bp,
+						 BNXT_ULP_SESSION_TYPE_SHARED,
+						 session);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Unable to open shared session (%d)\n",
+				    rc);
+			goto error_deinit;
+		}
 	}
+
+	/* Multiple session support */
+	if (bnxt_ulp_cntxt_multi_shared_session_enabled(bp->ulp_ctx)) {
+		stype = BNXT_ULP_SESSION_TYPE_SHARED_WC;
+		rc = ulp_ctx_shared_session_open(bp, stype, session);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Unable to open shared wc session (%d)\n",
+				    rc);
+			goto error_deinit;
+		}
+	}
+	bnxt_ulp_cntxt_num_shared_clients_set(bp->ulp_ctx, true);
+
 
 	/* Open the ulp session. */
 	rc = ulp_ctx_session_open(bp, session);
 	if (rc)
 		goto error_deinit;
 
-	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, &bp->tfp);
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT, tfp);
 	return rc;
 
 error_deinit:
-	session->session_opened = 1;
+	session->session_opened[BNXT_ULP_SESSION_TYPE_DEFAULT] = 1;
 	(void)ulp_ctx_deinit(bp, session);
 	return rc;
 }
@@ -932,6 +1132,7 @@ ulp_ctx_attach(struct bnxt *bp,
 {
 	int32_t rc = 0;
 	uint32_t flags, dev_id = BNXT_ULP_DEVICE_ID_LAST;
+	struct tf *tfp;
 	uint8_t app_id;
 
 	/* Increment the ulp context data reference count usage. */
@@ -939,7 +1140,9 @@ ulp_ctx_attach(struct bnxt *bp,
 	bp->ulp_ctx->cfg_data->ref_cnt++;
 
 	/* update the session details in bnxt tfp */
-	bp->tfp.session = session->g_tfp->session;
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	tfp->session = bnxt_ulp_session_tfp_get(session,
+						BNXT_ULP_SESSION_TYPE_DEFAULT);
 
 	/* Add the context to the context entries list */
 	rc = bnxt_ulp_cntxt_list_add(bp->ulp_ctx);
@@ -975,20 +1178,23 @@ ulp_ctx_attach(struct bnxt *bp,
 	rc = ulp_ctx_session_open(bp, session);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "Failed to open ctxt session, rc:%d\n", rc);
-		bp->tfp.session = NULL;
+		tfp->session = NULL;
 		return rc;
 	}
 
-	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, &bp->tfp);
+	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT, tfp);
 	return rc;
 }
 
 static void
 ulp_ctx_detach(struct bnxt *bp)
 {
-	if (bp->tfp.session) {
-		tf_close_session(&bp->tfp);
-		bp->tfp.session = NULL;
+	struct tf *tfp;
+
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	if (tfp->session) {
+		tf_close_session(tfp);
+		tfp->session = NULL;
 	}
 }
 
@@ -1121,6 +1327,7 @@ bnxt_ulp_global_cfg_update(struct bnxt *bp,
 	uint32_t global_cfg = 0;
 	int rc;
 	struct tf_global_cfg_parms parms = { 0 };
+	struct tf *tfp;
 
 	/* Initialize the params */
 	parms.dir = dir,
@@ -1129,7 +1336,8 @@ bnxt_ulp_global_cfg_update(struct bnxt *bp,
 	parms.config = (uint8_t *)&global_cfg,
 	parms.config_sz_in_bytes = sizeof(global_cfg);
 
-	rc = tf_get_global_cfg(&bp->tfp, &parms);
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	rc = tf_get_global_cfg(tfp, &parms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to get global cfg 0x%x rc:%d\n",
 			    type, rc);
@@ -1142,7 +1350,7 @@ bnxt_ulp_global_cfg_update(struct bnxt *bp,
 		global_cfg &= ~value;
 
 	/* SET the register RE_CFA_REG_ACT_TECT */
-	rc = tf_set_global_cfg(&bp->tfp, &parms);
+	rc = tf_set_global_cfg(tfp, &parms);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to set global cfg 0x%x rc:%d\n",
 			    type, rc);
@@ -1473,7 +1681,7 @@ bnxt_ulp_port_init(struct bnxt *bp)
 	}
 
 	/* update the port database for the given interface */
-	rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp->eth_dev);
+	rc = ulp_port_db_port_update(bp->ulp_ctx, bp->eth_dev);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to update port database\n");
 		goto jump_to_error;
@@ -1624,6 +1832,12 @@ bnxt_ulp_cntxt_shared_session_enabled(struct bnxt_ulp_context *ulp_ctx)
 	return ULP_SHARED_SESSION_IS_ENABLED(ulp_ctx->cfg_data->ulp_flags);
 }
 
+bool
+bnxt_ulp_cntxt_multi_shared_session_enabled(struct bnxt_ulp_context *ulp_ctx)
+{
+	return ULP_MULTI_SHARED_IS_SUPPORTED(ulp_ctx);
+}
+
 int32_t
 bnxt_ulp_cntxt_app_id_set(struct bnxt_ulp_context *ulp_ctx, uint8_t app_id)
 {
@@ -1721,37 +1935,6 @@ bnxt_ulp_cntxt_tbl_scope_id_set(struct bnxt_ulp_context *ulp_ctx,
 	return -EINVAL;
 }
 
-/* Function to set the shared tfp session details from the ulp context. */
-int32_t
-bnxt_ulp_cntxt_shared_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp)
-{
-	if (!ulp) {
-		BNXT_TF_DBG(ERR, "Invalid arguments\n");
-		return -EINVAL;
-	}
-
-	if (tfp == NULL) {
-		if (ulp->cfg_data->num_shared_clients > 0)
-			ulp->cfg_data->num_shared_clients--;
-	} else {
-		ulp->cfg_data->num_shared_clients++;
-	}
-
-	ulp->g_shared_tfp = tfp;
-	return 0;
-}
-
-/* Function to get the shared tfp session details from the ulp context. */
-struct tf *
-bnxt_ulp_cntxt_shared_tfp_get(struct bnxt_ulp_context *ulp)
-{
-	if (!ulp) {
-		BNXT_TF_DBG(ERR, "Invalid arguments\n");
-		return NULL;
-	}
-	return ulp->g_shared_tfp;
-}
-
 /* Function to get the number of shared clients attached */
 uint8_t
 bnxt_ulp_cntxt_num_shared_clients_get(struct bnxt_ulp_context *ulp)
@@ -1763,32 +1946,75 @@ bnxt_ulp_cntxt_num_shared_clients_get(struct bnxt_ulp_context *ulp)
 	return ulp->cfg_data->num_shared_clients;
 }
 
+/* Function to set the number of shared clients */
+int
+bnxt_ulp_cntxt_num_shared_clients_set(struct bnxt_ulp_context *ulp, bool incr)
+{
+	if (ulp == NULL || ulp->cfg_data == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid arguments\n");
+		return 0;
+	}
+	if (incr)
+		ulp->cfg_data->num_shared_clients++;
+	else if (ulp->cfg_data->num_shared_clients)
+		ulp->cfg_data->num_shared_clients--;
+
+	BNXT_TF_DBG(DEBUG, "%d:clients(%d)\n", incr,
+		    ulp->cfg_data->num_shared_clients);
+
+	return 0;
+}
+
 /* Function to set the tfp session details from the ulp context. */
 int32_t
-bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp)
+bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp,
+		       enum bnxt_ulp_session_type s_type,
+		       struct tf *tfp)
 {
+	uint32_t idx = 0;
+
 	if (!ulp) {
 		BNXT_TF_DBG(ERR, "Invalid arguments\n");
 		return -EINVAL;
 	}
+	if (ULP_MULTI_SHARED_IS_SUPPORTED(ulp)) {
+		if (s_type & BNXT_ULP_SESSION_TYPE_SHARED)
+			idx = 1;
+		else if (s_type & BNXT_ULP_SESSION_TYPE_SHARED_WC)
+			idx = 2;
 
-	ulp->g_tfp = tfp;
+	} else {
+		if ((s_type & BNXT_ULP_SESSION_TYPE_SHARED) ||
+		    (s_type & BNXT_ULP_SESSION_TYPE_SHARED_WC))
+			idx = 1;
+	}
+
+	ulp->g_tfp[idx] = tfp;
 	return 0;
 }
 
 /* Function to get the tfp session details from the ulp context. */
 struct tf *
 bnxt_ulp_cntxt_tfp_get(struct bnxt_ulp_context *ulp,
-		       enum bnxt_ulp_shared_session shared)
+		       enum bnxt_ulp_session_type s_type)
 {
+	uint32_t idx = 0;
+
 	if (!ulp) {
 		BNXT_TF_DBG(ERR, "Invalid arguments\n");
 		return NULL;
 	}
-	if (shared)
-		return ulp->g_shared_tfp;
-	else
-		return ulp->g_tfp;
+	if (ULP_MULTI_SHARED_IS_SUPPORTED(ulp)) {
+		if (s_type & BNXT_ULP_SESSION_TYPE_SHARED)
+			idx = 1;
+		else if (s_type & BNXT_ULP_SESSION_TYPE_SHARED_WC)
+			idx = 2;
+	} else {
+		if ((s_type & BNXT_ULP_SESSION_TYPE_SHARED) ||
+		    (s_type & BNXT_ULP_SESSION_TYPE_SHARED_WC))
+			idx = 1;
+	}
+	return ulp->g_tfp[idx];
 }
 
 /*
@@ -2078,4 +2304,42 @@ bnxt_ulp_cntxt_ptr2_app_tun_list_get(struct bnxt_ulp_context *ulp)
 		return NULL;
 
 	return ulp->cfg_data->app_tun;
+}
+
+/* Function to convert ulp dev id to regular dev id. */
+uint32_t
+bnxt_ulp_cntxt_convert_dev_id(uint32_t ulp_dev_id)
+{
+	enum tf_device_type type = 0;
+
+	switch (ulp_dev_id) {
+	case BNXT_ULP_DEVICE_ID_WH_PLUS:
+		type = TF_DEVICE_TYPE_P4;
+		break;
+	case BNXT_ULP_DEVICE_ID_STINGRAY:
+		type = TF_DEVICE_TYPE_SR;
+		break;
+	case BNXT_ULP_DEVICE_ID_THOR:
+		type = TF_DEVICE_TYPE_P5;
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "Invalid device id\n");
+		break;
+	}
+	return type;
+}
+
+struct tf*
+bnxt_ulp_bp_tfp_get(struct bnxt *bp, enum bnxt_ulp_session_type type)
+{
+	enum bnxt_session_type btype;
+
+	if (type & BNXT_ULP_SESSION_TYPE_SHARED)
+		btype = BNXT_SESSION_TYPE_SHARED_COMMON;
+	else if (type & BNXT_ULP_SESSION_TYPE_SHARED_WC)
+		btype = BNXT_SESSION_TYPE_SHARED_WC;
+	else
+		btype = BNXT_SESSION_TYPE_REGULAR;
+
+	return bnxt_get_tfp_session(bp, btype);
 }

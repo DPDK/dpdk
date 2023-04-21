@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -311,7 +311,8 @@ ulp_fc_tf_flow_stat_get(struct bnxt_ulp_context *ctxt,
 	uint32_t dev_id = 0;
 	int32_t rc = 0;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ctxt, BNXT_ULP_SHARED_SESSION_NO);
+	tfp = bnxt_ulp_cntxt_tfp_get(ctxt,
+				     ulp_flow_db_shared_session_get(res));
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
 		return -EINVAL;
@@ -437,8 +438,8 @@ void
 ulp_fc_mgr_alarm_cb(void *arg)
 {
 	int rc = 0;
-	unsigned int j;
-	enum tf_dir i;
+	unsigned int j = 0;
+	enum tf_dir i = 0;
 	struct bnxt_ulp_context *ctxt;
 	struct bnxt_ulp_fc_info *ulp_fc_info;
 	struct bnxt_ulp_device_params *dparms;
@@ -472,7 +473,8 @@ ulp_fc_mgr_alarm_cb(void *arg)
 		return;
 	}
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ctxt, BNXT_ULP_SHARED_SESSION_NO);
+	tfp = bnxt_ulp_cntxt_tfp_get(ctxt,
+				     ulp_fc_info->sw_acc_tbl[i][j].session_type);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
 		bnxt_ulp_cntxt_entry_release();
@@ -512,6 +514,15 @@ ulp_fc_mgr_alarm_cb(void *arg)
 			if (!ulp_fc_info->sw_acc_tbl[i][j].valid)
 				continue;
 			hw_cntr_id = ulp_fc_info->sw_acc_tbl[i][j].hw_cntr_id;
+			tfp = bnxt_ulp_cntxt_tfp_get(ctxt,
+						     ulp_fc_info->sw_acc_tbl[i][j].session_type);
+			if (!tfp) {
+				BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
+				pthread_mutex_unlock(&ulp_fc_info->fc_lock);
+				bnxt_ulp_cntxt_entry_release();
+				return;
+			}
+
 			rc = ulp_get_single_flow_stat(ctxt, tfp, ulp_fc_info, i,
 						      hw_cntr_id, dparms);
 			if (rc)
@@ -603,7 +614,8 @@ int32_t ulp_fc_mgr_start_idx_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
  *
  */
 int32_t ulp_fc_mgr_cntr_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
-			    uint32_t hw_cntr_id)
+			    uint32_t hw_cntr_id,
+			    enum bnxt_ulp_session_type session_type)
 {
 	struct bnxt_ulp_fc_info *ulp_fc_info;
 	uint32_t sw_cntr_idx;
@@ -619,6 +631,7 @@ int32_t ulp_fc_mgr_cntr_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
 	sw_cntr_idx = hw_cntr_id - ulp_fc_info->shadow_hw_tbl[dir].start_idx;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].valid = true;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].hw_cntr_id = hw_cntr_id;
+	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].session_type = session_type;
 	ulp_fc_info->num_entries++;
 	pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 

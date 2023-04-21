@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -633,6 +633,13 @@ struct bnxt_ring_stats {
 	uint64_t	rx_agg_aborts;
 };
 
+enum bnxt_session_type {
+	BNXT_SESSION_TYPE_REGULAR = 0,
+	BNXT_SESSION_TYPE_SHARED_COMMON,
+	BNXT_SESSION_TYPE_SHARED_WC,
+	BNXT_SESSION_TYPE_LAST
+};
+
 struct bnxt {
 	void				*bar0;
 
@@ -690,6 +697,9 @@ struct bnxt {
 #define BNXT_FLAGS2_PTP_ALARM_SCHEDULED		BIT(1)
 #define BNXT_P5_PTP_TIMESYNC_ENABLED(bp)	\
 	((bp)->flags2 & BNXT_FLAGS2_PTP_TIMESYNC_ENABLED)
+#define BNXT_FLAGS2_TESTPMD_EN                  BIT(3)
+#define BNXT_TESTPMD_EN(bp)                     \
+	((bp)->flags2 & BNXT_FLAGS2_TESTPMD_EN)
 
 	uint16_t		chip_num;
 #define CHIP_NUM_58818		0xd818
@@ -855,8 +865,7 @@ struct bnxt {
 	uint16_t		func_svif;
 	uint16_t		port_svif;
 
-	struct tf		tfp;
-	struct tf		tfp_shared;
+	struct tf		tfp[BNXT_SESSION_TYPE_LAST];
 	struct bnxt_ulp_context	*ulp_ctx;
 	struct bnxt_flow_stat_info *flow_stat;
 	uint16_t		max_num_kflows;
@@ -1044,4 +1053,5 @@ int bnxt_flow_ops_get_op(struct rte_eth_dev *dev,
 int bnxt_dev_start_op(struct rte_eth_dev *eth_dev);
 int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev);
 void bnxt_handle_vf_cfg_change(void *arg);
+struct tf *bnxt_get_tfp_session(struct bnxt *bp, enum bnxt_session_type type);
 #endif

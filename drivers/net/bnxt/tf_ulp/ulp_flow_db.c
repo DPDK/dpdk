@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -653,7 +653,8 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 						 params->resource_hndl);
 
 		ulp_fc_mgr_cntr_set(ulp_ctxt, params->direction,
-				    params->resource_hndl);
+				    params->resource_hndl,
+				    ulp_flow_db_shared_session_get(params));
 
 		if (!ulp_fc_mgr_thread_isstarted(ulp_ctxt))
 			ulp_fc_mgr_thread_start(ulp_ctxt);
@@ -1824,8 +1825,28 @@ ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt)
  * returns none
  */
 void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
-				    enum bnxt_ulp_shared_session shared)
+				    enum bnxt_ulp_session_type s_type)
 {
-	if (res && (shared & BNXT_ULP_SHARED_SESSION_YES))
+	if (res && (s_type & BNXT_ULP_SESSION_TYPE_SHARED))
 		res->fdb_flags |= ULP_FDB_FLAG_SHARED_SESSION;
+	else if (res && (s_type & BNXT_ULP_SESSION_TYPE_SHARED_WC))
+		res->fdb_flags |= ULP_FDB_FLAG_SHARED_WC_SESSION;
+}
+
+/*
+ * Get the shared bit for the flow db entry
+ *
+ * res [out] shared session type
+ */
+enum bnxt_ulp_session_type
+ulp_flow_db_shared_session_get(struct ulp_flow_db_res_params *res)
+{
+	enum bnxt_ulp_session_type stype = BNXT_ULP_SESSION_TYPE_DEFAULT;
+
+	if (res && (res->fdb_flags & ULP_FDB_FLAG_SHARED_SESSION))
+		stype = BNXT_ULP_SESSION_TYPE_SHARED;
+	else if (res && (res->fdb_flags & ULP_FDB_FLAG_SHARED_WC_SESSION))
+		stype = BNXT_ULP_SESSION_TYPE_SHARED_WC;
+
+	return stype;
 }

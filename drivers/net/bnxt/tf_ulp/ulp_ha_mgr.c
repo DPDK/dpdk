@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -54,7 +54,7 @@ ulp_ha_mgr_state_set(struct bnxt_ulp_context *ulp_ctx,
 		BNXT_TF_DBG(ERR, "Invalid parms in state get.\n");
 		return -EINVAL;
 	}
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT);
 	if (tfp == NULL) {
 		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
 		return -EINVAL;
@@ -88,7 +88,7 @@ ulp_ha_mgr_tf_client_num_get(struct bnxt_ulp_context *ulp_ctx,
 		BNXT_TF_DBG(ERR, "Invalid parms in client num get.\n");
 		return -EINVAL;
 	}
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT);
 	if (tfp == NULL) {
 		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
 		return -EINVAL;
@@ -176,7 +176,7 @@ ulp_ha_mgr_timer_cb(void *arg)
 		return;
 	}
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_YES);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_SHARED_WC);
 	if (tfp == NULL) {
 		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
 		goto cb_restart;
@@ -399,7 +399,7 @@ ulp_ha_mgr_state_get(struct bnxt_ulp_context *ulp_ctx,
 		BNXT_TF_DBG(ERR, "Invalid parms in state get.\n");
 		return -EINVAL;
 	}
-	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SHARED_SESSION_NO);
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT);
 	if (tfp == NULL) {
 		BNXT_TF_DBG(ERR, "Unable to get the TFP.\n");
 		return -EINVAL;

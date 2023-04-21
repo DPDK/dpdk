@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -29,6 +29,7 @@ struct sw_acc_counter {
 	bool	valid;
 	uint32_t hw_cntr_id;
 	uint32_t pc_flow_idx;
+	enum bnxt_ulp_session_type session_type;
 };
 
 struct hw_fc_mem_info {
@@ -118,7 +119,9 @@ int ulp_fc_mgr_start_idx_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
  *
  */
 int ulp_fc_mgr_cntr_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
-			uint32_t hw_cntr_id);
+			uint32_t hw_cntr_id,
+			enum bnxt_ulp_session_type session_type);
+
 /*
  * Reset the corresponding SW accumulator table entry based on
  * the difference between this counter ID and the starting

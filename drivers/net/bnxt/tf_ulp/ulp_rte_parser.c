@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -130,10 +130,6 @@ bnxt_ulp_rte_parser_hdr_parse(const struct rte_flow_item pattern[],
 	struct bnxt_ulp_rte_hdr_info *hdr_info;
 
 	params->field_idx = BNXT_ULP_PROTO_HDR_SVIF_NUM;
-
-	/* Set the computed flags for no vlan tags before parsing */
-	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_NO_VTAG, 1);
-	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_NO_VTAG, 1);
 
 	/* Parse all the items in the pattern */
 	while (item && item->type != RTE_FLOW_ITEM_TYPE_END) {
@@ -515,8 +511,8 @@ ulp_rte_port_hdr_handler(const struct rte_flow_item *item,
 	enum bnxt_ulp_direction_type item_dir;
 	uint16_t ethdev_id;
 	uint16_t mask = 0;
-	int32_t rc = BNXT_TF_RC_PARSE_ERR;
 	uint32_t ifindex;
+	int32_t rc = BNXT_TF_RC_PARSE_ERR;
 
 	if (!item->spec) {
 		BNXT_TF_DBG(ERR, "ParseErr:Port spec is not valid\n");
@@ -535,6 +531,11 @@ ulp_rte_port_hdr_handler(const struct rte_flow_item *item,
 		item_dir = BNXT_ULP_DIR_INVALID;
 		ethdev_id = port_spec->id;
 		mask = port_mask->id;
+
+		if (!port_mask->id) {
+			ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_SVIF_IGNORE);
+			mask = 0xff;
+		}
 		break;
 	}
 	case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR: {
@@ -778,7 +779,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		outer_vtag_num++;
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_VTAG_NUM,
 				    outer_vtag_num);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_NO_VTAG, 0);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_HAS_VTAG, 1);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_ONE_VTAG, 1);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_OO_VLAN);
@@ -808,7 +809,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		inner_vtag_num++;
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_VTAG_NUM,
 				    inner_vtag_num);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_NO_VTAG, 0);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_HAS_VTAG, 1);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_ONE_VTAG, 1);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_IO_VLAN);

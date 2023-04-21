@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -6413,6 +6413,12 @@ is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
 bool is_bnxt_supported(struct rte_eth_dev *dev)
 {
 	return is_device_supported(dev, &bnxt_rte_pmd);
+}
+
+struct tf *bnxt_get_tfp_session(struct bnxt *bp, enum bnxt_session_type type)
+{
+	return (type >= BNXT_SESSION_TYPE_LAST) ?
+		&bp->tfp[BNXT_SESSION_TYPE_REGULAR] : &bp->tfp[type];
 }
 
 RTE_LOG_REGISTER_SUFFIX(bnxt_logtype_driver, driver, NOTICE);

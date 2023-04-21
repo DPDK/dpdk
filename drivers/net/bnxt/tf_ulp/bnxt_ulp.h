@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -35,6 +35,11 @@
 #define BNXT_ULP_HIGH_AVAIL_ENABLED	0x8
 #define BNXT_ULP_APP_UNICAST_ONLY	0x10
 #define BNXT_ULP_APP_SOCKET_DIRECT	0x20
+#define BNXT_ULP_APP_TOS_PROTO_SUPPORT	0x40
+#define BNXT_ULP_APP_BC_MC_SUPPORT	0x80
+#define BNXT_ULP_CUST_VXLAN_SUPPORT	0x100
+#define BNXT_ULP_MULTI_SHARED_SUPPORT	0x200
+#define BNXT_ULP_APP_HA_DYNAMIC		0x400
 
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
 #define ULP_SHARED_SESSION_IS_ENABLED(flag) ((flag) &\
@@ -43,6 +48,17 @@
 						 BNXT_ULP_APP_DEV_UNSUPPORTED)
 #define ULP_HIGH_AVAIL_IS_ENABLED(flag)	((flag) & BNXT_ULP_HIGH_AVAIL_ENABLED)
 #define ULP_SOCKET_DIRECT_IS_ENABLED(flag) ((flag) & BNXT_ULP_APP_SOCKET_DIRECT)
+#define ULP_APP_TOS_PROTO_SUPPORT(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_APP_TOS_PROTO_SUPPORT)
+#define ULP_APP_BC_MC_SUPPORT(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_APP_BC_MC_SUPPORT)
+#define ULP_MULTI_SHARED_IS_SUPPORTED(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_MULTI_SHARED_SUPPORT)
+#define ULP_APP_HA_IS_DYNAMIC(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_APP_HA_DYNAMIC)
+
+#define ULP_APP_CUST_VXLAN_SUPPORT(ctx)	   ((ctx)->cfg_data->vxlan_port != 0)
+#define ULP_APP_CUST_VXLAN_IP_SUPPORT(ctx) ((ctx)->cfg_data->vxlan_ip_port != 0)
 
 enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
@@ -95,12 +111,19 @@ struct bnxt_ulp_data {
 	uint8_t				app_id;
 	uint8_t				num_shared_clients;
 	struct bnxt_flow_app_tun_ent	app_tun[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
+	uint32_t			vxlan_port;
+	uint32_t			vxlan_ip_port;
+	uint8_t				hu_reg_state;
+	uint8_t				hu_reg_cnt;
+	uint32_t			hu_session_type;
+	uint8_t				ha_pool_id;
+	enum bnxt_ulp_session_type	def_session_type;
 };
 
+#define BNXT_ULP_SESSION_MAX 3
 struct bnxt_ulp_context {
 	struct bnxt_ulp_data	*cfg_data;
-	struct tf		*g_tfp;
-	struct tf		*g_shared_tfp;
+	struct tf		*g_tfp[BNXT_ULP_SESSION_MAX];
 };
 
 struct bnxt_ulp_pci_info {
@@ -110,13 +133,12 @@ struct bnxt_ulp_pci_info {
 
 struct bnxt_ulp_session_state {
 	STAILQ_ENTRY(bnxt_ulp_session_state)	next;
-	bool					bnxt_ulp_init;
-	pthread_mutex_t				bnxt_ulp_mutex;
-	struct bnxt_ulp_pci_info		pci_info;
-	struct bnxt_ulp_data			*cfg_data;
-	struct tf				*g_tfp;
-	struct tf				g_shared_tfp;
-	uint32_t				session_opened;
+	bool				bnxt_ulp_init;
+	pthread_mutex_t			bnxt_ulp_mutex;
+	struct bnxt_ulp_pci_info	pci_info;
+	struct bnxt_ulp_data		*cfg_data;
+	struct tf			*g_tfp[BNXT_ULP_SESSION_MAX];
+	uint32_t			session_opened[BNXT_ULP_SESSION_MAX];
 };
 
 /* ULP flow id structure */
@@ -172,20 +194,14 @@ bnxt_ulp_cntxt_tbl_scope_id_get(struct bnxt_ulp_context *ulp_ctx,
 
 /* Function to set the tfp session details in the ulp context. */
 int32_t
-bnxt_ulp_cntxt_shared_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp);
-
-/* Function to get the tfp session details from ulp context. */
-struct tf *
-bnxt_ulp_cntxt_shared_tfp_get(struct bnxt_ulp_context *ulp);
-
-/* Function to set the tfp session details in the ulp context. */
-int32_t
-bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp, struct tf *tfp);
+bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp,
+		       enum bnxt_ulp_session_type s_type,
+		       struct tf *tfp);
 
 /* Function to get the tfp session details from ulp context. */
 struct tf *
 bnxt_ulp_cntxt_tfp_get(struct bnxt_ulp_context *ulp,
-		       enum bnxt_ulp_shared_session shared);
+		       enum bnxt_ulp_session_type s_type);
 
 /* Get the device table entry based on the device id. */
 struct bnxt_ulp_device_params *
@@ -238,6 +254,7 @@ int32_t
 ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 			struct ulp_tlv_param *param_list,
 			uint32_t ulp_class_tid,
+			uint16_t port_id,
 			uint32_t *flow_id);
 
 /* Function to destroy default flows. */
@@ -274,6 +291,20 @@ bnxt_ulp_cntxt_acquire_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
 void
 bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
 
+int32_t
+bnxt_get_action_handle_type(const struct rte_flow_action_handle *handle,
+			    uint32_t *action_handle_type);
+
+struct bnxt_ulp_shared_act_info *
+bnxt_ulp_shared_act_info_get(uint32_t *num_entries);
+
+int32_t
+bnxt_get_action_handle_direction(const struct rte_flow_action_handle *handle,
+				 uint32_t *dir);
+
+uint32_t
+bnxt_get_action_handle_index(const struct rte_flow_action_handle *handle);
+
 struct bnxt_ulp_glb_resource_info *
 bnxt_ulp_app_glb_resource_info_list_get(uint32_t *num_entries);
 
@@ -285,6 +316,9 @@ bnxt_ulp_cntxt_app_id_get(struct bnxt_ulp_context *ulp_ctx, uint8_t *app_id);
 
 bool
 bnxt_ulp_cntxt_shared_session_enabled(struct bnxt_ulp_context *ulp_ctx);
+
+bool
+bnxt_ulp_cntxt_multi_shared_session_enabled(struct bnxt_ulp_context *ulp_ctx);
 
 struct bnxt_ulp_app_capabilities_info *
 bnxt_ulp_app_cap_list_get(uint32_t *num_entries);
@@ -315,6 +349,41 @@ bnxt_ulp_cntxt_entry_release(void);
 uint8_t
 bnxt_ulp_cntxt_num_shared_clients_get(struct bnxt_ulp_context *ulp_ctx);
 
+int
+bnxt_ulp_cntxt_num_shared_clients_set(struct bnxt_ulp_context *ulp_ctx,
+				      bool incr);
+
 struct bnxt_flow_app_tun_ent *
 bnxt_ulp_cntxt_ptr2_app_tun_list_get(struct bnxt_ulp_context *ulp);
+
+/* Function to get the truflow app id. This defined in the build file */
+uint32_t
+bnxt_ulp_default_app_id_get(void);
+
+int
+bnxt_ulp_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
+			uint32_t vxlan_port);
+unsigned int
+bnxt_ulp_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx);
+int
+bnxt_ulp_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
+			   uint32_t vxlan_ip_port);
+unsigned int
+bnxt_ulp_vxlan_ip_port_get(struct bnxt_ulp_context *ulp_ctx);
+
+uint32_t
+bnxt_ulp_cntxt_convert_dev_id(uint32_t ulp_dev_id);
+
+int32_t
+bnxt_ulp_ha_reg_set(struct bnxt_ulp_context *ulp_ctx,
+		    uint8_t state, uint8_t cnt);
+
+uint32_t
+bnxt_ulp_ha_reg_state_get(struct bnxt_ulp_context *ulp_ctx);
+
+uint32_t
+bnxt_ulp_ha_reg_cnt_get(struct bnxt_ulp_context *ulp_ctx);
+
+struct tf*
+bnxt_ulp_bp_tfp_get(struct bnxt *bp, enum bnxt_ulp_session_type type);
 #endif /* _BNXT_ULP_H_ */

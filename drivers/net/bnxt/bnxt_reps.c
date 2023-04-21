@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -327,7 +327,7 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 		(void)bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
 
 	/* Update the ULP portdata base with the new VFR interface */
-	rc = ulp_port_db_dev_port_intf_update(parent_bp->ulp_ctx, vfr_ethdev);
+	rc = ulp_port_db_port_update(parent_bp->ulp_ctx, vfr_ethdev);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to update ulp port details vfr:%u\n",
 			    vfr->vf_id);

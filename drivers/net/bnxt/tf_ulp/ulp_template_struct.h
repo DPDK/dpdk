@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -171,7 +171,7 @@ extern struct bnxt_ulp_act_match_info ulp_act_match_list[];
 /* Device Specific Tables for mapper */
 struct bnxt_ulp_mapper_cond_info {
 	enum bnxt_ulp_cond_opc cond_opcode;
-	uint32_t cond_operand;
+	uint64_t cond_operand;
 };
 
 struct bnxt_ulp_mapper_cond_list_info {
@@ -233,10 +233,11 @@ struct bnxt_ulp_device_params {
 	uint64_t			packet_count_mask;
 	uint32_t			byte_count_shift;
 	uint32_t			packet_count_shift;
-	uint32_t			dynamic_pad_en;
+	uint32_t			wc_dynamic_pad_en;
+	uint32_t			em_dynamic_pad_en;
 	uint32_t			dynamic_sram_en;
 	uint32_t			dyn_encap_list_size;
-	struct bnxt_ulp_dyn_size_map	dyn_encap_sizes[4];
+	struct bnxt_ulp_dyn_size_map	dyn_encap_sizes[5];
 	uint32_t			dyn_modify_list_size;
 	struct bnxt_ulp_dyn_size_map	dyn_modify_sizes[4];
 	uint16_t			em_blk_size_bits;
@@ -305,8 +306,11 @@ struct bnxt_ulp_mapper_tbl_info {
 	enum bnxt_ulp_fdb_opc		fdb_opcode;
 	uint32_t			fdb_operand;
 
+	/* Manage ref_cnt via opcode for generic tables */
+	enum bnxt_ulp_ref_cnt_opc	ref_cnt_opcode;
+
 	/* Shared session */
-	enum bnxt_ulp_shared_session	shared_session;
+	enum bnxt_ulp_session_type	session_type;
 };
 
 struct bnxt_ulp_mapper_field_info {
@@ -340,6 +344,7 @@ struct bnxt_ulp_glb_resource_info {
 	uint8_t				app_id;
 	enum bnxt_ulp_device_id		device_id;
 	enum tf_dir			direction;
+	enum bnxt_ulp_session_type	session_type;
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
 	enum bnxt_ulp_glb_rf_idx	glb_regfile_index;
@@ -349,6 +354,7 @@ struct bnxt_ulp_resource_resv_info {
 	uint8_t				app_id;
 	enum bnxt_ulp_device_id		device_id;
 	enum tf_dir			direction;
+	enum bnxt_ulp_session_type	session_type;
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
 	uint32_t			count;
@@ -356,7 +362,13 @@ struct bnxt_ulp_resource_resv_info {
 
 struct bnxt_ulp_app_capabilities_info {
 	uint8_t				app_id;
+	uint32_t			vxlan_port;
+	uint32_t			vxlan_ip_port;
 	enum bnxt_ulp_device_id		device_id;
+	uint32_t			upgrade_fw_update;
+	uint8_t				ha_pool_id;
+	uint8_t				ha_reg_state;
+	uint8_t				ha_reg_cnt;
 	uint32_t			flags;
 };
 

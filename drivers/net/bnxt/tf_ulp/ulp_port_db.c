@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -118,8 +118,8 @@ int32_t	ulp_port_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
  *
  * Returns 0 on success or negative number on failure.
  */
-int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
-					 struct rte_eth_dev *eth_dev)
+int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
+				struct rte_eth_dev *eth_dev)
 {
 	uint32_t port_id = eth_dev->data->port_id;
 	struct ulp_phy_port_info *port_data;
