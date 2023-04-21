@@ -227,6 +227,9 @@ int bnxt_alloc_rings(struct bnxt *bp, unsigned int socket_id, uint16_t qidx,
 		tx_ring->bd_dma = mz_phys_addr + tx_ring_start;
 		tx_ring_info->tx_desc_mapping = tx_ring->bd_dma;
 		tx_ring->mem_zone = (const void *)mz;
+		tx_ring_info->nr_bds = rte_zmalloc("bnxt_nr_bds",
+						   sizeof(unsigned short) *
+						   tx_ring->ring_size, 0);
 
 		if (!tx_ring->bd)
 			return -ENOMEM;

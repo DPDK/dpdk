@@ -349,6 +349,7 @@ struct bnxt_ptp_cfg {
 					 BNXT_PTP_MSG_PDELAY_RESP)
 	uint8_t			tx_tstamp_en:1;
 	int			rx_filter;
+	uint8_t			filter_all;
 
 #define BNXT_PTP_RX_TS_L	0
 #define BNXT_PTP_RX_TS_H	1
@@ -372,6 +373,8 @@ struct bnxt_ptp_cfg {
 	/* On P5, the Rx timestamp is present in the Rx completion record */
 	uint64_t			rx_timestamp;
 	uint64_t			current_time;
+	uint64_t			old_time;
+	rte_spinlock_t			ptp_lock;
 };
 
 struct bnxt_coal {
@@ -722,6 +725,7 @@ struct bnxt {
 #define BNXT_FW_CAP_LINK_ADMIN		BIT(7)
 #define BNXT_FW_CAP_TRUFLOW_EN		BIT(8)
 #define BNXT_FW_CAP_VLAN_TX_INSERT	BIT(9)
+#define BNXT_FW_CAP_RX_ALL_PKT_TS	BIT(10)
 #define BNXT_TRUFLOW_EN(bp)	((bp)->fw_cap & BNXT_FW_CAP_TRUFLOW_EN &&\
 				 (bp)->app_id != 0xFF)
 
@@ -849,6 +853,7 @@ struct bnxt {
 	struct bnxt_led_info	*leds;
 	uint8_t			ieee_1588;
 	struct bnxt_ptp_cfg     *ptp_cfg;
+	uint8_t			ptp_all_rx_tstamp;
 	uint16_t		vf_resv_strategy;
 	struct bnxt_ctx_mem_info        *ctx;
 

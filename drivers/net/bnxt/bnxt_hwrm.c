@@ -669,6 +669,11 @@ int bnxt_hwrm_ptp_cfg(struct bnxt *bp)
 		flags |=
 			HWRM_PORT_MAC_CFG_INPUT_FLAGS_PTP_TX_TS_CAPTURE_DISABLE;
 
+	if (ptp->filter_all)
+		flags |=  HWRM_PORT_MAC_CFG_INPUT_FLAGS_ALL_RX_TS_CAPTURE_ENABLE;
+	else if (bp->fw_cap & BNXT_FW_CAP_RX_ALL_PKT_TS)
+		flags |= HWRM_PORT_MAC_CFG_INPUT_FLAGS_ALL_RX_TS_CAPTURE_DISABLE;
+
 	req.flags = rte_cpu_to_le_32(flags);
 	req.enables = rte_cpu_to_le_32
 		(HWRM_PORT_MAC_CFG_INPUT_ENABLES_RX_TS_CAPTURE_PTP_MSG_TYPE);
@@ -810,7 +815,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	struct hwrm_func_qcaps_input req = {.req_type = 0 };
 	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
 	uint16_t new_max_vfs;
-	uint32_t flags;
+	uint32_t flags, flags_ext2;
 
 	HWRM_PREP(&req, HWRM_FUNC_QCAPS, BNXT_USE_CHIMP_MB);
 
@@ -897,6 +902,10 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (bp->tunnel_disable_flag)
 		PMD_DRV_LOG(DEBUG, "Tunnel parsing capability is disabled, flags : %#x\n",
 			    bp->tunnel_disable_flag);
+
+	flags_ext2 = rte_le_to_cpu_32(resp->flags_ext2);
+	if (flags_ext2 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_RX_ALL_PKTS_TIMESTAMPS_SUPPORTED)
+		bp->fw_cap |= BNXT_FW_CAP_RX_ALL_PKT_TS;
 
 unlock:
 	HWRM_UNLOCK();

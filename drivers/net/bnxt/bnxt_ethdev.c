@@ -1441,8 +1441,11 @@ static void bnxt_ptp_get_current_time(void *arg)
 	if (!ptp)
 		return;
 
+	rte_spinlock_lock(&ptp->ptp_lock);
+	ptp->old_time = ptp->current_time;
 	bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
 				&ptp->current_time);
+	rte_spinlock_unlock(&ptp->ptp_lock);
 	rc = rte_eal_alarm_set(US_PER_S, bnxt_ptp_get_current_time, (void *)bp);
 	if (rc != 0) {
 		PMD_DRV_LOG(ERR, "Failed to re-schedule PTP alarm\n");
@@ -1458,8 +1461,11 @@ static int bnxt_schedule_ptp_alarm(struct bnxt *bp)
 	if (bp->flags2 & BNXT_FLAGS2_PTP_ALARM_SCHEDULED)
 		return 0;
 
+	rte_spinlock_lock(&ptp->ptp_lock);
 	bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
 				&ptp->current_time);
+	ptp->old_time = ptp->current_time;
+	rte_spinlock_unlock(&ptp->ptp_lock);
 
 
 	rc = rte_eal_alarm_set(US_PER_S, bnxt_ptp_get_current_time, (void *)bp);
@@ -3611,12 +3617,15 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 
 	ptp->rx_filter = 1;
 	ptp->tx_tstamp_en = 1;
+	ptp->filter_all = 1;
 	ptp->rxctl = BNXT_PTP_MSG_EVENTS;
 
 	rc = bnxt_hwrm_ptp_cfg(bp);
 	if (rc)
 		return rc;
 
+	rte_spinlock_init(&ptp->ptp_lock);
+	bp->ptp_all_rx_tstamp = 1;
 	memset(&ptp->tc, 0, sizeof(struct rte_timecounter));
 	memset(&ptp->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
 	memset(&ptp->tx_tstamp_tc, 0, sizeof(struct rte_timecounter));
@@ -3653,9 +3662,11 @@ bnxt_timesync_disable(struct rte_eth_dev *dev)
 	ptp->rx_filter = 0;
 	ptp->tx_tstamp_en = 0;
 	ptp->rxctl = 0;
+	ptp->filter_all = 0;
 
 	bnxt_hwrm_ptp_cfg(bp);
 
+	bp->ptp_all_rx_tstamp = 0;
 	if (!BNXT_CHIP_P5(bp))
 		bnxt_unmap_ptp_regs(bp);
 	else

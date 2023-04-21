@@ -24,6 +24,7 @@ struct bnxt_tx_ring_info {
 
 	rte_iova_t		tx_desc_mapping;
 
+	unsigned short          *nr_bds;
 	struct bnxt_ring	*tx_ring_struct;
 };
 

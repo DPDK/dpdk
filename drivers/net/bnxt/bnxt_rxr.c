@@ -697,7 +697,7 @@ bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 	if (!BNXT_CHIP_P5(bp) || !ptp)
 		return;
 
-	/* On Thor, Rx timestamps are provided directly in the
+	/* On P5, Rx timestamps are provided directly in the
 	 * Rx completion records to the driver. Only 32 bits of
 	 * the timestamp is present in the completion. Driver needs
 	 * to read the current 48 bit free running timer using the
@@ -705,6 +705,9 @@ bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 	 * from the HWRM response with the lower 32 bits in the
 	 * Rx completion to produce the 48 bit timestamp for the Rx packet
 	 */
+	rte_spinlock_lock(&ptp->ptp_lock);
+	last_hwrm_time = ptp->old_time;
+	rte_spinlock_unlock(&ptp->ptp_lock);
 	pkt_time = (last_hwrm_time & BNXT_PTP_CURRENT_TIME_MASK) | rx_ts_cmpl;
 	if (rx_ts_cmpl < (uint32_t)last_hwrm_time) {
 		/* timer has rolled over */
@@ -922,7 +925,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 
 	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
 		      RX_PKT_CMPL_FLAGS_MASK) ==
-		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
+		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP) ||
+		      bp->ptp_all_rx_tstamp)
 		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
 
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V2) {
