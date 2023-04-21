@@ -2405,6 +2405,9 @@ bnxt_hwrm_vnic_rss_cfg_non_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	int rc = 0;
 
+	if (vnic->num_lb_ctxts == 0)
+		return rc;
+
 	HWRM_PREP(&req, HWRM_VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
 	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
