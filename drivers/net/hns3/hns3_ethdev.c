@@ -4891,7 +4891,7 @@ hns3_set_fiber_port_link_speed(struct hns3_hw *hw,
 	return hns3_cfg_mac_speed_dup(hw, cfg->speed, cfg->duplex);
 }
 
-static const char *
+const char *
 hns3_get_media_type_name(uint8_t media_type)
 {
 	if (media_type == HNS3_MEDIA_TYPE_FIBER)

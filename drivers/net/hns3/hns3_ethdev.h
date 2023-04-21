@@ -1054,6 +1054,8 @@ int hns3_timesync_write_time(struct rte_eth_dev *dev,
 			const struct timespec *ts);
 int hns3_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
 
+const char *hns3_get_media_type_name(uint8_t media_type);
+
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)
 {
