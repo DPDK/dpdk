@@ -149,7 +149,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - image: fedora:35
+          - image: fedora:37
 
     steps:
     - name: Generate various keys
@@ -198,9 +198,9 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - image: fedora:35
+          - image: fedora:37
             compiler: gcc
-          - image: fedora:35
+          - image: fedora:37
             compiler: clang
 
     steps:
@@ -250,7 +250,7 @@ jobs:
       run: docker exec -i dpdk dnf update -y || true
     - name: Install packages
       run: docker exec -i dpdk dnf install -y ccache jansson-devel
-        libarchive-devel libatomic libbsd-devel libbpf-devel libfdt-devel
+        libarchive-devel libatomic libbsd-devel libxdp-devel libfdt-devel
         libpcap-devel ninja-build numactl-devel openssl-devel python3-pip
         python3-pyelftools python3-setuptools python3-wheel rdma-core-devel
         zlib-devel
