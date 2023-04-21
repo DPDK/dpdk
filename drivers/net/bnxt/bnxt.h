@@ -138,6 +138,7 @@
 #define BNXT_NUM_CMPL_DMA_AGGR			36
 #define BNXT_CMPL_AGGR_DMA_TMR_DURING_INT	50
 #define BNXT_NUM_CMPL_DMA_AGGR_DURING_INT	12
+#define BNXT_DEVICE_SERIAL_NUM_SIZE		8
 
 #define	BNXT_DEFAULT_VNIC_STATE_MASK			\
 	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_MASK
@@ -863,6 +864,8 @@ struct bnxt {
 	uint16_t		num_reps;
 	struct bnxt_rep_info	*rep_info;
 	uint16_t                *cfa_code_map;
+	/* Device Serial Number */
+	uint8_t			dsn[BNXT_DEVICE_SERIAL_NUM_SIZE];
 	/* Struct to hold adapter error recovery related info */
 	struct bnxt_error_recovery_info *recovery_info;
 #define BNXT_MARK_TABLE_SZ	(sizeof(struct bnxt_mark_info)  * 64 * 1024)

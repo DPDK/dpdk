@@ -131,11 +131,13 @@ struct bnxt_ulp_pci_info {
 	uint8_t		bus;
 };
 
+#define BNXT_ULP_DEVICE_SERIAL_NUM_SIZE 8
 struct bnxt_ulp_session_state {
 	STAILQ_ENTRY(bnxt_ulp_session_state)	next;
 	bool				bnxt_ulp_init;
 	pthread_mutex_t			bnxt_ulp_mutex;
 	struct bnxt_ulp_pci_info	pci_info;
+	uint8_t				dsn[BNXT_ULP_DEVICE_SERIAL_NUM_SIZE];
 	struct bnxt_ulp_data		*cfg_data;
 	struct tf			*g_tfp[BNXT_ULP_SESSION_MAX];
 	uint32_t			session_opened[BNXT_ULP_SESSION_MAX];

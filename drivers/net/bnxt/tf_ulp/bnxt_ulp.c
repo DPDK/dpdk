@@ -1318,9 +1318,13 @@ ulp_get_session(struct bnxt *bp, struct rte_pci_addr *pci_addr)
 
 	/* if multi root capability is enabled, then ignore the pci bus id */
 	STAILQ_FOREACH(session, &bnxt_ulp_session_list, next) {
-		if (session->pci_info.domain == pci_addr->domain &&
-		    (BNXT_MULTIROOT_EN(bp) ||
-		    session->pci_info.bus == pci_addr->bus)) {
+		if (BNXT_MULTIROOT_EN(bp)) {
+			if (!memcmp(bp->dsn, session->dsn,
+				    sizeof(session->dsn))) {
+				return session;
+			}
+		} else if (session->pci_info.domain == pci_addr->domain &&
+			   session->pci_info.bus == pci_addr->bus) {
 			return session;
 		}
 	}
@@ -1364,6 +1368,7 @@ ulp_session_init(struct bnxt *bp,
 			/* Add it to the queue */
 			session->pci_info.domain = pci_addr->domain;
 			session->pci_info.bus = pci_addr->bus;
+			memcpy(session->dsn, bp->dsn, sizeof(session->dsn));
 			rc = pthread_mutex_init(&session->bnxt_ulp_mutex, NULL);
 			if (rc) {
 				BNXT_TF_DBG(ERR, "mutex create failed\n");
