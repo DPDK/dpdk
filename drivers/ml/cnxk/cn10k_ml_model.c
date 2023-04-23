@@ -47,42 +47,42 @@ cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size)
 	metadata = (struct cn10k_ml_model_metadata *)buffer;
 
 	/* Header CRC check */
-	if (metadata->metadata_header.header_crc32c != 0) {
-		header_crc32c = rte_hash_crc(
-			buffer, sizeof(metadata->metadata_header) - sizeof(uint32_t), 0);
+	if (metadata->header.header_crc32c != 0) {
+		header_crc32c =
+			rte_hash_crc(buffer, sizeof(metadata->header) - sizeof(uint32_t), 0);
 
-		if (header_crc32c != metadata->metadata_header.header_crc32c) {
+		if (header_crc32c != metadata->header.header_crc32c) {
 			plt_err("Invalid model, Header CRC mismatch");
 			return -EINVAL;
 		}
 	}
 
 	/* Payload CRC check */
-	if (metadata->metadata_header.payload_crc32c != 0) {
-		payload_crc32c = rte_hash_crc(buffer + sizeof(metadata->metadata_header),
-					      size - sizeof(metadata->metadata_header), 0);
+	if (metadata->header.payload_crc32c != 0) {
+		payload_crc32c = rte_hash_crc(buffer + sizeof(metadata->header),
+					      size - sizeof(metadata->header), 0);
 
-		if (payload_crc32c != metadata->metadata_header.payload_crc32c) {
+		if (payload_crc32c != metadata->header.payload_crc32c) {
 			plt_err("Invalid model, Payload CRC mismatch");
 			return -EINVAL;
 		}
 	}
 
 	/* Model magic string */
-	if (strncmp((char *)metadata->metadata_header.magic, MRVL_ML_MODEL_MAGIC_STRING, 4) != 0) {
-		plt_err("Invalid model, magic = %s", metadata->metadata_header.magic);
+	if (strncmp((char *)metadata->header.magic, MRVL_ML_MODEL_MAGIC_STRING, 4) != 0) {
+		plt_err("Invalid model, magic = %s", metadata->header.magic);
 		return -EINVAL;
 	}
 
 	/* Target architecture */
-	if (metadata->metadata_header.target_architecture != MRVL_ML_MODEL_TARGET_ARCH) {
+	if (metadata->header.target_architecture != MRVL_ML_MODEL_TARGET_ARCH) {
 		plt_err("Model target architecture (%u) not supported",
-			metadata->metadata_header.target_architecture);
+			metadata->header.target_architecture);
 		return -ENOTSUP;
 	}
 
 	/* Header version */
-	rte_memcpy(version, metadata->metadata_header.version, 4 * sizeof(uint8_t));
+	rte_memcpy(version, metadata->header.version, 4 * sizeof(uint8_t));
 	if (version[0] * 1000 + version[1] * 100 < MRVL_ML_MODEL_VERSION) {
 		plt_err("Metadata version = %u.%u.%u.%u (< %u.%u.%u.%u) not supported", version[0],
 			version[1], version[2], version[3], (MRVL_ML_MODEL_VERSION / 1000) % 10,
