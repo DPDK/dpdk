@@ -436,6 +436,160 @@ cn10k_ml_prep_fp_job_descriptor(struct rte_ml_dev *dev, struct cn10k_ml_req *req
 	req->jd.model_run.num_batches = op->nb_batches;
 }
 
+struct xstat_info {
+	char name[32];
+	enum cn10k_ml_xstats_type type;
+	uint8_t reset_allowed;
+};
+
+/* Note: Device stats are not allowed to be reset. */
+static const struct xstat_info device_stats[] = {
+	{"nb_models_loaded", nb_models_loaded, 0},
+	{"nb_models_unloaded", nb_models_unloaded, 0},
+	{"nb_models_started", nb_models_started, 0},
+	{"nb_models_stopped", nb_models_stopped, 0},
+};
+
+static const struct xstat_info model_stats[] = {
+	{"Avg-HW-Latency", avg_hw_latency, 1}, {"Min-HW-Latency", min_hw_latency, 1},
+	{"Max-HW-Latency", max_hw_latency, 1}, {"Avg-FW-Latency", avg_fw_latency, 1},
+	{"Min-FW-Latency", min_fw_latency, 1}, {"Max-FW-Latency", max_fw_latency, 1},
+};
+
+static int
+cn10k_ml_xstats_init(struct rte_ml_dev *dev)
+{
+	struct cn10k_ml_dev *mldev;
+	uint16_t nb_stats;
+	uint16_t stat_id;
+	uint16_t model;
+	uint16_t i;
+
+	mldev = dev->data->dev_private;
+
+	/* Allocate memory for xstats entries. Don't allocate during reconfigure */
+	nb_stats = RTE_DIM(device_stats) + ML_CN10K_MAX_MODELS * RTE_DIM(model_stats);
+	if (mldev->xstats.entries == NULL)
+		mldev->xstats.entries = rte_zmalloc("cn10k_ml_xstats",
+						    sizeof(struct cn10k_ml_xstats_entry) * nb_stats,
+						    PLT_CACHE_LINE_SIZE);
+
+	if (mldev->xstats.entries == NULL)
+		return -ENOMEM;
+
+	/* Initialize device xstats */
+	stat_id = 0;
+	for (i = 0; i < RTE_DIM(device_stats); i++) {
+		mldev->xstats.entries[stat_id].map.id = stat_id;
+		snprintf(mldev->xstats.entries[stat_id].map.name,
+			 sizeof(mldev->xstats.entries[stat_id].map.name), "%s",
+			 device_stats[i].name);
+
+		mldev->xstats.entries[stat_id].mode = RTE_ML_DEV_XSTATS_DEVICE;
+		mldev->xstats.entries[stat_id].type = device_stats[i].type;
+		mldev->xstats.entries[stat_id].fn_id = CN10K_ML_XSTATS_FN_DEVICE;
+		mldev->xstats.entries[stat_id].obj_idx = 0;
+		mldev->xstats.entries[stat_id].reset_allowed = device_stats[i].reset_allowed;
+		stat_id++;
+	}
+	mldev->xstats.count_mode_device = stat_id;
+
+	/* Initialize model xstats */
+	for (model = 0; model < ML_CN10K_MAX_MODELS; model++) {
+		mldev->xstats.offset_for_model[model] = stat_id;
+
+		for (i = 0; i < RTE_DIM(model_stats); i++) {
+			mldev->xstats.entries[stat_id].map.id = stat_id;
+			mldev->xstats.entries[stat_id].mode = RTE_ML_DEV_XSTATS_MODEL;
+			mldev->xstats.entries[stat_id].type = model_stats[i].type;
+			mldev->xstats.entries[stat_id].fn_id = CN10K_ML_XSTATS_FN_MODEL;
+			mldev->xstats.entries[stat_id].obj_idx = model;
+			mldev->xstats.entries[stat_id].reset_allowed = model_stats[i].reset_allowed;
+
+			/* Name of xstat is updated during model load */
+			snprintf(mldev->xstats.entries[stat_id].map.name,
+				 sizeof(mldev->xstats.entries[stat_id].map.name), "Model-%u-%s",
+				 model, model_stats[i].name);
+
+			stat_id++;
+		}
+
+		mldev->xstats.count_per_model[model] = RTE_DIM(model_stats);
+	}
+
+	mldev->xstats.count_mode_model = stat_id - mldev->xstats.count_mode_device;
+	mldev->xstats.count = stat_id;
+
+	return 0;
+}
+
+static void
+cn10k_ml_xstats_uninit(struct rte_ml_dev *dev)
+{
+	struct cn10k_ml_dev *mldev;
+
+	mldev = dev->data->dev_private;
+
+	rte_free(mldev->xstats.entries);
+	mldev->xstats.entries = NULL;
+
+	mldev->xstats.count = 0;
+}
+
+static void
+cn10k_ml_xstats_model_name_update(struct rte_ml_dev *dev, uint16_t model_id)
+{
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	uint16_t rclk_freq;
+	uint16_t sclk_freq;
+	uint16_t stat_id;
+	char suffix[8];
+	uint16_t i;
+
+	mldev = dev->data->dev_private;
+	model = dev->data->models[model_id];
+	stat_id = RTE_DIM(device_stats) + model_id * RTE_DIM(model_stats);
+
+	roc_clk_freq_get(&rclk_freq, &sclk_freq);
+	if (sclk_freq == 0)
+		strcpy(suffix, "cycles");
+	else
+		strcpy(suffix, "ns");
+
+	/* Update xstat name based on model name and sclk availability */
+	for (i = 0; i < RTE_DIM(model_stats); i++) {
+		snprintf(mldev->xstats.entries[stat_id].map.name,
+			 sizeof(mldev->xstats.entries[stat_id].map.name), "%s-%s-%s",
+			 model->metadata.model.name, model_stats[i].name, suffix);
+		stat_id++;
+	}
+}
+
+static uint64_t
+cn10k_ml_dev_xstat_get(struct rte_ml_dev *dev, uint16_t obj_idx __rte_unused,
+		       enum cn10k_ml_xstats_type type)
+{
+	struct cn10k_ml_dev *mldev;
+
+	mldev = dev->data->dev_private;
+
+	switch (type) {
+	case nb_models_loaded:
+		return mldev->nb_models_loaded;
+	case nb_models_unloaded:
+		return mldev->nb_models_unloaded;
+	case nb_models_started:
+		return mldev->nb_models_started;
+	case nb_models_stopped:
+		return mldev->nb_models_stopped;
+	default:
+		return -1;
+	}
+
+	return 0;
+}
+
 #define ML_AVG_FOREACH_QP(dev, model, qp_id, str, value, count)                                    \
 	do {                                                                                       \
 		value = 0;                                                                         \
@@ -473,8 +627,7 @@ cn10k_ml_prep_fp_job_descriptor(struct rte_ml_dev *dev, struct cn10k_ml_req *req
 	} while (0)
 
 static uint64_t
-cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t model_id,
-			 enum cn10k_ml_model_xstats_type type)
+cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t obj_idx, enum cn10k_ml_xstats_type type)
 {
 	struct cn10k_ml_model *model;
 	uint16_t rclk_freq; /* MHz */
@@ -483,7 +636,7 @@ cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t model_id,
 	uint64_t value;
 	uint32_t qp_id;
 
-	model = dev->data->models[model_id];
+	model = dev->data->models[obj_idx];
 	if (model == NULL)
 		return 0;
 
@@ -517,6 +670,41 @@ cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t model_id,
 	return value;
 }
 
+static int
+cn10k_ml_device_xstats_reset(struct rte_ml_dev *dev, const uint16_t stat_ids[], uint16_t nb_ids)
+{
+	struct cn10k_ml_xstats_entry *xs;
+	struct cn10k_ml_dev *mldev;
+	uint16_t nb_stats;
+	uint16_t stat_id;
+	uint32_t i;
+
+	mldev = dev->data->dev_private;
+
+	if (stat_ids == NULL)
+		nb_stats = mldev->xstats.count_mode_device;
+	else
+		nb_stats = nb_ids;
+
+	for (i = 0; i < nb_stats; i++) {
+		if (stat_ids == NULL)
+			stat_id = i;
+		else
+			stat_id = stat_ids[i];
+
+		if (stat_id >= mldev->xstats.count_mode_device)
+			return -EINVAL;
+
+		xs = &mldev->xstats.entries[stat_id];
+		if (!xs->reset_allowed)
+			continue;
+
+		xs->reset_value = cn10k_ml_dev_xstat_get(dev, xs->obj_idx, xs->type);
+	}
+
+	return 0;
+}
+
 #define ML_AVG_RESET_FOREACH_QP(dev, model, qp_id, str)                                            \
 	do {                                                                                       \
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
@@ -539,8 +727,7 @@ cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t model_id,
 	} while (0)
 
 static void
-cn10k_ml_model_xstat_reset(struct rte_ml_dev *dev, uint16_t model_id,
-			   enum cn10k_ml_model_xstats_type type)
+cn10k_ml_reset_model_stat(struct rte_ml_dev *dev, uint16_t model_id, enum cn10k_ml_xstats_type type)
 {
 	struct cn10k_ml_model *model;
 	uint32_t qp_id;
@@ -569,6 +756,60 @@ cn10k_ml_model_xstat_reset(struct rte_ml_dev *dev, uint16_t model_id,
 	default:
 		return;
 	}
+}
+
+static int
+cn10k_ml_model_xstats_reset(struct rte_ml_dev *dev, int32_t model_id, const uint16_t stat_ids[],
+			    uint16_t nb_ids)
+{
+	struct cn10k_ml_xstats_entry *xs;
+	struct cn10k_ml_model *model;
+	struct cn10k_ml_dev *mldev;
+	int32_t lcl_model_id = 0;
+	uint16_t start_id;
+	uint16_t end_id;
+	int32_t i;
+	int32_t j;
+
+	mldev = dev->data->dev_private;
+	for (i = 0; i < ML_CN10K_MAX_MODELS; i++) {
+		if (model_id == -1) {
+			model = dev->data->models[i];
+			if (model == NULL) /* Skip inactive models */
+				continue;
+		} else {
+			if (model_id != i)
+				continue;
+
+			model = dev->data->models[model_id];
+			if (model == NULL) {
+				plt_err("Invalid model_id = %d\n", model_id);
+				return -EINVAL;
+			}
+		}
+
+		start_id = mldev->xstats.offset_for_model[i];
+		end_id = mldev->xstats.offset_for_model[i] + mldev->xstats.count_per_model[i] - 1;
+
+		if (stat_ids == NULL) {
+			for (j = start_id; j <= end_id; j++) {
+				xs = &mldev->xstats.entries[j];
+				cn10k_ml_reset_model_stat(dev, i, xs->type);
+			}
+		} else {
+			for (j = 0; j < nb_ids; j++) {
+				if (stat_ids[j] < start_id || stat_ids[j] > end_id) {
+					plt_err("Invalid stat_ids[%d] = %d for model_id = %d\n", j,
+						stat_ids[j], lcl_model_id);
+					return -EINVAL;
+				}
+				xs = &mldev->xstats.entries[stat_ids[j]];
+				cn10k_ml_reset_model_stat(dev, i, xs->type);
+			}
+		}
+	}
+
+	return 0;
 }
 
 static int
@@ -802,12 +1043,12 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 
 	rte_spinlock_init(&ocm->lock);
 
-	/* Check firmware stats */
-	if ((mldev->fw.req->jd.fw_load.cap.s.hw_stats) &&
-	    (mldev->fw.req->jd.fw_load.cap.s.fw_stats))
-		mldev->xstats_enabled = true;
-	else
-		mldev->xstats_enabled = false;
+	/* Initialize xstats */
+	ret = cn10k_ml_xstats_init(dev);
+	if (ret != 0) {
+		plt_err("Failed to initialize xstats");
+		goto error;
+	}
 
 	/* Set JCMDQ enqueue function */
 	if (mldev->hw_queue_lock == 1)
@@ -840,6 +1081,9 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	dev->op_error_get = cn10k_ml_op_error_get;
 
 	mldev->nb_models_loaded = 0;
+	mldev->nb_models_started = 0;
+	mldev->nb_models_stopped = 0;
+	mldev->nb_models_unloaded = 0;
 	mldev->state = ML_CN10K_DEV_STATE_CONFIGURED;
 
 	return 0;
@@ -898,6 +1142,9 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 	}
 
 	rte_free(dev->data->queue_pairs);
+
+	/* Un-initialize xstats */
+	cn10k_ml_xstats_uninit(dev);
 
 	/* Unload firmware */
 	cn10k_ml_fw_unload(mldev);
@@ -1029,182 +1276,163 @@ cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev)
 	}
 }
 
-/* Model xstats names */
-struct rte_ml_dev_xstats_map cn10k_ml_model_xstats_table[] = {
-	{avg_hw_latency, "Avg-HW-Latency"}, {min_hw_latency, "Min-HW-Latency"},
-	{max_hw_latency, "Max-HW-Latency"}, {avg_fw_latency, "Avg-FW-Latency"},
-	{min_fw_latency, "Min-FW-Latency"}, {max_fw_latency, "Max-FW-Latency"},
-};
-
 static int
-cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, struct rte_ml_dev_xstats_map *xstats_map,
+cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+			      int32_t model_id, struct rte_ml_dev_xstats_map *xstats_map,
 			      uint32_t size)
 {
-	struct rte_ml_dev_info dev_info;
-	struct cn10k_ml_model *model;
 	struct cn10k_ml_dev *mldev;
-	uint16_t rclk_freq;
-	uint16_t sclk_freq;
-	uint32_t model_id;
-	uint32_t count;
-	uint32_t type;
-	uint32_t id;
+	uint32_t xstats_mode_count;
+	uint32_t idx = 0;
+	uint32_t i;
 
 	mldev = dev->data->dev_private;
-	if (!mldev->xstats_enabled)
-		return 0;
 
-	if (xstats_map == NULL)
-		return PLT_DIM(cn10k_ml_model_xstats_table) * mldev->nb_models_loaded;
+	xstats_mode_count = 0;
+	switch (mode) {
+	case RTE_ML_DEV_XSTATS_DEVICE:
+		xstats_mode_count = mldev->xstats.count_mode_device;
+		break;
+	case RTE_ML_DEV_XSTATS_MODEL:
+		if (model_id >= ML_CN10K_MAX_MODELS)
+			break;
+		xstats_mode_count = mldev->xstats.count_per_model[model_id];
+		break;
+	default:
+		return -EINVAL;
+	};
 
-	/* Model xstats names */
-	count = 0;
-	cn10k_ml_dev_info_get(dev, &dev_info);
-	roc_clk_freq_get(&rclk_freq, &sclk_freq);
+	if (xstats_mode_count > size || xstats_map == NULL)
+		return xstats_mode_count;
 
-	for (id = 0; id < PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models; id++) {
-		model_id = id / PLT_DIM(cn10k_ml_model_xstats_table);
-		model = dev->data->models[model_id];
-
-		if (model == NULL)
+	for (i = 0; i < mldev->xstats.count && idx < size; i++) {
+		if (mldev->xstats.entries[i].mode != mode)
 			continue;
 
-		xstats_map[count].id = id;
-		type = id % PLT_DIM(cn10k_ml_model_xstats_table);
+		if (mode != RTE_ML_DEV_XSTATS_DEVICE &&
+		    model_id != mldev->xstats.entries[i].obj_idx)
+			continue;
 
-		if (sclk_freq == 0)
-			snprintf(xstats_map[count].name, RTE_ML_STR_MAX, "%s-%s-cycles",
-				 model->metadata.model.name,
-				 cn10k_ml_model_xstats_table[type].name);
-		else
-			snprintf(xstats_map[count].name, RTE_ML_STR_MAX, "%s-%s-ns",
-				 model->metadata.model.name,
-				 cn10k_ml_model_xstats_table[type].name);
-
-		count++;
-		if (count == size)
-			break;
+		strncpy(xstats_map[idx].name, mldev->xstats.entries[i].map.name, RTE_ML_STR_MAX);
+		xstats_map[idx].id = mldev->xstats.entries[i].map.id;
+		idx++;
 	}
 
-	return count;
+	return idx;
 }
 
-static int __rte_unused
+static int
 cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16_t *stat_id,
 				uint64_t *value)
 {
-	struct rte_ml_dev_xstats_map *xstats_map;
-	struct rte_ml_dev_info dev_info;
+	struct cn10k_ml_xstats_entry *xs;
 	struct cn10k_ml_dev *mldev;
-	uint32_t num_xstats;
-	uint32_t model_id;
-	uint32_t type;
-	uint32_t id;
-
-	mldev = dev->data->dev_private;
-	if (!mldev->xstats_enabled)
-		return 0;
-
-	num_xstats = PLT_DIM(cn10k_ml_model_xstats_table) * mldev->nb_models_loaded;
-	xstats_map = rte_zmalloc("cn10k_ml_xstats_map",
-				 sizeof(struct rte_ml_dev_xstats_map) * num_xstats, 0);
-	if (xstats_map == NULL) {
-		plt_err("Unable to allocate memory for cn10k_ml_xstats_map");
-		return -ENOMEM;
-	}
-
-	cn10k_ml_dev_xstats_names_get(dev, xstats_map, num_xstats);
-
-	cn10k_ml_dev_info_get(dev, &dev_info);
-	for (id = 0; id < PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models; id++) {
-		if (strncmp(name, xstats_map[id].name, strlen(name)) == 0) {
-			*stat_id = id;
-			rte_free(xstats_map);
-			break;
-		}
-	}
-
-	if (id == PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models) {
-		rte_free(xstats_map);
-		return -EINVAL;
-	}
-
-	model_id = id / PLT_DIM(cn10k_ml_model_xstats_table);
-	type = id % PLT_DIM(cn10k_ml_model_xstats_table);
-	*value = cn10k_ml_model_xstat_get(dev, model_id, type);
-
-	return 0;
-}
-
-static int __rte_unused
-cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, const uint16_t *stat_ids, uint64_t *values,
-			uint16_t nb_ids)
-{
-	struct cn10k_ml_model *model;
-	struct cn10k_ml_dev *mldev;
-	uint32_t model_id;
-	uint32_t count;
-	uint32_t type;
+	cn10k_ml_xstats_fn fn;
 	uint32_t i;
 
 	mldev = dev->data->dev_private;
-	if (!mldev->xstats_enabled)
-		return 0;
+	for (i = 0; i < mldev->xstats.count; i++) {
+		xs = &mldev->xstats.entries[i];
+		if (strncmp(xs->map.name, name, RTE_ML_STR_MAX) == 0) {
+			if (stat_id != NULL)
+				*stat_id = xs->map.id;
 
-	count = 0;
-	for (i = 0; i < nb_ids; i++) {
-		model_id = stat_ids[i] / PLT_DIM(cn10k_ml_model_xstats_table);
-		model = dev->data->models[model_id];
+			switch (xs->fn_id) {
+			case CN10K_ML_XSTATS_FN_DEVICE:
+				fn = cn10k_ml_dev_xstat_get;
+				break;
+			case CN10K_ML_XSTATS_FN_MODEL:
+				fn = cn10k_ml_model_xstat_get;
+				break;
+			default:
+				plt_err("Unexpected xstat fn_id = %d", xs->fn_id);
+				return -EINVAL;
+			}
 
-		if (model == NULL)
+			*value = fn(dev, xs->obj_idx, xs->type) - xs->reset_value;
+
+			return 0;
+		}
+	}
+
+	if (stat_id != NULL)
+		*stat_id = (uint16_t)-1;
+
+	return -EINVAL;
+}
+
+static int
+cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode, int32_t model_id,
+			const uint16_t stat_ids[], uint64_t values[], uint16_t nb_ids)
+{
+	struct cn10k_ml_xstats_entry *xs;
+	struct cn10k_ml_dev *mldev;
+	uint32_t xstats_mode_count;
+	cn10k_ml_xstats_fn fn;
+	uint64_t val;
+	uint32_t idx;
+	uint32_t i;
+
+	mldev = dev->data->dev_private;
+	xstats_mode_count = 0;
+
+	switch (mode) {
+	case RTE_ML_DEV_XSTATS_DEVICE:
+		xstats_mode_count = mldev->xstats.count_mode_device;
+		break;
+	case RTE_ML_DEV_XSTATS_MODEL:
+		if (model_id >= ML_CN10K_MAX_MODELS)
+			return -EINVAL;
+		xstats_mode_count = mldev->xstats.count_per_model[model_id];
+		break;
+	default:
+		return -EINVAL;
+	};
+
+	idx = 0;
+	for (i = 0; i < nb_ids && idx < xstats_mode_count; i++) {
+		xs = &mldev->xstats.entries[stat_ids[i]];
+		if (stat_ids[i] > mldev->xstats.count || xs->mode != mode)
 			continue;
 
-		type = stat_ids[i] % PLT_DIM(cn10k_ml_model_xstats_table);
-		values[i] = cn10k_ml_model_xstat_get(dev, model_id, type);
-		count++;
+		if (mode == RTE_ML_DEV_XSTATS_MODEL && model_id != xs->obj_idx) {
+			plt_err("Invalid stats_id[%d] = %d for model_id = %d\n", i, stat_ids[i],
+				model_id);
+			return -EINVAL;
+		}
+
+		switch (xs->fn_id) {
+		case CN10K_ML_XSTATS_FN_DEVICE:
+			fn = cn10k_ml_dev_xstat_get;
+			break;
+		case CN10K_ML_XSTATS_FN_MODEL:
+			fn = cn10k_ml_model_xstat_get;
+			break;
+		default:
+			plt_err("Unexpected xstat fn_id = %d", xs->fn_id);
+			return -EINVAL;
+		}
+
+		val = fn(dev, xs->obj_idx, xs->type);
+		if (values)
+			values[idx] = val;
+
+		idx++;
 	}
 
-	return count;
+	return idx;
 }
 
-static int __rte_unused
-cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, const uint16_t *stat_ids, uint16_t nb_ids)
+static int
+cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+			  int32_t model_id, const uint16_t stat_ids[], uint16_t nb_ids)
 {
-	struct rte_ml_dev_info dev_info;
-	struct cn10k_ml_model *model;
-	struct cn10k_ml_dev *mldev;
-	uint32_t model_id;
-	uint32_t type;
-	uint32_t i;
-
-	mldev = dev->data->dev_private;
-	if (!mldev->xstats_enabled)
-		return 0;
-
-	cn10k_ml_dev_info_get(dev, &dev_info);
-	if (stat_ids == NULL) {
-		for (i = 0; i < PLT_DIM(cn10k_ml_model_xstats_table) * dev_info.max_models; i++) {
-			model_id = i / PLT_DIM(cn10k_ml_model_xstats_table);
-			model = dev->data->models[model_id];
-
-			if (model == NULL)
-				continue;
-
-			type = i % PLT_DIM(cn10k_ml_model_xstats_table);
-			cn10k_ml_model_xstat_reset(dev, model_id, type);
-		}
-	} else {
-		for (i = 0; i < nb_ids; i++) {
-			model_id = stat_ids[i] / PLT_DIM(cn10k_ml_model_xstats_table);
-			model = dev->data->models[model_id];
-
-			if (model == NULL)
-				continue;
-
-			type = stat_ids[i] % PLT_DIM(cn10k_ml_model_xstats_table);
-			cn10k_ml_model_xstat_reset(dev, model_id, type);
-		}
-	}
+	switch (mode) {
+	case RTE_ML_DEV_XSTATS_DEVICE:
+		return cn10k_ml_device_xstats_reset(dev, stat_ids, nb_ids);
+	case RTE_ML_DEV_XSTATS_MODEL:
+		return cn10k_ml_model_xstats_reset(dev, model_id, stat_ids, nb_ids);
+	};
 
 	return 0;
 }
@@ -1471,6 +1699,9 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	dev->data->models[idx] = model;
 	mldev->nb_models_loaded++;
 
+	/* Update xstats names */
+	cn10k_ml_xstats_model_name_update(dev, idx);
+
 	*model_id = idx;
 
 	return 0;
@@ -1497,7 +1728,7 @@ cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
 	}
 
 	dev->data->models[model_id] = NULL;
-	mldev->nb_models_loaded--;
+	mldev->nb_models_unloaded++;
 
 	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, model_id);
 	return plt_memzone_free(plt_memzone_lookup(str));
@@ -1627,10 +1858,12 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	locked = false;
 	while (!locked) {
 		if (plt_spinlock_trylock(&model->lock) != 0) {
-			if (ret == 0)
+			if (ret == 0) {
 				model->state = ML_CN10K_MODEL_STATE_STARTED;
-			else
+				mldev->nb_models_started++;
+			} else {
 				model->state = ML_CN10K_MODEL_STATE_UNKNOWN;
+			}
 
 			plt_spinlock_unlock(&model->lock);
 			locked = true;
@@ -1751,6 +1984,7 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	locked = false;
 	while (!locked) {
 		if (plt_spinlock_trylock(&model->lock) != 0) {
+			mldev->nb_models_stopped++;
 			model->state = ML_CN10K_MODEL_STATE_LOADED;
 			plt_spinlock_unlock(&model->lock);
 			locked = true;
@@ -2308,6 +2542,10 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Stats ops */
 	.dev_stats_get = cn10k_ml_dev_stats_get,
 	.dev_stats_reset = cn10k_ml_dev_stats_reset,
+	.dev_xstats_names_get = cn10k_ml_dev_xstats_names_get,
+	.dev_xstats_by_name_get = cn10k_ml_dev_xstats_by_name_get,
+	.dev_xstats_get = cn10k_ml_dev_xstats_get,
+	.dev_xstats_reset = cn10k_ml_dev_xstats_reset,
 
 	/* Model ops */
 	.model_load = cn10k_ml_model_load,

@@ -399,27 +399,6 @@ struct cn10k_ml_model_addr {
 	uint32_t total_output_sz_d;
 };
 
-/* Extended stats types enum */
-enum cn10k_ml_model_xstats_type {
-	/* Average hardware latency */
-	avg_hw_latency = 0,
-
-	/* Minimum hardware latency */
-	min_hw_latency,
-
-	/* Maximum hardware latency */
-	max_hw_latency,
-
-	/* Average firmware latency */
-	avg_fw_latency,
-
-	/* Minimum firmware latency */
-	min_fw_latency,
-
-	/* Maximum firmware latency */
-	max_fw_latency,
-};
-
 /* Model fast-path stats */
 struct cn10k_ml_model_stats {
 	/* Total hardware latency, sum of all inferences */

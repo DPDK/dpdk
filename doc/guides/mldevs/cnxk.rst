@@ -213,14 +213,32 @@ Debugging Options
 Extended stats
 --------------
 
-Marvell cnxk ML PMD supports reporting the inference latencies
-through extended statistics.
-The PMD supports the below list of 6 extended stats types per each model.
-Total number of extended stats would be equal to 6 x number of models loaded.
+Marvell cnxk ML PMD supports reporting the device and model extended statistics.
 
-.. _table_octeon_cnxk_ml_xstats_names:
+PMD supports the below list of 4 device extended stats.
 
-.. table:: OCTEON cnxk ML PMD xstats names
+.. _table_octeon_cnxk_ml_device_xstats_names:
+
+.. table:: OCTEON cnxk ML PMD device xstats names
+
+   +---+---------------------+----------------------------------------------+
+   | # | Type                | Description                                  |
+   +===+=====================+==============================================+
+   | 1 | nb_models_loaded    | Number of models loaded                      |
+   +---+---------------------+----------------------------------------------+
+   | 2 | nb_models_unloaded  | Number of models unloaded                    |
+   +---+---------------------+----------------------------------------------+
+   | 3 | nb_models_started   | Number of models started                     |
+   +---+---------------------+----------------------------------------------+
+   | 4 | nb_models_stopped   | Number of models stopped                     |
+   +---+---------------------+----------------------------------------------+
+
+
+PMD supports the below list of 6 extended stats types per each model.
+
+.. _table_octeon_cnxk_ml_model_xstats_names:
+
+.. table:: OCTEON cnxk ML PMD model xstats names
 
    +---+---------------------+----------------------------------------------+
    | # | Type                | Description                                  |
