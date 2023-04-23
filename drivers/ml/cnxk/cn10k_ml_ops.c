@@ -1089,7 +1089,7 @@ cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, struct rte_ml_dev_xstats_m
 	return count;
 }
 
-static int
+static int __rte_unused
 cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16_t *stat_id,
 				uint64_t *value)
 {
@@ -1136,7 +1136,7 @@ cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16
 	return 0;
 }
 
-static int
+static int __rte_unused
 cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, const uint16_t *stat_ids, uint64_t *values,
 			uint16_t nb_ids)
 {
@@ -1167,7 +1167,7 @@ cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, const uint16_t *stat_ids, uint64
 	return count;
 }
 
-static int
+static int __rte_unused
 cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, const uint16_t *stat_ids, uint16_t nb_ids)
 {
 	struct rte_ml_dev_info dev_info;
@@ -2308,10 +2308,6 @@ struct rte_ml_dev_ops cn10k_ml_ops = {
 	/* Stats ops */
 	.dev_stats_get = cn10k_ml_dev_stats_get,
 	.dev_stats_reset = cn10k_ml_dev_stats_reset,
-	.dev_xstats_names_get = cn10k_ml_dev_xstats_names_get,
-	.dev_xstats_by_name_get = cn10k_ml_dev_xstats_by_name_get,
-	.dev_xstats_get = cn10k_ml_dev_xstats_get,
-	.dev_xstats_reset = cn10k_ml_dev_xstats_reset,
 
 	/* Model ops */
 	.model_load = cn10k_ml_model_load,

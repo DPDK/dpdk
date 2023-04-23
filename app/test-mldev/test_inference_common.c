@@ -1029,7 +1029,7 @@ ml_inference_launch_cores(struct ml_test *test, struct ml_options *opt, uint16_t
 }
 
 int
-ml_inference_stats_get(struct ml_test *test, struct ml_options *opt)
+ml_inference_throughput_get(struct ml_test *test, struct ml_options *opt)
 {
 	struct test_inference *t = ml_test_priv(test);
 	uint64_t total_cycles = 0;
@@ -1038,55 +1038,9 @@ ml_inference_stats_get(struct ml_test *test, struct ml_options *opt)
 	uint64_t avg_e2e;
 	uint32_t qp_id;
 	uint64_t freq;
-	int ret;
-	int i;
 
 	if (!opt->stats)
 		return 0;
-
-	/* get xstats size */
-	t->xstats_size = rte_ml_dev_xstats_names_get(opt->dev_id, NULL, 0);
-	if (t->xstats_size >= 0) {
-		/* allocate for xstats_map and values */
-		t->xstats_map = rte_malloc(
-			"ml_xstats_map", t->xstats_size * sizeof(struct rte_ml_dev_xstats_map), 0);
-		if (t->xstats_map == NULL) {
-			ret = -ENOMEM;
-			goto error;
-		}
-
-		t->xstats_values =
-			rte_malloc("ml_xstats_values", t->xstats_size * sizeof(uint64_t), 0);
-		if (t->xstats_values == NULL) {
-			ret = -ENOMEM;
-			goto error;
-		}
-
-		ret = rte_ml_dev_xstats_names_get(opt->dev_id, t->xstats_map, t->xstats_size);
-		if (ret != t->xstats_size) {
-			printf("Unable to get xstats names, ret = %d\n", ret);
-			ret = -1;
-			goto error;
-		}
-
-		for (i = 0; i < t->xstats_size; i++)
-			rte_ml_dev_xstats_get(opt->dev_id, &t->xstats_map[i].id,
-					      &t->xstats_values[i], 1);
-	}
-
-	/* print xstats*/
-	printf("\n");
-	print_line(80);
-	printf(" ML Device Extended Statistics\n");
-	print_line(80);
-	for (i = 0; i < t->xstats_size; i++)
-		printf(" %-64s = %" PRIu64 "\n", t->xstats_map[i].name, t->xstats_values[i]);
-	print_line(80);
-
-	/* release buffers */
-	rte_free(t->xstats_map);
-
-	rte_free(t->xstats_values);
 
 	/* print end-to-end stats */
 	freq = rte_get_tsc_hz();
@@ -1121,11 +1075,4 @@ ml_inference_stats_get(struct ml_test *test, struct ml_options *opt)
 	print_line(80);
 
 	return 0;
-
-error:
-	rte_free(t->xstats_map);
-
-	rte_free(t->xstats_values);
-
-	return ret;
 }
