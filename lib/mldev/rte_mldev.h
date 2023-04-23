@@ -594,6 +594,16 @@ void
 rte_ml_dev_stats_reset(int16_t dev_id);
 
 /**
+ * Selects the component of the mldev to retrieve statistics from.
+ */
+enum rte_ml_dev_xstats_mode {
+	RTE_ML_DEV_XSTATS_DEVICE,
+	/**< Device xstats */
+	RTE_ML_DEV_XSTATS_MODEL,
+	/**< Model xstats */
+};
+
+/**
  * A name-key lookup element for extended statistics.
  *
  * This structure is used to map between names and ID numbers for extended ML device statistics.
@@ -604,6 +614,109 @@ struct rte_ml_dev_xstats_map {
 	char name[RTE_ML_STR_MAX];
 	/**< xstat name */
 };
+
+/**
+ * Retrieve names of extended statistics of an ML device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param mode
+ *   Mode of statistics to retrieve. Choices include the device statistics and model statistics.
+ * @param model_id
+ *   Used to specify the model number in model mode, and is ignored in device mode.
+ * @param[out] xstats_map
+ *   Block of memory to insert names and ids into. Must be at least size in capacity. If set to
+ * NULL, function returns required capacity. The id values returned can be passed to
+ * *rte_ml_dev_xstats_get* to select statistics.
+ * @param size
+ *   Capacity of xstats_names (number of xstats_map).
+ * @return
+ *   - Positive value lower or equal to size: success. The return value is the number of entries
+ * filled in the stats table.
+ *   - Positive value higher than size: error, the given statistics table is too small. The return
+ * value corresponds to the size that should be given to succeed. The entries in the table are not
+ * valid and shall not be used by the caller.
+ *   - Negative value on error:
+ *        -ENODEV for invalid *dev_id*.
+ *        -EINVAL for invalid mode, model parameters.
+ *        -ENOTSUP if the device doesn't support this function.
+ */
+__rte_experimental
+int
+rte_ml_dev_xstats_names_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t model_id,
+			    struct rte_ml_dev_xstats_map *xstats_map, uint32_t size);
+
+/**
+ * Retrieve the value of a single stat by requesting it by name.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param name
+ *   Name of stat name to retrieve.
+ * @param[out] stat_id
+ *   If non-NULL, the numerical id of the stat will be returned, so that further requests for the
+ * stat can be got using rte_ml_dev_xstats_get, which will be faster as it doesn't need to scan a
+ * list of names for the stat. If the stat cannot be found, the id returned will be (unsigned)-1.
+ * @param[out] value
+ *   Value of the stat to be returned.
+ * @return
+ *   - Zero: No error.
+ *   - Negative value: -EINVAL if stat not found, -ENOTSUP if not supported.
+ */
+__rte_experimental
+int
+rte_ml_dev_xstats_by_name_get(int16_t dev_id, const char *name, uint16_t *stat_id, uint64_t *value);
+
+/**
+ * Retrieve extended statistics of an ML device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param mode
+ *  Mode of statistics to retrieve. Choices include the device statistics and model statistics.
+ * @param model_id
+ *   Used to specify the model id in model mode, and is ignored in device mode.
+ * @param stat_ids
+ *   ID numbers of the stats to get. The ids can be got from the stat position in the stat list from
+ * rte_ml_dev_xstats_names_get(), or by using rte_ml_dev_xstats_by_name_get().
+ * @param[out] values
+ *   Values for each stats request by ID.
+ * @param nb_ids
+ *   Number of stats requested.
+ * @return
+ *   - Positive value: number of stat entries filled into the values array
+ *   - Negative value on error:
+ *        -ENODEV for invalid *dev_id*.
+ *        -EINVAL for invalid mode, model id or stat id parameters.
+ *        -ENOTSUP if the device doesn't support this function.
+ */
+__rte_experimental
+int
+rte_ml_dev_xstats_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t model_id,
+		      const uint16_t stat_ids[], uint64_t values[], uint16_t nb_ids);
+
+/**
+ * Reset the values of the xstats of the selected component in the device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param mode
+ *   Mode of the statistics to reset. Choose from device or model.
+ * @param model_id
+ *   Model stats to reset. 0 and positive values select models, while -1 indicates all models.
+ * @param stat_ids
+ *   Selects specific statistics to be reset. When NULL, all statistics selected by *mode* will be
+ * reset. If non-NULL, must point to array of at least *nb_ids* size.
+ * @param nb_ids
+ *   The number of ids available from the *ids* array. Ignored when ids is NULL.
+ * @return
+ *   - Zero: successfully reset the statistics.
+ *   - Negative value: -EINVAL invalid parameters, -ENOTSUP if not supported.
+ */
+__rte_experimental
+int
+rte_ml_dev_xstats_reset(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t model_id,
+			const uint16_t stat_ids[], uint16_t nb_ids);
 
 /**
  * Dump internal information about *dev_id* to the FILE* provided in *fd*.

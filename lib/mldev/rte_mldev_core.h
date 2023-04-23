@@ -239,6 +239,101 @@ typedef void (*mldev_stats_reset_t)(struct rte_ml_dev *dev);
 /**
  * @internal
  *
+ * Function used to get names of extended stats.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param mode
+ *	Mode of stats to retrieve.
+ * @param model_id
+ *	Used to specify model id in model mode. Ignored in device mode.
+ * @param xstats_map
+ *	Array to insert id and names into.
+ * @param size
+ *	Size of xstats_map array.
+ *
+ * @return
+ *	- >= 0 and <= size on success.
+ *	- > size, error. Returns the size of xstats_map array required.
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_xstats_names_get_t)(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+					int32_t model_id, struct rte_ml_dev_xstats_map *xstats_map,
+					uint32_t size);
+
+/**
+ * @internal
+ *
+ * Function used to get a single extended stat by name.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param name
+ *	Name of the stat to retrieve.
+ * @param stat_id
+ *	ID of the stat to be returned.
+ * @param value
+ *	Value of the stat to be returned.
+ *
+ * @return
+ *	- = 0 success.
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_xstats_by_name_get_t)(struct rte_ml_dev *dev, const char *name,
+					  uint16_t *stat_id, uint64_t *value);
+
+/**
+ * @internal
+ *
+ * Function used to retrieve extended stats of a device.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param mode
+ *	Mode of stats to retrieve.
+ * @param model_id
+ *	Used to specify model id in model mode. Ignored in device mode.
+ * @param stat_ids
+ *	Array of ID numbers of the stats to be retrieved.
+ * @param values
+ *	Values of the stats requested by the ID.
+ * @param nb_ids
+ *	Number of stats requested.
+ *
+ * @return
+ *	- >= 0, number of entries filled into the values array.
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_xstats_get_t)(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+				  int32_t model_id, const uint16_t stat_ids[], uint64_t values[],
+				  uint16_t nb_ids);
+
+/**
+ * @internal
+ *
+ * Function used to reset extended stats.
+ *
+ * @param dev
+ *	ML device pointer.
+ * @param mode
+ *	Mode of stats to retrieve.
+ * @param model_id
+ *	Used to specify model id in model mode. Ignored in device mode.
+ * @param stat_ids
+ *	Array of stats IDs to be reset.
+ * @param nb_ids
+ *	Number of IDs in the stat_ids array.
+ *
+ * @return
+ *	- 0 on success.
+ *	- < 0, error code on failure.
+ */
+typedef int (*mldev_xstats_reset_t)(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+				    int32_t model_id, const uint16_t stat_ids[], uint16_t nb_ids);
+
+/**
+ * @internal
+ *
  * Function used to dump ML device debug info.
  *
  * @param dev
@@ -497,6 +592,18 @@ struct rte_ml_dev_ops {
 
 	/** Reset device statistics. */
 	mldev_stats_reset_t dev_stats_reset;
+
+	/** Get names of extended stats. */
+	mldev_xstats_names_get_t dev_xstats_names_get;
+
+	/** Get value of a single extended stat. */
+	mldev_xstats_by_name_get_t dev_xstats_by_name_get;
+
+	/** Get extended stats of a device. */
+	mldev_xstats_get_t dev_xstats_get;
+
+	/** Reset extended stats of the device. */
+	mldev_xstats_reset_t dev_xstats_reset;
 
 	/** Dump ML device debug info. */
 	mldev_dump_t dev_dump;

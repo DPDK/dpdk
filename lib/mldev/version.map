@@ -17,6 +17,10 @@ EXPERIMENTAL {
 	rte_ml_dev_stats_get;
 	rte_ml_dev_stats_reset;
 	rte_ml_dev_stop;
+	rte_ml_dev_xstats_by_name_get;
+	rte_ml_dev_xstats_get;
+	rte_ml_dev_xstats_names_get;
+	rte_ml_dev_xstats_reset;
 	rte_ml_enqueue_burst;
 	rte_ml_io_dequantize;
 	rte_ml_io_input_size_get;
