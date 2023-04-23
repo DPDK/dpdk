@@ -20,23 +20,23 @@
 
 #define ML_TEST_READ_TYPE(buffer, type) (*((type *)buffer))
 
-#define ML_TEST_CHECK_OUTPUT(output, reference, tolerance)                                         \
+#define ML_TEST_CHECK_OUTPUT(output, reference, tolerance) \
 	(((float)output - (float)reference) <= (((float)reference * tolerance) / 100.0))
 
-#define ML_OPEN_WRITE_GET_ERR(name, buffer, size, err)                                             \
-	do {                                                                                       \
-		FILE *fp = fopen(name, "w+");                                                      \
-		if (fp == NULL) {                                                                  \
-			ml_err("Unable to create file: %s, error: %s", name, strerror(errno));     \
-			err = true;                                                                \
-		} else {                                                                           \
-			if (fwrite(buffer, 1, size, fp) != size) {                                 \
-				ml_err("Error writing output, file: %s, error: %s", name,          \
-				       strerror(errno));                                           \
-				err = true;                                                        \
-			}                                                                          \
-			fclose(fp);                                                                \
-		}                                                                                  \
+#define ML_OPEN_WRITE_GET_ERR(name, buffer, size, err) \
+	do { \
+		FILE *fp = fopen(name, "w+"); \
+		if (fp == NULL) { \
+			ml_err("Unable to create file: %s, error: %s", name, strerror(errno)); \
+			err = true; \
+		} else { \
+			if (fwrite(buffer, 1, size, fp) != size) { \
+				ml_err("Error writing output, file: %s, error: %s", name, \
+				       strerror(errno)); \
+				err = true; \
+			} \
+			fclose(fp); \
+		} \
 	} while (0)
 
 /* Enqueue inference requests with burst size equal to 1 */
@@ -940,7 +940,7 @@ dump_output_fail:
 	if (t->cmn.opt->debug) {
 		/* dump quantized output buffer */
 		if (asprintf(&dump_path, "%s.q.%u", t->cmn.opt->filelist[req->fid].output,
-				obj_idx) == -1)
+			     obj_idx) == -1)
 			return;
 		ML_OPEN_WRITE_GET_ERR(dump_path, req->output, model->out_qsize, error);
 		free(dump_path);
@@ -948,8 +948,8 @@ dump_output_fail:
 			return;
 
 		/* dump dequantized output buffer */
-		if (asprintf(&dump_path, "%s.%u", t->cmn.opt->filelist[req->fid].output,
-				obj_idx) == -1)
+		if (asprintf(&dump_path, "%s.%u", t->cmn.opt->filelist[req->fid].output, obj_idx) ==
+		    -1)
 			return;
 		ML_OPEN_WRITE_GET_ERR(dump_path, model->output, model->out_dsize, error);
 		free(dump_path);

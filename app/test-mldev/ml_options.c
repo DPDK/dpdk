@@ -200,7 +200,7 @@ ml_dump_test_options(const char *testname)
 {
 	if (strcmp(testname, "device_ops") == 0) {
 		printf("\t\t--queue_pairs      : number of queue pairs to create\n"
-		       "\t\t--queue_size       : size fo queue-pair\n");
+		       "\t\t--queue_size       : size of queue-pair\n");
 		printf("\n");
 	}
 
@@ -216,7 +216,7 @@ ml_dump_test_options(const char *testname)
 		       "\t\t--repetitions      : number of inference repetitions\n"
 		       "\t\t--burst_size       : inference burst size\n"
 		       "\t\t--queue_pairs      : number of queue pairs to create\n"
-		       "\t\t--queue_size       : size fo queue-pair\n"
+		       "\t\t--queue_size       : size of queue-pair\n"
 		       "\t\t--batches          : number of batches of input\n"
 		       "\t\t--tolerance        : maximum tolerance (%%) for output validation\n"
 		       "\t\t--stats            : enable reporting device and model statistics\n");
