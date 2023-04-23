@@ -21,14 +21,15 @@ enum cn10k_ml_model_state {
 	ML_CN10K_MODEL_STATE_UNKNOWN,
 };
 
-/* Model Metadata : v 2.1.0.2 */
+/* Model Metadata : v 2.3.0.1 */
 #define MRVL_ML_MODEL_MAGIC_STRING "MRVL"
 #define MRVL_ML_MODEL_TARGET_ARCH  128
-#define MRVL_ML_MODEL_VERSION	   2100
+#define MRVL_ML_MODEL_VERSION_MIN  2100
 #define MRVL_ML_MODEL_NAME_LEN	   64
 #define MRVL_ML_INPUT_NAME_LEN	   16
 #define MRVL_ML_OUTPUT_NAME_LEN	   16
-#define MRVL_ML_INPUT_OUTPUT_SIZE  8
+#define MRVL_ML_NUM_INPUT_OUTPUT_1 8
+#define MRVL_ML_NUM_INPUT_OUTPUT_2 24
 
 /* Header (256-byte) */
 struct cn10k_ml_model_metadata_header {
@@ -101,10 +102,10 @@ struct cn10k_ml_model_metadata_model {
 	/* Inference batch size */
 	uint8_t batch_size;
 
-	/* Number of input tensors (Max 8) */
+	/* Number of input tensors (Max 32) */
 	uint8_t num_input;
 
-	/* Number of output tensors (Max 8) */
+	/* Number of output tensors (Max 32) */
 	uint8_t num_output;
 	uint8_t reserved_1;
 
@@ -159,7 +160,14 @@ struct cn10k_ml_model_metadata_model {
 	 * 1 - Yes
 	 */
 	uint8_t supports_lower_batch_size_optimization;
-	uint8_t reserved_3[59];
+	uint8_t reserved_3[3];
+
+	/* Relative DDR start address of scratch space */
+	uint64_t ddr_scratch_range_start;
+
+	/* Relative DDR end address of scratch space */
+	uint64_t ddr_scratch_range_end;
+	uint8_t reserved_4[40];
 };
 
 /* Init section (64-byte) */
@@ -303,7 +311,7 @@ struct cn10k_ml_model_metadata_output_section {
 
 /* Model data */
 struct cn10k_ml_model_metadata_data_section {
-	uint8_t reserved[4068];
+	uint8_t reserved[996];
 
 	/* Beta: xx.xx.xx.xx,
 	 * Later: YYYYMM.xx.xx
@@ -337,12 +345,18 @@ struct cn10k_ml_model_metadata {
 	struct cn10k_ml_model_metadata_weights_bias_section weights_bias;
 
 	/* Input (512-bytes, 64-byte per input) provisioned for 8 inputs */
-	struct cn10k_ml_model_metadata_input_section input[MRVL_ML_INPUT_OUTPUT_SIZE];
+	struct cn10k_ml_model_metadata_input_section input1[MRVL_ML_NUM_INPUT_OUTPUT_1];
 
 	/* Output (512-bytes, 64-byte per output) provisioned for 8 outputs */
-	struct cn10k_ml_model_metadata_output_section output[MRVL_ML_INPUT_OUTPUT_SIZE];
+	struct cn10k_ml_model_metadata_output_section output1[MRVL_ML_NUM_INPUT_OUTPUT_1];
 
 	uint8_t reserved_2[1792];
+
+	/* Input (1536-bytes, 64-byte per input) provisioned for 24 inputs */
+	struct cn10k_ml_model_metadata_input_section input2[MRVL_ML_NUM_INPUT_OUTPUT_2];
+
+	/* Output (1536-bytes, 64-byte per output) provisioned for 24 outputs */
+	struct cn10k_ml_model_metadata_output_section output2[MRVL_ML_NUM_INPUT_OUTPUT_2];
 
 	/* Model data */
 	struct cn10k_ml_model_metadata_data_section data;
@@ -399,7 +413,7 @@ struct cn10k_ml_model_addr {
 
 		/* Quantized input size */
 		uint32_t sz_q;
-	} input[MRVL_ML_INPUT_OUTPUT_SIZE];
+	} input[MRVL_ML_NUM_INPUT_OUTPUT_1];
 
 	/* Output address and size */
 	struct {
@@ -411,7 +425,7 @@ struct cn10k_ml_model_addr {
 
 		/* Quantized output size */
 		uint32_t sz_q;
-	} output[MRVL_ML_INPUT_OUTPUT_SIZE];
+	} output[MRVL_ML_NUM_INPUT_OUTPUT_1];
 
 	/* Total size of quantized input */
 	uint32_t total_input_sz_q;

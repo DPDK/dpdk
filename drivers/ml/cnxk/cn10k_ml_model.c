@@ -83,11 +83,11 @@ cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size)
 
 	/* Header version */
 	rte_memcpy(version, metadata->header.version, 4 * sizeof(uint8_t));
-	if (version[0] * 1000 + version[1] * 100 < MRVL_ML_MODEL_VERSION) {
+	if (version[0] * 1000 + version[1] * 100 != MRVL_ML_MODEL_VERSION_MIN) {
 		plt_err("Metadata version = %u.%u.%u.%u (< %u.%u.%u.%u) not supported", version[0],
-			version[1], version[2], version[3], (MRVL_ML_MODEL_VERSION / 1000) % 10,
-			(MRVL_ML_MODEL_VERSION / 100) % 10, (MRVL_ML_MODEL_VERSION / 10) % 10,
-			MRVL_ML_MODEL_VERSION % 10);
+			version[1], version[2], version[3], (MRVL_ML_MODEL_VERSION_MIN / 1000) % 10,
+			(MRVL_ML_MODEL_VERSION_MIN / 100) % 10,
+			(MRVL_ML_MODEL_VERSION_MIN / 10) % 10, MRVL_ML_MODEL_VERSION_MIN % 10);
 		return -ENOTSUP;
 	}
 
@@ -125,36 +125,36 @@ cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size)
 	}
 
 	/* Check input count */
-	if (metadata->model.num_input > MRVL_ML_INPUT_OUTPUT_SIZE) {
+	if (metadata->model.num_input > MRVL_ML_NUM_INPUT_OUTPUT_1) {
 		plt_err("Invalid metadata, num_input  = %u (> %u)", metadata->model.num_input,
-			MRVL_ML_INPUT_OUTPUT_SIZE);
+			MRVL_ML_NUM_INPUT_OUTPUT_1);
 		return -EINVAL;
 	}
 
 	/* Check output count */
-	if (metadata->model.num_output > MRVL_ML_INPUT_OUTPUT_SIZE) {
+	if (metadata->model.num_output > MRVL_ML_NUM_INPUT_OUTPUT_1) {
 		plt_err("Invalid metadata, num_output  = %u (> %u)", metadata->model.num_output,
-			MRVL_ML_INPUT_OUTPUT_SIZE);
+			MRVL_ML_NUM_INPUT_OUTPUT_1);
 		return -EINVAL;
 	}
 
 	/* Inputs */
 	for (i = 0; i < metadata->model.num_input; i++) {
-		if (rte_ml_io_type_size_get(cn10k_ml_io_type_map(metadata->input[i].input_type)) <=
+		if (rte_ml_io_type_size_get(cn10k_ml_io_type_map(metadata->input1[i].input_type)) <=
 		    0) {
 			plt_err("Invalid metadata, input[%u] : input_type = %u", i,
-				metadata->input[i].input_type);
+				metadata->input1[i].input_type);
 			return -EINVAL;
 		}
 
 		if (rte_ml_io_type_size_get(
-			    cn10k_ml_io_type_map(metadata->input[i].model_input_type)) <= 0) {
+			    cn10k_ml_io_type_map(metadata->input1[i].model_input_type)) <= 0) {
 			plt_err("Invalid metadata, input[%u] : model_input_type = %u", i,
-				metadata->input[i].model_input_type);
+				metadata->input1[i].model_input_type);
 			return -EINVAL;
 		}
 
-		if (metadata->input[i].relocatable != 1) {
+		if (metadata->input1[i].relocatable != 1) {
 			plt_err("Model not supported, non-relocatable input: %u", i);
 			return -ENOTSUP;
 		}
@@ -163,20 +163,20 @@ cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size)
 	/* Outputs */
 	for (i = 0; i < metadata->model.num_output; i++) {
 		if (rte_ml_io_type_size_get(
-			    cn10k_ml_io_type_map(metadata->output[i].output_type)) <= 0) {
+			    cn10k_ml_io_type_map(metadata->output1[i].output_type)) <= 0) {
 			plt_err("Invalid metadata, output[%u] : output_type = %u", i,
-				metadata->output[i].output_type);
+				metadata->output1[i].output_type);
 			return -EINVAL;
 		}
 
 		if (rte_ml_io_type_size_get(
-			    cn10k_ml_io_type_map(metadata->output[i].model_output_type)) <= 0) {
+			    cn10k_ml_io_type_map(metadata->output1[i].model_output_type)) <= 0) {
 			plt_err("Invalid metadata, output[%u] : model_output_type = %u", i,
-				metadata->output[i].model_output_type);
+				metadata->output1[i].model_output_type);
 			return -EINVAL;
 		}
 
-		if (metadata->output[i].relocatable != 1) {
+		if (metadata->output1[i].relocatable != 1) {
 			plt_err("Model not supported, non-relocatable output: %u", i);
 			return -ENOTSUP;
 		}
@@ -191,28 +191,29 @@ cn10k_ml_model_metadata_update(struct cn10k_ml_model_metadata *metadata)
 	uint8_t i;
 
 	for (i = 0; i < metadata->model.num_input; i++) {
-		metadata->input[i].input_type = cn10k_ml_io_type_map(metadata->input[i].input_type);
-		metadata->input[i].model_input_type =
-			cn10k_ml_io_type_map(metadata->input[i].model_input_type);
+		metadata->input1[i].input_type =
+			cn10k_ml_io_type_map(metadata->input1[i].input_type);
+		metadata->input1[i].model_input_type =
+			cn10k_ml_io_type_map(metadata->input1[i].model_input_type);
 
-		if (metadata->input[i].shape.w == 0)
-			metadata->input[i].shape.w = 1;
+		if (metadata->input1[i].shape.w == 0)
+			metadata->input1[i].shape.w = 1;
 
-		if (metadata->input[i].shape.x == 0)
-			metadata->input[i].shape.x = 1;
+		if (metadata->input1[i].shape.x == 0)
+			metadata->input1[i].shape.x = 1;
 
-		if (metadata->input[i].shape.y == 0)
-			metadata->input[i].shape.y = 1;
+		if (metadata->input1[i].shape.y == 0)
+			metadata->input1[i].shape.y = 1;
 
-		if (metadata->input[i].shape.z == 0)
-			metadata->input[i].shape.z = 1;
+		if (metadata->input1[i].shape.z == 0)
+			metadata->input1[i].shape.z = 1;
 	}
 
 	for (i = 0; i < metadata->model.num_output; i++) {
-		metadata->output[i].output_type =
-			cn10k_ml_io_type_map(metadata->output[i].output_type);
-		metadata->output[i].model_output_type =
-			cn10k_ml_io_type_map(metadata->output[i].model_output_type);
+		metadata->output1[i].output_type =
+			cn10k_ml_io_type_map(metadata->output1[i].output_type);
+		metadata->output1[i].model_output_type =
+			cn10k_ml_io_type_map(metadata->output1[i].model_output_type);
 	}
 }
 
@@ -272,31 +273,31 @@ cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_
 	addr->total_input_sz_q = 0;
 	for (i = 0; i < metadata->model.num_input; i++) {
 		addr->input[i].nb_elements =
-			metadata->input[i].shape.w * metadata->input[i].shape.x *
-			metadata->input[i].shape.y * metadata->input[i].shape.z;
+			metadata->input1[i].shape.w * metadata->input1[i].shape.x *
+			metadata->input1[i].shape.y * metadata->input1[i].shape.z;
 		addr->input[i].sz_d = addr->input[i].nb_elements *
-				      rte_ml_io_type_size_get(metadata->input[i].input_type);
+				      rte_ml_io_type_size_get(metadata->input1[i].input_type);
 		addr->input[i].sz_q = addr->input[i].nb_elements *
-				      rte_ml_io_type_size_get(metadata->input[i].model_input_type);
+				      rte_ml_io_type_size_get(metadata->input1[i].model_input_type);
 		addr->total_input_sz_d += addr->input[i].sz_d;
 		addr->total_input_sz_q += addr->input[i].sz_q;
 
 		plt_ml_dbg("model_id = %u, input[%u] - w:%u x:%u y:%u z:%u, sz_d = %u sz_q = %u",
-			   model->model_id, i, metadata->input[i].shape.w,
-			   metadata->input[i].shape.x, metadata->input[i].shape.y,
-			   metadata->input[i].shape.z, addr->input[i].sz_d, addr->input[i].sz_q);
+			   model->model_id, i, metadata->input1[i].shape.w,
+			   metadata->input1[i].shape.x, metadata->input1[i].shape.y,
+			   metadata->input1[i].shape.z, addr->input[i].sz_d, addr->input[i].sz_q);
 	}
 
 	/* Outputs */
 	addr->total_output_sz_q = 0;
 	addr->total_output_sz_d = 0;
 	for (i = 0; i < metadata->model.num_output; i++) {
-		addr->output[i].nb_elements = metadata->output[i].size;
+		addr->output[i].nb_elements = metadata->output1[i].size;
 		addr->output[i].sz_d = addr->output[i].nb_elements *
-				       rte_ml_io_type_size_get(metadata->output[i].output_type);
+				       rte_ml_io_type_size_get(metadata->output1[i].output_type);
 		addr->output[i].sz_q =
 			addr->output[i].nb_elements *
-			rte_ml_io_type_size_get(metadata->output[i].model_output_type);
+			rte_ml_io_type_size_get(metadata->output1[i].model_output_type);
 		addr->total_output_sz_q += addr->output[i].sz_q;
 		addr->total_output_sz_d += addr->output[i].sz_d;
 
@@ -388,24 +389,24 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
 
 	/* Set input info */
 	for (i = 0; i < info->nb_inputs; i++) {
-		rte_memcpy(input[i].name, metadata->input[i].input_name, MRVL_ML_INPUT_NAME_LEN);
-		input[i].dtype = metadata->input[i].input_type;
-		input[i].qtype = metadata->input[i].model_input_type;
-		input[i].shape.format = metadata->input[i].shape.format;
-		input[i].shape.w = metadata->input[i].shape.w;
-		input[i].shape.x = metadata->input[i].shape.x;
-		input[i].shape.y = metadata->input[i].shape.y;
-		input[i].shape.z = metadata->input[i].shape.z;
+		rte_memcpy(input[i].name, metadata->input1[i].input_name, MRVL_ML_INPUT_NAME_LEN);
+		input[i].dtype = metadata->input1[i].input_type;
+		input[i].qtype = metadata->input1[i].model_input_type;
+		input[i].shape.format = metadata->input1[i].shape.format;
+		input[i].shape.w = metadata->input1[i].shape.w;
+		input[i].shape.x = metadata->input1[i].shape.x;
+		input[i].shape.y = metadata->input1[i].shape.y;
+		input[i].shape.z = metadata->input1[i].shape.z;
 	}
 
 	/* Set output info */
 	for (i = 0; i < info->nb_outputs; i++) {
-		rte_memcpy(output[i].name, metadata->output[i].output_name,
+		rte_memcpy(output[i].name, metadata->output1[i].output_name,
 			   MRVL_ML_OUTPUT_NAME_LEN);
-		output[i].dtype = metadata->output[i].output_type;
-		output[i].qtype = metadata->output[i].model_output_type;
+		output[i].dtype = metadata->output1[i].output_type;
+		output[i].qtype = metadata->output1[i].model_output_type;
 		output[i].shape.format = RTE_ML_IO_FORMAT_1D;
-		output[i].shape.w = metadata->output[i].size;
+		output[i].shape.w = metadata->output1[i].size;
 		output[i].shape.x = 1;
 		output[i].shape.y = 1;
 		output[i].shape.z = 1;
