@@ -205,7 +205,8 @@ ml_dump_test_options(const char *testname)
 	}
 
 	if (strcmp(testname, "model_ops") == 0) {
-		printf("\t\t--models           : comma separated list of models\n");
+		printf("\t\t--models           : comma separated list of models\n"
+		       "\t\t--stats            : enable reporting device statistics\n");
 		printf("\n");
 	}
 
@@ -218,7 +219,7 @@ ml_dump_test_options(const char *testname)
 		       "\t\t--queue_size       : size fo queue-pair\n"
 		       "\t\t--batches          : number of batches of input\n"
 		       "\t\t--tolerance        : maximum tolerance (%%) for output validation\n"
-		       "\t\t--stats            : enable reporting performance statistics\n");
+		       "\t\t--stats            : enable reporting device and model statistics\n");
 		printf("\n");
 	}
 }

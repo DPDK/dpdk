@@ -70,6 +70,5 @@ void ml_inference_mem_destroy(struct ml_test *test, struct ml_options *opt);
 int ml_inference_result(struct ml_test *test, struct ml_options *opt, uint16_t fid);
 int ml_inference_launch_cores(struct ml_test *test, struct ml_options *opt, uint16_t start_fid,
 			      uint16_t end_fid);
-int ml_inference_throughput_get(struct ml_test *test, struct ml_options *opt);
 
 #endif /* TEST_INFERENCE_COMMON_H */

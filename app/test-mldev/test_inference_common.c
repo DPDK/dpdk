@@ -39,17 +39,6 @@
 		}                                                                                  \
 	} while (0)
 
-static void
-print_line(uint16_t len)
-{
-	uint16_t i;
-
-	for (i = 0; i < len; i++)
-		printf("-");
-
-	printf("\n");
-}
-
 /* Enqueue inference requests with burst size equal to 1 */
 static int
 ml_enqueue_single(void *arg)
@@ -1024,55 +1013,6 @@ ml_inference_launch_cores(struct ml_test *test, struct ml_options *opt, uint16_t
 
 		id++;
 	}
-
-	return 0;
-}
-
-int
-ml_inference_throughput_get(struct ml_test *test, struct ml_options *opt)
-{
-	struct test_inference *t = ml_test_priv(test);
-	uint64_t total_cycles = 0;
-	uint32_t nb_filelist;
-	uint64_t throughput;
-	uint64_t avg_e2e;
-	uint32_t qp_id;
-	uint64_t freq;
-
-	if (!opt->stats)
-		return 0;
-
-	/* print end-to-end stats */
-	freq = rte_get_tsc_hz();
-	for (qp_id = 0; qp_id < RTE_MAX_LCORE; qp_id++)
-		total_cycles += t->args[qp_id].end_cycles - t->args[qp_id].start_cycles;
-	avg_e2e = total_cycles / opt->repetitions;
-
-	if (freq == 0) {
-		avg_e2e = total_cycles / opt->repetitions;
-		printf(" %-64s = %" PRIu64 "\n", "Average End-to-End Latency (cycles)", avg_e2e);
-	} else {
-		avg_e2e = (total_cycles * NS_PER_S) / (opt->repetitions * freq);
-		printf(" %-64s = %" PRIu64 "\n", "Average End-to-End Latency (ns)", avg_e2e);
-	}
-
-	/* print inference throughput */
-	if (strcmp(opt->test_name, "inference_ordered") == 0)
-		nb_filelist = 1;
-	else
-		nb_filelist = opt->nb_filelist;
-
-	if (freq == 0) {
-		throughput = (nb_filelist * t->cmn.opt->repetitions * 1000000) / total_cycles;
-		printf(" %-64s = %" PRIu64 "\n", "Average Throughput (inferences / million cycles)",
-		       throughput);
-	} else {
-		throughput = (nb_filelist * t->cmn.opt->repetitions * freq) / total_cycles;
-		printf(" %-64s = %" PRIu64 "\n", "Average Throughput (inferences / second)",
-		       throughput);
-	}
-
-	print_line(80);
 
 	return 0;
 }

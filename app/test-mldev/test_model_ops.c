@@ -9,6 +9,7 @@
 #include <rte_mldev.h>
 
 #include "test_model_ops.h"
+#include "test_stats.h"
 
 static bool
 test_model_ops_cap_check(struct ml_options *opt)
@@ -383,6 +384,8 @@ test_model_ops_driver(struct ml_test *test, struct ml_options *opt)
 	}
 
 	printf("\n");
+
+	ml_stats_get(test, opt, RTE_ML_DEV_XSTATS_DEVICE, -1);
 
 	/* device destroy */
 	ret = test_model_ops_mldev_destroy(test, opt);

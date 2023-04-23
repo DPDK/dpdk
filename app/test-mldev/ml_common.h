@@ -26,4 +26,15 @@
 
 #define ml_dump_end printf("\b\t}\n\n")
 
+static inline void
+ml_print_line(uint16_t len)
+{
+	uint16_t i;
+
+	for (i = 0; i < len; i++)
+		printf("-");
+
+	printf("\n");
+}
+
 #endif /* ML_COMMON_H */

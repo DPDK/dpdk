@@ -14,6 +14,9 @@ struct test_common {
 	struct ml_options *opt;
 	enum ml_test_result result;
 	struct rte_ml_dev_info dev_info;
+	struct rte_ml_dev_xstats_map *xstats_map;
+	uint64_t *xstats_values;
+	int xstats_size;
 };
 
 bool ml_test_cap_check(struct ml_options *opt);
