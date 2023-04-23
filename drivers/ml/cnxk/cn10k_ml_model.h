@@ -30,6 +30,7 @@ enum cn10k_ml_model_state {
 #define MRVL_ML_OUTPUT_NAME_LEN	   16
 #define MRVL_ML_NUM_INPUT_OUTPUT_1 8
 #define MRVL_ML_NUM_INPUT_OUTPUT_2 24
+#define MRVL_ML_NUM_INPUT_OUTPUT   (MRVL_ML_NUM_INPUT_OUTPUT_1 + MRVL_ML_NUM_INPUT_OUTPUT_2)
 
 /* Header (256-byte) */
 struct cn10k_ml_model_metadata_header {
@@ -413,7 +414,7 @@ struct cn10k_ml_model_addr {
 
 		/* Quantized input size */
 		uint32_t sz_q;
-	} input[MRVL_ML_NUM_INPUT_OUTPUT_1];
+	} input[MRVL_ML_NUM_INPUT_OUTPUT];
 
 	/* Output address and size */
 	struct {
@@ -425,7 +426,7 @@ struct cn10k_ml_model_addr {
 
 		/* Quantized output size */
 		uint32_t sz_q;
-	} output[MRVL_ML_NUM_INPUT_OUTPUT_1];
+	} output[MRVL_ML_NUM_INPUT_OUTPUT];
 
 	/* Total size of quantized input */
 	uint32_t total_input_sz_q;

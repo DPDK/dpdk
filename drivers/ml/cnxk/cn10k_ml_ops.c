@@ -269,6 +269,7 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 	struct cn10k_ml_ocm *ocm;
 	char str[STR_LEN];
 	uint8_t i;
+	uint8_t j;
 
 	mldev = dev->data->dev_private;
 	ocm = &mldev->ocm;
@@ -324,16 +325,36 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 		"model_input_type", "quantize", "format");
 	print_line(fp, LINE_LEN);
 	for (i = 0; i < model->metadata.model.num_input; i++) {
-		fprintf(fp, "%8u  ", i);
-		fprintf(fp, "%*s  ", 16, model->metadata.input1[i].input_name);
-		rte_ml_io_type_to_str(model->metadata.input1[i].input_type, str, STR_LEN);
-		fprintf(fp, "%*s  ", 12, str);
-		rte_ml_io_type_to_str(model->metadata.input1[i].model_input_type, str, STR_LEN);
-		fprintf(fp, "%*s  ", 18, str);
-		fprintf(fp, "%*s", 12, (model->metadata.input1[i].quantize == 1 ? "Yes" : "No"));
-		rte_ml_io_format_to_str(model->metadata.input1[i].shape.format, str, STR_LEN);
-		fprintf(fp, "%*s", 16, str);
-		fprintf(fp, "\n");
+		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, model->metadata.input1[i].input_name);
+			rte_ml_io_type_to_str(model->metadata.input1[i].input_type, str, STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(model->metadata.input1[i].model_input_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "%*s", 12,
+				(model->metadata.input1[i].quantize == 1 ? "Yes" : "No"));
+			rte_ml_io_format_to_str(model->metadata.input1[i].shape.format, str,
+						STR_LEN);
+			fprintf(fp, "%*s", 16, str);
+			fprintf(fp, "\n");
+		} else {
+			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, model->metadata.input2[j].input_name);
+			rte_ml_io_type_to_str(model->metadata.input2[j].input_type, str, STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(model->metadata.input2[j].model_input_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "%*s", 12,
+				(model->metadata.input2[j].quantize == 1 ? "Yes" : "No"));
+			rte_ml_io_format_to_str(model->metadata.input2[j].shape.format, str,
+						STR_LEN);
+			fprintf(fp, "%*s", 16, str);
+			fprintf(fp, "\n");
+		}
 	}
 	fprintf(fp, "\n");
 
@@ -342,14 +363,30 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 		"model_output_type", "dequantize");
 	print_line(fp, LINE_LEN);
 	for (i = 0; i < model->metadata.model.num_output; i++) {
-		fprintf(fp, "%8u  ", i);
-		fprintf(fp, "%*s  ", 16, model->metadata.output1[i].output_name);
-		rte_ml_io_type_to_str(model->metadata.output1[i].output_type, str, STR_LEN);
-		fprintf(fp, "%*s  ", 12, str);
-		rte_ml_io_type_to_str(model->metadata.output1[i].model_output_type, str, STR_LEN);
-		fprintf(fp, "%*s  ", 18, str);
-		fprintf(fp, "%*s", 12, (model->metadata.output1[i].dequantize == 1 ? "Yes" : "No"));
-		fprintf(fp, "\n");
+		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, model->metadata.output1[i].output_name);
+			rte_ml_io_type_to_str(model->metadata.output1[i].output_type, str, STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(model->metadata.output1[i].model_output_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "%*s", 12,
+				(model->metadata.output1[i].dequantize == 1 ? "Yes" : "No"));
+			fprintf(fp, "\n");
+		} else {
+			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, model->metadata.output2[j].output_name);
+			rte_ml_io_type_to_str(model->metadata.output2[j].output_type, str, STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(model->metadata.output2[j].model_output_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "%*s", 12,
+				(model->metadata.output2[j].dequantize == 1 ? "Yes" : "No"));
+			fprintf(fp, "\n");
+		}
 	}
 	fprintf(fp, "\n");
 	print_line(fp, LINE_LEN);
@@ -2097,10 +2134,14 @@ cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batc
 		     void *qbuffer)
 {
 	struct cn10k_ml_model *model;
+	uint8_t model_input_type;
 	uint8_t *lcl_dbuffer;
 	uint8_t *lcl_qbuffer;
+	uint8_t input_type;
 	uint32_t batch_id;
+	float qscale;
 	uint32_t i;
+	uint32_t j;
 	int ret;
 
 	model = dev->data->models[model_id];
@@ -2116,28 +2157,38 @@ cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batc
 
 next_batch:
 	for (i = 0; i < model->metadata.model.num_input; i++) {
-		if (model->metadata.input1[i].input_type ==
-		    model->metadata.input1[i].model_input_type) {
+		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			input_type = model->metadata.input1[i].input_type;
+			model_input_type = model->metadata.input1[i].model_input_type;
+			qscale = model->metadata.input1[i].qscale;
+		} else {
+			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+			input_type = model->metadata.input2[j].input_type;
+			model_input_type = model->metadata.input2[j].model_input_type;
+			qscale = model->metadata.input2[j].qscale;
+		}
+
+		if (input_type == model_input_type) {
 			rte_memcpy(lcl_qbuffer, lcl_dbuffer, model->addr.input[i].sz_d);
 		} else {
 			switch (model->metadata.input1[i].model_input_type) {
 			case RTE_ML_IO_TYPE_INT8:
-				ret = rte_ml_io_float32_to_int8(model->metadata.input1[i].qscale,
+				ret = rte_ml_io_float32_to_int8(qscale,
 								model->addr.input[i].nb_elements,
 								lcl_dbuffer, lcl_qbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT8:
-				ret = rte_ml_io_float32_to_uint8(model->metadata.input1[i].qscale,
+				ret = rte_ml_io_float32_to_uint8(qscale,
 								 model->addr.input[i].nb_elements,
 								 lcl_dbuffer, lcl_qbuffer);
 				break;
 			case RTE_ML_IO_TYPE_INT16:
-				ret = rte_ml_io_float32_to_int16(model->metadata.input1[i].qscale,
+				ret = rte_ml_io_float32_to_int16(qscale,
 								 model->addr.input[i].nb_elements,
 								 lcl_dbuffer, lcl_qbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT16:
-				ret = rte_ml_io_float32_to_uint16(model->metadata.input1[i].qscale,
+				ret = rte_ml_io_float32_to_uint16(qscale,
 								  model->addr.input[i].nb_elements,
 								  lcl_dbuffer, lcl_qbuffer);
 				break;
@@ -2170,10 +2221,14 @@ cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_ba
 		       void *qbuffer, void *dbuffer)
 {
 	struct cn10k_ml_model *model;
+	uint8_t model_output_type;
 	uint8_t *lcl_qbuffer;
 	uint8_t *lcl_dbuffer;
+	uint8_t output_type;
 	uint32_t batch_id;
+	float dscale;
 	uint32_t i;
+	uint32_t j;
 	int ret;
 
 	model = dev->data->models[model_id];
@@ -2189,28 +2244,38 @@ cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_ba
 
 next_batch:
 	for (i = 0; i < model->metadata.model.num_output; i++) {
-		if (model->metadata.output1[i].output_type ==
-		    model->metadata.output1[i].model_output_type) {
+		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			output_type = model->metadata.output1[i].output_type;
+			model_output_type = model->metadata.output1[i].model_output_type;
+			dscale = model->metadata.output1[i].dscale;
+		} else {
+			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+			output_type = model->metadata.output2[j].output_type;
+			model_output_type = model->metadata.output2[j].model_output_type;
+			dscale = model->metadata.output2[j].dscale;
+		}
+
+		if (output_type == model_output_type) {
 			rte_memcpy(lcl_dbuffer, lcl_qbuffer, model->addr.output[i].sz_q);
 		} else {
 			switch (model->metadata.output1[i].model_output_type) {
 			case RTE_ML_IO_TYPE_INT8:
-				ret = rte_ml_io_int8_to_float32(model->metadata.output1[i].dscale,
+				ret = rte_ml_io_int8_to_float32(dscale,
 								model->addr.output[i].nb_elements,
 								lcl_qbuffer, lcl_dbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT8:
-				ret = rte_ml_io_uint8_to_float32(model->metadata.output1[i].dscale,
+				ret = rte_ml_io_uint8_to_float32(dscale,
 								 model->addr.output[i].nb_elements,
 								 lcl_qbuffer, lcl_dbuffer);
 				break;
 			case RTE_ML_IO_TYPE_INT16:
-				ret = rte_ml_io_int16_to_float32(model->metadata.output1[i].dscale,
+				ret = rte_ml_io_int16_to_float32(dscale,
 								 model->addr.output[i].nb_elements,
 								 lcl_qbuffer, lcl_dbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT16:
-				ret = rte_ml_io_uint16_to_float32(model->metadata.output1[i].dscale,
+				ret = rte_ml_io_uint16_to_float32(dscale,
 								  model->addr.output[i].nb_elements,
 								  lcl_qbuffer, lcl_dbuffer);
 				break;
