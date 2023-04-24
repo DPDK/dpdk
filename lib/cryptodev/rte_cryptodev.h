@@ -977,11 +977,14 @@ rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
  * @param   dev_id   ID of device that we want the session to be used on
  * @param   xforms   Symmetric crypto transform operations to apply on flow
  *                   processed with this session
- * @param   mp       Mempool where the private data is allocated.
+ * @param   mp       Mempool to allocate symmetric session objects from
  *
  * @return
  *  - On success return pointer to sym-session.
- *  - On failure returns NULL.
+ *  - On failure returns NULL and rte_errno is set to the error code:
+ *    - EINVAL on invalid arguments.
+ *    - ENOMEM on memory error for session allocation.
+ *    - ENOTSUP if device doesn't support session configuration.
  */
 void *
 rte_cryptodev_sym_session_create(uint8_t dev_id,
