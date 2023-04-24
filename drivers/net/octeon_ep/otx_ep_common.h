@@ -394,11 +394,11 @@ struct otx_ep_sriov_info {
 
 /* Required functions for each VF device */
 struct otx_ep_fn_list {
-	void (*setup_iq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
+	int (*setup_iq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
 
-	void (*setup_oq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
+	int (*setup_oq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
 
-	void (*setup_device_regs)(struct otx_ep_device *otx_ep);
+	int (*setup_device_regs)(struct otx_ep_device *otx_ep);
 
 	int (*enable_io_queues)(struct otx_ep_device *otx_ep);
 	void (*disable_io_queues)(struct otx_ep_device *otx_ep);

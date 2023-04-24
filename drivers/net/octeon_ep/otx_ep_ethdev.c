@@ -151,13 +151,17 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 	else if (otx_epvf->chip_id == PCI_DEVID_CN9K_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CN98XX_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CNF95N_EP_NET_VF ||
-		 otx_epvf->chip_id == PCI_DEVID_CNF95O_EP_NET_VF)
-		otx_epvf->eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
-	else if (otx_epvf->chip_id == PCI_DEVID_CN10KA_EP_NET_VF ||
+		 otx_epvf->chip_id == PCI_DEVID_CNF95O_EP_NET_VF ||
+		 otx_epvf->chip_id == PCI_DEVID_CN10KA_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CN10KB_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CNF10KA_EP_NET_VF ||
-		 otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF)
+		 otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF) {
 		otx_epvf->eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
+	} else {
+		otx_ep_err("Invalid chip_id\n");
+		ret = -EINVAL;
+		goto setup_fail;
+	}
 	ethdev_queues = (uint32_t)(otx_epvf->sriov_info.rings_per_vf);
 	otx_epvf->max_rx_queues = ethdev_queues;
 	otx_epvf->max_tx_queues = ethdev_queues;
@@ -489,6 +493,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	rte_eth_copy_pci_info(eth_dev, pdev);
 	otx_epvf->eth_dev = eth_dev;
 	otx_epvf->port_id = eth_dev->data->port_id;
 	eth_dev->dev_ops = &otx_ep_eth_dev_ops;
@@ -503,7 +508,8 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	otx_epvf->hw_addr = pdev->mem_resource[0].addr;
 	otx_epvf->pdev = pdev;
 
-	otx_epdev_init(otx_epvf);
+	if (otx_epdev_init(otx_epvf))
+		return -ENOMEM;
 	if (otx_epvf->chip_id == PCI_DEVID_CN9K_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CN98XX_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CNF95N_EP_NET_VF ||
@@ -511,11 +517,16 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	    otx_epvf->chip_id == PCI_DEVID_CN10KA_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CN10KB_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CNF10KA_EP_NET_VF ||
-	    otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF)
+	    otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF) {
 		otx_epvf->pkind = SDP_OTX2_PKIND_FS0;
-	else
+		otx_ep_info("using pkind %d\n", otx_epvf->pkind);
+	} else if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX_EP_VF) {
 		otx_epvf->pkind = SDP_PKIND;
-	otx_ep_info("using pkind %d\n", otx_epvf->pkind);
+		otx_ep_info("Using pkind %d.\n", otx_epvf->pkind);
+	} else {
+		otx_ep_err("Invalid chip id\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }

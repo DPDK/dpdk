@@ -3,7 +3,7 @@
  */
 
 #include <unistd.h>
-
+#include <assert.h>
 #include <rte_eal.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
@@ -81,6 +81,7 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 	const struct otx_ep_config *conf;
 	struct otx_ep_instr_queue *iq;
 	uint32_t q_size;
+	int ret;
 
 	conf = otx_ep->conf;
 	iq = otx_ep->instr_queue[iq_no];
@@ -140,7 +141,9 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 	iq->iqcmd_64B = (conf->iq.instr_type == 64);
 
 	/* Set up IQ registers */
-	otx_ep->fn_list.setup_iq_regs(otx_ep, iq_no);
+	ret = otx_ep->fn_list.setup_iq_regs(otx_ep, iq_no);
+	if (ret)
+		return ret;
 
 	return 0;
 
@@ -271,6 +274,7 @@ otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
 	uint32_t c_refill_threshold;
 	struct otx_ep_droq *droq;
 	uint32_t desc_ring_size;
+	int ret;
 
 	otx_ep_info("OQ[%d] Init start\n", q_no);
 
@@ -318,7 +322,9 @@ otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
 	droq->refill_threshold = c_refill_threshold;
 
 	/* Set up OQ registers */
-	otx_ep->fn_list.setup_oq_regs(otx_ep, q_no);
+	ret = otx_ep->fn_list.setup_oq_regs(otx_ep, q_no);
+	if (ret)
+		return ret;
 
 	otx_ep->io_qmask.oq |= (1ull << q_no);
 
@@ -852,19 +858,15 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
 		 * droq->pkts_pending);
 		 */
 		droq->stats.pkts_delayed_data++;
-		while (retry && !info->length)
+		while (retry && !info->length) {
 			retry--;
+			rte_delay_us_block(50);
+		}
 		if (!retry && !info->length) {
 			otx_ep_err("OCTEON DROQ[%d]: read_idx: %d; Retry failed !!\n",
 				   droq->q_no, droq->read_idx);
 			/* May be zero length packet; drop it */
-			rte_pktmbuf_free(droq_pkt);
-			droq->recv_buf_list[droq->read_idx] = NULL;
-			droq->read_idx = otx_ep_incr_index(droq->read_idx, 1,
-							   droq->nb_desc);
-			droq->stats.dropped_zlp++;
-			droq->refill_count++;
-			goto oq_read_fail;
+			assert(0);
 		}
 	}
 	if (next_fetch) {
@@ -938,6 +940,7 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
 				last_buf = droq_pkt;
 			} else {
 				otx_ep_err("no buf\n");
+				assert(0);
 			}
 
 			pkt_len += cpy_len;
@@ -953,16 +956,7 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
 	droq_pkt->l3_len = hdr_lens.l3_len;
 	droq_pkt->l4_len = hdr_lens.l4_len;
 
-	if (droq_pkt->nb_segs > 1 &&
-	    !(otx_ep->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
-		rte_pktmbuf_free(droq_pkt);
-		goto oq_read_fail;
-	}
-
 	return droq_pkt;
-
-oq_read_fail:
-	return NULL;
 }
 
 static inline uint32_t
@@ -992,6 +986,7 @@ otx_ep_recv_pkts(void *rx_queue,
 	struct rte_mbuf *oq_pkt;
 
 	uint32_t pkts = 0;
+	uint32_t valid_pkts = 0;
 	uint32_t new_pkts = 0;
 	int next_fetch;
 
@@ -1019,14 +1014,15 @@ otx_ep_recv_pkts(void *rx_queue,
 				    "last_pkt_count %" PRIu64 "new_pkts %d.\n",
 				   droq->pkts_pending, droq->last_pkt_count,
 				   new_pkts);
-			droq->pkts_pending -= pkts;
 			droq->stats.rx_err++;
-			goto finish;
+			continue;
+		} else {
+			rx_pkts[valid_pkts] = oq_pkt;
+			valid_pkts++;
+			/* Stats */
+			droq->stats.pkts_received++;
+			droq->stats.bytes_received += oq_pkt->pkt_len;
 		}
-		rx_pkts[pkts] = oq_pkt;
-		/* Stats */
-		droq->stats.pkts_received++;
-		droq->stats.bytes_received += oq_pkt->pkt_len;
 	}
 	droq->pkts_pending -= pkts;
 
@@ -1053,6 +1049,5 @@ update_credit:
 
 		rte_write32(0, droq->pkts_credit_reg);
 	}
-finish:
-	return pkts;
+	return valid_pkts;
 }
