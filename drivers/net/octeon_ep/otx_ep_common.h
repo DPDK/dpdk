@@ -345,6 +345,14 @@ struct otx_ep_droq {
 	 */
 	void *pkts_sent_reg;
 
+	/** Handle DMA incompletion during pkt reads.
+	 * This variable is used to initiate a sent_reg_read
+	 * that completes pending dma
+	 * this variable is used as lvalue so compiler cannot optimize
+	 * the reads.
+	 */
+	uint32_t sent_reg_val;
+
 	/* Statistics for this DROQ. */
 	struct otx_ep_droq_stats stats;
 

@@ -917,6 +917,10 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
 		struct rte_mbuf *first_buf = NULL;
 		struct rte_mbuf *last_buf = NULL;
 
+		/* csr read helps to flush pending dma */
+		droq->sent_reg_val = rte_read32(droq->pkts_sent_reg);
+		rte_rmb();
+
 		while (pkt_len < total_pkt_len) {
 			int cpy_len = 0;
 
