@@ -10,6 +10,8 @@
 #include <base/virtchnl2.h>
 #include <idpf_common_logs.h>
 
+#define IDPF_DEV_ID_SRIOV	0x145C
+
 #define IDPF_RSS_KEY_LEN	52
 
 #define IDPF_CTLQ_ID		-1

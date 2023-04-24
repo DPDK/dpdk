@@ -16,6 +16,7 @@ idpf_reset_pf(struct idpf_hw *hw)
 }
 
 #define IDPF_RESET_WAIT_CNT 100
+
 static int
 idpf_check_pf_reset_done(struct idpf_hw *hw)
 {
@@ -33,48 +34,105 @@ idpf_check_pf_reset_done(struct idpf_hw *hw)
 	return -EBUSY;
 }
 
-#define CTLQ_NUM 2
+static int
+idpf_check_vf_reset_done(struct idpf_hw *hw)
+{
+	uint32_t reg;
+	int i;
+
+	for (i = 0; i < IDPF_RESET_WAIT_CNT; i++) {
+		reg = IDPF_READ_REG(hw, VFGEN_RSTAT);
+		if (reg != 0xFFFFFFFF && (reg & VFGEN_RSTAT_VFR_STATE_M))
+			return 0;
+		rte_delay_ms(1000);
+	}
+
+	DRV_LOG(ERR, "VF reset timeout");
+	return -EBUSY;
+}
+
+#define IDPF_CTLQ_NUM 2
+
+struct idpf_ctlq_create_info pf_ctlq_info[IDPF_CTLQ_NUM] = {
+	{
+		.type = IDPF_CTLQ_TYPE_MAILBOX_TX,
+		.id = IDPF_CTLQ_ID,
+		.len = IDPF_CTLQ_LEN,
+		.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
+		.reg = {
+			.head = PF_FW_ATQH,
+			.tail = PF_FW_ATQT,
+			.len = PF_FW_ATQLEN,
+			.bah = PF_FW_ATQBAH,
+			.bal = PF_FW_ATQBAL,
+			.len_mask = PF_FW_ATQLEN_ATQLEN_M,
+			.len_ena_mask = PF_FW_ATQLEN_ATQENABLE_M,
+			.head_mask = PF_FW_ATQH_ATQH_M,
+		}
+	},
+	{
+		.type = IDPF_CTLQ_TYPE_MAILBOX_RX,
+		.id = IDPF_CTLQ_ID,
+		.len = IDPF_CTLQ_LEN,
+		.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
+		.reg = {
+			.head = PF_FW_ARQH,
+			.tail = PF_FW_ARQT,
+			.len = PF_FW_ARQLEN,
+			.bah = PF_FW_ARQBAH,
+			.bal = PF_FW_ARQBAL,
+			.len_mask = PF_FW_ARQLEN_ARQLEN_M,
+			.len_ena_mask = PF_FW_ARQLEN_ARQENABLE_M,
+			.head_mask = PF_FW_ARQH_ARQH_M,
+		}
+	}
+};
+
+struct idpf_ctlq_create_info vf_ctlq_info[IDPF_CTLQ_NUM] = {
+	{
+		.type = IDPF_CTLQ_TYPE_MAILBOX_TX,
+		.id = IDPF_CTLQ_ID,
+		.len = IDPF_CTLQ_LEN,
+		.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
+		.reg = {
+			.head = VF_ATQH,
+			.tail = VF_ATQT,
+			.len = VF_ATQLEN,
+			.bah = VF_ATQBAH,
+			.bal = VF_ATQBAL,
+			.len_mask = VF_ATQLEN_ATQLEN_M,
+			.len_ena_mask = VF_ATQLEN_ATQENABLE_M,
+			.head_mask = VF_ATQH_ATQH_M,
+		}
+	},
+	{
+		.type = IDPF_CTLQ_TYPE_MAILBOX_RX,
+		.id = IDPF_CTLQ_ID,
+		.len = IDPF_CTLQ_LEN,
+		.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
+		.reg = {
+			.head = VF_ARQH,
+			.tail = VF_ARQT,
+			.len = VF_ARQLEN,
+			.bah = VF_ARQBAH,
+			.bal = VF_ARQBAL,
+			.len_mask = VF_ARQLEN_ARQLEN_M,
+			.len_ena_mask = VF_ARQLEN_ARQENABLE_M,
+			.head_mask = VF_ARQH_ARQH_M,
+		}
+	}
+};
+
 static int
 idpf_init_mbx(struct idpf_hw *hw)
 {
-	struct idpf_ctlq_create_info ctlq_info[CTLQ_NUM] = {
-		{
-			.type = IDPF_CTLQ_TYPE_MAILBOX_TX,
-			.id = IDPF_CTLQ_ID,
-			.len = IDPF_CTLQ_LEN,
-			.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
-			.reg = {
-				.head = PF_FW_ATQH,
-				.tail = PF_FW_ATQT,
-				.len = PF_FW_ATQLEN,
-				.bah = PF_FW_ATQBAH,
-				.bal = PF_FW_ATQBAL,
-				.len_mask = PF_FW_ATQLEN_ATQLEN_M,
-				.len_ena_mask = PF_FW_ATQLEN_ATQENABLE_M,
-				.head_mask = PF_FW_ATQH_ATQH_M,
-			}
-		},
-		{
-			.type = IDPF_CTLQ_TYPE_MAILBOX_RX,
-			.id = IDPF_CTLQ_ID,
-			.len = IDPF_CTLQ_LEN,
-			.buf_size = IDPF_DFLT_MBX_BUF_SIZE,
-			.reg = {
-				.head = PF_FW_ARQH,
-				.tail = PF_FW_ARQT,
-				.len = PF_FW_ARQLEN,
-				.bah = PF_FW_ARQBAH,
-				.bal = PF_FW_ARQBAL,
-				.len_mask = PF_FW_ARQLEN_ARQLEN_M,
-				.len_ena_mask = PF_FW_ARQLEN_ARQENABLE_M,
-				.head_mask = PF_FW_ARQH_ARQH_M,
-			}
-		}
-	};
 	struct idpf_ctlq_info *ctlq;
-	int ret;
+	int ret = 0;
 
-	ret = idpf_ctlq_init(hw, CTLQ_NUM, ctlq_info);
+	if (hw->device_id == IDPF_DEV_ID_SRIOV)
+		ret = idpf_ctlq_init(hw, IDPF_CTLQ_NUM, vf_ctlq_info);
+	else
+		ret = idpf_ctlq_init(hw, IDPF_CTLQ_NUM, pf_ctlq_info);
 	if (ret != 0)
 		return ret;
 
@@ -312,8 +370,12 @@ idpf_adapter_init(struct idpf_adapter *adapter)
 	struct idpf_hw *hw = &adapter->hw;
 	int ret;
 
-	idpf_reset_pf(hw);
-	ret = idpf_check_pf_reset_done(hw);
+	if (hw->device_id == IDPF_DEV_ID_SRIOV) {
+		ret = idpf_check_vf_reset_done(hw);
+	} else {
+		idpf_reset_pf(hw);
+		ret = idpf_check_pf_reset_done(hw);
+	}
 	if (ret != 0) {
 		DRV_LOG(ERR, "IDPF is still resetting");
 		goto err_check_reset;

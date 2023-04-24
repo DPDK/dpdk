@@ -1078,6 +1078,7 @@ idpf_handle_virtchnl_msg(struct idpf_adapter_ext *adapter_ex)
 
 		switch (mbx_op) {
 		case idpf_mbq_opc_send_msg_to_peer_pf:
+		case idpf_mbq_opc_send_msg_to_peer_drv:
 			if (vc_op == VIRTCHNL2_OP_EVENT) {
 				if (ctlq_msg.data_len < sizeof(struct virtchnl2_event)) {
 					PMD_DRV_LOG(ERR, "Error event");
@@ -1279,6 +1280,7 @@ err:
 
 static const struct rte_pci_id pci_id_idpf_map[] = {
 	{ RTE_PCI_DEVICE(IDPF_INTEL_VENDOR_ID, IDPF_DEV_ID_PF) },
+	{ RTE_PCI_DEVICE(IDPF_INTEL_VENDOR_ID, IDPF_DEV_ID_SRIOV) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
