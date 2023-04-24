@@ -10,6 +10,7 @@
 #include "otx2_ep_vf.h"
 #include "cnxk_ep_vf.h"
 #include "otx_ep_rxtx.h"
+#include "otx_ep_mbox.h"
 
 #define OTX_EP_DEV(_eth_dev) \
 	((struct otx_ep_device *)(_eth_dev)->data->dev_private)
@@ -31,15 +32,24 @@ otx_ep_dev_info_get(struct rte_eth_dev *eth_dev,
 		    struct rte_eth_dev_info *devinfo)
 {
 	struct otx_ep_device *otx_epvf;
+	int max_rx_pktlen;
 
 	otx_epvf = OTX_EP_DEV(eth_dev);
+
+	max_rx_pktlen = otx_ep_mbox_get_max_pkt_len(eth_dev);
+	if (!max_rx_pktlen) {
+		otx_ep_err("Failed to get Max Rx packet length");
+		return -EINVAL;
+	}
 
 	devinfo->speed_capa = RTE_ETH_LINK_SPEED_10G;
 	devinfo->max_rx_queues = otx_epvf->max_rx_queues;
 	devinfo->max_tx_queues = otx_epvf->max_tx_queues;
 
 	devinfo->min_rx_bufsize = OTX_EP_MIN_RX_BUF_SIZE;
-	devinfo->max_rx_pktlen = OTX_EP_MAX_PKT_SZ;
+	devinfo->max_rx_pktlen = max_rx_pktlen;
+	devinfo->max_mtu = devinfo->max_rx_pktlen - OTX_EP_ETH_OVERHEAD;
+	devinfo->min_mtu = RTE_ETHER_MIN_LEN;
 	devinfo->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
 	devinfo->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
@@ -51,6 +61,71 @@ otx_ep_dev_info_get(struct rte_eth_dev *eth_dev,
 	devinfo->default_rxportconf.ring_size = OTX_EP_MIN_OQ_DESCRIPTORS;
 	devinfo->default_txportconf.ring_size = OTX_EP_MIN_IQ_DESCRIPTORS;
 
+	return 0;
+}
+
+static int
+otx_ep_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
+{
+	RTE_SET_USED(wait_to_complete);
+
+	if (!eth_dev->data->dev_started)
+		return 0;
+	struct rte_eth_link link;
+	int ret = 0;
+
+	memset(&link, 0, sizeof(link));
+	ret = otx_ep_mbox_get_link_info(eth_dev, &link);
+	if (ret)
+		return -EINVAL;
+	otx_ep_dbg("link status resp link %d duplex %d autoneg %d link_speed %d\n",
+		    link.link_status, link.link_duplex, link.link_autoneg, link.link_speed);
+	return rte_eth_linkstatus_set(eth_dev, &link);
+}
+
+static int
+otx_ep_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct rte_eth_dev_info devinfo;
+	int32_t ret = 0;
+
+	if (otx_ep_dev_info_get(eth_dev, &devinfo)) {
+		otx_ep_err("Cannot set MTU to %u: failed to get device info", mtu);
+		return -EPERM;
+	}
+
+	/* Check if MTU is within the allowed range */
+	if (mtu < devinfo.min_mtu) {
+		otx_ep_err("Invalid MTU %u: lower than minimum MTU %u", mtu, devinfo.min_mtu);
+		return -EINVAL;
+	}
+
+	if (mtu > devinfo.max_mtu) {
+		otx_ep_err("Invalid MTU %u; higher than maximum MTU %u", mtu, devinfo.max_mtu);
+		return -EINVAL;
+	}
+
+	ret = otx_ep_mbox_set_mtu(eth_dev, mtu);
+	if (ret)
+		return -EINVAL;
+
+	otx_ep_dbg("MTU is set to %u", mtu);
+
+	return 0;
+}
+
+static int
+otx_ep_dev_set_default_mac_addr(struct rte_eth_dev *eth_dev,
+				struct rte_ether_addr *mac_addr)
+{
+	int ret;
+
+	ret = otx_ep_mbox_set_mac_addr(eth_dev, mac_addr);
+	if (ret)
+		return -EINVAL;
+	otx_ep_dbg("Default MAC address " RTE_ETHER_ADDR_PRT_FMT "\n",
+		    RTE_ETHER_ADDR_BYTES(mac_addr));
+	rte_ether_addr_copy(mac_addr, eth_dev->data->mac_addrs);
 	return 0;
 }
 
@@ -78,6 +153,7 @@ otx_ep_dev_start(struct rte_eth_dev *eth_dev)
 		rte_read32(otx_epvf->droq[q]->pkts_credit_reg));
 	}
 
+	otx_ep_dev_link_update(eth_dev, 0);
 	otx_ep_info("dev started\n");
 
 	return 0;
@@ -454,6 +530,7 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
 	uint32_t num_queues, q_no;
 
+	otx_ep_mbox_send_dev_exit(eth_dev);
 	otx_epvf->fn_list.disable_io_queues(otx_epvf);
 	num_queues = otx_epvf->nb_rx_queues;
 	for (q_no = 0; q_no < num_queues; q_no++) {
@@ -482,19 +559,17 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 }
 
 static int
-otx_ep_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
+otx_ep_dev_get_mac_addr(struct rte_eth_dev *eth_dev,
+			struct rte_ether_addr *mac_addr)
 {
-	RTE_SET_USED(wait_to_complete);
+	int ret;
 
-	if (!eth_dev->data->dev_started)
-		return 0;
-	struct rte_eth_link link;
-
-	memset(&link, 0, sizeof(link));
-	link.link_status = RTE_ETH_LINK_UP;
-	link.link_speed  = RTE_ETH_SPEED_NUM_10G;
-	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-	return rte_eth_linkstatus_set(eth_dev, &link);
+	ret = otx_ep_mbox_get_mac_addr(eth_dev, mac_addr);
+	if (ret)
+		return -EINVAL;
+	otx_ep_dbg("Get MAC address " RTE_ETHER_ADDR_PRT_FMT "\n",
+		    RTE_ETHER_ADDR_BYTES(mac_addr));
+	return 0;
 }
 
 /* Define our ethernet definitions */
@@ -511,6 +586,8 @@ static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.stats_reset		= otx_ep_dev_stats_reset,
 	.link_update		= otx_ep_dev_link_update,
 	.dev_close		= otx_ep_dev_close,
+	.mtu_set		= otx_ep_dev_mtu_set,
+	.mac_addr_set           = otx_ep_dev_set_default_mac_addr,
 };
 
 static int
@@ -523,6 +600,37 @@ otx_ep_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 
+	return 0;
+}
+
+static int otx_ep_eth_dev_query_set_vf_mac(struct rte_eth_dev *eth_dev,
+					   struct rte_ether_addr *mac_addr)
+{
+	int ret_val;
+
+	memset(mac_addr, 0, sizeof(struct rte_ether_addr));
+	ret_val = otx_ep_dev_get_mac_addr(eth_dev, mac_addr);
+	if (!ret_val) {
+		if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
+			otx_ep_dbg("PF doesn't have valid VF MAC addr" RTE_ETHER_ADDR_PRT_FMT "\n",
+				    RTE_ETHER_ADDR_BYTES(mac_addr));
+			rte_eth_random_addr(mac_addr->addr_bytes);
+			otx_ep_dbg("Setting Random MAC address" RTE_ETHER_ADDR_PRT_FMT "\n",
+				    RTE_ETHER_ADDR_BYTES(mac_addr));
+			ret_val = otx_ep_dev_set_default_mac_addr(eth_dev, mac_addr);
+			if (ret_val) {
+				otx_ep_err("Setting MAC address " RTE_ETHER_ADDR_PRT_FMT "fails\n",
+					    RTE_ETHER_ADDR_BYTES(mac_addr));
+				return ret_val;
+			}
+		}
+		otx_ep_dbg("Received valid MAC addr from PF" RTE_ETHER_ADDR_PRT_FMT "\n",
+			    RTE_ETHER_ADDR_BYTES(mac_addr));
+	} else {
+		otx_ep_err("Getting MAC address from PF via Mbox fails with ret_val: %d\n",
+			    ret_val);
+		return ret_val;
+	}
 	return 0;
 }
 
@@ -541,6 +649,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	otx_epvf->eth_dev = eth_dev;
 	otx_epvf->port_id = eth_dev->data->port_id;
 	eth_dev->dev_ops = &otx_ep_eth_dev_ops;
+	rte_spinlock_init(&otx_epvf->mbox_lock);
 	eth_dev->data->mac_addrs = rte_zmalloc("otx_ep", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		otx_ep_err("MAC addresses memory allocation failed\n");
@@ -571,6 +680,16 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 		otx_ep_err("Invalid chip id\n");
 		return -EINVAL;
 	}
+
+	if (otx_ep_mbox_version_check(eth_dev))
+		return -EINVAL;
+
+	if (otx_ep_eth_dev_query_set_vf_mac(eth_dev,
+				(struct rte_ether_addr *)&vf_mac_addr)) {
+		otx_ep_err("set mac addr failed\n");
+		return -ENODEV;
+	}
+	rte_ether_addr_copy(&vf_mac_addr, eth_dev->data->mac_addrs);
 
 	return 0;
 }

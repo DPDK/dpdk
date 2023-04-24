@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_memzone.h>
+#include "otx_ep_common.h"
 #include "cnxk_ep_vf.h"
 
 static void

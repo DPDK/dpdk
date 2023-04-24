@@ -5,7 +5,7 @@
 #define _CNXK_EP_VF_H_
 
 #include <rte_io.h>
-#include "otx_ep_common.h"
+
 #define CNXK_CONFIG_XPANSION_BAR             0x38
 #define CNXK_CONFIG_PCIE_CAP                 0x70
 #define CNXK_CONFIG_PCIE_DEVCAP              0x74
@@ -92,6 +92,10 @@
 #define CNXK_EP_R_OUT_BYTE_CNT_START       0x10190
 #define CNXK_EP_R_OUT_CNTS_ISM_START       0x10510
 
+#define CNXK_EP_R_MBOX_PF_VF_DATA_START    0x10210
+#define CNXK_EP_R_MBOX_VF_PF_DATA_START    0x10230
+#define CNXK_EP_R_MBOX_PF_VF_INT_START     0x10220
+
 #define CNXK_EP_R_OUT_CNTS(ring)                \
 	(CNXK_EP_R_OUT_CNTS_START + ((ring) * CNXK_EP_RING_OFFSET))
 
@@ -124,6 +128,12 @@
 
 #define CNXK_EP_R_OUT_CNTS_ISM(ring)             \
 	(CNXK_EP_R_OUT_CNTS_ISM_START + ((ring) * CNXK_EP_RING_OFFSET))
+
+#define CNXK_EP_R_MBOX_VF_PF_DATA(ring)          \
+	(CNXK_EP_R_MBOX_VF_PF_DATA_START + ((ring) * CNXK_EP_RING_OFFSET))
+
+#define CNXK_EP_R_MBOX_PF_VF_INT(ring)           \
+	(CNXK_EP_R_MBOX_PF_VF_INT_START + ((ring) * CNXK_EP_RING_OFFSET))
 
 /*------------------ R_OUT Masks ----------------*/
 #define CNXK_EP_R_OUT_INT_LEVELS_BMODE       (1ULL << 63)
