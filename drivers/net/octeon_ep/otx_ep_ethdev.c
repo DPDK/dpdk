@@ -48,6 +48,9 @@ otx_ep_dev_info_get(struct rte_eth_dev *eth_dev,
 	devinfo->rx_desc_lim = otx_ep_rx_desc_lim;
 	devinfo->tx_desc_lim = otx_ep_tx_desc_lim;
 
+	devinfo->default_rxportconf.ring_size = OTX_EP_MIN_OQ_DESCRIPTORS;
+	devinfo->default_txportconf.ring_size = OTX_EP_MIN_IQ_DESCRIPTORS;
+
 	return 0;
 }
 
@@ -274,8 +277,8 @@ otx_ep_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 		return -EINVAL;
 	}
 	if (num_rx_descs < (SDP_GBL_WMARK * 8)) {
-		otx_ep_err("Invalid rx desc number should at least be greater than 8xwmark  %u\n",
-			   num_rx_descs);
+		otx_ep_err("Invalid rx desc number(%u) should at least be greater than 8xwmark  %u\n",
+			   num_rx_descs, (SDP_GBL_WMARK * 8));
 		return -EINVAL;
 	}
 
@@ -355,6 +358,11 @@ otx_ep_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 	if (num_tx_descs & (num_tx_descs - 1)) {
 		otx_ep_err("Invalid tx desc number should be pow 2  %u\n",
 			   num_tx_descs);
+		return -EINVAL;
+	}
+	if (num_tx_descs < (SDP_GBL_WMARK * 8)) {
+		otx_ep_err("Invalid tx desc number(%u) should at least be greater than 8*wmark(%u)\n",
+			   num_tx_descs, (SDP_GBL_WMARK * 8));
 		return -EINVAL;
 	}
 

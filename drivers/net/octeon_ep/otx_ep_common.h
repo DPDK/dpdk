@@ -11,8 +11,13 @@
 #define OTX_EP_MAX_RINGS_PER_VF        (8)
 #define OTX_EP_CFG_IO_QUEUES        OTX_EP_MAX_RINGS_PER_VF
 #define OTX_EP_64BYTE_INSTR         (64)
-#define OTX_EP_MIN_IQ_DESCRIPTORS   (128)
-#define OTX_EP_MIN_OQ_DESCRIPTORS   (128)
+/*
+ * Backpressure for SDP is configured on Octeon, and the minimum queue sizes
+ * must be much larger than the backpressure watermark configured in the Octeon
+ * SDP driver.  IQ and OQ backpressure configurations are separate.
+ */
+#define OTX_EP_MIN_IQ_DESCRIPTORS   (2048)
+#define OTX_EP_MIN_OQ_DESCRIPTORS   (2048)
 #define OTX_EP_MAX_IQ_DESCRIPTORS   (8192)
 #define OTX_EP_MAX_OQ_DESCRIPTORS   (8192)
 #define OTX_EP_OQ_BUF_SIZE          (2048)

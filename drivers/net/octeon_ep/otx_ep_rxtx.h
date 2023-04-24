@@ -7,8 +7,8 @@
 
 #include <rte_byteorder.h>
 
-#define OTX_EP_RXD_ALIGN 1
-#define OTX_EP_TXD_ALIGN 1
+#define OTX_EP_RXD_ALIGN 2
+#define OTX_EP_TXD_ALIGN 2
 
 #define OTX_EP_IQ_SEND_FAILED      (-1)
 #define OTX_EP_IQ_SEND_SUCCESS     (0)
