@@ -5,8 +5,8 @@
 #ifndef _IDPF_COMMON_VIRTCHNL_H_
 #define _IDPF_COMMON_VIRTCHNL_H_
 
-#include <idpf_common_device.h>
-#include <idpf_common_rxtx.h>
+#include "idpf_common_device.h"
+#include "idpf_common_rxtx.h"
 
 __rte_internal
 int idpf_vc_api_version_check(struct idpf_adapter *adapter);

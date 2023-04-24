@@ -3,8 +3,8 @@
  */
 
 #include <rte_log.h>
-#include <idpf_common_device.h>
-#include <idpf_common_virtchnl.h>
+#include "idpf_common_device.h"
+#include "idpf_common_virtchnl.h"
 
 static void
 idpf_reset_pf(struct idpf_hw *hw)

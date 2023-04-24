@@ -3,8 +3,8 @@
  */
 
 #include <rte_vect.h>
-#include <idpf_common_device.h>
-#include <idpf_common_rxtx.h>
+#include "idpf_common_device.h"
+#include "idpf_common_rxtx.h"
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wcast-qual"

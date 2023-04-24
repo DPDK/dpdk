@@ -2,8 +2,8 @@
  * Copyright(c) 2023 Intel Corporation
  */
 
-#include <idpf_common_virtchnl.h>
-#include <idpf_common_logs.h>
+#include "idpf_common_virtchnl.h"
+#include "idpf_common_logs.h"
 
 static int
 idpf_vc_clean(struct idpf_adapter *adapter)

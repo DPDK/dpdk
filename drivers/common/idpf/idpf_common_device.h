@@ -6,9 +6,9 @@
 #define _IDPF_COMMON_DEVICE_H_
 
 #include <rte_mbuf_ptype.h>
-#include <base/idpf_prototype.h>
-#include <base/virtchnl2.h>
-#include <idpf_common_logs.h>
+#include "base/idpf_prototype.h"
+#include "base/virtchnl2.h"
+#include "idpf_common_logs.h"
 
 #define IDPF_DEV_ID_SRIOV	0x145C
 
