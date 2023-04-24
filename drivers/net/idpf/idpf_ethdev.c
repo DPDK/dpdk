@@ -1126,6 +1126,44 @@ idpf_dev_alarm_handler(void *param)
 	rte_eal_alarm_set(IDPF_ALARM_INTERVAL, idpf_dev_alarm_handler, adapter);
 }
 
+static struct virtchnl2_get_capabilities req_caps = {
+	.csum_caps =
+	VIRTCHNL2_CAP_TX_CSUM_L3_IPV4          |
+	VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_TCP      |
+	VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_UDP      |
+	VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_SCTP     |
+	VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_TCP      |
+	VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_UDP      |
+	VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_SCTP     |
+	VIRTCHNL2_CAP_TX_CSUM_GENERIC          |
+	VIRTCHNL2_CAP_RX_CSUM_L3_IPV4          |
+	VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_TCP      |
+	VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_UDP      |
+	VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_SCTP     |
+	VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_TCP      |
+	VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_UDP      |
+	VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_SCTP     |
+	VIRTCHNL2_CAP_RX_CSUM_GENERIC,
+
+	.rss_caps =
+	VIRTCHNL2_CAP_RSS_IPV4_TCP             |
+	VIRTCHNL2_CAP_RSS_IPV4_UDP             |
+	VIRTCHNL2_CAP_RSS_IPV4_SCTP            |
+	VIRTCHNL2_CAP_RSS_IPV4_OTHER           |
+	VIRTCHNL2_CAP_RSS_IPV6_TCP             |
+	VIRTCHNL2_CAP_RSS_IPV6_UDP             |
+	VIRTCHNL2_CAP_RSS_IPV6_SCTP            |
+	VIRTCHNL2_CAP_RSS_IPV6_OTHER           |
+	VIRTCHNL2_CAP_RSS_IPV4_AH              |
+	VIRTCHNL2_CAP_RSS_IPV4_ESP             |
+	VIRTCHNL2_CAP_RSS_IPV4_AH_ESP          |
+	VIRTCHNL2_CAP_RSS_IPV6_AH              |
+	VIRTCHNL2_CAP_RSS_IPV6_ESP             |
+	VIRTCHNL2_CAP_RSS_IPV6_AH_ESP,
+
+	.other_caps = VIRTCHNL2_CAP_WB_ON_ITR
+};
+
 static int
 idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *adapter)
 {
@@ -1141,6 +1179,8 @@ idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *a
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
 	strncpy(adapter->name, pci_dev->device.name, PCI_PRI_STR_SIZE);
+
+	rte_memcpy(&base->caps, &req_caps, sizeof(struct virtchnl2_get_capabilities));
 
 	ret = idpf_adapter_init(base);
 	if (ret != 0) {

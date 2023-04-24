@@ -278,51 +278,12 @@ idpf_vc_api_version_check(struct idpf_adapter *adapter)
 int
 idpf_vc_caps_get(struct idpf_adapter *adapter)
 {
-	struct virtchnl2_get_capabilities caps_msg;
 	struct idpf_cmd_info args;
 	int err;
 
-	memset(&caps_msg, 0, sizeof(struct virtchnl2_get_capabilities));
-
-	caps_msg.csum_caps =
-		VIRTCHNL2_CAP_TX_CSUM_L3_IPV4          |
-		VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_TCP      |
-		VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_UDP      |
-		VIRTCHNL2_CAP_TX_CSUM_L4_IPV4_SCTP     |
-		VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_TCP      |
-		VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_UDP      |
-		VIRTCHNL2_CAP_TX_CSUM_L4_IPV6_SCTP     |
-		VIRTCHNL2_CAP_TX_CSUM_GENERIC          |
-		VIRTCHNL2_CAP_RX_CSUM_L3_IPV4          |
-		VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_TCP      |
-		VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_UDP      |
-		VIRTCHNL2_CAP_RX_CSUM_L4_IPV4_SCTP     |
-		VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_TCP      |
-		VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_UDP      |
-		VIRTCHNL2_CAP_RX_CSUM_L4_IPV6_SCTP     |
-		VIRTCHNL2_CAP_RX_CSUM_GENERIC;
-
-	caps_msg.rss_caps =
-		VIRTCHNL2_CAP_RSS_IPV4_TCP             |
-		VIRTCHNL2_CAP_RSS_IPV4_UDP             |
-		VIRTCHNL2_CAP_RSS_IPV4_SCTP            |
-		VIRTCHNL2_CAP_RSS_IPV4_OTHER           |
-		VIRTCHNL2_CAP_RSS_IPV6_TCP             |
-		VIRTCHNL2_CAP_RSS_IPV6_UDP             |
-		VIRTCHNL2_CAP_RSS_IPV6_SCTP            |
-		VIRTCHNL2_CAP_RSS_IPV6_OTHER           |
-		VIRTCHNL2_CAP_RSS_IPV4_AH              |
-		VIRTCHNL2_CAP_RSS_IPV4_ESP             |
-		VIRTCHNL2_CAP_RSS_IPV4_AH_ESP          |
-		VIRTCHNL2_CAP_RSS_IPV6_AH              |
-		VIRTCHNL2_CAP_RSS_IPV6_ESP             |
-		VIRTCHNL2_CAP_RSS_IPV6_AH_ESP;
-
-	caps_msg.other_caps = VIRTCHNL2_CAP_WB_ON_ITR;
-
 	args.ops = VIRTCHNL2_OP_GET_CAPS;
-	args.in_args = (uint8_t *)&caps_msg;
-	args.in_args_size = sizeof(caps_msg);
+	args.in_args = (uint8_t *)&adapter->caps;
+	args.in_args_size = sizeof(struct virtchnl2_get_capabilities);
 	args.out_buffer = adapter->mbx_resp;
 	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
@@ -333,7 +294,7 @@ idpf_vc_caps_get(struct idpf_adapter *adapter)
 		return err;
 	}
 
-	rte_memcpy(&adapter->caps, args.out_buffer, sizeof(caps_msg));
+	rte_memcpy(&adapter->caps, args.out_buffer, sizeof(struct virtchnl2_get_capabilities));
 
 	return 0;
 }
