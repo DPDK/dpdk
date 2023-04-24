@@ -245,7 +245,12 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	otx_ep_dbg("SDP_R[%d]_sent: %x", oq_no, rte_read32(droq->pkts_sent_reg));
-		return 0;
+
+	/* Set Watermark for backpressure */
+	oct_ep_write64(OTX_EP_OQ_WMARK_MIN,
+		       otx_ep->hw_addr + CNXK_EP_R_OUT_WMARK(oq_no));
+
+	return 0;
 }
 
 static int

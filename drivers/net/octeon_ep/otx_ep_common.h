@@ -23,6 +23,7 @@
 #define OTX_EP_MAX_OQ_DESCRIPTORS   (8192)
 #define OTX_EP_OQ_BUF_SIZE          (2048)
 #define OTX_EP_MIN_RX_BUF_SIZE      (64)
+#define OTX_EP_OQ_WMARK_MIN         (256)
 
 #define OTX_EP_OQ_INFOPTR_MODE      (0)
 #define OTX_EP_OQ_REFIL_THRESHOLD   (16)
