@@ -185,6 +185,9 @@ struct otx_ep_instr_queue {
 	 */
 	uint32_t flush_index;
 
+	/* Free-running/wrapping instruction counter for IQ. */
+	uint32_t inst_cnt;
+
 	/* This keeps track of the instructions pending in this queue. */
 	uint64_t instr_pending;
 
@@ -211,6 +214,12 @@ struct otx_ep_instr_queue {
 
 	/* Memory zone */
 	const struct rte_memzone *iq_mz;
+
+	/* Location in memory updated by SDP ISM */
+	uint32_t *inst_cnt_ism;
+
+	/* track inst count locally to consolidate HW counter updates */
+	uint32_t inst_cnt_ism_prev;
 };
 
 /** Descriptor format.
@@ -355,6 +364,10 @@ struct otx_ep_droq {
 	const struct rte_memzone *desc_ring_mz;
 
 	const struct rte_memzone *info_mz;
+
+	/* Pointer to host memory copy of output packet count, set by ISM */
+	uint32_t *pkts_sent_ism;
+	uint32_t pkts_sent_ism_prev;
 };
 #define OTX_EP_DROQ_SIZE		(sizeof(struct otx_ep_droq))
 
@@ -459,6 +472,9 @@ struct otx_ep_device {
 	uint64_t rx_offloads;
 
 	uint64_t tx_offloads;
+
+	/* DMA buffer for SDP ISM messages */
+	const struct rte_memzone *ism_buffer_mz;
 };
 
 int otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no,

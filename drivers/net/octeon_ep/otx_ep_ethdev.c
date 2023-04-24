@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <inttypes.h>
 #include <ethdev_pci.h>
 
 #include "otx_ep_common.h"
@@ -90,6 +91,32 @@ otx_ep_dev_stop(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+/*
+ * We only need 2 uint32_t locations per IOQ, but separate these so
+ * each IOQ has the variables on its own cache line.
+ */
+#define OTX_EP_ISM_BUFFER_SIZE (OTX_EP_MAX_IOQS_PER_VF * RTE_CACHE_LINE_SIZE)
+static int
+otx_ep_ism_setup(struct otx_ep_device *otx_epvf)
+{
+	otx_epvf->ism_buffer_mz =
+		rte_eth_dma_zone_reserve(otx_epvf->eth_dev, "ism",
+					 0, OTX_EP_ISM_BUFFER_SIZE,
+					 OTX_EP_PCI_RING_ALIGN, 0);
+
+	/* Same DMA buffer is shared by OQ and IQ, clear it at start */
+	memset(otx_epvf->ism_buffer_mz->addr, 0, OTX_EP_ISM_BUFFER_SIZE);
+	if (otx_epvf->ism_buffer_mz == NULL) {
+		otx_ep_err("Failed to allocate ISM buffer\n");
+		return(-1);
+	}
+	otx_ep_dbg("ISM: virt: 0x%p, dma: 0x%" PRIX64,
+		    (void *)otx_epvf->ism_buffer_mz->addr,
+		    otx_epvf->ism_buffer_mz->iova);
+
+	return 0;
+}
+
 static int
 otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 {
@@ -110,6 +137,8 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 		otx_epvf->chip_id = dev_id;
 		ret = otx2_ep_vf_setup_device(otx_epvf);
 		otx_epvf->fn_list.disable_io_queues(otx_epvf);
+		if (otx_ep_ism_setup(otx_epvf))
+			ret = -EINVAL;
 		break;
 	case PCI_DEVID_CN10KA_EP_NET_VF:
 	case PCI_DEVID_CN10KB_EP_NET_VF:
@@ -118,6 +147,8 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 		otx_epvf->chip_id = dev_id;
 		ret = cnxk_ep_vf_setup_device(otx_epvf);
 		otx_epvf->fn_list.disable_io_queues(otx_epvf);
+		if (otx_ep_ism_setup(otx_epvf))
+			ret = -EINVAL;
 		break;
 	default:
 		otx_ep_err("Unsupported device\n");
@@ -433,6 +464,11 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 		}
 	}
 	otx_ep_dbg("Num IQs:%d freed\n", otx_epvf->nb_tx_queues);
+
+	if (rte_eth_dma_zone_free(eth_dev, "ism", 0)) {
+		otx_ep_err("Failed to delete ISM buffer\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }

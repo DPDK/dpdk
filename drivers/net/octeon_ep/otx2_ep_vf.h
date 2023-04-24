@@ -42,6 +42,7 @@
 #define SDP_VF_R_IN_INT_LEVELS_START      (0x10060)
 #define SDP_VF_R_IN_PKT_CNT_START         (0x10080)
 #define SDP_VF_R_IN_BYTE_CNT_START        (0x10090)
+#define SDP_VF_R_IN_CNTS_ISM_START        (0x10520)
 
 #define SDP_VF_R_IN_CONTROL(ring)  \
 	(SDP_VF_R_IN_CONTROL_START + ((ring) * SDP_VF_RING_OFFSET))
@@ -70,6 +71,9 @@
 #define SDP_VF_R_IN_BYTE_CNT(ring)          \
 	(SDP_VF_R_IN_BYTE_CNT_START + ((ring) * SDP_VF_RING_OFFSET))
 
+#define SDP_VF_R_IN_CNTS_ISM(ring)          \
+	(SDP_VF_R_IN_CNTS_ISM_START + (SDP_VF_RING_OFFSET * (ring)))
+
 /* SDP VF OQ Registers */
 #define SDP_VF_R_OUT_CNTS_START              (0x10100)
 #define SDP_VF_R_OUT_INT_LEVELS_START        (0x10110)
@@ -80,6 +84,7 @@
 #define SDP_VF_R_OUT_ENABLE_START            (0x10160)
 #define SDP_VF_R_OUT_PKT_CNT_START           (0x10180)
 #define SDP_VF_R_OUT_BYTE_CNT_START          (0x10190)
+#define SDP_VF_R_OUT_CNTS_ISM_START          (0x10510)
 
 #define SDP_VF_R_OUT_CONTROL(ring)    \
 	(SDP_VF_R_OUT_CONTROL_START + ((ring) * SDP_VF_RING_OFFSET))
@@ -107,6 +112,9 @@
 
 #define SDP_VF_R_OUT_BYTE_CNT(ring)   \
 	(SDP_VF_R_OUT_BYTE_CNT_START + ((ring) * SDP_VF_RING_OFFSET))
+
+#define SDP_VF_R_OUT_CNTS_ISM(ring)   \
+	(SDP_VF_R_OUT_CNTS_ISM_START + (SDP_VF_RING_OFFSET * (ring)))
 
 /* SDP VF IQ Masks */
 #define SDP_VF_R_IN_CTL_RPVF_MASK       (0xF)
@@ -142,6 +150,12 @@ struct otx2_ep_instr_64B {
 	/* Additional headers available in a 64-byte instruction. */
 	uint64_t exhdr[4];
 };
+
+#define OTX2_EP_IQ_ISM_OFFSET(queue)   (RTE_CACHE_LINE_SIZE * (queue) + 4)
+#define OTX2_EP_OQ_ISM_OFFSET(queue)   (RTE_CACHE_LINE_SIZE * (queue))
+#define OTX2_EP_ISM_EN                 (0x1)
+#define OTX2_EP_ISM_MSIX_DIS           (0x2)
+#define OTX2_EP_MAX_RX_PKT_LEN         (16384)
 
 union out_int_lvl_t {
 	uint64_t d64;

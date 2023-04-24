@@ -20,6 +20,7 @@
 #define OTX_EP_INFO_SIZE 8
 #define OTX_EP_FSZ_FS0 0
 #define DROQ_REFILL_THRESHOLD 16
+#define OTX2_SDP_REQUEST_ISM   (0x1ULL << 63)
 
 static void
 otx_ep_dmazone_free(const struct rte_memzone *mz)
@@ -412,15 +413,32 @@ otx_ep_iqreq_add(struct otx_ep_instr_queue *iq, void *buf,
 static uint32_t
 otx_vf_update_read_index(struct otx_ep_instr_queue *iq)
 {
-	uint32_t new_idx = rte_read32(iq->inst_cnt_reg);
-	if (unlikely(new_idx == 0xFFFFFFFFU))
-		rte_write32(new_idx, iq->inst_cnt_reg);
+	uint32_t val;
+
+	/*
+	 * Batch subtractions from the HW counter to reduce PCIe traffic
+	 * This adds an extra local variable, but almost halves the
+	 * number of PCIe writes.
+	 */
+	val = *iq->inst_cnt_ism;
+	iq->inst_cnt += val - iq->inst_cnt_ism_prev;
+	iq->inst_cnt_ism_prev = val;
+
+	if (val > (uint32_t)(1 << 31)) {
+		/*
+		 * Only subtract the packet count in the HW counter
+		 * when count above halfway to saturation.
+		 */
+		rte_write32(val, iq->inst_cnt_reg);
+		*iq->inst_cnt_ism = 0;
+		iq->inst_cnt_ism_prev = 0;
+	}
+	rte_write64(OTX2_SDP_REQUEST_ISM, iq->inst_cnt_reg);
+
 	/* Modulo of the new index with the IQ size will give us
 	 * the new index.
 	 */
-	new_idx &= (iq->nb_desc - 1);
-
-	return new_idx;
+	return iq->inst_cnt & (iq->nb_desc - 1);
 }
 
 static void
@@ -962,14 +980,30 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
 static inline uint32_t
 otx_ep_check_droq_pkts(struct otx_ep_droq *droq)
 {
-	volatile uint64_t pkt_count;
 	uint32_t new_pkts;
+	uint32_t val;
 
-	/* Latest available OQ packets */
-	pkt_count = rte_read32(droq->pkts_sent_reg);
-	rte_write32(pkt_count, droq->pkts_sent_reg);
-	new_pkts = pkt_count;
+	/*
+	 * Batch subtractions from the HW counter to reduce PCIe traffic
+	 * This adds an extra local variable, but almost halves the
+	 * number of PCIe writes.
+	 */
+	val = *droq->pkts_sent_ism;
+	new_pkts = val - droq->pkts_sent_ism_prev;
+	droq->pkts_sent_ism_prev = val;
+
+	if (val > (uint32_t)(1 << 31)) {
+		/*
+		 * Only subtract the packet count in the HW counter
+		 * when count above halfway to saturation.
+		 */
+		rte_write32(val, droq->pkts_sent_reg);
+		*droq->pkts_sent_ism = 0;
+		droq->pkts_sent_ism_prev = 0;
+	}
+	rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
 	droq->pkts_pending += new_pkts;
+
 	return new_pkts;
 }
 

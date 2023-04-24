@@ -6,6 +6,7 @@
 
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_memzone.h>
 #include "otx_ep_common.h"
 #include "otx2_ep_vf.h"
 
@@ -236,6 +237,7 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 {
 	struct otx_ep_instr_queue *iq = otx_ep->instr_queue[iq_no];
 	volatile uint64_t reg_val = 0ull;
+	uint64_t ism_addr;
 	int loop = SDP_VF_BUSY_LOOP_COUNT;
 
 	reg_val = oct_ep_read64(otx_ep->hw_addr + SDP_VF_R_IN_CONTROL(iq_no));
@@ -282,6 +284,22 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	 */
 	oct_ep_write64(OTX_EP_CLEAR_SDP_IN_INT_LVLS,
 		       otx_ep->hw_addr + SDP_VF_R_IN_INT_LEVELS(iq_no));
+
+	/* Set up IQ ISM registers and structures */
+	ism_addr = (otx_ep->ism_buffer_mz->iova | OTX2_EP_ISM_EN
+		    | OTX2_EP_ISM_MSIX_DIS)
+		    + OTX2_EP_IQ_ISM_OFFSET(iq_no);
+	oct_ep_write64(ism_addr, (uint8_t *)otx_ep->hw_addr +
+		    SDP_VF_R_IN_CNTS_ISM(iq_no));
+	iq->inst_cnt_ism =
+		(uint32_t *)((uint8_t *)otx_ep->ism_buffer_mz->addr
+			     + OTX2_EP_IQ_ISM_OFFSET(iq_no));
+	otx_ep_err("SDP_R[%d] INST Q ISM virt: %p, dma: 0x%x", iq_no,
+		   (void *)iq->inst_cnt_ism,
+		   (unsigned int)ism_addr);
+	*iq->inst_cnt_ism = 0;
+	iq->inst_cnt_ism_prev = 0;
+
 	return 0;
 }
 
@@ -290,6 +308,7 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 {
 	volatile uint64_t reg_val = 0ull;
 	uint64_t oq_ctl = 0ull;
+	uint64_t ism_addr;
 	int loop = OTX_EP_BUSY_LOOP_COUNT;
 	struct otx_ep_droq *droq = otx_ep->droq[oq_no];
 
@@ -351,18 +370,32 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 
 	otx_ep_dbg("SDP_R[%d]_sent: %x", oq_no, rte_read32(droq->pkts_sent_reg));
 
-	loop = OTX_EP_BUSY_LOOP_COUNT;
+	/* Set up ISM registers and structures */
+	ism_addr = (otx_ep->ism_buffer_mz->iova | OTX2_EP_ISM_EN
+		    | OTX2_EP_ISM_MSIX_DIS)
+		    + OTX2_EP_OQ_ISM_OFFSET(oq_no);
+	oct_ep_write64(ism_addr, (uint8_t *)otx_ep->hw_addr +
+		    SDP_VF_R_OUT_CNTS_ISM(oq_no));
+	droq->pkts_sent_ism =
+		(uint32_t *)((uint8_t *)otx_ep->ism_buffer_mz->addr
+			     + OTX2_EP_OQ_ISM_OFFSET(oq_no));
+	otx_ep_err("SDP_R[%d] OQ ISM virt: %p, dma: 0x%x", oq_no,
+		   (void *)droq->pkts_sent_ism,
+		   (unsigned int)ism_addr);
+	*droq->pkts_sent_ism = 0;
+	droq->pkts_sent_ism_prev = 0;
+
+	loop = SDP_VF_BUSY_LOOP_COUNT;
 	while (((rte_read32(droq->pkts_sent_reg)) != 0ull) && loop--) {
 		reg_val = rte_read32(droq->pkts_sent_reg);
 		rte_write32((uint32_t)reg_val, droq->pkts_sent_reg);
 		rte_delay_ms(1);
 	}
-
-	if (loop < 0) {
-		otx_ep_err("Packets sent register value is not cleared\n");
+	if (loop < 0)
 		return -EIO;
-	}
-	otx_ep_dbg("SDP_R[%d]_sent: %x", oq_no, rte_read32(droq->pkts_sent_reg));
+	otx_ep_dbg("SDP_R[%d]_sent: %x", oq_no,
+		    rte_read32(droq->pkts_sent_reg));
+
 	return 0;
 }
 
