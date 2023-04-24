@@ -408,6 +408,9 @@ struct otx_ep_fn_list {
 
 	int (*enable_oq)(struct otx_ep_device *otx_ep, uint32_t q_no);
 	void (*disable_oq)(struct otx_ep_device *otx_ep, uint32_t q_no);
+
+	int (*enable_rxq_intr)(struct otx_ep_device *otx_epvf, uint16_t q_no);
+	int (*disable_rxq_intr)(struct otx_ep_device *otx_epvf, uint16_t q_no);
 };
 
 /* OTX_EP EP VF device data structure */
@@ -498,7 +501,7 @@ struct otx_ep_buf_free_info {
 	struct otx_ep_gather g;
 };
 
-#define OTX_EP_MAX_PKT_SZ 64000U
+#define OTX_EP_MAX_PKT_SZ 65498U
 #define OTX_EP_MAX_MAC_ADDRS 1
 #define OTX_EP_SG_ALIGN 8
 #define OTX_EP_CLEAR_ISIZE_BSIZE 0x7FFFFFULL

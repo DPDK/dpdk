@@ -14,17 +14,20 @@
 #define SDP_VF_BUSY_LOOP_COUNT      (10000)
 
 /* SDP VF OQ Masks */
-#define SDP_VF_R_OUT_CTL_IDLE         (1ull << 40)
-#define SDP_VF_R_OUT_CTL_ES_I         (1ull << 34)
-#define SDP_VF_R_OUT_CTL_NSR_I        (1ull << 33)
-#define SDP_VF_R_OUT_CTL_ROR_I        (1ull << 32)
-#define SDP_VF_R_OUT_CTL_ES_D         (1ull << 30)
-#define SDP_VF_R_OUT_CTL_NSR_D        (1ull << 29)
-#define SDP_VF_R_OUT_CTL_ROR_D        (1ull << 28)
-#define SDP_VF_R_OUT_CTL_ES_P         (1ull << 26)
-#define SDP_VF_R_OUT_CTL_NSR_P        (1ull << 25)
-#define SDP_VF_R_OUT_CTL_ROR_P        (1ull << 24)
-#define SDP_VF_R_OUT_CTL_IMODE        (1ull << 23)
+#define SDP_VF_R_OUT_CTL_IDLE         (0x1ull << 40)
+#define SDP_VF_R_OUT_CTL_ES_I         (0x1ull << 34)
+#define SDP_VF_R_OUT_CTL_NSR_I        (0x1ull << 33)
+#define SDP_VF_R_OUT_CTL_ROR_I        (0x1ull << 32)
+#define SDP_VF_R_OUT_CTL_ES_D         (0x1ull << 30)
+#define SDP_VF_R_OUT_CTL_NSR_D        (0x1ull << 29)
+#define SDP_VF_R_OUT_CTL_ROR_D        (0x1ull << 28)
+#define SDP_VF_R_OUT_CTL_ES_P         (0x1ull << 26)
+#define SDP_VF_R_OUT_CTL_NSR_P        (0x1ull << 25)
+#define SDP_VF_R_OUT_CTL_ROR_P        (0x1ull << 24)
+#define SDP_VF_R_OUT_CTL_IMODE        (0x1ull << 23)
+#define SDP_VF_R_OUT_CNTS_OUT_INT     (0x1ull << 62)
+#define SDP_VF_R_OUT_CNTS_IN_INT      (0x1ull << 61)
+#define SDP_VF_R_IN_CNTS_OUT_INT      (0x1ull << 62)
 
 /* SDP VF Register definitions */
 #define SDP_VF_RING_OFFSET                (0x1ull << 17)
@@ -140,4 +143,40 @@ struct otx2_ep_instr_64B {
 	uint64_t exhdr[4];
 };
 
+union out_int_lvl_t {
+	uint64_t d64;
+	struct {
+		uint64_t cnt:32;
+		uint64_t timet:22;
+		uint64_t max_len:7;
+		uint64_t max_len_en:1;
+		uint64_t time_cnt_en:1;
+		uint64_t bmode:1;
+	} s;
+};
+
+union out_cnts_t {
+	uint64_t d64;
+	struct {
+		uint64_t cnt:32;
+		uint64_t timer:22;
+		uint64_t rsvd:5;
+		uint64_t resend:1;
+		uint64_t mbox_int:1;
+		uint64_t in_int:1;
+		uint64_t out_int:1;
+		uint64_t send_ism:1;
+	} s;
+};
+
+#define OTX2_EP_64B_INSTR_SIZE	(sizeof(otx2_ep_instr_64B))
+
+#define NIX_MAX_HW_FRS			9212
+#define NIX_MAX_VTAG_INS		2
+#define NIX_MAX_VTAG_ACT_SIZE		(4 * NIX_MAX_VTAG_INS)
+#define NIX_MAX_FRS	\
+	(NIX_MAX_HW_FRS + RTE_ETHER_CRC_LEN - NIX_MAX_VTAG_ACT_SIZE)
+
+#define CN93XX_INTR_R_OUT_INT        (1ULL << 62)
+#define CN93XX_INTR_R_IN_INT         (1ULL << 61)
 #endif /*_OTX2_EP_VF_H_ */

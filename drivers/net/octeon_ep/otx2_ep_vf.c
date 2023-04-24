@@ -9,6 +9,117 @@
 #include "otx_ep_common.h"
 #include "otx2_ep_vf.h"
 
+static int otx2_vf_enable_rxq_intr(struct otx_ep_device *otx_epvf,
+				   uint16_t q_no);
+
+static int
+otx2_vf_reset_iq(struct otx_ep_device *otx_ep, int q_no)
+{
+	int loop = SDP_VF_BUSY_LOOP_COUNT;
+	volatile uint64_t d64 = 0ull;
+
+	/* There is no RST for a ring.
+	 * Clear all registers one by one after disabling the ring
+	 */
+
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_INSTR_BADDR(q_no));
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_INSTR_RSIZE(q_no));
+
+	d64 = 0xFFFFFFFF; /* ~0ull */
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_INSTR_DBELL(q_no));
+	d64 = otx2_read64(otx_ep->hw_addr + SDP_VF_R_IN_INSTR_DBELL(q_no));
+
+	while ((d64 != 0) && loop--) {
+		rte_delay_ms(1);
+		d64 = otx2_read64(otx_ep->hw_addr +
+				  SDP_VF_R_IN_INSTR_DBELL(q_no));
+	}
+	if (loop < 0) {
+		otx_ep_err("%s: doorbell init retry limit exceeded.\n", __func__);
+		return -EIO;
+	}
+
+	loop = SDP_VF_BUSY_LOOP_COUNT;
+	do {
+		d64 = otx2_read64(otx_ep->hw_addr + SDP_VF_R_IN_CNTS(q_no));
+		otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_CNTS(q_no));
+		rte_delay_ms(1);
+	} while ((d64 & ~SDP_VF_R_IN_CNTS_OUT_INT) != 0 && loop--);
+	if (loop < 0) {
+		otx_ep_err("%s: in_cnts init retry limit exceeded.\n", __func__);
+		return -EIO;
+	}
+
+	d64 = 0ull;
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_INT_LEVELS(q_no));
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_PKT_CNT(q_no));
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_IN_BYTE_CNT(q_no));
+
+	return 0;
+}
+
+static int
+otx2_vf_reset_oq(struct otx_ep_device *otx_ep, int q_no)
+{
+	int loop = SDP_VF_BUSY_LOOP_COUNT;
+	volatile uint64_t d64 = 0ull;
+
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
+
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_SLIST_BADDR(q_no));
+
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_SLIST_RSIZE(q_no));
+
+	d64 = 0xFFFFFFFF;
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_SLIST_DBELL(q_no));
+	d64 = otx2_read64(otx_ep->hw_addr + SDP_VF_R_OUT_SLIST_DBELL(q_no));
+	while ((d64 != 0) && loop--) {
+		rte_delay_ms(1);
+		d64 = otx2_read64(otx_ep->hw_addr +
+				  SDP_VF_R_OUT_SLIST_DBELL(q_no));
+	}
+	if (loop < 0) {
+		otx_ep_err("%s: doorbell init retry limit exceeded.\n", __func__);
+		return -EIO;
+	}
+
+	if (otx2_read64(otx_ep->hw_addr + SDP_VF_R_OUT_CNTS(q_no))
+	    & SDP_VF_R_OUT_CNTS_OUT_INT) {
+		/*
+		 * The OUT_INT bit is set.  This interrupt must be enabled in
+		 * order to clear the interrupt.  Interrupts are disabled
+		 * at the end of this function.
+		 */
+		union out_int_lvl_t out_int_lvl;
+
+		out_int_lvl.d64 = otx2_read64(otx_ep->hw_addr +
+					SDP_VF_R_OUT_INT_LEVELS(q_no));
+		out_int_lvl.s.time_cnt_en = 1;
+		out_int_lvl.s.cnt = 0;
+		otx2_write64(out_int_lvl.d64, otx_ep->hw_addr +
+				SDP_VF_R_OUT_INT_LEVELS(q_no));
+	}
+
+	loop = SDP_VF_BUSY_LOOP_COUNT;
+	do {
+		d64 = otx2_read64(otx_ep->hw_addr + SDP_VF_R_OUT_CNTS(q_no));
+		otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_CNTS(q_no));
+		rte_delay_ms(1);
+	} while ((d64 & ~SDP_VF_R_OUT_CNTS_IN_INT) != 0 && loop--);
+	if (loop < 0) {
+		otx_ep_err("%s: out_cnts init retry limit exceeded.\n", __func__);
+		return -EIO;
+	}
+
+	d64 = 0ull;
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_INT_LEVELS(q_no));
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_PKT_CNT(q_no));
+	otx2_write64(d64, otx_ep->hw_addr + SDP_VF_R_OUT_BYTE_CNT(q_no));
+
+	return 0;
+}
+
 static void
 otx2_vf_setup_global_iq_reg(struct otx_ep_device *otx_ep, int q_no)
 {
@@ -50,23 +161,62 @@ otx2_vf_setup_global_oq_reg(struct otx_ep_device *otx_ep, int q_no)
 }
 
 static int
+otx2_vf_reset_input_queues(struct otx_ep_device *otx_ep)
+{
+	uint32_t q_no = 0;
+	int ret = 0;
+
+	for (q_no = 0; q_no < otx_ep->sriov_info.rings_per_vf; q_no++) {
+		ret = otx2_vf_reset_iq(otx_ep, q_no);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+static int
+otx2_vf_reset_output_queues(struct otx_ep_device *otx_ep)
+{
+	uint64_t q_no = 0ull;
+	int ret = 0;
+
+	for (q_no = 0; q_no < otx_ep->sriov_info.rings_per_vf; q_no++) {
+		ret = otx2_vf_reset_oq(otx_ep, q_no);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+static int
 otx2_vf_setup_global_input_regs(struct otx_ep_device *otx_ep)
 {
 	uint64_t q_no = 0ull;
+	int ret = 0;
+
+	ret = otx2_vf_reset_input_queues(otx_ep);
+	if (ret)
+		return ret;
 
 	for (q_no = 0; q_no < (otx_ep->sriov_info.rings_per_vf); q_no++)
 		otx2_vf_setup_global_iq_reg(otx_ep, q_no);
-	return 0;
+	return ret;
 }
 
 static int
 otx2_vf_setup_global_output_regs(struct otx_ep_device *otx_ep)
 {
 	uint32_t q_no;
+	int ret = 0;
 
+	ret = otx2_vf_reset_output_queues(otx_ep);
+	if (ret)
+		return ret;
 	for (q_no = 0; q_no < (otx_ep->sriov_info.rings_per_vf); q_no++)
 		otx2_vf_setup_global_oq_reg(otx_ep, q_no);
-	return 0;
+	return ret;
 }
 
 static int
@@ -181,8 +331,8 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	rte_write64(OTX_EP_CLEAR_SDP_OUT_PKT_CNT, (uint8_t *)otx_ep->hw_addr +
 		    SDP_VF_R_OUT_PKT_CNT(oq_no));
 
-	loop = OTX_EP_BUSY_LOOP_COUNT;
 	/* Clear the OQ doorbell  */
+	loop = OTX_EP_BUSY_LOOP_COUNT;
 	rte_write32(OTX_EP_CLEAR_SLIST_DBELL, droq->pkts_credit_reg);
 	while ((rte_read32(droq->pkts_credit_reg) != 0ull) && loop--) {
 		rte_write32(OTX_EP_CLEAR_SLIST_DBELL, droq->pkts_credit_reg);
@@ -344,6 +494,40 @@ otx2_ep_get_defconf(struct otx_ep_device *otx_ep_dev __rte_unused)
 	return default_conf;
 }
 
+static int otx2_vf_enable_rxq_intr(struct otx_ep_device *otx_epvf,
+				   uint16_t q_no)
+{
+	union out_int_lvl_t out_int_lvl;
+	union out_cnts_t out_cnts;
+
+	out_int_lvl.d64 = otx2_read64(otx_epvf->hw_addr +
+				SDP_VF_R_OUT_INT_LEVELS(q_no));
+	out_int_lvl.s.time_cnt_en = 1;
+	out_int_lvl.s.cnt = 0;
+	otx2_write64(out_int_lvl.d64, otx_epvf->hw_addr +
+			SDP_VF_R_OUT_INT_LEVELS(q_no));
+	out_cnts.d64 = 0;
+	out_cnts.s.resend = 1;
+	otx2_write64(out_cnts.d64, otx_epvf->hw_addr + SDP_VF_R_OUT_CNTS(q_no));
+	return 0;
+}
+
+static int otx2_vf_disable_rxq_intr(struct otx_ep_device *otx_epvf,
+				    uint16_t q_no)
+{
+	union out_int_lvl_t out_int_lvl;
+
+	/* Disable the interrupt for this queue */
+	out_int_lvl.d64 = otx2_read64(otx_epvf->hw_addr +
+				SDP_VF_R_OUT_INT_LEVELS(q_no));
+	out_int_lvl.s.time_cnt_en = 0;
+	out_int_lvl.s.cnt = 0;
+	otx2_write64(out_int_lvl.d64, otx_epvf->hw_addr +
+			SDP_VF_R_OUT_INT_LEVELS(q_no));
+
+	return 0;
+}
+
 int
 otx2_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 {
@@ -380,6 +564,9 @@ otx2_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 
 	otx_ep->fn_list.enable_oq           = otx2_vf_enable_oq;
 	otx_ep->fn_list.disable_oq          = otx2_vf_disable_oq;
+
+	otx_ep->fn_list.enable_rxq_intr     = otx2_vf_enable_rxq_intr;
+	otx_ep->fn_list.disable_rxq_intr    = otx2_vf_disable_rxq_intr;
 
 	return 0;
 }
