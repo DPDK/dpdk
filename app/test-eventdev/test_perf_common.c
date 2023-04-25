@@ -1859,34 +1859,35 @@ int
 perf_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {
 	struct test_perf *t = evt_test_priv(test);
+	unsigned int cache_sz;
 
+	cache_sz = RTE_MIN(RTE_MEMPOOL_CACHE_MAX_SIZE, (opt->pool_sz / 1.5) / t->nb_workers);
 	if (opt->prod_type == EVT_PROD_TYPE_SYNT ||
 			opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR) {
 		t->pool = rte_mempool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
 				sizeof(struct perf_elt), /* element size*/
-				512, /* cache size*/
+				cache_sz, /* cache size*/
 				0, NULL, NULL,
 				perf_elt_init, /* obj constructor */
 				NULL, opt->socket_id, 0); /* flags */
 	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR &&
-			opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC)  {
+		   opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 		t->pool = rte_mempool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
 				sizeof(struct perf_elt) + modex_test_case.result_len,
 				/* element size*/
-				512, /* cache size*/
+				cache_sz, /* cache size*/
 				0, NULL, NULL,
 				NULL, /* obj constructor */
 				NULL, opt->socket_id, 0); /* flags */
 	} else {
 		t->pool = rte_pktmbuf_pool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
-				512, /* cache size*/
+				cache_sz, /* cache size*/
 				0,
 				RTE_MBUF_DEFAULT_BUF_SIZE,
 				opt->socket_id); /* flags */
-
 	}
 
 	if (t->pool == NULL) {
