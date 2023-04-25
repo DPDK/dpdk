@@ -34,14 +34,14 @@ Using the option ``mac=fixed`` you can create a fixed known MAC address::
 
 The MAC address will have a fixed value with the last octet incrementing by one
 for each interface string containing ``mac=fixed``. The MAC address is formatted
-as 00:'d':'t':'a':'p':[00-FF]. Convert the characters to hex and you get the
-actual MAC address: ``00:64:74:61:70:[00-FF]``.
+as 02:'d':'t':'a':'p':[00-FF]. Convert the characters to hex and you get the
+actual MAC address: ``02:64:74:61:70:[00-FF]``.
 
-   --vdev=net_tap0,mac="00:64:74:61:70:11"
+   --vdev=net_tap0,mac="02:64:74:61:70:11"
 
 The MAC address will have a user value passed as string. The MAC address is in
 format with delimiter ``:``. The string is byte converted to hex and you get
-the actual MAC address: ``00:64:74:61:70:11``.
+the actual MAC address: ``02:64:74:61:70:11``.
 
 It is possible to specify a remote netdevice to capture packets from by adding
 ``remote=foo1``, for example::
