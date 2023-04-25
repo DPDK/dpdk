@@ -27,7 +27,7 @@ evt_options_default(struct evt_options *opt)
 	opt->nb_flows = 1024;
 	opt->socket_id = SOCKET_ID_ANY;
 	opt->pool_sz = 16 * 1024;
-	opt->prod_enq_burst_sz = 1;
+	opt->prod_enq_burst_sz = 0;
 	opt->wkr_deq_dep = 16;
 	opt->nb_pkts = (1ULL << 26); /* do ~64M packets */
 	opt->nb_timers = 1E8;

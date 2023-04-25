@@ -131,8 +131,10 @@ perf_producer(void *arg)
 	uint32_t flow_counter = 0;
 	uint64_t count = 0;
 	struct perf_elt *m[BURST_SIZE + 1] = {NULL};
+	uint8_t enable_fwd_latency;
 	struct rte_event ev;
 
+	enable_fwd_latency = opt->fwd_latency;
 	if (opt->verbose_level > 1)
 		printf("%s(): lcore %d dev_id %d port=%d queue %d\n", __func__,
 				rte_lcore_id(), dev_id, port, p->queue_id);
@@ -151,13 +153,16 @@ perf_producer(void *arg)
 		for (i = 0; i < BURST_SIZE; i++) {
 			ev.flow_id = flow_counter++ % nb_flows;
 			ev.event_ptr = m[i];
-			m[i]->timestamp = rte_get_timer_cycles();
-			while (rte_event_enqueue_burst(dev_id,
-						       port, &ev, 1) != 1) {
+			if (enable_fwd_latency)
+				m[i]->timestamp = rte_get_timer_cycles();
+			while (rte_event_enqueue_new_burst(dev_id, port, &ev,
+							   1) != 1) {
 				if (t->done)
 					break;
 				rte_pause();
-				m[i]->timestamp = rte_get_timer_cycles();
+				if (enable_fwd_latency)
+					m[i]->timestamp =
+						rte_get_timer_cycles();
 			}
 		}
 		count += BURST_SIZE;
@@ -171,7 +176,6 @@ perf_producer_burst(void *arg)
 {
 	uint32_t i;
 	uint64_t timestamp;
-	struct rte_event_dev_info dev_info;
 	struct prod_data *p  = arg;
 	struct test_perf *t = p->t;
 	struct evt_options *opt = t->opt;
@@ -183,15 +187,13 @@ perf_producer_burst(void *arg)
 	uint32_t flow_counter = 0;
 	uint16_t enq = 0;
 	uint64_t count = 0;
-	struct perf_elt *m[MAX_PROD_ENQ_BURST_SIZE + 1];
-	struct rte_event ev[MAX_PROD_ENQ_BURST_SIZE + 1];
+	struct perf_elt *m[opt->prod_enq_burst_sz + 1];
+	struct rte_event ev[opt->prod_enq_burst_sz + 1];
 	uint32_t burst_size = opt->prod_enq_burst_sz;
+	uint8_t enable_fwd_latency;
 
-	memset(m, 0, sizeof(*m) * (MAX_PROD_ENQ_BURST_SIZE + 1));
-	rte_event_dev_info_get(dev_id, &dev_info);
-	if (dev_info.max_event_port_enqueue_depth < burst_size)
-		burst_size = dev_info.max_event_port_enqueue_depth;
-
+	enable_fwd_latency = opt->fwd_latency;
+	memset(m, 0, sizeof(*m) * (opt->prod_enq_burst_sz + 1));
 	if (opt->verbose_level > 1)
 		printf("%s(): lcore %d dev_id %d port=%d queue %d\n", __func__,
 				rte_lcore_id(), dev_id, port, p->queue_id);
@@ -212,19 +214,21 @@ perf_producer_burst(void *arg)
 		for (i = 0; i < burst_size; i++) {
 			ev[i].flow_id = flow_counter++ % nb_flows;
 			ev[i].event_ptr = m[i];
-			m[i]->timestamp = timestamp;
+			if (enable_fwd_latency)
+				m[i]->timestamp = timestamp;
 		}
-		enq = rte_event_enqueue_burst(dev_id, port, ev, burst_size);
+		enq = rte_event_enqueue_new_burst(dev_id, port, ev, burst_size);
 		while (enq < burst_size) {
-			enq += rte_event_enqueue_burst(dev_id, port,
-							ev + enq,
-							burst_size - enq);
+			enq += rte_event_enqueue_new_burst(
+				dev_id, port, ev + enq, burst_size - enq);
 			if (t->done)
 				break;
 			rte_pause();
-			timestamp = rte_get_timer_cycles();
-			for (i = enq; i < burst_size; i++)
-				m[i]->timestamp = timestamp;
+			if (enable_fwd_latency) {
+				timestamp = rte_get_timer_cycles();
+				for (i = enq; i < burst_size; i++)
+					m[i]->timestamp = timestamp;
+			}
 		}
 		count += burst_size;
 	}
@@ -799,9 +803,19 @@ perf_event_crypto_producer_burst(void *arg)
 static int
 perf_producer_wrapper(void *arg)
 {
+	struct rte_event_dev_info dev_info;
 	struct prod_data *p  = arg;
 	struct test_perf *t = p->t;
-	bool burst = evt_has_burst_mode(p->dev_id);
+
+	rte_event_dev_info_get(p->dev_id, &dev_info);
+	if (!t->opt->prod_enq_burst_sz) {
+		t->opt->prod_enq_burst_sz = MAX_PROD_ENQ_BURST_SIZE;
+		if (dev_info.max_event_port_enqueue_depth > 0 &&
+		    (uint32_t)dev_info.max_event_port_enqueue_depth <
+			    t->opt->prod_enq_burst_sz)
+			t->opt->prod_enq_burst_sz =
+				dev_info.max_event_port_enqueue_depth;
+	}
 
 	/* In case of synthetic producer, launch perf_producer or
 	 * perf_producer_burst depending on producer enqueue burst size
@@ -811,7 +825,7 @@ perf_producer_wrapper(void *arg)
 		return perf_producer(arg);
 	else if (t->opt->prod_type == EVT_PROD_TYPE_SYNT &&
 			t->opt->prod_enq_burst_sz > 1) {
-		if (!burst)
+		if (dev_info.max_event_port_enqueue_depth == 1)
 			evt_err("This event device does not support burst mode");
 		else
 			return perf_producer_burst(arg);
