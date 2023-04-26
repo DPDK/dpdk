@@ -12,14 +12,34 @@
 
 #include "virtchnl2_lan_desc.h"
 
-/* Error Codes
- * Note that many older versions of various iAVF drivers convert the reported
- * status code directly into an iavf_status enumeration. For this reason, it
- * is important that the values of these enumerations line up.
- */
-#define		VIRTCHNL2_STATUS_SUCCESS		0
-#define		VIRTCHNL2_STATUS_ERR_PARAM		-5
-#define		VIRTCHNL2_STATUS_ERR_OPCODE_MISMATCH	-38
+/* VIRTCHNL2_ERROR_CODES */
+/* success */
+#define	VIRTCHNL2_STATUS_SUCCESS	0
+/* Operation not permitted, used in case of command not permitted for sender */
+#define	VIRTCHNL2_STATUS_ERR_EPERM	1
+/* Bad opcode - virtchnl interface problem */
+#define	VIRTCHNL2_STATUS_ERR_ESRCH	3
+/* I/O error - HW access error */
+#define	VIRTCHNL2_STATUS_ERR_EIO	5
+/* No such resource - Referenced resource is not allacated */
+#define	VIRTCHNL2_STATUS_ERR_ENXIO	6
+/* Permission denied - Resource is not permitted to caller */
+#define	VIRTCHNL2_STATUS_ERR_EACCES	13
+/* Device or resource busy - In case shared resource is in use by others */
+#define	VIRTCHNL2_STATUS_ERR_EBUSY	16
+/* Object already exists and not free */
+#define	VIRTCHNL2_STATUS_ERR_EEXIST	17
+/* Invalid input argument in command */
+#define	VIRTCHNL2_STATUS_ERR_EINVAL	22
+/* No space left or allocation failure */
+#define	VIRTCHNL2_STATUS_ERR_ENOSPC	28
+/* Parameter out of range */
+#define	VIRTCHNL2_STATUS_ERR_ERANGE	34
+
+/* Op not allowed in current dev mode */
+#define	VIRTCHNL2_STATUS_ERR_EMODE	200
+/* State Machine error - Command sequence problem */
+#define	VIRTCHNL2_STATUS_ERR_ESM	201
 
 /* These macros are used to generate compilation errors if a structure/union
  * is not exactly the correct length. It gives a divide by zero error if the
@@ -1445,11 +1465,11 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 	case VIRTCHNL2_OP_EVENT:
 	case VIRTCHNL2_OP_UNKNOWN:
 	default:
-		return VIRTCHNL2_STATUS_ERR_PARAM;
+		return VIRTCHNL2_STATUS_ERR_ESRCH;
 	}
 	/* few more checks */
 	if (err_msg_format || valid_len != msglen)
-		return VIRTCHNL2_STATUS_ERR_OPCODE_MISMATCH;
+		return VIRTCHNL2_STATUS_ERR_EINVAL;
 
 	return 0;
 }
