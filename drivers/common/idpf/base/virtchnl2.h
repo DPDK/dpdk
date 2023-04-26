@@ -208,11 +208,8 @@
 #define VIRTCHNL2_CAP_RX_FLEX_DESC		BIT(17)
 #define VIRTCHNL2_CAP_PTYPE			BIT(18)
 #define VIRTCHNL2_CAP_LOOPBACK			BIT(19)
-#define VIRTCHNL2_CAP_OEM			BIT(20)
-
-/* VIRTCHNL2_DEVICE_TYPE */
-/* underlying device type */
-#define VIRTCHNL2_MEV_DEVICE			0
+/* this must be the last capability */
+#define VIRTCHNL2_CAP_OEM			BIT(63)
 
 /* VIRTCHNL2_TXQ_SCHED_MODE
  * Transmit Queue Scheduling Modes - Queue mode is the legacy mode i.e. inorder
