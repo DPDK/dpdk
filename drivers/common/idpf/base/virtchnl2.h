@@ -95,6 +95,8 @@
 #define		VIRTCHNL2_OP_ADD_MAC_ADDR		535
 #define		VIRTCHNL2_OP_DEL_MAC_ADDR		536
 #define		VIRTCHNL2_OP_CONFIG_PROMISCUOUS_MODE	537
+#define		VIRTCHNL2_OP_ADD_QUEUE_GROUPS		538
+#define		VIRTCHNL2_OP_DEL_QUEUE_GROUPS		539
 
 #define VIRTCHNL2_RDMA_INVALID_QUEUE_IDX	0xFFFF
 
@@ -344,6 +346,14 @@
  */
 #define VIRTCHNL2_UNICAST_PROMISC		BIT(0)
 #define VIRTCHNL2_MULTICAST_PROMISC		BIT(1)
+
+/* VIRTCHNL2_QUEUE_GROUP_TYPE
+ * Type of queue groups
+ * 0 till 0xFF is for general use
+ */
+#define VIRTCHNL2_QUEUE_GROUP_DATA		1
+#define VIRTCHNL2_QUEUE_GROUP_MBX		2
+#define VIRTCHNL2_QUEUE_GROUP_CONFIG		3
 
 /* VIRTCHNL2_PROTO_HDR_TYPE
  * Protocol header type within a packet segment. A segment consists of one or
@@ -794,6 +804,133 @@ struct virtchnl2_add_queues {
 
 VIRTCHNL2_CHECK_STRUCT_LEN(56, virtchnl2_add_queues);
 
+/* Queue Groups Extension */
+
+struct virtchnl2_rx_queue_group_info {
+	/* IN/OUT, user can ask to update rss_lut size originally allocated
+	 * by CreateVport command. New size will be returned if allocation
+	 * succeeded, otherwise original rss_size from CreateVport will
+	 * be returned.
+	 */
+	__le16 rss_lut_size;
+	/* Future extension purpose */
+	u8 pad[6];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_rx_queue_group_info);
+
+struct virtchnl2_tx_queue_group_info { /* IN */
+	/* TX TC queue group will be connected to */
+	u8 tx_tc;
+	/* Each group can have its own priority, value 0-7, while each group
+	 * with unique priority is strict priority.
+	 * It can be single set of queue groups which configured with
+	 * same priority, then they are assumed part of WFQ arbitration
+	 * group and are expected to be assigned with weight.
+	 */
+	u8 priority;
+	/* Determines if queue group is expected to be Strict Priority
+	 * according to its priority
+	 */
+	u8 is_sp;
+	u8 pad;
+
+	/* Peak Info Rate Weight in case Queue Group is part of WFQ
+	 * arbitration set.
+	 * The weights of the groups are independent of each other.
+	 * Possible values: 1-200
+	 */
+	__le16 pir_weight;
+	/* Future extension purpose for CIR only */
+	u8 cir_pad[2];
+	/* Future extension purpose*/
+	u8 pad2[8];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_tx_queue_group_info);
+
+struct virtchnl2_queue_group_id {
+	/* Queue group ID - depended on it's type
+	 * Data: is an ID which is relative to Vport
+	 * Config & Mailbox: is an ID which is relative to func.
+	 * This ID is use in future calls, i.e. delete.
+	 * Requested by host and assigned by Control plane.
+	 */
+	__le16 queue_group_id;
+	/* Functional type: see VIRTCHNL2_QUEUE_GROUP_TYPE definitions */
+	__le16 queue_group_type;
+	u8 pad[4];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_queue_group_id);
+
+struct virtchnl2_queue_group_info {
+	/* IN */
+	struct virtchnl2_queue_group_id qg_id;
+	/* IN, Number of queue of different types in the group. */
+	__le16 num_tx_q;
+	__le16 num_tx_complq;
+	__le16 num_rx_q;
+	__le16 num_rx_bufq;
+
+	struct virtchnl2_tx_queue_group_info tx_q_grp_info;
+	struct virtchnl2_rx_queue_group_info rx_q_grp_info;
+	/* Future extension purpose */
+	u8 pad[40];
+	struct virtchnl2_queue_reg_chunks chunks; /* OUT */
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(120, virtchnl2_queue_group_info);
+
+struct virtchnl2_queue_groups {
+	__le16 num_queue_groups;
+	u8 pad[6];
+	struct virtchnl2_queue_group_info groups[1];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(128, virtchnl2_queue_groups);
+
+/* VIRTCHNL2_OP_ADD_QUEUE_GROUPS
+ * PF sends this message to request additional transmit/receive queue groups
+ * beyond the ones that were assigned via CREATE_VPORT request.
+ * virtchnl2_add_queue_groups structure is used to specify the number of each
+ * type of queues. CP responds with the same structure with the actual number of
+ * groups and queues assigned followed by num_queue_groups and num_chunks of
+ * virtchnl2_queue_groups and virtchnl2_queue_chunk structures.
+ */
+struct virtchnl2_add_queue_groups {
+	/* IN, vport_id to add queue group to, same as allocated by CreateVport.
+	 * NA for mailbox and other types not assigned to vport
+	 */
+	__le32 vport_id;
+	u8 pad[4];
+	/* IN/OUT */
+	struct virtchnl2_queue_groups qg_info;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(136, virtchnl2_add_queue_groups);
+
+/* VIRTCHNL2_OP_DEL_QUEUE_GROUPS
+ * PF sends this message to delete queue groups.
+ * PF sends virtchnl2_delete_queue_groups struct to specify the queue groups
+ * to be deleted. CP performs requested action and returns status and update
+ * num_queue_groups with number of successfully deleted queue groups.
+ */
+struct virtchnl2_delete_queue_groups {
+	/* IN, vport_id to delete queue group from, same as
+	 * allocated by CreateVport.
+	 */
+	__le32 vport_id;
+	/* IN/OUT, Defines number of groups provided below */
+	__le16 num_queue_groups;
+	u8 pad[2];
+
+	/* IN, IDs & types of Queue Groups to delete */
+	struct virtchnl2_queue_group_id qg_ids[1];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_delete_queue_groups);
+
 /* Structure to specify a chunk of contiguous interrupt vectors */
 struct virtchnl2_vector_chunk {
 	__le16 start_vector_id;
@@ -1243,6 +1380,10 @@ static inline const char *virtchnl2_op_str(__le32 v_opcode)
 		return "VIRTCHNL2_OP_CREATE_ADI";
 	case VIRTCHNL2_OP_DESTROY_ADI:
 		return "VIRTCHNL2_OP_DESTROY_ADI";
+	case VIRTCHNL2_OP_ADD_QUEUE_GROUPS:
+		return "VIRTCHNL2_OP_ADD_QUEUE_GROUPS";
+	case VIRTCHNL2_OP_DEL_QUEUE_GROUPS:
+		return "VIRTCHNL2_OP_DEL_QUEUE_GROUPS";
 	default:
 		return "Unsupported (update virtchnl2.h)";
 	}
@@ -1371,6 +1512,54 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 			}
 			valid_len += (qs->chunks.num_chunks - 1) *
 				      sizeof(struct virtchnl2_queue_chunk);
+		}
+		break;
+	case VIRTCHNL2_OP_ADD_QUEUE_GROUPS:
+		valid_len = sizeof(struct virtchnl2_add_queue_groups);
+		if (msglen != valid_len) {
+			__le32 i = 0, offset = 0;
+			struct virtchnl2_add_queue_groups *add_queue_grp =
+				(struct virtchnl2_add_queue_groups *)msg;
+			struct virtchnl2_queue_groups *groups = &(add_queue_grp->qg_info);
+			struct virtchnl2_queue_group_info *grp_info;
+			__le32 chunk_size = sizeof(struct virtchnl2_queue_reg_chunk);
+			__le32 group_size = sizeof(struct virtchnl2_queue_group_info);
+			__le32 total_chunks_size;
+
+			if (groups->num_queue_groups == 0) {
+				err_msg_format = true;
+				break;
+			}
+			valid_len += (groups->num_queue_groups - 1) *
+				      sizeof(struct virtchnl2_queue_group_info);
+			offset = (u8 *)(&groups->groups[0]) - (u8 *)groups;
+
+			for (i = 0; i < groups->num_queue_groups; i++) {
+				grp_info = (struct virtchnl2_queue_group_info *)
+						   ((u8 *)groups + offset);
+				if (grp_info->chunks.num_chunks == 0) {
+					offset += group_size;
+					continue;
+				}
+				total_chunks_size = (grp_info->chunks.num_chunks - 1) * chunk_size;
+				offset += group_size + total_chunks_size;
+				valid_len += total_chunks_size;
+			}
+		}
+		break;
+	case VIRTCHNL2_OP_DEL_QUEUE_GROUPS:
+		valid_len = sizeof(struct virtchnl2_delete_queue_groups);
+		if (msglen != valid_len) {
+			struct virtchnl2_delete_queue_groups *del_queue_grp =
+				(struct virtchnl2_delete_queue_groups *)msg;
+
+			if (del_queue_grp->num_queue_groups == 0) {
+				err_msg_format = true;
+				break;
+			}
+
+			valid_len += (del_queue_grp->num_queue_groups - 1) *
+				      sizeof(struct virtchnl2_queue_group_id);
 		}
 		break;
 	case VIRTCHNL2_OP_MAP_QUEUE_VECTOR:
