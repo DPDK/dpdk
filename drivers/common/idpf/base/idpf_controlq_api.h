@@ -191,6 +191,10 @@ int idpf_ctlq_send(struct idpf_hw *hw,
 int idpf_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 		   struct idpf_ctlq_msg *q_msg);
 
+/* Reclaims all descriptors on HW write back */
+int idpf_ctlq_clean_sq_force(struct idpf_ctlq_info *cq, u16 *clean_count,
+			     struct idpf_ctlq_msg *msg_status[]);
+
 /* Reclaims send descriptors on HW write back */
 int idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 		       struct idpf_ctlq_msg *msg_status[]);

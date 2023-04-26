@@ -386,13 +386,15 @@ sq_send_command_out:
 }
 
 /**
- * idpf_ctlq_clean_sq - reclaim send descriptors on HW write back for the
- * requested queue
+ * __idpf_ctlq_clean_sq - helper function to reclaim descriptors on HW write
+ * back for the requested queue
  * @cq: pointer to the specific Control queue
  * @clean_count: (input|output) number of descriptors to clean as input, and
  * number of descriptors actually cleaned as output
  * @msg_status: (output) pointer to msg pointer array to be populated; needs
  * to be allocated by caller
+ * @force: (input) clean descriptors which were not done yet. Use with caution
+ * in kernel mode only
  *
  * Returns an array of message pointers associated with the cleaned
  * descriptors. The pointers are to the original ctlq_msgs sent on the cleaned
@@ -400,8 +402,8 @@ sq_send_command_out:
  * to send will have a non-zero status. The caller is expected to free original
  * ctlq_msgs and free or reuse the DMA buffers.
  */
-int idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
-		       struct idpf_ctlq_msg *msg_status[])
+static int __idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
+				struct idpf_ctlq_msg *msg_status[], bool force)
 {
 	struct idpf_ctlq_desc *desc;
 	u16 i = 0, num_to_clean;
@@ -425,7 +427,7 @@ int idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 	for (i = 0; i < num_to_clean; i++) {
 		/* Fetch next descriptor and check if marked as done */
 		desc = IDPF_CTLQ_DESC(cq, ntc);
-		if (!(LE16_TO_CPU(desc->flags) & IDPF_CTLQ_FLAG_DD))
+		if (!force && !(LE16_TO_CPU(desc->flags) & IDPF_CTLQ_FLAG_DD))
 			break;
 
 		desc_err = LE16_TO_CPU(desc->ret_val);
@@ -435,6 +437,8 @@ int idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 		}
 
 		msg_status[i] = cq->bi.tx_msg[ntc];
+		if (!msg_status[i])
+			break;
 		msg_status[i]->status = desc_err;
 
 		cq->bi.tx_msg[ntc] = NULL;
@@ -455,6 +459,48 @@ int idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 	*clean_count = i;
 
 	return ret;
+}
+
+/**
+ * idpf_ctlq_clean_sq_force - reclaim all descriptors on HW write back for the
+ * requested queue. Use only in kernel mode.
+ * @cq: pointer to the specific Control queue
+ * @clean_count: (input|output) number of descriptors to clean as input, and
+ * number of descriptors actually cleaned as output
+ * @msg_status: (output) pointer to msg pointer array to be populated; needs
+ * to be allocated by caller
+ *
+ * Returns an array of message pointers associated with the cleaned
+ * descriptors. The pointers are to the original ctlq_msgs sent on the cleaned
+ * descriptors.  The status will be returned for each; any messages that failed
+ * to send will have a non-zero status. The caller is expected to free original
+ * ctlq_msgs and free or reuse the DMA buffers.
+ */
+int idpf_ctlq_clean_sq_force(struct idpf_ctlq_info *cq, u16 *clean_count,
+			     struct idpf_ctlq_msg *msg_status[])
+{
+	return __idpf_ctlq_clean_sq(cq, clean_count, msg_status, true);
+}
+
+/**
+ * idpf_ctlq_clean_sq - reclaim send descriptors on HW write back for the
+ * requested queue
+ * @cq: pointer to the specific Control queue
+ * @clean_count: (input|output) number of descriptors to clean as input, and
+ * number of descriptors actually cleaned as output
+ * @msg_status: (output) pointer to msg pointer array to be populated; needs
+ * to be allocated by caller
+ *
+ * Returns an array of message pointers associated with the cleaned
+ * descriptors. The pointers are to the original ctlq_msgs sent on the cleaned
+ * descriptors.  The status will be returned for each; any messages that failed
+ * to send will have a non-zero status. The caller is expected to free original
+ * ctlq_msgs and free or reuse the DMA buffers.
+ */
+int idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
+		       struct idpf_ctlq_msg *msg_status[])
+{
+	return __idpf_ctlq_clean_sq(cq, clean_count, msg_status, false);
 }
 
 /**
