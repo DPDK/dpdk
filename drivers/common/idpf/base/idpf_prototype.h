@@ -40,6 +40,6 @@ int idpf_set_rss_key(struct idpf_hw *hw, u16 seid,
 int idpf_set_mac_type(struct idpf_hw *hw);
 
 int idpf_reset(struct idpf_hw *hw);
-int idpf_send_msg_to_cp(struct idpf_hw *hw, enum virtchnl_ops v_opcode,
+int idpf_send_msg_to_cp(struct idpf_hw *hw, int v_opcode,
 			int v_retval, u8 *msg, u16 msglen);
 #endif /* _IDPF_PROTOTYPE_H_ */

@@ -146,7 +146,7 @@ int idpf_init_hw(struct idpf_hw *hw, struct idpf_ctlq_size ctlq_size)
  * is sent asynchronously, i.e. idpf_asq_send_command() does not wait for
  * completion before returning.
  */
-int idpf_send_msg_to_cp(struct idpf_hw *hw, enum virtchnl_ops v_opcode,
+int idpf_send_msg_to_cp(struct idpf_hw *hw, int v_opcode,
 			int v_retval, u8 *msg, u16 msglen)
 {
 	struct idpf_ctlq_msg ctlq_msg = { 0 };
