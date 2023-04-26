@@ -426,13 +426,13 @@
 
 
 /* VIRTCHNL2_OP_VERSION
- * VF posts its version number to the CP. CP responds with its version number
+ * PF/VF posts its version number to the CP. CP responds with its version number
  * in the same format, along with a return code.
- * If there is a major version mismatch, then the VF cannot operate.
- * If there is a minor version mismatch, then the VF can operate but should
+ * If there is a major version mismatch, then the PF/VF cannot operate.
+ * If there is a minor version mismatch, then the PF/VF can operate but should
  * add a warning to the system log.
  *
- * This version opcode  MUST always be specified as == 1, regardless of other
+ * This version opcode MUST always be specified as == 1, regardless of other
  * changes in the API. The CP must always respond to this message without
  * error regardless of version mismatch.
  */
@@ -598,11 +598,7 @@ struct virtchnl2_create_vport {
 	/* see VIRTCHNL2_TX_DESC_IDS definitions */
 	__le64 tx_desc_ids;
 
-#define MAX_Q_REGIONS 16
-	__le32 max_qs_per_qregion[MAX_Q_REGIONS];
-	__le32 qregion_total_qs;
-	__le16 qregion_type;
-	__le16 pad2;
+	u8 reserved1[72];
 
 	/* see VIRTCHNL2_RSS_ALGORITHM definitions */
 	__le32 rss_algorithm;
@@ -665,9 +661,7 @@ struct virtchnl2_txq_info {
 	 */
 	__le16 peer_rx_queue_id;
 
-	/* value ranges from 0 to 15 */
-	__le16 qregion_id;
-	u8 pad[2];
+	u8 pad[4];
 
 	/* Egress pasid is used for SIOV use case */
 	__le32 egress_pasid;
@@ -734,10 +728,7 @@ struct virtchnl2_rxq_info {
 	 * if this field is set
 	 */
 	u8 bufq2_ena;
-	u8 pad2;
-
-	/* value ranges from 0 to 15 */
-	__le16 qregion_id;
+	u8 pad2[3];
 
 	/* Ingress pasid is used for SIOV use case */
 	__le32 ingress_pasid;
@@ -801,9 +792,13 @@ struct virtchnl2_vector_chunk {
 	 * interrupt indices without modifying the state of the interrupt.
 	 */
 	__le32 dynctl_reg_start;
+	/* register spacing to find the next dynctl and itrn register offset
+	 * from the provided dynctl_reg_start and itrn_reg_start respectively
+	 */
 	__le32 dynctl_reg_spacing;
 
 	__le32 itrn_reg_start;
+	/* register spacing to find the individual itrn register where n=0..2 */
 	__le32 itrn_reg_spacing;
 	u8 reserved[8];
 };
