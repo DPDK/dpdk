@@ -15,7 +15,7 @@
 #include "idpf_lan_pf_regs.h"
 #include "idpf_lan_vf_regs.h"
 #include "idpf_lan_txrx.h"
-#include "virtchnl.h"
+#include <virtchnl.h>
 
 #define APF
 

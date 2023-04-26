@@ -5,6 +5,8 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
     subdir_done()
 endif
 
+includes += include_directories('../iavf')
+
 deps += ['mbuf']
 
 sources = files(
