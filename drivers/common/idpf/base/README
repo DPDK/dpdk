@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021-2022 Intel Corporation
+ * Copyright(c) 2021-2023 Intel Corporation
  */
 
 Intel® IDPF driver
 ==================
 
 This directory contains source code of BSD-3-Clause idpf driver of version
-2022.09.13 released by the team which develops basic drivers for Intel IPU.
+2023.02.23 released by the team which develops basic drivers for Intel IPU.
 The directory of base/ contains the original source package.
 This driver is valid for the product(s) listed below
 
