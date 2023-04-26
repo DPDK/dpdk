@@ -130,6 +130,8 @@ int idpf_init_hw(struct idpf_hw *hw, struct idpf_ctlq_size ctlq_size)
 	hw->mac.addr[4] = 0x03;
 	hw->mac.addr[5] = 0x14;
 
+	idpf_free(hw, q_info);
+
 	return 0;
 }
 
@@ -219,6 +221,7 @@ bool idpf_check_asq_alive(struct idpf_hw *hw)
 int idpf_clean_arq_element(struct idpf_hw *hw,
 			   struct idpf_arq_event_info *e, u16 *pending)
 {
+	struct idpf_dma_mem *dma_mem = NULL;
 	struct idpf_ctlq_msg msg = { 0 };
 	int status;
 	u16 msg_data_len;
@@ -226,6 +229,8 @@ int idpf_clean_arq_element(struct idpf_hw *hw,
 	*pending = 1;
 
 	status = idpf_ctlq_recv(hw->arq, pending, &msg);
+	if (status == -ENOMSG)
+		goto exit;
 
 	/* ctlq_msg does not align to ctlq_desc, so copy relevant data here */
 	e->desc.opcode = msg.opcode;
@@ -240,7 +245,14 @@ int idpf_clean_arq_element(struct idpf_hw *hw,
 		msg_data_len = msg.data_len;
 		idpf_memcpy(e->msg_buf, msg.ctx.indirect.payload->va, msg_data_len,
 			    IDPF_DMA_TO_NONDMA);
+		dma_mem = msg.ctx.indirect.payload;
+	} else {
+		*pending = 0;
 	}
+
+	status = idpf_ctlq_post_rx_buffs(hw, hw->arq, pending, &dma_mem);
+
+exit:
 	return status;
 }
 
