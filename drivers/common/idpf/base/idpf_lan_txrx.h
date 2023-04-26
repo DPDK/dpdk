@@ -4,9 +4,8 @@
 
 #ifndef _IDPF_LAN_TXRX_H_
 #define _IDPF_LAN_TXRX_H_
-#ifndef __KERNEL__
+
 #include "idpf_osdep.h"
-#endif
 
 enum idpf_rss_hash {
 	/* Values 0 - 28 are reserved for future use */

@@ -5,13 +5,7 @@
 #ifndef _IDPF_CONTROLQ_API_H_
 #define _IDPF_CONTROLQ_API_H_
 
-#ifdef __KERNEL__
-#include "idpf_mem.h"
-#else /* !__KERNEL__ */
 #include "idpf_osdep.h"
-
-#include <rte_compat.h>
-#endif /* !__KERNEL__ */
 
 struct idpf_hw;
 

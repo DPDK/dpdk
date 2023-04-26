@@ -23,6 +23,7 @@
 #include <rte_log.h>
 #include <rte_random.h>
 #include <rte_io.h>
+#include <rte_compat.h>
 
 #define INLINE inline
 #define STATIC static

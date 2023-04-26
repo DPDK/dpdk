@@ -5,14 +5,8 @@
 #ifndef _IDPF_CONTROLQ_H_
 #define _IDPF_CONTROLQ_H_
 
-#ifdef __KERNEL__
-#include <linux/slab.h>
-#endif
-
-#ifndef __KERNEL__
 #include "idpf_osdep.h"
 #include "idpf_alloc.h"
-#endif
 #include "idpf_controlq_api.h"
 
 /* Maximum buffer lengths for all control queue types */
@@ -26,14 +20,12 @@
 	((u16)((((R)->next_to_clean > (R)->next_to_use) ? 0 : (R)->ring_size) + \
 	       (R)->next_to_clean - (R)->next_to_use - 1))
 
-#ifndef __KERNEL__
 /* Data type manipulation macros. */
 #define IDPF_HI_DWORD(x)	((u32)((((x) >> 16) >> 16) & 0xFFFFFFFF))
 #define IDPF_LO_DWORD(x)	((u32)((x) & 0xFFFFFFFF))
 #define IDPF_HI_WORD(x)		((u16)(((x) >> 16) & 0xFFFF))
 #define IDPF_LO_WORD(x)		((u16)((x) & 0xFFFF))
 
-#endif
 /* Control Queue default settings */
 #define IDPF_CTRL_SQ_CMD_TIMEOUT	250  /* msecs */
 

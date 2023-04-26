@@ -162,11 +162,7 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 	switch (qinfo->type) {
 	case IDPF_CTLQ_TYPE_MAILBOX_RX:
 		is_rxq = true;
-#ifdef __KERNEL__
-		fallthrough;
-#else
 		/* fallthrough */
-#endif /* __KERNEL__ */
 	case IDPF_CTLQ_TYPE_MAILBOX_TX:
 		status = idpf_ctlq_alloc_ring_res(hw, *cq_out);
 		break;
