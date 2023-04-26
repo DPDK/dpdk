@@ -27,7 +27,6 @@
 #define NIX_RX_REAS_F	   BIT(12)
 #define NIX_RX_VWQE_F	   BIT(13)
 #define NIX_RX_MULTI_SEG_F BIT(14)
-#define CPT_RX_WQE_F	   BIT(15)
 
 #define CNXK_NIX_CQ_ENTRY_SZ 128
 #define NIX_DESCS_PER_LOOP   4

@@ -119,8 +119,6 @@ struct cnxk_sso_evdev {
 	uint8_t gw_mode;
 	uint16_t stash_cnt;
 	struct cnxk_sso_stash *stash_parse_data;
-	/* Crypto adapter */
-	uint8_t is_ca_internal_port;
 } __rte_cache_aligned;
 
 /* Event port a.k.a GWS */
