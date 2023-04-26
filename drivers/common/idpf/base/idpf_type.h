@@ -14,8 +14,6 @@
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s)
 #define UNREFERENCED_5PARAMETER(_p, _q, _r, _s, _t)
 
-#define MAKEMASK(m, s)	((m) << (s))
-
 struct idpf_eth_stats {
 	u64 rx_bytes;			/* gorc */
 	u64 rx_unicast;			/* uprc */

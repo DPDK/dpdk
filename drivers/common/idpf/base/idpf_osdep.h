@@ -45,6 +45,8 @@ typedef struct idpf_lock idpf_lock;
 #define low_16_bits(x)		((x) & 0xFFFF)
 #define high_16_bits(x)		(((x) & 0xFFFF0000) >> 16)
 
+#define IDPF_M(m, s)		((m) << (s))
+
 #ifndef ETH_ADDR_LEN
 #define ETH_ADDR_LEN		6
 #endif
