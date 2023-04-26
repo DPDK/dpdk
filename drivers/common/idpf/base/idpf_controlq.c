@@ -311,18 +311,14 @@ int idpf_ctlq_send(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
 
 	for (i = 0; i < num_q_msg; i++) {
 		struct idpf_ctlq_msg *msg = &q_msg[i];
-		u64 msg_cookie;
 
 		desc = IDPF_CTLQ_DESC(cq, cq->next_to_use);
 
 		desc->opcode = CPU_TO_LE16(msg->opcode);
 		desc->pfid_vfid = CPU_TO_LE16(msg->func_id);
 
-		msg_cookie = *(u64 *)&msg->cookie;
-		desc->cookie_high =
-			CPU_TO_LE32(IDPF_HI_DWORD(msg_cookie));
-		desc->cookie_low =
-			CPU_TO_LE32(IDPF_LO_DWORD(msg_cookie));
+		desc->cookie_high = CPU_TO_LE32(msg->cookie.mbx.chnl_opcode);
+		desc->cookie_low = CPU_TO_LE32(msg->cookie.mbx.chnl_retval);
 
 		desc->flags = CPU_TO_LE16((msg->host_id & IDPF_HOST_ID_MASK) <<
 					  IDPF_CTLQ_FLAG_HOST_ID_S);
@@ -620,8 +616,6 @@ int idpf_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 	num_to_clean = *num_q_msg;
 
 	for (i = 0; i < num_to_clean; i++) {
-		u64 msg_cookie;
-
 		/* Fetch next descriptor and check if marked as done */
 		desc = IDPF_CTLQ_DESC(cq, ntc);
 		flags = LE16_TO_CPU(desc->flags);
@@ -639,10 +633,8 @@ int idpf_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 		if (flags & IDPF_CTLQ_FLAG_ERR)
 			ret_code = -EBADMSG;
 
-		msg_cookie = (u64)LE32_TO_CPU(desc->cookie_high) << 32;
-		msg_cookie |= (u64)LE32_TO_CPU(desc->cookie_low);
-		idpf_memcpy(&q_msg[i].cookie, &msg_cookie, sizeof(u64),
-			    IDPF_NONDMA_TO_NONDMA);
+		q_msg[i].cookie.mbx.chnl_opcode = LE32_TO_CPU(desc->cookie_high);
+		q_msg[i].cookie.mbx.chnl_retval = LE32_TO_CPU(desc->cookie_low);
 
 		q_msg[i].opcode = LE16_TO_CPU(desc->opcode);
 		q_msg[i].data_len = LE16_TO_CPU(desc->datalen);
