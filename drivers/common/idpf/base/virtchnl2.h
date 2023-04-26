@@ -289,8 +289,6 @@
  */
 #define VIRTCHNL2_ITR_IDX_0			0
 #define VIRTCHNL2_ITR_IDX_1			1
-#define VIRTCHNL2_ITR_IDX_2			2
-#define VIRTCHNL2_ITR_IDX_NO_ITR		3
 
 /* VIRTCHNL2_VECTOR_LIMITS
  * Since PF/VF messages are limited by __le16 size, precalculate the maximum
@@ -510,9 +508,7 @@ struct virtchnl2_get_capabilities {
 	 */
 	u8 max_sg_bufs_per_tx_pkt;
 
-	/* see VIRTCHNL2_ITR_IDX definition */
-	u8 itr_idx_map;
-
+	u8 reserved1;
 	__le16 pad1;
 
 	/* version of Control Plane that is running */
@@ -521,7 +517,12 @@ struct virtchnl2_get_capabilities {
 	/* see VIRTCHNL2_DEVICE_TYPE definitions */
 	__le32 device_type;
 
-	u8 reserved[12];
+	/* min packet length supported by device for single segment offload */
+	u8 min_sso_packet_len;
+	/* max number of header buffers that can be used for an LSO */
+	u8 max_hdr_buf_per_lso;
+
+	u8 reserved[10];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(80, virtchnl2_get_capabilities);
@@ -789,15 +790,17 @@ struct virtchnl2_vector_chunk {
 	 * interrupt indices without modifying the state of the interrupt.
 	 */
 	__le32 dynctl_reg_start;
-	/* register spacing to find the next dynctl and itrn register offset
-	 * from the provided dynctl_reg_start and itrn_reg_start respectively
-	 */
+	/* register spacing between dynctl registers of 2 consecutive vectors */
 	__le32 dynctl_reg_spacing;
 
 	__le32 itrn_reg_start;
-	/* register spacing to find the individual itrn register where n=0..2 */
+	/* register spacing between itrn registers of 2 consecutive vectors */
 	__le32 itrn_reg_spacing;
-	u8 reserved[8];
+	/* register spacing between itrn registers of the same vector
+	 * where n=0..2
+	 */
+	__le32 itrn_index_spacing;
+	u8 reserved[4];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(32, virtchnl2_vector_chunk);
