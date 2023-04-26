@@ -63,9 +63,13 @@ struct idpf_ctlq_msg {
 		u16 status;	/* when receiving a message */
 	};
 	union {
+#ifndef __KERNEL__
+#define FILL_OPCODE_V1(msg, opcode) ((msg).cookie.cfg.mbx.chnl_opcode = opcode)
+#define FILL_RETVAL_V1(msg, retval) ((msg).cookie.cfg.mbx.chnl_retval = retval)
+#endif /* __KERNEL__ */
 		struct {
-			u32 chnl_retval;
 			u32 chnl_opcode;
+			u32 chnl_retval;
 		} mbx;
 	} cookie;
 	union {

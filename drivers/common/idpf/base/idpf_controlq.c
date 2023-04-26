@@ -288,6 +288,8 @@ int idpf_ctlq_deinit(struct idpf_hw *hw)
  * send routine via the q_msg struct / control queue specific data struct.
  * The control queue will hold a reference to each send message until
  * the completion for that message has been cleaned.
+ * Since all q_msgs being sent are store in native endianness, these values
+ * must be converted to LE before being written to the hw descriptor.
  */
 int idpf_ctlq_send(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
 		   u16 num_q_msg, struct idpf_ctlq_msg q_msg[])
