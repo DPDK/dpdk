@@ -353,8 +353,10 @@ cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev,
 #endif
 
 	if (gw.u64[1])
-		cn9k_sso_hws_post_process(gw.u64, mbuf, flags, lookup_mem,
-					  tstamp);
+		cn9k_sso_hws_post_process(gw.u64, mbuf, flags, lookup_mem, tstamp);
+	else
+		gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
+			    (gw.u64[0] & (0x3FFull << 36)) << 4 | (gw.u64[0] & 0xffffffff);
 
 	ev->event = gw.u64[0];
 	ev->u64 = gw.u64[1];
