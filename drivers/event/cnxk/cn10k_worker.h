@@ -282,6 +282,9 @@ cn10k_sso_hws_get_work_empty(struct cn10k_sso_hws *ws, struct rte_event *ev,
 	ws->gw_rdata = gw.u64[0];
 	if (gw.u64[1])
 		cn10k_sso_hws_post_process(ws, gw.u64, flags);
+	else
+		gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
+			    (gw.u64[0] & (0x3FFull << 36)) << 4 | (gw.u64[0] & 0xffffffff);
 
 	ev->event = gw.u64[0];
 	ev->u64 = gw.u64[1];
