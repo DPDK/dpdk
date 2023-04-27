@@ -3886,3 +3886,272 @@ Tested Platforms
 * net/iavf
 
    * vf_interrupt_pmd/nic_interrupt_VF_vfio_pci: l3fwd-power Wake up failed on X722 37d0
+
+20.11.8 Release Notes
+---------------------
+
+
+20.11.8 Fixes
+~~~~~~~~~~~~~
+
+* acl: fix crash on PPC64 with GCC 11
+* app/bbdev: add allocation checks
+* app/bbdev: check statistics failure
+* app/compress-perf: fix remaining data for ops
+* app/compress-perf: fix some typos
+* app/compress-perf: fix testing single operation
+* app/crypto-perf: fix number of segments
+* app/crypto-perf: fix test file memory leak
+* app/flow-perf: fix division or module by zero
+* app/testpmd: cleanup cleanly from signal
+* app/testpmd: fix crash on cleanup
+* app/testpmd: fix encap/decap size calculation
+* app/testpmd: fix forwarding stats for Tx dropped
+* app/testpmd: fix interactive mode on Windows
+* app/testpmd: fix interactive mode with no ports
+* app/testpmd: fix packet count in IEEE 1588 engine
+* app/testpmd: fix packet transmission in noisy VNF engine
+* app/testpmd: fix Tx preparation in checksum engine
+* baseband/acc: fix acc100 iteration counter in TB
+* baseband/acc: fix memory leak on acc100 close
+* build: fix dependencies lookup
+* build: fix toolchain definition
+* bus/ifpga: fix devargs handling
+* ci: switch to Ubuntu 20.04
+* cmdline: handle EOF as quit
+* common/mlx5: use just sufficient barrier for Arm
+* compressdev: fix empty devargs parsing
+* compressdev: fix end of driver list
+* crypto/ccp: remove some printf
+* cryptodev: fix empty devargs parsing
+* crypto/qat: fix stream cipher direction
+* crypto/snow3g: fix snow3g enqueue stat increment
+* devtools: fix escaped space in grep pattern
+* doc: add Linux capability to access physical addresses
+* doc: fix code blocks in cryptodev guide
+* doc: fix dependency setup in l2fwd-cat example guide
+* doc: fix pipeline example path in user guide
+* doc: fix reference to event timer header
+* eal/freebsd: fix lock in alarm callback
+* eal: use same atomic intrinsics for GCC and clang
+* eal/windows: fix pedantic build
+* eal/windows: mark memory config as complete
+* eventdev/eth_tx: fix devices loop
+* eventdev/timer: fix overflow
+* examples/cmdline: fix build with GCC 12
+* examples/qos_sched: fix config entries in wrong sections
+* examples/qos_sched: fix debug mode
+* examples/qos_sched: fix Tx port config when link down
+* examples/vm_power_manager: revert backported commit
+* fbarray: fix metadata dump
+* graph: fix node shrink
+* kni: fix build on RHEL 9.1
+* kni: fix possible starvation when mbufs are exhausted
+* kvargs: add API documentation for process callback
+* lib: remove empty return types from doxygen comments
+* mem: fix hugepage info mapping
+* mempool: fix get objects from mempool with cache
+* net/bnxt: fix link state change interrupt config
+* net/bnxt: fix RSS hash in mbuf
+* net/bnxt: fix Rx queue stats after queue stop and start
+* net/bnxt: fix Tx queue stats after queue stop and start
+* net/e1000: fix saving of stripped VLAN TCI
+* net/hns3: add verification of RSS types
+* net/hns3: allow adding queue buffer size hash rule
+* net/hns3: extract common functions to set Rx/Tx
+* net/hns3: fix burst mode query with dummy function
+* net/hns3: fix clearing RSS configuration
+* net/hns3: fix config struct used for conversion
+* net/hns3: fix duplicate RSS rule check
+* net/hns3: fix log about indirection table size
+* net/hns3: fix possible truncation of hash key when config
+* net/hns3: fix possible truncation of redirection table
+* net/hns3: fix RSS key size compatibility
+* net/hns3: fix warning on flush or destroy rule
+* net/hns3: refactor set RSS hash algorithm and key interface
+* net/hns3: reimplement hash flow function
+* net/hns3: remove useless code when destroy valid RSS rule
+* net/hns3: save hash algo to RSS filter list node
+* net/hns3: separate flow RSS config from RSS conf
+* net/hns3: separate setting and clearing RSS rule
+* net/hns3: separate setting hash algorithm
+* net/hns3: separate setting hash key
+* net/hns3: separate setting redirection table
+* net/hns3: separate setting RSS types
+* net/hns3: use hardware config to report hash key
+* net/hns3: use hardware config to report hash types
+* net/hns3: use hardware config to report redirection table
+* net/hns3: use new RSS rule to configure hardware
+* net/hns3: use RSS filter list to check duplicated rule
+* net/i40e: fix MAC loopback on X722
+* net/i40e: fix validation of flow transfer attribute
+* net/i40e: reduce interrupt interval in multi-driver mode
+* net/i40e: revert link status check on device start
+* net/iavf: add lock for VF commands
+* net/iavf: fix device stop during reset
+* net/iavf: protect insertion in flow list
+* net/ice: fix validation of flow transfer attribute
+* net/ipn3ke: fix representor name
+* net/ipn3ke: fix thread exit
+* net/ixgbe: enable IPv6 mask in flow rules
+* net/ixgbe: fix firmware version consistency
+* net/ixgbe: fix IPv6 mask in flow director
+* net/mlx5: check compressed CQE opcode in vectorized Rx
+* net/mlx5: fix build with GCC 12 and ASan
+* net/mlx5: fix CQE dump for Tx
+* net/mlx5: fix error CQE dumping for vectorized Rx
+* net/mlx5: fix flow sample with ConnectX-5
+* net/mlx5: fix hairpin Tx queue reference count
+* net/mlx5: fix sysfs port name translation
+* net/mlx5: ignore non-critical syndromes for Rx queue
+* net/nfp: fix firmware name derived from PCI name
+* net/nfp: fix getting RSS configuration
+* net/nfp: fix MTU configuration order
+* net/sfc: enforce fate action in transfer flow rules
+* net/txgbe: fix default signal quality value for KX/KX4
+* net/txgbe: fix interrupt loss
+* net/txgbe: fix packet type to parse from offload flags
+* net/txgbe: fix Rx buffer size in config register
+* net/vhost: add missing newline in logs
+* net/vhost: fix Rx interrupt
+* net/virtio: deduce IP length for TSO checksum
+* net/virtio: fix empty devargs parsing
+* net/virtio: remove address width limit for modern devices
+* net/virtio-user: fix device starting failure handling
+* pdump: fix build with GCC 12
+* raw/ifpga/base: fix init with multi-process
+* raw/skeleton: fix empty devargs parsing
+* raw/skeleton: fix selftest
+* reorder: fix sequence number mbuf field register
+* reorder: invalidate buffer from ready queue in drain
+* ring: silence GCC 12 warnings
+* telemetry: fix repeat display when callback don't init dict
+* test/bbdev: extend HARQ tolerance
+* test/bbdev: fix crash for non supported HARQ length
+* test/bbdev: remove check for invalid opaque data
+* test/crypto: add missing MAC-I to PDCP vectors
+* test/crypto: fix statistics error messages
+* test: fix segment length in packet generator
+* test/mbuf: fix mbuf reset test
+* test/mbuf: fix test with mbuf debug enabled
+* test/reorder: fix double free of drained buffers
+* vdpa/ifc: fix argument compatibility check
+* vdpa/ifc: fix reconnection in SW-assisted live migration
+* version: 20.11.8-rc1
+* vhost: decrease log level for unimplemented requests
+* vhost: fix doxygen warnings
+* vhost: fix net header settings in datapath
+* vhost: fix OOB access for invalid vhost ID
+* vhost: fix possible FD leaks
+* vhost: fix possible FD leaks on truncation
+
+20.11.8 Validation
+~~~~~~~~~~~~~~~~~~
+
+* Intel(R) Testing
+
+   * Basic Intel(R) NIC testing
+      * Build & CFLAG compile: cover the build test combination with latest GCC/Clang version and the popular OS revision such as Ubuntu20.04, Fedora36, RHEL8.4, etc.
+      * PF(i40e, ixgbe): test scenarios including RTE_FLOW/TSO/Jumboframe/checksum offload/VLAN/VXLAN, etc.
+      * VF(i40e, ixgbe): test scenarios including VF-RTE_FLOW/TSO/Jumboframe/checksum offload/VLAN/VXLAN, etc.
+      * PF/VF(ice): test scenarios including Switch features/Package Management/Flow Director/Advanced Tx/Advanced RSS/ACL/DCF/Flexible Descriptor, etc.
+      * Intel NIC single core/NIC performance: test scenarios including PF/VF single core performance test, etc.
+      * IPsec: test scenarios including ipsec/ipsec-gw/ipsec library basic test - QAT&SW/FIB library, etc.
+
+   * Basic cryptodev and virtio testing
+      * Virtio: both function and performance test are covered. Such as PVP/Virtio_loopback/virtio-user loopback/virtio-net VM2VM perf testing/VMAWARE ESXI 8.0, etc.
+      * Cryptodev:
+         * Function test: test scenarios including Cryptodev API testing/CompressDev ISA-L/QAT/ZLIB PMD Testing/FIPS, etc.
+         * Performance test: test scenarios including Thoughput Performance/Cryptodev Latency, etc.
+
+
+* Nvidia(R) Testing
+
+   * Basic functionality via testpmd/example applications
+
+      * Tx/Rx
+      * xstats
+      * Timestamps
+      * Link status
+      * RTE flow and flow_director
+      * RSS
+      * VLAN filtering, stripping and insertion
+      * Checksum/TSO
+      * ptype
+      * link_status_interrupt example application
+      * l3fwd-power example application
+      * Multi-process example applications
+      * Hardware LRO tests
+
+   * Build tests
+
+      * Ubuntu 20.04.5 with MLNX_OFED_LINUX-5.9-0.5.6.0.
+      * Ubuntu 20.04.5 with rdma-core master (f0a079f).
+      * Ubuntu 20.04.5 with rdma-core v28.0.
+      * Ubuntu 18.04.6 with rdma-core v17.1.
+      * Ubuntu 18.04.6 with rdma-core master (f0a079f) (i386).
+      * Fedora 37 with rdma-core v41.0.
+      * Fedora 39 (Rawhide) with rdma-core v44.0.
+      * CentOS 7 7.9.2009 with rdma-core master (f0a079f).
+      * CentOS 7 7.9.2009 with MLNX_OFED_LINUX-5.9-0.5.6.0.
+      * CentOS 8 8.4.2105 with rdma-core master (f0a079f).
+      * OpenSUSE Leap 15.4 with rdma-core v38.1.
+      * Windows Server 2019 with Clang 11.0.0.
+
+   * BlueField-2
+
+      * DOCA 1.5.1
+      * fw 24.35.2000
+
+   * ConnectX-7
+
+      * Ubuntu 20.04
+      * Driver MLNX_OFED_LINUX-5.9-0.5.6.0
+      * fw 22.36.1010
+
+   * ConnectX-6 Dx
+
+      * Ubuntu 20.04
+      * Driver MLNX_OFED_LINUX-5.9-0.5.6.0
+      * fw 22.36.1010
+
+
+* Red Hat(R) Testing
+
+   * Platform
+
+      * RHEL 8
+      * Kernel 5.14
+      * Qemu 6.2.0
+      * X540-AT2 NIC(ixgbe, 10G)
+
+   * Functionality
+
+      * Guest with device assignment(PF) throughput testing(1G hugepage size)
+      * Guest with device assignment(PF) throughput testing(2M hugepage size)
+      * Guest with device assignment(VF) throughput testing
+      * PVP (host dpdk testpmd as vswitch) 1Q: throughput testing
+      * PVP vhost-user 2Q throughput testing
+      * PVP vhost-user 1Q cross numa node  throughput testing
+      * Guest with vhost-user 2 queues throughput testing
+      * vhost-user reconnect with dpdk-client, qemu-server: qemu reconnect
+      * vhost-user reconnect with dpdk-client, qemu-server: ovs reconnect
+      * PVP  reconnect with dpdk-client, qemu-server: PASS
+      * PVP 1Q live migration testing
+      * PVP 1Q cross numa node live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing (2M)
+      * Guest with ovs+dpdk+vhost-user 2Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 4Q live migration testing
+      * Host PF + DPDK testing
+      * Host VF + DPDK testing
+
+20.11.8 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* softnic
+
+   * metering/policing: creating a rule can sometimes fail
+
+* testpmd
+   * a "OP_DEL_RSS_INPUT_CFG" error can sometimes appear when exiting
