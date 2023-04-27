@@ -7918,7 +7918,7 @@ mlx5_flow_tunnel_validate(struct rte_eth_dev *dev,
 	if (!is_tunnel_offload_active(dev))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
-					  "tunnel offload was not activated");
+					  "tunnel offload was not activated, consider setting dv_xmeta_en=3");
 	if (!tunnel)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
