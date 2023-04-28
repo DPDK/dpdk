@@ -44,7 +44,8 @@ struct cnxk_se_sess {
 	uint16_t aad_length;
 	uint8_t is_sha3 : 1;
 	uint8_t short_iv : 1;
-	uint8_t rsvd : 6;
+	uint8_t is_sm3 : 1;
+	uint8_t rsvd : 5;
 	uint8_t mac_len;
 	uint8_t iv_length;
 	uint8_t auth_iv_length;
@@ -198,6 +199,9 @@ cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 	case RTE_CRYPTO_AUTH_SHAKE_128:
 	case RTE_CRYPTO_AUTH_SHAKE_256:
 		ret = (mac_len <= UINT8_MAX) ? 0 : -1;
+		break;
+	case RTE_CRYPTO_AUTH_SM3:
+		ret = (mac_len <= 32) ? 0 : -1;
 		break;
 	case RTE_CRYPTO_AUTH_NULL:
 		ret = 0;
@@ -1999,6 +2003,7 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	uint8_t zsk_flag = 0, zs_auth = 0, aes_gcm = 0, is_null = 0, is_sha3 = 0;
 	struct rte_crypto_auth_xform *a_form;
 	roc_se_auth_type auth_type = 0; /* NULL Auth type */
+	uint8_t is_sm3 = 0;
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
 		return fill_sess_gmac(xform, sess);
@@ -2109,6 +2114,10 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		auth_type = ROC_SE_AES_CMAC_EIA2;
 		zsk_flag = ROC_SE_ZS_IA;
 		break;
+	case RTE_CRYPTO_AUTH_SM3:
+		auth_type = ROC_SE_SM3;
+		is_sm3 = 1;
+		break;
 	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 		plt_dp_err("Crypto: Unsupported hash algo %u", a_form->algo);
@@ -2136,6 +2145,7 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	sess->mac_len = a_form->digest_length;
 	sess->is_null = is_null;
 	sess->is_sha3 = is_sha3;
+	sess->is_sm3 = is_sm3;
 	if (zsk_flag) {
 		sess->auth_iv_offset = a_form->iv.offset;
 		sess->auth_iv_length = a_form->iv.length;

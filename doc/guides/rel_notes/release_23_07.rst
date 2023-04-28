@@ -115,6 +115,7 @@ New Features
 * **Updated Marvell cnxk crypto driver.**
 
   * Added support for PDCP chain in cn10k crypto driver.
+  * Added support for SM3 hash operations.
 
 
 Removed Items

@@ -72,6 +72,7 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_SNOW3G_UIA2``
 * ``RTE_CRYPTO_AUTH_ZUC_EIA3``
 * ``RTE_CRYPTO_AUTH_AES_CMAC``
+* ``RTE_CRYPTO_AUTH_SM3``
 
 AEAD algorithms:
 
