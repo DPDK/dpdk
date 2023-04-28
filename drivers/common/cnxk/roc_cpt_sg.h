@@ -7,11 +7,13 @@
 
 #define ROC_DMA_MODE_SG (1 << 7)
 
-#define ROC_MAX_SG_IN_OUT_CNT 32
+#define ROC_MAX_SG_IN_OUT_CNT 128
 #define ROC_MAX_SG_CNT	      (ROC_MAX_SG_IN_OUT_CNT / 2)
 
 #define ROC_SG_LIST_HDR_SIZE (8u)
 #define ROC_SG_ENTRY_SIZE    sizeof(struct roc_sglist_comp)
+#define ROC_SG_MAX_COMP	     25
+#define ROC_SG_MAX_DLEN_SIZE (ROC_SG_LIST_HDR_SIZE + (ROC_SG_MAX_COMP * ROC_SG_ENTRY_SIZE))
 
 struct roc_sglist_comp {
 	union {
