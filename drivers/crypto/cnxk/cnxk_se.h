@@ -607,8 +607,7 @@ cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 	key_len = ctx->auth_key_len;
 	data_len = ROC_SE_AUTH_DLEN(d_lens);
 
-	/*GP op header */
-	cpt_inst_w4.s.opcode_minor = 0;
+	cpt_inst_w4.u64 = ctx->template_w4.u64;
 	cpt_inst_w4.s.param2 = ((uint16_t)hash_type << 8) | mac_len;
 	if (ctx->hmac) {
 		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_HMAC | ROC_DMA_MODE_SG;
@@ -724,8 +723,7 @@ cpt_digest_gen_sg_ver2_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 	key_len = ctx->auth_key_len;
 	data_len = ROC_SE_AUTH_DLEN(d_lens);
 
-	/*GP op header */
-	cpt_inst_w4.s.opcode_minor = 0;
+	cpt_inst_w4.u64 = ctx->template_w4.u64;
 	cpt_inst_w4.s.param2 = ((uint16_t)hash_type << 8) | mac_len;
 	if (ctx->hmac) {
 		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_HMAC;
@@ -1049,7 +1047,8 @@ cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	cipher_type = se_ctx->enc_cipher;
 	hash_type = se_ctx->hash_type;
 	mac_len = se_ctx->mac_len;
-	op_minor = se_ctx->template_w4.s.opcode_minor;
+	cpt_inst_w4.u64 = se_ctx->template_w4.u64;
+	op_minor = cpt_inst_w4.s.opcode_minor;
 
 	if (unlikely(!(flags & ROC_SE_VALID_IV_BUF))) {
 		iv_len = 0;
@@ -1080,8 +1079,7 @@ cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 
 	/* Encryption */
 	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_FC;
-	cpt_inst_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_ENCRYPT;
-	cpt_inst_w4.s.opcode_minor |= (uint64_t)op_minor;
+	cpt_inst_w4.s.opcode_minor |= ROC_SE_FC_MINOR_OP_ENCRYPT;
 
 	if (hash_type == ROC_SE_GMAC_TYPE) {
 		encr_offset = 0;
@@ -1112,7 +1110,6 @@ cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	if (op_minor & ROC_SE_FC_MINOR_OP_HMAC_FIRST)
 		outputlen = enc_dlen;
 
-	/* GP op header */
 	cpt_inst_w4.s.param1 = encr_data_len;
 	cpt_inst_w4.s.param2 = auth_data_len;
 
@@ -1219,7 +1216,8 @@ cpt_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	se_ctx = fc_params->ctx;
 	hash_type = se_ctx->hash_type;
 	mac_len = se_ctx->mac_len;
-	op_minor = se_ctx->template_w4.s.opcode_minor;
+	cpt_inst_w4.u64 = se_ctx->template_w4.u64;
+	op_minor = cpt_inst_w4.s.opcode_minor;
 
 	if (unlikely(!(flags & ROC_SE_VALID_IV_BUF))) {
 		iv_len = 0;
@@ -1390,8 +1388,8 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		return -1;
 	}
 
+	cpt_inst_w4.u64 = se_ctx->template_w4.u64;
 	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
-	cpt_inst_w4.s.opcode_minor = se_ctx->template_w4.s.opcode_minor;
 
 	cpt_inst_w4.s.param1 = auth_data_len;
 	cpt_inst_w4.s.param2 = 0;
@@ -1475,8 +1473,8 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	flags = se_ctx->zsk_flags;
 	mac_len = se_ctx->mac_len;
 
+	cpt_inst_w4.u64 = se_ctx->template_w4.u64;
 	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP;
-	cpt_inst_w4.s.opcode_minor = se_ctx->template_w4.s.opcode_minor;
 
 	if (flags == 0x1) {
 		iv_s = params->auth_iv_buf;
@@ -1563,7 +1561,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	}
 
 	/*
-	 * GP op header, lengths are expected in bits.
+	 * Lengths are expected in bits.
 	 */
 	cpt_inst_w4.s.param1 = encr_data_len;
 	cpt_inst_w4.s.param2 = auth_data_len;
@@ -1637,6 +1635,7 @@ cpt_kasumi_enc_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	mac_len = se_ctx->mac_len;
 
 	dir = iv_s[8] & 0x1;
+	cpt_inst_w4.u64 = se_ctx->template_w4.u64;
 
 	if (flags == 0x0) {
 		/* Consider IV len */
@@ -1712,7 +1711,7 @@ cpt_kasumi_dec_prep(uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_params *p
 		((1 << 6) | (se_ctx->k_ecb << 5) | (dir << 4) | (0 << 3) | (flags & 0x7));
 
 	/*
-	 * GP op header, lengths are expected in bits.
+	 * Lengths are expected in bits.
 	 */
 	cpt_inst_w4.s.param1 = encr_data_len;
 
