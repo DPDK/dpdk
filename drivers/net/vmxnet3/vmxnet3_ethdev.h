@@ -122,6 +122,8 @@ struct vmxnet3_hw {
 	UPT1_RxStats	      saved_rx_stats[VMXNET3_EXT_MAX_RX_QUEUES];
 	UPT1_TxStats          snapshot_tx_stats[VMXNET3_MAX_TX_QUEUES];
 	UPT1_RxStats          snapshot_rx_stats[VMXNET3_MAX_RX_QUEUES];
+	uint16_t              tx_prod_offset;
+	uint16_t              rx_prod_offset[2];
 	/* device capability bit map */
 	uint32_t	      DCR_capabilities[8];
 	/* pass-through capability bit map */

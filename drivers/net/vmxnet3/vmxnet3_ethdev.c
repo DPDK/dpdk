@@ -456,6 +456,17 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 		hw->uptv2_enabled = TRUE;
 		eth_vmxnet3_setup_capabilities(hw, eth_dev);
 	}
+
+	if (hw->used_DCR_capabilities[0] & (1 << VMXNET3_CAP_LARGE_BAR)) {
+		hw->tx_prod_offset = VMXNET3_REG_LB_TXPROD;
+		hw->rx_prod_offset[0] = VMXNET3_REG_LB_RXPROD;
+		hw->rx_prod_offset[1] = VMXNET3_REG_LB_RXPROD2;
+	} else {
+		hw->tx_prod_offset = VMXNET3_REG_TXPROD;
+		hw->rx_prod_offset[0] = VMXNET3_REG_RXPROD;
+		hw->rx_prod_offset[1] = VMXNET3_REG_RXPROD2;
+	}
+
 	/* Getting MAC Address */
 	mac_lo = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_MACL);
 	mac_hi = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_MACH);

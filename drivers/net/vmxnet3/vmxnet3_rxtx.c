@@ -57,8 +57,6 @@
 #define	VMXNET3_TX_OFFLOAD_NOTSUP_MASK	\
 	(RTE_MBUF_F_TX_OFFLOAD_MASK ^ VMXNET3_TX_OFFLOAD_MASK)
 
-static const uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
-
 static int vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t*, uint8_t);
 static void vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *);
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
@@ -577,7 +575,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (deferred >= rte_le_to_cpu_32(txq_ctrl->txThreshold)) {
 		txq_ctrl->txNumDeferred = 0;
 		/* Notify vSwitch that packets are available. */
-		VMXNET3_WRITE_BAR0_REG(hw, (VMXNET3_REG_TXPROD + txq->queue_id * VMXNET3_REG_ALIGN),
+		VMXNET3_WRITE_BAR0_REG(hw, (hw->tx_prod_offset + txq->queue_id * VMXNET3_REG_ALIGN),
 				       txq->cmd_ring.next2fill);
 	}
 
@@ -1000,7 +998,8 @@ rcd_done:
 		/* It's time to renew descriptors */
 		vmxnet3_renew_desc(rxq, ring_idx, newm);
 		if (unlikely(rxq->shared->ctrl.updateRxProd)) {
-			VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[ring_idx] + (rxq->queue_id * VMXNET3_REG_ALIGN),
+			VMXNET3_WRITE_BAR0_REG(hw, hw->rx_prod_offset[ring_idx] +
+					       (rxq->queue_id * VMXNET3_REG_ALIGN),
 					       rxq->cmd_ring[ring_idx].next2fill);
 		}
 
@@ -1027,7 +1026,8 @@ rcd_done:
 		}
 		if (unlikely(rxq->shared->ctrl.updateRxProd)) {
 			for (ring_idx = 0; ring_idx < VMXNET3_RX_CMDRING_SIZE; ring_idx++) {
-				VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[ring_idx] + (rxq->queue_id * VMXNET3_REG_ALIGN),
+				VMXNET3_WRITE_BAR0_REG(hw, hw->rx_prod_offset[ring_idx] +
+						       (rxq->queue_id * VMXNET3_REG_ALIGN),
 						       rxq->cmd_ring[ring_idx].next2fill);
 			}
 		}
@@ -1322,7 +1322,8 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
 			 * mbufs for coming packets.
 			 */
 			if (unlikely(rxq->shared->ctrl.updateRxProd)) {
-				VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[j] + (rxq->queue_id * VMXNET3_REG_ALIGN),
+				VMXNET3_WRITE_BAR0_REG(hw, hw->rx_prod_offset[j] +
+						       (rxq->queue_id * VMXNET3_REG_ALIGN),
 						       rxq->cmd_ring[j].next2fill);
 			}
 		}
