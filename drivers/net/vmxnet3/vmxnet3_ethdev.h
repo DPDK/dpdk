@@ -96,6 +96,7 @@ struct vmxnet3_hw {
 
 	uint16_t txdata_desc_size; /* tx data ring buffer size */
 	uint16_t rxdata_desc_size; /* rx data ring buffer size */
+	uint16_t rxdata_buf_size; /* rx data buffer size */
 
 	uint8_t num_intrs;
 

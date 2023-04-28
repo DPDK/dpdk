@@ -1113,6 +1113,8 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	} else {
 		ring->size = nb_desc;
+		if (VMXNET3_VERSION_GE_7(hw))
+			ring->size = rte_align32prevpow2(nb_desc);
 		ring->size &= ~VMXNET3_RING_SIZE_MASK;
 	}
 	comp_ring->size = data_ring->size = ring->size;
@@ -1193,6 +1195,9 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	rxq->mp = mp;
+	/* Remember buffer size for initialization in dev start. */
+	hw->rxdata_buf_size =
+		rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
 	rxq->shared = NULL; /* set in vmxnet3_setup_driver_shared() */
@@ -1217,6 +1222,8 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	} else {
 		ring0->size = nb_desc;
+		if (VMXNET3_VERSION_GE_7(hw))
+			ring0->size = rte_align32prevpow2(nb_desc);
 		ring0->size &= ~VMXNET3_RING_SIZE_MASK;
 		ring1->size = ring0->size;
 	}

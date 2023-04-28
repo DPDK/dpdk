@@ -105,6 +105,9 @@ typedef enum {
    VMXNET3_CMD_RESERVED4,
    VMXNET3_CMD_REGISTER_MEMREGS,
    VMXNET3_CMD_SET_RSS_FIELDS,
+   VMXNET3_CMD_RESERVED9,
+   VMXNET3_CMD_RESERVED10,
+   VMXNET3_CMD_SET_RING_BUFFER_SIZE,
 
    VMXNET3_CMD_FIRST_GET = 0xF00D0000,
    VMXNET3_CMD_GET_QUEUE_STATUS = VMXNET3_CMD_FIRST_GET,
@@ -822,6 +825,17 @@ typedef enum Vmxnet3_RSSField {
    VMXNET3_RSS_FIELDS_ESPIP6 = 0x0020,
 } Vmxnet3_RSSField;
 
+typedef
+#include "vmware_pack_begin.h"
+struct Vmxnet3_RingBufferSize {
+	__le16      ring1BufSizeType0;
+	__le16      ring1BufSizeType1;
+	__le16      ring2BufSizeType1;
+	__le16      pad;
+}
+#include "vmware_pack_end.h"
+Vmxnet3_RingBufferSize;
+
 /*
  * If the command data <= 16 bytes, use the shared memory direcly.
  * Otherwise, use the variable length configuration descriptor.
@@ -832,6 +846,7 @@ union Vmxnet3_CmdInfo {
    Vmxnet3_VariableLenConfDesc varConf;
    Vmxnet3_SetPolling          setPolling;
    Vmxnet3_RSSField            setRSSFields;
+   Vmxnet3_RingBufferSize      ringBufSize;
    __le16                      reserved[2];
    __le64                      data[2];
 }

@@ -1018,6 +1018,22 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	return VMXNET3_SUCCESS;
 }
 
+static void
+vmxnet3_init_bufsize(struct vmxnet3_hw *hw)
+{
+	struct Vmxnet3_DriverShared *shared = hw->shared;
+	union Vmxnet3_CmdInfo *cmd_info = &shared->cu.cmdInfo;
+
+	if (!VMXNET3_VERSION_GE_7(hw))
+		return;
+
+	cmd_info->ringBufSize.ring1BufSizeType0 = hw->rxdata_buf_size;
+	cmd_info->ringBufSize.ring1BufSizeType1 = 0;
+	cmd_info->ringBufSize.ring2BufSizeType1 = hw->rxdata_buf_size;
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_SET_RING_BUFFER_SIZE);
+}
+
 /*
  * Configure device link speed and setup link.
  * Must be called after eth_vmxnet3_dev_init. Other wise it might fail
@@ -1100,6 +1116,8 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Device queue init: UNSUCCESSFUL");
 		return ret;
 	}
+
+	vmxnet3_init_bufsize(hw);
 
 	hw->adapter_stopped = FALSE;
 
