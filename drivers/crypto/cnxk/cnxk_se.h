@@ -976,9 +976,6 @@ pdcp_chain_sg2_prep(struct roc_se_fc_params *params, struct roc_se_ctx *cpt_ctx,
 	w4.s.opcode_major |= (uint64_t)ROC_DMA_MODE_SG;
 	w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
 
-	/* DPTR has SG list */
-	inst->dptr = PLT_U64_CAST(m_vaddr);
-
 	gather_comp = m_vaddr;
 
 	/* Input Gather List */
