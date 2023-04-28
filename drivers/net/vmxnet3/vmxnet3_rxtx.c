@@ -1007,7 +1007,8 @@ rcd_done:
 
 		/* It's time to renew descriptors */
 		vmxnet3_renew_desc(rxq, ring_idx, newm);
-		if (unlikely(rxq->shared->ctrl.updateRxProd)) {
+		if (unlikely(rxq->shared->ctrl.updateRxProd &&
+			 (rxq->cmd_ring[ring_idx].next2fill & 0xf) == 0)) {
 			VMXNET3_WRITE_BAR0_REG(hw, hw->rx_prod_offset[ring_idx] +
 					       (rxq->queue_id * VMXNET3_REG_ALIGN),
 					       rxq->cmd_ring[ring_idx].next2fill);
@@ -1027,18 +1028,21 @@ rcd_done:
 
 	if (unlikely(nb_rxd == 0)) {
 		uint32_t avail;
+		uint32_t posted = 0;
 		for (ring_idx = 0; ring_idx < VMXNET3_RX_CMDRING_SIZE; ring_idx++) {
 			avail = vmxnet3_cmd_ring_desc_avail(&rxq->cmd_ring[ring_idx]);
 			if (unlikely(avail > 0)) {
 				/* try to alloc new buf and renew descriptors */
-				vmxnet3_post_rx_bufs(rxq, ring_idx);
+				if (vmxnet3_post_rx_bufs(rxq, ring_idx) > 0)
+					posted |= (1 << ring_idx);
 			}
 		}
 		if (unlikely(rxq->shared->ctrl.updateRxProd)) {
 			for (ring_idx = 0; ring_idx < VMXNET3_RX_CMDRING_SIZE; ring_idx++) {
-				VMXNET3_WRITE_BAR0_REG(hw, hw->rx_prod_offset[ring_idx] +
-						       (rxq->queue_id * VMXNET3_REG_ALIGN),
-						       rxq->cmd_ring[ring_idx].next2fill);
+				if (posted & (1 << ring_idx))
+					VMXNET3_WRITE_BAR0_REG(hw, hw->rx_prod_offset[ring_idx] +
+							       (rxq->queue_id * VMXNET3_REG_ALIGN),
+							       rxq->cmd_ring[ring_idx].next2fill);
 			}
 		}
 	}
