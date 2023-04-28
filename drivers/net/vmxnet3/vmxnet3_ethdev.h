@@ -122,6 +122,17 @@ struct vmxnet3_hw {
 	UPT1_RxStats	      saved_rx_stats[VMXNET3_EXT_MAX_RX_QUEUES];
 	UPT1_TxStats          snapshot_tx_stats[VMXNET3_MAX_TX_QUEUES];
 	UPT1_RxStats          snapshot_rx_stats[VMXNET3_MAX_RX_QUEUES];
+	/* device capability bit map */
+	uint32_t	      DCR_capabilities[8];
+	/* pass-through capability bit map */
+	uint32_t	      PTCR_capabilities[8];
+	/* max number of capabilities */
+	uint32_t	      max_capabilities[8];
+	/* used device capability bit map */
+	uint32_t	      used_DCR_capabilities[8];
+	/* used pass-through capability bit map */
+	uint32_t	      used_PTCR_capabilities[8];
+	bool                  uptv2_enabled;
 };
 
 #define VMXNET3_REV_7		6		/* Vmxnet3 Rev. 7 */

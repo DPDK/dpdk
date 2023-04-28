@@ -26,6 +26,12 @@
 #define VMXNET3_REG_MACH  0x30   /* MAC Address High */
 #define VMXNET3_REG_ICR   0x38   /* Interrupt Cause Register */
 #define VMXNET3_REG_ECR   0x40   /* Event Cause Register */
+#define VMXNET3_REG_DCR   0x48   /* Device capability register,
+				  * from 0x48 to 0x80
+				  */
+#define VMXNET3_REG_PTCR  0x88   /* Passthru capbility register
+				  * from 0x88 to 0xb0
+				  */
 
 #define VMXNET3_REG_WSAL  0xF00  /* Wireless Shared Address Lo  */
 #define VMXNET3_REG_WSAH  0xF08  /* Wireless Shared Address Hi  */
@@ -103,11 +109,13 @@ typedef enum {
    VMXNET3_CMD_GET_CONF_INTR,
    VMXNET3_CMD_GET_ADAPTIVE_RING_INFO,
    VMXNET3_CMD_GET_TXDATA_DESC_SIZE,
-	VMXNET3_CMD_RESERVED5,
-	VMXNET3_CMD_RESERVED6,
-	VMXNET3_CMD_RESERVED7,
-	VMXNET3_CMD_RESERVED8,
-	VMXNET3_CMD_GET_MAX_QUEUES_CONF,
+   VMXNET3_CMD_RESERVED5,
+   VMXNET3_CMD_RESERVED6,
+   VMXNET3_CMD_RESERVED7,
+   VMXNET3_CMD_RESERVED8,
+   VMXNET3_CMD_GET_MAX_QUEUES_CONF,
+   VMXNET3_CMD_GET_MAX_CAPABILITIES,
+   VMXNET3_CMD_GET_DCR0_REG,
 } Vmxnet3_Cmd;
 
 /* Adaptive Ring Info Flags */
@@ -876,5 +884,31 @@ do {\
 #define VMXWIFI_DRIVER_SHARED_LEN 8192
 
 #define VMXNET3_DID_PASSTHRU    0xFFFF
+
+#define VMXNET3_DCR_ERROR                          31   /* error when bit 31 of DCR is set */
+#define VMXNET3_CAP_UDP_RSS                        0    /* bit 0 of DCR 0 */
+#define VMXNET3_CAP_ESP_RSS_IPV4                   1    /* bit 1 of DCR 0 */
+#define VMXNET3_CAP_GENEVE_CHECKSUM_OFFLOAD        2    /* bit 2 of DCR 0 */
+#define VMXNET3_CAP_GENEVE_TSO                     3    /* bit 3 of DCR 0 */
+#define VMXNET3_CAP_VXLAN_CHECKSUM_OFFLOAD         4    /* bit 4 of DCR 0 */
+#define VMXNET3_CAP_VXLAN_TSO                      5    /* bit 5 of DCR 0 */
+#define VMXNET3_CAP_GENEVE_OUTER_CHECKSUM_OFFLOAD  6    /* bit 6 of DCR 0 */
+#define VMXNET3_CAP_VXLAN_OUTER_CHECKSUM_OFFLOAD   7    /* bit 7 of DCR 0 */
+#define VMXNET3_CAP_PKT_STEERING_IPV4              8    /* bit 8 of DCR 0 */
+#define VMXNET3_CAP_VERSION_4_MAX                  VMXNET3_CAP_PKT_STEERING_IPV4
+#define VMXNET3_CAP_ESP_RSS_IPV6                   9    /* bit 9 of DCR 0 */
+#define VMXNET3_CAP_VERSION_5_MAX                  VMXNET3_CAP_ESP_RSS_IPV6
+#define VMXNET3_CAP_ESP_OVER_UDP_RSS               10   /* bit 10 of DCR 0 */
+#define VMXNET3_CAP_INNER_RSS                      11   /* bit 11 of DCR 0 */
+#define VMXNET3_CAP_INNER_ESP_RSS                  12   /* bit 12 of DCR 0 */
+#define VMXNET3_CAP_CRC32_HASH_FUNC                13   /* bit 13 of DCR 0 */
+#define VMXNET3_CAP_VERSION_6_MAX                  VMXNET3_CAP_CRC32_HASH_FUNC
+#define VMXNET3_CAP_OAM_FILTER                     14   /* bit 14 of DCR 0 */
+#define VMXNET3_CAP_ESP_QS                         15   /* bit 15 of DCR 0 */
+#define VMXNET3_CAP_LARGE_BAR                      16   /* bit 16 of DCR 0 */
+#define VMXNET3_CAP_OOORX_COMP                     17   /* bit 17 of DCR 0 */
+#define VMXNET3_CAP_VERSION_7_MAX                  18
+/* when new capability is introduced, update VMXNET3_CAP_MAX */
+#define VMXNET3_CAP_MAX                            VMXNET3_CAP_VERSION_7_MAX
 
 #endif /* _VMXNET3_DEFS_H_ */

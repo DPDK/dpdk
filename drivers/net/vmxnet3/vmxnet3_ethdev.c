@@ -299,6 +299,61 @@ eth_vmxnet3_txdata_get(struct vmxnet3_hw *hw)
 		sizeof(struct Vmxnet3_TxDataDesc) : txdata_desc_size;
 }
 
+static int
+eth_vmxnet3_setup_capabilities(struct vmxnet3_hw *hw,
+			       struct rte_eth_dev *eth_dev)
+{
+	uint32_t dcr, ptcr, value;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_GET_MAX_CAPABILITIES);
+	value = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
+	hw->max_capabilities[0] = value;
+	dcr = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_DCR);
+	hw->DCR_capabilities[0] = dcr;
+	hw->used_DCR_capabilities[0] = 0;
+	ptcr = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_PTCR);
+	hw->PTCR_capabilities[0] = ptcr;
+	hw->used_PTCR_capabilities[0] = 0;
+
+	if (hw->uptv2_enabled && !(ptcr & (1 << VMXNET3_DCR_ERROR))) {
+		PMD_DRV_LOG(NOTICE, "UPTv2 enabled");
+		hw->used_PTCR_capabilities[0] = ptcr;
+	} else {
+		/* Use all DCR capabilities, but disable large bar */
+		hw->used_DCR_capabilities[0] = dcr &
+					(~(1UL << VMXNET3_CAP_LARGE_BAR));
+		PMD_DRV_LOG(NOTICE, "UPTv2 disabled");
+	}
+	if (hw->DCR_capabilities[0] & (1UL << VMXNET3_CAP_OOORX_COMP) &&
+	    hw->PTCR_capabilities[0] & (1UL << VMXNET3_CAP_OOORX_COMP)) {
+		if (hw->uptv2_enabled) {
+			hw->used_PTCR_capabilities[0] |=
+				(1UL << VMXNET3_CAP_OOORX_COMP);
+		}
+	}
+	if (hw->used_PTCR_capabilities[0]) {
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_DCR,
+				       hw->used_PTCR_capabilities[0]);
+	} else if (hw->used_DCR_capabilities[0]) {
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_DCR,
+				       hw->used_DCR_capabilities[0]);
+	}
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_DCR0_REG);
+	dcr = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
+	hw->used_DCR_capabilities[0] = dcr;
+	PMD_DRV_LOG(DEBUG, "Dev " PCI_PRI_FMT ", vmxnet3 v%d, UPT enabled: %s, "
+		    "DCR0=0x%08x, used DCR=0x%08x, "
+		    "PTCR=0x%08x, used PTCR=0x%08x",
+		    pci_dev->addr.domain, pci_dev->addr.bus,
+		    pci_dev->addr.devid, pci_dev->addr.function, hw->version,
+		    hw->uptv2_enabled ? "true" : "false",
+		    hw->DCR_capabilities[0], hw->used_DCR_capabilities[0],
+		    hw->PTCR_capabilities[0], hw->used_PTCR_capabilities[0]);
+	return 0;
+}
+
 /*
  * It returns 0 on success.
  */
@@ -396,6 +451,11 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 		return -EIO;
 	}
 
+	if (VMXNET3_VERSION_GE_7(hw)) {
+		/* start with UPTv2 enabled to avoid ESXi issues */
+		hw->uptv2_enabled = TRUE;
+		eth_vmxnet3_setup_capabilities(hw, eth_dev);
+	}
 	/* Getting MAC Address */
 	mac_lo = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_MACL);
 	mac_hi = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_MACH);
