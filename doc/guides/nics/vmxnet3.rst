@@ -21,10 +21,6 @@ VMXNET3 Implementation in the DPDK
 
 For details on the VMXNET3 device, refer to the VMXNET3 driver's vmxnet3 directory and support manual from VMware*.
 
-For performance details, refer to the following link from VMware:
-
-`http://www.vmware.com/pdf/vsp_4_vmxnet3_perf.pdf <http://www.vmware.com/pdf/vsp_4_vmxnet3_perf.pdf>`_
-
 As a PMD, the VMXNET3 driver provides the packet reception and transmission callbacks, vmxnet3_recv_pkts and vmxnet3_xmit_pkts.
 
 The VMXNET3 PMD handles all the packet buffer memory allocation and resides in guest address space
@@ -66,6 +62,32 @@ There are several options available for filtering packets at VMXNET3 device leve
 #.  VLAN filtering:
 
     *   VLAN tag based filtering without load balancing - SUPPORTED
+
+#.  Vmxnet3 versions and associated features.
+
+    Vmxnet3 version is tied to corresponding ESXi hardware version and each
+    version defines a set of compatible features.
+
+    * Vmxnet3 version 7, hw ver 19
+      This version adds support for Uniform Passthrough(UPT).
+
+    * Vmxnet3 version 6, hw ver 17
+      This version enhanced vmxnet3 to support queues up to 32 and also
+      removed power-of-two limitations on the queues.
+
+    * Vmxnet3 version 5, hw ver 15
+      Features not related to dpdk vmxnet3 PMD.
+
+    * Vmxnet3 version 4, hw ver 14
+      This version adds supoprt for UDP and ESP RSS
+
+    * Vmxnet3 version 3, hw ver 13
+      This version added performance enhancement features such as
+      configurable Tx data ring, Receive Data Ring, and the ability
+      to register memory regions.
+
+    * Vmxnet3 version 2, hw ver 11
+      This version adds support for Large Receive offload (LRO).
 
 .. note::
 

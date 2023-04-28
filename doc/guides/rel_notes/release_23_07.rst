@@ -67,6 +67,13 @@ New Features
   to PCI bus so that PCI drivers can access PCI memory resources
   when they are not mapped to process address space.
 
+* **Added vmxnet3 version 7 support.**
+
+  Added support for vmxnet3 version 7 which includes support
+  for uniform passthrough(UPT). The patches also add support
+  for new capability registers, large passthrough BAR and some
+  performance enhancements for UPT.
+
 
 Removed Items
 -------------
