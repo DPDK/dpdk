@@ -67,14 +67,41 @@ cnxk_cpt_asym_get_mlen(void)
 	return len;
 }
 
+static int
+cnxk_cpt_dev_clear(struct rte_cryptodev *dev)
+{
+	struct cnxk_cpt_vf *vf = dev->data->dev_private;
+	int ret;
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+		roc_ae_fpm_put();
+		roc_ae_ec_grp_put();
+	}
+
+	ret = roc_cpt_int_misc_cb_unregister(cnxk_cpt_int_misc_cb, NULL);
+	if (ret < 0) {
+		plt_err("Could not unregister CPT_MISC_INT cb");
+		return ret;
+	}
+
+	roc_cpt_dev_clear(&vf->cpt);
+
+	return 0;
+}
+
 int
-cnxk_cpt_dev_config(struct rte_cryptodev *dev,
-		    struct rte_cryptodev_config *conf)
+cnxk_cpt_dev_config(struct rte_cryptodev *dev, struct rte_cryptodev_config *conf)
 {
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
 	uint16_t nb_lf_avail, nb_lf;
 	int ret;
+
+	/* If this is a reconfigure attempt, clear the device and configure again */
+	if (roc_cpt->nb_lf > 0) {
+		cnxk_cpt_dev_clear(dev);
+		roc_cpt->opaque = NULL;
+	}
 
 	dev->feature_flags = cnxk_cpt_default_ff_get() & ~conf->ff_disable;
 
@@ -151,7 +178,6 @@ cnxk_cpt_dev_stop(struct rte_cryptodev *dev)
 int
 cnxk_cpt_dev_close(struct rte_cryptodev *dev)
 {
-	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	uint16_t i;
 	int ret;
 
@@ -163,19 +189,7 @@ cnxk_cpt_dev_close(struct rte_cryptodev *dev)
 		}
 	}
 
-	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
-		roc_ae_fpm_put();
-		roc_ae_ec_grp_put();
-	}
-
-	ret = roc_cpt_int_misc_cb_unregister(cnxk_cpt_int_misc_cb, NULL);
-	if (ret < 0) {
-		plt_err("Could not unregister CPT_MISC_INT cb");
-		return ret;
-	}
-	roc_cpt_dev_clear(&vf->cpt);
-
-	return 0;
+	return cnxk_cpt_dev_clear(dev);
 }
 
 void
