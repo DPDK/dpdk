@@ -52,9 +52,9 @@ cpt_ciph_aes_key_validate(uint16_t key_len)
 }
 
 static inline int
-cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx,
-		  uint16_t key_len)
+cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx, uint16_t key_len)
 {
+	bool chained_op = ctx->ciph_then_auth || ctx->auth_then_ciph;
 	int fc_type = 0;
 
 	switch (type) {
@@ -90,21 +90,24 @@ cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx,
 		fc_type = ROC_SE_FC_GEN;
 		break;
 	case ROC_SE_ZUC_EEA3:
-		if (ctx->hash_type)
+		if (chained_op) {
+			if (unlikely(key_len != 16))
+				return -1;
 			fc_type = ROC_SE_PDCP_CHAIN;
-		else
+		} else {
 			fc_type = ROC_SE_PDCP;
+		}
 		break;
 	case ROC_SE_SNOW3G_UEA2:
 		if (unlikely(key_len != 16))
 			return -1;
-		if (ctx->hash_type)
+		if (chained_op)
 			fc_type = ROC_SE_PDCP_CHAIN;
 		else
 			fc_type = ROC_SE_PDCP;
 		break;
 	case ROC_SE_AES_CTR_EEA2:
-		if (ctx->hash_type)
+		if (chained_op)
 			fc_type = ROC_SE_PDCP_CHAIN;
 		else
 			fc_type = ROC_SE_PDCP;
@@ -427,6 +430,7 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 				se_ctx->fc_type = ROC_SE_PDCP;
 			}
 			se_ctx->pdcp_auth_alg = ROC_SE_PDCP_ALG_TYPE_AES_CMAC;
+			se_ctx->eia2 = 1;
 			se_ctx->zsk_flags = 0x1;
 			break;
 		case ROC_SE_KASUMI_F9_ECB:
@@ -444,14 +448,19 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 		default:
 			return -1;
 		}
+
+		if ((se_ctx->fc_type == ROC_SE_PDCP_CHAIN) && (mac_len != 4)) {
+			plt_err("Only digest length of 4 is supported with PDCP chain");
+			return -1;
+		}
+
 		se_ctx->mac_len = mac_len;
 		se_ctx->hash_type = type;
 		pdcp_alg = zs_ctx->zuc.otk_ctx.w0.s.alg_type;
-		if (roc_model_is_cn9k())
-			if (chained_op == true)
-				opcode_minor = se_ctx->ciph_then_auth ? 2 : 3;
-			else
-				opcode_minor = ((1 << 7) | (pdcp_alg << 5) | 1);
+		if (chained_op)
+			opcode_minor = se_ctx->ciph_then_auth ? 2 : 3;
+		else if (roc_model_is_cn9k())
+			opcode_minor = ((1 << 7) | (pdcp_alg << 5) | 1);
 		else
 			opcode_minor = ((1 << 4) | 1);
 
@@ -510,7 +519,7 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 	struct roc_se_zuc_snow3g_ctx *zs_ctx = &se_ctx->se_ctx.zs_ctx;
 	struct roc_se_context *fctx = &se_ctx->se_ctx.fctx;
 	struct roc_se_zuc_snow3g_chain_ctx *zs_ch_ctx;
-	uint8_t opcode_minor;
+	uint8_t opcode_minor = 0;
 	uint8_t *zuc_const;
 	uint32_t keyx[4];
 	uint8_t *ci_key;
@@ -699,17 +708,14 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 
 success:
 	se_ctx->enc_cipher = type;
-	if (se_ctx->fc_type == ROC_SE_PDCP) {
+	if (se_ctx->fc_type == ROC_SE_PDCP_CHAIN) {
+		se_ctx->template_w4.s.opcode_minor = se_ctx->ciph_then_auth ? 2 : 3;
+	} else if (se_ctx->fc_type == ROC_SE_PDCP) {
 		if (roc_model_is_cn9k())
-			if (chained_op == true)
-				opcode_minor = se_ctx->ciph_then_auth ? 2 : 3;
-			else
-				opcode_minor =
-					((1 << 7) | (se_ctx->pdcp_ci_alg << 5) |
-					 (se_ctx->zsk_flags & 0x7));
+			opcode_minor =
+				((1 << 7) | (se_ctx->pdcp_ci_alg << 5) | (se_ctx->zsk_flags & 0x7));
 		else
 			opcode_minor = ((1 << 4));
-
 		se_ctx->template_w4.s.opcode_minor = opcode_minor;
 	}
 	return 0;
@@ -721,6 +727,9 @@ roc_se_ctx_swap(struct roc_se_ctx *se_ctx)
 	struct roc_se_zuc_snow3g_ctx *zs_ctx = &se_ctx->se_ctx.zs_ctx;
 
 	if (roc_model_is_cn9k())
+		return;
+
+	if (se_ctx->fc_type == ROC_SE_PDCP_CHAIN)
 		return;
 
 	zs_ctx->zuc.otk_ctx.w0.u64 = htobe64(zs_ctx->zuc.otk_ctx.w0.u64);

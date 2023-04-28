@@ -112,6 +112,10 @@ New Features
 
   * Added support for combined Cipher-CRC offload for DOCSIS for QAT GENs 2,3 and 4.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  * Added support for PDCP chain in cn10k crypto driver.
+
 
 Removed Items
 -------------

@@ -230,14 +230,16 @@ struct roc_se_onk_zuc_chain_ctx {
 	} w0;
 	union {
 		struct {
-			uint8_t encr_lfsr_state[64];
-			uint8_t auth_lfsr_state[64];
+			uint8_t encr_lfsr_state[72];
+			uint8_t auth_lfsr_state[72];
 		};
 		struct {
 			uint8_t ci_key[32];
 			uint8_t ci_zuc_const[32];
+			uint8_t rsvd[8];
 			uint8_t auth_key[32];
 			uint8_t auth_zuc_const[32];
+			uint8_t rsvd1[8];
 		};
 	} st;
 };
@@ -297,6 +299,7 @@ struct roc_se_ctx {
 	uint64_t pdcp_auth_alg : 2;
 	uint64_t ciph_then_auth : 1;
 	uint64_t auth_then_ciph : 1;
+	uint64_t eia2 : 1;
 	union cpt_inst_w4 template_w4;
 	/* Below fields are accessed by hardware */
 	struct se_ctx_s {
