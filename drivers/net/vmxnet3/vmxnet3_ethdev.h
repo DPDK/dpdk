@@ -124,6 +124,7 @@ struct vmxnet3_hw {
 	UPT1_RxStats          snapshot_rx_stats[VMXNET3_MAX_RX_QUEUES];
 };
 
+#define VMXNET3_REV_7		6		/* Vmxnet3 Rev. 7 */
 #define VMXNET3_REV_6		5		/* Vmxnet3 Rev. 6 */
 #define VMXNET3_REV_5		4		/* Vmxnet3 Rev. 5 */
 #define VMXNET3_REV_4		3		/* Vmxnet3 Rev. 4 */
@@ -131,6 +132,7 @@ struct vmxnet3_hw {
 #define VMXNET3_REV_2		1		/* Vmxnet3 Rev. 2 */
 #define VMXNET3_REV_1		0		/* Vmxnet3 Rev. 1 */
 
+#define VMXNET3_VERSION_GE_7(hw) ((hw)->version >= VMXNET3_REV_7 + 1)
 #define VMXNET3_VERSION_GE_6(hw) ((hw)->version >= VMXNET3_REV_6 + 1)
 #define VMXNET3_VERSION_GE_5(hw) ((hw)->version >= VMXNET3_REV_5 + 1)
 #define VMXNET3_VERSION_GE_4(hw) ((hw)->version >= VMXNET3_REV_4 + 1)
