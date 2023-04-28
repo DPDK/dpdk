@@ -3460,18 +3460,92 @@ static uint8_t rss_intel_key[40] = {
 	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
 };
 
+/*
+ * This function removes the rss configuration in the mrqe field of MRQC
+ * register and tries to maintain other configurations in the field, such
+ * DCB and Virtualization.
+ *
+ * The MRQC register supplied in section 8.2.3.7.12 of the Intel 82599
+ * datasheet. From the datasheet, we know that the mrqe field is an enum. So,
+ * masking the mrqe field with '~IXGBE_MRQC_RSSEN' may not completely disable
+ * rss configuration. For example, the value of mrqe is equal to 0101b when DCB
+ * and RSS with 4 TCs configured, however 'mrqe &= ~0x01' is equal to 0100b
+ * which corresponds to DCB and RSS with 8 TCs.
+ */
+static void
+ixgbe_mrqc_rss_remove(struct ixgbe_hw *hw)
+{
+	uint32_t mrqc;
+	uint32_t mrqc_reg;
+	uint32_t mrqe_val;
+
+	mrqc_reg = ixgbe_mrqc_reg_get(hw->mac.type);
+	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
+	mrqe_val = mrqc & IXGBE_MRQC_MRQE_MASK;
+
+	switch (mrqe_val) {
+	case IXGBE_MRQC_RSSEN:
+		/* Completely disable rss */
+		mrqe_val = 0;
+		break;
+	case IXGBE_MRQC_RTRSS8TCEN:
+		mrqe_val = IXGBE_MRQC_RT8TCEN;
+		break;
+	case IXGBE_MRQC_RTRSS4TCEN:
+		mrqe_val = IXGBE_MRQC_RT4TCEN;
+		break;
+	case IXGBE_MRQC_VMDQRSS64EN:
+		mrqe_val = IXGBE_MRQC_VMDQEN;
+		break;
+	case IXGBE_MRQC_VMDQRSS32EN:
+		PMD_DRV_LOG(WARNING, "There is no regression for virtualization"
+			" and RSS with 32 pools among the MRQE configurations"
+			" after removing RSS, and left it unchanged.");
+		break;
+	default:
+		/* No rss configured, leave it as it is */
+		break;
+	}
+	mrqc = (mrqc & ~IXGBE_MRQC_MRQE_MASK) | mrqe_val;
+	IXGBE_WRITE_REG(hw, mrqc_reg, mrqc);
+}
+
 static void
 ixgbe_rss_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw;
-	uint32_t mrqc;
-	uint32_t mrqc_reg;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	/* Remove the rss configuration and maintain the other configurations */
+	ixgbe_mrqc_rss_remove(hw);
+}
+
+/*
+ * This function checks whether the rss is enabled or not by comparing the mrqe
+ * field with some RSS related enums and also considers the configurations for
+ * DCB + RSS and Virtualization + RSS. It is necessary for getting the correct
+ * rss hash configurations from the RSS Field Enable field of MRQC register
+ * when both RSS and DCB/VMDQ are used.
+ */
+static bool
+ixgbe_rss_enabled(struct ixgbe_hw *hw)
+{
+	uint32_t mrqc;
+	uint32_t mrqc_reg;
+	uint32_t mrqe_val;
+
 	mrqc_reg = ixgbe_mrqc_reg_get(hw->mac.type);
 	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
-	mrqc &= ~IXGBE_MRQC_RSSEN;
-	IXGBE_WRITE_REG(hw, mrqc_reg, mrqc);
+	mrqe_val = mrqc & IXGBE_MRQC_MRQE_MASK;
+
+	if (mrqe_val == IXGBE_MRQC_RSSEN ||
+		mrqe_val == IXGBE_MRQC_RTRSS8TCEN ||
+		mrqe_val == IXGBE_MRQC_RTRSS4TCEN ||
+		mrqe_val == IXGBE_MRQC_VMDQRSS64EN ||
+		mrqe_val == IXGBE_MRQC_VMDQRSS32EN)
+		return true;
+
+	return false;
 }
 
 static void
@@ -3529,9 +3603,7 @@ ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_conf *rss_conf)
 {
 	struct ixgbe_hw *hw;
-	uint32_t mrqc;
 	uint64_t rss_hf;
-	uint32_t mrqc_reg;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -3540,7 +3612,6 @@ ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 			"NIC.");
 		return -ENOTSUP;
 	}
-	mrqc_reg = ixgbe_mrqc_reg_get(hw->mac.type);
 
 	/*
 	 * Excerpt from section 7.1.2.8 Receive-Side Scaling (RSS):
@@ -3552,8 +3623,7 @@ ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	 * disabled at initialization time.
 	 */
 	rss_hf = rss_conf->rss_hf & IXGBE_RSS_OFFLOAD_ALL;
-	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
-	if (!(mrqc & IXGBE_MRQC_RSSEN)) { /* RSS disabled */
+	if (!ixgbe_rss_enabled(hw)) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
 			return -(EINVAL);
 		return 0; /* Nothing to do */
@@ -3593,12 +3663,14 @@ ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 		}
 	}
 
-	/* Get RSS functions configured in MRQC register */
-	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
-	if ((mrqc & IXGBE_MRQC_RSSEN) == 0) { /* RSS is disabled */
+	if (!ixgbe_rss_enabled(hw)) { /* RSS is disabled */
 		rss_conf->rss_hf = 0;
 		return 0;
 	}
+
+	/* Get RSS functions configured in MRQC register */
+	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
+
 	rss_hf = 0;
 	if (mrqc & IXGBE_MRQC_RSS_FIELD_IPV4)
 		rss_hf |= RTE_ETH_RSS_IPV4;
