@@ -364,6 +364,14 @@ vmxnet3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			rte_errno = EINVAL;
 			return i;
 		}
+		/* TSO packet cannot occupy more than
+		 * VMXNET3_MAX_TSO_TXD_PER_PKT TX descriptors.
+		 */
+		if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0 &&
+				m->nb_segs > VMXNET3_MAX_TSO_TXD_PER_PKT) {
+			rte_errno = EINVAL;
+			return i;
+		}
 
 		/* check that only supported TX offloads are requested. */
 		if ((ol_flags & VMXNET3_TX_OFFLOAD_NOTSUP_MASK) != 0 ||
@@ -444,10 +452,12 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			continue;
 		}
 
-		/* Drop non-TSO packet that is excessively fragmented */
-		if (unlikely(!tso && count > VMXNET3_MAX_TXD_PER_PKT)) {
-			PMD_TX_LOG(ERR, "Non-TSO packet cannot occupy more than %d tx "
-				   "descriptors. Packet dropped.", VMXNET3_MAX_TXD_PER_PKT);
+		/* Drop non-TSO or TSO packet that is excessively fragmented */
+		if (unlikely((!tso && count > VMXNET3_MAX_TXD_PER_PKT) ||
+			     (tso && count > VMXNET3_MAX_TSO_TXD_PER_PKT))) {
+			PMD_TX_LOG(ERR, "Non-TSO or TSO packet cannot occupy more than "
+				   "%d or %d tx descriptors respectively. Packet dropped.",
+				   VMXNET3_MAX_TXD_PER_PKT, VMXNET3_MAX_TSO_TXD_PER_PKT);
 			txq->stats.drop_too_many_segs++;
 			txq->stats.drop_total++;
 			rte_pktmbuf_free(txm);
