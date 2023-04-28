@@ -329,6 +329,11 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 		if (!key_len)
 			return -1;
 
+		if (se_ctx->fc_type == ROC_SE_FC_GEN) {
+			plt_err("Cipher and Auth algorithm combination is not supported");
+			return -1;
+		}
+
 		if (roc_model_is_cn9k()) {
 			ci_key = zs_ctx->zuc.onk_ctx.ci_key;
 			zuc_const = zs_ctx->zuc.onk_ctx.zuc_const;
@@ -454,12 +459,13 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 		return 0;
 	}
 
-	if (!se_ctx->fc_type ||
-	    (type && type != ROC_SE_GMAC_TYPE && !se_ctx->enc_cipher))
+	if (!se_ctx->fc_type || (type && type != ROC_SE_GMAC_TYPE && !se_ctx->enc_cipher))
 		se_ctx->fc_type = ROC_SE_HASH_HMAC;
 
-	if (se_ctx->fc_type == ROC_SE_FC_GEN && key_len > 64)
+	if (se_ctx->fc_type == ROC_SE_FC_GEN && key_len > 64) {
+		plt_err("Maximum auth key length supported is 64");
 		return -1;
+	}
 
 	/* For GMAC auth, cipher must be NULL */
 	if (type == ROC_SE_GMAC_TYPE) {

@@ -551,6 +551,11 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 		return -EINVAL;
 	}
 
+	if (c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_AES_XTS) {
+		plt_err("AES XTS with auth algorithm is not supported");
+		return -ENOTSUP;
+	}
+
 	if (c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC &&
 	    a_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA1) {
 		plt_dp_err("3DES-CBC + SHA1 is not supported");
