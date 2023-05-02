@@ -430,7 +430,7 @@ thread_pipeline_disable(uint32_t thread_id,
 static inline struct thread_msg_req *
 thread_msg_recv(struct rte_ring *msgq_req)
 {
-	struct thread_msg_req *req;
+	struct thread_msg_req *req = NULL;
 
 	int status = rte_ring_sc_dequeue(msgq_req, (void **) &req);
 
