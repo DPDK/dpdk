@@ -24,7 +24,7 @@
 #define DB_KEY_TX_PUSH						(0x4 << 28)
 #define DB_LONG_TX_PUSH						(0x2 << 24)
 
-#define DEFAULT_CP_RING_SIZE	256
+#define DEFAULT_CP_RING_SIZE	4096
 #define DEFAULT_RX_RING_SIZE	256
 #define DEFAULT_TX_RING_SIZE	256
 
