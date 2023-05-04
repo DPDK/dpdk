@@ -173,7 +173,7 @@ Create the graph object
 ~~~~~~~~~~~~~~~~~~~~~~~
 Now that the nodes are linked, Its time to create a graph by including
 the required nodes. The application can provide a set of node patterns to
-form a graph object. The ``famish()`` API used underneath for the pattern
+form a graph object. The ``fnmatch()`` API used underneath for the pattern
 matching to include the required nodes. After the graph create any changes to
 nodes or graph is not allowed.
 
