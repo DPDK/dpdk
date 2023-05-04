@@ -865,7 +865,7 @@ ntb_stats_clear(void)
 
 	/* Clear NTB dev stats */
 	nb_ids = rte_rawdev_xstats_names_get(dev_id, NULL, 0);
-	if (nb_ids  < 0) {
+	if (nb_ids <= 0) {
 		printf("Error: Cannot get count of xstats\n");
 		return;
 	}
@@ -923,7 +923,7 @@ ntb_stats_display(void)
 
 	/* Get NTB dev stats and stats names */
 	nb_ids = rte_rawdev_xstats_names_get(dev_id, NULL, 0);
-	if (nb_ids  < 0) {
+	if (nb_ids <= 0) {
 		printf("Error: Cannot get count of xstats\n");
 		return;
 	}
