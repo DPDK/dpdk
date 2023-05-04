@@ -1046,6 +1046,8 @@ virtio_vdpa_dev_config(int vid)
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
+	uint64_t t_start = rte_rdtsc_precise();
+	uint64_t t_end;
 	int ret, i;
 
 	if (priv == NULL) {
@@ -1132,7 +1134,9 @@ virtio_vdpa_dev_config(int vid)
 	DRV_LOG(INFO, "%s vid %d move to driver ok", vdev->device->name, vid);
 
 	priv->configured = 1;
-	DRV_LOG(INFO, "%s vid %d was configured", vdev->device->name, vid);
+	t_end  = rte_rdtsc_precise();
+	DRV_LOG(INFO, "%s vid %d was configured, took %lu us.", vdev->device->name,
+            vid, (t_end - t_start) * 1000000 / rte_get_tsc_hz());
 
 	return 0;
 }
