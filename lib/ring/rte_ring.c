@@ -341,11 +341,6 @@ rte_ring_free(struct rte_ring *r)
 		return;
 	}
 
-	if (rte_memzone_free(r->memzone) != 0) {
-		RTE_LOG(ERR, RING, "Cannot free memory\n");
-		return;
-	}
-
 	ring_list = RTE_TAILQ_CAST(rte_ring_tailq.head, rte_ring_list);
 	rte_mcfg_tailq_write_lock();
 
@@ -363,6 +358,9 @@ rte_ring_free(struct rte_ring *r)
 	TAILQ_REMOVE(ring_list, te, next);
 
 	rte_mcfg_tailq_write_unlock();
+
+	if (rte_memzone_free(r->memzone) != 0)
+		RTE_LOG(ERR, RING, "Cannot free memory\n");
 
 	rte_free(te);
 }
