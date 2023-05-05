@@ -8446,7 +8446,7 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->auth_tag.len,
 			tdata->iv.len);
-	if (retval < 0)
+	if (retval != TEST_SUCCESS)
 		return retval;
 
 	if (tdata->aad.len > MBUF_SIZE) {
@@ -11580,7 +11580,7 @@ test_authenticated_decryption_oop(const struct aead_test_data *tdata)
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->auth_tag.len,
 			tdata->iv.len);
-	if (retval < 0)
+	if (retval != TEST_SUCCESS)
 		return retval;
 
 	/* alloc mbuf and set payload */
