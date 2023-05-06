@@ -429,6 +429,10 @@ struct mana_rxq {
 	struct mana_gdma_queue gdma_cq;
 	struct gdma_comp *gdma_comp_buf;
 
+	uint32_t comp_buf_len;
+	uint32_t comp_buf_idx;
+	uint32_t backlog_idx;
+
 	struct mana_stats stats;
 	struct mana_mr_btree mr_btree;
 
