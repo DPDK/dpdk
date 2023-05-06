@@ -353,6 +353,7 @@ struct mana_priv {
 struct mana_txq_desc {
 	struct rte_mbuf *pkt;
 	uint32_t wqe_size_in_bu;
+	bool suppress_tx_cqe;
 };
 
 struct mana_rxq_desc {
@@ -401,7 +402,7 @@ struct mana_txq {
 	/* desc_ring_head is where we put pending requests to ring,
 	 * completion pull off desc_ring_tail
 	 */
-	uint32_t desc_ring_head, desc_ring_tail;
+	uint32_t desc_ring_head, desc_ring_tail, desc_ring_len;
 
 	struct mana_mr_btree mr_btree;
 	struct mana_stats stats;
