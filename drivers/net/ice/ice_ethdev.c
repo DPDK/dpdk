@@ -56,6 +56,17 @@ static const char * const ice_valid_args[] = {
 
 #define PPS_OUT_DELAY_NS  1
 
+/* Maximum number of VSI */
+#define ICE_MAX_NUM_VSIS          (768UL)
+
+/* The 119 bit offset of the LAN Rx queue context is the L2TSEL control bit. */
+#define ICE_L2TSEL_QRX_CONTEXT_REG_IDX	3
+#define ICE_L2TSEL_BIT_OFFSET		   23
+enum ice_l2tsel {
+	ICE_L2TSEL_EXTRACT_FIRST_TAG_L2TAG2_2ND,
+	ICE_L2TSEL_EXTRACT_FIRST_TAG_L2TAG1,
+};
+
 struct proto_xtr_ol_flag {
 	const struct rte_mbuf_dynflag param;
 	bool required;
@@ -133,6 +144,9 @@ static int ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 			      size_t fw_size);
 static int ice_vlan_pvid_set(struct rte_eth_dev *dev,
 			     uint16_t pvid, int on);
+static int ice_vlan_tpid_set(struct rte_eth_dev *dev,
+		   enum rte_vlan_type vlan_type,
+		   uint16_t tpid);
 static int ice_get_eeprom_length(struct rte_eth_dev *dev);
 static int ice_get_eeprom(struct rte_eth_dev *dev,
 			  struct rte_dev_eeprom_info *eeprom);
@@ -255,6 +269,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.rx_queue_intr_disable        = ice_rx_queue_intr_disable,
 	.fw_version_get               = ice_fw_version_get,
 	.vlan_pvid_set                = ice_vlan_pvid_set,
+	.vlan_tpid_set                = ice_vlan_tpid_set,
 	.rxq_info_get                 = ice_rxq_info_get,
 	.txq_info_get                 = ice_txq_info_get,
 	.rx_burst_mode_get            = ice_rx_burst_mode_get,
@@ -1591,6 +1606,9 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 			hw->func_caps.common_cap.rss_table_size;
 	pf->flags |= ICE_FLAG_RSS_AQ_CAPABLE;
 
+	/* Defines the type of outer tag expected */
+	pf->outer_ethertype = RTE_ETHER_TYPE_VLAN;
+
 	memset(&vsi_ctx, 0, sizeof(vsi_ctx));
 	switch (type) {
 	case ICE_VSI_PF:
@@ -1618,6 +1636,9 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 				(ICE_AQ_VSI_OUTER_TAG_VLAN_8100 <<
 				 ICE_AQ_VSI_OUTER_TAG_TYPE_S) &
 				ICE_AQ_VSI_OUTER_TAG_TYPE_M;
+			vsi_ctx.info.outer_vlan_flags |=
+				(ICE_AQ_VSI_OUTER_VLAN_EMODE_NOTHING <<
+				ICE_AQ_VSI_OUTER_VLAN_EMODE_S);
 		}
 
 		/* FDIR */
@@ -3714,7 +3735,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	ice_set_tx_function(dev);
 
 	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
-			RTE_ETH_VLAN_EXTEND_MASK;
+			RTE_ETH_VLAN_EXTEND_MASK | RTE_ETH_QINQ_STRIP_MASK;
 	ret = ice_vlan_offload_set(dev, mask);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
@@ -4513,11 +4534,86 @@ ice_vsi_dis_inner_stripping(struct ice_vsi *vsi)
 	return ice_vsi_manage_vlan_stripping(vsi, false);
 }
 
-static int ice_vsi_ena_outer_stripping(struct ice_vsi *vsi)
+/**
+ * tpid_to_vsi_outer_vlan_type - convert from TPID to VSI context based tag_type
+ * @tpid: tpid used to translate into VSI context based tag_type
+ * @tag_type: output variable to hold the VSI context based tag type
+ */
+static int tpid_to_vsi_outer_vlan_type(u16 tpid, u8 *tag_type)
+{
+	switch (tpid) {
+	case RTE_ETHER_TYPE_VLAN:
+		*tag_type = ICE_AQ_VSI_OUTER_TAG_VLAN_8100;
+		break;
+	case RTE_ETHER_TYPE_QINQ:
+		*tag_type = ICE_AQ_VSI_OUTER_TAG_STAG;
+		break;
+	case RTE_ETHER_TYPE_QINQ1:
+		*tag_type = ICE_AQ_VSI_OUTER_TAG_VLAN_9100;
+		break;
+	default:
+		*tag_type = 0;
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * ice_is_supported_port_vlan_proto - make sure the vlan_proto is supported
+ * @hw: hardware structure used to check the VLAN mode
+ * @vlan_proto: VLAN TPID being checked
+ *
+ * If the device is configured in Double VLAN Mode (DVM), it supports three
+ * types: RTE_ETHER_TYPE_VLAN, RTE_ETHER_TYPE_QINQ1 and RTE_ETHER_TYPE_QINQ. If the device is
+ * configured in Single VLAN Mode (SVM), then only RTE_ETHER_TYPE_VLAN is supported.
+ */
+static bool
+ice_is_supported_port_vlan_proto(struct ice_hw *hw, u16 vlan_proto)
+{
+	bool is_supported = false;
+
+	switch (vlan_proto) {
+	case RTE_ETHER_TYPE_VLAN:
+		is_supported = true;
+		break;
+	case RTE_ETHER_TYPE_QINQ:
+		if (ice_is_dvm_ena(hw))
+			is_supported = true;
+		break;
+	case RTE_ETHER_TYPE_QINQ1:
+		if (ice_is_dvm_ena(hw))
+			is_supported = true;
+		break;
+	}
+
+	return is_supported;
+}
+
+/**
+ * ice_vsi_ena_outer_stripping - enable outer VLAN stripping
+ * @vsi: VSI to configure
+ * @tpid: TPID to enable outer VLAN stripping for
+ *
+ * Enable outer VLAN stripping via VSI context. This function should only be
+ * used if DVM is supported.
+ *
+ * Since the VSI context only supports a single TPID for insertion and
+ * stripping, setting the TPID for stripping will affect the TPID for insertion.
+ * Callers need to be aware of this limitation.
+ *
+ * Only modify outer VLAN stripping settings and the VLAN TPID. Outer VLAN
+ * insertion settings are unmodified.
+ *
+ * This enables hardware to strip a VLAN tag with the specified TPID to be
+ * stripped from the packet and placed in the receive descriptor.
+ */
+static int ice_vsi_ena_outer_stripping(struct ice_vsi *vsi, u16 tpid)
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
 	enum ice_status status;
+	u8 tag_type;
 	int err = 0;
 
 	/* do not allow modifying VLAN stripping when a port VLAN is configured
@@ -4525,6 +4621,9 @@ static int ice_vsi_ena_outer_stripping(struct ice_vsi *vsi)
 	 */
 	if (vsi->info.port_based_outer_vlan)
 		return 0;
+
+	if (tpid_to_vsi_outer_vlan_type(tpid, &tag_type))
+		return -EINVAL;
 
 	memset(&ctxt, 0, sizeof(ctxt));
 
@@ -4536,8 +4635,8 @@ static int ice_vsi_ena_outer_stripping(struct ice_vsi *vsi)
 	ctxt.info.outer_vlan_flags |=
 		(ICE_AQ_VSI_OUTER_VLAN_EMODE_SHOW_BOTH <<
 		 ICE_AQ_VSI_OUTER_VLAN_EMODE_S) |
-		(ICE_AQ_VSI_OUTER_TAG_VLAN_8100 <<
-		 ICE_AQ_VSI_OUTER_TAG_TYPE_S);
+		((tag_type << ICE_AQ_VSI_OUTER_TAG_TYPE_S) &
+		 ICE_AQ_VSI_OUTER_TAG_TYPE_M);
 
 	status = ice_update_vsi(hw, vsi->idx, &ctxt, NULL);
 	if (status) {
@@ -4585,22 +4684,105 @@ ice_vsi_dis_outer_stripping(struct ice_vsi *vsi)
 static int
 ice_vsi_config_vlan_stripping(struct ice_vsi *vsi, bool ena)
 {
-	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	int ret;
 
-	if (ice_is_dvm_ena(hw)) {
-		if (ena)
-			ret = ice_vsi_ena_outer_stripping(vsi);
-		else
-			ret = ice_vsi_dis_outer_stripping(vsi);
-	} else {
-		if (ena)
-			ret = ice_vsi_ena_inner_stripping(vsi);
-		else
-			ret = ice_vsi_dis_inner_stripping(vsi);
-	}
+	if (ena)
+		ret = ice_vsi_ena_inner_stripping(vsi);
+	else
+		ret = ice_vsi_dis_inner_stripping(vsi);
 
 	return ret;
+}
+
+/**
+ * ice_vsi_update_l2tsel - update l2tsel field for all Rx rings on this VSI
+ * @vsi: VSI used to update l2tsel on
+ * @l2tsel: l2tsel setting requested
+ *
+ * Use the l2tsel setting to update all of the Rx queue context bits for l2tsel.
+ * This will modify which descriptor field the first offloaded VLAN will be
+ * stripped into.
+ */
+static void ice_vsi_update_l2tsel(struct ice_vsi *vsi, enum ice_l2tsel l2tsel)
+{
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_pf *pf = ICE_VSI_TO_PF(vsi);
+	struct rte_eth_dev_data *dev_data = pf->dev_data;
+	u32 l2tsel_bit;
+	uint16_t i;
+
+	if (l2tsel == ICE_L2TSEL_EXTRACT_FIRST_TAG_L2TAG2_2ND)
+		l2tsel_bit = 0;
+	else
+		l2tsel_bit = BIT(ICE_L2TSEL_BIT_OFFSET);
+
+	for (i = 0; i < dev_data->nb_rx_queues; i++) {
+		u32 qrx_context_offset;
+		u32 regval;
+
+		qrx_context_offset =
+			QRX_CONTEXT(ICE_L2TSEL_QRX_CONTEXT_REG_IDX, i);
+
+		regval = rd32(hw, qrx_context_offset);
+		regval &= ~BIT(ICE_L2TSEL_BIT_OFFSET);
+		regval |= l2tsel_bit;
+		wr32(hw, qrx_context_offset, regval);
+	}
+}
+
+/* Configure outer vlan stripping on or off in QinQ mode */
+static int
+ice_vsi_config_outer_vlan_stripping(struct ice_vsi *vsi, bool on)
+{
+	uint16_t outer_ethertype = vsi->adapter->pf.outer_ethertype;
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int err = 0;
+
+	if (vsi->vsi_id >= ICE_MAX_NUM_VSIS) {
+		PMD_DRV_LOG(ERR, "VSI ID exceeds the maximum");
+		return -EINVAL;
+	}
+
+	if (!ice_is_dvm_ena(hw)) {
+		PMD_DRV_LOG(ERR, "Single VLAN mode (SVM) does not support qinq");
+		return -EOPNOTSUPP;
+	}
+
+	if (on) {
+		err = ice_vsi_ena_outer_stripping(vsi, outer_ethertype);
+		if (!err) {
+			enum ice_l2tsel l2tsel =
+				ICE_L2TSEL_EXTRACT_FIRST_TAG_L2TAG2_2ND;
+
+			/* PF tells the VF that the outer VLAN tag is always
+			 * extracted to VIRTCHNL_VLAN_TAG_LOCATION_L2TAG2_2 and
+			 * inner is always extracted to
+			 * VIRTCHNL_VLAN_TAG_LOCATION_L2TAG1. This is needed to
+			 * support outer stripping so the first tag always ends
+			 * up in L2TAG2_2ND and the second/inner tag, if
+			 * enabled, is extracted in L2TAG1.
+			 */
+			ice_vsi_update_l2tsel(vsi, l2tsel);
+		}
+	} else {
+		err = ice_vsi_dis_outer_stripping(vsi);
+		if (!err) {
+			enum ice_l2tsel l2tsel =
+				ICE_L2TSEL_EXTRACT_FIRST_TAG_L2TAG1;
+
+			/* PF tells the VF that the outer VLAN tag is always
+			 * extracted to VIRTCHNL_VLAN_TAG_LOCATION_L2TAG2_2 and
+			 * inner is always extracted to
+			 * VIRTCHNL_VLAN_TAG_LOCATION_L2TAG1. This is needed to
+			 * support inner stripping while outer stripping is
+			 * disabled so that the first and only tag is extracted
+			 * in L2TAG1.
+			 */
+			ice_vsi_update_l2tsel(vsi, l2tsel);
+		}
+	}
+
+	return err;
 }
 
 static int
@@ -4623,6 +4805,14 @@ ice_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			ice_vsi_config_vlan_stripping(vsi, true);
 		else
 			ice_vsi_config_vlan_stripping(vsi, false);
+	}
+
+	if (mask & RTE_ETH_QINQ_STRIP_MASK) {
+		/* Enable or disable outer VLAN stripping */
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
+			ice_vsi_config_outer_vlan_stripping(vsi, true);
+		else
+			ice_vsi_config_outer_vlan_stripping(vsi, false);
 	}
 
 	return 0;
@@ -5101,6 +5291,130 @@ ice_vsi_vlan_pvid_set(struct ice_vsi *vsi, struct ice_vsi_vlan_pvid_info *info)
 	return ret;
 }
 
+/**
+ * ice_vsi_set_outer_port_vlan - set the outer port VLAN and related settings
+ * @vsi: VSI to configure
+ * @vlan_info: packed u16 that contains the VLAN prio and ID
+ * @tpid: TPID of the port VLAN
+ *
+ * Set the port VLAN prio, ID, and TPID.
+ *
+ * Enable VLAN pruning so the VSI doesn't receive any traffic that doesn't match
+ * a VLAN prune rule. The caller should take care to add a VLAN prune rule that
+ * matches the port VLAN ID and TPID.
+ *
+ * Tell hardware to strip outer VLAN tagged packets on receive and don't put
+ * them in the receive descriptor. VSI(s) in port VLANs should not be aware of
+ * the port VLAN ID or TPID they are assigned to.
+ *
+ * Tell hardware to prevent outer VLAN tag insertion on transmit and only allow
+ * untagged outer packets from the transmit descriptor.
+ *
+ * Also, tell the hardware to insert the port VLAN on transmit.
+ */
+static int
+ice_vsi_set_outer_port_vlan(struct ice_vsi *vsi, u16 vlan_info, u16 tpid)
+{
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_vsi_ctx ctxt;
+	enum ice_status status;
+	u8 tag_type;
+	int err = 0;
+
+	if (tpid_to_vsi_outer_vlan_type(tpid, &tag_type))
+		return -EINVAL;
+
+	memset(&ctxt, 0, sizeof(ctxt));
+
+	ctxt.info = vsi->info;
+
+	ctxt.info.sw_flags2 |= ICE_AQ_VSI_SW_FLAG_RX_VLAN_PRUNE_ENA;
+
+	ctxt.info.port_based_outer_vlan = rte_cpu_to_le_16(vlan_info);
+	ctxt.info.outer_vlan_flags =
+		(ICE_AQ_VSI_OUTER_VLAN_EMODE_SHOW <<
+		 ICE_AQ_VSI_OUTER_VLAN_EMODE_S) |
+		((tag_type << ICE_AQ_VSI_OUTER_TAG_TYPE_S) &
+		 ICE_AQ_VSI_OUTER_TAG_TYPE_M) |
+		ICE_AQ_VSI_OUTER_VLAN_BLOCK_TX_DESC |
+		(ICE_AQ_VSI_OUTER_VLAN_TX_MODE_ACCEPTUNTAGGED <<
+		 ICE_AQ_VSI_OUTER_VLAN_TX_MODE_S) |
+		ICE_AQ_VSI_OUTER_VLAN_PORT_BASED_INSERT;
+	ctxt.info.valid_sections =
+		rte_cpu_to_le_16(ICE_AQ_VSI_PROP_OUTER_TAG_VALID |
+			    ICE_AQ_VSI_PROP_SW_VALID);
+
+	status = ice_update_vsi(hw, vsi->idx, &ctxt, NULL);
+	if (status != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR,
+		"update VSI for setting outer port based VLAN failed, err %d",
+		status);
+		err = -EINVAL;
+	} else {
+		vsi->info.port_based_outer_vlan = ctxt.info.port_based_outer_vlan;
+		vsi->info.outer_vlan_flags = ctxt.info.outer_vlan_flags;
+		vsi->info.sw_flags2 = ctxt.info.sw_flags2;
+	}
+
+	return err;
+}
+
+/**
+ * ice_vsi_dis_outer_insertion - disable outer VLAN insertion
+ * @vsi: VSI to configure
+ * @info: vlan pvid info
+ *
+ * Disable outer VLAN insertion via VSI context. This function should only be
+ * used if DVM is supported.
+ *
+ * Only modify the outer VLAN insertion settings. The VLAN TPID and outer VLAN
+ * settings are unmodified.
+ *
+ * This tells the hardware to not allow VLAN tagged packets in the transmit
+ * descriptor. This enables software offloaded VLAN insertion and disables
+ * hardware offloaded VLAN insertion.
+ */
+static int ice_vsi_dis_outer_insertion(struct ice_vsi *vsi, struct ice_vsi_vlan_pvid_info *info)
+{
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_vsi_ctx ctxt;
+	enum ice_status status;
+	uint8_t vlan_flags = 0;
+	int err = 0;
+
+	memset(&ctxt, 0, sizeof(ctxt));
+
+	ctxt.info.valid_sections =
+		rte_cpu_to_le_16(ICE_AQ_VSI_PROP_OUTER_TAG_VALID);
+	ctxt.info.port_based_inner_vlan = 0;
+	/* clear current outer VLAN insertion settings */
+	ctxt.info.outer_vlan_flags = vsi->info.outer_vlan_flags &
+		~(ICE_AQ_VSI_OUTER_VLAN_PORT_BASED_INSERT |
+		  ICE_AQ_VSI_OUTER_VLAN_TX_MODE_M);
+	if (info->config.reject.tagged == 0)
+		vlan_flags |= ICE_AQ_VSI_OUTER_VLAN_TX_MODE_ACCEPTTAGGED;
+	if (info->config.reject.untagged == 0)
+		vlan_flags |= ICE_AQ_VSI_OUTER_VLAN_TX_MODE_ACCEPTUNTAGGED;
+	ctxt.info.outer_vlan_flags |=
+		ICE_AQ_VSI_OUTER_VLAN_BLOCK_TX_DESC |
+		((vlan_flags <<
+		  ICE_AQ_VSI_OUTER_VLAN_TX_MODE_S) &
+		 ICE_AQ_VSI_OUTER_VLAN_TX_MODE_M);
+
+	status = ice_update_vsi(hw, vsi->idx, &ctxt, NULL);
+	if (!status) {
+		PMD_DRV_LOG(ERR,
+			    "update VSI for disabling outer VLAN insertion failed, err %d",
+			    status);
+		err = -EINVAL;
+	} else {
+		vsi->info.outer_vlan_flags = ctxt.info.outer_vlan_flags;
+		vsi->info.port_based_inner_vlan = ctxt.info.port_based_inner_vlan;
+	}
+
+	return err;
+}
+
 static int
 ice_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 {
@@ -5121,6 +5435,13 @@ ice_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 			data->dev_conf.txmode.hw_vlan_reject_untagged;
 	}
 
+	if (ice_is_dvm_ena(&vsi->adapter->hw)) {
+		if (on)
+			return ice_vsi_set_outer_port_vlan(vsi, pvid, pf->outer_ethertype);
+		else
+			return ice_vsi_dis_outer_insertion(vsi, &info);
+	}
+
 	ret = ice_vsi_vlan_pvid_set(vsi, &info);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to set pvid.");
@@ -5128,6 +5449,77 @@ ice_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	}
 
 	return 0;
+}
+
+static int ice_vsi_ena_outer_insertion(struct ice_vsi *vsi, uint16_t tpid)
+{
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_vsi_ctx ctxt;
+	enum ice_status status;
+	int err = 0;
+	u8 tag_type;
+	/* do not allow modifying VLAN stripping when a port VLAN is configured
+	 * on this VSI
+	 */
+	if (vsi->info.port_based_outer_vlan)
+		return 0;
+
+	if (tpid_to_vsi_outer_vlan_type(tpid, &tag_type))
+		return -EINVAL;
+
+	memset(&ctxt, 0, sizeof(ctxt));
+	ctxt.info.valid_sections =
+		rte_cpu_to_le_16(ICE_AQ_VSI_PROP_OUTER_TAG_VALID);
+	/* clear current outer VLAN insertion settings */
+	ctxt.info.outer_vlan_flags = vsi->info.outer_vlan_flags &
+		~(ICE_AQ_VSI_OUTER_VLAN_PORT_BASED_INSERT |
+		  ICE_AQ_VSI_OUTER_VLAN_BLOCK_TX_DESC |
+		  ICE_AQ_VSI_OUTER_VLAN_TX_MODE_M |
+		  ICE_AQ_VSI_OUTER_TAG_TYPE_M);
+	ctxt.info.outer_vlan_flags |=
+		((ICE_AQ_VSI_OUTER_VLAN_TX_MODE_ALL <<
+		  ICE_AQ_VSI_OUTER_VLAN_TX_MODE_S) &
+		 ICE_AQ_VSI_OUTER_VLAN_TX_MODE_M) |
+		((tag_type << ICE_AQ_VSI_OUTER_TAG_TYPE_S) &
+		 ICE_AQ_VSI_OUTER_TAG_TYPE_M);
+
+	status = ice_update_vsi(hw, vsi->idx, &ctxt, NULL);
+	if (status) {
+		PMD_DRV_LOG(ERR, "Update VSI failed to enable outer VLAN stripping");
+		err = -EIO;
+	} else {
+		vsi->info.outer_vlan_flags = ctxt.info.outer_vlan_flags;
+	}
+
+	return err;
+}
+
+static int
+ice_vlan_tpid_set(struct rte_eth_dev *dev,
+		   enum rte_vlan_type vlan_type,
+		   uint16_t tpid)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	uint64_t qinq = dev->data->dev_conf.rxmode.offloads &
+		   RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
+	int err = 0;
+
+	if ((vlan_type != RTE_ETH_VLAN_TYPE_INNER &&
+	     vlan_type != RTE_ETH_VLAN_TYPE_OUTER) ||
+	     (!qinq && vlan_type == RTE_ETH_VLAN_TYPE_INNER) ||
+		 !ice_is_supported_port_vlan_proto(hw, tpid)) {
+		PMD_DRV_LOG(ERR,
+			    "Unsupported vlan type.");
+		return -EINVAL;
+	}
+
+	err = ice_vsi_ena_outer_insertion(vsi, tpid);
+	if (!err)
+		pf->outer_ethertype = tpid;
+
+	return err;
 }
 
 static int
