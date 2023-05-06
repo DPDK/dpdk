@@ -1343,6 +1343,7 @@ failed:
 /*
  * Goes through the IB device list to look for the IB port matching the
  * mac_addr. If found, create a rte_eth_dev for it.
+ * Return value: number of successfully probed devices
  */
 static int
 mana_pci_probe_mac(struct rte_pci_device *pci_dev,
@@ -1352,8 +1353,9 @@ mana_pci_probe_mac(struct rte_pci_device *pci_dev,
 	int ibv_idx;
 	struct ibv_context *ctx;
 	int num_devices;
-	int ret = 0;
+	int ret;
 	uint8_t port;
+	int count = 0;
 
 	ibv_list = ibv_get_device_list(&num_devices);
 	for (ibv_idx = 0; ibv_idx < num_devices; ibv_idx++) {
@@ -1383,6 +1385,12 @@ mana_pci_probe_mac(struct rte_pci_device *pci_dev,
 		ret = ibv_query_device_ex(ctx, NULL, &dev_attr);
 		ibv_close_device(ctx);
 
+		if (ret) {
+			DRV_LOG(ERR, "Failed to query IB device %s",
+				ibdev->name);
+			continue;
+		}
+
 		for (port = 1; port <= dev_attr.orig_attr.phys_port_cnt;
 		     port++) {
 			struct rte_ether_addr addr;
@@ -1394,15 +1402,17 @@ mana_pci_probe_mac(struct rte_pci_device *pci_dev,
 				continue;
 
 			ret = mana_probe_port(ibdev, &dev_attr, port, pci_dev, &addr);
-			if (ret)
+			if (ret) {
 				DRV_LOG(ERR, "Probe on IB port %u failed %d", port, ret);
-			else
+			} else {
+				count++;
 				DRV_LOG(INFO, "Successfully probed on IB port %u", port);
+			}
 		}
 	}
 
 	ibv_free_device_list(ibv_list);
-	return ret;
+	return count;
 }
 
 /*
@@ -1416,6 +1426,7 @@ mana_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mana_conf conf = {0};
 	unsigned int i;
 	int ret;
+	int count = 0;
 
 	if (args && args->drv_str) {
 		ret = mana_parse_args(args, &conf);
@@ -1433,16 +1444,21 @@ mana_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 
 	/* If there are no driver parameters, probe on all ports */
-	if (!conf.index)
-		return mana_pci_probe_mac(pci_dev, NULL);
-
-	for (i = 0; i < conf.index; i++) {
-		ret = mana_pci_probe_mac(pci_dev, &conf.mac_array[i]);
-		if (ret)
-			return ret;
+	if (conf.index) {
+		for (i = 0; i < conf.index; i++)
+			count += mana_pci_probe_mac(pci_dev,
+						    &conf.mac_array[i]);
+	} else {
+		count = mana_pci_probe_mac(pci_dev, NULL);
 	}
 
-	return 0;
+	if (!count) {
+		rte_memzone_free(mana_shared_mz);
+		mana_shared_mz = NULL;
+		ret = -ENODEV;
+	}
+
+	return ret;
 }
 
 static int
@@ -1475,6 +1491,7 @@ mana_pci_remove(struct rte_pci_device *pci_dev)
 		if (!mana_shared_data->primary_cnt) {
 			DRV_LOG(DEBUG, "free shared memezone data");
 			rte_memzone_free(mana_shared_mz);
+			mana_shared_mz = NULL;
 		}
 
 		rte_spinlock_unlock(&mana_shared_data_lock);
