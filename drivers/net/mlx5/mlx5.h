@@ -368,11 +368,11 @@ struct mlx5_hw_q_job {
 	struct rte_flow_item *items;
 	union {
 		struct {
-			/* Pointer to ct query user memory. */
-			struct rte_flow_action_conntrack *profile;
-			/* Pointer to ct ASO query out memory. */
-			void *out_data;
-		} __rte_packed;
+			/* User memory for query output */
+			void *user;
+			/* Data extracted from hardware */
+			void *hw;
+		} __rte_packed query;
 		struct rte_flow_item_ethdev port_spec;
 		struct rte_flow_item_tag tag_spec;
 	} __rte_packed;

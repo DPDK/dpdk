@@ -1389,7 +1389,7 @@ mlx5_aso_ct_sq_query_single(struct mlx5_dev_ctx_shared *sh,
 		struct mlx5_hw_q_job *job = (struct mlx5_hw_q_job *)user_data;
 
 		sq->elts[wqe_idx].ct = user_data;
-		job->out_data = (char *)((uintptr_t)sq->mr.addr + wqe_idx * 64);
+		job->query.hw = (char *)((uintptr_t)sq->mr.addr + wqe_idx * 64);
 	} else {
 		sq->elts[wqe_idx].query_data = data;
 		sq->elts[wqe_idx].ct = ct;
