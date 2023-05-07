@@ -346,11 +346,11 @@ struct mlx5_lb_ctx {
 };
 
 /* HW steering queue job descriptor type. */
-enum {
+enum mlx5_hw_job_type {
 	MLX5_HW_Q_JOB_TYPE_CREATE, /* Flow create job type. */
 	MLX5_HW_Q_JOB_TYPE_DESTROY, /* Flow destroy job type. */
-	MLX5_HW_Q_JOB_TYPE_UPDATE,
-	MLX5_HW_Q_JOB_TYPE_QUERY,
+	MLX5_HW_Q_JOB_TYPE_UPDATE, /* Flow update job type. */
+	MLX5_HW_Q_JOB_TYPE_QUERY, /* Flow query job type. */
 };
 
 #define MLX5_HW_MAX_ITEMS (16)

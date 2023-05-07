@@ -8047,6 +8047,67 @@ flow_hw_action_handle_validate(struct rte_eth_dev *dev, uint32_t queue,
 	return 0;
 }
 
+static __rte_always_inline bool
+flow_hw_action_push(const struct rte_flow_op_attr *attr)
+{
+	return attr ? !attr->postpone : true;
+}
+
+static __rte_always_inline struct mlx5_hw_q_job *
+flow_hw_job_get(struct mlx5_priv *priv, uint32_t queue)
+{
+	return priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
+}
+
+static __rte_always_inline void
+flow_hw_job_put(struct mlx5_priv *priv, uint32_t queue)
+{
+	priv->hw_q[queue].job_idx++;
+}
+
+static __rte_always_inline struct mlx5_hw_q_job *
+flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
+			const struct rte_flow_action_handle *handle,
+			void *user_data, void *query_data,
+			enum mlx5_hw_job_type type,
+			struct rte_flow_error *error)
+{
+	struct mlx5_hw_q_job *job;
+
+	MLX5_ASSERT(queue != MLX5_HW_INV_QUEUE);
+	if (unlikely(!priv->hw_q[queue].job_idx)) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
+				   "Action destroy failed due to queue full.");
+		return NULL;
+	}
+	job = flow_hw_job_get(priv, queue);
+	job->type = type;
+	job->action = handle;
+	job->user_data = user_data;
+	job->query.user = query_data;
+	return job;
+}
+
+static __rte_always_inline void
+flow_hw_action_finalize(struct rte_eth_dev *dev, uint32_t queue,
+			struct mlx5_hw_q_job *job,
+			bool push, bool aso, bool status)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	if (likely(status)) {
+		if (push)
+			__flow_hw_push_action(dev, queue);
+		if (!aso)
+			rte_ring_enqueue(push ?
+					 priv->hw_q[queue].indir_cq :
+					 priv->hw_q[queue].indir_iq,
+					 job);
+	} else {
+		flow_hw_job_put(priv, queue);
+	}
+}
+
 /**
  * Create shared action.
  *
@@ -8084,21 +8145,15 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	cnt_id_t cnt_id;
 	uint32_t mtr_id;
 	uint32_t age_idx;
-	bool push = true;
+	bool push = flow_hw_action_push(attr);
 	bool aso = false;
 
 	if (attr) {
-		MLX5_ASSERT(queue != MLX5_HW_INV_QUEUE);
-		if (unlikely(!priv->hw_q[queue].job_idx)) {
-			rte_flow_error_set(error, ENOMEM,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Flow queue full.");
+		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
+					      NULL, MLX5_HW_Q_JOB_TYPE_CREATE,
+					      error);
+		if (!job)
 			return NULL;
-		}
-		job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
-		job->type = MLX5_HW_Q_JOB_TYPE_CREATE;
-		job->user_data = user_data;
-		push = !attr->postpone;
 	}
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
@@ -8161,17 +8216,9 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 		break;
 	}
 	if (job) {
-		if (!handle) {
-			priv->hw_q[queue].job_idx++;
-			return NULL;
-		}
 		job->action = handle;
-		if (push)
-			__flow_hw_push_action(dev, queue);
-		if (aso)
-			return handle;
-		rte_ring_enqueue(push ? priv->hw_q[queue].indir_cq :
-				 priv->hw_q[queue].indir_iq, job);
+		flow_hw_action_finalize(dev, queue, job, push, aso,
+					handle != NULL);
 	}
 	return handle;
 }
@@ -8219,19 +8266,15 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 	uint32_t idx = act_idx & ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
 	int ret = 0;
-	bool push = true;
+	bool push = flow_hw_action_push(attr);
 	bool aso = false;
 
 	if (attr) {
-		MLX5_ASSERT(queue != MLX5_HW_INV_QUEUE);
-		if (unlikely(!priv->hw_q[queue].job_idx))
-			return rte_flow_error_set(error, ENOMEM,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Action update failed due to queue full.");
-		job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
-		job->type = MLX5_HW_Q_JOB_TYPE_UPDATE;
-		job->user_data = user_data;
-		push = !attr->postpone;
+		job = flow_hw_action_job_init(priv, queue, handle, user_data,
+					      NULL, MLX5_HW_Q_JOB_TYPE_UPDATE,
+					      error);
+		if (!job)
+			return -rte_errno;
 	}
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
@@ -8294,19 +8337,8 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 					  "action type not supported");
 		break;
 	}
-	if (job) {
-		if (ret) {
-			priv->hw_q[queue].job_idx++;
-			return ret;
-		}
-		job->action = handle;
-		if (push)
-			__flow_hw_push_action(dev, queue);
-		if (aso)
-			return 0;
-		rte_ring_enqueue(push ? priv->hw_q[queue].indir_cq :
-				 priv->hw_q[queue].indir_iq, job);
-	}
+	if (job)
+		flow_hw_action_finalize(dev, queue, job, push, aso, ret == 0);
 	return ret;
 }
 
@@ -8345,20 +8377,16 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_hw_q_job *job = NULL;
 	struct mlx5_aso_mtr *aso_mtr;
 	struct mlx5_flow_meter_info *fm;
-	bool push = true;
+	bool push = flow_hw_action_push(attr);
 	bool aso = false;
 	int ret = 0;
 
 	if (attr) {
-		MLX5_ASSERT(queue != MLX5_HW_INV_QUEUE);
-		if (unlikely(!priv->hw_q[queue].job_idx))
-			return rte_flow_error_set(error, ENOMEM,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Action destroy failed due to queue full.");
-		job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
-		job->type = MLX5_HW_Q_JOB_TYPE_DESTROY;
-		job->user_data = user_data;
-		push = !attr->postpone;
+		job = flow_hw_action_job_init(priv, queue, handle, user_data,
+					      NULL, MLX5_HW_Q_JOB_TYPE_DESTROY,
+					      error);
+		if (!job)
+			return -rte_errno;
 	}
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
@@ -8421,19 +8449,8 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 					  "action type not supported");
 		break;
 	}
-	if (job) {
-		if (ret) {
-			priv->hw_q[queue].job_idx++;
-			return ret;
-		}
-		job->action = handle;
-		if (push)
-			__flow_hw_push_action(dev, queue);
-		if (aso)
-			return ret;
-		rte_ring_enqueue(push ? priv->hw_q[queue].indir_cq :
-				 priv->hw_q[queue].indir_iq, job);
-	}
+	if (job)
+		flow_hw_action_finalize(dev, queue, job, push, aso, ret == 0);
 	return ret;
 }
 
@@ -8672,19 +8689,15 @@ flow_hw_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
 	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 	uint32_t age_idx = act_idx & MLX5_HWS_AGE_IDX_MASK;
 	int ret;
-	bool push = true;
+	bool push = flow_hw_action_push(attr);
 	bool aso = false;
 
 	if (attr) {
-		MLX5_ASSERT(queue != MLX5_HW_INV_QUEUE);
-		if (unlikely(!priv->hw_q[queue].job_idx))
-			return rte_flow_error_set(error, ENOMEM,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Action destroy failed due to queue full.");
-		job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
-		job->type = MLX5_HW_Q_JOB_TYPE_QUERY;
-		job->user_data = user_data;
-		push = !attr->postpone;
+		job = flow_hw_action_job_init(priv, queue, handle, user_data,
+					      data, MLX5_HW_Q_JOB_TYPE_QUERY,
+					      error);
+		if (!job)
+			return -rte_errno;
 	}
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
@@ -8707,19 +8720,8 @@ flow_hw_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
 					  "action type not supported");
 		break;
 	}
-	if (job) {
-		if (ret) {
-			priv->hw_q[queue].job_idx++;
-			return ret;
-		}
-		job->action = handle;
-		if (push)
-			__flow_hw_push_action(dev, queue);
-		if (aso)
-			return ret;
-		rte_ring_enqueue(push ? priv->hw_q[queue].indir_cq :
-				 priv->hw_q[queue].indir_iq, job);
-	}
+	if (job)
+		flow_hw_action_finalize(dev, queue, job, push, aso, ret == 0);
 	return 0;
 }
 
