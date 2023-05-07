@@ -3951,6 +3951,8 @@ enum mlx5_aso_op {
 	ASO_OPER_LOGICAL_OR = 0x1,
 };
 
+#define MLX5_ASO_CSEG_READ_ENABLE 1
+
 /* ASO WQE CTRL segment. */
 struct mlx5_aso_cseg {
 	uint32_t va_h;
@@ -3964,6 +3966,8 @@ struct mlx5_aso_cseg {
 	uint64_t bitwise_data;
 	uint64_t data_mask;
 } __rte_packed;
+
+#define MLX5_MTR_MAX_TOKEN_VALUE INT32_MAX
 
 /* A meter data segment - 2 per ASO WQE. */
 struct mlx5_aso_mtr_dseg {
