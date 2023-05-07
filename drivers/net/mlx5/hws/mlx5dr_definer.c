@@ -21,6 +21,9 @@
 #define STE_UDP		0x2
 #define STE_ICMP	0x3
 
+#define MLX5DR_DEFINER_QUOTA_BLOCK 0
+#define MLX5DR_DEFINER_QUOTA_PASS  2
+
 /* Setter function based on bit offset and mask, for 32bit DW*/
 #define _DR_SET_32(p, v, byte_off, bit_off, mask) \
 	do { \
@@ -1447,6 +1450,62 @@ mlx5dr_definer_conv_item_tag(struct mlx5dr_definer_conv_data *cd,
 	return 0;
 }
 
+static void
+mlx5dr_definer_quota_set(struct mlx5dr_definer_fc *fc,
+			 const void *item_data, uint8_t *tag)
+{
+	/**
+	 * MLX5 PMD implements QUOTA with Meter object.
+	 * PMD Quota action translation implicitly increments
+	 * Meter register value after HW assigns it.
+	 * Meter register values are:
+	 *            HW     QUOTA(HW+1)  QUOTA state
+	 * RED        0        1 (01b)       BLOCK
+	 * YELLOW     1        2 (10b)       PASS
+	 * GREEN      2        3 (11b)       PASS
+	 *
+	 * Quota item checks Meter register bit 1 value to determine state:
+	 *            SPEC       MASK
+	 * PASS     2 (10b)    2 (10b)
+	 * BLOCK    0 (00b)    2 (10b)
+	 *
+	 * item_data is NULL when template quota item is non-masked:
+	 * .. / quota / ..
+	 */
+
+	const struct rte_flow_item_quota *quota = item_data;
+	uint32_t val;
+
+	if (quota && quota->state == RTE_FLOW_QUOTA_STATE_BLOCK)
+		val = MLX5DR_DEFINER_QUOTA_BLOCK;
+	else
+		val = MLX5DR_DEFINER_QUOTA_PASS;
+
+	DR_SET(tag, val, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static int
+mlx5dr_definer_conv_item_quota(struct mlx5dr_definer_conv_data *cd,
+			       __rte_unused struct rte_flow_item *item,
+			       int item_idx)
+{
+	int mtr_reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
+	struct mlx5dr_definer_fc *fc;
+
+	if (mtr_reg < 0) {
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	fc = mlx5dr_definer_get_register_fc(cd, mtr_reg);
+	if (!fc)
+		return rte_errno;
+
+	fc->tag_set = &mlx5dr_definer_quota_set;
+	fc->item_idx = item_idx;
+	return 0;
+}
+
 static int
 mlx5dr_definer_conv_item_metadata(struct mlx5dr_definer_conv_data *cd,
 				  struct rte_flow_item *item,
@@ -2162,6 +2221,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 			ret = mlx5dr_definer_conv_item_meter_color(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_METER_COLOR;
+			break;
+		case RTE_FLOW_ITEM_TYPE_QUOTA:
+			ret = mlx5dr_definer_conv_item_quota(&cd, items, i);
+			item_flags |= MLX5_FLOW_ITEM_QUOTA;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
 			ret = mlx5dr_definer_conv_item_ipv6_routing_ext(&cd, items, i);
