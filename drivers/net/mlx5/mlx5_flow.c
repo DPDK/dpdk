@@ -1095,6 +1095,20 @@ mlx5_flow_async_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
 				 void *data,
 				 void *user_data,
 				 struct rte_flow_error *error);
+static int
+mlx5_action_handle_query_update(struct rte_eth_dev *dev,
+				struct rte_flow_action_handle *handle,
+				const void *update, void *query,
+				enum rte_flow_query_update_mode qu_mode,
+				struct rte_flow_error *error);
+static int
+mlx5_flow_async_action_handle_query_update
+	(struct rte_eth_dev *dev, uint32_t queue_id,
+	 const struct rte_flow_op_attr *op_attr,
+	 struct rte_flow_action_handle *action_handle,
+	 const void *update, void *query,
+	 enum rte_flow_query_update_mode qu_mode,
+	 void *user_data, struct rte_flow_error *error);
 
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
@@ -1110,6 +1124,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.action_handle_destroy = mlx5_action_handle_destroy,
 	.action_handle_update = mlx5_action_handle_update,
 	.action_handle_query = mlx5_action_handle_query,
+	.action_handle_query_update = mlx5_action_handle_query_update,
 	.tunnel_decap_set = mlx5_flow_tunnel_decap_set,
 	.tunnel_match = mlx5_flow_tunnel_match,
 	.tunnel_action_decap_release = mlx5_flow_tunnel_action_release,
@@ -1133,6 +1148,8 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.push = mlx5_flow_push,
 	.async_action_handle_create = mlx5_flow_async_action_handle_create,
 	.async_action_handle_update = mlx5_flow_async_action_handle_update,
+	.async_action_handle_query_update =
+		mlx5_flow_async_action_handle_query_update,
 	.async_action_handle_query = mlx5_flow_async_action_handle_query,
 	.async_action_handle_destroy = mlx5_flow_async_action_handle_destroy,
 };
@@ -9498,6 +9515,27 @@ mlx5_flow_async_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 					 update, user_data, error);
 }
 
+static int
+mlx5_flow_async_action_handle_query_update
+	(struct rte_eth_dev *dev, uint32_t queue_id,
+	 const struct rte_flow_op_attr *op_attr,
+	 struct rte_flow_action_handle *action_handle,
+	 const void *update, void *query,
+	 enum rte_flow_query_update_mode qu_mode,
+	 void *user_data, struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops =
+		flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+
+	if (!fops || !fops->async_action_query_update)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "async query_update not supported");
+	return fops->async_action_query_update
+			   (dev, queue_id, op_attr, action_handle,
+			    update, query, qu_mode, user_data, error);
+}
+
 /**
  * Query shared action.
  *
@@ -10634,6 +10672,30 @@ mlx5_action_handle_query(struct rte_eth_dev *dev,
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
 
 	return flow_drv_action_query(dev, handle, data, fops, error);
+}
+
+static int
+mlx5_action_handle_query_update(struct rte_eth_dev *dev,
+				struct rte_flow_action_handle *handle,
+				const void *update, void *query,
+				enum rte_flow_query_update_mode qu_mode,
+				struct rte_flow_error *error)
+{
+	struct rte_flow_attr attr = { .transfer = 0 };
+	enum mlx5_flow_drv_type drv_type = flow_get_drv_type(dev, &attr);
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (drv_type == MLX5_FLOW_TYPE_MIN || drv_type == MLX5_FLOW_TYPE_MAX)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "invalid driver type");
+	fops = flow_get_drv_ops(drv_type);
+	if (!fops || !fops->action_query_update)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "no query_update handler");
+	return fops->action_query_update(dev, handle, update,
+					 query, qu_mode, error);
 }
 
 /**

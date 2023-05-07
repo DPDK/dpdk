@@ -74,7 +74,7 @@ mlx5_aso_reg_mr(struct mlx5_common_device *cdev, size_t length,
  * @param[in] sq
  *   ASO SQ to destroy.
  */
-static void
+void
 mlx5_aso_destroy_sq(struct mlx5_aso_sq *sq)
 {
 	mlx5_devx_sq_destroy(&sq->sq_obj);
@@ -148,7 +148,7 @@ mlx5_aso_age_init_sq(struct mlx5_aso_sq *sq)
  * @param[in] sq
  *   ASO SQ to initialize.
  */
-static void
+void
 mlx5_aso_mtr_init_sq(struct mlx5_aso_sq *sq)
 {
 	volatile struct mlx5_aso_wqe *restrict wqe;
@@ -219,7 +219,7 @@ mlx5_aso_ct_init_sq(struct mlx5_aso_sq *sq)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 mlx5_aso_sq_create(struct mlx5_common_device *cdev, struct mlx5_aso_sq *sq,
 		   void *uar, uint16_t log_desc_n)
 {
@@ -504,7 +504,7 @@ mlx5_aso_dump_err_objs(volatile uint32_t *cqe, volatile uint32_t *wqe)
  * @param[in] sq
  *   ASO SQ to use.
  */
-static void
+void
 mlx5_aso_cqe_err_handle(struct mlx5_aso_sq *sq)
 {
 	struct mlx5_aso_cq *cq = &sq->cq;

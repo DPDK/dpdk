@@ -71,6 +71,7 @@ enum {
 	MLX5_INDIRECT_ACTION_TYPE_COUNT,
 	MLX5_INDIRECT_ACTION_TYPE_CT,
 	MLX5_INDIRECT_ACTION_TYPE_METER_MARK,
+	MLX5_INDIRECT_ACTION_TYPE_QUOTA,
 };
 
 /* Now, the maximal ports will be supported is 16, action number is 32M. */
@@ -219,6 +220,8 @@ enum mlx5_feature_name {
 
 /* Meter color item */
 #define MLX5_FLOW_ITEM_METER_COLOR (UINT64_C(1) << 44)
+#define MLX5_FLOW_ITEM_QUOTA (UINT64_C(1) << 45)
+
 
 /* IPv6 routing extension item */
 #define MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT (UINT64_C(1) << 45)
@@ -311,6 +314,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_SEND_TO_KERNEL (1ull << 42)
 #define MLX5_FLOW_ACTION_INDIRECT_COUNT (1ull << 43)
 #define MLX5_FLOW_ACTION_INDIRECT_AGE (1ull << 44)
+#define MLX5_FLOW_ACTION_QUOTA (1ull << 46)
 
 #define MLX5_FLOW_DROP_INCLUSIVE_ACTIONS \
 	(MLX5_FLOW_ACTION_COUNT | MLX5_FLOW_ACTION_SAMPLE | MLX5_FLOW_ACTION_AGE)
@@ -1734,6 +1738,12 @@ typedef int (*mlx5_flow_action_query_t)
 			 const struct rte_flow_action_handle *action,
 			 void *data,
 			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_action_query_update_t)
+			(struct rte_eth_dev *dev,
+			 struct rte_flow_action_handle *handle,
+			 const void *update, void *data,
+			 enum rte_flow_query_update_mode qu_mode,
+			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_sync_domain_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t domains,
@@ -1890,7 +1900,13 @@ typedef int (*mlx5_flow_async_action_handle_update_t)
 			 const void *update,
 			 void *user_data,
 			 struct rte_flow_error *error);
-
+typedef int (*mlx5_flow_async_action_handle_query_update_t)
+			(struct rte_eth_dev *dev, uint32_t queue_id,
+			 const struct rte_flow_op_attr *op_attr,
+			 struct rte_flow_action_handle *action_handle,
+			 const void *update, void *data,
+			 enum rte_flow_query_update_mode qu_mode,
+			 void *user_data, struct rte_flow_error *error);
 typedef int (*mlx5_flow_async_action_handle_query_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t queue,
@@ -1941,6 +1957,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_action_destroy_t action_destroy;
 	mlx5_flow_action_update_t action_update;
 	mlx5_flow_action_query_t action_query;
+	mlx5_flow_action_query_update_t action_query_update;
 	mlx5_flow_sync_domain_t sync_domain;
 	mlx5_flow_discover_priorities_t discover_priorities;
 	mlx5_flow_item_create_t item_create;
@@ -1963,6 +1980,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_push_t push;
 	mlx5_flow_async_action_handle_create_t async_action_create;
 	mlx5_flow_async_action_handle_update_t async_action_update;
+	mlx5_flow_async_action_handle_query_update_t async_action_query_update;
 	mlx5_flow_async_action_handle_query_t async_action_query;
 	mlx5_flow_async_action_handle_destroy_t async_action_destroy;
 };

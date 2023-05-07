@@ -153,6 +153,7 @@ Features
 - E-Switch mirroring and modify.
 - 21844 flow priorities for ingress or egress flow groups greater than 0 and for any transfer
   flow group.
+- Flow quota.
 - Flow metering, including meter policy API.
 - Flow meter hierarchy.
 - Flow meter mark.
@@ -588,6 +589,16 @@ Limitations
 
   - Hairpin between two ports could only manual binding and explicit Tx flow mode. For single port hairpin, all the combinations of auto/manual binding and explicit/implicit Tx flow mode could be supported.
   - Hairpin in switchdev SR-IOV mode is not supported till now.
+
+- Quota:
+
+  - Quota implemented for HWS / template API.
+  - Maximal value for quota SET and ADD operations in INT32_MAX (2GB).
+  - Application cannot use 2 consecutive ADD updates.
+    Next tokens update after ADD must always be SET.
+  - Quota flow action cannot be used with Meter or CT flow actions in the same rule.
+  - Quota flow action and item supported in non-root HWS tables.
+  - Maximal number of HW quota and HW meter objects <= 16e6.
 
 - Meter:
 

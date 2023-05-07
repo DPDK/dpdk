@@ -130,6 +130,7 @@ New Features
   * Added support for multi-packet receive queue (MPRQ) on Windows.
   * Added support for CQE compression on Windows.
   * Added support for enhanced multi-packet write on Windows.
+  * Added support for quota flow action and item.
 
 * **Added vmxnet3 version 7 support.**
 

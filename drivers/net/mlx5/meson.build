@@ -47,6 +47,7 @@ if is_linux
     sources += files(
             'mlx5_flow_hw.c',
             'mlx5_hws_cnt.c',
+            'mlx5_flow_quota.c',
             'mlx5_flow_verbs.c',
     )
 endif
