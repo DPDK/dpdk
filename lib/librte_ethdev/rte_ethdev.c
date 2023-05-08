@@ -4032,6 +4032,12 @@ rte_eth_fec_set(uint16_t port_id, uint32_t fec_capa)
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
+
+	if (fec_capa == 0) {
+		RTE_ETHDEV_LOG(ERR, "At least one FEC mode should be specified\n");
+		return -EINVAL;
+	}
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fec_set, -ENOTSUP);
 	return eth_err(port_id, (*dev->dev_ops->fec_set)(dev, fec_capa));
 }
