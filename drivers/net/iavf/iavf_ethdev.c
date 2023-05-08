@@ -2660,6 +2660,18 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	if (vf->promisc_unicast_enabled || vf->promisc_multicast_enabled)
 		iavf_config_promisc(adapter, false, false);
 
+	/*
+	 * Release redundant queue resource when close the dev
+	 * so that other vfs can re-use the queues.
+	 */
+	if (vf->lv_enabled) {
+		ret = iavf_request_queues(dev, IAVF_MAX_NUM_QUEUES_DFLT);
+		if (ret)
+			PMD_DRV_LOG(ERR, "Reset the num of queues failed");
+
+		vf->max_rss_qregion = IAVF_MAX_NUM_QUEUES_DFLT;
+	}
+
 	iavf_shutdown_adminq(hw);
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 		/* disable uio intr before callback unregister */
