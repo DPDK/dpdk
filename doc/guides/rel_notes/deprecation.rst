@@ -121,13 +121,6 @@ Deprecation Notices
 * net/bnx2x: Starting from DPDK 23.07, the Marvell QLogic bnx2x driver will be removed.
   This decision has been made to alleviate the burden of maintaining a discontinued product.
 
-* net/liquidio: Remove LiquidIO ethdev driver.
-  The LiquidIO product line has been substituted
-  with CN9K/CN10K OCTEON product line smart NICs located in ``drivers/net/octeon_ep/``.
-  DPDK 20.08 has categorized the LiquidIO driver as UNMAINTAINED
-  because of the absence of updates in the driver.
-  Due to the above reasons, the driver will be unavailable from DPDK 23.07.
-
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,

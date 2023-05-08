@@ -183,6 +183,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* Removed LiquidIO ethdev driver located at ``drivers/net/liquidio/``.
+
 
 API Changes
 -----------

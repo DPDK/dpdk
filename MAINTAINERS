@@ -686,14 +686,6 @@ F: drivers/net/thunderx/
 F: doc/guides/nics/thunderx.rst
 F: doc/guides/nics/features/thunderx.ini
 
-Cavium LiquidIO - UNMAINTAINED
-M: Shijith Thotton <sthotton@marvell.com>
-M: Srisivasubramanian Srinivasan <srinivasan@marvell.com>
-T: git://dpdk.org/next/dpdk-next-net-mrvl
-F: drivers/net/liquidio/
-F: doc/guides/nics/liquidio.rst
-F: doc/guides/nics/features/liquidio.ini
-
 Cavium OCTEON TX
 M: Harman Kalra <hkalra@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl

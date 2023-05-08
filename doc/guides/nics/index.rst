@@ -44,7 +44,6 @@ Network Interface Controller Drivers
     ipn3ke
     ixgbe
     kni
-    liquidio
     mana
     memif
     mlx4
