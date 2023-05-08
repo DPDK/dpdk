@@ -4057,10 +4057,13 @@ int rte_eth_fec_get(uint16_t port_id, uint32_t *fec_capa);
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param fec_capa
- *   A bitmask of allowed FEC modes. If AUTO bit is set, other
- *   bits specify FEC modes which may be negotiated. If AUTO
- *   bit is clear, specify FEC modes to be used (only one valid
- *   mode per speed may be set).
+ *   A bitmask of allowed FEC modes.
+ *   If only the AUTO bit is set, the decision on which FEC
+ *   mode to use will be made by HW/FW or driver.
+ *   If the AUTO bit is set with some FEC modes, only specified
+ *   FEC modes can be set.
+ *   If AUTO bit is clear, specify FEC mode to be used
+ *   (only one valid mode per speed may be set).
  * @return
  *   - (0) if successful.
  *   - (-EINVAL) if the FEC mode is not valid.
