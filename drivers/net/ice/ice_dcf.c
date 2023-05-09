@@ -789,7 +789,8 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 {
 	struct rte_eth_dev *dev = hw->eth_dev;
 	struct rte_eth_rss_conf *rss_conf;
-	uint8_t i, j, nb_q;
+	uint8_t j, nb_q;
+	size_t i;
 	int ret;
 
 	rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
