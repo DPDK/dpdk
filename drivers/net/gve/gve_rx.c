@@ -414,11 +414,91 @@ err_rxq:
 	return err;
 }
 
+static int
+gve_rxq_mbufs_alloc(struct gve_rx_queue *rxq)
+{
+	struct rte_mbuf *nmb;
+	uint16_t i;
+	int diag;
+
+	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0], rxq->nb_rx_desc);
+	if (diag < 0) {
+		for (i = 0; i < rxq->nb_rx_desc - 1; i++) {
+			nmb = rte_pktmbuf_alloc(rxq->mpool);
+			if (!nmb)
+				break;
+			rxq->sw_ring[i] = nmb;
+		}
+		if (i < rxq->nb_rx_desc - 1)
+			return -ENOMEM;
+	}
+	rxq->nb_avail = 0;
+	rxq->next_avail = rxq->nb_rx_desc - 1;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		if (rxq->is_gqi_qpl) {
+			rxq->rx_data_ring[i].addr = rte_cpu_to_be_64(i * PAGE_SIZE);
+		} else {
+			if (i == rxq->nb_rx_desc - 1)
+				break;
+			nmb = rxq->sw_ring[i];
+			rxq->rx_data_ring[i].addr = rte_cpu_to_be_64(rte_mbuf_data_iova(nmb));
+		}
+	}
+
+	rte_write32(rte_cpu_to_be_32(rxq->next_avail), rxq->qrx_tail);
+
+	return 0;
+}
+
+int
+gve_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct gve_priv *hw = dev->data->dev_private;
+	struct gve_rx_queue *rxq;
+	int ret;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	rxq->qrx_tail = &hw->db_bar2[rte_be_to_cpu_32(rxq->qres->db_index)];
+
+	rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), rxq->ntfy_addr);
+
+	ret = gve_rxq_mbufs_alloc(rxq);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to alloc Rx queue mbuf");
+		return ret;
+	}
+
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+int
+gve_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct gve_rx_queue *rxq;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	gve_release_rxq_mbufs(rxq);
+	gve_reset_rxq(rxq);
+
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
 void
 gve_stop_rx_queues(struct rte_eth_dev *dev)
 {
 	struct gve_priv *hw = dev->data->dev_private;
-	struct gve_rx_queue *rxq;
 	uint16_t i;
 	int err;
 
@@ -429,9 +509,13 @@ gve_stop_rx_queues(struct rte_eth_dev *dev)
 	if (err != 0)
 		PMD_DRV_LOG(WARNING, "failed to destroy rxqs");
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		gve_release_rxq_mbufs(rxq);
-		gve_reset_rxq(rxq);
-	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		if (gve_rx_queue_stop(dev, i) != 0)
+			PMD_DRV_LOG(WARNING, "Fail to stop Rx queue %d", i);
+}
+
+void
+gve_set_rx_function(struct rte_eth_dev *dev)
+{
+	dev->rx_pkt_burst = gve_rx_burst;
 }

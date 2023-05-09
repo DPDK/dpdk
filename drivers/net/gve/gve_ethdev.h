@@ -367,6 +367,18 @@ gve_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void
 gve_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
+int
+gve_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+int
+gve_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int
+gve_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+int
+gve_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
 void
 gve_stop_tx_queues(struct rte_eth_dev *dev);
 
@@ -378,6 +390,12 @@ gve_rx_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t
 gve_tx_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+
+void
+gve_set_rx_function(struct rte_eth_dev *dev);
+
+void
+gve_set_tx_function(struct rte_eth_dev *dev);
 
 /* Below functions are used for DQO */
 
@@ -397,6 +415,18 @@ gve_tx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid);
 void
 gve_rx_queue_release_dqo(struct rte_eth_dev *dev, uint16_t qid);
 
+int
+gve_rx_queue_start_dqo(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int
+gve_tx_queue_start_dqo(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+int
+gve_rx_queue_stop_dqo(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int
+gve_tx_queue_stop_dqo(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
 void
 gve_stop_tx_queues_dqo(struct rte_eth_dev *dev);
 
@@ -408,5 +438,11 @@ gve_rx_burst_dqo(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t
 gve_tx_burst_dqo(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+
+void
+gve_set_rx_function_dqo(struct rte_eth_dev *dev);
+
+void
+gve_set_tx_function_dqo(struct rte_eth_dev *dev);
 
 #endif /* _GVE_ETHDEV_H_ */
