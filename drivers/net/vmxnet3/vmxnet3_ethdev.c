@@ -1833,6 +1833,7 @@ vmxnet3_process_events(struct rte_eth_dev *dev)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	uint32_t events = hw->shared->ecr;
+	int i;
 
 	if (!events)
 		return;
@@ -1857,16 +1858,28 @@ vmxnet3_process_events(struct rte_eth_dev *dev)
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
 				       VMXNET3_CMD_GET_QUEUE_STATUS);
 
-		if (hw->tqd_start->status.stopped)
-			PMD_DRV_LOG(ERR, "tq error 0x%x",
-				    hw->tqd_start->status.error);
+		PMD_DRV_LOG(ERR, "queue error event 0x%x for "
+			    RTE_ETHER_ADDR_PRT_FMT, events,
+			    hw->perm_addr[0], hw->perm_addr[1],
+			    hw->perm_addr[2], hw->perm_addr[3],
+			    hw->perm_addr[4], hw->perm_addr[5]);
 
-		if (hw->rqd_start->status.stopped)
-			PMD_DRV_LOG(ERR, "rq error 0x%x",
-				     hw->rqd_start->status.error);
+		for (i = 0; i < hw->num_tx_queues; i++) {
+			if (hw->tqd_start[i].status.stopped)
+				PMD_DRV_LOG(ERR, "tq %d error 0x%x",
+					    i, hw->tqd_start[i].status.error);
+		}
+		for (i = 0; i < hw->num_rx_queues; i++) {
+			if (hw->rqd_start[i].status.stopped)
+				PMD_DRV_LOG(ERR, "rq %d error 0x%x",
+					    i, hw->rqd_start[i].status.error);
+		}
 
-		/* Reset the device */
 		/* Have to reset the device */
+		/* Notify the application so that it can reset the device */
+		rte_eth_dev_callback_process(dev,
+					     RTE_ETH_EVENT_INTR_RESET,
+					     NULL);
 	}
 
 	if (events & VMXNET3_ECR_DIC)
