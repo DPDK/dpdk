@@ -1046,6 +1046,9 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RSS_IPSEC_ESP_SPI_IPV6_CAP)
 		bp->vnic_cap_flags |= BNXT_VNIC_CAP_ESP_SPI6_CAP;
 
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_HW_TUNNEL_TPA_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_VNIC_TUNNEL_TPA;
+
 	bp->max_tpa_v2 = rte_le_to_cpu_16(resp->max_aggs_supported);
 
 	HWRM_UNLOCK();
@@ -2666,6 +2669,30 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 	return rc;
 }
 
+#define BNXT_DFLT_TUNL_TPA_BMAP					\
+	(HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_GRE |	\
+	 HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_IPV4 |	\
+	 HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_IPV6)
+
+static void bnxt_vnic_update_tunl_tpa_bmap(struct bnxt *bp,
+					   struct hwrm_vnic_tpa_cfg_input *req)
+{
+	uint32_t tunl_tpa_bmap = BNXT_DFLT_TUNL_TPA_BMAP;
+
+	if (!(bp->vnic_cap_flags & BNXT_VNIC_CAP_VNIC_TUNNEL_TPA))
+		return;
+
+	if (bp->vxlan_port_cnt)
+		tunl_tpa_bmap |= HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_VXLAN |
+			HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_VXLAN_GPE;
+
+	if (bp->geneve_port_cnt)
+		tunl_tpa_bmap |= HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_GENEVE;
+
+	req->enables |= rte_cpu_to_le_32(HWRM_VNIC_TPA_CFG_INPUT_ENABLES_TNL_TPA_EN);
+	req->tnl_tpa_en_bitmap = rte_cpu_to_le_32(tunl_tpa_bmap);
+}
+
 int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 			struct bnxt_vnic_info *vnic, bool enable)
 {
@@ -2714,6 +2741,29 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 
 		if (BNXT_CHIP_P5_P7(bp))
 			req.max_aggs = rte_cpu_to_le_16(bp->max_tpa_v2);
+
+		/* For tpa v2 handle as per spec mss and log2 units */
+		if (BNXT_CHIP_P7(bp)) {
+			uint32_t nsegs, n, segs = 0;
+			uint16_t mss = bp->eth_dev->data->mtu - 40;
+			size_t page_size = rte_mem_page_size();
+			uint32_t max_mbuf_frags =
+				BNXT_TPA_MAX_PAGES / (rte_mem_page_size() + 1);
+
+			/* Calculate the number of segs based on mss */
+			if (mss <= page_size) {
+				n = page_size / mss;
+				nsegs = (max_mbuf_frags - 1) * n;
+			} else {
+				n = mss / page_size;
+				if (mss & (page_size - 1))
+					n++;
+				nsegs = (max_mbuf_frags - n) / n;
+			}
+			segs = rte_log2_u32(nsegs);
+			req.max_agg_segs = rte_cpu_to_le_16(segs);
+		}
+		bnxt_vnic_update_tunl_tpa_bmap(bp, &req);
 	}
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
@@ -4242,6 +4292,27 @@ int bnxt_hwrm_pf_evb_mode(struct bnxt *bp)
 	return rc;
 }
 
+static int bnxt_hwrm_set_tpa(struct bnxt *bp)
+{
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	uint64_t rx_offloads = dev_conf->rxmode.offloads;
+	bool tpa_flags = 0;
+	int rc, i;
+
+	tpa_flags = (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?  true : false;
+	for (i = 0; i < bp->max_vnics; i++) {
+		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+
+		if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
+			continue;
+
+		rc = bnxt_hwrm_vnic_tpa_cfg(bp, vnic, tpa_flags);
+		if (rc)
+			return rc;
+	}
+	return 0;
+}
+
 int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type)
 {
@@ -4277,6 +4348,8 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 	}
 
 	HWRM_UNLOCK();
+
+	bnxt_hwrm_set_tpa(bp);
 
 	return rc;
 }
@@ -4346,6 +4419,7 @@ int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 		bp->ecpri_port_cnt = 0;
 	}
 
+	bnxt_hwrm_set_tpa(bp);
 	return rc;
 }
 

@@ -18,6 +18,7 @@
 #include <rte_lcore.h>
 #include <rte_spinlock.h>
 #include <rte_time.h>
+#include <rte_eal_paging.h>
 
 #include "bnxt_cpr.h"
 #include "bnxt_util.h"
@@ -118,6 +119,8 @@
 #define BNXT_TPA_MAX_SEGS(bp) \
 	(BNXT_CHIP_P5_P7(bp) ? TPA_MAX_SEGS_TH : \
 			      TPA_MAX_SEGS)
+
+#define BNXT_TPA_MAX_PAGES	65536
 
 /*
  * Define the number of async completion rings to be used. Set to zero for
@@ -815,6 +818,7 @@ struct bnxt {
 #define BNXT_VNIC_CAP_ESP_SPI6_CAP	BIT(12)
 #define BNXT_VNIC_CAP_AH_SPI_CAP	(BNXT_VNIC_CAP_AH_SPI4_CAP | BNXT_VNIC_CAP_AH_SPI6_CAP)
 #define BNXT_VNIC_CAP_ESP_SPI_CAP	(BNXT_VNIC_CAP_ESP_SPI4_CAP | BNXT_VNIC_CAP_ESP_SPI6_CAP)
+#define BNXT_VNIC_CAP_VNIC_TUNNEL_TPA	BIT(13)
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;

@@ -153,7 +153,8 @@ static void bnxt_rx_ring_reset(void *arg)
 		rxr = rxq->rx_ring;
 		/* Disable and flush TPA before resetting the RX ring */
 		if (rxr->tpa_info)
-			bnxt_hwrm_vnic_tpa_cfg(bp, rxq->vnic, false);
+			bnxt_vnic_tpa_cfg(bp, rxq->queue_id, false);
+
 		rc = bnxt_hwrm_rx_ring_reset(bp, i);
 		if (rc) {
 			PMD_DRV_LOG(ERR, "Rx ring%d reset failed\n", i);
@@ -163,12 +164,13 @@ static void bnxt_rx_ring_reset(void *arg)
 		bnxt_rx_queue_release_mbufs(rxq);
 		rxr->rx_raw_prod = 0;
 		rxr->ag_raw_prod = 0;
+		rxr->ag_cons = 0;
 		rxr->rx_next_cons = 0;
 		bnxt_init_one_rx_ring(rxq);
 		bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 		bnxt_db_write(&rxr->ag_db, rxr->ag_raw_prod);
 		if (rxr->tpa_info)
-			bnxt_hwrm_vnic_tpa_cfg(bp, rxq->vnic, true);
+			bnxt_vnic_tpa_cfg(bp, rxq->queue_id, true);
 
 		rxq->in_reset = 0;
 	}
@@ -1151,7 +1153,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		return -EBUSY;
 
 	if (cmp_type == RX_TPA_START_CMPL_TYPE_RX_TPA_START ||
-	    cmp_type == RX_TPA_START_V2_CMPL_TYPE_RX_TPA_START_V2) {
+	    cmp_type == RX_TPA_START_V2_CMPL_TYPE_RX_TPA_START_V2 ||
+	    cmp_type == RX_TPA_START_V3_CMPL_TYPE_RX_TPA_START_V3) {
 		bnxt_tpa_start(rxq, (struct rx_tpa_start_cmpl *)rxcmp,
 			       (struct rx_tpa_start_cmpl_hi *)rxcmp1);
 		rc = -EINVAL; /* Continue w/o new mbuf */

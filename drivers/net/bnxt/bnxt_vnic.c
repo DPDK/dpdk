@@ -464,7 +464,9 @@ bnxt_vnic_queue_delete(struct bnxt *bp, uint16_t vnic_idx)
 static struct bnxt_vnic_info*
 bnxt_vnic_queue_create(struct bnxt *bp, int32_t vnic_id, uint16_t q_index)
 {
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	uint8_t *rx_queue_state = bp->eth_dev->data->rx_queue_state;
+	uint64_t rx_offloads = dev_conf->rxmode.offloads;
 	struct bnxt_vnic_info *vnic;
 	struct bnxt_rx_queue *rxq = NULL;
 	int32_t rc = -EINVAL;
@@ -522,6 +524,12 @@ bnxt_vnic_queue_create(struct bnxt *bp, int32_t vnic_id, uint16_t q_index)
 		PMD_DRV_LOG(DEBUG, "Failed to configure vnic %d\n", q_index);
 		goto cleanup;
 	}
+
+	rc = bnxt_hwrm_vnic_tpa_cfg(bp, vnic,
+				   (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?
+				    true : false);
+	if (rc)
+		PMD_DRV_LOG(DEBUG, "Failed to configure TPA on this vnic %d\n", q_index);
 
 	rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
 	if (rc) {
@@ -658,7 +666,9 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 		     struct bnxt_vnic_rss_info *rss_info,
 		     uint16_t vnic_id)
 {
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	uint8_t *rx_queue_state = bp->eth_dev->data->rx_queue_state;
+	uint64_t rx_offloads = dev_conf->rxmode.offloads;
 	struct bnxt_vnic_info *vnic;
 	struct bnxt_rx_queue *rxq = NULL;
 	uint32_t idx, nr_ctxs, config_rss = 0;
@@ -740,6 +750,12 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 		PMD_DRV_LOG(ERR, "Failed to configure vnic %d\n", idx);
 		goto fail_cleanup;
 	}
+
+	rc = bnxt_hwrm_vnic_tpa_cfg(bp, vnic,
+				   (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?
+				    true : false);
+	if (rc)
+		PMD_DRV_LOG(DEBUG, "Failed to configure TPA on this vnic %d\n", idx);
 
 	rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
 	if (rc) {
