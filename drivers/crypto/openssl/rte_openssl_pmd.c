@@ -1927,7 +1927,7 @@ process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
 
 	if (EVP_PKEY_sign(dsa_ctx, dsa_sign_data, &outlen, op->message.data,
 						op->message.length) <= 0) {
-		free(dsa_sign_data);
+		OPENSSL_free(dsa_sign_data);
 		goto err_dsa_sign;
 	}
 
@@ -1935,7 +1935,7 @@ process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
 	DSA_SIG *sign = d2i_DSA_SIG(NULL, &dsa_sign_data_p, outlen);
 	if (!sign) {
 		OPENSSL_LOG(ERR, "%s:%d\n", __func__, __LINE__);
-		free(dsa_sign_data);
+		OPENSSL_free(dsa_sign_data);
 		goto err_dsa_sign;
 	} else {
 		const BIGNUM *r = NULL, *s = NULL;
@@ -1947,7 +1947,7 @@ process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
 	}
 
 	DSA_SIG_free(sign);
-	free(dsa_sign_data);
+	OPENSSL_free(dsa_sign_data);
 	return 0;
 
 err_dsa_sign:
