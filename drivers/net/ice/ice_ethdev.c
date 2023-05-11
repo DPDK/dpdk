@@ -2440,6 +2440,9 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	pf->supported_rxdid = ice_get_supported_rxdid(hw);
 
+	/* reset all stats of the device, including pf and main vsi */
+	ice_stats_reset(dev);
+
 	return 0;
 
 err_flow_init:
