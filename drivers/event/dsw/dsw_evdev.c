@@ -363,6 +363,10 @@ static int
 dsw_close(struct rte_eventdev *dev)
 {
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
+	uint16_t port_id;
+
+	for (port_id = 0; port_id < dsw->num_ports; port_id++)
+		dsw_port_release(&dsw->ports[port_id]);
 
 	dsw->num_ports = 0;
 	dsw->num_queues = 0;
