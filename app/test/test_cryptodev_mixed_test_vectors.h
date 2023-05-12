@@ -1084,21 +1084,15 @@ struct mixed_cipher_auth_test_data auth_aes_cmac_cipher_zuc_test_case_1 = {
 struct mixed_cipher_auth_test_data auth_null_cipher_snow_test_case_1 = {
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.auth_key = {
-		.data = {
-			0xC7, 0x36, 0xC6, 0xAA, 0xB2, 0x2B, 0xFF, 0xF9,
-			0x1E, 0x26, 0x98, 0xD2, 0xE2, 0x2A, 0xD5, 0x7E
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.auth_iv = {
-		.data = {
-			0x14, 0x79, 0x3E, 0x41, 0x03, 0x97, 0xE8, 0xFD,
-			0x94, 0x79, 0x3E, 0x41, 0x03, 0x97, 0x68, 0xFD
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.auth = {
-		.len_bits = 44 << 3,
+		.len_bits = 0,
 		.offset_bits = 0,
 	},
 	.cipher_algo = RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
@@ -1163,21 +1157,15 @@ struct mixed_cipher_auth_test_data auth_null_cipher_snow_test_case_1 = {
 struct mixed_cipher_auth_test_data auth_null_cipher_zuc_test_case_1 = {
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.auth_key = {
-		.data = {
-			0xC7, 0x36, 0xC6, 0xAA, 0xB2, 0x2B, 0xFF, 0xF9,
-			0x1E, 0x26, 0x98, 0xD2, 0xE2, 0x2A, 0xD5, 0x7E
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.auth_iv = {
-		.data = {
-			0x14, 0x79, 0x3E, 0x41, 0x03, 0x97, 0xE8, 0xFD,
-			0x94, 0x79, 0x3E, 0x41, 0x03, 0x97, 0x68, 0xFD
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.auth = {
-		.len_bits = 48 << 3,
+		.len_bits = 0,
 		.offset_bits = 0,
 	},
 	.cipher_algo = RTE_CRYPTO_CIPHER_ZUC_EEA3,
@@ -1262,21 +1250,15 @@ struct mixed_cipher_auth_test_data auth_snow_cipher_null_test_case_1 = {
 	},
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.cipher_key = {
-		.data = {
-			0xC7, 0x36, 0xC6, 0xAA, 0xB2, 0x2B, 0xFF, 0xF9,
-			0x1E, 0x26, 0x98, 0xD2, 0xE2, 0x2A, 0xD5, 0x7E
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.cipher_iv = {
-		.data = {
-			0x14, 0x79, 0x3E, 0x41, 0x03, 0x97, 0xE8, 0xFD,
-			0x94, 0x79, 0x3E, 0x41, 0x03, 0x97, 0x68, 0xFD
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.cipher = {
-		.len_bits = 52 << 3,
+		.len_bits = 0,
 		.offset_bits = 0,
 	},
 	.plaintext = {
@@ -1342,21 +1324,15 @@ struct mixed_cipher_auth_test_data auth_zuc_cipher_null_test_case_1 = {
 	},
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.cipher_key = {
-		.data = {
-			0xc9, 0xe6, 0xce, 0xc4, 0x60, 0x7c, 0x72, 0xdb,
-			0x00, 0x0a, 0xef, 0xa8, 0x83, 0x85, 0xab, 0x0a
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.cipher_iv = {
-		.data = {
-			0xa9, 0x40, 0x59, 0xda, 0x50, 0x00, 0x00, 0x00,
-			0x29, 0x40, 0x59, 0xda, 0x50, 0x00, 0x80, 0x00
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.cipher = {
-		.len_bits = 77 << 3,
+		.len_bits = 0,
 		.offset_bits = 0,
 	},
 	.plaintext = {
@@ -1410,21 +1386,15 @@ struct mixed_cipher_auth_test_data auth_zuc_cipher_null_test_case_1 = {
 struct mixed_cipher_auth_test_data auth_null_cipher_aes_ctr_test_case_1 = {
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.auth_key = {
-		.data = {
-			0xC7, 0x36, 0xC6, 0xAA, 0xB2, 0x2B, 0xFF, 0xF9,
-			0x1E, 0x26, 0x98, 0xD2, 0xE2, 0x2A, 0xD5, 0x7E
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.auth_iv = {
-		.data = {
-			0x14, 0x79, 0x3E, 0x41, 0x03, 0x97, 0xE8, 0xFD,
-			0x94, 0x79, 0x3E, 0x41, 0x03, 0x97, 0x68, 0xFD
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.auth = {
-		.len_bits = 48 << 3,
+		.len_bits = 0,
 		.offset_bits = 0,
 	},
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CTR,
@@ -1507,19 +1477,15 @@ struct mixed_cipher_auth_test_data auth_aes_cmac_cipher_null_test_case_1 = {
 	},
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.cipher_key = {
-		.data = {
-			0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
-			0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
-		},
-		.len = 16,
+		.data = { 0x0 },
+		.len = 0,
 	},
 	.cipher_iv = {
-		.data = {
-		},
+		.data = { 0x0 },
 		.len = 0,
 	},
 	.cipher = {
-		.len_bits = 516 << 3,
+		.len_bits = 0,
 		.offset_bits = 0,
 	},
 	.plaintext = {
