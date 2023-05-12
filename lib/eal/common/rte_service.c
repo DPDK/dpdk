@@ -9,6 +9,7 @@
 #include <rte_service.h>
 #include <rte_service_component.h>
 
+#include <eal_trace_internal.h>
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
@@ -16,6 +17,7 @@
 #include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <rte_spinlock.h>
+#include <rte_trace_point.h>
 
 #include "eal_private.h"
 
@@ -276,6 +278,8 @@ rte_service_component_register(const struct rte_service_spec *spec,
 	if (id_ptr)
 		*id_ptr = free_slot;
 
+	rte_eal_trace_service_component_register(free_slot, spec->name);
+
 	return 0;
 }
 
@@ -336,6 +340,7 @@ rte_service_runstate_set(uint32_t id, uint32_t runstate)
 		__atomic_store_n(&s->app_runstate, RUNSTATE_STOPPED,
 			__ATOMIC_RELEASE);
 
+	rte_eal_trace_service_runstate_set(id, runstate);
 	return 0;
 }
 
@@ -368,6 +373,7 @@ static inline void
 service_runner_do_callback(struct rte_service_spec_impl *s,
 			   struct core_state *cs, uint32_t service_idx)
 {
+	rte_eal_trace_service_run_begin(service_idx, rte_lcore_id());
 	void *userdata = s->spec.callback_userdata;
 
 	if (service_stats_enabled(s)) {
@@ -395,8 +401,10 @@ service_runner_do_callback(struct rte_service_spec_impl *s,
 
 		__atomic_store_n(&service_stats->calls,
 			service_stats->calls + 1, __ATOMIC_RELAXED);
-	} else
+	} else {
 		s->spec.callback(userdata);
+	}
+	rte_eal_trace_service_run_end(service_idx, rte_lcore_id());
 }
 
 
@@ -658,6 +666,7 @@ int32_t
 rte_service_map_lcore_set(uint32_t id, uint32_t lcore, uint32_t enabled)
 {
 	uint32_t on = enabled > 0;
+	rte_eal_trace_service_map_lcore(id, lcore, enabled);
 	return service_update(id, lcore, &on, 0);
 }
 
@@ -683,6 +692,8 @@ set_lcore_state(uint32_t lcore, int32_t state)
 
 	/* update per-lcore optimized state tracking */
 	lcore_states[lcore].is_service_core = (state == ROLE_SERVICE);
+
+	rte_eal_trace_service_lcore_state_change(lcore, state);
 }
 
 int32_t
@@ -780,6 +791,8 @@ rte_service_lcore_start(uint32_t lcore)
 	 */
 	__atomic_store_n(&cs->runstate, RUNSTATE_RUNNING, __ATOMIC_RELEASE);
 
+	rte_eal_trace_service_lcore_start(lcore);
+
 	int ret = rte_eal_remote_launch(service_runner_func, 0, lcore);
 	/* returns -EBUSY if the core is already launched, 0 on success */
 	return ret;
@@ -823,6 +836,8 @@ rte_service_lcore_stop(uint32_t lcore)
 	 */
 	__atomic_store_n(&lcore_states[lcore].runstate, RUNSTATE_STOPPED,
 		__ATOMIC_RELEASE);
+
+	rte_eal_trace_service_lcore_stop(lcore);
 
 	return 0;
 }

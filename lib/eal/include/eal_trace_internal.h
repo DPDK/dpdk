@@ -174,6 +174,66 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u32(lcore_id);
 	rte_trace_point_emit_string(cpuset);
 )
+RTE_TRACE_POINT(
+	rte_eal_trace_thread_lcore_running,
+	RTE_TRACE_POINT_ARGS(unsigned int lcore_id, void *f),
+	rte_trace_point_emit_u32(lcore_id);
+	rte_trace_point_emit_ptr(f);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_thread_lcore_stopped,
+	RTE_TRACE_POINT_ARGS(unsigned int lcore_id),
+	rte_trace_point_emit_u32(lcore_id);
+)
+
+/* Service */
+RTE_TRACE_POINT(
+	rte_eal_trace_service_map_lcore,
+	RTE_TRACE_POINT_ARGS(unsigned int id, unsigned int lcore_id, unsigned int enabled),
+	rte_trace_point_emit_u32(id);
+	rte_trace_point_emit_u32(lcore_id);
+	rte_trace_point_emit_u32(enabled);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_service_lcore_state_change,
+	RTE_TRACE_POINT_ARGS(unsigned int lcore_id, int lcore_state),
+	rte_trace_point_emit_u32(lcore_id);
+	rte_trace_point_emit_i32(lcore_state);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_service_lcore_start,
+	RTE_TRACE_POINT_ARGS(unsigned int lcore_id),
+	rte_trace_point_emit_u32(lcore_id);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_service_lcore_stop,
+	RTE_TRACE_POINT_ARGS(unsigned int lcore_id),
+	rte_trace_point_emit_u32(lcore_id);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_service_run_begin,
+	RTE_TRACE_POINT_ARGS(unsigned int id, unsigned int lcore_id),
+	rte_trace_point_emit_u32(id);
+	rte_trace_point_emit_u32(lcore_id);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_service_runstate_set,
+	RTE_TRACE_POINT_ARGS(unsigned int id, unsigned int run_state),
+	rte_trace_point_emit_u32(id);
+	rte_trace_point_emit_u32(run_state);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_service_run_end,
+	RTE_TRACE_POINT_ARGS(unsigned int id, unsigned int lcore_id),
+	rte_trace_point_emit_u32(id);
+	rte_trace_point_emit_u32(lcore_id);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_service_component_register,
+	RTE_TRACE_POINT_ARGS(int id, const char *service_name),
+	rte_trace_point_emit_i32(id);
+	rte_trace_point_emit_string(service_name);
+)
 
 #ifdef __cplusplus
 }

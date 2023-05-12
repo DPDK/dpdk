@@ -205,6 +205,8 @@ eal_thread_loop(void *arg)
 				__ATOMIC_ACQUIRE)) == NULL)
 			rte_pause();
 
+		rte_eal_trace_thread_lcore_running(lcore_id, f);
+
 		/* call the function and store the return value */
 		fct_arg = lcore_config[lcore_id].arg;
 		ret = f(fct_arg);
@@ -219,6 +221,8 @@ eal_thread_loop(void *arg)
 		 */
 		__atomic_store_n(&lcore_config[lcore_id].state, WAIT,
 			__ATOMIC_RELEASE);
+
+		rte_eal_trace_thread_lcore_stopped(lcore_id);
 	}
 
 	/* never reached */

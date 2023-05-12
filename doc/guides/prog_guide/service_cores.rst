@@ -52,3 +52,16 @@ The service core library is capable of collecting runtime statistics like number
 of calls to a specific service, and number of cycles used by the service. The
 cycle count collection is dynamically configurable, allowing any application to
 profile the services running on the system at any time.
+
+Service Core Tracing
+~~~~~~~~~~~~~~~~~~~~
+
+The service core library is instrumented with tracepoints using the DPDK Trace
+Library. These tracepoints allow you to track the service and logical cores
+state. To activate tracing when launching a DPDK program it is necessary to use the
+``--trace`` option to specify a regular expression to select which tracepoints
+to enable. Here is an example if you want to only specify service core tracing::
+
+  ./dpdk/examples/service_cores/build/service_cores --trace="lib.eal.thread*" --trace="lib.eal.service*"
+
+See the :doc:`trace_lib` documentation for details.

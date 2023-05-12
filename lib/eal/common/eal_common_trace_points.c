@@ -70,6 +70,27 @@ RTE_TRACE_POINT_REGISTER(rte_eal_trace_thread_remote_launch,
 	lib.eal.thread.remote.launch)
 RTE_TRACE_POINT_REGISTER(rte_eal_trace_thread_lcore_ready,
 	lib.eal.thread.lcore.ready)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_thread_lcore_running,
+	lib.eal.thread.lcore.running)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_thread_lcore_stopped,
+	lib.eal.thread.lcore.stopped)
+
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_map_lcore,
+	lib.eal.service.map.lcore)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_lcore_state_change,
+	lib.eal.service.lcore.state.change)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_lcore_start,
+	lib.eal.service.lcore.start)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_lcore_stop,
+	lib.eal.service.lcore.stop)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_run_begin,
+	lib.eal.service.run.begin)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_runstate_set,
+	lib.eal.service.run.state.set)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_run_end,
+	lib.eal.service.run.end)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_service_component_register,
+	lib.eal.service.component.register)
 
 RTE_TRACE_POINT_REGISTER(rte_eal_trace_intr_callback_register,
 	lib.eal.intr.register)
