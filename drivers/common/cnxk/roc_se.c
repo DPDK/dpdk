@@ -71,6 +71,7 @@ cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx, uint16_t key_
 	case ROC_SE_AES_CFB:
 	case ROC_SE_AES_CTR:
 	case ROC_SE_AES_GCM:
+	case ROC_SE_AES_CCM:
 	case ROC_SE_AES_DOCSISBPI:
 		if (unlikely(cpt_ciph_aes_key_validate(key_len) != 0))
 			return -1;
@@ -535,7 +536,7 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 		zuc_const = zs_ctx->zuc.otk_ctx.zuc_const;
 	}
 
-	if (type == ROC_SE_AES_GCM)
+	if ((type == ROC_SE_AES_GCM) || (type == ROC_SE_AES_CCM))
 		se_ctx->template_w4.s.opcode_minor = BIT(5);
 
 	ret = cpt_ciph_type_set(type, se_ctx, key_len);
@@ -584,6 +585,7 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 		cpt_ciph_aes_key_type_set(fctx, key_len);
 		break;
 	case ROC_SE_AES_GCM:
+	case ROC_SE_AES_CCM:
 		cpt_ciph_aes_key_type_set(fctx, key_len);
 		break;
 	case ROC_SE_AES_XTS:

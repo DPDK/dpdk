@@ -31,6 +31,7 @@ struct cnxk_se_sess {
 	uint16_t cpt_op : 4;
 	uint16_t zsk_flag : 4;
 	uint16_t aes_gcm : 1;
+	uint16_t aes_ccm : 1;
 	uint16_t aes_ctr : 1;
 	uint16_t chacha_poly : 1;
 	uint16_t is_null : 1;
@@ -1815,10 +1816,10 @@ static __rte_always_inline int
 fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 {
 	struct rte_crypto_aead_xform *aead_form;
+	uint8_t aes_gcm = 0, aes_ccm = 0;
 	roc_se_cipher_type enc_type = 0; /* NULL Cipher type */
 	roc_se_auth_type auth_type = 0;	 /* NULL Auth type */
 	uint32_t cipher_key_len = 0;
-	uint8_t aes_gcm = 0;
 	aead_form = &xform->aead;
 
 	if (aead_form->op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
@@ -1838,9 +1839,10 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		aes_gcm = 1;
 		break;
 	case RTE_CRYPTO_AEAD_AES_CCM:
-		plt_dp_err("Crypto: Unsupported cipher algo %u",
-			   aead_form->algo);
-		return -1;
+		enc_type = ROC_SE_AES_CCM;
+		cipher_key_len = 16;
+		aes_ccm = 1;
+		break;
 	case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
 		enc_type = ROC_SE_CHACHA20;
 		auth_type = ROC_SE_POLY1305;
@@ -1859,19 +1861,27 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	}
 	sess->zsk_flag = 0;
 	sess->aes_gcm = aes_gcm;
+	sess->aes_ccm = aes_ccm;
 	sess->mac_len = aead_form->digest_length;
 	sess->iv_offset = aead_form->iv.offset;
 	sess->iv_length = aead_form->iv.length;
 	sess->aad_length = aead_form->aad_length;
 
-	switch (sess->iv_length) {
-	case 12:
-		sess->short_iv = 1;
-	case 16:
-		break;
-	default:
-		plt_dp_err("Crypto: Unsupported IV length %u", sess->iv_length);
-		return -1;
+	if (aes_ccm) {
+		if ((sess->iv_length < 11) || (sess->iv_length > 13)) {
+			plt_dp_err("Crypto: Unsupported IV length %u", sess->iv_length);
+			return -1;
+		}
+	} else {
+		switch (sess->iv_length) {
+		case 12:
+			sess->short_iv = 1;
+		case 16:
+			break;
+		default:
+			plt_dp_err("Crypto: Unsupported IV length %u", sess->iv_length);
+			return -1;
+		}
 	}
 
 	if (unlikely(roc_se_ciph_key_set(&sess->roc_se_ctx, enc_type, aead_form->key.data,
@@ -2016,6 +2026,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	sess->zsk_flag = zsk_flag;
 	sess->zs_cipher = zs_cipher;
 	sess->aes_gcm = 0;
+	sess->aes_ccm = 0;
 	sess->aes_ctr = aes_ctr;
 	sess->iv_offset = c_form->iv.offset;
 	sess->iv_length = c_form->iv.length;
@@ -2384,6 +2395,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	struct roc_se_fc_params fc_params;
 	char src[SRC_IOV_SIZE];
 	char dst[SRC_IOV_SIZE];
+	uint8_t ccm_iv_buf[16];
 	uint32_t iv_buf[4];
 	int ret;
 
@@ -2402,6 +2414,13 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 			       rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset), 12);
 			iv_buf[3] = rte_cpu_to_be_32(0x1);
 			fc_params.iv_buf = iv_buf;
+		}
+		if (sess->aes_ccm) {
+			memcpy((uint8_t *)ccm_iv_buf,
+			       rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset),
+			       sess->iv_length + 1);
+			ccm_iv_buf[0] = 14 - sess->iv_length;
+			fc_params.iv_buf = ccm_iv_buf;
 		}
 	}
 
@@ -2430,7 +2449,11 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 			d_offs = (d_offs - aad_len) | (d_offs << 16);
 			d_lens = (d_lens + aad_len) | (d_lens << 32);
 		} else {
-			fc_params.aad_buf.vaddr = sym_op->aead.aad.data;
+			/* For AES CCM, AAD is written 18B after aad.data as per API */
+			if (sess->aes_ccm)
+				fc_params.aad_buf.vaddr = PLT_PTR_ADD(sym_op->aead.aad.data, 18);
+			else
+				fc_params.aad_buf.vaddr = sym_op->aead.aad.data;
 			fc_params.aad_buf.size = aad_len;
 			flags |= ROC_SE_VALID_AAD_BUF;
 			inplace = 0;

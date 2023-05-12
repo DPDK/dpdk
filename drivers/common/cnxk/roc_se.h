@@ -113,6 +113,7 @@ typedef enum {
 	ROC_SE_AES_GCM = 0x7,
 	ROC_SE_AES_XTS = 0x8,
 	ROC_SE_CHACHA20 = 0x9,
+	ROC_SE_AES_CCM = 0xA,
 
 	/* These are only for software use */
 	ROC_SE_ZUC_EEA3 = 0x90,

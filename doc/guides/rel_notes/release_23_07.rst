@@ -116,6 +116,7 @@ New Features
 
   * Added support for PDCP chain in cn10k crypto driver.
   * Added support for SM3 hash operations.
+  * Added support for AES-CCM in cn9k and cn10k drivers.
 
 
 Removed Items
