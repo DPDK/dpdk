@@ -2205,6 +2205,8 @@ static int
 nfp_flow_action_push_vlan(char *act_data,
 		const struct rte_flow_action *action)
 {
+	uint8_t pcp;
+	uint16_t vid;
 	size_t act_size;
 	struct nfp_fl_act_push_vlan *push_vlan;
 	const struct rte_flow_action_of_push_vlan *push_vlan_conf;
@@ -2227,9 +2229,11 @@ nfp_flow_action_push_vlan(char *act_data,
 			(action + 1)->conf;
 	vlan_vid_conf  = (const struct rte_flow_action_of_set_vlan_vid *)
 			(action + 2)->conf;
+
+	vid = rte_be_to_cpu_16(vlan_vid_conf->vlan_vid) & 0x0fff;
+	pcp = vlan_pcp_conf->vlan_pcp & 0x07;
 	push_vlan->vlan_tpid = push_vlan_conf->ethertype;
-	push_vlan->vlan_tci = ((vlan_pcp_conf->vlan_pcp & 0x07) << 13) |
-			(vlan_vid_conf->vlan_vid & 0x0fff);
+	push_vlan->vlan_tci = rte_cpu_to_be_16(vid | (pcp << 13));
 
 	return 0;
 }
