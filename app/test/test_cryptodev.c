@@ -17369,13 +17369,11 @@ test_cryptodev_bcmfs(void)
 }
 
 static int
-test_cryptodev_qat_raw_api(void)
+run_cryptodev_raw_testsuite(const char *pmd_name)
 {
-	static const char *pmd_name = RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
 	int ret;
 
-	ret = require_feature_flag(pmd_name, RTE_CRYPTODEV_FF_SYM_RAW_DP,
-			"RAW API");
+	ret = require_feature_flag(pmd_name, RTE_CRYPTODEV_FF_SYM_RAW_DP, "RAW API");
 	if (ret)
 		return ret;
 
@@ -17384,6 +17382,12 @@ test_cryptodev_qat_raw_api(void)
 	global_api_test_type = CRYPTODEV_API_TEST;
 
 	return ret;
+}
+
+static int
+test_cryptodev_qat_raw_api(void)
+{
+	return run_cryptodev_raw_testsuite(RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 }
 
 static int
@@ -17401,37 +17405,13 @@ test_cryptodev_cn10k(void)
 static int
 test_cryptodev_dpaa2_sec_raw_api(void)
 {
-	static const char *pmd_name = RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD);
-	int ret;
-
-	ret = require_feature_flag(pmd_name, RTE_CRYPTODEV_FF_SYM_RAW_DP,
-			"RAW API");
-	if (ret)
-		return ret;
-
-	global_api_test_type = CRYPTODEV_RAW_API_TEST;
-	ret = run_cryptodev_testsuite(pmd_name);
-	global_api_test_type = CRYPTODEV_API_TEST;
-
-	return ret;
+	return run_cryptodev_raw_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
 }
 
 static int
 test_cryptodev_dpaa_sec_raw_api(void)
 {
-	static const char *pmd_name = RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD);
-	int ret;
-
-	ret = require_feature_flag(pmd_name, RTE_CRYPTODEV_FF_SYM_RAW_DP,
-			"RAW API");
-	if (ret)
-		return ret;
-
-	global_api_test_type = CRYPTODEV_RAW_API_TEST;
-	ret = run_cryptodev_testsuite(pmd_name);
-	global_api_test_type = CRYPTODEV_API_TEST;
-
-	return ret;
+	return run_cryptodev_raw_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
 }
 
 REGISTER_TEST_COMMAND(cryptodev_dpaa2_sec_raw_api_autotest,
