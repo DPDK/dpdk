@@ -2554,17 +2554,14 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 		enum rte_crypto_auth_operation auth_op,
 		enum rte_crypto_auth_algorithm auth_algo,
 		enum rte_crypto_cipher_algorithm cipher_algo,
-		const uint8_t *key, uint8_t key_len,
+		const uint8_t *a_key, uint8_t a_key_len,
+		const uint8_t *c_key, uint8_t c_key_len,
 		uint8_t auth_iv_len, uint8_t auth_len,
 		uint8_t cipher_iv_len)
 
 {
-	uint8_t cipher_auth_key[key_len];
-
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	memcpy(cipher_auth_key, key, key_len);
 
 	/* Setup Authentication Parameters */
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -2572,9 +2569,8 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 
 	ut_params->auth_xform.auth.op = auth_op;
 	ut_params->auth_xform.auth.algo = auth_algo;
-	ut_params->auth_xform.auth.key.length = key_len;
-	/* Hash key = cipher key */
-	ut_params->auth_xform.auth.key.data = cipher_auth_key;
+	ut_params->auth_xform.auth.key.length = a_key_len;
+	ut_params->auth_xform.auth.key.data = a_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
 	/* Auth IV will be after cipher IV */
 	ut_params->auth_xform.auth.iv.offset = IV_OFFSET + cipher_iv_len;
@@ -2586,12 +2582,13 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 
 	ut_params->cipher_xform.cipher.algo = cipher_algo;
 	ut_params->cipher_xform.cipher.op = cipher_op;
-	ut_params->cipher_xform.cipher.key.data = cipher_auth_key;
-	ut_params->cipher_xform.cipher.key.length = key_len;
+	ut_params->cipher_xform.cipher.key.data = c_key;
+	ut_params->cipher_xform.cipher.key.length = c_key_len;
 	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
 	ut_params->cipher_xform.cipher.iv.length = cipher_iv_len;
 
-	debug_hexdump(stdout, "key:", key, key_len);
+	debug_hexdump(stdout, "Auth key:", a_key, c_key_len);
+	debug_hexdump(stdout, "Cipher key:", c_key, c_key_len);
 
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
@@ -2677,23 +2674,21 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 		enum rte_crypto_auth_operation auth_op,
 		enum rte_crypto_auth_algorithm auth_algo,
 		enum rte_crypto_cipher_algorithm cipher_algo,
-		const uint8_t *key, const uint8_t key_len,
+		const uint8_t *a_key, const uint8_t a_key_len,
+		const uint8_t *c_key, const uint8_t c_key_len,
 		uint8_t auth_iv_len, uint8_t auth_len,
 		uint8_t cipher_iv_len)
 {
-	uint8_t auth_cipher_key[key_len];
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	memcpy(auth_cipher_key, key, key_len);
 
 	/* Setup Authentication Parameters */
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.auth.op = auth_op;
 	ut_params->auth_xform.next = &ut_params->cipher_xform;
 	ut_params->auth_xform.auth.algo = auth_algo;
-	ut_params->auth_xform.auth.key.length = key_len;
-	ut_params->auth_xform.auth.key.data = auth_cipher_key;
+	ut_params->auth_xform.auth.key.length = a_key_len;
+	ut_params->auth_xform.auth.key.data = a_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
 	/* Auth IV will be after cipher IV */
 	ut_params->auth_xform.auth.iv.offset = IV_OFFSET + cipher_iv_len;
@@ -2704,12 +2699,13 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 	ut_params->cipher_xform.next = NULL;
 	ut_params->cipher_xform.cipher.algo = cipher_algo;
 	ut_params->cipher_xform.cipher.op = cipher_op;
-	ut_params->cipher_xform.cipher.key.data = auth_cipher_key;
-	ut_params->cipher_xform.cipher.key.length = key_len;
+	ut_params->cipher_xform.cipher.key.data = c_key;
+	ut_params->cipher_xform.cipher.key.length = c_key_len;
 	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
 	ut_params->cipher_xform.cipher.iv.length = cipher_iv_len;
 
-	debug_hexdump(stdout, "key:", key, key_len);
+	debug_hexdump(stdout, "Auth key:", a_key, a_key_len);
+	debug_hexdump(stdout, "Cipher key:", c_key, c_key_len);
 
 	/* Create Crypto session*/
 	if (cipher_op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
@@ -4908,6 +4904,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->key.data, tdata->key.len,
+			tdata->key.data, tdata->key.len,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
 	if (retval != 0)
@@ -5036,6 +5033,7 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata,
 					: RTE_CRYPTO_AUTH_OP_GENERATE),
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
+			tdata->key.data, tdata->key.len,
 			tdata->key.data, tdata->key.len,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
@@ -5242,6 +5240,7 @@ test_snow3g_auth_cipher_sgl(const struct snow3g_test_data *tdata,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->key.data, tdata->key.len,
+			tdata->key.data, tdata->key.len,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
 
@@ -5442,6 +5441,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata,
 					: RTE_CRYPTO_AUTH_OP_GENERATE),
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			RTE_CRYPTO_CIPHER_KASUMI_F8,
+			tdata->key.data, tdata->key.len,
 			tdata->key.data, tdata->key.len,
 			0, tdata->digest.len,
 			tdata->cipher_iv.len);
@@ -5647,6 +5647,7 @@ test_kasumi_auth_cipher_sgl(const struct kasumi_test_data *tdata,
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			RTE_CRYPTO_CIPHER_KASUMI_F8,
 			tdata->key.data, tdata->key.len,
+			tdata->key.data, tdata->key.len,
 			0, tdata->digest.len,
 			tdata->cipher_iv.len);
 
@@ -5827,6 +5828,7 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 			RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			RTE_CRYPTO_CIPHER_KASUMI_F8,
+			tdata->key.data, tdata->key.len,
 			tdata->key.data, tdata->key.len,
 			0, tdata->digest.len,
 			tdata->cipher_iv.len);
@@ -6382,6 +6384,7 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 			RTE_CRYPTO_AUTH_ZUC_EIA3,
 			RTE_CRYPTO_CIPHER_ZUC_EEA3,
 			tdata->key.data, tdata->key.len,
+			tdata->key.data, tdata->key.len,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
 
@@ -6584,6 +6587,7 @@ test_zuc_auth_cipher_sgl(const struct wireless_test_data *tdata,
 					: RTE_CRYPTO_AUTH_OP_GENERATE),
 			RTE_CRYPTO_AUTH_ZUC_EIA3,
 			RTE_CRYPTO_CIPHER_ZUC_EEA3,
+			tdata->key.data, tdata->key.len,
 			tdata->key.data, tdata->key.len,
 			tdata->auth_iv.len, tdata->digest.len,
 			tdata->cipher_iv.len);
@@ -7789,6 +7793,7 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->auth_algo,
 				tdata->cipher_algo,
 				tdata->auth_key.data, tdata->auth_key.len,
+				tdata->cipher_key.data, tdata->cipher_key.len,
 				tdata->auth_iv.len, tdata->digest_enc.len,
 				tdata->cipher_iv.len);
 	else
@@ -7799,6 +7804,7 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->auth_algo,
 				tdata->cipher_algo,
 				tdata->auth_key.data, tdata->auth_key.len,
+				tdata->cipher_key.data, tdata->cipher_key.len,
 				tdata->auth_iv.len, tdata->digest_enc.len,
 				tdata->cipher_iv.len);
 	if (retval != 0)
@@ -8002,6 +8008,7 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->auth_algo,
 				tdata->cipher_algo,
 				tdata->auth_key.data, tdata->auth_key.len,
+				tdata->cipher_key.data, tdata->cipher_key.len,
 				tdata->auth_iv.len, tdata->digest_enc.len,
 				tdata->cipher_iv.len);
 	else
@@ -8012,6 +8019,7 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->auth_algo,
 				tdata->cipher_algo,
 				tdata->auth_key.data, tdata->auth_key.len,
+				tdata->cipher_key.data, tdata->cipher_key.len,
 				tdata->auth_iv.len, tdata->digest_enc.len,
 				tdata->cipher_iv.len);
 	if (retval != 0)
