@@ -309,6 +309,36 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 	IDXD_PMD_INFO("Init %s on NUMA node %d", name, dev->device.numa_node);
 	dev->device.driver = &drv->driver;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		char qname[32];
+		int max_qid;
+
+		/* look up queue 0 to get the PCI structure */
+		snprintf(qname, sizeof(qname), "%s-q0", name);
+		IDXD_PMD_INFO("Looking up %s\n", qname);
+		ret = idxd_dmadev_create(qname, &dev->device, NULL, &idxd_pci_ops);
+		if (ret != 0) {
+			IDXD_PMD_ERR("Failed to create dmadev %s", name);
+			return ret;
+		}
+		qid = rte_dma_get_dev_id_by_name(qname);
+		max_qid = rte_atomic16_read(
+			&((struct idxd_dmadev *)rte_dma_fp_objs[qid].dev_private)->u.pci->ref_count);
+
+		/* we have queue 0 done, now configure the rest of the queues */
+		for (qid = 1; qid < max_qid; qid++) {
+			/* add the queue number to each device name */
+			snprintf(qname, sizeof(qname), "%s-q%d", name, qid);
+			IDXD_PMD_INFO("Looking up %s\n", qname);
+			ret = idxd_dmadev_create(qname, &dev->device, NULL, &idxd_pci_ops);
+			if (ret != 0) {
+				IDXD_PMD_ERR("Failed to create dmadev %s", name);
+				return ret;
+			}
+		}
+		return 0;
+	}
+
 	if (dev->device.devargs && dev->device.devargs->args[0] != '\0') {
 		/* if the number of devargs grows beyond just 1, use rte_kvargs */
 		if (sscanf(dev->device.devargs->args,

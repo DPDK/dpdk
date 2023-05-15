@@ -599,6 +599,10 @@ idxd_dmadev_create(const char *name, struct rte_device *dev,
 	dmadev->fp_obj->completed = idxd_completed;
 	dmadev->fp_obj->completed_status = idxd_completed_status;
 	dmadev->fp_obj->burst_capacity = idxd_burst_capacity;
+	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	idxd = dmadev->data->dev_private;
 	*idxd = *base_idxd; /* copy over the main fields already passed in */
@@ -618,8 +622,6 @@ idxd_dmadev_create(const char *name, struct rte_device *dev,
 	}
 	idxd->batch_idx_ring = (void *)&idxd->batch_comp_ring[idxd->max_batches+1];
 	idxd->batch_iova = rte_mem_virt2iova(idxd->batch_comp_ring);
-
-	dmadev->fp_obj->dev_private = idxd;
 
 	idxd->dmadev->state = RTE_DMA_DEV_READY;
 

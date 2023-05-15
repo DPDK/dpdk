@@ -35,6 +35,12 @@ Device Setup
 Intel\ |reg| DSA devices can use the IDXD kernel driver or DPDK-supported drivers,
 such as ``vfio-pci``. Both are supported by the IDXD PMD.
 
+.. note::
+
+   To use Intel\ |reg| DSA devices in DPDK multi-process applications,
+   the devices should be bound to the vfio-pci driver.
+   Multi-process is not supported when using the kernel IDXD driver.
+
 Intel\ |reg| DSA devices using IDXD kernel driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
