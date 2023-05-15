@@ -256,6 +256,12 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 				vf->link_speed = iavf_convert_link_speed(speed);
 			}
 			iavf_dev_link_update(vf->eth_dev, 0);
+			if (vf->link_up && !vf->vf_reset) {
+				iavf_dev_watchdog_disable(adapter);
+			} else {
+				if (!vf->link_up)
+					iavf_dev_watchdog_enable(adapter);
+			}
 			PMD_DRV_LOG(INFO, "Link status update:%s",
 					vf->link_up ? "up" : "down");
 			break;
@@ -433,9 +439,12 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 	switch (pf_msg->event) {
 	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
-		vf->vf_reset = true;
-		iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET,
-					      NULL, 0);
+		vf->link_up = false;
+		if (!vf->vf_reset) {
+			vf->vf_reset = true;
+			iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET,
+				NULL, 0);
+		}
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
@@ -449,6 +458,12 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 			vf->link_speed = iavf_convert_link_speed(speed);
 		}
 		iavf_dev_link_update(dev, 0);
+		if (vf->link_up && !vf->vf_reset) {
+			iavf_dev_watchdog_disable(adapter);
+		} else {
+			if (!vf->link_up)
+				iavf_dev_watchdog_enable(adapter);
+		}
 		iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_LSC, NULL, 0);
 		break;
 	case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:

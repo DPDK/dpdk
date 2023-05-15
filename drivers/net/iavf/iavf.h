@@ -31,7 +31,7 @@
 
 #define IAVF_NUM_MACADDR_MAX      64
 
-#define IAVF_DEV_WATCHDOG_PERIOD     0
+#define IAVF_DEV_WATCHDOG_PERIOD     2000 /* microseconds, set 0 to disable*/
 
 #define IAVF_DEFAULT_RX_PTHRESH      8
 #define IAVF_DEFAULT_RX_HTHRESH      8
@@ -304,6 +304,7 @@ struct iavf_devargs {
 	uint8_t proto_xtr_dflt;
 	uint8_t proto_xtr[IAVF_MAX_QUEUE_NUM];
 	uint16_t quanta_size;
+	uint32_t watchdog_period;
 };
 
 struct iavf_security_ctx;
@@ -498,4 +499,6 @@ int iavf_flow_unsub(struct iavf_adapter *adapter,
 		    struct iavf_fsub_conf *filter);
 int iavf_flow_sub_check(struct iavf_adapter *adapter,
 			struct iavf_fsub_conf *filter);
+void iavf_dev_watchdog_enable(struct iavf_adapter *adapter);
+void iavf_dev_watchdog_disable(struct iavf_adapter *adapter);
 #endif /* _IAVF_ETHDEV_H_ */
