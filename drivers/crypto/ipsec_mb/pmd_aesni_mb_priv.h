@@ -854,6 +854,8 @@ get_digest_byte_length(IMB_HASH_ALG algo)
 struct aesni_mb_session {
 	IMB_JOB template_job;
 	/*< Template job structure */
+	uint32_t session_id;
+	/*< IPSec MB session ID */
 	struct {
 		uint16_t offset;
 	} iv;

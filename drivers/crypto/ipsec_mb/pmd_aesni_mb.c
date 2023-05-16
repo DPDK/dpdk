@@ -845,6 +845,10 @@ aesni_mb_session_configure(IMB_MGR *mb_mgr,
 		}
 	}
 
+#if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
+	sess->session_id = imb_set_session(mb_mgr, &sess->template_job);
+#endif
+
 	return 0;
 }
 
@@ -976,6 +980,10 @@ aesni_mb_set_docsis_sec_session_parameters(
 		IPSEC_MB_LOG(ERR, "Invalid/unsupported cipher parameters");
 		goto error_exit;
 	}
+
+#if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
+	ipsec_sess->session_id = imb_set_session(mb_mgr, &ipsec_sess->template_job);
+#endif
 
 error_exit:
 	free_mb_mgr(mb_mgr);
@@ -1386,6 +1394,9 @@ set_gcm_job(IMB_MGR *mb_mgr, IMB_JOB *job, const uint8_t sgl,
 		job->msg_len_to_hash_in_bytes = 0;
 		job->msg_len_to_cipher_in_bytes = 0;
 		job->cipher_start_src_offset_in_bytes = 0;
+#if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
+		imb_set_session(mb_mgr, job);
+#endif
 	} else {
 		job->hash_start_src_offset_in_bytes =
 				op->sym->aead.data.offset;
@@ -1470,7 +1481,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	const IMB_CIPHER_MODE cipher_mode =
 			session->template_job.cipher_mode;
 
-	memcpy(job, &session->template_job, sizeof(IMB_JOB));
+#if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
+	if (job->session_id != session->session_id)
+#endif
+		memcpy(job, &session->template_job, sizeof(IMB_JOB));
 
 	if (!op->sym->m_dst) {
 		/* in-place operation */
@@ -1510,6 +1524,9 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			job->u.GCM.ctx = &qp_data->gcm_sgl_ctx;
 			job->cipher_mode = IMB_CIPHER_GCM_SGL;
 			job->hash_alg = IMB_AUTH_GCM_SGL;
+#if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
+			imb_set_session(mb_mgr, job);
+#endif
 		}
 		break;
 	case IMB_AUTH_AES_GMAC_128:
@@ -1534,6 +1551,9 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			job->u.CHACHA20_POLY1305.ctx = &qp_data->chacha_sgl_ctx;
 			job->cipher_mode = IMB_CIPHER_CHACHA20_POLY1305_SGL;
 			job->hash_alg = IMB_AUTH_CHACHA20_POLY1305_SGL;
+#if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
+			imb_set_session(mb_mgr, job);
+#endif
 		}
 		break;
 	default:
