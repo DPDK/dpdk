@@ -236,6 +236,18 @@ These are the build configuration options affecting QAT, and their default value
 Both QAT SYM PMD and QAT ASYM PMD have an external dependency on libcrypto, so are not
 built by default.
 
+Ubuntu
+
+.. code-block:: console
+
+   apt install libssl-dev
+
+RHEL
+
+.. code-block:: console
+
+   dnf install openssl-devel
+
 The QAT compressdev PMD has no external dependencies, so is built by default.
 
 The number of VFs per PF varies - see table below. If multiple QAT packages are
