@@ -1366,6 +1366,70 @@ multi_sgl_job(IMB_JOB *job, struct rte_crypto_op *op,
 	}
 	return 0;
 }
+
+static inline int
+set_gcm_job(IMB_MGR *mb_mgr, IMB_JOB *job, const uint8_t sgl,
+	struct aesni_mb_qp_data *qp_data,
+	struct rte_crypto_op *op, uint8_t *digest_idx,
+	const struct aesni_mb_session *session,
+	struct rte_mbuf *m_src, struct rte_mbuf *m_dst,
+	const int oop)
+{
+	const uint32_t m_offset = op->sym->aead.data.offset;
+
+	job->u.GCM.aad = op->sym->aead.aad.data;
+	if (sgl) {
+		job->u.GCM.ctx = &qp_data->gcm_sgl_ctx;
+		job->cipher_mode = IMB_CIPHER_GCM_SGL;
+		job->hash_alg = IMB_AUTH_GCM_SGL;
+		job->hash_start_src_offset_in_bytes = 0;
+		job->msg_len_to_hash_in_bytes = 0;
+		job->msg_len_to_cipher_in_bytes = 0;
+		job->cipher_start_src_offset_in_bytes = 0;
+	} else {
+		job->hash_start_src_offset_in_bytes =
+				op->sym->aead.data.offset;
+		job->msg_len_to_hash_in_bytes =
+				op->sym->aead.data.length;
+		job->cipher_start_src_offset_in_bytes =
+			op->sym->aead.data.offset;
+		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
+	}
+
+	if (session->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		job->auth_tag_output = qp_data->temp_digests[*digest_idx];
+		*digest_idx = (*digest_idx + 1) % IMB_MAX_JOBS;
+	} else {
+		job->auth_tag_output = op->sym->aead.digest.data;
+	}
+
+	job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->iv.offset);
+
+	/* Set user data to be crypto operation data struct */
+	job->user_data = op;
+
+	if (sgl) {
+		job->src = NULL;
+		job->dst = NULL;
+
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
+		if (m_src->nb_segs <= MAX_NUM_SEGS)
+			return single_sgl_job(job, op, oop,
+					m_offset, m_src, m_dst,
+					qp_data->sgl_segs);
+		else
+#endif
+			return multi_sgl_job(job, op, oop,
+					m_offset, m_src, m_dst, mb_mgr);
+	} else {
+		job->src = rte_pktmbuf_mtod(m_src, uint8_t *);
+		job->dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, m_offset);
+	}
+
+	return 0;
+}
+
 /**
  * Process a crypto operation and complete a IMB_JOB job structure for
  * submission to the multi buffer library for processing.
@@ -1403,10 +1467,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		return -1;
 	}
 
-	memcpy(job, &session->template_job, sizeof(IMB_JOB));
+	const IMB_CIPHER_MODE cipher_mode =
+			session->template_job.cipher_mode;
 
-	/* Set authentication parameters */
-	const int aead = is_aead_algo(job->hash_alg, job->cipher_mode);
+	memcpy(job, &session->template_job, sizeof(IMB_JOB));
 
 	if (!op->sym->m_dst) {
 		/* in-place operation */
@@ -1424,9 +1488,16 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 
 	if (m_src->nb_segs > 1 || m_dst->nb_segs > 1) {
 		sgl = 1;
-		if (!imb_lib_support_sgl_algo(job->cipher_mode))
+		if (!imb_lib_support_sgl_algo(cipher_mode))
 			lb_sgl = 1;
 	}
+
+	if (cipher_mode == IMB_CIPHER_GCM)
+		return set_gcm_job(mb_mgr, job, sgl, qp_data,
+				op, digest_idx, session, m_src, m_dst, oop);
+
+	/* Set authentication parameters */
+	const int aead = is_aead_algo(job->hash_alg, cipher_mode);
 
 	switch (job->hash_alg) {
 	case IMB_AUTH_AES_CCM:
@@ -1474,13 +1545,12 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	else
 		m_offset = op->sym->cipher.data.offset;
 
-	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3) {
+	if (cipher_mode == IMB_CIPHER_ZUC_EEA3)
 		m_offset >>= 3;
-	} else if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN) {
+	else if (cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN)
 		m_offset = 0;
-	} else if (job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN) {
+	else if (cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN)
 		m_offset = 0;
-	}
 
 	/* Set digest output location */
 	if (job->hash_alg != IMB_AUTH_NULL &&
@@ -1642,7 +1712,7 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->msg_len_to_cipher_in_bytes = op->sym->cipher.data.length;
 	}
 
-	if (job->cipher_mode == IMB_CIPHER_NULL && oop) {
+	if (cipher_mode == IMB_CIPHER_NULL && oop) {
 		memcpy(job->dst + job->cipher_start_src_offset_in_bytes,
 			job->src + job->cipher_start_src_offset_in_bytes,
 			job->msg_len_to_cipher_in_bytes);
