@@ -852,9 +852,6 @@ get_digest_byte_length(IMB_HASH_ALG algo)
 
 /** AES-NI multi-buffer private session structure */
 struct aesni_mb_session {
-	IMB_CIPHER_MODE cipher_mode;
-	IMB_CIPHER_DIRECTION cipher_direction;
-	IMB_HASH_ALG hash_alg;
 	IMB_CHAIN_ORDER chain_order;
 	/*  common job fields */
 	struct {
