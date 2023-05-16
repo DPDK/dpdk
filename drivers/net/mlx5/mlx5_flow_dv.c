@@ -9470,12 +9470,10 @@ flow_dv_translate_item_vxlan(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_item_vxlan *vxlan_m;
 	const struct rte_flow_item_vxlan *vxlan_v;
-	const struct rte_flow_item_vxlan *vxlan_vv = item->spec;
 	void *headers_v;
 	void *misc_v;
 	void *misc5_v;
 	uint32_t tunnel_v;
-	uint32_t *tunnel_header_v;
 	char *vni_v;
 	uint16_t dport;
 	int size;
@@ -9527,24 +9525,11 @@ flow_dv_translate_item_vxlan(struct rte_eth_dev *dev,
 			vni_v[i] = vxlan_m->hdr.vni[i] & vxlan_v->hdr.vni[i];
 		return;
 	}
-	tunnel_header_v = (uint32_t *)MLX5_ADDR_OF(fte_match_set_misc5,
-						   misc5_v,
-						   tunnel_header_1);
 	tunnel_v = (vxlan_v->hdr.vni[0] & vxlan_m->hdr.vni[0]) |
 		   (vxlan_v->hdr.vni[1] & vxlan_m->hdr.vni[1]) << 8 |
 		   (vxlan_v->hdr.vni[2] & vxlan_m->hdr.vni[2]) << 16;
-	*tunnel_header_v = tunnel_v;
-	if (key_type == MLX5_SET_MATCHER_SW_M) {
-		tunnel_v = (vxlan_vv->hdr.vni[0] & vxlan_m->hdr.vni[0]) |
-			   (vxlan_vv->hdr.vni[1] & vxlan_m->hdr.vni[1]) << 8 |
-			   (vxlan_vv->hdr.vni[2] & vxlan_m->hdr.vni[2]) << 16;
-		if (!tunnel_v)
-			*tunnel_header_v = 0x0;
-		if (vxlan_vv->hdr.rsvd1 & vxlan_m->hdr.rsvd1)
-			*tunnel_header_v |= vxlan_v->hdr.rsvd1 << 24;
-	} else {
-		*tunnel_header_v |= (vxlan_v->hdr.rsvd1 & vxlan_m->hdr.rsvd1) << 24;
-	}
+	tunnel_v |= (vxlan_v->hdr.rsvd1 & vxlan_m->hdr.rsvd1) << 24;
+	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_1, RTE_BE32(tunnel_v));
 }
 
 /**
