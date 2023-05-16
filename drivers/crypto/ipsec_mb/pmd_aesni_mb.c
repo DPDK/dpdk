@@ -1898,6 +1898,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 	struct rte_crypto_op *op = (struct rte_crypto_op *)job->user_data;
 	struct aesni_mb_session *sess = NULL;
 	uint8_t *linear_buf = NULL;
+	int sgl = 0;
 
 #ifdef AESNI_MB_DOCSIS_SEC_ENABLED
 	uint8_t is_docsis_sec = 0;
@@ -1923,6 +1924,8 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 					op->sym->m_dst->nb_segs > 1)) &&
 					!imb_lib_support_sgl_algo(job->cipher_mode)) {
 				linear_buf = (uint8_t *) job->user_data2;
+				sgl = 1;
+
 				post_process_sgl_linear(op, job, sess, linear_buf);
 			}
 
@@ -1952,7 +1955,8 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 		default:
 			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		}
-		rte_free(linear_buf);
+		if (sgl)
+			rte_free(linear_buf);
 	}
 
 	/* Free session if a session-less crypto op */
