@@ -285,6 +285,8 @@ struct mlx5_hca_attr {
 	uint32_t striding_rq:1;
 	uint32_t ext_stride_num_range:1;
 	uint32_t cqe_compression_128:1;
+	uint32_t multi_pkt_send_wqe:1;
+	uint32_t enhanced_multi_pkt_send_wqe:1;
 	uint32_t set_reg_c:8;
 	uint32_t nic_flow_table:1;
 	uint32_t modify_outer_ip_ecn:1;

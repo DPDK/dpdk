@@ -1298,6 +1298,12 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->rss_ind_tbl_cap = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, rss_ind_tbl_cap);
+	attr->multi_pkt_send_wqe = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, multi_pkt_send_wqe);
+	attr->enhanced_multi_pkt_send_wqe = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, enhanced_multi_pkt_send_wqe);
 	/* Query HCA attribute for ROCE. */
 	if (attr->roce) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,

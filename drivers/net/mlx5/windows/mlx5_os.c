@@ -173,7 +173,6 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	sh->dev_cap.max_qp = 1 << hca_attr->log_max_qp;
 	sh->dev_cap.max_qp_wr = 1 << hca_attr->log_max_qp_sz;
 	sh->dev_cap.dv_flow_en = 1;
-	sh->dev_cap.mps = MLX5_MPW_DISABLED;
 	DRV_LOG(DEBUG, "MPW isn't supported.");
 	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is no supported.");
 	sh->dev_cap.hw_csum = hca_attr->csum_cap;
@@ -224,6 +223,13 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 		DRV_LOG(DEBUG, "Maximum Rx indirection table size is %u",
 			sh->dev_cap.ind_table_max_size);
 	}
+	if (hca_attr->enhanced_multi_pkt_send_wqe)
+		sh->dev_cap.mps = MLX5_MPW_ENHANCED;
+	else if (hca_attr->multi_pkt_send_wqe &&
+		 sh->dev_cap.mps != MLX5_ARG_UNSET)
+		sh->dev_cap.mps = MLX5_MPW;
+	else
+		sh->dev_cap.mps = MLX5_MPW_DISABLED;
 	sh->dev_cap.swp = mlx5_get_supported_sw_parsing_offloads(hca_attr);
 	sh->dev_cap.tunnel_en = mlx5_get_supported_tunneling_offloads(hca_attr);
 	if (sh->dev_cap.tunnel_en) {
