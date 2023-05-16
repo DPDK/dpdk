@@ -2129,6 +2129,8 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
  *   Pointer to the rte_eth_dev structure.
  * @param[in] item
  *   Item specification.
+ * @param[in] tag_bitmap
+ *   Tag index bitmap.
  * @param[in] attr
  *   Attributes of flow that includes this item.
  * @param[out] error
@@ -2140,6 +2142,7 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 static int
 flow_dv_validate_item_tag(struct rte_eth_dev *dev,
 			  const struct rte_flow_item *item,
+			  uint32_t *tag_bitmap,
 			  const struct rte_flow_attr *attr __rte_unused,
 			  struct rte_flow_error *error)
 {
@@ -2183,6 +2186,12 @@ flow_dv_validate_item_tag(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return ret;
 	MLX5_ASSERT(ret != REG_NON);
+	if (*tag_bitmap & (1 << ret))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "Duplicated tag index");
+	*tag_bitmap |= 1 << ret;
 	return 0;
 }
 
@@ -7051,9 +7060,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	bool def_policy = false;
 	bool shared_count = false;
 	uint16_t udp_dport = 0;
-	uint32_t tag_id = 0;
+	uint32_t tag_id = 0, tag_bitmap = 0;
 	const struct rte_flow_action_age *non_shared_age = NULL;
 	const struct rte_flow_action_count *count = NULL;
+	const struct mlx5_rte_flow_item_tag *mlx5_tag;
 	struct mlx5_priv *act_priv = NULL;
 	int aso_after_sample = 0;
 
@@ -7371,7 +7381,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_LAYER_ICMP6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TAG:
-			ret = flow_dv_validate_item_tag(dev, items,
+			ret = flow_dv_validate_item_tag(dev, items, &tag_bitmap,
 							attr, error);
 			if (ret < 0)
 				return ret;
@@ -7381,6 +7391,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_ITEM_SQ;
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
+			mlx5_tag = (const struct mlx5_rte_flow_item_tag *)items->spec;
+			if (tag_bitmap & (1 << mlx5_tag->id))
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+							  items->spec,
+							  "Duplicated tag index");
+			tag_bitmap |= 1 << mlx5_tag->id;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP:
 			ret = flow_dv_validate_item_gtp(dev, items, item_flags,
