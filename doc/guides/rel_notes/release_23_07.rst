@@ -125,6 +125,10 @@ New Features
   which are being upstreamed:
   https://lore.kernel.org/all/20230419134329.346825-1-maxime.coquelin@redhat.com/
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Added support for multi-packet receive queue (MPRQ) on Windows.
+
 * **Added vmxnet3 version 7 support.**
 
   Added support for vmxnet3 version 7 which includes support

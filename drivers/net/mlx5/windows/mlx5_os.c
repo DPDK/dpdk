@@ -187,6 +187,32 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	if (sh->dev_cap.tso)
 		sh->dev_cap.tso_max_payload_sz = 1 << hca_attr->max_lso_cap;
 	DRV_LOG(DEBUG, "Counters are not supported.");
+	if (hca_attr->striding_rq) {
+		sh->dev_cap.mprq.enabled = 1;
+		sh->dev_cap.mprq.log_min_stride_size =
+			MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES;
+		sh->dev_cap.mprq.log_max_stride_size =
+			MLX5_MAX_SINGLE_STRIDE_LOG_NUM_BYTES;
+		if (hca_attr->ext_stride_num_range)
+			sh->dev_cap.mprq.log_min_stride_num =
+				MLX5_EXT_MIN_SINGLE_WQE_LOG_NUM_STRIDES;
+		else
+			sh->dev_cap.mprq.log_min_stride_num =
+				MLX5_MIN_SINGLE_WQE_LOG_NUM_STRIDES;
+		sh->dev_cap.mprq.log_max_stride_num =
+			MLX5_MAX_SINGLE_WQE_LOG_NUM_STRIDES;
+		DRV_LOG(DEBUG, "\tmin_single_stride_log_num_of_bytes: %u",
+			sh->dev_cap.mprq.log_min_stride_size);
+		DRV_LOG(DEBUG, "\tmax_single_stride_log_num_of_bytes: %u",
+			sh->dev_cap.mprq.log_max_stride_size);
+		DRV_LOG(DEBUG, "\tmin_single_wqe_log_num_of_strides: %u",
+			sh->dev_cap.mprq.log_min_stride_num);
+		DRV_LOG(DEBUG, "\tmax_single_wqe_log_num_of_strides: %u",
+			sh->dev_cap.mprq.log_max_stride_num);
+		DRV_LOG(DEBUG, "\tmin_stride_wqe_log_size: %u",
+			sh->dev_cap.mprq.log_min_stride_wqe_size);
+		DRV_LOG(DEBUG, "Device supports Multi-Packet RQ.");
+	}
 	if (hca_attr->rss_ind_tbl_cap) {
 		/*
 		 * DPDK doesn't support larger/variable indirection tables.
