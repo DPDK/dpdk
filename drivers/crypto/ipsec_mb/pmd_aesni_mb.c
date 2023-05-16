@@ -57,8 +57,7 @@ is_aead_algo(IMB_HASH_ALG hash_alg, IMB_CIPHER_MODE cipher_mode)
 {
 	return (hash_alg == IMB_AUTH_CHACHA20_POLY1305 ||
 		hash_alg == IMB_AUTH_AES_CCM ||
-		(hash_alg == IMB_AUTH_AES_GMAC &&
-		cipher_mode == IMB_CIPHER_GCM));
+		cipher_mode == IMB_CIPHER_GCM);
 }
 
 /** Set session authentication parameters */
@@ -155,7 +154,6 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		} else
 			sess->cipher.direction = IMB_DIR_DECRYPT;
 
-		sess->auth.algo = IMB_AUTH_AES_GMAC;
 		if (sess->auth.req_digest_len >
 			get_digest_byte_length(IMB_AUTH_AES_GMAC)) {
 			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
@@ -167,16 +165,19 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 
 		switch (xform->auth.key.length) {
 		case IMB_KEY_128_BYTES:
+			sess->auth.algo = IMB_AUTH_AES_GMAC_128;
 			IMB_AES128_GCM_PRE(mb_mgr, xform->auth.key.data,
 				&sess->cipher.gcm_key);
 			sess->cipher.key_length_in_bytes = IMB_KEY_128_BYTES;
 			break;
 		case IMB_KEY_192_BYTES:
+			sess->auth.algo = IMB_AUTH_AES_GMAC_192;
 			IMB_AES192_GCM_PRE(mb_mgr, xform->auth.key.data,
 				&sess->cipher.gcm_key);
 			sess->cipher.key_length_in_bytes = IMB_KEY_192_BYTES;
 			break;
 		case IMB_KEY_256_BYTES:
+			sess->auth.algo = IMB_AUTH_AES_GMAC_256;
 			IMB_AES256_GCM_PRE(mb_mgr, xform->auth.key.data,
 				&sess->cipher.gcm_key);
 			sess->cipher.key_length_in_bytes = IMB_KEY_256_BYTES;
@@ -1039,17 +1040,18 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 		break;
 
 	case IMB_AUTH_AES_GMAC:
-		if (session->cipher.mode == IMB_CIPHER_GCM) {
-			job->u.GCM.aad = aad->va;
-			job->u.GCM.aad_len_in_bytes = session->aead.aad_len;
-		} else {
-			/* For GMAC */
-			job->u.GCM.aad = buf;
-			job->u.GCM.aad_len_in_bytes = len;
-			job->cipher_mode = IMB_CIPHER_GCM;
-		}
+		job->u.GCM.aad = aad->va;
+		job->u.GCM.aad_len_in_bytes = session->aead.aad_len;
 		job->enc_keys = &session->cipher.gcm_key;
 		job->dec_keys = &session->cipher.gcm_key;
+		break;
+
+	case IMB_AUTH_AES_GMAC_128:
+	case IMB_AUTH_AES_GMAC_192:
+	case IMB_AUTH_AES_GMAC_256:
+		job->u.GMAC._key = &session->cipher.gcm_key;
+		job->u.GMAC._iv = iv->va;
+		job->u.GMAC.iv_len_in_bytes = session->iv.length;
 		break;
 
 	case IMB_AUTH_CHACHA20_POLY1305:
@@ -1091,16 +1093,10 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 	job->dst = (uint8_t *)buf + sofs.ofs.cipher.head;
 	job->cipher_start_src_offset_in_bytes = sofs.ofs.cipher.head;
 	job->hash_start_src_offset_in_bytes = sofs.ofs.auth.head;
-	if (job->hash_alg == IMB_AUTH_AES_GMAC &&
-			session->cipher.mode != IMB_CIPHER_GCM) {
-		job->msg_len_to_hash_in_bytes = 0;
-		job->msg_len_to_cipher_in_bytes = 0;
-	} else {
-		job->msg_len_to_hash_in_bytes = len - sofs.ofs.auth.head -
-			sofs.ofs.auth.tail;
-		job->msg_len_to_cipher_in_bytes = len - sofs.ofs.cipher.head -
-			sofs.ofs.cipher.tail;
-	}
+	job->msg_len_to_hash_in_bytes = len - sofs.ofs.auth.head -
+		sofs.ofs.auth.tail;
+	job->msg_len_to_cipher_in_bytes = len - sofs.ofs.cipher.head -
+		sofs.ofs.cipher.tail;
 
 	job->user_data = udata;
 }
@@ -1184,8 +1180,6 @@ sgl_linear_cipher_auth_len(IMB_JOB *job, uint64_t *auth_len)
 			job->hash_alg == IMB_AUTH_ZUC_EIA3_BITLEN)
 		*auth_len = (job->msg_len_to_hash_in_bits >> 3) +
 				job->hash_start_src_offset_in_bytes;
-	else if (job->hash_alg == IMB_AUTH_AES_GMAC)
-		*auth_len = job->u.GCM.aad_len_in_bytes;
 	else
 		*auth_len = job->msg_len_to_hash_in_bytes +
 				job->hash_start_src_offset_in_bytes;
@@ -1352,23 +1346,23 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		break;
 
 	case IMB_AUTH_AES_GMAC:
-		if (session->cipher.mode == IMB_CIPHER_GCM) {
-			job->u.GCM.aad = op->sym->aead.aad.data;
-			job->u.GCM.aad_len_in_bytes = session->aead.aad_len;
-			if (sgl) {
-				job->u.GCM.ctx = &qp_data->gcm_sgl_ctx;
-				job->cipher_mode = IMB_CIPHER_GCM_SGL;
-				job->hash_alg = IMB_AUTH_GCM_SGL;
-			}
-		} else {
-			/* For GMAC */
-			job->u.GCM.aad = rte_pktmbuf_mtod_offset(m_src,
-					uint8_t *, op->sym->auth.data.offset);
-			job->u.GCM.aad_len_in_bytes = op->sym->auth.data.length;
-			job->cipher_mode = IMB_CIPHER_GCM;
+		job->u.GCM.aad = op->sym->aead.aad.data;
+		job->u.GCM.aad_len_in_bytes = session->aead.aad_len;
+		if (sgl) {
+			job->u.GCM.ctx = &qp_data->gcm_sgl_ctx;
+			job->cipher_mode = IMB_CIPHER_GCM_SGL;
+			job->hash_alg = IMB_AUTH_GCM_SGL;
 		}
 		job->enc_keys = &session->cipher.gcm_key;
 		job->dec_keys = &session->cipher.gcm_key;
+		break;
+	case IMB_AUTH_AES_GMAC_128:
+	case IMB_AUTH_AES_GMAC_192:
+	case IMB_AUTH_AES_GMAC_256:
+		job->u.GMAC._key = &session->cipher.gcm_key;
+		job->u.GMAC._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+						session->auth_iv.offset);
+		job->u.GMAC.iv_len_in_bytes = session->auth_iv.length;
 		break;
 	case IMB_AUTH_ZUC_EIA3_BITLEN:
 	case IMB_AUTH_ZUC256_EIA3_BITLEN:
@@ -1472,18 +1466,20 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		break;
 
 	case IMB_AUTH_AES_GMAC:
-		if (session->cipher.mode == IMB_CIPHER_GCM) {
-			job->hash_start_src_offset_in_bytes =
-					op->sym->aead.data.offset;
-			job->msg_len_to_hash_in_bytes =
-					op->sym->aead.data.length;
-		} else { /* AES-GMAC only, only AAD used */
-			job->msg_len_to_hash_in_bytes = 0;
-			job->hash_start_src_offset_in_bytes = 0;
-		}
-
+		job->hash_start_src_offset_in_bytes =
+				op->sym->aead.data.offset;
+		job->msg_len_to_hash_in_bytes =
+				op->sym->aead.data.length;
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 				session->iv.offset);
+		break;
+	case IMB_AUTH_AES_GMAC_128:
+	case IMB_AUTH_AES_GMAC_192:
+	case IMB_AUTH_AES_GMAC_256:
+		job->hash_start_src_offset_in_bytes =
+				op->sym->auth.data.offset;
+		job->msg_len_to_hash_in_bytes =
+				op->sym->auth.data.length;
 		break;
 
 	case IMB_AUTH_GCM_SGL:
@@ -1567,15 +1563,9 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 					op->sym->cipher.data.length;
 		break;
 	case IMB_CIPHER_GCM:
-		if (session->cipher.mode == IMB_CIPHER_NULL) {
-			/* AES-GMAC only (only AAD used) */
-			job->msg_len_to_cipher_in_bytes = 0;
-			job->cipher_start_src_offset_in_bytes = 0;
-		} else {
-			job->cipher_start_src_offset_in_bytes =
-					op->sym->aead.data.offset;
-			job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
-		}
+		job->cipher_start_src_offset_in_bytes =
+				op->sym->aead.data.offset;
+		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
 		break;
 	case IMB_CIPHER_CCM:
 	case IMB_CIPHER_CHACHA20_POLY1305:
