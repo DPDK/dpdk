@@ -9,6 +9,10 @@ struct aesni_mb_op_buf_data {
 	uint32_t offset;
 };
 
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
+static IMB_JOB *jobs[IMB_MAX_BURST_SIZE] = {NULL};
+#endif
+
 /**
  * Calculate the authentication pre-computes
  *
@@ -1884,6 +1888,168 @@ post_process_mb_sync_job(IMB_JOB *job)
 	st[0] = (job->status == IMB_STATUS_COMPLETED) ? 0 : EBADMSG;
 }
 
+static inline uint32_t
+handle_completed_sync_jobs(IMB_JOB *job, IMB_MGR *mb_mgr)
+{
+	uint32_t i;
+
+	for (i = 0; job != NULL; i++, job = IMB_GET_COMPLETED_JOB(mb_mgr))
+		post_process_mb_sync_job(job);
+
+	return i;
+}
+
+static inline uint32_t
+flush_mb_sync_mgr(IMB_MGR *mb_mgr)
+{
+	IMB_JOB *job;
+
+	job = IMB_FLUSH_JOB(mb_mgr);
+	return handle_completed_sync_jobs(job, mb_mgr);
+}
+
+static inline IMB_JOB *
+set_job_null_op(IMB_JOB *job, struct rte_crypto_op *op)
+{
+	job->chain_order = IMB_ORDER_HASH_CIPHER;
+	job->cipher_mode = IMB_CIPHER_NULL;
+	job->hash_alg = IMB_AUTH_NULL;
+	job->cipher_direction = IMB_DIR_DECRYPT;
+
+	/* Set user data to be crypto operation data struct */
+	job->user_data = op;
+
+	return job;
+}
+
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
+static uint16_t
+aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
+{
+	struct ipsec_mb_qp *qp = queue_pair;
+	IMB_MGR *mb_mgr = qp->mb_mgr;
+	struct rte_crypto_op *op;
+	struct rte_crypto_op *deqd_ops[IMB_MAX_BURST_SIZE];
+	IMB_JOB *job;
+	int retval, processed_jobs = 0;
+	uint16_t i, nb_jobs;
+
+	if (unlikely(nb_ops == 0 || mb_mgr == NULL))
+		return 0;
+
+	uint8_t digest_idx = qp->digest_idx;
+	uint16_t burst_sz = (nb_ops > IMB_MAX_BURST_SIZE) ?
+		IMB_MAX_BURST_SIZE : nb_ops;
+
+	/*
+	 * If nb_ops is greater than the max supported
+	 * ipsec_mb burst size, then process in bursts of
+	 * IMB_MAX_BURST_SIZE until all operations are submitted
+	 */
+	while (nb_ops) {
+		uint16_t nb_submit_ops;
+		uint16_t n = (nb_ops / burst_sz) ?
+			burst_sz : nb_ops;
+
+		while (unlikely((IMB_GET_NEXT_BURST(mb_mgr, n, jobs)) < n)) {
+			/*
+			 * Not enough free jobs in the queue
+			 * Flush n jobs until enough jobs available
+			 */
+			nb_jobs = IMB_FLUSH_BURST(mb_mgr, n, jobs);
+			for (i = 0; i < nb_jobs; i++) {
+				job = jobs[i];
+
+				op = post_process_mb_job(qp, job);
+				if (op) {
+					ops[processed_jobs++] = op;
+					qp->stats.dequeued_count++;
+				} else {
+					qp->stats.dequeue_err_count++;
+					break;
+				}
+			}
+		}
+
+		/*
+		 * Get the next operations to process from ingress queue.
+		 * There is no need to return the job to the IMB_MGR
+		 * if there are no more operations to process, since
+		 * the IMB_MGR can use that pointer again in next
+		 * get_next calls.
+		 */
+		nb_submit_ops = rte_ring_dequeue_burst(qp->ingress_queue,
+						(void **)deqd_ops, n, NULL);
+		for (i = 0; i < nb_submit_ops; i++) {
+			job = jobs[i];
+			op = deqd_ops[i];
+
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+			if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
+				retval = set_sec_mb_job_params(job, qp, op,
+							       &digest_idx);
+			else
+#endif
+				retval = set_mb_job_params(job, qp, op,
+							   &digest_idx, mb_mgr);
+
+			if (unlikely(retval != 0)) {
+				qp->stats.dequeue_err_count++;
+				set_job_null_op(job, op);
+			}
+		}
+
+		/* Submit jobs to multi-buffer for processing */
+#ifdef RTE_LIBRTE_PMD_AESNI_MB_DEBUG
+		int err = 0;
+
+		nb_jobs = IMB_SUBMIT_BURST(mb_mgr, nb_submit_ops, jobs);
+		err = imb_get_errno(mb_mgr);
+		if (err)
+			IPSEC_MB_LOG(ERR, "%s", imb_get_strerror(err));
+#else
+		nb_jobs = IMB_SUBMIT_BURST_NOCHECK(mb_mgr,
+						   nb_submit_ops, jobs);
+#endif
+		for (i = 0; i < nb_jobs; i++) {
+			job = jobs[i];
+
+			op = post_process_mb_job(qp, job);
+			if (op) {
+				ops[processed_jobs++] = op;
+				qp->stats.dequeued_count++;
+			} else {
+				qp->stats.dequeue_err_count++;
+				break;
+			}
+		}
+
+		qp->digest_idx = digest_idx;
+
+		if (processed_jobs < 1) {
+			nb_jobs = IMB_FLUSH_BURST(mb_mgr, n, jobs);
+
+			for (i = 0; i < nb_jobs; i++) {
+				job = jobs[i];
+
+				op = post_process_mb_job(qp, job);
+				if (op) {
+					ops[processed_jobs++] = op;
+					qp->stats.dequeued_count++;
+				} else {
+					qp->stats.dequeue_err_count++;
+					break;
+				}
+			}
+		}
+		nb_ops -= n;
+	}
+
+	return processed_jobs;
+}
+#else
+
 /**
  * Process a completed IMB_JOB job and keep processing jobs until
  * get_completed_job return NULL
@@ -1924,26 +2090,6 @@ handle_completed_jobs(struct ipsec_mb_qp *qp, IMB_MGR *mb_mgr,
 	return processed_jobs;
 }
 
-static inline uint32_t
-handle_completed_sync_jobs(IMB_JOB *job, IMB_MGR *mb_mgr)
-{
-	uint32_t i;
-
-	for (i = 0; job != NULL; i++, job = IMB_GET_COMPLETED_JOB(mb_mgr))
-		post_process_mb_sync_job(job);
-
-	return i;
-}
-
-static inline uint32_t
-flush_mb_sync_mgr(IMB_MGR *mb_mgr)
-{
-	IMB_JOB *job;
-
-	job = IMB_FLUSH_JOB(mb_mgr);
-	return handle_completed_sync_jobs(job, mb_mgr);
-}
-
 static inline uint16_t
 flush_mb_mgr(struct ipsec_mb_qp *qp, IMB_MGR *mb_mgr,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
@@ -1958,20 +2104,6 @@ flush_mb_mgr(struct ipsec_mb_qp *qp, IMB_MGR *mb_mgr,
 				&ops[processed_ops], nb_ops - processed_ops);
 
 	return processed_ops;
-}
-
-static inline IMB_JOB *
-set_job_null_op(IMB_JOB *job, struct rte_crypto_op *op)
-{
-	job->chain_order = IMB_ORDER_HASH_CIPHER;
-	job->cipher_mode = IMB_CIPHER_NULL;
-	job->hash_alg = IMB_AUTH_NULL;
-	job->cipher_direction = IMB_DIR_DECRYPT;
-
-	/* Set user data to be crypto operation data struct */
-	job->user_data = op;
-
-	return job;
 }
 
 static uint16_t
@@ -2054,7 +2186,7 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 	return processed_jobs;
 }
-
+#endif
 static inline int
 check_crypto_sgl(union rte_crypto_sym_ofs so, const struct rte_crypto_sgl *sgl)
 {
