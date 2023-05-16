@@ -4621,8 +4621,9 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	int i;
+	int i, tag_idx;
 	bool items_end = false;
+	uint32_t tag_bitmap = 0;
 
 	if (!attr->ingress && !attr->egress && !attr->transfer)
 		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR, NULL,
@@ -4664,16 +4665,26 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		switch (type) {
 		case RTE_FLOW_ITEM_TYPE_TAG:
 		{
-			int reg;
 			const struct rte_flow_item_tag *tag =
 				(const struct rte_flow_item_tag *)items[i].spec;
 
-			reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, tag->index);
-			if (reg == REG_NON)
+			if (tag == NULL)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+							  NULL,
+							  "Tag spec is NULL");
+			tag_idx = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, tag->index);
+			if (tag_idx == REG_NON)
 				return rte_flow_error_set(error, EINVAL,
 							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 							  NULL,
 							  "Unsupported tag index");
+			if (tag_bitmap & (1 << tag_idx))
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM,
+							  NULL,
+							  "Duplicated tag index");
+			tag_bitmap |= 1 << tag_idx;
 			break;
 		}
 		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
@@ -4687,6 +4698,12 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 							  NULL,
 							  "Unsupported internal tag index");
+			if (tag_bitmap & (1 << tag->index))
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM,
+							  NULL,
+							  "Duplicated tag index");
+			tag_bitmap |= 1 << tag->index;
 			break;
 		}
 		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
