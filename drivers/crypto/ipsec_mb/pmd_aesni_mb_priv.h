@@ -852,14 +852,12 @@ get_digest_byte_length(IMB_HASH_ALG algo)
 
 /** AES-NI multi-buffer private session structure */
 struct aesni_mb_session {
-	IMB_CHAIN_ORDER chain_order;
-	/*  common job fields */
+	IMB_JOB template_job;
+	/*< Template job structure */
 	struct {
-		uint16_t length;
 		uint16_t offset;
 	} iv;
 	struct {
-		uint16_t length;
 		uint16_t offset;
 	} auth_iv;
 	/* *< IV parameters
@@ -868,13 +866,6 @@ struct aesni_mb_session {
 	/* * Cipher Parameters
 	 */
 	struct {
-		/* * Cipher direction - encrypt / decrypt */
-		IMB_CIPHER_DIRECTION direction;
-		/* * Cipher mode - CBC / Counter */
-		IMB_CIPHER_MODE mode;
-
-		uint64_t key_length_in_bytes;
-
 		union {
 			struct {
 				uint32_t encode[60] __rte_aligned(16);
@@ -907,7 +898,6 @@ struct aesni_mb_session {
 
 	/* *< Authentication Parameters */
 	struct {
-		IMB_HASH_ALG algo; /* *< Authentication Algorithm */
 		enum rte_crypto_auth_operation operation;
 		/* *< auth operation generate or verify */
 		union {
@@ -948,16 +938,10 @@ struct aesni_mb_session {
 			kasumi_key_sched_t pKeySched_kasumi_auth;
 			/* *< KASUMI scheduled authentication key */
 		};
-		/* * Generated digest size by the Multi-buffer library */
-		uint16_t gen_digest_len;
 		/* * Requested digest size from Cryptodev */
 		uint16_t req_digest_len;
 
 	} auth;
-	struct {
-		/* * AAD data length */
-		uint16_t aad_len;
-	} aead;
 } __rte_cache_aligned;
 
 typedef void (*hash_one_block_t)(const void *data, void *digest);

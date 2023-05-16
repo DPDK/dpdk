@@ -76,7 +76,7 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 	uint32_t auth_precompute = 1;
 
 	if (xform == NULL) {
-		sess->auth.algo = IMB_AUTH_NULL;
+		sess->template_job.hash_alg = IMB_AUTH_NULL;
 		return 0;
 	}
 
@@ -87,7 +87,6 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 
 	/* Set IV parameters */
 	sess->auth_iv.offset = xform->auth.iv.offset;
-	sess->auth_iv.length = xform->auth.iv.length;
 
 	/* Set the request digest size */
 	sess->auth.req_digest_len = xform->auth.digest_length;
@@ -97,13 +96,13 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 
 	/* Set Authentication Parameters */
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_NULL) {
-		sess->auth.algo = IMB_AUTH_NULL;
-		sess->auth.gen_digest_len = 0;
+		sess->template_job.hash_alg = IMB_AUTH_NULL;
+		sess->template_job.auth_tag_output_len_in_bytes = 0;
 		return 0;
 	}
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
-		sess->auth.algo = IMB_AUTH_AES_XCBC;
+		sess->template_job.hash_alg = IMB_AUTH_AES_XCBC;
 
 		uint16_t xcbc_mac_digest_len =
 			get_truncated_digest_byte_length(IMB_AUTH_AES_XCBC);
@@ -111,18 +110,21 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
 			return -EINVAL;
 		}
-		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
 
 		IMB_AES_XCBC_KEYEXP(mb_mgr, xform->auth.key.data,
 				sess->auth.xcbc.k1_expanded,
 				sess->auth.xcbc.k2, sess->auth.xcbc.k3);
+		sess->template_job.u.XCBC._k1_expanded = sess->auth.xcbc.k1_expanded;
+		sess->template_job.u.XCBC._k2 = sess->auth.xcbc.k2;
+		sess->template_job.u.XCBC._k3 = sess->auth.xcbc.k3;
 		return 0;
 	}
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_CMAC) {
 		uint32_t dust[4*15];
 
-		sess->auth.algo = IMB_AUTH_AES_CMAC;
+		sess->template_job.hash_alg = IMB_AUTH_AES_CMAC;
 
 		uint16_t cmac_digest_len =
 				get_digest_byte_length(IMB_AUTH_AES_CMAC);
@@ -140,70 +142,74 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		 * the requested number of bytes.
 		 */
 		if (sess->auth.req_digest_len < 4)
-			sess->auth.gen_digest_len = cmac_digest_len;
+			sess->template_job.auth_tag_output_len_in_bytes = cmac_digest_len;
 		else
-			sess->auth.gen_digest_len = sess->auth.req_digest_len;
+			sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
 
 		IMB_AES_KEYEXP_128(mb_mgr, xform->auth.key.data,
 				sess->auth.cmac.expkey, dust);
 		IMB_AES_CMAC_SUBKEY_GEN_128(mb_mgr, sess->auth.cmac.expkey,
 				sess->auth.cmac.skey1, sess->auth.cmac.skey2);
+		sess->template_job.u.CMAC._key_expanded = sess->auth.cmac.expkey;
+		sess->template_job.u.CMAC._skey1 = sess->auth.cmac.skey1;
+		sess->template_job.u.CMAC._skey2 = sess->auth.cmac.skey2;
 		return 0;
 	}
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
 		if (xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE) {
-			sess->cipher.direction = IMB_DIR_ENCRYPT;
-			sess->chain_order = IMB_ORDER_CIPHER_HASH;
+			sess->template_job.cipher_direction = IMB_DIR_ENCRYPT;
+			sess->template_job.chain_order = IMB_ORDER_CIPHER_HASH;
 		} else
-			sess->cipher.direction = IMB_DIR_DECRYPT;
+			sess->template_job.cipher_direction = IMB_DIR_DECRYPT;
 
 		if (sess->auth.req_digest_len >
 			get_digest_byte_length(IMB_AUTH_AES_GMAC)) {
 			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
 			return -EINVAL;
 		}
-		sess->auth.gen_digest_len = sess->auth.req_digest_len;
-		sess->iv.length = xform->auth.iv.length;
+		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
+		sess->template_job.u.GMAC.iv_len_in_bytes = xform->auth.iv.length;
 		sess->iv.offset = xform->auth.iv.offset;
 
 		switch (xform->auth.key.length) {
 		case IMB_KEY_128_BYTES:
-			sess->auth.algo = IMB_AUTH_AES_GMAC_128;
+			sess->template_job.hash_alg = IMB_AUTH_AES_GMAC_128;
 			IMB_AES128_GCM_PRE(mb_mgr, xform->auth.key.data,
 				&sess->cipher.gcm_key);
-			sess->cipher.key_length_in_bytes = IMB_KEY_128_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_128_BYTES;
 			break;
 		case IMB_KEY_192_BYTES:
-			sess->auth.algo = IMB_AUTH_AES_GMAC_192;
+			sess->template_job.hash_alg = IMB_AUTH_AES_GMAC_192;
 			IMB_AES192_GCM_PRE(mb_mgr, xform->auth.key.data,
 				&sess->cipher.gcm_key);
-			sess->cipher.key_length_in_bytes = IMB_KEY_192_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_192_BYTES;
 			break;
 		case IMB_KEY_256_BYTES:
-			sess->auth.algo = IMB_AUTH_AES_GMAC_256;
+			sess->template_job.hash_alg = IMB_AUTH_AES_GMAC_256;
 			IMB_AES256_GCM_PRE(mb_mgr, xform->auth.key.data,
 				&sess->cipher.gcm_key);
-			sess->cipher.key_length_in_bytes = IMB_KEY_256_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_256_BYTES;
 			break;
 		default:
 			IPSEC_MB_LOG(ERR, "Invalid authentication key length\n");
 			return -EINVAL;
 		}
+		sess->template_job.u.GMAC._key = &sess->cipher.gcm_key;
 
 		return 0;
 	}
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3) {
 		if (xform->auth.key.length == 16) {
-			sess->auth.algo = IMB_AUTH_ZUC_EIA3_BITLEN;
+			sess->template_job.hash_alg = IMB_AUTH_ZUC_EIA3_BITLEN;
 
 			if (sess->auth.req_digest_len != 4) {
 				IPSEC_MB_LOG(ERR, "Invalid digest size\n");
 				return -EINVAL;
 			}
 		} else if (xform->auth.key.length == 32) {
-			sess->auth.algo = IMB_AUTH_ZUC256_EIA3_BITLEN;
+			sess->template_job.hash_alg = IMB_AUTH_ZUC256_EIA3_BITLEN;
 #if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
 			if (sess->auth.req_digest_len != 4 &&
 					sess->auth.req_digest_len != 8 &&
@@ -219,13 +225,14 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 			return -EINVAL;
 		}
 
-		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
 
 		memcpy(sess->auth.zuc_auth_key, xform->auth.key.data,
 			xform->auth.key.length);
+		sess->template_job.u.ZUC_EIA3._key = sess->auth.zuc_auth_key;
 		return 0;
 	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
-		sess->auth.algo = IMB_AUTH_SNOW3G_UIA2_BITLEN;
+		sess->template_job.hash_alg = IMB_AUTH_SNOW3G_UIA2_BITLEN;
 		uint16_t snow3g_uia2_digest_len =
 			get_truncated_digest_byte_length(
 						IMB_AUTH_SNOW3G_UIA2_BITLEN);
@@ -233,33 +240,37 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
 			return -EINVAL;
 		}
-		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
 
 		IMB_SNOW3G_INIT_KEY_SCHED(mb_mgr, xform->auth.key.data,
 					&sess->auth.pKeySched_snow3g_auth);
+		sess->template_job.u.SNOW3G_UIA2._key = (void *)
+			&sess->auth.pKeySched_snow3g_auth;
 		return 0;
 	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_KASUMI_F9) {
-		sess->auth.algo = IMB_AUTH_KASUMI_UIA1;
+		sess->template_job.hash_alg = IMB_AUTH_KASUMI_UIA1;
 		uint16_t kasumi_f9_digest_len =
 			get_truncated_digest_byte_length(IMB_AUTH_KASUMI_UIA1);
 		if (sess->auth.req_digest_len != kasumi_f9_digest_len) {
 			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
 			return -EINVAL;
 		}
-		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
 
 		IMB_KASUMI_INIT_F9_KEY_SCHED(mb_mgr, xform->auth.key.data,
 					&sess->auth.pKeySched_kasumi_auth);
+		sess->template_job.u.KASUMI_UIA1._key = (void *)
+			&sess->auth.pKeySched_kasumi_auth;
 		return 0;
 	}
 
 	switch (xform->auth.algo) {
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
-		sess->auth.algo = IMB_AUTH_MD5;
+		sess->template_job.hash_alg = IMB_AUTH_MD5;
 		hash_oneblock_fn = mb_mgr->md5_one_block;
 		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
-		sess->auth.algo = IMB_AUTH_HMAC_SHA_1;
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_1;
 		hash_oneblock_fn = mb_mgr->sha1_one_block;
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_1)) {
@@ -271,11 +282,11 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA1:
-		sess->auth.algo = IMB_AUTH_SHA_1;
+		sess->template_job.hash_alg = IMB_AUTH_SHA_1;
 		auth_precompute = 0;
 		break;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
-		sess->auth.algo = IMB_AUTH_HMAC_SHA_224;
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_224;
 		hash_oneblock_fn = mb_mgr->sha224_one_block;
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_224)) {
@@ -287,11 +298,11 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA224:
-		sess->auth.algo = IMB_AUTH_SHA_224;
+		sess->template_job.hash_alg = IMB_AUTH_SHA_224;
 		auth_precompute = 0;
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
-		sess->auth.algo = IMB_AUTH_HMAC_SHA_256;
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_256;
 		hash_oneblock_fn = mb_mgr->sha256_one_block;
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_256)) {
@@ -303,11 +314,11 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA256:
-		sess->auth.algo = IMB_AUTH_SHA_256;
+		sess->template_job.hash_alg = IMB_AUTH_SHA_256;
 		auth_precompute = 0;
 		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
-		sess->auth.algo = IMB_AUTH_HMAC_SHA_384;
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_384;
 		hash_oneblock_fn = mb_mgr->sha384_one_block;
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_384)) {
@@ -319,11 +330,11 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA384:
-		sess->auth.algo = IMB_AUTH_SHA_384;
+		sess->template_job.hash_alg = IMB_AUTH_SHA_384;
 		auth_precompute = 0;
 		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
-		sess->auth.algo = IMB_AUTH_HMAC_SHA_512;
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_512;
 		hash_oneblock_fn = mb_mgr->sha512_one_block;
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_512)) {
@@ -335,7 +346,7 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA512:
-		sess->auth.algo = IMB_AUTH_SHA_512;
+		sess->template_job.hash_alg = IMB_AUTH_SHA_512;
 		auth_precompute = 0;
 		break;
 	default:
@@ -344,9 +355,9 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		return -ENOTSUP;
 	}
 	uint16_t trunc_digest_size =
-			get_truncated_digest_byte_length(sess->auth.algo);
+			get_truncated_digest_byte_length(sess->template_job.hash_alg);
 	uint16_t full_digest_size =
-			get_digest_byte_length(sess->auth.algo);
+			get_digest_byte_length(sess->template_job.hash_alg);
 
 	if (sess->auth.req_digest_len > full_digest_size ||
 			sess->auth.req_digest_len == 0) {
@@ -356,9 +367,9 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 
 	if (sess->auth.req_digest_len != trunc_digest_size &&
 			sess->auth.req_digest_len != full_digest_size)
-		sess->auth.gen_digest_len = full_digest_size;
+		sess->template_job.auth_tag_output_len_in_bytes = full_digest_size;
 	else
-		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
 
 	/* Plain SHA does not require precompute key */
 	if (auth_precompute == 0)
@@ -370,14 +381,18 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 			sess->auth.pads.inner, sess->auth.pads.outer,
 			hashed_key,
 			xform->auth.key.length,
-			get_auth_algo_blocksize(sess->auth.algo));
+			get_auth_algo_blocksize(sess->template_job.hash_alg));
 	} else {
 		calculate_auth_precomputes(hash_oneblock_fn,
 			sess->auth.pads.inner, sess->auth.pads.outer,
 			xform->auth.key.data,
 			xform->auth.key.length,
-			get_auth_algo_blocksize(sess->auth.algo));
+			get_auth_algo_blocksize(sess->template_job.hash_alg));
 	}
+	sess->template_job.u.HMAC._hashed_auth_key_xor_ipad =
+		sess->auth.pads.inner;
+	sess->template_job.u.HMAC._hashed_auth_key_xor_opad =
+		sess->auth.pads.outer;
 
 	return 0;
 }
@@ -396,7 +411,7 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 	uint8_t is_kasumi = 0;
 
 	if (xform == NULL) {
-		sess->cipher.mode = IMB_CIPHER_NULL;
+		sess->template_job.cipher_mode = IMB_CIPHER_NULL;
 		return 0;
 	}
 
@@ -408,10 +423,10 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 	/* Select cipher direction */
 	switch (xform->cipher.op) {
 	case RTE_CRYPTO_CIPHER_OP_ENCRYPT:
-		sess->cipher.direction = IMB_DIR_ENCRYPT;
+		sess->template_job.cipher_direction = IMB_DIR_ENCRYPT;
 		break;
 	case RTE_CRYPTO_CIPHER_OP_DECRYPT:
-		sess->cipher.direction = IMB_DIR_DECRYPT;
+		sess->template_job.cipher_direction = IMB_DIR_DECRYPT;
 		break;
 	default:
 		IPSEC_MB_LOG(ERR, "Invalid cipher operation parameter");
@@ -421,48 +436,48 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 	/* Select cipher mode */
 	switch (xform->cipher.algo) {
 	case RTE_CRYPTO_CIPHER_AES_CBC:
-		sess->cipher.mode = IMB_CIPHER_CBC;
+		sess->template_job.cipher_mode = IMB_CIPHER_CBC;
 		is_aes = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
-		sess->cipher.mode = IMB_CIPHER_CNTR;
+		sess->template_job.cipher_mode = IMB_CIPHER_CNTR;
 		is_aes = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_DOCSISBPI:
-		sess->cipher.mode = IMB_CIPHER_DOCSIS_SEC_BPI;
+		sess->template_job.cipher_mode = IMB_CIPHER_DOCSIS_SEC_BPI;
 		is_docsis = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_DES_CBC:
-		sess->cipher.mode = IMB_CIPHER_DES;
+		sess->template_job.cipher_mode = IMB_CIPHER_DES;
 		break;
 	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
-		sess->cipher.mode = IMB_CIPHER_DOCSIS_DES;
+		sess->template_job.cipher_mode = IMB_CIPHER_DOCSIS_DES;
 		break;
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
-		sess->cipher.mode = IMB_CIPHER_DES3;
+		sess->template_job.cipher_mode = IMB_CIPHER_DES3;
 		is_3DES = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_ECB:
-		sess->cipher.mode = IMB_CIPHER_ECB;
+		sess->template_job.cipher_mode = IMB_CIPHER_ECB;
 		is_aes = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
-		sess->cipher.mode = IMB_CIPHER_ZUC_EEA3;
+		sess->template_job.cipher_mode = IMB_CIPHER_ZUC_EEA3;
 		is_zuc = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
-		sess->cipher.mode = IMB_CIPHER_SNOW3G_UEA2_BITLEN;
+		sess->template_job.cipher_mode = IMB_CIPHER_SNOW3G_UEA2_BITLEN;
 		is_snow3g = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
-		sess->cipher.mode = IMB_CIPHER_KASUMI_UEA1_BITLEN;
+		sess->template_job.cipher_mode = IMB_CIPHER_KASUMI_UEA1_BITLEN;
 		is_kasumi = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_NULL:
-		sess->cipher.mode = IMB_CIPHER_NULL;
-		sess->cipher.key_length_in_bytes = 0;
+		sess->template_job.cipher_mode = IMB_CIPHER_NULL;
+		sess->template_job.key_len_in_bytes = 0;
 		sess->iv.offset = xform->cipher.iv.offset;
-		sess->iv.length = xform->cipher.iv.length;
+		sess->template_job.iv_len_in_bytes = xform->cipher.iv.length;
 		return 0;
 	default:
 		IPSEC_MB_LOG(ERR, "Unsupported cipher mode parameter");
@@ -471,25 +486,25 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 
 	/* Set IV parameters */
 	sess->iv.offset = xform->cipher.iv.offset;
-	sess->iv.length = xform->cipher.iv.length;
+	sess->template_job.iv_len_in_bytes = xform->cipher.iv.length;
 
 	/* Check key length and choose key expansion function for AES */
 	if (is_aes) {
 		switch (xform->cipher.key.length) {
 		case IMB_KEY_128_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_128_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_128_BYTES;
 			IMB_AES_KEYEXP_128(mb_mgr, xform->cipher.key.data,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
 			break;
 		case IMB_KEY_192_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_192_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_192_BYTES;
 			IMB_AES_KEYEXP_192(mb_mgr, xform->cipher.key.data,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
 			break;
 		case IMB_KEY_256_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_256_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_256_BYTES;
 			IMB_AES_KEYEXP_256(mb_mgr, xform->cipher.key.data,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
@@ -498,16 +513,19 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
+
+		sess->template_job.enc_keys = sess->cipher.expanded_aes_keys.encode;
+		sess->template_job.dec_keys = sess->cipher.expanded_aes_keys.decode;
 	} else if (is_docsis) {
 		switch (xform->cipher.key.length) {
 		case IMB_KEY_128_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_128_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_128_BYTES;
 			IMB_AES_KEYEXP_128(mb_mgr, xform->cipher.key.data,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
 			break;
 		case IMB_KEY_256_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_256_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_256_BYTES;
 			IMB_AES_KEYEXP_256(mb_mgr, xform->cipher.key.data,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
@@ -516,6 +534,8 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
+		sess->template_job.enc_keys = sess->cipher.expanded_aes_keys.encode;
+		sess->template_job.dec_keys = sess->cipher.expanded_aes_keys.decode;
 	} else if (is_3DES) {
 		uint64_t *keys[3] = {sess->cipher.exp_3des_keys.key[0],
 				sess->cipher.exp_3des_keys.key[1],
@@ -559,38 +579,46 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 			return -EINVAL;
 		}
 
-		sess->cipher.key_length_in_bytes = 24;
+		sess->template_job.enc_keys = sess->cipher.exp_3des_keys.ks_ptr;
+		sess->template_job.dec_keys = sess->cipher.exp_3des_keys.ks_ptr;
+		sess->template_job.key_len_in_bytes = 24;
 	} else if (is_zuc) {
 		if (xform->cipher.key.length != 16 &&
 				xform->cipher.key.length != 32) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
-		sess->cipher.key_length_in_bytes = xform->cipher.key.length;
+		sess->template_job.key_len_in_bytes = xform->cipher.key.length;
 		memcpy(sess->cipher.zuc_cipher_key, xform->cipher.key.data,
 			xform->cipher.key.length);
+		sess->template_job.enc_keys = sess->cipher.zuc_cipher_key;
+		sess->template_job.dec_keys = sess->cipher.zuc_cipher_key;
 	} else if (is_snow3g) {
 		if (xform->cipher.key.length != 16) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
-		sess->cipher.key_length_in_bytes = 16;
+		sess->template_job.key_len_in_bytes = 16;
 		IMB_SNOW3G_INIT_KEY_SCHED(mb_mgr, xform->cipher.key.data,
 					&sess->cipher.pKeySched_snow3g_cipher);
+		sess->template_job.enc_keys = &sess->cipher.pKeySched_snow3g_cipher;
+		sess->template_job.dec_keys = &sess->cipher.pKeySched_snow3g_cipher;
 	} else if (is_kasumi) {
 		if (xform->cipher.key.length != 16) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
-		sess->cipher.key_length_in_bytes = 16;
+		sess->template_job.key_len_in_bytes = 16;
 		IMB_KASUMI_INIT_F8_KEY_SCHED(mb_mgr, xform->cipher.key.data,
 					&sess->cipher.pKeySched_kasumi_cipher);
+		sess->template_job.enc_keys = &sess->cipher.pKeySched_kasumi_cipher;
+		sess->template_job.dec_keys = &sess->cipher.pKeySched_kasumi_cipher;
 	} else {
 		if (xform->cipher.key.length != 8) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
-		sess->cipher.key_length_in_bytes = 8;
+		sess->template_job.key_len_in_bytes = 8;
 
 		IMB_DES_KEYSCHED(mb_mgr,
 			(uint64_t *)sess->cipher.expanded_aes_keys.encode,
@@ -598,6 +626,8 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 		IMB_DES_KEYSCHED(mb_mgr,
 			(uint64_t *)sess->cipher.expanded_aes_keys.decode,
 				xform->cipher.key.data);
+		sess->template_job.enc_keys = sess->cipher.expanded_aes_keys.encode;
+		sess->template_job.dec_keys = sess->cipher.expanded_aes_keys.decode;
 	}
 
 	return 0;
@@ -610,11 +640,11 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 {
 	switch (xform->aead.op) {
 	case RTE_CRYPTO_AEAD_OP_ENCRYPT:
-		sess->cipher.direction = IMB_DIR_ENCRYPT;
+		sess->template_job.cipher_direction = IMB_DIR_ENCRYPT;
 		sess->auth.operation = RTE_CRYPTO_AUTH_OP_GENERATE;
 		break;
 	case RTE_CRYPTO_AEAD_OP_DECRYPT:
-		sess->cipher.direction = IMB_DIR_DECRYPT;
+		sess->template_job.cipher_direction = IMB_DIR_DECRYPT;
 		sess->auth.operation = RTE_CRYPTO_AUTH_OP_VERIFY;
 		break;
 	default:
@@ -624,27 +654,28 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 
 	/* Set IV parameters */
 	sess->iv.offset = xform->aead.iv.offset;
-	sess->iv.length = xform->aead.iv.length;
+	sess->template_job.iv_len_in_bytes = xform->aead.iv.length;
 
 	/* Set digest sizes */
 	sess->auth.req_digest_len = xform->aead.digest_length;
-	sess->auth.gen_digest_len = sess->auth.req_digest_len;
+	sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
 
 	switch (xform->aead.algo) {
 	case RTE_CRYPTO_AEAD_AES_CCM:
-		sess->cipher.mode = IMB_CIPHER_CCM;
-		sess->auth.algo = IMB_AUTH_AES_CCM;
+		sess->template_job.cipher_mode = IMB_CIPHER_CCM;
+		sess->template_job.hash_alg = IMB_AUTH_AES_CCM;
+		sess->template_job.u.CCM.aad_len_in_bytes = xform->aead.aad_length;
 
 		/* Check key length and choose key expansion function for AES */
 		switch (xform->aead.key.length) {
 		case IMB_KEY_128_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_128_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_128_BYTES;
 			IMB_AES_KEYEXP_128(mb_mgr, xform->aead.key.data,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
 			break;
 		case IMB_KEY_256_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_256_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_256_BYTES;
 			IMB_AES_KEYEXP_256(mb_mgr, xform->aead.key.data,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
@@ -654,6 +685,8 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 			return -EINVAL;
 		}
 
+		sess->template_job.enc_keys = sess->cipher.expanded_aes_keys.encode;
+		sess->template_job.dec_keys = sess->cipher.expanded_aes_keys.decode;
 		/* CCM digests must be between 4 and 16 and an even number */
 		if (sess->auth.req_digest_len < AES_CCM_DIGEST_MIN_LEN ||
 			sess->auth.req_digest_len > AES_CCM_DIGEST_MAX_LEN ||
@@ -664,22 +697,23 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 		break;
 
 	case RTE_CRYPTO_AEAD_AES_GCM:
-		sess->cipher.mode = IMB_CIPHER_GCM;
-		sess->auth.algo = IMB_AUTH_AES_GMAC;
+		sess->template_job.cipher_mode = IMB_CIPHER_GCM;
+		sess->template_job.hash_alg = IMB_AUTH_AES_GMAC;
+		sess->template_job.u.GCM.aad_len_in_bytes = xform->aead.aad_length;
 
 		switch (xform->aead.key.length) {
 		case IMB_KEY_128_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_128_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_128_BYTES;
 			IMB_AES128_GCM_PRE(mb_mgr, xform->aead.key.data,
 				&sess->cipher.gcm_key);
 			break;
 		case IMB_KEY_192_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_192_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_192_BYTES;
 			IMB_AES192_GCM_PRE(mb_mgr, xform->aead.key.data,
 				&sess->cipher.gcm_key);
 			break;
 		case IMB_KEY_256_BYTES:
-			sess->cipher.key_length_in_bytes = IMB_KEY_256_BYTES;
+			sess->template_job.key_len_in_bytes = IMB_KEY_256_BYTES;
 			IMB_AES256_GCM_PRE(mb_mgr, xform->aead.key.data,
 				&sess->cipher.gcm_key);
 			break;
@@ -688,6 +722,8 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 			return -EINVAL;
 		}
 
+		sess->template_job.enc_keys = &sess->cipher.gcm_key;
+		sess->template_job.dec_keys = &sess->cipher.gcm_key;
 		/* GCM digest size must be between 1 and 16 */
 		if (sess->auth.req_digest_len == 0 ||
 				sess->auth.req_digest_len > 16) {
@@ -697,16 +733,20 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 		break;
 
 	case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
-		sess->cipher.mode = IMB_CIPHER_CHACHA20_POLY1305;
-		sess->auth.algo = IMB_AUTH_CHACHA20_POLY1305;
+		sess->template_job.cipher_mode = IMB_CIPHER_CHACHA20_POLY1305;
+		sess->template_job.hash_alg = IMB_AUTH_CHACHA20_POLY1305;
+		sess->template_job.u.CHACHA20_POLY1305.aad_len_in_bytes =
+			xform->aead.aad_length;
 
 		if (xform->aead.key.length != 32) {
 			IPSEC_MB_LOG(ERR, "Invalid key length");
 			return -EINVAL;
 		}
-		sess->cipher.key_length_in_bytes = 32;
+		sess->template_job.key_len_in_bytes = 32;
 		memcpy(sess->cipher.expanded_aes_keys.encode,
 			xform->aead.key.data, 32);
+		sess->template_job.enc_keys = sess->cipher.expanded_aes_keys.encode;
+		sess->template_job.dec_keys = sess->cipher.expanded_aes_keys.decode;
 		if (sess->auth.req_digest_len != 16) {
 			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
 			return -EINVAL;
@@ -741,16 +781,16 @@ aesni_mb_session_configure(IMB_MGR *mb_mgr,
 	/* Select Crypto operation - hash then cipher / cipher then hash */
 	switch (mode) {
 	case IPSEC_MB_OP_HASH_VERIFY_THEN_DECRYPT:
-		sess->chain_order = IMB_ORDER_HASH_CIPHER;
+		sess->template_job.chain_order = IMB_ORDER_HASH_CIPHER;
 		break;
 	case IPSEC_MB_OP_ENCRYPT_THEN_HASH_GEN:
 	case IPSEC_MB_OP_DECRYPT_THEN_HASH_VERIFY:
-		sess->chain_order = IMB_ORDER_CIPHER_HASH;
+		sess->template_job.chain_order = IMB_ORDER_CIPHER_HASH;
 		break;
 	case IPSEC_MB_OP_HASH_GEN_ONLY:
 	case IPSEC_MB_OP_HASH_VERIFY_ONLY:
 	case IPSEC_MB_OP_HASH_GEN_THEN_ENCRYPT:
-		sess->chain_order = IMB_ORDER_HASH_CIPHER;
+		sess->template_job.chain_order = IMB_ORDER_HASH_CIPHER;
 		break;
 	/*
 	 * Multi buffer library operates only at two modes,
@@ -760,18 +800,16 @@ aesni_mb_session_configure(IMB_MGR *mb_mgr,
 	 * the first operation and decryption the last one.
 	 */
 	case IPSEC_MB_OP_ENCRYPT_ONLY:
-		sess->chain_order = IMB_ORDER_CIPHER_HASH;
+		sess->template_job.chain_order = IMB_ORDER_CIPHER_HASH;
 		break;
 	case IPSEC_MB_OP_DECRYPT_ONLY:
-		sess->chain_order = IMB_ORDER_HASH_CIPHER;
+		sess->template_job.chain_order = IMB_ORDER_HASH_CIPHER;
 		break;
 	case IPSEC_MB_OP_AEAD_AUTHENTICATED_ENCRYPT:
-		sess->chain_order = IMB_ORDER_CIPHER_HASH;
-		sess->aead.aad_len = xform->aead.aad_length;
+		sess->template_job.chain_order = IMB_ORDER_CIPHER_HASH;
 		break;
 	case IPSEC_MB_OP_AEAD_AUTHENTICATED_DECRYPT:
-		sess->chain_order = IMB_ORDER_HASH_CIPHER;
-		sess->aead.aad_len = xform->aead.aad_length;
+		sess->template_job.chain_order = IMB_ORDER_HASH_CIPHER;
 		break;
 	case IPSEC_MB_OP_NOT_SUPPORTED:
 	default:
@@ -781,8 +819,7 @@ aesni_mb_session_configure(IMB_MGR *mb_mgr,
 	}
 
 	/* Default IV length = 0 */
-	sess->iv.length = 0;
-	sess->auth_iv.length = 0;
+	sess->template_job.iv_len_in_bytes = 0;
 
 	ret = aesni_mb_set_session_auth_parameters(mb_mgr, sess, auth_xform);
 	if (ret != 0) {
@@ -864,10 +901,10 @@ aesni_mb_set_docsis_sec_session_auth_parameters(struct aesni_mb_session *sess,
 
 	/* Select CRC generate/verify */
 	if (xform->direction == RTE_SECURITY_DOCSIS_UPLINK) {
-		sess->auth.algo = IMB_AUTH_DOCSIS_CRC32;
+		sess->template_job.hash_alg = IMB_AUTH_DOCSIS_CRC32;
 		sess->auth.operation = RTE_CRYPTO_AUTH_OP_VERIFY;
 	} else if (xform->direction == RTE_SECURITY_DOCSIS_DOWNLINK) {
-		sess->auth.algo = IMB_AUTH_DOCSIS_CRC32;
+		sess->template_job.hash_alg = IMB_AUTH_DOCSIS_CRC32;
 		sess->auth.operation = RTE_CRYPTO_AUTH_OP_GENERATE;
 	} else {
 		IPSEC_MB_LOG(ERR, "Unsupported DOCSIS direction");
@@ -875,7 +912,7 @@ aesni_mb_set_docsis_sec_session_auth_parameters(struct aesni_mb_session *sess,
 	}
 
 	sess->auth.req_digest_len = RTE_ETHER_CRC_LEN;
-	sess->auth.gen_digest_len = RTE_ETHER_CRC_LEN;
+	sess->template_job.auth_tag_output_len_in_bytes = RTE_ETHER_CRC_LEN;
 
 	return 0;
 }
@@ -907,12 +944,12 @@ aesni_mb_set_docsis_sec_session_parameters(
 
 	switch (conf->docsis.direction) {
 	case RTE_SECURITY_DOCSIS_UPLINK:
-		ipsec_sess->chain_order = IMB_ORDER_CIPHER_HASH;
+		ipsec_sess->template_job.chain_order = IMB_ORDER_CIPHER_HASH;
 		docsis_xform = &conf->docsis;
 		cipher_xform = conf->crypto_xform;
 		break;
 	case RTE_SECURITY_DOCSIS_DOWNLINK:
-		ipsec_sess->chain_order = IMB_ORDER_HASH_CIPHER;
+		ipsec_sess->template_job.chain_order = IMB_ORDER_HASH_CIPHER;
 		cipher_xform = conf->crypto_xform;
 		docsis_xform = &conf->docsis;
 		break;
@@ -923,7 +960,7 @@ aesni_mb_set_docsis_sec_session_parameters(
 	}
 
 	/* Default IV length = 0 */
-	ipsec_sess->iv.length = 0;
+	ipsec_sess->template_job.iv_len_in_bytes = 0;
 
 	ret = aesni_mb_set_docsis_sec_session_auth_parameters(ipsec_sess,
 			docsis_xform);
@@ -958,7 +995,7 @@ auth_start_offset(struct rte_crypto_op *op, struct aesni_mb_session *session,
 	uint32_t cipher_end, auth_end;
 
 	/* Only cipher then hash needs special calculation. */
-	if (!oop || session->chain_order != IMB_ORDER_CIPHER_HASH || lb_sgl)
+	if (!oop || session->template_job.chain_order != IMB_ORDER_CIPHER_HASH || lb_sgl)
 		return auth_offset;
 
 	m_src = op->sym->m_src;
@@ -1004,80 +1041,35 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 		struct rte_crypto_va_iova_ptr *iv,
 		struct rte_crypto_va_iova_ptr *aad, void *digest, void *udata)
 {
-	/* Set crypto operation */
-	job->chain_order = session->chain_order;
-
-	/* Set cipher parameters */
-	job->cipher_direction = session->cipher.direction;
-	job->cipher_mode = session->cipher.mode;
-
-	job->key_len_in_bytes = session->cipher.key_length_in_bytes;
+	memcpy(job, &session->template_job, sizeof(IMB_JOB));
 
 	/* Set authentication parameters */
-	job->hash_alg = session->auth.algo;
 	job->iv = iv->va;
 
 	switch (job->hash_alg) {
-	case IMB_AUTH_AES_XCBC:
-		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
-		job->u.XCBC._k2 = session->auth.xcbc.k2;
-		job->u.XCBC._k3 = session->auth.xcbc.k3;
-
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
-		break;
-
 	case IMB_AUTH_AES_CCM:
 		job->u.CCM.aad = (uint8_t *)aad->va + 18;
-		job->u.CCM.aad_len_in_bytes = session->aead.aad_len;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		job->iv++;
-		break;
-
-	case IMB_AUTH_AES_CMAC:
-		job->u.CMAC._key_expanded = session->auth.cmac.expkey;
-		job->u.CMAC._skey1 = session->auth.cmac.skey1;
-		job->u.CMAC._skey2 = session->auth.cmac.skey2;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		break;
 
 	case IMB_AUTH_AES_GMAC:
 		job->u.GCM.aad = aad->va;
-		job->u.GCM.aad_len_in_bytes = session->aead.aad_len;
-		job->enc_keys = &session->cipher.gcm_key;
-		job->dec_keys = &session->cipher.gcm_key;
 		break;
 
 	case IMB_AUTH_AES_GMAC_128:
 	case IMB_AUTH_AES_GMAC_192:
 	case IMB_AUTH_AES_GMAC_256:
-		job->u.GMAC._key = &session->cipher.gcm_key;
 		job->u.GMAC._iv = iv->va;
-		job->u.GMAC.iv_len_in_bytes = session->iv.length;
 		break;
 
 	case IMB_AUTH_CHACHA20_POLY1305:
 		job->u.CHACHA20_POLY1305.aad = aad->va;
-		job->u.CHACHA20_POLY1305.aad_len_in_bytes =
-			session->aead.aad_len;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.encode;
 		break;
 	default:
 		job->u.HMAC._hashed_auth_key_xor_ipad =
 				session->auth.pads.inner;
 		job->u.HMAC._hashed_auth_key_xor_opad =
 				session->auth.pads.outer;
-
-		if (job->cipher_mode == IMB_CIPHER_DES3) {
-			job->enc_keys = session->cipher.exp_3des_keys.ks_ptr;
-			job->dec_keys = session->cipher.exp_3des_keys.ks_ptr;
-		} else {
-			job->enc_keys = session->cipher.expanded_aes_keys.encode;
-			job->dec_keys = session->cipher.expanded_aes_keys.decode;
-		}
 	}
 
 	/*
@@ -1087,10 +1079,6 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 
 	/* Set digest location and length */
 	job->auth_tag_output = digest;
-	job->auth_tag_output_len_in_bytes = session->auth.gen_digest_len;
-
-	/* Set IV parameters */
-	job->iv_len_in_bytes = session->iv.length;
 
 	/* Data Parameters */
 	job->src = buf;
@@ -1235,8 +1223,10 @@ handle_sgl_linear(IMB_JOB *job, struct rte_crypto_op *op, uint32_t dst_offset,
 static inline int
 imb_lib_support_sgl_algo(IMB_CIPHER_MODE alg)
 {
-	if (alg == IMB_CIPHER_CHACHA20_POLY1305
-			|| alg == IMB_CIPHER_GCM)
+	if (alg == IMB_CIPHER_CHACHA20_POLY1305 ||
+			alg == IMB_CIPHER_CHACHA20_POLY1305_SGL ||
+			alg == IMB_CIPHER_GCM_SGL ||
+			alg == IMB_CIPHER_GCM)
 		return 1;
 	return 0;
 }
@@ -1413,27 +1403,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		return -1;
 	}
 
-	/* Set crypto operation */
-	job->chain_order = session->chain_order;
-
-	/* Set cipher parameters */
-	job->cipher_direction = session->cipher.direction;
-	job->cipher_mode = session->cipher.mode;
-
-	job->key_len_in_bytes = session->cipher.key_length_in_bytes;
+	memcpy(job, &session->template_job, sizeof(IMB_JOB));
 
 	/* Set authentication parameters */
-	job->hash_alg = session->auth.algo;
-
 	const int aead = is_aead_algo(job->hash_alg, job->cipher_mode);
-
-	if (job->cipher_mode == IMB_CIPHER_DES3) {
-		job->enc_keys = session->cipher.exp_3des_keys.ks_ptr;
-		job->dec_keys = session->cipher.exp_3des_keys.ks_ptr;
-	} else {
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
-	}
 
 	if (!op->sym->m_dst) {
 		/* in-place operation */
@@ -1451,89 +1424,49 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 
 	if (m_src->nb_segs > 1 || m_dst->nb_segs > 1) {
 		sgl = 1;
-		if (!imb_lib_support_sgl_algo(session->cipher.mode))
+		if (!imb_lib_support_sgl_algo(job->cipher_mode))
 			lb_sgl = 1;
 	}
 
 	switch (job->hash_alg) {
-	case IMB_AUTH_AES_XCBC:
-		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
-		job->u.XCBC._k2 = session->auth.xcbc.k2;
-		job->u.XCBC._k3 = session->auth.xcbc.k3;
-
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
-		break;
-
 	case IMB_AUTH_AES_CCM:
 		job->u.CCM.aad = op->sym->aead.aad.data + 18;
-		job->u.CCM.aad_len_in_bytes = session->aead.aad_len;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
-		break;
-
-	case IMB_AUTH_AES_CMAC:
-		job->u.CMAC._key_expanded = session->auth.cmac.expkey;
-		job->u.CMAC._skey1 = session->auth.cmac.skey1;
-		job->u.CMAC._skey2 = session->auth.cmac.skey2;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		break;
 
 	case IMB_AUTH_AES_GMAC:
 		job->u.GCM.aad = op->sym->aead.aad.data;
-		job->u.GCM.aad_len_in_bytes = session->aead.aad_len;
 		if (sgl) {
 			job->u.GCM.ctx = &qp_data->gcm_sgl_ctx;
 			job->cipher_mode = IMB_CIPHER_GCM_SGL;
 			job->hash_alg = IMB_AUTH_GCM_SGL;
 		}
-		job->enc_keys = &session->cipher.gcm_key;
-		job->dec_keys = &session->cipher.gcm_key;
 		break;
 	case IMB_AUTH_AES_GMAC_128:
 	case IMB_AUTH_AES_GMAC_192:
 	case IMB_AUTH_AES_GMAC_256:
-		job->u.GMAC._key = &session->cipher.gcm_key;
 		job->u.GMAC._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
-		job->u.GMAC.iv_len_in_bytes = session->auth_iv.length;
 		break;
 	case IMB_AUTH_ZUC_EIA3_BITLEN:
 	case IMB_AUTH_ZUC256_EIA3_BITLEN:
-		job->u.ZUC_EIA3._key = session->auth.zuc_auth_key;
 		job->u.ZUC_EIA3._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
 		break;
 	case IMB_AUTH_SNOW3G_UIA2_BITLEN:
-		job->u.SNOW3G_UIA2._key = (void *)
-			&session->auth.pKeySched_snow3g_auth;
 		job->u.SNOW3G_UIA2._iv =
 			rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
 		break;
-	case IMB_AUTH_KASUMI_UIA1:
-		job->u.KASUMI_UIA1._key = (void *)
-			&session->auth.pKeySched_kasumi_auth;
-		break;
 	case IMB_AUTH_CHACHA20_POLY1305:
 		job->u.CHACHA20_POLY1305.aad = op->sym->aead.aad.data;
-		job->u.CHACHA20_POLY1305.aad_len_in_bytes =
-			session->aead.aad_len;
 		if (sgl) {
 			job->u.CHACHA20_POLY1305.ctx = &qp_data->chacha_sgl_ctx;
 			job->cipher_mode = IMB_CIPHER_CHACHA20_POLY1305_SGL;
 			job->hash_alg = IMB_AUTH_CHACHA20_POLY1305_SGL;
 		}
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.encode;
 		break;
 	default:
-		job->u.HMAC._hashed_auth_key_xor_ipad =
-			session->auth.pads.inner;
-		job->u.HMAC._hashed_auth_key_xor_opad =
-			session->auth.pads.outer;
-
+		break;
 	}
 
 	if (aead)
@@ -1542,14 +1475,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		m_offset = op->sym->cipher.data.offset;
 
 	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3) {
-		job->enc_keys = session->cipher.zuc_cipher_key;
-		job->dec_keys = session->cipher.zuc_cipher_key;
 		m_offset >>= 3;
 	} else if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN) {
-		job->enc_keys = &session->cipher.pKeySched_snow3g_cipher;
 		m_offset = 0;
 	} else if (job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN) {
-		job->enc_keys = &session->cipher.pKeySched_kasumi_cipher;
 		m_offset = 0;
 	}
 
@@ -1565,7 +1494,7 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			job->auth_tag_output = op->sym->auth.digest.data;
 
 		if (session->auth.req_digest_len !=
-				session->auth.gen_digest_len) {
+				job->auth_tag_output_len_in_bytes) {
 			job->auth_tag_output =
 				qp_data->temp_digests[*digest_idx];
 			*digest_idx = (*digest_idx + 1) % IMB_MAX_JOBS;
@@ -1575,12 +1504,6 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	 * Multi-buffer library current only support returning a truncated
 	 * digest length as specified in the relevant IPsec RFCs
 	 */
-
-	/* Set digest length */
-	job->auth_tag_output_len_in_bytes = session->auth.gen_digest_len;
-
-	/* Set IV parameters */
-	job->iv_len_in_bytes = session->iv.length;
 
 	/* Data Parameters */
 	if (sgl) {
@@ -1773,8 +1696,8 @@ set_sec_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		return -1;
 	}
 	/* Only DOCSIS protocol operations supported now */
-	if (session->cipher.mode != IMB_CIPHER_DOCSIS_SEC_BPI ||
-			session->auth.algo != IMB_AUTH_DOCSIS_CRC32) {
+	if (session->template_job.cipher_mode != IMB_CIPHER_DOCSIS_SEC_BPI ||
+			session->template_job.hash_alg != IMB_AUTH_DOCSIS_CRC32) {
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		return -1;
 	}
@@ -1791,30 +1714,18 @@ set_sec_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		return -ENOTSUP;
 	}
 
-	/* Set crypto operation */
-	job->chain_order = session->chain_order;
+	memcpy(job, &session->template_job, sizeof(IMB_JOB));
 
 	/* Set cipher parameters */
-	job->cipher_direction = session->cipher.direction;
-	job->cipher_mode = session->cipher.mode;
-
-	job->key_len_in_bytes = session->cipher.key_length_in_bytes;
 	job->enc_keys = session->cipher.expanded_aes_keys.encode;
 	job->dec_keys = session->cipher.expanded_aes_keys.decode;
 
 	/* Set IV parameters */
-	job->iv_len_in_bytes = session->iv.length;
 	job->iv = (uint8_t *)op + session->iv.offset;
-
-	/* Set authentication parameters */
-	job->hash_alg = session->auth.algo;
 
 	/* Set digest output location */
 	job->auth_tag_output = qp_data->temp_digests[*digest_idx];
 	*digest_idx = (*digest_idx + 1) % IMB_MAX_JOBS;
-
-	/* Set digest length */
-	job->auth_tag_output_len_in_bytes = session->auth.gen_digest_len;
 
 	/* Set data parameters */
 	job->src = rte_pktmbuf_mtod(m_src, uint8_t *);
@@ -1865,7 +1776,7 @@ generate_digest(IMB_JOB *job, struct rte_crypto_op *op,
 		struct aesni_mb_session *sess)
 {
 	/* No extra copy needed */
-	if (likely(sess->auth.req_digest_len == sess->auth.gen_digest_len))
+	if (likely(sess->auth.req_digest_len == job->auth_tag_output_len_in_bytes))
 		return;
 
 	/*
@@ -1940,7 +1851,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 			if ((op->sym->m_src->nb_segs > 1 ||
 					(op->sym->m_dst != NULL &&
 					op->sym->m_dst->nb_segs > 1)) &&
-					!imb_lib_support_sgl_algo(sess->cipher.mode)) {
+					!imb_lib_support_sgl_algo(job->cipher_mode)) {
 				linear_buf = (uint8_t *) job->user_data2;
 				post_process_sgl_linear(op, job, sess, linear_buf);
 			}
@@ -1950,7 +1861,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 
 			if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
 				if (is_aead_algo(job->hash_alg,
-						sess->cipher.mode))
+						job->cipher_mode))
 					verify_digest(job,
 						op->sym->aead.digest.data,
 						sess->auth.req_digest_len,
