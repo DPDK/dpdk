@@ -237,6 +237,18 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	} else {
 		DRV_LOG(DEBUG, "Tunnel offloading is not supported.");
 	}
+	sh->dev_cap.cqe_comp = 0;
+#if (RTE_CACHE_LINE_SIZE == 128)
+	if (hca_attr->cqe_compression_128)
+		sh->dev_cap.cqe_comp = 1;
+	DRV_LOG(DEBUG, "Rx CQE 128B compression is %ssupported.",
+		sh->dev_cap.cqe_comp ? "" : "not ");
+#else
+	if (hca_attr->cqe_compression)
+		sh->dev_cap.cqe_comp = 1;
+	DRV_LOG(DEBUG, "Rx CQE compression is %ssupported.",
+		sh->dev_cap.cqe_comp ? "" : "not ");
+#endif
 	snprintf(sh->dev_cap.fw_ver, 64, "%x.%x.%04x",
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_major),
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_minor),

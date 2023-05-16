@@ -1062,6 +1062,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->cqe_compression = MLX5_GET(cmd_hca_cap, hcattr, cqe_compression);
 	attr->mini_cqe_resp_flow_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						mini_cqe_resp_flow_tag);
+	attr->cqe_compression_128 = MLX5_GET(cmd_hca_cap, hcattr,
+						cqe_compression_128);
 	attr->mini_cqe_resp_l3_l4_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						 mini_cqe_resp_l3_l4_tag);
 	attr->enhanced_cqe_compression = MLX5_GET(cmd_hca_cap, hcattr,

@@ -128,6 +128,7 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added support for multi-packet receive queue (MPRQ) on Windows.
+  * Added support for CQE compression on Windows.
 
 * **Added vmxnet3 version 7 support.**
 
