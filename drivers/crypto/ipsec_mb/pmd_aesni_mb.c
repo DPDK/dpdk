@@ -1241,6 +1241,141 @@ imb_lib_support_sgl_algo(IMB_CIPHER_MODE alg)
 	return 0;
 }
 
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
+static inline int
+single_sgl_job(IMB_JOB *job, struct rte_crypto_op *op,
+		int oop, uint32_t offset, struct rte_mbuf *m_src,
+		struct rte_mbuf *m_dst, struct IMB_SGL_IOV *sgl_segs)
+{
+	uint32_t num_segs = 0;
+	struct aesni_mb_op_buf_data src_sgl = {0};
+	struct aesni_mb_op_buf_data dst_sgl = {0};
+	uint32_t total_len;
+
+	job->sgl_state = IMB_SGL_ALL;
+
+	src_sgl.m = m_src;
+	src_sgl.offset = offset;
+
+	while (src_sgl.offset >= src_sgl.m->data_len) {
+		src_sgl.offset -= src_sgl.m->data_len;
+		src_sgl.m = src_sgl.m->next;
+
+		RTE_ASSERT(src_sgl.m != NULL);
+	}
+
+	if (oop) {
+		dst_sgl.m = m_dst;
+		dst_sgl.offset = offset;
+
+		while (dst_sgl.offset >= dst_sgl.m->data_len) {
+			dst_sgl.offset -= dst_sgl.m->data_len;
+			dst_sgl.m = dst_sgl.m->next;
+
+			RTE_ASSERT(dst_sgl.m != NULL);
+		}
+	}
+	total_len = op->sym->aead.data.length;
+
+	while (total_len != 0) {
+		uint32_t data_len, part_len;
+
+		if (src_sgl.m == NULL) {
+			IPSEC_MB_LOG(ERR, "Invalid source buffer");
+			return -EINVAL;
+		}
+
+		data_len = src_sgl.m->data_len - src_sgl.offset;
+
+		sgl_segs[num_segs].in = rte_pktmbuf_mtod_offset(src_sgl.m, uint8_t *,
+				src_sgl.offset);
+
+		if (dst_sgl.m != NULL) {
+			if (dst_sgl.m->data_len - dst_sgl.offset == 0) {
+				dst_sgl.m = dst_sgl.m->next;
+				if (dst_sgl.m == NULL) {
+					IPSEC_MB_LOG(ERR, "Invalid destination buffer");
+					return -EINVAL;
+				}
+				dst_sgl.offset = 0;
+			}
+			part_len = RTE_MIN(data_len, (dst_sgl.m->data_len -
+					dst_sgl.offset));
+			sgl_segs[num_segs].out = rte_pktmbuf_mtod_offset(dst_sgl.m,
+					uint8_t *, dst_sgl.offset);
+			dst_sgl.offset += part_len;
+		} else {
+			part_len = RTE_MIN(data_len, total_len);
+			sgl_segs[num_segs].out = rte_pktmbuf_mtod_offset(src_sgl.m, uint8_t *,
+				src_sgl.offset);
+		}
+
+		sgl_segs[num_segs].len = part_len;
+
+		total_len -= part_len;
+
+		if (part_len != data_len) {
+			src_sgl.offset += part_len;
+		} else {
+			src_sgl.m = src_sgl.m->next;
+			src_sgl.offset = 0;
+		}
+		num_segs++;
+	}
+	job->num_sgl_io_segs = num_segs;
+	job->sgl_io_segs = sgl_segs;
+	return 0;
+}
+#endif
+
+static inline int
+multi_sgl_job(IMB_JOB *job, struct rte_crypto_op *op,
+		int oop, uint32_t offset, struct rte_mbuf *m_src,
+		struct rte_mbuf *m_dst, IMB_MGR *mb_mgr)
+{
+	int ret;
+	IMB_JOB base_job;
+	struct aesni_mb_op_buf_data src_sgl = {0};
+	struct aesni_mb_op_buf_data dst_sgl = {0};
+	uint32_t total_len;
+
+	base_job = *job;
+	job->sgl_state = IMB_SGL_INIT;
+	job = IMB_SUBMIT_JOB(mb_mgr);
+	total_len = op->sym->aead.data.length;
+
+	src_sgl.m = m_src;
+	src_sgl.offset = offset;
+
+	while (src_sgl.offset >= src_sgl.m->data_len) {
+		src_sgl.offset -= src_sgl.m->data_len;
+		src_sgl.m = src_sgl.m->next;
+
+		RTE_ASSERT(src_sgl.m != NULL);
+	}
+
+	if (oop) {
+		dst_sgl.m = m_dst;
+		dst_sgl.offset = offset;
+
+		while (dst_sgl.offset >= dst_sgl.m->data_len) {
+			dst_sgl.offset -= dst_sgl.m->data_len;
+			dst_sgl.m = dst_sgl.m->next;
+
+			RTE_ASSERT(dst_sgl.m != NULL);
+		}
+	}
+
+	while (job->sgl_state != IMB_SGL_COMPLETE) {
+		job = IMB_GET_NEXT_JOB(mb_mgr);
+		*job = base_job;
+		ret = handle_aead_sgl_job(job, mb_mgr, &total_len,
+			&src_sgl, &dst_sgl);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
 /**
  * Process a crypto operation and complete a IMB_JOB job structure for
  * submission to the multi buffer library for processing.
@@ -1262,19 +1397,15 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 {
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst;
 	struct aesni_mb_qp_data *qp_data = ipsec_mb_get_qp_private_data(qp);
-	struct aesni_mb_op_buf_data src_sgl = {0};
-	struct aesni_mb_op_buf_data dst_sgl = {0};
 	struct aesni_mb_session *session;
-	uint32_t m_offset, oop;
+	uint32_t m_offset;
+	int oop;
 	uint32_t auth_off_in_bytes;
 	uint32_t ciph_off_in_bytes;
 	uint32_t auth_len_in_bytes;
 	uint32_t ciph_len_in_bytes;
-	uint32_t total_len;
-	IMB_JOB base_job;
 	uint8_t sgl = 0;
 	uint8_t lb_sgl = 0;
-	int ret;
 
 	session = ipsec_mb_get_session_private(qp, op);
 	if (session == NULL) {
@@ -1602,41 +1733,15 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		if (lb_sgl)
 			return handle_sgl_linear(job, op, m_offset, session);
 
-		base_job = *job;
-		job->sgl_state = IMB_SGL_INIT;
-		job = IMB_SUBMIT_JOB(mb_mgr);
-		total_len = op->sym->aead.data.length;
-
-		src_sgl.m = m_src;
-		src_sgl.offset = m_offset;
-
-		while (src_sgl.offset >= src_sgl.m->data_len) {
-			src_sgl.offset -= src_sgl.m->data_len;
-			src_sgl.m = src_sgl.m->next;
-
-			RTE_ASSERT(src_sgl.m != NULL);
-		}
-
-		if (oop) {
-			dst_sgl.m = m_dst;
-			dst_sgl.offset = m_offset;
-
-			while (dst_sgl.offset >= dst_sgl.m->data_len) {
-				dst_sgl.offset -= dst_sgl.m->data_len;
-				dst_sgl.m = dst_sgl.m->next;
-
-				RTE_ASSERT(dst_sgl.m != NULL);
-			}
-		}
-
-		while (job->sgl_state != IMB_SGL_COMPLETE) {
-			job = IMB_GET_NEXT_JOB(mb_mgr);
-			*job = base_job;
-			ret = handle_aead_sgl_job(job, mb_mgr, &total_len,
-				&src_sgl, &dst_sgl);
-			if (ret < 0)
-				return ret;
-		}
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
+		if (m_src->nb_segs <= MAX_NUM_SEGS)
+			return single_sgl_job(job, op, oop,
+					m_offset, m_src, m_dst,
+					qp_data->sgl_segs);
+		else
+#endif
+			return multi_sgl_job(job, op, oop,
+					m_offset, m_src, m_dst, mb_mgr);
 	}
 
 	return 0;

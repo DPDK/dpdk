@@ -20,6 +20,10 @@
 #define HMAC_IPAD_VALUE			(0x36)
 #define HMAC_OPAD_VALUE			(0x5C)
 
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
+#define MAX_NUM_SEGS 16
+#endif
+
 static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 	{	/* MD5 HMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -729,6 +733,9 @@ struct aesni_mb_qp_data {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
+#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
+	struct IMB_SGL_IOV sgl_segs[MAX_NUM_SEGS];
+#endif
 	union {
 		struct gcm_context_data gcm_sgl_ctx;
 		struct chacha20_poly1305_context_data chacha_sgl_ctx;
