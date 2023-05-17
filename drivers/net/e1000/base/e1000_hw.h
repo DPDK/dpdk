@@ -128,6 +128,10 @@ struct e1000_hw;
 #define E1000_DEV_ID_PCH_ADL_I219_V16		0x1A1F
 #define E1000_DEV_ID_PCH_ADL_I219_LM17		0x1A1C
 #define E1000_DEV_ID_PCH_ADL_I219_V17		0x1A1D
+#define E1000_DEV_ID_PCH_RPL_I219_LM23          0x0DC5
+#define E1000_DEV_ID_PCH_RPL_I219_V23           0x0DC6
+#define E1000_DEV_ID_PCH_RPL_I219_LM22          0x0DC7
+#define E1000_DEV_ID_PCH_RPL_I219_V22           0x0DC8
 #define E1000_DEV_ID_82576			0x10C9
 #define E1000_DEV_ID_82576_FIBER		0x10E6
 #define E1000_DEV_ID_82576_SERDES		0x10E7
@@ -217,6 +221,7 @@ enum e1000_mac_type {
 	e1000_pch_spt,
 	e1000_pch_cnp,
 	e1000_pch_adp,
+	e1000_pch_tgp,
 	e1000_82575,
 	e1000_82576,
 	e1000_82580,
