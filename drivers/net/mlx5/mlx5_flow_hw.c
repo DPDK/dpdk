@@ -1088,6 +1088,53 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static uint32_t
+flow_hw_count_nop_modify_field(struct mlx5_hw_modify_header_action *mhdr)
+{
+	uint32_t i;
+	uint32_t nops = 0;
+
+	for (i = 0; i < mhdr->mhdr_cmds_num; ++i) {
+		struct mlx5_modification_cmd cmd = mhdr->mhdr_cmds[i];
+
+		cmd.data0 = rte_be_to_cpu_32(cmd.data0);
+		if (cmd.action_type == MLX5_MODIFICATION_TYPE_NOP)
+			++nops;
+	}
+	return nops;
+}
+
+static int
+flow_hw_validate_compiled_modify_field(struct rte_eth_dev *dev,
+				       const struct mlx5_flow_template_table_cfg *cfg,
+				       struct mlx5_hw_modify_header_action *mhdr,
+				       struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
+
+	/*
+	 * Header modify pattern length limitation is only valid for HWS groups, i.e. groups > 0.
+	 * In group 0, MODIFY_FIELD actions are handled with header modify actions
+	 * managed by rdma-core.
+	 */
+	if (cfg->attr.flow_attr.group != 0 &&
+	    mhdr->mhdr_cmds_num > hca_attr->max_header_modify_pattern_length) {
+		uint32_t nops = flow_hw_count_nop_modify_field(mhdr);
+
+		DRV_LOG(ERR, "Too many modify header commands generated from "
+			     "MODIFY_FIELD actions. "
+			     "Generated HW commands = %u (amount of NOP commands = %u). "
+			     "Maximum supported = %u.",
+			     mhdr->mhdr_cmds_num, nops,
+			     hca_attr->max_header_modify_pattern_length);
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Number of MODIFY_FIELD actions exceeds maximum "
+					  "supported limit of actions");
+	}
+	return 0;
+}
+
 static int
 flow_hw_represented_port_compile(struct rte_eth_dev *dev,
 				 const struct rte_flow_attr *attr,
@@ -1706,6 +1753,10 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 		uint32_t bulk_size;
 		size_t mhdr_len;
 
+		if (flow_hw_validate_compiled_modify_field(dev, cfg, &mhdr, error)) {
+			__flow_hw_action_template_destroy(dev, acts);
+			return -rte_errno;
+		}
 		acts->mhdr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*acts->mhdr),
 					 0, SOCKET_ID_ANY);
 		if (!acts->mhdr)
