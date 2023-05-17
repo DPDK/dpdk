@@ -12690,8 +12690,8 @@ test_multi_session(void)
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_cryptodev_info dev_info;
+	int i, nb_sess, ret = TEST_SUCCESS;
 	void **sessions;
-	uint16_t i;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -12721,21 +12721,25 @@ test_multi_session(void)
 		sessions[i] = rte_cryptodev_sym_session_create(
 			ts_params->valid_devs[0], &ut_params->auth_xform,
 				ts_params->session_mpool);
-		if (sessions[i] == NULL && rte_errno == ENOTSUP)
-			return TEST_SKIPPED;
+		if (sessions[i] == NULL && rte_errno == ENOTSUP) {
+			nb_sess = i;
+			ret = TEST_SKIPPED;
+			break;
+		}
 
 		TEST_ASSERT_NOT_NULL(sessions[i],
 				"Session creation failed at session number %u",
 				i);
+
 		/* Attempt to send a request on each session */
-		TEST_ASSERT_SUCCESS( test_AES_CBC_HMAC_SHA512_decrypt_perform(
+		ret = test_AES_CBC_HMAC_SHA512_decrypt_perform(
 			sessions[i],
 			ut_params,
 			ts_params,
 			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
 			catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA512_digest,
-			aes_cbc_iv),
-			"Failed to perform decrypt on request number %u.", i);
+			aes_cbc_iv);
+
 		/* free crypto operation structure */
 		rte_crypto_op_free(ut_params->op);
 
@@ -12754,16 +12758,26 @@ test_multi_session(void)
 			rte_pktmbuf_free(ut_params->ibuf);
 			ut_params->ibuf = 0;
 		}
+
+		if (ret != TEST_SUCCESS) {
+			i++;
+			break;
+		}
 	}
 
-	for (i = 0; i < MAX_NB_SESSIONS; i++) {
+	nb_sess = i;
+
+	for (i = 0; i < nb_sess; i++) {
 		rte_cryptodev_sym_session_free(ts_params->valid_devs[0],
 				sessions[i]);
 	}
 
 	rte_free(sessions);
 
-	return TEST_SUCCESS;
+	if (ret != TEST_SKIPPED)
+		TEST_ASSERT_SUCCESS(ret, "Failed to perform decrypt on request number %u.", i - 1);
+
+	return ret;
 }
 
 struct multi_session_params {
@@ -12782,8 +12796,9 @@ test_multi_session_random_usage(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info dev_info;
+	int index = 0, ret = TEST_SUCCESS;
+	uint32_t nb_sess, i, j;
 	void **sessions;
-	uint32_t i, j;
 	struct multi_session_params ut_paramz[] = {
 
 		{
@@ -12842,27 +12857,30 @@ test_multi_session_random_usage(void)
 				ts_params->valid_devs[0],
 				&ut_paramz[i].ut_params.auth_xform,
 				ts_params->session_mpool);
-		if (sessions[i] == NULL && rte_errno == ENOTSUP)
-			return TEST_SKIPPED;
+		if (sessions[i] == NULL && rte_errno == ENOTSUP) {
+			nb_sess = i;
+			ret = TEST_SKIPPED;
+			goto session_clear;
+		}
 
 		TEST_ASSERT_NOT_NULL(sessions[i],
 				"Session creation failed at session number %u",
 				i);
 	}
 
+	nb_sess = i;
+
 	srand(time(NULL));
 	for (i = 0; i < 40000; i++) {
 
 		j = rand() % MB_SESSION_NUMBER;
 
-		TEST_ASSERT_SUCCESS(
-			test_AES_CBC_HMAC_SHA512_decrypt_perform(
+		ret = test_AES_CBC_HMAC_SHA512_decrypt_perform(
 					sessions[j],
 					&ut_paramz[j].ut_params,
 					ts_params, ut_paramz[j].cipher,
 					ut_paramz[j].digest,
-					ut_paramz[j].iv),
-			"Failed to perform decrypt on request number %u.", i);
+					ut_paramz[j].iv);
 
 		rte_crypto_op_free(ut_paramz[j].ut_params.op);
 
@@ -12882,14 +12900,23 @@ test_multi_session_random_usage(void)
 			rte_pktmbuf_free(ut_paramz[j].ut_params.ibuf);
 			ut_paramz[j].ut_params.ibuf = 0;
 		}
+
+		if (ret != TEST_SKIPPED) {
+			index = i;
+			break;
+		}
 	}
 
-	for (i = 0; i < MB_SESSION_NUMBER; i++) {
+session_clear:
+	for (i = 0; i < nb_sess; i++) {
 		rte_cryptodev_sym_session_free(ts_params->valid_devs[0],
 				sessions[i]);
 	}
 
 	rte_free(sessions);
+
+	if (ret != TEST_SKIPPED)
+		TEST_ASSERT_SUCCESS(ret, "Failed to perform decrypt on request number %u.", index);
 
 	return TEST_SUCCESS;
 }
