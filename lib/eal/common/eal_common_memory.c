@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -25,6 +26,7 @@
 #include "eal_internal_cfg.h"
 #include "eal_memcfg.h"
 #include "eal_options.h"
+#include "malloc_elem.h"
 #include "malloc_heap.h"
 
 /*
@@ -1105,11 +1107,17 @@ fail:
 }
 
 #ifndef RTE_EXEC_ENV_WINDOWS
-#define EAL_MEMZONE_LIST_REQ	"/eal/memzone_list"
-#define EAL_MEMZONE_INFO_REQ	"/eal/memzone_info"
-#define EAL_HEAP_LIST_REQ	"/eal/heap_list"
-#define EAL_HEAP_INFO_REQ	"/eal/heap_info"
-#define ADDR_STR		15
+#define EAL_MEMZONE_LIST_REQ		"/eal/memzone_list"
+#define EAL_MEMZONE_INFO_REQ		"/eal/memzone_info"
+#define EAL_HEAP_LIST_REQ		"/eal/heap_list"
+#define EAL_HEAP_INFO_REQ		"/eal/heap_info"
+#define EAL_MEMSEG_LISTS_REQ		"/eal/memseg_lists"
+#define EAL_MEMSEG_LIST_INFO_REQ	"/eal/memseg_list_info"
+#define EAL_MEMSEG_INFO_REQ		"/eal/memseg_info"
+#define EAL_ELEMENT_LIST_REQ		"/eal/mem_element_list"
+#define EAL_ELEMENT_INFO_REQ		"/eal/mem_element_info"
+#define ADDR_STR			15
+
 
 /* Telemetry callback handler to return heap stats for requested heap id. */
 static int
@@ -1258,6 +1266,369 @@ handle_eal_memzone_list_request(const char *cmd __rte_unused,
 	return 0;
 }
 
+/* n_vals is the number of params to be parsed. */
+static int
+parse_params(const char *params, uint32_t *vals, size_t n_vals)
+{
+	char dlim[2] = ",";
+	char *params_args;
+	size_t count = 0;
+	char *token;
+
+	if (vals == NULL || params == NULL || strlen(params) == 0)
+		return -1;
+
+	/* strtok expects char * and param is const char *. Hence on using
+	 * params as "const char *" compiler throws warning.
+	 */
+	params_args = strdup(params);
+	if (params_args == NULL)
+		return -1;
+
+	token = strtok(params_args, dlim);
+	while (token && isdigit(*token) && count < n_vals) {
+		vals[count++] = strtoul(token, NULL, 10);
+		token = strtok(NULL, dlim);
+	}
+
+	free(params_args);
+
+	if (count < n_vals)
+		return -1;
+
+	return 0;
+}
+
+static int
+handle_eal_memseg_lists_request(const char *cmd __rte_unused,
+				const char *params __rte_unused,
+				struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	int i;
+
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+
+	rte_mcfg_mem_read_lock();
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+		if (msl->memseg_arr.count == 0)
+			continue;
+
+		rte_tel_data_add_array_int(d, i);
+	}
+	rte_mcfg_mem_read_unlock();
+
+	return 0;
+}
+
+static int
+handle_eal_memseg_list_info_request(const char *cmd __rte_unused,
+				    const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	struct rte_memseg_list *msl;
+	struct rte_fbarray *arr;
+	uint32_t ms_list_idx;
+	int ms_idx;
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[1] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	ms_list_idx = vals[0];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+
+	rte_mcfg_mem_read_lock();
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	if (msl->memseg_arr.count == 0)
+		goto done;
+
+	arr = &msl->memseg_arr;
+
+	ms_idx = rte_fbarray_find_next_used(arr, 0);
+	while (ms_idx >= 0) {
+		rte_tel_data_add_array_int(d, ms_idx);
+		ms_idx = rte_fbarray_find_next_used(arr, ms_idx + 1);
+	}
+
+done:
+	rte_mcfg_mem_read_unlock();
+
+	return 0;
+}
+
+static int
+handle_eal_memseg_info_request(const char *cmd __rte_unused,
+			       const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	uint64_t ms_start_addr, ms_end_addr, ms_size, hugepage_size, ms_iova;
+	struct rte_memseg_list *msl;
+	const struct rte_memseg *ms;
+	struct rte_fbarray *arr;
+	char addr[ADDR_STR];
+	uint32_t ms_list_idx = 0;
+	uint32_t ms_idx = 0;
+	int32_t ms_socket_id;
+	uint32_t ms_flags;
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[2] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	ms_list_idx = vals[0];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	ms_idx = vals[1];
+
+	rte_mcfg_mem_read_lock();
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	if (msl->memseg_arr.count == 0) {
+		rte_mcfg_mem_read_unlock();
+		return -1;
+	}
+
+	arr = &msl->memseg_arr;
+	ms = rte_fbarray_get(arr, ms_idx);
+	if (ms == NULL) {
+		rte_mcfg_mem_read_unlock();
+		RTE_LOG(DEBUG, EAL, "Error fetching requested memseg.\n");
+		return -1;
+	}
+
+	ms_iova = ms->iova;
+	ms_start_addr = ms->addr_64;
+	ms_end_addr = (uint64_t)RTE_PTR_ADD(ms_start_addr, ms->len);
+	ms_size = ms->len;
+	hugepage_size = ms->hugepage_sz;
+	ms_socket_id = ms->socket_id;
+	ms_flags = ms->flags;
+
+	rte_mcfg_mem_read_unlock();
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_int(d, "Memseg_list_index", ms_list_idx);
+	rte_tel_data_add_dict_int(d, "Memseg_index", ms_idx);
+	if (ms_iova == RTE_BAD_IOVA)
+		snprintf(addr, ADDR_STR, "Bad IOVA");
+	else
+		snprintf(addr, ADDR_STR, "0x%"PRIx64, ms_iova);
+
+	rte_tel_data_add_dict_string(d, "IOVA_addr", addr);
+	snprintf(addr, ADDR_STR, "0x%"PRIx64, ms_start_addr);
+	rte_tel_data_add_dict_string(d, "Start_addr", addr);
+	snprintf(addr, ADDR_STR, "0x%"PRIx64, ms_end_addr);
+	rte_tel_data_add_dict_string(d, "End_addr", addr);
+	rte_tel_data_add_dict_uint(d, "Size", ms_size);
+	rte_tel_data_add_dict_uint(d, "Hugepage_size", hugepage_size);
+	rte_tel_data_add_dict_int(d, "Socket_id", ms_socket_id);
+	rte_tel_data_add_dict_int(d, "flags", ms_flags);
+
+	return 0;
+}
+
+static int
+handle_eal_element_list_request(const char *cmd __rte_unused,
+				const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	struct rte_memseg_list *msl;
+	const struct rte_memseg *ms;
+	struct malloc_elem *elem;
+	struct malloc_heap *heap;
+	uint64_t ms_start_addr, ms_end_addr;
+	uint64_t elem_start_addr, elem_end_addr;
+	uint32_t ms_list_idx = 0;
+	uint32_t heap_id = 0;
+	uint32_t ms_idx = 0;
+	int elem_count = 0;
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[3] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	heap_id = vals[0];
+	if (heap_id >= RTE_MAX_HEAPS)
+		return -1;
+
+	ms_list_idx = vals[1];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	ms_idx = vals[2];
+
+	rte_mcfg_mem_read_lock();
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
+	if (ms == NULL) {
+		rte_mcfg_mem_read_unlock();
+		RTE_LOG(DEBUG, EAL, "Error fetching requested memseg.\n");
+		return -1;
+	}
+
+	ms_start_addr = ms->addr_64;
+	ms_end_addr = (uint64_t)RTE_PTR_ADD(ms_start_addr, ms->len);
+	rte_mcfg_mem_read_unlock();
+
+	rte_tel_data_start_dict(d);
+
+	heap = &mcfg->malloc_heaps[heap_id];
+	rte_spinlock_lock(&heap->lock);
+
+	elem = heap->first;
+	while (elem) {
+		elem_start_addr = (uint64_t)elem;
+		elem_end_addr =
+			(uint64_t)RTE_PTR_ADD(elem_start_addr, elem->size);
+
+		if ((uint64_t)elem_start_addr >= ms_start_addr &&
+		    (uint64_t)elem_end_addr <= ms_end_addr)
+			elem_count++;
+		elem = elem->next;
+	}
+
+	rte_spinlock_unlock(&heap->lock);
+
+	rte_tel_data_add_dict_int(d, "Element_count", elem_count);
+
+	return 0;
+}
+
+static int
+handle_eal_element_info_request(const char *cmd __rte_unused,
+				const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	struct rte_memseg_list *msl;
+	const struct rte_memseg *ms;
+	struct malloc_elem *elem;
+	struct malloc_heap *heap;
+	struct rte_tel_data *c;
+	uint64_t ms_start_addr, ms_end_addr;
+	uint64_t elem_start_addr, elem_end_addr;
+	uint32_t ms_list_idx = 0;
+	uint32_t heap_id = 0;
+	uint32_t ms_idx = 0;
+	uint32_t start_elem = 0, end_elem = 0;
+	uint32_t count = 0, elem_count = 0;
+	char str[ADDR_STR];
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[5] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	heap_id = vals[0];
+	if (heap_id >= RTE_MAX_HEAPS)
+		return -1;
+
+	ms_list_idx = vals[1];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	ms_idx = vals[2];
+	start_elem = vals[3];
+	end_elem = vals[4];
+
+	if (end_elem < start_elem)
+		return -1;
+
+	rte_mcfg_mem_read_lock();
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
+	if (ms == NULL) {
+		rte_mcfg_mem_read_unlock();
+		RTE_LOG(DEBUG, EAL, "Error fetching requested memseg.\n");
+		return -1;
+	}
+
+	ms_start_addr = ms->addr_64;
+	ms_end_addr = (uint64_t)RTE_PTR_ADD(ms_start_addr, ms->len);
+
+	rte_mcfg_mem_read_unlock();
+
+	rte_tel_data_start_dict(d);
+
+	heap = &mcfg->malloc_heaps[heap_id];
+	rte_spinlock_lock(&heap->lock);
+
+	elem = heap->first;
+	while (elem) {
+		elem_start_addr = (uint64_t)elem;
+		elem_end_addr =
+			(uint64_t)RTE_PTR_ADD(elem_start_addr, elem->size);
+
+		if (elem_start_addr < ms_start_addr ||
+				elem_end_addr > ms_end_addr) {
+			elem = elem->next;
+			continue;
+		}
+
+		if (count < start_elem) {
+			elem = elem->next;
+			count++;
+			continue;
+		}
+
+		c = rte_tel_data_alloc();
+		if (c == NULL)
+			break;
+
+		rte_tel_data_start_dict(c);
+		rte_tel_data_add_dict_int(c, "msl_id", ms_list_idx);
+		rte_tel_data_add_dict_int(c, "ms_id", ms_idx);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, ms_start_addr);
+		rte_tel_data_add_dict_string(c, "memseg_start_addr", str);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, ms_end_addr);
+		rte_tel_data_add_dict_string(c, "memseg_end_addr", str);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, elem_start_addr);
+		rte_tel_data_add_dict_string(c, "element_start_addr", str);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, elem_end_addr);
+		rte_tel_data_add_dict_string(c, "element_end_addr", str);
+		rte_tel_data_add_dict_int(c, "element_size", elem->size);
+		snprintf(str, ADDR_STR, "%s", elem->state == 0 ? "Free" :
+			 elem->state == 1 ? "Busy" : elem->state == 2 ?
+			 "Pad" : "Error");
+		rte_tel_data_add_dict_string(c, "element_state", str);
+
+		snprintf(str, ADDR_STR, "%s_%u", "element", count);
+		if (rte_tel_data_add_dict_container(d, str, c, 0) != 0) {
+			rte_tel_data_free(c);
+			break;
+		}
+
+		elem_count++;
+		count++;
+		if (count > end_elem)
+			break;
+
+		elem = elem->next;
+	}
+
+	rte_spinlock_unlock(&heap->lock);
+
+	rte_tel_data_add_dict_int(d, "Element_count", elem_count);
+
+	return 0;
+}
+
 RTE_INIT(memory_telemetry)
 {
 	rte_telemetry_register_cmd(
@@ -1272,5 +1643,22 @@ RTE_INIT(memory_telemetry)
 	rte_telemetry_register_cmd(
 			EAL_HEAP_INFO_REQ, handle_eal_heap_info_request,
 			"Returns malloc heap stats. Parameters: int heap_id");
+	rte_telemetry_register_cmd(
+			EAL_MEMSEG_LISTS_REQ,
+			handle_eal_memseg_lists_request,
+			"Returns array of memseg list IDs. Takes no parameters");
+	rte_telemetry_register_cmd(
+			EAL_MEMSEG_LIST_INFO_REQ,
+			handle_eal_memseg_list_info_request,
+			"Returns memseg list info. Parameters: int memseg_list_id");
+	rte_telemetry_register_cmd(
+			EAL_MEMSEG_INFO_REQ, handle_eal_memseg_info_request,
+			"Returns memseg info. Parameter: int memseg_list_id,int memseg_id");
+	rte_telemetry_register_cmd(EAL_ELEMENT_LIST_REQ,
+			handle_eal_element_list_request,
+			"Returns array of heap element IDs. Parameters: int heap_id, int memseg_list_id, int memseg_id");
+	rte_telemetry_register_cmd(EAL_ELEMENT_INFO_REQ,
+			handle_eal_element_info_request,
+			"Returns element info. Parameters: int heap_id, int memseg_list_id, int memseg_id, int start_elem_id, int end_elem_id");
 }
 #endif
