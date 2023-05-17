@@ -277,7 +277,7 @@ struct vhost_virtqueue {
 	bool			access_ok;
 	bool			ready;
 
-	rte_spinlock_t		access_lock;
+	rte_rwlock_t		access_lock;
 
 
 	union {
@@ -517,7 +517,7 @@ static inline void
 vq_assert_lock__(struct virtio_net *dev, struct vhost_virtqueue *vq, const char *func)
 	__rte_assert_exclusive_lock(&vq->access_lock)
 {
-	if (unlikely(!rte_spinlock_is_locked(&vq->access_lock)))
+	if (unlikely(!rte_rwlock_write_is_locked(&vq->access_lock)))
 		rte_panic("VHOST_CONFIG: (%s) %s() called without access lock taken.\n",
 			dev->ifname, func);
 }

@@ -393,9 +393,9 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	else
 		rte_free(vq->shadow_used_split);
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 	vhost_free_async_mem(vq);
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 	rte_free(vq->batch_copy_elems);
 	vhost_user_iotlb_destroy(vq);
 	rte_free(vq->log_cache);
@@ -630,7 +630,7 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 
 		dev->virtqueue[i] = vq;
 		init_vring_queue(dev, vq, i);
-		rte_spinlock_init(&vq->access_lock);
+		rte_rwlock_init(&vq->access_lock);
 		vq->avail_wrap_counter = 1;
 		vq->used_wrap_counter = 1;
 		vq->signalled_used_valid = false;
@@ -1305,14 +1305,14 @@ rte_vhost_vring_call(int vid, uint16_t vring_idx)
 	if (!vq)
 		return -1;
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_read_lock(&vq->access_lock);
 
 	if (vq_is_packed(dev))
 		vhost_vring_call_packed(dev, vq);
 	else
 		vhost_vring_call_split(dev, vq);
 
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_read_unlock(&vq->access_lock);
 
 	return 0;
 }
@@ -1334,7 +1334,7 @@ rte_vhost_vring_call_nonblock(int vid, uint16_t vring_idx)
 	if (!vq)
 		return -1;
 
-	if (!rte_spinlock_trylock(&vq->access_lock))
+	if (rte_rwlock_read_trylock(&vq->access_lock))
 		return -EAGAIN;
 
 	if (vq_is_packed(dev))
@@ -1342,7 +1342,7 @@ rte_vhost_vring_call_nonblock(int vid, uint16_t vring_idx)
 	else
 		vhost_vring_call_split(dev, vq);
 
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_read_unlock(&vq->access_lock);
 
 	return 0;
 }
@@ -1365,7 +1365,7 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 	if (!vq)
 		return 0;
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 
 	if (unlikely(!vq->enabled || vq->avail == NULL))
 		goto out;
@@ -1373,7 +1373,7 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 	ret = *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx;
 
 out:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 	return ret;
 }
 
@@ -1457,12 +1457,12 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 	if (!vq)
 		return -1;
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 
 	vq->notif_enable = enable;
 	ret = vhost_enable_guest_notification(dev, vq, enable);
 
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return ret;
 }
@@ -1520,7 +1520,7 @@ rte_vhost_rx_queue_count(int vid, uint16_t qid)
 	if (vq == NULL)
 		return 0;
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 
 	if (unlikely(!vq->enabled || vq->avail == NULL))
 		goto out;
@@ -1528,7 +1528,7 @@ rte_vhost_rx_queue_count(int vid, uint16_t qid)
 	ret = *((volatile uint16_t *)&vq->avail->idx) - vq->last_avail_idx;
 
 out:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 	return ret;
 }
 
@@ -1757,9 +1757,9 @@ rte_vhost_async_channel_register(int vid, uint16_t queue_id)
 	if (unlikely(vq == NULL || !dev->async_copy || dev->vdpa_dev != NULL))
 		return -1;
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 	ret = async_channel_register(dev, vq);
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return ret;
 }
@@ -1804,7 +1804,7 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 	if (vq == NULL)
 		return ret;
 
-	if (!rte_spinlock_trylock(&vq->access_lock)) {
+	if (rte_rwlock_write_trylock(&vq->access_lock)) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to unregister async channel, virtqueue busy.\n");
 		return ret;
@@ -1821,7 +1821,7 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 		ret = 0;
 	}
 
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return ret;
 }
@@ -1954,7 +1954,7 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 	if (vq == NULL)
 		return ret;
 
-	if (!rte_spinlock_trylock(&vq->access_lock)) {
+	if (rte_rwlock_write_trylock(&vq->access_lock)) {
 		VHOST_LOG_CONFIG(dev->ifname, DEBUG,
 			"failed to check in-flight packets. virtqueue busy.\n");
 		return ret;
@@ -1963,7 +1963,7 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 	if (vq->async)
 		ret = vq->async->pkts_inflight_n;
 
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return ret;
 }
@@ -2084,13 +2084,13 @@ rte_vhost_vring_stats_get(int vid, uint16_t queue_id,
 
 	vq = dev->virtqueue[queue_id];
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 	for (i = 0; i < VHOST_NB_VQ_STATS; i++) {
 		stats[i].value =
 			*(uint64_t *)(((char *)vq) + vhost_vq_stat_strings[i].offset);
 		stats[i].id = i;
 	}
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return VHOST_NB_VQ_STATS;
 }
@@ -2111,9 +2111,9 @@ int rte_vhost_vring_stats_reset(int vid, uint16_t queue_id)
 
 	vq = dev->virtqueue[queue_id];
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 	memset(&vq->stats, 0, sizeof(vq->stats));
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return 0;
 }

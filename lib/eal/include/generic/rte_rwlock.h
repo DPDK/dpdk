@@ -237,6 +237,23 @@ rte_rwlock_write_unlock(rte_rwlock_t *rwl)
 }
 
 /**
+ * Test if the write lock is taken.
+ *
+ * @param rwl
+ *   A pointer to a rwlock structure.
+ * @return
+ *   1 if the write lock is currently taken; 0 otherwise.
+ */
+static inline int
+rte_rwlock_write_is_locked(rte_rwlock_t *rwl)
+{
+	if (__atomic_load_n(&rwl->cnt, __ATOMIC_RELAXED) & RTE_RWLOCK_WRITE)
+		return 1;
+
+	return 0;
+}
+
+/**
  * Try to execute critical section in a hardware memory transaction, if it
  * fails or not available take a read lock
  *

@@ -55,7 +55,7 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 static inline void
 vhost_queue_stats_update(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mbuf **pkts, uint16_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct virtqueue_stats *stats = &vq->stats;
 	int i;
@@ -102,7 +102,7 @@ static __rte_always_inline int64_t
 vhost_async_dma_transfer_one(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		int16_t dma_id, uint16_t vchan_id, uint16_t flag_idx,
 		struct vhost_iov_iter *pkt)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct async_dma_vchan_info *dma_info = &dma_copy_track[dma_id].vchans[vchan_id];
 	uint16_t ring_mask = dma_info->ring_mask;
@@ -152,7 +152,7 @@ static __rte_always_inline uint16_t
 vhost_async_dma_transfer(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		int16_t dma_id, uint16_t vchan_id, uint16_t head_idx,
 		struct vhost_iov_iter *pkts, uint16_t nr_pkts)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct async_dma_vchan_info *dma_info = &dma_copy_track[dma_id].vchans[vchan_id];
 	int64_t ret, nr_copies = 0;
@@ -454,7 +454,7 @@ vhost_async_shadow_enqueue_packed_batch(struct vhost_virtqueue *vq,
 
 static __rte_always_inline void
 vhost_async_shadow_dequeue_packed_batch(struct vhost_virtqueue *vq, uint16_t *ids)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	uint16_t i;
 	struct vhost_async *async = vq->async;
@@ -1131,7 +1131,7 @@ static __rte_always_inline int
 async_fill_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mbuf *m, uint32_t mbuf_offset,
 		uint64_t buf_iova, uint32_t cpy_len, bool to_desc)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	struct vhost_async *async = vq->async;
@@ -1211,7 +1211,7 @@ static __rte_always_inline int
 mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mbuf *m, struct buf_vector *buf_vec,
 		uint16_t nr_vec, uint16_t num_buffers, bool is_async)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint32_t vec_idx = 0;
@@ -1341,7 +1341,7 @@ vhost_enqueue_single_packed(struct virtio_net *dev,
 			    struct rte_mbuf *pkt,
 			    struct buf_vector *buf_vec,
 			    uint16_t *nr_descs)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint16_t nr_vec = 0;
@@ -1403,7 +1403,7 @@ vhost_enqueue_single_packed(struct virtio_net *dev,
 static __rte_noinline uint32_t
 virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint32_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint32_t pkt_idx = 0;
@@ -1635,7 +1635,7 @@ static __rte_always_inline int16_t
 virtio_dev_rx_single_packed(struct virtio_net *dev,
 			    struct vhost_virtqueue *vq,
 			    struct rte_mbuf *pkt)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
@@ -1661,7 +1661,7 @@ virtio_dev_rx_packed(struct virtio_net *dev,
 		     struct vhost_virtqueue *__rte_restrict vq,
 		     struct rte_mbuf **__rte_restrict pkts,
 		     uint32_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint32_t pkt_idx = 0;
@@ -1701,7 +1701,7 @@ virtio_dev_rx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t nb_tx = 0;
 
 	VHOST_LOG_DATA(dev->ifname, DEBUG, "%s\n", __func__);
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_read_lock(&vq->access_lock);
 
 	if (unlikely(!vq->enabled))
 		goto out_access_unlock;
@@ -1727,7 +1727,7 @@ out:
 	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_read_unlock(&vq->access_lock);
 
 	return nb_tx;
 }
@@ -1760,7 +1760,7 @@ rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
 
 static __rte_always_inline uint16_t
 async_get_first_inflight_pkt_idx(struct vhost_virtqueue *vq)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct vhost_async *async = vq->async;
 
@@ -2165,7 +2165,7 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev, struct vhost_virtqueue
 
 static __rte_always_inline void
 write_back_completed_descs_split(struct vhost_virtqueue *vq, uint16_t n_descs)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct vhost_async *async = vq->async;
 	uint16_t nr_left = n_descs;
@@ -2198,7 +2198,7 @@ write_back_completed_descs_split(struct vhost_virtqueue *vq, uint16_t n_descs)
 static __rte_always_inline void
 write_back_completed_descs_packed(struct vhost_virtqueue *vq,
 				uint16_t n_buffers)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct vhost_async *async = vq->async;
 	uint16_t from = async->last_buffer_idx_packed;
@@ -2263,7 +2263,7 @@ write_back_completed_descs_packed(struct vhost_virtqueue *vq,
 static __rte_always_inline uint16_t
 vhost_poll_enqueue_completed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint16_t count, int16_t dma_id, uint16_t vchan_id)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct vhost_async *async = vq->async;
 	struct async_inflight_info *pkts_info = async->pkts_info;
@@ -2357,7 +2357,7 @@ rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 
 	vq = dev->virtqueue[queue_id];
 
-	if (!rte_spinlock_trylock(&vq->access_lock)) {
+	if (rte_rwlock_read_trylock(&vq->access_lock)) {
 		VHOST_LOG_DATA(dev->ifname, DEBUG,
 			"%s: virtqueue %u is busy.\n",
 			__func__, queue_id);
@@ -2377,7 +2377,7 @@ rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 	vq->stats.inflight_completed += n_pkts_cpl;
 
 out:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_read_unlock(&vq->access_lock);
 
 	return n_pkts_cpl;
 }
@@ -2465,7 +2465,7 @@ rte_vhost_clear_queue(int vid, uint16_t queue_id, struct rte_mbuf **pkts,
 
 	vq = dev->virtqueue[queue_id];
 
-	if (!rte_spinlock_trylock(&vq->access_lock)) {
+	if (rte_rwlock_read_trylock(&vq->access_lock)) {
 		VHOST_LOG_DATA(dev->ifname, DEBUG, "%s: virtqueue %u is busy.\n",
 			__func__, queue_id);
 		return 0;
@@ -2495,7 +2495,7 @@ rte_vhost_clear_queue(int vid, uint16_t queue_id, struct rte_mbuf **pkts,
 	vq->stats.inflight_completed += n_pkts_cpl;
 
 out_access_unlock:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_read_unlock(&vq->access_lock);
 
 	return n_pkts_cpl;
 }
@@ -2516,7 +2516,7 @@ virtio_dev_rx_async_submit(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		return 0;
 	}
 
-	rte_spinlock_lock(&vq->access_lock);
+	rte_rwlock_write_lock(&vq->access_lock);
 
 	if (unlikely(!vq->enabled || !vq->async))
 		goto out_access_unlock;
@@ -2544,7 +2544,7 @@ out:
 	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return nb_tx;
 }
@@ -2866,7 +2866,7 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		  struct buf_vector *buf_vec, uint16_t nr_vec,
 		  struct rte_mbuf *m, struct rte_mempool *mbuf_pool,
 		  bool legacy_ol_flags, uint16_t slot_idx, bool is_async)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint32_t buf_avail, buf_offset, buf_len;
@@ -3073,7 +3073,7 @@ static uint16_t
 virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count,
 	bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint16_t i;
@@ -3178,7 +3178,7 @@ static uint16_t
 virtio_dev_tx_split_legacy(struct virtio_net *dev,
 	struct vhost_virtqueue *vq, struct rte_mempool *mbuf_pool,
 	struct rte_mbuf **pkts, uint16_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count, true);
@@ -3189,7 +3189,7 @@ static uint16_t
 virtio_dev_tx_split_compliant(struct virtio_net *dev,
 	struct vhost_virtqueue *vq, struct rte_mempool *mbuf_pool,
 	struct rte_mbuf **pkts, uint16_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count, false);
@@ -3393,7 +3393,7 @@ vhost_dequeue_single_packed(struct virtio_net *dev,
 			    uint16_t *buf_id,
 			    uint16_t *desc_count,
 			    bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
@@ -3443,7 +3443,7 @@ virtio_dev_tx_single_packed(struct virtio_net *dev,
 			    struct rte_mempool *mbuf_pool,
 			    struct rte_mbuf *pkts,
 			    bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 
@@ -3475,7 +3475,7 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 		     struct rte_mbuf **__rte_restrict pkts,
 		     uint32_t count,
 		     bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint32_t pkt_idx = 0;
@@ -3520,7 +3520,7 @@ static uint16_t
 virtio_dev_tx_packed_legacy(struct virtio_net *dev,
 	struct vhost_virtqueue *__rte_restrict vq, struct rte_mempool *mbuf_pool,
 	struct rte_mbuf **__rte_restrict pkts, uint32_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_packed(dev, vq, mbuf_pool, pkts, count, true);
@@ -3531,7 +3531,7 @@ static uint16_t
 virtio_dev_tx_packed_compliant(struct virtio_net *dev,
 	struct vhost_virtqueue *__rte_restrict vq, struct rte_mempool *mbuf_pool,
 	struct rte_mbuf **__rte_restrict pkts, uint32_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_packed(dev, vq, mbuf_pool, pkts, count, false);
@@ -3566,7 +3566,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(rte_spinlock_trylock(&vq->access_lock) == 0))
+	if (unlikely(rte_rwlock_read_trylock(&vq->access_lock) != 0))
 		return 0;
 
 	if (unlikely(!vq->enabled)) {
@@ -3636,7 +3636,7 @@ out:
 	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_read_unlock(&vq->access_lock);
 
 	if (unlikely(rarp_mbuf != NULL))
 		count += 1;
@@ -3648,7 +3648,7 @@ static __rte_always_inline uint16_t
 async_poll_dequeue_completed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mbuf **pkts, uint16_t count, int16_t dma_id,
 		uint16_t vchan_id, bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	uint16_t start_idx, from, i;
 	uint16_t nr_cpl_pkts = 0;
@@ -3695,7 +3695,7 @@ static __rte_always_inline uint16_t
 virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count,
 		int16_t dma_id, uint16_t vchan_id, bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	static bool allocerr_warned;
@@ -3844,7 +3844,7 @@ virtio_dev_tx_async_split_legacy(struct virtio_net *dev,
 		struct vhost_virtqueue *vq, struct rte_mempool *mbuf_pool,
 		struct rte_mbuf **pkts, uint16_t count,
 		int16_t dma_id, uint16_t vchan_id)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_async_split(dev, vq, mbuf_pool,
@@ -3857,7 +3857,7 @@ virtio_dev_tx_async_split_compliant(struct virtio_net *dev,
 		struct vhost_virtqueue *vq, struct rte_mempool *mbuf_pool,
 		struct rte_mbuf **pkts, uint16_t count,
 		int16_t dma_id, uint16_t vchan_id)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_async_split(dev, vq, mbuf_pool,
@@ -3867,7 +3867,7 @@ virtio_dev_tx_async_split_compliant(struct virtio_net *dev,
 static __rte_always_inline void
 vhost_async_shadow_dequeue_single_packed(struct vhost_virtqueue *vq,
 				uint16_t buf_id, uint16_t count)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 {
 	struct vhost_async *async = vq->async;
 	uint16_t idx = async->buffer_idx_packed;
@@ -3889,7 +3889,7 @@ virtio_dev_tx_async_single_packed(struct virtio_net *dev,
 			struct rte_mbuf *pkts,
 			uint16_t slot_idx,
 			bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	int err;
@@ -3942,7 +3942,7 @@ virtio_dev_tx_async_packed_batch(struct virtio_net *dev,
 			   struct vhost_virtqueue *vq,
 			   struct rte_mbuf **pkts, uint16_t slot_idx,
 			   uint16_t dma_id, uint16_t vchan_id)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint16_t avail_idx = vq->last_avail_idx;
@@ -4000,7 +4000,7 @@ static __rte_always_inline uint16_t
 virtio_dev_tx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts,
 		uint16_t count, uint16_t dma_id, uint16_t vchan_id, bool legacy_ol_flags)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint32_t pkt_idx = 0;
@@ -4111,7 +4111,7 @@ static uint16_t
 virtio_dev_tx_async_packed_legacy(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts,
 		uint16_t count, uint16_t dma_id, uint16_t vchan_id)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_async_packed(dev, vq, mbuf_pool,
@@ -4123,7 +4123,7 @@ static uint16_t
 virtio_dev_tx_async_packed_compliant(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts,
 		uint16_t count, uint16_t dma_id, uint16_t vchan_id)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_shared_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	return virtio_dev_tx_async_packed(dev, vq, mbuf_pool,
@@ -4173,7 +4173,7 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(rte_spinlock_trylock(&vq->access_lock) == 0))
+	if (unlikely(rte_rwlock_read_trylock(&vq->access_lock) != 0))
 		return 0;
 
 	if (unlikely(vq->enabled == 0)) {
@@ -4255,7 +4255,7 @@ out:
 	vhost_user_iotlb_rd_unlock(vq);
 
 out_access_unlock:
-	rte_spinlock_unlock(&vq->access_lock);
+	rte_rwlock_read_unlock(&vq->access_lock);
 
 	if (unlikely(rarp_mbuf != NULL))
 		count += 1;

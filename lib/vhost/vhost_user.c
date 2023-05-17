@@ -399,7 +399,7 @@ vhost_user_set_features(struct virtio_net **pdev,
 			cleanup_vq_inflight(dev, vq);
 			/* vhost_user_lock_all_queue_pairs locked all qps */
 			vq_assert_lock(dev, vq);
-			rte_spinlock_unlock(&vq->access_lock);
+			rte_rwlock_write_unlock(&vq->access_lock);
 			free_vq(dev, vq);
 		}
 	}
@@ -2649,10 +2649,10 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 					len, imsg->perm);
 
 			if (is_vring_iotlb(dev, vq, imsg)) {
-				rte_spinlock_lock(&vq->access_lock);
+				rte_rwlock_write_lock(&vq->access_lock);
 				translate_ring_addresses(&dev, &vq);
 				*pdev = dev;
-				rte_spinlock_unlock(&vq->access_lock);
+				rte_rwlock_write_unlock(&vq->access_lock);
 			}
 		}
 		break;
@@ -2667,9 +2667,9 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 					imsg->size);
 
 			if (is_vring_iotlb(dev, vq, imsg)) {
-				rte_spinlock_lock(&vq->access_lock);
+				rte_rwlock_write_lock(&vq->access_lock);
 				vring_invalidate(dev, vq);
-				rte_spinlock_unlock(&vq->access_lock);
+				rte_rwlock_write_unlock(&vq->access_lock);
 			}
 		}
 		break;
@@ -3030,7 +3030,7 @@ vhost_user_lock_all_queue_pairs(struct virtio_net *dev)
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
 
 		if (vq) {
-			rte_spinlock_lock(&vq->access_lock);
+			rte_rwlock_write_lock(&vq->access_lock);
 			vq_num++;
 		}
 		i++;
@@ -3048,7 +3048,7 @@ vhost_user_unlock_all_queue_pairs(struct virtio_net *dev)
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
 
 		if (vq) {
-			rte_spinlock_unlock(&vq->access_lock);
+			rte_rwlock_write_unlock(&vq->access_lock);
 			vq_num++;
 		}
 		i++;
