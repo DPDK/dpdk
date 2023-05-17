@@ -135,11 +135,12 @@ struct virtqueue_stats {
 	uint64_t broadcast;
 	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
 	uint64_t size_bins[8];
-	uint64_t guest_notifications;
 	uint64_t iotlb_hits;
 	uint64_t iotlb_misses;
 	uint64_t inflight_submitted;
 	uint64_t inflight_completed;
+	/* Counters below are atomic, and should be incremented as such. */
+	uint64_t guest_notifications;
 };
 
 /**
@@ -907,7 +908,8 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 				vq->callfd >= 0) {
 			eventfd_write(vq->callfd, (eventfd_t) 1);
 			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-				vq->stats.guest_notifications++;
+				__atomic_fetch_add(&vq->stats.guest_notifications,
+					1, __ATOMIC_RELAXED);
 			if (dev->notify_ops->guest_notified)
 				dev->notify_ops->guest_notified(dev->vid);
 		}
@@ -917,7 +919,8 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 				&& (vq->callfd >= 0)) {
 			eventfd_write(vq->callfd, (eventfd_t)1);
 			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-				vq->stats.guest_notifications++;
+				__atomic_fetch_add(&vq->stats.guest_notifications,
+					1, __ATOMIC_RELAXED);
 			if (dev->notify_ops->guest_notified)
 				dev->notify_ops->guest_notified(dev->vid);
 		}
@@ -974,7 +977,8 @@ kick:
 	if (kick && vq->callfd >= 0) {
 		eventfd_write(vq->callfd, (eventfd_t)1);
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-			vq->stats.guest_notifications++;
+			__atomic_fetch_add(&vq->stats.guest_notifications,
+					1, __ATOMIC_RELAXED);
 		if (dev->notify_ops->guest_notified)
 			dev->notify_ops->guest_notified(dev->vid);
 	}

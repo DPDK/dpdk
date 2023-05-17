@@ -2086,6 +2086,10 @@ rte_vhost_vring_stats_get(int vid, uint16_t queue_id,
 
 	rte_rwlock_write_lock(&vq->access_lock);
 	for (i = 0; i < VHOST_NB_VQ_STATS; i++) {
+		/*
+		 * No need to the read atomic counters as such, due to the
+		 * above write access_lock preventing them to be updated.
+		 */
 		stats[i].value =
 			*(uint64_t *)(((char *)vq) + vhost_vq_stat_strings[i].offset);
 		stats[i].id = i;
@@ -2112,6 +2116,10 @@ int rte_vhost_vring_stats_reset(int vid, uint16_t queue_id)
 	vq = dev->virtqueue[queue_id];
 
 	rte_rwlock_write_lock(&vq->access_lock);
+	/*
+	 * No need to the reset atomic counters as such, due to the
+	 * above write access_lock preventing them to be updated.
+	 */
 	memset(&vq->stats, 0, sizeof(vq->stats));
 	rte_rwlock_write_unlock(&vq->access_lock);
 
