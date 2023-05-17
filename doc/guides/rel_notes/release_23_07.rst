@@ -101,6 +101,13 @@ New Features
     Introduced both ``rte_flow_actions_update()`` and
     ``rte_flow_async_actions_update()`` functions.
 
+* **Added vhost callback API for interrupt handling.**
+
+  A new callback, ``guest_notify``, is introduced that can be used to handle
+  the interrupt kick outside of the datapath fast path.
+  In addition, a new API, ``rte_vhost_notify_guest()``,
+  is added to raise the interrupt outside of the fast path.
+
 * **Added vmxnet3 version 7 support.**
 
   Added support for vmxnet3 version 7 which includes support

@@ -44,6 +44,10 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 	{"size_1024_1518_packets", offsetof(struct vhost_virtqueue, stats.size_bins[6])},
 	{"size_1519_max_packets",  offsetof(struct vhost_virtqueue, stats.size_bins[7])},
 	{"guest_notifications",    offsetof(struct vhost_virtqueue, stats.guest_notifications)},
+	{"guest_notifications_offloaded", offsetof(struct vhost_virtqueue,
+		stats.guest_notifications_offloaded)},
+	{"guest_notifications_error", offsetof(struct vhost_virtqueue,
+		stats.guest_notifications_error)},
 	{"iotlb_hits",             offsetof(struct vhost_virtqueue, stats.iotlb_hits)},
 	{"iotlb_misses",           offsetof(struct vhost_virtqueue, stats.iotlb_misses)},
 	{"inflight_submitted",     offsetof(struct vhost_virtqueue, stats.inflight_submitted)},
@@ -1465,6 +1469,40 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return ret;
+}
+
+void
+rte_vhost_notify_guest(int vid, uint16_t queue_id)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+
+	if (!dev ||  queue_id >= VHOST_MAX_VRING)
+		return;
+
+	vq = dev->virtqueue[queue_id];
+	if (!vq)
+		return;
+
+	rte_rwlock_read_lock(&vq->access_lock);
+
+	if (vq->callfd >= 0) {
+		int ret = eventfd_write(vq->callfd, (eventfd_t)1);
+
+		if (ret) {
+			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+				__atomic_fetch_add(&vq->stats.guest_notifications_error,
+					1, __ATOMIC_RELAXED);
+		} else {
+			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+				__atomic_fetch_add(&vq->stats.guest_notifications,
+					1, __ATOMIC_RELAXED);
+			if (dev->notify_ops->guest_notified)
+				dev->notify_ops->guest_notified(dev->vid);
+		}
+	}
+
+	rte_rwlock_read_unlock(&vq->access_lock);
 }
 
 void

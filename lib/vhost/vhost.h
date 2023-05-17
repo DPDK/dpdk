@@ -141,6 +141,8 @@ struct virtqueue_stats {
 	uint64_t inflight_completed;
 	/* Counters below are atomic, and should be incremented as such. */
 	uint64_t guest_notifications;
+	uint64_t guest_notifications_offloaded;
+	uint64_t guest_notifications_error;
 };
 
 /**
@@ -885,6 +887,34 @@ vhost_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old)
 }
 
 static __rte_always_inline void
+vhost_vring_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	int ret;
+
+	if (dev->notify_ops->guest_notify &&
+	    dev->notify_ops->guest_notify(dev->vid, vq->index)) {
+		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+			__atomic_fetch_add(&vq->stats.guest_notifications_offloaded,
+				1, __ATOMIC_RELAXED);
+		return;
+	}
+
+	ret = eventfd_write(vq->callfd, (eventfd_t) 1);
+	if (ret) {
+		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+			__atomic_fetch_add(&vq->stats.guest_notifications_error,
+				1, __ATOMIC_RELAXED);
+		return;
+	}
+
+	if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+		__atomic_fetch_add(&vq->stats.guest_notifications,
+			1, __ATOMIC_RELAXED);
+	if (dev->notify_ops->guest_notified)
+		dev->notify_ops->guest_notified(dev->vid);
+}
+
+static __rte_always_inline void
 vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	/* Flush used->idx update before we read avail->flags. */
@@ -905,25 +935,13 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 		if ((vhost_need_event(vhost_used_event(vq), new, old) ||
 					unlikely(!signalled_used_valid)) &&
-				vq->callfd >= 0) {
-			eventfd_write(vq->callfd, (eventfd_t) 1);
-			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-				__atomic_fetch_add(&vq->stats.guest_notifications,
-					1, __ATOMIC_RELAXED);
-			if (dev->notify_ops->guest_notified)
-				dev->notify_ops->guest_notified(dev->vid);
-		}
+				vq->callfd >= 0)
+			vhost_vring_inject_irq(dev, vq);
 	} else {
 		/* Kick the guest if necessary. */
-		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
-				&& (vq->callfd >= 0)) {
-			eventfd_write(vq->callfd, (eventfd_t)1);
-			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-				__atomic_fetch_add(&vq->stats.guest_notifications,
-					1, __ATOMIC_RELAXED);
-			if (dev->notify_ops->guest_notified)
-				dev->notify_ops->guest_notified(dev->vid);
-		}
+		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT) &&
+				(vq->callfd >= 0))
+			vhost_vring_inject_irq(dev, vq);
 	}
 }
 
@@ -974,14 +992,8 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (vhost_need_event(off, new, old))
 		kick = true;
 kick:
-	if (kick && vq->callfd >= 0) {
-		eventfd_write(vq->callfd, (eventfd_t)1);
-		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-			__atomic_fetch_add(&vq->stats.guest_notifications,
-					1, __ATOMIC_RELAXED);
-		if (dev->notify_ops->guest_notified)
-			dev->notify_ops->guest_notified(dev->vid);
-	}
+	if (kick && vq->callfd >= 0)
+		vhost_vring_inject_irq(dev, vq);
 }
 
 static __rte_always_inline void
@@ -1020,4 +1032,11 @@ mbuf_is_consumed(struct rte_mbuf *m)
 
 uint64_t hua_to_alignment(struct rte_vhost_memory *mem, void *ptr);
 void mem_set_dump(void *ptr, size_t size, bool enable, uint64_t alignment);
+
+/* Versioned functions */
+int rte_vhost_driver_callback_register_v23(const char *path,
+	struct rte_vhost_device_ops const * const ops);
+int rte_vhost_driver_callback_register_v24(const char *path,
+	struct rte_vhost_device_ops const * const ops);
+
 #endif /* _VHOST_NET_CDEV_H_ */

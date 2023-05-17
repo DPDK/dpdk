@@ -64,6 +64,12 @@ DPDK_23 {
 	local: *;
 };
 
+DPDK_24 {
+	global:
+
+	rte_vhost_driver_callback_register;
+} DPDK_23;
+
 EXPERIMENTAL {
 	global:
 
@@ -98,6 +104,9 @@ EXPERIMENTAL {
 	# added in 22.11
 	rte_vhost_async_dma_unconfigure;
 	rte_vhost_vring_call_nonblock;
+
+	# added in 23.07
+	rte_vhost_notify_guest;
 };
 
 INTERNAL {

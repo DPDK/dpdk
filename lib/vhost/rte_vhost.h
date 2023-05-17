@@ -298,7 +298,13 @@ struct rte_vhost_device_ops {
 	 */
 	void (*guest_notified)(int vid);
 
-	void *reserved[1]; /**< Reserved for future extension */
+	/**
+	 * If this callback is registered, notification to the guest can
+	 * be handled by the front-end calling rte_vhost_notify_guest().
+	 * If it's not handled, 'false' should be returned. This can be used
+	 * to remove the "slow" eventfd_write() syscall from the datapath.
+	 */
+	bool (*guest_notify)(int vid, uint16_t queue_id);
 };
 
 /**
@@ -432,6 +438,21 @@ void rte_vhost_log_used_vring(int vid, uint16_t vring_idx,
 			      uint64_t offset, uint64_t len);
 
 int rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Inject the offloaded interrupt into the vhost device's queue.
+ * @see guest_notify vhost device operation
+ *
+ * @param vid
+ *  vhost device ID
+ * @param queue_id
+ *  virtio queue index
+ */
+__rte_experimental
+void rte_vhost_notify_guest(int vid, uint16_t queue_id);
 
 /**
  * Register vhost driver. path could be different for multiple
