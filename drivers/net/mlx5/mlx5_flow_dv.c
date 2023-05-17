@@ -7579,7 +7579,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			ret = mlx5_flow_validate_action_drop(action_flags,
+			ret = mlx5_flow_validate_action_drop(dev, is_root,
 							     attr, error);
 			if (ret < 0)
 				return ret;
@@ -18916,7 +18916,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 				break;
 			case RTE_FLOW_ACTION_TYPE_DROP:
 				ret = mlx5_flow_validate_action_drop
-					(action_flags[i], attr, &flow_err);
+					(dev, false, attr, &flow_err);
 				if (ret < 0)
 					return -rte_mtr_error_set(error,
 					ENOTSUP,

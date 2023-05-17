@@ -2226,7 +2226,8 @@ int mlx5_validate_action_rss(struct rte_eth_dev *dev,
 int mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    struct rte_flow_error *error);
-int mlx5_flow_validate_action_drop(uint64_t action_flags,
+int mlx5_flow_validate_action_drop(struct rte_eth_dev *dev,
+				   bool is_root,
 				   const struct rte_flow_attr *attr,
 				   struct rte_flow_error *error);
 int mlx5_flow_validate_action_flag(uint64_t action_flags,
