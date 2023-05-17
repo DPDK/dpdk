@@ -414,7 +414,8 @@ struct rte_crypto_rsa_op_param {
 	 * In this case the underlying array should have been
 	 * allocated with enough memory to hold plaintext output
 	 * (i.e. must be at least RSA key size). The message.length
-	 * field should be 0 and will be overwritten by the PMD
+	 * field could be either 0 or minimal length expected from PMD.
+	 * This could be validated and overwritten by the PMD
 	 * with the decrypted length.
 	 */
 
@@ -427,8 +428,10 @@ struct rte_crypto_rsa_op_param {
 	 * - for RSA public encrypt.
 	 * In this case the underlying array should have been allocated
 	 * with enough memory to hold ciphertext output (i.e. must be
-	 * at least RSA key size). The cipher.length field should
-	 * be 0 and will be overwritten by the PMD with the encrypted length.
+	 * at least RSA key size). The cipher.length field could be
+	 * either 0 or minimal length expected from PMD.
+	 * This could be validated and overwritten by the PMD
+	 * with the encrypted length.
 	 *
 	 * When RTE_CRYPTO_RSA_PADDING_NONE and RTE_CRYPTO_ASYM_OP_VERIFY
 	 * selected, this is an output of decrypted signature.
@@ -443,8 +446,10 @@ struct rte_crypto_rsa_op_param {
 	 * - for RSA private encrypt.
 	 * In this case the underlying array should have been allocated
 	 * with enough memory to hold signature output (i.e. must be
-	 * at least RSA key size). The sign.length field should
-	 * be 0 and will be overwritten by the PMD with the signature length.
+	 * at least RSA key size). The sign.length field could be
+	 * either 0 or minimal length expected from PMD.
+	 * This could be validated and overwritten by the PMD
+	 * with the signature length.
 	 */
 
 	struct rte_crypto_rsa_padding padding;

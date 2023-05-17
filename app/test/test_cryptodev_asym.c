@@ -90,7 +90,7 @@ queue_ops_rsa_sign_verify(void *sess)
 
 	asym_op->rsa.message.data = rsaplaintext.data;
 	asym_op->rsa.message.length = rsaplaintext.len;
-	asym_op->rsa.sign.length = 0;
+	asym_op->rsa.sign.length = RTE_DIM(rsa_n);
 	asym_op->rsa.sign.data = output_buf;
 	asym_op->rsa.padding.type = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
 
@@ -181,7 +181,7 @@ queue_ops_rsa_enc_dec(void *sess)
 
 	asym_op->rsa.message.data = rsaplaintext.data;
 	asym_op->rsa.cipher.data = cipher_buf;
-	asym_op->rsa.cipher.length = 0;
+	asym_op->rsa.cipher.length = RTE_DIM(rsa_n);
 	asym_op->rsa.message.length = rsaplaintext.len;
 	asym_op->rsa.padding.type = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
 
@@ -213,7 +213,7 @@ queue_ops_rsa_enc_dec(void *sess)
 
 	/* Use the resulted output as decryption Input vector*/
 	asym_op = result_op->asym;
-	asym_op->rsa.message.length = 0;
+	asym_op->rsa.message.length = RTE_DIM(rsa_n);
 	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
 	asym_op->rsa.padding.type = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
 
