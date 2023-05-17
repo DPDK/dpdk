@@ -1317,14 +1317,14 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 	uint16_t ether_type = 0;
 	bool is_empty_vlan = false;
 	uint16_t udp_dport = 0;
-	bool is_root;
+	/* Verbs interface does not support groups higher than 0. */
+	bool is_root = true;
 
 	if (items == NULL)
 		return -1;
 	ret = flow_verbs_validate_attributes(dev, attr, error);
 	if (ret < 0)
 		return ret;
-	is_root = ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int ret = 0;
@@ -1531,7 +1531,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			ret = mlx5_flow_validate_action_drop(action_flags,
+			ret = mlx5_flow_validate_action_drop(dev,
+							     is_root,
 							     attr,
 							     error);
 			if (ret < 0)

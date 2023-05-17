@@ -876,10 +876,10 @@ mlx5_flow_drop_action_config(struct rte_eth_dev *dev __rte_unused)
 	 */
 	if (!priv->sh->drop_action_check_flag) {
 		if (!mlx5_flow_discover_dr_action_support(dev))
-			priv->sh->dr_drop_action_en = 1;
+			priv->sh->dr_root_drop_action_en = 1;
 		priv->sh->drop_action_check_flag = 1;
 	}
-	if (priv->sh->dr_drop_action_en)
+	if (priv->sh->dr_root_drop_action_en)
 		priv->root_drop_action = priv->sh->dr_drop_action;
 	else
 		priv->root_drop_action = priv->drop_queue.hrxq->action;
