@@ -434,15 +434,22 @@ ipsec_mb_sym_session_configure(
 	struct ipsec_mb_dev_private *internals = dev->data->dev_private;
 	struct ipsec_mb_internals *pmd_data =
 		&ipsec_mb_pmds[internals->pmd_type];
-	IMB_MGR *mb_mgr = alloc_init_mb_mgr();
+	struct ipsec_mb_qp *qp = dev->data->queue_pairs[0];
+	IMB_MGR *mb_mgr;
 	int ret = 0;
+
+	if (qp != NULL)
+		mb_mgr = qp->mb_mgr;
+	else
+		mb_mgr = alloc_init_mb_mgr();
 
 	if (!mb_mgr)
 		return -ENOMEM;
 
 	if (unlikely(sess == NULL)) {
 		IPSEC_MB_LOG(ERR, "invalid session struct");
-		free_mb_mgr(mb_mgr);
+		if (qp == NULL)
+			free_mb_mgr(mb_mgr);
 		return -EINVAL;
 	}
 
@@ -452,11 +459,13 @@ ipsec_mb_sym_session_configure(
 		IPSEC_MB_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
-		free_mb_mgr(mb_mgr);
+		if (qp == NULL)
+			free_mb_mgr(mb_mgr);
 		return ret;
 	}
 
-	free_mb_mgr(mb_mgr);
+	if (qp == NULL)
+		free_mb_mgr(mb_mgr);
 	return 0;
 }
 
