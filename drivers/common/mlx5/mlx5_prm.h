@@ -2290,7 +2290,8 @@ struct mlx5_ifc_wqe_based_flow_table_cap_bits {
 	u8 rtc_index_mode[0x5];
 	u8 reserved_at_58[0x3];
 	u8 rtc_log_depth_max[0x5];
-	u8 reserved_at_60[0x10];
+	u8 reserved_at_60[0x8];
+	u8 max_header_modify_pattern_length[0x8];
 	u8 ste_format[0x10];
 	u8 stc_action_type[0x80];
 	u8 header_insert_type[0x10];
