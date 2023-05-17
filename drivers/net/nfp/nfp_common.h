@@ -244,11 +244,15 @@ struct nfp_net_hw {
 
 	/* Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;
+	struct rte_eth_xstat *eth_xstats_base;
 
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
 	struct nfp_cpp_area *hwqueues_area;
 	struct nfp_cpp_area *msix_area;
+	struct nfp_cpp_area *mac_stats_area;
+	uint8_t *mac_stats_bar;
+	uint8_t *mac_stats;
 
 	uint8_t *hw_queues;
 	/* Sequential physical port number */
@@ -444,6 +448,22 @@ int nfp_net_link_update(struct rte_eth_dev *dev,
 			__rte_unused int wait_to_complete);
 int nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 int nfp_net_stats_reset(struct rte_eth_dev *dev);
+uint32_t nfp_net_xstats_size(const struct rte_eth_dev *dev);
+int nfp_net_xstats_get_names(struct rte_eth_dev *dev,
+		struct rte_eth_xstat_name *xstats_names,
+		unsigned int size __rte_unused);
+int nfp_net_xstats_get(struct rte_eth_dev *dev,
+		struct rte_eth_xstat *xstats,
+		unsigned int n __rte_unused);
+int nfp_net_xstats_get_names_by_id(struct rte_eth_dev *dev,
+		const uint64_t *ids,
+		struct rte_eth_xstat_name *xstats_names,
+		unsigned int size);
+int nfp_net_xstats_get_by_id(struct rte_eth_dev *dev,
+		const uint64_t *ids,
+		uint64_t *values,
+		unsigned int n);
+int nfp_net_xstats_reset(struct rte_eth_dev *dev);
 int nfp_net_infos_get(struct rte_eth_dev *dev,
 		      struct rte_eth_dev_info *dev_info);
 const uint32_t *nfp_net_supported_ptypes_get(struct rte_eth_dev *dev);

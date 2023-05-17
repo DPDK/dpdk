@@ -448,6 +448,11 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.link_update		= nfp_net_link_update,
 	.stats_get		= nfp_net_stats_get,
 	.stats_reset		= nfp_net_stats_reset,
+	.xstats_get             = nfp_net_xstats_get,
+	.xstats_reset           = nfp_net_xstats_reset,
+	.xstats_get_names       = nfp_net_xstats_get_names,
+	.xstats_get_by_id       = nfp_net_xstats_get_by_id,
+	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
 	.dev_infos_get		= nfp_net_infos_get,
 	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
 	.mtu_set		= nfp_net_dev_mtu_set,
@@ -553,15 +558,27 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	}
 
 	if (port == 0) {
+		uint32_t min_size;
+
 		hw->ctrl_bar = pf_dev->ctrl_bar;
+		min_size = NFP_MAC_STATS_SIZE * hw->pf_dev->nfp_eth_table->max_index;
+		hw->mac_stats_bar = nfp_rtsym_map(hw->pf_dev->sym_tbl, "_mac_stats",
+				min_size, &hw->mac_stats_area);
+		if (hw->mac_stats_bar == NULL) {
+			PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _mac_stats_bar");
+			return -EIO;
+		}
+		hw->mac_stats = hw->mac_stats_bar;
 	} else {
 		if (pf_dev->ctrl_bar == NULL)
 			return -ENODEV;
 		/* Use port offset in pf ctrl_bar for this ports control bar */
 		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_PF_CSR_SLICE_SIZE);
+		hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar + (port * NFP_MAC_STATS_SIZE);
 	}
 
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "MAC stats: %p", hw->mac_stats);
 
 	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
 
@@ -573,6 +590,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
+	hw->eth_xstats_base = rte_malloc("rte_eth_xstat", sizeof(struct rte_eth_xstat) *
+			nfp_net_xstats_size(eth_dev), 0);
+	if (hw->eth_xstats_base == NULL) {
+		PMD_INIT_LOG(ERR, "no memory for xstats base values on device %s!",
+				pci_dev->device.name);
+		return -ENOMEM;
+	}
+
 
 	/* Work out where in the BAR the queues start. */
 	switch (pci_dev->id.device_id) {

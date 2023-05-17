@@ -47,12 +47,128 @@
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
 
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
+
+enum nfp_xstat_group {
+	NFP_XSTAT_GROUP_NET,
+	NFP_XSTAT_GROUP_MAC
+};
+struct nfp_xstat {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	int offset;
+	enum nfp_xstat_group group;
+};
+
+#define NFP_XSTAT_NET(_name, _offset) {                 \
+	.name = _name,                                  \
+	.offset = NFP_NET_CFG_STATS_##_offset,          \
+	.group = NFP_XSTAT_GROUP_NET,                   \
+}
+
+#define NFP_XSTAT_MAC(_name, _offset) {                 \
+	.name = _name,                                  \
+	.offset = NFP_MAC_STATS_##_offset,              \
+	.group = NFP_XSTAT_GROUP_MAC,                   \
+}
+
+static const struct nfp_xstat nfp_net_xstats[] = {
+	/**
+	 * Basic xstats available on both VF and PF.
+	 * Note that in case new statistics of group NFP_XSTAT_GROUP_NET
+	 * are added to this array, they must appear before any statistics
+	 * of group NFP_XSTAT_GROUP_MAC.
+	 */
+	NFP_XSTAT_NET("rx_good_packets_mc", RX_MC_FRAMES),
+	NFP_XSTAT_NET("tx_good_packets_mc", TX_MC_FRAMES),
+	NFP_XSTAT_NET("rx_good_packets_bc", RX_BC_FRAMES),
+	NFP_XSTAT_NET("tx_good_packets_bc", TX_BC_FRAMES),
+	NFP_XSTAT_NET("rx_good_bytes_uc", RX_UC_OCTETS),
+	NFP_XSTAT_NET("tx_good_bytes_uc", TX_UC_OCTETS),
+	NFP_XSTAT_NET("rx_good_bytes_mc", RX_MC_OCTETS),
+	NFP_XSTAT_NET("tx_good_bytes_mc", TX_MC_OCTETS),
+	NFP_XSTAT_NET("rx_good_bytes_bc", RX_BC_OCTETS),
+	NFP_XSTAT_NET("tx_good_bytes_bc", TX_BC_OCTETS),
+	NFP_XSTAT_NET("tx_missed_erros", TX_DISCARDS),
+	NFP_XSTAT_NET("bpf_pass_pkts", APP0_FRAMES),
+	NFP_XSTAT_NET("bpf_pass_bytes", APP0_BYTES),
+	NFP_XSTAT_NET("bpf_app1_pkts", APP1_FRAMES),
+	NFP_XSTAT_NET("bpf_app1_bytes", APP1_BYTES),
+	NFP_XSTAT_NET("bpf_app2_pkts", APP2_FRAMES),
+	NFP_XSTAT_NET("bpf_app2_bytes", APP2_BYTES),
+	NFP_XSTAT_NET("bpf_app3_pkts", APP3_FRAMES),
+	NFP_XSTAT_NET("bpf_app3_bytes", APP3_BYTES),
+	/**
+	 * MAC xstats available only on PF. These statistics are not available for VFs as the
+	 * PF is not initialized when the VF is initialized as it is still bound to the kernel
+	 * driver. As such, the PMD cannot obtain a CPP handle and access the rtsym_table in order
+	 * to get the pointer to the start of the MAC statistics counters.
+	 */
+	NFP_XSTAT_MAC("mac.rx_octets", RX_IN_OCTS),
+	NFP_XSTAT_MAC("mac.rx_frame_too_long_errors", RX_FRAME_TOO_LONG_ERRORS),
+	NFP_XSTAT_MAC("mac.rx_range_length_errors", RX_RANGE_LENGTH_ERRORS),
+	NFP_XSTAT_MAC("mac.rx_vlan_received_ok", RX_VLAN_RECEIVED_OK),
+	NFP_XSTAT_MAC("mac.rx_errors", RX_IN_ERRORS),
+	NFP_XSTAT_MAC("mac.rx_broadcast_pkts", RX_IN_BROADCAST_PKTS),
+	NFP_XSTAT_MAC("mac.rx_drop_events", RX_DROP_EVENTS),
+	NFP_XSTAT_MAC("mac.rx_alignment_errors", RX_ALIGNMENT_ERRORS),
+	NFP_XSTAT_MAC("mac.rx_pause_mac_ctrl_frames", RX_PAUSE_MAC_CTRL_FRAMES),
+	NFP_XSTAT_MAC("mac.rx_frames_received_ok", RX_FRAMES_RECEIVED_OK),
+	NFP_XSTAT_MAC("mac.rx_frame_check_sequence_errors", RX_FRAME_CHECK_SEQ_ERRORS),
+	NFP_XSTAT_MAC("mac.rx_unicast_pkts", RX_UNICAST_PKTS),
+	NFP_XSTAT_MAC("mac.rx_multicast_pkts", RX_MULTICAST_PKTS),
+	NFP_XSTAT_MAC("mac.rx_pkts", RX_PKTS),
+	NFP_XSTAT_MAC("mac.rx_undersize_pkts", RX_UNDERSIZE_PKTS),
+	NFP_XSTAT_MAC("mac.rx_pkts_64_octets", RX_PKTS_64_OCTS),
+	NFP_XSTAT_MAC("mac.rx_pkts_65_to_127_octets", RX_PKTS_65_TO_127_OCTS),
+	NFP_XSTAT_MAC("mac.rx_pkts_128_to_255_octets", RX_PKTS_128_TO_255_OCTS),
+	NFP_XSTAT_MAC("mac.rx_pkts_256_to_511_octets", RX_PKTS_256_TO_511_OCTS),
+	NFP_XSTAT_MAC("mac.rx_pkts_512_to_1023_octets", RX_PKTS_512_TO_1023_OCTS),
+	NFP_XSTAT_MAC("mac.rx_pkts_1024_to_1518_octets", RX_PKTS_1024_TO_1518_OCTS),
+	NFP_XSTAT_MAC("mac.rx_pkts_1519_to_max_octets", RX_PKTS_1519_TO_MAX_OCTS),
+	NFP_XSTAT_MAC("mac.rx_jabbers", RX_JABBERS),
+	NFP_XSTAT_MAC("mac.rx_fragments", RX_FRAGMENTS),
+	NFP_XSTAT_MAC("mac.rx_oversize_pkts", RX_OVERSIZE_PKTS),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class0", RX_PAUSE_FRAMES_CLASS0),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class1", RX_PAUSE_FRAMES_CLASS1),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class2", RX_PAUSE_FRAMES_CLASS2),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class3", RX_PAUSE_FRAMES_CLASS3),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class4", RX_PAUSE_FRAMES_CLASS4),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class5", RX_PAUSE_FRAMES_CLASS5),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class6", RX_PAUSE_FRAMES_CLASS6),
+	NFP_XSTAT_MAC("mac.rx_pause_frames_class7", RX_PAUSE_FRAMES_CLASS7),
+	NFP_XSTAT_MAC("mac.rx_mac_ctrl_frames_received", RX_MAC_CTRL_FRAMES_REC),
+	NFP_XSTAT_MAC("mac.rx_mac_head_drop", RX_MAC_HEAD_DROP),
+	NFP_XSTAT_MAC("mac.tx_queue_drop", TX_QUEUE_DROP),
+	NFP_XSTAT_MAC("mac.tx_octets", TX_OUT_OCTS),
+	NFP_XSTAT_MAC("mac.tx_vlan_transmitted_ok", TX_VLAN_TRANSMITTED_OK),
+	NFP_XSTAT_MAC("mac.tx_errors", TX_OUT_ERRORS),
+	NFP_XSTAT_MAC("mac.tx_broadcast_pkts", TX_BROADCAST_PKTS),
+	NFP_XSTAT_MAC("mac.tx_pause_mac_ctrl_frames", TX_PAUSE_MAC_CTRL_FRAMES),
+	NFP_XSTAT_MAC("mac.tx_frames_transmitted_ok", TX_FRAMES_TRANSMITTED_OK),
+	NFP_XSTAT_MAC("mac.tx_unicast_pkts", TX_UNICAST_PKTS),
+	NFP_XSTAT_MAC("mac.tx_multicast_pkts", TX_MULTICAST_PKTS),
+	NFP_XSTAT_MAC("mac.tx_pkts_64_octets", TX_PKTS_64_OCTS),
+	NFP_XSTAT_MAC("mac.tx_pkts_65_to_127_octets", TX_PKTS_65_TO_127_OCTS),
+	NFP_XSTAT_MAC("mac.tx_pkts_128_to_255_octets", TX_PKTS_128_TO_255_OCTS),
+	NFP_XSTAT_MAC("mac.tx_pkts_256_to_511_octets", TX_PKTS_256_TO_511_OCTS),
+	NFP_XSTAT_MAC("mac.tx_pkts_512_to_1023_octets", TX_PKTS_512_TO_1023_OCTS),
+	NFP_XSTAT_MAC("mac.tx_pkts_1024_to_1518_octets", TX_PKTS_1024_TO_1518_OCTS),
+	NFP_XSTAT_MAC("mac.tx_pkts_1519_to_max_octets", TX_PKTS_1519_TO_MAX_OCTS),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class0", TX_PAUSE_FRAMES_CLASS0),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class1", TX_PAUSE_FRAMES_CLASS1),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class2", TX_PAUSE_FRAMES_CLASS2),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class3", TX_PAUSE_FRAMES_CLASS3),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class4", TX_PAUSE_FRAMES_CLASS4),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class5", TX_PAUSE_FRAMES_CLASS5),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class6", TX_PAUSE_FRAMES_CLASS6),
+	NFP_XSTAT_MAC("mac.tx_pause_frames_class7", TX_PAUSE_FRAMES_CLASS7),
+};
 
 static const uint32_t nfp_net_link_speed_nfp2rte[] = {
 	[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,
@@ -792,6 +908,199 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
 
 	return 0;
+}
+
+uint32_t
+nfp_net_xstats_size(const struct rte_eth_dev *dev)
+{
+	/* If the device is a VF, then there will be no MAC stats */
+	struct nfp_net_hw *hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	const uint32_t size = RTE_DIM(nfp_net_xstats);
+
+	if (hw->mac_stats == NULL) {
+		uint32_t count;
+		for (count = 0; count < size; count++) {
+			if (nfp_net_xstats[count].group == NFP_XSTAT_GROUP_MAC)
+				break;
+		}
+		return count;
+	}
+
+	return size;
+}
+
+static const struct nfp_xstat *
+nfp_net_xstats_info(const struct rte_eth_dev *dev,
+		uint32_t index)
+{
+	if (index >= nfp_net_xstats_size(dev)) {
+		PMD_DRV_LOG(ERR, "xstat index out of bounds");
+		return NULL;
+	}
+
+	return &nfp_net_xstats[index];
+}
+
+static uint64_t
+nfp_net_xstats_value(const struct rte_eth_dev *dev,
+		uint32_t index,
+		bool raw)
+{
+	uint64_t value;
+	struct nfp_net_hw *hw;
+	struct nfp_xstat xstat;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	xstat = nfp_net_xstats[index];
+
+	if (xstat.group == NFP_XSTAT_GROUP_MAC)
+		value = nn_readq(hw->mac_stats + xstat.offset);
+	else
+		value = nn_cfg_readq(hw, xstat.offset);
+
+	if (raw)
+		return value;
+
+	/**
+	 * A baseline value of each statistic counter is recorded when stats are "reset".
+	 * Thus, the value returned by this function need to be decremented by this
+	 * baseline value. The result is the count of this statistic since the last time
+	 * it was "reset".
+	 */
+	return value - hw->eth_xstats_base[index].value;
+}
+
+int
+nfp_net_xstats_get_names(struct rte_eth_dev *dev,
+		struct rte_eth_xstat_name *xstats_names,
+		unsigned int size)
+{
+	/* NOTE: All callers ensure dev is always set. */
+	uint32_t id;
+	uint32_t nfp_size;
+	uint32_t read_size;
+
+	nfp_size = nfp_net_xstats_size(dev);
+
+	if (xstats_names == NULL)
+		return nfp_size;
+
+	/* Read at most NFP xstats number of names. */
+	read_size = RTE_MIN(size, nfp_size);
+
+	for (id = 0; id < read_size; id++)
+		rte_strlcpy(xstats_names[id].name, nfp_net_xstats[id].name,
+				RTE_ETH_XSTATS_NAME_SIZE);
+
+	return read_size;
+}
+
+int
+nfp_net_xstats_get(struct rte_eth_dev *dev,
+		struct rte_eth_xstat *xstats,
+		unsigned int n)
+{
+	/* NOTE: All callers ensure dev is always set. */
+	uint32_t id;
+	uint32_t nfp_size;
+	uint32_t read_size;
+
+	nfp_size = nfp_net_xstats_size(dev);
+
+	if (xstats == NULL)
+		return nfp_size;
+
+	/* Read at most NFP xstats number of values. */
+	read_size = RTE_MIN(n, nfp_size);
+
+	for (id = 0; id < read_size; id++) {
+		xstats[id].id = id;
+		xstats[id].value = nfp_net_xstats_value(dev, id, false);
+	}
+
+	return read_size;
+}
+
+int
+nfp_net_xstats_get_names_by_id(struct rte_eth_dev *dev,
+		const uint64_t *ids,
+		struct rte_eth_xstat_name *xstats_names,
+		unsigned int size)
+{
+	/**
+	 * NOTE: The only caller rte_eth_xstats_get_names_by_id() ensures dev,
+	 * ids, xstats_names and size are valid, and non-NULL.
+	 */
+	uint32_t i;
+	uint32_t read_size;
+
+	/* Read at most NFP xstats number of names. */
+	read_size = RTE_MIN(size, nfp_net_xstats_size(dev));
+
+	for (i = 0; i < read_size; i++) {
+		const struct nfp_xstat *xstat;
+
+		/* Make sure ID is valid for device. */
+		xstat = nfp_net_xstats_info(dev, ids[i]);
+		if (xstat == NULL)
+			return -EINVAL;
+
+		rte_strlcpy(xstats_names[i].name, xstat->name,
+				RTE_ETH_XSTATS_NAME_SIZE);
+	}
+
+	return read_size;
+}
+
+int
+nfp_net_xstats_get_by_id(struct rte_eth_dev *dev,
+		const uint64_t *ids,
+		uint64_t *values,
+		unsigned int n)
+{
+	/**
+	 * NOTE: The only caller rte_eth_xstats_get_by_id() ensures dev,
+	 * ids, values and n are valid, and non-NULL.
+	 */
+	uint32_t i;
+	uint32_t read_size;
+
+	/* Read at most NFP xstats number of values. */
+	read_size = RTE_MIN(n, nfp_net_xstats_size(dev));
+
+	for (i = 0; i < read_size; i++) {
+		const struct nfp_xstat *xstat;
+
+		/* Make sure index is valid for device. */
+		xstat = nfp_net_xstats_info(dev, ids[i]);
+		if (xstat == NULL)
+			return -EINVAL;
+
+		values[i] = nfp_net_xstats_value(dev, ids[i], false);
+	}
+
+	return read_size;
+}
+
+int
+nfp_net_xstats_reset(struct rte_eth_dev *dev)
+{
+	uint32_t id;
+	uint32_t read_size;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	read_size = nfp_net_xstats_size(dev);
+
+	for (id = 0; id < read_size; id++) {
+		hw->eth_xstats_base[id].id = id;
+		hw->eth_xstats_base[id].value = nfp_net_xstats_value(dev, id, true);
+	}
+	/**
+	 * Successfully reset xstats, now call function to reset basic stats
+	 * return value is then based on the success of that function
+	 */
+	return nfp_net_stats_reset(dev);
 }
 
 int

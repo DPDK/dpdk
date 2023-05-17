@@ -229,6 +229,11 @@ static const struct eth_dev_ops nfp_netvf_eth_dev_ops = {
 	.link_update		= nfp_net_link_update,
 	.stats_get		= nfp_net_stats_get,
 	.stats_reset		= nfp_net_stats_reset,
+	.xstats_get             = nfp_net_xstats_get,
+	.xstats_reset           = nfp_net_xstats_reset,
+	.xstats_get_names       = nfp_net_xstats_get_names,
+	.xstats_get_by_id       = nfp_net_xstats_get_by_id,
+	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
 	.dev_infos_get		= nfp_net_infos_get,
 	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
 	.mtu_set		= nfp_net_dev_mtu_set,
@@ -333,6 +338,14 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 			    "pairs for use, please try to generate less VFs",
 			    pci_dev->name);
 		return -ENODEV;
+	}
+
+	hw->eth_xstats_base = rte_malloc("rte_eth_xstat", sizeof(struct rte_eth_xstat) *
+			nfp_net_xstats_size(eth_dev), 0);
+	if (hw->eth_xstats_base == NULL) {
+		PMD_INIT_LOG(ERR, "no memory for xstats base values on device %s!",
+				pci_dev->device.name);
+		return -ENOMEM;
 	}
 
 	/* Work out where in the BAR the queues start. */
