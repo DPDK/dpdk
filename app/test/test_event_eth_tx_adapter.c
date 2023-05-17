@@ -800,13 +800,17 @@ tx_adapter_queue_start_stop(void)
 static int
 tx_adapter_set_get_params(void)
 {
-	int err;
+	int err, rc;
 	struct rte_event_eth_tx_adapter_runtime_params in_params;
 	struct rte_event_eth_tx_adapter_runtime_params out_params;
 
 	err = rte_event_eth_tx_adapter_queue_add(TEST_INST_ID,
 						 TEST_ETHDEV_ID,
 						 0);
+	if (err == -ENOTSUP) {
+		rc = TEST_SKIPPED;
+		goto skip;
+	}
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
 	err = rte_event_eth_tx_adapter_runtime_params_init(&in_params);
@@ -916,13 +920,14 @@ tx_adapter_set_get_params(void)
 	TEST_ASSERT(in_params.flush_threshold == out_params.flush_threshold,
 		    "Expected %u got %u",
 		    in_params.flush_threshold, out_params.flush_threshold);
-
+	rc = TEST_SUCCESS;
+skip:
 	err = rte_event_eth_tx_adapter_queue_del(TEST_INST_ID,
 						 TEST_ETHDEV_ID,
 						 0);
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
-	return TEST_SUCCESS;
+	return rc;
 }
 
 static int

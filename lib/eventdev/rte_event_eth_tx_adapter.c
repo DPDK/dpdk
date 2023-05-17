@@ -1310,36 +1310,15 @@ rte_event_eth_tx_adapter_runtime_params_init(
 }
 
 static int
-txa_caps_check(uint8_t id, struct txa_service_data *txa)
+txa_caps_check(struct txa_service_data *txa)
 {
-	uint32_t caps = 0;
-	struct rte_eth_dev *eth_dev = NULL;
-	struct txa_service_ethdev *tdi;
-	int i;
-
 	if (!txa->dev_count)
 		return -EINVAL;
 
-	/* The eth_dev used is always the same type.
-	 * Hence first valid eth_dev is taken.
-	 */
-	for (i = 0; i < txa->dev_count; i++) {
-		tdi = &txa->txa_ethdev[i];
-		if (tdi->nb_queues) {
-			eth_dev = tdi->dev;
-			break;
-		}
-	}
-	if (eth_dev == NULL)
-		return -EINVAL;
+	if (txa->service_id != TXA_INVALID_SERVICE_ID)
+		return 0;
 
-	if (txa_dev_caps_get(id))
-		txa_dev_caps_get(id)(txa_evdev(id), eth_dev, &caps);
-
-	if (caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT)
-		return -ENOTSUP;
-
-	return 0;
+	return -ENOTSUP;
 }
 
 int
@@ -1361,7 +1340,7 @@ rte_event_eth_tx_adapter_runtime_params_set(uint8_t id,
 	if (txa == NULL)
 		return -EINVAL;
 
-	ret = txa_caps_check(id, txa);
+	ret = txa_caps_check(txa);
 	if (ret)
 		return ret;
 
@@ -1392,7 +1371,7 @@ rte_event_eth_tx_adapter_runtime_params_get(uint8_t id,
 	if (txa == NULL)
 		return -EINVAL;
 
-	ret = txa_caps_check(id, txa);
+	ret = txa_caps_check(txa);
 	if (ret)
 		return ret;
 
