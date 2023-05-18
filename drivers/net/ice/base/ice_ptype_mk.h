@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2022 Intel Corporation
+ * Copyright(c) 2001-2023 Intel Corporation
  */
 
 #ifndef _ICE_PTYPE_MK_H_
