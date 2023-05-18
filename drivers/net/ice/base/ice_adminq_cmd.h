@@ -2002,8 +2002,8 @@ struct ice_aqc_lldp_get_mib {
 #define ICE_AQ_LLDP_DCBX_S			6
 #define ICE_AQ_LLDP_DCBX_M			(0x3 << ICE_AQ_LLDP_DCBX_S)
 #define ICE_AQ_LLDP_DCBX_NA			0
-#define ICE_AQ_LLDP_DCBX_IEEE			1
-#define ICE_AQ_LLDP_DCBX_CEE			2
+#define ICE_AQ_LLDP_DCBX_CEE			1
+#define ICE_AQ_LLDP_DCBX_IEEE			2
 /* The following bytes are reserved for the Get LLDP MIB command (0x0A00)
  * and in the LLDP MIB Change Event (0x0A01). They are valid for the
  * Get LLDP MIB (0x0A00) response only.
