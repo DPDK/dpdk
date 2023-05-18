@@ -3779,6 +3779,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``affinity {value}``: aggregated port (starts from 1).
 
+- ``tx_queue``: match Tx queue of sent packet.
+
+  - ``tx_queue {value}``: send queue value (starts from 0).
+
 - ``send_to_kernel``: send packets to kernel.
 
 

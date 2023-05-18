@@ -67,6 +67,11 @@ New Features
   to PCI bus so that PCI drivers can access PCI memory resources
   when they are not mapped to process address space.
 
+* **Added flow matching of Tx queue.**
+
+  Added ``RTE_FLOW_ITEM_TYPE_TX_QUEUE`` rte_flow pattern
+  to match the Tx queue of the sent packet.
+
 * **Added vmxnet3 version 7 support.**
 
   Added support for vmxnet3 version 7 which includes support
