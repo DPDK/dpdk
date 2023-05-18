@@ -311,6 +311,7 @@ struct ice_adv_rule_info {
 	struct ice_sw_act_ctrl sw_act;
 	u32 priority;
 	u8 rx; /* true means LOOKUP_RX otherwise LOOKUP_TX */
+	u8 add_dir_lkup;
 	u16 fltr_rule_id;
 	u16 lg_id;
 	struct ice_adv_rule_flags_info flags_info;

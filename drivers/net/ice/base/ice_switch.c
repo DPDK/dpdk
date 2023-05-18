@@ -7754,13 +7754,14 @@ ice_get_fv(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
 
 /**
  * ice_tun_type_match_word - determine if tun type needs a match mask
- * @tun_type: tunnel type
+ * @rinfo: other information regarding the rule e.g. priority and action info
  * @off: offset of packet flag
  * @mask: mask to be used for the tunnel
  */
-static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *off, u16 *mask)
+static bool
+ice_tun_type_match_word(struct ice_adv_rule_info *rinfo, u16 *off, u16 *mask)
 {
-	switch (tun_type) {
+	switch (rinfo->tun_type) {
 	case ICE_SW_TUN_VXLAN_GPE:
 	case ICE_SW_TUN_GENEVE:
 	case ICE_SW_TUN_VXLAN:
@@ -7778,9 +7779,14 @@ static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *off, 
 		return true;
 
 	case ICE_SW_TUN_AND_NON_TUN:
-		*mask = ICE_DIR_FLAG_MASK;
-		*off = ICE_TUN_FLAG_MDID_OFF(0);
-		return true;
+		if (rinfo->add_dir_lkup) {
+			*mask = ICE_DIR_FLAG_MASK;
+			*off = ICE_TUN_FLAG_MDID_OFF(0);
+			return true;
+		}
+		*mask = 0;
+		*off = 0;
+		return false;
 
 	case ICE_SW_TUN_GENEVE_VLAN:
 	case ICE_SW_TUN_VXLAN_VLAN:
@@ -7811,7 +7817,7 @@ ice_add_special_words(struct ice_adv_rule_info *rinfo,
 	 * tunnel bit in the packet metadata flags. If this is a tun_and_non_tun
 	 * packet, then add recipe index to match the direction bit in the flag.
 	 */
-	if (ice_tun_type_match_word(rinfo->tun_type, &off, &mask)) {
+	if (ice_tun_type_match_word(rinfo, &off, &mask)) {
 		if (lkup_exts->n_val_words < ICE_MAX_CHAIN_WORDS) {
 			u8 word = lkup_exts->n_val_words++;
 
