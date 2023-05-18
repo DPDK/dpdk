@@ -3856,6 +3856,7 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 	const enum ice_block blk = ICE_BLK_RSS;
 	struct ice_flow_prof *p, *t;
 	enum ice_status status = ICE_SUCCESS;
+	u16 vsig;
 
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
@@ -3865,7 +3866,16 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 
 	ice_acquire_lock(&hw->rss_locks);
 	LIST_FOR_EACH_ENTRY_SAFE(p, t, &hw->fl_profs[blk], ice_flow_prof,
-				 l_entry)
+				 l_entry) {
+		int ret;
+
+		/* check if vsig is already removed */
+		ret = ice_vsig_find_vsi(hw, blk,
+					ice_get_hw_vsi_num(hw, vsi_handle),
+					&vsig);
+		if (!ret && !vsig)
+			break;
+
 		if (ice_is_bit_set(p->vsis, vsi_handle)) {
 			status = ice_flow_disassoc_prof(hw, blk, p, vsi_handle);
 			if (status)
@@ -3877,6 +3887,7 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 					break;
 			}
 		}
+	}
 	ice_release_lock(&hw->rss_locks);
 
 	return status;
