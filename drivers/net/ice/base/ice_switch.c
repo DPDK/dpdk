@@ -7790,7 +7790,8 @@ ice_tun_type_match_word(struct ice_adv_rule_info *rinfo, u16 *off, u16 *mask)
 
 	case ICE_SW_TUN_GENEVE_VLAN:
 	case ICE_SW_TUN_VXLAN_VLAN:
-		*mask = ICE_TUN_FLAG_MASK & ~ICE_TUN_FLAG_VLAN_MASK;
+		*mask = ICE_TUN_FLAG_MASK & ~(ICE_TUN_FLAG_VLAN_MASK |
+			ICE_TUN_FLAG_IN_VLAN_MASK);
 		*off = ICE_TUN_FLAG_MDID_OFF(1);
 		return true;
 
