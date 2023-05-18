@@ -635,6 +635,7 @@ cnxk_sso_tx_adapter_free(uint8_t id __rte_unused,
 	if (dev->tx_adptr_data_sz && dev->tx_adptr_active_mask == 0) {
 		dev->tx_adptr_data_sz = 0;
 		free(dev->tx_adptr_data);
+		dev->tx_adptr_data = NULL;
 	}
 
 	return 0;
