@@ -100,9 +100,6 @@ cn10k_wqe_to_mbuf(uint64_t wqe, const uint64_t __mbuf, uint8_t port_id,
 				   (flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
 	struct rte_mbuf *mbuf = (struct rte_mbuf *)__mbuf;
 
-	/* Mark mempool obj as "get" as it is alloc'ed by NIX */
-	RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
-
 	cn10k_nix_cqe_to_mbuf((struct nix_cqe_hdr_s *)wqe, tag,
 			      (struct rte_mbuf *)mbuf, lookup_mem,
 			      mbuf_init | ((uint64_t)port_id) << 48, flags);
@@ -239,6 +236,10 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 
 		mbuf = u64[1] - sizeof(struct rte_mbuf);
 		rte_prefetch0((void *)mbuf);
+
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf)->pool, (void **)&mbuf, 1, 1);
+
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
 			const uint64_t mbuf_init =
 				0x100010000ULL | RTE_PKTMBUF_HEADROOM |
