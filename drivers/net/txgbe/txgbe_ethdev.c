@@ -2032,8 +2032,10 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 		rte_delay_ms(100);
 	} while (retries++ < (10 + TXGBE_LINK_UP_TIME));
 
-	/* cancel the delay handler before remove dev */
+	/* cancel all alarm handler before remove dev */
 	rte_eal_alarm_cancel(txgbe_dev_interrupt_delayed_handler, dev);
+	rte_eal_alarm_cancel(txgbe_dev_detect_sfp, dev);
+	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
 
 	/* uninitialize PF if max_vfs not zero */
 	txgbe_pf_host_uninit(dev);
