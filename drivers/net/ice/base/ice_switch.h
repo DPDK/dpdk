@@ -314,6 +314,7 @@ struct ice_adv_rule_info {
 	u8 add_dir_lkup;
 	u16 fltr_rule_id;
 	u16 lg_id;
+	u16 vlan_type;
 	struct ice_adv_rule_flags_info flags_info;
 };
 
