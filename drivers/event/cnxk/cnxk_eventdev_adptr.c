@@ -331,9 +331,9 @@ int
 cnxk_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
 			  const struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(event_dev);
-	RTE_SET_USED(eth_dev);
-
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
 	return 0;
 }
 
@@ -341,9 +341,9 @@ int
 cnxk_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
 			 const struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(event_dev);
 	RTE_SET_USED(eth_dev);
-
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	dev->rx_offloads = 0;
 	return 0;
 }
 
