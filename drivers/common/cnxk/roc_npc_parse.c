@@ -97,6 +97,7 @@ npc_parse_pre_l2(struct npc_parse_state *pst)
 		(const struct roc_npc_flow_item_raw *)pst->pattern->mask, &info,
 		raw_spec_buf, raw_mask_buf);
 
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
 
