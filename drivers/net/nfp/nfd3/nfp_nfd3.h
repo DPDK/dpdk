@@ -52,10 +52,14 @@ struct nfp_net_nfd3_tx_desc {
 static inline uint32_t
 nfp_net_nfd3_free_tx_desc(struct nfp_net_txq *txq)
 {
+	uint32_t free_desc;
+
 	if (txq->wr_p >= txq->rd_p)
-		return txq->tx_count - (txq->wr_p - txq->rd_p) - 8;
+		free_desc = txq->tx_count - (txq->wr_p - txq->rd_p);
 	else
-		return txq->rd_p - txq->wr_p - 8;
+		free_desc = txq->rd_p - txq->wr_p;
+
+	return (free_desc > 8) ? (free_desc - 8) : 0;
 }
 
 /*
