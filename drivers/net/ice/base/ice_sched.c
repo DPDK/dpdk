@@ -1370,11 +1370,6 @@ void ice_sched_get_psm_clk_freq(struct ice_hw *hw)
 	clk_src = (val & GLGEN_CLKSTAT_SRC_PSM_CLK_SRC_M) >>
 		GLGEN_CLKSTAT_SRC_PSM_CLK_SRC_S;
 
-#define PSM_CLK_SRC_367_MHZ 0x0
-#define PSM_CLK_SRC_416_MHZ 0x1
-#define PSM_CLK_SRC_446_MHZ 0x2
-#define PSM_CLK_SRC_390_MHZ 0x3
-
 	switch (clk_src) {
 	case PSM_CLK_SRC_367_MHZ:
 		hw->psm_clk_freq = ICE_PSM_CLK_367MHZ_IN_HZ;
@@ -1388,11 +1383,12 @@ void ice_sched_get_psm_clk_freq(struct ice_hw *hw)
 	case PSM_CLK_SRC_390_MHZ:
 		hw->psm_clk_freq = ICE_PSM_CLK_390MHZ_IN_HZ;
 		break;
-	default:
-		ice_debug(hw, ICE_DBG_SCHED, "PSM clk_src unexpected %u\n",
-			  clk_src);
-		/* fall back to a safe default */
-		hw->psm_clk_freq = ICE_PSM_CLK_446MHZ_IN_HZ;
+
+	/* default condition is not required as clk_src is restricted
+	 * to a 2-bit value from GLGEN_CLKSTAT_SRC_PSM_CLK_SRC_M mask.
+	 * The above switch statements cover the possible values of
+	 * this variable.
+	 */
 	}
 }
 
