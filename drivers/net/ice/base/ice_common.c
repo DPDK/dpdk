@@ -193,7 +193,8 @@ static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 bool ice_is_generic_mac(struct ice_hw *hw)
 {
 	return (hw->mac_type == ICE_MAC_GENERIC ||
-		hw->mac_type == ICE_MAC_GENERIC_3K);
+		hw->mac_type == ICE_MAC_GENERIC_3K ||
+		hw->mac_type == ICE_MAC_GENERIC_3K_E825);
 }
 
 /**
