@@ -7163,6 +7163,17 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 	return (u16)ice_bitmap_hweight(free_idx, ICE_MAX_FV_WORDS);
 }
 
+static void ice_set_recipe_index(unsigned long idx, u8 *bitmap)
+{
+	u32 byte = idx / BITS_PER_BYTE;
+	u32 bit = idx % BITS_PER_BYTE;
+
+	if (byte >= 8)
+		return;
+
+	bitmap[byte] |= 1 << bit;
+}
+
 /**
  * ice_add_sw_recipe - function to call AQ calls to create switch recipe
  * @hw: pointer to hardware structure
@@ -7290,10 +7301,10 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		}
 
 		/* fill recipe dependencies */
-		ice_zero_bitmap((ice_bitmap_t *)buf[recps].recipe_bitmap,
-				ICE_MAX_NUM_RECIPES);
-		ice_set_bit(buf[recps].recipe_indx,
-			    (ice_bitmap_t *)buf[recps].recipe_bitmap);
+		ice_memset(buf[recps].recipe_bitmap, 0,
+			   sizeof(buf[recps].recipe_bitmap), ICE_NONDMA_MEM);
+		ice_set_recipe_index(buf[recps].recipe_indx,
+				     buf[recps].recipe_bitmap);
 		buf[recps].content.act_ctrl_fwd_priority = rm->priority;
 		recps++;
 	}

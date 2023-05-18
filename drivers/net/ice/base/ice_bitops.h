@@ -11,6 +11,13 @@
 /* Define the size of the bitmap chunk */
 typedef u32 ice_bitmap_t;
 
+/* NOTE!
+ * Do not use any of the functions declared in this file
+ * on memory that was not declared with ice_declare_bitmap.
+ * Not following this rule might cause issues like split
+ * locks.
+ */
+
 /* Number of bits per bitmap chunk */
 #define BITS_PER_CHUNK		(BITS_PER_BYTE * sizeof(ice_bitmap_t))
 /* Determine which chunk a bit belongs in */
