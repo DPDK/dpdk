@@ -1623,8 +1623,10 @@ ice_get_sw_fv_list(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
 			}
 		}
 	} while (fv);
-	if (LIST_EMPTY(fv_list))
+	if (LIST_EMPTY(fv_list)) {
+		ice_warn(hw, "Required profiles not found in currently loaded DDP package");
 		return ICE_ERR_CFG;
+	}
 	return ICE_SUCCESS;
 
 err:

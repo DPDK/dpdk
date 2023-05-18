@@ -433,7 +433,7 @@ ice_bitmap_hweight(ice_bitmap_t *bm, u16 size)
 }
 
 /**
- * ice_cmp_bitmaps - compares two bitmaps.
+ * ice_cmp_bitmap - compares two bitmaps.
  * @bmp1: the bitmap to compare
  * @bmp2: the bitmap to compare with bmp1
  * @size: Size of the bitmaps in bits

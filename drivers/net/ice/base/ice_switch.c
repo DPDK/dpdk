@@ -1775,7 +1775,7 @@ static const u8 dummy_pppoe_ipv6_packet[] = {
 };
 
 static const
-struct ice_dummy_pkt_offsets dummy_pppoe_packet_ipv6_tcp_offsets[] = {
+struct ice_dummy_pkt_offsets dummy_pppoe_ipv6_tcp_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_VLAN_OFOS,	12 },
 	{ ICE_ETYPE_OL,		16 },
@@ -1820,7 +1820,7 @@ static const u8 dummy_pppoe_ipv6_tcp_packet[] = {
 };
 
 static const
-struct ice_dummy_pkt_offsets dummy_pppoe_packet_ipv6_udp_offsets[] = {
+struct ice_dummy_pkt_offsets dummy_pppoe_ipv6_udp_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_VLAN_OFOS,	12 },
 	{ ICE_ETYPE_OL,		16 },
@@ -8291,7 +8291,7 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		      const struct ice_dummy_pkt_offsets **offsets)
 {
 	bool tcp = false, udp = false, outer_ipv6 = false, vlan = false;
-	bool inner_ipv6 = false;
+	bool inner_ipv6 = false, pppoe = false;
 	bool cvlan = false;
 	bool gre = false, mpls = false;
 	u16 i;
@@ -8321,18 +8321,20 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			 lkups[i].m_u.ethertype.ethtype_id ==
 				CPU_TO_BE16(0xFFFF))
 			inner_ipv6 = true;
+		else if (lkups[i].type == ICE_PPPOE) {
+			pppoe = true;
+			if (lkups[i].h_u.pppoe_hdr.ppp_prot_id ==
+				CPU_TO_BE16(ICE_PPP_IPV6_PROTO_ID) &&
+			    lkups[i].m_u.pppoe_hdr.ppp_prot_id ==
+				CPU_TO_BE16(0xFFFF))
+				outer_ipv6 = true;
+		}
 		else if (lkups[i].type == ICE_IPV4_OFOS &&
 			 lkups[i].h_u.ipv4_hdr.protocol ==
 				ICE_IPV4_NVGRE_PROTO_ID &&
 			 lkups[i].m_u.ipv4_hdr.protocol ==
 				0xFF)
 			gre = true;
-		else if (lkups[i].type == ICE_PPPOE &&
-			 lkups[i].h_u.pppoe_hdr.ppp_prot_id ==
-				CPU_TO_BE16(ICE_PPP_IPV6_PROTO_ID) &&
-			 lkups[i].m_u.pppoe_hdr.ppp_prot_id ==
-				0xFFFF)
-			outer_ipv6 = true;
 		else if (lkups[i].type == ICE_IPV4_IL &&
 			 lkups[i].h_u.ipv4_hdr.protocol ==
 				ICE_TCP_PROTO_ID &&
@@ -8627,14 +8629,14 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	if (tun_type == ICE_SW_TUN_PPPOE_IPV6_TCP) {
 		*pkt = dummy_pppoe_ipv6_tcp_packet;
 		*pkt_len = sizeof(dummy_pppoe_ipv6_tcp_packet);
-		*offsets = dummy_pppoe_packet_ipv6_tcp_offsets;
+		*offsets = dummy_pppoe_ipv6_tcp_packet_offsets;
 		return;
 	}
 
 	if (tun_type == ICE_SW_TUN_PPPOE_IPV6_UDP) {
 		*pkt = dummy_pppoe_ipv6_udp_packet;
 		*pkt_len = sizeof(dummy_pppoe_ipv6_udp_packet);
-		*offsets = dummy_pppoe_packet_ipv6_udp_offsets;
+		*offsets = dummy_pppoe_ipv6_udp_packet_offsets;
 		return;
 	}
 
@@ -8738,6 +8740,11 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			*pkt_len = sizeof(dummy_vlan_udp_packet);
 			*offsets = dummy_vlan_udp_packet_offsets;
 			return;
+		} else if (pppoe) {
+			*pkt = dummy_pppoe_ipv4_udp_packet;
+			*pkt_len = sizeof(dummy_pppoe_ipv4_udp_packet);
+			*offsets = dummy_pppoe_ipv4_udp_packet_offsets;
+			return;
 		}
 		*pkt = dummy_udp_packet;
 		*pkt_len = sizeof(dummy_udp_packet);
@@ -8748,6 +8755,11 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			*pkt = dummy_vlan_udp_ipv6_packet;
 			*pkt_len = sizeof(dummy_vlan_udp_ipv6_packet);
 			*offsets = dummy_vlan_udp_ipv6_packet_offsets;
+			return;
+		} else if (pppoe) {
+			*pkt = dummy_pppoe_ipv6_udp_packet;
+			*pkt_len = sizeof(dummy_pppoe_ipv6_udp_packet);
+			*offsets = dummy_pppoe_ipv6_udp_packet_offsets;
 			return;
 		}
 		*pkt = dummy_udp_ipv6_packet;
@@ -8760,6 +8772,11 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			*pkt_len = sizeof(dummy_vlan_tcp_ipv6_packet);
 			*offsets = dummy_vlan_tcp_ipv6_packet_offsets;
 			return;
+		} else if (pppoe) {
+			*pkt = dummy_pppoe_ipv6_tcp_packet;
+			*pkt_len = sizeof(dummy_pppoe_ipv6_tcp_packet);
+			*offsets = dummy_pppoe_ipv6_tcp_packet_offsets;
+			return;
 		}
 		*pkt = dummy_tcp_ipv6_packet;
 		*pkt_len = sizeof(dummy_tcp_ipv6_packet);
@@ -8771,7 +8788,12 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		*pkt = dummy_vlan_tcp_packet;
 		*pkt_len = sizeof(dummy_vlan_tcp_packet);
 		*offsets = dummy_vlan_tcp_packet_offsets;
-	}  else if (mpls) {
+	} else if (pppoe) {
+		*pkt = dummy_pppoe_ipv4_tcp_packet;
+		*pkt_len = sizeof(dummy_pppoe_ipv4_tcp_packet);
+		*offsets = dummy_pppoe_ipv4_tcp_packet_offsets;
+		return;
+	} else if (mpls) {
 		*pkt = dummy_mpls_packet;
 		*pkt_len = sizeof(dummy_mpls_packet);
 		*offsets = dummy_mpls_packet_offsets;
