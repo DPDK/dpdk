@@ -1242,12 +1242,39 @@ npc_vtag_action_program(struct roc_npc *roc_npc,
 	return 0;
 }
 
+static void
+roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_base, uint16_t *chan_mask)
+{
+	struct roc_nix *roc_nix = roc_npc->roc_nix;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint16_t num_chan, range, num_bits = 0;
+	uint16_t mask = 0;
+
+	*chan_base = nix->rx_chan_base;
+	num_chan = nix->rx_chan_cnt - 1;
+	if (num_chan) {
+		range = *chan_base ^ (*chan_base + num_chan);
+		num_bits = (sizeof(uint32_t) * 8) - __builtin_clz(range) - 1;
+		/* Set mask for (15 - numbits) MSB bits */
+		*chan_mask = (uint16_t)~GENMASK(num_bits, 0);
+	} else {
+		*chan_mask = (uint16_t)GENMASK(15, 0);
+	}
+
+	mask = (uint16_t)GENMASK(num_bits, 0);
+	if (mask > num_chan + 1)
+		plt_warn(
+			"npc: SDP channel base:%x, channel count:%x. channel mask:%x covers more than channel count",
+			*chan_base, nix->rx_chan_cnt, *chan_mask);
+}
+
 struct roc_npc_flow *
 roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		    const struct roc_npc_item_info pattern[],
 		    const struct roc_npc_action actions[], int *errcode)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	uint16_t sdp_chan_base = 0, sdp_chan_mask = 0;
 	struct roc_npc_flow *flow, *flow_iter;
 	struct npc_parse_state parse_state;
 	struct npc_flow_list *list;
@@ -1260,16 +1287,9 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			npc->sdp_channel = roc_npc->sdp_channel;
 			npc->sdp_channel_mask = roc_npc->sdp_channel_mask;
 		} else {
-			/* By default set the channel and mask to cover
-			 * the whole SDP channel range.
-			 */
-			if (roc_model_is_cn10k()) {
-				npc->sdp_channel = (uint16_t)CN10K_SDP_CH_START;
-				npc->sdp_channel_mask = (uint16_t)CN10K_SDP_CH_MASK;
-			} else {
-				npc->sdp_channel = (uint16_t)NIX_CHAN_SDP_CH_START;
-				npc->sdp_channel_mask = (uint16_t)NIX_CHAN_SDP_CH_START;
-			}
+			roc_npc_sdp_channel_get(roc_npc, &sdp_chan_base, &sdp_chan_mask);
+			npc->sdp_channel = sdp_chan_base;
+			npc->sdp_channel_mask = sdp_chan_mask;
 		}
 	}
 
