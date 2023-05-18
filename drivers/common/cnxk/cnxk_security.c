@@ -201,6 +201,14 @@ ot_ipsec_inb_ctx_size(struct roc_ot_ipsec_inb_sa *sa)
 	return size;
 }
 
+static void
+ot_ipsec_update_ipv6_addr_endianness(uint64_t *addr)
+{
+	*addr = rte_be_to_cpu_64(*addr);
+	addr++;
+	*addr = rte_be_to_cpu_64(*addr);
+}
+
 static int
 ot_ipsec_inb_tunnel_hdr_fill(struct roc_ot_ipsec_inb_sa *sa,
 			     struct rte_security_ipsec_xform *ipsec_xfrm)
@@ -236,6 +244,10 @@ ot_ipsec_inb_tunnel_hdr_fill(struct roc_ot_ipsec_inb_sa *sa,
 		       sizeof(struct in6_addr));
 		memcpy(&sa->outer_hdr.ipv6.dst_addr, &tunnel->ipv6.dst_addr,
 		       sizeof(struct in6_addr));
+
+		/* IP Source and Dest are in LE/CPU endian */
+		ot_ipsec_update_ipv6_addr_endianness((uint64_t *)&sa->outer_hdr.ipv6.src_addr);
+		ot_ipsec_update_ipv6_addr_endianness((uint64_t *)&sa->outer_hdr.ipv6.dst_addr);
 
 		break;
 	default:
@@ -420,6 +432,10 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 		       sizeof(struct in6_addr));
 		memcpy(&sa->outer_hdr.ipv6.dst_addr, &tunnel->ipv6.dst_addr,
 		       sizeof(struct in6_addr));
+
+		/* IP Source and Dest are in LE/CPU endian */
+		ot_ipsec_update_ipv6_addr_endianness((uint64_t *)&sa->outer_hdr.ipv6.src_addr);
+		ot_ipsec_update_ipv6_addr_endianness((uint64_t *)&sa->outer_hdr.ipv6.dst_addr);
 
 		/* Outer header flow label source */
 		if (!ipsec_xfrm->options.copy_flabel) {
