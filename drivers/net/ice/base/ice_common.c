@@ -5360,6 +5360,42 @@ ice_cfg_vsi_lan(struct ice_port_info *pi, u16 vsi_handle, u16 tc_bitmap,
 }
 
 /**
+ * ice_aq_get_sensor_reading
+ * @hw: pointer to the HW struct
+ * @sensor: sensor type
+ * @format: requested response format
+ * @data: pointer to data to be read from the sensor
+ * @cd: pointer to command details structure or NULL
+ *
+ * Get sensor reading (0x0632)
+ */
+enum ice_status
+ice_aq_get_sensor_reading(struct ice_hw *hw, u8 sensor, u8 format,
+			  struct ice_aqc_get_sensor_reading_resp *data,
+			  struct ice_sq_cd *cd)
+{
+	struct ice_aqc_get_sensor_reading *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	if (!data)
+		return ICE_ERR_PARAM;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_sensor_reading);
+	cmd = &desc.params.get_sensor_reading;
+	cmd->sensor = sensor;
+	cmd->format = format;
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+
+	if (!status)
+		ice_memcpy(data, &desc.params.get_sensor_reading_resp,
+			   sizeof(*data), ICE_NONDMA_TO_NONDMA);
+
+	return status;
+}
+
+/**
  * ice_is_main_vsi - checks whether the VSI is main VSI
  * @hw: pointer to the HW struct
  * @vsi_handle: VSI handle
