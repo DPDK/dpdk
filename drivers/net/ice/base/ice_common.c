@@ -223,6 +223,7 @@ bool ice_is_e810t(struct ice_hw *hw)
 		case ICE_SUBDEV_ID_E810T3:
 		case ICE_SUBDEV_ID_E810T4:
 		case ICE_SUBDEV_ID_E810T5:
+		case ICE_SUBDEV_ID_E810T7:
 			return true;
 		}
 		break;
