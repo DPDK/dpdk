@@ -1579,6 +1579,9 @@ ice_get_sw_fv_list(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
 	struct ice_fv *fv;
 	u32 offset;
 
+	if (!lkups->n_val_words)
+		return ICE_SUCCESS;
+
 	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 
 	if (!lkups->n_val_words || !hw->seg)

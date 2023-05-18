@@ -7734,25 +7734,6 @@ ice_create_recipe_group(struct ice_hw *hw, struct ice_sw_recipe *rm,
 }
 
 /**
- * ice_get_fv - get field vectors/extraction sequences for spec. lookup types
- * @hw: pointer to hardware structure
- * @lkups: lookup elements or match criteria for the advanced recipe, one
- *	   structure per protocol header
- * @bm: bitmap of field vectors to consider
- * @fv_list: pointer to a list that holds the returned field vectors
- */
-static enum ice_status
-ice_get_fv(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
-	   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
-{
-	if (!lkups->n_val_words)
-		return ICE_SUCCESS;
-
-	/* Find field vectors that include all specified protocol types */
-	return ice_get_sw_fv_list(hw, lkups, bm, fv_list);
-}
-
-/**
  * ice_tun_type_match_word - determine if tun type needs a match mask
  * @rinfo: other information regarding the rule e.g. priority and action info
  * @off: offset of packet flag
@@ -8159,11 +8140,11 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 
 	/* Get bitmap of field vectors (profiles) that are compatible with the
 	 * rule request; only these will be searched in the subsequent call to
-	 * ice_get_fv.
+	 * ice_get_sw_fv_list.
 	 */
 	ice_get_compat_fv_bitmap(hw, rinfo, fv_bitmap);
 
-	status = ice_get_fv(hw, lkup_exts, fv_bitmap, &rm->fv_list);
+	status = ice_get_sw_fv_list(hw, lkup_exts, fv_bitmap, &rm->fv_list);
 	if (status)
 		goto err_unroll;
 
