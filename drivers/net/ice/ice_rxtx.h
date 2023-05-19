@@ -120,6 +120,7 @@ struct ice_rx_queue {
 	uint64_t hw_time_update; /* SW time of HW record updating */
 	struct rte_eth_rxseg_split rxseg[ICE_RX_MAX_NSEG];
 	uint32_t rxseg_nb;
+	bool ts_enable; /* if rxq timestamp is enabled */
 };
 
 struct ice_tx_entry {
