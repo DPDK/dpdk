@@ -302,11 +302,11 @@ test_multi_alloc_statistics(void)
 	rte_malloc_get_socket_stats(socket,&post_stats);
 	/* Check statistics reported are correct */
 	/* All post stats should be equal to pre stats after alloc freed */
-	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) &&
-			(post_stats.heap_freesz_bytes!=pre_stats.heap_freesz_bytes) &&
-			(post_stats.heap_allocsz_bytes!=pre_stats.heap_allocsz_bytes)&&
-			(post_stats.alloc_count!=pre_stats.alloc_count)&&
-			(post_stats.free_count!=pre_stats.free_count)) {
+	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) ||
+			(post_stats.heap_freesz_bytes != pre_stats.heap_freesz_bytes) ||
+			(post_stats.heap_allocsz_bytes != pre_stats.heap_allocsz_bytes) ||
+			(post_stats.alloc_count != pre_stats.alloc_count) ||
+			(post_stats.free_count != pre_stats.free_count)) {
 		printf("Malloc statistics are incorrect - freed alloc\n");
 		return -1;
 	}
@@ -363,11 +363,11 @@ test_multi_alloc_statistics(void)
 		return -1;
 	}
 
-	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) &&
-			(post_stats.heap_freesz_bytes!=pre_stats.heap_freesz_bytes) &&
-			(post_stats.heap_allocsz_bytes!=pre_stats.heap_allocsz_bytes)&&
-			(post_stats.alloc_count!=pre_stats.alloc_count)&&
-			(post_stats.free_count!=pre_stats.free_count)) {
+	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) ||
+			(post_stats.heap_freesz_bytes != pre_stats.heap_freesz_bytes) ||
+			(post_stats.heap_allocsz_bytes != pre_stats.heap_allocsz_bytes) ||
+			(post_stats.alloc_count != pre_stats.alloc_count) ||
+			(post_stats.free_count != pre_stats.free_count)) {
 		printf("Malloc statistics are incorrect - freed alloc\n");
 		return -1;
 	}
