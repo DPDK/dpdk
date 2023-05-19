@@ -3,11 +3,6 @@
  * All rights reserved.
  */
 
-/*
- * vim:shiftwidth=8:noexpandtab
- *
- * Netronome network device driver: Control BAR layout
- */
 #ifndef _NFP_CTRL_H_
 #define _NFP_CTRL_H_
 
@@ -434,9 +429,3 @@ nfp_net_cfg_ctrl_rss(uint32_t hw_cap)
 }
 
 #endif /* _NFP_CTRL_H_ */
-/*
- * Local variables:
- * c-file-style: "Linux"
- * indent-tabs-mode: t
- * End:
- */

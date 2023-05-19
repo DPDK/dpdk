@@ -5,14 +5,6 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-/*
- * vim:shiftwidth=8:noexpandtab
- *
- * @file dpdk/pmd/nfp_cpp_bridge.h
- *
- * Netronome vNIC DPDK Poll-Mode Driver: CPP Bridge header file
- */
-
 #ifndef _NFP_CPP_BRIDGE_H_
 #define _NFP_CPP_BRIDGE_H_
 
@@ -30,9 +22,3 @@ int nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev);
 int nfp_map_service(uint32_t service_id);
 
 #endif /* _NFP_CPP_BRIDGE_H_ */
-/*
- * Local variables:
- * c-file-style: "Linux"
- * indent-tabs-mode: t
- * End:
- */

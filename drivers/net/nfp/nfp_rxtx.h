@@ -3,14 +3,6 @@
  * All rights reserved.
  */
 
-/*
- * vim:shiftwidth=8:noexpandtab
- *
- * @file dpdk/pmd/nfp_rxtx.h
- *
- * Netronome NFP Rx/Tx specific header file
- */
-
 #ifndef _NFP_RXTX_H_
 #define _NFP_RXTX_H_
 
@@ -331,9 +323,3 @@ void nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 		uint8_t layer);
 
 #endif /* _NFP_RXTX_H_ */
-/*
- * Local variables:
- * c-file-style: "Linux"
- * indent-tabs-mode: t
- * End:
- */

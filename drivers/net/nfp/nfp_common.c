@@ -5,14 +5,6 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-/*
- * vim:shiftwidth=8:noexpandtab
- *
- * @file dpdk/pmd/nfp_common.c
- *
- * Netronome vNIC DPDK Poll-Mode Driver: Common files
- */
-
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -1963,10 +1955,3 @@ nfp_net_init_metadata_format(struct nfp_net_hw *hw)
 		hw->meta_format = NFP_NET_METAFORMAT_SINGLE;
 	}
 }
-
-/*
- * Local variables:
- * c-file-style: "Linux"
- * indent-tabs-mode: t
- * End:
- */

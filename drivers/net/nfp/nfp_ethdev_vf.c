@@ -5,14 +5,6 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-/*
- * vim:shiftwidth=8:noexpandtab
- *
- * @file dpdk/pmd/nfp_ethdev_vf.c
- *
- * Netronome vNIC  VF DPDK Poll-Mode Driver: Main entry point
- */
-
 #include <rte_alarm.h>
 
 #include "nfpcore/nfp_mip.h"
@@ -510,9 +502,3 @@ static struct rte_pci_driver rte_nfp_net_vf_pmd = {
 RTE_PMD_REGISTER_PCI(net_nfp_vf, rte_nfp_net_vf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");
-/*
- * Local variables:
- * c-file-style: "Linux"
- * indent-tabs-mode: t
- * End:
- */

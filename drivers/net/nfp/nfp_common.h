@@ -3,14 +3,6 @@
  * All rights reserved.
  */
 
-/*
- * vim:shiftwidth=8:noexpandtab
- *
- * @file dpdk/pmd/nfp_net_pmd.h
- *
- * Netronome NFP_NET PMD
- */
-
 #ifndef _NFP_COMMON_H_
 #define _NFP_COMMON_H_
 
@@ -514,9 +506,3 @@ void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
 	((struct nfp_app_fw_flower *)app_fw_priv)
 
 #endif /* _NFP_COMMON_H_ */
-/*
- * Local variables:
- * c-file-style: "Linux"
- * indent-tabs-mode: t
- * End:
- */

@@ -5,14 +5,6 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-/*
- * vim:shiftwidth=8:noexpandtab
- *
- * @file dpdk/pmd/nfp_rxtx.c
- *
- * Netronome vNIC DPDK Poll-Mode Driver: Rx/Tx functions
- */
-
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 
