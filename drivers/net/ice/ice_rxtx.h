@@ -103,6 +103,7 @@ struct ice_rx_queue {
 	uint32_t hw_time_high; /* high 32 bits of timestamp */
 	uint32_t hw_time_low; /* low 32 bits of timestamp */
 	uint64_t hw_time_update; /* SW time of HW record updating */
+	bool ts_enable; /* if rxq timestamp is enabled */
 };
 
 struct ice_tx_entry {
