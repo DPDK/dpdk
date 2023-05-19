@@ -168,7 +168,7 @@ find_suitable_element(struct malloc_heap *heap, size_t size,
 		}
 	}
 
-	if ((alt_elem != NULL) && (flags & RTE_MEMZONE_SIZE_HINT_ONLY))
+	if (flags & RTE_MEMZONE_SIZE_HINT_ONLY)
 		return alt_elem;
 
 	return NULL;
