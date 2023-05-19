@@ -3691,6 +3691,16 @@ ice_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		/* Register mbuf field and flag for Rx timestamp */
+		ret = rte_mbuf_dyn_rx_timestamp_register(&ice_timestamp_dynfield_offset,
+							 &ice_timestamp_dynflag);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Cannot register mbuf field/flag for timestamp");
+			goto tx_err;
+		}
+	}
+
 	/* program Rx queues' context in hardware*/
 	for (nb_rxq = 0; nb_rxq < data->nb_rx_queues; nb_rxq++) {
 		ret = ice_rx_queue_start(dev, nb_rxq);
