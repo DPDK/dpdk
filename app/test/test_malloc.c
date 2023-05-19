@@ -937,6 +937,7 @@ test_alloc_single_socket(int32_t socket)
 	if (mem == NULL)
 		return -1;
 	if (addr_to_socket(mem) != desired_socket) {
+		rte_free(mem);
 		return -1;
 	}
 	rte_free(mem);
