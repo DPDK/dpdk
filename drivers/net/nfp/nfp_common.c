@@ -1404,7 +1404,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 void
 nfp_net_dev_interrupt_delayed_handler(void *param)
 {
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct rte_eth_dev *dev = param;
 
 	nfp_net_link_update(dev, 0);
 	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
@@ -1420,7 +1420,7 @@ nfp_net_dev_interrupt_handler(void *param)
 {
 	int64_t timeout;
 	struct rte_eth_link link;
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct rte_eth_dev *dev = param;
 
 	PMD_DRV_LOG(DEBUG, "We got a LSC interrupt!!!");
 
@@ -1840,7 +1840,7 @@ nfp_net_stop_rx_queue(struct rte_eth_dev *dev)
 	struct nfp_net_rxq *this_rx_q;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		this_rx_q = dev->data->rx_queues[i];
 		nfp_net_reset_rx_queue(this_rx_q);
 	}
 }
@@ -1852,7 +1852,7 @@ nfp_net_close_rx_queue(struct rte_eth_dev *dev)
 	struct nfp_net_rxq *this_rx_q;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		this_rx_q = dev->data->rx_queues[i];
 		nfp_net_reset_rx_queue(this_rx_q);
 		nfp_net_rx_queue_release(dev, i);
 	}
@@ -1865,7 +1865,7 @@ nfp_net_stop_tx_queue(struct rte_eth_dev *dev)
 	struct nfp_net_txq *this_tx_q;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		this_tx_q = dev->data->tx_queues[i];
 		nfp_net_reset_tx_queue(this_tx_q);
 	}
 }
@@ -1877,7 +1877,7 @@ nfp_net_close_tx_queue(struct rte_eth_dev *dev)
 	struct nfp_net_txq *this_tx_q;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		this_tx_q = dev->data->tx_queues[i];
 		nfp_net_reset_tx_queue(this_tx_q);
 		nfp_net_tx_queue_release(dev, i);
 	}

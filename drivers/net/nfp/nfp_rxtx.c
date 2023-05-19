@@ -630,7 +630,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Saving physical and virtual addresses for the RX ring */
 	rxq->dma = (uint64_t)tz->iova;
-	rxq->rxds = (struct nfp_net_rx_desc *)tz->addr;
+	rxq->rxds = tz->addr;
 
 	/* mbuf pointers array for referencing mbufs linked to RX descriptors */
 	rxq->rxbufs = rte_zmalloc_socket("rxq->rxbufs",

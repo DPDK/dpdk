@@ -93,7 +93,7 @@ nfp_flow_dev_to_priv(struct rte_eth_dev *dev)
 {
 	struct nfp_flower_representor *repr;
 
-	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	repr = dev->data->dev_private;
 	return repr->app_fw_flower->flow_priv;
 }
 
@@ -726,8 +726,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			if (port_id->id >= RTE_MAX_ETHPORTS)
 				return -ERANGE;
 			ethdev = &rte_eth_devices[port_id->id];
-			representor = (struct nfp_flower_representor *)
-					ethdev->data->dev_private;
+			representor = ethdev->data->dev_private;
 			key_ls->port = rte_cpu_to_be_32(representor->port_id);
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
@@ -2047,7 +2046,7 @@ nfp_flow_action_output(char *act_data,
 		return -ERANGE;
 
 	ethdev = &rte_eth_devices[port_id->id];
-	representor = (struct nfp_flower_representor *)ethdev->data->dev_private;
+	representor = ethdev->data->dev_private;
 	act_size = sizeof(struct nfp_fl_act_output);
 
 	output = (struct nfp_fl_act_output *)act_data;
@@ -2083,7 +2082,7 @@ nfp_flow_action_set_mac(char *act_data,
 	set_eth->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
 	set_eth->reserved     = 0;
 
-	set_mac = (const struct rte_flow_action_set_mac *)action->conf;
+	set_mac = action->conf;
 	if (mac_src_flag) {
 		rte_memcpy(&set_eth->eth_addr[RTE_ETHER_ADDR_LEN],
 				set_mac->mac_addr, RTE_ETHER_ADDR_LEN);
@@ -2133,7 +2132,7 @@ nfp_flow_action_set_ip(char *act_data,
 	set_ip->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
 	set_ip->reserved     = 0;
 
-	set_ipv4 = (const struct rte_flow_action_set_ipv4 *)action->conf;
+	set_ipv4 = action->conf;
 	if (ip_src_flag) {
 		set_ip->ipv4_src = set_ipv4->ipv4_addr;
 		set_ip->ipv4_src_mask = RTE_BE32(0xffffffff);
@@ -2154,7 +2153,7 @@ nfp_flow_action_set_ipv6(char *act_data,
 	const struct rte_flow_action_set_ipv6 *set_ipv6;
 
 	set_ip = (struct nfp_fl_act_set_ipv6_addr *)act_data;
-	set_ipv6 = (const struct rte_flow_action_set_ipv6 *)action->conf;
+	set_ipv6 = action->conf;
 
 	if (ip_src_flag)
 		set_ip->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV6_SRC;
@@ -2191,7 +2190,7 @@ nfp_flow_action_set_tp(char *act_data,
 	set_tp->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
 	set_tp->reserved     = 0;
 
-	set_tp_conf = (const struct rte_flow_action_set_tp *)action->conf;
+	set_tp_conf = action->conf;
 	if (tp_src_flag) {
 		set_tp->src_port = set_tp_conf->port;
 		set_tp->src_port_mask = RTE_BE16(0xffff);
@@ -2223,12 +2222,9 @@ nfp_flow_action_push_vlan(char *act_data,
 	push_vlan->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
 	push_vlan->reserved     = 0;
 
-	push_vlan_conf = (const struct rte_flow_action_of_push_vlan *)
-			action->conf;
-	vlan_pcp_conf  = (const struct rte_flow_action_of_set_vlan_pcp *)
-			(action + 1)->conf;
-	vlan_vid_conf  = (const struct rte_flow_action_of_set_vlan_vid *)
-			(action + 2)->conf;
+	push_vlan_conf = action->conf;
+	vlan_pcp_conf  = (action + 1)->conf;
+	vlan_vid_conf  = (action + 2)->conf;
 
 	vid = rte_be_to_cpu_16(vlan_vid_conf->vlan_vid) & 0x0fff;
 	pcp = vlan_pcp_conf->vlan_pcp & 0x07;
@@ -2256,7 +2252,7 @@ nfp_flow_action_set_ttl(char *act_data,
 	ttl_tos->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV4_TTL_TOS;
 	ttl_tos->head.len_lw = act_size >> NFP_FL_LW_SIZ;
 
-	ttl_conf = (const struct rte_flow_action_set_ttl *)action->conf;
+	ttl_conf = action->conf;
 	ttl_tos->ipv4_ttl = ttl_conf->ttl_value;
 	ttl_tos->ipv4_ttl_mask = 0xff;
 	ttl_tos->reserved = 0;
@@ -2280,7 +2276,7 @@ nfp_flow_action_set_hl(char *act_data,
 	tc_hl->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV6_TC_HL_FL;
 	tc_hl->head.len_lw = act_size >> NFP_FL_LW_SIZ;
 
-	ttl_conf = (const struct rte_flow_action_set_ttl *)action->conf;
+	ttl_conf = action->conf;
 	tc_hl->ipv6_hop_limit = ttl_conf->ttl_value;
 	tc_hl->ipv6_hop_limit_mask = 0xff;
 	tc_hl->reserved = 0;
@@ -2304,7 +2300,7 @@ nfp_flow_action_set_tos(char *act_data,
 	ttl_tos->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV4_TTL_TOS;
 	ttl_tos->head.len_lw = act_size >> NFP_FL_LW_SIZ;
 
-	tos_conf = (const struct rte_flow_action_set_dscp *)action->conf;
+	tos_conf = action->conf;
 	ttl_tos->ipv4_tos = tos_conf->dscp;
 	ttl_tos->ipv4_tos_mask = 0xff;
 	ttl_tos->reserved = 0;
@@ -2328,7 +2324,7 @@ nfp_flow_action_set_tc(char *act_data,
 	tc_hl->head.jump_id = NFP_FL_ACTION_OPCODE_SET_IPV6_TC_HL_FL;
 	tc_hl->head.len_lw = act_size >> NFP_FL_LW_SIZ;
 
-	tos_conf = (const struct rte_flow_action_set_dscp *)action->conf;
+	tos_conf = action->conf;
 	tc_hl->ipv6_tc = tos_conf->dscp;
 	tc_hl->ipv6_tc_mask = 0xff;
 	tc_hl->reserved = 0;
@@ -2719,9 +2715,9 @@ nfp_flow_action_vxlan_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
 	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
 	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
 
-	eth   = (const struct rte_flow_item_eth *)vxlan_data->items[0].spec;
-	ipv4  = (const struct rte_flow_item_ipv4 *)vxlan_data->items[1].spec;
-	vxlan = (const struct rte_flow_item_vxlan *)vxlan_data->items[3].spec;
+	eth   = vxlan_data->items[0].spec;
+	ipv4  = vxlan_data->items[1].spec;
+	vxlan = vxlan_data->items[3].spec;
 
 	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
 	memset(pre_tun, 0, act_pre_size);
@@ -2756,9 +2752,9 @@ nfp_flow_action_vxlan_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
 	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
 
-	eth   = (const struct rte_flow_item_eth *)vxlan_data->items[0].spec;
-	ipv6  = (const struct rte_flow_item_ipv6 *)vxlan_data->items[1].spec;
-	vxlan = (const struct rte_flow_item_vxlan *)vxlan_data->items[3].spec;
+	eth   = vxlan_data->items[0].spec;
+	ipv6  = vxlan_data->items[1].spec;
+	vxlan = vxlan_data->items[3].spec;
 
 	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
 	memset(pre_tun, 0, act_pre_size);
@@ -3626,7 +3622,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	nfp_flower_update_meta_tci(nfp_flow->payload.unmasked_data, new_mask_id);
 
 	/* Calculate and store the hash_key for later use */
-	hash_data = (char *)(nfp_flow->payload.unmasked_data);
+	hash_data = nfp_flow->payload.unmasked_data;
 	nfp_flow->hash_key = rte_jhash(hash_data, nfp_flow->length, priv->hash_seed);
 
 	/* Find the flow in hash table */
@@ -3716,7 +3712,7 @@ nfp_flow_validate(struct rte_eth_dev *dev,
 	struct nfp_flow_priv *priv;
 	struct nfp_flower_representor *representor;
 
-	representor = (struct nfp_flower_representor *)dev->data->dev_private;
+	representor = dev->data->dev_private;
 	priv = representor->app_fw_flower->flow_priv;
 
 	nfp_flow = nfp_flow_setup(representor, attr, items, actions, error, true);
@@ -3751,7 +3747,7 @@ nfp_flow_create(struct rte_eth_dev *dev,
 	struct nfp_app_fw_flower *app_fw_flower;
 	struct nfp_flower_representor *representor;
 
-	representor = (struct nfp_flower_representor *)dev->data->dev_private;
+	representor = dev->data->dev_private;
 	app_fw_flower = representor->app_fw_flower;
 	priv = app_fw_flower->flow_priv;
 
@@ -3813,7 +3809,7 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 	struct nfp_app_fw_flower *app_fw_flower;
 	struct nfp_flower_representor *representor;
 
-	representor = (struct nfp_flower_representor *)dev->data->dev_private;
+	representor = dev->data->dev_private;
 	app_fw_flower = representor->app_fw_flower;
 	priv = app_fw_flower->flow_priv;
 
@@ -3949,7 +3945,7 @@ nfp_flow_stats_get(struct rte_eth_dev *dev,
 		return;
 	}
 
-	query = (struct rte_flow_query_count *)data;
+	query = data;
 	reset = query->reset;
 	memset(query, 0, sizeof(*query));
 

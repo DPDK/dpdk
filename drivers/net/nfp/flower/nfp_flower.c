@@ -60,7 +60,7 @@ nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 	uint32_t update = 0;
 	struct nfp_flower_representor *repr;
 
-	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	repr = dev->data->dev_private;
 	hw = repr->app_fw_flower->pf_hw;
 
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
@@ -89,7 +89,7 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct nfp_flower_representor *repr;
 
-	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	repr = dev->data->dev_private;
 	hw = repr->app_fw_flower->pf_hw;
 
 	/* Disabling queues just in case... */
@@ -149,19 +149,19 @@ nfp_flower_pf_stop(struct rte_eth_dev *dev)
 	struct nfp_net_rxq *this_rx_q;
 	struct nfp_flower_representor *repr;
 
-	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	repr = dev->data->dev_private;
 	hw = repr->app_fw_flower->pf_hw;
 
 	nfp_pf_repr_disable_queues(dev);
 
 	/* Clear queues */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		this_tx_q = dev->data->tx_queues[i];
 		nfp_net_reset_tx_queue(this_tx_q);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		this_rx_q = dev->data->rx_queues[i];
 		nfp_net_reset_rx_queue(this_rx_q);
 	}
 
@@ -189,7 +189,7 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	repr = (struct nfp_flower_representor *)dev->data->dev_private;
+	repr = dev->data->dev_private;
 	hw = repr->app_fw_flower->pf_hw;
 	pf_dev = hw->pf_dev;
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
@@ -204,12 +204,12 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 
 	/* Clear queues */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		this_tx_q = dev->data->tx_queues[i];
 		nfp_net_reset_tx_queue(this_tx_q);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		this_rx_q = dev->data->rx_queues[i];
 		nfp_net_reset_rx_queue(this_rx_q);
 	}
 
@@ -814,7 +814,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 		/* Saving physical and virtual addresses for the RX ring */
 		rxq->dma = (uint64_t)tz->iova;
-		rxq->rxds = (struct nfp_net_rx_desc *)tz->addr;
+		rxq->rxds = tz->addr;
 
 		/* Mbuf pointers array for referencing mbufs linked to RX descriptors */
 		rxq->rxbufs = rte_zmalloc_socket("rxq->rxbufs",
@@ -877,7 +877,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 		/* Saving physical and virtual addresses for the TX ring */
 		txq->dma = (uint64_t)tz->iova;
-		txq->txds = (struct nfp_net_nfd3_tx_desc *)tz->addr;
+		txq->txds = tz->addr;
 
 		/* Mbuf pointers array for referencing mbufs linked to TX descriptors */
 		txq->txbufs = rte_zmalloc_socket("txq->txbufs",

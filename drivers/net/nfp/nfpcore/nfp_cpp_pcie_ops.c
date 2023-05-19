@@ -835,7 +835,7 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 	if (nfp6000_set_barsz(dev, desc) < 0)
 		goto error;
 
-	desc->cfg = (char *)dev->mem_resource[0].addr;
+	desc->cfg = dev->mem_resource[0].addr;
 
 	nfp_enable_bars(desc);
 

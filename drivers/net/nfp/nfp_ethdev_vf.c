@@ -289,7 +289,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
-	hw->ctrl_bar = (uint8_t *)pci_dev->mem_resource[0].addr;
+	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
 		PMD_DRV_LOG(ERR,
 			"hw->ctrl_bar is NULL. BAR0 not configured");
