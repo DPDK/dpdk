@@ -1637,7 +1637,8 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
 			rxd_to_pkt_fields_ops[rxq->rxdid](rxq, mb, &rxdp[j]);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-			if (ice_timestamp_dynflag > 0) {
+			if (ice_timestamp_dynflag > 0 &&
+			    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 				rxq->time_high =
 				rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high);
 				if (unlikely(is_tsinit)) {
@@ -1984,7 +1985,8 @@ ice_recv_scattered_pkts(void *rx_queue,
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, first_seg, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-		if (ice_timestamp_dynflag > 0) {
+		if (ice_timestamp_dynflag > 0 &&
+		    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 			rxq->time_high =
 			   rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high);
 			if (unlikely(is_tsinit)) {
@@ -2435,7 +2437,8 @@ ice_recv_pkts(void *rx_queue,
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, rxm, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-		if (ice_timestamp_dynflag > 0) {
+		if (ice_timestamp_dynflag > 0 &&
+		    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 			rxq->time_high =
 			   rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high);
 			if (unlikely(is_tsinit)) {
