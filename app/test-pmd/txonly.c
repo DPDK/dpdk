@@ -56,7 +56,7 @@ uint32_t tx_ip_dst_addr = (198U << 24) | (18 << 16) | (0 << 8) | 2;
 #define IP_DEFTTL  64   /* from RFC 1340. */
 
 static struct rte_ipv4_hdr pkt_ip_hdr; /**< IP header of transmitted packets. */
-RTE_DEFINE_PER_LCORE(uint8_t, _ip_var); /**< IP address variation */
+RTE_DEFINE_PER_LCORE(uint8_t, _src_port_var); /**< Source port variation */
 static struct rte_udp_hdr pkt_udp_hdr; /**< UDP header of tx packets. */
 
 static uint64_t timestamp_mask; /**< Timestamp dynamic flag mask */
@@ -230,28 +230,34 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	copy_buf_to_pkt(eth_hdr, sizeof(*eth_hdr), pkt, 0);
 	copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
 			sizeof(struct rte_ether_hdr));
-	if (txonly_multi_flow) {
-		uint8_t  ip_var = RTE_PER_LCORE(_ip_var);
-		struct rte_ipv4_hdr *ip_hdr;
-		uint32_t addr;
-
-		ip_hdr = rte_pktmbuf_mtod_offset(pkt,
-				struct rte_ipv4_hdr *,
-				sizeof(struct rte_ether_hdr));
-		/*
-		 * Generate multiple flows by varying IP src addr. This
-		 * enables packets are well distributed by RSS in
-		 * receiver side if any and txonly mode can be a decent
-		 * packet generator for developer's quick performance
-		 * regression test.
-		 */
-		addr = (tx_ip_dst_addr | (ip_var++ << 8)) + rte_lcore_id();
-		ip_hdr->src_addr = rte_cpu_to_be_32(addr);
-		RTE_PER_LCORE(_ip_var) = ip_var;
-	}
 	copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
 			sizeof(struct rte_ether_hdr) +
 			sizeof(struct rte_ipv4_hdr));
+	if (txonly_multi_flow) {
+		uint16_t src_var = RTE_PER_LCORE(_src_port_var);
+		struct rte_udp_hdr *udp_hdr;
+		uint16_t src_port;
+
+		udp_hdr = rte_pktmbuf_mtod_offset(pkt,
+				struct rte_udp_hdr *,
+				sizeof(struct rte_ether_hdr) +
+				sizeof(struct rte_ipv4_hdr));
+		/*
+		 * Generate multiple flows by varying UDP source port.
+		 * This enables packets are well distributed by RSS in
+		 * receiver side if any and txonly mode can be a decent
+		 * packet generator for developer's quick performance
+		 * regression test.
+		 *
+		 * Only ports in the range 49152 (0xC000) and 65535 (0xFFFF)
+		 * will be used, with the least significant byte representing
+		 * the lcore ID. As such, the most significant byte will cycle
+		 * through 0xC0 and 0xFF.
+		 */
+		src_port = ((src_var++ | 0xC0) << 8) + rte_lcore_id();
+		udp_hdr->src_port = rte_cpu_to_be_16(src_port);
+		RTE_PER_LCORE(_src_port_var) = src_var;
+	}
 
 	if (unlikely(tx_pkt_split == TX_PKT_SPLIT_RND) || txonly_multi_flow)
 		update_pkt_header(pkt, pkt_len);
@@ -393,7 +399,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	nb_tx = common_fwd_stream_transmit(fs, pkts_burst, nb_pkt);
 
 	if (txonly_multi_flow)
-		RTE_PER_LCORE(_ip_var) -= nb_pkt - nb_tx;
+		RTE_PER_LCORE(_src_port_var) -= nb_pkt - nb_tx;
 
 	if (unlikely(nb_tx < nb_pkt)) {
 		if (verbose_level > 0 && fs->fwd_dropped == 0)
