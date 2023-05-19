@@ -28,7 +28,7 @@
 static int
 nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 {
-	struct nfp_net_rx_buff *rxe = rxq->rxbufs;
+	struct nfp_net_dp_buf *rxe = rxq->rxbufs;
 	uint64_t dma_addr;
 	unsigned int i;
 
@@ -371,7 +371,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_rx_desc *rxds;
-	struct nfp_net_rx_buff *rxb;
+	struct nfp_net_dp_buf *rxb;
 	struct nfp_net_hw *hw;
 	struct rte_mbuf *mb;
 	struct rte_mbuf *new_mb;

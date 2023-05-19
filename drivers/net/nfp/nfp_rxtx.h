@@ -98,6 +98,10 @@ struct nfp_meta_parsed {
 
 #define DIV_ROUND_UP(n, d)             (((n) + (d) - 1) / (d))
 
+struct nfp_net_dp_buf {
+	struct rte_mbuf *mbuf;
+};
+
 struct nfp_net_txq {
 	struct nfp_net_hw *hw; /* Backpointer to nfp_net structure */
 
@@ -128,9 +132,7 @@ struct nfp_net_txq {
 	 * For each descriptor keep a reference to the mbuf and
 	 * DMA address used until completion is signalled.
 	 */
-	struct {
-		struct rte_mbuf *mbuf;
-	} *txbufs;
+	struct nfp_net_dp_buf *txbufs;
 
 	/*
 	 * Information about the host side queue location. @txds is
@@ -210,10 +212,6 @@ struct nfp_net_rx_desc {
 	};
 };
 
-struct nfp_net_rx_buff {
-	struct rte_mbuf *mbuf;
-};
-
 struct nfp_net_rxq {
 	struct nfp_net_hw *hw;	/* Backpointer to nfp_net structure */
 
@@ -238,7 +236,7 @@ struct nfp_net_rxq {
 	 * For each buffer placed on the freelist, record the
 	 * associated SKB
 	 */
-	struct nfp_net_rx_buff *rxbufs;
+	struct nfp_net_dp_buf *rxbufs;
 
 	/*
 	 * Information about the host side queue location.  @rxds is

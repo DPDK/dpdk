@@ -30,7 +30,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	struct nfp_net_hw *hw;
 	struct nfp_net_rxq *rxq;
 	struct rte_mbuf *new_mb;
-	struct nfp_net_rx_buff *rxb;
+	struct nfp_net_dp_buf *rxb;
 	struct nfp_net_rx_desc *rxds;
 
 	rxq = rx_queue;

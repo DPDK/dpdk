@@ -320,7 +320,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 	struct nfp_net_hw *hw;
 	struct rte_mbuf *new_mb;
 	struct nfp_net_rxq *rxq;
-	struct nfp_net_rx_buff *rxb;
+	struct nfp_net_dp_buf *rxb;
 	struct nfp_net_rx_desc *rxds;
 	struct nfp_flower_representor *repr;
 
