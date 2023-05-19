@@ -4485,6 +4485,7 @@ int
 rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct rte_ether_addr *addr)
 {
 	struct rte_eth_dev *dev;
+	int index;
 	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
@@ -4501,6 +4502,15 @@ rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct rte_ether_addr *addr)
 		return -EINVAL;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mac_addr_set, -ENOTSUP);
+
+	/* Keep address unique in dev->data->mac_addrs[]. */
+	index = eth_dev_get_mac_addr_index(port_id, addr);
+	if (index > 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"New default address for port %u was already in the address list. Please remove it first.\n",
+			port_id);
+		return -EEXIST;
+	}
 
 	ret = (*dev->dev_ops->mac_addr_set)(dev, addr);
 	if (ret < 0)

@@ -4163,6 +4163,9 @@ int rte_eth_dev_mac_addr_remove(uint16_t port_id,
 
 /**
  * Set the default MAC address.
+ * It replaces the address at index 0 of the MAC address list.
+ * If the address was already in the MAC address list,
+ * please remove it first.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -4173,6 +4176,7 @@ int rte_eth_dev_mac_addr_remove(uint16_t port_id,
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if MAC address is invalid.
+ *   - (-EEXIST) if MAC address was already in the address list.
  */
 int rte_eth_dev_default_mac_addr_set(uint16_t port_id,
 		struct rte_ether_addr *mac_addr);
