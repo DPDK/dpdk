@@ -40,8 +40,8 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		struct rte_mbuf *mbuf = rte_pktmbuf_alloc(rxq->mem_pool);
 
 		if (mbuf == NULL) {
-			PMD_DRV_LOG(ERR, "RX mbuf alloc failed queue_id=%u",
-				(unsigned int)rxq->qidx);
+			PMD_DRV_LOG(ERR, "RX mbuf alloc failed queue_id=%hu",
+				rxq->qidx);
 			return -ENOMEM;
 		}
 
@@ -379,7 +379,6 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint64_t dma_addr;
 	uint16_t avail;
 
-	avail = 0;
 	rxq = rx_queue;
 	if (unlikely(rxq == NULL)) {
 		/*
@@ -387,12 +386,13 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * enabled. But the queue needs to be configured
 		 */
 		PMD_RX_LOG(ERR, "RX Bad queue");
-		return avail;
+		return 0;
 	}
 
 	hw = rxq->hw;
-	nb_hold = 0;
 
+	avail = 0;
+	nb_hold = 0;
 	while (avail < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
@@ -417,8 +417,8 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
 			PMD_RX_LOG(DEBUG,
-			"RX mbuf alloc failed port_id=%u queue_id=%u",
-				rxq->port_id, (unsigned int)rxq->qidx);
+			"RX mbuf alloc failed port_id=%u queue_id=%hu",
+					rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
 		}
@@ -495,8 +495,8 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (nb_hold == 0)
 		return nb_hold;
 
-	PMD_RX_LOG(DEBUG, "RX  port_id=%u queue_id=%u, %d packets received",
-		   rxq->port_id, (unsigned int)rxq->qidx, nb_hold);
+	PMD_RX_LOG(DEBUG, "RX  port_id=%hu queue_id=%hu, %hu packets received",
+		   rxq->port_id, rxq->qidx, avail);
 
 	nb_hold += rxq->nb_rx_hold;
 
@@ -506,9 +506,8 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%u queue=%u nb_hold=%u avail=%u",
-			   rxq->port_id, (unsigned int)rxq->qidx,
-			   (unsigned int)nb_hold, (unsigned int)avail);
+		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
+			   rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
 	}
@@ -605,9 +604,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Hw queues mapping based on firmware configuration */
 	rxq->qidx = queue_idx;
 	rxq->fl_qcidx = queue_idx * hw->stride_rx;
-	rxq->rx_qcidx = rxq->fl_qcidx + (hw->stride_rx - 1);
 	rxq->qcp_fl = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->fl_qcidx);
-	rxq->qcp_rx = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->rx_qcidx);
 
 	/*
 	 * Tracking mbuf size for detecting a potential mbuf overflow due to
@@ -621,7 +618,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_count = nb_desc;
 	rxq->port_id = dev->data->port_id;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
-	rxq->drop_en = rx_conf->rx_drop_en;
 
 	/*
 	 * Allocate RX ring hardware descriptors. A memzone large enough to

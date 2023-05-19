@@ -46,9 +46,7 @@ nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Hw queues mapping based on firmware configuration */
 	rxq->qidx = queue_idx;
 	rxq->fl_qcidx = queue_idx * hw->stride_rx;
-	rxq->rx_qcidx = rxq->fl_qcidx + (hw->stride_rx - 1);
 	rxq->qcp_fl = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->fl_qcidx);
-	rxq->qcp_rx = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->rx_qcidx);
 
 	/*
 	 * Tracking mbuf size for detecting a potential mbuf overflow due to
@@ -62,7 +60,6 @@ nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_count = nb_desc;
 	rxq->port_id = dev->data->port_id;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
-	rxq->drop_en = rx_conf->rx_drop_en;
 
 	/*
 	 * Allocate RX ring hardware descriptors. A memzone large enough to

@@ -311,8 +311,8 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 	 * We need different counters for packets given to the caller
 	 * and packets sent to representors
 	 */
-	int avail = 0;
-	int avail_multiplexed = 0;
+	uint16_t avail = 0;
+	uint16_t avail_multiplexed = 0;
 	uint64_t dma_addr;
 	uint32_t meta_portid;
 	uint16_t nb_hold = 0;
@@ -364,7 +364,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
 			PMD_RX_LOG(DEBUG,
-			"RX mbuf alloc failed port_id=%u queue_id=%d",
+			"RX mbuf alloc failed port_id=%hu queue_id=%hu",
 				rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
@@ -464,7 +464,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 	if (nb_hold == 0)
 		return nb_hold;
 
-	PMD_RX_LOG(DEBUG, "RX port_id=%u queue_id=%d, %d packets received",
+	PMD_RX_LOG(DEBUG, "RX port_id=%hu queue_id=%hu, %hu packets received",
 			rxq->port_id, rxq->qidx, nb_hold);
 
 	nb_hold += rxq->nb_rx_hold;
@@ -475,7 +475,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%u queue=%d nb_hold=%u avail=%d",
+		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
@@ -783,9 +783,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		/* Hw queues mapping based on firmware configuration */
 		rxq->qidx = i;
 		rxq->fl_qcidx = i * hw->stride_rx;
-		rxq->rx_qcidx = rxq->fl_qcidx + (hw->stride_rx - 1);
 		rxq->qcp_fl = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->fl_qcidx);
-		rxq->qcp_rx = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->rx_qcidx);
 
 		/*
 		 * Tracking mbuf size for detecting a potential mbuf overflow due to
@@ -798,7 +796,6 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 		rxq->rx_count = CTRL_VNIC_NB_DESC;
 		rxq->rx_free_thresh = DEFAULT_RX_FREE_THRESH;
-		rxq->drop_en = 1;
 
 		/*
 		 * Allocate RX ring hardware descriptors. A memzone large enough to

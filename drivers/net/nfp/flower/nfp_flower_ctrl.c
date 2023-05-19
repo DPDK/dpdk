@@ -68,8 +68,8 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
 			PMD_RX_LOG(ERR,
-				"RX mbuf alloc failed port_id=%u queue_id=%u",
-				rxq->port_id, (unsigned int)rxq->qidx);
+				"RX mbuf alloc failed port_id=%u queue_id=%hu",
+				rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
 		}
@@ -143,7 +143,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold >= rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%hu queue=%d nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
 			rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;

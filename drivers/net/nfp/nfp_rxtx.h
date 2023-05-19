@@ -213,81 +213,73 @@ struct nfp_net_rx_desc {
 };
 
 struct nfp_net_rxq {
-	struct nfp_net_hw *hw;	/* Backpointer to nfp_net structure */
+	/** Backpointer to nfp_net structure */
+	struct nfp_net_hw *hw;
 
-	 /*
-	  * @qcp_fl and @qcp_rx are pointers to the base addresses of the
-	  * freelist and RX queue controller peripheral queue structures on the
-	  * NFP
-	  */
+	/**
+	 * Point to the base addresses of the freelist queue
+	 * controller peripheral queue structures on the NFP.
+	 */
 	uint8_t *qcp_fl;
-	uint8_t *qcp_rx;
 
-	/*
-	 * Read and Write pointers.  @wr_p and @rd_p are host side
-	 * pointer, they are free running and have little relation to
-	 * the QCP pointers. @wr_p is where the driver adds new
-	 * freelist descriptors and @rd_p is where the driver start
-	 * reading descriptors for newly arrive packets from.
+	/**
+	 * Host side read pointer, free running and have little relation
+	 * to the QCP pointers. It is where the driver start reading
+	 * descriptors for newly arrive packets from.
 	 */
 	uint32_t rd_p;
 
-	/*
+	/**
+	 * The index of the QCP queue relative to the RX queue BAR
+	 * used for the freelist.
+	 */
+	uint32_t fl_qcidx;
+
+	/**
 	 * For each buffer placed on the freelist, record the
-	 * associated SKB
+	 * associated mbuf.
 	 */
 	struct nfp_net_dp_buf *rxbufs;
 
-	/*
-	 * Information about the host side queue location.  @rxds is
-	 * the virtual address for the queue
+	/**
+	 * Information about the host side queue location.
+	 * It is the virtual address for the queue.
 	 */
 	struct nfp_net_rx_desc *rxds;
 
-	/*
+	/**
 	 * The mempool is created by the user specifying a mbuf size.
 	 * We save here the reference of the mempool needed in the RX
 	 * path and the mbuf size for checking received packets can be
-	 * safely copied to the mbuf using the NFP_NET_RX_OFFSET
+	 * safely copied to the mbuf using the NFP_NET_RX_OFFSET.
 	 */
 	struct rte_mempool *mem_pool;
 	uint16_t mbuf_size;
 
-	/*
+	/**
 	 * Next two fields are used for giving more free descriptors
-	 * to the NFP
+	 * to the NFP.
 	 */
 	uint16_t rx_free_thresh;
 	uint16_t nb_rx_hold;
 
-	 /* the size of the queue in number of descriptors */
+	 /** The size of the queue in number of descriptors */
 	uint16_t rx_count;
 
-	/*
-	 * Fields above this point fit in a single cache line and are all used
-	 * in the RX critical path. Fields below this point are just used
-	 * during queue configuration or not used at all (yet)
-	 */
-
-	/* referencing dev->data->port_id */
+	/** Referencing dev->data->port_id */
 	uint16_t port_id;
 
-	uint8_t  crc_len; /* Not used by now */
-	uint8_t  drop_en; /* Not used by now */
+	/** The queue index from Linux's perspective */
+	uint16_t qidx;
 
-	/* DMA address of the queue */
-	__le64 dma;
-
-	/*
-	 * Queue information: @qidx is the queue index from Linux's
-	 * perspective.  @fl_qcidx is the index of the Queue
-	 * Controller peripheral queue relative to the RX queue BAR
-	 * used for the freelist and @rx_qcidx is the Queue Controller
-	 * Peripheral index for the RX queue.
+	/**
+	 * At this point 60 bytes have been used for all the fields in the
+	 * RX critical path. We have room for 4 bytes and still all placed
+	 * in a cache line.
 	 */
-	int qidx;
-	int fl_qcidx;
-	int rx_qcidx;
+
+	/** DMA address of the queue */
+	uint64_t dma;
 } __rte_aligned(64);
 
 static inline void
