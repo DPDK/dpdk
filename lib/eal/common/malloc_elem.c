@@ -382,7 +382,7 @@ malloc_elem_free_list_index(size_t size)
 	size_t log2;
 	size_t index;
 
-	if (size <= (1UL << MALLOC_MINSIZE_LOG2))
+	if (size < (1UL << MALLOC_MINSIZE_LOG2))
 		return 0;
 
 	/* Find next power of 2 > size. */
