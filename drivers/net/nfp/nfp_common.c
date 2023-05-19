@@ -453,17 +453,6 @@ nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 	hw->qcp_cfg = hw->tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
 }
 
-#define ETH_ADDR_LEN	6
-
-void
-nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src)
-{
-	int i;
-
-	for (i = 0; i < ETH_ADDR_LEN; i++)
-		dst[i] = src[i];
-}
-
 void
 nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac)
 {

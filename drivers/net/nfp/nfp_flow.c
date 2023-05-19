@@ -85,7 +85,7 @@ struct nfp_mask_id_entry {
 struct nfp_pre_tun_entry {
 	uint16_t mac_index;
 	uint16_t ref_cnt;
-	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+	struct rte_ether_addr mac_addr;
 } __rte_aligned(32);
 
 static inline struct nfp_flow_priv *
@@ -2894,7 +2894,7 @@ nfp_pre_tun_table_check_add(struct nfp_flower_representor *repr,
 	}
 
 	entry->ref_cnt = 1U;
-	memcpy(entry->mac_addr, repr->mac_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+	rte_ether_addr_copy(&repr->mac_addr, &entry->mac_addr);
 
 	/* 0 is considered a failed match */
 	for (i = 1; i < NFP_TUN_PRE_TUN_RULE_LIMIT; i++) {
@@ -2954,7 +2954,7 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 	}
 
 	entry->ref_cnt = 1U;
-	memcpy(entry->mac_addr, repr->mac_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
+	rte_ether_addr_copy(&repr->mac_addr, &entry->mac_addr);
 
 	/* 0 is considered a failed match */
 	for (i = 1; i < NFP_TUN_PRE_TUN_RULE_LIMIT; i++) {

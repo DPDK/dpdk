@@ -45,8 +45,7 @@ nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic, int port)
 
 	nfp_eth_table = nfp_eth_read_ports(app_fw_nic->pf_dev->cpp);
 
-	nfp_eth_copy_mac((uint8_t *)&hw->mac_addr,
-			 (uint8_t *)&nfp_eth_table->ports[port].mac_addr);
+	rte_ether_addr_copy(&nfp_eth_table->ports[port].mac_addr, &hw->mac_addr);
 
 	free(nfp_eth_table);
 	return 0;
@@ -654,19 +653,18 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	}
 
 	nfp_net_pf_read_mac(app_fw_nic, port);
-	nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
+	nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 
-	tmp_ether_addr = (struct rte_ether_addr *)&hw->mac_addr;
+	tmp_ether_addr = &hw->mac_addr;
 	if (!rte_is_valid_assigned_ether_addr(tmp_ether_addr)) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %d", port);
 		/* Using random mac addresses for VFs */
-		rte_eth_random_addr(&hw->mac_addr[0]);
-		nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
+		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
+		nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 	}
 
 	/* Copying mac address to DPDK eth_dev struct */
-	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac_addr,
-			&eth_dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(&hw->mac_addr, eth_dev->data->mac_addrs);
 
 	if ((hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_NOLIVE_MAC_ADDR;
@@ -677,8 +675,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     "mac=" RTE_ETHER_ADDR_PRT_FMT,
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id,
-		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
-		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
+		     RTE_ETHER_ADDR_BYTES(&hw->mac_addr));
 
 	/* Registering LSC interrupt handler */
 	rte_intr_callback_register(pci_dev->intr_handle,

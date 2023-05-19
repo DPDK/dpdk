@@ -232,7 +232,7 @@ struct nfp_net_hw {
 #endif
 #endif
 
-	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+	struct rte_ether_addr mac_addr;
 
 	/* Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;
@@ -428,7 +428,6 @@ void nfp_net_log_device_information(const struct nfp_net_hw *hw);
 void nfp_net_enable_queues(struct rte_eth_dev *dev);
 void nfp_net_disable_queues(struct rte_eth_dev *dev);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
-void nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src);
 void nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac);
 int nfp_net_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
@@ -463,7 +462,6 @@ int nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 int nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
 void nfp_net_cfg_queue_setup(struct nfp_net_hw *hw);
-void nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src);
 void nfp_net_dev_interrupt_handler(void *param);
 void nfp_net_dev_interrupt_delayed_handler(void *param);
 int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);

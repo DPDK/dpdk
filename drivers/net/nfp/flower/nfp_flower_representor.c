@@ -768,8 +768,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 		flower_repr.vf_id = i + 1;
 
 		/* Copy the real mac of the interface to the representor struct */
-		rte_ether_addr_copy((struct rte_ether_addr *)eth_port->mac_addr,
-				&flower_repr.mac_addr);
+		rte_ether_addr_copy(&eth_port->mac_addr, &flower_repr.mac_addr);
 		sprintf(flower_repr.name, "flower_repr_p%d", i);
 
 		/*

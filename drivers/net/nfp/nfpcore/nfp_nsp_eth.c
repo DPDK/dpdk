@@ -115,7 +115,7 @@ union eth_table_entry {
 	struct {
 		uint64_t port;
 		uint64_t state;
-		uint8_t mac_addr[6];
+		uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 		uint8_t resv[2];
 		uint64_t control;
 	};
@@ -163,8 +163,8 @@ nfp_eth_copy_mac_reverse(uint8_t *dst, const uint8_t *src)
 {
 	int i;
 
-	for (i = 0; i < (int)ETH_ALEN; i++)
-		dst[ETH_ALEN - i - 1] = src[i];
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+		dst[RTE_ETHER_ADDR_LEN - i - 1] = src[i];
 }
 
 static void
@@ -194,7 +194,7 @@ nfp_eth_port_translate(struct nfp_nsp *nsp, const union eth_table_entry *src,
 	dst->interface = FIELD_GET(NSP_ETH_STATE_INTERFACE, state);
 	dst->media = FIELD_GET(NSP_ETH_STATE_MEDIA, state);
 
-	nfp_eth_copy_mac_reverse(dst->mac_addr, src->mac_addr);
+	nfp_eth_copy_mac_reverse(&dst->mac_addr.addr_bytes[0], src->mac_addr);
 
 	dst->label_port = FIELD_GET(NSP_ETH_PORT_PHYLABEL, port);
 	dst->label_subport = FIELD_GET(NSP_ETH_PORT_LABEL, port);

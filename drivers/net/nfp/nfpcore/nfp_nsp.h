@@ -157,8 +157,6 @@ enum nfp_eth_fec {
 #define NFP_FEC_REED_SOLOMON	RTE_BIT32(NFP_FEC_REED_SOLOMON_BIT)
 #define NFP_FEC_DISABLED	RTE_BIT32(NFP_FEC_DISABLED_BIT)
 
-#define ETH_ALEN	6
-
 /**
  * struct nfp_eth_table - ETH table information
  * @count:	number of table entries
@@ -205,7 +203,7 @@ struct nfp_eth_table {
 		enum nfp_eth_fec fec;
 		enum nfp_eth_aneg aneg;
 
-		uint8_t mac_addr[ETH_ALEN];
+		struct rte_ether_addr mac_addr;
 
 		uint8_t label_port;
 		uint8_t label_subport;
