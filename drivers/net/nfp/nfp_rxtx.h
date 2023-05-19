@@ -191,24 +191,24 @@ struct nfp_net_rx_desc {
 	union {
 		/* Freelist descriptor */
 		struct {
-			__le16 dma_addr_hi;
+			uint16_t dma_addr_hi;
 			uint8_t spare;
 			uint8_t dd;
 
-			__le32 dma_addr_lo;
+			uint32_t dma_addr_lo;
 		} __rte_packed fld;
 
 		/* RX descriptor */
 		struct {
-			__le16 data_len;
+			uint16_t data_len;
 			uint8_t reserved;
 			uint8_t meta_len_dd;
 
-			__le16 flags;
-			__le16 vlan;
+			uint16_t flags;
+			uint16_t vlan;
 		} __rte_packed rxd;
 
-		__le32 vals[2];
+		uint32_t vals[2];
 	};
 };
 
