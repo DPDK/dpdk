@@ -164,7 +164,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue,
 	txq = tx_queue;
 	hw = txq->hw;
 
-	PMD_TX_LOG(DEBUG, "working for queue %u at pos %d and %u packets",
+	PMD_TX_LOG(DEBUG, "working for queue %hu at pos %d and %hu packets",
 			txq->qidx, txq->wr_p, nb_pkts);
 
 	if (nfp_net_nfdk_free_tx_desc(txq) < NFDK_TX_DESC_PER_SIMPLE_PKT * nb_pkts ||
@@ -175,7 +175,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue,
 	if (unlikely(free_descs == 0))
 		return 0;
 
-	PMD_TX_LOG(DEBUG, "queue: %u. Sending %u packets", txq->qidx, nb_pkts);
+	PMD_TX_LOG(DEBUG, "queue: %hu. Sending %hu packets", txq->qidx, nb_pkts);
 
 	/* Sending packets */
 	while (npkts < nb_pkts && free_descs > 0) {
@@ -398,9 +398,6 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 
 	txq->tx_count = nb_desc * NFDK_TX_DESC_PER_SIMPLE_PKT;
 	txq->tx_free_thresh = tx_free_thresh;
-	txq->tx_pthresh = tx_conf->tx_thresh.pthresh;
-	txq->tx_hthresh = tx_conf->tx_thresh.hthresh;
-	txq->tx_wthresh = tx_conf->tx_thresh.wthresh;
 
 	/* queue mapping based on firmware configuration */
 	txq->qidx = queue_idx;

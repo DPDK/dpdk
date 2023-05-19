@@ -14,7 +14,6 @@
 #ifndef _NFP_RXTX_H_
 #define _NFP_RXTX_H_
 
-#include <linux/types.h>
 #include <rte_io.h>
 
 #define NFP_DESC_META_LEN(d) ((d)->rxd.meta_len_dd & PCIE_DESC_RX_META_LEN_MASK)
@@ -103,63 +102,55 @@ struct nfp_net_dp_buf {
 };
 
 struct nfp_net_txq {
-	struct nfp_net_hw *hw; /* Backpointer to nfp_net structure */
+	/** Backpointer to nfp_net structure */
+	struct nfp_net_hw *hw;
 
-	/*
-	 * Queue information: @qidx is the queue index from Linux's
-	 * perspective.  @tx_qcidx is the index of the Queue
-	 * Controller Peripheral queue relative to the TX queue BAR.
-	 * @cnt is the size of the queue in number of
-	 * descriptors. @qcp_q is a pointer to the base of the queue
-	 * structure on the NFP
-	 */
+	/** Point to the base of the queue structure on the NFP. */
 	uint8_t *qcp_q;
 
-	/*
-	 * Read and Write pointers.  @wr_p and @rd_p are host side pointer,
-	 * they are free running and have little relation to the QCP pointers *
-	 * @qcp_rd_p is a local copy queue controller peripheral read pointer
+	/**
+	 * Host side read and write pointer, they are free running and
+	 * have little relation to the QCP pointers.
 	 */
-
 	uint32_t wr_p;
 	uint32_t rd_p;
 
+	/** The size of the queue in number of descriptors. */
 	uint32_t tx_count;
 
 	uint32_t tx_free_thresh;
 
-	/*
+	/**
 	 * For each descriptor keep a reference to the mbuf and
 	 * DMA address used until completion is signalled.
 	 */
 	struct nfp_net_dp_buf *txbufs;
 
-	/*
-	 * Information about the host side queue location. @txds is
-	 * the virtual address for the queue, @dma is the DMA address
-	 * of the queue and @size is the size in bytes for the queue
-	 * (needed for free)
+	/**
+	 * Information about the host side queue location.
+	 * It is the virtual address for the queue.
 	 */
 	union {
 		struct nfp_net_nfd3_tx_desc *txds;
 		struct nfp_net_nfdk_tx_desc *ktxds;
 	};
 
-	/*
-	 * At this point 48 bytes have been used for all the fields in the
-	 * TX critical path. We have room for 8 bytes and still all placed
-	 * in a cache line. We are not using the threshold values below but
-	 * if we need to, we can add the most used in the remaining bytes.
-	 */
-	uint32_t tx_rs_thresh; /* not used by now. Future? */
-	uint32_t tx_pthresh;   /* not used by now. Future? */
-	uint32_t tx_hthresh;   /* not used by now. Future? */
-	uint32_t tx_wthresh;   /* not used by now. Future? */
+	/** The index of the QCP queue relative to the TX queue BAR. */
+	uint32_t tx_qcidx;
+
+	/** The queue index from Linux's perspective. */
+	uint16_t qidx;
 	uint16_t port_id;
-	uint16_t data_pending; /* used by nfdk only */
-	int qidx;
-	int tx_qcidx;
-	__le64 dma;
+
+	/** Used by NFDk only */
+	uint16_t data_pending;
+
+	/**
+	 * At this point 58 bytes have been used for all the fields in the
+	 * TX critical path. We have room for 6 bytes and still all placed
+	 * in a cache line.
+	 */
+	uint64_t dma;
 } __rte_aligned(64);
 
 /* RX and freelist descriptor format */

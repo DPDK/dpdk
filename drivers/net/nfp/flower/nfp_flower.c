@@ -508,7 +508,7 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 	hw = txq->hw;
 	txds = &txq->txds[txq->wr_p];
 
-	PMD_TX_LOG(DEBUG, "working for queue %d at pos %u and %u packets",
+	PMD_TX_LOG(DEBUG, "working for queue %hu at pos %u and %hu packets",
 			txq->qidx, txq->wr_p, nb_pkts);
 
 	if ((nfp_net_nfd3_free_tx_desc(txq) < nb_pkts) || (nfp_net_nfd3_txq_full(txq)))
@@ -685,7 +685,7 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 static int
 nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 {
-	uint32_t i;
+	uint16_t i;
 	int ret = 0;
 	uint16_t n_txq;
 	uint16_t n_rxq;
@@ -869,9 +869,6 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 		txq->tx_count = CTRL_VNIC_NB_DESC;
 		txq->tx_free_thresh = DEFAULT_RX_FREE_THRESH;
-		txq->tx_pthresh = DEFAULT_TX_PTHRESH;
-		txq->tx_hthresh = DEFAULT_TX_HTHRESH;
-		txq->tx_wthresh = DEFAULT_TX_WTHRESH;
 
 		/* Queue mapping based on firmware configuration */
 		txq->qidx = i;

@@ -151,9 +151,6 @@ nfp_pf_repr_tx_queue_setup(struct rte_eth_dev *dev,
 
 	txq->tx_count = nb_desc;
 	txq->tx_free_thresh = tx_free_thresh;
-	txq->tx_pthresh = tx_conf->tx_thresh.pthresh;
-	txq->tx_hthresh = tx_conf->tx_thresh.hthresh;
-	txq->tx_wthresh = tx_conf->tx_thresh.wthresh;
 
 	/* queue mapping based on firmware configuration */
 	txq->qidx = queue_idx;

@@ -679,14 +679,14 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	uint32_t qcp_rd_p;
 	int todo;
 
-	PMD_TX_LOG(DEBUG, "queue %u. Check for descriptor with a complete"
+	PMD_TX_LOG(DEBUG, "queue %hu. Check for descriptor with a complete"
 		   " status", txq->qidx);
 
 	/* Work out how many packets have been sent */
 	qcp_rd_p = nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
 
 	if (qcp_rd_p == txq->rd_p) {
-		PMD_TX_LOG(DEBUG, "queue %u: It seems harrier is not sending "
+		PMD_TX_LOG(DEBUG, "queue %hu: It seems harrier is not sending "
 			   "packets (%u, %u)", txq->qidx,
 			   qcp_rd_p, txq->rd_p);
 		return 0;
