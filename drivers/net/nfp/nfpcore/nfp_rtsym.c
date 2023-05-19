@@ -113,8 +113,8 @@ __nfp_rtsym_table_read(struct nfp_cpp *cpp, const struct nfp_mip *mip)
 		return NULL;
 
 	/* Align to 64 bits */
-	symtab_size = round_up(symtab_size, 8);
-	strtab_size = round_up(strtab_size, 8);
+	symtab_size = RTE_ALIGN_CEIL(symtab_size, 8);
+	strtab_size = RTE_ALIGN_CEIL(strtab_size, 8);
 
 	rtsymtab = malloc(symtab_size);
 	if (rtsymtab == NULL)

@@ -16,25 +16,6 @@
 #define NFP_RTSYM_TARGET_EMU_CACHE      -7
 
 /*
- * This looks more complex than it should be. But we need to get the type for
- * the ~ right in round_down (it needs to be as wide as the result!), and we
- * want to evaluate the macro arguments just once each.
- */
-#define __round_mask(x, y) ((__typeof__(x))((y) - 1))
-
-#define round_up(x, y) \
-	(__extension__ ({ \
-		typeof(x) _x = (x); \
-		((((_x) - 1) | __round_mask(_x, y)) + 1); \
-	}))
-
-#define round_down(x, y) \
-	(__extension__ ({ \
-		typeof(x) _x = (x); \
-		((_x) & ~__round_mask(_x, y)); \
-	}))
-
-/*
  * Structure describing a run-time NFP symbol.
  *
  * The memory target of the symbol is generally the CPP target number and can be

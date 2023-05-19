@@ -70,8 +70,8 @@ nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 		n_descs++;
 
 	/* Don't count metadata descriptor, for the round down to work out */
-	if (round_down(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
-			round_down(txq->wr_p + n_descs, NFDK_TX_DESC_BLOCK_CNT))
+	if (RTE_ALIGN_FLOOR(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
+			RTE_ALIGN_FLOOR(txq->wr_p + n_descs, NFDK_TX_DESC_BLOCK_CNT))
 		goto close_block;
 
 	if (txq->data_pending + pkt->pkt_len > NFDK_TX_MAX_DATA_PER_BLOCK)
@@ -293,8 +293,9 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue,
 		}
 
 		used_descs = ktxds - txq->ktxds - txq->wr_p;
-		if (round_down(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
-				round_down(txq->wr_p + used_descs - 1, NFDK_TX_DESC_BLOCK_CNT)) {
+		if (RTE_ALIGN_FLOOR(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
+				RTE_ALIGN_FLOOR(txq->wr_p + used_descs - 1,
+						NFDK_TX_DESC_BLOCK_CNT)) {
 			PMD_TX_LOG(INFO, "Used descs cross block boundary");
 			goto xmit_end;
 		}
