@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
 #include <linux/pci_regs.h>
