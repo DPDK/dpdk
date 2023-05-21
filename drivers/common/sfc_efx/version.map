@@ -89,6 +89,7 @@ INTERNAL {
 	efx_mae_action_rule_insert;
 	efx_mae_action_rule_remove;
 	efx_mae_action_set_alloc;
+	efx_mae_action_set_clear_fw_rsrc_ids;
 	efx_mae_action_set_fill_in_counter_id;
 	efx_mae_action_set_fill_in_dst_mac_id;
 	efx_mae_action_set_fill_in_eh_id;

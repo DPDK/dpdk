@@ -1180,6 +1180,8 @@ sfc_mae_action_set_disable(struct sfc_adapter *sa,
 	}
 
 	if (fw_rsrc->refcnt == 1) {
+		efx_mae_action_set_clear_fw_rsrc_ids(action_set->spec);
+
 		rc = efx_mae_action_set_free(sa->nic, &fw_rsrc->aset_id);
 		if (rc == 0) {
 			sfc_dbg(sa, "disabled action_set=%p with AS_ID=0x%08x",

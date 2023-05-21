@@ -4748,6 +4748,20 @@ efx_mae_action_set_fill_in_counter_id(
 	__in				efx_mae_actions_t *spec,
 	__in				const efx_counter_t *counter_idp);
 
+/*
+ * Clears dangling FW object IDs (counter ID, for instance) in
+ * the action set specification. Useful for adapter restarts,
+ * when all MAE objects need to be reallocated by the driver.
+ *
+ * This method only clears the IDs in the specification.
+ * The driver is still responsible for keeping the IDs
+ * separately and freeing them when stopping the port.
+ */
+LIBEFX_API
+extern					void
+efx_mae_action_set_clear_fw_rsrc_ids(
+	__in				efx_mae_actions_t *spec);
+
 /* Action set ID */
 typedef struct efx_mae_aset_id_s {
 	uint32_t id;

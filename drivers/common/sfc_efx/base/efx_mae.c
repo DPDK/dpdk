@@ -1394,10 +1394,7 @@ efx_mae_action_set_spec_init(
 		goto fail1;
 	}
 
-	spec->ema_rsrc.emar_dst_mac_id.id = EFX_MAE_RSRC_ID_INVALID;
-	spec->ema_rsrc.emar_src_mac_id.id = EFX_MAE_RSRC_ID_INVALID;
-	spec->ema_rsrc.emar_eh_id.id = EFX_MAE_RSRC_ID_INVALID;
-	spec->ema_rsrc.emar_counter_id.id = EFX_MAE_RSRC_ID_INVALID;
+	efx_mae_action_set_clear_fw_rsrc_ids(spec);
 
 	/*
 	 * Helpers which populate v2 actions must reject them when v2 is not
@@ -3025,6 +3022,16 @@ fail2:
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
+}
+
+					void
+efx_mae_action_set_clear_fw_rsrc_ids(
+	__in				efx_mae_actions_t *spec)
+{
+	spec->ema_rsrc.emar_dst_mac_id.id = EFX_MAE_RSRC_ID_INVALID;
+	spec->ema_rsrc.emar_src_mac_id.id = EFX_MAE_RSRC_ID_INVALID;
+	spec->ema_rsrc.emar_eh_id.id = EFX_MAE_RSRC_ID_INVALID;
+	spec->ema_rsrc.emar_counter_id.id = EFX_MAE_RSRC_ID_INVALID;
 }
 
 	__checkReturn			efx_rc_t
