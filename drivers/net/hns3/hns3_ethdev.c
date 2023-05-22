@@ -3975,6 +3975,7 @@ static int
 hns3_get_sfp_info(struct hns3_hw *hw, struct hns3_mac *mac_info)
 {
 	struct hns3_sfp_info_cmd *resp;
+	uint32_t local_pause, lp_pause;
 	struct hns3_cmd_desc desc;
 	int ret;
 
@@ -4011,6 +4012,13 @@ hns3_get_sfp_info(struct hns3_hw *hw, struct hns3_mac *mac_info)
 		mac_info->support_autoneg = resp->autoneg_ability;
 		mac_info->link_autoneg = (resp->autoneg == 0) ? RTE_ETH_LINK_FIXED
 					: RTE_ETH_LINK_AUTONEG;
+		local_pause = resp->pause_status & HNS3_FIBER_LOCAL_PAUSE_MASK;
+		lp_pause = (resp->pause_status & HNS3_FIBER_LP_PAUSE_MASK) >>
+						HNS3_FIBER_LP_PAUSE_S;
+		mac_info->advertising =
+				local_pause << HNS3_PHY_LINK_MODE_PAUSE_S;
+		mac_info->lp_advertising =
+				lp_pause << HNS3_PHY_LINK_MODE_PAUSE_S;
 	} else {
 		mac_info->query_type = HNS3_DEFAULT_QUERY;
 	}
@@ -4093,6 +4101,8 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 		mac->supported_speed = mac_info.supported_speed;
 		mac->support_autoneg = mac_info.support_autoneg;
 		mac->link_autoneg = mac_info.link_autoneg;
+		mac->advertising = mac_info.advertising;
+		mac->lp_advertising = mac_info.lp_advertising;
 
 		return 0;
 	}
@@ -4495,24 +4505,6 @@ hns3_get_port_supported_speed(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static void
-hns3_get_fc_autoneg_capability(struct hns3_adapter *hns)
-{
-	struct hns3_mac *mac = &hns->hw.mac;
-
-	if (mac->media_type == HNS3_MEDIA_TYPE_COPPER) {
-		hns->pf.support_fc_autoneg = true;
-		return;
-	}
-
-	/*
-	 * Flow control auto-negotiation requires the cooperation of the driver
-	 * and firmware. Currently, the optical port does not support flow
-	 * control auto-negotiation.
-	 */
-	hns->pf.support_fc_autoneg = false;
-}
-
 static int
 hns3_init_pf(struct rte_eth_dev *eth_dev)
 {
@@ -4614,8 +4606,6 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 			     "by device, ret = %d.", ret);
 		goto err_supported_speed;
 	}
-
-	hns3_get_fc_autoneg_capability(hns);
 
 	hns3_tm_conf_init(eth_dev);
 
@@ -5181,8 +5171,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 }
 
 static void
-hns3_get_autoneg_rxtx_pause_copper(struct hns3_hw *hw, bool *rx_pause,
-				   bool *tx_pause)
+hns3_get_autoneg_rxtx_pause(struct hns3_hw *hw, bool *rx_pause, bool *tx_pause)
 {
 	struct hns3_mac *mac = &hw->mac;
 	uint32_t advertising = mac->advertising;
@@ -5193,8 +5182,7 @@ hns3_get_autoneg_rxtx_pause_copper(struct hns3_hw *hw, bool *rx_pause,
 	if (advertising & lp_advertising & HNS3_PHY_LINK_MODE_PAUSE_BIT) {
 		*rx_pause = true;
 		*tx_pause = true;
-	} else if (advertising & lp_advertising &
-		   HNS3_PHY_LINK_MODE_ASYM_PAUSE_BIT) {
+	} else if (advertising & lp_advertising & HNS3_PHY_LINK_MODE_ASYM_PAUSE_BIT) {
 		if (advertising & HNS3_PHY_LINK_MODE_PAUSE_BIT)
 			*rx_pause = true;
 		else if (lp_advertising & HNS3_PHY_LINK_MODE_PAUSE_BIT)
@@ -5209,26 +5197,7 @@ hns3_get_autoneg_fc_mode(struct hns3_hw *hw)
 	bool rx_pause = false;
 	bool tx_pause = false;
 
-	switch (hw->mac.media_type) {
-	case HNS3_MEDIA_TYPE_COPPER:
-		hns3_get_autoneg_rxtx_pause_copper(hw, &rx_pause, &tx_pause);
-		break;
-
-	/*
-	 * Flow control auto-negotiation is not supported for fiber and
-	 * backplane media type.
-	 */
-	case HNS3_MEDIA_TYPE_FIBER:
-	case HNS3_MEDIA_TYPE_BACKPLANE:
-		hns3_err(hw, "autoneg FC mode can't be obtained, but flow control auto-negotiation is enabled.");
-		current_mode = hw->requested_fc_mode;
-		goto out;
-	default:
-		hns3_err(hw, "autoneg FC mode can't be obtained for unknown media type(%u).",
-			 hw->mac.media_type);
-		current_mode = HNS3_FC_NONE;
-		goto out;
-	}
+	hns3_get_autoneg_rxtx_pause(hw, &rx_pause, &tx_pause);
 
 	if (rx_pause && tx_pause)
 		current_mode = HNS3_FC_FULL;
@@ -5239,7 +5208,6 @@ hns3_get_autoneg_fc_mode(struct hns3_hw *hw)
 	else
 		current_mode = HNS3_FC_NONE;
 
-out:
 	return current_mode;
 }
 

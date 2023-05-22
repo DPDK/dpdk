@@ -323,6 +323,7 @@ enum HNS3_CAPS_BITS {
 	HNS3_CAPS_RAS_IMP_B,
 	HNS3_CAPS_RXD_ADV_LAYOUT_B = 15,
 	HNS3_CAPS_TM_B = 19,
+	HNS3_CAPS_FC_AUTO_B = 30,
 };
 
 /* Capabilities of VF dependent on the PF */
@@ -666,6 +667,9 @@ enum hns3_promisc_type {
 #define HNS3_LINK_EVENT_REPORT_EN_B	0
 #define HNS3_NCSI_ERROR_REPORT_EN_B	1
 #define HNS3_FIRMWARE_PHY_DRIVER_EN_B	2
+
+#define HNS3_MAC_FC_AUTONEG_EN_B	6
+
 struct hns3_firmware_compat_cmd {
 	uint32_t compat;
 	uint8_t rsv[20];
@@ -680,6 +684,7 @@ struct hns3_firmware_compat_cmd {
 #define HNS3_PHY_LINK_MODE_AUTONEG_BIT		BIT(6)
 #define HNS3_PHY_LINK_MODE_PAUSE_BIT		BIT(13)
 #define HNS3_PHY_LINK_MODE_ASYM_PAUSE_BIT	BIT(14)
+#define HNS3_PHY_LINK_MODE_PAUSE_S		13
 
 #define HNS3_PHY_PARAM_CFG_BD_NUM	2
 struct hns3_phy_params_bd0_cmd {
@@ -789,6 +794,17 @@ struct hns3_sfp_type {
 #define HNS3_FIBER_LINK_SPEED_10M_BIT		BIT(7)
 #define HNS3_FIBER_LINK_SPEED_200G_BIT		BIT(8)
 
+/* Flags for pause status field */
+#define HNS3_FIBER_LOCAL_PAUSE_BIT	BIT(0)
+#define HNS3_FIBER_LOCAL_ASYM_PAUSE_BIT	BIT(1)
+#define HNS3_FIBER_LP_PAUSE_BIT		BIT(2)
+#define HNS3_FIBER_LP_ASYM_PAUSE_BIT	BIT(3)
+#define HNS3_FIBER_LOCAL_PAUSE_MASK	(HNS3_FIBER_LOCAL_PAUSE_BIT | \
+					 HNS3_FIBER_LOCAL_ASYM_PAUSE_BIT)
+#define HNS3_FIBER_LP_PAUSE_MASK	(HNS3_FIBER_LP_PAUSE_BIT | \
+					 HNS3_FIBER_LP_ASYM_PAUSE_BIT)
+#define HNS3_FIBER_LP_PAUSE_S		2
+
 struct hns3_sfp_info_cmd {
 	uint32_t sfp_speed;
 	uint8_t query_type; /* 0: sfp speed, 1: active */
@@ -798,7 +814,9 @@ struct hns3_sfp_info_cmd {
 	uint8_t autoneg_ability;
 	uint32_t supported_speed; /* speed supported by current media */
 	uint32_t module_type;
-	uint8_t rsv1[8];
+	uint8_t rsv[2];
+	uint8_t pause_status;
+	uint8_t rsv1[5];
 };
 
 #define HNS3_MAC_CFG_FEC_AUTO_EN_B	0

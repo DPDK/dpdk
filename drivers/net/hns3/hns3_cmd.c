@@ -428,7 +428,8 @@ hns3_get_caps_name(uint32_t caps_id)
 		{ HNS3_CAPS_UDP_TUNNEL_CSUM_B, "udp_tunnel_csum" },
 		{ HNS3_CAPS_RAS_IMP_B,         "ras_imp"         },
 		{ HNS3_CAPS_RXD_ADV_LAYOUT_B,  "rxd_adv_layout"  },
-		{ HNS3_CAPS_TM_B,              "tm_capability"   }
+		{ HNS3_CAPS_TM_B,              "tm_capability"   },
+		{ HNS3_CAPS_FC_AUTO_B,         "fc_autoneg"      }
 	};
 	uint32_t i;
 
@@ -510,6 +511,8 @@ hns3_parse_capability(struct hns3_hw *hw,
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_RAS_IMP_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_TM_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_TM_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_FC_AUTO_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FC_AUTO_B, 1);
 }
 
 static uint32_t
@@ -613,9 +616,31 @@ hns3_update_dev_lsc_cap(struct hns3_hw *hw, int fw_compact_cmd_result)
 	}
 }
 
+static void
+hns3_set_fc_autoneg_cap(struct hns3_adapter *hns, int fw_compact_cmd_result)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_mac *mac = &hw->mac;
+
+	if (mac->media_type == HNS3_MEDIA_TYPE_COPPER) {
+		hns->pf.support_fc_autoneg = true;
+		return;
+	}
+
+	/*
+	 * Flow control auto-negotiation requires the cooperation of the driver
+	 * and firmware.
+	 */
+	hns->pf.support_fc_autoneg = (hns3_dev_get_support(hw, FC_AUTO) &&
+					fw_compact_cmd_result == 0) ?
+					true : false;
+}
+
 static int
 hns3_apply_fw_compat_cmd_result(struct hns3_hw *hw, int result)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+
 	if (result != 0 && hns3_dev_get_support(hw, COPPER)) {
 		hns3_err(hw, "firmware fails to initialize the PHY, ret = %d.",
 			 result);
@@ -623,6 +648,7 @@ hns3_apply_fw_compat_cmd_result(struct hns3_hw *hw, int result)
 	}
 
 	hns3_update_dev_lsc_cap(hw, result);
+	hns3_set_fc_autoneg_cap(hns, result);
 
 	return 0;
 }
@@ -642,6 +668,8 @@ hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
 		hns3_set_bit(compat, HNS3_NCSI_ERROR_REPORT_EN_B, 0);
 		if (hns3_dev_get_support(hw, COPPER))
 			hns3_set_bit(compat, HNS3_FIRMWARE_PHY_DRIVER_EN_B, 1);
+		if (hns3_dev_get_support(hw, FC_AUTO))
+			hns3_set_bit(compat, HNS3_MAC_FC_AUTONEG_EN_B, 1);
 	}
 	req->compat = rte_cpu_to_le_32(compat);
 
