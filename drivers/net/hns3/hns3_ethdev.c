@@ -227,6 +227,19 @@ hns3_clear_all_event_cause(struct hns3_hw *hw)
 }
 
 static void
+hns3_delay_before_clear_event_cause(struct hns3_hw *hw, uint32_t event_type, uint32_t regclr)
+{
+#define IMPRESET_WAIT_MS_TIME	5
+
+	if (event_type == HNS3_VECTOR0_EVENT_RST &&
+	    regclr & BIT(HNS3_VECTOR0_IMPRESET_INT_B) &&
+	    hw->revision >= PCI_REVISION_ID_HIP09_A) {
+		rte_delay_ms(IMPRESET_WAIT_MS_TIME);
+		hns3_dbg(hw, "wait firmware watchdog initialization completed.");
+	}
+}
+
+static void
 hns3_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
@@ -239,6 +252,7 @@ hns3_interrupt_handler(void *param)
 	hns3_pf_disable_irq0(hw);
 
 	event_cause = hns3_check_event_cause(hns, &clearval);
+	hns3_delay_before_clear_event_cause(hw, event_cause, clearval);
 	hns3_clear_event_cause(hw, event_cause, clearval);
 	/* vector 0 interrupt is shared with reset and mailbox source events. */
 	if (event_cause == HNS3_VECTOR0_EVENT_ERR) {
