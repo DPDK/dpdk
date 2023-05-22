@@ -1167,38 +1167,16 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 	return TEST_SKIPPED;
 }
 #else
-
-#include <unistd.h>
-#include <sys/resource.h>
-#include <sys/time.h>
-#include <sys/wait.h>
-
-/* use fork() to test mbuf errors panic */
-static int
-verify_mbuf_check_panics(struct rte_mbuf *buf)
+/* Verify if mbuf can pass the check */
+static bool
+mbuf_check_pass(struct rte_mbuf *buf)
 {
-	int pid;
-	int status;
+	const char *reason;
 
-	pid = fork();
+	if (rte_mbuf_check(buf, 1, &reason) == 0)
+		return true;
 
-	if (pid == 0) {
-		struct rlimit rl;
-
-		/* No need to generate a coredump when panicking. */
-		rl.rlim_cur = rl.rlim_max = 0;
-		setrlimit(RLIMIT_CORE, &rl);
-		rte_mbuf_sanity_check(buf, 1); /* should panic */
-		exit(0);  /* return normally if it doesn't panic */
-	} else if (pid < 0) {
-		printf("Fork Failed\n");
-		return -1;
-	}
-	wait(&status);
-	if(status == 0)
-		return -1;
-
-	return 0;
+	return false;
 }
 
 static int
@@ -1215,19 +1193,19 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 		return -1;
 
 	printf("Checking good mbuf initially\n");
-	if (verify_mbuf_check_panics(buf) != -1)
+	if (!mbuf_check_pass(buf))
 		return -1;
 
 	printf("Now checking for error conditions\n");
 
-	if (verify_mbuf_check_panics(NULL)) {
+	if (mbuf_check_pass(NULL)) {
 		printf("Error with NULL mbuf test\n");
 		return -1;
 	}
 
 	badbuf = *buf;
 	badbuf.pool = NULL;
-	if (verify_mbuf_check_panics(&badbuf)) {
+	if (mbuf_check_pass(&badbuf)) {
 		printf("Error with bad-pool mbuf test\n");
 		return -1;
 	}
@@ -1235,7 +1213,7 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 	if (RTE_IOVA_IN_MBUF) {
 		badbuf = *buf;
 		rte_mbuf_iova_set(&badbuf, 0);
-		if (verify_mbuf_check_panics(&badbuf)) {
+		if (mbuf_check_pass(&badbuf)) {
 			printf("Error with bad-physaddr mbuf test\n");
 			return -1;
 		}
@@ -1243,21 +1221,21 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 
 	badbuf = *buf;
 	badbuf.buf_addr = NULL;
-	if (verify_mbuf_check_panics(&badbuf)) {
+	if (mbuf_check_pass(&badbuf)) {
 		printf("Error with bad-addr mbuf test\n");
 		return -1;
 	}
 
 	badbuf = *buf;
 	badbuf.refcnt = 0;
-	if (verify_mbuf_check_panics(&badbuf)) {
+	if (mbuf_check_pass(&badbuf)) {
 		printf("Error with bad-refcnt(0) mbuf test\n");
 		return -1;
 	}
 
 	badbuf = *buf;
 	badbuf.refcnt = UINT16_MAX;
-	if (verify_mbuf_check_panics(&badbuf)) {
+	if (mbuf_check_pass(&badbuf)) {
 		printf("Error with bad-refcnt(MAX) mbuf test\n");
 		return -1;
 	}
