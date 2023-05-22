@@ -1522,18 +1522,13 @@ struct rte_crypto_raw_dp_ctx {
 /**
  * Configure raw data-path context data.
  *
- * NOTE:
- * After the context data is configured, the user should call
- * rte_cryptodev_raw_attach_session() before using it in
- * rte_cryptodev_raw_enqueue/dequeue function call.
- *
  * @param	dev_id		The device identifier.
  * @param	qp_id		The index of the queue pair from which to
  *				retrieve processed packets. The value must be
  *				in the range [0, nb_queue_pair - 1] previously
  *				supplied to rte_cryptodev_configure().
  * @param	ctx		The raw data-path context data.
- * @param	sess_type	session type.
+ * @param	sess_type	Session type.
  * @param	session_ctx	Session context data.
  * @param	is_update	Set 0 if it is to initialize the ctx.
  *				Set 1 if ctx is initialized and only to update
@@ -1541,6 +1536,9 @@ struct rte_crypto_raw_dp_ctx {
  * @return
  *   - On success return 0.
  *   - On failure return negative integer.
+ *     - -EINVAL if input parameters are invalid.
+ *     - -ENOTSUP if crypto device does not support raw DP operations with the
+ *        provided session.
  */
 __rte_experimental
 int
