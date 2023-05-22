@@ -241,6 +241,7 @@ static const struct eth_dev_ops nfp_netvf_eth_dev_ops = {
 	.tx_queue_release	= nfp_net_tx_queue_release,
 	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
+	.fw_version_get         = nfp_net_firmware_version_get,
 };
 
 static inline int

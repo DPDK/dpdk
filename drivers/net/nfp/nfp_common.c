@@ -214,6 +214,9 @@ nfp_net_notify_port_speed(struct rte_eth_dev *dev)
 		      nfp_net_link_speed_rte2nfp(eth_table->ports[hw->idx].speed));
 }
 
+/* The length of firmware version string */
+#define FW_VER_LEN        32
+
 static int
 __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 {
@@ -1999,4 +2002,107 @@ nfp_net_cfg_read_version(struct nfp_net_hw *hw)
 
 	version.whole = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
 	hw->ver = version.split;
+}
+
+static void
+nfp_net_get_nsp_info(struct nfp_net_hw *hw, char *nsp_version)
+{
+	struct nfp_nsp *nsp;
+
+	nsp = nfp_nsp_open(hw->cpp);
+	if (nsp == NULL)
+		return;
+
+	snprintf(nsp_version, FW_VER_LEN, "%hu.%hu",
+			nfp_nsp_get_abi_ver_major(nsp),
+			nfp_nsp_get_abi_ver_minor(nsp));
+
+	nfp_nsp_close(nsp);
+}
+
+static void
+nfp_net_get_mip_name(struct nfp_net_hw *hw, char *mip_name)
+{
+	struct nfp_mip *mip;
+
+	mip = nfp_mip_open(hw->cpp);
+	if (mip == NULL)
+		return;
+
+	snprintf(mip_name, FW_VER_LEN, "%s", nfp_mip_name(mip));
+
+	nfp_mip_close(mip);
+}
+
+static void
+nfp_net_get_app_name(struct nfp_net_hw *hw, char *app_name)
+{
+	switch (hw->pf_dev->app_fw_id) {
+	case NFP_APP_FW_CORE_NIC:
+		snprintf(app_name, FW_VER_LEN, "%s", "nic");
+		break;
+	case NFP_APP_FW_FLOWER_NIC:
+		snprintf(app_name, FW_VER_LEN, "%s", "flower");
+		break;
+	default:
+		snprintf(app_name, FW_VER_LEN, "%s", "unknown");
+		break;
+	}
+}
+
+int
+nfp_net_firmware_version_get(struct rte_eth_dev *dev,
+		char *fw_version,
+		size_t fw_size)
+{
+	struct nfp_net_hw *hw;
+	char mip_name[FW_VER_LEN];
+	char app_name[FW_VER_LEN];
+	char nsp_version[FW_VER_LEN];
+	char vnic_version[FW_VER_LEN];
+
+	if (fw_size < FW_VER_LEN)
+		return FW_VER_LEN;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
+			hw->ver.extend, hw->ver.class,
+			hw->ver.major, hw->ver.minor);
+
+	nfp_net_get_nsp_info(hw, nsp_version);
+	nfp_net_get_mip_name(hw, mip_name);
+	nfp_net_get_app_name(hw, app_name);
+
+	snprintf(fw_version, FW_VER_LEN, "%s %s %s %s",
+			vnic_version, nsp_version, mip_name, app_name);
+
+	return 0;
+}
+
+int
+nfp_repr_firmware_version_get(struct rte_eth_dev *dev,
+		char *fw_version,
+		size_t fw_size)
+{
+	struct nfp_net_hw *hw;
+	char mip_name[FW_VER_LEN];
+	char app_name[FW_VER_LEN];
+	char nsp_version[FW_VER_LEN];
+	struct nfp_flower_representor *repr;
+
+	if (fw_size < FW_VER_LEN)
+		return FW_VER_LEN;
+
+	repr = dev->data->dev_private;
+	hw = repr->app_fw_flower->pf_hw;
+
+	nfp_net_get_nsp_info(hw, nsp_version);
+	nfp_net_get_mip_name(hw, mip_name);
+	nfp_net_get_app_name(hw, app_name);
+
+	snprintf(fw_version, FW_VER_LEN, "* %s %s %s",
+			nsp_version, mip_name, app_name);
+
+	return 0;
 }

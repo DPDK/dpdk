@@ -471,6 +471,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 	.udp_tunnel_port_add    = nfp_udp_tunnel_port_add,
 	.udp_tunnel_port_del    = nfp_udp_tunnel_port_del,
+	.fw_version_get         = nfp_net_firmware_version_get,
 };
 
 static inline int
