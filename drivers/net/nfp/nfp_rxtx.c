@@ -167,32 +167,6 @@ nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 
 	mbuf->hash.rss = meta->hash;
 	mbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
-
-	switch (meta->hash_type) {
-	case NFP_NET_RSS_IPV4:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV4;
-		break;
-	case NFP_NET_RSS_IPV6:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV6;
-		break;
-	case NFP_NET_RSS_IPV6_EX:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV6_EXT;
-		break;
-	case NFP_NET_RSS_IPV4_TCP:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV6_EXT;
-		break;
-	case NFP_NET_RSS_IPV6_TCP:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV6_EXT;
-		break;
-	case NFP_NET_RSS_IPV4_UDP:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV6_EXT;
-		break;
-	case NFP_NET_RSS_IPV6_UDP:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L3_IPV6_EXT;
-		break;
-	default:
-		mbuf->packet_type |= RTE_PTYPE_INNER_L4_MASK;
-	}
 }
 
 /*
