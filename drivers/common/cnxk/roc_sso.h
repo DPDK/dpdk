@@ -7,6 +7,9 @@
 
 #include "hw/ssow.h"
 
+#define ROC_SSO_AW_PER_LMT_LINE_LOG2 3
+#define ROC_SSO_XAE_PER_XAQ	     352
+
 struct roc_sso_hwgrp_qos {
 	uint16_t hwgrp;
 	uint8_t xaq_prcnt;

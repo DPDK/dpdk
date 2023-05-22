@@ -91,8 +91,10 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	uint64_t val;
 
 	ws->grp_base = grp_base;
-	ws->fc_mem = (uint64_t *)dev->fc_iova;
+	ws->fc_mem = (int64_t *)dev->fc_iova;
 	ws->xaq_lmt = dev->xaq_lmt;
+	ws->fc_cache_space = dev->fc_cache_space;
+	ws->aw_lmt = ws->lmt_base;
 
 	/* Set get_work timeout for HWS */
 	val = NSEC2USEC(dev->deq_tmo_ns);
@@ -481,6 +483,7 @@ cn10k_sso_info_get(struct rte_eventdev *event_dev,
 
 	dev_info->driver_name = RTE_STR(EVENTDEV_NAME_CN10K_PMD);
 	cnxk_sso_info_get(dev, dev_info);
+	dev_info->max_event_port_enqueue_depth = UINT32_MAX;
 }
 
 static int
@@ -489,7 +492,7 @@ cn10k_sso_dev_configure(const struct rte_eventdev *event_dev)
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	int rc;
 
-	rc = cnxk_sso_dev_validate(event_dev);
+	rc = cnxk_sso_dev_validate(event_dev, 1, UINT32_MAX);
 	if (rc < 0) {
 		plt_err("Invalid event device configuration");
 		return -EINVAL;
@@ -725,7 +728,7 @@ cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 	for (i = 0; i < dev->nb_event_ports; i++) {
 		struct cn10k_sso_hws *ws = event_dev->data->ports[i];
 		ws->xaq_lmt = dev->xaq_lmt;
-		ws->fc_mem = (uint64_t *)dev->fc_iova;
+		ws->fc_mem = (int64_t *)dev->fc_iova;
 		ws->tstamp = dev->tstamp;
 		if (lookup_mem)
 			ws->lookup_mem = lookup_mem;

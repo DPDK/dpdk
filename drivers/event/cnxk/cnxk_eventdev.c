@@ -145,7 +145,8 @@ cnxk_sso_restore_links(const struct rte_eventdev *event_dev,
 }
 
 int
-cnxk_sso_dev_validate(const struct rte_eventdev *event_dev)
+cnxk_sso_dev_validate(const struct rte_eventdev *event_dev, uint32_t deq_depth,
+		      uint32_t enq_depth)
 {
 	struct rte_event_dev_config *conf = &event_dev->data->dev_conf;
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
@@ -173,12 +174,12 @@ cnxk_sso_dev_validate(const struct rte_eventdev *event_dev)
 		return -EINVAL;
 	}
 
-	if (conf->nb_event_port_dequeue_depth > 1) {
+	if (conf->nb_event_port_dequeue_depth > deq_depth) {
 		plt_err("Unsupported event port deq depth requested");
 		return -EINVAL;
 	}
 
-	if (conf->nb_event_port_enqueue_depth > 1) {
+	if (conf->nb_event_port_enqueue_depth > enq_depth) {
 		plt_err("Unsupported event port enq depth requested");
 		return -EINVAL;
 	}
@@ -630,6 +631,14 @@ cnxk_sso_init(struct rte_eventdev *event_dev)
 	}
 
 	dev = cnxk_sso_pmd_priv(event_dev);
+	dev->fc_cache_space = rte_zmalloc("fc_cache", PLT_CACHE_LINE_SIZE,
+					  PLT_CACHE_LINE_SIZE);
+	if (dev->fc_cache_space == NULL) {
+		plt_memzone_free(mz);
+		plt_err("Failed to reserve memory for XAQ fc cache");
+		return -ENOMEM;
+	}
+
 	pci_dev = container_of(event_dev->dev, struct rte_pci_device, device);
 	dev->sso.pci_dev = pci_dev;
 

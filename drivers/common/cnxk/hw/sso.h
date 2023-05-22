@@ -157,6 +157,7 @@
 #define SSO_LF_GGRP_AQ_CNT	 (0x1c0ull)
 #define SSO_LF_GGRP_AQ_THR	 (0x1e0ull)
 #define SSO_LF_GGRP_MISC_CNT	 (0x200ull)
+#define SSO_LF_GGRP_OP_AW_LMTST	 (0x400ull)
 
 #define SSO_AF_IAQ_FREE_CNT_MASK      0x3FFFull
 #define SSO_AF_IAQ_RSVD_FREE_MASK     0x3FFFull

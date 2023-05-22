@@ -90,6 +90,7 @@ struct cnxk_sso_evdev {
 	uint32_t max_dequeue_timeout_ns;
 	int32_t max_num_events;
 	uint64_t xaq_lmt;
+	int64_t *fc_cache_space;
 	rte_iova_t fc_iova;
 	uint64_t rx_offloads;
 	uint64_t tx_offloads;
@@ -204,7 +205,8 @@ int cnxk_sso_fini(struct rte_eventdev *event_dev);
 int cnxk_sso_remove(struct rte_pci_device *pci_dev);
 void cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
 		       struct rte_event_dev_info *dev_info);
-int cnxk_sso_dev_validate(const struct rte_eventdev *event_dev);
+int cnxk_sso_dev_validate(const struct rte_eventdev *event_dev,
+			  uint32_t deq_depth, uint32_t enq_depth);
 int cnxk_setup_event_ports(const struct rte_eventdev *event_dev,
 			   cnxk_sso_init_hws_mem_t init_hws_mem,
 			   cnxk_sso_hws_setup_t hws_setup);

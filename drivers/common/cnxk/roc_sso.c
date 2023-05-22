@@ -6,6 +6,7 @@
 #include "roc_priv.h"
 
 #define SSO_XAQ_CACHE_CNT (0x7)
+#define SSO_XAQ_SLACK	  (16)
 
 /* Private functions. */
 int
@@ -493,9 +494,13 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 
 	xaq->nb_xae = nb_xae;
 
-	/* Taken from HRM 14.3.3(4) */
+	/** SSO will reserve up to 0x4 XAQ buffers per group when GetWork engine
+	 * is inactive and it might prefetch an additional 0x3 buffers due to
+	 * pipelining.
+	 */
 	xaq->nb_xaq = (SSO_XAQ_CACHE_CNT * nb_hwgrp);
 	xaq->nb_xaq += PLT_MAX(1 + ((xaq->nb_xae - 1) / xae_waes), xaq->nb_xaq);
+	xaq->nb_xaq += SSO_XAQ_SLACK;
 
 	xaq->mem = plt_zmalloc(xaq_buf_size * xaq->nb_xaq, xaq_buf_size);
 	if (xaq->mem == NULL) {
@@ -537,7 +542,8 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 	 * There should be a minimum headroom of 7 XAQs per HWGRP for SSO
 	 * to request XAQ to cache them even before enqueue is called.
 	 */
-	xaq->xaq_lmt = xaq->nb_xaq - (nb_hwgrp * SSO_XAQ_CACHE_CNT);
+	xaq->xaq_lmt =
+		xaq->nb_xaq - (nb_hwgrp * SSO_XAQ_CACHE_CNT) - SSO_XAQ_SLACK;
 
 	return 0;
 npa_fill_fail:

@@ -602,7 +602,7 @@ cn9k_sso_dev_configure(const struct rte_eventdev *event_dev)
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	int rc;
 
-	rc = cnxk_sso_dev_validate(event_dev);
+	rc = cnxk_sso_dev_validate(event_dev, 1, 1);
 	if (rc < 0) {
 		plt_err("Invalid event device configuration");
 		return -EINVAL;
