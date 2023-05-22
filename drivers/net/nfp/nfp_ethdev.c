@@ -57,6 +57,8 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t new_ctrl, update = 0;
+	uint32_t cap_extend;
+	uint32_t ctrl_extend = 0;
 	struct nfp_net_hw *hw;
 	struct nfp_pf_dev *pf_dev;
 	struct nfp_app_fw_nic *app_fw_nic;
@@ -145,6 +147,15 @@ nfp_net_start(struct rte_eth_dev *dev)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
 	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+		return -EIO;
+
+	/* Enable packet type offload by extend ctrl word1. */
+	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) != 0)
+		ctrl_extend = NFP_NET_CFG_CTRL_PKT_TYPE;
+
+	update = NFP_NET_CFG_UPDATE_GEN;
+	if (nfp_net_ext_reconfig(hw, ctrl_extend, update) < 0)
 		return -EIO;
 
 	/*

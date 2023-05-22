@@ -170,6 +170,89 @@ struct nfp_net_txq {
 #define PCIE_DESC_RX_L4_CSUM_OK         (PCIE_DESC_RX_TCP_CSUM_OK | \
 					 PCIE_DESC_RX_UDP_CSUM_OK)
 
+/*
+ * The bit format and map of nfp packet type for rxd.offload_info in Rx descriptor.
+ *
+ * Bit format about nfp packet type refers to the following:
+ * ---------------------------------
+ *            1                   0
+ *  5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           |tunnel |  l3 |  l4 |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * Bit map about nfp packet type refers to the following:
+ *
+ * L4: bit 0~2, used for layer 4 or inner layer 4.
+ * 000: NFP_NET_PTYPE_L4_NONE
+ * 001: NFP_NET_PTYPE_L4_TCP
+ * 010: NFP_NET_PTYPE_L4_UDP
+ * 011: NFP_NET_PTYPE_L4_FRAG
+ * 100: NFP_NET_PTYPE_L4_NONFRAG
+ * 101: NFP_NET_PTYPE_L4_ICMP
+ * 110: NFP_NET_PTYPE_L4_SCTP
+ * 111: reserved
+ *
+ * L3: bit 3~5, used for layer 3 or inner layer 3.
+ * 000: NFP_NET_PTYPE_L3_NONE
+ * 001: NFP_NET_PTYPE_L3_IPV6
+ * 010: NFP_NET_PTYPE_L3_IPV4
+ * 011: NFP_NET_PTYPE_L3_IPV4_EXT
+ * 100: NFP_NET_PTYPE_L3_IPV6_EXT
+ * 101: NFP_NET_PTYPE_L3_IPV4_EXT_UNKNOWN
+ * 110: NFP_NET_PTYPE_L3_IPV6_EXT_UNKNOWN
+ * 111: reserved
+ *
+ * Tunnel: bit 6~9, used for tunnel.
+ * 0000: NFP_NET_PTYPE_TUNNEL_NONE
+ * 0001: NFP_NET_PTYPE_TUNNEL_VXLAN
+ * 0100: NFP_NET_PTYPE_TUNNEL_NVGRE
+ * 0101: NFP_NET_PTYPE_TUNNEL_GENEVE
+ * 0010, 0011, 0110~1111: reserved
+ *
+ * Reserved: bit 10~15, used for extension.
+ */
+
+/* Mask and offset about nfp packet type based on the bit map above. */
+#define NFP_NET_PTYPE_L4_MASK                  0x0007
+#define NFP_NET_PTYPE_L3_MASK                  0x0038
+#define NFP_NET_PTYPE_TUNNEL_MASK              0x03c0
+
+#define NFP_NET_PTYPE_L4_OFFSET                0
+#define NFP_NET_PTYPE_L3_OFFSET                3
+#define NFP_NET_PTYPE_TUNNEL_OFFSET            6
+
+/* Case about nfp packet type based on the bit map above. */
+#define NFP_NET_PTYPE_L4_NONE                  0
+#define NFP_NET_PTYPE_L4_TCP                   1
+#define NFP_NET_PTYPE_L4_UDP                   2
+#define NFP_NET_PTYPE_L4_FRAG                  3
+#define NFP_NET_PTYPE_L4_NONFRAG               4
+#define NFP_NET_PTYPE_L4_ICMP                  5
+#define NFP_NET_PTYPE_L4_SCTP                  6
+
+#define NFP_NET_PTYPE_L3_NONE                  0
+#define NFP_NET_PTYPE_L3_IPV6                  1
+#define NFP_NET_PTYPE_L3_IPV4                  2
+#define NFP_NET_PTYPE_L3_IPV4_EXT              3
+#define NFP_NET_PTYPE_L3_IPV6_EXT              4
+#define NFP_NET_PTYPE_L3_IPV4_EXT_UNKNOWN      5
+#define NFP_NET_PTYPE_L3_IPV6_EXT_UNKNOWN      6
+
+#define NFP_NET_PTYPE_TUNNEL_NONE              0
+#define NFP_NET_PTYPE_TUNNEL_VXLAN             1
+#define NFP_NET_PTYPE_TUNNEL_NVGRE             4
+#define NFP_NET_PTYPE_TUNNEL_GENEVE            5
+
+#define NFP_PTYPE2RTE(tunnel, type) ((tunnel) ? RTE_PTYPE_INNER_##type : RTE_PTYPE_##type)
+
+/* Record NFP packet type parsed from rxd.offload_info. */
+struct nfp_ptype_parsed {
+	uint8_t l4_ptype;     /**< Packet type of layer 4, or inner layer 4. */
+	uint8_t l3_ptype;     /**< Packet type of layer 3, or inner layer 3. */
+	uint8_t tunnel_ptype; /**< Packet type of tunnel. */
+};
+
 struct nfp_net_rx_desc {
 	union {
 		/** Freelist descriptor. */

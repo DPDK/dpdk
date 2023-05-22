@@ -304,6 +304,138 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 	}
 }
 
+/**
+ * Set packet type to mbuf based on parsed structure.
+ *
+ * @param nfp_ptype
+ *   Packet type structure parsing from Rx descriptor.
+ * @param mb
+ *   Mbuf to set the packet type.
+ */
+static void
+nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype, struct rte_mbuf *mb)
+{
+	uint32_t mbuf_ptype = RTE_PTYPE_L2_ETHER;
+	uint8_t nfp_tunnel_ptype = nfp_ptype->tunnel_ptype;
+
+	if (nfp_tunnel_ptype != NFP_NET_PTYPE_TUNNEL_NONE)
+		mbuf_ptype |= RTE_PTYPE_INNER_L2_ETHER;
+
+	switch (nfp_tunnel_ptype) {
+	case NFP_NET_PTYPE_TUNNEL_NONE:
+		break;
+	case NFP_NET_PTYPE_TUNNEL_VXLAN:
+		mbuf_ptype |= RTE_PTYPE_TUNNEL_VXLAN;
+		break;
+	case NFP_NET_PTYPE_TUNNEL_NVGRE:
+		mbuf_ptype |= RTE_PTYPE_TUNNEL_NVGRE;
+		break;
+	case NFP_NET_PTYPE_TUNNEL_GENEVE:
+		mbuf_ptype |= RTE_PTYPE_TUNNEL_GENEVE;
+		break;
+	default:
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp tunnel packet type: %u",
+				nfp_tunnel_ptype);
+		break;
+	}
+
+	switch (nfp_ptype->l4_ptype) {
+	case NFP_NET_PTYPE_L4_NONE:
+		break;
+	case NFP_NET_PTYPE_L4_TCP:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_TCP);
+		break;
+	case NFP_NET_PTYPE_L4_UDP:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_UDP);
+		break;
+	case NFP_NET_PTYPE_L4_FRAG:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_FRAG);
+		break;
+	case NFP_NET_PTYPE_L4_NONFRAG:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_NONFRAG);
+		break;
+	case NFP_NET_PTYPE_L4_ICMP:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_ICMP);
+		break;
+	case NFP_NET_PTYPE_L4_SCTP:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_SCTP);
+		break;
+	default:
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 4 packet type: %u",
+				nfp_ptype->l4_ptype);
+		break;
+	}
+
+	switch (nfp_ptype->l3_ptype) {
+	case NFP_NET_PTYPE_L3_NONE:
+		break;
+	case NFP_NET_PTYPE_L3_IPV4:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV4);
+		break;
+	case NFP_NET_PTYPE_L3_IPV6:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV6);
+		break;
+	case NFP_NET_PTYPE_L3_IPV4_EXT:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV4_EXT);
+		break;
+	case NFP_NET_PTYPE_L3_IPV6_EXT:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV6_EXT);
+		break;
+	case NFP_NET_PTYPE_L3_IPV4_EXT_UNKNOWN:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV4_EXT_UNKNOWN);
+		break;
+	case NFP_NET_PTYPE_L3_IPV6_EXT_UNKNOWN:
+		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV6_EXT_UNKNOWN);
+		break;
+	default:
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 3 packet type: %u",
+				nfp_ptype->l3_ptype);
+		break;
+	}
+
+	mb->packet_type = mbuf_ptype;
+}
+
+/**
+ * Parse the packet type from Rx descriptor and set to mbuf.
+ *
+ * @param rxds
+ *   Rx descriptor including the offloading info of packet type.
+ * @param hw
+ *   Device.
+ * @param mb
+ *   Mbuf to set the packet type.
+ */
+static void
+nfp_net_parse_ptype(struct nfp_net_rx_desc *rxds,
+		struct nfp_net_hw *hw,
+		struct rte_mbuf *mb)
+{
+	uint32_t cap_extend;
+	uint32_t ctrl_extend;
+	struct nfp_ptype_parsed nfp_ptype;
+	uint16_t rxd_ptype = rxds->rxd.offload_info;
+
+	if (rxd_ptype == 0 || (rxds->rxd.flags & PCIE_DESC_RX_VLAN) != 0)
+		return;
+
+	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	ctrl_extend = nn_cfg_readl(hw, NFP_NET_CFG_CTRL_WORD1);
+
+	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) == 0 ||
+			(ctrl_extend & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+		return;
+
+	nfp_ptype.l4_ptype = (rxd_ptype & NFP_NET_PTYPE_L4_MASK) >>
+			NFP_NET_PTYPE_L4_OFFSET;
+	nfp_ptype.l3_ptype = (rxd_ptype & NFP_NET_PTYPE_L3_MASK) >>
+			NFP_NET_PTYPE_L3_OFFSET;
+	nfp_ptype.tunnel_ptype = (rxd_ptype & NFP_NET_PTYPE_TUNNEL_MASK) >>
+			NFP_NET_PTYPE_TUNNEL_OFFSET;
+
+	nfp_net_set_ptype(&nfp_ptype, mb);
+}
+
 /*
  * RX path design:
  *
@@ -437,6 +569,8 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		mb->port = rxq->port_id;
 
 		nfp_net_parse_meta(rxds, rxq, hw, mb);
+
+		nfp_net_parse_ptype(rxds, hw, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);

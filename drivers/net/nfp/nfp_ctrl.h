@@ -214,11 +214,19 @@
 /* Offload definitions */
 #define NFP_NET_N_VXLAN_PORTS  (NFP_NET_CFG_VXLAN_SZ / sizeof(uint16_t))
 
-/**
- * 64B reserved for future use (0x0080 - 0x00c0)
+/*
+ * 3 words reserved for extended ctrl words (0x0098 - 0x00a4)
+ * 3 words reserved for extended cap words (0x00a4 - 0x00b0)
+ * Currently only one word is used, can be extended in future.
  */
-#define NFP_NET_CFG_RESERVED            0x0080
-#define NFP_NET_CFG_RESERVED_SZ         0x0040
+#define NFP_NET_CFG_CTRL_WORD1          0x0098
+#define NFP_NET_CFG_CTRL_PKT_TYPE         (0x1 << 0)
+
+#define NFP_NET_CFG_CAP_WORD1           0x00a4
+
+/* 16B reserved for future use (0x00b0 - 0x00c0). */
+#define NFP_NET_CFG_RESERVED            0x00b0
+#define NFP_NET_CFG_RESERVED_SZ         0x0010
 
 /*
  * RSS configuration (0x0100 - 0x01ac):

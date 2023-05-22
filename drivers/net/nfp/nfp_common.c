@@ -301,6 +301,48 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 	return 0;
 }
 
+/**
+ * Reconfigure the NIC for the extend ctrl BAR.
+ *
+ * Write the update word to the BAR and ping the reconfig queue. Then poll
+ * until the firmware has acknowledged the update by zeroing the update word.
+ *
+ * @param hw
+ *   Device to reconfigure.
+ * @param ctrl_ext
+ *   The value for the first word of extend ctrl field in the BAR config.
+ * @param update
+ *   The value for the update field in the BAR config.
+ *
+ * @return
+ *   - (0) if OK to reconfigure the device.
+ *   - (EIO) if I/O err and fail to reconfigure the device.
+ */
+int
+nfp_net_ext_reconfig(struct nfp_net_hw *hw, uint32_t ctrl_ext, uint32_t update)
+{
+	int ret;
+
+	rte_spinlock_lock(&hw->reconfig_lock);
+
+	nn_cfg_writel(hw, NFP_NET_CFG_CTRL_WORD1, ctrl_ext);
+	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
+
+	rte_wmb();
+
+	ret = __nfp_net_reconfig(hw, update);
+
+	rte_spinlock_unlock(&hw->reconfig_lock);
+
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Error nft net ext reconfig: ctrl_ext=%#08x update=%#08x",
+				ctrl_ext, update);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 /*
  * Configure an Ethernet device. This function must be invoked first
  * before any other function in the Ethernet API. This function can
