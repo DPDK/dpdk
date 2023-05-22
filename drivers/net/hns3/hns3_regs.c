@@ -294,8 +294,9 @@ hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	uint32_t *origin_data_ptr = data;
 	uint32_t reg_offset;
-	uint16_t i, j;
 	size_t reg_num;
+	uint16_t j;
+	size_t i;
 
 	/* fetching per-PF registers values from PF PCIe register space */
 	reg_num = sizeof(cmdq_reg_addrs) / sizeof(uint32_t);
