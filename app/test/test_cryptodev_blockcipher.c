@@ -555,8 +555,16 @@ iterate:
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH)
 			is_auth = 1;
 
-		process_sym_raw_dp_op(dev_id, 0, op, is_cipher, is_auth, 0,
-				tdata->iv.len);
+		status = process_sym_raw_dp_op(dev_id, 0, op, is_cipher, is_auth,
+					       0, tdata->iv.len);
+		if (status != TEST_SUCCESS) {
+			if (status == TEST_SKIPPED)
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "SKIPPED");
+			else
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "FAILED");
+
+			goto error_exit;
+		}
 	} else {
 		if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,

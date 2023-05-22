@@ -235,7 +235,7 @@ fail:
 	return NULL;
 }
 
-void
+int
 process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 		struct rte_crypto_op *op, uint8_t is_cipher, uint8_t is_auth,
 		uint8_t len_in_bits, uint8_t cipher_iv_len);
