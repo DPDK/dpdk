@@ -245,7 +245,7 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 		}
 	} else if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN) != 0) {
 		if ((rxd->rxd.flags & PCIE_DESC_RX_VLAN) != 0) {
-			mb->vlan_tci = rte_cpu_to_le_32(rxd->rxd.vlan);
+			mb->vlan_tci = rte_cpu_to_le_32(rxd->rxd.offload_info);
 			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		}
 	}

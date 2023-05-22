@@ -428,7 +428,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 
 		if ((rxds->rxd.flags & PCIE_DESC_RX_VLAN) &&
 				(hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN)) {
-			mb->vlan_tci = rte_cpu_to_le_32(rxds->rxd.vlan);
+			mb->vlan_tci = rte_cpu_to_le_32(rxds->rxd.offload_info);
 			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		}
 
