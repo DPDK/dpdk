@@ -144,7 +144,6 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
 	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
 		return -EIO;
 

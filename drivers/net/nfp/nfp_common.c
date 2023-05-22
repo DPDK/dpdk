@@ -256,22 +256,27 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 	return 0;
 }
 
-/*
- * Reconfigure the NIC
- * @nn:    device to reconfigure
- * @ctrl:    The value for the ctrl field in the BAR config
- * @update:  The value for the update field in the BAR config
+/**
+ * Reconfigure the NIC.
  *
  * Write the update word to the BAR and ping the reconfig queue. Then poll
  * until the firmware has acknowledged the update by zeroing the update word.
+ *
+ * @param hw
+ *   Device to reconfigure.
+ * @param ctrl
+ *   The value for the ctrl field in the BAR config.
+ * @param update
+ *   The value for the update field in the BAR config.
+ *
+ * @return
+ *   - (0) if OK to reconfigure the device.
+ *   - (EIO) if I/O err and fail to reconfigure the device.
  */
 int
 nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 {
-	uint32_t err;
-
-	PMD_DRV_LOG(DEBUG, "nfp_net_reconfig: ctrl=%08x update=%08x",
-		    ctrl, update);
+	int ret;
 
 	if (hw->pf_dev != NULL && hw->pf_dev->app_fw_id == NFP_APP_FW_CORE_NIC)
 		nfp_net_notify_port_speed(hw->eth_dev);
@@ -283,18 +288,17 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 
 	rte_wmb();
 
-	err = __nfp_net_reconfig(hw, update);
+	ret = __nfp_net_reconfig(hw, update);
 
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
-	if (err != 0) {
-		PMD_INIT_LOG(ERR, "Error nfp_net reconfig for ctrl: %x update: %x",
-			     ctrl, update);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Error nfp net reconfig: ctrl=%#08x update=%#08x",
+				ctrl, update);
 		return -EIO;
 	}
 
 	return 0;
-
 }
 
 /*
