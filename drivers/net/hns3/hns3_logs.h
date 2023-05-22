@@ -31,4 +31,22 @@ extern int hns3_logtype_driver;
 #define hns3_dbg(hw, fmt, args...) \
 	PMD_DRV_LOG_RAW(hw, RTE_LOG_DEBUG, fmt "\n", ## args)
 
+#ifdef RTE_ETHDEV_DEBUG_RX
+extern int hns3_logtype_rx;
+#define PMD_RX_LOG(hw, level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, hns3_logtype_rx,	"%s %s(): " fmt "\n", \
+		(hw)->data->name, __func__, ## args)
+#else
+#define PMD_RX_LOG(hw, level, fmt, args...) do { } while (0)
+#endif
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+extern int hns3_logtype_tx;
+#define PMD_TX_LOG(hw, level, fmt, args...)			\
+	rte_log(RTE_LOG_ ## level, hns3_logtype_tx,	"%s %s(): " fmt "\n", \
+		(hw)->data->name, __func__, ## args)
+#else
+#define PMD_TX_LOG(hw, level, fmt, args...) do { } while (0)
+#endif
+
 #endif /* HNS3_LOGS_H */

@@ -553,6 +553,35 @@ struct hns3_tx_queue {
 	bool enabled;           /* indicate if Tx queue has been enabled */
 };
 
+#define RX_BD_LOG(hw, level, rxdp) \
+	PMD_RX_LOG(hw, level, "Rx descriptor: " \
+		"l234_info=%#x pkt_len=%u size=%u rss_hash=%#x fd_id=%u vlan_tag=%u " \
+		"o_dm_vlan_id_fb=%#x ot_vlan_tag=%u bd_base_info=%#x", \
+		rte_le_to_cpu_32((rxdp)->rx.l234_info), \
+		rte_le_to_cpu_16((rxdp)->rx.pkt_len), \
+		rte_le_to_cpu_16((rxdp)->rx.size), \
+		rte_le_to_cpu_32((rxdp)->rx.rss_hash), \
+		rte_le_to_cpu_16((rxdp)->rx.fd_id), \
+		rte_le_to_cpu_16((rxdp)->rx.vlan_tag), \
+		rte_le_to_cpu_16((rxdp)->rx.o_dm_vlan_id_fb), \
+		rte_le_to_cpu_16((rxdp)->rx.ot_vlan_tag), \
+		rte_le_to_cpu_32((rxdp)->rx.bd_base_info))
+
+#define TX_BD_LOG(hw, level, txdp) \
+	PMD_TX_LOG(hw, level, "Tx descriptor: " \
+		"vlan_tag=%u send_size=%u type_cs_vlan_tso_len=%#x outer_vlan_tag=%u " \
+		"tv=%#x ol_type_vlan_len_msec=%#x paylen_fd_dop_ol4cs=%#x " \
+		"tp_fe_sc_vld_ra_ri=%#x ckst_mss=%u", \
+		rte_le_to_cpu_16((txdp)->tx.vlan_tag), \
+		rte_le_to_cpu_16((txdp)->tx.send_size), \
+		rte_le_to_cpu_32((txdp)->tx.type_cs_vlan_tso_len), \
+		rte_le_to_cpu_16((txdp)->tx.outer_vlan_tag), \
+		rte_le_to_cpu_16((txdp)->tx.tv), \
+		rte_le_to_cpu_32((txdp)->tx.ol_type_vlan_len_msec), \
+		rte_le_to_cpu_32((txdp)->tx.paylen_fd_dop_ol4cs), \
+		rte_le_to_cpu_16((txdp)->tx.tp_fe_sc_vld_ra_ri), \
+		rte_le_to_cpu_16((txdp)->tx.ckst_mss))
+
 #define HNS3_GET_TX_QUEUE_PEND_BD_NUM(txq) \
 		((txq)->nb_tx_desc - 1 - (txq)->tx_bd_ready)
 

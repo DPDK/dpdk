@@ -2618,6 +2618,7 @@ hns3_recv_scattered_pkts(void *rx_queue,
 		 */
 		rxd = rxdp[(bd_base_info & (1u << HNS3_RXD_VLD_B)) -
 			   (1u << HNS3_RXD_VLD_B)];
+		RX_BD_LOG(&rxq->hns->hw, DEBUG, &rxd);
 
 		nmb = hns3_rx_alloc_buffer(rxq);
 		if (unlikely(nmb == NULL)) {
@@ -4274,6 +4275,8 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				tx_next_use = 0;
 				tx_bak_pkt = txq->sw_ring;
 			}
+			if (m_seg != NULL)
+				TX_BD_LOG(&txq->hns->hw, DEBUG, desc);
 
 			i++;
 		} while (m_seg != NULL);
@@ -4281,6 +4284,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/* Add end flag for the last Tx Buffer Descriptor */
 		desc->tx.tp_fe_sc_vld_ra_ri |=
 				 rte_cpu_to_le_16(BIT(HNS3_TXD_FE_B));
+		TX_BD_LOG(&txq->hns->hw, DEBUG, desc);
 
 		/* Increment bytes counter */
 		txq->basic_stats.bytes += tx_pkt->pkt_len;
