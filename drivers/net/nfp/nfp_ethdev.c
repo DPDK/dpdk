@@ -476,14 +476,14 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 static inline int
 nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw, struct rte_eth_dev *eth_dev)
 {
-	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
+	switch (hw->ver.extend) {
 	case NFP_NET_CFG_VERSION_DP_NFD3:
 		eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
 		break;
 	case NFP_NET_CFG_VERSION_DP_NFDK:
-		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {
+		if (hw->ver.major < 5) {
 			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
-				NFD_CFG_MAJOR_VERSION_of(hw->ver));
+					hw->ver.major);
 			return -EINVAL;
 		}
 		eth_dev->tx_pkt_burst = &nfp_net_nfdk_xmit_pkts;
@@ -581,7 +581,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 	PMD_INIT_LOG(DEBUG, "MAC stats: %p", hw->mac_stats);
 
-	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+	nfp_net_cfg_read_version(hw);
 
 	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
 		return -ENODEV;
@@ -639,7 +639,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	nfp_net_init_metadata_format(hw);
 
-	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2)
+	if (hw->ver.major < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;
 	else
 		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);

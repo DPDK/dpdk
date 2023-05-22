@@ -130,6 +130,20 @@
 
 #define NFP_NET_CFG_CTRL_CHAIN_META (NFP_NET_CFG_CTRL_RSS2 | \
 					NFP_NET_CFG_CTRL_CSUM_COMPLETE)
+
+/* Version number helper defines */
+struct nfp_net_fw_ver {
+	uint8_t minor;
+	uint8_t major;
+	uint8_t class;
+	/**
+	 * This byte can be extended for more use.
+	 * BIT0: NFD dp type, refer NFP_NET_CFG_VERSION_DP_NFDx
+	 * BIT[7:1]: reserved
+	 */
+	uint8_t extend;
+};
+
 /*
  * Read-only words (0x0030 - 0x0050):
  * @NFP_NET_CFG_VERSION:     Firmware version number
@@ -147,14 +161,6 @@
 #define NFP_NET_CFG_VERSION             0x0030
 #define   NFP_NET_CFG_VERSION_DP_NFD3   0
 #define   NFP_NET_CFG_VERSION_DP_NFDK   1
-#define   NFP_NET_CFG_VERSION_RESERVED_MASK	(0xff << 24)
-#define   NFP_NET_CFG_VERSION_CLASS_MASK  (0xff << 16)
-#define   NFP_NET_CFG_VERSION_CLASS(x)    (((x) & 0xff) << 16)
-#define   NFP_NET_CFG_VERSION_CLASS_GENERIC	0
-#define   NFP_NET_CFG_VERSION_MAJOR_MASK  (0xff <<  8)
-#define   NFP_NET_CFG_VERSION_MAJOR(x)    (((x) & 0xff) <<  8)
-#define   NFP_NET_CFG_VERSION_MINOR_MASK  (0xff <<  0)
-#define   NFP_NET_CFG_VERSION_MINOR(x)    (((x) & 0xff) <<  0)
 #define NFP_NET_CFG_STS                 0x0034
 #define   NFP_NET_CFG_STS_LINK            (0x1 << 0) /* Link up or down */
 /* Link rate */

@@ -80,24 +80,6 @@ struct nfp_net_adapter;
 #define NFP_NET_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define NFP_NET_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 
-/* Version number helper defines */
-#define NFD_CFG_CLASS_VER_msk       0xff
-#define NFD_CFG_CLASS_VER_shf       24
-#define NFD_CFG_CLASS_VER(x)        (((x) & 0xff) << 24)
-#define NFD_CFG_CLASS_VER_of(x)     (((x) >> 24) & 0xff)
-#define NFD_CFG_CLASS_TYPE_msk      0xff
-#define NFD_CFG_CLASS_TYPE_shf      16
-#define NFD_CFG_CLASS_TYPE(x)       (((x) & 0xff) << 16)
-#define NFD_CFG_CLASS_TYPE_of(x)    (((x) >> 16) & 0xff)
-#define NFD_CFG_MAJOR_VERSION_msk   0xff
-#define NFD_CFG_MAJOR_VERSION_shf   8
-#define NFD_CFG_MAJOR_VERSION(x)    (((x) & 0xff) << 8)
-#define NFD_CFG_MAJOR_VERSION_of(x) (((x) >> 8) & 0xff)
-#define NFD_CFG_MINOR_VERSION_msk   0xff
-#define NFD_CFG_MINOR_VERSION_shf   0
-#define NFD_CFG_MINOR_VERSION(x)    (((x) & 0xff) << 0)
-#define NFD_CFG_MINOR_VERSION_of(x) (((x) >> 0) & 0xff)
-
 /* Number of supported physical ports */
 #define NFP_MAX_PHYPORTS	12
 
@@ -196,7 +178,7 @@ struct nfp_net_hw {
 	struct rte_eth_dev *eth_dev;
 
 	/* Info from the firmware */
-	uint32_t ver;
+	struct nfp_net_fw_ver ver;
 	uint32_t cap;
 	uint32_t max_mtu;
 	uint32_t mtu;
@@ -491,6 +473,7 @@ int nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *max_tx_desc);
 int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
 void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
+void nfp_net_cfg_read_version(struct nfp_net_hw *hw);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)

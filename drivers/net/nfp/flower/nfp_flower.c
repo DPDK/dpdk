@@ -650,7 +650,7 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 	hw->rx_bar = pf_dev->hw_queues + rx_bar_off;
 
 	/* Get some of the read-only fields from the config BAR */
-	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+	nfp_net_cfg_read_version(hw);
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	/* Set the current MTU to the maximum supported */
@@ -661,7 +661,7 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 		return -ENODEV;
 
 	/* read the Rx offset configured from firmware */
-	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 2)
+	if (hw->ver.major < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;
 	else
 		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);

@@ -402,8 +402,7 @@ void
 nfp_net_log_device_information(const struct nfp_net_hw *hw)
 {
 	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d",
-			NFD_CFG_MAJOR_VERSION_of(hw->ver),
-			NFD_CFG_MINOR_VERSION_of(hw->ver), hw->max_mtu);
+			hw->ver.major, hw->ver.minor, hw->max_mtu);
 
 	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 			hw->cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
@@ -1160,14 +1159,14 @@ nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 {
 	uint16_t tx_dpp;
 
-	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
+	switch (hw->ver.extend) {
 	case NFP_NET_CFG_VERSION_DP_NFD3:
 		tx_dpp = NFD3_TX_DESC_PER_PKT;
 		break;
 	case NFP_NET_CFG_VERSION_DP_NFDK:
-		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {
+		if (hw->ver.major < 5) {
 			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
-				NFD_CFG_MAJOR_VERSION_of(hw->ver));
+					hw->ver.major);
 			return -EINVAL;
 		}
 		tx_dpp = NFDK_TX_DESC_PER_SIMPLE_PKT;
@@ -1957,11 +1956,10 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
 int
 nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name)
 {
-	if (NFD_CFG_CLASS_VER_of(hw->ver) == NFP_NET_CFG_VERSION_DP_NFD3 &&
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3 &&
 			rte_mem_check_dma_mask(40) != 0) {
-		PMD_DRV_LOG(ERR,
-			"The device %s can't be used: restricted dma mask to 40 bits!",
-			name);
+		PMD_DRV_LOG(ERR, "Device %s can't be used: restricted dma mask to 40 bits!",
+				name);
 		return -ENODEV;
 	}
 
@@ -1976,7 +1974,7 @@ nfp_net_init_metadata_format(struct nfp_net_hw *hw)
 	 * single metadata if only RSS(v1) is supported by hw capability, and RSS(v2)
 	 * also indicate that we are using chained metadata.
 	 */
-	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) == 4) {
+	if (hw->ver.major == 4) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
 	} else if ((hw->cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
@@ -1989,4 +1987,16 @@ nfp_net_init_metadata_format(struct nfp_net_hw *hw)
 	} else {
 		hw->meta_format = NFP_NET_METAFORMAT_SINGLE;
 	}
+}
+
+void
+nfp_net_cfg_read_version(struct nfp_net_hw *hw)
+{
+	union {
+		uint32_t whole;
+		struct nfp_net_fw_ver split;
+	} version;
+
+	version.whole = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+	hw->ver = version.split;
 }
