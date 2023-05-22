@@ -317,7 +317,7 @@ hns3_update_mac_stats(struct hns3_hw *hw)
 	uint32_t stats_iterms;
 	uint64_t *desc_data;
 	uint32_t desc_num;
-	uint16_t i;
+	uint32_t i;
 	int ret;
 
 	/* The first desc has a 64-bit header, so need to consider it. */
