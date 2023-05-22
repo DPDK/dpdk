@@ -5304,16 +5304,7 @@ hns3_check_fc_autoneg_valid(struct hns3_hw *hw, uint8_t autoneg)
 
 	if (!pf->support_fc_autoneg) {
 		if (autoneg != 0) {
-			hns3_err(hw, "unsupported fc auto-negotiation setting.");
-			return -EOPNOTSUPP;
-		}
-
-		/*
-		 * Flow control auto-negotiation of the NIC is not supported,
-		 * but other auto-negotiation features may be supported.
-		 */
-		if (autoneg != hw->mac.link_autoneg) {
-			hns3_err(hw, "please use 'link_speeds' in struct rte_eth_conf to disable autoneg!");
+			hns3_err(hw, "unsupported fc auto-negotiation.");
 			return -EOPNOTSUPP;
 		}
 
