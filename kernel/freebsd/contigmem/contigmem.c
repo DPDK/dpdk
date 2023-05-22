@@ -111,7 +111,7 @@ static struct cdevsw contigmem_ops = {
 };
 
 static int
-contigmem_load()
+contigmem_load(void)
 {
 	char index_string[8], description[32];
 	int  i, error = 0;
@@ -178,7 +178,7 @@ error:
 }
 
 static int
-contigmem_unload()
+contigmem_unload(void)
 {
 	int i;
 
