@@ -153,6 +153,8 @@ ABI Changes
 * ethdev: In the experimental ``struct rte_flow_action_modify_data``:
 
   * ``level`` field was reduced to 8 bits.
+  * ``tag_index`` field replaced ``level`` field in representing tag array for
+    ``RTE_FLOW_FIELD_TAG`` type.
 
 
 Known Issues

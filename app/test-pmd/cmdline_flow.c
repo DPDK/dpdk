@@ -654,6 +654,7 @@ enum index {
 	ACTION_MODIFY_FIELD_DST_TYPE_VALUE,
 	ACTION_MODIFY_FIELD_DST_LEVEL,
 	ACTION_MODIFY_FIELD_DST_LEVEL_VALUE,
+	ACTION_MODIFY_FIELD_DST_TAG_INDEX,
 	ACTION_MODIFY_FIELD_DST_TYPE_ID,
 	ACTION_MODIFY_FIELD_DST_CLASS_ID,
 	ACTION_MODIFY_FIELD_DST_OFFSET,
@@ -661,6 +662,7 @@ enum index {
 	ACTION_MODIFY_FIELD_SRC_TYPE_VALUE,
 	ACTION_MODIFY_FIELD_SRC_LEVEL,
 	ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE,
+	ACTION_MODIFY_FIELD_SRC_TAG_INDEX,
 	ACTION_MODIFY_FIELD_SRC_TYPE_ID,
 	ACTION_MODIFY_FIELD_SRC_CLASS_ID,
 	ACTION_MODIFY_FIELD_SRC_OFFSET,
@@ -877,7 +879,7 @@ static const char *const modify_field_ids[] = {
 	"ipv6_proto",
 	"flex_item",
 	"hash_result",
-	"geneve_opt_type", "geneve_opt_class", "geneve_opt_data",
+	"geneve_opt_type", "geneve_opt_class", "geneve_opt_data", "mpls",
 	NULL
 };
 
@@ -2348,6 +2350,7 @@ static const enum index next_action_sample[] = {
 
 static const enum index action_modify_field_dst[] = {
 	ACTION_MODIFY_FIELD_DST_LEVEL,
+	ACTION_MODIFY_FIELD_DST_TAG_INDEX,
 	ACTION_MODIFY_FIELD_DST_TYPE_ID,
 	ACTION_MODIFY_FIELD_DST_CLASS_ID,
 	ACTION_MODIFY_FIELD_DST_OFFSET,
@@ -2357,6 +2360,7 @@ static const enum index action_modify_field_dst[] = {
 
 static const enum index action_modify_field_src[] = {
 	ACTION_MODIFY_FIELD_SRC_LEVEL,
+	ACTION_MODIFY_FIELD_SRC_TAG_INDEX,
 	ACTION_MODIFY_FIELD_SRC_TYPE_ID,
 	ACTION_MODIFY_FIELD_SRC_CLASS_ID,
 	ACTION_MODIFY_FIELD_SRC_OFFSET,
@@ -6505,6 +6509,15 @@ static const struct token token_list[] = {
 		.call = parse_vc_modify_field_level,
 		.comp = comp_none,
 	},
+	[ACTION_MODIFY_FIELD_DST_TAG_INDEX] = {
+		.name = "dst_tag_index",
+		.help = "destination field tag array",
+		.next = NEXT(action_modify_field_dst,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_modify_field,
+					dst.tag_index)),
+		.call = parse_vc_conf,
+	},
 	[ACTION_MODIFY_FIELD_DST_TYPE_ID] = {
 		.name = "dst_type_id",
 		.help = "destination field type ID",
@@ -6557,6 +6570,15 @@ static const struct token token_list[] = {
 		.help = "source field level value",
 		.call = parse_vc_modify_field_level,
 		.comp = comp_none,
+	},
+	[ACTION_MODIFY_FIELD_SRC_TAG_INDEX] = {
+		.name = "stc_tag_index",
+		.help = "source field tag array",
+		.next = NEXT(action_modify_field_src,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_modify_field,
+					src.tag_index)),
+		.call = parse_vc_conf,
 	},
 	[ACTION_MODIFY_FIELD_SRC_TYPE_ID] = {
 		.name = "src_type_id",

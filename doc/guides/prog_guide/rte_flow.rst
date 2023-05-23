@@ -3057,8 +3057,7 @@ See ``enum rte_flow_field_id`` for the list of supported fields.
 
 ``width`` defines a number of bits to use from ``src`` field.
 
-``level`` is used to access any packet field on any encapsulation level
-as well as any tag element in the tag array:
+``level`` is used to access any packet field on any encapsulation level:
 
 - ``0`` means the default behaviour. Depending on the packet type,
   it can mean outermost, innermost or anything in between.
@@ -3066,8 +3065,15 @@ as well as any tag element in the tag array:
 - ``2`` and subsequent values requests access to the specified packet
   encapsulation level, from outermost to innermost (lower to higher values).
 
-For the tag array (in case of multiple tags are supported and present)
-``level`` translates directly into the array index.
+``tag_index`` is the index of the header inside encapsulation level.
+It is used to modify either ``VLAN`` or ``MPLS`` or ``TAG`` headers
+which multiple of them might be supported in the same encapsulation level.
+
+.. note::
+
+   For ``RTE_FLOW_FIELD_TAG`` type, the tag array was provided in ``level``
+   field and it is still supported for backwards compatibility.
+   When ``tag_index`` is zero, the tag array is taken from ``level`` field.
 
 ``type`` is used to specify (along with ``class_id``) the Geneve option
 which is being modified.
@@ -3144,7 +3150,9 @@ destination offset as ``48``, and provide immediate value ``0xXXXX85XX``.
    +=================+==========================================================+
    | ``field``       | ID: packet field, mark, meta, tag, immediate, pointer    |
    +-----------------+----------------------------------------------------------+
-   | ``level``       | encapsulation level of a packet field or tag array index |
+   | ``level``       | encapsulation level of a packet field                    |
+   +-----------------+----------------------------------------------------------+
+   | ``tag_index``   | tag index inside encapsulation level                     |
    +-----------------+----------------------------------------------------------+
    | ``type``        | Geneve option type                                       |
    +-----------------+----------------------------------------------------------+

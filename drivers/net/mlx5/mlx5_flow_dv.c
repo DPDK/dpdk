@@ -1896,16 +1896,17 @@ mlx5_flow_field_id_to_modify_info
 	case RTE_FLOW_FIELD_TAG:
 		{
 			MLX5_ASSERT(data->offset + width <= 32);
+			uint8_t tag_index = flow_tag_index_get(data);
 			int reg;
 
-			off_be = (data->level == MLX5_LINEAR_HASH_TAG_INDEX) ?
+			off_be = (tag_index == MLX5_LINEAR_HASH_TAG_INDEX) ?
 				 16 - (data->offset + width) + 16 : data->offset;
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG,
-							 data->level);
+							 tag_index);
 			else
 				reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG,
-							   data->level, error);
+							   tag_index, error);
 			if (reg < 0)
 				return;
 			MLX5_ASSERT(reg != REG_NON);
@@ -1985,7 +1986,7 @@ mlx5_flow_field_id_to_modify_info
 		{
 			uint32_t meta_mask = priv->sh->dv_meta_mask;
 			uint32_t meta_count = __builtin_popcount(meta_mask);
-			uint32_t reg = data->level;
+			uint8_t reg = flow_tag_index_get(data);
 
 			RTE_SET_USED(meta_count);
 			MLX5_ASSERT(data->offset + width <= meta_count);
@@ -5245,115 +5246,105 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_sh_config *config = &priv->sh->config;
 	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
-	const struct rte_flow_action_modify_field *action_modify_field =
-		action->conf;
-	uint32_t dst_width, src_width;
+	const struct rte_flow_action_modify_field *conf = action->conf;
+	const struct rte_flow_action_modify_data *src_data = &conf->src;
+	const struct rte_flow_action_modify_data *dst_data = &conf->dst;
+	uint32_t dst_width, src_width, width = conf->width;
 
 	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
 	if (ret)
 		return ret;
-	if (action_modify_field->src.field == RTE_FLOW_FIELD_FLEX_ITEM ||
-	    action_modify_field->dst.field == RTE_FLOW_FIELD_FLEX_ITEM)
+	if (src_data->field == RTE_FLOW_FIELD_FLEX_ITEM ||
+	    dst_data->field == RTE_FLOW_FIELD_FLEX_ITEM)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"flex item fields modification"
 				" is not supported");
-	dst_width = mlx5_flow_item_field_width(dev, action_modify_field->dst.field,
+	dst_width = mlx5_flow_item_field_width(dev, dst_data->field,
 					       -1, attr, error);
-	src_width = mlx5_flow_item_field_width(dev, action_modify_field->src.field,
+	src_width = mlx5_flow_item_field_width(dev, src_data->field,
 					       dst_width, attr, error);
-	if (action_modify_field->width == 0)
+	if (width == 0)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"no bits are requested to be modified");
-	else if (action_modify_field->width > dst_width ||
-		 action_modify_field->width > src_width)
+	else if (width > dst_width || width > src_width)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"cannot modify more bits than"
 				" the width of a field");
-	if (action_modify_field->dst.field != RTE_FLOW_FIELD_VALUE &&
-	    action_modify_field->dst.field != RTE_FLOW_FIELD_POINTER) {
-		if (action_modify_field->dst.offset +
-		    action_modify_field->width > dst_width)
+	if (dst_data->field != RTE_FLOW_FIELD_VALUE &&
+	    dst_data->field != RTE_FLOW_FIELD_POINTER) {
+		if (dst_data->offset + width > dst_width)
 			return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"destination offset is too big");
-		if (action_modify_field->dst.level &&
-		    action_modify_field->dst.field != RTE_FLOW_FIELD_TAG)
-			return rte_flow_error_set(error, ENOTSUP,
-					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"inner header fields modification"
-					" is not supported");
+		ret = flow_validate_modify_field_level(dst_data, error);
+		if (ret)
+			return ret;
 	}
-	if (action_modify_field->src.field != RTE_FLOW_FIELD_VALUE &&
-	    action_modify_field->src.field != RTE_FLOW_FIELD_POINTER) {
+	if (src_data->field != RTE_FLOW_FIELD_VALUE &&
+	    src_data->field != RTE_FLOW_FIELD_POINTER) {
 		if (root)
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"modify field action is not"
 					" supported for group 0");
-		if (action_modify_field->src.offset +
-		    action_modify_field->width > src_width)
+		if (src_data->offset + width > src_width)
 			return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"source offset is too big");
-		if (action_modify_field->src.level &&
-		    action_modify_field->src.field != RTE_FLOW_FIELD_TAG)
-			return rte_flow_error_set(error, ENOTSUP,
-					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"inner header fields modification"
-					" is not supported");
+		ret = flow_validate_modify_field_level(src_data, error);
+		if (ret)
+			return ret;
 	}
-	if ((action_modify_field->dst.field ==
-	     action_modify_field->src.field) &&
-	    (action_modify_field->dst.level ==
-	     action_modify_field->src.level))
+	if ((dst_data->field == src_data->field) &&
+	    (dst_data->level == src_data->level))
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"source and destination fields"
 				" cannot be the same");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VALUE ||
-	    action_modify_field->dst.field == RTE_FLOW_FIELD_POINTER ||
-	    action_modify_field->dst.field == RTE_FLOW_FIELD_MARK)
+	if (dst_data->field == RTE_FLOW_FIELD_VALUE ||
+	    dst_data->field == RTE_FLOW_FIELD_POINTER ||
+	    dst_data->field == RTE_FLOW_FIELD_MARK)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"mark, immediate value or a pointer to it"
 				" cannot be used as a destination");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_START ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_START)
+	if (dst_data->field == RTE_FLOW_FIELD_START ||
+	    src_data->field == RTE_FLOW_FIELD_START)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of an arbitrary"
 				" place in a packet is not supported");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VLAN_TYPE ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_VLAN_TYPE)
+	if (dst_data->field == RTE_FLOW_FIELD_VLAN_TYPE ||
+	    src_data->field == RTE_FLOW_FIELD_VLAN_TYPE)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the 802.1Q Tag"
 				" Identifier is not supported");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VXLAN_VNI ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_VXLAN_VNI)
+	if (dst_data->field == RTE_FLOW_FIELD_VXLAN_VNI ||
+	    src_data->field == RTE_FLOW_FIELD_VXLAN_VNI)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the VXLAN Network"
 				" Identifier is not supported");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_GENEVE_VNI ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_GENEVE_VNI)
+	if (dst_data->field == RTE_FLOW_FIELD_GENEVE_VNI ||
+	    src_data->field == RTE_FLOW_FIELD_GENEVE_VNI)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the GENEVE Network"
 				" Identifier is not supported");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_MARK ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_MARK)
+	if (dst_data->field == RTE_FLOW_FIELD_MARK ||
+	    src_data->field == RTE_FLOW_FIELD_MARK)
 		if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 		    !mlx5_flow_ext_mreg_supported(dev))
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"cannot modify mark in legacy mode"
 					" or without extensive registers");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_META ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_META) {
+	if (dst_data->field == RTE_FLOW_FIELD_META ||
+	    src_data->field == RTE_FLOW_FIELD_META) {
 		if (config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 		    !mlx5_flow_ext_mreg_supported(dev))
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5367,20 +5358,19 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 					"cannot modify meta without"
 					" extensive registers available");
 	}
-	if (action_modify_field->operation == RTE_FLOW_MODIFY_SUB)
+	if (conf->operation == RTE_FLOW_MODIFY_SUB)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"sub operations are not supported");
-	if (action_modify_field->dst.field == RTE_FLOW_FIELD_IPV4_ECN ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_IPV4_ECN ||
-	    action_modify_field->dst.field == RTE_FLOW_FIELD_IPV6_ECN ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_IPV6_ECN)
+	if (dst_data->field == RTE_FLOW_FIELD_IPV4_ECN ||
+	    src_data->field == RTE_FLOW_FIELD_IPV4_ECN ||
+	    dst_data->field == RTE_FLOW_FIELD_IPV6_ECN ||
+	    src_data->field == RTE_FLOW_FIELD_IPV6_ECN)
 		if (!hca_attr->modify_outer_ip_ecn && root)
 			return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the ECN for current firmware is not supported");
-	return (action_modify_field->width / 32) +
-	       !!(action_modify_field->width % 32);
+	return (width / 32) + !!(width % 32);
 }
 
 /**

@@ -1046,6 +1046,26 @@ flow_items_to_tunnel(const struct rte_flow_item items[])
 }
 
 /**
+ * Gets the tag array given for RTE_FLOW_FIELD_TAG type.
+ *
+ * In old API the value was provided in "level" field, but in new API
+ * it is provided in "tag_array" field. Since encapsulation level is not
+ * relevant for metadata, the tag array can be still provided in "level"
+ * for backwards compatibility.
+ *
+ * @param[in] data
+ *   Pointer to tag modify data structure.
+ *
+ * @return
+ *   Tag array index.
+ */
+static inline uint8_t
+flow_tag_index_get(const struct rte_flow_action_modify_data *data)
+{
+	return data->tag_index ? data->tag_index : data->level;
+}
+
+/**
  * Fetch 1, 2, 3 or 4 byte field from the byte array
  * and return as unsigned integer in host-endian format.
  *
@@ -2276,6 +2296,9 @@ int mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 int mlx5_flow_validate_action_default_miss(uint64_t action_flags,
 				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error);
+int flow_validate_modify_field_level
+			(const struct rte_flow_action_modify_data *data,
+			 struct rte_flow_error *error);
 int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 			      const uint8_t *mask,
 			      const uint8_t *nic_mask,
