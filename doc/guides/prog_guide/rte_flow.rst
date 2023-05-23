@@ -1968,8 +1968,8 @@ Also, regarding packet encapsulation ``level``:
   level.
 
 - ``2`` and subsequent values request RSS to be performed on the specified
-   inner packet encapsulation level, from outermost to innermost (lower to
-   higher values).
+  inner packet encapsulation level, from outermost to innermost (lower to
+  higher values).
 
 Values other than ``0`` are not necessarily supported.
 
@@ -3049,20 +3049,23 @@ The immediate value ``RTE_FLOW_FIELD_VALUE`` (or a pointer to it
 ``RTE_FLOW_FIELD_START`` is used to point to the beginning of a packet.
 See ``enum rte_flow_field_id`` for the list of supported fields.
 
-``op`` selects the operation to perform on a destination field.
+``op`` selects the operation to perform on a destination field:
+
 - ``set`` copies the data from ``src`` field to ``dst`` field.
 - ``add`` adds together ``dst`` and ``src`` and stores the result into ``dst``.
-- ``sub`` subtracts ``src`` from ``dst`` and stores the result into ``dst``
+- ``sub`` subtracts ``src`` from ``dst`` and stores the result into ``dst``.
 
 ``width`` defines a number of bits to use from ``src`` field.
 
 ``level`` is used to access any packet field on any encapsulation level
-as well as any tag element in the tag array.
-- ``0`` means the default behaviour. Depending on the packet type, it can
-mean outermost, innermost or anything in between.
+as well as any tag element in the tag array:
+
+- ``0`` means the default behaviour. Depending on the packet type,
+  it can mean outermost, innermost or anything in between.
 - ``1`` requests access to the outermost packet encapsulation level.
 - ``2`` and subsequent values requests access to the specified packet
-encapsulation level, from outermost to innermost (lower to higher values).
+  encapsulation level, from outermost to innermost (lower to higher values).
+
 For the tag array (in case of multiple tags are supported and present)
 ``level`` translates directly into the array index.
 
@@ -3856,6 +3859,7 @@ Asynchronous operations
 -----------------------
 
 Flow rules management can be done via special lockless flow management queues.
+
 - Queue operations are asynchronous and not thread-safe.
 
 - Operations can thus be invoked by the app's datapath,
