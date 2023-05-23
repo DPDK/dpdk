@@ -3,6 +3,7 @@
  */
 
 #include <cnxk_ethdev.h>
+#include <cnxk_mempool.h>
 
 #define CNXK_NIX_INL_META_POOL_NAME "NIX_INL_META_POOL"
 
@@ -43,7 +44,6 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_
 {
 	const char *mp_name = NULL;
 	struct rte_pktmbuf_pool_private mbp_priv;
-	struct npa_aura_s *aura;
 	struct rte_mempool *mp;
 	uint16_t first_skip;
 	int rc;
@@ -65,7 +65,6 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_
 			return -EINVAL;
 		}
 
-		plt_free(mp->pool_config);
 		rte_mempool_free(mp);
 
 		*aura_handle = 0;
@@ -84,22 +83,12 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_
 		return -EIO;
 	}
 
-	/* Indicate to allocate zero aura */
-	aura = plt_zmalloc(sizeof(struct npa_aura_s), 0);
-	if (!aura) {
-		rc = -ENOMEM;
-		goto free_mp;
-	}
-	aura->ena = 1;
-	if (!mempool_name)
-		aura->pool_addr = 0;
-	else
-		aura->pool_addr = 1; /* Any non zero value, so that alloc from next free Index */
-
-	rc = rte_mempool_set_ops_byname(mp, rte_mbuf_platform_mempool_ops(), aura);
+	rc = rte_mempool_set_ops_byname(mp, rte_mbuf_platform_mempool_ops(),
+					mempool_name ?
+					NULL : PLT_PTR_CAST(CNXK_MEMPOOL_F_ZERO_AURA));
 	if (rc) {
 		plt_err("Failed to setup mempool ops for meta, rc=%d", rc);
-		goto free_aura;
+		goto free_mp;
 	}
 
 	/* Init mempool private area */
@@ -113,15 +102,13 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_
 	rc = rte_mempool_populate_default(mp);
 	if (rc < 0) {
 		plt_err("Failed to create inline meta pool, rc=%d", rc);
-		goto free_aura;
+		goto free_mp;
 	}
 
 	rte_mempool_obj_iter(mp, rte_pktmbuf_init, NULL);
 	*aura_handle = mp->pool_id;
 	*mpool = (uintptr_t)mp;
 	return 0;
-free_aura:
-	plt_free(aura);
 free_mp:
 	rte_mempool_free(mp);
 	return rc;

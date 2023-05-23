@@ -72,7 +72,7 @@ cnxk_mempool_calc_mem_size(const struct rte_mempool *mp, uint32_t obj_num,
 int
 cnxk_mempool_alloc(struct rte_mempool *mp)
 {
-	uint32_t block_count, flags = 0;
+	uint32_t block_count, flags, roc_flags = 0;
 	uint64_t aura_handle = 0;
 	struct npa_aura_s aura;
 	struct npa_pool_s pool;
@@ -96,15 +96,18 @@ cnxk_mempool_alloc(struct rte_mempool *mp)
 	pool.nat_align = 1;
 	pool.buf_offset = mp->header_size / ROC_ALIGN;
 
-	/* Use driver specific mp->pool_config to override aura config */
-	if (mp->pool_config != NULL)
-		memcpy(&aura, mp->pool_config, sizeof(struct npa_aura_s));
+	flags = CNXK_MEMPOOL_FLAGS(mp);
+	if (flags & CNXK_MEMPOOL_F_ZERO_AURA) {
+		roc_flags = ROC_NPA_ZERO_AURA_F;
+	} else if (flags & CNXK_MEMPOOL_F_CUSTOM_AURA) {
+		struct npa_aura_s *paura;
 
-	if (aura.ena && aura.pool_addr == 0)
-		flags = ROC_NPA_ZERO_AURA_F;
+		paura = CNXK_MEMPOOL_CONFIG(mp);
+		memcpy(&aura, paura, sizeof(struct npa_aura_s));
+	}
 
 	rc = roc_npa_pool_create(&aura_handle, block_size, block_count, &aura,
-				 &pool, flags);
+				 &pool, roc_flags);
 	if (rc) {
 		plt_err("Failed to alloc pool or aura rc=%d", rc);
 		goto error;
