@@ -1800,8 +1800,8 @@ Also, regarding packet encapsulation ``level``:
   level.
 
 - ``2`` and subsequent values request RSS to be performed on the specified
-   inner packet encapsulation level, from outermost to innermost (lower to
-   higher values).
+  inner packet encapsulation level, from outermost to innermost (lower to
+  higher values).
 
 Values other than ``0`` are not necessarily supported.
 
