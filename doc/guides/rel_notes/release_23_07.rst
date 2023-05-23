@@ -72,6 +72,12 @@ New Features
   Added ``RTE_FLOW_ITEM_TYPE_TX_QUEUE`` rte_flow pattern
   to match the Tx queue of the sent packet.
 
+* **Added flow rule update.**
+
+  * Added API for updating the action list in the already existing rule.
+    Introduced both ``rte_flow_actions_update()`` and
+    ``rte_flow_async_actions_update()`` functions.
+
 * **Added vmxnet3 version 7 support.**
 
   Added support for vmxnet3 version 7 which includes support

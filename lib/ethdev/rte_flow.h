@@ -4371,6 +4371,29 @@ rte_flow_destroy(uint16_t port_id,
 		 struct rte_flow_error *error);
 
 /**
+ * Update a flow rule with new actions on a given port.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param flow
+ *   Flow rule handle to update.
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_actions_update(uint16_t port_id,
+			struct rte_flow *flow,
+			const struct rte_flow_action actions[],
+			struct rte_flow_error *error);
+
+/**
  * Destroy all flow rules associated with a port.
  *
  * In the unlikely event of failure, handles are still considered destroyed
@@ -5796,6 +5819,45 @@ rte_flow_async_destroy(uint16_t port_id,
 		       struct rte_flow *flow,
 		       void *user_data,
 		       struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue rule update operation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param queue_id
+ *   Flow queue used to insert the rule.
+ * @param[in] op_attr
+ *   Rule creation operation attributes.
+ * @param[in] flow
+ *   Flow rule to be updated.
+ * @param[in] actions
+ *   List of actions to be used.
+ *   The list order should match the order in the actions template.
+ * @param[in] actions_template_index
+ *   Actions template index in the table.
+ * @param[in] user_data
+ *   The user data that will be returned on the completion events.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_async_actions_update(uint16_t port_id,
+			      uint32_t queue_id,
+			      const struct rte_flow_op_attr *op_attr,
+			      struct rte_flow *flow,
+			      const struct rte_flow_action actions[],
+			      uint8_t actions_template_index,
+			      void *user_data,
+			      struct rte_flow_error *error);
 
 /**
  * @warning

@@ -490,6 +490,9 @@ RTE_TRACE_POINT_REGISTER(rte_flow_trace_create,
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_destroy,
 	lib.ethdev.flow.destroy)
 
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_actions_update,
+	lib.ethdev.flow.update)
+
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_flush,
 	lib.ethdev.flow.flush)
 
@@ -579,6 +582,9 @@ RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create,
 
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_destroy,
 	lib.ethdev.flow.async_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_actions_update,
+	lib.ethdev.flow.async_update)
 
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_push,
 	lib.ethdev.flow.push)

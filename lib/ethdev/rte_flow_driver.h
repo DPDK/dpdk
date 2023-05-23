@@ -302,6 +302,22 @@ struct rte_flow_ops {
 		 const void *update, void *query,
 		 enum rte_flow_query_update_mode qu_mode,
 		 void *user_data, struct rte_flow_error *error);
+	/** See rte_flow_actions_update(). */
+	int (*actions_update)
+		(struct rte_eth_dev *dev,
+		 struct rte_flow *flow,
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error);
+	/** See rte_flow_async_actions_update() */
+	int (*async_actions_update)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow *flow,
+		 const struct rte_flow_action actions[],
+		 uint8_t actions_template_index,
+		 void *user_data,
+		 struct rte_flow_error *error);
 };
 
 /**

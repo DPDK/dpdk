@@ -3453,6 +3453,31 @@ Return values:
 
 - 0 on success, a negative errno value otherwise and ``rte_errno`` is set.
 
+Update
+~~~~~~
+
+Update an existing flow rule with a new set of actions.
+
+.. code-block:: c
+
+   struct rte_flow *
+   rte_flow_actions_update(uint16_t port_id,
+                           struct rte_flow *flow,
+                           const struct rte_flow_action *actions[],
+                           struct rte_flow_error *error);
+
+Arguments:
+
+- ``port_id``: port identifier of Ethernet device.
+- ``flow``: flow rule handle to update.
+- ``actions``: associated actions (list terminated by the END action).
+- ``error``: perform verbose error reporting if not NULL. PMDs initialize
+  this structure in case of error only.
+
+Return values:
+
+- 0 on success, a negative errno value otherwise and ``rte_errno`` is set.
+
 Flush
 ~~~~~
 
@@ -3801,6 +3826,23 @@ Enqueueing a flow rule destruction operation is similar to simple destruction.
                           struct rte_flow *flow,
                           void *user_data,
                           struct rte_flow_error *error);
+
+Enqueue update operation
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enqueueing a flow rule update operation to replace actions in the existing rule.
+
+.. code-block:: c
+
+   int
+   rte_flow_async_actions_update(uint16_t port_id,
+                                 uint32_t queue_id,
+                                 const struct rte_flow_op_attr *op_attr,
+                                 struct rte_flow *flow,
+                                 const struct rte_flow_action actions[],
+                                 uint8_t actions_template_index,
+                                 void *user_data,
+                                 struct rte_flow_error *error);
 
 Enqueue indirect action creation operation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
