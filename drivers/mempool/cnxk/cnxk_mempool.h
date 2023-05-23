@@ -16,6 +16,10 @@ enum cnxk_mempool_flags {
 	 * as pool config to create the pool.
 	 */
 	CNXK_MEMPOOL_F_CUSTOM_AURA = RTE_BIT64(1),
+	/* This flag indicates whether the pool is a hardware pool or not.
+	 * This flag is set by the driver.
+	 */
+	CNXK_MEMPOOL_F_IS_HWPOOL = RTE_BIT64(2),
 };
 
 #define CNXK_MEMPOOL_F_MASK 0xFUL
