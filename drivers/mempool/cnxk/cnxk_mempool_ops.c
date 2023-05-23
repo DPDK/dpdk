@@ -174,7 +174,7 @@ cnxk_mempool_populate(struct rte_mempool *mp, unsigned int max_objs,
 	plt_npa_dbg("requested objects %" PRIu64 ", possible objects %" PRIu64
 		    "", (uint64_t)max_objs, (uint64_t)num_elts);
 
-	roc_npa_aura_op_range_set(mp->pool_id, iova,
+	roc_npa_pool_op_range_set(mp->pool_id, iova,
 				  iova + num_elts * total_elt_sz);
 
 	if (roc_npa_pool_range_update_check(mp->pool_id) < 0)

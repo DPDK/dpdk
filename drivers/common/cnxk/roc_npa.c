@@ -18,7 +18,7 @@ roc_npa_lf_init_cb_register(roc_npa_lf_init_cb_t cb)
 }
 
 void
-roc_npa_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
+roc_npa_pool_op_range_set(uint64_t aura_handle, uint64_t start_iova,
 			  uint64_t end_iova)
 {
 	const uint64_t start = roc_npa_aura_handle_to_base(aura_handle) +
@@ -32,11 +32,44 @@ roc_npa_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
 	PLT_ASSERT(lf);
 	lim = lf->aura_lim;
 
+	/* Change the range bookkeeping in software as well as in hardware */
 	lim[reg].ptr_start = PLT_MIN(lim[reg].ptr_start, start_iova);
 	lim[reg].ptr_end = PLT_MAX(lim[reg].ptr_end, end_iova);
 
 	roc_store_pair(lim[reg].ptr_start, reg, start);
 	roc_store_pair(lim[reg].ptr_end, reg, end);
+}
+
+void
+roc_npa_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
+			  uint64_t end_iova)
+{
+	uint64_t reg = roc_npa_aura_handle_to_aura(aura_handle);
+	struct npa_lf *lf = idev_npa_obj_get();
+	struct npa_aura_lim *lim;
+
+	PLT_ASSERT(lf);
+	lim = lf->aura_lim;
+
+	/* Change only the bookkeeping in software */
+	lim[reg].ptr_start = PLT_MIN(lim[reg].ptr_start, start_iova);
+	lim[reg].ptr_end = PLT_MAX(lim[reg].ptr_end, end_iova);
+}
+
+void
+roc_npa_aura_op_range_get(uint64_t aura_handle, uint64_t *start_iova,
+			  uint64_t *end_iova)
+{
+	uint64_t aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+	struct npa_aura_lim *lim;
+	struct npa_lf *lf;
+
+	lf = idev_npa_obj_get();
+	PLT_ASSERT(lf);
+
+	lim = lf->aura_lim;
+	*start_iova = lim[aura_id].ptr_start;
+	*end_iova = lim[aura_id].ptr_end;
 }
 
 static int

@@ -354,6 +354,7 @@ INTERNAL {
 	roc_npa_buf_type_update;
 	roc_npa_aura_drop_set;
 	roc_npa_aura_limit_modify;
+	roc_npa_aura_op_range_get;
 	roc_npa_aura_op_range_set;
 	roc_npa_ctx_dump;
 	roc_npa_dev_fini;
@@ -365,6 +366,7 @@ INTERNAL {
 	roc_npa_pool_create;
 	roc_npa_pool_destroy;
 	roc_npa_pool_op_pc_reset;
+	roc_npa_pool_op_range_set;
 	roc_npa_pool_range_update_check;
 	roc_npa_zero_aura_handle;
 	roc_npc_fini;

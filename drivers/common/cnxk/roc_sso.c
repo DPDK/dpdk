@@ -528,7 +528,7 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 		roc_npa_aura_op_free(xaq->aura_handle, 0, iova);
 		iova += xaq_buf_size;
 	}
-	roc_npa_aura_op_range_set(xaq->aura_handle, (uint64_t)xaq->mem, iova);
+	roc_npa_pool_op_range_set(xaq->aura_handle, (uint64_t)xaq->mem, iova);
 
 	if (roc_npa_aura_op_available_wait(xaq->aura_handle, xaq->nb_xaq, 0) !=
 	    xaq->nb_xaq) {

@@ -735,6 +735,12 @@ int __roc_api roc_npa_pool_range_update_check(uint64_t aura_handle);
 void __roc_api roc_npa_aura_op_range_set(uint64_t aura_handle,
 					 uint64_t start_iova,
 					 uint64_t end_iova);
+void __roc_api roc_npa_aura_op_range_get(uint64_t aura_handle,
+					 uint64_t *start_iova,
+					 uint64_t *end_iova);
+void __roc_api roc_npa_pool_op_range_set(uint64_t aura_handle,
+					 uint64_t start_iova,
+					 uint64_t end_iova);
 int __roc_api roc_npa_aura_create(uint64_t *aura_handle, uint32_t block_count,
 				  struct npa_aura_s *aura, int pool_id,
 				  uint32_t flags);
