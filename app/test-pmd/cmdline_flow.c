@@ -654,11 +654,15 @@ enum index {
 	ACTION_MODIFY_FIELD_DST_TYPE_VALUE,
 	ACTION_MODIFY_FIELD_DST_LEVEL,
 	ACTION_MODIFY_FIELD_DST_LEVEL_VALUE,
+	ACTION_MODIFY_FIELD_DST_TYPE_ID,
+	ACTION_MODIFY_FIELD_DST_CLASS_ID,
 	ACTION_MODIFY_FIELD_DST_OFFSET,
 	ACTION_MODIFY_FIELD_SRC_TYPE,
 	ACTION_MODIFY_FIELD_SRC_TYPE_VALUE,
 	ACTION_MODIFY_FIELD_SRC_LEVEL,
 	ACTION_MODIFY_FIELD_SRC_LEVEL_VALUE,
+	ACTION_MODIFY_FIELD_SRC_TYPE_ID,
+	ACTION_MODIFY_FIELD_SRC_CLASS_ID,
 	ACTION_MODIFY_FIELD_SRC_OFFSET,
 	ACTION_MODIFY_FIELD_SRC_VALUE,
 	ACTION_MODIFY_FIELD_SRC_POINTER,
@@ -872,7 +876,9 @@ static const char *const modify_field_ids[] = {
 	"ipv4_ecn", "ipv6_ecn", "gtp_psc_qfi", "meter_color",
 	"ipv6_proto",
 	"flex_item",
-	"hash_result", NULL
+	"hash_result",
+	"geneve_opt_type", "geneve_opt_class", "geneve_opt_data",
+	NULL
 };
 
 static const char *const meter_colors[] = {
@@ -2342,6 +2348,8 @@ static const enum index next_action_sample[] = {
 
 static const enum index action_modify_field_dst[] = {
 	ACTION_MODIFY_FIELD_DST_LEVEL,
+	ACTION_MODIFY_FIELD_DST_TYPE_ID,
+	ACTION_MODIFY_FIELD_DST_CLASS_ID,
 	ACTION_MODIFY_FIELD_DST_OFFSET,
 	ACTION_MODIFY_FIELD_SRC_TYPE,
 	ZERO,
@@ -2349,6 +2357,8 @@ static const enum index action_modify_field_dst[] = {
 
 static const enum index action_modify_field_src[] = {
 	ACTION_MODIFY_FIELD_SRC_LEVEL,
+	ACTION_MODIFY_FIELD_SRC_TYPE_ID,
+	ACTION_MODIFY_FIELD_SRC_CLASS_ID,
 	ACTION_MODIFY_FIELD_SRC_OFFSET,
 	ACTION_MODIFY_FIELD_SRC_VALUE,
 	ACTION_MODIFY_FIELD_SRC_POINTER,
@@ -6495,6 +6505,24 @@ static const struct token token_list[] = {
 		.call = parse_vc_modify_field_level,
 		.comp = comp_none,
 	},
+	[ACTION_MODIFY_FIELD_DST_TYPE_ID] = {
+		.name = "dst_type_id",
+		.help = "destination field type ID",
+		.next = NEXT(action_modify_field_dst,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_modify_field,
+					dst.type)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_MODIFY_FIELD_DST_CLASS_ID] = {
+		.name = "dst_class",
+		.help = "destination field class ID",
+		.next = NEXT(action_modify_field_dst,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_action_modify_field,
+					     dst.class_id)),
+		.call = parse_vc_conf,
+	},
 	[ACTION_MODIFY_FIELD_DST_OFFSET] = {
 		.name = "dst_offset",
 		.help = "destination field bit offset",
@@ -6529,6 +6557,24 @@ static const struct token token_list[] = {
 		.help = "source field level value",
 		.call = parse_vc_modify_field_level,
 		.comp = comp_none,
+	},
+	[ACTION_MODIFY_FIELD_SRC_TYPE_ID] = {
+		.name = "src_type_id",
+		.help = "source field type ID",
+		.next = NEXT(action_modify_field_src,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_modify_field,
+					src.type)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_MODIFY_FIELD_SRC_CLASS_ID] = {
+		.name = "src_class",
+		.help = "source field class ID",
+		.next = NEXT(action_modify_field_src,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_action_modify_field,
+					     src.class_id)),
+		.call = parse_vc_conf,
 	},
 	[ACTION_MODIFY_FIELD_SRC_OFFSET] = {
 		.name = "src_offset",

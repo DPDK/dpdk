@@ -150,6 +150,10 @@ ABI Changes
 
 * No ABI change that would break compatibility with 22.11.
 
+* ethdev: In the experimental ``struct rte_flow_action_modify_data``:
+
+  * ``level`` field was reduced to 8 bits.
+
 
 Known Issues
 ------------

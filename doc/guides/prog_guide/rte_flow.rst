@@ -3069,6 +3069,14 @@ as well as any tag element in the tag array:
 For the tag array (in case of multiple tags are supported and present)
 ``level`` translates directly into the array index.
 
+``type`` is used to specify (along with ``class_id``) the Geneve option
+which is being modified.
+This field is relevant only for ``RTE_FLOW_FIELD_GENEVE_OPT_XXXX`` type.
+
+``class_id`` is used to specify (along with ``type``) the Geneve option
+which is being modified.
+This field is relevant only for ``RTE_FLOW_FIELD_GENEVE_OPT_XXXX`` type.
+
 ``flex_handle`` is used to specify the flex item pointer which is being
 modified. ``flex_handle`` and ``level`` are mutually exclusive.
 
@@ -3099,6 +3107,18 @@ to replace the third byte of MAC address with value 0x85, application should
 specify destination width as 8, destination offset as 16, and provide immediate
 value as sequence of bytes {xxx, xxx, 0x85, xxx, xxx, xxx}.
 
+The ``RTE_FLOW_FIELD_GENEVE_OPT_DATA`` type supports modifying only one DW in
+single action and align to 32 bits.
+For example, for modifying 16 bits start from offset 24,
+2 different actions should be prepared.
+The first one includes ``offset=24`` and ``width=8``,
+and the second one includes ``offset=32`` and ``width=8``.
+Application should provide the data in immediate value memory only
+for the single DW even though the offset is related to start of first DW.
+For example, to replace the third byte of second DW in Geneve option data
+with value ``0x85``, the application should specify destination width as ``8``,
+destination offset as ``48``, and provide immediate value ``0xXXXX85XX``.
+
 .. _table_rte_flow_action_modify_field:
 
 .. table:: MODIFY_FIELD
@@ -3125,6 +3145,10 @@ value as sequence of bytes {xxx, xxx, 0x85, xxx, xxx, xxx}.
    | ``field``       | ID: packet field, mark, meta, tag, immediate, pointer    |
    +-----------------+----------------------------------------------------------+
    | ``level``       | encapsulation level of a packet field or tag array index |
+   +-----------------+----------------------------------------------------------+
+   | ``type``        | Geneve option type                                       |
+   +-----------------+----------------------------------------------------------+
+   | ``class_id``    | Geneve option class ID                                   |
    +-----------------+----------------------------------------------------------+
    | ``flex_handle`` | flex item handle of a packet field                       |
    +-----------------+----------------------------------------------------------+

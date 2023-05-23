@@ -3565,7 +3565,7 @@ flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"immediate value, pointer and hash result cannot be used as destination");
-	if (mask_conf->dst.level != UINT32_MAX)
+	if (mask_conf->dst.level != UINT8_MAX)
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION, action,
 			"destination encapsulation level must be fully masked");
@@ -3579,7 +3579,7 @@ flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
 				"destination field mask and template are not equal");
 	if (action_conf->src.field != RTE_FLOW_FIELD_POINTER &&
 	    action_conf->src.field != RTE_FLOW_FIELD_VALUE) {
-		if (mask_conf->src.level != UINT32_MAX)
+		if (mask_conf->src.level != UINT8_MAX)
 			return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"source encapsulation level must be fully masked");
@@ -4450,7 +4450,7 @@ flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = RTE_FLOW_FIELD_VLAN_ID,
-			.level = 0xffffffff, .offset = 0xffffffff,
+			.level = 0xff, .offset = 0xffffffff,
 		},
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
@@ -4583,12 +4583,12 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.width = UINT32_MAX,
@@ -5653,7 +5653,7 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
@@ -5677,12 +5677,12 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.width = UINT32_MAX,
@@ -6009,7 +6009,7 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
@@ -6182,12 +6182,12 @@ flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = UINT32_MAX,
+			.level = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.width = UINT32_MAX,

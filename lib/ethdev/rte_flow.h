@@ -3834,6 +3834,9 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_IPV6_PROTO,	/**< IPv6 next header. */
 	RTE_FLOW_FIELD_FLEX_ITEM,	/**< Flex item. */
 	RTE_FLOW_FIELD_HASH_RESULT,	/**< Hash result. */
+	RTE_FLOW_FIELD_GENEVE_OPT_TYPE,	/**< GENEVE option type. */
+	RTE_FLOW_FIELD_GENEVE_OPT_CLASS,/**< GENEVE option class. */
+	RTE_FLOW_FIELD_GENEVE_OPT_DATA,	/**< GENEVE option data. */
 };
 
 /**
@@ -3849,7 +3852,50 @@ struct rte_flow_action_modify_data {
 		struct {
 			/** Encapsulation level or tag index or flex item handle. */
 			union {
-				uint32_t level;
+				struct {
+					/**
+					 * Packet encapsulation level containing
+					 * the field to modify.
+					 *
+					 * - @p 0 requests the default behavior.
+					 *   Depending on the packet type, it
+					 *   can mean outermost, innermost or
+					 *   anything in between.
+					 *
+					 *   It basically stands for the
+					 *   innermost encapsulation level.
+					 *   Modification can be performed
+					 *   according to PMD and device
+					 *   capabilities.
+					 *
+					 * - @p 1 requests modification to be
+					 *   performed on the outermost packet
+					 *   encapsulation level.
+					 *
+					 * - @p 2 and subsequent values request
+					 *   modification to be performed on
+					 *   the specified inner packet
+					 *   encapsulation level, from
+					 *   outermost to innermost (lower to
+					 *   higher values).
+					 *
+					 * Values other than @p 0 are not
+					 * necessarily supported.
+					 */
+					uint8_t level;
+					/**
+					 * Geneve option type. relevant only
+					 * for RTE_FLOW_FIELD_GENEVE_OPT_XXXX
+					 * modification type.
+					 */
+					uint8_t type;
+					/**
+					 * Geneve option class. relevant only
+					 * for RTE_FLOW_FIELD_GENEVE_OPT_XXXX
+					 * modification type.
+					 */
+					rte_be16_t class_id;
+				};
 				struct rte_flow_item_flex_handle *flex_handle;
 			};
 			/** Number of bits to skip from a field. */
