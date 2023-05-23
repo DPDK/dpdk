@@ -3,11 +3,14 @@
  */
 
 #include <rte_mempool.h>
+#include <rte_pmd_cnxk_mempool.h>
 
 #include "roc_api.h"
 #include "cnxk_mempool.h"
 
-#define CN10K_HWPOOL_MEM_SIZE 128
+#define CN10K_HWPOOL_MEM_SIZE	 128
+#define CN10K_NPA_IOVA_RANGE_MIN 0x0
+#define CN10K_NPA_IOVA_RANGE_MAX 0x1fffffffffff80
 
 static int __rte_hot
 cn10k_hwpool_enq(struct rte_mempool *hp, void *const *obj_table, unsigned int n)
@@ -195,6 +198,64 @@ cn10k_hwpool_populate(struct rte_mempool *hp, unsigned int max_objs,
 	roc_npa_aura_op_range_set(hp->pool_id, start_iova, end_iova);
 
 	return hp->size;
+}
+
+int
+rte_pmd_cnxk_mempool_mbuf_exchange(struct rte_mbuf *m1, struct rte_mbuf *m2)
+{
+	struct rte_mempool_objhdr *hdr;
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	if (!(CNXK_MEMPOOL_FLAGS(m1->pool) & CNXK_MEMPOOL_F_NO_RANGE_CHECK) ||
+	    !(CNXK_MEMPOOL_FLAGS(m2->pool) & CNXK_MEMPOOL_F_NO_RANGE_CHECK)) {
+		plt_err("Pools must have range check disabled");
+		return -EINVAL;
+	}
+	if (m1->pool->elt_size != m2->pool->elt_size ||
+	    m1->pool->header_size != m2->pool->header_size ||
+	    m1->pool->trailer_size != m2->pool->trailer_size ||
+	    m1->pool->size != m2->pool->size) {
+		plt_err("Parameters of pools involved in exchange does not match");
+		return -EINVAL;
+	}
+#endif
+	RTE_SWAP(m1->pool, m2->pool);
+	hdr = rte_mempool_get_header(m1);
+	hdr->mp = m1->pool;
+	hdr = rte_mempool_get_header(m2);
+	hdr->mp = m2->pool;
+	return 0;
+}
+
+int
+rte_pmd_cnxk_mempool_is_hwpool(struct rte_mempool *mp)
+{
+	return !!(CNXK_MEMPOOL_FLAGS(mp) & CNXK_MEMPOOL_F_IS_HWPOOL);
+}
+
+int
+rte_pmd_cnxk_mempool_range_check_disable(struct rte_mempool *mp)
+{
+	if (rte_pmd_cnxk_mempool_is_hwpool(mp)) {
+		/* Disable only aura range check for hardware pools */
+		roc_npa_aura_op_range_set(mp->pool_id, CN10K_NPA_IOVA_RANGE_MIN,
+					  CN10K_NPA_IOVA_RANGE_MAX);
+		CNXK_MEMPOOL_SET_FLAGS(mp, CNXK_MEMPOOL_F_NO_RANGE_CHECK);
+		mp = CNXK_MEMPOOL_CONFIG(mp);
+	}
+
+	/* No need to disable again if already disabled */
+	if (CNXK_MEMPOOL_FLAGS(mp) & CNXK_MEMPOOL_F_NO_RANGE_CHECK)
+		return 0;
+
+	/* Disable aura/pool range check */
+	roc_npa_pool_op_range_set(mp->pool_id, CN10K_NPA_IOVA_RANGE_MIN,
+				  CN10K_NPA_IOVA_RANGE_MAX);
+	if (roc_npa_pool_range_update_check(mp->pool_id) < 0)
+		return -EBUSY;
+
+	CNXK_MEMPOOL_SET_FLAGS(mp, CNXK_MEMPOOL_F_NO_RANGE_CHECK);
+	return 0;
 }
 
 static struct rte_mempool_ops cn10k_hwpool_ops = {

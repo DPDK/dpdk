@@ -20,6 +20,10 @@ enum cnxk_mempool_flags {
 	 * This flag is set by the driver.
 	 */
 	CNXK_MEMPOOL_F_IS_HWPOOL = RTE_BIT64(2),
+	/* This flag indicates whether range check has been disabled for
+	 * the pool. This flag is set by the driver.
+	 */
+	CNXK_MEMPOOL_F_NO_RANGE_CHECK = RTE_BIT64(3),
 };
 
 #define CNXK_MEMPOOL_F_MASK 0xFUL

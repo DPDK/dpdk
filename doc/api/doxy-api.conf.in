@@ -9,6 +9,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/crypto/scheduler \
                           @TOPDIR@/drivers/dma/dpaa2 \
                           @TOPDIR@/drivers/event/dlb2 \
+                          @TOPDIR@/drivers/mempool/cnxk \
                           @TOPDIR@/drivers/mempool/dpaa2 \
                           @TOPDIR@/drivers/net/ark \
                           @TOPDIR@/drivers/net/bnxt \
