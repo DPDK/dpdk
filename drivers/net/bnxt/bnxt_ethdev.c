@@ -733,15 +733,49 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 
 static void bnxt_free_prev_ring_stats(struct bnxt *bp)
 {
+	/* tpa v2 devices use ext variant local struct */
+	if (BNXT_TPA_V2_P7(bp)) {
+		rte_free(bp->prev_rx_ring_stats_ext);
+		rte_free(bp->prev_tx_ring_stats_ext);
+		bp->prev_rx_ring_stats_ext = NULL;
+		bp->prev_tx_ring_stats_ext = NULL;
+		return;
+	}
 	rte_free(bp->prev_rx_ring_stats);
 	rte_free(bp->prev_tx_ring_stats);
-
 	bp->prev_rx_ring_stats = NULL;
 	bp->prev_tx_ring_stats = NULL;
 }
 
+static int bnxt_alloc_prev_ring_ext_stats(struct bnxt *bp)
+{
+	bp->prev_rx_ring_stats_ext = rte_zmalloc("bnxt_prev_rx_ring_stats_ext",
+						 sizeof(struct bnxt_ring_stats_ext) *
+						 bp->rx_cp_nr_rings,
+						 0);
+	if (bp->prev_rx_ring_stats_ext == NULL)
+		return -ENOMEM;
+
+	bp->prev_tx_ring_stats_ext = rte_zmalloc("bnxt_prev_tx_ring_stats_ext",
+						 sizeof(struct bnxt_ring_stats_ext) *
+						 bp->tx_cp_nr_rings,
+						 0);
+
+	if (bp->tx_cp_nr_rings > 0 && bp->prev_tx_ring_stats_ext == NULL)
+		goto error;
+
+	return 0;
+
+error:
+	bnxt_free_prev_ring_stats(bp);
+	return -ENOMEM;
+}
+
 static int bnxt_alloc_prev_ring_stats(struct bnxt *bp)
 {
+	if (BNXT_TPA_V2_P7(bp))
+		return bnxt_alloc_prev_ring_ext_stats(bp);
+
 	bp->prev_rx_ring_stats =  rte_zmalloc("bnxt_prev_rx_ring_stats",
 					      sizeof(struct bnxt_ring_stats) *
 					      bp->rx_cp_nr_rings,

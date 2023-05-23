@@ -705,6 +705,53 @@ struct bnxt_ring_stats {
 	uint64_t	rx_agg_aborts;
 };
 
+struct bnxt_ring_stats_ext {
+	/* Number of received unicast packets */
+	uint64_t        rx_ucast_pkts;
+	/* Number of received multicast packets */
+	uint64_t        rx_mcast_pkts;
+	/* Number of received broadcast packets */
+	uint64_t        rx_bcast_pkts;
+	/* Number of discarded packets on receive path */
+	uint64_t        rx_discard_pkts;
+	/* Number of packets on receive path with error */
+	uint64_t        rx_error_pkts;
+	/* Number of received bytes for unicast traffic */
+	uint64_t        rx_ucast_bytes;
+	/* Number of received bytes for multicast traffic */
+	uint64_t        rx_mcast_bytes;
+	/* Number of received bytes for broadcast traffic */
+	uint64_t        rx_bcast_bytes;
+	/* Number of transmitted unicast packets */
+	uint64_t        tx_ucast_pkts;
+	/* Number of transmitted multicast packets */
+	uint64_t        tx_mcast_pkts;
+	/* Number of transmitted broadcast packets */
+	uint64_t        tx_bcast_pkts;
+	/* Number of packets on transmit path with error */
+	uint64_t        tx_error_pkts;
+	/* Number of discarded packets on transmit path */
+	uint64_t        tx_discard_pkts;
+	/* Number of transmitted bytes for unicast traffic */
+	uint64_t        tx_ucast_bytes;
+	/* Number of transmitted bytes for multicast traffic */
+	uint64_t        tx_mcast_bytes;
+	/* Number of transmitted bytes for broadcast traffic */
+	uint64_t        tx_bcast_bytes;
+	/* Number of TPA eligible packets */
+	uint64_t        rx_tpa_eligible_pkt;
+	/* Number of TPA eligible bytes */
+	uint64_t        rx_tpa_eligible_bytes;
+	/* Number of TPA packets */
+	uint64_t        rx_tpa_pkt;
+	/* Number of TPA bytes */
+	uint64_t        rx_tpa_bytes;
+	/* Number of TPA errors */
+	uint64_t        rx_tpa_errors;
+	/* Number of TPA events */
+	uint64_t        rx_tpa_events;
+};
+
 enum bnxt_session_type {
 	BNXT_SESSION_TYPE_REGULAR = 0,
 	BNXT_SESSION_TYPE_SHARED_COMMON,
@@ -982,6 +1029,8 @@ struct bnxt {
 	uint16_t		tx_cfa_action;
 	struct bnxt_ring_stats	*prev_rx_ring_stats;
 	struct bnxt_ring_stats	*prev_tx_ring_stats;
+	struct bnxt_ring_stats_ext	*prev_rx_ring_stats_ext;
+	struct bnxt_ring_stats_ext	*prev_tx_ring_stats_ext;
 	struct bnxt_vnic_queue_db vnic_queue_db;
 
 #define BNXT_MAX_MC_ADDRS	((bp)->max_mcast_addr)

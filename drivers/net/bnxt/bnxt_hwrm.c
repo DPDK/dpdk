@@ -2386,6 +2386,8 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 
 	HWRM_PREP(&req, HWRM_STAT_CTX_ALLOC, BNXT_USE_CHIMP_MB);
 
+	req.stats_dma_length = rte_cpu_to_le_16(BNXT_HWRM_CTX_GET_SIZE(bp));
+
 	req.update_period_ms = rte_cpu_to_le_32(0);
 
 	req.stats_dma_addr = rte_cpu_to_le_64(cpr->hw_stats_map);
@@ -5187,6 +5189,8 @@ static void bnxt_update_prev_stat(uint64_t *cntr, uint64_t *prev_cntr)
 	 * returned by HW in this iteration, so use the previous
 	 * iteration's counter value
 	 */
+	if (!cntr || !prev_cntr)
+		return;
 	if (*prev_cntr && *cntr == 0)
 		*cntr = *prev_cntr;
 	else
@@ -5288,6 +5292,119 @@ int bnxt_hwrm_ring_stats(struct bnxt *bp, uint32_t cid, int idx,
 		ring_stats->tx_discard_pkts = rte_le_to_cpu_64(resp->tx_discard_pkts);
 		bnxt_update_prev_stat(&ring_stats->tx_discard_pkts,
 				      &prev_stats->tx_discard_pkts);
+	}
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_ring_stats_ext(struct bnxt *bp, uint32_t cid, int idx,
+			     struct bnxt_ring_stats_ext *ring_stats, bool rx)
+{
+	int rc = 0;
+	struct hwrm_stat_ext_ctx_query_input req = {.req_type = 0};
+	struct hwrm_stat_ext_ctx_query_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(&req, HWRM_STAT_EXT_CTX_QUERY, BNXT_USE_CHIMP_MB);
+
+	req.stat_ctx_id = rte_cpu_to_le_32(cid);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	if (rx) {
+		struct bnxt_ring_stats_ext *prev_stats = &bp->prev_rx_ring_stats_ext[idx];
+
+		ring_stats->rx_ucast_pkts = rte_le_to_cpu_64(resp->rx_ucast_pkts);
+		bnxt_update_prev_stat(&ring_stats->rx_ucast_pkts,
+				      &prev_stats->rx_ucast_pkts);
+
+		ring_stats->rx_mcast_pkts = rte_le_to_cpu_64(resp->rx_mcast_pkts);
+		bnxt_update_prev_stat(&ring_stats->rx_mcast_pkts,
+				      &prev_stats->rx_mcast_pkts);
+
+		ring_stats->rx_bcast_pkts = rte_le_to_cpu_64(resp->rx_bcast_pkts);
+		bnxt_update_prev_stat(&ring_stats->rx_bcast_pkts,
+				      &prev_stats->rx_bcast_pkts);
+
+		ring_stats->rx_ucast_bytes = rte_le_to_cpu_64(resp->rx_ucast_bytes);
+		bnxt_update_prev_stat(&ring_stats->rx_ucast_bytes,
+				      &prev_stats->rx_ucast_bytes);
+
+		ring_stats->rx_mcast_bytes = rte_le_to_cpu_64(resp->rx_mcast_bytes);
+		bnxt_update_prev_stat(&ring_stats->rx_mcast_bytes,
+				      &prev_stats->rx_mcast_bytes);
+
+		ring_stats->rx_bcast_bytes = rte_le_to_cpu_64(resp->rx_bcast_bytes);
+		bnxt_update_prev_stat(&ring_stats->rx_bcast_bytes,
+				      &prev_stats->rx_bcast_bytes);
+
+		ring_stats->rx_discard_pkts = rte_le_to_cpu_64(resp->rx_discard_pkts);
+		bnxt_update_prev_stat(&ring_stats->rx_discard_pkts,
+				      &prev_stats->rx_discard_pkts);
+
+		ring_stats->rx_error_pkts = rte_le_to_cpu_64(resp->rx_error_pkts);
+		bnxt_update_prev_stat(&ring_stats->rx_error_pkts,
+				      &prev_stats->rx_error_pkts);
+
+		ring_stats->rx_tpa_eligible_pkt = rte_le_to_cpu_64(resp->rx_tpa_eligible_pkt);
+		bnxt_update_prev_stat(&ring_stats->rx_tpa_eligible_pkt,
+				      &prev_stats->rx_tpa_eligible_pkt);
+
+		ring_stats->rx_tpa_eligible_bytes = rte_le_to_cpu_64(resp->rx_tpa_eligible_bytes);
+		bnxt_update_prev_stat(&ring_stats->rx_tpa_eligible_bytes,
+				      &prev_stats->rx_tpa_eligible_bytes);
+
+		ring_stats->rx_tpa_pkt = rte_le_to_cpu_64(resp->rx_tpa_pkt);
+		bnxt_update_prev_stat(&ring_stats->rx_tpa_pkt,
+				      &prev_stats->rx_tpa_pkt);
+
+		ring_stats->rx_tpa_bytes = rte_le_to_cpu_64(resp->rx_tpa_bytes);
+		bnxt_update_prev_stat(&ring_stats->rx_tpa_bytes,
+				      &prev_stats->rx_tpa_bytes);
+
+		ring_stats->rx_tpa_errors = rte_le_to_cpu_64(resp->rx_tpa_errors);
+		bnxt_update_prev_stat(&ring_stats->rx_tpa_errors,
+				      &prev_stats->rx_tpa_errors);
+
+		ring_stats->rx_tpa_events = rte_le_to_cpu_64(resp->rx_tpa_events);
+		bnxt_update_prev_stat(&ring_stats->rx_tpa_events,
+				      &prev_stats->rx_tpa_events);
+	} else {
+		struct bnxt_ring_stats_ext *prev_stats = &bp->prev_tx_ring_stats_ext[idx];
+
+		ring_stats->tx_ucast_pkts = rte_le_to_cpu_64(resp->tx_ucast_pkts);
+		bnxt_update_prev_stat(&ring_stats->tx_ucast_pkts,
+				      &prev_stats->tx_ucast_pkts);
+
+		ring_stats->tx_mcast_pkts = rte_le_to_cpu_64(resp->tx_mcast_pkts);
+		bnxt_update_prev_stat(&ring_stats->tx_mcast_pkts,
+				      &prev_stats->tx_mcast_pkts);
+
+		ring_stats->tx_bcast_pkts = rte_le_to_cpu_64(resp->tx_bcast_pkts);
+		bnxt_update_prev_stat(&ring_stats->tx_bcast_pkts,
+				      &prev_stats->tx_bcast_pkts);
+
+		ring_stats->tx_ucast_bytes = rte_le_to_cpu_64(resp->tx_ucast_bytes);
+		bnxt_update_prev_stat(&ring_stats->tx_ucast_bytes,
+				      &prev_stats->tx_ucast_bytes);
+
+		ring_stats->tx_mcast_bytes = rte_le_to_cpu_64(resp->tx_mcast_bytes);
+		bnxt_update_prev_stat(&ring_stats->tx_mcast_bytes,
+				      &prev_stats->tx_mcast_bytes);
+
+		ring_stats->tx_bcast_bytes = rte_le_to_cpu_64(resp->tx_bcast_bytes);
+		bnxt_update_prev_stat(&ring_stats->tx_bcast_bytes,
+				      &prev_stats->tx_bcast_bytes);
+
+		ring_stats->tx_discard_pkts = rte_le_to_cpu_64(resp->tx_discard_pkts);
+		bnxt_update_prev_stat(&ring_stats->tx_discard_pkts,
+				      &prev_stats->tx_discard_pkts);
+
+		ring_stats->tx_error_pkts = rte_le_to_cpu_64(resp->tx_error_pkts);
+		bnxt_update_prev_stat(&ring_stats->tx_error_pkts,
+				      &prev_stats->tx_error_pkts);
 	}
 
 	HWRM_UNLOCK();

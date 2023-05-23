@@ -483,8 +483,12 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	/* reset the previous stats for the rx_queue since the counters
 	 * will be cleared when the queue is started.
 	 */
-	memset(&bp->prev_rx_ring_stats[rx_queue_id], 0,
-	       sizeof(struct bnxt_ring_stats));
+	if (BNXT_TPA_V2_P7(bp))
+		memset(&bp->prev_rx_ring_stats_ext[rx_queue_id], 0,
+		       sizeof(struct bnxt_ring_stats_ext));
+	else
+		memset(&bp->prev_rx_ring_stats[rx_queue_id], 0,
+		       sizeof(struct bnxt_ring_stats));
 
 	/* Set the queue state to started here.
 	 * We check the status of the queue while posting buffer.

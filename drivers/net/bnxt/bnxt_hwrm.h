@@ -167,8 +167,14 @@ struct bnxt_pf_resource_info {
 	 BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp)   &&		\
 	 BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp))
 
-#define BNXT_SIG_MODE_NRZ	HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_NRZ
-#define BNXT_SIG_MODE_PAM4	HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_PAM4
+/* Is this tpa_v2 and P7
+ * Just add P5 to this once we validate on Thor FW
+ */
+#define BNXT_TPA_V2_P7(bp) ((bp)->max_tpa_v2 && BNXT_CHIP_P7(bp))
+/* Get the size of the stat context size for DMA from HW */
+#define BNXT_HWRM_CTX_GET_SIZE(bp)  (BNXT_TPA_V2_P7(bp) ?	\
+	sizeof(struct ctx_hw_stats_ext) :			\
+	sizeof(struct ctx_hw_stats))
 
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
@@ -352,6 +358,8 @@ int bnxt_hwrm_poll_ver_get(struct bnxt *bp);
 int bnxt_hwrm_rx_ring_reset(struct bnxt *bp, int queue_index);
 int bnxt_hwrm_ring_stats(struct bnxt *bp, uint32_t cid, int idx,
 			 struct bnxt_ring_stats *stats, bool rx);
+int bnxt_hwrm_ring_stats_ext(struct bnxt *bp, uint32_t cid, int idx,
+			     struct bnxt_ring_stats_ext *ring_stats, bool rx);
 int bnxt_hwrm_read_sfp_module_eeprom_info(struct bnxt *bp, uint16_t i2c_addr,
 					  uint16_t page_number, uint16_t start_addr,
 					  uint16_t data_length, uint8_t *buf);

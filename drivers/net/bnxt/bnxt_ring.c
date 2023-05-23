@@ -119,8 +119,7 @@ int bnxt_alloc_rings(struct bnxt *bp, unsigned int socket_id, uint16_t qidx,
 	int ag_ring_len = 0;
 
 	int stats_len = (tx_ring_info || rx_ring_info) ?
-	    RTE_CACHE_LINE_ROUNDUP(sizeof(struct hwrm_stat_ctx_query_output) -
-				   sizeof (struct hwrm_resp_hdr)) : 0;
+	    RTE_CACHE_LINE_ROUNDUP(BNXT_HWRM_CTX_GET_SIZE(bp)) : 0;
 	stats_len = RTE_ALIGN(stats_len, 128);
 
 	int cp_vmem_start = stats_len;
@@ -305,8 +304,9 @@ int bnxt_alloc_rings(struct bnxt *bp, unsigned int socket_id, uint16_t qidx,
 		*cp_ring->vmem = ((char *)mz->addr + stats_len);
 	if (stats_len) {
 		cp_ring_info->hw_stats = mz->addr;
-		cp_ring_info->hw_stats_map = mz_phys_addr;
 	}
+	cp_ring_info->hw_stats_map = mz_phys_addr;
+
 	cp_ring_info->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
 
 	if (nq_ring_info) {

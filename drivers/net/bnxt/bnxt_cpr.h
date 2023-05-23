@@ -68,7 +68,8 @@ struct bnxt_cp_ring_info {
 	struct bnxt_db_info     cp_db;
 	rte_iova_t		cp_desc_mapping;
 
-	struct ctx_hw_stats	*hw_stats;
+	char			*hw_stats;
+	uint16_t		hw_ring_stats_size;
 	rte_iova_t		hw_stats_map;
 	uint32_t		hw_stats_ctx_id;
 
