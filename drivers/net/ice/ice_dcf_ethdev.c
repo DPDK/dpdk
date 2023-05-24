@@ -1400,6 +1400,7 @@ ice_dcf_dev_rss_hash_update(struct rte_eth_dev *dev,
 {
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
 	struct ice_dcf_hw *hw = &adapter->real_hw;
+	int ret;
 
 	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
@@ -1418,7 +1419,28 @@ ice_dcf_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	rte_memcpy(hw->rss_key, rss_conf->rss_key, rss_conf->rss_key_len);
 
-	return ice_dcf_configure_rss_key(hw);
+	ret = ice_dcf_configure_rss_key(hw);
+	if (ret)
+		return ret;
+
+	/* Clear existing RSS. */
+	ret = ice_dcf_set_hena(hw, 0);
+
+	/* It is a workaround, temporarily allow error to be returned
+	 * due to possible lack of PF handling for hena = 0.
+	 */
+	if (ret)
+		PMD_DRV_LOG(WARNING, "fail to clean existing RSS,"
+				"lack PF support");
+
+	/* Set new RSS configuration. */
+	ret = ice_dcf_rss_hash_set(hw, rss_conf->rss_hf, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "fail to set new RSS");
+		return ret;
+	}
+
+	return 0;
 }
 
 static int

@@ -37,6 +37,130 @@
 	(sizeof(struct virtchnl_vf_resource) +	\
 		IAVF_MAX_VF_VSI * sizeof(struct virtchnl_vsi_resource))
 
+#define FIELD_SELECTOR(proto_hdr_field) \
+		(1UL << ((proto_hdr_field) & PROTO_HDR_FIELD_MASK))
+#define BUFF_NOUSED			0
+
+#define proto_hdr_eth { \
+	VIRTCHNL_PROTO_HDR_ETH, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_ETH_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_ETH_DST), {BUFF_NOUSED} }
+
+#define proto_hdr_svlan { \
+	VIRTCHNL_PROTO_HDR_S_VLAN, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_S_VLAN_ID), {BUFF_NOUSED} }
+
+#define proto_hdr_cvlan { \
+	VIRTCHNL_PROTO_HDR_C_VLAN, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_C_VLAN_ID), {BUFF_NOUSED} }
+
+#define proto_hdr_ipv4 { \
+	VIRTCHNL_PROTO_HDR_IPV4, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_DST), {BUFF_NOUSED} }
+
+#define proto_hdr_ipv4_with_prot { \
+	VIRTCHNL_PROTO_HDR_IPV4, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_DST) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_PROT), {BUFF_NOUSED} }
+
+#define proto_hdr_ipv6 { \
+	VIRTCHNL_PROTO_HDR_IPV6, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_DST), {BUFF_NOUSED} }
+
+#define proto_hdr_ipv6_frag { \
+	VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG_PKID), {BUFF_NOUSED} }
+
+#define proto_hdr_ipv6_with_prot { \
+	VIRTCHNL_PROTO_HDR_IPV6, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_DST) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_PROT), {BUFF_NOUSED} }
+
+#define proto_hdr_udp { \
+	VIRTCHNL_PROTO_HDR_UDP, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_UDP_SRC_PORT) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_UDP_DST_PORT), {BUFF_NOUSED} }
+
+#define proto_hdr_tcp { \
+	VIRTCHNL_PROTO_HDR_TCP, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_TCP_SRC_PORT) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_TCP_DST_PORT), {BUFF_NOUSED} }
+
+#define proto_hdr_sctp { \
+	VIRTCHNL_PROTO_HDR_SCTP, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_SCTP_SRC_PORT) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_SCTP_DST_PORT), {BUFF_NOUSED} }
+
+#define proto_hdr_esp { \
+	VIRTCHNL_PROTO_HDR_ESP, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_ESP_SPI), {BUFF_NOUSED} }
+
+#define proto_hdr_ah { \
+	VIRTCHNL_PROTO_HDR_AH, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_AH_SPI), {BUFF_NOUSED} }
+
+#define proto_hdr_l2tpv3 { \
+	VIRTCHNL_PROTO_HDR_L2TPV3, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_L2TPV3_SESS_ID), {BUFF_NOUSED} }
+
+#define proto_hdr_pfcp { \
+	VIRTCHNL_PROTO_HDR_PFCP, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_PFCP_SEID), {BUFF_NOUSED} }
+
+#define proto_hdr_gtpc { \
+	VIRTCHNL_PROTO_HDR_GTPC, 0, {BUFF_NOUSED} }
+
+#define proto_hdr_ecpri { \
+	VIRTCHNL_PROTO_HDR_ECPRI, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_ECPRI_PC_RTC_ID), {BUFF_NOUSED} }
+
+#define proto_hdr_l2tpv2 { \
+	VIRTCHNL_PROTO_HDR_L2TPV2, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_L2TPV2_SESS_ID) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_L2TPV2_LEN_SESS_ID), {BUFF_NOUSED} }
+
+#define proto_hdr_ppp { \
+	VIRTCHNL_PROTO_HDR_PPP, 0, {BUFF_NOUSED} }
+
+#define TUNNEL_LEVEL_OUTER		0
+#define TUNNEL_LEVEL_INNER		1
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv4_tmplt = {
+	TUNNEL_LEVEL_INNER, 1, {{proto_hdr_ipv4}}
+};
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv4_udp_tmplt = {
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv4_with_prot, proto_hdr_udp}}
+};
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv4_tcp_tmplt = {
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv4_with_prot, proto_hdr_tcp}}
+};
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv4_sctp_tmplt = {
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv4, proto_hdr_sctp}}
+};
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv6_tmplt = {
+	TUNNEL_LEVEL_INNER, 1, {{proto_hdr_ipv6}}
+};
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv6_udp_tmplt = {
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv6_with_prot, proto_hdr_udp}}
+};
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv6_tcp_tmplt = {
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv6_with_prot, proto_hdr_tcp}}
+};
+
+struct virtchnl_proto_hdrs ice_dcf_inner_ipv6_sctp_tmplt = {
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv6, proto_hdr_sctp}}
+};
+
 static __rte_always_inline int
 ice_dcf_send_cmd_req_no_irq(struct ice_dcf_hw *hw, enum virtchnl_ops op,
 			    uint8_t *req_msg, uint16_t req_msglen)
@@ -237,7 +361,7 @@ ice_dcf_get_vf_resource(struct ice_dcf_hw *hw)
 	       VIRTCHNL_VF_CAP_ADV_LINK_SPEED | VIRTCHNL_VF_CAP_DCF |
 	       VIRTCHNL_VF_OFFLOAD_VLAN_V2 |
 	       VF_BASE_MODE_OFFLOADS | VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC |
-	       VIRTCHNL_VF_OFFLOAD_QOS;
+	       VIRTCHNL_VF_OFFLOAD_QOS | VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF;
 
 	err = ice_dcf_send_cmd_req_no_irq(hw, VIRTCHNL_OP_GET_VF_RESOURCES,
 					  (uint8_t *)&caps, sizeof(caps));
@@ -858,6 +982,122 @@ ice_dcf_configure_rss_lut(struct ice_dcf_hw *hw)
 }
 
 int
+ice_dcf_add_del_rss_cfg(struct ice_dcf_hw *hw,
+		     struct virtchnl_rss_cfg *rss_cfg, bool add)
+{
+	struct dcf_virtchnl_cmd args;
+	int err;
+
+	memset(&args, 0, sizeof(args));
+
+	args.v_op = add ? VIRTCHNL_OP_ADD_RSS_CFG :
+		VIRTCHNL_OP_DEL_RSS_CFG;
+	args.req_msglen = sizeof(*rss_cfg);
+	args.req_msg = (uint8_t *)rss_cfg;
+	args.rsp_msglen = 0;
+	args.rsp_buflen = 0;
+	args.rsp_msgbuf = NULL;
+	args.pending = 0;
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of %s",
+			    add ? "OP_ADD_RSS_CFG" :
+			    "OP_DEL_RSS_INPUT_CFG");
+
+	return err;
+}
+
+int
+ice_dcf_set_hena(struct ice_dcf_hw *hw, uint64_t hena)
+{
+	struct virtchnl_rss_hena vrh;
+	struct dcf_virtchnl_cmd args;
+	int err;
+
+	memset(&args, 0, sizeof(args));
+
+	vrh.hena = hena;
+	args.v_op = VIRTCHNL_OP_SET_RSS_HENA;
+	args.req_msglen = sizeof(vrh);
+	args.req_msg = (uint8_t *)&vrh;
+	args.rsp_msglen = 0;
+	args.rsp_buflen = 0;
+	args.rsp_msgbuf = NULL;
+	args.pending = 0;
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_INIT_LOG(ERR, "Failed to execute OP_SET_RSS_HENA");
+
+	return err;
+}
+
+int
+ice_dcf_rss_hash_set(struct ice_dcf_hw *hw, uint64_t rss_hf, bool add)
+{
+	struct rte_eth_dev *dev = hw->eth_dev;
+	struct rte_eth_rss_conf *rss_conf;
+	struct virtchnl_rss_cfg rss_cfg;
+
+	rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+#define ICE_DCF_RSS_HF_ALL ( \
+	RTE_ETH_RSS_IPV4 | \
+	RTE_ETH_RSS_IPV6 | \
+	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+
+	rss_cfg.rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC;
+	if (rss_hf & RTE_ETH_RSS_IPV4) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv4_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv4_udp_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv4_tcp_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv4_sctp_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	if (rss_hf & RTE_ETH_RSS_IPV6) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv6_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv6_udp_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv6_tcp_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP) {
+		rss_cfg.proto_hdrs = ice_dcf_inner_ipv6_sctp_tmplt;
+		ice_dcf_add_del_rss_cfg(hw, &rss_cfg, add);
+	}
+
+	rss_conf->rss_hf = rss_hf & ICE_DCF_RSS_HF_ALL;
+	return 0;
+}
+
+int
 ice_dcf_init_rss(struct ice_dcf_hw *hw)
 {
 	struct rte_eth_dev *dev = hw->eth_dev;
@@ -907,6 +1147,23 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 	ret = ice_dcf_configure_rss_key(hw);
 	if (ret)
 		return ret;
+
+	/* Clear existing RSS. */
+	ret = ice_dcf_set_hena(hw, 0);
+
+	/* It is a workaround, temporarily allow error to be returned
+	 * due to possible lack of PF handling for hena = 0.
+	 */
+	if (ret)
+		PMD_DRV_LOG(WARNING, "fail to clean existing RSS,"
+				"lack PF support");
+
+	/* Set RSS hash configuration based on rss_conf->rss_hf. */
+	ret = ice_dcf_rss_hash_set(hw, rss_conf->rss_hf, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "fail to set default RSS");
+		return ret;
+	}
 
 	return 0;
 }
