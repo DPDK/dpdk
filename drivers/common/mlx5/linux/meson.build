@@ -217,6 +217,8 @@ has_sym_args = [
             'ibv_import_device' ],
         [ 'HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE', 'infiniband/mlx5dv.h',
             'mlx5dv_dr_action_create_dest_root_table' ],
+        [ 'HAVE_IBV_FORK_UNNEEDED', 'infiniband/verbs.h',
+            'ibv_is_fork_initialized'],
 ]
 if  libmtcr_ul_found
     has_sym_args += [
