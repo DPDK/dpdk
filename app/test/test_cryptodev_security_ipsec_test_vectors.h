@@ -417,7 +417,8 @@ struct ipsec_test_data pkt_aes_256_ccm = {
 				.op = RTE_CRYPTO_AEAD_OP_ENCRYPT,
 				.algo = RTE_CRYPTO_AEAD_AES_CCM,
 				.key.length = 32,
-				.iv.length = 12,
+				/* IV includes 3B salt and 8B per packet IV */
+				.iv.length = 11,
 				.iv.offset = IV_OFFSET,
 				.digest_length = 16,
 				.aad_length = 12,
