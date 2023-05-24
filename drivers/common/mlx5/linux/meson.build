@@ -221,6 +221,8 @@ has_sym_args = [
             'mlx5dv_dr_action_create_dest_root_table' ],
         [ 'HAVE_MLX5DV_CREATE_STEERING_ANCHOR', 'infiniband/mlx5dv.h',
             'mlx5dv_create_steering_anchor'],
+        [ 'HAVE_IBV_FORK_UNNEEDED', 'infiniband/verbs.h',
+            'ibv_is_fork_initialized'],
 ]
 if  libmtcr_ul_found
     has_sym_args += [
