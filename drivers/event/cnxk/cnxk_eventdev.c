@@ -323,9 +323,9 @@ int
 cnxk_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
 		       uint64_t *tmo_ticks)
 {
-	RTE_SET_USED(event_dev);
-	*tmo_ticks = NSEC2TICK(ns, rte_get_timer_hz());
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 
+	*tmo_ticks = dev->deq_tmo_ns ? ns / dev->deq_tmo_ns : 0;
 	return 0;
 }
 
