@@ -19,6 +19,10 @@
 static int
 mlx5_glue_fork_init(void)
 {
+#ifdef HAVE_IBV_FORK_UNNEEDED
+	if (ibv_is_fork_initialized() == IBV_FORK_UNNEEDED)
+		return 0; /* ibv_fork_init() not needed */
+#endif
 	return ibv_fork_init();
 }
 
