@@ -74,6 +74,9 @@ enum index {
 	SET_RAW_INDEX,
 	SET_SAMPLE_ACTIONS,
 	SET_SAMPLE_INDEX,
+	SET_IPV6_EXT_REMOVE,
+	SET_IPV6_EXT_PUSH,
+	SET_IPV6_EXT_INDEX,
 
 	/* Top-level command. */
 	FLOW,
@@ -509,6 +512,8 @@ enum index {
 	ITEM_IB_BTH_PKEY,
 	ITEM_IB_BTH_DST_QPN,
 	ITEM_IB_BTH_PSN,
+	ITEM_IPV6_PUSH_REMOVE_EXT,
+	ITEM_IPV6_PUSH_REMOVE_EXT_TYPE,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -689,6 +694,12 @@ enum index {
 	ACTION_QUOTA_QU_LIMIT,
 	ACTION_QUOTA_QU_UPDATE_OP,
 	ACTION_QUOTA_QU_UPDATE_OP_NAME,
+	ACTION_IPV6_EXT_REMOVE,
+	ACTION_IPV6_EXT_REMOVE_INDEX,
+	ACTION_IPV6_EXT_REMOVE_INDEX_VALUE,
+	ACTION_IPV6_EXT_PUSH,
+	ACTION_IPV6_EXT_PUSH_INDEX,
+	ACTION_IPV6_EXT_PUSH_INDEX_VALUE,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -752,6 +763,42 @@ struct raw_decap_conf raw_decap_confs[RAW_ENCAP_CONFS_MAX_NUM];
 struct action_raw_decap_data {
 	struct rte_flow_action_raw_decap conf;
 	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
+	uint16_t idx;
+};
+
+/** Maximum data size in struct rte_flow_action_ipv6_ext_push. */
+#define ACTION_IPV6_EXT_PUSH_MAX_DATA 512
+#define IPV6_EXT_PUSH_CONFS_MAX_NUM 8
+
+/** Storage for struct rte_flow_action_ipv6_ext_push. */
+struct ipv6_ext_push_conf {
+	uint8_t data[ACTION_IPV6_EXT_PUSH_MAX_DATA];
+	size_t size;
+	uint8_t type;
+};
+
+struct ipv6_ext_push_conf ipv6_ext_push_confs[IPV6_EXT_PUSH_CONFS_MAX_NUM];
+
+/** Storage for struct rte_flow_action_ipv6_ext_push including external data. */
+struct action_ipv6_ext_push_data {
+	struct rte_flow_action_ipv6_ext_push conf;
+	uint8_t data[ACTION_IPV6_EXT_PUSH_MAX_DATA];
+	uint8_t type;
+	uint16_t idx;
+};
+
+/** Storage for struct rte_flow_action_ipv6_ext_remove. */
+struct ipv6_ext_remove_conf {
+	struct rte_flow_action_ipv6_ext_remove conf;
+	uint8_t type;
+};
+
+struct ipv6_ext_remove_conf ipv6_ext_remove_confs[IPV6_EXT_PUSH_CONFS_MAX_NUM];
+
+/** Storage for struct rte_flow_action_ipv6_ext_remove including external data. */
+struct action_ipv6_ext_remove_data {
+	struct rte_flow_action_ipv6_ext_remove conf;
+	uint8_t type;
 	uint16_t idx;
 };
 
@@ -2076,6 +2123,8 @@ static const enum index next_action[] = {
 	ACTION_SEND_TO_KERNEL,
 	ACTION_QUOTA_CREATE,
 	ACTION_QUOTA_QU,
+	ACTION_IPV6_EXT_REMOVE,
+	ACTION_IPV6_EXT_PUSH,
 	ZERO,
 };
 
@@ -2284,6 +2333,18 @@ static const enum index action_raw_decap[] = {
 	ZERO,
 };
 
+static const enum index action_ipv6_ext_remove[] = {
+	ACTION_IPV6_EXT_REMOVE_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_ipv6_ext_push[] = {
+	ACTION_IPV6_EXT_PUSH_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
 static const enum index action_set_tag[] = {
 	ACTION_SET_TAG_DATA,
 	ACTION_SET_TAG_INDEX,
@@ -2348,6 +2409,22 @@ static const enum index next_action_sample[] = {
 	ZERO,
 };
 
+static const enum index item_ipv6_push_ext[] = {
+	ITEM_IPV6_PUSH_REMOVE_EXT,
+	ZERO,
+};
+
+static const enum index item_ipv6_push_ext_type[] = {
+	ITEM_IPV6_PUSH_REMOVE_EXT_TYPE,
+	ZERO,
+};
+
+static const enum index item_ipv6_push_ext_header[] = {
+	ITEM_IPV6_ROUTING_EXT,
+	ITEM_NEXT,
+	ZERO,
+};
+
 static const enum index action_modify_field_dst[] = {
 	ACTION_MODIFY_FIELD_DST_LEVEL,
 	ACTION_MODIFY_FIELD_DST_TAG_INDEX,
@@ -2395,6 +2472,9 @@ static int parse_set_raw_encap_decap(struct context *, const struct token *,
 static int parse_set_sample_action(struct context *, const struct token *,
 				   const char *, unsigned int,
 				   void *, unsigned int);
+static int parse_set_ipv6_ext_action(struct context *, const struct token *,
+				     const char *, unsigned int,
+				     void *, unsigned int);
 static int parse_set_init(struct context *, const struct token *,
 			  const char *, unsigned int,
 			  void *, unsigned int);
@@ -2472,6 +2552,22 @@ static int parse_vc_action_raw_encap_index(struct context *,
 static int parse_vc_action_raw_decap_index(struct context *,
 					   const struct token *, const char *,
 					   unsigned int, void *, unsigned int);
+static int parse_vc_action_ipv6_ext_remove(struct context *ctx, const struct token *token,
+					   const char *str, unsigned int len, void *buf,
+					   unsigned int size);
+static int parse_vc_action_ipv6_ext_remove_index(struct context *ctx,
+						 const struct token *token,
+						 const char *str, unsigned int len,
+						 void *buf,
+						 unsigned int size);
+static int parse_vc_action_ipv6_ext_push(struct context *ctx, const struct token *token,
+					 const char *str, unsigned int len, void *buf,
+					 unsigned int size);
+static int parse_vc_action_ipv6_ext_push_index(struct context *ctx,
+					       const struct token *token,
+					       const char *str, unsigned int len,
+					       void *buf,
+					       unsigned int size);
 static int parse_vc_action_set_meta(struct context *ctx,
 				    const struct token *token, const char *str,
 				    unsigned int len, void *buf,
@@ -2661,6 +2757,8 @@ static int comp_set_raw_index(struct context *, const struct token *,
 			      unsigned int, char *, unsigned int);
 static int comp_set_sample_index(struct context *, const struct token *,
 			      unsigned int, char *, unsigned int);
+static int comp_set_ipv6_ext_index(struct context *ctx, const struct token *token,
+				   unsigned int ent, char *buf, unsigned int size);
 static int comp_set_modify_field_op(struct context *, const struct token *,
 			      unsigned int, char *, unsigned int);
 static int comp_set_modify_field_id(struct context *, const struct token *,
@@ -6647,6 +6745,48 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
 	},
+	[ACTION_IPV6_EXT_REMOVE] = {
+		.name = "ipv6_ext_remove",
+		.help = "IPv6 extension type, defined by set ipv6_ext_remove",
+		.priv = PRIV_ACTION(IPV6_EXT_REMOVE,
+			sizeof(struct action_ipv6_ext_remove_data)),
+		.next = NEXT(action_ipv6_ext_remove),
+		.call = parse_vc_action_ipv6_ext_remove,
+	},
+	[ACTION_IPV6_EXT_REMOVE_INDEX] = {
+		.name = "index",
+		.help = "the index of ipv6_ext_remove",
+		.next = NEXT(NEXT_ENTRY(ACTION_IPV6_EXT_REMOVE_INDEX_VALUE)),
+	},
+	[ACTION_IPV6_EXT_REMOVE_INDEX_VALUE] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_ipv6_ext_remove_index,
+		.comp = comp_set_ipv6_ext_index,
+	},
+	[ACTION_IPV6_EXT_PUSH] = {
+		.name = "ipv6_ext_push",
+		.help = "IPv6 extension data, defined by set ipv6_ext_push",
+		.priv = PRIV_ACTION(IPV6_EXT_PUSH,
+			sizeof(struct action_ipv6_ext_push_data)),
+		.next = NEXT(action_ipv6_ext_push),
+		.call = parse_vc_action_ipv6_ext_push,
+	},
+	[ACTION_IPV6_EXT_PUSH_INDEX] = {
+		.name = "index",
+		.help = "the index of ipv6_ext_push",
+		.next = NEXT(NEXT_ENTRY(ACTION_IPV6_EXT_PUSH_INDEX_VALUE)),
+	},
+	[ACTION_IPV6_EXT_PUSH_INDEX_VALUE] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_ipv6_ext_push_index,
+		.comp = comp_set_ipv6_ext_index,
+	},
 	/* Top level command. */
 	[SET] = {
 		.name = "set",
@@ -6656,7 +6796,9 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY
 			     (SET_RAW_ENCAP,
 			      SET_RAW_DECAP,
-			      SET_SAMPLE_ACTIONS)),
+			      SET_SAMPLE_ACTIONS,
+			      SET_IPV6_EXT_REMOVE,
+			      SET_IPV6_EXT_PUSH)),
 		.call = parse_set_init,
 	},
 	/* Sub-level commands. */
@@ -6703,6 +6845,49 @@ static const struct token token_list[] = {
 				 sizeof(((struct buffer *)0)->port),
 				 0, RAW_SAMPLE_CONFS_MAX_NUM - 1)),
 		.call = parse_set_sample_action,
+	},
+	[SET_IPV6_EXT_PUSH] = {
+		.name = "ipv6_ext_push",
+		.help = "set IPv6 extension header",
+		.next = NEXT(NEXT_ENTRY(SET_IPV6_EXT_INDEX)),
+		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
+				(offsetof(struct buffer, port),
+				 sizeof(((struct buffer *)0)->port),
+				 0, IPV6_EXT_PUSH_CONFS_MAX_NUM - 1)),
+		.call = parse_set_ipv6_ext_action,
+	},
+	[SET_IPV6_EXT_REMOVE] = {
+		.name = "ipv6_ext_remove",
+		.help = "set IPv6 extension header",
+		.next = NEXT(NEXT_ENTRY(SET_IPV6_EXT_INDEX)),
+		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
+				(offsetof(struct buffer, port),
+				 sizeof(((struct buffer *)0)->port),
+				 0, IPV6_EXT_PUSH_CONFS_MAX_NUM - 1)),
+		.call = parse_set_ipv6_ext_action,
+	},
+	[SET_IPV6_EXT_INDEX] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "index of ipv6 extension push/remove actions",
+		.next = NEXT(item_ipv6_push_ext),
+		.call = parse_port,
+	},
+	[ITEM_IPV6_PUSH_REMOVE_EXT] = {
+		.name = "ipv6_ext",
+		.help = "set IPv6 extension header",
+		.priv = PRIV_ITEM(IPV6_EXT,
+				  sizeof(struct rte_flow_item_ipv6_ext)),
+		.next = NEXT(item_ipv6_push_ext_type),
+		.call = parse_vc,
+	},
+	[ITEM_IPV6_PUSH_REMOVE_EXT_TYPE] = {
+		.name = "type",
+		.help = "set IPv6 extension type",
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6_ext,
+					     next_hdr)),
+		.next = NEXT(item_ipv6_push_ext_header, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
 	},
 	[ACTION_SET_TAG] = {
 		.name = "set_tag",
@@ -9089,6 +9274,140 @@ parse_vc_action_raw_decap(struct context *ctx, const struct token *token,
 }
 
 static int
+parse_vc_action_ipv6_ext_remove(struct context *ctx, const struct token *token,
+				const char *str, unsigned int len, void *buf,
+				unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_ipv6_ext_remove_data *ipv6_ext_remove_data = NULL;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Copy the headers to the buffer. */
+	ipv6_ext_remove_data = ctx->object;
+	ipv6_ext_remove_data->conf.type = ipv6_ext_remove_confs[0].type;
+	action->conf = &ipv6_ext_remove_data->conf;
+	return ret;
+}
+
+static int
+parse_vc_action_ipv6_ext_remove_index(struct context *ctx, const struct token *token,
+				      const char *str, unsigned int len, void *buf,
+				      unsigned int size)
+{
+	struct action_ipv6_ext_remove_data *action_ipv6_ext_remove_data;
+	struct rte_flow_action *action;
+	const struct arg *arg;
+	struct buffer *out = buf;
+	int ret;
+	uint16_t idx;
+
+	RTE_SET_USED(token);
+	RTE_SET_USED(buf);
+	RTE_SET_USED(size);
+	arg = ARGS_ENTRY_ARB_BOUNDED
+		(offsetof(struct action_ipv6_ext_remove_data, idx),
+		 sizeof(((struct action_ipv6_ext_remove_data *)0)->idx),
+		 0, IPV6_EXT_PUSH_CONFS_MAX_NUM - 1);
+	if (push_args(ctx, arg))
+		return -1;
+	ret = parse_int(ctx, token, str, len, NULL, 0);
+	if (ret < 0) {
+		pop_args(ctx);
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	action_ipv6_ext_remove_data = ctx->object;
+	idx = action_ipv6_ext_remove_data->idx;
+	action_ipv6_ext_remove_data->conf.type = ipv6_ext_remove_confs[idx].type;
+	action->conf = &action_ipv6_ext_remove_data->conf;
+	return len;
+}
+
+static int
+parse_vc_action_ipv6_ext_push(struct context *ctx, const struct token *token,
+			      const char *str, unsigned int len, void *buf,
+			      unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_ipv6_ext_push_data *ipv6_ext_push_data = NULL;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Copy the headers to the buffer. */
+	ipv6_ext_push_data = ctx->object;
+	ipv6_ext_push_data->conf.type = ipv6_ext_push_confs[0].type;
+	ipv6_ext_push_data->conf.data = ipv6_ext_push_confs[0].data;
+	ipv6_ext_push_data->conf.size = ipv6_ext_push_confs[0].size;
+	action->conf = &ipv6_ext_push_data->conf;
+	return ret;
+}
+
+static int
+parse_vc_action_ipv6_ext_push_index(struct context *ctx, const struct token *token,
+				    const char *str, unsigned int len, void *buf,
+				    unsigned int size)
+{
+	struct action_ipv6_ext_push_data *action_ipv6_ext_push_data;
+	struct rte_flow_action *action;
+	const struct arg *arg;
+	struct buffer *out = buf;
+	int ret;
+	uint16_t idx;
+
+	RTE_SET_USED(token);
+	RTE_SET_USED(buf);
+	RTE_SET_USED(size);
+	arg = ARGS_ENTRY_ARB_BOUNDED
+		(offsetof(struct action_ipv6_ext_push_data, idx),
+		 sizeof(((struct action_ipv6_ext_push_data *)0)->idx),
+		 0, IPV6_EXT_PUSH_CONFS_MAX_NUM - 1);
+	if (push_args(ctx, arg))
+		return -1;
+	ret = parse_int(ctx, token, str, len, NULL, 0);
+	if (ret < 0) {
+		pop_args(ctx);
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	action_ipv6_ext_push_data = ctx->object;
+	idx = action_ipv6_ext_push_data->idx;
+	action_ipv6_ext_push_data->conf.type = ipv6_ext_push_confs[idx].type;
+	action_ipv6_ext_push_data->conf.size = ipv6_ext_push_confs[idx].size;
+	action_ipv6_ext_push_data->conf.data = ipv6_ext_push_confs[idx].data;
+	action->conf = &action_ipv6_ext_push_data->conf;
+	return len;
+}
+
+static int
 parse_vc_action_set_meta(struct context *ctx, const struct token *token,
 			 const char *str, unsigned int len, void *buf,
 			 unsigned int size)
@@ -10820,6 +11139,35 @@ parse_set_sample_action(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse set command, initialize output buffer for subsequent tokens. */
+static int
+parse_set_ipv6_ext_action(struct context *ctx, const struct token *token,
+			  const char *str, unsigned int len,
+			  void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	/* Make sure buffer is large enough. */
+	if (size < sizeof(*out))
+		return -1;
+	ctx->objdata = 0;
+	ctx->objmask = NULL;
+	ctx->object = out;
+	if (!out->command)
+		return -1;
+	out->command = ctx->curr;
+	/* For ipv6_ext_push/remove we need is pattern */
+	out->args.vc.pattern = (void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+						       sizeof(double));
+	return len;
+}
+
 /**
  * Parse set raw_encap/raw_decap command,
  * initialize output buffer for subsequent tokens.
@@ -11242,6 +11590,24 @@ comp_set_raw_index(struct context *ctx, const struct token *token,
 	RTE_SET_USED(ctx);
 	RTE_SET_USED(token);
 	for (idx = 0; idx < RAW_ENCAP_CONFS_MAX_NUM; ++idx) {
+		if (buf && idx == ent)
+			return snprintf(buf, size, "%u", idx);
+		++nb;
+	}
+	return nb;
+}
+
+/** Complete index number for set raw_ipv6_ext_push/ipv6_ext_remove commands. */
+static int
+comp_set_ipv6_ext_index(struct context *ctx, const struct token *token,
+			unsigned int ent, char *buf, unsigned int size)
+{
+	uint16_t idx = 0;
+	uint16_t nb = 0;
+
+	RTE_SET_USED(ctx);
+	RTE_SET_USED(token);
+	for (idx = 0; idx < IPV6_EXT_PUSH_CONFS_MAX_NUM; ++idx) {
 		if (buf && idx == ent)
 			return snprintf(buf, size, "%u", idx);
 		++nb;
@@ -12216,6 +12582,78 @@ flow_item_default_mask(const struct rte_flow_item *item)
 
 /** Dispatch parsed buffer to function calls. */
 static void
+cmd_set_ipv6_ext_parsed(const struct buffer *in)
+{
+	uint32_t n = in->args.vc.pattern_n;
+	int i = 0;
+	struct rte_flow_item *item = NULL;
+	size_t size = 0;
+	uint8_t *data = NULL;
+	uint8_t *type = NULL;
+	size_t *total_size = NULL;
+	uint16_t idx = in->port; /* We borrow port field as index */
+	struct rte_flow_item_ipv6_routing_ext *ext;
+	const struct rte_flow_item_ipv6_ext *ipv6_ext;
+
+	RTE_ASSERT(in->command == SET_IPV6_EXT_PUSH ||
+		   in->command == SET_IPV6_EXT_REMOVE);
+
+	if (in->command == SET_IPV6_EXT_REMOVE) {
+		if (n != 1 || in->args.vc.pattern->type !=
+		    RTE_FLOW_ITEM_TYPE_IPV6_EXT) {
+			fprintf(stderr, "Error - Not supported item\n");
+			return;
+		}
+		type = (uint8_t *)&ipv6_ext_remove_confs[idx].type;
+		item = in->args.vc.pattern;
+		ipv6_ext = item->spec;
+		*type = ipv6_ext->next_hdr;
+		return;
+	}
+
+	total_size = &ipv6_ext_push_confs[idx].size;
+	data = (uint8_t *)&ipv6_ext_push_confs[idx].data;
+	type = (uint8_t *)&ipv6_ext_push_confs[idx].type;
+
+	*total_size = 0;
+	memset(data, 0x00, ACTION_RAW_ENCAP_MAX_DATA);
+	for (i = n - 1 ; i >= 0; --i) {
+		item = in->args.vc.pattern + i;
+		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_IPV6_EXT:
+			ipv6_ext = item->spec;
+			*type = ipv6_ext->next_hdr;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
+			ext = (struct rte_flow_item_ipv6_routing_ext *)(uintptr_t)item->spec;
+			if (!ext->hdr.hdr_len) {
+				size = sizeof(struct rte_ipv6_routing_ext) +
+				(ext->hdr.segments_left << 4);
+				ext->hdr.hdr_len = ext->hdr.segments_left << 1;
+				/* Indicate no TLV once SRH. */
+				if (ext->hdr.type == 4)
+					ext->hdr.last_entry = ext->hdr.segments_left - 1;
+			} else {
+				size = sizeof(struct rte_ipv6_routing_ext) +
+				(ext->hdr.hdr_len << 3);
+			}
+			*total_size += size;
+			memcpy(data, ext, size);
+			break;
+		default:
+			fprintf(stderr, "Error - Not supported item\n");
+			goto error;
+		}
+	}
+	RTE_ASSERT((*total_size) <= ACTION_IPV6_EXT_PUSH_MAX_DATA);
+	return;
+error:
+	*total_size = 0;
+	memset(data, 0x00, ACTION_IPV6_EXT_PUSH_MAX_DATA);
+}
+
+/** Dispatch parsed buffer to function calls. */
+static void
 cmd_set_raw_parsed_sample(const struct buffer *in)
 {
 	uint32_t n = in->args.vc.actions_n;
@@ -12347,6 +12785,9 @@ cmd_set_raw_parsed(const struct buffer *in)
 
 	if (in->command == SET_SAMPLE_ACTIONS)
 		return cmd_set_raw_parsed_sample(in);
+	else if (in->command == SET_IPV6_EXT_PUSH ||
+		 in->command == SET_IPV6_EXT_REMOVE)
+		return cmd_set_ipv6_ext_parsed(in);
 	RTE_ASSERT(in->command == SET_RAW_ENCAP ||
 		   in->command == SET_RAW_DECAP);
 	if (in->command == SET_RAW_ENCAP) {
