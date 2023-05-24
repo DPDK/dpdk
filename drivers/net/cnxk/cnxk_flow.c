@@ -58,7 +58,9 @@ const struct cnxk_rte_flow_term_info term[] = {
 	[RTE_FLOW_ITEM_TYPE_RAW] = {ROC_NPC_ITEM_TYPE_RAW,
 				    sizeof(struct rte_flow_item_raw)},
 	[RTE_FLOW_ITEM_TYPE_MARK] = {ROC_NPC_ITEM_TYPE_MARK,
-				     sizeof(struct rte_flow_item_mark)}};
+				     sizeof(struct rte_flow_item_mark)},
+	[RTE_FLOW_ITEM_TYPE_TX_QUEUE] = {ROC_NPC_ITEM_TYPE_TX_QUEUE,
+				     sizeof(struct rte_flow_item_tx_queue)}};
 
 static int
 npc_rss_action_validate(struct rte_eth_dev *eth_dev,
