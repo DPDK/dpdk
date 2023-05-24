@@ -2968,6 +2968,25 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SKIP_CMAN,
 
 	/**
+	 * RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH
+	 *
+	 * Push IPv6 extension into IPv6 packet.
+	 *
+	 * @see struct rte_flow_action_ipv6_ext_push.
+	 */
+	RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH,
+
+	/**
+	 * RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE
+	 *
+	 * Remove IPv6 extension from IPv6 packet whose type
+	 * is provided in its configuration buffer.
+	 *
+	 * @see struct rte_flow_action_ipv6_ext_remove.
+	 */
+	RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE,
+
+	/**
 	 * Action handle to reference flow actions list.
 	 *
 	 * @see struct rte_flow_action_indirect_list
@@ -3520,6 +3539,38 @@ struct rte_flow_action_set_ipv4 {
  */
 struct rte_flow_action_set_ipv6 {
 	uint8_t ipv6_addr[16];
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH
+ *
+ * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH include:
+ *
+ * - IPV6_EXT TYPE / IPV6_EXT_HEADER_IN_TYPE / END
+ *
+ * The data must be added as the last IPv6 extension.
+ */
+struct rte_flow_action_ipv6_ext_push {
+	uint8_t *data; /**< IPv6 extension header data. */
+	size_t size; /**< Size (in bytes) of @p data. */
+	uint8_t type; /**< Type of IPv6 extension. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE
+ *
+ * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE include:
+ *
+ * - IPV6_EXT TYPE / END
+ */
+struct rte_flow_action_ipv6_ext_remove {
+	uint8_t type; /**< Type of IPv6 extension. */
 };
 
 /**

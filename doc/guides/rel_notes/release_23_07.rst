@@ -80,6 +80,12 @@ New Features
 
   Added ``RTE_FLOW_ITEM_TYPE_IB_BTH`` to match Infiniband BTH fields.
 
+* **Added actions to push or remove IPv6 extension.**
+
+  Added ``RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH`` and ``RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH``
+  to push or remove the specific IPv6 extension into or from the packets.
+  Push always put the new extension as the last one due to the next header awareness.
+
 * **Added indirect list flow action.**
 
   Added API to manage (create, destroy, update) a list of indirect actions.

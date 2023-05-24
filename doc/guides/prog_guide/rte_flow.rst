@@ -2508,6 +2508,28 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    | ``ipv6_addr`` | new IPv6 destination address |
    +---------------+------------------------------+
 
+Action: ``IPV6_EXT_PUSH``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Add an IPv6 extension into IPv6 header.
+Its template is provided in its data buffer
+with the specific type as defined in ``rte_flow_action_ipv6_ext_push``.
+
+This action modifies the payload of matched flows.
+The data supplied must be a valid extension in the specified type,
+it should be added the last one if preceding extension existed.
+When applied to the original packet,
+the resulting packet must be a valid packet.
+
+Action: ``IPV6_EXT_REMOVE``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Remove an IPv6 extension whose type is provided in
+``rte_flow_action_ipv6_ext_remove``.
+
+This action modifies the payload of matched flow
+and the packet should be valid after removing.
+
 Action: ``SET_TP_SRC``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
