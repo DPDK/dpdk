@@ -39,7 +39,11 @@ cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev)
 	uint32_t xae_cnt;
 	int rc;
 
-	xae_cnt = dev->sso.iue;
+	if (dev->num_events > 0)
+		xae_cnt = dev->num_events;
+	else
+		xae_cnt = dev->sso.iue;
+
 	if (dev->xae_cnt)
 		xae_cnt += dev->xae_cnt;
 	if (dev->adptr_xae_cnt)
@@ -189,6 +193,7 @@ cnxk_sso_dev_validate(const struct rte_eventdev *event_dev, uint32_t deq_depth,
 
 	dev->nb_event_queues = conf->nb_event_queues;
 	dev->nb_event_ports = conf->nb_event_ports;
+	dev->num_events = conf->nb_events_limit;
 
 	return 0;
 }

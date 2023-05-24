@@ -89,6 +89,7 @@ struct cnxk_sso_evdev {
 	uint32_t min_dequeue_timeout_ns;
 	uint32_t max_dequeue_timeout_ns;
 	int32_t max_num_events;
+	int32_t num_events;
 	uint64_t xaq_lmt;
 	int64_t *fc_cache_space;
 	rte_iova_t fc_iova;
