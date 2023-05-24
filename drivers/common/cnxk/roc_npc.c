@@ -779,11 +779,10 @@ npc_parse_pattern(struct npc *npc, const struct roc_npc_item_info pattern[],
 		  struct roc_npc_flow *flow, struct npc_parse_state *pst)
 {
 	npc_parse_stage_func_t parse_stage_funcs[] = {
-		npc_parse_meta_items, npc_parse_mark_item,  npc_parse_pre_l2,
-		npc_parse_cpt_hdr,    npc_parse_higig2_hdr, npc_parse_la,
-		npc_parse_lb,	      npc_parse_lc,	    npc_parse_ld,
-		npc_parse_le,	      npc_parse_lf,	    npc_parse_lg,
-		npc_parse_lh,
+		npc_parse_meta_items, npc_parse_mark_item, npc_parse_pre_l2, npc_parse_cpt_hdr,
+		npc_parse_higig2_hdr, npc_parse_tx_queue,  npc_parse_la,     npc_parse_lb,
+		npc_parse_lc,	      npc_parse_ld,	   npc_parse_le,     npc_parse_lf,
+		npc_parse_lg,	      npc_parse_lh,
 	};
 	uint8_t layer = 0;
 	int key_offset;
@@ -792,9 +791,9 @@ npc_parse_pattern(struct npc *npc, const struct roc_npc_item_info pattern[],
 	if (pattern == NULL)
 		return NPC_ERR_PARAM;
 
-	memset(pst, 0, sizeof(*pst));
 	pst->npc = npc;
 	pst->flow = flow;
+	pst->nix_intf = flow->nix_intf;
 
 	/* Use integral byte offset */
 	key_offset = pst->npc->keyx_len[flow->nix_intf];
@@ -864,7 +863,11 @@ npc_parse_rule(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	       struct npc_parse_state *pst)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct roc_nix *roc_nix = roc_npc->roc_nix;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	int err;
+
+	pst->nb_tx_queues = nix->nb_tx_queues;
 
 	/* Check attr */
 	err = npc_parse_attr(npc, attr, flow);
@@ -1445,6 +1448,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		return NULL;
 	}
 	memset(flow, 0, sizeof(*flow));
+	memset(&parse_state, 0, sizeof(parse_state));
 
 	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow,
 			    &parse_state);

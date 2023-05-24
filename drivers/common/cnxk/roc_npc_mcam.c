@@ -587,9 +587,47 @@ npc_mcam_set_channel(struct roc_npc_flow *flow,
 	flow->mcam_mask[0] |= (uint64_t)mask;
 }
 
+static int
+npc_mcam_set_pf_func(struct npc *npc, struct roc_npc_flow *flow, uint16_t pf_func)
+{
+#define NPC_PF_FUNC_WIDTH    2
+#define NPC_KEX_PF_FUNC_MASK 0xFFFF
+	uint16_t nr_bytes, hdr_offset, key_offset, pf_func_offset;
+	uint8_t *flow_mcam_data, *flow_mcam_mask;
+	struct npc_lid_lt_xtract_info *xinfo;
+	bool pffunc_found = false;
+	uint16_t mask = 0xFFFF;
+	int i;
+
+	flow_mcam_data = (uint8_t *)flow->mcam_data;
+	flow_mcam_mask = (uint8_t *)flow->mcam_mask;
+
+	xinfo = &npc->prx_dxcfg[NIX_INTF_TX][NPC_LID_LA][NPC_LT_LA_IH_NIX_ETHER];
+
+	for (i = 0; i < NPC_MAX_LD; i++) {
+		nr_bytes = xinfo->xtract[i].len;
+		hdr_offset = xinfo->xtract[i].hdr_off;
+		key_offset = xinfo->xtract[i].key_off;
+
+		if (hdr_offset > 0 || nr_bytes < NPC_PF_FUNC_WIDTH)
+			continue;
+		else
+			pffunc_found = true;
+
+		pf_func_offset = key_offset + nr_bytes - NPC_PF_FUNC_WIDTH;
+		memcpy((void *)&flow_mcam_data[pf_func_offset], (uint8_t *)&pf_func,
+		       NPC_PF_FUNC_WIDTH);
+		memcpy((void *)&flow_mcam_mask[pf_func_offset], (uint8_t *)&mask,
+		       NPC_PF_FUNC_WIDTH);
+	}
+	if (!pffunc_found)
+		return -EINVAL;
+
+	return 0;
+}
+
 int
-npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
-			 struct npc_parse_state *pst)
+npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow, struct npc_parse_state *pst)
 {
 	struct npc_mcam_write_entry_req *req;
 	struct nix_inl_dev *inl_dev = NULL;
@@ -668,6 +706,16 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 	 */
 	req->entry_data.vtag_action = flow->vtag_action;
 
+	if (flow->nix_intf == NIX_INTF_TX) {
+		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
+
+		pf_func = plt_cpu_to_be_16(pf_func);
+
+		rc = npc_mcam_set_pf_func(npc, flow, pf_func);
+		if (rc)
+			return rc;
+	}
+
 	for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
 		req->entry_data.kw[idx] = flow->mcam_data[idx];
 		req->entry_data.kw_mask[idx] = flow->mcam_mask[idx];
@@ -718,15 +766,6 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 				flow->mcam_mask[0] |= (0x7ULL << la_offset);
 			}
 		}
-	} else {
-		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
-
-		pf_func = plt_cpu_to_be_16(pf_func);
-		req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);
-		req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
-
-		flow->mcam_data[0] |= ((uint64_t)pf_func << 32);
-		flow->mcam_mask[0] |= ((uint64_t)0xffff << 32);
 	}
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
