@@ -21,8 +21,13 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
+#include <rte_version.h>
 
 #include "../gve_logs.h"
+
+#ifdef RTE_EXEC_ENV_LINUX
+#include <sys/utsname.h>
+#endif
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -72,6 +77,12 @@ typedef rte_iova_t dma_addr_t;
 #define __iomem
 
 #define msleep(ms)		rte_delay_ms(ms)
+
+#define OS_VERSION_STRLEN 128
+struct os_version_string {
+	char os_version_str1[OS_VERSION_STRLEN];
+	char os_version_str2[OS_VERSION_STRLEN];
+};
 
 /* These macros are used to generate compilation errors if a struct/union
  * is not exactly the correct length. It gives a divide by zero error if
@@ -160,4 +171,17 @@ gve_free_dma_mem(struct gve_dma_mem *mem)
 	mem->pa = 0;
 }
 
+static inline void
+populate_driver_version_strings(char *str1, char *str2)
+{
+	struct utsname uts;
+	if (uname(&uts) >= 0) {
+		/* release */
+		rte_strscpy(str1, uts.release,
+			OS_VERSION_STRLEN);
+		/* version */
+		rte_strscpy(str2, uts.version,
+			OS_VERSION_STRLEN);
+	}
+}
 #endif /* _GVE_OSDEP_H_ */

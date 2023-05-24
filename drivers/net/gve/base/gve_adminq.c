@@ -401,6 +401,9 @@ static int gve_adminq_issue_cmd(struct gve_priv *priv,
 	case GVE_ADMINQ_GET_PTYPE_MAP:
 		priv->adminq_get_ptype_map_cnt++;
 		break;
+	case GVE_ADMINQ_VERIFY_DRIVER_COMPATIBILITY:
+		priv->adminq_verify_driver_compatibility_cnt++;
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown AQ command opcode %d", opcode);
 	}
@@ -460,6 +463,22 @@ int gve_adminq_configure_device_resources(struct gve_priv *priv,
 		.ntfy_blk_msix_base_idx =
 					cpu_to_be32(GVE_NTFY_BLK_BASE_MSIX_IDX),
 		.queue_format = priv->queue_format,
+	};
+
+	return gve_adminq_execute_cmd(priv, &cmd);
+}
+
+int gve_adminq_verify_driver_compatibility(struct gve_priv *priv,
+					   u64 driver_info_len,
+					   dma_addr_t driver_info_addr)
+{
+	union gve_adminq_command cmd;
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.opcode = cpu_to_be32(GVE_ADMINQ_VERIFY_DRIVER_COMPATIBILITY);
+	cmd.verify_driver_compatibility = (struct gve_adminq_verify_driver_compatibility) {
+		.driver_info_len = cpu_to_be64(driver_info_len),
+		.driver_info_addr = cpu_to_be64(driver_info_addr),
 	};
 
 	return gve_adminq_execute_cmd(priv, &cmd);

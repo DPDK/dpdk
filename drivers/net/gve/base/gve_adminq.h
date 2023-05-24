@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  * Google Virtual Ethernet (gve) driver
- * Copyright (C) 2015-2022 Google, Inc.
+ * Copyright (C) 2015-2023 Google, Inc.
  */
 
 #ifndef _GVE_ADMINQ_H
@@ -23,6 +23,7 @@ enum gve_adminq_opcodes {
 	GVE_ADMINQ_REPORT_STATS			= 0xC,
 	GVE_ADMINQ_REPORT_LINK_SPEED		= 0xD,
 	GVE_ADMINQ_GET_PTYPE_MAP		= 0xE,
+	GVE_ADMINQ_VERIFY_DRIVER_COMPATIBILITY	= 0xF,
 };
 
 /* Admin queue status codes */
@@ -145,6 +146,44 @@ enum gve_sup_feature_mask {
 };
 
 #define GVE_DEV_OPT_LEN_GQI_RAW_ADDRESSING 0x0
+enum gve_driver_capbility {
+	gve_driver_capability_gqi_qpl = 0,
+	gve_driver_capability_gqi_rda = 1,
+	gve_driver_capability_dqo_qpl = 2, /* reserved for future use */
+	gve_driver_capability_dqo_rda = 3,
+};
+
+#define GVE_CAP1(a) BIT((int)a)
+
+#define GVE_DRIVER_CAPABILITY_FLAGS1 \
+	(GVE_CAP1(gve_driver_capability_gqi_qpl) | \
+	 GVE_CAP1(gve_driver_capability_gqi_rda) | \
+	 GVE_CAP1(gve_driver_capability_dqo_rda))
+
+#define GVE_DRIVER_CAPABILITY_FLAGS2 0x0
+#define GVE_DRIVER_CAPABILITY_FLAGS3 0x0
+#define GVE_DRIVER_CAPABILITY_FLAGS4 0x0
+
+struct gve_driver_info {
+	u8 os_type;	/* 0x05 = DPDK */
+	u8 driver_major;
+	u8 driver_minor;
+	u8 driver_sub;
+	__be32 os_version_major;
+	__be32 os_version_minor;
+	__be32 os_version_sub;
+	__be64 driver_capability_flags[4];
+	u8 os_version_str1[OS_VERSION_STRLEN];
+	u8 os_version_str2[OS_VERSION_STRLEN];
+};
+
+struct gve_adminq_verify_driver_compatibility {
+	__be64 driver_info_len;
+	__be64 driver_info_addr;
+};
+
+GVE_CHECK_STRUCT_LEN(16,  gve_adminq_verify_driver_compatibility);
+
 
 struct gve_adminq_configure_device_resources {
 	__be64 counter_array;
@@ -345,6 +384,8 @@ union gve_adminq_command {
 			struct gve_adminq_report_stats report_stats;
 			struct gve_adminq_report_link_speed report_link_speed;
 			struct gve_adminq_get_ptype_map get_ptype_map;
+			struct gve_adminq_verify_driver_compatibility
+				verify_driver_compatibility;
 		};
 	};
 	u8 reserved[64];
@@ -378,4 +419,7 @@ struct gve_ptype_lut;
 int gve_adminq_get_ptype_map_dqo(struct gve_priv *priv,
 				 struct gve_ptype_lut *ptype_lut);
 
+int gve_adminq_verify_driver_compatibility(struct gve_priv *priv,
+					   u64 driver_info_len,
+					   dma_addr_t driver_info_addr);
 #endif /* _GVE_ADMINQ_H */
