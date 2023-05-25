@@ -664,8 +664,8 @@ nix_lf_cq_dump(__io struct nix_cq_ctx_s *ctx, FILE *file)
 	nix_dump(file,
 		 "W1: lbpid_high \t\t\t0x%03x\nW1: lbpid_med \t\t\t0x%03x\n"
 		 "W1: lbpid_low \t\t\t0x%03x\n(W1: lbpid) \t\t\t0x%03x\n",
-		 ctx->lbpid_high, ctx->lbpid_med, ctx->lbpid_low,
-		 ctx->lbpid_high << 6 | ctx->lbpid_med << 3 | ctx->lbpid_low);
+		 ctx->lbpid_high, ctx->lbpid_med, ctx->lbpid_low, (unsigned int)
+		 (ctx->lbpid_high << 6 | ctx->lbpid_med << 3 | ctx->lbpid_low));
 	nix_dump(file, "W1: lbp_ena \t\t\t\t%d\n", ctx->lbp_ena);
 
 	nix_dump(file, "W2: update_time \t\t%d\nW2: avg_level \t\t\t%d",
