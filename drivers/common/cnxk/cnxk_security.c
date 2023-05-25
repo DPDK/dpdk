@@ -155,6 +155,10 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 
 		switch (auth_xfrm->auth.algo) {
 		case RTE_CRYPTO_AUTH_NULL:
+			if (w2->s.dir == ROC_IE_SA_DIR_INBOUND && ipsec_xfrm->replay_win_sz) {
+				plt_err("anti-replay can't be supported with integrity service disabled");
+				return -EINVAL;
+			}
 			w2->s.auth_type = ROC_IE_OT_SA_AUTH_NULL;
 			break;
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
@@ -1392,6 +1396,11 @@ cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
 	if (ret)
 		return ret;
 
+	if (crypto_xform->type != RTE_CRYPTO_SYM_XFORM_AEAD &&
+	    crypto_xform->auth.algo == RTE_CRYPTO_AUTH_NULL && ipsec->replay_win_sz) {
+		plt_err("anti-replay can't be supported with integrity service disabled");
+		return -EINVAL;
+	}
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD ||
 	    auth_xform->auth.algo == RTE_CRYPTO_AUTH_NULL ||
 	    auth_xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
