@@ -206,6 +206,10 @@ static const struct cnxk_nix_xstats_name nix_tx_xstats_cgx[] = {
 	{"cgx_tx_pause_packets", CGX_TX_PAUSE_PKTS},
 };
 
+static const struct cnxk_nix_xstats_name inl_sw_xstats[] = {
+	{"inl_sso_work_cnt", 0},
+};
+
 #define CNXK_NIX_NUM_RX_XSTATS	   PLT_DIM(nix_rx_xstats)
 #define CNXK_NIX_NUM_TX_XSTATS	   PLT_DIM(nix_tx_xstats)
 #define CNXK_NIX_NUM_QUEUE_XSTATS  PLT_DIM(nix_q_xstats)

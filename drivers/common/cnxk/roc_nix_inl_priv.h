@@ -57,6 +57,7 @@ struct nix_inl_dev {
 	bool is_nix1;
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
+	uint64_t sso_work_cnt;
 
 	/* NIX/CPT data */
 	void *inb_sa_base;

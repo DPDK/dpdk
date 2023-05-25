@@ -24,12 +24,7 @@
 int
 roc_nix_num_xstats_get(struct roc_nix *roc_nix)
 {
-	if (roc_nix_is_vf_or_sdp(roc_nix))
-		return CNXK_NIX_NUM_XSTATS_REG;
-	else if (roc_model_is_cn9k())
-		return CNXK_NIX_NUM_XSTATS_CGX;
-
-	return CNXK_NIX_NUM_XSTATS_RPM;
+	return roc_nix_xstats_names_get(roc_nix, NULL, 0);
 }
 
 int
@@ -360,6 +355,12 @@ roc_nix_xstats_get(struct roc_nix *roc_nix, struct roc_nix_xstat *xstats,
 				xstats[count].id = count;
 				count++;
 			}
+			for (i = 0; i < PLT_DIM(inl_sw_xstats); i++) {
+				if (!inl_sw_xstats[i].offset)
+					xstats[count].value = inl_dev->sso_work_cnt;
+				xstats[count].id = count;
+				count++;
+			}
 		}
 	}
 
@@ -473,6 +474,10 @@ roc_nix_xstats_names_get(struct roc_nix *roc_nix,
 			for (i = 0; i < CNXK_INL_NIX_RQ_XSTATS; i++) {
 				NIX_XSTATS_NAME_PRINT(xstats_names, count,
 						      inl_nix_rq_xstats, i);
+				count++;
+			}
+			for (i = 0; i < PLT_DIM(inl_sw_xstats); i++) {
+				NIX_XSTATS_NAME_PRINT(xstats_names, count, inl_sw_xstats, i);
 				count++;
 			}
 		}
