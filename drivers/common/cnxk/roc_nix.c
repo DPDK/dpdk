@@ -392,6 +392,7 @@ roc_nix_dev_init(struct roc_nix *roc_nix)
 {
 	enum roc_nix_rss_reta_sz reta_sz;
 	struct plt_pci_device *pci_dev;
+	struct roc_nix_list *nix_list;
 	uint16_t max_sqb_count;
 	uint64_t blkaddr;
 	struct dev *dev;
@@ -417,7 +418,12 @@ roc_nix_dev_init(struct roc_nix *roc_nix)
 	nix = roc_nix_to_nix_priv(roc_nix);
 	pci_dev = roc_nix->pci_dev;
 	dev = &nix->dev;
-	TAILQ_INSERT_TAIL(roc_idev_nix_list_get(), roc_nix, next);
+
+	nix_list = roc_idev_nix_list_get();
+	if (nix_list == NULL)
+		return -EINVAL;
+
+	TAILQ_INSERT_TAIL(nix_list, roc_nix, next);
 
 	if (nix->dev.drv_inited)
 		return 0;

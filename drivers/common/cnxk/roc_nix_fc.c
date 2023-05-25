@@ -431,13 +431,18 @@ static int
 nix_rx_chan_multi_bpid_cfg(struct roc_nix *roc_nix, uint8_t chan, uint16_t bpid, uint16_t *bpid_new)
 {
 	struct roc_nix *roc_nix_tmp, *roc_nix_pre = NULL;
+	struct roc_nix_list *nix_list;
 	uint8_t chan_pre;
 
 	if (!roc_feature_nix_has_rxchan_multi_bpid())
 		return -ENOTSUP;
 
+	nix_list = roc_idev_nix_list_get();
+	if (nix_list == NULL)
+		return -EINVAL;
+
 	/* Find associated NIX RX channel if Aura BPID is of that of a NIX. */
-	TAILQ_FOREACH(roc_nix_tmp, roc_idev_nix_list_get(), next) {
+	TAILQ_FOREACH(roc_nix_tmp, nix_list, next) {
 		struct nix *nix = roc_nix_to_nix_priv(roc_nix_tmp);
 		int i;
 
