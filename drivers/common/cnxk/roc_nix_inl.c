@@ -602,6 +602,96 @@ exit:
 	return rc;
 }
 
+static void
+nix_inl_eng_caps_get(struct nix *nix)
+{
+	struct roc_cpt_lf *lf = nix->cpt_lf_base;
+	uintptr_t lmt_base = lf->lmt_base;
+	union cpt_res_s res, *hw_res;
+	struct cpt_inst_s inst;
+	uint64_t *rptr;
+
+	hw_res = plt_zmalloc(sizeof(*hw_res), ROC_CPT_RES_ALIGN);
+	if (hw_res == NULL) {
+		plt_err("Couldn't allocate memory for result address");
+		return;
+	}
+
+	rptr = plt_zmalloc(ROC_ALIGN, 0);
+	if (rptr == NULL) {
+		plt_err("Couldn't allocate memory for rptr");
+		plt_free(hw_res);
+		return;
+	}
+
+	/* Fill CPT_INST_S for LOAD_FVC/HW_CRYPTO_SUPPORT microcode op */
+	memset(&inst, 0, sizeof(struct cpt_inst_s));
+	inst.res_addr = (uint64_t)hw_res;
+	inst.rptr = (uint64_t)rptr;
+	inst.w4.s.opcode_major = ROC_LOADFVC_MAJOR_OP;
+	inst.w4.s.opcode_minor = ROC_LOADFVC_MINOR_OP;
+	inst.w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+
+	/* Use 1 min timeout for the poll */
+	const uint64_t timeout = plt_tsc_cycles() + 60 * plt_tsc_hz();
+
+	if (roc_model_is_cn9k()) {
+		uint64_t lmt_status;
+
+		hw_res->cn9k.compcode = CPT_COMP_NOT_DONE;
+		plt_io_wmb();
+
+		do {
+			roc_lmt_mov_seg((void *)lmt_base, &inst, 4);
+			lmt_status = roc_lmt_submit_ldeor(lf->io_addr);
+		} while (lmt_status != 0);
+
+		/* Wait until CPT instruction completes */
+		do {
+			res.u64[0] = __atomic_load_n(&hw_res->u64[0], __ATOMIC_RELAXED);
+			if (unlikely(plt_tsc_cycles() > timeout))
+				break;
+		} while (res.cn9k.compcode == CPT_COMP_NOT_DONE);
+
+		if (res.cn9k.compcode != CPT_COMP_GOOD) {
+			plt_err("LOAD FVC operation timed out");
+			return;
+		}
+	} else {
+		uint64_t lmt_arg, io_addr;
+		uint16_t lmt_id;
+
+		hw_res->cn10k.compcode = CPT_COMP_NOT_DONE;
+
+		/* Use this lcore's LMT line as no one else is using it */
+		ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+		memcpy((void *)lmt_base, &inst, sizeof(inst));
+
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
+		io_addr = lf->io_addr | ROC_CN10K_CPT_INST_DW_M1 << 4;
+
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+		plt_io_wmb();
+
+		/* Wait until CPT instruction completes */
+		do {
+			res.u64[0] = __atomic_load_n(&hw_res->u64[0], __ATOMIC_RELAXED);
+			if (unlikely(plt_tsc_cycles() > timeout))
+				break;
+		} while (res.cn10k.compcode == CPT_COMP_NOT_DONE);
+
+		if (res.cn10k.compcode != CPT_COMP_GOOD || res.cn10k.uc_compcode) {
+			plt_err("LOAD FVC operation timed out");
+			goto exit;
+		}
+	}
+
+	nix->cpt_eng_caps = plt_be_to_cpu_64(*rptr);
+exit:
+	plt_free(rptr);
+	plt_free(hw_res);
+}
+
 int
 roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 {
@@ -652,6 +742,7 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 		plt_err("Failed to setup inbound lf, rc=%d", rc);
 		return rc;
 	}
+	nix->cpt_eng_caps = roc_cpt->hw_caps[CPT_ENG_TYPE_SE].u;
 
 	/* Setup Inbound SA table */
 	rc = nix_inl_inb_sa_tbl_setup(roc_nix);
@@ -871,6 +962,8 @@ skip_sa_alloc:
 		}
 	}
 
+	/* Fetch engine capabilities */
+	nix_inl_eng_caps_get(nix);
 	return 0;
 
 lf_fini:
@@ -1570,4 +1663,12 @@ void
 roc_nix_inl_meta_pool_cb_register(roc_nix_inl_meta_pool_cb_t cb)
 {
 	meta_pool_cb = cb;
+}
+
+uint64_t
+roc_nix_inl_eng_caps_get(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	return nix->cpt_eng_caps;
 }

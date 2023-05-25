@@ -203,6 +203,8 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 			plt_err("Outbound fc sw mem alloc failed");
 			goto sa_bmap_free;
 		}
+
+		dev->outb.cpt_eng_caps = roc_nix_inl_eng_caps_get(nix);
 	}
 	return 0;
 

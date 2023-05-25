@@ -809,7 +809,8 @@ cn10k_eth_sec_session_create(void *device,
 		sess_priv.chksum = (!ipsec->options.ip_csum_enable << 1 |
 				    !ipsec->options.l4_csum_enable);
 		sess_priv.dec_ttl = ipsec->options.dec_ttl;
-		if (roc_feature_nix_has_inl_ipsec_mseg())
+		if (roc_feature_nix_has_inl_ipsec_mseg() &&
+		    dev->outb.cpt_eng_caps & BIT_ULL(35))
 			sess_priv.nixtx_off = 1;
 
 		/* Pointer from eth_sec -> outb_sa */

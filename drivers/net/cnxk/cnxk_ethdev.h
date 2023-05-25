@@ -287,6 +287,9 @@ struct cnxk_eth_dev_sec_outb {
 
 	/* Lock to synchronize sa setup/release */
 	rte_spinlock_t lock;
+
+	/* Engine caps */
+	uint64_t cpt_eng_caps;
 };
 
 struct cnxk_eth_dev {

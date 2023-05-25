@@ -186,6 +186,7 @@ INTERNAL {
 	roc_nix_inl_dev_rq_put;
 	roc_nix_inl_dev_unlock;
 	roc_nix_inl_dev_xaq_realloc;
+	roc_nix_inl_eng_caps_get;
 	roc_nix_inl_inb_is_enabled;
 	roc_nix_inl_inb_init;
 	roc_nix_inl_inb_sa_base_get;

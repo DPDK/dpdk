@@ -12,6 +12,9 @@
 #define ROC_AE_CPT_BLOCK_TYPE1 0
 #define ROC_AE_CPT_BLOCK_TYPE2 1
 
+#define ROC_LOADFVC_MAJOR_OP 0x01UL
+#define ROC_LOADFVC_MINOR_OP 0x08UL
+
 /* Default engine groups */
 #define ROC_CPT_DFLT_ENG_GRP_SE	   0UL
 #define ROC_CPT_DFLT_ENG_GRP_SE_IE 1UL

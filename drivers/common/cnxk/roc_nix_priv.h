@@ -209,6 +209,7 @@ struct nix {
 	uint16_t outb_se_ring_base;
 	uint16_t cpt_lbpid;
 	uint16_t cpt_nixbpid;
+	uint64_t cpt_eng_caps;
 	bool need_meta_aura;
 	/* Mode provided by driver */
 	bool inb_inl_dev;
