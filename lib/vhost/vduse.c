@@ -42,6 +42,12 @@
 				(1ULL << VIRTIO_F_IN_ORDER) | \
 				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
 
+static void
+vduse_iotlb_remove_notify(uint64_t addr, uint64_t offset, uint64_t size)
+{
+	munmap((void *)(uintptr_t)addr, offset + size);
+}
+
 static int
 vduse_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm __rte_unused)
 {
@@ -99,6 +105,7 @@ close_fd:
 
 static struct vhost_backend_ops vduse_backend_ops = {
 	.iotlb_miss = vduse_iotlb_miss,
+	.iotlb_remove_notify = vduse_iotlb_remove_notify,
 };
 
 int
