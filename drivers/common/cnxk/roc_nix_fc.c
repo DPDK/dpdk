@@ -303,6 +303,12 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 				      fc_cfg->rq_cfg.enable, roc_nix->force_rx_aura_bp,
 				      fc_cfg->rq_cfg.tc, pool_drop_pct);
 
+		if (rq->spb_ena) {
+			roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.spb_pool,
+					      fc_cfg->rq_cfg.enable, roc_nix->force_rx_aura_bp,
+					      fc_cfg->rq_cfg.tc, pool_drop_pct);
+		}
+
 		if (roc_nix->local_meta_aura_ena && roc_nix->meta_aura_handle)
 			roc_nix_fc_npa_bp_cfg(roc_nix, roc_nix->meta_aura_handle,
 					      fc_cfg->rq_cfg.enable, roc_nix->force_rx_aura_bp,

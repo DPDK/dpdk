@@ -198,6 +198,7 @@ struct roc_nix_fc_cfg {
 			uint16_t cq_drop;
 			bool enable;
 			uint64_t pool;
+			uint64_t spb_pool;
 			uint64_t pool_drop_pct;
 		} rq_cfg;
 
