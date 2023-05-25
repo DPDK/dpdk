@@ -54,16 +54,23 @@ static void
 vhost_user_iotlb_clear_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node,
 		struct vhost_iotlb_entry *prev, struct vhost_iotlb_entry *next)
 {
-	uint64_t align;
+	uint64_t align, start, end;
+
+	start = node->uaddr;
+	end = node->uaddr + node->size;
 
 	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
 
-	/* Don't disable coredump if the previous node is in the same page */
-	if (!vhost_user_iotlb_share_page(prev, node, align)) {
-		/* Don't disable coredump if the next node is in the same page */
-		if (!vhost_user_iotlb_share_page(node, next, align))
-			mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, false, align);
-	}
+	/* Skip first page if shared with previous entry. */
+	if (vhost_user_iotlb_share_page(prev, node, align))
+		start = RTE_ALIGN_CEIL(start, align);
+
+	/* Skip last page if shared with next entry. */
+	if (vhost_user_iotlb_share_page(node, next, align))
+		end = RTE_ALIGN_FLOOR(end, align);
+
+	if (end > start)
+		mem_set_dump((void *)(uintptr_t)start, end - start, false, align);
 }
 
 static struct vhost_iotlb_entry *
