@@ -878,9 +878,11 @@ check_desc_error(uint32_t error_code) {
 static inline uint16_t
 get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
 {
+	uint16_t n = (bg == 1 ? N_ZC_1 : N_ZC_2) * z_c;
 	if (rv_index == 0)
 		return 0;
-	uint16_t n = (bg == 1 ? N_ZC_1 : N_ZC_2) * z_c;
+	if (z_c == 0)
+		return 0;
 	if (n_cb == n) {
 		if (rv_index == 1)
 			return (bg == 1 ? K0_1_1 : K0_1_2) * z_c;
