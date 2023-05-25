@@ -527,6 +527,8 @@ struct virtio_net {
 	int			postcopy_ufd;
 	int			postcopy_listening;
 
+	struct vhost_virtqueue	*cvq;
+
 	struct rte_vdpa_device *vdpa_dev;
 
 	/* context data for the external message handlers */
