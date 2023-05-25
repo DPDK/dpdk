@@ -55,8 +55,8 @@ class Client:
         # Gets arguments from Command-Line and assigns to instance of client
         self.file_path = file_path
 
-    def setRunpath(self, file_path):
-        self.run_path = os.path.join(get_dpdk_runtime_dir(args.file_prefix),
+    def setRunpath(self, file_prefix):
+        self.run_path = os.path.join(get_dpdk_runtime_dir(file_prefix),
                                      RUNTIME_SOCKET_NAME)
 
     def register(self):
