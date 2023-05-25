@@ -153,7 +153,7 @@ __json_format_str(char *buf, const int len, const char *prefix, const char *str,
 
 	ret = __json_format_str_to_buf(tmp, len, prefix, str, suffix);
 	if (ret > 0)
-		strcpy(buf, saved);
+		strcpy(buf, tmp);
 
 	free(tmp);
 	return ret;
