@@ -142,6 +142,128 @@ static struct vhost_backend_ops vduse_backend_ops = {
 };
 
 static void
+vduse_vring_setup(struct virtio_net *dev, unsigned int index)
+{
+	struct vhost_virtqueue *vq = dev->virtqueue[index];
+	struct vhost_vring_addr *ra = &vq->ring_addrs;
+	struct vduse_vq_info vq_info;
+	struct vduse_vq_eventfd vq_efd;
+	int ret;
+
+	vq_info.index = index;
+	ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_GET_INFO, &vq_info);
+	if (ret) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get VQ %u info: %s\n",
+				index, strerror(errno));
+		return;
+	}
+
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "VQ %u info:\n", index);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tnum: %u\n", vq_info.num);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdesc_addr: %llx\n", vq_info.desc_addr);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdriver_addr: %llx\n", vq_info.driver_addr);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdevice_addr: %llx\n", vq_info.device_addr);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tavail_idx: %u\n", vq_info.split.avail_index);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tready: %u\n", vq_info.ready);
+
+	vq->last_avail_idx = vq_info.split.avail_index;
+	vq->size = vq_info.num;
+	vq->ready = true;
+	vq->enabled = vq_info.ready;
+	ra->desc_user_addr = vq_info.desc_addr;
+	ra->avail_user_addr = vq_info.driver_addr;
+	ra->used_user_addr = vq_info.device_addr;
+
+	vq->kickfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (vq->kickfd < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to init kickfd for VQ %u: %s\n",
+				index, strerror(errno));
+		vq->kickfd = VIRTIO_INVALID_EVENTFD;
+		return;
+	}
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tkick fd: %d\n", vq->kickfd);
+
+	vq->shadow_used_split = rte_malloc_socket(NULL,
+				vq->size * sizeof(struct vring_used_elem),
+				RTE_CACHE_LINE_SIZE, 0);
+	vq->batch_copy_elems = rte_malloc_socket(NULL,
+				vq->size * sizeof(struct batch_copy_elem),
+				RTE_CACHE_LINE_SIZE, 0);
+
+	vhost_user_iotlb_rd_lock(vq);
+	if (vring_translate(dev, vq))
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to translate vring %d addresses\n",
+				index);
+
+	if (vhost_enable_guest_notification(dev, vq, 0))
+		VHOST_LOG_CONFIG(dev->ifname, ERR,
+				"Failed to disable guest notifications on vring %d\n",
+				index);
+	vhost_user_iotlb_rd_unlock(vq);
+
+	vq_efd.index = index;
+	vq_efd.fd = vq->kickfd;
+
+	ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP_KICKFD, &vq_efd);
+	if (ret) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to setup kickfd for VQ %u: %s\n",
+				index, strerror(errno));
+		close(vq->kickfd);
+		vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
+		return;
+	}
+}
+
+static void
+vduse_device_start(struct virtio_net *dev)
+{
+	unsigned int i, ret;
+
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "Starting device...\n");
+
+	dev->notify_ops = vhost_driver_callback_get(dev->ifname);
+	if (!dev->notify_ops) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR,
+				"Failed to get callback ops for driver\n");
+		return;
+	}
+
+	ret = ioctl(dev->vduse_dev_fd, VDUSE_DEV_GET_FEATURES, &dev->features);
+	if (ret) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get features: %s\n",
+				strerror(errno));
+		return;
+	}
+
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "Negotiated Virtio features: 0x%" PRIx64 "\n",
+		dev->features);
+
+	if (dev->features &
+		((1ULL << VIRTIO_NET_F_MRG_RXBUF) |
+		 (1ULL << VIRTIO_F_VERSION_1) |
+		 (1ULL << VIRTIO_F_RING_PACKED))) {
+		dev->vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
+	} else {
+		dev->vhost_hlen = sizeof(struct virtio_net_hdr);
+	}
+
+	for (i = 0; i < dev->nr_vring; i++)
+		vduse_vring_setup(dev, i);
+
+	dev->flags |= VIRTIO_DEV_READY;
+
+	if (dev->notify_ops->new_device(dev->vid) == 0)
+		dev->flags |= VIRTIO_DEV_RUNNING;
+
+	for (i = 0; i < dev->nr_vring; i++) {
+		struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+		if (dev->notify_ops->vring_state_changed)
+			dev->notify_ops->vring_state_changed(dev->vid, i, vq->enabled);
+	}
+}
+
+static void
 vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 {
 	struct virtio_net *dev = arg;
@@ -199,6 +321,10 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 				strerror(errno));
 		return;
 	}
+
+	if (dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK)
+		vduse_device_start(dev);
+
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "Request %s (%u) handled successfully\n",
 			vduse_req_id_to_str(req.type), req.type);
 }
