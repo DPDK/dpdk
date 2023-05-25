@@ -253,6 +253,44 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 }
 
 static void
+vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
+{
+	struct vhost_virtqueue *vq = dev->virtqueue[index];
+	struct vduse_vq_eventfd vq_efd;
+	int ret;
+
+	if (vq == dev->cvq && vq->kickfd >= 0) {
+		fdset_del(&vduse.fdset, vq->kickfd);
+		fdset_pipe_notify(&vduse.fdset);
+	}
+
+	vq_efd.index = index;
+	vq_efd.fd = VDUSE_EVENTFD_DEASSIGN;
+
+	ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP_KICKFD, &vq_efd);
+	if (ret)
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to cleanup kickfd for VQ %u: %s\n",
+				index, strerror(errno));
+
+	close(vq->kickfd);
+	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
+
+	vring_invalidate(dev, vq);
+
+	rte_free(vq->batch_copy_elems);
+	vq->batch_copy_elems = NULL;
+
+	rte_free(vq->shadow_used_split);
+	vq->shadow_used_split = NULL;
+
+	vq->enabled = false;
+	vq->ready = false;
+	vq->size = 0;
+	vq->last_used_idx = 0;
+	vq->last_avail_idx = 0;
+}
+
+static void
 vduse_device_start(struct virtio_net *dev)
 {
 	unsigned int i, ret;
@@ -305,12 +343,30 @@ vduse_device_start(struct virtio_net *dev)
 }
 
 static void
+vduse_device_stop(struct virtio_net *dev)
+{
+	unsigned int i;
+
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "Stopping device...\n");
+
+	vhost_destroy_device_notify(dev);
+
+	dev->flags &= ~VIRTIO_DEV_READY;
+
+	for (i = 0; i < dev->nr_vring; i++)
+		vduse_vring_cleanup(dev, i);
+
+	vhost_user_iotlb_flush_all(dev);
+}
+
+static void
 vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 {
 	struct virtio_net *dev = arg;
 	struct vduse_dev_request req;
 	struct vduse_dev_response resp;
 	struct vhost_virtqueue *vq;
+	uint8_t old_status = dev->status;
 	int ret;
 
 	memset(&resp, 0, sizeof(resp));
@@ -339,6 +395,7 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 	case VDUSE_SET_STATUS:
 		VHOST_LOG_CONFIG(dev->ifname, INFO, "\tnew status: 0x%08x\n",
 				req.s.status);
+		old_status = dev->status;
 		dev->status = req.s.status;
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
@@ -363,8 +420,12 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 		return;
 	}
 
-	if (dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK)
-		vduse_device_start(dev);
+	if ((old_status ^ dev->status) & VIRTIO_DEVICE_STATUS_DRIVER_OK) {
+		if (dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK)
+			vduse_device_start(dev);
+		else
+			vduse_device_stop(dev);
+	}
 
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "Request %s (%u) handled successfully\n",
 			vduse_req_id_to_str(req.type), req.type);
@@ -560,12 +621,7 @@ vduse_device_destroy(const char *path)
 	if (vid == RTE_MAX_VHOST_DEVICE)
 		return -1;
 
-	if (dev->cvq && dev->cvq->kickfd >= 0) {
-		fdset_del(&vduse.fdset, dev->cvq->kickfd);
-		fdset_pipe_notify(&vduse.fdset);
-		close(dev->cvq->kickfd);
-		dev->cvq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
-	}
+	vduse_device_stop(dev);
 
 	fdset_del(&vduse.fdset, dev->vduse_dev_fd);
 	fdset_pipe_notify(&vduse.fdset);

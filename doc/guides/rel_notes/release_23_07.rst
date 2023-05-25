@@ -113,6 +113,18 @@ New Features
   Introduced ``rte_vhost_driver_set_max_queue_num()`` to be able to limit
   the maximum number of supported queue pairs, required for VDUSE support.
 
+* **Added VDUSE support into vhost library.**
+
+  VDUSE aims at implementing vDPA devices in userspace.
+  It can be used as an alternative to Vhost-user when using Vhost-vDPA,
+  but also enable providing a virtio-net netdev to the host
+  when using Virtio-vDPA driver.
+  A limitation in this release is the lack of reconnection support.
+  While VDUSE support is already available in upstream kernel,
+  a couple of patches are required to support network device type,
+  which are being upstreamed:
+  https://lore.kernel.org/all/20230419134329.346825-1-maxime.coquelin@redhat.com/
+
 * **Added vmxnet3 version 7 support.**
 
   Added support for vmxnet3 version 7 which includes support
