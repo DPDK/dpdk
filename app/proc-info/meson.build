@@ -8,7 +8,7 @@ if is_windows
 endif
 
 sources = files('main.c')
-deps += ['ethdev', 'security']
+deps += ['ethdev', 'security', 'eventdev']
 if dpdk_conf.has('RTE_LIB_METRICS')
     deps += 'metrics'
 endif
