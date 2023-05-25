@@ -228,6 +228,36 @@ static struct rte_cryptodev_capabilities cn10k_eth_sec_crypto_caps[] = {
 			}, }
 		}, }
 	},
+	{	/* AES CCM */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD,
+			{.aead = {
+				.algo = RTE_CRYPTO_AEAD_AES_CCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.aad_size = {
+					.min = 8,
+					.max = 12,
+					.increment = 4
+				},
+				.iv_size = {
+					.min = 11,
+					.max = 13,
+					.increment = 1
+				}
+			}, }
+		}, }
+	},
 	{	/* NULL (AUTH) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
