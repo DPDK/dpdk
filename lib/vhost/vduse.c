@@ -42,6 +42,12 @@
 				(1ULL << VIRTIO_F_IN_ORDER) | \
 				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
 
+static int
+vduse_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	return ioctl(dev->vduse_dev_fd, VDUSE_VQ_INJECT_IRQ, &vq->index);
+}
+
 static void
 vduse_iotlb_remove_notify(uint64_t addr, uint64_t offset, uint64_t size)
 {
@@ -106,6 +112,7 @@ close_fd:
 static struct vhost_backend_ops vduse_backend_ops = {
 	.iotlb_miss = vduse_iotlb_miss,
 	.iotlb_remove_notify = vduse_iotlb_remove_notify,
+	.inject_irq = vduse_inject_irq,
 };
 
 int
