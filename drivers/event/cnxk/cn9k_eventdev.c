@@ -886,7 +886,7 @@ cn9k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
 						(sqes_per_sqb - 1));
 		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
 		txq->nb_sqb_bufs_adj =
-			(ROC_NIX_SQB_LOWER_THRESH * txq->nb_sqb_bufs_adj) / 100;
+			((100 - ROC_NIX_SQB_THRESH) * txq->nb_sqb_bufs_adj) / 100;
 	}
 }
 

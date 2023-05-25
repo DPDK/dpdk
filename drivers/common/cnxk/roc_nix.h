@@ -13,7 +13,7 @@
 #define ROC_NIX_BPF_STATS_MAX	      12
 #define ROC_NIX_MTR_ID_INVALID	      UINT32_MAX
 #define ROC_NIX_PFC_CLASS_INVALID     UINT8_MAX
-#define ROC_NIX_SQB_LOWER_THRESH      70U
+#define ROC_NIX_SQB_THRESH	      30U
 #define ROC_NIX_SQB_SLACK	      12U
 
 /* Reserved interface types for BPID allocation */

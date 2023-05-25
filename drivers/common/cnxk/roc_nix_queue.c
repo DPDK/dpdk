@@ -982,7 +982,7 @@ static int
 sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	uint16_t sqes_per_sqb, count, nb_sqb_bufs;
+	uint16_t sqes_per_sqb, count, nb_sqb_bufs, thr;
 	struct npa_pool_s pool;
 	struct npa_aura_s aura;
 	uint64_t blk_sz;
@@ -995,22 +995,21 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	else
 		sqes_per_sqb = (blk_sz / 8) / 8;
 
+	/* Reserve One SQE in each SQB to hold pointer for next SQB */
+	sqes_per_sqb -= 1;
+
 	sq->nb_desc = PLT_MAX(512U, sq->nb_desc);
-	nb_sqb_bufs = sq->nb_desc / sqes_per_sqb;
-	nb_sqb_bufs += NIX_SQB_LIST_SPACE;
+	nb_sqb_bufs = PLT_DIV_CEIL(sq->nb_desc, sqes_per_sqb);
+	thr = PLT_DIV_CEIL((nb_sqb_bufs * ROC_NIX_SQB_THRESH), 100);
+	nb_sqb_bufs += NIX_SQB_PREFETCH;
 	/* Clamp up the SQB count */
-	nb_sqb_bufs = PLT_MIN(roc_nix->max_sqb_count,
-			      (uint16_t)PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs));
+	nb_sqb_bufs = PLT_MIN(roc_nix->max_sqb_count, (uint16_t)PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs));
 
 	sq->nb_sqb_bufs = nb_sqb_bufs;
 	sq->sqes_per_sqb_log2 = (uint16_t)plt_log2_u32(sqes_per_sqb);
-	sq->nb_sqb_bufs_adj =
-		nb_sqb_bufs -
-		(PLT_ALIGN_MUL_CEIL(nb_sqb_bufs, sqes_per_sqb) / sqes_per_sqb);
-	sq->nb_sqb_bufs_adj =
-		(sq->nb_sqb_bufs_adj * ROC_NIX_SQB_LOWER_THRESH) / 100;
+	sq->nb_sqb_bufs_adj = nb_sqb_bufs;
 
-	nb_sqb_bufs += roc_nix->sqb_slack;
+	nb_sqb_bufs += PLT_MAX(thr, roc_nix->sqb_slack);
 	/* Explicitly set nat_align alone as by default pool is with both
 	 * nat_align and buf_offset = 1 which we don't want for SQB.
 	 */
