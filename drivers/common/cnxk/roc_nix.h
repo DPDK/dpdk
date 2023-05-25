@@ -15,6 +15,7 @@
 #define ROC_NIX_PFC_CLASS_INVALID     UINT8_MAX
 #define ROC_NIX_SQB_THRESH	      30U
 #define ROC_NIX_SQB_SLACK	      12U
+#define ROC_NIX_AURA_THRESH	      95U
 
 /* Reserved interface types for BPID allocation */
 #define ROC_NIX_INTF_TYPE_CGX  0
@@ -197,6 +198,7 @@ struct roc_nix_fc_cfg {
 			uint16_t cq_drop;
 			bool enable;
 			uint64_t pool;
+			uint64_t pool_drop_pct;
 		} rq_cfg;
 
 		struct {
@@ -849,8 +851,8 @@ uint16_t __roc_api roc_nix_chan_count_get(struct roc_nix *roc_nix);
 
 enum roc_nix_fc_mode __roc_api roc_nix_fc_mode_get(struct roc_nix *roc_nix);
 
-void __roc_api roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id,
-				     uint8_t ena, uint8_t force, uint8_t tc);
+void __roc_api roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
+				     uint8_t force, uint8_t tc, uint64_t drop_percent);
 int __roc_api roc_nix_bpids_alloc(struct roc_nix *roc_nix, uint8_t type,
 				  uint8_t bp_cnt, uint16_t *bpids);
 int __roc_api roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt,

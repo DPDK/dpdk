@@ -263,7 +263,7 @@ roc_nix_inl_meta_aura_check(struct roc_nix *roc_nix, struct roc_nix_rq *rq)
 		 */
 		if (aura_setup && nix->rqs[0] && nix->rqs[0]->tc != ROC_NIX_PFC_CLASS_INVALID)
 			roc_nix_fc_npa_bp_cfg(roc_nix, roc_nix->meta_aura_handle,
-					      true, true, nix->rqs[0]->tc);
+					      true, true, nix->rqs[0]->tc, ROC_NIX_AURA_THRESH);
 	} else {
 		rc = nix_inl_global_meta_buffer_validate(idev, rq);
 		if (rc)

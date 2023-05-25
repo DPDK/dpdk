@@ -283,6 +283,7 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct roc_nix_fc_cfg tmp;
+	uint64_t pool_drop_pct;
 	struct roc_nix_rq *rq;
 	int sso_ena = 0, rc;
 
@@ -293,13 +294,19 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		return -EINVAL;
 
 	if (sso_ena) {
+		pool_drop_pct = fc_cfg->rq_cfg.pool_drop_pct;
+		/* Use default value for zero pct */
+		if (fc_cfg->rq_cfg.enable && !pool_drop_pct)
+			pool_drop_pct = ROC_NIX_AURA_THRESH;
+
 		roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.pool,
 				      fc_cfg->rq_cfg.enable, true,
-				      fc_cfg->rq_cfg.tc);
+				      fc_cfg->rq_cfg.tc, fc_cfg->rq_cfg.pool_drop_pct);
 
 		if (roc_nix->local_meta_aura_ena && roc_nix->meta_aura_handle)
 			roc_nix_fc_npa_bp_cfg(roc_nix, roc_nix->meta_aura_handle,
-					      fc_cfg->rq_cfg.enable, true, fc_cfg->rq_cfg.tc);
+					      fc_cfg->rq_cfg.enable, true, fc_cfg->rq_cfg.tc,
+					      fc_cfg->rq_cfg.pool_drop_pct);
 	}
 
 	/* Copy RQ config to CQ config as they are occupying same area */
@@ -462,8 +469,8 @@ nix_rx_chan_multi_bpid_cfg(struct roc_nix *roc_nix, uint8_t chan, uint16_t bpid,
 #define NIX_BPID_INVALID 0xFFFF
 
 void
-roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
-		      uint8_t force, uint8_t tc)
+roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, uint8_t force,
+		      uint8_t tc, uint64_t drop_percent)
 {
 	uint32_t aura_id = roc_npa_aura_handle_to_aura(pool_id);
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
@@ -499,7 +506,7 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 	}
 
 	bp_intf = 1 << nix->is_nix1;
-	bp_thresh = NIX_RQ_AURA_THRESH(rsp->aura.limit >> rsp->aura.shift);
+	bp_thresh = NIX_RQ_AURA_THRESH(drop_percent, rsp->aura.limit >> rsp->aura.shift);
 
 	/* BP is already enabled. */
 	if (rsp->aura.bp_ena && ena) {

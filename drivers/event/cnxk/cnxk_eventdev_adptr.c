@@ -263,7 +263,7 @@ cnxk_sso_rx_adapter_queue_add(
 		if (rxq_sp->tx_pause)
 			roc_nix_fc_npa_bp_cfg(&cnxk_eth_dev->nix,
 					      rxq_sp->qconf.mp->pool_id, true,
-					      dev->force_ena_bp, rxq_sp->tc);
+					      dev->force_ena_bp, rxq_sp->tc, ROC_NIX_AURA_THRESH);
 		cnxk_sso_tstamp_cfg(eth_dev->data->port_id, cnxk_eth_dev, dev);
 		cnxk_eth_dev->nb_rxq_sso++;
 	}
@@ -307,7 +307,7 @@ cnxk_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 		rc = cnxk_sso_rxq_disable(cnxk_eth_dev, (uint16_t)rx_queue_id);
 		roc_nix_fc_npa_bp_cfg(&cnxk_eth_dev->nix,
 				      rxq_sp->qconf.mp->pool_id, false,
-				      dev->force_ena_bp, 0);
+				      dev->force_ena_bp, 0, ROC_NIX_AURA_THRESH);
 		cnxk_eth_dev->nb_rxq_sso--;
 
 		/* Enable drop_re if it was disabled earlier */
