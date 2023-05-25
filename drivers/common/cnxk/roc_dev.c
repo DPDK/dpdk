@@ -98,6 +98,9 @@ pf_af_sync_msg(struct dev *dev, struct mbox_msghdr **rsp)
 	return rc;
 }
 
+/* PF will send the messages to AF and wait for responses and forward the
+ * responses to VF.
+ */
 static int
 af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 {
@@ -115,9 +118,10 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 	/* We need to disable PF interrupts. We are in timer interrupt */
 	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
 
-	/* Send message */
+	/* Send message to AF */
 	mbox_msg_send(mbox, 0);
 
+	/* Wait for AF response */
 	do {
 		plt_delay_ms(sleep);
 		timeout++;
@@ -206,6 +210,7 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 	return req_hdr->num_msgs;
 }
 
+/* PF receives mbox DOWN messages from VF and forwards to AF */
 static int
 vf_pf_process_msgs(struct dev *dev, uint16_t vf)
 {
@@ -274,6 +279,7 @@ vf_pf_process_msgs(struct dev *dev, uint16_t vf)
 	if (routed > 0) {
 		plt_base_dbg("pf:%d routed %d messages from vf:%d to AF",
 			     dev->pf, routed, vf);
+		/* PF will send the messages to AF and wait for responses */
 		af_pf_wait_msg(dev, vf, routed);
 		mbox_reset(dev->mbox, 0);
 	}
@@ -289,6 +295,7 @@ vf_pf_process_msgs(struct dev *dev, uint16_t vf)
 	return i;
 }
 
+/* VF sends Ack to PF's UP messages */
 static int
 vf_pf_process_up_msgs(struct dev *dev, uint16_t vf)
 {
@@ -339,6 +346,7 @@ vf_pf_process_up_msgs(struct dev *dev, uint16_t vf)
 	return i;
 }
 
+/* PF handling messages from VF */
 static void
 roc_vf_pf_mbox_handle_msg(void *param)
 {
@@ -352,8 +360,9 @@ roc_vf_pf_mbox_handle_msg(void *param)
 		if (dev->intr.bits[vf / max_bits] & BIT_ULL(vf % max_bits)) {
 			plt_base_dbg("Process vf:%d request (pf:%d, vf:%d)", vf,
 				     dev->pf, dev->vf);
+			/* VF initiated down messages */
 			vf_pf_process_msgs(dev, vf);
-			/* UP messages */
+			/* VF replies to PF's UP messages */
 			vf_pf_process_up_msgs(dev, vf);
 			dev->intr.bits[vf / max_bits] &=
 				~(BIT_ULL(vf % max_bits));
@@ -362,6 +371,7 @@ roc_vf_pf_mbox_handle_msg(void *param)
 	dev->timer_set = 0;
 }
 
+/* IRQ to PF from VF - PF context (interrupt thread) */
 static void
 roc_vf_pf_mbox_irq(void *param)
 {
@@ -392,6 +402,7 @@ roc_vf_pf_mbox_irq(void *param)
 	}
 }
 
+/* Received response from AF (PF context) / PF (VF context) */
 static void
 process_msgs(struct dev *dev, struct mbox *mbox)
 {
@@ -451,7 +462,7 @@ process_msgs(struct dev *dev, struct mbox *mbox)
 	}
 
 	mbox_reset(mbox, 0);
-	/* Update acked if someone is waiting a message */
+	/* Update acked if someone is waiting a message - mbox_wait is waiting */
 	mdev->msgs_acked = msgs_acked;
 	plt_wmb();
 }
@@ -597,6 +608,7 @@ mbox_process_msgs_up(struct dev *dev, struct mbox_msghdr *req)
 	return -ENODEV;
 }
 
+/* Received up messages from AF (PF context) / PF (in context) */
 static void
 process_msgs_up(struct dev *dev, struct mbox *mbox)
 {
@@ -629,6 +641,7 @@ process_msgs_up(struct dev *dev, struct mbox *mbox)
 	}
 }
 
+/* IRQ to VF from PF - VF context (interrupt thread) */
 static void
 roc_pf_vf_mbox_irq(void *param)
 {
@@ -657,6 +670,7 @@ roc_pf_vf_mbox_irq(void *param)
 	process_msgs_up(dev, &dev->mbox_up);
 }
 
+/* IRQ to PF from AF - PF context (interrupt thread) */
 static void
 roc_af_pf_mbox_irq(void *param)
 {

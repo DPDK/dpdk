@@ -350,6 +350,11 @@ mbox_wait(struct mbox *mbox, int devid, uint32_t rst_timo)
 	uint32_t timeout = 0, sleep = 1;
 
 	rst_timo = rst_timo * 1000; /* Milli seconds to micro seconds */
+
+	/* Waiting for mdev->msgs_acked tp become equal to mdev->num_msgs,
+	 * mdev->msgs_acked are incremented at process_msgs() in interrupt
+	 * thread context.
+	 */
 	while (mdev->num_msgs > mdev->msgs_acked) {
 		plt_delay_us(sleep);
 		timeout += sleep;
