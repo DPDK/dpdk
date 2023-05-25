@@ -58,7 +58,7 @@ vhost_user_iotlb_wr_unlock_all(struct virtio_net *dev)
 }
 
 void vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t uaddr,
-					uint64_t uoffset, uint64_t size, uint8_t perm);
+		uint64_t uoffset, uint64_t size, uint64_t page_size, uint8_t perm);
 void vhost_user_iotlb_cache_remove(struct virtio_net *dev, uint64_t iova, uint64_t size);
 uint64_t vhost_user_iotlb_cache_find(struct virtio_net *dev, uint64_t iova,
 					uint64_t *size, uint8_t perm);

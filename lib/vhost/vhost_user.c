@@ -743,7 +743,7 @@ log_addr_to_gpa(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	return log_gpa;
 }
 
-uint64_t
+static uint64_t
 hua_to_alignment(struct rte_vhost_memory *mem, void *ptr)
 {
 	struct rte_vhost_mem_region *r;
@@ -2632,7 +2632,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 	struct virtio_net *dev = *pdev;
 	struct vhost_iotlb_msg *imsg = &ctx->msg.payload.iotlb;
 	uint16_t i;
-	uint64_t vva, len;
+	uint64_t vva, len, pg_sz;
 
 	switch (imsg->type) {
 	case VHOST_IOTLB_UPDATE:
@@ -2641,7 +2641,9 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 		if (!vva)
 			return RTE_VHOST_MSG_RESULT_ERR;
 
-		vhost_user_iotlb_cache_insert(dev, imsg->iova, vva, 0, len, imsg->perm);
+		pg_sz = hua_to_alignment(dev->mem, (void *)(uintptr_t)vva);
+
+		vhost_user_iotlb_cache_insert(dev, imsg->iova, vva, 0, len, pg_sz, imsg->perm);
 
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];

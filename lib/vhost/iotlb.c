@@ -19,14 +19,14 @@ struct vhost_iotlb_entry {
 	uint64_t uaddr;
 	uint64_t uoffset;
 	uint64_t size;
+	uint8_t page_shift;
 	uint8_t perm;
 };
 
 #define IOTLB_CACHE_SIZE 2048
 
 static bool
-vhost_user_iotlb_share_page(struct vhost_iotlb_entry *a, struct vhost_iotlb_entry *b,
-		uint64_t align)
+vhost_user_iotlb_share_page(struct vhost_iotlb_entry *a, struct vhost_iotlb_entry *b)
 {
 	uint64_t a_start, a_end, b_start;
 
@@ -38,44 +38,41 @@ vhost_user_iotlb_share_page(struct vhost_iotlb_entry *a, struct vhost_iotlb_entr
 
 	/* Assumes entry a lower than entry b */
 	RTE_ASSERT(a_start < b_start);
-	a_end = RTE_ALIGN_CEIL(a_start + a->size, align);
-	b_start = RTE_ALIGN_FLOOR(b_start, align);
+	a_end = RTE_ALIGN_CEIL(a_start + a->size, RTE_BIT64(a->page_shift));
+	b_start = RTE_ALIGN_FLOOR(b_start, RTE_BIT64(b->page_shift));
 
 	return a_end > b_start;
 }
 
 static void
-vhost_user_iotlb_set_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node)
+vhost_user_iotlb_set_dump(struct vhost_iotlb_entry *node)
 {
-	uint64_t align, start;
+	uint64_t start;
 
 	start = node->uaddr + node->uoffset;
-	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)start);
-
-	mem_set_dump((void *)(uintptr_t)start, node->size, true, align);
+	mem_set_dump((void *)(uintptr_t)start, node->size, true, RTE_BIT64(node->page_shift));
 }
 
 static void
-vhost_user_iotlb_clear_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node,
+vhost_user_iotlb_clear_dump(struct vhost_iotlb_entry *node,
 		struct vhost_iotlb_entry *prev, struct vhost_iotlb_entry *next)
 {
-	uint64_t align, start, end;
+	uint64_t start, end;
 
 	start = node->uaddr + node->uoffset;
 	end = start + node->size;
 
-	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)start);
-
 	/* Skip first page if shared with previous entry. */
-	if (vhost_user_iotlb_share_page(prev, node, align))
-		start = RTE_ALIGN_CEIL(start, align);
+	if (vhost_user_iotlb_share_page(prev, node))
+		start = RTE_ALIGN_CEIL(start, RTE_BIT64(node->page_shift));
 
 	/* Skip last page if shared with next entry. */
-	if (vhost_user_iotlb_share_page(node, next, align))
-		end = RTE_ALIGN_FLOOR(end, align);
+	if (vhost_user_iotlb_share_page(node, next))
+		end = RTE_ALIGN_FLOOR(end, RTE_BIT64(node->page_shift));
 
 	if (end > start)
-		mem_set_dump((void *)(uintptr_t)start, end - start, false, align);
+		mem_set_dump((void *)(uintptr_t)start, end - start, false,
+			RTE_BIT64(node->page_shift));
 }
 
 static struct vhost_iotlb_entry *
@@ -198,7 +195,7 @@ vhost_user_iotlb_cache_remove_all(struct virtio_net *dev)
 	vhost_user_iotlb_wr_lock_all(dev);
 
 	RTE_TAILQ_FOREACH_SAFE(node, &dev->iotlb_list, next, temp_node) {
-		vhost_user_iotlb_clear_dump(dev, node, NULL, NULL);
+		vhost_user_iotlb_clear_dump(node, NULL, NULL);
 
 		TAILQ_REMOVE(&dev->iotlb_list, node, next);
 		vhost_user_iotlb_pool_put(dev, node);
@@ -223,7 +220,7 @@ vhost_user_iotlb_cache_random_evict(struct virtio_net *dev)
 		if (!entry_idx) {
 			struct vhost_iotlb_entry *next_node = RTE_TAILQ_NEXT(node, next);
 
-			vhost_user_iotlb_clear_dump(dev, node, prev_node, next_node);
+			vhost_user_iotlb_clear_dump(node, prev_node, next_node);
 
 			TAILQ_REMOVE(&dev->iotlb_list, node, next);
 			vhost_user_iotlb_pool_put(dev, node);
@@ -239,7 +236,7 @@ vhost_user_iotlb_cache_random_evict(struct virtio_net *dev)
 
 void
 vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t uaddr,
-				uint64_t uoffset, uint64_t size, uint8_t perm)
+				uint64_t uoffset, uint64_t size, uint64_t page_size, uint8_t perm)
 {
 	struct vhost_iotlb_entry *node, *new_node;
 
@@ -263,6 +260,7 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t ua
 	new_node->uaddr = uaddr;
 	new_node->uoffset = uoffset;
 	new_node->size = size;
+	new_node->page_shift = __builtin_ctzll(page_size);
 	new_node->perm = perm;
 
 	vhost_user_iotlb_wr_lock_all(dev);
@@ -276,7 +274,7 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t ua
 			vhost_user_iotlb_pool_put(dev, new_node);
 			goto unlock;
 		} else if (node->iova > new_node->iova) {
-			vhost_user_iotlb_set_dump(dev, new_node);
+			vhost_user_iotlb_set_dump(new_node);
 
 			TAILQ_INSERT_BEFORE(node, new_node, next);
 			dev->iotlb_cache_nr++;
@@ -284,7 +282,7 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t ua
 		}
 	}
 
-	vhost_user_iotlb_set_dump(dev, new_node);
+	vhost_user_iotlb_set_dump(new_node);
 
 	TAILQ_INSERT_TAIL(&dev->iotlb_list, new_node, next);
 	dev->iotlb_cache_nr++;
@@ -313,7 +311,7 @@ vhost_user_iotlb_cache_remove(struct virtio_net *dev, uint64_t iova, uint64_t si
 		if (iova < node->iova + node->size) {
 			struct vhost_iotlb_entry *next_node = RTE_TAILQ_NEXT(node, next);
 
-			vhost_user_iotlb_clear_dump(dev, node, prev_node, next_node);
+			vhost_user_iotlb_clear_dump(node, prev_node, next_node);
 
 			TAILQ_REMOVE(&dev->iotlb_list, node, next);
 			vhost_user_iotlb_pool_put(dev, node);

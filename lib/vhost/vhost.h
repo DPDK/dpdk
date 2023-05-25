@@ -1032,7 +1032,6 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	return true;
 }
 
-uint64_t hua_to_alignment(struct rte_vhost_memory *mem, void *ptr);
 void mem_set_dump(void *ptr, size_t size, bool enable, uint64_t alignment);
 
 /* Versioned functions */
