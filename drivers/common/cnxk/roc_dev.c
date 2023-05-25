@@ -195,7 +195,8 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 				vf_msg->rc = msg->rc;
 				vf_msg->pcifunc = msg->pcifunc;
 				/* Send to VF */
-				mbox_msg_send(&dev->mbox_vfpf_up, vf);
+				mbox_msg_send_up(&dev->mbox_vfpf_up, vf);
+				mbox_wait_for_zero(&dev->mbox_vfpf_up, vf);
 			}
 		}
 
@@ -498,6 +499,7 @@ pf_vf_mbox_send_up_msg(struct dev *dev, void *rec_msg)
 
 		/* Send to VF */
 		mbox_msg_send(vf_mbox, vf);
+		mbox_wait_for_zero(&dev->mbox_vfpf_up, vf);
 	}
 }
 
@@ -631,6 +633,7 @@ static void
 roc_pf_vf_mbox_irq(void *param)
 {
 	struct dev *dev = param;
+	uint64_t mbox_data;
 	uint64_t intr;
 
 	intr = plt_read64(dev->bar2 + RVU_VF_INT);
@@ -639,6 +642,13 @@ roc_pf_vf_mbox_irq(void *param)
 
 	plt_write64(intr, dev->bar2 + RVU_VF_INT);
 	plt_base_dbg("Irq 0x%" PRIx64 "(pf:%d,vf:%d)", intr, dev->pf, dev->vf);
+
+	/* Reading for UP/DOWN message, next message sending will be delayed
+	 * by 1ms until this region is zeroed mbox_wait_for_zero()
+	 */
+	mbox_data = plt_read64(dev->bar2 + RVU_VF_VFPF_MBOX0);
+	if (mbox_data)
+		plt_write64(!mbox_data, dev->bar2 + RVU_VF_VFPF_MBOX0);
 
 	/* First process all configuration messages */
 	process_msgs(dev, dev->mbox);
@@ -651,6 +661,7 @@ static void
 roc_af_pf_mbox_irq(void *param)
 {
 	struct dev *dev = param;
+	uint64_t mbox_data;
 	uint64_t intr;
 
 	intr = plt_read64(dev->bar2 + RVU_PF_INT);
@@ -659,6 +670,13 @@ roc_af_pf_mbox_irq(void *param)
 
 	plt_write64(intr, dev->bar2 + RVU_PF_INT);
 	plt_base_dbg("Irq 0x%" PRIx64 "(pf:%d,vf:%d)", intr, dev->pf, dev->vf);
+
+	/* Reading for UP/DOWN message, next message sending will be delayed
+	 * by 1ms until this region is zeroed mbox_wait_for_zero()
+	 */
+	mbox_data = plt_read64(dev->bar2 + RVU_PF_PFAF_MBOX0);
+	if (mbox_data)
+		plt_write64(!mbox_data, dev->bar2 + RVU_PF_PFAF_MBOX0);
 
 	/* First process all configuration messages */
 	process_msgs(dev, dev->mbox);

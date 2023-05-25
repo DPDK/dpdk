@@ -35,6 +35,21 @@ struct mbox_msghdr {
 	int __io rc; /* Msg processed response code */
 };
 
+#define RVU_AF_AFPF_MBOX0 (0x02000)
+#define RVU_AF_AFPF_MBOX1 (0x02008)
+
+#define RVU_PF_PFAF_MBOX0 (0xC00)
+#define RVU_PF_PFAF_MBOX1 (0xC08)
+
+#define RVU_PF_VFX_PFVF_MBOX0 (0x0000)
+#define RVU_PF_VFX_PFVF_MBOX1 (0x0008)
+
+#define RVU_VF_VFPF_MBOX0 (0x0000)
+#define RVU_VF_VFPF_MBOX1 (0x0008)
+
+#define MBOX_DOWN_MSG 1
+#define MBOX_UP_MSG   2
+
 /* Mailbox message types */
 #define MBOX_MSG_MASK	 0xFFFF
 #define MBOX_MSG_INVALID 0xFFFE

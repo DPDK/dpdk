@@ -10,18 +10,6 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-#define RVU_AF_AFPF_MBOX0 (0x02000)
-#define RVU_AF_AFPF_MBOX1 (0x02008)
-
-#define RVU_PF_PFAF_MBOX0 (0xC00)
-#define RVU_PF_PFAF_MBOX1 (0xC08)
-
-#define RVU_PF_VFX_PFVF_MBOX0 (0x0000)
-#define RVU_PF_VFX_PFVF_MBOX1 (0x0008)
-
-#define RVU_VF_VFPF_MBOX0 (0x0000)
-#define RVU_VF_VFPF_MBOX1 (0x0008)
-
 /* RCLK, SCLK in MHz */
 uint16_t dev_rclk_freq;
 uint16_t dev_sclk_freq;
@@ -194,10 +182,31 @@ exit:
 
 /**
  * @internal
- * Send a mailbox message
+ * Synchronization between UP and DOWN messages
  */
-void
-mbox_msg_send(struct mbox *mbox, int devid)
+bool
+mbox_wait_for_zero(struct mbox *mbox, int devid)
+{
+	uint64_t data;
+
+	data = plt_read64((volatile void *)(mbox->reg_base +
+				(mbox->trigger | (devid << mbox->tr_shift))));
+
+	/* If data is non-zero wait for ~1ms and return to caller
+	 * whether data has changed to zero or not after the wait.
+	 */
+	if (data)
+		usleep(1000);
+	else
+		return true;
+
+	data = plt_read64((volatile void *)(mbox->reg_base +
+				(mbox->trigger | (devid << mbox->tr_shift))));
+	return data == 0;
+}
+
+static void
+mbox_msg_send_data(struct mbox *mbox, int devid, uint8_t data)
 {
 	struct mbox_dev *mdev = &mbox->dev[devid];
 	struct mbox_hdr *tx_hdr =
@@ -223,9 +232,28 @@ mbox_msg_send(struct mbox *mbox, int devid)
 	/* The interrupt should be fired after num_msgs is written
 	 * to the shared memory
 	 */
-	plt_write64(1, (volatile void *)(mbox->reg_base +
-					 (mbox->trigger |
-					  (devid << mbox->tr_shift))));
+	plt_write64(data, (volatile void *)(mbox->reg_base +
+				(mbox->trigger | (devid << mbox->tr_shift))));
+}
+
+/**
+ * @internal
+ * Send a mailbox message
+ */
+void
+mbox_msg_send(struct mbox *mbox, int devid)
+{
+	mbox_msg_send_data(mbox, devid, MBOX_DOWN_MSG);
+}
+
+/**
+ * @internal
+ * Send an UP mailbox message
+ */
+void
+mbox_msg_send_up(struct mbox *mbox, int devid)
+{
+	mbox_msg_send_data(mbox, devid, MBOX_UP_MSG);
 }
 
 /**
