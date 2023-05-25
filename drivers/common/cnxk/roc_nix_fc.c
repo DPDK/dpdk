@@ -104,6 +104,17 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		nix->cpt_lbpid = 0;
 	}
 
+	/* CPT to NIX BP on all channels */
+	if (!roc_feature_nix_has_rxchan_multi_bpid() || !nix->cpt_nixbpid)
+		goto exit;
+
+	mbox_put(mbox);
+	for (i = 0; i < nix->rx_chan_cnt; i++) {
+		rc = roc_nix_chan_bpid_set(roc_nix, i, nix->cpt_nixbpid, enable, false);
+		if (rc)
+			break;
+	}
+	return rc;
 exit:
 	mbox_put(mbox);
 	return rc;
@@ -598,4 +609,175 @@ roc_nix_chan_count_get(struct roc_nix *roc_nix)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 
 	return nix->chan_cnt;
+}
+
+/* Allocate BPID for requested type
+ * Returns number of BPIDs allocated
+ *	0 if no BPIDs available
+ *	-ve value on error
+ */
+int
+roc_nix_bpids_alloc(struct roc_nix *roc_nix, uint8_t type, uint8_t bp_cnt, uint16_t *bpids)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct nix_alloc_bpid_req *req;
+	struct nix_bpids *rsp;
+	int rc = -EINVAL;
+
+	/* Use this api for unreserved interface types */
+	if ((type < ROC_NIX_INTF_TYPE_RSVD) || (bp_cnt > ROC_NIX_MAX_BPID_CNT) || !bpids)
+		goto exit;
+
+	rc = -ENOSPC;
+	req = mbox_alloc_msg_nix_alloc_bpids(mbox);
+	if (req == NULL)
+		goto exit;
+	req->type = type;
+	req->bpid_cnt = bp_cnt;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	for (rc = 0; rc < rsp->bpid_cnt; rc++)
+		bpids[rc] = rsp->bpids[rc];
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt, uint16_t *bpids)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct nix_bpids *req;
+	int rc = -EINVAL;
+
+	/* Use this api for unreserved interface types */
+	if ((bp_cnt > ROC_NIX_MAX_BPID_CNT) || !bpids)
+		goto exit;
+
+	rc = -ENOSPC;
+	req = mbox_alloc_msg_nix_free_bpids(mbox);
+	if (req == NULL)
+		goto exit;
+	for (rc = 0; rc < bp_cnt; rc++)
+		req->bpids[rc] = bpids[rc];
+	req->bpid_cnt = rc;
+
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_rx_chan_cfg_get(struct roc_nix *roc_nix, uint16_t chan, bool is_cpt, uint64_t *cfg)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct nix_rx_chan_cfg *req;
+	struct nix_rx_chan_cfg *rsp;
+	int rc = -EINVAL;
+
+	req = mbox_alloc_msg_nix_rx_chan_cfg(mbox);
+	if (req == NULL)
+		goto exit;
+	if (is_cpt)
+		req->type = ROC_NIX_INTF_TYPE_CPT;
+	req->chan = chan;
+	req->read = 1;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+	*cfg = rsp->val;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_rx_chan_cfg_set(struct roc_nix *roc_nix, uint16_t chan, bool is_cpt, uint64_t val)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct nix_rx_chan_cfg *req;
+	int rc = -EINVAL;
+
+	req = mbox_alloc_msg_nix_rx_chan_cfg(mbox);
+	if (req == NULL)
+		goto exit;
+	if (is_cpt)
+		req->type = ROC_NIX_INTF_TYPE_CPT;
+	req->chan = chan;
+	req->val = val;
+	req->read = 0;
+
+	rc = mbox_process(mbox);
+	if (rc)
+		goto exit;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+#define NIX_BPID1_ENA 15
+#define NIX_BPID2_ENA 14
+#define NIX_BPID3_ENA 13
+
+#define NIX_BPID1_OFF 20
+#define NIX_BPID2_OFF 32
+#define NIX_BPID3_OFF 44
+
+int
+roc_nix_chan_bpid_set(struct roc_nix *roc_nix, uint16_t chan, uint64_t bpid, int ena, bool cpt_chan)
+{
+	uint64_t cfg;
+	int rc;
+
+	if (!roc_feature_nix_has_rxchan_multi_bpid())
+		return -ENOTSUP;
+
+	rc = roc_nix_rx_chan_cfg_get(roc_nix, chan, cpt_chan, &cfg);
+	if (rc)
+		return rc;
+
+	if (ena) {
+		if ((((cfg >> NIX_BPID1_OFF) & GENMASK_ULL(8, 0)) == bpid) ||
+		    (((cfg >> NIX_BPID2_OFF) & GENMASK_ULL(8, 0)) == bpid) ||
+		    (((cfg >> NIX_BPID3_OFF) & GENMASK_ULL(8, 0)) == bpid))
+			return 0;
+
+		if (!(cfg & BIT_ULL(NIX_BPID1_ENA))) {
+			cfg &= ~GENMASK_ULL(NIX_BPID1_OFF + 8, NIX_BPID1_OFF);
+			cfg |= (((uint64_t)bpid << NIX_BPID1_OFF) | BIT_ULL(NIX_BPID1_ENA));
+		} else if (!(cfg & BIT_ULL(NIX_BPID2_ENA))) {
+			cfg &= ~GENMASK_ULL(NIX_BPID2_OFF + 8, NIX_BPID2_OFF);
+			cfg |= (((uint64_t)bpid << NIX_BPID2_OFF) | BIT_ULL(NIX_BPID2_ENA));
+		} else if (!(cfg & BIT_ULL(NIX_BPID3_ENA))) {
+			cfg &= ~GENMASK_ULL(NIX_BPID3_OFF + 8, NIX_BPID3_OFF);
+			cfg |= (((uint64_t)bpid << NIX_BPID3_OFF) | BIT_ULL(NIX_BPID3_ENA));
+		} else {
+			plt_nix_dbg("Exceed maximum BPIDs");
+			return -ENOSPC;
+		}
+	} else {
+		if (((cfg >> NIX_BPID1_OFF) & GENMASK_ULL(8, 0)) == bpid) {
+			cfg &= ~(GENMASK_ULL(NIX_BPID1_OFF + 8, NIX_BPID1_OFF) |
+				 BIT_ULL(NIX_BPID1_ENA));
+		} else if (((cfg >> NIX_BPID2_OFF) & GENMASK_ULL(8, 0)) == bpid) {
+			cfg &= ~(GENMASK_ULL(NIX_BPID2_OFF + 8, NIX_BPID2_OFF) |
+				 BIT_ULL(NIX_BPID2_ENA));
+		} else if (((cfg >> NIX_BPID3_OFF) & GENMASK_ULL(8, 0)) == bpid) {
+			cfg &= ~(GENMASK_ULL(NIX_BPID3_OFF + 8, NIX_BPID3_OFF) |
+				 BIT_ULL(NIX_BPID3_ENA));
+		} else {
+			plt_nix_dbg("BPID not found");
+			return -EINVAL;
+		}
+	}
+	return roc_nix_rx_chan_cfg_set(roc_nix, chan, cpt_chan, cfg);
 }

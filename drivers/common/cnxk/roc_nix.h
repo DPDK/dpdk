@@ -16,6 +16,17 @@
 #define ROC_NIX_SQB_LOWER_THRESH      70U
 #define ROC_NIX_SQB_SLACK	      12U
 
+/* Reserved interface types for BPID allocation */
+#define ROC_NIX_INTF_TYPE_CGX  0
+#define ROC_NIX_INTF_TYPE_LBK  1
+#define ROC_NIX_INTF_TYPE_SDP  2
+#define ROC_NIX_INTF_TYPE_CPT  3
+#define ROC_NIX_INTF_TYPE_RSVD 4
+
+/* Application based types for BPID allocation, start from end (255 unused rsvd) */
+#define ROC_NIX_INTF_TYPE_CPT_NIX 254
+#define ROC_NIX_INTF_TYPE_SSO     253
+
 enum roc_nix_rss_reta_sz {
 	ROC_NIX_RSS_RETA_SZ_64 = 64,
 	ROC_NIX_RSS_RETA_SZ_128 = 128,
@@ -837,6 +848,16 @@ enum roc_nix_fc_mode __roc_api roc_nix_fc_mode_get(struct roc_nix *roc_nix);
 
 void __roc_api roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id,
 				     uint8_t ena, uint8_t force, uint8_t tc);
+int __roc_api roc_nix_bpids_alloc(struct roc_nix *roc_nix, uint8_t type,
+				  uint8_t bp_cnt, uint16_t *bpids);
+int __roc_api roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt,
+				 uint16_t *bpids);
+int __roc_api roc_nix_rx_chan_cfg_get(struct roc_nix *roc_nix, uint16_t chan,
+				      bool is_cpt, uint64_t *cfg);
+int __roc_api roc_nix_rx_chan_cfg_set(struct roc_nix *roc_nix, uint16_t chan,
+				      bool is_cpt, uint64_t val);
+int __roc_api roc_nix_chan_bpid_set(struct roc_nix *roc_nix, uint16_t chan,
+				    uint64_t bpid, int ena, bool cpt_chan);
 
 /* NPC */
 int __roc_api roc_nix_npc_promisc_ena_dis(struct roc_nix *roc_nix, int enable);

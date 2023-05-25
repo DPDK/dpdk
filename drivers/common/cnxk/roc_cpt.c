@@ -311,8 +311,7 @@ exit:
 }
 
 int
-roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
-			     uint16_t param2, uint16_t opcode)
+roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, struct roc_cpt_inline_ipsec_inb_cfg *cfg)
 {
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
 	struct cpt_rx_inline_lf_cfg_msg *req;
@@ -328,9 +327,10 @@ roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
 	}
 
 	req->sso_pf_func = idev_sso_pffunc_get();
-	req->param1 = param1;
-	req->param2 = param2;
-	req->opcode = opcode;
+	req->param1 = cfg->param1;
+	req->param2 = cfg->param2;
+	req->opcode = cfg->opcode;
+	req->bpid = cfg->bpid;
 
 	rc = mbox_process(mbox);
 exit:

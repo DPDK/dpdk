@@ -603,11 +603,10 @@ int
 roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct roc_cpt_inline_ipsec_inb_cfg cfg;
 	struct idev_cfg *idev = idev_get_cfg();
+	uint16_t bpids[ROC_NIX_MAX_BPID_CNT];
 	struct roc_cpt *roc_cpt;
-	uint16_t opcode;
-	uint16_t param1;
-	uint16_t param2;
 	int rc;
 
 	if (idev == NULL)
@@ -624,9 +623,9 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 	}
 
 	if (roc_model_is_cn9k()) {
-		param1 = (ROC_ONF_IPSEC_INB_MAX_L2_SZ >> 3) & 0xf;
-		param2 = ROC_IE_ON_INB_IKEV2_SINGLE_SA_SUPPORT;
-		opcode =
+		cfg.param1 = (ROC_ONF_IPSEC_INB_MAX_L2_SZ >> 3) & 0xf;
+		cfg.param2 = ROC_IE_ON_INB_IKEV2_SINGLE_SA_SUPPORT;
+		cfg.opcode =
 			((ROC_IE_ON_INB_MAX_CTX_LEN << 8) |
 			 (ROC_IE_ON_MAJOR_OP_PROCESS_INBOUND_IPSEC | (1 << 6)));
 	} else {
@@ -634,13 +633,18 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 
 		u.u16 = 0;
 		u.s.esp_trailer_disable = 1;
-		param1 = u.u16;
-		param2 = 0;
-		opcode = (ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC | (1 << 6));
+		cfg.param1 = u.u16;
+		cfg.param2 = 0;
+		cfg.opcode = (ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC | (1 << 6));
+		rc = roc_nix_bpids_alloc(roc_nix, ROC_NIX_INTF_TYPE_CPT_NIX, 1, bpids);
+		if (rc > 0) {
+			nix->cpt_nixbpid = bpids[0];
+			cfg.bpid = nix->cpt_nixbpid;
+		}
 	}
 
 	/* Do onetime Inbound Inline config in CPTPF */
-	rc = roc_cpt_inline_ipsec_inb_cfg(roc_cpt, param1, param2, opcode);
+	rc = roc_cpt_inline_ipsec_inb_cfg(roc_cpt, &cfg);
 	if (rc && rc != -EEXIST) {
 		plt_err("Failed to setup inbound lf, rc=%d", rc);
 		return rc;

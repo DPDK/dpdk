@@ -40,4 +40,11 @@ roc_feature_nix_has_reass(void)
 	return roc_model_is_cn10ka();
 }
 
+static inline bool
+roc_feature_nix_has_rxchan_multi_bpid(void)
+{
+	if (roc_model_is_cn10kb() || roc_model_is_cn10ka_b0())
+		return true;
+	return false;
+}
 #endif

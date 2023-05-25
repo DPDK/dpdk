@@ -178,8 +178,7 @@ int __roc_api roc_cpt_inline_ipsec_cfg(struct dev *dev, uint8_t slot,
 int __roc_api roc_cpt_inline_ipsec_inb_cfg_read(struct roc_cpt *roc_cpt,
 					struct roc_cpt_inline_ipsec_inb_cfg *cfg);
 int __roc_api roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt,
-					   uint16_t param1, uint16_t param2,
-					   uint16_t opcode);
+					   struct roc_cpt_inline_ipsec_inb_cfg *cfg);
 int __roc_api roc_cpt_afs_print(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_lfs_print(struct roc_cpt *roc_cpt);
 void __roc_api roc_cpt_iq_disable(struct roc_cpt_lf *lf);

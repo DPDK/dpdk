@@ -147,6 +147,9 @@ INTERNAL {
 	roc_nix_bpf_stats_reset;
 	roc_nix_bpf_stats_to_idx;
 	roc_nix_bpf_timeunit_get;
+	roc_nix_bpids_alloc;
+	roc_nix_bpids_free;
+	roc_nix_chan_bpid_set;
 	roc_nix_chan_count_get;
 	roc_nix_cq_dump;
 	roc_nix_cq_fini;
@@ -277,6 +280,8 @@ INTERNAL {
 	roc_nix_rss_key_set;
 	roc_nix_rss_reta_get;
 	roc_nix_rss_reta_set;
+	roc_nix_rx_chan_cfg_get;
+	roc_nix_rx_chan_cfg_set;
 	roc_nix_rx_drop_re_set;
 	roc_nix_rx_queue_intr_disable;
 	roc_nix_rx_queue_intr_enable;
