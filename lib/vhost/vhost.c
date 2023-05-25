@@ -680,10 +680,15 @@ reset_device(struct virtio_net *dev)
  * there is a new virtio device being attached).
  */
 int
-vhost_new_device(void)
+vhost_new_device(struct vhost_backend_ops *ops)
 {
 	struct virtio_net *dev;
 	int i;
+
+	if (ops == NULL) {
+		VHOST_LOG_CONFIG("device", ERR, "missing backend ops.\n");
+		return -1;
+	}
 
 	pthread_mutex_lock(&vhost_dev_lock);
 	for (i = 0; i < RTE_MAX_VHOST_DEVICE; i++) {
@@ -712,6 +717,7 @@ vhost_new_device(void)
 	dev->backend_req_fd = -1;
 	dev->postcopy_ufd = -1;
 	rte_spinlock_init(&dev->backend_req_lock);
+	dev->backend_ops = ops;
 
 	return i;
 }

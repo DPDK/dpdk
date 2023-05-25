@@ -90,6 +90,12 @@
 #endif
 
 /**
+ * Structure that contains backend-specific ops.
+ */
+struct vhost_backend_ops {
+};
+
+/**
  * Structure contains buffer address, length and descriptor index
  * from vring to do scatter RX.
  */
@@ -516,6 +522,8 @@ struct virtio_net {
 	void			*extern_data;
 	/* pre and post vhost user message handlers for the device */
 	struct rte_vhost_user_extern_ops extern_ops;
+
+	struct vhost_backend_ops *backend_ops;
 } __rte_cache_aligned;
 
 static inline void
@@ -815,7 +823,7 @@ get_device(int vid)
 	return dev;
 }
 
-int vhost_new_device(void);
+int vhost_new_device(struct vhost_backend_ops *ops);
 void cleanup_device(struct virtio_net *dev, int destroy);
 void reset_device(struct virtio_net *dev);
 void vhost_destroy_device(int);

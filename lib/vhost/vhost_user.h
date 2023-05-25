@@ -185,5 +185,6 @@ int vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm);
 int read_fd_message(char *ifname, int sockfd, char *buf, int buflen, int *fds, int max_fds,
 		int *fd_num);
 int send_fd_message(char *ifname, int sockfd, char *buf, int buflen, int *fds, int fd_num);
+int vhost_user_new_device(void);
 
 #endif

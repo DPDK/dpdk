@@ -3464,3 +3464,11 @@ disable:
 
 	return ret;
 }
+
+static struct vhost_backend_ops vhost_user_backend_ops;
+
+int
+vhost_user_new_device(void)
+{
+	return vhost_new_device(&vhost_user_backend_ops);
+}
