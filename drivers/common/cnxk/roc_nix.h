@@ -242,6 +242,22 @@ struct roc_nix_eeprom_info {
 #define ROC_NIX_LF_RX_CFG_LEN_OL4     BIT_ULL(40)
 #define ROC_NIX_LF_RX_CFG_LEN_OL3     BIT_ULL(41)
 
+#define ROC_NIX_LF_RX_CFG_RX_ERROR_MASK 0xFFFFFFFFFFF80000
+#define ROC_NIX_RE_PARTIAL		BIT_ULL(1)
+#define ROC_NIX_RE_JABBER		BIT_ULL(2)
+#define ROC_NIX_RE_CRC8_PCH		BIT_ULL(5)
+#define ROC_NIX_RE_CNC_INV		BIT_ULL(6)
+#define ROC_NIX_RE_FCS			BIT_ULL(7)
+#define ROC_NIX_RE_FCS_RCV		BIT_ULL(8)
+#define ROC_NIX_RE_TERMINATE		BIT_ULL(9)
+#define ROC_NIX_RE_MACSEC		BIT_ULL(10)
+#define ROC_NIX_RE_RX_CTL		BIT_ULL(11)
+#define ROC_NIX_RE_SKIP			BIT_ULL(12)
+#define ROC_NIX_RE_DMAPKT		BIT_ULL(15)
+#define ROC_NIX_RE_UNDERSIZE		BIT_ULL(16)
+#define ROC_NIX_RE_OVERSIZE		BIT_ULL(17)
+#define ROC_NIX_RE_OL2_LENMISM		BIT_ULL(18)
+
 /* Group 0 will be used for RSS, 1 -7 will be used for npc_flow RSS action*/
 #define ROC_NIX_RSS_GROUP_DEFAULT    0
 #define ROC_NIX_RSS_GRPS	     8
