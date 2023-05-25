@@ -100,6 +100,12 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		vhost_user_iotlb_rd_lock(vq);
 	}
 
+	tmp_size = *size;
+	/* Retry in case of VDUSE, as it is synchronous */
+	vva = vhost_user_iotlb_cache_find(dev, iova, &tmp_size, perm);
+	if (tmp_size == *size)
+		return vva;
+
 	return 0;
 }
 
