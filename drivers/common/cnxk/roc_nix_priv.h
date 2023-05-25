@@ -130,6 +130,7 @@ struct nix {
 	struct nix_qint *cints_mem;
 	uint8_t configured_qints;
 	uint8_t configured_cints;
+	uint8_t exact_match_ena;
 	struct roc_nix_rq **rqs;
 	struct roc_nix_sq **sqs;
 	uint16_t vwqe_interval;

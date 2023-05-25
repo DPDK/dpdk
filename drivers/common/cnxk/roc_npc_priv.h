@@ -404,6 +404,7 @@ struct npc {
 	struct npc_prio_flow_list_head *prio_flow_list;
 	struct plt_bitmap *rss_grp_entries;
 	struct npc_flow_list ipsec_list;
+	uint8_t exact_match_ena;
 };
 
 #define NPC_HASH_FIELD_LEN 16

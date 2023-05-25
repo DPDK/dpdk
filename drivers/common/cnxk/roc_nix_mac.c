@@ -201,6 +201,14 @@ roc_nix_mac_promisc_mode_enable(struct roc_nix *roc_nix, int enable)
 		goto exit;
 	}
 
+	/* Skip CGX promisc toggling if NPC exact match is enabled as
+	 * CGX filtering is disabled permanently.
+	 */
+	if (nix->exact_match_ena) {
+		rc = 0;
+		goto exit;
+	}
+
 	if (enable)
 		mbox_alloc_msg_cgx_promisc_enable(mbox);
 	else

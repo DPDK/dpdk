@@ -542,6 +542,7 @@ npc_mcam_fetch_kex_cfg(struct npc *npc)
 	mbox_memcpy((char *)npc->profile_name, kex_rsp->mkex_pfl_name,
 		    MKEX_NAME_LEN);
 
+	npc->exact_match_ena = (kex_rsp->rx_keyx_cfg >> 40) & 0xF;
 	npc_mcam_process_mkex_cfg(npc, kex_rsp);
 
 done:

@@ -272,6 +272,7 @@ roc_npc_init(struct roc_npc *roc_npc)
 	roc_npc->rx_parse_nibble = npc->keyx_supp_nmask[NPC_MCAM_RX];
 
 	npc->mcam_entries = npc_mcam_tot_entries() >> npc->keyw[NPC_MCAM_RX];
+	nix->exact_match_ena = npc->exact_match_ena;
 
 	/* Free, free_rev, live and live_rev entries */
 	bmap_sz = plt_bitmap_get_memory_footprint(npc->mcam_entries);
