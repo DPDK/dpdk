@@ -1382,7 +1382,7 @@ roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool enable)
 		return -EFAULT;
 
 	if (roc_feature_nix_has_inl_rq_mask()) {
-		rc = nix_inl_rq_mask_cfg(roc_nix, true);
+		rc = nix_inl_rq_mask_cfg(roc_nix, enable);
 		if (rc) {
 			plt_err("Failed to get rq mask rc=%d", rc);
 			return rc;
