@@ -173,6 +173,12 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 		resp.vq_state.split.avail_index = vq->last_avail_idx;
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
+	case VDUSE_SET_STATUS:
+		VHOST_LOG_CONFIG(dev->ifname, INFO, "\tnew status: 0x%08x\n",
+				req.s.status);
+		dev->status = req.s.status;
+		resp.result = VDUSE_REQ_RESULT_OK;
+		break;
 	default:
 		resp.result = VDUSE_REQ_RESULT_FAILED;
 		break;
