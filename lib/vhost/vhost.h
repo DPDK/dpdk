@@ -973,6 +973,8 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 kick:
 	if (kick) {
 		eventfd_write(vq->callfd, (eventfd_t)1);
+		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+			vq->stats.guest_notifications++;
 		if (dev->notify_ops->guest_notified)
 			dev->notify_ops->guest_notified(dev->vid);
 	}
