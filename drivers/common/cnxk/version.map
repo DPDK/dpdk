@@ -174,6 +174,8 @@ INTERNAL {
 	roc_nix_inl_cb_register;
 	roc_nix_inl_cb_unregister;
 	roc_nix_inl_ctx_write;
+	roc_nix_inl_dev_cpt_setup;
+	roc_nix_inl_dev_cpt_release;
 	roc_nix_inl_dev_dump;
 	roc_nix_inl_dev_fini;
 	roc_nix_inl_dev_init;

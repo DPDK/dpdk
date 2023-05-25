@@ -172,7 +172,7 @@ exit:
 }
 
 static int
-nix_inl_cpt_setup(struct nix_inl_dev *inl_dev)
+nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 {
 	struct roc_cpt_lf *lf = &inl_dev->cpt_lf;
 	struct dev *dev = &inl_dev->dev;
@@ -186,7 +186,7 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev)
 	eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE |
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_SE_IE |
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
-	rc = cpt_lfs_alloc(dev, eng_grpmask, RVU_BLOCK_ADDR_CPT0, false);
+	rc = cpt_lfs_alloc(dev, eng_grpmask, RVU_BLOCK_ADDR_CPT0, inl_dev_sso);
 	if (rc) {
 		plt_err("Failed to alloc CPT LF resources, rc=%d", rc);
 		return rc;
@@ -218,7 +218,7 @@ nix_inl_cpt_release(struct nix_inl_dev *inl_dev)
 {
 	struct roc_cpt_lf *lf = &inl_dev->cpt_lf;
 	struct dev *dev = &inl_dev->dev;
-	int rc, ret = 0;
+	int rc;
 
 	if (!inl_dev->attach_cptlf)
 		return 0;
@@ -228,17 +228,11 @@ nix_inl_cpt_release(struct nix_inl_dev *inl_dev)
 
 	/* Free LF resources */
 	rc = cpt_lfs_free(dev);
-	if (rc)
+	if (!rc)
+		lf->dev = NULL;
+	else
 		plt_err("Failed to free CPT LF resources, rc=%d", rc);
-	ret |= rc;
-
-	/* Detach LF */
-	rc = cpt_lfs_detach(dev);
-	if (rc)
-		plt_err("Failed to detach CPT LF, rc=%d", rc);
-	ret |= rc;
-
-	return ret;
+	return rc;
 }
 
 static int
@@ -940,7 +934,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 		goto nix_release;
 
 	/* Setup CPT LF */
-	rc = nix_inl_cpt_setup(inl_dev);
+	rc = nix_inl_cpt_setup(inl_dev, false);
 	if (rc)
 		goto sso_release;
 
@@ -1035,8 +1029,11 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 	/* Flush Inbound CTX cache entries */
 	nix_inl_cpt_ctx_cache_sync(inl_dev);
 
+	/* Release CPT */
+	rc = nix_inl_cpt_release(inl_dev);
+
 	/* Release SSO */
-	rc = nix_inl_sso_release(inl_dev);
+	rc |= nix_inl_sso_release(inl_dev);
 
 	/* Release NIX */
 	rc |= nix_inl_nix_release(inl_dev);
@@ -1051,4 +1048,36 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 
 	idev->nix_inl_dev = NULL;
 	return 0;
+}
+
+int
+roc_nix_inl_dev_cpt_setup(bool use_inl_dev_sso)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+
+	if (!idev || !idev->nix_inl_dev)
+		return -ENOENT;
+	inl_dev = idev->nix_inl_dev;
+
+	if (inl_dev->cpt_lf.dev != NULL)
+		return -EBUSY;
+
+	return nix_inl_cpt_setup(inl_dev, use_inl_dev_sso);
+}
+
+int
+roc_nix_inl_dev_cpt_release(void)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+
+	if (!idev || !idev->nix_inl_dev)
+		return -ENOENT;
+	inl_dev = idev->nix_inl_dev;
+
+	if (inl_dev->cpt_lf.dev == NULL)
+		return 0;
+
+	return nix_inl_cpt_release(inl_dev);
 }
