@@ -21,6 +21,7 @@
 #include "iotlb.h"
 #include "vduse.h"
 #include "vhost.h"
+#include "virtio_net_ctrl.h"
 
 #define VHOST_VDUSE_API_VERSION 0
 #define VDUSE_CTRL_PATH "/dev/vduse/control"
@@ -41,7 +42,9 @@
 				(1ULL << VIRTIO_NET_F_GUEST_ECN) | \
 				(1ULL << VIRTIO_RING_F_INDIRECT_DESC) | \
 				(1ULL << VIRTIO_F_IN_ORDER) | \
-				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
+				(1ULL << VIRTIO_F_IOMMU_PLATFORM) | \
+				(1ULL << VIRTIO_NET_F_CTRL_VQ) | \
+				(1ULL << VIRTIO_NET_F_MQ))
 
 struct vduse {
 	struct fdset fdset;
@@ -142,6 +145,25 @@ static struct vhost_backend_ops vduse_backend_ops = {
 };
 
 static void
+vduse_control_queue_event(int fd, void *arg, int *remove __rte_unused)
+{
+	struct virtio_net *dev = arg;
+	uint64_t buf;
+	int ret;
+
+	ret = read(fd, &buf, sizeof(buf));
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to read control queue event: %s\n",
+				strerror(errno));
+		return;
+	}
+
+	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "Control queue kicked\n");
+	if (virtio_net_ctrl_handle(dev))
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to handle ctrl request\n");
+}
+
+static void
 vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[index];
@@ -212,6 +234,22 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 		vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 		return;
 	}
+
+	if (vq == dev->cvq) {
+		ret = fdset_add(&vduse.fdset, vq->kickfd, vduse_control_queue_event, NULL, dev);
+		if (ret) {
+			VHOST_LOG_CONFIG(dev->ifname, ERR,
+					"Failed to setup kickfd handler for VQ %u: %s\n",
+					index, strerror(errno));
+			vq_efd.fd = VDUSE_EVENTFD_DEASSIGN;
+			ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP_KICKFD, &vq_efd);
+			close(vq->kickfd);
+			vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
+		}
+		fdset_pipe_notify(&vduse.fdset);
+		vhost_enable_guest_notification(dev, vq, 1);
+		VHOST_LOG_CONFIG(dev->ifname, INFO, "Ctrl queue event handler installed\n");
+	}
 }
 
 static void
@@ -257,6 +295,9 @@ vduse_device_start(struct virtio_net *dev)
 
 	for (i = 0; i < dev->nr_vring; i++) {
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+		if (vq == dev->cvq)
+			continue;
 
 		if (dev->notify_ops->vring_state_changed)
 			dev->notify_ops->vring_state_changed(dev->vid, i, vq->enabled);
@@ -334,9 +375,11 @@ vduse_device_create(const char *path)
 {
 	int control_fd, dev_fd, vid, ret;
 	pthread_t fdset_tid;
-	uint32_t i;
+	uint32_t i, max_queue_pairs, total_queues;
 	struct virtio_net *dev;
+	struct virtio_net_config vnet_config = { 0 };
 	uint64_t ver = VHOST_VDUSE_API_VERSION;
+	uint64_t features = VDUSE_NET_SUPPORTED_FEATURES;
 	struct vduse_dev_config *dev_config = NULL;
 	const char *name = path + strlen("/dev/vduse/");
 
@@ -376,22 +419,39 @@ vduse_device_create(const char *path)
 		goto out_ctrl_close;
 	}
 
-	dev_config = malloc(offsetof(struct vduse_dev_config, config));
+	dev_config = malloc(offsetof(struct vduse_dev_config, config) +
+			sizeof(vnet_config));
 	if (!dev_config) {
 		VHOST_LOG_CONFIG(name, ERR, "Failed to allocate VDUSE config\n");
 		ret = -1;
 		goto out_ctrl_close;
 	}
 
+	ret = rte_vhost_driver_get_queue_num(path, &max_queue_pairs);
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(name, ERR, "Failed to get max queue pairs\n");
+		goto out_free;
+	}
+
+	VHOST_LOG_CONFIG(path, INFO, "VDUSE max queue pairs: %u\n", max_queue_pairs);
+	total_queues = max_queue_pairs * 2;
+
+	if (max_queue_pairs == 1)
+		features &= ~(RTE_BIT64(VIRTIO_NET_F_CTRL_VQ) | RTE_BIT64(VIRTIO_NET_F_MQ));
+	else
+		total_queues += 1; /* Includes ctrl queue */
+
+	vnet_config.max_virtqueue_pairs = max_queue_pairs;
 	memset(dev_config, 0, sizeof(struct vduse_dev_config));
 
 	strncpy(dev_config->name, name, VDUSE_NAME_MAX - 1);
 	dev_config->device_id = VIRTIO_ID_NET;
 	dev_config->vendor_id = 0;
-	dev_config->features = VDUSE_NET_SUPPORTED_FEATURES;
-	dev_config->vq_num = 2;
+	dev_config->features = features;
+	dev_config->vq_num = total_queues;
 	dev_config->vq_align = sysconf(_SC_PAGE_SIZE);
-	dev_config->config_size = 0;
+	dev_config->config_size = sizeof(struct virtio_net_config);
+	memcpy(dev_config->config, &vnet_config, sizeof(vnet_config));
 
 	ret = ioctl(control_fd, VDUSE_CREATE_DEV, dev_config);
 	if (ret < 0) {
@@ -433,7 +493,7 @@ vduse_device_create(const char *path)
 	dev->vduse_dev_fd = dev_fd;
 	vhost_setup_virtio_net(dev->vid, true, true, true, true);
 
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < total_queues; i++) {
 		struct vduse_vq_config vq_cfg = { 0 };
 
 		ret = alloc_vring_queue(dev, i);
@@ -451,6 +511,8 @@ vduse_device_create(const char *path)
 			goto out_dev_destroy;
 		}
 	}
+
+	dev->cvq = dev->virtqueue[max_queue_pairs * 2];
 
 	ret = fdset_add(&vduse.fdset, dev->vduse_dev_fd, vduse_events_handler, NULL, dev);
 	if (ret) {
@@ -497,6 +559,13 @@ vduse_device_destroy(const char *path)
 
 	if (vid == RTE_MAX_VHOST_DEVICE)
 		return -1;
+
+	if (dev->cvq && dev->cvq->kickfd >= 0) {
+		fdset_del(&vduse.fdset, dev->cvq->kickfd);
+		fdset_pipe_notify(&vduse.fdset);
+		close(dev->cvq->kickfd);
+		dev->cvq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
+	}
 
 	fdset_del(&vduse.fdset, dev->vduse_dev_fd);
 	fdset_pipe_notify(&vduse.fdset);
