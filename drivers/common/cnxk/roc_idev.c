@@ -39,6 +39,7 @@ idev_set_defaults(struct idev_cfg *idev)
 	idev->bphy = NULL;
 	idev->cpt = NULL;
 	idev->nix_inl_dev = NULL;
+	TAILQ_INIT(&idev->roc_nix_list);
 	plt_spinlock_init(&idev->nix_inl_dev_lock);
 	plt_spinlock_init(&idev->npa_dev_lock);
 	__atomic_store_n(&idev->npa_refcnt, 0, __ATOMIC_RELEASE);
@@ -199,6 +200,17 @@ roc_nix_inl_outb_ring_base_get(struct roc_nix *roc_nix)
 	inl_dev = idev->nix_inl_dev;
 
 	return (uint64_t *)&inl_dev->sa_soft_exp_ring[nix->outb_se_ring_base];
+}
+
+struct roc_nix_list *
+roc_idev_nix_list_get(void)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev != NULL)
+		return &idev->roc_nix_list;
+	return NULL;
 }
 
 void

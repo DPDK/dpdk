@@ -882,6 +882,54 @@ roc_npa_zero_aura_handle(void)
 	return 0;
 }
 
+int
+roc_npa_aura_bp_configure(uint64_t aura_handle, uint16_t bpid, uint8_t bp_intf, uint8_t bp_thresh,
+			  bool enable)
+{
+	uint32_t aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+	struct npa_lf *lf = idev_npa_obj_get();
+	struct npa_aq_enq_req *req;
+	struct mbox *mbox;
+	int rc = 0;
+
+	if (lf == NULL)
+		return NPA_ERR_PARAM;
+
+	mbox = mbox_get(lf->mbox);
+	req = mbox_alloc_msg_npa_aq_enq(mbox);
+	if (req == NULL) {
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	req->aura_id = aura_id;
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_WRITE;
+
+	if (enable) {
+		if (bp_intf & 0x1) {
+			req->aura.nix0_bpid = bpid;
+			req->aura_mask.nix0_bpid = ~(req->aura_mask.nix0_bpid);
+		} else {
+			req->aura.nix1_bpid = bpid;
+			req->aura_mask.nix1_bpid = ~(req->aura_mask.nix1_bpid);
+		}
+		req->aura.bp = bp_thresh;
+		req->aura_mask.bp = ~(req->aura_mask.bp);
+	} else {
+		req->aura.bp = 0;
+		req->aura_mask.bp = ~(req->aura_mask.bp);
+	}
+
+	req->aura.bp_ena = bp_intf;
+	req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
+
+	mbox_process(mbox);
+fail:
+	mbox_put(mbox);
+	return rc;
+}
+
 static inline int
 npa_attach(struct mbox *m_box)
 {

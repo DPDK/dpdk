@@ -425,6 +425,8 @@ typedef void (*q_err_get_t)(struct roc_nix *roc_nix, void *data);
 typedef void (*link_info_get_t)(struct roc_nix *roc_nix,
 				struct roc_nix_link_info *link);
 
+TAILQ_HEAD(roc_nix_list, roc_nix);
+
 struct roc_nix {
 	/* Input parameters */
 	struct plt_pci_device *pci_dev;
@@ -456,6 +458,7 @@ struct roc_nix {
 	uint32_t buf_sz;
 	uint64_t meta_aura_handle;
 	uintptr_t meta_mempool;
+	TAILQ_ENTRY(roc_nix) next;
 
 #define ROC_NIX_MEM_SZ (6 * 1056)
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;

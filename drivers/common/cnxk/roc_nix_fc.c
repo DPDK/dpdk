@@ -428,17 +428,64 @@ exit:
 	return rc;
 }
 
+static int
+nix_rx_chan_multi_bpid_cfg(struct roc_nix *roc_nix, uint8_t chan, uint16_t bpid, uint16_t *bpid_new)
+{
+	struct roc_nix *roc_nix_tmp, *roc_nix_pre = NULL;
+	uint8_t chan_pre;
+
+	if (!roc_feature_nix_has_rxchan_multi_bpid())
+		return -ENOTSUP;
+
+	/* Find associated NIX RX channel if Aura BPID is of that of a NIX. */
+	TAILQ_FOREACH(roc_nix_tmp, roc_idev_nix_list_get(), next) {
+		struct nix *nix = roc_nix_to_nix_priv(roc_nix_tmp);
+		int i;
+
+		for (i = 0; i < NIX_MAX_CHAN; i++) {
+			if (nix->bpid[i] == bpid)
+				break;
+		}
+
+		if (i < NIX_MAX_CHAN) {
+			roc_nix_pre = roc_nix_tmp;
+			chan_pre = i;
+			break;
+		}
+	}
+
+	/* Alloc and configure a new BPID if Aura BPID is that of a NIX. */
+	if (roc_nix_pre) {
+		if (roc_nix_bpids_alloc(roc_nix, ROC_NIX_INTF_TYPE_SSO, 1, bpid_new) <= 0)
+			return -ENOSPC;
+
+		if (roc_nix_chan_bpid_set(roc_nix_pre, chan_pre, *bpid_new, 1, false) < 0)
+			return -ENOSPC;
+
+		if (roc_nix_chan_bpid_set(roc_nix, chan, *bpid_new, 1, false) < 0)
+			return -ENOSPC;
+
+		return 0;
+	} else {
+		return roc_nix_chan_bpid_set(roc_nix, chan, bpid, 1, false);
+	}
+
+	return 0;
+}
+
+#define NIX_BPID_INVALID 0xFFFF
+
 void
 roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 		      uint8_t force, uint8_t tc)
 {
+	uint32_t aura_id = roc_npa_aura_handle_to_aura(pool_id);
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct npa_lf *lf = idev_npa_obj_get();
 	struct npa_aq_enq_req *req;
 	struct npa_aq_enq_rsp *rsp;
+	uint8_t bp_thresh, bp_intf;
 	struct mbox *mbox;
-	uint32_t limit;
-	uint64_t shift;
 	int rc;
 
 	if (roc_nix_is_sdp(roc_nix))
@@ -446,93 +493,74 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 
 	if (!lf)
 		return;
-	mbox = mbox_get(lf->mbox);
 
-	req = mbox_alloc_msg_npa_aq_enq(mbox);
-	if (req == NULL)
-		goto exit;
+	mbox = lf->mbox;
+	req = mbox_alloc_msg_npa_aq_enq(mbox_get(mbox));
+	if (req == NULL) {
+		mbox_put(mbox);
+		return;
+	}
 
-	req->aura_id = roc_npa_aura_handle_to_aura(pool_id);
+	req->aura_id = aura_id;
 	req->ctype = NPA_AQ_CTYPE_AURA;
 	req->op = NPA_AQ_INSTOP_READ;
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
-	if (rc)
-		goto exit;
+	mbox_put(mbox);
+	if (rc) {
+		plt_nix_dbg("Failed to read context of aura 0x%" PRIx64, pool_id);
+		return;
+	}
 
-	limit = rsp->aura.limit;
-	shift = rsp->aura.shift;
+	bp_intf = 1 << nix->is_nix1;
+	bp_thresh = NIX_RQ_AURA_THRESH(rsp->aura.limit >> rsp->aura.shift);
 
 	/* BP is already enabled. */
 	if (rsp->aura.bp_ena && ena) {
-		uint16_t bpid;
-		bool nix1;
+		uint16_t bpid =
+			(rsp->aura.bp_ena & 0x1) ? rsp->aura.nix0_bpid : rsp->aura.nix1_bpid;
 
-		nix1 = !!(rsp->aura.bp_ena & 0x2);
-		if (nix1)
-			bpid = rsp->aura.nix1_bpid;
-		else
-			bpid = rsp->aura.nix0_bpid;
+		/* Disable BP if BPIDs don't match and couldn't add new BPID. */
+		if (bpid != nix->bpid[tc]) {
+			uint16_t bpid_new = NIX_BPID_INVALID;
 
-		/* If BP ids don't match disable BP. */
-		if (((nix1 != nix->is_nix1) || (bpid != nix->bpid[tc])) &&
-		    !force) {
-			req = mbox_alloc_msg_npa_aq_enq(mbox);
-			if (req == NULL)
-				goto exit;
+			if ((nix_rx_chan_multi_bpid_cfg(roc_nix, tc, bpid, &bpid_new) < 0) &&
+			    !force) {
+				plt_info("Disabling BP/FC on aura 0x%" PRIx64
+					 " as it shared across ports or tc",
+					 pool_id);
 
-			plt_info("Disabling BP/FC on aura 0x%" PRIx64
-				 " as it shared across ports or tc",
-				 pool_id);
-			req->aura_id = roc_npa_aura_handle_to_aura(pool_id);
-			req->ctype = NPA_AQ_CTYPE_AURA;
-			req->op = NPA_AQ_INSTOP_WRITE;
+				if (roc_npa_aura_bp_configure(pool_id, 0, 0, 0, false))
+					plt_nix_dbg(
+						"Disabling backpressue failed on aura 0x%" PRIx64,
+						pool_id);
+			}
 
-			req->aura.bp_ena = 0;
-			req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
-
-			mbox_process(mbox);
+			/* Configure Aura with new BPID if it is allocated. */
+			if (bpid_new != NIX_BPID_INVALID) {
+				if (roc_npa_aura_bp_configure(pool_id, bpid_new, bp_intf, bp_thresh,
+							      true))
+					plt_nix_dbg(
+						"Enabling backpressue failed on aura 0x%" PRIx64,
+						pool_id);
+			}
 		}
 
-		if ((nix1 != nix->is_nix1) || (bpid != nix->bpid[tc]))
-			plt_info("Ignoring aura 0x%" PRIx64 "->%u bpid mapping",
-				 pool_id, nix->bpid[tc]);
-		goto exit;
+		return;
 	}
 
 	/* BP was previously enabled but now disabled skip. */
 	if (rsp->aura.bp && ena)
-		goto exit;
-
-	req = mbox_alloc_msg_npa_aq_enq(mbox);
-	if (req == NULL)
-		goto exit;
-
-	req->aura_id = roc_npa_aura_handle_to_aura(pool_id);
-	req->ctype = NPA_AQ_CTYPE_AURA;
-	req->op = NPA_AQ_INSTOP_WRITE;
+		return;
 
 	if (ena) {
-		if (nix->is_nix1) {
-			req->aura.nix1_bpid = nix->bpid[tc];
-			req->aura_mask.nix1_bpid = ~(req->aura_mask.nix1_bpid);
-		} else {
-			req->aura.nix0_bpid = nix->bpid[tc];
-			req->aura_mask.nix0_bpid = ~(req->aura_mask.nix0_bpid);
-		}
-		req->aura.bp = NIX_RQ_AURA_THRESH(limit >> shift);
-		req->aura_mask.bp = ~(req->aura_mask.bp);
+		if (roc_npa_aura_bp_configure(pool_id, nix->bpid[tc], bp_intf, bp_thresh, true))
+			plt_nix_dbg("Enabling backpressue failed on aura 0x%" PRIx64, pool_id);
 	} else {
-		req->aura.bp = 0;
-		req->aura_mask.bp = ~(req->aura_mask.bp);
+		if (roc_npa_aura_bp_configure(pool_id, 0, 0, 0, false))
+			plt_nix_dbg("Disabling backpressue failed on aura 0x%" PRIx64, pool_id);
 	}
 
-	req->aura.bp_ena = (!!ena << nix->is_nix1);
-	req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
-
-	mbox_process(mbox);
-exit:
-	mbox_put(mbox);
 	return;
 }
 

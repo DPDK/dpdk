@@ -17,5 +17,6 @@ void __roc_api roc_idev_cpt_set(struct roc_cpt *cpt);
 
 struct roc_nix *__roc_api roc_idev_npa_nix_get(void);
 uint64_t __roc_api roc_idev_nix_inl_meta_aura_get(void);
+struct roc_nix_list *__roc_api roc_idev_nix_list_get(void);
 
 #endif /* _ROC_IDEV_H_ */

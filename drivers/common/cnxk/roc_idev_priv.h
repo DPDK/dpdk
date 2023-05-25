@@ -32,6 +32,7 @@ struct idev_cfg {
 	struct roc_sso *sso;
 	struct nix_inl_dev *nix_inl_dev;
 	struct idev_nix_inl_cfg inl_cfg;
+	struct roc_nix_list roc_nix_list;
 	plt_spinlock_t nix_inl_dev_lock;
 	plt_spinlock_t npa_dev_lock;
 };
