@@ -17,6 +17,7 @@ struct vhost_iotlb_entry {
 
 	uint64_t iova;
 	uint64_t uaddr;
+	uint64_t uoffset;
 	uint64_t size;
 	uint8_t perm;
 };
@@ -27,15 +28,18 @@ static bool
 vhost_user_iotlb_share_page(struct vhost_iotlb_entry *a, struct vhost_iotlb_entry *b,
 		uint64_t align)
 {
-	uint64_t a_end, b_start;
+	uint64_t a_start, a_end, b_start;
 
 	if (a == NULL || b == NULL)
 		return false;
 
+	a_start = a->uaddr + a->uoffset;
+	b_start = b->uaddr + b->uoffset;
+
 	/* Assumes entry a lower than entry b */
-	RTE_ASSERT(a->uaddr < b->uaddr);
-	a_end = RTE_ALIGN_CEIL(a->uaddr + a->size, align);
-	b_start = RTE_ALIGN_FLOOR(b->uaddr, align);
+	RTE_ASSERT(a_start < b_start);
+	a_end = RTE_ALIGN_CEIL(a_start + a->size, align);
+	b_start = RTE_ALIGN_FLOOR(b_start, align);
 
 	return a_end > b_start;
 }
@@ -43,11 +47,12 @@ vhost_user_iotlb_share_page(struct vhost_iotlb_entry *a, struct vhost_iotlb_entr
 static void
 vhost_user_iotlb_set_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node)
 {
-	uint64_t align;
+	uint64_t align, start;
 
-	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
+	start = node->uaddr + node->uoffset;
+	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)start);
 
-	mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, true, align);
+	mem_set_dump((void *)(uintptr_t)start, node->size, true, align);
 }
 
 static void
@@ -56,10 +61,10 @@ vhost_user_iotlb_clear_dump(struct virtio_net *dev, struct vhost_iotlb_entry *no
 {
 	uint64_t align, start, end;
 
-	start = node->uaddr;
-	end = node->uaddr + node->size;
+	start = node->uaddr + node->uoffset;
+	end = start + node->size;
 
-	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
+	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)start);
 
 	/* Skip first page if shared with previous entry. */
 	if (vhost_user_iotlb_share_page(prev, node, align))
@@ -234,7 +239,7 @@ vhost_user_iotlb_cache_random_evict(struct virtio_net *dev)
 
 void
 vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t uaddr,
-				uint64_t size, uint8_t perm)
+				uint64_t uoffset, uint64_t size, uint8_t perm)
 {
 	struct vhost_iotlb_entry *node, *new_node;
 
@@ -256,6 +261,7 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t ua
 
 	new_node->iova = iova;
 	new_node->uaddr = uaddr;
+	new_node->uoffset = uoffset;
 	new_node->size = size;
 	new_node->perm = perm;
 
@@ -344,7 +350,7 @@ vhost_user_iotlb_cache_find(struct virtio_net *dev, uint64_t iova, uint64_t *siz
 
 		offset = iova - node->iova;
 		if (!vva)
-			vva = node->uaddr + offset;
+			vva = node->uaddr + node->uoffset + offset;
 
 		mapped += node->size - offset;
 		iova = node->iova + node->size;

@@ -2641,7 +2641,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 		if (!vva)
 			return RTE_VHOST_MSG_RESULT_ERR;
 
-		vhost_user_iotlb_cache_insert(dev, imsg->iova, vva, len, imsg->perm);
+		vhost_user_iotlb_cache_insert(dev, imsg->iova, vva, 0, len, imsg->perm);
 
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
