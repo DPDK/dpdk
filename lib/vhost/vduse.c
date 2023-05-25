@@ -13,9 +13,11 @@
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 
 #include <rte_common.h>
 
+#include "iotlb.h"
 #include "vduse.h"
 #include "vhost.h"
 
@@ -40,7 +42,63 @@
 				(1ULL << VIRTIO_F_IN_ORDER) | \
 				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
 
+static int
+vduse_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm __rte_unused)
+{
+	struct vduse_iotlb_entry entry;
+	uint64_t size, page_size;
+	struct stat stat;
+	void *mmap_addr;
+	int fd, ret;
+
+	entry.start = iova;
+	entry.last = iova + 1;
+
+	ret = ioctl(dev->vduse_dev_fd, VDUSE_IOTLB_GET_FD, &entry);
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get IOTLB entry for 0x%" PRIx64 "\n",
+				iova);
+		return -1;
+	}
+
+	fd = ret;
+
+	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "New IOTLB entry:\n");
+	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\tIOVA: %" PRIx64 " - %" PRIx64 "\n",
+			(uint64_t)entry.start, (uint64_t)entry.last);
+	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\toffset: %" PRIx64 "\n", (uint64_t)entry.offset);
+	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\tfd: %d\n", fd);
+	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\tperm: %x\n", entry.perm);
+
+	size = entry.last - entry.start + 1;
+	mmap_addr = mmap(0, size + entry.offset, entry.perm, MAP_SHARED, fd, 0);
+	if (!mmap_addr) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR,
+				"Failed to mmap IOTLB entry for 0x%" PRIx64 "\n", iova);
+		ret = -1;
+		goto close_fd;
+	}
+
+	ret = fstat(fd, &stat);
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get page size.\n");
+		munmap(mmap_addr, entry.offset + size);
+		goto close_fd;
+	}
+	page_size = (uint64_t)stat.st_blksize;
+
+	vhost_user_iotlb_cache_insert(dev, entry.start, (uint64_t)(uintptr_t)mmap_addr,
+		entry.offset, size, page_size, entry.perm);
+
+	ret = 0;
+close_fd:
+	close(fd);
+
+	return ret;
+}
+
 static struct vhost_backend_ops vduse_backend_ops = {
+	.iotlb_miss = vduse_iotlb_miss,
 };
 
 int
