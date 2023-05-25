@@ -329,7 +329,12 @@ static int
 cn9k_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
 {
 	struct cn9k_eth_txq *txq = eth_dev->data->tx_queues[qidx];
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint16_t flags = dev->tx_offload_flags;
+	struct roc_nix *nix = &dev->nix;
+	uint32_t head = 0, tail = 0;
 	int rc;
+
 
 	rc = cnxk_nix_tx_queue_stop(eth_dev, qidx);
 	if (rc)
@@ -337,6 +342,15 @@ cn9k_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
 
 	/* Clear fc cache pkts to trigger worker stop */
 	txq->fc_cache_pkts = 0;
+
+	if ((flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) && txq->tx_compl.ena) {
+		struct roc_nix_sq *sq = &dev->sqs[qidx];
+		do {
+			handle_tx_completion_pkts(txq, 0);
+			roc_nix_sq_head_tail_get(nix, sq->qid, &head, &tail);
+		} while (head != tail);
+	}
+
 	return 0;
 }
 

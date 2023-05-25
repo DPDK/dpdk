@@ -107,4 +107,81 @@ void cn9k_eth_set_tx_function(struct rte_eth_dev *eth_dev);
 /* Security context setup */
 void cn9k_eth_sec_ops_override(void);
 
+static inline uint16_t
+nix_tx_compl_nb_pkts(struct cn9k_eth_txq *txq, const uint64_t wdata,
+		const uint32_t qmask)
+{
+	uint16_t available = txq->tx_compl.available;
+
+	/* Update the available count if cached value is not enough */
+	if (!unlikely(available)) {
+		uint64_t reg, head, tail;
+
+		/* Use LDADDA version to avoid reorder */
+		reg = roc_atomic64_add_sync(wdata, txq->tx_compl.cq_status);
+		/* CQ_OP_STATUS operation error */
+		if (reg & BIT_ULL(NIX_CQ_OP_STAT_OP_ERR) ||
+				reg & BIT_ULL(NIX_CQ_OP_STAT_CQ_ERR))
+			return 0;
+
+		tail = reg & 0xFFFFF;
+		head = (reg >> 20) & 0xFFFFF;
+		if (tail < head)
+			available = tail - head + qmask + 1;
+		else
+			available = tail - head;
+
+		txq->tx_compl.available = available;
+	}
+	return available;
+}
+
+static inline void
+handle_tx_completion_pkts(struct cn9k_eth_txq *txq, uint8_t mt_safe)
+{
+#define CNXK_NIX_CQ_ENTRY_SZ 128
+#define CQE_SZ(x)            ((x) * CNXK_NIX_CQ_ENTRY_SZ)
+
+	uint16_t tx_pkts = 0, nb_pkts;
+	const uintptr_t desc = txq->tx_compl.desc_base;
+	const uint64_t wdata = txq->tx_compl.wdata;
+	const uint32_t qmask = txq->tx_compl.qmask;
+	uint32_t head = txq->tx_compl.head;
+	struct nix_cqe_hdr_s *tx_compl_cq;
+	struct nix_send_comp_s *tx_compl_s0;
+	struct rte_mbuf *m_next, *m;
+
+	if (mt_safe)
+		rte_spinlock_lock(&txq->tx_compl.ext_buf_lock);
+
+	nb_pkts = nix_tx_compl_nb_pkts(txq, wdata, qmask);
+	while (tx_pkts < nb_pkts) {
+		rte_prefetch_non_temporal((void *)(desc +
+					(CQE_SZ((head + 2) & qmask))));
+		tx_compl_cq = (struct nix_cqe_hdr_s *)
+			(desc + CQE_SZ(head));
+		tx_compl_s0 = (struct nix_send_comp_s *)
+			((uint64_t *)tx_compl_cq + 1);
+		m = txq->tx_compl.ptr[tx_compl_s0->sqe_id];
+		while (m->next != NULL) {
+			m_next = m->next;
+			rte_pktmbuf_free_seg(m);
+			m = m_next;
+		}
+		rte_pktmbuf_free_seg(m);
+
+		head++;
+		head &= qmask;
+		tx_pkts++;
+	}
+	txq->tx_compl.head = head;
+	txq->tx_compl.available -= nb_pkts;
+
+	plt_write64((wdata | nb_pkts), txq->tx_compl.cq_door);
+
+	if (mt_safe)
+		rte_spinlock_unlock(&txq->tx_compl.ext_buf_lock);
+}
+
+
 #endif /* __CN9K_ETHDEV_H__ */
