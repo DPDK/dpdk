@@ -843,7 +843,7 @@ roc_nix_inl_dev_stats_get(struct roc_nix_stats *stats)
 	if (stats == NULL)
 		return NIX_ERR_PARAM;
 
-	if (!idev && idev->nix_inl_dev)
+	if (idev && idev->nix_inl_dev)
 		inl_dev = idev->nix_inl_dev;
 
 	if (!inl_dev)
