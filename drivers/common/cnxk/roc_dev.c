@@ -421,6 +421,7 @@ process_msgs(struct dev *dev, struct mbox *mbox)
 			dev->pf_func = msg->pcifunc;
 			break;
 		case MBOX_MSG_CGX_PRIO_FLOW_CTRL_CFG:
+		case MBOX_MSG_CGX_CFG_PAUSE_FRM:
 			/* Handling the case where one VF tries to disable PFC
 			 * while PFC already configured on other VFs. This is
 			 * not an error but a warning which can be ignored.

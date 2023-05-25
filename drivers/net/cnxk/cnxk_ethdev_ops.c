@@ -342,6 +342,10 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			return rc;
 	}
 
+	/* Skip mode set if it is we are in same state */
+	if (fc->rx_pause == rx_pause && fc->tx_pause == tx_pause)
+		return 0;
+
 	rc = roc_nix_fc_mode_set(nix, mode_map[fc_conf->mode]);
 	if (rc)
 		return rc;

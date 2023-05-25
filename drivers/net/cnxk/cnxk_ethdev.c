@@ -378,8 +378,9 @@ nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
-	fc->mode = (fc_mode == ROC_NIX_FC_FULL) ? RTE_ETH_FC_FULL :
-						  RTE_ETH_FC_TX_PAUSE;
+	fc->mode = (fc_mode == ROC_NIX_FC_FULL) ? RTE_ETH_FC_FULL : RTE_ETH_FC_TX_PAUSE;
+	fc->rx_pause = (fc->mode == RTE_ETH_FC_FULL) || (fc->mode == RTE_ETH_FC_RX_PAUSE);
+	fc->tx_pause = (fc->mode == RTE_ETH_FC_FULL) || (fc->mode == RTE_ETH_FC_TX_PAUSE);
 	return rc;
 }
 

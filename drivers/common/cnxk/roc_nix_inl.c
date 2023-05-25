@@ -131,6 +131,9 @@ nix_inl_meta_aura_create(struct idev_cfg *idev, struct roc_nix *roc_nix, uint16_
 	}
 	roc_nix->meta_mempool = mp;
 
+	plt_nix_dbg("Created meta aura %p(%s)for port %d", (void *)*meta_aura, mp_name,
+		    roc_nix->port_id);
+
 	if (!roc_nix->local_meta_aura_ena) {
 		inl_cfg->buf_sz = buf_sz;
 		inl_cfg->nb_bufs = nb_bufs;
