@@ -17,6 +17,7 @@
 
 #include <rte_common.h>
 
+#include "fd_man.h"
 #include "iotlb.h"
 #include "vduse.h"
 #include "vhost.h"
@@ -41,6 +42,31 @@
 				(1ULL << VIRTIO_RING_F_INDIRECT_DESC) | \
 				(1ULL << VIRTIO_F_IN_ORDER) | \
 				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
+
+struct vduse {
+	struct fdset fdset;
+};
+
+static struct vduse vduse = {
+	.fdset = {
+		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
+		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
+		.fd_pooling_mutex = PTHREAD_MUTEX_INITIALIZER,
+		.num = 0
+	},
+};
+
+static bool vduse_events_thread;
+
+static const char * const vduse_reqs_str[] = {
+	"VDUSE_GET_VQ_STATE",
+	"VDUSE_SET_STATUS",
+	"VDUSE_UPDATE_IOTLB",
+};
+
+#define vduse_req_id_to_str(id) \
+	(id < RTE_DIM(vduse_reqs_str) ? \
+	vduse_reqs_str[id] : "Unknown")
 
 static int
 vduse_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
@@ -115,15 +141,79 @@ static struct vhost_backend_ops vduse_backend_ops = {
 	.inject_irq = vduse_inject_irq,
 };
 
+static void
+vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
+{
+	struct virtio_net *dev = arg;
+	struct vduse_dev_request req;
+	struct vduse_dev_response resp;
+	int ret;
+
+	memset(&resp, 0, sizeof(resp));
+
+	ret = read(fd, &req, sizeof(req));
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to read request: %s\n",
+				strerror(errno));
+		return;
+	} else if (ret < (int)sizeof(req)) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Incomplete to read request %d\n", ret);
+		return;
+	}
+
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "New request: %s (%u)\n",
+			vduse_req_id_to_str(req.type), req.type);
+
+	switch (req.type) {
+	default:
+		resp.result = VDUSE_REQ_RESULT_FAILED;
+		break;
+	}
+
+	resp.request_id = req.request_id;
+
+	ret = write(dev->vduse_dev_fd, &resp, sizeof(resp));
+	if (ret != sizeof(resp)) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to write response %s\n",
+				strerror(errno));
+		return;
+	}
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "Request %s (%u) handled successfully\n",
+			vduse_req_id_to_str(req.type), req.type);
+}
+
 int
 vduse_device_create(const char *path)
 {
 	int control_fd, dev_fd, vid, ret;
+	pthread_t fdset_tid;
 	uint32_t i;
 	struct virtio_net *dev;
 	uint64_t ver = VHOST_VDUSE_API_VERSION;
 	struct vduse_dev_config *dev_config = NULL;
 	const char *name = path + strlen("/dev/vduse/");
+
+	/* If first device, create events dispatcher thread */
+	if (vduse_events_thread == false) {
+		/**
+		 * create a pipe which will be waited by poll and notified to
+		 * rebuild the wait list of poll.
+		 */
+		if (fdset_pipe_init(&vduse.fdset) < 0) {
+			VHOST_LOG_CONFIG(path, ERR, "failed to create pipe for vduse fdset\n");
+			return -1;
+		}
+
+		ret = rte_ctrl_thread_create(&fdset_tid, "vduse-events", NULL,
+				fdset_event_dispatch, &vduse.fdset);
+		if (ret != 0) {
+			VHOST_LOG_CONFIG(path, ERR, "failed to create vduse fdset handling thread\n");
+			fdset_pipe_uninit(&vduse.fdset);
+			return -1;
+		}
+
+		vduse_events_thread = true;
+	}
 
 	control_fd = open(VDUSE_CTRL_PATH, O_RDWR);
 	if (control_fd < 0) {
@@ -215,6 +305,14 @@ vduse_device_create(const char *path)
 		}
 	}
 
+	ret = fdset_add(&vduse.fdset, dev->vduse_dev_fd, vduse_events_handler, NULL, dev);
+	if (ret) {
+		VHOST_LOG_CONFIG(name, ERR, "Failed to add fd %d to vduse fdset\n",
+				dev->vduse_dev_fd);
+		goto out_dev_destroy;
+	}
+	fdset_pipe_notify(&vduse.fdset);
+
 	free(dev_config);
 
 	return 0;
@@ -252,6 +350,9 @@ vduse_device_destroy(const char *path)
 
 	if (vid == RTE_MAX_VHOST_DEVICE)
 		return -1;
+
+	fdset_del(&vduse.fdset, dev->vduse_dev_fd);
+	fdset_pipe_notify(&vduse.fdset);
 
 	if (dev->vduse_dev_fd >= 0) {
 		close(dev->vduse_dev_fd);
