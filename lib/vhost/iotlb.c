@@ -23,6 +23,34 @@ struct vhost_iotlb_entry {
 
 #define IOTLB_CACHE_SIZE 2048
 
+static void
+vhost_user_iotlb_set_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node)
+{
+	uint64_t align;
+
+	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
+
+	mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, true, align);
+}
+
+static void
+vhost_user_iotlb_clear_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node,
+		struct vhost_iotlb_entry *prev, struct vhost_iotlb_entry *next)
+{
+	uint64_t align, mask;
+
+	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
+	mask = ~(align - 1);
+
+	/* Don't disable coredump if the previous node is in the same page */
+	if (prev == NULL || (node->uaddr & mask) != ((prev->uaddr + prev->size - 1) & mask)) {
+		/* Don't disable coredump if the next node is in the same page */
+		if (next == NULL ||
+				((node->uaddr + node->size - 1) & mask) != (next->uaddr & mask))
+			mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, false, align);
+	}
+}
+
 static struct vhost_iotlb_entry *
 vhost_user_iotlb_pool_get(struct vhost_virtqueue *vq)
 {
@@ -149,8 +177,8 @@ vhost_user_iotlb_cache_remove_all(struct virtio_net *dev, struct vhost_virtqueue
 	rte_rwlock_write_lock(&vq->iotlb_lock);
 
 	RTE_TAILQ_FOREACH_SAFE(node, &vq->iotlb_list, next, temp_node) {
-		mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, false,
-			hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr));
+		vhost_user_iotlb_clear_dump(dev, node, NULL, NULL);
+
 		TAILQ_REMOVE(&vq->iotlb_list, node, next);
 		vhost_user_iotlb_pool_put(vq, node);
 	}
@@ -164,7 +192,6 @@ static void
 vhost_user_iotlb_cache_random_evict(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	struct vhost_iotlb_entry *node, *temp_node, *prev_node = NULL;
-	uint64_t alignment, mask;
 	int entry_idx;
 
 	rte_rwlock_write_lock(&vq->iotlb_lock);
@@ -173,20 +200,10 @@ vhost_user_iotlb_cache_random_evict(struct virtio_net *dev, struct vhost_virtque
 
 	RTE_TAILQ_FOREACH_SAFE(node, &vq->iotlb_list, next, temp_node) {
 		if (!entry_idx) {
-			struct vhost_iotlb_entry *next_node;
-			alignment = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
-			mask = ~(alignment - 1);
+			struct vhost_iotlb_entry *next_node = RTE_TAILQ_NEXT(node, next);
 
-			/* Don't disable coredump if the previous node is in the same page */
-			if (prev_node == NULL || (node->uaddr & mask) !=
-					((prev_node->uaddr + prev_node->size - 1) & mask)) {
-				next_node = RTE_TAILQ_NEXT(node, next);
-				/* Don't disable coredump if the next node is in the same page */
-				if (next_node == NULL || ((node->uaddr + node->size - 1) & mask) !=
-						(next_node->uaddr & mask))
-					mem_set_dump((void *)(uintptr_t)node->uaddr, node->size,
-							false, alignment);
-			}
+			vhost_user_iotlb_clear_dump(dev, node, prev_node, next_node);
+
 			TAILQ_REMOVE(&vq->iotlb_list, node, next);
 			vhost_user_iotlb_pool_put(vq, node);
 			vq->iotlb_cache_nr--;
@@ -240,16 +257,16 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq
 			vhost_user_iotlb_pool_put(vq, new_node);
 			goto unlock;
 		} else if (node->iova > new_node->iova) {
-			mem_set_dump((void *)(uintptr_t)new_node->uaddr, new_node->size, true,
-				hua_to_alignment(dev->mem, (void *)(uintptr_t)new_node->uaddr));
+			vhost_user_iotlb_set_dump(dev, new_node);
+
 			TAILQ_INSERT_BEFORE(node, new_node, next);
 			vq->iotlb_cache_nr++;
 			goto unlock;
 		}
 	}
 
-	mem_set_dump((void *)(uintptr_t)new_node->uaddr, new_node->size, true,
-		hua_to_alignment(dev->mem, (void *)(uintptr_t)new_node->uaddr));
+	vhost_user_iotlb_set_dump(dev, new_node);
+
 	TAILQ_INSERT_TAIL(&vq->iotlb_list, new_node, next);
 	vq->iotlb_cache_nr++;
 
@@ -265,7 +282,6 @@ vhost_user_iotlb_cache_remove(struct virtio_net *dev, struct vhost_virtqueue *vq
 					uint64_t iova, uint64_t size)
 {
 	struct vhost_iotlb_entry *node, *temp_node, *prev_node = NULL;
-	uint64_t alignment, mask;
 
 	if (unlikely(!size))
 		return;
@@ -278,20 +294,9 @@ vhost_user_iotlb_cache_remove(struct virtio_net *dev, struct vhost_virtqueue *vq
 			break;
 
 		if (iova < node->iova + node->size) {
-			struct vhost_iotlb_entry *next_node;
-			alignment = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
-			mask = ~(alignment-1);
+			struct vhost_iotlb_entry *next_node = RTE_TAILQ_NEXT(node, next);
 
-			/* Don't disable coredump if the previous node is in the same page */
-			if (prev_node == NULL || (node->uaddr & mask) !=
-					((prev_node->uaddr + prev_node->size - 1) & mask)) {
-				next_node = RTE_TAILQ_NEXT(node, next);
-				/* Don't disable coredump if the next node is in the same page */
-				if (next_node == NULL || ((node->uaddr + node->size - 1) & mask) !=
-						(next_node->uaddr & mask))
-					mem_set_dump((void *)(uintptr_t)node->uaddr, node->size,
-							false, alignment);
-			}
+			vhost_user_iotlb_clear_dump(dev, node, prev_node, next_node);
 
 			TAILQ_REMOVE(&vq->iotlb_list, node, next);
 			vhost_user_iotlb_pool_put(vq, node);
