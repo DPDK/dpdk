@@ -567,17 +567,21 @@ static int
 fpga_queue_start(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
+	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
+	uint32_t offset = FPGA_5GNR_FEC_RING_CTRL_REGS +
+			(sizeof(struct fpga_ring_ctrl_reg) * q->q_idx);
+	uint8_t enable = 0x01;
+	uint16_t zero = 0x0000;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	if (d == NULL) {
 		rte_bbdev_log(ERR, "Invalid device pointer");
 		return -1;
 	}
 #endif
-	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
-	uint32_t offset = FPGA_5GNR_FEC_RING_CTRL_REGS +
-			(sizeof(struct fpga_ring_ctrl_reg) * q->q_idx);
-	uint8_t enable = 0x01;
-	uint16_t zero = 0x0000;
+	if (dev->data->queues[queue_id].queue_private == NULL) {
+		rte_bbdev_log(ERR, "Cannot start invalid queue %d", queue_id);
+		return -1;
+	}
 
 	/* Clear queue head and tail variables */
 	q->tail = q->head_free_desc = 0;
