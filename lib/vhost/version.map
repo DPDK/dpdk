@@ -106,6 +106,7 @@ EXPERIMENTAL {
 	rte_vhost_vring_call_nonblock;
 
 	# added in 23.07
+	rte_vhost_driver_set_max_queue_num;
 	rte_vhost_notify_guest;
 };
 

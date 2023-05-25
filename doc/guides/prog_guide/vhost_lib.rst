@@ -339,6 +339,10 @@ The following is an overview of some key Vhost API functions:
   Inject the offloaded interrupt received by the 'guest_notify' callback,
   into the vhost device's queue.
 
+* ``rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs)``
+
+  Set the maximum number of queue pairs supported by the device.
+
 Vhost-user Implementations
 --------------------------
 

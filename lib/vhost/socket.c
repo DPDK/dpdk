@@ -57,6 +57,8 @@ struct vhost_user_socket {
 
 	uint64_t protocol_features;
 
+	uint32_t max_queue_pairs;
+
 	struct rte_vdpa_device *vdpa_dev;
 
 	struct rte_vhost_device_ops const *notify_ops;
@@ -823,7 +825,7 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
 
 	vdpa_dev = vsocket->vdpa_dev;
 	if (!vdpa_dev) {
-		*queue_num = VHOST_MAX_QUEUE_PAIRS;
+		*queue_num = vsocket->max_queue_pairs;
 		goto unlock_exit;
 	}
 
@@ -833,7 +835,36 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
 		goto unlock_exit;
 	}
 
-	*queue_num = RTE_MIN((uint32_t)VHOST_MAX_QUEUE_PAIRS, vdpa_queue_num);
+	*queue_num = RTE_MIN(vsocket->max_queue_pairs, vdpa_queue_num);
+
+unlock_exit:
+	pthread_mutex_unlock(&vhost_user.mutex);
+	return ret;
+}
+
+int
+rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs)
+{
+	struct vhost_user_socket *vsocket;
+	int ret = 0;
+
+	VHOST_LOG_CONFIG(path, INFO, "Setting max queue pairs to %u\n", max_queue_pairs);
+
+	if (max_queue_pairs > VHOST_MAX_QUEUE_PAIRS) {
+		VHOST_LOG_CONFIG(path, ERR, "Library only supports up to %u queue pairs\n",
+				VHOST_MAX_QUEUE_PAIRS);
+		return -1;
+	}
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (!vsocket) {
+		VHOST_LOG_CONFIG(path, ERR, "socket file is not registered yet.\n");
+		ret = -1;
+		goto unlock_exit;
+	}
+
+	vsocket->max_queue_pairs = max_queue_pairs;
 
 unlock_exit:
 	pthread_mutex_unlock(&vhost_user.mutex);
@@ -889,6 +920,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out_free;
 	}
 	vsocket->vdpa_dev = NULL;
+	vsocket->max_queue_pairs = VHOST_MAX_QUEUE_PAIRS;
 	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
 	vsocket->linearbuf = flags & RTE_VHOST_USER_LINEARBUF_SUPPORT;
 	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;

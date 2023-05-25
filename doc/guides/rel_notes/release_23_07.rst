@@ -108,6 +108,11 @@ New Features
   In addition, a new API, ``rte_vhost_notify_guest()``,
   is added to raise the interrupt outside of the fast path.
 
+* **Added vhost API to set maximum queue pairs supported.**
+
+  Introduced ``rte_vhost_driver_set_max_queue_num()`` to be able to limit
+  the maximum number of supported queue pairs, required for VDUSE support.
+
 * **Added vmxnet3 version 7 support.**
 
   Added support for vmxnet3 version 7 which includes support

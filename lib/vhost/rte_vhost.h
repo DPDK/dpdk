@@ -610,6 +610,23 @@ int
 rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Set the maximum number of queue pairs supported by the device.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param max_queue_pairs
+ *  The maximum number of queue pairs
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs);
+
+/**
  * Get the feature bits after negotiation
  *
  * @param vid
