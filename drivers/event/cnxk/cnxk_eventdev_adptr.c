@@ -273,15 +273,6 @@ cnxk_sso_rx_adapter_queue_add(
 	}
 
 	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
-
-	/* Switch to use PF/VF's NIX LF instead of inline device for inbound
-	 * when all the RQ's are switched to event dev mode. We do this only
-	 * when dev arg no_inl_dev=1 is selected.
-	 */
-	if (cnxk_eth_dev->inb.no_inl_dev &&
-	    cnxk_eth_dev->nb_rxq_sso == cnxk_eth_dev->nb_rxq)
-		cnxk_nix_inb_mode_set(cnxk_eth_dev, false);
-
 	return 0;
 }
 
@@ -309,12 +300,6 @@ cnxk_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 	if (rc < 0)
 		plt_err("Failed to clear Rx adapter config port=%d, q=%d",
 			eth_dev->data->port_id, rx_queue_id);
-
-	/* Removing RQ from Rx adapter implies need to use
-	 * inline device for CQ/Poll mode.
-	 */
-	cnxk_nix_inb_mode_set(cnxk_eth_dev, true);
-
 	return rc;
 }
 

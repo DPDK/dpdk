@@ -81,9 +81,6 @@ cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev)
 {
 	struct roc_nix *nix = &dev->nix;
 
-	if (dev->inb.inl_dev == use_inl_dev)
-		return 0;
-
 	plt_nix_dbg("Security sessions(%u) still active, inl=%u!!!",
 		    dev->inb.nb_sess, !!dev->inb.inl_dev);
 
@@ -119,7 +116,7 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		/* By default pick using inline device for poll mode.
 		 * Will be overridden when event mode rq's are setup.
 		 */
-		cnxk_nix_inb_mode_set(dev, true);
+		cnxk_nix_inb_mode_set(dev, !dev->inb.no_inl_dev);
 
 		/* Allocate memory to be used as dptr for CPT ucode
 		 * WRITE_SA op.
@@ -633,6 +630,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	struct roc_nix_rq *rq;
 	struct roc_nix_cq *cq;
 	uint16_t first_skip;
+	uint16_t wqe_skip;
 	int rc = -EINVAL;
 	size_t rxq_sz;
 	struct rte_mempool *lpb_pool = mp;
@@ -712,8 +710,15 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		rq->lpb_drop_ena = !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY);
 
 	/* Enable Inline IPSec on RQ, will not be used for Poll mode */
-	if (roc_nix_inl_inb_is_enabled(nix))
+	if (roc_nix_inl_inb_is_enabled(nix) && !dev->inb.inl_dev) {
 		rq->ipsech_ena = true;
+		/* WQE skip is needed when poll mode is enabled in CN10KA_B0 and above
+		 * for Inline IPsec traffic to CQ without inline device.
+		 */
+		wqe_skip = RTE_ALIGN_CEIL(sizeof(struct rte_mbuf), ROC_CACHE_LINE_SZ);
+		wqe_skip = wqe_skip / ROC_CACHE_LINE_SZ;
+		rq->wqe_skip = wqe_skip;
+	}
 
 	if (spb_pool) {
 		rq->spb_ena = 1;

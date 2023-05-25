@@ -473,6 +473,9 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 	if (rq->ipsech_ena) {
 		aq->rq.ipsech_ena = 1;
 		aq->rq.ipsecd_drop_en = 1;
+		aq->rq.ena_wqwd = 1;
+		aq->rq.wqe_skip = rq->wqe_skip;
+		aq->rq.wqe_caching = 1;
 	}
 
 	aq->rq.lpb_aura = roc_npa_aura_handle_to_aura(rq->aura_handle);
