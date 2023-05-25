@@ -89,10 +89,13 @@
 	for (iter = val; iter < num; iter++)
 #endif
 
+typedef void (*vhost_iotlb_remove_notify)(uint64_t addr, uint64_t off, uint64_t size);
+
 /**
  * Structure that contains backend-specific ops.
  */
 struct vhost_backend_ops {
+	vhost_iotlb_remove_notify iotlb_remove_notify;
 };
 
 /**

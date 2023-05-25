@@ -25,6 +25,15 @@ struct vhost_iotlb_entry {
 
 #define IOTLB_CACHE_SIZE 2048
 
+static void
+vhost_user_iotlb_remove_notify(struct virtio_net *dev, struct vhost_iotlb_entry *entry)
+{
+	if (dev->backend_ops->iotlb_remove_notify == NULL)
+		return;
+
+	dev->backend_ops->iotlb_remove_notify(entry->uaddr, entry->uoffset, entry->size);
+}
+
 static bool
 vhost_user_iotlb_share_page(struct vhost_iotlb_entry *a, struct vhost_iotlb_entry *b)
 {
@@ -198,6 +207,7 @@ vhost_user_iotlb_cache_remove_all(struct virtio_net *dev)
 		vhost_user_iotlb_clear_dump(node, NULL, NULL);
 
 		TAILQ_REMOVE(&dev->iotlb_list, node, next);
+		vhost_user_iotlb_remove_notify(dev, node);
 		vhost_user_iotlb_pool_put(dev, node);
 	}
 
@@ -223,6 +233,7 @@ vhost_user_iotlb_cache_random_evict(struct virtio_net *dev)
 			vhost_user_iotlb_clear_dump(node, prev_node, next_node);
 
 			TAILQ_REMOVE(&dev->iotlb_list, node, next);
+			vhost_user_iotlb_remove_notify(dev, node);
 			vhost_user_iotlb_pool_put(dev, node);
 			dev->iotlb_cache_nr--;
 			break;
@@ -314,6 +325,7 @@ vhost_user_iotlb_cache_remove(struct virtio_net *dev, uint64_t iova, uint64_t si
 			vhost_user_iotlb_clear_dump(node, prev_node, next_node);
 
 			TAILQ_REMOVE(&dev->iotlb_list, node, next);
+			vhost_user_iotlb_remove_notify(dev, node);
 			vhost_user_iotlb_pool_put(dev, node);
 			dev->iotlb_cache_nr--;
 		} else {
