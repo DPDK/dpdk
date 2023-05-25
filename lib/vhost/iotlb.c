@@ -23,6 +23,23 @@ struct vhost_iotlb_entry {
 
 #define IOTLB_CACHE_SIZE 2048
 
+static bool
+vhost_user_iotlb_share_page(struct vhost_iotlb_entry *a, struct vhost_iotlb_entry *b,
+		uint64_t align)
+{
+	uint64_t a_end, b_start;
+
+	if (a == NULL || b == NULL)
+		return false;
+
+	/* Assumes entry a lower than entry b */
+	RTE_ASSERT(a->uaddr < b->uaddr);
+	a_end = RTE_ALIGN_CEIL(a->uaddr + a->size, align);
+	b_start = RTE_ALIGN_FLOOR(b->uaddr, align);
+
+	return a_end > b_start;
+}
+
 static void
 vhost_user_iotlb_set_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node)
 {
@@ -37,16 +54,14 @@ static void
 vhost_user_iotlb_clear_dump(struct virtio_net *dev, struct vhost_iotlb_entry *node,
 		struct vhost_iotlb_entry *prev, struct vhost_iotlb_entry *next)
 {
-	uint64_t align, mask;
+	uint64_t align;
 
 	align = hua_to_alignment(dev->mem, (void *)(uintptr_t)node->uaddr);
-	mask = ~(align - 1);
 
 	/* Don't disable coredump if the previous node is in the same page */
-	if (prev == NULL || (node->uaddr & mask) != ((prev->uaddr + prev->size - 1) & mask)) {
+	if (!vhost_user_iotlb_share_page(prev, node, align)) {
 		/* Don't disable coredump if the next node is in the same page */
-		if (next == NULL ||
-				((node->uaddr + node->size - 1) & mask) != (next->uaddr & mask))
+		if (!vhost_user_iotlb_share_page(node, next, align))
 			mem_set_dump((void *)(uintptr_t)node->uaddr, node->size, false, align);
 	}
 }
