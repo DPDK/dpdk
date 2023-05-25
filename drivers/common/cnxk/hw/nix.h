@@ -363,6 +363,8 @@
 #define NIX_LF_SQ_OP_STATUS	 (0xa30ull)
 #define NIX_LF_SQ_OP_DROP_OCTS	 (0xa40ull)
 #define NIX_LF_SQ_OP_DROP_PKTS	 (0xa50ull)
+#define NIX_LF_SQ_OP_AGE_DROP_OCTS (0xa60ull) /* [CN10K, .) */
+#define NIX_LF_SQ_OP_AGE_DROP_PKTS (0xa70ull) /* [CN10K, .) */
 #define NIX_LF_CQ_OP_INT	 (0xb00ull)
 #define NIX_LF_CQ_OP_DOOR	 (0xb30ull)
 #define NIX_LF_CQ_OP_STATUS	 (0xb40ull)

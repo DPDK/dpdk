@@ -680,6 +680,10 @@ nix_sq_ctx(volatile void *qctx, struct plt_tel_data *d)
 	/* W12 */
 	CNXK_TEL_DICT_BF_PTR(d, ctx, pkts, w12_);
 
+	/* W13 */
+	CNXK_TEL_DICT_INT(d, ctx, aged_drop_octs, w13_);
+	CNXK_TEL_DICT_INT(d, ctx, aged_drop_pkts, w13_);
+
 	/* W14 */
 	CNXK_TEL_DICT_BF_PTR(d, ctx, drop_octs, w14_);
 

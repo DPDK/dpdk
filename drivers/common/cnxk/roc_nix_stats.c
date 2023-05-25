@@ -137,6 +137,10 @@ nix_stat_tx_queue_get(struct nix *nix, uint16_t qid,
 	qstats->tx_octs = qstat_read(nix, qid, NIX_LF_SQ_OP_OCTS);
 	qstats->tx_drop_pkts = qstat_read(nix, qid, NIX_LF_SQ_OP_DROP_PKTS);
 	qstats->tx_drop_octs = qstat_read(nix, qid, NIX_LF_SQ_OP_DROP_OCTS);
+	if (roc_feature_nix_has_age_drop_stats()) {
+		qstats->tx_age_drop_pkts = qstat_read(nix, qid, NIX_LF_SQ_OP_AGE_DROP_PKTS);
+		qstats->tx_age_drop_octs = qstat_read(nix, qid, NIX_LF_SQ_OP_AGE_DROP_OCTS);
+	}
 }
 
 static int

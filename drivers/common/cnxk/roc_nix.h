@@ -293,6 +293,8 @@ struct roc_nix_stats_queue {
 			uint64_t tx_octs;
 			uint64_t tx_drop_pkts;
 			uint64_t tx_drop_octs;
+			uint64_t tx_age_drop_pkts;
+			uint64_t tx_age_drop_octs;
 		};
 	};
 };
