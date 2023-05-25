@@ -1013,6 +1013,9 @@ vhost_driver_setup(struct rte_eth_dev *eth_dev)
 			goto drv_unreg;
 	}
 
+	if (rte_vhost_driver_set_max_queue_num(internal->iface_name, internal->max_queues))
+		goto drv_unreg;
+
 	if (rte_vhost_driver_callback_register(internal->iface_name,
 					       &vhost_ops) < 0) {
 		VHOST_LOG(ERR, "Can't register callbacks\n");
