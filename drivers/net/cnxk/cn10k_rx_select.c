@@ -79,9 +79,10 @@ cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 #undef R
 	};
 
-	/* Copy multi seg version with no offload for tear down sequence */
+	/* Copy multi seg version with security for tear down sequence */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		dev->rx_pkt_burst_no_offload = nix_eth_rx_burst_mseg[0];
+		dev->rx_pkt_burst_no_offload =
+			nix_eth_rx_burst_mseg_reas[NIX_RX_OFFLOAD_SECURITY_F];
 
 	if (dev->scalar_ena) {
 		if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {

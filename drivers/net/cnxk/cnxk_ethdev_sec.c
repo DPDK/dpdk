@@ -6,6 +6,7 @@
 #include <cnxk_mempool.h>
 
 #define CNXK_NIX_INL_META_POOL_NAME "NIX_INL_META_POOL"
+#define CN10K_HW_POOL_OPS_NAME "cn10k_hwpool_ops"
 
 #define CNXK_NIX_INL_SELFTEST	      "selftest"
 #define CNXK_NIX_INL_IPSEC_IN_MIN_SPI "ipsec_in_min_spi"
@@ -111,6 +112,67 @@ cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_
 	return 0;
 free_mp:
 	rte_mempool_free(mp);
+	return rc;
+}
+
+/* Create Aura and link with Global mempool for 1:N Pool:Aura case */
+int
+cnxk_nix_inl_custom_meta_pool_cb(uintptr_t pmpool, uintptr_t *mpool, const char *mempool_name,
+				 uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bufs,
+				 bool destroy)
+{
+	struct rte_mempool *hp;
+	int rc;
+
+	/* Destroy the mempool if requested */
+	if (destroy) {
+		hp = rte_mempool_lookup(mempool_name);
+		if (!hp)
+			return -ENOENT;
+
+		if (hp->pool_id != *aura_handle) {
+			plt_err("Meta pool aura mismatch");
+			return -EINVAL;
+		}
+
+		rte_mempool_free(hp);
+		plt_free(hp->pool_config);
+
+		*aura_handle = 0;
+		*mpool = 0;
+		return 0;
+	}
+
+	/* Need to make it similar to rte_pktmbuf_pool() for sake of OOP
+	 * support.
+	 */
+	hp = rte_mempool_create_empty(mempool_name, nb_bufs, buf_sz, 0,
+				      sizeof(struct rte_pktmbuf_pool_private),
+				      SOCKET_ID_ANY, 0);
+	if (!hp) {
+		plt_err("Failed to create inline meta pool");
+		return -EIO;
+	}
+
+	rc = rte_mempool_set_ops_byname(hp, CN10K_HW_POOL_OPS_NAME, (void *)pmpool);
+
+	if (rc) {
+		plt_err("Failed to setup ops, rc=%d", rc);
+		goto free_hp;
+	}
+
+	/* Populate buffer */
+	rc = rte_mempool_populate_default(hp);
+	if (rc < 0) {
+		plt_err("Failed to populate pool, rc=%d", rc);
+		goto free_hp;
+	}
+
+	*aura_handle = hp->pool_id;
+	*mpool = (uintptr_t)hp;
+	return 0;
+free_hp:
+	rte_mempool_free(hp);
 	return rc;
 }
 

@@ -13,6 +13,7 @@ struct nix_inl_dev;
 
 struct idev_nix_inl_cfg {
 	uint64_t meta_aura;
+	uintptr_t meta_mempool;
 	uint32_t nb_bufs;
 	uint32_t buf_sz;
 	uint32_t refs;

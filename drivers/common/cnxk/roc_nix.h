@@ -470,6 +470,7 @@ struct roc_nix {
 	bool local_meta_aura_ena;
 	uint32_t meta_buf_sz;
 	bool force_rx_aura_bp;
+	bool custom_meta_aura_ena;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;

@@ -166,6 +166,10 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 		RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf)->pool, (void **)&mbuf, 1, 1);
 
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			void *lookup_mem = ws->lookup_mem;
+			struct rte_mempool *mp = NULL;
+			uint64_t meta_aura;
+
 			const uint64_t mbuf_init =
 				0x100010000ULL | RTE_PKTMBUF_HEADROOM |
 				(flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
@@ -190,8 +194,11 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 				cq_w1, cq_w5, sa_base, (uintptr_t)&iova, &loff,
 				(struct rte_mbuf *)mbuf, d_off, flags,
 				mbuf_init | ((uint64_t)port) << 48);
+			mp = (struct rte_mempool *)cnxk_nix_inl_metapool_get(port, lookup_mem);
+			meta_aura = mp ? mp->pool_id : m->pool->pool_id;
+
 			if (loff)
-				roc_npa_aura_op_free(m->pool->pool_id, 0, iova);
+				roc_npa_aura_op_free(meta_aura, 0, iova);
 		}
 
 		u64[0] = CNXK_CLR_SUB_EVENT(u64[0]);

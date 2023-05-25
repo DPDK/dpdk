@@ -1885,6 +1885,9 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	/* Register callback for inline meta pool create */
 	roc_nix_inl_meta_pool_cb_register(cnxk_nix_inl_meta_pool_cb);
 
+	/* Register callback for inline meta pool create 1:N pool:aura */
+	roc_nix_inl_custom_meta_pool_cb_register(cnxk_nix_inl_custom_meta_pool_cb);
+
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
 	dev->ptype_disable = 0;
