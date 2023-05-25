@@ -892,6 +892,9 @@ roc_npa_aura_bp_configure(uint64_t aura_handle, uint16_t bpid, uint8_t bp_intf, 
 	struct mbox *mbox;
 	int rc = 0;
 
+	plt_npa_dbg("Setting BPID %u BP_INTF 0x%x BP_THRESH %u enable %u on aura %" PRIx64,
+		    bpid, bp_intf, bp_thresh, enable, aura_handle);
+
 	if (lf == NULL)
 		return NPA_ERR_PARAM;
 

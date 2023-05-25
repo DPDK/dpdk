@@ -300,13 +300,13 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 			pool_drop_pct = ROC_NIX_AURA_THRESH;
 
 		roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.pool,
-				      fc_cfg->rq_cfg.enable, true,
-				      fc_cfg->rq_cfg.tc, fc_cfg->rq_cfg.pool_drop_pct);
+				      fc_cfg->rq_cfg.enable, roc_nix->force_rx_aura_bp,
+				      fc_cfg->rq_cfg.tc, pool_drop_pct);
 
 		if (roc_nix->local_meta_aura_ena && roc_nix->meta_aura_handle)
 			roc_nix_fc_npa_bp_cfg(roc_nix, roc_nix->meta_aura_handle,
-					      fc_cfg->rq_cfg.enable, true, fc_cfg->rq_cfg.tc,
-					      fc_cfg->rq_cfg.pool_drop_pct);
+					      fc_cfg->rq_cfg.enable, roc_nix->force_rx_aura_bp,
+					      fc_cfg->rq_cfg.tc, pool_drop_pct);
 	}
 
 	/* Copy RQ config to CQ config as they are occupying same area */
@@ -479,7 +479,8 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	struct npa_aq_enq_rsp *rsp;
 	uint8_t bp_thresh, bp_intf;
 	struct mbox *mbox;
-	int rc;
+	uint16_t bpid;
+	int rc, i;
 
 	if (roc_nix_is_sdp(roc_nix))
 		return;
@@ -508,34 +509,25 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	bp_intf = 1 << nix->is_nix1;
 	bp_thresh = NIX_RQ_AURA_THRESH(drop_percent, rsp->aura.limit >> rsp->aura.shift);
 
+	bpid = (rsp->aura.bp_ena & 0x1) ? rsp->aura.nix0_bpid : rsp->aura.nix1_bpid;
 	/* BP is already enabled. */
 	if (rsp->aura.bp_ena && ena) {
-		uint16_t bpid =
-			(rsp->aura.bp_ena & 0x1) ? rsp->aura.nix0_bpid : rsp->aura.nix1_bpid;
-
 		/* Disable BP if BPIDs don't match and couldn't add new BPID. */
 		if (bpid != nix->bpid[tc]) {
 			uint16_t bpid_new = NIX_BPID_INVALID;
 
-			if ((nix_rx_chan_multi_bpid_cfg(roc_nix, tc, bpid, &bpid_new) < 0) &&
-			    !force) {
-				plt_info("Disabling BP/FC on aura 0x%" PRIx64
-					 " as it shared across ports or tc",
+			if (force && !nix_rx_chan_multi_bpid_cfg(roc_nix, tc, bpid, &bpid_new)) {
+				plt_info("Setting up shared BPID on shared aura 0x%" PRIx64,
 					 pool_id);
 
-				if (roc_npa_aura_bp_configure(pool_id, 0, 0, 0, false))
-					plt_nix_dbg(
-						"Disabling backpressue failed on aura 0x%" PRIx64,
-						pool_id);
-			}
-
-			/* Configure Aura with new BPID if it is allocated. */
-			if (bpid_new != NIX_BPID_INVALID) {
+				/* Configure Aura with new BPID if it is allocated. */
 				if (roc_npa_aura_bp_configure(pool_id, bpid_new, bp_intf, bp_thresh,
 							      true))
-					plt_nix_dbg(
-						"Enabling backpressue failed on aura 0x%" PRIx64,
+					plt_err("Enabling backpressue failed on aura 0x%" PRIx64,
 						pool_id);
+			} else {
+				plt_info("Ignoring port=%u tc=%u config on shared aura 0x%" PRIx64,
+					 roc_nix->port_id, tc, pool_id);
 			}
 		}
 
@@ -548,10 +540,19 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 
 	if (ena) {
 		if (roc_npa_aura_bp_configure(pool_id, nix->bpid[tc], bp_intf, bp_thresh, true))
-			plt_nix_dbg("Enabling backpressue failed on aura 0x%" PRIx64, pool_id);
+			plt_err("Enabling backpressue failed on aura 0x%" PRIx64, pool_id);
 	} else {
+		bool found = !!force;
+
+		/* Don't disable if existing BPID is not within this port's list */
+		for (i = 0; i < nix->chan_cnt; i++)
+			if (bpid == nix->bpid[i])
+				found = true;
+		if (!found)
+			return;
+
 		if (roc_npa_aura_bp_configure(pool_id, 0, 0, 0, false))
-			plt_nix_dbg("Disabling backpressue failed on aura 0x%" PRIx64, pool_id);
+			plt_err("Disabling backpressue failed on aura 0x%" PRIx64, pool_id);
 	}
 
 	return;
