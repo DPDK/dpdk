@@ -56,6 +56,12 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 
 #define VHOST_NB_VQ_STATS RTE_DIM(vhost_vq_stat_strings)
 
+static int
+vhost_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
+{
+	return dev->backend_ops->iotlb_miss(dev, iova, perm);
+}
+
 uint64_t
 __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		    uint64_t iova, uint64_t *size, uint8_t perm)
@@ -90,7 +96,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		vhost_user_iotlb_rd_unlock(vq);
 
 		vhost_user_iotlb_pending_insert(dev, iova, perm);
-		if (vhost_user_iotlb_miss(dev, iova, perm)) {
+		if (vhost_iotlb_miss(dev, iova, perm)) {
 			VHOST_LOG_DATA(dev->ifname, ERR,
 				"IOTLB miss req failed for IOVA 0x%" PRIx64 "\n",
 				iova);
@@ -687,6 +693,11 @@ vhost_new_device(struct vhost_backend_ops *ops)
 
 	if (ops == NULL) {
 		VHOST_LOG_CONFIG("device", ERR, "missing backend ops.\n");
+		return -1;
+	}
+
+	if (ops->iotlb_miss == NULL) {
+		VHOST_LOG_CONFIG("device", ERR, "missing IOTLB miss backend op.\n");
 		return -1;
 	}
 

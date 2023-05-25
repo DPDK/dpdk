@@ -3305,7 +3305,7 @@ out:
 	return ret;
 }
 
-int
+static int
 vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 {
 	int ret;
@@ -3465,7 +3465,9 @@ disable:
 	return ret;
 }
 
-static struct vhost_backend_ops vhost_user_backend_ops;
+static struct vhost_backend_ops vhost_user_backend_ops = {
+	.iotlb_miss = vhost_user_iotlb_miss,
+};
 
 int
 vhost_user_new_device(void)
