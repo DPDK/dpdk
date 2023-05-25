@@ -90,16 +90,20 @@
 #endif
 
 struct virtio_net;
+struct vhost_virtqueue;
+
 typedef void (*vhost_iotlb_remove_notify)(uint64_t addr, uint64_t off, uint64_t size);
 
 typedef int (*vhost_iotlb_miss_cb)(struct virtio_net *dev, uint64_t iova, uint8_t perm);
 
+typedef int (*vhost_vring_inject_irq_cb)(struct virtio_net *dev, struct vhost_virtqueue *vq);
 /**
  * Structure that contains backend-specific ops.
  */
 struct vhost_backend_ops {
 	vhost_iotlb_remove_notify iotlb_remove_notify;
 	vhost_iotlb_miss_cb iotlb_miss;
+	vhost_vring_inject_irq_cb inject_irq;
 };
 
 /**
@@ -906,8 +910,6 @@ vhost_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old)
 static __rte_always_inline void
 vhost_vring_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	int ret;
-
 	if (dev->notify_ops->guest_notify &&
 	    dev->notify_ops->guest_notify(dev->vid, vq->index)) {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
@@ -916,8 +918,7 @@ vhost_vring_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		return;
 	}
 
-	ret = eventfd_write(vq->callfd, (eventfd_t) 1);
-	if (ret) {
+	if (dev->backend_ops->inject_irq(dev, vq)) {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
 			__atomic_fetch_add(&vq->stats.guest_notifications_error,
 				1, __ATOMIC_RELAXED);
@@ -950,14 +951,12 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 			"%s: used_event_idx=%d, old=%d, new=%d\n",
 			__func__, vhost_used_event(vq), old, new);
 
-		if ((vhost_need_event(vhost_used_event(vq), new, old) ||
-					unlikely(!signalled_used_valid)) &&
-				vq->callfd >= 0)
+		if (vhost_need_event(vhost_used_event(vq), new, old) ||
+				unlikely(!signalled_used_valid))
 			vhost_vring_inject_irq(dev, vq);
 	} else {
 		/* Kick the guest if necessary. */
-		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT) &&
-				(vq->callfd >= 0))
+		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
 			vhost_vring_inject_irq(dev, vq);
 	}
 }
@@ -1009,7 +1008,7 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (vhost_need_event(off, new, old))
 		kick = true;
 kick:
-	if (kick && vq->callfd >= 0)
+	if (kick)
 		vhost_vring_inject_irq(dev, vq);
 }
 

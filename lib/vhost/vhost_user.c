@@ -3465,8 +3465,18 @@ disable:
 	return ret;
 }
 
+static int
+vhost_user_inject_irq(struct virtio_net *dev __rte_unused, struct vhost_virtqueue *vq)
+{
+	if (vq->callfd < 0)
+		return -1;
+
+	return eventfd_write(vq->callfd, (eventfd_t)1);
+}
+
 static struct vhost_backend_ops vhost_user_backend_ops = {
 	.iotlb_miss = vhost_user_iotlb_miss,
+	.inject_irq = vhost_user_inject_irq,
 };
 
 int

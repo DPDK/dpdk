@@ -701,6 +701,11 @@ vhost_new_device(struct vhost_backend_ops *ops)
 		return -1;
 	}
 
+	if (ops->inject_irq == NULL) {
+		VHOST_LOG_CONFIG("device", ERR, "missing IRQ injection backend op.\n");
+		return -1;
+	}
+
 	pthread_mutex_lock(&vhost_dev_lock);
 	for (i = 0; i < RTE_MAX_VHOST_DEVICE; i++) {
 		if (vhost_devices[i] == NULL)
@@ -1511,20 +1516,16 @@ rte_vhost_notify_guest(int vid, uint16_t queue_id)
 
 	rte_rwlock_read_lock(&vq->access_lock);
 
-	if (vq->callfd >= 0) {
-		int ret = eventfd_write(vq->callfd, (eventfd_t)1);
-
-		if (ret) {
-			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-				__atomic_fetch_add(&vq->stats.guest_notifications_error,
+	if (dev->backend_ops->inject_irq(dev, vq)) {
+		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+			__atomic_fetch_add(&vq->stats.guest_notifications_error,
 					1, __ATOMIC_RELAXED);
-		} else {
-			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-				__atomic_fetch_add(&vq->stats.guest_notifications,
+	} else {
+		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+			__atomic_fetch_add(&vq->stats.guest_notifications,
 					1, __ATOMIC_RELAXED);
-			if (dev->notify_ops->guest_notified)
-				dev->notify_ops->guest_notified(dev->vid);
-		}
+		if (dev->notify_ops->guest_notified)
+			dev->notify_ops->guest_notified(dev->vid);
 	}
 
 	rte_rwlock_read_unlock(&vq->access_lock);
