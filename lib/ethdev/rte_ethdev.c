@@ -1292,6 +1292,25 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	/* Backup mtu for rollback */
 	old_mtu = dev->data->mtu;
 
+	/* fields must be zero to reserve them for future ABI changes */
+	if (dev_conf->rxmode.reserved_64s[0] != 0 ||
+	    dev_conf->rxmode.reserved_64s[1] != 0 ||
+	    dev_conf->rxmode.reserved_ptrs[0] != NULL ||
+	    dev_conf->rxmode.reserved_ptrs[1] != NULL) {
+		RTE_ETHDEV_LOG(ERR, "Rxmode reserved fields not zero\n");
+		ret = -EINVAL;
+		goto rollback;
+	}
+
+	if (dev_conf->txmode.reserved_64s[0] != 0 ||
+	    dev_conf->txmode.reserved_64s[1] != 0 ||
+	    dev_conf->txmode.reserved_ptrs[0] != NULL ||
+	    dev_conf->txmode.reserved_ptrs[1] != NULL) {
+		RTE_ETHDEV_LOG(ERR, "txmode reserved fields not zero\n");
+		ret = -EINVAL;
+		goto rollback;
+	}
+
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
 		goto rollback;
@@ -2080,6 +2099,15 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	if (*dev->dev_ops->rx_queue_setup == NULL)
 		return -ENOTSUP;
 
+	if (rx_conf != NULL &&
+	   (rx_conf->reserved_64s[0] != 0 ||
+	    rx_conf->reserved_64s[1] != 0 ||
+	    rx_conf->reserved_ptrs[0] != NULL ||
+	    rx_conf->reserved_ptrs[1] != NULL)) {
+		RTE_ETHDEV_LOG(ERR, "Rx conf reserved fields not zero\n");
+		return -EINVAL;
+	}
+
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
 		return ret;
@@ -2283,6 +2311,12 @@ rte_eth_rx_hairpin_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
+	if (conf->reserved != 0) {
+		RTE_ETHDEV_LOG(ERR,
+			       "Rx hairpin reserved field not zero\n");
+		return -EINVAL;
+	}
+
 	ret = rte_eth_dev_hairpin_capability_get(port_id, &cap);
 	if (ret != 0)
 		return ret;
@@ -2377,6 +2411,15 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 
 	if (*dev->dev_ops->tx_queue_setup == NULL)
 		return -ENOTSUP;
+
+	if (tx_conf != NULL &&
+	   (tx_conf->reserved_64s[0] != 0 ||
+	    tx_conf->reserved_64s[1] != 0 ||
+	    tx_conf->reserved_ptrs[0] != NULL ||
+	    tx_conf->reserved_ptrs[1] != NULL)) {
+		RTE_ETHDEV_LOG(ERR, "Tx conf reserved fields not zero\n");
+		return -EINVAL;
+	}
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
