@@ -1267,6 +1267,11 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		   ROC_NIX_LF_RX_CFG_LEN_IL4 | ROC_NIX_LF_RX_CFG_LEN_IL3 |
 		   ROC_NIX_LF_RX_CFG_LEN_OL4 | ROC_NIX_LF_RX_CFG_LEN_OL3);
 
+	rx_cfg &= (ROC_NIX_LF_RX_CFG_RX_ERROR_MASK);
+
+	if (roc_feature_nix_has_drop_re_mask())
+		rx_cfg |= (ROC_NIX_RE_CRC8_PCH | ROC_NIX_RE_MACSEC);
+
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		rx_cfg |= ROC_NIX_LF_RX_CFG_IP6_UDP_OPT;
 		/* Disable drop re if rx offload security is enabled and
