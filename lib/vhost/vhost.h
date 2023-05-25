@@ -305,13 +305,6 @@ struct vhost_virtqueue {
 	struct log_cache_entry	*log_cache;
 
 	rte_rwlock_t	iotlb_lock;
-	rte_rwlock_t	iotlb_pending_lock;
-	struct vhost_iotlb_entry *iotlb_pool;
-	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
-	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
-	int				iotlb_cache_nr;
-	rte_spinlock_t	iotlb_free_lock;
-	SLIST_HEAD(, vhost_iotlb_entry) iotlb_free_list;
 
 	/* Used to notify the guest (trigger interrupt) */
 	int			callfd;
@@ -486,6 +479,15 @@ struct virtio_net {
 	int			extbuf;
 	int			linearbuf;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
+
+	rte_rwlock_t	iotlb_pending_lock;
+	struct vhost_iotlb_entry *iotlb_pool;
+	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
+	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
+	int				iotlb_cache_nr;
+	rte_spinlock_t	iotlb_free_lock;
+	SLIST_HEAD(, vhost_iotlb_entry) iotlb_free_list;
+
 	struct inflight_mem_info *inflight_info;
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
 	char			ifname[IF_NAME_SZ];

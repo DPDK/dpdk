@@ -67,7 +67,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	tmp_size = *size;
 
-	vva = vhost_user_iotlb_cache_find(vq, iova, &tmp_size, perm);
+	vva = vhost_user_iotlb_cache_find(dev, iova, &tmp_size, perm);
 	if (tmp_size == *size) {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
 			vq->stats.iotlb_hits++;
@@ -79,7 +79,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	iova += tmp_size;
 
-	if (!vhost_user_iotlb_pending_miss(vq, iova, perm)) {
+	if (!vhost_user_iotlb_pending_miss(dev, iova, perm)) {
 		/*
 		 * iotlb_lock is read-locked for a full burst,
 		 * but it only protects the iotlb cache.
@@ -89,12 +89,12 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 */
 		vhost_user_iotlb_rd_unlock(vq);
 
-		vhost_user_iotlb_pending_insert(dev, vq, iova, perm);
+		vhost_user_iotlb_pending_insert(dev, iova, perm);
 		if (vhost_user_iotlb_miss(dev, iova, perm)) {
 			VHOST_LOG_DATA(dev->ifname, ERR,
 				"IOTLB miss req failed for IOVA 0x%" PRIx64 "\n",
 				iova);
-			vhost_user_iotlb_pending_remove(vq, iova, 1, perm);
+			vhost_user_iotlb_pending_remove(dev, iova, 1, perm);
 		}
 
 		vhost_user_iotlb_rd_lock(vq);
@@ -401,7 +401,6 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	vhost_free_async_mem(vq);
 	rte_rwlock_write_unlock(&vq->access_lock);
 	rte_free(vq->batch_copy_elems);
-	vhost_user_iotlb_destroy(vq);
 	rte_free(vq->log_cache);
 	rte_free(vq);
 }
@@ -579,7 +578,7 @@ vring_invalidate(struct virtio_net *dev __rte_unused, struct vhost_virtqueue *vq
 }
 
 static void
-init_vring_queue(struct virtio_net *dev, struct vhost_virtqueue *vq,
+init_vring_queue(struct virtio_net *dev __rte_unused, struct vhost_virtqueue *vq,
 	uint32_t vring_idx)
 {
 	int numa_node = SOCKET_ID_ANY;
@@ -599,8 +598,6 @@ init_vring_queue(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 #endif
 	vq->numa_node = numa_node;
-
-	vhost_user_iotlb_init(dev, vq);
 }
 
 static void
@@ -635,6 +632,7 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 		dev->virtqueue[i] = vq;
 		init_vring_queue(dev, vq, i);
 		rte_rwlock_init(&vq->access_lock);
+		rte_rwlock_init(&vq->iotlb_lock);
 		vq->avail_wrap_counter = 1;
 		vq->used_wrap_counter = 1;
 		vq->signalled_used_valid = false;
@@ -799,6 +797,10 @@ vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags, bool stats
 		dev->flags |= VIRTIO_DEV_SUPPORT_IOMMU;
 	else
 		dev->flags &= ~VIRTIO_DEV_SUPPORT_IOMMU;
+
+	if (vhost_user_iotlb_init(dev) < 0)
+		VHOST_LOG_CONFIG("device", ERR, "failed to init IOTLB\n");
+
 }
 
 void

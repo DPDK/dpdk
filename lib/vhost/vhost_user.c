@@ -237,6 +237,8 @@ vhost_backend_cleanup(struct virtio_net *dev)
 	}
 
 	dev->postcopy_listening = 0;
+
+	vhost_user_iotlb_destroy(dev);
 }
 
 static void
@@ -539,7 +541,6 @@ numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 	if (vq != dev->virtqueue[vq->index]) {
 		VHOST_LOG_CONFIG(dev->ifname, INFO, "reallocated virtqueue on node %d\n", node);
 		dev->virtqueue[vq->index] = vq;
-		vhost_user_iotlb_init(dev, vq);
 	}
 
 	if (vq_is_packed(dev)) {
@@ -664,6 +665,8 @@ out_dev_realloc:
 		return;
 	}
 	dev->guest_pages = gp;
+
+	vhost_user_iotlb_init(dev);
 }
 #else
 static void
@@ -1360,8 +1363,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 
 		/* Flush IOTLB cache as previous HVAs are now invalid */
 		if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-			for (i = 0; i < dev->nr_vring; i++)
-				vhost_user_iotlb_flush_all(dev, dev->virtqueue[i]);
+			vhost_user_iotlb_flush_all(dev);
 
 		free_mem_region(dev);
 		rte_free(dev->mem);
@@ -2194,7 +2196,7 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 	ctx->msg.size = sizeof(ctx->msg.payload.state);
 	ctx->fd_num = 0;
 
-	vhost_user_iotlb_flush_all(dev, vq);
+	vhost_user_iotlb_flush_all(dev);
 
 	vring_invalidate(dev, vq);
 
@@ -2639,14 +2641,13 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 		if (!vva)
 			return RTE_VHOST_MSG_RESULT_ERR;
 
+		vhost_user_iotlb_cache_insert(dev, imsg->iova, vva, len, imsg->perm);
+
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
 
 			if (!vq)
 				continue;
-
-			vhost_user_iotlb_cache_insert(dev, vq, imsg->iova, vva,
-					len, imsg->perm);
 
 			if (is_vring_iotlb(dev, vq, imsg)) {
 				rte_rwlock_write_lock(&vq->access_lock);
@@ -2657,14 +2658,13 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 		}
 		break;
 	case VHOST_IOTLB_INVALIDATE:
+		vhost_user_iotlb_cache_remove(dev, imsg->iova, imsg->size);
+
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
 
 			if (!vq)
 				continue;
-
-			vhost_user_iotlb_cache_remove(dev, vq, imsg->iova,
-					imsg->size);
 
 			if (is_vring_iotlb(dev, vq, imsg)) {
 				rte_rwlock_write_lock(&vq->access_lock);
@@ -2674,8 +2674,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 		}
 		break;
 	default:
-		VHOST_LOG_CONFIG(dev->ifname, ERR,
-			"invalid IOTLB message type (%d)\n",
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "invalid IOTLB message type (%d)\n",
 			imsg->type);
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
