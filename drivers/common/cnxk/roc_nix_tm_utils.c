@@ -1267,7 +1267,8 @@ roc_nix_tm_shaper_default_red_algo(struct roc_nix_tm_node *node,
 	tm_node->red_algo = roc_prof->red_algo;
 
 	/* C0 doesn't support STALL when both PIR & CIR are enabled */
-	if (roc_model_is_cn96_cx()) {
+	if (roc_model_is_cn96_cx() || roc_model_is_cnf95xxn_a0() || roc_model_is_cnf95xxo_a0() ||
+	    roc_model_is_cnf95xxn_a1() || roc_model_is_cnf95xxn_b0()) {
 		nix_tm_shaper_conf_get(profile, &cir, &pir);
 
 		if (pir.rate && cir.rate)
