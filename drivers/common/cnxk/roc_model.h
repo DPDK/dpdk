@@ -31,6 +31,7 @@ struct roc_model {
 #define ROC_MODEL_CN106xx_A1   BIT_ULL(24)
 #define ROC_MODEL_CNF105xx_A1  BIT_ULL(25)
 #define ROC_MODEL_CN106xx_B0   BIT_ULL(26)
+#define ROC_MODEL_CNF105xxN_B0 BIT_ULL(27)
 /* Following flags describe platform code is running on */
 #define ROC_ENV_HW   BIT_ULL(61)
 #define ROC_ENV_EMUL BIT_ULL(62)
@@ -57,7 +58,7 @@ struct roc_model {
 
 #define ROC_MODEL_CN106xx   (ROC_MODEL_CN106xx_A0 | ROC_MODEL_CN106xx_A1 | ROC_MODEL_CN106xx_B0)
 #define ROC_MODEL_CNF105xx  (ROC_MODEL_CNF105xx_A0 | ROC_MODEL_CNF105xx_A1)
-#define ROC_MODEL_CNF105xxN (ROC_MODEL_CNF105xxN_A0)
+#define ROC_MODEL_CNF105xxN (ROC_MODEL_CNF105xxN_A0 | ROC_MODEL_CNF105xxN_B0)
 #define ROC_MODEL_CN103xx   (ROC_MODEL_CN103xx_A0)
 #define ROC_MODEL_CN10K                                                        \
 	(ROC_MODEL_CN106xx | ROC_MODEL_CNF105xx | ROC_MODEL_CNF105xxN |        \
@@ -250,6 +251,12 @@ static inline uint64_t
 roc_model_is_cnf10kb_a0(void)
 {
 	return roc_model->flag & ROC_MODEL_CNF105xxN_A0;
+}
+
+static inline uint64_t
+roc_model_is_cnf10kb_b0(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF105xxN_B0;
 }
 
 static inline uint64_t
