@@ -178,8 +178,8 @@ vhost_user_iotlb_cache_random_evict(struct virtio_net *dev, struct vhost_virtque
 			mask = ~(alignment - 1);
 
 			/* Don't disable coredump if the previous node is in the same page */
-			if (prev_node == NULL ||
-					(node->uaddr & mask) != (prev_node->uaddr & mask)) {
+			if (prev_node == NULL || (node->uaddr & mask) !=
+					((prev_node->uaddr + prev_node->size - 1) & mask)) {
 				next_node = RTE_TAILQ_NEXT(node, next);
 				/* Don't disable coredump if the next node is in the same page */
 				if (next_node == NULL || ((node->uaddr + node->size - 1) & mask) !=
@@ -283,8 +283,8 @@ vhost_user_iotlb_cache_remove(struct virtio_net *dev, struct vhost_virtqueue *vq
 			mask = ~(alignment-1);
 
 			/* Don't disable coredump if the previous node is in the same page */
-			if (prev_node == NULL ||
-					(node->uaddr & mask) != (prev_node->uaddr & mask)) {
+			if (prev_node == NULL || (node->uaddr & mask) !=
+					((prev_node->uaddr + prev_node->size - 1) & mask)) {
 				next_node = RTE_TAILQ_NEXT(node, next);
 				/* Don't disable coredump if the next node is in the same page */
 				if (next_node == NULL || ((node->uaddr + node->size - 1) & mask) !=
