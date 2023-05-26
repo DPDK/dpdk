@@ -883,6 +883,7 @@ s32 igc_set_mac_type(struct igc_hw *hw)
 		mac->type = igc_i211;
 		break;
 	case IGC_DEV_ID_I225_LM:
+	case IGC_DEV_ID_I225_LMVP:
 	case IGC_DEV_ID_I225_V:
 	case IGC_DEV_ID_I225_K:
 	case IGC_DEV_ID_I225_I:
