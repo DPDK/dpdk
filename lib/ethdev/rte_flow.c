@@ -919,7 +919,15 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 	src -= num;
 	dst -= num;
 	do {
-		if (src->conf) {
+		if (src->type == RTE_FLOW_ACTION_TYPE_INDIRECT) {
+			/*
+			 * Indirect action conf fills the indirect action
+			 * handler. Copy the action handle directly instead
+			 * of duplicating the pointer memory.
+			 */
+			if (size)
+				dst->conf = src->conf;
+		} else if (src->conf) {
 			off = RTE_ALIGN_CEIL(off, sizeof(double));
 			ret = rte_flow_conv_action_conf
 				((void *)(data + off),
