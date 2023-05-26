@@ -1836,6 +1836,11 @@ ice_flow_init(struct ice_adapter *ad)
 	if (ice_parser_create(&ad->hw, &ad->psr) != ICE_SUCCESS)
 		PMD_INIT_LOG(WARNING, "Failed to initialize DDP parser, raw packet filter will not be supported");
 
+	if (ice_is_dvm_ena(&ad->hw))
+		ice_parser_dvm_set(ad->psr, true);
+	else
+		ice_parser_dvm_set(ad->psr, false);
+
 	RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
 		if (engine->init == NULL) {
 			PMD_INIT_LOG(ERR, "Invalid engine type (%d)",
