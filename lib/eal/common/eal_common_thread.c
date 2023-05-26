@@ -252,6 +252,10 @@ static int ctrl_thread_init(void *arg)
 	struct rte_thread_ctrl_params *params = arg;
 
 	__rte_thread_init(rte_lcore_id(), cpuset);
+	/* Set control thread socket ID to SOCKET_ID_ANY
+	 * as control threads may be scheduled on any NUMA node.
+	 */
+	RTE_PER_LCORE(_socket_id) = SOCKET_ID_ANY;
 	params->ret = rte_thread_set_affinity_by_id(rte_thread_self(), cpuset);
 	if (params->ret != 0) {
 		__atomic_store_n(&params->ctrl_thread_status,

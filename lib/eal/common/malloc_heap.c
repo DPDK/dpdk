@@ -716,7 +716,16 @@ malloc_get_numa_socket(void)
 		if (conf->socket_mem[socket_id] != 0)
 			return socket_id;
 	}
-
+	/* We couldn't quickly find a NUMA node where memory was available,
+	 * so fall back to using main lcore socket ID.
+	 */
+	socket_id = rte_lcore_to_socket_id(rte_get_main_lcore());
+	/* Main lcore socket ID may be SOCKET_ID_ANY
+	 * when main lcore thread is affinitized to multiple NUMA nodes.
+	 */
+	if (socket_id != (unsigned int)SOCKET_ID_ANY)
+		return socket_id;
+	/* Failed to find meaningful socket ID, so use the first one available. */
 	return rte_socket_id_by_idx(0);
 }
 
