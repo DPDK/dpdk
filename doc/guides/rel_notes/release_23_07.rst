@@ -76,6 +76,10 @@ New Features
 
   Added ``RTE_FLOW_ITEM_TYPE_IB_BTH`` to match Infiniband BTH fields.
 
+* **Added indirect list flow action.**
+
+  Added API to manage (create, destroy, update) a list of indirect actions.
+
 * **Added flow rule update.**
 
   * Added API for updating the action list in the already existing rule.

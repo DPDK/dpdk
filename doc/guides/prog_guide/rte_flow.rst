@@ -2918,6 +2918,124 @@ including the ones created for the test, will be kept after the device start.
    | no properties |
    +---------------+
 
+Action: ``INDIRECT_LIST``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Indirect API creates a shared flow action with unique action handle.
+Flow rules can access the shared flow action and resources related to
+that action through the indirect action handle.
+In addition, the API allows to update existing shared flow action configuration.
+After the update completes, new action configuration
+is available to all flows that reference that shared action.
+
+Indirect actions list expands the indirect action API:
+
+- Indirect action list creates a handle for one or several
+  flow actions, while legacy indirect action handle references
+  single action only.
+  Input flow actions arranged in END terminated list.
+
+- Flow rule can provide rule specific configuration parameters to
+  existing shared handle.
+  Updates of flow rule specific configuration will not change the base
+  action configuration.
+  Base action configuration was set during the action creation.
+
+Indirect action list handle defines 2 types of resources:
+
+- Mutable handle resource can be changed during handle lifespan.
+
+- Immutable handle resource value is set during handle creation
+  and cannot be changed.
+
+There are 2 types of mutable indirect handle contexts:
+
+- Action mutable context is always shared between all flows
+  that referenced indirect actions list handle.
+  Action mutable context can be changed by explicit invocation
+  of indirect handle update function.
+
+- Flow mutable context is private to a flow.
+  Flow mutable context can be updated by indirect list handle
+  flow rule configuration.
+
+Indirect action types - immutable, action / flow mutable, are mutually
+exclusive and depend on the action definition.
+
+If indirect list handle was created from a list of actions A1 / A2 ... An / END
+indirect list flow action can update Ai flow mutable context in the
+action configuration parameter.
+Indirect list action configuration is and array [C1, C2,  .., Cn]
+where Ci corresponds to Ai in the action handle source.
+Ci configuration element points Ai flow mutable update, or it's NULL
+if Ai has no flow mutable update.
+Indirect list action configuration is NULL if the action has no flow mutable updates.
+Otherwise it points to an array of n flow mutable configuration pointers.
+
+**Template API:**
+
+*Action template format:*
+
+``template .. indirect_list handle Htmpl conf Ctmpl ..``
+
+``mask     .. indirect_list handle Hmask conf Cmask ..``
+
+- If Htmpl was masked (Hmask != 0), it will be fixed in that template.
+  Otherwise, indirect action value is set in a flow rule.
+
+- If Htmpl and Ctmpl[i] were masked (Hmask !=0 and Cmask[i] != 0),
+  Htmpl's Ai action flow mutable context fill be updated to
+  Ctmpl[i] values and will be fixed in that template.
+
+*Flow rule format:*
+
+``actions .. indirect_list handle Hflow conf Cflow ..``
+
+- If Htmpl was not masked in actions template, Hflow references an
+  action of the same type as Htmpl.
+
+- Cflow[i] updates handle's Ai flow mutable configuration if
+  the Ci was not masked in action template.
+
+.. _table_rte_flow_action_indirect_list:
+
+.. table:: INDIRECT_LIST
+
+   +------------------+----------------------------------+
+   | Field            | Value                            |
+   +==================+==================================+
+   | ``handle``       | Indirect action list handle      |
+   +------------------+----------------------------------+
+   | ``conf``         | Flow mutable configuration array |
+   +------------------+----------------------------------+
+
+.. code-block:: text
+
+   flow 1:
+    / indirect handle H conf C1 /
+                      |       |
+                      |       |
+                      |       |         flow 2:
+                      |       |         / indirect handle H conf C2 /
+                      |       |                           |      |
+                      |       |                           |      |
+                      |       |                           |      |
+              =========================================================
+              ^       |       |                           |      |
+              |       |       V                           |      V
+              |    ~~~~~~~~~~~~~~                      ~~~~~~~~~~~~~~~
+              |     flow mutable                        flow mutable
+              |     context 1                           context 2
+              |    ~~~~~~~~~~~~~~                      ~~~~~~~~~~~~~~~
+    indirect  |       |                                   |
+    action    |       |                                   |
+    context   |       V                                   V
+              |   -----------------------------------------------------
+              |                 action mutable context
+              |   -----------------------------------------------------
+              v                action immutable context
+              =========================================================
+
 Action: ``MODIFY_FIELD``
 ^^^^^^^^^^^^^^^^^^^^^^^^
 

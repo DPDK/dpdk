@@ -261,6 +261,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(METER_MARK, sizeof(struct rte_flow_action_meter_mark)),
 	MK_FLOW_ACTION(SEND_TO_KERNEL, 0),
 	MK_FLOW_ACTION(QUOTA, sizeof(struct rte_flow_action_quota)),
+	MK_FLOW_ACTION(INDIRECT_LIST,
+		       sizeof(struct rte_flow_action_indirect_list)),
 };
 
 int
@@ -2226,4 +2228,169 @@ rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
 						    query, mode,
 						    user_data, error);
 	return flow_err(port_id, ret, error);
+}
+
+struct rte_flow_action_list_handle *
+rte_flow_action_list_handle_create(uint16_t port_id,
+				   const
+				   struct rte_flow_indir_action_conf *conf,
+				   const struct rte_flow_action *actions,
+				   struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+	struct rte_flow_action_list_handle *handle;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, NULL);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->action_list_handle_create) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "action_list handle not supported");
+		return NULL;
+	}
+	dev = &rte_eth_devices[port_id];
+	handle = ops->action_list_handle_create(dev, conf, actions, error);
+	ret = flow_err(port_id, -rte_errno, error);
+	rte_flow_trace_action_list_handle_create(port_id, conf, actions, ret);
+	return handle;
+}
+
+int
+rte_flow_action_list_handle_destroy(uint16_t port_id,
+				    struct rte_flow_action_list_handle *handle,
+				    struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->action_list_handle_destroy)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "action_list handle not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->action_list_handle_destroy(dev, handle, error);
+	ret = flow_err(port_id, ret, error);
+	rte_flow_trace_action_list_handle_destroy(port_id, handle, ret);
+	return ret;
+}
+
+struct rte_flow_action_list_handle *
+rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
+					 const struct rte_flow_op_attr *attr,
+					 const struct rte_flow_indir_action_conf *conf,
+					 const struct rte_flow_action *actions,
+					 void *user_data,
+					 struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+	struct rte_flow_action_list_handle *handle;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, NULL);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->async_action_list_handle_create) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "action_list handle not supported");
+		return NULL;
+	}
+	dev = &rte_eth_devices[port_id];
+	handle = ops->async_action_list_handle_create(dev, queue_id, attr, conf,
+						      actions, user_data,
+						      error);
+	ret = flow_err(port_id, -rte_errno, error);
+	rte_flow_trace_async_action_list_handle_create(port_id, queue_id, attr,
+						       conf, actions, user_data,
+						       ret);
+	return handle;
+}
+
+int
+rte_flow_async_action_list_handle_destroy(uint16_t port_id, uint32_t queue_id,
+				 const struct rte_flow_op_attr *op_attr,
+				 struct rte_flow_action_list_handle *handle,
+				 void *user_data, struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->async_action_list_handle_destroy)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "async action_list handle not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->async_action_list_handle_destroy(dev, queue_id, op_attr,
+						    handle, user_data, error);
+	ret = flow_err(port_id, ret, error);
+	rte_flow_trace_async_action_list_handle_destroy(port_id, queue_id,
+							op_attr, handle,
+							user_data, ret);
+	return ret;
+}
+
+int
+rte_flow_action_list_handle_query_update(uint16_t port_id,
+			 const struct rte_flow_action_list_handle *handle,
+			 const void **update, void **query,
+			 enum rte_flow_query_update_mode mode,
+			 struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->action_list_handle_query_update)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "action_list query_update not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->action_list_handle_query_update(dev, handle, update, query,
+						   mode, error);
+	ret = flow_err(port_id, ret, error);
+	rte_flow_trace_action_list_handle_query_update(port_id, handle, update,
+						       query, mode, ret);
+	return ret;
+}
+
+int
+rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_id,
+			 const struct rte_flow_op_attr *attr,
+			 const struct rte_flow_action_list_handle *handle,
+			 const void **update, void **query,
+			 enum rte_flow_query_update_mode mode,
+			 void *user_data, struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->async_action_list_handle_query_update)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "action_list async query_update not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->async_action_list_handle_query_update(dev, queue_id, attr,
+							 handle, update, query,
+							 mode, user_data,
+							 error);
+	ret = flow_err(port_id, ret, error);
+	rte_flow_trace_async_action_list_handle_query_update(port_id, queue_id,
+							     attr, handle,
+							     update, query,
+							     mode, user_data,
+							     ret);
+	return ret;
 }

@@ -2966,6 +2966,13 @@ enum rte_flow_action_type {
 	 * applied to the given ethdev Rx queue.
 	 */
 	RTE_FLOW_ACTION_TYPE_SKIP_CMAN,
+
+	/**
+	 * Action handle to reference flow actions list.
+	 *
+	 * @see struct rte_flow_action_indirect_list
+	 */
+	RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
 };
 
 /**
@@ -6241,6 +6248,270 @@ rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
 					  const struct rte_flow_op_attr *attr,
 					  struct rte_flow_action_handle *handle,
 					  const void *update, void *query,
+					  enum rte_flow_query_update_mode mode,
+					  void *user_data,
+					  struct rte_flow_error *error);
+
+struct rte_flow_action_list_handle;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Configure INDIRECT_LIST flow action.
+ *
+ * @see RTE_FLOW_ACTION_TYPE_INDIRECT_LIST
+ */
+struct rte_flow_action_indirect_list {
+	/** Indirect action list handle */
+	struct rte_flow_action_list_handle *handle;
+	/**
+	 * Flow mutable configuration array.
+	 * NULL if the handle has no flow mutable configuration update.
+	 * Otherwise, if the handle was created with list A1 / A2 .. An / END
+	 * size of conf is n.
+	 * conf[i] points to flow mutable update of Ai in the handle
+	 * actions list or NULL if Ai has no update.
+	 */
+	const void **conf;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create an indirect flow action object from flow actions list.
+ * The object is identified by a unique handle.
+ * The handle has single state and configuration
+ * across all the flow rules using it.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] conf
+ *   Action configuration for the indirect action list creation.
+ * @param[in] actions
+ *   Specific configuration of the indirect action lists.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   A valid handle in case of success, NULL otherwise and rte_errno is set
+ *   to one of the error codes defined:
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-EINVAL) if *actions* list invalid.
+ *   - (-ENOTSUP) if *action* list element valid but unsupported.
+ */
+__rte_experimental
+struct rte_flow_action_list_handle *
+rte_flow_action_list_handle_create(uint16_t port_id,
+				   const
+				   struct rte_flow_indir_action_conf *conf,
+				   const struct rte_flow_action *actions,
+				   struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Async function call to create an indirect flow action object
+ * from flow actions list.
+ * The object is identified by a unique handle.
+ * The handle has single state and configuration
+ * across all the flow rules using it.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] queue_id
+ *   Flow queue which is used to update the rule.
+ * @param[in] attr
+ *   Indirect action update operation attributes.
+ * @param[in] conf
+ *   Action configuration for the indirect action list creation.
+ * @param[in] actions
+ *   Specific configuration of the indirect action list.
+ * @param[in] user_data
+ *   The user data that will be returned on async completion event.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   A valid handle in case of success, NULL otherwise and rte_errno is set
+ *   to one of the error codes defined:
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-EINVAL) if *actions* list invalid.
+ *   - (-ENOTSUP) if *action* list element valid but unsupported.
+ */
+__rte_experimental
+struct rte_flow_action_list_handle *
+rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
+					 const struct rte_flow_op_attr *attr,
+					 const struct rte_flow_indir_action_conf *conf,
+					 const struct rte_flow_action *actions,
+					 void *user_data,
+					 struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destroy indirect actions list by handle.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] handle
+ *   Handle for the indirect actions list to be destroyed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-ENOENT) if actions list pointed by *action* handle was not found.
+ *   - (-EBUSY) if actions list pointed by *action* handle still used
+ */
+__rte_experimental
+int
+rte_flow_action_list_handle_destroy(uint16_t port_id,
+				    struct rte_flow_action_list_handle *handle,
+				    struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue indirect action list destruction operation.
+ * The destroy queue must be the same
+ * as the queue on which the action was created.
+ *
+ * @param[in] port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] queue_id
+ *   Flow queue which is used to destroy the rule.
+ * @param[in] op_attr
+ *   Indirect action destruction operation attributes.
+ * @param[in] handle
+ *   Handle for the indirect action object to be destroyed.
+ * @param[in] user_data
+ *   The user data that will be returned on the completion events.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-ENOENT) if actions list pointed by *action* handle was not found.
+ *   - (-EBUSY) if actions list pointed by *action* handle still used
+ */
+__rte_experimental
+int
+rte_flow_async_action_list_handle_destroy
+		(uint16_t port_id, uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow_action_list_handle *handle,
+		 void *user_data, struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Query and/or update indirect flow actions list.
+ * If both query and update not NULL, the function atomically
+ * queries and updates indirect action. Query and update are carried in order
+ * specified in the mode parameter.
+ * If ether query or update is NULL, the function executes
+ * complementing operation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param handle
+ *   Handle for the indirect actions list object to be updated.
+ * @param update
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL update parameter is an array [U1, U2, ... Un] where Ui points to
+ *   Ai update context or NULL if Ai should not be updated.
+ * @param query
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL query parameter is an array [Q1, Q2, ... Qn] where Qi points to
+ *   Ai query context or NULL if Ai should not be queried.
+ * @param mode
+ *   Operational mode.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ * - (-ENODEV) if *port_id* invalid.
+ * - (-ENOTSUP) if underlying device does not support this functionality.
+ * - (-EINVAL) if *handle* or *mode* invalid or
+ *             both *query* and *update* are NULL.
+ */
+__rte_experimental
+int
+rte_flow_action_list_handle_query_update(uint16_t port_id,
+					 const struct rte_flow_action_list_handle *handle,
+					 const void **update, void **query,
+					 enum rte_flow_query_update_mode mode,
+					 struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue async indirect flow actions list query and/or update
+ * If both query and update not NULL, the function atomically
+ * queries and updates indirect action. Query and update are carried in order
+ * specified in the mode parameter.
+ * If ether query or update is NULL, the function executes
+ * complementing operation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param queue_id
+ *   Flow queue which is used to update the rule.
+ * @param attr
+ *   Indirect action update operation attributes.
+ * @param handle
+ *   Handle for the indirect actions list object to be updated.
+ * @param update
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL update parameter is an array [U1, U2, ... Un] where Ui points to
+ *   Ai update context or NULL if Ai should not be updated.
+ * @param query
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL query parameter is an array [Q1, Q2, ... Qn] where Qi points to
+ *   Ai query context or NULL if Ai should not be queried.
+ *   Query result returned on async completion event.
+ * @param mode
+ *   Operational mode.
+ * @param user_data
+ *   The user data that will be returned on async completion event.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ * - (-ENODEV) if *port_id* invalid.
+ * - (-ENOTSUP) if underlying device does not support this functionality.
+ * - (-EINVAL) if *handle* or *mode* invalid or
+ *             both *update* and *query* are NULL.
+ */
+__rte_experimental
+int
+rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_id,
+					  const struct rte_flow_op_attr *attr,
+					  const struct rte_flow_action_list_handle *handle,
+					  const void **update, void **query,
 					  enum rte_flow_query_update_mode mode,
 					  void *user_data,
 					  struct rte_flow_error *error);

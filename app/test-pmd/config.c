@@ -1764,9 +1764,47 @@ port_flow_configure(portid_t port_id,
 	return 0;
 }
 
+static int
+action_handle_create(portid_t port_id,
+		     struct port_indirect_action *pia,
+		     const struct rte_flow_indir_action_conf *conf,
+		     const struct rte_flow_action *action,
+		     struct rte_flow_error *error)
+{
+	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
+		struct rte_flow_action_age *age =
+			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
+
+		pia->age_type = ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION;
+		age->context = &pia->age_type;
+	} else if (action->type == RTE_FLOW_ACTION_TYPE_CONNTRACK) {
+		struct rte_flow_action_conntrack *ct =
+			(struct rte_flow_action_conntrack *)(uintptr_t)(action->conf);
+
+		memcpy(ct, &conntrack_context, sizeof(*ct));
+	}
+	pia->type = action->type;
+	pia->handle = rte_flow_action_handle_create(port_id, conf, action,
+						    error);
+	return pia->handle ? 0 : -1;
+}
+
+static int
+action_list_handle_create(portid_t port_id,
+			  struct port_indirect_action *pia,
+			  const struct rte_flow_indir_action_conf *conf,
+			  const struct rte_flow_action *actions,
+			  struct rte_flow_error *error)
+{
+	pia->type = RTE_FLOW_ACTION_TYPE_INDIRECT_LIST;
+	pia->list_handle =
+		rte_flow_action_list_handle_create(port_id, conf,
+						   actions, error);
+	return pia->list_handle ? 0 : -1;
+}
 /** Create indirect action */
 int
-port_action_handle_create(portid_t port_id, uint32_t id,
+port_action_handle_create(portid_t port_id, uint32_t id, bool indirect_list,
 			  const struct rte_flow_indir_action_conf *conf,
 			  const struct rte_flow_action *action)
 {
@@ -1777,28 +1815,16 @@ port_action_handle_create(portid_t port_id, uint32_t id,
 	ret = action_alloc(port_id, id, &pia);
 	if (ret)
 		return ret;
-	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
-		struct rte_flow_action_age *age =
-			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
-
-		pia->age_type = ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION;
-		age->context = &pia->age_type;
-	} else if (action->type == RTE_FLOW_ACTION_TYPE_CONNTRACK) {
-		struct rte_flow_action_conntrack *ct =
-		(struct rte_flow_action_conntrack *)(uintptr_t)(action->conf);
-
-		memcpy(ct, &conntrack_context, sizeof(*ct));
-	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x22, sizeof(error));
-	pia->handle = rte_flow_action_handle_create(port_id, conf, action,
-						    &error);
-	if (!pia->handle) {
+	ret = indirect_list ?
+	       action_list_handle_create(port_id, pia, conf, action, &error) :
+	       action_handle_create(port_id, pia, conf, action, &error);
+	if (ret) {
 		uint32_t destroy_id = pia->id;
 		port_action_handle_destroy(port_id, 1, &destroy_id);
 		return port_flow_complain(&error);
 	}
-	pia->type = action->type;
 	printf("Indirect action #%u created\n", pia->id);
 	return 0;
 }
@@ -1833,10 +1859,17 @@ port_action_handle_destroy(portid_t port_id,
 			 */
 			memset(&error, 0x33, sizeof(error));
 
-			if (pia->handle && rte_flow_action_handle_destroy(
-					port_id, pia->handle, &error)) {
-				ret = port_flow_complain(&error);
-				continue;
+			if (pia->handle) {
+				ret = pia->type ==
+				      RTE_FLOW_ACTION_TYPE_INDIRECT_LIST ?
+					rte_flow_action_list_handle_destroy
+					(port_id, pia->list_handle, &error) :
+					rte_flow_action_handle_destroy
+					(port_id, pia->handle, &error);
+				if (ret) {
+					ret = port_flow_complain(&error);
+					continue;
+				}
 			}
 			*tmp = pia->next;
 			printf("Indirect action #%u destroyed\n", pia->id);
@@ -1867,11 +1900,18 @@ port_action_handle_flush(portid_t port_id)
 
 		/* Poisoning to make sure PMDs update it in case of error. */
 		memset(&error, 0x44, sizeof(error));
-		if (pia->handle != NULL &&
-		    rte_flow_action_handle_destroy
-					(port_id, pia->handle, &error) != 0) {
-			printf("Indirect action #%u not destroyed\n", pia->id);
-			ret = port_flow_complain(&error);
+		if (pia->handle != NULL) {
+			ret = pia->type ==
+			      RTE_FLOW_ACTION_TYPE_INDIRECT_LIST ?
+			      rte_flow_action_list_handle_destroy
+				      (port_id, pia->list_handle, &error) :
+			      rte_flow_action_handle_destroy
+				      (port_id, pia->handle, &error);
+			if (ret) {
+				printf("Indirect action #%u not destroyed\n",
+				       pia->id);
+				ret = port_flow_complain(&error);
+			}
 			tmp = &pia->next;
 		} else {
 			*tmp = pia->next;
@@ -2822,6 +2862,45 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 	return ret;
 }
 
+static void
+queue_action_handle_create(portid_t port_id, uint32_t queue_id,
+			   struct port_indirect_action *pia,
+			   struct queue_job *job,
+			   const struct rte_flow_op_attr *attr,
+			   const struct rte_flow_indir_action_conf *conf,
+			   const struct rte_flow_action *action,
+			   struct rte_flow_error *error)
+{
+	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
+		struct rte_flow_action_age *age =
+			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
+
+		pia->age_type = ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION;
+		age->context = &pia->age_type;
+	}
+	/* Poisoning to make sure PMDs update it in case of error. */
+	pia->handle = rte_flow_async_action_handle_create(port_id, queue_id,
+							  attr, conf, action,
+							  job, error);
+	pia->type = action->type;
+}
+
+static void
+queue_action_list_handle_create(portid_t port_id, uint32_t queue_id,
+				struct port_indirect_action *pia,
+				struct queue_job *job,
+				const struct rte_flow_op_attr *attr,
+				const struct rte_flow_indir_action_conf *conf,
+				const struct rte_flow_action *action,
+				struct rte_flow_error *error)
+{
+	/* Poisoning to make sure PMDs update it in case of error. */
+	pia->type = RTE_FLOW_ACTION_TYPE_INDIRECT_LIST;
+	pia->list_handle = rte_flow_async_action_list_handle_create
+		(port_id, queue_id, attr, conf, action,
+		 job, error);
+}
+
 /** Enqueue indirect action create operation. */
 int
 port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
@@ -2835,6 +2914,8 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 	int ret;
 	struct rte_flow_error error;
 	struct queue_job *job;
+	bool is_indirect_list = action[1].type != RTE_FLOW_ACTION_TYPE_END;
+
 
 	ret = action_alloc(port_id, id, &pia);
 	if (ret)
@@ -2853,17 +2934,16 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 	job->type = QUEUE_JOB_TYPE_ACTION_CREATE;
 	job->pia = pia;
 
-	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
-		struct rte_flow_action_age *age =
-			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
-
-		pia->age_type = ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION;
-		age->context = &pia->age_type;
-	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x88, sizeof(error));
-	pia->handle = rte_flow_async_action_handle_create(port_id, queue_id,
-					&attr, conf, action, job, &error);
+
+	if (is_indirect_list)
+		queue_action_list_handle_create(port_id, queue_id, pia, job,
+						&attr, conf, action, &error);
+	else
+		queue_action_handle_create(port_id, queue_id, pia, job, &attr,
+					   conf, action, &error);
+
 	if (!pia->handle) {
 		uint32_t destroy_id = pia->id;
 		port_queue_action_handle_destroy(port_id, queue_id,
@@ -2871,7 +2951,6 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 		free(job);
 		return port_flow_complain(&error);
 	}
-	pia->type = action->type;
 	printf("Indirect action #%u creation queued\n", pia->id);
 	return 0;
 }
@@ -2920,9 +2999,15 @@ port_queue_action_handle_destroy(portid_t port_id,
 			}
 			job->type = QUEUE_JOB_TYPE_ACTION_DESTROY;
 			job->pia = pia;
-
-			if (rte_flow_async_action_handle_destroy(port_id,
-				queue_id, &attr, pia->handle, job, &error)) {
+			ret = pia->type == RTE_FLOW_ACTION_TYPE_INDIRECT_LIST ?
+			      rte_flow_async_action_list_handle_destroy
+				      (port_id, queue_id,
+				       &attr, pia->list_handle,
+				       job, &error) :
+			      rte_flow_async_action_handle_destroy
+				      (port_id, queue_id, &attr, pia->handle,
+				       job, &error);
+			if (ret) {
 				free(job);
 				ret = port_flow_complain(&error);
 				continue;

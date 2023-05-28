@@ -145,6 +145,7 @@ enum index {
 
 	/* Queue indirect action arguments */
 	QUEUE_INDIRECT_ACTION_CREATE,
+	QUEUE_INDIRECT_ACTION_LIST_CREATE,
 	QUEUE_INDIRECT_ACTION_UPDATE,
 	QUEUE_INDIRECT_ACTION_DESTROY,
 	QUEUE_INDIRECT_ACTION_QUERY,
@@ -157,6 +158,7 @@ enum index {
 	QUEUE_INDIRECT_ACTION_TRANSFER,
 	QUEUE_INDIRECT_ACTION_CREATE_POSTPONE,
 	QUEUE_INDIRECT_ACTION_SPEC,
+	QUEUE_INDIRECT_ACTION_LIST,
 
 	/* Queue indirect action update arguments */
 	QUEUE_INDIRECT_ACTION_UPDATE_POSTPONE,
@@ -242,6 +244,8 @@ enum index {
 
 	/* Indirect action arguments */
 	INDIRECT_ACTION_CREATE,
+	INDIRECT_ACTION_LIST_CREATE,
+	INDIRECT_ACTION_FLOW_CONF_CREATE,
 	INDIRECT_ACTION_UPDATE,
 	INDIRECT_ACTION_DESTROY,
 	INDIRECT_ACTION_QUERY,
@@ -253,6 +257,8 @@ enum index {
 	INDIRECT_ACTION_EGRESS,
 	INDIRECT_ACTION_TRANSFER,
 	INDIRECT_ACTION_SPEC,
+	INDIRECT_ACTION_LIST,
+	INDIRECT_ACTION_FLOW_CONF,
 
 	/* Indirect action destroy arguments */
 	INDIRECT_ACTION_DESTROY_ID,
@@ -633,6 +639,11 @@ enum index {
 	ACTION_SAMPLE_INDEX,
 	ACTION_SAMPLE_INDEX_VALUE,
 	ACTION_INDIRECT,
+	ACTION_INDIRECT_LIST,
+	ACTION_INDIRECT_LIST_HANDLE,
+	ACTION_INDIRECT_LIST_CONF,
+	INDIRECT_LIST_ACTION_ID2PTR_HANDLE,
+	INDIRECT_LIST_ACTION_ID2PTR_CONF,
 	ACTION_SHARED_INDIRECT,
 	INDIRECT_ACTION_PORT,
 	INDIRECT_ACTION_ID2PTR,
@@ -1273,6 +1284,7 @@ static const enum index next_qia_create_attr[] = {
 	QUEUE_INDIRECT_ACTION_TRANSFER,
 	QUEUE_INDIRECT_ACTION_CREATE_POSTPONE,
 	QUEUE_INDIRECT_ACTION_SPEC,
+	QUEUE_INDIRECT_ACTION_LIST,
 	ZERO,
 };
 
@@ -1301,11 +1313,20 @@ static const enum index next_ia_create_attr[] = {
 	INDIRECT_ACTION_EGRESS,
 	INDIRECT_ACTION_TRANSFER,
 	INDIRECT_ACTION_SPEC,
+	INDIRECT_ACTION_LIST,
+	INDIRECT_ACTION_FLOW_CONF,
 	ZERO,
 };
 
 static const enum index next_ia[] = {
 	INDIRECT_ACTION_ID2PTR,
+	ACTION_NEXT,
+	ZERO
+};
+
+static const enum index next_ial[] = {
+	ACTION_INDIRECT_LIST_HANDLE,
+	ACTION_INDIRECT_LIST_CONF,
 	ACTION_NEXT,
 	ZERO
 };
@@ -2037,6 +2058,7 @@ static const enum index next_action[] = {
 	ACTION_AGE_UPDATE,
 	ACTION_SAMPLE,
 	ACTION_INDIRECT,
+	ACTION_INDIRECT_LIST,
 	ACTION_SHARED_INDIRECT,
 	ACTION_MODIFY_FIELD,
 	ACTION_CONNTRACK,
@@ -2313,6 +2335,7 @@ static const enum index next_action_sample[] = {
 	ACTION_RAW_ENCAP,
 	ACTION_VXLAN_ENCAP,
 	ACTION_NVGRE_ENCAP,
+	ACTION_REPRESENTED_PORT,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2563,6 +2586,10 @@ static int parse_ia_destroy(struct context *ctx, const struct token *token,
 static int parse_ia_id2ptr(struct context *ctx, const struct token *token,
 			   const char *str, unsigned int len, void *buf,
 			   unsigned int size);
+
+static int parse_indlst_id2ptr(struct context *ctx, const struct token *token,
+			       const char *str, unsigned int len, void *buf,
+			       unsigned int size);
 static int parse_ia_port(struct context *ctx, const struct token *token,
 			 const char *str, unsigned int len, void *buf,
 			 unsigned int size);
@@ -2650,6 +2677,16 @@ comp_quota_update_name(struct context *ctx, const struct token *token,
 static int
 comp_qu_mode_name(struct context *ctx, const struct token *token,
 		  unsigned int ent, char *buf, unsigned int size);
+
+struct indlst_conf {
+	uint32_t id;
+	uint32_t conf_num;
+	struct rte_flow_action *actions;
+	const void **conf;
+	SLIST_ENTRY(indlst_conf) next;
+};
+
+static const struct indlst_conf *indirect_action_list_conf_get(uint32_t conf_id);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -3449,6 +3486,12 @@ static const struct token token_list[] = {
 		.name = "action",
 		.help = "specify action to create indirect handle",
 		.next = NEXT(next_action),
+	},
+	[QUEUE_INDIRECT_ACTION_LIST] = {
+		.name = "list",
+		.help = "specify actions for indirect handle list",
+		.next = NEXT(NEXT_ENTRY(ACTIONS, END)),
+		.call = parse_qia,
 	},
 	/* Top-level command. */
 	[PUSH] = {
@@ -6839,6 +6882,37 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uint32_t))),
 		.call = parse_vc,
 	},
+	[ACTION_INDIRECT_LIST] = {
+		.name = "indirect_list",
+		.help = "apply indirect list action by id",
+		.priv = PRIV_ACTION(INDIRECT_LIST,
+				    sizeof(struct
+					   rte_flow_action_indirect_list)),
+		.next = NEXT(next_ial),
+		.call = parse_vc,
+	},
+	[ACTION_INDIRECT_LIST_HANDLE] = {
+		.name = "handle",
+		.help = "indirect list handle",
+		.next = NEXT(next_ial, NEXT_ENTRY(INDIRECT_LIST_ACTION_ID2PTR_HANDLE)),
+		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uintptr_t))),
+	},
+	[ACTION_INDIRECT_LIST_CONF] = {
+		.name = "conf",
+		.help = "indirect list configuration",
+		.next = NEXT(next_ial, NEXT_ENTRY(INDIRECT_LIST_ACTION_ID2PTR_CONF)),
+		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uintptr_t))),
+	},
+	[INDIRECT_LIST_ACTION_ID2PTR_HANDLE] = {
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.call = parse_indlst_id2ptr,
+	},
+	[INDIRECT_LIST_ACTION_ID2PTR_CONF] = {
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.call = parse_indlst_id2ptr,
+	},
 	[ACTION_SHARED_INDIRECT] = {
 		.name = "shared_indirect",
 		.help = "apply indirect action by id and port",
@@ -6886,6 +6960,18 @@ static const struct token token_list[] = {
 		.name = "action",
 		.help = "specify action to create indirect handle",
 		.next = NEXT(next_action),
+	},
+	[INDIRECT_ACTION_LIST] = {
+		.name = "list",
+		.help = "specify actions for indirect handle list",
+		.next = NEXT(NEXT_ENTRY(ACTIONS, END)),
+		.call = parse_ia,
+	},
+	[INDIRECT_ACTION_FLOW_CONF] = {
+		.name = "flow_conf",
+		.help = "specify actions configuration for indirect handle list",
+		.next = NEXT(NEXT_ENTRY(ACTIONS, END)),
+		.call = parse_ia,
 	},
 	[ACTION_POL_G] = {
 		.name = "g_actions",
@@ -7261,6 +7347,12 @@ parse_ia(struct context *ctx, const struct token *token,
 		return len;
 	case INDIRECT_ACTION_QU_MODE:
 		return len;
+	case INDIRECT_ACTION_LIST:
+		out->command = INDIRECT_ACTION_LIST_CREATE;
+		return len;
+	case INDIRECT_ACTION_FLOW_CONF:
+		out->command = INDIRECT_ACTION_FLOW_CONF_CREATE;
+		return len;
 	default:
 		return -1;
 	}
@@ -7357,6 +7449,9 @@ parse_qia(struct context *ctx, const struct token *token,
 	case QUEUE_INDIRECT_ACTION_CREATE_POSTPONE:
 		return len;
 	case QUEUE_INDIRECT_ACTION_QU_MODE:
+		return len;
+	case QUEUE_INDIRECT_ACTION_LIST:
+		out->command = QUEUE_INDIRECT_ACTION_LIST_CREATE;
 		return len;
 	default:
 		return -1;
@@ -7534,10 +7629,12 @@ parse_vc(struct context *ctx, const struct token *token,
 			return -1;
 		break;
 	case ACTIONS:
-		out->args.vc.actions =
+		out->args.vc.actions = out->args.vc.pattern ?
 			(void *)RTE_ALIGN_CEIL((uintptr_t)
 					       (out->args.vc.pattern +
 						out->args.vc.pattern_n),
+					       sizeof(double)) :
+			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
 		ctx->object = out->args.vc.actions;
 		ctx->objmask = NULL;
@@ -10493,6 +10590,49 @@ parse_ia_id2ptr(struct context *ctx, const struct token *token,
 }
 
 static int
+parse_indlst_id2ptr(struct context *ctx, const struct token *token,
+		    const char *str, unsigned int len,
+		    __rte_unused void *buf, __rte_unused unsigned int size)
+{
+	struct rte_flow_action *action = ctx->object;
+	struct rte_flow_action_indirect_list *action_conf;
+	const struct indlst_conf *indlst_conf;
+	uint32_t id;
+	int ret;
+
+	if (!action)
+		return -1;
+	ctx->objdata = 0;
+	ctx->object = &id;
+	ctx->objmask = NULL;
+	ret = parse_int(ctx, token, str, len, ctx->object, sizeof(id));
+	if (ret != (int)len)
+		return ret;
+	ctx->object = action;
+	action_conf = (void *)(uintptr_t)action->conf;
+	action_conf->conf = NULL;
+	switch (ctx->curr) {
+	case INDIRECT_LIST_ACTION_ID2PTR_HANDLE:
+	action_conf->handle = (typeof(action_conf->handle))
+				port_action_handle_get_by_id(ctx->port, id);
+		if (!action_conf->handle) {
+			printf("no indirect list handle for id %u\n", id);
+			return -1;
+		}
+		break;
+	case INDIRECT_LIST_ACTION_ID2PTR_CONF:
+		indlst_conf = indirect_action_list_conf_get(id);
+		if (!indlst_conf)
+			return -1;
+		action_conf->conf = (const void **)indlst_conf->conf;
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
+static int
 parse_meter_profile_id2ptr(struct context *ctx, const struct token *token,
 		const char *str, unsigned int len,
 		void *buf, unsigned int size)
@@ -11533,6 +11673,64 @@ cmd_flow_tok(cmdline_parse_token_hdr_t **hdr,
 	*hdr = &cmd_flow_token_hdr;
 }
 
+static SLIST_HEAD(, indlst_conf) indlst_conf_head =
+	SLIST_HEAD_INITIALIZER();
+
+static void
+indirect_action_flow_conf_create(const struct buffer *in)
+{
+	int len, ret;
+	uint32_t i;
+	struct indlst_conf *indlst_conf = NULL;
+	size_t base = RTE_ALIGN(sizeof(*indlst_conf), 8);
+	struct rte_flow_action *src = in->args.vc.actions;
+
+	if (!in->args.vc.actions_n)
+		goto end;
+	len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, NULL, 0, src, NULL);
+	if (len <= 0)
+		goto end;
+	len = RTE_ALIGN(len, 16);
+
+	indlst_conf = calloc(1, base + len +
+			     in->args.vc.actions_n * sizeof(uintptr_t));
+	if (!indlst_conf)
+		goto end;
+	indlst_conf->id = in->args.vc.attr.group;
+	indlst_conf->conf_num = in->args.vc.actions_n - 1;
+	indlst_conf->actions = RTE_PTR_ADD(indlst_conf, base);
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, indlst_conf->actions,
+			    len, src, NULL);
+	if (ret <= 0) {
+		free(indlst_conf);
+		indlst_conf = NULL;
+		goto end;
+	}
+	indlst_conf->conf = RTE_PTR_ADD(indlst_conf, base + len);
+	for (i = 0; i < indlst_conf->conf_num; i++)
+		indlst_conf->conf[i] = indlst_conf->actions[i].conf;
+	SLIST_INSERT_HEAD(&indlst_conf_head, indlst_conf, next);
+end:
+	if (indlst_conf)
+		printf("created indirect action list configuration %u\n",
+		       in->args.vc.attr.group);
+	else
+		printf("cannot create indirect action list configuration %u\n",
+		       in->args.vc.attr.group);
+}
+
+static const struct indlst_conf *
+indirect_action_list_conf_get(uint32_t conf_id)
+{
+	const struct indlst_conf *conf;
+
+	SLIST_FOREACH(conf, &indlst_conf_head, next) {
+		if (conf->id == conf_id)
+			return conf;
+	}
+	return NULL;
+}
+
 /** Dispatch parsed buffer to function calls. */
 static void
 cmd_flow_parsed(const struct buffer *in)
@@ -11612,6 +11810,7 @@ cmd_flow_parsed(const struct buffer *in)
 				     in->args.aged.destroy);
 		break;
 	case QUEUE_INDIRECT_ACTION_CREATE:
+	case QUEUE_INDIRECT_ACTION_LIST_CREATE:
 		port_queue_action_handle_create(
 				in->port, in->queue, in->postpone,
 				in->args.vc.attr.group,
@@ -11647,14 +11846,19 @@ cmd_flow_parsed(const struct buffer *in)
 						      in->args.vc.actions);
 		break;
 	case INDIRECT_ACTION_CREATE:
+	case INDIRECT_ACTION_LIST_CREATE:
 		port_action_handle_create(
 				in->port, in->args.vc.attr.group,
+				in->command == INDIRECT_ACTION_LIST_CREATE,
 				&((const struct rte_flow_indir_action_conf) {
 					.ingress = in->args.vc.attr.ingress,
 					.egress = in->args.vc.attr.egress,
 					.transfer = in->args.vc.attr.transfer,
 				}),
 				in->args.vc.actions);
+		break;
+	case INDIRECT_ACTION_FLOW_CONF_CREATE:
+		indirect_action_flow_conf_create(in);
 		break;
 	case INDIRECT_ACTION_DESTROY:
 		port_action_handle_destroy(in->port,
@@ -11733,6 +11937,7 @@ cmd_flow_parsed(const struct buffer *in)
 	default:
 		break;
 	}
+	fflush(stdout);
 }
 
 /** Token generator and output processing callback (cmdline API). */

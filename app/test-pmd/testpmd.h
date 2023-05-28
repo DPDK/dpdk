@@ -228,7 +228,12 @@ struct port_indirect_action {
 	struct port_indirect_action *next; /**< Next flow in list. */
 	uint32_t id; /**< Indirect action ID. */
 	enum rte_flow_action_type type; /**< Action type. */
-	struct rte_flow_action_handle *handle;	/**< Indirect action handle. */
+	union {
+		struct rte_flow_action_handle *handle;
+		/**< Indirect action handle. */
+		struct rte_flow_action_list_handle *list_handle;
+		/**< Indirect action list handle*/
+	};
 	enum age_action_context_type age_type; /**< Age action context type. */
 };
 
@@ -921,7 +926,7 @@ void update_fwd_ports(portid_t new_pid);
 void set_fwd_eth_peer(portid_t port_id, char *peer_addr);
 
 void port_mtu_set(portid_t port_id, uint16_t mtu);
-int port_action_handle_create(portid_t port_id, uint32_t id,
+int port_action_handle_create(portid_t port_id, uint32_t id, bool indirect_list,
 			      const struct rte_flow_indir_action_conf *conf,
 			      const struct rte_flow_action *action);
 int port_action_handle_destroy(portid_t port_id,
