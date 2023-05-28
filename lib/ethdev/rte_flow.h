@@ -3911,6 +3911,17 @@ struct rte_flow_update_meter_mark {
 	uint32_t reserved:27;
 };
 
+/**
+ * @see RTE_FLOW_ACTION_TYPE_METER_MARK
+ * @see RTE_FLOW_ACTION_TYPE_INDIRECT_LIST
+ *
+ * Update flow mutable context.
+ */
+struct rte_flow_indirect_update_flow_meter_mark {
+	/** Updated init color applied to packet */
+	enum rte_color init_color;
+};
+
 /* Mbuf dynamic field offset for metadata. */
 extern int32_t rte_flow_dynf_metadata_offs;
 
