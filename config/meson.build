@@ -366,7 +366,7 @@ if max_numa_nodes == 'detect'
         error('Discovery of max_numa_nodes not supported for cross-compilation.')
     endif
     # overwrite the default value with discovered values
-    max_numa_nodes = run_command(get_numa_count_cmd).stdout().to_int()
+    max_numa_nodes = run_command(get_numa_count_cmd, check: true).stdout().to_int()
     message('Found @0@ numa nodes'.format(max_numa_nodes))
     dpdk_conf.set('RTE_MAX_NUMA_NODES', max_numa_nodes)
 elif max_numa_nodes != 'default'
