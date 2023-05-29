@@ -91,11 +91,12 @@ part_number_config_arm = {
     '0xd49': {
         'march': 'armv8.5-a',
         'march_features': ['sve2'],
+        'compiler_options': ['-mcpu=neoverse-n2'],
         'flags': [
             ['RTE_MACHINE', '"neoverse-n2"'],
             ['RTE_ARM_FEATURE_ATOMICS', true],
-            ['RTE_MAX_LCORE', 64],
-            ['RTE_MAX_NUMA_NODES', 1]
+            ['RTE_MAX_LCORE', 128],
+            ['RTE_MAX_NUMA_NODES', 2]
         ]
     }
 }
