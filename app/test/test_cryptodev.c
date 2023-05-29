@@ -44,6 +44,7 @@
 #include "test_cryptodev_aead_test_vectors.h"
 #include "test_cryptodev_hmac_test_vectors.h"
 #include "test_cryptodev_mixed_test_vectors.h"
+#include "test_cryptodev_sm4_test_vectors.h"
 #ifdef RTE_LIB_SECURITY
 #include "test_cryptodev_security_ipsec.h"
 #include "test_cryptodev_security_ipsec_test_vectors.h"
@@ -17133,6 +17134,8 @@ run_cryptodev_testsuite(const char *pmd_name)
 		BLKCIPHER_3DES_CIPHERONLY_TYPE,
 		BLKCIPHER_DES_CIPHERONLY_TYPE,
 		BLKCIPHER_DES_DOCSIS_TYPE,
+		BLKCIPHER_SM4_CHAIN_TYPE,
+		BLKCIPHER_SM4_CIPHERONLY_TYPE,
 		BLKCIPHER_AUTHONLY_TYPE};
 	struct unit_test_suite *static_suites[] = {
 		&cryptodev_multi_session_testsuite,

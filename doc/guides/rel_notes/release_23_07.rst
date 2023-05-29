@@ -108,6 +108,11 @@ New Features
   for new capability registers, large passthrough BAR and some
   performance enhancements for UPT.
 
+* **Added new algorithms to cryptodev.**
+
+  * Added symmetric hash algorithm SM3-HMAC.
+  * Added symmetric cipher algorithm ShangMi 4 (SM4) in CFB and OFB modes.
+
 * **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 
   * Added support for combined Cipher-CRC offload for DOCSIS for QAT GENs 2,3 and 4.
