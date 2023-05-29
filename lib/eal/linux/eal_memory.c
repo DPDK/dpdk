@@ -681,6 +681,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 
 	/* find free space in memseg lists */
 	for (msl_idx = 0; msl_idx < RTE_MAX_MEMSEG_LISTS; msl_idx++) {
+		int free_len;
 		bool empty;
 		msl = &mcfg->memsegs[msl_idx];
 		arr = &msl->memseg_arr;
@@ -692,18 +693,26 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 
 		/* leave space for a hole if array is not empty */
 		empty = arr->count == 0;
-		ms_idx = rte_fbarray_find_next_n_free(arr, 0,
-				seg_len + (empty ? 0 : 1));
-
-		/* memseg list is full? */
+		/* find start of the biggest contiguous block and its size */
+		ms_idx = rte_fbarray_find_biggest_free(arr, 0);
 		if (ms_idx < 0)
 			continue;
-
+		/* hole is 1 segment long, so at least two segments long. */
+		free_len = rte_fbarray_find_contig_free(arr, ms_idx);
+		if (free_len < 2)
+			continue;
 		/* leave some space between memsegs, they are not IOVA
 		 * contiguous, so they shouldn't be VA contiguous either.
 		 */
-		if (!empty)
+		if (!empty) {
 			ms_idx++;
+			free_len--;
+		}
+
+		/* we might not get all of the space we wanted */
+		free_len = RTE_MIN(seg_len, free_len);
+		seg_end = seg_start + free_len;
+		seg_len = seg_end - seg_start;
 		break;
 	}
 	if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
@@ -787,7 +796,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 	}
 	RTE_LOG(DEBUG, EAL, "Allocated %" PRIu64 "M on socket %i\n",
 			(seg_len * page_sz) >> 20, socket_id);
-	return 0;
+	return seg_len;
 }
 
 static uint64_t
@@ -1022,10 +1031,16 @@ remap_needed_hugepages(struct hugepage_file *hugepages, int n_pages)
 		if (new_memseg) {
 			/* if this isn't the first time, remap segment */
 			if (cur_page != 0) {
-				ret = remap_segment(hugepages, seg_start_page,
-						cur_page);
-				if (ret != 0)
-					return -1;
+				int n_remapped = 0;
+				int n_needed = cur_page - seg_start_page;
+				while (n_remapped < n_needed) {
+					ret = remap_segment(hugepages, seg_start_page,
+							cur_page);
+					if (ret < 0)
+						return -1;
+					n_remapped += ret;
+					seg_start_page += ret;
+				}
 			}
 			/* remember where we started */
 			seg_start_page = cur_page;
@@ -1034,10 +1049,16 @@ remap_needed_hugepages(struct hugepage_file *hugepages, int n_pages)
 	}
 	/* we were stopped, but we didn't remap the last segment, do it now */
 	if (cur_page != 0) {
-		ret = remap_segment(hugepages, seg_start_page,
-				cur_page);
-		if (ret != 0)
-			return -1;
+		int n_remapped = 0;
+		int n_needed = cur_page - seg_start_page;
+		while (n_remapped < n_needed) {
+			ret = remap_segment(hugepages, seg_start_page,
+					cur_page);
+			if (ret < 0)
+				return -1;
+			n_remapped += ret;
+			seg_start_page += ret;
+		}
 	}
 	return 0;
 }
