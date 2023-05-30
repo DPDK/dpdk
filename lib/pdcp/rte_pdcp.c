@@ -251,3 +251,52 @@ rte_pdcp_control_pdu_create(struct rte_pdcp_entity *pdcp_entity,
 
 	return m;
 }
+
+uint16_t
+rte_pdcp_t_reordering_expiry_handle(const struct rte_pdcp_entity *entity, struct rte_mbuf *out_mb[])
+{
+	struct entity_priv_dl_part *dl = entity_dl_part_get(entity);
+	struct entity_priv *en_priv = entity_priv_get(entity);
+	uint16_t capacity = entity->max_pkt_cache;
+	uint16_t nb_out, nb_seq;
+
+	/* 5.2.2.2 Actions when a t-Reordering expires */
+
+	/*
+	 * - deliver to upper layers in ascending order of the associated COUNT value after
+	 *   performing header decompression, if not decompressed before:
+	 */
+
+	/*   - all stored PDCP SDU(s) with associated COUNT value(s) < RX_REORD; */
+	nb_out = pdcp_reorder_up_to_get(&dl->reorder, out_mb, capacity, en_priv->state.rx_reord);
+	capacity -= nb_out;
+	out_mb = &out_mb[nb_out];
+
+	/*
+	 *   - all stored PDCP SDU(s) with consecutively associated COUNT value(s) starting from
+	 *     RX_REORD;
+	 */
+	nb_seq = pdcp_reorder_get_sequential(&dl->reorder, out_mb, capacity);
+	nb_out += nb_seq;
+
+	/*
+	 * - update RX_DELIV to the COUNT value of the first PDCP SDU which has not been delivered
+	 *   to upper layers, with COUNT value >= RX_REORD;
+	 */
+	en_priv->state.rx_deliv = en_priv->state.rx_reord + nb_seq;
+
+	/*
+	 * - if RX_DELIV < RX_NEXT:
+	 *   - update RX_REORD to RX_NEXT;
+	 *   - start t-Reordering.
+	 */
+	if (en_priv->state.rx_deliv < en_priv->state.rx_next) {
+		en_priv->state.rx_reord = en_priv->state.rx_next;
+		dl->t_reorder.state = TIMER_RUNNING;
+		dl->t_reorder.handle.start(dl->t_reorder.handle.timer, dl->t_reorder.handle.args);
+	} else {
+		dl->t_reorder.state = TIMER_EXPIRED;
+	}
+
+	return nb_out;
+}

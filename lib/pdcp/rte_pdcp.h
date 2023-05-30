@@ -102,6 +102,7 @@ typedef void (*rte_pdcp_t_reordering_stop_cb_t)(void *timer, void *args);
  *
  * Configuration provided by user, that PDCP library will invoke according to timer behaviour.
  */
+/* Structure rte_pdcp_t_reordering 8< */
 struct rte_pdcp_t_reordering {
 	/** Timer pointer, to be used in callback functions. */
 	void *timer;
@@ -112,6 +113,7 @@ struct rte_pdcp_t_reordering {
 	/** Timer stop callback handle. */
 	rte_pdcp_t_reordering_stop_cb_t stop;
 };
+/* >8 End of structure rte_pdcp_t_reordering. */
 
 /**
  * PDCP entity configuration to be used for establishing an entity.
@@ -338,8 +340,36 @@ rte_pdcp_pkt_post_process(const struct rte_pdcp_entity *entity,
 }
 
 /**
- * The header 'rte_pdcp_group.h' depends on defines in 'rte_pdcp.h'. So include
- * in the end.
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * 5.2.2.2 Actions when a t-Reordering expires
+ *
+ * When t-Reordering timer expires, PDCP is required to slide the reception
+ * window by updating state variables such as RX_REORD & RX_DELIV.
+ * PDCP would need to deliver some of the buffered packets
+ * based on the state variables and conditions described.
+ *
+ * The expiry handle need to be invoked by the application when t-Reordering
+ * timer expires. In addition to returning buffered packets, it may also restart
+ * timer based on the state variables.
+ *
+ * @param entity
+ *   Pointer to the *rte_pdcp_entity* for which the timer expired.
+ * @param[out] out_mb
+ *   The address of an array that can hold up to *rte_pdcp_entity.max_pkt_cache*
+ *   pointers to *rte_mbuf* structures. Used to return buffered packets that are expired.
+ * @return
+ *   Number of packets returned in *out_mb* buffer.
+ */
+__rte_experimental
+uint16_t
+rte_pdcp_t_reordering_expiry_handle(const struct rte_pdcp_entity *entity,
+				    struct rte_mbuf *out_mb[]);
+
+/**
+ * The header 'rte_pdcp_group.h' depends on defines in 'rte_pdcp.h'.
+ * So include in the end.
  */
 #include <rte_pdcp_group.h>
 

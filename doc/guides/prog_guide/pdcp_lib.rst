@@ -136,6 +136,36 @@ Supported integrity protection algorithms
 - ``RTE_CRYPTO_AUTH_SNOW3G_UIA2``
 - ``RTE_CRYPTO_AUTH_ZUC_EIA3``
 
+Timers
+------
+
+PDCP utilizes a reception window mechanism to limit the bits of ``COUNT`` value
+transmitted in the packet.
+It utilizes state variables such as ``RX_REORD``, ``RX_DELIV``
+to define the window and uses ``RX_DELIV`` as the lower pivot point of the window.
+
+``RX_DELIV`` would be updated only when packets are received in-order.
+Any missing packet would mean ``RX_DELIV`` won't be updated.
+A timer, ``t-Reordering``, helps PDCP to slide the window
+if the missing packet is not received in a specified time duration.
+
+While starting and stopping the timer will be done by lib PDCP,
+application could register its own timer implementation.
+This is to make sure application can choose between timers
+such as ``rte_timer`` and ``rte_event`` based timers.
+Starting and stopping of timer would happen during pre & post process API.
+
+When the ``t-Reordering`` timer expires, application would receive the expiry event.
+To perform the PDCP handling of the expiry event,
+``rte_pdcp_t_reordering_expiry_handle`` can be used.
+Expiry handling would involve sliding the window by updating state variables
+and passing the expired packets to the application.
+
+.. literalinclude:: ../../../lib/pdcp/rte_pdcp.h
+   :language: c
+   :start-after: Structure rte_pdcp_t_reordering 8<
+   :end-before: >8 End of structure rte_pdcp_t_reordering.
+
 Sample API usage
 ----------------
 
