@@ -26,6 +26,89 @@ struct entity_state {
 	uint32_t rx_reord;
 };
 
+union auth_iv_partial {
+	/* For AES-CMAC, there is no IV, but message gets prepended */
+	struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		uint64_t count : 32;
+		uint64_t zero_38_39 : 2;
+		uint64_t direction : 1;
+		uint64_t bearer : 5;
+		uint64_t zero_40_63 : 24;
+#else
+		uint64_t count : 32;
+		uint64_t bearer : 5;
+		uint64_t direction : 1;
+		uint64_t zero_38_39 : 2;
+		uint64_t zero_40_63 : 24;
+#endif
+	} aes_cmac;
+	struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		uint64_t count : 32;
+		uint64_t zero_37_39 : 3;
+		uint64_t bearer : 5;
+		uint64_t zero_40_63 : 24;
+
+		uint64_t rsvd_65_71 : 7;
+		uint64_t direction_64 : 1;
+		uint64_t rsvd_72_111 : 40;
+		uint64_t rsvd_113_119 : 7;
+		uint64_t direction_112 : 1;
+		uint64_t rsvd_120_127 : 8;
+#else
+		uint64_t count : 32;
+		uint64_t bearer : 5;
+		uint64_t zero_37_39 : 3;
+		uint64_t zero_40_63 : 24;
+
+		uint64_t direction_64 : 1;
+		uint64_t rsvd_65_71 : 7;
+		uint64_t rsvd_72_111 : 40;
+		uint64_t direction_112 : 1;
+		uint64_t rsvd_113_119 : 7;
+		uint64_t rsvd_120_127 : 8;
+#endif
+	} zs;
+	uint64_t u64[2];
+};
+
+union cipher_iv_partial {
+	struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		uint64_t count : 32;
+		uint64_t zero_38_39 : 2;
+		uint64_t direction : 1;
+		uint64_t bearer : 5;
+		uint64_t zero_40_63 : 24;
+#else
+		uint64_t count : 32;
+		uint64_t bearer : 5;
+		uint64_t direction : 1;
+		uint64_t zero_38_39 : 2;
+		uint64_t zero_40_63 : 24;
+#endif
+		uint64_t zero_64_127;
+	} aes_ctr;
+	struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		uint64_t count : 32;
+		uint64_t zero_38_39 : 2;
+		uint64_t direction : 1;
+		uint64_t bearer : 5;
+		uint64_t zero_40_63 : 24;
+#else
+		uint64_t count : 32;
+		uint64_t bearer : 5;
+		uint64_t direction : 1;
+		uint64_t zero_38_39 : 2;
+		uint64_t zero_40_63 : 24;
+#endif
+		uint64_t rsvd_64_127;
+	} zs;
+	uint64_t u64[2];
+};
+
 /*
  * Layout of PDCP entity: [rte_pdcp_entity] [entity_priv] [entity_dl/ul]
  */
@@ -35,6 +118,10 @@ struct entity_priv {
 	struct rte_cryptodev_sym_session *crypto_sess;
 	/** Entity specific IV generation function. */
 	iv_gen_t iv_gen;
+	/** Pre-prepared auth IV. */
+	union auth_iv_partial auth_iv_part;
+	/** Pre-prepared cipher IV. */
+	union cipher_iv_partial cipher_iv_part;
 	/** Entity state variables. */
 	struct entity_state state;
 	/** Flags. */

@@ -14,6 +14,181 @@
 #include "pdcp_entity.h"
 #include "pdcp_process.h"
 
+/* Enum of supported algorithms for ciphering */
+enum pdcp_cipher_algo {
+	PDCP_CIPHER_ALGO_NULL,
+	PDCP_CIPHER_ALGO_AES,
+	PDCP_CIPHER_ALGO_ZUC,
+	PDCP_CIPHER_ALGO_SNOW3G,
+	PDCP_CIPHER_ALGO_MAX
+};
+
+/* Enum of supported algorithms for integrity */
+enum pdcp_auth_algo {
+	PDCP_AUTH_ALGO_NULL,
+	PDCP_AUTH_ALGO_AES,
+	PDCP_AUTH_ALGO_ZUC,
+	PDCP_AUTH_ALGO_SNOW3G,
+	PDCP_AUTH_ALGO_MAX
+};
+
+/* IV generation functions based on type of operation (cipher - auth) */
+
+static void
+pdcp_iv_gen_null_null(struct rte_crypto_op *cop, const struct entity_priv *en_priv, uint32_t count)
+{
+	/* No IV required for NULL cipher + NULL auth */
+	RTE_SET_USED(cop);
+	RTE_SET_USED(en_priv);
+	RTE_SET_USED(count);
+}
+
+static void
+pdcp_iv_gen_null_aes_cmac(struct rte_crypto_op *cop, const struct entity_priv *en_priv,
+			  uint32_t count)
+{
+	struct rte_crypto_sym_op *op = cop->sym;
+	struct rte_mbuf *mb = op->m_src;
+	uint8_t *m_ptr;
+	uint64_t m;
+
+	/* AES-CMAC requires message to be prepended with info on count etc */
+
+	/* Prepend by 8 bytes to add custom message */
+	m_ptr = (uint8_t *)rte_pktmbuf_prepend(mb, 8);
+
+	m = en_priv->auth_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+
+	rte_memcpy(m_ptr, &m, 8);
+}
+
+static void
+pdcp_iv_gen_null_zs(struct rte_crypto_op *cop, const struct entity_priv *en_priv, uint32_t count)
+{
+	uint64_t iv_u64[2];
+	uint8_t *iv;
+
+	iv = rte_crypto_op_ctod_offset(cop, uint8_t *, PDCP_IV_OFFSET);
+
+	iv_u64[0] = en_priv->auth_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(iv, &iv_u64[0], 8);
+
+	iv_u64[1] = iv_u64[0] ^ en_priv->auth_iv_part.u64[1];
+	rte_memcpy(iv + 8, &iv_u64[1], 8);
+}
+
+static void
+pdcp_iv_gen_aes_ctr_null(struct rte_crypto_op *cop, const struct entity_priv *en_priv,
+			 uint32_t count)
+{
+	uint64_t iv_u64[2];
+	uint8_t *iv;
+
+	iv = rte_crypto_op_ctod_offset(cop, uint8_t *, PDCP_IV_OFFSET);
+
+	iv_u64[0] = en_priv->cipher_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	iv_u64[1] = 0;
+	rte_memcpy(iv, iv_u64, 16);
+}
+
+static void
+pdcp_iv_gen_zs_null(struct rte_crypto_op *cop, const struct entity_priv *en_priv, uint32_t count)
+{
+	uint64_t iv_u64;
+	uint8_t *iv;
+
+	iv = rte_crypto_op_ctod_offset(cop, uint8_t *, PDCP_IV_OFFSET);
+
+	iv_u64 = en_priv->cipher_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(iv, &iv_u64, 8);
+	rte_memcpy(iv + 8, &iv_u64, 8);
+}
+
+static void
+pdcp_iv_gen_zs_zs(struct rte_crypto_op *cop, const struct entity_priv *en_priv, uint32_t count)
+{
+	uint64_t iv_u64[2];
+	uint8_t *iv;
+
+	iv = rte_crypto_op_ctod_offset(cop, uint8_t *, PDCP_IV_OFFSET);
+
+	/* Generating cipher IV */
+	iv_u64[0] = en_priv->cipher_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(iv, &iv_u64[0], 8);
+	rte_memcpy(iv + 8, &iv_u64[0], 8);
+
+	iv += PDCP_IV_LEN;
+
+	/* Generating auth IV */
+	iv_u64[0] = en_priv->auth_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(iv, &iv_u64[0], 8);
+
+	iv_u64[1] = iv_u64[0] ^ en_priv->auth_iv_part.u64[1];
+	rte_memcpy(iv + 8, &iv_u64[1], 8);
+}
+
+static void
+pdcp_iv_gen_zs_aes_cmac(struct rte_crypto_op *cop, const struct entity_priv *en_priv,
+			uint32_t count)
+{
+	struct rte_crypto_sym_op *op = cop->sym;
+	struct rte_mbuf *mb = op->m_src;
+	uint8_t *m_ptr, *iv;
+	uint64_t iv_u64[2];
+	uint64_t m;
+
+	iv = rte_crypto_op_ctod_offset(cop, uint8_t *, PDCP_IV_OFFSET);
+	iv_u64[0] = en_priv->cipher_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(iv, &iv_u64[0], 8);
+	rte_memcpy(iv + 8, &iv_u64[0], 8);
+
+	m_ptr = (uint8_t *)rte_pktmbuf_prepend(mb, 8);
+	m = en_priv->auth_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(m_ptr, &m, 8);
+}
+
+static void
+pdcp_iv_gen_aes_ctr_aes_cmac(struct rte_crypto_op *cop, const struct entity_priv *en_priv,
+			    uint32_t count)
+{
+	struct rte_crypto_sym_op *op = cop->sym;
+	struct rte_mbuf *mb = op->m_src;
+	uint8_t *m_ptr, *iv;
+	uint64_t iv_u64[2];
+	uint64_t m;
+
+	iv = rte_crypto_op_ctod_offset(cop, uint8_t *, PDCP_IV_OFFSET);
+
+	iv_u64[0] = en_priv->cipher_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	iv_u64[1] = 0;
+	rte_memcpy(iv, iv_u64, PDCP_IV_LEN);
+
+	m_ptr = (uint8_t *)rte_pktmbuf_prepend(mb, 8);
+	m = en_priv->auth_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(m_ptr, &m, 8);
+}
+
+static void
+pdcp_iv_gen_aes_ctr_zs(struct rte_crypto_op *cop, const struct entity_priv *en_priv, uint32_t count)
+{
+	uint64_t iv_u64[2];
+	uint8_t *iv;
+
+	iv = rte_crypto_op_ctod_offset(cop, uint8_t *, PDCP_IV_OFFSET);
+
+	iv_u64[0] = en_priv->cipher_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	iv_u64[1] = 0;
+	rte_memcpy(iv, iv_u64, PDCP_IV_LEN);
+
+	iv += PDCP_IV_LEN;
+
+	iv_u64[0] = en_priv->auth_iv_part.u64[0] | ((uint64_t)(rte_cpu_to_be_32(count)));
+	rte_memcpy(iv, &iv_u64[0], 8);
+
+	iv_u64[1] = iv_u64[0] ^ en_priv->auth_iv_part.u64[1];
+	rte_memcpy(iv + 8, &iv_u64[1], 8);
+}
+
 static int
 pdcp_crypto_xfrm_get(const struct rte_pdcp_entity_conf *conf, struct rte_crypto_sym_xform **c_xfrm,
 		     struct rte_crypto_sym_xform **a_xfrm)
@@ -33,6 +208,111 @@ pdcp_crypto_xfrm_get(const struct rte_pdcp_entity_conf *conf, struct rte_crypto_
 	} else {
 		return -EINVAL;
 	}
+
+	return 0;
+}
+
+static int
+pdcp_iv_gen_func_set(struct rte_pdcp_entity *entity, const struct rte_pdcp_entity_conf *conf)
+{
+	struct rte_crypto_sym_xform *c_xfrm, *a_xfrm;
+	enum rte_security_pdcp_direction direction;
+	enum pdcp_cipher_algo cipher_algo;
+	enum pdcp_auth_algo auth_algo;
+	struct entity_priv *en_priv;
+	int ret;
+
+	en_priv = entity_priv_get(entity);
+
+	direction = conf->pdcp_xfrm.pkt_dir;
+	if (conf->reverse_iv_direction)
+		direction = !direction;
+
+	ret = pdcp_crypto_xfrm_get(conf, &c_xfrm, &a_xfrm);
+	if (ret)
+		return ret;
+
+	if (c_xfrm == NULL)
+		return -EINVAL;
+
+	memset(&en_priv->auth_iv_part, 0, sizeof(en_priv->auth_iv_part));
+	memset(&en_priv->cipher_iv_part, 0, sizeof(en_priv->cipher_iv_part));
+
+	switch (c_xfrm->cipher.algo) {
+	case RTE_CRYPTO_CIPHER_NULL:
+		cipher_algo = PDCP_CIPHER_ALGO_NULL;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		cipher_algo = PDCP_CIPHER_ALGO_AES;
+		en_priv->cipher_iv_part.aes_ctr.bearer = conf->pdcp_xfrm.bearer;
+		en_priv->cipher_iv_part.aes_ctr.direction = direction;
+		break;
+	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
+		cipher_algo = PDCP_CIPHER_ALGO_SNOW3G;
+		en_priv->cipher_iv_part.zs.bearer = conf->pdcp_xfrm.bearer;
+		en_priv->cipher_iv_part.zs.direction = direction;
+		break;
+	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
+		cipher_algo = PDCP_CIPHER_ALGO_ZUC;
+		en_priv->cipher_iv_part.zs.bearer = conf->pdcp_xfrm.bearer;
+		en_priv->cipher_iv_part.zs.direction = direction;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (a_xfrm != NULL) {
+		switch (a_xfrm->auth.algo) {
+		case RTE_CRYPTO_AUTH_NULL:
+			auth_algo = PDCP_AUTH_ALGO_NULL;
+			break;
+		case RTE_CRYPTO_AUTH_AES_CMAC:
+			auth_algo = PDCP_AUTH_ALGO_AES;
+			en_priv->auth_iv_part.aes_cmac.bearer = conf->pdcp_xfrm.bearer;
+			en_priv->auth_iv_part.aes_cmac.direction = direction;
+			break;
+		case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
+			auth_algo = PDCP_AUTH_ALGO_SNOW3G;
+			en_priv->auth_iv_part.zs.bearer = conf->pdcp_xfrm.bearer;
+			en_priv->auth_iv_part.zs.direction_64 = direction;
+			en_priv->auth_iv_part.zs.direction_112 = direction;
+			break;
+		case RTE_CRYPTO_AUTH_ZUC_EIA3:
+			auth_algo = PDCP_AUTH_ALGO_ZUC;
+			en_priv->auth_iv_part.zs.bearer = conf->pdcp_xfrm.bearer;
+			en_priv->auth_iv_part.zs.direction_64 = direction;
+			en_priv->auth_iv_part.zs.direction_112 = direction;
+			break;
+		default:
+			return -ENOTSUP;
+		}
+	} else {
+		auth_algo = PDCP_AUTH_ALGO_NULL;
+	}
+
+	static const iv_gen_t iv_gen_map[PDCP_CIPHER_ALGO_MAX][PDCP_AUTH_ALGO_MAX] = {
+		[PDCP_CIPHER_ALGO_NULL][PDCP_AUTH_ALGO_NULL] = pdcp_iv_gen_null_null,
+		[PDCP_CIPHER_ALGO_NULL][PDCP_AUTH_ALGO_AES] = pdcp_iv_gen_null_aes_cmac,
+		[PDCP_CIPHER_ALGO_NULL][PDCP_AUTH_ALGO_SNOW3G] = pdcp_iv_gen_null_zs,
+		[PDCP_CIPHER_ALGO_NULL][PDCP_AUTH_ALGO_ZUC] = pdcp_iv_gen_null_zs,
+
+		[PDCP_CIPHER_ALGO_AES][PDCP_AUTH_ALGO_NULL] = pdcp_iv_gen_aes_ctr_null,
+		[PDCP_CIPHER_ALGO_AES][PDCP_AUTH_ALGO_AES] = pdcp_iv_gen_aes_ctr_aes_cmac,
+		[PDCP_CIPHER_ALGO_AES][PDCP_AUTH_ALGO_SNOW3G] = pdcp_iv_gen_aes_ctr_zs,
+		[PDCP_CIPHER_ALGO_AES][PDCP_AUTH_ALGO_ZUC] = pdcp_iv_gen_aes_ctr_zs,
+
+		[PDCP_CIPHER_ALGO_SNOW3G][PDCP_AUTH_ALGO_NULL] = pdcp_iv_gen_zs_null,
+		[PDCP_CIPHER_ALGO_SNOW3G][PDCP_AUTH_ALGO_AES] = pdcp_iv_gen_zs_aes_cmac,
+		[PDCP_CIPHER_ALGO_SNOW3G][PDCP_AUTH_ALGO_SNOW3G] = pdcp_iv_gen_zs_zs,
+		[PDCP_CIPHER_ALGO_SNOW3G][PDCP_AUTH_ALGO_ZUC] = pdcp_iv_gen_zs_zs,
+
+		[PDCP_CIPHER_ALGO_ZUC][PDCP_AUTH_ALGO_NULL] = pdcp_iv_gen_zs_null,
+		[PDCP_CIPHER_ALGO_ZUC][PDCP_AUTH_ALGO_AES] = pdcp_iv_gen_zs_aes_cmac,
+		[PDCP_CIPHER_ALGO_ZUC][PDCP_AUTH_ALGO_SNOW3G] = pdcp_iv_gen_zs_zs,
+		[PDCP_CIPHER_ALGO_ZUC][PDCP_AUTH_ALGO_ZUC] = pdcp_iv_gen_zs_zs,
+	};
+
+	en_priv->iv_gen = iv_gen_map[cipher_algo][auth_algo];
 
 	return 0;
 }
@@ -852,6 +1132,10 @@ pdcp_process_func_set(struct rte_pdcp_entity *entity, const struct rte_pdcp_enti
 		return -EINVAL;
 
 	en_priv = entity_priv_get(entity);
+
+	ret = pdcp_iv_gen_func_set(entity, conf);
+	if (ret)
+		return ret;
 
 	ret = pdcp_entity_priv_populate(en_priv, conf);
 	if (ret)
