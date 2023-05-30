@@ -79,6 +79,16 @@ for transmission to other end.
 Such packets would need to be ciphered and authenticated
 based on the entity configuration.
 
+PDCP packet processing API for control PDU
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Control PDUs are used in PDCP as a communication channel
+between transmitting and receiving entities.
+When upper layer request for operations such as re-establishment,
+receiving PDCP entity need to prepare a status report
+and send it to the other end.
+The API ``rte_pdcp_control_pdu_create()`` allows application to request the same.
+
 PDCP packet processing API for data PDU
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

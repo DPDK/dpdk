@@ -109,6 +109,13 @@ union cipher_iv_partial {
 	uint64_t u64[2];
 };
 
+struct pdcp_cnt_bitmap {
+	/** Number of entries that can be stored. */
+	uint32_t size;
+	/** Bitmap of the count values already received.*/
+	struct rte_bitmap *bmp;
+};
+
 /*
  * Layout of PDCP entity: [rte_pdcp_entity] [entity_priv] [entity_dl/ul]
  */
@@ -136,9 +143,13 @@ struct entity_priv {
 		uint64_t is_ul_entity : 1;
 		/** Is NULL auth. */
 		uint64_t is_null_auth : 1;
+		/** Is status report required.*/
+		uint64_t is_status_report_required : 1;
 	} flags;
 	/** Crypto op pool. */
 	struct rte_mempool *cop_pool;
+	/** Control PDU pool. */
+	struct rte_mempool *ctrl_pdu_pool;
 	/** PDCP header size. */
 	uint8_t hdr_sz;
 	/** PDCP AAD size. For AES-CMAC, additional message is prepended for the operation. */
@@ -148,8 +159,8 @@ struct entity_priv {
 };
 
 struct entity_priv_dl_part {
-	/* NOTE: when in-order-delivery is supported, post PDCP packets would need to cached. */
-	uint8_t dummy;
+	/** PDCP would need to track the count values that are already received.*/
+	struct pdcp_cnt_bitmap bitmap;
 };
 
 struct entity_priv_ul_part {

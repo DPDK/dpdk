@@ -1102,6 +1102,19 @@ pdcp_entity_priv_populate(struct entity_priv *en_priv, const struct rte_pdcp_ent
 		en_priv->flags.is_null_auth = 1;
 
 	/**
+	 * flags.is_status_report_required
+	 *
+	 * Indicate whether status report is required.
+	 */
+	if (conf->status_report_required) {
+		/** Status report is required only for DL entities. */
+		if (conf->pdcp_xfrm.pkt_dir != RTE_SECURITY_PDCP_DOWNLINK)
+			return -EINVAL;
+
+		en_priv->flags.is_status_report_required = 1;
+	}
+
+	/**
 	 * hdr_sz
 	 *
 	 * PDCP header size of the entity

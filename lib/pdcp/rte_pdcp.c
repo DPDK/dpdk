@@ -6,7 +6,9 @@
 #include <rte_pdcp.h>
 #include <rte_malloc.h>
 
+#include "pdcp_cnt.h"
 #include "pdcp_crypto.h"
+#include "pdcp_ctrl_pdu.h"
 #include "pdcp_entity.h"
 #include "pdcp_process.h"
 
@@ -58,7 +60,7 @@ rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 	if (pdcp_dynfield_register() < 0)
 		return NULL;
 
-	if (conf == NULL || conf->cop_pool == NULL) {
+	if (conf == NULL || conf->cop_pool == NULL || conf->ctrl_pdu_pool == NULL) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -105,6 +107,7 @@ rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 	en_priv->state.rx_deliv = count;
 	en_priv->state.tx_next = count;
 	en_priv->cop_pool = conf->cop_pool;
+	en_priv->ctrl_pdu_pool = conf->ctrl_pdu_pool;
 
 	/* Setup crypto session */
 	ret = pdcp_crypto_sess_create(entity, conf);
@@ -112,6 +115,10 @@ rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 		goto entity_free;
 
 	ret = pdcp_process_func_set(entity, conf);
+	if (ret)
+		goto crypto_sess_destroy;
+
+	ret = pdcp_cnt_ring_create(entity, conf);
 	if (ret)
 		goto crypto_sess_destroy;
 
@@ -161,4 +168,42 @@ rte_pdcp_entity_suspend(struct rte_pdcp_entity *pdcp_entity,
 	RTE_SET_USED(out_mb);
 
 	return 0;
+}
+
+struct rte_mbuf *
+rte_pdcp_control_pdu_create(struct rte_pdcp_entity *pdcp_entity,
+			    enum rte_pdcp_ctrl_pdu_type type)
+{
+	struct entity_priv *en_priv;
+	struct rte_mbuf *m;
+	int ret;
+
+	if (pdcp_entity == NULL) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	en_priv = entity_priv_get(pdcp_entity);
+
+	m = rte_pktmbuf_alloc(en_priv->ctrl_pdu_pool);
+	if (m == NULL) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	switch (type) {
+	case RTE_PDCP_CTRL_PDU_TYPE_STATUS_REPORT:
+		ret = pdcp_ctrl_pdu_status_gen(en_priv, m);
+		break;
+	default:
+		ret = -ENOTSUP;
+	}
+
+	if (ret) {
+		rte_pktmbuf_free(m);
+		rte_errno = -ret;
+		return NULL;
+	}
+
+	return m;
 }

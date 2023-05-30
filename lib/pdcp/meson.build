@@ -8,7 +8,9 @@ if is_windows
 endif
 
 sources = files(
+        'pdcp_cnt.c',
         'pdcp_crypto.c',
+        'pdcp_ctrl_pdu.c',
         'pdcp_process.c',
         'rte_pdcp.c',
         )
