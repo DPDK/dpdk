@@ -647,6 +647,14 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		c0 = vld1q_u64((uint64_t *)(p0 + 48));
 		/* Synchronize for loading the rest of blocks. */
 		rte_io_rmb();
+		/* B.0 (CQE 3) reload lower half of the block. */
+		c3 = vld1q_lane_u64((uint64_t *)(p3 + 48), c3, 0);
+		/* B.0 (CQE 2) reload lower half of the block. */
+		c2 = vld1q_lane_u64((uint64_t *)(p2 + 48), c2, 0);
+		/* B.0 (CQE 1) reload lower half of the block. */
+		c1 = vld1q_lane_u64((uint64_t *)(p1 + 48), c1, 0);
+		/* B.0 (CQE 0) reload lower half of the block. */
+		c0 = vld1q_lane_u64((uint64_t *)(p0 + 48), c0, 0);
 		/* Prefetch next 4 CQEs. */
 		if (pkts_n - pos >= 2 * MLX5_VPMD_DESCS_PER_LOOP) {
 			unsigned int next = pos + MLX5_VPMD_DESCS_PER_LOOP;
