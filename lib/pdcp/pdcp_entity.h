@@ -93,9 +93,21 @@ pdcp_hdr_size_get(enum rte_security_pdcp_sn_size sn_size)
 }
 
 static inline uint32_t
+pdcp_window_size_get(enum rte_security_pdcp_sn_size sn_size)
+{
+	return 1 << (sn_size - 1);
+}
+
+static inline uint32_t
 pdcp_sn_mask_get(enum rte_security_pdcp_sn_size sn_size)
 {
 	return (1 << sn_size) - 1;
+}
+
+static inline uint32_t
+pdcp_sn_from_count_get(uint32_t count, enum rte_security_pdcp_sn_size sn_size)
+{
+	return (count & pdcp_sn_mask_get(sn_size));
 }
 
 static inline uint32_t
@@ -105,9 +117,21 @@ pdcp_hfn_mask_get(enum rte_security_pdcp_sn_size sn_size)
 }
 
 static inline uint32_t
+pdcp_hfn_from_count_get(uint32_t count, enum rte_security_pdcp_sn_size sn_size)
+{
+	return (count & pdcp_hfn_mask_get(sn_size)) >> sn_size;
+}
+
+static inline uint32_t
 pdcp_count_from_hfn_sn_get(uint32_t hfn, uint32_t sn, enum rte_security_pdcp_sn_size sn_size)
 {
 	return (((hfn << sn_size) & pdcp_hfn_mask_get(sn_size)) | (sn & pdcp_sn_mask_get(sn_size)));
+}
+
+static inline uint32_t
+pdcp_hfn_max(enum rte_security_pdcp_sn_size sn_size)
+{
+	return (1 << (32 - sn_size)) - 1;
 }
 
 #endif /* PDCP_ENTITY_H */
