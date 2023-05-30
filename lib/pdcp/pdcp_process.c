@@ -905,6 +905,7 @@ pdcp_post_process_update_entity_state(const struct rte_pdcp_entity *entity,
 	if (t_reorder->state == TIMER_RUNNING &&
 			en_priv->state.rx_deliv >= en_priv->state.rx_reord) {
 		t_reorder->state = TIMER_STOP;
+		t_reorder->handle.stop(t_reorder->handle.timer, t_reorder->handle.args);
 		/* Stop reorder buffer, only if it's empty */
 		if (en_priv->state.rx_deliv == en_priv->state.rx_next)
 			pdcp_reorder_stop(reorder);
@@ -919,6 +920,7 @@ pdcp_post_process_update_entity_state(const struct rte_pdcp_entity *entity,
 		en_priv->state.rx_reord = en_priv->state.rx_next;
 		/* Start t-Reordering */
 		t_reorder->state = TIMER_RUNNING;
+		t_reorder->handle.start(t_reorder->handle.timer, t_reorder->handle.args);
 	}
 
 	return processed;

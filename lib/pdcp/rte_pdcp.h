@@ -69,6 +69,51 @@ struct rte_pdcp_entity {
 } __rte_cache_aligned;
 
 /**
+ * Callback function type for t-Reordering timer start, set during PDCP entity establish.
+ * This callback is invoked by PDCP library, during t-Reordering timer start event.
+ * Only one t-Reordering per receiving PDCP entity would be running at a given time.
+ *
+ * @see struct rte_pdcp_timer
+ * @see rte_pdcp_entity_establish()
+ *
+ * @param timer
+ *   Pointer to timer.
+ * @param args
+ *   Pointer to timer arguments.
+ */
+typedef void (*rte_pdcp_t_reordering_start_cb_t)(void *timer, void *args);
+
+/**
+ * Callback function type for t-Reordering timer stop, set during PDCP entity establish.
+ * This callback will be invoked by PDCP library, during t-Reordering timer stop event.
+ *
+ * @see struct rte_pdcp_timer
+ * @see rte_pdcp_entity_establish()
+ *
+ * @param timer
+ *   Pointer to timer.
+ * @param args
+ *   Pointer to timer arguments.
+ */
+typedef void (*rte_pdcp_t_reordering_stop_cb_t)(void *timer, void *args);
+
+/**
+ * PDCP t-Reordering timer interface
+ *
+ * Configuration provided by user, that PDCP library will invoke according to timer behaviour.
+ */
+struct rte_pdcp_t_reordering {
+	/** Timer pointer, to be used in callback functions. */
+	void *timer;
+	/** Timer arguments, to be used in callback functions. */
+	void *args;
+	/** Timer start callback handle. */
+	rte_pdcp_t_reordering_start_cb_t start;
+	/** Timer stop callback handle. */
+	rte_pdcp_t_reordering_stop_cb_t stop;
+};
+
+/**
  * PDCP entity configuration to be used for establishing an entity.
  */
 /* Structure rte_pdcp_entity_conf 8< */
@@ -112,6 +157,8 @@ struct rte_pdcp_entity_conf {
 	bool status_report_required;
 	/** Enable out of order delivery. */
 	bool out_of_order_delivery;
+	/** t-Reordering timer configuration. */
+	struct rte_pdcp_t_reordering t_reordering;
 };
 /* >8 End of structure rte_pdcp_entity_conf. */
 

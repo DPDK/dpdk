@@ -56,6 +56,7 @@ pdcp_dl_establish(struct rte_pdcp_entity *entity, const struct rte_pdcp_entity_c
 	struct entity_priv_dl_part *dl = entity_dl_part_get(entity);
 
 	entity->max_pkt_cache = RTE_MAX(entity->max_pkt_cache, window_size);
+	dl->t_reorder.handle = conf->t_reordering;
 
 	return pdcp_reorder_create(&dl->reorder, window_size);
 }

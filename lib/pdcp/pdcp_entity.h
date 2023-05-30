@@ -120,6 +120,8 @@ enum timer_state {
 struct pdcp_t_reordering {
 	/** Represent timer state */
 	enum timer_state state;
+	/** User defined callback handles */
+	struct rte_pdcp_t_reordering handle;
 };
 
 struct pdcp_cnt_bitmap {
