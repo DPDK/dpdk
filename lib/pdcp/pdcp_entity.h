@@ -132,7 +132,7 @@ struct pdcp_cnt_bitmap {
 };
 
 /*
- * Layout of PDCP entity: [rte_pdcp_entity] [entity_priv] [entity_dl/ul]
+ * Layout of PDCP entity: [rte_pdcp_entity] [entity_priv] [entity_dl/ul] [reorder/bitmap]
  */
 
 struct entity_priv {

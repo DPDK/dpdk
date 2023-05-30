@@ -20,15 +20,14 @@ pdcp_cnt_bitmap_get_memory_footprint(const struct rte_pdcp_entity_conf *conf)
 }
 
 int
-pdcp_cnt_bitmap_create(struct entity_priv_dl_part *dl, void *bitmap_mem, uint32_t window_size)
+pdcp_cnt_bitmap_create(struct entity_priv_dl_part *dl, uint32_t nb_elem,
+		       void *bitmap_mem, uint32_t mem_size)
 {
-	uint32_t mem_size = rte_bitmap_get_memory_footprint(window_size);
-
-	dl->bitmap.bmp = rte_bitmap_init(window_size, bitmap_mem, mem_size);
+	dl->bitmap.bmp = rte_bitmap_init(nb_elem, bitmap_mem, mem_size);
 	if (dl->bitmap.bmp == NULL)
 		return -EINVAL;
 
-	dl->bitmap.size = window_size;
+	dl->bitmap.size = nb_elem;
 
 	return 0;
 }

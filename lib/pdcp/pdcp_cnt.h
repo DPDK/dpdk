@@ -10,7 +10,8 @@
 #include "pdcp_entity.h"
 
 uint32_t pdcp_cnt_bitmap_get_memory_footprint(const struct rte_pdcp_entity_conf *conf);
-int pdcp_cnt_bitmap_create(struct entity_priv_dl_part *dl, void *bitmap_mem, uint32_t window_size);
+int pdcp_cnt_bitmap_create(struct entity_priv_dl_part *dl, uint32_t nb_elem,
+			   void *bitmap_mem, uint32_t mem_size);
 
 void pdcp_cnt_bitmap_set(struct pdcp_cnt_bitmap bitmap, uint32_t count);
 bool pdcp_cnt_bitmap_is_set(struct pdcp_cnt_bitmap bitmap, uint32_t count);

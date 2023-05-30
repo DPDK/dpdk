@@ -9,12 +9,18 @@
 
 struct pdcp_reorder {
 	struct rte_reorder_buffer *buf;
-	uint32_t window_size;
 	bool is_active;
 };
 
-int pdcp_reorder_create(struct pdcp_reorder *reorder, uint32_t window_size);
-void pdcp_reorder_destroy(const struct pdcp_reorder *reorder);
+int pdcp_reorder_create(struct pdcp_reorder *reorder, size_t nb_elem, void *mem, size_t mem_size);
+
+/* NOTE: replace with `rte_reorder_memory_footprint_get` after DPDK 23.07 */
+#define SIZE_OF_REORDER_BUFFER (4 * RTE_CACHE_LINE_SIZE)
+static inline size_t
+pdcp_reorder_memory_footprint_get(size_t nb_elem)
+{
+	return SIZE_OF_REORDER_BUFFER + (2 * nb_elem * sizeof(struct rte_mbuf *));
+}
 
 static inline uint32_t
 pdcp_reorder_get_sequential(struct pdcp_reorder *reorder, struct rte_mbuf **mbufs,

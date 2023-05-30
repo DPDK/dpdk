@@ -14,7 +14,15 @@
 
 #define RTE_PDCP_DYNFIELD_NAME "rte_pdcp_dynfield"
 
-static int bitmap_mem_offset;
+struct entity_layout {
+	size_t bitmap_offset;
+	size_t bitmap_size;
+
+	size_t reorder_buf_offset;
+	size_t reorder_buf_size;
+
+	size_t total_size;
+};
 
 int rte_pdcp_dynfield_offset = -1;
 
@@ -35,46 +43,54 @@ pdcp_dynfield_register(void)
 }
 
 static int
-pdcp_entity_size_get(const struct rte_pdcp_entity_conf *conf)
+pdcp_entity_layout_get(const struct rte_pdcp_entity_conf *conf, struct entity_layout *layout)
 {
-	int size;
+	size_t size;
+	const uint32_t window_size = pdcp_window_size_get(conf->pdcp_xfrm.sn_size);
 
 	size = sizeof(struct rte_pdcp_entity) + sizeof(struct entity_priv);
 
 	if (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) {
 		size += sizeof(struct entity_priv_dl_part);
+		/* Bitmap require memory to be cache aligned */
 		size = RTE_CACHE_LINE_ROUNDUP(size);
-		bitmap_mem_offset = size;
-		size += pdcp_cnt_bitmap_get_memory_footprint(conf);
+		layout->bitmap_offset = size;
+		layout->bitmap_size = pdcp_cnt_bitmap_get_memory_footprint(conf);
+		size += layout->bitmap_size;
+		layout->reorder_buf_offset = size;
+		layout->reorder_buf_size = pdcp_reorder_memory_footprint_get(window_size);
+		size += layout->reorder_buf_size;
 	} else if (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_UPLINK)
 		size += sizeof(struct entity_priv_ul_part);
 	else
 		return -EINVAL;
 
-	return RTE_ALIGN_CEIL(size, RTE_CACHE_LINE_SIZE);
+	layout->total_size = size;
+
+	return 0;
 }
 
 static int
-pdcp_dl_establish(struct rte_pdcp_entity *entity, const struct rte_pdcp_entity_conf *conf)
+pdcp_dl_establish(struct rte_pdcp_entity *entity, const struct rte_pdcp_entity_conf *conf,
+		  const struct entity_layout *layout)
 {
 	const uint32_t window_size = pdcp_window_size_get(conf->pdcp_xfrm.sn_size);
 	struct entity_priv_dl_part *dl = entity_dl_part_get(entity);
-	void *bitmap_mem;
+	void *memory;
 	int ret;
 
 	entity->max_pkt_cache = RTE_MAX(entity->max_pkt_cache, window_size);
 	dl->t_reorder.handle = conf->t_reordering;
 
-	ret = pdcp_reorder_create(&dl->reorder, window_size);
+	memory = RTE_PTR_ADD(entity, layout->reorder_buf_offset);
+	ret = pdcp_reorder_create(&dl->reorder, window_size, memory, layout->reorder_buf_size);
 	if (ret)
 		return ret;
 
-	bitmap_mem = RTE_PTR_ADD(entity, bitmap_mem_offset);
-	ret = pdcp_cnt_bitmap_create(dl, bitmap_mem, window_size);
-	if (ret) {
-		pdcp_reorder_destroy(&dl->reorder);
+	memory = RTE_PTR_ADD(entity, layout->bitmap_offset);
+	ret = pdcp_cnt_bitmap_create(dl, window_size, memory, layout->bitmap_size);
+	if (ret)
 		return ret;
-	}
 
 	return 0;
 }
@@ -82,10 +98,11 @@ pdcp_dl_establish(struct rte_pdcp_entity *entity, const struct rte_pdcp_entity_c
 struct rte_pdcp_entity *
 rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 {
+	struct entity_layout entity_layout = { 0 };
 	struct rte_pdcp_entity *entity = NULL;
 	struct entity_priv *en_priv;
-	int ret, entity_size;
 	uint32_t count;
+	int ret;
 
 	if (pdcp_dynfield_register() < 0)
 		return NULL;
@@ -118,13 +135,14 @@ rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 		return NULL;
 	}
 
-	entity_size = pdcp_entity_size_get(conf);
-	if (entity_size < 0) {
+	ret = pdcp_entity_layout_get(conf, &entity_layout);
+	if (ret < 0) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
 
-	entity = rte_zmalloc_socket("pdcp_entity", entity_size, RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	entity = rte_zmalloc_socket("pdcp_entity", entity_layout.total_size, RTE_CACHE_LINE_SIZE,
+				    SOCKET_ID_ANY);
 	if (entity == NULL) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -149,7 +167,7 @@ rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 		goto crypto_sess_destroy;
 
 	if (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) {
-		ret = pdcp_dl_establish(entity, conf);
+		ret = pdcp_dl_establish(entity, conf, &entity_layout);
 		if (ret)
 			goto crypto_sess_destroy;
 	}
@@ -173,8 +191,6 @@ pdcp_dl_release(struct rte_pdcp_entity *entity, struct rte_mbuf *out_mb[])
 
 	nb_out = pdcp_reorder_up_to_get(&dl->reorder, out_mb, entity->max_pkt_cache,
 			en_priv->state.rx_next);
-
-	pdcp_reorder_destroy(&dl->reorder);
 
 	return nb_out;
 }
