@@ -13,5 +13,6 @@ sources = files(
         'rte_pdcp.c',
         )
 headers = files('rte_pdcp.h')
+indirect_headers += files('rte_pdcp_group.h')
 
 deps += ['mbuf', 'net', 'cryptodev', 'security']

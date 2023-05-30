@@ -255,6 +255,12 @@ rte_pdcp_pkt_post_process(const struct rte_pdcp_entity *entity,
 	return entity->post_process(entity, in_mb, out_mb, num, nb_err);
 }
 
+/**
+ * The header 'rte_pdcp_group.h' depends on defines in 'rte_pdcp.h'. So include
+ * in the end.
+ */
+#include <rte_pdcp_group.h>
+
 #ifdef __cplusplus
 }
 #endif
