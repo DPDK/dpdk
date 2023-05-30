@@ -209,7 +209,6 @@ roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
 			       unsigned int num, const int dis_wait,
 			       const int drop)
 {
-	unsigned int i;
 	int64_t *addr;
 	uint64_t res;
 	union {
@@ -219,10 +218,6 @@ roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
 
 	if (num > ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS)
 		return -1;
-
-	/* Zero first word of every cache line */
-	for (i = 0; i < num; i += (ROC_ALIGN / sizeof(uint64_t)))
-		buf[i] = 0;
 
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_AURA_BATCH_ALLOC);
@@ -240,6 +235,9 @@ roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
 	return 0;
 }
 
+/*
+ * Wait for a batch alloc operation on a cache line to complete.
+ */
 static inline void
 roc_npa_batch_alloc_wait(uint64_t *cache_line, unsigned int wait_us)
 {
@@ -255,6 +253,23 @@ roc_npa_batch_alloc_wait(uint64_t *cache_line, unsigned int wait_us)
 			break;
 }
 
+/*
+ * Count the number of pointers in a single batch alloc cache line.
+ */
+static inline unsigned int
+roc_npa_aura_batch_alloc_count_line(uint64_t *line, unsigned int wait_us)
+{
+	struct npa_batch_alloc_status_s *status;
+
+	status = (struct npa_batch_alloc_status_s *)line;
+	roc_npa_batch_alloc_wait(line, wait_us);
+
+	return status->count;
+}
+
+/*
+ * Count the number of pointers in a sequence of batch alloc cache lines.
+ */
 static inline unsigned int
 roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num,
 			       unsigned int wait_us)
@@ -279,6 +294,40 @@ roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num,
 	return count;
 }
 
+/*
+ * Extract allocated pointers from a single batch alloc cache line. This api
+ * only extracts the required number of pointers from the cache line and it
+ * adjusts the statsus->count so that a subsequent call to this api can
+ * extract the remaining pointers in the cache line appropriately.
+ */
+static inline unsigned int
+roc_npa_aura_batch_alloc_extract_line(uint64_t *buf, uint64_t *line,
+				      unsigned int num, unsigned int *rem)
+{
+	struct npa_batch_alloc_status_s *status;
+	unsigned int avail;
+
+	status = (struct npa_batch_alloc_status_s *)line;
+	roc_npa_batch_alloc_wait(line, 0);
+	avail = status->count;
+	num = avail > num ? num : avail;
+	if (num)
+		memcpy(buf, &line[avail - num], num * sizeof(uint64_t));
+	avail -= num;
+	if (avail == 0) {
+		/* Clear the lowest 7 bits of the first pointer */
+		buf[0] &= ~0x7FUL;
+		status->ccode = 0;
+	}
+	status->count = avail;
+	*rem = avail;
+
+	return num;
+}
+
+/*
+ * Extract all allocated pointers from a sequence of batch alloc cache lines.
+ */
 static inline unsigned int
 roc_npa_aura_batch_alloc_extract(uint64_t *buf, uint64_t *aligned_buf,
 				 unsigned int num)
@@ -330,11 +379,15 @@ roc_npa_aura_op_bulk_free(uint64_t aura_handle, uint64_t const *buf,
 	}
 }
 
+/*
+ * Issue a batch alloc operation on a sequence of cache lines, wait for the
+ * batch alloc to complete and copy the pointers out into the user buffer.
+ */
 static inline unsigned int
 roc_npa_aura_op_batch_alloc(uint64_t aura_handle, uint64_t *buf,
-			    uint64_t *aligned_buf, unsigned int num,
-			    const int dis_wait, const int drop,
-			    const int partial)
+			    unsigned int num, uint64_t *aligned_buf,
+			    unsigned int aligned_buf_sz, const int dis_wait,
+			    const int drop, const int partial)
 {
 	unsigned int count, chunk, num_alloc;
 
@@ -344,9 +397,12 @@ roc_npa_aura_op_batch_alloc(uint64_t aura_handle, uint64_t *buf,
 
 	count = 0;
 	while (num) {
-		chunk = (num > ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS) ?
-				      ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS :
-				      num;
+		/* Make sure that the pointers allocated fit into the cache
+		 * lines reserved.
+		 */
+		chunk = aligned_buf_sz / sizeof(uint64_t);
+		chunk = PLT_MIN(num, chunk);
+		chunk = PLT_MIN((int)chunk, ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS);
 
 		if (roc_npa_aura_batch_alloc_issue(aura_handle, aligned_buf,
 						   chunk, dis_wait, drop))
