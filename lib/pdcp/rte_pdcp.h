@@ -22,6 +22,21 @@
 extern "C" {
 #endif
 
+/* Forward declarations. */
+struct rte_pdcp_entity;
+
+/* PDCP pre-process function based on entity configuration. */
+typedef uint16_t (*rte_pdcp_pre_p_t)(const struct rte_pdcp_entity *entity,
+				     struct rte_mbuf *mb[],
+				     struct rte_crypto_op *cop[],
+				     uint16_t num, uint16_t *nb_err);
+
+/* PDCP post-process function based on entity configuration. */
+typedef uint16_t (*rte_pdcp_post_p_t)(const struct rte_pdcp_entity *entity,
+				      struct rte_mbuf *in_mb[],
+				      struct rte_mbuf *out_mb[],
+				      uint16_t num, uint16_t *nb_err);
+
 /**
  * PDCP entity.
  *
@@ -34,6 +49,10 @@ extern "C" {
  * depending on which radio bearer it is carrying data for.
  */
 struct rte_pdcp_entity {
+	/** Entity specific pre-process handle. */
+	rte_pdcp_pre_p_t pre_process;
+	/** Entity specific post-process handle. */
+	rte_pdcp_post_p_t post_process;
 	/**
 	 * PDCP entities may hold packets for purposes of in-order delivery
 	 * (in case of receiving PDCP entity) and re-transmission
@@ -158,6 +177,83 @@ __rte_experimental
 int
 rte_pdcp_entity_suspend(struct rte_pdcp_entity *pdcp_entity,
 			struct rte_mbuf *out_mb[]);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * For input mbufs and given PDCP entity pre-process the mbufs and prepare
+ * crypto ops that can be enqueued to the cryptodev associated with given
+ * session. Only error packets would be moved returned in the input buffer,
+ * *mb*, and it is the responsibility of the application to free the same.
+ *
+ * @param entity
+ *   Pointer to the *rte_pdcp_entity* object the packets belong to.
+ * @param[in, out] mb
+ *   The address of an array of *num* pointers to *rte_mbuf* structures
+ *   which contain the input packets.
+ *   Any error packets would be returned in the same buffer.
+ * @param[out] cop
+ *   The address of an array that can hold up to *num* pointers to
+ *   *rte_crypto_op* structures. Crypto ops would be allocated by
+ *   ``rte_pdcp_pkt_pre_process`` API.
+ * @param num
+ *   The maximum number of packets to process.
+ * @param[out] nb_err
+ *   Pointer to return the number of error packets returned in *mb*.
+ * @return
+ *   Count of crypto_ops prepared.
+ */
+__rte_experimental
+static inline uint16_t
+rte_pdcp_pkt_pre_process(const struct rte_pdcp_entity *entity,
+			 struct rte_mbuf *mb[], struct rte_crypto_op *cop[],
+			 uint16_t num, uint16_t *nb_err)
+{
+	return entity->pre_process(entity, mb, cop, num, nb_err);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * For input mbufs and given PDCP entity, perform PDCP post-processing of the mbufs.
+ *
+ * Input mbufs are the ones retrieved from rte_crypto_ops dequeued from cryptodev
+ * and grouped by *rte_pdcp_pkt_crypto_group()*.
+ *
+ * The post-processed packets would be returned in the *out_mb* buffer.
+ * The resultant mbufs would be grouped into success packets and error packets.
+ * Error packets would be grouped in the end of the array and
+ * it is the responsibility of the application to handle the same.
+ *
+ * When in-order delivery is enabled, PDCP entity may buffer packets and would
+ * deliver packets only when all prior packets have been post-processed.
+ * That would result in returning more/less packets than enqueued.
+ *
+ * @param entity
+ *   Pointer to the *rte_pdcp_entity* object the packets belong to.
+ * @param in_mb
+ *   The address of an array of *num* pointers to *rte_mbuf* structures.
+ * @param[out] out_mb
+ *   The address of an array of *num* pointers to *rte_mbuf* structures
+ *   to output packets after PDCP post-processing.
+ * @param num
+ *   The maximum number of packets to process.
+ * @param[out] nb_err
+ *   The number of error packets returned in *out_mb* buffer.
+ * @return
+ *   Count of packets returned in *out_mb* buffer.
+ */
+__rte_experimental
+static inline uint16_t
+rte_pdcp_pkt_post_process(const struct rte_pdcp_entity *entity,
+			  struct rte_mbuf *in_mb[],
+			  struct rte_mbuf *out_mb[],
+			  uint16_t num, uint16_t *nb_err)
+{
+	return entity->post_process(entity, in_mb, out_mb, num, nb_err);
+}
 
 #ifdef __cplusplus
 }

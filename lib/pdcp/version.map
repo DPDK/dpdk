@@ -5,6 +5,8 @@ EXPERIMENTAL {
 	rte_pdcp_entity_establish;
 	rte_pdcp_entity_release;
 	rte_pdcp_entity_suspend;
+	rte_pdcp_pkt_post_process;
+	rte_pdcp_pkt_pre_process;
 
 	local: *;
 };
