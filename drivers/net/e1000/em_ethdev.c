@@ -155,6 +155,10 @@ static const struct rte_pci_id pci_id_em_map[] = {
 	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_CNP_I219_V6) },
 	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_CNP_I219_LM7) },
 	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_CNP_I219_V7) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_RPL_I219_LM22) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_RPL_I219_V22) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_RPL_I219_LM23) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_RPL_I219_V23) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -227,6 +231,11 @@ eth_em_dev_is_ich8(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_CNP_I219_V6:
 	case E1000_DEV_ID_PCH_CNP_I219_LM7:
 	case E1000_DEV_ID_PCH_CNP_I219_V7:
+	case E1000_DEV_ID_PCH_RPL_I219_LM22:
+	case E1000_DEV_ID_PCH_RPL_I219_V22:
+	case E1000_DEV_ID_PCH_RPL_I219_LM23:
+	case E1000_DEV_ID_PCH_RPL_I219_V23:
+
 		return 1;
 	default:
 		return 0;
@@ -482,6 +491,8 @@ em_set_pba(struct e1000_hw *hw)
 		case e1000_pch_lpt:
 		case e1000_pch_spt:
 		case e1000_pch_cnp:
+		case e1000_pch_adp:
+		case e1000_pch_tgp:
 			pba = E1000_PBA_26K;
 			break;
 		default:
@@ -852,7 +863,9 @@ em_hardware_init(struct e1000_hw *hw)
 		hw->fc.refresh_time = 0x0400;
 	} else if (hw->mac.type == e1000_pch_lpt ||
 		   hw->mac.type == e1000_pch_spt ||
-		   hw->mac.type == e1000_pch_cnp) {
+		   hw->mac.type == e1000_pch_cnp ||
+		   hw->mac.type == e1000_pch_adp ||
+		   hw->mac.type == e1000_pch_tgp) {
 		hw->fc.requested_mode = e1000_fc_full;
 	}
 
@@ -1033,6 +1046,8 @@ em_get_max_pktlen(struct rte_eth_dev *dev)
 	case e1000_pch_lpt:
 	case e1000_pch_spt:
 	case e1000_pch_cnp:
+	case e1000_pch_adp:
+	case e1000_pch_tgp:
 	case e1000_82574:
 	case e1000_80003es2lan: /* 9K Jumbo Frame size */
 	case e1000_82583:
