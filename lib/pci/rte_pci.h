@@ -104,8 +104,7 @@ struct rte_pci_addr {
 
 /**
  * Utility function to write a pci device name, this device name can later be
- * used to retrieve the corresponding rte_pci_addr using eal_parse_pci_*
- * BDF helpers.
+ * used to retrieve the corresponding rte_pci_addr using rte_pci_addr_parse().
  *
  * @param addr
  *	The PCI Bus-Device-Function address
