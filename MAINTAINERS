@@ -1512,6 +1512,12 @@ F: doc/guides/prog_guide/ipsec_lib.rst
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: app/test-sad/
 
+PDCP - EXPERIMENTAL
+M: Anoob Joseph <anoobj@marvell.com>
+M: Volodymyr Fialko <vfialko@marvell.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: lib/pdcp/
+
 Flow Classify - EXPERIMENTAL - UNMAINTAINED
 F: lib/flow_classify/
 F: app/test/test_flow_classify*

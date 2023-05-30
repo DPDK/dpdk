@@ -1,0 +1,10 @@
+EXPERIMENTAL {
+	global:
+
+	# added in 23.07
+	rte_pdcp_entity_establish;
+	rte_pdcp_entity_release;
+	rte_pdcp_entity_suspend;
+
+	local: *;
+};

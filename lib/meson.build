@@ -56,6 +56,7 @@ libraries = [
         'stack',
         'vhost',
         'ipsec', # ipsec lib depends on net, crypto and security
+        'pdcp', # pdcp lib depends on crypto and security
         'fib', #fib lib depends on rib
         'port', # pkt framework libs which use other libs from above
         'pdump', # pdump lib depends on bpf
