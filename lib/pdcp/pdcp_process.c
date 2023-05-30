@@ -10,6 +10,7 @@
 #include <rte_pdcp.h>
 #include <rte_pdcp_hdr.h>
 
+#include "pdcp_cnt.h"
 #include "pdcp_crypto.h"
 #include "pdcp_entity.h"
 #include "pdcp_process.h"
@@ -860,11 +861,15 @@ pdcp_post_process_update_entity_state(const struct rte_pdcp_entity *entity,
 	if (count >= en_priv->state.rx_next)
 		en_priv->state.rx_next = count + 1;
 
+	if (unlikely(pdcp_cnt_bitmap_is_set(dl->bitmap, count)))
+		return -EEXIST;
+
+	pdcp_cnt_bitmap_set(dl->bitmap, count);
 	pdcp_packet_strip(mb, hdr_trim_sz, trim_mac);
 
 	if (en_priv->flags.is_out_of_order_delivery) {
 		out_mb[0] = mb;
-		en_priv->state.rx_deliv = count + 1;
+		pdcp_rx_deliv_set(entity, count + 1);
 
 		return 1;
 	}
@@ -891,7 +896,7 @@ pdcp_post_process_update_entity_state(const struct rte_pdcp_entity *entity,
 		}
 
 		/* Processed should never exceed the window size */
-		en_priv->state.rx_deliv = count + processed;
+		pdcp_rx_deliv_set(entity, count + processed);
 
 	} else {
 		if (!reorder->is_active)

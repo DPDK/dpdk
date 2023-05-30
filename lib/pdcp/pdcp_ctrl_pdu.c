@@ -8,6 +8,14 @@
 
 #include "pdcp_ctrl_pdu.h"
 #include "pdcp_entity.h"
+#include "pdcp_cnt.h"
+
+static inline uint16_t
+round_up_bits(uint32_t bits)
+{
+	/* round up to the next multiple of 8 */
+	return RTE_ALIGN_MUL_CEIL(bits, 8) / 8;
+}
 
 static __rte_always_inline void
 pdcp_hdr_fill(struct rte_pdcp_up_ctrl_pdu_hdr *pdu_hdr, uint32_t rx_deliv)
@@ -19,11 +27,13 @@ pdcp_hdr_fill(struct rte_pdcp_up_ctrl_pdu_hdr *pdu_hdr, uint32_t rx_deliv)
 }
 
 int
-pdcp_ctrl_pdu_status_gen(struct entity_priv *en_priv, struct rte_mbuf *m)
+pdcp_ctrl_pdu_status_gen(struct entity_priv *en_priv, struct entity_priv_dl_part *dl,
+			 struct rte_mbuf *m)
 {
 	struct rte_pdcp_up_ctrl_pdu_hdr *pdu_hdr;
-	uint32_t rx_deliv;
-	int pdu_sz;
+	uint32_t rx_deliv, actual_sz;
+	uint16_t pdu_sz, bitmap_sz;
+	uint8_t *data;
 
 	if (!en_priv->flags.is_status_report_required)
 		return -EINVAL;
@@ -42,5 +52,21 @@ pdcp_ctrl_pdu_status_gen(struct entity_priv *en_priv, struct rte_mbuf *m)
 		return 0;
 	}
 
-	return -ENOTSUP;
+	actual_sz = RTE_MIN(round_up_bits(en_priv->state.rx_next - rx_deliv - 1),
+			RTE_PDCP_CTRL_PDU_SIZE_MAX - pdu_sz);
+	bitmap_sz = pdcp_cnt_get_bitmap_size(actual_sz);
+
+	data = (uint8_t *)rte_pktmbuf_append(m, pdu_sz + bitmap_sz);
+	if (data == NULL)
+		return -ENOMEM;
+
+	m->pkt_len = pdu_sz + actual_sz;
+	m->data_len = pdu_sz + actual_sz;
+
+	pdcp_hdr_fill((struct rte_pdcp_up_ctrl_pdu_hdr *)data, rx_deliv);
+
+	data = RTE_PTR_ADD(data, pdu_sz);
+	pdcp_cnt_report_fill(dl->bitmap, en_priv->state, data, bitmap_sz);
+
+	return 0;
 }
