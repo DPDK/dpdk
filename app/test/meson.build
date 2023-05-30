@@ -435,6 +435,11 @@ if dpdk_conf.has('RTE_HAS_LIBPCAP')
     endif
 endif
 
+if dpdk_conf.has('RTE_LIB_PDCP')
+    test_sources += 'test_pdcp.c'
+    fast_tests += [['pdcp_autotest', false, true]]
+endif
+
 if cc.has_argument('-Wno-format-truncation')
     cflags += '-Wno-format-truncation'
 endif
