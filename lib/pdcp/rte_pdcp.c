@@ -10,6 +10,26 @@
 #include "pdcp_entity.h"
 #include "pdcp_process.h"
 
+#define RTE_PDCP_DYNFIELD_NAME "rte_pdcp_dynfield"
+
+int rte_pdcp_dynfield_offset = -1;
+
+static int
+pdcp_dynfield_register(void)
+{
+	const struct rte_mbuf_dynfield dynfield_desc = {
+		.name = RTE_PDCP_DYNFIELD_NAME,
+		.size = sizeof(rte_pdcp_dynfield_t),
+		.align = __alignof__(rte_pdcp_dynfield_t),
+	};
+
+	if (rte_pdcp_dynfield_offset != -1)
+		return rte_pdcp_dynfield_offset;
+
+	rte_pdcp_dynfield_offset = rte_mbuf_dynfield_register(&dynfield_desc);
+	return rte_pdcp_dynfield_offset;
+}
+
 static int
 pdcp_entity_size_get(const struct rte_pdcp_entity_conf *conf)
 {
@@ -34,6 +54,9 @@ rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 	struct entity_priv *en_priv;
 	int ret, entity_size;
 	uint32_t count;
+
+	if (pdcp_dynfield_register() < 0)
+		return NULL;
 
 	if (conf == NULL || conf->cop_pool == NULL) {
 		rte_errno = EINVAL;

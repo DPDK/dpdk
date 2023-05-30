@@ -6,6 +6,7 @@
 #include <rte_crypto_sym.h>
 #include <rte_cryptodev.h>
 #include <rte_memcpy.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_pdcp.h>
 #include <rte_pdcp_hdr.h>
 
@@ -336,9 +337,359 @@ pdcp_post_process_ul(const struct rte_pdcp_entity *entity,
 	return nb_success;
 }
 
+static inline int
+pdcp_sn_count_get(const uint32_t rx_deliv, int32_t rsn, uint32_t *count,
+		  const enum rte_security_pdcp_sn_size sn_size)
+{
+	const uint32_t rx_deliv_sn = pdcp_sn_from_count_get(rx_deliv, sn_size);
+	const uint32_t window_sz = pdcp_window_size_get(sn_size);
+	uint32_t rhfn;
+
+	rhfn = pdcp_hfn_from_count_get(rx_deliv, sn_size);
+
+	if (rsn < (int32_t)(rx_deliv_sn - window_sz)) {
+		if (unlikely(rhfn == pdcp_hfn_max(sn_size)))
+			return -ERANGE;
+		rhfn += 1;
+	} else if ((uint32_t)rsn >= (rx_deliv_sn + window_sz)) {
+		if (unlikely(rhfn == PDCP_HFN_MIN))
+			return -ERANGE;
+		rhfn -= 1;
+	}
+
+	*count = pdcp_count_from_hfn_sn_get(rhfn, rsn, sn_size);
+
+	return 0;
+}
+
+static inline uint16_t
+pdcp_pre_process_uplane_sn_12_dl_flags(const struct rte_pdcp_entity *entity,
+				       struct rte_mbuf *in_mb[], struct rte_crypto_op *cop[],
+				       uint16_t num, uint16_t *nb_err_ret,
+				       const bool is_integ_protected)
+{
+	struct entity_priv *en_priv = entity_priv_get(entity);
+	struct rte_pdcp_up_data_pdu_sn_12_hdr *pdu_hdr;
+	uint16_t nb_cop, nb_prep = 0, nb_err = 0;
+	rte_pdcp_dynfield_t *mb_dynfield;
+	struct rte_mbuf *mb;
+	int32_t rsn = 0;
+	uint32_t count;
+	int i;
+
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+
+	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
+					  num);
+
+	const uint32_t rx_deliv = en_priv->state.rx_deliv;
+
+	for (i = 0; i < nb_cop; i++) {
+		mb = in_mb[i];
+		pdu_hdr = rte_pktmbuf_mtod(mb, struct rte_pdcp_up_data_pdu_sn_12_hdr *);
+
+		/* Check for PDU type */
+		if (likely(pdu_hdr->d_c == RTE_PDCP_PDU_TYPE_DATA)) {
+			rsn = ((pdu_hdr->sn_11_8 << 8) | (pdu_hdr->sn_7_0));
+		} else {
+			/** NOTE: Control PDU not handled.*/
+			in_mb[nb_err++] = mb;
+			continue;
+		}
+
+		if (unlikely(pdcp_sn_count_get(rx_deliv, rsn, &count,
+					       RTE_SECURITY_PDCP_SN_SIZE_12))) {
+			in_mb[nb_err++] = mb;
+			continue;
+		}
+
+		cop_prepare(en_priv, mb, cop[nb_prep++], data_offset, count, is_integ_protected);
+
+		mb_dynfield = pdcp_dynfield(mb);
+		*mb_dynfield = count;
+	}
+
+	if (unlikely(nb_err))
+		rte_mempool_put_bulk(en_priv->cop_pool, (void *)&cop[nb_prep], nb_cop - nb_prep);
+
+	*nb_err_ret = num - nb_prep;
+
+	return nb_prep;
+}
+
+static uint16_t
+pdcp_pre_process_uplane_sn_12_dl_ip(const struct rte_pdcp_entity *entity, struct rte_mbuf *mb[],
+				    struct rte_crypto_op *cop[], uint16_t num, uint16_t *nb_err)
+{
+	return pdcp_pre_process_uplane_sn_12_dl_flags(entity, mb, cop, num, nb_err, true);
+}
+
+static uint16_t
+pdcp_pre_process_uplane_sn_12_dl(const struct rte_pdcp_entity *entity, struct rte_mbuf *mb[],
+				 struct rte_crypto_op *cop[], uint16_t num, uint16_t *nb_err)
+{
+	return pdcp_pre_process_uplane_sn_12_dl_flags(entity, mb, cop, num, nb_err, false);
+}
+
+static inline uint16_t
+pdcp_pre_process_uplane_sn_18_dl_flags(const struct rte_pdcp_entity *entity,
+				       struct rte_mbuf *in_mb[], struct rte_crypto_op *cop[],
+				       uint16_t num, uint16_t *nb_err_ret,
+				       const bool is_integ_protected)
+{
+	struct entity_priv *en_priv = entity_priv_get(entity);
+	struct rte_pdcp_up_data_pdu_sn_18_hdr *pdu_hdr;
+	uint16_t nb_cop, nb_prep = 0, nb_err = 0;
+	rte_pdcp_dynfield_t *mb_dynfield;
+	struct rte_mbuf *mb;
+	int32_t rsn = 0;
+	uint32_t count;
+	int i;
+
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
+					  num);
+
+	const uint32_t rx_deliv = en_priv->state.rx_deliv;
+
+	for (i = 0; i < nb_cop; i++) {
+		mb = in_mb[i];
+		pdu_hdr = rte_pktmbuf_mtod(mb, struct rte_pdcp_up_data_pdu_sn_18_hdr *);
+
+		/* Check for PDU type */
+		if (likely(pdu_hdr->d_c == RTE_PDCP_PDU_TYPE_DATA)) {
+			rsn = ((pdu_hdr->sn_17_16 << 16) | (pdu_hdr->sn_15_8 << 8) |
+			       (pdu_hdr->sn_7_0));
+		} else {
+			/** NOTE: Control PDU not handled.*/
+			in_mb[nb_err++] = mb;
+			continue;
+		}
+
+		if (unlikely(pdcp_sn_count_get(rx_deliv, rsn, &count,
+					       RTE_SECURITY_PDCP_SN_SIZE_18))) {
+			in_mb[nb_err++] = mb;
+			continue;
+		}
+
+		cop_prepare(en_priv, mb, cop[nb_prep++], data_offset, count, is_integ_protected);
+
+		mb_dynfield = pdcp_dynfield(mb);
+		*mb_dynfield = count;
+	}
+
+	if (unlikely(nb_err))
+		/* Using mempool API since crypto API is not providing bulk free */
+		rte_mempool_put_bulk(en_priv->cop_pool, (void *)&cop[nb_prep], nb_cop - nb_prep);
+
+	*nb_err_ret = num - nb_prep;
+
+	return nb_prep;
+}
+
+static uint16_t
+pdcp_pre_process_uplane_sn_18_dl_ip(const struct rte_pdcp_entity *entity, struct rte_mbuf *mb[],
+				    struct rte_crypto_op *cop[], uint16_t num, uint16_t *nb_err)
+{
+	return pdcp_pre_process_uplane_sn_18_dl_flags(entity, mb, cop, num, nb_err, true);
+}
+
+static uint16_t
+pdcp_pre_process_uplane_sn_18_dl(const struct rte_pdcp_entity *entity, struct rte_mbuf *mb[],
+				 struct rte_crypto_op *cop[], uint16_t num, uint16_t *nb_err)
+{
+	return pdcp_pre_process_uplane_sn_18_dl_flags(entity, mb, cop, num, nb_err, false);
+}
+
+static uint16_t
+pdcp_pre_process_cplane_sn_12_dl(const struct rte_pdcp_entity *entity, struct rte_mbuf *in_mb[],
+				 struct rte_crypto_op *cop[], uint16_t num, uint16_t *nb_err_ret)
+{
+	struct entity_priv *en_priv = entity_priv_get(entity);
+	struct rte_pdcp_cp_data_pdu_sn_12_hdr *pdu_hdr;
+	uint16_t nb_cop, nb_prep = 0, nb_err = 0;
+	rte_pdcp_dynfield_t *mb_dynfield;
+	struct rte_mbuf *mb;
+	uint32_t count;
+	int32_t rsn;
+	int i;
+
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+
+	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
+					  num);
+
+	const uint32_t rx_deliv = en_priv->state.rx_deliv;
+
+	for (i = 0; i < nb_cop; i++) {
+		mb = in_mb[i];
+		pdu_hdr = rte_pktmbuf_mtod(mb, struct rte_pdcp_cp_data_pdu_sn_12_hdr *);
+		rsn = ((pdu_hdr->sn_11_8 << 8) | (pdu_hdr->sn_7_0));
+		if (unlikely(pdcp_sn_count_get(rx_deliv, rsn, &count,
+					       RTE_SECURITY_PDCP_SN_SIZE_12))) {
+			in_mb[nb_err++] = mb;
+			continue;
+		}
+
+		cop_prepare(en_priv, mb, cop[nb_prep++], data_offset, count, true);
+
+		mb_dynfield = pdcp_dynfield(mb);
+		*mb_dynfield = count;
+	}
+
+	if (unlikely(nb_err))
+		/* Using mempool API since crypto API is not providing bulk free */
+		rte_mempool_put_bulk(en_priv->cop_pool, (void *)&cop[nb_prep], nb_cop - nb_prep);
+
+	*nb_err_ret = num - nb_prep;
+
+	return nb_prep;
+}
+
+static inline void
+pdcp_packet_strip(struct rte_mbuf *mb, const uint32_t hdr_trim_sz, const bool trim_mac)
+{
+	char *p = rte_pktmbuf_adj(mb, hdr_trim_sz);
+	RTE_ASSERT(p != NULL);
+	RTE_SET_USED(p);
+
+	if (trim_mac) {
+		int ret = rte_pktmbuf_trim(mb, RTE_PDCP_MAC_I_LEN);
+		RTE_ASSERT(ret == 0);
+		RTE_SET_USED(ret);
+	}
+}
+
+static inline bool
+pdcp_post_process_update_entity_state(const struct rte_pdcp_entity *entity,
+				      const uint32_t count)
+{
+	struct entity_priv *en_priv = entity_priv_get(entity);
+
+	if (count < en_priv->state.rx_deliv)
+		return false;
+
+	/* t-Reordering timer is not supported - SDU will be delivered immediately.
+	 * Update RX_DELIV to the COUNT value of the first PDCP SDU which has not
+	 * been delivered to upper layers
+	 */
+	en_priv->state.rx_next = count + 1;
+
+	if (count >= en_priv->state.rx_next)
+		en_priv->state.rx_next = count + 1;
+
+	return true;
+}
+
+static inline uint16_t
+pdcp_post_process_uplane_dl_flags(const struct rte_pdcp_entity *entity, struct rte_mbuf *in_mb[],
+				  struct rte_mbuf *out_mb[], uint16_t num, uint16_t *nb_err_ret,
+				  const bool is_integ_protected)
+{
+	struct entity_priv *en_priv = entity_priv_get(entity);
+	const uint32_t aad_sz = en_priv->aad_sz;
+	int i, nb_success = 0, nb_err = 0;
+	rte_pdcp_dynfield_t *mb_dynfield;
+	struct rte_mbuf *err_mb[num];
+	struct rte_mbuf *mb;
+	uint32_t count;
+
+	const uint32_t hdr_trim_sz = en_priv->hdr_sz + aad_sz;
+
+#ifdef RTE_ARCH_PPC_64
+	err_mb[0] = NULL; /* workaround PPC-GCC bug */
+#endif
+	for (i = 0; i < num; i++) {
+		mb = in_mb[i];
+		if (unlikely(mb->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED))
+			goto error;
+
+		mb_dynfield = pdcp_dynfield(mb);
+		count = *mb_dynfield;
+
+		if (unlikely(!pdcp_post_process_update_entity_state(entity, count)))
+			goto error;
+
+		pdcp_packet_strip(mb, hdr_trim_sz, is_integ_protected);
+		out_mb[nb_success++] = mb;
+		continue;
+
+error:
+		err_mb[nb_err++] = mb;
+	}
+
+	if (unlikely(nb_err != 0))
+		rte_memcpy(&out_mb[nb_success], err_mb, nb_err * sizeof(struct rte_mbuf *));
+
+	*nb_err_ret = nb_err;
+	return nb_success;
+}
+
+static uint16_t
+pdcp_post_process_uplane_dl_ip(const struct rte_pdcp_entity *entity, struct rte_mbuf *in_mb[],
+			       struct rte_mbuf *out_mb[], uint16_t num, uint16_t *nb_err)
+{
+	return pdcp_post_process_uplane_dl_flags(entity, in_mb, out_mb, num, nb_err, true);
+}
+
+static uint16_t
+pdcp_post_process_uplane_dl(const struct rte_pdcp_entity *entity, struct rte_mbuf *in_mb[],
+			   struct rte_mbuf *out_mb[], uint16_t num, uint16_t *nb_err)
+{
+	return pdcp_post_process_uplane_dl_flags(entity, in_mb, out_mb, num, nb_err, false);
+}
+
+static uint16_t
+pdcp_post_process_cplane_sn_12_dl(const struct rte_pdcp_entity *entity,
+				  struct rte_mbuf *in_mb[],
+				  struct rte_mbuf *out_mb[],
+				  uint16_t num, uint16_t *nb_err_ret)
+{
+	struct entity_priv *en_priv = entity_priv_get(entity);
+	const uint32_t aad_sz = en_priv->aad_sz;
+	int i, nb_success = 0, nb_err = 0;
+	rte_pdcp_dynfield_t *mb_dynfield;
+	struct rte_mbuf *err_mb[num];
+	struct rte_mbuf *mb;
+	uint32_t count;
+
+	const uint32_t hdr_trim_sz = en_priv->hdr_sz + aad_sz;
+
+#ifdef RTE_ARCH_PPC_64
+	err_mb[0] = NULL; /* workaround PPC-GCC bug */
+#endif
+	for (i = 0; i < num; i++) {
+		mb = in_mb[i];
+		if (unlikely(mb->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED))
+			goto error;
+
+		mb_dynfield = pdcp_dynfield(mb);
+		count = *mb_dynfield;
+
+		if (unlikely(!pdcp_post_process_update_entity_state(entity, count)))
+			goto error;
+
+		pdcp_packet_strip(mb, hdr_trim_sz, true);
+
+		out_mb[nb_success++] = mb;
+		continue;
+
+error:
+		err_mb[nb_err++] = mb;
+	}
+
+	if (unlikely(nb_err != 0))
+		rte_memcpy(&out_mb[nb_success], err_mb, nb_err * sizeof(struct rte_mbuf *));
+
+	*nb_err_ret = nb_err;
+	return nb_success;
+}
+
 static int
 pdcp_pre_post_func_set(struct rte_pdcp_entity *entity, const struct rte_pdcp_entity_conf *conf)
 {
+	struct entity_priv *en_priv = entity_priv_get(entity);
+
 	entity->pre_process = NULL;
 	entity->post_process = NULL;
 
@@ -347,6 +698,13 @@ pdcp_pre_post_func_set(struct rte_pdcp_entity *entity, const struct rte_pdcp_ent
 	    (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_UPLINK)) {
 		entity->pre_process = pdcp_pre_process_cplane_sn_12_ul;
 		entity->post_process = pdcp_post_process_ul;
+	}
+
+	if ((conf->pdcp_xfrm.domain == RTE_SECURITY_PDCP_MODE_CONTROL) &&
+	    (conf->pdcp_xfrm.sn_size == RTE_SECURITY_PDCP_SN_SIZE_12) &&
+	    (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)) {
+		entity->pre_process = pdcp_pre_process_cplane_sn_12_dl;
+		entity->post_process = pdcp_post_process_cplane_sn_12_dl;
 	}
 
 	if ((conf->pdcp_xfrm.domain == RTE_SECURITY_PDCP_MODE_DATA) &&
@@ -361,6 +719,38 @@ pdcp_pre_post_func_set(struct rte_pdcp_entity *entity, const struct rte_pdcp_ent
 	    (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_UPLINK)) {
 		entity->pre_process = pdcp_pre_process_uplane_sn_18_ul;
 		entity->post_process = pdcp_post_process_ul;
+	}
+
+	if ((conf->pdcp_xfrm.domain == RTE_SECURITY_PDCP_MODE_DATA) &&
+	    (conf->pdcp_xfrm.sn_size == RTE_SECURITY_PDCP_SN_SIZE_12) &&
+	    (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) &&
+	    (en_priv->flags.is_authenticated)) {
+		entity->pre_process = pdcp_pre_process_uplane_sn_12_dl_ip;
+		entity->post_process = pdcp_post_process_uplane_dl_ip;
+	}
+
+	if ((conf->pdcp_xfrm.domain == RTE_SECURITY_PDCP_MODE_DATA) &&
+	    (conf->pdcp_xfrm.sn_size == RTE_SECURITY_PDCP_SN_SIZE_12) &&
+	    (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) &&
+	    (!en_priv->flags.is_authenticated)) {
+		entity->pre_process = pdcp_pre_process_uplane_sn_12_dl;
+		entity->post_process = pdcp_post_process_uplane_dl;
+	}
+
+	if ((conf->pdcp_xfrm.domain == RTE_SECURITY_PDCP_MODE_DATA) &&
+	    (conf->pdcp_xfrm.sn_size == RTE_SECURITY_PDCP_SN_SIZE_18) &&
+	    (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) &&
+	    (en_priv->flags.is_authenticated)) {
+		entity->pre_process = pdcp_pre_process_uplane_sn_18_dl_ip;
+		entity->post_process = pdcp_post_process_uplane_dl_ip;
+	}
+
+	if ((conf->pdcp_xfrm.domain == RTE_SECURITY_PDCP_MODE_DATA) &&
+	    (conf->pdcp_xfrm.sn_size == RTE_SECURITY_PDCP_SN_SIZE_18) &&
+	    (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) &&
+	    (!en_priv->flags.is_authenticated)) {
+		entity->pre_process = pdcp_pre_process_uplane_sn_18_dl;
+		entity->post_process = pdcp_post_process_uplane_dl;
 	}
 
 	if (entity->pre_process == NULL || entity->post_process == NULL)

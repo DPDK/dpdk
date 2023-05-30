@@ -13,6 +13,8 @@
 
 struct entity_priv;
 
+#define PDCP_HFN_MIN 0
+
 /* IV generation function based on the entity configuration */
 typedef void (*iv_gen_t)(struct rte_crypto_op *cop, const struct entity_priv *en_priv,
 			 uint32_t count);
