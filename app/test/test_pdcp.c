@@ -3,15 +3,24 @@
  */
 
 #include <rte_errno.h>
+#ifdef RTE_LIB_EVENTDEV
+#include <rte_eventdev.h>
+#include <rte_event_timer_adapter.h>
+#endif /* RTE_LIB_EVENTDEV */
 #include <rte_malloc.h>
 #include <rte_pdcp.h>
 #include <rte_pdcp_hdr.h>
+#include <rte_timer.h>
 
 #include "test.h"
 #include "test_cryptodev.h"
 #include "test_cryptodev_security_pdcp_test_vectors.h"
 
+#define NSECPERSEC 1E9
 #define NB_DESC 1024
+#define TIMER_ADAPTER_ID 0
+#define TEST_EV_QUEUE_ID 0
+#define TEST_EV_PORT_ID 0
 #define CDEV_INVALID_ID UINT8_MAX
 #define NB_TESTS RTE_DIM(pdcp_test_params)
 #define PDCP_IV_LEN 16
@@ -33,9 +42,20 @@ struct pdcp_testsuite_params {
 	struct rte_mempool *cop_pool;
 	struct rte_mempool *sess_pool;
 	bool cdevs_used[RTE_CRYPTO_MAX_DEVS];
+	int evdev;
+#ifdef RTE_LIB_EVENTDEV
+	struct rte_event_timer_adapter *timdev;
+#endif /* RTE_LIB_EVENTDEV */
+	bool timer_is_running;
+	uint64_t min_resolution_ns;
 };
 
 static struct pdcp_testsuite_params testsuite_params;
+
+struct test_rte_timer_args {
+	int status;
+	struct rte_pdcp_entity *pdcp_entity;
+};
 
 struct pdcp_test_conf {
 	struct rte_pdcp_entity_conf entity;
@@ -123,6 +143,30 @@ pdcp_hfn_from_count_get(uint32_t count, enum rte_security_pdcp_sn_size sn_size)
 {
 	return (count & pdcp_hfn_mask_get(sn_size)) >> sn_size;
 }
+
+static void
+pdcp_timer_start_cb(void *timer, void *args)
+{
+	bool *is_timer_running = timer;
+
+	RTE_SET_USED(args);
+	*is_timer_running = true;
+}
+
+static void
+pdcp_timer_stop_cb(void *timer, void *args)
+{
+	bool *is_timer_running = timer;
+
+	RTE_SET_USED(args);
+	*is_timer_running = false;
+}
+
+static struct rte_pdcp_t_reordering t_reorder_timer = {
+	.timer = &testsuite_params.timer_is_running,
+	.start = pdcp_timer_start_cb,
+	.stop = pdcp_timer_stop_cb,
+};
 
 static inline int
 pdcp_hdr_size_get(enum rte_security_pdcp_sn_size sn_size)
@@ -462,6 +506,7 @@ create_test_conf_from_index(const int index, struct pdcp_test_conf *conf)
 	conf->entity.pdcp_xfrm.en_ordering = 0;
 	conf->entity.pdcp_xfrm.remove_duplicates = 0;
 	conf->entity.pdcp_xfrm.domain = pdcp_test_params[index].domain;
+	conf->entity.t_reordering = t_reorder_timer;
 
 	if (pdcp_test_packet_direction[index] == PDCP_DIR_UPLINK)
 		conf->entity.pdcp_xfrm.pkt_dir = RTE_SECURITY_PDCP_UPLINK;
@@ -1048,6 +1093,8 @@ test_reorder_gap_fill(struct pdcp_test_conf *ul_conf)
 	/* Check that packets in correct order */
 	ASSERT_TRUE_OR_GOTO(array_asc_sorted_check(out_mb, nb_success, sn_size), exit,
 			"Error occurred during packet drain\n");
+	ASSERT_TRUE_OR_GOTO(testsuite_params.timer_is_running == false, exit,
+			"Timer should be stopped after full drain\n");
 
 	ret = TEST_SUCCESS;
 exit:
@@ -1123,6 +1170,181 @@ exit:
 	return ret;
 }
 
+#ifdef RTE_LIB_EVENTDEV
+static void
+event_timer_start_cb(void *timer, void *args)
+{
+	struct rte_event_timer *evtims = args;
+	int ret = 0;
+
+	ret = rte_event_timer_arm_burst(timer, &evtims, 1);
+	assert(ret == 1);
+}
+#endif /* RTE_LIB_EVENTDEV */
+
+static int
+test_expiry_with_event_timer(const struct pdcp_test_conf *ul_conf)
+{
+#ifdef RTE_LIB_EVENTDEV
+	const enum rte_security_pdcp_sn_size sn_size = ul_conf->entity.pdcp_xfrm.sn_size;
+	struct rte_mbuf *m1 = NULL, *out_mb[1] = {0};
+	uint16_t n = 0, nb_err = 0, nb_try = 5;
+	struct rte_pdcp_entity *pdcp_entity;
+	struct pdcp_test_conf dl_conf;
+	int ret = TEST_FAILED, nb_out;
+	struct rte_event event;
+
+	const int start_count = 0;
+	struct rte_event_timer evtim = {
+		.ev.op = RTE_EVENT_OP_NEW,
+		.ev.queue_id = TEST_EV_QUEUE_ID,
+		.ev.sched_type = RTE_SCHED_TYPE_ATOMIC,
+		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
+		.state = RTE_EVENT_TIMER_NOT_ARMED,
+		.timeout_ticks = 1,
+	};
+
+	if (ul_conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)
+		return TEST_SKIPPED;
+
+	/* Create configuration for actual testing */
+	uplink_to_downlink_convert(ul_conf, &dl_conf);
+	dl_conf.entity.pdcp_xfrm.hfn = pdcp_hfn_from_count_get(start_count, sn_size);
+	dl_conf.entity.sn = pdcp_sn_from_count_get(start_count, sn_size);
+	dl_conf.entity.t_reordering.args = &evtim;
+	dl_conf.entity.t_reordering.timer = testsuite_params.timdev;
+	dl_conf.entity.t_reordering.start = event_timer_start_cb;
+
+	pdcp_entity = test_entity_create(&dl_conf, &ret);
+	if (pdcp_entity == NULL)
+		return ret;
+
+	evtim.ev.event_ptr = pdcp_entity;
+
+	/* Send packet with SN > RX_DELIV to create a gap */
+	m1 = generate_packet_for_dl_with_sn(*ul_conf, start_count + 1);
+	ASSERT_TRUE_OR_GOTO(m1 != NULL, exit, "Could not allocate buffer for packet\n");
+
+	/* Buffered packets after insert [NULL, m1] */
+	n = test_process_packets(pdcp_entity, dl_conf.entity.dev_id, &m1, 1, out_mb, &nb_err);
+	ASSERT_TRUE_OR_GOTO(nb_err == 0, exit, "Error occurred during packet buffering\n");
+	ASSERT_TRUE_OR_GOTO(n == 0, exit, "Packet was not buffered as expected\n");
+
+	m1 = NULL; /* Packet was moved to PDCP lib */
+
+	n = rte_event_dequeue_burst(testsuite_params.evdev, TEST_EV_PORT_ID, &event, 1, 0);
+	while (n != 1) {
+		rte_delay_us(testsuite_params.min_resolution_ns / 1000);
+		n = rte_event_dequeue_burst(testsuite_params.evdev, TEST_EV_PORT_ID, &event, 1, 0);
+		ASSERT_TRUE_OR_GOTO(nb_try-- > 0, exit,
+				"Dequeued unexpected timer expiry event: %i\n", n);
+	}
+
+	ASSERT_TRUE_OR_GOTO(event.event_type == RTE_EVENT_TYPE_TIMER, exit, "Unexpected event type\n");
+
+	/* Handle expiry event */
+	n = rte_pdcp_t_reordering_expiry_handle(event.event_ptr, out_mb);
+	ASSERT_TRUE_OR_GOTO(n == 1, exit, "Unexpected number of expired packets :%i\n", n);
+
+	ret = TEST_SUCCESS;
+exit:
+	rte_pktmbuf_free(m1);
+	rte_pktmbuf_free_bulk(out_mb, n);
+	nb_out = rte_pdcp_entity_release(pdcp_entity, out_mb);
+	rte_pktmbuf_free_bulk(out_mb, nb_out);
+	return ret;
+#else
+	RTE_SET_USED(ul_conf);
+	return TEST_SKIPPED;
+#endif /* RTE_LIB_EVENTDEV */
+}
+
+static void
+test_rte_timer_expiry_handle(struct rte_timer *timer_handle, void *arg)
+{
+	struct test_rte_timer_args *timer_data = arg;
+	struct rte_mbuf *out_mb[1] = {0};
+	uint16_t n;
+
+	RTE_SET_USED(timer_handle);
+
+	n = rte_pdcp_t_reordering_expiry_handle(timer_data->pdcp_entity, out_mb);
+	rte_pktmbuf_free_bulk(out_mb, n);
+
+	timer_data->status =  n == 1 ? n : -1;
+}
+
+static void
+test_rte_timer_start_cb(void *timer, void *args)
+{
+	rte_timer_reset_sync(timer, 1, SINGLE, rte_lcore_id(), test_rte_timer_expiry_handle, args);
+}
+
+static int
+test_expiry_with_rte_timer(const struct pdcp_test_conf *ul_conf)
+{
+	const enum rte_security_pdcp_sn_size sn_size = ul_conf->entity.pdcp_xfrm.sn_size;
+	struct rte_mbuf *m1 = NULL, *out_mb[1] = {0};
+	uint16_t n = 0, nb_err = 0, nb_try = 5;
+	struct test_rte_timer_args timer_args;
+	struct rte_pdcp_entity *pdcp_entity;
+	struct pdcp_test_conf dl_conf;
+	int ret = TEST_FAILED, nb_out;
+	struct rte_timer timer = {0};
+
+	const int start_count = 0;
+
+	if (ul_conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)
+		return TEST_SKIPPED;
+
+	/* Set up a timer */
+	rte_timer_init(&timer);
+
+	/* Create configuration for actual testing */
+	uplink_to_downlink_convert(ul_conf, &dl_conf);
+	dl_conf.entity.pdcp_xfrm.hfn = pdcp_hfn_from_count_get(start_count, sn_size);
+	dl_conf.entity.sn = pdcp_sn_from_count_get(start_count, sn_size);
+	dl_conf.entity.t_reordering.args = &timer_args;
+	dl_conf.entity.t_reordering.timer = &timer;
+	dl_conf.entity.t_reordering.start = test_rte_timer_start_cb;
+
+	pdcp_entity = test_entity_create(&dl_conf, &ret);
+	if (pdcp_entity == NULL)
+		return ret;
+
+	timer_args.status = 0;
+	timer_args.pdcp_entity = pdcp_entity;
+
+	/* Send packet with SN > RX_DELIV to create a gap */
+	m1 = generate_packet_for_dl_with_sn(*ul_conf, start_count + 1);
+	ASSERT_TRUE_OR_GOTO(m1 != NULL, exit, "Could not allocate buffer for packet\n");
+
+	/* Buffered packets after insert [NULL, m1] */
+	n = test_process_packets(pdcp_entity, dl_conf.entity.dev_id, &m1, 1, out_mb, &nb_err);
+	ASSERT_TRUE_OR_GOTO(nb_err == 0, exit, "Error occurred during packet buffering\n");
+	ASSERT_TRUE_OR_GOTO(n == 0, exit, "Packet was not buffered as expected\n");
+
+	m1 = NULL; /* Packet was moved to PDCP lib */
+
+	/* Verify that expire was handled correctly */
+	rte_timer_manage();
+	while (timer_args.status != 1) {
+		rte_delay_us(1);
+		rte_timer_manage();
+		ASSERT_TRUE_OR_GOTO(nb_try-- > 0, exit, "Bad expire handle status %i\n",
+			timer_args.status);
+	}
+
+	ret = TEST_SUCCESS;
+exit:
+	rte_pktmbuf_free(m1);
+	rte_pktmbuf_free_bulk(out_mb, n);
+	nb_out = rte_pdcp_entity_release(pdcp_entity, out_mb);
+	rte_pktmbuf_free_bulk(out_mb, nb_out);
+	return ret;
+}
+
 static int
 test_combined(struct pdcp_test_conf *ul_conf)
 {
@@ -1143,6 +1365,126 @@ test_combined(struct pdcp_test_conf *ul_conf)
 	ret = test_attempt_single(&dl_conf);
 
 	return ret;
+}
+
+#ifdef RTE_LIB_EVENTDEV
+static inline void
+eventdev_conf_default_set(struct rte_event_dev_config *dev_conf, struct rte_event_dev_info *info)
+{
+	memset(dev_conf, 0, sizeof(struct rte_event_dev_config));
+	dev_conf->dequeue_timeout_ns = info->min_dequeue_timeout_ns;
+	dev_conf->nb_event_ports = 1;
+	dev_conf->nb_event_queues = 1;
+	dev_conf->nb_event_queue_flows = info->max_event_queue_flows;
+	dev_conf->nb_event_port_dequeue_depth = info->max_event_port_dequeue_depth;
+	dev_conf->nb_event_port_enqueue_depth = info->max_event_port_enqueue_depth;
+	dev_conf->nb_event_port_enqueue_depth = info->max_event_port_enqueue_depth;
+	dev_conf->nb_events_limit = info->max_num_events;
+}
+
+static inline int
+eventdev_setup(void)
+{
+	struct rte_event_dev_config dev_conf;
+	struct rte_event_dev_info info;
+	int ret, evdev = 0;
+
+	if (!rte_event_dev_count())
+		return TEST_SKIPPED;
+
+	ret = rte_event_dev_info_get(evdev, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+	TEST_ASSERT(info.max_num_events < 0 || info.max_num_events >= 1,
+			"ERROR max_num_events=%d < max_events=%d", info.max_num_events, 1);
+
+	eventdev_conf_default_set(&dev_conf, &info);
+	ret = rte_event_dev_configure(evdev, &dev_conf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to configure eventdev");
+
+	ret = rte_event_queue_setup(evdev, TEST_EV_QUEUE_ID, NULL);
+	TEST_ASSERT_SUCCESS(ret, "Failed to setup queue=%d", TEST_EV_QUEUE_ID);
+
+	/* Configure event port */
+	ret = rte_event_port_setup(evdev, TEST_EV_PORT_ID, NULL);
+	TEST_ASSERT_SUCCESS(ret, "Failed to setup port=%d", TEST_EV_PORT_ID);
+	ret = rte_event_port_link(evdev, TEST_EV_PORT_ID, NULL, NULL, 0);
+	TEST_ASSERT(ret >= 0, "Failed to link all queues port=%d", TEST_EV_PORT_ID);
+
+	ret = rte_event_dev_start(evdev);
+	TEST_ASSERT_SUCCESS(ret, "Failed to start device");
+
+	testsuite_params.evdev = evdev;
+
+	return TEST_SUCCESS;
+}
+
+static int
+event_timer_setup(void)
+{
+	struct rte_event_timer_adapter_info info;
+	struct rte_event_timer_adapter *timdev;
+	uint32_t caps = 0;
+
+	struct rte_event_timer_adapter_conf config = {
+		.event_dev_id = testsuite_params.evdev,
+		.timer_adapter_id = TIMER_ADAPTER_ID,
+		.timer_tick_ns = NSECPERSEC,
+		.max_tmo_ns = 10 * NSECPERSEC,
+		.nb_timers = 10,
+		.flags = 0,
+	};
+
+	TEST_ASSERT_SUCCESS(rte_event_timer_adapter_caps_get(testsuite_params.evdev, &caps),
+				"Failed to get adapter capabilities");
+
+	if (!(caps & RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT))
+		return TEST_SKIPPED;
+
+	timdev = rte_event_timer_adapter_create(&config);
+
+	TEST_ASSERT_NOT_NULL(timdev, "Failed to create event timer ring");
+
+	testsuite_params.timdev = timdev;
+
+	TEST_ASSERT_EQUAL(rte_event_timer_adapter_start(timdev), 0,
+			"Failed to start event timer adapter");
+
+	rte_event_timer_adapter_get_info(timdev, &info);
+	testsuite_params.min_resolution_ns = info.min_resolution_ns;
+
+	return TEST_SUCCESS;
+}
+#endif /* RTE_LIB_EVENTDEV */
+
+static int
+ut_setup_pdcp_event_timer(void)
+{
+#ifdef RTE_LIB_EVENTDEV
+	int ret;
+
+	ret = eventdev_setup();
+	if (ret)
+		return ret;
+
+	return event_timer_setup();
+#else
+	return TEST_SKIPPED;
+#endif /* RTE_LIB_EVENTDEV */
+}
+
+static void
+ut_teardown_pdcp_event_timer(void)
+{
+#ifdef RTE_LIB_EVENTDEV
+	struct rte_event_timer_adapter *timdev = testsuite_params.timdev;
+	int evdev = testsuite_params.evdev;
+
+	rte_event_dev_stop(evdev);
+	rte_event_dev_close(evdev);
+
+	rte_event_timer_adapter_stop(timdev);
+	rte_event_timer_adapter_free(timdev);
+#endif /* RTE_LIB_EVENTDEV */
 }
 
 static int
@@ -1189,6 +1531,14 @@ static struct unit_test_suite reorder_test_cases  = {
 			ut_setup_pdcp, ut_teardown_pdcp,
 			run_test_with_all_known_vec_until_first_pass,
 			test_reorder_buffer_full_window_size_sn_12),
+		TEST_CASE_NAMED_WITH_DATA("test_expire_with_event_timer",
+			ut_setup_pdcp_event_timer, ut_teardown_pdcp_event_timer,
+			run_test_with_all_known_vec_until_first_pass,
+			test_expiry_with_event_timer),
+		TEST_CASE_NAMED_WITH_DATA("test_expire_with_rte_timer",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec_until_first_pass,
+			test_expiry_with_rte_timer),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
