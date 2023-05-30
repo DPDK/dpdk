@@ -16,6 +16,9 @@
 #define NB_TESTS RTE_DIM(pdcp_test_params)
 #define PDCP_IV_LEN 16
 
+/* According to formula(7.2.a Window_Size) */
+#define PDCP_WINDOW_SIZE(sn_size) (1 << (sn_size - 1))
+
 struct pdcp_testsuite_params {
 	struct rte_mempool *mbuf_pool;
 	struct rte_mempool *cop_pool;
@@ -36,10 +39,67 @@ struct pdcp_test_conf {
 	uint32_t output_len;
 };
 
+static int create_test_conf_from_index(const int index, struct pdcp_test_conf *conf);
+
+typedef int (*test_with_conf_t)(struct pdcp_test_conf *conf);
+
+static int
+run_test_foreach_known_vec(test_with_conf_t test, bool stop_on_first_pass)
+{
+	struct pdcp_test_conf test_conf;
+	bool all_tests_skipped = true;
+	uint32_t i;
+	int ret;
+
+	for (i = 0; i < NB_TESTS; i++) {
+		create_test_conf_from_index(i, &test_conf);
+		ret = test(&test_conf);
+
+		if (ret == TEST_FAILED) {
+			printf("[%03i] - %s - failed\n", i, pdcp_test_params[i].name);
+			return TEST_FAILED;
+		}
+
+		if ((ret == TEST_SKIPPED) || (ret == -ENOTSUP))
+			continue;
+
+		if (stop_on_first_pass)
+			return TEST_SUCCESS;
+
+		all_tests_skipped = false;
+	}
+
+	if (all_tests_skipped)
+		return TEST_SKIPPED;
+
+	return TEST_SUCCESS;
+}
+
+static int
+run_test_with_all_known_vec(const void *args)
+{
+	test_with_conf_t test = args;
+
+	return run_test_foreach_known_vec(test, false);
+}
+
 static inline int
 pdcp_hdr_size_get(enum rte_security_pdcp_sn_size sn_size)
 {
 	return RTE_ALIGN_MUL_CEIL(sn_size, 8) / 8;
+}
+
+static int
+pktmbuf_read_into(const struct rte_mbuf *m, void *buf, size_t buf_len)
+{
+	if (m->pkt_len > buf_len)
+		return -ENOMEM;
+
+	const void *read = rte_pktmbuf_read(m, 0, m->pkt_len, buf);
+	if (read != NULL && read != buf)
+		memcpy(buf, read, m->pkt_len);
+
+	return 0;
 }
 
 static int
@@ -324,6 +384,21 @@ pdcp_sn_from_raw_get(const void *data, enum rte_security_pdcp_sn_size size)
 	}
 
 	return sn;
+}
+
+static void
+pdcp_sn_to_raw_set(void *data, uint32_t sn, int size)
+{
+	if (size == RTE_SECURITY_PDCP_SN_SIZE_12) {
+		struct rte_pdcp_up_data_pdu_sn_12_hdr *pdu_hdr = data;
+		pdu_hdr->sn_11_8 = ((sn & 0xf00) >> 8);
+		pdu_hdr->sn_7_0 = (sn & 0xff);
+	} else if (size == RTE_SECURITY_PDCP_SN_SIZE_18) {
+		struct rte_pdcp_up_data_pdu_sn_18_hdr *pdu_hdr = data;
+		pdu_hdr->sn_17_16 = ((sn & 0x30000) >> 16);
+		pdu_hdr->sn_15_8 = ((sn & 0xff00) >> 8);
+		pdu_hdr->sn_7_0 = (sn & 0xff);
+	}
 }
 
 static int
@@ -648,9 +723,17 @@ test_attempt_single(struct pdcp_test_conf *t_conf)
 		goto mbuf_free;
 	}
 
-	ret = pdcp_known_vec_verify(mbuf, t_conf->output, t_conf->output_len);
-	if (ret)
-		goto mbuf_free;
+	/* If expected output provided - verify, else - store for future use */
+	if (t_conf->output_len) {
+		ret = pdcp_known_vec_verify(mbuf, t_conf->output, t_conf->output_len);
+		if (ret)
+			goto mbuf_free;
+	} else {
+		ret = pktmbuf_read_into(mbuf, t_conf->output, RTE_PDCP_CTRL_PDU_SIZE_MAX);
+		if (ret)
+			goto mbuf_free;
+		t_conf->output_len = mbuf->pkt_len;
+	}
 
 	ret = rte_pdcp_entity_suspend(pdcp_entity, out_mb);
 	if (ret) {
@@ -667,6 +750,193 @@ exit:
 	return ret;
 }
 
+static void
+uplink_to_downlink_convert(const struct pdcp_test_conf *ul_cfg,
+			   struct pdcp_test_conf *dl_cfg)
+{
+	assert(ul_cfg->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_UPLINK);
+
+	memcpy(dl_cfg, ul_cfg, sizeof(*dl_cfg));
+	dl_cfg->entity.pdcp_xfrm.pkt_dir = RTE_SECURITY_PDCP_DOWNLINK;
+	dl_cfg->entity.reverse_iv_direction = false;
+
+	if (dl_cfg->is_integrity_protected) {
+		dl_cfg->entity.crypto_xfrm = &dl_cfg->c_xfrm;
+
+		dl_cfg->c_xfrm.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+		dl_cfg->c_xfrm.next = &dl_cfg->a_xfrm;
+
+		dl_cfg->a_xfrm.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
+		dl_cfg->a_xfrm.next = NULL;
+	} else {
+		dl_cfg->entity.crypto_xfrm = &dl_cfg->c_xfrm;
+		dl_cfg->c_xfrm.next = NULL;
+		dl_cfg->c_xfrm.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	}
+
+	dl_cfg->entity.dev_id = (uint8_t)cryptodev_id_get(dl_cfg->is_integrity_protected,
+			&dl_cfg->c_xfrm, &dl_cfg->a_xfrm);
+
+	memcpy(dl_cfg->input, ul_cfg->output, ul_cfg->output_len);
+	dl_cfg->input_len = ul_cfg->output_len;
+
+	memcpy(dl_cfg->output, ul_cfg->input, ul_cfg->input_len);
+	dl_cfg->output_len = ul_cfg->input_len;
+}
+
+/*
+ * According to ETSI TS 138 323 V17.1.0, Section 5.2.2.1,
+ * SN could be divided into following ranges,
+ * relatively to current value of RX_DELIV state:
+ * +-------------+-------------+-------------+-------------+
+ * |  -Outside   |  -Window    |   +Window   |  +Outside   |
+ * |   (valid)   |  (Invalid)  |   (Valid)   |  (Invalid)  |
+ * +-------------+-------------^-------------+-------------+
+ *                             |
+ *                             v
+ *                        SN(RX_DELIV)
+ */
+enum sn_range_type {
+	SN_RANGE_MINUS_OUTSIDE,
+	SN_RANGE_MINUS_WINDOW,
+	SN_RANGE_PLUS_WINDOW,
+	SN_RANGE_PLUS_OUTSIDE,
+};
+
+#define PDCP_SET_COUNT(hfn, sn, size) ((hfn << size) | (sn & ((1 << size) - 1)))
+
+/*
+ * Take uplink test case as base, modify RX_DELIV in state and SN in input
+ */
+static int
+test_sn_range_type(enum sn_range_type type, struct pdcp_test_conf *conf)
+{
+	uint32_t rx_deliv_hfn, rx_deliv_sn, new_hfn, new_sn;
+	const int domain = conf->entity.pdcp_xfrm.domain;
+	struct pdcp_test_conf dl_conf;
+	int ret, expected_ret;
+
+	if (conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)
+		return TEST_SKIPPED;
+
+	if (domain != RTE_SECURITY_PDCP_MODE_CONTROL && domain != RTE_SECURITY_PDCP_MODE_DATA)
+		return TEST_SKIPPED;
+
+	const uint32_t sn_size = conf->entity.pdcp_xfrm.sn_size;
+	const uint32_t window_size = PDCP_WINDOW_SIZE(sn_size);
+	/* Max value of SN that could fit in `sn_size` bits */
+	const uint32_t max_sn = (1 << sn_size) - 1;
+	const uint32_t shift = (max_sn - window_size) / 2;
+	/* Could be any number up to `shift` value */
+	const uint32_t default_sn = RTE_MIN(2u, shift);
+
+	/* Initialize HFN as non zero value, to be able check values before */
+	rx_deliv_hfn = 0xa;
+
+	switch (type) {
+	case SN_RANGE_PLUS_WINDOW:
+		/* Within window size, HFN stay same */
+		new_hfn = rx_deliv_hfn;
+		rx_deliv_sn = default_sn;
+		new_sn = rx_deliv_sn + 1;
+		expected_ret = TEST_SUCCESS;
+		break;
+	case SN_RANGE_MINUS_WINDOW:
+		/* Within window size, HFN stay same */
+		new_hfn = rx_deliv_hfn;
+		rx_deliv_sn = default_sn;
+		new_sn = rx_deliv_sn - 1;
+		expected_ret = TEST_FAILED;
+		break;
+	case SN_RANGE_PLUS_OUTSIDE:
+		/* RCVD_SN >= SN(RX_DELIV) + Window_Size */
+		new_hfn = rx_deliv_hfn - 1;
+		rx_deliv_sn = default_sn;
+		new_sn = rx_deliv_sn + window_size;
+		expected_ret = TEST_FAILED;
+		break;
+	case SN_RANGE_MINUS_OUTSIDE:
+		/* RCVD_SN < SN(RX_DELIV) - Window_Size */
+		new_hfn = rx_deliv_hfn + 1;
+		rx_deliv_sn = window_size + default_sn;
+		new_sn = rx_deliv_sn - window_size - 1;
+		expected_ret = TEST_SUCCESS;
+		break;
+	default:
+		return TEST_FAILED;
+	}
+
+	/* Configure Uplink to generate expected, encrypted packet */
+	pdcp_sn_to_raw_set(conf->input, new_sn, conf->entity.pdcp_xfrm.sn_size);
+	conf->entity.reverse_iv_direction = true;
+	conf->entity.pdcp_xfrm.hfn = new_hfn;
+	conf->entity.sn = new_sn;
+	conf->output_len = 0;
+	ret = test_attempt_single(conf);
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	/* Flip configuration to downlink */
+	uplink_to_downlink_convert(conf, &dl_conf);
+
+	/* Modify the rx_deliv to verify the expected behaviour */
+	dl_conf.entity.pdcp_xfrm.hfn = rx_deliv_hfn;
+	dl_conf.entity.sn = rx_deliv_sn;
+	ret = test_attempt_single(&dl_conf);
+	if ((ret == TEST_SKIPPED) || (ret == -ENOTSUP))
+		return ret;
+
+	TEST_ASSERT_EQUAL(ret, expected_ret, "Unexpected result");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_sn_plus_window(struct pdcp_test_conf *t_conf)
+{
+	return test_sn_range_type(SN_RANGE_PLUS_WINDOW, t_conf);
+}
+
+static int
+test_sn_minus_window(struct pdcp_test_conf *t_conf)
+{
+	return test_sn_range_type(SN_RANGE_MINUS_WINDOW, t_conf);
+}
+
+static int
+test_sn_plus_outside(struct pdcp_test_conf *t_conf)
+{
+	return test_sn_range_type(SN_RANGE_PLUS_OUTSIDE, t_conf);
+}
+
+static int
+test_sn_minus_outside(struct pdcp_test_conf *t_conf)
+{
+	return test_sn_range_type(SN_RANGE_MINUS_OUTSIDE, t_conf);
+}
+
+static int
+test_combined(struct pdcp_test_conf *ul_conf)
+{
+	struct pdcp_test_conf dl_conf;
+	int ret;
+
+	if (ul_conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)
+		return TEST_SKIPPED;
+
+	ul_conf->entity.reverse_iv_direction = true;
+	ul_conf->output_len = 0;
+
+	ret = test_attempt_single(ul_conf);
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	uplink_to_downlink_convert(ul_conf, &dl_conf);
+	ret = test_attempt_single(&dl_conf);
+
+	return ret;
+}
+
 static int
 run_test_for_one_known_vec(const void *arg)
 {
@@ -677,8 +947,34 @@ run_test_for_one_known_vec(const void *arg)
 	return test_attempt_single(&test_conf);
 }
 
+static struct unit_test_suite combined_mode_cases  = {
+	.suite_name = "PDCP combined mode",
+	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA("combined mode", ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_combined),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+static struct unit_test_suite hfn_sn_test_cases  = {
+	.suite_name = "PDCP HFN/SN",
+	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA("SN plus window", ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_sn_plus_window),
+		TEST_CASE_NAMED_WITH_DATA("SN minus window", ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_sn_minus_window),
+		TEST_CASE_NAMED_WITH_DATA("SN plus outside", ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_sn_plus_outside),
+		TEST_CASE_NAMED_WITH_DATA("SN minus outside", ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_sn_minus_outside),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 struct unit_test_suite *test_suites[] = {
 	NULL, /* Place holder for known_vector_cases */
+	&combined_mode_cases,
+	&hfn_sn_test_cases,
 	NULL /* End of suites list */
 };
 
