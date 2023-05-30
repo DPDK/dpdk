@@ -110,6 +110,8 @@ struct rte_pdcp_entity_conf {
 	 * such as entity re-establishment.
 	 */
 	bool status_report_required;
+	/** Enable out of order delivery. */
+	bool out_of_order_delivery;
 };
 /* >8 End of structure rte_pdcp_entity_conf. */
 
@@ -269,8 +271,8 @@ rte_pdcp_pkt_pre_process(const struct rte_pdcp_entity *entity,
  * @param in_mb
  *   The address of an array of *num* pointers to *rte_mbuf* structures.
  * @param[out] out_mb
- *   The address of an array of *num* pointers to *rte_mbuf* structures
- *   to output packets after PDCP post-processing.
+ *   The address of an array that can hold up to *rte_pdcp_entity.max_pkt_cache*
+ *   pointers to *rte_mbuf* structures to output packets after PDCP post-processing.
  * @param num
  *   The maximum number of packets to process.
  * @param[out] nb_err

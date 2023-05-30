@@ -840,25 +840,88 @@ pdcp_packet_strip(struct rte_mbuf *mb, const uint32_t hdr_trim_sz, const bool tr
 	}
 }
 
-static inline bool
+static inline int
 pdcp_post_process_update_entity_state(const struct rte_pdcp_entity *entity,
-				      const uint32_t count)
+				      const uint32_t count, struct rte_mbuf *mb,
+				      struct rte_mbuf *out_mb[],
+				      const bool trim_mac)
 {
 	struct entity_priv *en_priv = entity_priv_get(entity);
+	struct pdcp_t_reordering *t_reorder;
+	struct pdcp_reorder *reorder;
+	uint16_t processed = 0;
+
+	struct entity_priv_dl_part *dl = entity_dl_part_get(entity);
+	const uint32_t hdr_trim_sz = en_priv->hdr_sz + en_priv->aad_sz;
 
 	if (count < en_priv->state.rx_deliv)
-		return false;
-
-	/* t-Reordering timer is not supported - SDU will be delivered immediately.
-	 * Update RX_DELIV to the COUNT value of the first PDCP SDU which has not
-	 * been delivered to upper layers
-	 */
-	en_priv->state.rx_next = count + 1;
+		return -EINVAL;
 
 	if (count >= en_priv->state.rx_next)
 		en_priv->state.rx_next = count + 1;
 
-	return true;
+	pdcp_packet_strip(mb, hdr_trim_sz, trim_mac);
+
+	if (en_priv->flags.is_out_of_order_delivery) {
+		out_mb[0] = mb;
+		en_priv->state.rx_deliv = count + 1;
+
+		return 1;
+	}
+
+	reorder = &dl->reorder;
+	t_reorder = &dl->t_reorder;
+
+	if (count == en_priv->state.rx_deliv) {
+		if (reorder->is_active) {
+			/*
+			 * This insert used only to increment reorder->min_seqn
+			 * To remove it - min_seqn_set() has to work with non-empty buffer
+			 */
+			pdcp_reorder_insert(reorder, mb, count);
+
+			/* Get buffered packets */
+			struct rte_mbuf **cached_mbufs = &out_mb[processed];
+			uint32_t nb_cached = pdcp_reorder_get_sequential(reorder,
+					cached_mbufs, entity->max_pkt_cache - processed);
+
+			processed += nb_cached;
+		} else {
+			out_mb[processed++] = mb;
+		}
+
+		/* Processed should never exceed the window size */
+		en_priv->state.rx_deliv = count + processed;
+
+	} else {
+		if (!reorder->is_active)
+			/* Initialize reordering buffer with RX_DELIV */
+			pdcp_reorder_start(reorder, en_priv->state.rx_deliv);
+		/* Buffer the packet */
+		pdcp_reorder_insert(reorder, mb, count);
+	}
+
+	/* Stop & reset current timer if rx_reord is received */
+	if (t_reorder->state == TIMER_RUNNING &&
+			en_priv->state.rx_deliv >= en_priv->state.rx_reord) {
+		t_reorder->state = TIMER_STOP;
+		/* Stop reorder buffer, only if it's empty */
+		if (en_priv->state.rx_deliv == en_priv->state.rx_next)
+			pdcp_reorder_stop(reorder);
+	}
+
+	/*
+	 * If t-Reordering is not running (includes the case when t-Reordering is stopped due to
+	 * actions above).
+	 */
+	if (t_reorder->state == TIMER_STOP && en_priv->state.rx_deliv < en_priv->state.rx_next) {
+		/* Update RX_REORD to RX_NEXT */
+		en_priv->state.rx_reord = en_priv->state.rx_next;
+		/* Start t-Reordering */
+		t_reorder->state = TIMER_RUNNING;
+	}
+
+	return processed;
 }
 
 static inline uint16_t
@@ -866,15 +929,11 @@ pdcp_post_process_uplane_dl_flags(const struct rte_pdcp_entity *entity, struct r
 				  struct rte_mbuf *out_mb[], uint16_t num, uint16_t *nb_err_ret,
 				  const bool is_integ_protected)
 {
-	struct entity_priv *en_priv = entity_priv_get(entity);
-	const uint32_t aad_sz = en_priv->aad_sz;
-	int i, nb_success = 0, nb_err = 0;
+	int i, nb_processed, nb_success = 0, nb_err = 0;
 	rte_pdcp_dynfield_t *mb_dynfield;
 	struct rte_mbuf *err_mb[num];
 	struct rte_mbuf *mb;
 	uint32_t count;
-
-	const uint32_t hdr_trim_sz = en_priv->hdr_sz + aad_sz;
 
 #ifdef RTE_ARCH_PPC_64
 	err_mb[0] = NULL; /* workaround PPC-GCC bug */
@@ -887,11 +946,12 @@ pdcp_post_process_uplane_dl_flags(const struct rte_pdcp_entity *entity, struct r
 		mb_dynfield = pdcp_dynfield(mb);
 		count = *mb_dynfield;
 
-		if (unlikely(!pdcp_post_process_update_entity_state(entity, count)))
+		nb_processed = pdcp_post_process_update_entity_state(
+				entity, count, mb, &out_mb[nb_success], is_integ_protected);
+		if (nb_processed < 0)
 			goto error;
 
-		pdcp_packet_strip(mb, hdr_trim_sz, is_integ_protected);
-		out_mb[nb_success++] = mb;
+		nb_success += nb_processed;
 		continue;
 
 error:
@@ -925,15 +985,11 @@ pdcp_post_process_cplane_sn_12_dl(const struct rte_pdcp_entity *entity,
 				  struct rte_mbuf *out_mb[],
 				  uint16_t num, uint16_t *nb_err_ret)
 {
-	struct entity_priv *en_priv = entity_priv_get(entity);
-	const uint32_t aad_sz = en_priv->aad_sz;
-	int i, nb_success = 0, nb_err = 0;
+	int i, nb_processed, nb_success = 0, nb_err = 0;
 	rte_pdcp_dynfield_t *mb_dynfield;
 	struct rte_mbuf *err_mb[num];
 	struct rte_mbuf *mb;
 	uint32_t count;
-
-	const uint32_t hdr_trim_sz = en_priv->hdr_sz + aad_sz;
 
 #ifdef RTE_ARCH_PPC_64
 	err_mb[0] = NULL; /* workaround PPC-GCC bug */
@@ -946,12 +1002,12 @@ pdcp_post_process_cplane_sn_12_dl(const struct rte_pdcp_entity *entity,
 		mb_dynfield = pdcp_dynfield(mb);
 		count = *mb_dynfield;
 
-		if (unlikely(!pdcp_post_process_update_entity_state(entity, count)))
+		nb_processed = pdcp_post_process_update_entity_state(
+				entity, count, mb, &out_mb[nb_success], true);
+		if (nb_processed < 0)
 			goto error;
 
-		pdcp_packet_strip(mb, hdr_trim_sz, true);
-
-		out_mb[nb_success++] = mb;
+		nb_success += nb_processed;
 		continue;
 
 error:
@@ -1113,6 +1169,13 @@ pdcp_entity_priv_populate(struct entity_priv *en_priv, const struct rte_pdcp_ent
 
 		en_priv->flags.is_status_report_required = 1;
 	}
+
+	/**
+	 * flags.is_out_of_order_delivery
+	 *
+	 * Indicate whether the outoforder delivery is enabled for PDCP entity.
+	 */
+	en_priv->flags.is_out_of_order_delivery = conf->out_of_order_delivery;
 
 	/**
 	 * hdr_sz

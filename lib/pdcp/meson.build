@@ -12,9 +12,10 @@ sources = files(
         'pdcp_crypto.c',
         'pdcp_ctrl_pdu.c',
         'pdcp_process.c',
+        'pdcp_reorder.c',
         'rte_pdcp.c',
         )
 headers = files('rte_pdcp.h')
 indirect_headers += files('rte_pdcp_group.h')
 
-deps += ['mbuf', 'net', 'cryptodev', 'security']
+deps += ['mbuf', 'net', 'cryptodev', 'security', 'reorder']

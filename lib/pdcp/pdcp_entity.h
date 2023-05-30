@@ -11,6 +11,8 @@
 #include <rte_pdcp.h>
 #include <rte_security.h>
 
+#include "pdcp_reorder.h"
+
 struct entity_priv;
 
 #define PDCP_HFN_MIN 0
@@ -109,6 +111,17 @@ union cipher_iv_partial {
 	uint64_t u64[2];
 };
 
+enum timer_state {
+	TIMER_STOP,
+	TIMER_RUNNING,
+	TIMER_EXPIRED,
+};
+
+struct pdcp_t_reordering {
+	/** Represent timer state */
+	enum timer_state state;
+};
+
 struct pdcp_cnt_bitmap {
 	/** Number of entries that can be stored. */
 	uint32_t size;
@@ -145,6 +158,8 @@ struct entity_priv {
 		uint64_t is_null_auth : 1;
 		/** Is status report required.*/
 		uint64_t is_status_report_required : 1;
+		/** Is out-of-order delivery enabled */
+		uint64_t is_out_of_order_delivery : 1;
 	} flags;
 	/** Crypto op pool. */
 	struct rte_mempool *cop_pool;
@@ -161,6 +176,10 @@ struct entity_priv {
 struct entity_priv_dl_part {
 	/** PDCP would need to track the count values that are already received.*/
 	struct pdcp_cnt_bitmap bitmap;
+	/** t-Reordering handles */
+	struct pdcp_t_reordering t_reorder;
+	/** Reorder packet buffer */
+	struct pdcp_reorder reorder;
 };
 
 struct entity_priv_ul_part {

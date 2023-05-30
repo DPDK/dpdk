@@ -49,6 +49,17 @@ pdcp_entity_size_get(const struct rte_pdcp_entity_conf *conf)
 	return RTE_ALIGN_CEIL(size, RTE_CACHE_LINE_SIZE);
 }
 
+static int
+pdcp_dl_establish(struct rte_pdcp_entity *entity, const struct rte_pdcp_entity_conf *conf)
+{
+	const uint32_t window_size = pdcp_window_size_get(conf->pdcp_xfrm.sn_size);
+	struct entity_priv_dl_part *dl = entity_dl_part_get(entity);
+
+	entity->max_pkt_cache = RTE_MAX(entity->max_pkt_cache, window_size);
+
+	return pdcp_reorder_create(&dl->reorder, window_size);
+}
+
 struct rte_pdcp_entity *
 rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 {
@@ -118,6 +129,12 @@ rte_pdcp_entity_establish(const struct rte_pdcp_entity_conf *conf)
 	if (ret)
 		goto crypto_sess_destroy;
 
+	if (conf->pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) {
+		ret = pdcp_dl_establish(entity, conf);
+		if (ret)
+			goto crypto_sess_destroy;
+	}
+
 	ret = pdcp_cnt_ring_create(entity, conf);
 	if (ret)
 		goto crypto_sess_destroy;
@@ -132,26 +149,50 @@ entity_free:
 	return NULL;
 }
 
+static int
+pdcp_dl_release(struct rte_pdcp_entity *entity, struct rte_mbuf *out_mb[])
+{
+	struct entity_priv_dl_part *dl = entity_dl_part_get(entity);
+	struct entity_priv *en_priv = entity_priv_get(entity);
+	int nb_out;
+
+	nb_out = pdcp_reorder_up_to_get(&dl->reorder, out_mb, entity->max_pkt_cache,
+			en_priv->state.rx_next);
+
+	pdcp_reorder_destroy(&dl->reorder);
+
+	return nb_out;
+}
+
 int
 rte_pdcp_entity_release(struct rte_pdcp_entity *pdcp_entity, struct rte_mbuf *out_mb[])
 {
+	struct entity_priv *en_priv;
+	int nb_out = 0;
+
 	if (pdcp_entity == NULL)
 		return -EINVAL;
+
+	en_priv = entity_priv_get(pdcp_entity);
+
+	if (!en_priv->flags.is_ul_entity)
+		nb_out = pdcp_dl_release(pdcp_entity, out_mb);
 
 	/* Teardown crypto sessions */
 	pdcp_crypto_sess_destroy(pdcp_entity);
 
 	rte_free(pdcp_entity);
 
-	RTE_SET_USED(out_mb);
-	return 0;
+	return nb_out;
 }
 
 int
 rte_pdcp_entity_suspend(struct rte_pdcp_entity *pdcp_entity,
 			struct rte_mbuf *out_mb[])
 {
+	struct entity_priv_dl_part *dl;
 	struct entity_priv *en_priv;
+	int nb_out = 0;
 
 	if (pdcp_entity == NULL)
 		return -EINVAL;
@@ -161,13 +202,15 @@ rte_pdcp_entity_suspend(struct rte_pdcp_entity *pdcp_entity,
 	if (en_priv->flags.is_ul_entity) {
 		en_priv->state.tx_next = 0;
 	} else {
+		dl = entity_dl_part_get(pdcp_entity);
+		nb_out = pdcp_reorder_up_to_get(&dl->reorder, out_mb, pdcp_entity->max_pkt_cache,
+				en_priv->state.rx_next);
+		pdcp_reorder_stop(&dl->reorder);
 		en_priv->state.rx_next = 0;
 		en_priv->state.rx_deliv = 0;
 	}
 
-	RTE_SET_USED(out_mb);
-
-	return 0;
+	return nb_out;
 }
 
 struct rte_mbuf *
