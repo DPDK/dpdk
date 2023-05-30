@@ -1107,6 +1107,71 @@ exit:
 }
 
 static int
+test_reorder_gap_in_reorder_buffer(const struct pdcp_test_conf *ul_conf)
+{
+	const enum rte_security_pdcp_sn_size sn_size = ul_conf->entity.pdcp_xfrm.sn_size;
+	struct rte_mbuf *m = NULL, *out_mb[2] = {0};
+	uint16_t nb_success = 0, nb_err = 0;
+	struct rte_pdcp_entity *pdcp_entity;
+	int ret = TEST_FAILED, nb_out, i;
+	struct pdcp_test_conf dl_conf;
+	uint8_t cdev_id;
+
+	const int start_count = 0;
+
+	if (ul_conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)
+		return TEST_SKIPPED;
+
+	/* Create configuration for actual testing */
+	uplink_to_downlink_convert(ul_conf, &dl_conf);
+	dl_conf.entity.pdcp_xfrm.hfn = pdcp_hfn_from_count_get(start_count, sn_size);
+	dl_conf.entity.sn = pdcp_sn_from_count_get(start_count, sn_size);
+	pdcp_entity = test_entity_create(&dl_conf, &ret);
+	if (pdcp_entity == NULL)
+		return ret;
+
+	cdev_id = dl_conf.entity.dev_id;
+
+	/* Create two gaps [NULL, m1, NULL, m3]*/
+	for (i = 0; i < 2; i++) {
+		m = generate_packet_for_dl_with_sn(*ul_conf, start_count + 2 * i + 1);
+		ASSERT_TRUE_OR_GOTO(m != NULL, exit, "Could not allocate buffer for packet\n");
+		nb_success = test_process_packets(pdcp_entity, cdev_id, &m, 1, out_mb, &nb_err);
+		ASSERT_TRUE_OR_GOTO(nb_err == 0, exit, "Error occurred during packet process\n");
+		ASSERT_TRUE_OR_GOTO(nb_success == 0, exit, "Packet was not buffered as expected\n");
+		m = NULL; /* Packet was moved to PDCP lib */
+	}
+
+	/* Generate packet to fill the first gap */
+	m = generate_packet_for_dl_with_sn(*ul_conf, start_count);
+	ASSERT_TRUE_OR_GOTO(m != NULL, exit, "Could not allocate buffer for packet\n");
+
+	/*
+	 * Buffered packets after insert [m0, m1, NULL, m3]
+	 * Only first gap should be filled, timer should be restarted for second gap
+	 */
+	nb_success = test_process_packets(pdcp_entity, cdev_id, &m, 1, out_mb, &nb_err);
+	ASSERT_TRUE_OR_GOTO(nb_err == 0, exit, "Error occurred during packet process\n");
+	ASSERT_TRUE_OR_GOTO(nb_success == 2, exit,
+			"Packet count mismatch (received: %i, expected: 2)\n", nb_success);
+	m = NULL;
+	/* Check that packets in correct order */
+	ASSERT_TRUE_OR_GOTO(array_asc_sorted_check(out_mb, nb_success, sn_size),
+			exit, "Error occurred during packet drain\n");
+	ASSERT_TRUE_OR_GOTO(testsuite_params.timer_is_running == true, exit,
+			"Timer should be restarted after partial drain");
+
+
+	ret = TEST_SUCCESS;
+exit:
+	rte_pktmbuf_free(m);
+	rte_pktmbuf_free_bulk(out_mb, nb_success);
+	nb_out = rte_pdcp_entity_release(pdcp_entity, out_mb);
+	rte_pktmbuf_free_bulk(out_mb, nb_out);
+	return ret;
+}
+
+static int
 test_reorder_buffer_full_window_size_sn_12(const struct pdcp_test_conf *ul_conf)
 {
 	const enum rte_security_pdcp_sn_size sn_size = ul_conf->entity.pdcp_xfrm.sn_size;
@@ -1527,6 +1592,9 @@ static struct unit_test_suite reorder_test_cases  = {
 		TEST_CASE_NAMED_WITH_DATA("test_reorder_gap_fill",
 			ut_setup_pdcp, ut_teardown_pdcp,
 			run_test_with_all_known_vec, test_reorder_gap_fill),
+		TEST_CASE_NAMED_WITH_DATA("test_reorder_gap_in_reorder_buffer",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_reorder_gap_in_reorder_buffer),
 		TEST_CASE_NAMED_WITH_DATA("test_reorder_buffer_full_window_size_sn_12",
 			ut_setup_pdcp, ut_teardown_pdcp,
 			run_test_with_all_known_vec_until_first_pass,
