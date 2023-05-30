@@ -2,6 +2,7 @@
  * Copyright(C) 2023 Marvell.
  */
 
+#include <rte_bitmap.h>
 #include <rte_errno.h>
 #ifdef RTE_LIB_EVENTDEV
 #include <rte_eventdev.h>
@@ -48,6 +49,9 @@ struct pdcp_testsuite_params {
 #endif /* RTE_LIB_EVENTDEV */
 	bool timer_is_running;
 	uint64_t min_resolution_ns;
+	struct rte_pdcp_up_ctrl_pdu_hdr *status_report;
+	uint32_t status_report_bitmask_capacity;
+	uint8_t *ctrl_pdu_buf;
 };
 
 static struct pdcp_testsuite_params testsuite_params;
@@ -167,6 +171,18 @@ static struct rte_pdcp_t_reordering t_reorder_timer = {
 	.start = pdcp_timer_start_cb,
 	.stop = pdcp_timer_stop_cb,
 };
+
+static inline void
+bitmask_set_bit(uint8_t *mask, uint32_t bit)
+{
+	mask[bit / 8] |= (1 << bit % 8);
+}
+
+static inline bool
+bitmask_is_bit_set(const uint8_t *mask, uint32_t bit)
+{
+	return mask[bit / 8] & (1 << (bit % 8));
+}
 
 static inline int
 pdcp_hdr_size_get(enum rte_security_pdcp_sn_size sn_size)
@@ -314,6 +330,21 @@ testsuite_setup(void)
 		goto cop_pool_free;
 	}
 
+	/* Allocate memory for longest possible status report */
+	ts_params->status_report_bitmask_capacity = RTE_PDCP_CTRL_PDU_SIZE_MAX -
+		sizeof(struct rte_pdcp_up_ctrl_pdu_hdr);
+	ts_params->status_report = rte_zmalloc(NULL, RTE_PDCP_CTRL_PDU_SIZE_MAX, 0);
+	if (ts_params->status_report == NULL) {
+		RTE_LOG(ERR, USER1, "Could not allocate status report\n");
+		goto cop_pool_free;
+	}
+
+	ts_params->ctrl_pdu_buf = rte_zmalloc(NULL, RTE_PDCP_CTRL_PDU_SIZE_MAX, 0);
+	if (ts_params->ctrl_pdu_buf == NULL) {
+		RTE_LOG(ERR, USER1, "Could not allocate status report data\n");
+		goto cop_pool_free;
+	}
+
 	return 0;
 
 cop_pool_free:
@@ -322,6 +353,8 @@ cop_pool_free:
 mbuf_pool_free:
 	rte_mempool_free(ts_params->mbuf_pool);
 	ts_params->mbuf_pool = NULL;
+	rte_free(ts_params->status_report);
+	rte_free(ts_params->ctrl_pdu_buf);
 	return TEST_FAILED;
 }
 
@@ -344,6 +377,9 @@ testsuite_teardown(void)
 
 	rte_mempool_free(ts_params->mbuf_pool);
 	ts_params->mbuf_pool = NULL;
+
+	rte_free(ts_params->status_report);
+	rte_free(ts_params->ctrl_pdu_buf);
 }
 
 static int
@@ -1410,6 +1446,246 @@ exit:
 	return ret;
 }
 
+static struct rte_pdcp_up_ctrl_pdu_hdr *
+pdcp_status_report_init(uint32_t fmc)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = testsuite_params.status_report;
+
+	hdr->d_c = RTE_PDCP_PDU_TYPE_CTRL;
+	hdr->pdu_type = RTE_PDCP_CTRL_PDU_TYPE_STATUS_REPORT;
+	hdr->fmc = rte_cpu_to_be_32(fmc);
+	hdr->r = 0;
+	memset(hdr->bitmap, 0, testsuite_params.status_report_bitmask_capacity);
+
+	return hdr;
+}
+
+static uint32_t
+pdcp_status_report_len(void)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = testsuite_params.status_report;
+	uint32_t i;
+
+	for (i = testsuite_params.status_report_bitmask_capacity; i != 0; i--) {
+		if (hdr->bitmap[i - 1])
+			return i;
+	}
+
+	return 0;
+}
+
+static int
+pdcp_status_report_verify(struct rte_mbuf *status_report,
+			 const struct rte_pdcp_up_ctrl_pdu_hdr *expected_hdr, uint32_t expected_len)
+{
+	uint32_t received_len = rte_pktmbuf_pkt_len(status_report);
+	uint8_t *received_buf = testsuite_params.ctrl_pdu_buf;
+	int ret;
+
+	ret = pktmbuf_read_into(status_report, received_buf, RTE_PDCP_CTRL_PDU_SIZE_MAX);
+	TEST_ASSERT_SUCCESS(ret, "Failed to copy status report pkt into continuous buffer");
+
+	debug_hexdump(stdout, "Received:", received_buf, received_len);
+	debug_hexdump(stdout, "Expected:", expected_hdr, expected_len);
+
+	TEST_ASSERT_EQUAL(expected_len, received_len,
+			  "Mismatch in packet lengths [expected: %d, received: %d]",
+			  expected_len, received_len);
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(received_buf, expected_hdr, expected_len,
+				     "Generated packet not as expected");
+
+	return 0;
+}
+
+static int
+test_status_report_gen(const struct pdcp_test_conf *ul_conf,
+		       const struct rte_pdcp_up_ctrl_pdu_hdr *hdr,
+		       uint32_t bitmap_len)
+{
+	const enum rte_security_pdcp_sn_size sn_size = ul_conf->entity.pdcp_xfrm.sn_size;
+	struct rte_mbuf *status_report = NULL, **out_mb, *m;
+	uint16_t nb_success = 0, nb_err = 0;
+	struct rte_pdcp_entity *pdcp_entity;
+	struct pdcp_test_conf dl_conf;
+	int ret = TEST_FAILED, nb_out;
+	uint32_t nb_pkts = 0, i;
+	uint8_t cdev_id;
+
+	const uint32_t start_count = rte_be_to_cpu_32(hdr->fmc);
+
+	if (ul_conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)
+		return TEST_SKIPPED;
+
+	/* Create configuration for actual testing */
+	uplink_to_downlink_convert(ul_conf, &dl_conf);
+	dl_conf.entity.pdcp_xfrm.hfn = pdcp_hfn_from_count_get(start_count, sn_size);
+	dl_conf.entity.sn = pdcp_sn_from_count_get(start_count, sn_size);
+	dl_conf.entity.status_report_required = true;
+
+	pdcp_entity = test_entity_create(&dl_conf, &ret);
+	if (pdcp_entity == NULL)
+		return ret;
+
+	cdev_id = dl_conf.entity.dev_id;
+	out_mb = calloc(pdcp_entity->max_pkt_cache, sizeof(uintptr_t));
+
+	for (i = 0; i < bitmap_len * 8; i++) {
+		if (!bitmask_is_bit_set(hdr->bitmap, i))
+			continue;
+
+		m = generate_packet_for_dl_with_sn(*ul_conf, start_count + i + 1);
+		ASSERT_TRUE_OR_GOTO(m != NULL, exit, "Could not allocate buffer for packet\n");
+
+		nb_success = test_process_packets(pdcp_entity, cdev_id, &m, 1, out_mb, &nb_err);
+		ASSERT_TRUE_OR_GOTO(nb_err == 0, exit, "Error occurred during packet buffering\n");
+		ASSERT_TRUE_OR_GOTO(nb_success == 0, exit, "Packet was not buffered as expected\n");
+
+	}
+
+	m = NULL;
+
+	/* Check status report */
+	status_report = rte_pdcp_control_pdu_create(pdcp_entity,
+			RTE_PDCP_CTRL_PDU_TYPE_STATUS_REPORT);
+	ASSERT_TRUE_OR_GOTO(status_report != NULL, exit, "Could not generate status report\n");
+
+	const uint32_t expected_len = sizeof(struct rte_pdcp_up_ctrl_pdu_hdr) + bitmap_len;
+
+	ASSERT_TRUE_OR_GOTO(pdcp_status_report_verify(status_report, hdr, expected_len) == 0, exit,
+			   "Report verification failure\n");
+
+	ret = TEST_SUCCESS;
+exit:
+	rte_free(m);
+	rte_pktmbuf_free(status_report);
+	rte_pktmbuf_free_bulk(out_mb, nb_pkts);
+	nb_out = rte_pdcp_entity_release(pdcp_entity, out_mb);
+	rte_pktmbuf_free_bulk(out_mb, nb_out);
+	free(out_mb);
+	return ret;
+}
+
+static void
+ctrl_pdu_hdr_packet_set(struct rte_pdcp_up_ctrl_pdu_hdr *hdr, uint32_t pkt_count)
+{
+	bitmask_set_bit(hdr->bitmap, pkt_count - rte_be_to_cpu_32(hdr->fmc) - 1);
+}
+
+static int
+test_status_report_fmc_only(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(42);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_one_pkt_first_slab(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(0);
+
+	ctrl_pdu_hdr_packet_set(hdr, RTE_BITMAP_SLAB_BIT_SIZE / 2 + 1);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_one_pkt_second_slab(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(1);
+
+	ctrl_pdu_hdr_packet_set(hdr, RTE_BITMAP_SLAB_BIT_SIZE + 1);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_full_slab(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(1);
+	const uint32_t start_offset = RTE_BITMAP_SLAB_BIT_SIZE + 1;
+	int i;
+
+	for (i = 0; i < RTE_BITMAP_SLAB_BIT_SIZE; i++)
+		ctrl_pdu_hdr_packet_set(hdr, start_offset + i);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_two_sequential_slabs(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(0);
+	const uint32_t start_offset = RTE_BITMAP_SLAB_BIT_SIZE / 2 + 1;
+
+	ctrl_pdu_hdr_packet_set(hdr, start_offset);
+	ctrl_pdu_hdr_packet_set(hdr, start_offset + RTE_BITMAP_SLAB_BIT_SIZE);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_two_non_sequential_slabs(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(0);
+	const uint32_t start_offset = RTE_BITMAP_SLAB_BIT_SIZE / 2 + 1;
+
+	ctrl_pdu_hdr_packet_set(hdr, start_offset);
+	ctrl_pdu_hdr_packet_set(hdr, start_offset + RTE_BITMAP_SLAB_BIT_SIZE);
+	ctrl_pdu_hdr_packet_set(hdr, 3 * RTE_BITMAP_SLAB_BIT_SIZE);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_max_length_sn_12(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr;
+	const uint32_t fmc = 0;
+	uint32_t i;
+
+	if (ul_conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK ||
+		ul_conf->entity.pdcp_xfrm.sn_size != RTE_SECURITY_PDCP_SN_SIZE_12)
+		return TEST_SKIPPED;
+
+	hdr = pdcp_status_report_init(fmc);
+
+	const uint32_t max_count = RTE_MIN((RTE_PDCP_CTRL_PDU_SIZE_MAX - sizeof(hdr)) * 8,
+			(uint32_t)PDCP_WINDOW_SIZE(RTE_SECURITY_PDCP_SN_SIZE_12));
+
+	i = fmc + 2; /* set first count to have a gap, to enable packet buffering */
+
+	for (; i < max_count; i++)
+		ctrl_pdu_hdr_packet_set(hdr, i);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_overlap_different_slabs(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(63);
+	const uint32_t sn_size = 12;
+
+	ctrl_pdu_hdr_packet_set(hdr, 64 + 1);
+	ctrl_pdu_hdr_packet_set(hdr, PDCP_WINDOW_SIZE(sn_size) + 1);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
+static int
+test_status_report_overlap_same_slab(const struct pdcp_test_conf *ul_conf)
+{
+	struct rte_pdcp_up_ctrl_pdu_hdr *hdr = pdcp_status_report_init(2);
+	const uint32_t sn_size = 12;
+
+	ctrl_pdu_hdr_packet_set(hdr, 4);
+	ctrl_pdu_hdr_packet_set(hdr, PDCP_WINDOW_SIZE(sn_size) + 1);
+
+	return test_status_report_gen(ul_conf, hdr, pdcp_status_report_len());
+}
+
 static int
 test_combined(struct pdcp_test_conf *ul_conf)
 {
@@ -1611,11 +1887,47 @@ static struct unit_test_suite reorder_test_cases  = {
 	}
 };
 
+static struct unit_test_suite status_report_test_cases  = {
+	.suite_name = "PDCP status report",
+	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_fmc_only",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_fmc_only),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_one_pkt_first_slab",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_one_pkt_first_slab),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_one_pkt_second_slab",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_one_pkt_second_slab),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_full_slab",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_full_slab),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_two_sequential_slabs",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_two_sequential_slabs),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_two_non_sequential_slabs",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_two_non_sequential_slabs),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_max_length_sn_12",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec_until_first_pass,
+			test_status_report_max_length_sn_12),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_overlap_different_slabs",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_overlap_different_slabs),
+		TEST_CASE_NAMED_WITH_DATA("test_status_report_overlap_same_slab",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_status_report_overlap_same_slab),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 struct unit_test_suite *test_suites[] = {
 	NULL, /* Place holder for known_vector_cases */
 	&combined_mode_cases,
 	&hfn_sn_test_cases,
 	&reorder_test_cases,
+	&status_report_test_cases,
 	NULL /* End of suites list */
 };
 
