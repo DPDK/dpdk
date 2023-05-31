@@ -121,6 +121,8 @@ struct pci_map {
 	uint64_t offset;
 	uint64_t size;
 	uint64_t phaddr;
+	uint32_t nr_areas;
+	struct vfio_region_sparse_mmap_area *areas;
 };
 
 struct pci_msix_table {
