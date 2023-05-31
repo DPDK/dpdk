@@ -13,6 +13,14 @@
 #include <rte_os_shim.h>
 #include <rte_pci.h>
 
+/*
+ * Convert struct rte_pci_device to struct rte_pci_device_internal
+ */
+#define RTE_PCI_DEVICE_INTERNAL(ptr) \
+	container_of(ptr, struct rte_pci_device_internal, device)
+#define RTE_PCI_DEVICE_INTERNAL_CONST(ptr) \
+	container_of(ptr, const struct rte_pci_device_internal, device)
+
 /**
  * Structure describing the PCI bus
  */
@@ -34,6 +42,10 @@ extern struct rte_pci_bus rte_pci_bus;
 struct rte_pci_driver;
 struct rte_pci_device;
 
+struct rte_pci_device_internal {
+	struct rte_pci_device device;
+};
+
 /**
  * Scan the content of the PCI bus, and the devices in the devices
  * list
@@ -53,7 +65,7 @@ pci_common_set(struct rte_pci_device *dev);
  * Free a PCI device.
  */
 void
-pci_free(struct rte_pci_device *dev);
+pci_free(struct rte_pci_device_internal *pdev);
 
 /**
  * Validate whether a device with given PCI address should be ignored or not.

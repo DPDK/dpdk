@@ -121,12 +121,12 @@ pci_common_set(struct rte_pci_device *dev)
 }
 
 void
-pci_free(struct rte_pci_device *dev)
+pci_free(struct rte_pci_device_internal *pdev)
 {
-	if (dev == NULL)
+	if (pdev == NULL)
 		return;
-	free(dev->bus_info);
-	free(dev);
+	free(pdev->device.bus_info);
+	free(pdev);
 }
 
 /* map a particular resource from a file */
@@ -465,7 +465,7 @@ free:
 		rte_intr_instance_free(dev->vfio_req_intr_handle);
 		dev->vfio_req_intr_handle = NULL;
 
-		pci_free(dev);
+		pci_free(RTE_PCI_DEVICE_INTERNAL(dev));
 	}
 
 	return error;
@@ -681,7 +681,7 @@ pci_unplug(struct rte_device *dev)
 	if (ret == 0) {
 		rte_pci_remove_device(pdev);
 		rte_devargs_remove(dev->devargs);
-		pci_free(pdev);
+		pci_free(RTE_PCI_DEVICE_INTERNAL(pdev));
 	}
 	return ret;
 }
