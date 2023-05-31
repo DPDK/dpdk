@@ -66,9 +66,9 @@ int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 #endif
 
 /* access config space */
-int pci_vfio_read_config(const struct rte_intr_handle *intr_handle,
+int pci_vfio_read_config(const struct rte_pci_device *dev,
 			 void *buf, size_t len, off_t offs);
-int pci_vfio_write_config(const struct rte_intr_handle *intr_handle,
+int pci_vfio_write_config(const struct rte_pci_device *dev,
 			  const void *buf, size_t len, off_t offs);
 
 int pci_vfio_ioport_map(struct rte_pci_device *dev, int bar,

@@ -38,7 +38,6 @@ extern "C" {
 #define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define VFIO_GROUP_FMT "/dev/vfio/%u"
 #define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
-#define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
 #define VFIO_GET_REGION_IDX(x) (x >> 40)
 #define VFIO_NOIOMMU_MODE      \
 	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"

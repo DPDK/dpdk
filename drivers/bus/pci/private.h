@@ -13,6 +13,8 @@
 #include <rte_os_shim.h>
 #include <rte_pci.h>
 
+#define RTE_MAX_PCI_REGIONS    9
+
 /*
  * Convert struct rte_pci_device to struct rte_pci_device_internal
  */
@@ -42,8 +44,15 @@ extern struct rte_pci_bus rte_pci_bus;
 struct rte_pci_driver;
 struct rte_pci_device;
 
+struct rte_pci_region {
+	uint64_t size;
+	uint64_t offset;
+};
+
 struct rte_pci_device_internal {
 	struct rte_pci_device device;
+	/* PCI regions provided by e.g. VFIO. */
+	struct rte_pci_region region[RTE_MAX_PCI_REGIONS];
 };
 
 /**

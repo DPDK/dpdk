@@ -645,7 +645,7 @@ int rte_pci_read_config(const struct rte_pci_device *device,
 		return pci_uio_read_config(intr_handle, buf, len, offset);
 #ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
-		return pci_vfio_read_config(intr_handle, buf, len, offset);
+		return pci_vfio_read_config(device, buf, len, offset);
 #endif
 	default:
 		rte_pci_device_name(&device->addr, devname,
@@ -669,7 +669,7 @@ int rte_pci_write_config(const struct rte_pci_device *device,
 		return pci_uio_write_config(intr_handle, buf, len, offset);
 #ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
-		return pci_vfio_write_config(intr_handle, buf, len, offset);
+		return pci_vfio_write_config(device, buf, len, offset);
 #endif
 	default:
 		rte_pci_device_name(&device->addr, devname,
