@@ -61,6 +61,12 @@ New Features
   which operates on FPGA based CDX devices.
   The CDX devices are memory mapped on system bus for embedded CPUs.
 
+* **Added MMIO read and write API to PCI bus.**
+
+  Introduced ``rte_pci_mmio_read()`` and ``rte_pci_mmio_write()`` API
+  to PCI bus so that PCI drivers can access PCI memory resources
+  when they are not mapped to process address space.
+
 
 Removed Items
 -------------

@@ -1260,6 +1260,42 @@ pci_vfio_ioport_unmap(struct rte_pci_ioport *p)
 }
 
 int
+pci_vfio_mmio_read(const struct rte_pci_device *dev, int bar,
+		   void *buf, size_t len, off_t offs)
+{
+	uint64_t size, offset;
+	int fd;
+
+	fd = rte_intr_dev_fd_get(dev->intr_handle);
+
+	if (pci_vfio_get_region(dev, bar, &size, &offset) != 0)
+		return -1;
+
+	if ((uint64_t)len + offs > size)
+		return -1;
+
+	return pread64(fd, buf, len, offset + offs);
+}
+
+int
+pci_vfio_mmio_write(const struct rte_pci_device *dev, int bar,
+		    const void *buf, size_t len, off_t offs)
+{
+	uint64_t size, offset;
+	int fd;
+
+	fd = rte_intr_dev_fd_get(dev->intr_handle);
+
+	if (pci_vfio_get_region(dev, bar, &size, &offset) != 0)
+		return -1;
+
+	if ((uint64_t)len + offs > size)
+		return -1;
+
+	return pwrite64(fd, buf, len, offset + offs);
+}
+
+int
 pci_vfio_is_enabled(void)
 {
 	return rte_vfio_is_enabled("vfio_pci");

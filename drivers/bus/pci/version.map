@@ -21,6 +21,10 @@ EXPERIMENTAL {
 
 	# added in 21.08
 	rte_pci_set_bus_master;
+
+	# added in 23.07
+	rte_pci_mmio_read;
+	rte_pci_mmio_write;
 };
 
 INTERNAL {

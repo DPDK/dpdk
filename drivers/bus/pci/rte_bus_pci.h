@@ -136,6 +136,54 @@ int rte_pci_write_config(const struct rte_pci_device *device,
 		const void *buf, size_t len, off_t offset);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Read from a MMIO PCI resource.
+ *
+ * @param device
+ *   A pointer to a rte_pci_device structure describing the device
+ *   to use.
+ * @param bar
+ *   Index of the IO PCI resource we want to access.
+ * @param buf
+ *   A data buffer where the bytes should be read into.
+ * @param len
+ *   The length of the data buffer.
+ * @param offset
+ *   The offset into MMIO space described by @bar.
+ * @return
+ *   Number of bytes read on success, negative on error.
+ */
+__rte_experimental
+int rte_pci_mmio_read(const struct rte_pci_device *device, int bar,
+		void *buf, size_t len, off_t offset);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Write to a MMIO PCI resource.
+ *
+ * @param device
+ *   A pointer to a rte_pci_device structure describing the device
+ *   to use.
+ * @param bar
+ *   Index of the IO PCI resource we want to access.
+ * @param buf
+ *   A data buffer containing the bytes should be written.
+ * @param len
+ *   The length of the data buffer.
+ * @param offset
+ *   The offset into MMIO space described by @bar.
+ * @return
+ *   Number of bytes written on success, negative on error.
+ */
+__rte_experimental
+int rte_pci_mmio_write(const struct rte_pci_device *device, int bar,
+		const void *buf, size_t len, off_t offset);
+
+/**
  * Initialize a rte_pci_ioport object for a pci device io resource.
  *
  * This object is then used to gain access to those io resources (see below).

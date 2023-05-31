@@ -680,6 +680,52 @@ int rte_pci_write_config(const struct rte_pci_device *device,
 	}
 }
 
+/* Read PCI MMIO space. */
+int rte_pci_mmio_read(const struct rte_pci_device *device, int bar,
+		void *buf, size_t len, off_t offset)
+{
+	char devname[RTE_DEV_NAME_MAX_LEN] = "";
+
+	switch (device->kdrv) {
+	case RTE_PCI_KDRV_IGB_UIO:
+	case RTE_PCI_KDRV_UIO_GENERIC:
+		return pci_uio_mmio_read(device, bar, buf, len, offset);
+#ifdef VFIO_PRESENT
+	case RTE_PCI_KDRV_VFIO:
+		return pci_vfio_mmio_read(device, bar, buf, len, offset);
+#endif
+	default:
+		rte_pci_device_name(&device->addr, devname,
+				    RTE_DEV_NAME_MAX_LEN);
+		RTE_LOG(ERR, EAL,
+			"Unknown driver type for %s\n", devname);
+		return -1;
+	}
+}
+
+/* Write PCI MMIO space. */
+int rte_pci_mmio_write(const struct rte_pci_device *device, int bar,
+		const void *buf, size_t len, off_t offset)
+{
+	char devname[RTE_DEV_NAME_MAX_LEN] = "";
+
+	switch (device->kdrv) {
+	case RTE_PCI_KDRV_IGB_UIO:
+	case RTE_PCI_KDRV_UIO_GENERIC:
+		return pci_uio_mmio_write(device, bar, buf, len, offset);
+#ifdef VFIO_PRESENT
+	case RTE_PCI_KDRV_VFIO:
+		return pci_vfio_mmio_write(device, bar, buf, len, offset);
+#endif
+	default:
+		rte_pci_device_name(&device->addr, devname,
+				    RTE_DEV_NAME_MAX_LEN);
+		RTE_LOG(ERR, EAL,
+			"Unknown driver type for %s\n", devname);
+		return -1;
+	}
+}
+
 int
 rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		struct rte_pci_ioport *p)

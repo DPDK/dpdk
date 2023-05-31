@@ -489,6 +489,28 @@ int rte_pci_write_config(const struct rte_pci_device *dev,
 	return -1;
 }
 
+/* Read PCI MMIO space. */
+int rte_pci_mmio_read(const struct rte_pci_device *dev, int bar,
+		      void *buf, size_t len, off_t offset)
+{
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
+		return -1;
+	memcpy(buf, (uint8_t *)dev->mem_resource[bar].addr + offset, len);
+	return len;
+}
+
+/* Write PCI MMIO space. */
+int rte_pci_mmio_write(const struct rte_pci_device *dev, int bar,
+		       const void *buf, size_t len, off_t offset)
+{
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
+		return -1;
+	memcpy((uint8_t *)dev->mem_resource[bar].addr + offset, buf, len);
+	return len;
+}
+
 int
 rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		struct rte_pci_ioport *p)

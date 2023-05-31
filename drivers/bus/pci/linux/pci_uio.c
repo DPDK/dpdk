@@ -55,6 +55,28 @@ pci_uio_write_config(const struct rte_intr_handle *intr_handle,
 	return pwrite(uio_cfg_fd, buf, len, offset);
 }
 
+int
+pci_uio_mmio_read(const struct rte_pci_device *dev, int bar,
+		  void *buf, size_t len, off_t offset)
+{
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
+		return -1;
+	memcpy(buf, (uint8_t *)dev->mem_resource[bar].addr + offset, len);
+	return len;
+}
+
+int
+pci_uio_mmio_write(const struct rte_pci_device *dev, int bar,
+		   const void *buf, size_t len, off_t offset)
+{
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
+		return -1;
+	memcpy((uint8_t *)dev->mem_resource[bar].addr + offset, buf, len);
+	return len;
+}
+
 static int
 pci_uio_set_bus_master(int dev_fd)
 {
