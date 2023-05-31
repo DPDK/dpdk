@@ -27,9 +27,11 @@
 #include <rte_launch.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
+#include <rte_lpm6.h>
 #include <rte_mempool.h>
 #include <rte_node_eth_api.h>
 #include <rte_node_ip4_api.h>
+#include <rte_node_ip6_api.h>
 #include <rte_per_lcore.h>
 #include <rte_string_fns.h>
 #include <rte_vect.h>
@@ -142,6 +144,12 @@ struct ipv4_l3fwd_lpm_route {
 	uint8_t if_out;
 };
 
+struct ipv6_l3fwd_lpm_route {
+	uint8_t ip[RTE_LPM6_IPV6_ADDR_SIZE];
+	uint8_t depth;
+	uint8_t if_out;
+};
+
 #define IPV4_L3FWD_LPM_NUM_ROUTES                                              \
 	(sizeof(ipv4_l3fwd_lpm_route_array) /                                  \
 	 sizeof(ipv4_l3fwd_lpm_route_array[0]))
@@ -151,6 +159,28 @@ static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
 	{RTE_IPV4(198, 18, 2, 0), 24, 2}, {RTE_IPV4(198, 18, 3, 0), 24, 3},
 	{RTE_IPV4(198, 18, 4, 0), 24, 4}, {RTE_IPV4(198, 18, 5, 0), 24, 5},
 	{RTE_IPV4(198, 18, 6, 0), 24, 6}, {RTE_IPV4(198, 18, 7, 0), 24, 7},
+};
+
+#define IPV6_L3FWD_LPM_NUM_ROUTES                                              \
+	(sizeof(ipv6_l3fwd_lpm_route_array) /                                  \
+	 sizeof(ipv6_l3fwd_lpm_route_array[0]))
+static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00}, 48, 0},
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x01}, 48, 1},
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x02}, 48, 2},
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x03}, 48, 3},
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x04}, 48, 4},
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x05}, 48, 5},
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x06}, 48, 6},
+	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x02}, 48, 7},
 };
 
 static int
@@ -1128,7 +1158,7 @@ main(int argc, char **argv)
 	memset(&rewrite_data, 0, sizeof(rewrite_data));
 	rewrite_len = sizeof(rewrite_data);
 
-	/* Add route to ip4 graph infra. 8< */
+	/* Add routes and rewrite data to graph infra. 8< */
 	for (i = 0; i < IPV4_L3FWD_LPM_NUM_ROUTES; i++) {
 		char route_str[INET6_ADDRSTRLEN * 4];
 		char abuf[INET6_ADDRSTRLEN];
@@ -1172,7 +1202,50 @@ main(int argc, char **argv)
 		RTE_LOG(INFO, L3FWD_GRAPH, "Added route %s, next_hop %u\n",
 			route_str, i);
 	}
-	/* >8 End of adding route to ip4 graph infa. */
+
+	for (i = 0; i < IPV6_L3FWD_LPM_NUM_ROUTES; i++) {
+		char route_str[INET6_ADDRSTRLEN * 4];
+		char abuf[INET6_ADDRSTRLEN];
+		struct in6_addr in6;
+		uint32_t dst_port;
+
+		/* Skip unused ports */
+		if ((1 << ipv6_l3fwd_lpm_route_array[i].if_out &
+		     enabled_port_mask) == 0)
+			continue;
+
+		dst_port = ipv6_l3fwd_lpm_route_array[i].if_out;
+
+		memcpy(in6.s6_addr, ipv6_l3fwd_lpm_route_array[i].ip, RTE_LPM6_IPV6_ADDR_SIZE);
+		snprintf(route_str, sizeof(route_str), "%s / %d (%d)",
+			 inet_ntop(AF_INET6, &in6, abuf, sizeof(abuf)),
+			 ipv6_l3fwd_lpm_route_array[i].depth,
+			 ipv6_l3fwd_lpm_route_array[i].if_out);
+
+		/* Use route index 'i' as next hop id */
+		ret = rte_node_ip6_route_add(ipv6_l3fwd_lpm_route_array[i].ip,
+			ipv6_l3fwd_lpm_route_array[i].depth, i,
+			RTE_NODE_IP6_LOOKUP_NEXT_REWRITE);
+
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Unable to add ip6 route %s to graph\n",
+				 route_str);
+
+		memcpy(rewrite_data, val_eth + dst_port, rewrite_len);
+
+		/* Add next hop rewrite data for id 'i' */
+		ret = rte_node_ip6_rewrite_add(i, rewrite_data,
+					       rewrite_len, dst_port);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Unable to add next hop %u for "
+				 "route %s\n", i, route_str);
+
+		RTE_LOG(INFO, L3FWD_GRAPH, "Added route %s, next_hop %u\n",
+			route_str, i);
+	}
+	/* >8 End of adding routes and rewrite data to graph infa. */
 
 	/* Launch per-lcore init on every worker lcore */
 	rte_eal_mp_remote_launch(graph_main_loop, NULL, SKIP_MAIN);

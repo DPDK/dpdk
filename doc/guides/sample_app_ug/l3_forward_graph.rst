@@ -12,7 +12,8 @@ Overview
 --------
 
 The application demonstrates the use of the graph framework and graph nodes
-``ethdev_rx``, ``ip4_lookup``, ``ip4_rewrite``, ``ethdev_tx`` and ``pkt_drop`` in DPDK to
+``ethdev_rx``, ``pkt_cls``, ``ip4_lookup``/``ip6_lookup``,
+``ip4_rewrite``/``ip6_rewrite``, ``ethdev_tx`` and ``pkt_drop`` in DPDK to
 implement packet forwarding.
 
 The initialization is very similar to those of the :doc:`l3_forward`.
@@ -24,13 +25,15 @@ TTL update and finally Tx is implemented inside graph nodes. These nodes are
 interconnected in graph framework. Application main loop needs to walk over
 graph using ``rte_graph_walk()`` with graph objects created one per worker lcore.
 
-The lookup method is as per implementation of ``ip4_lookup`` graph node.
+The lookup method is as per implementation of ``ip4_lookup``/``ip6_lookup`` graph node.
 The ID of the output interface for the input packet is the next hop returned by
 the LPM lookup. The set of LPM rules used by the application is statically
-configured and provided to ``ip4_lookup`` graph node and ``ip4_rewrite`` graph node
-using node control API ``rte_node_ip4_route_add()`` and ``rte_node_ip4_rewrite_add()``.
+configured and provided to ``ip4_lookup``/``ip6_lookup`` graph node and
+``ip4_rewrite``/``ip6_rewrite`` graph node using node control API
+``rte_node_ip4_route_add()``/``rte_node_ip6_route_add`` and
+``rte_node_ip4_rewrite_add()``/``rte_node_ip6_rewrite_add``.
 
-In the sample application, only IPv4 forwarding is supported as of now.
+In the sample application, IPv4 and IPv6 forwarding is supported.
 
 Compiling the Application
 -------------------------
@@ -149,8 +152,8 @@ lead to the clone of ``ethdev_rx`` and ``ethdev_tx`` nodes as ``ethdev_rx-X-Y`` 
 In case of ``ethdev_tx-X`` nodes, tx queue id assigned per instance of the node
 is same as graph id.
 
-These cloned nodes along with existing static nodes such as ``ip4_lookup`` and
-``ip4_rewrite`` will be used in graph creation to associate node's to lcore
+These cloned nodes along with existing static nodes such as ``ip4_lookup``/``ip6_lookup``
+and ``ip4_rewrite``/``ip6_rewrite`` will be used in graph creation to associate node's to lcore
 specific graph object.
 
 .. literalinclude:: ../../../examples/l3fwd-graph/main.c
@@ -186,20 +189,21 @@ Forwarding data(Route, Next-Hop) addition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once graph objects are created, node specific info like routes and rewrite
-headers will be provided run-time using ``rte_node_ip4_route_add()`` and
-``rte_node_ip4_rewrite_add()`` API.
+headers will be provided run-time using ``rte_node_ip4_route_add()``/
+``rte_node_ip6_route_add`` and ``rte_node_ip4_rewrite_add()``/``rte_node_ip6_rewrite_add``
+API.
 
 .. note::
 
-    Since currently ``ip4_lookup`` and ``ip4_rewrite`` nodes don't support
-    lock-less mechanisms(RCU, etc) to add run-time forwarding data like route and
-    rewrite data, forwarding data is added before packet processing loop is
-    launched on worker lcore.
+    Since currently ``ip4_lookup``/``ip6_lookup`` and ``ip4_rewrite``/``ip6_rewrite``
+    nodes don't support lock-less mechanisms(RCU, etc) to add run-time forwarding
+    data like route and rewrite data, forwarding data is added before packet
+    processing loop is launched on worker lcore.
 
 .. literalinclude:: ../../../examples/l3fwd-graph/main.c
     :language: c
-    :start-after: Add route to ip4 graph infra. 8<
-    :end-before: >8 End of adding route to ip4 graph infa.
+    :start-after: Add routes and rewrite data to graph infra. 8<
+    :end-before: >8 End of adding routes and rewrite data to graph infa.
     :dedent: 1
 
 Packet Forwarding using Graph Walk
@@ -215,8 +219,10 @@ specific graph object that was already created.
 
     rte_graph_walk() will walk over all the sources nodes i.e ``ethdev_rx-X-Y``
     associated with a given graph and Rx the available packets and enqueue them
-    to the following node ``ip4_lookup`` which then will enqueue them to ``ip4_rewrite``
-    node if LPM lookup succeeds. ``ip4_rewrite`` node then will update Ethernet header
+    to the following node ``pkt_cls`` which based on the packet type will enqueue
+    them to ``ip4_lookup``/``ip6_lookup`` which then will enqueue them to
+    ``ip4_rewrite``/``ip6_rewrite`` node if LPM lookup succeeds.
+    ``ip4_rewrite``/``ip6_rewrite`` node then will update Ethernet header
     as per next-hop data and transmit the packet via port 'Z' by enqueuing
     to ``ethdev_tx-Z`` node instance in its graph object.
 
