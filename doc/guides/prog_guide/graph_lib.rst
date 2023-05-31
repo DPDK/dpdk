@@ -401,6 +401,14 @@ On LPM lookup failure, objects are redirected to ``pkt_drop`` node.
 To achieve home run, node use ``rte_node_stream_move()``
 as mentioned in above sections.
 
+ip6_rewrite
+~~~~~~~~~~~
+This node gets packets from ``ip6_lookup`` node with next-hop ID
+for each packet is embedded in ``node_mbuf_priv1(mbuf)->nh``.
+This ID is used to determine the L2 header to be written to the packet
+before sending the packet out to a particular ``ethdev_tx`` node.
+``rte_node_ip6_rewrite_add()`` is control path API to add next-hop info.
+
 null
 ~~~~
 This node ignores the set of objects passed to it and reports that all are
