@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_pcapng.h>
 
@@ -80,7 +81,8 @@ graph_pcap_default_path_get(char **dir_path)
 int
 graph_pcap_file_open(const char *filename)
 {
-	int fd;
+	int fd, ret;
+	uint16_t portid;
 	char file_name[RTE_GRAPH_PCAP_FILE_SZ];
 	char *pcap_dir;
 
@@ -110,12 +112,29 @@ graph_pcap_file_open(const char *filename)
 				      NULL);
 	if (pcapng_fd == NULL) {
 		graph_err("Graph rte_pcapng_fdopen failed.");
-		close(fd);
-		return -1;
+		goto error;
+	}
+
+	/* Add the configured interfaces as possible capture ports */
+	RTE_ETH_FOREACH_DEV(portid) {
+		ret = rte_pcapng_add_interface(pcapng_fd, portid,
+					       NULL, NULL, NULL);
+		if (ret < 0) {
+			graph_err("Graph rte_pcapng_add_interface port %u failed: %d",
+				  portid, ret);
+			goto error;
+		}
 	}
 
 done:
 	return 0;
+error:
+	if (pcapng_fd != NULL) {
+		rte_pcapng_close(pcapng_fd);
+		pcapng_fd = NULL;
+	}
+	close(fd);
+	return -1;
 }
 
 int
