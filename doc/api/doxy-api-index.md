@@ -127,7 +127,8 @@ The public API headers are grouped by topics:
   [Geneve](@ref rte_geneve.h),
   [eCPRI](@ref rte_ecpri.h),
   [L2TPv2](@ref rte_l2tpv2.h),
-  [PPP](@ref rte_ppp.h)
+  [PPP](@ref rte_ppp.h),
+  [IB](@ref rte_ib.h)
 
 - **QoS**:
   [metering](@ref rte_meter.h),

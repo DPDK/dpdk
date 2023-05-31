@@ -3771,6 +3771,13 @@ This section lists supported pattern items and their attributes, if any.
   - ``ctrl {unsigned}``: PPP control.
   - ``proto_id {unsigned}``: PPP protocol identifier.
 
+- ``ib_bth``: match InfiniBand BTH(base transport header).
+
+  - ``opcode {unsigned}``: Opcode.
+  - ``pkey {unsigned}``: Partition key.
+  - ``dst_qp {unsigned}``: Destination Queue Pair.
+  - ``psn {unsigned}``: Packet Sequence Number.
+
 - ``meter``: match meter color.
 
   - ``color {value}``: meter color value (green/yellow/red).

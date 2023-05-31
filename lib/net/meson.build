@@ -22,6 +22,7 @@ headers = files(
         'rte_geneve.h',
         'rte_l2tpv2.h',
         'rte_ppp.h',
+        'rte_ib.h',
 )
 
 sources = files(

@@ -498,6 +498,11 @@ enum index {
 	ITEM_AGGR_AFFINITY_VALUE,
 	ITEM_TX_QUEUE,
 	ITEM_TX_QUEUE_VALUE,
+	ITEM_IB_BTH,
+	ITEM_IB_BTH_OPCODE,
+	ITEM_IB_BTH_PKEY,
+	ITEM_IB_BTH_DST_QPN,
+	ITEM_IB_BTH_PSN,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -1455,6 +1460,7 @@ static const enum index next_item[] = {
 	ITEM_QUOTA,
 	ITEM_AGGR_AFFINITY,
 	ITEM_TX_QUEUE,
+	ITEM_IB_BTH,
 	END_SET,
 	ZERO,
 };
@@ -1958,6 +1964,15 @@ static const enum index item_aggr_affinity[] = {
 
 static const enum index item_tx_queue[] = {
 	ITEM_TX_QUEUE_VALUE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ib_bth[] = {
+	ITEM_IB_BTH_OPCODE,
+	ITEM_IB_BTH_PKEY,
+	ITEM_IB_BTH_DST_QPN,
+	ITEM_IB_BTH_PSN,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -5531,6 +5546,46 @@ static const struct token token_list[] = {
 		.help = "quota state name",
 		.call = parse_quota_state_name,
 		.comp = comp_quota_state_name
+	},
+	[ITEM_IB_BTH] = {
+		.name = "ib_bth",
+		.help = "match ib bth fields",
+		.priv = PRIV_ITEM(IB_BTH,
+				  sizeof(struct rte_flow_item_ib_bth)),
+		.next = NEXT(item_ib_bth),
+		.call = parse_vc,
+	},
+	[ITEM_IB_BTH_OPCODE] = {
+		.name = "opcode",
+		.help = "match ib bth opcode",
+		.next = NEXT(item_ib_bth, NEXT_ENTRY(COMMON_UNSIGNED),
+				 item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ib_bth,
+						 hdr.opcode)),
+	},
+	[ITEM_IB_BTH_PKEY] = {
+		.name = "pkey",
+		.help = "partition key",
+		.next = NEXT(item_ib_bth, NEXT_ENTRY(COMMON_UNSIGNED),
+				 item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ib_bth,
+						 hdr.pkey)),
+	},
+	[ITEM_IB_BTH_DST_QPN] = {
+		.name = "dst_qp",
+		.help = "destination qp",
+		.next = NEXT(item_ib_bth, NEXT_ENTRY(COMMON_UNSIGNED),
+				 item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ib_bth,
+						 hdr.dst_qp)),
+	},
+	[ITEM_IB_BTH_PSN] = {
+		.name = "psn",
+		.help = "packet sequence number",
+		.next = NEXT(item_ib_bth, NEXT_ENTRY(COMMON_UNSIGNED),
+				 item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ib_bth,
+						 hdr.psn)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -11876,6 +11931,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		break;
 	case RTE_FLOW_ITEM_TYPE_TX_QUEUE:
 		mask = &rte_flow_item_tx_queue_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IB_BTH:
+		mask = &rte_flow_item_ib_bth_mask;
 		break;
 	default:
 		break;

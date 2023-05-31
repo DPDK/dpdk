@@ -38,6 +38,7 @@
 #include <rte_ppp.h>
 #include <rte_gre.h>
 #include <rte_macsec.h>
+#include <rte_ib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -680,6 +681,13 @@ enum rte_flow_item_type {
 	 * @see struct rte_flow_item_tx_queue
 	 */
 	 RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+
+	/**
+	 * Matches an InfiniBand base transport header in RoCE packet.
+	 *
+	 * @see struct rte_flow_item_ib_bth.
+	 */
+	RTE_FLOW_ITEM_TYPE_IB_BTH,
 };
 
 /**
@@ -2012,6 +2020,25 @@ static const struct rte_flow_item_ppp rte_flow_item_ppp_mask = {
 		.ctrl = 0xff,
 		.proto_id = RTE_BE16(0xffff),
 	}
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_IB_BTH.
+ *
+ * Matches an InfiniBand base transport header in RoCE packet.
+ */
+struct rte_flow_item_ib_bth {
+	struct rte_ib_bth hdr; /**< InfiniBand base transport header definition. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_IB_BTH. */
+#ifndef __cplusplus
+static const struct rte_flow_item_ib_bth rte_flow_item_ib_bth_mask = {
+	.hdr = {
+		.opcode = 0xff,
+		.dst_qp = "\xff\xff\xff",
+	},
 };
 #endif
 

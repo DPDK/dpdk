@@ -72,6 +72,10 @@ New Features
   Added ``RTE_FLOW_ITEM_TYPE_TX_QUEUE`` rte_flow pattern
   to match the Tx queue of the sent packet.
 
+* **Added flow matching of Infiniband BTH.**
+
+  Added ``RTE_FLOW_ITEM_TYPE_IB_BTH`` to match Infiniband BTH fields.
+
 * **Added flow rule update.**
 
   * Added API for updating the action list in the already existing rule.
