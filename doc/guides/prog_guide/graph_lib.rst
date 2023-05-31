@@ -388,6 +388,19 @@ to determine the L2 header to be written to the packet before sending
 the packet out to a particular ethdev_tx node.
 ``rte_node_ip4_rewrite_add()`` is control path API to add next-hop info.
 
+ip6_lookup
+~~~~~~~~~~
+This node is an intermediate node that does LPM lookup for the received
+IPv6 packets and the result determines each packets next node.
+
+On successful LPM lookup, the result contains the ``next_node`` ID
+and `next-hop`` ID with which the packet needs to be further processed.
+
+On LPM lookup failure, objects are redirected to ``pkt_drop`` node.
+``rte_node_ip6_route_add()`` is control path API to add IPv6 routes.
+To achieve home run, node use ``rte_node_stream_move()``
+as mentioned in above sections.
+
 null
 ~~~~
 This node ignores the set of objects passed to it and reports that all are

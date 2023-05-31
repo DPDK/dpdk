@@ -26,7 +26,7 @@ extern int rte_node_logtype;
  */
 struct node_mbuf_priv1 {
 	union {
-		/* IP4 rewrite */
+		/* IP4/IP6 rewrite */
 		struct {
 			uint16_t nh;
 			uint16_t ttl;

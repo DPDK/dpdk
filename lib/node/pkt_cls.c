@@ -24,6 +24,19 @@ static const uint8_t p_nxt[256] __rte_cache_aligned = {
 
 	[RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L2_ETHER] =
 		PKT_CLS_NEXT_IP4_LOOKUP,
+
+	[RTE_PTYPE_L3_IPV6] = PKT_CLS_NEXT_IP6_LOOKUP,
+
+	[RTE_PTYPE_L3_IPV6_EXT] = PKT_CLS_NEXT_IP6_LOOKUP,
+
+	[RTE_PTYPE_L3_IPV6_EXT_UNKNOWN] = PKT_CLS_NEXT_IP6_LOOKUP,
+
+	[RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L2_ETHER] = PKT_CLS_NEXT_IP6_LOOKUP,
+
+	[RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L2_ETHER] = PKT_CLS_NEXT_IP6_LOOKUP,
+
+	[RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L2_ETHER] =
+		PKT_CLS_NEXT_IP6_LOOKUP,
 };
 
 static uint16_t
@@ -216,6 +229,7 @@ struct rte_node_register pkt_cls_node = {
 		/* Pkt drop node starts at '0' */
 		[PKT_CLS_NEXT_PKT_DROP] = "pkt_drop",
 		[PKT_CLS_NEXT_IP4_LOOKUP] = "ip4_lookup",
+		[PKT_CLS_NEXT_IP6_LOOKUP] = "ip6_lookup",
 	},
 };
 RTE_NODE_REGISTER(pkt_cls_node);
