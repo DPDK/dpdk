@@ -1365,6 +1365,16 @@ mark_freeable(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 int
 rte_eal_cleanup(void)
 {
+	static uint32_t run_once;
+	uint32_t has_run = 0;
+
+	if (!__atomic_compare_exchange_n(&run_once, &has_run, 1, 0,
+					__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+		RTE_LOG(WARNING, EAL, "Already called cleanup\n");
+		rte_errno = EALREADY;
+		return -1;
+	}
+
 	/* if we're in a primary process, we need to mark hugepages as freeable
 	 * so that finalization can release them back to the system.
 	 */

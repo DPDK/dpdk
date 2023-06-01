@@ -902,6 +902,16 @@ rte_eal_init(int argc, char **argv)
 int
 rte_eal_cleanup(void)
 {
+	static uint32_t run_once;
+	uint32_t has_run = 0;
+
+	if (!__atomic_compare_exchange_n(&run_once, &has_run, 1, 0,
+			__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+		RTE_LOG(WARNING, EAL, "Already called cleanup\n");
+		rte_errno = EALREADY;
+		return -1;
+	}
+
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 	rte_service_finalize();
