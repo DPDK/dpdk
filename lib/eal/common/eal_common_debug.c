@@ -4,10 +4,12 @@
 
 #include <stdarg.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_debug.h>
+#include <rte_errno.h>
 
 void
 __rte_panic(const char *funcname, const char *format, ...)
@@ -39,7 +41,7 @@ rte_exit(int exit_code, const char *format, ...)
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);
 	va_end(ap);
 
-	if (rte_eal_cleanup() != 0)
+	if (rte_eal_cleanup() != 0 && rte_errno != EALREADY)
 		RTE_LOG(CRIT, EAL,
 			"EAL could not release all resources\n");
 	exit(exit_code);
