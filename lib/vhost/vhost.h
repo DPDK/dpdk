@@ -902,9 +902,9 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 			"%s: used_event_idx=%d, old=%d, new=%d\n",
 			__func__, vhost_used_event(vq), old, new);
 
-		if ((vhost_need_event(vhost_used_event(vq), new, old) &&
-					(vq->callfd >= 0)) ||
-				unlikely(!signalled_used_valid)) {
+		if ((vhost_need_event(vhost_used_event(vq), new, old) ||
+					unlikely(!signalled_used_valid)) &&
+				vq->callfd >= 0) {
 			eventfd_write(vq->callfd, (eventfd_t) 1);
 			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
 				vq->stats.guest_notifications++;
@@ -971,7 +971,7 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (vhost_need_event(off, new, old))
 		kick = true;
 kick:
-	if (kick) {
+	if (kick && vq->callfd >= 0) {
 		eventfd_write(vq->callfd, (eventfd_t)1);
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
 			vq->stats.guest_notifications++;
