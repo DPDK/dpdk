@@ -550,6 +550,12 @@ parse_link_speed(int n)
 	case 1000:
 		speed |= RTE_ETH_LINK_SPEED_1G;
 		break;
+	case 2500:
+		speed |= RTE_ETH_LINK_SPEED_2_5G;
+		break;
+	case 5000:
+		speed |= RTE_ETH_LINK_SPEED_5G;
+		break;
 	case 10000:
 		speed |= RTE_ETH_LINK_SPEED_10G;
 		break;

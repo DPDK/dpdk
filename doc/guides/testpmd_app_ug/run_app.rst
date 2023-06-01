@@ -388,6 +388,8 @@ The command line options are:
        10 - 10Mbps (not supported)
        100 - 100Mbps (not supported)
        1000 - 1Gbps
+       2500 - 2.5Gbps
+       5000 - 5Gbps
        10000 - 10Gbps
        25000 - 25Gbps
        40000 - 40Gbps
