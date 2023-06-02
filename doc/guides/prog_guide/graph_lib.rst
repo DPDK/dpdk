@@ -392,3 +392,13 @@ null
 ~~~~
 This node ignores the set of objects passed to it and reports that all are
 processed.
+
+kernel_tx
+~~~~~~~~~
+This node is an exit node that forwards the packets to kernel.
+It will be used to forward any control plane traffic to kernel stack from DPDK.
+It uses a raw socket interface to transmit the packets,
+it uses the packet's destination IP address in sockaddr_in address structure
+and ``sendto`` function to send data on the raw socket.
+After sending the burst of packets to kernel,
+this node frees up the packet buffers.
