@@ -67,6 +67,7 @@ struct uadk_crypto_priv {
 	bool env_cipher_init;
 	bool env_auth_init;
 	enum uadk_crypto_version version;
+	unsigned int max_nb_qpairs;
 } __rte_cache_aligned;
 
 extern int uadk_crypto_logtype;

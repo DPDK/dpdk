@@ -357,8 +357,15 @@ static const struct rte_cryptodev_capabilities uadk_crypto_v2_capabilities[] = {
 /* Configure device */
 static int
 uadk_crypto_pmd_config(struct rte_cryptodev *dev __rte_unused,
-		       struct rte_cryptodev_config *config __rte_unused)
+		       struct rte_cryptodev_config *config)
 {
+	char env[128];
+
+	/* set queue pairs num via env */
+	sprintf(env, "sync:%d@0", config->nb_queue_pairs);
+	setenv("WD_CIPHER_CTX_NUM", env, 1);
+	setenv("WD_DIGEST_CTX_NUM", env, 1);
+
 	return 0;
 }
 
@@ -434,7 +441,7 @@ uadk_crypto_pmd_info_get(struct rte_cryptodev *dev,
 	if (dev_info != NULL) {
 		dev_info->driver_id = dev->driver_id;
 		dev_info->driver_name = dev->device->driver->name;
-		dev_info->max_nb_queue_pairs = 128;
+		dev_info->max_nb_queue_pairs = priv->max_nb_qpairs;
 		/* No limit of number of sessions */
 		dev_info->sym.max_nb_sessions = 0;
 		dev_info->feature_flags = dev->feature_flags;
@@ -1015,6 +1022,7 @@ uadk_cryptodev_probe(struct rte_vdev_device *vdev)
 	struct uadk_crypto_priv *priv;
 	struct rte_cryptodev *dev;
 	struct uacce_dev *udev;
+	const char *input_args;
 	const char *name;
 
 	udev = wd_get_accel_dev("cipher");
@@ -1030,6 +1038,9 @@ uadk_cryptodev_probe(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 
+	input_args = rte_vdev_device_args(vdev);
+	rte_cryptodev_pmd_parse_input_args(&init_params, input_args);
+
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, &init_params);
 	if (dev == NULL) {
 		UADK_LOG(ERR, "driver %s: create failed", init_params.name);
@@ -1044,6 +1055,7 @@ uadk_cryptodev_probe(struct rte_vdev_device *vdev)
 			     RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO;
 	priv = dev->data->dev_private;
 	priv->version = version;
+	priv->max_nb_qpairs = init_params.max_nb_queue_pairs;
 
 	rte_cryptodev_pmd_probing_finish(dev);
 
@@ -1078,4 +1090,6 @@ static struct cryptodev_driver uadk_crypto_drv;
 RTE_PMD_REGISTER_VDEV(UADK_CRYPTO_DRIVER_NAME, uadk_crypto_pmd);
 RTE_PMD_REGISTER_CRYPTO_DRIVER(uadk_crypto_drv, uadk_crypto_pmd.driver,
 			       uadk_cryptodev_driver_id);
+RTE_PMD_REGISTER_PARAM_STRING(UADK_CRYPTO_DRIVER_NAME,
+			      "max_nb_queue_pairs=<int>");
 RTE_LOG_REGISTER_DEFAULT(uadk_crypto_logtype, INFO);
