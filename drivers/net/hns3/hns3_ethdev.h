@@ -1041,23 +1041,6 @@ void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex);
 void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
 
-int hns3_restore_ptp(struct hns3_adapter *hns);
-int hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,
-				    struct rte_eth_conf *conf);
-int hns3_ptp_init(struct hns3_hw *hw);
-void hns3_ptp_uninit(struct hns3_hw *hw);
-int hns3_timesync_enable(struct rte_eth_dev *dev);
-int hns3_timesync_disable(struct rte_eth_dev *dev);
-int hns3_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
-				struct timespec *timestamp,
-				uint32_t flags __rte_unused);
-int hns3_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
-				struct timespec *timestamp);
-int hns3_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts);
-int hns3_timesync_write_time(struct rte_eth_dev *dev,
-			const struct timespec *ts);
-int hns3_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
-
 const char *hns3_get_media_type_name(uint8_t media_type);
 
 static inline bool
