@@ -4637,6 +4637,7 @@ err_enable_intr:
 	hns3_fdir_filter_uninit(hns);
 err_fdir:
 	hns3_uninit_umv_space(hw);
+	hns3_ptp_uninit(hw);
 err_init_hw:
 	hns3_stats_uninit(hw);
 err_get_config:
@@ -4672,6 +4673,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	hns3_flow_uninit(eth_dev);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
+	hns3_ptp_uninit(hw);
 	hns3_stats_uninit(hw);
 	hns3_config_mac_tnl_int(hw, false);
 	hns3_pf_disable_irq0(hw);

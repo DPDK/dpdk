@@ -1045,6 +1045,7 @@ int hns3_restore_ptp(struct hns3_adapter *hns);
 int hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,
 				    struct rte_eth_conf *conf);
 int hns3_ptp_init(struct hns3_hw *hw);
+void hns3_ptp_uninit(struct hns3_hw *hw);
 int hns3_timesync_enable(struct rte_eth_dev *dev);
 int hns3_timesync_disable(struct rte_eth_dev *dev);
 int hns3_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
