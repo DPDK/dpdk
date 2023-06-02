@@ -22,6 +22,7 @@ BNX2X PMD has support for:
 - Promiscuous mode
 - Port hardware statistics
 - SR-IOV VF
+- Experimental 2.5Gbps support
 
 Non-supported Features
 ----------------------
@@ -71,6 +72,11 @@ Prerequisites
   standard Linux distros. If it is not available visit
   `linux-firmware git repository <https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/bnx2x/bnx2x-e2-7.13.11.0.fw>`_
   to get the required firmware.
+
+- 2.5Gbps speed currently requires that the firmware's NVM configuration
+  number 7 / 35 (first port) and 36 (second port) are set to 0x70
+  for 1G/2.5G/10G support.
+  This can be done for EFI or DOS using EDIAG tool from Broadcom.
 
 Pre-Installation Configuration
 ------------------------------
