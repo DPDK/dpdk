@@ -118,9 +118,6 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
-* net/bnx2x: Starting from DPDK 23.07, the Marvell QLogic bnx2x driver will be removed.
-  This decision has been made to alleviate the burden of maintaining a discontinued product.
-
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,

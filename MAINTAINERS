@@ -940,8 +940,7 @@ F: drivers/net/pfe/
 F: doc/guides/nics/features/pfe.ini
 
 Marvell QLogic bnx2x
-M: Rasesh Mody <rmody@marvell.com>
-M: Shahed Shaikh <shshaikh@marvell.com>
+M: Julien Aube <julien_dpdk@jaube.fr>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/bnx2x/
 F: doc/guides/nics/bnx2x.rst
