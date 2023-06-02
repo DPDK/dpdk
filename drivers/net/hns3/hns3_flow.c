@@ -1944,8 +1944,9 @@ hns3_flow_set_rss_ptype_tuple(struct hns3_hw *hw,
 	if (ret != 0)
 		return ret;
 
-	hns3_info(hw, "RSS tuple fields changed from 0x%" PRIx64 " to 0x%" PRIx64,
-		  old_tuple_fields, new_tuple_fields);
+	if (!cfg_global_tuple)
+		hns3_info(hw, "RSS tuple fields changed from 0x%" PRIx64 " to 0x%" PRIx64,
+			  old_tuple_fields, new_tuple_fields);
 
 	return 0;
 }
