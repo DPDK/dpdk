@@ -13,6 +13,7 @@ sources = files(
         'ethdev_tx.c',
         'ip4_lookup.c',
         'ip4_rewrite.c',
+        'kernel_rx.c',
         'kernel_tx.c',
         'log.c',
         'null.c',

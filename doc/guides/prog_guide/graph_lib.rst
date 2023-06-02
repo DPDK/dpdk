@@ -402,3 +402,13 @@ it uses the packet's destination IP address in sockaddr_in address structure
 and ``sendto`` function to send data on the raw socket.
 After sending the burst of packets to kernel,
 this node frees up the packet buffers.
+
+kernel_rx
+~~~~~~~~~
+This node is a source node which receives packets from kernel
+and forwards to any of the intermediate nodes.
+It uses the raw socket interface to receive packets from kernel.
+Uses ``poll`` function to poll on the socket fd
+for ``POLLIN`` events to read the packets from raw socket
+to stream buffer and does ``rte_node_next_stream_move()``
+when there are received packets.
