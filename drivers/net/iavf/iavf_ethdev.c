@@ -2855,7 +2855,20 @@ static int
 iavf_dev_reset(struct rte_eth_dev *dev)
 {
 	int ret;
+	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	/*
+	 * Check whether the VF reset has been done and inform application,
+	 * to avoid calling the virtual channel command, which may cause
+	 * the device to be abnormal.
+	 */
+	ret = iavf_check_vf_reset_done(hw);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Wait too long for reset done!\n");
+		return ret;
+	}
+
+	PMD_DRV_LOG(DEBUG, "Start dev_reset ...\n");
 	ret = iavf_dev_uninit(dev);
 	if (ret)
 		return ret;
