@@ -50,6 +50,8 @@ hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
 				rxq->sw_ring[i].mbuf = NULL;
 			}
 		}
+		for (i = 0; i < rxq->rx_rearm_nb; i++)
+			rxq->sw_ring[rxq->rx_rearm_start + i].mbuf = NULL;
 	}
 
 	for (i = 0; i < rxq->bulk_mbuf_num; i++)
@@ -4537,6 +4539,9 @@ hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rte_spinlock_unlock(&hw->lock);
 		return ret;
 	}
+
+	if (rxq->sw_ring[0].mbuf != NULL)
+		hns3_rx_queue_release_mbufs(rxq);
 
 	ret = hns3_init_rxq(hns, rx_queue_id);
 	if (ret) {
