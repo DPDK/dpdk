@@ -586,7 +586,7 @@ hns3_tqp_enable(struct hns3_hw *hw, uint16_t queue_id, bool enable)
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
-		hns3_err(hw, "TQP enable fail, ret = %d", ret);
+		hns3_err(hw, "TQP %s fail, ret = %d", enable ? "enable" : "disable", ret);
 
 	return ret;
 }
@@ -1635,7 +1635,7 @@ hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 
 	ret = hns3_fake_tx_queue_config(hw, tx_need_add_nb_q);
 	if (ret) {
-		hns3_err(hw, "Fail to configure fake rx queues: %d", ret);
+		hns3_err(hw, "Fail to configure fake tx queues: %d", ret);
 		goto cfg_fake_tx_q_fail;
 	}
 
