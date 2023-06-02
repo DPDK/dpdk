@@ -2734,7 +2734,8 @@ ice_parse_tunneling_params(uint64_t ol_flags,
 	 * Shall be set only if L4TUNT = 01b and EIPT is not zero
 	 */
 	if (!(*cd_tunneling & ICE_TX_CTX_EIPT_NONE) &&
-	    (*cd_tunneling & ICE_TXD_CTX_UDP_TUNNELING))
+		(*cd_tunneling & ICE_TXD_CTX_UDP_TUNNELING) &&
+		(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM))
 		*cd_tunneling |= ICE_TXD_CTX_QW0_L4T_CS_M;
 }
 
