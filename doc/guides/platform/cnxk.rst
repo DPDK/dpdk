@@ -258,7 +258,7 @@ context or stats using debugfs.
 
 Enable ``debugfs`` by:
 
-1. Compile kernel with debugfs enabled, i.e ``CONFIG_DEBUGFS=y``.
+1. Compile kernel with debugfs enabled, i.e ``CONFIG_DEBUG_FS=y``.
 2. Boot OCTEON CN9K/CN10K with debugfs supported kernel.
 3. Verify ``debugfs`` mounted by default "mount | grep -i debugfs" or mount it manually by using.
 
