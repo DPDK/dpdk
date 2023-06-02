@@ -306,3 +306,21 @@ hns3_restore_ptp(struct hns3_adapter *hns)
 
 	return ret;
 }
+
+void
+hns3_ptp_uninit(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int ret;
+
+	if (!hns3_dev_get_support(hw, PTP))
+		return;
+
+	ret = hns3_ptp_int_en(hw, false);
+	if (ret != 0)
+		hns3_err(hw, "disable PTP interrupt failed, ret = %d.", ret);
+
+	ret = hns3_timesync_configure(hns, false);
+	if (ret != 0)
+		hns3_err(hw, "disable timesync failed, ret = %d.", ret);
+}
