@@ -385,10 +385,9 @@ hns3_dfx_reg_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
 	hns3_cmd_setup_basic_desc(&desc[i], opcode, true);
 
 	ret = hns3_cmd_send(hw, desc, bd_num);
-	if (ret) {
+	if (ret)
 		hns3_err(hw, "fail to query dfx registers, opcode = 0x%04X, "
 			 "ret = %d.\n", opcode, ret);
-	}
 
 	return ret;
 }

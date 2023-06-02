@@ -751,7 +751,7 @@ hns3pf_reset_all_tqps(struct hns3_hw *hw)
 		for (i = 0; i < hw->cfg_max_queues; i++) {
 			ret = hns3pf_reset_tqp(hw, i);
 			if (ret) {
-				hns3_err(hw, "fail to reset tqp, queue_id = %d, ret = %d.",
+				hns3_err(hw, "fail to reset tqp, queue_id = %u, ret = %d.",
 					 i, ret);
 				return ret;
 			}
@@ -829,15 +829,13 @@ hns3_send_reset_queue_cmd(struct hns3_hw *hw, uint16_t queue_id,
 {
 	struct hns3_reset_tqp_queue_cmd *req;
 	struct hns3_cmd_desc desc;
-	int queue_direction;
 	int ret;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RESET_TQP_QUEUE_INDEP, false);
 
 	req = (struct hns3_reset_tqp_queue_cmd *)desc.data;
 	req->tqp_id = rte_cpu_to_le_16(queue_id);
-	queue_direction = queue_type == HNS3_RING_TYPE_TX ? 0 : 1;
-	req->queue_direction = rte_cpu_to_le_16(queue_direction);
+	req->queue_direction = queue_type == HNS3_RING_TYPE_TX ? 0 : 1;
 	hns3_set_bit(req->reset_req, HNS3_TQP_RESET_B, enable ? 1 : 0);
 
 	ret = hns3_cmd_send(hw, &desc, 1);
@@ -855,15 +853,13 @@ hns3_get_queue_reset_status(struct hns3_hw *hw, uint16_t queue_id,
 {
 	struct hns3_reset_tqp_queue_cmd *req;
 	struct hns3_cmd_desc desc;
-	int queue_direction;
 	int ret;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RESET_TQP_QUEUE_INDEP, true);
 
 	req = (struct hns3_reset_tqp_queue_cmd *)desc.data;
 	req->tqp_id = rte_cpu_to_le_16(queue_id);
-	queue_direction = queue_type == HNS3_RING_TYPE_TX ? 0 : 1;
-	req->queue_direction = rte_cpu_to_le_16(queue_direction);
+	req->queue_direction = queue_type == HNS3_RING_TYPE_TX ? 0 : 1;
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
