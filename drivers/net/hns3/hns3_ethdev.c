@@ -4416,6 +4416,12 @@ hns3_init_hardware(struct hns3_adapter *hns)
 		goto err_mac_init;
 	}
 
+	ret = hns3_ptp_init(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init PTP, ret = %d", ret);
+		goto err_mac_init;
+	}
+
 	return 0;
 
 err_mac_init:
@@ -4576,10 +4582,6 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(ERR, "Failed to register intr: %d", ret);
 		goto err_intr_callback_register;
 	}
-
-	ret = hns3_ptp_init(hw);
-	if (ret)
-		goto err_get_config;
 
 	/* Enable interrupt */
 	rte_intr_enable(pci_dev->intr_handle);
