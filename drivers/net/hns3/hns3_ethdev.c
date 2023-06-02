@@ -4088,7 +4088,7 @@ hns3_get_mac_ethertype_cmd_status(uint16_t cmdq_resp, uint8_t resp_code)
 
 	if (cmdq_resp) {
 		PMD_INIT_LOG(ERR,
-			     "cmdq execute failed for get_mac_ethertype_cmd_status, status=%u.\n",
+			     "cmdq execute failed for get_mac_ethertype_cmd_status, status=%u.",
 			     cmdq_resp);
 		return -EIO;
 	}
