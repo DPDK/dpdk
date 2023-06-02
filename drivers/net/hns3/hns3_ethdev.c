@@ -3653,7 +3653,7 @@ hns3_get_mac_ethertype_cmd_status(uint16_t cmdq_resp, uint8_t resp_code)
 
 	if (cmdq_resp) {
 		PMD_INIT_LOG(ERR,
-			     "cmdq execute failed for get_mac_ethertype_cmd_status, status=%u.\n",
+			     "cmdq execute failed for get_mac_ethertype_cmd_status, status=%u.",
 			     cmdq_resp);
 		return -EIO;
 	}
@@ -6300,7 +6300,7 @@ hns3_optical_module_existed(struct hns3_hw *hw)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
 		hns3_err(hw,
-			 "fail to get optical module exist state, ret = %d.\n",
+			 "fail to get optical module exist state, ret = %d.",
 			 ret);
 		return false;
 	}
@@ -6338,7 +6338,7 @@ hns3_get_module_eeprom_data(struct hns3_hw *hw, uint32_t offset,
 
 	ret = hns3_cmd_send(hw, desc, HNS3_SFP_INFO_CMD_NUM);
 	if (ret) {
-		hns3_err(hw, "fail to get module EEPROM info, ret = %d.\n",
+		hns3_err(hw, "fail to get module EEPROM info, ret = %d.",
 				ret);
 		return ret;
 	}
@@ -6375,7 +6375,7 @@ hns3_get_module_eeprom(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 
 	if (!hns3_optical_module_existed(hw)) {
-		hns3_err(hw, "fail to read module EEPROM: no module is connected.\n");
+		hns3_err(hw, "fail to read module EEPROM: no module is connected.");
 		return -EIO;
 	}
 
@@ -6438,7 +6438,7 @@ hns3_get_module_info(struct rte_eth_dev *dev,
 		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_MAX_LEN;
 		break;
 	default:
-		hns3_err(hw, "unknown module, type = %u, extra_type = %u.\n",
+		hns3_err(hw, "unknown module, type = %u, extra_type = %u.",
 			 sfp_type.type, sfp_type.ext_type);
 		return -EINVAL;
 	}
