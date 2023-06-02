@@ -82,6 +82,7 @@ rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 			memset(elem, 0, sizeof(ethdev_rx_node_elem_t));
 			elem->ctx.port_id = port_id;
 			elem->ctx.queue_id = j;
+			elem->ctx.cls_next = ETHDEV_RX_NEXT_PKT_CLS;
 			elem->nid = id;
 			elem->next = rx_node_data->head;
 			rx_node_data->head = elem;

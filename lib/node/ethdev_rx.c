@@ -194,8 +194,6 @@ ethdev_rx_node_init(const struct rte_graph *graph, struct rte_node *node)
 
 	RTE_VERIFY(elem != NULL);
 
-	ctx->cls_next = ETHDEV_RX_NEXT_PKT_CLS;
-
 	/* Check and setup ptype */
 	return ethdev_ptype_setup(ctx->port_id, ctx->queue_id);
 }
@@ -215,7 +213,6 @@ static struct rte_node_register ethdev_rx_node_base = {
 
 	.nb_edges = ETHDEV_RX_NEXT_MAX,
 	.next_nodes = {
-		/* Default pkt classification node */
 		[ETHDEV_RX_NEXT_PKT_CLS] = "pkt_cls",
 		[ETHDEV_RX_NEXT_IP4_LOOKUP] = "ip4_lookup",
 	},
