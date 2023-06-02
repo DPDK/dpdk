@@ -7,7 +7,7 @@
 #include <rte_time.h>
 
 #include "hns3_ethdev.h"
-#include "hns3_regs.h"
+#include "hns3_ptp.h"
 #include "hns3_logs.h"
 
 uint64_t hns3_timestamp_rx_dynflag;
