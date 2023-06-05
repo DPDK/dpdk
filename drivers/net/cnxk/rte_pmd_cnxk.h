@@ -34,12 +34,17 @@ enum rte_pmd_cnxk_sec_action_alg {
 	 *  SA_alg = { 7'b0, SA_mcam[24:0] + SPI[27:25]}
 	 */
 	RTE_PMD_CNXK_SEC_ACTION_ALG2,
+	/** SPI<28:25> segment the sequence number space.
+	 * Initial SA_index is from SA_XOR if enabled.
+	 * SA_alg = { 7'b0, SA_mcam[24:0] + SPI[28:25]}
+	 */
+	RTE_PMD_CNXK_SEC_ACTION_ALG3,
 	/** The inbound SPI maybe "random", therefore we want the MCAM to be
 	 * capable of remapping the SPI to an arbitrary SA_index.
 	 * SPI to SA is done using a lookup in NIX/NPC cam entry with key as
 	 * SPI, MATCH_ID, LFID.
 	 */
-	RTE_PMD_CNXK_SEC_ACTION_ALG3,
+	RTE_PMD_CNXK_SEC_ACTION_ALG4,
 };
 
 struct rte_pmd_cnxk_sec_action {
