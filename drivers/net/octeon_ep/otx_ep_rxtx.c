@@ -49,6 +49,7 @@ int
 otx_ep_delete_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 {
 	struct otx_ep_instr_queue *iq;
+	uint32_t i;
 
 	iq = otx_ep->instr_queue[iq_no];
 	if (iq == NULL) {
@@ -56,7 +57,12 @@ otx_ep_delete_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 		return -EINVAL;
 	}
 
-	rte_free(iq->req_list);
+	if (iq->req_list) {
+		for (i = 0; i < iq->nb_desc; i++)
+			rte_free(iq->req_list[i].finfo.g.sg);
+		rte_free(iq->req_list);
+	}
+
 	iq->req_list = NULL;
 
 	if (iq->iq_mz) {
@@ -81,7 +87,8 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 {
 	const struct otx_ep_config *conf;
 	struct otx_ep_instr_queue *iq;
-	uint32_t q_size;
+	struct otx_ep_sg_entry *sg;
+	uint32_t i, q_size;
 	int ret;
 
 	conf = otx_ep->conf;
@@ -119,6 +126,18 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 	if (iq->req_list == NULL) {
 		otx_ep_err("IQ[%d] req_list alloc failed\n", iq_no);
 		goto iq_init_fail;
+	}
+
+	for (i = 0; i < iq->nb_desc; i++) {
+		sg = rte_zmalloc_socket("sg_entry", (OTX_EP_MAX_SG_LISTS * OTX_EP_SG_ENTRY_SIZE),
+			OTX_EP_SG_ALIGN, rte_socket_id());
+		if (sg == NULL) {
+			otx_ep_err("IQ[%d] sg_entries alloc failed\n", iq_no);
+			goto iq_init_fail;
+		}
+
+		iq->req_list[i].finfo.g.num_sg = OTX_EP_MAX_SG_LISTS;
+		iq->req_list[i].finfo.g.sg = sg;
 	}
 
 	otx_ep_info("IQ[%d]: base: %p basedma: %lx count: %d\n",
@@ -371,25 +390,18 @@ delete_OQ:
 static inline void
 otx_ep_iqreq_delete(struct otx_ep_instr_queue *iq, uint32_t idx)
 {
+	struct rte_mbuf *mbuf;
 	uint32_t reqtype;
-	void *buf;
-	struct otx_ep_buf_free_info *finfo;
 
-	buf     = iq->req_list[idx].buf;
+	mbuf    = iq->req_list[idx].finfo.mbuf;
 	reqtype = iq->req_list[idx].reqtype;
 
 	switch (reqtype) {
 	case OTX_EP_REQTYPE_NORESP_NET:
-		rte_pktmbuf_free((struct rte_mbuf *)buf);
-		otx_ep_dbg("IQ buffer freed at idx[%d]\n", idx);
-		break;
-
 	case OTX_EP_REQTYPE_NORESP_GATHER:
-		finfo = (struct  otx_ep_buf_free_info *)buf;
 		/* This will take care of multiple segments also */
-		rte_pktmbuf_free(finfo->mbuf);
-		rte_free(finfo->g.sg);
-		rte_free(finfo);
+		rte_pktmbuf_free(mbuf);
+		otx_ep_dbg("IQ buffer freed at idx[%d]\n", idx);
 		break;
 
 	case OTX_EP_REQTYPE_NONE:
@@ -398,15 +410,15 @@ otx_ep_iqreq_delete(struct otx_ep_instr_queue *iq, uint32_t idx)
 	}
 
 	/* Reset the request list at this index */
-	iq->req_list[idx].buf = NULL;
+	iq->req_list[idx].finfo.mbuf = NULL;
 	iq->req_list[idx].reqtype = 0;
 }
 
 static inline void
-otx_ep_iqreq_add(struct otx_ep_instr_queue *iq, void *buf,
+otx_ep_iqreq_add(struct otx_ep_instr_queue *iq, struct rte_mbuf *mbuf,
 		uint32_t reqtype, int index)
 {
-	iq->req_list[index].buf = buf;
+	iq->req_list[index].finfo.mbuf = mbuf;
 	iq->req_list[index].reqtype = reqtype;
 }
 
@@ -531,8 +543,45 @@ set_sg_size(struct otx_ep_sg_entry *sg_entry, uint16_t size, uint32_t pos)
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 	sg_entry->u.size[pos] = size;
 #elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-	sg_entry->u.size[3 - pos] = size;
+	sg_entry->u.size[(OTX_EP_NUM_SG_PTRS - 1) - pos] = size;
 #endif
+}
+
+static inline int
+prepare_xmit_gather_list(struct otx_ep_instr_queue *iq, struct rte_mbuf *m, uint64_t *dptr,
+			 union otx_ep_instr_ih *ih)
+{
+	uint16_t j = 0, frags, num_sg, mask = OTX_EP_NUM_SG_PTRS - 1;
+	struct otx_ep_buf_free_info *finfo;
+	uint32_t pkt_len;
+	int rc = -1;
+
+	pkt_len = rte_pktmbuf_pkt_len(m);
+	frags = m->nb_segs;
+	num_sg = (frags + mask) / OTX_EP_NUM_SG_PTRS;
+
+	if (unlikely(pkt_len > OTX_EP_MAX_PKT_SZ && num_sg > OTX_EP_MAX_SG_LISTS)) {
+		otx_ep_err("Failed to xmit the pkt, pkt_len is higher or pkt has more segments\n");
+		goto exit;
+	}
+
+	finfo = &iq->req_list[iq->host_write_index].finfo;
+	*dptr = rte_mem_virt2iova(finfo->g.sg);
+	ih->s.tlen = pkt_len + ih->s.fsz;
+	ih->s.gsz = frags;
+	ih->s.gather = 1;
+
+	while (frags--) {
+		finfo->g.sg[(j >> 2)].ptr[(j & mask)] = rte_mbuf_data_iova(m);
+		set_sg_size(&finfo->g.sg[(j >> 2)], m->data_len, (j & mask));
+		j++;
+		m = m->next;
+	}
+
+	return 0;
+
+exit:
+	return rc;
 }
 
 /* Enqueue requests/packets to OTX_EP IQ queue.
@@ -541,20 +590,13 @@ set_sg_size(struct otx_ep_sg_entry *sg_entry, uint16_t size, uint32_t pos)
 uint16_t
 otx_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 {
+	struct otx_ep_instr_queue *iq = (struct otx_ep_instr_queue *)tx_queue;
+	struct otx_ep_device *otx_ep = iq->otx_ep_dev;
 	struct otx_ep_instr_64B iqcmd;
-	struct otx_ep_instr_queue *iq;
-	struct otx_ep_device *otx_ep;
-	struct rte_mbuf *m;
-
-	uint32_t iqreq_type, sgbuf_sz;
 	int dbell, index, count = 0;
-	unsigned int pkt_len, i;
-	int gather, gsz;
-	void *iqreq_buf;
-	uint64_t dptr;
-
-	iq = (struct otx_ep_instr_queue *)tx_queue;
-	otx_ep = iq->otx_ep_dev;
+	uint32_t iqreq_type;
+	uint32_t pkt_len, i;
+	struct rte_mbuf *m;
 
 	iqcmd.ih.u64 = 0;
 	iqcmd.pki_ih3.u64 = 0;
@@ -577,72 +619,24 @@ otx_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 	for (i = 0; i < nb_pkts; i++) {
 		m = pkts[i];
 		if (m->nb_segs == 1) {
-			/* dptr */
-			dptr = rte_mbuf_data_iova(m);
 			pkt_len = rte_pktmbuf_data_len(m);
-			iqreq_buf = m;
+			iqcmd.ih.s.tlen = pkt_len + iqcmd.ih.s.fsz;
+			iqcmd.dptr = rte_mbuf_data_iova(m); /*dptr*/
+			iqcmd.ih.s.gather = 0;
+			iqcmd.ih.s.gsz = 0;
 			iqreq_type = OTX_EP_REQTYPE_NORESP_NET;
-			gather = 0;
-			gsz = 0;
 		} else {
-			struct otx_ep_buf_free_info *finfo;
-			int j, frags, num_sg;
-
 			if (!(otx_ep->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS))
 				goto xmit_fail;
 
-			finfo = (struct otx_ep_buf_free_info *)rte_malloc(NULL,
-							sizeof(*finfo), 0);
-			if (finfo == NULL) {
-				otx_ep_err("free buffer alloc failed\n");
+			if (unlikely(prepare_xmit_gather_list(iq, m, &iqcmd.dptr, &iqcmd.ih) < 0))
 				goto xmit_fail;
-			}
-			num_sg = (m->nb_segs + 3) / 4;
-			sgbuf_sz = sizeof(struct otx_ep_sg_entry) * num_sg;
-			finfo->g.sg =
-				rte_zmalloc(NULL, sgbuf_sz, OTX_EP_SG_ALIGN);
-			if (finfo->g.sg == NULL) {
-				rte_free(finfo);
-				otx_ep_err("sg entry alloc failed\n");
-				goto xmit_fail;
-			}
-			gather = 1;
-			gsz = m->nb_segs;
-			finfo->g.num_sg = num_sg;
-			finfo->g.sg[0].ptr[0] = rte_mbuf_data_iova(m);
-			set_sg_size(&finfo->g.sg[0], m->data_len, 0);
-			pkt_len = m->data_len;
-			finfo->mbuf = m;
 
-			frags = m->nb_segs - 1;
-			j = 1;
-			m = m->next;
-			while (frags--) {
-				finfo->g.sg[(j >> 2)].ptr[(j & 3)] =
-						rte_mbuf_data_iova(m);
-				set_sg_size(&finfo->g.sg[(j >> 2)],
-						m->data_len, (j & 3));
-				pkt_len += m->data_len;
-				j++;
-				m = m->next;
-			}
-			dptr = rte_mem_virt2iova(finfo->g.sg);
-			iqreq_buf = finfo;
+			pkt_len = rte_pktmbuf_pkt_len(m);
 			iqreq_type = OTX_EP_REQTYPE_NORESP_GATHER;
-			if (pkt_len > OTX_EP_MAX_PKT_SZ) {
-				rte_free(finfo->g.sg);
-				rte_free(finfo);
-				otx_ep_err("failed\n");
-				goto xmit_fail;
-			}
 		}
-		/* ih vars */
-		iqcmd.ih.s.tlen = pkt_len + iqcmd.ih.s.fsz;
-		iqcmd.ih.s.gather = gather;
-		iqcmd.ih.s.gsz = gsz;
 
-		iqcmd.dptr = dptr;
-		otx_ep_swap_8B_data(&iqcmd.irh.u64, 1);
+		iqcmd.irh.u64 = rte_bswap64(iqcmd.irh.u64);
 
 #ifdef OTX_EP_IO_DEBUG
 		otx_ep_dbg("After swapping\n");
@@ -662,7 +656,7 @@ otx_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 		index = iq->host_write_index;
 		if (otx_ep_send_data(otx_ep, iq, &iqcmd, dbell))
 			goto xmit_fail;
-		otx_ep_iqreq_add(iq, iqreq_buf, iqreq_type, index);
+		otx_ep_iqreq_add(iq, m, iqreq_type, index);
 		iq->stats.tx_pkts++;
 		iq->stats.tx_bytes += pkt_len;
 		count++;
@@ -682,22 +676,16 @@ xmit_fail:
 uint16_t
 otx2_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 {
+	struct otx_ep_instr_queue *iq = (struct otx_ep_instr_queue *)tx_queue;
+	struct otx_ep_device *otx_ep = iq->otx_ep_dev;
 	struct otx2_ep_instr_64B iqcmd2;
-	struct otx_ep_instr_queue *iq;
-	struct otx_ep_device *otx_ep;
-	uint64_t dptr;
-	int count = 0;
-	unsigned int i;
+	uint32_t iqreq_type;
 	struct rte_mbuf *m;
-	unsigned int pkt_len;
-	void *iqreq_buf;
-	uint32_t iqreq_type, sgbuf_sz;
-	int gather, gsz;
+	uint32_t pkt_len;
+	int count = 0;
+	uint16_t i;
 	int dbell;
 	int index;
-
-	iq = (struct otx_ep_instr_queue *)tx_queue;
-	otx_ep = iq->otx_ep_dev;
 
 	iqcmd2.ih.u64 = 0;
 	iqcmd2.irh.u64 = 0;
@@ -711,71 +699,24 @@ otx2_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 	for (i = 0; i < nb_pkts; i++) {
 		m = pkts[i];
 		if (m->nb_segs == 1) {
-			/* dptr */
-			dptr = rte_mbuf_data_iova(m);
 			pkt_len = rte_pktmbuf_data_len(m);
-			iqreq_buf = m;
+			iqcmd2.ih.s.tlen = pkt_len + iqcmd2.ih.s.fsz;
+			iqcmd2.dptr = rte_mbuf_data_iova(m); /*dptr*/
+			iqcmd2.ih.s.gather = 0;
+			iqcmd2.ih.s.gsz = 0;
 			iqreq_type = OTX_EP_REQTYPE_NORESP_NET;
-			gather = 0;
-			gsz = 0;
 		} else {
-			struct otx_ep_buf_free_info *finfo;
-			int j, frags, num_sg;
-
 			if (!(otx_ep->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS))
 				goto xmit_fail;
 
-			finfo = (struct otx_ep_buf_free_info *)
-					rte_malloc(NULL, sizeof(*finfo), 0);
-			if (finfo == NULL) {
-				otx_ep_err("free buffer alloc failed\n");
+			if (unlikely(prepare_xmit_gather_list(iq, m, &iqcmd2.dptr, &iqcmd2.ih) < 0))
 				goto xmit_fail;
-			}
-			num_sg = (m->nb_segs + 3) / 4;
-			sgbuf_sz = sizeof(struct otx_ep_sg_entry) * num_sg;
-			finfo->g.sg =
-				rte_zmalloc(NULL, sgbuf_sz, OTX_EP_SG_ALIGN);
-			if (finfo->g.sg == NULL) {
-				rte_free(finfo);
-				otx_ep_err("sg entry alloc failed\n");
-				goto xmit_fail;
-			}
-			gather = 1;
-			gsz = m->nb_segs;
-			finfo->g.num_sg = num_sg;
-			finfo->g.sg[0].ptr[0] = rte_mbuf_data_iova(m);
-			set_sg_size(&finfo->g.sg[0], m->data_len, 0);
-			pkt_len = m->data_len;
-			finfo->mbuf = m;
 
-			frags = m->nb_segs - 1;
-			j = 1;
-			m = m->next;
-			while (frags--) {
-				finfo->g.sg[(j >> 2)].ptr[(j & 3)] =
-						rte_mbuf_data_iova(m);
-				set_sg_size(&finfo->g.sg[(j >> 2)],
-						m->data_len, (j & 3));
-				pkt_len += m->data_len;
-				j++;
-				m = m->next;
-			}
-			dptr = rte_mem_virt2iova(finfo->g.sg);
-			iqreq_buf = finfo;
+			pkt_len = rte_pktmbuf_pkt_len(m);
 			iqreq_type = OTX_EP_REQTYPE_NORESP_GATHER;
-			if (pkt_len > OTX_EP_MAX_PKT_SZ) {
-				rte_free(finfo->g.sg);
-				rte_free(finfo);
-				otx_ep_err("failed\n");
-				goto xmit_fail;
-			}
 		}
-		/* ih vars */
-		iqcmd2.ih.s.tlen = pkt_len + iqcmd2.ih.s.fsz;
-		iqcmd2.ih.s.gather = gather;
-		iqcmd2.ih.s.gsz = gsz;
-		iqcmd2.dptr = dptr;
-		otx_ep_swap_8B_data(&iqcmd2.irh.u64, 1);
+
+		iqcmd2.irh.u64 = rte_bswap64(iqcmd2.irh.u64);
 
 #ifdef OTX_EP_IO_DEBUG
 		otx_ep_dbg("After swapping\n");
@@ -794,7 +735,7 @@ otx2_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 		dbell = (i == (unsigned int)(nb_pkts - 1)) ? 1 : 0;
 		if (otx_ep_send_data(otx_ep, iq, &iqcmd2, dbell))
 			goto xmit_fail;
-		otx_ep_iqreq_add(iq, iqreq_buf, iqreq_type, index);
+		otx_ep_iqreq_add(iq, m, iqreq_type, index);
 		iq->stats.tx_pkts++;
 		iq->stats.tx_bytes += pkt_len;
 		count++;

@@ -37,6 +37,8 @@
 #define OTX_EP_NORESP_OHSM_SEND     (4)
 #define OTX_EP_NORESP_LAST          (4)
 #define OTX_EP_PCI_RING_ALIGN   65536
+#define OTX_EP_MAX_SG_LISTS 4
+#define OTX_EP_NUM_SG_PTRS 4
 #define SDP_PKIND 40
 #define SDP_OTX2_PKIND 57
 #define SDP_OTX2_PKIND_FS0 0
@@ -135,9 +137,40 @@ typedef union otx_ep_instr_ih {
 	} s;
 } otx_ep_instr_ih_t;
 
+struct otx_ep_sg_entry {
+	/** The first 64 bit gives the size of data in each dptr. */
+	union {
+		uint16_t size[OTX_EP_NUM_SG_PTRS];
+		uint64_t size64;
+	} u;
+
+	/** The 4 dptr pointers for this entry. */
+	uint64_t ptr[OTX_EP_NUM_SG_PTRS];
+};
+
+#define OTX_EP_SG_ENTRY_SIZE	(sizeof(struct otx_ep_sg_entry))
+
+/** Structure of a node in list of gather components maintained by
+ *  driver for each network device.
+ */
+struct otx_ep_gather {
+	/** number of gather entries. */
+	int num_sg;
+
+	/** Gather component that can accommodate max sized fragment list
+	 *  received from the IP layer.
+	 */
+	struct otx_ep_sg_entry *sg;
+};
+
+struct otx_ep_buf_free_info {
+	struct rte_mbuf *mbuf;
+	struct otx_ep_gather g;
+};
+
 /* OTX_EP IQ request list */
 struct otx_ep_instr_list {
-	void *buf;
+	struct otx_ep_buf_free_info finfo;
 	uint32_t reqtype;
 };
 #define OTX_EP_IQREQ_LIST_SIZE	(sizeof(struct otx_ep_instr_list))
@@ -515,37 +548,6 @@ int otx_ep_setup_oqs(struct otx_ep_device *otx_ep, int oq_no, int num_descs,
 		     int desc_size, struct rte_mempool *mpool,
 		     unsigned int socket_id);
 int otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no);
-
-struct otx_ep_sg_entry {
-	/** The first 64 bit gives the size of data in each dptr. */
-	union {
-		uint16_t size[4];
-		uint64_t size64;
-	} u;
-
-	/** The 4 dptr pointers for this entry. */
-	uint64_t ptr[4];
-};
-
-#define OTX_EP_SG_ENTRY_SIZE	(sizeof(struct otx_ep_sg_entry))
-
-/** Structure of a node in list of gather components maintained by
- *  driver for each network device.
- */
-struct otx_ep_gather {
-	/** number of gather entries. */
-	int num_sg;
-
-	/** Gather component that can accommodate max sized fragment list
-	 *  received from the IP layer.
-	 */
-	struct otx_ep_sg_entry *sg;
-};
-
-struct otx_ep_buf_free_info {
-	struct rte_mbuf *mbuf;
-	struct otx_ep_gather g;
-};
 
 #define OTX_EP_MAX_PKT_SZ 65498U
 #define OTX_EP_MAX_MAC_ADDRS 1
