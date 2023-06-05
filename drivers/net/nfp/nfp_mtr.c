@@ -6,6 +6,7 @@
 #include <rte_mtr_driver.h>
 #include <bus_pci_driver.h>
 #include <rte_malloc.h>
+#include <rte_alarm.h>
 
 #include "nfp_common.h"
 #include "nfp_mtr.h"
@@ -17,6 +18,9 @@
 #define NFP_FL_QOS_PPS          RTE_BIT32(15)
 #define NFP_FL_QOS_METER        RTE_BIT32(10)
 #define NFP_FL_QOS_RFC2697      RTE_BIT32(0)
+
+/* Alarm timeout value in microseconds */
+#define NFP_METER_STATS_INTERVAL 1000000  /* 1 second */
 
 /**
  * Callback to get MTR capabilities.
@@ -1072,9 +1076,22 @@ nfp_net_mtr_ops_get(struct rte_eth_dev *dev, void *arg)
 	return 0;
 }
 
+static void
+nfp_mtr_stats_request(void *arg)
+{
+	struct nfp_mtr *mtr;
+	struct nfp_app_fw_flower *app_fw_flower = arg;
+
+	LIST_FOREACH(mtr, &app_fw_flower->mtr_priv->mtrs, next)
+		nfp_flower_cmsg_qos_stats(app_fw_flower, &mtr->mtr_profile->conf.head);
+
+	rte_eal_alarm_set(NFP_METER_STATS_INTERVAL, nfp_mtr_stats_request, arg);
+}
+
 int
 nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 {
+	int ret;
 	struct nfp_mtr_priv *priv;
 	struct nfp_app_fw_flower *app_fw_flower;
 
@@ -1087,7 +1104,13 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
 	app_fw_flower->mtr_priv = priv;
 
-	priv->drain_tsc = rte_get_tsc_hz();
+	ret = rte_eal_alarm_set(NFP_METER_STATS_INTERVAL, nfp_mtr_stats_request,
+			(void *)app_fw_flower);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "nfp mtr timer init failed.");
+		rte_free(priv);
+		return ret;
+	}
 
 	LIST_INIT(&priv->mtrs);
 	LIST_INIT(&priv->profiles);
@@ -1109,6 +1132,8 @@ nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
 	priv = app_fw_flower->mtr_priv;
+
+	rte_eal_alarm_cancel(nfp_mtr_stats_request, (void *)app_fw_flower);
 
 	LIST_FOREACH(mtr, &priv->mtrs, next) {
 		LIST_REMOVE(mtr, next);

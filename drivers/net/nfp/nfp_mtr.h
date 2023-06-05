@@ -159,14 +159,12 @@ struct nfp_mtr {
  * @policies:        the head node of policy list
  * @mtrs:            the head node of mtrs list
  * @mtr_stats_lock:  spinlock for meter stats
- * @drain_tsc:       clock period
  */
 struct nfp_mtr_priv {
 	LIST_HEAD(, nfp_mtr_profile) profiles;
 	LIST_HEAD(, nfp_mtr_policy) policies;
 	LIST_HEAD(, nfp_mtr) mtrs;
 	rte_spinlock_t mtr_stats_lock;
-	uint64_t drain_tsc;
 };
 
 int nfp_net_mtr_ops_get(struct rte_eth_dev *dev, void *arg);

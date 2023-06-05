@@ -322,28 +322,14 @@ nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 	}
 }
 
-static void
-nfp_mtr_stats_request(struct nfp_app_fw_flower *app_fw_flower)
-{
-	struct nfp_mtr *mtr;
-
-	LIST_FOREACH(mtr, &app_fw_flower->mtr_priv->mtrs, next)
-		(void)nfp_flower_cmsg_qos_stats(app_fw_flower, &mtr->mtr_profile->conf.head);
-}
-
 void
 nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower)
 {
 	uint16_t count;
-	uint64_t cur_tsc;
-	uint64_t drain_tsc;
-	uint64_t pre_tsc = 0;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_hw *ctrl_hw;
 	struct rte_eth_dev *ctrl_eth_dev;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-
-	drain_tsc = app_fw_flower->mtr_priv->drain_tsc;
 
 	ctrl_hw = app_fw_flower->ctrl_hw;
 	ctrl_eth_dev = ctrl_hw->eth_dev;
@@ -357,12 +343,6 @@ nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower)
 			app_fw_flower->ctrl_vnic_rx_count += count;
 			/* Process cmsgs here */
 			nfp_flower_cmsg_rx(app_fw_flower, pkts_burst, count);
-		}
-
-		cur_tsc = rte_rdtsc();
-		if (unlikely(cur_tsc - pre_tsc > drain_tsc)) {
-			nfp_mtr_stats_request(app_fw_flower);
-			pre_tsc = cur_tsc;
 		}
 	}
 }
