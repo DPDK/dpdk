@@ -1853,7 +1853,6 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 				&& rule->portid == port_id)
 			*rx_offloads |= RTE_ETH_RX_OFFLOAD_SECURITY;
 		if (IS_HW_REASSEMBLY_EN(rule->flags)) {
-			*rx_offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 			*tx_offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 			*hw_reassembly = 1;
 		}
