@@ -1624,6 +1624,8 @@ inline_ipsec_testsuite_setup(void)
 		 * Without SG mode, default value is picked.
 		 */
 		plaintext_len = local_port_conf.rxmode.mtu - 256;
+	} else {
+		plaintext_len = 0;
 	}
 
 	return 0;
@@ -1934,6 +1936,7 @@ test_inline_ip_reassembly(const void *testdata)
 	const struct reassembly_vector *td = testdata;
 	struct ip_reassembly_test_packet full_pkt;
 	struct ip_reassembly_test_packet frags[MAX_FRAGS];
+	uint16_t extra_data, extra_data_sum = 0;
 	struct ipsec_test_flags flags = {0};
 	int i = 0;
 
@@ -1945,14 +1948,22 @@ test_inline_ip_reassembly(const void *testdata)
 			sizeof(struct ip_reassembly_test_packet));
 	reassembly_td.full_pkt = &full_pkt;
 
-	test_vector_payload_populate(reassembly_td.full_pkt, true);
 	for (; i < reassembly_td.nb_frags; i++) {
 		memcpy(&frags[i], td->frags[i],
 			sizeof(struct ip_reassembly_test_packet));
 		reassembly_td.frags[i] = &frags[i];
+
+		/* Add extra data for multi-seg test on all fragments except last one */
+		extra_data = 0;
+		if (plaintext_len && reassembly_td.frags[i]->len < plaintext_len &&
+		    (i != reassembly_td.nb_frags - 1))
+			extra_data = ((plaintext_len - reassembly_td.frags[i]->len) & ~0x7ULL);
+
 		test_vector_payload_populate(reassembly_td.frags[i],
-				(i == 0) ? true : false);
+				(i == 0) ? true : false, extra_data, extra_data_sum);
+		extra_data_sum += extra_data;
 	}
+	test_vector_payload_populate(reassembly_td.full_pkt, true, extra_data_sum, 0);
 
 	return test_ipsec_with_reassembly(&reassembly_td, &flags);
 }
@@ -2666,8 +2677,6 @@ test_ipsec_inline_proto_pkt_esn_antireplay4096(const void *test_data)
 {
 	return test_ipsec_inline_proto_pkt_esn_antireplay(test_data, 4096);
 }
-
-
 
 static struct unit_test_suite inline_ipsec_testsuite  = {
 	.suite_name = "Inline IPsec Ethernet Device Unit Test Suite",

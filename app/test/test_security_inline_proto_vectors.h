@@ -17,7 +17,7 @@ uint8_t dummy_ipv6_eth_hdr[] = {
 		0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0x86, 0xdd,
 };
 
-#define MAX_FRAG_LEN		 1500
+#define MAX_FRAG_LEN		 IPSEC_TEXT_MAX_LEN
 #define MAX_FRAGS		 6
 #define MAX_PKT_LEN		 (MAX_FRAG_LEN * MAX_FRAGS)
 
@@ -468,9 +468,13 @@ struct ip_reassembly_test_packet pkt_ipv4_udp_p3_f5 = {
 
 static inline void
 test_vector_payload_populate(struct ip_reassembly_test_packet *pkt,
-		bool first_frag)
+			     bool first_frag, uint16_t extra_data, uint16_t extra_data_sum)
 {
+	bool is_ipv6 = ((pkt->data[0] >> 4) == 0x6);
 	uint32_t i = pkt->l4_offset;
+	uint16_t len, off;
+	size_t ext_len = 0;
+	int proto;
 
 	/**
 	 * For non-fragmented packets and first frag, skip 8 bytes from
@@ -478,6 +482,51 @@ test_vector_payload_populate(struct ip_reassembly_test_packet *pkt,
 	 */
 	if (first_frag)
 		i += 8;
+
+	/* Fixup header and checksum */
+	if (extra_data || extra_data_sum) {
+		if (is_ipv6) {
+			struct rte_ipv6_hdr *hdr = (struct rte_ipv6_hdr *)pkt->data;
+			struct rte_ipv6_fragment_ext *frag_ext;
+			uint8_t *p = pkt->data;
+			uint16_t old_off;
+
+			len = rte_be_to_cpu_16(hdr->payload_len) + extra_data;
+			hdr->payload_len = rte_cpu_to_be_16(len);
+
+			/* Find frag extension header to add to frag offset */
+			if (extra_data_sum) {
+				proto = hdr->proto;
+				p += sizeof(struct rte_ipv6_hdr);
+				while (proto != IPPROTO_FRAGMENT &&
+				       (proto = rte_ipv6_get_next_ext(p, proto, &ext_len) >= 0))
+					p += ext_len;
+
+				/* Found fragment header, update the frag offset */
+				if (proto == IPPROTO_FRAGMENT) {
+					frag_ext = (struct rte_ipv6_fragment_ext *)p;
+					old_off = rte_be_to_cpu_16(frag_ext->frag_data);
+					off = old_off & 0xFFF8;
+					off += extra_data_sum;
+					frag_ext->frag_data = rte_cpu_to_be_16(off |
+									       (old_off & 0x7));
+				}
+			}
+		} else {
+			struct rte_ipv4_hdr *hdr = (struct rte_ipv4_hdr *)pkt->data;
+			uint16_t old_off = rte_be_to_cpu_16(hdr->fragment_offset);
+
+			len = rte_be_to_cpu_16(hdr->total_length) + extra_data;
+			off = old_off & 0x1FFF;
+			off += (extra_data_sum >> 3);
+
+			hdr->total_length = rte_cpu_to_be_16(len);
+			hdr->fragment_offset = rte_cpu_to_be_16(off | (old_off & 0xe000));
+			hdr->hdr_checksum = 0;
+			hdr->hdr_checksum = rte_ipv4_cksum(hdr);
+		}
+		pkt->len += extra_data;
+	}
 
 	for (; i < pkt->len; i++)
 		pkt->data[i] = 0x58;
