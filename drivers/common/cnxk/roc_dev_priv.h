@@ -70,6 +70,14 @@ dev_is_afvf(uint16_t pf_func)
 	return !(pf_func & ~RVU_PFVF_FUNC_MASK);
 }
 
+struct mbox_sync {
+	bool start_thread;
+	uint8_t msg_avail;
+	pthread_t pfvf_msg_thread;
+	pthread_cond_t pfvf_msg_cond;
+	pthread_mutex_t mutex;
+};
+
 struct dev {
 	uint16_t pf;
 	int16_t vf;
@@ -85,7 +93,7 @@ struct dev {
 	struct mbox mbox_vfpf;
 	struct mbox mbox_vfpf_up;
 	dev_intr_t intr;
-	int timer_set; /* ~0 : no alarm handling */
+	dev_intr_t flr;
 	uint64_t hwcap;
 	struct npa_lf npa;
 	struct mbox *mbox;
@@ -97,6 +105,7 @@ struct dev {
 	void *roc_ml;
 	bool disable_shared_lmt; /* false(default): shared lmt mode enabled */
 	const struct plt_memzone *lmt_mz;
+	struct mbox_sync sync;
 } __plt_cache_aligned;
 
 struct npa {

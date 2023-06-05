@@ -483,7 +483,7 @@ struct roc_nix {
 	uintptr_t meta_mempool;
 	TAILQ_ENTRY(roc_nix) next;
 
-#define ROC_NIX_MEM_SZ (6 * 1056)
+#define ROC_NIX_MEM_SZ (6 * 1070)
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 

@@ -17,6 +17,12 @@
 /* Single Root I/O Virtualization */
 #define ROC_PCI_SRIOV_TOTAL_VF 0x0e /* Total VFs */
 
+/* VF Mbox handler thread name */
+#define MBOX_HANDLER_NAME_MAX_LEN 25
+
+/* VF interrupt message pending bits - mbox or flr */
+#define ROC_DEV_MBOX_PEND BIT_ULL(0)
+#define ROC_DEV_FLR_PEND  BIT_ULL(1)
 static void *
 mbox_mem_map(off_t off, size_t size)
 {
@@ -348,7 +354,7 @@ vf_pf_process_up_msgs(struct dev *dev, uint16_t vf)
 
 /* PF handling messages from VF */
 static void
-roc_vf_pf_mbox_handle_msg(void *param)
+roc_vf_pf_mbox_handle_msg(void *param, dev_intr_t *intr)
 {
 	uint16_t vf, max_vf, max_bits;
 	struct dev *dev = param;
@@ -357,29 +363,30 @@ roc_vf_pf_mbox_handle_msg(void *param)
 	max_vf = max_bits * MAX_VFPF_DWORD_BITS;
 
 	for (vf = 0; vf < max_vf; vf++) {
-		if (dev->intr.bits[vf / max_bits] & BIT_ULL(vf % max_bits)) {
+		if (intr->bits[vf / max_bits] & BIT_ULL(vf % max_bits)) {
 			plt_base_dbg("Process vf:%d request (pf:%d, vf:%d)", vf,
 				     dev->pf, dev->vf);
 			/* VF initiated down messages */
 			vf_pf_process_msgs(dev, vf);
 			/* VF replies to PF's UP messages */
 			vf_pf_process_up_msgs(dev, vf);
-			dev->intr.bits[vf / max_bits] &=
-				~(BIT_ULL(vf % max_bits));
+			intr->bits[vf / max_bits] &= ~(BIT_ULL(vf % max_bits));
 		}
 	}
-	dev->timer_set = 0;
 }
 
 /* IRQ to PF from VF - PF context (interrupt thread) */
 static void
 roc_vf_pf_mbox_irq(void *param)
 {
+	bool signal_thread = false;
 	struct dev *dev = param;
-	bool alarm_set = false;
+	dev_intr_t intrb;
 	uint64_t intr;
-	int vfpf;
+	int vfpf, sz;
 
+	sz = sizeof(intrb.bits[0]) * MAX_VFPF_DWORD_BITS;
+	memset(intrb.bits, 0, sz);
 	for (vfpf = 0; vfpf < MAX_VFPF_DWORD_BITS; ++vfpf) {
 		intr = plt_read64(dev->bar2 + RVU_PF_VFPF_MBOX_INTX(vfpf));
 		if (!intr)
@@ -389,16 +396,22 @@ roc_vf_pf_mbox_irq(void *param)
 			     vfpf, intr, dev->pf, dev->vf);
 
 		/* Save and clear intr bits */
-		dev->intr.bits[vfpf] |= intr;
+		intrb.bits[vfpf] |= intr;
 		plt_write64(intr, dev->bar2 + RVU_PF_VFPF_MBOX_INTX(vfpf));
-		alarm_set = true;
+		signal_thread = true;
 	}
 
-	if (!dev->timer_set && alarm_set) {
-		dev->timer_set = 1;
-		/* Start timer to handle messages */
-		plt_alarm_set(VF_PF_MBOX_TIMER_MS, roc_vf_pf_mbox_handle_msg,
-			      dev);
+	if (signal_thread) {
+		pthread_mutex_lock(&dev->sync.mutex);
+		/* Interrupt state was saved in local variable first, as dev->intr.bits
+		 * is a shared resources between VF msg and interrupt thread.
+		 */
+		memcpy(dev->intr.bits, intrb.bits, sz);
+		/* MBOX message received from VF */
+		dev->sync.msg_avail |= ROC_DEV_MBOX_PEND;
+		/* Signal vf message handler thread */
+		pthread_cond_signal(&dev->sync.pfvf_msg_cond);
+		pthread_mutex_unlock(&dev->sync.mutex);
 	}
 }
 
@@ -712,8 +725,6 @@ mbox_register_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 
 	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
 
-	dev->timer_set = 0;
-
 	/* MBOX interrupt for VF(0...63) <-> PF */
 	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev,
 			      RVU_PF_INT_VEC_VFPF_MBOX0);
@@ -795,10 +806,6 @@ mbox_unregister_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 
 	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
 
-	dev->timer_set = 0;
-
-	plt_alarm_cancel(roc_vf_pf_mbox_handle_msg, dev);
-
 	/* Unregister the interrupt handler for each vectors */
 	/* MBOX interrupt for VF(0...63) <-> PF */
 	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev,
@@ -842,7 +849,7 @@ vf_flr_send_msg(struct dev *dev, uint16_t vf)
 	struct msg_req *req;
 	int rc;
 
-	req = mbox_alloc_msg_vf_flr(mbox);
+	req = mbox_alloc_msg_vf_flr(mbox_get(mbox));
 	if (req == NULL)
 		return -ENOSPC;
 	/* Overwrite pcifunc to indicate VF */
@@ -853,6 +860,8 @@ vf_flr_send_msg(struct dev *dev, uint16_t vf)
 	if (rc)
 		plt_err("Failed to send VF FLR mbox msg, rc=%d", rc);
 
+	mbox_put(mbox);
+
 	return rc;
 }
 
@@ -860,40 +869,46 @@ static void
 roc_pf_vf_flr_irq(void *param)
 {
 	struct dev *dev = (struct dev *)param;
-	uint16_t max_vf = 64, vf;
+	bool signal_thread = false;
+	dev_intr_t flr;
 	uintptr_t bar2;
 	uint64_t intr;
-	int i;
+	int i, sz;
 
-	max_vf = (dev->maxvf > 0) ? dev->maxvf : 64;
 	bar2 = dev->bar2;
 
-	plt_base_dbg("FLR VF interrupt: max_vf: %d", max_vf);
-
+	sz = sizeof(flr.bits[0]) * MAX_VFPF_DWORD_BITS;
+	memset(flr.bits, 0, sz);
 	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
 		intr = plt_read64(bar2 + RVU_PF_VFFLR_INTX(i));
 		if (!intr)
 			continue;
 
-		for (vf = 0; vf < max_vf; vf++) {
-			if (!(intr & (1ULL << vf)))
-				continue;
+		/* Clear interrupt */
+		plt_write64(intr, bar2 + RVU_PF_VFFLR_INTX(i));
+		/* Disable the interrupt */
+		plt_write64(intr,
+			    bar2 + RVU_PF_VFFLR_INT_ENA_W1CX(i));
 
-			plt_base_dbg("FLR: i :%d intr: 0x%" PRIx64 ", vf-%d", i,
-				     intr, (64 * i + vf));
-			/* Clear interrupt */
-			plt_write64(BIT_ULL(vf), bar2 + RVU_PF_VFFLR_INTX(i));
-			/* Disable the interrupt */
-			plt_write64(BIT_ULL(vf),
-				    bar2 + RVU_PF_VFFLR_INT_ENA_W1CX(i));
-			/* Inform AF about VF reset */
-			vf_flr_send_msg(dev, vf);
+		/* Save FLR interrupts per VF as bits */
+		flr.bits[i] |= intr;
+		/* Enable interrupt */
+		plt_write64(~0ull,
+			    bar2 + RVU_PF_VFFLR_INT_ENA_W1SX(i));
+		signal_thread = true;
+	}
 
-			/* Signal FLR finish */
-			plt_write64(BIT_ULL(vf), bar2 + RVU_PF_VFTRPENDX(i));
-			/* Enable interrupt */
-			plt_write64(~0ull, bar2 + RVU_PF_VFFLR_INT_ENA_W1SX(i));
-		}
+	if (signal_thread) {
+		pthread_mutex_lock(&dev->sync.mutex);
+		/* Interrupt state was saved in local variable first, as dev->flr.bits
+		 * is a shared resources between VF msg and interrupt thread.
+		 */
+		memcpy(dev->flr.bits, flr.bits, sz);
+		/* FLR message received from VF */
+		dev->sync.msg_avail |= ROC_DEV_FLR_PEND;
+		/* Signal vf message handler thread */
+		pthread_cond_signal(&dev->sync.pfvf_msg_cond);
+		pthread_mutex_unlock(&dev->sync.mutex);
 	}
 }
 
@@ -943,6 +958,77 @@ dev_vf_flr_register_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
 		plt_write64(~0ull, dev->bar2 + RVU_PF_VFFLR_INT_ENA_W1SX(i));
 	}
 	return 0;
+}
+
+static void
+vf_flr_handle_msg(void *param, dev_intr_t *flr)
+{
+	uint16_t vf, max_vf, max_bits;
+	struct dev *dev = param;
+
+	max_bits = sizeof(flr->bits[0]) * sizeof(uint64_t);
+	max_vf = max_bits * MAX_VFPF_DWORD_BITS;
+
+	for (vf = 0; vf < max_vf; vf++) {
+		if (flr->bits[vf / max_bits] & BIT_ULL(vf % max_bits)) {
+			plt_base_dbg("Process FLR vf:%d request (pf:%d, vf:%d)",
+				     vf, dev->pf, dev->vf);
+			/* Inform AF about VF reset */
+			vf_flr_send_msg(dev, vf);
+			flr->bits[vf / max_bits] &= ~(BIT_ULL(vf % max_bits));
+
+			/* Signal FLR finish */
+			plt_write64(BIT_ULL(vf % max_bits),
+				    dev->bar2 + RVU_PF_VFTRPENDX(vf / max_bits));
+		}
+	}
+}
+
+static void *
+pf_vf_mbox_thread_main(void *arg)
+{
+	struct dev *dev = arg;
+	bool is_flr, is_mbox;
+	dev_intr_t flr, intr;
+	int sz, rc;
+
+	sz = sizeof(intr.bits[0]) * MAX_VFPF_DWORD_BITS;
+	pthread_mutex_lock(&dev->sync.mutex);
+	while (dev->sync.start_thread) {
+		do {
+			rc = pthread_cond_wait(&dev->sync.pfvf_msg_cond, &dev->sync.mutex);
+		} while (rc != 0);
+
+		if (!dev->sync.msg_avail) {
+			continue;
+		} else {
+			while (dev->sync.msg_avail) {
+				/* Check which VF msg received */
+				is_mbox = dev->sync.msg_avail & ROC_DEV_MBOX_PEND;
+				is_flr = dev->sync.msg_avail & ROC_DEV_FLR_PEND;
+				memcpy(intr.bits, dev->intr.bits, sz);
+				memcpy(flr.bits, dev->flr.bits, sz);
+				memset(dev->flr.bits, 0, sz);
+				memset(dev->intr.bits, 0, sz);
+				dev->sync.msg_avail = 0;
+				/* Unlocking for interrupt thread to grab lock
+				 * and update msg_avail field.
+				 */
+				pthread_mutex_unlock(&dev->sync.mutex);
+				/* Calling respective message handlers */
+				if (is_mbox)
+					roc_vf_pf_mbox_handle_msg(dev, &intr);
+				if (is_flr)
+					vf_flr_handle_msg(dev, &flr);
+				/* Locking as cond wait will unlock before wait */
+				pthread_mutex_lock(&dev->sync.mutex);
+			}
+		}
+	}
+
+	pthread_mutex_unlock(&dev->sync.mutex);
+
+	return NULL;
 }
 
 static void
@@ -1177,6 +1263,7 @@ dev_cache_line_size_valid(void)
 int
 dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 {
+	char name[MBOX_HANDLER_NAME_MAX_LEN];
 	int direction, up_direction, rc;
 	uintptr_t bar2, bar4, mbox;
 	uintptr_t vf_mbase = 0;
@@ -1277,26 +1364,48 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 			       MBOX_DIR_PFVF_UP, pci_dev->max_vfs, intr_offset);
 		if (rc)
 			goto iounmap;
+
+		/* Create a thread for handling msgs from VFs */
+		pthread_cond_init(&dev->sync.pfvf_msg_cond, NULL);
+		pthread_mutex_init(&dev->sync.mutex, NULL);
+
+		snprintf(name, MBOX_HANDLER_NAME_MAX_LEN, "pf%d_vf_msg_hndlr", dev->pf);
+		dev->sync.start_thread = true;
+		rc = plt_ctrl_thread_create(&dev->sync.pfvf_msg_thread, name, NULL,
+					    pf_vf_mbox_thread_main, dev);
+		if (rc != 0) {
+			plt_err("Failed to create thread for VF mbox handling\n");
+			goto iounmap;
+		}
 	}
 
 	/* Register VF-FLR irq handlers */
 	if (!dev_is_vf(dev)) {
 		rc = dev_vf_flr_register_irqs(pci_dev, dev);
 		if (rc)
-			goto iounmap;
+			goto stop_msg_thrd;
 	}
 	dev->mbox_active = 1;
 
 	rc = npa_lf_init(dev, pci_dev);
 	if (rc)
-		goto iounmap;
+		goto stop_msg_thrd;
 
 	/* Setup LMT line base */
 	rc = dev_lmt_setup(dev);
 	if (rc)
-		goto iounmap;
+		goto stop_msg_thrd;
 
 	return rc;
+stop_msg_thrd:
+	/* Exiting the mbox sync thread */
+	if (dev->sync.start_thread) {
+		dev->sync.start_thread = false;
+		pthread_cond_signal(&dev->sync.pfvf_msg_cond);
+		pthread_join(dev->sync.pfvf_msg_thread, NULL);
+		pthread_mutex_destroy(&dev->sync.mutex);
+		pthread_cond_destroy(&dev->sync.pfvf_msg_cond);
+	}
 iounmap:
 	dev_vf_mbase_put(pci_dev, vf_mbase);
 mbox_unregister:
@@ -1319,6 +1428,15 @@ dev_fini(struct dev *dev, struct plt_pci_device *pci_dev)
 	/* Check if this dev hosts npalf and has 1+ refs */
 	if (idev_npa_lf_active(dev) > 1)
 		return -EAGAIN;
+
+	/* Exiting the mbox sync thread */
+	if (dev->sync.start_thread) {
+		dev->sync.start_thread = false;
+		pthread_cond_signal(&dev->sync.pfvf_msg_cond);
+		pthread_join(dev->sync.pfvf_msg_thread, NULL);
+		pthread_mutex_destroy(&dev->sync.mutex);
+		pthread_cond_destroy(&dev->sync.pfvf_msg_cond);
+	}
 
 	/* Clear references to this pci dev */
 	npa_lf_fini();
