@@ -430,6 +430,10 @@ EXPERIMENTAL {
 	rte_thread_create_control;
 	rte_thread_set_name;
 	__rte_eal_trace_generic_blob;
+
+	# added in 23.07
+	rte_memzone_max_get;
+	rte_memzone_max_set;
 };
 
 INTERNAL {

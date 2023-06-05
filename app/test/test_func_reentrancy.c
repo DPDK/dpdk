@@ -51,7 +51,7 @@ typedef void (*case_clean_t)(unsigned lcore_id);
 #define MEMPOOL_ELT_SIZE                    (sizeof(uint32_t))
 #define MEMPOOL_SIZE                        (4)
 
-#define MAX_LCORES	(RTE_MAX_MEMZONE / (MAX_ITER_MULTI * 4U))
+#define MAX_LCORES	(rte_memzone_max_get() / (MAX_ITER_MULTI * 4U))
 
 static uint32_t obj_count;
 static uint32_t synchro;

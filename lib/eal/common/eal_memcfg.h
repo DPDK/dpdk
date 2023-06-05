@@ -75,6 +75,8 @@ struct rte_mem_config {
 	/**< TSC rate */
 
 	uint8_t dma_maskbits; /**< Keeps the more restricted dma mask. */
+
+	size_t max_memzone; /**< Maximum number of allocated memzones. */
 };
 
 /* update internal config from shared mem config */

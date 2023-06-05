@@ -871,9 +871,17 @@ test_memzone_bounded(void)
 static int
 test_memzone_free(void)
 {
-	const struct rte_memzone *mz[RTE_MAX_MEMZONE + 1];
+	const struct rte_memzone **mz;
 	int i;
 	char name[20];
+	int rc = -1;
+
+	mz = rte_calloc("memzone_test", rte_memzone_max_get() + 1,
+			sizeof(struct rte_memzone *), 0);
+	if (!mz) {
+		printf("Fail allocating memzone test array\n");
+		return rc;
+	}
 
 	mz[0] = rte_memzone_reserve(TEST_MEMZONE_NAME("tempzone0"), 2000,
 			SOCKET_ID_ANY, 0);
@@ -881,42 +889,42 @@ test_memzone_free(void)
 			SOCKET_ID_ANY, 0);
 
 	if (mz[0] > mz[1])
-		return -1;
+		goto exit_test;
 	if (!rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone0")))
-		return -1;
+		goto exit_test;
 	if (!rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone1")))
-		return -1;
+		goto exit_test;
 
 	if (rte_memzone_free(mz[0])) {
 		printf("Fail memzone free - tempzone0\n");
-		return -1;
+		goto exit_test;
 	}
 	if (rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone0"))) {
 		printf("Found previously free memzone - tempzone0\n");
-		return -1;
+		goto exit_test;
 	}
 	mz[2] = rte_memzone_reserve(TEST_MEMZONE_NAME("tempzone2"), 2000,
 			SOCKET_ID_ANY, 0);
 
 	if (mz[2] > mz[1]) {
 		printf("tempzone2 should have gotten the free entry from tempzone0\n");
-		return -1;
+		goto exit_test;
 	}
 	if (rte_memzone_free(mz[2])) {
 		printf("Fail memzone free - tempzone2\n");
-		return -1;
+		goto exit_test;
 	}
 	if (rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone2"))) {
 		printf("Found previously free memzone - tempzone2\n");
-		return -1;
+		goto exit_test;
 	}
 	if (rte_memzone_free(mz[1])) {
 		printf("Fail memzone free - tempzone1\n");
-		return -1;
+		goto exit_test;
 	}
 	if (rte_memzone_lookup(TEST_MEMZONE_NAME("tempzone1"))) {
 		printf("Found previously free memzone - tempzone1\n");
-		return -1;
+		goto exit_test;
 	}
 
 	i = 0;
@@ -928,7 +936,7 @@ test_memzone_free(void)
 
 	if (rte_memzone_free(mz[0])) {
 		printf("Fail memzone free - tempzone0\n");
-		return -1;
+		goto exit_test;
 	}
 	mz[0] = rte_memzone_reserve(TEST_MEMZONE_NAME("tempzone0new"), 0,
 			SOCKET_ID_ANY, 0);
@@ -936,17 +944,21 @@ test_memzone_free(void)
 	if (mz[0] == NULL) {
 		printf("Fail to create memzone - tempzone0new - when MAX memzones were "
 				"created and one was free\n");
-		return -1;
+		goto exit_test;
 	}
 
 	for (i = i - 2; i >= 0; i--) {
 		if (rte_memzone_free(mz[i])) {
 			printf("Fail memzone free - tempzone%d\n", i);
-			return -1;
+			goto exit_test;
 		}
 	}
 
-	return 0;
+	rc = 0;
+
+exit_test:
+	rte_free(mz);
+	return rc;
 }
 
 static int test_memzones_left;

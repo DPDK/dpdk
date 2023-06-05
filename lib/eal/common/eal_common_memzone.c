@@ -22,6 +22,42 @@
 #include "eal_private.h"
 #include "eal_memcfg.h"
 
+/* Default count used until rte_memzone_max_set() is called */
+#define DEFAULT_MAX_MEMZONE_COUNT 2560
+
+int
+rte_memzone_max_set(size_t max)
+{
+	struct rte_mem_config *mcfg;
+
+	if (eal_get_internal_configuration()->init_complete > 0) {
+		RTE_LOG(ERR, EAL, "Max memzone cannot be set after EAL init\n");
+		return -1;
+	}
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	if (mcfg == NULL) {
+		RTE_LOG(ERR, EAL, "Failed to set max memzone count\n");
+		return -1;
+	}
+
+	mcfg->max_memzone = max;
+
+	return 0;
+}
+
+size_t
+rte_memzone_max_get(void)
+{
+	struct rte_mem_config *mcfg;
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	if (mcfg == NULL || mcfg->max_memzone == 0)
+		return DEFAULT_MAX_MEMZONE_COUNT;
+
+	return mcfg->max_memzone;
+}
+
 static inline const struct rte_memzone *
 memzone_lookup_thread_unsafe(const char *name)
 {
@@ -81,8 +117,9 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	/* no more room in config */
 	if (arr->count >= arr->len) {
 		RTE_LOG(ERR, EAL,
-		"%s(): Number of requested memzone segments exceeds RTE_MAX_MEMZONE\n",
-			__func__);
+		"%s(): Number of requested memzone segments exceeds maximum "
+		"%u\n", __func__, arr->len);
+
 		rte_errno = ENOSPC;
 		return NULL;
 	}
@@ -396,7 +433,7 @@ rte_eal_memzone_init(void)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
 			rte_fbarray_init(&mcfg->memzones, "memzone",
-			RTE_MAX_MEMZONE, sizeof(struct rte_memzone))) {
+			rte_memzone_max_get(), sizeof(struct rte_memzone))) {
 		RTE_LOG(ERR, EAL, "Cannot allocate memzone list\n");
 		ret = -1;
 	} else if (rte_eal_process_type() == RTE_PROC_SECONDARY &&

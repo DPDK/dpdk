@@ -66,6 +66,36 @@ struct rte_memzone {
 } __rte_packed;
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set the maximum number of memzones.
+ *
+ * This function can only be called prior to rte_eal_init().
+ *
+ * @param max
+ *   Maximum number of memzones.
+ * @return
+ *  0 on success, -1 otherwise.
+ */
+__rte_experimental
+int rte_memzone_max_set(size_t max);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get the maximum number of memzones.
+ *
+ * @note: The maximum value will not change after calling rte_eal_init().
+ *
+ * @return
+ *   Maximum number of memzones.
+ */
+__rte_experimental
+size_t rte_memzone_max_get(void);
+
+/**
  * Reserve a portion of physical memory.
  *
  * This function reserves some memory and returns a pointer to a
