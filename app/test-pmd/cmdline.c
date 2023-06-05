@@ -12282,12 +12282,13 @@ cmd_show_rx_tx_desc_status_parsed(void *parsed_result,
 	struct cmd_show_rx_tx_desc_status_result *res = parsed_result;
 	int rc;
 
-	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
-		fprintf(stderr, "invalid port id %u\n", res->cmd_pid);
-		return;
-	}
-
 	if (!strcmp(res->cmd_keyword, "rxq")) {
+		if (rte_eth_dev_is_valid_rxq(res->cmd_pid, res->cmd_qid) != 0) {
+			fprintf(stderr,
+				"Invalid input: port id = %d, queue id = %d\n",
+				res->cmd_pid, res->cmd_qid);
+			return;
+		}
 		rc = rte_eth_rx_descriptor_status(res->cmd_pid, res->cmd_qid,
 					     res->cmd_did);
 		if (rc < 0) {
@@ -12303,6 +12304,12 @@ cmd_show_rx_tx_desc_status_parsed(void *parsed_result,
 		else
 			printf("Desc status = UNAVAILABLE\n");
 	} else if (!strcmp(res->cmd_keyword, "txq")) {
+		if (rte_eth_dev_is_valid_txq(res->cmd_pid, res->cmd_qid) != 0) {
+			fprintf(stderr,
+				"Invalid input: port id = %d, queue id = %d\n",
+				res->cmd_pid, res->cmd_qid);
+			return;
+		}
 		rc = rte_eth_tx_descriptor_status(res->cmd_pid, res->cmd_qid,
 					     res->cmd_did);
 		if (rc < 0) {
@@ -12382,8 +12389,10 @@ cmd_show_rx_queue_desc_used_count_parsed(void *parsed_result,
 	struct cmd_show_rx_queue_desc_used_count_result *res = parsed_result;
 	int rc;
 
-	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
-		fprintf(stderr, "invalid port id %u\n", res->cmd_pid);
+	if (rte_eth_dev_is_valid_rxq(res->cmd_pid, res->cmd_qid) != 0) {
+		fprintf(stderr,
+			"Invalid input: port id = %d, queue id = %d\n",
+			res->cmd_pid, res->cmd_qid);
 		return;
 	}
 
