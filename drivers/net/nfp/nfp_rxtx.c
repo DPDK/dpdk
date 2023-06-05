@@ -340,13 +340,13 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype, struct rte_mbuf *mb)
 	case NFP_NET_PTYPE_TUNNEL_NONE:
 		break;
 	case NFP_NET_PTYPE_TUNNEL_VXLAN:
-		mbuf_ptype |= RTE_PTYPE_TUNNEL_VXLAN;
+		mbuf_ptype |= RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L4_UDP;
 		break;
 	case NFP_NET_PTYPE_TUNNEL_NVGRE:
 		mbuf_ptype |= RTE_PTYPE_TUNNEL_NVGRE;
 		break;
 	case NFP_NET_PTYPE_TUNNEL_GENEVE:
-		mbuf_ptype |= RTE_PTYPE_TUNNEL_GENEVE;
+		mbuf_ptype |= RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L4_UDP;
 		break;
 	default:
 		PMD_RX_LOG(DEBUG, "Unrecognized nfp tunnel packet type: %u",
