@@ -438,9 +438,7 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 			rte_ring_enqueue(repr->ring, (void *)mb);
 			avail_multiplexed++;
 		} else if (repr != NULL) {
-			PMD_RX_LOG(ERR, "[%u] No ring available for repr_port %s\n",
-					hw->idx, repr->name);
-			PMD_RX_LOG(DEBUG, "Adding the mbuf to the mbuf array passed by the app");
+			PMD_RX_LOG(ERR, "No ring available for repr_port %s", repr->name);
 			rx_pkts[avail++] = mb;
 		} else {
 			PMD_RX_LOG(DEBUG, "Adding the mbuf to the mbuf array passed by the app");

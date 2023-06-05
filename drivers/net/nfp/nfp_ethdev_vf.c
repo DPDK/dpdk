@@ -402,7 +402,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
 		err = -ENOMEM;
-		goto dev_err_queues_map;
+		goto dev_err_ctrl_map;
 	}
 
 	nfp_netvf_read_mac(hw);
@@ -443,8 +443,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	return 0;
 
-dev_err_queues_map:
-		nfp_cpp_area_free(hw->hwqueues_area);
 dev_err_ctrl_map:
 		nfp_cpp_area_free(hw->ctrl_area);
 

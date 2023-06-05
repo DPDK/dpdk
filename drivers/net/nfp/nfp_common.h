@@ -119,35 +119,13 @@ struct nfp_pf_dev {
 	/* The eth table reported by firmware */
 	struct nfp_eth_table *nfp_eth_table;
 
-	/* Current values for control */
-	uint32_t ctrl;
-
 	uint8_t *ctrl_bar;
-	uint8_t *tx_bar;
-	uint8_t *rx_bar;
-
-	uint8_t *qcp_cfg;
-	rte_spinlock_t reconfig_lock;
-
-	uint16_t flbufsz;
-	uint16_t device_id;
-	uint16_t vendor_id;
-	uint16_t subsystem_device_id;
-	uint16_t subsystem_vendor_id;
-#if defined(DSTQ_SELECTION)
-#if DSTQ_SELECTION
-	uint16_t device_function;
-#endif
-#endif
 
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
 	struct nfp_cpp_area *hwqueues_area;
-	struct nfp_cpp_area *msix_area;
 
 	uint8_t *hw_queues;
-
-	union eth_table_entry *eth_table;
 
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
@@ -208,11 +186,6 @@ struct nfp_net_hw {
 	uint16_t vendor_id;
 	uint16_t subsystem_device_id;
 	uint16_t subsystem_vendor_id;
-#if defined(DSTQ_SELECTION)
-#if DSTQ_SELECTION
-	uint16_t device_function;
-#endif
-#endif
 
 	struct rte_ether_addr mac_addr;
 
@@ -222,19 +195,14 @@ struct nfp_net_hw {
 
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
-	struct nfp_cpp_area *hwqueues_area;
-	struct nfp_cpp_area *msix_area;
 	struct nfp_cpp_area *mac_stats_area;
 	uint8_t *mac_stats_bar;
 	uint8_t *mac_stats;
 
-	uint8_t *hw_queues;
-	/* Sequential physical port number */
+	/* Sequential physical port number, only valid for CoreNIC firmware */
 	uint8_t idx;
 	/* Internal port number as seen from NFP */
 	uint8_t nfp_idx;
-
-	union eth_table_entry *eth_table;
 };
 
 struct nfp_net_adapter {
