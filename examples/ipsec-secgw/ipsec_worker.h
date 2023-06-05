@@ -123,7 +123,6 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 		   struct ipsec_traffic *t)
 {
 	uint32_t ptype = pkt->packet_type;
-	const struct rte_ether_hdr *eth;
 	const struct rte_ipv4_hdr *iph4;
 	const struct rte_ipv6_hdr *iph6;
 	uint32_t tun_type, l3_type;
@@ -138,7 +137,6 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 	tun_type = ptype & RTE_PTYPE_TUNNEL_MASK;
 	l3_type = ptype & RTE_PTYPE_L3_MASK;
 
-	eth = rte_pktmbuf_mtod(pkt, const struct rte_ether_hdr *);
 	if (RTE_ETH_IS_IPV4_HDR(l3_type)) {
 		iph4 = (const struct rte_ipv4_hdr *)rte_pktmbuf_adj(pkt,
 			RTE_ETHER_HDR_LEN);
@@ -192,8 +190,7 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 		tx_offload = l3len << RTE_MBUF_L2_LEN_BITS;
 	} else {
 		/* Unknown/Unsupported type, drop the packet */
-		RTE_LOG(ERR, IPSEC, "Unsupported packet type 0x%x\n",
-			rte_be_to_cpu_16(eth->ether_type));
+		RTE_LOG_DP(DEBUG, IPSEC, "Unsupported packet type 0x%x\n", ptype);
 		free_pkts(&pkt, 1);
 		return;
 	}

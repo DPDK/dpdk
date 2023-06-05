@@ -578,7 +578,7 @@ process_ipsec_ev_outbound(struct ipsec_ctx *ctx, struct route_table *rt,
 		 * Only plain IPv4 & IPv6 packets are allowed
 		 * on protected port. Drop the rest.
 		 */
-		RTE_LOG(ERR, IPSEC, "Unsupported packet type = %d\n", type);
+		RTE_LOG_DP(DEBUG, IPSEC, "Unsupported packet type = %d\n", type);
 		goto drop_pkt_and_exit;
 	}
 
