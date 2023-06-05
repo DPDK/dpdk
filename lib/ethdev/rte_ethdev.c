@@ -772,6 +772,28 @@ eth_dev_validate_tx_queue(const struct rte_eth_dev *dev, uint16_t tx_queue_id)
 }
 
 int
+rte_eth_dev_is_valid_rxq(uint16_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	return eth_dev_validate_rx_queue(dev, queue_id);
+}
+
+int
+rte_eth_dev_is_valid_txq(uint16_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	return eth_dev_validate_tx_queue(dev, queue_id);
+}
+
+int
 rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id)
 {
 	struct rte_eth_dev *dev;

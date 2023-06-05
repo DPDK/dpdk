@@ -67,6 +67,11 @@ New Features
   to PCI bus so that PCI drivers can access PCI memory resources
   when they are not mapped to process address space.
 
+* **Added ethdev Rx/Tx queue ID check API.**
+
+  Added ethdev Rx/Tx queue ID check API.
+  If the queue has been setup, it is considered valid.
+
 * **Added LLRS FEC mode in ethdev.**
 
   Added LLRS algorithm to Forward Error Correction (FEC) modes.
