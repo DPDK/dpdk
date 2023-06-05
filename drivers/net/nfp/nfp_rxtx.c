@@ -321,6 +321,21 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype, struct rte_mbuf *mb)
 	if (nfp_tunnel_ptype != NFP_NET_PTYPE_TUNNEL_NONE)
 		mbuf_ptype |= RTE_PTYPE_INNER_L2_ETHER;
 
+	switch (nfp_ptype->outer_l3_ptype) {
+	case NFP_NET_PTYPE_OUTER_L3_NONE:
+		break;
+	case NFP_NET_PTYPE_OUTER_L3_IPV4:
+		mbuf_ptype |= RTE_PTYPE_L3_IPV4;
+		break;
+	case NFP_NET_PTYPE_OUTER_L3_IPV6:
+		mbuf_ptype |= RTE_PTYPE_L3_IPV6;
+		break;
+	default:
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp outer layer 3 packet type: %u",
+				nfp_ptype->outer_l3_ptype);
+		break;
+	}
+
 	switch (nfp_tunnel_ptype) {
 	case NFP_NET_PTYPE_TUNNEL_NONE:
 		break;
@@ -432,6 +447,8 @@ nfp_net_parse_ptype(struct nfp_net_rx_desc *rxds,
 			NFP_NET_PTYPE_L3_OFFSET;
 	nfp_ptype.tunnel_ptype = (rxd_ptype & NFP_NET_PTYPE_TUNNEL_MASK) >>
 			NFP_NET_PTYPE_TUNNEL_OFFSET;
+	nfp_ptype.outer_l3_ptype = (rxd_ptype & NFP_NET_PTYPE_OUTER_L3_MASK) >>
+			NFP_NET_PTYPE_OUTER_L3_OFFSET;
 
 	nfp_net_set_ptype(&nfp_ptype, mb);
 }

@@ -178,7 +178,7 @@ struct nfp_net_txq {
  *            1                   0
  *  5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |           |tunnel |  l3 |  l4 |
+ * |       |ol3|tunnel |  l3 |  l4 |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  * Bit map about nfp packet type refers to the following:
@@ -210,6 +210,12 @@ struct nfp_net_txq {
  * 0101: NFP_NET_PTYPE_TUNNEL_GENEVE
  * 0010, 0011, 0110~1111: reserved
  *
+ * Outer L3: bit 10~11, used for outer layer 3.
+ * 00: NFP_NET_PTYPE_OUTER_L3_NONE
+ * 01: NFP_NET_PTYPE_OUTER_L3_IPV6
+ * 10: NFP_NET_PTYPE_OUTER_L3_IPV4
+ * 11: reserved
+ *
  * Reserved: bit 10~15, used for extension.
  */
 
@@ -217,10 +223,12 @@ struct nfp_net_txq {
 #define NFP_NET_PTYPE_L4_MASK                  0x0007
 #define NFP_NET_PTYPE_L3_MASK                  0x0038
 #define NFP_NET_PTYPE_TUNNEL_MASK              0x03c0
+#define NFP_NET_PTYPE_OUTER_L3_MASK            0x0c00
 
 #define NFP_NET_PTYPE_L4_OFFSET                0
 #define NFP_NET_PTYPE_L3_OFFSET                3
 #define NFP_NET_PTYPE_TUNNEL_OFFSET            6
+#define NFP_NET_PTYPE_OUTER_L3_OFFSET          10
 
 /* Case about nfp packet type based on the bit map above. */
 #define NFP_NET_PTYPE_L4_NONE                  0
@@ -244,13 +252,18 @@ struct nfp_net_txq {
 #define NFP_NET_PTYPE_TUNNEL_NVGRE             4
 #define NFP_NET_PTYPE_TUNNEL_GENEVE            5
 
+#define NFP_NET_PTYPE_OUTER_L3_NONE            0
+#define NFP_NET_PTYPE_OUTER_L3_IPV6            1
+#define NFP_NET_PTYPE_OUTER_L3_IPV4            2
+
 #define NFP_PTYPE2RTE(tunnel, type) ((tunnel) ? RTE_PTYPE_INNER_##type : RTE_PTYPE_##type)
 
 /* Record NFP packet type parsed from rxd.offload_info. */
 struct nfp_ptype_parsed {
-	uint8_t l4_ptype;     /**< Packet type of layer 4, or inner layer 4. */
-	uint8_t l3_ptype;     /**< Packet type of layer 3, or inner layer 3. */
-	uint8_t tunnel_ptype; /**< Packet type of tunnel. */
+	uint8_t l4_ptype;       /**< Packet type of layer 4, or inner layer 4. */
+	uint8_t l3_ptype;       /**< Packet type of layer 3, or inner layer 3. */
+	uint8_t tunnel_ptype;   /**< Packet type of tunnel. */
+	uint8_t outer_l3_ptype; /**< Packet type of outer layer 3. */
 };
 
 struct nfp_net_rx_desc {
