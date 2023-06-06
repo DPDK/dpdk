@@ -26,8 +26,8 @@ __rte_stack_lf_count(struct rte_stack *s)
 	 * elements. If the mempool is near-empty to the point that this is a
 	 * concern, the user should consider increasing the mempool size.
 	 */
-	return (unsigned int)rte_atomic64_read((rte_atomic64_t *)
-			&s->stack_lf.used.len);
+	/* NOTE: review for potential ordering optimization */
+	return __atomic_load_n(&s->stack_lf.used.len, __ATOMIC_SEQ_CST);
 }
 
 static __rte_always_inline void
@@ -67,8 +67,8 @@ __rte_stack_lf_push_elems(struct rte_stack_lf_list *list,
 				1, __ATOMIC_RELEASE,
 				__ATOMIC_RELAXED);
 	} while (success == 0);
-
-	rte_atomic64_add((rte_atomic64_t *)&list->len, num);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_fetch_add(&list->len, num, __ATOMIC_SEQ_CST);
 }
 
 static __rte_always_inline struct rte_stack_lf_elem *
@@ -82,14 +82,16 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 
 	/* Reserve num elements, if available */
 	while (1) {
-		uint64_t len = rte_atomic64_read((rte_atomic64_t *)&list->len);
+		/* NOTE: review for potential ordering optimization */
+		uint64_t len = __atomic_load_n(&list->len, __ATOMIC_SEQ_CST);
 
 		/* Does the list contain enough elements? */
 		if (unlikely(len < num))
 			return NULL;
 
-		if (rte_atomic64_cmpset((volatile uint64_t *)&list->len,
-					len, len - num))
+		/* NOTE: review for potential ordering optimization */
+		if (__atomic_compare_exchange_n(&list->len, &len, len - num,
+				0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
 			break;
 	}
 
