@@ -18,7 +18,6 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_pci.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_memory.h>
 #include <rte_eal.h>

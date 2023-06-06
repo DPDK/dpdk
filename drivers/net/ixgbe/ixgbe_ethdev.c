@@ -1127,7 +1127,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return 0;
 	}
 
-	rte_atomic32_clear(&ad->link_thread_running);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
 	ixgbe_parse_devargs(eth_dev->data->dev_private,
 			    pci_dev->device.devargs);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
@@ -1625,7 +1626,8 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
-	rte_atomic32_clear(&ad->link_thread_running);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
 	ixgbevf_parse_devargs(eth_dev->data->dev_private,
 			      pci_dev->device.devargs);
 
@@ -4186,7 +4188,8 @@ ixgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev, uint32_t timeout_ms)
 	struct ixgbe_adapter *ad = dev->data->dev_private;
 	uint32_t timeout = timeout_ms ? timeout_ms : WARNING_TIMEOUT;
 
-	while (rte_atomic32_read(&ad->link_thread_running)) {
+	/* NOTE: review for potential ordering optimization */
+	while (__atomic_load_n(&ad->link_thread_running, __ATOMIC_SEQ_CST)) {
 		msec_delay(1);
 		timeout--;
 
@@ -4222,7 +4225,8 @@ ixgbe_dev_setup_link_thread_handler(void *param)
 	ixgbe_setup_link(hw, speed, true);
 
 	intr->flags &= ~IXGBE_FLAG_NEED_LINK_CONFIG;
-	rte_atomic32_clear(&ad->link_thread_running);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
 	return 0;
 }
 
@@ -4317,7 +4321,8 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	if (link_up == 0) {
 		if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber) {
 			ixgbe_dev_wait_setup_link_complete(dev, 0);
-			if (rte_atomic32_test_and_set(&ad->link_thread_running)) {
+			/* NOTE: review for potential ordering optimization */
+			if (__atomic_test_and_set(&ad->link_thread_running, __ATOMIC_SEQ_CST)) {
 				/* To avoid race condition between threads, set
 				 * the IXGBE_FLAG_NEED_LINK_CONFIG flag only
 				 * when there is no link thread running.
@@ -4330,7 +4335,8 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 					dev) < 0) {
 					PMD_DRV_LOG(ERR,
 						"Create link thread failed!");
-					rte_atomic32_clear(&ad->link_thread_running);
+					/* NOTE: review for potential ordering optimization */
+					__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
 				}
 			} else {
 				PMD_DRV_LOG(ERR,
