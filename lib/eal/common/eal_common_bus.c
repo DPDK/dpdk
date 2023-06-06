@@ -239,9 +239,13 @@ rte_bus_get_iommu_class(void)
 			rte_bus_name(bus),
 			bus_iova_mode == RTE_IOVA_DC ? "DC" :
 			(bus_iova_mode == RTE_IOVA_PA ? "PA" : "VA"));
-		if (bus_iova_mode == RTE_IOVA_PA)
+		if (bus_iova_mode == RTE_IOVA_PA) {
 			buses_want_pa = true;
-		else if (bus_iova_mode == RTE_IOVA_VA)
+			if (!RTE_IOVA_IN_MBUF)
+				RTE_LOG(WARNING, EAL,
+					"Bus %s wants IOVA as PA not compatible with 'enable_iova_as_pa=false' build option.\n",
+					rte_bus_name(bus));
+		} else if (bus_iova_mode == RTE_IOVA_VA)
 			buses_want_va = true;
 	}
 	if (buses_want_va && !buses_want_pa) {
