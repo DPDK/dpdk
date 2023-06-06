@@ -742,33 +742,157 @@ cpfl_config_rx_queues_irqs(struct rte_eth_dev *dev)
 	return idpf_vport_irq_map_config(vport, nb_rx_queues);
 }
 
+/* Update hairpin_info for dev's tx hairpin queue */
+static int
+cpfl_txq_hairpin_info_update(struct rte_eth_dev *dev, uint16_t rx_port)
+{
+	struct cpfl_vport *cpfl_tx_vport = dev->data->dev_private;
+	struct rte_eth_dev *peer_dev = &rte_eth_devices[rx_port];
+	struct cpfl_vport *cpfl_rx_vport = peer_dev->data->dev_private;
+	struct cpfl_txq_hairpin_info *hairpin_info;
+	struct cpfl_tx_queue *cpfl_txq;
+	int i;
+
+	for (i = cpfl_tx_vport->nb_data_txq; i < dev->data->nb_tx_queues; i++) {
+		cpfl_txq = dev->data->tx_queues[i];
+		hairpin_info = &cpfl_txq->hairpin_info;
+		if (hairpin_info->peer_rxp != rx_port) {
+			PMD_DRV_LOG(ERR, "port %d is not the peer port", rx_port);
+			return -EINVAL;
+		}
+		hairpin_info->peer_rxq_id =
+			cpfl_hw_qid_get(cpfl_rx_vport->p2p_q_chunks_info->rx_start_qid,
+					hairpin_info->peer_rxq_id - cpfl_rx_vport->nb_data_rxq);
+	}
+
+	return 0;
+}
+
+/* Bind Rx hairpin queue's memory zone to peer Tx hairpin queue's memory zone */
+static void
+cpfl_rxq_hairpin_mz_bind(struct rte_eth_dev *dev)
+{
+	struct cpfl_vport *cpfl_rx_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_rx_vport->base;
+	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_hw *hw = &adapter->hw;
+	struct cpfl_rx_queue *cpfl_rxq;
+	struct cpfl_tx_queue *cpfl_txq;
+	struct rte_eth_dev *peer_dev;
+	const struct rte_memzone *mz;
+	uint16_t peer_tx_port;
+	uint16_t peer_tx_qid;
+	int i;
+
+	for (i = cpfl_rx_vport->nb_data_rxq; i < dev->data->nb_rx_queues; i++) {
+		cpfl_rxq = dev->data->rx_queues[i];
+		peer_tx_port = cpfl_rxq->hairpin_info.peer_txp;
+		peer_tx_qid = cpfl_rxq->hairpin_info.peer_txq_id;
+		peer_dev = &rte_eth_devices[peer_tx_port];
+		cpfl_txq = peer_dev->data->tx_queues[peer_tx_qid];
+
+		/* bind rx queue */
+		mz = cpfl_txq->base.mz;
+		cpfl_rxq->base.rx_ring_phys_addr = mz->iova;
+		cpfl_rxq->base.rx_ring = mz->addr;
+		cpfl_rxq->base.mz = mz;
+
+		/* bind rx buffer queue */
+		mz = cpfl_txq->base.complq->mz;
+		cpfl_rxq->base.bufq1->rx_ring_phys_addr = mz->iova;
+		cpfl_rxq->base.bufq1->rx_ring = mz->addr;
+		cpfl_rxq->base.bufq1->mz = mz;
+		cpfl_rxq->base.bufq1->qrx_tail = hw->hw_addr +
+			cpfl_hw_qtail_get(cpfl_rx_vport->p2p_q_chunks_info->rx_buf_qtail_start,
+					0, cpfl_rx_vport->p2p_q_chunks_info->rx_buf_qtail_spacing);
+	}
+}
+
 static int
 cpfl_start_queues(struct rte_eth_dev *dev)
 {
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct cpfl_rx_queue *cpfl_rxq;
 	struct cpfl_tx_queue *cpfl_txq;
+	int update_flag = 0;
 	int err = 0;
 	int i;
 
+	/* For normal data queues, configure, init and enale Txq.
+	 * For non-manual bind hairpin queues, configure Txq.
+	 */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		cpfl_txq = dev->data->tx_queues[i];
 		if (cpfl_txq == NULL || cpfl_txq->base.tx_deferred_start)
 			continue;
-		err = cpfl_tx_queue_start(dev, i);
+		if (!cpfl_txq->hairpin_info.hairpin_q) {
+			err = cpfl_tx_queue_start(dev, i);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Fail to start Tx queue %u", i);
+				return err;
+			}
+		} else if (!cpfl_vport->p2p_manual_bind) {
+			if (update_flag == 0) {
+				err = cpfl_txq_hairpin_info_update(dev,
+								   cpfl_txq->hairpin_info.peer_rxp);
+				if (err != 0) {
+					PMD_DRV_LOG(ERR, "Fail to update Tx hairpin queue info");
+					return err;
+				}
+				update_flag = 1;
+			}
+			err = cpfl_hairpin_txq_config(vport, cpfl_txq);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Fail to configure hairpin Tx queue %u", i);
+				return err;
+			}
+		}
+	}
+
+	/* For non-manual bind hairpin queues, configure Tx completion queue first.*/
+	if (!cpfl_vport->p2p_manual_bind && cpfl_vport->p2p_tx_complq != NULL) {
+		err = cpfl_hairpin_tx_complq_config(cpfl_vport);
 		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start Tx queue %u", i);
+			PMD_DRV_LOG(ERR, "Fail to config Tx completion queue");
 			return err;
 		}
 	}
 
+	/* For non-manual bind hairpin queues, configure Rx buffer queue.*/
+	if (!cpfl_vport->p2p_manual_bind && cpfl_vport->p2p_rx_bufq != NULL) {
+		cpfl_rxq_hairpin_mz_bind(dev);
+		err = cpfl_hairpin_rx_bufq_config(cpfl_vport);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Fail to config Rx buffer queue");
+			return err;
+		}
+	}
+
+	/* For normal data queues, configure, init and enale Rxq.
+	 * For non-manual bind hairpin queues, configure Rxq, and then init Rxq.
+	 */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		cpfl_rxq = dev->data->rx_queues[i];
 		if (cpfl_rxq == NULL || cpfl_rxq->base.rx_deferred_start)
 			continue;
-		err = cpfl_rx_queue_start(dev, i);
-		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start Rx queue %u", i);
-			return err;
+		if (!cpfl_rxq->hairpin_info.hairpin_q) {
+			err = cpfl_rx_queue_start(dev, i);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Fail to start Rx queue %u", i);
+				return err;
+			}
+		} else if (!cpfl_vport->p2p_manual_bind) {
+			err = cpfl_hairpin_rxq_config(vport, cpfl_rxq);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Fail to configure hairpin Rx queue %u", i);
+				return err;
+			}
+			err = cpfl_rx_queue_init(dev, i);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Fail to init hairpin Rx queue %u", i);
+				return err;
+			}
 		}
 	}
 

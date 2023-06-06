@@ -923,6 +923,94 @@ err_txq_mz_rsv:
 }
 
 int
+cpfl_hairpin_rx_bufq_config(struct cpfl_vport *cpfl_vport)
+{
+	struct idpf_rx_queue *rx_bufq = cpfl_vport->p2p_rx_bufq;
+	struct virtchnl2_rxq_info rxq_info;
+
+	memset(&rxq_info, 0, sizeof(rxq_info));
+
+	rxq_info.type = VIRTCHNL2_QUEUE_TYPE_RX_BUFFER;
+	rxq_info.queue_id = rx_bufq->queue_id;
+	rxq_info.ring_len = rx_bufq->nb_rx_desc;
+	rxq_info.dma_ring_addr = rx_bufq->rx_ring_phys_addr;
+	rxq_info.desc_ids = VIRTCHNL2_RXDID_2_FLEX_SPLITQ_M;
+	rxq_info.rx_buffer_low_watermark = CPFL_RXBUF_LOW_WATERMARK;
+	rxq_info.model = VIRTCHNL2_QUEUE_MODEL_SPLIT;
+	rxq_info.data_buffer_size = rx_bufq->rx_buf_len;
+	rxq_info.buffer_notif_stride = CPFL_RX_BUF_STRIDE;
+
+	return idpf_vc_rxq_config_by_info(&cpfl_vport->base, &rxq_info, 1);
+}
+
+int
+cpfl_hairpin_rxq_config(struct idpf_vport *vport, struct cpfl_rx_queue *cpfl_rxq)
+{
+	struct virtchnl2_rxq_info rxq_info;
+	struct idpf_rx_queue *rxq = &cpfl_rxq->base;
+
+	memset(&rxq_info, 0, sizeof(rxq_info));
+
+	rxq_info.type = VIRTCHNL2_QUEUE_TYPE_RX;
+	rxq_info.queue_id = rxq->queue_id;
+	rxq_info.ring_len = rxq->nb_rx_desc;
+	rxq_info.dma_ring_addr = rxq->rx_ring_phys_addr;
+	rxq_info.rx_bufq1_id = rxq->bufq1->queue_id;
+	rxq_info.max_pkt_size = vport->max_pkt_len;
+	rxq_info.desc_ids = VIRTCHNL2_RXDID_2_FLEX_SPLITQ_M;
+	rxq_info.qflags |= VIRTCHNL2_RX_DESC_SIZE_16BYTE;
+
+	rxq_info.data_buffer_size = rxq->rx_buf_len;
+	rxq_info.model = VIRTCHNL2_QUEUE_MODEL_SPLIT;
+	rxq_info.rx_buffer_low_watermark = CPFL_RXBUF_LOW_WATERMARK;
+
+	PMD_DRV_LOG(NOTICE, "hairpin: vport %u, Rxq id 0x%x",
+		vport->vport_id, rxq_info.queue_id);
+
+	return idpf_vc_rxq_config_by_info(vport, &rxq_info, 1);
+}
+
+int
+cpfl_hairpin_tx_complq_config(struct cpfl_vport *cpfl_vport)
+{
+	struct idpf_tx_queue *tx_complq = cpfl_vport->p2p_tx_complq;
+	struct virtchnl2_txq_info txq_info;
+
+	memset(&txq_info, 0, sizeof(txq_info));
+
+	txq_info.dma_ring_addr = tx_complq->tx_ring_phys_addr;
+	txq_info.type = VIRTCHNL2_QUEUE_TYPE_TX_COMPLETION;
+	txq_info.queue_id = tx_complq->queue_id;
+	txq_info.ring_len = tx_complq->nb_tx_desc;
+	txq_info.peer_rx_queue_id = cpfl_vport->p2p_rx_bufq->queue_id;
+	txq_info.model = VIRTCHNL2_QUEUE_MODEL_SPLIT;
+	txq_info.sched_mode = VIRTCHNL2_TXQ_SCHED_MODE_FLOW;
+
+	return idpf_vc_txq_config_by_info(&cpfl_vport->base, &txq_info, 1);
+}
+
+int
+cpfl_hairpin_txq_config(struct idpf_vport *vport, struct cpfl_tx_queue *cpfl_txq)
+{
+	struct idpf_tx_queue *txq = &cpfl_txq->base;
+	struct virtchnl2_txq_info txq_info;
+
+	memset(&txq_info, 0, sizeof(txq_info));
+
+	txq_info.dma_ring_addr = txq->tx_ring_phys_addr;
+	txq_info.type = VIRTCHNL2_QUEUE_TYPE_TX;
+	txq_info.queue_id = txq->queue_id;
+	txq_info.ring_len = txq->nb_tx_desc;
+	txq_info.tx_compl_queue_id = txq->complq->queue_id;
+	txq_info.relative_queue_id = txq->queue_id;
+	txq_info.peer_rx_queue_id = cpfl_txq->hairpin_info.peer_rxq_id;
+	txq_info.model = VIRTCHNL2_QUEUE_MODEL_SPLIT;
+	txq_info.sched_mode = VIRTCHNL2_TXQ_SCHED_MODE_FLOW;
+
+	return idpf_vc_txq_config_by_info(vport, &txq_info, 1);
+}
+
+int
 cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct cpfl_rx_queue *cpfl_rxq;

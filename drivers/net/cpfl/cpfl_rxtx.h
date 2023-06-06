@@ -32,11 +32,14 @@
 #define CPFL_RING_BASE_ALIGN	128
 
 #define CPFL_DEFAULT_RX_FREE_THRESH	32
+#define CPFL_RXBUF_LOW_WATERMARK	64
 
 #define CPFL_DEFAULT_TX_RS_THRESH	32
 #define CPFL_DEFAULT_TX_FREE_THRESH	32
 
 #define CPFL_SUPPORT_CHAIN_NUM 5
+
+#define CPFL_RX_BUF_STRIDE 64
 
 struct cpfl_rxq_hairpin_info {
 	bool hairpin_q;		/* if rx queue is a hairpin queue */
@@ -95,4 +98,8 @@ int cpfl_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 int cpfl_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				uint16_t nb_desc,
 				const struct rte_eth_hairpin_conf *conf);
+int cpfl_hairpin_tx_complq_config(struct cpfl_vport *cpfl_vport);
+int cpfl_hairpin_txq_config(struct idpf_vport *vport, struct cpfl_tx_queue *cpfl_txq);
+int cpfl_hairpin_rx_bufq_config(struct cpfl_vport *cpfl_vport);
+int cpfl_hairpin_rxq_config(struct idpf_vport *vport, struct cpfl_rx_queue *cpfl_rxq);
 #endif /* _CPFL_RXTX_H_ */
