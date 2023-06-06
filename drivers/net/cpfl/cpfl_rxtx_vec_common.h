@@ -85,6 +85,8 @@ cpfl_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 		cpfl_rxq = dev->data->rx_queues[i];
 		default_ret = cpfl_rx_vec_queue_default(&cpfl_rxq->base);
 		if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
+			if (cpfl_rxq->hairpin_info.hairpin_q)
+				continue;
 			splitq_ret = cpfl_rx_splitq_vec_default(&cpfl_rxq->base);
 			ret = splitq_ret && default_ret;
 		} else {
@@ -106,6 +108,8 @@ cpfl_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		cpfl_txq = dev->data->tx_queues[i];
+		if (cpfl_txq->hairpin_info.hairpin_q)
+			continue;
 		ret = cpfl_tx_vec_queue_default(&cpfl_txq->base);
 		if (ret == CPFL_SCALAR_PATH)
 			return CPFL_SCALAR_PATH;

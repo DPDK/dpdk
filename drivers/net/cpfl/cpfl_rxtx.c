@@ -10,6 +10,67 @@
 #include "cpfl_rxtx.h"
 #include "cpfl_rxtx_vec_common.h"
 
+static inline void
+cpfl_tx_hairpin_descq_reset(struct idpf_tx_queue *txq)
+{
+	uint32_t i, size;
+
+	if (!txq) {
+		PMD_DRV_LOG(DEBUG, "Pointer to txq is NULL");
+		return;
+	}
+
+	size = txq->nb_tx_desc * CPFL_P2P_DESC_LEN;
+	for (i = 0; i < size; i++)
+		((volatile char *)txq->desc_ring)[i] = 0;
+}
+
+static inline void
+cpfl_tx_hairpin_complq_reset(struct idpf_tx_queue *cq)
+{
+	uint32_t i, size;
+
+	if (!cq) {
+		PMD_DRV_LOG(DEBUG, "Pointer to complq is NULL");
+		return;
+	}
+
+	size = cq->nb_tx_desc * CPFL_P2P_DESC_LEN;
+	for (i = 0; i < size; i++)
+		((volatile char *)cq->compl_ring)[i] = 0;
+}
+
+static inline void
+cpfl_rx_hairpin_descq_reset(struct idpf_rx_queue *rxq)
+{
+	uint16_t len;
+	uint32_t i;
+
+	if (!rxq)
+		return;
+
+	len = rxq->nb_rx_desc;
+	for (i = 0; i < len * CPFL_P2P_DESC_LEN; i++)
+		((volatile char *)rxq->rx_ring)[i] = 0;
+}
+
+static inline void
+cpfl_rx_hairpin_bufq_reset(struct idpf_rx_queue *rxbq)
+{
+	uint16_t len;
+	uint32_t i;
+
+	if (!rxbq)
+		return;
+
+	len = rxbq->nb_rx_desc;
+	for (i = 0; i < len * CPFL_P2P_DESC_LEN; i++)
+		((volatile char *)rxbq->rx_ring)[i] = 0;
+
+	rxbq->bufq1 = NULL;
+	rxbq->bufq2 = NULL;
+}
+
 static uint64_t
 cpfl_rx_offload_convert(uint64_t offload)
 {
@@ -234,7 +295,10 @@ cpfl_rx_queue_release(void *rxq)
 
 	/* Split queue */
 	if (!q->adapter->is_rx_singleq) {
-		if (q->bufq2)
+		/* the mz is shared between Tx/Rx hairpin, let Rx_release
+		 * free the buf, q->bufq1->mz and q->mz.
+		 */
+		if (!cpfl_rxq->hairpin_info.hairpin_q && q->bufq2)
 			cpfl_rx_split_bufq_release(q->bufq2);
 
 		if (q->bufq1)
@@ -385,6 +449,7 @@ cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		}
 	}
 
+	cpfl_vport->nb_data_rxq++;
 	rxq->q_set = true;
 	dev->data->rx_queues[queue_idx] = cpfl_rxq;
 
@@ -548,6 +613,7 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->qtx_tail = hw->hw_addr + (vport->chunks_info.tx_qtail_start +
 			queue_idx * vport->chunks_info.tx_qtail_spacing);
 	txq->ops = &def_txq_ops;
+	cpfl_vport->nb_data_txq++;
 	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = cpfl_txq;
 
@@ -559,6 +625,300 @@ err_sw_ring_alloc:
 err_mz_reserve:
 	rte_free(txq);
 err_txq_alloc:
+	return ret;
+}
+
+static int
+cpfl_rx_hairpin_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *bufq,
+			   uint16_t logic_qid, uint16_t nb_desc)
+{
+	struct cpfl_vport *cpfl_vport =
+	    (struct cpfl_vport *)dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct idpf_adapter *adapter = vport->adapter;
+	struct rte_mempool *mp;
+	char pool_name[RTE_MEMPOOL_NAMESIZE];
+
+	mp = cpfl_vport->p2p_mp;
+	if (!mp) {
+		snprintf(pool_name, RTE_MEMPOOL_NAMESIZE, "p2p_mb_pool_%u",
+			 dev->data->port_id);
+		mp = rte_pktmbuf_pool_create(pool_name, CPFL_P2P_NB_MBUF * CPFL_MAX_P2P_NB_QUEUES,
+					     CPFL_P2P_CACHE_SIZE, 0, CPFL_P2P_MBUF_SIZE,
+					     dev->device->numa_node);
+		if (!mp) {
+			PMD_INIT_LOG(ERR, "Failed to allocate mbuf pool for p2p");
+			return -ENOMEM;
+		}
+		cpfl_vport->p2p_mp = mp;
+	}
+
+	bufq->mp = mp;
+	bufq->nb_rx_desc = nb_desc;
+	bufq->queue_id = cpfl_hw_qid_get(cpfl_vport->p2p_q_chunks_info->rx_buf_start_qid,
+					 logic_qid);
+	bufq->port_id = dev->data->port_id;
+	bufq->adapter = adapter;
+	bufq->rx_buf_len = CPFL_P2P_MBUF_SIZE - RTE_PKTMBUF_HEADROOM;
+
+	bufq->q_set = true;
+	bufq->ops = &def_rxq_ops;
+
+	return 0;
+}
+
+int
+cpfl_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			    uint16_t nb_desc,
+			    const struct rte_eth_hairpin_conf *conf)
+{
+	struct cpfl_vport *cpfl_vport = (struct cpfl_vport *)dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct idpf_adapter *adapter_base = vport->adapter;
+	uint16_t logic_qid = cpfl_vport->nb_p2p_rxq;
+	struct cpfl_rxq_hairpin_info *hairpin_info;
+	struct cpfl_rx_queue *cpfl_rxq;
+	struct idpf_rx_queue *bufq1 = NULL;
+	struct idpf_rx_queue *rxq;
+	uint16_t peer_port, peer_q;
+	uint16_t qid;
+	int ret;
+
+	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		PMD_INIT_LOG(ERR, "Only spilt queue model supports hairpin queue.");
+		return -EINVAL;
+	}
+
+	if (conf->peer_count != 1) {
+		PMD_INIT_LOG(ERR, "Can't support Rx hairpin queue peer count %d", conf->peer_count);
+		return -EINVAL;
+	}
+
+	peer_port = conf->peers[0].port;
+	peer_q = conf->peers[0].queue;
+
+	if (nb_desc % CPFL_ALIGN_RING_DESC != 0 ||
+	    nb_desc > CPFL_MAX_RING_DESC ||
+	    nb_desc < CPFL_MIN_RING_DESC) {
+		PMD_INIT_LOG(ERR, "Number (%u) of receive descriptors is invalid", nb_desc);
+		return -EINVAL;
+	}
+
+	/* Free memory if needed */
+	if (dev->data->rx_queues[queue_idx]) {
+		cpfl_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		dev->data->rx_queues[queue_idx] = NULL;
+	}
+
+	/* Setup Rx description queue */
+	cpfl_rxq = rte_zmalloc_socket("cpfl hairpin rxq",
+				 sizeof(struct cpfl_rx_queue),
+				 RTE_CACHE_LINE_SIZE,
+				 SOCKET_ID_ANY);
+	if (!cpfl_rxq) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for rx queue data structure");
+		return -ENOMEM;
+	}
+
+	rxq = &cpfl_rxq->base;
+	hairpin_info = &cpfl_rxq->hairpin_info;
+	rxq->nb_rx_desc = nb_desc * 2;
+	rxq->queue_id = cpfl_hw_qid_get(cpfl_vport->p2p_q_chunks_info->rx_start_qid, logic_qid);
+	rxq->port_id = dev->data->port_id;
+	rxq->adapter = adapter_base;
+	rxq->rx_buf_len = CPFL_P2P_MBUF_SIZE - RTE_PKTMBUF_HEADROOM;
+	hairpin_info->hairpin_q = true;
+	hairpin_info->peer_txp = peer_port;
+	hairpin_info->peer_txq_id = peer_q;
+
+	if (conf->manual_bind != 0)
+		cpfl_vport->p2p_manual_bind = true;
+	else
+		cpfl_vport->p2p_manual_bind = false;
+
+	if (cpfl_vport->p2p_rx_bufq == NULL) {
+		bufq1 = rte_zmalloc_socket("hairpin rx bufq1",
+					   sizeof(struct idpf_rx_queue),
+					   RTE_CACHE_LINE_SIZE,
+					   SOCKET_ID_ANY);
+		if (!bufq1) {
+			PMD_INIT_LOG(ERR, "Failed to allocate memory for hairpin Rx buffer queue 1.");
+			ret = -ENOMEM;
+			goto err_alloc_bufq1;
+		}
+		qid = 2 * logic_qid;
+		ret = cpfl_rx_hairpin_bufq_setup(dev, bufq1, qid, nb_desc);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to setup hairpin Rx buffer queue 1");
+			ret = -EINVAL;
+			goto err_setup_bufq1;
+		}
+		cpfl_vport->p2p_rx_bufq = bufq1;
+	}
+
+	rxq->bufq1 = cpfl_vport->p2p_rx_bufq;
+	rxq->bufq2 = NULL;
+
+	cpfl_vport->nb_p2p_rxq++;
+	rxq->q_set = true;
+	dev->data->rx_queues[queue_idx] = cpfl_rxq;
+
+	return 0;
+
+err_setup_bufq1:
+	rte_mempool_free(cpfl_vport->p2p_mp);
+	rte_free(bufq1);
+err_alloc_bufq1:
+	rte_free(cpfl_rxq);
+
+	return ret;
+}
+
+int
+cpfl_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+			    uint16_t nb_desc,
+			    const struct rte_eth_hairpin_conf *conf)
+{
+	struct cpfl_vport *cpfl_vport =
+	    (struct cpfl_vport *)dev->data->dev_private;
+
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct idpf_adapter *adapter_base = vport->adapter;
+	uint16_t logic_qid = cpfl_vport->nb_p2p_txq;
+	struct cpfl_txq_hairpin_info *hairpin_info;
+	struct idpf_hw *hw = &adapter_base->hw;
+	struct cpfl_tx_queue *cpfl_txq;
+	struct idpf_tx_queue *txq, *cq;
+	const struct rte_memzone *mz;
+	uint32_t ring_size;
+	uint16_t peer_port, peer_q;
+	int ret;
+
+	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		PMD_INIT_LOG(ERR, "Only spilt queue model supports hairpin queue.");
+		return -EINVAL;
+	}
+
+	if (conf->peer_count != 1) {
+		PMD_INIT_LOG(ERR, "Can't support Tx hairpin queue peer count %d", conf->peer_count);
+		return -EINVAL;
+	}
+
+	peer_port = conf->peers[0].port;
+	peer_q = conf->peers[0].queue;
+
+	if (nb_desc % CPFL_ALIGN_RING_DESC != 0 ||
+	    nb_desc > CPFL_MAX_RING_DESC ||
+	    nb_desc < CPFL_MIN_RING_DESC) {
+		PMD_INIT_LOG(ERR, "Number (%u) of transmit descriptors is invalid",
+			     nb_desc);
+		return -EINVAL;
+	}
+
+	/* Free memory if needed. */
+	if (dev->data->tx_queues[queue_idx]) {
+		cpfl_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		dev->data->tx_queues[queue_idx] = NULL;
+	}
+
+	/* Allocate the TX queue data structure. */
+	cpfl_txq = rte_zmalloc_socket("cpfl hairpin txq",
+				 sizeof(struct cpfl_tx_queue),
+				 RTE_CACHE_LINE_SIZE,
+				 SOCKET_ID_ANY);
+	if (!cpfl_txq) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for tx queue structure");
+		return -ENOMEM;
+	}
+
+	txq = &cpfl_txq->base;
+	hairpin_info = &cpfl_txq->hairpin_info;
+	/* Txq ring length should be 2 times of Tx completion queue size. */
+	txq->nb_tx_desc = nb_desc * 2;
+	txq->queue_id = cpfl_hw_qid_get(cpfl_vport->p2p_q_chunks_info->tx_start_qid, logic_qid);
+	txq->port_id = dev->data->port_id;
+	hairpin_info->hairpin_q = true;
+	hairpin_info->peer_rxp = peer_port;
+	hairpin_info->peer_rxq_id = peer_q;
+
+	if (conf->manual_bind != 0)
+		cpfl_vport->p2p_manual_bind = true;
+	else
+		cpfl_vport->p2p_manual_bind = false;
+
+	/* Always Tx hairpin queue allocates Tx HW ring */
+	ring_size = RTE_ALIGN(txq->nb_tx_desc * CPFL_P2P_DESC_LEN,
+			      CPFL_DMA_MEM_ALIGN);
+	mz = rte_eth_dma_zone_reserve(dev, "hairpin_tx_ring", logic_qid,
+				      ring_size + CPFL_P2P_RING_BUF,
+				      CPFL_RING_BASE_ALIGN,
+				      dev->device->numa_node);
+	if (!mz) {
+		PMD_INIT_LOG(ERR, "Failed to reserve DMA memory for TX");
+		ret = -ENOMEM;
+		goto err_txq_mz_rsv;
+	}
+
+	txq->tx_ring_phys_addr = mz->iova;
+	txq->desc_ring = mz->addr;
+	txq->mz = mz;
+
+	cpfl_tx_hairpin_descq_reset(txq);
+	txq->qtx_tail = hw->hw_addr +
+		cpfl_hw_qtail_get(cpfl_vport->p2p_q_chunks_info->tx_qtail_start,
+				  logic_qid, cpfl_vport->p2p_q_chunks_info->tx_qtail_spacing);
+	txq->ops = &def_txq_ops;
+
+	if (cpfl_vport->p2p_tx_complq == NULL) {
+		cq = rte_zmalloc_socket("cpfl hairpin cq",
+					sizeof(struct idpf_tx_queue),
+					RTE_CACHE_LINE_SIZE,
+					dev->device->numa_node);
+		if (!cq) {
+			PMD_INIT_LOG(ERR, "Failed to allocate memory for tx queue structure");
+			ret = -ENOMEM;
+			goto err_cq_alloc;
+		}
+
+		cq->nb_tx_desc = nb_desc;
+		cq->queue_id = cpfl_hw_qid_get(cpfl_vport->p2p_q_chunks_info->tx_compl_start_qid,
+					       0);
+		cq->port_id = dev->data->port_id;
+
+		/* Tx completion queue always allocates the HW ring */
+		ring_size = RTE_ALIGN(cq->nb_tx_desc * CPFL_P2P_DESC_LEN,
+				      CPFL_DMA_MEM_ALIGN);
+		mz = rte_eth_dma_zone_reserve(dev, "hairpin_tx_compl_ring", logic_qid,
+					      ring_size + CPFL_P2P_RING_BUF,
+					      CPFL_RING_BASE_ALIGN,
+					      dev->device->numa_node);
+		if (!mz) {
+			PMD_INIT_LOG(ERR, "Failed to reserve DMA memory for TX completion queue");
+			ret = -ENOMEM;
+			goto err_cq_mz_rsv;
+		}
+		cq->tx_ring_phys_addr = mz->iova;
+		cq->compl_ring = mz->addr;
+		cq->mz = mz;
+
+		cpfl_tx_hairpin_complq_reset(cq);
+		cpfl_vport->p2p_tx_complq = cq;
+	}
+
+	txq->complq = cpfl_vport->p2p_tx_complq;
+
+	cpfl_vport->nb_p2p_txq++;
+	txq->q_set = true;
+	dev->data->tx_queues[queue_idx] = cpfl_txq;
+
+	return 0;
+
+err_cq_mz_rsv:
+	rte_free(cq);
+err_cq_alloc:
+	cpfl_dma_zone_release(mz);
+err_txq_mz_rsv:
+	rte_free(cpfl_txq);
 	return ret;
 }
 
@@ -865,6 +1225,8 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 		if (vport->rx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				cpfl_rxq = dev->data->rx_queues[i];
+				if (cpfl_rxq->hairpin_info.hairpin_q)
+					continue;
 				(void)idpf_qc_splitq_rx_vec_setup(&cpfl_rxq->base);
 			}
 #ifdef CC_AVX512_SUPPORT

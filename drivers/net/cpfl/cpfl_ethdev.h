@@ -89,6 +89,17 @@ struct p2p_queue_chunks_info {
 struct cpfl_vport {
 	struct idpf_vport base;
 	struct p2p_queue_chunks_info *p2p_q_chunks_info;
+
+	struct rte_mempool *p2p_mp;
+
+	uint16_t nb_data_rxq;
+	uint16_t nb_data_txq;
+	uint16_t nb_p2p_rxq;
+	uint16_t nb_p2p_txq;
+
+	struct idpf_rx_queue *p2p_rx_bufq;
+	struct idpf_tx_queue *p2p_tx_complq;
+	bool p2p_manual_bind;
 };
 
 struct cpfl_adapter_ext {

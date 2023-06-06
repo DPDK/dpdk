@@ -22,6 +22,11 @@
 #define CPFL_P2P_NB_TX_COMPLQ	1
 #define CPFL_P2P_NB_QUEUE_GRPS	1
 #define CPFL_P2P_QUEUE_GRP_ID	1
+#define CPFL_P2P_DESC_LEN	16
+#define CPFL_P2P_NB_MBUF	4096
+#define CPFL_P2P_CACHE_SIZE	250
+#define CPFL_P2P_MBUF_SIZE	2048
+#define CPFL_P2P_RING_BUF	128
 
 /* Base address of the HW descriptor ring should be 128B aligned. */
 #define CPFL_RING_BASE_ALIGN	128
@@ -33,13 +38,39 @@
 
 #define CPFL_SUPPORT_CHAIN_NUM 5
 
+struct cpfl_rxq_hairpin_info {
+	bool hairpin_q;		/* if rx queue is a hairpin queue */
+	uint16_t peer_txp;
+	uint16_t peer_txq_id;
+};
+
 struct cpfl_rx_queue {
 	struct idpf_rx_queue base;
+	struct cpfl_rxq_hairpin_info hairpin_info;
+};
+
+struct cpfl_txq_hairpin_info {
+	bool hairpin_q;		/* if tx queue is a hairpin queue */
+	uint16_t peer_rxp;
+	uint16_t peer_rxq_id;
 };
 
 struct cpfl_tx_queue {
 	struct idpf_tx_queue base;
+	struct cpfl_txq_hairpin_info hairpin_info;
 };
+
+static inline uint16_t
+cpfl_hw_qid_get(uint16_t start_qid, uint16_t offset)
+{
+	return start_qid + offset;
+}
+
+static inline uint64_t
+cpfl_hw_qtail_get(uint64_t tail_start, uint16_t offset, uint64_t tail_spacing)
+{
+	return tail_start + offset * tail_spacing;
+}
 
 int cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
@@ -59,4 +90,9 @@ void cpfl_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void cpfl_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 void cpfl_set_rx_function(struct rte_eth_dev *dev);
 void cpfl_set_tx_function(struct rte_eth_dev *dev);
+int cpfl_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+				uint16_t nb_desc, const struct rte_eth_hairpin_conf *conf);
+int cpfl_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+				uint16_t nb_desc,
+				const struct rte_eth_hairpin_conf *conf);
 #endif /* _CPFL_RXTX_H_ */
