@@ -41,6 +41,17 @@
 
 #define CPFL_RX_BUF_STRIDE 64
 
+/* The value written in the RX buffer queue tail register,
+ * and in WritePTR field in the TX completion queue context,
+ * must be a multiple of 8.
+ */
+#define CPFL_HAIRPIN_Q_TAIL_AUX_VALUE 8
+
+struct virtchnl2_p2p_rx_buf_desc {
+	__le64  reserve0;
+	__le64  pkt_addr; /* Packet buffer address */
+};
+
 struct cpfl_rxq_hairpin_info {
 	bool hairpin_q;		/* if rx queue is a hairpin queue */
 	uint16_t peer_txp;
@@ -102,4 +113,8 @@ int cpfl_hairpin_tx_complq_config(struct cpfl_vport *cpfl_vport);
 int cpfl_hairpin_txq_config(struct idpf_vport *vport, struct cpfl_tx_queue *cpfl_txq);
 int cpfl_hairpin_rx_bufq_config(struct cpfl_vport *cpfl_vport);
 int cpfl_hairpin_rxq_config(struct idpf_vport *vport, struct cpfl_rx_queue *cpfl_rxq);
+int cpfl_switch_hairpin_complq(struct cpfl_vport *cpfl_vport, bool on);
+int cpfl_switch_hairpin_bufq(struct cpfl_vport *cpfl_vport, bool on);
+int cpfl_switch_hairpin_rxtx_queue(struct cpfl_vport *cpfl_vport, uint16_t qid,
+				   bool rx, bool on);
 #endif /* _CPFL_RXTX_H_ */

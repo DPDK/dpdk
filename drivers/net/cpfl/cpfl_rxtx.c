@@ -1011,6 +1011,89 @@ cpfl_hairpin_txq_config(struct idpf_vport *vport, struct cpfl_tx_queue *cpfl_txq
 }
 
 int
+cpfl_switch_hairpin_complq(struct cpfl_vport *cpfl_vport, bool on)
+{
+	struct idpf_vport *vport = &cpfl_vport->base;
+	uint32_t type;
+	int err, queue_id;
+
+	type = VIRTCHNL2_QUEUE_TYPE_TX_COMPLETION;
+	queue_id = cpfl_vport->p2p_tx_complq->queue_id;
+	err = idpf_vc_ena_dis_one_queue(vport, queue_id, type, on);
+
+	return err;
+}
+
+int
+cpfl_switch_hairpin_bufq(struct cpfl_vport *cpfl_vport, bool on)
+{
+	struct idpf_vport *vport = &cpfl_vport->base;
+	uint32_t type;
+	int err, queue_id;
+
+	type = VIRTCHNL2_QUEUE_TYPE_RX_BUFFER;
+	queue_id = cpfl_vport->p2p_rx_bufq->queue_id;
+	err = idpf_vc_ena_dis_one_queue(vport, queue_id, type, on);
+
+	return err;
+}
+
+int
+cpfl_switch_hairpin_rxtx_queue(struct cpfl_vport *cpfl_vport, uint16_t logic_qid,
+			       bool rx, bool on)
+{
+	struct idpf_vport *vport = &cpfl_vport->base;
+	uint32_t type;
+	int err, queue_id;
+
+	type = rx ? VIRTCHNL2_QUEUE_TYPE_RX : VIRTCHNL2_QUEUE_TYPE_TX;
+
+	if (type == VIRTCHNL2_QUEUE_TYPE_RX)
+		queue_id = cpfl_hw_qid_get(cpfl_vport->p2p_q_chunks_info->rx_start_qid, logic_qid);
+	else
+		queue_id = cpfl_hw_qid_get(cpfl_vport->p2p_q_chunks_info->tx_start_qid, logic_qid);
+	err = idpf_vc_ena_dis_one_queue(vport, queue_id, type, on);
+	if (err)
+		return err;
+
+	return err;
+}
+
+static int
+cpfl_alloc_split_p2p_rxq_mbufs(struct idpf_rx_queue *rxq)
+{
+	volatile struct virtchnl2_p2p_rx_buf_desc *rxd;
+	struct rte_mbuf *mbuf = NULL;
+	uint64_t dma_addr;
+	uint16_t i;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		mbuf = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!mbuf)) {
+			PMD_DRV_LOG(ERR, "Failed to allocate mbuf for RX");
+			return -ENOMEM;
+		}
+
+		rte_mbuf_refcnt_set(mbuf, 1);
+		mbuf->next = NULL;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->nb_segs = 1;
+		mbuf->port = rxq->port_id;
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+
+		rxd = &((volatile struct virtchnl2_p2p_rx_buf_desc *)(rxq->rx_ring))[i];
+		rxd->reserve0 = 0;
+		rxd->pkt_addr = dma_addr;
+	}
+
+	rxq->nb_rx_hold = 0;
+	/* The value written in the RX buffer queue tail register, must be a multiple of 8.*/
+	rxq->rx_tail = rxq->nb_rx_desc - CPFL_HAIRPIN_Q_TAIL_AUX_VALUE;
+
+	return 0;
+}
+
+int
 cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct cpfl_rx_queue *cpfl_rxq;
@@ -1063,22 +1146,31 @@ cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		IDPF_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 	} else {
 		/* Split queue */
-		err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq1);
-		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
-			return err;
-		}
-		err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq2);
-		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
-			return err;
+		if (cpfl_rxq->hairpin_info.hairpin_q) {
+			err = cpfl_alloc_split_p2p_rxq_mbufs(rxq->bufq1);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Failed to allocate p2p RX buffer queue mbuf");
+				return err;
+			}
+		} else {
+			err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq1);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
+				return err;
+			}
+			err = idpf_qc_split_rxq_mbufs_alloc(rxq->bufq2);
+			if (err != 0) {
+				PMD_DRV_LOG(ERR, "Failed to allocate RX buffer queue mbuf");
+				return err;
+			}
 		}
 
 		rte_wmb();
 
 		/* Init the RX tail register. */
 		IDPF_PCI_REG_WRITE(rxq->bufq1->qrx_tail, rxq->bufq1->rx_tail);
-		IDPF_PCI_REG_WRITE(rxq->bufq2->qrx_tail, rxq->bufq2->rx_tail);
+		if (rxq->bufq2)
+			IDPF_PCI_REG_WRITE(rxq->bufq2->qrx_tail, rxq->bufq2->rx_tail);
 	}
 
 	return err;
@@ -1185,7 +1277,12 @@ cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EINVAL;
 
 	cpfl_rxq = dev->data->rx_queues[rx_queue_id];
-	err = idpf_vc_queue_switch(vport, rx_queue_id, true, false);
+	if (cpfl_rxq->hairpin_info.hairpin_q)
+		err = cpfl_switch_hairpin_rxtx_queue(cpfl_vport,
+						     rx_queue_id - cpfl_vport->nb_data_txq,
+						     true, false);
+	else
+		err = idpf_vc_queue_switch(vport, rx_queue_id, true, false);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
 			    rx_queue_id);
@@ -1199,10 +1296,17 @@ cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		idpf_qc_single_rx_queue_reset(rxq);
 	} else {
 		rxq->bufq1->ops->release_mbufs(rxq->bufq1);
-		rxq->bufq2->ops->release_mbufs(rxq->bufq2);
-		idpf_qc_split_rx_queue_reset(rxq);
+		if (rxq->bufq2)
+			rxq->bufq2->ops->release_mbufs(rxq->bufq2);
+		if (cpfl_rxq->hairpin_info.hairpin_q) {
+			cpfl_rx_hairpin_descq_reset(rxq);
+			cpfl_rx_hairpin_bufq_reset(rxq->bufq1);
+		} else {
+			idpf_qc_split_rx_queue_reset(rxq);
+		}
 	}
-	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	if (!cpfl_rxq->hairpin_info.hairpin_q)
+		dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -1221,7 +1325,12 @@ cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	cpfl_txq = dev->data->tx_queues[tx_queue_id];
 
-	err = idpf_vc_queue_switch(vport, tx_queue_id, false, false);
+	if (cpfl_txq->hairpin_info.hairpin_q)
+		err = cpfl_switch_hairpin_rxtx_queue(cpfl_vport,
+						     tx_queue_id - cpfl_vport->nb_data_txq,
+						     false, false);
+	else
+		err = idpf_vc_queue_switch(vport, tx_queue_id, false, false);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u off",
 			    tx_queue_id);
@@ -1234,10 +1343,17 @@ cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 		idpf_qc_single_tx_queue_reset(txq);
 	} else {
-		idpf_qc_split_tx_descq_reset(txq);
-		idpf_qc_split_tx_complq_reset(txq->complq);
+		if (cpfl_txq->hairpin_info.hairpin_q) {
+			cpfl_tx_hairpin_descq_reset(txq);
+			cpfl_tx_hairpin_complq_reset(txq->complq);
+		} else {
+			idpf_qc_split_tx_descq_reset(txq);
+			idpf_qc_split_tx_complq_reset(txq->complq);
+		}
 	}
-	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	if (!cpfl_txq->hairpin_info.hairpin_q)
+		dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -1257,9 +1373,21 @@ cpfl_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 void
 cpfl_stop_queues(struct rte_eth_dev *dev)
 {
+	struct cpfl_vport *cpfl_vport =
+		(struct cpfl_vport *)dev->data->dev_private;
 	struct cpfl_rx_queue *cpfl_rxq;
 	struct cpfl_tx_queue *cpfl_txq;
 	int i;
+
+	if (cpfl_vport->p2p_tx_complq != NULL) {
+		if (cpfl_switch_hairpin_complq(cpfl_vport, false) != 0)
+			PMD_DRV_LOG(ERR, "Failed to stop hairpin Tx complq");
+	}
+
+	if (cpfl_vport->p2p_rx_bufq != NULL) {
+		if (cpfl_switch_hairpin_bufq(cpfl_vport, false) != 0)
+			PMD_DRV_LOG(ERR, "Failed to stop hairpin Rx bufq");
+	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		cpfl_rxq = dev->data->rx_queues[i];
