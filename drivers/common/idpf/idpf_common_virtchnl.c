@@ -360,6 +360,72 @@ idpf_vc_vport_destroy(struct idpf_vport *vport)
 }
 
 int
+idpf_vc_queue_grps_add(struct idpf_vport *vport,
+		       struct virtchnl2_add_queue_groups *p2p_queue_grps_info,
+		       uint8_t *p2p_queue_grps_out)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_cmd_info args;
+	int size, qg_info_size;
+	int err = -1;
+
+	size = sizeof(*p2p_queue_grps_info) +
+	       (p2p_queue_grps_info->qg_info.num_queue_groups - 1) *
+		   sizeof(struct virtchnl2_queue_group_info);
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_ADD_QUEUE_GROUPS;
+	args.in_args = (uint8_t *)p2p_queue_grps_info;
+	args.in_args_size = size;
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+	if (err != 0) {
+		DRV_LOG(ERR,
+			"Failed to execute command of VIRTCHNL2_OP_ADD_QUEUE_GROUPS");
+		return err;
+	}
+
+	rte_memcpy(p2p_queue_grps_out, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+	return 0;
+}
+
+int idpf_vc_queue_grps_del(struct idpf_vport *vport,
+			  uint16_t num_q_grps,
+			  struct virtchnl2_queue_group_id *qg_ids)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_delete_queue_groups *vc_del_q_grps;
+	struct idpf_cmd_info args;
+	int size;
+	int err;
+
+	size = sizeof(*vc_del_q_grps) +
+	       (num_q_grps - 1) * sizeof(struct virtchnl2_queue_group_id);
+	vc_del_q_grps = rte_zmalloc("vc_del_q_grps", size, 0);
+
+	vc_del_q_grps->vport_id = vport->vport_id;
+	vc_del_q_grps->num_queue_groups = num_q_grps;
+	memcpy(vc_del_q_grps->qg_ids, qg_ids,
+	       num_q_grps * sizeof(struct virtchnl2_queue_group_id));
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_DEL_QUEUE_GROUPS;
+	args.in_args = (uint8_t *)vc_del_q_grps;
+	args.in_args_size = size;
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+	if (err != 0)
+		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_DEL_QUEUE_GROUPS");
+
+	rte_free(vc_del_q_grps);
+	return err;
+}
+
+int
 idpf_vc_rss_key_set(struct idpf_vport *vport)
 {
 	struct idpf_adapter *adapter = vport->adapter;

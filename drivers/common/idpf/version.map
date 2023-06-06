@@ -43,6 +43,8 @@ INTERNAL {
 	idpf_vc_irq_map_unmap_config;
 	idpf_vc_one_msg_read;
 	idpf_vc_ptype_info_query;
+	idpf_vc_queue_grps_add;
+	idpf_vc_queue_grps_del;
 	idpf_vc_queue_switch;
 	idpf_vc_queues_ena_dis;
 	idpf_vc_rss_hash_get;

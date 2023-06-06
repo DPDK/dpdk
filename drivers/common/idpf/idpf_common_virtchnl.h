@@ -64,4 +64,13 @@ int idpf_vc_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 __rte_internal
 int idpf_vc_ctlq_post_rx_buffs(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
 			   u16 *buff_count, struct idpf_dma_mem **buffs);
+__rte_internal
+int idpf_vc_queue_grps_del(struct idpf_vport *vport,
+			   uint16_t num_q_grps,
+			   struct virtchnl2_queue_group_id *qg_ids);
+__rte_internal
+int
+idpf_vc_queue_grps_add(struct idpf_vport *vport,
+		       struct virtchnl2_add_queue_groups *ptp_queue_grps_info,
+		       uint8_t *ptp_queue_grps_out);
 #endif /* _IDPF_COMMON_VIRTCHNL_H_ */
