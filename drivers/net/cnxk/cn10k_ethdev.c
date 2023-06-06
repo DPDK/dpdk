@@ -241,6 +241,9 @@ cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			return rc;
 	}
 
+	/* Set Txq flag for MT_LOCKFREE */
+	txq->flag = !!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_MT_LOCKFREE);
+
 	/* Store lmt base in tx queue for easy access */
 	txq->lmt_base = nix->lmt_base;
 	txq->io_addr = sq->io_addr;

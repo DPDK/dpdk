@@ -48,6 +48,47 @@
 		}                                                              \
 	} while (0)
 
+#define NIX_XMIT_FC_OR_RETURN_MTS(txq, pkts)                                                       \
+	do {                                                                                       \
+		int64_t *fc_cache = &(txq)->fc_cache_pkts;                                         \
+		uint8_t retry_count = 8;                                                           \
+		int64_t val, newval;                                                               \
+	retry:                                                                                     \
+		/* Reduce the cached count */                                                      \
+		val = (int64_t)__atomic_fetch_sub(fc_cache, pkts, __ATOMIC_RELAXED);               \
+		val -= pkts;                                                                       \
+		/* Cached value is low, Update the fc_cache_pkts */                                \
+		if (unlikely(val < 0)) {                                                           \
+			/* Multiply with sqe_per_sqb to express in pkts */                         \
+			newval = txq->nb_sqb_bufs_adj - __atomic_load_n(txq->fc_mem,               \
+									__ATOMIC_RELAXED);         \
+			newval = (newval << (txq)->sqes_per_sqb_log2) - newval;                    \
+			newval -= pkts;                                                            \
+			if (!__atomic_compare_exchange_n(fc_cache, &val, newval, false,            \
+							 __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {    \
+				if (retry_count) {                                                 \
+					retry_count--;                                             \
+					goto retry;                                                \
+				} else                                                             \
+					return 0;                                                  \
+			}                                                                          \
+			/* Update and check it again for the room */                               \
+			if (unlikely(newval < 0))                                                  \
+				return 0;                                                          \
+		}                                                                                  \
+	} while (0)
+
+#define NIX_XMIT_FC_CHECK_RETURN(txq, pkts)                                                        \
+	do {                                                                                       \
+		if (unlikely((txq)->flag))                                                         \
+			NIX_XMIT_FC_OR_RETURN_MTS(txq, pkts);                                      \
+		else {                                                                             \
+			NIX_XMIT_FC_OR_RETURN(txq, pkts);                                          \
+			/* Reduce the cached count */                                              \
+			txq->fc_cache_pkts -= pkts;                                                \
+		}                                                                                  \
+	} while (0)
+
 /* Encoded number of segments to number of dwords macro, each value of nb_segs
  * is encoded as 4bits.
  */
@@ -1274,11 +1315,9 @@ cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
 		handle_tx_completion_pkts(txq, flags & NIX_TX_VWQE_F);
 
-	if (!(flags & NIX_TX_VWQE_F)) {
-		NIX_XMIT_FC_OR_RETURN(txq, pkts);
-		/* Reduce the cached count */
-		txq->fc_cache_pkts -= pkts;
-	}
+	if (!(flags & NIX_TX_VWQE_F))
+		NIX_XMIT_FC_CHECK_RETURN(txq, pkts);
+
 	/* Get cmd skeleton */
 	cn10k_nix_tx_skeleton(txq, cmd, flags, !(flags & NIX_TX_VWQE_F));
 
@@ -1423,11 +1462,9 @@ cn10k_nix_xmit_pkts_mseg(void *tx_queue, uint64_t *ws,
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
 		handle_tx_completion_pkts(txq, flags & NIX_TX_VWQE_F);
 
-	if (!(flags & NIX_TX_VWQE_F)) {
-		NIX_XMIT_FC_OR_RETURN(txq, pkts);
-		/* Reduce the cached count */
-		txq->fc_cache_pkts -= pkts;
-	}
+	if (!(flags & NIX_TX_VWQE_F))
+		NIX_XMIT_FC_CHECK_RETURN(txq, pkts);
+
 	/* Get cmd skeleton */
 	cn10k_nix_tx_skeleton(txq, cmd, flags, !(flags & NIX_TX_VWQE_F));
 
@@ -1979,11 +2016,9 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 		handle_tx_completion_pkts(txq, flags & NIX_TX_VWQE_F);
 
 	if (!(flags & NIX_TX_VWQE_F)) {
-		NIX_XMIT_FC_OR_RETURN(txq, pkts);
 		scalar = pkts & (NIX_DESCS_PER_LOOP - 1);
 		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
-		/* Reduce the cached count */
-		txq->fc_cache_pkts -= pkts;
+		NIX_XMIT_FC_CHECK_RETURN(txq, pkts);
 	} else {
 		scalar = pkts & (NIX_DESCS_PER_LOOP - 1);
 		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
