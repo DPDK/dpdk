@@ -735,11 +735,22 @@ cpfl_dev_configure(struct rte_eth_dev *dev)
 static int
 cpfl_config_rx_queues_irqs(struct rte_eth_dev *dev)
 {
+	uint32_t qids[CPFL_MAX_P2P_NB_QUEUES + IDPF_DEFAULT_RXQ_NUM] = {0};
 	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
 	struct idpf_vport *vport = &cpfl_vport->base;
 	uint16_t nb_rx_queues = dev->data->nb_rx_queues;
+	struct cpfl_rx_queue *cpfl_rxq;
+	int i;
 
-	return idpf_vport_irq_map_config(vport, nb_rx_queues);
+	for (i = 0; i < nb_rx_queues; i++) {
+		cpfl_rxq = dev->data->rx_queues[i];
+		if (cpfl_rxq->hairpin_info.hairpin_q)
+			qids[i] = cpfl_hw_qid_get(cpfl_vport->p2p_q_chunks_info->rx_start_qid,
+						  (i - cpfl_vport->nb_data_rxq));
+		else
+			qids[i] = cpfl_hw_qid_get(vport->chunks_info.rx_start_qid, i);
+	}
+	return idpf_vport_irq_map_config_by_qids(vport, qids, nb_rx_queues);
 }
 
 /* Update hairpin_info for dev's tx hairpin queue */
