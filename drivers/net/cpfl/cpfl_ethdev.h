@@ -56,6 +56,7 @@
 
 /* Device IDs */
 #define IDPF_DEV_ID_CPF			0x1453
+#define VIRTCHNL2_QUEUE_GROUP_P2P	0x100
 
 struct cpfl_vport_param {
 	struct cpfl_adapter_ext *adapter;
@@ -69,8 +70,25 @@ struct cpfl_devargs {
 	uint16_t req_vport_nb;
 };
 
+struct p2p_queue_chunks_info {
+	uint32_t tx_start_qid;
+	uint32_t rx_start_qid;
+	uint32_t tx_compl_start_qid;
+	uint32_t rx_buf_start_qid;
+
+	uint64_t tx_qtail_start;
+	uint32_t tx_qtail_spacing;
+	uint64_t rx_qtail_start;
+	uint32_t rx_qtail_spacing;
+	uint64_t tx_compl_qtail_start;
+	uint32_t tx_compl_qtail_spacing;
+	uint64_t rx_buf_qtail_start;
+	uint32_t rx_buf_qtail_spacing;
+};
+
 struct cpfl_vport {
 	struct idpf_vport base;
+	struct p2p_queue_chunks_info *p2p_q_chunks_info;
 };
 
 struct cpfl_adapter_ext {

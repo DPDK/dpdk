@@ -841,6 +841,21 @@ cpfl_dev_stop(struct rte_eth_dev *dev)
 }
 
 static int
+cpfl_p2p_queue_grps_del(struct idpf_vport *vport)
+{
+	struct virtchnl2_queue_group_id qg_ids;
+	int ret = 0;
+
+	memset(&qg_ids, 0, sizeof(qg_ids));
+	qg_ids.queue_group_id = CPFL_P2P_QUEUE_GRP_ID;
+	qg_ids.queue_group_type = VIRTCHNL2_QUEUE_GROUP_P2P;
+	ret = idpf_vc_queue_grps_del(vport, CPFL_P2P_NB_QUEUE_GRPS, &qg_ids);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to delete p2p queue groups");
+	return ret;
+}
+
+static int
 cpfl_dev_close(struct rte_eth_dev *dev)
 {
 	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
@@ -848,7 +863,12 @@ cpfl_dev_close(struct rte_eth_dev *dev)
 	struct cpfl_adapter_ext *adapter = CPFL_ADAPTER_TO_EXT(vport->adapter);
 
 	cpfl_dev_stop(dev);
+
+	if (!adapter->base.is_rx_singleq && !adapter->base.is_tx_singleq)
+		cpfl_p2p_queue_grps_del(vport);
+
 	idpf_vport_deinit(vport);
+	rte_free(cpfl_vport->p2p_q_chunks_info);
 
 	adapter->cur_vports &= ~RTE_BIT32(vport->devarg_id);
 	adapter->cur_vport_nb--;
@@ -1285,6 +1305,96 @@ cpfl_vport_idx_alloc(struct cpfl_adapter_ext *adapter)
 }
 
 static int
+cpfl_p2p_q_grps_add(struct idpf_vport *vport,
+		    struct virtchnl2_add_queue_groups *p2p_queue_grps_info,
+		    uint8_t *p2p_q_vc_out_info)
+{
+	int ret;
+
+	p2p_queue_grps_info->vport_id = vport->vport_id;
+	p2p_queue_grps_info->qg_info.num_queue_groups = CPFL_P2P_NB_QUEUE_GRPS;
+	p2p_queue_grps_info->qg_info.groups[0].num_rx_q = CPFL_MAX_P2P_NB_QUEUES;
+	p2p_queue_grps_info->qg_info.groups[0].num_rx_bufq = CPFL_P2P_NB_RX_BUFQ;
+	p2p_queue_grps_info->qg_info.groups[0].num_tx_q = CPFL_MAX_P2P_NB_QUEUES;
+	p2p_queue_grps_info->qg_info.groups[0].num_tx_complq = CPFL_P2P_NB_TX_COMPLQ;
+	p2p_queue_grps_info->qg_info.groups[0].qg_id.queue_group_id = CPFL_P2P_QUEUE_GRP_ID;
+	p2p_queue_grps_info->qg_info.groups[0].qg_id.queue_group_type = VIRTCHNL2_QUEUE_GROUP_P2P;
+	p2p_queue_grps_info->qg_info.groups[0].rx_q_grp_info.rss_lut_size = 0;
+	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.tx_tc = 0;
+	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.priority = 0;
+	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.is_sp = 0;
+	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.pir_weight = 0;
+
+	ret = idpf_vc_queue_grps_add(vport, p2p_queue_grps_info, p2p_q_vc_out_info);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to add p2p queue groups.");
+		return ret;
+	}
+
+	return ret;
+}
+
+static int
+cpfl_p2p_queue_info_init(struct cpfl_vport *cpfl_vport,
+			 struct virtchnl2_add_queue_groups *p2p_q_vc_out_info)
+{
+	struct p2p_queue_chunks_info *p2p_q_chunks_info = cpfl_vport->p2p_q_chunks_info;
+	struct virtchnl2_queue_reg_chunks *vc_chunks_out;
+	int i, type;
+
+	if (p2p_q_vc_out_info->qg_info.groups[0].qg_id.queue_group_type !=
+	    VIRTCHNL2_QUEUE_GROUP_P2P) {
+		PMD_DRV_LOG(ERR, "Add queue group response mismatch.");
+		return -EINVAL;
+	}
+
+	vc_chunks_out = &p2p_q_vc_out_info->qg_info.groups[0].chunks;
+
+	for (i = 0; i < vc_chunks_out->num_chunks; i++) {
+		type = vc_chunks_out->chunks[i].type;
+		switch (type) {
+		case VIRTCHNL2_QUEUE_TYPE_TX:
+			p2p_q_chunks_info->tx_start_qid =
+				vc_chunks_out->chunks[i].start_queue_id;
+			p2p_q_chunks_info->tx_qtail_start =
+				vc_chunks_out->chunks[i].qtail_reg_start;
+			p2p_q_chunks_info->tx_qtail_spacing =
+				vc_chunks_out->chunks[i].qtail_reg_spacing;
+			break;
+		case VIRTCHNL2_QUEUE_TYPE_RX:
+			p2p_q_chunks_info->rx_start_qid =
+				vc_chunks_out->chunks[i].start_queue_id;
+			p2p_q_chunks_info->rx_qtail_start =
+				vc_chunks_out->chunks[i].qtail_reg_start;
+			p2p_q_chunks_info->rx_qtail_spacing =
+				vc_chunks_out->chunks[i].qtail_reg_spacing;
+			break;
+		case VIRTCHNL2_QUEUE_TYPE_TX_COMPLETION:
+			p2p_q_chunks_info->tx_compl_start_qid =
+				vc_chunks_out->chunks[i].start_queue_id;
+			p2p_q_chunks_info->tx_compl_qtail_start =
+				vc_chunks_out->chunks[i].qtail_reg_start;
+			p2p_q_chunks_info->tx_compl_qtail_spacing =
+				vc_chunks_out->chunks[i].qtail_reg_spacing;
+			break;
+		case VIRTCHNL2_QUEUE_TYPE_RX_BUFFER:
+			p2p_q_chunks_info->rx_buf_start_qid =
+				vc_chunks_out->chunks[i].start_queue_id;
+			p2p_q_chunks_info->rx_buf_qtail_start =
+				vc_chunks_out->chunks[i].qtail_reg_start;
+			p2p_q_chunks_info->rx_buf_qtail_spacing =
+				vc_chunks_out->chunks[i].qtail_reg_spacing;
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "Unsupported queue type");
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int
 cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 {
 	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
@@ -1293,6 +1403,8 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	struct cpfl_adapter_ext *adapter = param->adapter;
 	/* for sending create vport virtchnl msg prepare */
 	struct virtchnl2_create_vport create_vport_info;
+	struct virtchnl2_add_queue_groups p2p_queue_grps_info;
+	uint8_t p2p_q_vc_out_info[IDPF_DFLT_MBX_BUF_SIZE] = {0};
 	int ret = 0;
 
 	dev->dev_ops = &cpfl_eth_dev_ops;
@@ -1326,6 +1438,29 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 
 	rte_ether_addr_copy((struct rte_ether_addr *)vport->default_mac_addr,
 			    &dev->data->mac_addrs[0]);
+
+	if (!adapter->base.is_rx_singleq && !adapter->base.is_tx_singleq) {
+		memset(&p2p_queue_grps_info, 0, sizeof(p2p_queue_grps_info));
+		ret = cpfl_p2p_q_grps_add(vport, &p2p_queue_grps_info, p2p_q_vc_out_info);
+		if (ret != 0) {
+			PMD_INIT_LOG(WARNING, "Failed to add p2p queue group.");
+			return 0;
+		}
+		cpfl_vport->p2p_q_chunks_info = rte_zmalloc(NULL,
+						    sizeof(struct p2p_queue_chunks_info), 0);
+		if (cpfl_vport->p2p_q_chunks_info == NULL) {
+			PMD_INIT_LOG(WARNING, "Failed to allocate p2p queue info.");
+			cpfl_p2p_queue_grps_del(vport);
+			return 0;
+		}
+		ret = cpfl_p2p_queue_info_init(cpfl_vport,
+				       (struct virtchnl2_add_queue_groups *)p2p_q_vc_out_info);
+		if (ret != 0) {
+			PMD_INIT_LOG(WARNING, "Failed to init p2p queue info.");
+			rte_free(cpfl_vport->p2p_q_chunks_info);
+			cpfl_p2p_queue_grps_del(vport);
+		}
+	}
 
 	return 0;
 
