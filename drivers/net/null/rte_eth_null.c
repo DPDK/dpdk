@@ -37,8 +37,8 @@ struct null_queue {
 	struct rte_mempool *mb_pool;
 	struct rte_mbuf *dummy_packet;
 
-	rte_atomic64_t rx_pkts;
-	rte_atomic64_t tx_pkts;
+	uint64_t rx_pkts;
+	uint64_t tx_pkts;
 };
 
 struct pmd_options {
@@ -101,7 +101,8 @@ eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		bufs[i]->port = h->internals->port_id;
 	}
 
-	rte_atomic64_add(&(h->rx_pkts), i);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_fetch_add(&h->rx_pkts, i, __ATOMIC_SEQ_CST);
 
 	return i;
 }
@@ -128,7 +129,8 @@ eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		bufs[i]->port = h->internals->port_id;
 	}
 
-	rte_atomic64_add(&(h->rx_pkts), i);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_fetch_add(&h->rx_pkts, i, __ATOMIC_SEQ_CST);
 
 	return i;
 }
@@ -152,7 +154,8 @@ eth_null_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	for (i = 0; i < nb_bufs; i++)
 		rte_pktmbuf_free(bufs[i]);
 
-	rte_atomic64_add(&(h->tx_pkts), i);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_fetch_add(&h->tx_pkts, i, __ATOMIC_SEQ_CST);
 
 	return i;
 }
@@ -174,7 +177,8 @@ eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		rte_pktmbuf_free(bufs[i]);
 	}
 
-	rte_atomic64_add(&(h->tx_pkts), i);
+	/* NOTE: review for potential ordering optimization */
+	__atomic_fetch_add(&h->tx_pkts, i, __ATOMIC_SEQ_CST);
 
 	return i;
 }
@@ -316,8 +320,9 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 			RTE_MIN(dev->data->nb_rx_queues,
 				RTE_DIM(internal->rx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
+		/* NOTE: review for atomic access */
 		igb_stats->q_ipackets[i] =
-			internal->rx_null_queues[i].rx_pkts.cnt;
+			internal->rx_null_queues[i].rx_pkts;
 		rx_total += igb_stats->q_ipackets[i];
 	}
 
@@ -325,8 +330,9 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 			RTE_MIN(dev->data->nb_tx_queues,
 				RTE_DIM(internal->tx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
+		/* NOTE: review for atomic access */
 		igb_stats->q_opackets[i] =
-			internal->tx_null_queues[i].tx_pkts.cnt;
+			internal->tx_null_queues[i].tx_pkts;
 		tx_total += igb_stats->q_opackets[i];
 	}
 
@@ -347,9 +353,11 @@ eth_stats_reset(struct rte_eth_dev *dev)
 
 	internal = dev->data->dev_private;
 	for (i = 0; i < RTE_DIM(internal->rx_null_queues); i++)
-		internal->rx_null_queues[i].rx_pkts.cnt = 0;
+		/* NOTE: review for atomic access */
+		internal->rx_null_queues[i].rx_pkts = 0;
 	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++)
-		internal->tx_null_queues[i].tx_pkts.cnt = 0;
+		/* NOTE: review for atomic access */
+		internal->tx_null_queues[i].tx_pkts = 0;
 
 	return 0;
 }
