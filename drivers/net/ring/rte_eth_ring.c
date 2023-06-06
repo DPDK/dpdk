@@ -44,8 +44,8 @@ enum dev_action {
 
 struct ring_queue {
 	struct rte_ring *rng;
-	rte_atomic64_t rx_pkts;
-	rte_atomic64_t tx_pkts;
+	uint64_t rx_pkts;
+	uint64_t tx_pkts;
 };
 
 struct pmd_internals {
@@ -80,9 +80,9 @@ eth_ring_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	const uint16_t nb_rx = (uint16_t)rte_ring_dequeue_burst(r->rng,
 			ptrs, nb_bufs, NULL);
 	if (r->rng->flags & RING_F_SC_DEQ)
-		r->rx_pkts.cnt += nb_rx;
+		r->rx_pkts += nb_rx;
 	else
-		rte_atomic64_add(&(r->rx_pkts), nb_rx);
+		__atomic_fetch_add(&r->rx_pkts, nb_rx, __ATOMIC_RELAXED);
 	return nb_rx;
 }
 
@@ -94,9 +94,9 @@ eth_ring_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	const uint16_t nb_tx = (uint16_t)rte_ring_enqueue_burst(r->rng,
 			ptrs, nb_bufs, NULL);
 	if (r->rng->flags & RING_F_SP_ENQ)
-		r->tx_pkts.cnt += nb_tx;
+		r->tx_pkts += nb_tx;
 	else
-		rte_atomic64_add(&(r->tx_pkts), nb_tx);
+		__atomic_fetch_add(&r->tx_pkts, nb_tx, __ATOMIC_RELAXED);
 	return nb_tx;
 }
 
@@ -184,13 +184,13 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_rx_queues; i++) {
-		stats->q_ipackets[i] = internal->rx_ring_queues[i].rx_pkts.cnt;
+		stats->q_ipackets[i] = internal->rx_ring_queues[i].rx_pkts;
 		rx_total += stats->q_ipackets[i];
 	}
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_tx_queues; i++) {
-		stats->q_opackets[i] = internal->tx_ring_queues[i].tx_pkts.cnt;
+		stats->q_opackets[i] = internal->tx_ring_queues[i].tx_pkts;
 		tx_total += stats->q_opackets[i];
 	}
 
@@ -207,9 +207,9 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	struct pmd_internals *internal = dev->data->dev_private;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		internal->rx_ring_queues[i].rx_pkts.cnt = 0;
+		internal->rx_ring_queues[i].rx_pkts = 0;
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		internal->tx_ring_queues[i].tx_pkts.cnt = 0;
+		internal->tx_ring_queues[i].tx_pkts = 0;
 
 	return 0;
 }
