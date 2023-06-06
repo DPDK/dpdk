@@ -1081,6 +1081,46 @@ cpfl_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+cpfl_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
+			    size_t len, uint32_t tx)
+{
+	struct cpfl_vport *cpfl_vport =
+		(struct cpfl_vport *)dev->data->dev_private;
+	struct idpf_tx_queue *txq;
+	struct idpf_rx_queue *rxq;
+	struct cpfl_tx_queue *cpfl_txq;
+	struct cpfl_rx_queue *cpfl_rxq;
+	uint16_t i;
+	uint16_t j = 0;
+
+	if (len <= 0)
+		return -EINVAL;
+
+	if (cpfl_vport->p2p_q_chunks_info == NULL)
+		return -ENOTSUP;
+
+	if (tx > 0) {
+		for (i = cpfl_vport->nb_data_txq, j = 0; i < dev->data->nb_tx_queues; i++, j++) {
+			txq = dev->data->tx_queues[i];
+			if (txq == NULL || j >= len)
+				return -EINVAL;
+			cpfl_txq = (struct cpfl_tx_queue *)txq;
+			peer_ports[j] = cpfl_txq->hairpin_info.peer_rxp;
+		}
+	} else if (tx == 0) {
+		for (i = cpfl_vport->nb_data_rxq, j = 0; i < dev->data->nb_rx_queues; i++, j++) {
+			rxq = dev->data->rx_queues[i];
+			if (rxq == NULL || j >= len)
+				return -EINVAL;
+			cpfl_rxq = (struct cpfl_rx_queue *)rxq;
+			peer_ports[j] = cpfl_rxq->hairpin_info.peer_txp;
+		}
+	}
+
+	return j;
+}
+
 static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.dev_configure			= cpfl_dev_configure,
 	.dev_close			= cpfl_dev_close,
@@ -1110,6 +1150,7 @@ static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.hairpin_cap_get		= cpfl_hairpin_cap_get,
 	.rx_hairpin_queue_setup		= cpfl_rx_hairpin_queue_setup,
 	.tx_hairpin_queue_setup		= cpfl_tx_hairpin_queue_setup,
+	.hairpin_get_peer_ports         = cpfl_hairpin_get_peer_ports,
 };
 
 static int
