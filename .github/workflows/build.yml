@@ -53,6 +53,7 @@ jobs:
             cross: mingw
           - os: ubuntu-20.04
             compiler: gcc
+            library: shared
             cross: aarch64
           - os: ubuntu-20.04
             compiler: gcc
