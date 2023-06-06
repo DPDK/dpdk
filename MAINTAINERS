@@ -1520,7 +1520,7 @@ F: examples/distributor/
 F: doc/guides/sample_app_ug/dist_app.rst
 
 Reorder
-M: Reshma Pattan <reshma.pattan@intel.com>
+M: Volodymyr Fialko <vfialko@marvell.com>
 F: lib/reorder/
 F: doc/guides/prog_guide/reorder_lib.rst
 F: app/test/test_reorder*
