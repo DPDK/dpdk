@@ -124,7 +124,8 @@ static int
 cpfl_dev_link_update(struct rte_eth_dev *dev,
 		     __rte_unused int wait_to_complete)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct rte_eth_link new_link;
 	unsigned int i;
 
@@ -156,7 +157,8 @@ cpfl_dev_link_update(struct rte_eth_dev *dev,
 static int
 cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 
 	dev_info->max_rx_queues = base->caps.max_rx_q;
@@ -216,7 +218,8 @@ cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 static int
 cpfl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 
 	/* mtu setting is forbidden if port is start */
 	if (dev->data->dev_started) {
@@ -256,12 +259,12 @@ static uint64_t
 cpfl_get_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
 {
 	uint64_t mbuf_alloc_failed = 0;
-	struct idpf_rx_queue *rxq;
+	struct cpfl_rx_queue *cpfl_rxq;
 	int i = 0;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		mbuf_alloc_failed += __atomic_load_n(&rxq->rx_stats.mbuf_alloc_failed,
+		cpfl_rxq = dev->data->rx_queues[i];
+		mbuf_alloc_failed += __atomic_load_n(&cpfl_rxq->base.rx_stats.mbuf_alloc_failed,
 						     __ATOMIC_RELAXED);
 	}
 
@@ -271,8 +274,8 @@ cpfl_get_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
 static int
 cpfl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	struct idpf_vport *vport =
-		(struct idpf_vport *)dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct virtchnl2_vport_stats *pstats = NULL;
 	int ret;
 
@@ -305,20 +308,20 @@ cpfl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 static void
 cpfl_reset_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
 {
-	struct idpf_rx_queue *rxq;
+	struct cpfl_rx_queue *cpfl_rxq;
 	int i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		__atomic_store_n(&rxq->rx_stats.mbuf_alloc_failed, 0, __ATOMIC_RELAXED);
+		cpfl_rxq = dev->data->rx_queues[i];
+		__atomic_store_n(&cpfl_rxq->base.rx_stats.mbuf_alloc_failed, 0, __ATOMIC_RELAXED);
 	}
 }
 
 static int
 cpfl_dev_stats_reset(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport =
-		(struct idpf_vport *)dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct virtchnl2_vport_stats *pstats = NULL;
 	int ret;
 
@@ -343,8 +346,8 @@ static int cpfl_dev_xstats_reset(struct rte_eth_dev *dev)
 static int cpfl_dev_xstats_get(struct rte_eth_dev *dev,
 			       struct rte_eth_xstat *xstats, unsigned int n)
 {
-	struct idpf_vport *vport =
-		(struct idpf_vport *)dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct virtchnl2_vport_stats *pstats = NULL;
 	unsigned int i;
 	int ret;
@@ -459,7 +462,8 @@ cpfl_rss_reta_update(struct rte_eth_dev *dev,
 		     struct rte_eth_rss_reta_entry64 *reta_conf,
 		     uint16_t reta_size)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	uint16_t idx, shift;
 	int ret = 0;
@@ -498,7 +502,8 @@ cpfl_rss_reta_query(struct rte_eth_dev *dev,
 		    struct rte_eth_rss_reta_entry64 *reta_conf,
 		    uint16_t reta_size)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	uint16_t idx, shift;
 	int ret = 0;
@@ -536,7 +541,8 @@ static int
 cpfl_rss_hash_update(struct rte_eth_dev *dev,
 		     struct rte_eth_rss_conf *rss_conf)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	int ret = 0;
 
@@ -601,7 +607,8 @@ static int
 cpfl_rss_hash_conf_get(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_conf *rss_conf)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	int ret = 0;
 
@@ -638,7 +645,8 @@ cpfl_rss_hash_conf_get(struct rte_eth_dev *dev,
 static int
 cpfl_dev_configure(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 	struct idpf_adapter *base = vport->adapter;
 	int ret;
@@ -710,7 +718,8 @@ cpfl_dev_configure(struct rte_eth_dev *dev)
 static int
 cpfl_config_rx_queues_irqs(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	uint16_t nb_rx_queues = dev->data->nb_rx_queues;
 
 	return idpf_vport_irq_map_config(vport, nb_rx_queues);
@@ -719,14 +728,14 @@ cpfl_config_rx_queues_irqs(struct rte_eth_dev *dev)
 static int
 cpfl_start_queues(struct rte_eth_dev *dev)
 {
-	struct idpf_rx_queue *rxq;
-	struct idpf_tx_queue *txq;
+	struct cpfl_rx_queue *cpfl_rxq;
+	struct cpfl_tx_queue *cpfl_txq;
 	int err = 0;
 	int i;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txq = dev->data->tx_queues[i];
-		if (txq == NULL || txq->tx_deferred_start)
+		cpfl_txq = dev->data->tx_queues[i];
+		if (cpfl_txq == NULL || cpfl_txq->base.tx_deferred_start)
 			continue;
 		err = cpfl_tx_queue_start(dev, i);
 		if (err != 0) {
@@ -736,8 +745,8 @@ cpfl_start_queues(struct rte_eth_dev *dev)
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		if (rxq == NULL || rxq->rx_deferred_start)
+		cpfl_rxq = dev->data->rx_queues[i];
+		if (cpfl_rxq == NULL || cpfl_rxq->base.rx_deferred_start)
 			continue;
 		err = cpfl_rx_queue_start(dev, i);
 		if (err != 0) {
@@ -752,7 +761,8 @@ cpfl_start_queues(struct rte_eth_dev *dev)
 static int
 cpfl_dev_start(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	struct cpfl_adapter_ext *adapter = CPFL_ADAPTER_TO_EXT(base);
 	uint16_t num_allocated_vectors = base->caps.num_allocated_vectors;
@@ -813,7 +823,8 @@ err_vec:
 static int
 cpfl_dev_stop(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 
 	if (dev->data->dev_started == 0)
 		return 0;
@@ -832,7 +843,8 @@ cpfl_dev_stop(struct rte_eth_dev *dev)
 static int
 cpfl_dev_close(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct cpfl_adapter_ext *adapter = CPFL_ADAPTER_TO_EXT(vport->adapter);
 
 	cpfl_dev_stop(dev);
@@ -842,7 +854,7 @@ cpfl_dev_close(struct rte_eth_dev *dev)
 	adapter->cur_vport_nb--;
 	dev->data->dev_private = NULL;
 	adapter->vports[vport->sw_idx] = NULL;
-	rte_free(vport);
+	rte_free(cpfl_vport);
 
 	return 0;
 }
@@ -1047,7 +1059,7 @@ cpfl_find_vport(struct cpfl_adapter_ext *adapter, uint32_t vport_id)
 	int i;
 
 	for (i = 0; i < adapter->cur_vport_nb; i++) {
-		vport = adapter->vports[i];
+		vport = &adapter->vports[i]->base;
 		if (vport->vport_id != vport_id)
 			continue;
 		else
@@ -1275,7 +1287,8 @@ cpfl_vport_idx_alloc(struct cpfl_adapter_ext *adapter)
 static int
 cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct cpfl_vport_param *param = init_params;
 	struct cpfl_adapter_ext *adapter = param->adapter;
 	/* for sending create vport virtchnl msg prepare */
@@ -1300,7 +1313,7 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 		goto err;
 	}
 
-	adapter->vports[param->idx] = vport;
+	adapter->vports[param->idx] = cpfl_vport;
 	adapter->cur_vports |= RTE_BIT32(param->devarg_id);
 	adapter->cur_vport_nb++;
 
@@ -1415,7 +1428,7 @@ cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		snprintf(name, sizeof(name), "cpfl_%s_vport_0",
 			 pci_dev->device.name);
 		retval = rte_eth_dev_create(&pci_dev->device, name,
-					    sizeof(struct idpf_vport),
+					    sizeof(struct cpfl_vport),
 					    NULL, NULL, cpfl_dev_vport_init,
 					    &vport_param);
 		if (retval != 0)
@@ -1433,7 +1446,7 @@ cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				 pci_dev->device.name,
 				 devargs.req_vports[i]);
 			retval = rte_eth_dev_create(&pci_dev->device, name,
-						    sizeof(struct idpf_vport),
+						    sizeof(struct cpfl_vport),
 						    NULL, NULL, cpfl_dev_vport_init,
 						    &vport_param);
 			if (retval != 0)

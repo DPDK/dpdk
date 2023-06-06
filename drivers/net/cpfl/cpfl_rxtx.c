@@ -128,7 +128,8 @@ cpfl_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *rxq,
 			 uint16_t nb_desc, unsigned int socket_id,
 			 struct rte_mempool *mp, uint8_t bufq_id)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	struct idpf_hw *hw = &base->hw;
 	const struct rte_memzone *mz;
@@ -220,15 +221,69 @@ cpfl_rx_split_bufq_release(struct idpf_rx_queue *bufq)
 	rte_free(bufq);
 }
 
+static void
+cpfl_rx_queue_release(void *rxq)
+{
+	struct cpfl_rx_queue *cpfl_rxq = rxq;
+	struct idpf_rx_queue *q = NULL;
+
+	if (cpfl_rxq == NULL)
+		return;
+
+	q = &cpfl_rxq->base;
+
+	/* Split queue */
+	if (!q->adapter->is_rx_singleq) {
+		if (q->bufq2)
+			cpfl_rx_split_bufq_release(q->bufq2);
+
+		if (q->bufq1)
+			cpfl_rx_split_bufq_release(q->bufq1);
+
+		rte_free(cpfl_rxq);
+		return;
+	}
+
+	/* Single queue */
+	q->ops->release_mbufs(q);
+	rte_free(q->sw_ring);
+	rte_memzone_free(q->mz);
+	rte_free(cpfl_rxq);
+}
+
+static void
+cpfl_tx_queue_release(void *txq)
+{
+	struct cpfl_tx_queue *cpfl_txq = txq;
+	struct idpf_tx_queue *q = NULL;
+
+	if (cpfl_txq == NULL)
+		return;
+
+	q = &cpfl_txq->base;
+
+	if (q->complq) {
+		rte_memzone_free(q->complq->mz);
+		rte_free(q->complq);
+	}
+
+	q->ops->release_mbufs(q);
+	rte_free(q->sw_ring);
+	rte_memzone_free(q->mz);
+	rte_free(cpfl_txq);
+}
+
 int
 cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		    uint16_t nb_desc, unsigned int socket_id,
 		    const struct rte_eth_rxconf *rx_conf,
 		    struct rte_mempool *mp)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	struct idpf_hw *hw = &base->hw;
+	struct cpfl_rx_queue *cpfl_rxq;
 	const struct rte_memzone *mz;
 	struct idpf_rx_queue *rxq;
 	uint16_t rx_free_thresh;
@@ -248,20 +303,22 @@ cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
-		idpf_qc_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		cpfl_rx_queue_release(dev->data->rx_queues[queue_idx]);
 		dev->data->rx_queues[queue_idx] = NULL;
 	}
 
 	/* Setup Rx queue */
-	rxq = rte_zmalloc_socket("cpfl rxq",
-				 sizeof(struct idpf_rx_queue),
+	cpfl_rxq = rte_zmalloc_socket("cpfl rxq",
+				 sizeof(struct cpfl_rx_queue),
 				 RTE_CACHE_LINE_SIZE,
 				 socket_id);
-	if (rxq == NULL) {
+	if (cpfl_rxq == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate memory for rx queue data structure");
 		ret = -ENOMEM;
 		goto err_rxq_alloc;
 	}
+
+	rxq = &cpfl_rxq->base;
 
 	is_splitq = !!(vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT);
 
@@ -329,7 +386,7 @@ cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	}
 
 	rxq->q_set = true;
-	dev->data->rx_queues[queue_idx] = rxq;
+	dev->data->rx_queues[queue_idx] = cpfl_rxq;
 
 	return 0;
 
@@ -349,7 +406,8 @@ cpfl_tx_complq_setup(struct rte_eth_dev *dev, struct idpf_tx_queue *txq,
 		     uint16_t queue_idx, uint16_t nb_desc,
 		     unsigned int socket_id)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	const struct rte_memzone *mz;
 	struct idpf_tx_queue *cq;
 	int ret;
@@ -397,9 +455,11 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		    uint16_t nb_desc, unsigned int socket_id,
 		    const struct rte_eth_txconf *tx_conf)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 	struct idpf_adapter *base = vport->adapter;
 	uint16_t tx_rs_thresh, tx_free_thresh;
+	struct cpfl_tx_queue *cpfl_txq;
 	struct idpf_hw *hw = &base->hw;
 	const struct rte_memzone *mz;
 	struct idpf_tx_queue *txq;
@@ -419,20 +479,22 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	/* Free memory if needed. */
 	if (dev->data->tx_queues[queue_idx] != NULL) {
-		idpf_qc_tx_queue_release(dev->data->tx_queues[queue_idx]);
+		cpfl_tx_queue_release(dev->data->tx_queues[queue_idx]);
 		dev->data->tx_queues[queue_idx] = NULL;
 	}
 
 	/* Allocate the TX queue data structure. */
-	txq = rte_zmalloc_socket("cpfl txq",
-				 sizeof(struct idpf_tx_queue),
+	cpfl_txq = rte_zmalloc_socket("cpfl txq",
+				 sizeof(struct cpfl_tx_queue),
 				 RTE_CACHE_LINE_SIZE,
 				 socket_id);
-	if (txq == NULL) {
+	if (cpfl_txq == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate memory for tx queue structure");
 		ret = -ENOMEM;
 		goto err_txq_alloc;
 	}
+
+	txq = &cpfl_txq->base;
 
 	is_splitq = !!(vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT);
 
@@ -487,7 +549,7 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			queue_idx * vport->chunks_info.tx_qtail_spacing);
 	txq->ops = &def_txq_ops;
 	txq->q_set = true;
-	dev->data->tx_queues[queue_idx] = txq;
+	dev->data->tx_queues[queue_idx] = cpfl_txq;
 
 	return 0;
 
@@ -503,6 +565,7 @@ err_txq_alloc:
 int
 cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
+	struct cpfl_rx_queue *cpfl_rxq;
 	struct idpf_rx_queue *rxq;
 	uint16_t max_pkt_len;
 	uint32_t frame_size;
@@ -511,7 +574,8 @@ cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rx_queue_id >= dev->data->nb_rx_queues)
 		return -EINVAL;
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	cpfl_rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = &cpfl_rxq->base;
 
 	if (rxq == NULL || !rxq->q_set) {
 		PMD_DRV_LOG(ERR, "RX queue %u not available or setup",
@@ -575,9 +639,10 @@ cpfl_rx_queue_init(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 cpfl_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_rx_queue *rxq =
-		dev->data->rx_queues[rx_queue_id];
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct cpfl_rx_queue *cpfl_rxq = dev->data->rx_queues[rx_queue_id];
+	struct idpf_rx_queue *rxq = &cpfl_rxq->base;
 	int err = 0;
 
 	err = idpf_vc_rxq_config(vport, rxq);
@@ -610,15 +675,15 @@ cpfl_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 cpfl_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	struct idpf_tx_queue *txq;
+	struct cpfl_tx_queue *cpfl_txq;
 
 	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -EINVAL;
 
-	txq = dev->data->tx_queues[tx_queue_id];
+	cpfl_txq = dev->data->tx_queues[tx_queue_id];
 
 	/* Init the RX tail register. */
-	IDPF_PCI_REG_WRITE(txq->qtx_tail, 0);
+	IDPF_PCI_REG_WRITE(cpfl_txq->base.qtx_tail, 0);
 
 	return 0;
 }
@@ -626,12 +691,13 @@ cpfl_tx_queue_init(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 int
 cpfl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_tx_queue *txq =
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct cpfl_tx_queue *cpfl_txq =
 		dev->data->tx_queues[tx_queue_id];
 	int err = 0;
 
-	err = idpf_vc_txq_config(vport, txq);
+	err = idpf_vc_txq_config(vport, &cpfl_txq->base);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Fail to configure Tx queue %u", tx_queue_id);
 		return err;
@@ -650,7 +716,7 @@ cpfl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
 			    tx_queue_id);
 	} else {
-		txq->q_started = true;
+		cpfl_txq->base.q_started = true;
 		dev->data->tx_queue_state[tx_queue_id] =
 			RTE_ETH_QUEUE_STATE_STARTED;
 	}
@@ -661,13 +727,16 @@ cpfl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 int
 cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct cpfl_rx_queue *cpfl_rxq;
 	struct idpf_rx_queue *rxq;
 	int err;
 
 	if (rx_queue_id >= dev->data->nb_rx_queues)
 		return -EINVAL;
 
+	cpfl_rxq = dev->data->rx_queues[rx_queue_id];
 	err = idpf_vc_queue_switch(vport, rx_queue_id, true, false);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
@@ -675,7 +744,7 @@ cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return err;
 	}
 
-	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq = &cpfl_rxq->base;
 	rxq->q_started = false;
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 		rxq->ops->release_mbufs(rxq);
@@ -693,12 +762,16 @@ cpfl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct cpfl_tx_queue *cpfl_txq;
 	struct idpf_tx_queue *txq;
 	int err;
 
 	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -EINVAL;
+
+	cpfl_txq = dev->data->tx_queues[tx_queue_id];
 
 	err = idpf_vc_queue_switch(vport, tx_queue_id, false, false);
 	if (err != 0) {
@@ -707,7 +780,7 @@ cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return err;
 	}
 
-	txq = dev->data->tx_queues[tx_queue_id];
+	txq = &cpfl_txq->base;
 	txq->q_started = false;
 	txq->ops->release_mbufs(txq);
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
@@ -724,25 +797,25 @@ cpfl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 void
 cpfl_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	idpf_qc_rx_queue_release(dev->data->rx_queues[qid]);
+	cpfl_rx_queue_release(dev->data->rx_queues[qid]);
 }
 
 void
 cpfl_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	idpf_qc_tx_queue_release(dev->data->tx_queues[qid]);
+	cpfl_tx_queue_release(dev->data->tx_queues[qid]);
 }
 
 void
 cpfl_stop_queues(struct rte_eth_dev *dev)
 {
-	struct idpf_rx_queue *rxq;
-	struct idpf_tx_queue *txq;
+	struct cpfl_rx_queue *cpfl_rxq;
+	struct cpfl_tx_queue *cpfl_txq;
 	int i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		if (rxq == NULL)
+		cpfl_rxq = dev->data->rx_queues[i];
+		if (cpfl_rxq == NULL)
 			continue;
 
 		if (cpfl_rx_queue_stop(dev, i) != 0)
@@ -750,8 +823,8 @@ cpfl_stop_queues(struct rte_eth_dev *dev)
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txq = dev->data->tx_queues[i];
-		if (txq == NULL)
+		cpfl_txq = dev->data->tx_queues[i];
+		if (cpfl_txq == NULL)
 			continue;
 
 		if (cpfl_tx_queue_stop(dev, i) != 0)
@@ -762,9 +835,10 @@ cpfl_stop_queues(struct rte_eth_dev *dev)
 void
 cpfl_set_rx_function(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 #ifdef RTE_ARCH_X86
-	struct idpf_rx_queue *rxq;
+	struct cpfl_rx_queue *cpfl_rxq;
 	int i;
 
 	if (cpfl_rx_vec_dev_check_default(dev) == CPFL_VECTOR_PATH &&
@@ -790,8 +864,8 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
 		if (vport->rx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
-				rxq = dev->data->rx_queues[i];
-				(void)idpf_qc_splitq_rx_vec_setup(rxq);
+				cpfl_rxq = dev->data->rx_queues[i];
+				(void)idpf_qc_splitq_rx_vec_setup(&cpfl_rxq->base);
 			}
 #ifdef CC_AVX512_SUPPORT
 			if (vport->rx_use_avx512) {
@@ -810,8 +884,8 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 	} else {
 		if (vport->rx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
-				rxq = dev->data->rx_queues[i];
-				(void)idpf_qc_singleq_rx_vec_setup(rxq);
+				cpfl_rxq = dev->data->rx_queues[i];
+				(void)idpf_qc_singleq_rx_vec_setup(&cpfl_rxq->base);
 			}
 #ifdef CC_AVX512_SUPPORT
 			if (vport->rx_use_avx512) {
@@ -860,10 +934,11 @@ cpfl_set_rx_function(struct rte_eth_dev *dev)
 void
 cpfl_set_tx_function(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
 #ifdef RTE_ARCH_X86
 #ifdef CC_AVX512_SUPPORT
-	struct idpf_tx_queue *txq;
+	struct cpfl_tx_queue *cpfl_txq;
 	int i;
 #endif /* CC_AVX512_SUPPORT */
 
@@ -878,8 +953,8 @@ cpfl_set_tx_function(struct rte_eth_dev *dev)
 				vport->tx_use_avx512 = true;
 			if (vport->tx_use_avx512) {
 				for (i = 0; i < dev->data->nb_tx_queues; i++) {
-					txq = dev->data->tx_queues[i];
-					idpf_qc_tx_vec_avx512_setup(txq);
+					cpfl_txq = dev->data->tx_queues[i];
+					idpf_qc_tx_vec_avx512_setup(&cpfl_txq->base);
 				}
 			}
 		}
@@ -916,10 +991,10 @@ cpfl_set_tx_function(struct rte_eth_dev *dev)
 #ifdef CC_AVX512_SUPPORT
 			if (vport->tx_use_avx512) {
 				for (i = 0; i < dev->data->nb_tx_queues; i++) {
-					txq = dev->data->tx_queues[i];
-					if (txq == NULL)
+					cpfl_txq = dev->data->tx_queues[i];
+					if (cpfl_txq == NULL)
 						continue;
-					idpf_qc_tx_vec_avx512_setup(txq);
+					idpf_qc_tx_vec_avx512_setup(&cpfl_txq->base);
 				}
 				PMD_DRV_LOG(NOTICE,
 					    "Using Single AVX512 Vector Tx (port %d).",

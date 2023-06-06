@@ -23,6 +23,14 @@
 
 #define CPFL_SUPPORT_CHAIN_NUM 5
 
+struct cpfl_rx_queue {
+	struct idpf_rx_queue base;
+};
+
+struct cpfl_tx_queue {
+	struct idpf_tx_queue base;
+};
+
 int cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			uint16_t nb_desc, unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf);

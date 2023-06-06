@@ -76,15 +76,16 @@ cpfl_rx_splitq_vec_default(struct idpf_rx_queue *rxq)
 static inline int
 cpfl_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
-	struct idpf_vport *vport = dev->data->dev_private;
-	struct idpf_rx_queue *rxq;
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct cpfl_rx_queue *cpfl_rxq;
 	int i, default_ret, splitq_ret, ret = CPFL_SCALAR_PATH;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		default_ret = cpfl_rx_vec_queue_default(rxq);
+		cpfl_rxq = dev->data->rx_queues[i];
+		default_ret = cpfl_rx_vec_queue_default(&cpfl_rxq->base);
 		if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
-			splitq_ret = cpfl_rx_splitq_vec_default(rxq);
+			splitq_ret = cpfl_rx_splitq_vec_default(&cpfl_rxq->base);
 			ret = splitq_ret && default_ret;
 		} else {
 			ret = default_ret;
@@ -100,12 +101,12 @@ static inline int
 cpfl_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
 	int i;
-	struct idpf_tx_queue *txq;
+	struct cpfl_tx_queue *cpfl_txq;
 	int ret = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txq = dev->data->tx_queues[i];
-		ret = cpfl_tx_vec_queue_default(txq);
+		cpfl_txq = dev->data->tx_queues[i];
+		ret = cpfl_tx_vec_queue_default(&cpfl_txq->base);
 		if (ret == CPFL_SCALAR_PATH)
 			return CPFL_SCALAR_PATH;
 	}

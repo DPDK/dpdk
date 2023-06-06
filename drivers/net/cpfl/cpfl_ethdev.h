@@ -69,13 +69,17 @@ struct cpfl_devargs {
 	uint16_t req_vport_nb;
 };
 
+struct cpfl_vport {
+	struct idpf_vport base;
+};
+
 struct cpfl_adapter_ext {
 	TAILQ_ENTRY(cpfl_adapter_ext) next;
 	struct idpf_adapter base;
 
 	char name[CPFL_ADAPTER_NAME_LEN];
 
-	struct idpf_vport **vports;
+	struct cpfl_vport **vports;
 	uint16_t max_vport_nb;
 
 	uint16_t cur_vports; /* bit mask of created vport */
