@@ -44,6 +44,7 @@
 #define HNS3_VECTOR0_IMP_CMDQ_ERR_B	4U
 #define HNS3_VECTOR0_IMP_RD_POISON_B	5U
 #define HNS3_VECTOR0_ALL_MSIX_ERR_B	6U
+#define HNS3_VECTOR0_TRIGGER_IMP_RESET_B	7U
 
 #define HNS3_RESET_WAIT_MS	100
 #define HNS3_RESET_WAIT_CNT	200
@@ -5575,17 +5576,6 @@ hns3_func_reset_cmd(struct hns3_hw *hw, int func_id)
 	return hns3_cmd_send(hw, &desc, 1);
 }
 
-static int
-hns3_imp_reset_cmd(struct hns3_hw *hw)
-{
-	struct hns3_cmd_desc desc;
-
-	hns3_cmd_setup_basic_desc(&desc, 0xFFFE, false);
-	desc.data[0] = 0xeedd;
-
-	return hns3_cmd_send(hw, &desc, 1);
-}
-
 static void
 hns3_msix_process(struct hns3_adapter *hns, enum hns3_reset_level reset_level)
 {
@@ -5603,7 +5593,9 @@ hns3_msix_process(struct hns3_adapter *hns, enum hns3_reset_level reset_level)
 
 	switch (reset_level) {
 	case HNS3_IMP_RESET:
-		hns3_imp_reset_cmd(hw);
+		val = hns3_read_dev(hw, HNS3_VECTOR0_OTER_EN_REG);
+		hns3_set_bit(val, HNS3_VECTOR0_TRIGGER_IMP_RESET_B, 1);
+		hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, val);
 		hns3_warn(hw, "IMP Reset requested time=%ld.%.6ld",
 			  tv.tv_sec, tv.tv_usec);
 		break;
