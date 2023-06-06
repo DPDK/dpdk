@@ -678,6 +678,8 @@ free_mbuf(struct rte_mbuf *mbuf)
 					ip_reassembly_dynfield_offset,
 					rte_eth_ip_reassembly_dynfield_t *);
 			rte_pktmbuf_free(mbuf);
+			if (dynfield.nb_frags == 0)
+				break;
 			mbuf = dynfield.next_frag;
 		}
 	}
@@ -736,6 +738,53 @@ get_and_verify_incomplete_frags(struct rte_mbuf *mbuf,
 }
 
 static int
+event_tx_burst(struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rte_event ev;
+	int i, nb_sent = 0;
+
+	/* Convert packets to events */
+	memset(&ev, 0, sizeof(ev));
+	ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
+	for (i = 0; i < nb_pkts; i++) {
+		ev.mbuf = tx_pkts[i];
+		ev.mbuf->port = port_id;
+		nb_sent += rte_event_eth_tx_adapter_enqueue(
+				eventdev_id, port_id, &ev, 1, 0);
+	}
+
+	return nb_sent;
+}
+
+static int
+event_rx_burst(struct rte_mbuf **rx_pkts, uint16_t nb_pkts_to_rx)
+{
+	int nb_ev, nb_rx = 0, j = 0;
+	const int ms_per_pkt = 5;
+	struct rte_event ev;
+
+	do {
+		nb_ev = rte_event_dequeue_burst(eventdev_id, port_id,
+				&ev, 1, 0);
+
+		if (nb_ev == 0) {
+			rte_delay_ms(1);
+			continue;
+		}
+
+		/* Get packet from event */
+		if (ev.event_type != RTE_EVENT_TYPE_ETHDEV) {
+			printf("Unsupported event type: %i\n",
+				ev.event_type);
+			continue;
+		}
+		rx_pkts[nb_rx++] = ev.mbuf;
+	} while (j++ < (nb_pkts_to_rx * ms_per_pkt) && nb_rx < nb_pkts_to_rx);
+
+	return nb_rx;
+}
+
+static int
 test_ipsec_with_reassembly(struct reassembly_vector *vector,
 		const struct ipsec_test_flags *flags)
 {
@@ -761,26 +810,9 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	burst_sz = vector->burst ? ENCAP_DECAP_BURST_SZ : 1;
 	nb_tx = vector->nb_frags * burst_sz;
 
-	rte_eth_dev_stop(port_id);
-	if (ret != 0) {
-		printf("rte_eth_dev_stop: err=%s, port=%u\n",
-			       rte_strerror(-ret), port_id);
-		return ret;
-	}
 	rte_eth_ip_reassembly_capability_get(port_id, &reass_capa);
 	if (reass_capa.max_frags < vector->nb_frags)
 		return TEST_SKIPPED;
-	if (reass_capa.timeout_ms > APP_REASS_TIMEOUT) {
-		reass_capa.timeout_ms = APP_REASS_TIMEOUT;
-		rte_eth_ip_reassembly_conf_set(port_id, &reass_capa);
-	}
-
-	ret = rte_eth_dev_start(port_id);
-	if (ret < 0) {
-		printf("rte_eth_dev_start: err=%d, port=%d\n",
-			ret, port_id);
-		return ret;
-	}
 
 	memset(tx_pkts_burst, 0, sizeof(tx_pkts_burst[0]) * nb_tx);
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_tx);
@@ -871,7 +903,10 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	if (ret)
 		goto out;
 
-	nb_sent = rte_eth_tx_burst(port_id, 0, tx_pkts_burst, nb_tx);
+	if (event_mode_enabled)
+		nb_sent = event_tx_burst(tx_pkts_burst, nb_tx);
+	else
+		nb_sent = rte_eth_tx_burst(port_id, 0, tx_pkts_burst, nb_tx);
 	if (nb_sent != nb_tx) {
 		ret = -1;
 		printf("\nFailed to tx %u pkts", nb_tx);
@@ -883,14 +918,17 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	/* Retry few times before giving up */
 	nb_rx = 0;
 	j = 0;
-	do {
-		nb_rx += rte_eth_rx_burst(port_id, 0, &rx_pkts_burst[nb_rx],
-					  nb_tx - nb_rx);
-		j++;
-		if (nb_rx >= nb_tx)
-			break;
-		rte_delay_ms(1);
-	} while (j < 5 || !nb_rx);
+	if (event_mode_enabled)
+		nb_rx = event_rx_burst(rx_pkts_burst, nb_tx);
+	else
+		do {
+			nb_rx += rte_eth_rx_burst(port_id, 0, &rx_pkts_burst[nb_rx],
+						  nb_tx - nb_rx);
+			j++;
+			if (nb_rx >= nb_tx)
+				break;
+			rte_delay_ms(1);
+		} while (j < 5 || !nb_rx);
 
 	/* Check for minimum number of Rx packets expected */
 	if ((vector->nb_frags == 1 && nb_rx != nb_tx) ||
@@ -948,52 +986,6 @@ out:
 	for (i = 0; i < nb_rx; i++)
 		free_mbuf(rx_pkts_burst[i]);
 	return ret;
-}
-
-static int
-event_tx_burst(struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	struct rte_event ev;
-	int i, nb_sent = 0;
-
-	/* Convert packets to events */
-	memset(&ev, 0, sizeof(ev));
-	ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
-	for (i = 0; i < nb_pkts; i++) {
-		ev.mbuf = tx_pkts[i];
-		nb_sent += rte_event_eth_tx_adapter_enqueue(
-				eventdev_id, port_id, &ev, 1, 0);
-	}
-
-	return nb_sent;
-}
-
-static int
-event_rx_burst(struct rte_mbuf **rx_pkts, uint16_t nb_pkts_to_rx)
-{
-	int nb_ev, nb_rx = 0, j = 0;
-	const int ms_per_pkt = 3;
-	struct rte_event ev;
-
-	do {
-		nb_ev = rte_event_dequeue_burst(eventdev_id, port_id,
-				&ev, 1, 0);
-
-		if (nb_ev == 0) {
-			rte_delay_ms(1);
-			continue;
-		}
-
-		/* Get packet from event */
-		if (ev.event_type != RTE_EVENT_TYPE_ETHDEV) {
-			printf("Unsupported event type: %i\n",
-				ev.event_type);
-			continue;
-		}
-		rx_pkts[nb_rx++] = ev.mbuf;
-	} while (j++ < (nb_pkts_to_rx * ms_per_pkt) && nb_rx < nb_pkts_to_rx);
-
-	return nb_rx;
 }
 
 static int
@@ -1475,9 +1467,87 @@ out:
 }
 
 static int
+ut_setup_inline_ipsec_reassembly(void)
+{
+	struct rte_eth_ip_reassembly_params reass_capa = {0};
+	int ret;
+
+	rte_eth_ip_reassembly_capability_get(port_id, &reass_capa);
+	if (reass_capa.timeout_ms > APP_REASS_TIMEOUT) {
+		reass_capa.timeout_ms = APP_REASS_TIMEOUT;
+		rte_eth_ip_reassembly_conf_set(port_id, &reass_capa);
+	}
+
+	/* Start event devices */
+	if (event_mode_enabled) {
+		ret = rte_event_eth_rx_adapter_start(rx_adapter_id);
+		if (ret < 0) {
+			printf("Failed to start rx adapter %d\n", ret);
+			return ret;
+		}
+
+		ret = rte_event_dev_start(eventdev_id);
+		if (ret < 0) {
+			printf("Failed to start event device %d\n", ret);
+			return ret;
+		}
+	}
+
+	/* Start device */
+	ret = rte_eth_dev_start(port_id);
+	if (ret < 0) {
+		printf("rte_eth_dev_start: err=%d, port=%d\n",
+			ret, port_id);
+		return ret;
+	}
+	/* always enable promiscuous */
+	ret = rte_eth_promiscuous_enable(port_id);
+	if (ret != 0) {
+		printf("rte_eth_promiscuous_enable: err=%s, port=%d\n",
+			rte_strerror(-ret), port_id);
+		return ret;
+	}
+
+	check_all_ports_link_status(1, RTE_PORT_ALL);
+
+	return 0;
+}
+
+static void
+ut_teardown_inline_ipsec_reassembly(void)
+{
+	struct rte_eth_ip_reassembly_params reass_conf = {0};
+	uint16_t portid;
+	int ret;
+
+	/* Stop event devices */
+	if (event_mode_enabled)
+		rte_event_dev_stop(eventdev_id);
+
+	/* port tear down */
+	RTE_ETH_FOREACH_DEV(portid) {
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%s, port=%u\n",
+			       rte_strerror(-ret), portid);
+
+		/* Clear reassembly configuration */
+		rte_eth_ip_reassembly_conf_set(portid, &reass_conf);
+	}
+}
+static int
 ut_setup_inline_ipsec(void)
 {
 	int ret;
+
+	/* Start event devices */
+	if (event_mode_enabled) {
+		ret = rte_event_dev_start(eventdev_id);
+		if (ret < 0) {
+			printf("Failed to start event device %d\n", ret);
+			return ret;
+		}
+	}
 
 	/* Start device */
 	ret = rte_eth_dev_start(port_id);
@@ -1502,9 +1572,12 @@ ut_setup_inline_ipsec(void)
 static void
 ut_teardown_inline_ipsec(void)
 {
-	struct rte_eth_ip_reassembly_params reass_conf = {0};
 	uint16_t portid;
 	int ret;
+
+	/* Stop event devices */
+	if (event_mode_enabled)
+		rte_event_dev_stop(eventdev_id);
 
 	/* port tear down */
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -1512,9 +1585,6 @@ ut_teardown_inline_ipsec(void)
 		if (ret != 0)
 			printf("rte_eth_dev_stop: err=%s, port=%u\n",
 			       rte_strerror(-ret), portid);
-
-		/* Clear reassembly configuration */
-		rte_eth_ip_reassembly_conf_set(portid, &reass_conf);
 	}
 }
 
@@ -3048,43 +3118,43 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 2 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_2frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv6 Reassembly with 2 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv6_2frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 4 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_4frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv6 Reassembly with 4 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv6_4frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 5 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_5frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv6 Reassembly with 5 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv6_5frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with incomplete fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_incomplete_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with overlapping fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_overlap_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with out of order fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_out_of_order_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with burst of 4 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_4frag_burst_vector),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
