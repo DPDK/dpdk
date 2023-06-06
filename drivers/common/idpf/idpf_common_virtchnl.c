@@ -733,7 +733,7 @@ idpf_vc_vectors_dealloc(struct idpf_vport *vport)
 	return err;
 }
 
-static int
+int
 idpf_vc_ena_dis_one_queue(struct idpf_vport *vport, uint16_t qid,
 			  uint32_t type, bool on)
 {

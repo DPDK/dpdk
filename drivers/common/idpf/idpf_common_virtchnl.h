@@ -71,6 +71,9 @@ __rte_internal
 int idpf_vc_txq_config_by_info(struct idpf_vport *vport, struct virtchnl2_txq_info *txq_info,
 			       uint16_t num_qs);
 __rte_internal
+int idpf_vc_ena_dis_one_queue(struct idpf_vport *vport, uint16_t qid,
+			      uint32_t type, bool on);
+__rte_internal
 int idpf_vc_queue_grps_del(struct idpf_vport *vport,
 			   uint16_t num_q_grps,
 			   struct virtchnl2_queue_group_id *qg_ids);

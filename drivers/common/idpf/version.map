@@ -40,6 +40,7 @@ INTERNAL {
 	idpf_vc_cmd_execute;
 	idpf_vc_ctlq_post_rx_buffs;
 	idpf_vc_ctlq_recv;
+	idpf_vc_ena_dis_one_queue;
 	idpf_vc_irq_map_unmap_config;
 	idpf_vc_one_msg_read;
 	idpf_vc_ptype_info_query;
