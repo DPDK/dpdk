@@ -54,8 +54,10 @@ INTERNAL {
 	idpf_vc_rss_lut_get;
 	idpf_vc_rss_lut_set;
 	idpf_vc_rxq_config;
+	idpf_vc_rxq_config_by_info;
 	idpf_vc_stats_query;
 	idpf_vc_txq_config;
+	idpf_vc_txq_config_by_info;
 	idpf_vc_vectors_alloc;
 	idpf_vc_vectors_dealloc;
 	idpf_vc_vport_create;

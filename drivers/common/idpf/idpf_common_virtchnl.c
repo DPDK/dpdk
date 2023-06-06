@@ -1050,6 +1050,41 @@ idpf_vc_rxq_config(struct idpf_vport *vport, struct idpf_rx_queue *rxq)
 	return err;
 }
 
+int idpf_vc_rxq_config_by_info(struct idpf_vport *vport, struct virtchnl2_rxq_info *rxq_info,
+			       uint16_t num_qs)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_config_rx_queues *vc_rxqs = NULL;
+	struct idpf_cmd_info args;
+	int size, err, i;
+
+	size = sizeof(*vc_rxqs) + (num_qs - 1) *
+		sizeof(struct virtchnl2_rxq_info);
+	vc_rxqs = rte_zmalloc("cfg_rxqs", size, 0);
+	if (vc_rxqs == NULL) {
+		DRV_LOG(ERR, "Failed to allocate virtchnl2_config_rx_queues");
+		err = -ENOMEM;
+		return err;
+	}
+	vc_rxqs->vport_id = vport->vport_id;
+	vc_rxqs->num_qinfo = num_qs;
+	memcpy(vc_rxqs->qinfo, rxq_info, num_qs * sizeof(struct virtchnl2_rxq_info));
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_CONFIG_RX_QUEUES;
+	args.in_args = (uint8_t *)vc_rxqs;
+	args.in_args_size = size;
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+	rte_free(vc_rxqs);
+	if (err != 0)
+		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_CONFIG_RX_QUEUES");
+
+	return err;
+}
+
 int
 idpf_vc_txq_config(struct idpf_vport *vport, struct idpf_tx_queue *txq)
 {
@@ -1105,6 +1140,41 @@ idpf_vc_txq_config(struct idpf_vport *vport, struct idpf_tx_queue *txq)
 		txq_info->sched_mode = VIRTCHNL2_TXQ_SCHED_MODE_FLOW;
 		txq_info->ring_len = txq->complq->nb_tx_desc;
 	}
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_CONFIG_TX_QUEUES;
+	args.in_args = (uint8_t *)vc_txqs;
+	args.in_args_size = size;
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(adapter, &args);
+	rte_free(vc_txqs);
+	if (err != 0)
+		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_CONFIG_TX_QUEUES");
+
+	return err;
+}
+
+int
+idpf_vc_txq_config_by_info(struct idpf_vport *vport, struct virtchnl2_txq_info *txq_info,
+		       uint16_t num_qs)
+{
+	struct idpf_adapter *adapter = vport->adapter;
+	struct virtchnl2_config_tx_queues *vc_txqs = NULL;
+	struct idpf_cmd_info args;
+	int size, err;
+
+	size = sizeof(*vc_txqs) + (num_qs - 1) * sizeof(struct virtchnl2_txq_info);
+	vc_txqs = rte_zmalloc("cfg_txqs", size, 0);
+	if (vc_txqs == NULL) {
+		DRV_LOG(ERR, "Failed to allocate virtchnl2_config_tx_queues");
+		err = -ENOMEM;
+		return err;
+	}
+	vc_txqs->vport_id = vport->vport_id;
+	vc_txqs->num_qinfo = num_qs;
+	memcpy(vc_txqs->qinfo, txq_info, num_qs * sizeof(struct virtchnl2_txq_info));
 
 	memset(&args, 0, sizeof(args));
 	args.ops = VIRTCHNL2_OP_CONFIG_TX_QUEUES;
