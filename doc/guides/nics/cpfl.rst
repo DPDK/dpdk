@@ -106,3 +106,11 @@ The paths are chosen based on 2 conditions:
   A value "P" means the offload feature is not supported by vector path.
   If any not supported features are used, cpfl vector PMD is disabled
   and the scalar paths are chosen.
+
+
+Hairpin queue
+~~~~~~~~~~~~~
+
+E2100 Series can loopback packets from RX port to TX port.
+This feature is called port-to-port or hairpin.
+Currently, the PMD only supports single port hairpin.

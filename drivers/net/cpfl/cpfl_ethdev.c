@@ -1121,6 +1121,141 @@ cpfl_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
 	return j;
 }
 
+static int
+cpfl_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port)
+{
+	struct cpfl_vport *cpfl_tx_vport = dev->data->dev_private;
+	struct idpf_vport *tx_vport = &cpfl_tx_vport->base;
+	struct cpfl_vport *cpfl_rx_vport;
+	struct cpfl_tx_queue *cpfl_txq;
+	struct cpfl_rx_queue *cpfl_rxq;
+	struct rte_eth_dev *peer_dev;
+	struct idpf_vport *rx_vport;
+	int err = 0;
+	int i;
+
+	err = cpfl_txq_hairpin_info_update(dev, rx_port);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Fail to update Tx hairpin queue info.");
+		return err;
+	}
+
+	/* configure hairpin queues */
+	for (i = cpfl_tx_vport->nb_data_txq; i < dev->data->nb_tx_queues; i++) {
+		cpfl_txq = dev->data->tx_queues[i];
+		err = cpfl_hairpin_txq_config(tx_vport, cpfl_txq);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Fail to configure hairpin Tx queue %u", i);
+			return err;
+		}
+	}
+
+	err = cpfl_hairpin_tx_complq_config(cpfl_tx_vport);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Fail to config Tx completion queue");
+		return err;
+	}
+
+	peer_dev = &rte_eth_devices[rx_port];
+	cpfl_rx_vport = (struct cpfl_vport *)peer_dev->data->dev_private;
+	rx_vport = &cpfl_rx_vport->base;
+	cpfl_rxq_hairpin_mz_bind(peer_dev);
+
+	err = cpfl_hairpin_rx_bufq_config(cpfl_rx_vport);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Fail to config Rx buffer queue");
+		return err;
+	}
+
+	for (i = cpfl_rx_vport->nb_data_rxq; i < peer_dev->data->nb_rx_queues; i++) {
+		cpfl_rxq = peer_dev->data->rx_queues[i];
+		err = cpfl_hairpin_rxq_config(rx_vport, cpfl_rxq);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Fail to configure hairpin Rx queue %u", i);
+			return err;
+		}
+		err = cpfl_rx_queue_init(peer_dev, i);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Fail to init hairpin Rx queue %u", i);
+			return err;
+		}
+	}
+
+	/* enable hairpin queues */
+	for (i = cpfl_tx_vport->nb_data_txq; i < dev->data->nb_tx_queues; i++) {
+		cpfl_txq = dev->data->tx_queues[i];
+		err = cpfl_switch_hairpin_rxtx_queue(cpfl_tx_vport,
+						     i - cpfl_tx_vport->nb_data_txq,
+						     false, true);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to switch hairpin TX queue %u on",
+				    i);
+			return err;
+		}
+		cpfl_txq->base.q_started = true;
+	}
+
+	err = cpfl_switch_hairpin_complq(cpfl_tx_vport, true);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch hairpin Tx complq");
+		return err;
+	}
+
+	for (i = cpfl_rx_vport->nb_data_rxq; i < peer_dev->data->nb_rx_queues; i++) {
+		cpfl_rxq = peer_dev->data->rx_queues[i];
+		err = cpfl_switch_hairpin_rxtx_queue(cpfl_rx_vport,
+						     i - cpfl_rx_vport->nb_data_rxq,
+						     true, true);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Failed to switch hairpin RX queue %u on",
+				    i);
+		}
+		cpfl_rxq->base.q_started = true;
+	}
+
+	err = cpfl_switch_hairpin_bufq(cpfl_rx_vport, true);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to switch hairpin Rx buffer queue");
+		return err;
+	}
+
+	return 0;
+}
+
+static int
+cpfl_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port)
+{
+	struct cpfl_vport *cpfl_tx_vport = dev->data->dev_private;
+	struct rte_eth_dev *peer_dev = &rte_eth_devices[rx_port];
+	struct cpfl_vport *cpfl_rx_vport = peer_dev->data->dev_private;
+	struct cpfl_tx_queue *cpfl_txq;
+	struct cpfl_rx_queue *cpfl_rxq;
+	int i;
+
+	/* disable hairpin queues */
+	for (i = cpfl_tx_vport->nb_data_txq; i < dev->data->nb_tx_queues; i++) {
+		cpfl_txq = dev->data->tx_queues[i];
+		cpfl_switch_hairpin_rxtx_queue(cpfl_tx_vport,
+					       i - cpfl_tx_vport->nb_data_txq,
+					       false, false);
+		cpfl_txq->base.q_started = false;
+	}
+
+	cpfl_switch_hairpin_complq(cpfl_tx_vport, false);
+
+	for (i = cpfl_rx_vport->nb_data_rxq; i < peer_dev->data->nb_rx_queues; i++) {
+		cpfl_rxq = peer_dev->data->rx_queues[i];
+		cpfl_switch_hairpin_rxtx_queue(cpfl_rx_vport,
+					       i - cpfl_rx_vport->nb_data_rxq,
+					       true, false);
+		cpfl_rxq->base.q_started = false;
+	}
+
+	cpfl_switch_hairpin_bufq(cpfl_rx_vport, false);
+
+	return 0;
+}
+
 static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.dev_configure			= cpfl_dev_configure,
 	.dev_close			= cpfl_dev_close,
@@ -1151,6 +1286,8 @@ static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.rx_hairpin_queue_setup		= cpfl_rx_hairpin_queue_setup,
 	.tx_hairpin_queue_setup		= cpfl_tx_hairpin_queue_setup,
 	.hairpin_get_peer_ports         = cpfl_hairpin_get_peer_ports,
+	.hairpin_bind                   = cpfl_hairpin_bind,
+	.hairpin_unbind                 = cpfl_hairpin_unbind,
 };
 
 static int
