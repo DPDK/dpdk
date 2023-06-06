@@ -200,5 +200,9 @@ int idpf_vport_info_init(struct idpf_vport *vport,
 			 struct virtchnl2_create_vport *vport_info);
 __rte_internal
 void idpf_vport_stats_update(struct virtchnl2_vport_stats *oes, struct virtchnl2_vport_stats *nes);
+__rte_internal
+int idpf_vport_irq_map_config_by_qids(struct idpf_vport *vport,
+				      uint32_t *qids,
+				      uint16_t nb_rx_queues);
 
 #endif /* _IDPF_COMMON_DEVICE_H_ */

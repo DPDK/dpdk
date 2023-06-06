@@ -69,6 +69,7 @@ INTERNAL {
 	idpf_vport_info_init;
 	idpf_vport_init;
 	idpf_vport_irq_map_config;
+	idpf_vport_irq_map_config_by_qids;
 	idpf_vport_irq_unmap_config;
 	idpf_vport_rss_config;
 	idpf_vport_stats_update;
