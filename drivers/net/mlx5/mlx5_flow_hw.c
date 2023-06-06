@@ -5152,6 +5152,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
 		case RTE_FLOW_ITEM_TYPE_ESP:
 		case RTE_FLOW_ITEM_TYPE_FLEX:
+		case RTE_FLOW_ITEM_TYPE_IB_BTH:
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 			/*

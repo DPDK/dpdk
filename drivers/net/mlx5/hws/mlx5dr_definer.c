@@ -10,6 +10,7 @@
 #define ETH_TYPE_IPV6_VXLAN	0x86DD
 #define ETH_VXLAN_DEFAULT_PORT	4789
 #define IP_UDP_PORT_MPLS	6635
+#define UDP_ROCEV2_PORT	4791
 #define DR_FLOW_LAYER_TUNNEL_NO_MPLS (MLX5_FLOW_LAYER_TUNNEL & ~MLX5_FLOW_LAYER_MPLS)
 
 #define STE_NO_VLAN	0x0
@@ -174,7 +175,9 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE16,	gre_opt_checksum,	v->checksum_rsvd.checksum,	rte_flow_item_gre_opt) \
 	X(SET,		meter_color,		rte_col_2_mlx5_col(v->color),	rte_flow_item_meter_color) \
 	X(SET_BE32,     ipsec_spi,              v->hdr.spi,             rte_flow_item_esp) \
-	X(SET_BE32,     ipsec_sequence_number,  v->hdr.seq,             rte_flow_item_esp)
+	X(SET_BE32,     ipsec_sequence_number,  v->hdr.seq,             rte_flow_item_esp) \
+	X(SET,		ib_l4_udp_port,		UDP_ROCEV2_PORT,	rte_flow_item_ib_bth) \
+	X(SET,		ib_l4_opcode,		v->hdr.opcode,		rte_flow_item_ib_bth)
 
 /* Item set function format */
 #define X(set_type, func_name, value, item_type) \
@@ -584,6 +587,16 @@ mlx5dr_definer_mpls_label_set(struct mlx5dr_definer_fc *fc,
 
 	memcpy(tag + fc->byte_off, v->label_tc_s, sizeof(v->label_tc_s));
 	memcpy(tag + fc->byte_off + sizeof(v->label_tc_s), &v->ttl, sizeof(v->ttl));
+}
+
+static void
+mlx5dr_definer_ib_l4_qp_set(struct mlx5dr_definer_fc *fc,
+			    const void *item_spec,
+			    uint8_t *tag)
+{
+	const struct rte_flow_item_ib_bth *v = item_spec;
+
+	memcpy(tag + fc->byte_off, &v->hdr.dst_qp, sizeof(v->hdr.dst_qp));
 }
 
 static int
@@ -2101,6 +2114,63 @@ mlx5dr_definer_conv_item_flex_parser(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_ib_l4(struct mlx5dr_definer_conv_data *cd,
+			       struct rte_flow_item *item,
+			       int item_idx)
+{
+	const struct rte_flow_item_ib_bth *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+
+	/* In order to match on RoCEv2(layer4 ib), we must match
+	 * on ip_protocol and l4_dport.
+	 */
+	if (!cd->relaxed) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_udp_protocol_set;
+			DR_CALC_SET(fc, eth_l2, l4_type_bwc, inner);
+		}
+
+		fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_ib_l4_udp_port_set;
+			DR_CALC_SET(fc, eth_l4, destination_port, inner);
+		}
+	}
+
+	if (!m)
+		return 0;
+
+	if (m->hdr.se || m->hdr.m || m->hdr.padcnt || m->hdr.tver ||
+		m->hdr.pkey || m->hdr.f || m->hdr.b || m->hdr.rsvd0 ||
+		m->hdr.a || m->hdr.rsvd1 || !is_mem_zero(m->hdr.psn, 3)) {
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (m->hdr.opcode) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_IB_L4_OPCODE];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ib_l4_opcode_set;
+		DR_CALC_SET_HDR(fc, ib_l4, opcode);
+	}
+
+	if (!is_mem_zero(m->hdr.dst_qp, 3)) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_IB_L4_QPN];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ib_l4_qp_set;
+		DR_CALC_SET_HDR(fc, ib_l4, qp);
+	}
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				struct mlx5dr_match_template *mt,
 				uint8_t *hl)
@@ -2244,6 +2314,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			ret = mlx5dr_definer_conv_item_mpls(&cd, items, i);
 			item_flags |= MLX5_FLOW_LAYER_MPLS;
 			cd.mpls_idx++;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IB_BTH:
+			ret = mlx5dr_definer_conv_item_ib_l4(&cd, items, i);
+			item_flags |= MLX5_FLOW_ITEM_IB_BTH;
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);
