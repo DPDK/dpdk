@@ -147,6 +147,7 @@ Features
 - Matching on GTP extension header with raw encap/decap action.
 - Matching on Geneve TLV option header with raw encap/decap action.
 - Matching on ESP header SPI field.
+- Matching on InfiniBand BTH.
 - Modify IPv4/IPv6 ECN field.
 - RSS support in sample action.
 - E-Switch mirroring and jump.

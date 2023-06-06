@@ -978,7 +978,7 @@ struct mlx5_ifc_fte_match_set_misc_bits {
 	u8 gre_key_h[0x18];
 	u8 gre_key_l[0x8];
 	u8 vxlan_vni[0x18];
-	u8 reserved_at_b8[0x8];
+	u8 bth_opcode[0x8];
 	u8 geneve_vni[0x18];
 	u8 lag_rx_port_affinity[0x4];
 	u8 reserved_at_e8[0x2];
@@ -991,7 +991,8 @@ struct mlx5_ifc_fte_match_set_misc_bits {
 	u8 reserved_at_120[0xa];
 	u8 geneve_opt_len[0x6];
 	u8 geneve_protocol_type[0x10];
-	u8 reserved_at_140[0x20];
+	u8 reserved_at_140[0x8];
+	u8 bth_dst_qp[0x18];
 	u8 inner_esp_spi[0x20];
 	u8 outer_esp_spi[0x20];
 	u8 reserved_at_1a0[0x60];

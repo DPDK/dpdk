@@ -230,6 +230,9 @@ enum mlx5_feature_name {
 /* Aggregated affinity item */
 #define MLX5_FLOW_ITEM_AGGR_AFFINITY (UINT64_C(1) << 49)
 
+/* IB BTH ITEM. */
+#define MLX5_FLOW_ITEM_IB_BTH (1ull << 51)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -367,6 +370,9 @@ enum mlx5_feature_name {
 /* UDP port numbers for VxLAN. */
 #define MLX5_UDP_PORT_VXLAN 4789
 #define MLX5_UDP_PORT_VXLAN_GPE 4790
+
+/* UDP port numbers for RoCEv2. */
+#define MLX5_UDP_PORT_ROCEv2 4791
 
 /* UDP port numbers for GENEVE. */
 #define MLX5_UDP_PORT_GENEVE 6081

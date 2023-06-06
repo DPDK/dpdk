@@ -7193,6 +7193,65 @@ flow_dv_validate_item_flex(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate IB BTH item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] udp_dport
+ *   UDP destination port
+ * @param[in] item
+ *   Item specification.
+ * @param root
+ *   Whether action is on root table.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_validate_item_ib_bth(struct rte_eth_dev *dev,
+			       uint16_t udp_dport,
+			       const struct rte_flow_item *item,
+			       bool root,
+			       struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ib_bth *mask = item->mask;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_ib_bth *valid_mask;
+	int ret;
+
+	valid_mask = &rte_flow_item_ib_bth_mask;
+	if (udp_dport && udp_dport != MLX5_UDP_PORT_ROCEv2)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "protocol filtering not compatible"
+					  " with UDP layer");
+	if (mask && (mask->hdr.se || mask->hdr.m || mask->hdr.padcnt ||
+		mask->hdr.tver || mask->hdr.pkey || mask->hdr.f || mask->hdr.b ||
+		mask->hdr.rsvd0 || mask->hdr.a || mask->hdr.rsvd1 ||
+		mask->hdr.psn[0] || mask->hdr.psn[1] || mask->hdr.psn[2]))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "only opcode and dst_qp are supported");
+	if (root || priv->sh->steering_format_version ==
+		MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "IB BTH item is not supported");
+	if (!mask)
+		mask = &rte_flow_item_ib_bth_mask;
+	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					(const uint8_t *)valid_mask,
+					sizeof(struct rte_flow_item_ib_bth),
+					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+/**
  * Internal validation function. For validating both actions and items.
  *
  * @param[in] dev
@@ -7706,6 +7765,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_AGGR_AFFINITY;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IB_BTH:
+			ret = mlx5_flow_validate_item_ib_bth(dev, udp_dport,
+							    items, is_root, error);
+			if (ret < 0)
+				return ret;
+
+			last_item = MLX5_FLOW_ITEM_IB_BTH;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -10963,6 +11030,37 @@ flow_dv_translate_item_aggr_affinity(void *key,
 		 affinity_v->affinity & affinity_m->affinity);
 }
 
+static void
+flow_dv_translate_item_ib_bth(void *key,
+			      const struct rte_flow_item *item,
+			      int inner, uint32_t key_type)
+{
+	const struct rte_flow_item_ib_bth *bth_m;
+	const struct rte_flow_item_ib_bth *bth_v;
+	void *headers_v, *misc_v;
+	uint16_t udp_dport;
+	char *qpn_v;
+	int i, size;
+
+	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
+		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
+		udp_dport = key_type & MLX5_SET_MATCHER_M ?
+			0xFFFF : MLX5_UDP_PORT_ROCEv2;
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, udp_dport);
+	}
+	if (MLX5_ITEM_VALID(item, key_type))
+		return;
+	MLX5_ITEM_UPDATE(item, key_type, bth_v, bth_m, &rte_flow_item_ib_bth_mask);
+	misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	MLX5_SET(fte_match_set_misc, misc_v, bth_opcode,
+		 bth_v->hdr.opcode & bth_m->hdr.opcode);
+	qpn_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, bth_dst_qp);
+	size = sizeof(bth_m->hdr.dst_qp);
+	for (i = 0; i < size; ++i)
+		qpn_v[i] = bth_m->hdr.dst_qp[i] & bth_v->hdr.dst_qp[i];
+}
+
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
 
 #define HEADER_IS_ZERO(match_criteria, headers)				     \
@@ -13763,6 +13861,10 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 	case RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY:
 		flow_dv_translate_item_aggr_affinity(key, items, key_type);
 		last_item = MLX5_FLOW_ITEM_AGGR_AFFINITY;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IB_BTH:
+		flow_dv_translate_item_ib_bth(key, items, tunnel, key_type);
+		last_item = MLX5_FLOW_ITEM_IB_BTH;
 		break;
 	default:
 		break;
