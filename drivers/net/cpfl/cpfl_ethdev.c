@@ -155,6 +155,23 @@ cpfl_dev_link_update(struct rte_eth_dev *dev,
 }
 
 static int
+cpfl_hairpin_cap_get(struct rte_eth_dev *dev,
+		     struct rte_eth_hairpin_cap *cap)
+{
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+
+	if (cpfl_vport->p2p_q_chunks_info == NULL)
+		return -ENOTSUP;
+
+	cap->max_nb_queues = CPFL_MAX_P2P_NB_QUEUES;
+	cap->max_rx_2_tx = CPFL_MAX_HAIRPINQ_RX_2_TX;
+	cap->max_tx_2_rx = CPFL_MAX_HAIRPINQ_TX_2_RX;
+	cap->max_nb_desc = CPFL_MAX_HAIRPINQ_NB_DESC;
+
+	return 0;
+}
+
+static int
 cpfl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
@@ -905,6 +922,7 @@ static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.xstats_get			= cpfl_dev_xstats_get,
 	.xstats_get_names		= cpfl_dev_xstats_get_names,
 	.xstats_reset			= cpfl_dev_xstats_reset,
+	.hairpin_cap_get		= cpfl_hairpin_cap_get,
 };
 
 static int
