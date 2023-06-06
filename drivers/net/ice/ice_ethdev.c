@@ -3927,8 +3927,10 @@ ice_atomic_read_link_status(struct rte_eth_dev *dev,
 	struct rte_eth_link *dst = link;
 	struct rte_eth_link *src = &dev->data->dev_link;
 
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-				*(uint64_t *)src) == 0)
+	/* NOTE: review for potential ordering optimization */
+	if (!__atomic_compare_exchange_n((uint64_t *)dst, (uint64_t *)dst,
+			*(uint64_t *)src, 0,
+			__ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
 		return -1;
 
 	return 0;
@@ -3941,8 +3943,10 @@ ice_atomic_write_link_status(struct rte_eth_dev *dev,
 	struct rte_eth_link *dst = &dev->data->dev_link;
 	struct rte_eth_link *src = link;
 
-	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-				*(uint64_t *)src) == 0)
+	/* NOTE: review for potential ordering optimization */
+	if (!__atomic_compare_exchange_n((uint64_t *)dst, (uint64_t *)dst,
+			*(uint64_t *)src, 0,
+			__ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
 		return -1;
 
 	return 0;
