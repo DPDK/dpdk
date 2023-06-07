@@ -71,6 +71,7 @@
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_devargs.h>
+#include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_vfio.h>
 
@@ -91,6 +92,15 @@
 		RTE_TAILQ_FOREACH(p, &rte_cdx_bus.driver_list, next)
 
 struct rte_cdx_bus rte_cdx_bus;
+
+enum cdx_params {
+	RTE_CDX_PARAM_NAME,
+};
+
+static const char * const cdx_params_keys[] = {
+	[RTE_CDX_PARAM_NAME] = "name",
+	NULL,
+};
 
 /* Add a device to CDX bus */
 static void
@@ -385,6 +395,7 @@ cdx_probe_one_driver(struct rte_cdx_driver *dr,
 	} else {
 		dev->device.driver = &dr->driver;
 	}
+	dev->driver = dr;
 
 	return ret;
 
@@ -499,6 +510,71 @@ cdx_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	return NULL;
 }
 
+/* Remove a device from CDX bus */
+static void
+cdx_remove_device(struct rte_cdx_device *cdx_dev)
+{
+	TAILQ_REMOVE(&rte_cdx_bus.device_list, cdx_dev, next);
+}
+
+/*
+ * If vendor/device ID match, call the remove() function of the
+ * driver.
+ */
+static int
+cdx_detach_dev(struct rte_cdx_device *dev)
+{
+	struct rte_cdx_driver *dr;
+	int ret = 0;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	dr = dev->driver;
+
+	CDX_BUS_DEBUG("detach device %s using driver: %s",
+		dev->device.name, dr->driver.name);
+
+	if (dr->remove) {
+		ret = dr->remove(dev);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* clear driver structure */
+	dev->driver = NULL;
+	dev->device.driver = NULL;
+
+	rte_cdx_unmap_device(dev);
+
+	rte_intr_instance_free(dev->intr_handle);
+	dev->intr_handle = NULL;
+
+	return 0;
+}
+
+static int
+cdx_plug(struct rte_device *dev)
+{
+	return cdx_probe_all_drivers(RTE_DEV_TO_CDX_DEV(dev));
+}
+
+static int
+cdx_unplug(struct rte_device *dev)
+{
+	struct rte_cdx_device *cdx_dev;
+	int ret;
+
+	cdx_dev = RTE_DEV_TO_CDX_DEV(dev);
+	ret = cdx_detach_dev(cdx_dev);
+	if (ret == 0) {
+		cdx_remove_device(cdx_dev);
+		rte_devargs_remove(dev->devargs);
+		free(cdx_dev);
+	}
+	return ret;
+}
+
 static int
 cdx_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
@@ -526,15 +602,61 @@ cdx_get_iommu_class(void)
 	return RTE_IOVA_VA;
 }
 
+static int
+cdx_dev_match(const struct rte_device *dev,
+		const void *_kvlist)
+{
+	const struct rte_kvargs *kvlist = _kvlist;
+	const char *key = cdx_params_keys[RTE_CDX_PARAM_NAME];
+	const char *name;
+
+	/* no kvlist arg, all devices match */
+	if (kvlist == NULL)
+		return 0;
+
+	/* if key is present in kvlist and does not match, filter device */
+	name = rte_kvargs_get(kvlist, key);
+	if (name != NULL && strcmp(name, dev->name))
+		return -1;
+
+	return 0;
+}
+
+static void *
+cdx_dev_iterate(const void *start,
+		const char *str,
+		const struct rte_dev_iterator *it __rte_unused)
+{
+	rte_bus_find_device_t find_device;
+	struct rte_kvargs *kvargs = NULL;
+	struct rte_device *dev;
+
+	if (str != NULL) {
+		kvargs = rte_kvargs_parse(str, cdx_params_keys);
+		if (kvargs == NULL) {
+			CDX_BUS_ERR("cannot parse argument list %s", str);
+			rte_errno = EINVAL;
+			return NULL;
+		}
+	}
+	find_device = rte_cdx_bus.bus.find_device;
+	dev = find_device(start, cdx_dev_match, kvargs);
+	rte_kvargs_free(kvargs);
+	return dev;
+}
+
 struct rte_cdx_bus rte_cdx_bus = {
 	.bus = {
 		.scan = cdx_scan,
 		.probe = cdx_probe,
 		.find_device = cdx_find_device,
+		.plug = cdx_plug,
+		.unplug = cdx_unplug,
 		.parse = cdx_parse,
 		.dma_map = cdx_dma_map,
 		.dma_unmap = cdx_dma_unmap,
 		.get_iommu_class = cdx_get_iommu_class,
+		.dev_iterate = cdx_dev_iterate,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_cdx_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_cdx_bus.driver_list),

@@ -52,6 +52,7 @@ struct rte_cdx_id {
 struct rte_cdx_device {
 	RTE_TAILQ_ENTRY(rte_cdx_device) next;	/**< Next probed CDX device. */
 	struct rte_device device;		/**< Inherit core device */
+	struct rte_cdx_driver *driver;		/**< CDX driver used in probing */
 	char name[RTE_DEV_NAME_MAX_LEN];	/**< Device name */
 	struct rte_cdx_id id;			/**< CDX ID. */
 	struct rte_mem_resource mem_resource[RTE_CDX_MAX_RESOURCE];
