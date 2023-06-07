@@ -91,6 +91,9 @@ sfc_mae_counter_fw_rsrc_enable(struct sfc_adapter *sa,
 	case EFX_COUNTER_TYPE_ACTION:
 		counters = &reg->action_counters;
 		break;
+	case EFX_COUNTER_TYPE_CONNTRACK:
+		counters = &reg->conntrack_counters;
+		break;
 	default:
 		rc = EINVAL;
 		goto fail_counter_type_check;
@@ -171,6 +174,9 @@ sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
 	switch (counter->type) {
 	case EFX_COUNTER_TYPE_ACTION:
 		counters = &reg->action_counters;
+		break;
+	case EFX_COUNTER_TYPE_CONNTRACK:
+		counters = &reg->conntrack_counters;
 		break;
 	default:
 		return EINVAL;
@@ -319,6 +325,9 @@ sfc_mae_parse_counter_packet(struct sfc_adapter *sa,
 	case ERF_SC_PACKETISER_HEADER_IDENTIFIER_AR:
 		counters = &counter_registry->action_counters;
 		break;
+	case ERF_SC_PACKETISER_HEADER_IDENTIFIER_CT:
+		counters = &counter_registry->conntrack_counters;
+		break;
 	default:
 		sfc_err(sa, "unexpected MAE counters source identifier %u", id);
 		return;
@@ -392,6 +401,23 @@ sfc_mae_parse_counter_packet(struct sfc_adapter *sa,
 		byte_count_hi =
 			EFX_OWORD_FIELD32(counters_data[i],
 				ERF_SC_PACKETISER_PAYLOAD_BYTE_COUNT_HI);
+
+		if (id == ERF_SC_PACKETISER_HEADER_IDENTIFIER_CT) {
+			/*
+			 * FIXME:
+			 *
+			 * CT counters are 1-bit saturating counters.
+			 * There is no way to express this in DPDK
+			 * currently, so increment the hit count
+			 * by one to let the application know
+			 * that the flow is still effective.
+			 */
+			packet_count_lo = 1;
+			packet_count_hi = 0;
+			byte_count_lo = 0;
+			byte_count_hi = 0;
+		}
+
 		sfc_mae_counter_increment(sa,
 			counters,
 			EFX_OWORD_FIELD32(counters_data[i],
@@ -982,6 +1008,10 @@ sfc_mae_counter_get(struct sfc_adapter *sa,
 	case EFX_COUNTER_TYPE_ACTION:
 		counters = &sa->mae.counter_registry.action_counters;
 		need_byte_count = true;
+		break;
+	case EFX_COUNTER_TYPE_CONNTRACK:
+		counters = &sa->mae.counter_registry.conntrack_counters;
+		need_byte_count = false;
 		break;
 	default:
 		return EINVAL;

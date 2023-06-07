@@ -65,7 +65,8 @@ sfc_mae_assign_entity_mport(struct sfc_adapter *sa,
 
 static int
 sfc_mae_counter_registry_init(struct sfc_mae_counter_registry *registry,
-			      uint32_t nb_action_counters_max)
+			      uint32_t nb_action_counters_max,
+			      uint32_t nb_conntrack_counters_max)
 {
 	int ret;
 
@@ -76,12 +77,20 @@ sfc_mae_counter_registry_init(struct sfc_mae_counter_registry *registry,
 
 	registry->action_counters.type = EFX_COUNTER_TYPE_ACTION;
 
+	ret = sfc_mae_counters_init(&registry->conntrack_counters,
+				    nb_conntrack_counters_max);
+	if (ret != 0)
+		return ret;
+
+	registry->conntrack_counters.type = EFX_COUNTER_TYPE_CONNTRACK;
+
 	return 0;
 }
 
 static void
 sfc_mae_counter_registry_fini(struct sfc_mae_counter_registry *registry)
 {
+	sfc_mae_counters_fini(&registry->conntrack_counters);
 	sfc_mae_counters_fini(&registry->action_counters);
 }
 
@@ -162,10 +171,13 @@ sfc_mae_attach(struct sfc_adapter *sa)
 
 		sfc_log_init(sa, "init MAE counter record registry");
 		rc = sfc_mae_counter_registry_init(&mae->counter_registry,
-					limits.eml_max_n_action_counters);
+					limits.eml_max_n_action_counters,
+					limits.eml_max_n_conntrack_counters);
 		if (rc != 0) {
-			sfc_err(sa, "failed to init record registry for %u AR counters: %s",
-				limits.eml_max_n_action_counters, rte_strerror(rc));
+			sfc_err(sa, "failed to init record registry for %u AR and %u CT counters: %s",
+				limits.eml_max_n_action_counters,
+				limits.eml_max_n_conntrack_counters,
+				rte_strerror(rc));
 			goto fail_counter_registry_init;
 		}
 	}
@@ -1473,6 +1485,8 @@ sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 	}
 
 	sfc_mae_action_rule_del(sa, spec_mae->action_rule);
+
+	sfc_mae_counter_del(sa, spec_mae->ct_counter);
 }
 
 static int
@@ -4225,7 +4239,7 @@ static const char * const action_names[] = {
 static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
-			  struct rte_flow *flow,
+			  struct rte_flow *flow, bool ct,
 			  struct sfc_mae_actions_bundle *bundle,
 			  struct sfc_mae_aset_ctx *ctx,
 			  struct rte_flow_error *error)
@@ -4240,6 +4254,12 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	unsigned int switch_port_type_mask;
 	bool custom_error = B_FALSE;
 	int rc = 0;
+
+	if (ct) {
+		mae_counter_type = EFX_COUNTER_TYPE_CONNTRACK;
+		counterp = &spec_mae->ct_counter;
+		spec_ptr = NULL;
+	}
 
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
@@ -4528,7 +4548,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		if (rc != 0)
 			goto fail_rule_parse_action;
 
-		rc = sfc_mae_rule_parse_action(sa, action, flow,
+		rc = sfc_mae_rule_parse_action(sa, action, flow, ct,
 					       &bundle, &ctx, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
@@ -4563,8 +4583,15 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		 */
 		efx_mae_action_set_populate_mark_reset(ctx.spec);
 
-		(ctx.counter)->ft_switch_hit_counter =
-			&spec_mae->ft_ctx->switch_hit_counter;
+		if (ctx.counter != NULL) {
+			(ctx.counter)->ft_switch_hit_counter =
+				&spec_mae->ft_ctx->switch_hit_counter;
+		} else if (sfc_mae_counter_stream_enabled(sa)) {
+			SFC_ASSERT(ct);
+
+			spec_mae->ct_counter->ft_switch_hit_counter =
+				&spec_mae->ft_ctx->switch_hit_counter;
+		}
 		break;
 	default:
 		SFC_ASSERT(B_FALSE);
@@ -4845,12 +4872,34 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 		return rc;
 
 	if (spec_mae->action_rule->ct_mark != 0) {
+		struct sfc_mae_counter *counter = spec_mae->ct_counter;
+
+		rc = sfc_mae_counter_enable(sa, counter, NULL);
+		if (rc != 0) {
+			sfc_mae_action_rule_disable(sa, action_rule);
+			return rc;
+		}
+
+		if (counter != NULL) {
+			struct sfc_mae_fw_rsrc *fw_rsrc = &counter->fw_rsrc;
+
+			spec_mae->ct_resp.counter_id = fw_rsrc->counter_id.id;
+
+			rc = sfc_mae_counter_start(sa);
+			if (rc != 0) {
+				sfc_mae_action_rule_disable(sa, action_rule);
+				return rc;
+			}
+		} else {
+			spec_mae->ct_resp.counter_id = EFX_MAE_RSRC_ID_INVALID;
+		}
+
 		spec_mae->ct_resp.ct_mark = spec_mae->action_rule->ct_mark;
-		spec_mae->ct_resp.counter_id = EFX_MAE_RSRC_ID_INVALID;
 
 		rc = sfc_mae_conntrack_insert(sa, &spec_mae->ct_key,
 					      &spec_mae->ct_resp);
 		if (rc != 0) {
+			sfc_mae_counter_disable(sa, counter);
 			sfc_mae_action_rule_disable(sa, action_rule);
 			return rc;
 		}
@@ -4873,6 +4922,8 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 	if (action_rule->ct_mark != 0)
 		(void)sfc_mae_conntrack_delete(sa, &spec_mae->ct_key);
 
+	sfc_mae_counter_disable(sa, spec_mae->ct_counter);
+
 	sfc_mae_action_rule_disable(sa, action_rule);
 
 	return 0;
@@ -4887,31 +4938,41 @@ sfc_mae_query_counter(struct sfc_adapter *sa,
 {
 	const struct sfc_mae_action_rule *action_rule = spec->action_rule;
 	const struct rte_flow_action_count *conf = action->conf;
-	struct sfc_mae_action_set *action_set;
-	struct sfc_mae_counter *counter;
+	struct sfc_mae_counter *counters[1 /* action rule counter */ +
+					 1 /* conntrack counter */];
+	unsigned int i;
 	int rc;
 
-	if (action_rule == NULL || action_rule->action_set == NULL ||
-	    action_rule->action_set->counter == NULL ||
-	    action_rule->action_set->counter->indirect) {
-		return rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ACTION, action,
-			"Queried flow rule does not have count actions");
-	}
+	/*
+	 * The check for counter unavailability is done based
+	 * on counter traversal results. See error set below.
+	 */
+	if (action_rule != NULL && action_rule->action_set != NULL &&
+	    action_rule->action_set->counter != NULL &&
+	    !action_rule->action_set->counter->indirect)
+		counters[0] = action_rule->action_set->counter;
+	else
+		counters[0] = NULL;
 
-	action_set = action_rule->action_set;
-	counter = action_set->counter;
+	counters[1] = spec->ct_counter;
 
-	if (conf == NULL ||
-	    (counter->rte_id_valid && conf->id == counter->rte_id)) {
-		rc = sfc_mae_counter_get(sa, counter, data);
-		if (rc != 0) {
-			return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION, action,
-				"Queried flow rule counter action is invalid");
+	for (i = 0; i < RTE_DIM(counters); ++i) {
+		struct sfc_mae_counter *counter = counters[i];
+
+		if (counter == NULL)
+			continue;
+
+		if (conf == NULL ||
+		    (counter->rte_id_valid && conf->id == counter->rte_id)) {
+			rc = sfc_mae_counter_get(sa, counter, data);
+			if (rc != 0) {
+				return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"Queried flow rule counter action is invalid");
+			}
+
+			return 0;
 		}
-
-		return 0;
 	}
 
 	return rte_flow_error_set(error, ENOENT,

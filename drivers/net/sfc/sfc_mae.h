@@ -173,6 +173,8 @@ struct sfc_mae_counter_registry {
 	/* Common counter information */
 	/** Action rule counter record collection */
 	struct sfc_mae_counter_records	action_counters;
+	/** Conntrack counter record collection */
+	struct sfc_mae_counter_records	conntrack_counters;
 
 	/* Information used by counter update service */
 	/** Callback to get packets from RxQ */

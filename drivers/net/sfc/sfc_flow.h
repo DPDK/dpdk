@@ -86,6 +86,8 @@ struct sfc_flow_spec_mae {
 	/* Conntrack (CT) assistance table entry key and response */
 	sfc_mae_conntrack_response_t	ct_resp;
 	sfc_mae_conntrack_key_t		ct_key;
+	/* Conntrack (CT) assistance counter */
+	struct sfc_mae_counter		*ct_counter;
 };
 
 /* PMD-specific definition of the opaque type from rte_flow.h */
