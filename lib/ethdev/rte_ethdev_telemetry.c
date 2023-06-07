@@ -916,6 +916,111 @@ eth_dev_handle_port_fec(const char *cmd __rte_unused,
 	return 0;
 }
 
+static int
+eth_dev_add_vlan_id(int port_id, struct rte_tel_data *d)
+{
+	struct rte_tel_data *vlan_blks[64] = {NULL};
+	uint16_t vlan_num, vidx, vbit, num_blks;
+	char blk_name[RTE_TEL_MAX_STRING_LEN];
+	struct rte_vlan_filter_conf *vfc;
+	struct rte_tel_data *vlan_blk;
+	struct rte_tel_data *vd;
+	uint64_t bit_width;
+	uint64_t vlan_id;
+
+	vd = rte_tel_data_alloc();
+	if (vd == NULL)
+		return -ENOMEM;
+
+	vfc = &rte_eth_devices[port_id].data->vlan_filter_conf;
+	bit_width = CHAR_BIT * sizeof(uint64_t);
+	vlan_num = 0;
+	num_blks = 0;
+
+	rte_tel_data_start_dict(vd);
+	for (vidx = 0; vidx < RTE_DIM(vfc->ids); vidx++) {
+		if (vfc->ids[vidx] == 0)
+			continue;
+
+		vlan_blk = rte_tel_data_alloc();
+		if (vlan_blk == NULL)
+			goto free_all;
+
+		vlan_blks[num_blks] = vlan_blk;
+		num_blks++;
+		snprintf(blk_name, RTE_TEL_MAX_STRING_LEN, "vlan_%"PRIu64"_to_%"PRIu64"",
+			 bit_width * vidx, bit_width * (vidx + 1) - 1);
+		rte_tel_data_start_array(vlan_blk, RTE_TEL_UINT_VAL);
+		rte_tel_data_add_dict_container(vd, blk_name, vlan_blk, 0);
+
+		for (vbit = 0; vbit < bit_width; vbit++) {
+			if ((vfc->ids[vidx] & RTE_BIT64(vbit)) == 0)
+				continue;
+
+			vlan_id = bit_width * vidx + vbit;
+			rte_tel_data_add_array_uint(vlan_blk, vlan_id);
+			vlan_num++;
+		}
+	}
+
+	rte_tel_data_add_dict_uint(d, "vlan_num", vlan_num);
+	rte_tel_data_add_dict_container(d, "vlan_ids", vd, 0);
+
+	return 0;
+
+free_all:
+	while (num_blks-- > 0)
+		rte_tel_data_free(vlan_blks[num_blks]);
+
+	rte_tel_data_free(vd);
+	return -ENOMEM;
+}
+
+static int
+eth_dev_handle_port_vlan(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_eth_txmode *txmode;
+	struct rte_eth_conf dev_conf;
+	uint16_t port_id;
+	int offload, ret;
+	char *end_param;
+
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, false);
+	if (ret < 0)
+		return ret;
+
+	ret = rte_eth_dev_conf_get(port_id, &dev_conf);
+	if (ret != 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Failed to get device configuration, ret = %d\n", ret);
+		return ret;
+	}
+
+	txmode = &dev_conf.txmode;
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_uint(d, "pvid", txmode->pvid);
+	rte_tel_data_add_dict_uint(d, "hw_vlan_reject_tagged",
+		txmode->hw_vlan_reject_tagged);
+	rte_tel_data_add_dict_uint(d, "hw_vlan_reject_untagged",
+		txmode->hw_vlan_reject_untagged);
+	rte_tel_data_add_dict_uint(d, "hw_vlan_insert_pvid",
+		txmode->hw_vlan_insert_pvid);
+
+	offload = rte_eth_dev_get_vlan_offload(port_id);
+	rte_tel_data_add_dict_string(d, "VLAN_STRIP",
+		((offload & RTE_ETH_VLAN_STRIP_OFFLOAD) != 0) ? "on" : "off");
+	rte_tel_data_add_dict_string(d, "VLAN_EXTEND",
+		((offload & RTE_ETH_VLAN_EXTEND_OFFLOAD) != 0) ? "on" : "off");
+	rte_tel_data_add_dict_string(d, "QINQ_STRIP",
+		((offload & RTE_ETH_QINQ_STRIP_OFFLOAD) != 0) ? "on" : "off");
+	rte_tel_data_add_dict_string(d, "VLAN_FILTER",
+		((offload & RTE_ETH_VLAN_FILTER_OFFLOAD) != 0) ? "on" : "off");
+
+	return eth_dev_add_vlan_id(port_id, d);
+}
+
 RTE_INIT(ethdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/ethdev/list", eth_dev_handle_port_list,
@@ -949,4 +1054,6 @@ RTE_INIT(ethdev_init_telemetry)
 			"Returns RSS info for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/fec", eth_dev_handle_port_fec,
 			"Returns FEC info for a port. Parameters: int port_id");
+	rte_telemetry_register_cmd("/ethdev/vlan", eth_dev_handle_port_vlan,
+			"Returns VLAN info for a port. Parameters: int port_id");
 }
