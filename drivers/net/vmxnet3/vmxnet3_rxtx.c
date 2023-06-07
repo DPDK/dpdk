@@ -1316,11 +1316,18 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
 		for (j = 0; j < VMXNET3_RX_CMDRING_SIZE; j++) {
 			/* Passing 0 as alloc_num will allocate full ring */
 			ret = vmxnet3_post_rx_bufs(rxq, j);
-			if (ret <= 0) {
+
+			/* Zero number of descriptors in the configuration of the RX queue */
+			if (ret == 0) {
 				PMD_INIT_LOG(ERR,
-					     "ERROR: Posting Rxq: %d buffers ring: %d",
-					     i, j);
-				return -ret;
+					"Invalid configuration in Rx queue: %d, buffers ring: %d\n",
+					i, j);
+				return -EINVAL;
+			}
+			/* Return the error number */
+			if (ret < 0) {
+				PMD_INIT_LOG(ERR, "Posting Rxq: %d buffers ring: %d", i, j);
+				return ret;
 			}
 			/*
 			 * Updating device with the index:next2fill to fill the
