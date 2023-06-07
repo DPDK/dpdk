@@ -110,9 +110,19 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue,
 		struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
+	return nfp_net_nfd3_xmit_pkts_common(tx_queue, tx_pkts, nb_pkts, false);
+}
+
+uint16_t
+nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts,
+		bool repr_flag)
+{
 	int i;
 	int pkt_size;
 	int dma_size;
+	uint8_t offset;
 	uint64_t dma_addr;
 	uint16_t free_descs;
 	uint16_t issued_descs;
@@ -122,7 +132,6 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue,
 	struct nfp_net_txq *txq;
 	struct nfp_net_nfd3_tx_desc txd;
 	struct nfp_net_nfd3_tx_desc *txds;
-	struct nfp_net_meta_raw meta_data;
 
 	txq = tx_queue;
 	hw = txq->hw;
@@ -146,7 +155,6 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue,
 
 	/* Sending packets */
 	for (i = 0; i < nb_pkts && free_descs > 0; i++) {
-		memset(&meta_data, 0, sizeof(meta_data));
 		/* Grabbing the mbuf linked to the current descriptor */
 		lmbuf = &txq->txbufs[txq->wr_p].mbuf;
 		/* Warming the cache for releasing the mbuf later on */
@@ -154,7 +162,14 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue,
 
 		pkt = *(tx_pkts + i);
 
-		nfp_net_nfd3_set_meta_data(&meta_data, txq, pkt);
+		if (!repr_flag) {
+			struct nfp_net_meta_raw meta_data;
+			memset(&meta_data, 0, sizeof(meta_data));
+			nfp_net_nfd3_set_meta_data(&meta_data, txq, pkt);
+			offset = meta_data.length;
+		} else {
+			offset = FLOWER_PKT_DATA_OFFSET;
+		}
 
 		if (unlikely(pkt->nb_segs > 1 &&
 				(hw->cap & NFP_NET_CFG_CTRL_GATHER) == 0)) {
@@ -222,7 +237,7 @@ nfp_net_nfd3_xmit_pkts(void *tx_queue,
 				txds->offset_eop = 0;
 
 			/* Set the meta_len */
-			txds->offset_eop |= meta_data.length;
+			txds->offset_eop |= offset;
 
 			pkt = pkt->next;
 			/* Referencing next free TX descriptor */
