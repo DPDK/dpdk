@@ -599,10 +599,10 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 	char mp_name[RTE_MEMPOOL_NAMESIZE];
 	const struct rte_memzone *mz;
 	uint64_t nb_buffers;
+	char *buffer = NULL;
 	uint32_t buff_size;
 	uint32_t mz_size;
-	uint32_t fsize;
-	FILE *fp;
+	size_t fsize;
 	int ret;
 
 	/* get input buffer size */
@@ -642,51 +642,36 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 		t->model[fid].reference = NULL;
 
 	/* load input file */
-	fp = fopen(opt->filelist[fid].input, "r");
-	if (fp == NULL) {
-		ml_err("Failed to open input file : %s\n", opt->filelist[fid].input);
-		ret = -errno;
+	ret = ml_read_file(opt->filelist[fid].input, &fsize, &buffer);
+	if (ret != 0)
 		goto error;
-	}
 
-	fseek(fp, 0, SEEK_END);
-	fsize = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	if (fsize != t->model[fid].inp_dsize) {
-		ml_err("Invalid input file, size = %u (expected size = %" PRIu64 ")\n", fsize,
+	if (fsize == t->model[fid].inp_dsize) {
+		rte_memcpy(t->model[fid].input, buffer, fsize);
+		free(buffer);
+	} else {
+		ml_err("Invalid input file, size = %zu (expected size = %" PRIu64 ")\n", fsize,
 		       t->model[fid].inp_dsize);
 		ret = -EINVAL;
-		fclose(fp);
 		goto error;
 	}
-
-	if (fread(t->model[fid].input, 1, t->model[fid].inp_dsize, fp) != t->model[fid].inp_dsize) {
-		ml_err("Failed to read input file : %s\n", opt->filelist[fid].input);
-		ret = -errno;
-		fclose(fp);
-		goto error;
-	}
-	fclose(fp);
 
 	/* load reference file */
+	buffer = NULL;
 	if (t->model[fid].reference != NULL) {
-		fp = fopen(opt->filelist[fid].reference, "r");
-		if (fp == NULL) {
-			ml_err("Failed to open reference file : %s\n",
-			       opt->filelist[fid].reference);
-			ret = -errno;
+		ret = ml_read_file(opt->filelist[fid].reference, &fsize, &buffer);
+		if (ret != 0)
 			goto error;
-		}
 
-		if (fread(t->model[fid].reference, 1, t->model[fid].out_dsize, fp) !=
-		    t->model[fid].out_dsize) {
-			ml_err("Failed to read reference file : %s\n",
-			       opt->filelist[fid].reference);
-			ret = -errno;
-			fclose(fp);
+		if (fsize == t->model[fid].out_dsize) {
+			rte_memcpy(t->model[fid].reference, buffer, fsize);
+			free(buffer);
+		} else {
+			ml_err("Invalid reference file, size = %zu (expected size = %" PRIu64 ")\n",
+			       fsize, t->model[fid].out_dsize);
+			ret = -EINVAL;
 			goto error;
 		}
-		fclose(fp);
 	}
 
 	/* create mempool for quantized input and output buffers. ml_request_initialize is
@@ -717,6 +702,8 @@ error:
 		rte_mempool_free(t->model[fid].io_pool);
 		t->model[fid].io_pool = NULL;
 	}
+
+	free(buffer);
 
 	return ret;
 }

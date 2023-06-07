@@ -27,4 +27,6 @@ int ml_test_device_close(struct ml_test *test, struct ml_options *opt);
 int ml_test_device_start(struct ml_test *test, struct ml_options *opt);
 int ml_test_device_stop(struct ml_test *test, struct ml_options *opt);
 
+int ml_read_file(char *file, size_t *size, char **buffer);
+
 #endif /* TEST_COMMON_H */
