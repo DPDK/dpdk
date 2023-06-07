@@ -576,6 +576,54 @@ eth_dev_handle_port_rxq(const char *cmd __rte_unused,
 	return ret;
 }
 
+static int
+eth_dev_handle_port_txq(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_eth_thresh *tx_thresh;
+	struct rte_eth_txconf *txconf;
+	struct rte_eth_txq_info qinfo;
+	struct rte_tel_data *offload;
+	uint16_t port_id, queue_id;
+	int ret;
+
+	ret = ethdev_parse_queue_params(params, false, &port_id, &queue_id);
+	if (ret != 0)
+		return ret;
+
+	ret = rte_eth_tx_queue_info_get(port_id, queue_id, &qinfo);
+	if (ret != 0)
+		return ret;
+
+	rte_tel_data_start_dict(d);
+	tx_thresh = &qinfo.conf.tx_thresh;
+	txconf = &qinfo.conf;
+	rte_tel_data_add_dict_uint(d, "host_threshold", tx_thresh->hthresh);
+	rte_tel_data_add_dict_uint(d, "prefetch_threshold", tx_thresh->pthresh);
+	rte_tel_data_add_dict_uint(d, "writeback_threshold", tx_thresh->wthresh);
+	rte_tel_data_add_dict_uint(d, "rs_threshold", txconf->tx_rs_thresh);
+	rte_tel_data_add_dict_uint(d, "free_threshold", txconf->tx_free_thresh);
+	rte_tel_data_add_dict_string(d, "deferred_start",
+			txconf->tx_deferred_start == 0 ? "off" : "on");
+
+	offload = rte_tel_data_alloc();
+	if (offload == NULL)
+		return -ENOMEM;
+
+	eth_dev_parse_tx_offloads(txconf->offloads, offload);
+	rte_tel_data_add_dict_container(d, "offloads", offload, 0);
+
+	rte_tel_data_add_dict_uint(d, "queue_state", qinfo.queue_state);
+	rte_tel_data_add_dict_uint(d, "nb_desc", qinfo.nb_desc);
+
+	ret = eth_dev_add_burst_mode(port_id, queue_id, false, d);
+	if (ret != 0)
+		rte_tel_data_free(offload);
+
+	return 0;
+}
+
 RTE_INIT(ethdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/ethdev/list", eth_dev_handle_port_list,
@@ -601,4 +649,6 @@ RTE_INIT(ethdev_init_telemetry)
 			"Returns flow ctrl info for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/rx_queue", eth_dev_handle_port_rxq,
 			"Returns Rx queue info for a port. Parameters: int port_id, int queue_id (Optional if only one queue)");
+	rte_telemetry_register_cmd("/ethdev/tx_queue", eth_dev_handle_port_txq,
+			"Returns Tx queue info for a port. Parameters: int port_id, int queue_id (Optional if only one queue)");
 }
