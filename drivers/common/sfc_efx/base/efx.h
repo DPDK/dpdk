@@ -5108,6 +5108,73 @@ efx_table_list(
 	__in					unsigned int n_table_ids,
 	__out_opt				unsigned int *n_table_ids_writtenp);
 
+LIBEFX_API
+extern	__checkReturn		size_t
+efx_table_supported_num_get(
+	__in			void);
+
+LIBEFX_API
+extern	__checkReturn		boolean_t
+efx_table_is_supported(
+	__in			efx_table_id_t table_id);
+
+/* Unique IDs for table fields */
+typedef enum efx_table_field_id_e {
+	EFX_TABLE_FIELD_ID_UNUSED = 0x0,
+	EFX_TABLE_FIELD_ID_COUNTER_ID = 0xa,
+	EFX_TABLE_FIELD_ID_ETHER_TYPE = 0x1c,
+	EFX_TABLE_FIELD_ID_SRC_IP = 0x1d,
+	EFX_TABLE_FIELD_ID_DST_IP = 0x1e,
+	EFX_TABLE_FIELD_ID_IP_PROTO = 0x20,
+	EFX_TABLE_FIELD_ID_SRC_PORT = 0x21,
+	EFX_TABLE_FIELD_ID_DST_PORT = 0x22,
+	EFX_TABLE_FIELD_ID_NAT_PORT = 0x7a,
+	EFX_TABLE_FIELD_ID_NAT_IP = 0x7b,
+	EFX_TABLE_FIELD_ID_NAT_DIR = 0x7c,
+	EFX_TABLE_FIELD_ID_CT_MARK = 0x7d,
+} efx_table_field_id_t;
+
+/* Table fields mask types */
+typedef enum efx_table_field_mask_type_e {
+	EFX_TABLE_FIELD_MASK_NEVER = 0x0,
+	EFX_TABLE_FIELD_MASK_EXACT = 0x1,
+} efx_table_field_mask_type_t;
+
+typedef struct efx_table_field_desc_s {
+	efx_table_field_id_t		field_id;
+	uint16_t			lbn;
+	uint16_t			width;
+	efx_table_field_mask_type_t	mask_type;
+	uint8_t				scheme;
+} efx_table_field_descriptor_t;
+
+/* Types of HW tables */
+typedef enum efx_table_type_e {
+	/* Exact match to all key fields of table entry. */
+	EFX_TABLE_TYPE_BCAM = 0x2,
+} efx_table_type_t;
+
+typedef struct efx_table_descriptor_s {
+	efx_table_type_t	type;
+	uint16_t		key_width;
+	uint16_t		resp_width;
+	/* Number of key's fields to match data */
+	uint16_t		n_key_fields;
+	/* Number of fields in match response */
+	uint16_t		n_resp_fields;
+} efx_table_descriptor_t;
+
+LIBEFX_API
+extern	__checkReturn				efx_rc_t
+efx_table_describe(
+	__in					efx_nic_t *enp,
+	__in					efx_table_id_t table_id,
+	__in					uint32_t field_offset,
+	__out_opt				efx_table_descriptor_t *table_descp,
+	__out_ecount_opt(n_field_descs)		efx_table_field_descriptor_t *fields_descs,
+	__in					unsigned int n_field_descs,
+	__out_opt				unsigned int *n_field_descs_writtenp);
+
 #ifdef	__cplusplus
 }
 #endif

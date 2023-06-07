@@ -233,7 +233,10 @@ INTERNAL {
 	efx_sram_buf_tbl_clear;
 	efx_sram_buf_tbl_set;
 
+	efx_table_describe;
+	efx_table_is_supported;
 	efx_table_list;
+	efx_table_supported_num_get;
 
 	efx_tunnel_config_clear;
 	efx_tunnel_config_udp_add;

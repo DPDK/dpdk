@@ -6,6 +6,11 @@
 #include "efx.h"
 #include "efx_impl.h"
 
+/* List of HW tables that have support in efx */
+static const efx_table_id_t efx_supported_table_ids[] = {
+	EFX_TABLE_ID_CONNTRACK,
+};
+
 	__checkReturn				efx_rc_t
 efx_table_list(
 	__in					efx_nic_t *enp,
@@ -80,6 +85,257 @@ efx_table_list(
 
 	return (0);
 
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn		size_t
+efx_table_supported_num_get(
+	__in			void)
+{
+	return (EFX_ARRAY_SIZE(efx_supported_table_ids));
+}
+
+	__checkReturn		boolean_t
+efx_table_is_supported(
+	__in			efx_table_id_t table_id)
+{
+	size_t i;
+
+	for (i = 0; i < efx_table_supported_num_get(); i++) {
+		if (efx_supported_table_ids[i] == table_id)
+			return (B_TRUE);
+	}
+
+	return (B_FALSE);
+}
+
+static	__checkReturn			efx_rc_t
+efx_table_ct_desc_fields_check(
+	__in_ecount(n_fields_descs)	efx_table_field_descriptor_t *fields_descsp,
+	__in				unsigned int n_fields_descs)
+{
+	unsigned int i;
+	efx_rc_t rc;
+
+	for (i = 0; i < n_fields_descs; i++) {
+		switch (fields_descsp[i].field_id) {
+		case EFX_TABLE_FIELD_ID_ETHER_TYPE:
+		case EFX_TABLE_FIELD_ID_SRC_IP:
+		case EFX_TABLE_FIELD_ID_DST_IP:
+		case EFX_TABLE_FIELD_ID_IP_PROTO:
+		case EFX_TABLE_FIELD_ID_SRC_PORT:
+		case EFX_TABLE_FIELD_ID_DST_PORT:
+			if (fields_descsp[i].mask_type != EFX_TABLE_FIELD_MASK_EXACT) {
+				rc = EINVAL;
+				goto fail1;
+			}
+			break;
+		/*
+		 * TODO:
+		 * All fields in the CT table have EXACT mask.
+		 * All the response field descriptors must have the EXACT mask.
+		 * In the current implementation, only the Ethertype, source and
+		 * destination IP address, IP protocol, and source and destination IP
+		 * are used for the lookup by the key.
+		 * FW could use the NEVER mask for the fields in the key that are not
+		 * used for the lookup.
+		 * As an alternative, a new mask could be added for these fields,
+		 * like EXACT_NOT_USED.
+		 */
+		default:
+			if ((fields_descsp[i].mask_type != EFX_TABLE_FIELD_MASK_NEVER) &&
+			    (fields_descsp[i].mask_type != EFX_TABLE_FIELD_MASK_EXACT)) {
+				rc = EINVAL;
+				goto fail2;
+			}
+			break;
+		}
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static	__checkReturn			efx_rc_t
+efx_table_desc_fields_check(
+	__in				efx_table_id_t table_id,
+	__in_ecount(n_fields_descs)	efx_table_field_descriptor_t *fields_descsp,
+	__in				unsigned int n_fields_descs)
+{
+	efx_rc_t rc;
+
+	switch (table_id) {
+	case EFX_TABLE_ID_CONNTRACK:
+		rc = efx_table_ct_desc_fields_check(fields_descsp, n_fields_descs);
+		if (rc != 0)
+			goto fail1;
+		break;
+	default:
+		break;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static					void
+efx_table_desc_fields_get(
+	__in				const efx_mcdi_req_t *req,
+	__out_ecount(n_fields_descs)	efx_table_field_descriptor_t *fields_descsp,
+	__in				unsigned int n_fields_descs)
+{
+	unsigned int i;
+
+	for (i = 0; i < n_fields_descs; i++) {
+		fields_descsp[i].field_id = (efx_table_field_id_t)
+		    MCDI_OUT_INDEXED_QWORD_FIELD(*req,
+			TABLE_DESCRIPTOR_OUT_FIELDS, i, TABLE_FIELD_DESCR_FIELD_ID);
+
+		fields_descsp[i].lbn =
+		    MCDI_OUT_INDEXED_QWORD_FIELD(*req,
+			TABLE_DESCRIPTOR_OUT_FIELDS, i, TABLE_FIELD_DESCR_LBN);
+
+		fields_descsp[i].width =
+		    MCDI_OUT_INDEXED_QWORD_FIELD(*req,
+			TABLE_DESCRIPTOR_OUT_FIELDS, i, TABLE_FIELD_DESCR_WIDTH);
+
+		fields_descsp[i].mask_type = (efx_table_field_mask_type_t)
+		    MCDI_OUT_INDEXED_QWORD_FIELD(*req,
+			TABLE_DESCRIPTOR_OUT_FIELDS, i, TABLE_FIELD_DESCR_MASK_TYPE);
+
+		fields_descsp[i].scheme =
+		    MCDI_OUT_INDEXED_QWORD_FIELD(*req,
+			TABLE_DESCRIPTOR_OUT_FIELDS, i, TABLE_FIELD_DESCR_SCHEME);
+	}
+}
+
+	__checkReturn				efx_rc_t
+efx_table_describe(
+	__in					efx_nic_t *enp,
+	__in					efx_table_id_t table_id,
+	__in					uint32_t field_offset,
+	__out_opt				efx_table_descriptor_t *table_descp,
+	__out_ecount_opt(n_field_descs)		efx_table_field_descriptor_t *fields_descs,
+	__in					unsigned int n_field_descs,
+	__out_opt				unsigned int *n_field_descs_writtenp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	unsigned int n_entries;
+	efx_mcdi_req_t req;
+	unsigned int i;
+	efx_rc_t rc;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_TABLE_DESCRIPTOR_IN_LEN,
+	    MC_CMD_TABLE_DESCRIPTOR_OUT_LENMAX_MCDI2);
+
+	/* Ensure EFX and MCDI use same values for table types */
+	EFX_STATIC_ASSERT(EFX_TABLE_TYPE_BCAM == MC_CMD_TABLE_DESCRIPTOR_OUT_TYPE_BCAM);
+
+	/* Ensure EFX and MCDI use same values for table fields */
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_UNUSED == TABLE_FIELD_ID_UNUSED);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_COUNTER_ID == TABLE_FIELD_ID_COUNTER_ID);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_ETHER_TYPE == TABLE_FIELD_ID_ETHER_TYPE);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_SRC_IP == TABLE_FIELD_ID_SRC_IP);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_DST_IP == TABLE_FIELD_ID_DST_IP);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_IP_PROTO == TABLE_FIELD_ID_IP_PROTO);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_SRC_PORT == TABLE_FIELD_ID_SRC_PORT);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_DST_PORT == TABLE_FIELD_ID_DST_PORT);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_NAT_PORT == TABLE_FIELD_ID_NAT_PORT);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_NAT_IP == TABLE_FIELD_ID_NAT_IP);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_NAT_DIR == TABLE_FIELD_ID_NAT_DIR);
+	EFX_STATIC_ASSERT(EFX_TABLE_FIELD_ID_CT_MARK == TABLE_FIELD_ID_CT_MARK);
+
+	if (encp->enc_table_api_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (!efx_table_is_supported(table_id)) {
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	if ((n_field_descs != 0) &&
+	    ((fields_descs == NULL) || (n_field_descs_writtenp == NULL))) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
+	req.emr_cmd = MC_CMD_TABLE_DESCRIPTOR;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_TABLE_DESCRIPTOR_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_TABLE_DESCRIPTOR_OUT_LENMAX_MCDI2;
+
+	MCDI_IN_SET_DWORD(req, TABLE_DESCRIPTOR_IN_TABLE_ID, (uint32_t)table_id);
+	MCDI_IN_SET_DWORD(req, TABLE_DESCRIPTOR_IN_FIRST_FIELDS_INDEX, field_offset);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail4;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_TABLE_DESCRIPTOR_OUT_LENMIN) {
+		rc = EMSGSIZE;
+		goto fail5;
+	}
+
+	if (table_descp != NULL) {
+		table_descp->type = (efx_table_type_t)MCDI_OUT_WORD(
+		    req, TABLE_DESCRIPTOR_OUT_TYPE);
+		table_descp->key_width = MCDI_OUT_WORD(
+		    req, TABLE_DESCRIPTOR_OUT_KEY_WIDTH);
+		table_descp->resp_width = MCDI_OUT_WORD(
+		    req, TABLE_DESCRIPTOR_OUT_RESP_WIDTH);
+		table_descp->n_key_fields = MCDI_OUT_WORD(
+		    req, TABLE_DESCRIPTOR_OUT_N_KEY_FIELDS);
+		table_descp->n_resp_fields = MCDI_OUT_WORD(
+		    req, TABLE_DESCRIPTOR_OUT_N_RESP_FIELDS);
+	}
+
+	n_entries = MC_CMD_TABLE_DESCRIPTOR_OUT_FIELDS_NUM(req.emr_out_length_used);
+
+	if (fields_descs != NULL) {
+		if (n_entries > n_field_descs) {
+			rc = ENOMEM;
+			goto fail6;
+		}
+
+		efx_table_desc_fields_get(&req, fields_descs, n_entries);
+		rc = efx_table_desc_fields_check(table_id, fields_descs, n_entries);
+		if (rc != 0)
+			goto fail7;
+	}
+
+	if (n_field_descs_writtenp != NULL)
+		*n_field_descs_writtenp = n_entries;
+
+	return (0);
+
+fail7:
+	EFSYS_PROBE(fail7);
+fail6:
+	EFSYS_PROBE(fail6);
 fail5:
 	EFSYS_PROBE(fail5);
 fail4:
