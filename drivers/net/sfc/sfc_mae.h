@@ -345,15 +345,13 @@ struct sfc_mae_parse_ctx {
 
 int sfc_mae_attach(struct sfc_adapter *sa);
 void sfc_mae_detach(struct sfc_adapter *sa);
+
+int sfc_mae_rule_parse(struct sfc_adapter *sa,
+		       const struct rte_flow_item pattern[],
+		       const struct rte_flow_action actions[],
+		       struct rte_flow *flow, struct rte_flow_error *error);
+
 sfc_flow_cleanup_cb_t sfc_mae_flow_cleanup;
-int sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
-			       const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error);
-int sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
-			       const struct rte_flow_action actions[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error);
 sfc_flow_verify_cb_t sfc_mae_flow_verify;
 sfc_flow_insert_cb_t sfc_mae_flow_insert;
 sfc_flow_remove_cb_t sfc_mae_flow_remove;

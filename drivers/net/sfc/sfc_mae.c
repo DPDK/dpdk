@@ -2747,7 +2747,7 @@ sfc_mae_rule_encap_parse_fini(struct sfc_adapter *sa,
 		efx_mae_match_spec_fini(sa->nic, ctx->match_spec_outer);
 }
 
-int
+static int
 sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 			   const struct rte_flow_item pattern[],
 			   struct rte_flow *flow,
@@ -3772,7 +3772,7 @@ sfc_mae_process_encap_header(struct sfc_adapter *sa,
 	return sfc_mae_encap_header_add(sa, bounce_eh, encap_headerp);
 }
 
-int
+static int
 sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			   const struct rte_flow_action actions[],
 			   struct rte_flow *flow,
@@ -3932,6 +3932,60 @@ fail_action_set_spec_init:
 			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			NULL, "Failed to process the action");
 	}
+	return rc;
+}
+
+int
+sfc_mae_rule_parse(struct sfc_adapter *sa, const struct rte_flow_item pattern[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow *flow, struct rte_flow_error *error)
+{
+	struct sfc_flow_spec *spec = &flow->spec;
+	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
+	int rc;
+
+	/*
+	 * If the flow is meant to be a TUNNEL rule in a FT context,
+	 * preparse its actions and save its properties in spec_mae.
+	 */
+	rc = sfc_ft_tunnel_rule_detect(sa, actions, spec_mae, error);
+	if (rc != 0)
+		goto fail;
+
+	rc = sfc_mae_rule_parse_pattern(sa, pattern, flow, error);
+	if (rc != 0)
+		goto fail;
+
+	if (spec_mae->ft_rule_type == SFC_FT_RULE_TUNNEL) {
+		/*
+		 * By design, this flow should be represented solely by the
+		 * outer rule. But the HW/FW hasn't got support for setting
+		 * Rx mark from RECIRC_ID on outer rule lookup yet. Neither
+		 * does it support outer rule counters. As a workaround, an
+		 * action rule of lower priority is used to do the job.
+		 *
+		 * So don't skip sfc_mae_rule_parse_actions() below.
+		 */
+	}
+
+	rc = sfc_mae_rule_parse_actions(sa, actions, flow, error);
+	if (rc != 0)
+		goto fail;
+
+	if (spec_mae->ft_ctx != NULL) {
+		if (spec_mae->ft_rule_type == SFC_FT_RULE_TUNNEL)
+			spec_mae->ft_ctx->tunnel_rule_is_set = B_TRUE;
+
+		++(spec_mae->ft_ctx->refcnt);
+	}
+
+	return 0;
+
+fail:
+	/* Reset these values to avoid confusing sfc_mae_flow_cleanup(). */
+	spec_mae->ft_rule_type = SFC_FT_RULE_NONE;
+	spec_mae->ft_ctx = NULL;
+
 	return rc;
 }
 
