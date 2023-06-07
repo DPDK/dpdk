@@ -1168,6 +1168,32 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_match_spec_clone(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_match_spec_t *orig,
+	__out				efx_mae_match_spec_t **clonep)
+{
+	efx_mae_match_spec_t *clone;
+	efx_rc_t rc;
+
+	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (*clone), clone);
+	if (clone == NULL) {
+		rc = ENOMEM;
+		goto fail1;
+	}
+
+	memcpy(clone, orig, sizeof (efx_mae_match_spec_t));
+
+	*clonep = clone;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn			boolean_t
 efx_mae_match_specs_equal(
 	__in				const efx_mae_match_spec_t *left,

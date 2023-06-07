@@ -125,6 +125,7 @@ INTERNAL {
 	efx_mae_mac_addr_alloc;
 	efx_mae_mac_addr_free;
 	efx_mae_match_spec_bit_set;
+	efx_mae_match_spec_clone;
 	efx_mae_match_spec_field_set;
 	efx_mae_match_spec_fini;
 	efx_mae_match_spec_init;

@@ -4462,6 +4462,13 @@ efx_mae_match_spec_recirc_id_set(
 	__in				uint8_t recirc_id);
 
 LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_clone(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_match_spec_t *orig,
+	__out				efx_mae_match_spec_t **clonep);
+
+LIBEFX_API
 extern	__checkReturn			boolean_t
 efx_mae_match_specs_equal(
 	__in				const efx_mae_match_spec_t *left,
