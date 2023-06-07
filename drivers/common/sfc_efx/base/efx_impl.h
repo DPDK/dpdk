@@ -841,7 +841,7 @@ typedef struct efx_mae_s {
 	/** Outer rule match field capabilities. */
 	efx_mae_field_cap_t		*em_outer_rule_field_caps;
 	size_t				em_outer_rule_field_caps_size;
-	uint32_t			em_max_ncounters;
+	uint32_t			em_max_n_action_counters;
 } efx_mae_t;
 
 #endif /* EFSYS_OPT_MAE */

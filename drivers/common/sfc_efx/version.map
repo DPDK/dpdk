@@ -114,7 +114,9 @@ INTERNAL {
 	efx_mae_action_set_spec_init;
 	efx_mae_action_set_specs_equal;
 	efx_mae_counters_alloc;
+	efx_mae_counters_alloc_type;
 	efx_mae_counters_free;
+	efx_mae_counters_free_type;
 	efx_mae_counters_stream_give_credits;
 	efx_mae_counters_stream_start;
 	efx_mae_counters_stream_stop;
