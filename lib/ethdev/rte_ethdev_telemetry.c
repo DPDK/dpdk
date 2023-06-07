@@ -328,6 +328,41 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 	return 0;
 }
 
+static int
+eth_dev_handle_port_macs(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	char mac_addr[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_dev *eth_dev;
+	uint16_t port_id;
+	char *end_param;
+	uint32_t i;
+	int ret;
+
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, false);
+	if (ret < 0)
+		return ret;
+
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
+	eth_dev = &rte_eth_devices[port_id];
+	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
+	for (i = 0; i < dev_info.max_mac_addrs; i++) {
+		if (rte_is_zero_ether_addr(&eth_dev->data->mac_addrs[i]))
+			continue;
+
+		rte_ether_format_addr(mac_addr, sizeof(mac_addr),
+			&eth_dev->data->mac_addrs[i]);
+		rte_tel_data_add_array_string(d, mac_addr);
+	}
+
+	return 0;
+}
+
 RTE_INIT(ethdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/ethdev/list", eth_dev_handle_port_list,
@@ -347,4 +382,6 @@ RTE_INIT(ethdev_init_telemetry)
 			"Returns the device info for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/module_eeprom", eth_dev_handle_port_module_eeprom,
 			"Returns module EEPROM info with SFF specs. Parameters: int port_id");
+	rte_telemetry_register_cmd("/ethdev/macs", eth_dev_handle_port_macs,
+			"Returns the MAC addresses for a port. Parameters: int port_id");
 }
