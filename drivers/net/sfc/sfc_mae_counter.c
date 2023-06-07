@@ -76,12 +76,12 @@ sfc_mae_counter_rxq_required(struct sfc_adapter *sa)
 }
 
 int
-sfc_mae_counter_enable(struct sfc_adapter *sa,
-		       struct sfc_mae_counter_id *counterp)
+sfc_mae_counter_fw_rsrc_enable(struct sfc_adapter *sa,
+			       struct sfc_mae_counter *counterp)
 {
 	struct sfc_mae_counter_registry *reg = &sa->mae.counter_registry;
-	struct sfc_mae_counters *counters = &reg->counters;
-	struct sfc_mae_counter *p;
+	struct sfc_mae_counter_records *counters = &reg->counters;
+	struct sfc_mae_counter_record *p;
 	efx_counter_t mae_counter;
 	uint32_t generation_count;
 	uint32_t unused;
@@ -147,12 +147,12 @@ fail_mae_counter_alloc:
 }
 
 int
-sfc_mae_counter_disable(struct sfc_adapter *sa,
-			struct sfc_mae_counter_id *counter)
+sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
+				struct sfc_mae_counter *counter)
 {
 	struct sfc_mae_counter_registry *reg = &sa->mae.counter_registry;
-	struct sfc_mae_counters *counters = &reg->counters;
-	struct sfc_mae_counter *p;
+	struct sfc_mae_counter_records *counters = &reg->counters;
+	struct sfc_mae_counter_record *p;
 	uint32_t unused;
 	int rc;
 
@@ -189,12 +189,13 @@ sfc_mae_counter_disable(struct sfc_adapter *sa,
 
 static void
 sfc_mae_counter_increment(struct sfc_adapter *sa,
-			  struct sfc_mae_counters *counters,
+			  struct sfc_mae_counter_records *counters,
 			  uint32_t mae_counter_id,
 			  uint32_t generation_count,
 			  uint64_t pkts, uint64_t bytes)
 {
-	struct sfc_mae_counter *p = &counters->mae_counters[mae_counter_id];
+	struct sfc_mae_counter_record *p =
+		&counters->mae_counters[mae_counter_id];
 	struct sfc_mae_counters_xstats *xstats = &counters->xstats;
 	union sfc_pkts_bytes cnt_val;
 	bool inuse;
@@ -667,7 +668,7 @@ sfc_mae_counter_thread_spawn(struct sfc_adapter *sa,
 }
 
 int
-sfc_mae_counters_init(struct sfc_mae_counters *counters,
+sfc_mae_counters_init(struct sfc_mae_counter_records *counters,
 		      uint32_t nb_counters_max)
 {
 	int rc;
@@ -691,7 +692,7 @@ sfc_mae_counters_init(struct sfc_mae_counters *counters,
 }
 
 void
-sfc_mae_counters_fini(struct sfc_mae_counters *counters)
+sfc_mae_counters_fini(struct sfc_mae_counter_records *counters)
 {
 	rte_free(counters->mae_counters);
 	counters->mae_counters = NULL;
@@ -942,13 +943,13 @@ fail_counter_stream:
 }
 
 int
-sfc_mae_counter_get(struct sfc_mae_counters *counters,
-		    const struct sfc_mae_counter_id *counter,
+sfc_mae_counter_get(struct sfc_mae_counter_records *counters,
+		    const struct sfc_mae_counter *counter,
 		    struct rte_flow_query_count *data)
 {
 	struct sfc_ft_ctx *ft_ctx = counter->ft_ctx;
 	uint64_t non_reset_tunnel_hit_counter;
-	struct sfc_mae_counter *p;
+	struct sfc_mae_counter_record *p;
 	union sfc_pkts_bytes value;
 
 	SFC_ASSERT(counter->mae_id.id < counters->n_mae_counters);

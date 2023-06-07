@@ -68,7 +68,7 @@ struct sfc_mae_encap_header {
 TAILQ_HEAD(sfc_mae_encap_headers, sfc_mae_encap_header);
 
 /* Counter ID */
-struct sfc_mae_counter_id {
+struct sfc_mae_counter {
 	/* ID of a counter in MAE */
 	efx_counter_t			mae_id;
 	/* ID of a counter in RTE */
@@ -86,7 +86,7 @@ struct sfc_mae_counter_id {
 struct sfc_mae_action_set {
 	TAILQ_ENTRY(sfc_mae_action_set)	entries;
 	unsigned int			refcnt;
-	struct sfc_mae_counter_id	*counters;
+	struct sfc_mae_counter		*counters;
 	uint32_t			n_counters;
 	efx_mae_actions_t		*spec;
 	struct sfc_mae_encap_header	*encap_header;
@@ -129,7 +129,7 @@ struct sfc_mae_bounce_eh {
 };
 
 /** Counter collection entry */
-struct sfc_mae_counter {
+struct sfc_mae_counter_record {
 	bool				inuse;
 	uint32_t			generation_count;
 	union sfc_pkts_bytes		value;
@@ -143,9 +143,9 @@ struct sfc_mae_counters_xstats {
 	uint64_t			realloc_update;
 };
 
-struct sfc_mae_counters {
+struct sfc_mae_counter_records {
 	/** An array of all MAE counters */
-	struct sfc_mae_counter		*mae_counters;
+	struct sfc_mae_counter_record	*mae_counters;
 	/** Extra statistics for counters */
 	struct sfc_mae_counters_xstats	xstats;
 	/** Count of all MAE counters */
@@ -162,7 +162,7 @@ enum sfc_mae_counter_polling_mode {
 struct sfc_mae_counter_registry {
 	/* Common counter information */
 	/** Counters collection */
-	struct sfc_mae_counters		counters;
+	struct sfc_mae_counter_records	counters;
 
 	/* Information used by counter update service */
 	/** Callback to get packets from RxQ */
@@ -219,7 +219,7 @@ struct sfc_mae {
 	struct sfc_mae_bounce_eh	bounce_eh;
 	/** Flag indicating whether counter-only RxQ is running */
 	bool				counter_rxq_running;
-	/** Counter registry */
+	/** Counter record registry */
 	struct sfc_mae_counter_registry	counter_registry;
 	/**
 	 * Switchdev default rules. They forward traffic from PHY port

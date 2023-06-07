@@ -151,7 +151,7 @@ sfc_mae_attach(struct sfc_adapter *sa)
 		if (rc != 0)
 			goto fail_mae_get_limits;
 
-		sfc_log_init(sa, "init MAE counter registry");
+		sfc_log_init(sa, "init MAE counter record registry");
 		rc = sfc_mae_counter_registry_init(&mae->counter_registry,
 						   limits.eml_max_n_counters);
 		if (rc != 0) {
@@ -817,7 +817,7 @@ sfc_mae_encap_header_disable(struct sfc_adapter *sa,
 
 static int
 sfc_mae_counters_enable(struct sfc_adapter *sa,
-			struct sfc_mae_counter_id *counters,
+			struct sfc_mae_counter *counters,
 			unsigned int n_counters,
 			efx_mae_actions_t *action_set_spec)
 {
@@ -833,7 +833,7 @@ sfc_mae_counters_enable(struct sfc_adapter *sa,
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 	SFC_ASSERT(n_counters == 1);
 
-	rc = sfc_mae_counter_enable(sa, &counters[0]);
+	rc = sfc_mae_counter_fw_rsrc_enable(sa, &counters[0]);
 	if (rc != 0) {
 		sfc_err(sa, "failed to enable MAE counter %u: %s",
 			counters[0].mae_id.id, rte_strerror(rc));
@@ -851,7 +851,7 @@ sfc_mae_counters_enable(struct sfc_adapter *sa,
 	return 0;
 
 fail_fill_in_id:
-	(void)sfc_mae_counter_disable(sa, &counters[0]);
+	(void)sfc_mae_counter_fw_rsrc_disable(sa, &counters[0]);
 
 fail_counter_add:
 	sfc_log_init(sa, "failed: %s", rte_strerror(rc));
@@ -860,7 +860,7 @@ fail_counter_add:
 
 static int
 sfc_mae_counters_disable(struct sfc_adapter *sa,
-			 struct sfc_mae_counter_id *counters,
+			 struct sfc_mae_counter *counters,
 			 unsigned int n_counters)
 {
 	if (n_counters == 0)
@@ -874,7 +874,7 @@ sfc_mae_counters_disable(struct sfc_adapter *sa,
 		return EALREADY;
 	}
 
-	return sfc_mae_counter_disable(sa, &counters[0]);
+	return sfc_mae_counter_fw_rsrc_disable(sa, &counters[0]);
 }
 
 struct sfc_mae_aset_ctx {
@@ -1039,7 +1039,7 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 	struct sfc_mae_encap_header *encap_header;
 	struct sfc_mae_mac_addr *dst_mac_addr;
 	struct sfc_mae_mac_addr *src_mac_addr;
-	struct sfc_mae_counter_id *counters;
+	struct sfc_mae_counter *counters;
 	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
