@@ -13,6 +13,29 @@
 #include "sff_telemetry.h"
 
 static int
+eth_dev_parse_port_params(const char *params, uint16_t *port_id,
+		char **end_param, bool has_next)
+{
+	uint64_t pi;
+
+	if (params == NULL || strlen(params) == 0 ||
+		!isdigit(*params) || port_id == NULL)
+		return -EINVAL;
+
+	pi = strtoul(params, end_param, 0);
+	if (**end_param != '\0' && !has_next)
+		RTE_ETHDEV_LOG(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring\n");
+
+	if (pi >= UINT16_MAX || !rte_eth_dev_is_valid_port(pi))
+		return -EINVAL;
+
+	*port_id = (uint16_t)pi;
+
+	return 0;
+}
+
+static int
 eth_dev_handle_port_list(const char *cmd __rte_unused,
 		const char *params __rte_unused,
 		struct rte_tel_data *d)
@@ -65,14 +88,13 @@ eth_dev_handle_port_stats(const char *cmd __rte_unused,
 		struct rte_tel_data *d)
 {
 	struct rte_eth_stats stats;
-	int port_id, ret;
+	uint16_t port_id;
+	char *end_param;
+	int ret;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
-		return -1;
-
-	port_id = atoi(params);
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -1;
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, false);
+	if (ret < 0)
+		return ret;
 
 	ret = rte_eth_stats_get(port_id, &stats);
 	if (ret < 0)
@@ -105,17 +127,15 @@ eth_dev_handle_port_xstats(const char *cmd __rte_unused,
 	struct rte_eth_xstat *eth_xstats;
 	struct rte_eth_xstat_name *xstat_names;
 	struct rte_kvargs *kvlist;
-	int port_id, num_xstats;
 	bool hide_zero = false;
+	uint16_t port_id;
 	char *end_param;
+	int num_xstats;
 	int i, ret;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
-		return -1;
-
-	port_id = strtoul(params, &end_param, 0);
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -1;
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, true);
+	if (ret < 0)
+		return ret;
 
 	if (*end_param != '\0') {
 		kvlist = rte_kvargs_parse(end_param, valid_keys);
@@ -167,18 +187,13 @@ eth_dev_handle_port_dump_priv(const char *cmd __rte_unused,
 			struct rte_tel_data *d)
 {
 	char *buf, *end_param;
-	int port_id, ret;
+	uint16_t port_id;
+	int ret;
 	FILE *f;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
-		return -EINVAL;
-
-	port_id = strtoul(params, &end_param, 0);
-	if (*end_param != '\0')
-		RTE_ETHDEV_LOG(NOTICE,
-			"Extra parameters passed to ethdev telemetry command, ignoring");
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -EINVAL;
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, false);
+	if (ret < 0)
+		return ret;
 
 	buf = calloc(RTE_TEL_MAX_SINGLE_STRING_LEN, sizeof(char));
 	if (buf == NULL)
@@ -208,19 +223,14 @@ eth_dev_handle_port_link_status(const char *cmd __rte_unused,
 		struct rte_tel_data *d)
 {
 	static const char *status_str = "status";
-	int ret, port_id;
 	struct rte_eth_link link;
+	uint16_t port_id;
 	char *end_param;
+	int ret;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
-		return -1;
-
-	port_id = strtoul(params, &end_param, 0);
-	if (*end_param != '\0')
-		RTE_ETHDEV_LOG(NOTICE,
-			"Extra parameters passed to ethdev telemetry command, ignoring");
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -1;
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, false);
+	if (ret < 0)
+		return ret;
 
 	ret = rte_eth_link_get_nowait(port_id, &link);
 	if (ret < 0)
@@ -247,19 +257,14 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 	struct rte_tel_data *rxq_state, *txq_state;
 	char mac_addr[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_eth_dev *eth_dev;
+	uint16_t port_id;
 	char *end_param;
-	int port_id, i;
+	int ret;
+	int i;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
-		return -1;
-
-	port_id = strtoul(params, &end_param, 0);
-	if (*end_param != '\0')
-		RTE_ETHDEV_LOG(NOTICE,
-			"Extra parameters passed to ethdev telemetry command, ignoring");
-
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -EINVAL;
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, false);
+	if (ret < 0)
+		return ret;
 
 	eth_dev = &rte_eth_devices[port_id];
 
