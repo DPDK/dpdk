@@ -12,7 +12,25 @@
 #include "../nfp_rxtx.h"
 #include "../nfpcore/nfp_mip.h"
 #include "../nfpcore/nfp_rtsym.h"
+#include "../flower/nfp_flower.h"
+#include "../flower/nfp_flower_cmsg.h"
 #include "nfp_nfdk.h"
+
+uint32_t
+nfp_flower_nfdk_pkt_add_metadata(struct rte_mbuf *mbuf,
+		uint32_t port_id)
+{
+	uint32_t header;
+	char *meta_offset;
+
+	meta_offset = rte_pktmbuf_prepend(mbuf, FLOWER_PKT_DATA_OFFSET);
+	header = NFP_NET_META_PORTID << NFP_NET_META_NFDK_LENGTH | FLOWER_PKT_DATA_OFFSET;
+	*(rte_be32_t *)meta_offset = rte_cpu_to_be_32(header);
+	meta_offset += NFP_NET_META_HEADER_SIZE;
+	*(rte_be32_t *)meta_offset = rte_cpu_to_be_32(port_id);
+
+	return FLOWER_PKT_DATA_OFFSET;
+}
 
 static inline uint16_t
 nfp_net_nfdk_headlen_to_segs(uint16_t headlen)

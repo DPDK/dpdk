@@ -16,6 +16,7 @@
 #include "../nfp_cpp_bridge.h"
 #include "../nfp_rxtx.h"
 #include "../nfd3/nfp_nfd3.h"
+#include "../nfdk/nfp_nfdk.h"
 #include "../nfpcore/nfp_mip.h"
 #include "../nfpcore/nfp_rtsym.h"
 #include "../nfpcore/nfp_nsp.h"
@@ -1061,11 +1062,16 @@ nfp_flower_enable_services(struct nfp_app_fw_flower *app_fw_flower)
 static void
 nfp_flower_pkt_add_metadata_register(struct nfp_app_fw_flower *app_fw_flower)
 {
+	struct nfp_net_hw *hw;
 	struct nfp_flower_nfd_func *nfd_func;
 
+	hw = app_fw_flower->pf_hw;
 	nfd_func = &app_fw_flower->nfd_func;
 
-	nfd_func->pkt_add_metadata_t = nfp_flower_nfd3_pkt_add_metadata;
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+		nfd_func->pkt_add_metadata_t = nfp_flower_nfd3_pkt_add_metadata;
+	else
+		nfd_func->pkt_add_metadata_t = nfp_flower_nfdk_pkt_add_metadata;
 }
 
 uint32_t
