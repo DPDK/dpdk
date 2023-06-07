@@ -5175,6 +5175,22 @@ efx_table_describe(
 	__in					unsigned int n_field_descs,
 	__out_opt				unsigned int *n_field_descs_writtenp);
 
+/* Maximum possible size of data for manipulation of the tables */
+#define EFX_TABLE_ENTRY_LENGTH_MAX	1008
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_table_entry_insert(
+	__in				efx_nic_t *enp,
+	__in				efx_table_id_t table_id,
+	__in				uint16_t priority,
+	__in				uint16_t mask_id,
+	__in				uint16_t key_width,
+	__in				uint16_t mask_width,
+	__in				uint16_t resp_width,
+	__in_bcount(data_size)		uint8_t *entry_datap,
+	__in				unsigned int data_size);
+
 #ifdef	__cplusplus
 }
 #endif
