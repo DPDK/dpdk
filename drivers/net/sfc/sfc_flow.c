@@ -2610,16 +2610,32 @@ sfc_flow_create(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct rte_flow *flow;
+
+	sfc_adapter_lock(sa);
+	flow = sfc_flow_create_locked(sa, attr, pattern, actions, error);
+	sfc_adapter_unlock(sa);
+
+	return flow;
+}
+
+struct rte_flow *
+sfc_flow_create_locked(struct sfc_adapter *sa,
+		       const struct rte_flow_attr *attr,
+		       const struct rte_flow_item pattern[],
+		       const struct rte_flow_action actions[],
+		       struct rte_flow_error *error)
+{
 	struct rte_flow *flow = NULL;
 	int rc;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	flow = sfc_flow_zmalloc(error);
 	if (flow == NULL)
 		goto fail_no_mem;
 
-	sfc_adapter_lock(sa);
-
-	rc = sfc_flow_parse(dev, attr, pattern, actions, flow, error);
+	rc = sfc_flow_parse(sa->eth_dev, attr, pattern, actions, flow, error);
 	if (rc != 0)
 		goto fail_bad_value;
 
@@ -2631,8 +2647,6 @@ sfc_flow_create(struct rte_eth_dev *dev,
 			goto fail_flow_insert;
 	}
 
-	sfc_adapter_unlock(sa);
-
 	return flow;
 
 fail_flow_insert:
@@ -2640,7 +2654,6 @@ fail_flow_insert:
 
 fail_bad_value:
 	sfc_flow_free(sa, flow);
-	sfc_adapter_unlock(sa);
 
 fail_no_mem:
 	return NULL;
@@ -2652,10 +2665,23 @@ sfc_flow_destroy(struct rte_eth_dev *dev,
 		 struct rte_flow_error *error)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	int rc;
+
+	sfc_adapter_lock(sa);
+	rc = sfc_flow_destroy_locked(sa, flow, error);
+	sfc_adapter_unlock(sa);
+
+	return rc;
+}
+
+int
+sfc_flow_destroy_locked(struct sfc_adapter *sa, struct rte_flow *flow,
+			struct rte_flow_error *error)
+{
 	struct rte_flow *flow_ptr;
 	int rc = EINVAL;
 
-	sfc_adapter_lock(sa);
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(flow_ptr, &sa->flow_list, entries) {
 		if (flow_ptr == flow)
@@ -2675,8 +2701,6 @@ sfc_flow_destroy(struct rte_eth_dev *dev,
 	sfc_flow_free(sa, flow);
 
 fail_bad_value:
-	sfc_adapter_unlock(sa);
-
 	return -rc;
 }
 

@@ -195,6 +195,15 @@ typedef int (sfc_flow_query_cb_t)(struct rte_eth_dev *dev,
 				  void *data,
 				  struct rte_flow_error *error);
 
+struct rte_flow *sfc_flow_create_locked(struct sfc_adapter *sa,
+					const struct rte_flow_attr *attr,
+					const struct rte_flow_item pattern[],
+					const struct rte_flow_action actions[],
+					struct rte_flow_error *error);
+
+int sfc_flow_destroy_locked(struct sfc_adapter *sa, struct rte_flow *flow,
+			    struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif
