@@ -202,6 +202,15 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 		goto err;
 	}
 
+	/* Allocate interrupt instance for cdx device */
+	dev->intr_handle =
+		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (dev->intr_handle == NULL) {
+		CDX_BUS_ERR("Failed to create interrupt instance for %s",
+			dev->device.name);
+		return -ENOMEM;
+	}
+
 	/*
 	 * Check if device is bound to 'vfio-cdx' driver, so that user-space
 	 * can gracefully access the device.
@@ -380,6 +389,8 @@ cdx_probe_one_driver(struct rte_cdx_driver *dr,
 	return ret;
 
 error_probe:
+	rte_intr_instance_free(dev->intr_handle);
+	dev->intr_handle = NULL;
 	cdx_vfio_unmap_resource(dev);
 error_map_device:
 	return ret;

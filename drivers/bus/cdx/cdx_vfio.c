@@ -51,6 +51,10 @@ struct mapped_cdx_resource {
 /** mapped cdx device list */
 TAILQ_HEAD(mapped_cdx_res_list, mapped_cdx_resource);
 
+/* IRQ set buffer length for MSI interrupts */
+#define MSI_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
+			      sizeof(int) * (RTE_MAX_RXTX_INTR_VEC_ID + 1))
+
 static struct rte_tailq_elem cdx_vfio_tailq = {
 	.name = "VFIO_CDX_RESOURCE_LIST",
 };
@@ -95,6 +99,27 @@ cdx_vfio_unmap_resource_primary(struct rte_cdx_device *dev)
 	char cdx_addr[PATH_MAX] = {0};
 	struct mapped_cdx_resource *vfio_res = NULL;
 	struct mapped_cdx_res_list *vfio_res_list;
+	int ret, vfio_dev_fd;
+
+	if (rte_intr_fd_get(dev->intr_handle) < 0)
+		return -1;
+
+	if (close(rte_intr_fd_get(dev->intr_handle)) < 0) {
+		CDX_BUS_ERR("Error when closing eventfd file descriptor for %s",
+			dev->device.name);
+		return -1;
+	}
+
+	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (vfio_dev_fd < 0)
+		return -1;
+
+	ret = rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
+				      vfio_dev_fd);
+	if (ret < 0) {
+		CDX_BUS_ERR("Cannot release VFIO device");
+		return ret;
+	}
 
 	vfio_res_list =
 		RTE_TAILQ_CAST(cdx_vfio_tailq.head, mapped_cdx_res_list);
@@ -117,6 +142,18 @@ cdx_vfio_unmap_resource_secondary(struct rte_cdx_device *dev)
 {
 	struct mapped_cdx_resource *vfio_res = NULL;
 	struct mapped_cdx_res_list *vfio_res_list;
+	int ret, vfio_dev_fd;
+
+	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (vfio_dev_fd < 0)
+		return -1;
+
+	ret = rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
+				      vfio_dev_fd);
+	if (ret < 0) {
+		CDX_BUS_ERR("Cannot release VFIO device");
+		return ret;
+	}
 
 	vfio_res_list =
 		RTE_TAILQ_CAST(cdx_vfio_tailq.head, mapped_cdx_res_list);
@@ -141,9 +178,74 @@ cdx_vfio_unmap_resource(struct rte_cdx_device *dev)
 		return cdx_vfio_unmap_resource_secondary(dev);
 }
 
+/* set up interrupt support (but not enable interrupts) */
 static int
-cdx_vfio_setup_device(int vfio_dev_fd)
+cdx_vfio_setup_interrupts(struct rte_cdx_device *dev, int vfio_dev_fd,
+		int num_irqs)
 {
+	int i, ret;
+
+	if (num_irqs == 0)
+		return 0;
+
+	/* start from MSI interrupt type */
+	for (i = 0; i < num_irqs; i++) {
+		struct vfio_irq_info irq = { .argsz = sizeof(irq) };
+		int fd = -1;
+
+		irq.index = i;
+
+		ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq);
+		if (ret < 0) {
+			CDX_BUS_ERR("Cannot get VFIO IRQ info, error %i (%s)",
+				errno, strerror(errno));
+			return -1;
+		}
+
+		/* if this vector cannot be used with eventfd, fail if we explicitly
+		 * specified interrupt type, otherwise continue
+		 */
+		if ((irq.flags & VFIO_IRQ_INFO_EVENTFD) == 0)
+			continue;
+
+		/* Set nb_intr to the total number of interrupts */
+		if (rte_intr_event_list_update(dev->intr_handle, irq.count))
+			return -1;
+
+		/* set up an eventfd for interrupts */
+		fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+		if (fd < 0) {
+			CDX_BUS_ERR("Cannot set up eventfd, error %i (%s)",
+				errno, strerror(errno));
+			return -1;
+		}
+
+		if (rte_intr_fd_set(dev->intr_handle, fd))
+			return -1;
+
+		/* DPDK CDX bus currently supports only MSI-X */
+		if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_VFIO_MSIX))
+			return -1;
+
+		if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd))
+			return -1;
+
+		return 0;
+	}
+
+	/* if we're here, we haven't found a suitable interrupt vector */
+	return -1;
+}
+
+static int
+cdx_vfio_setup_device(struct rte_cdx_device *dev, int vfio_dev_fd,
+		int num_irqs)
+{
+	if (cdx_vfio_setup_interrupts(dev, vfio_dev_fd, num_irqs) != 0) {
+		CDX_BUS_ERR("Error setting up interrupts!");
+		return -1;
+	}
+
 	/*
 	 * Reset the device. If the device is not capable of resetting,
 	 * then it updates errno as EINVAL.
@@ -279,6 +381,9 @@ cdx_vfio_map_resource_primary(struct rte_cdx_device *dev)
 	struct cdx_map *maps;
 	int vfio_dev_fd, i, ret;
 
+	if (rte_intr_fd_set(dev->intr_handle, -1))
+		return -1;
+
 	ret = rte_vfio_setup_device(RTE_CDX_BUS_DEVICES_PATH, dev_name,
 				    &vfio_dev_fd, &device_info);
 	if (ret)
@@ -344,7 +449,7 @@ cdx_vfio_map_resource_primary(struct rte_cdx_device *dev)
 		free(reg);
 	}
 
-	if (cdx_vfio_setup_device(vfio_dev_fd) < 0) {
+	if (cdx_vfio_setup_device(dev, vfio_dev_fd, device_info.num_irqs) < 0) {
 		CDX_BUS_ERR("%s setup device failed", dev_name);
 		goto err_vfio_res;
 	}
@@ -372,6 +477,9 @@ cdx_vfio_map_resource_secondary(struct rte_cdx_device *dev)
 		RTE_TAILQ_CAST(cdx_vfio_tailq.head, mapped_cdx_res_list);
 	const char *dev_name = dev->device.name;
 	struct cdx_map *maps;
+
+	if (rte_intr_fd_set(dev->intr_handle, -1))
+		return -1;
 
 	/* if we're in a secondary process, just find our tailq entry */
 	TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
@@ -406,6 +514,10 @@ cdx_vfio_map_resource_secondary(struct rte_cdx_device *dev)
 		dev->mem_resource[i].len = maps[i].size;
 	}
 
+	/* we need save vfio_dev_fd, so it can be used during release */
+	if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd))
+		goto err_vfio_dev_fd;
+
 	return 0;
 err_vfio_dev_fd:
 	rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, cdx_addr, vfio_dev_fd);
@@ -423,4 +535,64 @@ cdx_vfio_map_resource(struct rte_cdx_device *dev)
 		return cdx_vfio_map_resource_primary(dev);
 	else
 		return cdx_vfio_map_resource_secondary(dev);
+}
+
+int
+rte_cdx_vfio_intr_enable(const struct rte_intr_handle *intr_handle)
+{
+	char irq_set_buf[MSI_IRQ_SET_BUF_LEN];
+	struct vfio_irq_set *irq_set;
+	int *fd_ptr, vfio_dev_fd, i;
+	int ret;
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->count = rte_intr_nb_intr_get(intr_handle);
+	irq_set->argsz = sizeof(struct vfio_irq_set) +
+			 (sizeof(int) * irq_set->count);
+
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = 0;
+	irq_set->start = 0;
+	fd_ptr = (int *) &irq_set->data;
+
+	for (i = 0; i < rte_intr_nb_efd_get(intr_handle); i++)
+		fd_ptr[i] = rte_intr_efds_index_get(intr_handle, i);
+
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		CDX_BUS_ERR("Error enabling MSI interrupts for fd %d",
+			rte_intr_fd_get(intr_handle));
+		return -1;
+	}
+
+	return 0;
+}
+
+/* disable MSI interrupts */
+int
+rte_cdx_vfio_intr_disable(const struct rte_intr_handle *intr_handle)
+{
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[MSI_IRQ_SET_BUF_LEN];
+	int len, ret, vfio_dev_fd;
+
+	len = sizeof(struct vfio_irq_set);
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 0;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = 0;
+	irq_set->start = 0;
+
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret)
+		CDX_BUS_ERR("Error disabling MSI interrupts for fd %d",
+			rte_intr_fd_get(intr_handle));
+
+	return ret;
 }
