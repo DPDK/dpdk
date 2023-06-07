@@ -282,6 +282,7 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 {
 	struct rte_tel_data *rx_offload, *tx_offload;
 	struct rte_tel_data *rxq_state, *txq_state;
+	char fw_version[RTE_TEL_MAX_STRING_LEN];
 	char mac_addr[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_eth_dev *eth_dev;
 	uint16_t port_id;
@@ -313,6 +314,11 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 
 	rte_tel_data_start_dict(d);
 	rte_tel_data_add_dict_string(d, "name", eth_dev->data->name);
+
+	if (rte_eth_dev_fw_version_get(port_id, fw_version,
+					 RTE_TEL_MAX_STRING_LEN) == 0)
+		rte_tel_data_add_dict_string(d, "fw_version", fw_version);
+
 	rte_tel_data_add_dict_int(d, "state", eth_dev->state);
 	rte_tel_data_add_dict_int(d, "nb_rx_queues",
 			eth_dev->data->nb_rx_queues);
