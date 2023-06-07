@@ -237,5 +237,7 @@ int nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t nb_desc,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
+int nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
+		struct rte_mbuf *pkt);
 
 #endif /* _NFP_NFDK_H_ */

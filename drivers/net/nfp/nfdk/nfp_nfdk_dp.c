@@ -63,7 +63,7 @@ nfp_net_nfdk_tx_close_block(struct nfp_net_txq *txq,
 	txq->wr_p = D_IDX(txq, wr_p + nop_slots);
 }
 
-static int
+int
 nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt)
 {

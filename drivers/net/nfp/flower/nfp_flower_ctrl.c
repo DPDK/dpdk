@@ -12,6 +12,7 @@
 #include "../nfp_ctrl.h"
 #include "../nfp_rxtx.h"
 #include "../nfd3/nfp_nfd3.h"
+#include "../nfdk/nfp_nfdk.h"
 #include "nfp_flower.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_cmsg.h"
@@ -224,14 +225,149 @@ xmit_end:
 	return cnt;
 }
 
+static uint16_t
+nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_mbuf *mbuf)
+{
+	int nop_descs;
+	uint32_t type;
+	uint32_t dma_len;
+	uint32_t tmp_dlen;
+	uint64_t dma_addr;
+	uint32_t dlen_type;
+	uint32_t used_descs;
+	uint32_t free_descs;
+	struct rte_mbuf **lmbuf;
+	struct nfp_net_txq *txq;
+	uint32_t issued_descs = 0;
+	struct rte_eth_dev *ctrl_dev;
+	struct nfp_net_nfdk_tx_desc *ktxds;
+
+	ctrl_dev = app_fw_flower->ctrl_hw->eth_dev;
+
+	/* Flower ctrl vNIC only has a single tx queue */
+	txq = ctrl_dev->data->tx_queues[0];
+
+	if (unlikely(mbuf->nb_segs > 1)) {
+		PMD_TX_LOG(ERR, "Multisegment packet not supported");
+		return 0;
+	}
+
+	if (nfp_net_nfdk_free_tx_desc(txq) < NFDK_TX_DESC_PER_SIMPLE_PKT ||
+			nfp_net_nfdk_txq_full(txq))
+		nfp_net_tx_free_bufs(txq);
+
+	free_descs = nfp_net_nfdk_free_tx_desc(txq);
+	if (unlikely(free_descs < NFDK_TX_DESC_PER_SIMPLE_PKT)) {
+		PMD_TX_LOG(ERR, "ctrl dev no free descs");
+		return 0;
+	}
+
+	nop_descs = nfp_net_nfdk_tx_maybe_close_block(txq, mbuf);
+	if (nop_descs < 0)
+		return 0;
+
+	issued_descs += nop_descs;
+	ktxds = &txq->ktxds[txq->wr_p];
+
+	/*
+	 * Checksum and VLAN flags just in the first descriptor for a
+	 * multisegment packet, but TSO info needs to be in all of them.
+	 */
+	dma_len = mbuf->data_len;
+	if (dma_len <= NFDK_TX_MAX_DATA_PER_HEAD)
+		type = NFDK_DESC_TX_TYPE_SIMPLE;
+	else
+		type = NFDK_DESC_TX_TYPE_GATHER;
+
+	/* Implicitly truncates to chunk in below logic */
+	dma_len -= 1;
+
+	/*
+	 * We will do our best to pass as much data as we can in descriptor
+	 * and we need to make sure the first descriptor includes whole
+	 * head since there is limitation in firmware side. Sometimes the
+	 * value of 'dma_len & NFDK_DESC_TX_DMA_LEN_HEAD' will be less
+	 * than packet head len.
+	 */
+	if (dma_len > NFDK_DESC_TX_DMA_LEN_HEAD)
+		dma_len = NFDK_DESC_TX_DMA_LEN_HEAD;
+	dlen_type = dma_len | (NFDK_DESC_TX_TYPE_HEAD & (type << 12));
+	ktxds->dma_len_type = rte_cpu_to_le_16(dlen_type);
+	dma_addr = rte_mbuf_data_iova(mbuf);
+	ktxds->dma_addr_hi = rte_cpu_to_le_16(dma_addr >> 32);
+	ktxds->dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
+	ktxds++;
+
+	/*
+	 * Preserve the original dlen_type, this way below the EOP logic
+	 * can use dlen_type.
+	 */
+	tmp_dlen = dlen_type & NFDK_DESC_TX_DMA_LEN_HEAD;
+	dma_len -= tmp_dlen;
+	dma_addr += tmp_dlen + 1;
+
+	/*
+	 * The rest of the data (if any) will be in larger DMA descriptors
+	 * and is handled with the dma_len loop.
+	 */
+	lmbuf = &txq->txbufs[txq->wr_p].mbuf;
+	if (*lmbuf != NULL)
+		rte_pktmbuf_free_seg(*lmbuf);
+	*lmbuf = mbuf;
+	while (dma_len > 0) {
+		dma_len -= 1;
+		dlen_type = NFDK_DESC_TX_DMA_LEN & dma_len;
+
+		ktxds->dma_len_type = rte_cpu_to_le_16(dlen_type);
+		ktxds->dma_addr_hi = rte_cpu_to_le_16(dma_addr >> 32);
+		ktxds->dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
+		ktxds++;
+
+		dma_len -= dlen_type;
+		dma_addr += dlen_type + 1;
+	}
+
+	(ktxds - 1)->dma_len_type = rte_cpu_to_le_16(dlen_type | NFDK_DESC_TX_EOP);
+
+	ktxds->raw = rte_cpu_to_le_64(NFDK_DESC_TX_CHAIN_META);
+	ktxds++;
+
+	used_descs = ktxds - txq->ktxds - txq->wr_p;
+	if (RTE_ALIGN_FLOOR(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
+			RTE_ALIGN_FLOOR(txq->wr_p + used_descs - 1, NFDK_TX_DESC_BLOCK_CNT)) {
+		PMD_TX_LOG(INFO, "Used descs cross block boundary");
+		return 0;
+	}
+
+	txq->wr_p = D_IDX(txq, txq->wr_p + used_descs);
+	if (txq->wr_p % NFDK_TX_DESC_BLOCK_CNT)
+		txq->data_pending += mbuf->pkt_len;
+	else
+		txq->data_pending = 0;
+
+	issued_descs += used_descs;
+
+	/* Increment write pointers. Force memory write before we let HW know */
+	rte_wmb();
+	nfp_qcp_ptr_add(txq->qcp_q, NFP_QCP_WRITE_PTR, issued_descs);
+
+	return 1;
+}
+
 void
 nfp_flower_ctrl_vnic_xmit_register(struct nfp_app_fw_flower *app_fw_flower)
 {
+	struct nfp_net_hw *hw;
 	struct nfp_flower_nfd_func *nfd_func;
 
+	hw = app_fw_flower->pf_hw;
 	nfd_func = &app_fw_flower->nfd_func;
 
-	nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfd3_xmit;
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+		nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfd3_xmit;
+	else
+		nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfdk_xmit;
 }
 
 uint16_t
