@@ -67,7 +67,7 @@ struct sfc_repr_proxy_port {
 	uint32_t				remote_vnic_mcdi_client_handle;
 	struct sfc_repr_proxy_rxq		rxq[SFC_REPR_RXQ_MAX];
 	struct sfc_repr_proxy_txq		txq[SFC_REPR_TXQ_MAX];
-	struct sfc_mae_rule			*mae_rule;
+	struct rte_flow				*mae_rule;
 	bool					enabled;
 	bool					started;
 };

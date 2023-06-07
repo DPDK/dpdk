@@ -681,47 +681,25 @@ static int
 sfc_repr_proxy_mae_rule_insert(struct sfc_adapter *sa,
 			       struct sfc_repr_proxy_port *port)
 {
-	struct sfc_repr_proxy *rp = &sa->repr_proxy;
-	efx_mport_sel_t mport_alias_selector;
-	efx_mport_sel_t mport_vf_selector;
-	struct sfc_mae_rule *mae_rule;
-	int rc;
+	int rc = EINVAL;
 
 	sfc_log_init(sa, "entry");
 
-	rc = efx_mae_mport_by_id(&port->egress_mport,
-				 &mport_vf_selector);
-	if (rc != 0) {
-		sfc_err(sa, "failed to get VF mport for repr %u",
-			port->repr_id);
-		goto fail_get_vf;
-	}
-
-	rc = efx_mae_mport_by_id(&rp->mport_alias, &mport_alias_selector);
-	if (rc != 0) {
-		sfc_err(sa, "failed to get mport selector for repr %u",
-			port->repr_id);
-		goto fail_get_alias;
-	}
-
-	rc = sfc_mae_rule_add_mport_match_deliver(sa, &mport_vf_selector,
-						  &mport_alias_selector, -1,
-						  &mae_rule);
-	if (rc != 0) {
+	port->mae_rule = sfc_mae_repr_flow_create(sa,
+				    SFC_MAE_RULE_PRIO_LOWEST, port->rte_port_id,
+				    RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR,
+				    RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT);
+	if (port->mae_rule == NULL) {
 		sfc_err(sa, "failed to insert MAE rule for repr %u",
 			port->repr_id);
 		goto fail_rule_add;
 	}
-
-	port->mae_rule = mae_rule;
 
 	sfc_log_init(sa, "done");
 
 	return 0;
 
 fail_rule_add:
-fail_get_alias:
-fail_get_vf:
 	sfc_log_init(sa, "failed: %s", rte_strerror(rc));
 	return rc;
 }
@@ -730,9 +708,7 @@ static void
 sfc_repr_proxy_mae_rule_remove(struct sfc_adapter *sa,
 			       struct sfc_repr_proxy_port *port)
 {
-	struct sfc_mae_rule *mae_rule = port->mae_rule;
-
-	sfc_mae_rule_del(sa, mae_rule);
+	sfc_mae_repr_flow_destroy(sa, port->mae_rule);
 }
 
 static int
