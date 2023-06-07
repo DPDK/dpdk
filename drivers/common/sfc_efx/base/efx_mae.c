@@ -1834,6 +1834,9 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 	[EFX_MAE_ACTION_DECR_IP_TTL] = {
 		.emad_add = efx_mae_action_set_no_op
 	},
+	[EFX_MAE_ACTION_NAT] = {
+		.emad_add = efx_mae_action_set_no_op
+	},
 	[EFX_MAE_ACTION_VLAN_PUSH] = {
 		.emad_add = efx_mae_action_set_add_vlan_push
 	},
@@ -1860,6 +1863,7 @@ static const uint32_t efx_mae_action_ordered_map =
 	(1U << EFX_MAE_ACTION_SET_DST_MAC) |
 	(1U << EFX_MAE_ACTION_SET_SRC_MAC) |
 	(1U << EFX_MAE_ACTION_DECR_IP_TTL) |
+	(1U << EFX_MAE_ACTION_NAT) |
 	(1U << EFX_MAE_ACTION_VLAN_PUSH) |
 	/*
 	 * HW will conduct action COUNT after
@@ -2033,6 +2037,14 @@ efx_mae_action_set_populate_decr_ip_ttl(
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_nat(
+	__in				efx_mae_actions_t *spec)
+{
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_NAT, 0, NULL));
 }
 
 	__checkReturn			efx_rc_t
@@ -3088,6 +3100,11 @@ efx_mae_action_set_alloc(
 	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_DECR_IP_TTL)) != 0) {
 		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
 		    MAE_ACTION_SET_ALLOC_IN_DO_DECR_IP_TTL, 1);
+	}
+
+	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_NAT)) != 0) {
+		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
+		    MAE_ACTION_SET_ALLOC_IN_DO_NAT, 1);
 	}
 
 	if (spec->ema_n_vlan_tags_to_push > 0) {

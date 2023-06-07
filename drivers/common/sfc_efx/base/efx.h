@@ -4569,6 +4569,19 @@ extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_decr_ip_ttl(
 	__in				efx_mae_actions_t *spec);
 
+/*
+ * This only requests NAT action. The replacement IP address and
+ * L4 port number, as well as the edit direction (DST/SRC), come
+ * from the response to a hit in the conntrack assistance table.
+ *
+ * The action amends the outermost frame. In the case of prior
+ * decapsulation, that maps to the (originally) inner frame.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_nat(
+	__in				efx_mae_actions_t *spec);
+
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_vlan_push(
