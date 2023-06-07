@@ -154,8 +154,8 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	return avail;
 }
 
-uint16_t
-nfp_flower_ctrl_vnic_xmit(struct nfp_app_fw_flower *app_fw_flower,
+static uint16_t
+nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf *mbuf)
 {
 	uint16_t cnt = 0;
@@ -222,6 +222,23 @@ xmit_end:
 	nfp_qcp_ptr_add(txq->qcp_q, NFP_QCP_WRITE_PTR, 1);
 
 	return cnt;
+}
+
+void
+nfp_flower_ctrl_vnic_xmit_register(struct nfp_app_fw_flower *app_fw_flower)
+{
+	struct nfp_flower_nfd_func *nfd_func;
+
+	nfd_func = &app_fw_flower->nfd_func;
+
+	nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfd3_xmit;
+}
+
+uint16_t
+nfp_flower_ctrl_vnic_xmit(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_mbuf *mbuf)
+{
+	return app_fw_flower->nfd_func.ctrl_vnic_xmit_t(app_fw_flower, mbuf);
 }
 
 static void

@@ -1086,6 +1086,7 @@ static void
 nfp_flower_nfd_func_register(struct nfp_app_fw_flower *app_fw_flower)
 {
 	nfp_flower_pkt_add_metadata_register(app_fw_flower);
+	nfp_flower_ctrl_vnic_xmit_register(app_fw_flower);
 }
 
 int

@@ -41,6 +41,9 @@ struct nfp_flower_nfd_func {
 	/** Function used to add metadata into pkt. */
 	uint32_t (*pkt_add_metadata_t)(struct rte_mbuf *mbuf,
 		uint32_t port_id);
+	/** Function used to xmit pkt through ctrl vnic. */
+	uint16_t (*ctrl_vnic_xmit_t)(struct nfp_app_fw_flower *app_fw_flower,
+			struct rte_mbuf *mbuf);
 };
 
 /* The flower application's private structure */
