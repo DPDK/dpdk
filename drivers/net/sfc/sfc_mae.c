@@ -1063,6 +1063,18 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 			return rc;
 		}
 
+		if (action_set->n_counters > 0) {
+			rc = sfc_mae_counter_start(sa);
+			if (rc != 0) {
+				sfc_err(sa, "failed to start MAE counters support: %s",
+					rte_strerror(rc));
+				sfc_mae_encap_header_disable(sa, encap_header);
+				sfc_mae_mac_addr_disable(sa, src_mac_addr);
+				sfc_mae_mac_addr_disable(sa, dst_mac_addr);
+				return rc;
+			}
+		}
+
 		rc = sfc_mae_counters_enable(sa, counters,
 					     action_set->n_counters,
 					     action_set->spec);
@@ -4143,15 +4155,6 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_action_set_enable;
 
-	if (action_set->n_counters > 0) {
-		rc = sfc_mae_counter_start(sa);
-		if (rc != 0) {
-			sfc_err(sa, "failed to start MAE counters support: %s",
-				rte_strerror(rc));
-			goto fail_mae_counter_start;
-		}
-	}
-
 	fw_rsrc = &action_set->fw_rsrc;
 
 	rc = efx_mae_action_rule_insert(sa->nic, spec_mae->match_spec,
@@ -4166,7 +4169,6 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 	return 0;
 
 fail_action_rule_insert:
-fail_mae_counter_start:
 	sfc_mae_action_set_disable(sa, action_set);
 
 fail_action_set_enable:
