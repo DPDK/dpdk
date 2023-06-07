@@ -365,8 +365,6 @@ enum nfp_flower_cmsg_port_vnic_type {
 
 #define NFP_FLOWER_CMSG_HLEN            sizeof(struct nfp_flower_cmsg_hdr)
 #define NFP_FLOWER_CMSG_VER1            1
-#define NFP_NET_META_PORTID             5
-#define NFP_META_PORT_ID_CTRL           ~0U
 
 #define NFP_FLOWER_CMSG_PORT_TYPE(x)            (((x) >> 28) & 0xf)  /* [31,28] */
 #define NFP_FLOWER_CMSG_PORT_SYS_ID(x)          (((x) >> 24) & 0xf)  /* [24,27] */

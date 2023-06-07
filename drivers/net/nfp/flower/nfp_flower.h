@@ -105,8 +105,9 @@ nfp_flower_support_decap_v2(const struct nfp_app_fw_flower *app_fw_flower)
 
 int nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev);
 int nfp_secondary_init_app_fw_flower(struct nfp_cpp *cpp);
-uint16_t nfp_flower_pf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts);
+bool nfp_flower_pf_dispatch_pkts(struct nfp_net_hw *hw,
+		struct rte_mbuf *mbuf,
+		uint32_t port_id);
 uint16_t nfp_flower_pf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 int nfp_flower_pf_start(struct rte_eth_dev *dev);

@@ -44,6 +44,7 @@ struct nfp_net_meta_raw {
  * Parsed NFP packet metadata are recorded in this struct. The content is
  * read-only after it have been recorded during parsing by nfp_net_parse_meta().
  *
+ * @port_id: Port id value
  * @hash: RSS hash value
  * @hash_type: RSS hash type
  * @vlan_layer: The layers of VLAN info which are passed from nic.
@@ -62,6 +63,7 @@ struct nfp_net_meta_raw {
  * @vlan.tci: Vlan TCI including PCP + Priority + VID
  */
 struct nfp_meta_parsed {
+	uint32_t port_id;
 	uint32_t hash;
 	uint8_t hash_type;
 	uint8_t vlan_layer;

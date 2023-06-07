@@ -16,6 +16,7 @@
 #include "nfdk/nfp_nfdk.h"
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
+#include "flower/nfp_flower.h"
 
 static int
 nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
@@ -124,6 +125,9 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
 
 	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, meta_offset += 4) {
 		switch (meta_info & NFP_NET_META_FIELD_MASK) {
+		case NFP_NET_META_PORTID:
+			meta->port_id = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
+			break;
 		case NFP_NET_META_HASH:
 			/* Next field type is about the hash type */
 			meta_info >>= NFP_NET_META_FIELD_SIZE;
@@ -270,11 +274,11 @@ static void
 nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 		struct nfp_net_rxq *rxq,
 		struct nfp_net_hw *hw,
-		struct rte_mbuf *mb)
+		struct rte_mbuf *mb,
+		struct nfp_meta_parsed *meta)
 {
 	uint8_t *meta_base;
 	rte_be32_t meta_header;
-	struct nfp_meta_parsed meta = {};
 
 	if (unlikely(NFP_DESC_META_LEN(rxds) == 0))
 		return;
@@ -285,18 +289,18 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 
 	switch (hw->meta_format) {
 	case NFP_NET_METAFORMAT_CHAINED:
-		if (nfp_net_parse_chained_meta(meta_base, meta_header, &meta)) {
-			nfp_net_parse_meta_hash(&meta, rxq, mb);
-			nfp_net_parse_meta_vlan(&meta, rxds, rxq, mb);
-			nfp_net_parse_meta_qinq(&meta, rxq, mb);
+		if (nfp_net_parse_chained_meta(meta_base, meta_header, meta)) {
+			nfp_net_parse_meta_hash(meta, rxq, mb);
+			nfp_net_parse_meta_vlan(meta, rxds, rxq, mb);
+			nfp_net_parse_meta_qinq(meta, rxq, mb);
 		} else {
 			PMD_RX_LOG(DEBUG, "RX chained metadata format is wrong!");
 		}
 		break;
 	case NFP_NET_METAFORMAT_SINGLE:
 		if ((rxds->rxd.flags & PCIE_DESC_RX_RSS) != 0) {
-			nfp_net_parse_single_meta(meta_base, meta_header, &meta);
-			nfp_net_parse_meta_hash(&meta, rxq, mb);
+			nfp_net_parse_single_meta(meta_base, meta_header, meta);
+			nfp_net_parse_meta_hash(meta, rxq, mb);
 		}
 		break;
 	default:
@@ -493,6 +497,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t nb_hold;
 	uint64_t dma_addr;
 	uint16_t avail;
+	uint16_t avail_multiplexed = 0;
 
 	rxq = rx_queue;
 	if (unlikely(rxq == NULL)) {
@@ -508,7 +513,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	avail = 0;
 	nb_hold = 0;
-	while (avail < nb_pkts) {
+	while (avail + avail_multiplexed < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
 			PMD_RX_LOG(ERR, "rxb does not exist!");
@@ -585,15 +590,22 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		mb->next = NULL;
 		mb->port = rxq->port_id;
 
-		nfp_net_parse_meta(rxds, rxq, hw, mb);
+		struct nfp_meta_parsed meta = {};
+		nfp_net_parse_meta(rxds, rxq, hw, mb, &meta);
 
 		nfp_net_parse_ptype(rxds, hw, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);
 
-		/* Adding the mbuf to the mbuf array passed by the app */
-		rx_pkts[avail++] = mb;
+		if (meta.port_id == 0) {
+			rx_pkts[avail++] = mb;
+		} else if (nfp_flower_pf_dispatch_pkts(hw, mb, meta.port_id)) {
+			avail_multiplexed++;
+		} else {
+			rte_pktmbuf_free(mb);
+			break;
+		}
 
 		/* Now resetting and updating the descriptor */
 		rxds->vals[0] = 0;

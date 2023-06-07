@@ -34,6 +34,9 @@
 /* Prepend field types */
 #define NFP_NET_META_HASH               1 /* next field carries hash type */
 #define NFP_NET_META_VLAN               4
+#define NFP_NET_META_PORTID             5
+
+#define NFP_META_PORT_ID_CTRL           ~0U
 
 /* Hash type pre-pended when a RSS hash was computed */
 #define NFP_NET_RSS_NONE                0
