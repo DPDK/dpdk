@@ -100,6 +100,7 @@ TAILQ_HEAD(sfc_mae_action_sets, sfc_mae_action_set);
 /** Action rule registry entry */
 struct sfc_mae_action_rule {
 	TAILQ_ENTRY(sfc_mae_action_rule)	entries;
+	uint32_t				ct_mark;
 	struct sfc_mae_outer_rule		*outer_rule;
 	struct sfc_mae_action_set		*action_set;
 	efx_mae_match_spec_t			*match_spec;

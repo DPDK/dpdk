@@ -18,6 +18,7 @@
 #include "efx.h"
 
 #include "sfc_flow_rss.h"
+#include "sfc_mae_ct.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,6 +83,9 @@ struct sfc_flow_spec_mae {
 	struct sfc_mae_outer_rule	*outer_rule;
 	/* Action rule registry entry */
 	struct sfc_mae_action_rule	*action_rule;
+	/* Conntrack (CT) assistance table entry key and response */
+	sfc_mae_conntrack_response_t	ct_resp;
+	sfc_mae_conntrack_key_t		ct_key;
 };
 
 /* Flow specification */

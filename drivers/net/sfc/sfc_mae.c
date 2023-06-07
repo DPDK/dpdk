@@ -18,6 +18,7 @@
 #include "sfc.h"
 #include "sfc_flow_tunnel.h"
 #include "sfc_mae_counter.h"
+#include "sfc_mae_ct.h"
 #include "sfc_log.h"
 #include "sfc_switch.h"
 #include "sfc_service.h"
@@ -1179,17 +1180,22 @@ struct sfc_mae_action_rule_ctx {
 	struct sfc_mae_outer_rule	*outer_rule;
 	struct sfc_mae_action_set	*action_set;
 	efx_mae_match_spec_t		*match_spec;
+	uint32_t			ct_mark;
 };
 
 static int
 sfc_mae_action_rule_attach(struct sfc_adapter *sa,
-			   const struct sfc_mae_action_rule_ctx *ctx,
+			   struct sfc_mae_action_rule_ctx *ctx,
 			   struct sfc_mae_action_rule **rulep,
-			   __rte_unused struct rte_flow_error *error)
+			   struct rte_flow_error *error)
 {
+	uint32_t new_ct_mark = ctx->ct_mark;
 	struct sfc_mae_action_rule *rule;
+	int rc;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	SFC_ASSERT(ctx->ct_mark <= 1);
 
 	/*
 	 * It is assumed that the caller of this helper has already properly
@@ -1198,9 +1204,23 @@ sfc_mae_action_rule_attach(struct sfc_adapter *sa,
 	 * on 0xffffffff / 0xffffffff, so that specs compare correctly.
 	 */
 	TAILQ_FOREACH(rule, &sa->mae.action_rules, entries) {
+		if (rule->ct_mark == new_ct_mark)
+			++new_ct_mark;
+
 		if (rule->outer_rule != ctx->outer_rule ||
-		    rule->action_set != ctx->action_set)
+		    rule->action_set != ctx->action_set ||
+		    !!rule->ct_mark != !!ctx->ct_mark)
 			continue;
+
+		if (ctx->ct_mark != 0) {
+			rc = efx_mae_match_spec_ct_mark_set(ctx->match_spec,
+							    rule->ct_mark);
+			if (rc != 0) {
+				return rte_flow_error_set(error, EFAULT,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "AR: failed to set CT mark for comparison");
+			}
+		}
 
 		if (efx_mae_match_specs_equal(rule->match_spec,
 					      ctx->match_spec)) {
@@ -1209,6 +1229,24 @@ sfc_mae_action_rule_attach(struct sfc_adapter *sa,
 			*rulep = rule;
 			return 0;
 		}
+	}
+
+	if (ctx->ct_mark != 0) {
+		if (new_ct_mark == UINT32_MAX) {
+			return rte_flow_error_set(error, ERANGE,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "AR: failed to allocate CT mark");
+		}
+
+		rc = efx_mae_match_spec_ct_mark_set(ctx->match_spec,
+						    new_ct_mark);
+		if (rc != 0) {
+			return rte_flow_error_set(error, EFAULT,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "AR: failed to set CT mark");
+		}
+
+		ctx->ct_mark = new_ct_mark;
 	}
 
 	/*
@@ -1233,6 +1271,17 @@ sfc_mae_action_rule_add(struct sfc_adapter *sa,
 		return ENOMEM;
 
 	rule->refcnt = 1;
+
+	/*
+	 * It is assumed that the caller invoked sfc_mae_action_rule_attach()
+	 * and got (-ENOENT) before getting here. That ensures a unique CT
+	 * mark value or, if no CT is involved at all, simply zero.
+	 *
+	 * It is also assumed that match on the mark (if non-zero)
+	 * is already set in the action rule match specification.
+	 */
+	rule->ct_mark = ctx->ct_mark;
+
 	rule->outer_rule = ctx->outer_rule;
 	rule->action_set = ctx->action_set;
 	rule->match_spec = ctx->match_spec;
@@ -1804,6 +1853,8 @@ struct sfc_mae_field_locator {
 	size_t				size;
 	/* Field offset in the corresponding rte_flow_item_ struct */
 	size_t				ofst;
+
+	uint8_t				ct_key_field;
 };
 
 static void
@@ -2656,6 +2707,216 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 	},
 };
 
+#define SFC_MAE_CT_KEY_ET 0x01 /* EtherType */
+#define SFC_MAE_CT_KEY_DA 0x02 /* IPv4/IPv6 destination address */
+#define SFC_MAE_CT_KEY_SA 0x04 /* IPv4/IPv6 source address */
+#define SFC_MAE_CT_KEY_L4 0x08 /* IPv4/IPv6 L4 protocol ID */
+#define SFC_MAE_CT_KEY_DP 0x10 /* L4 destination port */
+#define SFC_MAE_CT_KEY_SP 0x20 /* L4 source port */
+
+#define SFC_MAE_CT_KEY_FIELD_SIZE_MAX	sizeof(sfc_mae_conntrack_key_t)
+
+static const struct sfc_mae_field_locator flocs_ct[] = {
+	{
+		EFX_MAE_FIELD_ETHER_TYPE_BE,
+		RTE_SIZEOF_FIELD(sfc_mae_conntrack_key_t, ether_type_le),
+		offsetof(sfc_mae_conntrack_key_t, ether_type_le),
+		SFC_MAE_CT_KEY_ET,
+	},
+	{
+		EFX_MAE_FIELD_DST_IP4_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.dst_addr),
+		offsetof(sfc_mae_conntrack_key_t, dst_addr_le) +
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.dst_addr) -
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.dst_addr),
+		SFC_MAE_CT_KEY_DA,
+	},
+	{
+		EFX_MAE_FIELD_SRC_IP4_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.src_addr),
+		offsetof(sfc_mae_conntrack_key_t, src_addr_le) +
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.src_addr) -
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.src_addr),
+		SFC_MAE_CT_KEY_SA,
+	},
+	{
+		EFX_MAE_FIELD_DST_IP6_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.dst_addr),
+		offsetof(sfc_mae_conntrack_key_t, dst_addr_le),
+		SFC_MAE_CT_KEY_DA,
+	},
+	{
+		EFX_MAE_FIELD_SRC_IP6_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.src_addr),
+		offsetof(sfc_mae_conntrack_key_t, src_addr_le),
+		SFC_MAE_CT_KEY_SA,
+	},
+	{
+		EFX_MAE_FIELD_IP_PROTO,
+		RTE_SIZEOF_FIELD(sfc_mae_conntrack_key_t, ip_proto),
+		offsetof(sfc_mae_conntrack_key_t, ip_proto),
+		SFC_MAE_CT_KEY_L4,
+	},
+	{
+		EFX_MAE_FIELD_L4_DPORT_BE,
+		RTE_SIZEOF_FIELD(sfc_mae_conntrack_key_t, dst_port_le),
+		offsetof(sfc_mae_conntrack_key_t, dst_port_le),
+		SFC_MAE_CT_KEY_DP,
+	},
+	{
+		EFX_MAE_FIELD_L4_SPORT_BE,
+		RTE_SIZEOF_FIELD(sfc_mae_conntrack_key_t, src_port_le),
+		offsetof(sfc_mae_conntrack_key_t, src_port_le),
+		SFC_MAE_CT_KEY_SP,
+	},
+};
+
+static int
+sfc_mae_rule_process_ct(struct sfc_adapter *sa, struct sfc_mae_parse_ctx *pctx,
+			struct sfc_mae_action_rule_ctx *action_rule_ctx,
+			struct sfc_flow_spec_mae *spec,
+			struct rte_flow_error *error)
+{
+	efx_mae_match_spec_t *match_spec_tmp;
+	uint8_t ct_key_missing_fields =
+		SFC_MAE_CT_KEY_ET | SFC_MAE_CT_KEY_DA | SFC_MAE_CT_KEY_SA |
+		SFC_MAE_CT_KEY_L4 | SFC_MAE_CT_KEY_DP | SFC_MAE_CT_KEY_SP;
+	unsigned int i;
+	int rc;
+
+	if (pctx->ft_rule_type == SFC_FT_RULE_TUNNEL) {
+		/*
+		 * TUNNEL rules have no network match fields that belong
+		 * in an action rule match specification, so nothing can
+		 * be possibly utilised for conntrack assistance offload.
+		 */
+		return 0;
+	}
+
+	if (!sfc_mae_conntrack_is_supported(sa))
+		return 0;
+
+	rc = efx_mae_match_spec_clone(sa->nic, pctx->match_spec_action,
+				      &match_spec_tmp);
+	if (rc != 0) {
+		return rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"AR: failed to clone the match specification");
+	}
+
+	for (i = 0; i < RTE_DIM(flocs_ct); ++i) {
+		const struct sfc_mae_field_locator *fl = &flocs_ct[i];
+		uint8_t mask_full[SFC_MAE_CT_KEY_FIELD_SIZE_MAX];
+		uint8_t mask_zero[SFC_MAE_CT_KEY_FIELD_SIZE_MAX];
+		uint8_t value[SFC_MAE_CT_KEY_FIELD_SIZE_MAX];
+		uint8_t mask[SFC_MAE_CT_KEY_FIELD_SIZE_MAX];
+		uint8_t *ct_key = (uint8_t *)&spec->ct_key;
+		efx_mae_field_id_t fid = fl->field_id;
+		unsigned int j;
+
+		rc = efx_mae_match_spec_field_get(match_spec_tmp, fid,
+						  fl->size, value,
+						  fl->size, mask);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"AR: failed to extract match field");
+		}
+
+		memset(mask_full, 0xff, fl->size);
+
+		if (memcmp(mask, mask_full, fl->size) != 0)
+			continue;
+
+		memset(mask_zero, 0, fl->size);
+
+		rc = efx_mae_match_spec_field_set(match_spec_tmp, fid,
+						  fl->size, mask_zero,
+						  fl->size, mask_zero);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"AR: failed to erase match field");
+		}
+
+		for (j = 0; j < fl->size; ++j) {
+			uint8_t *byte_dst = ct_key + fl->ofst + fl->size - 1 - j;
+			const uint8_t *byte_src = value + j;
+
+			*byte_dst = *byte_src;
+		}
+
+		ct_key_missing_fields &= ~(fl->ct_key_field);
+	}
+
+	if (ct_key_missing_fields != 0) {
+		efx_mae_match_spec_fini(sa->nic, match_spec_tmp);
+		return 0;
+	}
+
+	efx_mae_match_spec_fini(sa->nic, pctx->match_spec_action);
+	pctx->match_spec_action = match_spec_tmp;
+
+	if (pctx->ft_rule_type == SFC_FT_RULE_SWITCH) {
+		/*
+		 * A SWITCH rule re-uses the corresponding TUNNEL rule's
+		 * outer rule, where conntrack request should have been
+		 * configured already, so skip outer rule processing.
+		 */
+		goto skip_outer_rule;
+	}
+
+	if (pctx->match_spec_outer == NULL) {
+		const struct sfc_mae_pattern_data *pdata = &pctx->pattern_data;
+		const struct sfc_mae_ethertype *et;
+		struct sfc_mae *mae = &sa->mae;
+
+		rc = efx_mae_match_spec_init(sa->nic,
+					     EFX_MAE_RULE_OUTER,
+					     mae->nb_outer_rule_prios_max - 1,
+					     &pctx->match_spec_outer);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"OR: failed to initialise the match specification");
+		}
+
+		/* Match on EtherType appears to be compulsory in outer rules */
+
+		et = &pdata->ethertypes[pdata->nb_vlan_tags];
+
+		rc = efx_mae_match_spec_field_set(pctx->match_spec_outer,
+				EFX_MAE_FIELD_ENC_ETHER_TYPE_BE,
+				sizeof(et->value), (const uint8_t *)&et->value,
+				sizeof(et->mask), (const uint8_t *)&et->mask);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"OR: failed to set match on EtherType");
+		}
+	}
+
+	rc = efx_mae_outer_rule_do_ct_set(pctx->match_spec_outer);
+	if (rc != 0) {
+		return rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"OR: failed to request CT lookup");
+	}
+
+skip_outer_rule:
+	/* Initial/dummy CT mark value */
+	action_rule_ctx->ct_mark = 1;
+
+	return 0;
+}
+
+#undef SFC_MAE_CT_KEY_ET
+#undef SFC_MAE_CT_KEY_DA
+#undef SFC_MAE_CT_KEY_SA
+#undef SFC_MAE_CT_KEY_L4
+#undef SFC_MAE_CT_KEY_DP
+#undef SFC_MAE_CT_KEY_SP
+
 static int
 sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 			   struct sfc_mae_parse_ctx *ctx,
@@ -2679,12 +2940,10 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 		return 0;
 	}
 
-	if (ctx->encap_type == EFX_TUNNEL_PROTOCOL_NONE) {
+	if (ctx->match_spec_outer == NULL) {
 		*rulep = NULL;
 		goto no_or_id;
 	}
-
-	SFC_ASSERT(ctx->match_spec_outer != NULL);
 
 	if (!efx_mae_match_spec_is_valid(sa->nic, ctx->match_spec_outer)) {
 		return rte_flow_error_set(error, ENOTSUP,
@@ -2812,6 +3071,7 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 {
 	const struct rte_flow_item *pattern = ctx->pattern;
 	struct sfc_mae *mae = &sa->mae;
+	bool request_ct = false;
 	uint8_t recirc_id = 0;
 	int rc;
 
@@ -2907,6 +3167,14 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 	switch (ctx->ft_rule_type) {
 	case SFC_FT_RULE_TUNNEL:
 		recirc_id = SFC_FT_CTX_ID_TO_CTX_MARK(ctx->ft_ctx->id);
+
+		if (sfc_mae_conntrack_is_supported(sa)) {
+			/*
+			 * Request lookup in conntrack table since SWITCH rules
+			 * are eligible to utilise this type of assistance.
+			 */
+			request_ct = true;
+		}
 		/* FALLTHROUGH */
 	case SFC_FT_RULE_NONE:
 		if (ctx->priority >= mae->nb_outer_rule_prios_max) {
@@ -2940,6 +3208,16 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					"OR: failed to initialise RECIRC_ID");
 		}
+
+		if (!request_ct)
+			break;
+
+		rc = efx_mae_outer_rule_do_ct_set(ctx->match_spec_outer);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"OR: failed to request CT lookup");
+		}
 		break;
 	case SFC_FT_RULE_SWITCH:
 		/* Outermost items -> "ENC" match fields in the action rule. */
@@ -2961,9 +3239,6 @@ static void
 sfc_mae_rule_encap_parse_fini(struct sfc_adapter *sa,
 			      struct sfc_mae_parse_ctx *ctx)
 {
-	if (ctx->encap_type == EFX_TUNNEL_PROTOCOL_NONE)
-		return;
-
 	if (ctx->match_spec_outer != NULL)
 		efx_mae_match_spec_fini(sa->nic, ctx->match_spec_outer);
 }
@@ -3067,6 +3342,11 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_process_pattern_data;
 
+	rc = sfc_mae_rule_process_ct(sa, &ctx_mae, action_rule_ctx,
+				     spec, error);
+	if (rc != 0)
+		goto fail_process_ct;
+
 	rc = sfc_mae_rule_process_outer(sa, &ctx_mae, outer_rulep, error);
 	if (rc != 0)
 		goto fail_process_outer;
@@ -3085,6 +3365,7 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 
 fail_validate_match_spec_action:
 fail_process_outer:
+fail_process_ct:
 fail_process_pattern_data:
 fail_parse_pattern:
 	sfc_mae_rule_encap_parse_fini(sa, &ctx_mae);
@@ -4382,6 +4663,18 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 	if (rc != 0)
 		return rc;
 
+	if (spec_mae->action_rule->ct_mark != 0) {
+		spec_mae->ct_resp.ct_mark = spec_mae->action_rule->ct_mark;
+		spec_mae->ct_resp.counter_id = EFX_MAE_RSRC_ID_INVALID;
+
+		rc = sfc_mae_conntrack_insert(sa, &spec_mae->ct_key,
+					      &spec_mae->ct_resp);
+		if (rc != 0) {
+			sfc_mae_action_rule_disable(sa, action_rule);
+			return rc;
+		}
+	}
+
 	return 0;
 }
 
@@ -4395,6 +4688,9 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 
 	if (action_rule == NULL)
 		return 0;
+
+	if (action_rule->ct_mark != 0)
+		(void)sfc_mae_conntrack_delete(sa, &spec_mae->ct_key);
 
 	sfc_mae_action_rule_disable(sa, action_rule);
 
