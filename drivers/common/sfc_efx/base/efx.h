@@ -1672,6 +1672,8 @@ typedef struct efx_nic_cfg_s {
 	boolean_t		enc_mae_admin;
 	/* NIC support for MAE action set v2 features. */
 	boolean_t		enc_mae_aset_v2_supported;
+	/* NIC support for MCDI Table Access API. */
+	boolean_t		enc_table_api_supported;
 	/* Firmware support for "FLAG" and "MARK" filter actions */
 	boolean_t		enc_filter_action_flag_supported;
 	boolean_t		enc_filter_action_mark_supported;
