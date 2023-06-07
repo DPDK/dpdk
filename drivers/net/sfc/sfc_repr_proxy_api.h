@@ -46,6 +46,9 @@ int sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id);
 int sfc_repr_proxy_repr_entity_mac_addr_set(uint16_t pf_port_id,
 		uint16_t repr_id, const struct rte_ether_addr *mac_addr);
 
+void sfc_repr_proxy_mport_alias_get(uint16_t pf_port_id,
+				    efx_mport_id_t *mport_alias);
+
 #ifdef __cplusplus
 }
 #endif

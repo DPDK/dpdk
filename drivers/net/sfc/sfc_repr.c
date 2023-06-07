@@ -933,15 +933,26 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
 	struct sfc_mae_switch_port_request switch_port_request;
 	efx_mport_sel_t ethdev_mport_sel;
+	efx_mport_id_t proxy_mport_id;
 	struct sfc_repr *sr;
 	int ret;
 
 	/*
-	 * Currently there is no mport we can use for representor's
-	 * ethdev. Use an invalid one for now. This way representors
-	 * can be instantiated.
+	 * For each representor, a driver-internal flow has to be installed
+	 * in order to direct traffic coming from the represented entity to
+	 * the "representor proxy". Such internal flows need to find ethdev
+	 * mport by ethdev ID of the representors in question to specify in
+	 * delivery action. So set the representor ethdev's mport to that
+	 * of the "representor proxy" in below switch port request.
 	 */
-	efx_mae_mport_invalid(&ethdev_mport_sel);
+	sfc_repr_proxy_mport_alias_get(repr_data->pf_port_id, &proxy_mport_id);
+
+	ret = efx_mae_mport_by_id(&proxy_mport_id, &ethdev_mport_sel);
+	if (ret != 0) {
+		SFC_GENERIC_LOG(ERR,
+			"%s() failed to get repr proxy mport by ID", __func__);
+		goto fail_get_selector;
+	}
 
 	memset(&switch_port_request, 0, sizeof(switch_port_request));
 	switch_port_request.type = SFC_MAE_SWITCH_PORT_REPRESENTOR;
@@ -1033,6 +1044,7 @@ fail_alloc_sr:
 
 fail_create_port:
 fail_mae_assign_switch_port:
+fail_get_selector:
 	SFC_GENERIC_LOG(ERR, "%s() failed: %s", __func__, rte_strerror(-ret));
 	return ret;
 }

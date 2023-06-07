@@ -102,8 +102,18 @@ int sfc_mae_assign_switch_port(uint16_t switch_domain_id,
 int sfc_mae_clear_switch_port(uint16_t switch_domain_id,
 			      uint16_t switch_port_id);
 
+/*
+ * For user flows, allowed_mae_switch_port_types can only contain bit
+ * SFC_MAE_SWITCH_PORT_INDEPENDENT, meaning that only those ethdevs
+ * that have their own MAE m-ports can be accessed by a port-based
+ * action. For driver-internal flows, this mask can also contain
+ * bit SFC_MAE_SWITCH_PORT_REPRESENTOR to allow VF traffic to be
+ * sent to the common MAE m-port of all such REPRESENTOR ports
+ * via a port-based action, for default switch interconnection.
+ */
 int sfc_mae_switch_get_ethdev_mport(uint16_t switch_domain_id,
 				    uint16_t ethdev_port_id,
+				    unsigned int allowed_mae_switch_port_types,
 				    efx_mport_sel_t *mport_sel);
 
 int sfc_mae_switch_get_entity_mport(uint16_t switch_domain_id,

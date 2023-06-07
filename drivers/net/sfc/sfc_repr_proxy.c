@@ -1708,3 +1708,18 @@ sfc_repr_proxy_repr_entity_mac_addr_set(uint16_t pf_port_id, uint16_t repr_id,
 
 	return rc;
 }
+
+void
+sfc_repr_proxy_mport_alias_get(uint16_t pf_port_id, efx_mport_id_t *mport_alias)
+{
+	const struct sfc_repr_proxy *rp;
+	struct sfc_adapter *sa;
+
+	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	sfc_adapter_lock(sa);
+	rp = sfc_repr_proxy_by_adapter(sa);
+
+	memcpy(mport_alias, &rp->mport_alias, sizeof(*mport_alias));
+
+	sfc_adapter_unlock(sa);
+}

@@ -1527,6 +1527,7 @@ sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 	const struct rte_flow_item_port_id *spec = NULL;
 	const struct rte_flow_item_port_id *mask = NULL;
 	efx_mport_sel_t mport_sel;
+	unsigned int type_mask;
 	int rc;
 
 	if (ctx_mae->match_mport_set) {
@@ -1558,8 +1559,10 @@ sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 					  "The port ID is too large");
 	}
 
+	type_mask = 1U << SFC_MAE_SWITCH_PORT_INDEPENDENT;
+
 	rc = sfc_mae_switch_get_ethdev_mport(ctx_mae->sa->mae.switch_domain_id,
-					     spec->id, &mport_sel);
+					     spec->id, type_mask, &mport_sel);
 	if (rc != 0) {
 		return rte_flow_error_set(error, rc,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1592,6 +1595,7 @@ sfc_mae_rule_parse_item_ethdev_based(const struct rte_flow_item *item,
 	const struct rte_flow_item_ethdev *spec = NULL;
 	const struct rte_flow_item_ethdev *mask = NULL;
 	efx_mport_sel_t mport_sel;
+	unsigned int type_mask;
 	int rc;
 
 	if (ctx_mae->match_mport_set) {
@@ -1619,9 +1623,11 @@ sfc_mae_rule_parse_item_ethdev_based(const struct rte_flow_item *item,
 
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
+		type_mask = 1U << SFC_MAE_SWITCH_PORT_INDEPENDENT;
+
 		rc = sfc_mae_switch_get_ethdev_mport(
 				ctx_mae->sa->mae.switch_domain_id,
-				spec->port_id, &mport_sel);
+				spec->port_id, type_mask, &mport_sel);
 		if (rc != 0) {
 			return rte_flow_error_set(error, rc,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -3531,6 +3537,7 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 {
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_mae *mae = &sa->mae;
+	unsigned int type_mask;
 	efx_mport_sel_t mport;
 	uint16_t port_id;
 	int rc;
@@ -3540,8 +3547,10 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 
 	port_id = (conf->original != 0) ? sas->port_id : conf->id;
 
+	type_mask = 1U << SFC_MAE_SWITCH_PORT_INDEPENDENT;
+
 	rc = sfc_mae_switch_get_ethdev_mport(mae->switch_domain_id,
-					     port_id, &mport);
+					     port_id, type_mask, &mport);
 	if (rc != 0) {
 		sfc_err(sa, "failed to get m-port for the given ethdev (port_id=%u): %s",
 			port_id, strerror(rc));
@@ -3560,14 +3569,14 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 static int
 sfc_mae_rule_parse_action_port_representor(struct sfc_adapter *sa,
 		const struct rte_flow_action_ethdev *conf,
-		efx_mae_actions_t *spec)
+		unsigned int type_mask, efx_mae_actions_t *spec)
 {
 	struct sfc_mae *mae = &sa->mae;
 	efx_mport_sel_t mport;
 	int rc;
 
 	rc = sfc_mae_switch_get_ethdev_mport(mae->switch_domain_id,
-					     conf->port_id, &mport);
+					     conf->port_id, type_mask, &mport);
 	if (rc != 0) {
 		sfc_err(sa, "failed to get m-port for the given ethdev (port_id=%u): %s",
 			conf->port_id, strerror(rc));
@@ -3643,6 +3652,7 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	const struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
 	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
 	efx_mae_actions_t *spec = ctx->spec;
+	unsigned int switch_port_type_mask;
 	bool custom_error = B_FALSE;
 	int rc = 0;
 
@@ -3759,8 +3769,11 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR,
 				       bundle->actions_mask);
+
+		switch_port_type_mask = 1U << SFC_MAE_SWITCH_PORT_INDEPENDENT;
+
 		rc = sfc_mae_rule_parse_action_port_representor(sa,
-				action->conf, spec);
+				action->conf, switch_port_type_mask, spec);
 		break;
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
