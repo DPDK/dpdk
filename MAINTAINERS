@@ -564,6 +564,11 @@ F: doc/guides/mempool/cnxk.rst
 Bus Drivers
 -----------
 
+AMD CDX bus
+M: Nipun Gupta <nipun.gupta@amd.com>
+M: Nikhil Agarwal <nikhil.agarwal@amd.com>
+F: drivers/bus/cdx/
+
 Auxiliary bus driver - EXPERIMENTAL
 M: Parav Pandit <parav@nvidia.com>
 M: Xueming Li <xuemingl@nvidia.com>

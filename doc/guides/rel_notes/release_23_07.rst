@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added AMD CDX bus support.**
+
+  CDX bus driver has been added to support AMD CDX bus,
+  which operates on FPGA based CDX devices.
+  The CDX devices are memory mapped on system bus for embedded CPUs.
+
 
 Removed Items
 -------------

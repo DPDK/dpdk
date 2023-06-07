@@ -3,6 +3,7 @@
 
 drivers = [
         'auxiliary',
+        'cdx',
         'dpaa',
         'fslmc',
         'ifpga',
