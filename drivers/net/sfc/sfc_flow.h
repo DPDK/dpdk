@@ -10,6 +10,8 @@
 #ifndef _SFC_FLOW_H
 #define _SFC_FLOW_H
 
+#include <stdbool.h>
+
 #include <rte_tailq.h>
 #include <rte_flow_driver.h>
 
@@ -101,6 +103,7 @@ struct sfc_flow_spec {
 struct rte_flow {
 	struct sfc_flow_spec spec;	/* flow specification */
 	TAILQ_ENTRY(rte_flow) entries;	/* flow list entries */
+	bool internal;			/* true for internal rules */
 };
 
 TAILQ_HEAD(sfc_flow_list, rte_flow);
@@ -195,7 +198,7 @@ typedef int (sfc_flow_query_cb_t)(struct rte_eth_dev *dev,
 				  void *data,
 				  struct rte_flow_error *error);
 
-struct rte_flow *sfc_flow_create_locked(struct sfc_adapter *sa,
+struct rte_flow *sfc_flow_create_locked(struct sfc_adapter *sa, bool internal,
 					const struct rte_flow_attr *attr,
 					const struct rte_flow_item pattern[],
 					const struct rte_flow_action actions[],

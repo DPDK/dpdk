@@ -2539,6 +2539,20 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 	efx_mae_rule_id_t invalid_rule_id = { .id = EFX_MAE_RSRC_ID_INVALID };
 	int rc;
 
+	if (ctx->internal) {
+		/*
+		 * A driver-internal flow may not comprise an outer rule,
+		 * but it must not match on invalid outer rule ID since
+		 * it must catch all missed packets, including those
+		 * that hit an outer rule of another flow entry but
+		 * do not hit a higher-priority action rule later.
+		 * So do not set match on outer rule ID here.
+		 */
+		SFC_ASSERT(ctx->match_spec_outer == NULL);
+		*rulep = NULL;
+		return 0;
+	}
+
 	if (ctx->encap_type == EFX_TUNNEL_PROTOCOL_NONE) {
 		*rulep = NULL;
 		goto no_or_id;
@@ -2825,9 +2839,10 @@ sfc_mae_rule_encap_parse_fini(struct sfc_adapter *sa,
 int
 sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 			   const struct rte_flow_item pattern[],
-			   struct sfc_flow_spec_mae *spec,
+			   struct rte_flow *flow,
 			   struct rte_flow_error *error)
 {
+	struct sfc_flow_spec_mae *spec = &flow->spec.mae;
 	struct sfc_mae_parse_ctx ctx_mae;
 	unsigned int priority_shift = 0;
 	struct sfc_flow_parse_ctx ctx;
@@ -2835,6 +2850,7 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 
 	memset(&ctx_mae, 0, sizeof(ctx_mae));
 	ctx_mae.ft_rule_type = spec->ft_rule_type;
+	ctx_mae.internal = flow->internal;
 	ctx_mae.priority = spec->priority;
 	ctx_mae.ft_ctx = spec->ft_ctx;
 	ctx_mae.sa = sa;
@@ -3644,11 +3660,12 @@ static const char * const action_names[] = {
 static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
-			  const struct sfc_flow_spec_mae *spec_mae,
+			  const struct rte_flow *flow,
 			  struct sfc_mae_actions_bundle *bundle,
 			  struct sfc_mae_aset_ctx *ctx,
 			  struct rte_flow_error *error)
 {
+	const struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
 	const struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
 	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
 	efx_mae_actions_t *spec = ctx->spec;
@@ -3772,6 +3789,11 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 
 		switch_port_type_mask = 1U << SFC_MAE_SWITCH_PORT_INDEPENDENT;
 
+		if (flow->internal) {
+			switch_port_type_mask |=
+					1U << SFC_MAE_SWITCH_PORT_REPRESENTOR;
+		}
+
 		rc = sfc_mae_rule_parse_action_port_representor(sa,
 				action->conf, switch_port_type_mask, spec);
 		break;
@@ -3842,9 +3864,10 @@ sfc_mae_process_encap_header(struct sfc_adapter *sa,
 int
 sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			   const struct rte_flow_action actions[],
-			   struct sfc_flow_spec_mae *spec_mae,
+			   struct rte_flow *flow,
 			   struct rte_flow_error *error)
 {
+	struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
 	struct sfc_mae_actions_bundle bundle = {0};
 	const struct rte_flow_action *action;
 	struct sfc_mae_aset_ctx ctx = {0};
@@ -3901,7 +3924,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		if (rc != 0)
 			goto fail_rule_parse_action;
 
-		rc = sfc_mae_rule_parse_action(sa, action, spec_mae,
+		rc = sfc_mae_rule_parse_action(sa, action, flow,
 					       &bundle, &ctx, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;

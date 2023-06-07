@@ -363,6 +363,7 @@ struct sfc_mae_parse_ctx {
 	size_t				tunnel_def_mask_size;
 	const void			*tunnel_def_mask;
 	bool				match_mport_set;
+	bool				internal;
 	enum sfc_ft_rule_type		ft_rule_type;
 	struct sfc_mae_pattern_data	pattern_data;
 	efx_tunnel_protocol_t		encap_type;
@@ -376,11 +377,11 @@ void sfc_mae_detach(struct sfc_adapter *sa);
 sfc_flow_cleanup_cb_t sfc_mae_flow_cleanup;
 int sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 			       const struct rte_flow_item pattern[],
-			       struct sfc_flow_spec_mae *spec,
+			       struct rte_flow *flow,
 			       struct rte_flow_error *error);
 int sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			       const struct rte_flow_action actions[],
-			       struct sfc_flow_spec_mae *spec_mae,
+			       struct rte_flow *flow,
 			       struct rte_flow_error *error);
 sfc_flow_verify_cb_t sfc_mae_flow_verify;
 sfc_flow_insert_cb_t sfc_mae_flow_insert;

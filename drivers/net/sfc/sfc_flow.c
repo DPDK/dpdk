@@ -7,6 +7,8 @@
  * for Solarflare) and Solarflare Communications, Inc.
  */
 
+#include <stdbool.h>
+
 #include <rte_byteorder.h>
 #include <rte_tailq.h>
 #include <rte_common.h>
@@ -2405,7 +2407,7 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail;
 
-	rc = sfc_mae_rule_parse_pattern(sa, pattern, spec_mae, error);
+	rc = sfc_mae_rule_parse_pattern(sa, pattern, flow, error);
 	if (rc != 0)
 		goto fail;
 
@@ -2421,7 +2423,7 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 		 */
 	}
 
-	rc = sfc_mae_rule_parse_actions(sa, actions, spec_mae, error);
+	rc = sfc_mae_rule_parse_actions(sa, actions, flow, error);
 	if (rc != 0)
 		goto fail;
 
@@ -2613,14 +2615,14 @@ sfc_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow;
 
 	sfc_adapter_lock(sa);
-	flow = sfc_flow_create_locked(sa, attr, pattern, actions, error);
+	flow = sfc_flow_create_locked(sa, false, attr, pattern, actions, error);
 	sfc_adapter_unlock(sa);
 
 	return flow;
 }
 
 struct rte_flow *
-sfc_flow_create_locked(struct sfc_adapter *sa,
+sfc_flow_create_locked(struct sfc_adapter *sa, bool internal,
 		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item pattern[],
 		       const struct rte_flow_action actions[],
@@ -2635,13 +2637,15 @@ sfc_flow_create_locked(struct sfc_adapter *sa,
 	if (flow == NULL)
 		goto fail_no_mem;
 
+	flow->internal = internal;
+
 	rc = sfc_flow_parse(sa->eth_dev, attr, pattern, actions, flow, error);
 	if (rc != 0)
 		goto fail_bad_value;
 
 	TAILQ_INSERT_TAIL(&sa->flow_list, flow, entries);
 
-	if (sa->state == SFC_ETHDEV_STARTED) {
+	if (flow->internal || sa->state == SFC_ETHDEV_STARTED) {
 		rc = sfc_flow_insert(sa, flow, error);
 		if (rc != 0)
 			goto fail_flow_insert;
@@ -2694,7 +2698,7 @@ sfc_flow_destroy_locked(struct sfc_adapter *sa, struct rte_flow *flow,
 		goto fail_bad_value;
 	}
 
-	if (sa->state == SFC_ETHDEV_STARTED)
+	if (flow->internal || sa->state == SFC_ETHDEV_STARTED)
 		rc = sfc_flow_remove(sa, flow, error);
 
 	TAILQ_REMOVE(&sa->flow_list, flow, entries);
@@ -2711,10 +2715,14 @@ sfc_flow_flush(struct rte_eth_dev *dev,
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct rte_flow *flow;
 	int ret = 0;
+	void *tmp;
 
 	sfc_adapter_lock(sa);
 
-	while ((flow = TAILQ_FIRST(&sa->flow_list)) != NULL) {
+	RTE_TAILQ_FOREACH_SAFE(flow, &sa->flow_list, entries, tmp) {
+		if (flow->internal)
+			continue;
+
 		if (sa->state == SFC_ETHDEV_STARTED) {
 			int rc;
 
@@ -2842,10 +2850,14 @@ void
 sfc_flow_fini(struct sfc_adapter *sa)
 {
 	struct rte_flow *flow;
+	void *tmp;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	while ((flow = TAILQ_FIRST(&sa->flow_list)) != NULL) {
+	RTE_TAILQ_FOREACH_SAFE(flow, &sa->flow_list, entries, tmp) {
+		if (flow->internal)
+			continue;
+
 		TAILQ_REMOVE(&sa->flow_list, flow, entries);
 		sfc_flow_free(sa, flow);
 	}
@@ -2858,8 +2870,10 @@ sfc_flow_stop(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	TAILQ_FOREACH(flow, &sa->flow_list, entries)
-		sfc_flow_remove(sa, flow, NULL);
+	TAILQ_FOREACH(flow, &sa->flow_list, entries) {
+		if (!flow->internal)
+			sfc_flow_remove(sa, flow, NULL);
+	}
 
 	/*
 	 * MAE counter service is not stopped on flow rule remove to avoid
@@ -2881,6 +2895,9 @@ sfc_flow_start(struct sfc_adapter *sa)
 	sfc_ft_counters_reset(sa);
 
 	TAILQ_FOREACH(flow, &sa->flow_list, entries) {
+		if (flow->internal)
+			continue;
+
 		rc = sfc_flow_insert(sa, flow, NULL);
 		if (rc != 0)
 			goto fail_bad_flow;

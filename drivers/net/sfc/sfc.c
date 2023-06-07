@@ -975,6 +975,8 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_rss_attach;
 
+	sfc_flow_init(sa);
+
 	rc = sfc_flow_rss_attach(sa);
 	if (rc != 0)
 		goto fail_flow_rss_attach;
@@ -1006,8 +1008,6 @@ sfc_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);
 
-	sfc_flow_init(sa);
-
 	rc = sfc_sw_xstats_init(sa);
 	if (rc != 0)
 		goto fail_sw_xstats_init;
@@ -1030,7 +1030,6 @@ fail_sriov_vswitch_create:
 	sfc_sw_xstats_close(sa);
 
 fail_sw_xstats_init:
-	sfc_flow_fini(sa);
 	sfc_repr_proxy_detach(sa);
 
 fail_repr_proxy_attach:
@@ -1052,6 +1051,7 @@ fail_filter_attach:
 	sfc_flow_rss_detach(sa);
 
 fail_flow_rss_attach:
+	sfc_flow_fini(sa);
 	sfc_rss_detach(sa);
 
 fail_rss_attach:
@@ -1099,8 +1099,6 @@ sfc_detach(struct sfc_adapter *sa)
 
 	sfc_sriov_vswitch_destroy(sa);
 
-	sfc_flow_fini(sa);
-
 	sfc_repr_proxy_detach(sa);
 	sfc_mae_switchdev_fini(sa);
 	sfc_tbls_detach(sa);
@@ -1108,6 +1106,7 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_mae_counter_rxq_detach(sa);
 	sfc_filter_detach(sa);
 	sfc_flow_rss_detach(sa);
+	sfc_flow_fini(sa);
 	sfc_rss_detach(sa);
 	sfc_port_detach(sa);
 	sfc_ev_detach(sa);
