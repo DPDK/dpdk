@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 
+#include <rte_byteorder.h>
 #include <rte_bitops.h>
 #include <rte_common.h>
 #include <rte_vxlan.h>
@@ -3446,6 +3447,8 @@ error:
 enum sfc_mae_actions_bundle_type {
 	SFC_MAE_ACTIONS_BUNDLE_EMPTY = 0,
 	SFC_MAE_ACTIONS_BUNDLE_VLAN_PUSH,
+	SFC_MAE_ACTIONS_BUNDLE_NAT_DST,
+	SFC_MAE_ACTIONS_BUNDLE_NAT_SRC,
 };
 
 struct sfc_mae_actions_bundle {
@@ -3466,7 +3469,8 @@ struct sfc_mae_actions_bundle {
  */
 static int
 sfc_mae_actions_bundle_submit(const struct sfc_mae_actions_bundle *bundle,
-			      efx_mae_actions_t *spec)
+			      struct sfc_flow_spec_mae *flow_spec,
+			      bool ct, efx_mae_actions_t *spec)
 {
 	int rc = 0;
 
@@ -3476,6 +3480,16 @@ sfc_mae_actions_bundle_submit(const struct sfc_mae_actions_bundle *bundle,
 	case SFC_MAE_ACTIONS_BUNDLE_VLAN_PUSH:
 		rc = efx_mae_action_set_populate_vlan_push(
 			spec, bundle->vlan_push_tpid, bundle->vlan_push_tci);
+		break;
+	case SFC_MAE_ACTIONS_BUNDLE_NAT_DST:
+		flow_spec->ct_resp.nat.dir_is_dst = true;
+		/* FALLTHROUGH */
+	case SFC_MAE_ACTIONS_BUNDLE_NAT_SRC:
+		if (ct && flow_spec->ct_resp.nat.ip_le != 0 &&
+		    flow_spec->ct_resp.nat.port_le != 0)
+			rc = efx_mae_action_set_populate_nat(spec);
+		else
+			rc = EINVAL;
 		break;
 	default:
 		SFC_ASSERT(B_FALSE);
@@ -3493,7 +3507,8 @@ sfc_mae_actions_bundle_submit(const struct sfc_mae_actions_bundle *bundle,
 static int
 sfc_mae_actions_bundle_sync(const struct rte_flow_action *action,
 			    struct sfc_mae_actions_bundle *bundle,
-			    efx_mae_actions_t *spec,
+			    struct sfc_flow_spec_mae *flow_spec,
+			    efx_mae_actions_t *spec, bool ct,
 			    struct rte_flow_error *error)
 {
 	enum sfc_mae_actions_bundle_type bundle_type_new;
@@ -3504,6 +3519,14 @@ sfc_mae_actions_bundle_sync(const struct rte_flow_action *action,
 	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 		bundle_type_new = SFC_MAE_ACTIONS_BUNDLE_VLAN_PUSH;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+	case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+		bundle_type_new = SFC_MAE_ACTIONS_BUNDLE_NAT_DST;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+	case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+		bundle_type_new = SFC_MAE_ACTIONS_BUNDLE_NAT_SRC;
 		break;
 	default:
 		/*
@@ -3517,7 +3540,7 @@ sfc_mae_actions_bundle_sync(const struct rte_flow_action *action,
 
 	if (bundle_type_new != bundle->type ||
 	    (bundle->actions_mask & (1ULL << action->type)) != 0) {
-		rc = sfc_mae_actions_bundle_submit(bundle, spec);
+		rc = sfc_mae_actions_bundle_submit(bundle, flow_spec, ct, spec);
 		if (rc != 0)
 			goto fail_submit;
 
@@ -3532,6 +3555,20 @@ fail_submit:
 	return rte_flow_error_set(error, rc,
 			RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 			"Failed to request the (group of) action(s)");
+}
+
+static void
+sfc_mae_rule_parse_action_nat_addr(const struct rte_flow_action_set_ipv4 *conf,
+				   uint32_t *nat_addr_le)
+{
+	*nat_addr_le = rte_bswap32(conf->ipv4_addr);
+}
+
+static void
+sfc_mae_rule_parse_action_nat_port(const struct rte_flow_action_set_tp *conf,
+				   uint16_t *nat_port_le)
+{
+	*nat_port_le = rte_bswap16(conf->port);
 }
 
 static void
@@ -4058,6 +4095,10 @@ static const char * const action_names[] = {
 	[RTE_FLOW_ACTION_TYPE_SET_MAC_SRC] = "SET_MAC_SRC",
 	[RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL] = "OF_DEC_NW_TTL",
 	[RTE_FLOW_ACTION_TYPE_DEC_TTL] = "DEC_TTL",
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_DST] = "SET_IPV4_DST",
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC] = "SET_IPV4_SRC",
+	[RTE_FLOW_ACTION_TYPE_SET_TP_DST] = "SET_TP_DST",
+	[RTE_FLOW_ACTION_TYPE_SET_TP_SRC] = "SET_TP_SRC",
 	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = "OF_PUSH_VLAN",
 	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID] = "OF_SET_VLAN_VID",
 	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP] = "OF_SET_VLAN_PCP",
@@ -4077,12 +4118,12 @@ static const char * const action_names[] = {
 static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
-			  const struct rte_flow *flow,
+			  struct rte_flow *flow,
 			  struct sfc_mae_actions_bundle *bundle,
 			  struct sfc_mae_aset_ctx *ctx,
 			  struct rte_flow_error *error)
 {
-	const struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
+	struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
 	const struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
 	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
 	efx_mae_actions_t *spec = ctx->spec;
@@ -4128,6 +4169,24 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_DEC_TTL,
 				       bundle->actions_mask);
 		rc = efx_mae_action_set_populate_decr_ip_ttl(spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+	case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_SET_IPV4_DST,
+				       bundle->actions_mask);
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC,
+				       bundle->actions_mask);
+		sfc_mae_rule_parse_action_nat_addr(action->conf,
+					&spec_mae->ct_resp.nat.ip_le);
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+	case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_SET_TP_DST,
+				       bundle->actions_mask);
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_SET_TP_SRC,
+				       bundle->actions_mask);
+		sfc_mae_rule_parse_action_nat_port(action->conf,
+						&spec_mae->ct_resp.nat.port_le);
 		break;
 	case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
@@ -4287,6 +4346,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 {
 	struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
 	struct sfc_mae_actions_bundle bundle = {0};
+	bool ct = (action_rule_ctx->ct_mark != 0);
 	const struct rte_flow_action *action;
 	struct sfc_mae_aset_ctx ctx = {0};
 	struct sfc_mae *mae = &sa->mae;
@@ -4337,8 +4397,8 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 
 	for (action = actions;
 	     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
-		rc = sfc_mae_actions_bundle_sync(action, &bundle,
-						 ctx.spec, error);
+		rc = sfc_mae_actions_bundle_sync(action, &bundle, spec_mae,
+						 ctx.spec, ct, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 
@@ -4348,7 +4408,8 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			goto fail_rule_parse_action;
 	}
 
-	rc = sfc_mae_actions_bundle_sync(action, &bundle, ctx.spec, error);
+	rc = sfc_mae_actions_bundle_sync(action, &bundle, spec_mae,
+					 ctx.spec, ct, error);
 	if (rc != 0)
 		goto fail_rule_parse_action;
 

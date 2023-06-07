@@ -136,6 +136,8 @@ New Features
 
   * Added support for configuring FEC mode, querying FEC capabilities and
     current FEC mode from a device.
+  * Added partial support for transfer flow actions SET_IPV4_DST, SET_TP_DST,
+    SET_IPV4_SRC and SET_TP_SRC on SN1000 SmartNICs.
 
 * **Added vmxnet3 version 7 support.**
 
