@@ -402,6 +402,9 @@ sfc_mae_outer_rule_del(struct sfc_adapter *sa,
 {
 	struct sfc_mae *mae = &sa->mae;
 
+	if (rule == NULL)
+		return;
+
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 	SFC_ASSERT(rule->refcnt != 0);
 
@@ -429,10 +432,15 @@ sfc_mae_outer_rule_enable(struct sfc_adapter *sa,
 			  struct sfc_mae_outer_rule *rule,
 			  efx_mae_match_spec_t *match_spec_action)
 {
-	struct sfc_mae_fw_rsrc *fw_rsrc = &rule->fw_rsrc;
+	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
+	if (rule == NULL)
+		return 0;
+
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	fw_rsrc = &rule->fw_rsrc;
 
 	if (fw_rsrc->refcnt == 0) {
 		SFC_ASSERT(fw_rsrc->rule_id.id == EFX_MAE_RSRC_ID_INVALID);
@@ -480,10 +488,15 @@ static void
 sfc_mae_outer_rule_disable(struct sfc_adapter *sa,
 			   struct sfc_mae_outer_rule *rule)
 {
-	struct sfc_mae_fw_rsrc *fw_rsrc = &rule->fw_rsrc;
+	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
+	if (rule == NULL)
+		return;
+
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	fw_rsrc = &rule->fw_rsrc;
 
 	if (fw_rsrc->rule_id.id == EFX_MAE_RSRC_ID_INVALID ||
 	    fw_rsrc->refcnt == 0) {
@@ -1057,6 +1070,9 @@ sfc_mae_action_set_del(struct sfc_adapter *sa,
 {
 	struct sfc_mae *mae = &sa->mae;
 
+	if (action_set == NULL)
+		return;
+
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 	SFC_ASSERT(action_set->refcnt != 0);
 
@@ -1092,14 +1108,23 @@ static int
 sfc_mae_action_set_enable(struct sfc_adapter *sa,
 			  struct sfc_mae_action_set *action_set)
 {
-	struct sfc_mae_encap_header *encap_header = action_set->encap_header;
-	struct sfc_mae_mac_addr *dst_mac_addr = action_set->dst_mac_addr;
-	struct sfc_mae_mac_addr *src_mac_addr = action_set->src_mac_addr;
-	struct sfc_mae_counter_id *counters = action_set->counters;
-	struct sfc_mae_fw_rsrc *fw_rsrc = &action_set->fw_rsrc;
+	struct sfc_mae_encap_header *encap_header;
+	struct sfc_mae_mac_addr *dst_mac_addr;
+	struct sfc_mae_mac_addr *src_mac_addr;
+	struct sfc_mae_counter_id *counters;
+	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
+	if (action_set == NULL)
+		return 0;
+
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	encap_header = action_set->encap_header;
+	dst_mac_addr = action_set->dst_mac_addr;
+	src_mac_addr = action_set->src_mac_addr;
+	counters = action_set->counters;
+	fw_rsrc = &action_set->fw_rsrc;
 
 	if (fw_rsrc->refcnt == 0) {
 		SFC_ASSERT(fw_rsrc->aset_id.id == EFX_MAE_RSRC_ID_INVALID);
@@ -1167,10 +1192,15 @@ static void
 sfc_mae_action_set_disable(struct sfc_adapter *sa,
 			   struct sfc_mae_action_set *action_set)
 {
-	struct sfc_mae_fw_rsrc *fw_rsrc = &action_set->fw_rsrc;
+	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
+	if (action_set == NULL)
+		return;
+
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	fw_rsrc = &action_set->fw_rsrc;
 
 	if (fw_rsrc->aset_id.id == EFX_MAE_RSRC_ID_INVALID ||
 	    fw_rsrc->refcnt == 0) {
@@ -1228,11 +1258,8 @@ sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 
 	SFC_ASSERT(spec_mae->rule_id.id == EFX_MAE_RSRC_ID_INVALID);
 
-	if (spec_mae->outer_rule != NULL)
-		sfc_mae_outer_rule_del(sa, spec_mae->outer_rule);
-
-	if (spec_mae->action_set != NULL)
-		sfc_mae_action_set_del(sa, spec_mae->action_set);
+	sfc_mae_outer_rule_del(sa, spec_mae->outer_rule);
+	sfc_mae_action_set_del(sa, spec_mae->action_set);
 
 	if (spec_mae->match_spec != NULL)
 		efx_mae_match_spec_fini(sa->nic, spec_mae->match_spec);
@@ -2577,9 +2604,7 @@ no_or_id:
 	rc = efx_mae_match_spec_outer_rule_id_set(ctx->match_spec_action,
 						  &invalid_rule_id);
 	if (rc != 0) {
-		if (*rulep != NULL)
-			sfc_mae_outer_rule_del(sa, *rulep);
-
+		sfc_mae_outer_rule_del(sa, *rulep);
 		*rulep = NULL;
 
 		return rte_flow_error_set(error, rc,
@@ -3981,9 +4006,14 @@ static int
 sfc_mae_outer_rule_class_verify(struct sfc_adapter *sa,
 				struct sfc_mae_outer_rule *rule)
 {
-	struct sfc_mae_fw_rsrc *fw_rsrc = &rule->fw_rsrc;
 	struct sfc_mae_outer_rule *entry;
+	struct sfc_mae_fw_rsrc *fw_rsrc;
 	struct sfc_mae *mae = &sa->mae;
+
+	if (rule == NULL)
+		return 0;
+
+	fw_rsrc = &rule->fw_rsrc;
 
 	if (fw_rsrc->rule_id.id != EFX_MAE_RSRC_ID_INVALID) {
 		/* An active rule is reused. It's class is wittingly valid. */
@@ -4071,11 +4101,9 @@ sfc_mae_flow_verify(struct sfc_adapter *sa,
 	if (sa->state != SFC_ETHDEV_STARTED)
 		return EAGAIN;
 
-	if (outer_rule != NULL) {
-		rc = sfc_mae_outer_rule_class_verify(sa, outer_rule);
-		if (rc != 0)
-			return rc;
-	}
+	rc = sfc_mae_outer_rule_class_verify(sa, outer_rule);
+	if (rc != 0)
+		return rc;
 
 	return sfc_mae_action_rule_class_verify(sa, spec_mae);
 }
@@ -4141,8 +4169,7 @@ fail_mae_counter_start:
 	sfc_mae_action_set_disable(sa, action_set);
 
 fail_action_set_enable:
-	if (outer_rule != NULL)
-		sfc_mae_outer_rule_disable(sa, outer_rule);
+	sfc_mae_outer_rule_disable(sa, outer_rule);
 
 fail_outer_rule_enable:
 	return rc;
@@ -4177,8 +4204,7 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 	sfc_mae_action_set_disable(sa, action_set);
 
 skip_action_rule:
-	if (outer_rule != NULL)
-		sfc_mae_outer_rule_disable(sa, outer_rule);
+	sfc_mae_outer_rule_disable(sa, outer_rule);
 
 	return 0;
 }
