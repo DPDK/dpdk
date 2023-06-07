@@ -6570,7 +6570,7 @@ eth_dev_handle_port_dump_priv(const char *cmd __rte_unused,
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -EINVAL;
 
-	buf = calloc(sizeof(char), RTE_TEL_MAX_SINGLE_STRING_LEN);
+	buf = calloc(RTE_TEL_MAX_SINGLE_STRING_LEN, sizeof(char));
 	if (buf == NULL)
 		return -ENOMEM;
 
