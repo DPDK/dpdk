@@ -75,14 +75,13 @@ struct sfc_flow_spec_mae {
 	struct sfc_ft_ctx		*ft_ctx;
 	/* Desired priority level */
 	unsigned int			priority;
-	/* Outer rule registry entry */
+	/*
+	 * Outer rule registry entry (points to below action_rule->outer_rule
+	 * when action_rule is not NULL; self-sufficient entry otherwise)
+	 */
 	struct sfc_mae_outer_rule	*outer_rule;
-	/* EFX match specification */
-	efx_mae_match_spec_t		*match_spec;
-	/* Action set registry entry */
-	struct sfc_mae_action_set	*action_set;
-	/* Firmware-allocated rule ID */
-	efx_mae_rule_id_t		rule_id;
+	/* Action rule registry entry */
+	struct sfc_mae_action_rule	*action_rule;
 };
 
 /* Flow specification */

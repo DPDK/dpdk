@@ -97,6 +97,17 @@ struct sfc_mae_action_set {
 
 TAILQ_HEAD(sfc_mae_action_sets, sfc_mae_action_set);
 
+/** Action rule registry entry */
+struct sfc_mae_action_rule {
+	TAILQ_ENTRY(sfc_mae_action_rule)	entries;
+	struct sfc_mae_outer_rule		*outer_rule;
+	struct sfc_mae_action_set		*action_set;
+	efx_mae_match_spec_t			*match_spec;
+	struct sfc_mae_fw_rsrc			fw_rsrc;
+	unsigned int				refcnt;
+};
+TAILQ_HEAD(sfc_mae_action_rules, sfc_mae_action_rule);
+
 /** Options for MAE support status */
 enum sfc_mae_status {
 	SFC_MAE_STATUS_UNKNOWN = 0,
@@ -201,6 +212,8 @@ struct sfc_mae {
 	struct sfc_mae_mac_addrs	mac_addrs;
 	/** Action set registry */
 	struct sfc_mae_action_sets	action_sets;
+	/** Action rule registry */
+	struct sfc_mae_action_rules	action_rules;
 	/** Encap. header bounce buffer */
 	struct sfc_mae_bounce_eh	bounce_eh;
 	/** Flag indicating whether counter-only RxQ is running */

@@ -1294,9 +1294,7 @@ sfc_flow_parse_attr(struct sfc_adapter *sa,
 		}
 		spec->type = SFC_FLOW_SPEC_MAE;
 		spec_mae->priority = attr->priority;
-		spec_mae->match_spec = NULL;
-		spec_mae->action_set = NULL;
-		spec_mae->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
+		spec_mae->action_rule = NULL;
 	}
 
 	return 0;
