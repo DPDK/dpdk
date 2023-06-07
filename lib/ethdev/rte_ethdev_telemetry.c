@@ -249,11 +249,38 @@ eth_dev_handle_port_link_status(const char *cmd __rte_unused,
 	return 0;
 }
 
+static void
+eth_dev_parse_rx_offloads(uint64_t offload, struct rte_tel_data *d)
+{
+	uint64_t i;
+
+	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
+	for (i = 0; i < CHAR_BIT * sizeof(offload); i++) {
+		if ((offload & RTE_BIT64(i)) != 0)
+			rte_tel_data_add_array_string(d,
+				rte_eth_dev_rx_offload_name(offload & RTE_BIT64(i)));
+	}
+}
+
+static void
+eth_dev_parse_tx_offloads(uint64_t offload, struct rte_tel_data *d)
+{
+	uint64_t i;
+
+	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
+	for (i = 0; i < CHAR_BIT * sizeof(offload); i++) {
+		if ((offload & RTE_BIT64(i)) != 0)
+			rte_tel_data_add_array_string(d,
+				rte_eth_dev_tx_offload_name(offload & RTE_BIT64(i)));
+	}
+}
+
 static int
 eth_dev_handle_port_info(const char *cmd __rte_unused,
 		const char *params,
 		struct rte_tel_data *d)
 {
+	struct rte_tel_data *rx_offload, *tx_offload;
 	struct rte_tel_data *rxq_state, *txq_state;
 	char mac_addr[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_eth_dev *eth_dev;
@@ -269,14 +296,20 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 	eth_dev = &rte_eth_devices[port_id];
 
 	rxq_state = rte_tel_data_alloc();
-	if (!rxq_state)
+	if (rxq_state == NULL)
 		return -ENOMEM;
 
 	txq_state = rte_tel_data_alloc();
-	if (!txq_state) {
-		rte_tel_data_free(rxq_state);
-		return -ENOMEM;
-	}
+	if (txq_state == NULL)
+		goto free_rxq_state;
+
+	rx_offload = rte_tel_data_alloc();
+	if (rx_offload == NULL)
+		goto free_txq_state;
+
+	tx_offload = rte_tel_data_alloc();
+	if (tx_offload == NULL)
+		goto free_rx_offload;
 
 	rte_tel_data_start_dict(d);
 	rte_tel_data_add_dict_string(d, "name", eth_dev->data->name);
@@ -318,14 +351,27 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 	rte_tel_data_add_dict_int(d, "numa_node", eth_dev->data->numa_node);
 	rte_tel_data_add_dict_uint_hex(d, "dev_flags",
 			eth_dev->data->dev_flags, 0);
-	rte_tel_data_add_dict_uint_hex(d, "rx_offloads",
-			eth_dev->data->dev_conf.rxmode.offloads, 0);
-	rte_tel_data_add_dict_uint_hex(d, "tx_offloads",
-			eth_dev->data->dev_conf.txmode.offloads, 0);
+
+	eth_dev_parse_rx_offloads(eth_dev->data->dev_conf.rxmode.offloads,
+			rx_offload);
+	rte_tel_data_add_dict_container(d, "rx_offloads", rx_offload, 0);
+	eth_dev_parse_tx_offloads(eth_dev->data->dev_conf.txmode.offloads,
+			tx_offload);
+	rte_tel_data_add_dict_container(d, "tx_offloads", tx_offload, 0);
+
 	rte_tel_data_add_dict_uint_hex(d, "ethdev_rss_hf",
 			eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf, 0);
 
 	return 0;
+
+free_rx_offload:
+	rte_tel_data_free(rx_offload);
+free_txq_state:
+	rte_tel_data_free(txq_state);
+free_rxq_state:
+	rte_tel_data_free(rxq_state);
+
+	return -ENOMEM;
 }
 
 static int
