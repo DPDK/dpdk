@@ -1162,22 +1162,10 @@ nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 {
 	uint16_t tx_dpp;
 
-	switch (hw->ver.extend) {
-	case NFP_NET_CFG_VERSION_DP_NFD3:
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		tx_dpp = NFD3_TX_DESC_PER_PKT;
-		break;
-	case NFP_NET_CFG_VERSION_DP_NFDK:
-		if (hw->ver.major < 5) {
-			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
-					hw->ver.major);
-			return -EINVAL;
-		}
+	else
 		tx_dpp = NFDK_TX_DESC_PER_SIMPLE_PKT;
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
-		return -EINVAL;
-	}
 
 	*max_tx_desc = NFP_NET_MAX_TX_DESC / tx_dpp;
 
@@ -2105,4 +2093,25 @@ nfp_repr_firmware_version_get(struct rte_eth_dev *dev,
 			nsp_version, mip_name, app_name);
 
 	return 0;
+}
+
+bool
+nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version)
+{
+	uint8_t nfd_version = version.extend;
+
+	if (nfd_version == NFP_NET_CFG_VERSION_DP_NFD3)
+		return true;
+
+	if (nfd_version == NFP_NET_CFG_VERSION_DP_NFDK) {
+		if (version.major < 5) {
+			PMD_INIT_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
+					version.major);
+			return false;
+		}
+
+		return true;
+	}
+
+	return false;
 }

@@ -649,6 +649,9 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 
 	/* Get some of the read-only fields from the config BAR */
 	nfp_net_cfg_read_version(hw);
+	if (!nfp_net_is_valid_nfd_version(hw->ver))
+		return -EINVAL;
+
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	/* Set the current MTU to the maximum supported */

@@ -244,31 +244,18 @@ static const struct eth_dev_ops nfp_netvf_eth_dev_ops = {
 	.fw_version_get         = nfp_net_firmware_version_get,
 };
 
-static inline int
-nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw, struct rte_eth_dev *eth_dev)
+static inline void
+nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw,
+		struct rte_eth_dev *eth_dev)
 {
-	switch (hw->ver.extend) {
-	case NFP_NET_CFG_VERSION_DP_NFD3:
-		eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
-		break;
-	case NFP_NET_CFG_VERSION_DP_NFDK:
-		if (hw->ver.major < 5) {
-			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
-					hw->ver.major);
-			return -EINVAL;
-		}
-		eth_dev->tx_pkt_burst = &nfp_net_nfdk_xmit_pkts;
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
-		return -EINVAL;
-	}
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+		eth_dev->tx_pkt_burst = nfp_net_nfd3_xmit_pkts;
+	else
+		eth_dev->tx_pkt_burst = nfp_net_nfdk_xmit_pkts;
 
 	eth_dev->dev_ops = &nfp_netvf_eth_dev_ops;
 	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
 	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
-
-	return 0;
 }
 
 static int
@@ -300,12 +287,13 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
 	nfp_net_cfg_read_version(hw);
+	if (!nfp_net_is_valid_nfd_version(hw->ver))
+		return -EINVAL;
 
 	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
 		return -ENODEV;
 
-	if (nfp_netvf_ethdev_ops_mount(hw, eth_dev))
-		return -EINVAL;
+	nfp_netvf_ethdev_ops_mount(hw, eth_dev);
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

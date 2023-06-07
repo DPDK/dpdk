@@ -889,20 +889,10 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	switch (hw->ver.extend) {
-	case NFP_NET_CFG_VERSION_DP_NFD3:
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		return nfp_net_nfd3_tx_queue_setup(dev, queue_idx,
 				nb_desc, socket_id, tx_conf);
-	case NFP_NET_CFG_VERSION_DP_NFDK:
-		if (hw->ver.major < 5) {
-			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
-					hw->ver.major);
-			return -EINVAL;
-		}
+	else
 		return nfp_net_nfdk_tx_queue_setup(dev, queue_idx,
 				nb_desc, socket_id, tx_conf);
-	default:
-		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
-		return -EINVAL;
-	}
 }

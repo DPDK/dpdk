@@ -444,6 +444,7 @@ void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
 void nfp_net_cfg_read_version(struct nfp_net_hw *hw);
 int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
 int nfp_repr_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
+bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)
