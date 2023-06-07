@@ -398,6 +398,9 @@ struct cn10k_ml_model_addr {
 	/* Weights and bias load address */
 	void *wb_load_addr;
 
+	/* Scratch base address */
+	void *scratch_base_addr;
+
 	/* Start tile */
 	uint8_t tile_start;
 

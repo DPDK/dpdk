@@ -17,6 +17,9 @@ struct cn10k_ml_req {
 	/* Job descriptor */
 	struct cn10k_ml_jd jd;
 
+	/* Job descriptor extra arguments */
+	union cn10k_ml_jd_extended_args extended_args;
+
 	/* Job result */
 	struct cn10k_ml_result result;
 

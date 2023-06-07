@@ -416,8 +416,10 @@ cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *mldev, struct cn10k_ml_mode
 			req->jd.hdr.sp_flags = ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE;
 		else
 			req->jd.hdr.sp_flags = 0x0;
-		req->jd.model_start.model_src_ddr_addr =
-			PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, addr->init_load_addr));
+
+		req->jd.hdr.sp_flags |= ML_CN10K_SP_FLAGS_EXTENDED_LOAD_JD;
+		req->jd.model_start.extended_args =
+			PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, &req->extended_args));
 		req->jd.model_start.model_dst_ddr_addr =
 			PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, addr->init_run_addr));
 		req->jd.model_start.model_init_offset = 0x0;
@@ -448,6 +450,13 @@ cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *mldev, struct cn10k_ml_mode
 		req->jd.model_start.output.s.ddr_range_start =
 			metadata->model.ddr_output_range_start;
 		req->jd.model_start.output.s.ddr_range_end = metadata->model.ddr_output_range_end;
+
+		req->extended_args.start.ddr_scratch_base_address = PLT_U64_CAST(
+			roc_ml_addr_ap2mlip(&mldev->roc, model->addr.scratch_base_addr));
+		req->extended_args.start.ddr_scratch_range_start =
+			metadata->model.ddr_scratch_range_start;
+		req->extended_args.start.ddr_scratch_range_end =
+			metadata->model.ddr_scratch_range_end;
 	}
 }
 
@@ -1616,6 +1625,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
+	size_t model_scratch_size;
 	size_t model_stats_size;
 	size_t model_data_size;
 	size_t model_info_size;
@@ -1657,6 +1667,9 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	metadata = (struct cn10k_ml_model_metadata *)params->addr;
 	model_data_size = metadata->init_model.file_size + metadata->main_model.file_size +
 			  metadata->finish_model.file_size + metadata->weights_bias.file_size;
+	model_scratch_size = PLT_ALIGN_CEIL(metadata->model.ddr_scratch_range_end -
+						    metadata->model.ddr_scratch_range_start + 1,
+					    ML_CN10K_ALIGN_SIZE);
 	model_data_size = PLT_ALIGN_CEIL(model_data_size, ML_CN10K_ALIGN_SIZE);
 	model_info_size = sizeof(struct rte_ml_model_info) +
 			  metadata->model.num_input * sizeof(struct rte_ml_io_info) +
@@ -1665,7 +1678,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	model_stats_size = (dev->data->nb_queue_pairs + 1) * sizeof(struct cn10k_ml_model_stats);
 
 	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
-		  2 * model_data_size + model_info_size +
+		  2 * model_data_size + model_scratch_size + model_info_size +
 		  PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE) +
 		  model_stats_size;
 
@@ -1694,6 +1707,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	base_dma_addr = PLT_PTR_ADD(
 		mz->addr, PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE));
 	cn10k_ml_model_addr_update(model, params->addr, base_dma_addr);
+	model->addr.scratch_base_addr = PLT_PTR_ADD(base_dma_addr, 2 * model_data_size);
 
 	/* Copy data from load to run. run address to be used by MLIP */
 	rte_memcpy(model->addr.base_dma_addr_run, model->addr.base_dma_addr_load, model_data_size);
@@ -1707,7 +1721,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	model->model_mem_map.scratch_pages = scratch_pages;
 
 	/* Set model info */
-	model->info = PLT_PTR_ADD(base_dma_addr, 2 * model_data_size);
+	model->info = PLT_PTR_ADD(model->addr.scratch_base_addr, model_scratch_size);
 	cn10k_ml_model_info_set(dev, model);
 
 	/* Set slow-path request address and state */

@@ -38,6 +38,7 @@
 
 /* ML slow-path job flags */
 #define ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE BIT(0)
+#define ML_CN10K_SP_FLAGS_EXTENDED_LOAD_JD   BIT(1)
 
 /* Poll mode job state */
 #define ML_CN10K_POLL_JOB_START	 0
@@ -233,6 +234,22 @@ struct cn10k_ml_jd_header {
 	uint64_t *result;
 };
 
+/* Extra arguments for job descriptor */
+union cn10k_ml_jd_extended_args {
+	struct cn10k_ml_jd_extended_args_section_start {
+		/** DDR Scratch base address */
+		uint64_t ddr_scratch_base_address;
+
+		/** DDR Scratch range start */
+		uint64_t ddr_scratch_range_start;
+
+		/** DDR Scratch range end */
+		uint64_t ddr_scratch_range_end;
+
+		uint8_t rsvd[104];
+	} start;
+};
+
 /* Job descriptor structure */
 struct cn10k_ml_jd {
 	/* Job descriptor header (32 bytes) */
@@ -256,8 +273,8 @@ struct cn10k_ml_jd {
 		} fw_load;
 
 		struct cn10k_ml_jd_section_model_start {
-			/* Source model start address in DDR relative to ML_MLR_BASE */
-			uint64_t model_src_ddr_addr;
+			/* Extended arguments */
+			uint64_t extended_args;
 
 			/* Destination model start address in DDR relative to ML_MLR_BASE */
 			uint64_t model_dst_ddr_addr;
