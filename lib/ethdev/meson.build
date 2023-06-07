@@ -9,6 +9,7 @@ sources = files(
         'rte_class_eth.c',
         'rte_ethdev.c',
         'rte_ethdev_cman.c',
+        'rte_ethdev_telemetry.c',
         'rte_flow.c',
         'rte_mtr.c',
         'rte_tm.c',
