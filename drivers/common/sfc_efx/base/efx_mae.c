@@ -16,7 +16,7 @@ efx_mae_get_capabilities(
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_MAE_GET_CAPS_IN_LEN,
-	    MC_CMD_MAE_GET_CAPS_OUT_LEN);
+	    MC_CMD_MAE_GET_CAPS_V2_OUT_LEN);
 	struct efx_mae_s *maep = enp->en_maep;
 	efx_rc_t rc;
 
@@ -24,7 +24,7 @@ efx_mae_get_capabilities(
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_MAE_GET_CAPS_IN_LEN;
 	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_MAE_GET_CAPS_OUT_LEN;
+	req.emr_out_length = MC_CMD_MAE_GET_CAPS_V2_OUT_LEN;
 
 	efx_mcdi_execute(enp, &req);
 
@@ -69,6 +69,13 @@ efx_mae_get_capabilities(
 
 	maep->em_max_n_action_counters =
 	    MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_AR_COUNTERS);
+
+	if (req.emr_out_length_used >= MC_CMD_MAE_GET_CAPS_V2_OUT_LEN) {
+		maep->em_max_n_conntrack_counters =
+		    MCDI_OUT_DWORD(req, MAE_GET_CAPS_V2_OUT_CT_COUNTERS);
+	} else {
+		maep->em_max_n_conntrack_counters = 0;
+	}
 
 	return (0);
 
@@ -375,6 +382,7 @@ efx_mae_get_limits(
 	emlp->eml_encap_header_size_limit =
 	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_IN_HDR_DATA_MAXNUM_MCDI2;
 	emlp->eml_max_n_action_counters = maep->em_max_n_action_counters;
+	emlp->eml_max_n_conntrack_counters = maep->em_max_n_conntrack_counters;
 
 	return (0);
 
@@ -3282,10 +3290,14 @@ efx_mae_counters_alloc_type(
 	efx_rc_t rc;
 
 	EFX_STATIC_ASSERT(EFX_COUNTER_TYPE_ACTION == MAE_COUNTER_TYPE_AR);
+	EFX_STATIC_ASSERT(EFX_COUNTER_TYPE_CONNTRACK == MAE_COUNTER_TYPE_CT);
 
 	switch (type) {
 	case EFX_COUNTER_TYPE_ACTION:
 		max_n_counters = maep->em_max_n_action_counters;
+		break;
+	case EFX_COUNTER_TYPE_CONNTRACK:
+		max_n_counters = maep->em_max_n_conntrack_counters;
 		break;
 	default:
 		rc = EINVAL;
@@ -3403,6 +3415,9 @@ efx_mae_counters_free_type(
 	case EFX_COUNTER_TYPE_ACTION:
 		max_n_counters = maep->em_max_n_action_counters;
 		break;
+	case EFX_COUNTER_TYPE_CONNTRACK:
+		max_n_counters = maep->em_max_n_conntrack_counters;
+		break;
 	default:
 		rc = EINVAL;
 		goto fail1;
@@ -3505,8 +3520,11 @@ efx_mae_counters_stream_start(
 	__out				uint32_t *flags_out)
 {
 	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_MAE_COUNTERS_STREAM_START_IN_LEN,
+	EFX_MCDI_DECLARE_BUF(payload,
+			     MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_LEN,
 			     MC_CMD_MAE_COUNTERS_STREAM_START_OUT_LEN);
+	struct efx_mae_s *maep = enp->en_maep;
+	uint32_t counter_types;
 	efx_rc_t rc;
 
 	EFX_STATIC_ASSERT(EFX_MAE_COUNTERS_STREAM_IN_ZERO_SQUASH_DISABLE ==
@@ -3517,7 +3535,7 @@ efx_mae_counters_stream_start(
 
 	req.emr_cmd = MC_CMD_MAE_COUNTERS_STREAM_START;
 	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_MAE_COUNTERS_STREAM_START_IN_LEN;
+	req.emr_in_length = MC_CMD_MAE_COUNTERS_STREAM_START_V2_IN_LEN;
 	req.emr_out_buf = payload;
 	req.emr_out_length = MC_CMD_MAE_COUNTERS_STREAM_START_OUT_LEN;
 
@@ -3525,6 +3543,15 @@ efx_mae_counters_stream_start(
 	MCDI_IN_SET_WORD(req, MAE_COUNTERS_STREAM_START_IN_PACKET_SIZE,
 			 packet_size);
 	MCDI_IN_SET_DWORD(req, MAE_COUNTERS_STREAM_START_IN_FLAGS, flags_in);
+
+	counter_types = (1U << MAE_COUNTER_TYPE_AR);
+
+	if (maep->em_max_n_conntrack_counters != 0)
+		counter_types |= (1U << MAE_COUNTER_TYPE_CT);
+
+	MCDI_IN_SET_DWORD(req,
+			  MAE_COUNTERS_STREAM_START_V2_IN_COUNTER_TYPES_MASK,
+			  counter_types);
 
 	efx_mcdi_execute(enp, &req);
 
