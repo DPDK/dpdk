@@ -80,19 +80,28 @@ sfc_mae_counter_fw_rsrc_enable(struct sfc_adapter *sa,
 			       struct sfc_mae_counter *counterp)
 {
 	struct sfc_mae_counter_registry *reg = &sa->mae.counter_registry;
-	struct sfc_mae_counter_records *counters = &reg->counters;
+	struct sfc_mae_counter_records *counters;
 	struct sfc_mae_counter_record *p;
 	efx_counter_t mae_counter;
 	uint32_t generation_count;
 	uint32_t unused;
 	int rc;
 
+	switch (counterp->type) {
+	case EFX_COUNTER_TYPE_ACTION:
+		counters = &reg->action_counters;
+		break;
+	default:
+		rc = EINVAL;
+		goto fail_counter_type_check;
+	}
+
 	/*
 	 * The actual count of counters allocated is ignored since a failure
 	 * to allocate a single counter is indicated by non-zero return code.
 	 */
-	rc = efx_mae_counters_alloc(sa->nic, 1, &unused, &mae_counter,
-				    &generation_count);
+	rc = efx_mae_counters_alloc_type(sa->nic, counterp->type, 1, &unused,
+					 &mae_counter, &generation_count);
 	if (rc != 0) {
 		sfc_err(sa, "failed to alloc MAE counter: %s",
 			rte_strerror(rc));
@@ -132,16 +141,18 @@ sfc_mae_counter_fw_rsrc_enable(struct sfc_adapter *sa,
 	 */
 	__atomic_store_n(&p->inuse, true, __ATOMIC_RELEASE);
 
-	sfc_info(sa, "enabled MAE counter #%u with reset pkts=%" PRIu64
-		 " bytes=%" PRIu64, mae_counter.id,
+	sfc_info(sa, "enabled MAE counter 0x%x-#%u with reset pkts=%" PRIu64
+		 " bytes=%" PRIu64, counterp->type, mae_counter.id,
 		 p->reset.pkts, p->reset.bytes);
 
 	return 0;
 
 fail_counter_id_range:
-	(void)efx_mae_counters_free(sa->nic, 1, &unused, &mae_counter, NULL);
+	(void)efx_mae_counters_free_type(sa->nic, counterp->type, 1, &unused,
+					 &mae_counter, NULL);
 
 fail_mae_counter_alloc:
+fail_counter_type_check:
 	sfc_log_init(sa, "failed: %s", rte_strerror(rc));
 	return rc;
 }
@@ -151,11 +162,19 @@ sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
 				struct sfc_mae_counter *counter)
 {
 	struct sfc_mae_counter_registry *reg = &sa->mae.counter_registry;
-	struct sfc_mae_counter_records *counters = &reg->counters;
 	efx_counter_t *mae_counter = &counter->fw_rsrc.counter_id;
+	struct sfc_mae_counter_records *counters;
 	struct sfc_mae_counter_record *p;
 	uint32_t unused;
 	int rc;
+
+	switch (counter->type) {
+	case EFX_COUNTER_TYPE_ACTION:
+		counters = &reg->action_counters;
+		break;
+	default:
+		return EINVAL;
+	}
 
 	SFC_ASSERT(mae_counter->id < counters->n_mae_counters);
 	/*
@@ -166,13 +185,14 @@ sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
 	p = &counters->mae_counters[mae_counter->id];
 	__atomic_store_n(&p->inuse, false, __ATOMIC_RELEASE);
 
-	rc = efx_mae_counters_free(sa->nic, 1, &unused, mae_counter, NULL);
+	rc = efx_mae_counters_free_type(sa->nic, counter->type, 1, &unused,
+					mae_counter, NULL);
 	if (rc != 0)
-		sfc_err(sa, "failed to free MAE counter %u: %s",
-			mae_counter->id, rte_strerror(rc));
+		sfc_err(sa, "failed to free MAE counter 0x%x-#%u: %s",
+			counter->type, mae_counter->id, rte_strerror(rc));
 
-	sfc_info(sa, "disabled MAE counter #%u with reset pkts=%" PRIu64
-		 " bytes=%" PRIu64, mae_counter->id,
+	sfc_info(sa, "disabled MAE counter 0x%x-#%u with reset pkts=%" PRIu64
+		 " bytes=%" PRIu64, counter->type, mae_counter->id,
 		 p->reset.pkts, p->reset.bytes);
 
 	/*
@@ -243,8 +263,8 @@ sfc_mae_counter_increment(struct sfc_adapter *sa,
 				 __ATOMIC_RELAXED);
 	}
 
-	sfc_info(sa, "update MAE counter #%u: pkts+%" PRIu64 "=%" PRIu64
-		 ", bytes+%" PRIu64 "=%" PRIu64, mae_counter_id,
+	sfc_info(sa, "update MAE counter 0x%x-#%u: pkts+%" PRIu64 "=%" PRIu64
+		 ", bytes+%" PRIu64 "=%" PRIu64, counters->type, mae_counter_id,
 		 pkts, cnt_val.pkts, bytes, cnt_val.bytes);
 }
 
@@ -253,6 +273,7 @@ sfc_mae_parse_counter_packet(struct sfc_adapter *sa,
 			     struct sfc_mae_counter_registry *counter_registry,
 			     const struct rte_mbuf *m)
 {
+	struct sfc_mae_counter_records *counters;
 	uint32_t generation_count;
 	const efx_xword_t *hdr;
 	const efx_oword_t *counters_data;
@@ -293,7 +314,12 @@ sfc_mae_parse_counter_packet(struct sfc_adapter *sa,
 	}
 
 	id = EFX_XWORD_FIELD(*hdr, ERF_SC_PACKETISER_HEADER_IDENTIFIER);
-	if (unlikely(id != ERF_SC_PACKETISER_HEADER_IDENTIFIER_AR)) {
+
+	switch (id) {
+	case ERF_SC_PACKETISER_HEADER_IDENTIFIER_AR:
+		counters = &counter_registry->action_counters;
+		break;
+	default:
 		sfc_err(sa, "unexpected MAE counters source identifier %u", id);
 		return;
 	}
@@ -367,7 +393,7 @@ sfc_mae_parse_counter_packet(struct sfc_adapter *sa,
 			EFX_OWORD_FIELD32(counters_data[i],
 				ERF_SC_PACKETISER_PAYLOAD_BYTE_COUNT_HI);
 		sfc_mae_counter_increment(sa,
-			&counter_registry->counters,
+			counters,
 			EFX_OWORD_FIELD32(counters_data[i],
 				ERF_SC_PACKETISER_PAYLOAD_COUNTER_INDEX),
 			generation_count,
@@ -941,14 +967,25 @@ fail_counter_stream:
 }
 
 int
-sfc_mae_counter_get(struct sfc_mae_counter_records *counters,
+sfc_mae_counter_get(struct sfc_adapter *sa,
 		    const struct sfc_mae_counter *counter,
 		    struct rte_flow_query_count *data)
 {
 	struct sfc_ft_ctx *ft_ctx = counter->ft_ctx;
+	struct sfc_mae_counter_records *counters;
 	uint64_t non_reset_tunnel_hit_counter;
 	struct sfc_mae_counter_record *p;
 	union sfc_pkts_bytes value;
+	bool need_byte_count;
+
+	switch (counter->type) {
+	case EFX_COUNTER_TYPE_ACTION:
+		counters = &sa->mae.counter_registry.action_counters;
+		need_byte_count = true;
+		break;
+	default:
+		return EINVAL;
+	}
 
 	SFC_ASSERT(counter->fw_rsrc.counter_id.id < counters->n_mae_counters);
 	p = &counters->mae_counters[counter->fw_rsrc.counter_id.id];
@@ -968,7 +1005,7 @@ sfc_mae_counter_get(struct sfc_mae_counter_records *counters,
 		data->hits += ft_ctx->switch_hit_counter;
 		non_reset_tunnel_hit_counter = data->hits;
 		data->hits -= ft_ctx->reset_tunnel_hit_counter;
-	} else {
+	} else if (need_byte_count) {
 		data->bytes_set = 1;
 		data->bytes = value.bytes - p->reset.bytes;
 	}
@@ -979,7 +1016,9 @@ sfc_mae_counter_get(struct sfc_mae_counter_records *counters,
 				non_reset_tunnel_hit_counter;
 		} else {
 			p->reset.pkts = value.pkts;
-			p->reset.bytes = value.bytes;
+
+			if (need_byte_count)
+				p->reset.bytes = value.bytes;
 		}
 	}
 

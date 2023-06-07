@@ -45,7 +45,7 @@ int sfc_mae_counter_fw_rsrc_enable(struct sfc_adapter *sa,
 				   struct sfc_mae_counter *counterp);
 int sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
 				    struct sfc_mae_counter *counter);
-int sfc_mae_counter_get(struct sfc_mae_counter_records *counters,
+int sfc_mae_counter_get(struct sfc_adapter *sa,
 			const struct sfc_mae_counter *counter,
 			struct rte_flow_query_count *data);
 

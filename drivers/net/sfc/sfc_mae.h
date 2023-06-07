@@ -86,6 +86,7 @@ struct sfc_mae_counter {
 	struct sfc_mae_fw_rsrc		fw_rsrc;
 
 	bool				indirect;
+	efx_counter_type_t		type;
 };
 
 TAILQ_HEAD(sfc_mae_counters, sfc_mae_counter);
@@ -157,6 +158,8 @@ struct sfc_mae_counter_records {
 	struct sfc_mae_counters_xstats	xstats;
 	/** Count of all MAE counters */
 	unsigned int			n_mae_counters;
+	/** Counter type, for logging */
+	efx_counter_type_t		type;
 };
 
 /** Options for MAE counter polling mode */
@@ -168,8 +171,8 @@ enum sfc_mae_counter_polling_mode {
 
 struct sfc_mae_counter_registry {
 	/* Common counter information */
-	/** Counters collection */
-	struct sfc_mae_counter_records	counters;
+	/** Action rule counter record collection */
+	struct sfc_mae_counter_records	action_counters;
 
 	/* Information used by counter update service */
 	/** Callback to get packets from RxQ */

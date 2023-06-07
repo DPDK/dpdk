@@ -65,15 +65,24 @@ sfc_mae_assign_entity_mport(struct sfc_adapter *sa,
 
 static int
 sfc_mae_counter_registry_init(struct sfc_mae_counter_registry *registry,
-			      uint32_t nb_counters_max)
+			      uint32_t nb_action_counters_max)
 {
-	return sfc_mae_counters_init(&registry->counters, nb_counters_max);
+	int ret;
+
+	ret = sfc_mae_counters_init(&registry->action_counters,
+				    nb_action_counters_max);
+	if (ret != 0)
+		return ret;
+
+	registry->action_counters.type = EFX_COUNTER_TYPE_ACTION;
+
+	return 0;
 }
 
 static void
 sfc_mae_counter_registry_fini(struct sfc_mae_counter_registry *registry)
 {
-	sfc_mae_counters_fini(&registry->counters);
+	sfc_mae_counters_fini(&registry->action_counters);
 }
 
 struct rte_flow *
@@ -153,10 +162,10 @@ sfc_mae_attach(struct sfc_adapter *sa)
 
 		sfc_log_init(sa, "init MAE counter record registry");
 		rc = sfc_mae_counter_registry_init(&mae->counter_registry,
-						   limits.eml_max_n_counters);
+					limits.eml_max_n_action_counters);
 		if (rc != 0) {
-			sfc_err(sa, "failed to init MAE counters registry for %u entries: %s",
-				limits.eml_max_n_counters, rte_strerror(rc));
+			sfc_err(sa, "failed to init record registry for %u AR counters: %s",
+				limits.eml_max_n_action_counters, rte_strerror(rc));
 			goto fail_counter_registry_init;
 		}
 	}
@@ -833,6 +842,9 @@ sfc_mae_counter_add(struct sfc_adapter *sa,
 	if (counter_tmp != NULL) {
 		counter->rte_id_valid = counter_tmp->rte_id_valid;
 		counter->rte_id = counter_tmp->rte_id;
+		counter->type = counter_tmp->type;
+	} else {
+		counter->type = EFX_COUNTER_TYPE_ACTION;
 	}
 
 	counter->fw_rsrc.counter_id.id = EFX_MAE_RSRC_ID_INVALID;
@@ -864,8 +876,8 @@ sfc_mae_counter_del(struct sfc_adapter *sa, struct sfc_mae_counter *counter)
 
 	if (counter->fw_rsrc.counter_id.id != EFX_MAE_RSRC_ID_INVALID ||
 	    counter->fw_rsrc.refcnt != 0) {
-		sfc_err(sa, "deleting counter=%p abandons its FW resource: COUNTER_ID=0x%08x, refcnt=%u",
-			counter, counter->fw_rsrc.counter_id.id,
+		sfc_err(sa, "deleting counter=%p abandons its FW resource: COUNTER_ID=0x%x-#%u, refcnt=%u",
+			counter, counter->type, counter->fw_rsrc.counter_id.id,
 			counter->fw_rsrc.refcnt);
 	}
 
@@ -916,8 +928,8 @@ sfc_mae_counter_enable(struct sfc_adapter *sa, struct sfc_mae_counter *counter,
 	}
 
 	if (fw_rsrc->refcnt == 0) {
-		sfc_dbg(sa, "enabled counter=%p: COUNTER_ID=0x%08x",
-			counter, fw_rsrc->counter_id.id);
+		sfc_dbg(sa, "enabled counter=%p: COUNTER_ID=0x%x-#%u",
+			counter, counter->type, fw_rsrc->counter_id.id);
 	}
 
 	++(fw_rsrc->refcnt);
@@ -940,8 +952,8 @@ sfc_mae_counter_disable(struct sfc_adapter *sa, struct sfc_mae_counter *counter)
 
 	if (fw_rsrc->counter_id.id == EFX_MAE_RSRC_ID_INVALID ||
 	    fw_rsrc->refcnt == 0) {
-		sfc_err(sa, "failed to disable counter=%p: already disabled; COUNTER_ID=0x%08x, refcnt=%u",
-			counter, fw_rsrc->counter_id.id, fw_rsrc->refcnt);
+		sfc_err(sa, "failed to disable counter=%p: already disabled; COUNTER_ID=0x%x-#%u, refcnt=%u",
+			counter, counter->type, fw_rsrc->counter_id.id, fw_rsrc->refcnt);
 		return;
 	}
 
@@ -950,11 +962,11 @@ sfc_mae_counter_disable(struct sfc_adapter *sa, struct sfc_mae_counter *counter)
 
 		rc = sfc_mae_counter_fw_rsrc_disable(sa, counter);
 		if (rc == 0) {
-			sfc_dbg(sa, "disabled counter=%p with COUNTER_ID=0x%08x",
-				counter, counter_id);
+			sfc_dbg(sa, "disabled counter=%p with COUNTER_ID=0x%x-#%u",
+				counter, counter->type, counter_id);
 		} else {
-			sfc_err(sa, "failed to disable counter=%p with COUNTER_ID=0x%08x: %s",
-				counter, counter_id, strerror(rc));
+			sfc_err(sa, "failed to disable counter=%p with COUNTER_ID=0x%x-#%u: %s",
+				counter, counter->type, counter_id, strerror(rc));
 		}
 
 		fw_rsrc->counter_id.id = EFX_MAE_RSRC_ID_INVALID;
@@ -3954,6 +3966,7 @@ sfc_mae_rule_parse_action_mark(struct sfc_adapter *sa,
 static int
 sfc_mae_rule_parse_action_count(struct sfc_adapter *sa,
 				const struct rte_flow_action_count *conf,
+				efx_counter_type_t mae_counter_type,
 				struct sfc_mae_counter **counterp,
 				efx_mae_actions_t *spec)
 {
@@ -3992,6 +4005,8 @@ sfc_mae_rule_parse_action_count(struct sfc_adapter *sa,
 		counter_tmp.rte_id_valid = true;
 		counter_tmp.rte_id = conf->id;
 	}
+
+	counter_tmp.type = mae_counter_type;
 
 	return sfc_mae_counter_add(sa, &counter_tmp, counterp);
 
@@ -4217,6 +4232,7 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 {
 	struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
 	const struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
+	efx_counter_type_t mae_counter_type = EFX_COUNTER_TYPE_ACTION;
 	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
 	struct sfc_mae_counter **counterp = &ctx->counter;
 	efx_mae_actions_t *spec = ctx->spec;
@@ -4309,6 +4325,7 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_COUNT,
 				       bundle->actions_mask);
 		rc = sfc_mae_rule_parse_action_count(sa, action->conf,
+						     mae_counter_type,
 						     counterp, spec_ptr);
 		break;
 	case RTE_FLOW_ACTION_TYPE_INDIRECT:
@@ -4887,8 +4904,7 @@ sfc_mae_query_counter(struct sfc_adapter *sa,
 
 	if (conf == NULL ||
 	    (counter->rte_id_valid && conf->id == counter->rte_id)) {
-		rc = sfc_mae_counter_get(&sa->mae.counter_registry.counters,
-					 counter, data);
+		rc = sfc_mae_counter_get(sa, counter, data);
 		if (rc != 0) {
 			return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -5002,6 +5018,7 @@ sfc_mae_indir_action_create(struct sfc_adapter *sa,
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		ret = sfc_mae_rule_parse_action_count(sa, action->conf,
+						      EFX_COUNTER_TYPE_ACTION,
 						      &handle->counter, NULL);
 		if (ret == 0)
 			handle->counter->indirect = true;
@@ -5065,8 +5082,7 @@ sfc_mae_indir_action_query(struct sfc_adapter *sa,
 		if (handle->counter->fw_rsrc.refcnt == 0)
 			goto fail_not_in_use;
 
-		ret = sfc_mae_counter_get(&sa->mae.counter_registry.counters,
-					  handle->counter, data);
+		ret = sfc_mae_counter_get(sa, handle->counter, data);
 		if (ret != 0)
 			goto fail_counter_get;
 
