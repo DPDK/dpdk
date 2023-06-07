@@ -2371,6 +2371,26 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_outer_rule_do_ct_set(
+	__in				efx_mae_match_spec_t *spec)
+{
+	efx_rc_t rc;
+
+	if (spec->emms_type != EFX_MAE_RULE_OUTER) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	spec->emms_outer_rule_do_ct = B_TRUE;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn		efx_rc_t
 efx_mae_outer_rule_insert(
 	__in			efx_nic_t *enp,
@@ -2386,6 +2406,7 @@ efx_mae_outer_rule_insert(
 	uint32_t encap_type_mcdi;
 	efx_mae_rule_id_t or_id;
 	size_t offset;
+	uint8_t do_ct;
 	efx_rc_t rc;
 
 	EFX_STATIC_ASSERT(sizeof (or_idp->id) ==
@@ -2447,6 +2468,11 @@ efx_mae_outer_rule_insert(
 	MCDI_IN_SET_DWORD_FIELD(req, MAE_OUTER_RULE_INSERT_IN_LOOKUP_CONTROL,
 	    MAE_OUTER_RULE_INSERT_IN_RECIRC_ID,
 	    spec->emms_outer_rule_recirc_id);
+
+	do_ct = (spec->emms_outer_rule_do_ct == B_FALSE) ? 0 : 1;
+
+	MCDI_IN_SET_DWORD_FIELD(req, MAE_OUTER_RULE_INSERT_IN_LOOKUP_CONTROL,
+	    MAE_OUTER_RULE_INSERT_IN_DO_CT, do_ct);
 
 	efx_mcdi_execute(enp, &req);
 

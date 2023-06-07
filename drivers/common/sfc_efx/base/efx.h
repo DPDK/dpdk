@@ -4688,6 +4688,15 @@ efx_mae_outer_rule_recirc_id_set(
 	__in				efx_mae_match_spec_t *spec,
 	__in				uint8_t recirc_id);
 
+/*
+ * Request that packets hitting this rule be submitted
+ * for a lookup in the conntrack assistance table.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_outer_rule_do_ct_set(
+	__in				efx_mae_match_spec_t *spec);
+
 LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_mae_outer_rule_insert(

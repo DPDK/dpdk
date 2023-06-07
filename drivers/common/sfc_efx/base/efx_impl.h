@@ -1761,6 +1761,7 @@ struct efx_mae_match_spec_s {
 		uint8_t			outer[MAE_ENC_FIELD_PAIRS_LEN];
 	} emms_mask_value_pairs;
 	uint8_t				emms_outer_rule_recirc_id;
+	boolean_t			emms_outer_rule_do_ct;
 };
 
 typedef enum efx_mae_action_e {
