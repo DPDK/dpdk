@@ -92,6 +92,7 @@ sources = files(
         'sfc_tbl_meta_cache.c',
         'sfc_mae.c',
         'sfc_mae_counter.c',
+        'sfc_mae_ct.c',
         'sfc_flow.c',
         'sfc_flow_rss.c',
         'sfc_flow_tunnel.c',
