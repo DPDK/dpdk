@@ -397,8 +397,10 @@ skip_action_rule:
 
 static void
 sfc_mae_outer_rule_disable(struct sfc_adapter *sa,
-			   struct sfc_mae_outer_rule *rule)
+			   struct sfc_mae_outer_rule *rule,
+			   efx_mae_match_spec_t *match_spec_action)
 {
+	efx_mae_rule_id_t invalid_rule_id = { .id = EFX_MAE_RSRC_ID_INVALID };
 	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
@@ -409,6 +411,18 @@ sfc_mae_outer_rule_disable(struct sfc_adapter *sa,
 
 	fw_rsrc = &rule->fw_rsrc;
 
+	if (match_spec_action == NULL)
+		goto skip_action_rule;
+
+	rc = efx_mae_match_spec_outer_rule_id_set(match_spec_action,
+						  &invalid_rule_id);
+	if (rc != 0) {
+		sfc_err(sa, "cannot restore match on invalid outer rule ID: %s",
+			strerror(rc));
+		return;
+	}
+
+skip_action_rule:
 	if (fw_rsrc->rule_id.id == EFX_MAE_RSRC_ID_INVALID ||
 	    fw_rsrc->refcnt == 0) {
 		sfc_err(sa, "failed to disable outer_rule=%p: already disabled; OR_ID=0x%08x, refcnt=%u",
@@ -2459,7 +2473,7 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 			   struct sfc_mae_outer_rule **rulep,
 			   struct rte_flow_error *error)
 {
-	efx_mae_rule_id_t invalid_rule_id = { .id = EFX_MAE_RSRC_ID_INVALID };
+	efx_mae_rule_id_t or_id = { .id = EFX_MAE_RSRC_ID_INVALID };
 	int rc;
 
 	if (ctx->internal) {
@@ -2506,13 +2520,20 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 	/* The spec has now been tracked by the outer rule entry. */
 	ctx->match_spec_outer = NULL;
 
+	or_id.id = (*rulep)->fw_rsrc.rule_id.id;
+
 no_or_id:
 	switch (ctx->ft_rule_type) {
 	case SFC_FT_RULE_NONE:
 		break;
 	case SFC_FT_RULE_TUNNEL:
-		/* No action rule */
-		return 0;
+		/*
+		 * Workaround. TUNNEL flows are not supposed to involve
+		 * MAE action rules, but, due to the currently limited
+		 * HW/FW implementation, action rules are still needed.
+		 * See sfc_mae_rule_parse_pattern().
+		 */
+		break;
 	case SFC_FT_RULE_SWITCH:
 		/*
 		 * Match on recirculation ID rather than
@@ -2538,14 +2559,13 @@ no_or_id:
 	 * outer rule table. Set OR_ID match field to 0xffffffff/0xffffffff
 	 * in the action rule specification; this ensures correct behaviour.
 	 *
-	 * If, on the other hand, this flow does have an outer rule, its ID
-	 * may be unknown at the moment (not yet allocated), but OR_ID mask
-	 * has to be set to 0xffffffff anyway for correct class comparisons.
-	 * When the outer rule has been allocated, this match field will be
-	 * overridden by sfc_mae_outer_rule_enable() to use the right value.
+	 * If, however, this flow does have an outer rule, OR_ID match must
+	 * be set to the currently known value for that outer rule. It will
+	 * be either 0xffffffff or some valid ID, depending on whether this
+	 * outer rule is currently active (adapter state is STARTED) or not.
 	 */
 	rc = efx_mae_match_spec_outer_rule_id_set(ctx->match_spec_action,
-						  &invalid_rule_id);
+						  &or_id);
 	if (rc != 0) {
 		sfc_mae_outer_rule_del(sa, *rulep);
 		*rulep = NULL;
@@ -4172,7 +4192,7 @@ fail_action_rule_insert:
 	sfc_mae_action_set_disable(sa, action_set);
 
 fail_action_set_enable:
-	sfc_mae_outer_rule_disable(sa, outer_rule);
+	sfc_mae_outer_rule_disable(sa, outer_rule, spec_mae->match_spec);
 
 fail_outer_rule_enable:
 	return rc;
@@ -4207,7 +4227,7 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 	sfc_mae_action_set_disable(sa, action_set);
 
 skip_action_rule:
-	sfc_mae_outer_rule_disable(sa, outer_rule);
+	sfc_mae_outer_rule_disable(sa, outer_rule, spec_mae->match_spec);
 
 	return 0;
 }
