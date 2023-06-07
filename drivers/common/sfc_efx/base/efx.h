@@ -5093,6 +5093,21 @@ efx_nic_dma_map(
 	__in		size_t len,
 	__out		efsys_dma_addr_t *nic_addrp);
 
+/* Unique IDs for HW tables */
+typedef enum efx_table_id_e {
+	EFX_TABLE_ID_CONNTRACK = 0x10300,
+} efx_table_id_t;
+
+LIBEFX_API
+extern	__checkReturn				efx_rc_t
+efx_table_list(
+	__in					efx_nic_t *enp,
+	__in					uint32_t entry_ofst,
+	__out_opt				unsigned int *total_n_tablesp,
+	__out_ecount_opt(n_table_ids)		efx_table_id_t *table_ids,
+	__in					unsigned int n_table_ids,
+	__out_opt				unsigned int *n_table_ids_writtenp);
+
 #ifdef	__cplusplus
 }
 #endif

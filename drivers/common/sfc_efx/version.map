@@ -233,6 +233,8 @@ INTERNAL {
 	efx_sram_buf_tbl_clear;
 	efx_sram_buf_tbl_set;
 
+	efx_table_list;
+
 	efx_tunnel_config_clear;
 	efx_tunnel_config_udp_add;
 	efx_tunnel_config_udp_remove;
