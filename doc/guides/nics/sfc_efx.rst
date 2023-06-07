@@ -306,6 +306,8 @@ Supported actions (***transfer*** rules):
 
 - COUNT
 
+- INDIRECT
+
 - DROP
 
 Validating flow rules depends on the firmware variant.

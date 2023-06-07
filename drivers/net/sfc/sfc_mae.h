@@ -84,6 +84,8 @@ struct sfc_mae_counter {
 	struct sfc_ft_ctx		*ft_ctx;
 
 	struct sfc_mae_fw_rsrc		fw_rsrc;
+
+	bool				indirect;
 };
 
 TAILQ_HEAD(sfc_mae_counters, sfc_mae_counter);
@@ -400,6 +402,19 @@ void sfc_mae_repr_flow_destroy(struct sfc_adapter *sa, struct rte_flow *flow);
 
 int sfc_mae_switchdev_init(struct sfc_adapter *sa);
 void sfc_mae_switchdev_fini(struct sfc_adapter *sa);
+
+int sfc_mae_indir_action_create(struct sfc_adapter *sa,
+				const struct rte_flow_action *action,
+				struct rte_flow_action_handle *handle,
+				struct rte_flow_error *error);
+
+int sfc_mae_indir_action_destroy(struct sfc_adapter *sa,
+				 const struct rte_flow_action_handle *handle,
+				 struct rte_flow_error *error);
+
+int sfc_mae_indir_action_query(struct sfc_adapter *sa,
+			       const struct rte_flow_action_handle *handle,
+			       void *data, struct rte_flow_error *error);
 
 #ifdef __cplusplus
 }

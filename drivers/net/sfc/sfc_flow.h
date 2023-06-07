@@ -88,6 +88,20 @@ struct sfc_flow_spec_mae {
 	sfc_mae_conntrack_key_t		ct_key;
 };
 
+/* PMD-specific definition of the opaque type from rte_flow.h */
+struct rte_flow_action_handle {
+	TAILQ_ENTRY(rte_flow_action_handle)	entries;
+
+	bool					transfer;
+	enum rte_flow_action_type		type;
+
+	union {
+		struct sfc_mae_counter		*counter;
+	};
+};
+
+TAILQ_HEAD(sfc_flow_indir_actions, rte_flow_action_handle);
+
 /* Flow specification */
 struct sfc_flow_spec {
 	/* Flow specification type (engine-based) */

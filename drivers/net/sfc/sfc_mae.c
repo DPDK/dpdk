@@ -4006,6 +4006,58 @@ fail_counter_queue_uninit:
 }
 
 static int
+sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa,
+				   const struct rte_flow_action_handle *handle,
+				   enum sfc_ft_rule_type ft_rule_type,
+				   struct sfc_mae_aset_ctx *ctx,
+				   struct rte_flow_error *error)
+{
+	struct rte_flow_action_handle *entry;
+	int rc;
+
+	TAILQ_FOREACH(entry, &sa->flow_indir_actions, entries) {
+		if (entry == handle) {
+			sfc_dbg(sa, "attaching to indirect_action=%p", entry);
+
+			switch (entry->type) {
+			case RTE_FLOW_ACTION_TYPE_COUNT:
+				if (ft_rule_type != SFC_FT_RULE_NONE) {
+					return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot use indirect count action in tunnel model");
+				}
+
+				if (ctx->counter != NULL) {
+					return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot have multiple actions COUNT in one flow");
+				}
+
+				rc = efx_mae_action_set_populate_count(ctx->spec);
+				if (rc != 0) {
+					return rte_flow_error_set(error, rc,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "failed to add COUNT to MAE action set");
+				}
+
+				ctx->counter = entry->counter;
+				++(ctx->counter->refcnt);
+				break;
+			default:
+				SFC_ASSERT(B_FALSE);
+				break;
+			}
+
+			return 0;
+		}
+	}
+
+	return rte_flow_error_set(error, ENOENT,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "indirect action handle not found");
+}
+
+static int
 sfc_mae_rule_parse_action_pf_vf(struct sfc_adapter *sa,
 				const struct rte_flow_action_vf *vf_conf,
 				efx_mae_actions_t *spec)
@@ -4143,6 +4195,7 @@ static const char * const action_names[] = {
 	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP] = "OF_SET_VLAN_PCP",
 	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP] = "VXLAN_ENCAP",
 	[RTE_FLOW_ACTION_TYPE_COUNT] = "COUNT",
+	[RTE_FLOW_ACTION_TYPE_INDIRECT] = "INDIRECT",
 	[RTE_FLOW_ACTION_TYPE_FLAG] = "FLAG",
 	[RTE_FLOW_ACTION_TYPE_MARK] = "MARK",
 	[RTE_FLOW_ACTION_TYPE_PF] = "PF",
@@ -4257,6 +4310,14 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 				       bundle->actions_mask);
 		rc = sfc_mae_rule_parse_action_count(sa, action->conf,
 						     counterp, spec_ptr);
+		break;
+	case RTE_FLOW_ACTION_TYPE_INDIRECT:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_INDIRECT,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_indirect(sa, action->conf,
+							spec_mae->ft_rule_type,
+							ctx, error);
+		custom_error = B_TRUE;
 		break;
 	case RTE_FLOW_ACTION_TYPE_FLAG:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_FLAG,
@@ -4813,7 +4874,9 @@ sfc_mae_query_counter(struct sfc_adapter *sa,
 	struct sfc_mae_counter *counter;
 	int rc;
 
-	if (action_rule == NULL || action_rule->action_set->counter == NULL) {
+	if (action_rule == NULL || action_rule->action_set == NULL ||
+	    action_rule->action_set->counter == NULL ||
+	    action_rule->action_set->counter->indirect) {
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION, action,
 			"Queried flow rule does not have count actions");
@@ -4923,4 +4986,106 @@ sfc_mae_switchdev_fini(struct sfc_adapter *sa)
 
 	sfc_mae_repr_flow_destroy(sa, mae->switchdev_rule_pf_to_ext);
 	sfc_mae_repr_flow_destroy(sa, mae->switchdev_rule_ext_to_pf);
+}
+
+int
+sfc_mae_indir_action_create(struct sfc_adapter *sa,
+			    const struct rte_flow_action *action,
+			    struct rte_flow_action_handle *handle,
+			    struct rte_flow_error *error)
+{
+	int ret;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(handle != NULL);
+
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		ret = sfc_mae_rule_parse_action_count(sa, action->conf,
+						      &handle->counter, NULL);
+		if (ret == 0)
+			handle->counter->indirect = true;
+		break;
+	default:
+		ret = ENOTSUP;
+	}
+
+	if (ret != 0) {
+		return rte_flow_error_set(error, ret,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"failed to parse indirect action to mae object");
+	}
+
+	handle->type = action->type;
+
+	return 0;
+}
+
+int
+sfc_mae_indir_action_destroy(struct sfc_adapter *sa,
+			     const struct rte_flow_action_handle *handle,
+			     struct rte_flow_error *error)
+{
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(handle != NULL);
+
+	switch (handle->type) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		if (handle->counter->refcnt != 1)
+			goto fail;
+
+		sfc_mae_counter_del(sa, handle->counter);
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+		break;
+	}
+
+	return 0;
+
+fail:
+	return rte_flow_error_set(error, EIO, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "indirect action is still in use");
+}
+
+int
+sfc_mae_indir_action_query(struct sfc_adapter *sa,
+			   const struct rte_flow_action_handle *handle,
+			   void *data, struct rte_flow_error *error)
+{
+	int ret;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(handle != NULL);
+
+	switch (handle->type) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		SFC_ASSERT(handle->counter != NULL);
+
+		if (handle->counter->fw_rsrc.refcnt == 0)
+			goto fail_not_in_use;
+
+		ret = sfc_mae_counter_get(&sa->mae.counter_registry.counters,
+					  handle->counter, data);
+		if (ret != 0)
+			goto fail_counter_get;
+
+		break;
+	default:
+		goto fail_unsup;
+	}
+
+	return 0;
+
+fail_not_in_use:
+	return rte_flow_error_set(error, EIO, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "indirect action is not in use");
+
+fail_counter_get:
+	return rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "failed to collect indirect action COUNT data");
+
+fail_unsup:
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "indirect action of this type cannot be queried");
 }

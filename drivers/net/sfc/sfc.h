@@ -250,6 +250,7 @@ struct sfc_adapter {
 	struct sfc_tbls			hw_tables;
 	struct sfc_repr_proxy		repr_proxy;
 
+	struct sfc_flow_indir_actions	flow_indir_actions;
 	struct sfc_flow_list		flow_list;
 
 	unsigned int			rxq_max;

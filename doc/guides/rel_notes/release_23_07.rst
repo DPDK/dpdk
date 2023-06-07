@@ -138,6 +138,8 @@ New Features
     current FEC mode from a device.
   * Added partial support for transfer flow actions SET_IPV4_DST, SET_TP_DST,
     SET_IPV4_SRC and SET_TP_SRC on SN1000 SmartNICs.
+  * Added support for transfer flow action INDIRECT with subtype COUNT,
+    for aggregated statistics.
 
 * **Added vmxnet3 version 7 support.**
 

@@ -2776,6 +2776,128 @@ sfc_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static struct rte_flow_action_handle *
+sfc_flow_action_handle_create(struct rte_eth_dev *dev,
+			      const struct rte_flow_indir_action_conf *conf,
+			      const struct rte_flow_action *action,
+			      struct rte_flow_error *error)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct rte_flow_action_handle *handle;
+	int ret;
+
+	if (!conf->transfer) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "non-transfer domain does not support indirect actions");
+		return NULL;
+	}
+
+	if (conf->ingress || conf->egress) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "cannot combine ingress/egress with transfer");
+		return NULL;
+	}
+
+	handle = rte_zmalloc("sfc_rte_flow_action_handle", sizeof(*handle), 0);
+	if (handle == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "failed to allocate memory");
+		return NULL;
+	}
+
+	sfc_adapter_lock(sa);
+
+	ret = sfc_mae_indir_action_create(sa, action, handle, error);
+	if (ret != 0) {
+		sfc_adapter_unlock(sa);
+		rte_free(handle);
+		return NULL;
+	}
+
+	TAILQ_INSERT_TAIL(&sa->flow_indir_actions, handle, entries);
+
+	handle->transfer = (bool)conf->transfer;
+
+	sfc_adapter_unlock(sa);
+
+	return handle;
+}
+
+static int
+sfc_flow_action_handle_destroy(struct rte_eth_dev *dev,
+			       struct rte_flow_action_handle *handle,
+			       struct rte_flow_error *error)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct rte_flow_action_handle *entry;
+	int rc = EINVAL;
+
+	sfc_adapter_lock(sa);
+
+	TAILQ_FOREACH(entry, &sa->flow_indir_actions, entries) {
+		if (entry != handle)
+			continue;
+
+		if (entry->transfer) {
+			rc = sfc_mae_indir_action_destroy(sa, handle,
+							  error);
+			if (rc != 0)
+				goto exit;
+		} else {
+			SFC_ASSERT(B_FALSE);
+		}
+
+		TAILQ_REMOVE(&sa->flow_indir_actions, entry, entries);
+		rte_free(entry);
+		goto exit;
+	}
+
+	rc = rte_flow_error_set(error, ENOENT,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"indirect action handle not found");
+
+exit:
+	sfc_adapter_unlock(sa);
+	return rc;
+}
+
+static int
+sfc_flow_action_handle_query(struct rte_eth_dev *dev,
+			     const struct rte_flow_action_handle *handle,
+			     void *data, struct rte_flow_error *error)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct rte_flow_action_handle *entry;
+	int rc = EINVAL;
+
+	sfc_adapter_lock(sa);
+
+	TAILQ_FOREACH(entry, &sa->flow_indir_actions, entries) {
+		if (entry != handle)
+			continue;
+
+		if (entry->transfer) {
+			rc = sfc_mae_indir_action_query(sa, handle,
+							data, error);
+		} else {
+			SFC_ASSERT(B_FALSE);
+		}
+
+		goto exit;
+	}
+
+	rc = rte_flow_error_set(error, ENOENT,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"indirect action handle not found");
+
+exit:
+	sfc_adapter_unlock(sa);
+	return rc;
+}
+
 const struct rte_flow_ops sfc_flow_ops = {
 	.validate = sfc_flow_validate,
 	.create = sfc_flow_create,
@@ -2783,6 +2905,9 @@ const struct rte_flow_ops sfc_flow_ops = {
 	.flush = sfc_flow_flush,
 	.query = sfc_flow_query,
 	.isolate = sfc_flow_isolate,
+	.action_handle_create = sfc_flow_action_handle_create,
+	.action_handle_destroy = sfc_flow_action_handle_destroy,
+	.action_handle_query = sfc_flow_action_handle_query,
 	.tunnel_decap_set = sfc_ft_decap_set,
 	.tunnel_match = sfc_ft_match,
 	.tunnel_action_decap_release = sfc_ft_action_decap_release,
@@ -2796,6 +2921,7 @@ sfc_flow_init(struct sfc_adapter *sa)
 {
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
+	TAILQ_INIT(&sa->flow_indir_actions);
 	TAILQ_INIT(&sa->flow_list);
 }
 
