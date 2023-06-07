@@ -504,6 +504,10 @@ efx_mcdi_set_nic_addr_regions(
 	EFX_DWORD_FIELD(*(MCDI_OUT2(_emr, efx_dword_t, _ofst) +		\
 			(_idx)), _field)
 
+#define	MCDI_OUT_INDEXED_QWORD_FIELD(_emr, _ofst, _idx, _field)		\
+	EFX_QWORD_FIELD(*(MCDI_OUT2(_emr, efx_qword_t, _ofst) +		\
+			(_idx)), _field)
+
 #define	MCDI_OUT_INDEXED_STRUCT_MEMBER(_emr, _type, _arr_ofst, _idx,	\
 		_member_ofst)						\
 	((_type *)(MCDI_OUT2(_emr, uint8_t, _arr_ofst) +		\
