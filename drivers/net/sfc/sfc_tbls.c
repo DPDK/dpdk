@@ -3,6 +3,7 @@
  * Copyright (c) 2023 Advanced Micro Devices, Inc.
  */
 
+#include "sfc.h"
 #include "sfc_tbls.h"
 #include "sfc_debug.h"
 
@@ -10,6 +11,65 @@
 
 /* Number of bits in uint32_t type */
 #define SFC_TBLS_U32_BITS (sizeof(uint32_t) * CHAR_BIT)
+
+int
+sfc_tbls_attach(struct sfc_adapter *sa)
+{
+	struct sfc_tbls *tables = &sa->hw_tables;
+	const struct sfc_mae *mae = &sa->mae;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	if (mae->status != SFC_MAE_STATUS_ADMIN ||
+	    !encp->enc_table_api_supported) {
+		tables->status = SFC_TBLS_STATUS_UNSUPPORTED;
+		return 0;
+	}
+
+	tables->status = SFC_TBLS_STATUS_SUPPORTED;
+
+	rc = sfc_tbl_meta_init(sa);
+	if (rc != 0)
+		return rc;
+
+	sfc_log_init(sa, "done");
+
+	return 0;
+}
+
+void
+sfc_tbls_detach(struct sfc_adapter *sa)
+{
+	struct sfc_tbls *tables = &sa->hw_tables;
+
+	sfc_log_init(sa, "entry");
+
+	if (tables->status != SFC_TBLS_STATUS_SUPPORTED)
+		goto done;
+
+	sfc_tbl_meta_fini(sa);
+
+done:
+	sfc_log_init(sa, "done");
+
+	tables->status = SFC_TBLS_STATUS_UNKNOWN;
+}
+
+int
+sfc_tbls_start(struct sfc_adapter *sa)
+{
+	struct sfc_tbls *tables = &sa->hw_tables;
+	int rc;
+
+	if (tables->status == SFC_TBLS_STATUS_UNKNOWN) {
+		rc = sfc_tbls_attach(sa);
+		return rc;
+	}
+
+	return 0;
+}
 
 static uint32_t
 sfc_tbls_field_update(uint32_t in, uint16_t lbn, uint16_t width, uint32_t value)

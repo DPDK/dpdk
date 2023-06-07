@@ -491,6 +491,10 @@ sfc_try_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_ev_start;
 
+	rc = sfc_tbls_start(sa);
+	if (rc != 0)
+		goto fail_tbls_start;
+
 	rc = sfc_port_start(sa);
 	if (rc != 0)
 		goto fail_port_start;
@@ -526,8 +530,11 @@ fail_tx_start:
 fail_rx_start:
 	sfc_port_stop(sa);
 
-fail_port_start:
+fail_tbls_start:
 	sfc_ev_stop(sa);
+
+fail_port_start:
+	sfc_tbls_stop(sa);
 
 fail_ev_start:
 	sfc_intr_stop(sa);
@@ -626,6 +633,7 @@ sfc_stop(struct sfc_adapter *sa)
 	sfc_tx_stop(sa);
 	sfc_rx_stop(sa);
 	sfc_port_stop(sa);
+	sfc_tbls_stop(sa);
 	sfc_ev_stop(sa);
 	sfc_intr_stop(sa);
 	efx_nic_fini(sa->nic);
@@ -983,6 +991,10 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mae_attach;
 
+	rc = sfc_tbls_attach(sa);
+	if (rc != 0)
+		goto fail_tables_attach;
+
 	rc = sfc_mae_switchdev_init(sa);
 	if (rc != 0)
 		goto fail_mae_switchdev_init;
@@ -1025,6 +1037,9 @@ fail_repr_proxy_attach:
 	sfc_mae_switchdev_fini(sa);
 
 fail_mae_switchdev_init:
+	sfc_tbls_detach(sa);
+
+fail_tables_attach:
 	sfc_mae_detach(sa);
 
 fail_mae_attach:
@@ -1088,6 +1103,7 @@ sfc_detach(struct sfc_adapter *sa)
 
 	sfc_repr_proxy_detach(sa);
 	sfc_mae_switchdev_fini(sa);
+	sfc_tbls_detach(sa);
 	sfc_mae_detach(sa);
 	sfc_mae_counter_rxq_detach(sa);
 	sfc_filter_detach(sa);

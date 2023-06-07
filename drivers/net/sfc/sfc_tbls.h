@@ -8,6 +8,8 @@
 
 #include "efx.h"
 
+#include "sfc_tbl_meta.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,6 +45,85 @@ extern "C" {
 
 /* Mask is used only for STCAM */
 #define SFC_TBLS_BCAM_MASK_WIDTH	0
+
+/** Options for HW tables support status */
+enum sfc_tbls_status {
+	SFC_TBLS_STATUS_UNKNOWN = 0,
+	SFC_TBLS_STATUS_UNSUPPORTED,
+	SFC_TBLS_STATUS_SUPPORTED,
+};
+
+/**
+ * Entry point to access HW tables
+ *
+ * SFC driver can access hardware (HW) tables.
+ * Interaction with HW tables is done through the MCDI table access API
+ * that is implemented in EFX.
+ *
+ * In order to manipulate data on HW tables it's necessary to
+ * - discover the list of supported tables;
+ * - read a table descriptor to get details of the structure
+ *   of the table;
+ * - get named fields of the table;
+ * - insert/delete/update table entries based on given fields
+ *   and information about the table
+ *
+ * All table layout data should be saved in a cache.
+ * The cache allows to avoid getting the table descriptor each time when you want
+ * to manipulate table entries. It just contains the table
+ * descriptors and all associated data. The cache is based on the RTE hash map and
+ * it uses a table ID as a key.
+ * The sfc_tbl_meta library serves as a wrapper over the cache and allows to user
+ * to get all information about the tables without worrying about the cache.
+ *
+ * +------------------------+
+ * | Cache is uninitialized |<----------------------------------+
+ * +------------------------+					|
+ *	|							|
+ *	| sfc_attach()						|
+ *	| sfc_tbls_attach() -- (fail) -- sfc_tbls_detach()------+
+ *	V					^
+ * +------------------------+			|
+ * |  Cache is initialized  |			+-------+
+ * +------------------------+				|
+ *	| sfc_start()					|
+ *	| sfc_tbls_start() -- (fail) -- sfc_tbls_stop()-+
+ *	V						|
+ * +------------------------+				|
+ * | Cache is initialized   |				|
+ * | and valid              |				|
+ * +------------------------+				|
+ *	|						|
+ *	| sfc_restart()					|
+ *	V						|
+ * +------------------------+				|
+ * | Cache is initialized   |				|
+ * | but can be invalid     |				|
+ * +------------------------+---------------------------+
+ */
+struct sfc_tbls {
+	struct sfc_tbl_meta_cache	meta;
+	enum sfc_tbls_status		status;
+};
+
+struct sfc_adapter;
+
+static inline bool
+sfc_tbls_id_is_supported(struct sfc_adapter *sa,
+			 efx_table_id_t table_id)
+{
+	return (sfc_tbl_meta_lookup(sa, table_id) == NULL ? false : true);
+}
+
+int sfc_tbls_attach(struct sfc_adapter *sa);
+void sfc_tbls_detach(struct sfc_adapter *sa);
+int sfc_tbls_start(struct sfc_adapter *sa);
+
+static inline void
+sfc_tbls_stop(struct sfc_adapter *sa)
+{
+	sfc_tbls_detach(sa);
+}
 
 static inline int
 sfc_tbls_bcam_entry_insert(efx_nic_t *enp, efx_table_id_t table_id, uint16_t key_width,

@@ -31,6 +31,7 @@
 #include "sfc_flow_tunnel.h"
 #include "sfc_sriov.h"
 #include "sfc_mae.h"
+#include "sfc_tbls.h"
 #include "sfc_dp.h"
 #include "sfc_sw_stats.h"
 #include "sfc_repr_proxy.h"
@@ -246,6 +247,7 @@ struct sfc_adapter {
 	struct sfc_ft_ctx		ft_ctx_pool[SFC_FT_MAX_NTUNNELS];
 	struct sfc_filter		filter;
 	struct sfc_mae			mae;
+	struct sfc_tbls			hw_tables;
 	struct sfc_repr_proxy		repr_proxy;
 
 	struct sfc_flow_list		flow_list;
