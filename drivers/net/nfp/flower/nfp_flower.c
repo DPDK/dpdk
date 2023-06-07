@@ -485,8 +485,8 @@ nfp_flower_pf_recv_pkts(void *rx_queue,
 	return avail;
 }
 
-uint16_t
-nfp_flower_pf_xmit_pkts(void *tx_queue,
+static uint16_t
+nfp_flower_pf_nfd3_xmit_pkts(void *tx_queue,
 		struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
@@ -613,6 +613,30 @@ xmit_end:
 	nfp_qcp_ptr_add(txq->qcp_q, NFP_QCP_WRITE_PTR, issued_descs);
 
 	return i;
+}
+
+static void
+nfp_flower_pf_xmit_pkts_register(struct nfp_app_fw_flower *app_fw_flower)
+{
+	struct nfp_flower_nfd_func *nfd_func;
+
+	nfd_func = &app_fw_flower->nfd_func;
+
+	nfd_func->pf_xmit_t = nfp_flower_pf_nfd3_xmit_pkts;
+}
+
+uint16_t
+nfp_flower_pf_xmit_pkts(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	struct nfp_net_txq *txq;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	txq = tx_queue;
+	app_fw_flower = txq->hw->pf_dev->app_fw_priv;
+
+	return app_fw_flower->nfd_func.pf_xmit_t(tx_queue, tx_pkts, nb_pkts);
 }
 
 static int
@@ -1087,6 +1111,7 @@ nfp_flower_nfd_func_register(struct nfp_app_fw_flower *app_fw_flower)
 {
 	nfp_flower_pkt_add_metadata_register(app_fw_flower);
 	nfp_flower_ctrl_vnic_xmit_register(app_fw_flower);
+	nfp_flower_pf_xmit_pkts_register(app_fw_flower);
 }
 
 int

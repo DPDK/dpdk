@@ -44,6 +44,9 @@ struct nfp_flower_nfd_func {
 	/** Function used to xmit pkt through ctrl vnic. */
 	uint16_t (*ctrl_vnic_xmit_t)(struct nfp_app_fw_flower *app_fw_flower,
 			struct rte_mbuf *mbuf);
+	/** Function used to xmit pkts through PF. */
+	uint16_t (*pf_xmit_t)(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts);
 };
 
 /* The flower application's private structure */
