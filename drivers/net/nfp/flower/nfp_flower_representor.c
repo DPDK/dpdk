@@ -465,7 +465,6 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 {
 	uint16_t i;
 	uint16_t sent;
-	char *meta_offset;
 	void *pf_tx_queue;
 	struct nfp_net_txq *txq;
 	struct nfp_net_hw *pf_hw;
@@ -483,12 +482,9 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 	repr_dev = &rte_eth_devices[txq->port_id];
 	repr = repr_dev->data->dev_private;
 
-	for (i = 0; i < nb_pkts; i++) {
-		meta_offset = rte_pktmbuf_prepend(tx_pkts[i], FLOWER_PKT_DATA_OFFSET);
-		*(uint32_t *)meta_offset = rte_cpu_to_be_32(NFP_NET_META_PORTID);
-		meta_offset += 4;
-		*(uint32_t *)meta_offset = rte_cpu_to_be_32(repr->port_id);
-	}
+	for (i = 0; i < nb_pkts; i++)
+		nfp_flower_pkt_add_metadata(repr->app_fw_flower,
+				tx_pkts[i], repr->port_id);
 
 	/* This points to the PF vNIC that owns this representor */
 	pf_hw = txq->hw;

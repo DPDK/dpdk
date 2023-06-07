@@ -1058,6 +1058,30 @@ nfp_flower_enable_services(struct nfp_app_fw_flower *app_fw_flower)
 	return 0;
 }
 
+static void
+nfp_flower_pkt_add_metadata_register(struct nfp_app_fw_flower *app_fw_flower)
+{
+	struct nfp_flower_nfd_func *nfd_func;
+
+	nfd_func = &app_fw_flower->nfd_func;
+
+	nfd_func->pkt_add_metadata_t = nfp_flower_nfd3_pkt_add_metadata;
+}
+
+uint32_t
+nfp_flower_pkt_add_metadata(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_mbuf *mbuf,
+		uint32_t port_id)
+{
+	return app_fw_flower->nfd_func.pkt_add_metadata_t(mbuf, port_id);
+}
+
+static void
+nfp_flower_nfd_func_register(struct nfp_app_fw_flower *app_fw_flower)
+{
+	nfp_flower_pkt_add_metadata_register(app_fw_flower);
+}
+
 int
 nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 {
@@ -1134,6 +1158,8 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 		PMD_INIT_LOG(ERR, "Could not initialize flower PF vNIC");
 		goto pf_cpp_area_cleanup;
 	}
+
+	nfp_flower_nfd_func_register(app_fw_flower);
 
 	/* The ctrl vNIC struct comes directly after the PF one */
 	app_fw_flower->ctrl_hw = pf_hw + 1;

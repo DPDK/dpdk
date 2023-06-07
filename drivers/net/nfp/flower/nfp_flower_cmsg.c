@@ -12,28 +12,19 @@
 #include "nfp_flower_representor.h"
 
 static void *
-nfp_flower_cmsg_init(struct rte_mbuf *m,
+nfp_flower_cmsg_init(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_mbuf *m,
 		enum nfp_flower_cmsg_type type,
 		uint32_t size)
 {
 	char *pkt;
-	uint32_t data;
 	uint32_t new_size = size;
 	struct nfp_flower_cmsg_hdr *hdr;
 
 	pkt = rte_pktmbuf_mtod(m, char *);
 	PMD_DRV_LOG(DEBUG, "flower_cmsg_init using pkt at %p", pkt);
 
-	data = rte_cpu_to_be_32(NFP_NET_META_PORTID);
-	rte_memcpy(pkt, &data, 4);
-	pkt += 4;
-	new_size += 4;
-
-	/* First the metadata as flower requires it */
-	data = rte_cpu_to_be_32(NFP_META_PORT_ID_CTRL);
-	rte_memcpy(pkt, &data, 4);
-	pkt += 4;
-	new_size += 4;
+	new_size += nfp_flower_pkt_add_metadata(app_fw_flower, m, NFP_META_PORT_ID_CTRL);
 
 	/* Now the ctrl header */
 	hdr = (struct nfp_flower_cmsg_hdr *)pkt;
@@ -51,14 +42,17 @@ nfp_flower_cmsg_init(struct rte_mbuf *m,
 }
 
 static void
-nfp_flower_cmsg_mac_repr_init(struct rte_mbuf *mbuf, int num_ports)
+nfp_flower_cmsg_mac_repr_init(struct rte_mbuf *mbuf,
+		struct nfp_app_fw_flower *app_fw_flower)
 {
 	uint32_t size;
+	uint8_t num_ports;
 	struct nfp_flower_cmsg_mac_repr *msg;
 	enum nfp_flower_cmsg_type type = NFP_FLOWER_CMSG_TYPE_MAC_REPR;
 
+	num_ports = app_fw_flower->num_phyport_reprs;
 	size = sizeof(*msg) + (num_ports * sizeof(msg->ports[0]));
-	msg = nfp_flower_cmsg_init(mbuf, type, size);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf, type, size);
 	memset(msg->reserved, 0, sizeof(msg->reserved));
 	msg->num_ports = num_ports;
 }
@@ -96,7 +90,7 @@ nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower)
 		return -ENOMEM;
 	}
 
-	nfp_flower_cmsg_mac_repr_init(mbuf, app_fw_flower->num_phyport_reprs);
+	nfp_flower_cmsg_mac_repr_init(mbuf, app_fw_flower);
 
 	/* Fill in the mac repr cmsg */
 	nfp_eth_table = app_fw_flower->pf_hw->pf_dev->nfp_eth_table;
@@ -133,7 +127,8 @@ nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_PORT_REIFY, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_PORT_REIFY, sizeof(*msg));
 	msg->portnum  = rte_cpu_to_be_32(repr->port_id);
 	msg->reserved = 0;
 	msg->info     = rte_cpu_to_be_16(1);
@@ -162,7 +157,8 @@ nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_PORT_MOD, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_PORT_MOD, sizeof(*msg));
 	msg->portnum  = rte_cpu_to_be_32(port_id);
 	msg->reserved = 0;
 	msg->info     = carrier_ok;
@@ -199,7 +195,8 @@ nfp_flower_cmsg_flow_delete(struct nfp_app_fw_flower *app_fw_flower,
 	msg_len = (nfp_flow_meta->key_len + nfp_flow_meta->mask_len +
 			nfp_flow_meta->act_len) << NFP_FL_LW_SIZ;
 	msg_len += sizeof(struct nfp_fl_rule_metadata);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_FLOW_DEL, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_FLOW_DEL, msg_len);
 	rte_memcpy(msg, flow->payload.meta, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -233,7 +230,8 @@ nfp_flower_cmsg_flow_add(struct nfp_app_fw_flower *app_fw_flower,
 	msg_len = (nfp_flow_meta->key_len + nfp_flow_meta->mask_len +
 			nfp_flow_meta->act_len) << NFP_FL_LW_SIZ;
 	msg_len += sizeof(struct nfp_fl_rule_metadata);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_FLOW_ADD, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_FLOW_ADD, msg_len);
 	rte_memcpy(msg, flow->payload.meta, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -264,7 +262,8 @@ nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 	msg_len = sizeof(struct nfp_flower_cmsg_tun_neigh_v4);
 	if (!nfp_flower_support_decap_v2(app_fw_flower))
 		msg_len -= sizeof(struct nfp_flower_tun_neigh_ext);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_NEIGH, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_NEIGH, msg_len);
 	memcpy(msg, payload, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -295,7 +294,8 @@ nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
 	msg_len = sizeof(struct nfp_flower_cmsg_tun_neigh_v6);
 	if (!nfp_flower_support_decap_v2(app_fw_flower))
 		msg_len -= sizeof(struct nfp_flower_tun_neigh_ext);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V6, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V6, msg_len);
 	memcpy(msg, payload, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -324,7 +324,8 @@ nfp_flower_cmsg_tun_off_v4(struct nfp_app_fw_flower *app_fw_flower)
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_IPS, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_IPS, sizeof(*msg));
 
 	priv = app_fw_flower->flow_priv;
 	rte_spinlock_lock(&priv->ipv4_off_lock);
@@ -366,7 +367,8 @@ nfp_flower_cmsg_tun_off_v6(struct nfp_app_fw_flower *app_fw_flower)
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_IPS_V6, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_IPS_V6, sizeof(*msg));
 
 	priv = app_fw_flower->flow_priv;
 	rte_spinlock_lock(&priv->ipv6_off_lock);
@@ -409,7 +411,8 @@ nfp_flower_cmsg_pre_tunnel_rule(struct nfp_app_fw_flower *app_fw_flower,
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_PRE_TUN_RULE, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_PRE_TUN_RULE, sizeof(*msg));
 
 	meta_tci = (struct nfp_flower_meta_tci *)((char *)nfp_flow_meta +
 			sizeof(struct nfp_fl_rule_metadata));
@@ -450,7 +453,8 @@ nfp_flower_cmsg_tun_mac_rule(struct nfp_app_fw_flower *app_fw_flower,
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_MAC, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_MAC, sizeof(*msg));
 
 	msg->count = rte_cpu_to_be_16(1);
 	msg->index = rte_cpu_to_be_16(mac_idx);
@@ -484,7 +488,8 @@ nfp_flower_cmsg_qos_add(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	len = sizeof(struct nfp_profile_conf);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_MOD, len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_QOS_MOD, len);
 	rte_memcpy(msg, conf, len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -513,7 +518,8 @@ nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	len = sizeof(struct nfp_profile_conf);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_DEL, len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_QOS_DEL, len);
 	rte_memcpy(msg, conf, len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -542,7 +548,8 @@ nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	len = sizeof(struct nfp_cfg_head);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_STATS, len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_QOS_STATS, len);
 	rte_memcpy(msg, head, len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);

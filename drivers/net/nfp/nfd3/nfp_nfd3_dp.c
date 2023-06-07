@@ -10,7 +10,23 @@
 #include "../nfp_logs.h"
 #include "../nfp_common.h"
 #include "../nfp_rxtx.h"
+#include "../flower/nfp_flower.h"
+#include "../flower/nfp_flower_cmsg.h"
 #include "nfp_nfd3.h"
+
+uint32_t
+nfp_flower_nfd3_pkt_add_metadata(struct rte_mbuf *mbuf,
+		uint32_t port_id)
+{
+	char *meta_offset;
+
+	meta_offset = rte_pktmbuf_prepend(mbuf, FLOWER_PKT_DATA_OFFSET);
+	*(rte_be32_t *)meta_offset = rte_cpu_to_be_32(NFP_NET_META_PORTID);
+	meta_offset += NFP_NET_META_HEADER_SIZE;
+	*(rte_be32_t *)meta_offset = rte_cpu_to_be_32(port_id);
+
+	return FLOWER_PKT_DATA_OFFSET;
+}
 
 /*
  * nfp_net_nfd3_tx_vlan() - Set vlan info in the nfd3 tx desc

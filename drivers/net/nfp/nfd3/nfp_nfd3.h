@@ -153,6 +153,8 @@ nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq,
 		txd->flags |= NFD3_DESC_TX_CSUM;
 }
 
+uint32_t nfp_flower_nfd3_pkt_add_metadata(struct rte_mbuf *mbuf,
+		uint32_t port_id);
 uint16_t nfp_net_nfd3_xmit_pkts(void *tx_queue,
 		struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);

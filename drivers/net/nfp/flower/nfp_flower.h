@@ -29,10 +29,19 @@
  * to the correct packet data offset after metadata has
  * been added
  */
-#define FLOWER_PKT_DATA_OFFSET 8
+#define FLOWER_PKT_DATA_OFFSET (NFP_NET_META_HEADER_SIZE + NFP_NET_META_FIELD_SIZE)
 
 #define MAX_FLOWER_PHYPORTS 8
 #define MAX_FLOWER_VFS 64
+
+struct nfp_app_fw_flower;
+
+/* The function pointers for different NFD version */
+struct nfp_flower_nfd_func {
+	/** Function used to add metadata into pkt. */
+	uint32_t (*pkt_add_metadata_t)(struct rte_mbuf *mbuf,
+		uint32_t port_id);
+};
 
 /* The flower application's private structure */
 struct nfp_app_fw_flower {
@@ -77,6 +86,9 @@ struct nfp_app_fw_flower {
 
 	struct nfp_flow_priv *flow_priv;
 	struct nfp_mtr_priv *mtr_priv;
+
+	/* Function pointers for different NFD version */
+	struct nfp_flower_nfd_func nfd_func;
 };
 
 static inline bool
@@ -93,5 +105,7 @@ uint16_t nfp_flower_pf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 int nfp_flower_pf_start(struct rte_eth_dev *dev);
 int nfp_flower_pf_stop(struct rte_eth_dev *dev);
+uint32_t nfp_flower_pkt_add_metadata(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_mbuf *mbuf, uint32_t port_id);
 
 #endif /* _NFP_FLOWER_H_ */
