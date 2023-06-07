@@ -87,6 +87,7 @@ sources = files(
         'sfc_tso.c',
         'sfc_filter.c',
         'sfc_switch.c',
+        'sfc_tbls.c',
         'sfc_mae.c',
         'sfc_mae_counter.c',
         'sfc_flow.c',
