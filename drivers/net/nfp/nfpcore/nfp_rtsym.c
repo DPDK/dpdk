@@ -232,6 +232,113 @@ nfp_rtsym_lookup(struct nfp_rtsym_table *rtbl, const char *name)
 	return NULL;
 }
 
+static uint64_t
+nfp_rtsym_size(const struct nfp_rtsym *sym)
+{
+	switch (sym->type) {
+	case NFP_RTSYM_TYPE_NONE:
+		printf("rtsym '%s': type NONE", sym->name);
+		return 0;
+	case NFP_RTSYM_TYPE_OBJECT:    /* Fall through */
+	case NFP_RTSYM_TYPE_FUNCTION:
+		return sym->size;
+	case NFP_RTSYM_TYPE_ABS:
+		return sizeof(uint64_t);
+	default:
+		printf("rtsym '%s': unknown type: %d", sym->name, sym->type);
+		return 0;
+	}
+}
+
+static int
+nfp_rtsym_to_dest(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint8_t action,
+		uint8_t token,
+		uint64_t offset,
+		uint32_t *cpp_id,
+		uint64_t *addr)
+{
+	if (sym->type != NFP_RTSYM_TYPE_OBJECT) {
+		printf("rtsym '%s': direct access to non-object rtsym",
+				sym->name);
+		return -EINVAL;
+	}
+
+	*addr = sym->addr + offset;
+
+	if (sym->target >= 0) {
+		*cpp_id = NFP_CPP_ISLAND_ID(sym->target, action, token, sym->domain);
+	} else if (sym->target == NFP_RTSYM_TARGET_EMU_CACHE) {
+		int locality_off = nfp_cpp_mu_locality_lsb(cpp);
+
+		*addr &= ~(NFP_MU_ADDR_ACCESS_TYPE_MASK << locality_off);
+		*addr |= NFP_MU_ADDR_ACCESS_TYPE_DIRECT << locality_off;
+
+		*cpp_id = NFP_CPP_ISLAND_ID(NFP_CPP_TARGET_MU, action, token,
+				sym->domain);
+	} else {
+		printf("rtsym '%s': unhandled target encoding: %d",
+				sym->name, sym->target);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+nfp_rtsym_readl(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint8_t action,
+		uint8_t token,
+		uint64_t offset,
+		uint32_t *value)
+{
+	int ret;
+	uint64_t addr;
+	uint32_t cpp_id;
+
+	if (offset + 4 > nfp_rtsym_size(sym)) {
+		printf("rtsym '%s': readl out of bounds", sym->name);
+		return -ENXIO;
+	}
+
+	ret = nfp_rtsym_to_dest(cpp, sym, action, token, offset, &cpp_id, &addr);
+	if (ret != 0)
+		return ret;
+
+	return nfp_cpp_readl(cpp, cpp_id, addr, value);
+}
+
+static int
+nfp_rtsym_readq(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint8_t action,
+		uint8_t token,
+		uint64_t offset,
+		uint64_t *value)
+{
+	int ret;
+	uint64_t addr;
+	uint32_t cpp_id;
+
+	if (offset + 8 > nfp_rtsym_size(sym)) {
+		printf("rtsym '%s': readq out of bounds", sym->name);
+		return -ENXIO;
+	}
+
+	if (sym->type == NFP_RTSYM_TYPE_ABS) {
+		*value = sym->addr;
+		return 0;
+	}
+
+	ret = nfp_rtsym_to_dest(cpp, sym, action, token, offset, &cpp_id, &addr);
+	if (ret != 0)
+		return ret;
+
+	return nfp_cpp_readq(cpp, cpp_id, addr, value);
+}
+
 /*
  * nfp_rtsym_read_le() - Read a simple unsigned scalar value from symbol
  * @rtbl:	NFP RTsym table
@@ -248,7 +355,7 @@ uint64_t
 nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
 {
 	const struct nfp_rtsym *sym;
-	uint32_t val32, id;
+	uint32_t val32;
 	uint64_t val;
 	int err;
 
@@ -258,19 +365,13 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
 		goto exit;
 	}
 
-	id = NFP_CPP_ISLAND_ID(sym->target, NFP_CPP_ACTION_RW, 0, sym->domain);
-
-#ifdef DEBUG
-	printf("Reading symbol %s with size %" PRIu64 " at %" PRIx64 "\n",
-		name, sym->size, sym->addr);
-#endif
 	switch (sym->size) {
 	case 4:
-		err = nfp_cpp_readl(rtbl->cpp, id, sym->addr, &val32);
+		err = nfp_rtsym_readl(rtbl->cpp, sym, NFP_CPP_ACTION_RW, 0, 0, &val32);
 		val = val32;
 		break;
 	case 8:
-		err = nfp_cpp_readq(rtbl->cpp, id, sym->addr, &val);
+		err = nfp_rtsym_readq(rtbl->cpp, sym, NFP_CPP_ACTION_RW, 0, 0, &val);
 		break;
 	default:
 		printf("rtsym '%s' unsupported size: %" PRId64 "\n",
@@ -295,8 +396,11 @@ uint8_t *
 nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 	      unsigned int min_size, struct nfp_cpp_area **area)
 {
-	const struct nfp_rtsym *sym;
+	int ret;
 	uint8_t *mem;
+	uint64_t addr;
+	uint32_t cpp_id;
+	const struct nfp_rtsym *sym;
 
 #ifdef DEBUG
 	printf("mapping symbol %s\n", name);
@@ -307,14 +411,20 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 		return NULL;
 	}
 
+	ret = nfp_rtsym_to_dest(rtbl->cpp, sym, NFP_CPP_ACTION_RW, 0, 0,
+			&cpp_id, &addr);
+	if (ret != 0) {
+		printf("rtsym '%s': mapping failed", name);
+		return NULL;
+	}
+
 	if (sym->size < min_size) {
 		printf("Symbol %s too small (%" PRIu64 " < %u)\n", name,
 			sym->size, min_size);
 		return NULL;
 	}
 
-	mem = nfp_cpp_map_area(rtbl->cpp, sym->domain, sym->target, sym->addr,
-			       sym->size, area);
+	mem = nfp_cpp_map_area(rtbl->cpp, cpp_id, addr, sym->size, area);
 	if (!mem) {
 		printf("Failed to map symbol %s\n", name);
 		return NULL;

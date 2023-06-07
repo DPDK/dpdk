@@ -2797,6 +2797,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	uint64_t tx_bar_off = 0, rx_bar_off = 0;
 	uint32_t start_q;
+	uint32_t cpp_id;
 	int stride = 4;
 	int port = 0;
 	int err;
@@ -2908,7 +2909,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	if (hw->is_pf && port == 0) {
 		/* configure access to tx/rx vNIC BARs */
-		hwport0->hw_queues = nfp_cpp_map_area(hw->cpp, 0, 0,
+		cpp_id = NFP_CPP_ISLAND_ID(0, NFP_CPP_ACTION_RW, 0, 0);
+		hwport0->hw_queues = nfp_cpp_map_area(hw->cpp, cpp_id,
 						      NFP_PCIE_QUEUE(0),
 						      NFP_QCP_QUEUE_AREA_SZ,
 						      &hw->hwqueues_area);
