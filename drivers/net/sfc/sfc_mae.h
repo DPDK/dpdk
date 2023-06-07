@@ -27,6 +27,7 @@ struct sfc_mae_fw_rsrc {
 	unsigned int			refcnt;
 	RTE_STD_C11
 	union {
+		efx_counter_t		counter_id;
 		efx_mae_aset_id_t	aset_id;
 		efx_mae_rule_id_t	rule_id;
 		efx_mae_mac_id_t	mac_id;
@@ -67,10 +68,11 @@ struct sfc_mae_encap_header {
 
 TAILQ_HEAD(sfc_mae_encap_headers, sfc_mae_encap_header);
 
-/* Counter ID */
+/* Counter object registry entry */
 struct sfc_mae_counter {
-	/* ID of a counter in MAE */
-	efx_counter_t			mae_id;
+	TAILQ_ENTRY(sfc_mae_counter)	entries;
+	unsigned int			refcnt;
+
 	/* ID of a counter in RTE */
 	uint32_t			rte_id;
 	/* RTE counter ID validity status */
@@ -80,18 +82,21 @@ struct sfc_mae_counter {
 	uint64_t			*ft_switch_hit_counter;
 	/* Flow Tunnel (FT) context (for TUNNEL rules; otherwise, NULL) */
 	struct sfc_ft_ctx		*ft_ctx;
+
+	struct sfc_mae_fw_rsrc		fw_rsrc;
 };
+
+TAILQ_HEAD(sfc_mae_counters, sfc_mae_counter);
 
 /** Action set registry entry */
 struct sfc_mae_action_set {
 	TAILQ_ENTRY(sfc_mae_action_set)	entries;
 	unsigned int			refcnt;
-	struct sfc_mae_counter		*counters;
-	uint32_t			n_counters;
 	efx_mae_actions_t		*spec;
 	struct sfc_mae_encap_header	*encap_header;
 	struct sfc_mae_mac_addr		*dst_mac_addr;
 	struct sfc_mae_mac_addr		*src_mac_addr;
+	struct sfc_mae_counter		*counter;
 	struct sfc_mae_fw_rsrc		fw_rsrc;
 };
 
@@ -221,6 +226,8 @@ struct sfc_mae {
 	bool				counter_rxq_running;
 	/** Counter record registry */
 	struct sfc_mae_counter_registry	counter_registry;
+	/** Counter object registry */
+	struct sfc_mae_counters		counters;
 	/**
 	 * Switchdev default rules. They forward traffic from PHY port
 	 * to PF and vice versa.

@@ -110,7 +110,7 @@ sfc_mae_counter_fw_rsrc_enable(struct sfc_adapter *sa,
 		goto fail_counter_id_range;
 	}
 
-	counterp->mae_id = mae_counter;
+	counterp->fw_rsrc.counter_id.id = mae_counter.id;
 
 	p = &counters->mae_counters[mae_counter.id];
 
@@ -152,29 +152,27 @@ sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
 {
 	struct sfc_mae_counter_registry *reg = &sa->mae.counter_registry;
 	struct sfc_mae_counter_records *counters = &reg->counters;
+	efx_counter_t *mae_counter = &counter->fw_rsrc.counter_id;
 	struct sfc_mae_counter_record *p;
 	uint32_t unused;
 	int rc;
 
-	if (counter->mae_id.id == EFX_MAE_RSRC_ID_INVALID)
-		return 0;
-
-	SFC_ASSERT(counter->mae_id.id < counters->n_mae_counters);
+	SFC_ASSERT(mae_counter->id < counters->n_mae_counters);
 	/*
 	 * The flag is set at the very end of add operation and reset
 	 * at the beginning of delete operation. Release ordering is
 	 * paired with acquire ordering on load in counter increment operation.
 	 */
-	p = &counters->mae_counters[counter->mae_id.id];
+	p = &counters->mae_counters[mae_counter->id];
 	__atomic_store_n(&p->inuse, false, __ATOMIC_RELEASE);
 
-	rc = efx_mae_counters_free(sa->nic, 1, &unused, &counter->mae_id, NULL);
+	rc = efx_mae_counters_free(sa->nic, 1, &unused, mae_counter, NULL);
 	if (rc != 0)
 		sfc_err(sa, "failed to free MAE counter %u: %s",
-			counter->mae_id.id, rte_strerror(rc));
+			mae_counter->id, rte_strerror(rc));
 
 	sfc_info(sa, "disabled MAE counter #%u with reset pkts=%" PRIu64
-		 " bytes=%" PRIu64, counter->mae_id.id,
+		 " bytes=%" PRIu64, mae_counter->id,
 		 p->reset.pkts, p->reset.bytes);
 
 	/*
@@ -182,7 +180,7 @@ sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
 	 * If there's some error, the resulting resource leakage is bad, but
 	 * nothing sensible can be done in this case.
 	 */
-	counter->mae_id.id = EFX_MAE_RSRC_ID_INVALID;
+	mae_counter->id = EFX_MAE_RSRC_ID_INVALID;
 
 	return rc;
 }
@@ -952,8 +950,8 @@ sfc_mae_counter_get(struct sfc_mae_counter_records *counters,
 	struct sfc_mae_counter_record *p;
 	union sfc_pkts_bytes value;
 
-	SFC_ASSERT(counter->mae_id.id < counters->n_mae_counters);
-	p = &counters->mae_counters[counter->mae_id.id];
+	SFC_ASSERT(counter->fw_rsrc.counter_id.id < counters->n_mae_counters);
+	p = &counters->mae_counters[counter->fw_rsrc.counter_id.id];
 
 	/*
 	 * Ordering is relaxed since it is the only operation on counter value.
