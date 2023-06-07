@@ -488,12 +488,42 @@ cdx_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	return NULL;
 }
 
+static int
+cdx_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	RTE_SET_USED(dev);
+
+	return rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD,
+					  (uintptr_t)addr, iova, len);
+}
+
+static int
+cdx_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	RTE_SET_USED(dev);
+
+	return rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD,
+					    (uintptr_t)addr, iova, len);
+}
+
+static enum rte_iova_mode
+cdx_get_iommu_class(void)
+{
+	if (TAILQ_EMPTY(&rte_cdx_bus.device_list))
+		return RTE_IOVA_DC;
+
+	return RTE_IOVA_VA;
+}
+
 struct rte_cdx_bus rte_cdx_bus = {
 	.bus = {
 		.scan = cdx_scan,
 		.probe = cdx_probe,
 		.find_device = cdx_find_device,
 		.parse = cdx_parse,
+		.dma_map = cdx_dma_map,
+		.dma_unmap = cdx_dma_unmap,
+		.get_iommu_class = cdx_get_iommu_class,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_cdx_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_cdx_bus.driver_list),
