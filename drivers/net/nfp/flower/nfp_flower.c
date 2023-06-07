@@ -493,14 +493,27 @@ nfp_flower_pf_nfd3_xmit_pkts(void *tx_queue,
 	return nfp_net_nfd3_xmit_pkts_common(tx_queue, tx_pkts, nb_pkts, true);
 }
 
+static uint16_t
+nfp_flower_pf_nfdk_xmit_pkts(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	return nfp_net_nfdk_xmit_pkts_common(tx_queue, tx_pkts, nb_pkts, true);
+}
+
 static void
 nfp_flower_pf_xmit_pkts_register(struct nfp_app_fw_flower *app_fw_flower)
 {
+	struct nfp_net_hw *hw;
 	struct nfp_flower_nfd_func *nfd_func;
 
+	hw = app_fw_flower->pf_hw;
 	nfd_func = &app_fw_flower->nfd_func;
 
-	nfd_func->pf_xmit_t = nfp_flower_pf_nfd3_xmit_pkts;
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+		nfd_func->pf_xmit_t = nfp_flower_pf_nfd3_xmit_pkts;
+	else
+		nfd_func->pf_xmit_t = nfp_flower_pf_nfdk_xmit_pkts;
 }
 
 uint16_t

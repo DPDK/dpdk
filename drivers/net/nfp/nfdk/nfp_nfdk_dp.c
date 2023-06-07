@@ -166,11 +166,19 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue,
 		struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
+	return nfp_net_nfdk_xmit_pkts_common(tx_queue, tx_pkts, nb_pkts, false);
+}
+
+uint16_t
+nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts,
+		bool repr_flag)
+{
 	uint32_t buf_idx;
 	uint64_t dma_addr;
 	uint32_t free_descs;
 	uint32_t npkts = 0;
-	uint64_t metadata = 0;
 	struct rte_mbuf *pkt;
 	struct nfp_net_hw *hw;
 	struct rte_mbuf **lmbuf;
@@ -203,6 +211,7 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue,
 		uint32_t tmp_dlen;
 		uint32_t dlen_type;
 		uint32_t used_descs;
+		uint64_t metadata = 0;
 
 		pkt = *(tx_pkts + npkts);
 		nop_descs = nfp_net_nfdk_tx_maybe_close_block(txq, pkt);
@@ -219,7 +228,11 @@ nfp_net_nfdk_xmit_pkts(void *tx_queue,
 		RTE_MBUF_PREFETCH_TO_FREE(*lmbuf);
 
 		temp_pkt = pkt;
-		nfp_net_nfdk_set_meta_data(pkt, txq, &metadata);
+
+		if (repr_flag)
+			metadata = NFDK_DESC_TX_CHAIN_META;
+		else
+			nfp_net_nfdk_set_meta_data(pkt, txq, &metadata);
 
 		if (unlikely(pkt->nb_segs > 1 &&
 				(hw->cap & NFP_NET_CFG_CTRL_GATHER) == 0)) {
