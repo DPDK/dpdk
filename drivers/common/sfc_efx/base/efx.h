@@ -5191,6 +5191,17 @@ efx_table_entry_insert(
 	__in_bcount(data_size)		uint8_t *entry_datap,
 	__in				unsigned int data_size);
 
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_table_entry_delete(
+	__in				efx_nic_t *enp,
+	__in				efx_table_id_t table_id,
+	__in				uint16_t mask_id,
+	__in				uint16_t key_width,
+	__in				uint16_t mask_width,
+	__in_bcount(data_size)		uint8_t *entry_datap,
+	__in				unsigned int data_size);
+
 #ifdef	__cplusplus
 }
 #endif

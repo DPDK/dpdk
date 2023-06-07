@@ -427,3 +427,80 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
+
+	__checkReturn			efx_rc_t
+efx_table_entry_delete(
+	__in				efx_nic_t *enp,
+	__in				efx_table_id_t table_id,
+	__in				uint16_t mask_id,
+	__in				uint16_t key_width,
+	__in				uint16_t mask_width,
+	__in_bcount(data_size)		uint8_t *entry_datap,
+	__in				unsigned int data_size)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	unsigned int n_dwords;
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_TABLE_DELETE_IN_LENMAX_MCDI2,
+	    MC_CMD_TABLE_DELETE_OUT_LEN);
+
+	/*
+	 * Ensure  MCDI number of 32bit units matches EFX maximum possible
+	 * data in bytes.
+	 */
+	EFX_STATIC_ASSERT((MC_CMD_TABLE_DELETE_IN_LENMAX  * sizeof(uint32_t)) ==
+		EFX_TABLE_ENTRY_LENGTH_MAX);
+
+	if (encp->enc_table_api_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if ((data_size % sizeof(uint32_t)) != 0) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	if ((data_size == 0) || (data_size > EFX_TABLE_ENTRY_LENGTH_MAX)) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
+	n_dwords = data_size / sizeof(uint32_t);
+
+	req.emr_cmd = MC_CMD_TABLE_DELETE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_TABLE_DELETE_IN_LEN(n_dwords);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_TABLE_DELETE_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, TABLE_DELETE_IN_TABLE_ID, (uint32_t)table_id);
+	MCDI_IN_SET_WORD(req, TABLE_DELETE_IN_MASK_ID, mask_id);
+	MCDI_IN_SET_WORD(req, TABLE_DELETE_IN_KEY_WIDTH, key_width);
+	MCDI_IN_SET_WORD(req, TABLE_DELETE_IN_MASK_WIDTH, mask_width);
+
+
+	memcpy(MCDI_IN2(req, uint8_t, TABLE_DELETE_IN_DATA), entry_datap, data_size);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail4;
+	}
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
