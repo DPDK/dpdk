@@ -4439,6 +4439,16 @@ efx_mae_match_spec_field_set(
 	__in				size_t mask_size,
 	__in_bcount(mask_size)		const uint8_t *mask);
 
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_field_get(
+	__in				const efx_mae_match_spec_t *spec,
+	__in				efx_mae_field_id_t field_id,
+	__in				size_t value_size,
+	__out_bcount_opt(value_size)	uint8_t *value,
+	__in				size_t mask_size,
+	__out_bcount_opt(mask_size)	uint8_t *mask);
+
 /* The corresponding mask will be set to B_TRUE. */
 LIBEFX_API
 extern	__checkReturn			efx_rc_t

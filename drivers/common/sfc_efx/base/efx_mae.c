@@ -1068,6 +1068,137 @@ fail1:
 }
 
 	__checkReturn			efx_rc_t
+efx_mae_match_spec_field_get(
+	__in				const efx_mae_match_spec_t *spec,
+	__in				efx_mae_field_id_t field_id,
+	__in				size_t value_size,
+	__out_bcount_opt(value_size)	uint8_t *value,
+	__in				size_t mask_size,
+	__out_bcount_opt(mask_size)	uint8_t *mask)
+{
+	const efx_mae_mv_desc_t *descp;
+	unsigned int desc_set_nentries;
+	const uint8_t *mvp;
+	efx_rc_t rc;
+
+	switch (spec->emms_type) {
+	case EFX_MAE_RULE_OUTER:
+		desc_set_nentries =
+		    EFX_ARRAY_SIZE(__efx_mae_outer_rule_mv_desc_set);
+		descp = &__efx_mae_outer_rule_mv_desc_set[field_id];
+		mvp = spec->emms_mask_value_pairs.outer;
+		break;
+	case EFX_MAE_RULE_ACTION:
+		desc_set_nentries =
+		    EFX_ARRAY_SIZE(__efx_mae_action_rule_mv_desc_set);
+		descp = &__efx_mae_action_rule_mv_desc_set[field_id];
+		mvp = spec->emms_mask_value_pairs.action;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if ((unsigned int)field_id >= desc_set_nentries) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	if (descp->emmd_mask_size == 0) {
+		/* The ID points to a gap in the array of field descriptors. */
+		rc = EINVAL;
+		goto fail3;
+	}
+
+	if (value != NULL && value_size != descp->emmd_value_size) {
+		rc = EINVAL;
+		goto fail4;
+	}
+
+	if (mask != NULL && mask_size != descp->emmd_mask_size) {
+		rc = EINVAL;
+		goto fail5;
+	}
+
+	if (value == NULL && value_size != 0) {
+		rc = EINVAL;
+		goto fail6;
+	}
+
+	if (mask == NULL && mask_size != 0) {
+		rc = EINVAL;
+		goto fail7;
+	}
+
+	if (descp->emmd_endianness == EFX_MAE_FIELD_BE) {
+		/*
+		 * The MCDI request field is in network (big endian) order.
+		 * The mask/value are also big endian.
+		 */
+		memcpy(value, mvp + descp->emmd_value_offset, value_size);
+		memcpy(mask, mvp + descp->emmd_mask_offset, mask_size);
+	} else {
+		efx_dword_t dword;
+
+		/*
+		 * The MCDI request field is little endian.
+		 * The mask/value are in host byte order.
+		 */
+		switch (value_size) {
+		case 4:
+			memcpy(&dword, mvp + descp->emmd_value_offset,
+			    sizeof (dword));
+
+			*(uint32_t *)value =
+			    EFX_DWORD_FIELD(dword, EFX_DWORD_0);
+			break;
+		case 1:
+			memcpy(value, mvp + descp->emmd_value_offset, 1);
+			break;
+		case 0:
+			break;
+		default:
+			EFSYS_ASSERT(B_FALSE);
+		}
+
+		switch (mask_size) {
+		case 4:
+			memcpy(&dword, mvp + descp->emmd_mask_offset,
+			    sizeof (dword));
+
+			*(uint32_t *)mask =
+			    EFX_DWORD_FIELD(dword, EFX_DWORD_0);
+			break;
+		case 1:
+			memcpy(mask, mvp + descp->emmd_mask_offset, 1);
+			break;
+		case 0:
+			break;
+		default:
+			EFSYS_ASSERT(B_FALSE);
+		}
+	}
+
+	return (0);
+
+fail7:
+	EFSYS_PROBE(fail7);
+fail6:
+	EFSYS_PROBE(fail6);
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
 efx_mae_match_spec_bit_set(
 	__in				efx_mae_match_spec_t *spec,
 	__in				efx_mae_field_id_t field_id,
