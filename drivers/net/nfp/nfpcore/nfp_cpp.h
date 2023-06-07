@@ -31,6 +31,9 @@ struct nfp_cpp {
 	 */
 	uint32_t imb_cat_table[16];
 
+	/* MU access type bit offset */
+	uint32_t mu_locality_lsb;
+
 	int driver_lock_needed;
 };
 
@@ -455,7 +458,7 @@ struct nfp_cpp_area *nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
  */
 void nfp_cpp_area_release_free(struct nfp_cpp_area *area);
 
-uint8_t *nfp_cpp_map_area(struct nfp_cpp *cpp, int domain, int target,
+uint8_t *nfp_cpp_map_area(struct nfp_cpp *cpp, uint32_t cpp_id,
 			   uint64_t addr, unsigned long size,
 			   struct nfp_cpp_area **area);
 /*
@@ -868,5 +871,7 @@ int nfp_cpp_mutex_unlock(struct nfp_cpp_mutex *mutex);
  * @return		0 if the lock succeeded, negative value on failure.
  */
 int nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex);
+
+uint32_t nfp_cpp_mu_locality_lsb(struct nfp_cpp *cpp);
 
 #endif /* !__NFP_CPP_H__ */
