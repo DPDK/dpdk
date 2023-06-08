@@ -362,22 +362,36 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	iova_mode = internal_conf->iova_mode;
-	if (iova_mode == RTE_IOVA_PA && !has_phys_addr) {
-		rte_eal_init_alert("Cannot use IOVA as 'PA' since physical addresses are not available");
-		rte_errno = EINVAL;
-		return -1;
-	}
 	if (iova_mode == RTE_IOVA_DC) {
 		RTE_LOG(DEBUG, EAL, "Specific IOVA mode is not requested, autodetecting\n");
 		if (has_phys_addr) {
 			RTE_LOG(DEBUG, EAL, "Selecting IOVA mode according to bus requests\n");
 			iova_mode = rte_bus_get_iommu_class();
-			if (iova_mode == RTE_IOVA_DC)
-				iova_mode = RTE_IOVA_PA;
+			if (iova_mode == RTE_IOVA_DC) {
+				if (!RTE_IOVA_IN_MBUF) {
+					iova_mode = RTE_IOVA_VA;
+					RTE_LOG(DEBUG, EAL, "IOVA as VA mode is forced by build option.\n");
+				} else	{
+					iova_mode = RTE_IOVA_PA;
+				}
+			}
 		} else {
 			iova_mode = RTE_IOVA_VA;
 		}
 	}
+
+	if (iova_mode == RTE_IOVA_PA && !has_phys_addr) {
+		rte_eal_init_alert("Cannot use IOVA as 'PA' since physical addresses are not available");
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	if (iova_mode == RTE_IOVA_PA && !RTE_IOVA_IN_MBUF) {
+		rte_eal_init_alert("Cannot use IOVA as 'PA' as it is disabled during build");
+		rte_errno = EINVAL;
+		return -1;
+	}
+
 	RTE_LOG(DEBUG, EAL, "Selected IOVA mode '%s'\n",
 		iova_mode == RTE_IOVA_PA ? "PA" : "VA");
 	rte_eal_get_configuration()->iova_mode = iova_mode;

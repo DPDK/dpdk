@@ -1075,7 +1075,10 @@ rte_eal_init(int argc, char **argv)
 		if (iova_mode == RTE_IOVA_DC) {
 			RTE_LOG(DEBUG, EAL, "Buses did not request a specific IOVA mode.\n");
 
-			if (!phys_addrs) {
+			if (!RTE_IOVA_IN_MBUF) {
+				iova_mode = RTE_IOVA_VA;
+				RTE_LOG(DEBUG, EAL, "IOVA as VA mode is forced by build option.\n");
+			} else if (!phys_addrs) {
 				/* if we have no access to physical addresses,
 				 * pick IOVA as VA mode.
 				 */
