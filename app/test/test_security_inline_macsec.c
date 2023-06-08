@@ -1438,6 +1438,140 @@ test_inline_macsec_sa_not_in_use(const void *data __rte_unused)
 }
 
 static int
+test_inline_macsec_decap_stats(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_decap_stats = 1;
+
+	size = (sizeof(list_mcs_cipher_vectors) / sizeof((list_mcs_cipher_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err) {
+			printf("\nDecap stats case %d failed", cur_td->test_idx);
+			err = -1;
+		} else {
+			printf("\nDecap stats case %d passed", cur_td->test_idx);
+			err = 0;
+		}
+		all_err += err;
+	}
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+
+	return all_err;
+}
+
+static int
+test_inline_macsec_verify_only_stats(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_verify_only_stats = 1;
+
+	size = (sizeof(list_mcs_integrity_vectors) / sizeof((list_mcs_integrity_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_integrity_vectors[i];
+		err = test_macsec(&cur_td, MCS_VERIFY_ONLY, &opts);
+		if (err) {
+			printf("\nVerify only stats case %d failed", cur_td->test_idx);
+			err = -1;
+		} else {
+			printf("\nVerify only stats case %d Passed", cur_td->test_idx);
+			err = 0;
+		}
+		all_err += err;
+	}
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+
+	return all_err;
+}
+
+static int
+test_inline_macsec_pkts_invalid_stats(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+
+	size = (sizeof(list_mcs_err_cipher_vectors) / sizeof((list_mcs_err_cipher_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_err_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err)
+			err = 0;
+		else
+			err = -1;
+
+		all_err += err;
+	}
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
+test_inline_macsec_pkts_unchecked_stats(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_DISABLE;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_pkts_unchecked_stats = 1;
+
+	size = (sizeof(list_mcs_integrity_vectors) / sizeof((list_mcs_integrity_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_integrity_vectors[i];
+		err = test_macsec(&cur_td, MCS_VERIFY_ONLY, &opts);
+		if (err)
+			err = -1;
+		else
+			err = 0;
+
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
 test_inline_macsec_out_pkts_untagged(const void *data __rte_unused)
 {
 	const struct mcs_test_vector *cur_td;
@@ -1496,6 +1630,70 @@ test_inline_macsec_out_pkts_toolong(const void *data __rte_unused)
 		else
 			err = 0;
 
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
+test_inline_macsec_encap_stats(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.encrypt = true;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_encap_stats = 1;
+
+	size = (sizeof(list_mcs_cipher_vectors) / sizeof((list_mcs_cipher_vectors)[0]));
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_ENCAP, &opts);
+		if (err)
+			err = -1;
+		else
+			err = 0;
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
+test_inline_macsec_auth_only_stats(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_auth_only_stats = 1;
+
+	size = (sizeof(list_mcs_integrity_vectors) / sizeof((list_mcs_integrity_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_integrity_vectors[i];
+		err = test_macsec(&cur_td, MCS_AUTH_ONLY, &opts);
+		if (err)
+			err = -1;
+		else
+			err = 0;
 		all_err += err;
 	}
 
@@ -1697,6 +1895,22 @@ static struct unit_test_suite inline_macsec_testsuite  = {
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_sa_not_in_use),
 		TEST_CASE_NAMED_ST(
+			"MACsec decap stats",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_decap_stats),
+		TEST_CASE_NAMED_ST(
+			"MACsec verify only stats",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_verify_only_stats),
+		TEST_CASE_NAMED_ST(
+			"MACsec pkts invalid stats",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_pkts_invalid_stats),
+		TEST_CASE_NAMED_ST(
+			"MACsec pkts unchecked stats",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_pkts_unchecked_stats),
+		TEST_CASE_NAMED_ST(
 			"MACsec out pkts untagged",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_out_pkts_untagged),
@@ -1704,6 +1918,14 @@ static struct unit_test_suite inline_macsec_testsuite  = {
 			"MACsec out pkts too long",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_out_pkts_toolong),
+		TEST_CASE_NAMED_ST(
+			"MACsec Encap stats",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_encap_stats),
+		TEST_CASE_NAMED_ST(
+			"MACsec auth only stats",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_auth_only_stats),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},
