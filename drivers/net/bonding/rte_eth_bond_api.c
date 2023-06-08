@@ -712,6 +712,16 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 		}
 	}
 
+	/* Remove the dedicated queues flow */
+	if (internals->mode == BONDING_MODE_8023AD &&
+		internals->mode4.dedicated_queues.enabled == 1 &&
+		internals->mode4.dedicated_queues.flow[slave_port_id] != NULL) {
+		rte_flow_destroy(slave_port_id,
+				internals->mode4.dedicated_queues.flow[slave_port_id],
+				&flow_error);
+		internals->mode4.dedicated_queues.flow[slave_port_id] = NULL;
+	}
+
 	slave_eth_dev = &rte_eth_devices[slave_port_id];
 	slave_remove(internals, slave_eth_dev);
 	slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDED_SLAVE);
