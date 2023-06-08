@@ -89,7 +89,6 @@ part_number_config_arm = {
         'march': 'armv8.4-a',
     },
     '0xd49': {
-        'march': 'armv8.5-a',
         'march_features': ['sve2'],
         'compiler_options': ['-mcpu=neoverse-n2'],
         'flags': [
