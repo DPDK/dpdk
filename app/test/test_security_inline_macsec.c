@@ -206,6 +206,8 @@ fill_macsec_sc_conf(const struct mcs_test_vector *td,
 	uint8_t i;
 
 	sc_conf->dir = dir;
+	sc_conf->pn_threshold = ((uint64_t)td->xpn << 32) |
+		rte_be_to_cpu_32(*(const uint32_t *)(&td->secure_pkt.data[tci_off + 2]));
 	if (dir == RTE_SECURITY_MACSEC_DIR_TX) {
 		sc_conf->sc_tx.sa_id = sa_id[0];
 		if (sa_id[1] != MCS_INVALID_SA) {
@@ -231,12 +233,16 @@ fill_macsec_sc_conf(const struct mcs_test_vector *td,
 			/* use some default SCI */
 			sc_conf->sc_tx.sci = 0xf1341e023a2b1c5d;
 		}
+		if (td->xpn > 0)
+			sc_conf->sc_tx.is_xpn = 1;
 	} else {
 		for (i = 0; i < RTE_SECURITY_MACSEC_NUM_AN; i++) {
 			sc_conf->sc_rx.sa_id[i] = sa_id[i];
 			sc_conf->sc_rx.sa_in_use[i] = opts->sa_in_use;
 		}
 		sc_conf->sc_rx.active = 1;
+		if (td->xpn > 0)
+			sc_conf->sc_rx.is_xpn = 1;
 	}
 }
 
@@ -833,6 +839,7 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 	struct rte_security_session_conf sess_conf = {0};
 	struct rte_security_macsec_sa sa_conf = {0};
 	struct rte_security_macsec_sc sc_conf = {0};
+	struct mcs_err_vector err_vector = {0};
 	struct rte_security_ctx *ctx;
 	int nb_rx = 0, nb_sent;
 	int i, j = 0, ret, id, an = 0;
@@ -866,6 +873,34 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 			goto out;
 		}
 		j++;
+
+		if (opts->rekey_en) {
+
+			err_vector.td = td[i];
+			err_vector.rekey_td = opts->rekey_td;
+			err_vector.event = RTE_ETH_EVENT_MACSEC_UNKNOWN;
+			err_vector.event_subtype = RTE_ETH_SUBEVENT_MACSEC_UNKNOWN;
+			rte_eth_dev_callback_register(port_id, RTE_ETH_EVENT_MACSEC,
+					test_macsec_event_callback, &err_vector);
+			if (op == MCS_DECAP || op == MCS_VERIFY_ONLY)
+				tx_pkts_burst[j] = init_packet(mbufpool,
+						opts->rekey_td->secure_pkt.data,
+						opts->rekey_td->secure_pkt.len);
+			else {
+				tx_pkts_burst[j] = init_packet(mbufpool,
+						opts->rekey_td->plain_pkt.data,
+						opts->rekey_td->plain_pkt.len);
+
+				tx_pkts_burst[j]->ol_flags |= RTE_MBUF_F_TX_MACSEC;
+			}
+			if (tx_pkts_burst[j] == NULL) {
+				while (j--)
+					rte_pktmbuf_free(tx_pkts_burst[j]);
+				ret = TEST_FAILED;
+				goto out;
+			}
+			j++;
+		}
 
 		if (op == MCS_DECAP || op == MCS_ENCAP_DECAP ||
 				op == MCS_VERIFY_ONLY || op == MCS_AUTH_VERIFY) {
@@ -921,6 +956,20 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 			}
 			tx_sa_id[i][0] = (uint16_t)id;
 			tx_sa_id[i][1] = MCS_INVALID_SA;
+			if (opts->rekey_en) {
+				memset(&sa_conf, 0, sizeof(struct rte_security_macsec_sa));
+				fill_macsec_sa_conf(opts->rekey_td, &sa_conf,
+					RTE_SECURITY_MACSEC_DIR_TX,
+					opts->rekey_td->secure_pkt.data[tci_off] &
+						RTE_MACSEC_AN_MASK,
+					tci_off);
+				id = rte_security_macsec_sa_create(ctx, &sa_conf);
+				if (id < 0) {
+					printf("MACsec rekey SA create failed : %d.\n", id);
+					goto out;
+				}
+				tx_sa_id[i][1] = (uint16_t)id;
+			}
 			fill_macsec_sc_conf(td[i], &sc_conf, opts,
 					RTE_SECURITY_MACSEC_DIR_TX, tx_sa_id[i], tci_off);
 			id = rte_security_macsec_sc_create(ctx, &sc_conf);
@@ -983,9 +1032,44 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 		goto out;
 	}
 
+	if (opts->rekey_en) {
+		switch (err_vector.event) {
+		case RTE_ETH_EVENT_MACSEC_TX_SA_PN_SOFT_EXP:
+			printf("Received RTE_ETH_EVENT_MACSEC_TX_SA_PN_SOFT_EXP event\n");
+			/* The first sa is active now, so the 0th sa can be
+			 * reconfigured. Using the same key as zeroeth sa, but
+			 * other key can also be configured.
+			 */
+			rte_security_macsec_sa_destroy(ctx, tx_sa_id[0][0],
+					RTE_SECURITY_MACSEC_DIR_TX);
+			fill_macsec_sa_conf(td[0], &sa_conf,
+					RTE_SECURITY_MACSEC_DIR_TX,
+					td[0]->secure_pkt.data[tci_off] &
+					RTE_MACSEC_AN_MASK, tci_off);
+			id = rte_security_macsec_sa_create(ctx, &sa_conf);
+			if (id < 0) {
+				printf("MACsec SA create failed : %d.\n", id);
+				return TEST_FAILED;
+			}
+			tx_sa_id[0][0] = (uint16_t)id;
+			break;
+		default:
+			printf("Received unsupported event\n");
+		}
+	}
+
 	for (i = 0; i < nb_rx; i++) {
-		ret = test_macsec_post_process(rx_pkts_burst[i], td[i], op,
-				opts->check_out_pkts_untagged);
+		if (opts->rekey_en && i == 1) {
+			/* The second received packet is matched with
+			 * rekey td
+			 */
+			ret = test_macsec_post_process(rx_pkts_burst[i],
+					opts->rekey_td, op,
+					opts->check_out_pkts_untagged);
+		} else {
+			ret = test_macsec_post_process(rx_pkts_burst[i], td[i],
+					op, opts->check_out_pkts_untagged);
+		}
 		if (ret != TEST_SUCCESS) {
 			for ( ; i < nb_rx; i++)
 				rte_pktmbuf_free(rx_pkts_burst[i]);
@@ -1018,6 +1102,10 @@ out:
 
 	destroy_default_flow(port_id);
 
+	if (opts->rekey_en)
+		rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_MACSEC,
+					test_macsec_event_callback, &err_vector);
+
 	/* Destroy session so that other cases can create the session again */
 	for (i = 0; i < opts->nb_td; i++) {
 		if (op == MCS_ENCAP || op == MCS_ENCAP_DECAP ||
@@ -1028,6 +1116,10 @@ out:
 						RTE_SECURITY_MACSEC_DIR_TX);
 			rte_security_macsec_sa_destroy(ctx, tx_sa_id[i][0],
 						RTE_SECURITY_MACSEC_DIR_TX);
+			if (opts->rekey_en) {
+				rte_security_macsec_sa_destroy(ctx, tx_sa_id[i][1],
+						RTE_SECURITY_MACSEC_DIR_TX);
+			}
 		}
 		if (op == MCS_DECAP || op == MCS_ENCAP_DECAP ||
 				op == MCS_VERIFY_ONLY || op == MCS_AUTH_VERIFY) {
@@ -1822,6 +1914,43 @@ test_inline_macsec_interrupts_all(const void *data __rte_unused)
 }
 
 static int
+test_inline_macsec_rekey_tx(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.encrypt = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.rekey_en = 1;
+
+	size = (sizeof(list_mcs_rekey_vectors) / sizeof((list_mcs_rekey_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_rekey_vectors[i];
+		opts.rekey_td = &list_mcs_rekey_vectors[++i];
+		err = test_macsec(&cur_td, MCS_ENCAP, &opts);
+		if (err) {
+			printf("Tx hw rekey test case %d failed\n", i);
+			err = -1;
+		} else {
+			printf("Tx hw rekey test case %d passed\n", i);
+			err = 0;
+		}
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
 ut_setup_inline_macsec(void)
 {
 	int ret;
@@ -2050,6 +2179,10 @@ static struct unit_test_suite inline_macsec_testsuite  = {
 			"MACsec interrupts all",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_interrupts_all),
+		TEST_CASE_NAMED_ST(
+			"MACsec re-key Tx",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_rekey_tx),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},
