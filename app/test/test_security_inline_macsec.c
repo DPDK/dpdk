@@ -1074,6 +1074,51 @@ test_inline_macsec_auth_verify_all(const void *data __rte_unused)
 }
 
 static int
+test_inline_macsec_multi_flow(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *tv[MCS_MAX_FLOWS];
+	struct mcs_test_vector iter[MCS_MAX_FLOWS];
+	struct mcs_test_opts opts = {0};
+	int i, err;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.encrypt = true;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = MCS_MAX_FLOWS;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+
+	for (i = 0; i < MCS_MAX_FLOWS; i++) {
+		memcpy(&iter[i].sa_key.data, sa_key, MCS_MULTI_FLOW_TD_KEY_SZ);
+		memcpy(&iter[i].plain_pkt.data, eth_addrs[i], 2 * RTE_ETHER_ADDR_LEN);
+		memcpy(&iter[i].plain_pkt.data[2 * RTE_ETHER_ADDR_LEN], plain_user_data,
+		       MCS_MULTI_FLOW_TD_PLAIN_DATA_SZ);
+		memcpy(&iter[i].secure_pkt.data, eth_addrs[i], 2 * RTE_ETHER_ADDR_LEN);
+		memcpy(&iter[i].secure_pkt.data[2 * RTE_ETHER_ADDR_LEN], secure_user_data,
+		       MCS_MULTI_FLOW_TD_SECURE_DATA_SZ);
+		iter[i].sa_key.len = MCS_MULTI_FLOW_TD_KEY_SZ;
+		iter[i].plain_pkt.len = MCS_MULTI_FLOW_TD_PLAIN_DATA_SZ +
+					(2 * RTE_ETHER_ADDR_LEN);
+		iter[i].secure_pkt.len = MCS_MULTI_FLOW_TD_SECURE_DATA_SZ +
+					(2 * RTE_ETHER_ADDR_LEN);
+		iter[i].alg = RTE_SECURITY_MACSEC_ALG_GCM_128;
+		iter[i].ssci = 0x0;
+		iter[i].xpn = 0x0;
+		tv[i] = (const struct mcs_test_vector *)&iter[i];
+	}
+	err = test_macsec(tv, MCS_ENCAP_DECAP, &opts);
+	if (err) {
+		printf("\nCipher Auth Encryption multi flow failed");
+		err = -1;
+	} else {
+		printf("\nCipher Auth Encryption multi flow Passed");
+		err = 0;
+	}
+	return err;
+}
+
+static int
 ut_setup_inline_macsec(void)
 {
 	int ret;
@@ -1218,6 +1263,10 @@ inline_macsec_testsuite_teardown(void)
 static struct unit_test_suite inline_macsec_testsuite  = {
 	.suite_name = "Inline MACsec Ethernet Device Unit Test Suite",
 	.unit_test_cases = {
+		TEST_CASE_NAMED_ST(
+			"MACsec Encap + decap Multi flow",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_multi_flow),
 		TEST_CASE_NAMED_ST(
 			"MACsec encap(Cipher+Auth) known vector",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
