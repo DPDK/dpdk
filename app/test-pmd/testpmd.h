@@ -116,6 +116,14 @@ enum {
 	QUEUE_JOB_TYPE_ACTION_QUERY,
 };
 
+enum noisy_fwd_mode {
+	NOISY_FWD_MODE_IO,
+	NOISY_FWD_MODE_MAC,
+	NOISY_FWD_MODE_MACSWAP,
+	NOISY_FWD_MODE_5TSWAP,
+	NOISY_FWD_MODE_MAX,
+};
+
 /**
  * The data structure associated with RX and TX packet burst statistics
  * that are recorded for each forwarding stream.
@@ -396,6 +404,7 @@ struct fwd_engine {
 	port_fwd_end_t   port_fwd_end;   /**< NULL if nothing special to do. */
 	stream_init_t    stream_init;    /**< NULL if nothing special to do. */
 	packet_fwd_t     packet_fwd;     /**< Mandatory. */
+	const char       *status;        /**< NULL if nothing to display. */
 };
 
 void common_fwd_stream_init(struct fwd_stream *fs);
@@ -560,6 +569,8 @@ extern int8_t rx_drop_en;
 extern int16_t tx_free_thresh;
 extern int16_t tx_rs_thresh;
 
+extern enum noisy_fwd_mode noisy_fwd_mode;
+extern const char * const noisy_fwd_mode_desc[];
 extern uint16_t noisy_tx_sw_bufsz;
 extern uint16_t noisy_tx_sw_buf_flush_time;
 extern uint64_t noisy_lkup_mem_sz;

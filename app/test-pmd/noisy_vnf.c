@@ -32,6 +32,18 @@
 #include <rte_malloc.h>
 
 #include "testpmd.h"
+#include "5tswap.h"
+#include "macfwd.h"
+#if defined(RTE_ARCH_X86)
+#include "macswap_sse.h"
+#elif defined(__ARM_NEON)
+#include "macswap_neon.h"
+#else
+#include "macswap.h"
+#endif
+
+#define NOISY_STRSIZE 256
+#define NOISY_RING "noisy_ring_%d\n"
 
 struct noisy_config {
 	struct rte_ring *f;
@@ -80,9 +92,6 @@ sim_memory_lookups(struct noisy_config *ncf, uint16_t nb_pkts)
 {
 	uint16_t i, j;
 
-	if (!ncf->do_sim)
-		return;
-
 	for (i = 0; i < nb_pkts; i++) {
 		for (j = 0; j < noisy_lkup_num_writes; j++)
 			do_write(ncf->vnf_mem);
@@ -110,15 +119,13 @@ sim_memory_lookups(struct noisy_config *ncf, uint16_t nb_pkts)
  *    out of the FIFO
  * 4. Cases 2 and 3 combined
  */
-static bool
-pkt_burst_noisy_vnf(struct fwd_stream *fs)
+static uint16_t
+noisy_eth_tx_burst(struct fwd_stream *fs, uint16_t nb_rx, struct rte_mbuf **pkts_burst)
 {
 	const uint64_t freq_khz = rte_get_timer_hz() / 1000;
 	struct noisy_config *ncf = noisy_cfg[fs->rx_port];
-	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_mbuf *tmp_pkts[MAX_PKT_BURST];
 	uint16_t nb_deqd = 0;
-	uint16_t nb_rx = 0;
 	uint16_t nb_tx = 0;
 	uint16_t nb_enqd;
 	unsigned int fifo_free;
@@ -126,12 +133,16 @@ pkt_burst_noisy_vnf(struct fwd_stream *fs)
 	bool needs_flush = false;
 	uint64_t now;
 
-	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
-	if (unlikely(nb_rx == 0))
-		goto flush;
+	if (unlikely(nb_rx == 0)) {
+		if (!ncf->do_buffering)
+			goto end;
+		else
+			goto flush;
+	}
 
 	if (!ncf->do_buffering) {
-		sim_memory_lookups(ncf, nb_rx);
+		if (ncf->do_sim)
+			sim_memory_lookups(ncf, nb_rx);
 		nb_tx = common_fwd_stream_transmit(fs, pkts_burst, nb_rx);
 		goto end;
 	}
@@ -150,7 +161,8 @@ pkt_burst_noisy_vnf(struct fwd_stream *fs)
 			nb_tx = common_fwd_stream_transmit(fs, tmp_pkts, nb_deqd);
 	}
 
-	sim_memory_lookups(ncf, nb_enqd);
+	if (ncf->do_sim)
+		sim_memory_lookups(ncf, nb_enqd);
 
 flush:
 	if (ncf->do_flush) {
@@ -169,11 +181,66 @@ flush:
 		ncf->prev_time = rte_get_timer_cycles();
 	}
 end:
+	return nb_tx;
+}
+
+static bool
+pkt_burst_io(struct fwd_stream *fs)
+{
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	uint16_t nb_rx;
+	uint16_t nb_tx;
+
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
+	nb_tx = noisy_eth_tx_burst(fs, nb_rx, pkts_burst);
+
 	return nb_rx > 0 || nb_tx > 0;
 }
 
-#define NOISY_STRSIZE 256
-#define NOISY_RING "noisy_ring_%d\n"
+static bool
+pkt_burst_mac(struct fwd_stream *fs)
+{
+	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
+	uint16_t nb_rx;
+	uint16_t nb_tx;
+
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
+	if (likely(nb_rx != 0))
+		do_macfwd(pkts_burst, nb_rx, fs);
+	nb_tx = noisy_eth_tx_burst(fs, nb_rx, pkts_burst);
+
+	return nb_rx > 0 || nb_tx > 0;
+}
+
+static bool
+pkt_burst_macswap(struct fwd_stream *fs)
+{
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	uint16_t nb_rx;
+	uint16_t nb_tx;
+
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
+	if (likely(nb_rx != 0))
+		do_macswap(pkts_burst, nb_rx, &ports[fs->tx_port]);
+	nb_tx = noisy_eth_tx_burst(fs, nb_rx, pkts_burst);
+
+	return nb_rx > 0 || nb_tx > 0;
+}
+
+static bool
+pkt_burst_5tswap(struct fwd_stream *fs)
+{
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	uint16_t nb_rx;
+	uint16_t nb_tx;
+
+	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
+	if (likely(nb_rx != 0))
+		do_5tswap(pkts_burst, nb_rx, fs);
+	nb_tx = noisy_eth_tx_burst(fs, nb_rx, pkts_burst);
+
+	return nb_rx > 0 || nb_tx > 0;
+}
 
 static void
 noisy_fwd_end(portid_t pi)
@@ -226,6 +293,20 @@ noisy_fwd_begin(portid_t pi)
 			 "--noisy-lkup-memory-size must be > 0\n");
 	}
 
+	if (noisy_fwd_mode == NOISY_FWD_MODE_IO)
+		noisy_vnf_engine.packet_fwd = pkt_burst_io;
+	else if (noisy_fwd_mode == NOISY_FWD_MODE_MAC)
+		noisy_vnf_engine.packet_fwd = pkt_burst_mac;
+	else if (noisy_fwd_mode == NOISY_FWD_MODE_MACSWAP)
+		noisy_vnf_engine.packet_fwd = pkt_burst_macswap;
+	else if (noisy_fwd_mode == NOISY_FWD_MODE_5TSWAP)
+		noisy_vnf_engine.packet_fwd = pkt_burst_5tswap;
+	else
+		rte_exit(EXIT_FAILURE,
+			 " Invalid noisy_fwd_mode specified\n");
+
+	noisy_vnf_engine.status = noisy_fwd_mode_desc[noisy_fwd_mode];
+
 	return 0;
 }
 
@@ -233,6 +314,6 @@ struct fwd_engine noisy_vnf_engine = {
 	.fwd_mode_name  = "noisy",
 	.port_fwd_begin = noisy_fwd_begin,
 	.port_fwd_end   = noisy_fwd_end,
-	.stream_init    = common_fwd_stream_init,
-	.packet_fwd     = pkt_burst_noisy_vnf,
+	.stream_init	= common_fwd_stream_init,
+	.packet_fwd     = pkt_burst_io,
 };

@@ -4142,8 +4142,10 @@ rxtx_config_display(void)
 	portid_t pid;
 	queueid_t qid;
 
-	printf("  %s packet forwarding%s packets/burst=%d\n",
+	printf("  %s%s%s packet forwarding%s packets/burst=%d\n",
 	       cur_fwd_eng->fwd_mode_name,
+	       cur_fwd_eng->status ? "-" : "",
+	       cur_fwd_eng->status ? cur_fwd_eng->status : "",
 	       retry_enabled == 0 ? "" : " with retry",
 	       nb_pkt_per_burst);
 
@@ -4906,9 +4908,11 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 	lcoreid_t  lc_id;
 	streamid_t sm_id;
 
-	printf("%s packet forwarding%s - ports=%d - cores=%d - streams=%d - "
+	printf("%s%s%s packet forwarding%s - ports=%d - cores=%d - streams=%d - "
 		"NUMA support %s, MP allocation mode: %s\n",
 		cfg->fwd_eng->fwd_mode_name,
+		cfg->fwd_eng->status ? "-" : "",
+		cfg->fwd_eng->status ? cfg->fwd_eng->status : "",
 		retry_enabled == 0 ? "" : " with retry",
 		cfg->nb_fwd_ports, cfg->nb_fwd_lcores, cfg->nb_fwd_streams,
 		numa_support == 1 ? "enabled" : "disabled",

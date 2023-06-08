@@ -489,6 +489,15 @@ The command line options are:
     * xmemhuge: create and populate mempool using externally and anonymously
       allocated hugepage area
 
+*   ``--noisy-forward-mode=mode``
+
+    Set the noisy vnf forwarding mode where ``mode`` is one of the following::
+
+       io (the default)
+       mac
+       macswap
+       5tswap
+
 *   ``--noisy-tx-sw-buffer-size``
 
     Set the number of maximum elements  of the FIFO queue to be created

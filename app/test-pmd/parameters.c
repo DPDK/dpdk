@@ -190,6 +190,7 @@ usage(char* progname)
 	       "    anon: use regular DPDK memory to create and anonymous memory to populate mempool\n"
 	       "    xmem: use anonymous memory to create and populate mempool\n"
 	       "    xmemhuge: use anonymous hugepage memory to create and populate mempool\n");
+	printf("  --noisy-forward-mode=<io|mac|macswap|5tswap>: set the sub-fwd mode, defaults to io\n");
 	printf("  --noisy-tx-sw-buffer-size=N: size of FIFO buffer\n");
 	printf("  --noisy-tx-sw-buffer-flushtime=N: flush FIFO after N ms\n");
 	printf("  --noisy-lkup-memory=N: allocate N MB of VNF memory\n");
@@ -704,6 +705,7 @@ launch_args_parse(int argc, char** argv)
 		{ "mp-alloc",			1, 0, 0 },
 		{ "tx-ip",			1, 0, 0 },
 		{ "tx-udp",			1, 0, 0 },
+		{ "noisy-forward-mode",		1, 0, 0 },
 		{ "noisy-tx-sw-buffer-size",	1, 0, 0 },
 		{ "noisy-tx-sw-buffer-flushtime", 1, 0, 0 },
 		{ "noisy-lkup-memory",		1, 0, 0 },
@@ -1449,6 +1451,19 @@ launch_args_parse(int argc, char** argv)
 				else
 					rte_exit(EXIT_FAILURE,
 						 "noisy-lkup-num-reads-writes must be >= 0\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name,
+				    "noisy-forward-mode")) {
+				int i;
+				for (i = 0; i < NOISY_FWD_MODE_MAX; i++)
+					if (!strcmp(optarg, noisy_fwd_mode_desc[i])) {
+						noisy_fwd_mode = i;
+						break;
+					}
+				if (i == NOISY_FWD_MODE_MAX)
+					rte_exit(EXIT_FAILURE, "noisy-forward-mode %s invalid,"
+						 " must be a valid noisy-forward-mode value\n",
+						 optarg);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "no-iova-contig"))
 				mempool_flags = RTE_MEMPOOL_F_NO_IOVA_CONTIG;

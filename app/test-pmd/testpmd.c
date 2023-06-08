@@ -331,6 +331,20 @@ int16_t tx_free_thresh = RTE_PMD_PARAM_UNSET;
 int16_t tx_rs_thresh = RTE_PMD_PARAM_UNSET;
 
 /*
+ * Configurable sub-forwarding mode for the noisy_vnf forwarding mode.
+ */
+enum noisy_fwd_mode noisy_fwd_mode;
+
+/* String version of enum noisy_fwd_mode */
+const char * const noisy_fwd_mode_desc[] = {
+	[NOISY_FWD_MODE_IO] = "io",
+	[NOISY_FWD_MODE_MAC] = "mac",
+	[NOISY_FWD_MODE_MACSWAP] = "macswap",
+	[NOISY_FWD_MODE_5TSWAP] = "5tswap",
+	[NOISY_FWD_MODE_MAX] = NULL,
+};
+
+/*
  * Configurable value of buffered packets before sending.
  */
 uint16_t noisy_tx_sw_bufsz;
