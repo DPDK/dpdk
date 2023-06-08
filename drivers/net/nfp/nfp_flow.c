@@ -3130,7 +3130,7 @@ nfp_flow_action_geneve_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);
-	tos = (ipv6->hdr.vtc_flow >> RTE_IPV6_HDR_TC_SHIFT) & 0xff;
+	tos = rte_be_to_cpu_32(ipv6->hdr.vtc_flow) >> RTE_IPV6_HDR_TC_SHIFT;
 	tun_id = (geneve->vni[0] << 16) | (geneve->vni[1] << 8) | geneve->vni[2];
 	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_GENEVE, tun_id,
 			ipv6->hdr.hop_limits, tos);
