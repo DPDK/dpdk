@@ -2736,6 +2736,7 @@ nfp_flow_action_vxlan_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		struct nfp_fl_tun *tun)
 {
+	uint8_t tos;
 	uint64_t tun_id;
 	struct nfp_fl_act_pre_tun *pre_tun;
 	struct nfp_fl_act_set_tun *set_tun;
@@ -2756,9 +2757,9 @@ nfp_flow_action_vxlan_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);
 	tun_id = rte_be_to_cpu_32(vxlan->hdr.vx_vni);
+	tos = rte_be_to_cpu_32(ipv6->hdr.vtc_flow) >> RTE_IPV6_HDR_TC_SHIFT;
 	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_VXLAN, tun_id,
-			ipv6->hdr.hop_limits,
-			(ipv6->hdr.vtc_flow >> RTE_IPV6_HDR_TC_SHIFT) & 0xff);
+			ipv6->hdr.hop_limits, tos);
 	set_tun->tun_flags = vxlan->hdr.vx_flags;
 
 	/* Send the tunnel neighbor cmsg to fw */
