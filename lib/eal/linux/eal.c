@@ -1061,12 +1061,6 @@ rte_eal_init(int argc, char **argv)
 		}
 	}
 
-	/* register multi-process action callbacks for hotplug */
-	if (eal_mp_dev_hotplug_init() < 0) {
-		rte_eal_init_alert("failed to register mp callback for hotplug");
-		return -1;
-	}
-
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices");
 		rte_errno = ENODEV;
@@ -1202,6 +1196,12 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_malloc_heap_init() < 0) {
 		rte_eal_init_alert("Cannot init malloc heap");
 		rte_errno = ENODEV;
+		return -1;
+	}
+
+	/* register multi-process action callbacks for hotplug after memory init */
+	if (eal_mp_dev_hotplug_init() < 0) {
+		rte_eal_init_alert("failed to register mp callback for hotplug");
 		return -1;
 	}
 
