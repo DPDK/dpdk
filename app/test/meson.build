@@ -128,6 +128,7 @@ test_sources = files(
         'test_rwlock.c',
         'test_sched.c',
         'test_security.c',
+        'test_security_inline_macsec.c',
         'test_security_inline_proto.c',
         'test_seqlock.c',
         'test_service_cores.c',
