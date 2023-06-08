@@ -60,6 +60,7 @@ struct mcs_test_opts {
 	uint8_t replay_protect;
 	uint8_t rekey_en;
 	const struct mcs_test_vector *rekey_td;
+	const struct mcs_test_vector *ar_td[3];
 	bool dump_all_stats;
 	uint8_t check_untagged_rx;
 	uint8_t check_bad_tag_cnt;
@@ -715,6 +716,15 @@ mcs_stats_check(struct rte_security_ctx *ctx, enum mcs_op op,
 		if (opts->check_pkts_unchecked_stats && sc_stat.pkt_unchecked_cnt != 1)
 			return TEST_FAILED;
 
+		if (opts->replay_protect) {
+			if (opts->replay_win_sz == 0 &&
+					sc_stat.pkt_late_cnt != 2)
+				return TEST_FAILED;
+			else if (opts->replay_win_sz == 32 &&
+					sc_stat.pkt_late_cnt != 1)
+				return TEST_FAILED;
+		}
+
 		for (i = 0; i < RTE_SECURITY_MACSEC_NUM_AN; i++) {
 			memset(&sa_stat, 0, sizeof(struct rte_security_macsec_sa_stats));
 			rte_security_macsec_sa_stats_get(ctx, rx_sa_id[i],
@@ -844,6 +854,7 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 	int nb_rx = 0, nb_sent;
 	int i, j = 0, ret, id, an = 0;
 	uint8_t tci_off;
+	int k;
 
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * opts->nb_td);
 
@@ -873,6 +884,20 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 			goto out;
 		}
 		j++;
+
+		if (opts->replay_protect) {
+			for (k = 0; k < 3; k++, j++) {
+				tx_pkts_burst[j] = init_packet(mbufpool,
+					opts->ar_td[k]->secure_pkt.data,
+					opts->ar_td[k]->secure_pkt.len);
+				if (tx_pkts_burst[j] == NULL) {
+					while (j--)
+						rte_pktmbuf_free(tx_pkts_burst[j]);
+					ret = TEST_FAILED;
+					goto out;
+				}
+			}
+		}
 
 		if (opts->rekey_en) {
 
@@ -1065,6 +1090,15 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 		default:
 			printf("Received unsupported event\n");
 		}
+	}
+
+	if (opts->replay_protect) {
+		for (i = 0; i < nb_rx; i++) {
+			rte_pktmbuf_free(rx_pkts_burst[i]);
+			rx_pkts_burst[i] = NULL;
+		}
+		ret = TEST_SUCCESS;
+		goto out;
 	}
 
 	for (i = 0; i < nb_rx; i++) {
@@ -1995,6 +2029,50 @@ test_inline_macsec_rekey_rx(const void *data __rte_unused)
 }
 
 static int
+test_inline_macsec_anti_replay(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	uint16_t replay_win_sz[2] = {32, 0};
+	int err, all_err = 0;
+	int i, size;
+	int j;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.replay_protect = 1;
+
+	size = (sizeof(list_mcs_anti_replay_vectors) / sizeof((list_mcs_anti_replay_vectors)[0]));
+
+	for (j = 0; j < 2; j++) {
+		opts.replay_win_sz = replay_win_sz[j];
+
+		for (i = 0; i < size; i++) {
+			cur_td = &list_mcs_anti_replay_vectors[i];
+			opts.ar_td[0] = &list_mcs_anti_replay_vectors[++i];
+			opts.ar_td[1] = &list_mcs_anti_replay_vectors[++i];
+			opts.ar_td[2] = &list_mcs_anti_replay_vectors[++i];
+			err = test_macsec(&cur_td, MCS_DECAP, &opts);
+			if (err) {
+				printf("Replay window: %u, Anti replay test case %d failed\n",
+				       opts.replay_win_sz, i);
+				err = -1;
+			} else {
+				printf("Replay window: %u, Anti replay test case %d passed\n",
+				       opts.replay_win_sz, i);
+				err = 0;
+			}
+			all_err += err;
+		}
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
 ut_setup_inline_macsec(void)
 {
 	int ret;
@@ -2231,6 +2309,10 @@ static struct unit_test_suite inline_macsec_testsuite  = {
 			"MACsec re-key Rx",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_rekey_rx),
+		TEST_CASE_NAMED_ST(
+			"MACsec anti-replay",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_anti_replay),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},
