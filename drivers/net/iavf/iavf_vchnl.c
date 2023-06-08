@@ -256,6 +256,7 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 				vf->link_speed = iavf_convert_link_speed(speed);
 			}
 			iavf_dev_link_update(vf->eth_dev, 0);
+			iavf_dev_event_post(vf->eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL, 0);
 			PMD_DRV_LOG(INFO, "Link status update:%s",
 					vf->link_up ? "up" : "down");
 			break;
@@ -368,28 +369,48 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args,
 		_clear_cmd(vf);
 		break;
 	default:
-		/* For other virtchnl ops in running time,
-		 * wait for the cmd done flag.
-		 */
-		do {
-			if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN)
-				break;
-			iavf_msec_delay(ASQ_DELAY_MS);
-			/* If don't read msg or read sys event, continue */
-		} while (i++ < MAX_TRY_TIMES);
-
-		if (i >= MAX_TRY_TIMES) {
-			PMD_DRV_LOG(ERR, "No response for cmd %d", args->ops);
+		if (rte_thread_is_intr()) {
+			/* For virtchnl ops were executed in eal_intr_thread,
+			 * need to poll the response.
+			 */
+			do {
+				result = iavf_read_msg_from_pf(adapter, args->out_size,
+							args->out_buffer);
+				if (result == IAVF_MSG_CMD)
+					break;
+				iavf_msec_delay(ASQ_DELAY_MS);
+			} while (i++ < MAX_TRY_TIMES);
+			if (i >= MAX_TRY_TIMES ||
+				vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+				err = -1;
+				PMD_DRV_LOG(ERR, "No response or return failure (%d)"
+						" for cmd %d", vf->cmd_retval, args->ops);
+			}
 			_clear_cmd(vf);
-			err = -EIO;
-		} else if (vf->cmd_retval ==
-			   VIRTCHNL_STATUS_ERR_NOT_SUPPORTED) {
-			PMD_DRV_LOG(ERR, "Cmd %d not supported", args->ops);
-			err = -ENOTSUP;
-		} else if (vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Return failure %d for cmd %d",
-				    vf->cmd_retval, args->ops);
-			err = -EINVAL;
+		} else {
+			/* For other virtchnl ops in running time,
+			 * wait for the cmd done flag.
+			 */
+			do {
+				if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN)
+					break;
+				iavf_msec_delay(ASQ_DELAY_MS);
+				/* If don't read msg or read sys event, continue */
+			} while (i++ < MAX_TRY_TIMES);
+
+			if (i >= MAX_TRY_TIMES) {
+				PMD_DRV_LOG(ERR, "No response for cmd %d", args->ops);
+				_clear_cmd(vf);
+				err = -EIO;
+			} else if (vf->cmd_retval ==
+				VIRTCHNL_STATUS_ERR_NOT_SUPPORTED) {
+				PMD_DRV_LOG(ERR, "Cmd %d not supported", args->ops);
+				err = -ENOTSUP;
+			} else if (vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+				PMD_DRV_LOG(ERR, "Return failure %d for cmd %d",
+						vf->cmd_retval, args->ops);
+				err = -EINVAL;
+			}
 		}
 		break;
 	}
@@ -403,8 +424,14 @@ iavf_execute_vf_cmd_safe(struct iavf_adapter *adapter,
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	int ret;
+	int is_intr_thread = rte_thread_is_intr();
 
-	rte_spinlock_lock(&vf->aq_lock);
+	if (is_intr_thread) {
+		if (!rte_spinlock_trylock(&vf->aq_lock))
+			return -EIO;
+	} else {
+		rte_spinlock_lock(&vf->aq_lock);
+	}
 	ret = iavf_execute_vf_cmd(adapter, args, async);
 	rte_spinlock_unlock(&vf->aq_lock);
 
