@@ -53,6 +53,7 @@ Supported Asymmetric Crypto algorithms:
 * ``RTE_CRYPTO_ASYM_XFORM_DH``
 * ``RTE_CRYPTO_ASYM_XFORM_MODINV``
 * ``RTE_CRYPTO_ASYM_XFORM_MODEX``
+* ``RTE_CRYPTO_ASYM_XFORM_SM2``
 
 
 Installation

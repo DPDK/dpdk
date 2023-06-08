@@ -124,6 +124,10 @@ New Features
   * Added support for SM3 hash operations.
   * Added support for AES-CCM in cn9k and cn10k drivers.
 
+* **Updated OpenSSL crypto driver.**
+
+  * Added SM2 algorithm support in asymmetric crypto operations.
+
 * **Added PDCP Library.**
 
   Added an experimental library to provide PDCP UL and DL processing of packets.

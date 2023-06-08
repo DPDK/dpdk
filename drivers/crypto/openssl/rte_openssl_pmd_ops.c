@@ -1282,6 +1282,50 @@ err_dsa:
 		BN_free(pub_key);
 		return -1;
 	}
+	case RTE_CRYPTO_ASYM_XFORM_SM2:
+	{
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		OSSL_PARAM_BLD *param_bld = NULL;
+		OSSL_PARAM *params = NULL;
+		int ret = -1;
+
+		if (xform->sm2.hash != RTE_CRYPTO_AUTH_SM3)
+			return -1;
+
+		param_bld = OSSL_PARAM_BLD_new();
+		if (!param_bld) {
+			OPENSSL_LOG(ERR, "failed to allocate params\n");
+			goto err_sm2;
+		}
+
+		ret = OSSL_PARAM_BLD_push_utf8_string(param_bld,
+				OSSL_ASYM_CIPHER_PARAM_DIGEST, "SM3", 0);
+		if (!ret) {
+			OPENSSL_LOG(ERR, "failed to push params\n");
+			goto err_sm2;
+		}
+
+		params = OSSL_PARAM_BLD_to_param(param_bld);
+		if (!params) {
+			OPENSSL_LOG(ERR, "failed to push params\n");
+			goto err_sm2;
+		}
+
+		asym_session->u.sm2.params = params;
+		OSSL_PARAM_BLD_free(param_bld);
+
+		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_SM2;
+		break;
+err_sm2:
+		if (param_bld)
+			OSSL_PARAM_BLD_free(param_bld);
+
+		if (asym_session->u.sm2.params)
+			OSSL_PARAM_free(asym_session->u.sm2.params);
+
+		return -1;
+#endif
+	}
 	default:
 		return ret;
 	}
@@ -1366,6 +1410,10 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 			DSA_free(sess->u.s.dsa);
 #endif
 		break;
+	case RTE_CRYPTO_ASYM_XFORM_SM2:
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		OSSL_PARAM_free(sess->u.sm2.params);
+#endif
 	default:
 		break;
 	}
