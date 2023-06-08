@@ -660,6 +660,103 @@ mcs_stats_dump(struct rte_security_ctx *ctx, enum mcs_op op,
 }
 
 static int
+mcs_stats_check(struct rte_security_ctx *ctx, enum mcs_op op,
+		const struct mcs_test_opts *opts,
+		const struct mcs_test_vector *td,
+		void *rx_sess, void *tx_sess,
+		uint8_t rx_sc_id, uint8_t tx_sc_id,
+		uint16_t rx_sa_id[], uint16_t tx_sa_id[])
+{
+	struct rte_security_stats sess_stats = {0};
+	struct rte_security_macsec_secy_stats *secy_stat;
+	struct rte_security_macsec_sc_stats sc_stat = {0};
+	struct rte_security_macsec_sa_stats sa_stat = {0};
+	int i;
+
+	if (op == MCS_DECAP || op == MCS_ENCAP_DECAP ||
+			op == MCS_VERIFY_ONLY || op == MCS_AUTH_VERIFY) {
+		rte_security_session_stats_get(ctx, rx_sess, &sess_stats);
+		secy_stat = &sess_stats.macsec;
+
+		if ((opts->check_untagged_rx && secy_stat->pkt_notag_cnt != 1) ||
+				(opts->check_untagged_rx && secy_stat->pkt_untaged_cnt != 1))
+			return TEST_FAILED;
+
+		if (opts->check_bad_tag_cnt && secy_stat->pkt_badtag_cnt != 1)
+			return TEST_FAILED;
+
+		if (opts->check_sa_not_in_use && secy_stat->pkt_nosaerror_cnt != 1)
+			return TEST_FAILED;
+
+		if (opts->check_decap_stats && secy_stat->octet_decrypted_cnt !=
+				(uint16_t)(td->plain_pkt.len - 2 * RTE_ETHER_ADDR_LEN))
+			return TEST_FAILED;
+
+		if (opts->check_verify_only_stats && secy_stat->octet_validated_cnt !=
+				(uint16_t)(td->plain_pkt.len - 2 * RTE_ETHER_ADDR_LEN))
+			return TEST_FAILED;
+
+		rte_security_macsec_sc_stats_get(ctx, rx_sc_id,
+				RTE_SECURITY_MACSEC_DIR_RX, &sc_stat);
+
+		if ((opts->check_decap_stats || opts->check_verify_only_stats) &&
+				sc_stat.pkt_ok_cnt != 1)
+			return TEST_FAILED;
+
+		if (opts->check_pkts_invalid_stats && sc_stat.pkt_notvalid_cnt != 1)
+			return TEST_FAILED;
+
+		if (opts->check_pkts_unchecked_stats && sc_stat.pkt_unchecked_cnt != 1)
+			return TEST_FAILED;
+
+		for (i = 0; i < RTE_SECURITY_MACSEC_NUM_AN; i++) {
+			memset(&sa_stat, 0, sizeof(struct rte_security_macsec_sa_stats));
+			rte_security_macsec_sa_stats_get(ctx, rx_sa_id[i],
+					RTE_SECURITY_MACSEC_DIR_RX, &sa_stat);
+
+		}
+	}
+
+	if (op == MCS_ENCAP || op == MCS_ENCAP_DECAP ||
+			op == MCS_AUTH_ONLY || op == MCS_AUTH_VERIFY) {
+		memset(&sess_stats, 0, sizeof(struct rte_security_stats));
+		rte_security_session_stats_get(ctx, tx_sess, &sess_stats);
+		secy_stat = &sess_stats.macsec;
+
+		if (opts->check_out_pkts_untagged && secy_stat->pkt_untagged_cnt != 1)
+			return TEST_FAILED;
+
+		if (opts->check_out_pkts_toolong && secy_stat->pkt_toolong_cnt != 1)
+			return TEST_FAILED;
+
+		if (opts->check_encap_stats && secy_stat->octet_encrypted_cnt !=
+				(uint16_t)(td->plain_pkt.len - 2 * RTE_ETHER_ADDR_LEN))
+			return TEST_FAILED;
+
+		if (opts->check_auth_only_stats && secy_stat->octet_protected_cnt !=
+				(uint16_t)(td->plain_pkt.len - 2 * RTE_ETHER_ADDR_LEN))
+			return TEST_FAILED;
+
+
+		memset(&sc_stat, 0, sizeof(struct rte_security_macsec_sc_stats));
+		rte_security_macsec_sc_stats_get(ctx, tx_sc_id, RTE_SECURITY_MACSEC_DIR_TX,
+						 &sc_stat);
+
+		if (opts->check_encap_stats && sc_stat.pkt_encrypt_cnt != 1)
+			return TEST_FAILED;
+
+		if (opts->check_auth_only_stats && sc_stat.pkt_protected_cnt != 1)
+			return TEST_FAILED;
+
+		memset(&sa_stat, 0, sizeof(struct rte_security_macsec_sa_stats));
+		rte_security_macsec_sa_stats_get(ctx, tx_sa_id[0],
+				RTE_SECURITY_MACSEC_DIR_TX, &sa_stat);
+	}
+
+	return 0;
+}
+
+static int
 test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs_test_opts *opts)
 {
 	uint16_t rx_sa_id[MCS_MAX_FLOWS][RTE_SECURITY_MACSEC_NUM_AN] = {{0}};
@@ -832,9 +929,20 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 		rx_pkts_burst[i] = NULL;
 	}
 out:
+	if (opts->check_out_pkts_toolong == 1 ||
+			opts->check_sa_not_in_use == 1 ||
+			opts->check_bad_tag_cnt == 1)
+		ret = TEST_SUCCESS;
+
 	for (i = 0; i < opts->nb_td; i++) {
 		if (opts->dump_all_stats) {
 			mcs_stats_dump(ctx, op,
+					rx_sess[i], tx_sess[i],
+					rx_sc_id[i], tx_sc_id[i],
+					rx_sa_id[i], tx_sa_id[i]);
+		} else {
+			if (ret == TEST_SUCCESS)
+				ret = mcs_stats_check(ctx, op, opts, td[i],
 					rx_sess[i], tx_sess[i],
 					rx_sc_id[i], tx_sc_id[i],
 					rx_sa_id[i], tx_sa_id[i]);
@@ -1182,6 +1290,220 @@ test_inline_macsec_with_vlan(const void *data __rte_unused)
 }
 
 static int
+test_inline_macsec_pkt_drop(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.encrypt = true;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+
+	size = (sizeof(list_mcs_err_cipher_vectors) / sizeof((list_mcs_err_cipher_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_err_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err) {
+			printf("\nPacket drop case %d passed", cur_td->test_idx);
+			err = 0;
+		} else {
+			printf("\nPacket drop case %d failed", cur_td->test_idx);
+			err = -1;
+		}
+		all_err += err;
+	}
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+
+	return all_err;
+}
+
+static int
+test_inline_macsec_untagged_rx(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_untagged_rx = 1;
+
+	size = (sizeof(list_mcs_untagged_cipher_vectors) /
+		sizeof((list_mcs_untagged_cipher_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_untagged_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err)
+			err = 0;
+		else
+			err = -1;
+
+		all_err += err;
+	}
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_NO_DISCARD;
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_untagged_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err)
+			err = 0;
+		else
+			err = -1;
+
+		all_err += err;
+	}
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+
+	return all_err;
+}
+
+static int
+test_inline_macsec_bad_tag_rx(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_bad_tag_cnt = 1;
+
+	size = (sizeof(list_mcs_bad_tag_vectors) / sizeof((list_mcs_bad_tag_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_bad_tag_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err)
+			err = -1;
+		else
+			err = 0;
+
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+
+	return all_err;
+}
+
+static int
+test_inline_macsec_sa_not_in_use(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 0;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_sa_not_in_use = 1;
+
+	size = (sizeof(list_mcs_cipher_vectors) / sizeof((list_mcs_cipher_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err)
+			err = -1;
+		else
+			err = 0;
+
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+
+	return all_err;
+}
+
+static int
+test_inline_macsec_out_pkts_untagged(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.encrypt = false;
+	opts.protect_frames = false;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_out_pkts_untagged = 1;
+
+	size = (sizeof(list_mcs_cipher_vectors) / sizeof((list_mcs_cipher_vectors)[0]));
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_ENCAP, &opts);
+		if (err)
+			err = -1;
+		else
+			err = 0;
+
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
+test_inline_macsec_out_pkts_toolong(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_NO_DISCARD;
+	opts.encrypt = true;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = 50;
+	opts.check_out_pkts_toolong = 1;
+
+	size = (sizeof(list_mcs_cipher_vectors) / sizeof((list_mcs_cipher_vectors)[0]));
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_cipher_vectors[i];
+		err = test_macsec(&cur_td, MCS_ENCAP, &opts);
+		if (err)
+			err = -1;
+		else
+			err = 0;
+
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
 ut_setup_inline_macsec(void)
 {
 	int ret;
@@ -1358,6 +1680,30 @@ static struct unit_test_suite inline_macsec_testsuite  = {
 			"MACsec Encap and decap with VLAN",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_with_vlan),
+		TEST_CASE_NAMED_ST(
+			"MACsec packet drop",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_pkt_drop),
+		TEST_CASE_NAMED_ST(
+			"MACsec untagged Rx",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_untagged_rx),
+		TEST_CASE_NAMED_ST(
+			"MACsec bad tag Rx",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_bad_tag_rx),
+		TEST_CASE_NAMED_ST(
+			"MACsec SA not in use",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_sa_not_in_use),
+		TEST_CASE_NAMED_ST(
+			"MACsec out pkts untagged",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_out_pkts_untagged),
+		TEST_CASE_NAMED_ST(
+			"MACsec out pkts too long",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_out_pkts_toolong),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},
