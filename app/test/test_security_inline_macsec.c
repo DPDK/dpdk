@@ -905,8 +905,14 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 		if (op == MCS_DECAP || op == MCS_ENCAP_DECAP ||
 				op == MCS_VERIFY_ONLY || op == MCS_AUTH_VERIFY) {
 			for (an = 0; an < RTE_SECURITY_MACSEC_NUM_AN; an++) {
+				if (opts->rekey_en && an ==
+						(opts->rekey_td->secure_pkt.data[tci_off] &
+						RTE_MACSEC_AN_MASK))
+					fill_macsec_sa_conf(opts->rekey_td, &sa_conf,
+						RTE_SECURITY_MACSEC_DIR_RX, an, tci_off);
+				else
 				/* For simplicity, using same SA conf for all AN */
-				fill_macsec_sa_conf(td[i], &sa_conf,
+					fill_macsec_sa_conf(td[i], &sa_conf,
 						RTE_SECURITY_MACSEC_DIR_RX, an, tci_off);
 				id = rte_security_macsec_sa_create(ctx, &sa_conf);
 				if (id < 0) {
@@ -1052,6 +1058,9 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 				return TEST_FAILED;
 			}
 			tx_sa_id[0][0] = (uint16_t)id;
+			break;
+		case RTE_ETH_EVENT_MACSEC_RX_SA_PN_SOFT_EXP:
+			printf("Received RTE_ETH_EVENT_MACSEC_RX_SA_PN_SOFT_EXP event\n");
 			break;
 		default:
 			printf("Received unsupported event\n");
@@ -1951,6 +1960,41 @@ test_inline_macsec_rekey_tx(const void *data __rte_unused)
 }
 
 static int
+test_inline_macsec_rekey_rx(const void *data __rte_unused)
+{
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int err, all_err = 0;
+	int i, size;
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.rekey_en = 1;
+
+	size = (sizeof(list_mcs_rekey_vectors) / sizeof((list_mcs_rekey_vectors)[0]));
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_rekey_vectors[i];
+		opts.rekey_td = &list_mcs_rekey_vectors[++i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if (err) {
+			printf("Rx rekey test case %d failed\n", i);
+			err = -1;
+		} else {
+			printf("Rx rekey test case %d passed\n", i);
+			err = 0;
+		}
+		all_err += err;
+	}
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
 ut_setup_inline_macsec(void)
 {
 	int ret;
@@ -2183,6 +2227,10 @@ static struct unit_test_suite inline_macsec_testsuite  = {
 			"MACsec re-key Tx",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_rekey_tx),
+		TEST_CASE_NAMED_ST(
+			"MACsec re-key Rx",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_rekey_rx),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},
