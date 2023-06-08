@@ -757,6 +757,71 @@ mcs_stats_check(struct rte_security_ctx *ctx, enum mcs_op op,
 }
 
 static int
+test_macsec_event_callback(uint16_t port_id, enum rte_eth_event_type type,
+			   void *param, void *ret_param)
+{
+	struct mcs_err_vector *vector = (struct mcs_err_vector *)param;
+	struct rte_eth_event_macsec_desc *event_desc = NULL;
+
+	RTE_SET_USED(port_id);
+
+	if (type != RTE_ETH_EVENT_MACSEC)
+		return -1;
+
+	event_desc = ret_param;
+	if (event_desc == NULL) {
+		printf("Event descriptor not set\n");
+		return -1;
+	}
+	vector->notify_event = true;
+
+	switch (event_desc->type) {
+	case RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR:
+		vector->event = RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR;
+		switch (event_desc->subtype) {
+		case RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_V_EQ1:
+			vector->event_subtype = RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_V_EQ1;
+			break;
+		case RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_E_EQ0_C_EQ1:
+			vector->event_subtype = RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_E_EQ0_C_EQ1;
+			break;
+		case RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SL_GTE48:
+			vector->event_subtype = RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SL_GTE48;
+			break;
+		case RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_ES_EQ1_SC_EQ1:
+			vector->event_subtype = RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_ES_EQ1_SC_EQ1;
+			break;
+		case RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SC_EQ1_SCB_EQ1:
+			vector->event_subtype = RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SC_EQ1_SCB_EQ1;
+			break;
+		default:
+			printf("\nUnknown Macsec event subtype: %d", event_desc->subtype);
+		}
+		break;
+	case RTE_ETH_EVENT_MACSEC_RX_SA_PN_HARD_EXP:
+		vector->event = RTE_ETH_EVENT_MACSEC_RX_SA_PN_HARD_EXP;
+		break;
+	case RTE_ETH_EVENT_MACSEC_RX_SA_PN_SOFT_EXP:
+		vector->event = RTE_ETH_EVENT_MACSEC_RX_SA_PN_SOFT_EXP;
+		break;
+	case RTE_ETH_EVENT_MACSEC_TX_SA_PN_HARD_EXP:
+		vector->event = RTE_ETH_EVENT_MACSEC_TX_SA_PN_HARD_EXP;
+		break;
+	case RTE_ETH_EVENT_MACSEC_TX_SA_PN_SOFT_EXP:
+		vector->event = RTE_ETH_EVENT_MACSEC_TX_SA_PN_SOFT_EXP;
+		break;
+	case RTE_ETH_EVENT_MACSEC_SA_NOT_VALID:
+		vector->event = RTE_ETH_EVENT_MACSEC_SA_NOT_VALID;
+		break;
+	default:
+		printf("Invalid MACsec event reported\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs_test_opts *opts)
 {
 	uint16_t rx_sa_id[MCS_MAX_FLOWS][RTE_SECURITY_MACSEC_NUM_AN] = {{0}};
@@ -913,6 +978,8 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 		while (--nb_rx >= 0)
 			rte_pktmbuf_free(rx_pkts_burst[nb_rx]);
 		ret = TEST_FAILED;
+		if (opts->check_sectag_interrupts == 1)
+			ret = TEST_SUCCESS;
 		goto out;
 	}
 
@@ -1702,6 +1769,59 @@ test_inline_macsec_auth_only_stats(const void *data __rte_unused)
 }
 
 static int
+test_inline_macsec_interrupts_all(const void *data __rte_unused)
+{
+	struct mcs_err_vector err_vector = {0};
+	const struct mcs_test_vector *cur_td;
+	struct mcs_test_opts opts = {0};
+	int i, size;
+	int err, all_err = 0;
+	enum rte_eth_event_macsec_subtype subtype[] =  {
+		RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_V_EQ1,
+		RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_E_EQ0_C_EQ1,
+		RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SL_GTE48,
+		RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_ES_EQ1_SC_EQ1,
+		RTE_ETH_SUBEVENT_MACSEC_RX_SECTAG_SC_EQ1_SCB_EQ1,
+	};
+
+	opts.val_frames = RTE_SECURITY_MACSEC_VALIDATE_STRICT;
+	opts.protect_frames = true;
+	opts.sa_in_use = 1;
+	opts.nb_td = 1;
+	opts.sectag_insert_mode = 1;
+	opts.mtu = RTE_ETHER_MTU;
+	opts.check_sectag_interrupts = 1;
+
+	err_vector.event = RTE_ETH_EVENT_MACSEC_UNKNOWN;
+	err_vector.event_subtype = RTE_ETH_SUBEVENT_MACSEC_UNKNOWN;
+	rte_eth_dev_callback_register(port_id, RTE_ETH_EVENT_MACSEC,
+			test_macsec_event_callback, &err_vector);
+
+	size = (sizeof(list_mcs_intr_test_vectors) / sizeof((list_mcs_intr_test_vectors)[0]));
+
+	for (i = 0; i < size; i++) {
+		cur_td = &list_mcs_intr_test_vectors[i];
+		err = test_macsec(&cur_td, MCS_DECAP, &opts);
+		if ((err_vector.event == RTE_ETH_EVENT_MACSEC_SECTAG_VAL_ERR) &&
+		    (err_vector.event_subtype == subtype[i])) {
+			printf("\nSectag val err interrupt test case %d passed",
+			       cur_td->test_idx);
+			err = 0;
+		} else {
+			printf("\nSectag val err interrupt test case %d failed",
+			       cur_td->test_idx);
+			err = -1;
+		}
+		all_err += err;
+	}
+	rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_MACSEC,
+			test_macsec_event_callback, &err_vector);
+
+	printf("\n%s: Success: %d, Failure: %d\n", __func__, size + all_err, -all_err);
+	return all_err;
+}
+
+static int
 ut_setup_inline_macsec(void)
 {
 	int ret;
@@ -1926,6 +2046,10 @@ static struct unit_test_suite inline_macsec_testsuite  = {
 			"MACsec auth only stats",
 			ut_setup_inline_macsec, ut_teardown_inline_macsec,
 			test_inline_macsec_auth_only_stats),
+		TEST_CASE_NAMED_ST(
+			"MACsec interrupts all",
+			ut_setup_inline_macsec, ut_teardown_inline_macsec,
+			test_inline_macsec_interrupts_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},
