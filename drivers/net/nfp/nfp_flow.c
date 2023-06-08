@@ -1231,6 +1231,7 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		bool is_mask,
 		bool is_outer_layer)
 {
+	uint32_t vtc_flow;
 	struct nfp_flower_ipv6 *ipv6;
 	const struct rte_ipv6_hdr *hdr;
 	struct nfp_flower_meta_tci *meta_tci;
@@ -1254,12 +1255,12 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 
 		hdr = is_mask ? &mask->hdr : &spec->hdr;
 
+		vtc_flow = rte_be_to_cpu_32(hdr->vtc_flow);
 		if (ext_meta && (rte_be_to_cpu_32(ext_meta->nfp_flow_key_layer2) &
 				NFP_FLOWER_LAYER2_GRE)) {
 			ipv6_gre_tun = (struct nfp_flower_ipv6_gre_tun *)*mbuf_off;
 
-			ipv6_gre_tun->ip_ext.tos = (hdr->vtc_flow &
-					RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
+			ipv6_gre_tun->ip_ext.tos = vtc_flow >> RTE_IPV6_HDR_TC_SHIFT;
 			ipv6_gre_tun->ip_ext.ttl = hdr->hop_limits;
 			memcpy(ipv6_gre_tun->ipv6.ipv6_src, hdr->src_addr,
 					sizeof(ipv6_gre_tun->ipv6.ipv6_src));
@@ -1268,8 +1269,7 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		} else {
 			ipv6_udp_tun = (struct nfp_flower_ipv6_udp_tun *)*mbuf_off;
 
-			ipv6_udp_tun->ip_ext.tos = (hdr->vtc_flow &
-					RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
+			ipv6_udp_tun->ip_ext.tos = vtc_flow >> RTE_IPV6_HDR_TC_SHIFT;
 			ipv6_udp_tun->ip_ext.ttl = hdr->hop_limits;
 			memcpy(ipv6_udp_tun->ipv6.ipv6_src, hdr->src_addr,
 					sizeof(ipv6_udp_tun->ipv6.ipv6_src));
@@ -1290,10 +1290,10 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 			*mbuf_off += sizeof(struct nfp_flower_tp_ports);
 
 		hdr = is_mask ? &mask->hdr : &spec->hdr;
+		vtc_flow = rte_be_to_cpu_32(hdr->vtc_flow);
 		ipv6 = (struct nfp_flower_ipv6 *)*mbuf_off;
 
-		ipv6->ip_ext.tos   = (hdr->vtc_flow & RTE_IPV6_HDR_TC_MASK) >>
-				RTE_IPV6_HDR_TC_SHIFT;
+		ipv6->ip_ext.tos   = vtc_flow >> RTE_IPV6_HDR_TC_SHIFT;
 		ipv6->ip_ext.proto = hdr->proto;
 		ipv6->ip_ext.ttl   = hdr->hop_limits;
 		memcpy(ipv6->ipv6_src, hdr->src_addr, sizeof(ipv6->ipv6_src));
