@@ -2746,10 +2746,7 @@ ice_txd_enable_checksum(uint64_t ol_flags,
 			union ice_tx_offload tx_offload)
 {
 	/* Set MACLEN */
-	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
-		*td_offset |= (tx_offload.outer_l2_len >> 1)
-			<< ICE_TX_DESC_LEN_MACLEN_S;
-	else
+	if (!(ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK))
 		*td_offset |= (tx_offload.l2_len >> 1)
 			<< ICE_TX_DESC_LEN_MACLEN_S;
 
@@ -3010,9 +3007,12 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Fill in tunneling parameters if necessary */
 		cd_tunneling_params = 0;
-		if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+		if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+			td_offset |= (tx_offload.outer_l2_len >> 1)
+				<< ICE_TX_DESC_LEN_MACLEN_S;
 			ice_parse_tunneling_params(ol_flags, tx_offload,
 						   &cd_tunneling_params);
+		}
 
 		/* Enable checksum offloading */
 		if (ol_flags & ICE_TX_CKSUM_OFFLOAD_MASK)
