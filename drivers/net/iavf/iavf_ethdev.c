@@ -2011,6 +2011,9 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->dev_data = eth_dev->data;
 	adapter->stopped = 1;
 
+	if (iavf_dev_event_handler_init())
+		return 0;
+
 	if (iavf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
 		return -1;
@@ -2037,8 +2040,6 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	if (iavf_dev_event_handler_init())
-		return 0;
 
 	/* register callback func to eal lib */
 	rte_intr_callback_register(&pci_dev->intr_handle,
