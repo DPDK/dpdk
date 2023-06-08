@@ -106,8 +106,10 @@ typedef int (*security_macsec_sc_create_t)(void *device, struct rte_security_mac
  *
  * @param	device		Crypto/eth device pointer
  * @param	sc_id		MACsec SC ID
+ * @param	dir		Direction of SC
  */
-typedef int (*security_macsec_sc_destroy_t)(void *device, uint16_t sc_id);
+typedef int (*security_macsec_sc_destroy_t)(void *device, uint16_t sc_id,
+		enum rte_security_macsec_direction dir);
 
 /**
  * Configure a MACsec security Association (SA) on a device.
@@ -128,8 +130,10 @@ typedef int (*security_macsec_sa_create_t)(void *device, struct rte_security_mac
  *
  * @param	device		Crypto/eth device pointer
  * @param	sa_id		MACsec SA ID
+ * @param	dir		Direction of SA
  */
-typedef int (*security_macsec_sa_destroy_t)(void *device, uint16_t sa_id);
+typedef int (*security_macsec_sa_destroy_t)(void *device, uint16_t sa_id,
+		enum rte_security_macsec_direction dir);
 
 /**
  * Get the size of a security session
@@ -162,6 +166,7 @@ typedef int (*security_session_stats_get_t)(void *device,
  *
  * @param	device		Crypto/eth device pointer
  * @param	sc_id		secure channel ID created by rte_security_macsec_sc_create()
+ * @param	dir		direction of SC
  * @param	stats		SC stats of the driver
  *
  * @return
@@ -169,6 +174,7 @@ typedef int (*security_session_stats_get_t)(void *device,
  *  - -EINVAL if sc_id or device is invalid.
  */
 typedef int (*security_macsec_sc_stats_get_t)(void *device, uint16_t sc_id,
+		enum rte_security_macsec_direction dir,
 		struct rte_security_macsec_sc_stats *stats);
 
 /**
@@ -176,6 +182,7 @@ typedef int (*security_macsec_sc_stats_get_t)(void *device, uint16_t sc_id,
  *
  * @param	device		Crypto/eth device pointer
  * @param	sa_id		secure channel ID created by rte_security_macsec_sc_create()
+ * @param	dir		direction of SA
  * @param	stats		SC stats of the driver
  *
  * @return
@@ -183,6 +190,7 @@ typedef int (*security_macsec_sc_stats_get_t)(void *device, uint16_t sc_id,
  *  - -EINVAL if sa_id or device is invalid.
  */
 typedef int (*security_macsec_sa_stats_get_t)(void *device, uint16_t sa_id,
+		enum rte_security_macsec_direction dir,
 		struct rte_security_macsec_sa_stats *stats);
 
 

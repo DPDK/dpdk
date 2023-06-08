@@ -164,13 +164,14 @@ rte_security_macsec_sa_create(struct rte_security_ctx *instance,
 }
 
 int
-rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id)
+rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id,
+			       enum rte_security_macsec_direction dir)
 {
 	int ret;
 
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sc_destroy, -EINVAL, -ENOTSUP);
 
-	ret = instance->ops->macsec_sc_destroy(instance->device, sc_id);
+	ret = instance->ops->macsec_sc_destroy(instance->device, sc_id, dir);
 	if (ret != 0)
 		return ret;
 
@@ -181,13 +182,14 @@ rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id
 }
 
 int
-rte_security_macsec_sa_destroy(struct rte_security_ctx *instance, uint16_t sa_id)
+rte_security_macsec_sa_destroy(struct rte_security_ctx *instance, uint16_t sa_id,
+			       enum rte_security_macsec_direction dir)
 {
 	int ret;
 
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sa_destroy, -EINVAL, -ENOTSUP);
 
-	ret = instance->ops->macsec_sa_destroy(instance->device, sa_id);
+	ret = instance->ops->macsec_sa_destroy(instance->device, sa_id, dir);
 	if (ret != 0)
 		return ret;
 
@@ -199,22 +201,24 @@ rte_security_macsec_sa_destroy(struct rte_security_ctx *instance, uint16_t sa_id
 
 int
 rte_security_macsec_sc_stats_get(struct rte_security_ctx *instance, uint16_t sc_id,
+				 enum rte_security_macsec_direction dir,
 				 struct rte_security_macsec_sc_stats *stats)
 {
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sc_stats_get, -EINVAL, -ENOTSUP);
 	RTE_PTR_OR_ERR_RET(stats, -EINVAL);
 
-	return instance->ops->macsec_sc_stats_get(instance->device, sc_id, stats);
+	return instance->ops->macsec_sc_stats_get(instance->device, sc_id, dir, stats);
 }
 
 int
 rte_security_macsec_sa_stats_get(struct rte_security_ctx *instance, uint16_t sa_id,
+				 enum rte_security_macsec_direction dir,
 				 struct rte_security_macsec_sa_stats *stats)
 {
 	RTE_PTR_CHAIN3_OR_ERR_RET(instance, ops, macsec_sa_stats_get, -EINVAL, -ENOTSUP);
 	RTE_PTR_OR_ERR_RET(stats, -EINVAL);
 
-	return instance->ops->macsec_sa_stats_get(instance->device, sa_id, stats);
+	return instance->ops->macsec_sa_stats_get(instance->device, sa_id, dir, stats);
 }
 
 int
