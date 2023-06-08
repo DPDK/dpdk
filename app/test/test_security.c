@@ -1829,41 +1829,6 @@ test_capability_get_no_matching_protocol(void)
 }
 
 /**
- * Test execution of rte_security_capability_get when macsec protocol
- * is searched and capabilities table contain proper entry.
- * However macsec records search is not supported in rte_security.
- */
-static int
-test_capability_get_no_support_for_macsec(void)
-{
-	struct security_unittest_params *ut_params = &unittest_params;
-	struct rte_security_capability_idx idx = {
-		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
-		.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
-	};
-	struct rte_security_capability capabilities[] = {
-		{
-			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
-			.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
-		},
-		{
-			.action = RTE_SECURITY_ACTION_TYPE_NONE,
-		},
-	};
-
-	mock_capabilities_get_exp.device = NULL;
-	mock_capabilities_get_exp.ret = capabilities;
-
-	const struct rte_security_capability *ret;
-	ret = rte_security_capability_get(&ut_params->ctx, &idx);
-	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
-			ret, NULL, "%p");
-	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
-
-	return TEST_SUCCESS;
-}
-
-/**
  * Test execution of rte_security_capability_get when capabilities table
  * does not contain entry with matching ipsec proto field
  */
@@ -2319,8 +2284,6 @@ static struct unit_test_suite security_testsuite  = {
 				test_capability_get_no_matching_action),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_capability_get_no_matching_protocol),
-		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
-				test_capability_get_no_support_for_macsec),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_capability_get_ipsec_mismatch_proto),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
