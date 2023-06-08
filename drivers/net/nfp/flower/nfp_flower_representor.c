@@ -518,7 +518,7 @@ static const struct eth_dev_ops nfp_flower_pf_repr_dev_ops = {
 	.stats_reset          = nfp_flower_repr_stats_reset,
 
 	.promiscuous_enable   = nfp_net_promisc_enable,
-	.promiscuous_disable  = nfp_net_promisc_enable,
+	.promiscuous_disable  = nfp_net_promisc_disable,
 
 	.mac_addr_set         = nfp_flower_repr_mac_addr_set,
 	.fw_version_get       = nfp_repr_firmware_version_get,
@@ -540,7 +540,7 @@ static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 	.stats_reset          = nfp_flower_repr_stats_reset,
 
 	.promiscuous_enable   = nfp_net_promisc_enable,
-	.promiscuous_disable  = nfp_net_promisc_enable,
+	.promiscuous_disable  = nfp_net_promisc_disable,
 
 	.mac_addr_set         = nfp_flower_repr_mac_addr_set,
 	.fw_version_get       = nfp_repr_firmware_version_get,
