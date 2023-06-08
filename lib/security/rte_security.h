@@ -399,6 +399,8 @@ struct rte_security_macsec_sa {
 struct rte_security_macsec_sc {
 	/** Direction of SC */
 	enum rte_security_macsec_direction dir;
+	/** Packet number threshold */
+	uint64_t pn_threshold;
 	union {
 		struct {
 			/** SAs for each association number */
@@ -407,8 +409,10 @@ struct rte_security_macsec_sc {
 			uint8_t sa_in_use[RTE_SECURITY_MACSEC_NUM_AN];
 			/** Channel is active */
 			uint8_t active : 1;
+			/** Extended packet number is enabled for SAs */
+			uint8_t is_xpn : 1;
 			/** Reserved bitfields for future */
-			uint8_t reserved : 7;
+			uint8_t reserved : 6;
 		} sc_rx;
 		struct {
 			uint16_t sa_id; /**< SA ID to be used for encryption */
@@ -416,8 +420,10 @@ struct rte_security_macsec_sc {
 			uint64_t sci; /**< SCI value to be used if send_sci is set */
 			uint8_t active : 1; /**< Channel is active */
 			uint8_t re_key_en : 1; /**< Enable Rekeying */
+			/** Extended packet number is enabled for SAs */
+			uint8_t is_xpn : 1;
 			/** Reserved bitfields for future */
-			uint8_t reserved : 6;
+			uint8_t reserved : 5;
 		} sc_tx;
 	};
 };
