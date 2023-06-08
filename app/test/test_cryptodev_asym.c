@@ -21,6 +21,7 @@
 #include "test_cryptodev_ecpm_test_vectors.h"
 #include "test_cryptodev_mod_test_vectors.h"
 #include "test_cryptodev_rsa_test_vectors.h"
+#include "test_cryptodev_sm2_test_vectors.h"
 #include "test_cryptodev_asym_util.h"
 #include "test.h"
 
@@ -2196,6 +2197,582 @@ test_ecpm_all_curve(void)
 	return overall_status;
 }
 
+static int
+_test_sm2_sign(bool rnd_secret)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_op *result_op = NULL;
+	uint8_t output_buf_r[TEST_DATA_SIZE];
+	uint8_t output_buf_s[TEST_DATA_SIZE];
+	struct rte_crypto_asym_xform xform;
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	void *sess = NULL;
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Compute sign */
+
+	/* Populate op with operational details */
+	asym_op->sm2.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+	asym_op->sm2.message.data = input_params.message.data;
+	asym_op->sm2.message.length = input_params.message.length;
+	asym_op->sm2.pkey.data = input_params.pkey.data;
+	asym_op->sm2.pkey.length = input_params.pkey.length;
+	asym_op->sm2.q.x.data = input_params.pubkey_qx.data;
+	asym_op->sm2.q.x.length = input_params.pubkey_qx.length;
+	asym_op->sm2.q.y.data = input_params.pubkey_qy.data;
+	asym_op->sm2.q.y.length = input_params.pubkey_qy.length;
+	asym_op->sm2.id.data = input_params.id.data;
+	asym_op->sm2.id.length = input_params.id.length;
+	if (rnd_secret) {
+		asym_op->sm2.k.data = NULL;
+		asym_op->sm2.k.length = 0;
+	} else {
+		asym_op->sm2.k.data = input_params.k.data;
+		asym_op->sm2.k.length = input_params.k.length;
+	}
+
+	/* Init out buf */
+	asym_op->sm2.r.data = output_buf_r;
+	asym_op->sm2.s.data = output_buf_s;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "r:",
+			asym_op->sm2.r.data, asym_op->sm2.r.length);
+	debug_hexdump(stdout, "s:",
+			asym_op->sm2.s.data, asym_op->sm2.s.length);
+
+	if (!rnd_secret) {
+		/* Verify sign (by comparison). */
+		if (memcmp(input_params.sign_r.data, asym_op->sm2.r.data,
+				   asym_op->sm2.r.length) != 0) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1,
+					"line %u FAILED: %s", __LINE__,
+					"SM2 sign failed.\n");
+			goto exit;
+		}
+		if (memcmp(input_params.sign_s.data, asym_op->sm2.s.data,
+				   asym_op->sm2.s.length) != 0) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1,
+					"line %u FAILED: %s", __LINE__,
+					"SM2 sign failed.\n");
+			goto exit;
+		}
+	} else {
+		/* Verify sign (in roundtrip).
+		 * Due to random number used per message, sign op
+		 * would produce different output for same message
+		 * every time. Hence, we can't have expected output
+		 * to match, instead reverse op to verify.
+		 */
+
+		/* Populate op with operational details */
+		asym_op->sm2.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+
+		/* Enqueue sign result for verify */
+		if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1,
+					"line %u FAILED: %s", __LINE__,
+					"Error sending packet for operation\n");
+			goto exit;
+		}
+
+		while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+			rte_pause();
+
+		if (result_op == NULL) {
+			status = TEST_FAILED;
+			goto exit;
+		}
+		if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1,
+					"line %u FAILED: %s", __LINE__,
+					"SM2 verify failed.\n");
+			goto exit;
+		}
+	}
+
+exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+};
+
+static int
+test_sm2_sign_rnd_secret(void)
+{
+	return _test_sm2_sign(true);
+}
+
+__rte_used static int
+test_sm2_sign_plain_secret(void)
+{
+	return _test_sm2_sign(false);
+}
+
+static int
+test_sm2_verify(void)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_op *result_op = NULL;
+	struct rte_crypto_asym_xform xform;
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	void *sess = NULL;
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Verify given sign */
+
+	/* Populate op with operational details */
+	asym_op->sm2.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+	asym_op->sm2.message.data = input_params.message.data;
+	asym_op->sm2.message.length = input_params.message.length;
+	asym_op->sm2.pkey.data = input_params.pkey.data;
+	asym_op->sm2.pkey.length = input_params.pkey.length;
+	asym_op->sm2.q.x.data = input_params.pubkey_qx.data;
+	asym_op->sm2.q.x.length = input_params.pubkey_qx.length;
+	asym_op->sm2.q.y.data = input_params.pubkey_qy.data;
+	asym_op->sm2.q.y.length = input_params.pubkey_qy.length;
+	asym_op->sm2.r.data = input_params.sign_r.data;
+	asym_op->sm2.r.length = input_params.sign_r.length;
+	asym_op->sm2.s.data = input_params.sign_s.data;
+	asym_op->sm2.s.length = input_params.sign_s.length;
+	asym_op->sm2.id.data = input_params.id.data;
+	asym_op->sm2.id.length = input_params.id.length;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+};
+
+static int
+_test_sm2_enc(bool rnd_secret)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	uint8_t output_buf[TEST_DATA_SIZE], *pbuf = NULL;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_op *result_op = NULL;
+	struct rte_crypto_asym_xform xform;
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	void *sess = NULL;
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Compute encrypt */
+
+	/* Populate op with operational details */
+	asym_op->sm2.op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
+	asym_op->sm2.message.data = input_params.message.data;
+	asym_op->sm2.message.length = input_params.message.length;
+	asym_op->sm2.pkey.data = input_params.pkey.data;
+	asym_op->sm2.pkey.length = input_params.pkey.length;
+	asym_op->sm2.q.x.data = input_params.pubkey_qx.data;
+	asym_op->sm2.q.x.length = input_params.pubkey_qx.length;
+	asym_op->sm2.q.y.data = input_params.pubkey_qy.data;
+	asym_op->sm2.q.y.length = input_params.pubkey_qy.length;
+	if (rnd_secret) {
+		asym_op->sm2.k.data = NULL;
+		asym_op->sm2.k.length = 0;
+	} else {
+		asym_op->sm2.k.data = input_params.k.data;
+		asym_op->sm2.k.length = input_params.k.length;
+	}
+
+	/* Init out buf */
+	asym_op->sm2.cipher.data = output_buf;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "cipher:",
+			asym_op->sm2.cipher.data, asym_op->sm2.cipher.length);
+
+	if (!rnd_secret) {
+		if (memcmp(input_params.cipher.data, asym_op->sm2.cipher.data,
+				   asym_op->sm2.cipher.length) != 0) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1, "line %u FAILED: %s", __LINE__,
+					"SM2 encrypt failed.\n");
+			goto exit;
+		}
+	} else {
+		/* Verify cipher (in roundtrip).
+		 * Due to random number used per message, encrypt op
+		 * would produce different output for same message
+		 * every time. Hence, we can't have expected output
+		 * to match, instead reverse op to decrypt.
+		 */
+
+		/* Populate op with operational details */
+		op->asym->sm2.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
+		pbuf = rte_malloc(NULL, TEST_DATA_SIZE, 0);
+		op->asym->sm2.message.data = pbuf;
+		op->asym->sm2.message.length = TEST_DATA_SIZE;
+
+		/* Enqueue cipher result for decrypt */
+		if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1,
+					"line %u FAILED: %s", __LINE__,
+					"Error sending packet for operation\n");
+			goto exit;
+		}
+
+		while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+			rte_pause();
+
+		if (result_op == NULL) {
+			status = TEST_FAILED;
+			goto exit;
+		}
+		if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1,
+					"line %u FAILED: %s", __LINE__,
+					"SM2 encrypt failed.\n");
+			goto exit;
+		}
+
+		asym_op = result_op->asym;
+		if (memcmp(input_params.message.data, asym_op->sm2.message.data,
+			       asym_op->sm2.message.length) != 0) {
+			status = TEST_FAILED;
+			RTE_LOG(ERR, USER1, "line %u FAILED: %s", __LINE__,
+					"SM2 encrypt failed.\n");
+			goto exit;
+		}
+	}
+exit:
+	if (pbuf != NULL)
+		rte_free(pbuf);
+
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+};
+
+static int
+test_sm2_enc_rnd_secret(void)
+{
+	return _test_sm2_enc(true);
+}
+
+__rte_used static int
+test_sm2_enc_plain_secret(void)
+{
+	return _test_sm2_enc(false);
+}
+
+static int
+test_sm2_dec(void)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_op *result_op = NULL;
+	uint8_t output_buf_m[TEST_DATA_SIZE];
+	struct rte_crypto_asym_xform xform;
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	void *sess = NULL;
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Compute decrypt */
+
+	/* Populate op with operational details */
+	asym_op->sm2.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
+	asym_op->sm2.cipher.data = input_params.cipher.data;
+	asym_op->sm2.cipher.length = input_params.cipher.length;
+	asym_op->sm2.pkey.data = input_params.pkey.data;
+	asym_op->sm2.pkey.length = input_params.pkey.length;
+	asym_op->sm2.q.x.data = input_params.pubkey_qx.data;
+	asym_op->sm2.q.x.length = input_params.pubkey_qx.length;
+	asym_op->sm2.q.y.data = input_params.pubkey_qy.data;
+	asym_op->sm2.q.y.length = input_params.pubkey_qy.length;
+
+	/* Init out buf */
+	asym_op->sm2.message.data = output_buf_m;
+	asym_op->sm2.message.length = RTE_DIM(output_buf_m);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "message:",
+			asym_op->sm2.message.data, asym_op->sm2.message.length);
+
+	if (memcmp(input_params.message.data, asym_op->sm2.message.data,
+			op->asym->sm2.message.length)) {
+		status = TEST_FAILED;
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"SM2 decrypt failed.\n");
+		goto exit;
+	}
+exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+};
+
 static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 	.suite_name = "Crypto Device OPENSSL ASYM Unit Test Suite",
 	.setup = testsuite_setup,
@@ -2205,6 +2782,10 @@ static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_dsa),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
 				test_dh_keygenration),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_sign_rnd_secret),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_verify),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_enc_rnd_secret),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_dec),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_rsa_enc_dec),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
 				test_rsa_sign_verify),

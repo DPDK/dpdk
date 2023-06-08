@@ -110,6 +110,7 @@ New Features
 
 * **Added new algorithms to cryptodev.**
 
+  * Added asymmetric algorithm ShangMi 2 (SM2) along with prime field curve support.
   * Added symmetric hash algorithm SM3-HMAC.
   * Added symmetric cipher algorithm ShangMi 4 (SM4) in CFB and OFB modes.
 
