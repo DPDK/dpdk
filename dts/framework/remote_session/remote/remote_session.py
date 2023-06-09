@@ -11,7 +11,6 @@ from framework.config import NodeConfiguration
 from framework.exception import RemoteCommandExecutionError
 from framework.logger import DTSLOG
 from framework.settings import SETTINGS
-from framework.utils import EnvVarsDict
 
 
 @dataclasses.dataclass(slots=True, frozen=True)
@@ -89,7 +88,7 @@ class RemoteSession(ABC):
         command: str,
         timeout: float = SETTINGS.timeout,
         verify: bool = False,
-        env: EnvVarsDict | None = None,
+        env: dict | None = None,
     ) -> CommandResult:
         """
         Send a command to the connected node using optional env vars
@@ -114,7 +113,7 @@ class RemoteSession(ABC):
 
     @abstractmethod
     def _send_command(
-        self, command: str, timeout: float, env: EnvVarsDict | None
+        self, command: str, timeout: float, env: dict | None
     ) -> CommandResult:
         """
         Use the underlying protocol to execute the command using optional env vars
@@ -141,15 +140,33 @@ class RemoteSession(ABC):
         """
 
     @abstractmethod
-    def copy_file(
+    def copy_from(
         self,
         source_file: str | PurePath,
         destination_file: str | PurePath,
-        source_remote: bool = False,
     ) -> None:
+        """Copy a file from the remote Node to the local filesystem.
+
+        Copy source_file from the remote Node associated with this remote
+        session to destination_file on the local filesystem.
+
+        Args:
+            source_file: the file on the remote Node.
+            destination_file: a file or directory path on the local filesystem.
         """
-        Copy source_file from local filesystem to destination_file on the remote Node
-        associated with the remote session.
-        If source_remote is True, reverse the direction - copy source_file from the
-        associated Node to destination_file on local filesystem.
+
+    @abstractmethod
+    def copy_to(
+        self,
+        source_file: str | PurePath,
+        destination_file: str | PurePath,
+    ) -> None:
+        """Copy a file from local filesystem to the remote Node.
+
+        Copy source_file from local filesystem to destination_file
+        on the remote Node associated with this remote session.
+
+        Args:
+            source_file: the file on the local filesystem.
+            destination_file: a file or directory path on the remote Node.
         """

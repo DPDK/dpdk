@@ -10,7 +10,7 @@ from pathlib import PurePath
 from framework.config import BuildTargetConfiguration, NodeConfiguration
 from framework.remote_session import CommandResult, OSSession
 from framework.settings import SETTINGS
-from framework.utils import EnvVarsDict, MesonArgs
+from framework.utils import MesonArgs
 
 from .hw import LogicalCoreCount, LogicalCoreList, VirtualDevice
 from .node import Node
@@ -27,7 +27,7 @@ class SutNode(Node):
     _dpdk_prefix_list: list[str]
     _dpdk_timestamp: str
     _build_target_config: BuildTargetConfiguration | None
-    _env_vars: EnvVarsDict
+    _env_vars: dict
     _remote_tmp_dir: PurePath
     __remote_dpdk_dir: PurePath | None
     _dpdk_version: str | None
@@ -38,7 +38,7 @@ class SutNode(Node):
         super(SutNode, self).__init__(node_config)
         self._dpdk_prefix_list = []
         self._build_target_config = None
-        self._env_vars = EnvVarsDict()
+        self._env_vars = {}
         self._remote_tmp_dir = self.main_session.get_remote_tmp_dir()
         self.__remote_dpdk_dir = None
         self._dpdk_version = None
@@ -94,7 +94,7 @@ class SutNode(Node):
         """
         Populate common environment variables and set build target config.
         """
-        self._env_vars = EnvVarsDict()
+        self._env_vars = {}
         self._build_target_config = build_target_config
         self._env_vars.update(
             self.main_session.get_dpdk_build_env_vars(build_target_config.arch)
@@ -112,7 +112,7 @@ class SutNode(Node):
         Copy to and extract DPDK tarball on the SUT node.
         """
         self._logger.info("Copying DPDK tarball to SUT.")
-        self.main_session.copy_file(SETTINGS.dpdk_tarball_path, self._remote_tmp_dir)
+        self.main_session.copy_to(SETTINGS.dpdk_tarball_path, self._remote_tmp_dir)
 
         # construct remote tarball path
         # the basename is the same on local host and on remote Node
@@ -259,7 +259,7 @@ class SutNode(Node):
         Run DPDK application on the remote node.
         """
         return self.main_session.send_command(
-            f"{app_path} {eal_args}", timeout, verify=True
+            f"{app_path} {eal_args}", timeout, privileged=True, verify=True
         )
 
 

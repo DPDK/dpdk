@@ -1,29 +1,49 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2010-2014 Intel Corporation
-# Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
-# Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2023 PANTHEON.tech s.r.o.
 
-import time
+import socket
+import traceback
 from pathlib import PurePath
 
-import pexpect  # type: ignore
-from pexpect import pxssh  # type: ignore
+from fabric import Connection  # type: ignore[import]
+from invoke.exceptions import (  # type: ignore[import]
+    CommandTimedOut,
+    ThreadException,
+    UnexpectedExit,
+)
+from paramiko.ssh_exception import (  # type: ignore[import]
+    AuthenticationException,
+    BadHostKeyException,
+    NoValidConnectionsError,
+    SSHException,
+)
 
 from framework.config import NodeConfiguration
 from framework.exception import SSHConnectionError, SSHSessionDeadError, SSHTimeoutError
 from framework.logger import DTSLOG
-from framework.utils import GREEN, RED, EnvVarsDict
 
 from .remote_session import CommandResult, RemoteSession
 
 
 class SSHSession(RemoteSession):
-    """
-    Module for creating Pexpect SSH remote sessions.
+    """A persistent SSH connection to a remote Node.
+
+    The connection is implemented with the Fabric Python library.
+
+    Args:
+        node_config: The configuration of the Node to connect to.
+        session_name: The name of the session.
+        logger: The logger used for logging.
+            This should be passed from the parent OSSession.
+
+    Attributes:
+        session: The underlying Fabric SSH connection.
+
+    Raises:
+        SSHConnectionError: The connection cannot be established.
     """
 
-    session: pxssh.pxssh
-    magic_prompt: str
+    session: Connection
 
     def __init__(
         self,
@@ -31,218 +51,91 @@ class SSHSession(RemoteSession):
         session_name: str,
         logger: DTSLOG,
     ):
-        self.magic_prompt = "MAGIC PROMPT"
         super(SSHSession, self).__init__(node_config, session_name, logger)
 
     def _connect(self) -> None:
-        """
-        Create connection to assigned node.
-        """
+        errors = []
         retry_attempts = 10
         login_timeout = 20 if self.port else 10
-        password_regex = (
-            r"(?i)(?:password:)|(?:passphrase for key)|(?i)(password for .+:)"
-        )
-        try:
-            for retry_attempt in range(retry_attempts):
-                self.session = pxssh.pxssh(encoding="utf-8")
-                try:
-                    self.session.login(
-                        self.ip,
-                        self.username,
-                        self.password,
-                        original_prompt="[$#>]",
-                        port=self.port,
-                        login_timeout=login_timeout,
-                        password_regex=password_regex,
-                    )
-                    break
-                except Exception as e:
-                    self._logger.warning(e)
-                    time.sleep(2)
-                    self._logger.info(
-                        f"Retrying connection: retry number {retry_attempt + 1}."
-                    )
-            else:
-                raise Exception(f"Connection to {self.hostname} failed")
-
-            self.send_expect("stty -echo", "#")
-            self.send_expect("stty columns 1000", "#")
-            self.send_expect("bind 'set enable-bracketed-paste off'", "#")
-        except Exception as e:
-            self._logger.error(RED(str(e)))
-            if getattr(self, "port", None):
-                suggestion = (
-                    f"\nSuggestion: Check if the firewall on {self.hostname} is "
-                    f"stopped.\n"
+        for retry_attempt in range(retry_attempts):
+            try:
+                self.session = Connection(
+                    self.ip,
+                    user=self.username,
+                    port=self.port,
+                    connect_kwargs={"password": self.password},
+                    connect_timeout=login_timeout,
                 )
-                self._logger.info(GREEN(suggestion))
+                self.session.open()
 
-            raise SSHConnectionError(self.hostname)
+            except (ValueError, BadHostKeyException, AuthenticationException) as e:
+                self._logger.exception(e)
+                raise SSHConnectionError(self.hostname) from e
 
-    def send_expect(
-        self, command: str, prompt: str, timeout: float = 15, verify: bool = False
-    ) -> str | int:
-        try:
-            ret = self.send_expect_base(command, prompt, timeout)
-            if verify:
-                ret_status = self.send_expect_base("echo $?", prompt, timeout)
-                try:
-                    retval = int(ret_status)
-                    if retval:
-                        self._logger.error(f"Command: {command} failure!")
-                        self._logger.error(ret)
-                        return retval
-                    else:
-                        return ret
-                except ValueError:
-                    return ret
+            except (NoValidConnectionsError, socket.error, SSHException) as e:
+                self._logger.debug(traceback.format_exc())
+                self._logger.warning(e)
+
+                error = repr(e)
+                if error not in errors:
+                    errors.append(error)
+
+                self._logger.info(
+                    f"Retrying connection: retry number {retry_attempt + 1}."
+                )
+
             else:
-                return ret
-        except Exception as e:
-            self._logger.error(
-                f"Exception happened in [{command}] and output is "
-                f"[{self._get_output()}]"
-            )
-            raise e
-
-    def send_expect_base(self, command: str, prompt: str, timeout: float) -> str:
-        self._clean_session()
-        original_prompt = self.session.PROMPT
-        self.session.PROMPT = prompt
-        self._send_line(command)
-        self._prompt(command, timeout)
-
-        before = self._get_output()
-        self.session.PROMPT = original_prompt
-        return before
-
-    def _clean_session(self) -> None:
-        self.session.PROMPT = self.magic_prompt
-        self.get_output(timeout=0.01)
-        self.session.PROMPT = self.session.UNIQUE_PROMPT
-
-    def _send_line(self, command: str) -> None:
-        if not self.is_alive():
-            raise SSHSessionDeadError(self.hostname)
-        if len(command) == 2 and command.startswith("^"):
-            self.session.sendcontrol(command[1])
+                break
         else:
-            self.session.sendline(command)
-
-    def _prompt(self, command: str, timeout: float) -> None:
-        if not self.session.prompt(timeout):
-            raise SSHTimeoutError(command, self._get_output()) from None
-
-    def get_output(self, timeout: float = 15) -> str:
-        """
-        Get all output before timeout
-        """
-        try:
-            self.session.prompt(timeout)
-        except Exception:
-            pass
-
-        before = self._get_output()
-        self._flush()
-
-        return before
-
-    def _get_output(self) -> str:
-        if not self.is_alive():
-            raise SSHSessionDeadError(self.hostname)
-        before = self.session.before.rsplit("\r\n", 1)[0]
-        if before == "[PEXPECT]":
-            return ""
-        return before
-
-    def _flush(self) -> None:
-        """
-        Clear all session buffer
-        """
-        self.session.buffer = ""
-        self.session.before = ""
+            raise SSHConnectionError(self.hostname, errors)
 
     def is_alive(self) -> bool:
-        return self.session.isalive()
+        return self.session.is_connected
 
     def _send_command(
-        self, command: str, timeout: float, env: EnvVarsDict | None
+        self, command: str, timeout: float, env: dict | None
     ) -> CommandResult:
-        output = self._send_command_get_output(command, timeout, env)
-        return_code = int(self._send_command_get_output("echo $?", timeout, None))
+        """Send a command and return the result of the execution.
 
-        # we're capturing only stdout
-        return CommandResult(self.name, command, output, "", return_code)
+        Args:
+            command: The command to execute.
+            timeout: Wait at most this many seconds for the execution to complete.
+            env: Extra environment variables that will be used in command execution.
 
-    def _send_command_get_output(
-        self, command: str, timeout: float, env: EnvVarsDict | None
-    ) -> str:
+        Raises:
+            SSHSessionDeadError: The session died while executing the command.
+            SSHTimeoutError: The command execution timed out.
+        """
         try:
-            self._clean_session()
-            if env:
-                command = f"{env} {command}"
-            self._send_line(command)
-        except Exception as e:
-            raise e
+            output = self.session.run(
+                command, env=env, warn=True, hide=True, timeout=timeout
+            )
 
-        output = self.get_output(timeout=timeout)
-        self.session.PROMPT = self.session.UNIQUE_PROMPT
-        self.session.prompt(0.1)
+        except (UnexpectedExit, ThreadException) as e:
+            self._logger.exception(e)
+            raise SSHSessionDeadError(self.hostname) from e
 
-        return output
+        except CommandTimedOut as e:
+            self._logger.exception(e)
+            raise SSHTimeoutError(command, e.result.stderr) from e
 
-    def _close(self, force: bool = False) -> None:
-        if force is True:
-            self.session.close()
-        else:
-            if self.is_alive():
-                self.session.logout()
+        return CommandResult(
+            self.name, command, output.stdout, output.stderr, output.return_code
+        )
 
-    def copy_file(
+    def copy_from(
         self,
         source_file: str | PurePath,
         destination_file: str | PurePath,
-        source_remote: bool = False,
     ) -> None:
-        """
-        Send a local file to a remote host.
-        """
-        if source_remote:
-            source_file = f"{self.username}@{self.ip}:{source_file}"
-        else:
-            destination_file = f"{self.username}@{self.ip}:{destination_file}"
+        self.session.get(str(destination_file), str(source_file))
 
-        port = ""
-        if self.port:
-            port = f" -P {self.port}"
+    def copy_to(
+        self,
+        source_file: str | PurePath,
+        destination_file: str | PurePath,
+    ) -> None:
+        self.session.put(str(source_file), str(destination_file))
 
-        command = (
-            f"scp -v{port} -o NoHostAuthenticationForLocalhost=yes"
-            f" {source_file} {destination_file}"
-        )
-
-        self._spawn_scp(command)
-
-    def _spawn_scp(self, scp_cmd: str) -> None:
-        """
-        Transfer a file with SCP
-        """
-        self._logger.info(scp_cmd)
-        p: pexpect.spawn = pexpect.spawn(scp_cmd)
-        time.sleep(0.5)
-        ssh_newkey: str = "Are you sure you want to continue connecting"
-        i: int = p.expect(
-            [ssh_newkey, "[pP]assword", "# ", pexpect.EOF, pexpect.TIMEOUT], 120
-        )
-        if i == 0:  # add once in trust list
-            p.sendline("yes")
-            i = p.expect([ssh_newkey, "[pP]assword", pexpect.EOF], 2)
-
-        if i == 1:
-            time.sleep(0.5)
-            p.sendline(self.password)
-            p.expect("Exit status 0", 60)
-        if i == 4:
-            self._logger.error("SCP TIMEOUT error %d" % i)
-        p.close()
+    def _close(self, force: bool = False) -> None:
+        self.session.close()

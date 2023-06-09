@@ -95,9 +95,14 @@ Setting up DTS environment
 
 #. **SSH Connection**
 
-   DTS uses Python pexpect for SSH connections between DTS environment and the other hosts.
-   The pexpect implementation is a wrapper around the ssh command in the DTS environment.
-   This means it'll use the SSH agent providing the ssh command and its keys.
+   DTS uses the Fabric Python library for SSH connections between DTS environment
+   and the other hosts.
+   The authentication method used is pubkey authentication.
+   Fabric tries to use a passed key/certificate,
+   then any key it can with through an SSH agent,
+   then any "id_rsa", "id_dsa" or "id_ecdsa" key discoverable in ``~/.ssh/``
+   (with any matching OpenSSH-style certificates).
+   DTS doesn't pass any keys, so Fabric tries to use the other two methods.
 
 
 Setting up System Under Test
@@ -132,6 +137,21 @@ There are two areas that need to be set up on a System Under Test:
      It's possible to use the hugepage configuration already present on the SUT.
      If you wish to do so, don't specify the hugepage configuration in the DTS config file.
 
+#. **User with administrator privileges**
+
+.. _sut_admin_user:
+
+   DTS needs administrator privileges to run DPDK applications (such as testpmd) on the SUT.
+   The SUT user must be able run commands in privileged mode without asking for password.
+   On most Linux distributions, it's a matter of setting up passwordless sudo:
+
+   #. Run ``sudo visudo`` and check that it contains ``%sudo	ALL=(ALL:ALL) NOPASSWD:ALL``.
+
+   #. Add the SUT user to the sudo group with:
+
+   .. code-block:: console
+
+      sudo usermod -aG sudo <sut_user>
 
 Running DTS
 -----------
@@ -151,7 +171,8 @@ which is a template that illustrates what can be configured in DTS:
      :start-at: executions:
 
 
-The user must be root or any other user with prompt starting with ``#``.
+The user must have :ref:`administrator privileges <sut_admin_user>`
+which don't require password authentication.
 The other fields are mostly self-explanatory
 and documented in more detail in ``dts/framework/config/conf_yaml_schema.json``.
 

@@ -9,7 +9,7 @@ from pathlib import PurePath, PurePosixPath
 from framework.config import Architecture
 from framework.exception import DPDKBuildError, RemoteCommandExecutionError
 from framework.settings import SETTINGS
-from framework.utils import EnvVarsDict, MesonArgs
+from framework.utils import MesonArgs
 
 from .os_session import OSSession
 
@@ -34,7 +34,7 @@ class PosixSession(OSSession):
 
     def guess_dpdk_remote_dir(self, remote_dir) -> PurePosixPath:
         remote_guess = self.join_remote_path(remote_dir, "dpdk-*")
-        result = self.remote_session.send_command(f"ls -d {remote_guess} | tail -1")
+        result = self.send_command(f"ls -d {remote_guess} | tail -1")
         return PurePosixPath(result.stdout)
 
     def get_remote_tmp_dir(self) -> PurePosixPath:
@@ -48,7 +48,7 @@ class PosixSession(OSSession):
         env_vars = {}
         if arch == Architecture.i686:
             # find the pkg-config path and store it in PKG_CONFIG_LIBDIR
-            out = self.remote_session.send_command("find /usr -type d -name pkgconfig")
+            out = self.send_command("find /usr -type d -name pkgconfig")
             pkg_path = ""
             res_path = out.stdout.split("\r\n")
             for cur_path in res_path:
@@ -65,13 +65,19 @@ class PosixSession(OSSession):
     def join_remote_path(self, *args: str | PurePath) -> PurePosixPath:
         return PurePosixPath(*args)
 
-    def copy_file(
+    def copy_from(
         self,
         source_file: str | PurePath,
         destination_file: str | PurePath,
-        source_remote: bool = False,
     ) -> None:
-        self.remote_session.copy_file(source_file, destination_file, source_remote)
+        self.remote_session.copy_from(source_file, destination_file)
+
+    def copy_to(
+        self,
+        source_file: str | PurePath,
+        destination_file: str | PurePath,
+    ) -> None:
+        self.remote_session.copy_to(source_file, destination_file)
 
     def remove_remote_dir(
         self,
@@ -80,24 +86,24 @@ class PosixSession(OSSession):
         force: bool = True,
     ) -> None:
         opts = PosixSession.combine_short_options(r=recursive, f=force)
-        self.remote_session.send_command(f"rm{opts} {remote_dir_path}")
+        self.send_command(f"rm{opts} {remote_dir_path}")
 
     def extract_remote_tarball(
         self,
         remote_tarball_path: str | PurePath,
         expected_dir: str | PurePath | None = None,
     ) -> None:
-        self.remote_session.send_command(
+        self.send_command(
             f"tar xfm {remote_tarball_path} "
             f"-C {PurePosixPath(remote_tarball_path).parent}",
             60,
         )
         if expected_dir:
-            self.remote_session.send_command(f"ls {expected_dir}", verify=True)
+            self.send_command(f"ls {expected_dir}", verify=True)
 
     def build_dpdk(
         self,
-        env_vars: EnvVarsDict,
+        env_vars: dict,
         meson_args: MesonArgs,
         remote_dpdk_dir: str | PurePath,
         remote_dpdk_build_dir: str | PurePath,
@@ -108,7 +114,7 @@ class PosixSession(OSSession):
             if rebuild:
                 # reconfigure, then build
                 self._logger.info("Reconfiguring DPDK build.")
-                self.remote_session.send_command(
+                self.send_command(
                     f"meson configure {meson_args} {remote_dpdk_build_dir}",
                     timeout,
                     verify=True,
@@ -118,7 +124,7 @@ class PosixSession(OSSession):
                 # fresh build - remove target dir first, then build from scratch
                 self._logger.info("Configuring DPDK build from scratch.")
                 self.remove_remote_dir(remote_dpdk_build_dir)
-                self.remote_session.send_command(
+                self.send_command(
                     f"meson setup "
                     f"{meson_args} {remote_dpdk_dir} {remote_dpdk_build_dir}",
                     timeout,
@@ -127,14 +133,14 @@ class PosixSession(OSSession):
                 )
 
             self._logger.info("Building DPDK.")
-            self.remote_session.send_command(
+            self.send_command(
                 f"ninja -C {remote_dpdk_build_dir}", timeout, verify=True, env=env_vars
             )
         except RemoteCommandExecutionError as e:
             raise DPDKBuildError(f"DPDK build failed when doing '{e.command}'.")
 
     def get_dpdk_version(self, build_dir: str | PurePath) -> str:
-        out = self.remote_session.send_command(
+        out = self.send_command(
             f"cat {self.join_remote_path(build_dir, 'VERSION')}", verify=True
         )
         return out.stdout
@@ -146,7 +152,7 @@ class PosixSession(OSSession):
             # kill and cleanup only if DPDK is running
             dpdk_pids = self._get_dpdk_pids(dpdk_runtime_dirs)
             for dpdk_pid in dpdk_pids:
-                self.remote_session.send_command(f"kill -9 {dpdk_pid}", 20)
+                self.send_command(f"kill -9 {dpdk_pid}", 20)
             self._check_dpdk_hugepages(dpdk_runtime_dirs)
             self._remove_dpdk_runtime_dirs(dpdk_runtime_dirs)
 
@@ -168,7 +174,7 @@ class PosixSession(OSSession):
         Return a list of directories of the remote_dir.
         If remote_path doesn't exist, return None.
         """
-        out = self.remote_session.send_command(
+        out = self.send_command(
             f"ls -l {remote_path} | awk '/^d/ {{print $NF}}'"
         ).stdout
         if "No such file or directory" in out:
@@ -182,9 +188,7 @@ class PosixSession(OSSession):
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             dpdk_config_file = PurePosixPath(dpdk_runtime_dir, "config")
             if self._remote_files_exists(dpdk_config_file):
-                out = self.remote_session.send_command(
-                    f"lsof -Fp {dpdk_config_file}"
-                ).stdout
+                out = self.send_command(f"lsof -Fp {dpdk_config_file}").stdout
                 if out and "No such file or directory" not in out:
                     for out_line in out.splitlines():
                         match = re.match(pid_regex, out_line)
@@ -193,7 +197,7 @@ class PosixSession(OSSession):
         return pids
 
     def _remote_files_exists(self, remote_path: PurePath) -> bool:
-        result = self.remote_session.send_command(f"test -e {remote_path}")
+        result = self.send_command(f"test -e {remote_path}")
         return not result.return_code
 
     def _check_dpdk_hugepages(
@@ -202,9 +206,7 @@ class PosixSession(OSSession):
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             hugepage_info = PurePosixPath(dpdk_runtime_dir, "hugepage_info")
             if self._remote_files_exists(hugepage_info):
-                out = self.remote_session.send_command(
-                    f"lsof -Fp {hugepage_info}"
-                ).stdout
+                out = self.send_command(f"lsof -Fp {hugepage_info}").stdout
                 if out and "No such file or directory" not in out:
                     self._logger.warning("Some DPDK processes did not free hugepages.")
                     self._logger.warning("*******************************************")

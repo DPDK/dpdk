@@ -9,10 +9,10 @@ authors = ["Owen Hilyard <ohilyard@iol.unh.edu>", "dts@dpdk.org"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pexpect = "^4.8.0"
 warlock = "^2.0.1"
 PyYAML = "^6.0"
 types-PyYAML = "^6.0.8"
+fabric = "^2.7.1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.961"

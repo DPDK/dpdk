@@ -16,7 +16,7 @@ executions:
 nodes:
   - name: "SUT 1"
     hostname: sut1.change.me.localhost
-    user: root
+    user: dtsuser
     arch: x86_64
     os: linux
     lcores: ""

@@ -62,13 +62,19 @@ class SSHConnectionError(DTSError):
     """
 
     host: str
+    errors: list[str]
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
 
-    def __init__(self, host: str):
+    def __init__(self, host: str, errors: list[str] | None = None):
         self.host = host
+        self.errors = [] if errors is None else errors
 
     def __str__(self) -> str:
-        return f"Error trying to connect with {self.host}"
+        message = f"Error trying to connect with {self.host}."
+        if self.errors:
+            message += f" Errors encountered while retrying: {', '.join(self.errors)}"
+
+        return message
 
 
 class SSHSessionDeadError(DTSError):

@@ -10,7 +10,7 @@ from framework.config import Architecture, NodeConfiguration
 from framework.logger import DTSLOG
 from framework.settings import SETTINGS
 from framework.testbed_model import LogicalCore
-from framework.utils import EnvVarsDict, MesonArgs
+from framework.utils import MesonArgs
 
 from .remote import CommandResult, RemoteSession, create_remote_session
 
@@ -53,16 +53,31 @@ class OSSession(ABC):
     def send_command(
         self,
         command: str,
-        timeout: float,
+        timeout: float = SETTINGS.timeout,
+        privileged: bool = False,
         verify: bool = False,
-        env: EnvVarsDict | None = None,
+        env: dict | None = None,
     ) -> CommandResult:
         """
         An all-purpose API in case the command to be executed is already
         OS-agnostic, such as when the path to the executed command has been
         constructed beforehand.
         """
+        if privileged:
+            command = self._get_privileged_command(command)
+
         return self.remote_session.send_command(command, timeout, verify, env)
+
+    @abstractmethod
+    def _get_privileged_command(self, command: str) -> str:
+        """Modify the command so that it executes with administrative privileges.
+
+        Args:
+            command: The command to modify.
+
+        Returns:
+            The modified command that executes with administrative privileges.
+        """
 
     @abstractmethod
     def guess_dpdk_remote_dir(self, remote_dir) -> PurePath:
@@ -90,17 +105,35 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def copy_file(
+    def copy_from(
         self,
         source_file: str | PurePath,
         destination_file: str | PurePath,
-        source_remote: bool = False,
     ) -> None:
+        """Copy a file from the remote Node to the local filesystem.
+
+        Copy source_file from the remote Node associated with this remote
+        session to destination_file on the local filesystem.
+
+        Args:
+            source_file: the file on the remote Node.
+            destination_file: a file or directory path on the local filesystem.
         """
+
+    @abstractmethod
+    def copy_to(
+        self,
+        source_file: str | PurePath,
+        destination_file: str | PurePath,
+    ) -> None:
+        """Copy a file from local filesystem to the remote Node.
+
         Copy source_file from local filesystem to destination_file
-        on the remote Node associated with the remote session.
-        If source_remote is True, reverse the direction - copy source_file from the
-        associated remote Node to destination_file on local storage.
+        on the remote Node associated with this remote session.
+
+        Args:
+            source_file: the file on the local filesystem.
+            destination_file: a file or directory path on the remote Node.
         """
 
     @abstractmethod
@@ -128,7 +161,7 @@ class OSSession(ABC):
     @abstractmethod
     def build_dpdk(
         self,
-        env_vars: EnvVarsDict,
+        env_vars: dict,
         meson_args: MesonArgs,
         remote_dpdk_dir: str | PurePath,
         remote_dpdk_build_dir: str | PurePath,

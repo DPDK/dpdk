@@ -14,10 +14,11 @@ class LinuxSession(PosixSession):
     The implementation of non-Posix compliant parts of Linux remote sessions.
     """
 
+    def _get_privileged_command(self, command: str) -> str:
+        return f"sudo -- sh -c '{command}'"
+
     def get_remote_cpus(self, use_first_core: bool) -> list[LogicalCore]:
-        cpu_info = self.remote_session.send_command(
-            "lscpu -p=CPU,CORE,SOCKET,NODE|grep -v \\#"
-        ).stdout
+        cpu_info = self.send_command("lscpu -p=CPU,CORE,SOCKET,NODE|grep -v \\#").stdout
         lcores = []
         for cpu_line in cpu_info.splitlines():
             lcore, core, socket, node = map(int, cpu_line.split(","))
@@ -45,20 +46,20 @@ class LinuxSession(PosixSession):
         self._mount_huge_pages()
 
     def _get_hugepage_size(self) -> int:
-        hugepage_size = self.remote_session.send_command(
+        hugepage_size = self.send_command(
             "awk '/Hugepagesize/ {print $2}' /proc/meminfo"
         ).stdout
         return int(hugepage_size)
 
     def _get_hugepages_total(self) -> int:
-        hugepages_total = self.remote_session.send_command(
+        hugepages_total = self.send_command(
             "awk '/HugePages_Total/ { print $2 }' /proc/meminfo"
         ).stdout
         return int(hugepages_total)
 
     def _get_numa_nodes(self) -> list[int]:
         try:
-            numa_count = self.remote_session.send_command(
+            numa_count = self.send_command(
                 "cat /sys/devices/system/node/online", verify=True
             ).stdout
             numa_range = expand_range(numa_count)
@@ -70,14 +71,12 @@ class LinuxSession(PosixSession):
     def _mount_huge_pages(self) -> None:
         self._logger.info("Re-mounting Hugepages.")
         hugapge_fs_cmd = "awk '/hugetlbfs/ { print $2 }' /proc/mounts"
-        self.remote_session.send_command(f"umount $({hugapge_fs_cmd})")
-        result = self.remote_session.send_command(hugapge_fs_cmd)
+        self.send_command(f"umount $({hugapge_fs_cmd})")
+        result = self.send_command(hugapge_fs_cmd)
         if result.stdout == "":
             remote_mount_path = "/mnt/huge"
-            self.remote_session.send_command(f"mkdir -p {remote_mount_path}")
-            self.remote_session.send_command(
-                f"mount -t hugetlbfs nodev {remote_mount_path}"
-            )
+            self.send_command(f"mkdir -p {remote_mount_path}")
+            self.send_command(f"mount -t hugetlbfs nodev {remote_mount_path}")
 
     def _supports_numa(self) -> bool:
         # the system supports numa if self._numa_nodes is non-empty and there are more
@@ -94,14 +93,12 @@ class LinuxSession(PosixSession):
         )
         if force_first_numa and self._supports_numa():
             # clear non-numa hugepages
-            self.remote_session.send_command(
-                f"echo 0 | sudo tee {hugepage_config_path}"
-            )
+            self.send_command(f"echo 0 | tee {hugepage_config_path}", privileged=True)
             hugepage_config_path = (
                 f"/sys/devices/system/node/node{self._numa_nodes[0]}/hugepages"
                 f"/hugepages-{size}kB/nr_hugepages"
             )
 
-        self.remote_session.send_command(
-            f"echo {amount} | sudo tee {hugepage_config_path}"
+        self.send_command(
+            f"echo {amount} | tee {hugepage_config_path}", privileged=True
         )
