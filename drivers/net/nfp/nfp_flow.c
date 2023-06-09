@@ -4038,11 +4038,21 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	size_t stats_size;
 	uint64_t ctx_count;
 	uint64_t ctx_split;
+	char mask_name[RTE_HASH_NAMESIZE];
+	char flow_name[RTE_HASH_NAMESIZE];
+	char pretun_name[RTE_HASH_NAMESIZE];
 	struct nfp_flow_priv *priv;
 	struct nfp_app_fw_flower *app_fw_flower;
 
+	snprintf(mask_name, sizeof(mask_name), "%s_mask",
+			pf_dev->pci_dev->device.name);
+	snprintf(flow_name, sizeof(flow_name), "%s_flow",
+			pf_dev->pci_dev->device.name);
+	snprintf(pretun_name, sizeof(pretun_name), "%s_pretun",
+			pf_dev->pci_dev->device.name);
+
 	struct rte_hash_parameters mask_hash_params = {
-		.name       = "mask_hash_table",
+		.name       = mask_name,
 		.entries    = NFP_MASK_TABLE_ENTRIES,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
@@ -4051,7 +4061,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	};
 
 	struct rte_hash_parameters flow_hash_params = {
-		.name       = "flow_hash_table",
+		.name       = flow_name,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
 		.key_len    = sizeof(uint32_t),
@@ -4059,7 +4069,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	};
 
 	struct rte_hash_parameters pre_tun_hash_params = {
-		.name       = "pre_tunnel_table",
+		.name       = pretun_name,
 		.entries    = 32,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
