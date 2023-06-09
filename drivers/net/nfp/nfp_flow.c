@@ -1908,6 +1908,19 @@ nfp_flow_inner_item_get(const struct rte_flow_item items[],
 	return false;
 }
 
+static bool
+nfp_flow_tcp_flag_check(const struct rte_flow_item items[])
+{
+	const struct rte_flow_item *item;
+
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		if (item->type == RTE_FLOW_ITEM_TYPE_TCP)
+			return true;
+	}
+
+	return false;
+}
+
 static int
 nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		const struct rte_flow_item items[],
@@ -2002,6 +2015,9 @@ nfp_flow_compile_items(struct nfp_flower_representor *representor,
 		mbuf_off_exact += sizeof(struct nfp_flower_ext_meta);
 		mbuf_off_mask += sizeof(struct nfp_flower_ext_meta);
 	}
+
+	if (nfp_flow_tcp_flag_check(items))
+		nfp_flow->tcp_flag = true;
 
 	/* Check if this is a tunnel flow and get the inner item*/
 	is_tun_flow = nfp_flow_inner_item_get(items, &loop_item);
@@ -2174,7 +2190,8 @@ static void
 nfp_flow_action_set_tp(char *act_data,
 		const struct rte_flow_action *action,
 		bool tp_src_flag,
-		bool tp_set_flag)
+		bool tp_set_flag,
+		bool tcp_flag)
 {
 	size_t act_size;
 	struct nfp_fl_act_set_tport *set_tp;
@@ -2186,7 +2203,10 @@ nfp_flow_action_set_tp(char *act_data,
 		set_tp = (struct nfp_fl_act_set_tport *)act_data;
 
 	act_size = sizeof(struct nfp_fl_act_set_tport);
-	set_tp->head.jump_id = NFP_FL_ACTION_OPCODE_SET_TCP;
+	if (tcp_flag)
+		set_tp->head.jump_id = NFP_FL_ACTION_OPCODE_SET_TCP;
+	else
+		set_tp->head.jump_id = NFP_FL_ACTION_OPCODE_SET_UDP;
 	set_tp->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
 	set_tp->reserved     = 0;
 
@@ -3443,7 +3463,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_SRC");
-			nfp_flow_action_set_tp(position, action, true, tp_set_flag);
+			nfp_flow_action_set_tp(position, action, true,
+					tp_set_flag, nfp_flow->tcp_flag);
 			if (!tp_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_tport);
 				tp_set_flag = true;
@@ -3451,7 +3472,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_DST");
-			nfp_flow_action_set_tp(position, action, false, tp_set_flag);
+			nfp_flow_action_set_tp(position, action, false,
+					tp_set_flag, nfp_flow->tcp_flag);
 			if (!tp_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_tport);
 				tp_set_flag = true;
