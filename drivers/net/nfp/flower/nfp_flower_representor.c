@@ -723,6 +723,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 {
 	int i;
 	int ret;
+	struct rte_device *device;
 	struct rte_eth_dev *eth_dev;
 	struct nfp_eth_table *nfp_eth_table;
 	struct nfp_eth_table_port *eth_port;
@@ -746,7 +747,11 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 
 	/* PF vNIC reprs get a random MAC address */
 	rte_eth_random_addr(flower_repr.mac_addr.addr_bytes);
-	sprintf(flower_repr.name, "flower_repr_pf");
+
+	device = &app_fw_flower->pf_hw->pf_dev->pci_dev->device;
+
+	snprintf(flower_repr.name, sizeof(flower_repr.name),
+			"%s_flower_repr_pf", device->name);
 
 	/* Create a eth_dev for this representor */
 	ret = rte_eth_dev_create(eth_dev->device, flower_repr.name,
@@ -767,7 +772,8 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 
 		/* Copy the real mac of the interface to the representor struct */
 		rte_ether_addr_copy(&eth_port->mac_addr, &flower_repr.mac_addr);
-		sprintf(flower_repr.name, "flower_repr_p%d", i);
+		snprintf(flower_repr.name, sizeof(flower_repr.name),
+				"%s_fl_repr_p%d", device->name, i);
 
 		/*
 		 * Create a eth_dev for this representor
@@ -798,7 +804,8 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 
 		/* VF reprs get a random MAC address */
 		rte_eth_random_addr(flower_repr.mac_addr.addr_bytes);
-		sprintf(flower_repr.name, "flower_repr_vf%d", i);
+		snprintf(flower_repr.name, sizeof(flower_repr.name),
+				"%s_fl_repr_vf%d", device->name, i);
 
 		 /* This will also allocate private memory for the device*/
 		ret = rte_eth_dev_create(eth_dev->device, flower_repr.name,
