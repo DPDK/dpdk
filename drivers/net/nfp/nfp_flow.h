@@ -224,6 +224,7 @@ struct rte_flow {
 	uint32_t hash_key;
 	uint32_t port_id;
 	bool install_flag;
+	bool tcp_flag;    /**< Used in the SET_TP_* action */
 	enum nfp_flow_type type;
 };
 
