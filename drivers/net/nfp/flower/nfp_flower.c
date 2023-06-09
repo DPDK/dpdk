@@ -698,6 +698,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 	struct rte_eth_dev *eth_dev;
 	const struct rte_memzone *tz;
 	struct nfp_app_fw_flower *app_fw_flower;
+	char ctrl_pktmbuf_pool_name[RTE_MEMZONE_NAMESIZE];
 
 	/* Set up some pointers here for ease of use */
 	pf_dev = hw->pf_dev;
@@ -731,7 +732,10 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 	/* Create a mbuf pool for the ctrl vNIC */
 	numa_node = rte_socket_id();
-	app_fw_flower->ctrl_pktmbuf_pool = rte_pktmbuf_pool_create("ctrl_mbuf_pool",
+	snprintf(ctrl_pktmbuf_pool_name, sizeof(ctrl_pktmbuf_pool_name),
+			"%s_ctrlmp", pf_dev->pci_dev->device.name);
+	app_fw_flower->ctrl_pktmbuf_pool =
+			rte_pktmbuf_pool_create(ctrl_pktmbuf_pool_name,
 			4 * CTRL_VNIC_NB_DESC, 64, 0, 9216, numa_node);
 	if (app_fw_flower->ctrl_pktmbuf_pool == NULL) {
 		PMD_INIT_LOG(ERR, "Create mbuf pool for ctrl vnic failed");
