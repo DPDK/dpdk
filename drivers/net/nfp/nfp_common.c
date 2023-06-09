@@ -187,31 +187,23 @@ nfp_net_link_speed_rte2nfp(uint16_t speed)
 }
 
 static void
-nfp_net_notify_port_speed(struct rte_eth_dev *dev)
+nfp_net_notify_port_speed(struct nfp_net_hw *hw, struct rte_eth_link *link)
 {
-	struct nfp_net_hw *hw;
-	struct nfp_eth_table *eth_table;
-	uint32_t nn_link_status;
-
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	eth_table = hw->pf_dev->nfp_eth_table;
-
 	/**
 	 * Read the link status from NFP_NET_CFG_STS. If the link is down
 	 * then write the link speed NFP_NET_CFG_STS_LINK_RATE_UNKNOWN to
 	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
 	 */
-	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
-	if ((nn_link_status & NFP_NET_CFG_STS_LINK) == 0) {
+	if (link->link_status == RTE_ETH_LINK_DOWN) {
 		nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE, NFP_NET_CFG_STS_LINK_RATE_UNKNOWN);
 		return;
 	}
 	/**
-	 * Link is up so read the link speed from the eth_table and write to
+	 * Link is up so write the link speed from the eth_table to
 	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
 	 */
 	nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE,
-		      nfp_net_link_speed_rte2nfp(eth_table->ports[hw->idx].speed));
+		      nfp_net_link_speed_rte2nfp(link->link_speed));
 }
 
 /* The length of firmware version string */
@@ -280,9 +272,6 @@ int
 nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 {
 	int ret;
-
-	if (hw->pf_dev != NULL && hw->pf_dev->app_fw_id == NFP_APP_FW_CORE_NIC)
-		nfp_net_notify_port_speed(hw->eth_dev);
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
@@ -738,10 +727,13 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 int
 nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 {
+	int ret;
+	uint32_t i;
+	uint32_t nn_link_status;
 	struct nfp_net_hw *hw;
 	struct rte_eth_link link;
-	uint16_t nn_link_status;
-	int ret;
+	struct nfp_eth_table *nfp_eth_table;
+
 
 	PMD_DRV_LOG(DEBUG, "Link update");
 
@@ -756,18 +748,31 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 		link.link_status = RTE_ETH_LINK_UP;
 
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 
-	/**
-	 * Shift and mask nn_link_status so that it is effectively the value
-	 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
-	 */
-	nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
-			 NFP_NET_CFG_STS_LINK_RATE_MASK;
-
-	if (nn_link_status >= RTE_DIM(nfp_net_link_speed_nfp2rte))
-		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-	else
-		link.link_speed = nfp_net_link_speed_nfp2rte[nn_link_status];
+	if (link.link_status == RTE_ETH_LINK_UP) {
+		if (hw->pf_dev != NULL) {
+			nfp_eth_table = hw->pf_dev->nfp_eth_table;
+			if (nfp_eth_table != NULL) {
+				uint32_t speed = nfp_eth_table->ports[hw->idx].speed;
+				for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
+					if (nfp_net_link_speed_nfp2rte[i] == speed) {
+						link.link_speed = speed;
+						break;
+					}
+				}
+			}
+		} else {
+			/**
+			 * Shift and mask nn_link_status so that it is effectively the value
+			 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
+			 */
+			nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
+					NFP_NET_CFG_STS_LINK_RATE_MASK;
+			if (nn_link_status < RTE_DIM(nfp_net_link_speed_nfp2rte))
+				link.link_speed = nfp_net_link_speed_nfp2rte[nn_link_status];
+		}
+	}
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == 0) {
@@ -776,6 +781,15 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 		else
 			PMD_DRV_LOG(INFO, "NIC Link is Down");
 	}
+
+	/**
+	 * Notify the port to update the speed value in the CTRL BAR from NSP.
+	 * Not applicable for VFs as the associated PF is still attached to the
+	 * kernel driver.
+	 */
+	if (hw->pf_dev != NULL)
+		nfp_net_notify_port_speed(hw, &link);
+
 	return ret;
 }
 
