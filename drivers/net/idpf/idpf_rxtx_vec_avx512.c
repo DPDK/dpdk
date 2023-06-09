@@ -843,6 +843,10 @@ idpf_singleq_tx_release_mbufs_avx512(struct idpf_tx_queue *txq)
 		}
 		i = 0;
 	}
+	for (; i < txq->tx_tail; i++) {
+		rte_pktmbuf_free_seg(swr[i].mbuf);
+		swr[i].mbuf = NULL;
+	}
 }
 
 static const struct idpf_txq_ops avx512_singleq_tx_vec_ops = {
