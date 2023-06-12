@@ -110,6 +110,7 @@ enum {
 enum {
 	QUEUE_JOB_TYPE_FLOW_CREATE,
 	QUEUE_JOB_TYPE_FLOW_DESTROY,
+	QUEUE_JOB_TYPE_FLOW_UPDATE,
 	QUEUE_JOB_TYPE_ACTION_CREATE,
 	QUEUE_JOB_TYPE_ACTION_DESTROY,
 	QUEUE_JOB_TYPE_ACTION_UPDATE,
@@ -225,6 +226,7 @@ struct port_flow {
 	struct port_flow *next; /**< Next flow in list. */
 	struct port_flow *tmp; /**< Temporary linking. */
 	uint32_t id; /**< Flow rule ID. */
+	struct port_table *table; /**< Flow table. */
 	struct rte_flow *flow; /**< Opaque flow object returned by PMD. */
 	struct rte_flow_conv_rule rule; /**< Saved flow rule description. */
 	enum age_action_context_type age_type; /**< Age action context type. */
@@ -983,6 +985,9 @@ int port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 			   const struct rte_flow_action *actions);
 int port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 			    bool postpone, uint32_t n, const uint32_t *rule);
+int port_queue_flow_update(portid_t port_id, queueid_t queue_id,
+			   bool postpone, uint32_t rule_idx, uint32_t actions_idx,
+			   const struct rte_flow_action *actions);
 int port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 			bool postpone, uint32_t id,
 			const struct rte_flow_indir_action_conf *conf,

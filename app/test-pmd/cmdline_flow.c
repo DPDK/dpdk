@@ -132,6 +132,7 @@ enum index {
 	/* Queue arguments. */
 	QUEUE_CREATE,
 	QUEUE_DESTROY,
+	QUEUE_UPDATE,
 	QUEUE_AGED,
 	QUEUE_INDIRECT_ACTION,
 
@@ -145,6 +146,9 @@ enum index {
 	/* Queue destroy arguments. */
 	QUEUE_DESTROY_ID,
 	QUEUE_DESTROY_POSTPONE,
+
+	/* Queue update arguments. */
+	QUEUE_UPDATE_ID,
 
 	/* Queue indirect action arguments */
 	QUEUE_INDIRECT_ACTION_CREATE,
@@ -1312,6 +1316,7 @@ static const enum index next_table_destroy_attr[] = {
 static const enum index next_queue_subcmd[] = {
 	QUEUE_CREATE,
 	QUEUE_DESTROY,
+	QUEUE_UPDATE,
 	QUEUE_AGED,
 	QUEUE_INDIRECT_ACTION,
 	ZERO,
@@ -3408,6 +3413,14 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY(struct buffer, queue)),
 		.call = parse_qo_destroy,
 	},
+	[QUEUE_UPDATE] = {
+		.name = "update",
+		.help = "update a flow rule",
+		.next = NEXT(NEXT_ENTRY(QUEUE_UPDATE_ID),
+			     NEXT_ENTRY(COMMON_QUEUE_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, queue)),
+		.call = parse_qo,
+	},
 	[QUEUE_AGED] = {
 		.name = "aged",
 		.help = "list and destroy aged flows",
@@ -3483,6 +3496,15 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
 					    args.destroy.rule)),
 		.call = parse_qo_destroy,
+	},
+	[QUEUE_UPDATE_ID] = {
+		.name = "rule",
+		.help = "specify rule id to update",
+		.next = NEXT(NEXT_ENTRY(QUEUE_ACTIONS_TEMPLATE),
+			NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+				     args.vc.rule_id)),
+		.call = parse_qo,
 	},
 	/* Queue indirect action arguments */
 	[QUEUE_INDIRECT_ACTION_CREATE] = {
@@ -10207,6 +10229,7 @@ parse_qo(struct context *ctx, const struct token *token,
 	}
 	switch (ctx->curr) {
 	case QUEUE_CREATE:
+	case QUEUE_UPDATE:
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
@@ -10218,6 +10241,7 @@ parse_qo(struct context *ctx, const struct token *token,
 	case QUEUE_ACTIONS_TEMPLATE:
 	case QUEUE_CREATE_POSTPONE:
 	case QUEUE_RULE_ID:
+	case QUEUE_UPDATE_ID:
 		return len;
 	case ITEM_PATTERN:
 		out->args.vc.pattern =
@@ -12232,6 +12256,11 @@ cmd_flow_parsed(const struct buffer *in)
 		port_queue_flow_destroy(in->port, in->queue, in->postpone,
 					in->args.destroy.rule_n,
 					in->args.destroy.rule);
+		break;
+	case QUEUE_UPDATE:
+		port_queue_flow_update(in->port, in->queue, in->postpone,
+				in->args.vc.rule_id, in->args.vc.act_templ_id,
+				in->args.vc.actions);
 		break;
 	case PUSH:
 		port_queue_flow_push(in->port, in->queue);

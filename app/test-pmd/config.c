@@ -2799,6 +2799,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 
 	pf->next = port->flow_list;
 	pf->id = id;
+	pf->table = pt;
 	pf->flow = flow;
 	job->pf = pf;
 	port->flow_list = pf;
@@ -2903,6 +2904,94 @@ queue_action_list_handle_create(portid_t port_id, uint32_t queue_id,
 	pia->list_handle = rte_flow_async_action_list_handle_create
 		(port_id, queue_id, attr, conf, action,
 		 job, error);
+}
+
+/** Enqueue update flow rule operation. */
+int
+port_queue_flow_update(portid_t port_id, queueid_t queue_id,
+		       bool postpone, uint32_t rule_idx, uint32_t actions_idx,
+		       const struct rte_flow_action *actions)
+{
+	struct rte_flow_op_attr op_attr = { .postpone = postpone };
+	struct rte_port *port;
+	struct port_flow *pf, *uf;
+	struct port_flow **tmp;
+	struct port_table *pt;
+	bool found;
+	struct rte_flow_error error = { RTE_FLOW_ERROR_TYPE_NONE, NULL, NULL };
+	struct rte_flow_action_age *age = age_action_get(actions);
+	struct queue_job *job;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+
+	if (queue_id >= port->queue_nb) {
+		printf("Queue #%u is invalid\n", queue_id);
+		return -EINVAL;
+	}
+
+	found = false;
+	tmp = &port->flow_list;
+	while (*tmp) {
+		pf = *tmp;
+		if (rule_idx == pf->id) {
+			found = true;
+			break;
+		}
+		tmp = &(*tmp)->next;
+	}
+	if (!found) {
+		printf("Flow rule #%u is invalid\n", rule_idx);
+		return -EINVAL;
+	}
+
+	pt = pf->table;
+	if (actions_idx >= pt->nb_actions_templates) {
+		printf("Actions template index #%u is invalid,"
+		       " %u templates present in the table\n",
+		       actions_idx, pt->nb_actions_templates);
+		return -EINVAL;
+	}
+
+	job = calloc(1, sizeof(*job));
+	if (!job) {
+		printf("Queue flow create job allocate failed\n");
+		return -ENOMEM;
+	}
+	job->type = QUEUE_JOB_TYPE_FLOW_UPDATE;
+
+	uf = port_flow_new(&pt->flow_attr, pf->rule.pattern_ro, actions, &error);
+	if (!uf) {
+		free(job);
+		return port_flow_complain(&error);
+	}
+
+	if (age) {
+		uf->age_type = ACTION_AGE_CONTEXT_TYPE_FLOW;
+		age->context = &uf->age_type;
+	}
+
+	/*
+	 * Poisoning to make sure PMD update it in case of error.
+	 */
+	memset(&error, 0x44, sizeof(error));
+	if (rte_flow_async_actions_update(port_id, queue_id, &op_attr, pf->flow,
+					  actions, actions_idx, job, &error)) {
+		free(uf);
+		free(job);
+		return port_flow_complain(&error);
+	}
+	uf->next = pf->next;
+	uf->id = pf->id;
+	uf->table = pt;
+	uf->flow = pf->flow;
+	*tmp = uf;
+	job->pf = pf;
+
+	printf("Flow rule #%u update enqueued\n", pf->id);
+	return 0;
 }
 
 /** Enqueue indirect action create operation. */
@@ -3394,7 +3483,8 @@ port_queue_flow_pull(portid_t port_id, queueid_t queue_id)
 		if (res[i].status == RTE_FLOW_OP_SUCCESS)
 			success++;
 		job = (struct queue_job *)res[i].user_data;
-		if (job->type == QUEUE_JOB_TYPE_FLOW_DESTROY)
+		if (job->type == QUEUE_JOB_TYPE_FLOW_DESTROY ||
+		    job->type == QUEUE_JOB_TYPE_FLOW_UPDATE)
 			free(job->pf);
 		else if (job->type == QUEUE_JOB_TYPE_ACTION_DESTROY)
 			free(job->pia);
