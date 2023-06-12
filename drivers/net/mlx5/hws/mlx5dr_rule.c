@@ -630,6 +630,23 @@ static int mlx5dr_rule_destroy_root(struct mlx5dr_rule *rule,
 	return 0;
 }
 
+static int mlx5dr_rule_enqueue_precheck(struct mlx5dr_context *ctx,
+					struct mlx5dr_rule_attr *attr)
+{
+	if (unlikely(!attr->user_data)) {
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	/* Check if there is room in queue */
+	if (unlikely(mlx5dr_send_engine_full(&ctx->send_queue[attr->queue_id]))) {
+		rte_errno = EBUSY;
+		return rte_errno;
+	}
+
+	return 0;
+}
+
 int mlx5dr_rule_create(struct mlx5dr_matcher *matcher,
 		       uint8_t mt_idx,
 		       const struct rte_flow_item items[],
@@ -644,16 +661,8 @@ int mlx5dr_rule_create(struct mlx5dr_matcher *matcher,
 	rule_handle->matcher = matcher;
 	ctx = matcher->tbl->ctx;
 
-	if (unlikely(!attr->user_data)) {
-		rte_errno = EINVAL;
+	if (mlx5dr_rule_enqueue_precheck(ctx, attr))
 		return -rte_errno;
-	}
-
-	/* Check if there is room in queue */
-	if (unlikely(mlx5dr_send_engine_full(&ctx->send_queue[attr->queue_id]))) {
-		rte_errno = EBUSY;
-		return -rte_errno;
-	}
 
 	assert(matcher->num_of_mt >= mt_idx);
 	assert(matcher->num_of_at >= at_idx);
@@ -677,19 +686,10 @@ int mlx5dr_rule_create(struct mlx5dr_matcher *matcher,
 int mlx5dr_rule_destroy(struct mlx5dr_rule *rule,
 			struct mlx5dr_rule_attr *attr)
 {
-	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
 	int ret;
 
-	if (unlikely(!attr->user_data)) {
-		rte_errno = EINVAL;
+	if (mlx5dr_rule_enqueue_precheck(rule->matcher->tbl->ctx, attr))
 		return -rte_errno;
-	}
-
-	/* Check if there is room in queue */
-	if (unlikely(mlx5dr_send_engine_full(&ctx->send_queue[attr->queue_id]))) {
-		rte_errno = EBUSY;
-		return -rte_errno;
-	}
 
 	if (unlikely(mlx5dr_table_is_root(rule->matcher->tbl)))
 		ret = mlx5dr_rule_destroy_root(rule, attr);
