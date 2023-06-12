@@ -71,6 +71,8 @@ pci_vfio_read_config(const struct rte_pci_device *dev,
 	int fd;
 
 	fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (fd < 0)
+		return -1;
 
 	if (pci_vfio_get_region(dev, VFIO_PCI_CONFIG_REGION_INDEX,
 				&size, &offset) != 0)
@@ -90,6 +92,8 @@ pci_vfio_write_config(const struct rte_pci_device *dev,
 	int fd;
 
 	fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (fd < 0)
+		return -1;
 
 	if (pci_vfio_get_region(dev, VFIO_PCI_CONFIG_REGION_INDEX,
 				&size, &offset) != 0)
@@ -1369,6 +1373,8 @@ pci_vfio_mmio_read(const struct rte_pci_device *dev, int bar,
 	int fd;
 
 	fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (fd < 0)
+		return -1;
 
 	if (pci_vfio_get_region(dev, bar, &size, &offset) != 0)
 		return -1;
@@ -1387,6 +1393,8 @@ pci_vfio_mmio_write(const struct rte_pci_device *dev, int bar,
 	int fd;
 
 	fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (fd < 0)
+		return -1;
 
 	if (pci_vfio_get_region(dev, bar, &size, &offset) != 0)
 		return -1;
