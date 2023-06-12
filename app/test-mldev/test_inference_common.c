@@ -867,9 +867,6 @@ next_element:
 			goto next_output;
 	}
 done:
-	if (match)
-		t->nb_valid++;
-
 	return match;
 }
 
@@ -892,10 +889,8 @@ ml_request_finish(struct rte_mempool *mp, void *opaque, void *obj, unsigned int 
 	rte_ml_io_dequantize(t->cmn.opt->dev_id, model->id, t->model[req->fid].nb_batches,
 			     req->output, model->output);
 
-	if (model->reference == NULL) {
-		t->nb_valid++;
+	if (model->reference == NULL)
 		goto dump_output_pass;
-	}
 
 	if (!ml_inference_validation(opaque, req))
 		goto dump_output_fail;
@@ -920,6 +915,7 @@ dump_output_pass:
 		if (error)
 			return;
 	}
+	t->nb_valid++;
 
 	return;
 
