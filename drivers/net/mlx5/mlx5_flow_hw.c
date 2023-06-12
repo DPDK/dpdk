@@ -2248,7 +2248,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 
 		if (!hw_acts->mhdr->shared) {
 			rule_acts[pos].modify_header.offset =
-						job->flow->idx - 1;
+						job->flow->res_idx - 1;
 			rule_acts[pos].modify_header.data =
 						(uint8_t *)job->mhdr_cmd;
 			rte_memcpy(job->mhdr_cmd, hw_acts->mhdr->mhdr_cmds,
@@ -2405,7 +2405,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			 */
 			age_idx = mlx5_hws_age_action_create(priv, queue, 0,
 							     age,
-							     job->flow->idx,
+							     job->flow->res_idx,
 							     error);
 			if (age_idx == 0)
 				return -rte_errno;
@@ -2504,7 +2504,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	}
 	if (hw_acts->encap_decap && !hw_acts->encap_decap->shared) {
 		rule_acts[hw_acts->encap_decap_pos].reformat.offset =
-				job->flow->idx - 1;
+				job->flow->res_idx - 1;
 		rule_acts[hw_acts->encap_decap_pos].reformat.data = buf;
 	}
 	if (mlx5_hws_cnt_id_valid(hw_acts->cnt_id))
@@ -2612,6 +2612,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	struct mlx5_hw_q_job *job;
 	const struct rte_flow_item *rule_items;
 	uint32_t flow_idx;
+	uint32_t res_idx = 0;
 	int ret;
 
 	if (unlikely((!dev->data->dev_started))) {
@@ -2625,12 +2626,17 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
 	if (!flow)
 		goto error;
+	mlx5_ipool_malloc(table->resource, &res_idx);
+	if (!res_idx)
+		goto flow_free;
 	/*
 	 * Set the table here in order to know the destination table
 	 * when free the flow afterwards.
 	 */
 	flow->table = table;
+	flow->mt_idx = pattern_template_index;
 	flow->idx = flow_idx;
+	flow->res_idx = res_idx;
 	job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
 	/*
 	 * Set the job type here in order to know if the flow memory
@@ -2644,8 +2650,9 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	 * Indexed pool returns 1-based indices, but mlx5dr expects 0-based indices for rule
 	 * insertion hints.
 	 */
-	MLX5_ASSERT(flow_idx > 0);
-	rule_attr.rule_idx = flow_idx - 1;
+	MLX5_ASSERT(res_idx > 0);
+	flow->rule_idx = res_idx - 1;
+	rule_attr.rule_idx = flow->rule_idx;
 	/*
 	 * Construct the flow actions based on the input actions.
 	 * The implicitly appended action is always fixed, like metadata
@@ -2672,8 +2679,10 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 		return (struct rte_flow *)flow;
 free:
 	/* Flow created fail, return the descriptor and flow memory. */
-	mlx5_ipool_free(table->flow, flow_idx);
 	priv->hw_q[queue].job_idx++;
+	mlx5_ipool_free(table->resource, res_idx);
+flow_free:
+	mlx5_ipool_free(table->flow, flow_idx);
 error:
 	rte_flow_error_set(error, rte_errno,
 			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -2729,6 +2738,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	struct rte_flow_hw *flow;
 	struct mlx5_hw_q_job *job;
 	uint32_t flow_idx;
+	uint32_t res_idx = 0;
 	int ret;
 
 	if (unlikely(rule_index >= table->cfg.attr.nb_flows)) {
@@ -2742,12 +2752,17 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
 	if (!flow)
 		goto error;
+	mlx5_ipool_malloc(table->resource, &res_idx);
+	if (!res_idx)
+		goto flow_free;
 	/*
 	 * Set the table here in order to know the destination table
 	 * when free the flow afterwards.
 	 */
 	flow->table = table;
+	flow->mt_idx = 0;
 	flow->idx = flow_idx;
+	flow->res_idx = res_idx;
 	job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
 	/*
 	 * Set the job type here in order to know if the flow memory
@@ -2760,9 +2775,8 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	/*
 	 * Set the rule index.
 	 */
-	MLX5_ASSERT(flow_idx > 0);
-	rule_attr.rule_idx = rule_index;
 	flow->rule_idx = rule_index;
+	rule_attr.rule_idx = flow->rule_idx;
 	/*
 	 * Construct the flow actions based on the input actions.
 	 * The implicitly appended action is always fixed, like metadata
@@ -2784,13 +2798,132 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 		return (struct rte_flow *)flow;
 free:
 	/* Flow created fail, return the descriptor and flow memory. */
-	mlx5_ipool_free(table->flow, flow_idx);
 	priv->hw_q[queue].job_idx++;
+	mlx5_ipool_free(table->resource, res_idx);
+flow_free:
+	mlx5_ipool_free(table->flow, flow_idx);
 error:
 	rte_flow_error_set(error, rte_errno,
 			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			   "fail to create rte flow");
 	return NULL;
+}
+
+/**
+ * Enqueue HW steering flow update.
+ *
+ * The flow will be applied to the HW only if the postpone bit is not set or
+ * the extra push function is called.
+ * The flow destruction status should be checked from dequeue result.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to destroy the flow.
+ * @param[in] attr
+ *   Pointer to the flow operation attributes.
+ * @param[in] flow
+ *   Pointer to the flow to be destroyed.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_async_flow_update(struct rte_eth_dev *dev,
+			   uint32_t queue,
+			   const struct rte_flow_op_attr *attr,
+			   struct rte_flow *flow,
+			   const struct rte_flow_action actions[],
+			   uint8_t action_template_index,
+			   void *user_data,
+			   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5dr_rule_attr rule_attr = {
+		.queue_id = queue,
+		.user_data = user_data,
+		.burst = attr->postpone,
+	};
+	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
+	struct rte_flow_hw *of = (struct rte_flow_hw *)flow;
+	struct rte_flow_hw *nf;
+	struct rte_flow_template_table *table = of->table;
+	struct mlx5_hw_q_job *job;
+	uint32_t res_idx = 0;
+	int ret;
+
+	if (unlikely(!priv->hw_q[queue].job_idx)) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	mlx5_ipool_malloc(table->resource, &res_idx);
+	if (!res_idx)
+		goto error;
+	job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
+	nf = job->upd_flow;
+	memset(nf, 0, sizeof(struct rte_flow_hw));
+	/*
+	 * Set the table here in order to know the destination table
+	 * when free the flow afterwards.
+	 */
+	nf->table = table;
+	nf->mt_idx = of->mt_idx;
+	nf->idx = of->idx;
+	nf->res_idx = res_idx;
+	/*
+	 * Set the job type here in order to know if the flow memory
+	 * should be freed or not when get the result from dequeue.
+	 */
+	job->type = MLX5_HW_Q_JOB_TYPE_UPDATE;
+	job->flow = nf;
+	job->user_data = user_data;
+	rule_attr.user_data = job;
+	/*
+	 * Indexed pool returns 1-based indices, but mlx5dr expects 0-based indices for rule
+	 * insertion hints.
+	 */
+	MLX5_ASSERT(res_idx > 0);
+	nf->rule_idx = res_idx - 1;
+	rule_attr.rule_idx = nf->rule_idx;
+	/*
+	 * Construct the flow actions based on the input actions.
+	 * The implicitly appended action is always fixed, like metadata
+	 * copy action from FDB to NIC Rx.
+	 * No need to copy and contrust a new "actions" list based on the
+	 * user's input, in order to save the cost.
+	 */
+	if (flow_hw_actions_construct(dev, job,
+				      &table->ats[action_template_index],
+				      nf->mt_idx, actions,
+				      rule_acts, queue, error)) {
+		rte_errno = EINVAL;
+		goto free;
+	}
+	/*
+	 * Switch the old flow and the new flow.
+	 */
+	job->flow = of;
+	job->upd_flow = nf;
+	ret = mlx5dr_rule_action_update((struct mlx5dr_rule *)of->rule,
+					action_template_index, rule_acts, &rule_attr);
+	if (likely(!ret))
+		return 0;
+free:
+	/* Flow created fail, return the descriptor and flow memory. */
+	priv->hw_q[queue].job_idx++;
+	mlx5_ipool_free(table->resource, res_idx);
+error:
+	return rte_flow_error_set(error, rte_errno,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"fail to update rte flow");
 }
 
 /**
@@ -3002,6 +3135,7 @@ flow_hw_pull(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
 	struct mlx5_hw_q_job *job;
+	uint32_t res_idx;
 	int ret, i;
 
 	/* 1. Pull the flow completion. */
@@ -3012,9 +3146,12 @@ flow_hw_pull(struct rte_eth_dev *dev,
 				"fail to query flow queue");
 	for (i = 0; i <  ret; i++) {
 		job = (struct mlx5_hw_q_job *)res[i].user_data;
+		/* Release the original resource index in case of update. */
+		res_idx = job->flow->res_idx;
 		/* Restore user data. */
 		res[i].user_data = job->user_data;
-		if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY) {
+		if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY ||
+		    job->type == MLX5_HW_Q_JOB_TYPE_UPDATE) {
 			if (job->flow->fate_type == MLX5_FLOW_FATE_JUMP)
 				flow_hw_jump_release(dev, job->flow->jump);
 			else if (job->flow->fate_type == MLX5_FLOW_FATE_QUEUE)
@@ -3026,7 +3163,14 @@ flow_hw_pull(struct rte_eth_dev *dev,
 				mlx5_ipool_free(pool->idx_pool,	job->flow->mtr_id);
 				job->flow->mtr_id = 0;
 			}
-			mlx5_ipool_free(job->flow->table->flow, job->flow->idx);
+			if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY) {
+				mlx5_ipool_free(job->flow->table->resource, res_idx);
+				mlx5_ipool_free(job->flow->table->flow, job->flow->idx);
+			} else {
+				rte_memcpy(job->flow, job->upd_flow,
+					offsetof(struct rte_flow_hw, rule));
+				mlx5_ipool_free(job->flow->table->resource, res_idx);
+			}
 		}
 		priv->hw_q[queue].job[priv->hw_q[queue].job_idx++] = job;
 	}
@@ -3315,6 +3459,13 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	tbl->flow = mlx5_ipool_create(&cfg);
 	if (!tbl->flow)
 		goto error;
+	/* Allocate rule indexed pool. */
+	cfg.size = 0;
+	cfg.type = "mlx5_hw_table_rule";
+	cfg.max_idx += priv->hw_q[0].size;
+	tbl->resource = mlx5_ipool_create(&cfg);
+	if (!tbl->resource)
+		goto error;
 	/* Register the flow group. */
 	ge = mlx5_hlist_register(priv->sh->groups, attr->flow_attr.group, &ctx);
 	if (!ge)
@@ -3417,6 +3568,8 @@ error:
 		if (tbl->grp)
 			mlx5_hlist_unregister(priv->sh->groups,
 					      &tbl->grp->entry);
+		if (tbl->resource)
+			mlx5_ipool_destroy(tbl->resource);
 		if (tbl->flow)
 			mlx5_ipool_destroy(tbl->flow);
 		mlx5_free(tbl);
@@ -3593,16 +3746,20 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int i;
 	uint32_t fidx = 1;
+	uint32_t ridx = 1;
 
 	/* Build ipool allocated object bitmap. */
+	mlx5_ipool_flush_cache(table->resource);
 	mlx5_ipool_flush_cache(table->flow);
 	/* Check if ipool has allocated objects. */
-	if (table->refcnt || mlx5_ipool_get_next(table->flow, &fidx)) {
-		DRV_LOG(WARNING, "Table %p is still in using.", (void *)table);
+	if (table->refcnt ||
+	    mlx5_ipool_get_next(table->flow, &fidx) ||
+	    mlx5_ipool_get_next(table->resource, &ridx)) {
+		DRV_LOG(WARNING, "Table %p is still in use.", (void *)table);
 		return rte_flow_error_set(error, EBUSY,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
-				   "table in using");
+				   "table in use");
 	}
 	LIST_REMOVE(table, next);
 	for (i = 0; i < table->nb_item_templates; i++)
@@ -3615,6 +3772,7 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 	}
 	mlx5dr_matcher_destroy(table->matcher);
 	mlx5_hlist_unregister(priv->sh->groups, &table->grp->entry);
+	mlx5_ipool_destroy(table->resource);
 	mlx5_ipool_destroy(table->flow);
 	mlx5_free(table);
 	return 0;
@@ -7417,7 +7575,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			    sizeof(struct mlx5_modification_cmd) *
 			    MLX5_MHDR_MAX_CMD +
 			    sizeof(struct rte_flow_item) *
-			    MLX5_HW_MAX_ITEMS) *
+			    MLX5_HW_MAX_ITEMS +
+				sizeof(struct rte_flow_hw)) *
 			    _queue_attr[i]->size;
 	}
 	priv->hw_q = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
@@ -7431,6 +7590,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		uint8_t *encap = NULL;
 		struct mlx5_modification_cmd *mhdr_cmd = NULL;
 		struct rte_flow_item *items = NULL;
+		struct rte_flow_hw *upd_flow = NULL;
 
 		priv->hw_q[i].job_idx = _queue_attr[i]->size;
 		priv->hw_q[i].size = _queue_attr[i]->size;
@@ -7449,10 +7609,13 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			 &mhdr_cmd[_queue_attr[i]->size * MLX5_MHDR_MAX_CMD];
 		items = (struct rte_flow_item *)
 			 &encap[_queue_attr[i]->size * MLX5_ENCAP_MAX_LEN];
+		upd_flow = (struct rte_flow_hw *)
+			&items[_queue_attr[i]->size * MLX5_HW_MAX_ITEMS];
 		for (j = 0; j < _queue_attr[i]->size; j++) {
 			job[j].mhdr_cmd = &mhdr_cmd[j * MLX5_MHDR_MAX_CMD];
 			job[j].encap_data = &encap[j * MLX5_ENCAP_MAX_LEN];
 			job[j].items = &items[j * MLX5_HW_MAX_ITEMS];
+			job[j].upd_flow = &upd_flow[j];
 			priv->hw_q[i].job[j] = &job[j];
 		}
 		snprintf(mz_name, sizeof(mz_name), "port_%u_indir_act_cq_%u",
@@ -9032,6 +9195,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.template_table_destroy = flow_hw_table_destroy,
 	.async_flow_create = flow_hw_async_flow_create,
 	.async_flow_create_by_index = flow_hw_async_flow_create_by_index,
+	.async_flow_update = flow_hw_async_flow_update,
 	.async_flow_destroy = flow_hw_async_flow_destroy,
 	.pull = flow_hw_pull,
 	.push = flow_hw_push,

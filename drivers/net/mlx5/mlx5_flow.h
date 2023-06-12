@@ -1179,6 +1179,7 @@ typedef uint32_t cnt_id_t;
 /* HWS flow struct. */
 struct rte_flow_hw {
 	uint32_t idx; /* Flow index from indexed pool. */
+	uint32_t res_idx; /* Resource index from indexed pool. */
 	uint32_t fate_type; /* Fate action type. */
 	union {
 		/* Jump action. */
@@ -1186,6 +1187,7 @@ struct rte_flow_hw {
 		struct mlx5_hrxq *hrxq; /* TIR action. */
 	};
 	struct rte_flow_template_table *table; /* The table flow allcated from. */
+	uint8_t mt_idx;
 	uint32_t age_idx;
 	cnt_id_t cnt_id;
 	uint32_t mtr_id;
@@ -1377,6 +1379,7 @@ struct rte_flow_template_table {
 	/* Action templates bind to the table. */
 	struct mlx5_hw_action_template ats[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
 	struct mlx5_indexed_pool *flow; /* The table's flow ipool. */
+	struct mlx5_indexed_pool *resource; /* The table's resource ipool. */
 	struct mlx5_flow_template_table_cfg cfg;
 	uint32_t type; /* Flow table type RX/TX/FDB. */
 	uint8_t nb_item_templates; /* Item template number. */
@@ -1871,6 +1874,15 @@ typedef struct rte_flow *(*mlx5_flow_async_flow_create_by_index_t)
 			 uint8_t action_template_index,
 			 void *user_data,
 			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_async_flow_update_t)
+			(struct rte_eth_dev *dev,
+			 uint32_t queue,
+			 const struct rte_flow_op_attr *attr,
+			 struct rte_flow *flow,
+			 const struct rte_flow_action actions[],
+			 uint8_t action_template_index,
+			 void *user_data,
+			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_async_flow_destroy_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t queue,
@@ -1981,6 +1993,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_table_destroy_t template_table_destroy;
 	mlx5_flow_async_flow_create_t async_flow_create;
 	mlx5_flow_async_flow_create_by_index_t async_flow_create_by_index;
+	mlx5_flow_async_flow_update_t async_flow_update;
 	mlx5_flow_async_flow_destroy_t async_flow_destroy;
 	mlx5_flow_pull_t pull;
 	mlx5_flow_push_t push;

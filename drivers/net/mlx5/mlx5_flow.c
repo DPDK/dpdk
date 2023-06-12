@@ -1048,6 +1048,15 @@ mlx5_flow_async_flow_create_by_index(struct rte_eth_dev *dev,
 			    void *user_data,
 			    struct rte_flow_error *error);
 static int
+mlx5_flow_async_flow_update(struct rte_eth_dev *dev,
+			     uint32_t queue,
+			     const struct rte_flow_op_attr *attr,
+			     struct rte_flow *flow,
+			     const struct rte_flow_action actions[],
+			     uint8_t action_template_index,
+			     void *user_data,
+			     struct rte_flow_error *error);
+static int
 mlx5_flow_async_flow_destroy(struct rte_eth_dev *dev,
 			     uint32_t queue,
 			     const struct rte_flow_op_attr *attr,
@@ -1152,6 +1161,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 		mlx5_flow_async_action_handle_query_update,
 	.async_action_handle_query = mlx5_flow_async_action_handle_query,
 	.async_action_handle_destroy = mlx5_flow_async_action_handle_destroy,
+	.async_actions_update = mlx5_flow_async_flow_update,
 };
 
 /* Tunnel information. */
@@ -9384,6 +9394,52 @@ mlx5_flow_async_flow_create_by_index(struct rte_eth_dev *dev,
 	return fops->async_flow_create_by_index(dev, queue_id, attr, table,
 				       rule_index, actions, action_template_index,
 				       user_data, error);
+}
+
+/**
+ * Enqueue flow update.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to destroy the flow.
+ * @param[in] attr
+ *   Pointer to the flow operation attributes.
+ * @param[in] flow
+ *   Pointer to the flow to be destroyed.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_async_flow_update(struct rte_eth_dev *dev,
+			     uint32_t queue,
+			     const struct rte_flow_op_attr *attr,
+			     struct rte_flow *flow,
+			     const struct rte_flow_action actions[],
+			     uint8_t action_template_index,
+			     void *user_data,
+			     struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr fattr = {0};
+
+	if (flow_get_drv_type(dev, &fattr) != MLX5_FLOW_TYPE_HW)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"flow_q update with incorrect steering mode");
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->async_flow_update(dev, queue, attr, flow,
+					actions, action_template_index, user_data, error);
 }
 
 /**

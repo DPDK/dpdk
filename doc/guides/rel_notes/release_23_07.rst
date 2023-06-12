@@ -132,6 +132,7 @@ New Features
   * Added support for enhanced multi-packet write on Windows.
   * Added support for InfiniBand BTH matching.
   * Added support for quota flow action and item.
+  * Added support for flow rule update.
 
 * **Updated Solarflare network PMD.**
 

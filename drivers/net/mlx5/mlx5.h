@@ -385,6 +385,7 @@ struct mlx5_hw_q_job {
 		struct rte_flow_item_ethdev port_spec;
 		struct rte_flow_item_tag tag_spec;
 	} __rte_packed;
+	struct rte_flow_hw *upd_flow; /* Flow with updated values. */
 };
 
 /* HW steering job descriptor LIFO pool. */
