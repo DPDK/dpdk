@@ -132,11 +132,11 @@ parser_read_int32(int32_t *value, const char *p)
 	int32_t val;
 
 	p = skip_white_spaces(p);
-	if (!isdigit(*p))
+	if ((*p != '-') && (!isdigit(*p)))
 		return -EINVAL;
 
 	val = strtol(p, &next, 10);
-	if (p == next)
+	if ((*next != '\0') || (p == next))
 		return -EINVAL;
 
 	*value = val;
@@ -150,11 +150,11 @@ parser_read_int16(int16_t *value, const char *p)
 	int16_t val;
 
 	p = skip_white_spaces(p);
-	if (!isdigit(*p))
+	if ((*p != '-') && (!isdigit(*p)))
 		return -EINVAL;
 
 	val = strtol(p, &next, 10);
-	if (p == next)
+	if ((*next != '\0') || (p == next))
 		return -EINVAL;
 
 	*value = val;

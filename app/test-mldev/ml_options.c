@@ -43,6 +43,7 @@ static int
 ml_parse_test_name(struct ml_options *opt, const char *arg)
 {
 	strlcpy(opt->test_name, arg, ML_TEST_NAME_MAX_LEN);
+
 	return 0;
 }
 
@@ -52,9 +53,8 @@ ml_parse_dev_id(struct ml_options *opt, const char *arg)
 	int ret;
 
 	ret = parser_read_int16(&opt->dev_id, arg);
-
 	if (ret < 0)
-		return -EINVAL;
+		ml_err("Invalid option: dev_id = %s\n", arg);
 
 	return ret;
 }
@@ -62,9 +62,13 @@ ml_parse_dev_id(struct ml_options *opt, const char *arg)
 static int
 ml_parse_socket_id(struct ml_options *opt, const char *arg)
 {
-	opt->socket_id = atoi(arg);
+	int ret;
 
-	return 0;
+	ret = parser_read_int32(&opt->socket_id, arg);
+	if (ret < 0)
+		ml_err("Invalid option: socket_id = %s\n", arg);
+
+	return ret;
 }
 
 static int
@@ -143,10 +147,17 @@ ml_parse_filelist(struct ml_options *opt, const char *arg)
 	else
 		memset(opt->filelist[opt->nb_filelist].reference, 0, PATH_MAX);
 
+	/* check for extra tokens */
+	token = strtok(NULL, delim);
+	if (token != NULL) {
+		ml_err("Invalid filelist. Entries > 4\n.");
+		return -EINVAL;
+	}
+
 	opt->nb_filelist++;
 
 	if (opt->nb_filelist == 0) {
-		ml_err("Empty filelist. Need at least one filelist entry for the test.");
+		ml_err("Empty filelist. Need at least one filelist entry for the test.\n");
 		return -EINVAL;
 	}
 
@@ -156,13 +167,25 @@ ml_parse_filelist(struct ml_options *opt, const char *arg)
 static int
 ml_parse_repetitions(struct ml_options *opt, const char *arg)
 {
-	return parser_read_uint64(&opt->repetitions, arg);
+	int ret;
+
+	ret = parser_read_uint64(&opt->repetitions, arg);
+	if (ret != 0)
+		ml_err("Invalid option, repetitions = %s\n", arg);
+
+	return ret;
 }
 
 static int
 ml_parse_burst_size(struct ml_options *opt, const char *arg)
 {
-	return parser_read_uint16(&opt->burst_size, arg);
+	int ret;
+
+	ret = parser_read_uint16(&opt->burst_size, arg);
+	if (ret != 0)
+		ml_err("Invalid option, burst_size = %s\n", arg);
+
+	return ret;
 }
 
 static int
@@ -171,6 +194,8 @@ ml_parse_queue_pairs(struct ml_options *opt, const char *arg)
 	int ret;
 
 	ret = parser_read_uint16(&opt->queue_pairs, arg);
+	if (ret != 0)
+		ml_err("Invalid option, queue_pairs = %s\n", arg);
 
 	return ret;
 }
@@ -178,13 +203,25 @@ ml_parse_queue_pairs(struct ml_options *opt, const char *arg)
 static int
 ml_parse_queue_size(struct ml_options *opt, const char *arg)
 {
-	return parser_read_uint16(&opt->queue_size, arg);
+	int ret;
+
+	ret = parser_read_uint16(&opt->queue_size, arg);
+	if (ret != 0)
+		ml_err("Invalid option, queue_size = %s\n", arg);
+
+	return ret;
 }
 
 static int
 ml_parse_batches(struct ml_options *opt, const char *arg)
 {
-	return parser_read_uint16(&opt->batches, arg);
+	int ret;
+
+	ret = parser_read_uint16(&opt->batches, arg);
+	if (ret != 0)
+		ml_err("Invalid option, batches = %s\n", arg);
+
+	return ret;
 }
 
 static int

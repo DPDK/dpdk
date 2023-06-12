@@ -95,13 +95,13 @@ ml_test_opt_check(struct ml_options *opt)
 		return -ENODEV;
 	}
 
-	if (opt->dev_id >= dev_count) {
-		ml_err("Invalid option dev_id = %d", opt->dev_id);
+	if ((opt->dev_id >= dev_count) || (opt->dev_id < 0)) {
+		ml_err("Invalid option, dev_id = %d", opt->dev_id);
 		return -EINVAL;
 	}
 
 	socket_id = rte_ml_dev_socket_id(opt->dev_id);
-	if (!((opt->socket_id != SOCKET_ID_ANY) || (opt->socket_id != socket_id))) {
+	if ((opt->socket_id != SOCKET_ID_ANY) && (opt->socket_id != socket_id)) {
 		ml_err("Invalid option, socket_id = %d\n", opt->socket_id);
 		return -EINVAL;
 	}

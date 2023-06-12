@@ -302,19 +302,19 @@ test_inference_cap_check(struct ml_options *opt)
 	rte_ml_dev_info_get(opt->dev_id, &dev_info);
 
 	if (opt->queue_pairs > dev_info.max_queue_pairs) {
-		ml_err("Insufficient capabilities: queue_pairs = %u, max_queue_pairs = %u",
+		ml_err("Insufficient capabilities: queue_pairs = %u > (max_queue_pairs = %u)",
 		       opt->queue_pairs, dev_info.max_queue_pairs);
 		return false;
 	}
 
 	if (opt->queue_size > dev_info.max_desc) {
-		ml_err("Insufficient capabilities: queue_size = %u, max_desc = %u", opt->queue_size,
-		       dev_info.max_desc);
+		ml_err("Insufficient capabilities: queue_size = %u > (max_desc = %u)",
+		       opt->queue_size, dev_info.max_desc);
 		return false;
 	}
 
 	if (opt->nb_filelist > dev_info.max_models) {
-		ml_err("Insufficient capabilities:  Filelist count exceeded device limit, count = %u (max limit = %u)",
+		ml_err("Insufficient capabilities:  Filelist count exceeded device limit, count = %u > (max limit = %u)",
 		       opt->nb_filelist, dev_info.max_models);
 		return false;
 	}
@@ -408,7 +408,7 @@ test_inference_opt_dump(struct ml_options *opt)
 	ml_dump("stats", "%s", (opt->stats ? "true" : "false"));
 
 	if (opt->batches == 0)
-		ml_dump("batches", "%u (default)", opt->batches);
+		ml_dump("batches", "%u (default batch size)", opt->batches);
 	else
 		ml_dump("batches", "%u", opt->batches);
 
