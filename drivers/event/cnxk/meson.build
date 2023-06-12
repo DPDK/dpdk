@@ -31,6 +31,10 @@ if soc_type == 'cn9k' or soc_type == 'all'
 sources += files(
         'cn9k_eventdev.c',
         'cn9k_worker.c',
+)
+
+if host_machine.cpu_family().startswith('aarch')
+sources += files(
         'deq/cn9k/deq_0_15_burst.c',
         'deq/cn9k/deq_16_31_burst.c',
         'deq/cn9k/deq_32_47_burst.c',
@@ -202,11 +206,16 @@ sources += files(
         'tx/cn9k/tx_112_127_dual_seg.c',
 )
 endif
+endif
 
 if soc_type == 'cn10k' or soc_type == 'all'
 sources += files(
         'cn10k_eventdev.c',
         'cn10k_worker.c',
+)
+
+if host_machine.cpu_family().startswith('aarch')
+sources += files(
         'deq/cn10k/deq_0_15_burst.c',
         'deq/cn10k/deq_16_31_burst.c',
         'deq/cn10k/deq_32_47_burst.c',
@@ -291,6 +300,7 @@ sources += files(
         'tx/cn10k/tx_96_111_seg.c',
         'tx/cn10k/tx_112_127_seg.c',
 )
+endif
 endif
 
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']

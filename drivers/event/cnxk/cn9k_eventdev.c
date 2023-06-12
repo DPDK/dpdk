@@ -309,6 +309,7 @@ cn9k_sso_updt_tx_adptr_data(const struct rte_eventdev *event_dev)
 static void
 cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 {
+#if defined(RTE_ARCH_ARM64)
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	/* Single WS modes */
 	const event_dequeue_t sso_hws_deq[NIX_RX_OFFLOAD_MAX] = {
@@ -511,6 +512,9 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 
 	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
 	rte_mb();
+#else
+	RTE_SET_USED(event_dev);
+#endif
 }
 
 static void *

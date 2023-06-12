@@ -45,6 +45,7 @@ sources += files(
         'cn9k_tx_select.c',
 )
 
+if host_machine.cpu_family().startswith('aarch')
 sources += files(
         'rx/cn9k/rx_0_15.c',
         'rx/cn9k/rx_16_31.c',
@@ -115,6 +116,7 @@ sources += files(
         'tx/cn9k/tx_112_127_vec_mseg.c',
 )
 endif
+endif
 
 if soc_type == 'cn10k' or soc_type == 'all'
 # CN10K
@@ -126,6 +128,7 @@ sources += files(
         'cn10k_tx_select.c',
 )
 
+if host_machine.cpu_family().startswith('aarch')
 sources += files(
         'rx/cn10k/rx_0_15.c',
         'rx/cn10k/rx_16_31.c',
@@ -195,6 +198,7 @@ sources += files(
         'tx/cn10k/tx_96_111_vec_mseg.c',
         'tx/cn10k/tx_112_127_vec_mseg.c',
 )
+endif
 endif
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']

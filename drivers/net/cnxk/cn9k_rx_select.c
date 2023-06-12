@@ -5,7 +5,7 @@
 #include "cn9k_ethdev.h"
 #include "cn9k_rx.h"
 
-static inline void
+static __rte_used void
 pick_rx_func(struct rte_eth_dev *eth_dev,
 	     const eth_rx_burst_t rx_burst[NIX_RX_OFFLOAD_MAX])
 {
@@ -25,6 +25,7 @@ pick_rx_func(struct rte_eth_dev *eth_dev,
 void
 cn9k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 {
+#if defined(RTE_ARCH_ARM64)
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 
 	const eth_rx_burst_t nix_eth_rx_burst[NIX_RX_OFFLOAD_MAX] = {
@@ -68,4 +69,7 @@ cn9k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		return pick_rx_func(eth_dev, nix_eth_rx_vec_burst_mseg);
 	return pick_rx_func(eth_dev, nix_eth_rx_vec_burst);
+#else
+	RTE_SET_USED(eth_dev);
+#endif
 }
