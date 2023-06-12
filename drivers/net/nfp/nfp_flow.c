@@ -2154,6 +2154,7 @@ nfp_flow_action_set_ipv6(char *act_data,
 		bool ip_src_flag)
 {
 	int i;
+	rte_be32_t tmp;
 	size_t act_size;
 	struct nfp_fl_act_set_ipv6_addr *set_ip;
 	const struct rte_flow_action_set_ipv6 *set_ipv6;
@@ -2171,7 +2172,8 @@ nfp_flow_action_set_ipv6(char *act_data,
 	set_ip->reserved = 0;
 
 	for (i = 0; i < 4; i++) {
-		set_ip->ipv6[i].exact = set_ipv6->ipv6_addr[i * 4];
+		rte_memcpy(&tmp, &set_ipv6->ipv6_addr[i * 4], 4);
+		set_ip->ipv6[i].exact = tmp;
 		set_ip->ipv6[i].mask = RTE_BE32(0xffffffff);
 	}
 }
