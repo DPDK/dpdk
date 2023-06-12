@@ -2489,10 +2489,10 @@ nfp_flower_add_tun_neigh_v4_decap(struct nfp_app_fw_flower *app_fw_flower,
 	if (nfp_flower_support_decap_v2(app_fw_flower)) {
 		if (meta_tci->tci != 0) {
 			payload.ext.vlan_tci = meta_tci->tci;
-			payload.ext.vlan_tpid = 0x88a8;
+			payload.ext.vlan_tpid = RTE_BE16(0x88a8);
 		} else {
-			payload.ext.vlan_tci = 0xffff;
-			payload.ext.vlan_tpid = 0xffff;
+			payload.ext.vlan_tci = RTE_BE16(0xffff);
+			payload.ext.vlan_tpid = RTE_BE16(0xffff);
 		}
 		payload.ext.host_ctx = nfp_flow_meta->host_ctx_id;
 	}
@@ -2616,10 +2616,10 @@ nfp_flower_add_tun_neigh_v6_decap(struct nfp_app_fw_flower *app_fw_flower,
 	if (nfp_flower_support_decap_v2(app_fw_flower)) {
 		if (meta_tci->tci != 0) {
 			payload.ext.vlan_tci = meta_tci->tci;
-			payload.ext.vlan_tpid = 0x88a8;
+			payload.ext.vlan_tpid = RTE_BE16(0x88a8);
 		} else {
-			payload.ext.vlan_tci = 0xffff;
-			payload.ext.vlan_tpid = 0xffff;
+			payload.ext.vlan_tci = RTE_BE16(0xffff);
+			payload.ext.vlan_tpid = RTE_BE16(0xffff);
 		}
 		payload.ext.host_ctx = nfp_flow_meta->host_ctx_id;
 	}
