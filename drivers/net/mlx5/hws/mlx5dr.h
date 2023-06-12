@@ -365,6 +365,23 @@ int mlx5dr_rule_create(struct mlx5dr_matcher *matcher,
 int mlx5dr_rule_destroy(struct mlx5dr_rule *rule,
 			struct mlx5dr_rule_attr *attr);
 
+/* Enqueue update actions on an existing rule.
+ *
+ * @param[in, out] rule_handle
+ *	A valid rule handle to update.
+ * @param[in] at_idx
+ *	Action template index to update the actions with.
+ *  @param[in] rule_actions
+ *	Rule action to be executed on match.
+ * @param[in] attr
+ *	Rule update attributes.
+ * @return zero on successful enqueue non zero otherwise.
+ */
+int mlx5dr_rule_action_update(struct mlx5dr_rule *rule_handle,
+			      uint8_t at_idx,
+			      struct mlx5dr_rule_action rule_actions[],
+			      struct mlx5dr_rule_attr *attr);
+
 /* Create direct rule drop action.
  *
  * @param[in] ctx
