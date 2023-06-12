@@ -728,7 +728,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			ethdev = &rte_eth_devices[port_id->id];
 			representor = (struct nfp_flower_representor *)
 					ethdev->data->dev_private;
-			key_ls->port = rte_cpu_to_be_32(representor->port_id);
+			key_ls->port = representor->port_id;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_VLAN detected");
