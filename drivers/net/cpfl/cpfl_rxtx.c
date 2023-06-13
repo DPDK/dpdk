@@ -304,6 +304,7 @@ cpfl_rx_queue_release(void *rxq)
 		if (q->bufq1)
 			cpfl_rx_split_bufq_release(q->bufq1);
 
+		rte_memzone_free(q->mz);
 		rte_free(cpfl_rxq);
 		return;
 	}
