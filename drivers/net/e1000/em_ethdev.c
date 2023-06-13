@@ -1073,8 +1073,8 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 * To avoid it we support just one RX queue for now (no RSS).
 	 */
 
-	dev_info->max_rx_queues = 1;
-	dev_info->max_tx_queues = 1;
+	dev_info->max_rx_queues = 2;
+	dev_info->max_tx_queues = 2;
 
 	dev_info->rx_queue_offload_capa = em_get_rx_queue_offloads_capa();
 	dev_info->rx_offload_capa = em_get_rx_port_offloads_capa() |
