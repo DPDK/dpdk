@@ -586,6 +586,7 @@ F: drivers/bus/dpaa/
 F: drivers/bus/fslmc/
 
 PCI bus driver
+M: Chenbo Xia <chenbo.xia@intel.com>
 F: drivers/bus/pci/
 
 Platform bus driver
@@ -1664,6 +1665,7 @@ F: app/test/test_rcu*
 F: doc/guides/prog_guide/rcu_lib.rst
 
 PCI
+M: Chenbo Xia <chenbo.xia@intel.com>
 M: Gaetan Rivet <grive@u256.net>
 F: lib/pci/
 
