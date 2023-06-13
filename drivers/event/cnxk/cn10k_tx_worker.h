@@ -32,9 +32,9 @@ cn10k_sso_txq_fc_wait(const struct cn10k_eth_txq *txq)
 static __rte_always_inline int32_t
 cn10k_sso_sq_depth(const struct cn10k_eth_txq *txq)
 {
-	return (txq->nb_sqb_bufs_adj -
-		__atomic_load_n((int16_t *)txq->fc_mem, __ATOMIC_RELAXED))
-	       << txq->sqes_per_sqb_log2;
+	int32_t avail = (int32_t)txq->nb_sqb_bufs_adj -
+			(int32_t)__atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED);
+	return (avail << txq->sqes_per_sqb_log2) - avail;
 }
 
 static __rte_always_inline uint16_t

@@ -713,6 +713,14 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 }
 #endif
 
+static __rte_always_inline int32_t
+cn9k_sso_sq_depth(const struct cn9k_eth_txq *txq)
+{
+	int32_t avail = (int32_t)txq->nb_sqb_bufs_adj -
+			(int32_t)__atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED);
+	return (avail << txq->sqes_per_sqb_log2) - avail;
+}
+
 static __rte_always_inline uint16_t
 cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 		      uint64_t *txq_data, const uint32_t flags)
@@ -736,9 +744,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
 		handle_tx_completion_pkts(txq, 1);
 
-	if (((txq->nb_sqb_bufs_adj -
-	      __atomic_load_n((int16_t *)txq->fc_mem, __ATOMIC_RELAXED))
-	     << txq->sqes_per_sqb_log2) <= 0)
+	if (cn9k_sso_sq_depth(txq) <= 0)
 		return 0;
 	cn9k_nix_tx_skeleton(txq, cmd, flags, 0);
 	cn9k_nix_xmit_prepare(txq, m, cmd, flags, txq->lso_tun_fmt, txq->mark_flag,

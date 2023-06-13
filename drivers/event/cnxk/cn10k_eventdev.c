@@ -843,16 +843,9 @@ cn10k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
 		sq = &cnxk_eth_dev->sqs[tx_queue_id];
 		txq = eth_dev->data->tx_queues[tx_queue_id];
 		sqes_per_sqb = 1U << txq->sqes_per_sqb_log2;
-		sq->nb_sqb_bufs_adj =
-			sq->nb_sqb_bufs -
-			RTE_ALIGN_MUL_CEIL(sq->nb_sqb_bufs, sqes_per_sqb) /
-				sqes_per_sqb;
 		if (cnxk_eth_dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
-			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc /
-						(sqes_per_sqb - 1));
+			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc / sqes_per_sqb);
 		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
-		txq->nb_sqb_bufs_adj =
-			((100 - ROC_NIX_SQB_THRESH) * txq->nb_sqb_bufs_adj) / 100;
 	}
 }
 

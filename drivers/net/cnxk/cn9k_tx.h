@@ -32,12 +32,13 @@
 
 #define NIX_XMIT_FC_OR_RETURN(txq, pkts)                                       \
 	do {                                                                   \
+		int64_t avail;                                                 \
 		/* Cached value is low, Update the fc_cache_pkts */            \
 		if (unlikely((txq)->fc_cache_pkts < (pkts))) {                 \
+			avail = txq->nb_sqb_bufs_adj - *txq->fc_mem;           \
 			/* Multiply with sqe_per_sqb to express in pkts */     \
 			(txq)->fc_cache_pkts =                                 \
-				((txq)->nb_sqb_bufs_adj - *(txq)->fc_mem)      \
-				<< (txq)->sqes_per_sqb_log2;                   \
+				(avail << (txq)->sqes_per_sqb_log2) - avail;   \
 			/* Check it again for the room */                      \
 			if (unlikely((txq)->fc_cache_pkts < (pkts)))           \
 				return 0;                                      \
