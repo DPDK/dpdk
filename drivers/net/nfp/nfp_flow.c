@@ -3209,6 +3209,7 @@ nfp_flow_action_nvgre_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_fl_tun *tun)
 {
 	uint8_t tos;
+	uint64_t tun_id;
 	const struct rte_ether_hdr *eth;
 	const struct rte_flow_item_ipv6 *ipv6;
 	const struct rte_flow_item_gre *gre;
@@ -3220,6 +3221,7 @@ nfp_flow_action_nvgre_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 	eth    = (const struct rte_ether_hdr *)raw_encap->data;
 	ipv6   = (const struct rte_flow_item_ipv6 *)(eth + 1);
 	gre    = (const struct rte_flow_item_gre *)(ipv6 + 1);
+	tun_id = rte_be_to_cpu_32(*(const rte_be32_t *)(gre + 1));
 
 	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
 	memset(pre_tun, 0, act_pre_size);
@@ -3228,7 +3230,7 @@ nfp_flow_action_nvgre_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);
 	tos = rte_be_to_cpu_32(ipv6->hdr.vtc_flow) >> RTE_IPV6_HDR_TC_SHIFT;
-	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_GRE, 0,
+	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_GRE, tun_id,
 			ipv6->hdr.hop_limits, tos);
 	set_tun->tun_proto = gre->protocol;
 
