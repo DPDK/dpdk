@@ -2747,7 +2747,7 @@ nfp_flow_action_vxlan_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
 
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);
-	tun_id = rte_be_to_cpu_32(vxlan->hdr.vx_vni);
+	tun_id = rte_be_to_cpu_32(vxlan->hdr.vx_vni) >> 8;
 	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_VXLAN, tun_id,
 			ipv4->hdr.time_to_live, ipv4->hdr.type_of_service);
 	set_tun->tun_flags = vxlan->hdr.vx_flags;
@@ -2785,7 +2785,7 @@ nfp_flow_action_vxlan_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);
-	tun_id = rte_be_to_cpu_32(vxlan->hdr.vx_vni);
+	tun_id = rte_be_to_cpu_32(vxlan->hdr.vx_vni) >> 8;
 	tos = rte_be_to_cpu_32(ipv6->hdr.vtc_flow) >> RTE_IPV6_HDR_TC_SHIFT;
 	nfp_flow_set_tun_process(set_tun, NFP_FL_TUN_VXLAN, tun_id,
 			ipv6->hdr.hop_limits, tos);
