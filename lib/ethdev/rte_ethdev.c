@@ -1047,6 +1047,49 @@ rte_eth_dev_tx_offload_name(uint64_t offload)
 	return name;
 }
 
+static char *
+eth_dev_offload_names(uint64_t bitmask, char *buf, size_t size,
+	const char *(*offload_name)(uint64_t))
+{
+	unsigned int pos = 0;
+	int ret;
+
+	/* There should be at least enough space to handle those cases */
+	RTE_ASSERT(size >= sizeof("none") && size >= sizeof("..."));
+
+	if (bitmask == 0) {
+		ret = snprintf(&buf[pos], size - pos, "none");
+		if (ret < 0 || pos + ret >= size)
+			ret = 0;
+		pos += ret;
+		goto out;
+	}
+
+	while (bitmask != 0) {
+		uint64_t offload = RTE_BIT64(__builtin_ctzll(bitmask));
+		const char *name = offload_name(offload);
+
+		ret = snprintf(&buf[pos], size - pos, "%s,", name);
+		if (ret < 0 || pos + ret >= size) {
+			if (pos + sizeof("...") >= size)
+				pos = size - sizeof("...");
+			ret = snprintf(&buf[pos], size - pos, "...");
+			if (ret > 0 && pos + ret < size)
+				pos += ret;
+			goto out;
+		}
+
+		pos += ret;
+		bitmask &= ~offload;
+	}
+
+	/* Eliminate trailing comma */
+	pos--;
+out:
+	buf[pos] = '\0';
+	return buf;
+}
+
 const char *
 rte_eth_dev_capability_name(uint64_t capability)
 {
@@ -1353,23 +1396,36 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	/* Any requested offloading must be within its device capabilities */
 	if ((dev_conf->rxmode.offloads & dev_info.rx_offload_capa) !=
 	     dev_conf->rxmode.offloads) {
-		RTE_ETHDEV_LOG(ERR,
-			"Ethdev port_id=%u requested Rx offloads 0x%"PRIx64" doesn't match Rx offloads "
-			"capabilities 0x%"PRIx64" in %s()\n",
-			port_id, dev_conf->rxmode.offloads,
-			dev_info.rx_offload_capa,
-			__func__);
+		char buffer[512];
+
+		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%u does not support Rx offloads %s\n",
+			port_id, eth_dev_offload_names(
+			dev_conf->rxmode.offloads & ~dev_info.rx_offload_capa,
+			buffer, sizeof(buffer), rte_eth_dev_rx_offload_name));
+		RTE_ETHDEV_LOG(DEBUG, "Ethdev port_id=%u was requested Rx offloads %s\n",
+			port_id, eth_dev_offload_names(dev_conf->rxmode.offloads,
+			buffer, sizeof(buffer), rte_eth_dev_rx_offload_name));
+		RTE_ETHDEV_LOG(DEBUG, "Ethdev port_id=%u supports Rx offloads %s\n",
+			port_id, eth_dev_offload_names(dev_info.rx_offload_capa,
+			buffer, sizeof(buffer), rte_eth_dev_rx_offload_name));
+
 		ret = -EINVAL;
 		goto rollback;
 	}
 	if ((dev_conf->txmode.offloads & dev_info.tx_offload_capa) !=
 	     dev_conf->txmode.offloads) {
-		RTE_ETHDEV_LOG(ERR,
-			"Ethdev port_id=%u requested Tx offloads 0x%"PRIx64" doesn't match Tx offloads "
-			"capabilities 0x%"PRIx64" in %s()\n",
-			port_id, dev_conf->txmode.offloads,
-			dev_info.tx_offload_capa,
-			__func__);
+		char buffer[512];
+
+		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%u does not support Tx offloads %s\n",
+			port_id, eth_dev_offload_names(
+			dev_conf->txmode.offloads & ~dev_info.tx_offload_capa,
+			buffer, sizeof(buffer), rte_eth_dev_tx_offload_name));
+		RTE_ETHDEV_LOG(DEBUG, "Ethdev port_id=%u was requested Tx offloads %s\n",
+			port_id, eth_dev_offload_names(dev_conf->txmode.offloads,
+			buffer, sizeof(buffer), rte_eth_dev_tx_offload_name));
+		RTE_ETHDEV_LOG(DEBUG, "Ethdev port_id=%u supports Tx offloads %s\n",
+			port_id, eth_dev_offload_names(dev_info.tx_offload_capa,
+			buffer, sizeof(buffer), rte_eth_dev_tx_offload_name));
 		ret = -EINVAL;
 		goto rollback;
 	}
