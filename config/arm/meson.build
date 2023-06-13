@@ -591,7 +591,7 @@ if update_flags
         part_number = soc_config['part_number']
         soc_flags = soc_config.get('flags', [])
         if not soc_config.get('numa', true)
-            has_libnuma = 0
+            has_libnuma = false
         endif
 
         disable_drivers += ',' + soc_config.get('disable_drivers', '')
