@@ -71,12 +71,12 @@ cnxk_sso_hws_swtag_wait(uintptr_t tag_op)
 
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "		ldr %[swtb], [%[swtp_loc]]	\n"
-		     "		tbz %[swtb], 62, done%=		\n"
+		     "		tbz %[swtb], 62, .Ldone%=	\n"
 		     "		sevl				\n"
-		     "rty%=:	wfe				\n"
+		     ".Lrty%=:	wfe				\n"
 		     "		ldr %[swtb], [%[swtp_loc]]	\n"
-		     "		tbnz %[swtb], 62, rty%=		\n"
-		     "done%=:					\n"
+		     "		tbnz %[swtb], 62, .Lrty%=	\n"
+		     ".Ldone%=:					\n"
 		     : [swtb] "=&r"(swtp)
 		     : [swtp_loc] "r"(tag_op));
 #else

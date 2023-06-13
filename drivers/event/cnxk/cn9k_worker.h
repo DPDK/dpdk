@@ -232,18 +232,19 @@ cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 		rte_prefetch_non_temporal(dws->lookup_mem);
 #ifdef RTE_ARCH_ARM64
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
-		     "rty%=:					\n"
+		     ".Lrty%=:					\n"
 		     "		ldr %[tag], [%[tag_loc]]	\n"
 		     "		ldr %[wqp], [%[wqp_loc]]	\n"
-		     "		tbnz %[tag], 63, rty%=		\n"
-		     "done%=:	str %[gw], [%[pong]]		\n"
+		     "		tbnz %[tag], 63, .Lrty%=	\n"
+		     ".Ldone%=:	str %[gw], [%[pong]]		\n"
 		     "		dmb ld				\n"
 		     "		sub %[mbuf], %[wqp], #0x80	\n"
 		     "		prfm pldl1keep, [%[mbuf]]	\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1]),
 		       [mbuf] "=&r"(mbuf)
 		     : [tag_loc] "r"(base + SSOW_LF_GWS_TAG),
-		       [wqp_loc] "r"(base + SSOW_LF_GWS_WQP), [gw] "r"(dws->gw_wdata),
+		       [wqp_loc] "r"(base + SSOW_LF_GWS_WQP),
+		       [gw] "r"(dws->gw_wdata),
 		       [pong] "r"(pair_base + SSOW_LF_GWS_OP_GET_WORK0));
 #else
 	gw.u64[0] = plt_read64(base + SSOW_LF_GWS_TAG);
@@ -282,13 +283,13 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "		ldr %[tag], [%[tag_loc]]	\n"
 		     "		ldr %[wqp], [%[wqp_loc]]	\n"
-		     "		tbz %[tag], 63, done%=		\n"
+		     "		tbz %[tag], 63, .Ldone%=	\n"
 		     "		sevl				\n"
-		     "rty%=:	wfe				\n"
+		     ".Lrty%=:	wfe				\n"
 		     "		ldr %[tag], [%[tag_loc]]	\n"
 		     "		ldr %[wqp], [%[wqp_loc]]	\n"
-		     "		tbnz %[tag], 63, rty%=		\n"
-		     "done%=:	dmb ld				\n"
+		     "		tbnz %[tag], 63, .Lrty%=	\n"
+		     ".Ldone%=:	dmb ld				\n"
 		     "		sub %[mbuf], %[wqp], #0x80	\n"
 		     "		prfm pldl1keep, [%[mbuf]]	\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1]),
@@ -330,13 +331,13 @@ cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev,
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "		ldr %[tag], [%[tag_loc]]	\n"
 		     "		ldr %[wqp], [%[wqp_loc]]	\n"
-		     "		tbz %[tag], 63, done%=		\n"
+		     "		tbz %[tag], 63, .Ldone%=	\n"
 		     "		sevl				\n"
-		     "rty%=:	wfe				\n"
+		     ".Lrty%=:	wfe				\n"
 		     "		ldr %[tag], [%[tag_loc]]	\n"
 		     "		ldr %[wqp], [%[wqp_loc]]	\n"
-		     "		tbnz %[tag], 63, rty%=		\n"
-		     "done%=:	dmb ld				\n"
+		     "		tbnz %[tag], 63, .Lrty%=	\n"
+		     ".Ldone%=:	dmb ld				\n"
 		     "		sub %[mbuf], %[wqp], #0x80	\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1]),
 		       [mbuf] "=&r"(mbuf)

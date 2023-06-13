@@ -269,12 +269,12 @@ cn10k_sso_hws_get_work_empty(struct cn10k_sso_hws *ws, struct rte_event *ev,
 #ifdef RTE_ARCH_ARM64
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "		ldp %[tag], %[wqp], [%[tag_loc]]	\n"
-		     "		tbz %[tag], 63, done%=			\n"
+		     "		tbz %[tag], 63, .Ldone%=		\n"
 		     "		sevl					\n"
-		     "rty%=:	wfe					\n"
+		     ".Lrty%=:	wfe					\n"
 		     "		ldp %[tag], %[wqp], [%[tag_loc]]	\n"
-		     "		tbnz %[tag], 63, rty%=			\n"
-		     "done%=:	dmb ld					\n"
+		     "		tbnz %[tag], 63, .Lrty%=		\n"
+		     ".Ldone%=:	dmb ld					\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1])
 		     : [tag_loc] "r"(ws->base + SSOW_LF_GWS_WQE0)
 		     : "memory");
