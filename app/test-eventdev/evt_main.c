@@ -21,9 +21,6 @@ static void
 signal_handler(int signum)
 {
 	if (signum == SIGINT || signum == SIGTERM) {
-		printf("\nSignal %d received, preparing to exit...\n",
-				signum);
-
 		if (test != NULL) {
 			/* request all lcores to exit from the main loop */
 			*(int *)test->test_priv = true;

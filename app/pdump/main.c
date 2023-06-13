@@ -571,8 +571,6 @@ static void
 signal_handler(int sig_num)
 {
 	if (sig_num == SIGINT) {
-		printf("\n\nSignal %d received, preparing to exit...\n",
-				sig_num);
 		quit_signal = 1;
 	}
 }

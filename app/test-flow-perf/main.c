@@ -1708,9 +1708,6 @@ static void
 signal_handler(int signum)
 {
 	if (signum == SIGINT || signum == SIGTERM) {
-		printf("\n\nSignal %d received, preparing to exit...\n",
-					signum);
-		printf("Error: Stats are wrong due to sudden signal!\n\n");
 		force_quit = true;
 	}
 }
