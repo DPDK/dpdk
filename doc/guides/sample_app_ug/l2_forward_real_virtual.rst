@@ -106,7 +106,7 @@ where,
     Without this option, only packets with the MAC destination address
     set to the Ethernet address of the port are accepted.
 
-*   q NQ: A number of queues (=ports) per lcore (default is 1)
+*   q NQ: Maximum number of queues per lcore (default is 1)
 
 *   --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)
 

@@ -56,7 +56,7 @@ where,
 
 * ``p PORTMASK``: A hexadecimal bitmask of the ports to configure
 
-* ``q NQ``: A number of queues (=ports) per lcore (default is 1)
+* ``q NQ``: Maximum number of queues per lcore (default is 1)
 
 * ``K PERIOD``: Heartbeat check period in ms(5ms default; 86400 max)
 
