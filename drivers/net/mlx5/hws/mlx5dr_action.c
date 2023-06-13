@@ -34,7 +34,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_TIR) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ROOT_TABLE),
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_NIC_TX] = {
@@ -51,7 +51,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_FT) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ROOT_TABLE),
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_FDB] = {
@@ -71,7 +71,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_VPORT) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ROOT_TABLE),
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 };
@@ -524,7 +524,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
 		attr->dest_table_id = obj->id;
 		break;
-	case MLX5DR_ACTION_TYP_DEST_ROOT_TABLE:
+	case MLX5DR_ACTION_TYP_DEST_ROOT:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
 		attr->dest_table_id = action->root_tbl.sa->id;
@@ -1648,10 +1648,9 @@ free_action:
 }
 
 struct mlx5dr_action *
-mlx5dr_action_create_dest_root_table(struct mlx5dr_context *ctx,
-				     struct mlx5dr_table *tbl,
-				     uint16_t priority,
-				     uint32_t flags)
+mlx5dr_action_create_dest_root(struct mlx5dr_context *ctx,
+			       uint16_t priority,
+			       uint32_t flags)
 {
 	struct mlx5dv_steering_anchor_attr attr = {0};
 	struct mlx5dv_steering_anchor *sa;
@@ -1660,12 +1659,6 @@ mlx5dr_action_create_dest_root_table(struct mlx5dr_context *ctx,
 
 	if (mlx5dr_action_is_root_flags(flags)) {
 		DR_LOG(ERR, "Action flags must be only non root (HWS)");
-		rte_errno = ENOTSUP;
-		return NULL;
-	}
-
-	if (!mlx5dr_table_is_root(tbl)) {
-		DR_LOG(ERR, "Non root table cannot be set as destination");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
@@ -1687,7 +1680,7 @@ mlx5dr_action_create_dest_root_table(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
-	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_DEST_ROOT_TABLE);
+	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_DEST_ROOT);
 	if (!action)
 		goto free_steering_anchor;
 
@@ -1725,7 +1718,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_PUSH_VLAN:
 		mlx5dr_action_destroy_stcs(action);
 		break;
-	case MLX5DR_ACTION_TYP_DEST_ROOT_TABLE:
+	case MLX5DR_ACTION_TYP_DEST_ROOT:
 		mlx5dr_action_destroy_stcs(action);
 		mlx5_glue->destroy_steering_anchor(action->root_tbl.sa);
 		break;
@@ -2216,7 +2209,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_DROP:
 		case MLX5DR_ACTION_TYP_TIR:
 		case MLX5DR_ACTION_TYP_FT:
-		case MLX5DR_ACTION_TYP_DEST_ROOT_TABLE:
+		case MLX5DR_ACTION_TYP_DEST_ROOT:
 		case MLX5DR_ACTION_TYP_VPORT:
 		case MLX5DR_ACTION_TYP_MISS:
 			/* Hit action */

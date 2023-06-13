@@ -45,7 +45,7 @@ enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_PUSH_VLAN,
 	MLX5DR_ACTION_TYP_ASO_METER,
 	MLX5DR_ACTION_TYP_ASO_CT,
-	MLX5DR_ACTION_TYP_DEST_ROOT_TABLE,
+	MLX5DR_ACTION_TYP_DEST_ROOT,
 	MLX5DR_ACTION_TYP_MAX,
 };
 
@@ -587,8 +587,6 @@ mlx5dr_action_create_push_vlan(struct mlx5dr_context *ctx, uint32_t flags);
  * the given priority.
  * @param[in] ctx
  *	The context in which the new action will be created.
- * @param[in] tbl
- *	The root table to jump to.
  * @param[in] priority
  *	The priority of matcher in the root table to jump to.
  * @param[in] flags
@@ -596,10 +594,9 @@ mlx5dr_action_create_push_vlan(struct mlx5dr_context *ctx, uint32_t flags);
  * @return pointer to mlx5dr_action on success NULL otherwise.
  */
 struct mlx5dr_action *
-mlx5dr_action_create_dest_root_table(struct mlx5dr_context *ctx,
-				     struct mlx5dr_table *tbl,
-				     uint16_t priority,
-				     uint32_t flags);
+mlx5dr_action_create_dest_root(struct mlx5dr_context *ctx,
+				uint16_t priority,
+				uint32_t flags);
 
 /* Destroy direct rule action.
  *
