@@ -1620,8 +1620,18 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_TNL_L2_TO_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
-			DRV_LOG(ERR, "send to kernel action is not supported in HW steering.");
-			goto err;
+			flow_hw_translate_group(dev, cfg, attr->group,
+						&target_grp, error);
+			if (target_grp == 0) {
+				__flow_hw_action_template_destroy(dev, acts);
+				return rte_flow_error_set(error, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"Send to kernel action on root table is not supported in HW steering mode");
+			}
+			action_pos = at->actions_off[actions - at->actions];
+			acts->rule_acts[action_pos].action = priv->hw_send_to_kernel;
+			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			err = flow_hw_modify_field_compile(dev, attr, action_start,
 							   actions, masks, acts, &mhdr,
@@ -4189,6 +4199,7 @@ flow_hw_template_expand_modify_field(struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_DROP:
+		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_RSS:
@@ -4337,6 +4348,21 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			/* TODO: Validation logic */
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
+#ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
+		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
+			if (priv->shared_host)
+				return rte_flow_error_set(error, ENOTSUP,
+							  RTE_FLOW_ERROR_TYPE_ACTION,
+							  action,
+							  "action not supported in guest port");
+			if (!priv->hw_send_to_kernel)
+				return rte_flow_error_set(error, ENOTSUP,
+							  RTE_FLOW_ERROR_TYPE_ACTION,
+							  action,
+							  "action is not available");
+			action_flags |= MLX5_FLOW_ACTION_SEND_TO_KERNEL;
+			break;
+#endif
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			/* TODO: Validation logic */
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
@@ -4478,6 +4504,7 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_CONNTRACK] = MLX5DR_ACTION_TYP_ASO_CT,
 	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = MLX5DR_ACTION_TYP_POP_VLAN,
 	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = MLX5DR_ACTION_TYP_PUSH_VLAN,
+	[RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL] = MLX5DR_ACTION_TYP_DEST_ROOT,
 };
 
 static int
@@ -5878,6 +5905,30 @@ flow_hw_free_vport_actions(struct mlx5_priv *priv)
 			mlx5dr_action_destroy(priv->hw_vport[port_id]);
 	mlx5_free(priv->hw_vport);
 	priv->hw_vport = NULL;
+}
+
+static void
+flow_hw_create_send_to_kernel_actions(struct mlx5_priv *priv __rte_unused)
+{
+#ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
+	priv->hw_send_to_kernel =
+			mlx5dr_action_create_dest_root(priv->dr_ctx,
+						       MLX5_HW_LOWEST_PRIO_ROOT,
+						       MLX5DR_ACTION_FLAG_HWS_RX);
+	if (!priv->hw_send_to_kernel) {
+		DRV_LOG(WARNING, "Unable to create HWS send to kernel action");
+		return;
+	}
+#endif
+}
+
+static void
+flow_hw_destroy_send_to_kernel_action(struct mlx5_priv *priv)
+{
+	if (priv->hw_send_to_kernel) {
+		mlx5dr_action_destroy(priv->hw_send_to_kernel);
+		priv->hw_send_to_kernel = NULL;
+	}
 }
 
 /**
@@ -7748,6 +7799,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 		}
 	}
+	if (!priv->shared_host)
+		flow_hw_create_send_to_kernel_actions(priv);
 	if (port_attr->nb_conn_tracks || (host_priv && host_priv->hws_ctpool)) {
 		mem_size = sizeof(struct mlx5_aso_sq) * nb_q_updated +
 			   sizeof(*priv->ct_mng);
@@ -7810,6 +7863,7 @@ err:
 		priv->hws_cpool = NULL;
 	}
 	mlx5_flow_quota_destroy(dev);
+	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
 		if (priv->hw_drop[i])
@@ -7890,6 +7944,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
 	flow_hw_destroy_vlan(dev);
+	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);
 	if (priv->acts_ipool) {
 		mlx5_ipool_destroy(priv->acts_ipool);
