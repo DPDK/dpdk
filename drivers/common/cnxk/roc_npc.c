@@ -472,10 +472,9 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 
 static int
 npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
-		  const struct roc_npc_action actions[],
-		  struct roc_npc_flow *flow)
+		  const struct roc_npc_action actions[], struct roc_npc_flow *flow,
+		  uint16_t dst_pf_func)
 {
-	const struct roc_npc_action_port_id *act_portid;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	const struct roc_npc_action *sec_action = NULL;
 	const struct roc_npc_action_mark *act_mark;
@@ -545,10 +544,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			break;
 
 		case ROC_NPC_ACTION_TYPE_PORT_ID:
-			act_portid = (const struct roc_npc_action_port_id *)
-					     actions->conf;
-			pf_func &= (0xfc00);
-			pf_func = (pf_func | (act_portid->id + 1));
+			pf_func = dst_pf_func;
 			req_act |= ROC_NPC_ACTION_TYPE_VF;
 			break;
 
@@ -859,9 +855,8 @@ npc_parse_attr(struct npc *npc, const struct roc_npc_attr *attr,
 
 static int
 npc_parse_rule(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
-	       const struct roc_npc_item_info pattern[],
-	       const struct roc_npc_action actions[], struct roc_npc_flow *flow,
-	       struct npc_parse_state *pst)
+	       const struct roc_npc_item_info pattern[], const struct roc_npc_action actions[],
+	       struct roc_npc_flow *flow, struct npc_parse_state *pst)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	struct roc_nix *roc_nix = roc_npc->roc_nix;
@@ -881,7 +876,7 @@ npc_parse_rule(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		return err;
 
 	/* Check action */
-	err = npc_parse_actions(roc_npc, attr, actions, flow);
+	err = npc_parse_actions(roc_npc, attr, actions, flow, pst->dst_pf_func);
 	if (err)
 		return err;
 	return 0;
@@ -897,8 +892,7 @@ roc_npc_flow_parse(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	struct npc_parse_state parse_state = {0};
 	int rc;
 
-	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow,
-			    &parse_state);
+	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow, &parse_state);
 	if (rc)
 		return rc;
 
@@ -1420,8 +1414,8 @@ roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_base, uint16_t *
 
 struct roc_npc_flow *
 roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
-		    const struct roc_npc_item_info pattern[],
-		    const struct roc_npc_action actions[], int *errcode)
+		    const struct roc_npc_item_info pattern[], const struct roc_npc_action actions[],
+		    uint16_t dst_pf_func, int *errcode)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	uint16_t sdp_chan_base = 0, sdp_chan_mask = 0;
@@ -1451,8 +1445,9 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	memset(flow, 0, sizeof(*flow));
 	memset(&parse_state, 0, sizeof(parse_state));
 
-	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow,
-			    &parse_state);
+	parse_state.dst_pf_func = dst_pf_func;
+
+	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow, &parse_state);
 	if (rc != 0) {
 		*errcode = rc;
 		goto err_exit;

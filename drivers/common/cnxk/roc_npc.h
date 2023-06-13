@@ -358,41 +358,29 @@ int __roc_api roc_npc_init(struct roc_npc *roc_npc);
 int __roc_api roc_npc_fini(struct roc_npc *roc_npc);
 const char *__roc_api roc_npc_profile_name_get(struct roc_npc *roc_npc);
 
-struct roc_npc_flow *__roc_api
-roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
-		    const struct roc_npc_item_info pattern[],
-		    const struct roc_npc_action actions[], int *errcode);
-int __roc_api roc_npc_flow_destroy(struct roc_npc *roc_npc,
-				   struct roc_npc_flow *flow);
-int __roc_api roc_npc_mcam_free(struct roc_npc *roc_npc,
-				struct roc_npc_flow *mcam);
+struct roc_npc_flow *__roc_api roc_npc_flow_create(struct roc_npc *roc_npc,
+						   const struct roc_npc_attr *attr,
+						   const struct roc_npc_item_info pattern[],
+						   const struct roc_npc_action actions[],
+						   uint16_t dst_pf_func, int *errcode);
+int __roc_api roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow);
+int __roc_api roc_npc_mcam_free(struct roc_npc *roc_npc, struct roc_npc_flow *mcam);
 int __roc_api roc_npc_mcam_free_entry(struct roc_npc *roc_npc, uint32_t entry);
-int __roc_api roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc,
-					      bool enable);
-int __roc_api roc_npc_mcam_alloc_entry(struct roc_npc *roc_npc,
-				       struct roc_npc_flow *mcam,
-				       struct roc_npc_flow *ref_mcam, int prio,
-				       int *resp_count);
-int __roc_api roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry,
-					 int *alloc_entry, int req_count,
-					 int priority, int *resp_count);
-int __roc_api roc_npc_mcam_ena_dis_entry(struct roc_npc *roc_npc,
-					 struct roc_npc_flow *mcam,
+int __roc_api roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc, bool enable);
+int __roc_api roc_npc_mcam_alloc_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
+				       struct roc_npc_flow *ref_mcam, int prio, int *resp_count);
+int __roc_api roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry, int *alloc_entry,
+					 int req_count, int priority, int *resp_count);
+int __roc_api roc_npc_mcam_ena_dis_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
 					 bool enable);
-int __roc_api roc_npc_mcam_write_entry(struct roc_npc *roc_npc,
-				       struct roc_npc_flow *mcam);
-int __roc_api roc_npc_flow_parse(struct roc_npc *roc_npc,
-				 const struct roc_npc_attr *attr,
+int __roc_api roc_npc_mcam_write_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam);
+int __roc_api roc_npc_flow_parse(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 				 const struct roc_npc_item_info pattern[],
-				 const struct roc_npc_action actions[],
-				 struct roc_npc_flow *flow);
+				 const struct roc_npc_action actions[], struct roc_npc_flow *flow);
 int __roc_api roc_npc_get_low_priority_mcam(struct roc_npc *roc_npc);
-int __roc_api roc_npc_mcam_free_counter(struct roc_npc *roc_npc,
-					uint16_t ctr_id);
-int __roc_api roc_npc_mcam_read_counter(struct roc_npc *roc_npc,
-					uint32_t ctr_id, uint64_t *count);
-int __roc_api roc_npc_mcam_clear_counter(struct roc_npc *roc_npc,
-					 uint32_t ctr_id);
+int __roc_api roc_npc_mcam_free_counter(struct roc_npc *roc_npc, uint16_t ctr_id);
+int __roc_api roc_npc_mcam_read_counter(struct roc_npc *roc_npc, uint32_t ctr_id, uint64_t *count);
+int __roc_api roc_npc_mcam_clear_counter(struct roc_npc *roc_npc, uint32_t ctr_id);
 int __roc_api roc_npc_inl_mcam_read_counter(uint32_t ctr_id, uint64_t *count);
 int __roc_api roc_npc_inl_mcam_clear_counter(uint32_t ctr_id);
 int __roc_api roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc);
@@ -400,17 +388,13 @@ void __roc_api roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc);
 void __roc_api roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 				      struct roc_npc_flow *mcam);
 int __roc_api roc_npc_mark_actions_get(struct roc_npc *roc_npc);
-int __roc_api roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc,
-					      uint32_t count);
+int __roc_api roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc, uint32_t count);
 int __roc_api roc_npc_vtag_actions_get(struct roc_npc *roc_npc);
-int __roc_api roc_npc_vtag_actions_sub_return(struct roc_npc *roc_npc,
-					      uint32_t count);
+int __roc_api roc_npc_vtag_actions_sub_return(struct roc_npc *roc_npc, uint32_t count);
 int __roc_api roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
 						    struct roc_npc_flow *flow);
 int __roc_api roc_npc_validate_portid_action(struct roc_npc *roc_npc_src,
 					     struct roc_npc *roc_npc_dst);
-int __roc_api roc_npc_mcam_init(struct roc_npc *roc_npc,
-				struct roc_npc_flow *flow, int mcam_id);
-int __roc_api roc_npc_mcam_move(struct roc_npc *roc_npc, uint16_t old_ent,
-				uint16_t new_ent);
+int __roc_api roc_npc_mcam_init(struct roc_npc *roc_npc, struct roc_npc_flow *flow, int mcam_id);
+int __roc_api roc_npc_mcam_move(struct roc_npc *roc_npc, uint16_t old_ent, uint16_t new_ent);
 #endif /* _ROC_NPC_H_ */

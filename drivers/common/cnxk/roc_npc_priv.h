@@ -201,6 +201,7 @@ struct npc_parse_state {
 	bool is_second_pass_rule;
 	bool has_eth_type;
 	uint16_t nb_tx_queues;
+	uint16_t dst_pf_func;
 };
 
 enum npc_kpu_parser_flag {

@@ -113,14 +113,13 @@ npc_rss_flowkey_get(struct cnxk_eth_dev *eth_dev,
 
 static int
 cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
-		 const struct rte_flow_action actions[],
-		 struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
+		 const struct rte_flow_action actions[], struct roc_npc_action in_actions[],
+		 uint32_t *flowkey_cfg, uint16_t *dst_pf_func)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct rte_flow_action_ethdev *act_ethdev;
 	const struct rte_flow_action_port_id *port_act;
 	const struct rte_flow_action_queue *act_q;
-	struct roc_npc *roc_npc_src = &dev->npc;
 	struct rte_eth_dev *portid_eth_dev;
 	char if_name[RTE_ETH_NAME_MAX_LEN];
 	struct cnxk_eth_dev *hw_dst;
@@ -186,12 +185,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			}
 			hw_dst = portid_eth_dev->data->dev_private;
 			roc_npc_dst = &hw_dst->npc;
-
-			rc = roc_npc_validate_portid_action(roc_npc_src,
-							    roc_npc_dst);
-
-			if (rc)
-				goto err_exit;
+			*dst_pf_func = roc_npc_dst->pf_func;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
@@ -255,13 +249,10 @@ err_exit:
 }
 
 static int
-cnxk_map_flow_data(struct rte_eth_dev *eth_dev,
-		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item pattern[],
-		   const struct rte_flow_action actions[],
-		   struct roc_npc_attr *in_attr,
-		   struct roc_npc_item_info in_pattern[],
-		   struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
+cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+		   const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
+		   struct roc_npc_attr *in_attr, struct roc_npc_item_info in_pattern[],
+		   struct roc_npc_action in_actions[], uint32_t *flowkey_cfg, uint16_t *dst_pf_func)
 {
 	int i = 0;
 
@@ -280,15 +271,12 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev,
 	}
 	in_pattern[i].type = ROC_NPC_ITEM_TYPE_END;
 
-	return cnxk_map_actions(eth_dev, attr, actions, in_actions,
-				flowkey_cfg);
+	return cnxk_map_actions(eth_dev, attr, actions, in_actions, flowkey_cfg, dst_pf_func);
 }
 
 static int
-cnxk_flow_validate(struct rte_eth_dev *eth_dev,
-		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item pattern[],
-		   const struct rte_flow_action actions[],
+cnxk_flow_validate(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+		   const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
 		   struct rte_flow_error *error)
 {
 	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
@@ -298,13 +286,14 @@ cnxk_flow_validate(struct rte_eth_dev *eth_dev,
 	struct roc_npc_attr in_attr;
 	struct roc_npc_flow flow;
 	uint32_t flowkey_cfg = 0;
+	uint16_t dst_pf_func = 0;
 	int rc;
 
 	memset(&flow, 0, sizeof(flow));
 	flow.is_validate = true;
 
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
-				&flowkey_cfg);
+				&flowkey_cfg, &dst_pf_func);
 	if (rc) {
 		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
 				   "Failed to map flow data");
@@ -333,23 +322,21 @@ cnxk_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 	struct roc_npc *npc = &dev->npc;
 	struct roc_npc_attr in_attr;
 	struct roc_npc_flow *flow;
+	uint16_t dst_pf_func = 0;
 	int errcode = 0;
 	int rc;
 
-	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr,
-				in_pattern, in_actions,
-				&npc->flowkey_cfg_state);
+	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
+				&npc->flowkey_cfg_state, &dst_pf_func);
 	if (rc) {
-		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
-				   NULL, "Failed to map flow data");
+		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
+				   "Failed to map flow data");
 		return NULL;
 	}
 
-	flow = roc_npc_flow_create(npc, &in_attr, in_pattern, in_actions,
-				   &errcode);
+	flow = roc_npc_flow_create(npc, &in_attr, in_pattern, in_actions, dst_pf_func, &errcode);
 	if (errcode != 0) {
-		rte_flow_error_set(error, errcode, errcode, NULL,
-				   roc_error_msg_get(errcode));
+		rte_flow_error_set(error, errcode, errcode, NULL, roc_error_msg_get(errcode));
 		return NULL;
 	}
 

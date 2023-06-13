@@ -125,6 +125,10 @@ New Features
   which are being upstreamed:
   https://lore.kernel.org/all/20230419134329.346825-1-maxime.coquelin@redhat.com/
 
+* **Updated Marvell cnxk ethdev driver.**
+
+  * Extended ``RTE_FLOW_ACTION_TYPE_PORT_ID`` to redirect traffic across PF ports.
+
 * **Updated NVIDIA mlx5 net driver.**
 
   * Added support for multi-packet receive queue (MPRQ) on Windows.
