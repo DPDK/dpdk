@@ -190,11 +190,11 @@ if find_libnuma
     endif
 endif
 
-has_libfdt = 0
+has_libfdt = false
 fdt_dep = cc.find_library('fdt', required: false)
 if fdt_dep.found() and cc.has_header('fdt.h')
     dpdk_conf.set10('RTE_HAS_LIBFDT', true)
-    has_libfdt = 1
+    has_libfdt = true
     add_project_link_arguments('-lfdt', language: 'c')
     dpdk_extra_ldflags += '-lfdt'
 endif

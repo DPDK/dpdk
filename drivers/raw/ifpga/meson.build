@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-if has_libfdt == 0
+if not has_libfdt
     build = false
     reason = 'missing dependency, "libfdt"'
     subdir_done()

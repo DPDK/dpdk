@@ -15,7 +15,7 @@ endif
 #  rte_eth_switch_domain_free()
 #
 
-if has_libfdt == 0
+if not has_libfdt
     build = false
     reason = 'missing dependency, "libfdt"'
     subdir_done()
