@@ -144,18 +144,126 @@ nix_sec_flush_meta(uintptr_t laddr, uint16_t lmt_id, uint8_t loff,
 	roc_lmt_submit_steorl(lmt_id, pa);
 }
 
+#if defined(RTE_ARCH_ARM64)
+static __rte_always_inline uint64_t
+nix_sec_reass_frags_get(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf **next_mbufs)
+{
+	const struct cpt_frag_info_s *finfo;
+	uint32_t offset = hdr->w2.fi_offset;
+	const uint64_t *frag_ptr;
+	uint64x2_t frags23;
+	uint16x4_t fsz_w1;
+
+	/* offset of 0 implies 256B, otherwise it implies offset*8B */
+	offset = (((offset - 1) & 0x1f) + 1) * 8;
+	finfo = RTE_PTR_ADD(hdr, offset);
+	frag_ptr = (const uint64_t *)(finfo + 1);
+	frags23 = vrev64q_u8(vld1q_u64(frag_ptr));
+
+	next_mbufs[0] = ((struct rte_mbuf *)rte_be_to_cpu_64(hdr->frag1_wqe_ptr) - 1);
+	next_mbufs[1] = ((struct rte_mbuf *)vgetq_lane_u64(frags23, 0) - 1);
+	next_mbufs[2] = ((struct rte_mbuf *)vgetq_lane_u64(frags23, 1) - 1);
+
+	fsz_w1 = vdup_n_u64(finfo->w1.u64);
+	fsz_w1 = vrev16_u8(fsz_w1);
+	return vget_lane_u64(fsz_w1, 0);
+}
+
+static __rte_always_inline void
+nix_sec_reass_first_frag_update(struct rte_mbuf *head, const uint8_t *m_ipptr,
+				uint64_t fsz, uint64_t cq_w1, uint16_t *ihl)
+{
+	union nix_rx_parse_u *rx = (union nix_rx_parse_u *)((uintptr_t)(head + 1) + 8);
+	uint16_t fragx_sum = vaddv_u16(vdup_n_u64(fsz));
+	uint8_t lcptr = rx->lcptr;
+	uint16_t tot_len;
+	uint32_t cksum;
+	uint8_t *ipptr;
+
+	ipptr = (uint8_t *)head->buf_addr + head->data_off + lcptr;
+	/* Find the L3 header length and update inner pkt based on meta lc type */
+	if (((cq_w1 >> 40) & 0xF) == NPC_LT_LC_IP) {
+		const struct rte_ipv4_hdr *m_hdr = (const struct rte_ipv4_hdr *)m_ipptr;
+		struct rte_ipv4_hdr *hdr = (struct rte_ipv4_hdr *)ipptr;
+
+		*ihl = (m_hdr->version_ihl & 0xf) << 2;
+
+		hdr->fragment_offset = 0;
+		tot_len = rte_cpu_to_be_16(fragx_sum + *ihl);
+		hdr->total_length = tot_len;
+		/* Perform incremental checksum based on meta pkt ip hdr */
+		cksum = m_hdr->hdr_checksum;
+		cksum += m_hdr->fragment_offset;
+		cksum += 0xFFFF;
+		cksum += m_hdr->total_length;
+		cksum += (uint16_t)(~tot_len);
+		cksum = (cksum & 0xFFFF) + ((cksum & 0xFFFF0000) >> 16);
+		hdr->hdr_checksum = cksum;
+
+		head->pkt_len = lcptr + *ihl + fragx_sum;
+	} else {
+		struct rte_ipv6_hdr *hdr = (struct rte_ipv6_hdr *)ipptr;
+		size_t ext_len = sizeof(struct rte_ipv6_hdr);
+		uint8_t *nxt_hdr = (uint8_t *)hdr;
+		int nh = hdr->proto;
+
+		*ihl = 0;
+		while (nh != -EINVAL) {
+			nxt_hdr += ext_len;
+			*ihl += ext_len;
+			nh = rte_ipv6_get_next_ext(nxt_hdr, nh, &ext_len);
+		}
+
+		/* Remove the frag header by moving header 8 bytes forward */
+		hdr->payload_len = rte_cpu_to_be_16(fragx_sum + *ihl -
+					8 - sizeof(struct rte_ipv6_hdr));
+
+		rte_memcpy(rte_pktmbuf_mtod_offset(head, void *, 8),
+			   rte_pktmbuf_mtod(head, void *),
+			   lcptr + sizeof(struct rte_ipv6_hdr));
+
+		head->data_len -= 8;
+		head->data_off += 8;
+		head->pkt_len = lcptr + *ihl - 8 + fragx_sum;
+	}
+}
+
+#else
+static __rte_always_inline uint64_t
+nix_sec_reass_frags_get(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf **next_mbufs)
+{
+	RTE_SET_USED(hdr);
+	next_mbufs[0] = NULL;
+	next_mbufs[1] = NULL;
+	next_mbufs[2] = NULL;
+	return 0;
+}
+
+static __rte_always_inline void
+nix_sec_reass_first_frag_update(struct rte_mbuf *head, const uint8_t *m_ipptr,
+				uint64_t fsz, uint64_t cq_w1, uint16_t *ihl)
+{
+	RTE_SET_USED(head);
+	RTE_SET_USED(m_ipptr);
+	RTE_SET_USED(fsz);
+	RTE_SET_USED(cq_w1);
+	*ihl = 0;
+}
+#endif
+
 static struct rte_mbuf *
 nix_sec_attach_frags(const struct cpt_parse_hdr_s *hdr,
+		     struct rte_mbuf *head,
 		     struct cn10k_inb_priv_data *inb_priv,
 		     const uint64_t mbuf_init)
 {
-	struct rte_mbuf *head, *mbuf, *mbuf_prev;
-	uint32_t offset = hdr->w2.fi_offset;
+	uint8_t num_frags = hdr->w0.num_frags;
+	struct rte_mbuf *next_mbufs[3];
 	union nix_rx_parse_u *frag_rx;
-	struct cpt_frag_info_s *finfo;
-	uint64_t *frag_ptr = NULL;
+	struct rte_mbuf *mbuf;
 	uint64_t ol_flags;
 	uint16_t frag_size;
+	uint8_t frag_i = 0;
 	uint16_t rlen;
 	uint64_t *wqe;
 	int off;
@@ -164,48 +272,37 @@ nix_sec_attach_frags(const struct cpt_parse_hdr_s *hdr,
 	ol_flags = BIT_ULL(inb_priv->reass_dynflag_bit);
 	ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
 
-	/* offset of 0 implies 256B, otherwise it implies offset*8B */
-	offset = (((offset - 1) & 0x1f) + 1) * 8;
-	finfo = RTE_PTR_ADD(hdr, offset);
+	/* Get frags list */
+	nix_sec_reass_frags_get(hdr, next_mbufs);
 
 	/* Frag-0: */
-	wqe = (uint64_t *)(rte_be_to_cpu_64(hdr->wqe_ptr));
+	wqe = (uint64_t *)(head + 1);
 	rlen = ((*(wqe + 10)) >> 16) & 0xFFFF;
 
 	frag_rx = (union nix_rx_parse_u *)(wqe + 1);
-	frag_size = rlen + frag_rx->lcptr - frag_rx->laptr;
-	frag_rx->pkt_lenm1 = frag_size - 1;
 
-	mbuf = (struct rte_mbuf *)((uintptr_t)wqe - sizeof(struct rte_mbuf));
-	*(uint64_t *)(&mbuf->rearm_data) = mbuf_init;
-	mbuf->data_len = frag_size;
-	mbuf->pkt_len = frag_size;
-	mbuf->ol_flags = ol_flags;
-	mbuf->next = NULL;
-	head = mbuf;
-	mbuf_prev = mbuf;
+	head->ol_flags = ol_flags;
 	/* Update dynamic field with userdata */
-	*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
+	*rte_security_dynfield(head) = (uint64_t)inb_priv->userdata;
 
-	cnxk_ip_reassembly_dynfield(head, off)->nb_frags = hdr->w0.num_frags - 1;
-	cnxk_ip_reassembly_dynfield(head, off)->next_frag = NULL;
+	num_frags--;
+	mbuf = head;
 
-	/* Frag-1: */
-	if (hdr->w0.num_frags > 1) {
-		wqe = (uint64_t *)(rte_be_to_cpu_64(hdr->frag1_wqe_ptr));
+	/* Frag-1+: */
+	while (num_frags) {
+		cnxk_ip_reassembly_dynfield(mbuf, off)->next_frag = next_mbufs[frag_i];
+		cnxk_ip_reassembly_dynfield(mbuf, off)->nb_frags = num_frags;
+		mbuf = next_mbufs[frag_i];
+		wqe = (uint64_t *)(mbuf + 1);
 		rlen = ((*(wqe + 10)) >> 16) & 0xFFFF;
 
 		frag_rx = (union nix_rx_parse_u *)(wqe + 1);
 		frag_size = rlen + frag_rx->lcptr - frag_rx->laptr;
-		frag_rx->pkt_lenm1 = frag_size - 1;
 
-		mbuf = (struct rte_mbuf *)((uintptr_t)wqe -
-				sizeof(struct rte_mbuf));
 		*(uint64_t *)(&mbuf->rearm_data) = mbuf_init;
 		mbuf->data_len = frag_size;
 		mbuf->pkt_len = frag_size;
 		mbuf->ol_flags = ol_flags;
-		mbuf->next = NULL;
 
 		/* Update dynamic field with userdata */
 		*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
@@ -213,218 +310,95 @@ nix_sec_attach_frags(const struct cpt_parse_hdr_s *hdr,
 		/* Mark frag as get */
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
-		cnxk_ip_reassembly_dynfield(mbuf, off)->nb_frags =
-			hdr->w0.num_frags - 2;
-		cnxk_ip_reassembly_dynfield(mbuf, off)->next_frag = NULL;
-		cnxk_ip_reassembly_dynfield(mbuf_prev, off)->next_frag = mbuf;
-		mbuf_prev = mbuf;
+		num_frags--;
+		frag_i++;
 	}
+	cnxk_ip_reassembly_dynfield(mbuf, off)->nb_frags = 0;
+	cnxk_ip_reassembly_dynfield(mbuf, off)->next_frag = NULL;
 
-	/* Frag-2: */
-	if (hdr->w0.num_frags > 2) {
-		frag_ptr = (uint64_t *)(finfo + 1);
-		wqe = (uint64_t *)(rte_be_to_cpu_64(*frag_ptr));
-		rlen = ((*(wqe + 10)) >> 16) & 0xFFFF;
-
-		frag_rx = (union nix_rx_parse_u *)(wqe + 1);
-		frag_size = rlen + frag_rx->lcptr - frag_rx->laptr;
-		frag_rx->pkt_lenm1 = frag_size - 1;
-
-		mbuf = (struct rte_mbuf *)((uintptr_t)wqe -
-				sizeof(struct rte_mbuf));
-		*(uint64_t *)(&mbuf->rearm_data) = mbuf_init;
-		mbuf->data_len = frag_size;
-		mbuf->pkt_len = frag_size;
-		mbuf->ol_flags = ol_flags;
-		mbuf->next = NULL;
-
-		/* Update dynamic field with userdata */
-		*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
-
-		/* Mark frag as get */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
-
-		cnxk_ip_reassembly_dynfield(mbuf, off)->nb_frags =
-			hdr->w0.num_frags - 3;
-		cnxk_ip_reassembly_dynfield(mbuf, off)->next_frag = NULL;
-		cnxk_ip_reassembly_dynfield(mbuf_prev, off)->next_frag = mbuf;
-		mbuf_prev = mbuf;
-	}
-
-	/* Frag-3: */
-	if (hdr->w0.num_frags > 3) {
-		wqe = (uint64_t *)(rte_be_to_cpu_64(*(frag_ptr + 1)));
-		rlen = ((*(wqe + 10)) >> 16) & 0xFFFF;
-
-		frag_rx = (union nix_rx_parse_u *)(wqe + 1);
-		frag_size = rlen + frag_rx->lcptr - frag_rx->laptr;
-		frag_rx->pkt_lenm1 = frag_size - 1;
-
-		mbuf = (struct rte_mbuf *)((uintptr_t)wqe -
-				sizeof(struct rte_mbuf));
-		*(uint64_t *)(&mbuf->rearm_data) = mbuf_init;
-		mbuf->data_len = frag_size;
-		mbuf->pkt_len = frag_size;
-		mbuf->ol_flags = ol_flags;
-		mbuf->next = NULL;
-
-		/* Mark frag as get */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
-
-		/* Update dynamic field with userdata */
-		*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
-
-		cnxk_ip_reassembly_dynfield(mbuf, off)->nb_frags =
-			hdr->w0.num_frags - 4;
-		cnxk_ip_reassembly_dynfield(mbuf, off)->next_frag = NULL;
-		cnxk_ip_reassembly_dynfield(mbuf_prev, off)->next_frag = mbuf;
-	}
 	return head;
 }
 
-static struct rte_mbuf *
-nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, uint64_t cq_w1,
-			uint64_t cq_w5, uint64_t mbuf_init)
+static __rte_always_inline struct rte_mbuf *
+nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf *head,
+			 uint64_t cq_w1, uint64_t cq_w5, uint64_t mbuf_init)
 {
-	uint32_t fragx_sum, pkt_hdr_len, l3_hdr_size;
-	uint32_t offset = hdr->w2.fi_offset;
-	union nix_rx_parse_u *inner_rx;
-	uint16_t rlen, data_off, b_off;
+	uint8_t num_frags = hdr->w0.num_frags;
 	union nix_rx_parse_u *frag_rx;
-	struct cpt_frag_info_s *finfo;
-	struct rte_mbuf *head, *mbuf;
-	uint64_t *frag_ptr = NULL;
-	rte_iova_t *inner_iova;
+	struct rte_mbuf *next_mbufs[3];
+	uint16_t data_off, b_off;
+	const uint8_t *m_ipptr;
+	uint16_t l3_hdr_size;
+	struct rte_mbuf *mbuf;
 	uint16_t frag_size;
+	uint64_t fsz_w1;
 	uint64_t *wqe;
 
 	/* Base data offset */
 	b_off = mbuf_init & 0xFFFFUL;
 	mbuf_init &= ~0xFFFFUL;
 
-	/* offset of 0 implies 256B, otherwise it implies offset*8B */
-	offset = (((offset - 1) & 0x1f) + 1) * 8;
-	finfo = RTE_PTR_ADD(hdr, offset);
+	/* Get list of all fragments and frag sizes */
+	fsz_w1 = nix_sec_reass_frags_get(hdr, next_mbufs);
 
 	/* Frag-0: */
-	wqe = (uint64_t *)rte_be_to_cpu_64(hdr->wqe_ptr);
-	inner_rx = (union nix_rx_parse_u *)(wqe + 1);
-	inner_iova = (rte_iova_t *)*(wqe + 9);
+	wqe = (uint64_t *)(head + 1);
 
-	/* Update only the upper 28-bits from meta pkt parse info */
-	*((uint64_t *)inner_rx) = ((*((uint64_t *)inner_rx) & ((1ULL << 36) - 1)) |
-				(cq_w1 & ~((1ULL << 36) - 1)));
-
-	rlen = ((*(wqe + 10)) >> 16) & 0xFFFF;
-	frag_size = rlen + ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
-	fragx_sum = rte_be_to_cpu_16(finfo->w1.frag_size0);
-	pkt_hdr_len = frag_size - fragx_sum;
-
-	mbuf = (struct rte_mbuf *)((uintptr_t)wqe - sizeof(struct rte_mbuf));
-	*(uint64_t *)(&mbuf->rearm_data) = mbuf_init | b_off;
-	mbuf->data_len = frag_size;
-	head = mbuf;
-
-	if (inner_rx->lctype == NPC_LT_LC_IP) {
-		struct rte_ipv4_hdr *hdr = (struct rte_ipv4_hdr *)
-				RTE_PTR_ADD(inner_iova, inner_rx->lcptr);
-
-		l3_hdr_size = (hdr->version_ihl & 0xf) << 2;
-	} else {
-		struct rte_ipv6_hdr *hdr = (struct rte_ipv6_hdr *)
-				RTE_PTR_ADD(inner_iova, inner_rx->lcptr);
-		size_t ext_len = sizeof(struct rte_ipv6_hdr);
-		uint8_t *nxt_hdr = (uint8_t *)hdr;
-		int nh = hdr->proto;
-
-		l3_hdr_size = 0;
-		while (nh != -EINVAL) {
-			nxt_hdr += ext_len;
-			l3_hdr_size += ext_len;
-			nh = rte_ipv6_get_next_ext(nxt_hdr, nh, &ext_len);
-		}
-	}
+	/* First fragment data len is already update by caller */
+	m_ipptr = ((const uint8_t *)hdr + ((cq_w5 >> 16) & 0xFF));
+	nix_sec_reass_first_frag_update(head, m_ipptr, fsz_w1, cq_w1, &l3_hdr_size);
+	fsz_w1 >>= 16;
 
 	/* Frag-1: */
-	wqe = (uint64_t *)(rte_be_to_cpu_64(hdr->frag1_wqe_ptr));
-	frag_size = rte_be_to_cpu_16(finfo->w1.frag_size1);
+	head->next = next_mbufs[0];
+	mbuf = next_mbufs[0];
+	wqe = (uint64_t *)(mbuf + 1);
 	frag_rx = (union nix_rx_parse_u *)(wqe + 1);
+	frag_size = fsz_w1 & 0xFFFF;
+	fsz_w1 >>= 16;
 
-	mbuf->next = (struct rte_mbuf *)((uintptr_t)wqe - sizeof(struct rte_mbuf));
-	mbuf = mbuf->next;
 	data_off = b_off + frag_rx->lcptr + l3_hdr_size;
 	*(uint64_t *)(&mbuf->rearm_data) = mbuf_init | data_off;
 	mbuf->data_len = frag_size;
-	fragx_sum += frag_size;
 
 	/* Mark frag as get */
 	RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
 	/* Frag-2: */
-	if (hdr->w0.num_frags > 2) {
-		frag_ptr = (uint64_t *)(finfo + 1);
-		wqe = (uint64_t *)(rte_be_to_cpu_64(*frag_ptr));
-		frag_size = rte_be_to_cpu_16(finfo->w1.frag_size2);
+	if (num_frags > 2) {
+		mbuf->next = next_mbufs[1];
+		mbuf = next_mbufs[1];
+		wqe = (uint64_t *)(mbuf + 1);
 		frag_rx = (union nix_rx_parse_u *)(wqe + 1);
+		frag_size = fsz_w1 & 0xFFFF;
+		fsz_w1 >>= 16;
 
-		mbuf->next = (struct rte_mbuf *)((uintptr_t)wqe - sizeof(struct rte_mbuf));
-		mbuf = mbuf->next;
 		data_off = b_off + frag_rx->lcptr + l3_hdr_size;
 		*(uint64_t *)(&mbuf->rearm_data) = mbuf_init | data_off;
 		mbuf->data_len = frag_size;
-		fragx_sum += frag_size;
 
 		/* Mark frag as get */
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 	}
 
 	/* Frag-3: */
-	if (hdr->w0.num_frags > 3) {
-		wqe = (uint64_t *)(rte_be_to_cpu_64(*(frag_ptr + 1)));
-		frag_size = rte_be_to_cpu_16(finfo->w1.frag_size3);
+	if (num_frags > 3) {
+		mbuf->next = next_mbufs[2];
+		mbuf = next_mbufs[2];
+		wqe = (uint64_t *)(mbuf + 1);
 		frag_rx = (union nix_rx_parse_u *)(wqe + 1);
+		frag_size = fsz_w1 & 0xFFFF;
+		fsz_w1 >>= 16;
 
-		mbuf->next = (struct rte_mbuf *)((uintptr_t)wqe - sizeof(struct rte_mbuf));
-		mbuf = mbuf->next;
 		data_off = b_off + frag_rx->lcptr + l3_hdr_size;
 		*(uint64_t *)(&mbuf->rearm_data) = mbuf_init | data_off;
 		mbuf->data_len = frag_size;
-		fragx_sum += frag_size;
 
 		/* Mark frag as get */
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 	}
 
-	if (inner_rx->lctype == NPC_LT_LC_IP) {
-		struct rte_ipv4_hdr *hdr = (struct rte_ipv4_hdr *)
-				RTE_PTR_ADD(inner_iova, inner_rx->lcptr);
-
-		hdr->fragment_offset = 0;
-		hdr->total_length = rte_cpu_to_be_16(fragx_sum + l3_hdr_size);
-		hdr->hdr_checksum = 0;
-		hdr->hdr_checksum = rte_ipv4_cksum(hdr);
-
-		inner_rx->pkt_lenm1 = pkt_hdr_len + fragx_sum - 1;
-	} else {
-		/* Remove the frag header by moving header 8 bytes forward */
-		struct rte_ipv6_hdr *hdr = (struct rte_ipv6_hdr *)
-				RTE_PTR_ADD(inner_iova, inner_rx->lcptr);
-
-		hdr->payload_len = rte_cpu_to_be_16(fragx_sum + l3_hdr_size -
-					8 - sizeof(struct rte_ipv6_hdr));
-
-		rte_memcpy(rte_pktmbuf_mtod_offset(head, void *, 8),
-			   rte_pktmbuf_mtod(head, void *),
-			   inner_rx->lcptr + sizeof(struct rte_ipv6_hdr));
-
-		inner_rx->pkt_lenm1 = pkt_hdr_len + fragx_sum - 8 - 1;
-		head->data_len -= 8;
-		head->data_off += 8;
-	}
-	mbuf->next = NULL;
-	head->pkt_len = inner_rx->pkt_lenm1 + 1;
-	head->nb_segs = hdr->w0.num_frags;
-
+	head->nb_segs = num_frags;
 	return head;
 }
 
@@ -432,7 +406,7 @@ static __rte_always_inline struct rte_mbuf *
 nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 			uintptr_t laddr, uint8_t *loff, struct rte_mbuf *mbuf,
 			uint16_t data_off, const uint16_t flags,
-			const uint64_t mbuf_init)
+			uint64_t mbuf_init)
 {
 	const void *__p = (void *)((uintptr_t)mbuf + (uint16_t)data_off);
 	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)__p;
@@ -445,60 +419,70 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 	void *inb_sa;
 	uint64_t w0;
 
-	if ((flags & NIX_RX_REAS_F) && (cq_w1 & BIT(11))) {
-		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
-		w0 = hdr->w0.u64;
-		sa_idx = w0 >> 32;
+	if (!(cq_w1 & BIT(11)))
+		return mbuf;
 
-		inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
-		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
+	inner = (struct rte_mbuf *)(rte_be_to_cpu_64(hdr->wqe_ptr) -
+				    sizeof(struct rte_mbuf));
 
-		if (!hdr->w0.num_frags) {
-			/* No Reassembly or inbound error */
-			inner = (struct rte_mbuf *)
-				(rte_be_to_cpu_64(hdr->wqe_ptr) -
-				 sizeof(struct rte_mbuf));
+	/* Store meta in lmtline to free
+	 * Assume all meta's from same aura.
+	 */
+	*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
+	*loff = *loff + 1;
 
-			/* Update dynamic field with userdata */
-			*rte_security_dynfield(inner) =
-				(uint64_t)inb_priv->userdata;
+	/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
+	w0 = hdr->w0.u64;
+	sa_idx = w0 >> 32;
 
-			/* Get ucc from cpt parse header */
-			ucc = hdr->w3.hw_ccode;
+	inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
+	inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
 
-			/* Calculate inner packet length as
-			 * IP total len + l2 len
-			 */
-			ip = (uintptr_t)hdr + ((cq_w5 >> 16) & 0xFF);
-			ip += ((cq_w1 >> 40) & 0x6);
-			len = rte_be_to_cpu_16(*(uint16_t *)ip);
-			len += ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
-			len += (cq_w1 & BIT(42)) ? 40 : 0;
+	/* Update dynamic field with userdata */
+	*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
 
-			inner->pkt_len = len;
-			inner->data_len = len;
-			*(uint64_t *)(&inner->rearm_data) = mbuf_init;
+	/* Get ucc from cpt parse header */
+	ucc = hdr->w3.hw_ccode;
 
-			inner->ol_flags = ((CPT_COMP_HWGOOD_MASK & (1U << ucc)) ?
-					   RTE_MBUF_F_RX_SEC_OFFLOAD :
-					   (RTE_MBUF_F_RX_SEC_OFFLOAD |
-					    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
+	/* Calculate inner packet length as IP total len + l2 len */
+	ip = (uintptr_t)hdr + ((cq_w5 >> 16) & 0xFF);
+	ip += ((cq_w1 >> 40) & 0x6);
+	len = rte_be_to_cpu_16(*(uint16_t *)ip);
+	len += ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
+	len += (cq_w1 & BIT(42)) ? 40 : 0;
 
-			ucc = hdr->w3.uc_ccode;
+	inner->pkt_len = len;
+	inner->data_len = len;
+	*(uint64_t *)(&inner->rearm_data) = mbuf_init;
 
-			if (ucc && ucc < 0xED) {
-				inner->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
-			} else {
-				ucc += 3; /* To make codes in 0xFx series except 0 */
-				inner->ol_flags |= ((ucc & 0xF0) == 0xF0) ?
-						   ((NIX_RX_SEC_UCC_CONST >> ((ucc & 0xF) << 3))
-						    & 0xFF) << 1 : RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-			}
-		} else if ((!(hdr->w0.err_sum) || roc_ie_ot_ucc_is_success(hdr->w3.uc_ccode)) &&
-			   !(hdr->w0.reas_sts)) {
+	inner->ol_flags = ((CPT_COMP_HWGOOD_MASK & (1U << ucc)) ?
+			   RTE_MBUF_F_RX_SEC_OFFLOAD :
+			   (RTE_MBUF_F_RX_SEC_OFFLOAD |
+			    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
+
+	ucc = hdr->w3.uc_ccode;
+
+	if (ucc && ucc < 0xED) {
+		inner->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+	} else {
+		ucc += 3; /* To make codes in 0xFx series except 0 */
+		inner->ol_flags |= ((ucc & 0xF0) == 0xF0) ?
+			((NIX_RX_SEC_UCC_CONST >> ((ucc & 0xF) << 3))
+			 & 0xFF) << 1 : RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+	}
+
+	/* Mark meta mbuf as put */
+	RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
+
+	/* Mark inner mbuf as get */
+	RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
+
+	/* Skip reassembly processing when multi-seg is enabled */
+	if (!(flags & NIX_RX_MULTI_SEG_F) && (flags & NIX_RX_REAS_F) && hdr->w0.num_frags) {
+		if ((!(hdr->w0.err_sum) || roc_ie_ot_ucc_is_success(hdr->w3.uc_ccode)) &&
+		    !(hdr->w0.reas_sts)) {
 			/* Reassembly success */
-			inner = nix_sec_reassemble_frags(hdr, cq_w1, cq_w5,
-							 mbuf_init);
+			nix_sec_reassemble_frags(hdr, inner, cq_w1, cq_w5, mbuf_init);
 
 			/* Update dynamic field with userdata */
 			*rte_security_dynfield(inner) =
@@ -508,82 +492,10 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 			inner->ol_flags = RTE_MBUF_F_RX_SEC_OFFLOAD;
 		} else {
 			/* Reassembly failure */
-			inner = nix_sec_attach_frags(hdr, inb_priv, mbuf_init);
+			nix_sec_attach_frags(hdr, inner, inb_priv, mbuf_init);
 		}
-
-		/* Store meta in lmtline to free
-		 * Assume all meta's from same aura.
-		 */
-		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
-		*loff = *loff + 1;
-
-		/* Mark meta mbuf as put */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
-
-		/* Mark inner mbuf as get */
-		RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
-
-		return inner;
-	} else if (cq_w1 & BIT(11)) {
-		inner = (struct rte_mbuf *)(rte_be_to_cpu_64(hdr->wqe_ptr) -
-					    sizeof(struct rte_mbuf));
-
-		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
-		w0 = hdr->w0.u64;
-		sa_idx = w0 >> 32;
-
-		inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
-		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
-
-		/* Update dynamic field with userdata */
-		*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
-
-		/* Get ucc from cpt parse header */
-		ucc = hdr->w3.hw_ccode;
-
-		/* Calculate inner packet length as IP total len + l2 len */
-		ip = (uintptr_t)hdr + ((cq_w5 >> 16) & 0xFF);
-		ip += ((cq_w1 >> 40) & 0x6);
-		len = rte_be_to_cpu_16(*(uint16_t *)ip);
-		len += ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
-		len += (cq_w1 & BIT(42)) ? 40 : 0;
-
-		inner->pkt_len = len;
-		inner->data_len = len;
-		*(uint64_t *)(&inner->rearm_data) = mbuf_init;
-
-		inner->ol_flags = ((CPT_COMP_HWGOOD_MASK & (1U << ucc)) ?
-				   RTE_MBUF_F_RX_SEC_OFFLOAD :
-				   (RTE_MBUF_F_RX_SEC_OFFLOAD |
-				    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
-
-		ucc = hdr->w3.uc_ccode;
-
-		if (ucc && ucc < 0xED) {
-			inner->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
-		} else {
-			ucc += 3; /* To make codes in 0xFx series except 0 */
-			inner->ol_flags |= ((ucc & 0xF0) == 0xF0) ?
-					   ((NIX_RX_SEC_UCC_CONST >> ((ucc & 0xF) << 3))
-					    & 0xFF) << 1 : RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-		}
-
-		/* Store meta in lmtline to free
-		 * Assume all meta's from same aura.
-		 */
-		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
-		*loff = *loff + 1;
-
-		/* Mark meta mbuf as put */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
-
-		/* Mark inner mbuf as get */
-		RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
-
-		return inner;
 	}
-
-	return mbuf;
+	return inner;
 }
 
 #if defined(RTE_ARCH_ARM64)
@@ -612,11 +524,16 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 	/* Mark inner mbuf as get */
 	RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
 
-	if (flags & NIX_RX_REAS_F && hdr->w0.num_frags) {
+	if (!(flags & NIX_RX_MULTI_SEG_F) && flags & NIX_RX_REAS_F && hdr->w0.num_frags) {
 		if ((!(hdr->w0.err_sum) || roc_ie_ot_ucc_is_success(hdr->w3.uc_ccode)) &&
 		    !(hdr->w0.reas_sts)) {
+			/* First frag len */
+			inner->pkt_len = vgetq_lane_u16(*rx_desc_field1, 2);
+			inner->data_len = vgetq_lane_u16(*rx_desc_field1, 4);
+			*(uint64_t *)(&inner->rearm_data) = mbuf_init;
+
 			/* Reassembly success */
-			nix_sec_reassemble_frags(hdr, cq_w1, cq_w5, mbuf_init);
+			nix_sec_reassemble_frags(hdr, inner, cq_w1, cq_w5, mbuf_init);
 
 			/* Assume success */
 			*ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
@@ -632,14 +549,8 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 			*rearm = vsetq_lane_u64(mbuf_init, *rearm, 0);
 		} else {
 			/* Reassembly failure */
-			nix_sec_attach_frags(hdr, inb_priv, mbuf_init);
+			nix_sec_attach_frags(hdr, inner, inb_priv, mbuf_init);
 			*ol_flags |= inner->ol_flags;
-
-			/* Update pkt_len and data_len */
-			*rx_desc_field1 = vsetq_lane_u16(inner->pkt_len,
-							 *rx_desc_field1, 2);
-			*rx_desc_field1 = vsetq_lane_u16(inner->data_len,
-							 *rx_desc_field1, 4);
 		}
 	}
 }
@@ -697,18 +608,30 @@ nix_update_match_id(const uint16_t match_id, uint64_t ol_flags,
 
 static __rte_always_inline void
 nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
-		    uint64_t rearm, const uint16_t flags)
+		    uint64_t rearm, uintptr_t cpth, uintptr_t sa_base, const uint16_t flags)
 {
+	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)cpth;
+	struct cn10k_inb_priv_data *inb_priv = NULL;
+	uint8_t num_frags = 0, frag_i = 0;
+	struct rte_mbuf *next_mbufs[3];
 	const rte_iova_t *iova_list;
+	bool reas_success = false;
 	uint16_t later_skip = 0;
 	struct rte_mbuf *head;
 	const rte_iova_t *eol;
+	uint64_t cq_w5 = 0;
+	uint16_t ihl = 0;
+	uint64_t fsz = 0;
+	int dyn_off = 0;
 	uint8_t nb_segs;
+	uint16_t sg_len;
 	uint64_t cq_w1;
 	int64_t len;
 	uint64_t sg;
 
 	cq_w1 = *(const uint64_t *)rx;
+	if (flags & NIX_RX_REAS_F)
+		cq_w5 = *((const uint64_t *)rx + 4);
 	/* Use inner rx parse for meta pkts sg list */
 	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F) {
 		const uint64_t *wqe = (const uint64_t *)(mbuf + 1);
@@ -718,40 +641,69 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 	sg = *(const uint64_t *)(rx + 1);
 	nb_segs = (sg >> 48) & 0x3;
 
-	if (nb_segs == 1)
+	if (nb_segs == 1 && !(flags & NIX_RX_REAS_F))
 		return;
 
 	/* For security we have already updated right pkt_len */
-	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F)
+	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F) {
 		len = mbuf->pkt_len;
-	else
+
+		/* Handle reassembly with multi segs */
+		if (flags & NIX_RX_REAS_F && hdr->w0.num_frags) {
+			void *inb_sa;
+
+			num_frags = hdr->w0.num_frags;
+			inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, hdr->w0.u64 >> 32);
+			inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
+			ihl = 0;
+
+			dyn_off = inb_priv->reass_dynfield_off;
+			fsz = nix_sec_reass_frags_get(hdr, next_mbufs);
+			num_frags -= 1;
+
+			if (!(hdr->w0.reas_sts) &&
+			    (!(hdr->w0.err_sum) ||
+			     roc_ie_ot_ucc_is_success(hdr->w3.uc_ccode)))
+				reas_success = true;
+		}
+	} else {
 		len = rx->pkt_lenm1 + 1;
+	}
+
 	mbuf->pkt_len = len - (flags & NIX_RX_OFFLOAD_TSTAMP_F ? CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
+	mbuf->nb_segs = nb_segs;
+	head = mbuf;
 	mbuf->data_len =
 		(sg & 0xFFFF) - (flags & NIX_RX_OFFLOAD_TSTAMP_F ? CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
-	len -= mbuf->data_len;
-	mbuf->nb_segs = nb_segs;
-	sg = sg >> 16;
-
 	eol = ((const rte_iova_t *)(rx + 1) + ((rx->desc_sizem1 + 1) << 1));
+again:
+	len -= mbuf->data_len;
+	sg = sg >> 16;
 	/* Skip SG_S and first IOVA*/
 	iova_list = ((const rte_iova_t *)(rx + 1)) + 2;
 	nb_segs--;
 
-	rearm = rearm & ~0xFFFF;
 	later_skip = (uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf;
 
-	head = mbuf;
 	while (nb_segs) {
 		mbuf->next = (struct rte_mbuf *)(*iova_list - later_skip);
 		mbuf = mbuf->next;
 
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
-		mbuf->data_len = sg & 0xFFFF;
-		len -= sg & 0XFFFF;
+		sg_len = sg & 0XFFFF;
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			/* Adjust last mbuf data length with negative offset for
+			 * security pkts if needed.
+			 */
+			len -= sg_len;
+			sg_len = (len > 0) ? sg_len : (sg_len + len);
+			len = (len > 0) ? len : 0;
+		}
+
+		mbuf->data_len = sg_len;
 		sg = sg >> 16;
-		*(uint64_t *)(&mbuf->rearm_data) = rearm;
+		*(uint64_t *)(&mbuf->rearm_data) = rearm & ~0xFFFF;
 		nb_segs--;
 		iova_list++;
 
@@ -763,15 +715,66 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		}
 	}
 
-	/* Adjust last mbuf data length with negative offset for security pkts if needed */
-	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F && len < 0)
-		mbuf->data_len += len;
+	if ((flags & NIX_RX_REAS_F) && (cq_w1 & BIT(11)) && num_frags) {
+		struct rte_mbuf *next_frag = next_mbufs[frag_i];
+		uint16_t lcptr, ldptr = 0;
+
+		rx = (const union nix_rx_parse_u *)((uintptr_t)(next_frag + 1) + 8);
+		lcptr = (*((const uint64_t *)rx + 4) >> 16) & 0xFF;
+		eol = ((const rte_iova_t *)(rx + 1) + ((rx->desc_sizem1 + 1) << 1));
+		sg = *(const uint64_t *)(rx + 1);
+		nb_segs = (sg >> 48) & 0x3;
+
+		if (reas_success) {
+			/* Update first fragment info */
+			if (!frag_i) {
+				const uint8_t *ipptr;
+
+				ipptr = ((const uint8_t *)hdr + ((cq_w5 >> 16) & 0xFF));
+				nix_sec_reass_first_frag_update(head, ipptr, fsz, cq_w1, &ihl);
+				fsz >>= 16;
+			}
+			mbuf->next = next_frag;
+			head->nb_segs += nb_segs;
+			len = fsz & 0xFFFF;
+			fsz >>= 16;
+			ldptr = ihl + lcptr;
+		} else {
+			len = ((eol[0] >> 16) & 0xFFFF) + lcptr;
+			head->ol_flags |= BIT_ULL(inb_priv->reass_dynflag_bit) |
+				RTE_MBUF_F_RX_SEC_OFFLOAD;
+			cnxk_ip_reassembly_dynfield(head, dyn_off)->next_frag = next_frag;
+			cnxk_ip_reassembly_dynfield(head, dyn_off)->nb_frags = num_frags;
+			/* Update dynamic field with userdata from prev head */
+			*rte_security_dynfield(next_frag) = *rte_security_dynfield(head);
+			head = next_frag;
+			head->pkt_len = len - (flags & NIX_RX_OFFLOAD_TSTAMP_F ?
+					       CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
+			head->nb_segs = nb_segs;
+		}
+		mbuf = next_frag;
+		*(uint64_t *)(&mbuf->rearm_data) = rearm + ldptr;
+		mbuf->data_len = (sg & 0xFFFF) - ldptr -
+				 (flags & NIX_RX_OFFLOAD_TSTAMP_F ?
+				  CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
+		num_frags--;
+		frag_i++;
+		goto again;
+	}
+
+	/* Update for last failure fragment */
+	if ((flags & NIX_RX_REAS_F) && frag_i && !reas_success) {
+		cnxk_ip_reassembly_dynfield(head, dyn_off)->next_frag = NULL;
+		cnxk_ip_reassembly_dynfield(head, dyn_off)->nb_frags = 0;
+	}
 }
 
 static __rte_always_inline void
 cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		      struct rte_mbuf *mbuf, const void *lookup_mem,
-		      const uint64_t val, const uint16_t flag)
+		      const uint64_t val, const uintptr_t cpth, const uintptr_t sa_base,
+		      const uint16_t flag)
 {
 	const union nix_rx_parse_u *rx =
 		(const union nix_rx_parse_u *)((const uint64_t *)cq + 1);
@@ -825,7 +828,7 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		 * timestamp data process.
 		 * Hence, timestamp flag argument is not required.
 		 */
-		nix_cqe_xtract_mseg(rx, mbuf, val, flag & ~NIX_RX_OFFLOAD_TSTAMP_F);
+		nix_cqe_xtract_mseg(rx, mbuf, val, cpth, sa_base, flag & ~NIX_RX_OFFLOAD_TSTAMP_F);
 }
 
 static inline uint16_t
@@ -906,6 +909,7 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 	struct nix_cqe_hdr_s *cq;
 	struct rte_mbuf *mbuf;
 	uint64_t aura_handle;
+	uintptr_t cpth = 0;
 	uint64_t sa_base;
 	uint16_t lmt_id;
 	uint64_t laddr;
@@ -937,13 +941,15 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 			const uint64_t cq_w1 = *((const uint64_t *)cq + 1);
 			const uint64_t cq_w5 = *((const uint64_t *)cq + 5);
 
+			cpth = ((uintptr_t)mbuf + (uint16_t)data_off);
+
 			mbuf = nix_sec_meta_to_mbuf_sc(cq_w1, cq_w5, sa_base, laddr,
 						       &loff, mbuf, data_off,
 						       flags, mbuf_init);
 		}
 
 		cn10k_nix_cqe_to_mbuf(cq, cq->tag, mbuf, lookup_mem, mbuf_init,
-				      flags);
+				      cpth, sa_base, flags);
 		cn10k_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
 					(flags & NIX_RX_OFFLOAD_TSTAMP_F),
 					(uint64_t *)((uint8_t *)mbuf
@@ -1033,6 +1039,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	const uint64_t wdata = flags & NIX_RX_VWQE_F ? 0 : rxq->wdata;
 	const uintptr_t desc = flags & NIX_RX_VWQE_F ? 0 : rxq->desc;
 	uint64x2_t cq0_w8, cq1_w8, cq2_w8, cq3_w8, mbuf01, mbuf23;
+	uintptr_t cpth0 = 0, cpth1 = 0, cpth2 = 0, cpth3 = 0;
 	uint64_t ol_flags0, ol_flags1, ol_flags2, ol_flags3;
 	uint64x2_t rearm0 = vdupq_n_u64(mbuf_initializer);
 	uint64x2_t rearm1 = vdupq_n_u64(mbuf_initializer);
@@ -1333,16 +1340,17 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			uint64_t cq1_w5 = *CQE_PTR_OFF(cq0, 1, 40, flags);
 			uint64_t cq2_w5 = *CQE_PTR_OFF(cq0, 2, 40, flags);
 			uint64_t cq3_w5 = *CQE_PTR_OFF(cq0, 3, 40, flags);
-			uintptr_t cpth0 = (uintptr_t)mbuf0 + d_off;
-			uintptr_t cpth1 = (uintptr_t)mbuf1 + d_off;
-			uintptr_t cpth2 = (uintptr_t)mbuf2 + d_off;
-			uintptr_t cpth3 = (uintptr_t)mbuf3 + d_off;
 			uint8_t code;
 
 			uint64x2_t inner0, inner1, inner2, inner3;
 			uint64x2_t wqe01, wqe23, sa01, sa23;
 			uint16x4_t lens, l2lens, ltypes;
 			uint8x8_t ucc;
+
+			cpth0 = (uintptr_t)mbuf0 + d_off;
+			cpth1 = (uintptr_t)mbuf1 + d_off;
+			cpth2 = (uintptr_t)mbuf2 + d_off;
+			cpth3 = (uintptr_t)mbuf3 + d_off;
 
 			inner0 = vld1q_u64((const uint64_t *)cpth0);
 			inner1 = vld1q_u64((const uint64_t *)cpth1);
@@ -1729,16 +1737,16 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			 */
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
 					    (CQE_PTR_OFF(cq0, 0, 8, flags)),
-					    mbuf0, mbuf_initializer, flags);
+					    mbuf0, mbuf_initializer, cpth0, sa_base, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
 					    (CQE_PTR_OFF(cq0, 1, 8, flags)),
-					    mbuf1, mbuf_initializer, flags);
+					    mbuf1, mbuf_initializer, cpth1, sa_base, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
 					    (CQE_PTR_OFF(cq0, 2, 8, flags)),
-					    mbuf2, mbuf_initializer, flags);
+					    mbuf2, mbuf_initializer, cpth2, sa_base, flags);
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
 					    (CQE_PTR_OFF(cq0, 3, 8, flags)),
-					    mbuf3, mbuf_initializer, flags);
+					    mbuf3, mbuf_initializer, cpth3, sa_base, flags);
 		}
 
 		/* Store the mbufs to rx_pkts */

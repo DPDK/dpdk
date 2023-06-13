@@ -127,6 +127,7 @@ New Features
 
 * **Updated Marvell cnxk ethdev driver.**
 
+  * Added support for reassembly of multi-segment packets.
   * Extended ``RTE_FLOW_ACTION_TYPE_PORT_ID`` to redirect traffic across PF ports.
   * Added support for inline MACsec processing using security library
     for CN103 platform.
