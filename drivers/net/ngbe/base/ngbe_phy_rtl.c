@@ -392,6 +392,26 @@ s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw, u32 *speed, bool *link_up)
 			*speed = NGBE_LINK_SPEED_10M_FULL;
 	}
 
+	if (hw->lsc)
+		return status;
+
+	/*
+	 * Because of the slow speed of getting link state, RTL_PHYSR
+	 * may still be up while the actual link state is down.
+	 * So we read RTL_GBSR to get accurate state when speed is 1G
+	 * in polling mode.
+	 */
+	if (*speed == NGBE_LINK_SPEED_1GB_FULL) {
+		status = hw->phy.read_reg(hw, RTL_GBSR,
+				RTL_DEV_ZERO, &phy_data);
+		phy_link = phy_data & RTL_GBSR_LRS;
+
+		/* Only need to detect link down */
+		if (!phy_link) {
+			*link_up = false;
+			*speed = NGBE_LINK_SPEED_UNKNOWN;
+		}
+	}
 	return status;
 }
 

@@ -102,13 +102,15 @@ s32 ngbe_init_phy_yt(struct ngbe_hw *hw)
 {
 	rte_spinlock_init(&hw->phy_lock);
 
-	rte_spinlock_lock(&hw->phy_lock);
-	/* close sds area register */
-	ngbe_write_phy_reg_ext_yt(hw, YT_SMI_PHY, 0, 0);
-	/* enable interrupts */
-	ngbe_write_phy_reg_mdi(hw, YT_INTR, 0,
-				YT_INTR_ENA_MASK | YT_SDS_INTR_ENA_MASK);
-	rte_spinlock_unlock(&hw->phy_lock);
+	if (hw->lsc) {
+		rte_spinlock_lock(&hw->phy_lock);
+		/* close sds area register */
+		ngbe_write_phy_reg_ext_yt(hw, YT_SMI_PHY, 0, 0);
+		/* enable interrupts */
+		ngbe_write_phy_reg_mdi(hw, YT_INTR, 0,
+					YT_INTR_ENA_MASK | YT_SDS_INTR_ENA_MASK);
+		rte_spinlock_unlock(&hw->phy_lock);
+	}
 
 	hw->phy.set_phy_power(hw, false);
 
