@@ -259,6 +259,268 @@ cnxk_eth_macsec_sc_destroy(void *device, uint16_t sc_id, enum rte_security_macse
 	return ret;
 }
 
+struct cnxk_macsec_sess *
+cnxk_eth_macsec_sess_get_by_sess(struct cnxk_eth_dev *dev, const struct rte_security_session *sess)
+{
+	struct cnxk_macsec_sess *macsec_sess = NULL;
+
+	TAILQ_FOREACH(macsec_sess, &dev->mcs_list, entry) {
+		if (macsec_sess->sess == sess)
+			return macsec_sess;
+	}
+
+	return NULL;
+}
+
+int
+cnxk_eth_macsec_session_create(struct cnxk_eth_dev *dev, struct rte_security_session_conf *conf,
+			       struct rte_security_session *sess)
+{
+	struct cnxk_macsec_sess *macsec_sess_priv = SECURITY_GET_SESS_PRIV(sess);
+	struct rte_security_macsec_xform *xform = &conf->macsec;
+	struct cnxk_mcs_dev *mcs_dev = dev->mcs_dev;
+	struct roc_mcs_secy_plcy_write_req req;
+	enum mcs_direction dir;
+	uint8_t secy_id = 0;
+	uint8_t sectag_tci = 0;
+	int ret = 0;
+
+	if (!roc_feature_nix_has_macsec())
+		return -ENOTSUP;
+
+	dir = (xform->dir == RTE_SECURITY_MACSEC_DIR_TX) ? MCS_TX : MCS_RX;
+	ret = mcs_resource_alloc(mcs_dev, dir, &secy_id, 1, CNXK_MCS_RSRC_TYPE_SECY);
+	if (ret) {
+		plt_err("Failed to allocate SECY id.");
+		return -ENOMEM;
+	}
+
+	req.secy_id = secy_id;
+	req.dir = dir;
+	req.plcy = 0L;
+
+	if (xform->dir == RTE_SECURITY_MACSEC_DIR_TX) {
+		sectag_tci = ((uint8_t)xform->tx_secy.sectag_version << 5) |
+			     ((uint8_t)xform->tx_secy.end_station << 4) |
+			     ((uint8_t)xform->tx_secy.send_sci << 3) |
+			     ((uint8_t)xform->tx_secy.scb << 2) |
+			     ((uint8_t)xform->tx_secy.encrypt << 1) |
+			     (uint8_t)xform->tx_secy.encrypt;
+		req.plcy = (((uint64_t)xform->tx_secy.mtu & 0xFFFF) << 28) |
+			   (((uint64_t)sectag_tci & 0x3F) << 22) |
+			   (((uint64_t)xform->tx_secy.sectag_off & 0x7F) << 15) |
+			   ((uint64_t)xform->tx_secy.sectag_insert_mode << 14) |
+			   ((uint64_t)xform->tx_secy.icv_include_da_sa << 13) |
+			   (((uint64_t)xform->cipher_off & 0x7F) << 6) |
+			   ((uint64_t)xform->alg << 2) |
+			   ((uint64_t)xform->tx_secy.protect_frames << 1) |
+			   (uint64_t)xform->tx_secy.ctrl_port_enable;
+	} else {
+		req.plcy = ((uint64_t)xform->rx_secy.replay_win_sz << 18) |
+			   ((uint64_t)xform->rx_secy.replay_protect << 17) |
+			   ((uint64_t)xform->rx_secy.icv_include_da_sa << 16) |
+			   (((uint64_t)xform->cipher_off & 0x7F) << 9) |
+			   ((uint64_t)xform->alg << 5) |
+			   ((uint64_t)xform->rx_secy.preserve_sectag << 4) |
+			   ((uint64_t)xform->rx_secy.preserve_icv << 3) |
+			   ((uint64_t)xform->rx_secy.validate_frames << 1) |
+			   (uint64_t)xform->rx_secy.ctrl_port_enable;
+	}
+
+	ret = roc_mcs_secy_policy_write(mcs_dev->mdev, &req);
+	if (ret) {
+		plt_err(" Failed to configure Tx SECY");
+		return -EINVAL;
+	}
+
+	if (xform->dir == RTE_SECURITY_MACSEC_DIR_RX) {
+		struct roc_mcs_rx_sc_cam_write_req rx_sc_cam = {0};
+
+		rx_sc_cam.sci = xform->sci;
+		rx_sc_cam.secy_id = secy_id & 0x3F;
+		rx_sc_cam.sc_id = xform->sc_id;
+		ret = roc_mcs_rx_sc_cam_write(mcs_dev->mdev, &rx_sc_cam);
+		if (ret) {
+			plt_err(" Failed to write rx_sc_cam");
+			return -EINVAL;
+		}
+	}
+	macsec_sess_priv->sci = xform->sci;
+	macsec_sess_priv->sc_id = xform->sc_id;
+	macsec_sess_priv->secy_id = secy_id;
+	macsec_sess_priv->dir = dir;
+	macsec_sess_priv->sess = sess;
+
+	TAILQ_INSERT_TAIL(&dev->mcs_list, macsec_sess_priv, entry);
+
+	return 0;
+}
+
+int
+cnxk_eth_macsec_session_destroy(struct cnxk_eth_dev *dev, struct rte_security_session *sess)
+{
+	struct cnxk_mcs_dev *mcs_dev = dev->mcs_dev;
+	struct roc_mcs_clear_stats stats_req = {0};
+	struct roc_mcs_free_rsrc_req req = {0};
+	struct cnxk_macsec_sess *s;
+	int ret = 0;
+
+	if (!roc_feature_nix_has_macsec())
+		return -ENOTSUP;
+
+	s = SECURITY_GET_SESS_PRIV(sess);
+
+	stats_req.type = CNXK_MCS_RSRC_TYPE_SECY;
+	stats_req.id = s->secy_id;
+	stats_req.dir = s->dir;
+	stats_req.all = 0;
+
+	ret = roc_mcs_stats_clear(mcs_dev->mdev, &stats_req);
+	if (ret)
+		plt_err("Failed to clear stats for SECY id %u, dir %u.", s->secy_id, s->dir);
+
+	req.rsrc_id = s->secy_id;
+	req.dir = s->dir;
+	req.rsrc_type = CNXK_MCS_RSRC_TYPE_SECY;
+
+	ret = roc_mcs_rsrc_free(mcs_dev->mdev, &req);
+	if (ret)
+		plt_err("Failed to free SC id.");
+
+	TAILQ_REMOVE(&dev->mcs_list, s, entry);
+
+	return ret;
+}
+
+int
+cnxk_mcs_flow_configure(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr __rte_unused,
+			 const struct rte_flow_item pattern[],
+			 const struct rte_flow_action actions[],
+			 struct rte_flow_error *error __rte_unused, void **mcs_flow)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct rte_flow_item_eth *eth_item = NULL;
+	struct cnxk_mcs_dev *mcs_dev = dev->mcs_dev;
+	struct roc_mcs_flowid_entry_write_req req;
+	struct cnxk_mcs_flow_opts opts = {0};
+	struct cnxk_macsec_sess *sess;
+	struct rte_ether_addr src;
+	struct rte_ether_addr dst;
+	int ret;
+	int i = 0;
+
+	if (!roc_feature_nix_has_macsec())
+		return -ENOTSUP;
+
+	sess = cnxk_eth_macsec_sess_get_by_sess(dev,
+			(const struct rte_security_session *)actions->conf);
+	if (sess == NULL)
+		return -EINVAL;
+
+	ret = mcs_resource_alloc(mcs_dev, sess->dir, &sess->flow_id, 1,
+				 CNXK_MCS_RSRC_TYPE_FLOWID);
+	if (ret) {
+		plt_err("Failed to allocate FLow id.");
+		return -ENOMEM;
+	}
+	memset(&req, 0, sizeof(struct roc_mcs_flowid_entry_write_req));
+	req.sci = sess->sci;
+	req.flow_id = sess->flow_id;
+	req.secy_id = sess->secy_id;
+	req.sc_id = sess->sc_id;
+	req.ena = 1;
+	req.ctr_pkt = 0;
+	req.dir = sess->dir;
+
+	while (pattern[i].type != RTE_FLOW_ITEM_TYPE_END) {
+		if (pattern[i].type == RTE_FLOW_ITEM_TYPE_ETH)
+			eth_item = pattern[i].spec;
+		else
+			plt_err("Unhandled flow item : %d", pattern[i].type);
+		i++;
+	}
+	if (eth_item) {
+		dst = eth_item->hdr.dst_addr;
+		src = eth_item->hdr.src_addr;
+
+		/* Find ways to fill opts */
+
+		req.data[0] =
+			(uint64_t)dst.addr_bytes[0] << 40 | (uint64_t)dst.addr_bytes[1] << 32 |
+			(uint64_t)dst.addr_bytes[2] << 24 | (uint64_t)dst.addr_bytes[3] << 16 |
+			(uint64_t)dst.addr_bytes[4] << 8 | (uint64_t)dst.addr_bytes[5] |
+			(uint64_t)src.addr_bytes[5] << 48 | (uint64_t)src.addr_bytes[4] << 56;
+		req.data[1] = (uint64_t)src.addr_bytes[3] | (uint64_t)src.addr_bytes[2] << 8 |
+			      (uint64_t)src.addr_bytes[1] << 16 |
+			      (uint64_t)src.addr_bytes[0] << 24 |
+			      (uint64_t)eth_item->hdr.ether_type << 32 |
+			      ((uint64_t)opts.outer_tag_id & 0xFFFF) << 48;
+		req.data[2] = ((uint64_t)opts.outer_tag_id & 0xF0000) |
+			      ((uint64_t)opts.outer_priority & 0xF) << 4 |
+			      ((uint64_t)opts.second_outer_tag_id & 0xFFFFF) << 8 |
+			      ((uint64_t)opts.second_outer_priority & 0xF) << 28 |
+			      ((uint64_t)opts.bonus_data << 32) |
+			      ((uint64_t)opts.tag_match_bitmap << 48) |
+			      ((uint64_t)opts.packet_type & 0xF) << 56 |
+			      ((uint64_t)opts.outer_vlan_type & 0x7) << 60 |
+			      ((uint64_t)opts.inner_vlan_type & 0x1) << 63;
+		req.data[3] = ((uint64_t)opts.inner_vlan_type & 0x6) >> 1 |
+			      ((uint64_t)opts.num_tags & 0x7F) << 2 |
+			      ((uint64_t)opts.flowid_user & 0x1F) << 9 |
+			      ((uint64_t)opts.express & 1) << 14 |
+			      ((uint64_t)opts.lmac_id & 0x1F) << 15;
+
+		req.mask[0] = 0x0;
+		req.mask[1] = 0xFFFFFFFF00000000;
+		req.mask[2] = 0xFFFFFFFFFFFFFFFF;
+		req.mask[3] = 0xFFFFFFFFFFFFFFFF;
+
+		ret = roc_mcs_flowid_entry_write(mcs_dev->mdev, &req);
+		if (ret)
+			return ret;
+		*mcs_flow = (void *)(uintptr_t)actions->conf;
+	} else {
+		plt_err("Flow not confirured");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int
+cnxk_mcs_flow_destroy(struct cnxk_eth_dev *dev, void *flow)
+{
+	const struct cnxk_macsec_sess *s = cnxk_eth_macsec_sess_get_by_sess(dev, flow);
+	struct cnxk_mcs_dev *mcs_dev = dev->mcs_dev;
+	struct roc_mcs_clear_stats stats_req = {0};
+	struct roc_mcs_free_rsrc_req req = {0};
+	int ret = 0;
+
+	if (!roc_feature_nix_has_macsec())
+		return -ENOTSUP;
+
+	if (s == NULL)
+		return 0;
+
+	stats_req.type = CNXK_MCS_RSRC_TYPE_FLOWID;
+	stats_req.id = s->flow_id;
+	stats_req.dir = s->dir;
+	stats_req.all = 0;
+
+	ret = roc_mcs_stats_clear(mcs_dev->mdev, &stats_req);
+	if (ret)
+		plt_err("Failed to clear stats for Flow id %u, dir %u.", s->flow_id, s->dir);
+
+	req.rsrc_id = s->flow_id;
+	req.dir = s->dir;
+	req.rsrc_type = CNXK_MCS_RSRC_TYPE_FLOWID;
+
+	ret = roc_mcs_rsrc_free(mcs_dev->mdev, &req);
+	if (ret)
+		plt_err("Failed to free flow_id: %d.", s->flow_id);
+
+	return ret;
+}
+
 static int
 cnxk_mcs_event_cb(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg)
 {

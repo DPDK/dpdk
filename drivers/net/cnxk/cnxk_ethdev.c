@@ -1969,6 +1969,8 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 		}
 		dev->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_MACSEC_STRIP;
 		dev->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MACSEC_INSERT;
+
+		TAILQ_INIT(&dev->mcs_list);
 	}
 
 	plt_nix_dbg("Port=%d pf=%d vf=%d ver=%s hwcap=0x%" PRIx64

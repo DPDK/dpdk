@@ -284,7 +284,7 @@ cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 static unsigned int
 cnxk_eth_sec_session_get_size(void *device __rte_unused)
 {
-	return sizeof(struct cnxk_eth_sec_sess);
+	return RTE_MAX(sizeof(struct cnxk_macsec_sess), sizeof(struct cnxk_eth_sec_sess));
 }
 
 struct rte_security_ops cnxk_eth_sec_ops = {

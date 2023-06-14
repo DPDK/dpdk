@@ -642,7 +642,9 @@ cn10k_eth_sec_session_create(void *device,
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 		return -ENOTSUP;
 
-	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
+	if (conf->protocol == RTE_SECURITY_PROTOCOL_MACSEC)
+		return cnxk_eth_macsec_session_create(dev, conf, sess);
+	else if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
 		return -ENOTSUP;
 
 	if (rte_security_dynfield_register() < 0)
@@ -887,13 +889,18 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_macsec_sess *macsec_sess;
 	struct cnxk_eth_sec_sess *eth_sec;
 	rte_spinlock_t *lock;
 	void *sa_dptr;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
-	if (!eth_sec)
+	if (!eth_sec) {
+		macsec_sess = cnxk_eth_macsec_sess_get_by_sess(dev, sess);
+		if (macsec_sess)
+			return cnxk_eth_macsec_session_destroy(dev, sess);
 		return -ENOENT;
+	}
 
 	lock = eth_sec->inb ? &dev->inb.lock : &dev->outb.lock;
 	rte_spinlock_lock(lock);

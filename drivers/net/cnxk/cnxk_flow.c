@@ -289,6 +289,11 @@ cnxk_flow_validate(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 	uint16_t dst_pf_func = 0;
 	int rc;
 
+	/* Skip flow validation for MACsec. */
+	if (actions[0].type == RTE_FLOW_ACTION_TYPE_SECURITY &&
+	    cnxk_eth_macsec_sess_get_by_sess(dev, actions[0].conf) != NULL)
+		return 0;
+
 	memset(&flow, 0, sizeof(flow));
 	flow.is_validate = true;
 

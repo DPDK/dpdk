@@ -24,6 +24,27 @@ enum cnxk_mcs_rsrc_type {
 	CNXK_MCS_RSRC_TYPE_PORT,
 };
 
+struct cnxk_mcs_flow_opts {
+	uint32_t outer_tag_id;
+	/**< {VLAN_ID[11:0]}, or 20-bit MPLS label*/
+	uint8_t outer_priority;
+	/**< {PCP/Pbits, DE/CFI} or {1'b0, EXP} for MPLS.*/
+	uint32_t second_outer_tag_id;
+	/**< {VLAN_ID[11:0]}, or 20-bit MPLS label*/
+	uint8_t second_outer_priority;
+	/**< {PCP/Pbits, DE/CFI} or {1'b0, EXP} for MPLS. */
+	uint16_t bonus_data;
+	/**< 2 bytes of additional bonus data extracted from one of the custom tags*/
+	uint8_t tag_match_bitmap;
+	uint8_t packet_type;
+	uint8_t outer_vlan_type;
+	uint8_t inner_vlan_type;
+	uint8_t num_tags;
+	bool express;
+	uint8_t lmac_id;
+	uint8_t flowid_user;
+};
+
 struct cnxk_mcs_event_data {
 	/* Valid for below events
 	 * - ROC_MCS_EVENT_RX_SA_PN_SOFT_EXP
@@ -78,5 +99,9 @@ int cnxk_eth_macsec_sa_destroy(void *device, uint16_t sa_id,
 			       enum rte_security_macsec_direction dir);
 int cnxk_eth_macsec_sc_destroy(void *device, uint16_t sc_id,
 			       enum rte_security_macsec_direction dir);
+
+int cnxk_eth_macsec_session_create(struct cnxk_eth_dev *dev, struct rte_security_session_conf *conf,
+				   struct rte_security_session *sess);
+int cnxk_eth_macsec_session_destroy(struct cnxk_eth_dev *dev, struct rte_security_session *sess);
 
 #endif /* CNXK_ETHDEV_MCS_H */

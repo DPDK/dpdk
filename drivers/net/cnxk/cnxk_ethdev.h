@@ -292,6 +292,21 @@ struct cnxk_eth_dev_sec_outb {
 	uint64_t cpt_eng_caps;
 };
 
+/* MACsec session private data */
+struct cnxk_macsec_sess {
+	/* List entry */
+	TAILQ_ENTRY(cnxk_macsec_sess) entry;
+
+	/* Back pointer to session */
+	struct rte_security_session *sess;
+	enum mcs_direction dir;
+	uint64_t sci;
+	uint8_t secy_id;
+	uint8_t sc_id;
+	uint8_t flow_id;
+};
+TAILQ_HEAD(cnxk_macsec_sess_list, cnxk_macsec_sess);
+
 struct cnxk_eth_dev {
 	/* ROC NIX */
 	struct roc_nix nix;
@@ -398,6 +413,7 @@ struct cnxk_eth_dev {
 
 	/* MCS device */
 	struct cnxk_mcs_dev *mcs_dev;
+	struct cnxk_macsec_sess_list mcs_list;
 };
 
 struct cnxk_eth_rxq_sp {
