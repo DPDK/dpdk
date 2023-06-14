@@ -420,29 +420,17 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype, struct rte_mbuf *mb)
  *
  * @param rxds
  *   Rx descriptor including the offloading info of packet type.
- * @param hw
- *   Device.
  * @param mb
  *   Mbuf to set the packet type.
  */
 static void
 nfp_net_parse_ptype(struct nfp_net_rx_desc *rxds,
-		struct nfp_net_hw *hw,
 		struct rte_mbuf *mb)
 {
-	uint32_t cap_extend;
-	uint32_t ctrl_extend;
 	struct nfp_ptype_parsed nfp_ptype;
 	uint16_t rxd_ptype = rxds->rxd.offload_info;
 
 	if (rxd_ptype == 0 || (rxds->rxd.flags & PCIE_DESC_RX_VLAN) != 0)
-		return;
-
-	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
-	ctrl_extend = nn_cfg_readl(hw, NFP_NET_CFG_CTRL_WORD1);
-
-	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) == 0 ||
-			(ctrl_extend & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return;
 
 	nfp_ptype.l4_ptype = (rxd_ptype & NFP_NET_PTYPE_L4_MASK) >>
@@ -593,7 +581,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		struct nfp_meta_parsed meta = {};
 		nfp_net_parse_meta(rxds, rxq, hw, mb, &meta);
 
-		nfp_net_parse_ptype(rxds, hw, mb);
+		nfp_net_parse_ptype(rxds, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);
