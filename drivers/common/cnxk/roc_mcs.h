@@ -88,6 +88,25 @@ struct roc_mcs_flowid_ena_dis_entry {
 	uint8_t dir;
 };
 
+struct roc_mcs_pn_table_write_req {
+	uint64_t next_pn;
+	uint8_t pn_id;
+	uint8_t dir;
+};
+
+struct roc_mcs_cam_entry_read_req {
+	uint8_t rsrc_type; /* TCAM/SECY/SC/SA/PN */
+	uint8_t rsrc_id;
+	uint8_t dir;
+};
+
+struct roc_mcs_cam_entry_read_rsp {
+	uint64_t reg_val[10];
+	uint8_t rsrc_type;
+	uint8_t rsrc_id;
+	uint8_t dir;
+};
+
 struct roc_mcs_hw_info {
 	uint8_t num_mcs_blks; /* Number of MCS blocks */
 	uint8_t tcam_entries; /* RX/TX Tcam entries per mcs block */
@@ -97,6 +116,24 @@ struct roc_mcs_hw_info {
 	uint64_t rsvd[16];
 };
 
+struct roc_mcs_set_lmac_mode {
+	uint8_t mode; /* '1' for internal bypass mode (passthrough), '0' for MCS processing */
+	uint8_t lmac_id;
+	uint64_t rsvd;
+};
+
+struct roc_mcs_set_active_lmac {
+	uint32_t lmac_bmap;    /* bitmap of active lmac per mcs block */
+	uint16_t channel_base; /* MCS channel base */
+	uint64_t rsvd;
+};
+
+struct roc_mcs_set_pn_threshold {
+	uint64_t threshold;
+	uint8_t xpn; /* '1' for setting xpn threshold */
+	uint8_t dir;
+	uint64_t rsvd;
+};
 
 struct roc_mcs {
 	TAILQ_ENTRY(roc_mcs) next;
@@ -119,6 +156,12 @@ __roc_api void roc_mcs_dev_fini(struct roc_mcs *mcs);
 __roc_api struct roc_mcs *roc_mcs_dev_get(uint8_t mcs_idx);
 /* HW info get */
 __roc_api int roc_mcs_hw_info_get(struct roc_mcs_hw_info *hw_info);
+/* Active lmac bmap set */
+__roc_api int roc_mcs_active_lmac_set(struct roc_mcs *mcs, struct roc_mcs_set_active_lmac *lmac);
+/* Port bypass mode set */
+__roc_api int roc_mcs_lmac_mode_set(struct roc_mcs *mcs, struct roc_mcs_set_lmac_mode *port);
+/* (X)PN threshold set */
+__roc_api int roc_mcs_pn_threshold_set(struct roc_mcs *mcs, struct roc_mcs_set_pn_threshold *pn);
 
 /* Resource allocation and free */
 __roc_api int roc_mcs_rsrc_alloc(struct roc_mcs *mcs, struct roc_mcs_alloc_rsrc_req *req,
@@ -129,6 +172,12 @@ __roc_api int roc_mcs_sa_policy_write(struct roc_mcs *mcs,
 				      struct roc_mcs_sa_plcy_write_req *sa_plcy);
 __roc_api int roc_mcs_sa_policy_read(struct roc_mcs *mcs,
 				     struct roc_mcs_sa_plcy_write_req *sa_plcy);
+
+/* PN Table read and write */
+__roc_api int roc_mcs_pn_table_write(struct roc_mcs *mcs,
+				     struct roc_mcs_pn_table_write_req *pn_table);
+__roc_api int roc_mcs_pn_table_read(struct roc_mcs *mcs,
+				    struct roc_mcs_pn_table_write_req *pn_table);
 
 /* RX SC read, write and enable */
 __roc_api int roc_mcs_rx_sc_cam_write(struct roc_mcs *mcs,

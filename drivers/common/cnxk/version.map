@@ -135,6 +135,7 @@ INTERNAL {
 	roc_se_auth_key_set;
 	roc_se_ciph_key_set;
 	roc_se_ctx_init;
+	roc_mcs_active_lmac_set;
 	roc_mcs_dev_init;
 	roc_mcs_dev_fini;
 	roc_mcs_dev_get;
@@ -142,6 +143,10 @@ INTERNAL {
 	roc_mcs_flowid_entry_read;
 	roc_mcs_flowid_entry_write;
 	roc_mcs_hw_info_get;
+	roc_mcs_lmac_mode_set;
+	roc_mcs_pn_table_write;
+	roc_mcs_pn_table_read;
+	roc_mcs_pn_threshold_set;
 	roc_mcs_rsrc_alloc;
 	roc_mcs_rsrc_free;
 	roc_mcs_rx_sc_cam_enable;

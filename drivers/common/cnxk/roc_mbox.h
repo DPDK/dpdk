@@ -308,7 +308,11 @@ struct mbox_msghdr {
 	M(MCS_TX_SC_SA_MAP_WRITE, 0xa006, mcs_tx_sc_sa_map_write, mcs_tx_sc_sa_map, msg_rsp)       \
 	M(MCS_RX_SC_SA_MAP_WRITE, 0xa007, mcs_rx_sc_sa_map_write, mcs_rx_sc_sa_map, msg_rsp)       \
 	M(MCS_FLOWID_ENA_ENTRY, 0xa008, mcs_flowid_ena_entry, mcs_flowid_ena_dis_entry, msg_rsp)   \
+	M(MCS_PN_TABLE_WRITE, 0xa009, mcs_pn_table_write, mcs_pn_table_write_req, msg_rsp)         \
+	M(MCS_SET_ACTIVE_LMAC, 0xa00a, mcs_set_active_lmac, mcs_set_active_lmac, msg_rsp)          \
 	M(MCS_GET_HW_INFO, 0xa00b, mcs_get_hw_info, msg_req, mcs_hw_info)                          \
+	M(MCS_SET_LMAC_MODE, 0xa013, mcs_set_lmac_mode, mcs_set_lmac_mode, msg_rsp)                \
+	M(MCS_SET_PN_THRESHOLD, 0xa014, mcs_set_pn_threshold, mcs_set_pn_threshold, msg_rsp)       \
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
 #define MBOX_UP_CGX_MESSAGES                                                   \
@@ -812,6 +816,34 @@ struct mcs_flowid_ena_dis_entry {
 	uint64_t __io rsvd;
 };
 
+struct mcs_pn_table_write_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io next_pn;
+	uint8_t __io pn_id;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
+struct mcs_cam_entry_read_req {
+	struct mbox_msghdr hdr;
+	uint8_t __io rsrc_type; /* TCAM/SECY/SC/SA/PN */
+	uint8_t __io rsrc_id;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
+struct mcs_cam_entry_read_rsp {
+	struct mbox_msghdr hdr;
+	uint64_t __io reg_val[10];
+	uint8_t __io rsrc_type;
+	uint8_t __io rsrc_id;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
 struct mcs_hw_info {
 	struct mbox_msghdr hdr;
 	uint8_t __io num_mcs_blks; /* Number of MCS blocks */
@@ -822,6 +854,30 @@ struct mcs_hw_info {
 	uint64_t __io rsvd[16];
 };
 
+struct mcs_set_active_lmac {
+	struct mbox_msghdr hdr;
+	uint32_t __io lmac_bmap; /* bitmap of active lmac per mcs block */
+	uint8_t __io mcs_id;
+	uint16_t __io channel_base; /* MCS channel base */
+	uint64_t __io rsvd;
+};
+
+struct mcs_set_lmac_mode {
+	struct mbox_msghdr hdr;
+	uint8_t __io mode; /* '1' for internal bypass mode (passthrough), '0' for MCS processing */
+	uint8_t __io lmac_id;
+	uint8_t __io mcs_id;
+	uint64_t __io rsvd;
+};
+
+struct mcs_set_pn_threshold {
+	struct mbox_msghdr hdr;
+	uint64_t __io threshold;
+	uint8_t __io xpn; /* '1' for setting xpn threshold */
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
 
 /* NPA mbox message formats */
 

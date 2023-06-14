@@ -210,6 +210,37 @@ roc_mcs_sa_policy_read(struct roc_mcs *mcs __plt_unused,
 	return -ENOTSUP;
 }
 
+int
+roc_mcs_pn_table_write(struct roc_mcs *mcs, struct roc_mcs_pn_table_write_req *pn_table)
+{
+	struct mcs_pn_table_write_req *pn;
+	struct msg_rsp *rsp;
+
+	MCS_SUPPORT_CHECK;
+
+	if (pn_table == NULL)
+		return -EINVAL;
+
+	pn = mbox_alloc_msg_mcs_pn_table_write(mcs->mbox);
+	if (pn == NULL)
+		return -ENOMEM;
+
+	pn->next_pn = pn_table->next_pn;
+	pn->pn_id = pn_table->pn_id;
+	pn->mcs_id = mcs->idx;
+	pn->dir = pn_table->dir;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_pn_table_read(struct roc_mcs *mcs __plt_unused,
+		      struct roc_mcs_pn_table_write_req *sa __plt_unused)
+{
+	MCS_SUPPORT_CHECK;
+
+	return -ENOTSUP;
+}
 
 int
 roc_mcs_rx_sc_cam_write(struct roc_mcs *mcs, struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam)

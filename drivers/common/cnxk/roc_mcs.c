@@ -38,6 +38,77 @@ roc_mcs_hw_info_get(struct roc_mcs_hw_info *hw_info)
 	return rc;
 }
 
+int
+roc_mcs_active_lmac_set(struct roc_mcs *mcs, struct roc_mcs_set_active_lmac *lmac)
+{
+	struct mcs_set_active_lmac *req;
+	struct msg_rsp *rsp;
+
+	/* Only needed for 105N */
+	if (!roc_model_is_cnf10kb())
+		return 0;
+
+	if (lmac == NULL)
+		return -EINVAL;
+
+	MCS_SUPPORT_CHECK;
+
+	req = mbox_alloc_msg_mcs_set_active_lmac(mcs->mbox);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->lmac_bmap = lmac->lmac_bmap;
+	req->channel_base = lmac->channel_base;
+	req->mcs_id = mcs->idx;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_lmac_mode_set(struct roc_mcs *mcs, struct roc_mcs_set_lmac_mode *port)
+{
+	struct mcs_set_lmac_mode *req;
+	struct msg_rsp *rsp;
+
+	if (port == NULL)
+		return -EINVAL;
+
+	MCS_SUPPORT_CHECK;
+
+	req = mbox_alloc_msg_mcs_set_lmac_mode(mcs->mbox);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->lmac_id = port->lmac_id;
+	req->mcs_id = mcs->idx;
+	req->mode = port->mode;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_pn_threshold_set(struct roc_mcs *mcs, struct roc_mcs_set_pn_threshold *pn)
+{
+	struct mcs_set_pn_threshold *req;
+	struct msg_rsp *rsp;
+
+	if (pn == NULL)
+		return -EINVAL;
+
+	MCS_SUPPORT_CHECK;
+
+	req = mbox_alloc_msg_mcs_set_pn_threshold(mcs->mbox);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->threshold = pn->threshold;
+	req->mcs_id = mcs->idx;
+	req->dir = pn->dir;
+	req->xpn = pn->xpn;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
 static int
 mcs_alloc_bmap(uint16_t entries, void **mem, struct plt_bitmap **bmap)
 {
