@@ -135,6 +135,76 @@ struct roc_mcs_set_pn_threshold {
 	uint64_t rsvd;
 };
 
+struct roc_mcs_stats_req {
+	uint8_t id;
+	uint8_t dir;
+};
+
+struct roc_mcs_flowid_stats {
+	uint64_t tcam_hit_cnt;
+};
+
+struct roc_mcs_secy_stats {
+	uint64_t ctl_pkt_bcast_cnt;
+	uint64_t ctl_pkt_mcast_cnt;
+	uint64_t ctl_pkt_ucast_cnt;
+	uint64_t ctl_octet_cnt;
+	uint64_t unctl_pkt_bcast_cnt;
+	uint64_t unctl_pkt_mcast_cnt;
+	uint64_t unctl_pkt_ucast_cnt;
+	uint64_t unctl_octet_cnt;
+	/* Valid only for RX */
+	uint64_t octet_decrypted_cnt;
+	uint64_t octet_validated_cnt;
+	uint64_t pkt_port_disabled_cnt;
+	uint64_t pkt_badtag_cnt;
+	uint64_t pkt_nosa_cnt;
+	uint64_t pkt_nosaerror_cnt;
+	uint64_t pkt_tagged_ctl_cnt;
+	uint64_t pkt_untaged_cnt;
+	uint64_t pkt_ctl_cnt;	/* CN10K-B */
+	uint64_t pkt_notag_cnt; /* CNF10K-B */
+	/* Valid only for TX */
+	uint64_t octet_encrypted_cnt;
+	uint64_t octet_protected_cnt;
+	uint64_t pkt_noactivesa_cnt;
+	uint64_t pkt_toolong_cnt;
+	uint64_t pkt_untagged_cnt;
+};
+
+struct roc_mcs_sc_stats {
+	/* RX */
+	uint64_t hit_cnt;
+	uint64_t pkt_invalid_cnt;
+	uint64_t pkt_late_cnt;
+	uint64_t pkt_notvalid_cnt;
+	uint64_t pkt_unchecked_cnt;
+	uint64_t pkt_delay_cnt;	     /* CNF10K-B */
+	uint64_t pkt_ok_cnt;	     /* CNF10K-B */
+	uint64_t octet_decrypt_cnt;  /* CN10K-B */
+	uint64_t octet_validate_cnt; /* CN10K-B */
+	/* TX */
+	uint64_t pkt_encrypt_cnt;
+	uint64_t pkt_protected_cnt;
+	uint64_t octet_encrypt_cnt;   /* CN10K-B */
+	uint64_t octet_protected_cnt; /* CN10K-B */
+};
+
+struct roc_mcs_port_stats {
+	uint64_t tcam_miss_cnt;
+	uint64_t parser_err_cnt;
+	uint64_t preempt_err_cnt; /* CNF10K-B */
+	uint64_t sectag_insert_err_cnt;
+};
+
+struct roc_mcs_clear_stats {
+	uint8_t type; /* FLOWID, SECY, SC, SA, PORT */
+	/* type = PORT, If id = FF(invalid) port no is derived from pcifunc */
+	uint8_t id;
+	uint8_t dir;
+	uint8_t all; /* All resources stats mapped to PF are cleared */
+};
+
 struct roc_mcs {
 	TAILQ_ENTRY(roc_mcs) next;
 	struct plt_pci_device *pci_dev;
@@ -209,5 +279,20 @@ __roc_api int roc_mcs_flowid_entry_read(struct roc_mcs *mcs,
 					struct roc_mcs_flowid_entry_write_req *flowid_rsp);
 __roc_api int roc_mcs_flowid_entry_enable(struct roc_mcs *mcs,
 					  struct roc_mcs_flowid_ena_dis_entry *entry);
+
+/* Flow id stats get */
+__roc_api int roc_mcs_flowid_stats_get(struct roc_mcs *mcs, struct roc_mcs_stats_req *mcs_req,
+				       struct roc_mcs_flowid_stats *stats);
+/* Secy stats get */
+__roc_api int roc_mcs_secy_stats_get(struct roc_mcs *mcs, struct roc_mcs_stats_req *mcs_req,
+				     struct roc_mcs_secy_stats *stats);
+/* SC stats get */
+__roc_api int roc_mcs_sc_stats_get(struct roc_mcs *mcs, struct roc_mcs_stats_req *mcs_req,
+				   struct roc_mcs_sc_stats *stats);
+/* Port stats get */
+__roc_api int roc_mcs_port_stats_get(struct roc_mcs *mcs, struct roc_mcs_stats_req *mcs_req,
+				     struct roc_mcs_port_stats *stats);
+/* Clear stats */
+__roc_api int roc_mcs_stats_clear(struct roc_mcs *mcs, struct roc_mcs_clear_stats *mcs_req);
 
 #endif /* ROC_MCS_H */
