@@ -189,13 +189,70 @@ In the above example, A graph object will be created with ethdev Rx
 node of port 0 and queue 0, all ipv4* nodes in the system,
 and ethdev tx node of all ports.
 
-Multicore graph processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-In the current graph library implementation, specifically,
-``rte_graph_walk()`` and ``rte_node_enqueue*`` fast path API functions
-are designed to work on single-core to have better performance.
-The fast path API works on graph object, So the multi-core graph
-processing strategy would be to create graph object PER WORKER.
+Graph models
+~~~~~~~~~~~~
+There are two different kinds of graph walking models. User can select the model using
+``rte_graph_worker_model_set()`` API. If the application decides to use only one model,
+the fast path check can be avoided by defining the model with RTE_GRAPH_MODEL_SELECT.
+For example:
+
+.. code-block:: c
+
+  #define RTE_GRAPH_MODEL_SELECT RTE_GRAPH_MODEL_RTC
+  #include "rte_graph_worker.h"
+
+RTC (Run-To-Completion)
+^^^^^^^^^^^^^^^^^^^^^^^
+This is the default graph walking model. Specifically, ``rte_graph_walk_rtc()`` and
+``rte_node_enqueue*`` fast path API functions are designed to work on single-core to
+have better performance. The fast path API works on graph object, So the multi-core
+graph processing strategy would be to create graph object PER WORKER.
+
+Example:
+
+Graph: node-0 -> node-1 -> node-2 @Core0.
+
+.. code-block:: diff
+
+    + - - - - - - - - - - - - - - - - - - - - - +
+    '                  Core #0                  '
+    '                                           '
+    ' +--------+     +---------+     +--------+ '
+    ' | Node-0 | --> | Node-1  | --> | Node-2 | '
+    ' +--------+     +---------+     +--------+ '
+    '                                           '
+    + - - - - - - - - - - - - - - - - - - - - - +
+
+Dispatch model
+^^^^^^^^^^^^^^
+The dispatch model enables a cross-core dispatching mechanism which employs
+a scheduling work-queue to dispatch streams to other worker cores which
+being associated with the destination node.
+
+Use ``rte_graph_model_mcore_dispatch_lcore_affinity_set()`` to set lcore affinity
+with the node.
+Each worker core will have a graph repetition. Use ``rte_graph_clone()`` to clone
+graph for each worker and use``rte_graph_model_mcore_dispatch_core_bind()`` to
+bind graph with the worker core.
+
+Example:
+
+Graph topo: node-0 -> Core1; node-1 -> node-2; node-2 -> node-3.
+Config graph: node-0 @Core0; node-1/3 @Core1; node-2 @Core2.
+
+.. code-block:: diff
+
+    + - - - - - -+     +- - - - - - - - - - - - - +     + - - - - - -+
+    '  Core #0   '     '          Core #1         '     '  Core #2   '
+    '            '     '                          '     '            '
+    ' +--------+ '     ' +--------+    +--------+ '     ' +--------+ '
+    ' | Node-0 | - - - ->| Node-1 |    | Node-3 |<- - - - | Node-2 | '
+    ' +--------+ '     ' +--------+    +--------+ '     ' +--------+ '
+    '            '     '     |                    '     '      ^     '
+    + - - - - - -+     +- - -|- - - - - - - - - - +     + - - -|- - -+
+                             |                                 |
+                             + - - - - - - - - - - - - - - - - +
+
 
 In fast path
 ~~~~~~~~~~~~
