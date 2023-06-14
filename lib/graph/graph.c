@@ -451,6 +451,11 @@ rte_graph_destroy(rte_graph_t id)
 	while (graph != NULL) {
 		tmp = STAILQ_NEXT(graph, next);
 		if (graph->id == id) {
+			/* Destroy the schedule work queue if has */
+			if (rte_graph_worker_model_get(graph->graph) ==
+			    RTE_GRAPH_MODEL_MCORE_DISPATCH)
+				graph_sched_wq_destroy(graph);
+
 			/* Call fini() of the all the nodes in the graph */
 			graph_node_fini(graph);
 			/* Destroy graph fast path memory */
@@ -477,7 +482,6 @@ graph_clone(struct graph *parent_graph, const char *name, struct rte_graph_param
 {
 	struct graph_node *graph_node;
 	struct graph *graph;
-	RTE_SET_USED(prm);
 
 	graph_spinlock_lock();
 
@@ -524,6 +528,11 @@ graph_clone(struct graph *parent_graph, const char *name, struct rte_graph_param
 
 	/* Clone the graph model */
 	graph->graph->model = parent_graph->graph->model;
+
+	/* Create the graph schedule work queue */
+	if (rte_graph_worker_model_get(graph->graph) == RTE_GRAPH_MODEL_MCORE_DISPATCH &&
+	    graph_sched_wq_create(graph, parent_graph, prm))
+		goto graph_mem_destroy;
 
 	/* Call init() of the all the nodes in the graph */
 	if (graph_node_init(graph))
