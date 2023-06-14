@@ -1961,6 +1961,16 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto free_mac_addrs;
 
+	if (roc_feature_nix_has_macsec()) {
+		rc = cnxk_mcs_dev_init(dev, 0);
+		if (rc) {
+			plt_err("Failed to init MCS");
+			goto free_mac_addrs;
+		}
+		dev->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_MACSEC_STRIP;
+		dev->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MACSEC_INSERT;
+	}
+
 	plt_nix_dbg("Port=%d pf=%d vf=%d ver=%s hwcap=0x%" PRIx64
 		    " rxoffload_capa=0x%" PRIx64 " txoffload_capa=0x%" PRIx64,
 		    eth_dev->data->port_id, roc_nix_get_pf(nix),
@@ -2057,6 +2067,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 		eth_dev->data->rx_queues[i] = NULL;
 	}
 	eth_dev->data->nb_rx_queues = 0;
+
+	if (roc_feature_nix_has_macsec())
+		cnxk_mcs_dev_fini(dev);
 
 	/* Free security resources */
 	nix_security_release(dev);

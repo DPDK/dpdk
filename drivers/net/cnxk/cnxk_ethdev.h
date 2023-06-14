@@ -395,6 +395,9 @@ struct cnxk_eth_dev {
 	/* Reassembly dynfield/flag offsets */
 	int reass_dynfield_off;
 	int reass_dynflag_bit;
+
+	/* MCS device */
+	struct cnxk_mcs_dev *mcs_dev;
 };
 
 struct cnxk_eth_rxq_sp {
@@ -622,6 +625,17 @@ int cnxk_nix_cman_config_init(struct rte_eth_dev *dev, struct rte_eth_cman_confi
 int cnxk_nix_cman_config_set(struct rte_eth_dev *dev, const struct rte_eth_cman_config *config);
 
 int cnxk_nix_cman_config_get(struct rte_eth_dev *dev, struct rte_eth_cman_config *config);
+
+int cnxk_mcs_dev_init(struct cnxk_eth_dev *dev, uint8_t mcs_idx);
+void cnxk_mcs_dev_fini(struct cnxk_eth_dev *dev);
+
+struct cnxk_macsec_sess *cnxk_eth_macsec_sess_get_by_sess(struct cnxk_eth_dev *dev,
+							  const struct rte_security_session *sess);
+int cnxk_mcs_flow_configure(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[], struct rte_flow_error *error,
+			     void **mcs_flow);
+int cnxk_mcs_flow_destroy(struct cnxk_eth_dev *eth_dev, void *mcs_flow);
 
 /* Other private functions */
 int nix_recalc_mtu(struct rte_eth_dev *eth_dev);

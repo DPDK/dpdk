@@ -1090,9 +1090,15 @@ cn10k_eth_sec_ops_override(void)
 	init_once = 1;
 
 	/* Update platform specific ops */
+	cnxk_eth_sec_ops.macsec_sa_create = NULL;
+	cnxk_eth_sec_ops.macsec_sc_create = NULL;
+	cnxk_eth_sec_ops.macsec_sa_destroy = NULL;
+	cnxk_eth_sec_ops.macsec_sc_destroy = NULL;
 	cnxk_eth_sec_ops.session_create = cn10k_eth_sec_session_create;
 	cnxk_eth_sec_ops.session_destroy = cn10k_eth_sec_session_destroy;
 	cnxk_eth_sec_ops.capabilities_get = cn10k_eth_sec_capabilities_get;
 	cnxk_eth_sec_ops.session_update = cn10k_eth_sec_session_update;
 	cnxk_eth_sec_ops.session_stats_get = cn10k_eth_sec_session_stats_get;
+	cnxk_eth_sec_ops.macsec_sc_stats_get = NULL;
+	cnxk_eth_sec_ops.macsec_sa_stats_get = NULL;
 }

@@ -22,6 +22,7 @@ sources = files(
         'cnxk_ethdev.c',
         'cnxk_ethdev_cman.c',
         'cnxk_ethdev_devargs.c',
+        'cnxk_ethdev_mcs.c',
         'cnxk_ethdev_mtr.c',
         'cnxk_ethdev_ops.c',
         'cnxk_ethdev_sec.c',
