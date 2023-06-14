@@ -845,9 +845,7 @@ F: doc/guides/nics/mvneta.rst
 F: doc/guides/nics/features/mvneta.ini
 
 Marvell OCTEON TX EP - endpoint
-M: Radha Mohan Chintakuntla <radhac@marvell.com>
-M: Veerasenareddy Burru <vburru@marvell.com>
-M: Sathesh Edara <sedara@marvell.com>
+M: Vamsi Attunuru <vattunuru@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/octeon_ep/
 F: doc/guides/nics/features/octeon_ep.ini
@@ -1250,8 +1248,7 @@ F: drivers/dma/hisilicon/
 F: doc/guides/dmadevs/hisilicon.rst
 
 Marvell CNXK DPI DMA
-M: Radha Mohan Chintakuntla <radhac@marvell.com>
-M: Veerasenareddy Burru <vburru@marvell.com>
+M: Vamsi Attunuru <vattunuru@marvell.com>
 F: drivers/dma/cnxk/
 F: doc/guides/dmadevs/cnxk.rst
 
