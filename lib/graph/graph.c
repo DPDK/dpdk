@@ -260,6 +260,65 @@ graph_mem_fixup_secondary(struct rte_graph *graph)
 	return graph_mem_fixup_node_ctx(graph);
 }
 
+static bool
+graph_src_node_avail(struct graph *graph)
+{
+	struct graph_node *graph_node;
+
+	STAILQ_FOREACH(graph_node, &graph->node_list, next)
+		if ((graph_node->node->flags & RTE_NODE_SOURCE_F) &&
+		    (graph_node->node->lcore_id == RTE_MAX_LCORE ||
+		     graph->lcore_id == graph_node->node->lcore_id))
+			return true;
+
+	return false;
+}
+
+int
+rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
+{
+	struct graph *graph;
+
+	GRAPH_ID_CHECK(id);
+	if (!rte_lcore_is_enabled(lcore))
+		SET_ERR_JMP(ENOLINK, fail, "lcore %d not enabled", lcore);
+
+	STAILQ_FOREACH(graph, &graph_list, next)
+		if (graph->id == id)
+			break;
+
+	if (graph->graph->model == RTE_GRAPH_MODEL_MCORE_DISPATCH)
+		goto fail;
+
+	graph->lcore_id = lcore;
+	graph->socket = rte_lcore_to_socket_id(lcore);
+
+	/* check the availability of source node */
+	if (!graph_src_node_avail(graph))
+		graph->graph->head = 0;
+
+	return 0;
+
+fail:
+	return -rte_errno;
+}
+
+void
+rte_graph_model_mcore_dispatch_core_unbind(rte_graph_t id)
+{
+	struct graph *graph;
+
+	GRAPH_ID_CHECK(id);
+	STAILQ_FOREACH(graph, &graph_list, next)
+		if (graph->id == id)
+			break;
+
+	graph->lcore_id = RTE_MAX_LCORE;
+
+fail:
+	return;
+}
+
 struct rte_graph *
 rte_graph_lookup(const char *name)
 {
@@ -346,6 +405,7 @@ rte_graph_create(const char *name, struct rte_graph_param *prm)
 	graph->src_node_count = src_node_count;
 	graph->node_count = graph_nodes_count(graph);
 	graph->id = graph_id;
+	graph->lcore_id = RTE_MAX_LCORE;
 	graph->num_pkt_to_capture = prm->num_pkt_to_capture;
 	if (prm->pcap_filename)
 		rte_strscpy(graph->pcap_filename, prm->pcap_filename, RTE_GRAPH_PCAP_FILE_SZ);

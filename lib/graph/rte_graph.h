@@ -286,6 +286,28 @@ __rte_experimental
 int rte_graph_export(const char *name, FILE *f);
 
 /**
+ * Bind graph with specific lcore for mcore dispatch model.
+ *
+ * @param id
+ *   Graph id to get the pointer of graph object
+ * @param lcore
+ * The lcore where the graph will run on
+ * @return
+ *   0 on success, error otherwise.
+ */
+__rte_experimental
+int rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore);
+
+/**
+ * Unbind graph with lcore for mcore dispatch model
+ *
+ * @param id
+ * Graph id to get the pointer of graph object
+ */
+__rte_experimental
+void rte_graph_model_mcore_dispatch_core_unbind(rte_graph_t id);
+
+/**
  * Get graph object from its name.
  *
  * Typical usage of this API to get graph objects in the worker thread and
