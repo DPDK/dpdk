@@ -57,6 +57,7 @@ The application has a number of command line options similar to l3fwd::
                                    [--pcap-enable]
                                    [--pcap-num-cap]
                                    [--pcap-file-name]
+                                   [--model]
 
 Where,
 
@@ -80,6 +81,8 @@ Where,
 * ``--pcap-num-cap:`` Optional, Number of packets to be captured per core.
 
 * ``--pcap-file-name:`` Optional, Pcap filename to capture packets in.
+
+* ``--model:`` Optional, select graph walking model.
 
 For example, consider a dual processor socket platform with 8 physical cores, where cores 0-7 and 16-23 appear on socket 0,
 while cores 8-15 and 24-31 appear on socket 1.
@@ -124,6 +127,19 @@ In this command:
 *   The --pcap-num-cap option enables user to configure number packets to be captured per graph. Default 1024 packets per graph are captured.
 
 *   The --pcap-file-name option enables user to give filename in which packets are to be captured.
+
+To enable mcore dispatch model, the application need change RTE_GRAPH_MODEL_SELECT to ``#define RTE_GRAPH_MODEL_SELECT RTE_GRAPH_MODEL_MCORE_DISPATCH``
+before including rte_graph_worker.h. Recompile and use following command:
+
+.. code-block:: console
+
+    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2,3,4 -n 4 -- -p 0x1 --config="(0,0,1)" -P --model="dispatch"
+
+To enable graph walking model selection in run-time, remove the define of ``RTE_GRAPH_MODEL_SELECT``. Recompile and use the same command.
+
+In this command:
+
+*   The --model option enables user to select ``rtc`` or ``dispatch`` model.
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
