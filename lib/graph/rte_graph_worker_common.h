@@ -141,6 +141,39 @@ void __rte_node_stream_alloc_size(struct rte_graph *graph,
  *   Pointer to node object to be enqueued.
  */
 static __rte_always_inline void
+__rte_node_process(struct rte_graph *graph, struct rte_node *node)
+{
+	uint64_t start;
+	uint16_t rc;
+	void **objs;
+
+	RTE_ASSERT(node->fence == RTE_GRAPH_FENCE);
+	objs = node->objs;
+	rte_prefetch0(objs);
+
+	if (rte_graph_has_stats_feature()) {
+		start = rte_rdtsc();
+		rc = node->process(graph, node, objs, node->idx);
+		node->total_cycles += rte_rdtsc() - start;
+		node->total_calls++;
+		node->total_objs += rc;
+	} else {
+		node->process(graph, node, objs, node->idx);
+	}
+	node->idx = 0;
+}
+
+/**
+ * @internal
+ *
+ * Enqueue a given node to the tail of the graph reel.
+ *
+ * @param graph
+ *   Pointer Graph object.
+ * @param node
+ *   Pointer to node object to be enqueued.
+ */
+static __rte_always_inline void
 __rte_node_enqueue_tail_update(struct rte_graph *graph, struct rte_node *node)
 {
 	uint32_t tail;
