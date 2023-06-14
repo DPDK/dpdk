@@ -670,6 +670,7 @@ struct txgbe_hw {
 	bool adapter_stopped;
 	bool allow_unsupported_sfp;
 	bool need_crosstalk_fix;
+	bool autoneg;
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;

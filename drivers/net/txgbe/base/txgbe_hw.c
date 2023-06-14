@@ -2321,9 +2321,23 @@ s32 txgbe_setup_mac_link_multispeed_fiber(struct txgbe_hw *hw,
 	}
 
 	if (speed & TXGBE_LINK_SPEED_1GB_FULL) {
+		u32 curr_autoneg;
+
 		speedcnt++;
 		if (highest_link_speed == TXGBE_LINK_SPEED_UNKNOWN)
 			highest_link_speed = TXGBE_LINK_SPEED_1GB_FULL;
+
+		status = hw->mac.check_link(hw, &link_speed, &link_up, false);
+		if (status != 0)
+			return status;
+
+		/* If we already have link at this speed, just jump out */
+		if (link_speed == TXGBE_LINK_SPEED_1GB_FULL) {
+			curr_autoneg = rd32_epcs(hw, SR_MII_MMD_CTL);
+			if (link_up && (hw->autoneg ==
+					!!(curr_autoneg & SR_MII_MMD_CTL_AN_EN)))
+				goto out;
+		}
 
 		/* Set the module link speed */
 		switch (hw->phy.media_type) {
