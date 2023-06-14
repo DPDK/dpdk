@@ -24,7 +24,7 @@ extern "C" {
  * packets read from the ring are all non-jumbo frames. The complete IP
  * datagrams written to the ring are not changed. The jumbo frames are
  * fragmented into several IP packets with length less or equal to MTU.
- ***/
+ */
 
 #include <stdint.h>
 

@@ -12,9 +12,9 @@ extern "C" {
 /**
  * @file
  * RTE SWX FD Input and Output Ports
- ***/
-#include <stdint.h>
+ */
 
+#include <stdint.h>
 
 #include "rte_swx_port.h"
 

@@ -15,7 +15,7 @@ extern "C" {
  *
  * sched_reader: input port built on top of pre-initialized rte_sched_port
  * sched_writer: output port built on top of pre-initialized rte_sched_port
- ***/
+ */
 
 #include <stdint.h>
 

@@ -30,7 +30,7 @@ extern "C" {
  * The telemetry library provides a method to retrieve statistics from
  * DPDK by sending a request message over a socket. DPDK will send
  * a JSON encoded response containing telemetry data.
- ***/
+ */
 
 /** opaque structure used internally for managing data from callbacks */
 struct rte_tel_data;

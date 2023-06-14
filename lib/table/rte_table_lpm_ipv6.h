@@ -39,7 +39,7 @@ extern "C" {
  * has to carefully manage the format of the LPM table entry (i.e.  the next
  * hop information) so that any next hop data that changes value during
  * run-time (e.g. counters) is placed outside of this area.
- ***/
+ */
 
 #include <stdint.h>
 

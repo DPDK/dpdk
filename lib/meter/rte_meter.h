@@ -18,14 +18,13 @@ extern "C" {
  *    1. Single Rate Three Color Marker (srTCM): defined by IETF RFC 2697
  *    2. Two Rate Three Color Marker (trTCM): defined by IETF RFC 2698
  *    3. Two Rate Three Color Marker (trTCM): defined by IETF RFC 4115
- ***/
+ */
 
 #include <stdint.h>
 
-
 /*
  * Application Programmer's Interface (API)
- ***/
+ */
 
 /**
  * Color
@@ -326,7 +325,7 @@ rte_meter_trtcm_rfc4115_color_aware_check(
 
 /*
  * Inline implementation of run-time methods
- ***/
+ */
 
 struct rte_meter_srtcm_profile {
 	uint64_t cbs;

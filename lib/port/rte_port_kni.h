@@ -16,10 +16,9 @@ extern "C" {
  *
  * kni_reader: input port built on top of pre-initialized KNI interface
  * kni_writer: output port built on top of pre-initialized KNI interface
- ***/
+ */
 
 #include <stdint.h>
-
 
 #include "rte_port.h"
 

@@ -46,7 +46,8 @@ extern "C" {
  * 2. Key size:
  *     a. Configurable key size
  *     b. Single key size (8-byte, 16-byte or 32-byte key size)
- ***/
+ */
+
 #include <stdint.h>
 
 #include "rte_table.h"

@@ -14,7 +14,7 @@ extern "C" {
  * RTE Table Array
  *
  * Simple array indexing. Lookup key is the array entry index.
- ***/
+ */
 
 #include <stdint.h>
 

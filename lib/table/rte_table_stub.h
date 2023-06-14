@@ -14,8 +14,7 @@ extern "C" {
  * RTE Table Stub
  *
  * The stub table lookup operation produces lookup miss for all input packets.
- ***/
-
+ */
 
 #include "rte_table.h"
 

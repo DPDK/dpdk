@@ -21,10 +21,9 @@ extern "C" {
  *      input port built on top of pre-initialized multi consumers ring
  * ring_multi_writer:
  *      output port built on top of pre-initialized multi producers ring
- ***/
+ */
 
 #include <stdint.h>
-
 
 #include "rte_port.h"
 

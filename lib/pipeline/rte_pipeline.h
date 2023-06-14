@@ -51,7 +51,7 @@ extern "C" {
  * <B>Thread safety.</B> It is possible to have multiple pipelines running on
  * the same CPU core, but it is not allowed (for thread safety reasons) to have
  * multiple CPU cores running the same pipeline instance.
- ***/
+ */
 
 #include <stdint.h>
 

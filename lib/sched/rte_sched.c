@@ -1226,7 +1226,7 @@ rte_sched_subport_config(struct rte_sched_port *port,
 	/** Memory is allocated only on first invocation of the api for a
 	 * given subport. Subsequent invocation on same subport will just
 	 * update subport bandwidth parameter.
-	 **/
+	 */
 	if (port->subports[subport_id] == NULL) {
 
 		status = rte_sched_subport_check_params(params,

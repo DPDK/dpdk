@@ -246,7 +246,7 @@ struct rte_crypto_cipher_xform {
 	 *    (key1 || key2).
 	 *  - Each key can be either 128 bits (16 bytes) or 256 bits (32 bytes).
 	 *  - Both keys must have the same size.
-	 **/
+	 */
 	struct {
 		uint16_t offset;
 		/**< Starting point for Initialisation Vector or Counter,

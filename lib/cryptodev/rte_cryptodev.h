@@ -1407,7 +1407,7 @@ typedef int (*cryptodev_sym_raw_operation_done_t)(void *qp, uint8_t *drv_ctx,
  * @param	user_data	Dequeued user data.
  * @return
  *  - The number of operations to be dequeued.
- **/
+ */
 typedef uint32_t (*rte_cryptodev_raw_get_dequeue_count_t)(void *user_data);
 
 /**
@@ -1417,7 +1417,7 @@ typedef uint32_t (*rte_cryptodev_raw_get_dequeue_count_t)(void *user_data);
  * @param	user_data	Dequeued user data.
  * @param	index		Index number of the processed descriptor.
  * @param	is_op_success	Operation status provided by the driver.
- **/
+ */
 typedef void (*rte_cryptodev_raw_post_dequeue_t)(void *user_data,
 	uint32_t index, uint8_t is_op_success);
 

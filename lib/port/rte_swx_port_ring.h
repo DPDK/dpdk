@@ -12,10 +12,9 @@ extern "C" {
 /**
  * @file
  * RTE SWX Ring Input and Output Ports
- ***/
+ */
 
 #include <stdint.h>
-
 
 #include "rte_swx_port.h"
 

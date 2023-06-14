@@ -451,8 +451,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	return 0;
 }
 
-/***
-*
+/*
 * mask = match bitmask
 * match = at least one match
 * match_many = more than one match
@@ -489,7 +488,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 * match = 0xFFFELLU
 * match_many = 0xFEE8LLU
 * match_pos = 0x12131210LLU
-***/
+*/
 
 #define LUT_MATCH						0xFFFELLU
 #define LUT_MATCH_MANY						0xFEE8LLU
@@ -781,7 +780,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	lru_update(bkt31, match_pos31);				\
 }
 
-/***
+/*
 * The lookup function implements a 4-stage pipeline, with each stage processing
 * two different packets. The purpose of pipelined implementation is to hide the
 * latency of prefetching the data structures and loosen the data dependency
@@ -795,7 +794,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 *
 * The naming convention is:
 *	  pXY = packet Y of stage X, X = 0 .. 3, Y = 0 .. 1
-***/
+*/
 static int rte_table_hash_lru_lookup(
 	void *table,
 	struct rte_mbuf **pkts,

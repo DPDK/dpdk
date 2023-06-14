@@ -12,7 +12,7 @@ extern "C" {
 /**
  * @file
  * Proportional Integral controller Enhanced (PIE)
- **/
+ */
 
 #include <stdint.h>
 

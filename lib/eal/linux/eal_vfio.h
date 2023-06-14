@@ -99,14 +99,14 @@ struct vfio_group {
 /* DMA mapping function prototype.
  * Takes VFIO container fd as a parameter.
  * Returns 0 on success, -1 on error.
- * */
+ */
 typedef int (*vfio_dma_func_t)(int);
 
 /* Custom memory region DMA mapping function prototype.
  * Takes VFIO container fd, virtual address, physical address, length and
  * operation type (0 to unmap 1 for map) as a parameters.
  * Returns 0 on success, -1 on error.
- **/
+ */
 typedef int (*vfio_dma_user_func_t)(int fd, uint64_t vaddr, uint64_t iova,
 		uint64_t len, int do_map);
 

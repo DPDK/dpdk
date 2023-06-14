@@ -5,7 +5,7 @@
 /**
  * @file rte_keepalive.h
  * DPDK RTE LCore Keepalive Monitor.
- **/
+ */
 
 #ifndef _KEEPALIVE_H_
 #define _KEEPALIVE_H_

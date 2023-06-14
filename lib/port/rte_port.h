@@ -15,7 +15,7 @@ extern "C" {
  *
  * This tool is part of the DPDK Packet Framework tool suite and provides
  * a standard interface to implement different types of packet ports.
- ***/
+ */
 
 #include <stdint.h>
 #include <rte_mbuf.h>

@@ -309,7 +309,7 @@ struct rte_sched_port_params {
 
 /*
  * Configuration
- ***/
+ */
 
 /**
  * Hierarchical scheduler port configuration
@@ -432,9 +432,10 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 uint32_t
 rte_sched_port_get_memory_footprint(struct rte_sched_port_params *port_params,
 	struct rte_sched_subport_params **subport_params);
+
 /*
  * Statistics
- ***/
+ */
 
 /**
  * Hierarchical scheduler subport statistics read

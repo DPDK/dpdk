@@ -12,7 +12,7 @@ extern "C" {
 /**
  * @file
  * RTE Random Early Detection (RED)
- ***/
+ */
 
 #include <stdint.h>
 #include <limits.h>

@@ -22,7 +22,7 @@ extern "C" {
  * use-case, the lookup key is an n-tuple of packet fields that uniquely
  * identifies a traffic flow, while data represents actions and action
  * meta-data associated with the same traffic flow.
- ***/
+ */
 
 #include <stdint.h>
 #include <rte_port.h>

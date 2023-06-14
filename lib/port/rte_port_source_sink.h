@@ -15,7 +15,7 @@ extern "C" {
  *
  * source: input port that can be used to generate packets
  * sink: output port that drops all packets written to it
- ***/
+ */
 
 #include "rte_port.h"
 

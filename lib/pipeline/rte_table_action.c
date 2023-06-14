@@ -1956,7 +1956,7 @@ pkt_work_sym_crypto(struct rte_mbuf *mbuf, struct sym_crypto_data *data,
 
 			/** For encryption, update the pkt iv field, otherwise
 			 *  update the iv_aad_field
-			 **/
+			 */
 			if (data->direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
 				rte_memcpy(pkt_iv, data->iv_aad_data,
 					data->cipher_auth.cipher_iv_update_len);

@@ -4315,7 +4315,7 @@ enum rte_flow_conv_op {
 	 *   @code (const void *)enum rte_flow_item_type @endcode
 	 * - @p dst type:
 	 *   @code char * @endcode
-	 **/
+	 */
 	RTE_FLOW_CONV_OP_ITEM_NAME,
 
 	/**
@@ -4329,7 +4329,7 @@ enum rte_flow_conv_op {
 	 *   @code (const void *)enum rte_flow_action_type @endcode
 	 * - @p dst type:
 	 *   @code char * @endcode
-	 **/
+	 */
 	RTE_FLOW_CONV_OP_ACTION_NAME,
 
 	/**

@@ -15,7 +15,7 @@ extern "C" {
  *
  * crypto_reader: input port built on top of pre-initialized crypto interface
  * crypto_writer: output port built on top of pre-initialized crypto interface
- **/
+ */
 
 #include <stdint.h>
 

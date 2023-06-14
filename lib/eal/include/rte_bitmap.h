@@ -32,7 +32,7 @@ extern "C" {
  * serialization of the bit set/clear and bitmap scan operations needs to be
  * enforced by the caller, while the bit get operation does not require locking
  * the bitmap.
- ***/
+ */
 
 #include <string.h>
 #include <rte_compat.h>
