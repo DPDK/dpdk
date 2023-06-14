@@ -532,7 +532,9 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 
 	struct iavf_adapter *adapter = rxq->vsi->adapter;
 
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	uint64_t offloads = adapter->dev_data->dev_conf.rxmode.offloads;
+#endif
 	const uint32_t *type_table = adapter->ptype_tbl;
 
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0,
@@ -558,6 +560,21 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 	if (!(rxdp->wb.status_error0 &
 			rte_cpu_to_le_32(1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S)))
 		return 0;
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	bool is_tsinit = false;
+	uint8_t inflection_point = 0;
+	__m256i hw_low_last = _mm256_set_epi32(0, 0, 0, 0, 0, 0, 0, rxq->phc_time);
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+
+		if (unlikely(sw_cur_time - rxq->hw_time_update > 4)) {
+			hw_low_last = _mm256_setzero_si256();
+			is_tsinit = 1;
+		} else {
+			hw_low_last = _mm256_set_epi32(0, 0, 0, 0, 0, 0, 0, rxq->phc_time);
+		}
+	}
+#endif
 
 	/* constants used in processing loop */
 	const __m256i crc_adjust =
@@ -967,10 +984,11 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 		if (offload) {
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 			/**
-			 * needs to load 2nd 16B of each desc for RSS hash parsing,
+			 * needs to load 2nd 16B of each desc,
 			 * will cause performance drop to get into this context.
 			 */
 			if (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH ||
+				offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP ||
 			    rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
 				/* load bottom half of every 32B desc */
 				const __m128i raw_desc_bh7 =
@@ -1053,7 +1071,7 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 					mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
 					mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
 					mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
-				}
+				} /* if() on RSS hash parsing */
 
 				if (rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
 					/* merge the status/error-1 bits into one register */
@@ -1132,8 +1150,121 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 					mb4_5 = _mm256_or_si256(mb4_5, vlan_tci4_5);
 					mb2_3 = _mm256_or_si256(mb2_3, vlan_tci2_3);
 					mb0_1 = _mm256_or_si256(mb0_1, vlan_tci0_1);
-				}
-			} /* if() on RSS hash parsing */
+				} /* if() on Vlan parsing */
+
+				if (offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+					uint32_t mask = 0xFFFFFFFF;
+					__m256i ts;
+					__m256i ts_low = _mm256_setzero_si256();
+					__m256i ts_low1;
+					__m256i ts_low2;
+					__m256i max_ret;
+					__m256i cmp_ret;
+					uint8_t ret = 0;
+					uint8_t shift = 8;
+					__m256i ts_desp_mask = _mm256_set_epi32(mask, 0, 0, 0, mask, 0, 0, 0);
+					__m256i cmp_mask = _mm256_set1_epi32(mask);
+					__m256i ts_permute_mask = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+
+					ts = _mm256_and_si256(raw_desc_bh0_1, ts_desp_mask);
+					ts_low = _mm256_or_si256(ts_low, _mm256_srli_si256(ts, 3 * 4));
+					ts = _mm256_and_si256(raw_desc_bh2_3, ts_desp_mask);
+					ts_low = _mm256_or_si256(ts_low, _mm256_srli_si256(ts, 2 * 4));
+					ts = _mm256_and_si256(raw_desc_bh4_5, ts_desp_mask);
+					ts_low = _mm256_or_si256(ts_low, _mm256_srli_si256(ts, 4));
+					ts = _mm256_and_si256(raw_desc_bh6_7, ts_desp_mask);
+					ts_low = _mm256_or_si256(ts_low, ts);
+
+					ts_low1 = _mm256_permutevar8x32_epi32(ts_low, ts_permute_mask);
+					ts_low2 = _mm256_permutevar8x32_epi32(ts_low1,
+								_mm256_set_epi32(6, 5, 4, 3, 2, 1, 0, 7));
+					ts_low2 = _mm256_and_si256(ts_low2,
+								_mm256_set_epi32(mask, mask, mask, mask, mask, mask, mask, 0));
+					ts_low2 = _mm256_or_si256(ts_low2, hw_low_last);
+					hw_low_last = _mm256_and_si256(ts_low1,
+								_mm256_set_epi32(0, 0, 0, 0, 0, 0, 0, mask));
+
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 0],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 0);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 1],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 1);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 2],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 2);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 3],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 3);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 4],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 4);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 5],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 5);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 6],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 6);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 7],
+						iavf_timestamp_dynfield_offset, uint32_t *) = _mm256_extract_epi32(ts_low1, 7);
+
+					if (unlikely(is_tsinit)) {
+						uint32_t in_timestamp;
+						if (iavf_get_phc_time(rxq))
+							PMD_DRV_LOG(ERR, "get physical time failed");
+						in_timestamp = *RTE_MBUF_DYNFIELD(rx_pkts[i + 0],
+								iavf_timestamp_dynfield_offset, uint32_t *);
+						rxq->phc_time = iavf_tstamp_convert_32b_64b(rxq->phc_time, in_timestamp);
+					}
+
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 0],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 1],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 2],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 3],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 4],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 5],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 6],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 7],
+						iavf_timestamp_dynfield_offset + 4, uint32_t *) = (uint32_t)(rxq->phc_time >> 32);
+
+					max_ret = _mm256_max_epu32(ts_low2, ts_low1);
+					cmp_ret = _mm256_andnot_si256(_mm256_cmpeq_epi32(max_ret, ts_low1), cmp_mask);
+
+					if (_mm256_testz_si256(cmp_ret, cmp_mask)) {
+						inflection_point = 0;
+					} else {
+						inflection_point = 1;
+						while (shift > 1) {
+							shift = shift >> 1;
+							__m256i mask_low = _mm256_setzero_si256();
+							__m256i mask_high = _mm256_setzero_si256();
+							switch (shift) {
+							case 4:
+								mask_low = _mm256_set_epi32(0, 0, 0, 0, mask, mask, mask, mask);
+								mask_high = _mm256_set_epi32(mask, mask, mask, mask, 0, 0, 0, 0);
+								break;
+							case 2:
+								mask_low = _mm256_srli_si256(cmp_mask, 2 * 4);
+								mask_high = _mm256_slli_si256(cmp_mask, 2 * 4);
+								break;
+							case 1:
+								mask_low = _mm256_srli_si256(cmp_mask, 1 * 4);
+								mask_high = _mm256_slli_si256(cmp_mask, 1 * 4);
+								break;
+							}
+							ret = _mm256_testz_si256(cmp_ret, mask_low);
+							if (ret) {
+								ret = _mm256_testz_si256(cmp_ret, mask_high);
+								inflection_point += ret ? 0 : shift;
+								cmp_mask = mask_high;
+							} else {
+								cmp_mask = mask_low;
+							}
+						}
+					}
+					mbuf_flags = _mm256_or_si256(mbuf_flags, _mm256_set1_epi32(iavf_timestamp_dynflag));
+				} /* if() on Timestamp parsing */
+			}
 #endif
 		}
 
@@ -1265,9 +1396,61 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 				(_mm_cvtsi128_si64
 					(_mm256_castsi256_si128(status0_7)));
 		received += burst;
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+			inflection_point = (inflection_point <= burst) ? inflection_point : 0;
+			switch (inflection_point) {
+			case 1:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 0],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				/* fallthrough */
+			case 2:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 1],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				/* fallthrough */
+			case 3:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 2],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				/* fallthrough */
+			case 4:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 3],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				/* fallthrough */
+			case 5:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 4],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				/* fallthrough */
+			case 6:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 5],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				/* fallthrough */
+			case 7:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 6],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				/* fallthrough */
+			case 8:
+				*RTE_MBUF_DYNFIELD(rx_pkts[i + 7],
+					iavf_timestamp_dynfield_offset + 4, uint32_t *) += 1;
+				rxq->phc_time += (uint64_t)1 << 32;
+				/* fallthrough */
+			case 0:
+				break;
+			default:
+				PMD_DRV_LOG(ERR, "invalid inflection point for rx timestamp");
+				break;
+			}
+
+			rxq->hw_time_update = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+		}
+#endif
 		if (burst != IAVF_DESCS_PER_LOOP_AVX)
 			break;
 	}
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	if (received > 0 && (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
+		rxq->phc_time = *RTE_MBUF_DYNFIELD(rx_pkts[received - 1], iavf_timestamp_dynfield_offset, rte_mbuf_timestamp_t *);
+#endif
 
 	/* update tail pointers */
 	rxq->rx_tail += received;
