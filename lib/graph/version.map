@@ -14,10 +14,14 @@ EXPERIMENTAL {
 	rte_graph_lookup;
 	rte_graph_list_dump;
 	rte_graph_max_count;
+	rte_graph_model_is_valid;
 	rte_graph_node_get;
 	rte_graph_node_get_by_name;
 	rte_graph_obj_dump;
 	rte_graph_walk;
+	rte_graph_worker_model_get;
+	rte_graph_worker_model_no_check_get;
+	rte_graph_worker_model_set;
 
 	rte_graph_cluster_stats_create;
 	rte_graph_cluster_stats_destroy;

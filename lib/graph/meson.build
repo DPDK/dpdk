@@ -15,6 +15,7 @@ sources = files(
         'graph_stats.c',
         'graph_populate.c',
         'graph_pcap.c',
+        'rte_graph_worker.c',
 )
 headers = files('rte_graph.h', 'rte_graph_worker.h')
 indirect_headers += files(
