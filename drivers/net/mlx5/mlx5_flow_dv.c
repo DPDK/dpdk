@@ -5291,6 +5291,15 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 		ret = flow_validate_modify_field_level(dst_data, error);
 		if (ret)
 			return ret;
+		if (dst_data->tag_index &&
+		    !flow_modify_field_support_tag_array(dst_data->field))
+			return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"destination tag index is not supported");
+		if (dst_data->class_id)
+			return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"destination class ID is not supported");
 	}
 	if (src_data->field != RTE_FLOW_FIELD_VALUE &&
 	    src_data->field != RTE_FLOW_FIELD_POINTER) {
@@ -5306,6 +5315,15 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 		ret = flow_validate_modify_field_level(src_data, error);
 		if (ret)
 			return ret;
+		if (src_data->tag_index &&
+		    !flow_modify_field_support_tag_array(src_data->field))
+			return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"source tag index is not supported");
+		if (src_data->class_id)
+			return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"source class ID is not supported");
 	}
 	if ((dst_data->field == src_data->field) &&
 	    (dst_data->level == src_data->level))

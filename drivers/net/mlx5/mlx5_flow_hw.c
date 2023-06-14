@@ -3821,6 +3821,15 @@ flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
 	ret = flow_validate_modify_field_level(&action_conf->dst, error);
 	if (ret)
 		return ret;
+	if (action_conf->dst.tag_index &&
+	    !flow_modify_field_support_tag_array(action_conf->dst.field))
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"destination tag index is not supported");
+	if (action_conf->dst.class_id)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"destination class id is not supported");
 	if (mask_conf->dst.level != UINT8_MAX)
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -3835,6 +3844,15 @@ flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
 				"destination field mask and template are not equal");
 	if (action_conf->src.field != RTE_FLOW_FIELD_POINTER &&
 	    action_conf->src.field != RTE_FLOW_FIELD_VALUE) {
+		if (action_conf->src.tag_index &&
+		    !flow_modify_field_support_tag_array(action_conf->src.field))
+			return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"source tag index is not supported");
+		if (action_conf->src.class_id)
+			return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"source class id is not supported");
 		if (mask_conf->src.level != UINT8_MAX)
 			return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -4831,12 +4849,12 @@ static const struct rte_flow_action rx_meta_copy_action =  {
 		.dst = {
 			.field = (enum rte_flow_field_id)
 				MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_B,
+			.tag_index = REG_B,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)
 				MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_C_1,
+			.tag_index = REG_C_1,
 		},
 		.width = 32,
 	}
@@ -4850,12 +4868,14 @@ static const struct rte_flow_action rx_meta_copy_mask = {
 			.field = (enum rte_flow_field_id)
 				MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)
 				MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.width = UINT32_MAX,
@@ -4886,6 +4906,7 @@ static const struct rte_flow_action quota_color_inc_mask = {
 		.dst = {
 			.field = RTE_FLOW_FIELD_METER_COLOR,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
@@ -6034,7 +6055,7 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_C_0,
+			.tag_index = REG_C_0,
 			.offset = rte_bsf32(tag_mask),
 		},
 		.src = {
@@ -6047,6 +6068,7 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
@@ -6058,11 +6080,11 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_C_1,
+			.tag_index = REG_C_1,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_A,
+			.tag_index = REG_A,
 		},
 		.width = 32,
 	};
@@ -6071,11 +6093,13 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.width = UINT32_MAX,
@@ -6391,7 +6415,7 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_C_0,
+			.tag_index = REG_C_0,
 		},
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
@@ -6403,6 +6427,7 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
@@ -6563,11 +6588,11 @@ flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_C_1,
+			.tag_index = REG_C_1,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_A,
+			.tag_index = REG_A,
 		},
 		.width = 32,
 	};
@@ -6576,11 +6601,13 @@ flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev)
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
 			.level = UINT8_MAX,
+			.tag_index = UINT8_MAX,
 			.offset = UINT32_MAX,
 		},
 		.width = UINT32_MAX,
@@ -9734,11 +9761,11 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev)
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_C_1,
+			.tag_index = REG_C_1,
 		},
 		.src = {
 			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
-			.level = REG_A,
+			.tag_index = REG_A,
 		},
 		.width = 32,
 	};

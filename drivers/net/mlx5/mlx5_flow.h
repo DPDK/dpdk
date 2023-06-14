@@ -1114,6 +1114,18 @@ flow_dv_fetch_field(const uint8_t *data, uint32_t size)
 	return ret;
 }
 
+static inline bool
+flow_modify_field_support_tag_array(enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_TAG:
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
 struct field_modify_info {
 	uint32_t size; /* Size of field in protocol header, in bytes. */
 	uint32_t offset; /* Offset of field in protocol header, in bytes. */
