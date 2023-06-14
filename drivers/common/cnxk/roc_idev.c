@@ -38,6 +38,7 @@ idev_set_defaults(struct idev_cfg *idev)
 	idev->num_lmtlines = 0;
 	idev->bphy = NULL;
 	idev->cpt = NULL;
+	TAILQ_INIT(&idev->mcs_list);
 	idev->nix_inl_dev = NULL;
 	TAILQ_INIT(&idev->roc_nix_list);
 	plt_spinlock_init(&idev->nix_inl_dev_lock);
@@ -185,6 +186,51 @@ roc_idev_cpt_get(void)
 		return idev->cpt;
 
 	return NULL;
+}
+
+struct roc_mcs *
+roc_idev_mcs_get(uint8_t mcs_idx)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct roc_mcs *mcs = NULL;
+
+	if (idev != NULL) {
+		TAILQ_FOREACH(mcs, &idev->mcs_list, next) {
+			if (mcs->idx == mcs_idx)
+				return mcs;
+		}
+	}
+
+	return NULL;
+}
+
+void
+roc_idev_mcs_set(struct roc_mcs *mcs)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct roc_mcs *mcs_iter = NULL;
+
+	if (idev != NULL) {
+		TAILQ_FOREACH(mcs_iter, &idev->mcs_list, next) {
+			if (mcs_iter->idx == mcs->idx)
+				return;
+		}
+		TAILQ_INSERT_TAIL(&idev->mcs_list, mcs, next);
+	}
+}
+
+void
+roc_idev_mcs_free(struct roc_mcs *mcs)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct roc_mcs *mcs_iter = NULL;
+
+	if (idev != NULL) {
+		TAILQ_FOREACH(mcs_iter, &idev->mcs_list, next) {
+			if (mcs_iter->idx == mcs->idx)
+				TAILQ_REMOVE(&idev->mcs_list, mcs, next);
+		}
+	}
 }
 
 uint64_t *

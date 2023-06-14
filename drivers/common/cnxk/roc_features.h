@@ -59,4 +59,16 @@ roc_feature_nix_has_age_drop_stats(void)
 {
 	return (roc_model_is_cn10kb() || roc_model_is_cn10ka_b0());
 }
+
+static inline bool
+roc_feature_nix_has_macsec(void)
+{
+	return roc_model_is_cn10kb();
+}
+
+static inline bool
+roc_feature_bphy_has_macsec(void)
+{
+	return roc_model_is_cnf10kb();
+}
 #endif

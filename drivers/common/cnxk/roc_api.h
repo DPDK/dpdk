@@ -114,4 +114,7 @@
 /* ML */
 #include "roc_ml.h"
 
+/* MACsec */
+#include "roc_mcs.h"
+
 #endif /* _ROC_API_H_ */

@@ -44,6 +44,9 @@
 /* DPI */
 #include "roc_dpi_priv.h"
 
+/* MCS */
+#include "roc_mcs_priv.h"
+
 /* REE */
 #include "roc_ree_priv.h"
 

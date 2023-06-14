@@ -94,6 +94,9 @@ INTERNAL {
 	roc_idev_cpt_get;
 	roc_idev_cpt_set;
 	roc_idev_lmt_base_addr_get;
+	roc_idev_mcs_free;
+	roc_idev_mcs_get;
+	roc_idev_mcs_set;
 	roc_idev_npa_maxpools_get;
 	roc_idev_npa_maxpools_set;
 	roc_idev_npa_nix_get;
@@ -132,6 +135,10 @@ INTERNAL {
 	roc_se_auth_key_set;
 	roc_se_ciph_key_set;
 	roc_se_ctx_init;
+	roc_mcs_dev_init;
+	roc_mcs_dev_fini;
+	roc_mcs_dev_get;
+	roc_mcs_hw_info_get;
 	roc_nix_bpf_alloc;
 	roc_nix_bpf_config;
 	roc_nix_bpf_connect;
