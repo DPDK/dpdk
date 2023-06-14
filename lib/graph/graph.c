@@ -291,6 +291,7 @@ rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
 		goto fail;
 
 	graph->lcore_id = lcore;
+	graph->graph->dispatch.lcore_id = graph->lcore_id;
 	graph->socket = rte_lcore_to_socket_id(lcore);
 
 	/* check the availability of source node */
@@ -314,6 +315,7 @@ rte_graph_model_mcore_dispatch_core_unbind(rte_graph_t id)
 			break;
 
 	graph->lcore_id = RTE_MAX_LCORE;
+	graph->graph->dispatch.lcore_id = RTE_MAX_LCORE;
 
 fail:
 	return;

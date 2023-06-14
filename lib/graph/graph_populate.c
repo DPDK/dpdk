@@ -89,6 +89,7 @@ graph_nodes_populate(struct graph *_graph)
 		}
 		node->id = graph_node->node->id;
 		node->parent_id = pid;
+		node->dispatch.lcore_id = graph_node->node->lcore_id;
 		nb_edges = graph_node->node->nb_edges;
 		node->nb_edges = nb_edges;
 		off += sizeof(struct rte_node);
