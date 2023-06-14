@@ -783,6 +783,7 @@ struct txgbe_hw {
 	bool allow_unsupported_sfp;
 	bool need_crosstalk_fix;
 	bool dev_start;
+	bool autoneg;
 	struct txgbe_devargs devarg;
 
 	uint64_t isb_dma;
