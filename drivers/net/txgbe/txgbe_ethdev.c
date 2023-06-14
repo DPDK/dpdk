@@ -3143,7 +3143,8 @@ txgbe_dev_interrupt_delayed_handler(void *param)
 	}
 
 	/* restore original mask */
-	intr->mask_misc |= TXGBE_ICRMISC_LSC;
+	if (dev->data->dev_conf.intr_conf.lsc == 1)
+		intr->mask_misc |= TXGBE_ICRMISC_LSC;
 
 	intr->mask = intr->mask_orig;
 	intr->mask_orig = 0;
