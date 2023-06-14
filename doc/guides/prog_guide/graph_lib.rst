@@ -26,7 +26,7 @@ Features of the Graph library are:
 - Low overhead statistics collection infrastructure.
 - Support to export the graph as a Graphviz dot file. See ``rte_graph_export()``.
 - Allow having another graph walk implementation in the future by segregating
-  the fast path(``rte_graph_worker.h``) and slow path code.
+  the fast path(``rte_graph_worker_common.h``) and slow path code.
 
 Advantages of Graph architecture
 --------------------------------

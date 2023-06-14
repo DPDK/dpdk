@@ -2,11 +2,11 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
-#ifndef _RTE_GRAPH_WORKER_H_
-#define _RTE_GRAPH_WORKER_H_
+#ifndef _RTE_GRAPH_WORKER_COMMON_H_
+#define _RTE_GRAPH_WORKER_COMMON_H_
 
 /**
- * @file rte_graph_worker.h
+ * @file rte_graph_worker_common.h
  *
  * @warning
  * @b EXPERIMENTAL:
@@ -518,4 +518,4 @@ rte_node_next_stream_move(struct rte_graph *graph, struct rte_node *src,
 }
 #endif
 
-#endif /* _RTE_GRAPH_WORKER_H_ */
+#endif /* _RTE_GRAPH_WORKER_COIMMON_H_ */

@@ -5,7 +5,7 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_graph.h>
-#include <rte_graph_worker.h>
+#include <rte_graph_worker_common.h>
 #include <rte_ip.h>
 #include <rte_malloc.h>
 #include <rte_vect.h>

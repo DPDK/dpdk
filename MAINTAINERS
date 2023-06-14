@@ -1724,10 +1724,11 @@ F: doc/guides/prog_guide/bpf_lib.rst
 Graph - EXPERIMENTAL
 M: Jerin Jacob <jerinj@marvell.com>
 M: Kiran Kumar K <kirankumark@marvell.com>
+M: Nithin Dabilpuram <ndabilpuram@marvell.com>
+M: Zhirun Yan <zhirun.yan@intel.com>
 F: lib/graph/
 F: doc/guides/prog_guide/graph_lib.rst
 F: app/test/test_graph*
-M: Nithin Dabilpuram <ndabilpuram@marvell.com>
 F: examples/l3fwd-graph/
 F: doc/guides/sample_app_ug/l3_forward_graph.rst
 

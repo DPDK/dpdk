@@ -6,7 +6,7 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_graph.h>
-#include <rte_graph_worker.h>
+#include <rte_graph_worker_common.h>
 
 #include "ethdev_rx_priv.h"
 #include "node_private.h"

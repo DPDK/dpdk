@@ -3,7 +3,7 @@
  */
 
 #include <rte_graph.h>
-#include <rte_graph_worker.h>
+#include <rte_graph_worker_common.h>
 
 #include "pkt_cls_priv.h"
 #include "node_private.h"
