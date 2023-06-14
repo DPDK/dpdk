@@ -27,6 +27,7 @@ sources = files(
         'roc_ie_ot.c',
         'roc_mbox.c',
         'roc_mcs.c',
+        'roc_mcs_sec_cfg.c',
         'roc_ml.c',
         'roc_model.c',
         'roc_nix.c',

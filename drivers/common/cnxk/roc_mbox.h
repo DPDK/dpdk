@@ -300,6 +300,7 @@ struct mbox_msghdr {
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
 	M(MCS_FREE_RESOURCES, 0xa001, mcs_free_resources, mcs_free_rsrc_req, msg_rsp)              \
+	M(MCS_SA_PLCY_WRITE, 0xa005, mcs_sa_plcy_write, mcs_sa_plcy_write_req, msg_rsp)            \
 	M(MCS_GET_HW_INFO, 0xa00b, mcs_get_hw_info, msg_req, mcs_hw_info)                          \
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
@@ -724,6 +725,17 @@ struct mcs_free_rsrc_req {
 	uint8_t __io all; /* Free all the cam resources */
 	uint64_t __io rsvd;
 };
+
+struct mcs_sa_plcy_write_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io plcy[2][9]; /* Support 2 SA policy */
+	uint8_t __io sa_index[2];
+	uint8_t __io sa_cnt;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
 
 struct mcs_hw_info {
 	struct mbox_msghdr hdr;
