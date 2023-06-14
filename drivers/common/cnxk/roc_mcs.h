@@ -426,6 +426,56 @@ struct roc_mcs_event_desc {
 	union roc_mcs_event_data metadata;
 };
 
+struct roc_mcs_fips_req {
+	uint8_t dir;
+};
+
+struct roc_mcs_fips_mode {
+	uint64_t mode;
+	uint8_t dir;
+};
+
+struct roc_mcs_fips_ctl {
+	uint64_t ctl;
+	uint8_t dir;
+};
+
+struct roc_mcs_fips_iv {
+	uint32_t iv_bits95_64;
+	uint64_t iv_bits63_0;
+	uint8_t dir;
+};
+
+struct roc_mcs_fips_ctr {
+	uint32_t fips_ctr;
+	uint8_t dir;
+};
+
+struct roc_mcs_fips_key {
+	uint64_t sak_bits255_192;
+	uint64_t sak_bits191_128;
+	uint64_t sak_bits127_64;
+	uint64_t sak_bits63_0;
+	uint64_t hashkey_bits127_64;
+	uint64_t hashkey_bits63_0;
+	uint8_t sak_len;
+	uint8_t dir;
+};
+
+struct roc_mcs_fips_block {
+	uint64_t blk_bits127_64;
+	uint64_t blk_bits63_0;
+	uint8_t dir;
+};
+
+struct roc_mcs_fips_result_rsp {
+	uint64_t blk_bits127_64;
+	uint64_t blk_bits63_0;
+	uint64_t icv_bits127_64;
+	uint64_t icv_bits63_0;
+	uint8_t result_pass;
+};
+
 /** User application callback to be registered for any notifications from driver. */
 typedef int (*roc_mcs_dev_cb_fn)(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg);
 
@@ -552,4 +602,23 @@ __roc_api int roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cf
 __roc_api int roc_mcs_port_recovery(struct roc_mcs *mcs, union roc_mcs_event_data *mdata,
 				    uint8_t port_id);
 
+/* FIPS reset */
+__roc_api int roc_mcs_fips_reset(struct roc_mcs *mcs, struct roc_mcs_fips_req *req);
+/* FIPS mode set */
+__roc_api int roc_mcs_fips_mode_set(struct roc_mcs *mcs, struct roc_mcs_fips_mode *req);
+/* FIPS ctl set */
+__roc_api int roc_mcs_fips_ctl_set(struct roc_mcs *mcs, struct roc_mcs_fips_ctl *req);
+/* FIPS iv set */
+__roc_api int roc_mcs_fips_iv_set(struct roc_mcs *mcs, struct roc_mcs_fips_iv *req);
+/* FIPS ctr set */
+__roc_api int roc_mcs_fips_ctr_set(struct roc_mcs *mcs, struct roc_mcs_fips_ctr *req);
+/* FIPS key set */
+__roc_api int roc_mcs_fips_key_set(struct roc_mcs *mcs, struct roc_mcs_fips_key *req);
+/* FIPS block set */
+__roc_api int roc_mcs_fips_block_set(struct roc_mcs *mcs, struct roc_mcs_fips_block *req);
+/* FIPS start */
+__roc_api int roc_mcs_fips_start(struct roc_mcs *mcs, struct roc_mcs_fips_req *req);
+/* FIPS result */
+__roc_api int roc_mcs_fips_result_get(struct roc_mcs *mcs, struct roc_mcs_fips_req *req,
+				      struct roc_mcs_fips_result_rsp *rsp);
 #endif /* ROC_MCS_H */
