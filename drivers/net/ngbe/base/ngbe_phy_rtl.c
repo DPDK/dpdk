@@ -120,6 +120,8 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 	hw->init_phy = true;
 	msec_delay(1);
 
+	hw->phy.set_phy_power(hw, true);
+
 	for (i = 0; i < 15; i++) {
 		if (!rd32m(hw, NGBE_STAT,
 			NGBE_STAT_GPHY_IN_RST(hw->bus.lan_id)))
