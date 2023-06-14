@@ -248,6 +248,26 @@ __rte_experimental
 int rte_graph_destroy(rte_graph_t id);
 
 /**
+ * Clone Graph.
+ *
+ * Clone a graph from static graph (graph created from rte_graph_create()). And
+ * all cloned graphs attached to the parent graph MUST be destroyed together
+ * for fast schedule design limitation (stop ALL graph walk firstly).
+ *
+ * @param id
+ *   Static graph id to clone from.
+ * @param name
+ *   Name of the new graph. The library prepends the parent graph name to the
+ * user-specified name. The final graph name will be,
+ * "parent graph name" + "-" + name.
+ *
+ * @return
+ *   Valid graph id on success, RTE_GRAPH_ID_INVALID otherwise.
+ */
+__rte_experimental
+rte_graph_t rte_graph_clone(rte_graph_t id, const char *name);
+
+/**
  * Get graph id from graph name.
  *
  * @param name

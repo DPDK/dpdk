@@ -5,6 +5,7 @@ EXPERIMENTAL {
 	__rte_node_stream_alloc;
 	__rte_node_stream_alloc_size;
 
+	rte_graph_clone;
 	rte_graph_create;
 	rte_graph_destroy;
 	rte_graph_dump;
