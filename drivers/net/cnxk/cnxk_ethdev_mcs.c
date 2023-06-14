@@ -521,6 +521,70 @@ cnxk_mcs_flow_destroy(struct cnxk_eth_dev *dev, void *flow)
 	return ret;
 }
 
+int
+cnxk_eth_macsec_sa_stats_get(void *device, uint16_t sa_id, enum rte_security_macsec_direction dir,
+			     struct rte_security_macsec_sa_stats *stats)
+{
+	RTE_SET_USED(device);
+	RTE_SET_USED(sa_id);
+	RTE_SET_USED(dir);
+	RTE_SET_USED(stats);
+
+	return 0;
+}
+
+int
+cnxk_eth_macsec_sc_stats_get(void *device, uint16_t sc_id, enum rte_security_macsec_direction dir,
+			     struct rte_security_macsec_sc_stats *stats)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_mcs_dev *mcs_dev = dev->mcs_dev;
+	struct roc_mcs_stats_req req = {0};
+
+	if (!roc_feature_nix_has_macsec())
+		return -ENOTSUP;
+
+	req.id = sc_id;
+	req.dir = (dir == RTE_SECURITY_MACSEC_DIR_RX) ? MCS_RX : MCS_TX;
+
+	return roc_mcs_sc_stats_get(mcs_dev->mdev, &req, (struct roc_mcs_sc_stats *)stats);
+}
+
+int
+cnxk_eth_macsec_session_stats_get(struct cnxk_eth_dev *dev, struct cnxk_macsec_sess *sess,
+				  struct rte_security_stats *stats)
+{
+	struct cnxk_mcs_dev *mcs_dev = dev->mcs_dev;
+	struct roc_mcs_flowid_stats flow_stats = {0};
+	struct roc_mcs_port_stats port_stats = {0};
+	struct roc_mcs_stats_req req = {0};
+
+	if (!roc_feature_nix_has_macsec())
+		return -ENOTSUP;
+
+	req.id = sess->flow_id;
+	req.dir = sess->dir;
+	roc_mcs_flowid_stats_get(mcs_dev->mdev, &req, &flow_stats);
+	plt_nix_dbg("\n******* FLOW_ID IDX[%u] STATS dir: %u********\n", sess->flow_id, sess->dir);
+	plt_nix_dbg("TX: tcam_hit_cnt: 0x%" PRIx64 "\n", flow_stats.tcam_hit_cnt);
+
+	req.id = mcs_dev->port_id;
+	req.dir = sess->dir;
+	roc_mcs_port_stats_get(mcs_dev->mdev, &req, &port_stats);
+	plt_nix_dbg("\n********** PORT[0] STATS ****************\n");
+	plt_nix_dbg("RX tcam_miss_cnt: 0x%" PRIx64 "\n", port_stats.tcam_miss_cnt);
+	plt_nix_dbg("RX parser_err_cnt: 0x%" PRIx64 "\n", port_stats.parser_err_cnt);
+	plt_nix_dbg("RX preempt_err_cnt: 0x%" PRIx64 "\n", port_stats.preempt_err_cnt);
+	plt_nix_dbg("RX sectag_insert_err_cnt: 0x%" PRIx64 "\n", port_stats.sectag_insert_err_cnt);
+
+	req.id = sess->secy_id;
+	req.dir = sess->dir;
+
+	return roc_mcs_secy_stats_get(mcs_dev->mdev, &req,
+				      (struct roc_mcs_secy_stats *)(&stats->macsec));
+}
+
 static int
 cnxk_mcs_event_cb(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg)
 {

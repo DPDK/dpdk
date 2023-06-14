@@ -100,6 +100,15 @@ int cnxk_eth_macsec_sa_destroy(void *device, uint16_t sa_id,
 int cnxk_eth_macsec_sc_destroy(void *device, uint16_t sc_id,
 			       enum rte_security_macsec_direction dir);
 
+int cnxk_eth_macsec_sa_stats_get(void *device, uint16_t sa_id,
+				 enum rte_security_macsec_direction dir,
+				 struct rte_security_macsec_sa_stats *stats);
+int cnxk_eth_macsec_sc_stats_get(void *device, uint16_t sa_id,
+				 enum rte_security_macsec_direction dir,
+				 struct rte_security_macsec_sc_stats *stats);
+int cnxk_eth_macsec_session_stats_get(struct cnxk_eth_dev *dev, struct cnxk_macsec_sess *sess,
+				      struct rte_security_stats *stats);
+
 int cnxk_eth_macsec_session_create(struct cnxk_eth_dev *dev, struct rte_security_session_conf *conf,
 				   struct rte_security_session *sess);
 int cnxk_eth_macsec_session_destroy(struct cnxk_eth_dev *dev, struct rte_security_session *sess);

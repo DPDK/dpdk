@@ -1058,12 +1058,17 @@ cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_macsec_sess *macsec_sess;
 	struct cnxk_eth_sec_sess *eth_sec;
 	int rc;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
-	if (eth_sec == NULL)
+	if (eth_sec == NULL) {
+		macsec_sess = cnxk_eth_macsec_sess_get_by_sess(dev, sess);
+		if (macsec_sess)
+			return cnxk_eth_macsec_session_stats_get(dev, macsec_sess, stats);
 		return -EINVAL;
+	}
 
 	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb,
 			    ROC_NIX_INL_SA_OP_FLUSH);
@@ -1107,6 +1112,6 @@ cn10k_eth_sec_ops_override(void)
 	cnxk_eth_sec_ops.capabilities_get = cn10k_eth_sec_capabilities_get;
 	cnxk_eth_sec_ops.session_update = cn10k_eth_sec_session_update;
 	cnxk_eth_sec_ops.session_stats_get = cn10k_eth_sec_session_stats_get;
-	cnxk_eth_sec_ops.macsec_sc_stats_get = NULL;
-	cnxk_eth_sec_ops.macsec_sa_stats_get = NULL;
+	cnxk_eth_sec_ops.macsec_sc_stats_get = cnxk_eth_macsec_sc_stats_get;
+	cnxk_eth_sec_ops.macsec_sa_stats_get = cnxk_eth_macsec_sa_stats_get;
 }

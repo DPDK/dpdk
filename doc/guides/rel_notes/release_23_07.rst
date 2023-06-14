@@ -128,6 +128,8 @@ New Features
 * **Updated Marvell cnxk ethdev driver.**
 
   * Extended ``RTE_FLOW_ACTION_TYPE_PORT_ID`` to redirect traffic across PF ports.
+  * Added support for inline MACsec processing using security library
+    for CN103 platform.
 
 * **Updated NVIDIA mlx5 net driver.**
 
