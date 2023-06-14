@@ -974,9 +974,6 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	/* Stop the link setup handler before resetting the HW. */
-	rte_eal_alarm_cancel(ngbe_dev_setup_link_alarm_handler, dev);
-
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
 
@@ -1171,8 +1168,6 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 		return 0;
 
 	PMD_INIT_FUNC_TRACE();
-
-	rte_eal_alarm_cancel(ngbe_dev_setup_link_alarm_handler, dev);
 
 	if (hw->gpio_ctl) {
 		/* gpio0 is used to power on/off control*/
@@ -1895,24 +1890,6 @@ ngbe_dev_overheat(struct rte_eth_dev *dev)
 	}
 }
 
-void
-ngbe_dev_setup_link_alarm_handler(void *param)
-{
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
-	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
-	u32 speed;
-	bool autoneg = false;
-
-	speed = hw->phy.autoneg_advertised;
-	if (!speed)
-		hw->mac.get_link_capabilities(hw, &speed, &autoneg);
-
-	hw->mac.setup_link(hw, speed, true);
-
-	intr->flags &= ~NGBE_FLAG_NEED_LINK_CONFIG;
-}
-
 /* return 0 means link status changed, -1 means not changed */
 int
 ngbe_dev_link_update_share(struct rte_eth_dev *dev,
@@ -1922,7 +1899,6 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 	struct rte_eth_link link;
 	u32 link_speed = NGBE_LINK_SPEED_UNKNOWN;
 	u32 lan_speed = 0;
-	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
 	bool link_up;
 	int err;
 	int wait = 1;
@@ -1935,9 +1911,6 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 			~RTE_ETH_LINK_SPEED_AUTONEG);
 
 	hw->mac.get_link_status = true;
-
-	if (intr->flags & NGBE_FLAG_NEED_LINK_CONFIG)
-		return rte_eth_linkstatus_set(dev, &link);
 
 	/* check if it needs to wait to complete, if lsc interrupt is enabled */
 	if (wait_to_complete == 0 || dev->data->dev_conf.intr_conf.lsc != 0)
@@ -1953,7 +1926,6 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 	if (!link_up)
 		return rte_eth_linkstatus_set(dev, &link);
 
-	intr->flags &= ~NGBE_FLAG_NEED_LINK_CONFIG;
 	link.link_status = RTE_ETH_LINK_UP;
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
