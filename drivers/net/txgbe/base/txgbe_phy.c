@@ -1380,7 +1380,9 @@ txgbe_set_sgmii_an37_ability(struct txgbe_hw *hw)
 		wr32_epcs(hw, SR_MII_MMD_AN_CTL, 0x0105);
 	wr32_epcs(hw, SR_MII_MMD_DIGI_CTL, 0x0200);
 	value = rd32_epcs(hw, SR_MII_MMD_CTL);
-	value = (value & ~0x1200) | (0x1 << 12) | (0x1 << 9);
+	value = (value & ~0x1200) | (0x1 << 9);
+	if (hw->autoneg)
+		value |= SR_MII_MMD_CTL_AN_EN;
 	wr32_epcs(hw, SR_MII_MMD_CTL, value);
 }
 

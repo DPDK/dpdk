@@ -1776,6 +1776,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 		speed = (TXGBE_LINK_SPEED_100M_FULL |
 			 TXGBE_LINK_SPEED_1GB_FULL |
 			 TXGBE_LINK_SPEED_10GB_FULL);
+		hw->autoneg = true;
 	} else {
 		if (*link_speeds & RTE_ETH_LINK_SPEED_10G)
 			speed |= TXGBE_LINK_SPEED_10GB_FULL;
@@ -1787,6 +1788,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 			speed |= TXGBE_LINK_SPEED_1GB_FULL;
 		if (*link_speeds & RTE_ETH_LINK_SPEED_100M)
 			speed |= TXGBE_LINK_SPEED_100M_FULL;
+		hw->autoneg = false;
 	}
 
 	err = hw->mac.setup_link(hw, speed, link_up);
