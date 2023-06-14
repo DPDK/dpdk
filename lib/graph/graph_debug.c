@@ -74,6 +74,12 @@ rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 		fprintf(f, "       size=%d\n", n->size);
 		fprintf(f, "       idx=%d\n", n->idx);
 		fprintf(f, "       total_objs=%" PRId64 "\n", n->total_objs);
+		if (rte_graph_worker_model_get(g) == RTE_GRAPH_MODEL_MCORE_DISPATCH) {
+			fprintf(f, "       total_sched_objs=%" PRId64 "\n",
+				n->dispatch.total_sched_objs);
+			fprintf(f, "       total_sched_fail=%" PRId64 "\n",
+				n->dispatch.total_sched_fail);
+		}
 		fprintf(f, "       total_calls=%" PRId64 "\n", n->total_calls);
 		for (i = 0; i < n->nb_edges; i++)
 			fprintf(f, "          edge[%d] <%s>\n", i,

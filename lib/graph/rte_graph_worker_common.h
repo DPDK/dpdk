@@ -110,6 +110,8 @@ struct rte_node {
 		/* Fast schedule area for mcore dispatch model */
 		struct {
 			unsigned int lcore_id;  /**< Node running lcore. */
+			uint64_t total_sched_objs; /**< Number of objects scheduled. */
+			uint64_t total_sched_fail; /**< Number of scheduled failure. */
 		} dispatch;
 	};
 	/* Fast path area  */

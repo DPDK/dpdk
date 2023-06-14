@@ -40,19 +40,47 @@ struct rte_graph_cluster_stats {
 	struct cluster_node clusters[];
 } __rte_cache_aligned;
 
+#define boarder_model_dispatch()                                                              \
+	fprintf(f, "+-------------------------------+---------------+--------" \
+		   "-------+---------------+---------------+---------------+" \
+		   "---------------+---------------+-" \
+		   "----------+\n")
+
 #define boarder()                                                              \
 	fprintf(f, "+-------------------------------+---------------+--------" \
 		   "-------+---------------+---------------+---------------+-" \
 		   "----------+\n")
 
 static inline void
-print_banner(FILE *f)
+print_banner_default(FILE *f)
 {
 	boarder();
 	fprintf(f, "%-32s%-16s%-16s%-16s%-16s%-16s%-16s\n", "|Node", "|calls",
 		"|objs", "|realloc_count", "|objs/call", "|objs/sec(10E6)",
 		"|cycles/call|");
 	boarder();
+}
+
+static inline void
+print_banner_dispatch(FILE *f)
+{
+	boarder_model_dispatch();
+	fprintf(f, "%-32s%-16s%-16s%-16s%-16s%-16s%-16s%-16s%-16s\n",
+		"|Node", "|calls",
+		"|objs", "|sched objs", "|sched fail",
+		"|realloc_count", "|objs/call", "|objs/sec(10E6)",
+		"|cycles/call|");
+	boarder_model_dispatch();
+}
+
+static inline void
+print_banner(FILE *f)
+{
+	if (rte_graph_worker_model_get(STAILQ_FIRST(graph_list_head_get())->graph) ==
+	    RTE_GRAPH_MODEL_MCORE_DISPATCH)
+		print_banner_dispatch(f);
+	else
+		print_banner_default(f);
 }
 
 static inline void
@@ -76,11 +104,22 @@ print_node(FILE *f, const struct rte_graph_cluster_node_stats *stat)
 	objs_per_sec = ts_per_hz ? (objs - prev_objs) / ts_per_hz : 0;
 	objs_per_sec /= 1000000;
 
-	fprintf(f,
-		"|%-31s|%-15" PRIu64 "|%-15" PRIu64 "|%-15" PRIu64
-		"|%-15.3f|%-15.6f|%-11.4f|\n",
-		stat->name, calls, objs, stat->realloc_count, objs_per_call,
-		objs_per_sec, cycles_per_call);
+	if (rte_graph_worker_model_get(STAILQ_FIRST(graph_list_head_get())->graph) ==
+	    RTE_GRAPH_MODEL_MCORE_DISPATCH) {
+		fprintf(f,
+			"|%-31s|%-15" PRIu64 "|%-15" PRIu64 "|%-15" PRIu64
+			"|%-15" PRIu64 "|%-15" PRIu64
+			"|%-15.3f|%-15.6f|%-11.4f|\n",
+			stat->name, calls, objs, stat->dispatch.sched_objs,
+			stat->dispatch.sched_fail, stat->realloc_count, objs_per_call,
+			objs_per_sec, cycles_per_call);
+	} else {
+		fprintf(f,
+			"|%-31s|%-15" PRIu64 "|%-15" PRIu64 "|%-15" PRIu64
+			"|%-15.3f|%-15.6f|%-11.4f|\n",
+			stat->name, calls, objs, stat->realloc_count, objs_per_call,
+			objs_per_sec, cycles_per_call);
+	}
 }
 
 static int
@@ -88,13 +127,20 @@ graph_cluster_stats_cb(bool is_first, bool is_last, void *cookie,
 		       const struct rte_graph_cluster_node_stats *stat)
 {
 	FILE *f = cookie;
+	int model;
+
+	model = rte_graph_worker_model_get(STAILQ_FIRST(graph_list_head_get())->graph);
 
 	if (unlikely(is_first))
 		print_banner(f);
 	if (stat->objs)
 		print_node(f, stat);
-	if (unlikely(is_last))
-		boarder();
+	if (unlikely(is_last)) {
+		if (model == RTE_GRAPH_MODEL_MCORE_DISPATCH)
+			boarder_model_dispatch();
+		else
+			boarder();
+	}
 
 	return 0;
 };
@@ -333,11 +379,19 @@ cluster_node_arregate_stats(struct cluster_node *cluster)
 {
 	uint64_t calls = 0, cycles = 0, objs = 0, realloc_count = 0;
 	struct rte_graph_cluster_node_stats *stat = &cluster->stat;
+	uint64_t sched_objs = 0, sched_fail = 0;
 	struct rte_node *node;
 	rte_node_t count;
+	int model;
 
+	model = rte_graph_worker_model_get(STAILQ_FIRST(graph_list_head_get())->graph);
 	for (count = 0; count < cluster->nb_nodes; count++) {
 		node = cluster->nodes[count];
+
+		if (model == RTE_GRAPH_MODEL_MCORE_DISPATCH) {
+			sched_objs += node->dispatch.total_sched_objs;
+			sched_fail += node->dispatch.total_sched_fail;
+		}
 
 		calls += node->total_calls;
 		objs += node->total_objs;
@@ -348,6 +402,12 @@ cluster_node_arregate_stats(struct cluster_node *cluster)
 	stat->calls = calls;
 	stat->objs = objs;
 	stat->cycles = cycles;
+
+	if (model == RTE_GRAPH_MODEL_MCORE_DISPATCH) {
+		stat->dispatch.sched_objs = sched_objs;
+		stat->dispatch.sched_fail = sched_fail;
+	}
+
 	stat->ts = rte_get_timer_cycles();
 	stat->realloc_count = realloc_count;
 }

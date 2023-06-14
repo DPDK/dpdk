@@ -220,6 +220,16 @@ struct rte_graph_cluster_node_stats {
 	uint64_t prev_objs;	/**< Previous number of processed objs. */
 	uint64_t prev_cycles;	/**< Previous number of cycles. */
 
+	RTE_STD_C11
+	union {
+		struct {
+			uint64_t sched_objs;
+			/**< Previous number of scheduled objs for dispatch model. */
+			uint64_t sched_fail;
+			/**< Previous number of failed schedule objs for dispatch model. */
+		} dispatch;
+	};
+
 	uint64_t realloc_count; /**< Realloc count. */
 
 	rte_node_t id;	/**< Node identifier of stats. */
