@@ -53,7 +53,6 @@ extern "C" {
  *	    the same user;
  *           - Weighted Round Robin (WRR) is used to service the
  *	    queues within same pipe lowest priority traffic class (best-effort).
- *
  */
 
 #include <rte_compat.h>
@@ -310,7 +309,6 @@ struct rte_sched_port_params {
 
 /*
  * Configuration
- *
  ***/
 
 /**
@@ -436,7 +434,6 @@ rte_sched_port_get_memory_footprint(struct rte_sched_port_params *port_params,
 	struct rte_sched_subport_params **subport_params);
 /*
  * Statistics
- *
  ***/
 
 /**

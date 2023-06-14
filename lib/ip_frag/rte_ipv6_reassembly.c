@@ -13,7 +13,6 @@
  * IPv6 reassemble
  *
  * Implementation of IPv6 reassembly.
- *
  */
 
 static inline void

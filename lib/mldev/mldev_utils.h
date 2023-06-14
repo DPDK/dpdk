@@ -15,7 +15,6 @@ extern "C" {
  * ML Device PMD utility API
  *
  * These APIs for the use from ML drivers, user applications shouldn't use them.
- *
  */
 
 #include <rte_compat.h>

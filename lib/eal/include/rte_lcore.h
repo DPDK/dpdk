@@ -9,7 +9,6 @@
  * @file
  *
  * API for lcore and socket manipulation
- *
  */
 #include <stdio.h>
 

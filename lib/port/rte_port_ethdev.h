@@ -15,7 +15,6 @@ extern "C" {
  *
  * ethdev_reader: input port built on top of pre-initialized NIC RX queue
  * ethdev_writer: output port built on top of pre-initialized NIC TX queue
- *
  ***/
 
 #include <stdint.h>

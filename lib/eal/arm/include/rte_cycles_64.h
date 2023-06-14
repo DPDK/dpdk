@@ -72,7 +72,6 @@ rte_rdtsc(void)
  * val |= (BIT(0) | BIT(2));
  * isb();
  * asm volatile("msr pmcr_el0, %0" : : "r" (val));
- *
  */
 
 /** Read PMU cycle counter */

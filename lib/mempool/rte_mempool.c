@@ -55,7 +55,6 @@ mempool_event_callback_invoke(enum rte_mempool_event event,
 #if defined(RTE_ARCH_X86)
 /*
  * return the greatest common divisor between a and b (fast algorithm)
- *
  */
 static unsigned get_gcd(unsigned a, unsigned b)
 {

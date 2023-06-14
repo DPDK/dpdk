@@ -14,7 +14,6 @@
  *
  * This API allows to do control path functions of ip4_* nodes
  * like ip4_lookup, ip4_rewrite.
- *
  */
 #ifdef __cplusplus
 extern "C" {

@@ -2043,7 +2043,6 @@ rte_sched_port_enqueue_qwa(struct rte_sched_port *port,
  *       |   0   |      |   1   |      |   2   |      |   3   |
  * ----->|_______|----->|_______|----->|_______|----->|_______|----->
  *   p01            p11            p21            p31
- *
  */
 int
 rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts,

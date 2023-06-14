@@ -90,7 +90,6 @@ struct rte_rawdev_info;
  * @return
  *   - 0: Success, driver updates the contextual information of the raw device
  *   - <0: Error code returned by the driver info get function.
- *
  */
 int
 rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
@@ -152,7 +151,6 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
  *   - <0: Error code returned by the driver info get function.
  *
  * @see rte_raw_queue_setup()
- *
  */
 int
 rte_rawdev_queue_conf_get(uint16_t dev_id,

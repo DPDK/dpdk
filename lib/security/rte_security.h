@@ -10,7 +10,6 @@
  * @file rte_security.h
  *
  * RTE Security Common Definitions
- *
  */
 
 #ifdef __cplusplus

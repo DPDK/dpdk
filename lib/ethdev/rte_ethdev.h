@@ -6372,7 +6372,6 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
  *   - EINVAL: offload flags are not correctly set
  *   - ENOTSUP: the offload feature is not supported by the hardware
  *   - ENODEV: if *port_id* is invalid (with debug enabled only)
- *
  */
 
 #ifndef RTE_ETHDEV_TX_PREPARE_NOOP

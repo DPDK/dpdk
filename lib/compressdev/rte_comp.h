@@ -9,7 +9,6 @@
  * @file rte_comp.h
  *
  * RTE definitions for Data Compression Service
- *
  */
 
 #ifdef __cplusplus

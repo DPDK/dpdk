@@ -83,7 +83,6 @@
  * _REMOVE_HEAD			+	-	+	-
  * _REMOVE			s	+	s	+
  * _SWAP			+	+	+	+
- *
  */
 #ifdef QUEUE_MACRO_DEBUG
 #warn Use QUEUE_MACRO_DEBUG_TRACE and/or QUEUE_MACRO_DEBUG_TRASH

@@ -102,7 +102,6 @@ extobj_statement_parse(struct extobj_spec *s,
 
 /*
  * struct.
- *
  */
 static void
 struct_spec_free(struct struct_spec *s)
@@ -279,7 +278,6 @@ error:
 
 /*
  * header.
- *
  */
 static void
 header_spec_free(struct header_spec *s)
@@ -331,7 +329,6 @@ header_statement_parse(struct header_spec *s,
 
 /*
  * metadata.
- *
  */
 static void
 metadata_spec_free(struct metadata_spec *s)
@@ -375,7 +372,6 @@ metadata_statement_parse(struct metadata_spec *s,
 
 /*
  * action.
- *
  */
 static void
 action_spec_free(struct action_spec *s)
@@ -504,7 +500,6 @@ action_block_parse(struct action_spec *s,
 
 /*
  * table.
- *
  */
 static void
 table_spec_free(struct table_spec *s)
@@ -1059,7 +1054,6 @@ table_block_parse(struct table_spec *s,
 
 /*
  * selector.
- *
  */
 static void
 selector_spec_free(struct selector_spec *s)
@@ -1345,7 +1339,6 @@ selector_block_parse(struct selector_spec *s,
 
 /*
  * learner.
- *
  */
 static void
 learner_spec_free(struct learner_spec *s)
@@ -1927,7 +1920,6 @@ learner_block_parse(struct learner_spec *s,
 
 /*
  * regarray.
- *
  */
 static void
 regarray_spec_free(struct regarray_spec *s)
@@ -1995,7 +1987,6 @@ regarray_statement_parse(struct regarray_spec *s,
 
 /*
  * metarray.
- *
  */
 static void
 metarray_spec_free(struct metarray_spec *s)
@@ -2052,7 +2043,6 @@ metarray_statement_parse(struct metarray_spec *s,
 /*
  *
  * rss
- *
  */
 
 static void
@@ -2097,7 +2087,6 @@ rss_statement_parse(struct rss_spec *s,
 
 /*
  * apply.
- *
  */
 static void
 apply_spec_free(struct apply_spec *s)

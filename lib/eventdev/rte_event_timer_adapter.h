@@ -310,7 +310,6 @@ struct rte_event_timer_adapter_info {
  *
  * @see RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES,
  *   struct rte_event_timer_adapter_info
- *
  */
 int
 rte_event_timer_adapter_get_info(
@@ -596,7 +595,6 @@ struct rte_event_timer_adapter {
  *   - EALREADY A timer was encountered that was already armed
  *
  * @see RTE_EVENT_TIMER_ADAPTER_F_PERIODIC
- *
  */
 static inline uint16_t
 rte_event_timer_arm_burst(const struct rte_event_timer_adapter *adapter,

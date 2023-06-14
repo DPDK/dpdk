@@ -20,7 +20,6 @@
  * dump and destroy on graph and node operations such as clone,
  * edge update, and edge shrink, etc. The API also allows to create the stats
  * cluster to monitor per graph and per node stats.
- *
  */
 
 #include <stdbool.h>
@@ -95,7 +94,6 @@ struct rte_graph_cluster_node_stats; /**< Node stats within cluster of graphs */
  *   Number of objects processed.
  *
  * @see rte_graph_walk()
- *
  */
 typedef uint16_t (*rte_node_process_t)(struct rte_graph *graph,
 				       struct rte_node *node, void **objs,

@@ -14,7 +14,6 @@
  *
  * This API allows to do control path functions of ip6_* nodes
  * like ip6_lookup, ip6_rewrite.
- *
  */
 #ifdef __cplusplus
 extern "C" {

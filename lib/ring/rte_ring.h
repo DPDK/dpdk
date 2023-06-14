@@ -32,7 +32,6 @@
  * Note: the ring implementation is not preemptible. Refer to Programmer's
  * guide/Environment Abstraction Layer/Multiple pthread/Known Issues/rte_ring
  * for more information.
- *
  */
 
 #ifdef __cplusplus

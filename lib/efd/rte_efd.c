@@ -344,7 +344,6 @@ efd_get_choice(const struct rte_efd_table * const table,
  *   Computed chunk ID
  * @param bin_id
  *   Computed bin ID
- *
  */
 static inline void
 efd_compute_ids(const struct rte_efd_table * const table,

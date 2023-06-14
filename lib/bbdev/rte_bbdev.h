@@ -963,7 +963,6 @@ rte_bbdev_queue_intr_ctl(uint16_t dev_id, uint16_t queue_id, int epfd, int op,
  *
  * @returns
  *   Device status as string or NULL if invalid.
- *
  */
 __rte_experimental
 const char*
@@ -977,7 +976,6 @@ rte_bbdev_device_status_str(enum rte_bbdev_device_status status);
  *
  * @returns
  *   Queue status as string or NULL if op_type is invalid.
- *
  */
 __rte_experimental
 const char*

@@ -15,7 +15,6 @@
  * serviced.
  *
  * All locks must be initialised before use, and only initialised once.
- *
  */
 
 #ifdef __cplusplus

@@ -14,7 +14,6 @@
  * RTE IPv6 Fragmentation
  *
  * Implementation of IPv6 fragmentation.
- *
  */
 
 static inline void

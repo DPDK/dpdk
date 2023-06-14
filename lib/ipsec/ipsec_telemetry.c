@@ -41,7 +41,6 @@ handle_telemetry_cmd_ipsec_sa_list(const char *cmd __rte_unused,
  *     "SA_SPI_XX": {"count": 0, "bytes": 0, "errors": 0},
  *     "SA_SPI_YY": {"count": 0, "bytes": 0, "errors": 0}
  * }
- *
  */
 static int
 handle_telemetry_cmd_ipsec_sa_stats(const char *cmd __rte_unused,

@@ -669,7 +669,6 @@ rte_mp_channel_cleanup(void)
  * Return -1, as fail to send message and it's caused by the local side.
  * Return 0, as fail to send message and it's caused by the remote side.
  * Return 1, as succeed to send message.
- *
  */
 static int
 send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)

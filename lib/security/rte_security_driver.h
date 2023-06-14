@@ -10,7 +10,6 @@
  * @file rte_security_driver.h
  *
  * RTE Security Common Definitions
- *
  */
 
 #ifdef __cplusplus

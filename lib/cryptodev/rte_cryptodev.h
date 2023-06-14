@@ -162,7 +162,6 @@ struct rte_cryptodev_symmetric_capability {
 
 /**
  * Asymmetric Xform Crypto Capability
- *
  */
 struct rte_cryptodev_asymmetric_xform_capability {
 	enum rte_crypto_asym_xform_type xform_type;
@@ -188,7 +187,6 @@ struct rte_cryptodev_asymmetric_xform_capability {
 
 /**
  * Asymmetric Crypto Capability
- *
  */
 struct rte_cryptodev_asymmetric_capability {
 	struct rte_cryptodev_asymmetric_xform_capability xform_capa;
@@ -222,7 +220,6 @@ struct rte_cryptodev_sym_capability_idx {
 /**
  * Structure used to describe asymmetric crypto xforms
  * Each xform maps to one asym algorithm.
- *
  */
 struct rte_cryptodev_asym_capability_idx {
 	enum rte_crypto_asym_xform_type type;

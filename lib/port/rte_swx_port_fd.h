@@ -12,7 +12,6 @@ extern "C" {
 /**
  * @file
  * RTE SWX FD Input and Output Ports
- *
  ***/
 #include <stdint.h>
 

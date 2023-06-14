@@ -12,8 +12,6 @@ extern "C" {
 /**
  * @file
  * RTE Random Early Detection (RED)
- *
- *
  ***/
 
 #include <stdint.h>
@@ -35,7 +33,6 @@ extern "C" {
 
 /**
  * Externs
- *
  */
 extern uint32_t rte_red_rand_val;
 extern uint32_t rte_red_rand_seed;
@@ -44,7 +41,6 @@ extern uint16_t rte_red_pow2_frac_inv[16];
 
 /**
  * RED configuration parameters passed by user
- *
  */
 struct rte_red_params {
 	uint16_t min_th;   /**< Minimum threshold for queue (max_th) */

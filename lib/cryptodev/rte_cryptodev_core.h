@@ -14,7 +14,6 @@
  * public API because they are used by inline functions in the published API.
  *
  * Applications should not use these directly.
- *
  */
 
 typedef uint16_t (*dequeue_pkt_burst_t)(void *qp,

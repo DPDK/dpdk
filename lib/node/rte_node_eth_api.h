@@ -14,7 +14,6 @@
  *
  * This API allows to setup ethdev_rx and ethdev_tx nodes
  * and its queue associations.
- *
  */
 
 #ifdef __cplusplus

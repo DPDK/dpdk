@@ -1726,7 +1726,6 @@ static const struct rte_flow_item_mark rte_flow_item_mark_mask = {
  * RTE_FLOW_ITEM_TYPE_NSH
  *
  * Match network service header (NSH), RFC 8300
- *
  */
 struct rte_flow_item_nsh {
 	uint32_t version:2;
@@ -1758,7 +1757,6 @@ static const struct rte_flow_item_nsh rte_flow_item_nsh_mask = {
  * RTE_FLOW_ITEM_TYPE_IGMP
  *
  * Match Internet Group Management Protocol (IGMP), RFC 2236
- *
  */
 struct rte_flow_item_igmp {
 	uint32_t type:8;
@@ -1781,7 +1779,6 @@ static const struct rte_flow_item_igmp rte_flow_item_igmp_mask = {
  * RTE_FLOW_ITEM_TYPE_AH
  *
  * Match IP Authentication Header (AH), RFC 4302
- *
  */
 struct rte_flow_item_ah {
 	uint32_t next_hdr:8;
@@ -3028,7 +3025,6 @@ struct rte_flow_action_quota {
  * Query indirect QUOTA action.
  *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
- *
  */
 struct rte_flow_query_quota {
 	int64_t quota; /**< Quota value. */
@@ -3422,7 +3418,6 @@ struct rte_flow_action_of_push_mpls {
  * - ETH / IPV4 / UDP / VXLAN / END
  * - ETH / IPV6 / UDP / VXLAN / END
  * - ETH / VLAN / IPV4 / UDP / VXLAN / END
- *
  */
 struct rte_flow_action_vxlan_encap {
 	/**
@@ -3456,7 +3451,6 @@ struct rte_flow_action_vxlan_encap {
  *
  * - ETH / IPV4 / NVGRE / END
  * - ETH / VLAN / IPV6 / NVGRE / END
- *
  */
 struct rte_flow_action_nvgre_encap {
 	/**
@@ -4041,7 +4035,6 @@ struct rte_flow_action_meter_mark {
  * RTE_FLOW_ACTION_TYPE_METER_MARK
  *
  * Wrapper structure for the context update interface.
- *
  */
 struct rte_flow_update_meter_mark {
 	/** New meter_mark parameters to be updated. */
@@ -5301,7 +5294,6 @@ rte_flow_flex_item_release(uint16_t port_id,
  *
  * Information about flow engine resources.
  * The zero value means a resource is not supported.
- *
  */
 struct rte_flow_port_info {
 	/**
@@ -5345,7 +5337,6 @@ struct rte_flow_port_info {
  *
  * Information about flow engine asynchronous queues.
  * The value only valid if @p port_attr.max_nb_queues is not zero.
- *
  */
 struct rte_flow_queue_info {
 	/**
@@ -5395,7 +5386,6 @@ rte_flow_info_get(uint16_t port_id,
  *
  * Flow engine resources settings.
  * The zero value means on demand resource allocations only.
- *
  */
 struct rte_flow_port_attr {
 	/**
@@ -5439,7 +5429,6 @@ struct rte_flow_port_attr {
  *
  * Flow engine asynchronous queues settings.
  * The value means default value picked by PMD.
- *
  */
 struct rte_flow_queue_attr {
 	/**

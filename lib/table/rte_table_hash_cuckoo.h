@@ -12,7 +12,6 @@ extern "C" {
 /**
  * @file
  * RTE Table Hash Cuckoo
- *
  ***/
 #include <stdint.h>
 

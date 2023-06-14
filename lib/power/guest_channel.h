@@ -39,7 +39,6 @@ int guest_channel_host_connect(const char *path, unsigned int lcore_id);
  *
  * @param lcore_id
  *  lcore_id.
- *
  */
 void guest_channel_host_disconnect(unsigned int lcore_id);
 

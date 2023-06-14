@@ -10,7 +10,6 @@
  * @file
  *
  * CPU pause operation.
- *
  */
 
 #include <stdint.h>

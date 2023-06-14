@@ -16,7 +16,6 @@ extern "C" {
  *
  * These APIs for the use from Ethernet drivers, user applications shouldn't
  * use them.
- *
  */
 
 #include <dev_driver.h>

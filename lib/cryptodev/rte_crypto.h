@@ -9,7 +9,6 @@
  * @file rte_crypto.h
  *
  * RTE Cryptography Common Definitions
- *
  */
 
 #ifdef __cplusplus

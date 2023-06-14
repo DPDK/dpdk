@@ -15,7 +15,6 @@ extern "C" {
  *
  * fd_reader: input port built on top of valid non-blocking file descriptor
  * fd_writer: output port built on top of valid non-blocking file descriptor
- *
  ***/
 
 #include <stdint.h>

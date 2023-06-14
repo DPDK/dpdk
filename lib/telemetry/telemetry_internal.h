@@ -14,7 +14,6 @@
  *
  * @file
  * RTE Telemetry Legacy and internal definitions
- *
  ***/
 
 /**

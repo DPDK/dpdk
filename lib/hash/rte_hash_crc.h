@@ -51,7 +51,6 @@ static uint8_t crc32_alg = CRC32_SW;
  *   - (CRC32_SSE42) Use SSE4.2 intrinsics if available
  *   - (CRC32_SSE42_x64) Use 64-bit SSE4.2 intrinsic if available (default x86)
  *   - (CRC32_ARM64) Use ARMv8 CRC intrinsic if available (default ARMv8)
- *
  */
 static inline void
 rte_hash_crc_set_alg(uint8_t alg)

@@ -390,7 +390,6 @@ typedef void (*cryptodev_asym_clear_session_t)(struct rte_cryptodev *dev,
  *
  * @return
  *  - Returns number of successfully processed packets.
- *
  */
 typedef uint32_t (*cryptodev_sym_cpu_crypto_process_t)
 	(struct rte_cryptodev *dev, struct rte_cryptodev_sym_session *sess,

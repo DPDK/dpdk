@@ -240,7 +240,6 @@ rte_mp_action_register(const char *name, rte_mp_t action);
  *
  * @param name
  *   The name argument plays as the nonredundant key to find the action.
- *
  */
 void
 rte_mp_action_unregister(const char *name);
@@ -463,7 +462,6 @@ uint64_t rte_eal_get_baseaddr(void);
  * IOVA mapping mode is iommu programming mode of a device.
  * That device (for example: IOMMU backed DMA device) based
  * on rte_iova_mode will generate physical or virtual address.
- *
  */
 enum rte_iova_mode {
 	RTE_IOVA_DC = 0,	/* Don't care mode */

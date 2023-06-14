@@ -489,7 +489,6 @@ table_mailbox_size_get(void)
  * match = 1111_1111_1111_1110 = 0xFFFE
  * match_many = 1111_1110_1110_1000 = 0xFEE8
  * match_pos = 0001_0010_0001_0011__0001_0010_0001_0000 = 0x12131210
- *
  */
 
 #define LUT_MATCH      0xFFFE

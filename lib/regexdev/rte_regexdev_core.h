@@ -14,7 +14,6 @@
  * in order to expose their ops to the class.
  *
  * Applications should not use these API directly.
- *
  */
 
 struct rte_regexdev;

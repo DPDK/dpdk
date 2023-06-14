@@ -76,7 +76,6 @@ enum rte_crypto_curve_id {
  * Asymmetric crypto transformation types.
  * Each xform type maps to one asymmetric algorithm
  * performing specific operation
- *
  */
 enum rte_crypto_asym_xform_type {
 	RTE_CRYPTO_ASYM_XFORM_UNSPECIFIED = 0,
@@ -181,7 +180,6 @@ enum rte_crypto_rsa_padding_type {
  *
  * enumerates private key format required to perform RSA crypto
  * transform.
- *
  */
 enum rte_crypto_rsa_priv_key_type {
 	RTE_RSA_KEY_TYPE_EXP,
@@ -303,7 +301,6 @@ struct rte_crypto_rsa_padding {
  * Asymmetric RSA transform data
  *
  * Structure describing RSA xform params
- *
  */
 struct rte_crypto_rsa_xform {
 	rte_crypto_uint n;
@@ -326,7 +323,6 @@ struct rte_crypto_rsa_xform {
  * Asymmetric Modular exponentiation transform data
  *
  * Structure describing modular exponentiation xform param
- *
  */
 struct rte_crypto_modex_xform {
 	rte_crypto_uint modulus;
@@ -339,7 +335,6 @@ struct rte_crypto_modex_xform {
  * Asymmetric modular multiplicative inverse transform operation
  *
  * Structure describing modular multiplicative inverse transform
- *
  */
 struct rte_crypto_modinv_xform {
 	rte_crypto_uint modulus;
@@ -350,7 +345,6 @@ struct rte_crypto_modinv_xform {
  * Asymmetric DH transform data
  *
  * Structure describing deffie-hellman xform params
- *
  */
 struct rte_crypto_dh_xform {
 	rte_crypto_uint p;
@@ -363,7 +357,6 @@ struct rte_crypto_dh_xform {
  * Asymmetric Digital Signature transform operation
  *
  * Structure describing DSA xform params
- *
  */
 struct rte_crypto_dsa_xform {
 	rte_crypto_uint p;
@@ -380,7 +373,6 @@ struct rte_crypto_dsa_xform {
  * Asymmetric elliptic curve transform data
  *
  * Structure describing all EC based xform params
- *
  */
 struct rte_crypto_ec_xform {
 	enum rte_crypto_curve_id curve_id;
@@ -400,7 +392,6 @@ struct rte_crypto_sm2_xform {
 /**
  * Operations params for modular operations:
  * exponentiation and multiplicative inverse
- *
  */
 struct rte_crypto_mod_op_param {
 	rte_crypto_uint base;
@@ -411,7 +402,6 @@ struct rte_crypto_mod_op_param {
 
 /**
  * RSA operation params
- *
  */
 struct rte_crypto_rsa_op_param {
 	enum rte_crypto_asym_op_type op_type;
@@ -545,7 +535,6 @@ struct rte_crypto_ecdh_op_param {
 
 /**
  * DSA Operations params
- *
  */
 struct rte_crypto_dsa_op_param {
 	enum rte_crypto_asym_op_type op_type;
@@ -734,7 +723,6 @@ struct rte_crypto_sm2_op_param {
  * Asymmetric Cryptographic Operation.
  *
  * Structure describing asymmetric crypto operation params.
- *
  */
 struct rte_crypto_asym_op {
 	RTE_STD_C11

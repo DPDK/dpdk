@@ -254,7 +254,6 @@ typedef int (*rawdev_queue_setup_t)(struct rte_rawdev *dev,
  *   Raw device pointer
  * @param queue_id
  *   Raw queue index
- *
  */
 typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
 				      uint16_t queue_id);
@@ -273,7 +272,6 @@ typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
  *   Raw device pointer
  * @return
  *   Number of queues; 0 is assumed to be a valid response.
- *
  */
 typedef uint16_t (*rawdev_queue_count_t)(struct rte_rawdev *dev);
 
@@ -339,7 +337,6 @@ typedef int (*rawdev_dequeue_bufs_t)(struct rte_rawdev *dev,
  * @return
  *   0 for success,
  *   !0 Error
- *
  */
 typedef int (*rawdev_dump_t)(struct rte_rawdev *dev, FILE *f);
 

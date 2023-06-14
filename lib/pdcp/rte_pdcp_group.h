@@ -78,7 +78,6 @@ rte_pdcp_en_from_cop(const struct rte_crypto_op *cop)
  *   The maximum number of crypto-ops to process.
  * @return
  *   Number of filled elements in *grp* array.
- *
  */
 static inline uint16_t
 rte_pdcp_pkt_crypto_group(struct rte_crypto_op *cop[], struct rte_mbuf *mb[],

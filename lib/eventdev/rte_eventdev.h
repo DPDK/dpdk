@@ -203,7 +203,6 @@
  *		rte_event_enqueue_burst(...);
  *	}
  * \endcode
- *
  */
 
 #ifdef __cplusplus
@@ -462,7 +461,6 @@ struct rte_event_dev_info {
  * @return
  *   - 0: Success, driver updates the contextual information of the event device
  *   - <0: Error code returned by the driver info get function.
- *
  */
 int
 rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info);
@@ -679,7 +677,6 @@ struct rte_event_queue_conf {
  *   - <0: Error code returned by the driver info get function.
  *
  * @see rte_event_queue_setup()
- *
  */
 int
 rte_event_queue_default_conf_get(uint8_t dev_id, uint8_t queue_id,
@@ -881,7 +878,6 @@ struct rte_event_port_conf {
  *   - <0: Error code returned by the driver info get function.
  *
  * @see rte_event_port_setup()
- *
  */
 int
 rte_event_port_default_conf_get(uint8_t dev_id, uint8_t port_id,
@@ -1271,7 +1267,6 @@ struct rte_event_vector {
  *
  * This operation must only be enqueued to the same port that the
  * event to be released was dequeued from.
- *
  */
 
 /**
@@ -1388,7 +1383,6 @@ struct rte_event {
  *   - 0: Success, driver provides Rx event adapter capabilities for the
  *	ethernet device.
  *   - <0: Error code returned by the driver function.
- *
  */
 int
 rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
@@ -1464,7 +1458,6 @@ rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
  *   - 0: Success, driver provides event adapter capabilities for the
  *     cryptodev device.
  *   - <0: Error code returned by the driver function.
- *
  */
 int
 rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
@@ -1494,7 +1487,6 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
  * @return
  *   - 0: Success, driver provides eth Tx adapter capabilities.
  *   - <0: Error code returned by the driver function.
- *
  */
 int
 rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
@@ -1523,7 +1515,6 @@ rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
  *
  * @see rte_event_dequeue_burst(), RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
  * @see rte_event_dev_configure()
- *
  */
 int
 rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
@@ -1587,7 +1578,6 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
  * (EDQUOT) Quota exceeded(Application tried to link the queue configured with
  *  RTE_EVENT_QUEUE_CFG_SINGLE_LINK to more than one event ports)
  * (EINVAL) Invalid parameter
- *
  */
 int
 rte_event_port_link(uint8_t dev_id, uint8_t port_id,
@@ -1686,7 +1676,6 @@ rte_event_port_unlinks_in_progress(uint8_t dev_id, uint8_t port_id);
  * The number of links established on the event port designated by its
  *  *port_id*.
  * - <0 on failure.
- *
  */
 int
 rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,

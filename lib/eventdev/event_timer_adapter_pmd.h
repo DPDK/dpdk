@@ -14,7 +14,6 @@
  * This file provides implementation helpers for internal use by PMDs.  They
  * are not intended to be exposed to applications and are not subject to ABI
  * versioning.
- *
  */
 
 #ifdef __cplusplus

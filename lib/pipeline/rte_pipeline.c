@@ -155,7 +155,6 @@ rte_pipeline_port_out_free(struct rte_port_out *port);
 
 /*
  * Pipeline
- *
  */
 static int
 rte_pipeline_check_params(struct rte_pipeline_params *params)
@@ -267,7 +266,6 @@ rte_pipeline_free(struct rte_pipeline *p)
 
 /*
  * Table
- *
  */
 static int
 rte_table_check_params(struct rte_pipeline *p,
@@ -682,7 +680,6 @@ int rte_pipeline_table_entry_delete_bulk(struct rte_pipeline *p,
 
 /*
  * Port
- *
  */
 static int
 rte_pipeline_port_in_check_params(struct rte_pipeline *p,
@@ -1030,7 +1027,6 @@ rte_pipeline_port_in_disable(struct rte_pipeline *p, uint32_t port_id)
 
 /*
  * Pipeline run-time
- *
  */
 int
 rte_pipeline_check(struct rte_pipeline *p)

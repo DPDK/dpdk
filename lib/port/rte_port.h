@@ -15,7 +15,6 @@ extern "C" {
  *
  * This tool is part of the DPDK Packet Framework tool suite and provides
  * a standard interface to implement different types of packet ports.
- *
  ***/
 
 #include <stdint.h>
@@ -46,7 +45,6 @@ extern "C" {
 
 /*
  * Port IN
- *
  */
 /** Maximum number of packets read from any input port in a single burst.
 Cannot be changed. */
@@ -125,7 +123,6 @@ struct rte_port_in_ops {
 
 /*
  * Port OUT
- *
  */
 /** Output port statistics */
 struct rte_port_out_stats {

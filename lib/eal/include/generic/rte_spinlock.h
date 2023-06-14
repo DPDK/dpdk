@@ -15,7 +15,6 @@
  * a loop repeatedly checking until the lock becomes available.
  *
  * All locks must be initialised before use, and only initialised once.
- *
  */
 
 #include <rte_lcore.h>

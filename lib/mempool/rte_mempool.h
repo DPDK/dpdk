@@ -1867,7 +1867,6 @@ void rte_mempool_list_dump(FILE *f);
  *   NULL on error
  *   with rte_errno set appropriately. Possible rte_errno values include:
  *    - ENOENT - required entry not available to return.
- *
  */
 struct rte_mempool *rte_mempool_lookup(const char *name);
 

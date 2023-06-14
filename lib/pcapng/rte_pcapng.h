@@ -131,7 +131,6 @@ enum rte_pcapng_direction {
  * @return
  *   - The pointer to the new mbuf formatted for pcapng_write
  *   - NULL if allocation fails.
- *
  */
 __rte_experimental
 struct rte_mbuf *

@@ -1153,7 +1153,6 @@ eth_dev_check_lro_pkt_size(uint16_t port_id, uint32_t config_size,
  * @return
  *   - (0) if validation successful.
  *   - (-EINVAL) if requested offload has been silently disabled.
- *
  */
 static int
 eth_dev_validate_offloads(uint16_t port_id, uint64_t req_offloads,

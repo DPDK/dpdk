@@ -142,7 +142,6 @@ typedef struct cmdline_inst cmdline_parse_inst_t;
 /**
  * A context is identified by its name, and contains a list of
  * instruction
- *
  */
 typedef cmdline_parse_inst_t *cmdline_parse_ctx_t;
 

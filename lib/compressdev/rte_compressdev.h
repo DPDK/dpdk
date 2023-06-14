@@ -495,7 +495,6 @@ rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
  *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
  *  - Returns -ENOTSUP if comp device does not support the comp transform.
  *  - Returns -ENOMEM if the private stream could not be allocated.
- *
  */
 __rte_experimental
 int

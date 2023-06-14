@@ -552,7 +552,6 @@ static int rte_table_hash_ext_lookup_unoptimized(
  * match = 0xFFFELLU
  * match_many = 0xFEE8LLU
  * match_pos = 0x12131210LLU
- *
  ***/
 
 #define LUT_MATCH						0xFFFELLU
@@ -844,7 +843,6 @@ static int rte_table_hash_ext_lookup_unoptimized(
 *
 * The naming convention is:
 *    pXY = packet Y of stage X, X = 0 .. 3, Y = 0 .. 1
-*
 ***/
 static int rte_table_hash_ext_lookup(
 	void *table,

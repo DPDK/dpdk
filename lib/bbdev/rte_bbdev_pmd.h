@@ -64,7 +64,6 @@ rte_bbdev_release(struct rte_bbdev *bbdev);
  * @return
  *   - The device structure pointer, or
  *   - NULL otherwise
- *
  */
 struct rte_bbdev *
 rte_bbdev_get_named_dev(const char *name);

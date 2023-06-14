@@ -226,7 +226,6 @@ rte_rcu_qsbr_get_memsize(uint32_t max_threads);
  *   On error - 1 with error code set in rte_errno.
  *   Possible rte_errno codes are:
  *   - EINVAL - max_threads is 0 or 'v' is NULL.
- *
  */
 int
 rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads);

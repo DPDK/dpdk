@@ -25,7 +25,6 @@ extern "C" {
  * The complete IP datagrams written to the ring are not changed. The IP
  * fragments written to the ring are first reassembled and into complete IP
  * datagrams or dropped on error or IP reassembly time-out.
- *
  ***/
 
 #include <stdint.h>

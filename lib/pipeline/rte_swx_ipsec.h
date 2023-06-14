@@ -87,7 +87,6 @@ struct rte_swx_ipsec_burst_size {
 
 /**
  * IPsec instance configuration parameters
- *
  */
 struct rte_swx_ipsec_params {
 	/** Input packet queue. */
@@ -111,7 +110,6 @@ struct rte_swx_ipsec_params {
 
 /**
  * IPsec input packet meta-data
- *
  */
 struct rte_swx_ipsec_input_packet_metadata {
 	/* SA ID. */

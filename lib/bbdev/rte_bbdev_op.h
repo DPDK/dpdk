@@ -936,7 +936,6 @@ struct rte_bbdev_op_pool_private {
  *
  * @returns
  *   Operation type as string or NULL if op_type is invalid
- *
  */
 const char*
 rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type);

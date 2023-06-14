@@ -356,7 +356,6 @@ int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
  * @param cpusetp
  *   Pointer to CPU affinity of current thread.
  *   It presumes input is not NULL, otherwise it causes panic.
- *
  */
 void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
 

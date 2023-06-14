@@ -32,7 +32,6 @@ extern "C" {
 
 /**
  * PIE configuration parameters passed by user
- *
  */
 struct rte_pie_params {
 	uint16_t qdelay_ref;           /**< Latency Target (milliseconds) */
@@ -43,7 +42,6 @@ struct rte_pie_params {
 
 /**
  * PIE configuration parameters
- *
  */
 struct rte_pie_config {
 	uint64_t qdelay_ref;           /**< Latency Target (in CPU cycles.) */

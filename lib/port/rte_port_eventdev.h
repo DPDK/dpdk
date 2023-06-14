@@ -17,7 +17,6 @@ extern "C" {
  * interface
  * eventdev_writer: output port built on top of pre-initialized eventdev
  * interface
- *
 **/
 
 #include <stdint.h>

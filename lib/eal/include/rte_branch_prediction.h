@@ -22,7 +22,6 @@ extern "C" {
  *
  *   if (likely(x > 1))
  *      do_stuff();
- *
  */
 #ifndef likely
 #define likely(x)	__builtin_expect(!!(x), 1)
@@ -36,7 +35,6 @@ extern "C" {
  *
  *   if (unlikely(x < 1))
  *      do_stuff();
- *
  */
 #ifndef unlikely
 #define unlikely(x)	__builtin_expect(!!(x), 0)

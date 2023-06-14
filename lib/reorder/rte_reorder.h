@@ -12,7 +12,6 @@
  * Reorder library is a component which is designed to
  * provide ordering of out of ordered packets based on
  * sequence number present in mbuf.
- *
  */
 
 #include <rte_compat.h>

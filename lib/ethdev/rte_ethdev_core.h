@@ -16,7 +16,6 @@
  * public API because they are used by inline functions in the published API.
  *
  * Applications should not use these directly.
- *
  */
 
 struct rte_eth_dev_callback;

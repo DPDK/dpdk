@@ -51,7 +51,6 @@ extern "C" {
  * <B>Thread safety.</B> It is possible to have multiple pipelines running on
  * the same CPU core, but it is not allowed (for thread safety reasons) to have
  * multiple CPU cores running the same pipeline instance.
- *
  ***/
 
 #include <stdint.h>
@@ -64,7 +63,6 @@ struct rte_mbuf;
 
 /*
  * Pipeline
- *
  */
 /** Opaque data type for pipeline */
 struct rte_pipeline;
@@ -175,7 +173,6 @@ int rte_pipeline_flush(struct rte_pipeline *p);
 
 /*
  * Actions
- *
  */
 /** Reserved actions */
 enum rte_pipeline_action {
@@ -197,7 +194,6 @@ enum rte_pipeline_action {
 
 /*
  * Table
- *
  */
 /** Maximum number of tables allowed for any given pipeline instance. The
 	value of this parameter cannot be changed. */
@@ -530,7 +526,6 @@ int rte_pipeline_table_stats_read(struct rte_pipeline *p, uint32_t table_id,
 
 /*
  * Port IN
- *
  */
 /** Maximum number of input ports allowed for any given pipeline instance. The
 	value of this parameter cannot be changed. */
@@ -662,7 +657,6 @@ int rte_pipeline_port_in_stats_read(struct rte_pipeline *p, uint32_t port_id,
 
 /*
  * Port OUT
- *
  */
 /** Maximum number of output ports allowed for any given pipeline instance. The
 	value of this parameter cannot be changed. */
@@ -753,7 +747,6 @@ int rte_pipeline_port_out_stats_read(struct rte_pipeline *p, uint32_t port_id,
 
 /*
  * Functions to be called as part of the port IN/OUT or table action handlers
- *
  */
 /**
  * Action handler packet insert to output port

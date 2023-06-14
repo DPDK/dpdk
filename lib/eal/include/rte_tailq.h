@@ -8,7 +8,6 @@
 /**
  * @file
  *  Here defines rte_tailq APIs for only internal use
- *
  */
 
 #ifdef __cplusplus

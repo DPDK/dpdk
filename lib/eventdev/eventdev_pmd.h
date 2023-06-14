@@ -310,7 +310,6 @@ typedef int (*eventdev_close_t)(struct rte_eventdev *dev);
  *   Event queue index
  * @param[out] queue_conf
  *   Event queue configuration structure
- *
  */
 typedef void (*eventdev_queue_default_conf_get_t)(struct rte_eventdev *dev,
 		uint8_t queue_id, struct rte_event_queue_conf *queue_conf);
@@ -339,7 +338,6 @@ typedef int (*eventdev_queue_setup_t)(struct rte_eventdev *dev,
  *   Event device pointer
  * @param queue_id
  *   Event queue index
- *
  */
 typedef void (*eventdev_queue_release_t)(struct rte_eventdev *dev,
 		uint8_t queue_id);
@@ -373,7 +371,6 @@ typedef int (*eventdev_queue_attr_set_t)(struct rte_eventdev *dev,
  *   Event port index
  * @param[out] port_conf
  *   Event port configuration structure
- *
  */
 typedef void (*eventdev_port_default_conf_get_t)(struct rte_eventdev *dev,
 		uint8_t port_id, struct rte_event_port_conf *port_conf);
@@ -400,7 +397,6 @@ typedef int (*eventdev_port_setup_t)(struct rte_eventdev *dev,
  *
  * @param port
  *   Event port pointer
- *
  */
 typedef void (*eventdev_port_release_t)(void *port);
 
@@ -415,7 +411,6 @@ typedef void (*eventdev_port_release_t)(void *port);
  *   User-provided event flush function.
  * @param args
  *   Arguments to be passed to the user-provided event flush function.
- *
  */
 typedef void (*eventdev_port_quiesce_t)(struct rte_eventdev *dev, void *port,
 					rte_eventdev_port_flush_t flush_cb,
@@ -439,7 +434,6 @@ typedef void (*eventdev_port_quiesce_t)(struct rte_eventdev *dev, void *port,
  *
  * @return
  *   Returns 0 on success.
- *
  */
 typedef int (*eventdev_port_link_t)(struct rte_eventdev *dev, void *port,
 		const uint8_t queues[], const uint8_t priorities[],
@@ -459,7 +453,6 @@ typedef int (*eventdev_port_link_t)(struct rte_eventdev *dev, void *port,
  *
  * @return
  *   Returns 0 on success.
- *
  */
 typedef int (*eventdev_port_unlink_t)(struct rte_eventdev *dev, void *port,
 		uint8_t queues[], uint16_t nb_unlinks);
@@ -493,7 +486,6 @@ typedef int (*eventdev_port_unlinks_in_progress_t)(struct rte_eventdev *dev,
  *
  * @return
  *   Returns 0 on success.
- *
  */
 typedef int (*eventdev_dequeue_timeout_ticks_t)(struct rte_eventdev *dev,
 		uint64_t ns, uint64_t *timeout_ticks);
@@ -505,7 +497,6 @@ typedef int (*eventdev_dequeue_timeout_ticks_t)(struct rte_eventdev *dev,
  *   Event device pointer
  * @param f
  *   A pointer to a file for output
- *
  */
 typedef void (*eventdev_dump_t)(struct rte_eventdev *dev, FILE *f);
 
@@ -602,7 +593,6 @@ typedef uint64_t (*eventdev_xstats_get_by_name)(const struct rte_eventdev *dev,
  *   - 0: Success, driver provides Rx event adapter capabilities for the
  *	ethernet device.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_eth_rx_adapter_caps_get_t)
 					(const struct rte_eventdev *dev,
@@ -634,7 +624,6 @@ struct rte_event_eth_rx_adapter_queue_conf;
  *   - 0: Success, driver provides Rx event adapter capabilities for the
  *	ethernet device.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_timer_adapter_caps_get_t)(
 	const struct rte_eventdev *dev, uint64_t flags, uint32_t *caps,
@@ -660,7 +649,6 @@ typedef int (*eventdev_timer_adapter_caps_get_t)(
  * @return
  *   - 0: Success, ethernet receive queue added successfully.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_eth_rx_adapter_queue_add_t)(
 		const struct rte_eventdev *dev,
@@ -685,7 +673,6 @@ typedef int (*eventdev_eth_rx_adapter_queue_add_t)(
  * @return
  *   - 0: Success, ethernet receive queue deleted successfully.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_eth_rx_adapter_queue_del_t)
 					(const struct rte_eventdev *dev,
@@ -932,7 +919,6 @@ struct rte_event_crypto_adapter_queue_conf;
  *   - 0: Success, driver provides event adapter capabilities for the
  *	cryptodev.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_crypto_adapter_caps_get_t)
 					(const struct rte_eventdev *dev,
@@ -963,7 +949,6 @@ typedef int (*eventdev_crypto_adapter_caps_get_t)
  * @return
  *   - 0: Success, cryptodev queue pair added successfully.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_crypto_adapter_queue_pair_add_t)(
 		const struct rte_eventdev *dev,
@@ -991,7 +976,6 @@ typedef int (*eventdev_crypto_adapter_queue_pair_add_t)(
  * @return
  *   - 0: Success, cryptodev queue pair deleted successfully.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_crypto_adapter_queue_pair_del_t)
 					(const struct rte_eventdev *dev,
@@ -1114,7 +1098,6 @@ typedef int (*eventdev_crypto_adapter_vector_limits_get_t)(
  * @return
  *   - 0: Success, driver provides eth Tx adapter capabilities
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_eth_tx_adapter_caps_get_t)
 					(const struct rte_eventdev *dev,

@@ -17,7 +17,6 @@ extern "C" {
 *
 * This library allows reading application defined parameters from standard
 * format configuration file.
-*
 ***/
 
 #ifndef CFG_NAME_LEN

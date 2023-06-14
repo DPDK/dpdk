@@ -18,7 +18,6 @@
  *
  * This file contains small inline functions to make it easier for applications
  * to build up valid JSON responses to telemetry requests.
- *
  ***/
 
 /**
