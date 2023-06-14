@@ -47,7 +47,8 @@
 		RTE_ETH_RX_OFFLOAD_CHECKSUM |		 \
 		RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |		 \
 		RTE_ETH_RX_OFFLOAD_VLAN |		 \
-		RTE_ETH_RX_OFFLOAD_RSS_HASH)
+		RTE_ETH_RX_OFFLOAD_RSS_HASH |    \
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 
 /**
  * According to the vlan capabilities returned by the driver and FW, the vlan tci
