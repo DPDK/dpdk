@@ -17,4 +17,4 @@ for path in sys.argv[1].split(','):
     if path:
         for p in iglob(os.path.join(root, path)):
             if os.path.isdir(p):
-                print(os.path.relpath(p).replace('\\', '/'))
+                print(os.path.relpath(p, start=root).replace('\\', '/'))
