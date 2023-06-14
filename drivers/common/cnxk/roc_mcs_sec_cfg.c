@@ -268,6 +268,38 @@ roc_mcs_rx_sc_cam_enable(struct roc_mcs *mcs __plt_unused,
 }
 
 int
+roc_mcs_secy_policy_write(struct roc_mcs *mcs, struct roc_mcs_secy_plcy_write_req *secy_plcy)
+{
+	struct mcs_secy_plcy_write_req *secy;
+	struct msg_rsp *rsp;
+
+	MCS_SUPPORT_CHECK;
+
+	if (secy_plcy == NULL)
+		return -EINVAL;
+
+	secy = mbox_alloc_msg_mcs_secy_plcy_write(mcs->mbox);
+	if (secy == NULL)
+		return -ENOMEM;
+
+	secy->plcy = secy_plcy->plcy;
+	secy->secy_id = secy_plcy->secy_id;
+	secy->mcs_id = mcs->idx;
+	secy->dir = secy_plcy->dir;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_secy_policy_read(struct roc_mcs *mcs __plt_unused,
+			 struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam __plt_unused)
+{
+	MCS_SUPPORT_CHECK;
+
+	return -ENOTSUP;
+}
+
+int
 roc_mcs_rx_sc_sa_map_write(struct roc_mcs *mcs, struct roc_mcs_rx_sc_sa_map *rx_sc_sa_map)
 {
 	struct mcs_priv *priv = roc_mcs_to_mcs_priv(mcs);
@@ -379,4 +411,87 @@ roc_mcs_tx_sc_sa_map_read(struct roc_mcs *mcs __plt_unused,
 	MCS_SUPPORT_CHECK;
 
 	return -ENOTSUP;
+}
+
+int
+roc_mcs_flowid_entry_write(struct roc_mcs *mcs, struct roc_mcs_flowid_entry_write_req *flowid_req)
+{
+	struct mcs_priv *priv = roc_mcs_to_mcs_priv(mcs);
+	struct mcs_flowid_entry_write_req *flow_req;
+	struct msg_rsp *rsp;
+	uint8_t port;
+	int rc;
+
+	MCS_SUPPORT_CHECK;
+
+	if (flowid_req == NULL)
+		return -EINVAL;
+
+	flow_req = mbox_alloc_msg_mcs_flowid_entry_write(mcs->mbox);
+	if (flow_req == NULL)
+		return -ENOMEM;
+
+	mbox_memcpy(flow_req->data, flowid_req->data, sizeof(uint64_t) * 4);
+	mbox_memcpy(flow_req->mask, flowid_req->mask, sizeof(uint64_t) * 4);
+	flow_req->sci = flowid_req->sci;
+	flow_req->flow_id = flowid_req->flow_id;
+	flow_req->secy_id = flowid_req->secy_id;
+	flow_req->sc_id = flowid_req->sc_id;
+	flow_req->ena = flowid_req->ena;
+	flow_req->ctr_pkt = flowid_req->ctr_pkt;
+	flow_req->mcs_id = mcs->idx;
+	flow_req->dir = flowid_req->dir;
+
+	rc = mbox_process_msg(mcs->mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (flow_req->mask[3] & (BIT_ULL(10) | BIT_ULL(11)))
+		return rc;
+
+	port = (flow_req->data[3] >> 10) & 0x3;
+
+	plt_bitmap_set(priv->port_rsrc[port].tcam_bmap,
+		       flowid_req->flow_id +
+			       ((flowid_req->dir == MCS_TX) ? priv->tcam_entries : 0));
+	plt_bitmap_set(priv->port_rsrc[port].secy_bmap,
+		       flowid_req->secy_id +
+			       ((flowid_req->dir == MCS_TX) ? priv->secy_entries : 0));
+
+	if (flowid_req->dir == MCS_TX)
+		plt_bitmap_set(priv->port_rsrc[port].sc_bmap, priv->sc_entries + flowid_req->sc_id);
+
+	return 0;
+}
+
+int
+roc_mcs_flowid_entry_read(struct roc_mcs *mcs __plt_unused,
+			  struct roc_mcs_flowid_entry_write_req *flowid_rsp __plt_unused)
+{
+	MCS_SUPPORT_CHECK;
+
+	return -ENOTSUP;
+}
+
+int
+roc_mcs_flowid_entry_enable(struct roc_mcs *mcs, struct roc_mcs_flowid_ena_dis_entry *entry)
+{
+	struct mcs_flowid_ena_dis_entry *flow_entry;
+	struct msg_rsp *rsp;
+
+	MCS_SUPPORT_CHECK;
+
+	if (entry == NULL)
+		return -EINVAL;
+
+	flow_entry = mbox_alloc_msg_mcs_flowid_ena_entry(mcs->mbox);
+	if (flow_entry == NULL)
+		return -ENOMEM;
+
+	flow_entry->flow_id = entry->flow_id;
+	flow_entry->ena = entry->ena;
+	flow_entry->mcs_id = mcs->idx;
+	flow_entry->dir = entry->dir;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
 }

@@ -32,6 +32,24 @@ struct roc_mcs_free_rsrc_req {
 	uint8_t all; /* Free all the cam resources */
 };
 
+struct roc_mcs_flowid_entry_write_req {
+	uint64_t data[4];
+	uint64_t mask[4];
+	uint64_t sci; /* 105N for tx_secy_mem_map */
+	uint8_t flow_id;
+	uint8_t secy_id; /* secyid for which flowid is mapped */
+	uint8_t sc_id;	 /* Valid if dir = MCS_TX, SC_CAM id mapped to flowid */
+	uint8_t ena;	 /* Enable tcam entry */
+	uint8_t ctr_pkt;
+	uint8_t dir;
+};
+
+struct roc_mcs_secy_plcy_write_req {
+	uint64_t plcy;
+	uint8_t secy_id;
+	uint8_t dir;
+};
+
 /* RX SC_CAM mapping */
 struct roc_mcs_rx_sc_cam_write_req {
 	uint64_t sci;	  /* SCI */
@@ -62,6 +80,12 @@ struct roc_mcs_rx_sc_sa_map {
 	uint8_t sa_in_use;
 	uint8_t sc_id;
 	uint8_t an; /* value range 0-3, sc_id + an used as index SA_MEM_MAP */
+};
+
+struct roc_mcs_flowid_ena_dis_entry {
+	uint8_t flow_id;
+	uint8_t ena;
+	uint8_t dir;
 };
 
 struct roc_mcs_hw_info {
@@ -113,6 +137,11 @@ __roc_api int roc_mcs_rx_sc_cam_read(struct roc_mcs *mcs,
 				     struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam);
 __roc_api int roc_mcs_rx_sc_cam_enable(struct roc_mcs *mcs,
 				       struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam);
+/* SECY policy read and write */
+__roc_api int roc_mcs_secy_policy_write(struct roc_mcs *mcs,
+					struct roc_mcs_secy_plcy_write_req *secy_plcy);
+__roc_api int roc_mcs_secy_policy_read(struct roc_mcs *mcs,
+				       struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam);
 /* RX SC-SA MAP read and write */
 __roc_api int roc_mcs_rx_sc_sa_map_write(struct roc_mcs *mcs,
 					 struct roc_mcs_rx_sc_sa_map *rx_sc_sa_map);
@@ -123,5 +152,13 @@ __roc_api int roc_mcs_tx_sc_sa_map_write(struct roc_mcs *mcs,
 					 struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map);
 __roc_api int roc_mcs_tx_sc_sa_map_read(struct roc_mcs *mcs,
 					struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map);
+
+/* Flow entry read, write and enable */
+__roc_api int roc_mcs_flowid_entry_write(struct roc_mcs *mcs,
+					 struct roc_mcs_flowid_entry_write_req *flowid_req);
+__roc_api int roc_mcs_flowid_entry_read(struct roc_mcs *mcs,
+					struct roc_mcs_flowid_entry_write_req *flowid_rsp);
+__roc_api int roc_mcs_flowid_entry_enable(struct roc_mcs *mcs,
+					  struct roc_mcs_flowid_ena_dis_entry *entry);
 
 #endif /* ROC_MCS_H */

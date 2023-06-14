@@ -138,6 +138,9 @@ INTERNAL {
 	roc_mcs_dev_init;
 	roc_mcs_dev_fini;
 	roc_mcs_dev_get;
+	roc_mcs_flowid_entry_enable;
+	roc_mcs_flowid_entry_read;
+	roc_mcs_flowid_entry_write;
 	roc_mcs_hw_info_get;
 	roc_mcs_rsrc_alloc;
 	roc_mcs_rsrc_free;
@@ -148,6 +151,8 @@ INTERNAL {
 	roc_mcs_rx_sc_sa_map_write;
 	roc_mcs_sa_policy_read;
 	roc_mcs_sa_policy_write;
+	roc_mcs_secy_policy_read;
+	roc_mcs_secy_policy_write;
 	roc_mcs_tx_sc_sa_map_read;
 	roc_mcs_tx_sc_sa_map_write;
 	roc_nix_bpf_alloc;

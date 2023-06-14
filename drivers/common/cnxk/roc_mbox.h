@@ -300,10 +300,14 @@ struct mbox_msghdr {
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
 	M(MCS_FREE_RESOURCES, 0xa001, mcs_free_resources, mcs_free_rsrc_req, msg_rsp)              \
+	M(MCS_FLOWID_ENTRY_WRITE, 0xa002, mcs_flowid_entry_write, mcs_flowid_entry_write_req,      \
+	  msg_rsp)                                                                                 \
+	M(MCS_SECY_PLCY_WRITE, 0xa003, mcs_secy_plcy_write, mcs_secy_plcy_write_req, msg_rsp)      \
 	M(MCS_RX_SC_CAM_WRITE, 0xa004, mcs_rx_sc_cam_write, mcs_rx_sc_cam_write_req, msg_rsp)      \
 	M(MCS_SA_PLCY_WRITE, 0xa005, mcs_sa_plcy_write, mcs_sa_plcy_write_req, msg_rsp)            \
 	M(MCS_TX_SC_SA_MAP_WRITE, 0xa006, mcs_tx_sc_sa_map_write, mcs_tx_sc_sa_map, msg_rsp)       \
 	M(MCS_RX_SC_SA_MAP_WRITE, 0xa007, mcs_rx_sc_sa_map_write, mcs_rx_sc_sa_map, msg_rsp)       \
+	M(MCS_FLOWID_ENA_ENTRY, 0xa008, mcs_flowid_ena_entry, mcs_flowid_ena_dis_entry, msg_rsp)   \
 	M(MCS_GET_HW_INFO, 0xa00b, mcs_get_hw_info, msg_req, mcs_hw_info)                          \
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
@@ -729,6 +733,31 @@ struct mcs_free_rsrc_req {
 	uint64_t __io rsvd;
 };
 
+struct mcs_flowid_entry_write_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io data[4];
+	uint64_t __io mask[4];
+	uint64_t __io sci; /* CNF10K-B for tx_secy_mem_map */
+	uint8_t __io flow_id;
+	uint8_t __io secy_id; /* secyid for which flowid is mapped */
+	/* sc_id is Valid if dir = MCS_TX, SC_CAM id mapped to flowid */
+	uint8_t __io sc_id;
+	uint8_t __io ena; /* Enable tcam entry */
+	uint8_t __io ctr_pkt;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
+struct mcs_secy_plcy_write_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io plcy;
+	uint8_t __io secy_id;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
 /* RX SC_CAM mapping */
 struct mcs_rx_sc_cam_write_req {
 	struct mbox_msghdr hdr;
@@ -771,6 +800,15 @@ struct mcs_rx_sc_sa_map {
 	/* an range is 0-3, sc_id + an used as index SA_MEM_MAP */
 	uint8_t __io an;
 	uint8_t __io mcs_id;
+	uint64_t __io rsvd;
+};
+
+struct mcs_flowid_ena_dis_entry {
+	struct mbox_msghdr hdr;
+	uint8_t __io flow_id;
+	uint8_t __io ena;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
 	uint64_t __io rsvd;
 };
 
