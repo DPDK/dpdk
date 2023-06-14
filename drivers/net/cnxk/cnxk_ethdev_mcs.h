@@ -16,6 +16,14 @@ struct cnxk_mcs_dev {
 	uint8_t idx;
 };
 
+enum cnxk_mcs_rsrc_type {
+	CNXK_MCS_RSRC_TYPE_FLOWID,
+	CNXK_MCS_RSRC_TYPE_SECY,
+	CNXK_MCS_RSRC_TYPE_SC,
+	CNXK_MCS_RSRC_TYPE_SA,
+	CNXK_MCS_RSRC_TYPE_PORT,
+};
+
 struct cnxk_mcs_event_data {
 	/* Valid for below events
 	 * - ROC_MCS_EVENT_RX_SA_PN_SOFT_EXP
@@ -62,5 +70,13 @@ struct cnxk_mcs_event_desc {
 	enum roc_mcs_event_subtype subtype;
 	struct cnxk_mcs_event_data metadata;
 };
+
+int cnxk_eth_macsec_sa_create(void *device, struct rte_security_macsec_sa *conf);
+int cnxk_eth_macsec_sc_create(void *device, struct rte_security_macsec_sc *conf);
+
+int cnxk_eth_macsec_sa_destroy(void *device, uint16_t sa_id,
+			       enum rte_security_macsec_direction dir);
+int cnxk_eth_macsec_sc_destroy(void *device, uint16_t sc_id,
+			       enum rte_security_macsec_direction dir);
 
 #endif /* CNXK_ETHDEV_MCS_H */
