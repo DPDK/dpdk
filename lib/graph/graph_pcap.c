@@ -11,7 +11,7 @@
 #include <rte_mbuf.h>
 #include <rte_pcapng.h>
 
-#include "rte_graph_worker_common.h"
+#include "rte_graph_worker.h"
 
 #include "graph_pcap_private.h"
 

@@ -23,7 +23,7 @@
 #include <rte_cycles.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
-#include <rte_graph_worker_common.h>
+#include <rte_graph_worker.h>
 #include <rte_launch.h>
 #include <rte_lcore.h>
 #include <rte_log.h>

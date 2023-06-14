@@ -13,7 +13,7 @@
 #include <rte_spinlock.h>
 
 #include "rte_graph.h"
-#include "rte_graph_worker_common.h"
+#include "rte_graph_worker.h"
 
 extern int rte_graph_logtype;
 

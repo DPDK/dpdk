@@ -12,7 +12,7 @@
 #include <rte_debug.h>
 #include <rte_ethdev.h>
 #include <rte_graph.h>
-#include <rte_graph_worker_common.h>
+#include <rte_graph_worker.h>
 #include <rte_ip.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>

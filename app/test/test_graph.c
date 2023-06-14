@@ -24,7 +24,7 @@ test_node_list_dump(void)
 #else
 
 #include <rte_graph.h>
-#include <rte_graph_worker_common.h>
+#include <rte_graph_worker.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_random.h>
