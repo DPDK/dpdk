@@ -539,6 +539,8 @@ Limitations
 
   - Supports the 'set' and 'add' operations for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action.
   - Modification of an arbitrary place in a packet via the special ``RTE_FLOW_FIELD_START`` Field ID is not supported.
+  - Modification of the MPLS header is supported only in HWS and only to copy from,
+    the encapsulation level is always 0.
   - Modification of the 802.1Q Tag, VXLAN Network or GENEVE Network ID's is not supported.
   - Encapsulation levels are not supported, can modify outermost header fields only.
   - Offsets cannot skip past the boundary of a field.

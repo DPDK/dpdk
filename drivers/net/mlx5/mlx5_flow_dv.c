@@ -1388,6 +1388,7 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 	case RTE_FLOW_FIELD_GENEVE_VNI:
 		return 24;
 	case RTE_FLOW_FIELD_GTP_TEID:
+	case RTE_FLOW_FIELD_MPLS:
 	case RTE_FLOW_FIELD_TAG:
 		return 32;
 	case RTE_FLOW_FIELD_MARK:
@@ -1433,6 +1434,12 @@ flow_modify_info_mask_32_masked(uint32_t length, uint32_t off, uint32_t post_mas
 {
 	uint32_t mask = (0xffffffffu >> (32 - length)) << off;
 	return rte_cpu_to_be_32(mask & post_mask);
+}
+
+static __rte_always_inline enum mlx5_modification_field
+mlx5_mpls_modi_field_get(const struct rte_flow_action_modify_data *data)
+{
+	return MLX5_MODI_IN_MPLS_LABEL_0 + data->tag_index;
 }
 
 static void
@@ -1888,6 +1895,16 @@ mlx5_flow_field_id_to_modify_info
 		off_be = 32 - (data->offset + width);
 		info[idx] = (struct field_modify_info){4, 0,
 					MLX5_MODI_GTP_TEID};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_32(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_MPLS:
+		MLX5_ASSERT(data->offset + width <= 32);
+		off_be = 32 - (data->offset + width);
+		info[idx] = (struct field_modify_info){4, 0,
+					mlx5_mpls_modi_field_get(data)};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_32(width, off_be);
 		else
@@ -5362,6 +5379,12 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the GENEVE Network"
 				" Identifier is not supported");
+	if (dst_data->field == RTE_FLOW_FIELD_MPLS ||
+	    src_data->field == RTE_FLOW_FIELD_MPLS)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"modifications of the MPLS header "
+				"is not supported");
 	if (dst_data->field == RTE_FLOW_FIELD_MARK ||
 	    src_data->field == RTE_FLOW_FIELD_MARK)
 		if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
