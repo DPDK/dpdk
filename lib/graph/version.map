@@ -15,6 +15,7 @@ EXPERIMENTAL {
 	rte_graph_list_dump;
 	rte_graph_max_count;
 	rte_graph_model_is_valid;
+	rte_graph_model_mcore_dispatch_node_lcore_affinity_set;
 	rte_graph_node_get;
 	rte_graph_node_get_by_name;
 	rte_graph_obj_dump;

@@ -51,6 +51,8 @@ struct node {
 	STAILQ_ENTRY(node) next;      /**< Next node in the list. */
 	char name[RTE_NODE_NAMESIZE]; /**< Name of the node. */
 	uint64_t flags;		      /**< Node configuration flag. */
+	unsigned int lcore_id;
+	/**< Node runs on the Lcore ID used for mcore dispatch model. */
 	rte_node_process_t process;   /**< Node process function. */
 	rte_node_init_t init;         /**< Node init function. */
 	rte_node_fini_t fini;	      /**< Node fini function. */

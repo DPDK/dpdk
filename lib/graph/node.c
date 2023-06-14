@@ -100,6 +100,7 @@ __rte_node_register(const struct rte_node_register *reg)
 			goto free;
 	}
 
+	node->lcore_id = RTE_MAX_LCORE;
 	node->id = node_id++;
 
 	/* Add the node at tail */
