@@ -11,6 +11,8 @@
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_spinlock.h>
+#include <rte_errno.h>
+#include <rte_string_fns.h>
 
 #include "rte_graph.h"
 #include "rte_graph_worker.h"
@@ -113,6 +115,45 @@ struct graph {
 	STAILQ_HEAD(gnode_list, graph_node) node_list;
 	/**< Nodes in a graph. */
 };
+
+/* Node and graph common functions */
+/**
+ * @internal
+ *
+ * Naming a cloned graph or node by appending a string to base name.
+ *
+ * @param new_name
+ *   Pointer to the name of the cloned object.
+ * @param base_name
+ *   Pointer to the name of original object.
+ * @param append_str
+ *   Pointer to the appended string.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise.
+ */
+static inline int clone_name(char *new_name, char *base_name, const char *append_str)
+{
+	ssize_t sz, rc;
+
+#define SZ RTE_MIN(RTE_NODE_NAMESIZE, RTE_GRAPH_NAMESIZE)
+	rc = rte_strscpy(new_name, base_name, SZ);
+	if (rc < 0)
+		goto fail;
+	sz = rc;
+	rc = rte_strscpy(new_name + sz, "-", RTE_MAX((int16_t)(SZ - sz), 0));
+	if (rc < 0)
+		goto fail;
+	sz += rc;
+	sz = rte_strscpy(new_name + sz, append_str, RTE_MAX((int16_t)(SZ - sz), 0));
+	if (sz < 0)
+		goto fail;
+
+	return 0;
+fail:
+	rte_errno = E2BIG;
+	return -rte_errno;
+}
 
 /* Node functions */
 STAILQ_HEAD(node_head, node);

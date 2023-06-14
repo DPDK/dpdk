@@ -115,30 +115,6 @@ fail:
 	return RTE_NODE_ID_INVALID;
 }
 
-static int
-clone_name(struct rte_node_register *reg, struct node *node, const char *name)
-{
-	ssize_t sz, rc;
-
-#define SZ RTE_NODE_NAMESIZE
-	rc = rte_strscpy(reg->name, node->name, SZ);
-	if (rc < 0)
-		goto fail;
-	sz = rc;
-	rc = rte_strscpy(reg->name + sz, "-", RTE_MAX((int16_t)(SZ - sz), 0));
-	if (rc < 0)
-		goto fail;
-	sz += rc;
-	sz = rte_strscpy(reg->name + sz, name, RTE_MAX((int16_t)(SZ - sz), 0));
-	if (sz < 0)
-		goto fail;
-
-	return 0;
-fail:
-	rte_errno = E2BIG;
-	return -rte_errno;
-}
-
 static rte_node_t
 node_clone(struct node *node, const char *name)
 {
@@ -170,7 +146,7 @@ node_clone(struct node *node, const char *name)
 		reg->next_nodes[i] = node->next_nodes[i];
 
 	/* Naming ceremony of the new node. name is node->name + "-" + name */
-	if (clone_name(reg, node, name))
+	if (clone_name(reg->name, node->name, name))
 		goto free;
 
 	rc = __rte_node_register(reg);
