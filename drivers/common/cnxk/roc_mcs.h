@@ -163,6 +163,45 @@ struct roc_mcs_set_pn_threshold {
 	uint64_t rsvd;
 };
 
+enum roc_mcs_ctrl_pkt_rule_type {
+	ROC_MCS_CTRL_PKT_RULE_TYPE_ETH,
+	ROC_MCS_CTRL_PKT_RULE_TYPE_DA,
+	ROC_MCS_CTRL_PKT_RULE_TYPE_RANGE,
+	ROC_MCS_CTRL_PKT_RULE_TYPE_COMBO,
+	ROC_MCS_CTRL_PKT_RULE_TYPE_MAC,
+};
+
+struct roc_mcs_alloc_ctrl_pkt_rule_req {
+	uint8_t rule_type;
+	uint8_t dir; /* Macsec ingress or egress side */
+	uint64_t rsvd;
+};
+
+struct roc_mcs_alloc_ctrl_pkt_rule_rsp {
+	uint8_t rule_idx;
+	uint8_t rule_type;
+	uint8_t dir;
+	uint64_t rsvd;
+};
+
+struct roc_mcs_free_ctrl_pkt_rule_req {
+	uint8_t rule_idx;
+	uint8_t rule_type;
+	uint8_t dir;
+	uint8_t all; /* Free all the rule resources */
+	uint64_t rsvd;
+};
+
+struct roc_mcs_ctrl_pkt_rule_write_req {
+	uint64_t data0;
+	uint64_t data1;
+	uint64_t data2;
+	uint8_t rule_idx;
+	uint8_t rule_type;
+	uint8_t dir;
+	uint64_t rsvd;
+};
+
 struct roc_mcs_port_cfg_set_req {
 	/* Index of custom tag (= cstm_indx[x] in roc_mcs_custom_tag_cfg_get_rsp struct) to use
 	 * when TX SECY_PLCY_MEMX[SECTAG_INSERT_MODE] = 0 (relative offset mode)
@@ -192,6 +231,19 @@ struct roc_mcs_port_cfg_get_rsp {
 	uint8_t fifo_skid;
 	uint8_t port_mode;
 	uint8_t port_id;
+	uint64_t rsvd;
+};
+
+struct roc_mcs_custom_tag_cfg_get_req {
+	uint8_t dir;
+	uint64_t rsvd;
+};
+
+struct roc_mcs_custom_tag_cfg_get_rsp {
+	uint16_t cstm_etype[8]; /* EthType/TPID */
+	uint8_t cstm_indx[8];	/* Custom tag index used to identify the VLAN etype */
+	uint8_t cstm_etype_en;	/* bitmap of enabled custom tags */
+	uint8_t dir;
 	uint64_t rsvd;
 };
 
@@ -411,6 +463,10 @@ __roc_api int roc_mcs_port_cfg_set(struct roc_mcs *mcs, struct roc_mcs_port_cfg_
 /* Set port config */
 __roc_api int roc_mcs_port_cfg_get(struct roc_mcs *mcs, struct roc_mcs_port_cfg_get_req *req,
 				   struct roc_mcs_port_cfg_get_rsp *rsp);
+/* Get custom tag config */
+__roc_api int roc_mcs_custom_tag_cfg_get(struct roc_mcs *mcs,
+					 struct roc_mcs_custom_tag_cfg_get_req *req,
+					 struct roc_mcs_custom_tag_cfg_get_rsp *rsp);
 
 /* Resource allocation and free */
 __roc_api int roc_mcs_rsrc_alloc(struct roc_mcs *mcs, struct roc_mcs_alloc_rsrc_req *req,
@@ -458,6 +514,15 @@ __roc_api int roc_mcs_flowid_entry_read(struct roc_mcs *mcs,
 					struct roc_mcs_flowid_entry_write_req *flowid_rsp);
 __roc_api int roc_mcs_flowid_entry_enable(struct roc_mcs *mcs,
 					  struct roc_mcs_flowid_ena_dis_entry *entry);
+
+/* Control packet rule alloc, free and write */
+__roc_api int roc_mcs_ctrl_pkt_rule_alloc(struct roc_mcs *mcs,
+					  struct roc_mcs_alloc_ctrl_pkt_rule_req *req,
+					  struct roc_mcs_alloc_ctrl_pkt_rule_rsp *rsp);
+__roc_api int roc_mcs_ctrl_pkt_rule_free(struct roc_mcs *mcs,
+					 struct roc_mcs_free_ctrl_pkt_rule_req *req);
+__roc_api int roc_mcs_ctrl_pkt_rule_write(struct roc_mcs *mcs,
+					  struct roc_mcs_ctrl_pkt_rule_write_req *req);
 
 /* Flow id stats get */
 __roc_api int roc_mcs_flowid_stats_get(struct roc_mcs *mcs, struct roc_mcs_stats_req *mcs_req,

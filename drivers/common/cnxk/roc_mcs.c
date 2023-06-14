@@ -141,6 +141,88 @@ roc_mcs_pn_threshold_set(struct roc_mcs *mcs, struct roc_mcs_set_pn_threshold *p
 }
 
 int
+roc_mcs_ctrl_pkt_rule_alloc(struct roc_mcs *mcs, struct roc_mcs_alloc_ctrl_pkt_rule_req *req,
+			    struct roc_mcs_alloc_ctrl_pkt_rule_rsp *rsp)
+{
+	struct mcs_alloc_ctrl_pkt_rule_req *rule_req;
+	struct mcs_alloc_ctrl_pkt_rule_rsp *rule_rsp;
+	int rc;
+
+	MCS_SUPPORT_CHECK;
+
+	if (req == NULL || rsp == NULL)
+		return -EINVAL;
+
+	rule_req = mbox_alloc_msg_mcs_alloc_ctrl_pkt_rule(mcs->mbox);
+	if (rule_req == NULL)
+		return -ENOMEM;
+
+	rule_req->rule_type = req->rule_type;
+	rule_req->mcs_id = mcs->idx;
+	rule_req->dir = req->dir;
+
+	rc = mbox_process_msg(mcs->mbox, (void *)&rule_rsp);
+	if (rc)
+		return rc;
+
+	rsp->rule_type = rule_rsp->rule_type;
+	rsp->rule_idx = rule_rsp->rule_idx;
+	rsp->dir = rule_rsp->dir;
+
+	return 0;
+}
+
+int
+roc_mcs_ctrl_pkt_rule_free(struct roc_mcs *mcs, struct roc_mcs_free_ctrl_pkt_rule_req *req)
+{
+	struct mcs_free_ctrl_pkt_rule_req *rule_req;
+	struct msg_rsp *rsp;
+
+	MCS_SUPPORT_CHECK;
+
+	if (req == NULL)
+		return -EINVAL;
+
+	rule_req = mbox_alloc_msg_mcs_free_ctrl_pkt_rule(mcs->mbox);
+	if (rule_req == NULL)
+		return -ENOMEM;
+
+	rule_req->rule_type = req->rule_type;
+	rule_req->rule_idx = req->rule_idx;
+	rule_req->mcs_id = mcs->idx;
+	rule_req->dir = req->dir;
+	rule_req->all = req->all;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_ctrl_pkt_rule_write(struct roc_mcs *mcs, struct roc_mcs_ctrl_pkt_rule_write_req *req)
+{
+	struct mcs_ctrl_pkt_rule_write_req *rule_req;
+	struct msg_rsp *rsp;
+
+	MCS_SUPPORT_CHECK;
+
+	if (req == NULL)
+		return -EINVAL;
+
+	rule_req = mbox_alloc_msg_mcs_ctrl_pkt_rule_write(mcs->mbox);
+	if (rule_req == NULL)
+		return -ENOMEM;
+
+	rule_req->rule_type = req->rule_type;
+	rule_req->rule_idx = req->rule_idx;
+	rule_req->mcs_id = mcs->idx;
+	rule_req->dir = req->dir;
+	rule_req->data0 = req->data0;
+	rule_req->data1 = req->data1;
+	rule_req->data2 = req->data2;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
 roc_mcs_port_cfg_set(struct roc_mcs *mcs, struct roc_mcs_port_cfg_set_req *req)
 {
 	struct mcs_port_cfg_set_req *set_req;
@@ -194,6 +276,41 @@ roc_mcs_port_cfg_get(struct roc_mcs *mcs, struct roc_mcs_port_cfg_get_req *req,
 	rsp->fifo_skid = get_rsp->fifo_skid;
 	rsp->port_mode = get_rsp->lmac_mode;
 	rsp->port_id = get_rsp->lmac_id;
+
+	return 0;
+}
+
+int
+roc_mcs_custom_tag_cfg_get(struct roc_mcs *mcs, struct roc_mcs_custom_tag_cfg_get_req *req,
+			   struct roc_mcs_custom_tag_cfg_get_rsp *rsp)
+{
+	struct mcs_custom_tag_cfg_get_req *get_req;
+	struct mcs_custom_tag_cfg_get_rsp *get_rsp;
+	int i, rc;
+
+	MCS_SUPPORT_CHECK;
+
+	if (req == NULL)
+		return -EINVAL;
+
+	get_req = mbox_alloc_msg_mcs_custom_tag_cfg_get(mcs->mbox);
+	if (get_req == NULL)
+		return -ENOMEM;
+
+	get_req->dir = req->dir;
+	get_req->mcs_id = mcs->idx;
+
+	rc = mbox_process_msg(mcs->mbox, (void *)&get_rsp);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < 8; i++) {
+		rsp->cstm_etype[i] = get_rsp->cstm_etype[i];
+		rsp->cstm_indx[i] = get_rsp->cstm_indx[i];
+	}
+
+	rsp->cstm_etype_en = get_rsp->cstm_etype_en;
+	rsp->dir = get_rsp->dir;
 
 	return 0;
 }

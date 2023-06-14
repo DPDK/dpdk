@@ -136,6 +136,10 @@ INTERNAL {
 	roc_se_ciph_key_set;
 	roc_se_ctx_init;
 	roc_mcs_active_lmac_set;
+	roc_mcs_ctrl_pkt_rule_alloc;
+	roc_mcs_ctrl_pkt_rule_free;
+	roc_mcs_ctrl_pkt_rule_write;
+	roc_mcs_custom_tag_cfg_get;
 	roc_mcs_dev_init;
 	roc_mcs_dev_fini;
 	roc_mcs_dev_get;

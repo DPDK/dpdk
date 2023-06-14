@@ -319,9 +319,17 @@ struct mbox_msghdr {
 	M(MCS_INTR_CFG, 0xa012, mcs_intr_cfg, mcs_intr_cfg, msg_rsp)                               \
 	M(MCS_SET_LMAC_MODE, 0xa013, mcs_set_lmac_mode, mcs_set_lmac_mode, msg_rsp)                \
 	M(MCS_SET_PN_THRESHOLD, 0xa014, mcs_set_pn_threshold, mcs_set_pn_threshold, msg_rsp)       \
+	M(MCS_ALLOC_CTRL_PKT_RULE, 0xa015, mcs_alloc_ctrl_pkt_rule, mcs_alloc_ctrl_pkt_rule_req,   \
+	  mcs_alloc_ctrl_pkt_rule_rsp)                                                             \
+	M(MCS_FREE_CTRL_PKT_RULE, 0xa016, mcs_free_ctrl_pkt_rule, mcs_free_ctrl_pkt_rule_req,      \
+	  msg_rsp)                                                                                 \
+	M(MCS_CTRL_PKT_RULE_WRITE, 0xa017, mcs_ctrl_pkt_rule_write, mcs_ctrl_pkt_rule_write_req,   \
+	  msg_rsp)                                                                                 \
 	M(MCS_PORT_RESET, 0xa018, mcs_port_reset, mcs_port_reset_req, msg_rsp)                     \
 	M(MCS_PORT_CFG_SET, 0xa019, mcs_port_cfg_set, mcs_port_cfg_set_req, msg_rsp)               \
 	M(MCS_PORT_CFG_GET, 0xa020, mcs_port_cfg_get, mcs_port_cfg_get_req, mcs_port_cfg_get_rsp)  \
+	M(MCS_CUSTOM_TAG_CFG_GET, 0xa021, mcs_custom_tag_cfg_get, mcs_custom_tag_cfg_get_req,      \
+	  mcs_custom_tag_cfg_get_rsp)                                                              \
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
 #define MBOX_UP_CGX_MESSAGES                                                   \
@@ -922,6 +930,53 @@ struct mcs_set_pn_threshold {
 	uint64_t __io rsvd;
 };
 
+enum mcs_ctrl_pkt_rule_type {
+	MCS_CTRL_PKT_RULE_TYPE_ETH,
+	MCS_CTRL_PKT_RULE_TYPE_DA,
+	MCS_CTRL_PKT_RULE_TYPE_RANGE,
+	MCS_CTRL_PKT_RULE_TYPE_COMBO,
+	MCS_CTRL_PKT_RULE_TYPE_MAC,
+};
+
+struct mcs_alloc_ctrl_pkt_rule_req {
+	struct mbox_msghdr hdr;
+	uint8_t __io rule_type;
+	uint8_t __io mcs_id; /* MCS block ID */
+	uint8_t __io dir;    /* Macsec ingress or egress side */
+	uint64_t __io rsvd;
+};
+
+struct mcs_alloc_ctrl_pkt_rule_rsp {
+	struct mbox_msghdr hdr;
+	uint8_t __io rule_idx;
+	uint8_t __io rule_type;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
+struct mcs_free_ctrl_pkt_rule_req {
+	struct mbox_msghdr hdr;
+	uint8_t __io rule_idx;
+	uint8_t __io rule_type;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint8_t __io all; /* Free all the rule resources */
+	uint64_t __io rsvd;
+};
+
+struct mcs_ctrl_pkt_rule_write_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io data0;
+	uint64_t __io data1;
+	uint64_t __io data2;
+	uint8_t __io rule_idx;
+	uint8_t __io rule_type;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
 struct mcs_port_cfg_set_req {
 	struct mbox_msghdr hdr;
 	uint8_t __io cstm_tag_rel_mode_sel;
@@ -948,6 +1003,23 @@ struct mcs_port_cfg_get_rsp {
 	uint8_t __io lmac_mode;
 	uint8_t __io lmac_id;
 	uint8_t __io mcs_id;
+	uint64_t __io rsvd;
+};
+
+struct mcs_custom_tag_cfg_get_req {
+	struct mbox_msghdr hdr;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
+	uint64_t __io rsvd;
+};
+
+struct mcs_custom_tag_cfg_get_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io cstm_etype[8];
+	uint8_t __io cstm_indx[8];
+	uint8_t __io cstm_etype_en;
+	uint8_t __io mcs_id;
+	uint8_t __io dir;
 	uint64_t __io rsvd;
 };
 
