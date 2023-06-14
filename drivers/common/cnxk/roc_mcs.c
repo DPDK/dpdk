@@ -76,6 +76,25 @@ roc_mcs_active_lmac_set(struct roc_mcs *mcs, struct roc_mcs_set_active_lmac *lma
 	return mbox_process_msg(mcs->mbox, (void *)&rsp);
 }
 
+static int
+mcs_port_reset_set(struct roc_mcs *mcs, struct roc_mcs_port_reset_req *port, uint8_t reset)
+{
+	struct mcs_port_reset_req *req;
+	struct msg_rsp *rsp;
+
+	MCS_SUPPORT_CHECK;
+
+	req = mbox_alloc_msg_mcs_port_reset(mcs->mbox);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->reset = reset;
+	req->lmac_id = port->port_id;
+	req->mcs_id = mcs->idx;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
 int
 roc_mcs_lmac_mode_set(struct roc_mcs *mcs, struct roc_mcs_set_lmac_mode *port)
 {
@@ -122,6 +141,64 @@ roc_mcs_pn_threshold_set(struct roc_mcs *mcs, struct roc_mcs_set_pn_threshold *p
 }
 
 int
+roc_mcs_port_cfg_set(struct roc_mcs *mcs, struct roc_mcs_port_cfg_set_req *req)
+{
+	struct mcs_port_cfg_set_req *set_req;
+	struct msg_rsp *rsp;
+
+	MCS_SUPPORT_CHECK;
+
+	if (req == NULL)
+		return -EINVAL;
+
+	set_req = mbox_alloc_msg_mcs_port_cfg_set(mcs->mbox);
+	if (set_req == NULL)
+		return -ENOMEM;
+
+	set_req->cstm_tag_rel_mode_sel = req->cstm_tag_rel_mode_sel;
+	set_req->custom_hdr_enb = req->custom_hdr_enb;
+	set_req->fifo_skid = req->fifo_skid;
+	set_req->lmac_mode = req->port_mode;
+	set_req->lmac_id = req->port_id;
+	set_req->mcs_id = mcs->idx;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_port_cfg_get(struct roc_mcs *mcs, struct roc_mcs_port_cfg_get_req *req,
+		     struct roc_mcs_port_cfg_get_rsp *rsp)
+{
+	struct mcs_port_cfg_get_req *get_req;
+	struct mcs_port_cfg_get_rsp *get_rsp;
+	int rc;
+
+	MCS_SUPPORT_CHECK;
+
+	if (req == NULL)
+		return -EINVAL;
+
+	get_req = mbox_alloc_msg_mcs_port_cfg_get(mcs->mbox);
+	if (get_req == NULL)
+		return -ENOMEM;
+
+	get_req->lmac_id = req->port_id;
+	get_req->mcs_id = mcs->idx;
+
+	rc = mbox_process_msg(mcs->mbox, (void *)&get_rsp);
+	if (rc)
+		return rc;
+
+	rsp->cstm_tag_rel_mode_sel = get_rsp->cstm_tag_rel_mode_sel;
+	rsp->custom_hdr_enb = get_rsp->custom_hdr_enb;
+	rsp->fifo_skid = get_rsp->fifo_skid;
+	rsp->port_mode = get_rsp->lmac_mode;
+	rsp->port_id = get_rsp->lmac_id;
+
+	return 0;
+}
+
+int
 roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cfg *config)
 {
 	struct mcs_intr_cfg *req;
@@ -140,6 +217,275 @@ roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cfg *config)
 	req->mcs_id = mcs->idx;
 
 	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_port_recovery(struct roc_mcs *mcs, union roc_mcs_event_data *mdata, uint8_t port_id)
+{
+	struct mcs_priv *priv = roc_mcs_to_mcs_priv(mcs);
+	struct roc_mcs_pn_table_write_req pn_table = {0};
+	struct roc_mcs_rx_sc_sa_map rx_map = {0};
+	struct roc_mcs_tx_sc_sa_map tx_map = {0};
+	struct roc_mcs_port_reset_req port = {0};
+	struct roc_mcs_clear_stats stats = {0};
+	int tx_cnt = 0, rx_cnt = 0, rc = 0;
+	uint64_t set;
+	int i;
+
+	port.port_id = port_id;
+	rc = mcs_port_reset_set(mcs, &port, 1);
+
+	/* Reset TX/RX PN tables */
+	for (i = 0; i < (priv->sa_entries << 1); i++) {
+		set = plt_bitmap_get(priv->port_rsrc[port_id].sa_bmap, i);
+		if (set) {
+			pn_table.pn_id = i;
+			pn_table.next_pn = 1;
+			pn_table.dir = MCS_RX;
+			if (i >= priv->sa_entries) {
+				pn_table.dir = MCS_TX;
+				pn_table.pn_id -= priv->sa_entries;
+			}
+			rc = roc_mcs_pn_table_write(mcs, &pn_table);
+			if (rc)
+				return rc;
+
+			if (i >= priv->sa_entries)
+				tx_cnt++;
+			else
+				rx_cnt++;
+		}
+	}
+
+	if (tx_cnt || rx_cnt) {
+		mdata->tx_sa_array = plt_zmalloc(tx_cnt * sizeof(uint16_t), 0);
+		if (tx_cnt && (mdata->tx_sa_array == NULL)) {
+			rc = -ENOMEM;
+			goto exit;
+		}
+		mdata->rx_sa_array = plt_zmalloc(rx_cnt * sizeof(uint16_t), 0);
+		if (rx_cnt && (mdata->rx_sa_array == NULL)) {
+			rc = -ENOMEM;
+			goto exit;
+		}
+
+		mdata->num_tx_sa = tx_cnt;
+		mdata->num_rx_sa = rx_cnt;
+		for (i = 0; i < (priv->sa_entries << 1); i++) {
+			set = plt_bitmap_get(priv->port_rsrc[port_id].sa_bmap, i);
+			if (set) {
+				if (i >= priv->sa_entries)
+					mdata->tx_sa_array[--tx_cnt] = i - priv->sa_entries;
+				else
+					mdata->rx_sa_array[--rx_cnt] = i;
+			}
+		}
+	}
+	tx_cnt = 0;
+	rx_cnt = 0;
+
+	/* Reset Tx active SA to index:0 */
+	for (i = priv->sc_entries; i < (priv->sc_entries << 1); i++) {
+		set = plt_bitmap_get(priv->port_rsrc[port_id].sc_bmap, i);
+		if (set) {
+			uint16_t sc_id = i - priv->sc_entries;
+
+			tx_map.sa_index0 = priv->port_rsrc[port_id].sc_conf[sc_id].tx.sa_idx0;
+			tx_map.sa_index1 = priv->port_rsrc[port_id].sc_conf[sc_id].tx.sa_idx1;
+			tx_map.rekey_ena = priv->port_rsrc[port_id].sc_conf[sc_id].tx.rekey_enb;
+			tx_map.sectag_sci = priv->port_rsrc[port_id].sc_conf[sc_id].tx.sci;
+			tx_map.sa_index0_vld = 1;
+			tx_map.sa_index1_vld = 0;
+			tx_map.tx_sa_active = 0;
+			tx_map.sc_id = sc_id;
+			rc = roc_mcs_tx_sc_sa_map_write(mcs, &tx_map);
+			if (rc)
+				return rc;
+
+			tx_cnt++;
+		}
+	}
+
+	if (tx_cnt) {
+		mdata->tx_sc_array = plt_zmalloc(tx_cnt * sizeof(uint16_t), 0);
+		if (tx_cnt && (mdata->tx_sc_array == NULL)) {
+			rc = -ENOMEM;
+			goto exit;
+		}
+
+		mdata->num_tx_sc = tx_cnt;
+		for (i = priv->sc_entries; i < (priv->sc_entries << 1); i++) {
+			set = plt_bitmap_get(priv->port_rsrc[port_id].sc_bmap, i);
+			if (set)
+				mdata->tx_sc_array[--tx_cnt] = i - priv->sc_entries;
+		}
+	}
+
+	/* Clear SA_IN_USE for active ANs in RX CPM */
+	for (i = 0; i < priv->sc_entries; i++) {
+		set = plt_bitmap_get(priv->port_rsrc[port_id].sc_bmap, i);
+		if (set) {
+			rx_map.sa_index = priv->port_rsrc[port_id].sc_conf[i].rx.sa_idx;
+			rx_map.an = priv->port_rsrc[port_id].sc_conf[i].rx.an;
+			rx_map.sa_in_use = 0;
+			rx_map.sc_id = i;
+			rc = roc_mcs_rx_sc_sa_map_write(mcs, &rx_map);
+			if (rc)
+				return rc;
+
+			rx_cnt++;
+		}
+	}
+
+	/* Reset flow(flow/secy/sc/sa) stats mapped to this PORT */
+	for (i = 0; i < (priv->tcam_entries << 1); i++) {
+		set = plt_bitmap_get(priv->port_rsrc[port_id].tcam_bmap, i);
+		if (set) {
+			stats.type = MCS_FLOWID_STATS;
+			stats.id = i;
+			stats.dir = MCS_RX;
+			if (i >= priv->sa_entries) {
+				stats.dir = MCS_TX;
+				stats.id -= priv->tcam_entries;
+			}
+			rc = roc_mcs_stats_clear(mcs, &stats);
+			if (rc)
+				return rc;
+		}
+	}
+	for (i = 0; i < (priv->secy_entries << 1); i++) {
+		set = plt_bitmap_get(priv->port_rsrc[port_id].secy_bmap, i);
+		if (set) {
+			stats.type = MCS_SECY_STATS;
+			stats.id = i;
+			stats.dir = MCS_RX;
+			if (i >= priv->sa_entries) {
+				stats.dir = MCS_TX;
+				stats.id -= priv->secy_entries;
+			}
+			rc = roc_mcs_stats_clear(mcs, &stats);
+			if (rc)
+				return rc;
+		}
+	}
+	for (i = 0; i < (priv->sc_entries << 1); i++) {
+		set = plt_bitmap_get(priv->port_rsrc[port_id].sc_bmap, i);
+		if (set) {
+			stats.type = MCS_SC_STATS;
+			stats.id = i;
+			stats.dir = MCS_RX;
+			if (i >= priv->sa_entries) {
+				stats.dir = MCS_TX;
+				stats.id -= priv->sc_entries;
+			}
+			rc = roc_mcs_stats_clear(mcs, &stats);
+			if (rc)
+				return rc;
+		}
+	}
+	if (roc_model_is_cn10kb_a0()) {
+		for (i = 0; i < (priv->sa_entries << 1); i++) {
+			set = plt_bitmap_get(priv->port_rsrc[port_id].sa_bmap, i);
+			if (set) {
+				stats.type = MCS_SA_STATS;
+				stats.id = i;
+				stats.dir = MCS_RX;
+				if (i >= priv->sa_entries) {
+					stats.dir = MCS_TX;
+					stats.id -= priv->sa_entries;
+				}
+				rc = roc_mcs_stats_clear(mcs, &stats);
+				if (rc)
+					return rc;
+			}
+		}
+	}
+	{
+		stats.type = MCS_PORT_STATS;
+		stats.id = port_id;
+		rc = roc_mcs_stats_clear(mcs, &stats);
+		if (rc)
+			return rc;
+	}
+
+	if (rx_cnt) {
+		mdata->rx_sc_array = plt_zmalloc(rx_cnt * sizeof(uint16_t), 0);
+		if (mdata->rx_sc_array == NULL) {
+			rc = -ENOMEM;
+			goto exit;
+		}
+		mdata->sc_an_array = plt_zmalloc(rx_cnt * sizeof(uint8_t), 0);
+		if (mdata->sc_an_array == NULL) {
+			rc = -ENOMEM;
+			goto exit;
+		}
+
+		mdata->num_rx_sc = rx_cnt;
+	}
+
+	/* Reactivate in-use ANs for active SCs in RX CPM */
+	for (i = 0; i < priv->sc_entries; i++) {
+		set = plt_bitmap_get(priv->port_rsrc[port_id].sc_bmap, i);
+		if (set) {
+			rx_map.sa_index = priv->port_rsrc[port_id].sc_conf[i].rx.sa_idx;
+			rx_map.an = priv->port_rsrc[port_id].sc_conf[i].rx.an;
+			rx_map.sa_in_use = 1;
+			rx_map.sc_id = i;
+			rc = roc_mcs_rx_sc_sa_map_write(mcs, &rx_map);
+			if (rc)
+				return rc;
+
+			mdata->rx_sc_array[--rx_cnt] = i;
+			mdata->sc_an_array[rx_cnt] = priv->port_rsrc[port_id].sc_conf[i].rx.an;
+		}
+	}
+
+	port.port_id = port_id;
+	rc = mcs_port_reset_set(mcs, &port, 0);
+
+	return rc;
+exit:
+	if (mdata->num_tx_sa)
+		plt_free(mdata->tx_sa_array);
+	if (mdata->num_rx_sa)
+		plt_free(mdata->rx_sa_array);
+	if (mdata->num_tx_sc)
+		plt_free(mdata->tx_sc_array);
+	if (mdata->num_rx_sc) {
+		plt_free(mdata->rx_sc_array);
+		plt_free(mdata->sc_an_array);
+	}
+	return rc;
+}
+
+int
+roc_mcs_port_reset(struct roc_mcs *mcs, struct roc_mcs_port_reset_req *port)
+{
+	struct roc_mcs_event_desc desc = {0};
+	int rc;
+
+	/* Initiate port reset and software recovery */
+	rc = roc_mcs_port_recovery(mcs, &desc.metadata, port->port_id);
+	if (rc)
+		goto exit;
+
+	desc.type = ROC_MCS_EVENT_PORT_RESET_RECOVERY;
+	/* Notify the entity details to the application which are recovered */
+	mcs_event_cb_process(mcs, &desc);
+
+exit:
+	if (desc.metadata.num_tx_sa)
+		plt_free(desc.metadata.tx_sa_array);
+	if (desc.metadata.num_rx_sa)
+		plt_free(desc.metadata.rx_sa_array);
+	if (desc.metadata.num_tx_sc)
+		plt_free(desc.metadata.tx_sc_array);
+	if (desc.metadata.num_rx_sc) {
+		plt_free(desc.metadata.rx_sc_array);
+		plt_free(desc.metadata.sc_an_array);
+	}
+
+	return rc;
 }
 
 int

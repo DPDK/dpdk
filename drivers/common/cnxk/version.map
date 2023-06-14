@@ -151,6 +151,10 @@ INTERNAL {
 	roc_mcs_pn_table_write;
 	roc_mcs_pn_table_read;
 	roc_mcs_pn_threshold_set;
+	roc_mcs_port_cfg_get;
+	roc_mcs_port_cfg_set;
+	roc_mcs_port_recovery;
+	roc_mcs_port_reset;
 	roc_mcs_port_stats_get;
 	roc_mcs_rsrc_alloc;
 	roc_mcs_rsrc_free;

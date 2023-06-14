@@ -163,6 +163,43 @@ struct roc_mcs_set_pn_threshold {
 	uint64_t rsvd;
 };
 
+struct roc_mcs_port_cfg_set_req {
+	/* Index of custom tag (= cstm_indx[x] in roc_mcs_custom_tag_cfg_get_rsp struct) to use
+	 * when TX SECY_PLCY_MEMX[SECTAG_INSERT_MODE] = 0 (relative offset mode)
+	 */
+	uint8_t cstm_tag_rel_mode_sel;
+	/* In ingress path, custom_hdr_enb = 1 when the port is expected to receive pkts
+	 * that have 8B custom header before DMAC
+	 */
+	uint8_t custom_hdr_enb;
+	/* Valid fifo skid values are 14,28,56 for 25G,50G,100G respectively
+	 * FIFOs need to be configured based on the port_mode, valid only for 105N
+	 */
+	uint8_t fifo_skid;
+	uint8_t port_mode; /* 2'b00 - 25G or less, 2'b01 - 50G, 2'b10 - 100G */
+	uint8_t port_id;
+	uint64_t rsvd;
+};
+
+struct roc_mcs_port_cfg_get_req {
+	uint8_t port_id;
+	uint64_t rsvd;
+};
+
+struct roc_mcs_port_cfg_get_rsp {
+	uint8_t cstm_tag_rel_mode_sel;
+	uint8_t custom_hdr_enb;
+	uint8_t fifo_skid;
+	uint8_t port_mode;
+	uint8_t port_id;
+	uint64_t rsvd;
+};
+
+struct roc_mcs_port_reset_req {
+	uint8_t port_id;
+	uint64_t rsvd;
+};
+
 struct roc_mcs_stats_req {
 	uint8_t id;
 	uint8_t dir;
@@ -367,6 +404,13 @@ __roc_api int roc_mcs_active_lmac_set(struct roc_mcs *mcs, struct roc_mcs_set_ac
 __roc_api int roc_mcs_lmac_mode_set(struct roc_mcs *mcs, struct roc_mcs_set_lmac_mode *port);
 /* (X)PN threshold set */
 __roc_api int roc_mcs_pn_threshold_set(struct roc_mcs *mcs, struct roc_mcs_set_pn_threshold *pn);
+/* Reset port */
+__roc_api int roc_mcs_port_reset(struct roc_mcs *mcs, struct roc_mcs_port_reset_req *port);
+/* Get port config */
+__roc_api int roc_mcs_port_cfg_set(struct roc_mcs *mcs, struct roc_mcs_port_cfg_set_req *req);
+/* Set port config */
+__roc_api int roc_mcs_port_cfg_get(struct roc_mcs *mcs, struct roc_mcs_port_cfg_get_req *req,
+				   struct roc_mcs_port_cfg_get_rsp *rsp);
 
 /* Resource allocation and free */
 __roc_api int roc_mcs_rsrc_alloc(struct roc_mcs *mcs, struct roc_mcs_alloc_rsrc_req *req,
@@ -438,5 +482,9 @@ __roc_api int roc_mcs_event_cb_unregister(struct roc_mcs *mcs, enum roc_mcs_even
 
 /* Configure interrupts */
 __roc_api int roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cfg *config);
+
+/* Port recovery from fatal errors */
+__roc_api int roc_mcs_port_recovery(struct roc_mcs *mcs, union roc_mcs_event_data *mdata,
+				    uint8_t port_id);
 
 #endif /* ROC_MCS_H */
