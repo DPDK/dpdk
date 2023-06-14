@@ -1579,6 +1579,7 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_GPIOINTMASK               0x014834
 #define TXGBE_GPIOINTTYPE               0x014838
 #define TXGBE_GPIOINTSTAT               0x014840
+#define TXGBE_GPIORAWINTSTAT            0x014844
 #define TXGBE_GPIOEOI                   0x01484C
 
 
@@ -1884,7 +1885,19 @@ po32m(struct txgbe_hw *hw, u32 reg, u32 mask, u32 expect, u32 *actual,
 }
 
 /* flush all write operations */
-#define txgbe_flush(hw) rd32(hw, 0x00100C)
+static inline void txgbe_flush(struct txgbe_hw *hw)
+{
+	switch (hw->mac.type) {
+	case txgbe_mac_raptor:
+		rd32(hw, TXGBE_PWR);
+		break;
+	case txgbe_mac_raptor_vf:
+		rd32(hw, TXGBE_VFSTATUS);
+		break;
+	default:
+		break;
+	}
+}
 
 #define rd32a(hw, reg, idx) ( \
 	rd32((hw), (reg) + ((idx) << 2)))

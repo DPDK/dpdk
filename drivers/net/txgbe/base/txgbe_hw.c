@@ -2987,10 +2987,6 @@ void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 {
 	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
 
-	/* Blocked by MNG FW so bail */
-	if (txgbe_check_reset_blocked(hw))
-		return;
-
 	if (txgbe_close_notify(hw))
 		txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_LEDCTL_10G |
 				TXGBE_LEDCTL_1G | TXGBE_LEDCTL_ACTIVE);
@@ -3038,10 +3034,6 @@ void txgbe_enable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
  **/
 void txgbe_flap_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 {
-	/* Blocked by MNG FW so bail */
-	if (txgbe_check_reset_blocked(hw))
-		return;
-
 	if (hw->mac.autotry_restart) {
 		txgbe_disable_tx_laser_multispeed_fiber(hw);
 		txgbe_enable_tx_laser_multispeed_fiber(hw);
@@ -3432,18 +3424,9 @@ s32 txgbe_reset_hw(struct txgbe_hw *hw)
 	autoc = hw->mac.autoc_read(hw);
 
 mac_reset_top:
-	/*
-	 * Issue global reset to the MAC.  Needs to be SW reset if link is up.
-	 * If link reset is used when link is up, it might reset the PHY when
-	 * mng is using it.  If link is down or the flag to force full link
-	 * reset is set, then perform link reset.
-	 */
-	if (txgbe_mng_present(hw)) {
-		txgbe_hic_reset(hw);
-	} else {
-		wr32(hw, TXGBE_RST, TXGBE_RST_LAN(hw->bus.lan_id));
-		txgbe_flush(hw);
-	}
+	/* Do LAN reset, the MNG domain will not be reset. */
+	wr32(hw, TXGBE_RST, TXGBE_RST_LAN(hw->bus.lan_id));
+	txgbe_flush(hw);
 	usec_delay(10);
 
 	txgbe_reset_misc(hw);

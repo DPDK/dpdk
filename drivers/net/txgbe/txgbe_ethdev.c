@@ -1530,6 +1530,25 @@ txgbe_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void txgbe_reinit_gpio_intr(struct txgbe_hw *hw)
+{
+	u32 reg;
+
+	wr32(hw, TXGBE_GPIOINTMASK, 0xFF);
+	reg = rd32(hw, TXGBE_GPIORAWINTSTAT);
+
+	if (reg & TXGBE_GPIOBIT_2)
+		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_2);
+
+	if (reg & TXGBE_GPIOBIT_3)
+		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_3);
+
+	if (reg & TXGBE_GPIOBIT_6)
+		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_6);
+
+	wr32(hw, TXGBE_GPIOINTMASK, 0);
+}
+
 static void
 txgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
 {
@@ -1667,6 +1686,10 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	hw->mac.start_hw(hw);
 	hw->mac.get_link_status = true;
 	hw->dev_start = true;
+
+	/* workaround for GPIO intr lost when mng_veto bit is set */
+	if (txgbe_check_reset_blocked(hw))
+		txgbe_reinit_gpio_intr(hw);
 
 	/* configure PF module if SRIOV enabled */
 	txgbe_pf_host_configure(dev);
@@ -1883,6 +1906,10 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	/* disable interrupts */
 	txgbe_disable_intr(hw);
+
+	/* workaround for GPIO intr lost when mng_veto bit is set */
+	if (txgbe_check_reset_blocked(hw))
+		txgbe_reinit_gpio_intr(hw);
 
 	/* reset the NIC */
 	txgbe_pf_reset_hw(hw);
