@@ -32,12 +32,36 @@ struct roc_mcs_free_rsrc_req {
 	uint8_t all; /* Free all the cam resources */
 };
 
+/* RX SC_CAM mapping */
+struct roc_mcs_rx_sc_cam_write_req {
+	uint64_t sci;	  /* SCI */
+	uint64_t secy_id; /* secy index mapped to SC */
+	uint8_t sc_id;	  /* SC CAM entry index */
+};
 
 struct roc_mcs_sa_plcy_write_req {
 	uint64_t plcy[2][9];
 	uint8_t sa_index[2];
 	uint8_t sa_cnt;
 	uint8_t dir;
+};
+
+struct roc_mcs_tx_sc_sa_map {
+	uint8_t sa_index0;
+	uint8_t sa_index1;
+	uint8_t rekey_ena;
+	uint8_t sa_index0_vld;
+	uint8_t sa_index1_vld;
+	uint8_t tx_sa_active;
+	uint64_t sectag_sci;
+	uint8_t sc_id; /* used as index for SA_MEM_MAP */
+};
+
+struct roc_mcs_rx_sc_sa_map {
+	uint8_t sa_index;
+	uint8_t sa_in_use;
+	uint8_t sc_id;
+	uint8_t an; /* value range 0-3, sc_id + an used as index SA_MEM_MAP */
 };
 
 struct roc_mcs_hw_info {
@@ -81,5 +105,23 @@ __roc_api int roc_mcs_sa_policy_write(struct roc_mcs *mcs,
 				      struct roc_mcs_sa_plcy_write_req *sa_plcy);
 __roc_api int roc_mcs_sa_policy_read(struct roc_mcs *mcs,
 				     struct roc_mcs_sa_plcy_write_req *sa_plcy);
+
+/* RX SC read, write and enable */
+__roc_api int roc_mcs_rx_sc_cam_write(struct roc_mcs *mcs,
+				      struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam);
+__roc_api int roc_mcs_rx_sc_cam_read(struct roc_mcs *mcs,
+				     struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam);
+__roc_api int roc_mcs_rx_sc_cam_enable(struct roc_mcs *mcs,
+				       struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam);
+/* RX SC-SA MAP read and write */
+__roc_api int roc_mcs_rx_sc_sa_map_write(struct roc_mcs *mcs,
+					 struct roc_mcs_rx_sc_sa_map *rx_sc_sa_map);
+__roc_api int roc_mcs_rx_sc_sa_map_read(struct roc_mcs *mcs,
+					struct roc_mcs_rx_sc_sa_map *rx_sc_sa_map);
+/* TX SC-SA MAP read and write */
+__roc_api int roc_mcs_tx_sc_sa_map_write(struct roc_mcs *mcs,
+					 struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map);
+__roc_api int roc_mcs_tx_sc_sa_map_read(struct roc_mcs *mcs,
+					struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map);
 
 #endif /* ROC_MCS_H */

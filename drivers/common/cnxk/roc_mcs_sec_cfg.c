@@ -209,3 +209,174 @@ roc_mcs_sa_policy_read(struct roc_mcs *mcs __plt_unused,
 
 	return -ENOTSUP;
 }
+
+
+int
+roc_mcs_rx_sc_cam_write(struct roc_mcs *mcs, struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam)
+{
+	struct mcs_priv *priv = roc_mcs_to_mcs_priv(mcs);
+	struct mcs_rx_sc_cam_write_req *rx_sc;
+	struct msg_rsp *rsp;
+	int i, rc;
+
+	MCS_SUPPORT_CHECK;
+
+	if (rx_sc_cam == NULL)
+		return -EINVAL;
+
+	rx_sc = mbox_alloc_msg_mcs_rx_sc_cam_write(mcs->mbox);
+	if (rx_sc == NULL)
+		return -ENOMEM;
+
+	rx_sc->sci = rx_sc_cam->sci;
+	rx_sc->secy_id = rx_sc_cam->secy_id;
+	rx_sc->sc_id = rx_sc_cam->sc_id;
+	rx_sc->mcs_id = mcs->idx;
+
+	rc = mbox_process_msg(mcs->mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < MAX_PORTS_PER_MCS; i++) {
+		uint32_t set = plt_bitmap_get(priv->port_rsrc[i].secy_bmap, rx_sc_cam->secy_id);
+
+		if (set) {
+			plt_bitmap_set(priv->port_rsrc[i].sc_bmap, rx_sc_cam->sc_id);
+			break;
+		}
+	}
+
+	return 0;
+}
+
+int
+roc_mcs_rx_sc_cam_read(struct roc_mcs *mcs __plt_unused,
+		       struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam __plt_unused)
+{
+	MCS_SUPPORT_CHECK;
+
+	return -ENOTSUP;
+}
+
+int
+roc_mcs_rx_sc_cam_enable(struct roc_mcs *mcs __plt_unused,
+			 struct roc_mcs_rx_sc_cam_write_req *rx_sc_cam __plt_unused)
+{
+	MCS_SUPPORT_CHECK;
+
+	return -ENOTSUP;
+}
+
+int
+roc_mcs_rx_sc_sa_map_write(struct roc_mcs *mcs, struct roc_mcs_rx_sc_sa_map *rx_sc_sa_map)
+{
+	struct mcs_priv *priv = roc_mcs_to_mcs_priv(mcs);
+	struct mcs_rx_sc_sa_map *sa_map;
+	struct msg_rsp *rsp;
+	uint16_t sc_id;
+	int i, rc;
+
+	MCS_SUPPORT_CHECK;
+
+	if (rx_sc_sa_map == NULL)
+		return -EINVAL;
+
+	sc_id = rx_sc_sa_map->sc_id;
+	sa_map = mbox_alloc_msg_mcs_rx_sc_sa_map_write(mcs->mbox);
+	if (sa_map == NULL)
+		return -ENOMEM;
+
+	sa_map->sa_index = rx_sc_sa_map->sa_index;
+	sa_map->sa_in_use = rx_sc_sa_map->sa_in_use;
+	sa_map->sc_id = rx_sc_sa_map->sc_id;
+	sa_map->an = rx_sc_sa_map->an;
+	sa_map->mcs_id = mcs->idx;
+
+	rc = mbox_process_msg(mcs->mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < MAX_PORTS_PER_MCS; i++) {
+		uint32_t set = plt_bitmap_get(priv->port_rsrc[i].sc_bmap, sc_id);
+
+		if (set) {
+			plt_bitmap_set(priv->port_rsrc[i].sa_bmap, rx_sc_sa_map->sa_index);
+			priv->port_rsrc[i].sc_conf[sc_id].rx.sa_idx = rx_sc_sa_map->sa_index;
+			priv->port_rsrc[i].sc_conf[sc_id].rx.an = rx_sc_sa_map->an;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+int
+roc_mcs_rx_sc_sa_map_read(struct roc_mcs *mcs __plt_unused,
+			  struct roc_mcs_rx_sc_sa_map *rx_sc_sa_map __plt_unused)
+{
+	MCS_SUPPORT_CHECK;
+
+	return -ENOTSUP;
+}
+
+int
+roc_mcs_tx_sc_sa_map_write(struct roc_mcs *mcs, struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map)
+{
+	struct mcs_priv *priv = roc_mcs_to_mcs_priv(mcs);
+	struct mcs_tx_sc_sa_map *sa_map;
+	struct msg_rsp *rsp;
+	uint16_t sc_id;
+	int i, rc;
+
+	MCS_SUPPORT_CHECK;
+
+	if (tx_sc_sa_map == NULL)
+		return -EINVAL;
+
+	sa_map = mbox_alloc_msg_mcs_tx_sc_sa_map_write(mcs->mbox);
+	if (sa_map == NULL)
+		return -ENOMEM;
+
+	sa_map->sa_index0 = tx_sc_sa_map->sa_index0;
+	sa_map->sa_index1 = tx_sc_sa_map->sa_index1;
+	sa_map->rekey_ena = tx_sc_sa_map->rekey_ena;
+	sa_map->sa_index0_vld = tx_sc_sa_map->sa_index0_vld;
+	sa_map->sa_index1_vld = tx_sc_sa_map->sa_index1_vld;
+	sa_map->tx_sa_active = tx_sc_sa_map->tx_sa_active;
+	sa_map->sectag_sci = tx_sc_sa_map->sectag_sci;
+	sa_map->sc_id = tx_sc_sa_map->sc_id;
+	sa_map->mcs_id = mcs->idx;
+
+	rc = mbox_process_msg(mcs->mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	sc_id = tx_sc_sa_map->sc_id;
+	for (i = 0; i < MAX_PORTS_PER_MCS; i++) {
+		uint32_t set = plt_bitmap_get(priv->port_rsrc[i].sc_bmap, sc_id + priv->sc_entries);
+
+		if (set) {
+			uint32_t pos = priv->sa_entries + tx_sc_sa_map->sa_index0;
+
+			plt_bitmap_set(priv->port_rsrc[i].sa_bmap, pos);
+			priv->port_rsrc[i].sc_conf[sc_id].tx.sa_idx0 = tx_sc_sa_map->sa_index0;
+			pos = priv->sa_entries + tx_sc_sa_map->sa_index1;
+			plt_bitmap_set(priv->port_rsrc[i].sa_bmap, pos);
+			priv->port_rsrc[i].sc_conf[sc_id].tx.sa_idx1 = tx_sc_sa_map->sa_index1;
+			priv->port_rsrc[i].sc_conf[sc_id].tx.sci = tx_sc_sa_map->sectag_sci;
+			priv->port_rsrc[i].sc_conf[sc_id].tx.rekey_enb = tx_sc_sa_map->rekey_ena;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+int
+roc_mcs_tx_sc_sa_map_read(struct roc_mcs *mcs __plt_unused,
+			  struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map __plt_unused)
+{
+	MCS_SUPPORT_CHECK;
+
+	return -ENOTSUP;
+}

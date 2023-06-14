@@ -300,7 +300,10 @@ struct mbox_msghdr {
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
 	M(MCS_FREE_RESOURCES, 0xa001, mcs_free_resources, mcs_free_rsrc_req, msg_rsp)              \
+	M(MCS_RX_SC_CAM_WRITE, 0xa004, mcs_rx_sc_cam_write, mcs_rx_sc_cam_write_req, msg_rsp)      \
 	M(MCS_SA_PLCY_WRITE, 0xa005, mcs_sa_plcy_write, mcs_sa_plcy_write_req, msg_rsp)            \
+	M(MCS_TX_SC_SA_MAP_WRITE, 0xa006, mcs_tx_sc_sa_map_write, mcs_tx_sc_sa_map, msg_rsp)       \
+	M(MCS_RX_SC_SA_MAP_WRITE, 0xa007, mcs_rx_sc_sa_map_write, mcs_rx_sc_sa_map, msg_rsp)       \
 	M(MCS_GET_HW_INFO, 0xa00b, mcs_get_hw_info, msg_req, mcs_hw_info)                          \
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
@@ -726,6 +729,16 @@ struct mcs_free_rsrc_req {
 	uint64_t __io rsvd;
 };
 
+/* RX SC_CAM mapping */
+struct mcs_rx_sc_cam_write_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io sci;     /* SCI */
+	uint64_t __io secy_id; /* secy index mapped to SC */
+	uint8_t __io sc_id;    /* SC CAM entry index */
+	uint8_t __io mcs_id;
+	uint64_t __io rsvd;
+};
+
 struct mcs_sa_plcy_write_req {
 	struct mbox_msghdr hdr;
 	uint64_t __io plcy[2][9]; /* Support 2 SA policy */
@@ -736,6 +749,30 @@ struct mcs_sa_plcy_write_req {
 	uint64_t __io rsvd;
 };
 
+struct mcs_tx_sc_sa_map {
+	struct mbox_msghdr hdr;
+	uint8_t __io sa_index0;
+	uint8_t __io sa_index1;
+	uint8_t __io rekey_ena;
+	uint8_t __io sa_index0_vld;
+	uint8_t __io sa_index1_vld;
+	uint8_t __io tx_sa_active;
+	uint64_t __io sectag_sci;
+	uint8_t __io sc_id; /* used as index for SA_MEM_MAP */
+	uint8_t __io mcs_id;
+	uint64_t __io rsvd;
+};
+
+struct mcs_rx_sc_sa_map {
+	struct mbox_msghdr hdr;
+	uint8_t __io sa_index;
+	uint8_t __io sa_in_use;
+	uint8_t __io sc_id;
+	/* an range is 0-3, sc_id + an used as index SA_MEM_MAP */
+	uint8_t __io an;
+	uint8_t __io mcs_id;
+	uint64_t __io rsvd;
+};
 
 struct mcs_hw_info {
 	struct mbox_msghdr hdr;
