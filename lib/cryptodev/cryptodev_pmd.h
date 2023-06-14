@@ -534,7 +534,7 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id);
  *   - 0 on success, negative on error
  */
 __rte_internal
-extern int
+int
 rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev);
 
 

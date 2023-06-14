@@ -216,7 +216,7 @@ __rte_crypto_op_get_priv_data_size(struct rte_mempool *mempool)
  *  - On success pointer to mempool
  *  - On failure NULL
  */
-extern struct rte_mempool *
+struct rte_mempool *
 rte_crypto_op_pool_create(const char *name, enum rte_crypto_op_type type,
 		unsigned nb_elts, unsigned cache_size, uint16_t priv_size,
 		int socket_id);

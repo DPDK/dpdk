@@ -545,8 +545,7 @@ rte_cryptodev_asym_get_xform_string(enum rte_crypto_asym_xform_type xform_enum);
  * @return
  *   The name of this flag, or NULL if it's not a valid feature flag.
  */
-
-extern const char *
+const char *
 rte_cryptodev_get_feature_name(uint64_t flag);
 
 /**  Crypto device information */
@@ -662,7 +661,7 @@ struct rte_cryptodev_stats {
  *   - Returns crypto device identifier on success.
  *   - Return -1 on failure to find named crypto device.
  */
-extern int
+int
 rte_cryptodev_get_dev_id(const char *name);
 
 /**
@@ -675,7 +674,7 @@ rte_cryptodev_get_dev_id(const char *name);
  *   - Returns crypto device name.
  *   - Returns NULL if crypto device is not present.
  */
-extern const char *
+const char *
 rte_cryptodev_name_get(uint8_t dev_id);
 
 /**
@@ -685,7 +684,7 @@ rte_cryptodev_name_get(uint8_t dev_id);
  * @return
  *   - The total number of usable crypto devices.
  */
-extern uint8_t
+uint8_t
 rte_cryptodev_count(void);
 
 /**
@@ -696,7 +695,7 @@ rte_cryptodev_count(void);
  * @return
  *   Returns number of crypto device.
  */
-extern uint8_t
+uint8_t
 rte_cryptodev_device_count_by_driver(uint8_t driver_id);
 
 /**
@@ -723,7 +722,7 @@ rte_cryptodev_devices_get(const char *driver_name, uint8_t *devices,
  *   a default of zero if the socket could not be determined.
  *   -1 if returned is the dev_id value is out of range.
  */
-extern int
+int
 rte_cryptodev_socket_id(uint8_t dev_id);
 
 /** Crypto device configuration structure */
@@ -756,7 +755,7 @@ struct rte_cryptodev_config {
  *   - 0: Success, device configured.
  *   - <0: Error code returned by the driver configuration function.
  */
-extern int
+int
 rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config);
 
 /**
@@ -774,7 +773,7 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config);
  *   - 0: Success, device started.
  *   - <0: Error code of the driver device start function.
  */
-extern int
+int
 rte_cryptodev_start(uint8_t dev_id);
 
 /**
@@ -783,7 +782,7 @@ rte_cryptodev_start(uint8_t dev_id);
  *
  * @param	dev_id		The identifier of the device.
  */
-extern void
+void
 rte_cryptodev_stop(uint8_t dev_id);
 
 /**
@@ -795,7 +794,7 @@ rte_cryptodev_stop(uint8_t dev_id);
  *  - 0 on successfully closing device
  *  - <0 on failure to close device
  */
-extern int
+int
 rte_cryptodev_close(uint8_t dev_id);
 
 /**
@@ -819,7 +818,7 @@ rte_cryptodev_close(uint8_t dev_id);
  *   - 0: Success, queue pair correctly set up.
  *   - <0: Queue pair configuration failed
  */
-extern int
+int
 rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id);
 
@@ -847,7 +846,7 @@ rte_cryptodev_get_qp_status(uint8_t dev_id, uint16_t queue_pair_id);
  * @return
  *   - The number of configured queue pairs.
  */
-extern uint16_t
+uint16_t
 rte_cryptodev_queue_pair_count(uint8_t dev_id);
 
 
@@ -862,7 +861,7 @@ rte_cryptodev_queue_pair_count(uint8_t dev_id);
  *   - Zero if successful.
  *   - Non-zero otherwise.
  */
-extern int
+int
 rte_cryptodev_stats_get(uint8_t dev_id, struct rte_cryptodev_stats *stats);
 
 /**
@@ -870,7 +869,7 @@ rte_cryptodev_stats_get(uint8_t dev_id, struct rte_cryptodev_stats *stats);
  *
  * @param	dev_id		The identifier of the device.
  */
-extern void
+void
 rte_cryptodev_stats_reset(uint8_t dev_id);
 
 /**
@@ -886,7 +885,7 @@ rte_cryptodev_stats_reset(uint8_t dev_id);
  * the last valid element has it's op field set to
  * RTE_CRYPTO_OP_TYPE_UNDEFINED.
  */
-extern void
+void
 rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info);
 
 
@@ -903,7 +902,7 @@ rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info);
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-extern int
+int
 rte_cryptodev_callback_register(uint8_t dev_id,
 		enum rte_cryptodev_event_type event,
 		rte_cryptodev_cb_fn cb_fn, void *cb_arg);
@@ -921,7 +920,7 @@ rte_cryptodev_callback_register(uint8_t dev_id,
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-extern int
+int
 rte_cryptodev_callback_unregister(uint8_t dev_id,
 		enum rte_cryptodev_event_type event,
 		rte_cryptodev_cb_fn cb_fn, void *cb_arg);

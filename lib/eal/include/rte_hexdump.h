@@ -28,7 +28,7 @@ extern "C" {
  * @param len
  *   The number of bytes to dump out.
  */
-extern void
+void
 rte_hexdump(FILE *f, const char *title, const void *buf, unsigned int len);
 
 /**

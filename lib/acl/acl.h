@@ -6,7 +6,7 @@
 #define	_ACL_H_
 
 #ifdef __cplusplus
-extern"C" {
+extern "C" {
 #endif /* __cplusplus */
 
 #define RTE_ACL_QUAD_MAX	5

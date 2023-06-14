@@ -901,9 +901,9 @@ rte_security_session_fast_mdata_set(void *sess, uint64_t fdata)
 
 /** Function to call PMD specific function pointer set_pkt_metadata() */
 __rte_experimental
-extern int __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
-					   void *sess,
-					   struct rte_mbuf *m, void *params);
+int __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
+				    void *sess,
+				    struct rte_mbuf *m, void *params);
 
 /**
  *  Updates the buffer with device-specific defined metadata
