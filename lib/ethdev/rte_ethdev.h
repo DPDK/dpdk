@@ -2683,7 +2683,7 @@ int rte_eth_dev_is_valid_port(uint16_t port_id);
  *   - 0 if Rx queue is valid.
  */
 __rte_experimental
-int rte_eth_dev_is_valid_rxq(uint16_t port_id, uint16_t queue_id);
+int rte_eth_rx_queue_is_valid(uint16_t port_id, uint16_t queue_id);
 
 /**
  * @warning
@@ -2702,7 +2702,7 @@ int rte_eth_dev_is_valid_rxq(uint16_t port_id, uint16_t queue_id);
  *   - 0 if Tx queue is valid.
  */
 __rte_experimental
-int rte_eth_dev_is_valid_txq(uint16_t port_id, uint16_t queue_id);
+int rte_eth_tx_queue_is_valid(uint16_t port_id, uint16_t queue_id);
 
 /**
  * Start specified Rx queue of a port. It is used when rx_deferred_start
