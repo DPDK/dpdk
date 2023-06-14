@@ -1052,6 +1052,8 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 	if (hw->is_pf && dev->data->dev_conf.lpbk_mode)
 		goto skip_link_setup;
 
+	hw->lsc = dev->data->dev_conf.intr_conf.lsc;
+
 	err = hw->mac.check_link(hw, &speed, &link_up, 0);
 	if (err != 0)
 		goto error;

@@ -1541,11 +1541,15 @@ s32 ngbe_clear_vfta(struct ngbe_hw *hw)
 s32 ngbe_check_mac_link_em(struct ngbe_hw *hw, u32 *speed,
 			bool *link_up, bool link_up_wait_to_complete)
 {
-	u32 i, reg;
+	u32 i;
 	s32 status = 0;
 
-	reg = rd32(hw, NGBE_GPIOINTSTAT);
-	wr32(hw, NGBE_GPIOEOI, reg);
+	if (hw->lsc) {
+		u32 reg;
+
+		reg = rd32(hw, NGBE_GPIOINTSTAT);
+		wr32(hw, NGBE_GPIOEOI, reg);
+	}
 
 	if (link_up_wait_to_complete) {
 		for (i = 0; i < hw->mac.max_link_up_time; i++) {

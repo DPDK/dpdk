@@ -431,6 +431,7 @@ struct ngbe_hw {
 	bool offset_loaded;
 	bool is_pf;
 	bool gpio_ctl;
+	bool lsc;
 	u32 led_conf;
 	bool init_phy;
 	rte_spinlock_t phy_lock;
