@@ -1,6 +1,9 @@
 EXPERIMENTAL {
 	global:
 
+	__rte_graph_mcore_dispatch_sched_node_enqueue;
+	__rte_graph_mcore_dispatch_sched_wq_process;
+
 	__rte_node_register;
 	__rte_node_stream_alloc;
 	__rte_node_stream_alloc_size;

@@ -169,6 +169,17 @@ struct rte_graph_param {
 	bool pcap_enable; /**< Pcap enable. */
 	uint64_t num_pkt_to_capture; /**< Number of packets to capture. */
 	char *pcap_filename; /**< Filename in which packets to be captured.*/
+
+	RTE_STD_C11
+	union {
+		struct {
+			uint64_t rsvd; /**< Reserved for rtc model. */
+		} rtc;
+		struct {
+			uint32_t wq_size_max; /**< Maximum size of workqueue for dispatch model. */
+			uint32_t mp_capacity; /**< Capacity of memory pool for dispatch model. */
+		} dispatch;
+	};
 };
 
 /**
@@ -260,12 +271,14 @@ int rte_graph_destroy(rte_graph_t id);
  *   Name of the new graph. The library prepends the parent graph name to the
  * user-specified name. The final graph name will be,
  * "parent graph name" + "-" + name.
+ * @param prm
+ *   Graph parameter, includes model-specific parameters in this graph.
  *
  * @return
  *   Valid graph id on success, RTE_GRAPH_ID_INVALID otherwise.
  */
 __rte_experimental
-rte_graph_t rte_graph_clone(rte_graph_t id, const char *name);
+rte_graph_t rte_graph_clone(rte_graph_t id, const char *name, struct rte_graph_param *prm);
 
 /**
  * Get graph id from graph name.

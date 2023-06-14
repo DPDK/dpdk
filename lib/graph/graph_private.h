@@ -414,4 +414,35 @@ void graph_dump(FILE *f, struct graph *g);
  */
 void node_dump(FILE *f, struct node *n);
 
+/**
+ * @internal
+ *
+ * Create the graph schedule work queue for mcore dispatch model.
+ * All cloned graphs attached to the parent graph MUST be destroyed together
+ * for fast schedule design limitation.
+ *
+ * @param _graph
+ *   The graph object
+ * @param _parent_graph
+ *   The parent graph object which holds the run-queue head.
+ * @param prm
+ *   Graph parameter, includes model-specific parameters in this graph.
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Graph schedule work queue related error.
+ */
+int graph_sched_wq_create(struct graph *_graph, struct graph *_parent_graph,
+			   struct rte_graph_param *prm);
+
+/**
+ * @internal
+ *
+ * Destroy the graph schedule work queue for mcore dispatch model.
+ *
+ * @param _graph
+ *   The graph object
+ */
+void graph_sched_wq_destroy(struct graph *_graph);
+
 #endif /* _RTE_GRAPH_PRIVATE_H_ */

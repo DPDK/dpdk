@@ -20,7 +20,52 @@
 extern "C" {
 #endif
 
+#include <rte_errno.h>
+#include <rte_mempool.h>
+#include <rte_memzone.h>
+#include <rte_ring.h>
+
 #include "rte_graph_worker_common.h"
+
+#define RTE_GRAPH_SCHED_WQ_SIZE_MULTIPLIER  8
+#define RTE_GRAPH_SCHED_WQ_SIZE(nb_nodes)   \
+	((typeof(nb_nodes))((nb_nodes) * RTE_GRAPH_SCHED_WQ_SIZE_MULTIPLIER))
+
+/**
+ * @internal
+ *
+ * Schedule the node to the right graph's work queue for mcore dispatch model.
+ *
+ * @param node
+ *   Pointer to the scheduled node object.
+ * @param rq
+ *   Pointer to the scheduled run-queue for all graphs.
+ *
+ * @return
+ *   True on success, false otherwise.
+ *
+ * @note
+ * This implementation is used by mcore dispatch model only and user application
+ * should not call it directly.
+ */
+__rte_experimental
+bool __rte_noinline __rte_graph_mcore_dispatch_sched_node_enqueue(struct rte_node *node,
+								  struct rte_graph_rq_head *rq);
+
+/**
+ * @internal
+ *
+ * Process all nodes (streams) in the graph's work queue for mcore dispatch model.
+ *
+ * @param graph
+ *   Pointer to the graph object.
+ *
+ * @note
+ * This implementation is used by mcore dispatch model only and user application
+ * should not call it directly.
+ */
+__rte_experimental
+void __rte_graph_mcore_dispatch_sched_wq_process(struct rte_graph *graph);
 
 /**
  * Set lcore affinity with the node used for mcore dispatch model.

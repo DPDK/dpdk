@@ -473,10 +473,11 @@ done:
 }
 
 static rte_graph_t
-graph_clone(struct graph *parent_graph, const char *name)
+graph_clone(struct graph *parent_graph, const char *name, struct rte_graph_param *prm)
 {
 	struct graph_node *graph_node;
 	struct graph *graph;
+	RTE_SET_USED(prm);
 
 	graph_spinlock_lock();
 
@@ -547,14 +548,14 @@ fail:
 }
 
 rte_graph_t
-rte_graph_clone(rte_graph_t id, const char *name)
+rte_graph_clone(rte_graph_t id, const char *name, struct rte_graph_param *prm)
 {
 	struct graph *graph;
 
 	GRAPH_ID_CHECK(id);
 	STAILQ_FOREACH(graph, &graph_list, next)
 		if (graph->id == id)
-			return graph_clone(graph, name);
+			return graph_clone(graph, name, prm);
 
 fail:
 	return RTE_GRAPH_ID_INVALID;
