@@ -62,4 +62,12 @@ roc_mcs_to_mcs_priv(struct roc_mcs *roc_mcs)
 	return (struct mcs_priv *)&roc_mcs->reserved[0];
 }
 
+static inline void *
+roc_mcs_to_mcs_cb_list(struct roc_mcs *roc_mcs)
+{
+	return (void *)((uintptr_t)roc_mcs->reserved + sizeof(struct mcs_priv));
+}
+
+int mcs_event_cb_process(struct roc_mcs *mcs, struct roc_mcs_event_desc *desc);
+
 #endif /* _ROC_MCS_PRIV_H_ */

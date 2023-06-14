@@ -528,6 +528,91 @@ pf_vf_mbox_send_up_msg(struct dev *dev, void *rec_msg)
 }
 
 static int
+mbox_up_handler_mcs_intr_notify(struct dev *dev, struct mcs_intr_info *info, struct msg_rsp *rsp)
+{
+	struct roc_mcs_event_desc desc = {0};
+	struct roc_mcs *mcs;
+
+	plt_base_dbg("pf:%d/vf:%d msg id 0x%x (%s) from: pf:%d/vf:%d", dev_get_pf(dev->pf_func),
+		     dev_get_vf(dev->pf_func), info->hdr.id, mbox_id2name(info->hdr.id),
+		     dev_get_pf(info->hdr.pcifunc), dev_get_vf(info->hdr.pcifunc));
+
+	mcs = roc_idev_mcs_get(info->mcs_id);
+	if (!mcs)
+		goto exit;
+
+	if (info->intr_mask) {
+		switch (info->intr_mask) {
+		case MCS_CPM_RX_SECTAG_V_EQ1_INT:
+			desc.type = ROC_MCS_EVENT_SECTAG_VAL_ERR;
+			desc.subtype = ROC_MCS_EVENT_RX_SECTAG_V_EQ1;
+			break;
+		case MCS_CPM_RX_SECTAG_E_EQ0_C_EQ1_INT:
+			desc.type = ROC_MCS_EVENT_SECTAG_VAL_ERR;
+			desc.subtype = ROC_MCS_EVENT_RX_SECTAG_E_EQ0_C_EQ1;
+			break;
+		case MCS_CPM_RX_SECTAG_SL_GTE48_INT:
+			desc.type = ROC_MCS_EVENT_SECTAG_VAL_ERR;
+			desc.subtype = ROC_MCS_EVENT_RX_SECTAG_SL_GTE48;
+			break;
+		case MCS_CPM_RX_SECTAG_ES_EQ1_SC_EQ1_INT:
+			desc.type = ROC_MCS_EVENT_SECTAG_VAL_ERR;
+			desc.subtype = ROC_MCS_EVENT_RX_SECTAG_ES_EQ1_SC_EQ1;
+			break;
+		case MCS_CPM_RX_SECTAG_SC_EQ1_SCB_EQ1_INT:
+			desc.type = ROC_MCS_EVENT_SECTAG_VAL_ERR;
+			desc.subtype = ROC_MCS_EVENT_RX_SECTAG_SC_EQ1_SCB_EQ1;
+			break;
+		case MCS_CPM_RX_PACKET_XPN_EQ0_INT:
+			desc.type = ROC_MCS_EVENT_RX_SA_PN_HARD_EXP;
+			desc.metadata.sa_idx = info->sa_id;
+			break;
+		case MCS_CPM_RX_PN_THRESH_REACHED_INT:
+			desc.type = ROC_MCS_EVENT_RX_SA_PN_SOFT_EXP;
+			desc.metadata.sa_idx = info->sa_id;
+			break;
+		case MCS_CPM_TX_PACKET_XPN_EQ0_INT:
+			desc.type = ROC_MCS_EVENT_TX_SA_PN_HARD_EXP;
+			desc.metadata.sa_idx = info->sa_id;
+			break;
+		case MCS_CPM_TX_PN_THRESH_REACHED_INT:
+			desc.type = ROC_MCS_EVENT_TX_SA_PN_SOFT_EXP;
+			desc.metadata.sa_idx = info->sa_id;
+			break;
+		case MCS_CPM_TX_SA_NOT_VALID_INT:
+			desc.type = ROC_MCS_EVENT_SA_NOT_VALID;
+			break;
+		case MCS_BBE_RX_DFIFO_OVERFLOW_INT:
+		case MCS_BBE_TX_DFIFO_OVERFLOW_INT:
+			desc.type = ROC_MCS_EVENT_FIFO_OVERFLOW;
+			desc.subtype = ROC_MCS_EVENT_DATA_FIFO_OVERFLOW;
+			desc.metadata.lmac_id = info->lmac_id;
+			break;
+		case MCS_BBE_RX_PLFIFO_OVERFLOW_INT:
+		case MCS_BBE_TX_PLFIFO_OVERFLOW_INT:
+			desc.type = ROC_MCS_EVENT_FIFO_OVERFLOW;
+			desc.subtype = ROC_MCS_EVENT_POLICY_FIFO_OVERFLOW;
+			desc.metadata.lmac_id = info->lmac_id;
+			break;
+		case MCS_PAB_RX_CHAN_OVERFLOW_INT:
+		case MCS_PAB_TX_CHAN_OVERFLOW_INT:
+			desc.type = ROC_MCS_EVENT_FIFO_OVERFLOW;
+			desc.subtype = ROC_MCS_EVENT_PKT_ASSM_FIFO_OVERFLOW;
+			desc.metadata.lmac_id = info->lmac_id;
+			break;
+		default:
+			goto exit;
+		}
+
+		mcs_event_cb_process(mcs, &desc);
+	}
+
+exit:
+	rsp->hdr.rc = 0;
+	return 0;
+}
+
+static int
 mbox_up_handler_cgx_link_event(struct dev *dev, struct cgx_link_info_msg *msg,
 			       struct msg_rsp *rsp)
 {
@@ -615,6 +700,7 @@ mbox_process_msgs_up(struct dev *dev, struct mbox_msghdr *req)
 		return err;                                                    \
 	}
 		MBOX_UP_CGX_MESSAGES
+		MBOX_UP_MCS_MESSAGES
 #undef M
 	}
 

@@ -116,6 +116,34 @@ struct roc_mcs_hw_info {
 	uint64_t rsvd[16];
 };
 
+#define ROC_MCS_CPM_RX_SECTAG_V_EQ1_INT		 BIT_ULL(0)
+#define ROC_MCS_CPM_RX_SECTAG_E_EQ0_C_EQ1_INT	 BIT_ULL(1)
+#define ROC_MCS_CPM_RX_SECTAG_SL_GTE48_INT	 BIT_ULL(2)
+#define ROC_MCS_CPM_RX_SECTAG_ES_EQ1_SC_EQ1_INT	 BIT_ULL(3)
+#define ROC_MCS_CPM_RX_SECTAG_SC_EQ1_SCB_EQ1_INT BIT_ULL(4)
+#define ROC_MCS_CPM_RX_PACKET_XPN_EQ0_INT	 BIT_ULL(5)
+#define ROC_MCS_CPM_RX_PN_THRESH_REACHED_INT	 BIT_ULL(6)
+#define ROC_MCS_CPM_TX_PACKET_XPN_EQ0_INT	 BIT_ULL(7)
+#define ROC_MCS_CPM_TX_PN_THRESH_REACHED_INT	 BIT_ULL(8)
+#define ROC_MCS_CPM_TX_SA_NOT_VALID_INT		 BIT_ULL(9)
+#define ROC_MCS_BBE_RX_DFIFO_OVERFLOW_INT	 BIT_ULL(10)
+#define ROC_MCS_BBE_RX_PLFIFO_OVERFLOW_INT	 BIT_ULL(11)
+#define ROC_MCS_BBE_TX_DFIFO_OVERFLOW_INT	 BIT_ULL(12)
+#define ROC_MCS_BBE_TX_PLFIFO_OVERFLOW_INT	 BIT_ULL(13)
+#define ROC_MCS_PAB_RX_CHAN_OVERFLOW_INT	 BIT_ULL(14)
+#define ROC_MCS_PAB_TX_CHAN_OVERFLOW_INT	 BIT_ULL(15)
+
+struct roc_mcs_intr_cfg {
+	uint64_t intr_mask; /* Interrupt enable mask */
+};
+
+struct roc_mcs_intr_info {
+	uint64_t intr_mask;
+	int sa_id;
+	uint8_t lmac_id;
+	uint64_t rsvd;
+};
+
 struct roc_mcs_set_lmac_mode {
 	uint8_t mode; /* '1' for internal bypass mode (passthrough), '0' for MCS processing */
 	uint8_t lmac_id;
@@ -204,6 +232,113 @@ struct roc_mcs_clear_stats {
 	uint8_t dir;
 	uint8_t all; /* All resources stats mapped to PF are cleared */
 };
+
+enum roc_mcs_event_subtype {
+	ROC_MCS_SUBEVENT_UNKNOWN,
+
+	/* subevents of ROC_MCS_EVENT_SECTAG_VAL_ERR sectag validation events
+	 * ROC_MCS_EVENT_RX_SECTAG_V_EQ1
+	 *	Validation check: SecTag.TCI.V = 1
+	 * ROC_MCS_EVENT_RX_SECTAG_E_EQ0_C_EQ1
+	 *	Validation check: SecTag.TCI.E = 0 && SecTag.TCI.C = 1
+	 * ROC_MCS_EVENT_RX_SECTAG_SL_GTE48
+	 *	Validation check: SecTag.SL >= 'd48
+	 * ROC_MCS_EVENT_RX_SECTAG_ES_EQ1_SC_EQ1
+	 *	Validation check: SecTag.TCI.ES = 1 && SecTag.TCI.SC = 1
+	 * ROC_MCS_EVENT_RX_SECTAG_SC_EQ1_SCB_EQ1
+	 *	Validation check: SecTag.TCI.SC = 1 && SecTag.TCI.SCB = 1
+	 */
+	ROC_MCS_EVENT_RX_SECTAG_V_EQ1,
+	ROC_MCS_EVENT_RX_SECTAG_E_EQ0_C_EQ1,
+	ROC_MCS_EVENT_RX_SECTAG_SL_GTE48,
+	ROC_MCS_EVENT_RX_SECTAG_ES_EQ1_SC_EQ1,
+	ROC_MCS_EVENT_RX_SECTAG_SC_EQ1_SCB_EQ1,
+
+	/* subevents of ROC_MCS_EVENT_FIFO_OVERFLOW error event
+	 * ROC_MCS_EVENT_DATA_FIFO_OVERFLOW:
+	 *	Notifies data FIFO overflow fatal error in BBE unit.
+	 * ROC_MCS_EVENT_POLICY_FIFO_OVERFLOW
+	 *	Notifies policy FIFO overflow fatal error in BBE unit.
+	 * ROC_MCS_EVENT_PKT_ASSM_FIFO_OVERFLOW,
+	 *	Notifies output FIFO overflow fatal error in PAB unit.
+	 */
+	ROC_MCS_EVENT_DATA_FIFO_OVERFLOW,
+	ROC_MCS_EVENT_POLICY_FIFO_OVERFLOW,
+	ROC_MCS_EVENT_PKT_ASSM_FIFO_OVERFLOW,
+};
+
+enum roc_mcs_event_type {
+	ROC_MCS_EVENT_UNKNOWN,
+
+	/* Notifies BBE_INT_DFIFO/PLFIFO_OVERFLOW or PAB_INT_OVERFLOW
+	 * interrupts, it's a fatal error that causes packet corruption.
+	 */
+	ROC_MCS_EVENT_FIFO_OVERFLOW,
+
+	/* Notifies CPM_RX_SECTAG_X validation error interrupt */
+	ROC_MCS_EVENT_SECTAG_VAL_ERR,
+	/* Notifies CPM_RX_PACKET_XPN_EQ0 (SecTag.PN == 0 in ingress) interrupt */
+	ROC_MCS_EVENT_RX_SA_PN_HARD_EXP,
+	/* Notifies CPM_RX_PN_THRESH_REACHED interrupt */
+	ROC_MCS_EVENT_RX_SA_PN_SOFT_EXP,
+	/* Notifies CPM_TX_PACKET_XPN_EQ0 (PN wrapped in egress) interrupt */
+	ROC_MCS_EVENT_TX_SA_PN_HARD_EXP,
+	/* Notifies CPM_TX_PN_THRESH_REACHED interrupt */
+	ROC_MCS_EVENT_TX_SA_PN_SOFT_EXP,
+	/* Notifies CPM_TX_SA_NOT_VALID interrupt */
+	ROC_MCS_EVENT_SA_NOT_VALID,
+	/* Notifies recovery of software driven port reset */
+	ROC_MCS_EVENT_PORT_RESET_RECOVERY,
+};
+
+union roc_mcs_event_data {
+	/* Valid for below events
+	 * - ROC_MCS_EVENT_RX_SA_PN_SOFT_EXP
+	 * - ROC_MCS_EVENT_TX_SA_PN_SOFT_EXP
+	 */
+	struct {
+		uint8_t secy_idx;
+		uint8_t sc_idx;
+		uint8_t sa_idx;
+	};
+	/* Valid for below event
+	 * - ROC_MCS_EVENT_FIFO_OVERFLOW
+	 *
+	 * Upon fatal error notification on a MCS port, ROC driver resets below attributes of active
+	 * flow entities(sc & sa) and than resets the port.
+	 * - Reset NEXT_PN of active SAs to 1.
+	 * - Reset TX active SA for each SC, TX_SA_ACTIVE = 0, SA_INDEX0_VLD = 1.
+	 * - Clear SA_IN_USE for active ANs in RX_SA_MAP_MEM.
+	 * - Clear all stats mapping to this port.
+	 * - Reactivate SA_IN_USE for active ANs in RX_SA_MAP_MEM.
+	 *
+	 *  ROC driver notifies the following flow entity(sc & sa) details in application callback,
+	 *  application is expected to exchange the Tx/Rx NEXT_PN, TX_SA_ACTIVE, active RX SC AN
+	 *  details with peer device so that peer device can resets it's MACsec flow states and than
+	 *  resume packet transfers.
+	 */
+	struct {
+		uint16_t *tx_sa_array; /* Tx SAs whose PN memories were reset (NEXT_PN=1) */
+		uint16_t *rx_sa_array; /* Rx SAs whose PN memories were reset (NEXT_PN=1) */
+		uint16_t *tx_sc_array; /* Tx SCs whose active SAs were reset (TX_SA_ACTIVE=0) */
+		uint16_t *rx_sc_array; /* Rx SCs whose state was reset */
+		uint8_t *sc_an_array;  /* AN of Rx SCs(in rx_sc_array) which were reactivated */
+		uint8_t num_tx_sa;     /* num entries in tx_sa_array */
+		uint8_t num_rx_sa;     /* num entries in rx_sa_array */
+		uint8_t num_tx_sc;     /* num entries in tx_sc_array */
+		uint8_t num_rx_sc;     /* num entries in rx_sc_array */
+		uint8_t lmac_id;       /* lmac_id/port which was recovered from fatal error */
+	};
+};
+
+struct roc_mcs_event_desc {
+	enum roc_mcs_event_type type;
+	enum roc_mcs_event_subtype subtype;
+	union roc_mcs_event_data metadata;
+};
+
+/** User application callback to be registered for any notifications from driver. */
+typedef int (*roc_mcs_dev_cb_fn)(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg);
 
 struct roc_mcs {
 	TAILQ_ENTRY(roc_mcs) next;
@@ -294,5 +429,14 @@ __roc_api int roc_mcs_port_stats_get(struct roc_mcs *mcs, struct roc_mcs_stats_r
 				     struct roc_mcs_port_stats *stats);
 /* Clear stats */
 __roc_api int roc_mcs_stats_clear(struct roc_mcs *mcs, struct roc_mcs_clear_stats *mcs_req);
+
+/* Register user callback routines */
+__roc_api int roc_mcs_event_cb_register(struct roc_mcs *mcs, enum roc_mcs_event_type event,
+					roc_mcs_dev_cb_fn cb_fn, void *cb_arg, void *userdata);
+/* Unregister user callback routines */
+__roc_api int roc_mcs_event_cb_unregister(struct roc_mcs *mcs, enum roc_mcs_event_type event);
+
+/* Configure interrupts */
+__roc_api int roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cfg *config);
 
 #endif /* ROC_MCS_H */

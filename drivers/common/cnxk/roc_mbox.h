@@ -316,6 +316,7 @@ struct mbox_msghdr {
 	M(MCS_GET_SC_STATS, 0xa00e, mcs_get_sc_stats, mcs_stats_req, mcs_sc_stats)                 \
 	M(MCS_GET_PORT_STATS, 0xa010, mcs_get_port_stats, mcs_stats_req, mcs_port_stats)           \
 	M(MCS_CLEAR_STATS, 0xa011, mcs_clear_stats, mcs_clear_stats, msg_rsp)                      \
+	M(MCS_INTR_CFG, 0xa012, mcs_intr_cfg, mcs_intr_cfg, msg_rsp)                               \
 	M(MCS_SET_LMAC_MODE, 0xa013, mcs_set_lmac_mode, mcs_set_lmac_mode, msg_rsp)                \
 	M(MCS_SET_PN_THRESHOLD, 0xa014, mcs_set_pn_threshold, mcs_set_pn_threshold, msg_rsp)       \
 
@@ -324,9 +325,11 @@ struct mbox_msghdr {
 	M(CGX_LINK_EVENT, 0xC00, cgx_link_event, cgx_link_info_msg, msg_rsp)   \
 	M(CGX_PTP_RX_INFO, 0xC01, cgx_ptp_rx_info, cgx_ptp_rx_info_msg, msg_rsp)
 
+#define MBOX_UP_MCS_MESSAGES M(MCS_INTR_NOTIFY, 0xE00, mcs_intr_notify, mcs_intr_info, msg_rsp)
+
 enum {
 #define M(_name, _id, _1, _2, _3) MBOX_MSG_##_name = _id,
-	MBOX_MESSAGES MBOX_UP_CGX_MESSAGES
+	MBOX_MESSAGES MBOX_UP_CGX_MESSAGES MBOX_UP_MCS_MESSAGES
 #undef M
 };
 
@@ -864,6 +867,38 @@ struct mcs_set_active_lmac {
 	uint32_t __io lmac_bmap; /* bitmap of active lmac per mcs block */
 	uint8_t __io mcs_id;
 	uint16_t __io channel_base; /* MCS channel base */
+	uint64_t __io rsvd;
+};
+
+#define MCS_CPM_RX_SECTAG_V_EQ1_INT	     BIT_ULL(0)
+#define MCS_CPM_RX_SECTAG_E_EQ0_C_EQ1_INT    BIT_ULL(1)
+#define MCS_CPM_RX_SECTAG_SL_GTE48_INT	     BIT_ULL(2)
+#define MCS_CPM_RX_SECTAG_ES_EQ1_SC_EQ1_INT  BIT_ULL(3)
+#define MCS_CPM_RX_SECTAG_SC_EQ1_SCB_EQ1_INT BIT_ULL(4)
+#define MCS_CPM_RX_PACKET_XPN_EQ0_INT	     BIT_ULL(5)
+#define MCS_CPM_RX_PN_THRESH_REACHED_INT     BIT_ULL(6)
+#define MCS_CPM_TX_PACKET_XPN_EQ0_INT	     BIT_ULL(7)
+#define MCS_CPM_TX_PN_THRESH_REACHED_INT     BIT_ULL(8)
+#define MCS_CPM_TX_SA_NOT_VALID_INT	     BIT_ULL(9)
+#define MCS_BBE_RX_DFIFO_OVERFLOW_INT	     BIT_ULL(10)
+#define MCS_BBE_RX_PLFIFO_OVERFLOW_INT	     BIT_ULL(11)
+#define MCS_BBE_TX_DFIFO_OVERFLOW_INT	     BIT_ULL(12)
+#define MCS_BBE_TX_PLFIFO_OVERFLOW_INT	     BIT_ULL(13)
+#define MCS_PAB_RX_CHAN_OVERFLOW_INT	     BIT_ULL(14)
+#define MCS_PAB_TX_CHAN_OVERFLOW_INT	     BIT_ULL(15)
+
+struct mcs_intr_cfg {
+	struct mbox_msghdr hdr;
+	uint64_t __io intr_mask; /* Interrupt enable mask */
+	uint8_t __io mcs_id;
+};
+
+struct mcs_intr_info {
+	struct mbox_msghdr hdr;
+	uint64_t __io intr_mask;
+	int __io sa_id;
+	uint8_t __io mcs_id;
+	uint8_t __io lmac_id;
 	uint64_t __io rsvd;
 };
 

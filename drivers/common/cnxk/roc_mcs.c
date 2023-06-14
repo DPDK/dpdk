@@ -5,6 +5,18 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+struct mcs_event_cb {
+	TAILQ_ENTRY(mcs_event_cb) next;
+	enum roc_mcs_event_type event;
+	roc_mcs_dev_cb_fn cb_fn;
+	void *cb_arg;
+	void *ret_param;
+	uint32_t active;
+};
+TAILQ_HEAD(mcs_event_cb_list, mcs_event_cb);
+
+PLT_STATIC_ASSERT(ROC_MCS_MEM_SZ >= (sizeof(struct mcs_priv) + sizeof(struct mcs_event_cb_list)));
+
 int
 roc_mcs_hw_info_get(struct roc_mcs_hw_info *hw_info)
 {
@@ -107,6 +119,107 @@ roc_mcs_pn_threshold_set(struct roc_mcs *mcs, struct roc_mcs_set_pn_threshold *p
 	req->xpn = pn->xpn;
 
 	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cfg *config)
+{
+	struct mcs_intr_cfg *req;
+	struct msg_rsp *rsp;
+
+	if (config == NULL)
+		return -EINVAL;
+
+	MCS_SUPPORT_CHECK;
+
+	req = mbox_alloc_msg_mcs_intr_cfg(mcs->mbox);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->intr_mask = config->intr_mask;
+	req->mcs_id = mcs->idx;
+
+	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+}
+
+int
+roc_mcs_event_cb_register(struct roc_mcs *mcs, enum roc_mcs_event_type event,
+			  roc_mcs_dev_cb_fn cb_fn, void *cb_arg, void *userdata)
+{
+	struct mcs_event_cb_list *cb_list = (struct mcs_event_cb_list *)roc_mcs_to_mcs_cb_list(mcs);
+	struct mcs_event_cb *cb;
+
+	if (cb_fn == NULL || cb_arg == NULL || userdata == NULL)
+		return -EINVAL;
+
+	MCS_SUPPORT_CHECK;
+
+	TAILQ_FOREACH(cb, cb_list, next) {
+		if (cb->cb_fn == cb_fn && cb->cb_arg == cb_arg && cb->event == event)
+			break;
+	}
+
+	if (cb == NULL) {
+		cb = plt_zmalloc(sizeof(struct mcs_event_cb), 0);
+		if (!cb)
+			return -ENOMEM;
+
+		cb->cb_fn = cb_fn;
+		cb->cb_arg = cb_arg;
+		cb->event = event;
+		mcs->userdata = userdata;
+		TAILQ_INSERT_TAIL(cb_list, cb, next);
+	}
+
+	return 0;
+}
+
+int
+roc_mcs_event_cb_unregister(struct roc_mcs *mcs, enum roc_mcs_event_type event)
+{
+	struct mcs_event_cb_list *cb_list = (struct mcs_event_cb_list *)roc_mcs_to_mcs_cb_list(mcs);
+	struct mcs_event_cb *cb, *next;
+
+	MCS_SUPPORT_CHECK;
+
+	for (cb = TAILQ_FIRST(cb_list); cb != NULL; cb = next) {
+		next = TAILQ_NEXT(cb, next);
+
+		if (cb->event != event)
+			continue;
+
+		if (cb->active == 0) {
+			TAILQ_REMOVE(cb_list, cb, next);
+			plt_free(cb);
+		} else {
+			return -EAGAIN;
+		}
+	}
+
+	return 0;
+}
+
+int
+mcs_event_cb_process(struct roc_mcs *mcs, struct roc_mcs_event_desc *desc)
+{
+	struct mcs_event_cb_list *cb_list = (struct mcs_event_cb_list *)roc_mcs_to_mcs_cb_list(mcs);
+	struct mcs_event_cb mcs_cb;
+	struct mcs_event_cb *cb;
+	int rc = 0;
+
+	TAILQ_FOREACH(cb, cb_list, next) {
+		if (cb->cb_fn == NULL || cb->event != desc->type)
+			continue;
+
+		mcs_cb = *cb;
+		cb->active = 1;
+		mcs_cb.ret_param = desc;
+
+		rc = mcs_cb.cb_fn(mcs->userdata, mcs_cb.ret_param, mcs_cb.cb_arg);
+		cb->active = 0;
+	}
+
+	return rc;
 }
 
 static int
@@ -227,6 +340,7 @@ exit:
 struct roc_mcs *
 roc_mcs_dev_init(uint8_t mcs_idx)
 {
+	struct mcs_event_cb_list *cb_list;
 	struct roc_mcs *mcs;
 	struct npa_lf *npa;
 
@@ -254,6 +368,9 @@ roc_mcs_dev_init(uint8_t mcs_idx)
 	/* Add any per mcsv initialization */
 	if (mcs_alloc_rsrc_bmap(mcs))
 		goto exit;
+
+	cb_list = (struct mcs_event_cb_list *)roc_mcs_to_mcs_cb_list(mcs);
+	TAILQ_INIT(cb_list);
 
 	roc_idev_mcs_set(mcs);
 	mcs->refcount++;

@@ -139,11 +139,14 @@ INTERNAL {
 	roc_mcs_dev_init;
 	roc_mcs_dev_fini;
 	roc_mcs_dev_get;
+	roc_mcs_event_cb_register;
+	roc_mcs_event_cb_unregister;
 	roc_mcs_flowid_entry_enable;
 	roc_mcs_flowid_entry_read;
 	roc_mcs_flowid_entry_write;
 	roc_mcs_flowid_stats_get;
 	roc_mcs_hw_info_get;
+	roc_mcs_intr_configure;
 	roc_mcs_lmac_mode_set;
 	roc_mcs_pn_table_write;
 	roc_mcs_pn_table_read;
