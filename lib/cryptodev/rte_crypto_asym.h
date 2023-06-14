@@ -395,9 +395,9 @@ struct rte_crypto_sm2_xform {
  */
 struct rte_crypto_mod_op_param {
 	rte_crypto_uint base;
-	/** Base of modular exponentiation/multiplicative inverse */
+	/**< Base of modular exponentiation/multiplicative inverse. */
 	rte_crypto_uint result;
-	/** Result of modular exponentiation/multiplicative inverse */
+	/**< Result of modular exponentiation/multiplicative inverse. */
 };
 
 /**
