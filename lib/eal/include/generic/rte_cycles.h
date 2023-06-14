@@ -38,7 +38,7 @@ rte_get_tsc_hz(void);
 /**
  * Return the number of TSC cycles since boot
  *
-  * @return
+ * @return
  *   the number of cycles
  */
 static inline uint64_t

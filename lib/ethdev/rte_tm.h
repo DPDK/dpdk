@@ -1937,9 +1937,9 @@ rte_tm_node_cman_update(uint16_t port_id,
  *   Error details. Filled in only on error, when not NULL.
  * @return
  *   0 on success, non-zero error code otherwise.
-  *
+ *
  * @see struct rte_tm_capabilities::cman_wred_context_private_n_max
-*/
+ */
 __rte_experimental
 int
 rte_tm_node_wred_context_update(uint16_t port_id,

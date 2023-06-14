@@ -5847,10 +5847,10 @@ rte_flow_template_table_destroy(uint16_t port_id,
  */
 __extension__
 struct rte_flow_op_attr {
-	 /**
-	  * When set, the requested action will not be sent to the HW immediately.
-	  * The application must call the rte_flow_queue_push to actually send it.
-	  */
+	/**
+	 * When set, the requested action will not be sent to the HW immediately.
+	 * The application must call the rte_flow_queue_push to actually send it.
+	 */
 	uint32_t postpone:1;
 };
 

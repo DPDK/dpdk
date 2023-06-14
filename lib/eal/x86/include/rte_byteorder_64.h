@@ -15,7 +15,7 @@
 /*
  * An architecture-optimized byte swap for a 64-bit value.
  *
-  * Do not use this function directly. The preferred function is rte_bswap64().
+ * Do not use this function directly. The preferred function is rte_bswap64().
  */
 /* 64-bit mode */
 static inline uint64_t rte_arch_bswap64(uint64_t _x)

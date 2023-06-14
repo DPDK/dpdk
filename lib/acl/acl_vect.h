@@ -36,7 +36,7 @@
  * This is effectively a popcnt of bytes that are greater than the
  * input byte.
  * Single nodes are processed in the same ways as quad range nodes.
-*/
+ */
 #define ACL_TR_CALC_ADDR(P, S,					\
 	addr, index_mask, next_input, shuffle_input,		\
 	ones_16, range_base, tr_lo, tr_hi)               do {	\

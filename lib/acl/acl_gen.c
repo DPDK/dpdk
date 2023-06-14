@@ -148,11 +148,11 @@ acl_node_fill_dfa(const struct rte_acl_node *node,
 }
 
 /*
-*  Counts the number of groups of sequential bits that are
-*  either 0 or 1, as specified by the zero_one parameter. This is used to
-*  calculate the number of ranges in a node to see if it fits in a quad range
-*  node.
-*/
+ * Count the number of groups of sequential bits that are either 0 or 1,
+ * as specified by the zero_one parameter.
+ * This is used to calculate the number of ranges in a node
+ * to see if it fits in a quad range node.
+ */
 static int
 acl_count_sequential_groups(struct rte_acl_bitset *bits, int zero_one)
 {

@@ -452,43 +452,43 @@ static int rte_table_hash_lru_lookup_unoptimized(
 }
 
 /*
-* mask = match bitmask
-* match = at least one match
-* match_many = more than one match
-* match_pos = position of first match
-*
-* ----------------------------------------
-* mask		 match	 match_many	  match_pos
-* ----------------------------------------
-* 0000		 0		 0			  00
-* 0001		 1		 0			  00
-* 0010		 1		 0			  01
-* 0011		 1		 1			  00
-* ----------------------------------------
-* 0100		 1		 0			  10
-* 0101		 1		 1			  00
-* 0110		 1		 1			  01
-* 0111		 1		 1			  00
-* ----------------------------------------
-* 1000		 1		 0			  11
-* 1001		 1		 1			  00
-* 1010		 1		 1			  01
-* 1011		 1		 1			  00
-* ----------------------------------------
-* 1100		 1		 1			  10
-* 1101		 1		 1			  00
-* 1110		 1		 1			  01
-* 1111		 1		 1			  00
-* ----------------------------------------
-*
-* match = 1111_1111_1111_1110
-* match_many = 1111_1110_1110_1000
-* match_pos = 0001_0010_0001_0011__0001_0010_0001_0000
-*
-* match = 0xFFFELLU
-* match_many = 0xFEE8LLU
-* match_pos = 0x12131210LLU
-*/
+ * mask = match bitmask
+ * match = at least one match
+ * match_many = more than one match
+ * match_pos = position of first match
+ *
+ * ----------------------------------------
+ * mask		 match	 match_many	  match_pos
+ * ----------------------------------------
+ * 0000		 0		 0			  00
+ * 0001		 1		 0			  00
+ * 0010		 1		 0			  01
+ * 0011		 1		 1			  00
+ * ----------------------------------------
+ * 0100		 1		 0			  10
+ * 0101		 1		 1			  00
+ * 0110		 1		 1			  01
+ * 0111		 1		 1			  00
+ * ----------------------------------------
+ * 1000		 1		 0			  11
+ * 1001		 1		 1			  00
+ * 1010		 1		 1			  01
+ * 1011		 1		 1			  00
+ * ----------------------------------------
+ * 1100		 1		 1			  10
+ * 1101		 1		 1			  00
+ * 1110		 1		 1			  01
+ * 1111		 1		 1			  00
+ * ----------------------------------------
+ *
+ * match = 1111_1111_1111_1110
+ * match_many = 1111_1110_1110_1000
+ * match_pos = 0001_0010_0001_0011__0001_0010_0001_0000
+ *
+ * match = 0xFFFELLU
+ * match_many = 0xFEE8LLU
+ * match_pos = 0x12131210LLU
+ */
 
 #define LUT_MATCH						0xFFFELLU
 #define LUT_MATCH_MANY						0xFEE8LLU
@@ -781,20 +781,20 @@ static int rte_table_hash_lru_lookup_unoptimized(
 }
 
 /*
-* The lookup function implements a 4-stage pipeline, with each stage processing
-* two different packets. The purpose of pipelined implementation is to hide the
-* latency of prefetching the data structures and loosen the data dependency
-* between instructions.
-*
-*   p00  _______   p10  _______   p20  _______   p30  _______
-* ----->|       |----->|       |----->|       |----->|       |----->
-*       |   0   |      |   1   |      |   2   |      |   3   |
-* ----->|_______|----->|_______|----->|_______|----->|_______|----->
-*   p01            p11            p21            p31
-*
-* The naming convention is:
-*	  pXY = packet Y of stage X, X = 0 .. 3, Y = 0 .. 1
-*/
+ * The lookup function implements a 4-stage pipeline, with each stage processing
+ * two different packets. The purpose of pipelined implementation is to hide the
+ * latency of prefetching the data structures and loosen the data dependency
+ * between instructions.
+ *
+ *   p00  _______   p10  _______   p20  _______   p30  _______
+ * ----->|       |----->|       |----->|       |----->|       |----->
+ *       |   0   |      |   1   |      |   2   |      |   3   |
+ * ----->|_______|----->|_______|----->|_______|----->|_______|----->
+ *   p01            p11            p21            p31
+ *
+ * The naming convention is:
+ *	  pXY = packet Y of stage X, X = 0 .. 3, Y = 0 .. 1
+ */
 static int rte_table_hash_lru_lookup(
 	void *table,
 	struct rte_mbuf **pkts,

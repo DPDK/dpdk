@@ -825,10 +825,10 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 #define RTE_ETH_VLAN_ID_MAX          0x0FFF /**< VLAN ID is in lower 12 bits*/
 /**@}*/
 
-/* Definitions used for receive MAC address   */
+/* Definitions used for receive MAC address */
 #define RTE_ETH_NUM_RECEIVE_MAC_ADDR   128 /**< Maximum nb. of receive mac addr. */
 
-/* Definitions used for unicast hash  */
+/* Definitions used for unicast hash */
 #define RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY 128 /**< Maximum nb. of UC hash array. */
 
 /**@{@name VMDq Rx mode
@@ -4496,7 +4496,7 @@ int rte_eth_dev_rss_reta_query(uint16_t port_id,
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
-  *  - (-ENODEV) if *port_id* invalid.
+ *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
@@ -4517,7 +4517,7 @@ int rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct rte_ether_addr *addr,
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
-  *  - (-ENODEV) if *port_id* invalid.
+ *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
@@ -5231,38 +5231,39 @@ int
 rte_eth_read_clock(uint16_t port_id, uint64_t *clock);
 
 /**
-* Get the port ID from device name. The device name should be specified
-* as below:
-* - PCIe address (Domain:Bus:Device.Function), for example- 0000:2:00.0
-* - SoC device name, for example- fsl-gmac0
-* - vdev dpdk name, for example- net_[pcap0|null0|tap0]
-*
-* @param name
-*  pci address or name of the device
-* @param port_id
-*   pointer to port identifier of the device
-* @return
-*   - (0) if successful and port_id is filled.
-*   - (-ENODEV or -EINVAL) on failure.
-*/
+ * Get the port ID from device name.
+ * The device name should be specified as below:
+ * - PCIe address (Domain:Bus:Device.Function), for example- 0000:2:00.0
+ * - SoC device name, for example- fsl-gmac0
+ * - vdev dpdk name, for example- net_[pcap0|null0|tap0]
+ *
+ * @param name
+ *   PCI address or name of the device.
+ * @param port_id
+ *   Pointer to port identifier of the device.
+ * @return
+ *   - (0) if successful and port_id is filled.
+ *   - (-ENODEV or -EINVAL) on failure.
+ */
 int
 rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id);
 
 /**
-* Get the device name from port ID. The device name is specified as below:
-* - PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
-* - SoC device name, for example- fsl-gmac0
-* - vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
-*
-* @param port_id
-*   Port identifier of the device.
-* @param name
-*   Buffer of size RTE_ETH_NAME_MAX_LEN to store the name.
-* @return
-*   - (0) if successful.
-*   - (-ENODEV) if *port_id* is invalid.
-*   - (-EINVAL) on failure.
-*/
+ * Get the device name from port ID.
+ * The device name is specified as below:
+ * - PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
+ * - SoC device name, for example- fsl-gmac0
+ * - vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
+ *
+ * @param port_id
+ *   Port identifier of the device.
+ * @param name
+ *   Buffer of size RTE_ETH_NAME_MAX_LEN to store the name.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* is invalid.
+ *   - (-EINVAL) on failure.
+ */
 int
 rte_eth_dev_get_name_by_port(uint16_t port_id, char *name);
 

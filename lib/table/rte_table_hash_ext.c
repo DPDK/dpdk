@@ -829,20 +829,20 @@ static int rte_table_hash_ext_lookup_unoptimized(
 }
 
 /*
-* The lookup function implements a 4-stage pipeline, with each stage processing
-* two different packets. The purpose of pipelined implementation is to hide the
-* latency of prefetching the data structures and loosen the data dependency
-* between instructions.
-*
-*  p00  _______   p10  _______   p20  _______   p30  _______
-*----->|       |----->|       |----->|       |----->|       |----->
-*      |   0   |      |   1   |      |   2   |      |   3   |
-*----->|_______|----->|_______|----->|_______|----->|_______|----->
-*  p01            p11            p21            p31
-*
-* The naming convention is:
-*    pXY = packet Y of stage X, X = 0 .. 3, Y = 0 .. 1
-*/
+ * The lookup function implements a 4-stage pipeline, with each stage processing
+ * two different packets. The purpose of pipelined implementation is to hide the
+ * latency of prefetching the data structures and loosen the data dependency
+ * between instructions.
+ *
+ *  p00  _______   p10  _______   p20  _______   p30  _______
+ *----->|       |----->|       |----->|       |----->|       |----->
+ *      |   0   |      |   1   |      |   2   |      |   3   |
+ *----->|_______|----->|_______|----->|_______|----->|_______|----->
+ *  p01            p11            p21            p31
+ *
+ * The naming convention is:
+ *    pXY = packet Y of stage X, X = 0 .. 3, Y = 0 .. 1
+ */
 static int rte_table_hash_ext_lookup(
 	void *table,
 	struct rte_mbuf **pkts,
