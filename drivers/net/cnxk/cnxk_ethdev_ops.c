@@ -391,6 +391,44 @@ cnxk_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index)
 }
 
 int
+cnxk_nix_sq_flush(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	int i, rc = 0;
+
+	/* Flush all tx queues */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		struct roc_nix_sq *sq = &dev->sqs[i];
+
+		if (eth_dev->data->tx_queues[i] == NULL)
+			continue;
+
+		rc = roc_nix_tm_sq_aura_fc(sq, false);
+		if (rc) {
+			plt_err("Failed to disable sqb aura fc, rc=%d", rc);
+			goto exit;
+		}
+
+		/* Wait for sq entries to be flushed */
+		rc = roc_nix_tm_sq_flush_spin(sq);
+		if (rc) {
+			plt_err("Failed to drain sq, rc=%d\n", rc);
+			goto exit;
+		}
+		if (data->tx_queue_state[i] == RTE_ETH_QUEUE_STATE_STARTED) {
+			rc = roc_nix_tm_sq_aura_fc(sq, true);
+			if (rc) {
+				plt_err("Failed to enable sq aura fc, txq=%u, rc=%d", i, rc);
+				goto exit;
+			}
+		}
+	}
+exit:
+	return rc;
+}
+
+int
 cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	uint32_t old_frame_size, frame_size = mtu + CNXK_NIX_L2_OVERHEAD;
@@ -431,6 +469,15 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	    frame_size > (buffsz * CNXK_NIX_RX_NB_SEG_MAX)) {
 		plt_err("Greater than maximum supported packet length");
 		goto exit;
+	}
+
+	/* if new MTU was smaller than old one, then flush all SQs before MTU change */
+	if (old_frame_size > frame_size) {
+		if (data->dev_started) {
+			plt_err("Reducing MTU is not supported when device started");
+			goto exit;
+		}
+		cnxk_nix_sq_flush(eth_dev);
 	}
 
 	frame_size -= RTE_ETHER_CRC_LEN;

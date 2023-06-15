@@ -444,6 +444,7 @@ int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
 int cnxk_nix_remove(struct rte_pci_device *pci_dev);
 int cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
+int cnxk_nix_sq_flush(struct rte_eth_dev *eth_dev);
 int cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
 				    struct rte_ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr);
