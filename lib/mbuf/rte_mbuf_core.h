@@ -584,8 +584,8 @@ struct rte_mbuf {
 				 * @see rte_event_eth_tx_adapter_txq_set()
 				 */
 			} txadapter; /**< Eventdev ethdev Tx adapter */
-			/**< User defined tags. See rte_distributor_process() */
 			uint32_t usr;
+			/**< User defined tags. See rte_distributor_process() */
 		} hash;                   /**< hash information */
 	};
 
