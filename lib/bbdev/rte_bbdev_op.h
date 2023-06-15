@@ -203,7 +203,9 @@ enum rte_bbdev_op_ldpcdec_flag_bitmasks {
 	 *  for HARQ memory. If not set, it is assumed the filler bits are not
 	 *  in HARQ memory and handled directly by the LDPC decoder.
 	 */
-	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS = (1ULL << 19)
+	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS = (1ULL << 19),
+	/** Set if a device supports input/output HARQ 4bits compression. */
+	RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION = (1ULL << 20)
 };
 
 /** Flags for LDPC encoder operation and capability structure */

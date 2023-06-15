@@ -903,6 +903,12 @@ given below.
 |RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK                        |
 | Set if a device supports loopback access to HARQ internal memory   |
 +--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS                         |
+| Set if a device includes LLR filler bits in HARQ circular buffer   |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION                                |
+|Set if a device supports input/output 4 bits HARQ compression       |
++--------------------------------------------------------------------+
 
 The structure passed for each LDPC decode operation is given below,
 with the operation flags forming a bitmask in the ``op_flags`` field.
