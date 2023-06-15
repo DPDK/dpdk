@@ -649,6 +649,12 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		mbuf2 = (struct rte_mbuf *)vgetq_lane_u64(mbuf23, 0);
 		mbuf3 = (struct rte_mbuf *)vgetq_lane_u64(mbuf23, 1);
 
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf1->pool, (void **)&mbuf1, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf2->pool, (void **)&mbuf2, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf3->pool, (void **)&mbuf3, 1, 1);
+
 		/* Mask to get packet len from NIX_RX_SG_S */
 		const uint8x16_t shuf_msk = {
 			0xFF, 0xFF, /* pkt_type set as unknown */
@@ -913,12 +919,6 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		roc_prefetch_store_keep(mbuf1);
 		roc_prefetch_store_keep(mbuf2);
 		roc_prefetch_store_keep(mbuf3);
-
-		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf1->pool, (void **)&mbuf1, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf2->pool, (void **)&mbuf2, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf3->pool, (void **)&mbuf3, 1, 1);
 
 		packets += NIX_DESCS_PER_LOOP;
 
