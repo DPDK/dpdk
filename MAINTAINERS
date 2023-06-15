@@ -587,6 +587,7 @@ F: drivers/bus/fslmc/
 
 PCI bus driver
 M: Chenbo Xia <chenbo.xia@intel.com>
+M: Nipun Gupta <nipun.gupta@amd.com>
 F: drivers/bus/pci/
 
 Platform bus driver
