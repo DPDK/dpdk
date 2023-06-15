@@ -248,6 +248,28 @@ sfc_dev_start(struct rte_eth_dev *dev)
 	return -rc;
 }
 
+static void
+sfc_dev_get_rte_link(struct rte_eth_dev *dev, int wait_to_complete,
+		     struct rte_eth_link *link)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+
+	SFC_ASSERT(link != NULL);
+
+	if (sa->state != SFC_ETHDEV_STARTED) {
+		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, link);
+	} else if (wait_to_complete) {
+		efx_link_mode_t link_mode;
+
+		if (efx_port_poll(sa->nic, &link_mode) != 0)
+			link_mode = EFX_LINK_UNKNOWN;
+		sfc_port_link_mode_to_info(link_mode, link);
+	} else {
+		sfc_ev_mgmt_qpoll(sa);
+		rte_eth_linkstatus_get(dev, link);
+	}
+}
+
 static int
 sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
@@ -257,19 +279,7 @@ sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	sfc_log_init(sa, "entry");
 
-	if (sa->state != SFC_ETHDEV_STARTED) {
-		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, &current_link);
-	} else if (wait_to_complete) {
-		efx_link_mode_t link_mode;
-
-		if (efx_port_poll(sa->nic, &link_mode) != 0)
-			link_mode = EFX_LINK_UNKNOWN;
-		sfc_port_link_mode_to_info(link_mode, &current_link);
-
-	} else {
-		sfc_ev_mgmt_qpoll(sa);
-		rte_eth_linkstatus_get(dev, &current_link);
-	}
+	sfc_dev_get_rte_link(dev, wait_to_complete, &current_link);
 
 	ret = rte_eth_linkstatus_set(dev, &current_link);
 	if (ret == 0)
