@@ -134,15 +134,10 @@ suffix added to the PCI ID: wwww:xx:yy.z_portn. For example, a PF with PCI ID
 PF multiprocess support
 -----------------------
 
-Due to how the driver needs to access the NFP through a CPP interface, which
-implies to use specific registers inside the chip, the number of secondary
-processes with PF ports is limited to only one.
-
-This limitation will be solved in future versions, but having basic
-multiprocess support is important for allowing development and debugging
-through the PF using a secondary process, which will create a CPP bridge
-for user space tools accessing the NFP.
-
+The NFP PMD supports the PF multiprocess.
+Having basic multiprocess support is important for allowing development
+and debugging through the PF using a secondary process,
+which will create a CPP bridge for user space tools accessing the NFP.
 
 System configuration
 --------------------
