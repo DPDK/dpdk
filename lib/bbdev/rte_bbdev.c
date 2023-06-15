@@ -441,6 +441,7 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 	const struct rte_bbdev_op_cap *p;
 	struct rte_bbdev_queue_conf *stored_conf;
 	const char *op_type_str;
+	unsigned int max_priority;
 	VALID_DEV_OR_RET_ERR(dev, dev_id);
 
 	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
@@ -494,20 +495,16 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 					conf->queue_size, queue_id, dev_id);
 			return -EINVAL;
 		}
-		if (conf->op_type == RTE_BBDEV_OP_TURBO_DEC &&
-			conf->priority > dev_info.max_ul_queue_priority) {
+		if ((uint8_t)conf->op_type >= RTE_BBDEV_OP_TYPE_SIZE_MAX) {
 			rte_bbdev_log(ERR,
-					"Priority (%u) of queue %u of bbdev %u must be <= %u",
-					conf->priority, queue_id, dev_id,
-					dev_info.max_ul_queue_priority);
+					"Invalid operation type (%u) ", conf->op_type);
 			return -EINVAL;
 		}
-		if (conf->op_type == RTE_BBDEV_OP_TURBO_ENC &&
-			conf->priority > dev_info.max_dl_queue_priority) {
+		max_priority = dev_info.queue_priority[conf->op_type];
+		if (conf->priority > max_priority) {
 			rte_bbdev_log(ERR,
 					"Priority (%u) of queue %u of bbdev %u must be <= %u",
-					conf->priority, queue_id, dev_id,
-					dev_info.max_dl_queue_priority);
+					conf->priority, queue_id, dev_id, max_priority);
 			return -EINVAL;
 		}
 	}
