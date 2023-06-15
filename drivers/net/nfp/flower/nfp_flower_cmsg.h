@@ -132,6 +132,9 @@ struct nfp_flower_cmsg_port_mod {
 	rte_be16_t mtu;
 };
 
+#define NFP_FLOWER_CMSG_PORT_MOD_INFO_LINK              RTE_BIT32(0)
+#define NFP_FLOWER_CMSG_PORT_MOD_MTU_CHANGE_ONLY        RTE_BIT32(1)
+
 struct nfp_flower_tun_neigh {
 	uint8_t dst_mac[RTE_ETHER_ADDR_LEN];
 	uint8_t src_mac[RTE_ETHER_ADDR_LEN];

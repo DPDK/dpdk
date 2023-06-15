@@ -16,6 +16,7 @@
 #include "nfp_flower.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_cmsg.h"
+#include "nfp_flower_representor.h"
 
 #define MAX_PKT_BURST 32
 
@@ -427,6 +428,42 @@ nfp_flower_cmsg_rx_qos_stats(struct nfp_mtr_priv *mtr_priv,
 	rte_spinlock_unlock(&mtr_priv->mtr_stats_lock);
 }
 
+static int
+nfp_flower_cmsg_port_mod_rx(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_mbuf *pkt_burst)
+{
+	uint32_t port;
+	struct nfp_flower_representor *repr;
+	struct nfp_flower_cmsg_port_mod *msg;
+
+	msg = rte_pktmbuf_mtod_offset(pkt_burst, struct nfp_flower_cmsg_port_mod *,
+			NFP_FLOWER_CMSG_HLEN);
+	port = rte_be_to_cpu_32(msg->portnum);
+
+	switch (NFP_FLOWER_CMSG_PORT_TYPE(port)) {
+	case NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT:
+		repr = app_fw_flower->phy_reprs[NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(port)];
+		break;
+	case NFP_FLOWER_CMSG_PORT_TYPE_PCIE_PORT:
+		if (NFP_FLOWER_CMSG_PORT_VNIC_TYPE(port) == NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF)
+			repr =  app_fw_flower->vf_reprs[NFP_FLOWER_CMSG_PORT_VNIC(port)];
+		else
+			repr = app_fw_flower->pf_repr;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "ctrl msg for unknown port %#x", port);
+		return -EINVAL;
+	}
+
+	repr->link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	if ((msg->info & NFP_FLOWER_CMSG_PORT_MOD_INFO_LINK) != 0)
+		repr->link.link_status = RTE_ETH_LINK_UP;
+	else
+		repr->link.link_status = RTE_ETH_LINK_DOWN;
+
+	return 0;
+}
+
 static void
 nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf **pkts_burst,
@@ -469,6 +506,9 @@ nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 		} else if (cmsg_hdr->type == NFP_FLOWER_CMSG_TYPE_QOS_STATS) {
 			/* Handle meter stats */
 			nfp_flower_cmsg_rx_qos_stats(mtr_priv, pkts_burst[i]);
+		} else if (cmsg_hdr->type == NFP_FLOWER_CMSG_TYPE_PORT_MOD) {
+			/* Handle changes to port configuration/status */
+			nfp_flower_cmsg_port_mod_rx(app_fw_flower, pkts_burst[i]);
 		}
 
 		rte_pktmbuf_free(pkts_burst[i]);
