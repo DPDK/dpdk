@@ -1670,6 +1670,7 @@ M: Gaetan Rivet <grive@u256.net>
 F: lib/pci/
 
 Power management
+M: Anatoly Burakov <anatoly.burakov@intel.com>
 M: David Hunt <david.hunt@intel.com>
 F: lib/power/
 F: doc/guides/prog_guide/power_man.rst
