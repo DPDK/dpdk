@@ -1876,7 +1876,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				(uint8_t *)(uintptr_t)raw_mask->pattern;
 			uint8_t *tmp_spec, *tmp_mask;
 			uint16_t tmp_val = 0;
-			uint8_t pkt_len = 0;
+			uint16_t pkt_len = 0;
 			uint8_t tmp = 0;
 			int i, j;
 
