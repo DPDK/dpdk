@@ -50,6 +50,7 @@ extern "C" {
 #define RTE_BBDEV_LDPC_MAX_CODE_BLOCKS (256)
 /* 12 CS maximum */
 #define RTE_BBDEV_MAX_CS_2 (6)
+#define RTE_BBDEV_MAX_CS   (12)
 /* MLD-TS up to 4 layers */
 #define RTE_BBDEV_MAX_MLD_LAYERS (4)
 /* 12 SB per RB */
@@ -242,7 +243,15 @@ enum rte_bbdev_op_fft_flag_bitmasks {
 	/** Set if the input data used FP16 format. */
 	RTE_BBDEV_FFT_FP16_INPUT = (1ULL << 6),
 	/** Set if the output data uses FP16 format. */
-	RTE_BBDEV_FFT_FP16_OUTPUT = (1ULL << 7)
+	RTE_BBDEV_FFT_FP16_OUTPUT = (1ULL << 7),
+	/** Flexible adjustment of Timing offset adjustment per CS. */
+	RTE_BBDEV_FFT_TIMING_OFFSET_PER_CS = (1ULL << 8),
+	/** Flexible adjustment of Timing error correction per CS. */
+	RTE_BBDEV_FFT_TIMING_ERROR = (1ULL << 9),
+	/** Set for optional frequency domain dewindowing. */
+	RTE_BBDEV_FFT_DEWINDOWING = (1ULL << 10),
+	/** Flexible adjustment of frequency resampling mode. */
+	RTE_BBDEV_FFT_FREQ_RESAMPLING = (1ULL << 11)
 };
 
 /** Flags for MLDTS operation and capability structure */
@@ -756,6 +765,8 @@ struct rte_bbdev_op_fft {
 	struct rte_bbdev_op_data base_input;
 	/** Output data starting from first antenna and first cyclic shift. */
 	struct rte_bbdev_op_data base_output;
+	/** Optional frequency window input data. */
+	struct rte_bbdev_op_data dewindowing_input;
 	/** Optional power measurement output data. */
 	struct rte_bbdev_op_data power_meas_output;
 	/** Flags from rte_bbdev_op_fft_flag_bitmasks. */
@@ -790,6 +801,16 @@ struct rte_bbdev_op_fft {
 	uint16_t power_shift;
 	/** Adjust the FP6 exponent for INT<->FP16 conversion. */
 	uint16_t fp16_exp_adjust;
+	/** Frequency resampling : 0: Transparent Mode1: 4/3 Resample2: 2/3 Resample. */
+	int8_t freq_resample_mode;
+	/** Output depadded size prior to frequency resampling. */
+	uint16_t output_depadded_size;
+	/** Time error correction initial phase. */
+	uint16_t cs_theta_0[RTE_BBDEV_MAX_CS];
+	/** Time error correction phase increment. */
+	uint32_t cs_theta_d[RTE_BBDEV_MAX_CS];
+	/* Time offset per CS of time domain samples. */
+	int8_t time_offset[RTE_BBDEV_MAX_CS];
 };
 /* >8 End of structure rte_bbdev_op_fft. */
 

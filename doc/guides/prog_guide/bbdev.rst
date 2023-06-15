@@ -1111,6 +1111,18 @@ with the operation flags forming a bitmask in the ``op_flags`` field.
 |RTE_BBDEV_FFT_FP16_OUTPUT                                           |
 | Set if the output data shall use FP16 format instead of INT16      |
 +--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_TIMING_OFFSET_PER_CS                                  |
+| Set if device supports adjusting time offset per CS                |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_TIMING_ERROR                                          |
+| Set if device supports correcting for timing error                 |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_DEWINDOWING                                           |
+| Set if enabling the option FFT Dewindowing in Frequency domain     |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_FREQ_RESAMPLING                                       |
+| Set if device supports the optional frequency resampling           |
++--------------------------------------------------------------------+
 
 The FFT parameters are set out in the table below.
 
@@ -1120,6 +1132,8 @@ The FFT parameters are set out in the table below.
 |base_input               |input data                                                    |
 +-------------------------+--------------------------------------------------------------+
 |base_output              |output data                                                   |
++-------------------------+--------------------------------------------------------------+
+|dewindowing_input        |optional frequency domain dewindowing input data              |
 +-------------------------+--------------------------------------------------------------+
 |power_meas_output        |optional output data with power measurement on DFT output     |
 +-------------------------+--------------------------------------------------------------+
@@ -1154,6 +1168,16 @@ The FFT parameters are set out in the table below.
 |power_shift              |shift down of level of power measurement when enabled         |
 +-------------------------+--------------------------------------------------------------+
 |fp16_exp_adjust          |value added to FP16 exponent at conversion from INT16         |
++-------------------------+--------------------------------------------------------------+
+|freq_resample_mode       |frequency ressampling mode (0:transparent, 1-2: resample)     |
++-------------------------+--------------------------------------------------------------+
+| output_depadded_size    |output depadded size prior to frequency resampling            |
++-------------------------+--------------------------------------------------------------+
+|cs_theta_0               |timing error correction initial phase                         |
++-------------------------+--------------------------------------------------------------+
+|cs_theta_d               |timing error correction phase increment                       |
++-------------------------+--------------------------------------------------------------+
+|time_offset              |time offset per CS of time domain samples                     |
 +-------------------------+--------------------------------------------------------------+
 
 The mbuf input ``base_input`` is mandatory for all bbdev PMDs and
