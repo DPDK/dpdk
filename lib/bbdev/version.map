@@ -50,4 +50,9 @@ EXPERIMENTAL {
 	rte_bbdev_enqueue_status_str;
 	rte_bbdev_fft_op_alloc_bulk;
 	rte_bbdev_fft_op_free_bulk;
+	#added in 23.11
+	rte_bbdev_dequeue_mldts_ops;
+	rte_bbdev_enqueue_mldts_ops;
+	rte_bbdev_mldts_op_alloc_bulk;
+	rte_bbdev_mldts_op_free_bulk;
 };

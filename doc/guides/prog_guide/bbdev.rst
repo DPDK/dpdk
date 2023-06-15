@@ -1165,6 +1165,59 @@ either as 2 INT16 or as 2 FP16 based when the option supported.
 The data layout is based on contiguous concatenation of output data
 first by cyclic shift then by antenna.
 
+BBDEV MLD-TS Operation
+~~~~~~~~~~~~~~~~~~~~~~
+
+This operation allows to run the Tree Search (TS) portion of a Maximum Likelihood processing (MLD).
+
+This alternate equalization option accelerates the exploration of the best combination of
+transmitted symbols across layers minimizing the Euclidean distance between the received and
+reconstructed signal, then generates the LLRs to be used by the LDPC Decoder.
+The input is the results of the Q R decomposition: Q^Hy signal and R matrix.
+
+The structure passed for each MLD-TS operation is given below,
+with the operation flags forming a bitmask in the ``op_flags`` field.
+
+  **NOTE:** The actual operation flags that may be used with a specific
+  bbdev PMD are dependent on the driver capabilities as reported via
+  ``rte_bbdev_info_get()``, and may be a subset of those below.
+
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev_op.h
+   :language: c
+   :start-after: Structure rte_bbdev_op_mldts 8<
+   :end-before: >8 End of structure rte_bbdev_op_mldts.
+
++--------------------------------------------------------------------+
+|Description of MLD-TS capability flags                              |
++====================================================================+
+|RTE_BBDEV_MLDTS_REP                                                 |
+| Set if the option to use repeated data from R channel is supported |
++--------------------------------------------------------------------+
+
+The MLD-TS parameters are set out in the table below.
+
++-------------------------+--------------------------------------------------------------+
+|Parameter                |Description                                                   |
++=========================+==============================================================+
+|qhy_input                |input data qHy                                                |
++-------------------------+--------------------------------------------------------------+
+|r_input                  |input data R triangular matrix                                |
++-------------------------+--------------------------------------------------------------+
+|output                   |output data (LLRs)                                            |
++-------------------------+--------------------------------------------------------------+
+|op_flags                 |bitmask of all active operation capabilities                  |
++-------------------------+--------------------------------------------------------------+
+|num_rbs                  |number of Resource Blocks                                     |
++-------------------------+--------------------------------------------------------------+
+|num_layers               |number of overlapping layers                                  |
++-------------------------+--------------------------------------------------------------+
+|q_m                      |array of modulation order for each layer                      |
++-------------------------+--------------------------------------------------------------+
+|r_rep                    |optional row repetition for the R matrix (subcarriers)        |
++-------------------------+--------------------------------------------------------------+
+|c_rep                    |optional column repetition for the R matrix (symbols)         |
++-------------------------+--------------------------------------------------------------+
+
 Sample code
 -----------
 

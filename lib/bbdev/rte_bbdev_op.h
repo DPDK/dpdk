@@ -50,6 +50,10 @@ extern "C" {
 #define RTE_BBDEV_LDPC_MAX_CODE_BLOCKS (256)
 /* 12 CS maximum */
 #define RTE_BBDEV_MAX_CS_2 (6)
+/* MLD-TS up to 4 layers */
+#define RTE_BBDEV_MAX_MLD_LAYERS (4)
+/* 12 SB per RB */
+#define RTE_BBDEV_SCPERRB (12)
 
 /*
  * Maximum size to be used to manage the enum rte_bbdev_op_type
@@ -239,6 +243,12 @@ enum rte_bbdev_op_fft_flag_bitmasks {
 	RTE_BBDEV_FFT_FP16_INPUT = (1ULL << 6),
 	/** Set if the output data uses FP16 format. */
 	RTE_BBDEV_FFT_FP16_OUTPUT = (1ULL << 7)
+};
+
+/** Flags for MLDTS operation and capability structure */
+enum rte_bbdev_op_mldts_flag_bitmasks {
+	/**  Set if the device supports C/R repetition options.  */
+	RTE_BBDEV_MLDTS_REP = (1ULL << 0),
 };
 
 /** Flags for the Code Block/Transport block mode  */
@@ -783,6 +793,35 @@ struct rte_bbdev_op_fft {
 };
 /* >8 End of structure rte_bbdev_op_fft. */
 
+/** Operation structure for MLDTS processing.
+ *
+ * The output mbuf data structure is expected to be allocated by the
+ * application with enough room for the output data.
+ */
+
+/* Structure rte_bbdev_op_mldts 8< */
+struct rte_bbdev_op_mldts {
+	/** Input data QHy from QR decomposition. */
+	struct rte_bbdev_op_data qhy_input;
+	/** Input data R from QR decomposition. */
+	struct rte_bbdev_op_data r_input;
+	/** Output data post MLD-TS. */
+	struct rte_bbdev_op_data output;
+	/** Flags from *rte_bbdev_op_MLDTS_flag_bitmasks*. */
+	uint32_t op_flags;
+	/** Number of RBs. */
+	uint16_t num_rbs;
+	/** Number of layers 2->4. */
+	uint16_t num_layers;
+	/** Modulation order (2->8 QPSK to 256QAM). */
+	uint8_t q_m[RTE_BBDEV_MAX_MLD_LAYERS];
+	/** Row repetition for the same R matrix - subcarriers. */
+	uint8_t r_rep;
+	/** Column repetition for the same R matrix - symbols. */
+	uint8_t c_rep;
+};
+/* >8 End of structure rte_bbdev_op_mldts. */
+
 /** List of the capabilities for the Turbo Decoder */
 struct rte_bbdev_op_cap_turbo_dec {
 	/** Flags from rte_bbdev_op_td_flag_bitmasks */
@@ -839,6 +878,16 @@ struct rte_bbdev_op_cap_ldpc_enc {
 struct rte_bbdev_op_cap_fft {
 	/** Flags from *rte_bbdev_op_fft_flag_bitmasks*. */
 	uint32_t capability_flags;
+	/** Num input code block buffers. */
+	uint16_t num_buffers_src;
+	/** Num output code block buffers. */
+	uint16_t num_buffers_dst;
+};
+
+/** List of the capabilities for the MLD */
+struct rte_bbdev_op_cap_mld {
+	/** Flags from rte_bbdev_op_mldts_flag_bitmasks */
+	uint32_t capability_flags;
 	/** Number of input code block buffers. */
 	uint16_t num_buffers_src;
 	/** Number of output code block buffers. */
@@ -856,6 +905,7 @@ enum rte_bbdev_op_type {
 	RTE_BBDEV_OP_LDPC_DEC,  /**< LDPC decode */
 	RTE_BBDEV_OP_LDPC_ENC,  /**< LDPC encode */
 	RTE_BBDEV_OP_FFT,  /**< FFT */
+	RTE_BBDEV_OP_MLDTS,  /**< MLD-TS */
 	/* Note: RTE_BBDEV_OP_TYPE_SIZE_MAX must be larger or equal to maximum enum value */
 };
 
@@ -864,7 +914,8 @@ enum {
 	RTE_BBDEV_DRV_ERROR,
 	RTE_BBDEV_DATA_ERROR,
 	RTE_BBDEV_CRC_ERROR,
-	RTE_BBDEV_SYNDROME_ERROR
+	RTE_BBDEV_SYNDROME_ERROR,
+	RTE_BBDEV_ENGINE_ERROR
 };
 
 /** Structure specifying a single encode operation */
@@ -911,6 +962,18 @@ struct rte_bbdev_fft_op {
 	struct rte_bbdev_op_fft fft;
 };
 
+/** Structure specifying a single mldts operation */
+struct rte_bbdev_mldts_op {
+	/** Status of operation that was performed. */
+	int status;
+	/** Mempool which op instance is in. */
+	struct rte_mempool *mempool;
+	/** Opaque pointer for user data. */
+	void *opaque_data;
+	/** Contains turbo decoder specific parameters. */
+	struct rte_bbdev_op_mldts mldts;
+};
+
 /** Operation capabilities supported by a device */
 struct rte_bbdev_op_cap {
 	enum rte_bbdev_op_type type;  /**< Type of operation */
@@ -920,6 +983,7 @@ struct rte_bbdev_op_cap {
 		struct rte_bbdev_op_cap_ldpc_dec ldpc_dec;
 		struct rte_bbdev_op_cap_ldpc_enc ldpc_enc;
 		struct rte_bbdev_op_cap_fft fft;
+		struct rte_bbdev_op_cap_mld mld;
 	} cap;  /**< Operation-type specific capabilities */
 };
 
@@ -1058,6 +1122,36 @@ rte_bbdev_fft_op_alloc_bulk(struct rte_mempool *mempool,
 }
 
 /**
+ * Bulk allocate MLD operations from a mempool with parameter defaults reset.
+ *
+ * @param mempool
+ *   Operation mempool, created by *rte_bbdev_op_pool_create*.
+ * @param ops
+ *   Output array to place allocated operations.
+ * @param num_ops
+ *   Number of operations to allocate.
+ *
+ * @returns
+ *   - 0 on success.
+ *   - EINVAL if invalid mempool is provided.
+ */
+__rte_experimental
+static inline int
+rte_bbdev_mldts_op_alloc_bulk(struct rte_mempool *mempool,
+		struct rte_bbdev_mldts_op **ops, uint16_t num_ops)
+{
+	struct rte_bbdev_op_pool_private *priv;
+
+	/* Check type */
+	priv = (struct rte_bbdev_op_pool_private *)rte_mempool_get_priv(mempool);
+	if (unlikely(priv->type != RTE_BBDEV_OP_MLDTS))
+		return -EINVAL;
+
+	/* Get elements */
+	return rte_mempool_get_bulk(mempool, (void **)ops, num_ops);
+}
+
+/**
  * Free decode operation structures that were allocated by
  * rte_bbdev_dec_op_alloc_bulk().
  * All structures must belong to the same mempool.
@@ -1104,6 +1198,24 @@ rte_bbdev_enc_op_free_bulk(struct rte_bbdev_enc_op **ops, unsigned int num_ops)
 __rte_experimental
 static inline void
 rte_bbdev_fft_op_free_bulk(struct rte_bbdev_fft_op **ops, unsigned int num_ops)
+{
+	if (num_ops > 0)
+		rte_mempool_put_bulk(ops[0]->mempool, (void **)ops, num_ops);
+}
+
+/**
+ * Free encode operation structures that were allocated by
+ * rte_bbdev_mldts_op_alloc_bulk().
+ * All structures must belong to the same mempool.
+ *
+ * @param ops
+ *   Operation structures
+ * @param num_ops
+ *   Number of structures
+ */
+__rte_experimental
+static inline void
+rte_bbdev_mldts_op_free_bulk(struct rte_bbdev_mldts_op **ops, unsigned int num_ops)
 {
 	if (num_ops > 0)
 		rte_mempool_put_bulk(ops[0]->mempool, (void **)ops, num_ops);
