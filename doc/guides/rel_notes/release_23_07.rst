@@ -132,6 +132,11 @@ New Features
   * Added support for enhanced multi-packet write on Windows.
   * Added support for quota flow action and item.
 
+* **Updated Solarflare network PMD.**
+
+  * Added support for configuring FEC mode, querying FEC capabilities and
+    current FEC mode from a device.
+
 * **Added vmxnet3 version 7 support.**
 
   Added support for vmxnet3 version 7 which includes support

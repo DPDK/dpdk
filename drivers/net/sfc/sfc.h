@@ -68,6 +68,8 @@ struct sfc_port {
 
 	uint32_t			phy_adv_cap_mask;
 	uint32_t			phy_adv_cap;
+	uint32_t			fec_cfg;
+	bool				fec_auto;
 
 	unsigned int			flow_ctrl;
 	boolean_t			flow_ctrl_autoneg;

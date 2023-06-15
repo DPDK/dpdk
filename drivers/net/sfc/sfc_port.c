@@ -228,17 +228,8 @@ sfc_port_start(struct sfc_adapter *sa)
 	/* Preserve pause capabilities set by above efx_mac_fcntl_set()  */
 	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_CURRENT, &phy_adv_cap);
 	SFC_ASSERT((port->phy_adv_cap & phy_pause_caps) == 0);
-	phy_adv_cap = port->phy_adv_cap | (phy_adv_cap & phy_pause_caps);
-
-	/*
-	 * No controls for FEC yet. Use default FEC mode.
-	 * I.e. advertise everything supported (*_FEC=1), but do not request
-	 * anything explicitly (*_FEC_REQUESTED=0).
-	 */
-	phy_adv_cap |= port->phy_adv_cap_mask &
-		(1u << EFX_PHY_CAP_BASER_FEC |
-		 1u << EFX_PHY_CAP_RS_FEC |
-		 1u << EFX_PHY_CAP_25G_BASER_FEC);
+	phy_adv_cap = port->phy_adv_cap | (phy_adv_cap & phy_pause_caps) |
+			port->fec_cfg;
 
 	sfc_log_init(sa, "set phy adv caps to %#x", phy_adv_cap);
 	rc = efx_phy_adv_cap_set(sa->nic, phy_adv_cap);
@@ -468,6 +459,17 @@ sfc_port_attach(struct sfc_adapter *sa)
 	}
 
 	port->mac_stats_update_period_ms = kvarg_stats_update_period_ms;
+
+	/*
+	 * Set default FEC mode.
+	 * I.e. advertise everything supported (*_FEC=1), but do not request
+	 * anything explicitly (*_FEC_REQUESTED=0).
+	 */
+	port->fec_cfg = port->phy_adv_cap_mask &
+		(EFX_PHY_CAP_FEC_BIT(BASER_FEC) |
+		 EFX_PHY_CAP_FEC_BIT(RS_FEC) |
+		 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC));
+	port->fec_auto = true;
 
 	sfc_log_init(sa, "done");
 	return 0;

@@ -3958,6 +3958,15 @@ typedef enum efx_phy_fec_type_e {
 	EFX_PHY_FEC_RS
 } efx_phy_fec_type_t;
 
+#define EFX_PHY_CAP_FEC_BIT(_fec_bit) (1U << EFX_PHY_CAP_##_fec_bit)
+#define EFX_PHY_CAP_FEC_MASK \
+	(EFX_PHY_CAP_FEC_BIT(BASER_FEC) |		\
+	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC) |		\
+	 EFX_PHY_CAP_FEC_BIT(BASER_FEC_REQUESTED) |	\
+	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC_REQUESTED) |	\
+	 EFX_PHY_CAP_FEC_BIT(RS_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(RS_FEC_REQUESTED))
+
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_fec_type_get(
