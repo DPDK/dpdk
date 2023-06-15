@@ -4139,13 +4139,11 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	char pretun_name[RTE_HASH_NAMESIZE];
 	struct nfp_flow_priv *priv;
 	struct nfp_app_fw_flower *app_fw_flower;
+	const char *pci_name = strchr(pf_dev->pci_dev->name, ':') + 1;
 
-	snprintf(mask_name, sizeof(mask_name), "%s_mask",
-			pf_dev->pci_dev->device.name);
-	snprintf(flow_name, sizeof(flow_name), "%s_flow",
-			pf_dev->pci_dev->device.name);
-	snprintf(pretun_name, sizeof(pretun_name), "%s_pretun",
-			pf_dev->pci_dev->device.name);
+	snprintf(mask_name, sizeof(mask_name), "%s_mask", pci_name);
+	snprintf(flow_name, sizeof(flow_name), "%s_flow", pci_name);
+	snprintf(pretun_name, sizeof(pretun_name), "%s_pretun", pci_name);
 
 	struct rte_hash_parameters mask_hash_params = {
 		.name       = mask_name,

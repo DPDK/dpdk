@@ -456,7 +456,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 	/* Create a mbuf pool for the ctrl vNIC */
 	numa_node = rte_socket_id();
 	snprintf(ctrl_pktmbuf_pool_name, sizeof(ctrl_pktmbuf_pool_name),
-			"%s_ctrlmp", pf_dev->pci_dev->device.name);
+			"%s_ctrlmp", (strchr(pf_dev->pci_dev->name, ':') + 1));
 	app_fw_flower->ctrl_pktmbuf_pool =
 			rte_pktmbuf_pool_create(ctrl_pktmbuf_pool_name,
 			4 * CTRL_VNIC_NB_DESC, 64, 0, 9216, numa_node);
