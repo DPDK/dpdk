@@ -71,8 +71,8 @@ part_number_config_arm = {
             ['RTE_MACHINE', '"neoverse-n1"'],
             ['RTE_ARM_FEATURE_ATOMICS', true],
             ['RTE_MAX_MEM_MB', 1048576],
-            ['RTE_MAX_LCORE', 160],
-            ['RTE_MAX_NUMA_NODES', 2]
+            ['RTE_MAX_LCORE', 256],
+            ['RTE_MAX_NUMA_NODES', 8]
         ]
     },
     '0xd40': {
@@ -165,16 +165,30 @@ implementer_cavium = {
 implementer_ampere = {
     'description': 'Ampere Computing',
     'flags': [
-        ['RTE_MACHINE', '"emag"'],
         ['RTE_CACHE_LINE_SIZE', 64],
-        ['RTE_MAX_LCORE', 32],
-        ['RTE_MAX_NUMA_NODES', 1]
+        ['RTE_MAX_LCORE', 1024],
+        ['RTE_MAX_NUMA_NODES', 8]
     ],
     'part_number_config': {
         '0x0': {
             'march': 'armv8-a',
             'march_features': ['crc', 'crypto'],
-            'compiler_options':  ['-mtune=emag']
+            'compiler_options':  ['-mtune=emag'],
+            'flags': [
+                ['RTE_MACHINE', '"eMAG"'],
+                ['RTE_MAX_LCORE', 32],
+                ['RTE_MAX_NUMA_NODES', 1]
+            ]
+        },
+        '0xac3': {
+            'march': 'armv8.6-a',
+            'march_features': ['crc', 'crypto'],
+            'compiler_options':  ['-mcpu=ampere1'],
+            'flags': [
+                ['RTE_MACHINE', '"AmpereOne"'],
+                ['RTE_MAX_LCORE', 320],
+                ['RTE_MAX_NUMA_NODES', 8]
+            ]
         }
     }
 }
@@ -277,6 +291,7 @@ implementers = {
     '0x50': implementer_ampere,
     '0x51': implementer_qualcomm,
     '0x70': implementer_phytium,
+    '0xc0': implementer_ampere,
 }
 
 # SoC specific armv8 flags have the highest priority
@@ -291,6 +306,20 @@ soc_generic_aarch32 = {
     'description': 'Generic un-optimized build for armv8 aarch32 exec mode',
     'implementer': 'generic',
     'part_number': 'generic_aarch32'
+}
+
+soc_altra = {
+    'description': 'Ampere Altra/AltraMax',
+    'implementer': '0x41',
+    'part_number': '0xd0c',
+    'numa': true
+}
+
+soc_ampereone = {
+    'description': 'Ampere AmpereOne',
+    'implementer': '0xc0',
+    'part_number': '0xac3',
+    'numa': true
 }
 
 soc_armada = {
@@ -489,6 +518,8 @@ soc_bluefield3 = {
 Start of SoCs list
 generic:         Generic un-optimized build for armv8 aarch64 execution mode.
 generic_aarch32: Generic un-optimized build for armv8 aarch32 execution mode.
+altra:           Ampere Altra/AltraMax
+ampereone:       Ampere AmpereOne
 armada:          Marvell ARMADA
 bluefield:       NVIDIA BlueField
 bluefield3:      NVIDIA BlueField-3
@@ -518,6 +549,8 @@ End of SoCs list
 socs = {
     'generic': soc_generic,
     'generic_aarch32': soc_generic_aarch32,
+    'altra': soc_altra,
+    'ampereone': soc_ampereone,
     'armada': soc_armada,
     'bluefield': soc_bluefield,
     'bluefield3': soc_bluefield3,
