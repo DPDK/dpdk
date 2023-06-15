@@ -92,6 +92,9 @@ jobs:
       with:
         path: reference
         key: ${{ steps.get_ref_keys.outputs.abi }}
+    - name: Configure i386 architecture
+      if: env.BUILD_32BIT == 'true'
+      run: sudo dpkg --add-architecture i386
     - name: Update APT cache
       run: sudo apt update || true
     - name: Install packages
@@ -104,7 +107,7 @@ jobs:
       run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev
     - name: Install i386 cross compiling packages
       if: env.BUILD_32BIT == 'true'
-      run: sudo apt install -y gcc-multilib g++-multilib
+      run: sudo apt install -y gcc-multilib g++-multilib libnuma-dev:i386
     - name: Install aarch64 cross compiling packages
       if: env.AARCH64 == 'true'
       run: sudo apt install -y crossbuild-essential-arm64

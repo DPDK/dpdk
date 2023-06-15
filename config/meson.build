@@ -381,6 +381,15 @@ endif
 if not dpdk_conf.has('RTE_MAX_NUMA_NODES')
     error('Number of NUMA nodes not specified.')
 endif
+if (is_linux and
+        dpdk_conf.get('RTE_MAX_NUMA_NODES') > 1 and
+        not meson.is_cross_build() and
+        not has_libnuma)
+    error('''
+No NUMA library (development package) found, yet DPDK configured for multiple NUMA nodes.
+Please install libnuma, or set 'max_numa_nodes' option to '1' to build without NUMA support.
+''')
+endif
 
 # set the install path for the drivers
 dpdk_conf.set_quoted('RTE_EAL_PMD_PATH', eal_pmd_path)
