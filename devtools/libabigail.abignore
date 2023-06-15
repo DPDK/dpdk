@@ -37,6 +37,10 @@
         type_kind = enum
         changed_enumerators = RTE_CRYPTO_ASYM_XFORM_ECPM, RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
 
+; Ignore changes to bbdev FFT API which is experimental
+[suppress_type]
+        name = rte_bbdev_fft_op
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Temporary exceptions till next major ABI version ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
