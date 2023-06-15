@@ -1383,10 +1383,94 @@ virtio_vdpa_get_vfid(const char *pf_name, const char *vf_name, int *vfid)
 }
 
 static int
+virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_priv *priv)
+{
+	bool ret;
+
+	if (!priv)
+		return 0;
+
+	if (priv->configured)
+		virtio_vdpa_dev_close(priv->vid);
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
+		DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", pci_dev->name, priv->lcore_id);
+		rte_eal_wait_lcore(priv->lcore_id);
+	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
+		DRV_LOG(ERR, "%s is dev close work had err", pci_dev->name);
+	}
+
+	if (priv->dev_ops->unreg_dev_intr) {
+		ret = virtio_pci_dev_interrupt_disable(priv->vpdev, 0);
+		if (ret) {
+			DRV_LOG(ERR, "%s error disabling virtio dev interrupts: %d (%s)",
+					priv->vdev->device->name,
+					ret, strerror(errno));
+		}
+
+		ret = priv->dev_ops->unreg_dev_intr(priv);
+		if (ret) {
+			DRV_LOG(ERR, "%s unregister dev interrupt fail ret:%d", pci_dev->name, ret);
+		}
+	}
+
+	if (priv->lm_status == VIRTIO_S_FREEZED) {
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d", pci_dev->name, priv->vf_id, ret);
+		}
+		priv->lm_status = VIRTIO_S_QUIESCED;
+	}
+
+	if (priv->lm_status == VIRTIO_S_QUIESCED) {
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_RUNNING);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d", pci_dev->name, priv->vf_id, ret);
+		}
+		priv->lm_status = VIRTIO_S_RUNNING;
+	}
+
+	if (priv->vdev)
+		rte_vdpa_unregister_device(priv->vdev);
+
+	if (priv->vpdev) {
+		ret = virtio_pci_dev_interrupts_free(priv->vpdev);
+		if (ret) {
+			DRV_LOG(ERR, "Error free virtio dev interrupts: %s",
+					strerror(errno));
+		}
+	}
+
+	virtio_vdpa_queues_free(priv);
+
+	if (priv->vpdev) {
+		virtio_pci_dev_reset(priv->vpdev, VIRTIO_VDPA_REMOVE_RESET_TIME_OUT);
+		virtio_pci_dev_free(priv->vpdev);
+	}
+
+	if (priv->vfio_container_fd  >= 0)
+		rte_vfio_container_destroy(priv->vfio_container_fd);
+
+	if (priv->state_mz)
+		rte_memzone_free(priv->state_mz);
+
+	if (priv->state_mz_remote)
+		rte_memzone_free(priv->state_mz_remote);
+	if (priv->vdpa_dp_map)
+		rte_memzone_free(priv->vdpa_dp_map);
+	rte_free(priv);
+
+	return 0;
+}
+
+#define VIRTIO_VDPA_GET_GROUPE_RETRIES 120
+static int
 virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 {
 	struct virtio_vdpa_priv *priv = NULL;
-	bool found = false, ret;
+	bool found = false;
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &virtio_priv_list, next) {
@@ -1397,84 +1481,11 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 		}
 	}
 	pthread_mutex_unlock(&priv_list_lock);
-	if (found) {
-		if (priv->configured)
-			virtio_vdpa_dev_close(priv->vid);
-
-		if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
-			DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", pci_dev->name, priv->lcore_id);
-			rte_eal_wait_lcore(priv->lcore_id);
-		}
-
-		if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
-			DRV_LOG(ERR, "%s is dev close work had err", pci_dev->name);
-		}
-
-		if (priv->dev_ops->unreg_dev_intr) {
-			ret = virtio_pci_dev_interrupt_disable(priv->vpdev, 0);
-			if (ret) {
-				DRV_LOG(ERR, "%s error disabling virtio dev interrupts: %d (%s)",
-						priv->vdev->device->name,
-						ret, strerror(errno));
-			}
-
-			ret = priv->dev_ops->unreg_dev_intr(priv);
-			if (ret) {
-				DRV_LOG(ERR, "%s unregister dev interrupt fail ret:%d", pci_dev->name, ret);
-			}
-		}
-
-		if (priv->lm_status == VIRTIO_S_FREEZED) {
-			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
-			if (ret) {
-				DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d", pci_dev->name, priv->vf_id, ret);
-			}
-			priv->lm_status = VIRTIO_S_QUIESCED;
-		}
-
-		if (priv->lm_status == VIRTIO_S_QUIESCED) {
-			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_RUNNING);
-			if (ret) {
-				DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d", pci_dev->name, priv->vf_id, ret);
-			}
-			priv->lm_status = VIRTIO_S_RUNNING;
-		}
-
-		if (priv->vdev)
-			rte_vdpa_unregister_device(priv->vdev);
-
-		if (priv->vpdev) {
-			ret = virtio_pci_dev_interrupts_free(priv->vpdev);
-			if (ret) {
-				DRV_LOG(ERR, "Error free virtio dev interrupts: %s",
-						strerror(errno));
-			}
-		}
-
-		virtio_vdpa_queues_free(priv);
-
-		if (priv->vpdev) {
-			virtio_pci_dev_reset(priv->vpdev, VIRTIO_VDPA_REMOVE_RESET_TIME_OUT);
-			virtio_pci_dev_free(priv->vpdev);
-		}
-
-		if (priv->vfio_container_fd  >= 0)
-			rte_vfio_container_destroy(priv->vfio_container_fd);
-
-		if (priv->state_mz)
-			rte_memzone_free(priv->state_mz);
-
-		if (priv->state_mz_remote)
-			rte_memzone_free(priv->state_mz_remote);
-		if (priv->vdpa_dp_map)
-			rte_memzone_free(priv->vdpa_dp_map);
-		rte_free(priv);
-	}
-
-	return found ? 0 : -ENODEV;
+	if (!found)
+		return -ENODEV;
+	return virtio_vdpa_dev_do_remove(pci_dev, priv);
 }
 
-#define VIRTIO_VDPA_GET_GROUPE_RETRIES 120
 static int
 virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
@@ -1714,7 +1725,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	return 0;
 
 error:
-	virtio_vdpa_dev_remove(pci_dev);
+	virtio_vdpa_dev_do_remove(pci_dev, priv);
 	return -rte_errno;
 }
 
