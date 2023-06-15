@@ -886,8 +886,8 @@ iavf_hash_parse_raw_pattern(const struct rte_flow_item *item,
 			struct iavf_rss_meta *meta)
 {
 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
+	uint16_t spec_len, pkt_len;
 	uint8_t *pkt_buf, *msk_buf;
-	uint8_t spec_len, pkt_len;
 	uint8_t tmp_val = 0;
 	uint8_t tmp_c = 0;
 	int i, j;
