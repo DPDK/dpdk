@@ -1324,6 +1324,9 @@ err_sm2:
 			OSSL_PARAM_free(asym_session->u.sm2.params);
 
 		return -1;
+#else
+		OPENSSL_LOG(WARNING, "SM2 unsupported for OpenSSL Version < 3.0");
+		return -ENOTSUP;
 #endif
 	}
 	default:
