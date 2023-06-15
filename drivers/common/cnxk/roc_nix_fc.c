@@ -750,8 +750,6 @@ roc_nix_rx_chan_cfg_set(struct roc_nix *roc_nix, uint16_t chan, bool is_cpt, uin
 	req->read = 0;
 
 	rc = mbox_process(mbox);
-	if (rc)
-		goto exit;
 exit:
 	mbox_put(mbox);
 	return rc;
