@@ -1696,10 +1696,12 @@ cn10k_nix_xmit_store(struct rte_mbuf *mbuf, uint8_t segdw, uintptr_t laddr,
 			vst1q_u64(LMT_OFF(laddr, 0, 16), cmd2);
 			vst1q_u64(LMT_OFF(laddr, 0, 32), cmd1);
 		}
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
 	} else {
 		/* Store the prepared send desc to LMT lines */
 		vst1q_u64(LMT_OFF(laddr, 0, 0), cmd0);
 		vst1q_u64(LMT_OFF(laddr, 0, 16), cmd1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
 	}
 }
 
