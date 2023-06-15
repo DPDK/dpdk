@@ -2128,7 +2128,7 @@ struct nix_lso_format {
 #define NIX_SDP_MAX_HW_FRS  65535UL
 #define NIX_SDP_16K_HW_FRS  16380UL
 #define NIX_RPM_MAX_HW_FRS  16380UL
-#define NIX_MIN_HW_FRS	    60UL
+#define NIX_MIN_HW_FRS	    40UL
 
 /** NIX policer rate limits */
 #define NIX_BPF_MAX_RATE_DIV_EXP  12
