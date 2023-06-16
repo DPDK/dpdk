@@ -3604,7 +3604,7 @@ static int
 bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 {
 	const char *name = rte_vdev_device_name(dev);
-	uint8_t socket_id = dev->device.numa_node;
+	int socket_id = dev->device.numa_node;
 	struct bond_dev_private *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	uint32_t vlan_filter_bmp_size;
@@ -3806,7 +3806,7 @@ bond_probe(struct rte_vdev_device *dev)
 	port_id = bond_alloc(dev, bonding_mode);
 	if (port_id < 0) {
 		RTE_BOND_LOG(ERR, "Failed to create socket %s in mode %u on "
-				"socket %u.",	name, bonding_mode, socket_id);
+				"socket %d.",	name, bonding_mode, socket_id);
 		goto parse_error;
 	}
 	internals = rte_eth_devices[port_id].data->dev_private;
@@ -3831,7 +3831,7 @@ bond_probe(struct rte_vdev_device *dev)
 
 	rte_eth_dev_probing_finish(&rte_eth_devices[port_id]);
 	RTE_BOND_LOG(INFO, "Create bonded device %s on port %d in mode %u on "
-			"socket %u.",	name, port_id, bonding_mode, socket_id);
+			"socket %d.",	name, port_id, bonding_mode, socket_id);
 	return 0;
 
 parse_error:

@@ -212,6 +212,12 @@ bond_ethdev_parse_socket_id_kvarg(const char *key __rte_unused,
 	if (*endptr != 0 || errno != 0)
 		return -1;
 
+	/* SOCKET_ID_ANY also consider a valid socket id */
+	if ((int8_t)socket_id == SOCKET_ID_ANY) {
+		*(int *)extra_args = SOCKET_ID_ANY;
+		return 0;
+	}
+
 	/* validate socket id value */
 	if (socket_id >= 0 && socket_id < RTE_MAX_NUMA_NODES) {
 		*(int *)extra_args = (int)socket_id;
