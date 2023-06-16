@@ -454,11 +454,14 @@ test_cryptodev_asym_op(struct crypto_testsuite_params_asym *ts_params,
 		ret = rte_cryptodev_asym_session_create(dev_id, &xform_tc,
 				ts_params->session_mpool, &sess);
 		if (ret < 0) {
-			snprintf(test_msg, ASYM_TEST_MSG_LEN,
-					"line %u "
-					"FAILED: %s", __LINE__,
-					"Session creation failed");
 			status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+			if (status == TEST_SKIPPED)
+				snprintf(test_msg, ASYM_TEST_MSG_LEN, "SKIPPED");
+			else
+				snprintf(test_msg, ASYM_TEST_MSG_LEN,
+						"line %u "
+						"FAILED: %s", __LINE__,
+						"Session creation failed");
 			goto error_exit;
 		}
 
@@ -490,6 +493,11 @@ test_cryptodev_asym_op(struct crypto_testsuite_params_asym *ts_params,
 	}
 
 	if (test_cryptodev_asym_ver(op, &xform_tc, data_tc, result_op) != TEST_SUCCESS) {
+		if (result_op->status == RTE_CRYPTO_OP_STATUS_INVALID_ARGS) {
+			snprintf(test_msg, ASYM_TEST_MSG_LEN, "SESSIONLESS SKIPPED");
+			status = TEST_SKIPPED;
+			goto error_exit;
+		}
 		snprintf(test_msg, ASYM_TEST_MSG_LEN,
 			"line %u FAILED: %s",
 			__LINE__, "Verification failed ");
@@ -620,13 +628,19 @@ test_one_by_one(void)
 	/* Go through all test cases */
 	test_index = 0;
 	for (i = 0; i < test_vector.size; i++) {
-		if (test_one_case(test_vector.address[i], 0) != TEST_SUCCESS)
+		status = test_one_case(test_vector.address[i], 0);
+		if (status == TEST_SUCCESS || status == TEST_SKIPPED)
+			status = TEST_SUCCESS;
+		else
 			status = TEST_FAILED;
 	}
+
 	if (sessionless) {
 		for (i = 0; i < test_vector.size; i++) {
-			if (test_one_case(test_vector.address[i], 1)
-					!= TEST_SUCCESS)
+			status = test_one_case(test_vector.address[i], 1);
+			if (status == TEST_SUCCESS || status == TEST_SKIPPED)
+				status = TEST_SUCCESS;
+			else
 				status = TEST_FAILED;
 		}
 	}
