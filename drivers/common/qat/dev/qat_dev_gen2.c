@@ -22,7 +22,7 @@ static struct qat_qp_hw_spec_funcs qat_qp_hw_spec_gen2 = {
 };
 
 static int
-qat_dev_get_slice_map_gen2(uint16_t *map __rte_unused,
+qat_dev_get_slice_map_gen2(uint32_t *map __rte_unused,
 	const struct rte_pci_device *pci_dev __rte_unused)
 {
 	return 0;

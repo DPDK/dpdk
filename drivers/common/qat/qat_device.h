@@ -37,7 +37,7 @@ typedef int (*qat_dev_get_misc_bar_t)
 typedef int (*qat_dev_read_config_t)
 		(struct qat_pci_device *);
 typedef int (*qat_dev_get_extra_size_t)(void);
-typedef int (*qat_dev_get_slice_map_t)(uint16_t *map,
+typedef int (*qat_dev_get_slice_map_t)(uint32_t *map,
 		const struct rte_pci_device *pci_dev);
 
 struct qat_dev_hw_spec_funcs {

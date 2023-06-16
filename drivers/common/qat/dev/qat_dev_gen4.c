@@ -283,7 +283,7 @@ qat_dev_get_misc_bar_gen4(struct rte_mem_resource **mem_resource,
 }
 
 static int
-qat_dev_get_slice_map_gen4(uint16_t *map __rte_unused,
+qat_dev_get_slice_map_gen4(uint32_t *map __rte_unused,
 	const struct rte_pci_device *pci_dev __rte_unused)
 {
 	return 0;
