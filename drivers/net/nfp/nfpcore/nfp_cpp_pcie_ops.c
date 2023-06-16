@@ -66,8 +66,8 @@
 #define NFP_PCIE_P2C_GENERAL_TOKEN_OFFSET(bar, x) ((x) << ((bar)->bitsize - 4))
 #define NFP_PCIE_P2C_GENERAL_SIZE(bar)             (1 << ((bar)->bitsize - 4))
 
-#define NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(bar, slot) \
-	(NFP_PCIE_BAR(0) + ((bar) * 8 + (slot)) * 4)
+#define NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(id, bar, slot) \
+	(NFP_PCIE_BAR(id) + ((bar) * 8 + (slot)) * 4)
 
 #define NFP_PCIE_CPP_BAR_PCIETOCPPEXPBAR(bar, slot) \
 	(((bar) * 8 + (slot)) * 4)
@@ -114,6 +114,7 @@ struct nfp_pcie_user {
 	int secondary_lock;
 	char busdev[BUSDEV_SZ];
 	int barsz;
+	int dev_id;
 	char *cfg;
 };
 
@@ -255,7 +256,7 @@ nfp_bar_write(struct nfp_pcie_user *nfp, struct nfp_bar *bar,
 		return (-ENOMEM);
 
 	bar->csr = nfp->cfg +
-		   NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(base, slot);
+		   NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(nfp->dev_id, base, slot);
 
 	*(uint32_t *)(bar->csr) = newcfg;
 
@@ -325,10 +326,8 @@ nfp_enable_bars(struct nfp_pcie_user *nfp)
 		bar->base = 0;
 		bar->iomem = NULL;
 		bar->lock = 0;
-		bar->csr = nfp->cfg +
-			   NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(bar->index >> 3,
-							   bar->index & 7);
-
+		bar->csr = nfp->cfg + NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(nfp->dev_id,
+				bar->index >> 3, bar->index & 7);
 		bar->iomem = nfp->cfg + (bar->index << bar->bitsize);
 	}
 	return 0;
@@ -843,6 +842,7 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 		goto error;
 
 	desc->cfg = (char *)dev->mem_resource[0].addr;
+	desc->dev_id = dev->addr.function & 0x7;
 
 	nfp_enable_bars(desc);
 
