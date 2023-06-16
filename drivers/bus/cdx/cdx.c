@@ -208,8 +208,8 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 	ret = cdx_get_kernel_driver_by_path(filename, driver, sizeof(driver));
 	if (ret < 0) {
 		CDX_BUS_ERR("Fail to get kernel driver");
-		ret = -1;
-		goto err;
+		free(dev);
+		return -1;
 	}
 
 	/* Allocate interrupt instance for cdx device */
@@ -218,6 +218,7 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 	if (dev->intr_handle == NULL) {
 		CDX_BUS_ERR("Failed to create interrupt instance for %s",
 			dev->device.name);
+		free(dev);
 		return -ENOMEM;
 	}
 
@@ -241,8 +242,8 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 	/* get device id */
 	snprintf(filename, sizeof(filename), "%s/device", dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
-		free(dev);
-		return -1;
+		ret = -1;
+		goto err;
 	}
 	dev->id.device_id = (uint16_t)tmp;
 
@@ -251,6 +252,7 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 	return 0;
 
 err:
+	rte_intr_instance_free(dev->intr_handle);
 	free(dev);
 	return ret;
 }
