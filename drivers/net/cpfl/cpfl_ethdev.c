@@ -712,17 +712,15 @@ cpfl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (base->caps.rss_caps != 0 && dev->data->nb_rx_queues != 0 &&
-		conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
+	if (base->caps.rss_caps != 0 && dev->data->nb_rx_queues != 0) {
 		ret = cpfl_init_rss(vport);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Failed to init rss");
 			return ret;
 		}
-	} else {
+	} else if (conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
 		PMD_INIT_LOG(ERR, "RSS is not supported.");
-		if (conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
-			return -ENOTSUP;
+		return -ENOTSUP;
 	}
 
 	vport->max_pkt_len =
