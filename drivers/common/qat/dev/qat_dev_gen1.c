@@ -242,7 +242,7 @@ qat_dev_get_extra_size_gen1(void)
 }
 
 static int
-qat_get_dev_slice_map_gen1(uint16_t *map __rte_unused,
+qat_get_dev_slice_map_gen1(uint32_t *map __rte_unused,
 	const struct rte_pci_device *pci_dev __rte_unused)
 {
 	return 0;
