@@ -272,6 +272,21 @@ allocated while for GEN1 devices, 12 buffers are allocated, plus 1472 bytes over
 	larger than the input size).
 
 
+Running QAT PMD with insecure crypto algorithms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A few insecure crypto algorithms are deprecated from QAT drivers.
+This needs to be reflected in DPDK QAT PMD.
+DPDK QAT PMD has by default disabled all the insecure crypto algorithms from Gen 1, 2, 3 and 4.
+A PMD devarg is used to enable the capability.
+
+- qat_legacy_capa
+
+To use this feature the user must set the devarg on process start as a device additional devarg::
+
+  -a b1:01.2,qat_legacy_capa=1
+
+
 Running QAT PMD with minimum threshold for burst size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -12,10 +12,41 @@
 
 #define MIXED_CRYPTO_MIN_FW_VER 0x04090000
 
-static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen2[] = {
+static struct rte_cryptodev_capabilities qat_sym_crypto_legacy_caps_gen2[] = {
+	QAT_SYM_CIPHER_CAP(DES_CBC,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
+	QAT_SYM_CIPHER_CAP(3DES_CBC,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
+	QAT_SYM_CIPHER_CAP(3DES_CTR,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 16, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
 	QAT_SYM_PLAIN_AUTH_CAP(SHA1,
 		CAP_SET(block_size, 64),
 		CAP_RNG(digest_size, 1, 20, 1)),
+	QAT_SYM_AUTH_CAP(SHA224,
+		CAP_SET(block_size, 64),
+		CAP_RNG_ZERO(key_size), CAP_RNG(digest_size, 1, 28, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_AUTH_CAP(SHA224_HMAC,
+		CAP_SET(block_size, 64),
+		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 28, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_AUTH_CAP(SHA1_HMAC,
+		CAP_SET(block_size, 64),
+		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 20, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_AUTH_CAP(MD5_HMAC,
+		CAP_SET(block_size, 64),
+		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 16, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_CIPHER_CAP(DES_DOCSISBPI,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 8, 8, 0), CAP_RNG(iv_size, 8, 8, 0)),
+};
+
+static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen2[] = {
 	QAT_SYM_AEAD_CAP(AES_GCM,
 		CAP_SET(block_size, 16),
 		CAP_RNG(key_size, 16, 32, 8), CAP_RNG(digest_size, 8, 16, 4),
@@ -32,10 +63,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen2[] = {
 		CAP_SET(block_size, 16),
 		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(digest_size, 4, 16, 4),
 			CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_AUTH_CAP(SHA224,
-		CAP_SET(block_size, 64),
-		CAP_RNG_ZERO(key_size), CAP_RNG(digest_size, 1, 28, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	QAT_SYM_AUTH_CAP(SHA256,
 		CAP_SET(block_size, 64),
 		CAP_RNG_ZERO(key_size), CAP_RNG(digest_size, 1, 32, 1),
@@ -51,14 +78,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen2[] = {
 	QAT_SYM_PLAIN_AUTH_CAP(SHA3_256,
 		CAP_SET(block_size, 136),
 		CAP_RNG(digest_size, 32, 32, 0)),
-	QAT_SYM_AUTH_CAP(SHA1_HMAC,
-		CAP_SET(block_size, 64),
-		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 20, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_AUTH_CAP(SHA224_HMAC,
-		CAP_SET(block_size, 64),
-		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 28, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	QAT_SYM_AUTH_CAP(SHA256_HMAC,
 		CAP_SET(block_size, 64),
 		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 32, 1),
@@ -70,10 +89,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen2[] = {
 	QAT_SYM_AUTH_CAP(SHA512_HMAC,
 		CAP_SET(block_size, 128),
 		CAP_RNG(key_size, 1, 128, 1), CAP_RNG(digest_size, 1, 64, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_AUTH_CAP(MD5_HMAC,
-		CAP_SET(block_size, 64),
-		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 16, 1),
 		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	QAT_SYM_AUTH_CAP(AES_XCBC_MAC,
 		CAP_SET(block_size, 16),
@@ -112,18 +127,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen2[] = {
 	QAT_SYM_CIPHER_CAP(NULL,
 		CAP_SET(block_size, 1),
 		CAP_RNG_ZERO(key_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_CIPHER_CAP(3DES_CBC,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
-	QAT_SYM_CIPHER_CAP(3DES_CTR,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 16, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
-	QAT_SYM_CIPHER_CAP(DES_CBC,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
-	QAT_SYM_CIPHER_CAP(DES_DOCSISBPI,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 8, 8, 0), CAP_RNG(iv_size, 8, 8, 0)),
 	QAT_SYM_CIPHER_CAP(ZUC_EEA3,
 		CAP_SET(block_size, 16),
 		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 16, 16, 0)),
@@ -283,8 +286,13 @@ qat_sym_crypto_cap_get_gen2(struct qat_cryptodev_private *internals,
 			const char *capa_memz_name,
 			const uint16_t __rte_unused slice_map)
 {
-	const uint32_t size = sizeof(qat_sym_crypto_caps_gen2);
-	uint32_t i;
+	uint32_t legacy_capa_num;
+	uint32_t size = sizeof(qat_sym_crypto_caps_gen2);
+	uint32_t legacy_size = sizeof(qat_sym_crypto_legacy_caps_gen2);
+	legacy_capa_num = legacy_size/sizeof(struct rte_cryptodev_capabilities);
+
+	if (unlikely(qat_legacy_capa))
+		size = size + legacy_size;
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
 	if (internals->capa_mz == NULL) {
@@ -300,17 +308,15 @@ qat_sym_crypto_cap_get_gen2(struct qat_cryptodev_private *internals,
 	struct rte_cryptodev_capabilities *addr =
 			(struct rte_cryptodev_capabilities *)
 				internals->capa_mz->addr;
-	const struct rte_cryptodev_capabilities *capabilities =
-		qat_sym_crypto_caps_gen2;
-	const uint32_t capa_num =
-		size / sizeof(struct rte_cryptodev_capabilities);
-	uint32_t curr_capa = 0;
+	struct rte_cryptodev_capabilities *capabilities;
 
-	for (i = 0; i < capa_num; i++) {
-		memcpy(addr + curr_capa, capabilities + i,
-			sizeof(struct rte_cryptodev_capabilities));
-		curr_capa++;
+	if (unlikely(qat_legacy_capa)) {
+		capabilities = qat_sym_crypto_legacy_caps_gen2;
+		memcpy(addr, capabilities, legacy_size);
+		addr += legacy_capa_num;
 	}
+	capabilities = qat_sym_crypto_caps_gen2;
+	memcpy(addr, capabilities, sizeof(qat_sym_crypto_caps_gen2));
 	internals->qat_dev_capabilities = internals->capa_mz->addr;
 
 	return 0;

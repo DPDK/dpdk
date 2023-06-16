@@ -15,6 +15,8 @@
 #include "qat_pke.h"
 #include "qat_ec.h"
 
+#define RSA_MODULUS_2048_BITS 2048
+
 uint8_t qat_asym_driver_id;
 
 struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[QAT_N_GENS];
@@ -913,8 +915,12 @@ asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 		return modexp_set_input(qat_req, cookie, asym_op, xform);
 	case RTE_CRYPTO_ASYM_XFORM_MODINV:
 		return modinv_set_input(qat_req, cookie, asym_op, xform);
-	case RTE_CRYPTO_ASYM_XFORM_RSA:
+	case RTE_CRYPTO_ASYM_XFORM_RSA:{
+		if (unlikely((xform->rsa.n.length < RSA_MODULUS_2048_BITS)
+					&& (qat_legacy_capa == 0)))
+			return RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return rsa_set_input(qat_req, cookie, asym_op, xform);
+	}
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		return ecdsa_set_input(qat_req, cookie, asym_op, xform);
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
@@ -1273,8 +1279,14 @@ qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 	case RTE_CRYPTO_ASYM_XFORM_MODINV:
 		ret = session_set_modinv(qat_session, xform);
 		break;
-	case RTE_CRYPTO_ASYM_XFORM_RSA:
+	case RTE_CRYPTO_ASYM_XFORM_RSA: {
+		if (unlikely((xform->rsa.n.length < RSA_MODULUS_2048_BITS)
+					&& (qat_legacy_capa == 0))) {
+			ret = -ENOTSUP;
+			return ret;
+		}
 		ret = session_set_rsa(qat_session, xform);
+		}
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:

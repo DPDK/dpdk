@@ -11,6 +11,7 @@
 
 extern uint8_t qat_sym_driver_id;
 extern uint8_t qat_asym_driver_id;
+extern int qat_legacy_capa;
 
 /**
  * helper macro to set cryptodev capability range

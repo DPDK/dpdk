@@ -17,6 +17,7 @@
 
 uint8_t qat_sym_driver_id;
 int qat_ipsec_mb_lib;
+int qat_legacy_capa;
 
 struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
 
@@ -285,6 +286,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 					qat_dev_cmd_param[i].val;
 		if (!strcmp(qat_dev_cmd_param[i].name, QAT_IPSEC_MB_LIB))
 			qat_ipsec_mb_lib = qat_dev_cmd_param[i].val;
+		if (!strcmp(qat_dev_cmd_param[i].name, QAT_LEGACY_CAPA))
+			qat_legacy_capa = qat_dev_cmd_param[i].val;
 		if (!strcmp(qat_dev_cmd_param[i].name, QAT_CMD_SLICE_MAP))
 			slice_map = qat_dev_cmd_param[i].val;
 		i++;
