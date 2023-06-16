@@ -338,26 +338,21 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 static int
 nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 {
+	int err;
 	uint32_t start_q;
 	uint64_t rx_bar_off;
 	uint64_t tx_bar_off;
-	const int stride = 4;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
 
 	pf_dev = hw->pf_dev;
 	pci_dev = hw->pf_dev->pci_dev;
 
-	hw->device_id = pci_dev->id.device_id;
-	hw->vendor_id = pci_dev->id.vendor_id;
-	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
-	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
-
 	PMD_INIT_LOG(DEBUG, "%s vNIC ctrl bar: %p", vnic_type, hw->ctrl_bar);
 
-	/* Read the number of available rx/tx queues from hardware */
-	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
-	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
+	err = nfp_net_common_init(pci_dev, hw);
+	if (err != 0)
+		return err;
 
 	/* Work out where in the BAR the queues start */
 	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
@@ -368,31 +363,8 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 	hw->tx_bar = pf_dev->hw_queues + tx_bar_off;
 	hw->rx_bar = pf_dev->hw_queues + rx_bar_off;
 
-	/* Get some of the read-only fields from the config BAR */
-	nfp_net_cfg_read_version(hw);
-	if (!nfp_net_is_valid_nfd_version(hw->ver))
-		return -EINVAL;
-
-	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
-	nfp_net_init_metadata_format(hw);
-
-	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	/* Set the current MTU to the maximum supported */
 	hw->mtu = hw->max_mtu;
-	hw->flbufsz = DEFAULT_FLBUF_SIZE;
-
-	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
-		return -ENODEV;
-
-	/* read the Rx offset configured from firmware */
-	if (hw->ver.major < 2)
-		hw->rx_offset = NFP_NET_RX_OFFSET;
-	else
-		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
-
-	hw->ctrl = 0;
-	hw->stride_rx = stride;
-	hw->stride_tx = stride;
 
 	/* Reuse cfg queue setup function */
 	nfp_net_cfg_queue_setup(hw);

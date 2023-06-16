@@ -266,7 +266,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	uint64_t tx_bar_off = 0, rx_bar_off = 0;
 	uint32_t start_q;
-	int stride = 4;
 	int port = 0;
 	int err;
 
@@ -285,12 +284,9 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
-	nfp_net_cfg_read_version(hw);
-	if (!nfp_net_is_valid_nfd_version(hw->ver))
-		return -EINVAL;
-
-	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
-		return -ENODEV;
+	err = nfp_net_common_init(pci_dev, hw);
+	if (err != 0)
+		return err;
 
 	nfp_netvf_ethdev_ops_mount(hw, eth_dev);
 
@@ -299,26 +295,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
-	hw->device_id = pci_dev->id.device_id;
-	hw->vendor_id = pci_dev->id.vendor_id;
-	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
-	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
-
-	PMD_INIT_LOG(DEBUG, "nfp_net: device (%u:%u) %u:%u:%u:%u",
-		     pci_dev->id.vendor_id, pci_dev->id.device_id,
-		     pci_dev->addr.domain, pci_dev->addr.bus,
-		     pci_dev->addr.devid, pci_dev->addr.function);
-
-	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
-	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
-	if (hw->max_rx_queues == 0 || hw->max_tx_queues == 0) {
-		PMD_DRV_LOG(ERR,
-			    "Device %s can not be used, there are no valid queue "
-			    "pairs for use, please try to generate less VFs",
-			    pci_dev->name);
-		return -ENODEV;
-	}
 
 	hw->eth_xstats_base = rte_malloc("rte_eth_xstat", sizeof(struct rte_eth_xstat) *
 			nfp_net_xstats_size(eth_dev), 0);
@@ -355,28 +331,11 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		     hw->ctrl_bar, hw->tx_bar, hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(hw);
-
-	/* Get some of the read-only fields from the config BAR */
-	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
-	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->mtu = RTE_ETHER_MTU;
-	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 
 	/* VLAN insertion is incompatible with LSOv2 */
 	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
-
-	nfp_net_init_metadata_format(hw);
-
-	if (hw->ver.major < 2)
-		hw->rx_offset = NFP_NET_RX_OFFSET;
-	else
-		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
-
-	hw->ctrl = 0;
-
-	hw->stride_rx = stride;
-	hw->stride_tx = stride;
 
 	nfp_net_log_device_information(hw);
 

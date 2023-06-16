@@ -1321,6 +1321,52 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	return 0;
 }
 
+int
+nfp_net_common_init(struct rte_pci_device *pci_dev,
+		struct nfp_net_hw *hw)
+{
+	const int stride = 4;
+
+	hw->device_id = pci_dev->id.device_id;
+	hw->vendor_id = pci_dev->id.vendor_id;
+	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
+	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
+
+	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
+	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
+	if (hw->max_rx_queues == 0 || hw->max_tx_queues == 0) {
+		PMD_INIT_LOG(ERR, "Device %s can not be used, there are no valid queue "
+				"pairs for use", pci_dev->name);
+		return -ENODEV;
+	}
+
+	nfp_net_cfg_read_version(hw);
+	if (!nfp_net_is_valid_nfd_version(hw->ver))
+		return -EINVAL;
+
+	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
+		return -ENODEV;
+
+	/* Get some of the read-only fields from the config BAR */
+	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
+	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
+	hw->flbufsz = DEFAULT_FLBUF_SIZE;
+
+	nfp_net_init_metadata_format(hw);
+
+	/* read the Rx offset configured from firmware */
+	if (hw->ver.major < 2)
+		hw->rx_offset = NFP_NET_RX_OFFSET;
+	else
+		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
+
+	hw->ctrl = 0;
+	hw->stride_rx = stride;
+	hw->stride_tx = stride;
+
+	return 0;
+}
+
 const uint32_t *
 nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 {
