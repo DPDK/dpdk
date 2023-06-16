@@ -322,12 +322,13 @@ cdx_unmap_resource(void *requested_addr, size_t size)
 	if (requested_addr == NULL)
 		return;
 
+	CDX_BUS_DEBUG("Unmapping CDX memory at %p", requested_addr);
+
 	/* Unmap the CDX memory resource of device */
 	if (rte_mem_unmap(requested_addr, size)) {
 		CDX_BUS_ERR("%s(): cannot mem unmap(%p, %#zx): %s", __func__,
 			requested_addr, size, rte_strerror(rte_errno));
 	}
-	CDX_BUS_DEBUG("CDX memory unmapped at %p", requested_addr);
 }
 /*
  * Match the CDX Driver and Device using device id and vendor id.
