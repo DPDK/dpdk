@@ -135,7 +135,7 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 		node_mbuf_priv1(mbuf3, dyn)->ttl = ipv6_hdr->hop_limits;
 		rte_memcpy(ip_batch[3], ipv6_hdr->dst_addr, 16);
 
-		rc = rte_lpm6_lookup_bulk_func(lpm6, ip_batch, next_hop, 4);
+		rte_lpm6_lookup_bulk_func(lpm6, ip_batch, next_hop, 4);
 
 		next_hop[0] = (next_hop[0] < 0) ? (int32_t)drop_nh : next_hop[0];
 		node_mbuf_priv1(mbuf0, dyn)->nh = (uint16_t)next_hop[0];
