@@ -452,7 +452,6 @@ cdx_probe(void)
 				dev->name);
 			rte_errno = errno;
 			failed++;
-			ret = 0;
 		}
 	}
 
