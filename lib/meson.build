@@ -72,6 +72,7 @@ optional_libs = [
         'cfgfile',
         'flow_classify',
         'gpudev',
+        'graph',
         'gro',
         'gso',
         'kni',
