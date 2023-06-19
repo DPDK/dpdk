@@ -1338,8 +1338,9 @@ test_expiry_with_event_timer(const struct pdcp_test_conf *ul_conf)
 	while (n != 1) {
 		rte_delay_us(testsuite_params.min_resolution_ns / 1000);
 		n = rte_event_dequeue_burst(testsuite_params.evdev, TEST_EV_PORT_ID, &event, 1, 0);
-		ASSERT_TRUE_OR_GOTO(nb_try-- > 0, exit,
+		ASSERT_TRUE_OR_GOTO(nb_try > 0, exit,
 				"Dequeued unexpected timer expiry event: %i\n", n);
+		nb_try--;
 	}
 
 	ASSERT_TRUE_OR_GOTO(event.event_type == RTE_EVENT_TYPE_TIMER, exit, "Unexpected event type\n");
@@ -1433,8 +1434,9 @@ test_expiry_with_rte_timer(const struct pdcp_test_conf *ul_conf)
 	while (timer_args.status != 1) {
 		rte_delay_us(1);
 		rte_timer_manage();
-		ASSERT_TRUE_OR_GOTO(nb_try-- > 0, exit, "Bad expire handle status %i\n",
+		ASSERT_TRUE_OR_GOTO(nb_try > 0, exit, "Bad expire handle status %i\n",
 			timer_args.status);
+		nb_try--;
 	}
 
 	ret = TEST_SUCCESS;
