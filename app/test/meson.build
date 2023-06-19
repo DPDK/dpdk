@@ -210,6 +210,7 @@ fast_tests = [
         ['fib6_autotest', true],
         ['func_reentrancy_autotest', false],
         ['flow_classify_autotest', false],
+        ['graph_autotest', true],
         ['hash_autotest', true],
         ['interrupt_autotest', true],
         ['ipfrag_autotest', false],
@@ -226,6 +227,7 @@ fast_tests = [
         ['memzone_autotest', false],
         ['meter_autotest', true],
         ['multiprocess_autotest', false],
+        ['node_list_dump', true],
         ['per_lcore_autotest', true],
         ['prefetch_autotest', true],
         ['rcu_qsbr_autotest', true],
@@ -303,6 +305,7 @@ perf_test_names = [
         'hash_readwrite_lf_perf_autotest',
         'trace_perf_autotest',
 	'ipsec_perf_autotest',
+        'graph_perf_autotest',
 ]
 
 driver_test_names = [
