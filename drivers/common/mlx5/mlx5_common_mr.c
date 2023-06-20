@@ -1059,7 +1059,7 @@ mr_lookup_caches(struct mlx5_mr_ctrl *mr_ctrl,
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
-static uint32_t
+uint32_t
 mlx5_mr_addr2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, uintptr_t addr)
 {
 	uint32_t lkey;

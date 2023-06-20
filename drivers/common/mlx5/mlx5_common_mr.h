@@ -240,6 +240,10 @@ mlx5_mr_create(struct mlx5_common_device *cdev,
 	       struct mlx5_mr_share_cache *share_cache,
 	       struct mr_cache_entry *entry, uintptr_t addr);
 
+__rte_internal
+uint32_t
+mlx5_mr_addr2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, uintptr_t addr);
+
 /* mlx5_common_verbs.c */
 
 __rte_internal
