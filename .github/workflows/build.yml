@@ -20,6 +20,7 @@ jobs:
       BUILD_32BIT: ${{ matrix.config.cross == 'i386' }}
       BUILD_DEBUG: ${{ contains(matrix.config.checks, 'debug') }}
       BUILD_DOCS: ${{ contains(matrix.config.checks, 'doc') }}
+      BUILD_EXAMPLES: ${{ contains(matrix.config.checks, 'examples') }}
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
       LIBABIGAIL_VERSION: libabigail-2.1
@@ -39,7 +40,7 @@ jobs:
             mini: mini
           - os: ubuntu-20.04
             compiler: gcc
-            checks: abi+debug+doc+tests
+            checks: abi+debug+doc+examples+tests
           - os: ubuntu-20.04
             compiler: clang
             checks: asan+doc+tests
@@ -96,12 +97,11 @@ jobs:
     - name: Install packages
       run: sudo apt install -y ccache libarchive-dev libbsd-dev libfdt-dev
         libibverbs-dev libjansson-dev libnuma-dev libpcap-dev libssl-dev
-        ninja-build python3-pip python3-pyelftools python3-setuptools
+        ninja-build pkg-config python3-pip python3-pyelftools python3-setuptools
         python3-wheel zlib1g-dev
     - name: Install libabigail build dependencies if no cache is available
       if: env.ABI_CHECKS == 'true' && steps.libabigail-cache.outputs.cache-hit != 'true'
       run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev
-        pkg-config
     - name: Install i386 cross compiling packages
       if: env.BUILD_32BIT == 'true'
       run: sudo apt install -y gcc-multilib g++-multilib

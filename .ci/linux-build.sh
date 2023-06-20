@@ -1,7 +1,7 @@
 #!/bin/sh -xe
 
 if [ -z "${DEF_LIB:-}" ]; then
-    DEF_LIB=static ABI_CHECKS= BUILD_DOCS= RUN_TESTS= $0
+    DEF_LIB=static ABI_CHECKS= BUILD_DOCS= BUILD_EXAMPLES= RUN_TESTS= $0
     DEF_LIB=shared $0
     exit
 fi
@@ -99,6 +99,7 @@ if [ "$MINI" = "true" ]; then
 else
     OPTS="$OPTS -Ddisable_libs="
 fi
+OPTS="$OPTS -Dlibdir=lib"
 
 if [ "$ASAN" = "true" ]; then
     OPTS="$OPTS -Db_sanitize=address"
@@ -167,4 +168,28 @@ if [ "$RUN_TESTS" = "true" ]; then
     sudo meson test -C build --suite fast-tests -t 3 || failed="true"
     catch_coredump
     [ "$failed" != "true" ]
+fi
+
+# Test examples compilation with an installed dpdk
+if [ "$BUILD_EXAMPLES" = "true" ]; then
+    [ -d install ] || DESTDIR=$(pwd)/install ninja -C build install
+    export LD_LIBRARY_PATH=$(dirname $(find $(pwd)/install -name librte_eal.so)):$LD_LIBRARY_PATH
+    export PKG_CONFIG_PATH=$(dirname $(find $(pwd)/install -name libdpdk.pc)):$PKG_CONFIG_PATH
+    export PKGCONF="pkg-config --define-prefix"
+    find build/examples -maxdepth 1 -type f -name "dpdk-*" |
+    while read target; do
+        target=${target%%:*}
+        target=${target#build/examples/dpdk-}
+        if [ -e examples/$target/Makefile ]; then
+            echo $target
+            continue
+        fi
+        # Some examples binaries are built from an example sub
+        # directory, discover the "top level" example name.
+        find examples -name Makefile |
+        sed -n "s,examples/\([^/]*\)\(/.*\|\)/$target/Makefile,\1,p"
+    done | sort -u |
+    while read example; do
+        make -C install/usr/local/share/dpdk/examples/$example clean shared
+    done
 fi
