@@ -755,10 +755,8 @@ RTE_INIT(qat_sym_crypto_gen3_init)
 			qat_sym_crypto_set_session_gen3;
 	qat_sym_gen_dev_ops[QAT_GEN3].set_raw_dp_ctx =
 			qat_sym_configure_raw_dp_ctx_gen3;
-#ifdef RTE_LIB_SECURITY
 	qat_sym_gen_dev_ops[QAT_GEN3].create_security_ctx =
 			qat_sym_create_security_gen1;
-#endif
 }
 
 RTE_INIT(qat_asym_crypto_gen3_init)

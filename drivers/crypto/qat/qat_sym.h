@@ -6,15 +6,11 @@
 #define _QAT_SYM_H_
 
 #include <cryptodev_pmd.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_net_crc.h>
-#endif
 
 #ifdef BUILD_QAT_SYM
 #include <openssl/evp.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
-#endif
 
 #include "qat_common.h"
 #include "qat_sym_session.h"
@@ -222,7 +218,6 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 	return sym_op->cipher.data.length - last_block_len;
 }
 
-#ifdef RTE_LIB_SECURITY
 static inline void
 qat_crc_verify(struct qat_sym_session *ctx, struct rte_crypto_op *op)
 {
@@ -288,7 +283,6 @@ qat_sym_preprocess_requests(void **ops, uint16_t nb_ops)
 		}
 	}
 }
-#endif
 
 static __rte_always_inline int
 qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
@@ -306,7 +300,6 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 			sizeof(struct icp_qat_fw_comn_resp));
 #endif
 
-#ifdef RTE_LIB_SECURITY
 	if (rx_op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		/*
 		 * Assuming at this point that if it's a security
@@ -314,9 +307,7 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 		 */
 		sess = SECURITY_GET_SESS_PRIV(rx_op->sym->session);
 		is_docsis_sec = 1;
-	} else
-#endif
-	{
+	} else {
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(rx_op->sym->session);
 		is_docsis_sec = 0;
 	}
@@ -331,11 +322,9 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 
 		if (sess->bpi_ctx) {
 			qat_bpicipher_postprocess(sess, rx_op);
-#ifdef RTE_LIB_SECURITY
 			if (is_docsis_sec && sess->qat_cmd !=
 						ICP_QAT_FW_LA_CMD_CIPHER_CRC)
 				qat_crc_verify(sess, rx_op);
-#endif
 		}
 	}
 

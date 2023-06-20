@@ -3,9 +3,7 @@
  */
 
 #include <rte_cryptodev.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
-#endif
 
 #include "adf_transport_access_macros.h"
 #include "icp_qat_fw.h"
@@ -401,8 +399,6 @@ qat_sym_build_op_chain_gen1(void *in_op, struct qat_sym_session *ctx,
 	return 0;
 }
 
-#ifdef RTE_LIB_SECURITY
-
 #define QAT_SECURITY_SYM_CAPABILITIES					\
 	{	/* AES DOCSIS BPI */					\
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\
@@ -489,7 +485,6 @@ qat_sym_create_security_gen1(void *cryptodev)
 	return (void *)security_instance;
 }
 
-#endif
 int
 qat_sym_dp_enqueue_single_cipher_gen1(void *qp_data, uint8_t *drv_ctx,
 	struct rte_crypto_vec *data, uint16_t n_data_vecs,
@@ -1260,8 +1255,6 @@ RTE_INIT(qat_sym_crypto_gen1_init)
 			qat_sym_configure_raw_dp_ctx_gen1;
 	qat_sym_gen_dev_ops[QAT_GEN1].get_feature_flags =
 			qat_sym_crypto_feature_flags_get_gen1;
-#ifdef RTE_LIB_SECURITY
 	qat_sym_gen_dev_ops[QAT_GEN1].create_security_ctx =
 			qat_sym_create_security_gen1;
-#endif
 }

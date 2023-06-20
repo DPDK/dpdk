@@ -640,10 +640,8 @@ qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
 		}
 	}
 
-#ifdef RTE_LIB_SECURITY
 	if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
 		qat_sym_preprocess_requests(ops, nb_ops_possible);
-#endif
 
 	memset(tmp_qp->opaque, 0xff, sizeof(tmp_qp->opaque));
 

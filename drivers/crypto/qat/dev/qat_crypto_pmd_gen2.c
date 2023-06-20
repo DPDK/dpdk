@@ -333,11 +333,8 @@ RTE_INIT(qat_sym_crypto_gen2_init)
 			qat_sym_configure_raw_dp_ctx_gen1;
 	qat_sym_gen_dev_ops[QAT_GEN2].get_feature_flags =
 			qat_sym_crypto_feature_flags_get_gen1;
-
-#ifdef RTE_LIB_SECURITY
 	qat_sym_gen_dev_ops[QAT_GEN2].create_security_ctx =
 			qat_sym_create_security_gen1;
-#endif
 }
 
 RTE_INIT(qat_asym_crypto_gen2_init)

@@ -98,10 +98,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			opaque[0] = (uintptr_t)ctx;
 			opaque[1] = (uintptr_t)build_request;
 		}
-	}
-
-#ifdef RTE_LIB_SECURITY
-	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+	} else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		ctx = SECURITY_GET_SESS_PRIV(op->sym->session);
 		if (unlikely(!ctx)) {
 			QAT_DP_LOG(ERR, "No session for this device");
@@ -151,9 +148,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			opaque[0] = sess;
 			opaque[1] = (uintptr_t)build_request;
 		}
-	}
-#endif
-	else { /* RTE_CRYPTO_OP_SESSIONLESS */
+	} else { /* RTE_CRYPTO_OP_SESSIONLESS */
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		QAT_LOG(DEBUG, "QAT does not support sessionless operation");
 		return -1;
@@ -251,7 +246,6 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-#ifdef RTE_LIB_SECURITY
 	if (gen_dev_ops->create_security_ctx) {
 		cryptodev->security_ctx =
 			gen_dev_ops->create_security_ctx((void *)cryptodev);
@@ -266,7 +260,6 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	} else {
 		QAT_LOG(INFO, "Device %s rte_security support disabled", name);
 	}
-#endif
 	snprintf(capa_memz_name, RTE_CRYPTODEV_NAME_MAX_LEN,
 			"QAT_SYM_CAPA_GEN_%d",
 			qat_pci_dev->qat_dev_gen);
@@ -309,10 +302,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	return 0;
 
 error:
-#ifdef RTE_LIB_SECURITY
 	rte_free(cryptodev->security_ctx);
 	cryptodev->security_ctx = NULL;
-#endif
 	rte_cryptodev_pmd_destroy(cryptodev);
 	memset(&qat_dev_instance->sym_rte_dev, 0,
 		sizeof(qat_dev_instance->sym_rte_dev));
@@ -334,10 +325,8 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 
 	/* free crypto device */
 	cryptodev = rte_cryptodev_pmd_get_dev(qat_pci_dev->sym_dev->dev_id);
-#ifdef RTE_LIB_SECURITY
 	rte_free(cryptodev->security_ctx);
 	cryptodev->security_ctx = NULL;
-#endif
 	rte_cryptodev_pmd_destroy(cryptodev);
 	qat_pci_devs[qat_pci_dev->qat_dev_id].sym_rte_dev.name = NULL;
 	qat_pci_dev->sym_dev = NULL;
