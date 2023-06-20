@@ -15,6 +15,7 @@ endif
 
 sources = files(
         'mlx5_crypto.c',
+        'mlx5_crypto_xts.c',
         'mlx5_crypto_dek.c',
 )
 

@@ -31,6 +31,7 @@ struct mlx5_crypto_priv {
 	struct mlx5_uar uar; /* User Access Region. */
 	uint32_t max_segs_num; /* Maximum supported data segs. */
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
+	const struct rte_cryptodev_capabilities *caps;
 	struct rte_cryptodev_config dev_config;
 	struct mlx5_devx_obj *login_obj;
 	uint64_t keytag;
@@ -70,6 +71,35 @@ struct mlx5_crypto_devarg_params {
 	uint32_t max_segs_num;
 };
 
+struct mlx5_crypto_session {
+	uint32_t bs_bpt_eo_es;
+	/**< bsf_size, bsf_p_type, encryption_order and encryption standard,
+	 * saved in big endian format.
+	 */
+	uint32_t bsp_res;
+	/**< crypto_block_size_pointer and reserved 24 bits saved in big
+	 * endian format.
+	 */
+	uint32_t iv_offset:16;
+	/**< Starting point for Initialisation Vector. */
+	struct mlx5_crypto_dek *dek; /**< Pointer to dek struct. */
+	uint32_t dek_id; /**< DEK ID */
+} __rte_packed;
+
+typedef void *(*mlx5_crypto_mkey_update_t)(struct mlx5_crypto_priv *priv,
+					   struct mlx5_crypto_qp *qp,
+					   uint32_t idx);
+
+void
+mlx5_crypto_indirect_mkeys_release(struct mlx5_crypto_qp *qp,
+				   uint16_t n);
+
+int
+mlx5_crypto_indirect_mkeys_prepare(struct mlx5_crypto_priv *priv,
+				   struct mlx5_crypto_qp *qp,
+				   struct mlx5_devx_mkey_attr *attr,
+				   mlx5_crypto_mkey_update_t update_cb);
+
 int
 mlx5_crypto_dek_destroy(struct mlx5_crypto_priv *priv,
 			struct mlx5_crypto_dek *dek);
@@ -83,5 +113,8 @@ mlx5_crypto_dek_setup(struct mlx5_crypto_priv *priv);
 
 void
 mlx5_crypto_dek_unset(struct mlx5_crypto_priv *priv);
+
+int
+mlx5_crypto_xts_init(struct mlx5_crypto_priv *priv);
 
 #endif /* MLX5_CRYPTO_H_ */
