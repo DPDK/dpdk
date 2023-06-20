@@ -372,7 +372,6 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct qat_dev_hw_spec_funcs *ops_hw;
 	struct qat_dev_cmd_param qat_dev_cmd_param[] = {
 			{ QAT_LEGACY_CAPA, 0 },
-			{ QAT_IPSEC_MB_LIB, 0 },
 			{ SYM_ENQ_THRESHOLD_NAME, 0 },
 			{ ASYM_ENQ_THRESHOLD_NAME, 0 },
 			{ COMP_ENQ_THRESHOLD_NAME, 0 },

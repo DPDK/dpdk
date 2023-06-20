@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2022 Intel Corporation
+ * Copyright(c) 2015-2023 Intel Corporation
  */
 
 #include <openssl/evp.h>
@@ -16,7 +16,6 @@
 #include "qat_qp.h"
 
 uint8_t qat_sym_driver_id;
-int qat_ipsec_mb_lib;
 int qat_legacy_capa;
 
 struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
@@ -108,7 +107,11 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			struct rte_cryptodev *cdev;
 			struct qat_cryptodev_private *internals;
 
+#ifdef RTE_QAT_OPENSSL
 			if (unlikely(ctx->bpi_ctx == NULL)) {
+#else
+			if (unlikely(ctx->mb_mgr == NULL)) {
+#endif
 				QAT_DP_LOG(ERR, "QAT PMD only supports security"
 						" operation requests for"
 						" DOCSIS, op (%p) is not for"
@@ -277,8 +280,6 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 				SYM_CIPHER_CRC_ENABLE_NAME))
 			internals->cipher_crc_offload_enable =
 					qat_dev_cmd_param[i].val;
-		if (!strcmp(qat_dev_cmd_param[i].name, QAT_IPSEC_MB_LIB))
-			qat_ipsec_mb_lib = qat_dev_cmd_param[i].val;
 		if (!strcmp(qat_dev_cmd_param[i].name, QAT_LEGACY_CAPA))
 			qat_legacy_capa = qat_dev_cmd_param[i].val;
 		if (!strcmp(qat_dev_cmd_param[i].name, QAT_CMD_SLICE_MAP))

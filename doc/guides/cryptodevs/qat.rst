@@ -334,18 +334,15 @@ To use this feature the user must set the devarg on process start as a device ad
  -a 03:01.1,qat_sym_cipher_crc_enable=1
 
 
-Running QAT PMD with Intel IPSEC MB library for symmetric precomputes function
+Running QAT PMD with Intel IPsec MB library for symmetric precomputes function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The QAT PMD use Openssl library for partial hash calculation in symmetirc precomputes function by
-default, the following parameter is allow QAT PMD switch over to multi-buffer job API if Intel
-IPSEC MB library installed on system.
-
-- qat_ipsec_mb_lib
-
-To use this feature the user must set the parameter on process start as a device additional parameter::
-
-  -a 03:01.1,qat_ipsec_mb_lib=1
+The QAT PMD uses Intel IPsec MB library for partial hash calculation
+in symmetric precomputes function by default,
+the minimum required version of IPsec MB library is v1.4.
+If this version of IPsec is not met, it will fallback to use OpenSSL.
+ARM will always default to using OpenSSL
+as ARM IPsec MB does not support the necessary algorithms.
 
 
 Device and driver naming

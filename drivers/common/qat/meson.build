@@ -28,29 +28,45 @@ if disable_drivers.contains(qat_compress_path)
 endif
 
 libcrypto = dependency('libcrypto', required: false, method: 'pkg-config')
-if qat_crypto and not libcrypto.found()
-    qat_crypto = false
-    dpdk_drvs_disabled += qat_crypto_path
-    set_variable(qat_crypto_path.underscorify() + '_disable_reason',
-            'missing dependency, libcrypto')
-endif
 
-IMB_required_ver = '1.2.0'
-IMB_header = '#include<intel-ipsec-mb.h>'
 if arch_subdir == 'arm'
-    IMB_header = '#include<ipsec-mb.h>'
-endif
-libipsecmb = cc.find_library('IPSec_MB', required: false)
-libcrypto_3 = dependency('libcrypto', required: false,
-    method: 'pkg-config', version : '>=3.0.0')
-if libipsecmb.found() and libcrypto_3.found()
-    # version comes with quotes, so we split based on " and take the middle
-    imb_ver = cc.get_define('IMB_VERSION_STR',
-        prefix : IMB_header).split('"')[1]
+    if libcrypto.found()
+        ext_deps += libcrypto
+        dpdk_conf.set('RTE_QAT_OPENSSL', true)
+    else
+        qat_crypto = false
+        dpdk_drvs_disabled += qat_crypto_path
+        set_variable(qat_crypto_path.underscorify() + '_disable_reason',
+        'missing dependency for Arm, libcrypto')
+    endif
+else
+    IMB_required_ver = '1.4.0'
+    IMB_header = '#include<intel-ipsec-mb.h>'
+    libipsecmb = cc.find_library('IPSec_MB', required: false)
+    if libipsecmb.found()
+        # version comes with quotes, so we split based on " and take the middle
+        imb_ver = cc.get_define('IMB_VERSION_STR',
+            prefix : IMB_header).split('"')[1]
 
-    if (imb_ver.version_compare('>=' + IMB_required_ver))
-        ext_deps += libipsecmb
-        dpdk_conf.set('RTE_QAT_LIBIPSECMB', true)
+        if (imb_ver.version_compare('>=' + IMB_required_ver))
+            ext_deps += libipsecmb
+        elif libcrypto.found()
+            ext_deps += libcrypto
+            dpdk_conf.set('RTE_QAT_OPENSSL', true)
+        else
+            qat_crypto = false
+            dpdk_drvs_disabled += qat_crypto_path
+            set_variable(qat_crypto_path.underscorify() + '_disable_reason',
+                'missing dependency, libipsecmb or libcrypto')
+        endif
+    elif libcrypto.found()
+        ext_deps += libcrypto
+        dpdk_conf.set('RTE_QAT_OPENSSL', true)
+    else
+        qat_crypto = false
+        dpdk_drvs_disabled += qat_crypto_path
+        set_variable(qat_crypto_path.underscorify() + '_disable_reason',
+            'missing dependency, libipsecmb or libcrypto')
     endif
 endif
 
@@ -103,6 +119,5 @@ if qat_crypto
         sources += files(join_paths(qat_crypto_relpath, f))
     endforeach
     deps += ['security']
-    ext_deps += libcrypto
     cflags += ['-DBUILD_QAT_SYM', '-DBUILD_QAT_ASYM']
 endif

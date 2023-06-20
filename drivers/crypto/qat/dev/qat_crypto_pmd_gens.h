@@ -82,8 +82,13 @@ qat_bpicipher_preprocess(struct qat_sym_session *ctx,
 			QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: dst before pre-process:",
 			dst, last_block_len);
 #endif
+#ifdef RTE_QAT_OPENSSL
 		op_bpi_cipher_decrypt(last_block, dst, iv, block_len,
 				last_block_len, ctx->bpi_ctx);
+#else
+		bpi_cipher_ipsec(last_block, dst, iv, last_block_len, ctx->expkey,
+			ctx->mb_mgr, ctx->docsis_key_len);
+#endif
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src after pre-process:",
 			last_block, last_block_len);
@@ -231,7 +236,12 @@ qat_sym_convert_op_to_vec_cipher(struct rte_crypto_op *op,
 		cipher_ofs = op->sym->cipher.data.offset >> 3;
 		break;
 	case 0:
+
+#ifdef RTE_QAT_OPENSSL
 		if (ctx->bpi_ctx) {
+#else
+		if (ctx->mb_mgr) {
+#endif
 			/* DOCSIS - only send complete blocks to device.
 			 * Process any partial block using CFB mode.
 			 * Even if 0 complete blocks, still send this to device
@@ -375,6 +385,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 	int is_oop = (op->sym->m_dst != NULL) &&
 			(op->sym->m_dst != op->sym->m_src);
 	int is_sgl = op->sym->m_src->nb_segs > 1;
+	int is_bpi = 0;
 	int n_src;
 	int ret;
 
@@ -399,9 +410,14 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 		cipher_ofs = op->sym->cipher.data.offset >> 3;
 		break;
 	case 0:
+#ifdef RTE_QAT_OPENSSL
 		if (ctx->bpi_ctx) {
+#else
+		if (ctx->mb_mgr) {
+#endif
 			cipher_len = qat_bpicipher_preprocess(ctx, op);
 			cipher_ofs = op->sym->cipher.data.offset;
+			is_bpi = 1;
 		} else {
 			cipher_len = op->sym->cipher.data.length;
 			cipher_ofs = op->sym->cipher.data.offset;
@@ -436,7 +452,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 	/* digest in buffer check. Needed only for wireless algos
 	 * or combined cipher-crc operations
 	 */
-	if (ret == 1 || ctx->bpi_ctx) {
+	if (ret == 1 || is_bpi) {
 		/* Handle digest-encrypted cases, i.e.
 		 * auth-gen-then-cipher-encrypt and
 		 * cipher-decrypt-then-auth-verify
@@ -465,7 +481,11 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 		/* Then check if digest-encrypted conditions are met */
 		if (((auth_ofs + auth_len < cipher_ofs + cipher_len) &&
 				(digest->iova == auth_end_iova)) ||
+#ifdef RTE_QAT_OPENSSL
 				ctx->bpi_ctx)
+#else
+				ctx->mb_mgr)
+#endif
 			max_len = RTE_MAX(max_len, auth_ofs + auth_len +
 					ctx->digest_length);
 	}
@@ -714,7 +734,12 @@ enqueue_one_chain_job_gen1(struct qat_sym_session *ctx,
 	/* Then check if digest-encrypted conditions are met */
 	if (((auth_param->auth_off + auth_param->auth_len <
 		cipher_param->cipher_offset + cipher_param->cipher_length) &&
-			(digest->iova == auth_iova_end)) || ctx->bpi_ctx) {
+			(digest->iova == auth_iova_end)) ||
+#ifdef RTE_QAT_OPENSSL
+			ctx->bpi_ctx) {
+#else
+			ctx->mb_mgr) {
+#endif
 		/* Handle partial digest encryption */
 		if (cipher_param->cipher_offset + cipher_param->cipher_length <
 			auth_param->auth_off + auth_param->auth_len +
