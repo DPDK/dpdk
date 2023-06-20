@@ -110,13 +110,14 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct rte_flow_action_queue *act_q = NULL;
 	const struct rte_flow_action_port_id *port_act;
-	const struct rte_flow_action_queue *act_q;
 	struct roc_npc *roc_npc_src = &dev->npc;
 	struct rte_eth_dev *portid_eth_dev;
 	char if_name[RTE_ETH_NAME_MAX_LEN];
 	struct cnxk_eth_dev *hw_dst;
 	struct roc_npc *roc_npc_dst;
+	bool is_vf_action = false;
 	int i = 0, rc = 0;
 	int rq;
 
@@ -150,6 +151,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_VF:
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_VF;
 			in_actions[i].conf = actions->conf;
+			is_vf_action = true;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
@@ -183,13 +185,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			act_q = (const struct rte_flow_action_queue *)
-					actions->conf;
-			rq = act_q->index;
-			if (rq >= eth_dev->data->nb_rx_queues) {
-				plt_npc_dbg("Invalid queue index");
-				goto err_exit;
-			}
+			act_q = (const struct rte_flow_action_queue *)actions->conf;
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_QUEUE;
 			in_actions[i].conf = actions->conf;
 			break;
@@ -233,6 +229,14 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			goto err_exit;
 		}
 		i++;
+	}
+
+	if (!is_vf_action && act_q) {
+		rq = act_q->index;
+		if (rq >= eth_dev->data->nb_rx_queues) {
+			plt_npc_dbg("Invalid queue index");
+			goto err_exit;
+		}
 	}
 	in_actions[i].type = ROC_NPC_ACTION_TYPE_END;
 	return 0;
