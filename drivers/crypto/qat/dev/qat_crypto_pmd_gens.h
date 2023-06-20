@@ -625,6 +625,12 @@ enqueue_one_auth_job_gen1(struct qat_sym_session *ctx,
 		rte_memcpy(cipher_param->u.cipher_IV_array, auth_iv->va,
 				ctx->auth_iv.length);
 		break;
+	case ICP_QAT_HW_AUTH_ALGO_SM3:
+		if (ctx->auth_mode == ICP_QAT_HW_AUTH_MODE0)
+			auth_param->u1.aad_adr = 0;
+		else
+			auth_param->u1.aad_adr = ctx->prefix_paddr;
+		break;
 	default:
 		break;
 	}
@@ -677,6 +683,12 @@ enqueue_one_chain_job_gen1(struct qat_sym_session *ctx,
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_SM3:
+		if (ctx->auth_mode == ICP_QAT_HW_AUTH_MODE0)
+			auth_param->u1.aad_adr = 0;
+		else
+			auth_param->u1.aad_adr = ctx->prefix_paddr;
 		break;
 	default:
 		break;

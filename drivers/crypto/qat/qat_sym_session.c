@@ -127,11 +127,12 @@ qat_sym_cd_crc_set(struct qat_sym_session *cdesc,
 
 static int
 qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
-						const uint8_t *authkey,
-						uint32_t authkeylen,
-						uint32_t aad_length,
-						uint32_t digestsize,
-						unsigned int operation);
+	const uint8_t *authkey,
+	uint32_t authkeylen,
+	uint32_t aad_length,
+	uint32_t digestsize,
+	unsigned int operation,
+	enum qat_device_gen qat_dev_gen);
 
 static void
 qat_sym_session_init_common_hdr(struct qat_sym_session *session);
@@ -572,6 +573,8 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 	/* Set context descriptor physical address */
 	session->cd_paddr = session_paddr +
 			offsetof(struct qat_sym_session, cd);
+	session->prefix_paddr = session_paddr +
+			offsetof(struct qat_sym_session, prefix_state);
 
 	session->dev_id = internals->dev_id;
 	session->qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_NONE;
@@ -750,6 +753,10 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SM3;
 		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
 		break;
+	case RTE_CRYPTO_AUTH_SM3_HMAC:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SM3;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE2;
+		break;
 	case RTE_CRYPTO_AUTH_SHA1:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA1;
 		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
@@ -875,7 +882,8 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 						key_length,
 						0,
 						auth_xform->digest_length,
-						auth_xform->op))
+						auth_xform->op,
+						qat_dev_gen))
 				return -EINVAL;
 		} else {
 			session->qat_cmd = ICP_QAT_FW_LA_CMD_HASH_CIPHER;
@@ -890,7 +898,8 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 					key_length,
 					0,
 					auth_xform->digest_length,
-					auth_xform->op))
+					auth_xform->op,
+					qat_dev_gen))
 				return -EINVAL;
 
 			if (qat_sym_cd_cipher_set(session,
@@ -904,7 +913,8 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				key_length,
 				0,
 				auth_xform->digest_length,
-				auth_xform->op))
+				auth_xform->op,
+				qat_dev_gen))
 			return -EINVAL;
 	}
 
@@ -1010,7 +1020,8 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 					aead_xform->key.length,
 					aead_xform->aad_length,
 					aead_xform->digest_length,
-					crypto_operation))
+					crypto_operation,
+					qat_dev_gen))
 			return -EINVAL;
 	} else {
 		session->qat_dir = ICP_QAT_HW_CIPHER_DECRYPT;
@@ -1027,7 +1038,8 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 					aead_xform->key.length,
 					aead_xform->aad_length,
 					aead_xform->digest_length,
-					crypto_operation))
+					crypto_operation,
+					qat_dev_gen))
 			return -EINVAL;
 
 		if (qat_sym_cd_cipher_set(session,
@@ -1196,6 +1208,8 @@ static int qat_hash_get_block_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum block size in this case */
 		return SHA512_CBLOCK;
+	case ICP_QAT_HW_AUTH_ALGO_SM3:
+		return QAT_SM3_BLOCK_SIZE;
 	default:
 		QAT_LOG(ERR, "invalid hash alg %u", qat_hash_alg);
 		return -EFAULT;
@@ -2076,13 +2090,14 @@ int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,
 }
 
 int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
-						const uint8_t *authkey,
-						uint32_t authkeylen,
-						uint32_t aad_length,
-						uint32_t digestsize,
-						unsigned int operation)
+		const uint8_t *authkey,
+		uint32_t authkeylen,
+		uint32_t aad_length,
+		uint32_t digestsize,
+		unsigned int operation,
+		enum qat_device_gen qat_dev_gen)
 {
-	struct icp_qat_hw_auth_setup *hash;
+	struct icp_qat_hw_auth_setup *hash, *hash_2 = NULL;
 	struct icp_qat_hw_cipher_algo_blk *cipherconfig;
 	struct icp_qat_fw_la_bulk_req *req_tmpl = &cdesc->fw_req;
 	struct icp_qat_fw_comn_req_hdr_cd_pars *cd_pars = &req_tmpl->cd_pars;
@@ -2098,6 +2113,7 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 	uint32_t *aad_len = NULL;
 	uint32_t wordIndex  = 0;
 	uint32_t *pTempKey;
+	uint8_t *prefix = NULL;
 	int ret = 0;
 
 	if (cdesc->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH) {
@@ -2148,6 +2164,7 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SM3
 		|| cdesc->is_cnt_zero
 			)
 		hash->auth_counter.counter = 0;
@@ -2159,6 +2176,7 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		hash->auth_counter.counter = rte_bswap32(block_size);
 	}
 
+	hash_cd_ctrl->hash_cfg_offset = hash_offset >> 3;
 	cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_auth_setup);
 	switch (cdesc->qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SM3:
@@ -2167,6 +2185,48 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		state1_size = qat_hash_get_state1_size(
 				cdesc->qat_hash_alg);
 		state2_size = ICP_QAT_HW_SM3_STATE2_SZ;
+		if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0)
+			break;
+		hash_2 = (struct icp_qat_hw_auth_setup *)(cdesc->cd_cur_ptr +
+			state1_size + state2_size);
+		hash_2->auth_config.config =
+			ICP_QAT_HW_AUTH_CONFIG_BUILD(ICP_QAT_HW_AUTH_MODE2,
+				cdesc->qat_hash_alg, digestsize);
+		rte_memcpy(cdesc->cd_cur_ptr + state1_size + state2_size +
+			sizeof(*hash_2), sm3InitialState,
+			sizeof(sm3InitialState));
+		hash_cd_ctrl->inner_state1_sz = state1_size;
+		hash_cd_ctrl->inner_state2_sz  = state2_size;
+		hash_cd_ctrl->inner_state2_offset =
+			hash_cd_ctrl->hash_cfg_offset +
+			((sizeof(struct icp_qat_hw_auth_setup) +
+			RTE_ALIGN_CEIL(hash_cd_ctrl->inner_state1_sz, 8)) >> 3);
+		hash_cd_ctrl->outer_config_offset =
+			hash_cd_ctrl->inner_state2_offset +
+			((hash_cd_ctrl->inner_state2_sz) >> 3);
+		hash_cd_ctrl->outer_state1_sz = state1_size;
+		hash_cd_ctrl->outer_res_sz = state2_size;
+		hash_cd_ctrl->outer_prefix_sz =
+			qat_hash_get_block_size(cdesc->qat_hash_alg);
+		hash_cd_ctrl->outer_prefix_offset =
+			qat_hash_get_block_size(cdesc->qat_hash_alg) >> 3;
+		auth_param->u2.inner_prefix_sz =
+			qat_hash_get_block_size(cdesc->qat_hash_alg);
+		auth_param->hash_state_sz = digestsize;
+		if (qat_dev_gen == QAT_GEN4) {
+			ICP_QAT_FW_HASH_FLAG_MODE2_SET(
+				hash_cd_ctrl->hash_flags,
+				QAT_FW_LA_MODE2);
+		} else {
+			hash_cd_ctrl->hash_flags |=
+				ICP_QAT_FW_AUTH_HDR_FLAG_DO_NESTED;
+		}
+		prefix = cdesc->prefix_state;
+		rte_memcpy(prefix, authkey, authkeylen);
+		rte_memcpy(prefix + QAT_PREFIX_SIZE, authkey,
+			authkeylen);
+		cd_extra_size += sizeof(struct icp_qat_hw_auth_setup) +
+			state1_size + state2_size;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
 		if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0) {
@@ -2527,8 +2587,7 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 	}
 
 	/* Auth CD config setup */
-	hash_cd_ctrl->hash_cfg_offset = hash_offset >> 3;
-	hash_cd_ctrl->hash_flags = ICP_QAT_FW_AUTH_HDR_FLAG_NO_NESTED;
+	hash_cd_ctrl->hash_flags |= ICP_QAT_FW_AUTH_HDR_FLAG_NO_NESTED;
 	hash_cd_ctrl->inner_state1_sz = state1_size;
 	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
 		hash_cd_ctrl->inner_res_sz = 4;
@@ -2545,13 +2604,10 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 			((sizeof(struct icp_qat_hw_auth_setup) +
 			 RTE_ALIGN_CEIL(hash_cd_ctrl->inner_state1_sz, 8))
 					>> 3);
-
 	cdesc->cd_cur_ptr += state1_size + state2_size + cd_extra_size;
 	cd_size = cdesc->cd_cur_ptr-(uint8_t *)&cdesc->cd;
-
 	cd_pars->u.s.content_desc_addr = cdesc->cd_paddr;
 	cd_pars->u.s.content_desc_params_sz = RTE_ALIGN_CEIL(cd_size, 8) >> 3;
-
 	return 0;
 }
 
@@ -2857,6 +2913,8 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 	/* Set context descriptor physical address */
 	session->cd_paddr = session_paddr +
 			offsetof(struct qat_sym_session, cd);
+	session->prefix_paddr = session_paddr +
+			offsetof(struct qat_sym_session, prefix_state);
 
 	/* Get requested QAT command id - should be cipher */
 	qat_cmd_id = qat_get_cmd_id(xform);

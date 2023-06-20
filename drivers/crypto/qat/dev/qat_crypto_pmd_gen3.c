@@ -159,6 +159,10 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen3[] = {
 	QAT_SYM_PLAIN_AUTH_CAP(SM3,
 		CAP_SET(block_size, 64),
 		CAP_RNG(digest_size, 32, 32, 0)),
+	QAT_SYM_AUTH_CAP(SM3_HMAC,
+		CAP_SET(block_size, 64),
+		CAP_RNG(key_size, 16, 64, 4), CAP_RNG(digest_size, 32, 32, 0),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 

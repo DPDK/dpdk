@@ -148,6 +148,7 @@ New Features
 * **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 
   * Added support for combined Cipher-CRC offload for DOCSIS for QAT GENs 2,3 and 4.
+  * Added support for SM3-HMAC algorithm for QAT GENs 3 and 4.
 
 * **Updated Marvell cnxk crypto driver.**
 

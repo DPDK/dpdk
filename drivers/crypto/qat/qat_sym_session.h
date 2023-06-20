@@ -56,8 +56,13 @@
 #define QAT_CRYPTO_SLICE_UCS	2
 #define QAT_CRYPTO_SLICE_WCP	4
 
+#define QAT_PREFIX_SIZE		64
+#define QAT_PREFIX_TBL_SIZE	((QAT_PREFIX_SIZE) * 2)
+
 #define QAT_SESSION_IS_SLICE_SET(flags, flag)	\
 	(!!((flags) & (flag)))
+
+#define QAT_SM3_BLOCK_SIZE	64
 
 enum qat_sym_proto_flag {
 	QAT_CRYPTO_PROTO_FLAG_NONE = 0,
@@ -98,8 +103,10 @@ struct qat_sym_session {
 	enum icp_qat_hw_auth_mode auth_mode;
 	void *bpi_ctx;
 	struct qat_sym_cd cd;
+	uint8_t prefix_state[QAT_PREFIX_TBL_SIZE] __rte_cache_aligned;
 	uint8_t *cd_cur_ptr;
 	phys_addr_t cd_paddr;
+	phys_addr_t prefix_paddr;
 	struct icp_qat_fw_la_bulk_req fw_req;
 	uint8_t aad_len;
 	struct qat_crypto_instance *inst;
