@@ -72,16 +72,40 @@ struct mlx5_crypto_devarg_params {
 };
 
 struct mlx5_crypto_session {
-	uint32_t bs_bpt_eo_es;
-	/**< bsf_size, bsf_p_type, encryption_order and encryption standard,
-	 * saved in big endian format.
-	 */
-	uint32_t bsp_res;
-	/**< crypto_block_size_pointer and reserved 24 bits saved in big
-	 * endian format.
-	 */
+	union {
+		/**< AES-XTS configuration. */
+		struct {
+			uint32_t bs_bpt_eo_es;
+			/**< bsf_size, bsf_p_type, encryption_order and encryption standard,
+			 * saved in big endian format.
+			 */
+			uint32_t bsp_res;
+			/**< crypto_block_size_pointer and reserved 24 bits saved in big
+			 * endian format.
+			 */
+		};
+		/**< AES-GCM configuration. */
+		struct {
+			uint32_t mmo_ctrl;
+			/**< Crypto control fields with algo type and op type in big
+			 * endian format.
+			 */
+			uint32_t wqe_aad_len;
+			/**< Crypto AAD length field in big endian format. */
+			uint32_t wqe_tag_len;
+			/**< Crypto tag length field in big endian format. */
+			uint16_t tag_len;
+			/**< AES-GCM crypto digest size in bytes. */
+			uint16_t aad_len;
+			/**< The length of the additional authenticated data (AAD) in bytes. */
+			uint32_t op_type;
+			/**< Operation type. */
+		};
+	};
 	uint32_t iv_offset:16;
 	/**< Starting point for Initialisation Vector. */
+	uint32_t iv_len;
+	/**< Initialisation Vector length. */
 	struct mlx5_crypto_dek *dek; /**< Pointer to dek struct. */
 	uint32_t dek_id; /**< DEK ID */
 } __rte_packed;
