@@ -2185,12 +2185,14 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 
 	if (zsk_flag && sess->roc_se_ctx.auth_then_ciph) {
 		struct rte_crypto_cipher_xform *c_form;
-		c_form = &xform->next->cipher;
-		if (c_form->op != RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
-		    a_form->op != RTE_CRYPTO_AUTH_OP_GENERATE) {
-			plt_dp_err("Crypto: PDCP auth then cipher must use"
-				   " options: encrypt and generate");
-			return -EINVAL;
+		if (xform->next != NULL) {
+			c_form = &xform->next->cipher;
+			if ((c_form != NULL) && (c_form->op != RTE_CRYPTO_CIPHER_OP_ENCRYPT) &&
+			    a_form->op != RTE_CRYPTO_AUTH_OP_GENERATE) {
+				plt_dp_err("Crypto: PDCP auth then cipher must use"
+					   " options: encrypt and generate");
+				return -EINVAL;
+			}
 		}
 	}
 
