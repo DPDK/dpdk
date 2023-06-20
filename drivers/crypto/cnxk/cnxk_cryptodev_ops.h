@@ -13,6 +13,7 @@
 #include "roc_constants.h"
 #include "roc_cpt.h"
 #include "roc_cpt_sg.h"
+#include "roc_errata.h"
 #include "roc_se.h"
 
 #define CNXK_CPT_MIN_HEADROOM_REQ	 32
@@ -179,5 +180,12 @@ alloc_op_meta(struct roc_se_buf_ptr *buf, int32_t len, struct rte_mempool *cpt_m
 	infl_req->op_flags |= CPT_OP_FLAGS_METABUF;
 
 	return mdata;
+}
+
+static __rte_always_inline bool
+hw_ctx_cache_enable(void)
+{
+	return roc_errata_cpt_hang_on_mixed_ctx_val() || roc_model_is_cn10ka_b0() ||
+	       roc_model_is_cn10kb_a0();
 }
 #endif /* _CNXK_CRYPTODEV_OPS_H_ */
