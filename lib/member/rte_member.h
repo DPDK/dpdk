@@ -313,6 +313,7 @@ struct rte_member_parameters {
 	 * for bucket location.
 	 * For vBF type, these two hashes and their combinations are used as
 	 * hash locations to index the bit array.
+	 * For Sketch type, these seeds are not used.
 	 */
 	uint32_t prim_hash_seed;
 
