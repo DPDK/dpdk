@@ -122,6 +122,9 @@ static s32 igc_init_mac_params_i225(struct igc_hw *hw)
 
 	mac->ops.write_vfta = igc_write_vfta_generic;
 
+	/* Disable EEE by default */
+	dev_spec->eee_disable = true;
+
 	return IGC_SUCCESS;
 }
 
@@ -1243,6 +1246,7 @@ s32 igc_init_hw_i225(struct igc_hw *hw)
 
 	hw->phy.ops.get_cfg_done = igc_get_cfg_done_i225;
 	ret_val = igc_init_hw_base(hw);
+	igc_set_eee_i225(hw, false, false, false);
 	return ret_val;
 }
 
