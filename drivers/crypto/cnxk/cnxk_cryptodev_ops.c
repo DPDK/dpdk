@@ -660,7 +660,7 @@ cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
 
 	/* Set the engine group */
 	if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3 || sess->is_sm3 ||
-	    sess->passthrough)
+	    sess->passthrough || sess->is_sm4)
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
 	else
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
@@ -703,6 +703,9 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 			break;
 		case ROC_SE_PDCP_CHAIN:
 			thr_type = CPT_DP_THREAD_TYPE_PDCP_CHAIN;
+			break;
+		case ROC_SE_SM:
+			thr_type = CPT_DP_THREAD_TYPE_SM;
 			break;
 		default:
 			plt_err("Invalid op type");

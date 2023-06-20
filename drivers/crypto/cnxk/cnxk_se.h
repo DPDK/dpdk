@@ -23,6 +23,7 @@ enum cpt_dp_thread_type {
 	CPT_DP_THREAD_TYPE_PDCP,
 	CPT_DP_THREAD_TYPE_PDCP_CHAIN,
 	CPT_DP_THREAD_TYPE_KASUMI,
+	CPT_DP_THREAD_TYPE_SM,
 	CPT_DP_THREAD_AUTH_ONLY,
 	CPT_DP_THREAD_GENERIC,
 	CPT_DP_THREAD_TYPE_PT,
@@ -49,7 +50,8 @@ struct cnxk_se_sess {
 	uint8_t short_iv : 1;
 	uint8_t is_sm3 : 1;
 	uint8_t passthrough : 1;
-	uint8_t rsvd : 4;
+	uint8_t is_sm4 : 1;
+	uint8_t rsvd : 3;
 	uint8_t mac_len;
 	uint8_t iv_length;
 	uint8_t auth_iv_length;
@@ -1043,6 +1045,100 @@ pdcp_chain_sg2_prep(struct roc_se_fc_params *params, struct roc_se_ctx *cpt_ctx,
 }
 
 static __rte_always_inline int
+cpt_sm_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_params *fc_params,
+	    struct cpt_inst_s *inst, const bool is_sg_ver2, int decrypt)
+{
+	int32_t inputlen, outputlen, enc_dlen;
+	union cpt_inst_w4 cpt_inst_w4;
+	uint32_t passthrough_len = 0;
+	struct roc_se_ctx *se_ctx;
+	uint32_t encr_data_len;
+	uint32_t encr_offset;
+	uint64_t offset_ctrl;
+	uint8_t iv_len = 16;
+	uint8_t *src = NULL;
+	void *offset_vaddr;
+	int ret;
+
+	encr_offset = ROC_SE_ENCR_OFFSET(d_offs);
+	encr_data_len = ROC_SE_ENCR_DLEN(d_lens);
+
+	se_ctx = fc_params->ctx;
+	cpt_inst_w4.u64 = se_ctx->template_w4.u64;
+
+	if (unlikely(!(flags & ROC_SE_VALID_IV_BUF)))
+		iv_len = 0;
+
+	encr_offset += iv_len;
+	enc_dlen = encr_data_len + encr_offset;
+	enc_dlen = RTE_ALIGN_CEIL(encr_data_len, 8) + encr_offset;
+
+	inputlen = enc_dlen;
+	outputlen = enc_dlen;
+
+	cpt_inst_w4.s.param1 = encr_data_len;
+
+	if (unlikely(encr_offset >> 8)) {
+		plt_dp_err("Offset not supported");
+		plt_dp_err("enc_offset: %d", encr_offset);
+		return -1;
+	}
+
+	offset_ctrl = rte_cpu_to_be_64((uint64_t)encr_offset);
+
+	/*
+	 * In cn9k, cn10k since we have a limitation of
+	 * IV & Offset control word not part of instruction
+	 * and need to be part of Data Buffer, we check if
+	 * head room is there and then only do the Direct mode processing
+	 */
+	if (likely((flags & ROC_SE_SINGLE_BUF_INPLACE) && (flags & ROC_SE_SINGLE_BUF_HEADROOM))) {
+		void *dm_vaddr = fc_params->bufs[0].vaddr;
+
+		/* Use Direct mode */
+
+		offset_vaddr = PLT_PTR_SUB(dm_vaddr, ROC_SE_OFF_CTRL_LEN + iv_len);
+		*(uint64_t *)offset_vaddr = offset_ctrl;
+
+		/* DPTR */
+		inst->dptr = (uint64_t)offset_vaddr;
+
+		/* RPTR should just exclude offset control word */
+		inst->rptr = (uint64_t)dm_vaddr - iv_len;
+
+		cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
+
+		if (likely(iv_len)) {
+			void *dst = PLT_PTR_ADD(offset_vaddr, ROC_SE_OFF_CTRL_LEN);
+			uint64_t *src = fc_params->iv_buf;
+
+			rte_memcpy(dst, src, 16);
+		}
+		inst->w4.u64 = cpt_inst_w4.u64;
+	} else {
+		if (likely(iv_len))
+			src = fc_params->iv_buf;
+
+		inst->w4.u64 = cpt_inst_w4.u64;
+
+		if (is_sg_ver2)
+			ret = sg2_inst_prep(fc_params, inst, offset_ctrl, src, iv_len, 0, 0,
+					    inputlen, outputlen, passthrough_len, flags, 0,
+					    decrypt);
+		else
+			ret = sg_inst_prep(fc_params, inst, offset_ctrl, src, iv_len, 0, 0,
+					   inputlen, outputlen, passthrough_len, flags, 0, decrypt);
+
+		if (unlikely(ret)) {
+			plt_dp_err("sg prep failed");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static __rte_always_inline int
 cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		  struct roc_se_fc_params *fc_params, struct cpt_inst_s *inst,
 		  const bool is_sg_ver2)
@@ -1883,6 +1979,71 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 }
 
 static __rte_always_inline int
+fill_sm_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
+{
+	struct roc_se_sm_context *sm_ctx = &sess->roc_se_ctx.se_ctx.sm_ctx;
+	struct rte_crypto_cipher_xform *c_form;
+	roc_sm_cipher_type enc_type = 0;
+
+	c_form = &xform->cipher;
+
+	if (c_form->op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+		sess->cpt_op |= ROC_SE_OP_CIPHER_ENCRYPT;
+		sess->roc_se_ctx.template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_ENCRYPT;
+	} else if (c_form->op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
+		sess->cpt_op |= ROC_SE_OP_CIPHER_DECRYPT;
+		sess->roc_se_ctx.template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_DECRYPT;
+	} else {
+		plt_dp_err("Unknown cipher operation\n");
+		return -1;
+	}
+
+	switch (c_form->algo) {
+	case RTE_CRYPTO_CIPHER_SM4_CBC:
+		enc_type = ROC_SM4_CBC;
+		break;
+	case RTE_CRYPTO_CIPHER_SM4_ECB:
+		enc_type = ROC_SM4_ECB;
+		break;
+	case RTE_CRYPTO_CIPHER_SM4_CTR:
+		enc_type = ROC_SM4_CTR;
+		break;
+	case RTE_CRYPTO_CIPHER_SM4_CFB:
+		enc_type = ROC_SM4_CFB;
+		break;
+	case RTE_CRYPTO_CIPHER_SM4_OFB:
+		enc_type = ROC_SM4_OFB;
+		break;
+	default:
+		plt_dp_err("Crypto: Undefined cipher algo %u specified", c_form->algo);
+		return -1;
+	}
+
+	sess->iv_offset = c_form->iv.offset;
+	sess->iv_length = c_form->iv.length;
+
+	if (c_form->key.length != ROC_SE_SM4_KEY_LEN) {
+		plt_dp_err("Invalid cipher params keylen %u", c_form->key.length);
+		return -1;
+	}
+
+	sess->zsk_flag = 0;
+	sess->zs_cipher = 0;
+	sess->aes_gcm = 0;
+	sess->aes_ctr = 0;
+	sess->is_null = 0;
+	sess->is_sm4 = 1;
+	sess->roc_se_ctx.fc_type = ROC_SE_SM;
+
+	sess->roc_se_ctx.template_w4.s.opcode_major = ROC_SE_MAJOR_OP_SM;
+
+	memcpy(sm_ctx->encr_key, c_form->key.data, ROC_SE_SM4_KEY_LEN);
+	sm_ctx->enc_cipher = enc_type;
+
+	return 0;
+}
+
+static __rte_always_inline int
 fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 {
 	uint8_t zsk_flag = 0, zs_cipher = 0, aes_ctr = 0, is_null = 0;
@@ -1891,6 +2052,13 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	uint32_t cipher_key_len = 0;
 
 	c_form = &xform->cipher;
+
+	if ((c_form->algo == RTE_CRYPTO_CIPHER_SM4_CBC) ||
+	    (c_form->algo == RTE_CRYPTO_CIPHER_SM4_ECB) ||
+	    (c_form->algo == RTE_CRYPTO_CIPHER_SM4_CTR) ||
+	    (c_form->algo == RTE_CRYPTO_CIPHER_SM4_CFB) ||
+	    (c_form->algo == RTE_CRYPTO_CIPHER_SM4_OFB))
+		return fill_sm_sess_cipher(xform, sess);
 
 	if (c_form->op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
 		sess->cpt_op |= ROC_SE_OP_CIPHER_ENCRYPT;
@@ -2360,6 +2528,110 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 
 	iovec->buf_cnt = index;
 	return;
+}
+
+static __rte_always_inline int
+fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
+	       struct cpt_qp_meta_info *m_info, struct cpt_inflight_req *infl_req,
+	       struct cpt_inst_s *inst, const bool is_sg_ver2)
+{
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct roc_se_fc_params fc_params;
+	struct rte_mbuf *m_src, *m_dst;
+	uint8_t cpt_op = sess->cpt_op;
+	uint64_t d_offs, d_lens;
+	char src[SRC_IOV_SIZE];
+	char dst[SRC_IOV_SIZE];
+	void *mdata = NULL;
+#ifdef CPT_ALWAYS_USE_SG_MODE
+	uint8_t inplace = 0;
+#else
+	uint8_t inplace = 1;
+#endif
+	uint32_t flags = 0;
+	int ret;
+
+	uint32_t ci_data_length = sym_op->cipher.data.length;
+	uint32_t ci_data_offset = sym_op->cipher.data.offset;
+
+	fc_params.cipher_iv_len = sess->iv_length;
+	fc_params.auth_iv_len = 0;
+	fc_params.auth_iv_buf = NULL;
+	fc_params.iv_buf = NULL;
+	fc_params.mac_buf.size = 0;
+	fc_params.mac_buf.vaddr = 0;
+
+	if (likely(sess->iv_length)) {
+		flags |= ROC_SE_VALID_IV_BUF;
+		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset);
+	}
+
+	m_src = sym_op->m_src;
+	m_dst = sym_op->m_dst;
+
+	d_offs = ci_data_offset;
+	d_offs = (d_offs << 16);
+
+	d_lens = ci_data_length;
+	d_lens = (d_lens << 32);
+
+	fc_params.ctx = &sess->roc_se_ctx;
+
+	if (likely(!m_dst && inplace)) {
+		fc_params.dst_iov = fc_params.src_iov = (void *)src;
+
+		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
+
+	} else {
+		/* Out of place processing */
+		fc_params.src_iov = (void *)src;
+		fc_params.dst_iov = (void *)dst;
+
+		/* Store SG I/O in the api for reuse */
+		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0)) {
+			plt_dp_err("Prepare src iov failed");
+			ret = -EINVAL;
+			goto err_exit;
+		}
+
+		if (unlikely(m_dst != NULL)) {
+			if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
+				plt_dp_err("Prepare dst iov failed for m_dst %p", m_dst);
+				ret = -EINVAL;
+				goto err_exit;
+			}
+		} else {
+			fc_params.dst_iov = (void *)src;
+		}
+	}
+
+	fc_params.meta_buf.vaddr = NULL;
+
+	if (unlikely(!((flags & ROC_SE_SINGLE_BUF_INPLACE) &&
+		       (flags & ROC_SE_SINGLE_BUF_HEADROOM)))) {
+		mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
+		if (mdata == NULL) {
+			plt_dp_err("Error allocating meta buffer for request");
+			return -ENOMEM;
+		}
+	}
+
+	/* Finally prepare the instruction */
+	ret = cpt_sm_prep(flags, d_offs, d_lens, &fc_params, inst, is_sg_ver2,
+			  !(cpt_op & ROC_SE_OP_ENCODE));
+
+	if (unlikely(ret)) {
+		plt_dp_err("Preparing request failed due to bad input arg");
+		goto free_mdata_and_exit;
+	}
+
+	return 0;
+
+free_mdata_and_exit:
+	if (infl_req->op_flags & CPT_OP_FLAGS_METABUF)
+		rte_mempool_put(m_info->pool, infl_req->mdata);
+err_exit:
+	return ret;
 }
 
 static __rte_always_inline int
@@ -3051,6 +3323,10 @@ cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cnxk_
 		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst, true, false,
 				     is_sg_ver2);
 		break;
+	case CPT_DP_THREAD_TYPE_SM:
+		ret = fill_sm_params(op, sess, &qp->meta_info, infl_req, inst, is_sg_ver2);
+		break;
+
 	case CPT_DP_THREAD_AUTH_ONLY:
 		ret = fill_digest_params(op, sess, &qp->meta_info, infl_req, inst, is_sg_ver2);
 		break;

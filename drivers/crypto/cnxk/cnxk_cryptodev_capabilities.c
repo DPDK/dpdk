@@ -1049,6 +1049,109 @@ static const struct rte_cryptodev_capabilities caps_null[] = {
 	},
 };
 
+static const struct rte_cryptodev_capabilities caps_sm4[] = {
+	{	/* SM4 CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_CBC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* SM4 ECB */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_ECB,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* SM4 CTR */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_CTR,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* SM4 OFB */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_OFB,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* SM4 CFB */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_CFB,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+};
+
 static const struct rte_cryptodev_capabilities caps_end[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
@@ -1513,9 +1616,13 @@ cn9k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos
 }
 
 static void
-cn10k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos)
+cn10k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[],
+		     union cpt_eng_caps *hw_caps, int *cur_pos)
 {
-	cpt_caps_add(cnxk_caps, cur_pos, caps_sm3, RTE_DIM(caps_sm3));
+	if (hw_caps->sg_ver2) {
+		CPT_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, sm3);
+		CPT_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, sm4);
+	}
 }
 
 static void
@@ -1537,7 +1644,7 @@ crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 		cn9k_crypto_caps_add(cnxk_caps, &cur_pos);
 
 	if (roc_model_is_cn10k())
-		cn10k_crypto_caps_add(cnxk_caps, &cur_pos);
+		cn10k_crypto_caps_add(cnxk_caps, hw_caps, &cur_pos);
 
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_null, RTE_DIM(caps_null));
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));

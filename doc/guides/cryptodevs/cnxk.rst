@@ -41,6 +41,7 @@ Cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_KASUMI_F8``
 * ``RTE_CRYPTO_CIPHER_SNOW3G_UEA2``
 * ``RTE_CRYPTO_CIPHER_ZUC_EEA3``
+* ``RTE_CRYPTO_CIPHER_SM4``
 
 Hash algorithms:
 

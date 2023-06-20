@@ -757,6 +757,9 @@ roc_se_ctx_init(struct roc_se_ctx *roc_se_ctx)
 	case ROC_SE_PDCP_CHAIN:
 		ctx_len = sizeof(struct roc_se_zuc_snow3g_chain_ctx);
 		break;
+	case ROC_SE_SM:
+		ctx_len = sizeof(struct roc_se_sm_context);
+		break;
 	default:
 		ctx_len = 0;
 	}

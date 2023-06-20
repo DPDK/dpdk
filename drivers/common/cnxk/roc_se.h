@@ -17,6 +17,7 @@
 #define ROC_SE_MAJOR_OP_PDCP	   0x37
 #define ROC_SE_MAJOR_OP_KASUMI	   0x38
 #define ROC_SE_MAJOR_OP_PDCP_CHAIN 0x3C
+#define ROC_SE_MAJOR_OP_SM	   0x3D
 
 #define ROC_SE_MAJOR_OP_MISC		 0x01ULL
 #define ROC_SE_MISC_MINOR_OP_PASSTHROUGH 0x03ULL
@@ -28,6 +29,8 @@
 
 #define ROC_SE_OFF_CTRL_LEN 8
 
+#define ROC_SE_SM4_KEY_LEN 16
+
 #define ROC_SE_ZS_EA 0x1
 #define ROC_SE_ZS_IA 0x2
 #define ROC_SE_K_F8  0x4
@@ -38,6 +41,7 @@
 #define ROC_SE_KASUMI	  0x3
 #define ROC_SE_HASH_HMAC  0x4
 #define ROC_SE_PDCP_CHAIN 0x5
+#define ROC_SE_SM	  0x6
 
 #define ROC_SE_OP_CIPHER_ENCRYPT 0x1
 #define ROC_SE_OP_CIPHER_DECRYPT 0x2
@@ -126,6 +130,14 @@ typedef enum {
 } roc_se_cipher_type;
 
 typedef enum {
+	ROC_SM4_ECB = 0x0,
+	ROC_SM4_CBC = 0x1,
+	ROC_SM4_CTR = 0x2,
+	ROC_SM4_CFB = 0x3,
+	ROC_SM4_OFB = 0x4,
+} roc_sm_cipher_type;
+
+typedef enum {
 	/* Microcode errors */
 	ROC_SE_NO_ERR = 0x00,
 	ROC_SE_ERR_OPCODE_UNSUPPORTED = 0x01,
@@ -190,6 +202,13 @@ struct roc_se_hmac_context {
 struct roc_se_context {
 	struct roc_se_enc_context enc;
 	struct roc_se_hmac_context hmac;
+};
+
+struct roc_se_sm_context {
+	uint64_t rsvd_56_60 : 5;
+	uint64_t enc_cipher : 3;
+	uint64_t rsvd_0_55 : 56;
+	uint8_t encr_key[16];
 };
 
 struct roc_se_otk_zuc_ctx {
@@ -325,6 +344,7 @@ struct roc_se_ctx {
 			struct roc_se_zuc_snow3g_ctx zs_ctx;
 			struct roc_se_zuc_snow3g_chain_ctx zs_ch_ctx;
 			struct roc_se_kasumi_ctx k_ctx;
+			struct roc_se_sm_context sm_ctx;
 		};
 	} se_ctx __plt_aligned(ROC_ALIGN);
 	uint8_t *auth_key;
