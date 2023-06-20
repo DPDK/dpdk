@@ -19,6 +19,7 @@
 #include "nfp6000/nfp6000.h"
 #include "nfp6000/nfp_xpb.h"
 #include "nfp_nffw.h"
+#include "../nfp_logs.h"
 
 #define NFP_PL_DEVICE_ID                        0x00000004
 #define NFP_PL_DEVICE_ID_MASK                   0xff
@@ -118,6 +119,36 @@ nfp_cpp_area_name(struct nfp_cpp_area *cpp_area)
 	return cpp_area->name;
 }
 
+#define NFP_IMB_TGTADDRESSMODECFG_MODE_of(_x)       (((_x) >> 13) & 0x7)
+#define NFP_IMB_TGTADDRESSMODECFG_ADDRMODE          RTE_BIT32(12)
+
+static int
+nfp_cpp_set_mu_locality_lsb(struct nfp_cpp *cpp)
+{
+	int ret;
+	int mode;
+	int addr40;
+	uint32_t imbcppat;
+
+	imbcppat = cpp->imb_cat_table[NFP_CPP_TARGET_MU];
+	mode = NFP_IMB_TGTADDRESSMODECFG_MODE_of(imbcppat);
+	addr40 = imbcppat & NFP_IMB_TGTADDRESSMODECFG_ADDRMODE;
+
+	ret = nfp_cppat_mu_locality_lsb(mode, addr40);
+	if (ret < 0)
+		return ret;
+
+	cpp->mu_locality_lsb = ret;
+
+	return 0;
+}
+
+uint32_t
+nfp_cpp_mu_locality_lsb(struct nfp_cpp *cpp)
+{
+	return cpp->mu_locality_lsb;
+}
+
 /*
  * nfp_cpp_area_alloc - allocate a new CPP area
  * @cpp:    CPP handle
@@ -141,10 +172,6 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp, uint32_t dest,
 
 	if (!cpp)
 		return NULL;
-
-	/* CPP bus uses only a 40-bit address */
-	if ((address + size) > (1ULL << 40))
-		return NFP_ERRPTR(EFAULT);
 
 	/* Remap from cpp_island to cpp_target */
 	err = nfp_target_cpp(dest, tmp64, &dest, &tmp64, cpp->imb_cat_table);
@@ -588,6 +615,13 @@ nfp_cpp_alloc(struct rte_pci_device *dev, int driver_lock_needed)
 		}
 	}
 
+	err = nfp_cpp_set_mu_locality_lsb(cpp);
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "Can't calculate MU locality bit offset");
+		free(cpp);
+		return NULL;
+	}
+
 	return cpp;
 }
 
@@ -819,8 +853,7 @@ __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model)
 /*
  * nfp_cpp_map_area() - Helper function to map an area
  * @cpp:    NFP CPP handler
- * @domain: CPP domain
- * @target: CPP target
+ * @cpp_id: CPP ID
  * @addr:   CPP address
  * @size:   Size of the area
  * @area:   Area handle (output)
@@ -828,18 +861,15 @@ __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model)
  * Map an area of IOMEM access.  To undo the effect of this function call
  * @nfp_cpp_area_release_free(*area).
  *
- * Return: Pointer to memory mapped area or ERR_PTR
+ * Return: Pointer to memory mapped area or NULL
  */
 uint8_t *
-nfp_cpp_map_area(struct nfp_cpp *cpp, int domain, int target, uint64_t addr,
+nfp_cpp_map_area(struct nfp_cpp *cpp, uint32_t cpp_id, uint64_t addr,
 		 unsigned long size, struct nfp_cpp_area **area)
 {
 	uint8_t *res;
-	uint32_t dest;
 
-	dest = NFP_CPP_ISLAND_ID(target, NFP_CPP_ACTION_RW, 0, domain);
-
-	*area = nfp_cpp_area_alloc_acquire(cpp, dest, addr, size);
+	*area = nfp_cpp_area_alloc_acquire(cpp, cpp_id, addr, size);
 	if (!*area)
 		goto err_eio;
 

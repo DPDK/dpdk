@@ -929,6 +929,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	int ret;
 	int err = 0;
 	uint64_t addr;
+	uint32_t cpp_id;
 	struct nfp_cpp *cpp;
 	enum nfp_app_fw_id app_fw_id;
 	struct nfp_pf_dev *pf_dev;
@@ -1028,7 +1029,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto pf_cleanup;
 	}
 
-	pf_dev->hw_queues = nfp_cpp_map_area(pf_dev->cpp, 0, 0,
+	cpp_id = NFP_CPP_ISLAND_ID(0, NFP_CPP_ACTION_RW, 0, 0);
+	pf_dev->hw_queues = nfp_cpp_map_area(pf_dev->cpp, cpp_id,
 			addr, NFP_QCP_QUEUE_AREA_SZ,
 			&pf_dev->hwqueues_area);
 	if (pf_dev->hw_queues == NULL) {
