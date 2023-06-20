@@ -53,7 +53,7 @@ can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zi
 
 For Arm system, ARM64 port of the multi-buffer library can be downloaded from
 `<https://gitlab.arm.com/arm-reference-solutions/ipsec-mb/-/tree/main/>`_. The
-latest version of the library supported by this PMD is tagged as SECLIB-IPSEC-2022.05.25.
+latest version of the library supported by this PMD is tagged as SECLIB-IPSEC-2023.06.20.
 
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK:
