@@ -6,8 +6,6 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-name = 'efd_server'
-
 allow_experimental_apis = true
 deps += 'efd'
 sources += files('args.c', 'init.c', 'main.c')
