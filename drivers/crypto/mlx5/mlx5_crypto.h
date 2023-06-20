@@ -117,4 +117,7 @@ mlx5_crypto_dek_unset(struct mlx5_crypto_priv *priv);
 int
 mlx5_crypto_xts_init(struct mlx5_crypto_priv *priv);
 
+int
+mlx5_crypto_gcm_init(struct mlx5_crypto_priv *priv);
+
 #endif /* MLX5_CRYPTO_H_ */

@@ -335,7 +335,9 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (!cdev->config.hca_attr.crypto || !cdev->config.hca_attr.aes_xts) {
+	if (!cdev->config.hca_attr.crypto ||
+	   (!cdev->config.hca_attr.aes_xts &&
+	    !cdev->config.hca_attr.crypto_mmo.crypto_mmo_qp)) {
 		DRV_LOG(ERR, "Not enough capabilities to support crypto "
 			"operations, maybe old FW/OFED version?");
 		rte_errno = ENOTSUP;

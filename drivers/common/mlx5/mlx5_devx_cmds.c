@@ -1117,6 +1117,21 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->crypto_wrapped_import_method = !!(MLX5_GET(crypto_caps,
 						hcattr, wrapped_import_method)
 						& 1 << 2);
+		attr->crypto_mmo.crypto_mmo_qp = MLX5_GET(crypto_caps, hcattr, crypto_mmo_qp);
+		attr->crypto_mmo.gcm_256_encrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_256_encrypt);
+		attr->crypto_mmo.gcm_128_encrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_128_encrypt);
+		attr->crypto_mmo.gcm_256_decrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_256_decrypt);
+		attr->crypto_mmo.gcm_128_decrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_128_decrypt);
+		attr->crypto_mmo.gcm_auth_tag_128 =
+			MLX5_GET(crypto_caps, hcattr, gcm_auth_tag_128);
+		attr->crypto_mmo.gcm_auth_tag_96 =
+			MLX5_GET(crypto_caps, hcattr, gcm_auth_tag_96);
+		attr->crypto_mmo.log_crypto_mmo_max_size =
+			MLX5_GET(crypto_caps, hcattr, log_crypto_mmo_max_size);
 	}
 	if (hca_cap_2_sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,

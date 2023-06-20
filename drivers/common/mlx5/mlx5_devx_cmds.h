@@ -125,6 +125,18 @@ struct mlx5_hca_flex_attr {
 	uint8_t  header_length_mask_width;
 };
 
+__extension__
+struct mlx5_hca_crypto_mmo_attr {
+	uint32_t crypto_mmo_qp:1;
+	uint32_t gcm_256_encrypt:1;
+	uint32_t gcm_128_encrypt:1;
+	uint32_t gcm_256_decrypt:1;
+	uint32_t gcm_128_decrypt:1;
+	uint32_t gcm_auth_tag_128:1;
+	uint32_t gcm_auth_tag_96:1;
+	uint32_t log_crypto_mmo_max_size:6;
+};
+
 /* ISO C restricts enumerator values to range of 'int' */
 __extension__
 enum {
@@ -250,6 +262,7 @@ struct mlx5_hca_attr {
 	struct mlx5_hca_vdpa_attr vdpa;
 	struct mlx5_hca_flow_attr flow;
 	struct mlx5_hca_flex_attr flex;
+	struct mlx5_hca_crypto_mmo_attr crypto_mmo;
 	int log_max_qp_sz;
 	int log_max_cq_sz;
 	int log_max_qp;

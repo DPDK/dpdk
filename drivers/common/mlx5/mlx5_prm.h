@@ -4581,7 +4581,9 @@ struct mlx5_ifc_crypto_caps_bits {
 	u8 synchronize_dek[0x1];
 	u8 int_kek_manual[0x1];
 	u8 int_kek_auto[0x1];
-	u8 reserved_at_6[0x12];
+	u8 reserved_at_6[0xd];
+	u8 sw_wrapped_dek_key_purpose[0x1];
+	u8 reserved_at_14[0x4];
 	u8 wrapped_import_method[0x8];
 	u8 reserved_at_20[0x3];
 	u8 log_dek_max_alloc[0x5];
@@ -4598,8 +4600,19 @@ struct mlx5_ifc_crypto_caps_bits {
 	u8 log_dek_granularity[0x5];
 	u8 reserved_at_68[0x3];
 	u8 log_max_num_int_kek[0x5];
-	u8 reserved_at_70[0x10];
-	u8 reserved_at_80[0x780];
+	u8 sw_wrapped_dek_new[0x10];
+	u8 reserved_at_80[0x80];
+	u8 crypto_mmo_qp[0x1];
+	u8 crypto_aes_gcm_256_encrypt[0x1];
+	u8 crypto_aes_gcm_128_encrypt[0x1];
+	u8 crypto_aes_gcm_256_decrypt[0x1];
+	u8 crypto_aes_gcm_128_decrypt[0x1];
+	u8 gcm_auth_tag_128[0x1];
+	u8 gcm_auth_tag_96[0x1];
+	u8 reserved_at_107[0x3];
+	u8 log_crypto_mmo_max_size[0x6];
+	u8 reserved_at_110[0x10];
+	u8 reserved_at_120[0x6e0];
 };
 
 struct mlx5_ifc_crypto_commissioning_register_bits {
