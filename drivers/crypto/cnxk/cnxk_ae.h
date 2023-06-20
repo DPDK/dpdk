@@ -723,7 +723,8 @@ cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	 * optionally ROUNDUP8(input point(x and y coordinates)).
 	 * Please note point length is equivalent to prime of the curve
 	 */
-	if (cpt_ver == ROC_CPT_REVISION_ID_96XX_C0) {
+	if (cpt_ver == ROC_CPT_REVISION_ID_96XX_B0 || cpt_ver == ROC_CPT_REVISION_ID_96XX_C0 ||
+	    cpt_ver == ROC_CPT_REVISION_ID_98XX) {
 		dlen = sizeof(fpm_table_iova) + 3 * p_align + scalar_align;
 		memset(dptr, 0, dlen);
 		*(uint64_t *)dptr = fpm_table_iova;
