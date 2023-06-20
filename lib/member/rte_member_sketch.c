@@ -227,7 +227,6 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 		goto error_runtime;
 	}
 
-	rte_srand(ss->prim_hash_seed);
 	for (i = 0; i < ss->num_row; i++)
 		ss->hash_seeds[i] = rte_rand();
 
