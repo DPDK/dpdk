@@ -526,16 +526,13 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 		return -EINVAL;
 	}
 
-	if ((c_xfrm == NULL || c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_NULL) &&
-	    a_xfrm != NULL && a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL &&
-	    a_xfrm->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-		plt_dp_err("Null cipher + null auth verify is not supported");
-		return -ENOTSUP;
-	}
+	if ((aead_xfrm == NULL) &&
+	    (c_xfrm == NULL || c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_NULL) &&
+	    (a_xfrm == NULL || a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL))
+		sess->passthrough = 1;
 
 	/* Cipher only */
-	if (c_xfrm != NULL &&
-	    (a_xfrm == NULL || a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL)) {
+	if (c_xfrm != NULL && (a_xfrm == NULL || a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL)) {
 		if (fill_sess_cipher(c_xfrm, sess))
 			return -ENOTSUP;
 		else
@@ -662,7 +659,8 @@ cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
 		inst_w7.s.cptr += 8;
 
 	/* Set the engine group */
-	if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3 || sess->is_sm3)
+	if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3 || sess->is_sm3 ||
+	    sess->passthrough)
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
 	else
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
@@ -687,7 +685,9 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 
 	sess_priv->lf = roc_cpt->lf[0];
 
-	if (sess_priv->cpt_op & ROC_SE_OP_CIPHER_MASK) {
+	if (sess_priv->passthrough)
+		thr_type = CPT_DP_THREAD_TYPE_PT;
+	else if (sess_priv->cpt_op & ROC_SE_OP_CIPHER_MASK) {
 		switch (sess_priv->roc_se_ctx.fc_type) {
 		case ROC_SE_FC_GEN:
 			if (sess_priv->aes_gcm || sess_priv->aes_ccm || sess_priv->chacha_poly)

@@ -24,6 +24,8 @@ enum cpt_dp_thread_type {
 	CPT_DP_THREAD_TYPE_PDCP_CHAIN,
 	CPT_DP_THREAD_TYPE_KASUMI,
 	CPT_DP_THREAD_AUTH_ONLY,
+	CPT_DP_THREAD_GENERIC,
+	CPT_DP_THREAD_TYPE_PT,
 };
 
 struct cnxk_se_sess {
@@ -46,7 +48,8 @@ struct cnxk_se_sess {
 	uint8_t is_sha3 : 1;
 	uint8_t short_iv : 1;
 	uint8_t is_sm3 : 1;
-	uint8_t rsvd : 5;
+	uint8_t passthrough : 1;
+	uint8_t rsvd : 4;
 	uint8_t mac_len;
 	uint8_t iv_length;
 	uint8_t auth_iv_length;
@@ -636,15 +639,6 @@ cpt_digest_gen_sg_ver1_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 		cpt_inst_w4.s.dlen = data_len;
 	}
 
-	/* Null auth only case enters the if */
-	if (unlikely(!hash_type && !ctx->enc_cipher)) {
-		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_MISC;
-		/* Minor op is passthrough */
-		cpt_inst_w4.s.opcode_minor = 0x03;
-		/* Send out completion code only */
-		cpt_inst_w4.s.param2 = 0x1;
-	}
-
 	/* DPTR has SG list */
 	in_buffer = m_vaddr;
 
@@ -756,15 +750,6 @@ cpt_digest_gen_sg_ver2_prep(uint32_t flags, uint64_t d_lens, struct roc_se_fc_pa
 		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_HASH;
 		cpt_inst_w4.s.param1 = 0;
 		cpt_inst_w4.s.dlen = data_len;
-	}
-
-	/* Null auth only case enters the if */
-	if (unlikely(!hash_type && !ctx->enc_cipher)) {
-		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_MISC;
-		/* Minor op is passthrough */
-		cpt_inst_w4.s.opcode_minor = 0x03;
-		/* Send out completion code only */
-		cpt_inst_w4.s.param2 = 0x1;
 	}
 
 	/* DPTR has SG list */
@@ -2376,6 +2361,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 	iovec->buf_cnt = index;
 	return;
 }
+
 static __rte_always_inline int
 fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	       struct cpt_qp_meta_info *m_info, struct cpt_inflight_req *infl_req,
@@ -2590,6 +2576,38 @@ free_mdata_and_exit:
 		rte_mempool_put(m_info->pool, infl_req->mdata);
 err_exit:
 	return ret;
+}
+
+static inline int
+fill_passthrough_params(struct rte_crypto_op *cop, struct cpt_inst_s *inst)
+{
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct rte_mbuf *m_src, *m_dst;
+
+	const union cpt_inst_w4 w4 = {
+		.s.opcode_major = ROC_SE_MAJOR_OP_MISC,
+		.s.opcode_minor = ROC_SE_MISC_MINOR_OP_PASSTHROUGH,
+		.s.param1 = 1,
+		.s.param2 = 1,
+		.s.dlen = 0,
+	};
+
+	m_src = sym_op->m_src;
+	m_dst = sym_op->m_dst;
+
+	if (unlikely(m_dst != NULL && m_dst != m_src)) {
+		void *src = rte_pktmbuf_mtod_offset(m_src, void *, cop->sym->cipher.data.offset);
+		void *dst = rte_pktmbuf_mtod(m_dst, void *);
+		int data_len = cop->sym->cipher.data.length;
+
+		rte_memcpy(dst, src, data_len);
+	}
+
+	inst->w0.u64 = 0;
+	inst->w5.u64 = 0;
+	inst->w4.u64 = w4.u64;
+
+	return 0;
 }
 
 static __rte_always_inline int
@@ -3012,6 +3030,9 @@ cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cnxk_
 	int ret;
 
 	switch (sess->dp_thr_type) {
+	case CPT_DP_THREAD_TYPE_PT:
+		ret = fill_passthrough_params(op, inst);
+		break;
 	case CPT_DP_THREAD_TYPE_PDCP:
 		ret = fill_pdcp_params(op, sess, &qp->meta_info, infl_req, inst, is_sg_ver2);
 		break;
