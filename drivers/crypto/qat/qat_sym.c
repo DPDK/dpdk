@@ -179,7 +179,7 @@ qat_sym_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 
 int
 qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
+		struct qat_dev_cmd_param *qat_dev_cmd_param)
 {
 	int i = 0, ret = 0;
 	uint16_t slice_map = 0;
