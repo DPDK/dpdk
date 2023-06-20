@@ -92,6 +92,7 @@ struct mlx5_crypto_devarg_params {
 	struct mlx5_devx_crypto_login_attr login_attr;
 	uint64_t keytag;
 	uint32_t max_segs_num;
+	uint32_t is_aes_gcm:1;
 };
 
 struct mlx5_crypto_session {

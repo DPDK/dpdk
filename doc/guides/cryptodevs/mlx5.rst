@@ -21,6 +21,11 @@ and **NVIDIA BlueField-3** family adapters.
 Overview
 --------
 
+NVIDIA MLX5 crypto driver supports AES-XTS and AES-GCM cryption.
+
+AES-XTS
+~~~~~~~
+
 The device can provide disk encryption services,
 allowing data encryption and decryption towards a disk.
 Having all encryption/decryption operations done in a single device
@@ -38,13 +43,38 @@ The encryption does not require text to be aligned to the AES block size (128b).
 
 See :doc:`../../platform/mlx5` guide for more design details.
 
+AES-GCM
+~~~~~~~
+
+The supported AAD/digest/key size can be read from ``dev_info``.
+
+In AES-GCM mode, the HW requires continuous input and output of
+Additional Authenticated Data (AAD), payload, and digest (if needed).
+However, the API only provides a single AAD input,
+which means that in the out-of-place mode,
+the AAD will be used in both input and output.
+This reuse of AAD in the out-of-place mode breaks the continuous output,
+which degrades the performance and introduces extra UMR WQE.
+If digest is not continuous after payload will also lead to that extra UMR WQE.
+
+To address this issue, the API provides ``min_mbuf_headroom_req`` and
+``min_mbuf_tailroom_req`` in ``rte_cryptodev_info`` as a hint to the PMD.
+It indicates the PMD can use the buffer before and after the mbuf payload
+as AAD and digest space.
+With this hint, the PMD will use the buffer before and after the mbuf payload
+directly via copying AAD and digest.
+However, the application must ensure that there is enough headroom and tailroom
+reserved for the mbuf.
+Or, for non-continuous operations, extra UMR WQE will be used.
+
+
 Configuration
 -------------
 
 See the :ref:`mlx5 common configuration <mlx5_common_env>`.
 
 A device comes out of NVIDIA factory with pre-defined import methods.
-There are two possible import methods: wrapped or plaintext.
+There are two possible import methods: wrapped or plaintext (valid for AES-XTS only).
 
 In case the device is in wrapped mode, it needs to be moved to crypto operational mode.
 In order to move the device to crypto operational mode, credential and KEK
@@ -120,24 +150,36 @@ Driver options
 Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
 for an additional list of options shared with other mlx5 drivers.
 
+- ``algo`` parameter [int]
+
+  - 0. AES-XTS crypto.
+
+  - 1. AES-GCM crypto.
+
+  Set to zero (AES-XTS) by default.
+
 - ``wcs_file`` parameter [string] - mandatory in wrapped mode
 
   File path including only the wrapped credential in string format of hexadecimal
   numbers, represent 48 bytes (8 bytes IV added by the AES key wrap algorithm).
+  This option is valid only for AES-XTS.
 
 - ``import_kek_id`` parameter [int]
 
   The identifier of the KEK, default value is 0 represents the operational
   register import_kek..
+  This option is valid only for AES-XTS.
 
 - ``credential_id`` parameter [int]
 
   The identifier of the credential, default value is 0 represents the operational
   register credential.
+  This option is valid only for AES-XTS.
 
 - ``keytag`` parameter [int]
 
   The plaintext of the keytag appended to the AES-XTS keys, default value is 0.
+  This option is valid only for AES-XTS.
 
 - ``max_segs_num`` parameter [int]
 
@@ -161,6 +203,8 @@ Limitations
 - The supported data-unit lengths are 512B and 4KB and 1MB. In case the `dataunit_len`
   is not provided in the cipher xform, the OP length is limited to the above
   values.
+- AES-GCM is supported only on BlueField-3.
+- AES-GCM supports only key import plaintext mode.
 
 
 Prerequisites
@@ -172,6 +216,7 @@ FW Prerequisites
 - xx.31.0328 for ConnectX-6.
 - xx.32.0108 for ConnectX-6 Dx and BlueField-2.
 - xx.36.xxxx for ConnectX-7 and BlueField-3.
+- xx.37.3010 for BlueField-3 and newer for AES-GCM.
 
 Linux Prerequisites
 ~~~~~~~~~~~~~~~~~~~

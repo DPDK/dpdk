@@ -269,6 +269,14 @@ mlx5_crypto_args_check_handler(const char *key, const char *val, void *opaque)
 		attr->credential_pointer = (uint32_t)tmp;
 	} else if (strcmp(key, "keytag") == 0) {
 		devarg_prms->keytag = tmp;
+	} else if (strcmp(key, "algo") == 0) {
+		if (tmp == 1) {
+			devarg_prms->is_aes_gcm = 1;
+		} else if (tmp > 1) {
+			DRV_LOG(ERR, "Invalid algo.");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
 	}
 	return 0;
 }
@@ -285,6 +293,7 @@ mlx5_crypto_parse_devargs(struct mlx5_kvargs_ctrl *mkvlist,
 		"keytag",
 		"max_segs_num",
 		"wcs_file",
+		"algo",
 		NULL,
 	};
 
@@ -370,10 +379,19 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 	priv->crypto_dev = crypto_dev;
 	priv->is_wrapped_mode = wrapped_mode;
 	priv->max_segs_num = devarg_prms.max_segs_num;
-	ret = mlx5_crypto_xts_init(priv);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to init AES-XTS crypto.");
-		return -ENOTSUP;
+	/* Init and override AES-GCM configuration. */
+	if (devarg_prms.is_aes_gcm) {
+		ret = mlx5_crypto_gcm_init(priv);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to init AES-GCM crypto.");
+			return -ENOTSUP;
+		}
+	} else {
+		ret = mlx5_crypto_xts_init(priv);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to init AES-XTS crypto.");
+			return -ENOTSUP;
+		}
 	}
 	if (mlx5_devx_uar_prepare(cdev, &priv->uar) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);

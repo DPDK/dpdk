@@ -125,7 +125,7 @@ New Features
   which are being upstreamed:
   https://lore.kernel.org/all/20230419134329.346825-1-maxime.coquelin@redhat.com/
 
-* **Updated NVIDIA mlx5 driver.**
+* **Updated NVIDIA mlx5 net driver.**
 
   * Added support for multi-packet receive queue (MPRQ) on Windows.
   * Added support for CQE compression on Windows.
@@ -156,6 +156,10 @@ New Features
   * Added support for SM3 hash operations.
   * Added support for SM4 operations in cn10k driver.
   * Added support for AES-CCM in cn9k and cn10k drivers.
+
+* **Updated NVIDIA mlx5 crypto driver.**
+
+  * Added support for AES-GCM crypto.
 
 * **Updated OpenSSL crypto driver.**
 

@@ -110,6 +110,60 @@ mlx5_crypto_dek_fill_gcm_attr(struct mlx5_crypto_dek *dek,
 }
 
 static int
+mlx5_crypto_generate_gcm_cap(struct mlx5_hca_crypto_mmo_attr *mmo_attr,
+			     struct rte_cryptodev_capabilities *cap)
+{
+	/* Init key size. */
+	if (mmo_attr->gcm_128_encrypt && mmo_attr->gcm_128_decrypt &&
+		mmo_attr->gcm_256_encrypt && mmo_attr->gcm_256_decrypt) {
+		cap->sym.aead.key_size.min = 16;
+		cap->sym.aead.key_size.max = 32;
+		cap->sym.aead.key_size.increment = 16;
+	} else if (mmo_attr->gcm_256_encrypt && mmo_attr->gcm_256_decrypt) {
+		cap->sym.aead.key_size.min = 32;
+		cap->sym.aead.key_size.max = 32;
+		cap->sym.aead.key_size.increment = 0;
+	} else if (mmo_attr->gcm_128_encrypt && mmo_attr->gcm_128_decrypt) {
+		cap->sym.aead.key_size.min = 16;
+		cap->sym.aead.key_size.max = 16;
+		cap->sym.aead.key_size.increment = 0;
+	} else {
+		DRV_LOG(ERR, "No available AES-GCM encryption/decryption supported.");
+		return -1;
+	}
+	/* Init tag size. */
+	if (mmo_attr->gcm_auth_tag_128 && mmo_attr->gcm_auth_tag_96) {
+		cap->sym.aead.digest_size.min = 12;
+		cap->sym.aead.digest_size.max = 16;
+		cap->sym.aead.digest_size.increment = 4;
+	} else if (mmo_attr->gcm_auth_tag_96) {
+		cap->sym.aead.digest_size.min = 12;
+		cap->sym.aead.digest_size.max = 12;
+		cap->sym.aead.digest_size.increment = 0;
+	} else if (mmo_attr->gcm_auth_tag_128) {
+		cap->sym.aead.digest_size.min = 16;
+		cap->sym.aead.digest_size.max = 16;
+		cap->sym.aead.digest_size.increment = 0;
+	} else {
+		DRV_LOG(ERR, "No available AES-GCM tag size supported.");
+		return -1;
+	}
+	/* Init AAD size. */
+	cap->sym.aead.aad_size.min = 0;
+	cap->sym.aead.aad_size.max = UINT16_MAX;
+	cap->sym.aead.aad_size.increment = 1;
+	/* Init IV size. */
+	cap->sym.aead.iv_size.min = 12;
+	cap->sym.aead.iv_size.max = 12;
+	cap->sym.aead.iv_size.increment = 0;
+	/* Init left items. */
+	cap->op = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	cap->sym.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD;
+	cap->sym.aead.algo = RTE_CRYPTO_AEAD_AES_GCM;
+	return 0;
+}
+
+static int
 mlx5_crypto_sym_gcm_session_configure(struct rte_cryptodev *dev,
 				  struct rte_crypto_sym_xform *xform,
 				  struct rte_cryptodev_sym_session *session)
@@ -917,8 +971,10 @@ mlx5_crypto_gcm_dequeue_burst(void *queue_pair,
 int
 mlx5_crypto_gcm_init(struct mlx5_crypto_priv *priv)
 {
+	struct mlx5_common_device *cdev = priv->cdev;
 	struct rte_cryptodev *crypto_dev = priv->crypto_dev;
 	struct rte_cryptodev_ops *dev_ops = crypto_dev->dev_ops;
+	int ret;
 
 	/* Override AES-GCM specified ops. */
 	dev_ops->sym_session_configure = mlx5_crypto_sym_gcm_session_configure;
@@ -928,6 +984,13 @@ mlx5_crypto_gcm_init(struct mlx5_crypto_priv *priv)
 	crypto_dev->dequeue_burst = mlx5_crypto_gcm_dequeue_burst;
 	crypto_dev->enqueue_burst = mlx5_crypto_gcm_enqueue_burst;
 	priv->max_klm_num = RTE_ALIGN((priv->max_segs_num + 1) * 2 + 1, MLX5_UMR_KLM_NUM_ALIGN);
+	/* Generate GCM capability. */
+	ret = mlx5_crypto_generate_gcm_cap(&cdev->config.hca_attr.crypto_mmo,
+					   mlx5_crypto_gcm_caps);
+	if (ret) {
+		DRV_LOG(ERR, "No enough AES-GCM cap.");
+		return -1;
+	}
 	priv->caps = mlx5_crypto_gcm_caps;
 	return 0;
 }
