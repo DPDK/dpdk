@@ -208,7 +208,8 @@ The public API headers are grouped by topics:
     [graph_worker](@ref rte_graph_worker.h)
   * graph_nodes:
     [eth_node](@ref rte_node_eth_api.h),
-    [ip4_node](@ref rte_node_ip4_api.h)
+    [ip4_node](@ref rte_node_ip4_api.h),
+    [ip6_node](@ref rte_node_ip6_api.h)
 
 - **basic**:
   [bitops](@ref rte_bitops.h),
