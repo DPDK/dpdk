@@ -2490,6 +2490,193 @@ modular_multiplicative_inverse(const void *test_data)
 	return TEST_SUCCESS;
 }
 
+#define SET_RSA_PARAM(arg, vector, coef) \
+	uint8_t coef[TEST_DATA_SIZE] = { }; \
+	memcpy(coef, vector->coef.data, vector->coef.len); \
+	arg.coef.data = coef; \
+	arg.coef.length = vector->coef.len
+
+#define SET_RSA_PARAM_QT(arg, vector, coef) \
+	uint8_t coef[TEST_DATA_SIZE] = { }; \
+	memcpy(coef, vector->coef.data, vector->coef.len); \
+	arg.qt.coef.data = coef; \
+	arg.qt.coef.length = vector->coef.len
+
+typedef void (*rsa_key_init_t)(struct rte_crypto_asym_xform *,
+	const struct rsa_test_data_2 *);
+
+static int
+RSA_Encrypt(const struct rsa_test_data_2 *vector, uint8_t *cipher_buf)
+{
+	self->result_op = NULL;
+	/* Compute encryption on the test vector */
+	self->op->asym->rsa.op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
+	self->op->asym->rsa.cipher.data = cipher_buf;
+	self->op->asym->rsa.cipher.length = 0;
+	SET_RSA_PARAM(self->op->asym->rsa, vector, message);
+	self->op->asym->rsa.padding.type = vector->padding;
+
+	rte_crypto_op_attach_asym_session(self->op, self->sess);
+	TEST_ASSERT_SUCCESS(send_one(),
+		"Failed to process crypto op (Enryption)");
+
+	return 0;
+}
+
+static int
+RSA_Decrypt(const struct rsa_test_data_2 *vector, uint8_t *plaintext,
+		const int use_op)
+{
+	uint8_t cipher[TEST_DATA_SIZE] = { 0 };
+
+	if (use_op == 0) {
+		memcpy(cipher, vector->cipher.data, vector->cipher.len);
+		self->op->asym->rsa.cipher.data = cipher;
+		self->op->asym->rsa.cipher.length = vector->cipher.len;
+	}
+	self->result_op = NULL;
+	self->op->asym->rsa.message.data = plaintext;
+	self->op->asym->rsa.message.length = 0;
+	self->op->asym->rsa.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
+	self->op->asym->rsa.padding.type = vector->padding;
+	rte_crypto_op_attach_asym_session(self->op, self->sess);
+	TEST_ASSERT_SUCCESS(send_one(),
+		"Failed to process crypto op (Decryption)");
+	return 0;
+}
+
+static void
+RSA_key_init_Exp(struct rte_crypto_asym_xform *xform,
+		const struct rsa_test_data_2 *vector)
+{
+	SET_RSA_PARAM(xform->rsa, vector, n);
+	SET_RSA_PARAM(xform->rsa, vector, e);
+	SET_RSA_PARAM(xform->rsa, vector, d);
+	xform->rsa.key_type = RTE_RSA_KEY_TYPE_EXP;
+}
+
+static void
+RSA_key_init_CRT(struct rte_crypto_asym_xform *xform,
+		const struct rsa_test_data_2 *vector)
+{
+	SET_RSA_PARAM(xform->rsa, vector, n);
+	SET_RSA_PARAM(xform->rsa, vector, e);
+	SET_RSA_PARAM_QT(xform->rsa, vector, p);
+	SET_RSA_PARAM_QT(xform->rsa, vector, q);
+	SET_RSA_PARAM_QT(xform->rsa, vector, dP);
+	SET_RSA_PARAM_QT(xform->rsa, vector, dQ);
+	SET_RSA_PARAM_QT(xform->rsa, vector, qInv);
+	xform->rsa.key_type = RTE_RSA_KEY_TYPE_QT;
+}
+
+static int
+RSA_Init_Session(const struct rsa_test_data_2 *vector,
+	rsa_key_init_t key_init)
+{
+	const uint8_t dev_id = params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	struct rte_crypto_asym_xform xform = { };
+	int ret = 0;
+
+	key_init(&xform, vector);
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA;
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT)) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support decrypt op with quintuple key type. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+		params->session_mpool, &self->sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+			"Session creation failed for enc_dec_crt\n");
+		return (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+	}
+	return 0;
+}
+
+static int
+KAT_RSA_Encrypt(const void *data)
+{
+	uint8_t cipher_buf[TEST_DATA_SIZE] = {0};
+	const struct rsa_test_data_2 *vector = data;
+	int ret = RSA_Init_Session(vector, RSA_key_init_Exp);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "Failed to init session for RSA\n");
+		return ret;
+	}
+	TEST_ASSERT_SUCCESS(RSA_Encrypt(vector, cipher_buf),
+		"RSA: Failed to encrypt");
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->cipher.data,
+		self->result_op->asym->rsa.cipher.data,
+		self->result_op->asym->rsa.cipher.length,
+		"operation verification failed\n");
+	return 0;
+}
+
+static int
+KAT_RSA_Encrypt_CRT(const void *data)
+{
+	uint8_t cipher_buf[TEST_DATA_SIZE] = {0};
+	const struct rsa_test_data_2 *vector = data;
+	int ret = RSA_Init_Session(vector, RSA_key_init_CRT);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "Failed to init session for RSA\n");
+		return ret;
+	}
+	TEST_ASSERT_SUCCESS(RSA_Encrypt(vector, cipher_buf),
+		"RSA: Failed to encrypt");
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->cipher.data,
+		self->result_op->asym->rsa.cipher.data,
+		self->result_op->asym->rsa.cipher.length,
+		"operation verification failed\n");
+	return 0;
+}
+
+static int
+KAT_RSA_Decrypt(const void *data)
+{
+	uint8_t message[TEST_DATA_SIZE] = {0};
+	const struct rsa_test_data_2 *vector = data;
+	int ret = RSA_Init_Session(vector, RSA_key_init_Exp);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "Failed to init session for RSA\n");
+		return ret;
+	}
+	TEST_ASSERT_SUCCESS(RSA_Decrypt(vector, message, 0),
+		"RSA: Failed to encrypt");
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->message.data,
+		self->result_op->asym->rsa.message.data,
+		self->result_op->asym->rsa.message.length,
+		"operation verification failed\n");
+	return 0;
+}
+
+static int
+KAT_RSA_Decrypt_CRT(const void *data)
+{
+	uint8_t message[TEST_DATA_SIZE] = {0};
+	const struct rsa_test_data_2 *vector = data;
+	int ret = RSA_Init_Session(vector, RSA_key_init_CRT);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "Failed to init session for RSA\n");
+		return ret;
+	}
+	TEST_ASSERT_SUCCESS(RSA_Decrypt(vector, message, 0),
+		"RSA: Failed to encrypt");
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->message.data,
+		self->result_op->asym->rsa.message.data,
+		self->result_op->asym->rsa.message.length,
+		"operation verification failed\n");
+	return 0;
+}
+
 static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 	.suite_name = "Crypto Device OPENSSL ASYM Unit Test Suite",
 	.setup = testsuite_setup,
@@ -2530,6 +2717,24 @@ static struct unit_test_suite cryptodev_qat_asym_testsuite  = {
 			"Modular Inverse (mod=128, base=20, exp=3, inv=128)",
 			ut_setup_asym, ut_teardown_asym,
 			modular_multiplicative_inverse, &modinv_test_case),
+		/* RSA EXP */
+		TEST_CASE_NAMED_WITH_DATA(
+			"RSA Encryption (n=128, pt=20, e=3) EXP, Padding: NONE",
+			ut_setup_asym, ut_teardown_asym,
+			KAT_RSA_Encrypt, &RSA_vector_128_20_3_None),
+		TEST_CASE_NAMED_WITH_DATA(
+			"RSA Decryption (n=128, pt=20, e=3) EXP, Padding: NONE",
+			ut_setup_asym, ut_teardown_asym,
+			KAT_RSA_Decrypt, &RSA_vector_128_20_3_None),
+		/* RSA CRT */
+		TEST_CASE_NAMED_WITH_DATA(
+			"RSA Encryption (n=128, pt=20, e=3) CRT, Padding: NONE",
+			ut_setup_asym, ut_teardown_asym,
+			KAT_RSA_Encrypt_CRT, &RSA_vector_128_20_3_None),
+		TEST_CASE_NAMED_WITH_DATA(
+			"RSA Decryption (n=128, pt=20, e=3) CRT, Padding: NONE",
+			ut_setup_asym, ut_teardown_asym,
+			KAT_RSA_Decrypt_CRT, &RSA_vector_128_20_3_None),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
