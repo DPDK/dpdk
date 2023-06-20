@@ -62,8 +62,13 @@ mlx5_crypto_dev_infos_get(struct rte_cryptodev *dev,
 			MLX5_CRYPTO_FEATURE_FLAGS(priv->is_wrapped_mode);
 		dev_info->capabilities = priv->caps;
 		dev_info->max_nb_queue_pairs = MLX5_CRYPTO_MAX_QPS;
-		dev_info->min_mbuf_headroom_req = 0;
-		dev_info->min_mbuf_tailroom_req = 0;
+		if (priv->caps->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			dev_info->min_mbuf_headroom_req = MLX5_CRYPTO_GCM_MAX_AAD;
+			dev_info->min_mbuf_tailroom_req = MLX5_CRYPTO_GCM_MAX_DIGEST;
+		} else {
+			dev_info->min_mbuf_headroom_req = 0;
+			dev_info->min_mbuf_tailroom_req = 0;
+		}
 		dev_info->sym.max_nb_sessions = 0;
 		/*
 		 * If 0, the device does not have any limitation in number of

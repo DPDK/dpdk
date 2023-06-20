@@ -23,6 +23,8 @@
 #define MLX5_CRYPTO_KLM_SEGS_NUM(umr_wqe_sz) ((umr_wqe_sz -\
 					MLX5_CRYPTO_UMR_WQE_STATIC_SIZE) /\
 					MLX5_WSEG_SIZE)
+#define MLX5_CRYPTO_GCM_MAX_AAD 64
+#define MLX5_CRYPTO_GCM_MAX_DIGEST 16
 
 struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;
@@ -61,6 +63,9 @@ struct mlx5_crypto_qp {
 	uint8_t *wqe;
 	uint16_t entries_n;
 	uint16_t cq_entries_n;
+	uint16_t reported_ci;
+	uint16_t qp_ci;
+	uint16_t cq_ci;
 	uint16_t pi;
 	uint16_t ci;
 	uint16_t db_pi;
@@ -70,6 +75,9 @@ struct mlx5_crypto_qp {
 	uint16_t umr_pi;
 	uint16_t umr_ci;
 	uint32_t umr_errors;
+	uint16_t last_gga_pi;
+	bool has_umr;
+	uint16_t cpy_tag_op;
 };
 
 struct mlx5_crypto_dek {

@@ -617,6 +617,7 @@ struct mlx5_wqe_send_en_wqe {
 /* MMO metadata segment */
 
 #define	MLX5_OPCODE_MMO	0x2fu
+#define	MLX5_OPC_MOD_MMO_CRYPTO 0x6u
 #define	MLX5_OPC_MOD_MMO_REGEX 0x4u
 #define	MLX5_OPC_MOD_MMO_COMP 0x2u
 #define	MLX5_OPC_MOD_MMO_DECOMP 0x3u
