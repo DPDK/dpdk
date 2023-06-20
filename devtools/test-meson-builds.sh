@@ -299,6 +299,22 @@ export PKG_CONFIG_PATH=$(dirname $pc_file):$PKG_CONFIG_PATH
 libdir=$(dirname $(find $DESTDIR -name librte_eal.so))
 export LD_LIBRARY_PATH=$libdir:$LD_LIBRARY_PATH
 examples=${DPDK_BUILD_TEST_EXAMPLES:-"cmdline helloworld l2fwd l3fwd skeleton timer"}
+if [ "$examples" = 'all' ]; then
+	examples=$(find $build_path/examples -maxdepth 1 -type f -name "dpdk-*" |
+	while read target; do
+		target=${target%%:*}
+		target=${target#$build_path/examples/dpdk-}
+		if [ -e $srcdir/examples/$target/Makefile ]; then
+			echo $target
+			continue
+		fi
+		# Some examples binaries are built from an example sub
+		# directory, discover the "top level" example name.
+		find $srcdir/examples -name Makefile |
+		sed -n "s,$srcdir/examples/\([^/]*\)\(/.*\|\)/$target/Makefile,\1,p"
+	done | sort -u |
+	tr '\n' ' ')
+fi
 # if pkg-config defines the necessary flags, test building some examples
 if pkg-config --define-prefix libdpdk >/dev/null 2>&1; then
 	export PKGCONF="pkg-config --define-prefix"
