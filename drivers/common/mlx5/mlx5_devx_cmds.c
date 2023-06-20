@@ -2475,6 +2475,12 @@ mlx5_devx_cmd_create_qp(void *ctx,
 				 attr->dbr_umem_valid);
 			MLX5_SET(qpc, qpc, dbr_umem_id, attr->dbr_umem_id);
 		}
+		if (attr->cd_master)
+			MLX5_SET(qpc, qpc, cd_master, attr->cd_master);
+		if (attr->cd_slave_send)
+			MLX5_SET(qpc, qpc, cd_slave_send, attr->cd_slave_send);
+		if (attr->cd_slave_recv)
+			MLX5_SET(qpc, qpc, cd_slave_receive, attr->cd_slave_recv);
 		MLX5_SET64(qpc, qpc, dbr_addr, attr->dbr_address);
 		MLX5_SET64(create_qp_in, in, wq_umem_offset,
 			   attr->wq_umem_offset);

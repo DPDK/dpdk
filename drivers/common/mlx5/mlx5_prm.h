@@ -589,6 +589,17 @@ struct mlx5_rdma_write_wqe {
 	struct mlx5_wqe_dseg dseg[];
 } __rte_packed;
 
+struct mlx5_wqe_send_en_seg {
+	uint32_t reserve[2];
+	uint32_t sqnpc;
+	uint32_t qpn;
+} __rte_packed;
+
+struct mlx5_wqe_send_en_wqe {
+	struct mlx5_wqe_cseg ctr;
+	struct mlx5_wqe_send_en_seg sseg;
+} __rte_packed;
+
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
