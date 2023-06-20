@@ -13,10 +13,26 @@
 #include "mlx5_crypto_utils.h"
 #include "mlx5_crypto.h"
 
-struct mlx5_crypto_dek_ctx {
-	struct rte_crypto_cipher_xform *cipher;
-	struct mlx5_crypto_priv *priv;
-};
+static int
+mlx5_crypto_dek_get_key(struct rte_crypto_sym_xform *xform,
+			const uint8_t **key,
+			uint16_t *key_len)
+{
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+		*key = xform->cipher.key.data;
+		*key_len = xform->cipher.key.length;
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		*key = xform->aead.key.data;
+		*key_len = xform->aead.key.length;
+	} else {
+		*key = NULL;
+		*key_len = 0;
+		DRV_LOG(ERR, "Xform dek type not supported.");
+		rte_errno = -EINVAL;
+		return -1;
+	}
+	return 0;
+}
 
 int
 mlx5_crypto_dek_destroy(struct mlx5_crypto_priv *priv,
@@ -27,19 +43,22 @@ mlx5_crypto_dek_destroy(struct mlx5_crypto_priv *priv,
 
 struct mlx5_crypto_dek *
 mlx5_crypto_dek_prepare(struct mlx5_crypto_priv *priv,
-			struct rte_crypto_cipher_xform *cipher)
+			struct rte_crypto_sym_xform *xform)
 {
+	const uint8_t *key;
+	uint16_t key_len;
 	struct mlx5_hlist *dek_hlist = priv->dek_hlist;
 	struct mlx5_crypto_dek_ctx dek_ctx = {
-		.cipher = cipher,
+		.xform = xform,
 		.priv = priv,
 	};
-	struct rte_crypto_cipher_xform *cipher_ctx = cipher;
-	uint64_t key64 = __rte_raw_cksum(cipher_ctx->key.data,
-					 cipher_ctx->key.length, 0);
-	struct mlx5_list_entry *entry = mlx5_hlist_register(dek_hlist,
-							     key64, &dek_ctx);
+	uint64_t key64;
+	struct mlx5_list_entry *entry;
 
+	if (mlx5_crypto_dek_get_key(xform, &key, &key_len))
+		return NULL;
+	key64 = __rte_raw_cksum(key, key_len, 0);
+	entry = mlx5_hlist_register(dek_hlist, key64, &dek_ctx);
 	return entry == NULL ? NULL :
 			     container_of(entry, struct mlx5_crypto_dek, entry);
 }
@@ -76,75 +95,54 @@ mlx5_crypto_dek_match_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_crypto_dek_ctx *ctx = cb_ctx;
-	struct rte_crypto_cipher_xform *cipher_ctx = ctx->cipher;
+	struct rte_crypto_sym_xform *xform = ctx->xform;
 	struct mlx5_crypto_dek *dek =
 			container_of(entry, typeof(*dek), entry);
 	uint32_t key_len = dek->size;
+	uint16_t xkey_len;
+	const uint8_t *key;
 
-	if (key_len != cipher_ctx->key.length)
+	if (mlx5_crypto_dek_get_key(xform, &key, &xkey_len))
 		return -1;
-	return memcmp(cipher_ctx->key.data, dek->data, cipher_ctx->key.length);
+	if (key_len != xkey_len)
+		return -1;
+	return memcmp(key, dek->data, xkey_len);
 }
 
 static struct mlx5_list_entry *
 mlx5_crypto_dek_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 {
 	struct mlx5_crypto_dek_ctx *ctx = cb_ctx;
-	struct rte_crypto_cipher_xform *cipher_ctx = ctx->cipher;
+	struct rte_crypto_sym_xform *xform = ctx->xform;
 	struct mlx5_crypto_dek *dek = rte_zmalloc(__func__, sizeof(*dek),
 						  RTE_CACHE_LINE_SIZE);
 	struct mlx5_devx_dek_attr dek_attr = {
 		.pd = ctx->priv->cdev->pdn,
-		.key_purpose = MLX5_CRYPTO_KEY_PURPOSE_AES_XTS,
-		.has_keytag = 1,
 	};
-	bool is_wrapped = ctx->priv->is_wrapped_mode;
+	int ret = -1;
 
 	if (dek == NULL) {
 		DRV_LOG(ERR, "Failed to allocate dek memory.");
 		return NULL;
 	}
-	if (is_wrapped) {
-		switch (cipher_ctx->key.length) {
-		case 48:
-			dek->size = 48;
-			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_128b;
-			break;
-		case 80:
-			dek->size = 80;
-			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_256b;
-			break;
-		default:
-			DRV_LOG(ERR, "Wrapped key size not supported.");
-			return NULL;
-		}
-	} else {
-		switch (cipher_ctx->key.length) {
-		case 32:
-			dek->size = 40;
-			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_128b;
-			break;
-		case 64:
-			dek->size = 72;
-			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_256b;
-			break;
-		default:
-			DRV_LOG(ERR, "Key size not supported.");
-			return NULL;
-		}
-		memcpy(&dek_attr.key[cipher_ctx->key.length],
-						&ctx->priv->keytag, 8);
-	}
-	memcpy(&dek_attr.key, cipher_ctx->key.data, cipher_ctx->key.length);
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
+		ret = mlx5_crypto_dek_fill_xts_attr(dek, &dek_attr, cb_ctx);
+	else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
+		ret = mlx5_crypto_dek_fill_gcm_attr(dek, &dek_attr, cb_ctx);
+	if (ret)
+		goto fail;
 	dek->obj = mlx5_devx_cmd_create_dek_obj(ctx->priv->cdev->ctx,
 						&dek_attr);
 	if (dek->obj == NULL) {
-		rte_free(dek);
-		return NULL;
+		DRV_LOG(ERR, "Failed to create dek obj.");
+		goto fail;
 	}
-	memcpy(&dek->data, cipher_ctx->key.data, cipher_ctx->key.length);
 	return &dek->entry;
+fail:
+	rte_free(dek);
+	return NULL;
 }
+
 
 static void
 mlx5_crypto_dek_remove_cb(void *tool_ctx __rte_unused,

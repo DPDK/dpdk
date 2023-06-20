@@ -86,6 +86,11 @@ struct mlx5_crypto_session {
 	uint32_t dek_id; /**< DEK ID */
 } __rte_packed;
 
+struct mlx5_crypto_dek_ctx {
+	struct rte_crypto_sym_xform *xform;
+	struct mlx5_crypto_priv *priv;
+};
+
 typedef void *(*mlx5_crypto_mkey_update_t)(struct mlx5_crypto_priv *priv,
 					   struct mlx5_crypto_qp *qp,
 					   uint32_t idx);
@@ -106,7 +111,7 @@ mlx5_crypto_dek_destroy(struct mlx5_crypto_priv *priv,
 
 struct mlx5_crypto_dek *
 mlx5_crypto_dek_prepare(struct mlx5_crypto_priv *priv,
-			struct rte_crypto_cipher_xform *cipher);
+			struct rte_crypto_sym_xform *xform);
 
 int
 mlx5_crypto_dek_setup(struct mlx5_crypto_priv *priv);
@@ -119,5 +124,15 @@ mlx5_crypto_xts_init(struct mlx5_crypto_priv *priv);
 
 int
 mlx5_crypto_gcm_init(struct mlx5_crypto_priv *priv);
+
+int
+mlx5_crypto_dek_fill_xts_attr(struct mlx5_crypto_dek *dek,
+			      struct mlx5_devx_dek_attr *dek_attr,
+			      void *cb_ctx);
+
+int
+mlx5_crypto_dek_fill_gcm_attr(struct mlx5_crypto_dek *dek,
+			      struct mlx5_devx_dek_attr *dek_attr,
+			      void *cb_ctx);
 
 #endif /* MLX5_CRYPTO_H_ */

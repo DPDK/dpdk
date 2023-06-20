@@ -45,6 +45,57 @@ const struct rte_cryptodev_capabilities mlx5_crypto_caps[] = {
 	},
 };
 
+int
+mlx5_crypto_dek_fill_xts_attr(struct mlx5_crypto_dek *dek,
+			      struct mlx5_devx_dek_attr *dek_attr,
+			      void *cb_ctx)
+{
+	struct mlx5_crypto_dek_ctx *ctx = cb_ctx;
+	struct rte_crypto_cipher_xform *cipher_ctx = &ctx->xform->cipher;
+	bool is_wrapped = ctx->priv->is_wrapped_mode;
+
+	if (cipher_ctx->algo != RTE_CRYPTO_CIPHER_AES_XTS) {
+		DRV_LOG(ERR, "Only AES-XTS algo supported.");
+		return -EINVAL;
+	}
+	dek_attr->key_purpose = MLX5_CRYPTO_KEY_PURPOSE_AES_XTS;
+	dek_attr->has_keytag = 1;
+	if (is_wrapped) {
+		switch (cipher_ctx->key.length) {
+		case 48:
+			dek->size = 48;
+			dek_attr->key_size = MLX5_CRYPTO_KEY_SIZE_128b;
+			break;
+		case 80:
+			dek->size = 80;
+			dek_attr->key_size = MLX5_CRYPTO_KEY_SIZE_256b;
+			break;
+		default:
+			DRV_LOG(ERR, "Wrapped key size not supported.");
+			return -EINVAL;
+		}
+	} else {
+		switch (cipher_ctx->key.length) {
+		case 32:
+			dek->size = 40;
+			dek_attr->key_size = MLX5_CRYPTO_KEY_SIZE_128b;
+			break;
+		case 64:
+			dek->size = 72;
+			dek_attr->key_size = MLX5_CRYPTO_KEY_SIZE_256b;
+			break;
+		default:
+			DRV_LOG(ERR, "Key size not supported.");
+			return -EINVAL;
+		}
+		memcpy(&dek_attr->key[cipher_ctx->key.length],
+						&ctx->priv->keytag, 8);
+	}
+	memcpy(&dek_attr->key, cipher_ctx->key.data, cipher_ctx->key.length);
+	memcpy(&dek->data, cipher_ctx->key.data, cipher_ctx->key.length);
+	return 0;
+}
+
 static int
 mlx5_crypto_xts_sym_session_configure(struct rte_cryptodev *dev,
 				      struct rte_crypto_sym_xform *xform,
@@ -66,7 +117,7 @@ mlx5_crypto_xts_sym_session_configure(struct rte_cryptodev *dev,
 		return -ENOTSUP;
 	}
 	cipher = &xform->cipher;
-	sess_private_data->dek = mlx5_crypto_dek_prepare(priv, cipher);
+	sess_private_data->dek = mlx5_crypto_dek_prepare(priv, xform);
 	if (sess_private_data->dek == NULL) {
 		DRV_LOG(ERR, "Failed to prepare dek.");
 		return -ENOMEM;
