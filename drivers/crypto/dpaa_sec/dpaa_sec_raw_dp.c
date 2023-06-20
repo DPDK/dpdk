@@ -7,9 +7,7 @@
 #include <cryptodev_pmd.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
-#endif
 
 /* RTA header files */
 #include <desc/algo.h>
@@ -645,7 +643,6 @@ build_dpaa_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	return cf;
 }
 
-#ifdef RTE_LIB_SECURITY
 static inline struct dpaa_sec_job *
 build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
 			struct rte_crypto_sgl *sgl,
@@ -772,7 +769,6 @@ build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
 
 	return cf;
 }
-#endif
 
 static uint32_t
 dpaa_sec_raw_enqueue_burst(void *qp_data, uint8_t *drv_ctx,
@@ -1035,11 +1031,9 @@ dpaa_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 		sess->build_raw_dp_fd = build_dpaa_raw_dp_chain_fd;
 	else if (sess->ctxt == DPAA_SEC_AEAD)
 		sess->build_raw_dp_fd = build_raw_cipher_auth_gcm_sg;
-#ifdef RTE_LIB_SECURITY
 	else if (sess->ctxt == DPAA_SEC_IPSEC ||
 			sess->ctxt == DPAA_SEC_PDCP)
 		sess->build_raw_dp_fd = build_dpaa_raw_proto_sg;
-#endif
 	else
 		return -ENOTSUP;
 	dp_ctx = (struct dpaa_sec_raw_dp_ctx *)raw_dp_ctx->drv_ctx_data;
