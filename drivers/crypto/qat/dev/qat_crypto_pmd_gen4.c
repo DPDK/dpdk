@@ -223,10 +223,8 @@ qat_sym_build_op_aead_gen4(void *in_op, struct qat_sym_session *ctx,
 	enqueue_one_aead_job_gen4(ctx, qat_req, &cipher_iv, &digest, &aad, ofs,
 		total_len);
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(qat_req, ctx, in_sgl.vec, in_sgl.num, &cipher_iv,
 			NULL, &aad, &digest);
-#endif
 
 	return 0;
 }
@@ -311,10 +309,9 @@ qat_sym_dp_enqueue_single_aead_gen4(void *qp_data, uint8_t *drv_ctx,
 	dp_ctx->tail = tail;
 	dp_ctx->cached_enqueue++;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, data, n_data_vecs, iv,
 			NULL, aad, digest);
-#endif
+
 	return 0;
 }
 
@@ -370,11 +367,9 @@ qat_sym_dp_enqueue_aead_jobs_gen4(void *qp_data, uint8_t *drv_ctx,
 
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		qat_sym_debug_log_dump(req, ctx, vec->src_sgl[i].vec,
 				vec->src_sgl[i].num, &vec->iv[i], NULL,
 				&vec->aad[i], &vec->digest[i]);
-#endif
 	}
 
 	if (unlikely(i < n))
