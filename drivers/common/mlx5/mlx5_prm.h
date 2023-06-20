@@ -470,6 +470,15 @@ struct mlx5_wqe_rseg {
 #define MLX5_UMRC_KO_OFFSET 16u
 #define MLX5_UMRC_TO_BS_OFFSET 0u
 
+/*
+ * As PRM describes, the address of the UMR pointer must be
+ * aligned to 2KB.
+ */
+#define MLX5_UMR_KLM_PTR_ALIGN (1 << 11)
+
+#define MLX5_UMR_KLM_NUM_ALIGN \
+	(MLX5_UMR_KLM_PTR_ALIGN / sizeof(struct mlx5_klm))
+
 struct mlx5_wqe_umr_cseg {
 	uint32_t if_cf_toe_cq_res;
 	uint32_t ko_to_bs;
@@ -672,6 +681,19 @@ union mlx5_gga_compress_opaque {
 		};
 	} __rte_packed;
 	uint32_t data[64];
+};
+
+union mlx5_gga_crypto_opaque {
+	struct {
+		uint32_t syndrome;
+		uint32_t reserved0[2];
+		struct {
+			uint32_t iv[3];
+			uint32_t tag_size;
+			uint32_t aad_size;
+		} cp __rte_packed;
+	} __rte_packed;
+	uint8_t data[64];
 };
 
 struct mlx5_ifc_regexp_mmo_control_bits {

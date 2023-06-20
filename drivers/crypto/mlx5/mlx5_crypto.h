@@ -28,8 +28,11 @@ struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	struct rte_cryptodev *crypto_dev;
+	mlx5_reg_mr_t reg_mr_cb; /* Callback to reg_mr func */
+	mlx5_dereg_mr_t dereg_mr_cb; /* Callback to dereg_mr func */
 	struct mlx5_uar uar; /* User Access Region. */
 	uint32_t max_segs_num; /* Maximum supported data segs. */
+	uint32_t max_klm_num; /* Maximum supported klm. */
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
 	const struct rte_cryptodev_capabilities *caps;
 	struct rte_cryptodev_config dev_config;
@@ -46,15 +49,27 @@ struct mlx5_crypto_qp {
 	struct mlx5_crypto_priv *priv;
 	struct mlx5_devx_cq cq_obj;
 	struct mlx5_devx_qp qp_obj;
+	struct mlx5_devx_qp umr_qp_obj;
 	struct rte_cryptodev_stats stats;
 	struct rte_crypto_op **ops;
 	struct mlx5_devx_obj **mkey; /* WQE's indirect mekys. */
+	struct mlx5_klm *klm_array;
+	union mlx5_gga_crypto_opaque *opaque_addr;
 	struct mlx5_mr_ctrl mr_ctrl;
+	struct mlx5_pmd_mr mr;
+	/* Crypto QP. */
 	uint8_t *wqe;
 	uint16_t entries_n;
+	uint16_t cq_entries_n;
 	uint16_t pi;
 	uint16_t ci;
 	uint16_t db_pi;
+	/* UMR QP. */
+	uint8_t *umr_wqe;
+	uint16_t umr_wqbbs;
+	uint16_t umr_pi;
+	uint16_t umr_ci;
+	uint32_t umr_errors;
 };
 
 struct mlx5_crypto_dek {

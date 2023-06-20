@@ -159,5 +159,7 @@ INTERNAL {
 
 	mlx5_os_interrupt_handler_create; # WINDOWS_NO_EXPORT
 	mlx5_os_interrupt_handler_destroy; # WINDOWS_NO_EXPORT
+
+	mlx5_os_set_reg_mr_cb;
 	local: *;
 };
