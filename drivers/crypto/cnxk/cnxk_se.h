@@ -2539,23 +2539,6 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 
 		if (unlikely(m_dst != NULL)) {
-			uint32_t pkt_len;
-
-			/* Try to make room as much as src has */
-			pkt_len = rte_pktmbuf_pkt_len(m_dst);
-
-			if (unlikely(pkt_len < rte_pktmbuf_pkt_len(m_src))) {
-				pkt_len = rte_pktmbuf_pkt_len(m_src) - pkt_len;
-				if (!rte_pktmbuf_append(m_dst, pkt_len)) {
-					plt_dp_err("Not enough space in "
-						   "m_dst %p, need %u"
-						   " more",
-						   m_dst, pkt_len);
-					ret = -EINVAL;
-					goto err_exit;
-				}
-			}
-
 			if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
 				plt_dp_err("Prepare dst iov failed for "
 					   "m_dst %p",
@@ -2650,30 +2633,16 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
 		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
 	} else {
-		uint32_t pkt_len;
-
 		/* Out of place processing */
+
 		fc_params.src_iov = (void *)src;
 		fc_params.dst_iov = (void *)dst;
 
 		/* Store SG I/O in the api for reuse */
-		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0)) {
+		if (unlikely(prepare_iov_from_pkt(m_src, fc_params.src_iov, 0))) {
 			plt_dp_err("Prepare src iov failed");
 			ret = -EINVAL;
 			goto err_exit;
-		}
-
-		/* Try to make room as much as src has */
-		pkt_len = rte_pktmbuf_pkt_len(m_dst);
-
-		if (unlikely(pkt_len < rte_pktmbuf_pkt_len(m_src))) {
-			pkt_len = rte_pktmbuf_pkt_len(m_src) - pkt_len;
-			if (unlikely(rte_pktmbuf_append(m_dst, pkt_len) == NULL)) {
-				plt_dp_err("Not enough space in m_dst %p, need %u more", m_dst,
-					   pkt_len);
-				ret = -EINVAL;
-				goto err_exit;
-			}
 		}
 
 		if (unlikely(prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0))) {
@@ -2689,7 +2658,8 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
 		if (mdata == NULL) {
 			plt_dp_err("Could not allocate meta buffer");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto err_exit;
 		}
 	}
 
@@ -2798,22 +2768,6 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 
 		if (unlikely(m_dst != NULL)) {
-			uint32_t pkt_len;
-
-			/* Try to make room as much as src has */
-			pkt_len = rte_pktmbuf_pkt_len(m_dst);
-
-			if (unlikely(pkt_len < rte_pktmbuf_pkt_len(m_src))) {
-				pkt_len = rte_pktmbuf_pkt_len(m_src) - pkt_len;
-				if (!rte_pktmbuf_append(m_dst, pkt_len)) {
-					plt_dp_err("Not enough space in m_dst "
-						   "%p, need %u more",
-						   m_dst, pkt_len);
-					ret = -EINVAL;
-					goto err_exit;
-				}
-			}
-
 			if (unlikely(prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0))) {
 				plt_dp_err("Could not prepare m_dst iov %p", m_dst);
 				ret = -EINVAL;
