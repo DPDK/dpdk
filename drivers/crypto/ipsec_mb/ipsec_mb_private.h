@@ -13,11 +13,8 @@
 #include <cryptodev_pmd.h>
 #include <bus_vdev_driver.h>
 
-#if defined(RTE_LIB_SECURITY)
-#define IPSEC_MB_DOCSIS_SEC_ENABLED 1
 #include <rte_security.h>
 #include <rte_security_driver.h>
-#endif
 
 /* Maximum length for digest */
 #define DIGEST_LENGTH_MAX 64

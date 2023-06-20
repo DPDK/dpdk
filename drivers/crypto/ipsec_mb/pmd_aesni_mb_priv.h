@@ -5,12 +5,10 @@
 #ifndef _PMD_AESNI_MB_PRIV_H_
 #define _PMD_AESNI_MB_PRIV_H_
 
-#if defined(RTE_LIB_SECURITY)
 #define AESNI_MB_DOCSIS_SEC_ENABLED 1
 #include <rte_security.h>
 #include <rte_security_driver.h>
 #include <rte_ether.h>
-#endif
 
 #include "ipsec_mb_private.h"
 
@@ -950,7 +948,6 @@ typedef void (*hash_one_block_t)(const void *data, void *digest);
 typedef void (*aes_keyexp_t)(const void *key, void *enc_exp_keys,
 			void *dec_exp_keys);
 
-#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
 static const struct rte_cryptodev_capabilities
 					aesni_mb_pmd_security_crypto_cap[] = {
 	{	/* AES DOCSIS BPI */
@@ -998,6 +995,5 @@ static const struct rte_security_capability aesni_mb_pmd_security_cap[] = {
 		.action = RTE_SECURITY_ACTION_TYPE_NONE
 	}
 };
-#endif
 
 #endif /* _PMD_AESNI_MB_PRIV_H_ */
