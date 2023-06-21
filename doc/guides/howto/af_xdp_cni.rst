@@ -14,7 +14,7 @@ AF_XDP is a Linux socket Address Family that enables an XDP program
 to redirect packets to a memory buffer in userspace.
 
 This document explains how to enable the `AF_XDP Plugin for Kubernetes`_ within
-a DPDK application using the `AF_XDP PMD`_ to connect and use these technologies.
+a DPDK application using the :doc:`../nics/af_xdp` to connect and use these technologies.
 
 .. _AF_XDP Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
 
@@ -22,7 +22,7 @@ a DPDK application using the `AF_XDP PMD`_ to connect and use these technologies
 Background
 ----------
 
-The standard `AF_XDP PMD`_ initialization process involves loading an eBPF program
+The standard :doc:`../nics/af_xdp` initialization process involves loading an eBPF program
 onto the kernel netdev to be used by the PMD.
 This operation requires root or escalated Linux privileges
 and thus prevents the PMD from working in an unprivileged container.
@@ -46,8 +46,6 @@ the ``XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD`` libbpf flag
 should be used when creating the socket
 to instruct libbpf not to load the default libbpf program on the netdev.
 Instead the loading is handled by the CNI.
-
-.. _AF_XDP PMD: https://doc.dpdk.org/guides/nics/af_xdp.html
 
 .. note::
 
