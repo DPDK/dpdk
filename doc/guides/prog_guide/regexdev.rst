@@ -124,8 +124,7 @@ The configuration mode is depended on the PMD capabilities.
 
 Online rule configuration is done using the following API functions:
 ``rte_regexdev_rule_db_update`` which add / remove rules from the rules
-precompiled list, and ``rte_regexdev_rule_db_compile_activate``
-which compile the rules and loads them to the RegEx HW.
+precompiled list.
 
 Offline rule configuration can be done by adding a pointer to the compiled
 rule database in the configuration step, or by using

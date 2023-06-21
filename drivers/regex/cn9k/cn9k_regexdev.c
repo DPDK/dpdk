@@ -14,7 +14,6 @@
 
 /* REE common headers */
 #include "cn9k_regexdev.h"
-#include "cn9k_regexdev_compiler.h"
 
 
 /* HW matches are at offset 0x80 from RES_PTR_ADDR
@@ -698,12 +697,6 @@ cn9k_ree_queue_pair_setup(struct rte_regexdev *dev, uint16_t qp_id,
 }
 
 static int
-cn9k_ree_rule_db_compile_activate(struct rte_regexdev *dev)
-{
-	return cn9k_ree_rule_db_compile_prog(dev);
-}
-
-static int
 cn9k_ree_rule_db_update(struct rte_regexdev *dev,
 		const struct rte_regexdev_rule *rules, uint16_t nb_rules)
 {
@@ -834,8 +827,7 @@ static struct rte_regexdev_ops cn9k_ree_ops = {
 	.dev_attr_get = NULL,
 	.dev_attr_set = NULL,
 	.dev_rule_db_update = cn9k_ree_rule_db_update,
-	.dev_rule_db_compile_activate =
-			cn9k_ree_rule_db_compile_activate,
+	.dev_rule_db_compile_activate = NULL,
 	.dev_db_import = cn9k_ree_rule_db_import,
 	.dev_db_export = cn9k_ree_rule_db_export,
 	.dev_xstats_names_get = NULL,
