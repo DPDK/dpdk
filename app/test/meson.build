@@ -152,7 +152,7 @@ test_sources = files(
         'virtual_pmd.c',
 )
 
-test_deps = enabled_libs
+test_deps = dpdk_libs_enabled
 # as well as libs, the pci and vdev bus drivers are needed for a lot of tests
 test_deps += ['bus_pci', 'bus_vdev']
 

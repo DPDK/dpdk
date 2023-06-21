@@ -22,7 +22,7 @@ sources += gen_c_files.process(dpdk_chkinc_headers)
 # so we always include them in deps list
 deps = [get_variable('shared_rte_bus_vdev'), get_variable('shared_rte_bus_pci')]
 # add the rest of the libs to the dependencies
-foreach l:enabled_libs
+foreach l:dpdk_libs_enabled
     deps += get_variable('shared_rte_' + l)
 endforeach
 

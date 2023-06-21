@@ -44,6 +44,7 @@ dpdk_extra_ldflags = []
 dpdk_libs_deprecated = []
 dpdk_apps_disabled = []
 dpdk_libs_disabled = []
+dpdk_libs_enabled = []
 dpdk_drvs_disabled = []
 testpmd_drivers_sources = []
 testpmd_drivers_deps = []
@@ -134,7 +135,7 @@ message(output_message + '\n')
 output_message = '\n=================\nLibraries Enabled\n=================\n'
 output_message += '\nlibs:\n\t'
 output_count = 0
-foreach lib:enabled_libs
+foreach lib:dpdk_libs_enabled
     output_message += lib + ', '
     output_count += 1
     if output_count == 8

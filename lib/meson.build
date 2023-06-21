@@ -112,8 +112,6 @@ if cc.has_argument('-Wno-format-truncation')
     default_cflags += '-Wno-format-truncation'
 endif
 
-enabled_libs = [] # used to print summary at the end
-
 foreach l:libraries
     build = true
     reason = '<unknown reason>' # set if build == false to explain why
@@ -180,7 +178,7 @@ foreach l:libraries
         continue
     endif
 
-    enabled_libs += name
+    dpdk_libs_enabled += name
     dpdk_conf.set('RTE_LIB_' + name.to_upper(), 1)
     install_headers(headers)
     install_headers(indirect_headers)
