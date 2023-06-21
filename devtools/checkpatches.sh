@@ -167,6 +167,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# prefer Sphinx references for internal documentation
+	awk -v FOLDERS='doc' \
+		-v EXPRESSIONS='//doc.dpdk.org/guides/' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using explicit URL to doc.dpdk.org, prefer :ref: or :doc:' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# '// XXX is not set' must be preferred over '#undef XXX'
 	awk -v FOLDERS='config/rte_config.h' \
 		-v EXPRESSIONS='#undef' \
