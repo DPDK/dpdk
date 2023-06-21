@@ -147,7 +147,7 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 	/* allocate a reassembly table for TCP/IPv4 GRO */
 	struct gro_tcp4_tbl tcp_tbl;
 	struct gro_tcp4_flow tcp_flows[RTE_GRO_MAX_BURST_ITEM_NUM];
-	struct gro_tcp4_item tcp_items[RTE_GRO_MAX_BURST_ITEM_NUM] = {{0} };
+	struct gro_tcp_item tcp_items[RTE_GRO_MAX_BURST_ITEM_NUM] = {{0} };
 
 	/* allocate a reassembly table for UDP/IPv4 GRO */
 	struct gro_udp4_tbl udp_tbl;
