@@ -7,6 +7,11 @@ if is_windows
     subdir_done()
 endif
 
+if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
+    build = false
+    reason = 'requires IOVA in mbuf (set enable_iova_as_pa option)'
+endif
+
 if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     build = false
     reason = 'only supported on 64-bit Linux'
