@@ -18,6 +18,8 @@ option('enable_docs', type: 'boolean', value: false, description:
        'build documentation')
 option('enable_apps', type: 'string', value: '', description:
        'Comma-separated list of apps to build. If unspecified, build all apps.')
+option('enable_deprecated_libs', type: 'string', value: '', description:
+       'Comma-separated list of deprecated libraries to explicitly enable.')
 option('enable_drivers', type: 'string', value: '', description:
        'Comma-separated list of drivers to build. If unspecified, build all drivers.')
 option('enable_driver_sdk', type: 'boolean', value: false, description:

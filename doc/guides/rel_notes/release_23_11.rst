@@ -72,6 +72,9 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* build: Enabling deprecated libraries is now done using the new
+  ``enable_deprecated_libraries`` build option.
+
 
 Removed Items
 -------------

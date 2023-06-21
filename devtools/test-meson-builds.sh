@@ -120,10 +120,10 @@ config () # <dir> <builddir> <meson options>
 		return
 	fi
 	options=
-	# deprecated libs may be disabled by default, so for complete builds ensure
-	# no libs are disabled
-	if ! echo $* | grep -q -- 'disable_libs' ; then
-		options="$options -Ddisable_libs="
+	# deprecated libs are disabled by default, so for complete builds
+	# enable them
+	if ! echo $* | grep -q -- 'enable_deprecated_libs' ; then
+		options="$options -Denable_deprecated_libs=*"
 	fi
 	if echo $* | grep -qw -- '--default-library=shared' ; then
 		options="$options -Dexamples=all"

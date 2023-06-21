@@ -100,6 +100,15 @@ optional_libs = [
         'vhost',
 ]
 
+enable_deprecated_libs = []
+foreach l:run_command(list_dir_globs, get_option('enable_deprecated_libs'),
+        check: true).stdout().split()
+    if not dpdk_libs_deprecated.contains(l)
+        continue
+    endif
+    enable_deprecated_libs += l
+endforeach
+
 disabled_libs = []
 opt_disabled_libs = run_command(list_dir_globs, get_option('disable_libs'),
         check: true).stdout().split()
@@ -144,16 +153,19 @@ foreach l:libraries
         deps += ['eal']
     endif
 
-    if disabled_libs.contains(l)
-        build = false
-        reason = 'explicitly disabled via build config'
-        if dpdk_libs_deprecated.contains(l)
-            reason += ' (deprecated lib)'
-        endif
-    else
-        if dpdk_libs_deprecated.contains(l)
+    if dpdk_libs_deprecated.contains(l)
+        if not enable_deprecated_libs.contains(l)
+            build = false
+            reason = 'not in enabled deprecated libraries build config'
+        else
             warning('Enabling deprecated library, "@0@"'.format(l))
         endif
+    elif disabled_libs.contains(l)
+        build = false
+        reason = 'explicitly disabled via build config'
+    endif
+
+    if build
         subdir(l)
     endif
     if name != l
