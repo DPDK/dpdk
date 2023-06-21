@@ -203,6 +203,7 @@ def generate_overview_table(output_filename, table_id, section, table_name, titl
     num_cols = len(header_names)
 
     print_table_css(outfile, table_id)
+    print('.. _' + table_name + ':', file=outfile)
     print('.. table:: ' + table_name + '\n', file=outfile)
     print_table_header(outfile, num_cols, header_names, title)
     print_table_body(outfile, num_cols, ini_files, ini_data, default_features)
