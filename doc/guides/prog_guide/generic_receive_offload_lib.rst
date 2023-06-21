@@ -138,20 +138,21 @@ The key-based algorithm has two characters:
 
    Key-based Reassembly Algorithm
 
-TCP/IPv4 GRO
-------------
+TCP-IPv4/IPv6 GRO
+-----------------
 
-The table structure used by TCP/IPv4 GRO contains two arrays: flow array
+The table structure used by TCP-IPv4/IPv6 GRO contains two arrays: flow array
 and item array. The flow array keeps flow information, and the item array
 keeps packet information.
+The flow array is different for IPv4 and IPv6 while the item array is the same.
 
-Header fields used to define a TCP/IPv4 flow include:
+Header fields used to define a TCP-IPv4/IPv6 flow include:
 
-- source and destination: Ethernet and IP address, TCP port
+- common TCP key fields : Ethernet address, TCP port, TCP acknowledge number
+- version specific IP address
+- IPv6 flow label for IPv6 flow
 
-- TCP acknowledge number
-
-TCP/IPv4 packets whose FIN, SYN, RST, URG, PSH, ECE or CWR bit is set
+TCP packets whose FIN, SYN, RST, URG, PSH, ECE or CWR bit is set
 won't be processed.
 
 Header fields deciding if two packets are neighbors include:
@@ -159,7 +160,7 @@ Header fields deciding if two packets are neighbors include:
 - TCP sequence number
 
 - IPv4 ID. The IPv4 ID fields of the packets, whose DF bit is 0, should
-  be increased by 1.
+  be increased by 1. This is applicable only for IPv4.
 
 VxLAN GRO
 ---------
