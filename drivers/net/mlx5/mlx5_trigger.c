@@ -1282,8 +1282,8 @@ continue_dev_start:
 			dev->data->port_id);
 		goto error;
 	}
-	/* Set a mask and offset of dynamic metadata flows into Rx queues. */
-	mlx5_flow_rxq_dynf_metadata_set(dev);
+	/* Set dynamic fields and flags into Rx queues. */
+	mlx5_flow_rxq_dynf_set(dev);
 	/* Set flags and context to convert Rx timestamps. */
 	mlx5_rxq_timestamp_set(dev);
 	/* Set a mask and offset of scheduling on timestamp into Tx queues. */

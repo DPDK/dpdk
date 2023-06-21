@@ -30,6 +30,7 @@
 #include "rte_ethdev.h"
 #include "rte_ethdev_trace_fp.h"
 #include "ethdev_driver.h"
+#include "rte_flow_driver.h"
 #include "ethdev_profile.h"
 #include "ethdev_private.h"
 #include "ethdev_trace.h"
@@ -6501,6 +6502,10 @@ rte_eth_rx_metadata_negotiate(uint16_t port_id, uint64_t *features)
 		RTE_ETHDEV_LOG(ERR, "Invalid features (NULL)\n");
 		return -EINVAL;
 	}
+
+	if ((*features & RTE_ETH_RX_METADATA_TUNNEL_ID) != 0 &&
+			rte_flow_restore_info_dynflag_register() < 0)
+		*features &= ~RTE_ETH_RX_METADATA_TUNNEL_ID;
 
 	if (*dev->dev_ops->rx_metadata_negotiate == NULL)
 		return -ENOTSUP;

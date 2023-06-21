@@ -88,18 +88,20 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	char print_buf[MAX_STRING_LEN];
 	size_t buf_size = MAX_STRING_LEN;
 	size_t cur_len = 0;
+	uint64_t restore_info_dynflag;
 
 	if (!nb_pkts)
 		return;
+	restore_info_dynflag = rte_flow_restore_info_dynflag();
 	MKDUMPSTR(print_buf, buf_size, cur_len,
 		  "port %u/queue %u: %s %u packets\n", port_id, queue,
 		  is_rx ? "received" : "sent", (unsigned int) nb_pkts);
 	for (i = 0; i < nb_pkts; i++) {
-		int ret;
 		struct rte_flow_error error;
 		struct rte_flow_restore_info info = { 0, };
 
 		mb = pkts[i];
+		ol_flags = mb->ol_flags;
 		if (rxq_share > 0)
 			MKDUMPSTR(print_buf, buf_size, cur_len, "port %u, ",
 				  mb->port);
@@ -107,8 +109,8 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		eth_type = RTE_BE_TO_CPU_16(eth_hdr->ether_type);
 		packet_type = mb->packet_type;
 		is_encapsulation = RTE_ETH_IS_TUNNEL_PKT(packet_type);
-		ret = rte_flow_get_restore_info(port_id, mb, &info, &error);
-		if (!ret) {
+		if ((ol_flags & restore_info_dynflag) != 0 &&
+				rte_flow_get_restore_info(port_id, mb, &info, &error) == 0) {
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  "restore info:");
 			if (info.flags & RTE_FLOW_RESTORE_INFO_TUNNEL) {
@@ -153,7 +155,6 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 			  " - pool=%s - type=0x%04x - length=%u - nb_segs=%d",
 			  mb->pool->name, eth_type, (unsigned int) mb->pkt_len,
 			  (int)mb->nb_segs);
-		ol_flags = mb->ol_flags;
 		if (ol_flags & RTE_MBUF_F_RX_RSS_HASH) {
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - RSS hash=0x%x",

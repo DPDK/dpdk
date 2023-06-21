@@ -376,6 +376,12 @@ struct rte_flow_ops {
 const struct rte_flow_ops *
 rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error);
 
+/**
+ * Register mbuf dynamic flag for rte_flow_get_restore_info.
+ */
+int
+rte_flow_restore_info_dynflag_register(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -136,6 +136,7 @@ struct mlx5_rxq_data {
 	struct mlx5_uar_data uar_data; /* CQ doorbell. */
 	uint32_t cqn; /* CQ number. */
 	uint8_t cq_arm_sn; /* CQ arm seq number. */
+	uint64_t mark_flag; /* ol_flags to set with marks. */
 	uint32_t tunnel; /* Tunnel information. */
 	int timestamp_offset; /* Dynamic mbuf field for timestamp. */
 	uint64_t timestamp_rx_flag; /* Dynamic mbuf flag for timestamp. */

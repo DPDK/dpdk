@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <rte_ethdev.h>
 #include <rte_log.h>
 #include <rte_mbuf_dyn.h>
 
@@ -135,12 +136,8 @@ sfc_dp_ft_ctx_id_register(void)
 		.size = sizeof(uint8_t),
 		.align = __alignof__(uint8_t),
 	};
-	static const struct rte_mbuf_dynflag ft_ctx_id_valid = {
-		.name = "rte_net_sfc_dynflag_ft_ctx_id_valid",
-	};
 
 	int field_offset;
-	int flag;
 
 	SFC_GENERIC_LOG(INFO, "%s() entry", __func__);
 
@@ -156,15 +153,8 @@ sfc_dp_ft_ctx_id_register(void)
 		return -1;
 	}
 
-	flag = rte_mbuf_dynflag_register(&ft_ctx_id_valid);
-	if (flag < 0) {
-		SFC_GENERIC_LOG(ERR, "%s() failed to register ft_ctx_id dynflag",
-				__func__);
-		return -1;
-	}
-
+	sfc_dp_ft_ctx_id_valid = rte_flow_restore_info_dynflag();
 	sfc_dp_ft_ctx_id_offset = field_offset;
-	sfc_dp_ft_ctx_id_valid = UINT64_C(1) << flag;
 
 	SFC_GENERIC_LOG(INFO, "%s() done", __func__);
 

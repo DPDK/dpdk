@@ -1745,6 +1745,7 @@ struct mlx5_priv {
 	unsigned int lb_used:1; /* Loopback queue is referred to. */
 	uint32_t mark_enabled:1; /* If mark action is enabled on rxqs. */
 	uint32_t num_lag_ports:4; /* Number of ports can be bonded. */
+	uint32_t tunnel_enabled:1; /* If tunnel offloading is enabled on rxqs. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
@@ -2154,7 +2155,9 @@ int mlx5_flow_query_counter(struct rte_eth_dev *dev, struct rte_flow *flow,
 int mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev, struct rte_flow *flow,
 		FILE *file, struct rte_flow_error *error);
 #endif
-void mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev);
+int mlx5_flow_rx_metadata_negotiate(struct rte_eth_dev *dev,
+	uint64_t *features);
+void mlx5_flow_rxq_dynf_set(struct rte_eth_dev *dev);
 int mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
 int mlx5_validate_action_ct(struct rte_eth_dev *dev,

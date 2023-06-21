@@ -1796,6 +1796,38 @@ flow_rxq_flags_clear(struct rte_eth_dev *dev)
 	priv->sh->shared_mark_enabled = 0;
 }
 
+static uint64_t mlx5_restore_info_dynflag;
+
+int
+mlx5_flow_rx_metadata_negotiate(struct rte_eth_dev *dev, uint64_t *features)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint64_t supported = 0;
+
+	if (!is_tunnel_offload_active(dev)) {
+		supported |= RTE_ETH_RX_METADATA_USER_FLAG;
+		supported |= RTE_ETH_RX_METADATA_USER_MARK;
+		if ((*features & RTE_ETH_RX_METADATA_TUNNEL_ID) != 0) {
+			DRV_LOG(DEBUG,
+				"tunnel offload was not activated, consider setting dv_xmeta_en=%d",
+				MLX5_XMETA_MODE_MISS_INFO);
+		}
+	} else {
+		supported |= RTE_ETH_RX_METADATA_TUNNEL_ID;
+		if ((*features & RTE_ETH_RX_METADATA_TUNNEL_ID) != 0 &&
+				mlx5_restore_info_dynflag == 0)
+			mlx5_restore_info_dynflag = rte_flow_restore_info_dynflag();
+	}
+
+	if (((*features & supported) & RTE_ETH_RX_METADATA_TUNNEL_ID) != 0)
+		priv->tunnel_enabled = 1;
+	else
+		priv->tunnel_enabled = 0;
+
+	*features &= supported;
+	return 0;
+}
+
 /**
  * Set the Rx queue dynamic metadata (mask and offset) for a flow
  *
@@ -1803,10 +1835,14 @@ flow_rxq_flags_clear(struct rte_eth_dev *dev)
  *   Pointer to the Ethernet device structure.
  */
 void
-mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev)
+mlx5_flow_rxq_dynf_set(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	uint64_t mark_flag = RTE_MBUF_F_RX_FDIR_ID;
 	unsigned int i;
+
+	if (priv->tunnel_enabled)
+		mark_flag |= mlx5_restore_info_dynflag;
 
 	for (i = 0; i != priv->rxqs_n; ++i) {
 		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, i);
@@ -1826,6 +1862,7 @@ mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev)
 			data->flow_meta_offset = rte_flow_dynf_metadata_offs;
 			data->flow_meta_port_mask = priv->sh->dv_meta_mask;
 		}
+		data->mark_flag = mark_flag;
 	}
 }
 
@@ -11560,12 +11597,10 @@ mlx5_flow_tunnel_get_restore_info(struct rte_eth_dev *dev,
 	uint64_t ol_flags = m->ol_flags;
 	const struct mlx5_flow_tbl_data_entry *tble;
 	const uint64_t mask = RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!is_tunnel_offload_active(dev)) {
-		info->flags = 0;
-		return 0;
-	}
-
+	if (priv->tunnel_enabled == 0)
+		goto err;
 	if ((ol_flags & mask) != mask)
 		goto err;
 	tble = tunnel_mark_decode(dev, m->hash.fdir.hi);

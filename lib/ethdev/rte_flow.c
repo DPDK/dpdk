@@ -1441,6 +1441,33 @@ rte_flow_get_restore_info(uint16_t port_id,
 				  NULL, rte_strerror(ENOTSUP));
 }
 
+static struct {
+	const struct rte_mbuf_dynflag desc;
+	uint64_t value;
+} flow_restore_info_dynflag = {
+	.desc = { .name = "RTE_MBUF_F_RX_RESTORE_INFO", },
+};
+
+uint64_t
+rte_flow_restore_info_dynflag(void)
+{
+	return flow_restore_info_dynflag.value;
+}
+
+int
+rte_flow_restore_info_dynflag_register(void)
+{
+	if (flow_restore_info_dynflag.value == 0) {
+		int offset = rte_mbuf_dynflag_register(&flow_restore_info_dynflag.desc);
+
+		if (offset < 0)
+			return -1;
+		flow_restore_info_dynflag.value = RTE_BIT64(offset);
+	}
+
+	return 0;
+}
+
 int
 rte_flow_tunnel_action_decap_release(uint16_t port_id,
 				     struct rte_flow_action *actions,

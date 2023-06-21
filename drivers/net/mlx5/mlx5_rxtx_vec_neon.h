@@ -231,9 +231,9 @@ cycle:
 					vdupq_n_u32(RTE_MBUF_F_RX_FDIR);
 				const uint32x4_t fdir_all_flags =
 					vdupq_n_u32(RTE_MBUF_F_RX_FDIR |
-						    RTE_MBUF_F_RX_FDIR_ID);
+						    rxq->mark_flag);
 				uint32x4_t fdir_id_flags =
-					vdupq_n_u32(RTE_MBUF_F_RX_FDIR_ID);
+					vdupq_n_u32(rxq->mark_flag);
 				uint32x4_t invalid_mask, ftag;
 
 				__asm__ volatile
@@ -446,7 +446,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	if (rxq->mark) {
 		const uint32x4_t ft_def = vdupq_n_u32(MLX5_FLOW_MARK_DEFAULT);
 		const uint32x4_t fdir_flags = vdupq_n_u32(RTE_MBUF_F_RX_FDIR);
-		uint32x4_t fdir_id_flags = vdupq_n_u32(RTE_MBUF_F_RX_FDIR_ID);
+		uint32x4_t fdir_id_flags = vdupq_n_u32(rxq->mark_flag);
 		uint32x4_t invalid_mask;
 
 		/* Check if flow tag is non-zero then set RTE_MBUF_F_RX_FDIR. */

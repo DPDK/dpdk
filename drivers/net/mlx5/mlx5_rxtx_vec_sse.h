@@ -214,9 +214,9 @@ cycle:
 					_mm_set1_epi32(RTE_MBUF_F_RX_FDIR);
 				const __m128i fdir_all_flags =
 					_mm_set1_epi32(RTE_MBUF_F_RX_FDIR |
-						       RTE_MBUF_F_RX_FDIR_ID);
+						       rxq->mark_flag);
 				__m128i fdir_id_flags =
-					_mm_set1_epi32(RTE_MBUF_F_RX_FDIR_ID);
+					_mm_set1_epi32(rxq->mark_flag);
 
 				/* Extract flow_tag field. */
 				__m128i ftag0 =
@@ -442,7 +442,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 	if (rxq->mark) {
 		const __m128i pinfo_ft_mask = _mm_set1_epi32(0xffffff00);
 		const __m128i fdir_flags = _mm_set1_epi32(RTE_MBUF_F_RX_FDIR);
-		__m128i fdir_id_flags = _mm_set1_epi32(RTE_MBUF_F_RX_FDIR_ID);
+		__m128i fdir_id_flags = _mm_set1_epi32(rxq->mark_flag);
 		__m128i flow_tag, invalid_mask;
 
 		flow_tag = _mm_and_si128(pinfo, pinfo_ft_mask);

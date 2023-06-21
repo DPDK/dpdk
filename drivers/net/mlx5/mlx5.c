@@ -2347,6 +2347,7 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.get_monitor_addr = mlx5_get_monitor_addr,
 	.count_aggr_ports = mlx5_count_aggr_ports,
 	.map_aggr_tx_affinity = mlx5_map_aggr_tx_affinity,
+	.rx_metadata_negotiate = mlx5_flow_rx_metadata_negotiate,
 };
 
 /* Available operations from secondary process. */
@@ -2372,6 +2373,7 @@ const struct eth_dev_ops mlx5_dev_sec_ops = {
 	.get_module_eeprom = mlx5_get_module_eeprom,
 	.count_aggr_ports = mlx5_count_aggr_ports,
 	.map_aggr_tx_affinity = mlx5_map_aggr_tx_affinity,
+	.rx_metadata_negotiate = mlx5_flow_rx_metadata_negotiate,
 };
 
 /* Available operations in flow isolated mode. */

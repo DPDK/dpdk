@@ -296,15 +296,15 @@ cycle:
 				const __vector unsigned char fdir_all_flags =
 					(__vector unsigned char)
 					(__vector unsigned int){
-					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID,
-					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID,
-					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID,
-					RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID};
+					RTE_MBUF_F_RX_FDIR | rxq->mark_flag,
+					RTE_MBUF_F_RX_FDIR | rxq->mark_flag,
+					RTE_MBUF_F_RX_FDIR | rxq->mark_flag,
+					RTE_MBUF_F_RX_FDIR | rxq->mark_flag};
 				__vector unsigned char fdir_id_flags =
 					(__vector unsigned char)
 					(__vector unsigned int){
-					RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID,
-					RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID};
+					rxq->mark_flag, rxq->mark_flag,
+					rxq->mark_flag, rxq->mark_flag};
 				/* Extract flow_tag field. */
 				__vector unsigned char ftag0 = vec_perm(mcqe1,
 							zero, flow_mark_shuf);
@@ -632,8 +632,8 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 			RTE_MBUF_F_RX_FDIR, RTE_MBUF_F_RX_FDIR};
 		__vector unsigned char fdir_id_flags =
 			(__vector unsigned char)(__vector unsigned int){
-			RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID,
-			RTE_MBUF_F_RX_FDIR_ID, RTE_MBUF_F_RX_FDIR_ID};
+			rxq->mark_flag, rxq->mark_flag,
+			rxq->mark_flag, rxq->mark_flag};
 		__vector unsigned char flow_tag, invalid_mask;
 
 		flow_tag = (__vector unsigned char)
