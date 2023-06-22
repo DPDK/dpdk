@@ -35,6 +35,7 @@ endif
 endif
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
+CFLAGS += -D_GNU_SOURCE
 
 LDFLAGS += -lpqos
 
