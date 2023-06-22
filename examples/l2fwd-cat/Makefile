@@ -27,6 +27,7 @@ LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
+CFLAGS += -D_GNU_SOURCE
 
 LDFLAGS += -lpqos
 
