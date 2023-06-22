@@ -937,8 +937,10 @@ efx_rx_qcreate_internal(
 
 		rss_hash_field =
 		    &erplp->erpl_fields[EFX_RX_PREFIX_FIELD_RSS_HASH];
-		if (rss_hash_field->erpfi_width_bits == 0)
+		if (rss_hash_field->erpfi_width_bits == 0) {
+			rc = ENOTSUP;
 			goto fail5;
+		}
 	}
 
 	enp->en_rx_qcount++;
