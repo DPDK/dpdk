@@ -187,6 +187,7 @@ siena_board_cfg(
 	encp->enc_allow_set_mac_with_installed_filters = B_TRUE;
 	encp->enc_rx_packed_stream_supported = B_FALSE;
 	encp->enc_rx_var_packed_stream_supported = B_FALSE;
+	encp->enc_rx_include_fcs_supported = B_FALSE;
 	encp->enc_rx_es_super_buffer_supported = B_FALSE;
 	encp->enc_fw_subvariant_no_tx_csum_supported = B_FALSE;
 

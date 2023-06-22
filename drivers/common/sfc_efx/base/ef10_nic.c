@@ -1244,6 +1244,12 @@ ef10_get_datapath_caps(
 	/* No limit on maximum number of Rx scatter elements per packet. */
 	encp->enc_rx_scatter_max = -1;
 
+	/* Check if the firmware supports include FCS on RX */
+	if (CAP_FLAGS1(req, RX_INCLUDE_FCS))
+		encp->enc_rx_include_fcs_supported = B_TRUE;
+	else
+		encp->enc_rx_include_fcs_supported = B_FALSE;
+
 	/* Check if the firmware supports packed stream mode */
 	if (CAP_FLAGS1(req, RX_PACKED_STREAM))
 		encp->enc_rx_packed_stream_supported = B_TRUE;
