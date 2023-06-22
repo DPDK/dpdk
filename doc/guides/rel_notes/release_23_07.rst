@@ -140,6 +140,7 @@ New Features
     SET_IPV4_SRC and SET_TP_SRC on SN1000 SmartNICs.
   * Added support for transfer flow action INDIRECT with subtype COUNT,
     for aggregated statistics.
+  * Added support for keeping CRC.
 
 * **Added vmxnet3 version 7 support.**
 

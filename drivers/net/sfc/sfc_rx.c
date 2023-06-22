@@ -654,7 +654,8 @@ struct sfc_dp_rx sfc_efx_rx = {
 	},
 	.features		= SFC_DP_RX_FEAT_INTR,
 	.dev_offload_capa	= RTE_ETH_RX_OFFLOAD_CHECKSUM |
-				  RTE_ETH_RX_OFFLOAD_RSS_HASH,
+				  RTE_ETH_RX_OFFLOAD_RSS_HASH |
+				  RTE_ETH_RX_OFFLOAD_KEEP_CRC,
 	.queue_offload_capa	= RTE_ETH_RX_OFFLOAD_SCATTER,
 	.qsize_up_rings		= sfc_efx_rx_qsize_up_rings,
 	.qcreate		= sfc_efx_rx_qcreate,
@@ -937,6 +938,9 @@ sfc_rx_get_offload_mask(struct sfc_adapter *sa)
 
 	if (encp->enc_tunnel_encapsulations_supported == 0)
 		no_caps |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	if (encp->enc_rx_include_fcs_supported == 0)
+		no_caps |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 
 	return ~no_caps;
 }

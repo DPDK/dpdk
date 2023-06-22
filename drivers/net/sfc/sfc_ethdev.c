@@ -689,8 +689,13 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	sfc_adapter_lock(sa);
 
-	if (have_dp_rx_stats)
+	if (have_dp_rx_stats) {
 		sfc_stats_get_dp_rx(sa, &stats->ipackets, &stats->ibytes);
+		if (dev->data->dev_conf.rxmode.offloads &
+		    RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
+			stats->ibytes -= stats->ipackets * RTE_ETHER_CRC_LEN;
+		}
+	}
 	if (have_dp_tx_stats)
 		sfc_stats_get_dp_tx(sa, &stats->opackets, &stats->obytes);
 
