@@ -71,6 +71,7 @@ INTERNAL {
 	efx_mac_drain;
 	efx_mac_fcntl_get;
 	efx_mac_fcntl_set;
+	efx_mac_include_fcs_set;
 	efx_mac_filter_default_rxq_clear;
 	efx_mac_filter_default_rxq_set;
 	efx_mac_filter_get_all_ucast_mcast;

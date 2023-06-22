@@ -747,6 +747,11 @@ efx_mac_fcntl_get(
 	__out		unsigned int *fcntl_wantedp,
 	__out		unsigned int *fcntl_linkp);
 
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mac_include_fcs_set(
+	__in efx_nic_t *enp,
+	__in boolean_t enabled);
 
 #if EFSYS_OPT_MAC_STATS
 

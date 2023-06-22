@@ -527,6 +527,54 @@ efx_mac_filter_default_rxq_clear(
 		emop->emo_filter_default_rxq_clear(enp);
 }
 
+	__checkReturn	efx_rc_t
+efx_mac_include_fcs_set(
+	__in		efx_nic_t *enp,
+	__in		boolean_t enabled)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	const efx_mac_ops_t *emop = epp->ep_emop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
+	EFSYS_ASSERT(emop != NULL);
+
+	if (enabled && !encp->enc_rx_include_fcs_supported) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	/*
+	 * Enabling 'include FCS' changes link control state and affects
+	 * behaviour for all PCI functions on the port, so to avoid this it
+	 * can be enabled only if the PCI function is exclusive port user
+	 */
+	if (enabled && encp->enc_port_usage != EFX_PORT_USAGE_EXCLUSIVE) {
+		rc = EACCES;
+		goto fail2;
+	}
+
+	if (epp->ep_include_fcs != enabled) {
+		epp->ep_include_fcs = enabled;
+
+		rc = emop->emo_reconfigure(enp);
+		if (rc != 0)
+			goto fail3;
+	}
+
+	return 0;
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return rc;
+}
 
 #if EFSYS_OPT_MAC_STATS
 
