@@ -666,6 +666,12 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	otx_epvf->port_id = eth_dev->data->port_id;
 	eth_dev->dev_ops = &otx_ep_eth_dev_ops;
 	rte_spinlock_init(&otx_epvf->mbox_lock);
+
+	/*
+	 * Initialize negotiated Mbox version to base version of VF Mbox
+	 * This will address working legacy PF with latest VF.
+	 */
+	otx_epvf->mbox_neg_ver = OTX_EP_MBOX_VERSION_V1;
 	eth_dev->data->mac_addrs = rte_zmalloc("otx_ep", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		otx_ep_err("MAC addresses memory allocation failed\n");

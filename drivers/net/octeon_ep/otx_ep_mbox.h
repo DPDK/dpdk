@@ -5,8 +5,15 @@
 #ifndef _OTX_EP_MBOX_H_
 #define _OTX_EP_MBOX_H_
 
+/*
+ * When a new command is implemented, VF Mbox version should be bumped.
+ */
+enum octep_pfvf_mbox_version {
+	OTX_EP_MBOX_VERSION_V0,
+	OTX_EP_MBOX_VERSION_V1,
+};
 
-#define OTX_EP_MBOX_VERSION        1
+#define OTX_EP_MBOX_VERSION_CURRENT OTX_EP_MBOX_VERSION_V1
 
 enum otx_ep_mbox_opcode {
 	OTX_EP_MBOX_CMD_VERSION,
@@ -20,7 +27,7 @@ enum otx_ep_mbox_opcode {
 	OTX_EP_MBOX_CMD_GET_LINK_STATUS,
 	OTX_EP_MBOX_CMD_GET_MTU,
 	OTX_EP_MBOX_CMD_DEV_REMOVE,
-	OTX_EP_MBOX_CMD_LAST,
+	OTX_EP_MBOX_CMD_MAX,
 };
 
 enum otx_ep_mbox_word_type {

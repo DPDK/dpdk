@@ -12,6 +12,14 @@
 #include "cnxk_ep_vf.h"
 #include "otx_ep_mbox.h"
 
+/*
+ * When a new command is implemented, the below table should be updated
+ * with new command and it's version info.
+ */
+static uint32_t otx_ep_cmd_versions[OTX_EP_MBOX_CMD_MAX] = {
+	[0 ... OTX_EP_MBOX_CMD_DEV_REMOVE] = OTX_EP_MBOX_VERSION_V1
+};
+
 static int
 __otx_ep_send_mbox_cmd(struct otx_ep_device *otx_ep,
 		       union otx_ep_mbox_word cmd,
@@ -56,6 +64,12 @@ otx_ep_send_mbox_cmd(struct otx_ep_device *otx_ep,
 	int ret;
 
 	rte_spinlock_lock(&otx_ep->mbox_lock);
+	if (otx_ep_cmd_versions[cmd.s.opcode] > otx_ep->mbox_neg_ver) {
+		otx_ep_dbg("CMD:%d not supported in Version:%d\n", cmd.s.opcode,
+			    otx_ep->mbox_neg_ver);
+		rte_spinlock_unlock(&otx_ep->mbox_lock);
+		return -EOPNOTSUPP;
+	}
 	ret = __otx_ep_send_mbox_cmd(otx_ep, cmd, rsp);
 	rte_spinlock_unlock(&otx_ep->mbox_lock);
 	return ret;
@@ -284,15 +298,27 @@ int otx_ep_mbox_version_check(struct rte_eth_dev *eth_dev)
 
 	cmd.u64 = 0;
 	cmd.s_version.opcode = OTX_EP_MBOX_CMD_VERSION;
-	cmd.s_version.version = OTX_EP_MBOX_VERSION;
+	cmd.s_version.version = OTX_EP_MBOX_VERSION_CURRENT;
 	ret = otx_ep_send_mbox_cmd(otx_ep, cmd, &rsp);
-	if (!ret)
-		return 0;
-	if (ret == OTX_EP_MBOX_CMD_STATUS_NACK) {
-		otx_ep_err("VF Mbox version:%u is not compatible with PF\n",
+
+	/*
+	 * VF receives NACK or version info as zero
+	 * only if PF driver running old version of Mailbox
+	 * In this case VF mailbox version fallbacks to base
+	 * mailbox vesrion OTX_EP_MBOX_VERSION_V1.
+	 * Default VF mbox_neg_ver is set to OTX_EP_MBOX_VERSION_V1
+	 * during initialization of PMD driver.
+	 */
+	if (ret == OTX_EP_MBOX_CMD_STATUS_NACK || rsp.s_version.version == 0) {
+		otx_ep_dbg("VF Mbox version fallback to base version from:%u\n",
 			(uint32_t)cmd.s_version.version);
+		return 0;
 	}
-	return ret;
+	otx_ep->mbox_neg_ver = (uint32_t)rsp.s_version.version;
+	otx_ep_dbg("VF Mbox version:%u Negotiated VF version with PF:%u\n",
+		    (uint32_t)cmd.s_version.version,
+		    (uint32_t)rsp.s_version.version);
+	return 0;
 }
 
 int otx_ep_mbox_send_dev_exit(struct rte_eth_dev *eth_dev)

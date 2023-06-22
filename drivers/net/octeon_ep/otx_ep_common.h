@@ -538,6 +538,9 @@ struct otx_ep_device {
 
 	/* Mailbox receive message length */
 	int32_t mbox_rcv_message_len;
+
+	/* Negotiated Mbox version */
+	uint32_t mbox_neg_ver;
 };
 
 int otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no,
