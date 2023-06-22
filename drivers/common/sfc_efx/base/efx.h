@@ -311,6 +311,12 @@ efx_nic_check_pcie_link_speed(
 	__in		uint32_t pcie_link_gen,
 	__out		efx_pcie_link_performance_t *resultp);
 
+typedef enum efx_port_usage_e {
+	EFX_PORT_USAGE_UNKNOWN = 0,
+	EFX_PORT_USAGE_EXCLUSIVE,	/* Port only used by this PF */
+	EFX_PORT_USAGE_SHARED,		/* Port shared with other PFs */
+} efx_port_usage_t;
+
 #define	EFX_MAC_ADDR_LEN 6
 
 #if EFSYS_OPT_MCDI
@@ -1682,6 +1688,8 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_assigned_port;
 	/* NIC DMA mapping type */
 	efx_nic_dma_mapping_t	enc_dma_mapping;
+	/* Physical ports shared by PFs */
+	efx_port_usage_t	enc_port_usage;
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_VF_INVALID 0xffff

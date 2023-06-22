@@ -1044,6 +1044,83 @@ fail1:
 	return (rc);
 }
 
+static	__checkReturn			efx_rc_t
+ef10_nic_get_physical_port_usage(
+	__in				efx_nic_t *enp,
+	__in_ecount(pfs_to_ports_size)	uint8_t *pfs_to_ports,
+	__in				size_t pfs_to_ports_size,
+	__out				efx_port_usage_t *port_usagep)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_port_usage_t port_usage;
+	uint8_t phy_port;
+	efx_rc_t rc;
+	size_t pf;
+
+	/*
+	 * The sharing of physical ports between functions are determined
+	 * in the following way.
+	 * 1. If VFs are enabled then the physical port is shared.
+	 * 2. Retrieve PFs to ports assignment.
+	 * 3. If PF 0 assignment cannot be retrieved(ACCESS_DENIED), it
+	 *    implies this is an unprivileged function. An unprivileged
+	 *    function indicates the physical port must be shared with
+	 *    another privileged function.
+	 * 4. If PF 0 assignment can be retrieved, it indicates this
+	 *    function is privileged. Now, read all other PF's physical
+	 *    port number assignment and check if the current PF's physical
+	 *    port is shared with any other PF's physical port.
+	 * NOTE: PF 0 is always privileged function.
+	 */
+
+	if (EFX_PCI_FUNCTION_IS_VF(encp)) {
+		port_usage = EFX_PORT_USAGE_SHARED;
+		goto out;
+	}
+
+	if (pfs_to_ports[0] ==
+	    MC_CMD_GET_CAPABILITIES_V2_OUT_ACCESS_NOT_PERMITTED) {
+		/*
+		 * This is unprivileged function as it do not have sufficient
+		 * privileges to read the value, this implies the physical port
+		 * is shared between this function and another privileged
+		 * function
+		 */
+		port_usage = EFX_PORT_USAGE_SHARED;
+		goto out;
+	}
+
+	if (encp->enc_pf >= pfs_to_ports_size) {
+		rc = EINVAL;
+		goto fail1;
+	}
+	phy_port = pfs_to_ports[encp->enc_pf];
+
+	/*
+	 * This is privileged function as it is able read the value of
+	 * PF 0. Now, check if any other function share the same physical
+	 * port number as this function.
+	 */
+	for (pf = 0; pf < pfs_to_ports_size; pf++) {
+		if ((encp->enc_pf != pf) && (phy_port == pfs_to_ports[pf])) {
+			/* Found match, PFs share the same physical port */
+			port_usage = EFX_PORT_USAGE_SHARED;
+			goto out;
+		}
+	}
+
+	port_usage = EFX_PORT_USAGE_EXCLUSIVE;
+
+out:
+	*port_usagep = port_usage;
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 static	__checkReturn	efx_rc_t
 ef10_get_datapath_caps(
 	__in		efx_nic_t *enp)
@@ -1306,6 +1383,30 @@ ef10_get_datapath_caps(
 	} else {
 		encp->enc_tunnel_config_udp_entries_max = 0;
 	}
+
+#define CAP_PFS_TO_PORTS(_n)	\
+	(MC_CMD_GET_CAPABILITIES_V2_OUT_PFS_TO_PORTS_ASSIGNMENT_ ## _n)
+
+	encp->enc_port_usage = EFX_PORT_USAGE_UNKNOWN;
+
+	if (req.emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V2_OUT_LEN) {
+		/* PFs to ports assignment */
+		uint8_t pfs_to_ports[CAP_PFS_TO_PORTS(NUM)];
+
+		EFX_STATIC_ASSERT((CAP_PFS_TO_PORTS(NUM) * CAP_PFS_TO_PORTS(LEN)) ==
+		    EFX_ARRAY_SIZE(pfs_to_ports));
+
+		memcpy(pfs_to_ports, MCDI_OUT(req, efx_byte_t, CAP_PFS_TO_PORTS(OFST)),
+		    EFX_ARRAY_SIZE(pfs_to_ports));
+
+		rc = ef10_nic_get_physical_port_usage(enp, pfs_to_ports,
+		    EFX_ARRAY_SIZE(pfs_to_ports), &encp->enc_port_usage);
+		if (rc != 0) {
+			/* PF to port mapping lookup failed */
+			encp->enc_port_usage = EFX_PORT_USAGE_UNKNOWN;
+		}
+	}
+#undef  CAP_PFS_TO_PORTS
 
 	/*
 	 * Check if firmware reports the VI window mode.
