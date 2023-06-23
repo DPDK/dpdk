@@ -113,6 +113,8 @@ struct qat_sym_op_cookie {
 			phys_addr_t cd_phys_addr;
 		} spc_gmac;
 	} opt;
+	uint8_t digest_null[4];
+	phys_addr_t digest_null_phys_addr;
 };
 
 struct qat_sym_dp_ctx {

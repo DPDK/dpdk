@@ -51,6 +51,11 @@ qat_sym_init_op_cookie(void *op_cookie)
 			rte_mempool_virt2iova(cookie) +
 			offsetof(struct qat_sym_op_cookie,
 			opt.spc_gmac.cd_cipher);
+
+	cookie->digest_null_phys_addr =
+			rte_mempool_virt2iova(cookie) +
+			offsetof(struct qat_sym_op_cookie,
+			digest_null);
 }
 
 static __rte_always_inline int

@@ -300,7 +300,8 @@ qat_sym_convert_op_to_vec_auth(struct rte_crypto_op *op,
 		struct rte_crypto_sgl *in_sgl, struct rte_crypto_sgl *out_sgl,
 		struct rte_crypto_va_iova_ptr *cipher_iv __rte_unused,
 		struct rte_crypto_va_iova_ptr *auth_iv,
-		struct rte_crypto_va_iova_ptr *digest)
+		struct rte_crypto_va_iova_ptr *digest,
+		struct qat_sym_op_cookie *cookie)
 {
 	uint32_t auth_ofs = 0, auth_len = 0;
 	int n_src, ret;
@@ -365,7 +366,11 @@ qat_sym_convert_op_to_vec_auth(struct rte_crypto_op *op,
 		out_sgl->num = 0;
 
 	digest->va = (void *)op->sym->auth.digest.data;
-	digest->iova = op->sym->auth.digest.phys_addr;
+
+	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL)
+		digest->iova = cookie->digest_null_phys_addr;
+	else
+		digest->iova = op->sym->auth.digest.phys_addr;
 
 	return 0;
 }
@@ -376,7 +381,8 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 		struct rte_crypto_sgl *in_sgl, struct rte_crypto_sgl *out_sgl,
 		struct rte_crypto_va_iova_ptr *cipher_iv,
 		struct rte_crypto_va_iova_ptr *auth_iv_or_aad,
-		struct rte_crypto_va_iova_ptr *digest)
+		struct rte_crypto_va_iova_ptr *digest,
+		struct qat_sym_op_cookie *cookie)
 {
 	union rte_crypto_sym_ofs ofs;
 	uint32_t max_len = 0;
@@ -401,7 +407,11 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 	auth_iv_or_aad->iova = rte_crypto_op_ctophys_offset(op,
 			ctx->auth_iv.offset);
 	digest->va = (void *)op->sym->auth.digest.data;
-	digest->iova = op->sym->auth.digest.phys_addr;
+
+	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL)
+		digest->iova = cookie->digest_null_phys_addr;
+	else
+		digest->iova = op->sym->auth.digest.phys_addr;
 
 	ret = qat_cipher_is_len_in_bits(ctx, op);
 	switch (ret) {
