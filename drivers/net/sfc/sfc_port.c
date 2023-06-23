@@ -225,6 +225,11 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_fcntl_set;
 
+	sfc_log_init(sa, "set vlan strip to %u", port->vlan_strip);
+	rc = efx_port_vlan_strip_set(sa->nic, port->vlan_strip);
+	if (rc != 0)
+		goto fail_mac_vlan_strip_set;
+
 	/* Preserve pause capabilities set by above efx_mac_fcntl_set()  */
 	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_CURRENT, &phy_adv_cap);
 	SFC_ASSERT((port->phy_adv_cap & phy_pause_caps) == 0);
@@ -345,6 +350,7 @@ fail_mac_addr_set:
 fail_mac_pdu_set:
 fail_phy_adv_cap_set:
 fail_mac_fcntl_set:
+fail_mac_vlan_strip_set:
 #if EFSYS_OPT_LOOPBACK
 fail_loopback_set:
 #endif
@@ -391,6 +397,11 @@ sfc_port_configure(struct sfc_adapter *sa)
 		port->include_fcs = true;
 	else
 		port->include_fcs = false;
+
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+		port->vlan_strip = true;
+	else
+		port->vlan_strip = false;
 
 	return 0;
 }

@@ -75,6 +75,7 @@ struct sfc_port {
 	unsigned int			flow_ctrl;
 	boolean_t			flow_ctrl_autoneg;
 	boolean_t			include_fcs;
+	boolean_t			vlan_strip;
 	size_t				pdu;
 
 	/*

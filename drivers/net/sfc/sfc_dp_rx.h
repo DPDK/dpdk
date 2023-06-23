@@ -70,6 +70,7 @@ struct sfc_dp_rx_qcreate_info {
 	unsigned int		flags;
 #define SFC_RXQ_FLAG_RSS_HASH	0x1
 #define SFC_RXQ_FLAG_INGRESS_MPORT	0x2
+#define SFC_RXQ_FLAG_VLAN_STRIPPED_TCI	0x4
 
 	/** Rx queue size */
 	unsigned int		rxq_entries;

@@ -141,6 +141,7 @@ New Features
   * Added support for transfer flow action INDIRECT with subtype COUNT,
     for aggregated statistics.
   * Added support for keeping CRC.
+  * Added VLAN stripping support on SN1000 SmartNICs.
 
 * **Added vmxnet3 version 7 support.**
 
