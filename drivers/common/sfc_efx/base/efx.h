@@ -1627,6 +1627,7 @@ typedef struct efx_nic_cfg_s {
 	/* Number of TSO contexts on the NIC (FATSOv2) */
 	uint32_t		enc_fw_assisted_tso_v2_n_contexts;
 	boolean_t		enc_hw_tx_insert_vlan_enabled;
+	boolean_t		enc_rx_vlan_stripping_supported;
 	/* Number of PFs on the NIC */
 	uint32_t		enc_hw_pf_count;
 	/* Datapath firmware vadapter/vport/vswitch support */

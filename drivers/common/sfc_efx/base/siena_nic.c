@@ -179,6 +179,7 @@ siena_board_cfg(
 	    (encp->enc_rxq_limit * EFX_RXQ_DC_NDESCS(EFX_RXQ_DC_SIZE));
 
 	encp->enc_hw_tx_insert_vlan_enabled = B_FALSE;
+	encp->enc_rx_vlan_stripping_supported = B_FALSE;
 	encp->enc_fw_assisted_tso_enabled = B_FALSE;
 	encp->enc_fw_assisted_tso_v2_enabled = B_FALSE;
 	encp->enc_fw_assisted_tso_v2_n_contexts = 0;

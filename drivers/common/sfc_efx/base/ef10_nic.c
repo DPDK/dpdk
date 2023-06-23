@@ -1223,6 +1223,12 @@ ef10_get_datapath_caps(
 	else
 		encp->enc_hw_tx_insert_vlan_enabled = B_FALSE;
 
+	/* Check if firmware supports VLAN stripping. */
+	if (CAP_FLAGS1(req, RX_VLAN_STRIPPING))
+		encp->enc_rx_vlan_stripping_supported = B_TRUE;
+	else
+		encp->enc_rx_vlan_stripping_supported = B_FALSE;
+
 	/* Check if the firmware supports RX event batching */
 	if (CAP_FLAGS1(req, RX_BATCHING))
 		encp->enc_rx_batching_enabled = B_TRUE;
