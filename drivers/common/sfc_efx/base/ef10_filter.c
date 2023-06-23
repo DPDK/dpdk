@@ -2113,6 +2113,26 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+ef10_filter_get_count(
+	__in	efx_nic_t *enp,
+	__out	uint32_t *countp)
+{
+	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	uint32_t filter_count;
+
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(countp != NULL);
+
+	filter_count = table->eft_unicst_filter_count +
+			table->eft_mulcst_filter_count +
+			table->eft_encap_filter_count;
+
+	*countp = filter_count;
+
+	return (0);
+}
+
 		void
 ef10_filter_get_default_rxq(
 	__in		efx_nic_t *enp,

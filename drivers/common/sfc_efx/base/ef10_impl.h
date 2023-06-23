@@ -1348,6 +1348,12 @@ ef10_filter_reconfigure(
 	__in				uint32_t count);
 
 LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+ef10_filter_get_count(
+	__in	efx_nic_t *enp,
+	__out	uint32_t *countp);
+
+LIBEFX_INTERNAL
 extern		void
 ef10_filter_get_default_rxq(
 	__in		efx_nic_t *enp,

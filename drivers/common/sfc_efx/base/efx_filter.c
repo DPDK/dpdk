@@ -53,6 +53,7 @@ static const efx_filter_ops_t	__efx_filter_siena_ops = {
 	siena_filter_delete,		/* efo_delete */
 	siena_filter_supported_filters,	/* efo_supported_filters */
 	NULL,				/* efo_reconfigure */
+	NULL,				/* efo_get_count */
 };
 #endif /* EFSYS_OPT_SIENA */
 
@@ -65,6 +66,7 @@ static const efx_filter_ops_t	__efx_filter_ef10_ops = {
 	ef10_filter_delete,		/* efo_delete */
 	ef10_filter_supported_filters,	/* efo_supported_filters */
 	ef10_filter_reconfigure,	/* efo_reconfigure */
+	ef10_filter_get_count,		/* efo_get_count */
 };
 #endif /* EFX_OPTS_EF10() */
 
@@ -77,6 +79,7 @@ static const efx_filter_ops_t	__efx_filter_rhead_ops = {
 	ef10_filter_delete,		/* efo_delete */
 	ef10_filter_supported_filters,	/* efo_supported_filters */
 	ef10_filter_reconfigure,	/* efo_reconfigure */
+	ef10_filter_get_count,		/* efo_get_count */
 };
 #endif /* EFSYS_OPT_RIVERHEAD */
 
@@ -306,6 +309,35 @@ efx_filter_reconfigure(
 
 	return (0);
 
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_filter_get_count(
+	__in	efx_nic_t *enp,
+	__out	uint32_t *countp)
+{
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_FILTER);
+
+	if (enp->en_efop->efo_get_count == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if ((rc = enp->en_efop->efo_get_count(enp, countp)) != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 

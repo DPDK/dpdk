@@ -288,6 +288,7 @@ typedef struct efx_filter_ops_s {
 	efx_rc_t	(*efo_reconfigure)(efx_nic_t *, uint8_t const *, boolean_t,
 				   boolean_t, boolean_t, boolean_t,
 				   uint8_t const *, uint32_t);
+	efx_rc_t	(*efo_get_count)(efx_nic_t *, uint32_t *);
 } efx_filter_ops_t;
 
 LIBEFX_INTERNAL
@@ -301,6 +302,12 @@ efx_filter_reconfigure(
 	__in				boolean_t brdcst,
 	__in_ecount(6*count)		uint8_t const *addrs,
 	__in				uint32_t count);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_filter_get_count(
+	__in	efx_nic_t *enp,
+	__out	uint32_t *countp);
 
 #endif /* EFSYS_OPT_FILTER */
 
