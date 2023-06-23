@@ -407,7 +407,7 @@ qat_sym_build_op_auth_gen3(void *in_op, struct qat_sym_session *ctx,
 	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 	ofs.raw = qat_sym_convert_op_to_vec_auth(op, ctx, &in_sgl, &out_sgl,
-			NULL, &auth_iv, &digest);
+			NULL, &auth_iv, &digest, op_cookie);
 	if (unlikely(ofs.raw == UINT64_MAX)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
