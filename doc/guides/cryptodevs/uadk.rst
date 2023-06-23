@@ -90,7 +90,7 @@ Test steps
       meson setup build (--reconfigure)
       cd build
       ninja
-      sudo ninja install
+      sudo meson install
 
 #. Prepare hugepages for DPDK (see also :doc:`../tools/hugepages`)
 

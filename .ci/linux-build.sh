@@ -151,14 +151,14 @@ if [ "$ABI_CHECKS" = "true" ]; then
         git clone --single-branch -b "$REF_GIT_TAG" $REF_GIT_REPO $refsrcdir
         meson setup $OPTS -Dexamples= $refsrcdir $refsrcdir/build
         ninja -C $refsrcdir/build
-        DESTDIR=$(pwd)/reference ninja -C $refsrcdir/build install
+        DESTDIR=$(pwd)/reference meson install -C $refsrcdir/build
         find reference/usr/local -name '*.a' -delete
         rm -rf reference/usr/local/bin
         rm -rf reference/usr/local/share
         echo $REF_GIT_TAG > reference/VERSION
     fi
 
-    DESTDIR=$(pwd)/install ninja -C build install
+    DESTDIR=$(pwd)/install meson install -C build
     devtools/check-abi.sh reference install ${ABI_CHECKS_WARN_ONLY:-}
 fi
 
@@ -172,7 +172,7 @@ fi
 
 # Test examples compilation with an installed dpdk
 if [ "$BUILD_EXAMPLES" = "true" ]; then
-    [ -d install ] || DESTDIR=$(pwd)/install ninja -C build install
+    [ -d install ] || DESTDIR=$(pwd)/install meson install -C build
     export LD_LIBRARY_PATH=$(dirname $(find $(pwd)/install -name librte_eal.so)):$LD_LIBRARY_PATH
     export PKG_CONFIG_PATH=$(dirname $(find $(pwd)/install -name libdpdk.pc)):$PKG_CONFIG_PATH
     export PKGCONF="pkg-config --define-prefix"

@@ -12,7 +12,7 @@ following set of commands::
 	meson setup build
 	cd build
 	ninja
-	ninja install
+	meson install
 
 This will compile DPDK in the ``build`` subdirectory, and then install the
 resulting libraries, drivers and header files onto the system - generally
@@ -165,7 +165,7 @@ printing each command on a new line as it runs.
 Installing the Compiled Files
 ------------------------------
 
-Use ``ninja install`` to install the required DPDK files onto the system.
+Use ``meson install`` to install the required DPDK files onto the system.
 The install prefix defaults to ``/usr/local`` but can be used as with other
 options above. The environment variable ``DESTDIR`` can be used to adjust
 the root directory for the install, for example when packaging.

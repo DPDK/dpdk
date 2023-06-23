@@ -47,7 +47,7 @@ The final, install, step generally needs to be run as root::
   meson setup build
   cd build
   ninja
-  ninja install
+  meson install
 
 This will install the DPDK libraries and drivers to `/usr/local/lib` with a
 pkg-config file `libdpdk.pc` installed to `/usr/local/lib/pkgconfig`. The

@@ -22,7 +22,7 @@ the system when DPDK is installed, and so can be built using GNU make.
    on the FreeBSD system.
 
 The following shows how to compile the helloworld example app, following
-the installation of DPDK using `ninja install` as described previously::
+the installation of DPDK using `meson install` as described previously::
 
         $ export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 

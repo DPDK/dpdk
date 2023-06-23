@@ -158,8 +158,8 @@ compile () # <builddir>
 install_target () # <builddir> <installdir>
 {
 	rm -rf $2
-	echo "DESTDIR=$2 $ninja_cmd -C $1 install" >&$verbose
-	DESTDIR=$2 $ninja_cmd -C $1 install >&$veryverbose
+	echo "DESTDIR=$2 $MESON install -C $1" >&$verbose
+	DESTDIR=$2 $MESON install -C $1 >&$veryverbose
 }
 
 build () # <directory> <target cc | cross file> <ABI check> [meson options]

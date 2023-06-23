@@ -956,7 +956,7 @@ ext_deps
 headers
 	**Default Value = []**.
 	Used to return the list of header files for the library that should be
-	installed to $PREFIX/include when ``ninja install`` is run. As with
+	installed to $PREFIX/include when ``meson install`` is run. As with
 	source files, these should be specified using the meson ``files()``
 	function.
 	When ``check_includes`` build option is set to ``true``, each header file
