@@ -394,8 +394,16 @@ to enable fastpath services.
 Inbuilt Nodes
 -------------
 
-DPDK provides a set of nodes for data processing. The following section
-details the documentation for the same.
+DPDK provides a set of nodes for data processing.
+The following diagram depicts inbuilt nodes data flow.
+
+.. _figure_graph_inbuit_node_flow:
+
+.. figure:: img/graph_inbuilt_node_flow.*
+
+   Inbuilt nodes data flow
+
+Following section details the documentation for individual inbuilt node.
 
 ethdev_rx
 ~~~~~~~~~
