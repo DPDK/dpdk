@@ -171,6 +171,7 @@ efx_mcdi_filter_op_add(
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_FILTER_OP_V3_IN_LEN,
 		MC_CMD_FILTER_OP_EXT_OUT_LEN);
 	efx_filter_match_flags_t match_flags;
+	efx_port_t *epp = &(enp->en_port);
 	uint32_t port_id;
 	efx_rc_t rc;
 
@@ -336,6 +337,11 @@ efx_mcdi_filter_op_add(
 	} else if (spec->efs_flags & EFX_FILTER_FLAG_ACTION_FLAG) {
 		MCDI_IN_SET_DWORD_FIELD(req, FILTER_OP_V3_IN_MATCH_ACTION_FLAGS,
 		    FILTER_OP_V3_IN_MATCH_SET_FLAG, 1);
+	}
+
+	if (epp->ep_vlan_strip) {
+		MCDI_IN_SET_DWORD_FIELD(req, FILTER_OP_V3_IN_MATCH_ACTION_FLAGS,
+		    FILTER_OP_V3_IN_MATCH_STRIP_VLAN, 1);
 	}
 
 	efx_mcdi_execute(enp, &req);

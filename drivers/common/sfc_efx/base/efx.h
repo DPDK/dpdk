@@ -1159,6 +1159,12 @@ efx_port_poll(
 	__out_opt	efx_link_mode_t	*link_modep);
 
 LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_port_vlan_strip_set(
+	__in		efx_nic_t *enp,
+	__in		boolean_t enabled);
+
+LIBEFX_API
 extern		void
 efx_port_fini(
 	__in	efx_nic_t *enp);
@@ -3117,6 +3123,12 @@ typedef enum efx_rxq_type_e {
  * Request user flag field in the Rx prefix of a queue.
  */
 #define	EFX_RXQ_FLAG_USER_FLAG		0x20
+/*
+ * Request VLAN TCI field in the Rx prefix. The flag just
+ * controls delivery of the stripped VLAN TCI if VLAN stripping
+ * is enabled and done.
+ */
+#define	EFX_RXQ_FLAG_VLAN_STRIPPED_TCI		0x40
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t

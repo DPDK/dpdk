@@ -943,11 +943,25 @@ efx_rx_qcreate_internal(
 		}
 	}
 
+	if (flags & EFX_RXQ_FLAG_VLAN_STRIPPED_TCI) {
+		const efx_rx_prefix_layout_t *erplp = &erp->er_prefix_layout;
+		const efx_rx_prefix_field_info_t *vlan_tci_field;
+
+		vlan_tci_field =
+		    &erplp->erpl_fields[EFX_RX_PREFIX_FIELD_VLAN_STRIP_TCI];
+		if (vlan_tci_field->erpfi_width_bits == 0) {
+			rc = ENOTSUP;
+			goto fail6;
+		}
+	}
+
 	enp->en_rx_qcount++;
 	*erpp = erp;
 
 	return (0);
 
+fail6:
+	EFSYS_PROBE(fail6);
 fail5:
 	EFSYS_PROBE(fail5);
 

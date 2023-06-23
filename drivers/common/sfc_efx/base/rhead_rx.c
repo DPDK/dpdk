@@ -640,6 +640,9 @@ rhead_rx_qcreate(
 	if (flags & EFX_RXQ_FLAG_USER_FLAG)
 		fields_mask |= 1U << EFX_RX_PREFIX_FIELD_USER_FLAG;
 
+	if (flags & EFX_RXQ_FLAG_VLAN_STRIPPED_TCI)
+		fields_mask |= 1U << EFX_RX_PREFIX_FIELD_VLAN_STRIP_TCI;
+
 	/*
 	 * LENGTH is required in EF100 host interface, as receive events
 	 * do not include the packet length.

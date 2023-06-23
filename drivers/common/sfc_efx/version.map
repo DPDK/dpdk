@@ -211,6 +211,7 @@ INTERNAL {
 	efx_port_init;
 	efx_port_loopback_set;
 	efx_port_poll;
+	efx_port_vlan_strip_set;
 
 	efx_pseudo_hdr_hash_get;
 	efx_pseudo_hdr_pkt_length_get;
