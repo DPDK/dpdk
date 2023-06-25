@@ -1715,7 +1715,6 @@ ice_switch_parse_action(struct ice_pf *pf,
 	struct rte_eth_dev_data *dev_data = pf->adapter->pf.dev_data;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_rss *act_qgrop;
-	const struct rte_flow_action_mark *act_mark;
 	uint16_t base_queue, i;
 	const struct rte_flow_action *action;
 	enum rte_flow_action_type action_type;
@@ -1766,13 +1765,6 @@ ice_switch_parse_action(struct ice_pf *pf,
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			rule_info->sw_act.fltr_act =
 				ICE_DROP_PACKET;
-			break;
-
-		case RTE_FLOW_ACTION_TYPE_MARK:
-			act_mark = action->conf;
-			rule_info->sw_act.fltr_act =
-				ICE_SET_MARK;
-			rule_info->sw_act.markid = act_mark->id;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -1830,7 +1822,6 @@ ice_switch_check_action(const struct rte_flow_action *actions,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_DROP:
-		case RTE_FLOW_ACTION_TYPE_MARK:
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 			actions_num++;
