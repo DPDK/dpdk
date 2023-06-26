@@ -264,8 +264,10 @@ names=$(git log --format='From: %an <%ae>%n%b' --reverse $range |
 	sed -rn 's,.*: (.*<.*@.*>),\1,p' |
 	sort -u)
 bad=$(for contributor in $names ; do
+	contributor=${contributor//(/\\(}
 	! grep -qE "^$contributor($| <)" $selfdir/../.mailmap || continue
-	if grep -q "^${contributor%% <*} <" .mailmap ; then
+	name=${contributor%% <*}
+	if grep -q "^$name <" $selfdir/../.mailmap ; then
 		printf "\t$contributor is not the primary email address\n"
 	else
 		printf "\t$contributor is unknown in .mailmap\n"
