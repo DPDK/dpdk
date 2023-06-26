@@ -842,6 +842,34 @@ idpf_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static const struct eth_dev_ops idpf_eth_dev_ops = {
+	.dev_configure			= idpf_dev_configure,
+	.dev_close			= idpf_dev_close,
+	.rx_queue_setup			= idpf_rx_queue_setup,
+	.tx_queue_setup			= idpf_tx_queue_setup,
+	.dev_infos_get			= idpf_dev_info_get,
+	.dev_start			= idpf_dev_start,
+	.dev_stop			= idpf_dev_stop,
+	.link_update			= idpf_dev_link_update,
+	.rx_queue_start			= idpf_rx_queue_start,
+	.tx_queue_start			= idpf_tx_queue_start,
+	.rx_queue_stop			= idpf_rx_queue_stop,
+	.tx_queue_stop			= idpf_tx_queue_stop,
+	.rx_queue_release		= idpf_dev_rx_queue_release,
+	.tx_queue_release		= idpf_dev_tx_queue_release,
+	.mtu_set			= idpf_dev_mtu_set,
+	.dev_supported_ptypes_get	= idpf_dev_supported_ptypes_get,
+	.stats_get			= idpf_dev_stats_get,
+	.stats_reset			= idpf_dev_stats_reset,
+	.reta_update			= idpf_rss_reta_update,
+	.reta_query			= idpf_rss_reta_query,
+	.rss_hash_update		= idpf_rss_hash_update,
+	.rss_hash_conf_get		= idpf_rss_hash_conf_get,
+	.xstats_get			= idpf_dev_xstats_get,
+	.xstats_get_names		= idpf_dev_xstats_get_names,
+	.xstats_reset			= idpf_dev_xstats_reset,
+};
+
 static int
 insert_value(struct idpf_devargs *devargs, uint16_t id)
 {
@@ -1215,34 +1243,6 @@ err_vports_alloc:
 err_adapter_init:
 	return ret;
 }
-
-static const struct eth_dev_ops idpf_eth_dev_ops = {
-	.dev_configure			= idpf_dev_configure,
-	.dev_close			= idpf_dev_close,
-	.rx_queue_setup			= idpf_rx_queue_setup,
-	.tx_queue_setup			= idpf_tx_queue_setup,
-	.dev_infos_get			= idpf_dev_info_get,
-	.dev_start			= idpf_dev_start,
-	.dev_stop			= idpf_dev_stop,
-	.link_update			= idpf_dev_link_update,
-	.rx_queue_start			= idpf_rx_queue_start,
-	.tx_queue_start			= idpf_tx_queue_start,
-	.rx_queue_stop			= idpf_rx_queue_stop,
-	.tx_queue_stop			= idpf_tx_queue_stop,
-	.rx_queue_release		= idpf_dev_rx_queue_release,
-	.tx_queue_release		= idpf_dev_tx_queue_release,
-	.mtu_set			= idpf_dev_mtu_set,
-	.dev_supported_ptypes_get	= idpf_dev_supported_ptypes_get,
-	.stats_get			= idpf_dev_stats_get,
-	.stats_reset			= idpf_dev_stats_reset,
-	.reta_update			= idpf_rss_reta_update,
-	.reta_query			= idpf_rss_reta_query,
-	.rss_hash_update		= idpf_rss_hash_update,
-	.rss_hash_conf_get		= idpf_rss_hash_conf_get,
-	.xstats_get			= idpf_dev_xstats_get,
-	.xstats_get_names		= idpf_dev_xstats_get_names,
-	.xstats_reset			= idpf_dev_xstats_reset,
-};
 
 static uint16_t
 idpf_vport_idx_alloc(struct idpf_adapter_ext *ad)
