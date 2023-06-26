@@ -70,14 +70,6 @@ else
     endif
 endif
 
-# The driver should not build if both compression and crypto are disabled
-#FIXME common code depends on compression files so check only compress!
-if not qat_compress # and not qat_crypto
-    build = false
-    reason = '' # rely on reason for compress/crypto above
-    subdir_done()
-endif
-
 deps += ['bus_pci', 'cryptodev', 'net', 'compressdev']
 sources += files(
         'qat_common.c',

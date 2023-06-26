@@ -128,9 +128,6 @@ qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
 		void **ops, uint16_t nb_ops);
 
 uint16_t
-qat_enqueue_comp_op_burst(void *qp, void **ops, uint16_t nb_ops);
-
-uint16_t
 qat_dequeue_op_burst(void *qp, void **ops,
 		qat_op_dequeue_t qat_dequeue_process_response, uint16_t nb_ops);
 
@@ -206,6 +203,21 @@ struct qat_qp_hw_spec_funcs {
 	qat_qp_get_hw_data_t		qat_qp_get_hw_data;
 };
 
-extern struct qat_qp_hw_spec_funcs *qat_qp_hw_spec[];
+extern struct qat_qp_hw_spec_funcs*
+	qat_qp_hw_spec[];
+
+static inline void
+txq_write_tail(enum qat_device_gen qat_dev_gen,
+		struct qat_qp *qp, struct qat_queue *q)
+{
+	struct qat_qp_hw_spec_funcs *ops =
+		qat_qp_hw_spec[qat_dev_gen];
+
+	/*
+	 * Pointer check should be done during
+	 * initialization
+	 */
+	ops->qat_qp_csr_write_tail(qp, q);
+}
 
 #endif /* _QAT_QP_H_ */
