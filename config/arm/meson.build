@@ -206,6 +206,16 @@ implementer_hisilicon = {
                 ['RTE_MAX_LCORE', 1280],
                 ['RTE_MAX_NUMA_NODES', 16]
             ]
+        },
+        '0xd03': {
+            'march': 'armv8.5-a',
+            'march_features': ['crypto', 'sve'],
+            'flags': [
+                ['RTE_MACHINE', '"hip10"'],
+                ['RTE_ARM_FEATURE_ATOMICS', true],
+                ['RTE_MAX_LCORE', 1280],
+                ['RTE_MAX_NUMA_NODES', 16]
+            ]
         }
     }
 }
@@ -387,6 +397,13 @@ soc_graviton3 = {
     'numa': false
 }
 
+soc_hip10 = {
+    'description': 'HiSilicon HIP10',
+    'implementer': '0x48',
+    'part_number': '0xd03',
+    'numa': true
+}
+
 soc_kunpeng920 = {
     'description': 'HiSilicon Kunpeng 920',
     'implementer': '0x48',
@@ -485,6 +502,7 @@ ft2000plus:      Phytium FT-2000+
 tys2500:         Phytium TengYun S2500
 graviton2:       AWS Graviton2
 graviton3:       AWS Graviton3
+hip10:           HiSilicon HIP10
 kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
 n1sdp:           Arm Neoverse N1SDP
@@ -513,6 +531,7 @@ socs = {
     'tys2500': soc_tys2500,
     'graviton2': soc_graviton2,
     'graviton3': soc_graviton3,
+    'hip10': soc_hip10,
     'kunpeng920': soc_kunpeng920,
     'kunpeng930': soc_kunpeng930,
     'n1sdp': soc_n1sdp,
