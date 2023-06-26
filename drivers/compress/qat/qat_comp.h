@@ -141,5 +141,8 @@ qat_comp_stream_create(struct rte_compressdev *dev,
 int
 qat_comp_stream_free(struct rte_compressdev *dev, void *stream);
 
+uint16_t
+qat_enqueue_comp_op_burst(void *qp, void **ops, uint16_t nb_ops);
+
 #endif
 #endif
