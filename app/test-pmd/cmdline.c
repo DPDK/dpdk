@@ -39,6 +39,7 @@
 #include <rte_gro.h>
 #endif
 #include <rte_mbuf_dyn.h>
+#include <rte_trace.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -8369,6 +8370,10 @@ static void cmd_dump_parsed(void *parsed_result,
 		rte_devargs_dump(stdout);
 	else if (!strcmp(res->dump, "dump_lcores"))
 		rte_lcore_dump(stdout);
+#ifndef RTE_EXEC_ENV_WINDOWS
+	else if (!strcmp(res->dump, "dump_trace"))
+		rte_trace_save();
+#endif
 	else if (!strcmp(res->dump, "dump_log_types"))
 		rte_log_dump(stdout);
 }
@@ -8383,6 +8388,9 @@ static cmdline_parse_token_string_t cmd_dump_dump =
 		"dump_mempool#"
 		"dump_devargs#"
 		"dump_lcores#"
+#ifndef RTE_EXEC_ENV_WINDOWS
+		"dump_trace#"
+#endif
 		"dump_log_types");
 
 static cmdline_parse_inst_t cmd_dump = {

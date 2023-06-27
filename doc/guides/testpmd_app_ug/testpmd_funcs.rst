@@ -598,6 +598,13 @@ Dumps the logical cores list::
 
    testpmd> dump_lcores
 
+dump trace
+~~~~~~~~~~
+
+Dumps the tracing data to the folder according to the current EAL settings::
+
+   testpmd> dump_trace
+
 dump log types
 ~~~~~~~~~~~~~~
 
