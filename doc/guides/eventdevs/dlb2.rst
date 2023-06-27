@@ -17,8 +17,8 @@ Configuration
 -------------
 
 The DLB PF PMD is a user-space PMD that uses VFIO to gain direct
-device access. To use this operation mode, the PCIe PF device must be bound
-to a DPDK-compatible VFIO driver, such as vfio-pci.
+device access. To use this operation mode, the PCIe PF device must
+be bound to a DPDK-compatible VFIO driver, such as vfio-pci.
 
 Eventdev API Notes
 ------------------
@@ -395,26 +395,6 @@ The depth must be between 32 and 1024, and must be a power of 2.
 
        --allow ea:00.0,max_enqueue_depth=<depth>
 
-QE Weight
-~~~~~~~~~
-
-DLB supports advanced scheduling mechanisms, such as CQ weight.
-Each load balanced CQ has a configurable work capacity (max 256)
-which corresponds to the total QE weight DLB will allow to be enqueued
-to that consumer. Every load balanced event/QE carries a weight of 0, 2, 4,
-or 8 and DLB will increment a (per CQ) load indicator when it schedules a
-QE to that CQ. The weight is also stored in the history list. When a
-completion arrives, the weight is popped from the history list and used to
-decrement the load indicator. This creates a new scheduling condition - a CQ
-whose load is equal to or in excess of capacity is not available for traffic.
-Note that the weight may not exceed the maximum CQ depth.
-
-    .. code-block:: console
-
-       --allow ea:00.0,cq_weight=all:<weight>
-       --allow ea:00.0,cq_weight=qidA-qidB:<weight>
-       --allow ea:00.0,cq_weight=qid:<weight>
-
 Producer Coremask
 ~~~~~~~~~~~~~~~~~
 
@@ -450,3 +430,87 @@ won't be used.
     .. code-block:: console
 
        --allow ea:00.0,default_port_allocation=<y/Y>
+
+QE Weight
+~~~~~~~~~
+
+DLB supports advanced scheduling mechanisms, such as CQ weight.
+Each load balanced CQ has a configurable work capacity (max 256)
+which corresponds to the total QE weight DLB will allow to be enqueued
+to that consumer. Every load balanced event/QE carries a weight of 0, 2, 4,
+or 8 and DLB will increment a (per CQ) load indicator when it schedules a
+QE to that CQ. The weight is also stored in the history list. When a
+completion arrives, the weight is popped from the history list and used to
+decrement the load indicator. This creates a new scheduling condition - a CQ
+whose load is equal to or in excess of capacity is not available for traffic.
+Note that the weight may not exceed the maximum CQ depth.
+
+Example command to enable QE Weight feature:
+
+    .. code-block:: console
+
+       --allow ea:00.0,enable_cq_weight=<y/Y>
+
+Running Eventdev Applications with DLB Device
+---------------------------------------------
+
+This section explains how to run eventdev applications
+with DLB hardware as well as difference in command line parameter
+to switch between a DLB hardware and a virtual eventdev device such as SW0, hence
+users can run applications with or without DLB device to compare performance of
+a DLB device.
+
+In order to run eventdev applications, DLB device must be bound
+to a DPDK-compatible VFIO driver, such as vfio-pci.
+
+Example command to bind DLB device to vfio-pci driver:
+
+    .. code-block:: console
+
+       ../usertools/dpdk-devbind.py -b vfio-pci ea:00.0
+
+Eventdev applications can be run with or without a DLB device.
+Below examples give details of running eventdev application without DLB device
+and with DLB device. Notice that the primary difference between two examples are
+passing the parameter ``--vdev <driver><id>``. The first example run uses a virtual
+eventdev device SW0 while second example run directly and picks DLB device from
+VFIO driver.
+
+Example command to run eventdev application without a DLB device:
+
+	.. code-block:: console
+
+	   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+					--test=order_queue --plcores 1 --wlcores 2,3
+
+After binding DLB device to a supported pci driver such as vfio-pci,
+eventdev applications can be run on the DLB device.
+
+Example command to run eventdev application with a DLB device:
+
+	.. code-block:: console
+
+		sudo build/app/dpdk-test-eventdev -- --test=order_queue\
+			--plcores=1 --wlcores=2-7 --stlist=o --worker_deq_depth=128\
+			--prod_enq_burst_sz=64 --nb_flows=64 --nb_pkts=1000000
+
+A particular DLB device can also be picked from command line by passing
+	``--a`` or  ``--allow`` option:
+
+	.. code-block:: console
+
+		sudo build/app/dpdk-test-eventdev --allow ea:00.0 -- --test=order_queue\
+			--plcores=1 --wlcores=2-7 --stlist=o --worker_deq_depth=128\
+			--prod_enq_burst_sz=64 --nb_flows=64 --nb_pkts=1000000
+
+Debugging options
+~~~~~~~~~~~~~~~~~
+
+To specify log level for a DLB device use ``--log-level=dlb,8``.
+Example command to run eventdev application with a DLB device log level enabled:
+
+	.. code-block:: console
+
+		sudo build/app/dpdk-test-eventdev --allow ea:00.0 --log-level=dlb,8 -- --test=order_queue\
+			--plcores=1 --wlcores=2-7 --stlist=o --worker_deq_depth=128\
+			--prod_enq_burst_sz=64 --nb_flows=64 --nb_pkts=1000000

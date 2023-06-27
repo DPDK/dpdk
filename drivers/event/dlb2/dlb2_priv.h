@@ -47,11 +47,11 @@
 #define DLB2_VECTOR_OPTS_ENAB_ARG "vector_opts_enable"
 #define DLB2_MAX_CQ_DEPTH "max_cq_depth"
 #define DLB2_MAX_ENQ_DEPTH "max_enqueue_depth"
-#define DLB2_CQ_WEIGHT "cq_weight"
 #define DLB2_PORT_COS "port_cos"
 #define DLB2_COS_BW "cos_bw"
 #define DLB2_PRODUCER_COREMASK "producer_coremask"
 #define DLB2_DEFAULT_LDB_PORT_ALLOCATION_ARG "default_port_allocation"
+#define DLB2_ENABLE_CQ_WEIGHT_ARG "enable_cq_weight"
 
 /* Begin HW related defines and structs */
 
@@ -637,6 +637,7 @@ struct dlb2_eventdev {
 	uint32_t cos_ports[DLB2_COS_NUM_VALS]; /* total ldb ports in each class */
 	uint32_t cos_bw[DLB2_COS_NUM_VALS]; /* bandwidth per cos domain */
 	uint8_t max_cos_port; /* Max LDB port from any cos */
+	bool enable_cq_weight;
 };
 
 /* used for collecting and passing around the dev args */
@@ -674,6 +675,7 @@ struct dlb2_devargs {
 	struct dlb2_cos_bw cos_bw;
 	const char *producer_coremask;
 	bool default_ldb_port_allocation;
+	bool enable_cq_weight;
 };
 
 /* End Eventdev related defines and structs */
