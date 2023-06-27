@@ -553,6 +553,22 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
 	return 0;
 }
 
+/**
+ * Check if counter pool allocated for HWS is shared between ports.
+ *
+ * @param[in] priv
+ *   Pointer to the port private data structure.
+ *
+ * @return
+ *   True if counter pools is shared between ports. False otherwise.
+ */
+static __rte_always_inline bool
+mlx5_hws_cnt_is_pool_shared(struct mlx5_priv *priv)
+{
+	return priv && priv->hws_cpool &&
+	    (priv->shared_refcnt || priv->hws_cpool->cfg.host_cpool != NULL);
+}
+
 static __rte_always_inline unsigned int
 mlx5_hws_cnt_pool_get_size(struct mlx5_hws_cnt_pool *cpool)
 {
