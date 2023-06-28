@@ -70,6 +70,25 @@ foreach subpath:subdirs
     else
         class = subpath
         subdir(class)
+        skip_class = false
+        foreach d:std_deps
+            if not is_variable('shared_rte_' + d)
+                skip_class = true
+                reason = 'missing internal dependency, "@0@"'.format(d)
+                if dpdk_libs_deprecated.contains(d)
+                    reason += ' (deprecated lib)'
+                endif
+                message('Disabling @1@/* drivers: missing internal dependency "@0@"'
+                        .format(d, class))
+                break
+            endif
+        endforeach
+        if skip_class
+            drv_path = join_paths(class, '*')
+            dpdk_drvs_disabled += drv_path
+            set_variable(drv_path.underscorify() + '_disable_reason', reason)
+            continue
+        endif
     endif
 
     # save class name on first occurrence
