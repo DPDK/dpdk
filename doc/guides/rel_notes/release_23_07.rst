@@ -88,6 +88,10 @@ New Features
 
   * Added support for new I219 devices.
 
+* **Updated Intel igc driver.**
+
+  * Added support for I225-LMVP.
+
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added support for reassembly of multi-segment packets.
