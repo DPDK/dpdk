@@ -4317,6 +4317,10 @@ typedef enum efx_mae_field_id_e {
 	 */
 	EFX_MAE_FIELD_RECIRC_ID,
 	EFX_MAE_FIELD_CT_MARK,
+
+	/* Single bits which can be set by efx_mae_match_spec_bit_set(). */
+	EFX_MAE_FIELD_IS_IP_FRAG,
+	EFX_MAE_FIELD_IP_FIRST_FRAG,
 	EFX_MAE_FIELD_NIDS
 } efx_mae_field_id_t;
 

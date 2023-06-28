@@ -334,6 +334,10 @@ struct sfc_mae_pattern_data {
 	uint8_t				l3_next_proto_restriction_value;
 	uint8_t				l3_next_proto_restriction_mask;
 
+	rte_be16_t			l3_frag_ofst_value;
+	rte_be16_t			l3_frag_ofst_mask;
+	rte_be16_t			l3_frag_ofst_last;
+
 	/* Projected state of EFX_MAE_FIELD_HAS_OVLAN match bit */
 	bool				has_ovlan_value;
 	bool				has_ovlan_mask;

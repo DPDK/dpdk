@@ -1700,6 +1700,80 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 	if (rc != 0)
 		goto fail;
 
+	if (pdata->l3_frag_ofst_mask != 0) {
+		const rte_be16_t hdr_mask = RTE_BE16(RTE_IPV4_HDR_OFFSET_MASK);
+		rte_be16_t value;
+		rte_be16_t last;
+		boolean_t first_frag;
+		boolean_t is_ip_frag;
+		boolean_t any_frag;
+
+		if (pdata->l3_frag_ofst_mask & RTE_BE16(RTE_IPV4_HDR_DF_FLAG)) {
+			sfc_err(ctx->sa, "Don't fragment flag is not supported.");
+			rc = ENOTSUP;
+			goto fail;
+		}
+
+		if ((pdata->l3_frag_ofst_mask & hdr_mask) != hdr_mask) {
+			sfc_err(ctx->sa, "Invalid value for fragment offset mask.");
+			rc = EINVAL;
+			goto fail;
+		}
+
+		value = pdata->l3_frag_ofst_mask & pdata->l3_frag_ofst_value;
+		last = pdata->l3_frag_ofst_mask & pdata->l3_frag_ofst_last;
+
+		/*
+		 *  value:  last:       matches:
+		 *  0       0           Non-fragmented packet
+		 *  1       0x1fff      Non-first fragment
+		 *  1       0x1fff+MF   Any fragment
+		 *  MF      0           First fragment
+		 */
+		if (last == 0 &&
+		    (pdata->l3_frag_ofst_value & hdr_mask) != 0) {
+			sfc_err(ctx->sa,
+				"Exact matching is prohibited for non-zero offsets, but ranges are allowed.");
+			rc = EINVAL;
+			goto fail;
+		}
+
+		if (value == 0 && last == 0) {
+			is_ip_frag = false;
+			any_frag = true;
+		} else if (value == RTE_BE16(1) && (last & hdr_mask) == hdr_mask) {
+			if (last & RTE_BE16(RTE_IPV4_HDR_MF_FLAG)) {
+				is_ip_frag = true;
+				any_frag = true;
+			} else {
+				is_ip_frag = true;
+				any_frag = false;
+				first_frag = false;
+			}
+		} else if (value == RTE_BE16(RTE_IPV4_HDR_MF_FLAG) && last == 0) {
+			is_ip_frag = true;
+			any_frag = false;
+			first_frag = true;
+		} else {
+			sfc_err(ctx->sa, "Invalid value for fragment offset.");
+			rc = EINVAL;
+			goto fail;
+		}
+
+		rc = efx_mae_match_spec_bit_set(ctx->match_spec,
+						fremap[EFX_MAE_FIELD_IS_IP_FRAG], is_ip_frag);
+		if (rc != 0)
+			goto fail;
+
+		if (!any_frag) {
+			rc = efx_mae_match_spec_bit_set(ctx->match_spec,
+							fremap[EFX_MAE_FIELD_IP_FIRST_FRAG],
+							first_frag);
+			if (rc != 0)
+				goto fail;
+		}
+	}
+
 	return 0;
 
 fail:
@@ -2209,6 +2283,15 @@ static const struct sfc_mae_field_locator flocs_ipv4[] = {
 		offsetof(struct rte_flow_item_ipv4, hdr.next_proto_id),
 	},
 	{
+		/*
+		 * This locator is used only for building supported fields mask.
+		 * The field is handled by sfc_mae_rule_process_pattern_data().
+		 */
+		SFC_MAE_FIELD_HANDLING_DEFERRED,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.fragment_offset),
+		offsetof(struct rte_flow_item_ipv4, hdr.fragment_offset),
+	},
+	{
 		EFX_MAE_FIELD_IP_TOS,
 		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4,
 				 hdr.type_of_service),
@@ -2230,14 +2313,30 @@ sfc_mae_rule_parse_item_ipv4(const struct rte_flow_item *item,
 	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
 	struct sfc_mae_pattern_data *pdata = &ctx_mae->pattern_data;
 	struct rte_flow_item_ipv4 supp_mask;
+	struct rte_flow_item item_dup;
 	const uint8_t *spec = NULL;
 	const uint8_t *mask = NULL;
+	const uint8_t *last = NULL;
 	int rc;
+
+	item_dup.spec = item->spec;
+	item_dup.mask = item->mask;
+	item_dup.last = item->last;
+	item_dup.type = item->type;
 
 	sfc_mae_item_build_supp_mask(flocs_ipv4, RTE_DIM(flocs_ipv4),
 				     &supp_mask, sizeof(supp_mask));
 
-	rc = sfc_flow_parse_init(item,
+	/* We don't support IPv4 fragmentation in the outer frames. */
+	if (ctx_mae->match_spec != ctx_mae->match_spec_action)
+		supp_mask.hdr.fragment_offset = 0;
+
+	if (item != NULL && item->last != NULL) {
+		last = item->last;
+		item_dup.last = NULL;
+	}
+
+	rc = sfc_flow_parse_init(&item_dup,
 				 (const void **)&spec, (const void **)&mask,
 				 (const void *)&supp_mask,
 				 &rte_flow_item_ipv4_mask,
@@ -2251,12 +2350,19 @@ sfc_mae_rule_parse_item_ipv4(const struct rte_flow_item *item,
 	if (spec != NULL) {
 		const struct rte_flow_item_ipv4 *item_spec;
 		const struct rte_flow_item_ipv4 *item_mask;
+		const struct rte_flow_item_ipv4 *item_last;
 
 		item_spec = (const struct rte_flow_item_ipv4 *)spec;
 		item_mask = (const struct rte_flow_item_ipv4 *)mask;
+		if (last != NULL)
+			item_last = (const struct rte_flow_item_ipv4 *)last;
 
 		pdata->l3_next_proto_value = item_spec->hdr.next_proto_id;
 		pdata->l3_next_proto_mask = item_mask->hdr.next_proto_id;
+		pdata->l3_frag_ofst_mask = item_mask->hdr.fragment_offset;
+		pdata->l3_frag_ofst_value = item_spec->hdr.fragment_offset;
+		if (last != NULL)
+			pdata->l3_frag_ofst_last = item_last->hdr.fragment_offset;
 	} else {
 		return 0;
 	}
@@ -2518,6 +2624,8 @@ static const efx_mae_field_id_t field_ids_no_remap[] = {
 	FIELD_ID_NO_REMAP(TCP_FLAGS_BE),
 	FIELD_ID_NO_REMAP(HAS_OVLAN),
 	FIELD_ID_NO_REMAP(HAS_IVLAN),
+	FIELD_ID_NO_REMAP(IS_IP_FRAG),
+	FIELD_ID_NO_REMAP(IP_FIRST_FRAG),
 
 #undef FIELD_ID_NO_REMAP
 };
