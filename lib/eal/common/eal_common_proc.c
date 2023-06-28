@@ -322,6 +322,15 @@ retry:
 }
 
 static void
+cleanup_msg_fds(const struct rte_mp_msg *msg)
+{
+	int i;
+
+	for (i = 0; i < msg->num_fds; i++)
+		close(msg->fds[i]);
+}
+
+static void
 process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 {
 	struct pending_request *pending_req;
@@ -349,8 +358,10 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			else if (pending_req->type == REQUEST_TYPE_ASYNC)
 				req = async_reply_handle_thread_unsafe(
 						pending_req);
-		} else
+		} else {
 			RTE_LOG(ERR, EAL, "Drop mp reply: %s\n", msg->name);
+			cleanup_msg_fds(msg);
+		}
 		pthread_mutex_unlock(&pending_requests.lock);
 
 		if (req != NULL)
@@ -380,6 +391,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			RTE_LOG(ERR, EAL, "Cannot find action: %s\n",
 				msg->name);
 		}
+		cleanup_msg_fds(msg);
 	} else if (action(msg, s->sun_path) < 0) {
 		RTE_LOG(ERR, EAL, "Fail to handle message: %s\n", msg->name);
 	}
