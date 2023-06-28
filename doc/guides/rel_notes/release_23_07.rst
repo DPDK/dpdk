@@ -92,6 +92,10 @@ New Features
 
   * Added support for I225-LMVP.
 
+* **Updated Intel ice driver.**
+
+  * Added support for link speed change.
+
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added support for reassembly of multi-segment packets.
