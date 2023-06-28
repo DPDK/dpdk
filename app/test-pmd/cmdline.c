@@ -255,6 +255,36 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (port_id) flow_ctrl"
 			"	Show flow control info of a port.\n\n"
+
+			"dump_physmem\n"
+			"    Dumps all physical memory segment layouts\n\n"
+
+			"dump_socket_mem\n"
+			"    Dumps the memory usage of all sockets\n\n"
+
+			"dump_memzone\n"
+			"    Dumps the layout of all memory zones\n\n"
+
+			"dump_struct_sizes\n"
+			"    Dumps the size of all memory structures\n\n"
+
+			"dump_ring\n"
+			"    Dumps the status of all or specific element in DPDK rings\n\n"
+
+			"dump_mempool\n"
+			"    Dumps the statistics of all or specific memory pool\n\n"
+
+			"dump_devargs\n"
+			"    Dumps the user device list\n\n"
+
+			"dump_lcores\n"
+			"    Dumps the logical cores list\n\n"
+
+			"dump_trace\n"
+			"    Dumps the tracing data to the folder according to the current EAL settings\n\n"
+
+			"dump_log_types\n"
+			"    Dumps the log level for all the dpdk modules\n\n"
 		);
 	}
 
