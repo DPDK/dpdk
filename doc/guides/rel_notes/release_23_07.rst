@@ -95,6 +95,7 @@ New Features
 * **Updated Intel ice driver.**
 
   * Added support for link speed change.
+  * Added support for double VLAN.
 
 * **Updated Marvell cnxk ethdev driver.**
 
