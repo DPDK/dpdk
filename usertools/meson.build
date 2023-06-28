@@ -6,5 +6,6 @@ install_data([
             'dpdk-pmdinfo.py',
             'dpdk-telemetry.py',
             'dpdk-hugepages.py',
+            'dpdk-rss-flows.py',
         ],
         install_dir: 'bin')
