@@ -84,6 +84,10 @@ New Features
 
   * Added DQO queue descriptor format support.
 
+* **Updated Intel e1000 driver.**
+
+  * Added support for new I219 devices.
+
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added support for reassembly of multi-segment packets.
