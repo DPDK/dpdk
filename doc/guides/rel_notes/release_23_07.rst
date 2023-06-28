@@ -100,6 +100,7 @@ New Features
 * **Updated Intel iavf driver.**
 
   * Added new AVX2 Rx/Tx to use HW offload features.
+  * Added support for Rx timestamp offload on vector paths.
 
 * **Updated Marvell cnxk ethdev driver.**
 
