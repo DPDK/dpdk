@@ -96,11 +96,13 @@ New Features
 
   * Added support for link speed change.
   * Added support for double VLAN.
+  * Added support for UDP fragmentation offload.
 
 * **Updated Intel iavf driver.**
 
   * Added new AVX2 Rx/Tx to use HW offload features.
   * Added support for Rx timestamp offload on vector paths.
+  * Added support for UDP fragmentation offload.
 
 * **Updated Marvell cnxk ethdev driver.**
 
