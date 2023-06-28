@@ -2805,8 +2805,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	 */
 	if (flow_hw_actions_construct(dev, job,
 				      &table->ats[action_template_index],
-				      action_template_index, actions,
-				      rule_acts, queue, error)) {
+				      0, actions, rule_acts, queue, error)) {
 		rte_errno = EINVAL;
 		goto free;
 	}
