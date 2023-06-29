@@ -1766,6 +1766,11 @@ T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
+DMA device performance tool
+M: Cheng Jiang <cheng1.jiang@intel.com>
+F: app/test-dma-perf/
+F: doc/guides/tools/dmaperf.rst
+
 Flow performance tool
 M: Wisam Jaddo <wisamm@nvidia.com>
 F: app/test-flow-perf/

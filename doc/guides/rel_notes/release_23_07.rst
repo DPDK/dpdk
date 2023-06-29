@@ -200,6 +200,12 @@ New Features
 
   Enhanced the GRO library to support TCP packets over IPv6 network.
 
+* **Added DMA device performance test application.**
+
+  Added an application to test the performance of DMA device and CPU.
+
+  See the :doc:`../tools/dmaperf` for more details.
+
 
 Removed Items
 -------------
