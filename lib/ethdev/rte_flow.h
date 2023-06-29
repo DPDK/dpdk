@@ -2307,7 +2307,7 @@ struct rte_flow_item_tx_queue {
 /** Default mask for RTE_FLOW_ITEM_TX_QUEUE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_tx_queue rte_flow_item_tx_queue_mask = {
-	.tx_queue = RTE_BE16(0xffff),
+	.tx_queue = 0xffff,
 };
 #endif
 
