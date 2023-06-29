@@ -97,6 +97,10 @@ New Features
   * Added support for link speed change.
   * Added support for double VLAN.
 
+* **Updated Intel iavf driver.**
+
+  * Added new AVX2 Rx/Tx to use HW offload features.
+
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added support for reassembly of multi-segment packets.
