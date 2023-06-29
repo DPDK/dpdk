@@ -873,13 +873,6 @@ struct hns3_adapter {
 	struct hns3_ptype_table ptype_tbl __rte_cache_aligned;
 };
 
-#define HNS3_DEVARG_RX_FUNC_HINT	"rx_func_hint"
-#define HNS3_DEVARG_TX_FUNC_HINT	"tx_func_hint"
-
-#define HNS3_DEVARG_DEV_CAPS_MASK	"dev_caps_mask"
-
-#define HNS3_DEVARG_MBX_TIME_LIMIT_MS	"mbx_time_limit_ms"
-
 enum hns3_dev_cap {
 	HNS3_DEV_SUPPORT_DCB_B,
 	HNS3_DEV_SUPPORT_COPPER_B,
