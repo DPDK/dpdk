@@ -7843,7 +7843,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	}
 	/* Initialize quotas */
-	if (port_attr->nb_quotas) {
+	if (port_attr->nb_quotas || (host_priv && host_priv->quota_ctx.devx_obj)) {
 		ret = mlx5_flow_quota_init(dev, port_attr->nb_quotas);
 		if (ret) {
 			rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,

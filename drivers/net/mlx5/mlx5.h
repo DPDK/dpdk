@@ -1715,7 +1715,6 @@ struct mlx5_quota {
 
 /* Bulk management structure for flow quota. */
 struct mlx5_quota_ctx {
-	uint32_t nb_quotas; /* Total number of quota objects */
 	struct mlx5dr_action *dr_action; /* HWS action */
 	struct mlx5_devx_obj *devx_obj; /* DEVX ranged object. */
 	struct mlx5_pmd_mr mr; /* MR for READ from MTR ASO */

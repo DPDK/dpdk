@@ -632,19 +632,22 @@ mlx5_flow_quota_destroy(struct rte_eth_dev *dev)
 	struct mlx5_quota_ctx *qctx = &priv->quota_ctx;
 	int ret;
 
-	if (qctx->quota_ipool)
-		mlx5_ipool_destroy(qctx->quota_ipool);
-	mlx5_quota_destroy_sq(priv);
-	mlx5_quota_destroy_read_buf(priv);
 	if (qctx->dr_action) {
 		ret = mlx5dr_action_destroy(qctx->dr_action);
 		if (ret)
 			DRV_LOG(ERR, "QUOTA: failed to destroy DR action");
 	}
-	if (qctx->devx_obj) {
-		ret = mlx5_devx_cmd_destroy(qctx->devx_obj);
-		if (ret)
-			DRV_LOG(ERR, "QUOTA: failed to destroy MTR ASO object");
+	if (!priv->shared_host) {
+		if (qctx->quota_ipool)
+			mlx5_ipool_destroy(qctx->quota_ipool);
+		mlx5_quota_destroy_sq(priv);
+		mlx5_quota_destroy_read_buf(priv);
+		if (qctx->devx_obj) {
+			ret = mlx5_devx_cmd_destroy(qctx->devx_obj);
+			if (ret)
+				DRV_LOG(ERR,
+					"QUOTA: failed to destroy MTR ASO object");
+		}
 	}
 	memset(qctx, 0, sizeof(*qctx));
 	return 0;
@@ -652,14 +655,27 @@ mlx5_flow_quota_destroy(struct rte_eth_dev *dev)
 
 #define MLX5_QUOTA_IPOOL_TRUNK_SIZE (1u << 12)
 #define MLX5_QUOTA_IPOOL_CACHE_SIZE (1u << 13)
-int
-mlx5_flow_quota_init(struct rte_eth_dev *dev, uint32_t nb_quotas)
+
+static int
+mlx5_quota_init_guest(struct mlx5_priv *priv)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_quota_ctx *qctx = &priv->quota_ctx;
+	struct rte_eth_dev *host_dev = priv->shared_host;
+	struct mlx5_priv *host_priv = host_dev->data->dev_private;
+
+	/**
+	 * Shared quota object can be used in flow rules only.
+	 * DR5 flow action needs access to ASO abjects.
+	 */
+	qctx->devx_obj = host_priv->quota_ctx.devx_obj;
+	return 0;
+}
+
+static int
+mlx5_quota_init_host(struct mlx5_priv *priv, uint32_t nb_quotas)
+{
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_quota_ctx *qctx = &priv->quota_ctx;
-	int reg_id = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, NULL);
-	uint32_t flags = MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
 	struct mlx5_indexed_pool_config quota_ipool_cfg = {
 		.size = sizeof(struct mlx5_quota),
 		.trunk_size = RTE_MIN(nb_quotas, MLX5_QUOTA_IPOOL_TRUNK_SIZE),
@@ -680,32 +696,18 @@ mlx5_flow_quota_init(struct rte_eth_dev *dev, uint32_t nb_quotas)
 		DRV_LOG(DEBUG, "QUOTA: no MTR support");
 		return -ENOTSUP;
 	}
-	if (reg_id < 0) {
-		DRV_LOG(DEBUG, "QUOTA: MRT register not available");
-		return -ENOTSUP;
-	}
 	qctx->devx_obj = mlx5_devx_cmd_create_flow_meter_aso_obj
 		(sh->cdev->ctx, sh->cdev->pdn, rte_log2_u32(nb_quotas >> 1));
 	if (!qctx->devx_obj) {
 		DRV_LOG(DEBUG, "QUOTA: cannot allocate MTR ASO objects");
 		return -ENOMEM;
 	}
-	if (sh->config.dv_esw_en && priv->master)
-		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
-	qctx->dr_action = mlx5dr_action_create_aso_meter
-		(priv->dr_ctx, (struct mlx5dr_devx_obj *)qctx->devx_obj,
-		 reg_id - REG_C_0, flags);
-	if (!qctx->dr_action) {
-		DRV_LOG(DEBUG, "QUOTA: failed to create DR action");
-		ret = -ENOMEM;
-		goto err;
-	}
 	ret = mlx5_quota_alloc_read_buf(priv);
 	if (ret)
-		goto err;
+		return ret;
 	ret = mlx5_quota_alloc_sq(priv);
 	if (ret)
-		goto err;
+		return ret;
 	if (nb_quotas < MLX5_QUOTA_IPOOL_TRUNK_SIZE)
 		quota_ipool_cfg.per_core_cache = 0;
 	else if (nb_quotas < MLX5_HW_IPOOL_SIZE_THRESHOLD)
@@ -715,10 +717,40 @@ mlx5_flow_quota_init(struct rte_eth_dev *dev, uint32_t nb_quotas)
 	qctx->quota_ipool = mlx5_ipool_create(&quota_ipool_cfg);
 	if (!qctx->quota_ipool) {
 		DRV_LOG(DEBUG, "QUOTA: failed to allocate quota pool");
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+int
+mlx5_flow_quota_init(struct rte_eth_dev *dev, uint32_t nb_quotas)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_quota_ctx *qctx = &priv->quota_ctx;
+	uint32_t flags = MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
+	int reg_id = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, NULL);
+	int ret;
+
+	if (reg_id < 0) {
+		DRV_LOG(DEBUG, "QUOTA: MRT register not available");
+		return -ENOTSUP;
+	}
+	if (!priv->shared_host)
+		ret = mlx5_quota_init_host(priv, nb_quotas);
+	else
+		ret = mlx5_quota_init_guest(priv);
+	if (ret)
+		goto err;
+	if (priv->sh->config.dv_esw_en && priv->master)
+		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
+	qctx->dr_action = mlx5dr_action_create_aso_meter
+		(priv->dr_ctx, (struct mlx5dr_devx_obj *)qctx->devx_obj,
+		 reg_id - REG_C_0, flags);
+	if (!qctx->dr_action) {
+		DRV_LOG(DEBUG, "QUOTA: failed to create DR action");
 		ret = -ENOMEM;
 		goto err;
 	}
-	qctx->nb_quotas = nb_quotas;
 	return 0;
 err:
 	mlx5_flow_quota_destroy(dev);
