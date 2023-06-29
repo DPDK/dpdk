@@ -355,9 +355,13 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 	/* roce_type is used to filter roce frames
 	 * dst_vport is used to specify the rule
 	 */
-	key_cfg->meta_data_active = BIT(DST_VPORT) | BIT(TUNNEL_PACKET) |
-	    BIT(VLAN_NUMBER);
-	hns3_dbg(hw, "fdir meta data: dst_vport tunnel_packet vlan_number");
+	key_cfg->meta_data_active = BIT(DST_VPORT) | BIT(TUNNEL_PACKET);
+	if (pf->fdir.vlan_match_mode)
+		key_cfg->meta_data_active |= BIT(VLAN_NUMBER);
+
+	hns3_dbg(hw, "fdir meta data: dst_vport tunnel_packet %s",
+		 (pf->fdir.vlan_match_mode == HNS3_FDIR_VLAN_STRICT_MATCH) ?
+		 "vlan_number" : "");
 
 	ret = hns3_get_fd_allocation(hw,
 				     &pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_1],

@@ -171,6 +171,13 @@ struct hns3_fdir_rule_ele {
 TAILQ_HEAD(hns3_fdir_rule_list, hns3_fdir_rule_ele);
 
 /*
+ * On 'strict' mode, hardware bases on VLAN number to exactly match the
+ * input flow.
+ */
+#define HNS3_FDIR_VLAN_STRICT_MATCH	1
+#define HNS3_FDIR_VLAN_NOSTRICT_MATCH	0
+
+/*
  *  A structure used to define fields of a FDIR related info.
  */
 struct hns3_fdir_info {
@@ -178,6 +185,7 @@ struct hns3_fdir_info {
 	struct hns3_fdir_rule_ele **hash_map;
 	struct rte_hash *hash_handle;
 	struct hns3_fd_cfg fd_cfg;
+	uint8_t vlan_match_mode;
 };
 
 struct hns3_adapter;

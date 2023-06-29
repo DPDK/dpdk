@@ -27,6 +27,8 @@ enum {
 
 #define HNS3_DEVARG_MBX_TIME_LIMIT_MS	"mbx_time_limit_ms"
 
+#define HNS3_DEVARG_FDIR_VALN_MATCH_MODE	"fdir_vlan_match_mode"
+
 #define MSEC_PER_SEC              1000L
 #define USEC_PER_MSEC             1000L
 

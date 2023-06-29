@@ -140,6 +140,33 @@ Runtime Configuration
    For example::
    -a 0000:7d:00.0,mbx_time_limit_ms=600
 
+- ``fdir_vlan_match_mode`` (default ``strict``)
+
+  Used to select VLAN match mode. This runtime config can be ``strict``
+  or ``nostrict`` and is only valid for PF devices.
+  If driver works on ``strict`` mode (default mode), hardware does strictly
+  match the input flow base on VLAN number.
+
+  For the following scenarios with two rules:
+
+  .. code-block:: console
+
+     rule0:
+       pattern: eth type is 0x0806
+       actions: queue index 3
+     rule1:
+       pattern: eth type is 0x0806 / vlan vid is 20
+       actions: queue index 4
+
+  If application select ``strict`` mode, only the ARP packets with VLAN
+  20 are directed to queue 4, and the ARP packets with other VLAN ID
+  cannot be directed to the specified queue. If application want to all
+  ARP packets with or without VLAN to be directed to the specified queue,
+  application can select ``nostrict`` mode and just need to set rule0.
+
+  For example::
+
+    -a 0000:7d:00.0,fdir_vlan_match_mode=nostrict
 
 Driver compilation and testing
 ------------------------------

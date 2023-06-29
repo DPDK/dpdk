@@ -238,6 +238,34 @@ hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
+static int
+hns3_parse_vlan_match_mode(const char *key, const char *value, void *args)
+{
+	uint8_t mode;
+
+	RTE_SET_USED(key);
+
+	if (value == NULL) {
+		PMD_INIT_LOG(WARNING, "no value for key:\"%s\"", key);
+		return -1;
+	}
+
+	if (strcmp(value, "strict") == 0) {
+		mode = HNS3_FDIR_VLAN_STRICT_MATCH;
+	} else if (strcmp(value, "nostrict") == 0) {
+		mode = HNS3_FDIR_VLAN_NOSTRICT_MATCH;
+	} else {
+		PMD_INIT_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\", "
+			"value must be 'strict' or 'nostrict'",
+			value, key);
+		return -1;
+	}
+
+	*(uint8_t *)args = mode;
+
+	return 0;
+}
+
 void
 hns3_parse_devargs(struct rte_eth_dev *dev)
 {
@@ -254,6 +282,8 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 	hns->tx_func_hint = HNS3_IO_FUNC_HINT_NONE;
 	hns->dev_caps_mask = 0;
 	hns->mbx_time_limit_ms = HNS3_MBX_DEF_TIME_LIMIT_MS;
+	if (!hns->is_vf)
+		hns->pf.fdir.vlan_match_mode = HNS3_FDIR_VLAN_STRICT_MATCH;
 
 	if (dev->device->devargs == NULL)
 		return;
@@ -270,6 +300,11 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 			   &hns3_parse_dev_caps_mask, &dev_caps_mask);
 	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_MBX_TIME_LIMIT_MS,
 			   &hns3_parse_mbx_time_limit, &mbx_time_limit_ms);
+	if (!hns->is_vf)
+		(void)rte_kvargs_process(kvlist,
+					 HNS3_DEVARG_FDIR_VALN_MATCH_MODE,
+					 &hns3_parse_vlan_match_mode,
+					 &hns->pf.fdir.vlan_match_mode);
 
 	rte_kvargs_free(kvlist);
 
