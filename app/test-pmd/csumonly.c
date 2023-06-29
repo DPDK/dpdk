@@ -250,7 +250,7 @@ parse_gtp(struct rte_udp_hdr *udp_hdr,
 		info->l4_proto = 0;
 	}
 
-	info->l2_len += gtp_len + sizeof(udp_hdr);
+	info->l2_len += gtp_len + sizeof(*udp_hdr);
 }
 
 /* Parse a vxlan header */
