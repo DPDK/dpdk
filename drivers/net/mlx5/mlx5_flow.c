@@ -9775,23 +9775,47 @@ mlx5_flow_dev_dump_sh_all(struct rte_eth_dev *dev,
 		}
 		i = lcore_index;
 
-		for (j = 0; j <= h->mask; j++) {
-			l_inconst = &h->buckets[j].l;
-			if (!l_inconst || !l_inconst->cache[i])
-				continue;
+		if (lcore_index == MLX5_LIST_NLCORE) {
+			for (i = 0; i <= (uint32_t)lcore_index; i++) {
+				for (j = 0; j <= h->mask; j++) {
+					l_inconst = &h->buckets[j].l;
+					if (!l_inconst || !l_inconst->cache[i])
+						continue;
 
-			e = LIST_FIRST(&l_inconst->cache[i]->h);
-			while (e) {
-				modify_hdr =
-				(struct mlx5_flow_dv_modify_hdr_resource *)e;
-				data = (const uint8_t *)modify_hdr->actions;
-				size = (size_t)(modify_hdr->actions_num) * 8;
-				actions_num = modify_hdr->actions_num;
-				id = (uint64_t)(uintptr_t)modify_hdr->action;
-				type = DR_DUMP_REC_TYPE_PMD_MODIFY_HDR;
-				save_dump_file(data, size, type, id,
-						(void *)(&actions_num), file);
-				e = LIST_NEXT(e, next);
+					e = LIST_FIRST(&l_inconst->cache[i]->h);
+					while (e) {
+						modify_hdr =
+						(struct mlx5_flow_dv_modify_hdr_resource *)e;
+						data = (const uint8_t *)modify_hdr->actions;
+						size = (size_t)(modify_hdr->actions_num) * 8;
+						actions_num = modify_hdr->actions_num;
+						id = (uint64_t)(uintptr_t)modify_hdr->action;
+						type = DR_DUMP_REC_TYPE_PMD_MODIFY_HDR;
+						save_dump_file(data, size, type, id,
+								(void *)(&actions_num), file);
+						e = LIST_NEXT(e, next);
+					}
+				}
+			}
+		} else {
+			for (j = 0; j <= h->mask; j++) {
+				l_inconst = &h->buckets[j].l;
+				if (!l_inconst || !l_inconst->cache[i])
+					continue;
+
+				e = LIST_FIRST(&l_inconst->cache[i]->h);
+				while (e) {
+					modify_hdr =
+					(struct mlx5_flow_dv_modify_hdr_resource *)e;
+					data = (const uint8_t *)modify_hdr->actions;
+					size = (size_t)(modify_hdr->actions_num) * 8;
+					actions_num = modify_hdr->actions_num;
+					id = (uint64_t)(uintptr_t)modify_hdr->action;
+					type = DR_DUMP_REC_TYPE_PMD_MODIFY_HDR;
+					save_dump_file(data, size, type, id,
+							(void *)(&actions_num), file);
+					e = LIST_NEXT(e, next);
+				}
 			}
 		}
 
