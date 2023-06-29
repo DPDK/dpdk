@@ -1,4 +1,4 @@
-DPDK_23 {
+DPDK_24 {
 	global:
 
 	rte_pmd_i40e_add_vf_mac_addr;

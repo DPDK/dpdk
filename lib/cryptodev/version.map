@@ -1,4 +1,4 @@
-DPDK_23 {
+DPDK_24 {
 	global:
 
 	rte_crypto_aead_algorithm_strings;
@@ -84,16 +84,16 @@ EXPERIMENTAL {
 	rte_cryptodev_remove_deq_callback;
 	rte_cryptodev_remove_enq_callback;
 
-	# added 22.03
+	# added in 22.03
 	rte_cryptodev_asym_session_get_user_data;
 	rte_cryptodev_asym_session_pool_create;
 	rte_cryptodev_asym_session_set_user_data;
 
-	#added in 22.07
+	# added in 22.07
 	rte_cryptodev_session_event_mdata_set;
 	rte_crypto_asym_ke_strings;
 
-	# added 23.03
+	# added in 23.03
 	rte_cryptodev_asym_get_xform_string;
 	rte_cryptodev_get_aead_algo_string;
 	rte_cryptodev_get_auth_algo_string;

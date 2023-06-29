@@ -1,4 +1,4 @@
-DPDK_23 {
+DPDK_24 {
 	global:
 
 	rte_pipeline_ah_packet_drop;
@@ -104,7 +104,7 @@ EXPERIMENTAL {
 	rte_swx_pipeline_table_state_set;
 	rte_swx_pipeline_table_type_register;
 
-	#added in 21.05
+	# added in 21.05
 	rte_swx_ctl_metarray_info_get;
 	rte_swx_ctl_meter_profile_add;
 	rte_swx_ctl_meter_profile_delete;
@@ -118,7 +118,7 @@ EXPERIMENTAL {
 	rte_swx_pipeline_metarray_config;
 	rte_swx_pipeline_regarray_config;
 
-	#added in 21.08
+	# added in 21.08
 	rte_swx_pipeline_selector_config;
 	rte_swx_ctl_pipeline_selector_fprintf;
 	rte_swx_ctl_pipeline_selector_group_add;
@@ -131,7 +131,7 @@ EXPERIMENTAL {
 	rte_swx_ctl_selector_group_id_field_info_get;
 	rte_swx_ctl_selector_member_id_field_info_get;
 
-	#added in 21.11
+	# added in 21.11
 	rte_swx_ctl_pipeline_learner_default_entry_add;
 	rte_swx_ctl_pipeline_learner_default_entry_read;
 	rte_swx_ctl_pipeline_learner_stats_read;
@@ -140,7 +140,7 @@ EXPERIMENTAL {
 	rte_swx_ctl_learner_match_field_info_get;
 	rte_swx_pipeline_learner_config;
 
-	#added in 22.07
+	# added in 22.07
 	rte_swx_ctl_pipeline_learner_timeout_get;
 	rte_swx_ctl_pipeline_learner_timeout_set;
 	rte_swx_pipeline_hash_func_register;

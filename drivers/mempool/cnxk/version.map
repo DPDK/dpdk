@@ -1,10 +1,10 @@
- DPDK_23 {
+DPDK_24 {
 	local: *;
- };
+};
 
- EXPERIMENTAL {
+EXPERIMENTAL {
 	global:
 	rte_pmd_cnxk_mempool_is_hwpool;
 	rte_pmd_cnxk_mempool_mbuf_exchange;
 	rte_pmd_cnxk_mempool_range_check_disable;
- };
+};

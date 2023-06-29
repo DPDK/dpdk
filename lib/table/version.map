@@ -1,4 +1,4 @@
-DPDK_23 {
+DPDK_24 {
 	global:
 
 	rte_table_acl_ops;
@@ -46,7 +46,7 @@ EXPERIMENTAL {
 	rte_swx_table_learner_lookup;
 	rte_swx_table_learner_mailbox_size_get;
 
-	#added in 22.07
+	# added in 22.07
 	rte_swx_table_learner_rearm;
 	rte_swx_table_learner_rearm_new;
 	rte_swx_table_learner_timeout_update;
