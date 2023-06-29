@@ -329,7 +329,8 @@ void hn_rndis_receive_response(struct hn_data *hv,
 
 	hn_rndis_dump(data);
 
-	if (len < sizeof(3 * sizeof(uint32_t))) {
+	/* Check we can read first three data fields from RNDIS header */
+	if (len < 3 * sizeof(uint32_t)) {
 		PMD_DRV_LOG(ERR,
 			    "missing RNDIS header %u", len);
 		return;
