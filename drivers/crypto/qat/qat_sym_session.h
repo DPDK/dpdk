@@ -142,10 +142,10 @@ struct qat_sym_session {
 	qat_sym_build_request_t build_request[2];
 #ifndef RTE_QAT_OPENSSL
 	IMB_MGR *mb_mgr;
-#endif
-	uint64_t expkey[4*15];
-	uint32_t dust[4*15];
+	uint64_t expkey[4*15] __rte_aligned(16);
+	uint32_t dust[4*15] __rte_aligned(16);
 	uint8_t docsis_key_len;
+#endif
 };
 
 int
