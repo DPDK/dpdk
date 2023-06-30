@@ -4814,7 +4814,7 @@ flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 	struct rte_flow_pattern_template *it;
 	struct rte_flow_item *copied_items = NULL;
 	const struct rte_flow_item *tmpl_items;
-	uint64_t orig_item_nb;
+	uint32_t orig_item_nb;
 	struct rte_flow_item port = {
 		.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
 		.mask = &rte_flow_item_ethdev_mask,
@@ -5573,12 +5573,15 @@ flow_hw_esw_mgr_regc_marker(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow pattern template on success, NULL otherwise.
  */
 static struct rte_flow_pattern_template *
-flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev)
+flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev,
+					     struct rte_flow_error *error)
 {
 	struct rte_flow_pattern_template_attr attr = {
 		.relaxed_matching = 0,
@@ -5608,7 +5611,7 @@ flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev)
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
+	return flow_hw_pattern_template_create(dev, &attr, items, error);
 }
 
 /**
@@ -5621,12 +5624,15 @@ flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow pattern template on success, NULL otherwise.
  */
 static struct rte_flow_pattern_template *
-flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev)
+flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev,
+					     struct rte_flow_error *error)
 {
 	struct rte_flow_pattern_template_attr attr = {
 		.relaxed_matching = 0,
@@ -5659,7 +5665,7 @@ flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev)
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
+	return flow_hw_pattern_template_create(dev, &attr, items, error);
 }
 
 /**
@@ -5669,12 +5675,15 @@ flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow pattern template on success, NULL otherwise.
  */
 static struct rte_flow_pattern_template *
-flow_hw_create_ctrl_port_pattern_template(struct rte_eth_dev *dev)
+flow_hw_create_ctrl_port_pattern_template(struct rte_eth_dev *dev,
+					  struct rte_flow_error *error)
 {
 	struct rte_flow_pattern_template_attr attr = {
 		.relaxed_matching = 0,
@@ -5693,7 +5702,7 @@ flow_hw_create_ctrl_port_pattern_template(struct rte_eth_dev *dev)
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
+	return flow_hw_pattern_template_create(dev, &attr, items, error);
 }
 
 /*
@@ -5703,12 +5712,15 @@ flow_hw_create_ctrl_port_pattern_template(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow pattern template on success, NULL otherwise.
  */
 static struct rte_flow_pattern_template *
-flow_hw_create_tx_default_mreg_copy_pattern_template(struct rte_eth_dev *dev)
+flow_hw_create_tx_default_mreg_copy_pattern_template(struct rte_eth_dev *dev,
+						     struct rte_flow_error *error)
 {
 	struct rte_flow_pattern_template_attr tx_pa_attr = {
 		.relaxed_matching = 0,
@@ -5729,10 +5741,8 @@ flow_hw_create_tx_default_mreg_copy_pattern_template(struct rte_eth_dev *dev)
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 	};
-	struct rte_flow_error drop_err;
 
-	RTE_SET_USED(drop_err);
-	return flow_hw_pattern_template_create(dev, &tx_pa_attr, eth_all, &drop_err);
+	return flow_hw_pattern_template_create(dev, &tx_pa_attr, eth_all, error);
 }
 
 /**
@@ -5743,12 +5753,15 @@ flow_hw_create_tx_default_mreg_copy_pattern_template(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow actions template on success, NULL otherwise.
  */
 static struct rte_flow_actions_template *
-flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
+flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev,
+					       struct rte_flow_error *error)
 {
 	uint32_t marker_mask = flow_hw_esw_mgr_regc_marker_mask(dev);
 	uint32_t marker_bits = flow_hw_esw_mgr_regc_marker(dev);
@@ -5814,7 +5827,7 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
 	set_reg_v.dst.offset = rte_bsf32(marker_mask);
 	rte_memcpy(set_reg_v.src.value, &marker_bits, sizeof(marker_bits));
 	rte_memcpy(set_reg_m.src.value, &marker_mask, sizeof(marker_mask));
-	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m, NULL);
+	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m, error);
 }
 
 /**
@@ -5826,13 +5839,16 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  * @param group
  *   Destination group for this action template.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow actions template on success, NULL otherwise.
  */
 static struct rte_flow_actions_template *
 flow_hw_create_ctrl_jump_actions_template(struct rte_eth_dev *dev,
-					  uint32_t group)
+					  uint32_t group,
+					  struct rte_flow_error *error)
 {
 	struct rte_flow_actions_template_attr attr = {
 		.transfer = 1,
@@ -5862,8 +5878,8 @@ flow_hw_create_ctrl_jump_actions_template(struct rte_eth_dev *dev,
 		}
 	};
 
-	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m,
-					       NULL);
+	return flow_hw_actions_template_create(dev, &attr, actions_v,
+					       actions_m, error);
 }
 
 /**
@@ -5872,12 +5888,15 @@ flow_hw_create_ctrl_jump_actions_template(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow action template on success, NULL otherwise.
  */
 static struct rte_flow_actions_template *
-flow_hw_create_ctrl_port_actions_template(struct rte_eth_dev *dev)
+flow_hw_create_ctrl_port_actions_template(struct rte_eth_dev *dev,
+					  struct rte_flow_error *error)
 {
 	struct rte_flow_actions_template_attr attr = {
 		.transfer = 1,
@@ -5907,8 +5926,7 @@ flow_hw_create_ctrl_port_actions_template(struct rte_eth_dev *dev)
 		}
 	};
 
-	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m,
-					       NULL);
+	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m, error);
 }
 
 /*
@@ -5917,12 +5935,15 @@ flow_hw_create_ctrl_port_actions_template(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow actions template on success, NULL otherwise.
  */
 static struct rte_flow_actions_template *
-flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev)
+flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev,
+						     struct rte_flow_error *error)
 {
 	struct rte_flow_actions_template_attr tx_act_attr = {
 		.egress = 1,
@@ -5985,11 +6006,9 @@ flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
-	struct rte_flow_error drop_err;
 
-	RTE_SET_USED(drop_err);
 	return flow_hw_actions_template_create(dev, &tx_act_attr, actions,
-					       masks, &drop_err);
+					       masks, error);
 }
 
 /**
@@ -6002,6 +6021,8 @@ flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev)
  *   Pointer to flow pattern template.
  * @param at
  *   Pointer to flow actions template.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow table on success, NULL otherwise.
@@ -6009,7 +6030,8 @@ flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev)
 static struct rte_flow_template_table*
 flow_hw_create_ctrl_sq_miss_root_table(struct rte_eth_dev *dev,
 				       struct rte_flow_pattern_template *it,
-				       struct rte_flow_actions_template *at)
+				       struct rte_flow_actions_template *at,
+				       struct rte_flow_error *error)
 {
 	struct rte_flow_template_table_attr attr = {
 		.flow_attr = {
@@ -6026,7 +6048,7 @@ flow_hw_create_ctrl_sq_miss_root_table(struct rte_eth_dev *dev,
 		.external = false,
 	};
 
-	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, NULL);
+	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, error);
 }
 
 
@@ -6040,6 +6062,8 @@ flow_hw_create_ctrl_sq_miss_root_table(struct rte_eth_dev *dev,
  *   Pointer to flow pattern template.
  * @param at
  *   Pointer to flow actions template.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow table on success, NULL otherwise.
@@ -6047,7 +6071,8 @@ flow_hw_create_ctrl_sq_miss_root_table(struct rte_eth_dev *dev,
 static struct rte_flow_template_table*
 flow_hw_create_ctrl_sq_miss_table(struct rte_eth_dev *dev,
 				  struct rte_flow_pattern_template *it,
-				  struct rte_flow_actions_template *at)
+				  struct rte_flow_actions_template *at,
+				  struct rte_flow_error *error)
 {
 	struct rte_flow_template_table_attr attr = {
 		.flow_attr = {
@@ -6064,7 +6089,7 @@ flow_hw_create_ctrl_sq_miss_table(struct rte_eth_dev *dev,
 		.external = false,
 	};
 
-	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, NULL);
+	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, error);
 }
 
 /*
@@ -6076,6 +6101,8 @@ flow_hw_create_ctrl_sq_miss_table(struct rte_eth_dev *dev,
  *   Pointer to flow pattern template.
  * @param at
  *   Pointer to flow actions template.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow table on success, NULL otherwise.
@@ -6083,7 +6110,8 @@ flow_hw_create_ctrl_sq_miss_table(struct rte_eth_dev *dev,
 static struct rte_flow_template_table*
 flow_hw_create_tx_default_mreg_copy_table(struct rte_eth_dev *dev,
 					  struct rte_flow_pattern_template *pt,
-					  struct rte_flow_actions_template *at)
+					  struct rte_flow_actions_template *at,
+					  struct rte_flow_error *error)
 {
 	struct rte_flow_template_table_attr tx_tbl_attr = {
 		.flow_attr = {
@@ -6097,14 +6125,8 @@ flow_hw_create_tx_default_mreg_copy_table(struct rte_eth_dev *dev,
 		.attr = tx_tbl_attr,
 		.external = false,
 	};
-	struct rte_flow_error drop_err = {
-		.type = RTE_FLOW_ERROR_TYPE_NONE,
-		.cause = NULL,
-		.message = NULL,
-	};
 
-	RTE_SET_USED(drop_err);
-	return flow_hw_table_create(dev, &tx_tbl_cfg, &pt, 1, &at, 1, &drop_err);
+	return flow_hw_table_create(dev, &tx_tbl_cfg, &pt, 1, &at, 1, error);
 }
 
 /**
@@ -6117,6 +6139,8 @@ flow_hw_create_tx_default_mreg_copy_table(struct rte_eth_dev *dev,
  *   Pointer to flow pattern template.
  * @param at
  *   Pointer to flow actions template.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to flow table on success, NULL otherwise.
@@ -6124,7 +6148,8 @@ flow_hw_create_tx_default_mreg_copy_table(struct rte_eth_dev *dev,
 static struct rte_flow_template_table *
 flow_hw_create_ctrl_jump_table(struct rte_eth_dev *dev,
 			       struct rte_flow_pattern_template *it,
-			       struct rte_flow_actions_template *at)
+			       struct rte_flow_actions_template *at,
+			       struct rte_flow_error *error)
 {
 	struct rte_flow_template_table_attr attr = {
 		.flow_attr = {
@@ -6141,7 +6166,7 @@ flow_hw_create_ctrl_jump_table(struct rte_eth_dev *dev,
 		.external = false,
 	};
 
-	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, NULL);
+	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, error);
 }
 
 /**
@@ -6150,12 +6175,14 @@ flow_hw_create_ctrl_jump_table(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
  *
  * @return
- *   0 on success, EINVAL otherwise
+ *   0 on success, negative values otherwise
  */
 static __rte_unused int
-flow_hw_create_ctrl_tables(struct rte_eth_dev *dev)
+flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_pattern_template *esw_mgr_items_tmpl = NULL;
@@ -6168,96 +6195,107 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev)
 	struct rte_flow_actions_template *tx_meta_actions_tmpl = NULL;
 	uint32_t xmeta = priv->sh->config.dv_xmeta_en;
 	uint32_t repr_matching = priv->sh->config.repr_matching;
+	int ret;
 
 	/* Create templates and table for default SQ miss flow rules - root table. */
-	esw_mgr_items_tmpl = flow_hw_create_ctrl_esw_mgr_pattern_template(dev);
+	esw_mgr_items_tmpl = flow_hw_create_ctrl_esw_mgr_pattern_template(dev, error);
 	if (!esw_mgr_items_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create E-Switch Manager item"
 			" template for control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
-	regc_jump_actions_tmpl = flow_hw_create_ctrl_regc_jump_actions_template(dev);
+	regc_jump_actions_tmpl = flow_hw_create_ctrl_regc_jump_actions_template(dev, error);
 	if (!regc_jump_actions_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create REG_C set and jump action template"
 			" for control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
 	MLX5_ASSERT(priv->hw_esw_sq_miss_root_tbl == NULL);
 	priv->hw_esw_sq_miss_root_tbl = flow_hw_create_ctrl_sq_miss_root_table
-			(dev, esw_mgr_items_tmpl, regc_jump_actions_tmpl);
+			(dev, esw_mgr_items_tmpl, regc_jump_actions_tmpl, error);
 	if (!priv->hw_esw_sq_miss_root_tbl) {
 		DRV_LOG(ERR, "port %u failed to create table for default sq miss (root table)"
 			" for control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
 	/* Create templates and table for default SQ miss flow rules - non-root table. */
-	regc_sq_items_tmpl = flow_hw_create_ctrl_regc_sq_pattern_template(dev);
+	regc_sq_items_tmpl = flow_hw_create_ctrl_regc_sq_pattern_template(dev, error);
 	if (!regc_sq_items_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create SQ item template for"
 			" control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
-	port_actions_tmpl = flow_hw_create_ctrl_port_actions_template(dev);
+	port_actions_tmpl = flow_hw_create_ctrl_port_actions_template(dev, error);
 	if (!port_actions_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create port action template"
 			" for control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
 	MLX5_ASSERT(priv->hw_esw_sq_miss_tbl == NULL);
 	priv->hw_esw_sq_miss_tbl = flow_hw_create_ctrl_sq_miss_table(dev, regc_sq_items_tmpl,
-								     port_actions_tmpl);
+								     port_actions_tmpl, error);
 	if (!priv->hw_esw_sq_miss_tbl) {
 		DRV_LOG(ERR, "port %u failed to create table for default sq miss (non-root table)"
 			" for control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
 	/* Create templates and table for default FDB jump flow rules. */
-	port_items_tmpl = flow_hw_create_ctrl_port_pattern_template(dev);
+	port_items_tmpl = flow_hw_create_ctrl_port_pattern_template(dev, error);
 	if (!port_items_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create SQ item template for"
 			" control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
 	jump_one_actions_tmpl = flow_hw_create_ctrl_jump_actions_template
-			(dev, MLX5_HW_LOWEST_USABLE_GROUP);
+			(dev, MLX5_HW_LOWEST_USABLE_GROUP, error);
 	if (!jump_one_actions_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create jump action template"
 			" for control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
 	MLX5_ASSERT(priv->hw_esw_zero_tbl == NULL);
 	priv->hw_esw_zero_tbl = flow_hw_create_ctrl_jump_table(dev, port_items_tmpl,
-							       jump_one_actions_tmpl);
+							       jump_one_actions_tmpl,
+							       error);
 	if (!priv->hw_esw_zero_tbl) {
 		DRV_LOG(ERR, "port %u failed to create table for default jump to group 1"
 			" for control flows", dev->data->port_id);
-		goto error;
+		goto err;
 	}
 	/* Create templates and table for default Tx metadata copy flow rule. */
 	if (!repr_matching && xmeta == MLX5_XMETA_MODE_META32_HWS) {
-		tx_meta_items_tmpl = flow_hw_create_tx_default_mreg_copy_pattern_template(dev);
+		tx_meta_items_tmpl =
+			flow_hw_create_tx_default_mreg_copy_pattern_template(dev, error);
 		if (!tx_meta_items_tmpl) {
 			DRV_LOG(ERR, "port %u failed to Tx metadata copy pattern"
 				" template for control flows", dev->data->port_id);
-			goto error;
+			goto err;
 		}
-		tx_meta_actions_tmpl = flow_hw_create_tx_default_mreg_copy_actions_template(dev);
+		tx_meta_actions_tmpl =
+			flow_hw_create_tx_default_mreg_copy_actions_template(dev, error);
 		if (!tx_meta_actions_tmpl) {
 			DRV_LOG(ERR, "port %u failed to Tx metadata copy actions"
 				" template for control flows", dev->data->port_id);
-			goto error;
+			goto err;
 		}
 		MLX5_ASSERT(priv->hw_tx_meta_cpy_tbl == NULL);
-		priv->hw_tx_meta_cpy_tbl = flow_hw_create_tx_default_mreg_copy_table(dev,
-					tx_meta_items_tmpl, tx_meta_actions_tmpl);
+		priv->hw_tx_meta_cpy_tbl =
+			flow_hw_create_tx_default_mreg_copy_table(dev, tx_meta_items_tmpl,
+								  tx_meta_actions_tmpl, error);
 		if (!priv->hw_tx_meta_cpy_tbl) {
 			DRV_LOG(ERR, "port %u failed to create table for default"
 				" Tx metadata copy flow rule", dev->data->port_id);
-			goto error;
+			goto err;
 		}
 	}
 	return 0;
-error:
+err:
+	/* Do not overwrite the rte_errno. */
+	ret = -rte_errno;
+	if (ret == 0)
+		ret = rte_flow_error_set(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "Failed to create control tables.");
 	if (priv->hw_esw_zero_tbl) {
 		flow_hw_table_destroy(dev, priv->hw_esw_zero_tbl, NULL);
 		priv->hw_esw_zero_tbl = NULL;
@@ -6286,7 +6324,7 @@ error:
 		flow_hw_pattern_template_destroy(dev, regc_sq_items_tmpl, NULL);
 	if (esw_mgr_items_tmpl)
 		flow_hw_pattern_template_destroy(dev, esw_mgr_items_tmpl, NULL);
-	return -EINVAL;
+	return ret;
 }
 
 static void
@@ -6995,11 +7033,9 @@ flow_hw_configure(struct rte_eth_dev *dev,
 					   NULL, "Failed to create vport actions.");
 			goto err;
 		}
-		ret = flow_hw_create_ctrl_tables(dev);
-		if (ret) {
-			rte_errno = -ret;
+		ret = flow_hw_create_ctrl_tables(dev, error);
+		if (ret)
 			goto err;
-		}
 	}
 	if (port_attr->nb_conn_tracks) {
 		mem_size = sizeof(struct mlx5_aso_sq) * nb_q_updated +
