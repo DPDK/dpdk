@@ -5965,12 +5965,14 @@ flow_hw_destroy_send_to_kernel_action(struct mlx5_priv *priv)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param[out] error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to pattern template on success. NULL otherwise, and rte_errno is set.
  */
 static struct rte_flow_pattern_template *
-flow_hw_create_tx_repr_sq_pattern_tmpl(struct rte_eth_dev *dev)
+flow_hw_create_tx_repr_sq_pattern_tmpl(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct rte_flow_pattern_template_attr attr = {
 		.relaxed_matching = 0,
@@ -5989,7 +5991,7 @@ flow_hw_create_tx_repr_sq_pattern_tmpl(struct rte_eth_dev *dev)
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
+	return flow_hw_pattern_template_create(dev, &attr, items, error);
 }
 
 static __rte_always_inline uint32_t
@@ -6047,12 +6049,15 @@ flow_hw_update_action_mask(struct rte_flow_action *action,
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param[out] error
+ *   Pointer to error structure.
  *
  * @return
  *   Pointer to actions template on success. NULL otherwise, and rte_errno is set.
  */
 static struct rte_flow_actions_template *
-flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
+flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev,
+					  struct rte_flow_error *error)
 {
 	uint32_t tag_mask = flow_hw_tx_tag_regc_mask(dev);
 	uint32_t tag_value = flow_hw_tx_tag_regc_value(dev);
@@ -6141,7 +6146,7 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev)
 				   NULL, NULL);
 	idx++;
 	MLX5_ASSERT(idx <= RTE_DIM(actions_v));
-	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m, NULL);
+	return flow_hw_actions_template_create(dev, &attr, actions_v, actions_m, error);
 }
 
 static void
@@ -6170,12 +6175,14 @@ flow_hw_cleanup_tx_repr_tagging(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param[out] error
+ *   Pointer to error structure.
  *
  * @return
  *   0 on success, negative errno value otherwise.
  */
 static int
-flow_hw_setup_tx_repr_tagging(struct rte_eth_dev *dev)
+flow_hw_setup_tx_repr_tagging(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_template_table_attr attr = {
@@ -6193,20 +6200,22 @@ flow_hw_setup_tx_repr_tagging(struct rte_eth_dev *dev)
 
 	MLX5_ASSERT(priv->sh->config.dv_esw_en);
 	MLX5_ASSERT(priv->sh->config.repr_matching);
-	priv->hw_tx_repr_tagging_pt = flow_hw_create_tx_repr_sq_pattern_tmpl(dev);
+	priv->hw_tx_repr_tagging_pt =
+		flow_hw_create_tx_repr_sq_pattern_tmpl(dev, error);
 	if (!priv->hw_tx_repr_tagging_pt)
-		goto error;
-	priv->hw_tx_repr_tagging_at = flow_hw_create_tx_repr_tag_jump_acts_tmpl(dev);
+		goto err;
+	priv->hw_tx_repr_tagging_at =
+		flow_hw_create_tx_repr_tag_jump_acts_tmpl(dev, error);
 	if (!priv->hw_tx_repr_tagging_at)
-		goto error;
+		goto err;
 	priv->hw_tx_repr_tagging_tbl = flow_hw_table_create(dev, &cfg,
 							    &priv->hw_tx_repr_tagging_pt, 1,
 							    &priv->hw_tx_repr_tagging_at, 1,
-							    NULL);
+							    error);
 	if (!priv->hw_tx_repr_tagging_tbl)
-		goto error;
+		goto err;
 	return 0;
-error:
+err:
 	flow_hw_cleanup_tx_repr_tagging(dev);
 	return -rte_errno;
 }
@@ -7638,8 +7647,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	}
 
-	memcpy(_queue_attr, queue_attr,
-	       sizeof(void *) * nb_queue);
+	memcpy(_queue_attr, queue_attr, sizeof(void *) * nb_queue);
 	_queue_attr[nb_queue] = &ctrl_queue_attr;
 	priv->acts_ipool = mlx5_ipool_create(&cfg);
 	if (!priv->acts_ipool)
@@ -7732,7 +7740,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		MLX5_ASSERT(rte_eth_dev_is_valid_port(port_attr->host_port_id));
 		if (is_proxy) {
 			DRV_LOG(ERR, "cross vHCA shared mode not supported "
-				     " for E-Switch confgiurations");
+				"for E-Switch confgiurations");
 			rte_errno = ENOTSUP;
 			goto err;
 		}
@@ -7816,11 +7824,9 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 	}
 	if (priv->sh->config.dv_esw_en && priv->sh->config.repr_matching) {
-		ret = flow_hw_setup_tx_repr_tagging(dev);
-		if (ret) {
-			rte_errno = -ret;
+		ret = flow_hw_setup_tx_repr_tagging(dev, error);
+		if (ret)
 			goto err;
-		}
 	}
 	if (is_proxy) {
 		ret = flow_hw_create_vport_actions(priv);
