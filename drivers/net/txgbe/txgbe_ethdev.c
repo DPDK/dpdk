@@ -546,6 +546,7 @@ null:
 static int
 eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
+	struct txgbe_adapter *ad = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(eth_dev);
@@ -594,6 +595,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return 0;
 	}
 
+	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
@@ -1680,7 +1682,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 
 	/* Stop the link setup handler before resetting the HW. */
 	rte_eal_alarm_cancel(txgbe_dev_detect_sfp, dev);
-	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+	txgbe_dev_wait_setup_link_complete(dev, 0);
 
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
@@ -1919,7 +1921,7 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	rte_eal_alarm_cancel(txgbe_dev_detect_sfp, dev);
-	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+	txgbe_dev_wait_setup_link_complete(dev, 0);
 
 	/* disable interrupts */
 	txgbe_disable_intr(hw);
@@ -2803,11 +2805,52 @@ txgbe_dev_setup_link_alarm_handler(void *param)
 	intr->flags &= ~TXGBE_FLAG_NEED_LINK_CONFIG;
 }
 
+/*
+ * If @timeout_ms was 0, it means that it will not return until link complete.
+ * It returns 1 on complete, return 0 on timeout.
+ */
+int
+txgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev, uint32_t timeout_ms)
+{
+#define WARNING_TIMEOUT    9000 /* 9s in total */
+	struct txgbe_adapter *ad = TXGBE_DEV_ADAPTER(dev);
+	uint32_t timeout = timeout_ms ? timeout_ms : WARNING_TIMEOUT;
+
+	while (__atomic_load_n(&ad->link_thread_running, __ATOMIC_SEQ_CST)) {
+		msec_delay(1);
+		timeout--;
+
+		if (timeout_ms) {
+			if (!timeout)
+				return 0;
+		} else if (!timeout) {
+			/* It will not return until link complete */
+			timeout = WARNING_TIMEOUT;
+			PMD_DRV_LOG(ERR, "TXGBE link thread not complete too long time!");
+		}
+	}
+
+	return 1;
+}
+
+static uint32_t
+txgbe_dev_setup_link_thread_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct txgbe_adapter *ad = TXGBE_DEV_ADAPTER(dev);
+
+	rte_thread_detach(rte_thread_self());
+	txgbe_dev_setup_link_alarm_handler(dev);
+	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
+	return 0;
+}
+
 /* return 0 means link status changed, -1 means not changed */
 int
 txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 			    int wait_to_complete)
 {
+	struct txgbe_adapter *ad = TXGBE_DEV_ADAPTER(dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_eth_link link;
 	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
@@ -2844,10 +2887,25 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		if ((hw->subsystem_device_id & 0xFF) ==
 				TXGBE_DEV_ID_KR_KX_KX4) {
 			hw->mac.bp_down_event(hw);
-		} else if (hw->phy.media_type == txgbe_media_type_fiber) {
-			intr->flags |= TXGBE_FLAG_NEED_LINK_CONFIG;
-			rte_eal_alarm_set(10,
-				txgbe_dev_setup_link_alarm_handler, dev);
+		} else if (hw->phy.media_type == txgbe_media_type_fiber &&
+				dev->data->dev_conf.intr_conf.lsc != 0) {
+			txgbe_dev_wait_setup_link_complete(dev, 0);
+			if (!__atomic_test_and_set(&ad->link_thread_running, __ATOMIC_SEQ_CST)) {
+				/* To avoid race condition between threads, set
+				 * the TXGBE_FLAG_NEED_LINK_CONFIG flag only
+				 * when there is no link thread running.
+				 */
+				intr->flags |= TXGBE_FLAG_NEED_LINK_CONFIG;
+				if (rte_thread_create_control(&ad->link_thread_tid,
+					"txgbe-link-thread", NULL,
+					txgbe_dev_setup_link_thread_handler, dev) < 0) {
+					PMD_DRV_LOG(ERR, "Create link thread failed!");
+					__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
+				}
+			} else {
+				PMD_DRV_LOG(ERR,
+					"Other link thread is running now!");
+			}
 		}
 		return rte_eth_linkstatus_set(dev, &link);
 	} else if (!hw->dev_start) {

@@ -165,6 +165,7 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	int err;
 	uint32_t tc, tcs;
+	struct txgbe_adapter *ad = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
@@ -205,6 +206,7 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
+	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->device_id = pci_dev->id.device_id;
@@ -618,7 +620,7 @@ txgbevf_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Stop the link setup handler before resetting the HW. */
-	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+	txgbe_dev_wait_setup_link_complete(dev, 0);
 
 	err = hw->mac.reset_hw(hw);
 	if (err) {
@@ -720,7 +722,7 @@ txgbevf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+	txgbe_dev_wait_setup_link_complete(dev, 0);
 
 	txgbevf_intr_disable(dev);
 

@@ -370,6 +370,9 @@ struct txgbe_adapter {
 
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
+
+	uint32_t link_thread_running;
+	rte_thread_t link_thread_tid;
 };
 
 #define TXGBE_DEV_ADAPTER(dev) \
@@ -561,6 +564,9 @@ void txgbe_configure_dcb(struct rte_eth_dev *dev);
 int
 txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		int wait_to_complete);
+int
+txgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev,
+		uint32_t timeout_ms);
 int txgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 
 void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
