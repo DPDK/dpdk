@@ -410,8 +410,7 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 		goto error;
 	}
 	for (qidx = 0; qidx < ccfg->q_num; qidx++) {
-		snprintf(mz_name, sizeof(mz_name), "%s_cache/%u", pcfg->name,
-				qidx);
+		snprintf(mz_name, sizeof(mz_name), "%s_qc/%x", pcfg->name, qidx);
 		cntp->cache->qcache[qidx] = rte_ring_create(mz_name, ccfg->size,
 				SOCKET_ID_ANY,
 				RING_F_SP_ENQ | RING_F_SC_DEQ |
@@ -634,7 +633,7 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 			SOCKET_ID_ANY);
 	if (mp_name == NULL)
 		goto error;
-	snprintf(mp_name, RTE_MEMZONE_NAMESIZE, "MLX5_HWS_CNT_POOL_%u",
+	snprintf(mp_name, RTE_MEMZONE_NAMESIZE, "MLX5_HWS_CNT_P_%x",
 			dev->data->port_id);
 	pcfg.name = mp_name;
 	pcfg.request_num = pattr->nb_counters;
