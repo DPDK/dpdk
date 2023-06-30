@@ -7831,7 +7831,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	if (is_proxy) {
 		ret = flow_hw_create_vport_actions(priv);
 		if (ret) {
-			rte_errno = -ret;
+			rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "Failed to create vport actions.");
 			goto err;
 		}
 		ret = flow_hw_create_ctrl_tables(dev);
