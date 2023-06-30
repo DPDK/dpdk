@@ -670,7 +670,7 @@ rte_thash_get_gfni_matrices(struct rte_thash_ctx *ctx)
 }
 
 static inline uint8_t
-read_unaligned_byte(uint8_t *ptr, unsigned int len, unsigned int offset)
+read_unaligned_byte(uint8_t *ptr, unsigned int offset)
 {
 	uint8_t ret = 0;
 
@@ -681,13 +681,14 @@ read_unaligned_byte(uint8_t *ptr, unsigned int len, unsigned int offset)
 			(CHAR_BIT - (offset % CHAR_BIT));
 	}
 
-	return ret >> (CHAR_BIT - len);
+	return ret;
 }
 
 static inline uint32_t
 read_unaligned_bits(uint8_t *ptr, int len, int offset)
 {
 	uint32_t ret = 0;
+	int shift;
 
 	len = RTE_MAX(len, 0);
 	len = RTE_MIN(len, (int)(sizeof(uint32_t) * CHAR_BIT));
@@ -695,13 +696,14 @@ read_unaligned_bits(uint8_t *ptr, int len, int offset)
 	while (len > 0) {
 		ret <<= CHAR_BIT;
 
-		ret |= read_unaligned_byte(ptr, RTE_MIN(len, CHAR_BIT),
-			offset);
+		ret |= read_unaligned_byte(ptr, offset);
 		offset += CHAR_BIT;
 		len -= CHAR_BIT;
 	}
 
-	return ret;
+	shift = (len == 0) ? 0 :
+		(CHAR_BIT - ((len + CHAR_BIT) % CHAR_BIT));
+	return ret >> shift;
 }
 
 /* returns mask for len bits with given offset inside byte */
