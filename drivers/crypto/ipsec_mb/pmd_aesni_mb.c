@@ -2,6 +2,8 @@
  * Copyright(c) 2015-2021 Intel Corporation
  */
 
+#include <unistd.h>
+
 #include "pmd_aesni_mb_priv.h"
 
 struct aesni_mb_op_buf_data {
@@ -847,6 +849,7 @@ aesni_mb_session_configure(IMB_MGR *mb_mgr,
 
 #if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
 	sess->session_id = imb_set_session(mb_mgr, &sess->template_job);
+	sess->pid = getpid();
 #endif
 
 	return 0;
@@ -1482,7 +1485,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			session->template_job.cipher_mode;
 
 #if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
-	if (job->session_id != session->session_id)
+	if (session->pid != getpid()) {
+		memcpy(job, &session->template_job, sizeof(IMB_JOB));
+		imb_set_session(mb_mgr, job);
+	} else if (job->session_id != session->session_id)
 #endif
 		memcpy(job, &session->template_job, sizeof(IMB_JOB));
 

@@ -854,6 +854,8 @@ struct aesni_mb_session {
 	/*< Template job structure */
 	uint32_t session_id;
 	/*< IPSec MB session ID */
+	pid_t pid;
+	/*< Process ID that created session */
 	struct {
 		uint16_t offset;
 	} iv;
