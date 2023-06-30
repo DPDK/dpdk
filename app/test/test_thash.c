@@ -804,6 +804,137 @@ test_adjust_tuple(void)
 	return TEST_SUCCESS;
 }
 
+static uint32_t
+calc_tuple_hash(const uint8_t tuple[TUPLE_SZ], const uint8_t *key)
+{
+	uint32_t i, hash;
+	uint32_t tmp[TUPLE_SZ / sizeof(uint32_t)];
+
+	for (i = 0; i < RTE_DIM(tmp); i++)
+		tmp[i] = rte_be_to_cpu_32(
+			*(const uint32_t *)&tuple[i * sizeof(uint32_t)]);
+
+	hash = rte_softrss(tmp, RTE_DIM(tmp), key);
+	return hash;
+}
+
+static int
+check_adj_tuple(const uint8_t tuple[TUPLE_SZ], const uint8_t *key,
+		uint32_t dhv, uint32_t ohv, uint32_t adjust, uint32_t reta_sz,
+		const char *prefix)
+{
+	uint32_t hash, hashlsb;
+
+	hash = calc_tuple_hash(tuple, key);
+	hashlsb = hash & HASH_MSK(reta_sz);
+
+	printf("%s(%s) for tuple:\n", __func__, prefix);
+	rte_memdump(stdout, NULL, tuple, TUPLE_SZ);
+	printf("\treta_sz: %u,\n"
+		"\torig hash: %#x,\n"
+		"\tdesired: %#x,\n"
+		"\tadjust: %#x,\n"
+		"\tactual: %#x,\n",
+	       reta_sz, ohv, dhv, adjust, hashlsb);
+
+	if (dhv == hashlsb) {
+		printf("\t***Succeeded\n");
+		return 0;
+	}
+
+	printf("\t***Failed\n");
+	return -1;
+}
+
+static int
+test_adjust_tuple_mb(uint32_t reta_sz, uint32_t bofs)
+{
+	struct rte_thash_ctx *ctx;
+	struct rte_thash_subtuple_helper *h;
+	const int key_len = 40;
+	const uint8_t *new_key;
+	uint8_t orig_tuple[TUPLE_SZ];
+	uint8_t tuple_1[TUPLE_SZ];
+	uint8_t tuple_2[TUPLE_SZ];
+	uint32_t orig_hash;
+	int rc, ret;
+	uint32_t adj_bits;
+	unsigned int random = rte_rand();
+	unsigned int desired_value = random & HASH_MSK(reta_sz);
+
+	const uint32_t h_offset = offsetof(union rte_thash_tuple, v4.dport) * CHAR_BIT;
+	const uint32_t h_size = sizeof(uint16_t) * CHAR_BIT - bofs;
+
+	printf("===%s(reta_sz=%u,bofs=%u)===\n", __func__, reta_sz, bofs);
+
+	memset(orig_tuple, 0xab, sizeof(orig_tuple));
+
+	ctx = rte_thash_init_ctx("test", key_len, reta_sz, NULL, 0);
+	RTE_TEST_ASSERT(ctx != NULL, "can not create thash ctx\n");
+
+	ret = rte_thash_add_helper(ctx, "test", h_size, h_offset);
+	RTE_TEST_ASSERT(ret == 0, "can not add helper, ret %d\n", ret);
+
+	new_key = rte_thash_get_key(ctx);
+
+	h = rte_thash_get_helper(ctx, "test");
+
+	orig_hash = calc_tuple_hash(orig_tuple, new_key);
+
+	adj_bits = rte_thash_get_complement(h, orig_hash, desired_value);
+
+	/* use method #1, update tuple manually */
+	memcpy(tuple_1, orig_tuple, sizeof(tuple_1));
+	{
+		uint16_t nv, ov, *p;
+
+		p = (uint16_t *)(tuple_1 + h_offset / CHAR_BIT);
+		ov = p[0];
+		nv = ov ^ rte_cpu_to_be_16(adj_bits << bofs);
+		printf("%s#%d: ov=%#hx, nv=%#hx, adj=%#x;\n",
+			__func__, __LINE__, ov, nv, adj_bits);
+		p[0] = nv;
+	}
+
+	rc = check_adj_tuple(tuple_1, new_key, desired_value, orig_hash,
+		adj_bits, reta_sz, "method #1");
+	if (h_offset % CHAR_BIT == 0)
+		ret |= rc;
+
+	/* use method #2, use library function to adjust tuple */
+	memcpy(tuple_2, orig_tuple, sizeof(tuple_2));
+
+	rte_thash_adjust_tuple(ctx, h, tuple_2, sizeof(tuple_2),
+		desired_value, 1, NULL, NULL);
+	ret |= check_adj_tuple(tuple_2, new_key, desired_value, orig_hash,
+		adj_bits, reta_sz, "method #2");
+
+	rte_thash_free_ctx(ctx);
+
+	ret |= memcmp(tuple_1, tuple_2, sizeof(tuple_1));
+
+	printf("%s EXIT=======\n", __func__);
+	return ret;
+}
+
+static int
+test_adjust_tuple_mult_reta(void)
+{
+	uint32_t i, j, np, nt;
+
+	nt = 0, np = 0;
+	for (i = 0; i < CHAR_BIT; i++) {
+		for (j = 6; j <= RTE_THASH_RETA_SZ_MAX - i; j++) {
+			np += (test_adjust_tuple_mb(j, i) == 0);
+			nt++;
+		}
+	}
+
+	printf("%s: tests executed: %u, test passed: %u\n", __func__, nt, np);
+	RTE_TEST_ASSERT(nt == np, "%u subtests failed", nt - np);
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite thash_tests = {
 	.suite_name = "thash autotest",
 	.setup = NULL,
@@ -824,6 +955,7 @@ static struct unit_test_suite thash_tests = {
 	TEST_CASE(test_predictable_rss_min_seq),
 	TEST_CASE(test_predictable_rss_multirange),
 	TEST_CASE(test_adjust_tuple),
+	TEST_CASE(test_adjust_tuple_mult_reta),
 	TEST_CASES_END()
 	}
 };
