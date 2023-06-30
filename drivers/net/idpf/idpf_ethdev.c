@@ -1486,9 +1486,9 @@ RTE_PMD_REGISTER_PCI(net_idpf, rte_idpf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_idpf, pci_id_idpf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_idpf, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_idpf,
-			      IDPF_TX_SINGLE_Q "=<0|1> "
-			      IDPF_RX_SINGLE_Q "=<0|1> "
-			      IDPF_VPORT "=[vport_set0,[vport_set1],...]");
+	IDPF_TX_SINGLE_Q "=<0|1> "
+	IDPF_RX_SINGLE_Q "=<0|1> "
+	IDPF_VPORT "=[<begin>[-<end>][,<begin >[-<end>]][, ... ]]");
 
 RTE_LOG_REGISTER_SUFFIX(idpf_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(idpf_logtype_driver, driver, NOTICE);
