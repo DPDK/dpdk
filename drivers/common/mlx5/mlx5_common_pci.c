@@ -109,7 +109,7 @@ mlx5_dev_is_pci(const struct rte_device *dev)
 }
 
 bool
-mlx5_dev_is_vf_pci(struct rte_pci_device *pci_dev)
+mlx5_dev_is_vf_pci(const struct rte_pci_device *pci_dev)
 {
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
