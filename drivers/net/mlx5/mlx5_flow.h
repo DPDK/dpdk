@@ -52,8 +52,8 @@ enum mlx5_rte_flow_action_type {
 
 /* Private (internal) Field IDs for MODIFY_FIELD action. */
 enum mlx5_rte_flow_field_id {
-		MLX5_RTE_FLOW_FIELD_END = INT_MIN,
-			MLX5_RTE_FLOW_FIELD_META_REG,
+	MLX5_RTE_FLOW_FIELD_END = INT_MIN,
+	MLX5_RTE_FLOW_FIELD_META_REG,
 };
 
 #define MLX5_INDIRECT_ACTION_TYPE_OFFSET 29
@@ -1118,9 +1118,10 @@ flow_dv_fetch_field(const uint8_t *data, uint32_t size)
 static inline bool
 flow_modify_field_support_tag_array(enum rte_flow_field_id field)
 {
-	switch (field) {
+	switch ((int)field) {
 	case RTE_FLOW_FIELD_TAG:
 	case RTE_FLOW_FIELD_MPLS:
+	case MLX5_RTE_FLOW_FIELD_META_REG:
 		return true;
 	default:
 		break;

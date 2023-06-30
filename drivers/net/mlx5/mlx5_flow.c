@@ -2415,7 +2415,8 @@ flow_validate_modify_field_level(const struct rte_flow_action_modify_data *data,
 {
 	if (data->level == 0)
 		return 0;
-	if (data->field != RTE_FLOW_FIELD_TAG)
+	if (data->field != RTE_FLOW_FIELD_TAG &&
+	    data->field != (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "inner header fields modification is not supported");
@@ -2428,7 +2429,7 @@ flow_validate_modify_field_level(const struct rte_flow_action_modify_data *data,
 	 * 'tag_index' field. In old API, it was provided using 'level' field
 	 * and it is still supported for backwards compatibility.
 	 */
-	DRV_LOG(WARNING, "tag array provided in 'level' field instead of 'tag_index' field.");
+	DRV_LOG(DEBUG, "tag array provided in 'level' field instead of 'tag_index' field.");
 	return 0;
 }
 
