@@ -6447,27 +6447,28 @@ flow_hw_create_vlan(struct rte_eth_dev *dev)
 		MLX5DR_ACTION_FLAG_HWS_FDB
 	};
 
+	/* rte_errno is set in the mlx5dr_action* functions. */
 	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i <= MLX5DR_TABLE_TYPE_NIC_TX; i++) {
 		priv->hw_pop_vlan[i] =
 			mlx5dr_action_create_pop_vlan(priv->dr_ctx, flags[i]);
 		if (!priv->hw_pop_vlan[i])
-			return -ENOENT;
+			return -rte_errno;
 		priv->hw_push_vlan[i] =
 			mlx5dr_action_create_push_vlan(priv->dr_ctx, flags[i]);
 		if (!priv->hw_pop_vlan[i])
-			return -ENOENT;
+			return -rte_errno;
 	}
 	if (priv->sh->config.dv_esw_en && priv->master) {
 		priv->hw_pop_vlan[MLX5DR_TABLE_TYPE_FDB] =
 			mlx5dr_action_create_pop_vlan
 				(priv->dr_ctx, MLX5DR_ACTION_FLAG_HWS_FDB);
 		if (!priv->hw_pop_vlan[MLX5DR_TABLE_TYPE_FDB])
-			return -ENOENT;
+			return -rte_errno;
 		priv->hw_push_vlan[MLX5DR_TABLE_TYPE_FDB] =
 			mlx5dr_action_create_push_vlan
 				(priv->dr_ctx, MLX5DR_ACTION_FLAG_HWS_FDB);
 		if (!priv->hw_pop_vlan[MLX5DR_TABLE_TYPE_FDB])
-			return -ENOENT;
+			return -rte_errno;
 	}
 	return 0;
 }
@@ -7079,8 +7080,11 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		}
 	}
 	ret = flow_hw_create_vlan(dev);
-	if (ret)
+	if (ret) {
+		rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "Failed to VLAN actions.");
 		goto err;
+	}
 	if (_queue_attr)
 		mlx5_free(_queue_attr);
 	if (port_attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE)
