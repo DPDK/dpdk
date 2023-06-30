@@ -81,6 +81,7 @@ Runtime Config Options
   ``common``.
 
   For example::
+
   -a 0000:7d:00.0,rx_func_hint=simple
 
 - ``tx_func_hint`` (default ``none``)
@@ -101,6 +102,7 @@ Runtime Config Options
   ``common``.
 
   For example::
+
   -a 0000:7d:00.0,tx_func_hint=common
 
 - ``dev_caps_mask`` (default ``0``)
@@ -113,6 +115,7 @@ Runtime Config Options
   Its main purpose is to debug and avoid problems.
 
   For example::
+
   -a 0000:7d:00.0,dev_caps_mask=0xF
 
 - ``mbx_time_limit_ms`` (default ``500``)
