@@ -7072,8 +7072,11 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 		}
 		ret = mlx5_hws_age_pool_init(dev, port_attr, nb_queue);
-		if (ret < 0)
+		if (ret < 0) {
+			rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "Failed to init age pool.");
 			goto err;
+		}
 	}
 	ret = flow_hw_create_vlan(dev);
 	if (ret)
