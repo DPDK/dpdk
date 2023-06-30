@@ -7849,8 +7849,11 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	/* Initialize quotas */
 	if (port_attr->nb_quotas) {
 		ret = mlx5_flow_quota_init(dev, port_attr->nb_quotas);
-		if (ret)
+		if (ret) {
+			rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					   "Failed to initialize quota.");
 			goto err;
+		}
 	}
 	/* Initialize meter library*/
 	if (port_attr->nb_meters || (host_priv && host_priv->hws_mpool))
