@@ -577,6 +577,7 @@ iavf_queues_req_reset(struct rte_eth_dev *dev, uint16_t num)
 	PMD_DRV_LOG(INFO, "change queue pairs from %u to %u",
 			vf->vsi_res->num_queue_pairs, num);
 
+	iavf_dev_watchdog_disable(ad);
 	ret = iavf_dev_reset(dev);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "vf reset failed");
