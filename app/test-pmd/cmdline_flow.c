@@ -2940,6 +2940,7 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.table.attr.nb_flows)),
+		.call = parse_table,
 	},
 	[TABLE_PATTERN_TEMPLATE] = {
 		.name = "pattern_template",
@@ -8992,6 +8993,11 @@ parse_table(struct context *ctx, const struct token *token,
 		return len;
 	case TABLE_TRANSFER:
 		out->args.table.attr.flow_attr.transfer = 1;
+		return len;
+	case TABLE_RULES_NUMBER:
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
 		return len;
 	default:
 		return -1;
