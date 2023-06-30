@@ -1243,6 +1243,8 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_flow_meter_info *fm;
 	uint32_t mtr_id;
 
+	if (meter_mark->profile == NULL)
+		return NULL;
 	aso_mtr = mlx5_ipool_malloc(priv->hws_mpool->idx_pool, &mtr_id);
 	if (!aso_mtr)
 		return NULL;
