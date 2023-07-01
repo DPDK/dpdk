@@ -915,6 +915,9 @@ dump_packets(void)
 	int i;
 	unsigned int lcore_id = 0;
 
+	if (num_tuples == 0)
+		rte_exit(EXIT_FAILURE, "No device specified for capture\n");
+
 	if (!multiple_core_capture) {
 		printf(" core (%u), capture for (%d) tuples\n",
 				rte_lcore_id(), num_tuples);
