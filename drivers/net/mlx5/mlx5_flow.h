@@ -1098,10 +1098,10 @@ struct mlx5_flow_workspace {
 	/* If creating another flow in same thread, push new as stack. */
 	struct mlx5_flow_workspace *prev;
 	struct mlx5_flow_workspace *next;
+	struct mlx5_flow_workspace *gc;
 	uint32_t inuse; /* can't create new flow with current. */
 	struct mlx5_flow flows[MLX5_NUM_MAX_DEV_FLOWS];
 	struct mlx5_flow_rss_desc rss_desc;
-	uint32_t rssq_num; /* Allocated queue num in rss_desc. */
 	uint32_t flow_idx; /* Intermediate device flow index. */
 	struct mlx5_flow_meter_info *fm; /* Pointer to the meter in flow. */
 	struct mlx5_flow_meter_policy *policy;
@@ -1304,6 +1304,8 @@ struct mlx5_flow_driver_ops {
 struct mlx5_flow_workspace *mlx5_flow_push_thread_workspace(void);
 void mlx5_flow_pop_thread_workspace(void);
 struct mlx5_flow_workspace *mlx5_flow_get_thread_workspace(void);
+void mlx5_flow_workspace_gc_release(void);
+
 __extension__
 struct flow_grp_info {
 	uint64_t external:1;

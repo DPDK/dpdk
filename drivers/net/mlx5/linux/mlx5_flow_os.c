@@ -12,7 +12,7 @@ static rte_thread_key key_workspace;
 int
 mlx5_flow_os_init_workspace_once(void)
 {
-	if (rte_thread_key_create(&key_workspace, flow_release_workspace)) {
+	if (rte_thread_key_create(&key_workspace, NULL)) {
 		DRV_LOG(ERR, "Can't create flow workspace data thread key.");
 		rte_errno = ENOMEM;
 		return -rte_errno;

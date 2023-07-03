@@ -6527,36 +6527,6 @@ flow_tunnel_from_rule(const struct mlx5_flow *flow)
 }
 
 /**
- * Adjust flow RSS workspace if needed.
- *
- * @param wks
- *   Pointer to thread flow work space.
- * @param rss_desc
- *   Pointer to RSS descriptor.
- * @param[in] nrssq_num
- *   New RSS queue number.
- *
- * @return
- *   0 on success, -1 otherwise and rte_errno is set.
- */
-static int
-flow_rss_workspace_adjust(struct mlx5_flow_workspace *wks,
-			  struct mlx5_flow_rss_desc *rss_desc,
-			  uint32_t nrssq_num)
-{
-	if (likely(nrssq_num <= wks->rssq_num))
-		return 0;
-	rss_desc->queue = realloc(rss_desc->queue,
-			  sizeof(*rss_desc->queue) * RTE_ALIGN(nrssq_num, 2));
-	if (!rss_desc->queue) {
-		rte_errno = ENOMEM;
-		return -1;
-	}
-	wks->rssq_num = RTE_ALIGN(nrssq_num, 2);
-	return 0;
-}
-
-/**
  * Create a flow and add it to @p list.
  *
  * @param dev
@@ -6673,8 +6643,7 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	if (attr->ingress && !attr->transfer)
 		rss = flow_get_rss_action(dev, p_actions_rx);
 	if (rss) {
-		if (flow_rss_workspace_adjust(wks, rss_desc, rss->queue_num))
-			return 0;
+		MLX5_ASSERT(rss->queue_num <= RTE_ETH_RSS_RETA_SIZE_512);
 		/*
 		 * The following information is required by
 		 * mlx5_flow_hashfields_adjust() in advance.
@@ -7107,9 +7076,31 @@ flow_release_workspace(void *data)
 
 	while (wks) {
 		next = wks->next;
-		free(wks->rss_desc.queue);
 		free(wks);
 		wks = next;
+	}
+}
+
+static struct mlx5_flow_workspace *gc_head;
+static rte_spinlock_t mlx5_flow_workspace_lock = RTE_SPINLOCK_INITIALIZER;
+
+static void
+mlx5_flow_workspace_gc_add(struct mlx5_flow_workspace *ws)
+{
+	rte_spinlock_lock(&mlx5_flow_workspace_lock);
+	ws->gc = gc_head;
+	gc_head = ws;
+	rte_spinlock_unlock(&mlx5_flow_workspace_lock);
+}
+
+void
+mlx5_flow_workspace_gc_release(void)
+{
+	while (gc_head) {
+		struct mlx5_flow_workspace *wks = gc_head;
+
+		gc_head = wks->gc;
+		flow_release_workspace(wks);
 	}
 }
 
@@ -7138,24 +7129,17 @@ mlx5_flow_get_thread_workspace(void)
 static struct mlx5_flow_workspace*
 flow_alloc_thread_workspace(void)
 {
-	struct mlx5_flow_workspace *data = calloc(1, sizeof(*data));
+	size_t data_size = RTE_ALIGN(sizeof(struct mlx5_flow_workspace), sizeof(long));
+	size_t rss_queue_array_size = sizeof(uint16_t) * RTE_ETH_RSS_RETA_SIZE_512;
+	struct mlx5_flow_workspace *data = calloc(1, data_size +
+						     rss_queue_array_size);
 
 	if (!data) {
-		DRV_LOG(ERR, "Failed to allocate flow workspace "
-			"memory.");
+		DRV_LOG(ERR, "Failed to allocate flow workspace memory.");
 		return NULL;
 	}
-	data->rss_desc.queue = calloc(1,
-			sizeof(uint16_t) * MLX5_RSSQ_DEFAULT_NUM);
-	if (!data->rss_desc.queue)
-		goto err;
-	data->rssq_num = MLX5_RSSQ_DEFAULT_NUM;
+	data->rss_desc.queue = RTE_PTR_ADD(data, data_size);
 	return data;
-err:
-	if (data->rss_desc.queue)
-		free(data->rss_desc.queue);
-	free(data);
-	return NULL;
 }
 
 /**
@@ -7176,6 +7160,7 @@ mlx5_flow_push_thread_workspace(void)
 		data = flow_alloc_thread_workspace();
 		if (!data)
 			return NULL;
+		mlx5_flow_workspace_gc_add(data);
 	} else if (!curr->inuse) {
 		data = curr;
 	} else if (curr->next) {
