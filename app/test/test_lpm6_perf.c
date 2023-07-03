@@ -66,8 +66,6 @@ test_lpm6_perf(void)
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
 
-	rte_srand(rte_rdtsc());
-
 	printf("No. routes = %u\n", (unsigned) NUM_ROUTE_ENTRIES);
 
 	print_route_distribution(large_route_table, (uint32_t) NUM_ROUTE_ENTRIES);

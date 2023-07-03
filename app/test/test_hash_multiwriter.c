@@ -146,8 +146,6 @@ test_hash_multiwriter(void)
 		tbl_multiwriter_test_params.nb_tsx_insertion)
 		* tbl_multiwriter_test_params.nb_tsx_insertion;
 
-	rte_srand(rte_rdtsc());
-
 	keys = rte_malloc(NULL, sizeof(uint32_t) * nb_entries, 0);
 
 	if (keys == NULL) {

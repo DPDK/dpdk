@@ -83,8 +83,6 @@ test_fib6_perf(void)
 	conf.trie.nh_sz = RTE_FIB6_TRIE_4B;
 	conf.trie.num_tbl8 = RTE_MIN(get_max_nh(conf.trie.nh_sz), 1000000U);
 
-	rte_srand(rte_rdtsc());
-
 	printf("No. routes = %u\n", (unsigned int) NUM_ROUTE_ENTRIES);
 
 	print_route_distribution(large_route_table,

@@ -605,8 +605,6 @@ test_lpm_perf(void)
 	uint64_t cache_line_counter = 0;
 	int64_t count = 0;
 
-	rte_srand(rte_rdtsc());
-
 	generate_large_route_rule_table();
 
 	printf("No. routes = %u\n", (unsigned) NUM_ROUTE_ENTRIES);

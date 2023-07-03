@@ -334,8 +334,6 @@ test_fib_perf(void)
 	int status = 0;
 	int64_t count = 0;
 
-	rte_srand(rte_rdtsc());
-
 	generate_large_route_rule_table();
 
 	printf("No. routes = %u\n", (unsigned int) NUM_ROUTE_ENTRIES);

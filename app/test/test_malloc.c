@@ -692,8 +692,6 @@ test_random_alloc_free(void *_ __rte_unused)
 	unsigned i;
 	unsigned count = 0;
 
-	rte_srand((unsigned)rte_rdtsc());
-
 	for (i = 0; i < N; i++){
 		unsigned free_mem = 0;
 		size_t allocated_size;

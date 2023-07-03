@@ -573,7 +573,6 @@ test_memzone_reserve_max_aligned(void)
 		socket = rte_socket_id_by_idx(i);
 
 		/* random alignment */
-		rte_srand((unsigned int)rte_rdtsc());
 		const unsigned int align = 1 << ((rte_rand() % 8) + 5); /* from 128 up to 4k alignment */
 
 		/* memzone size may be between size and size - align */
