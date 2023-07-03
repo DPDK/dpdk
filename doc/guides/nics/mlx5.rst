@@ -1901,9 +1901,15 @@ The procedure below is an example of using a ConnectX-5 adapter card (pf0) with 
         $ ip link set p0 vf 0 trust on
         $ ip link set p0 vf 1 trust on
 
-#. Configure all VFs using mlxreg::
+#. Configure all VFs using ``mlxreg``:
 
-   $ mlxreg -d /dev/mst/mt4121_pciconf0 --reg_name VHCA_TRUST_LEVEL --yes --set "all_vhca=0x1,trust_level=0x1"
+   - For MFT >= 4.21::
+
+     $ mlxreg -d /dev/mst/mt4121_pciconf0 --reg_name VHCA_TRUST_LEVEL --yes --indexes 'all_vhca=0x1,vhca_id=0x0' --set 'trust_level=0x1'
+
+   - For MFT < 4.21::
+
+     $ mlxreg -d /dev/mst/mt4121_pciconf0 --reg_name VHCA_TRUST_LEVEL --yes --set "all_vhca=0x1,trust_level=0x1"
 
    .. note::
 
