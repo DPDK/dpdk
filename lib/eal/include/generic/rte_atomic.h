@@ -55,6 +55,14 @@ static inline void rte_rmb(void);
  * Guarantees that the LOAD and STORE operations that precede the
  * rte_smp_mb() call are globally visible across the lcores
  * before the LOAD and STORE operations that follows it.
+ *
+ * @note
+ *  This function is deprecated.
+ *  It provides similar synchronization primitive as atomic fence,
+ *  but has different syntax and memory ordering semantic. Hence
+ *  deprecated for the simplicity of memory ordering semantics in use.
+ *
+ *  rte_atomic_thread_fence(__ATOMIC_ACQ_REL) should be used instead.
  */
 static inline void rte_smp_mb(void);
 
@@ -64,6 +72,17 @@ static inline void rte_smp_mb(void);
  * Guarantees that the STORE operations that precede the
  * rte_smp_wmb() call are globally visible across the lcores
  * before the STORE operations that follows it.
+ *
+ * @note
+ *  This function is deprecated.
+ *  It provides similar synchronization primitive as atomic fence,
+ *  but has different syntax and memory ordering semantic. Hence
+ *  deprecated for the simplicity of memory ordering semantics in use.
+ *
+ *  rte_atomic_thread_fence(__ATOMIC_RELEASE) should be used instead.
+ *  The fence also guarantees LOAD operations that precede the call
+ *  are globally visible across the lcores before the STORE operations
+ *  that follows it.
  */
 static inline void rte_smp_wmb(void);
 
@@ -73,6 +92,17 @@ static inline void rte_smp_wmb(void);
  * Guarantees that the LOAD operations that precede the
  * rte_smp_rmb() call are globally visible across the lcores
  * before the LOAD operations that follows it.
+ *
+ * @note
+ *  This function is deprecated.
+ *  It provides similar synchronization primitive as atomic fence,
+ *  but has different syntax and memory ordering semantic. Hence
+ *  deprecated for the simplicity of memory ordering semantics in use.
+ *
+ *  rte_atomic_thread_fence(__ATOMIC_ACQUIRE) should be used instead.
+ *  The fence also guarantees LOAD operations that precede the call
+ *  are globally visible across the lcores before the STORE operations
+ *  that follows it.
  */
 static inline void rte_smp_rmb(void);
 ///@}
