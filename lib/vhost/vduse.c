@@ -418,7 +418,7 @@ vduse_device_create(const char *path)
 	pthread_t fdset_tid;
 	uint32_t i, max_queue_pairs, total_queues;
 	struct virtio_net *dev;
-	struct virtio_net_config vnet_config = { 0 };
+	struct virtio_net_config vnet_config = {{ 0 }};
 	uint64_t ver = VHOST_VDUSE_API_VERSION;
 	uint64_t features;
 	struct vduse_dev_config *dev_config = NULL;
