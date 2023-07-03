@@ -30,6 +30,23 @@ static const char * const idpf_valid_args[] = {
 	NULL
 };
 
+uint32_t idpf_supported_speeds[] = {
+	RTE_ETH_SPEED_NUM_NONE,
+	RTE_ETH_SPEED_NUM_10M,
+	RTE_ETH_SPEED_NUM_100M,
+	RTE_ETH_SPEED_NUM_1G,
+	RTE_ETH_SPEED_NUM_2_5G,
+	RTE_ETH_SPEED_NUM_5G,
+	RTE_ETH_SPEED_NUM_10G,
+	RTE_ETH_SPEED_NUM_20G,
+	RTE_ETH_SPEED_NUM_25G,
+	RTE_ETH_SPEED_NUM_40G,
+	RTE_ETH_SPEED_NUM_50G,
+	RTE_ETH_SPEED_NUM_56G,
+	RTE_ETH_SPEED_NUM_100G,
+	RTE_ETH_SPEED_NUM_200G
+};
+
 static const uint64_t idpf_map_hena_rss[] = {
 	[IDPF_HASH_NONF_UNICAST_IPV4_UDP] =
 			RTE_ETH_RSS_NONFRAG_IPV4_UDP,
@@ -110,47 +127,23 @@ idpf_dev_link_update(struct rte_eth_dev *dev,
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 	struct rte_eth_link new_link;
+	unsigned int i;
 
 	memset(&new_link, 0, sizeof(new_link));
 
-	switch (vport->link_speed) {
-	case RTE_ETH_SPEED_NUM_10M:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_10M;
-		break;
-	case RTE_ETH_SPEED_NUM_100M:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_100M;
-		break;
-	case RTE_ETH_SPEED_NUM_1G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_1G;
-		break;
-	case RTE_ETH_SPEED_NUM_10G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_10G;
-		break;
-	case RTE_ETH_SPEED_NUM_20G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_20G;
-		break;
-	case RTE_ETH_SPEED_NUM_25G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_25G;
-		break;
-	case RTE_ETH_SPEED_NUM_40G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_40G;
-		break;
-	case RTE_ETH_SPEED_NUM_50G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_50G;
-		break;
-	case RTE_ETH_SPEED_NUM_100G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_100G;
-		break;
-	case RTE_ETH_SPEED_NUM_200G:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_200G;
-		break;
-	default:
-		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	/* initialize with default value */
+	new_link.link_speed = vport->link_up ? RTE_ETH_SPEED_NUM_UNKNOWN : RTE_ETH_SPEED_NUM_NONE;
+
+	/* update in case a match */
+	for (i = 0; i < RTE_DIM(idpf_supported_speeds); i++) {
+		if (vport->link_speed == idpf_supported_speeds[i]) {
+			new_link.link_speed = vport->link_speed;
+			break;
+		}
 	}
 
 	new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-	new_link.link_status = vport->link_up ? RTE_ETH_LINK_UP :
-		RTE_ETH_LINK_DOWN;
+	new_link.link_status = vport->link_up ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 	new_link.link_autoneg = (dev->data->dev_conf.link_speeds & RTE_ETH_LINK_SPEED_FIXED) ?
 				 RTE_ETH_LINK_FIXED : RTE_ETH_LINK_AUTONEG;
 
