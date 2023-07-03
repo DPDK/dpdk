@@ -390,7 +390,7 @@ modify_fib(struct dir24_8_tbl *dp, struct rte_rib *rib, uint32_t ip,
 				(uint32_t)(1ULL << (32 - tmp_depth));
 		} else {
 			redge = ip + (uint32_t)(1ULL << (32 - depth));
-			if (ledge == redge)
+			if (ledge == redge && ledge != 0)
 				break;
 			ret = install_to_fib(dp, ledge, redge,
 				next_hop);
