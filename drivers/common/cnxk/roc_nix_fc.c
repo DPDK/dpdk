@@ -91,17 +91,6 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
 			goto exit;
-	} else {
-		req = mbox_alloc_msg_nix_cpt_bp_disable(mbox);
-		if (req == NULL)
-			return rc;
-		req->chan_base = 0;
-		req->chan_cnt = 1;
-		req->bpid_per_chan = 0;
-
-		rc = mbox_process_msg(mbox, (void *)&rsp);
-		if (rc)
-			goto exit;
 	}
 
 exit:
