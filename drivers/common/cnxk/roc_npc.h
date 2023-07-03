@@ -40,6 +40,7 @@ enum roc_npc_item_type {
 	ROC_NPC_ITEM_TYPE_RAW,
 	ROC_NPC_ITEM_TYPE_MARK,
 	ROC_NPC_ITEM_TYPE_TX_QUEUE,
+	ROC_NPC_ITEM_TYPE_IPV6_ROUTING_EXT,
 	ROC_NPC_ITEM_TYPE_END,
 };
 
@@ -126,6 +127,22 @@ struct roc_ipv6_fragment_ext {
 	uint8_t reserved;    /**< Reserved */
 	uint16_t frag_data;  /**< All fragmentation data */
 	uint32_t id;	     /**< Packet ID */
+} __plt_packed;
+
+struct roc_ipv6_routing_ext {
+	uint8_t next_hdr;	/**< Protocol, next header. */
+	uint8_t hdr_len;	/**< Header length. */
+	uint8_t type;		/**< Extension header type. */
+	uint8_t segments_left;	/**< Valid segments number. */
+	union {
+		uint32_t flags; /**< Packet control data per type. */
+		struct {
+			uint8_t last_entry; /**< The last_entry field of SRH */
+			uint8_t flag;	    /**< Packet flag. */
+			uint16_t tag;	    /**< Packet tag. */
+		};
+	};
+	/* Next are 128-bit IPv6 address fields to describe segments. */
 } __plt_packed;
 
 struct roc_flow_item_ipv6_ext {

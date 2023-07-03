@@ -719,8 +719,8 @@ npc_handle_ipv6ext_attr(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 static int
 npc_process_ipv6_item(struct npc_parse_state *pst)
 {
-	uint8_t ipv6_hdr_mask[sizeof(struct roc_ipv6_hdr) + sizeof(struct roc_ipv6_fragment_ext)];
-	uint8_t ipv6_hdr_buf[sizeof(struct roc_ipv6_hdr) + sizeof(struct roc_ipv6_fragment_ext)];
+	uint8_t ipv6_hdr_mask[2 * sizeof(struct roc_ipv6_hdr)];
+	uint8_t ipv6_hdr_buf[2 * sizeof(struct roc_ipv6_hdr)];
 	const struct roc_npc_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
 	const struct roc_npc_item_info *pattern = pst->pattern;
 	int offset = 0, rc = 0, lid, item_count = 0;
@@ -804,6 +804,16 @@ npc_process_ipv6_item(struct npc_parse_state *pst)
 				       sizeof(struct roc_ipv6_fragment_ext));
 
 			break;
+		} else if (pattern->type == ROC_NPC_ITEM_TYPE_IPV6_ROUTING_EXT) {
+			item_count++;
+			ltype = NPC_LT_LC_IP6_EXT;
+			parse_info.len = sizeof(struct roc_ipv6_hdr) + pattern->size;
+
+			if (pattern->spec)
+				memcpy(ipv6_hdr_buf + offset, pattern->spec, pattern->size);
+			if (pattern->mask)
+				memcpy(ipv6_hdr_mask + offset, pattern->mask, pattern->size);
+			break;
 		}
 
 		pattern++;
@@ -867,6 +877,7 @@ npc_parse_lc(struct npc_parse_state *pst)
 	case ROC_NPC_ITEM_TYPE_IPV6:
 	case ROC_NPC_ITEM_TYPE_IPV6_EXT:
 	case ROC_NPC_ITEM_TYPE_IPV6_FRAG_EXT:
+	case ROC_NPC_ITEM_TYPE_IPV6_ROUTING_EXT:
 		return npc_process_ipv6_item(pst);
 	case ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4:
 		lt = NPC_LT_LC_ARP;
