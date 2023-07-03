@@ -528,12 +528,12 @@ mlx5_rx_queue_stop(struct rte_eth_dev *dev, uint16_t idx)
 	 * synchronized, that might be broken on RQ restart
 	 * and cause Rx malfunction, so queue stopping is
 	 * not supported if vectorized Rx burst is engaged.
-	 * The routine pointer depends on the process
-	 * type, should perform check there.
+	 * The routine pointer depends on the process type,
+	 * should perform check there. MPRQ is not supported as well.
 	 */
-	if (pkt_burst == mlx5_rx_burst_vec) {
-		DRV_LOG(ERR, "Rx queue stop is not supported "
-			"for vectorized Rx");
+	if (pkt_burst != mlx5_rx_burst) {
+		DRV_LOG(ERR, "Rx queue stop is only supported "
+			"for non-vectorized single-packet Rx");
 		rte_errno = EINVAL;
 		return -EINVAL;
 	}
