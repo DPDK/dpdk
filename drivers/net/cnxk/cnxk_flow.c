@@ -59,6 +59,8 @@ const struct cnxk_rte_flow_term_info term[] = {
 				    sizeof(struct rte_flow_item_raw)},
 	[RTE_FLOW_ITEM_TYPE_MARK] = {ROC_NPC_ITEM_TYPE_MARK,
 				     sizeof(struct rte_flow_item_mark)},
+	[RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT] = {ROC_NPC_ITEM_TYPE_IPV6_ROUTING_EXT,
+				     sizeof(struct rte_flow_item_ipv6_routing_ext)},
 	[RTE_FLOW_ITEM_TYPE_TX_QUEUE] = {ROC_NPC_ITEM_TYPE_TX_QUEUE,
 				     sizeof(struct rte_flow_item_tx_queue)}};
 
