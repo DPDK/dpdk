@@ -711,7 +711,7 @@ sfc_mae_counter_thread_spawn(struct sfc_adapter *sa,
 	counter_registry->polling.thread.run = true;
 
 	rc = rte_ctrl_thread_create(&sa->mae.counter_registry.polling.thread.id,
-				    "mae_counter_thread", NULL,
+				    "dpdk-sfc-maecnt", NULL,
 				    sfc_mae_counter_thread, sa);
 
 	return rc;

@@ -4329,7 +4329,7 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 				 */
 				intr->flags |= IXGBE_FLAG_NEED_LINK_CONFIG;
 				if (rte_thread_create_control(&ad->link_thread_tid,
-					"ixgbe-link-handler",
+					"dpdk-ixgbe-link",
 					NULL,
 					ixgbe_dev_setup_link_thread_handler,
 					dev) < 0) {

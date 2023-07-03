@@ -570,7 +570,7 @@ setup_notify_relay(struct ifcvf_internal *internal)
 	char name[THREAD_NAME_LEN];
 	int ret;
 
-	snprintf(name, sizeof(name), "ifc-notify-%d", internal->vid);
+	snprintf(name, sizeof(name), "dpdk-ifc-noti%d", internal->vid);
 	ret = rte_ctrl_thread_create(&internal->tid, name, NULL, notify_relay,
 				     (void *)internal);
 	if (ret != 0) {
@@ -681,7 +681,7 @@ setup_intr_relay(struct ifcvf_internal *internal)
 	char name[THREAD_NAME_LEN];
 	int ret;
 
-	snprintf(name, sizeof(name), "ifc-intr-%d", internal->vid);
+	snprintf(name, sizeof(name), "dpdk-ifc-int%d", internal->vid);
 	ret = rte_ctrl_thread_create(&internal->intr_tid, name, NULL,
 				     intr_relay, (void *)internal);
 	if (ret) {
@@ -1019,7 +1019,7 @@ setup_vring_relay(struct ifcvf_internal *internal)
 	char name[THREAD_NAME_LEN];
 	int ret;
 
-	snprintf(name, sizeof(name), "ifc-vring-%d", internal->vid);
+	snprintf(name, sizeof(name), "dpdk-ifc-ring%d", internal->vid);
 	ret = rte_ctrl_thread_create(&internal->tid, name, NULL, vring_relay,
 				     (void *)internal);
 	if (ret != 0) {

@@ -200,7 +200,7 @@ static inline void os_schedule_work(struct dlb2_hw *hw)
 	dlb2_dev = container_of(hw, struct dlb2_dev, hw);
 
 	ret = rte_ctrl_thread_create(&complete_queue_map_unmap_thread,
-				     "dlb_queue_unmap_waiter",
+				     "dpdk-dlb-qunmap",
 				     NULL,
 				     dlb2_complete_queue_map_unmap,
 				     dlb2_dev);

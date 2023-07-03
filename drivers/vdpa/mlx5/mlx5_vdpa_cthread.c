@@ -312,7 +312,7 @@ mlx5_vdpa_c_thread_create(int cpu_core)
 			"vdpa multi-threads %d.", thrd_idx);
 			goto c_thread_err;
 		}
-		snprintf(name, sizeof(name), "vDPA-mthread-%d", thrd_idx);
+		snprintf(name, sizeof(name), "dpdk-vmlx5-c%d", thrd_idx);
 		ret = pthread_setname_np(
 				conf_thread_mng.cthrd[thrd_idx].tid, name);
 		if (ret)

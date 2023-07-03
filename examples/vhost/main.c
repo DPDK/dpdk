@@ -1986,11 +1986,11 @@ main(int argc, char *argv[])
 
 	/* Enable stats if the user option is set. */
 	if (enable_stats) {
-		ret = rte_ctrl_thread_create(&tid, "print-stats", NULL,
+		ret = rte_ctrl_thread_create(&tid, "dpdk-vhost-stat", NULL,
 					print_stats, NULL);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE,
-				"Cannot create print-stats thread\n");
+				"Cannot create dpdk-vhost-stat thread\n");
 	}
 
 	/* Launch all data cores. */

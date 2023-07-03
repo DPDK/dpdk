@@ -127,7 +127,7 @@ skeldma_start(struct rte_dma_dev *dev)
 
 	rte_mb();
 
-	snprintf(name, sizeof(name), "dma_skel_%d", dev->data->dev_id);
+	snprintf(name, sizeof(name), "dpdk-dma-skel%d", dev->data->dev_id);
 	ret = rte_thread_create_control(&hw->thread, name, NULL,
 				     cpucopy_thread, dev);
 	if (ret) {

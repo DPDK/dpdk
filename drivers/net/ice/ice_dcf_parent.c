@@ -181,7 +181,7 @@ start_vsi_reset_thread(struct ice_dcf_hw *dcf_hw, bool vfr, uint16_t vf_id)
 	param->vfr = vfr;
 	param->vf_id = vf_id;
 
-	snprintf(name, sizeof(name), "ice-reset-%u", vf_id);
+	snprintf(name, sizeof(name), "dpdk-ice-rst%u", vf_id);
 	ret = rte_thread_create_control(&thread, name, NULL,
 				     ice_dcf_vsi_update_service_handler, param);
 	if (ret != 0) {

@@ -646,7 +646,7 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
-	if (rte_ctrl_thread_create(&mp_handle_tid, "rte_mp_handle",
+	if (rte_ctrl_thread_create(&mp_handle_tid, "dpdk-mp-msg",
 			NULL, mp_handle, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "failed to create mp thread: %s\n",
 			strerror(errno));

@@ -239,7 +239,7 @@ test_thread_control_create_join(void)
 	rte_thread_t thread_main_id;
 
 	thread_id_ready = 0;
-	RTE_TEST_ASSERT(rte_thread_create_control(&thread_id, "test_control_threads",
+	RTE_TEST_ASSERT(rte_thread_create_control(&thread_id, "dpdk-test-thcc",
 		NULL, thread_main, &thread_main_id) == 0,
 		"Failed to create thread.");
 

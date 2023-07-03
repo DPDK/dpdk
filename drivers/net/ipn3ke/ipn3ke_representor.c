@@ -2593,7 +2593,7 @@ ipn3ke_rpst_scan_check(void)
 
 	if (ipn3ke_rpst_scan_num == 1) {
 		ret = rte_ctrl_thread_create(&ipn3ke_rpst_scan_thread,
-			"ipn3ke scanner",
+			"dpdk-ipn3ke-scn",
 			NULL,
 			ipn3ke_rpst_scan_handle_request, NULL);
 		if (ret) {

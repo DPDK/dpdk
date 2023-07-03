@@ -362,7 +362,7 @@ test_ctrl_thread(void)
 	/* Create one control thread */
 	t = &ctrl_thread_context;
 	t->state = Thread_INIT;
-	if (rte_ctrl_thread_create((pthread_t *)&t->id, "test_ctrl_threads",
+	if (rte_ctrl_thread_create((pthread_t *)&t->id, "dpdk-test-ctrlt",
 					NULL, ctrl_thread_loop, t) != 0)
 		return -1;
 

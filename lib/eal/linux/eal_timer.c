@@ -176,7 +176,7 @@ rte_eal_hpet_init(int make_default)
 
 	/* create a thread that will increment a global variable for
 	 * msb (hpet is 32 bits by default under linux) */
-	ret = rte_ctrl_thread_create(&msb_inc_thread_id, "hpet-msb-inc", NULL,
+	ret = rte_ctrl_thread_create(&msb_inc_thread_id, "dpdk-hpet-msb", NULL,
 				     hpet_msb_inc, NULL);
 	if (ret != 0) {
 		RTE_LOG(ERR, EAL, "ERROR: Cannot create HPET timer thread!\n");

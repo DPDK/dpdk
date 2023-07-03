@@ -551,7 +551,7 @@ ifpga_monitor_start_func(struct ifpga_rawdev *dev)
 
 	if (!__atomic_fetch_add(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED)) {
 		ret = rte_ctrl_thread_create(&ifpga_monitor_start_thread,
-					     "ifpga-monitor", NULL,
+					     "dpdk-ifpga-mon", NULL,
 					     ifpga_rawdev_gsd_handle, NULL);
 		if (ret != 0) {
 			ifpga_monitor_start_thread = 0;

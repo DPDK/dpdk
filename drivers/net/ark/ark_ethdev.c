@@ -600,11 +600,11 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 	if (!ark->isvf && ark->start_pg && !ark->pg_running) {
 		pthread_t thread;
 
-		/* Delay packet generatpr start allow the hardware to be ready
+		/* Delay packet generator start allow the hardware to be ready
 		 * This is only used for sanity checking with internal generator
 		 */
 		char tname[32];
-		snprintf(tname, sizeof(tname), "ark-delay-pg-%d",
+		snprintf(tname, sizeof(tname), "dpdk-ark-pg%d",
 			 dev->data->port_id);
 
 		if (rte_ctrl_thread_create(&thread, tname, NULL,

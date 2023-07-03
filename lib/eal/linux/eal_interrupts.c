@@ -1188,7 +1188,7 @@ rte_eal_intr_init(void)
 	}
 
 	/* create the host thread to wait/handle the interrupt */
-	ret = rte_ctrl_thread_create(&intr_thread, "eal-intr-thread", NULL,
+	ret = rte_ctrl_thread_create(&intr_thread, "dpdk-intr", NULL,
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
 		rte_errno = -ret;

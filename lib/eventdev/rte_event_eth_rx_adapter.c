@@ -1619,7 +1619,7 @@ rxa_create_intr_thread(struct event_eth_rx_adapter *rx_adapter)
 	rte_spinlock_init(&rx_adapter->intr_ring_lock);
 
 	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
-			"rx-intr-thread-%d", rx_adapter->id);
+			"dpdk-evt-rx%d", rx_adapter->id);
 
 	err = rte_ctrl_thread_create(&rx_adapter->rx_intr_thread, thread_name,
 				NULL, rxa_intr_thread, rx_adapter);
