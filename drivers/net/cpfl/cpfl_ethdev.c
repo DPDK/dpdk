@@ -818,6 +818,24 @@ cpfl_rxq_hairpin_mz_bind(struct rte_eth_dev *dev)
 }
 
 static int
+cpfl_rss_lut_config(struct cpfl_vport *cpfl_vport, uint16_t nb_q)
+{
+	struct idpf_vport *vport = &cpfl_vport->base;
+	uint16_t lut_size = vport->rss_lut_size;
+	uint16_t i;
+	int ret;
+
+	for (i = 0; i < lut_size; i++)
+		vport->rss_lut[i] = i % nb_q;
+
+	ret = idpf_vc_rss_lut_set(vport);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to configure RSS lut");
+
+	return ret;
+}
+
+static int
 cpfl_start_queues(struct rte_eth_dev *dev)
 {
 	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
@@ -950,6 +968,10 @@ cpfl_start_queues(struct rte_eth_dev *dev)
 			return err;
 		}
 	}
+
+	/* re-configure RSS lut if there's hairpin queue */
+	if (cpfl_vport->nb_p2p_rxq > 0)
+		err = cpfl_rss_lut_config(cpfl_vport, cpfl_vport->nb_data_rxq);
 
 	return err;
 }
