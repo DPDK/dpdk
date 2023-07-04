@@ -4520,7 +4520,7 @@ flow_hw_actions_validate(struct rte_eth_dev *dev,
 static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_MARK] = MLX5DR_ACTION_TYP_TAG,
 	[RTE_FLOW_ACTION_TYPE_DROP] = MLX5DR_ACTION_TYP_DROP,
-	[RTE_FLOW_ACTION_TYPE_JUMP] = MLX5DR_ACTION_TYP_FT,
+	[RTE_FLOW_ACTION_TYPE_JUMP] = MLX5DR_ACTION_TYP_TBL,
 	[RTE_FLOW_ACTION_TYPE_QUEUE] = MLX5DR_ACTION_TYP_TIR,
 	[RTE_FLOW_ACTION_TYPE_RSS] = MLX5DR_ACTION_TYP_TIR,
 	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP] = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2,
@@ -4665,7 +4665,7 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 			action_types[curr_off++] = MLX5DR_ACTION_TYP_ASO_METER;
 			if (curr_off >= MLX5_HW_MAX_ACTS)
 				goto err_actions_num;
-			action_types[curr_off++] = MLX5DR_ACTION_TYP_FT;
+			action_types[curr_off++] = MLX5DR_ACTION_TYP_TBL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 			type = mlx5_hw_dr_action_types[at->actions[i].type];

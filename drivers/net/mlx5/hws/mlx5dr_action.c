@@ -30,7 +30,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
-		BIT(MLX5DR_ACTION_TYP_FT) |
+		BIT(MLX5DR_ACTION_TYP_TBL) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_TIR) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
@@ -48,7 +48,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
-		BIT(MLX5DR_ACTION_TYP_FT) |
+		BIT(MLX5DR_ACTION_TYP_TBL) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
 		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
@@ -67,7 +67,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
-		BIT(MLX5DR_ACTION_TYP_FT) |
+		BIT(MLX5DR_ACTION_TYP_TBL) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_VPORT) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
@@ -275,7 +275,7 @@ int mlx5dr_action_root_build_attr(struct mlx5dr_rule_action rule_actions[],
 		action = rule_actions[i].action;
 
 		switch (action->type) {
-		case MLX5DR_ACTION_TYP_FT:
+		case MLX5DR_ACTION_TYP_TBL:
 		case MLX5DR_ACTION_TYP_TIR:
 			attr[i].type = MLX5DV_FLOW_ACTION_DEST_DEVX;
 			attr[i].obj = action->devx_obj;
@@ -519,7 +519,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 			attr->modify_header.pattern_id = action->modify_header.pattern_obj->id;
 		}
 		break;
-	case MLX5DR_ACTION_TYP_FT:
+	case MLX5DR_ACTION_TYP_TBL:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
 		attr->dest_table_id = obj->id;
@@ -747,7 +747,7 @@ mlx5dr_action_create_dest_table(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
-	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_FT);
+	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_TBL);
 	if (!action)
 		return NULL;
 
@@ -1681,7 +1681,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_TAG:
 	case MLX5DR_ACTION_TYP_DROP:
 	case MLX5DR_ACTION_TYP_CTR:
-	case MLX5DR_ACTION_TYP_FT:
+	case MLX5DR_ACTION_TYP_TBL:
 	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2:
 	case MLX5DR_ACTION_TYP_ASO_METER:
 	case MLX5DR_ACTION_TYP_ASO_CT:
@@ -2178,7 +2178,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		switch (action_type[i]) {
 		case MLX5DR_ACTION_TYP_DROP:
 		case MLX5DR_ACTION_TYP_TIR:
-		case MLX5DR_ACTION_TYP_FT:
+		case MLX5DR_ACTION_TYP_TBL:
 		case MLX5DR_ACTION_TYP_DEST_ROOT:
 		case MLX5DR_ACTION_TYP_VPORT:
 		case MLX5DR_ACTION_TYP_MISS:
