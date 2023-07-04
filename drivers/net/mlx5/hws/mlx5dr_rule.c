@@ -521,6 +521,11 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 
 	queue = &ctx->send_queue[attr->queue_id];
 
+	if (unlikely(mlx5dr_send_engine_err(queue))) {
+		mlx5dr_rule_destroy_failed_hws(rule, attr);
+		return 0;
+	}
+
 	/* Rule is not completed yet */
 	if (rule->status == MLX5DR_RULE_STATUS_CREATING) {
 		rte_errno = EBUSY;
@@ -529,11 +534,6 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 
 	/* Rule failed and doesn't require cleanup */
 	if (rule->status == MLX5DR_RULE_STATUS_FAILED) {
-		mlx5dr_rule_destroy_failed_hws(rule, attr);
-		return 0;
-	}
-
-	if (unlikely(mlx5dr_send_engine_err(queue))) {
 		mlx5dr_rule_destroy_failed_hws(rule, attr);
 		return 0;
 	}
