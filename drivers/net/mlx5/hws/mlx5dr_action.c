@@ -322,10 +322,12 @@ int mlx5dr_action_root_build_attr(struct mlx5dr_rule_action rule_actions[],
 	return 0;
 }
 
-static bool mlx5dr_action_fixup_stc_attr(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
-					 struct mlx5dr_cmd_stc_modify_attr *fixup_stc_attr,
-					 enum mlx5dr_table_type table_type,
-					 bool is_mirror)
+static bool
+mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
+			     struct mlx5dr_cmd_stc_modify_attr *stc_attr,
+			     struct mlx5dr_cmd_stc_modify_attr *fixup_stc_attr,
+			     enum mlx5dr_table_type table_type,
+			     bool is_mirror)
 {
 	struct mlx5dr_devx_obj *devx_obj;
 	bool use_fixup = false;
@@ -346,6 +348,17 @@ static bool mlx5dr_action_fixup_stc_attr(struct mlx5dr_cmd_stc_modify_attr *stc_
 		*fixup_stc_attr = *stc_attr;
 		fixup_stc_attr->ste_table.ste_obj_id = devx_obj->id;
 		use_fixup = true;
+		break;
+
+	case MLX5_IFC_STC_ACTION_TYPE_ALLOW:
+		if (fw_tbl_type == FS_FT_FDB_TX || fw_tbl_type == FS_FT_FDB_RX) {
+			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT;
+			fixup_stc_attr->action_offset = stc_attr->action_offset;
+			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
+			fixup_stc_attr->vport.esw_owner_vhca_id = ctx->caps->vhca_id;
+			fixup_stc_attr->vport.vport_num = ctx->caps->eswitch_manager_vport_number;
+			use_fixup = true;
+		}
 		break;
 
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT:
@@ -397,7 +410,7 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 	devx_obj_0 = mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
 
 	/* According to table/action limitation change the stc_attr */
-	use_fixup = mlx5dr_action_fixup_stc_attr(stc_attr, &fixup_stc_attr, table_type, false);
+	use_fixup = mlx5dr_action_fixup_stc_attr(ctx, stc_attr, &fixup_stc_attr, table_type, false);
 	ret = mlx5dr_cmd_stc_modify(devx_obj_0, use_fixup ? &fixup_stc_attr : stc_attr);
 	if (ret) {
 		DR_LOG(ERR, "Failed to modify STC action_type %d tbl_type %d",
@@ -411,7 +424,8 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 
 		devx_obj_1 = mlx5dr_pool_chunk_get_base_devx_obj_mirror(stc_pool, stc);
 
-		use_fixup = mlx5dr_action_fixup_stc_attr(stc_attr, &fixup_stc_attr,
+		use_fixup = mlx5dr_action_fixup_stc_attr(ctx, stc_attr,
+							 &fixup_stc_attr,
 							 table_type, true);
 		ret = mlx5dr_cmd_stc_modify(devx_obj_1, use_fixup ? &fixup_stc_attr : stc_attr);
 		if (ret) {
@@ -491,7 +505,6 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_MISS:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_ALLOW;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
-		/* TODO Need to support default miss for FDB */
 		break;
 	case MLX5DR_ACTION_TYP_CTR:
 		attr->id = obj->id;
