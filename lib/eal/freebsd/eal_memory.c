@@ -172,9 +172,8 @@ rte_eal_hugepage_init(void)
 				break;
 			}
 			if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
-				RTE_LOG(ERR, EAL, "Could not find space for memseg. Please increase %s and/or %s in configuration.\n",
-					RTE_STR(RTE_MAX_MEMSEG_PER_TYPE),
-					RTE_STR(RTE_MAX_MEM_MB_PER_TYPE));
+				RTE_LOG(ERR, EAL, "Could not find space for memseg. Please increase RTE_MAX_MEMSEG_PER_LIST "
+					"RTE_MAX_MEMSEG_PER_TYPE and/or RTE_MAX_MEM_MB_PER_TYPE in configuration.\n");
 				return -1;
 			}
 			arr = &msl->memseg_arr;
@@ -404,8 +403,7 @@ memseg_primary_init(void)
 
 			if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
 				RTE_LOG(ERR, EAL,
-					"No more space in memseg lists, please increase %s\n",
-					RTE_STR(RTE_MAX_MEMSEG_LISTS));
+					"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS\n");
 				return -1;
 			}
 
