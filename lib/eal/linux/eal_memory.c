@@ -716,9 +716,8 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 		break;
 	}
 	if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
-		RTE_LOG(ERR, EAL, "Could not find space for memseg. Please increase %s and/or %s in configuration.\n",
-				RTE_STR(RTE_MAX_MEMSEG_PER_TYPE),
-				RTE_STR(RTE_MAX_MEM_MB_PER_TYPE));
+		RTE_LOG(ERR, EAL, "Could not find space for memseg. Please increase RTE_MAX_MEMSEG_PER_LIST "
+			"RTE_MAX_MEMSEG_PER_TYPE and/or RTE_MAX_MEM_MB_PER_TYPE in configuration.\n");
 		return -1;
 	}
 
@@ -966,8 +965,7 @@ prealloc_segments(struct hugepage_file *hugepages, int n_pages)
 				break;
 			}
 			if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
-				RTE_LOG(ERR, EAL, "Not enough space in memseg lists, please increase %s\n",
-					RTE_STR(RTE_MAX_MEMSEG_LISTS));
+				RTE_LOG(ERR, EAL, "Not enough space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS\n");
 				return -1;
 			}
 
@@ -1833,8 +1831,7 @@ memseg_primary_init_32(void)
 
 				if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
 					RTE_LOG(ERR, EAL,
-						"No more space in memseg lists, please increase %s\n",
-						RTE_STR(RTE_MAX_MEMSEG_LISTS));
+						"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS\n");
 					return -1;
 				}
 
