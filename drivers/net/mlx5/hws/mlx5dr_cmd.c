@@ -1134,7 +1134,7 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 
 		ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
 		if (ret) {
-			DR_LOG(ERR, "Query eswitch capabilities failed %d\n", ret);
+			DR_LOG(ERR, "Query eswitch capabilities failed %d", ret);
 			rte_errno = errno;
 			return rte_errno;
 		}

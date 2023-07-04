@@ -535,7 +535,7 @@ mlx5dr_definer_get_mpls_fc(struct mlx5dr_definer_conv_data *cd, bool inner)
 		break;
 	default:
 		rte_errno = ENOTSUP;
-		DR_LOG(ERR, "MPLS index %d is not supported\n", mpls_idx);
+		DR_LOG(ERR, "MPLS index %d is not supported", mpls_idx);
 		return NULL;
 	}
 
@@ -571,7 +571,7 @@ mlx5dr_definer_get_mpls_oks_fc(struct mlx5dr_definer_conv_data *cd, bool inner)
 		break;
 	default:
 		rte_errno = ENOTSUP;
-		DR_LOG(ERR, "MPLS index %d is not supported\n", mpls_idx);
+		DR_LOG(ERR, "MPLS index %d is not supported", mpls_idx);
 		return NULL;
 	}
 

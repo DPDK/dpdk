@@ -112,7 +112,7 @@ static int mlx5dr_action_get_shared_stc_nic(struct mlx5dr_context *ctx,
 		stc_attr.remove_words.num_of_words = MLX5DR_ACTION_HDR_LEN_L2_VLAN;
 		break;
 	default:
-		DR_LOG(ERR, "No such type : stc_type\n");
+		DR_LOG(ERR, "No such type : stc_type");
 		assert(false);
 		rte_errno = EINVAL;
 		goto unlock_and_out;
@@ -469,7 +469,7 @@ static uint32_t mlx5dr_action_get_mh_stc_type(__be64 pattern)
 		return MLX5_IFC_STC_ACTION_TYPE_COPY;
 	default:
 		assert(false);
-		DR_LOG(ERR, "Unsupported action type: 0x%x\n", action_type);
+		DR_LOG(ERR, "Unsupported action type: 0x%x", action_type);
 		rte_errno = ENOTSUP;
 		return MLX5_IFC_STC_ACTION_TYPE_NOP;
 	}
@@ -1017,7 +1017,7 @@ static int mlx5dr_action_create_dest_vport_hws(struct mlx5dr_context *ctx,
 
 	ret = mlx5dr_cmd_query_ib_port(ctx->ibv_ctx, &vport_caps, ib_port_num);
 	if (ret) {
-		DR_LOG(ERR, "Failed querying port %d\n", ib_port_num);
+		DR_LOG(ERR, "Failed querying port %d", ib_port_num);
 		return ret;
 	}
 	action->vport.vport_num = vport_caps.vport_num;
@@ -1025,7 +1025,7 @@ static int mlx5dr_action_create_dest_vport_hws(struct mlx5dr_context *ctx,
 
 	ret = mlx5dr_action_create_stcs(action, NULL);
 	if (ret) {
-		DR_LOG(ERR, "Failed creating stc for port %d\n", ib_port_num);
+		DR_LOG(ERR, "Failed creating stc for port %d", ib_port_num);
 		return ret;
 	}
 
@@ -1041,7 +1041,7 @@ mlx5dr_action_create_dest_vport(struct mlx5dr_context *ctx,
 	int ret;
 
 	if (!(flags & MLX5DR_ACTION_FLAG_HWS_FDB)) {
-		DR_LOG(ERR, "Vport action is supported for FDB only\n");
+		DR_LOG(ERR, "Vport action is supported for FDB only");
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -1052,7 +1052,7 @@ mlx5dr_action_create_dest_vport(struct mlx5dr_context *ctx,
 
 	ret = mlx5dr_action_create_dest_vport_hws(ctx, action, ib_port_num);
 	if (ret) {
-		DR_LOG(ERR, "Failed to create vport action HWS\n");
+		DR_LOG(ERR, "Failed to create vport action HWS");
 		goto free_action;
 	}
 
@@ -1081,7 +1081,7 @@ mlx5dr_action_create_push_vlan(struct mlx5dr_context *ctx, uint32_t flags)
 
 	ret = mlx5dr_action_create_stcs(action, NULL);
 	if (ret) {
-		DR_LOG(ERR, "Failed creating stc for push vlan\n");
+		DR_LOG(ERR, "Failed creating stc for push vlan");
 		goto free_action;
 	}
 
@@ -1115,7 +1115,7 @@ mlx5dr_action_create_pop_vlan(struct mlx5dr_context *ctx, uint32_t flags)
 
 	ret = mlx5dr_action_create_stcs(action, NULL);
 	if (ret) {
-		DR_LOG(ERR, "Failed creating stc for pop vlan\n");
+		DR_LOG(ERR, "Failed creating stc for pop vlan");
 		goto free_shared;
 	}
 
@@ -1418,7 +1418,7 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_context *ctx,
 
 	if (data_sz != MLX5DR_ACTION_HDR_LEN_L2 &&
 	    data_sz != MLX5DR_ACTION_HDR_LEN_L2_W_VLAN) {
-		DR_LOG(ERR, "Data size is not supported for decap-l3\n");
+		DR_LOG(ERR, "Data size is not supported for decap-l3");
 		rte_errno = EINVAL;
 		return rte_errno;
 	}
@@ -1430,7 +1430,7 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_context *ctx,
 	ret = mlx5dr_pat_arg_create_modify_header(ctx, action, mh_data_size,
 						  (__be64 *)mh_data, bulk_size);
 	if (ret) {
-		DR_LOG(ERR, "Failed allocating modify-header for decap-l3\n");
+		DR_LOG(ERR, "Failed allocating modify-header for decap-l3");
 		return ret;
 	}
 
@@ -1528,7 +1528,7 @@ mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
 
 	if (!mlx5dr_action_is_hws_flags(flags) ||
 	    ((flags & MLX5DR_ACTION_FLAG_SHARED) && log_bulk_size)) {
-		DR_LOG(ERR, "Reformat flags don't fit HWS (flags: %x0x)\n",
+		DR_LOG(ERR, "Reformat flags don't fit HWS (flags: %x0x)",
 			flags);
 		rte_errno = EINVAL;
 		goto free_action;
@@ -1536,7 +1536,7 @@ mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
 
 	ret = mlx5dr_action_create_reformat_hws(ctx, data_sz, inline_data, log_bulk_size, action);
 	if (ret) {
-		DR_LOG(ERR, "Failed to create reformat.\n");
+		DR_LOG(ERR, "Failed to create reformat.");
 		rte_errno = EINVAL;
 		goto free_action;
 	}
@@ -1605,14 +1605,14 @@ mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
 
 	if (!mlx5dr_action_is_hws_flags(flags) ||
 	    ((flags & MLX5DR_ACTION_FLAG_SHARED) && log_bulk_size)) {
-		DR_LOG(ERR, "Flags don't fit hws (flags: %x0x, log_bulk_size: %d)\n",
+		DR_LOG(ERR, "Flags don't fit hws (flags: %x0x, log_bulk_size: %d)",
 			flags, log_bulk_size);
 		rte_errno = EINVAL;
 		goto free_action;
 	}
 
 	if (!mlx5dr_pat_arg_verify_actions(pattern, pattern_sz / MLX5DR_MODIFY_ACTION_SIZE)) {
-		DR_LOG(ERR, "One of the actions is not supported\n");
+		DR_LOG(ERR, "One of the actions is not supported");
 		rte_errno = EINVAL;
 		goto free_action;
 	}
@@ -1628,7 +1628,7 @@ mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
 		ret = mlx5dr_pat_arg_create_modify_header(ctx, action, pattern_sz,
 							  pattern, log_bulk_size);
 		if (ret) {
-			DR_LOG(ERR, "Failed allocating modify-header\n");
+			DR_LOG(ERR, "Failed allocating modify-header");
 			goto free_action;
 		}
 	}
