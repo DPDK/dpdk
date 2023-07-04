@@ -130,6 +130,9 @@ Deprecation Notices
   ``rte_cryptodev_get_auth_algo_string``, ``rte_cryptodev_get_aead_algo_string`` and
   ``rte_cryptodev_asym_get_xform_string`` respectively.
 
+* security: Hide structures ``rte_security_ops`` and ``rte_security_ctx``
+  as these are internal to DPDK library and drivers.
+
 * flow_classify: The flow_classify library and example have no maintainer.
   The library is experimental and, as such, it could be removed from DPDK.
   Its removal has been postponed to let potential users report interest
