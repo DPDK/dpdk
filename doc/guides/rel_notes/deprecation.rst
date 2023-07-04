@@ -133,6 +133,11 @@ Deprecation Notices
 * security: Hide structures ``rte_security_ops`` and ``rte_security_ctx``
   as these are internal to DPDK library and drivers.
 
+* security: New SA option ``ingress_oop`` would be added in structure
+  ``rte_security_ipsec_sa_options`` to support out of place processing
+  for inline inbound SA from DPDK 23.11. ``reserved_opts`` field in the
+  same struct would be removed as discussed in techboard meeting.
+
 * flow_classify: The flow_classify library and example have no maintainer.
   The library is experimental and, as such, it could be removed from DPDK.
   Its removal has been postponed to let potential users report interest
