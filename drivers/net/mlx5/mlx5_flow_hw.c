@@ -1420,7 +1420,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	struct rte_flow_action *actions = at->actions;
 	struct rte_flow_action *action_start = actions;
 	struct rte_flow_action *masks = at->masks;
-	enum mlx5dr_action_reformat_type refmt_type = 0;
+	enum mlx5dr_action_type refmt_type = 0;
 	const struct rte_flow_action_raw_encap *raw_encap_data;
 	const struct rte_flow_item *enc_item = NULL, *enc_item_m = NULL;
 	uint16_t reformat_src = 0;
@@ -1575,7 +1575,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 					     masks->conf)->definition;
 			reformat_used = true;
 			reformat_src = actions - action_start;
-			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L2;
+			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			MLX5_ASSERT(!reformat_used);
@@ -1586,13 +1586,13 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 					     masks->conf)->definition;
 			reformat_used = true;
 			reformat_src = actions - action_start;
-			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L2;
+			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
 			MLX5_ASSERT(!reformat_used);
 			reformat_used = true;
-			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_TNL_L2_TO_L2;
+			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap_data =
@@ -1608,18 +1608,18 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			if (reformat_used) {
 				refmt_type = data_size <
 				MLX5_ENCAPSULATION_DECISION_SIZE ?
-				MLX5DR_ACTION_REFORMAT_TYPE_TNL_L3_TO_L2 :
-				MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L3;
+				MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2 :
+				MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3;
 			} else {
 				reformat_used = true;
 				refmt_type =
-				MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L2;
+				MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
 			}
 			reformat_src = actions - action_start;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			reformat_used = true;
-			refmt_type = MLX5DR_ACTION_REFORMAT_TYPE_TNL_L2_TO_L2;
+			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 			flow_hw_translate_group(dev, cfg, attr->group,
@@ -4523,10 +4523,10 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_JUMP] = MLX5DR_ACTION_TYP_FT,
 	[RTE_FLOW_ACTION_TYPE_QUEUE] = MLX5DR_ACTION_TYP_TIR,
 	[RTE_FLOW_ACTION_TYPE_RSS] = MLX5DR_ACTION_TYP_TIR,
-	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP] = MLX5DR_ACTION_TYP_L2_TO_TNL_L2,
-	[RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP] = MLX5DR_ACTION_TYP_L2_TO_TNL_L2,
-	[RTE_FLOW_ACTION_TYPE_VXLAN_DECAP] = MLX5DR_ACTION_TYP_TNL_L2_TO_L2,
-	[RTE_FLOW_ACTION_TYPE_NVGRE_DECAP] = MLX5DR_ACTION_TYP_TNL_L2_TO_L2,
+	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP] = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2,
+	[RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP] = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2,
+	[RTE_FLOW_ACTION_TYPE_VXLAN_DECAP] = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2,
+	[RTE_FLOW_ACTION_TYPE_NVGRE_DECAP] = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2,
 	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD] = MLX5DR_ACTION_TYP_MODIFY_HDR,
 	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = MLX5DR_ACTION_TYP_VPORT,
 	[RTE_FLOW_ACTION_TYPE_CONNTRACK] = MLX5DR_ACTION_TYP_ASO_CT,
@@ -4604,7 +4604,7 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 	enum mlx5dr_action_type action_types[MLX5_HW_MAX_ACTS] = { MLX5DR_ACTION_TYP_LAST };
 	unsigned int i;
 	uint16_t curr_off;
-	enum mlx5dr_action_type reformat_act_type = MLX5DR_ACTION_TYP_TNL_L2_TO_L2;
+	enum mlx5dr_action_type reformat_act_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 	uint16_t reformat_off = UINT16_MAX;
 	uint16_t mhdr_off = UINT16_MAX;
 	uint16_t cnt_off = UINT16_MAX;
@@ -4642,16 +4642,16 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 			data_size = raw_encap_data->size;
 			if (reformat_off != UINT16_MAX) {
 				reformat_act_type = data_size < MLX5_ENCAPSULATION_DECISION_SIZE ?
-					MLX5DR_ACTION_TYP_TNL_L3_TO_L2 :
-					MLX5DR_ACTION_TYP_L2_TO_TNL_L3;
+					MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2 :
+					MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3;
 			} else {
 				reformat_off = curr_off++;
-				reformat_act_type = MLX5DR_ACTION_TYP_L2_TO_TNL_L2;
+				reformat_act_type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			reformat_off = curr_off++;
-			reformat_act_type = MLX5DR_ACTION_TYP_TNL_L2_TO_L2;
+			reformat_act_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			if (mhdr_off == UINT16_MAX) {

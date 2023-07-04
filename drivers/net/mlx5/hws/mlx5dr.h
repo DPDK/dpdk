@@ -29,10 +29,10 @@ enum mlx5dr_matcher_resource_mode {
 
 enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_LAST,
-	MLX5DR_ACTION_TYP_TNL_L2_TO_L2,
-	MLX5DR_ACTION_TYP_L2_TO_TNL_L2,
-	MLX5DR_ACTION_TYP_TNL_L3_TO_L2,
-	MLX5DR_ACTION_TYP_L2_TO_TNL_L3,
+	MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2,
+	MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2,
+	MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2,
+	MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3,
 	MLX5DR_ACTION_TYP_DROP,
 	MLX5DR_ACTION_TYP_TIR,
 	MLX5DR_ACTION_TYP_FT,
@@ -60,13 +60,6 @@ enum mlx5dr_action_flags {
 	 * only once at the creation of the action.
 	 */
 	MLX5DR_ACTION_FLAG_SHARED = 1 << 6,
-};
-
-enum mlx5dr_action_reformat_type {
-	MLX5DR_ACTION_REFORMAT_TYPE_TNL_L2_TO_L2,
-	MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L2,
-	MLX5DR_ACTION_REFORMAT_TYPE_TNL_L3_TO_L2,
-	MLX5DR_ACTION_REFORMAT_TYPE_L2_TO_TNL_L3,
 };
 
 enum mlx5dr_action_aso_meter_color {
@@ -487,7 +480,7 @@ mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
  * @param[in] ctx
  *	The context in which the new action will be created.
  * @param[in] reformat_type
- *	Type of reformat.
+ *	Type of reformat prefixed with MLX5DR_ACTION_TYP_REFORMAT.
  * @param[in] data_sz
  *	Size in bytes of data.
  * @param[in] inline_data
@@ -500,7 +493,7 @@ mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
  */
 struct mlx5dr_action *
 mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
-			      enum mlx5dr_action_reformat_type reformat_type,
+			      enum mlx5dr_action_type reformat_type,
 			      size_t data_sz,
 			      void *inline_data,
 			      uint32_t log_bulk_size,

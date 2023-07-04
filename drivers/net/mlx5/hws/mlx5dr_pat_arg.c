@@ -73,7 +73,7 @@ static bool mlx5dr_pat_compare_pattern(enum mlx5dr_action_type cur_type,
 		return false;
 
 	 /* All decap-l3 look the same, only change is the num of actions */
-	if (type == MLX5DR_ACTION_TYP_TNL_L3_TO_L2)
+	if (type == MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2)
 		return true;
 
 	for (i = 0; i < num_of_actions; i++) {
