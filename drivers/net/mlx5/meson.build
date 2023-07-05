@@ -31,6 +31,7 @@ sources = files(
         'mlx5_rxtx.c',
         'mlx5_stats.c',
         'mlx5_trigger.c',
+        'mlx5_trace.c',
         'mlx5_tx.c',
         'mlx5_tx_empw.c',
         'mlx5_tx_mpw.c',

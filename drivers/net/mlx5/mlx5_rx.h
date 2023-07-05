@@ -378,25 +378,6 @@ mlx5_rx_mb2mr(struct mlx5_rxq_data *rxq, struct rte_mbuf *mb)
 }
 
 /**
- * Convert timestamp from HW format to linear counter
- * from Packet Pacing Clock Queue CQE timestamp format.
- *
- * @param sh
- *   Pointer to the device shared context. Might be needed
- *   to convert according current device configuration.
- * @param ts
- *   Timestamp from CQE to convert.
- * @return
- *   UTC in nanoseconds
- */
-static __rte_always_inline uint64_t
-mlx5_txpp_convert_rx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t ts)
-{
-	RTE_SET_USED(sh);
-	return (ts & UINT32_MAX) + (ts >> 32) * NS_PER_S;
-}
-
-/**
  * Set timestamp in mbuf dynamic field.
  *
  * @param mbuf
