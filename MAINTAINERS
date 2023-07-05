@@ -1804,7 +1804,6 @@ F: doc/guides/tools/img/eventdev_*
 F: app/test/test_event_ring.c
 
 Procinfo tool
-M: Maryam Tahhan <maryam.tahhan@intel.com>
 M: Reshma Pattan <reshma.pattan@intel.com>
 F: app/proc-info/
 F: doc/guides/tools/proc_info.rst
