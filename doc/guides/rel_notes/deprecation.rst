@@ -186,6 +186,14 @@ Deprecation Notices
   for inline inbound SA from DPDK 23.11. ``reserved_opts`` field in the
   same struct would be removed as discussed in techboard meeting.
 
+* eventdev: The single-event (non-burst) enqueue and dequeue operations,
+  used by static inline burst enqueue and dequeue functions in ``rte_eventdev.h``,
+  will be removed in DPDK 23.11.
+  This simplification includes changing the layout and potentially also
+  the size of the public ``rte_event_fp_ops`` struct, breaking the ABI.
+  Since these functions are not called directly by the application,
+  the API remains unaffected.
+
 * flow_classify: The flow_classify library and example have no maintainer.
   The library is experimental and, as such, it could be removed from DPDK.
   Its removal has been postponed to let potential users report interest
