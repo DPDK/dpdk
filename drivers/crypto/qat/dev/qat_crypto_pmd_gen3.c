@@ -46,6 +46,9 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_legacy_caps_gen3[] = {
 	QAT_SYM_PLAIN_AUTH_CAP(SHA3_224,
 		CAP_SET(block_size, 144),
 		CAP_RNG(digest_size, 28, 28, 0)),
+	QAT_SYM_CIPHER_CAP(SM4_ECB,
+		CAP_SET(block_size, 16),
+		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 0, 0, 0))
 };
 
 static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen3[] = {
@@ -147,9 +150,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen3[] = {
 		CAP_RNG(key_size, 32, 32, 0),
 		CAP_RNG(digest_size, 16, 16, 0),
 		CAP_RNG(aad_size, 0, 240, 1), CAP_RNG(iv_size, 12, 12, 0)),
-	QAT_SYM_CIPHER_CAP(SM4_ECB,
-		CAP_SET(block_size, 16),
-		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 0, 0, 0)),
 	QAT_SYM_CIPHER_CAP(SM4_CBC,
 		CAP_SET(block_size, 16),
 		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 16, 16, 0)),
