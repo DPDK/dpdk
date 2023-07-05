@@ -180,6 +180,23 @@ VFIO module parameter ``dma_entry_limit`` with a default value of 64K.
 When application is out of DMA entries, these limits need to be adjusted to
 increase the allowed limit.
 
+When ``--no-huge`` option is used,
+the page size used is of smaller size of ``4K`` or ``64K``
+and we shall need to increase ``dma_entry_limit``.
+
+To update the ``dma_entry_limit``,
+``vfio_iommu_type1`` has to be loaded with additional module parameter:
+
+.. code-block:: console
+
+   modprobe vfio_iommu_type1 dma_entry_limit=512000
+
+Alternatively, one can also change this value in an already loaded kernel module:
+
+.. code-block:: console
+
+   echo 512000 > /sys/module/vfio_iommu_type1/parameters/dma_entry_limit
+
 Creating Virtual Functions using vfio-pci
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
