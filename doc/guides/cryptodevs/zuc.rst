@@ -48,8 +48,8 @@ library and compile it on their user system before building DPDK.
 
 For x86 system, the multi-buffer library is available
 `here <https://github.com/01org/intel-ipsec-mb>`_.
-The latest version of the library supported by this PMD is v1.3, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
+The latest version of the library supported by this PMD is v1.4, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.4.zip>`_.
 
 For Arm system, ARM64 port of the multi-buffer library can be downloaded from
 `<https://gitlab.arm.com/arm-reference-solutions/ipsec-mb/-/tree/main/>`_. The
@@ -95,7 +95,7 @@ and the external crypto libraries supported by them:
    =============  ================================
    16.11 - 19.11  LibSSO ZUC
    20.02 - 21.08  Multi-buffer library 0.53 - 1.3*
-   21.11+         Multi-buffer library 1.0  - 1.3*
+   21.11+         Multi-buffer library 1.0  - 1.4*
    =============  ================================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.

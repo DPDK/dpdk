@@ -99,8 +99,8 @@ Installation
 To build DPDK with the AESNI_MB_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.3, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
+The latest version of the library supported by this PMD is v1.4, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.4.zip>`_.
 
 .. code-block:: console
 
@@ -146,7 +146,7 @@ and the Multi-Buffer library version supported by them:
    19.05 - 19.08   0.52
    19.11 - 20.08   0.52 - 0.55
    20.11 - 21.08   0.53 - 1.3*
-   21.11+          1.0  - 1.3*
+   21.11+          1.0  - 1.4*
    ==============  ============================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.

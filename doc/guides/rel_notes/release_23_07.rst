@@ -189,6 +189,10 @@ New Features
 
   * Added SM2 algorithm support in asymmetric crypto operations.
 
+* **Updated ipsec_mb crypto driver.**
+
+  * Added Intel IPsec MB v1.4 library support for x86 platform.
+
 * **Added PDCP Library.**
 
   Added an experimental library to provide PDCP UL and DL processing of packets.
