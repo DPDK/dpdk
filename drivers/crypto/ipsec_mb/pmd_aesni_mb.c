@@ -11,10 +11,6 @@ struct aesni_mb_op_buf_data {
 	uint32_t offset;
 };
 
-#if IMB_VERSION(1, 2, 0) < IMB_VERSION_NUM
-static IMB_JOB *jobs[IMB_MAX_BURST_SIZE] = {NULL};
-#endif
-
 /**
  * Calculate the authentication pre-computes
  *
@@ -2050,6 +2046,7 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	IMB_JOB *job;
 	int retval, processed_jobs = 0;
 	uint16_t i, nb_jobs;
+	IMB_JOB *jobs[IMB_MAX_BURST_SIZE] = {NULL};
 
 	if (unlikely(nb_ops == 0 || mb_mgr == NULL))
 		return 0;
