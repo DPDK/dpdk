@@ -286,6 +286,15 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **Testpmd is not forwarding on queues individually stopped.**
+
+  Testpmd forwards packets on started queues.
+  If a queue explicitly stopped, and later port stopped and started again,
+  the status of the previously stopped queue is not updated,
+  so forwarding is not working on those queues.
+
+  As a workaround start queues back explicitly, instead of port stop/start.
+
 
 Tested Platforms
 ----------------
