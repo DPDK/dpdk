@@ -72,7 +72,7 @@ ice_rx_reassemble_packets(struct ice_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 	/* save the partial packet for next time */
 	rxq->pkt_first_seg = start;
 	rxq->pkt_last_seg = end;
-	rte_memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
+	memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
 	return pkt_idx;
 }
 
