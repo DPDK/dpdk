@@ -2356,13 +2356,6 @@ update_rx_queue_state(uint16_t port_id, uint16_t queue_id)
 			rx_qinfo.queue_state;
 	} else if (rc == -ENOTSUP) {
 		/*
-		 * Do not change the rxq state for primary process
-		 * to ensure that the PMDs do not implement
-		 * rte_eth_rx_queue_info_get can forward as before.
-		 */
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-			return;
-		/*
 		 * Set the rxq state to RTE_ETH_QUEUE_STATE_STARTED
 		 * to ensure that the PMDs do not implement
 		 * rte_eth_rx_queue_info_get can forward.
@@ -2387,13 +2380,6 @@ update_tx_queue_state(uint16_t port_id, uint16_t queue_id)
 		ports[port_id].txq[queue_id].state =
 			tx_qinfo.queue_state;
 	} else if (rc == -ENOTSUP) {
-		/*
-		 * Do not change the txq state for primary process
-		 * to ensure that the PMDs do not implement
-		 * rte_eth_tx_queue_info_get can forward as before.
-		 */
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-			return;
 		/*
 		 * Set the txq state to RTE_ETH_QUEUE_STATE_STARTED
 		 * to ensure that the PMDs do not implement
@@ -2461,7 +2447,8 @@ start_packet_forwarding(int with_tx_first)
 		return;
 
 	if (stream_init != NULL) {
-		update_queue_state();
+		if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+			update_queue_state();
 		for (i = 0; i < cur_fwd_config.nb_fwd_streams; i++)
 			stream_init(fwd_streams[i]);
 	}
@@ -3224,7 +3211,8 @@ start_port(portid_t pid)
 		pl[cfg_pi++] = pi;
 	}
 
-	update_queue_state();
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		update_queue_state();
 
 	if (at_least_one_port_successfully_started && !no_link_check)
 		check_all_ports_link_status(RTE_PORT_ALL);
