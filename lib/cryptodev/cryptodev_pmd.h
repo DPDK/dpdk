@@ -65,7 +65,7 @@ struct rte_cryptodev_data {
 	/** Device ID for this instance */
 	uint8_t dev_id;
 	/** Socket ID where memory is allocated */
-	uint8_t socket_id;
+	int socket_id;
 	/** Unique identifier name */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 
