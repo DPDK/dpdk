@@ -730,6 +730,54 @@ mlx5_tx_request_completion(struct mlx5_txq_data *__rte_restrict txq,
 }
 
 /**
+ * Set completion request flag for all issued WQEs.
+ * This routine is intended to be used with enabled fast path tracing
+ * and send scheduling on time to provide the detailed report in trace
+ * for send completions on every WQE.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param loc
+ *   Pointer to burst routine local context.
+ * @param olx
+ *   Configured Tx offloads mask. It is fully defined at
+ *   compile time and may be used for optimization.
+ */
+static __rte_always_inline void
+mlx5_tx_request_completion_trace(struct mlx5_txq_data *__rte_restrict txq,
+				 struct mlx5_txq_local *__rte_restrict loc,
+				 unsigned int olx)
+{
+	uint16_t head = txq->elts_comp;
+
+	while (txq->wqe_comp != txq->wqe_ci) {
+		volatile struct mlx5_wqe *wqe;
+		uint32_t wqe_n;
+
+		MLX5_ASSERT(loc->wqe_last);
+		wqe = txq->wqes + (txq->wqe_comp & txq->wqe_m);
+		if (wqe == loc->wqe_last) {
+			head = txq->elts_head;
+			head +=	MLX5_TXOFF_CONFIG(INLINE) ?
+				0 : loc->pkts_sent - loc->pkts_copy;
+			txq->elts_comp = head;
+		}
+		/* Completion request flag was set on cseg constructing. */
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head |
+			  (wqe->cseg.opcode >> 8) << 16;
+#else
+		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head;
+#endif
+		/* A CQE slot must always be available. */
+		MLX5_ASSERT((txq->cq_pi - txq->cq_ci) <= txq->cqe_s);
+		/* Advance to the next WQE in the queue. */
+		wqe_n = rte_be_to_cpu_32(wqe->cseg.sq_ds) & 0x3F;
+		txq->wqe_comp += RTE_ALIGN(wqe_n, 4) / 4;
+	}
+}
+
+/**
  * Build the Control Segment with specified opcode:
  * - MLX5_OPCODE_SEND
  * - MLX5_OPCODE_ENHANCED_MPSW
@@ -755,7 +803,7 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
 		  struct mlx5_wqe *__rte_restrict wqe,
 		  unsigned int ds,
 		  unsigned int opcode,
-		  unsigned int olx __rte_unused)
+		  unsigned int olx)
 {
 	struct mlx5_wqe_cseg *__rte_restrict cs = &wqe->cseg;
 
@@ -764,8 +812,12 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
 		opcode = MLX5_OPCODE_TSO | MLX5_OPC_MOD_MPW << 24;
 	cs->opcode = rte_cpu_to_be_32((txq->wqe_ci << 8) | opcode);
 	cs->sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
-	cs->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
-			     MLX5_COMP_MODE_OFFSET);
+	if (MLX5_TXOFF_CONFIG(TXPP) && __rte_trace_point_fp_is_enabled())
+		cs->flags = RTE_BE32(MLX5_COMP_ALWAYS <<
+				     MLX5_COMP_MODE_OFFSET);
+	else
+		cs->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
+				     MLX5_COMP_MODE_OFFSET);
 	cs->misc = RTE_BE32(0);
 	if (__rte_trace_point_fp_is_enabled() && !loc->pkts_sent)
 		rte_pmd_mlx5_trace_tx_entry(txq->port_id, txq->idx);
@@ -3663,7 +3715,10 @@ enter_send_single:
 	if (unlikely(loc.pkts_sent == loc.pkts_loop))
 		goto burst_exit;
 	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, &loc, olx);
+	if (MLX5_TXOFF_CONFIG(TXPP) && __rte_trace_point_fp_is_enabled())
+		mlx5_tx_request_completion_trace(txq, &loc, olx);
+	else
+		mlx5_tx_request_completion(txq, &loc, olx);
 	/*
 	 * Ring QP doorbell immediately after WQE building completion
 	 * to improve latencies. The pure software related data treatment

@@ -968,8 +968,12 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	cqe_n = desc / MLX5_TX_COMP_THRESH +
-		1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
+	if (__rte_trace_point_fp_is_enabled() &&
+	    txq_data->offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+		cqe_n = UINT16_MAX / 2 - 1;
+	else
+		cqe_n = desc / MLX5_TX_COMP_THRESH +
+			1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
 	txq_obj->cq = mlx5_glue->create_cq(priv->sh->cdev->ctx, cqe_n,
 					   NULL, NULL, 0);
 	if (txq_obj->cq == NULL) {

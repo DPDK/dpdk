@@ -1470,8 +1470,12 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	MLX5_ASSERT(ppriv);
 	txq_obj->txq_ctrl = txq_ctrl;
 	txq_obj->dev = dev;
-	cqe_n = (1UL << txq_data->elts_n) / MLX5_TX_COMP_THRESH +
-		1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
+	if (__rte_trace_point_fp_is_enabled() &&
+	    txq_data->offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+		cqe_n = UINT16_MAX / 2 - 1;
+	else
+		cqe_n = (1UL << txq_data->elts_n) / MLX5_TX_COMP_THRESH +
+			1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
 	log_desc_n = log2above(cqe_n);
 	cqe_n = 1UL << log_desc_n;
 	if (cqe_n > UINT16_MAX) {
