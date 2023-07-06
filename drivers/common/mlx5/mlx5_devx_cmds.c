@@ -1078,6 +1078,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					 general_obj_types) &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
 	attr->rq_delay_drop = MLX5_GET(cmd_hca_cap, hcattr, rq_delay_drop);
+	attr->nic_flow_table = MLX5_GET(cmd_hca_cap, hcattr, nic_flow_table);
 	attr->striding_rq = MLX5_GET(cmd_hca_cap, hcattr, striding_rq);
 	attr->ext_stride_num_range =
 		MLX5_GET(cmd_hca_cap, hcattr, ext_stride_num_range);
