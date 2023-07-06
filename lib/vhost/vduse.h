@@ -7,6 +7,8 @@
 
 #include "vhost.h"
 
+#define VDUSE_NET_SUPPORTED_FEATURES VIRTIO_NET_SUPPORTED_FEATURES
+
 #ifdef VHOST_HAS_VDUSE
 
 int vduse_device_create(const char *path);

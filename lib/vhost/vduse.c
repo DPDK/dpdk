@@ -26,27 +26,6 @@
 #define VHOST_VDUSE_API_VERSION 0
 #define VDUSE_CTRL_PATH "/dev/vduse/control"
 
-#define VDUSE_NET_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
-				(1ULL << VIRTIO_F_ANY_LAYOUT) | \
-				(1ULL << VIRTIO_F_VERSION_1)   | \
-				(1ULL << VIRTIO_NET_F_GSO) | \
-				(1ULL << VIRTIO_NET_F_HOST_TSO4) | \
-				(1ULL << VIRTIO_NET_F_HOST_TSO6) | \
-				(1ULL << VIRTIO_NET_F_HOST_UFO) | \
-				(1ULL << VIRTIO_NET_F_HOST_ECN) | \
-				(1ULL << VIRTIO_NET_F_CSUM)    | \
-				(1ULL << VIRTIO_NET_F_GUEST_CSUM) | \
-				(1ULL << VIRTIO_NET_F_GUEST_TSO4) | \
-				(1ULL << VIRTIO_NET_F_GUEST_TSO6) | \
-				(1ULL << VIRTIO_NET_F_GUEST_UFO) | \
-				(1ULL << VIRTIO_NET_F_GUEST_ECN) | \
-				(1ULL << VIRTIO_RING_F_INDIRECT_DESC) | \
-				(1ULL << VIRTIO_RING_F_EVENT_IDX) | \
-				(1ULL << VIRTIO_F_IN_ORDER) | \
-				(1ULL << VIRTIO_F_IOMMU_PLATFORM) | \
-				(1ULL << VIRTIO_NET_F_CTRL_VQ) | \
-				(1ULL << VIRTIO_NET_F_MQ))
-
 struct vduse {
 	struct fdset fdset;
 };
@@ -441,7 +420,7 @@ vduse_device_create(const char *path)
 	struct virtio_net *dev;
 	struct virtio_net_config vnet_config = { 0 };
 	uint64_t ver = VHOST_VDUSE_API_VERSION;
-	uint64_t features = VDUSE_NET_SUPPORTED_FEATURES;
+	uint64_t features;
 	struct vduse_dev_config *dev_config = NULL;
 	const char *name = path + strlen("/dev/vduse/");
 
@@ -487,6 +466,12 @@ vduse_device_create(const char *path)
 		VHOST_LOG_CONFIG(name, ERR, "Failed to allocate VDUSE config\n");
 		ret = -1;
 		goto out_ctrl_close;
+	}
+
+	ret = rte_vhost_driver_get_features(path, &features);
+	if (ret < 0) {
+		VHOST_LOG_CONFIG(name, ERR, "Failed to get backend features\n");
+		goto out_free;
 	}
 
 	ret = rte_vhost_driver_get_queue_num(path, &max_queue_pairs);

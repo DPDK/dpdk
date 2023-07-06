@@ -921,6 +921,10 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		VHOST_LOG_CONFIG(path, ERR, "failed to init connection mutex\n");
 		goto out_free;
 	}
+
+	if (!strncmp("/dev/vduse/", path, strlen("/dev/vduse/")))
+		vsocket->is_vduse = true;
+
 	vsocket->vdpa_dev = NULL;
 	vsocket->max_queue_pairs = VHOST_MAX_QUEUE_PAIRS;
 	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
@@ -950,9 +954,14 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	 * two values.
 	 */
 	vsocket->use_builtin_virtio_net = true;
-	vsocket->supported_features = VIRTIO_NET_SUPPORTED_FEATURES;
-	vsocket->features           = VIRTIO_NET_SUPPORTED_FEATURES;
-	vsocket->protocol_features  = VHOST_USER_PROTOCOL_FEATURES;
+	if (vsocket->is_vduse) {
+		vsocket->supported_features = VDUSE_NET_SUPPORTED_FEATURES;
+		vsocket->features           = VDUSE_NET_SUPPORTED_FEATURES;
+	} else {
+		vsocket->supported_features = VHOST_USER_NET_SUPPORTED_FEATURES;
+		vsocket->features           = VHOST_USER_NET_SUPPORTED_FEATURES;
+		vsocket->protocol_features  = VHOST_USER_PROTOCOL_FEATURES;
+	}
 
 	if (vsocket->async_copy) {
 		vsocket->supported_features &= ~(1ULL << VHOST_F_LOG_ALL);
@@ -993,9 +1002,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 #endif
 	}
 
-	if (!strncmp("/dev/vduse/", path, strlen("/dev/vduse/"))) {
-		vsocket->is_vduse = true;
-	} else {
+	if (!vsocket->is_vduse) {
 		if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
 			vsocket->reconnect = !(flags & RTE_VHOST_USER_NO_RECONNECT);
 			if (vsocket->reconnect && reconn_tid == 0) {
