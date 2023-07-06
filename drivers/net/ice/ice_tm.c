@@ -693,6 +693,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	struct ice_vsi *vsi;
 	int ret_val = ICE_SUCCESS;
 	uint64_t peak = 0;
+	uint64_t committed = 0;
 	uint8_t priority;
 	uint32_t i;
 	uint32_t idx_vsi_child;
@@ -801,17 +802,33 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		q_teid = txq->q_teid;
 		if (tm_node->shaper_profile) {
 			/* Transfer from Byte per seconds to Kbps */
-			peak = tm_node->shaper_profile->profile.peak.rate;
-			peak = peak / 1000 * BITS_PER_BYTE;
-			ret_val = ice_cfg_q_bw_lmt(hw->port_info, vsi->idx,
-						   tm_node->tc, tm_node->id,
-						   ICE_MAX_BW, (u32)peak);
-			if (ret_val) {
-				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-				PMD_DRV_LOG(ERR,
-					    "configure queue %u bandwidth failed",
-					    tm_node->id);
-				goto fail_clear;
+			if (tm_node->shaper_profile->profile.peak.rate > 0) {
+				peak = tm_node->shaper_profile->profile.peak.rate;
+				peak = peak / 1000 * BITS_PER_BYTE;
+				ret_val = ice_cfg_q_bw_lmt(hw->port_info, vsi->idx,
+							   tm_node->tc, tm_node->id,
+							   ICE_MAX_BW, (u32)peak);
+				if (ret_val) {
+					error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+					PMD_DRV_LOG(ERR,
+						    "configure queue %u peak bandwidth failed",
+						    tm_node->id);
+					goto fail_clear;
+				}
+			}
+			if (tm_node->shaper_profile->profile.committed.rate > 0) {
+				committed = tm_node->shaper_profile->profile.committed.rate;
+				committed = committed / 1000 * BITS_PER_BYTE;
+				ret_val = ice_cfg_q_bw_lmt(hw->port_info, vsi->idx,
+							   tm_node->tc, tm_node->id,
+							   ICE_MIN_BW, (u32)committed);
+				if (ret_val) {
+					error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+					PMD_DRV_LOG(ERR,
+						    "configure queue %u committed bandwidth failed",
+						    tm_node->id);
+					goto fail_clear;
+				}
 			}
 		}
 		priority = 7 - tm_node->priority;
