@@ -2164,8 +2164,11 @@ mlx5_validate_action_rss(struct rte_eth_dev *dev,
 	const char *message;
 	uint32_t queue_idx;
 
-	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT &&
-	    rss->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
+	if (rss->func == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) {
+		DRV_LOG(WARNING, "port %u symmetric RSS supported with SORT",
+			dev->data->port_id);
+	} else if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT &&
+		   rss->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->func,
@@ -5578,6 +5581,8 @@ get_meter_sub_policy(struct rte_eth_dev *dev,
 						items, rss_actions, error))
 					goto exit;
 				rss_desc_v[i] = wks->rss_desc;
+				rss_desc_v[i].symmetric_hash_function =
+						dev_flow.symmetric_hash_function;
 				rss_desc_v[i].key_len = MLX5_RSS_HASH_KEY_LEN;
 				rss_desc_v[i].hash_fields =
 						dev_flow.hash_fields;
@@ -7275,6 +7280,7 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		rss = flow_get_rss_action(dev, p_actions_rx);
 	if (rss) {
 		MLX5_ASSERT(rss->queue_num <= RTE_ETH_RSS_RETA_SIZE_512);
+		rss_desc->symmetric_hash_function = MLX5_RSS_IS_SYMM(rss->func);
 		/*
 		 * The following information is required by
 		 * mlx5_flow_hashfields_adjust() in advance.

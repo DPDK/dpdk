@@ -284,7 +284,7 @@ uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
 void mlx5_rxq_timestamp_set(struct rte_eth_dev *dev);
 int mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hxrq_idx,
 		     const uint8_t *rss_key, uint32_t rss_key_len,
-		     uint64_t hash_fields,
+		     uint64_t hash_fields, bool symmetric_hash_function,
 		     const uint16_t *queues, uint32_t queues_n);
 
 /* mlx5_rx.c */

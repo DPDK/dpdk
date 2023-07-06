@@ -1509,6 +1509,7 @@ struct mlx5_mtr_config {
 
 /* RSS description. */
 struct mlx5_flow_rss_desc {
+	bool symmetric_hash_function; /**< Symmetric hash function */
 	uint32_t level;
 	uint32_t queue_num; /**< Number of entries in @p queue. */
 	uint64_t types; /**< Specific RSS hash types (see RTE_ETH_RSS_*). */
@@ -1577,6 +1578,7 @@ struct mlx5_hrxq {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	void *action; /* DV QP action pointer. */
 #endif
+	bool symmetric_hash_function; /* Symmetric hash function */
 	uint32_t hws_flags; /* Hw steering flags. */
 	uint64_t hash_fields; /* Verbs Hash fields. */
 	uint32_t rss_key_len; /* Hash key length in bytes. */
@@ -1648,6 +1650,7 @@ struct mlx5_obj_ops {
 	int (*hrxq_modify)(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 			   const uint8_t *rss_key,
 			   uint64_t hash_fields,
+			   bool symmetric_hash_function,
 			   const struct mlx5_ind_table_obj *ind_tbl);
 	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
 	int (*drop_action_create)(struct rte_eth_dev *dev);

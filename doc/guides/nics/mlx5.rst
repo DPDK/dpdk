@@ -110,6 +110,7 @@ Features
   and source only, destination only or both.
 - Several RSS hash keys, one for each flow type.
 - Default RSS operation with no hash key specification.
+- Symmetric RSS function.
 - Configurable RETA table.
 - Link flow control (pause frame).
 - Support for multiple MAC addresses.
@@ -204,6 +205,9 @@ Limitations
 - Available descriptor threshold event:
 
   - Does not support shared Rx queue and hairpin Rx queue.
+
+- The symmetric RSS function is supported by swapping source and destination
+  addresses and ports.
 
 - Host shaper:
 

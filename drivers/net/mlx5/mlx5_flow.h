@@ -900,6 +900,7 @@ struct mlx5_flow {
 	bool external; /**< true if the flow is created external to PMD. */
 	uint8_t ingress:1; /**< 1 if the flow is ingress. */
 	uint8_t skip_scale:2;
+	uint8_t symmetric_hash_function:1;
 	/**
 	 * Each Bit be set to 1 if Skip the scale the flow group with factor.
 	 * If bit0 be set to 1, then skip the scale the original flow group;
@@ -1249,6 +1250,7 @@ struct mlx5_action_construct_data {
 			uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS];
 		} modify_header;
 		struct {
+			bool symmetric_hash_function; /* Symmetric RSS hash */
 			uint64_t types; /* RSS hash types. */
 			uint32_t level; /* RSS level. */
 			uint32_t idx; /* Shared action index. */
@@ -1451,6 +1453,9 @@ struct rte_flow_template_table {
 #define MLX5_RSS_HASH_IPV6_ESP (MLX5_RSS_HASH_IPV6 | \
 				MLX5_RSS_HASH_ESP_SPI)
 #define MLX5_RSS_HASH_NONE 0ULL
+
+#define MLX5_RSS_IS_SYMM(func) \
+		((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ)
 
 
 /* extract next protocol type from Ethernet & VLAN headers */

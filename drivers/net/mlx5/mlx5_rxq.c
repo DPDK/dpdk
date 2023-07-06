@@ -2759,6 +2759,7 @@ mlx5_hrxq_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
 	struct mlx5_hrxq *hrxq = container_of(entry, typeof(*hrxq), entry);
 
 	return (hrxq->rss_key_len != rss_desc->key_len ||
+	    hrxq->symmetric_hash_function != rss_desc->symmetric_hash_function ||
 	    memcmp(hrxq->rss_key, rss_desc->key, rss_desc->key_len) ||
 	    hrxq->hws_flags != rss_desc->hws_flags ||
 	    hrxq->hash_fields != rss_desc->hash_fields ||
@@ -2792,7 +2793,7 @@ mlx5_hrxq_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
 int
 mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 		 const uint8_t *rss_key, uint32_t rss_key_len,
-		 uint64_t hash_fields,
+		 uint64_t hash_fields, bool symmetric_hash_function,
 		 const uint16_t *queues, uint32_t queues_n)
 {
 	int err;
@@ -2837,8 +2838,8 @@ mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 		return -rte_errno;
 	}
 	MLX5_ASSERT(priv->obj_ops.hrxq_modify);
-	ret = priv->obj_ops.hrxq_modify(dev, hrxq, rss_key,
-					hash_fields, ind_tbl);
+	ret = priv->obj_ops.hrxq_modify(dev, hrxq, rss_key, hash_fields,
+					symmetric_hash_function, ind_tbl);
 	if (ret) {
 		rte_errno = errno;
 		goto error;
@@ -2938,6 +2939,7 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = rss_desc->hash_fields;
 	hrxq->hws_flags = rss_desc->hws_flags;
+	hrxq->symmetric_hash_function = rss_desc->symmetric_hash_function;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
 	ret = priv->obj_ops.hrxq_new(dev, hrxq, rss_desc->tunnel);
 	if (ret < 0)

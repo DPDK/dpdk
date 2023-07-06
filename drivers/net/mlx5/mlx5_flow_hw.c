@@ -405,6 +405,7 @@ flow_hw_tir_action_register(struct rte_eth_dev *dev,
 		       MLX5_RSS_HASH_KEY_LEN);
 		rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
 		rss_desc.types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
+		rss_desc.symmetric_hash_function = MLX5_RSS_IS_SYMM(rss->func);
 		flow_hw_hashfields_set(&rss_desc, &rss_desc.hash_fields);
 		flow_dv_action_rss_l34_hash_adjust(rss->types,
 						   &rss_desc.hash_fields);
@@ -674,6 +675,8 @@ __flow_hw_act_data_shared_rss_append(struct mlx5_priv *priv,
 	act_data->shared_rss.types = !rss->origin.types ? RTE_ETH_RSS_IP :
 				     rss->origin.types;
 	act_data->shared_rss.idx = idx;
+	act_data->shared_rss.symmetric_hash_function =
+		MLX5_RSS_IS_SYMM(rss->origin.func);
 	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
 	return 0;
 }
@@ -1913,6 +1916,7 @@ flow_hw_shared_action_get(struct rte_eth_dev *dev,
 	case MLX5_RTE_FLOW_ACTION_TYPE_RSS:
 		rss_desc.level = act_data->shared_rss.level;
 		rss_desc.types = act_data->shared_rss.types;
+		rss_desc.symmetric_hash_function = act_data->shared_rss.symmetric_hash_function;
 		flow_dv_hashfields_set(item_flags, &rss_desc, &hash_fields);
 		hrxq_idx = flow_dv_action_rss_hrxq_lookup
 			(dev, act_data->shared_rss.idx, hash_fields);
@@ -2000,6 +2004,9 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev, uint32_t queue,
 		act_data.shared_rss.types = !shared_rss->origin.types ?
 					    RTE_ETH_RSS_IP :
 					    shared_rss->origin.types;
+		act_data.shared_rss.symmetric_hash_function =
+			MLX5_RSS_IS_SYMM(shared_rss->origin.func);
+
 		item_flags = table->its[it_idx]->item_flags;
 		if (flow_hw_shared_action_get
 				(dev, &act_data, item_flags, rule_act))

@@ -12006,6 +12006,7 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 	struct mlx5_hrxq *hrxq;
 
 	MLX5_ASSERT(rss_desc->queue_num);
+	rss_desc->symmetric_hash_function = dev_flow->symmetric_hash_function;
 	rss_desc->key_len = MLX5_RSS_HASH_KEY_LEN;
 	rss_desc->hash_fields = dev_flow->hash_fields;
 	rss_desc->tunnel = !!(dh->layers & MLX5_FLOW_LAYER_TUNNEL);
@@ -12550,6 +12551,8 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 			const uint8_t *rss_key;
 
 			rss = sub_actions->conf;
+			rss_desc->symmetric_hash_function =
+				MLX5_RSS_IS_SYMM(rss->func);
 			memcpy(rss_desc->queue, rss->queue,
 			       rss->queue_num * sizeof(uint16_t));
 			rss_desc->queue_num = rss->queue_num;
@@ -14478,6 +14481,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			rss = actions->conf;
+			rss_desc->symmetric_hash_function =
+				MLX5_RSS_IS_SYMM(rss->func);
 			memcpy(rss_desc->queue, rss->queue,
 			       rss->queue_num * sizeof(uint16_t));
 			rss_desc->queue_num = rss->queue_num;
@@ -14944,10 +14949,12 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				      error);
 	if (ret)
 		return -rte_errno;
-	if (action_flags & MLX5_FLOW_ACTION_RSS)
+	if (action_flags & MLX5_FLOW_ACTION_RSS) {
+		dev_flow->symmetric_hash_function = rss_desc->symmetric_hash_function;
 		flow_dv_hashfields_set(dev_flow->handle->layers,
 				       rss_desc,
 				       &dev_flow->hash_fields);
+	}
 	/* If has RSS action in the sample action, the Sample/Mirror resource
 	 * should be registered after the hash filed be update.
 	 */
@@ -16022,6 +16029,8 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 					  "cannot setup indirection table");
 	memcpy(rss_desc.key, shared_rss->origin.key, MLX5_RSS_HASH_KEY_LEN);
 	rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
+	rss_desc.symmetric_hash_function =
+		MLX5_RSS_IS_SYMM(shared_rss->origin.func);
 	rss_desc.const_q = shared_rss->origin.queue;
 	rss_desc.queue_num = shared_rss->origin.queue_num;
 	/* Set non-zero value to indicate a shared RSS. */
@@ -19145,6 +19154,8 @@ flow_dv_mtr_policy_rss_compare(const struct rte_flow_action_rss *r1,
 		return 0;
 	if (!(r1->level <= 1 && r2->level <= 1) &&
 	    !(r1->level > 1 && r2->level > 1))
+		return 1;
+	if (r1->func != r2->func)
 		return 1;
 	if (r1->types != r2->types &&
 	    !((r1->types == 0 || r1->types == RTE_ETH_RSS_IP) &&
