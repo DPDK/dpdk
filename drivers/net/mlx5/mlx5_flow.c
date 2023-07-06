@@ -364,7 +364,7 @@ mlx5_flow_expand_rss_skip_explicit(const struct mlx5_flow_expand_node graph[],
 	return next;
 }
 
-#define MLX5_RSS_EXP_ELT_N 16
+#define MLX5_RSS_EXP_ELT_N 32
 
 /**
  * Expand RSS flows into several possible flows according to the RSS hash
@@ -529,6 +529,7 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 			if (lsize > size)
 				return -EINVAL;
 			n = elt * sizeof(*item);
+			MLX5_ASSERT((buf->entries) < MLX5_RSS_EXP_ELT_N);
 			buf->entry[buf->entries].priority =
 				stack_pos + 1 + missed;
 			buf->entry[buf->entries].pattern = addr;
